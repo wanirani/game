@@ -4,13 +4,17 @@
 //  - 게스트(로그인 안 함)는 네트워크 요청 0건. 계정 화면을 열 때만 GET /api/health 로 서버가 있는지 확인한다
 //  - 로그인 중: 슬롯 저장(saves.onWrite) 2초 뒤 그 슬롯을 올린다(rev 로 충돌 검사). 메타(해금·엔딩·기록)는 덮어쓰지 않고 합친다
 //  - 모든 서버 작업은 한 줄로 차례대로 실행(queue)되고, 게임 진행을 기다리게 하지 않는다
+//  - '로그인 유지': 켜면 토큰을 localStorage 에(서버 세션 30일), 끄면 sessionStorage 에(창을 닫으면 사라짐, 서버 세션 12시간) 둔다.
+//    선택은 bn_remember 에 기억한다. 처음 기본값은 안드로이드 앱·터치 기기는 켬, 데스크톱 브라우저(PC방·학교 등 공용일 수 있음)는 끔
 //  - 이벤트(bus): 'cloud:status' {state} · 'cloud:login' {id, resumed} · 'cloud:logout' {reason} · 'cloud:sync' {phase, ...} · 'cloud:conflict' {slot}
-// 시험용: localStorage 'bn_api_base' 에 API 주소(예: '/api')를 넣으면 호스트 검사 없이 그 주소를 쓴다
+// 시험용: localStorage 'bn_api_base' 에 같은 출처의 API 경로(예: '/api')를 넣으면 호스트 검사 없이 그 경로를 쓴다
+//         (다른 사이트 주소는 무시 — 비밀번호·토큰이 다른 곳으로 가지 않게)
 import { bus } from './events.js';
 import { saves, isValidSave } from './save.js';
 
 export const API_BASE = '/api';
-const K_AUTH = 'bn_auth', K_BASE = 'bn_api_base', K_SYNC = 'bn_cloud_sync';
+const K_AUTH = 'bn_auth', K_BASE = 'bn_api_base', K_SYNC = 'bn_cloud_sync', K_REMEMBER = 'bn_remember';
+const TOKEN_RE = /^[A-Za-z0-9_-]{43}$/;
 export const SLOTS = [1, 2, 3];
 const DEBOUNCE = 2000;
 const PER_MODE = 20; // 명예의 전당: 모드별 보관 수 (front/common.js 와 같음)
@@ -24,12 +28,15 @@ const FRONT_SCENES = new Set(['title', 'slots', 'account', 'options', 'difficult
 export const MESSAGES = {
   bad_request: '요청 형식이 올바르지 않습니다.',
   bad_json: '요청 데이터를 읽을 수 없습니다.',
+  unsupported_media_type: '요청 형식이 올바르지 않습니다. (JSON 으로 보내야 합니다)',
+  forbidden: '허용되지 않는 요청입니다.',
   payload_too_large: '보내는 데이터가 너무 큽니다.',
   invalid_id: '아이디는 영문 소문자로 시작하는 4~16자의 영문 소문자, 숫자, 밑줄(_)로 만들어 주세요.',
   reserved_id: '사용할 수 없는 아이디입니다. 다른 아이디를 입력해 주세요.',
   id_taken: '이미 사용 중인 아이디입니다.',
   invalid_password: '비밀번호는 8~64자로 입력해 주세요. (줄바꿈 같은 제어 문자는 쓸 수 없습니다)',
   password_same_as_id: '비밀번호는 아이디와 다르게 정해 주세요.',
+  weak_password: '너무 흔하거나 추측하기 쉬운 비밀번호입니다. 아이디가 들어가지 않은, 다른 사람이 떠올리기 어려운 비밀번호로 정해 주세요.',
   same_password: '새 비밀번호가 지금 비밀번호와 같습니다.',
   invalid_credentials: '아이디 또는 비밀번호가 올바르지 않습니다.',
   wrong_password: '비밀번호가 올바르지 않습니다.',
@@ -60,8 +67,8 @@ const fail = (error, extra = {}) => ({ ok: false, error, message: MESSAGES[error
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const num = (v) => (Number.isFinite(v) ? v : 0);
 
-// ───────────────────────── 저장소 (localStorage, 실패 시 메모리) ─────────────────────────
-const mem = {};
+// ───────────────────────── 저장소 (localStorage · sessionStorage, 실패 시 메모리) ─────────────────────────
+const mem = {}, smem = {};
 function lsGet(k) {
   if (Object.hasOwn(mem, k)) return mem[k];
   try { return localStorage.getItem(k); } catch { return null; }
@@ -73,7 +80,64 @@ function lsDel(k) {
   delete mem[k];
   try { localStorage.removeItem(k); } catch { /* 무시 */ }
 }
+// sessionStorage: 이 탭(창)에서만 유지 — 새로 고침은 살아남고 창을 닫으면 사라진다
+function ssGet(k) {
+  if (Object.hasOwn(smem, k)) return smem[k];
+  try { return sessionStorage.getItem(k); } catch { return null; }
+}
+function ssSet(k, v) {
+  try { sessionStorage.setItem(k, v); delete smem[k]; return true; } catch { smem[k] = v; return false; }
+}
+function ssDel(k) {
+  delete smem[k];
+  try { sessionStorage.removeItem(k); } catch { /* 무시 */ }
+}
 function jget(k) { try { return JSON.parse(lsGet(k)); } catch { return null; } }
+
+// ───────────────────────── 받은 데이터 정리 (프로토타입 오염·깊은 트리 방지) ─────────────────────────
+const UNSAFE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+/**
+ * JSON 데이터의 안전한 복사본: '__proto__'·'constructor'·'prototype' 키를 버리고, maxDepth 보다 깊은 부분은 버린다.
+ * JSON.parse 는 '__proto__' 를 자기 속성으로 만들고, 그 뒤 obj[k] = v 로 옮기면 obj 의 프로토타입이 바뀐다.
+ * 서버·가져오기 코드에서 온 기록을 합치거나 게임 객체에 대입하기 전에 거친다. 재귀 없이 처리한다.
+ */
+export function sanitizeTree(v, maxDepth = 32) {
+  if (!v || typeof v !== 'object') return v;
+  const root = Array.isArray(v) ? [] : {};
+  const stack = [[v, root, 1]];
+  while (stack.length) {
+    const [src, dst, d] = stack.pop();
+    const arr = Array.isArray(src);
+    for (const k of arr ? src.keys() : Object.keys(src)) {
+      if (!arr && UNSAFE_KEYS.has(k)) continue;
+      const x = src[k];
+      if (x && typeof x === 'object') {
+        if (d >= maxDepth) { if (arr) dst[k] = null; continue; }
+        const c = Array.isArray(x) ? [] : {};
+        dst[k] = c;
+        stack.push([x, c, d + 1]);
+      } else if (x !== undefined && typeof x !== 'function') dst[k] = x;
+      else if (arr) dst[k] = null;
+    }
+  }
+  return root;
+}
+
+/** 시험용 API 주소 덮어쓰기 값 검사: 같은 출처의 절대 경로('/api', '/v2/api')만 허용, 나머지는 null */
+export function safeBase(o) {
+  if (typeof o !== 'string') return null;
+  const s = o.trim().replace(/\/+$/, '');
+  return /^\/[A-Za-z0-9._~-]+(\/[A-Za-z0-9._~-]+)*$/.test(s) && !/(^|\/)\.\.?(\/|$)/.test(s) ? s : null;
+}
+
+export const isValidToken = (t) => typeof t === 'string' && TOKEN_RE.test(t);
+
+/** '로그인 유지' 처음 기본값: 안드로이드 앱·터치 기기(대개 개인 기기)는 켬, 데스크톱 브라우저(PC방·학교 등 공용일 수 있음)는 끔 */
+export function defaultRemember(loc = typeof location !== 'undefined' ? location : null) {
+  if (/(^|\.)appassets\.androidplatform\.net$/i.test(String(loc?.hostname ?? ''))) return true;
+  try { if (typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches) return true; } catch { /* 무시 */ }
+  return false;
+}
 
 // ───────────────────────── 입력 검사 (서버 규칙과 같음: netlify/lib/validate.mts) ─────────────────────────
 const ID_RE = /^[a-z][a-z0-9_]{3,15}$/;
@@ -90,6 +154,42 @@ const CONTROL_RE = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/;
 
 /** 아이디 정규화: 앞뒤 공백 제거 + 소문자 (서버와 같음) */
 export const normalizeId = (raw) => String(raw ?? '').trim().toLowerCase();
+/** 서버가 준(또는 저장해 둔) 아이디가 형식에 맞는가 */
+export const isValidId = (id) => typeof id === 'string' && ID_RE.test(id);
+
+/** 흔한 비밀번호 — netlify/lib/validate.mts 의 COMMON_PASSWORDS 와 같아야 한다 (tools/accounts/test_api.mjs 가 확인) */
+export const COMMON_PASSWORDS = [
+  'password', 'password1', 'password12', 'password123', 'password1!', 'password!', 'passw0rd', 'p@ssw0rd', 'p@ssword', 'p@ssw0rd1',
+  'passwords', 'pass1234', 'pass12345', 'mypassword', '12345678', '123456789', '1234567890', '0123456789', '12345678910',
+  '987654321', '0987654321', '11111111', '111111111', '00000000', '88888888', '12341234', '11223344', '11112222', '12344321',
+  '147258369', '159753456', '741852963', '123123123', '123qweasd', '1q2w3e4r', '1q2w3e4r!', '1q2w3e4r5t', '1q2w3e4r5t6y',
+  '1qaz2wsx', '1qazxsw2', '1qaz2wsx3edc', '2wsx3edc', 'q1w2e3r4', 'q1w2e3r4t5', 'qwer1234', 'qwer1234!', '1234qwer', '1234qwer!',
+  'qwerty12', 'qwerty123', 'qwerty1234', 'qwertyui', 'qwertyuiop', 'qwe123456', 'qweasdzxc', 'qweasd123', 'asdf1234', '1234asdf',
+  'asdfghjk', 'asdfghjkl', 'asdf1234!', 'zxcv1234', 'zxcvbnm1', 'zxcvbnm123', 'zxcvbnm!', 'a1234567', 'a12345678', 'a123456789',
+  'abcd1234', 'abcd1234!', 'abc12345', 'abc123456', 'abcdefg1', 'aa123456', 'iloveyou', 'iloveyou1', 'iloveyou!', 'sunshine',
+  'princess', 'football', 'baseball', 'basketball', 'superman', 'starwars', 'trustno1', 'whatever', 'welcome1', 'welcome123',
+  'letmein1', 'letmein123', 'dragon12', 'monkey12', 'master12', 'shadow12', 'michael1', 'jennifer', 'computer', 'internet',
+  'samsung1', 'samsung123', 'admin123', 'admin1234', 'administrator', 'root1234', 'test1234', 'testtest', 'guest123',
+  'dkssudgktpdy', '가나다라마바사아', 'bloodnocturne', 'blood_nocturne', 'bloodnocturne1', 'castlevania', 'dracula1',
+  'dracula123', 'vampire1', 'vampire123', 'nocturne1',
+];
+const COMMON = new Set(COMMON_PASSWORDS);
+function isRun(p) {
+  const c = [...p].map((ch) => ch.codePointAt(0));
+  if (c.length < 3) return false;
+  const step = (a, b) => (a === 57 && b === 48 ? 1 : a === 48 && b === 57 ? -1 : b - a);
+  const d = step(c[0], c[1]);
+  return (d === 1 || d === -1) && c.every((x, i) => i === 0 || step(c[i - 1], x) === d);
+}
+/** 추측하기 쉬운 비밀번호인가 (서버 isWeakPassword 와 같음): 흔한 비밀번호, 1~4글자 묶음 반복, 연속된 글자, 아이디 + 3글자 이하 */
+export function isWeakPassword(pw, id = '') {
+  const p = String(pw).normalize('NFC').toLowerCase();
+  if (COMMON.has(p)) return true;
+  if (/^(.{1,4})\1+$/su.test(p)) return true;
+  if (isRun(p)) return true;
+  const i = normalizeId(id);
+  return !!i && p.includes(i) && [...p].length - i.length < 4;
+}
 
 /** 아이디 검사 → 오류 문구 또는 null. signup 이면 예약된 아이디도 거른다 */
 export function checkId(raw, signup = false) {
@@ -112,6 +212,7 @@ export function checkPassword(pw, id = '') {
   if (n < 8) return `비밀번호는 8자 이상이어야 합니다. (지금 ${n}자)`;
   if (n > 64) return `비밀번호는 64자까지 쓸 수 있습니다. (지금 ${n}자)`;
   if (id && pw.normalize('NFC').toLowerCase() === normalizeId(id)) return MESSAGES.password_same_as_id;
+  if (isWeakPassword(pw, id)) return MESSAGES.weak_password;
   return null;
 }
 
@@ -211,8 +312,9 @@ function mergeCounts(a, b) {
  * 그 밖의 필드(마지막 캐릭터·이니셜·아케이드 설정 등)는 이 기기 값이 우선.
  */
 export function mergeMeta(a, b) {
-  a = isObj(a) ? a : {};
+  a = isObj(a) ? sanitizeTree(a) : {};
   if (!isObj(b)) return JSON.parse(JSON.stringify(a));
+  b = sanitizeTree(b);
   const out = JSON.parse(JSON.stringify({ ...b, ...a }));
   out.unlockedChars = union(a.unlockedChars, b.unlockedChars);
   out.endingsSeen = union(a.endingsSeen, b.endingsSeen);
@@ -232,7 +334,7 @@ export function mergeMeta(a, b) {
 
 /** 서버 검사(invalid_meta)에 걸리지 않게 모양을 다듬은 복사본 */
 export function cleanMeta(m) {
-  const o = JSON.parse(JSON.stringify(isObj(m) ? m : {}));
+  const o = JSON.parse(JSON.stringify(isObj(m) ? sanitizeTree(m) : {}));
   o.unlockedChars = union(o.unlockedChars, []);
   o.endingsSeen = union(o.endingsSeen, []);
   o.highScores = (Array.isArray(o.highScores) ? o.highScores : []).filter(isObj).slice(0, 200);
@@ -256,7 +358,7 @@ class Cloud {
   constructor() {
     this.game = null;
     this.state = 'unknown'; // 'unknown' | 'checking' | 'ready' | 'offline' | 'unavailable' | 'blocked'
-    this.auth = null;       // { id, token }
+    this.auth = null;       // { id, token, remember } — remember: 토큰을 localStorage 에 두는가('로그인 유지')
     this.verified = false;  // 이번 실행에서 서버가 토큰을 확인했는가
     this.createdAt = null;
     this.lastSync = 0;
@@ -287,14 +389,10 @@ class Cloud {
     if (!this.eligible()) this.setState('blocked');
     else if (this.auth) this.resume();
   }
-  get base() {
-    const o = lsGet(K_BASE);
-    return typeof o === 'string' && o.trim() ? o.trim().replace(/\/+$/, '') : API_BASE;
-  }
+  get base() { return safeBase(lsGet(K_BASE)) ?? API_BASE; }
   /** 이 환경에서 서버 요청을 보내도 되는가 */
   eligible() {
-    const o = lsGet(K_BASE);
-    if (typeof o === 'string' && o.trim()) return true;
+    if (safeBase(lsGet(K_BASE))) return true;
     return typeof location !== 'undefined' && isEligibleLocation(location);
   }
   get loggedIn() { return !!this.auth; }
@@ -309,24 +407,45 @@ class Cloud {
   }
 
   // ── 토큰 ──
+  /** 저장된 로그인 읽기: '로그인 유지'면 localStorage, 아니면 이 탭의 sessionStorage. 형식이 틀린 값은 버린다 */
   loadAuth() {
-    const a = jget(K_AUTH);
-    this.auth = isObj(a) && typeof a.id === 'string' && typeof a.token === 'string' && a.token ? { id: a.id, token: a.token } : null;
+    const pick = (raw, remember) => {
+      try {
+        const a = JSON.parse(raw);
+        return isObj(a) && isValidId(a.id) && isValidToken(a.token) ? { id: a.id, token: a.token, remember } : null;
+      } catch { return null; }
+    };
+    this.auth = pick(lsGet(K_AUTH), true) ?? pick(ssGet(K_AUTH), false);
+    if (!this.auth) { lsDel(K_AUTH); ssDel(K_AUTH); }
   }
-  setAuth(id, token) {
-    this.auth = { id, token };
+  persistAuth() {
+    if (!this.auth) return;
+    const raw = JSON.stringify({ id: this.auth.id, token: this.auth.token });
+    if (this.auth.remember) { lsSet(K_AUTH, raw); ssDel(K_AUTH); } else { ssSet(K_AUTH, raw); lsDel(K_AUTH); }
+  }
+  /** '로그인 유지' 선택 (이 기기에 기억한 값, 없으면 기기 종류에 따른 기본값) */
+  rememberPref() {
+    const v = lsGet(K_REMEMBER);
+    return v === '1' ? true : v === '0' ? false : defaultRemember();
+  }
+  setRememberPref(on) { lsSet(K_REMEMBER, on ? '1' : '0'); }
+  setAuth(id, token, remember = this.rememberPref()) {
+    this.auth = { id, token, remember: !!remember };
     this.verified = true;
-    lsSet(K_AUTH, JSON.stringify(this.auth));
+    this.setRememberPref(!!remember);
+    this.persistAuth();
     this.resetView();
     this.setState('ready');
     bus.emit('cloud:login', { id, resumed: false });
   }
   clearAuth(reason = 'logout') {
     if (!this.auth) return;
-    const id = this.auth.id;
+    const { id, remember } = this.auth;
     this.auth = null; this.verified = false; this.createdAt = null; this.lastSync = 0;
     for (const k of Object.keys(this.timers)) { clearTimeout(this.timers[k]); delete this.timers[k]; }
-    lsDel(K_AUTH);
+    lsDel(K_AUTH); ssDel(K_AUTH);
+    // '로그인 유지'를 끄고 쓴 기기(공용일 수 있음)에서 직접 로그아웃하면 이 계정의 동기화 기록(아이디가 들어 있다)도 지운다
+    if (reason === 'logout' && !remember) this.dropRecs(id);
     this.resetView();
     this.warned.clear();
     bus.emit('cloud:logout', { id, reason });
@@ -347,12 +466,12 @@ class Cloud {
   syncDb() { const d = jget(K_SYNC); return isObj(d) ? d : {}; }
   recs(id = this.id) {
     const d = this.syncDb();
-    const r = isObj(d[id]) ? d[id] : {};
+    const r = isValidId(id) && isObj(d[id]) ? d[id] : {};
     if (!isObj(r.slots)) r.slots = {};
     return r;
   }
   saveRecs(r, id = this.id) {
-    if (!id) return;
+    if (!isValidId(id)) return;
     const d = this.syncDb();
     d[id] = r;
     lsSet(K_SYNC, JSON.stringify(d));
@@ -390,7 +509,10 @@ class Cloud {
     let timedOut = false;
     const timer = setTimeout(() => { timedOut = true; ctrl?.abort(); }, timeout);
     try {
-      const res = await fetch(this.base + path, { method, headers, body: payload, signal: ctrl?.signal, cache: 'no-store' });
+      // 쿠키를 쓰지 않고(credentials omit), 넘겨주기(redirect)를 따라가지 않는다 — 비밀번호·토큰이 다른 주소로 다시 보내지지 않게
+      const res = await fetch(this.base + path, {
+        method, headers, body: payload, signal: ctrl?.signal, cache: 'no-store', credentials: 'omit', redirect: 'error', referrerPolicy: 'no-referrer',
+      });
       let json = null;
       try { json = await res.json(); } catch { json = null; }
       if (!isObj(json) || typeof json.ok !== 'boolean') return fail('bad_response', { status: res.status });
@@ -459,7 +581,7 @@ class Cloud {
       const r = await this.request('GET', '/auth/me', { timeout: 8000 });
       if (r.ok) {
         this.verified = true; this.createdAt = r.createdAt ?? null;
-        if (this.auth && r.id && r.id !== this.auth.id) { this.auth.id = r.id; lsSet(K_AUTH, JSON.stringify(this.auth)); }
+        if (this.auth && isValidId(r.id) && r.id !== this.auth.id) { this.auth.id = r.id; this.persistAuth(); }
         this.setState('ready');
         bus.emit('cloud:login', { id: this.id, resumed: true });
         const out = await this.refresh({ reason: 'resume' });
@@ -476,16 +598,22 @@ class Cloud {
   }
 
   // ── 계정 ──
-  async signup(id, password) {
-    const r = await this.request('POST', '/auth/signup', { body: { id: normalizeId(id), password }, auth: false, timeout: 15000 });
-    this.noteResult(r);
-    if (r.ok) this.setAuth(r.id, r.token);
+  /** 로그인·가입·복구 응답의 아이디·토큰 형식 확인 (형식이 틀리면 저장하지 않는다) */
+  checkAuthReply(r) {
+    if (r.ok && (!isValidId(r.id) || !isValidToken(r.token))) return fail('bad_response', { status: r.status });
     return r;
   }
-  async login(id, password) {
-    const r = await this.request('POST', '/auth/login', { body: { id: normalizeId(id), password }, auth: false, timeout: 15000 });
+  /** remember: '로그인 유지' (생략하면 이 기기에 기억한 선택) */
+  async signup(id, password, { remember = this.rememberPref() } = {}) {
+    const r = this.checkAuthReply(await this.request('POST', '/auth/signup', { body: { id: normalizeId(id), password, remember: !!remember }, auth: false, timeout: 15000 }));
     this.noteResult(r);
-    if (r.ok) this.setAuth(r.id, r.token);
+    if (r.ok) this.setAuth(r.id, r.token, remember);
+    return r;
+  }
+  async login(id, password, { remember = this.rememberPref() } = {}) {
+    const r = this.checkAuthReply(await this.request('POST', '/auth/login', { body: { id: normalizeId(id), password, remember: !!remember }, auth: false, timeout: 15000 }));
+    this.noteResult(r);
+    if (r.ok) this.setAuth(r.id, r.token, remember);
     return r;
   }
   async me() {
@@ -494,26 +622,32 @@ class Cloud {
     this.noteResult(r);
     return r;
   }
-  /** 로그아웃: 기다리던 업로드를 먼저 보내고(최대 몇 초) 서버 토큰을 폐기. 서버에 닿지 않아도 이 기기에서는 로그아웃된다 */
-  async logout() {
-    if (!this.auth) return { ok: true };
+  /**
+   * 로그아웃: 기다리던 업로드를 먼저 보내고(최대 몇 초) 서버 토큰을 폐기.
+   *  - 보통: 서버에 닿지 않아도 이 기기에서는 로그아웃된다 → {ok:true, remote:false} (서버 세션은 만료될 때까지 남는다)
+   *  - all:true (모든 기기에서 로그아웃): 서버에 닿아야 의미가 있으므로 실패하면 로그인 상태를 그대로 두고 오류를 돌려준다
+   */
+  async logout({ all = false } = {}) {
+    if (!this.auth) return { ok: true, remote: true };
     this.flushTimers();
     await Promise.race([this.queue, new Promise((r) => setTimeout(r, 4000))]);
-    const r = this.auth ? await this.request('POST', '/auth/logout', { timeout: 5000 }) : { ok: true };
+    const r = this.auth ? await this.request('POST', '/auth/logout', { body: all ? { all: true } : undefined, timeout: 5000 }) : { ok: true };
+    if (all && !r.ok && r.error !== 'unauthorized') { this.noteResult(r); return r; }
     this.clearAuth('logout');
-    return { ok: true, remote: !!r.ok };
+    return { ok: true, remote: !!r.ok, revoked: r.revoked ?? 0 };
   }
   async changePassword(oldPassword, newPassword) {
     const r = await this.request('POST', '/auth/password', { body: { oldPassword, newPassword }, timeout: 15000 });
     this.noteResult(r);
     return r;
   }
-  async recover(id, recoveryCode, newPassword) {
-    const r = await this.request('POST', '/auth/recover', { body: { id: normalizeId(id), recoveryCode: String(recoveryCode ?? '').trim(), newPassword }, auth: false, timeout: 15000 });
+  async recover(id, recoveryCode, newPassword, { remember = this.rememberPref() } = {}) {
+    const body = { id: normalizeId(id), recoveryCode: String(recoveryCode ?? '').trim(), newPassword, remember: !!remember };
+    const r = this.checkAuthReply(await this.request('POST', '/auth/recover', { body, auth: false, timeout: 15000 }));
     this.noteResult(r);
     if (r.ok) {
       if (this.auth && this.auth.id !== r.id) this.clearAuth('switch');
-      this.setAuth(r.id, r.token);
+      this.setAuth(r.id, r.token, remember);
     }
     return r;
   }
@@ -644,7 +778,7 @@ class Cloud {
         v.error = r.message;
         return r;
       }
-      let data = r.data;
+      let data = sanitizeTree(r.data);
       if (!isValidSave(data)) { v.error = MESSAGES.invalid_save; return fail('invalid_save'); }
       try { const { migrateState } = await import('../game/state.js'); data = migrateState(data); } catch (e) { console.warn('[cloud] migrate', e); }
       if (auto && this.activeSlot() === slot) return { ok: false, error: 'held' };
@@ -684,9 +818,10 @@ class Cloud {
   localMeta() { return this.game?.meta ?? saves.loadMeta(); }
   applyMeta(merged) {
     const m = this.game?.meta;
+    merged = sanitizeTree(merged);
     this.muted = true;
     try {
-      if (m) { for (const k of Object.keys(merged)) m[k] = merged[k]; saves.saveMeta(m); }
+      if (m) { for (const k of Object.keys(merged)) if (!UNSAFE_KEYS.has(k)) m[k] = merged[k]; saves.saveMeta(m); }
       else saves.saveMeta(merged);
     } finally { this.muted = false; }
   }
