@@ -204,4 +204,19 @@ for (const [st, ch] of [['s12', 'azel'], ['s13', 'kael'], ['s09', 'lia']]) {
     return { id, dlg: dlg && JSON.stringify(dlg).slice(0, 80), seen, final: await top(page) };
   });
 }
+for (const [st, ch] of [['s03', 'kael'], ['s04', 'bran'], ['s02', 'sera'], ['s08', 'victor']]) {
+  await run('reset_' + st, `index.html?scene=stage&stage=${st}&room=boss&char=${ch}`, async (page) => {
+    await page.evaluate(() => { const w = __game.world; w.player.x = w.arenaX + 48 * 2; w.startBoss(); });
+    for (let i = 0; i < 60; i++) { const t = await top(page); if (!/dialogue|bossIntro/.test(t)) break; await page.keyboard.press('KeyX'); await W(page, 250); }
+    await W(page, 1000);
+    await page.evaluate(() => { const w = __game.world, b = w.boss; b.invuln = false; b.takeHit(Math.floor(b.hp * 0.78), {}, w, {}); });
+    await W(page, 3500);
+    const mid = await page.evaluate(() => { const b = __game.world.boss; return { hp: b.hp, phase: b.phase, w: b.w, h: b.h, mounted: b.mounted, split: b.split }; });
+    await page.evaluate(() => { const w = __game.world, p = w.player; p.iframes = 0; p.hp = 1; p.takeHit(99999, { team: 'enemy', flat: 99999, dir: 1, kb: [0, 0] }, w, {}); });
+    await W(page, 5500);
+    const after = await page.evaluate(() => { const w = __game.world, b = w.boss; return { hp: b.hp, max: b.stats.maxHp, phase: b.phase, w: b.w, h: b.h, mounted: b.mounted, split: b.split, st: b.state, px: Math.round(w.player.x), x0: w.arena.x0, camx: Math.round(w.camera.x), pdead: w.player.dead, bosses: w.entities.filter((e) => e.kind === 'boss' && !e.dead).length }; });
+    await page.screenshot({ path: `/tmp/claude-0/fix_engine_reset_${st}.png` });
+    return { mid, after };
+  });
+}
 await browser.close(); srv.close();
