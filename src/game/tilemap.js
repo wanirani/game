@@ -52,14 +52,51 @@ export class TileMap {
         }
       }
     }
-    // 가짜 벽(h)으로 둘러싸인 표식 칸도 가짜 벽으로 메운다 — 비밀 방 안의 아이템·적이 밖에서 구멍처럼 보이지 않게
-    const W = this.w, H = this.h;
-    const closed = (x, y) => { const t = x < 0 || y < 0 || x >= W || y >= H ? T.SOLID : this.tiles[y * W + x]; return t === T.SOLID || t === T.BREAK || t === T.FAKE; };
-    for (const mk of this.markers) {
-      const i = mk.ty * W + mk.tx;
-      if (mk.breakable || this.tiles[i] !== T.EMPTY) continue;
-      const nb = [[mk.tx - 1, mk.ty], [mk.tx + 1, mk.ty], [mk.tx, mk.ty - 1], [mk.tx, mk.ty + 1]];
-      if (nb.every(([x, y]) => closed(x, y)) && nb.some(([x, y]) => x >= 0 && y >= 0 && x < W && y < H && this.tiles[y * W + x] === T.FAKE)) this.tiles[i] = T.FAKE;
+    this.fillSecretPockets(room);
+  }
+  /**
+   * 비밀 방 메우기: 가짜 벽(h) 너머에만 있는 빈 공간도 가짜 벽으로 바꿔, 밖에서 창문처럼 뚫려 보이거나
+   * 안의 아이템·상자·촛불·적이 미리 보이지 않게 한다. 들어서는 순간 revealFake 의 flood fill 로 한꺼번에 드러난다.
+   *  1) 시작점 P · 문 D · 보스 트리거 X · 방 출구(좌우 끝 열, 위쪽 출구/천장이 트인 맨 윗줄, 아래쪽 출구)에서
+   *     4방향 flood fill. 벽(#,%)과 가짜 벽(h)만 막힘 — 부서지는 벽(B/H/K)·발판(=)·가시·액체는 통과(입구)로 본다.
+   *  2) 닿지 못한 칸들의 연결 덩어리 가운데 가짜 벽에 맞닿은 것만 비밀 방으로 보고, 그 안의 빈칸을 가짜 벽으로 바꾼다.
+   *     (발판·가시·액체·부서지는 벽은 그대로 둔다 — 안쪽 지형과 숨은 상자는 드러난 뒤에도 그대로 쓰인다)
+   */
+  fillSecretPockets(room) {
+    const W = this.w, H = this.h, tiles = this.tiles;
+    let hasFake = false;
+    for (let i = 0; i < tiles.length; i++) if (tiles[i] === T.FAKE) { hasFake = true; break; }
+    if (!hasFake) return;
+    const open = (i) => tiles[i] !== T.SOLID && tiles[i] !== T.FAKE;
+    const reached = new Uint8Array(W * H);
+    const stack = [];
+    const seed = (x, y) => { if (x < 0 || y < 0 || x >= W || y >= H) return; const i = y * W + x; if (open(i) && !reached[i]) { reached[i] = 1; stack.push(i); } };
+    // 문은 이어진 방으로 나가는 곳이지만, 가짜 벽 속에 파묻힌 비밀 문(사방이 벽·가짜 벽)은 씨앗에서 빼 함께 가린다 (s11 r2)
+    const buried = (x, y) => [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]].every(([a, b]) => a < 0 || b < 0 || a >= W || b >= H || !open(b * W + a));
+    for (const mk of this.markers) if (mk.ch === 'P' || mk.ch === 'X' || (mk.ch === 'D' && !buried(mk.tx, mk.ty))) seed(mk.tx, mk.ty);
+    for (let x = 0; x < W; x++) { seed(x, 0); if (room.exitDown) seed(x, H - 1); } // 맨 윗줄은 천장 위(방 밖)로 이어져 있다
+    for (let y = 0; y < H; y++) { if (room.exitLeft) seed(0, y); if (room.exitRight) seed(W - 1, y); }
+    const flood = (mark, pass, out) => {
+      while (stack.length) {
+        const i = stack.pop(), x = i % W, y = (i - x) / W;
+        out?.push(i);
+        if (x > 0 && pass(i - 1) && !mark[i - 1]) { mark[i - 1] = 1; stack.push(i - 1); }
+        if (x < W - 1 && pass(i + 1) && !mark[i + 1]) { mark[i + 1] = 1; stack.push(i + 1); }
+        if (y > 0 && pass(i - W) && !mark[i - W]) { mark[i - W] = 1; stack.push(i - W); }
+        if (y < H - 1 && pass(i + W) && !mark[i + W]) { mark[i + W] = 1; stack.push(i + W); }
+      }
+    };
+    flood(reached, open);
+    // 닿지 못한 덩어리별로: 가짜 벽에 맞닿았으면 빈칸을 가짜 벽으로
+    const seen = new Uint8Array(W * H);
+    const touchesFake = (i) => { const x = i % W; return (x > 0 && tiles[i - 1] === T.FAKE) || (x < W - 1 && tiles[i + 1] === T.FAKE) || (i >= W && tiles[i - W] === T.FAKE) || (i + W < tiles.length && tiles[i + W] === T.FAKE); };
+    for (let i0 = 0; i0 < tiles.length; i0++) {
+      if (reached[i0] || seen[i0] || !open(i0)) continue;
+      const comp = [];
+      seen[i0] = 1; stack.push(i0);
+      flood(seen, (j) => open(j) && !reached[j], comp);
+      if (!comp.some(touchesFake)) continue;
+      for (const i of comp) if (tiles[i] === T.EMPTY) tiles[i] = T.FAKE;
     }
   }
   get pxW() { return this.w * TILE; }

@@ -217,7 +217,7 @@ q_<questId>_start / q_<questId>_done for all 13 Part 2 side quests (§9)
 Also **modify** (in `story.js`): `npc_marta_ch13`, `npc_rook_ch13`, `npc_alberto_ch13`, `npc_elise_ch13`,
 `npc_carmilla_ch13` — the first hub visit after s13 now happens *after* `p2_prologue`, so each gets a Part-2-aware
 branch: prepend `ifFlag('p2_started','p2')`, keep the old lines, `go('end')`, then `L('p2')` + 1–2 new lines that keep
-the old sentiment but react to the crack in the sky (e.g. Marta: “영웅 양반, 방값은 영원히 공짜라니까. …근데 저 하늘의 금은 뭐야? 또 가야 해?”; Rook: “가면은… 이계에서 벗겠습니다요. 그때까진 장사꾼 로크로 불러 주십쇼.”), `L('end')`.
+the old sentiment but react to the crack in the sky (e.g. Marta: “영웅 양반, 방값은 영원히 공짜라니까. …근데 저 하늘의 금은 뭐야? 또 가야 해?”; Rook: “가면은… 모든 게 끝나면 벗겠습니다요. 그때까진 장사꾼 로크로 불러 주십쇼.”), `L('end')`.
 
 Rules for boss phase scripts: the boss code pushes them exactly like `b_dracula` does for `b_dracula_transform`
 (dialogue overlay, `world.cutscene = true` until `onEnd`), only in `world.mode === 'story'` and only the first time
@@ -289,7 +289,9 @@ Part 1 endings never show Part 2 lines unless a p2 ending was seen.
    instead of going to the title.
 2. **Legacy saves** (cleared s13 before Part 2 existed): `WorldMapScene.enter()` — if `progress.cleared.s13` (or
    `bosses.includes('b_chaos')`) and `!flags.p2_started` and not arcade and `registry.story` → mark
-   `seenScripts.push('p2_prologue')` and `g.go('story', { script: 'p2_prologue', then: 'worldmap', thenParams: { page: 1 }, bg: 'cg/cg_rift_sky' })`, return.
+   `seenScripts.push('p2_prologue')` and `g.go('story', { script: 'p2_prologue', then: 'hub', thenParams: { from: 'p2' }, bg: 'cg/cg_rift_sky' })`, return.
+   (Target is the hub, never `worldmap` directly: the world map is normally *pushed* over the hub and its `close()` pops,
+   so it must not be the only scene on the stack.) The player then re-enters the gate and gets the s14 reveal.
 3. `p2_prologue` sets `flags.p2_started` (and `rook_revealed`) and gives `k_rift_lantern`. Main quest `main14`
    auto-accepts on the next quest sync.
 
@@ -362,7 +364,7 @@ class GimmickSet {            // world.gimmick
   get noRegen(): boolean;     // any member (blight status)
   get speedMul(): number;     // product (deep 0.72, blight 0.9)
   get bgFlip(): boolean;      // mirror phase B
-  lights(L); drawWorld(ctx, cam, layer /*'back'|'front'*/); drawScreen(ctx, vw, vh);
+  lights(L); drawWorld(ctx, cam, layer /*'under'|'back'|'front'*/); drawScreen(ctx, vw, vh);
   onFell(p); onRespawn(); cleanse(n); dispose();
 }
 ```
@@ -390,6 +392,7 @@ Per-kind extra API (on the member returned by `get(kind)`):
 4. `update()`: right after `this.fx.update(sdt, this.map);` → `this.gimmick?.update(sdt);`. In the lighting block after
    the entity `lights` loop → `this.gimmick?.lights?.(this.lighting);`.
 5. `render()`: far background: `if (this.gimmick?.bgFlip) { ctx.save(); ctx.translate(vw, 0); ctx.scale(-1, 1); this.bg.drawFar(ctx, cam, vw, vh, this.time); ctx.restore(); } else this.bg.drawFar(...)`.
+   After `this.bg.drawMid(ctx, cam, this.time);` → `this.gimmick?.drawWorld(ctx, cam, 'under');` (behind tiles).
    After `this.tiles.draw(ctx, cam);` → `this.gimmick?.drawWorld(ctx, cam, 'back');`.
    Replace `this.stage.liquid` in `drawLiquid` with `this.liquid`, then right after it → `this.gimmick?.drawWorld(ctx, cam, 'front');`.
    After `this.bg.drawFront(...)` → `this.gimmick?.drawScreen(ctx, vw, vh);`.
@@ -407,8 +410,8 @@ current `physics()` / `handleJump()` / `heal()` / `tickTimers()` are):
 6. Max run speed multiplies by `(world.gimmick?.speedMul ?? 1)`.
 
 **`src/game/tilemap.js`**: new phase tiles (below). **`src/game/props.js`**: `Door.draw` renders `this.mark === 'blood'`
-(a dark-red handprint on the door face + 3 animated drips + faint red glow `rgba(255,40,60,0.25)`); `Statue` heal also
-calls `world.gimmick?.cleanse?.(100)`. **`src/render/tiles.js`**: `drawLiquid` palette `deep: ['rgba(8,38,66,0.74)', '#6fe8ff']`,
+(a dark-red handprint on the door face + 3 animated drips + faint red glow `rgba(255,40,60,0.25)`); `Statue` calls
+`world.gimmick?.cleanse?.(100)` *before* `world.healPlayer(1, true)` (so the blight heal penalty is already lifted). **`src/render/tiles.js`**: `drawLiquid` palette `deep: ['rgba(8,38,66,0.74)', '#6fe8ff']`,
 new `TILE_STYLES`, new `DECOR_SETS`, `OPEN_SKY_THEMES` add `'sky','void','blight'`. **`src/render/background.js`**: new
 `THEMES` and weathers (§4.1).
 
@@ -449,17 +452,21 @@ Phase tiles use the stage main texture when solid.
 - Reset to `start` on room load and `onRespawn`. `auto > 0`: flip every `auto` s with 1.0 s warning (ghost tiles blink).
 
 **magma** — `{ kind:'magma', mode:'tide'|'rise'|'manual', … }`
-- State `level` (px, surface y). Draw (`'front'`): lava body from `level` to map bottom (cached vertical gradient
-  `#ffb040`→`#ff5a1a`→`#7a1004`), sine surface (amp 4 px, 2 wavelengths per 3 tiles), bright rim `#ffd070`, bubble
-  particles (`ember`) at `quality`-scaled rate; lights every 192 px along the visible surface (r 150, `#ff6a1a`, i 0.5).
+- State `level` (px, surface y). Draw in two layers so solid tiles occlude the lava but submerged bodies look sunk:
+  `'under'` (behind tiles) — lava body from `level` to the map bottom across the visible width (cached vertical gradient
+  `#ffb040`→`#ff5a1a`→`#7a1004`); `'front'` — only the surface: sine line (amp 4 px, 2 wavelengths per 3 tiles), bright
+  rim `#ffd070`, a 28 px translucent glow band below it (α 0.55, so entities under the surface read as submerged),
+  drawn only over columns whose surface cell is not solid; bubble particles (`ember`) at a `quality`-scaled rate;
+  lights every 192 px along the visible surface (r 150, `#ff6a1a`, i 0.5).
 - Contact: `p.bottom > level + 6` and not invulnerable → `p.takeHit(ceil(maxHP×0.10), { team:'enemy', dir:-facing, kb:[0,-760], flat:1, element:'fire' }, world, {})`.
   Fully submerged (`p.y > level + 12`) → `world.onPlayerFell(p)`.
 - `tide`: `{ low, high, period:9, hold:2.5, warn:1.5 }` (rows). Cycle: rest at `low` → warn (band at `high` pulses
   `rgba(255,120,40,0.35)`, bubbles, `sfx('fire', { pitch: 0.6 })` once) → rise over 1.2 s (easeInOut) → hold → fall over 1.5 s → rest (remaining time). Rest time = `period − warn − 1.2 − hold − 1.5` (≥ 0.5).
 - `rise`: `{ y0, y1, speed:40, trigger }` — starts at row `y0`; begins rising at `speed` px/s when the player's feet row
-  `< trigger` (default `y0 − 6`); stops at row `y1`. `onFell`: `level = max(y0px, min(level, p.bottom + 5*48))` wait —
-  precisely: after the player is placed at the safe spot, set `level = max(level_start_px, (p.y + p.h) + 5*TILE)` so lava
-  is at least 5 tiles below the feet; `onRespawn`: `level = y0px`, rising restarts on trigger.
+  `< trigger` (default `y0 − 6`); stops at row `y1` (screen y grows downward, so "rising" = `level` decreasing).
+  `onFell` (called after the player was moved to the safe spot): `level = Math.min(y0px, Math.max(level, p.bottom + 5 * TILE))`
+  — the lava drops to at least 5 tiles below the feet, never below its start; rising continues immediately.
+  `onRespawn`: `level = y0px`, rising waits for the trigger again.
 - `manual`: `{ level }` start row; `setLevel(row, speed)` animates toward the target at `speed` px/s.
 - Enemies ignore magma (maps never place enemies below `high`/`y0`).
 
@@ -510,7 +517,8 @@ Phase tiles use the stage main texture when solid.
 - `SporePod` (40×40, kind `'prop'`): idle breathing → when the player is within 80 px or it is hit → swell 0.45 s →
   burst: cloud 160×120 centred, 5 s; hidden for `podRespawn` s then regrows. A fire-element hit (or `tech_purge`)
   burns it: no cloud, `ember` burst. Not an enemy (no exp).
-- `cleanse(n)`: `meter = max(0, meter − n)` (Statue 100, food 30, `tech_purge` 50).
+- `cleanse(n)`: `meter = max(0, meter − n)` and re-evaluate `status` immediately (off when `meter ≤ off`)
+  (Statue 100, food 30, `tech_purge` 50).
 - HUD: label `부패`, bar 200×12 top centre, `#9ad040`; status on → `#8a3aa8` and blinking `부패!`.
 
 **voidwall** — `{ kind:'voidwall', mode:'chase'|'arena', speed:115, delay:2.5, startTx:-3, stopTx:null, dmg:0.15 }`
@@ -529,8 +537,8 @@ Phase tiles use the stage main texture when solid.
 `onJumpInput` — first `true` wins; HUD meters stack downward (14, 34, 54…).
 
 ### 3.6 Lighting, layers, performance
-`drawWorld('back')` = ghost/phase overlays, updraft columns, spore clouds behind entities; `drawWorld('front')` =
-magma, void wall, bubble columns, front spore haze. All screen overlays go through `drawScreen`. Cached: magma
+`drawWorld('under')` = magma body; `drawWorld('back')` = ghost/phase overlays, heartbeat veins, updraft columns, spore
+clouds behind entities; `drawWorld('front')` = magma surface band, void wall, bubble columns, front spore haze. All screen overlays go through `drawScreen`. Cached: magma
 gradient per room height, spore/bubble sprites, vein pattern. Particle emission multiplied by `world.fx.quality`.
 
 ### 3.7 Map validator (`tools/validate_maps.mjs`, owner WP-A)
@@ -665,7 +673,7 @@ maps are per stage (below); rooms may use subsets. Chest `$` contents are listed
 Chandeliers (`4`) are placed in the empty cell directly below a ceiling tile; their AI snaps to the ceiling.
 | room | name | size | layout / beats | markers & params |
 |---|---|---|---|---|
-| r1 | 거울의 현관 | 110×15 | cols 0–12 start plaza (`P` (2,11)). Tutorial: cols 22–23 rows 7–12 = `a` wall; `Q` at col 18; cols 26–37 row 12 = `b` bridge over `^` spikes at row 13 (so one flip opens the wall *and* builds the bridge). Cols 38–70 combat hall with `b` ledge row 8 cols 44–50 to a `$`. Cols 74–75 rows 7–12 = `b` wall (B blocks) with `Q` at col 70 to flip back. Cols 76–110 phantom swords, `B` at (90,12). | `triggers: ['s14_t1']` (`!` col 8); enemies 1×2, 2×2, 4×2, 5×2, 3×1; `chests: ['m_stone_6']`; `exitRight: 'r2'` |
+| r1 | 거울의 현관 | 110×15 | Floor top row 12 (solid rows 12–14), standing row 11. Cols 0–12 start plaza (`P` (2,11)). Tutorial: cols 22–23 rows 7–11 = `a` wall; `Q` at col 18 (standing row); cols 26–37: the floor row 12 is `b` (a bridge that exists only in B) over `^` spikes at row 13 and solid row 14 (so one flip opens the wall *and* builds the bridge; falling in phase A = spike hit, jump out). Cols 38–70 combat hall with a `b` ledge row 8 cols 44–50 leading to a `$`. Cols 74–75 rows 7–11 = `b` wall with `Q` at col 70 to flip back to A. Cols 76–110 phantom swords, a `B` block at (90,11) across the path. | `triggers: ['s14_t1']` (`!` col 8); enemies 1×2, 2×2, 4×2, 5×2, 3×1; `chests: ['m_stone_6']`; `exitRight: 'r2'` |
 | r2 | 뒤집힌 무도회장 | 36×52 (ascent) | `P` bottom-left (2,49), floor rows 50–51. Zig-zag climb built from alternating `a`/`b` ledges; 3 `Q` on side walls at rows 44, 30, 16; `=` rest ledges; exit opening in the right wall rows 2–4. | enemies 2×3, 4×3, 1×1; `K` niche at (1,24) with `hiddenChest: 'm_scroll_protect'`; `exitRight: 'r3'` |
 | r3 | 거울의 회랑 | 130×15 | `S` col 5. Five mirror puzzles (a `Q` every ~25 cols). `H` (d21) at (64,11) inside an alcove enclosed by `a` tiles (reachable only in B). `@` lore l21 (100,11). `$` on a `b` platform (118,6). | enemies 1×4, 2×3, 3×2, 5×2, 7×1; `items: ['lore:l21']`; `docs: ['d21']`; `chests: ['epic']`; `exitRight: 'r4'` |
 | r4 | 만화경의 방 | 60×24 | Tiered hall: tier floors at rows 20, 15, 10, 5 alternately `a`/`b`; 4 `Q`. `!` s14_t2 at (30,19). Secret: `h` fake wall cluster cols 1–4 rows 2–4 hiding `@` k_star_1 at (2,3) and `@` lore l22 at (3,3); reachable only via a `b` ledge row 5 cols 5–9. Exit in right wall rows 17–19. | enemies 1×2, 2×3, 3×1, 4×2; `triggers: ['s14_t2']`; `items: ['k_star_1', 'lore:l22']`; `exitRight: 'r5'` |
@@ -678,7 +686,7 @@ map bottom). Tide `high: 12` floods one tile above the floor → every ≤ 6 col
 whose top is ≤ row 11 (or a `=` at row ≤ 11) to wait on.
 | room | name | size | layout / beats | markers & params |
 |---|---|---|---|---|
-| r1 | 재의 관문 | 120×15 | Intro tide (stage default). Raised walkways, 3 basins. `!` s15_t1? no — `!` **s15_t1 is in r3**; r1 has the intro TIP only (from `_intro`). | enemies 1×4, 5×2, 3×1, 4×1; `exitRight: 'r2'` |
+| r1 | 재의 관문 | 120×15 | Intro tide (stage default gimmick). Raised walkways, 3 basins, a `$` on a high ledge. No trigger (`s15_t1` is in r3; the tide TIP comes from `s15_intro`). | enemies 1×4, 5×2, 3×1, 4×1; `chests: ['m_stone_6']`; `exitRight: 'r2'` |
 | r2 | 용융 수직갱 | 34×60 (ascent) | `P` bottom (3,57), floor rows 58–59. Zig-zag `#` ledges and `=` platforms, 2 `V` platforms (`platRange: 4`, `platSpeed: 70`), bellows on ledges; exit opening right wall rows 2–4. | `gimmick: { kind: 'magma', mode: 'rise', y0: 59, y1: 5, speed: 40, trigger: 52 }`; enemies 1×4, 4×2, 3×1; `K` + `hiddenChest: 'm_stone_6'`; `exitRight: 'r3'` |
 | r3 | 사슬 주조장 | 130×15 | `S` col 4. Chain press set piece around col 60 (`!` s15_t1). `@` lore l23 at (40,11) on an anvil ledge; `H` (d22) at (110,11) behind a cooled furnace. | `gimmick: { kind: 'magma', mode: 'tide', low: 14, high: 12, period: 10, hold: 3, warn: 1.5 }`; enemies 2×2, 3×2, 1×3, 6×1, 7×1; `triggers: ['s15_t1']`; `items: ['lore:l23']`; `docs: ['d22']`; `chests: ['epic']`; `exitRight: 'r4'` |
 | r4 | 담금질 수조 | 70×22 | Deep vat: floor top row 20; chain platforms `=` rows 14, 10, 6; 2 `M` (`platRange: 5`, `platSpeed: 90`). Secret `h` cols 1–5 rows 1–3 with `@` k_star_2 (2,2) and `@` lore l24 (4,2). Exit right wall rows 17–19. | `gimmick: { kind: 'magma', mode: 'tide', low: 21, high: 16, period: 6, hold: 1.5, warn: 1.2 }`; enemies 1×4, 4×2, 2×1; `items: ['k_star_2', 'lore:l24']`; `exitRight: 'r5'` |
@@ -713,7 +721,7 @@ cell, as in Part 1). Wrong doors lead to loop rooms that exit back to the maze r
 | room | name | size | layout / beats | markers & params |
 |---|---|---|---|---|
 | r1 | 잠의 입구 | 110×15 | Heartbeat gates (`z`/`Z` 2-wide, 4-tall columns) every ~15 cols. `!` s18_t1 col 10. | enemies 4×3, 1×1, 2×1, 5×2; `triggers: ['s18_t1']`; `exitRight: 'r2'` |
-| r2 | 문의 미로 I | 60×15 | Three doors `D` at cols 18, 32, 46 on floor row 12. `z`/`Z` walls between the doors. | `doors: ['loop', 'r3', 'loop']`, `doorMarks: [null, 'blood', null]`; enemies 2×1, 4×2, 5×1 |
+| r2 | 문의 미로 I | 60×15 | Floor top row 12; three doors `D` at cols 18, 32, 46 in the standing row 11 (the `D` cell is the door's bottom cell, as in Part 1). `z`/`Z` walls between the doors; closed right wall. | `doors: ['loop', 'r3', 'loop']`, `doorMarks: [null, 'blood', null]`; enemies 2×1, 4×2, 5×1 |
 | loop | 같은 복도 | 40×15 | An eerily identical corridor (same decor as r2); `W` windows show the same painting. | enemies 4×1, 5×1; `exitRight: 'r2'` |
 | r3 | 거꾸로 흐르는 시계탑 | 34×50 (ascent) | `P` bottom (3,47). `z`/`Z` platforms; `@` lore l29 at (17,26); `S` at the top ledge (4,3). Exit right wall rows 2–4. | enemies 1×2, 2×1, 3×2, 5×1; `items: ['lore:l29']`; `exitRight: 'r4'` |
 | r4 | 문의 미로 II | 80×15 | Doors at cols 16, 32, 48, 64. `H` (d25) at (40,11) under an upside-down portrait (`W` above it). | `doors: ['loop2', 'loop2', 'r5', 'loop2']`, `doorMarks: [null, null, 'blood', null]`; `docs: ['d25']`; enemies 2×2, 1×1, 6×1, 4×2 |
@@ -1440,3 +1448,332 @@ and `'heartFound'` like `'relicFound'`; `claimQuest` applies optional `reward.fl
 Dialogue: `q_<id>_start` (1–2 lines, the giver) and `q_<id>_done` (1–2 lines) for all 13, in `story_p2.js`.
 `q_hd_ember_done` must reference his grandfather (“할아버지의 불이다. …고맙다.”); `q_ab_dawnflower_done` is the most
 emotional (“허허… 이게 새벽꽃인가. 곱구먼. 정말로 곱구먼.”).
+
+---
+
+## 10. World map page 2 (`src/scenes/town/worldmap.js`, owner WP-G)
+
+- **Pages**: `page 0` = 악마성 (today's map; nodes = `STAGE_ORDER_P1` + arena, village start, relic bar);
+  `page 1` = 이계 (nodes = `STAGE_ORDER_P2`, no arena, start = the Eshville rift gate at `{ x: 0.5, y: 0.93 }` labelled
+  `에슈빌 균열문`). Page 1 exists iff `flags.p2_started || unlocked.includes('s14')`; when it does not, render exactly as today (no tabs).
+- **Entering**: `enter({ page })` — explicit param wins; else page 1 if Part 2 exists and (the most recent unlocked
+  uncleared stage is a P2 stage or `lastStage.stageId` is P2); else 0. Legacy-save prologue check (§2.2) runs first.
+- **Unlock reveals** (same style as the s13 reveal): on enter, if `flags.p2_started` and `!unlocked.includes('s14')` →
+  push `'s14'`, set `flags.s14_revealed`, force page 1, reveal text `균열이 열렸다` / `에슈빌 하늘 너머로 이계의 길이 드러났다`,
+  colour `#b060ff`. If `unlocked.includes('s20') && !flags.s20_revealed` → set the flag, page 1, reveal `태초의 공허` /
+  `여섯 세계의 심장이 공허로 가는 길을 비춘다`, colour `#ffffff`. Reveal particles use the stage `color`.
+- **Tabs** (top bar, only when page 1 exists): two buttons `{x:250,y:12,w:112,h:34}` `악마성 Ⅰ` and `{x:368,…}` `이계 Ⅱ`
+  (selected: gold `uiButton` selected style; other dim). Tap switches; keys: `swap`, `skill1`, `skill2`, `map` switch
+  pages (gamepad LB/RB/Select work via those actions). Switching: 0.35 s crossfade, `sfx('card')`, node index resets to
+  that page's default (latest unlocked uncleared, else last unlocked).
+- **Page 1 visuals**: background `bg/worldmap2` (fallback gradient `['#0a0612', '#1a0a2a']`), overlay
+  `rgba(10,4,20,0.25)`, violet vignette. Labels: colour `#e8dcff`, outline `rgba(10,4,20,0.92)`. Paths: gate → s14 →
+  … → s19 → s20 (spiral into the centre), open path colour `#b060ff` with the existing `wide` glow for s20. Node
+  gradients use `stage.color` (open), grey (locked), gold (cleared) as today; s20 node pulses white.
+  Header title `이계 지도`, subtitle `BEYOND THE RIFT`; right side: 6 heart slots (icons `wheart_1…6`, tinted circle
+  `stage.color` when owned, `?` when not) + `n/6`, and beneath in small text `별의 조각 n/6`.
+- **Info panel** (page 1): chapter label `CHAPTER XIV…XX` (extend `ROMAN` to 20), name/sub/req as today, `적 레벨`,
+  docs row as today; replace the relic block with `별의 조각` (icon `star_shard`, owned → shard name, else
+  `어딘가에 숨어 있다`) for s14–s19 and `세계의 심장` state (icon `wheart_n`); s20 shows `별의 조각 n/6`.
+- **Token** and depart animation unchanged. `launch()` unchanged (intro story → stage).
+- Keyboard hints add `[['Q','E'], '지도 전환']` when page 1 exists.
+- Hub (optional, WP-G, low priority): while `p2_started && !p2_done`, draw a thin procedural silver crack across the hub
+  sky (screen-space, behind NPCs, α 0.6, slow shimmer); after `ending_p2` draw it as a faint scar; after `ending_p2true` none.
+  Minimal edit in `hub.js` render; skip if the hub file is under heavy concurrent edit.
+
+## 11. Arcade integration (`src/scenes/front/arcade.js`, owner WP-G)
+- `BOSS_ORDER` appends `'b_narkissa','b_moloch','b_dagon','b_ziz','b_mara','b_behemoth','b_nihil'`.
+- `COURSES` appends (keep existing indices 0–2): `{ name: '이계편', sub: '14~20장 보스', from: 13, to: 20, p2: true }`,
+  `{ name: '전 보스 연속', sub: '20연전', from: 0, to: 20, p2: true }`.
+- `LEVEL_PRESETS` appends `{ name: '이계의 순례자', lv: 68, tier: 2, wtier: 7, rarity: 4, enh: 13, docs: 99, potions: 7, p2: true }`.
+- `p2Known(game)` = any slot has `s14` unlocked, or `meta.endingsSeen` contains a p2 ending, or `meta.konami`. Rows
+  hide `p2` courses/presets when `!p2Known`; a saved `arcadeCfg` pointing at a hidden option falls back to index 0.
+- Practice mode picks up s14–s20 automatically through `practiceStages()` (unlock union).
+- Boss rush uses the Part 2 boss classes directly; in arcade mode phase scripts are skipped (§1.4).
+
+## 12. Music (`src/data/music.js`, owner WP-I)
+New tracks in the existing MML format (ids fixed; names are the in-game titles):
+| id | name | tempo / key | direction |
+|---|---|---|---|
+| s14 | 14장: 거울의 성 | 150, `F# hmin`, `sig: 3` waltz | harpsi + celesta + musicbox lead, strings pad, choir; palindromic melody phrases (A section = B section reversed); light kit. |
+| s15 | 15장: 영겁의 용광로 | 168, `E hmin` | power-chord `gtr`, `brass` stabs, low organ pedal; anvil hits on kit `t`/`m` lanes every bar; a 7/8 (`sig: 3.5`) bridge. |
+| s16 | 16장: 가라앉은 성소 | 96, `D hmin` | organ + choir with heavy `rev`, arpeggiated `harpsi` like dripping water, `bells` every 2 bars; sparse kit. |
+| s17 | 17장: 폭풍의 공중정원 | 176, `A hmin` → B section `F# hmin` | heroic: `strings` ostinato, `brass` fanfare lead, driving `drive`/`gallop` drums. |
+| s18 | 18장: 악몽의 미궁 | 120, `C hmin` | heartbeat kick motif (`k: 'x..x........'`), detuned `musicbox` lullaby (use `semi` offsets for dissonance), `celesta`, `choir` whispers. |
+| s19 | 19장: 썩어가는 숲 | 132, `G hmin` | `tribal` drums, `fiddle` lead, `reed` harmony, `pizz` bass. |
+| s20 | 20장: 태초의 공허 | 184, `C hmin` | epic: `choir` + `organ` + `sawlead`; quotes the title theme's first phrase in the B section. |
+| boss3 | 보스: 이계의 수호자 | 178, `D hmin` | Part 2 boss theme A (s14/s16/s18): organ + sawlead + choir stabs. |
+| boss4 | 보스: 폭주하는 닻 | 186, `G hmin` | Part 2 boss theme B (s15/s17/s19): gtr + brass + `dbl` drums. |
+| nihil | 태초의 공허 니힐 | intro 72 → 196, `Bb hmin` | `intro` section: slow choir/organ (8 bars); main: fastest track, all instruments; `order` loops main only. |
+| worldmap2 | 균열의 지도 | 84, `B hmin` | ambient: celesta arps, choir pad, strings; no drums. |
+Gain targets match the existing tracks (loudness within ±10% of `s13`/`chaos`). The world map plays `worldmap2` on page 1
+(switching pages crossfades music).
+
+---
+
+## 13. Assets
+
+### 13.1 Kling (owner WP-H1) — model `kling-image-v3_0_omni`, ≈2 credits/image, ≈38 images ≈ 76 credits
+Pipeline: exactly as `tools/kling/*` (download with `curl -sSL`, `clean_watermark.py` crop — the bottom-right
+"KlingAI" mark must be gone, WebP q80–82, record every item in `tools/kling/manifest.json` with group/aspect/prompt/
+generationId/file). Size budget: bg ≤ 180 KB, cg ≤ 170 KB, portrait ≤ 90 KB, texture ≤ 60 KB (total Part 2 ≤ 6 MB).
+Prompt suffixes (reuse verbatim from the manifest style):
+- **BG** (21:9, final ≈ 2520×1005): `… Wide panoramic 2D side-scrolling action game background art, dark gothic horror fantasy, painterly digital illustration with rich detail, dramatic cinematic lighting, strong atmospheric depth and fog layers, no characters, no people, no text, no letters, no UI, no watermark. The lower quarter of the image is darker and simpler so a gameplay floor can overlay it.`
+- **Portrait** (3:4): `… Dark gothic horror boss monster concept art, menacing, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, no text, no watermark.`
+- **CG** (16:9): `… Cinematic dark gothic fantasy illustration, painterly digital art, highly detailed, dramatic lighting, rich atmosphere, visual novel event CG, no text, no letters, no watermark.` CGs never show a specific hero: use "a lone hunter silhouette seen from behind".
+- **Texture** (1:1 → 512×512 seamless via `seamless_lib.py`): `… Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture.`
+
+| file | aspect | prompt core |
+|---|---|---|
+| bg/s14_mirror | 21:9 | An infinite gothic palace built entirely of mirrors and black glass, endless mirrored corridors reflecting into infinity, inverted crystal chandeliers hanging upside down, silver filigree arches, cracked mirror panes with faint pale faces trapped inside, cold moonlight refracting into prismatic beams. Palette of silver white, obsidian black, pale cyan and faint rose-crimson accents. |
+| bg/s15_forge | 21:9 | A colossal infernal forge in another world, rivers of molten metal pouring from giant crucibles, enormous chains hammered on anvils the size of houses, black iron towers and chimneys belching fire and soot, the silhouette of a gigantic bull-horned bronze idol far in the background, embers in the air. Palette of molten orange, ember red, soot black and iron grey. |
+| bg/s16_sunken | 21:9 | A drowned gothic cathedral city at the bottom of a dark sea, ruined spires and flying buttresses encrusted with coral and barnacles, faint shafts of light from far above, bioluminescent jellyfish and anglerfish lights, swaying kelp, sunken statues of robed saints, an enormous pipe organ overgrown with shells. Palette of deep teal, abyssal blue, verdigris bronze, pearl white and bioluminescent cyan. |
+| bg/s17_sky | 21:9 | Ancient floating sky ruins above a sea of storm clouds, broken marble temples and colonnades on drifting rock islands, golden domes, chain bridges, lightning crackling between towering cumulonimbus, the vast shadow of a gigantic bird's wing across the clouds, sunset light breaking through. Palette of storm grey-blue, marble white, gold, lightning cyan and sunset amber. |
+| bg/s18_nightmare | 21:9 | A surreal nightmare labyrinth of stitched fleshy walls, impossible staircases and doors floating in darkness, giant antique iron cradles and broken porcelain dolls, melting clocks, a huge pale moon with a sleeping face, threads hanging from the sky. Palette of bruised purple, sickly green, bone white and deep black with blood red highlights. |
+| bg/s19_blight | 21:9 | A dying primeval forest rotting from a fungal blight, colossal world-tree roots and trunks covered in pale glowing mushrooms, spores drifting like snow, sickly yellow-green mist, the skeleton of a gigantic beast overgrown with fungus in the distance, toxic swamp pools. Palette of sickly yellow-green, rot brown, bruised violet and fungus white. |
+| bg/s20_void | 21:9 | The primordial void before creation, an endless black abyss scattered with dying stars and nebulae, fragments of other worlds (mirror shards, molten chains, drowned spires, floating ruins, cradles, giant roots) drifting and dissolving into darkness, prismatic cracks of light, the faint colossal hooded silhouette made of stars in the far distance. Palette of absolute black, starlight white, prismatic iridescent edges and faint gold. |
+| bg/worldmap2 | 16:9 | An ancient astral chart on dark indigo parchment: seven small otherworld vignettes (a mirror castle, a volcanic forge, a sunken cathedral, floating sky ruins, a nightmare labyrinth, a rotting forest, and a black void in the centre) arranged in a spiral around a glowing crack in reality, gold ink constellation lines connecting them, a small village gate at the bottom centre. Top-down fantasy map illustration, painterly, no text, no letters, no labels, no watermark. |
+| tex/tex_mirror | 1:1 | black obsidian glass tiles with silver filigree seams and faint cracked mirror shards |
+| tex/tex_forge | 1:1 | dark riveted iron plates with glowing orange molten seams and soot |
+| tex/tex_coral | 1:1 | sunken barnacle-encrusted pale marble blocks with teal algae and small corals |
+| tex/tex_sky_marble | 1:1 | weathered white marble blocks with gold inlay and wind-worn cracks |
+| tex/tex_nightmare | 1:1 | stitched pale flesh-like wallpaper with faded purple damask pattern and bone buttons |
+| tex/tex_rotwood | 1:1 | rotten dark tree bark with pale fungus shelves and faint yellow-green glowing spores |
+| tex/tex_void | 1:1 | black crystal stone with tiny embedded stars and faint prismatic cracks |
+| portraits/b_narkissa | 3:4 | Narkissa, the Empress of Ten Thousand Mirrors, a towering gothic queen of black glass and silver, a cracked porcelain mask covered with dozens of mismatched reflected eyes, a gown of hanging mirror shards each reflecting a screaming face, six long jointed glass arms ending in shard blades, spider-like glass legs beneath the gown, cold prismatic light. |
+| portraits/b_narkissa2 | 3:4 | (image_to_image from b_narkissa) the same empress with her mask shattered, a hollow face full of hundreds of eyes and a mouth of mirror teeth, shards orbiting her, grotesque and terrifying. |
+| portraits/b_moloch | 3:4 | Moloch, a colossal bull-headed bronze furnace idol, an open ribcage furnace in its belly with a glowing grate and tormented souls pressed against the bars, a giant forge hammer fused to its right arm, molten tongs for a left hand, chimneys on its back belching fire, hooked chains hanging from its body, standing in a pool of magma. |
+| portraits/b_dagon | 3:4 | Dagon, the drowned priest-king, a colossal fish-headed humanoid with barnacle-crusted grey-green flesh, gill slits across his ribs, a crown of bioluminescent angler lures, a coral crozier, lower body a mass of eel-like tentacles, fused with a sunken cathedral pipe organ, drowned pilgrims embedded in his back like pearls. |
+| portraits/b_ziz | 3:4 | Ziz, a colossal storm bird whose wings eclipse the sky, a bare skull beak, rows of glowing eyes along the leading edges of its wings, feathers made of storm cloud and crackling lightning, an exposed ribcage full of ball lightning, talons like broken spires. |
+| portraits/b_mara | 3:4 | Mara, the Mother of Nightmares, a gaunt elongated hag with four long arms and a cracked porcelain doll face with no eyes and a stitched vertical mouth, squatting on a giant iron baby cradle, her long hair made of threads tied to floating sleeping faces, broken doll limbs crawling from under the cradle. |
+| portraits/b_behemoth | 3:4 | Behemoth, a mountain-sized rotting beast like a colossal boar and hippopotamus, half its face bare skull, trees and giant pale mushrooms growing from its back, exposed ribs with pulsing fungal sacs, a pale humanoid fungal queen fused to its spine controlling it with root tendrils. |
+| portraits/b_nihil | 3:4 | Nihil, the Primordial Void, a colossal hooded silhouette cut out of reality with a starfield inside its body, a white featureless porcelain mask, two gigantic floating hands each with an eye in the palm, prismatic cracks around its outline. |
+| portraits/b_nihil2 | 3:4 | (image_to_image from b_nihil) the mask split open into a maw of collapsing stars and teeth, the body tearing into a vortex of black nebula, cosmic horror. |
+| portraits/npc_rook2 | 3:4 | (image_to_image from portraits/npc_rook for costume consistency) the same crow-masked merchant now unmasked: an ancient man with a kind weathered face, sharp black eyes with thin golden rings, long grey-black hair braided with raven feathers, holding his crow-beak mask in one hand, black feathered cloak, warm morning sunlight, gentle smile. Suffix: `Dark gothic fantasy character portrait, upper body, painterly digital illustration, warm rim light, visual novel dialogue portrait, no text, no watermark.` |
+| cg/cg_rift_sky | 16:9 | A small gothic mountain village at night during a harvest festival with bonfires, the night sky cracked like broken glass with silver light and stars leaking through the fissures, villagers looking up in fear, a church bell tower in the foreground. |
+| cg/cg_rook_reveal | 16:9 | A mysterious figure in a black feathered cloak and crow-beak mask standing in a village square at night under a cracked sky, ravens circling, holding up an old lantern with a black flame inside, dramatic backlight. |
+| cg/cg_rift_gate | 16:9 | A lone hunter silhouette seen from behind before a colossal gate of light torn in the sky beyond a village gate, seven doorways to different worlds visible inside the rift, a raven on a signpost. |
+| cg/cg_mirror_empress | 16:9 | Inside an infinite mirror palace, a towering empress of black glass with a cracked porcelain mask looms over a lone hunter silhouette; countless reflections show different versions of the hunter. |
+| cg/cg_forge_idol | 16:9 | A colossal bull-horned bronze idol with a furnace in its belly rises from a lake of molten metal, chains everywhere, a lone hunter silhouette on a narrow bridge before it. |
+| cg/cg_sunken_cathedral | 16:9 | A drowned cathedral at the bottom of the sea lit by bioluminescent jellyfish; a giant fish-headed priest-king with a crown of glowing lures rises behind the altar; a lone hunter silhouette swimming toward him. |
+| cg/cg_ziz_storm | 16:9 | A gigantic storm bird with a skull beak and lightning feathers spreads its wings across the entire sky above floating ruins; a lone hunter silhouette on a broken bridge. |
+| cg/cg_mara_cradle | 16:9 | A nightmare nursery in darkness, a gaunt four-armed hag with a porcelain doll face crouches on a giant iron cradle singing, threads tied to floating sleeping faces; a lone hunter silhouette at the door. |
+| cg/cg_behemoth_rot | 16:9 | A mountain-sized rotting beast with trees and mushrooms growing from its back stomps through a dying forest, spores falling like snow, a pale fungal queen on its spine; a lone hunter silhouette and a white stag spirit. |
+| cg/cg_void_descent | 16:9 | A lone hunter silhouette with a lantern descending a path of floating fragments into an infinite black void full of dying stars, six glowing hearts of different colours orbiting the lantern, a raven flying alongside. |
+| cg/cg_nihil | 16:9 | A colossal hooded silhouette made of stars with a white mask and giant hands with eyes in the palms looms over a tiny hunter silhouette in an infinite black void. |
+| cg/cg_p2_ending | 16:9 | Night, a crow-masked figure in a black feathered cloak sits alone on a church bell tower holding a small lantern, watching a thin healed silver scar across the starry sky above a sleeping village; bittersweet. |
+| cg/cg_p2_true | 16:9 | Sunrise on a village inn terrace, a bright morning star still shining in the dawn sky, an old man with raven-feather braids holding a crow mask smiles; warm crowd silhouettes, a white stag, a griffin, a flaming horse and small glowing spirits around them; hopeful new dawn. |
+
+### 13.2 Blender (owner WP-H2) — `tools/blender/build_p2.py` reusing the helpers/materials/render setup of `build_icons_misc.py` / `build_decor_*.py`
+- **Icons** (`assets/icons/<id>.png`, 128×128, 3/4 view, same rig as `build_icons_equipment.py`): `whip_7 sword_7
+  greatsword_7 dagger_7 gun_7 staff_7 head_7 body_7 cloak_7 ring_7 amulet_7` (tier-7 look: dark metal with an
+  iridescent rift-crack emissive seam and a small star gem), `wheart_1…6` (a faceted heart-shaped crystal with an
+  anchor emblem in each world colour: `#dff4ff #ff7a2a #3ad0c8 #bfe0ff #c060ff #9ad040`), `star_shard` (small
+  five-pointed crystal star, warm white emissive), `rift_lantern` (old iron lantern with a black flame), `dawnflower`
+  (pale gold lily-like flower glowing at the petal edges).
+- **Props** (`assets/props/<id>.png`, front view, sizes in §4.1 at 2× then downsampled): the 21 `deco_*` ids of §4.1,
+  plus `prop_mirror_switch` (96×192: tall standing mirror in a silver gothic frame, glass left mostly neutral so the
+  game can tint it) and `prop_spore_pod` (96×96, bulbous glowing fungus pod). Contact sheet to `/tmp/claude-0/proto/…`.
+- All renders keep the existing lighting/palette conventions (warm key, cool rim) so props sit with the Kling bgs.
+
+### 13.3 Procedural fallbacks (mandatory)
+Every Part 2 visual must render without its asset: backgrounds via THEMES gradients, portraits omitted, CG → bg,
+icons → `fallbackIcon`, props → procedural drawings in `gimmicks.js`/`tiles.js`. Tests run before WP-H lands.
+
+---
+
+## 14. Mounts and guardians (request #4) — story integration contract
+Mechanics, balancing, UI, rendering and save format of companions belong to the companion spec. This spec fixes
+**which six companions Part 2 grants, their ids, Korean names and where they are obtained**. The companion package
+must add these six to its roster with exactly these ids (it may add other companions obtained elsewhere).
+
+| id | Korean name | type | obtained (script / cmd) | concept & suggested behaviour (non-binding) |
+|---|---|---|---|---|
+| `gd_mirra` | 거울 요정 미라 | 수호신 (guardian) | `s14_outro` `{ cmd:'recruit', id:'gd_mirra' }` after 나르키사 | Narkissa's cast-away true reflection; a small girl of silver light with orbiting mirror shards. Echoes the player's hits at reduced power; reflects a projectile occasionally. |
+| `mt_ignis` | 화염 군마 이그니스 | 탈것 (mount) | `s15_outro` after 몰록 | Flaming warhorse freed from the forge chains. Fast gallop, flaming charge, leaves embers. |
+| `gd_lumen` | 등불 해파리 루멘 | 수호신 | `s16_outro` after 다곤 | Bioluminescent jellyfish. Extra light radius, zaps nearby enemies, slows air drain underwater (hook: `gimmickOf('deep')` exposes `air` so the companion can top it up). |
+| `mt_gale` | 폭풍 그리핀 게일 | 탈것 | `s17_outro` after 지즈 | Griffin grown by Ziz's last lightning. Extra air jump + glide; resists wind gusts. |
+| `gd_momo` | 꿈먹는 맥 모모 | 수호신 | `s18_outro` after 마라 | Small dream-eating tapir. Periodically swallows an enemy projectile. |
+| `mt_silva` | 백록 신령 실바 | 탈것 | `s19_outro` after 베헤모스 | White stag forest spirit. Antler charge; slows blight gain (hook: `gimmickOf('blight').cleanse`). |
+
+Integration rules:
+- Recruitment is only through the `recruit` story command (§2.4); flags `recruit_<id>` are the persistent truth.
+- Foreshadowing appearances in `_t1/_t2` use the ids as speaker with a temporary `name` (see §1.3) and no mechanics.
+- Gimmick interplay the companion spec must handle (suggested defaults): mounts auto-dismount when the rider enters
+  `deep` water (swimming is on foot) and cannot be summoned while underwater; mirror flips need nothing special (the
+  flip-refusal overlap test must use the mounted body's AABB if riding enlarges it); wind gusts and updrafts push a
+  mounted player exactly like an unmounted one; magma, void-wall, choke and blight damage apply to the rider; guardians
+  are never solid, never block phase/heartbeat tiles and are ignored by the tile-deferral checks.
+- Companion bodies must not count as "enemies" or "player" in gimmick overlap tests, and guardian attacks may hit
+  `MirrorSwitch`/`SporePod` props (they are hittable props) only if the companion spec wants that — default: no.
+- `b_nihil_final` lists each recruited companion's line (conditional on its flag).
+- Companion portraits `portraits/<id>` are produced by the companion package (Kling) — this spec's scripts reference them
+  but work without them.
+
+---
+
+## 15. Balance targets (levels 46–70)
+
+Reference run: normal difficulty, `node tools/balance.mjs normal <char>` extended by WP-J to cover s14–s20 (tier 7 via
+`tierForLevel`, rarity `min(4, 1 + floor(i/4))`, enhancement `min(12, floor(i*0.8))`). Targets for kael, and every
+other character within ±30%:
+
+| stage | enemy lv | expected player lv at entry | hitsMed | hitsMax | takenMed % | boss hits | boss taken % |
+|---|---|---|---|---|---|---|---|
+| s14 | 46 | 39–43 | 5–9 | ≤ 20 | 6–12 | 110–170 | 12–22 |
+| s15 | 50 | 43–47 | 5–9 | ≤ 20 | 6–12 | 110–170 | 12–22 |
+| s16 | 53 | 46–50 | 5–9 | ≤ 20 | 6–12 | 110–170 | 12–22 |
+| s17 | 56 | 49–53 | 5–9 | ≤ 20 | 6–12 | 115–175 | 12–22 |
+| s18 | 60 | 52–57 | 5–9 | ≤ 20 | 6–13 | 120–180 | 13–23 |
+| s19 | 64 | 56–61 | 5–10 | ≤ 22 | 6–13 | 130–190 | 13–23 |
+| s20 | 68 | 60–65 | 5–10 | ≤ 22 | 7–14 | 180–260 | 14–24 |
+
+Level at the end of s20 ≈ 64–68. Tuning knobs, in order: enemy base `atk` (quadratic scaling dominates after lv 55 —
+lower base atk before touching `enemyStats`), enemy/boss base `hp`, boss `hpMul`, enemy `exp`, main-quest exp `k`,
+tier-7 `T_ATK`/`A_BASE` (±15% max). `enemyStats()` and `Boss` scaling formulas must not change (Part 1 balance).
+Difficulty scaling (5 levels) applies unchanged; on `inferno` every boss uses the inferno extras listed in §6.
+Gimmick damage (magma 10%, choke 6%/s, void 15%, blight ≤1.5%/s, pits 25%) is percentage-based and difficulty-independent.
+Economy: tier-7 smith prices ×2 of tier 6; stage gold reward formula unchanged (scales with level).
+
+---
+
+## 16. Work packages, ownership, order
+
+### 16.1 Merge protocol (all packages)
+- Do not `git commit` (a background autosave commits). Throwaway files only in `tools/.proto_<package>/`
+  (git-ignored); screenshots in `/tmp/claude-0/proto/<package>/`.
+- New files: created and owned by exactly one package (below). Shared files: only the hunks listed in 16.3, applied
+  with small anchored `Edit`s after re-reading the file (other agents edit the same files concurrently); never reformat,
+  never rewrite a shared file wholesale, never revert others' changes. If an anchor moved, find the equivalent spot.
+- Code defensively against missing neighbours: `world.gimmickOf?.(k)`, `game.companions?.recruit?.()`, missing assets,
+  missing SCRIPTS ids (skip), missing ITEMS (skip with `console.warn` once).
+- Stubs: packages that own an aggregator edit create empty stub modules for sibling packages (only if absent) so the
+  game never imports a missing file.
+
+### 16.2 Packages
+| pkg | scope | new files (owned) | shared-file edits (owned hunks) |
+|---|---|---|---|
+| **WP-A Engine** | §3, §4.1, validator | `src/game/gimmicks.js` | `src/game/world.js` (§3.3 hooks, §3.9, door marks), `src/game/player.js` (§3.3 hooks), `src/game/tilemap.js` (phase chars), `src/game/props.js` (Door mark, Statue cleanse), `src/render/tiles.js` (TILE_STYLES, DECOR_SETS, deep liquid, OPEN_SKY_THEMES, DECOR_BLOCK), `src/render/background.js` (THEMES, weathers `spores`/`stars`), `tools/validate_maps.mjs` (§3.7) |
+| **WP-B Stages & maps** | §4.2, §4.3 | `src/data/maps/s14.js` … `s20.js` | `src/data/stages.js` (7 stages, imports, exports `STAGE_ORDER_P1/P2`, `SHARDS`, `HEARTS`) |
+| **WP-C1 Enemies A** | s14–s16 enemies (§5) | `src/data/enemies_c.js`, `src/game/ai_c.js`, `src/render/enemies_c.js`, `tools/gallery_enemies_c.html` | `src/data/enemies.js`, `src/game/ai.js`, `src/render/enemies.js` (merge lines for C and D); stubs `enemies_d.js`, `ai_d.js`, `render/enemies_d.js` if absent |
+| **WP-C2 Enemies B** | s17–s20 enemies (§5) | `src/data/enemies_d.js`, `src/game/ai_d.js`, `src/render/enemies_d.js`, `tools/gallery_enemies_d.html` | — |
+| **WP-D1 Bosses A** | narkissa, moloch, dagon, ziz (§6) | `src/data/bosses_c.js`, `src/game/bosses/c_common.js`, `c_narkissa.js`, `c_moloch.js`, `c_dagon.js`, `c_ziz.js`, `bosses_c.js`, `tools/gallery_bosses_c.html` | `src/data/bosses.js`, `src/game/bosses/index.js` (merge C and D); stubs `data/bosses_d.js`, `game/bosses/bosses_d.js` if absent |
+| **WP-D2 Bosses B** | mara, behemoth, nihil (§6) | `src/data/bosses_d.js`, `src/game/bosses/d_mara.js`, `d_behemoth.js`, `d_nihil.js`, `bosses_d.js`, `tools/gallery_bosses_d.html` | — |
+| **WP-E Story & endings** | §1, §2.2–2.4 | `src/data/story_p2.js` (`SCRIPTS_P2`, `CREDITS_P2`) | `src/data/story.js` (merge `SCRIPTS_P2`, `endingAfter` s20, `creditsFor`, ch13 NPC branches), `src/scenes/dialogue.js` + `src/scenes/front/story.js` (`recruit` cmd), `src/scenes/front/ending.js` (ENDINGS, decideEnding, credits slides/stats/notes/leave, p2_prologue after true credits), `src/scenes/results.js` (`toEnding` s20) |
+| **WP-F Items/lore/quests** | §7, §8, §9, §6.9 | `src/game/skills_p2.js` | `src/data/items.js`, `src/data/lore.js`, `src/data/quests.js`, `src/data/shop.js`, `src/game/quests.js`, `src/game/loot.js`, `src/game/skills.js` (1 import + `Object.assign` + `TECH_NAMES`), `src/render/icons.js` (tier-7 fallback colours) |
+| **WP-G Map UI / save / arcade** | §2.1–2.2 (world-map side), §2.6, §10, §11 | — | `src/scenes/town/worldmap.js`, `src/game/state.js`, `src/scenes/front/arcade.js` (+ `arcade_run.js` only if a course/preset change needs it), `src/scenes/town/hub.js` (optional sky crack) |
+| **WP-H1 Kling art** | §13.1 | `assets/bg/*`, `assets/tex/*`, `assets/portraits/*`, `assets/cg/*` (Part 2 files only) | `tools/kling/manifest.json`, `tools/kling/cleaned.json` (append only) |
+| **WP-H2 Blender art** | §13.2 | `tools/blender/build_p2.py`, `assets/icons/*` and `assets/props/*` (Part 2 ids only) | — |
+| **WP-I Music** | §12 | — | `src/data/music.js` (append 11 tracks) |
+| **WP-J Integration & QA** | §15, §17, docs | `tools/test_part2.mjs`, `tools/fixtures/save_v1.json` | `tools/integration.mjs` (add s14–s20 cases), `tools/balance.mjs` (P2 rows + `--check`), `docs/ARCHITECTURE.md` (Part 2 section: ids, chars, gimmicks, scripts); after the owners finish, may tune numeric stat fields in `enemies_c/d.js`, `bosses_c/d.js`, items tier-7 tables (hand-off noted in its report) |
+
+### 16.3 Shared-file edit table (who owns which hunk)
+| file | hunk | owner |
+|---|---|---|
+| `src/game/world.js` | gimmick import/getters/loadRoom/update/lights/render/collect/onPlayerFell/respawn, door `mark` | WP-A |
+| `src/game/player.js` | the 6 gimmick hook lines only | WP-A |
+| `src/game/tilemap.js` | `PHASE` chars + `phaseTiles` | WP-A |
+| `src/game/props.js` | `Door.draw` mark, `Statue` cleanse call | WP-A |
+| `src/render/tiles.js`, `src/render/background.js` | theme/tile/decor/liquid entries | WP-A |
+| `tools/validate_maps.mjs` | §3.7 | WP-A |
+| `src/data/stages.js` | stages + exports | WP-B |
+| `src/data/enemies.js`, `src/game/ai.js`, `src/render/enemies.js` | merge lines | WP-C1 |
+| `src/data/bosses.js`, `src/game/bosses/index.js` | merge lines | WP-D1 |
+| `src/data/story.js` | merge line, `endingAfter`, `creditsFor`, 5 ch13 scripts | WP-E |
+| `src/scenes/dialogue.js`, `src/scenes/front/story.js` | `case 'recruit'` | WP-E |
+| `src/scenes/front/ending.js`, `src/scenes/results.js` | §2.3 | WP-E |
+| `src/data/items.js`, `lore.js`, `quests.js`, `shop.js`; `src/game/quests.js`, `loot.js`, `skills.js`; `src/render/icons.js` | §7–§9 | WP-F |
+| `src/scenes/town/worldmap.js`, `src/game/state.js`, `src/scenes/front/arcade.js`, `src/scenes/town/hub.js` | §2.6, §10, §11 | WP-G |
+| `src/data/music.js` | 11 tracks | WP-I |
+| `tools/kling/manifest.json` | append | WP-H1 |
+| `tools/integration.mjs`, `tools/balance.mjs`, `docs/ARCHITECTURE.md` | Part 2 additions | WP-J |
+
+### 16.4 Order and dependencies
+1. **Hour 0 (unblockers, ≤ 30 min each)**: WP-C1/C2 write their *data* files first (all 24 ids, final stats) and the
+   aggregator merges + stubs; WP-D1/D2 likewise for boss data; WP-F adds item/lore ids (keys, materials, tier 7) first;
+   WP-A lands `tilemap.js` phase chars and the validator. After this, WP-B can validate maps.
+2. **Parallel main work**: WP-A runtime, WP-B maps, WP-C/D behaviour + art, WP-E story text + flow, WP-F techs/loot/
+   quests, WP-G world map/save/arcade, WP-H art, WP-I music.
+3. **WP-J** runs continuously once 1. is done (integration smoke), then balance and the full acceptance suite at the end.
+Blocking relations: WP-B ⇐ (WP-A validator, C/D/F data ids); WP-D1 `moloch/dagon/ziz`, WP-D2 all ⇐ WP-A gimmick API
+(code against §3.2 and null-check until it lands); WP-G page 1 ⇐ WP-B stage data (filter missing stages); WP-E ⇐ none
+(ids are fixed here).
+
+---
+
+## 17. Acceptance tests
+All must pass with zero page errors/console errors (same filters as `tools/integration.mjs`). WP-J implements
+`tools/test_part2.mjs` (Playwright, `chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' })`,
+server via `tools/serve.mjs start(port)`); each package runs the subset for its area before handing off.
+
+**Static**
+1. `node tools/validate_maps.mjs` → exit 0 (all stages incl. s14–s20; no errors, warnings reviewed).
+2. `node tools/test_part2.mjs --static` (Node only, imports data modules): every s14–s20 stage's `enemies`, `boss`,
+   `docs`, `shard`, `heart`, `music` (in `TRACKS`), `intro/outro`, every room `triggers`, every boss's `_pre/_post` and
+   phase scripts exist; every `ITEMS` id referenced by maps, quests, boss `drops`, story `give` exists; every quest's
+   enemy/item/npc exists; `LORE_ORDER` covers all `LORE` ids; `DOC_ORDER` has d01–d27; `BOSS_ORDER` has all 20 bosses;
+   every `recruit` id is one of the six in §14; `SCRIPTS` has every id of §1.4; `ENDINGS` has 5 kinds; `SAVE_VERSION === 2`.
+3. `node tools/balance.mjs normal kael --check` and the same for sera/victor/bran/lia/azel → all rows inside §15.
+
+**Runtime (headless, desktop 1280×720)** — helper: load URL, then `page.evaluate` to set `__game.state.heroes[charId].level = 60`,
+`world.player.refreshStats()`, full HP/MP, and keep `player.iframes = 99` for the smoke loops unless the test measures damage.
+4. Every room of s14–s20 (`?scene=stage&stage=sXX&room=rY`): 8 s of scripted input (right 2 s, jump, attack ×3, dash,
+   left 1 s, down+jump, sub, skill1) → no errors; `world.gimmick` kinds match §4.3.
+5. Gimmicks:
+   - s14 r1: `gimmickOf('mirror').phase === 'A'`; `flip(true)` → `'B'` and the `a` tile at (22,10) is EMPTY, `b` at (30,12) is SOLID; `world.gimmick.bgFlip === true`.
+   - s15 r2: place the player 8 tiles above `trigger`; after 3 s `gimmickOf('magma').level` decreased by ≥ 100 px; submerging the player calls `onPlayerFell` (HP −25%) and lowers `level`.
+   - s16 r2: put the player underwater; after 3 s `air ≤ 80`; `input` jump press → `player.vy < 0`; at `air = 0` HP drops within 1.2 s.
+   - s17 r1: during a gust (`gust(1, 900, 2, 0)`) with no input, player `vx > 150` within 0.5 s; inside a `U` cell (r2) `vy < 0` within 0.4 s.
+   - s18 r1: after `beat + 0.1` s a `z` tile toggled; a tile overlapping the player is deferred (never solid while overlapped).
+   - s19 r1: player inside a spore rect → `meter > 20` after 1 s; at 100 `status` true and `player.heal()` heals half; Statue/food cleanse.
+   - s20 r1: after `delay + 1` s `wallX` increased; standing still → damaged and pushed right.
+6. Bosses (each of the 7): load `room=boss`, walk right into the arena, dismiss dialogues (Enter), wait for
+   `world.bossActive && !world.cutscene`; for every state in §6 call `boss.debugAct(name)` and run 3.5 s; `debugPhase(n)`
+   for each phase then repeat the phase's states; force a player death (`player.hp = 0` path) during P2 and verify
+   `onReset` restores phase 0 visuals/arena (walls open, magma/water back, beat default); finally set `boss.hp = 1`,
+   hit it → `world.cleared` → results scene → no errors. Screenshots per phase to `/tmp/claude-0/proto/wpj/`.
+7. Flow: fixture state with `cleared.s13` + `flags.abyss_open`: `game.go('credits', { kind: 'true', fromEnding: true })`,
+   advance → `story` scene with `p2_prologue` → hub; `flags.p2_started === true`, inventory has `k_rift_lantern`;
+   from the hub, `game.push('worldmap')` → reveal plays, `unlocked` includes `s14`, `page === 1`; tab switch to page 0
+   and back works with keyboard (`KeyQ`) and a tap on the tab rect; closing the map returns to the hub.
+8. Legacy save: load `tools/fixtures/save_v1.json` (a Part-1-complete v1 save without `shards/hearts`) through
+   `saves.importCode`/`migrateState` → `version === 2`, arrays present; opening the world map plays `p2_prologue` once.
+9. Endings: with `progress.shards` of length 6 vs 0, clearing s20 (`results` → `leave()`) reaches `ending` kind `p2true` / `p2`,
+   plays `ending_p2true` / `ending_p2`, credits contain `CREDITS_P2` and the p2true closing line, `leave()` returns to the hub.
+   Part 1 regressions: s12 without relics → `ending_bad`/`ending_normal`; s13 → `ending_true` → prologue.
+10. Items/quests: `rollItem(55)` can return tier 7; smith stock at chapter 15 lists `w_*_13/14`; claiming `ab_dawnflower`
+    grants `u_alberto` and sets `dawnflower_given`; `rk_stars` progress follows `progress.shards`; techs `tech_mirror`,
+    `tech_whirl`, `tech_purge` fire via their command sequences (inject input history) and spend MP.
+11. Boss loot: killing `b_narkissa` twice gives `k_heart_1` once; `b_nihil` first kill drops a `MYTHIC_WEAPONS_P2` weapon.
+
+**Mobile (`--mobile`, 844×390, touch)**
+12. s16 r2 and s17 r2 smoke with the virtual pad (jump button swims; updraft works); world map page switch by tapping
+    the tab; gimmick HUD meters do not overlap the pause button, pads or boss bar (screenshot review).
+
+**Visual review** (screenshots attached to each package's report): gallery pages for 24 enemies × anims and 7 bosses ×
+phases; one screenshot per P2 room; world map page 1; both ending title cards. Art must meet §0.
+
+**Performance**: in s17 r1 (wind, particles) and s20 r1 (void wall) with `quality: 'medium'`, the average of
+`world.update + world.render` over 300 frames in headless Chromium ≤ 10 ms at 1280×720.
+
+---
+
+## 18. Risks and mitigations
+1. **Concurrent edits of shared files** (world.js, player.js, story.js, ending.js, worldmap.js are also touched by other
+   specs) → hooks are one-liners at stable anchors, re-read before each edit, WP-J re-runs the full suite at the end.
+2. **Player physics refactors by the feel/companion specs** could move `physics()`/`handleJump()` → the six hooks are
+   semantic (pre/post physics, jump consumption, heal/regen/speed multipliers); re-apply at the new locations.
+3. **Circular imports** (`gimmicks`↔`world`, `ai_c/d`↔`ai`, `story_p2`↔`story`, `skills_p2`↔`skills`) → no top-level use
+   of imported values; `story_p2.js` and `skills_p2.js` must not import their aggregators.
+4. **Companion id mismatch** with the companion spec → ids fixed here, recruitment via flags; the companion system reads
+   `recruit_<id>` on load.
+5. **Validator false negatives/positives in gimmick rooms** (mirror BFS with phases, swimming, updrafts) → tests 1 and 4
+   together; a room that validates but is not completable is caught by manual playthrough in WP-J.
+6. **Balance at levels 60+** (quadratic enemy attack growth) → base `atk` knobs first (§15), `--check` gate.
+7. **Mobile performance** (magma gradient, clouds, rings) → cached sprites, `fx.quality`, perf test.
+8. **Dynamic liquid changes** (Dagon flood) → row-by-row updates with tile invalidation only for changed cells.
+9. **Ending-flow regressions** for Part 1 (s12/s13) → explicit regression checks in test 9.
+10. **Door-maze frustration** → blood mark + TIP + short loop rooms; loop2 rewards exploration (star shard).
+11. **`falseDawn` banner confusion** → followed within 1.0 s by the purple reveal; boss stays visible; never sets `cleared`.
+12. **Asset delays / Kling watermark** → procedural fallbacks mandatory (§13.3); watermark crop verified per image.
+13. **Tier-7 weapon visuals** depend on the hero renderer → `style: 6` + optional `rift` flag, never an unknown style index.

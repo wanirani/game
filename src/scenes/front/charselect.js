@@ -255,7 +255,7 @@ export class CharSelectScene extends Scene {
     } else {
       p.move = null; p.moveT = 0; p.anim = 'idle'; p.animT = t; p.muzzleT = 0; p.charging = 0;
     }
-    const shakeX = this.shakeT > 0 ? Math.sin(t * 90) * 6 * this.shakeT : 0;
+    const shakeX = this.shakeT > 0 ? Math.sin(t * 90) * 6 * this.shakeT * (this.game.settings?.screenShake ?? 1) : 0; // '화면 흔들림' 설정을 따른다 (끔이면 흔들지 않음)
     if (this.shakeT > 0) this.shakeT -= 1 / 60;
     ctx.save();
     ctx.translate(fx + shakeX, fy);
