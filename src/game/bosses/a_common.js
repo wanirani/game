@@ -166,6 +166,26 @@ export function bolt(ctx, x0, y0, x1, y1, color, w = 3, seed = 0, jag = 18) {
   ctx.strokeStyle = '#ffffff'; ctx.lineWidth = w * 0.6; ctx.stroke();
   ctx.globalCompositeOperation = op;
 }
+const _FQ = new Float32Array(12);
+/** 불꽃 혀 다발 (가산): (x,y) 에서 각도 a 방향으로 n 가닥, 길이 L */
+export function flames(ctx, x, y, a, n, L, t, color, w0 = 8, seed = 0, color2 = null, alpha = 0.45) {
+  const op = ctx.globalCompositeOperation;
+  ctx.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < n; i++) {
+    const aa = a + (i - (n - 1) / 2) * 0.22, len = L * (0.6 + hash(i + seed) * 0.5) * (0.9 + 0.1 * Math.sin(t * 9 + i));
+    let px = x, py = y;
+    _FQ[0] = px; _FQ[1] = py;
+    for (let j = 1; j < 5; j++) {
+      const w = Math.sin(t * 7 + i * 1.7 + j + seed) * 0.25 * j / 4;
+      px += Math.cos(aa + w) * len / 4; py += Math.sin(aa + w) * len / 4 - j * 1.5;
+      _FQ[j * 2] = px; _FQ[j * 2 + 1] = py;
+    }
+    taper(ctx, _FQ, 5, w0, 0.5);
+    ctx.fillStyle = rgba(color2 && i % 2 ? color2 : color, alpha); ctx.fill();
+  }
+  glow(ctx, x, y, L * 0.6, color, 0.35);
+  ctx.globalCompositeOperation = op;
+}
 /** 파티클 옵션에서 undefined 값 제거 (Object.assign 으로 프리셋 색이 지워지지 않게) */
 export function opt(o) { for (const k in o) if (o[k] === undefined) delete o[k]; return o; }
 /** 결정론적 의사난수 (그리기용, 할당 없음) */

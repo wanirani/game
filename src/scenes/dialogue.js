@@ -31,7 +31,7 @@ export class DialogueScene extends Scene {
     if (this.world) this.world.cutscene = true;
     this.onEnd = onEnd;
     let L = lines;
-    if (!L && npc) L = SCRIPTS[resolveNpcScript(npc, this.game.state)] ?? [{ who: npc, text: '……' }];
+    if (!L && npc) L = SCRIPTS[resolveNpcScript(npc, this.game.state, this.world?.stage?.id)] ?? [{ who: npc, text: '……' }];
     if (!L && script) L = SCRIPTS[script] ?? [{ who: 'narrator', text: `(대사 ${script} 없음)` }];
     this.lines = L || [];
     this.i = -1; this.shown = 0; this.menu = null;
@@ -116,7 +116,18 @@ export class DialogueScene extends Scene {
       return;
     }
     if (input.pressed('confirm') || input.pressed('attack') || input.pointer.tapped || input.pressed('jump')) { audio.sfx('menu_move', { vol: 0.4 }); this.next(); }
-    if (input.pressed('menu') && !this.cur.choice) { this.i = this.lines.length; this.next(); }
+    if (input.pressed('menu') && !input.pressed('confirm') && !this.cur.choice) this.skipAll(); // Enter(=menu+confirm)는 넘기기만
+  }
+  /** 대사 건너뛰기: 남은 명령(합류·플래그·지급·CG)은 실행하고, 선택지에서는 멈춘다 */
+  skipAll() {
+    while (++this.i < this.lines.length) {
+      const l = this.lines[this.i];
+      if (l.label || (l.if && !this.check(l.if))) continue;
+      if (l.cmd) { if (l.cmd !== 'sfx' && l.cmd !== 'shake') this.runCmd(l); continue; }
+      if (l.goto && !l.text) { this.i = (this.labels[l.goto] ?? this.lines.length) - 1; continue; }
+      if (l.choice) { this.i--; this.next(); return; }
+    }
+    this.finish();
   }
   render(ctx) {
     if (!this.cur) return;

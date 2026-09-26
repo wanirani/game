@@ -1,0 +1,169 @@
+// 동료 교체: 합류한 헌터 중 한 명을 골라 함께 싸운다 (영웅 상태는 캐릭터별로 따로 성장)
+import { Scene } from '../../core/game.js';
+import { input } from '../../core/input.js';
+import { audio } from '../../core/audio.js';
+import { assets } from '../../core/assets.js';
+import { text, wrap, panel, button, bar, drawCover, vignette, FONT, COLORS, font } from '../../core/ui.js';
+import { TAU, clamp, ease, rgba, rand, fmt } from '../../core/math.js';
+import { Particles } from '../../core/particles.js';
+import { drawHero } from '../../render/hero.js';
+import { CHARACTERS, CHAR_ORDER } from '../../data/characters.js';
+import { CLASSES } from '../../data/classes.js';
+import { ensureHero } from '../../game/state.js';
+import { composeLook, expToNext } from '../../game/stats.js';
+import { findItem } from '../../game/inventory.js';
+import { ITEMS } from '../../data/items.js';
+import { hitRect, nameOf, Snap } from './common.js';
+import { glow } from './facades.js';
+
+const STAR_KEYS = ['공격', '방어', '속도', '마법', '사거리'];
+
+export class PartyScene extends Scene {
+  enter(params = {}) {
+    this.world = params.world ?? null;
+    const st = this.game.state;
+    const unlocked = new Set(this.game.meta?.unlockedChars ?? ['kael']);
+    for (const id in st.heroes || {}) unlocked.add(id);
+    this.list = CHAR_ORDER.map((id) => ({ id, ch: CHARACTERS[id], open: unlocked.has(id), rig: {}, snap: new Snap() }));
+    this.index = Math.max(0, this.list.findIndex((e) => e.id === st.charId));
+    this.fx = new Particles(300);
+    this.leaving = null;
+    audio.sfx('menu_ok');
+  }
+  get state() { return this.game.state; }
+
+  update(dt) {
+    this.fx.update(dt, null);
+    if (this.leaving) { this.leaving.t += dt; if (this.leaving.t > 0.7) { this.game.pop(); } return; }
+    const n = this.list.length;
+    if (input.pressed('left')) { this.index = (this.index + n - 1) % n; audio.sfx('menu_move'); }
+    if (input.pressed('right')) { this.index = (this.index + 1) % n; audio.sfx('menu_move'); }
+    if (input.pointer.tapped) {
+      if (this.closeRect && hitRect(this.closeRect)) { audio.sfx('menu_cancel'); this.game.pop(); return; }
+      if (this.actRect && hitRect(this.actRect)) { this.choose(); return; }
+      for (let i = 0; i < (this.cardRects?.length ?? 0); i++) if (hitRect(this.cardRects[i])) { if (i === this.index) this.choose(); else { this.index = i; audio.sfx('menu_move'); } return; }
+    }
+    if (input.pressed('confirm')) { this.choose(); return; }
+    if (input.pressed('cancel') || (input.pressed('menu') && !input.pressed('confirm'))) { audio.sfx('menu_cancel'); this.game.pop(); }
+  }
+  choose() {
+    const e = this.list[this.index], st = this.state;
+    if (!e.open) { audio.sfx('menu_cancel'); this.game.toast(e.ch.unlock?.text ?? '아직 합류하지 않은 동료다.', '#ff8a7a'); return; }
+    if (e.id === st.charId) { audio.sfx('menu_cancel'); this.game.pop(); return; }
+    const fresh = !st.heroes[e.id];
+    ensureHero(st, e.id);
+    st.charId = e.id;
+    audio.sfx('powerup'); audio.sfx('menu_ok');
+    const r = this.cardRects?.[this.index];
+    if (r) {
+      this.fx.burst('gold', r.x + r.w / 2, r.y + r.h * 0.6, 40, { speed: 280 });
+      this.fx.ring(r.x + r.w / 2, r.y + r.h * 0.6, { color: '#e8c872', r0: 10, r1: 140, life: 0.5, width: 6 });
+    }
+    this.game.toast(fresh ? `${e.ch.name} 합류! 함께 싸운다.` : `${e.ch.name}(으)로 교체했다.`, '#ffe7a0');
+    this.leaving = { t: 0 };
+  }
+
+  render(ctx) {
+    const vw = this.game.viewW, vh = this.game.viewH, st = this.state;
+    drawCover(ctx, assets.get('bg/title') ?? assets.get('bg/hub'), vw, vh, { fallback: ['#140814', '#05020a'] });
+    ctx.fillStyle = 'rgba(4,2,8,0.72)'; ctx.fillRect(0, 0, vw, vh);
+    vignette(ctx, vw, vh, 0.75);
+    // 헤더
+    text(ctx, '동료', 24, 40, { size: 28, weight: 800, family: FONT.title, color: '#f3d690', ow: 4 });
+    text(ctx, 'PARTY  ·  함께 싸울 헌터를 고르세요', 92, 38, { size: 12, weight: 800, family: FONT.num, color: '#8a7a64' });
+    this.closeRect = { x: vw - 64, y: 10, w: 52, h: 40 };
+    button(ctx, this.closeRect, '✕', { size: 20 });
+    ctx.fillStyle = 'rgba(232,200,114,0.45)'; ctx.fillRect(0, 58, vw, 1.5);
+    // 카드
+    const n = this.list.length, gap = 10, m = 18;
+    const cw = (vw - m * 2 - gap * (n - 1)) / n, ch = 262, cy = 72;
+    this.cardRects = [];
+    this.list.forEach((e, i) => {
+      const r = { x: m + i * (cw + gap), y: cy, w: cw, h: ch };
+      this.cardRects.push(r);
+      this.drawCard(ctx, r, e, i === this.index);
+    });
+    // 상세
+    const e = this.list[this.index];
+    const dy = cy + ch + 12, dh = vh - dy - 70;
+    panel(ctx, m, dy, vw - m * 2, dh, { corner: false });
+    const c = e.ch;
+    text(ctx, e.open ? c.name : '???', m + 20, dy + 32, { size: 20, weight: 800, family: FONT.title, color: e.open ? '#f3d690' : '#6a5a50' });
+    text(ctx, `${c.eng} · ${c.title}`, m + 20, dy + 52, { size: 11, weight: 800, family: FONT.num, color: '#8a7a64' });
+    ctx.font = font(13, 500);
+    const dw = (vw - m * 2) * 0.58;
+    wrap(ctx, e.open ? c.desc : (c.unlock?.text ?? '아직 합류하지 않았다.'), dw - 30, 13).slice(0, 3).forEach((l, k) => text(ctx, l, m + 20, dy + 76 + k * 19, { size: 13, color: '#c8b8a0' }));
+    // 능력 별점
+    const sx = m + dw + 10;
+    STAR_KEYS.forEach((k, j) => {
+      const y = dy + 26 + j * 17;
+      text(ctx, k, sx, y, { size: 12, color: '#9d8f80' });
+      const v = c.stars?.[k] ?? 0;
+      for (let s = 0; s < 5; s++) text(ctx, '★', sx + 52 + s * 15, y + 1, { size: 13, color: s < v ? '#ffd84a' : 'rgba(120,100,80,0.4)', ow: 2 });
+    });
+    const hero = st.heroes[e.id];
+    if (hero) {
+      const wx = sx + 150;
+      text(ctx, `Lv.${hero.level}`, wx, dy + 30, { size: 18, weight: 900, family: FONT.num, color: '#fff' });
+      text(ctx, CLASSES[hero.classId]?.name ?? '', wx, dy + 50, { size: 13, weight: 700, color: '#e8c872' });
+      const w = findItem(st, hero.equip?.weapon);
+      if (w) text(ctx, nameOf(w), wx, dy + 70, { size: 12, color: COLORS.rarity[w.rarity ?? 0], maxWidth: vw - m - wx - 16 });
+      bar(ctx, wx, dy + 80, Math.min(160, vw - m - wx - 20), 5, hero.exp / expToNext(hero.level), { color: '#e8c872', shine: false });
+    } else if (e.open) text(ctx, '새 동료 — 선택하면 합류한다', sx + 150, dy + 40, { size: 13, weight: 700, color: '#8ae0a0' });
+    // 버튼
+    this.actRect = { x: vw / 2 - 170, y: vh - 58, w: 340, h: 48 };
+    const label = !e.open ? '잠겨 있음' : e.id === st.charId ? '현재 동행 중' : `${c.name.split(' ')[0]}와(과) 함께 간다`;
+    button(ctx, this.actRect, label, { selected: e.open && e.id !== st.charId, disabled: !e.open, size: 17 });
+    if (!input.touchMode) text(ctx, '←→ 선택   Z 결정   X 닫기', vw / 2, vh - 3, { size: 11, align: 'center', color: 'rgba(157,143,128,0.8)', ow: 2 });
+    this.fx.draw(ctx, 'front');
+    if (this.leaving) { ctx.fillStyle = `rgba(255,240,200,${Math.max(0, 0.5 - this.leaving.t)})`; ctx.fillRect(0, 0, vw, vh); }
+  }
+
+  drawCard(ctx, r, e, sel) {
+    const st = this.state, c = e.ch, cur = e.id === st.charId;
+    const t = this.t;
+    ctx.save();
+    const lift = sel ? -6 - Math.sin(t * 3) * 2 : 0;
+    ctx.translate(0, lift);
+    const g = ctx.createLinearGradient(0, r.y, 0, r.y + r.h);
+    g.addColorStop(0, sel ? 'rgba(70,20,34,0.95)' : 'rgba(22,12,20,0.92)'); g.addColorStop(1, 'rgba(6,3,8,0.96)');
+    ctx.fillStyle = g; ctx.fillRect(r.x, r.y, r.w, r.h);
+    // 초상화 (위쪽 은은하게)
+    const img = assets.get(c.portrait);
+    if (img) {
+      ctx.save(); ctx.beginPath(); ctx.rect(r.x, r.y, r.w, r.h * 0.62); ctx.clip();
+      const s = r.w / img.width * 1.15, iw = img.width * s, ih = img.height * s;
+      ctx.globalAlpha = e.open ? (sel ? 0.55 : 0.32) : 0.12;
+      ctx.drawImage(img, r.x + r.w / 2 - iw / 2, r.y - ih * 0.05, iw, ih);
+      ctx.globalAlpha = 1;
+      const fg = ctx.createLinearGradient(0, r.y + r.h * 0.2, 0, r.y + r.h * 0.62);
+      fg.addColorStop(0, 'rgba(6,3,8,0)'); fg.addColorStop(1, 'rgba(6,3,8,1)');
+      ctx.fillStyle = fg; ctx.fillRect(r.x, r.y + r.h * 0.2, r.w, r.h * 0.43);
+      ctx.restore();
+    }
+    // 캐릭터 (절차적, 현재 외형)
+    const hero = st.heroes[e.id];
+    const look = hero ? composeLook(st, hero) : structuredClone(c.look);
+    if (!hero) look.weapon = { type: c.weaponType, style: 1 };
+    const scale = clamp(r.w / 70, 1.35, 1.9);
+    const bottom = r.y + r.h - 60;
+    if (e.open) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; glow(ctx, r.x + r.w / 2, bottom - 60, 80, look.aura?.color ?? (sel ? '#e8c872' : '#6a5a8a'), sel ? 0.35 : 0.12); ctx.restore(); }
+    ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.beginPath(); ctx.ellipse(r.x + r.w / 2, bottom, 28, 6, 0, 0, TAU); ctx.fill();
+    const p = { cx: r.x + r.w / 2, bottom, facing: 1, anim: sel && e.open ? 'run' : 'idle', animT: t, look, ch: c, rig: e.rig, t: t + r.x * 0.01, stats: { reach: 0 }, onGround: true, vx: sel && e.open ? 150 : 0, vy: 0 };
+    if (sel && e.open) drawHero(ctx, p, null, { scale });
+    else {
+      // 선택되지 않은 카드는 정지 스냅샷 (성능)
+      p.t = 1.3 + r.x * 0.01; p.rig = {};
+      e.snap.draw(ctx, `${e.id}:${hero?.classId ?? ''}:${hero?.equip?.weapon ?? ''}:${e.open}`, r.x, r.y, r.w, r.h - 40, (oc) => drawHero(oc, p, null, e.open ? { scale } : { scale, tint: '#07040a' }));
+    }
+    // 이름 · 레벨
+    text(ctx, e.open ? c.name.split(' ')[0] : '???', r.x + r.w / 2, r.y + r.h - 36, { size: 16, weight: 800, family: FONT.title, align: 'center', color: e.open ? (sel ? '#fff4d8' : '#f3d690') : '#5a4a40' });
+    text(ctx, e.open ? (hero ? `Lv.${hero.level} · ${CLASSES[hero.classId]?.name ?? ''}` : c.title) : '미합류', r.x + r.w / 2, r.y + r.h - 16, { size: 11, weight: 700, align: 'center', color: e.open ? '#b8a890' : '#5a4a40', maxWidth: r.w - 8 });
+    ctx.strokeStyle = sel ? COLORS.gold : cur ? 'rgba(232,200,114,0.7)' : 'rgba(110,85,48,0.55)'; ctx.lineWidth = sel ? 2.5 : 1.2;
+    ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
+    if (sel) { ctx.shadowColor = 'rgba(232,200,114,0.6)'; ctx.shadowBlur = 16; ctx.strokeRect(r.x, r.y, r.w, r.h); ctx.shadowBlur = 0; }
+    if (cur) { ctx.fillStyle = '#8a1426'; ctx.fillRect(r.x + 6, r.y + 6, 46, 20); text(ctx, '동행 중', r.x + 29, r.y + 20, { size: 11, weight: 800, align: 'center', color: '#ffe7a0', ow: 0 }); }
+    if (!e.open) text(ctx, '🔒', r.x + r.w / 2, r.y + r.h * 0.42, { size: 26, align: 'center', ow: 0 });
+    ctx.restore();
+  }
+}

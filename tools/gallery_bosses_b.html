@@ -33,7 +33,7 @@ const acts = (q.get('acts') || 'idle~1.5').split(',').map((s) => { const [st, t,
 const live = q.get('live') === '1';
 const COLS = live ? 1 : Number(q.get('cols') || Math.min(2, acts.length));
 const ROWS = live ? 1 : Math.ceil(acts.length / COLS);
-const VW = 1280, VH = 540;
+const VW = Number(q.get('vw') || 960), VH = 540;
 const ZOOM = Number(q.get('zoom') || 0);
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 const PW = live ? VW : Math.floor(Number(q.get('pw') || (COLS === 1 ? 1280 : 640)));

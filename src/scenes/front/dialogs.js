@@ -94,7 +94,7 @@ export class SaveCodeScene extends Scene {
     this.place();
     if (this.mode === 'export') setTimeout(() => { try { ta.focus(); ta.select(); } catch { /* 무시 */ } }, 50);
   }
-  rect() { const vw = this.game.viewW; const w = Math.min(620, vw - 120); return { x: vw / 2 - w / 2 + 20, y: 196, w: w - 40, h: 170 }; }
+  rect() { const vw = this.game.viewW; const w = Math.min(620, vw - 120); return { x: vw / 2 - w / 2 + 20, y: 206, w: w - 40, h: 160 }; }
   place() {
     const ta = this.ta, cv = this.game.canvas;
     if (!ta || !cv) return;

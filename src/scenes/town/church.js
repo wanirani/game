@@ -15,7 +15,7 @@ import { availableClasses, canChangeClass, changeClass } from '../../game/progre
 import { composeLook, STAT_INFO } from '../../game/stats.js';
 import { addByBase } from '../../game/inventory.js';
 import { SHOP_LINES } from '../../data/town.js';
-import { ServiceScene, Modal, RewardPopup, makeInst, hitRect, rowBg } from './common.js';
+import { ServiceScene, Modal, RewardPopup, makeInst, hitRect, rowBg, Snap } from './common.js';
 import { glow } from './facades.js';
 
 const TIER_NAME = ['기본 직업', '상급 직업', '최상급 직업'];
@@ -207,12 +207,17 @@ export class ChurchScene extends ServiceScene {
     else this.drawSave(ctx, body);
   }
 
-  preview(ctx, key, look, cx, bottom, scale, aura) {
+  preview(ctx, key, look, cx, bottom, scale, aura, still = false) {
     const rig = (this.rigs[key] ??= {});
     const ch = CHARACTERS[this.hero.charId];
     if (aura) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; glow(ctx, cx, bottom - 70 * scale / 1.6, 90 * scale / 1.6, aura, 0.35 + Math.sin(this.t * 2) * 0.06); ctx.restore(); }
     ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.beginPath(); ctx.ellipse(cx, bottom, 34 * scale / 1.6, 7, 0, 0, TAU); ctx.fill();
-    drawHero(ctx, { cx, bottom, facing: 1, anim: 'idle', animT: this.t, look, ch, rig, t: this.t, stats: { reach: 0 }, onGround: true, vx: 0, vy: 0 }, null, { scale });
+    const p = { cx, bottom, facing: 1, anim: 'idle', animT: this.t, look, ch, rig, t: this.t, stats: { reach: 0 }, onGround: true, vx: 0, vy: 0 };
+    if (!still) { drawHero(ctx, p, null, { scale }); return; }
+    p.t = 1.2; p.rig = {};
+    const snap = (this.snaps ??= {})[key] ??= new Snap();
+    const w = 150 * scale, h = 170 * scale;
+    snap.draw(ctx, `${key}:${this.hero.classId}:${scale}`, cx - w / 2, bottom - h + 12 * scale, w, h, (oc) => drawHero(oc, p, null, { scale }));
   }
 
   drawClass(ctx, body) {
@@ -257,7 +262,7 @@ export class ChurchScene extends ServiceScene {
       const lg = ctx.createRadialGradient(r.x + pw / 2, r.y + r.h * 0.55, 10, r.x + pw / 2, r.y + r.h * 0.55, r.h * 0.6);
       lg.addColorStop(0, rgba(look.aura?.color ?? '#e8c872', 0.2)); lg.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = lg; ctx.fillRect(r.x, r.y, pw, r.h);
-      this.preview(ctx, c.id, look, r.x + pw / 2 + 4, r.y + r.h - 22, clamp(r.h / 150, 1.3, 2.1), look.aura?.color);
+      this.preview(ctx, c.id, look, r.x + pw / 2 + 4, r.y + r.h - 22, clamp(r.h / 150, 1.3, 2.1), look.aura?.color, !sel);
       ctx.restore();
       // 정보 (우측)
       const tx = r.x + pw + 12, tw = r.w - pw - 22;

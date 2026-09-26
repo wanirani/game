@@ -277,9 +277,21 @@ function render(time) {
     drawCell(c, time, LIVE);
   }
 }
-render(3.83);
-if (LIVE) { const t0 = performance.now(); const loop = () => { render(3 + (performance.now() - t0) / 1000); requestAnimationFrame(loop); }; requestAnimationFrame(loop); }
-window.__ready = true;
+// 첫 그리기는 조금씩 나눠서(페이지 load 이벤트를 막지 않도록) → 완료 시 window.__ready
+async function renderProgressive(time) {
+  bg();
+  let n = 0;
+  for (const c of cells) {
+    if (c.kind === 'h') { ctx.fillStyle = '#e8c872'; ctx.font = 'bold 18px serif'; ctx.fillText(c.text, 12, c.y + 22); continue; }
+    drawCell(c, time, false);
+    if (++n % 6 === 0) await new Promise((r) => setTimeout(r, 0));
+  }
+}
+setTimeout(async () => {
+  await renderProgressive(3.83);
+  window.__ready = true;
+  if (LIVE) { const t0 = performance.now(); const loop = () => { render(3 + (performance.now() - t0) / 1000); requestAnimationFrame(loop); }; requestAnimationFrame(loop); }
+}, 0);
 </script>
 </body>
 </html>

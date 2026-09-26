@@ -8,7 +8,7 @@
 //       | { cmd:'cg', id:'cg_prologue_moon' | null }   (전체화면 이벤트 CG, null 로 해제)
 // '{hero}' 는 현재 캐릭터 이름으로 치환
 // ID 규칙: prologue · <stageId>_intro/_t1/_t2/_outro · <bossId>_pre/_post · b_dracula_transform(2페이즈 연출용)
-//          ending_bad/normal/true · <npcId>_ch<N>/_default/_tip<N> · q_<questId>_start/_done
+//          ending_bad/normal/true · <npcId>_ch<N>/_default/_tip<N>/_<stageId>(스테이지 안 NPC) · q_<questId>_start/_done
 // 챕터 N 대사 = N장을 클리어한 뒤(다음 장 출발 전)에 마을에서 듣는 대사.
 // 주요 플래그: elise_taken, lia_joined, elise_rescued, carmilla_trust1/2(+met1/2), azel_joined, alberto_confessed, relics_all(퀘스트 런타임이 설정), abyss_open
 
@@ -72,6 +72,7 @@ export const SCRIPTS = {
     N('[TIP] 금이 간 벽을 부수면 숨겨진 방과 비전서를 찾을 수 있다.'),
   ],
   s01_t1: [
+    N('무너진 헛간 잔해 속에서 신음 소리가 새어 나온다.'),
     S('자경단원', '크윽… 사, 사냥꾼이오? 놈들이… 성에서 내려왔소.'),
     S('자경단원', '박쥐들이 뭉쳐서 집채만 한 괴물이 됐어. 종탑 위에 둥지를 틀었다오.'),
     H({ kael: '…나이트윙. 가문의 기록에 있던 놈이군. 쉬고 계십시오.',
@@ -820,12 +821,12 @@ export const SCRIPTS = {
   ],
   s11_t1: [
     ifFlag('carmilla_trust1', 'friend'),
-    S(CA, '또 만났네. 여전히 날 못 믿겠다는 얼굴이구나.'),
+    S(CA, '(어둠 속에서 카밀라의 목소리) 또 만났네. 여전히 날 못 믿겠다는 얼굴이구나.'),
     S(CA, '상관없어. 사신과 싸울 거라면 성수를 넉넉히 챙기렴. 충고는 공짜야.'),
     go('end'),
     L('friend'),
-    S(CA, '약속대로 왔구나. 사신은 예배당 가장 높은 곳에서 너희를 기다려.'),
-    S(CA, '그 녀석의 낫은 원을 그리며 되돌아와. 등 뒤를 조심하렴.'),
+    S(CA, '(어둠 속에서 카밀라의 목소리) 약속대로 왔구나. 사신은 예배당 가장 높은 곳에서 기다려.'),
+    S(CA, '마지막 유물, 피의 반지는 이 예배당 어딘가 무너지는 벽 너머에 있어. 벽을 의심하렴.'),
     L('end'),
   ],
   s11_t2: [
@@ -1309,8 +1310,16 @@ export const SCRIPTS = {
 
   // ═══════════════════════════ NPC: 엘리제 ═══════════════════════════
   npc_elise_ch0: [
-    S(EL, '안녕하세요! 신부님이 성 쪽으론 절대 가지 말래요. …그래도 성이 예쁘긴 해요.'),
-    S(EL, '마르타 이모네 백작님은 제가 생선 꼬리를 주면 발라당 누워요. 귀엽죠?'),
+    S(EL, '헌터님! 마을이… 마을이 불타고 있어요!'),
+    S(EL, '신부님이 예배당에 숨어 있으랬는데, 마르타 이모네 백작님이 안 보여서 찾으러 나왔어요.'),
+    H({ kael: '여긴 위험해. 고양이는 내가 찾아 줄 테니 예배당으로 가.',
+      sera: '백작님은 제가 꼭 찾아 드릴게요. 엘리제는 예배당으로 가요. 어서요.',
+      victor: '고양이는 아홉 번 산다잖아. 넌 한 번뿐이고. 예배당으로 뛰어.',
+      bran: '고양이는 내가 찾겠소. 아가씨는 예배당으로 피하시오.',
+      lia: '고양이는 알아서 살아남아. 너도 그래야지. 예배당으로 가.',
+      azel: '겁먹지 마라. 고양이는 내가 찾는다. 너는 예배당으로.',
+      default: '여긴 위험해! 어서 예배당으로 가!' }),
+    S(EL, '네… 네! 조심하세요! 예배당에서 기도하고 있을게요!'),
   ],
   npc_elise_ch1: [
     N('(엘리제가 늘 앉아 있던 우물가엔 낡은 헝겊 인형 하나만 놓여 있다…)'),
@@ -1345,6 +1354,24 @@ export const SCRIPTS = {
   ],
   npc_elise_default: [S(EL, '오늘도 헌터님을 위해 기도했어요!')],
   npc_elise_tip1: [S(EL, '백작님(고양이)이 까마귀 깃털을 엄청 좋아해요. 마르타 이모한테 물어보세요!')],
+  npc_elise_s01: [
+    ifFlag('elise_warned', 'again'),
+    S(EL, '헌터님! 마을이… 마을이 불타고 있어요!'),
+    S(EL, '신부님이 예배당에 숨어 있으랬는데, 마르타 이모네 백작님이 안 보여서 찾으러 나왔어요.'),
+    H({ kael: '여긴 위험해. 고양이는 내가 찾아 줄 테니 예배당으로 가.',
+      sera: '백작님은 제가 꼭 찾아 드릴게요. 엘리제는 예배당으로 가요. 어서요.',
+      victor: '고양이는 아홉 번 산다잖아. 넌 한 번뿐이고. 예배당으로 뛰어.',
+      bran: '고양이는 내가 찾겠소. 아가씨는 예배당으로 피하시오.',
+      lia: '고양이는 알아서 살아남아. 너도 그래야지. 예배당으로 가.',
+      azel: '겁먹지 마라. 고양이는 내가 찾는다. 너는 예배당으로.',
+      default: '여긴 위험해! 어서 예배당으로 가!' }),
+    S(EL, '네… 네! 조심하세요! 예배당에서 기도하고 있을게요!'),
+    flag('elise_warned'),
+    go('end'),
+    L('again'),
+    S(EL, '가, 갈게요! 금방 갈 거예요! …백작님, 어디 있니…?'),
+    L('end'),
+  ],
 
   // ═══════════════════════════ NPC: 카밀라 ═══════════════════════════
   npc_carmilla_ch0: [
@@ -1375,6 +1402,25 @@ export const SCRIPTS = {
     S(CA, '햇빛 아래서 포도주를 마시는 날이 올 줄이야. 후후, 생각보다 따뜻하네.'),
   ],
   npc_carmilla_default: [S(CA, '햇빛 없는 자리가 좋아. 이 여관 구석처럼. …같이 한 잔 할래?')],
+  npc_carmilla_s06: [
+    ifFlag('carmilla_met1', 'met'),
+    S(CA, '후후, 서두르렴. 그 수다쟁이 책이 네 이야기를 전부 읽어 버리기 전에.'),
+    S(CA, '내가 누구냐고? 그 책을 닥치게 하면 알려 줄게.'),
+    go('end'),
+    L('met'),
+    S(CA, '또 왔니? 이 도서관, 먼지 냄새가 좋아서 자주 와. 너도 그렇지 않니?'),
+    L('end'),
+  ],
+  npc_carmilla_s11: [
+    ifFlag('carmilla_trust1', 'friend'),
+    S(CA, '예배당에 흡혈귀라니, 우습지? 나도 알아.'),
+    S(CA, '사신의 낫은 원을 그리며 되돌아와. …이건 그냥 혼잣말이야.'),
+    go('end'),
+    L('friend'),
+    S(CA, '왔구나. 사신은 제단 너머에 있어. 그 녀석의 낫은 원을 그리며 되돌아오니 등 뒤를 조심해.'),
+    S(CA, '무사히 돌아오면 해 줄 이야기가 있어. 아주 중요한 이야기.'),
+    L('end'),
+  ],
 
   // ═══════════════════════════ 퀘스트 대사 (q_<id>_start / _done) ═══════════════════════════
   q_mt_herbs_start: [
@@ -1443,12 +1489,14 @@ export const SCRIPTS = {
   q_cm_brides_done: [S(CA, '고마워. 이제 좀 조용하겠네. 이건 답례야. 피 냄새는 안 나니 안심하렴.')],
 };
 
-/** NPC 대화 스크립트 선택 (챕터/플래그에 따라)
- *  1) 특수 상황(퀘스트 전달 등) → 2) 현재 챕터 이하의 가장 최근 _ch<N> (처음 한 번) → 3) default/팁/최근 챕터 대사 순환 */
-export function resolveNpcScript(npcId, state) {
+/** NPC 대화 스크립트 선택 (챕터/플래그/장소에 따라)
+ *  1) 특수 상황(퀘스트 전달 등) → 2) 스테이지 전용 <npcId>_<stageId> → 3) 현재 챕터 이하의 가장 최근 _ch<N> (처음 한 번)
+ *  → 4) default/팁/최근 챕터 대사 순환. stageId 는 대화가 일어난 World 의 스테이지 id (마을이면 생략) */
+export function resolveNpcScript(npcId, state, stageId) {
   const p = state?.progress;
   const ch = p?.chapter ?? 0;
   if (npcId === 'npc_alberto' && state?.quests?.active?.el_letter && !p?.flags?.letter_delivered) return 'npc_alberto_letter';
+  if (stageId && SCRIPTS[`${npcId}_${stageId}`]) return `${npcId}_${stageId}`; // 스테이지 안에서 만났을 때 전용 대사
   let latest = null;
   for (let k = ch; k >= 0; k--) if (SCRIPTS[`${npcId}_ch${k}`]) { latest = `${npcId}_ch${k}`; break; }
   const seen = p?.seenScripts;

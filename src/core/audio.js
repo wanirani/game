@@ -1,6 +1,6 @@
 // 오디오 시스템 — 절차적 WebAudio 엔진 (효과음 합성 + 룩어헤드 BGM 시퀀서 + 대성당 잔향)
 //  audio.unlock()                   첫 사용자 입력 시 AudioContext 활성화
-//  audio.sfx(name, {vol, pitch, pan})
+//  audio.sfx(name, {vol, pitch, pan, delay})
 //  audio.music(trackId, {fade})     BGM 전환 (같은 곡이면 무시)
 //  audio.stopMusic(fade)
 //  audio.duck(amount, time)         잠시 BGM 볼륨 낮춤
@@ -243,8 +243,8 @@ export function compileTrack(def0, id = '?') {
   const chans = chIds.map((k) => ({ id: k, ...def.ch[k] }));
   const secs = {};
   for (const [name, sec] of Object.entries(def.sec)) {
-    const beats = (sec.bars ?? 4) * bpb;
-    const chords = sec.chords ? parseChords(sec.chords, beats, bpb) : null;
+    const sbpb = sec.sig ?? bpb, beats = (sec.bars ?? 4) * sbpb;
+    const chords = sec.chords ? parseChords(sec.chords, beats, sbpb) : null;
     const key = parseKey(sec.key ?? def.key ?? 'A min');
     const trans = (def.trans ?? 0) + (sec.trans ?? 0);
     const by = {};
@@ -263,7 +263,7 @@ export function compileTrack(def0, id = '?') {
         ev = p.len < beats - 1e-6 ? loopFit(p.ev, p.len, beats) : p.ev.filter((e) => e.t < beats - 1e-6);
       } else if ((v && v.gen) || cd.gen) {
         const g = { ...cd, ...(v || E0) };
-        ev = genPattern(g, chords, beats, bpb);
+        ev = genPattern(g, chords, beats, sbpb);
         if (!chords) warn.push(`${id}.${name}.${cid}: 코드 진행 없음`);
       }
       for (const e of ev) e.c = ci;
@@ -530,7 +530,7 @@ const DRUMS = {
   },
   h(e, ch, t, v) { e.noiseHit(ch.hh, t, 0.06, v * 0.3, 0.013); },
   o(e, ch, t, v) { e.noiseHit(ch.hh, t, 0.36, v * 0.26, 0.09); },
-  c(e, ch, t, v) { e.noiseHit(ch.cy, t, 1.8, v * 0.36, 0.45, 0.002); },
+  c(e, ch, t, v) { e.noiseHit(ch.cy, t, 1.6, v * 0.2, 0.4, 0.002); },
   r(e, ch, t, v) {
     e.noiseHit(ch.hh, t, 0.4, v * 0.14, 0.12);
     const o = e.osc('square', 3150, t), g = e.ctx.createGain(); g.gain.setValueAtTime(v * 0.025, t); g.gain.exponentialRampToValueAtTime(0.0005, t + 0.25);
@@ -1006,6 +1006,17 @@ const SFX = {
   type: { max: 2, gap: 0.03, vary: 0.08, fn(S) { T(S, 'square', 880, 0, 0, 0.025, 0.05, { f: ['lowpass', 2500] }); N(S, 0, 0.012, 0.06, { f: ['highpass', 4000] }); } },
 };
 
+// 체감 음량 보정 (오프라인 렌더 단기 RMS 측정 기반) — 호출부 vol 과 곱해짐
+const SFX_VOL = {
+  hit: 1.2, whip: 1.25, whip_crack: 1.2, slash: 2.6, dagger: 3, cross: 1.6, axe: 1.3, holywater_burn: 1.6,
+  magic: 1.5, holy: 1.3, ice: 1.6, jump: 1.6, double_jump: 1.4, land: 0.6, footstep: 0.8,
+  heart: 1.4, coin: 1.3, item: 1.2, powerup: 2, extra_life: 1.5, chest: 2, heal: 1.3,
+  menu_move: 2.2, menu_ok: 1.6, menu_cancel: 1.6, type: 9, candle: 1.5, door: 0.8, secret: 2, clock_tick: 1.5,
+  bat: 2.5, ghost: 1.5, splash: 1.5, dice: 4, card: 4, slot_spin: 5, slot_win: 1.5, ready: 1.5, coin_insert: 1.5,
+  charge_ready: 1.6, combo: 3, warning: 1.6, enhance_success: 1.4,
+};
+for (const k in SFX_VOL) if (SFX[k]) SFX[k].vol = SFX_VOL[k];
+
 // ─────────────────────────────── 엔진 ───────────────────────────────
 /** 한 AudioContext(실시간 또는 Offline) 위의 믹서·잔향·신스·시퀀서 */
 export class Engine {
@@ -1016,7 +1027,7 @@ export class Engine {
     for (let i = 0; i < nd.length; i++) nd[i] = R() * 2 - 1;
     this.noise = nb;
     this.master = c.createGain(); this.master.gain.value = 0.9;
-    const comp = c.createDynamicsCompressor(); comp.threshold.value = -15; comp.knee.value = 10; comp.ratio.value = 3.2; comp.attack.value = 0.004; comp.release.value = 0.22;
+    const comp = c.createDynamicsCompressor(); comp.threshold.value = -12; comp.knee.value = 12; comp.ratio.value = 2.6; comp.attack.value = 0.005; comp.release.value = 0.25;
     const lim = c.createDynamicsCompressor(); lim.threshold.value = -2.5; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.001; lim.release.value = 0.1;
     this.master.connect(comp); comp.connect(lim); lim.connect(c.destination);
     // 잔향
@@ -1108,9 +1119,9 @@ export class Engine {
     node.connect(this.sfxG);
     let wet = null;
     if (def.rev) { wet = c.createGain(); wet.gain.value = def.rev; node.connect(wet); wet.connect(this.sfxRev); }
-    const S = { e: this, c, t: now + 0.004, p: pitch * (1 + (R() * 2 - 1) * (def.vary ?? 0.035)), v: vol * (def.vol ?? 1), out, end: 0 };
+    const S = { e: this, c, t: now + 0.004 + (o.delay || 0), p: pitch * (1 + (R() * 2 - 1) * (def.vary ?? 0.035)), v: vol * (def.vol ?? 1), out, end: 0 };
     def.fn(S);
-    this.live.push({ name, st: now, end: now + S.end + 0.05, out, node, wet });
+    this.live.push({ name, st: now, end: now + (o.delay || 0) + S.end + 0.05, out, node, wet });
     if (def.duck) this.duck(def.duck[0] * Math.min(1, vol), def.duck[1]);
   }
   steal(x, now) { x.out.gain.cancelScheduledValues(now); x.out.gain.setTargetAtTime(0, now, 0.012); x.end = Math.min(x.end, now + 0.06); }

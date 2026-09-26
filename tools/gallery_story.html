@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>스토리 갤러리</title>
+<style>
+  html, body { margin: 0; background: #07040a; color: #d8ccb8; font-family: 'Noto Sans KR', sans-serif; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<script type="module">
+// 스토리 담당 갤러리: NPC 스프라이트(data/npcs.js look) ↔ 초상화 비교 (?sec=npcs)
+import { drawHero } from '../src/render/hero.js';
+import { NPCS, NPC_ORDER } from '../src/data/npcs.js';
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const W = 1280, H = 560;
+cv.width = W; cv.height = H;
+const imgs = {};
+await Promise.all(NPC_ORDER.map((id) => new Promise((res) => { const im = new Image(); im.onload = () => { imgs[id] = im; res(); }; im.onerror = res; im.src = `../assets/portraits/${id}.webp`; })));
+function bg() {
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#120a18'); g.addColorStop(0.6, '#1a0c14'); g.addColorStop(1, '#0a0810');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  let s = 7; const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < 700; i++) { const x = rnd() * W, y = rnd() * H, r = 4 + rnd() * 40; ctx.fillStyle = `rgba(${60 + rnd() * 80},${20 + rnd() * 30},${40 + rnd() * 50},${0.05 + rnd() * 0.08})`; ctx.fillRect(x, y, r, r * 0.5); }
+}
+const ents = {};
+const scratch = document.createElement('canvas'); scratch.width = 600; scratch.height = 600; const sctx = scratch.getContext('2d');
+function ent(look) { return { facing: 1, anim: 'idle', animT: 0.5, move: null, moveT: 0, vx: 0, vy: 0, onGround: true, rig: {}, t: 3, stats: { reach: 0 }, charging: 0, muzzleT: 0, look, ch: { move: {} }, npc: true, cx: 0, bottom: 0 }; }
+function render(time) {
+  bg();
+  const cw = W / NPC_ORDER.length;
+  NPC_ORDER.forEach((id, i) => {
+    const n = NPCS[id], x = i * cw;
+    const im = imgs[id];
+    if (im) { const h = 240, w = h * im.width / im.height; ctx.drawImage(im, x + (cw - w) / 2, 10, w, h); }
+    let e = ents[id];
+    if (!e) { e = ents[id] = ent(n.look); for (let f = 0; f < 40; f++) { e.t = 3 + f / 60; sctx.setTransform(2, 0, 0, 2, 300, 500); drawHero(sctx, e, null, {}); } }
+    e.t = time; e.animT = time;
+    ctx.save(); ctx.translate(x + cw / 2, H - 50); ctx.scale(2.6, 2.6); e.cx = 0; e.bottom = 0; drawHero(ctx, e, null, {}); ctx.restore();
+    ctx.fillStyle = '#e8c872'; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(`${n.name} · ${n.title}`, x + cw / 2, H - 18);
+  });
+}
+let t0 = performance.now();
+render(3);
+window.__ready = true;
+function loop(now) { render(3 + (now - t0) / 1000); requestAnimationFrame(loop); }
+if (new URLSearchParams(location.search).has('anim')) requestAnimationFrame(loop);
+</script>
+</body>
+</html>

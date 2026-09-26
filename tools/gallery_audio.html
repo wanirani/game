@@ -86,7 +86,9 @@ const sc = $('scope'), g = sc.getContext('2d'); let buf = null;
 function stats(b) {
   const L = b.getChannelData(0), Rr = b.getChannelData(1), sr = b.sampleRate; let pk = 0, ss = 0; const win = []; let ws = 0, wn = 0;
   for (let i = 0; i < L.length; i++) { const v = (L[i] + Rr[i]) * 0.5, a = Math.max(Math.abs(L[i]), Math.abs(Rr[i])); if (a > pk) pk = a; ss += v * v; ws += v * v; wn++; if (wn === sr) { win.push(Math.sqrt(ws / wn)); ws = 0; wn = 0; } }
-  return { peak: +pk.toFixed(3), rms: +Math.sqrt(ss / L.length).toFixed(4), minWin: +Math.min(...win).toFixed(4), win: win.map((x) => +x.toFixed(3)) };
+  let st = 0; const n50 = Math.floor(sr * 0.05);
+  for (let i = 0; i + n50 <= L.length; i += n50) { let s = 0; for (let j = i; j < i + n50; j++) { const v = (L[j] + Rr[j]) * 0.5; s += v * v; } st = Math.max(st, Math.sqrt(s / n50)); }
+  return { peak: +pk.toFixed(3), st: +st.toFixed(3), rms: +Math.sqrt(ss / L.length).toFixed(4), minWin: +Math.min(...win).toFixed(4), win: win.map((x) => +x.toFixed(3)) };
 }
 window.__audioCompile = () => {
   const out = {};
@@ -100,13 +102,14 @@ window.__audioCompile = () => {
   }
   return out;
 };
-window.__audioTest = async (ids, sec = 8, skip = 0) => {
+window.__audioTest = async (ids, sec = 8, skip = 0, solo = null) => {
   const res = {};
   for (const id of ids) {
     const oc = new OfflineAudioContext(2, Math.floor(44100 * sec), 44100);
     const eng = new Engine(oc); eng.setVolumes(0.6, 0.8);
-    const p = eng.playTrack(id, 0.02, 0.02);
+    const p = eng.playTrack(id, 0.5, 0.02);
     if (skip) { p.st -= skip * 60 / p.comp.bpm; }
+    if (solo) for (const ch of p.chans) if (ch.def.id !== solo) ch.in.gain.value = 0;
     p.schedule(sec);
     const b = await oc.startRendering();
     res[id] = { notes: p.notes, ...stats(b) };
@@ -117,9 +120,9 @@ window.__sfxTest = async (names = SFX_NAMES) => {
   const res = {};
   for (const n of names) {
     const oc = new OfflineAudioContext(2, 44100 * 3, 44100);
-    const eng = new Engine(oc); eng.setVolumes(0.6, 0.8); eng.sfx(n);
+    const eng = new Engine(oc); eng.setVolumes(0.6, 0.8); eng.sfx(n, { delay: 0.6 });
     const b = await oc.startRendering(); const s = stats(b);
-    res[n] = { peak: s.peak, rms: s.rms, has: !!SFX[n] };
+    res[n] = { peak: s.peak, st: s.st, has: !!SFX[n] };
   }
   return res;
 };

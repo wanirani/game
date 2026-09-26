@@ -114,7 +114,7 @@ export class CreditsScene extends Scene {
     else if (kind === 'bad') this.slides.push('cg/cg_bad_ending');
     else this.slides.push('cg/cg_castle_collapse', 'bg/ending');
     this.slides.forEach((k) => assets.get(k));
-    this.scroll = 0; this.phase = 'roll'; this.phaseT = 0;
+    this.scroll = 150; this.phase = 'roll'; this.phaseT = 0;
     this.amb = new Ambience({ embers: 40, motes: 30, bats: 3, fog: false, lightning: false, emberColor: '#ffd890' });
     audio.music('credits');
     this.stats = fromEnding ? this.buildStats() : null;
@@ -205,10 +205,18 @@ export class CreditsScene extends Scene {
     ctx.beginPath(); ctx.rect(0, 0, sw, vh); ctx.clip();
     kenBurns(ctx, assets.get(this.slides[i0]), sw, vh, (u % 1) * per + i0 * 11, { z0: 1.04, z1: 1.14, period: per * 2, alpha: 0.8 });
     if (f > 0) kenBurns(ctx, assets.get(this.slides[i1]), sw, vh, i1 * 11, { z0: 1.04, z1: 1.14, period: per * 2, alpha: 0.8 * f });
-    const fr = ctx.createLinearGradient(sw * 0.6, 0, sw, 0);
-    fr.addColorStop(0, 'rgba(0,0,0,0)'); fr.addColorStop(1, 'rgba(0,0,0,1)');
-    ctx.fillStyle = fr; ctx.fillRect(0, 0, sw, vh);
+    if (this.phase === 'roll') {
+      const fr = ctx.createLinearGradient(sw * 0.5, 0, sw * 0.98, 0);
+      fr.addColorStop(0, 'rgba(0,0,0,0)'); fr.addColorStop(1, 'rgba(0,0,0,1)');
+      ctx.fillStyle = fr; ctx.fillRect(0, 0, sw + 1, vh);
+    }
     ctx.restore();
+    if (this.phase === 'roll') {
+      // 오른쪽 크레딧 영역: 은은한 진홍빛
+      const rg = ctx.createRadialGradient(vw * 0.78, vh * 0.5, 20, vw * 0.78, vh * 0.5, vh * 0.7);
+      rg.addColorStop(0, 'rgba(60,8,20,0.55)'); rg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = rg; ctx.fillRect(sw - 2, 0, vw - sw + 2, vh);
+    }
     const vg = ctx.createLinearGradient(0, 0, 0, vh);
     vg.addColorStop(0, 'rgba(0,0,0,0.7)'); vg.addColorStop(0.2, 'rgba(0,0,0,0)'); vg.addColorStop(0.8, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.7)');
     ctx.fillStyle = vg; ctx.fillRect(0, 0, vw, vh);

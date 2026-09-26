@@ -146,6 +146,9 @@ function poseIdle(P, K, t, npc) {
   P.a1 = HP - 0.26 + br * 0.02; P.r1 = 0.88; P.a2 = HP + 0.22 - br * 0.02; P.r2 = 0.9;
   if (K.fem) { P.f1x = 3.5; P.f2x = -4.5; P.a2 = HP + 0.12; }
   if (K.B >= 1.25) { P.f1x = 7; P.f2x = -8.5; P.a1 = HP - 0.34; P.a2 = HP + 0.32; }
+  if (!npc) { // 플레이어: 무릎을 살짝 굽힌 전투 대기 자세
+    P.py += 0.9; P.f1x += 1.6; P.f2x -= 1.4; P.lean += 0.03; P.hd -= 0.03;
+  }
 }
 function poseStance(P, K) {
   P.py = -39.5; P.lean = 0.12; P.hd = -0.06; P.f1x = 8; P.f1y = -2.8; P.f2x = -9.5; P.f2y = -2.8;
@@ -253,6 +256,8 @@ function holdFor(P, K, mode) {
   } else if (w === 'gun') {
     P.w1 = P.a1 - 0.3; P.w2 = P.a2 - 0.35;
     if (mode === 'air') { P.w1 = P.a1 + 0.2; }
+  } else if (w === 'whip') {
+    if (mode === 'idle') { P.a1 = HP - 0.12; P.r1 = 0.66; P.e1 = 1; } // 허리의 채찍에 손을 얹음
   } else if (w === 'staff') {
     if (mode === 'run') { P.a1 = HP - 0.45 + (P.a1 - HP) * 0.3; P.r1 = 0.72; P.w1 = -2.15; }
     else if (mode === 'air') { P.a1 = -0.4; P.r1 = 0.8; P.w1 = -1.05; }
@@ -1238,6 +1243,15 @@ function ribGrad(P, n, w, base, k = 1) {
   const mxp = (x0 + x1) / 2, myp = (y0 + y1) / 2;
   return grad(mxp + nx * r, myp + ny * r, mxp - nx * r, myp - ny * r, base, k);
 }
+// 체인 설정 (매 프레임 객체 생성을 피하려고 모듈 상수로)
+const CC_HAIR2 = { g: 1200, d: 0.88, push: 240, rest: 0.5, curl: 0.12, flut: 120 };
+const CC_VEIL = { g: 1400, d: 0.9, push: 150, rest: 0.3, curl: 0.06, flut: 60 };
+const CC_VHAIR = { g: 1400, d: 0.9, push: 150, rest: 0.22, curl: 0.05 };
+const CC_SCARF = { g: 1100, d: 0.9, push: 250, rest: 0.5, curl: 0.03, flut: 150 };
+const CC_SCARF_L = { g: 950, d: 0.9, push: 400, rest: 0.9, curl: 0.03, flut: 200 };
+const CC_CAPE = { g: 1500, d: 0.93, push: 90, rest: 0.12, curl: 0.04, flut: 110 };
+const CC_BAND = { g: 900, d: 0.9, push: 360, rest: 0.95, curl: 0.12, flut: 240 };
+const CC_BAND2 = { g: 900, d: 0.9, push: 360, rest: 1.4, curl: 0.12, flut: 240 };
 const HAIR_CFG = {
   ponytail: { n: 7, seg: 4.4, w0: 3.0, w1: 0.6, ax: -7.6, ay: -3.6, cfg: { g: 1150, d: 0.88, push: 260, rest: 0.75, curl: 0.1 } },
   long: { n: 6, seg: 4.6, w0: 4.2, w1: 2.4, ax: -4.6, ay: 1.5, cfg: { g: 1500, d: 0.9, push: 120, rest: 0.18, curl: 0.03 } },
@@ -1271,7 +1285,7 @@ function drawBandTails(s, K, E) {
   headPt(s, K, -8.4, -2.6); tx0(E.P, QX, QY);
   const ax = TX, ay = TY;
   for (let j = 1; j >= 0; j--) {
-    const n = 5, pts = chain(j ? 'band2' : 'band', E, ax, ay, n, j ? 3.1 : 3.8, { g: 900, d: 0.9, push: 360, rest: 0.95 + j * 0.45, curl: 0.12, flut: 240 }, ax + 1);
+    const n = 5, pts = chain(j ? 'band2' : 'band', E, ax, ay, n, j ? 3.1 : 3.8, j ? CC_BAND2 : CC_BAND, ax + 1);
     for (let i = 0; i < n; i++) WS[i] = lerp(1.05, 0.75, i / (n - 1));
     ribbonPath(c, pts, n, WS, false);
     const bc = sh(K.band, -0.22 * j);
@@ -1298,7 +1312,7 @@ function drawHairChains(s, K, E) {
   }
   if (K.hs === 'flowing') {
     headPt(s, K, -3.2, 3.5); tx0(E.P, QX, QY);
-    const p2 = chain('hair2', E, TX, TY, 6, 4.4, { g: 1200, d: 0.88, push: 240, rest: 0.5, curl: 0.12, flut: 120 }, TX + 1);
+    const p2 = chain('hair2', E, TX, TY, 6, 4.4, CC_HAIR2, TX + 1);
     for (let i = 0; i < 6; i++) WS[i] = lerp(3.0, 0.6, i / 5);
     ribbonPath(c, p2, 6, WS, true);
     c.fillStyle = ribGrad(p2, 6, 3, sh(hc, -0.08), 0.9); c.fill(); outline(hc, 0.6);
@@ -1309,7 +1323,7 @@ function drawVeil(s, K, E) {
   const c = G.c;
   headPt(s, K, -4.2, -5.2); tx0(E.P, QX, QY);
   const n = 5;
-  const pts = chain('veil', E, TX, TY, n, 5.6, { g: 1400, d: 0.9, push: 150, rest: 0.3, curl: 0.06, flut: 60 }, TX + 2);
+  const pts = chain('veil', E, TX, TY, n, 5.6, CC_VEIL, TX + 2);
   for (let i = 0; i < n; i++) WS[i] = lerp(4.2, 6.4, i / (n - 1));
   const vc = K.hgC || K.se;
   ribbonPath(c, pts, n, WS, false);
@@ -1318,7 +1332,7 @@ function drawVeil(s, K, E) {
   // 은발이 베일 밑으로
   if (K.hs === 'long' || K.hs === 'flowing') {
     headPt(s, K, -3.4, 2.8); tx0(E.P, QX, QY);
-    const hp = chain('hair', E, TX, TY, 5, 4.4, { g: 1400, d: 0.9, push: 150, rest: 0.22, curl: 0.05 }, TX + 1);
+    const hp = chain('hair', E, TX, TY, 5, 4.4, CC_VHAIR, TX + 1);
     for (let i = 0; i < 5; i++) WS[i] = lerp(2.6, 1.2, i / 4);
     ribbonPath(c, hp, 5, WS, true); c.fillStyle = ribGrad(hp, 5, 2.6, K.hair); c.fill(); outline(K.hair, 0.5);
   }
@@ -1328,7 +1342,7 @@ function drawScarfTail(s, K, E) {
   const c = G.c, sc = K.scarf;
   sp(s, K, 1.02, -backAt(K, 1) - 0.5); tx0(E.P, QX, QY);
   const n = sc.long ? 11 : 6;
-  const pts = chain('scarf', E, TX, TY, n, sc.long ? 5.6 : 4.6, { g: sc.long ? 700 : 1100, d: 0.9, push: sc.long ? 420 : 250, rest: sc.long ? 0.9 : 0.5, curl: 0.03, flut: sc.long ? 260 : 150 }, TX + 1);
+  const pts = chain('scarf', E, TX, TY, n, sc.long ? 5.6 : 4.6, sc.long ? CC_SCARF_L : CC_SCARF, TX + 1);
   for (let i = 0; i < n; i++) WS[i] = lerp(2.4, sc.long ? 1.9 : 1.6, i / (n - 1));
   ribbonPath(c, pts, n, WS, false);
   c.fillStyle = ribGrad(pts, n, 2.4, sc.c, 0.8); c.fill(); outline(sc.c, 0.6);
@@ -1363,7 +1377,7 @@ function drawCape(s, K, E) {
   const c = G.c;
   sp(s, K, 0.94, -backAt(K, 0.94) + 0.8); tx0(E.P, QX, QY);
   const n = 7, len = 44 * cp.len;
-  const pts = chain('cape', E, TX, TY, n, len / (n - 1), { g: 1500, d: 0.93, push: 90, rest: 0.12, curl: 0.04, flut: 110 }, TX - 0.5);
+  const pts = chain('cape', E, TX, TY, n, len / (n - 1), CC_CAPE, TX - 0.5);
   for (let i = 0; i < n; i++) WS[i] = lerp(3.6, 9.8 + cp.len * 2.2, Math.pow(i / (n - 1), 0.75)) * K.hW;
   // 안감(앞쪽 가장자리로 살짝 보임)
   ribbonPath(c, pts, n, WS, false);
@@ -1832,7 +1846,7 @@ export function drawHero(ctx, p, world, opts = {}) {
   // 본체: 역광 테두리(뒤-위로 비켜 찍은 차가운 단색 복사본) → 본체 → 피격 섬광
   if (off) {
     const S = bodyOffscreen(ctx, K, P, W, tt, hs, fac, flashK > 0 ? FLASH_COL : RIM_COL);
-    if (wantRim) blitOff(ctx, TINTC, S, fac, hs, -fac * 1.25 * hs, -1.1 * hs, RIM_A, 'source-over');
+    if (wantRim) blitOff(ctx, TINTC, S, fac, hs, -fac * 1.05 * hs, -0.95 * hs, RIM_A, 'source-over');
     blitOff(ctx, BODYC, S, fac, hs, 0, 0, 1, 'source-over');
     if (flashK > 0) blitOff(ctx, TINTC, S, fac, hs, 0, 0, 0.75 * flashK, 'lighter');
   } else drawLayers(c, E, K, P, W, tt);
@@ -1935,7 +1949,7 @@ function drawLayers(c, E, K, P, W, tt) {
 // ── 오프스크린 본체 패스 (역광 테두리 / 피격 섬광) ──
 // 몸 전체를 전용 캔버스(BODY)에 한 번 그리고 → 그 알파로 단색 복사본(TINT)을 만들어
 // 뒤-위로 비켜 찍으면 가장자리에 차가운 역광선이 남는다. 벡터 패스는 1회뿐이라 저렴하다.
-const RIM_COL = '#9fb6ff', RIM_A = 0.62, FLASH_COL = '#ffd0c0';
+const RIM_COL = '#a4b8ff', RIM_A = 0.58, FLASH_COL = '#ffd0c0';
 let BODYC = null, TINTC = null;
 const OB = { W: 0, H: 0, bw: 0, bt: 0, bb: 0 };
 function offCanvas(cv, W, H) {

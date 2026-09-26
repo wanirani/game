@@ -474,6 +474,27 @@ export function portraitIn(ctx, img, r, { fx = 0.5, fy = 0.22, zoom = 1, silhoue
   ctx.restore();
 }
 
+/** 초상화 가장자리를 투명하게 녹인 캐시 캔버스 (컷신에서 CG 위에 자연스럽게 얹기 위함) */
+const FEATHER = new Map();
+export function featherPortrait(img, key, { side = 0.2, bottom = 0.42, top = 0.06 } = {}) {
+  if (!img) return null;
+  const k = `${key}|${side}|${bottom}`;
+  if (FEATHER.has(k)) return FEATHER.get(k);
+  const W = Math.min(520, img.width), H = Math.round(W * img.height / img.width);
+  const c = mkCanvas(W, H), x = c.getContext('2d');
+  x.drawImage(img, 0, 0, W, H);
+  x.globalCompositeOperation = 'destination-in';
+  let g = x.createLinearGradient(0, 0, W, 0);
+  g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(side, 'rgba(0,0,0,1)'); g.addColorStop(1 - side, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  x.fillStyle = g; x.fillRect(0, 0, W, H);
+  g = x.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(top, 'rgba(0,0,0,1)'); g.addColorStop(1 - bottom, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  x.fillStyle = g; x.fillRect(0, 0, W, H);
+  if (FEATHER.size > 10) FEATHER.delete(FEATHER.keys().next().value);
+  FEATHER.set(k, c);
+  return c;
+}
+
 // ───────────────────────── 캐릭터 미리보기 ─────────────────────────
 /** 캐릭터(+직업) 외형 */
 export function lookOf(charId, classId = null, w = {}) {

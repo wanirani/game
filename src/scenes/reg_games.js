@@ -2,9 +2,11 @@
 import { InnScene } from './games/inn.js';
 import { DiceScene } from './games/dice.js';
 import { BlackjackScene } from './games/blackjack.js';
+import { SlotScene } from './games/slot.js';
 
 export function register(game) {
   game.register('inn', InnScene);
   game.register('minigame_dice', DiceScene);
   game.register('minigame_blackjack', BlackjackScene);
+  game.register('minigame_slot', SlotScene);
 }

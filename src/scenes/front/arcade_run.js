@@ -403,6 +403,7 @@ export class PracticeScene extends ArcadeRunScene {
   setup() {
     const w = this.world;
     w.finishStage = () => this.finish(true);
+    w.banner = null;
     this.call = { main: 'STAGE PRACTICE', sub: `제${w.stage.chapter}장 ${w.stage.name}`, color: '#5aa8ff', t: 0 };
     this.phase = 'play';
   }

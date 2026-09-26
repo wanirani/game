@@ -604,3 +604,24 @@ export function mergeLines(mine = {}, theirs = {}, alias = {}) {
   for (const k in theirs) { const key = alias[k] ?? k; if (Array.isArray(theirs[k]) && theirs[k].length) out[key] = theirs[k]; }
   return out;
 }
+
+// ───────────────────────── 정지 스냅샷 (비선택 캐릭터 미리보기 캐시) ─────────────────────────
+/** 무거운 그림(예: drawHero 확대)을 오프스크린에 한 번 그려 두고 key 가 바뀔 때만 다시 그린다 */
+export class Snap {
+  constructor() { this.cv = null; this.key = null; }
+  draw(ctx, key, x, y, w, h, paint) {
+    const m = ctx.getTransform();
+    const rs = clamp(Math.round(Math.hypot(m.a, m.b) * 4) / 4, 1, 2);
+    const W = Math.max(1, Math.ceil(w * rs)), H = Math.max(1, Math.ceil(h * rs));
+    const k = `${key}|${Math.round(x)}|${Math.round(y)}|${rs}`;
+    if (!this.cv) this.cv = document.createElement('canvas');
+    if (this.key !== k || this.cv.width !== W || this.cv.height !== H) {
+      this.cv.width = W; this.cv.height = H;
+      const oc = this.cv.getContext('2d');
+      oc.setTransform(rs, 0, 0, rs, -x * rs, -y * rs);
+      try { paint(oc); } catch (e) { console.error(e); }
+      this.key = k;
+    }
+    ctx.drawImage(this.cv, 0, 0, W, H, x, y, w, h);
+  }
+}

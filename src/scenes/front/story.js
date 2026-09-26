@@ -16,7 +16,7 @@ import { CHARACTERS } from '../../data/characters.js';
 import { NPCS } from '../../data/npcs.js';
 import { BOSSES } from '../../data/bosses.js';
 import { addByBase } from '../../game/inventory.js';
-import { Ambience, kenBurns, ornament, gbutton, menuItem, setPad, goSafe, glowSprite, GOLD, BONE, DIM } from './common.js';
+import { Ambience, kenBurns, ornament, gbutton, menuItem, setPad, goSafe, glowSprite, featherPortrait, GOLD, BONE, DIM } from './common.js';
 
 const BAR = 50;
 
@@ -257,25 +257,20 @@ export class StoryScene extends Scene {
     const draw = (key, side, a, slide) => {
       const img = key ? assets.get(key) : null;
       if (!img || a <= 0) return;
-      const h = (this.cg ? 0.8 : 0.92) * vh, w = h * img.width / img.height;
-      const x = side === 'left' ? 20 - slide : vw - w - 20 + slide;
-      const y = vh - h - BAR + 16 + Math.sin(t * 0.8) * 2;
+      const fp = featherPortrait(img, key);
+      const h = (this.cg ? 0.84 : 0.94) * vh, w = h * img.width / img.height;
+      const x = side === 'left' ? 10 - slide : vw - w - 10 + slide;
+      const y = vh - h - BAR + 30 + Math.sin(t * 0.8) * 2;
       ctx.save();
-      ctx.globalAlpha = a;
-      // 뒤쪽 은은한 광원
+      // 뒤쪽 어둠 + 은은한 역광 (배경과 분리)
+      ctx.globalAlpha = a * 0.55;
+      ctx.drawImage(glowSprite('#000000'), x - w * 0.1, y + h * 0.05, w * 1.2, h * 1.1);
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = a * 0.25;
-      ctx.drawImage(glowSprite(side === 'left' ? '#6a8aff' : '#ff3a4a'), x - w * 0.2, y, w * 1.4, h);
+      ctx.globalAlpha = a * 0.22;
+      ctx.drawImage(glowSprite(side === 'left' ? '#6a8aff' : '#ff3a4a'), x - w * 0.15, y - h * 0.05, w * 1.3, h);
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = a;
-      ctx.drawImage(img, x, y, w, h);
-      // 가장자리/아래 페이드
-      const fb = ctx.createLinearGradient(0, y + h * 0.55, 0, y + h);
-      fb.addColorStop(0, 'rgba(0,0,0,0)'); fb.addColorStop(1, 'rgba(0,0,0,1)');
-      ctx.fillStyle = fb; ctx.fillRect(x - 1, y + h * 0.55, w + 2, h * 0.45 + 1);
-      const fs = ctx.createLinearGradient(side === 'left' ? x + w * 0.7 : x + w * 0.3, 0, side === 'left' ? x + w : x, 0);
-      fs.addColorStop(0, 'rgba(0,0,0,0)'); fs.addColorStop(1, 'rgba(0,0,0,0.85)');
-      ctx.fillStyle = fs; ctx.fillRect(x - 1, y, w + 2, h);
+      ctx.drawImage(fp ?? img, x, y, w, h);
       ctx.restore();
     };
     const k = ease.outCubic(clamp(P.t / 0.45, 0, 1));

@@ -19,7 +19,7 @@ export const NPCS = {
   npc_hadwin: {
     id: 'npc_hadwin', name: '하드윈', title: '대장장이', portrait: 'portraits/npc_hadwin', role: 'smith', services: ['smith', 'enhance', 'quest'],
     desc: '말수 적은 거한 대장장이. 망치질 소리로 대화한다는 농담이 있을 정도. 무기를 보면 주인의 실력을 안다고 한다.',
-    look: { build: 'huge', height: 1.04, skin: '#c89070', hair: '#3a2a20', hairStyle: 'bald', beard: 'full', eyes: '#5a3a24', outfit: 'smith',
+    look: { build: 'huge', height: 1.04, skin: '#c89070', hair: '#7a6450', hairStyle: 'bald', beard: 'full', eyes: '#5a3a24', outfit: 'smith',
       primary: '#5a4838', secondary: '#6a4424', trim: '#8a8e9a', pants: '#2a2420', boots: '#1a1410', armor: null },
   },
   npc_alberto: {

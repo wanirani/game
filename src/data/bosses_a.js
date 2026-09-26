@@ -20,7 +20,7 @@ export const BOSSES_A = {
   },
   b_dullahan: {
     id: 'b_dullahan', name: '둘라한', title: '목 없는 흑기사', hp: 1100, atk: 23, def: 10, res: 6, exp: 560, score: 28000,
-    size: { w: 150, h: 158 }, contact: 0.8, material: 'metal', weak: ['holy', 'thunder'], resist: ['dark'],
+    size: { w: 180, h: 200 }, contact: 0.8, material: 'metal', weak: ['holy', 'thunder'], resist: ['dark'],
     phases: [0.6, 0.3], music: 'boss2', portrait: 'portraits/b_dullahan', stageId: 's03', drops: ['u_dullahan'],
     light: { r: 210, color: '#8ab8ff', i: 0.7 }, deathColor: '#9ac8ff', deathFx: 'soul',
     intro: '(목 없는 기사가 불타는 제 머리를 높이 치켜든다.)',

@@ -1,6 +1,6 @@
 // 도감 탭: 적(ENEMIES)·보스(BOSSES) 목록(장별 묶음) · 처치 수 · 실시간 렌더 미리보기(스테이지 배경 위) · 약점/내성/드롭/설명
 // 처치한 적만 정보 공개, 미발견은 실루엣
-import { text, FONT, drawCover } from '../../core/ui.js';
+import { text, FONT } from '../../core/ui.js';
 import { audio } from '../../core/audio.js';
 import { clamp, rgba } from '../../core/math.js';
 import { assets } from '../../core/assets.js';
@@ -143,14 +143,9 @@ export class BestiaryTab extends Tab {
 
   drawPreview(ctx, r, x, y, w, h, seen) {
     const t = this.t;
-    ctx.save();
-    rr(ctx, x, y, w, h, 4); ctx.clip();
     const sid = this.stageOf(r);
     const bgKey = D.STAGES()[sid]?.bg;
     const img = bgKey ? assets.get(bgKey) : null;
-    drawCover(ctx, img, w, h, { fallback: ['#1a1024', '#06030a'] });
-    ctx.restore();
-    // drawCover 는 (0,0) 기준이므로 위치 보정: 다시 그림
     ctx.save();
     rr(ctx, x, y, w, h, 4); ctx.clip();
     if (img) {
@@ -225,13 +220,7 @@ export class BestiaryTab extends Tab {
     g.globalCompositeOperation = 'source-in';
     g.fillStyle = '#06030a'; g.fillRect(0, 0, pw, ph);
     g.globalCompositeOperation = 'source-over';
-    // 테두리 역광처럼 살짝 밝은 복제 먼저
-    ctx.save();
-    ctx.globalAlpha *= 0.5; ctx.filter = 'none';
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha *= 0.25;
-    ctx.drawImage(c, 0, 0, pw, ph, x - 1.5, y - 1.5, w, h);
-    ctx.restore();
+    glowOval(ctx, x + w / 2, y + h * 0.55, w * 0.35, h * 0.42, '#6a4a9a', 0.4);
     ctx.drawImage(c, 0, 0, pw, ph, x, y, w, h);
     text(ctx, '?', x + w / 2, y + h / 2 + 14, { size: 40, align: 'center', weight: 900, family: FONT.num, color: 'rgba(200,170,140,0.35)', ow: 0 });
   }

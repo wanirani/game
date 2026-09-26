@@ -53,3 +53,8 @@ if (which === 'story') {
   fakeSave(3, 'lia', 'nightmare', 9);
   g.go('slots', { mode: 'load' });
 }
+// 전투 보조: ?killboss / ?killall / ?die (쿼리에 난수를 붙여 매번 새로 실행: ?killboss&1)
+const w = g.world;
+if (which.startsWith('killboss') && w?.boss && !w.boss.dead) w.boss.takeHit(1e9, { dir: 1, kb: [0, 0] }, w, {});
+if (which.startsWith('killall') && w) for (const e of w.enemies()) e.takeHit?.(1e9, { dir: 1, kb: [0, -200] }, w, {});
+if (which.startsWith('die') && w?.player) { w.run.lives = 1; w.player.hp = 0; w.player.die(w); }

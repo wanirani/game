@@ -587,7 +587,7 @@ export class MiniGame extends Scene {
   }
 
   // ── 정산 ──
-  settle({ win, payout = 0, tier, perfect = false, title, sub, popup = true, delay = 0.5, cx, cy } = {}) {
+  settle({ win, payout = 0, tier, perfect = false, title, sub, popup = true, delay = 0.5, cx, cy, quiet = false } = {}) {
     tier ??= win ? 'win' : 'lose';
     const st = this.st, free = this.roundFree;
     const gold = free ? 0 : Math.max(0, Math.round(payout));
@@ -628,10 +628,11 @@ export class MiniGame extends Scene {
       if (tier === 'big') { this.flash('#ffe7a0', 0.5); this.shake(7, 0.4); this.fx.ring(x, y, { color: '#ffd060', r0: 20, r1: 240, life: 0.5, width: 6 }); }
     } else if (tier === 'push') {
       audio.sfx('menu_ok');
-    } else {
+    } else if (!quiet) {
       audio.sfx('lose'); this.shake(5, 0.3);
       this.fx.burst('smoke', x, y, 10, { speed: 60 });
     }
+    if (!popup) for (const it of items) this.game.toast(`획득: ${it.name} ×${it.qty}`, '#ffe070');
     return rec;
   }
   shake(m, t) { this.shakeMag = Math.max(this.shakeMag, m * (this.game.settings?.screenShake ?? 1)); this.shakeT = Math.max(this.shakeT, t); }

@@ -328,7 +328,14 @@ export function arenaOf(world, boss) {
   let X0 = x0, X1 = x1;
   if (map?.typeAt) {
     const tx = Math.floor(cx / TILE);
-    for (let ty = Math.floor(floor / TILE) - 2; ty >= 0; ty--) if (solidAt(map, tx, ty)) { top = (ty + 1) * TILE; break; }
+    // 천장: 여러 열 중 가장 높은 곳 (떠 있는 섬/종유석에 속지 않도록)
+    top = floor;
+    for (let i = 1; i <= 7; i++) {
+      const cx2 = Math.floor((x0 + (x1 - x0) * i / 8) / TILE);
+      let tt = 0;
+      for (let ty = Math.floor(floor / TILE) - 2; ty >= 0; ty--) if (solidAt(map, cx2, ty)) { tt = (ty + 1) * TILE; break; }
+      top = Math.min(top, tt);
+    }
     // 좌우 벽: 바닥 바로 위 두 줄에서 중앙부터 바깥으로 첫 고체 타일
     const ty1 = Math.floor(floor / TILE) - 1, ty2 = ty1 - 1;
     for (let t = tx; t * TILE < x1; t++) if (solidAt(map, t, ty1) && solidAt(map, t, ty2)) { X1 = Math.min(x1, t * TILE); break; }

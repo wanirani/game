@@ -485,7 +485,7 @@ function boom(w, p, x, y, r, o = {}) {
 function spikeFx(w, p, x, base, h, wd, delay, a, style) {
   const seed = Math.random();
   fx(w, {
-    delay, life: 0.62, z: 9, x: x - wd * 2, y: base - h - 20, w: wd * 4, h: h + 30, atk: a, win: [0, 0.3],
+    delay, life: 0.62, z: 9, x: x - wd * 2, y: base - h - 20, w: wd * 4, h: h + 30, atk: a, win: [0, 0.3], onHit: style.onHit,
     rect(e) { const up = ease.outBack(clamp(e.lt / 0.1, 0, 1)); return { x: x - wd * 0.8, y: base - h * up, w: wd * 1.6, h: h * up }; },
     start(e, ww) {
       ww.fx.burst(style.dust ?? 'dust', x, base - 4, 7, { angle: -Math.PI / 2, spread: 1.2, speed: 160, color: style.dustCol });
@@ -838,11 +838,11 @@ SKILL_IMPL.sera_holy_bolt = (p, w, lv) => {
   }
 };
 
-function pillarFx(w, p, x, base, W, mv, delay, life, col) {
+function pillarFx(w, p, x, base, W, mv, delay, life, col, extra = {}) {
   const top = w.camera.y - 60;
   return fx(w, {
     delay, life, z: 11, x: x - W * 2, y: top, w: W * 4, h: base - top + 20,
-    atk: atk(p, { mv, element: 'holy', rehit: 0.12, kb: [60, -280], hitstop: 0.04, shake: 2 }), win: [0.22, 0.85],
+    atk: atk(p, { mv, element: 'holy', rehit: 0.12, kb: [60, -280], hitstop: 0.04, shake: 2, ...extra }), win: [0.22, 0.85],
     rect() { return { x: x - W * 0.8, y: top, w: W * 1.6, h: base - top }; },
     tick(e, ww) {
       if (!e.d.on && e.k >= 0.22) {
@@ -1131,5 +1131,1359 @@ SKILL_IMPL.sera_chrono = (p, w, lv) => {
       drawClock(ctx, p.cx, p.cy - 10, R * sc, a, e.d.hm, e.d.hh);
     },
     light(L) { L.add(p.cx, p.cy, R * 1.6, '#8ac8ff', 0.9); },
+  });
+};
+
+// ═══════════════════════════ 빅터 ═══════════════════════════
+const gunOf = (p, alt = false) => ({ x: p.cx + p.facing * 44, y: p.bottom - (alt ? 56 : 60) });
+function muzzle(w, p, x, y, ang, col = '#ffd070', big = 1) {
+  w.fx.flash(x, y, { color: col, size: 46 * big, life: 0.08 });
+  w.fx.burst('spark', x, y, Math.round(3 * big), { angle: ang, spread: 0.4, color: '#ffe0a0' });
+  w.fx.emit('smoke', x, y, { speed: 30 });
+  p.muzzleT = 0.06;
+}
+function aimAng(p, w, x, y, range = 720, cone = 0.55) {
+  const base = p.facing > 0 ? 0 : Math.PI;
+  const e = frontEnemies(w, p, range)[0];
+  if (!e) return base + rand(-0.03, 0.03);
+  const a = Math.atan2(e.cy - y, e.cx - x);
+  const d = Math.atan2(Math.sin(a - base), Math.cos(a - base));
+  return base + clamp(d, -cone, cone);
+}
+function bullet(w, p, x, y, ang, o = {}) {
+  const sp = o.speed ?? 1800;
+  return shoot(w, p, {
+    x, y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, w: 18, h: 8, render: o.render ?? 'bullet', color: o.color ?? '#ffe7a0',
+    life: o.life ?? 0.5, pierce: o.pierce ?? 1, scale: o.scale ?? 1, trail: o.trail ?? null, trailRate: 0.03, collideWalls: o.walls ?? true,
+    light: o.light ?? null, onExpire: o.onExpire, attack: atk(p, { mv: o.mv ?? 0.6, kb: o.kb ?? [120, -40], hitstop: o.hitstop ?? 0.03, shake: o.shake ?? 1, element: o.element ?? null, crit: o.crit ?? 0 }),
+  });
+}
+
+SKILL_IMPL.victor_fanning = (p, w, lv) => {
+  const id = 'victor_fanning', n = N(id, lv), mv = MV(id, lv), steps = [];
+  for (let i = 0; i < n; i++) steps.push([i * 0.065, (ww) => {
+    pose(p, ww, i % 2 ? 'shoot_alt' : 'shoot', 0.14, { h0: 0.01, hw: 0.02, sfx: 'gun' });
+    const g = gunOf(p, i % 2 === 1), ang = aimAng(p, ww, g.x, g.y);
+    bullet(ww, p, g.x, g.y, ang, { mv, scale: 1.1 });
+    muzzle(ww, p, g.x, g.y, ang);
+    shake(ww, 1.5, 0.05);
+  }]);
+  seq(w, steps);
+};
+
+SKILL_IMPL.victor_bullet_dance = (p, w, lv) => {
+  const id = 'victor_bullet_dance', n = N(id, lv), mv = MV(id, lv), steps = [];
+  pose(p, w, 'spin_blade', 0.55, { h0: 0.04, hw: 0.44, sfx: 'dash' });
+  const rot0 = rand(0, TAU);
+  for (let i = 0; i < n; i++) steps.push([0.04 + i * (0.42 / n), (ww) => {
+    const ang = rot0 + i / n * TAU * 1.25 * p.facing, x = p.cx + Math.cos(ang) * 30, y = p.cy - 8 + Math.sin(ang) * 16;
+    bullet(ww, p, x, y, ang, { mv, speed: 1400, kb: [180, -120], scale: 1.1 });
+    muzzle(ww, p, x, y, ang, '#ffd070', 0.7);
+    if (i % 2 === 0) audio.sfx('gun', { vol: 0.6, pitch: rand(0.95, 1.15) });
+  }]);
+  seq(w, steps);
+  w.fx.ring(p.cx, p.cy, { color: '#ffd070', r0: 20, r1: 110, life: 0.4, width: 4 });
+};
+
+SKILL_IMPL.victor_pierce_shot = (p, w, lv) => {
+  const id = 'victor_pierce_shot', mv = MV(id, lv), W = V(id, 'w', lv), f = p.facing, cam = w.camera;
+  pose(p, w, 'shoot_double', 0.5, { h0: 0.2, hw: 0.04, sfx: 'charge_ready' });
+  // 조준 섬광
+  fx(w, {
+    life: 0.2, z: 12,
+    follow(e) { const g = gunOf(p); e.d.x = g.x; e.d.y = g.y; e.x = g.x - 60; e.y = g.y - 60; e.w = e.h = 120; },
+    draw(ctx, e) { const u = e.k; ctx.globalCompositeOperation = ADD; glow(ctx, e.d.x, e.d.y, 40 + u * 30, '#fff0b0', 0.5 + u * 0.5); flare(ctx, e.d.x, e.d.y, 30 + u * 50, '#fff0b0', 1, u * 2); },
+    end(e, ww) {
+      const x0 = e.d.x, y = e.d.y, x1 = f > 0 ? cam.x + cam.vw + 60 : cam.x - 60;
+      const lx = Math.min(x0, x1), len = Math.abs(x1 - x0);
+      audio.sfx('shotgun'); audio.sfx('gun', { pitch: 0.7 });
+      shake(ww, 9, 0.25); ww.camera.punchZoom(1.04, 0.12);
+      p.vx = -f * 320;
+      ww.fx.flash(x0, y, { color: '#fff0b0', size: 120, life: 0.12 });
+      fx(ww, {
+        life: 0.42, z: 12, x: lx, y: y - W * 3, w: len, h: W * 6,
+        atk: atk(p, { mv, kb: [420, -160], hitstop: 0.1, shake: 6, crit: 15 }), win: [0, 0.3],
+        rect() { return { x: lx, y: y - W * 0.9, w: len, h: W * 1.8 }; },
+        draw(ctx, e2) {
+          const a = 1 - e2.k, th = W * (1 - e2.k * 0.7);
+          ctx.globalCompositeOperation = ADD;
+          beamH(ctx, x0, x1, y, th * 2.2, '#ffd070', a * 0.7);
+          beamH(ctx, x0, x1, y, th * 0.7, '#ffffff', a, '#ffffff');
+          ctx.strokeStyle = rgba('#fff0b0', 0.6 * a); ctx.lineWidth = 2;
+          for (let d = 90; d < len; d += 130) {
+            const rx = x0 + f * d, rr = W * (1.2 + e2.k * 3) * (1 - d / len * 0.5);
+            ctx.beginPath(); ctx.ellipse(rx, y, rr * 0.35, rr * 1.6, 0, 0, TAU); ctx.stroke();
+          }
+        },
+        light(L, e2) { for (let d = 0; d < len; d += 240) L.add(x0 + f * d, y, 160, '#ffe7a0', 1.2 * (1 - e2.k)); },
+      });
+    },
+  });
+};
+
+SKILL_IMPL.victor_phantom_bullet = (p, w, lv) => {
+  const id = 'victor_phantom_bullet', n = N(id, lv), mv = MV(id, lv), f = p.facing, cx0 = p.cx, b0 = p.bottom;
+  pose(p, w, 'shoot_double', 0.5, { h0: 0.3, hw: 0.04, sfx: 'gun' });
+  audio.sfx('ghost', { vol: 0.8 }); audio.sfx('mist', { vol: 0.6 });
+  const spots = [[-58, -78], [-60, 0], [-118, -40], [-120, -118], [-170, 0], [-176, -80]];
+  for (let i = 0; i < n; i++) {
+    const [dx, dy] = spots[i % spots.length];
+    const gx = cx0 + f * dx, gb = b0 + dy;
+    const snap = ghostOf(p, gx, gb, { anim: 'shoot_double', move: { id: 'ph', anim: 'shoot_double', dur: 0.8, hit: [0.3 + i * 0.06, 0.34 + i * 0.06] }, moveT: 0, onGround: dy === 0, facing: f });
+    fx(w, {
+      life: 0.85, z: 9, x: gx - 50, y: gb - 110, w: 100, h: 120, d: { fired: false },
+      tick(e, ww, dt) {
+        snap.moveT = e.lt; snap.t = p.t;
+        if (!e.d.fired && e.lt >= 0.3 + i * 0.06) {
+          e.d.fired = true;
+          const x = gx + f * 44, y = gb - 60;
+          bullet(ww, p, x, y, f > 0 ? 0 : Math.PI, { mv, speed: 2000, pierce: 99, walls: false, life: 0.6, render: lanceRender, color: '#9ab0ff', scale: 1.1, kb: [260, -120], hitstop: 0.05, shake: 3, light: { r: 90, color: '#9ab0ff', i: 0.9 } });
+          muzzle(ww, p, x, y, f > 0 ? 0 : Math.PI, '#9ab0ff', 1.3);
+          audio.sfx('gun', { pitch: 0.8 + i * 0.05 });
+        }
+      },
+      draw(ctx, e, ww) {
+        const a = Math.min(1, e.lt * 6) * clamp((e.life - e.lt) / 0.25, 0, 1);
+        drawHero(ctx, snap, ww, { alpha: 0.75 * a, tint: '#8aa8ff' });
+        ctx.globalCompositeOperation = ADD; glow(ctx, gx, gb - 44, 60, '#9ab0ff', 0.3 * a);
+      },
+      light(L) { L.add(gx, gb - 44, 90, '#9ab0ff', 0.6); },
+    });
+  }
+};
+
+SKILL_IMPL.victor_execution = (p, w, lv) => {
+  const id = 'victor_execution', n = N(id, lv), mv = MV(id, lv);
+  const tgs = enemiesIn(w, viewRect(w)).sort((a, b) => Math.abs(a.cx - p.cx) - Math.abs(b.cx - p.cx)).slice(0, n);
+  if (!tgs.length) { w.game.toast('조준할 적이 없다', '#ff8a8a', 1); return false; }
+  audio.sfx('charge_ready'); audio.sfx('clock_tick', { vol: 0.6 });
+  pose(p, w, 'shoot', 0.4, { h0: 0.3, sfx: 'menu_move' });
+  tgs.forEach((tg, i) => {
+    const T = 0.5 + i * 0.13;
+    fx(w, {
+      life: T, z: 12, d: { x: tg.cx, y: tg.cy },
+      follow(e) { if (!tg.dead) { e.d.x = tg.cx; e.d.y = tg.cy; } e.x = e.d.x - 70; e.y = e.d.y - 70; e.w = e.h = 140; },
+      draw(ctx, e) {
+        const u = ease.outCubic(e.k), R = lerp(70, 22, u), a = Math.min(1, e.lt * 8);
+        ctx.save(); ctx.translate(e.d.x, e.d.y); ctx.rotate((1 - u) * 2.5);
+        ctx.globalCompositeOperation = ADD; ctx.strokeStyle = rgba('#ff3040', 0.95 * a); ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.stroke();
+        ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(0, 0, R * 0.55, 0, TAU); ctx.stroke();
+        for (let k = 0; k < 4; k++) { ctx.rotate(Math.PI / 2); ctx.beginPath(); ctx.moveTo(R * 0.35, 0); ctx.lineTo(R * 1.35, 0); ctx.stroke(); }
+        ctx.fillStyle = rgba('#ff3040', a); ctx.beginPath(); ctx.arc(0, 0, 2.5, 0, TAU); ctx.fill();
+        ctx.restore();
+      },
+      end(e, ww) {
+        const g = gunOf(p), x = e.d.x, y = e.d.y;
+        p.facing = Math.sign(x - p.cx) || p.facing;
+        pose(p, ww, i % 2 ? 'shoot_alt' : 'shoot', 0.16, { h0: 0.01, sfx: 'gun' });
+        const ratio = tg.dead ? 1 : clamp(tg.hp / maxHpOf(tg), 0, 1);
+        playerStrike(ww, circ(x, y, 26), atk(p, { mv, mult: p.dmgMul * (1 + (1 - ratio) * 1.5), crit: 30, kb: [300, -260], hitstop: 0.1, shake: 6, dir: Math.sign(x - p.cx) || 1 }));
+        fx(ww, {
+          life: 0.14, z: 12, x: Math.min(g.x, x) - 10, y: Math.min(g.y, y) - 10, w: Math.abs(x - g.x) + 20, h: Math.abs(y - g.y) + 20,
+          draw(ctx, e2) { cutLine(ctx, g.x, g.y, x, y, 3, '#ffd070', 1 - e2.k); },
+        });
+        muzzle(ww, p, g.x, g.y, Math.atan2(y - g.y, x - g.x), '#ffd070', 1.4);
+        ww.fx.burst('blood', x, y, 10, { speed: 260 }); ww.fx.flash(x, y, { color: '#ff3040', size: 90, life: 0.12 });
+        audio.sfx('crit');
+      },
+    });
+  });
+};
+
+function dynamiteRender(ctx, pr) {
+  ctx.rotate(pr.rot);
+  ctx.fillStyle = '#b01a14'; ctx.fillRect(-12, -5, 24, 10);
+  ctx.fillStyle = '#e8d8b0'; ctx.fillRect(-12, -5, 3, 10); ctx.fillRect(9, -5, 3, 10);
+  ctx.fillStyle = '#1a0c08'; ctx.fillRect(-4, -5, 2, 10); ctx.fillRect(3, -5, 2, 10);
+  ctx.strokeStyle = '#2a1a10'; ctx.lineWidth = 1.2; ctx.strokeRect(-12, -5, 24, 10);
+  ctx.strokeStyle = '#6a5a4a'; ctx.beginPath(); ctx.moveTo(12, 0); ctx.quadraticCurveTo(18, -6, 20, -10); ctx.stroke();
+  ctx.globalCompositeOperation = ADD; glow(ctx, 20, -10, 12 + Math.random() * 6, '#ffd070', 1); flare(ctx, 20, -10, 10, '#fff0b0', 1, pr.t * 20);
+}
+SKILL_IMPL.victor_dynamite = (p, w, lv) => {
+  const id = 'victor_dynamite', n = N(id, lv), r = V(id, 'r', lv), mv = MV(id, lv), f = p.facing;
+  p.throwT = 0.25; audio.sfx('axe', { pitch: 1.2 });
+  for (let i = 0; i < n; i++) {
+    shoot(w, p, {
+      x: p.cx + f * 20, y: p.bottom - 70, vx: f * (380 + i * 110), vy: -560 - i * 50, w: 16, h: 16, behavior: 'arc', gravity: 1, collideWalls: 'land',
+      spin: 12 * f, life: 1.6, pierce: 1, render: dynamiteRender, light: { r: 60, color: '#ffc060', i: 0.7 },
+      attack: atk(p, { mv: 0.2, element: 'fire', kb: [60, -60], hitstop: 0.02 }),
+      onLand: (pr, ww) => pr.expire(ww),
+      onExpire: (pr, ww) => boom(ww, p, pr.cx, pr.cy - 10, r, { mv, element: 'fire', shake: 9, kb: [340, -520], atk: { launch: true } }),
+    });
+  }
+};
+
+SKILL_IMPL.victor_hellfire_burst = (p, w, lv) => {
+  const id = 'victor_hellfire_burst', n = N(id, lv), mv = MV(id, lv), f = p.facing, g = gunOf(p);
+  pose(p, w, 'shoot_double', 0.45, { h0: 0.05, sfx: 'shotgun' });
+  p.vx = -f * 260;
+  audio.sfx('fire'); shake(w, 8, 0.25); w.camera.punchZoom(1.03, 0.1);
+  const base = f > 0 ? 0 : Math.PI;
+  for (let i = 0; i < n; i++) {
+    const ang = base + rand(-0.34, 0.34);
+    bullet(w, p, g.x, g.y, ang, { mv, speed: rand(1200, 1700), life: rand(0.3, 0.45), render: fireballRender, scale: 0.45, element: 'fire', trail: i % 3 === 0 ? 'fire' : null, kb: [220, -140], light: i % 4 === 0 ? { r: 70, color: '#ff7a2a', i: 0.7 } : null });
+  }
+  // 총구 화염 원뿔
+  fx(w, {
+    life: 0.25, z: 12, x: g.x - 200, y: g.y - 120, w: 400, h: 240,
+    draw(ctx, e) {
+      const a = 1 - e.k, L = 190 * (0.6 + e.k * 0.6);
+      ctx.save(); ctx.translate(g.x, g.y); ctx.scale(f, 1); ctx.globalCompositeOperation = ADD;
+      const gr = ctx.createLinearGradient(0, 0, L, 0);
+      gr.addColorStop(0, rgba('#fff0c0', a)); gr.addColorStop(0.4, rgba('#ff8a2a', 0.8 * a)); gr.addColorStop(1, rgba('#ff3a0a', 0));
+      ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(0, -6); ctx.quadraticCurveTo(L * 0.6, -L * 0.42, L, -L * 0.3); ctx.lineTo(L, L * 0.3); ctx.quadraticCurveTo(L * 0.6, L * 0.42, 0, 6); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    },
+    light(L) { L.add(g.x + f * 80, g.y, 260, '#ff7a2a', 1.2); },
+  });
+  // 불바다
+  for (let i = 0; i < 3; i++) {
+    const x = p.cx + f * (100 + i * 85), base0 = groundAt(w, x, p.bottom - 30) ?? p.bottom;
+    fx(w, {
+      delay: 0.08 + i * 0.05, life: 1.7, z: 9, x: x - 50, y: base0 - 90, w: 100, h: 94,
+      atk: atk(p, { mv: mv * 0.6, element: 'fire', rehit: 0.35, kb: [60, -260], hitstop: 0.02, shake: 1 }), win: [0, 0.9],
+      rect() { return { x: x - 40, y: base0 - 60, w: 80, h: 60 }; },
+      draw(ctx, e) { const a = Math.min(1, e.lt * 6) * clamp((e.life - e.lt) / 0.4, 0, 1); fireColumn(ctx, x, base0, 20, 70, e.lt + i, a); fireColumn(ctx, x - 26, base0, 12, 40, e.lt * 1.3 + i + 0.5, a); fireColumn(ctx, x + 24, base0, 13, 46, e.lt * 1.1 + i + 0.2, a); },
+      light(L, e) { L.add(x, base0 - 30, 130, '#ff7a2a', 0.8 * (1 - e.k)); },
+    });
+  }
+};
+
+SKILL_IMPL.victor_gatling = (p, w, lv) => {
+  const id = 'victor_gatling', T = V(id, 't', lv), mv = MV(id, lv);
+  audio.sfx('charge_ready');
+  fx(w, {
+    life: T, z: 12, d: { cd: 0, n: 0 },
+    follow(e) { e.x = p.cx - 100; e.y = p.cy - 100; e.w = e.h = 200; },
+    tick(e, ww, dt) {
+      p.vx *= 0.6;
+      if (!p.move || p.move.id !== 'sk_shoot_double') pose(p, ww, 'shoot_double', 0.3, { h0: 0.01, hw: 0.25, sfx: 'gun' });
+      e.d.cd -= dt;
+      while (e.d.cd <= 0) {
+        e.d.cd += 0.045; e.d.n++;
+        const alt = e.d.n % 2 === 1, g = gunOf(p, alt), ang = (p.facing > 0 ? 0 : Math.PI) + rand(-0.075, 0.075);
+        bullet(ww, p, g.x, g.y + rand(-3, 3), ang, { mv, speed: 1900, scale: 1.2, kb: [90, -30], hitstop: 0.015, shake: 0.5 });
+        muzzle(ww, p, g.x, g.y, ang, '#ffd070', 1.1);
+        ww.fx.emit('spark', p.cx - p.facing * 6, p.bottom - 62, { color: '#e8c060', angle: -Math.PI / 2 - p.facing * 0.6, spread: 0.4, speed: 220, grav: 1200, life: 0.5, size: 2.5 });
+        if (e.d.n % 2 === 0) audio.sfx('gun', { vol: 0.55, pitch: rand(1.0, 1.2) });
+        shake(ww, 1.8, 0.06);
+      }
+    },
+    end() { p.endMove(); },
+    light(L) { L.add(p.cx + p.facing * 60, p.bottom - 60, 180, '#ffd070', 0.9); },
+  });
+};
+
+// ═══════════════════════════ 브란 ═══════════════════════════
+const ROCK = { c1: '#7a6a5a', c2: '#2a221c', rim: 'rgba(255,190,120,0.9)', glow: '#ff9a3a', dustCol: '#8a7a6a', bitCol: '#6a5a4a' };
+SKILL_IMPL.bran_ground_split = (p, w, lv) => {
+  const id = 'bran_ground_split', n = N(id, lv), mv = MV(id, lv), s = SZ(lv), f = p.facing, x0 = p.cx;
+  pose(p, w, 'heavy_down', 0.52, { h0: 0.17, hw: 0.1, sfx: 'slash_heavy', mv: { slash: { r: 110, arc: 2.4, angle: 0.3, width: 30, color: '#ffc080' } } });
+  const hitT = 0.17 / p.atkSpeedMul;
+  seq(w, [[hitT, (ww) => {
+    shake(ww, 7, 0.2); audio.sfx('explode', { vol: 0.7, pitch: 0.8 });
+    const gx = x0 + f * 60, gy = groundAt(ww, gx, p.bottom - 20) ?? p.bottom;
+    ww.fx.ring(gx, gy, { color: '#ffc080', r0: 10, r1: 90, life: 0.3, width: 6 });
+    ww.fx.burst('dust', gx, gy, 12, { speed: 200 });
+    for (let i = 0; i < n; i++) {
+      const x = x0 + f * (80 + i * 62 * s), base = groundAt(ww, x, gy - 30) ?? gy;
+      spikeFx(ww, p, x, base, (72 + i * 7) * s, 20 * s, i * 0.065, atk(p, { mv, kb: [180, -560], launch: true, hitstop: 0.05, shake: 3 }), ROCK);
+    }
+  }]]);
+};
+
+SKILL_IMPL.bran_whirlwind = (p, w, lv) => {
+  const id = 'bran_whirlwind', r = V(id, 'r', lv), T = V(id, 't', lv), mv = MV(id, lv);
+  audio.sfx('slash_heavy');
+  fx(w, {
+    life: T, z: 11, d: { a: 0, snd: 0 },
+    atk: atk(p, { mv, kb: [320, -260], rehit: 0.12, hitstop: 0.035, shake: 2 }), win: [0, 1],
+    follow(e) { e.d.cx = p.cx; e.d.cy = p.bottom - 50; e.x = p.cx - r * 1.2; e.y = e.d.cy - r * 1.2; e.w = e.h = r * 2.4; },
+    rect(e) { return { x: e.d.cx - r, y: e.d.cy - r * 0.8, w: r * 2, h: r * 1.35 }; },
+    tick(e, ww, dt) {
+      e.d.a += dt * 17 * p.facing;
+      if (!p.move || p.move.id !== 'sk_heavy_spin') pose(p, ww, 'heavy_spin', 0.44, { h0: 0.02, hw: 0.4, sfx: 'slash', mv: { canMove: true } });
+      e.d.snd -= dt; if (e.d.snd <= 0) { e.d.snd = 0.2; audio.sfx('slash', { vol: 0.5, pitch: rand(0.8, 1) }); }
+      if (Math.random() < 0.5) ww.fx.emit('dust', e.d.cx + rand(-r, r), p.bottom - 4, { speed: 80, angle: -Math.PI / 2 });
+      if (Math.random() < 0.4) ww.fx.emit('spark', e.d.cx + rand(-r, r) * 0.8, e.d.cy + rand(-30, 30), { color: '#e8ecf8', speed: 300 });
+    },
+    draw(ctx, e) {
+      const a = Math.min(1, e.lt * 8) * clamp((e.life - e.lt) / 0.2, 0, 1), cx = e.d.cx, cy = e.d.cy;
+      ctx.globalCompositeOperation = ADD;
+      glow(ctx, cx, cy, r * 1.1, '#c8d4ff', 0.2 * a);
+      for (let j = 0; j < 4; j++) {
+        const yy = cy + 34 - j * 26, rr = r * (0.85 + j * 0.08), rot = e.d.a * (1 + j * 0.1) + j;
+        ctx.save(); ctx.translate(cx, yy); ctx.scale(1, 0.28); ctx.lineCap = 'round';
+        for (let k = 0; k < 6; k++) {
+          const u = (k + 1) / 6, a0 = rot - 2.4 + k * 0.4;
+          ctx.strokeStyle = rgba(j % 2 ? '#e8ecff' : '#9ab0d0', a * u * 0.7); ctx.lineWidth = 3 + u * 12;
+          ctx.beginPath(); ctx.arc(0, 0, rr, a0, a0 + 0.42); ctx.stroke();
+        }
+        ctx.restore();
+      }
+    },
+    end() { p.endMove(); },
+    light(L, e) { L.add(e.d.cx, e.d.cy, r * 1.5, '#c8d4ff', 0.6); },
+  });
+};
+
+function shieldShape(ctx, s, a) {
+  ctx.globalCompositeOperation = ADD; glow(ctx, 0, 0, 70 * s, '#9ad0ff', 0.45 * a);
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = a;
+  const g = ctx.createLinearGradient(-24 * s, -40 * s, 24 * s, 40 * s);
+  g.addColorStop(0, '#e8f0ff'); g.addColorStop(0.5, '#6a8ad0'); g.addColorStop(1, '#1a2a5a');
+  ctx.fillStyle = g; ctx.strokeStyle = '#e8c872'; ctx.lineWidth = 3 * s;
+  ctx.beginPath(); ctx.moveTo(-24 * s, -38 * s); ctx.quadraticCurveTo(0, -46 * s, 24 * s, -38 * s); ctx.lineTo(22 * s, 6 * s); ctx.quadraticCurveTo(14 * s, 30 * s, 0, 42 * s); ctx.quadraticCurveTo(-14 * s, 30 * s, -22 * s, 6 * s); ctx.closePath();
+  ctx.fill(); ctx.stroke();
+  ctx.globalCompositeOperation = ADD; ctx.fillStyle = rgba('#fff2b0', 0.95 * a);
+  ctx.fillRect(-3 * s, -28 * s, 6 * s, 50 * s); ctx.fillRect(-14 * s, -14 * s, 28 * s, 6 * s);
+  ctx.globalAlpha = 1;
+}
+SKILL_IMPL.bran_shield_charge = (p, w, lv) => {
+  const id = 'bran_shield_charge', D = V(id, 'r', lv), mv = MV(id, lv), f = p.facing, dur = 0.28, sp = D / dur, s = 0.95 + lv * 0.05;
+  pose(p, w, 'heavy_low', 0.4, { h0: 0.03, hw: 0.3, sfx: 'dash' });
+  audio.sfx('clang', { pitch: 0.8 });
+  fx(w, {
+    life: dur, z: 12, d: { g: 0 },
+    atk: atk(p, { mv, element: 'holy', kb: [640, -360], hitstop: 0.09, shake: 7, stun: 0.6 }), win: [0, 1],
+    follow(e) { e.x = p.cx - 60; e.y = p.y - 20; e.w = 120; e.h = p.h + 30; },
+    rect() { return { x: f > 0 ? p.cx : p.cx - 76, y: p.y - 6, w: 76, h: p.h + 6 }; },
+    tick(e, ww) {
+      p.vx = f * sp; holdInvuln(p);
+      if ((e.d.g++ & 1) === 0) afterimage(ww, p, '#9ad0ff', 0.2);
+      ww.fx.emit('dust', p.cx - f * 10, p.bottom - 2, { speed: 90, angle: f > 0 ? Math.PI : 0, spread: 0.4 });
+    },
+    onHit(e, ww) { audio.sfx('clang'); },
+    draw(ctx, e) {
+      const a = Math.min(1, e.lt * 12);
+      ctx.save(); ctx.translate(p.cx + f * 40, p.cy - 4); ctx.scale(f, 1); shieldShape(ctx, s, a); ctx.restore();
+      ctx.globalCompositeOperation = ADD;
+      for (let i = 0; i < 5; i++) { const y = p.y + 10 + i * 16; cutLine(ctx, p.cx - f * (30 + i * 9), y, p.cx - f * (120 + i * 22), y, 1.5, '#9ad0ff', 0.6 * a); }
+    },
+    end(e, ww) {
+      p.iframes = 0; p.vx = f * 120;
+      ww.fx.ring(p.cx + f * 40, p.cy, { color: '#bcd4ff', r0: 10, r1: 90, life: 0.3, width: 6 });
+      ww.fx.burst('holy', p.cx + f * 40, p.cy, 12, { speed: 260 });
+      shake(ww, 5, 0.15);
+    },
+    light(L) { L.add(p.cx + f * 40, p.cy, 150, '#9ad0ff', 1); },
+  });
+};
+
+SKILL_IMPL.bran_aegis = (p, w, lv) => {
+  const id = 'bran_aegis', T = V(id, 't', lv), mv = MV(id, lv), f = p.facing, x = p.cx + f * 80;
+  const base = groundAt(w, x, p.bottom - 30) ?? p.bottom, H = 210, Wd = 16;
+  pose(p, w, 'heavy_up', 0.45, { h0: 0.12, sfx: 'holy' });
+  audio.sfx('clang', { pitch: 0.6 }); audio.sfx('holy');
+  fx(w, {
+    life: T, z: 11, x: x - 60, y: base - H - 20, w: 120, h: H + 30, d: { snd: 0 },
+    atk: atk(p, { mv, element: 'holy', kb: [420, -220], rehit: 0.3, hitstop: 0.04, shake: 2, dir: f }), win: [0.03, 1],
+    rect() { return { x: x - Wd * 1.6, y: base - H, w: Wd * 3.2, h: H }; },
+    start(e, ww) { ww.fx.burst('holy', x, base - 20, 18, { angle: -Math.PI / 2, spread: 0.5, speed: 380 }); shake(ww, 5, 0.2); },
+    tick(e, ww, dt) {
+      e.d.snd -= dt;
+      const r = { x: x - Wd * 2, y: base - H, w: Wd * 4, h: H };
+      for (const pr of ww.entities) {
+        if (pr.kind !== 'projectile' || pr.team !== 'enemy' || pr.dead) continue;
+        if (overlap(r, pr.rect())) {
+          pr.dead = true;
+          ww.fx.burst('spark', pr.cx, pr.cy, 8, { color: '#bcd4ff', speed: 260 });
+          ww.fx.flash(pr.cx, pr.cy, { color: '#bcd4ff', size: 50, life: 0.1 });
+          if (e.d.snd <= 0) { e.d.snd = 0.12; audio.sfx('clang', { vol: 0.6, pitch: rand(1, 1.3) }); }
+        }
+      }
+    },
+    draw(ctx, e) {
+      const up = ease.outBack(clamp(e.lt / 0.18, 0, 1)), a = clamp((e.life - e.lt) / 0.25, 0, 1), h = H * up, top = base - h;
+      ctx.globalCompositeOperation = ADD;
+      const g = ctx.createLinearGradient(x - Wd * 2, 0, x + Wd * 2, 0);
+      g.addColorStop(0, rgba('#6a9aff', 0)); g.addColorStop(0.5, rgba('#9ad0ff', 0.35 * a)); g.addColorStop(1, rgba('#6a9aff', 0));
+      ctx.fillStyle = g; ctx.fillRect(x - Wd * 2, top, Wd * 4, h);
+      ctx.strokeStyle = rgba('#bcdcff', 0.55 * a); ctx.lineWidth = 1.5;
+      const hs = 13;
+      for (let row = 0; row * hs * 1.5 < h; row++) {
+        const yy = base - row * hs * 1.5 - hs, ox = row % 2 ? hs * 0.86 : 0, pulse = 0.5 + 0.5 * Math.sin(e.lt * 6 + row * 0.7);
+        ctx.strokeStyle = rgba('#bcdcff', (0.25 + pulse * 0.45) * a);
+        for (let c = -1; c <= 0; c++) {
+          const cx = x + c * hs * 1.72 + ox + hs * 0.86;
+          ctx.beginPath();
+          for (let k = 0; k <= 6; k++) { const t = k / 6 * TAU + Math.PI / 6; k ? ctx.lineTo(cx + Math.cos(t) * hs, yy + Math.sin(t) * hs) : ctx.moveTo(cx + Math.cos(t) * hs, yy + Math.sin(t) * hs); }
+          ctx.stroke();
+        }
+      }
+      beamV(ctx, x - Wd * 1.9, top, base, 2.5, '#fff2b0', 0.9 * a);
+      beamV(ctx, x + Wd * 1.9, top, base, 2.5, '#fff2b0', 0.9 * a);
+      glow(ctx, x, top, 40, '#fff2b0', 0.6 * a);
+      glow(ctx, x, base, 50, '#9ad0ff', 0.6 * a);
+    },
+    light(L, e) { L.add(x, base - H / 2, 200, '#9ad0ff', 0.9 * (1 - e.k * 0.5)); },
+  });
+};
+
+SKILL_IMPL.bran_crusade_sword = (p, w, lv) => {
+  const id = 'bran_crusade_sword', r = V(id, 'r', lv), mv = MV(id, lv), s = SZ(lv), f = p.facing;
+  const tg = frontEnemies(w, p, 420)[0];
+  const tx = tg ? tg.cx : p.cx + f * 170, base = groundAt(w, tx, (tg ? tg.cy : p.bottom - 30)) ?? p.bottom;
+  const L = 280 * s, Wd = 40 * s, top = w.camera.y - L - 40, fall = 0.3;
+  pose(p, w, 'heavy_up', 0.5, { h0: 0.12, sfx: 'holy' });
+  audio.sfx('bell', { pitch: 0.7 });
+  fx(w, {
+    life: 1.25, z: 11, x: tx - L * 0.6, y: top, w: L * 1.2, h: base - top + 60, d: { hit: false },
+    tick(e, ww) {
+      if (!e.d.hit && e.lt >= fall) {
+        e.d.hit = true;
+        const n = playerStrike(ww, { x: tx - r, y: base - r * 1.3, w: r * 2, h: r * 1.3 + 10 }, atk(p, { mv, element: 'holy', kb: [360, -640], launch: true, hitstop: 0.16, shake: 12, dir: f }));
+        shake(ww, 14, 0.4); ww.camera.punchZoom(1.06, 0.2); ww.game.flash('#fff8e0', 0.5, 4);
+        audio.sfx('explode'); audio.sfx('holy', { pitch: 0.8 });
+        ww.fx.ring(tx, base - 6, { color: '#fff2b0', r0: 20, r1: r * 1.4, life: 0.45, width: 12 });
+        ww.fx.burst('holy', tx, base - 20, 30, { speed: 420 });
+        ww.fx.burst('shard', tx, base - 6, 14, { angle: -Math.PI / 2, spread: 1.2, speed: 460, color: '#7a6a5a' });
+        ww.fx.burst('dust', tx, base, 16, { speed: 260 });
+        if (n) audio.sfx('hit_heavy');
+      }
+    },
+    draw(ctx, e) {
+      const u = clamp(e.lt / fall, 0, 1), tipY = lerp(top + L, base + L * 0.28, ease.inCubic(u)), a = clamp((e.life - e.lt) / 0.35, 0, 1);
+      ctx.globalCompositeOperation = ADD;
+      if (u < 1) beamV(ctx, tx, top, tipY - L * 0.3, Wd * 0.5, '#fff2b0', 0.5 * u);
+      if (e.d.hit) {
+        const k = (e.lt - fall) / 0.4;
+        if (k < 1) { beamV(ctx, tx, w.camera.y - 20, base, Wd * 2.2 * (1 - k), '#fff2b0', 1 - k); glow(ctx, tx, base, r * 1.4, '#fff2b0', 1 - k); }
+        runeCircle(ctx, tx, base - 1, r, '#fff2b0', e.lt * 2, a * 0.8, 0.22, 8);
+      }
+      ctx.save(); ctx.translate(tx, tipY - L); bigSword(ctx, L, Wd, '#f4f6ff', a, '#fff2b0'); ctx.restore();
+    },
+    light(L2, e) { L2.add(tx, base - 100, e.d.hit ? r * 2.6 : 160, '#fff2b0', e.d.hit ? 1.4 * (1 - e.k) : 0.7); },
+  });
+};
+
+SKILL_IMPL.bran_warcry = (p, w, lv) => {
+  const id = 'bran_warcry', T = V(id, 't', lv), r = V(id, 'r', lv), mv = MV(id, lv);
+  p.buffs.rage = Math.max(p.buffs.rage ?? 0, T);
+  pose(p, w, 'heavy_up', 0.5, { h0: 0.1, sfx: 'boss_roar' });
+  audio.sfx('boss_roar', { pitch: 1.3 });
+  w.game.flash('#ff3020', 0.3, 4); shake(w, 10, 0.4);
+  playerStrike(w, circ(p.cx, p.cy, r), atk(p, { mv, kb: [380, -300], hitstop: 0.06, shake: 4, stun: 1.2 }));
+  for (let i = 0; i < 3; i++) setTimeoutFx(w, i * 0.09, (ww) => ww.fx.ring(p.cx, p.cy - 10, { color: i === 1 ? '#ffd070' : '#ff4030', r0: 20, r1: r * (1.1 + i * 0.25), life: 0.4, width: 10 - i * 2 }));
+  w.fx.burst('dust', p.cx, p.bottom, 16, { speed: 320 });
+  fx(w, {
+    life: 0.5, z: 12, x: p.cx - r * 1.5, y: p.cy - r * 1.5, w: r * 3, h: r * 3, d: { cx: p.cx, cy: p.cy - 10 },
+    draw(ctx, e) {
+      const a = 1 - e.k, cx = e.d.cx, cy = e.d.cy;
+      ctx.globalCompositeOperation = ADD;
+      glow(ctx, cx, cy, r * (0.6 + e.k), '#ff4030', 0.4 * a);
+      for (let i = 0; i < 18; i++) {
+        const t = i / 18 * TAU + 0.2, r0 = 40 + e.k * r * 0.8, r1 = r0 + 50 + (i % 3) * 20;
+        cutLine(ctx, cx + Math.cos(t) * r0, cy + Math.sin(t) * r0 * 0.7, cx + Math.cos(t) * r1, cy + Math.sin(t) * r1 * 0.7, 2.5, '#ff7a3a', a);
+      }
+    },
+  });
+};
+function setTimeoutFx(w, delay, fn) { fx(w, { delay, life: 0.01, start: (e, ww) => fn(ww) }); }
+
+SKILL_IMPL.bran_warlord_leap = (p, w, lv) => {
+  const id = 'bran_warlord_leap', r = V(id, 'r', lv), mv = MV(id, lv), f = p.facing;
+  p.vy = -1050; p.vx = f * 300; p.onGround = false; p.jumpCut = true;
+  pose(p, w, 'heavy_up', 0.34, { h0: 0.05, sfx: 'jump' });
+  w.fx.burst('dust', p.cx, p.bottom, 14, { speed: 240 });
+  audio.sfx('jump', { pitch: 0.7 });
+  fx(w, {
+    life: 1.6, z: 12, d: { dive: false, done: false },
+    tick(e, ww) {
+      holdInvuln(p);
+      if (!e.d.dive && p.vy > -120) { e.d.dive = true; pose(p, ww, 'plunge', 1.2, { h0: 0.02, hw: 1.1, sfx: 'dash' }); p.vy = 1300; p.vx = f * 180; }
+      if (e.d.dive) { p.vy = Math.max(p.vy, 1300); afterimage(ww, p, '#ff9a3a', 0.15); }
+      if (e.d.dive && p.onGround && !e.d.done) {
+        e.d.done = true;
+        const x = p.cx, y = p.bottom;
+        playerStrike(ww, { x: x - r, y: y - r * 0.9, w: r * 2, h: r * 0.9 + 12 }, atk(p, { mv, kb: [420, -700], launch: true, hitstop: 0.14, shake: 12 }));
+        boomRing(ww, x, y, r, '#ffb060');
+        shake(ww, 16, 0.45); ww.camera.punchZoom(1.07, 0.2); ww.game.flash('#ffb060', 0.35, 4);
+        audio.sfx('explode', { pitch: 0.7 });
+        p.endMove(); p.iframes = 0;
+        e.dead = true;
+      }
+    },
+    end() { p.iframes = 0; },
+  });
+};
+/** 지면 충격파 연출 (균열 + 파편) */
+function boomRing(w, x, y, r, col) {
+  w.fx.ring(x, y - 4, { color: col, r0: 20, r1: r * 1.5, life: 0.45, width: 12 });
+  w.fx.burst('shard', x, y - 6, 18, { angle: -Math.PI / 2, spread: 1.3, speed: 520, color: '#6a5a4a' });
+  w.fx.burst('dust', x, y, 20, { speed: 300 });
+  w.fx.burst('fire', x, y - 10, 12, { speed: 260, color: col });
+  const cracks = [];
+  for (let i = 0; i < 7; i++) {
+    const dir = i % 2 ? 1 : -1, len = r * rand(0.6, 1.3), pts = [x, y];
+    let cx = x, cy = y;
+    for (let k = 0; k < 5; k++) { cx += dir * len / 5; cy = y - rand(0, 5) + (k === 4 ? 0 : 0); pts.push(cx, cy + rand(-3, 3)); }
+    cracks.push(pts);
+  }
+  fx(w, {
+    life: 0.9, z: -1, x: x - r * 1.4, y: y - 40, w: r * 2.8, h: 60,
+    draw(ctx, e) {
+      const a = 1 - e.k;
+      ctx.globalCompositeOperation = ADD; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      for (const pts of cracks) {
+        ctx.strokeStyle = rgba(col, 0.35 * a); ctx.lineWidth = 7; strokePts(ctx, pts);
+        ctx.strokeStyle = rgba('#fff0c0', 0.9 * a); ctx.lineWidth = 2; strokePts(ctx, pts);
+      }
+      glow(ctx, x, y, r * 1.1, col, 0.5 * a);
+    },
+    light(L, e) { L.add(x, y - 30, r * 2.4, col, 1.2 * (1 - e.k)); },
+  });
+}
+
+SKILL_IMPL.bran_blood_frenzy = (p, w, lv) => {
+  const id = 'bran_blood_frenzy', n = N(id, lv), mv = MV(id, lv), steps = [];
+  audio.sfx('slash_heavy', { pitch: 0.8 });
+  for (let i = 0; i < n; i++) {
+    const last = i === n - 1;
+    steps.push([i * 0.1, (ww) => {
+      const f = p.facing;
+      pose(p, ww, i % 2 ? 'heavy_up' : 'heavy_down', last ? 0.36 : 0.16, { h0: 0.03, hw: 0.06, sfx: 'slash_heavy' });
+      p.vx = f * 90;
+      const ang = (f > 0 ? 0 : Math.PI) + (i % 2 ? -0.5 : 0.5) * f + rand(-0.3, 0.3);
+      ww.fx.slash(p.cx + f * 30, p.bottom - 62, ang, { radius: (last ? 150 : 115) * SZ(lv), arc: 2.6, width: last ? 38 : 26, color: '#ff2a3a', life: 0.16 });
+      const nHit = playerStrike(ww, p.relRect(-16, -140, last ? 200 : 170, 140), atk(p, { mv: last ? mv * 2 : mv, kb: last ? [480, -380] : [120, -120], hitstop: last ? 0.12 : 0.04, shake: last ? 9 : 3 }));
+      if (nHit) { p.heal(p.stats.hp * 0.012 * nHit, false); ww.fx.burst('blood', p.cx + f * 70, p.cy - 10, 8 * nHit, { speed: 260 }); }
+    }]);
+  }
+  seq(w, steps);
+};
+
+// ═══════════════════════════ 리아 ═══════════════════════════
+/** X자 칼선 연출 */
+function xSlash(w, x, y, size, col, life = 0.26, rot = 0) {
+  fx(w, {
+    life, z: 12, x: x - size, y: y - size, w: size * 2, h: size * 2,
+    draw(ctx, e) {
+      const u = ease.outCubic(Math.min(1, e.lt / 0.06)), a = 1 - clamp((e.k - 0.3) / 0.7, 0, 1), L = size * u;
+      for (const s of [-1, 1]) {
+        const t = rot + s * 0.78;
+        cutLine(ctx, x - Math.cos(t) * L, y - Math.sin(t) * L, x + Math.cos(t) * L, y + Math.sin(t) * L, 5 * (1 - e.k * 0.5), col, a);
+      }
+      ctx.globalCompositeOperation = ADD; glow(ctx, x, y, size * 0.8, col, 0.5 * a);
+    },
+  });
+}
+SKILL_IMPL.lia_shadow_step = (p, w, lv) => {
+  const id = 'lia_shadow_step', R = V(id, 'r', lv), mv = MV(id, lv);
+  const tg = w.nearestEnemy(p.cx, p.cy, R);
+  const x0 = p.cx, y0 = p.cy;
+  afterimage(w, p, '#b060ff', 0.35);
+  w.fx.burst('dark', p.cx, p.cy, 12, { speed: 120, color: '#3a1a5a' });
+  audio.sfx('mist');
+  let tx, tb;
+  if (tg) {
+    const side = -(tg.facing || 1), cands = [tg.cx + side * (tg.w / 2 + p.w / 2 + 14), tg.cx - side * (tg.w / 2 + p.w / 2 + 14)];
+    const bottoms = [tg.bottom, p.bottom];
+    outer: for (const cx of cands) for (const b of bottoms) if (freeSpot(w, p, cx, b)) { tx = cx; tb = b; break outer; }
+  } else {
+    for (let d = 180; d >= 40; d -= 20) { const cx = p.cx + p.facing * d; if (freeSpot(w, p, cx, p.bottom)) { tx = cx; tb = p.bottom; break; } }
+  }
+  if (tx !== undefined) { p.x = tx - p.w / 2; p.y = tb - p.h; p.vx = 0; p.vy = Math.min(p.vy, 0); }
+  if (tg) p.facing = Math.sign(tg.cx - p.cx) || p.facing;
+  holdInvuln(p);
+  pose(p, w, 'stab_alt', 0.26, { h0: 0.02, hw: 0.06, sfx: 'slash_heavy' });
+  const hx = tg ? tg.cx : p.cx + p.facing * 60, hy = tg ? tg.cy : p.cy;
+  fx(w, {
+    life: 0.2, z: 12, x: Math.min(x0, p.cx) - 20, y: Math.min(y0, p.cy) - 30, w: Math.abs(p.cx - x0) + 40, h: 60,
+    draw(ctx, e) { cutLine(ctx, x0, y0, p.cx, p.cy, 2, '#b060ff', 0.8 * (1 - e.k)); },
+  });
+  playerStrike(w, circ(hx, hy, tg ? Math.max(tg.w, tg.h) * 0.6 : 50), atk(p, { mv, crit: 100, element: 'dark', kb: [260, -320], hitstop: 0.12, shake: 6 }));
+  xSlash(w, hx, hy, 60 + lv * 6, '#ff4a6a', 0.3, rand(-0.3, 0.3));
+  w.fx.flash(hx, hy, { color: '#ff4a6a', size: 90, life: 0.12 });
+  w.fx.burst('dark', p.cx, p.cy, 10, { speed: 100, color: '#3a1a5a' });
+};
+
+function xCrescentRender(ctx, pr) {
+  const d = Math.sign(pr.vx) || 1, R = pr.h * 0.5;
+  ctx.scale(d, 1);
+  for (const s of [-1, 1]) { ctx.save(); ctx.rotate(s * 0.7); crescent(ctx, R, R * 0.38, pr.color, 0.95, '#ffffff'); ctx.restore(); }
+  ctx.globalCompositeOperation = ADD; glow(ctx, R * 0.3, 0, R * 0.7, '#ffffff', 0.4);
+}
+SKILL_IMPL.lia_cross_cut = (p, w, lv) => {
+  const id = 'lia_cross_cut', n = N(id, lv), mv = MV(id, lv), s = SZ(lv), steps = [];
+  for (let i = 0; i < n; i++) steps.push([i * 0.11, (ww) => {
+    const f = p.facing;
+    pose(p, ww, i % 2 ? 'stab' : 'spin_blade', 0.28, { h0: 0.03, hw: 0.1, sfx: 'slash_heavy' });
+    shoot(ww, p, {
+      x: p.cx + f * 34, y: p.bottom - 52 + (i % 2 ? -14 : 8), vx: f * 940, vy: 0, w: 60 * s, h: 96 * s, render: xCrescentRender, color: '#ff4a6a',
+      life: 0.55, pierce: 99, collideWalls: false, fadeOut: true, light: { r: 110 * s, color: '#ff4a6a', i: 0.8 },
+      attack: atk(p, { mv, kb: [240, -200], hitstop: 0.06, shake: 3 }),
+    });
+  }]);
+  seq(w, steps);
+};
+
+function shurikenRender(ctx, pr) {
+  const s = pr.scale;
+  ctx.globalCompositeOperation = ADD; glow(ctx, 0, 0, 22 * s, '#b0c0ff', 0.35);
+  ctx.strokeStyle = 'rgba(200,210,255,0.3)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, 13 * s, 0, TAU); ctx.stroke();
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.rotate(pr.rot);
+  const g = ctx.createLinearGradient(-12 * s, -12 * s, 12 * s, 12 * s);
+  g.addColorStop(0, '#f4f6ff'); g.addColorStop(0.5, '#8a90a8'); g.addColorStop(1, '#3a3e50');
+  ctx.fillStyle = g; ctx.strokeStyle = '#0c0a12'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let i = 0; i < 4; i++) {
+    const t = i / 4 * TAU;
+    ctx.lineTo(Math.cos(t) * 13 * s, Math.sin(t) * 13 * s);
+    ctx.lineTo(Math.cos(t + Math.PI / 4) * 3.5 * s, Math.sin(t + Math.PI / 4) * 3.5 * s);
+  }
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#c0142a'; ctx.beginPath(); ctx.arc(0, 0, 2.5 * s, 0, TAU); ctx.fill();
+}
+SKILL_IMPL.lia_shuriken = (p, w, lv) => {
+  const id = 'lia_shuriken', n = N(id, lv), mv = MV(id, lv), f = p.facing, spread = Math.min(0.8, 0.13 * (n - 1));
+  p.throwT = 0.2; audio.sfx('dagger', { pitch: 1.3 });
+  for (let i = 0; i < n; i++) {
+    const da = n > 1 ? -spread / 2 + spread * i / (n - 1) : 0, ang = f > 0 ? da : Math.PI - da;
+    shoot(w, p, {
+      x: p.cx + f * 22, y: p.bottom - 56, vx: Math.cos(ang) * 1050, vy: Math.sin(ang) * 1050, w: 22, h: 22, scale: 1.2, spin: 30,
+      render: shurikenRender, life: 0.7, pierce: 3, attack: atk(p, { mv, kb: [120, -60], hitstop: 0.03, shake: 1, crit: 5 }),
+    });
+  }
+};
+
+SKILL_IMPL.lia_shadow_clones = (p, w, lv) => {
+  const id = 'lia_shadow_clones', n = N(id, lv), mv = MV(id, lv), f = p.facing;
+  const tgs = enemiesIn(w, viewRect(w)).sort((a, b) => Math.abs(a.cx - p.cx) - Math.abs(b.cx - p.cx));
+  audio.sfx('mist'); audio.sfx('dark', { vol: 0.6 });
+  pose(p, w, 'cast', 0.4, { h0: 0.1, sfx: 'dark' });
+  for (let i = 0; i < n; i++) {
+    const tg = tgs.length ? tgs[i % tgs.length] : null;
+    const sx = p.cx - f * (20 + i * 14), sb = p.bottom;
+    const dir = tg ? (Math.sign(tg.cx - sx) || f) : f;
+    const ex = tg ? tg.cx + dir * (tg.w / 2 + 90) : sx + f * (260 + i * 40), eb = tg ? (groundAt(w, ex, tg.cy) ?? tg.bottom) : sb;
+    const tyC = tg ? tg.cy : sb - 44;
+    const snap = ghostOf(p, sx, sb, { anim: 'dash', move: null, facing: dir, onGround: true });
+    const D = 0.17;
+    fx(w, {
+      delay: 0.06 + i * 0.09, life: 0.5, z: 11, d: { x: sx, b: sb },
+      atk: atk(p, { mv, element: 'dark', kb: [260, -300], hitstop: 0.06, shake: 3, dir, crit: 10 }), win: [0.15, 0.4],
+      follow(e) {
+        const u = ease.inOutQuad(clamp(e.lt / D, 0, 1));
+        e.d.x = lerp(sx, ex, u); e.d.b = lerp(sb, eb, u);
+        e.x = Math.min(sx, ex) - 40; e.y = Math.min(sb, eb) - 110; e.w = Math.abs(ex - sx) + 80; e.h = Math.abs(eb - sb) + 120;
+      },
+      rect() { return { x: Math.min(sx, ex), y: tyC - 40, w: Math.abs(ex - sx), h: 80 }; },
+      start(e, ww) { ww.fx.burst('dark', sx, sb - 40, 8, { speed: 100, color: '#3a1a5a' }); audio.sfx('dash', { vol: 0.5, pitch: 1.3 }); },
+      tick(e, ww) {
+        snap.cx = e.d.x; snap.x = e.d.x - p.w / 2; snap.bottom = e.d.b; snap.y = e.d.b - p.h; snap.t = p.t; snap.animT = e.lt;
+        if (e.lt > D && !e.d.cut) { e.d.cut = true; snap.anim = 'land'; if (tg) xSlash(ww, tg.cx, tyC, 56, '#b060ff', 0.3, rand(-0.4, 0.4)); audio.sfx('slash', { pitch: 1.2 }); }
+      },
+      draw(ctx, e, ww) {
+        const a = Math.min(1, e.lt * 10) * clamp((e.life - e.lt) / 0.2, 0, 1);
+        if (e.lt < D + 0.05) cutLine(ctx, sx, sb - 44, e.d.x, e.d.b - 44, 3, '#b060ff', 0.7 * a);
+        drawHero(ctx, snap, ww, { alpha: 0.8 * a, tint: '#6a3aaa' });
+      },
+      end(e, ww) { ww.fx.burst('dark', e.d.x, e.d.b - 40, 10, { speed: 90, color: '#2a1040' }); },
+      light(L, e) { L.add(e.d.x, e.d.b - 44, 90, '#b060ff', 0.6); },
+    });
+  }
+};
+
+function petalRender(ctx, pr) {
+  const s = pr.scale, fl = 0.85 + Math.sin(pr.t * 40 + pr.ox) * 0.15;
+  ctx.rotate(Math.atan2(pr.vy, pr.vx));
+  ctx.globalCompositeOperation = ADD;
+  glow(ctx, 0, 0, 30 * s, '#ff5a7a', 0.45);
+  const g = ctx.createRadialGradient(4 * s, 0, 0, 0, 0, 20 * s);
+  g.addColorStop(0, '#fff0e0'); g.addColorStop(0.4, '#ffb070'); g.addColorStop(1, 'rgba(255,60,100,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.moveTo(16 * s * fl, 0); ctx.quadraticCurveTo(0, -12 * s, -22 * s * fl, 0); ctx.quadraticCurveTo(0, 12 * s, 16 * s * fl, 0); ctx.fill();
+  for (const sd of [-1, 1]) { ctx.save(); ctx.rotate(sd * 0.9); ctx.globalAlpha = 0.6; ctx.beginPath(); ctx.ellipse(-4 * s, 0, 12 * s, 4 * s, 0, 0, TAU); ctx.fill(); ctx.restore(); }
+}
+SKILL_IMPL.lia_kagerou = (p, w, lv) => {
+  const id = 'lia_kagerou', n = N(id, lv), mv = MV(id, lv), f = p.facing, spread = Math.min(1.1, 0.16 * (n - 1));
+  pose(p, w, 'cast', 0.4, { h0: 0.08, sfx: 'fire' });
+  audio.sfx('fire', { pitch: 1.3 });
+  w.fx.ring(p.cx, p.cy, { color: '#ff7a9a', r0: 20, r1: 90, life: 0.35, width: 3 });
+  for (let i = 0; i < n; i++) {
+    const da = n > 1 ? -spread / 2 + spread * i / (n - 1) : 0, ang = f > 0 ? da : Math.PI - da, sp = rand(420, 540);
+    shoot(w, p, {
+      x: p.cx + f * 24, y: p.bottom - 58, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, w: 26, h: 26, scale: 1.1,
+      render: petalRender, behavior: 'wave', waveAmp: rand(90, 170) * (i % 2 ? 1 : -1), waveFreq: rand(8, 11), life: 1.1, pierce: 1, collideWalls: true,
+      trail: 'fire', trailRate: 0.05, trailOpts: { color: '#ff5a7a', color2: '#ffc0a0', size: 8 }, light: { r: 80, color: '#ff7a9a', i: 0.8 },
+      attack: atk(p, { mv: mv * 0.4, element: 'fire', kb: [100, -100], hitstop: 0.02 }),
+      onWall: (pr, ww) => pr.expire(ww),
+      onExpire: (pr, ww) => boom(ww, p, pr.cx, pr.cy, 52, { mv, element: 'fire', c1: '#ff4a7a', c2: '#ffc0a0', shake: 3, sfx: 'fire' }),
+    });
+  }
+};
+
+function daggerRender(ctx, pr) {
+  const s = pr.scale, a = (pr.orbitA ?? 0) + Math.PI / 2;
+  ctx.rotate(a);
+  ctx.globalCompositeOperation = ADD;
+  const g = ctx.createLinearGradient(-40 * s, 0, 0, 0);
+  g.addColorStop(0, 'rgba(255,216,74,0)'); g.addColorStop(1, 'rgba(255,230,140,0.6)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(-18 * s, 0, 24 * s, 6 * s, 0, 0, TAU); ctx.fill();
+  glow(ctx, 6 * s, 0, 16 * s, '#ffd84a', 0.5);
+  ctx.globalCompositeOperation = 'source-over';
+  const bg = ctx.createLinearGradient(0, -4 * s, 0, 4 * s);
+  bg.addColorStop(0, '#ffffff'); bg.addColorStop(0.5, '#ffe7a0'); bg.addColorStop(1, '#b08a2a');
+  ctx.fillStyle = bg; ctx.strokeStyle = '#2a1a08'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(18 * s, 0); ctx.lineTo(0, -4 * s); ctx.lineTo(-4 * s, 0); ctx.lineTo(0, 4 * s); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#3a1420'; ctx.fillRect(-12 * s, -2 * s, 8 * s, 4 * s);
+}
+SKILL_IMPL.lia_blade_waltz = (p, w, lv) => {
+  const id = 'lia_blade_waltz', n = N(id, lv), T = V(id, 't', lv), mv = MV(id, lv), s = SZ(lv);
+  pose(p, w, 'spin_blade', 0.4, { h0: 0.03, hw: 0.3, sfx: 'slash' });
+  audio.sfx('slash_heavy', { pitch: 1.4 });
+  for (let i = 0; i < n; i++) {
+    shoot(w, p, {
+      x: p.cx, y: p.cy, w: 26, h: 26, scale: 1.2, behavior: 'orbit', orbitA: i / n * TAU, orbitR: 70 * s, orbitSpeed: 7.5 * p.facing, life: T,
+      pierce: 9999, collideWalls: false, render: daggerRender, light: i === 0 ? { r: 120 * s, color: '#ffd84a', i: 0.6 } : null,
+      attack: atk(p, { mv, rehit: 0.22, kb: [160, -120], hitstop: 0.02, shake: 1 }),
+    });
+  }
+  fx(w, {
+    life: T, z: 9,
+    follow(e) { e.x = p.cx - 100 * s; e.y = p.cy - 100 * s; e.w = e.h = 200 * s; },
+    draw(ctx, e) {
+      const a = Math.min(1, e.lt * 5) * clamp((e.life - e.lt) / 0.3, 0, 1);
+      ctx.globalCompositeOperation = ADD; ctx.strokeStyle = rgba('#ffd84a', 0.28 * a); ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(p.cx, p.cy, 70 * s, 0, TAU); ctx.stroke();
+      glow(ctx, p.cx, p.cy, 80 * s, '#ffd84a', 0.12 * a);
+    },
+  });
+};
+
+SKILL_IMPL.lia_thousand_blades = (p, w, lv) => {
+  const id = 'lia_thousand_blades', n = N(id, lv), mv = MV(id, lv), s = SZ(lv), f = p.facing, x0 = p.cx, steps = [];
+  pose(p, w, 'cast_up', 0.5, { h0: 0.1, sfx: 'holy' });
+  audio.sfx('slash_heavy', { pitch: 1.5 });
+  const tgs = frontEnemies(w, p, 460 * s);
+  for (let i = 0; i < n; i++) steps.push([0.1 + i * (0.75 / n), (ww) => {
+    const tg = tgs.length && Math.random() < 0.5 ? tgs[Math.floor(Math.random() * tgs.length)] : null;
+    const x = tg ? tg.cx + rand(-24, 24) : x0 + f * rand(30, 400 * s);
+    const gy = groundAt(ww, x, p.bottom - 60, 10 * TILE) ?? p.bottom, sy = ww.camera.y - 60, T = Math.max(0.12, (gy - sy) / 1700);
+    fx(ww, {
+      life: T + 0.35, z: 11, d: { y: sy, hit: false },
+      atk: atk(p, { mv, kb: [60, -160], hitstop: 0.03, shake: 1.5, dir: f }), win: [0, T / (T + 0.35)],
+      follow(e) { e.d.y = lerp(sy, gy, clamp(e.lt / T, 0, 1)); e.x = x - 20; e.y = e.d.y - 90; e.w = 40; e.h = 100; },
+      rect(e) { return { x: x - 12, y: e.d.y - 40, w: 24, h: 44 }; },
+      tick(e, ww2) { if (!e.d.hit && e.lt >= T) { e.d.hit = true; ww2.fx.burst('spark', x, gy - 4, 6, { color: '#ffe070', angle: -Math.PI / 2, spread: 1.2, speed: 260 }); if (Math.random() < 0.4) audio.sfx('clang', { vol: 0.3, pitch: rand(1.3, 1.7) }); } },
+      draw(ctx, e) {
+        const y = e.d.y, a = e.lt < T ? 1 : 1 - (e.lt - T) / 0.35;
+        ctx.globalCompositeOperation = ADD;
+        if (e.lt < T) beamV(ctx, x, y - 120, y - 30, 4, '#ffd84a', 0.55);
+        ctx.save(); ctx.translate(x, y - (e.lt >= T ? 10 : 0)); ctx.rotate(Math.PI / 2); ctx.scale(1.5 * s, 1.5 * s);
+        daggerRender(ctx, { scale: 1, orbitA: -Math.PI / 2 });
+        ctx.restore();
+        ctx.globalAlpha = 1;
+        if (e.lt >= T) { ctx.globalCompositeOperation = ADD; glow(ctx, x, gy - 6, 30, '#ffd84a', a * 0.8); }
+      },
+      light(L, e) { if (i % 3 === 0) L.add(x, e.d.y - 20, 80, '#ffd84a', 0.8); },
+    });
+  }]);
+  seq(w, steps);
+};
+
+function scytheShape(ctx, L, a) {
+  ctx.globalAlpha = a;
+  ctx.strokeStyle = '#1a1014'; ctx.lineWidth = 7; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(L, 0); ctx.stroke();
+  ctx.strokeStyle = 'rgba(106,255,176,0.6)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(4, -2); ctx.lineTo(L, -2); ctx.stroke();
+  const g = ctx.createLinearGradient(L, 0, L - L * 0.2, L * 0.9);
+  g.addColorStop(0, '#e8fff4'); g.addColorStop(0.4, '#6affb0'); g.addColorStop(1, 'rgba(20,80,50,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.moveTo(L, -6); ctx.quadraticCurveTo(L + L * 0.35, L * 0.25, L - L * 0.15, L * 0.95); ctx.quadraticCurveTo(L + L * 0.08, L * 0.3, L - 10, 8); ctx.closePath(); ctx.fill();
+  ctx.globalCompositeOperation = ADD; ctx.strokeStyle = 'rgba(220,255,240,0.9)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(L, -6); ctx.quadraticCurveTo(L + L * 0.35, L * 0.25, L - L * 0.15, L * 0.95); ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+SKILL_IMPL.lia_reaper_scythe = (p, w, lv) => {
+  const id = 'lia_reaper_scythe', r = V(id, 'r', lv), mv = MV(id, lv), f = p.facing, s = SZ(lv);
+  pose(p, w, 'spin_blade', 0.45, { h0: 0.04, hw: 0.3, sfx: 'slash_heavy' });
+  audio.sfx('ghost'); audio.sfx('dark');
+  const cx = p.cx, cy = p.cy - 10;
+  const rect = { x: f > 0 ? cx - 40 : cx - r, y: cy - r, w: r + 40, h: r * 1.6 };
+  fx(w, {
+    life: 0.6, z: 12, x: cx - r * 1.3, y: cy - r * 1.3, w: r * 2.6, h: r * 2.6, d: { done: false },
+    atk: atk(p, { mv, element: 'dark', kb: [320, -380], hitstop: 0.12, shake: 9, crit: 10 }), win: [0.1, 0.45],
+    rect() { return rect; },
+    tick(e, ww) {
+      if (Math.random() < 0.7) { const t = lerp(-2.4, 0.9, ease.outCubic(clamp(e.lt / 0.26, 0, 1))); ww.fx.emit('soul', cx + f * Math.cos(t) * r * 0.9, cy + Math.sin(t) * r * 0.9, { speed: 60 }); }
+      if (!e.d.done && e.k > 0.45) {
+        e.d.done = true;
+        for (const en of enemiesIn(ww, rect)) {
+          if (en.kind !== 'enemy' || en.dying > 0) continue;
+          if (en.hp / maxHpOf(en) < 0.2) {
+            hitTarget(ww, atk(p, { flat: en.hp + 1, element: 'dark', hitId: nid('exe'), hitstop: 0.1, shake: 6 }), en, en.cx, en.cy);
+            ww.fx.text(en.cx, en.y - 20, '처형!', { color: '#6affb0', size: 24 });
+            ww.fx.burst('soul', en.cx, en.cy, 20, { speed: 200 });
+          }
+        }
+      }
+    },
+    draw(ctx, e) {
+      const u = ease.outCubic(clamp(e.lt / 0.26, 0, 1)), t = lerp(-2.4, 0.9, u), a = 1 - clamp((e.k - 0.55) / 0.45, 0, 1);
+      ctx.save(); ctx.translate(cx, cy); ctx.scale(f, 1);
+      ctx.globalCompositeOperation = ADD;
+      ctx.lineCap = 'round';
+      for (let k = 0; k < 10; k++) {
+        const t0 = lerp(-2.4, t, k / 10), t1 = lerp(-2.4, t, (k + 1) / 10);
+        ctx.strokeStyle = rgba('#6affb0', a * (k + 1) / 10 * 0.55); ctx.lineWidth = 10 + k * 3.5;
+        ctx.beginPath(); ctx.arc(0, 0, r * 0.82, t0, t1); ctx.stroke();
+      }
+      ctx.strokeStyle = rgba('#e8fff4', a * 0.9); ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(0, 0, r * 0.95, Math.max(-2.4, t - 0.8), t); ctx.stroke();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.rotate(t - 0.3); scytheShape(ctx, r * 0.75, a);
+      ctx.restore();
+    },
+    light(L, e) { L.add(cx + f * r * 0.4, cy, r * 1.8, '#6affb0', 1 - e.k); },
+  });
+};
+
+// ═══════════════════════════ 아젤 ═══════════════════════════
+SKILL_IMPL.azel_moon_slash = (p, w, lv) => {
+  const id = 'azel_moon_slash', mv = MV(id, lv), s = V(id, 's', lv) / 100;
+  pose(p, w, 'slash_wide', 0.34, { h0: 0.06, hw: 0.08, sfx: 'slash_heavy', mv: { slash: { r: 90, arc: 3, angle: 0, width: 24, color: '#ffb0c0' } } });
+  setTimeoutFx(w, 0.06 / p.atkSpeedMul, (ww) => {
+    const f = p.facing;
+    shoot(ww, p, {
+      x: p.cx + f * 40, y: p.bottom - 52, vx: f * 980, vy: 0, w: 60 * s, h: 128 * s, render: crescentRender, color: '#ff3a5a', color2: '#ffffff', edge: '#fff4f8',
+      life: 0.55, pierce: 99, collideWalls: false, fadeOut: true, fadeIn: true, light: { r: 130 * s, color: '#ff3a5a', i: 0.9 },
+      attack: atk(p, { mv, kb: [260, -160], hitstop: 0.06, shake: 3 }),
+    });
+    audio.sfx('slash', { pitch: 0.8 });
+  });
+};
+
+function spectralSword(ctx, L, a) {
+  ctx.globalCompositeOperation = ADD;
+  glow(ctx, 0, L * 0.5, L * 0.55, '#b090ff', 0.4 * a);
+  const g = ctx.createLinearGradient(-5, 0, 5, 0);
+  g.addColorStop(0, rgba('#8a6aff', 0.5 * a)); g.addColorStop(0.5, rgba('#ffffff', a)); g.addColorStop(1, rgba('#8a6aff', 0.5 * a));
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.moveTo(-5, L * 0.22); ctx.lineTo(5, L * 0.22); ctx.lineTo(3, L * 0.92); ctx.lineTo(0, L); ctx.lineTo(-3, L * 0.92); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = rgba('#ffd870', 0.9 * a); ctx.fillRect(-14, L * 0.2, 28, 4);
+  ctx.fillStyle = rgba('#c8b0ff', 0.8 * a); ctx.fillRect(-2, 0, 4, L * 0.2);
+  glow(ctx, 0, 0, 6, '#ffd870', a);
+}
+function swordProjRender(ctx, pr) {
+  ctx.rotate(Math.atan2(pr.vy, pr.vx) - Math.PI / 2);
+  ctx.translate(0, -30 * pr.scale);
+  ctx.scale(pr.scale, pr.scale);
+  spectralSword(ctx, 60, 1);
+  const g = ctx.createLinearGradient(0, -40, 0, 0);
+  g.addColorStop(0, 'rgba(160,120,255,0)'); g.addColorStop(1, 'rgba(200,180,255,0.4)');
+  ctx.fillStyle = g; ctx.fillRect(-4, -50, 8, 50);
+}
+SKILL_IMPL.azel_phantom_blades = (p, w, lv) => {
+  const id = 'azel_phantom_blades', n = N(id, lv), mv = MV(id, lv), f = p.facing, form = 0.32;
+  pose(p, w, 'cast', 0.45, { h0: 0.1, sfx: 'magic' });
+  audio.sfx('ghost', { pitch: 1.4 });
+  const slots = [];
+  for (let i = 0; i < n; i++) { const t = -Math.PI / 2 - f * (n > 1 ? lerp(-1.1, 1.3, i / (n - 1)) : 0); slots.push(t); }
+  fx(w, {
+    life: form + n * 0.07 + 0.05, z: 11, d: { fired: 0 },
+    follow(e) { e.x = p.cx - 160; e.y = p.cy - 180; e.w = 320; e.h = 260; },
+    tick(e, ww) {
+      while (e.d.fired < n && e.lt >= form + e.d.fired * 0.07) {
+        const i = e.d.fired++, t = slots[i], sx = p.cx + Math.cos(t) * 80, sy = p.cy - 20 + Math.sin(t) * 60;
+        const tg = ww.nearestEnemy(sx, sy, 700), ang = tg ? Math.atan2(tg.cy - sy, tg.cx - sx) : (f > 0 ? 0 : Math.PI);
+        shoot(ww, p, {
+          x: sx, y: sy, vx: Math.cos(ang) * 1150, vy: Math.sin(ang) * 1150, w: 22, h: 22, scale: 1.1, render: swordProjRender, behavior: 'homing', speed: 1150, homingTurn: 12,
+          life: 0.8, pierce: 2, collideWalls: false, light: { r: 80, color: '#b090ff', i: 0.7 },
+          attack: atk(p, { mv, kb: [180, -120], hitstop: 0.04, shake: 2 }),
+          onExpire: (pr, w2) => w2.fx.burst('magic', pr.cx, pr.cy, 8, { color: '#c8b0ff', speed: 160 }),
+        });
+        audio.sfx('slash', { vol: 0.5, pitch: 1.3 + i * 0.05 });
+      }
+    },
+    draw(ctx, e, ww) {
+      for (let i = e.d.fired; i < n; i++) {
+        const t = slots[i], sx = p.cx + Math.cos(t) * 80, sy = p.cy - 20 + Math.sin(t) * 60 + Math.sin(e.lt * 6 + i) * 3;
+        const a = clamp((e.lt - i * 0.04) / 0.15, 0, 1);
+        const tg = ww.nearestEnemy(sx, sy, 700), ang = tg ? Math.atan2(tg.cy - sy, tg.cx - sx) : (f > 0 ? 0 : Math.PI);
+        ctx.save(); ctx.translate(sx, sy); ctx.rotate(ang - Math.PI / 2); ctx.translate(0, -30); ctx.scale(1.1, 1.1); spectralSword(ctx, 60, a); ctx.restore();
+      }
+    },
+    light(L) { L.add(p.cx, p.cy - 60, 160, '#b090ff', 0.6); },
+  });
+};
+
+const BLOOD = { c1: '#d01a34', c2: '#3a0610', rim: 'rgba(255,140,160,0.95)', glow: '#ff2040', dust: 'blood', dustCol: '#9a0d1c', bits: 'blood', bitCol: '#c0142a', sfx: 'holywater_burn' };
+SKILL_IMPL.azel_blood_lance = (p, w, lv) => {
+  const id = 'azel_blood_lance', n = N(id, lv), mv = MV(id, lv), s = SZ(lv), f = p.facing, x0 = p.cx;
+  pose(p, w, 'slash_up', 0.4, { h0: 0.08, sfx: 'dark' });
+  audio.sfx('dark');
+  for (let i = 0; i < n; i++) {
+    const x = x0 + f * (70 + i * 56 * s), base = groundAt(w, x, p.bottom - 30) ?? p.bottom;
+    const a = atk(p, { mv, type: 'mag', element: 'dark', kb: [120, -520], launch: true, hitstop: 0.05, shake: 3 });
+    spikeFx(w, p, x, base, (78 + i * 8) * s, 16 * s, 0.08 + i * 0.07, a, { ...BLOOD, onHit: (e, ww, nh) => { p.heal(p.stats.hp * 0.015 * nh); ww.fx.burst('blood', p.cx, p.cy, 6, { speed: 60, color: '#ff2040' }); } });
+  }
+};
+
+SKILL_IMPL.azel_bat_storm = (p, w, lv) => {
+  const id = 'azel_bat_storm', n = N(id, lv), mv = MV(id, lv), steps = [];
+  pose(p, w, 'cast', 0.45, { h0: 0.1, sfx: 'bat' });
+  audio.sfx('bat'); w.fx.burst('dark', p.cx, p.cy - 10, 12, { speed: 140, color: '#4a0a1a' });
+  for (let i = 0; i < n; i++) steps.push([i * 0.035, (ww) => {
+    const ang = rand(0, TAU), sp = rand(300, 420);
+    shoot(ww, p, {
+      x: p.cx + rand(-10, 10), y: p.cy - 16, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp - 120, w: 24, h: 18, scale: rand(0.8, 1.1),
+      render: batRender, behavior: 'homing', speed: 560, homingTurn: 7, homingDelay: 0.2, life: 2.4, pierce: 2, collideWalls: false,
+      attack: atk(p, { mv, type: 'mag', element: 'dark', rehit: 0.3, kb: [80, -100], hitstop: 0.03, shake: 1 }),
+      onHit: () => p.heal(p.stats.hp * 0.006, false),
+    });
+    if (i % 4 === 0) audio.sfx('bat', { vol: 0.4, pitch: rand(0.9, 1.3) });
+  }]);
+  seq(w, steps);
+};
+
+function bloodMoon(ctx, x, y, R, a, t) {
+  ctx.globalCompositeOperation = ADD;
+  glow(ctx, x, y, R * 2.6, '#ff1a2a', 0.45 * a);
+  ctx.globalCompositeOperation = 'source-over';
+  const g = ctx.createRadialGradient(x - R * 0.3, y - R * 0.3, R * 0.1, x, y, R);
+  g.addColorStop(0, rgba('#ff6a5a', a)); g.addColorStop(0.6, rgba('#c0102a', a)); g.addColorStop(1, rgba('#5a0010', a));
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, R, 0, TAU); ctx.fill();
+  ctx.fillStyle = rgba('#5a0010', 0.35 * a);
+  for (const [cx, cy, cr] of [[-0.3, -0.2, 0.18], [0.25, 0.1, 0.24], [-0.05, 0.38, 0.12], [0.35, -0.35, 0.1]]) { ctx.beginPath(); ctx.arc(x + cx * R, y + cy * R, cr * R, 0, TAU); ctx.fill(); }
+  ctx.globalCompositeOperation = ADD; ctx.strokeStyle = rgba('#ffb0b0', 0.5 * a); ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(x, y, R, -2.4 + Math.sin(t) * 0.1, -0.6); ctx.stroke();
+}
+SKILL_IMPL.azel_crimson_feast = (p, w, lv) => {
+  const id = 'azel_crimson_feast', r = V(id, 'r', lv), T = V(id, 't', lv), mv = MV(id, lv);
+  pose(p, w, 'cast_up', 0.5, { h0: 0.12, sfx: 'dark' });
+  audio.sfx('bell', { pitch: 0.5 }); audio.sfx('dark');
+  w.game.flash('#ff1030', 0.25, 3);
+  fx(w, {
+    life: T, z: 9,
+    atk: atk(p, { mv, type: 'mag', element: 'dark', rehit: 0.25, kb: [30, -60], hitstop: 0.02, shake: 1, stun: 0.3 }), win: [0.05, 1],
+    follow(e) { e.x = p.cx - r * 1.1; e.y = p.y - 200; e.w = r * 2.2; e.h = p.h + 220; },
+    rect() { return { x: p.cx - r, y: p.bottom - r * 0.9, w: r * 2, h: r * 0.95 }; },
+    onHit(e, ww, n) { p.heal(p.stats.hp * 0.008 * n, false); },
+    tick(e, ww) {
+      if (Math.random() < 0.5) {
+        const en = enemiesIn(ww, { x: p.cx - r, y: p.bottom - r, w: r * 2, h: r })[0];
+        if (en) { const dx = p.cx - en.cx, dy = p.cy - en.cy, L = Math.hypot(dx, dy) || 1; ww.fx.emit('magic', en.cx, en.cy, { color: '#ff2040', speed: 0, vx: dx / L * 420, vy: dy / L * 420, grav: 0, life: L / 420 }); }
+      }
+    },
+    draw(ctx, e) {
+      const a = Math.min(1, e.lt * 4) * clamp((e.life - e.lt) / 0.4, 0, 1), rise = ease.outCubic(clamp(e.lt / 0.5, 0, 1));
+      runeCircle(ctx, p.cx, p.bottom - 1, r, '#ff2040', -e.lt * 1.2, a, 0.24, 5);
+      ctx.globalCompositeOperation = ADD;
+      const g = ctx.createRadialGradient(p.cx, p.bottom, 10, p.cx, p.bottom, r);
+      g.addColorStop(0, rgba('#ff1a2a', 0.02 * a)); g.addColorStop(1, rgba('#ff1a2a', 0.22 * a));
+      ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(p.cx, p.bottom, r, r * 0.8, 0, Math.PI, TAU); ctx.fill();
+      bloodMoon(ctx, p.cx, p.y - 60 - rise * 60, 36 + lv * 3, a, e.lt);
+    },
+    light(L) { L.add(p.cx, p.y - 100, r * 1.6, '#ff2040', 1); },
+  });
+};
+
+SKILL_IMPL.azel_dawn_rush = (p, w, lv) => {
+  const id = 'azel_dawn_rush', D = V(id, 'r', lv), mv = MV(id, lv), f = p.facing, dur = 0.18, sp = D / dur, x0 = p.cx, y = p.cy;
+  pose(p, w, 'thrust', 0.32, { h0: 0.03, hw: 0.2, sfx: 'dash' });
+  audio.sfx('holy', { pitch: 1.3 });
+  fx(w, {
+    life: dur, z: 12, d: { g: 0 },
+    tick(e, ww) {
+      p.vx = f * sp; if (!p.onGround) p.vy = 0; holdInvuln(p);
+      if ((e.d.g++ & 1) === 0) afterimage(ww, p, '#ffe070', 0.3);
+      ww.fx.emit('holy', p.cx - f * 10, p.cy + rand(-24, 24), { speed: 60 });
+    },
+    end(e, ww) {
+      p.iframes = 0; p.vx = f * 160;
+      const x1 = p.cx, cnt = 5;
+      for (let i = 0; i < cnt; i++) {
+        const x = lerp(x0, x1, (i + 0.5) / cnt);
+        setTimeoutFx(ww, 0.05 + i * 0.05, (w2) => {
+          w2.fx.slash(x, y + rand(-10, 10), rand(-1.2, 1.2) + (f > 0 ? 0 : Math.PI), { radius: 70, arc: 2.4, width: 20, color: '#ffe070', life: 0.18 });
+          w2.fx.flash(x, y, { color: '#fff2b0', size: 70, life: 0.1 });
+          playerStrike(w2, { x: x - 45, y: y - 55, w: 90, h: 110 }, atk(p, { mv, element: 'holy', kb: [200, -200], hitstop: 0.05, shake: 3 }));
+          audio.sfx('slash', { vol: 0.6, pitch: 1.2 + i * 0.06 });
+        });
+      }
+      fx(ww, { life: 0.4, z: 11, x: Math.min(x0, x1) - 20, y: y - 20, w: Math.abs(x1 - x0) + 40, h: 40, draw(ctx, e2) { cutLine(ctx, x0, y, x1, y, 6 * (1 - e2.k), '#ffe070', 1 - e2.k); } });
+    },
+    light(L) { L.add(p.cx, p.cy, 160, '#ffe070', 1); },
+  });
+};
+
+SKILL_IMPL.azel_dawnbreaker = (p, w, lv) => {
+  const id = 'azel_dawnbreaker', mv = MV(id, lv), s = V(id, 's', lv) / 100;
+  pose(p, w, 'slash_wide', 0.5, { h0: 0.12, hw: 0.08, sfx: 'slash_heavy', mv: { slash: { r: 130, arc: 3.2, angle: 0, width: 36, color: '#ffe070' } } });
+  audio.sfx('holy', { pitch: 0.8 });
+  setTimeoutFx(w, 0.12 / p.atkSpeedMul, (ww) => {
+    const f = p.facing;
+    ww.game.flash('#fff2b0', 0.35, 4); shake(ww, 10, 0.3); ww.camera.punchZoom(1.06, 0.15);
+    audio.sfx('slash_heavy', { pitch: 0.7 }); audio.sfx('explode', { vol: 0.5, pitch: 1.4 });
+    shoot(ww, p, {
+      x: p.cx + f * 50, y: p.bottom - 60, vx: f * 1150, vy: 0, w: 120 * s, h: 300 * s, render: dawnRender, color: '#ffc040', edge: '#ffffff',
+      life: 0.75, pierce: 999, collideWalls: false, fadeOut: true, fadeIn: true, light: { r: 260 * s, color: '#ffd070', i: 1.2 },
+      attack: atk(p, { mv, element: 'holy', kb: [380, -300], hitstop: 0.1, shake: 6 }),
+    });
+  });
+};
+function dawnRender(ctx, pr) {
+  const d = Math.sign(pr.vx) || 1, R = pr.h * 0.5;
+  ctx.scale(d, 1);
+  ctx.globalCompositeOperation = ADD;
+  for (let i = 0; i < 9; i++) {
+    const t = -1.2 + i * 0.3, L = R * (1.3 + (i % 2) * 0.35);
+    ctx.strokeStyle = rgba('#fff2b0', 0.18); ctx.lineWidth = 6;
+    ctx.beginPath(); ctx.moveTo(Math.cos(t) * R * 0.6, Math.sin(t) * R * 0.6); ctx.lineTo(Math.cos(t) * L, Math.sin(t) * L); ctx.stroke();
+  }
+  crescent(ctx, R, R * 0.45, pr.color, 1, '#ffffff');
+  glow(ctx, R * 0.4, 0, R * 0.5, '#ffffff', 0.5);
+}
+
+SKILL_IMPL.azel_fallen_wings = (p, w, lv) => {
+  const id = 'azel_fallen_wings', n = N(id, lv), mv = MV(id, lv), f = p.facing, s = SZ(lv);
+  pose(p, w, 'cast_up', 0.5, { h0: 0.12, sfx: 'holy' });
+  audio.sfx('holy'); audio.sfx('dark', { vol: 0.6 });
+  fx(w, {
+    life: 1.0, z: 9, d: { fired: false },
+    follow(e) { e.x = p.cx - 170 * s; e.y = p.y - 120; e.w = 340 * s; e.h = 240; },
+    tick(e, ww) {
+      if (!e.d.fired && e.lt > 0.18) {
+        e.d.fired = true;
+        for (let i = 0; i < n; i++) {
+          const holy = i % 2 === 0, ang = -Math.PI / 2 + f * lerp(-0.6, 1.5, n > 1 ? i / (n - 1) : 0.5) + rand(-0.05, 0.05), sp = rand(650, 850);
+          shoot(ww, p, {
+            x: p.cx - f * 8, y: p.bottom - 64, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, w: 18, h: 18, scale: 1.1,
+            render: holy ? featherRenderL : featherRenderD, behavior: 'homing', speed: sp, homingTurn: 5, homingDelay: 0.22, life: 1.2, pierce: 1, collideWalls: false,
+            attack: atk(p, { mv, type: 'mag', element: holy ? 'holy' : 'dark', kb: [100, -100], hitstop: 0.03, shake: 1 }),
+            onExpire: (pr, w2) => w2.fx.burst(holy ? 'holy' : 'dark', pr.cx, pr.cy, 5, { speed: 120 }),
+          });
+        }
+        audio.sfx('bat', { pitch: 1.6, vol: 0.6 });
+      }
+    },
+    draw(ctx, e) {
+      const open = ease.outBack(clamp(e.lt / 0.25, 0, 1)), a = clamp((e.life - e.lt) / 0.3, 0, 1), sx = p.cx - f * 6, sy = p.bottom - 64;
+      ctx.save(); ctx.translate(sx, sy); ctx.scale(-f, 1); ctx.rotate(-0.1); wing(ctx, 110 * s, open, '#ffffff', '#fff2b0', 0.85 * a); ctx.restore();
+      ctx.save(); ctx.translate(sx + f * 4, sy - 4); ctx.scale(-f, 1); ctx.rotate(0.35); wing(ctx, 96 * s, open, '#5a2a8a', '#140818', 0.9 * a, true); ctx.restore();
+    },
+    light(L) { L.add(p.cx - f * 30, p.bottom - 90, 200, '#d0b0ff', 0.8); },
+  });
+};
+function featherRenderL(ctx, pr) { ctx.rotate(Math.atan2(pr.vy, pr.vx)); featherShape(ctx, 16 * pr.scale, '#fff2b0', '#fff8e0'); }
+function featherRenderD(ctx, pr) { ctx.rotate(Math.atan2(pr.vy, pr.vx)); featherShape(ctx, 16 * pr.scale, '#b060ff', '#3a1a5a'); }
+
+// ═══════════════════════════ 필살기 ═══════════════════════════
+/** 필살기 공통 감독: 화면 잠금(입력 차단·무적) + 배경 암전 + 시간표 */
+function ultDirector(w, p, o) {
+  const cam = w.camera, steps = (o.steps || []).sort((a, b) => a[0] - b[0]);
+  const bound = (e) => { e.x = cam.x - 60; e.y = cam.y - 60; e.w = cam.vw + 120; e.h = cam.vh + 120; };
+  fx(w, {
+    life: o.dur, z: -1, follow: bound,
+    draw(ctx, e, ww) {
+      const a = (o.dim ?? 0.55) * Math.min(1, e.lt / 0.2) * clamp((e.life - e.lt) / 0.35, 0, 1);
+      ctx.fillStyle = rgba(o.dimCol ?? '#05020a', a); ctx.fillRect(e.x, e.y, e.w, e.h);
+      o.bg?.(ctx, e, ww, a / (o.dim ?? 0.55));
+    },
+  });
+  return fx(w, {
+    life: o.dur, z: 12, d: { i: 0, ...(o.d || {}) }, follow: bound,
+    start(e, ww) { ww.cutscene = true; p.vx = 0; o.start?.(e, ww); },
+    tick(e, ww, dt) {
+      ww.cutscene = true;
+      while (e.d.i < steps.length && steps[e.d.i][0] <= e.lt) steps[e.d.i++][1](ww, e);
+      o.tick?.(e, ww, dt);
+    },
+    end(e, ww) { ww.cutscene = false; p.hidden = false; p.iframes = Math.max(p.iframes, 0); o.end?.(e, ww); },
+    draw: o.draw, light: o.light,
+  });
+}
+function uHit(w, p, mv, o = {}) {
+  const { rect, ...rest } = o;
+  return playerStrike(w, rect ?? viewRect(w, 30), atk(p, { mv, type: bestType(p), tags: ['ult'], breakWalls: false, hitId: nid('ult'), kb: [60, -200], hitstop: 0.04, shake: 4, ...rest }));
+}
+function ultFinal(w, p, mv, col, o = {}) {
+  uHit(w, p, mv, { hitstop: 0.3, shake: 18, kb: [420, -620], launch: true, ...o });
+  w.game.flash(col, 0.95, 1.6);
+  shake(w, 18, 0.6); w.camera.punchZoom(1.14, 0.3);
+  audio.sfx('explode'); audio.sfx('crit', { pitch: 0.7 });
+}
+
+// 카엘 — 그랜드 크로스: 화면을 가르는 성광의 십자와 성광 기둥
+ULTS.kael = (p, w) => {
+  const cam = w.camera;
+  const cx = clamp(p.cx, cam.x + 220, cam.x + cam.vw - 220), cy = clamp(p.cy - 40, cam.y + 150, cam.y + cam.vh - 130);
+  pose(p, w, 'cast_up', 1.6, { h0: 0.2, hw: 1.2, sfx: 'holy' });
+  const order = [2, 3, 1, 4, 0, 5], steps = [
+    [0, (ww) => { audio.sfx('bell'); }],
+    [0.3, (ww) => { audio.sfx('holy', { pitch: 0.7 }); ww.game.flash('#fff8e0', 0.5, 4); shake(ww, 6, 0.3); }],
+  ];
+  order.forEach((k, i) => steps.push([0.45 + i * 0.1, (ww) => {
+    const x = cam.x + cam.vw * (k + 0.5) / 6, base = groundAt(ww, x, cam.y + cam.vh * 0.5, 14 * TILE) ?? cam.y + cam.vh - 40;
+    pillarFx(ww, p, x, base, 46, 0.55, 0, 0.75, '#fff2b0', { tags: ['ult'], breakWalls: false, type: bestType(p), hitstop: 0.03 + i * 0.008 });
+  }]));
+  steps.push([1.25, (ww) => { ultFinal(ww, p, 5, '#fff8e0', { element: 'holy' }); ww.fx.burst('holy', cx, cy, 60, { speed: 520 }); ww.fx.ring(cx, cy, { color: '#fff2b0', r0: 30, r1: cam.vw * 0.6, life: 0.6, width: 16 }); }]);
+  ultDirector(w, p, {
+    dur: 2.0, dim: 0.62, steps,
+    tick(e, ww) {
+      if (e.lt < 0.35) for (let i = 0; i < 3; i++) { const t = rand(0, TAU), r = rand(160, 260); ww.fx.emit('holy', p.cx + Math.cos(t) * r, p.cy + Math.sin(t) * r, { speed: 0, vx: -Math.cos(t) * r * 3, vy: -Math.sin(t) * r * 3, grav: 0, life: 0.3 }); }
+    },
+    draw(ctx, e) {
+      const lt = e.lt;
+      ctx.globalCompositeOperation = ADD;
+      if (lt < 0.3) { glow(ctx, p.cx, p.cy - 10, 60 + lt * 300, '#fff2b0', lt / 0.3 * 0.6); return; }
+      const g = ease.outCubic(clamp((lt - 0.3) / 0.22, 0, 1)), fin = lt > 1.25 ? clamp((lt - 1.25) / 0.12, 0, 1) : 0;
+      const fade = clamp((e.life - lt) / 0.5, 0, 1), th = (22 + Math.sin(lt * 30) * 3) * (1 + fin * 2.5) * fade;
+      beamV(ctx, cx, cy - cam.vh * g, cy + cam.vh * g, th * 1.6, '#ffd870', 0.55 * fade);
+      beamV(ctx, cx, cy - cam.vh * g, cy + cam.vh * g, th * 0.55, '#ffffff', fade, '#ffffff');
+      beamH(ctx, cx - cam.vw * g, cx + cam.vw * g, cy, th * 1.6, '#ffd870', 0.55 * fade);
+      beamH(ctx, cx - cam.vw * g, cx + cam.vw * g, cy, th * 0.55, '#ffffff', fade, '#ffffff');
+      glow(ctx, cx, cy, 160 * (1 + fin), '#fff2b0', 0.8 * fade);
+      flare(ctx, cx, cy, 220 * g * (1 + fin * 0.8), '#fff2b0', fade, lt * 0.6);
+      flare(ctx, cx, cy, 140 * g, '#ffffff', fade, -lt * 0.9 + 0.4);
+    },
+    light(L, e) { L.add(cx, cy, 700, '#fff2b0', e.lt > 0.3 ? 1.5 : 0.6); L.add(p.cx, p.cy, 200, '#fff2b0', 1); },
+  });
+};
+
+// 세라 — 천상의 심판: 하늘의 마법진에서 쏟아지는 빛의 비와 심판의 기둥
+ULTS.sera = (p, w) => {
+  const cam = w.camera;
+  pose(p, w, 'cast_up', 1.9, { h0: 0.2, hw: 1.5, sfx: 'holy' });
+  const steps = [[0, () => { audio.sfx('bell'); audio.sfx('holy', { pitch: 0.6 }); }]];
+  for (let i = 0; i < 7; i++) steps.push([0.4 + i * 0.15, (ww) => { uHit(ww, p, 0.5, { element: 'holy', hitstop: 0.03, kb: [20, -120] }); if (i % 2 === 0) audio.sfx('holy', { vol: 0.5, pitch: 1.2 + i * 0.05 }); }]);
+  steps.push([1.55, (ww) => { ultFinal(ww, p, 5, '#ffffff', { element: 'holy' }); }]);
+  ultDirector(w, p, {
+    dur: 2.2, dim: 0.5, dimCol: '#0a0818', steps, d: { rain: [], rt: 0 },
+    tick(e, ww, dt) {
+      const R = e.d.rain;
+      for (let i = R.length - 1; i >= 0; i--) { R[i].t += dt; if (R[i].t > 0.28) { R[i] = R[R.length - 1]; R.pop(); } }
+      if (e.lt > 0.3 && e.lt < 1.5) {
+        e.d.rt += dt * 70;
+        while (e.d.rt >= 1) {
+          e.d.rt--;
+          const x = cam.x + rand(0, cam.vw), gy = groundAt(ww, x, cam.y + cam.vh * 0.3, 16 * TILE) ?? cam.y + cam.vh;
+          R.push({ x, gy, t: 0, wd: rand(3, 9) });
+          if (Math.random() < 0.25) ww.fx.burst('holy', x, gy - 4, 3, { angle: -Math.PI / 2, spread: 1, speed: 180 });
+        }
+      }
+    },
+    draw(ctx, e) {
+      const lt = e.lt, cx = cam.x + cam.vw / 2, cy = cam.y + 70, a = Math.min(1, lt / 0.3) * clamp((e.life - lt) / 0.4, 0, 1);
+      runeCircle(ctx, cx, cy, cam.vw * 0.36, '#fff2b0', lt * 0.8, a, 0.22, 8);
+      runeCircle(ctx, cx, cy, cam.vw * 0.22, '#ffffff', -lt * 1.3, a, 0.22, 5);
+      ctx.globalCompositeOperation = ADD;
+      for (const r of e.d.rain) {
+        const u = r.t / 0.28, y1 = lerp(cy, r.gy, Math.min(1, u * 3));
+        beamV(ctx, r.x, cy, y1, r.wd, '#fff2b0', (1 - u) * 0.9);
+        if (u > 0.3) glow(ctx, r.x, r.gy - 4, 40, '#fff2b0', (1 - u) * 0.7);
+      }
+      if (lt > 1.45) {
+        const k = clamp((lt - 1.45) / 0.15, 0, 1), f2 = clamp((e.life - lt) / 0.5, 0, 1), W = cam.vw * 0.2 * k;
+        beamV(ctx, cx, cam.y - 20, cam.y + cam.vh + 20, W, '#fff2b0', 0.8 * f2);
+        beamV(ctx, cx, cam.y - 20, cam.y + cam.vh + 20, W * 0.45, '#ffffff', f2, '#ffffff');
+      }
+    },
+    light(L, e) { L.add(cam.x + cam.vw / 2, cam.y + cam.vh * 0.4, cam.vw * 0.7, '#fff2b0', e.lt > 0.3 ? 1.3 : 0.5); },
+  });
+};
+
+// 빅터 — 데드맨즈 핸드: 에이스와 에이트가 흩날리는 슬로모션 속 총알 폭풍
+ULTS.victor = (p, w) => {
+  const cam = w.camera;
+  w.slowmo = Math.max(w.slowmo, 0.55);
+  pose(p, w, 'shoot_up', 0.4, { h0: 0.1, sfx: 'card' });
+  audio.sfx('card'); audio.sfx('clock_tick', { pitch: 0.6 });
+  const cards = [];
+  const RANKS = ['A', '8', 'A', '8'], SUITS = ['♠', '♣', '♣', '♠'];
+  for (let i = 0; i < 10; i++) {
+    const t = -Math.PI / 2 + rand(-1.3, 1.3), sp = rand(500, 900);
+    cards.push({ x: p.cx, y: p.cy - 20, vx: Math.cos(t) * sp, vy: Math.sin(t) * sp, rot: rand(0, TAU), vr: rand(-9, 9), rank: RANKS[i % 4], suit: SUITS[i % 4], s: rand(0.8, 1.1) });
+  }
+  const steps = [];
+  let n = 0;
+  for (let t = 0.3; t < 1.25; t += 0.028) {
+    const k = n++;
+    steps.push([t, (ww, e) => {
+      const alt = k % 2 === 1, g = gunOf(p, alt), pool = enemiesIn(ww, viewRect(ww));
+      let x, y, tg = null;
+      if (pool.length && Math.random() < 0.8) { tg = pool[k % pool.length]; x = tg.cx + rand(-14, 14); y = tg.cy + rand(-20, 20); }
+      else { x = cam.x + rand(40, cam.vw - 40); y = cam.y + rand(60, cam.vh - 60); }
+      if (Math.abs(x - p.cx) > 20) p.facing = Math.sign(x - p.cx);
+      if (k % 3 === 0) pose(p, ww, alt ? 'shoot_alt' : 'shoot', 0.1, { h0: 0.01, sfx: 'gun' });
+      e.d.tr.push({ x0: g.x, y0: g.y, x1: x, y1: y, t: 0 });
+      muzzle(ww, p, g.x, g.y, Math.atan2(y - g.y, x - g.x), '#ffd070', 0.8);
+      ww.fx.burst('spark', x, y, 3, { color: '#ffe0a0', speed: 260 });
+      if (tg) playerStrike(ww, circ(x, y, 18), atk(p, { mv: 0.3, type: bestType(p), tags: ['ult'], breakWalls: false, kb: [40, -60], hitstop: 0.01, shake: 1 }));
+      if (k % 2 === 0) audio.sfx('gun', { vol: 0.5, pitch: rand(0.9, 1.2) });
+    }]);
+  }
+  steps.push([1.3, (ww) => { pose(p, ww, 'shoot_double', 0.5, { h0: 0.02, sfx: 'shotgun' }); }]);
+  steps.push([1.36, (ww) => { const g = gunOf(p); muzzle(ww, p, g.x, g.y, p.facing > 0 ? 0 : Math.PI, '#fff0b0', 3); ultFinal(ww, p, 4.8, '#ffd070'); audio.sfx('shotgun'); }]);
+  ultDirector(w, p, {
+    dur: 1.95, dim: 0.5, dimCol: '#0a0604', steps, d: { tr: [] },
+    tick(e, ww, dt) {
+      for (const c of cards) { c.x += c.vx * dt; c.y += c.vy * dt; c.vy += 500 * dt; c.vx *= 0.99; c.rot += c.vr * dt; }
+      const T = e.d.tr;
+      for (let i = T.length - 1; i >= 0; i--) { T[i].t += dt; if (T[i].t > 0.08) { T[i] = T[T.length - 1]; T.pop(); } }
+    },
+    draw(ctx, e) {
+      const a = clamp((e.life - e.lt) / 0.4, 0, 1);
+      for (const c of cards) { ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.rot); ctx.scale(c.s * Math.cos(c.rot * 0.7), c.s); cardShape(ctx, 38, 54, c.rank, c.suit, a); ctx.restore(); }
+      for (const t of e.d.tr) cutLine(ctx, t.x0, t.y0, t.x1, t.y1, 2.2, '#ffd070', 1 - t.t / 0.08);
+      if (e.lt > 1.34 && e.lt < 1.6) { ctx.globalCompositeOperation = ADD; const g = gunOf(p); glow(ctx, g.x, g.y, 200, '#ffd070', 1 - (e.lt - 1.34) / 0.26); }
+    },
+    light(L, e) { L.add(p.cx, p.cy, 260, '#ffd070', 1); },
+  });
+};
+
+// 브란 — 대지 분쇄: 도약 후 내려찍어 화면 전체를 뒤흔드는 지진과 암석 기둥
+ULTS.bran = (p, w) => {
+  const cam = w.camera;
+  pose(p, w, 'heavy_up', 0.4, { h0: 0.1, sfx: 'jump' });
+  p.vy = -1150; p.vx = 0; p.onGround = false; p.jumpCut = true;
+  audio.sfx('boss_roar', { pitch: 1.2 });
+  const slam = (ww, e) => {
+    e.d.slam = e.lt;
+    const x = p.cx, y = p.bottom;
+    e.d.sx = x; e.d.sy = y;
+    p.endMove(); pose(p, ww, 'heavy_down', 0.5, { h0: 0.01, sfx: 'slash_heavy' });
+    uHit(ww, p, 1.2, { kb: [80, -760], launch: true, hitstop: 0.12, shake: 12 });
+    boomRing(ww, x, y, 260, '#ffb060');
+    shake(ww, 22, 1.3); ww.game.flash('#ffb060', 0.6, 3);
+    audio.sfx('explode', { pitch: 0.6 }); audio.sfx('break_wall');
+    const xs = [];
+    for (let i = 1; i <= 5; i++) { xs.push(x + i * 150); xs.push(x - i * 150); }
+    xs.forEach((px, i) => {
+      if (px < cam.x - 40 || px > cam.x + cam.vw + 40) return;
+      const base = groundAt(ww, px, y - 60, 10 * TILE) ?? y;
+      spikeFx(ww, p, px, base, rand(150, 230), 34, 0.12 + Math.floor(i / 2) * 0.09,
+        atk(p, { mv: 0.9, type: bestType(p), tags: ['ult'], breakWalls: false, kb: [60, -760], launch: true, hitstop: 0.05, shake: 6 }), ROCK);
+    });
+  };
+  ultDirector(w, p, {
+    dur: 2.5, dim: 0.5, dimCol: '#0a0402', d: { dive: false, slam: 0, fin: false, sx: 0, sy: 0 },
+    tick(e, ww) {
+      if (!e.d.slam) {
+        if (!e.d.dive && (p.vy > -150 || e.lt > 0.55)) { e.d.dive = true; pose(p, ww, 'plunge', 1.2, { h0: 0.02, hw: 1.1, sfx: 'dash' }); p.vy = 1500; }
+        if (e.d.dive) { p.vy = Math.max(p.vy, 1500); afterimage(ww, p, '#ffb060', 0.18); }
+        if ((e.d.dive && p.onGround) || e.lt > 1.1) slam(ww, e);
+      } else if (!e.d.fin && e.lt > e.d.slam + 0.9) {
+        e.d.fin = true;
+        ultFinal(ww, p, 4.6, '#ffb060', { element: null });
+        ww.fx.ring(e.d.sx, e.d.sy - 10, { color: '#ffd8a0', r0: 30, r1: cam.vw * 0.7, life: 0.6, width: 18 });
+      }
+    },
+    draw(ctx, e) {
+      if (!e.d.slam) return;
+      const k = clamp((e.lt - e.d.slam) / 0.35, 0, 1), a = clamp((e.life - e.lt) / 0.5, 0, 1), x = e.d.sx, y = e.d.sy;
+      ctx.globalCompositeOperation = ADD; ctx.lineCap = 'round';
+      for (const d of [-1, 1]) {
+        const pts = [x, y];
+        for (let i = 1; i <= 12; i++) pts.push(x + d * cam.vw * k * i / 12, y - 2 + Math.sin(i * 2.7 + d) * 6);
+        ctx.strokeStyle = rgba('#ff7a2a', 0.45 * a); ctx.lineWidth = 12; strokePts(ctx, pts);
+        ctx.strokeStyle = rgba('#fff0c0', 0.95 * a); ctx.lineWidth = 3; strokePts(ctx, pts);
+      }
+      glow(ctx, x, y, 220 * (0.6 + k), '#ff9a3a', 0.6 * a);
+    },
+    light(L, e) { if (e.d.slam) L.add(e.d.sx, e.d.sy - 40, 600, '#ff9a3a', 1.3); },
+  });
+};
+
+// 리아 — 천망회회: 모습을 감춘 채 화면을 뒤덮는 백 개의 그림자 참격, 그리고 그물이 닫힌다
+ULTS.lia = (p, w) => {
+  const cam = w.camera, px = p.cx, pb = p.bottom;
+  afterimage(w, p, '#ff4a6a', 0.4);
+  w.fx.burst('dark', p.cx, p.cy, 20, { speed: 160, color: '#2a0a1a' });
+  audio.sfx('mist'); audio.sfx('slash_heavy', { pitch: 1.4 });
+  p.hidden = true;
+  const snapBase = p.snapshot();
+  ultDirector(w, p, {
+    dur: 2.1, dim: 0.78, dimCol: '#08000a', d: { cuts: [], net: [], ct: 0, n: 0, fin: false },
+    tick(e, ww, dt) {
+      const C = e.d.cuts;
+      for (let i = C.length - 1; i >= 0; i--) { C[i].t += dt; if (C[i].t > 0.14) { if (e.d.net.length < 110) e.d.net.push(C[i]); C[i] = C[C.length - 1]; C.pop(); } }
+      if (e.lt > 0.15 && e.lt < 1.35) {
+        e.d.ct += dt * 85;
+        const pool = enemiesIn(ww, viewRect(ww));
+        while (e.d.ct >= 1) {
+          e.d.ct--; const k = e.d.n++;
+          let x, y, tg = null;
+          if (pool.length && Math.random() < 0.65) { tg = pool[k % pool.length]; x = tg.cx + rand(-10, 10); y = tg.cy + rand(-16, 16); }
+          else { x = cam.x + rand(30, cam.vw - 30); y = cam.y + rand(50, cam.vh - 40); }
+          const t = rand(0, TAU), L = rand(110, 210);
+          C.push({ x0: x - Math.cos(t) * L, y0: y - Math.sin(t) * L, x1: x + Math.cos(t) * L, y1: y + Math.sin(t) * L, t: 0 });
+          if (tg) playerStrike(ww, circ(x, y, 22), atk(p, { mv: 0.1, type: bestType(p), element: 'dark', tags: ['ult'], breakWalls: false, kb: [20, -40], hitstop: 0, shake: 0.5, crit: 10 }));
+          if (k % 4 === 0) audio.sfx('slash', { vol: 0.45, pitch: rand(1.1, 1.6) });
+          if (k % 12 === 0) { const s2 = { ...snapBase, x: x - p.w / 2, cx: x, y: y + 40 - p.h, bottom: y + 40, facing: Math.cos(t) > 0 ? 1 : -1, anim: 'dash', move: null }; ww.fx.ghost((ctx, a) => drawHero(ctx, s2, ww, { alpha: a, tint: '#ff4a6a' }), 0.2, 'front'); }
+        }
+      }
+      if (!e.d.fin && e.lt > 1.5) {
+        e.d.fin = true;
+        p.hidden = false; p.x = px - p.w / 2; p.y = pb - p.h;
+        pose(p, ww, 'stab_alt', 0.5, { h0: 0.02, sfx: 'slash_heavy' });
+        ultFinal(ww, p, 4.2, '#ff2040', { element: 'dark' });
+        for (const n of e.d.net) ww.fx.burst('spark', (n.x0 + n.x1) / 2, (n.y0 + n.y1) / 2, 1, { color: '#ff4a6a', speed: 200 });
+      }
+    },
+    draw(ctx, e) {
+      const lt = e.lt, glowNet = lt > 1.35 && lt < 1.5 ? 1 : 0, netA = lt < 1.5 ? 0.13 + glowNet * 0.8 : Math.max(0, 0.9 - (lt - 1.5) * 3);
+      ctx.globalCompositeOperation = ADD; ctx.lineCap = 'round';
+      if (netA > 0.01) {
+        ctx.strokeStyle = rgba('#ff2a4a', netA); ctx.lineWidth = 1.5 + glowNet * 1.5;
+        ctx.beginPath(); for (const n of e.d.net) { ctx.moveTo(n.x0, n.y0); ctx.lineTo(n.x1, n.y1); } ctx.stroke();
+      }
+      for (const c of e.d.cuts) cutLine(ctx, c.x0, c.y0, c.x1, c.y1, 3.2, '#ff2a4a', 1 - c.t / 0.14);
+      if (lt > 1.35 && lt < 1.7) glow(ctx, px, pb - 44, 260, '#ff2040', 1 - (lt - 1.35) / 0.35);
+    },
+    light(L, e) { L.add(cam.x + cam.vw / 2, cam.y + cam.vh / 2, cam.vw * 0.5, '#ff2a4a', 0.6); },
+    end() { p.hidden = false; },
+  });
+};
+
+// 아젤 — 블러드 녹턴: 핏빛 달이 떠오르고, 화면을 가르는 초승달 참격
+ULTS.azel = (p, w) => {
+  const cam = w.camera;
+  const bats = [];
+  for (let i = 0; i < 22; i++) bats.push({ x: cam.x + rand(-200, cam.vw), y: cam.y + rand(30, cam.vh * 0.6), vx: rand(380, 620) * (Math.random() < 0.5 ? 1 : -1), ph: rand(0, TAU), s: rand(0.6, 1.2) });
+  pose(p, w, 'cast_up', 0.55, { h0: 0.1, sfx: 'dark' });
+  audio.sfx('bell', { pitch: 0.5 }); audio.sfx('bat');
+  const sweep = (ww, dir, mv) => { uHit(ww, p, mv, { element: 'dark', hitstop: 0.06, kb: [dir * 200, -260] }); audio.sfx('slash_heavy', { pitch: 0.7 }); shake(ww, 8, 0.2); };
+  const steps = [
+    [0.5, (ww) => pose(p, ww, 'slash_wide', 0.55, { h0: 0.1, sfx: 'slash_heavy' })],
+    [0.62, (ww) => sweep(ww, 1, 0.9)], [0.74, (ww) => sweep(ww, 1, 0.9)], [0.86, (ww) => sweep(ww, 1, 0.9)],
+    [1.2, (ww) => pose(p, ww, 'slash_up', 0.5, { h0: 0.08, sfx: 'slash_heavy' })],
+    [1.42, (ww) => {
+      ultFinal(ww, p, 4.6, '#ff1030', { element: 'dark' });
+      p.heal(p.stats.hp * 0.15);
+      for (const en of enemiesIn(ww, viewRect(ww))) ww.fx.burst('blood', en.cx, en.cy, 14, { speed: 320 });
+    }],
+  ];
+  ultDirector(w, p, {
+    dur: 2.15, dim: 0.6, dimCol: '#0c0004', steps,
+    bg(ctx, e, ww, a) {
+      const rise = ease.outCubic(clamp(e.lt / 0.6, 0, 1)), R = cam.vh * 0.26;
+      const g = ctx.createLinearGradient(0, cam.y, 0, cam.y + cam.vh);
+      g.addColorStop(0, rgba('#5a0010', 0.45 * a)); g.addColorStop(1, rgba('#1a0004', 0));
+      ctx.fillStyle = g; ctx.fillRect(cam.x, cam.y, cam.vw, cam.vh);
+      bloodMoon(ctx, cam.x + cam.vw * 0.5, cam.y + cam.vh * 0.3 + (1 - rise) * 120, R, a * (0.4 + rise * 0.6), e.lt);
+    },
+    tick(e, ww, dt) { for (const b of bats) { b.x += b.vx * dt; b.ph += dt * 24; if (b.x > cam.x + cam.vw + 80) b.x = cam.x - 80; if (b.x < cam.x - 80) b.x = cam.x + cam.vw + 80; } },
+    draw(ctx, e) {
+      const lt = e.lt, a = clamp((e.life - lt) / 0.4, 0, 1);
+      for (const b of bats) { ctx.save(); ctx.translate(b.x, b.y); ctx.scale(b.vx > 0 ? 1 : -1, 1); ctx.globalAlpha = a; batShape(ctx, 16 * b.s, Math.sin(b.ph)); ctx.restore(); }
+      ctx.globalAlpha = 1;
+      const R = cam.vw * 0.62, cx = p.cx, cy = p.cy - 10;
+      const drawSweep = (t0, dur, a0, a1, dirY) => {
+        if (lt < t0 || lt > t0 + dur + 0.25) return;
+        const u = ease.outCubic(clamp((lt - t0) / dur, 0, 1)), fade = 1 - clamp((lt - t0 - dur) / 0.25, 0, 1);
+        for (let k = 3; k >= 0; k--) {
+          ctx.save(); ctx.translate(cx, cy); ctx.scale(p.facing, dirY); ctx.rotate(lerp(a0, a1, Math.max(0, u - k * 0.06)));
+          crescent(ctx, R, R * 0.16, '#ff1a3a', fade * (1 - k * 0.22), '#ffe0e4'); ctx.restore();
+        }
+      };
+      drawSweep(0.58, 0.32, -1.3, 1.1, 1);
+      drawSweep(1.28, 0.2, -1.1, 0.9, -1);
+    },
+    light(L, e) { L.add(cam.x + cam.vw * 0.5, cam.y + cam.vh * 0.3, cam.vw * 0.5, '#ff2040', 1); L.add(p.cx, p.cy, 220, '#ff2040', 1); },
   });
 };
