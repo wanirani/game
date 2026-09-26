@@ -1,6 +1,8 @@
 // 저장 시스템: 슬롯 3개 + 설정 + 전역 메타(해금·최고점수). localStorage 사용 (실패 시 메모리 보관).
 // saves.write(slot, state) / saves.read(slot) / saves.list() / saves.remove(slot)
 // saves.exportCode(slot) → 문자열, saves.importCode(slot, code)
+// saves.onWrite(fn) → 해제 함수. 슬롯 저장·삭제·가져오기와 메타 저장 뒤 fn({ type:'write'|'remove'|'meta', slot }) 호출 (클라우드 동기화용)
+// saves.store(slot, data) → 클라우드에서 받은 기록을 savedAt 그대로 저장 (onWrite 알림 없음)
 // isValidSave(obj) → 불러와도 안전한 최소 구조인지 (가져오기 코드·손상된 슬롯 거부용)
 import { CHARACTERS } from '../data/characters.js';
 
@@ -57,12 +59,28 @@ export const DEFAULT_META = {
 };
 
 class SaveSystem {
+  constructor() { this.listeners = new Set(); }
+  /** 저장 알림 구독 (core/cloud.js 가 쓴다). 구독자 오류는 저장을 막지 않는다 */
+  onWrite(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
+  notify(ev) {
+    for (const fn of this.listeners) { try { fn(ev); } catch (e) { console.error('[saves]', e); } }
+  }
   slotKey(slot) { return `${PREFIX}slot_${slot}`; }
   write(slot, state) {
     state.savedAt = Date.now();
     state.slot = slot;
-    return lsSet(this.slotKey(slot), JSON.stringify(state));
+    const ok = lsSet(this.slotKey(slot), JSON.stringify(state));
+    this.notify({ type: 'write', slot });
+    return ok;
   }
+  /** 받은 기록을 그대로 저장 (savedAt 유지, 알림 없음). 구조가 올바르지 않으면 false */
+  store(slot, data) {
+    if (!isValidSave(data)) return false;
+    data.slot = slot;
+    return lsSet(this.slotKey(slot), JSON.stringify(data));
+  }
+  /** 슬롯에 무언가 저장되어 있는가 (손상되어 read() 가 null 인 경우도 true) */
+  has(slot) { return lsGet(this.slotKey(slot)) != null; }
   read(slot) {
     const raw = lsGet(this.slotKey(slot));
     if (!raw) return null;
@@ -71,7 +89,7 @@ class SaveSystem {
       return isValidSave(s) ? s : null; // 손상된 슬롯은 빈 슬롯으로 취급 (새로 시작으로 덮어쓸 수 있음)
     } catch { return null; }
   }
-  remove(slot) { lsDel(this.slotKey(slot)); }
+  remove(slot) { lsDel(this.slotKey(slot)); this.notify({ type: 'remove', slot }); }
   /** 슬롯 요약 목록 (타이틀 화면용) */
   list() {
     return [1, 2, 3].map((slot) => {
@@ -97,6 +115,7 @@ class SaveSystem {
       if (!isValidSave(obj)) return false;
       obj.slot = slot;
       lsSet(this.slotKey(slot), JSON.stringify(obj));
+      this.notify({ type: 'write', slot });
       return true;
     } catch { return false; }
   }
@@ -110,6 +129,6 @@ class SaveSystem {
       return { ...structuredClone(DEFAULT_META), ...m };
     } catch { return structuredClone(DEFAULT_META); }
   }
-  saveMeta(m) { lsSet(PREFIX + 'meta', JSON.stringify(m)); }
+  saveMeta(m) { lsSet(PREFIX + 'meta', JSON.stringify(m)); this.notify({ type: 'meta' }); }
 }
 export const saves = new SaveSystem();

@@ -1,0 +1,79 @@
+{
+ "_about": "Part 2 (world2 WP-H1) Kling art. model kling-image-v3_0_omni, 2k. Processing: bg/worldmap2 height 1080 then bottom cut >= 7% (watermark + flat band), WebP q80; cg height 1080 then bottom cut 7.5%, q82; portraits height 1024 then bottom cut 5.5%, q82; tex centre square -> 512 -> seamless_lib.make_seamless, q82. Quality lowered in steps of 2 only when a file exceeded the spec size budget (bg 180 KB, cg 170 KB, portrait 90 KB, tex 60 KB). \"assets\" lists accepted files, \"generations\" lists every Kling job (including rejected retries) with its prompt and generation id.",
+ "images_generated": 8,
+ "assets": {},
+ "generations": [
+  {
+   "asset": "s14_mirror",
+   "attempt": 1,
+   "tool": "text_to_image",
+   "generationId": "AUBttpMEqJ6_WN3oK7Uqc29bzMpD4p9zQKps3kaqMzWY57Ry9yQzPtYgmKMBwXwznMmyhDz7",
+   "status": "rejected",
+   "note": "photoreal human faces, 3D-render look, 207 KB even at q60",
+   "prompt": "An infinite gothic palace built entirely of mirrors and black glass, endless mirrored corridors reflecting into infinity, inverted crystal chandeliers hanging upside down, silver filigree arches, cracked mirror panes with faint pale faces trapped inside, cold moonlight refracting into prismatic beams. Palette of silver white, obsidian black, pale cyan and faint rose-crimson accents. Wide panoramic 2D side-scrolling action game background art, dark gothic horror fantasy, painterly digital illustration with rich detail, dramatic cinematic lighting, strong atmospheric depth and fog layers, no characters, no people, no text, no letters, no UI, no watermark. The lower quarter of the image is darker and simpler so a gameplay floor can overlay it. Full-bleed painting edge to edge, the scenery fills the entire canvas including all four corners and the bottom edge, no borders, no frame, no black bars, no letterbox, no interface, no HUD, no health bars, no buttons, no icons."
+  },
+  {
+   "asset": "s15_forge",
+   "attempt": 1,
+   "tool": "text_to_image",
+   "generationId": "ARr_joYD6RNmyxZCun8vRiAYMVUgK6rEYD6v9q4573Zc_AzSGzk-URrTILsB3jVaJe-TuilK",
+   "status": "rejected",
+   "note": "game UI frame bars top and bottom",
+   "prompt": "A colossal infernal forge in another world, rivers of molten metal pouring from giant crucibles, enormous chains hammered on anvils the size of houses, black iron towers and chimneys belching fire and soot, the silhouette of a gigantic bull-horned bronze idol far in the background, embers in the air. Palette of molten orange, ember red, soot black and iron grey. Wide panoramic 2D side-scrolling action game background art, dark gothic horror fantasy, painterly digital illustration with rich detail, dramatic cinematic lighting, strong atmospheric depth and fog layers, no characters, no people, no text, no letters, no UI, no watermark. The lower quarter of the image is darker and simpler so a gameplay floor can overlay it. Full-bleed painting edge to edge, the scenery fills the entire canvas including all four corners and the bottom edge, no borders, no frame, no black bars, no letterbox, no interface, no HUD, no health bars, no buttons, no icons."
+  },
+  {
+   "asset": "s16_sunken",
+   "attempt": 1,
+   "tool": "text_to_image",
+   "generationId": "AYQq6A0Ou5n0yeGC6t6YKvVB1yZqKwvhBKcsMm6nkoNlpUaW8AifWIV3iifBzHI4LnZsnDir",
+   "status": "rejected",
+   "note": "split water line (jellyfish above a water surface), near-black lower third",
+   "prompt": "A drowned gothic cathedral city at the bottom of a dark sea, ruined spires and flying buttresses encrusted with coral and barnacles, faint shafts of light from far above, bioluminescent jellyfish and anglerfish lights, swaying kelp, sunken statues of robed saints, an enormous pipe organ overgrown with shells. Palette of deep teal, abyssal blue, verdigris bronze, pearl white and bioluminescent cyan. Wide panoramic 2D side-scrolling action game background art, dark gothic horror fantasy, painterly digital illustration with rich detail, dramatic cinematic lighting, strong atmospheric depth and fog layers, no characters, no people, no text, no letters, no UI, no watermark. The lower quarter of the image is darker and simpler so a gameplay floor can overlay it. Full-bleed painting edge to edge, the scenery fills the entire canvas including all four corners and the bottom edge, no borders, no frame, no black bars, no letterbox, no interface, no HUD, no health bars, no buttons, no icons."
+  },
+  {
+   "asset": "s17_sky",
+   "attempt": 1,
+   "tool": "text_to_image",
+   "generationId": "AUWlhjc6bE4tFCi41G2ulnJAo8Ovuhc29HGxylTR-ttCkTXmx8gOd2UA4pYsao6H5vmtx2_2",
+   "status": "processed",
+   "note": null,
+   "prompt": "Ancient floating sky ruins above a sea of storm clouds, broken marble temples and colonnades on drifting rock islands, golden domes, chain bridges, lightning crackling between towering cumulonimbus, the vast shadow of a gigantic bird's wing across the clouds, sunset light breaking through. Palette of storm grey-blue, marble white, gold, lightning cyan and sunset amber. Wide panoramic 2D side-scrolling action game background art, dark gothic horror fantasy, painterly digital illustration with rich detail, dramatic cinematic lighting, strong atmospheric depth and fog layers, no characters, no people, no text, no letters, no UI, no watermark. The lower quarter of the image is darker and simpler so a gameplay floor can overlay it. Full-bleed painting edge to edge, the scenery fills the entire canvas including all four corners and the bottom edge, no borders, no frame, no black bars, no letterbox, no interface, no HUD, no health bars, no buttons, no icons."
+  },
+  {
+   "asset": "s18_nightmare",
+   "attempt": 1,
+   "tool": "text_to_image",
+   "generationId": "AWLezy3Ox5SVqoJGq37NkfpFkEN0rcH3NlaDILy1NuCGY0ZaX9eGYYMzCt6_xKH0UWWYambe",
+   "status": "rejected",
+   "note": "reads as a platformer level layout with fake platforms, cut-off moon",
+   "prompt": "A surreal nightmare labyrinth of stitched fleshy walls, impossible staircases and doors floating in darkness, giant antique iron cradles and broken porcelain dolls, melting clocks, a huge pale moon with a sleeping face, threads hanging from the sky. Palette of bruised purple, sickly green, bone white and deep black with blood red highlights. Wide panoramic 2D side-scrolling action game background art, dark gothic horror fantasy, painterly digital illustration with rich detail, dramatic cinematic lighting, strong atmospheric depth and fog layers, no characters, no people, no text, no letters, no UI, no watermark. The lower quarter of the image is darker and simpler so a gameplay floor can overlay it. Full-bleed painting edge to edge, the scenery fills the entire canvas including all four corners and the bottom edge, no borders, no frame, no black bars, no letterbox, no interface, no HUD, no health bars, no buttons, no icons."
+  },
+  {
+   "asset": "s19_blight",
+   "attempt": 1,
+   "tool": "text_to_image",
+   "generationId": "AfTowgruBm0upOkmLQ9rh06GsUtJhx2EaCOgsMQx7KkalG0sFdET4yl4TB4gjRT1DiQYZUBs",
+   "status": "rejected",
+   "note": "black letterbox bars top and bottom, pixel-art style",
+   "prompt": "A dying primeval forest rotting from a fungal blight, colossal world-tree roots and trunks covered in pale glowing mushrooms, spores drifting like snow, sickly yellow-green mist, the skeleton of a gigantic beast overgrown with fungus in the distance, toxic swamp pools. Palette of sickly yellow-green, rot brown, bruised violet and fungus white. Wide panoramic 2D side-scrolling action game background art, dark gothic horror fantasy, painterly digital illustration with rich detail, dramatic cinematic lighting, strong atmospheric depth and fog layers, no characters, no people, no text, no letters, no UI, no watermark. The lower quarter of the image is darker and simpler so a gameplay floor can overlay it. Full-bleed painting edge to edge, the scenery fills the entire canvas including all four corners and the bottom edge, no borders, no frame, no black bars, no letterbox, no interface, no HUD, no health bars, no buttons, no icons."
+  },
+  {
+   "asset": "s20_void",
+   "attempt": 1,
+   "tool": "text_to_image",
+   "generationId": "AbO8pv-ErK4ElrvUOZ1OAuHV1tH-wS11jULJQGNg5EK3dcmx2GVnM77EQ43x-5zdysdBzqrF",
+   "status": "rejected",
+   "note": "ornamental crystal frame border, mostly empty, no world fragments or silhouette",
+   "prompt": "The primordial void before creation, an endless black abyss scattered with dying stars and nebulae, fragments of other worlds (mirror shards, molten chains, drowned spires, floating ruins, cradles, giant roots) drifting and dissolving into darkness, prismatic cracks of light, the faint colossal hooded silhouette made of stars in the far distance. Palette of absolute black, starlight white, prismatic iridescent edges and faint gold. Wide panoramic 2D side-scrolling action game background art, dark gothic horror fantasy, painterly digital illustration with rich detail, dramatic cinematic lighting, strong atmospheric depth and fog layers, no characters, no people, no text, no letters, no UI, no watermark. The lower quarter of the image is darker and simpler so a gameplay floor can overlay it. Full-bleed painting edge to edge, the scenery fills the entire canvas including all four corners and the bottom edge, no borders, no frame, no black bars, no letterbox, no interface, no HUD, no health bars, no buttons, no icons."
+  },
+  {
+   "asset": "worldmap2",
+   "attempt": 1,
+   "tool": "text_to_image",
+   "generationId": "AeJto-0uAaJTpggupDSOFgoqWvVbHqi0CPMnHiTn9DeUVXH4jdwTrBA7RgMlEP3TX1xp_Cdi",
+   "status": "rejected",
+   "note": "vignettes do not match spec mapPos layout, extra green forest vignette, torn parchment corners",
+   "prompt": "An ancient astral chart on dark indigo parchment: seven small otherworld vignettes (a mirror castle, a volcanic forge, a sunken cathedral, floating sky ruins, a nightmare labyrinth, a rotting forest, and a black void in the centre) arranged in a spiral around a glowing crack in reality, gold ink constellation lines connecting them, a small village gate at the bottom centre. Top-down fantasy map illustration, painterly, no text, no letters, no labels, no watermark. Purely pictorial, no writing or runes anywhere, no title banner, no legend, no frame border, the parchment fills the entire canvas edge to edge."
+  }
+ ]
+}

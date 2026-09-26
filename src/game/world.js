@@ -196,16 +196,19 @@ export class World {
     const free = (x, y) => { const t = m.typeAt(x, y); return !isSolidType(t) && t !== T.SPIKE && t !== T.LIQUID; };
     const floor = (x, y) => { const t = m.typeAt(x, y); return isSolidType(t) || t === T.ONEWAY; };
     const R = this.stickRect();
+    // 착지해 선 자세로 카메라를 맞춰 판정 (공중 자세보다 시야가 20px 낮다). 세로는 한 칸 여유를 두어 경계에 걸친 경우도 옮긴다
     const covered = () => {
+      p.onGround = true;
       cam.follow(p, 1 / 60, true);
       const z = cam.zoom, sx0 = (p.x - cam.x) * z, sy0 = (p.y - cam.y) * z, sy1 = (p.y + p.h - cam.y) * z;
-      return sy1 > R.y0 && sy0 < R.y1 && sx0 < R.x1 + (TILE / 2) * z;
+      return sy1 + TILE * z > R.y0 && sy0 < R.y1 && sx0 < R.x1 + (TILE / 2) * z;
     };
     for (let k = 1; k <= 6 && covered(); k++) {
       const x = start.tx + k;
       if (!(free(x, start.ty) && free(x, start.ty - 1) && floor(x, start.ty + 1))) break;
       place(x);
     }
+    p.onGround = false;
   }
 
   spawnPlaced(spec, x, y, key) {

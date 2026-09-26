@@ -25,6 +25,9 @@ const KEYMAP = {
   Tab: ['map'], KeyM: ['map'],
 };
 
+/** 글자를 입력할 수 있는 요소인가 (읽기 전용 칸은 제외 — 세이브 코드 내보내기처럼 키로 버튼을 조작) */
+const isTyping = (t) => !!t && (t.isContentEditable || (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) && !t.readOnly));
+
 // 표준 게임패드 매핑
 const PADMAP = [
   ['jump', 'confirm'], // 0 A
@@ -66,6 +69,7 @@ class Input {
   init(game) {
     this.game = game;
     window.addEventListener('keydown', (e) => {
+      if (isTyping(e.target)) return; // 계정 화면 등 실제 입력 칸에서 타이핑 중이면 게임 키로 쓰지 않음
       if (this.textCapture && e.key.length === 1) { this.textCapture(e.key); }
       const acts = KEYMAP[e.code];
       if (acts) {
