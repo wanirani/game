@@ -1,0 +1,225 @@
+{
+ "s01_village": {
+  "group": "bg",
+  "ar": "21:9",
+  "gid": "AcjL4KjiJI0iZxXWlgfRiQ_klshmVtXTIq3p-jZh5pQcWfuC_9E9d-i1N3B_AE8ZdFyMK4nm",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzQwOTVkMmZhLWE2ODYtNDhhYy05MmZmLWMzMzRiZmRlMGE4YS8tMzk5MTA2OTYzNjAyMzM4MjI2Ni90ZW1wOHZkMmsucG5n.origin?x-kcdn-pid=112372"
+ },
+ "s02_graveyard": {
+  "group": "bg",
+  "ar": "21:9",
+  "gid": "AT8K6ezbihOC3TeF_8CUgPFHBhmC_SX5TgfkZrtsMcBZjkJmgKjuIU7UNqmLqBvA173dptf9",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2YxYjhmYzhkLWU3YjMtNDNiMC1iMDYwLTAwMTJjYTdiNGU1NC8tNDMyOTk1Mjk2OTgyNjkzNTc5NC90ZW1wdWMwMnYucG5n.origin?x-kcdn-pid=112372"
+ },
+ "s03_gate": {
+  "group": "bg",
+  "ar": "21:9",
+  "gid": "AcFYzQi4qHqVdBrYfATqdJ9IaqNRgPF3086kNErExWph0NpgRmfo196GvmDIvlAHbz7BUtc_",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2U5MGQxNTcyLTdkMmEtNGZmYS04OWQwLTg3OWNmM2FkM2QwMi8tMzk2Mjg3NzIzNjM2MTQ0ODYzNi90ZW1wbHlpdXIucG5n.origin?x-kcdn-pid=112372"
+ },
+ "s04_hall": {
+  "group": "bg",
+  "ar": "21:9",
+  "gid": "AUKEY-8gA2kMPZFC-9vW7DanlPl9C7jkAfbgpVRQv7XhUL58hAz-6atCbZSqSF6P1BFbAzXM",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzAzOWI1NjE5LTcyYzEtNGI0ZC1iOTg1LTM2NzI3N2E4ZTQyYi80NzA2NDQ1NTYxNjU0OTkzNTM3L3RlbXB5dWgzbC5wbmc.origin?x-kcdn-pid=112372"
+ },
+ "s05_catacombs": {
+  "group": "bg",
+  "ar": "21:9",
+  "gid": "AYyCUX83GtqcJuN5vNP58oFsSm_ZQK623SSn8ws6ZjuDPwKF2CLMKSRW-K--Lr8JVxMXh5TS",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzUyYjkxOWY5LWJlZTUtNDZlYi1iYzlhLWJhZDQ4ODgwMmIxNS8yODYyODcxOTQyODg1OTM1ODI0L3RlbXAwZDFvdy5wbmc.origin?x-kcdn-pid=112372"
+ },
+ "s06_library": {
+  "group": "bg",
+  "ar": "21:9",
+  "gid": "AcBFjiyzQrAICpR92W2LBJH-GocceIM-uqqoozgT-gEN3kn6rITBVoKHrLiyeCjHck3RMjRA",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2IyNjBhYmJkLTk3N2EtNDI0ZC1hMTc0LWU1N2ZmMjZlYTE0MC83NzIxOTI4MDUyODQ4MzY0Mzc4L3RlbXBwbDExZy5wbmc.origin?x-kcdn-pid=112372"
+ },
+ "s07_alchemy": {
+  "group": "bg",
+  "ar": "21:9",
+  "gid": "AcA8rjmLVdutgeOll1eW8YbXsV-AqOmTxRbpMENVr04VybqdsrtjS4BOZmu58nHMwzHVnMmT",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2I2NjQzYWRkLTFmNzgtNDZiZi1hNTVhLTM0MDhhY2UzMzI2ZS81MDEzMjc2NTY2NTE4MjM1MjYwL3RlbXAybG5zYy5wbmc.origin?x-kcdn-pid=112372"
+ },
+ "s08_waterway": {
+  "group": "bg",
+  "ar": "21:9",
+  "gid": "ARofd1aWiJqpQCcF_SbDXJG0zEmkFbnRaj32FLDHRoj6cCrtRQu3-7BuNIZTsmXzq5UfsXnx",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzYyM2ViNTE5LWYzMTktNGE2OS05ZjEwLTEwNmJiN2NlNmQ0ZC83OTYxNjI5Nzg3NDA4ODI3NDAwL3RlbXAzNmtqaC5wbmc.origin?x-kcdn-pid=112372"
+ },
+ "kael": {
+  "group": "portrait",
+  "ar": "2:3",
+  "gid": "ASPhBtzSbix3bofk7WmU-tfQXEMhOHP3LILRy-IH8ZTiQ5pOgpwH_PyUv5CBNlJXV6JpEVy3",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2YzOTlhZGE3LTJjNTEtNGNmZS05ZjYzLWZmYWM0ZDFlNTRhMC8tNjIzMjk1MjkzOTk0Mjc2NTIxL3RlbXA0cmxyeS5wbmc.origin?x-kcdn-pid=112372",
+  "prompt": "Kael Valcrane, a handsome young male vampire hunter in his twenties, long dark brown hair tied back, determined amber eyes, dark leather long coat with crimson inner lining and silver buckles, holding a long leather chain whip, a silver cross pendant. Dark gothic fantasy character art, full body heroic standing pose, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with red moonlight glow, game character select art, no text, no letters, no watermark."
+ },
+ "sera": {
+  "group": "portrait",
+  "ar": "2:3",
+  "gid": "AdHD6XzCZzZ4wprWlcIrjE8qV6Hg7EaiTDvQz9NXlGyZI0EU2U8aIHyG17QaZ9rQj3jhW6X6",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzU3MmZjYWEyLTI1NWYtNDBmYy04YTg0LWE2YTYwMWUzZWNlZS8yMzI4MjU5Mzg3NTE5NDE1OTU2L3RlbXAyZjhscC5wbmc.origin?x-kcdn-pid=112372",
+  "prompt": "Seraphina, a beautiful young female exorcist battle nun, long silver-white hair, blue eyes, white and gold battle habit with a flowing short cape, holding a glowing holy tome and a golden rosary staff, holy light particles. Dark gothic fantasy character art, full body heroic standing pose, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with red moonlight glow, game character select art, no text, no letters, no watermark."
+ },
+ "victor": {
+  "group": "portrait",
+  "ar": "2:3",
+  "gid": "Aag3b3hFyewgw7XqIVVGf3jFG3TIGYQO7PKBoclqbMgz7oo-teTQ56Wj9AMSAzBJpE5HdVP_",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0Lzc5ZjQzNWZjLTc2Y2ItNDZmNy05YjU2LTQ5ZDAwNjhhNzExOS82MzkyOTcwMDY5OTYyNjQ5NjY1L3RlbXB2cGxpZS5wbmc.origin?x-kcdn-pid=112372",
+  "prompt": "Victor Grimm, a rugged male monster-hunting gunslinger in his thirties, wide-brimmed black hat, scarred face with stubble, long brown duster coat, bandolier of silver bullets, two ornate revolvers in his hands, gun smoke curling. Dark gothic fantasy character art, full body heroic standing pose, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with red moonlight glow, game character select art, no text, no letters, no watermark."
+ },
+ "bran": {
+  "group": "portrait",
+  "ar": "2:3",
+  "gid": "Ab_0C1f7B4Kmhe4iVGBuhOP3bdcWV67eZVl8E5dEU15ylI8e2Ey4cgldMX4MaSQ8G5se2ioo",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzliNzBiNGY4LTM4OTEtNDUxYS1iNGJiLTExOThkNmVlYmQzOC84ODQ5NjkzNDM3MDE5NTg1OTk4L3RlbXA0Zm53Yy5wbmc.origin?x-kcdn-pid=112372",
+  "prompt": "Bran Ironheart, a huge muscular male knight, short red beard, heavy battle-worn steel plate armor with a tattered blue tabard, wielding an enormous greatsword over his shoulder. Dark gothic fantasy character art, full body heroic standing pose, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with red moonlight glow, game character select art, no text, no letters, no watermark."
+ },
+ "lia": {
+  "group": "portrait",
+  "ar": "2:3",
+  "gid": "AfmoeuLRMBsEWdgCwapnUkgqhyOWxF3wU5ZGrcYkiiz-rldCYHfmXAQJvsXyfwOJo-qFsTe3",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzY0MWQ5NDYyLWRlMWMtNDNjMS05NjIzLWMzMjQyMzYwMzliNy8tODg3NDE4MjAzODU3MzY2NTE3OS90ZW1wb3JxdGwucG5n.origin?x-kcdn-pid=112372",
+  "prompt": "Lia Crow, an agile young female assassin, short black hair, a long crimson scarf flowing, dark ninja-style leather outfit with light armor plates, twin curved daggers, lower face mask, crouching ready pose. Dark gothic fantasy character art, full body heroic standing pose, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with red moonlight glow, game character select art, no text, no letters, no watermark."
+ },
+ "azel": {
+  "group": "portrait",
+  "ar": "2:3",
+  "gid": "ASQvLkTdvtqwxHBMmqniiC8OgKRX0aznoRa5W8i5IepmDrx2_36uM1PXWr1U-QC5NqS3u1NH",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0Lzc3ZTE1MmFlLWU1OTctNDI5My1iODhkLWJlYjkxMDBjNjkyMC8tOTY5MDU3OTkxMjI2Njk0OTY3L3RlbXBsejIwbi5wbmc.origin?x-kcdn-pid=112372",
+  "prompt": "Azel de Nocte, an elegant pale dhampir swordsman, long flowing platinum-silver hair, golden glowing eyes, black aristocratic coat with a high collar and a long black cape with crimson lining, holding a slender glowing longsword. Dark gothic fantasy character art, full body heroic standing pose, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with red moonlight glow, game character select art, no text, no letters, no watermark."
+ },
+ "npc_marta": {
+  "group": "portrait",
+  "ar": "3:4",
+  "gid": "AUYaEb4X9HIS7BcxL-SjI55d2dmnL0oDJ4nxpBaLSIQTZkhttIgCsoGq1VR0FBy6ou1NFb9A",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzUzYTk3ZGM4LTViN2EtNGZjZi1iMmI3LTc3NGVhMGQ0NjVkZi8tNjcxNDI1Nzk4ODU2NTk5MDcxOS90ZW1wcGpnczYucG5n.origin?x-kcdn-pid=112372",
+  "prompt": "Marta, a plump cheerful middle-aged innkeeper woman, rosy cheeks, braided auburn hair, apron, holding a tankard, a black cat on her shoulder. Dark gothic fantasy character portrait, upper body, painterly digital illustration, warm candle rim light, dark background, visual novel dialogue portrait, no text, no watermark."
+ },
+ "npc_rook": {
+  "group": "portrait",
+  "ar": "3:4",
+  "gid": "Aaw7MwwVsRg0N55yxo5PtKmxYADXHDEkTbe6LbLPKu-nwcShD58uiZ_DH76tt7TGrQLBe2tS",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzFmNGJmMDkzLTcyMTEtNDA1My1hODdhLTJjYjRhYThhM2YxMS8yNjgxNjUwNTEzOTMxNzg5NTMzL3RlbXA4bDNpei5wbmc.origin?x-kcdn-pid=112372",
+  "prompt": "Rook, a mysterious hooded traveling merchant, only glowing eyes and a sly grin visible under the hood, many pouches, trinkets and a lantern. Dark gothic fantasy character portrait, upper body, painterly digital illustration, warm candle rim light, dark background, visual novel dialogue portrait, no text, no watermark."
+ },
+ "npc_hadwin": {
+  "group": "portrait",
+  "ar": "3:4",
+  "gid": "Aa2robC_MI23fXUp23cg4QHTijm9iBkBUnaUJFYExbHZ69us7FwGAfewFF-qq622tC8_qa4f",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2RiMzE2MDcxLWFkNWUtNDQyNS1iODc4LTVjNTBiNDk1N2ZjNi80NTUzNDg4MTQzMzI4MTY2MjU1L3RlbXA5emFqcC5wbmc.origin?x-kcdn-pid=112372",
+  "prompt": "Hadwin, a burly bald blacksmith with a thick grey braided beard, soot-covered muscular arms, leather apron, holding a hammer, forge glow. Dark gothic fantasy character portrait, upper body, painterly digital illustration, warm candle rim light, dark background, visual novel dialogue portrait, no text, no watermark."
+ },
+ "npc_alberto": {
+  "group": "portrait",
+  "ar": "3:4",
+  "gid": "ATgdRhwthKqWCSk5TiKOBFTmVOFrTN5yFFciBRFEglUMEDl7_7xwqQS3FiIj7wC6vZgjpqIj",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2Q2NzFlZmVlLWQ2NjUtNGI0MC04Nzg4LTJkMDFjNmY5ZTlmYS80Njg1ODgxNjExNjY5MDUzNzIzL3RlbXA0NDg1dy5wbmc.origin?x-kcdn-pid=112372",
+  "prompt": "Father Alberto, an old wise priest with a white beard, round spectacles, black cassock, holding an old book and a lantern. Dark gothic fantasy character portrait, upper body, painterly digital illustration, warm candle rim light, dark background, visual novel dialogue portrait, no text, no watermark."
+ },
+ "npc_elise": {
+  "group": "portrait",
+  "ar": "3:4",
+  "gid": "Aa7FbDj50mpOhRPbh1LcWFy4bxgxJBogVziF4nspGU3K0gVf8YvWP150g0Yz-GO8nb94Q46k",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzRlYjc1ZDJhLTFiNTgtNDA1Mi1iNjZkLTNmZTg2ZTRhMjE4MC8tNDYzNjI1NzQ3MTcyMDgwMjgxNi90ZW1wMnJkaDMucG5n.origin?x-kcdn-pid=112372",
+  "prompt": "Elise, a brave village girl of about twelve with blonde braids, simple peasant dress, holding a small lantern, frightened but hopeful expression. Dark gothic fantasy character portrait, upper body, painterly digital illustration, warm candle rim light, dark background, visual novel dialogue portrait, no text, no watermark."
+ },
+ "npc_carmilla": {
+  "group": "portrait",
+  "ar": "3:4",
+  "gid": "AZ1rKuggk3MJSWt9smw1hN2yZBBqLNBLWFk3UqYZmLSlPHWx0n6ya91fB9KZTujEoicIRNgt",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2JhZTcwMDY5LTA5NmItNGY2Ny04YjUzLWQzYzhlMjRhYWY4Ni8tODI5NDg1NDY0ODgyNDk3ODEwNy90ZW1wbDl0cjEucG5n.origin?x-kcdn-pid=112372",
+  "prompt": "Carmilla, a mysterious beautiful vampire noblewoman, pale skin, long black hair, crimson eyes, elegant black and red gothic gown, holding a wine glass, enigmatic smile. Dark gothic fantasy character portrait, upper body, painterly digital illustration, warm candle rim light, dark background, visual novel dialogue portrait, no text, no watermark."
+ },
+ "tex_castle_stone": {
+  "group": "tex",
+  "ar": "1:1",
+  "gid": "ATPFlMSxa4YhiW_bQajddQGCp3umG4J6j1Cxy0aQ8IT_hEQr7Mja7M9A6dqP_c1qjRlNrzI7",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzBmOGQwYWRjLTY3ZDItNDc5NS05OGU3LTczMjEyNmRhYmM2OC8tMTg3NzI2Njg5NDU2MTg1NDYyNC90ZW1wOHQxamUucG5n.origin?x-kcdn-pid=112372",
+  "prompt": "large grey gothic castle stone blocks masonry with dark mortar lines Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture."
+ },
+ "tex_mossy_stone": {
+  "group": "tex",
+  "ar": "1:1",
+  "gid": "ARpXgSsZmonHjzVrX2p43AmSYPbkzFmExuUhrjB7vPXcPGnxLQl9UBptjQyDnVROMVO8BSPq",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2ZjM2M2MmJlLTVjZDYtNDAyNy1iNDE0LTk5N2Q4YzZlOWM4MS8tNTQwNTU3MzE2ODc1NTAyMDAyOC90ZW1wMzdydDgucG5n.origin?x-kcdn-pid=112372",
+  "prompt": "old cracked stone slabs covered with patches of green moss and lichen Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture."
+ },
+ "tex_wood": {
+  "group": "tex",
+  "ar": "1:1",
+  "gid": "AdfFCYwjRltS2jiZ9p4seb5H8iuwwECW_ClpqlN5tnP7CznQAYiwnDUUUqT8JnVisexPGbe9",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0Lzk1NTMxMjZkLTMyNzMtNDQ3ZS05ZWQyLWU5NmFkODc3NjZlNi83MzUwNzA1NzA0ODA2MDc0Mjc4L3RlbXAxanBkdC5wbmc.origin?x-kcdn-pid=112372",
+  "prompt": "dark weathered wooden planks with iron nails, horizontal boards Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture."
+ },
+ "tex_marble": {
+  "group": "tex",
+  "ar": "1:1",
+  "gid": "ARP8CwSbrN1SFtcKcnvtFMpcGQaPokwq848cIPj43svz-NYue3xmzZJ81621iuERpxBvTXdI",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2FjZmYwNWQ3LWUxN2ItNDRjMi04ZjczLTA3MGRlNGE0YWNiZC82NDQ2MjQxOTIwNzYzNTE2MDIzL3RlbXBsNWJrNi5wbmc.origin?x-kcdn-pid=112372",
+  "prompt": "dark polished marble floor tiles with thin gold veins Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture."
+ },
+ "tex_bone": {
+  "group": "tex",
+  "ar": "1:1",
+  "gid": "ARNs843rhnbJmXyHjeeXSkZidToc_YQKLlqNGwBbmlMWmSes7ItoaSLO2fEraqvFq9EWEIFY",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2VhNTVlMDcxLTA4OTYtNGViNS05MDg1LWVkMjI2NTNjMTViNC8tNTg3MjE3MDEwOTg1Njg1NjUxMy90ZW1wZ3JqaXgucG5n.origin?x-kcdn-pid=112372",
+  "prompt": "wall of stacked skulls and bones tightly packed, ossuary Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture."
+ },
+ "tex_library": {
+  "group": "tex",
+  "ar": "1:1",
+  "gid": "ARDhZit24BvJzaf335zbrlTEs66aDVOEr0G7CiDvTlJsWp9Wb7IQg3za8yaO9DLD_i3dBTJw",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzAxZmQ4NTBkLWM3MTAtNGQ5Ny1iZjM5LWNmNjU0MGZmMzgwYy8tNzkxOTU0NzMwMjM5NTM2OTQyMi90ZW1wejR1bDQucG5n.origin?x-kcdn-pid=112372",
+  "prompt": "dark carved wooden paneling with gothic ornaments Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture."
+ },
+ "tex_lab": {
+  "group": "tex",
+  "ar": "1:1",
+  "gid": "ATEFwG9PDQtQSt4T4QBAl8GR4kxm_ORd8Dy4RO0DmetdcBnmDssGISpyWzFN943s4OTzLhgl",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzFkYmNhZTZmLTJjZTctNDg5MC05OTJhLTRmMjlkOWZhNmFkYy8tMTU3MTEzNzA2NjQxNjEzMzIwOC90ZW1wZG4zc3kucG5n.origin?x-kcdn-pid=112372",
+  "prompt": "greenish stained stone tiles with copper inlays and faint alchemical symbols Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture."
+ },
+ "tex_wet_stone": {
+  "group": "tex",
+  "ar": "1:1",
+  "gid": "AQ6lAJT8mhAVOdf-bpdEvKmJYHMu_muWz8lSVr3NcY1vXQFqCALT9ew6QcKjBsm1HR2BN5i6",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzI5ZGIzMmI4LWY3ZjgtNDNkNy05ZWEyLThjNzYzOWUzMTg4NS8tMjkyOTg2NTg5MzIxMDUwMDQ3MS90ZW1wejNydTAucG5n.origin?x-kcdn-pid=112372",
+  "prompt": "wet dark blue slimy stone bricks with water stains Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture."
+ },
+ "tex_brass": {
+  "group": "tex",
+  "ar": "1:1",
+  "gid": "AdiyGgroM3uGBmLNtji4sQQxkOO5eJSg3Rl3ZxDA2ASTi6w5uC__JMlB98spVzX8G9FKOfY6",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzhkZDAyNzU0LWM5ZjMtNGE2NS1iNmM5LTdjZTVlOGI3OTg3MS8tNDAwNDI0MzM4NTc1OTI4MDQ2MS90ZW1wdjE2MGoucG5n.origin?x-kcdn-pid=112372",
+  "prompt": "brass metal plates with rivets and engraved gear patterns Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture."
+ },
+ "tex_ice": {
+  "group": "tex",
+  "ar": "1:1",
+  "gid": "ASJPTNTmdTm4HspbXcHPsBQSPs-3qnARziDcUVRX-qgXzvhIBAetLCW2tmeT5H48hzrHS6yh",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzRmYjE2MTA1LTUwYjYtNGRjNy1hZDA2LWQ3ZmRkOTFlMGE3YS8tOTEwODY4NjYwMDI2MTM4NDQwMi90ZW1wdnY3dXEucG5n.origin?x-kcdn-pid=112372",
+  "prompt": "ice-covered frozen stone blocks with frost crystals Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture."
+ },
+ "tex_blood_marble": {
+  "group": "tex",
+  "ar": "1:1",
+  "gid": "AbMTZ__1Rmxa9DSom7C99aVEgb6HOfUDjnRjr22mYYebj8ahyes9IZBpu2Gr-mwZ42yO3Y6z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2NjOTIyYTAxLWQ0NjAtNGZkYy05YzRhLTQxNGYzYzA4Y2FjYS83MzE0ODQyMDUzNzA5MjU2MTI1L3RlbXByMHVtYy5wbmc.origin?x-kcdn-pid=112372",
+  "prompt": "black marble with crimson red veins and gothic carvings Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture."
+ },
+ "tex_abyss": {
+  "group": "tex",
+  "ar": "1:1",
+  "gid": "AeAE3d_qKZXpDJPxZb84z69Oghz2xGUK_6pTpExV2B2UA3hOg5HPRYEXTYA83f3qHo-YCCeu",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2I1ZmQ5MGZkLTBlNjctNDM4OS1iNDdiLTBmNDRjY2NmZGRkMC8tNDYwNjc2MzUzNDUzNjIzNTM1MS90ZW1wdXVvN2MucG5n.origin?x-kcdn-pid=112372",
+  "prompt": "hellish obsidian rock with glowing purple and orange cracks Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture."
+ },
+ "tex_dirt": {
+  "group": "tex",
+  "ar": "1:1",
+  "gid": "AdO_cArX_lwcRfJsVmE9WogQjd4mf1YGhXixty63aOlOFdLxU8fmd5Vzf0x0vQr4eZKJHTV2",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2ZjNGFlM2Y0LWRhNDEtNGFhNi1hYmJlLWFjYjgyMzQyZjBlMy8tMjIzNjIzMDA5NTQ1Nzk3MjA3Ni90ZW1weDFoYjIucG5n.origin?x-kcdn-pid=112372",
+  "prompt": "dark earth soil ground with small stones and roots Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture."
+ }
+}
