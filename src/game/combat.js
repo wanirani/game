@@ -130,10 +130,18 @@ export function playerStrike(world, rect, attack) {
   let n = 0;
   for (const e of world.hittables()) {
     if (e.dead || e === attack.owner) continue;
-    // 여러 피격 판정(보스 머리·몸통 등)을 모두 검사
-    const boxes = e.hurtboxes ? e.hurtboxes() : [e.hurtbox ? e.hurtbox() : e];
-    const hb = boxes.find((b) => b && overlap(rect, b));
+    // 피격 판정: BossB 계열은 hitParts()(부위별 방어 배율·약점), 그 외는 hurtboxes()(여러 몸통) 또는 hurtbox()
+    let boxes;
+    if (e.hitParts) { if (e.invuln) continue; boxes = e.hitParts() || []; }
+    else boxes = e.hurtboxes ? e.hurtboxes() : [e.hurtbox ? e.hurtbox() : e];
+    const hb = boxes.find((b) => b && !b.off && overlap(rect, b));
     if (!hb) continue;
+    if (e.hitParts) {
+      // 맞은 부위 기록 → takeHit 에서 부위 효과(약점 파괴·갑옷 반응) 적용, 부위 방어 배율 반영
+      e.hitPart = hb;
+      const m = hb.defMul ?? 1;
+      if (e.baseDef !== undefined) { e.stats.def = Math.round(e.baseDef * m + (hb.defAdd ?? 0)); e.stats.res = Math.round((e.baseRes ?? e.baseDef) * m + (hb.defAdd ?? 0)); }
+    }
     const hx = clamp(attack.dir > 0 ? rect.x + rect.w * 0.7 : rect.x + rect.w * 0.3, hb.x, hb.x + hb.w);
     const hy = clamp(rect.y + rect.h / 2, hb.y + 4, hb.y + hb.h - 4);
     if (hitTarget(world, attack, e, hx, hy)) n++;
