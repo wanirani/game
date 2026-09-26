@@ -25,6 +25,8 @@ const FAR_DARK = 0.42;
 let H = null;                      // 호스트(hero.js) 함수·상태 묶음 — bindHost 로 주입 (순환 import 방지)
 /** hero.js 가 모듈 초기화 때 한 번 호출: { SK, ST, SW, chain, tx(P,x,y,out), applyT1, drawWings, drawScarfTail, CC:{CAPE,BAND,BAND2} } */
 export function bindHost(h) { H = h; }
+/** QA 도구(tools/puppet/review.html) 전용: 마지막으로 푼 골격(SK)과 좌표 변환 */
+export function _debugHost() { return H; }
 let ENABLED = true;
 /** 전역 끄기 (디버그·비교용). false 면 모든 영웅이 벡터 렌더러로 그려진다 */
 export function setPuppetEnabled(v) { ENABLED = !!v; }

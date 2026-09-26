@@ -50,10 +50,11 @@ for (const s of plan) {
   const r = await page.evaluate((s) => window.__api.render(s), s);
   const name = String(i).padStart(3, '0') + '_' + (s.label || 'cell').replace(/[^a-z0-9._-]+/gi, '_');
   if (r.url) fs.writeFileSync(path.join(outDir, name + '.png'), Buffer.from(r.url.split(',')[1], 'base64'));
-  report.push({ i, name, label: s.label, spec: s, an: r.an, ms: +r.ms.toFixed(3), fy: r.fy, fx: r.fx, sc: r.sc, pose: r.pose });
+  report.push({ i, name, label: s.label, spec: s, an: r.an, joints: r.joints, ms: +r.ms.toFixed(3), fy: r.fy, fx: r.fx, sc: r.sc, pose: r.pose });
   i++;
 }
 fs.writeFileSync(path.join(outDir, 'report.json'), JSON.stringify(report, null, 1));
-const flagged = report.filter((r) => r.an && (r.an.holes.some((h) => h.n >= (Number(opt('minhole', 6)))) || r.an.seam > Number(opt('minseam', 400))));
-console.log(JSON.stringify({ cells: report.length, flagged: flagged.length, errs, top: flagged.slice(0, 40).map((r) => `${r.label}: holes ${r.an.holes.filter((h) => h.n >= 6).map((h) => `${h.n}@${h.x},${h.y}`).join(' ')} seam ${r.an.seam}`) }, null, 1));
+// 관절 틈: 관절점·뼈 중간점 둘레 최소 알파 < 150
+const jgap = report.filter((r) => r.joints && Object.values(r.joints).some((j) => j[2] < 150));
+console.log(JSON.stringify({ cells: report.length, jointGaps: jgap.length, errs, top: jgap.slice(0, 60).map((r) => `${r.label}: ${Object.entries(r.joints).filter(([, j]) => j[2] < 150).map(([k, j]) => `${k}=${j[2]}@${j[0]},${j[1]}`).join(' ')}`) }, null, 1));
 await browser.close(); srv.close();

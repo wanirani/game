@@ -37,12 +37,16 @@ function shovelGeo(sp, td) {
 const _q = [0, 0];
 const HUNCH = 0.32;                   // lean already painted into the torso
 
+const Q0 = {}, TR = [0, 0, 0];
+const VARS = [['base', 'deep'], ['dmg1', 'deep_dmg1'], ['dmg2', 'deep_dmg2']];   // [near, far] part variant per damage level
+let LAN = null;                       // lantern placement of the current layout
 /** pose — same numbers as the vector drawHumanoid(pose:'shovel') so the painted swing matches the AI hit frame */
 function pose(e) {
   const t = e.t ?? 0, at = e.animT ?? 0, anim = e.anim, P = e.params || {};
   const hurt = hurtOf(e), walking = anim === 'walk';
   const ph = t * 5, sw = walking ? Math.sin(ph) : 0, cw = walking ? Math.cos(ph) : 0, br = Math.sin(t * 2.1);
-  const q = { walking, hurt, tele: 0, trail: null, stepX: 0, strike: 0, scoop: 0, slamK: -1 };
+  const q = Q0;                                  // reused (no per-frame allocation)
+  q.walking = walking; q.hurt = hurt; q.tele = 0; q.trail = null; q.stepX = 0; q.strike = 0; q.scoop = 0; q.slamK = -1;
   q.bob = walking ? -Math.abs(cw) * 2.4 : br * 0.9;
   q.lean = HUNCH + (walking ? 0.05 : 0) + br * 0.015;
   q.hipF = walking ? sw * 0.45 : 0.14; q.hipB = walking ? -sw * 0.45 : -0.1;
@@ -58,7 +62,7 @@ function pose(e) {
       q.wA = ap.s <= 0 ? lerp(2.3, 3.9, kw) : lerp(3.9, 1.35, ks);
       q.slamK = ap.s > 0 ? ks : -1;          // swing progress: layout() ends the swing with the blade on the ground
       q.lean = ap.s <= 0 ? lerp(0.25, -0.15, kw) : lerp(-0.15, 0.55, ks);
-      if (ap.s > 0) q.trail = [3.9, q.wA, clamp(1 - ap.after / 0.3, 0, 1)];
+      if (ap.s > 0) { q.trail = TR; TR[0] = 3.9; TR[1] = q.wA; TR[2] = clamp(1 - ap.after / 0.3, 0, 1); }
       q.stepX = ap.s * 6; q.strike = ap.s > 0 ? clamp(1 - ap.after / 0.35, 0, 1) : 0;
       q.hipF = lerp(q.hipF, 0.5, kw); q.knF = lerp(q.knF, -0.5, kw);
     } else {
@@ -66,7 +70,7 @@ function pose(e) {
       q.wA = ap.s <= 0 ? lerp(2.3, 0.4, kw) : lerp(0.4, 3.0, ks);
       q.lean = ap.s <= 0 ? lerp(0.25, 0.5, kw) : lerp(0.5, -0.1, ks);
       q.bob += ap.s <= 0 ? 6 * kw : 6 * (1 - ks);
-      if (ap.s > 0) q.trail = [0.4, q.wA, clamp(1 - ap.after / 0.25, 0, 1) * 0.7];
+      if (ap.s > 0) { q.trail = TR; TR[0] = 0.4; TR[1] = q.wA; TR[2] = clamp(1 - ap.after / 0.25, 0, 1) * 0.7; }
       q.scoop = ap.s > 0 ? clamp(1 - ap.after / 0.3, 0, 1) : 0;
       q.knF = lerp(q.knF, -0.7, kw); q.knB = lerp(q.knB, -0.5, kw);
     }
@@ -78,10 +82,10 @@ function pose(e) {
 }
 
 function layout(e, q, dl, rig) {
-  NP = 0;
+  NP = 0; LAN = null;
   const hipY = -45 + q.bob, x0 = q.stepX;
   const tr = q.lean - HUNCH;
-  const V = (base) => (dl ? `${base === 'deep' ? 'deep_' : ''}dmg${dl}` : base);
+  const VN = VARS[dl], V = (base) => (base === 'deep' ? VN[1] : VN[0]);
   K.pivotPos('torso', 'a', 'neck', x0, hipY, tr, 1, 1, _q); const nx = _q[0], ny = _q[1];
   K.pivotPos('torso', 'a', 'shN', x0, hipY, tr, 1, 1, _q); const snx = _q[0], sny = _q[1];
   K.pivotPos('torso', 'a', 'shF', x0, hipY, tr, 1, 1, _q); const sfx = _q[0], sfy = _q[1];
@@ -112,7 +116,7 @@ function layout(e, q, dl, rig) {
   const bp = K.part('boot');
   place('boot', kbx, kby, dirOf(q.hipB + q.knB) - bp.ang, 'deep');
   // coat tails: strip-warped cloth from the belt line
-  place('tails', x0 - 1, hipY - 1, tr * 0.4, dl ? `dmg${dl}` : 'base', 1.05, 1, 'a', 1);
+  place('tails', x0 - 1, hipY - 1, tr * 0.4, VN[0], 1.05, 1, 'a', 1);
   // torso + hump
   place('torso', x0, hipY, tr, V('base'));
   // near leg
@@ -120,7 +124,7 @@ function layout(e, q, dl, rig) {
   place('boot', kfx, kfy, dirOf(q.hipF + q.knF) - bp.ang, 'base');
   // head
   const hr = q.head + (q.lean - HUNCH) * 0.3;
-  place('head', nx, ny, hr, dl ? `dmg${dl}` : 'base');
+  place('head', nx, ny, hr, VN[0]);
   // shovel (handle in the far hand)
   place('shovel', bhx, bhy, sd - sp.ang, 'base', 1, 1, G.grip);
   // lantern on the belt: spring pendulum
@@ -128,12 +132,12 @@ function layout(e, q, dl, rig) {
   const now = e.t ?? 0, dt = clamp(now - L.t, 0, 0.05); L.t = now;
   const target = -(e.vx ?? 0) * 0.002 * (e.facing < 0 ? -1 : 1) - (q.lean - HUNCH) * 0.8;
   L.v += ((target - L.a) * 40 - L.v * 3) * dt; L.a += L.v * dt;
-  place('lantern', blx + 2, bly - 1, L.a, 'base', 1, 1, 'a', 2);
+  LAN = place('lantern', blx + 2, bly - 1, L.a, 'base', 1, 1, 'a', 2);
   // near arm: IK onto the upper handle
   const ik = ik2(snx, sny, g2x, g2y, UA, FA, -1);
   const nex = snx + Math.cos(ik[0]) * UA, ney = sny + Math.sin(ik[0]) * UA;
   limbB('uarm', snx, sny, ik[0], UA, V('base'), 1.35);
-  limbB('farm', nex, ney, ik[1], FA, dl ? `dmg${dl}` : 'base', 1);
+  limbB('farm', nex, ney, ik[1], FA, VN[0], 1);
   place('hand', g2x, g2y, ik[1] - HP, 'base', 1, 1, 'grip');
   return { sfx, sfy, nx, ny, hr, blx, bly, reach: G.reach, tipx: bhx + Math.cos(sd) * G.reach, tipy: bhy + Math.sin(sd) * G.reach };
 }
@@ -144,15 +148,18 @@ function limbB(name, x, y, dir, L, vn, st) {
   place(name, x + Math.cos(dir) * L, y + Math.sin(dir) * L, dir - p.ang, vn, 1, st, 'b');
 }
 
+let TW = false, TT = 0;
+/** coat-tail strip offsets (texels): pushed back the lower they hang, flutter while walking, slow sway at rest */
+function tailsOff(u) {
+  _q[0] = -(u * u) * (TW ? 14 : 4) - Math.sin(TT * (TW ? 10 : 2) - u * 3.5) * u * 6 * (TW ? 1 : 0.3); _q[1] = 0; return _q;
+}
 function drawAll(e, q) {
   const t = e.t ?? 0;
   for (let i = 0; i < NP; i++) {
     const p = PL[i];
     if (p.kind === 1) {
-      const w = q.walking ? 1 : 0.3;
-      K.strips(p.name, p.pv, p.x, p.y, p.rot, p.sx, p.sy, K.nStrips(5), 'y', (u) => {
-        _q[0] = -(u * u) * (q.walking ? 14 : 4) - Math.sin(t * (q.walking ? 10 : 2) - u * 3.5) * u * 6 * w; _q[1] = 0; return _q;
-      }, 1, p.vn);
+      TW = q.walking; TT = t;
+      K.strips(p.name, p.pv, p.x, p.y, p.rot, p.sx, p.sy, K.nStrips(5), 'y', tailsOff, 1, p.vn);
     } else K.put(p.name, p.pv, p.x, p.y, p.rot, p.sx, p.sy, 1, p.vn);
   }
 }
@@ -167,7 +174,7 @@ function die(e, world, rig) {
     // collapses forward: the big body pitches over, head/hat/shovel/lantern fly
     pieces.push({ ...p, vx: (heavy ? 50 : 30) + K.frand(-70, 90), vy: -K.frand(60, 240) * (heavy ? 0.4 : 1), vr: (heavy ? 1.6 : K.frand(-8, 8)) });
   }
-  const lx = PL.find((p) => p.name === 'lantern');
+  const lx = LAN ? { x: LAN.x, y: LAN.y } : null;
   K.spawnCorpse(world, e, rig, pieces, {
     life: 1.8, fade: 0.6, bounce: 0.18,
     dust: { n: 12, w: 26, h: 20, col: '#5a4a3a' },
@@ -194,7 +201,7 @@ export function draw(ctx, e, world, o, rig) {
     // amber eyes under the brim (flare on wind-ups), lantern light with render-RNG flicker
     K.pivotPos('head', 'a', 'eye', L.nx, L.ny, L.hr, 1, 1, _q);
     K.glow(_q[0], _q[1], 3.2 + 3 * q.tele, '#ffb040', 0.7 + 0.3 * q.tele);
-    const lan = PL.find((p) => p.name === 'lantern');
+    const lan = LAN;
     if (lan) {
       K.pivotPos('lantern', 'a', 'glow', lan.x, lan.y, lan.rot, 1, 1, _q);
       const fl = 0.85 + 0.15 * Math.sin(t * 13) + (dl === 2 ? (K.fr() - 0.5) * 0.35 : 0);

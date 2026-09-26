@@ -16,6 +16,7 @@ import { drawHero, setPuppetEnabled, puppetStatus, preloadPuppet, HERO_DRAW_SCAL
 import { CHARACTERS } from './src/data/characters.js';
 import { CLASSES, classChain } from './src/data/classes.js';
 import { MOVESETS } from './src/data/movesets.js';
+import { _debugHost } from './src/render/hero_puppet.js';
 
 function lookOf(charId, classId, w = {}, equip = {}) {
   const ch = CHARACTERS[charId];
@@ -143,10 +144,35 @@ async function render(s) {
   const ms = performance.now() - t0;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   const an = (!s.bg || s.bg === 'none') ? analyse(W, H) : null;
+  // 관절 검사: 관절점·뼈 중간점 둘레(반지름 1.4 논리px)의 최소 알파 — 이음매 틈이면 낮다
+  let joints = null;
+  if (an && e.rig.P && !s.yaw) {
+    const Hh = _debugHost(), SK = Hh.SK, P = e.rig.P, O = [0, 0], fac = e.facing < 0 ? -1 : 1, hs = s.scale ?? 1;
+    const pts = { neck: [SK.nx, SK.ny], sh1: [SK.s1x, SK.s1y], el1: [SK.e1x, SK.e1y], el2: [SK.e2x, SK.e2y], hip1: [SK.hp1x, SK.hp1y], hip2: [SK.hp2x, SK.hp2y],
+      kn1: [SK.k1x, SK.k1y], kn2: [SK.k2x, SK.k2y], an1: [SK.a1x, SK.a1y], an2: [SK.a2x, SK.a2y],
+      ua1: [(SK.s1x + SK.e1x) / 2, (SK.s1y + SK.e1y) / 2], fa1: [(SK.e1x + SK.h1x) / 2, (SK.e1y + SK.h1y) / 2], ua2: [(SK.s2x + SK.e2x) / 2, (SK.s2y + SK.e2y) / 2], fa2: [(SK.e2x + SK.h2x) / 2, (SK.e2y + SK.h2y) / 2],
+      th1: [(SK.hp1x + SK.k1x) / 2, (SK.hp1y + SK.k1y) / 2], sn1: [(SK.k1x + SK.a1x) / 2, (SK.k1y + SK.a1y) / 2], th2: [(SK.hp2x + SK.k2x) / 2, (SK.hp2y + SK.k2y) / 2], sn2: [(SK.k2x + SK.a2x) / 2, (SK.k2y + SK.a2y) / 2],
+      belly: [(SK.px * 2 + SK.nx) / 3, (SK.py * 2 + SK.ny) / 3], chest: [(SK.px + SK.nx * 2) / 3, (SK.py + SK.ny * 2) / 3] };
+    const d = ctx.getImageData(0, 0, W, H).data;
+    joints = {};
+    const r = Math.max(2, Math.round(1.4 * sc * hs));
+    for (const [k, [x, y]] of Object.entries(pts)) {
+      Hh.tx(P, x, y, O);
+      const cx = Math.round(fx + fac * hs * sc * O[0]), cy = Math.round(fy + hs * sc * O[1]);
+      let mn = 255;
+      for (let yy = -r; yy <= r; yy++) for (let xx = -r; xx <= r; xx++) {
+        if (xx * xx + yy * yy > r * r) continue;
+        const X = cx + xx, Y = cy + yy;
+        if (X < 0 || Y < 0 || X >= W || Y >= H) continue;
+        const a = d[(Y * W + X) * 4 + 3]; if (a < mn) mn = a;
+      }
+      joints[k] = [cx, cy, mn];
+    }
+  }
   if (s.label) { ctx.fillStyle = '#fff'; ctx.font = '13px sans-serif'; ctx.fillText(s.label, 6, 16); }
   const url = s.noPng ? null : cv.toDataURL('image/png');
   const P = e.rig.P;
-  return { url, an, ms, anim: e.anim, moveT: e.moveT, fy, fx, sc, pose: P ? { py: P.py, rot: P.rot, lean: P.lean } : null };
+  return { url, an, joints, ms, anim: e.anim, moveT: e.moveT, fy, fx, sc, pose: P ? { py: P.py, rot: P.rot, lean: P.lean } : null };
 }
 window.__api = { render, lookOf, moveOf, MOVESETS, CLASSES, CHARACTERS, HERO_DRAW_SCALE, preloadPuppet, puppetStatus };
 window.__ready = true;
