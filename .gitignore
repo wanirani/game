@@ -7,3 +7,5 @@ tools/.qa_*/
 tools/.proto_*/
 dist/
 tools/android/*.keystore
+tools/android/keystore.properties
+tools/android/*.jks

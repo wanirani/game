@@ -1,12 +1,22 @@
-// UI 그리기 도우미: 고딕풍 패널, 테두리, 외곽선 텍스트, 버튼(터치/클릭), 목록 메뉴, 게이지, 줄바꿈
+// UI 그리기 도우미: 고딕풍 패널, 테두리, 외곽선 텍스트, 피 글씨(bloodText), 버튼(터치/클릭), 목록 메뉴, 게이지, 줄바꿈
 import { input } from './input.js';
 import { clamp, rgba } from './math.js';
 
+/**
+ * 글꼴 묶음. 모든 글꼴은 assets/fonts/ 에 woff2 로 들어 있다 (오프라인·APK 대응, css/style.css 의 @font-face).
+ * 한글 글꼴은 게임에 쓰인 글자 + KS X 1001 한글 2350자로 서브셋 (tools/fonts/build_fonts.py 로 다시 만든다).
+ *  - blood : 큰 제목·보스 이름·STAGE CLEAR 같은 피 글씨 (라틴: Grenze Gotisch 블랙레터 / 한글: Hahmlet 블랙)
+ *  - logo  : 영문 장식 제목 (블랙레터, 굵게 900)
+ *  - title : 고딕 세리프 소제목·이름 (Hahmlet, 700~900)
+ *  - body  : 작은 글씨·대화·설명 (Noto Sans KR, 가독성 우선)
+ *  - num   : 숫자·점수·데미지 (Cinzel, 한글은 본문 글꼴로)
+ */
 export const FONT = {
   body: '"Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif',
-  title: '"Nanum Myeongjo", "Noto Serif KR", serif',
-  logo: '"Cinzel Decorative", "Cinzel", "Nanum Myeongjo", serif',
-  num: '"Cinzel", "Noto Sans KR", serif',
+  title: '"Hahmlet", "Nanum Myeongjo", "Noto Serif KR", serif',
+  logo: '"Grenze Gotisch", "Hahmlet", "Cinzel", serif',
+  blood: '"Grenze Gotisch", "Hahmlet", serif',
+  num: '"Cinzel", "Noto Sans KR", sans-serif',
 };
 
 export const COLORS = {
@@ -212,3 +222,318 @@ export function cornerButton(ctx, x, y, label) {
 export function hint(ctx, w, h, keysText, touchText) {
   text(ctx, input.touchMode ? (touchText ?? keysText) : keysText, w / 2, h - 12, { size: 13, align: 'center', color: COLORS.dim, ow: 2 });
 }
+
+// ───────────────────────── 글꼴 로딩 ─────────────────────────
+/** 첫 화면 전에 받아 둘 글꼴 (굵기별). css/style.css 의 @font-face 와 짝을 이룬다 */
+export const FONT_FACES = [
+  '400 16px "Noto Sans KR"', '700 16px "Noto Sans KR"', '900 16px "Noto Sans KR"',
+  '800 16px "Hahmlet"', '900 16px "Hahmlet"',
+  '900 16px "Grenze Gotisch"', '900 16px "Cinzel"', '900 16px "Cinzel Decorative"',
+];
+/**
+ * 글꼴을 불러오고 최대 timeout(ms)까지만 기다린다. 실패·시간초과여도 게임은 시스템 글꼴로 계속된다.
+ * 반환: 모두 불러왔으면 true
+ */
+export function loadFonts(timeout = 1800) {
+  const fs = typeof document !== 'undefined' ? document.fonts : null;
+  if (!fs?.load) return Promise.resolve(false);
+  const sample = '블러드 녹턴 BLOOD 0123';
+  const all = Promise.all(FONT_FACES.map((f) => fs.load(f, sample).then((r) => r.length > 0, () => false)))
+    .then((r) => r.every(Boolean));
+  return Promise.race([all, new Promise((r) => setTimeout(() => r(false), timeout))]);
+}
+/** 부팅 때 한 번 시작한 글꼴 로딩 (index.html 의 preload 로 이미 받는 중인 파일을 기다린다). 페이지 시작 후 약 2초가 넘으면 기다리지 않는다 */
+export const fontsReady = loadFonts(typeof performance !== 'undefined' ? clamp(2100 - performance.now(), 300, 1800) : 0);
+// 캔버스는 첫 그림 전에 글꼴이 있어야 제목 캐시 등이 시스템 글꼴로 굳지 않는다 → 이 모듈을 쓰는 모든 장면이 최대 약 1.8초 기다린다
+await fontsReady;
+
+// ───────────────────────── 피 글씨 ─────────────────────────
+/**
+ * 피 글씨 스타일. grad: 위→아래 채움, edge: 바깥 테두리, inner: 안쪽 어두운 테, hi: 젖은 윗면 광택,
+ * glow: 뒤쪽 발광, bevel: 금박 양각(왼쪽 위 밝게·오른쪽 아래 어둡게), drips: 기본 피 방울 양(0~1), drip: 방울 색 [어두움, 중간, 밝음]
+ */
+export const TEXT_STYLES = {
+  blood: {
+    grad: [[0, '#ff6a5e'], [0.22, '#e0242e'], [0.55, '#a00a1e'], [0.85, '#5e0412'], [1, '#34000a']],
+    edge: '#120003', inner: 'rgba(38,0,6,0.7)', hi: 'rgba(255,200,190,0.34)', glow: 'rgba(210,10,34,0.55)',
+    drips: 1, drip: ['#2a0006', '#8e0a1e', '#e8343c', '#ff9a90'],
+  },
+  gold: {
+    grad: [[0, '#fff8e0'], [0.3, '#f4d68c'], [0.58, '#c8963a'], [0.82, '#8a5018'], [1, '#5a2c0a']],
+    edge: '#1a0802', inner: 'rgba(70,34,4,0.75)', hi: 'rgba(255,255,244,0.85)', lo: 'rgba(60,20,0,0.75)', glow: 'rgba(200,16,40,0.6)',
+    bevel: true, drips: 0, drip: ['#2a0006', '#8e0a1e', '#e8343c', '#ff9a90'],
+  },
+  bone: {
+    grad: [[0, '#fffaf0'], [0.4, '#e8dcc4'], [0.8, '#a8967a'], [1, '#6a5a44']],
+    edge: '#0e0806', inner: 'rgba(40,28,20,0.7)', hi: 'rgba(255,255,255,0.8)', lo: 'rgba(30,18,10,0.6)', glow: 'rgba(0,0,0,0.7)',
+    bevel: true, drips: 0, drip: ['#2a0006', '#8e0a1e', '#e8343c', '#ff9a90'],
+  },
+};
+
+const TXT_CACHE = new Map();
+const TXT_CACHE_MAX = 48;
+let _scratchA = null, _scratchB = null;
+function mkCanvas(w, h) {
+  if (typeof OffscreenCanvas !== 'undefined' && typeof document === 'undefined') return new OffscreenCanvas(w, h);
+  const c = document.createElement('canvas'); c.width = w; c.height = h; return c;
+}
+function scratch(which, w, h) {
+  let c = which ? _scratchB : _scratchA;
+  if (!c) { c = mkCanvas(w, h); if (which) _scratchB = c; else _scratchA = c; }
+  if (c.width < w || c.height < h) { c.width = Math.max(c.width, w); c.height = Math.max(c.height, h); }
+  const g = c.getContext('2d', { willReadFrequently: which === 0 });
+  g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+  g.shadowColor = 'transparent'; g.shadowBlur = 0; g.shadowOffsetX = 0; g.shadowOffsetY = 0;
+  g.clearRect(0, 0, c.width, c.height);
+  return [c, g];
+}
+function strHash(s) {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+  return h;
+}
+function rng(seed) {
+  let a = seed >>> 0;
+  return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+function setSpacing(g, px) { try { if ('letterSpacing' in g) g.letterSpacing = `${px}px`; } catch { /* 미지원 */ } }
+
+// 피 방울 스프라이트 (스타일 색별로 한 번만 만든다)
+const DRIP_SPR = new Map();
+function dripSprites(cols) {
+  const key = cols.join();
+  let s = DRIP_SPR.get(key);
+  if (s) return s;
+  const [dark, mid, bright, spec] = cols;
+  // 줄기: 가로 단면(원통 음영 + 가는 반사선)을 세로로 늘려 그린다
+  const stem = mkCanvas(48, 2), sg = stem.getContext('2d');
+  const lg = sg.createLinearGradient(0, 0, 48, 0);
+  lg.addColorStop(0, '#120003'); lg.addColorStop(0.1, dark); lg.addColorStop(0.26, mid); lg.addColorStop(0.36, bright);
+  lg.addColorStop(0.42, spec); lg.addColorStop(0.48, bright); lg.addColorStop(0.64, mid); lg.addColorStop(0.9, dark); lg.addColorStop(1, '#120003');
+  sg.fillStyle = lg; sg.fillRect(0, 0, 48, 2);
+  // 끝 방울: 아래가 무거운 물방울 + 반사광
+  const bulb = mkCanvas(64, 72), bg = bulb.getContext('2d');
+  const drop = (g, r) => { g.beginPath(); g.moveTo(32, 36 - r * 1.25); g.bezierCurveTo(32 + r * 0.35, 36 - r * 0.7, 32 + r, 36 - r * 0.3, 32 + r, 36 + r * 0.25); g.arc(32, 36 + r * 0.25, r, 0, Math.PI); g.bezierCurveTo(32 - r, 36 - r * 0.3, 32 - r * 0.35, 36 - r * 0.7, 32, 36 - r * 1.25); g.fill(); };
+  bg.fillStyle = '#120003'; drop(bg, 27);
+  const rg = bg.createRadialGradient(25, 36, 2, 32, 40, 26);
+  rg.addColorStop(0, bright); rg.addColorStop(0.45, mid); rg.addColorStop(1, dark);
+  bg.fillStyle = rg; drop(bg, 24.5);
+  bg.fillStyle = spec; bg.globalAlpha = 0.9; bg.beginPath(); bg.ellipse(24, 38, 4.5, 7, 0.25, 0, Math.PI * 2); bg.fill();
+  bg.globalAlpha = 0.5; bg.beginPath(); bg.ellipse(40, 50, 2.5, 3, 0, 0, Math.PI * 2); bg.fill();
+  s = { stem, bulb };
+  DRIP_SPR.set(key, s);
+  return s;
+}
+
+/** 글자 아랫면에서 피가 흘러내릴 자리 찾기 (문자열마다 결정적 → 깜빡이지 않는다) */
+function findDrips(g, PW, PH, S, oy, size, amount, str, seed) {
+  if (amount <= 0) return [];
+  const data = g.getImageData(0, 0, PW, PH).data;
+  const LW = Math.floor(PW / S);
+  const bottom = new Float32Array(LW).fill(-1);
+  for (let lx = 0; lx < LW; lx++) {
+    const px = Math.min(PW - 1, Math.round((lx + 0.5) * S));
+    for (let py = PH - 1; py >= 0; py--) {
+      if (data[(py * PW + px) * 4 + 3] > 150) { bottom[lx] = py / S; break; }
+    }
+  }
+  const run = (lx, ly) => { // 해당 줄에서 불투명한 가로 길이
+    const py = Math.max(0, Math.min(PH - 1, Math.round(ly * S)));
+    const at = (x) => x >= 0 && x < PW && data[(py * PW + x) * 4 + 3] > 150;
+    const px = Math.round((lx + 0.5) * S);
+    let a = px, b = px;
+    while (at(a - 1)) a--;
+    while (at(b + 1)) b++;
+    return at(px) ? (b - a + 1) / S : 0;
+  };
+  const cand = [];
+  for (let lx = 3; lx < LW - 3; lx++) {
+    const b = bottom[lx];
+    if (b < 0 || b < oy - size * 0.2) continue; // 기준선 근처 아랫면만
+    if (bottom[lx - 3] > b + 0.8 || bottom[lx + 3] > b + 0.8) continue; // 옆이 더 낮으면 가장 낮은 곳이 아님
+    const w = run(lx, b - 1.2);
+    if (w < size * 0.045) continue;
+    cand.push({ x: lx + 0.5, y: b, run: w });
+  }
+  const r = rng(seed);
+  for (let i = cand.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [cand[i], cand[j]] = [cand[j], cand[i]]; }
+  const glyphs = [...str].filter((ch) => ch.trim()).length;
+  const want = clamp(Math.round(glyphs * 0.62 * amount + 0.4), 1, 18);
+  const gap = Math.max(6, size * 0.32);
+  const out = [];
+  for (const c of cand) {
+    if (out.length >= want) break;
+    if (out.some((o) => Math.abs(o.x - c.x) < gap)) continue;
+    const w = clamp(c.run * 0.8, size * 0.06, size * 0.13);
+    const long = r();
+    out.push({
+      x: c.x, y: c.y - w * 0.3, w,
+      len: size * (0.16 + long * long * 0.95) * (0.55 + amount * 0.45),
+      period: 3.6 + r() * 5.2, phase: r(), falls: r() < 0.6,
+      delay: r() * 0.9, grow: 1.1 + r() * 1.9,
+    });
+  }
+  return out;
+}
+
+/** 캐시 비트맵 한 장 만들기 (글자 + 테두리 + 발광 + 광택 + 방울 뿌리) */
+function buildText(str, size, weight, family, styleName, st, spacing, amount, S, glow) {
+  const fontStr = `${weight} ${size}px ${family}`;
+  const [, mg] = scratch(0, 4, 4);
+  mg.font = fontStr; setSpacing(mg, spacing);
+  const m = mg.measureText(str);
+  const adv = m.width;
+  const asc = m.actualBoundingBoxAscent ?? size * 0.8, desc = m.actualBoundingBoxDescent ?? size * 0.22;
+  const left = m.actualBoundingBoxLeft ?? 0, right = m.actualBoundingBoxRight ?? adv;
+  const fAsc = m.fontBoundingBoxAscent ?? size * 0.92, fDesc = m.fontBoundingBoxDescent ?? size * 0.24;
+  const pad = Math.ceil(size * (glow ? 0.42 : 0.22) + 4);
+  const W = Math.ceil(left + right + pad * 2), H = Math.ceil(asc + desc + pad * 2);
+  const PW = Math.ceil(W * S), PH = Math.ceil(H * S);
+  const ox = pad + left, oy = pad + asc;
+  const seed = strHash(`${str}|${size}|${family}`);
+  const prep = (g) => { g.setTransform(S, 0, 0, S, 0, 0); g.font = fontStr; setSpacing(g, spacing); g.textAlign = 'left'; g.textBaseline = 'alphabetic'; g.lineJoin = 'round'; g.lineCap = 'round'; };
+
+  // 1) 마스크 → 피 방울 자리
+  const [, ag] = scratch(0, PW, PH);
+  prep(ag); ag.fillStyle = '#000'; ag.fillText(str, ox, oy);
+  const drips = findDrips(ag, PW, PH, S, oy, size, amount, str, seed);
+  const roots = drips.map((d) => { // 글자 아랫면에서 오목하게 좁아지며 방울 줄기로 이어지는 목
+    const p = new Path2D(), w = d.w, x = d.x, y = d.y;
+    p.moveTo(x - w * 1.25, y - w * 0.5);
+    p.quadraticCurveTo(x - w * 0.5, y - w * 0.2, x - w * 0.5, y + w * 1.2);
+    p.lineTo(x + w * 0.5, y + w * 1.2);
+    p.quadraticCurveTo(x + w * 0.5, y - w * 0.2, x + w * 1.25, y - w * 0.5);
+    p.closePath();
+    return p;
+  });
+  const shape = (g, how) => {
+    if (how === 'fill') { g.fillText(str, ox, oy); for (const p of roots) g.fill(p); }
+    else { g.strokeText(str, ox, oy); for (const p of roots) g.stroke(p); }
+  };
+
+  const out = mkCanvas(PW, PH), c = out.getContext('2d');
+  prep(c);
+  const edgeW = Math.max(2.5, size * 0.1);
+  // 2) 발광 + 그림자 + 바깥 테두리
+  if (glow) {
+    c.save(); c.shadowColor = st.glow; c.shadowBlur = size * 0.34 * S;
+    c.strokeStyle = st.edge; c.fillStyle = st.edge; c.lineWidth = edgeW; shape(c, 'stroke'); shape(c, 'fill'); c.restore();
+  }
+  c.save(); c.translate(size * 0.03, size * 0.07); c.globalAlpha = 0.7;
+  c.strokeStyle = '#000'; c.fillStyle = '#000'; c.lineWidth = edgeW; shape(c, 'stroke'); shape(c, 'fill'); c.restore();
+  c.strokeStyle = st.edge; c.lineWidth = edgeW; shape(c, 'stroke');
+
+  // 3) 글자 몸통: 세로 그라데이션 + 얼룩 + 안쪽 어두운 테 + 젖은 광택
+  const [fc, fg] = scratch(0, PW, PH);
+  prep(fg);
+  const gr = fg.createLinearGradient(0, oy - asc, 0, oy + Math.max(desc, size * 0.12));
+  for (const [o, col] of st.grad) gr.addColorStop(o, col);
+  fg.fillStyle = gr; shape(fg, 'fill');
+  fg.globalCompositeOperation = 'source-atop';
+  const r = rng(seed ^ 0x9e3779b9);
+  const blots = Math.round((left + right) / size * 5);
+  for (let i = 0; i < blots; i++) { // 굳은 핏자국 얼룩
+    fg.fillStyle = r() < 0.7 ? 'rgba(30,0,6,0.22)' : 'rgba(255,150,130,0.12)';
+    fg.beginPath(); fg.ellipse(ox - left + r() * (left + right), oy - asc + r() * (asc + desc), size * (0.04 + r() * 0.12), size * (0.03 + r() * 0.08), r() * 3, 0, Math.PI * 2); fg.fill();
+  }
+  fg.strokeStyle = st.inner; fg.lineWidth = Math.max(1.5, size * (st.bevel ? 0.07 : 0.06)); shape(fg, 'stroke');
+  // 광택: 글자 모양에서 아래로 민 모양을 빼면 윗면 초승달만 남는다
+  const [hc, hg] = scratch(1, PW, PH);
+  const rim = (dx, dy, col) => {
+    hg.setTransform(1, 0, 0, 1, 0, 0); hg.globalCompositeOperation = 'source-over'; hg.clearRect(0, 0, PW, PH);
+    prep(hg); hg.fillStyle = col; shape(hg, 'fill');
+    hg.globalCompositeOperation = 'destination-out'; hg.translate(dx, dy); hg.fillStyle = '#000'; shape(hg, 'fill');
+    fg.save(); fg.setTransform(1, 0, 0, 1, 0, 0); fg.drawImage(hc, 0, 0, PW, PH, 0, 0, PW, PH); fg.restore();
+  };
+  const d = Math.max(1, size * 0.04);
+  if (st.bevel) { rim(d * 0.7, d, st.hi); rim(-d * 0.7, -d, st.lo); }
+  else for (const k of [0.34, 0.67, 1]) rim(0, Math.max(0.6, size * 0.03 * k), st.hi); // 겹쳐 그려 위쪽으로 갈수록 밝은 젖은 광택
+  fg.globalCompositeOperation = 'source-over';
+  c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(fc, 0, 0, PW, PH, 0, 0, PW, PH); c.restore();
+
+  return { c: out, S, W, H, ox, oy, adv, asc, desc, fAsc, fDesc, drips, st, styleName, fontStr, fontOk: fontLoaded(fontStr, str), checkAt: 0 };
+}
+function fontLoaded(fontStr, str) {
+  try { return typeof document === 'undefined' || document.fonts.check(fontStr, str); } catch { return true; }
+}
+
+/** 피 방울 그리기 (캐시 원점 기준 좌표) */
+function drawDrips(ctx, e, t, time) {
+  const spr = dripSprites(e.st.drip);
+  for (const d of e.drips) {
+    let k = 1;
+    if (t != null) { const u = clamp((t - d.delay) / d.grow, 0, 1); k = 1 - (1 - u) ** 3; }
+    if (k <= 0) continue;
+    const breathe = 1 + Math.sin(time * 0.6 + d.phase * 6.28) * 0.035;
+    const len = d.len * k * breathe;
+    const y0 = d.y + d.w * 0.6;
+    ctx.drawImage(spr.stem, d.x - d.w / 2, y0, d.w, len);
+    // 끝에서 부풀다 떨어지는 방울
+    const cyc = (time / d.period + d.phase) % 1;
+    let sw = 0.85;
+    if (d.falls) {
+      if (cyc < 0.72) sw = 0.85 + 0.55 * (cyc / 0.72) ** 2;
+      else if (k >= 1) {
+        const ft = (cyc - 0.72) * d.period;
+        const fy = y0 + len + d.w * 0.6 + 0.5 * 900 * ft * ft;
+        const a = clamp(1 - (cyc - 0.72) / 0.28, 0, 1);
+        const br = d.w * 0.9;
+        ctx.save(); ctx.globalAlpha *= a;
+        ctx.drawImage(spr.bulb, d.x - br * 1.2, fy - br * 1.5, br * 2.4, br * 2.7 * (1 + ft * 0.8));
+        ctx.restore();
+      }
+    }
+    const br = d.w * sw * 0.8; // 줄기 끝에 맺힌 방울 (줄기보다 굵다)
+    ctx.drawImage(spr.bulb, d.x - br * 1.2, y0 + len - br * 1.9, br * 2.4, br * 2.7);
+  }
+}
+
+/**
+ * 피 글씨: 짙은 진홍 그라데이션 + 어두운 안쪽 테 + 젖은 광택 + 글자에서 천천히 흘러내리는 핏방울.
+ * 비트맵은 (문자열·크기·글꼴·스타일·화면배율)별로 캐시되므로 매 프레임 불러도 싸다. 방울만 매 프레임 움직인다.
+ *   bloodText(ctx, '본 드래곤', vw/2, 200, { size: 64, t: this.t })
+ * opts:
+ *   size=48, weight=900, family=FONT.blood, align='center'|'left'|'right', baseline='alphabetic'|'middle'|'top'|'bottom'
+ *   style='blood'|'gold'|'bone' (gold/bone 은 양각 금박·뼈 글씨, 기본적으로 방울 없음)
+ *   drips=0~1 (방울 양, 기본은 스타일 값), t=등장 후 경과 초(주면 방울이 처음부터 흘러내리는 연출, 생략하면 다 흘러내린 상태)
+ *   time=애니메이션 시계(초, 기본 performance.now), alpha=1, spacing=자간(px), maxWidth, glow=true
+ * 반환: { w, h } 실제로 그린 글자 폭(advance)·크기
+ */
+export function bloodText(ctx, str, x, y, opts = {}) {
+  str = String(str ?? '');
+  if (!str) return { w: 0, h: 0 };
+  const { size = 48, weight = 900, family = FONT.blood, align = 'center', baseline = 'alphabetic', style = 'blood', t = null, alpha = 1, spacing = 0, maxWidth = null, glow = true } = opts;
+  const st = TEXT_STYLES[style] || TEXT_STYLES.blood;
+  const amount = clamp(opts.drips ?? st.drips, 0, 1);
+  const time = opts.time ?? (typeof performance !== 'undefined' ? performance.now() / 1000 : 0);
+  const tr = ctx.getTransform ? ctx.getTransform() : { a: 1, b: 0 };
+  const S = clamp(Math.round(Math.hypot(tr.a, tr.b) * 4) / 4, 1, 3);
+  const key = `${style}|${size}|${weight}|${family}|${spacing}|${amount}|${glow ? 1 : 0}|${S}|${str}`;
+  let e = TXT_CACHE.get(key);
+  if (e && !e.fontOk && time - e.checkAt > 0.5) { // 글꼴이 늦게 도착하면 다시 굽는다
+    e.checkAt = time;
+    if (fontLoaded(e.fontStr, str)) { TXT_CACHE.delete(key); e = null; }
+  }
+  if (!e) {
+    e = buildText(str, size, weight, family, style, st, spacing, amount, S, glow);
+    e.checkAt = time;
+    if (!e.fontOk) { try { document.fonts.load(e.fontStr, str); } catch { /* 무시 */ } }
+    if (TXT_CACHE.size >= TXT_CACHE_MAX) TXT_CACHE.delete(TXT_CACHE.keys().next().value);
+  } else TXT_CACHE.delete(key);
+  TXT_CACHE.set(key, e); // 최근 사용 순서 유지 (LRU)
+
+  const ax = align === 'center' ? e.adv / 2 : align === 'right' || align === 'end' ? e.adv : 0;
+  const by = baseline === 'middle' ? (e.fAsc - e.fDesc) / 2 : baseline === 'top' || baseline === 'hanging' ? e.fAsc : baseline === 'bottom' || baseline === 'ideographic' ? -e.fDesc : 0;
+  const sx = maxWidth && e.adv > maxWidth ? maxWidth / e.adv : 1;
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  ctx.translate(x, y + by);
+  if (sx !== 1) ctx.scale(sx, 1);
+  ctx.translate(-ax - e.ox, -e.oy);
+  ctx.drawImage(e.c, 0, 0, e.c.width / e.S, e.c.height / e.S);
+  if (e.drips.length) drawDrips(ctx, e, t, time);
+  ctx.restore();
+  return { w: e.adv * sx, h: size };
+}
+/** 피 글씨 캐시 비우기 (글꼴 교체 등) */
+export function clearTextCache() { TXT_CACHE.clear(); }

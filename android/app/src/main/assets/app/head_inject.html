@@ -1,0 +1,28 @@
+<style>#fsBtn{display:none!important}</style>
+<script>
+(function () {
+  // 안드로이드 앱 전용 조각 (AssetServer.java 가 index.html 의 </head> 바로 앞에 끼워 넣는다)
+  // - 앱은 이미 몰입형 전체화면이므로 브라우저용 전체화면 버튼(#fsBtn)은 숨긴다
+  // - 게임 파일은 모두 APK 안에 있으므로 서비스 워커(오프라인 캐시)는 쓰지 않는다 (저장공간 중복 방지)
+  // - navigator.vibrate 는 네이티브 진동으로 연결한다 (WebView 버전에 따라 동작하지 않는 경우 대비)
+  var root = document.documentElement;
+  root.classList.add('bn-app', 'bn-android');
+  window.__BN_APP = { platform: 'android', version: '{{VERSION}}' };
+  try {
+    var sw = navigator.serviceWorker;
+    if (sw) {
+      sw.register = function () { return Promise.reject(new Error('앱에서는 서비스 워커를 사용하지 않습니다')); };
+      if (sw.getRegistrations) sw.getRegistrations().then(function (rs) { rs.forEach(function (r) { r.unregister(); }); }).catch(function () {});
+    }
+  } catch (e) {}
+  try {
+    var B = window.BNAndroid;
+    if (B && B.vibrate) {
+      Object.defineProperty(navigator, 'vibrate', {
+        configurable: true, writable: true,
+        value: function (p) { try { B.vibrate(JSON.stringify(p == null ? 0 : p)); } catch (e) {} return true; },
+      });
+    }
+  } catch (e) {}
+})();
+</script>

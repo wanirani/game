@@ -11,9 +11,12 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="assets/ui/icon-192.png">
 <link rel="apple-touch-icon" href="assets/ui/icon-192.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@600;800;900&family=Nanum+Myeongjo:wght@700;800&family=Noto+Sans+KR:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<!-- 글꼴은 모두 assets/fonts 에 들어 있다 (오프라인·APK). 모듈보다 먼저 받기 시작한다 -->
+<link rel="preload" href="assets/fonts/noto-sans-kr.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/hahmlet.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/grenze-gotisch.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/cinzel.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/cinzel-decorative-900.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
