@@ -619,7 +619,7 @@ def _pat_marble(nt, I, tc, color, a):
             wave_type="BANDS", bands_direction="DIAGONAL")
     ln(nt, vec, wv.inputs["Vector"])
     vein = a.get("vein", (0.45, 0.43, 0.42))
-    col = ramp(nt, wv.outputs["Fac"], [(0.0, vein), (0.06, color), (0.94, color),
+    col = ramp(nt, wv.outputs["Fac"], [(0.0, vein), (0.035, color), (0.965, color),
                                         (1.0, vein)])
     nz = noise(nt, vec, 3.0, 4.0)
     mix = nn(nt, "ShaderNodeMix", data_type="RGBA", blend_type="MULTIPLY")
@@ -866,8 +866,8 @@ _PATTERNS = dict(wood=_pat_wood, rust=_pat_rust, stone=_pat_stone,
                  eye=_pat_eye, prism=_pat_prism)
 
 
-def M_flame(name="flame", core=(1.0, 0.62, 0.2), mid=(1.0, 0.3, 0.03),
-            tip=(0.8, 0.08, 0.02), strength=2.6, soft=1.6):
+def M_flame(name="flame", core=(1.0, 0.55, 0.12), mid=(1.0, 0.24, 0.02),
+            tip=(0.7, 0.06, 0.02), strength=2.0, soft=1.6):
     """Emission flame: bright core at the base, reddening toward the tip,
     fading to transparent at grazing angles (soft edges)."""
     if name in G.mats:
@@ -2133,7 +2133,6 @@ def rolled_sheet(length, r_in, turns, thick, mat, flap=0.0, droop=0.0, n=140,
             pts.append(pts[-1] + t * (flap / m) - nrm * (droop * u * u / m) * 4)
     zs = 20
     verts, faces = [], []
-    rng = random.Random(5)
     for p in pts:
         for k in range(zs + 1):
             z = -length / 2 + length * k / zs
@@ -2329,7 +2328,6 @@ def build_relic_eye():
             cone(0.05 if k % 2 == 0 else 0.035, L, gold,
                  loc=(0.45 * math.cos(a), 0.45 * math.sin(a), -0.04),
                  rot=(0, rad(90), a), seg=6, name="ray", smooth=False)
-        # eyelid-shaped bat wings of gold
     torus(0.09, 0.025, gold, loc=(0, 0, 0.82), rot=(rad(90), 0, 0))
     sphere(0.07, M_gem("eyegem", (0.9, 0.0, 0.04), glow=0.8), loc=(0, -0.05, -0.8), seg=16,
            rings=10)
@@ -2657,15 +2655,13 @@ def build_coin():
                bump=0.05, bump_scale=30)
     with sub(rot=(rad(90), 0, 0)):
         lathe([(0.0, -0.06), (0.44, -0.06), (0.47, -0.075), (0.52, -0.06), (0.53, 0.0),
-               (0.52, 0.06), (0.47, 0.075), (0.44, 0.06), (0.42, 0.045), (0.0, 0.045)][::-1][::-1],
+               (0.52, 0.06), (0.47, 0.075), (0.44, 0.06), (0.42, 0.045), (0.0, 0.045)],
               gold, seg=64, name="coin")
         for k in range(20):
             a = TAU * k / 20
             sphere(0.018, gold, loc=(0.4 * math.cos(a), 0.4 * math.sin(a), 0.045), seg=8, rings=4)
     extrude(shape_cross(0.44, 0.56, 0.12, 0.36, 0.035), 0.04, gold, bev=0.015, bev_seg=1,
             loc=(0, -0.065, -0.3), name="emboss", sharp=25)
-    # tiny skull above the cross arms: cranium + eye sockets
-    ink = pbr("coinshadow", (0.25, 0.14, 0.03), metal=1, rough=0.5)
     sparkle((0.34, -0.2, 0.36), 0.1, (1.0, 0.95, 0.7))
     view(yaw=28, pitch=8, diag=-12, fill=0.86, glow=0.4)
 
@@ -3022,6 +3018,574 @@ def build_prop_coffin():
     point_light((0.0, 0.6, 1.3), (1.0, 0.04, 0.04), 70, 0.4)
     point_light((0.0, -0.8, 0.3), (1.0, 0.1, 0.08), 8, 0.3)
     view(pitch=5, fill=0.9, glow=0.55, rim=0.8)
+
+
+def feather(root, length, width, angle, mat, y=0.0, name="feather"):
+    """Flat feather (inflated leaf outline) pointing at `angle` (deg, 0 = +x,
+    90 = up) in the picture plane."""
+    n = 10
+    up = [(length * i / n, width * math.sin(math.pi * (i / n) ** 0.8) ** 0.7) for i in range(n + 1)]
+    lo = [(length * i / n, -width * 0.7 * math.sin(math.pi * (i / n) ** 0.8) ** 0.7)
+          for i in range(n - 1, 0, -1)]
+    rot = (0, -rad(angle), 0)
+    return inflate(up + lo, width * 0.22, mat, rings=3, center=(length * 0.4, 0.0),
+                   loc=(root[0], y, root[1]), rot=rot, name=name)
+
+
+@item("prop_statue", "prop", (128, 256))
+def build_prop_statue():
+    marble = M_marble("statuemarble", (0.86, 0.85, 0.84), vein=(0.7, 0.69, 0.7))
+    base_m = M_marble("pedestalmarble", (0.5, 0.48, 0.5), vein=(0.34, 0.33, 0.35), scale=2.0)
+    gold = M_gold()
+    box((1.3, 0.9, 0.2), base_m, loc=(0, 0, 0.1), bev=0.03, name="plinth")
+    box((1.0, 0.7, 0.64), base_m, loc=(0, 0, 0.52), bev=0.02, name="pedestal")
+    box((1.2, 0.85, 0.14), base_m, loc=(0, 0, 0.9), bev=0.03, name="cornice")
+    box((1.12, 0.8, 0.05), gold, loc=(0, 0, 0.225), bev=0.01)
+    extrude(shape_cross(0.3, 0.44, 0.08, 0.3, 0.03), 0.04, gold, loc=(0, -0.36, 0.3),
+            bev=0.012, bev_seg=1, name="emblem", sharp=25)
+    z0 = 0.97
+    with sub(loc=(0, 0.05, z0)):
+        robe = [(0.0, 0.0), (0.46, 0.0), (0.45, 0.08), (0.38, 0.45), (0.29, 0.9),
+                (0.21, 1.22), (0.17, 1.36), (0.0, 1.36)]
+        lathe(robe, marble, seg=64, sy=0.8, name="robe",
+              radial=lambda a, t: 1 + 0.09 * math.sin(11 * a + 0.5) * (1 - t) ** 1.2
+              + 0.03 * math.sin(23 * a) * (1 - t))
+        sphere(0.5, marble, loc=(0, 0, 1.6), scale=(0.44, 0.33, 0.62), seg=32, rings=16,
+               name="torso")
+        for sx in (-1, 1):
+            sphere(0.1, marble, loc=(sx * 0.2, 0.02, 1.82), seg=16, rings=10)
+        cyl(0.06, 0.18, marble, loc=(0, 0.0, 1.95), seg=16)
+        sphere(0.13, marble, loc=(0, -0.01, 2.12), scale=(1.0, 1.05, 1.18), seg=32, rings=16,
+               name="head")
+        veil = lathe([(0.0, 2.36), (0.1, 2.33), (0.16, 2.24), (0.17, 2.08), (0.2, 1.92),
+                      (0.27, 1.76), (0.33, 1.52), (0.36, 1.3)], marble, seg=40, cap=False,
+                     a0=rad(-25), a1=rad(205), name="veil",
+                     radial=lambda a, t: 1 + 0.05 * math.sin(9 * a) * t)
+        solidify(veil, 0.025)
+        halo = M_glow("halo", (1.0, 0.85, 0.5), 2.2, base=(1.0, 0.85, 0.5))
+        torus(0.26, 0.018, halo, loc=(0, 0.2, 2.18), rot=(rad(90), 0, 0), seg=64, rseg=8)
+        for sx in (-1, 1):
+            sweep(catmull([(sx * 0.22, 0.0, 1.82), (sx * 0.3, -0.03, 1.6),
+                           (sx * 0.22, -0.18, 1.5), (sx * 0.1, -0.28, 1.55)], 8),
+                  lambda t: 0.06 + 0.035 * t ** 2, marble, segs=12, name="arm")
+            sphere(0.045, marble, loc=(sx * 0.08, -0.3, 1.57), seg=12, rings=8)
+        orb = M_glow("healorb", (0.45, 0.8, 1.0), 1.3, base=(0.5, 0.8, 1.0))
+        sphere(0.13, orb, loc=(0, -0.34, 1.66), seg=32, rings=16, name="orb")
+        sphere(0.2, M_glowshell("orbhalo", (0.4, 0.75, 1.0), 0.6, 1.2), loc=(0, -0.34, 1.66),
+               seg=32, rings=16)
+        point_light((0, -0.55, 1.66), (0.6, 0.85, 1.0), 40, 0.1)
+        # wings: feathers hang from an arched leading edge, longest at the tip
+        edge = catmull([(0.14, 1.86), (0.3, 2.22), (0.46, 2.6), (0.6, 2.92), (0.62, 3.12)], 10)
+        for sx in (-1, 1):
+            m = len(edge)
+            for row, (L0, L1, w, dy, zoff) in enumerate(((0.3, 1.25, 0.1, 0.26, 0.0),
+                                                          (0.22, 0.66, 0.1, 0.2, 0.05),
+                                                          (0.14, 0.34, 0.08, 0.15, 0.08))):
+                nf = 9 if row == 0 else (8 if row == 1 else 7)
+                for k in range(nf):
+                    u = k / (nf - 1)
+                    x, z = edge[min(int(u * (m - 1)), m - 1)]
+                    ang = -98 + 30 * u
+                    L = L0 + (L1 - L0) * u ** 0.8
+                    a = ang if sx > 0 else 180 - ang
+                    feather((sx * x, z + zoff), L, w, a, marble, y=dy + 0.01 * k,
+                            name="feather")
+            sweep([(sx * x, 0.15, z + 0.04) for (x, z) in edge], lambda t: 0.06 - 0.03 * t,
+                  marble, segs=10, name="wingarm")
+    view(pitch=5, fill=0.95, glow=0.7, top=1.5)
+
+
+@item("prop_gargoyle", "prop", (128, 160))
+def build_prop_gargoyle():
+    stone = M_stone("gargstone", (0.42, 0.41, 0.43), scale=3.5, crack=0.012)
+    ped = M_stone("pedstone", (0.34, 0.33, 0.34), scale=3.0, moss=True, moss_z0=-0.35,
+                  moss_z1=0.1)
+    box((1.0, 0.85, 0.16), ped, loc=(0, 0, 0.08), bev=0.03)
+    box((0.8, 0.68, 0.62), ped, loc=(0, 0, 0.47), bev=0.02)
+    box((0.96, 0.82, 0.13), ped, loc=(0, 0, 0.845), bev=0.03)
+    eye = M_glow("gargeye", (1.0, 0.05, 0.02), 6.0)
+
+    def part(ob):
+        displace(ob, 0.012, 0.05)
+        return ob
+    with sub(loc=(0, 0.05, 0.91), rot=(0, 0, rad(-28))):
+        part(sphere(0.5, stone, loc=(0, 0.08, 0.42), scale=(0.52, 0.62, 0.62),
+                    rot=(rad(28), 0, 0), seg=32, rings=16, name="torso"))
+        part(sphere(0.22, stone, loc=(0, -0.13, 0.52), scale=(1.1, 0.9, 1.0), seg=24, rings=12))
+        part(sphere(0.17, stone, loc=(0, -0.3, 0.74), seg=24, rings=12, name="head"))
+        part(sphere(0.5, stone, loc=(0, -0.45, 0.68), scale=(0.2, 0.26, 0.15), seg=20, rings=10))
+        part(sphere(0.5, stone, loc=(0, -0.42, 0.6), scale=(0.17, 0.22, 0.08), rot=(rad(-12), 0, 0),
+                    seg=20, rings=10))
+        sphere(0.5, stone, loc=(0, -0.38, 0.8), scale=(0.34, 0.14, 0.1), seg=20, rings=10)
+        for sx in (-1, 1):
+            sphere(0.032, eye, loc=(sx * 0.075, -0.43, 0.78), seg=12, rings=8)
+            for k in range(2):
+                cone(0.018, 0.06, M_bone("fangstone", (0.7, 0.68, 0.64)),
+                     loc=(sx * (0.04 + 0.04 * k), -0.54, 0.64), rot=(rad(180), 0, 0), seg=6)
+            horn = catmull([(sx * 0.1, -0.26, 0.86), (sx * 0.2, -0.16, 1.0),
+                            (sx * 0.24, 0.02, 1.08), (sx * 0.2, 0.18, 1.02)], 8)
+            sweep(horn, lambda t: 0.05 * (1 - t) + 0.006, stone, segs=10, name="horn")
+            cone(0.05, 0.16, stone, loc=(sx * 0.16, -0.26, 0.78), rot=(0, rad(70 * sx), 0), seg=8)
+            arm = catmull([(sx * 0.2, -0.16, 0.5), (sx * 0.26, -0.3, 0.3), (sx * 0.24, -0.36, 0.04)], 6)
+            part(sweep(arm, lambda t: 0.075 - 0.02 * t, stone, segs=12, name="arm"))
+            sphere(0.07, stone, loc=(sx * 0.24, -0.4, 0.03), scale=(1.1, 1.3, 0.6), seg=14, rings=8)
+            for c in (-1, 0, 1):
+                cone(0.018, 0.07, stone, loc=(sx * 0.24 + c * 0.035, -0.47, 0.02),
+                     rot=(rad(100), 0, 0), seg=6)
+            part(sphere(0.5, stone, loc=(sx * 0.27, 0.12, 0.2), scale=(0.24, 0.42, 0.32), seg=20,
+                        rings=10, name="thigh"))
+            sphere(0.08, stone, loc=(sx * 0.3, -0.08, 0.04), scale=(1.0, 1.4, 0.6), seg=14, rings=8)
+            # bat wing: membrane + bones
+            with sub(loc=(sx * 0.16, 0.24, 0.62), rot=(0, 0, rad(-18 * sx))):
+                outline = [(0.0, 0.0), (0.12, 0.34), (0.34, 0.62), (0.72, 0.56), (0.56, 0.4),
+                           (0.7, 0.2), (0.5, 0.14), (0.54, -0.1), (0.32, -0.02), (0.2, -0.24),
+                           (0.06, -0.1)]
+                extrude([(sx * x, z) for (x, z) in outline], 0.03,
+                        M_stone("wingstone", (0.36, 0.35, 0.36), scale=5.0), bev=0.01)
+                bones = [(0.34, 0.62), (0.72, 0.56), (0.7, 0.2), (0.54, -0.1), (0.2, -0.24)]
+                sweep([(0.0, -0.02, 0.0), (sx * 0.14, -0.02, 0.36), (sx * 0.34, -0.02, 0.62)],
+                      lambda t: 0.045 - 0.015 * t, stone, segs=8)
+                for (x, z) in bones[1:]:
+                    sweep([(sx * 0.34, -0.02, 0.62), (sx * x, -0.02, z)], lambda t: 0.028 - 0.02 * t,
+                          stone, segs=6)
+                cone(0.03, 0.12, stone, loc=(sx * 0.34, -0.02, 0.62), rot=(0, rad(-20 * sx), 0), seg=6)
+        tail = catmull([(0.0, 0.34, 0.16), (0.22, 0.4, 0.02), (0.38, 0.25, -0.16),
+                        (0.44, -0.05, -0.3), (0.38, -0.3, -0.36)], 8)
+        sweep(tail, lambda t: 0.055 * (1 - t) + 0.014, stone, segs=10, name="tail")
+        extrude(mirror_x([(0.0, 0.0), (0.05, 0.02), (0.0, 0.1)]), 0.03, stone,
+                loc=(0.38, -0.33, -0.4), rot=(0, rad(20), 0))
+    view(pitch=7, fill=0.95, glow=0.6)
+
+
+def _arch_pt(r, c, hs, t):
+    """Point on a pointed (two-centred) arch: t in [0, 1] from the left
+    springer over the apex to the right springer; arcs of radius r centred at
+    (+c, hs) (left arc) and (-c, hs) (right arc)."""
+    a_ap = math.acos(-c / r)
+    if t <= 0.5:
+        a = math.pi - (math.pi - a_ap) * (t / 0.5)
+        return (c + r * math.cos(a), hs + r * math.sin(a))
+    a = math.pi - (math.pi - a_ap) * ((1 - t) / 0.5)
+    return (-(c + r * math.cos(a)), hs + r * math.sin(a))
+
+
+@item("prop_door", "prop", (128, 192))
+def build_prop_door():
+    stone = M_stone("doorstone", (0.36, 0.34, 0.33), scale=3.0, moss=True, moss_z0=-0.4,
+                    moss_z1=0.6)
+    wood = M_wood((0.26, 0.13, 0.06), "doorwood", axis="Z", grain=1.1)
+    iron = M_wrought()
+    w_in, hs = 1.2, 1.3
+    r_in = 0.9 * w_in
+    c = r_in - w_in / 2
+    r_out = r_in + 0.26
+    # voussoirs
+    n = 11
+    for i in range(n):
+        t0, t1 = i / n + 0.004, (i + 1) / n - 0.004
+        inner = [_arch_pt(r_in, c, hs, t0 + (t1 - t0) * k / 4) for k in range(5)]
+        outer = [_arch_pt(r_out, c, hs, t0 + (t1 - t0) * k / 4) for k in range(5)]
+        extrude(inner + outer[::-1], 0.36 if i != n // 2 else 0.42, stone, bev=0.025,
+                name="voussoir")
+    # jambs
+    wj = r_out - r_in
+    zc = 0.0
+    k = 0
+    while zc < hs - 0.01:
+        hgt = min(0.32 if k % 2 == 0 else 0.24, hs - zc)
+        for sx in (-1, 1):
+            ext = 0.05 if k % 2 == 0 else 0.0
+            x0 = sx * w_in / 2
+            x1 = sx * (w_in / 2 + wj + ext)
+            extrude([(x0, zc + 0.006), (x1, zc + 0.006), (x1, zc + hgt - 0.006),
+                     (x0, zc + hgt - 0.006)], 0.36, stone, bev=0.025, name="jamb")
+        zc += hgt
+        k += 1
+    box((w_in + 2 * wj + 0.3, 0.5, 0.08), stone, loc=(0, -0.06, -0.04), bev=0.02, name="step")
+    # door planks, clipped to the arch with a boolean intersect
+    bm = bmesh.new()
+    npl = 6
+    pw = w_in / npl
+    for i in range(npl):
+        x = -w_in / 2 + pw * (i + 0.5)
+        gap = 0.02 if i == npl // 2 - 1 or i == npl // 2 else 0.008
+        res = bmesh.ops.create_cube(bm, size=1.0)
+        vs = res["verts"]
+        bmesh.ops.scale(bm, vec=Vector((pw - gap, 0.1, hs + r_in)), verts=vs)
+        bmesh.ops.translate(bm, vec=Vector((x, 0.06, (hs + r_in) / 2)), verts=vs)
+    planks = bm_obj("planks", bm, wood, sharp=30)
+    bevel(planks, 0.01, 1)
+    opening = [_arch_pt(r_in, c, hs, i / 40) for i in range(41)]
+    opening = [(opening[0][0], -0.01)] + opening + [(opening[-1][0], -0.01)]
+    cutter = extrude([(x * 0.999, z) for (x, z) in opening], 0.6, None, name="cut")
+    boolean(planks, cutter, op="INTERSECT")
+    # iron straps with scroll ends and rivets
+    for z in (0.32, 0.98, 1.6):
+        if z < hs:
+            half = w_in / 2 - 0.03
+        else:
+            half = (c - math.sqrt(r_in ** 2 - (z - hs) ** 2)) * -1 - 0.05
+        box((2 * half, 0.03, 0.1), iron, loc=(0, -0.005, z), bev=0.008, name="strap")
+        rivet_row((-half + 0.06, -0.025, z), (half - 0.06, -0.025, z), 7, 0.02, iron)
+        for sx in (-1, 1):
+            curl = []
+            for i in range(14):
+                tt = i / 13
+                ang = tt * TAU * 0.85 + math.pi / 2
+                rr = 0.07 * (1 - 0.6 * tt)
+                curl.append((sx * (0.12 + rr * math.cos(ang) * -1), -0.025, z + 0.05 + rr * math.sin(ang) - 0.07))
+            curve_tube(curl, 0.014, iron, kind="POLY")
+    brass = M_brass()
+    with sub(loc=(0, -0.03, 1.05), rot=(rad(90), 0, 0)):
+        lathe([(0.0, 0.0), (0.1, 0.0), (0.09, 0.03), (0.04, 0.05), (0.0, 0.05)], iron, seg=24,
+              radial=lambda a, t: 1 + 0.12 * math.sin(8 * a))
+    torus(0.11, 0.02, brass, loc=(0, -0.07, 0.94), rot=(rad(90), 0, 0), seg=32)
+    extrude(mirror_x([(0.0, -0.1), (0.05, -0.08), (0.05, 0.08), (0.0, 0.1)]), 0.02, iron,
+            loc=(0.3, -0.02, 0.9), bev=0.006)
+    extrude(mirror_x([(0.0, -0.04), (0.01, -0.04), (0.01, 0.0), (0.02, 0.015), (0.0, 0.03)]),
+            0.02, M_black(), loc=(0.3, -0.035, 0.9))
+    view(pitch=5, fill=0.95, glow=0.0)
+
+
+@item("prop_chandelier", "prop", (256, 160))
+def build_prop_chandelier():
+    iron = M_wrought()
+    brass = M_brass()
+    R1, R2 = 1.45, 0.82
+    lathe([(0.0, -0.62), (0.03, -0.5), (0.06, -0.38), (0.12, -0.3), (0.14, -0.22),
+           (0.08, -0.16), (0.07, 0.0), (0.16, 0.06), (0.16, 0.12), (0.07, 0.18), (0.06, 0.5),
+           (0.12, 0.56), (0.1, 0.64), (0.05, 0.7), (0.05, 0.92), (0.0, 0.94)], iron, seg=32,
+          name="shaft")
+    torus(R1, 0.05, iron, seg=96, rseg=10, rz=1.4, name="ring1")
+    torus(R2, 0.04, iron, loc=(0, 0, 0.46), seg=64, rseg=10, rz=1.4, name="ring2")
+    n1, n2 = 10, 6
+    for k in range(n1):
+        a = TAU * (k + 0.5) / n1
+        c, s_ = math.cos(a), math.sin(a)
+        if k % 2 == 0:
+            curve_tube([(0.1 * c, 0.1 * s_, 0.1), (0.55 * c, 0.55 * s_, -0.12),
+                        (1.05 * c, 1.05 * s_, -0.1), (R1 * c, R1 * s_, 0.0)], 0.03, iron,
+                       name="arm")
+        # hanging drop between candles
+        cone(0.035, 0.18, iron, loc=(R1 * math.cos(a + TAU / n1 / 2), R1 * math.sin(a + TAU / n1 / 2),
+                                     -0.04), rot=(math.pi, 0, 0), seg=8, name="drop")
+        with sub(loc=(R1 * c, R1 * s_, 0.04)):
+            lathe([(0.0, 0.0), (0.11, 0.0), (0.13, 0.04), (0.11, 0.05), (0.05, 0.03), (0.0, 0.03)],
+                  brass, seg=20, name="cup")
+            candle((0, 0, 0.03), 0.055, 0.3 + 0.05 * math.sin(k * 2.3), drip_seed=k, power=22)
+    for k in range(n2):
+        a = TAU * k / n2
+        c, s_ = math.cos(a), math.sin(a)
+        curve_tube([(0.07 * c, 0.07 * s_, 0.3), (0.4 * c, 0.4 * s_, 0.28), (R2 * c, R2 * s_, 0.46)],
+                   0.025, iron, name="arm2")
+        with sub(loc=(R2 * c, R2 * s_, 0.5)):
+            lathe([(0.0, 0.0), (0.1, 0.0), (0.12, 0.04), (0.1, 0.05), (0.0, 0.03)], brass, seg=20)
+            candle((0, 0, 0.03), 0.05, 0.28, drip_seed=20 + k, power=18)
+    hub = (0, 0, 1.3)
+    torus(0.08, 0.025, iron, loc=hub, seg=24, rseg=8)
+    for k in range(4):
+        a = TAU * k / 4 + TAU / 8
+        chain([(R1 * math.cos(a) * 0.98, R1 * math.sin(a) * 0.98, 0.05), (0.06 * math.cos(a),
+               0.06 * math.sin(a), hub[2])], iron, link_len=0.13, wire=0.016)
+    chain([(0, 0, hub[2] + 0.04), (0, 0, 1.9)], iron, link_len=0.14, wire=0.018)
+    view(pitch=12, anchor="top", fill=0.96, glow=0.9, margin=0.0)
+
+
+def _profile_r(prof, z):
+    for (r0, z0), (r1, z1) in zip(prof[:-1], prof[1:]):
+        if z0 <= z <= z1 and z1 > z0:
+            return r0 + (r1 - r0) * (z - z0) / (z1 - z0)
+    return prof[-1][0]
+
+
+@item("prop_barrel", "prop", (96, 96))
+def build_prop_barrel():
+    staves = pbr("staves", (0.42, 0.24, 0.1), rough=0.6, pattern="staves", count=18)
+    body = catmull2d([(0.42, 0.0), (0.49, 0.3), (0.52, 0.6), (0.49, 0.9), (0.42, 1.2)], 6,
+                     closed=False)
+    prof = [(0.0, 0.0)] + body + [(0.4, 1.2), (0.39, 1.15), (0.0, 1.15)]
+    lathe(prof, staves, seg=72, name="barrel")
+    lid = M_wood((0.36, 0.2, 0.08), "lidwood", axis="X", grain=1.3)
+    cyl(0.39, 0.02, lid, loc=(0, 0, 1.155), seg=48, name="lid")
+    for x in (-0.13, 0.13):
+        box((0.008, 0.78, 0.012), pbr("groove", (0.05, 0.02, 0.01), rough=0.9),
+            loc=(x, 0, 1.165))
+    iron = M_wrought()
+    for z in (0.1, 0.33, 0.87, 1.1):
+        r = _profile_r(body, z)
+        torus(r + 0.012, 0.022, iron, loc=(0, 0, z), rz=2.4, rr=0.6, seg=72, rseg=10,
+              name="hoop")
+        for k in range(5):
+            a = -math.pi / 2 + (k - 2) * 0.35
+            sphere(0.012, iron, loc=((r + 0.03) * math.cos(a), (r + 0.03) * math.sin(a), z),
+                   seg=8, rings=4)
+    view(pitch=12, fill=0.94, glow=0.0)
+
+
+@item("prop_crate", "prop", (96, 96))
+def build_prop_crate():
+    core = M_wood((0.28, 0.16, 0.07), "cratecore", axis="X", grain=1.4)
+    board = M_wood((0.46, 0.28, 0.12), "crateboard", axis="X", grain=1.4)
+    board_v = M_wood((0.46, 0.28, 0.12), "crateboard_v", axis="Z", grain=1.4)
+    iron = M_wrought()
+    S = 1.0
+    box((S * 0.96, S * 0.96, S * 0.96), core, loc=(0, 0, S / 2), name="core")
+    # front planks with gaps
+    for i in range(4):
+        z = 0.12 + i * 0.25
+        box((S * 0.86, 0.03, 0.225), core, loc=(0, -0.48, z + 0.1), bev=0.008, name="plank")
+    t = 0.13
+    for (sx, sz) in ((-1, 0), (1, 0)):
+        box((t, 0.06, S), board_v, loc=(sx * (S / 2 - t / 2), -0.49, S / 2), bev=0.012)
+    for sz in (0, 1):
+        box((S, 0.06, t), board, loc=(0, -0.49, t / 2 + sz * (S - t)), bev=0.012)
+    L = math.hypot(S - 2 * t, S - 2 * t)
+    ang = math.atan2(S - 2 * t, S - 2 * t)
+    box((L, 0.05, t * 0.9), board, loc=(0, -0.5, S / 2), rot=(0, -ang, 0), bev=0.012,
+        name="brace")
+    # top frame (visible from the slight top angle)
+    for sy in (-1, 1):
+        box((S, t, 0.06), board, loc=(0, sy * (S / 2 - t / 2), S - 0.01), bev=0.012)
+    for sx in (-1, 1):
+        box((t, S, 0.06), board_v, loc=(sx * (S / 2 - t / 2), 0, S - 0.01), bev=0.012)
+    for sx in (-1, 1):
+        for sz in (-1, 1):
+            pts = [(0, 0), (0.2, 0), (0.2, 0.05), (0.05, 0.05), (0.05, 0.2), (0, 0.2)]
+            extrude([(sx * -x, -sz * z) for (x, z) in pts], 0.02, iron, bev=0.006,
+                    loc=(sx * (S / 2 + 0.005), -0.53, S / 2 + sz * (S / 2 + 0.005)))
+            sphere(0.018, iron, loc=(sx * (S / 2 - 0.06), -0.545, S / 2 + sz * (S / 2 - 0.06)),
+                   seg=8, rings=4)
+    view(pitch=12, fill=0.94, glow=0.0)
+
+
+@item("prop_pillar", "prop", (96, 256))
+def build_prop_pillar():
+    stone = M_stone("pillarstone", (0.25, 0.25, 0.29), scale=1.6, crack=0.004)
+    carved = M_stone("carvedstone", (0.3, 0.3, 0.34), scale=3.0, crack=0.004)
+    mossy = M_stone("plinthstone", (0.24, 0.24, 0.27), scale=3.0, moss=True, moss_z0=-0.1,
+                    moss_z1=0.1)
+    box((1.0, 1.0, 0.24), mossy, loc=(0, 0, 0.12), bev=0.03, name="plinth")
+    lathe([(0.0, 0.24), (0.47, 0.24), (0.49, 0.29), (0.45, 0.35), (0.40, 0.37), (0.42, 0.42),
+           (0.37, 0.48), (0.34, 0.5), (0.0, 0.5)], carved, seg=48, sharp=50, name="base")
+    zt = 3.3
+    lathe([(0.0, 0.5), (0.3, 0.5), (0.3, zt), (0.0, zt)], stone, seg=64, name="shaft",
+          radial=lambda a, t: 1 + 0.05 * math.cos(16 * a))
+    for k in range(4):
+        a = TAU * k / 4 + TAU / 8
+        cyl(0.1, zt - 0.5, stone, loc=(0.31 * math.cos(a), 0.31 * math.sin(a), (zt + 0.5) / 2),
+            seg=20)
+    for z in (1.4, 2.4):
+        torus(0.36, 0.045, carved, loc=(0, 0, z), seg=64, rseg=10)
+    joint = pbr("joint", (0.05, 0.05, 0.06), rough=0.9)
+    for z in (0.95, 1.9, 2.85):
+        torus(0.302, 0.006, joint, loc=(0, 0, z), seg=64, rseg=6)
+    lathe([(0.0, zt), (0.36, zt), (0.38, zt + 0.05), (0.42, zt + 0.2), (0.5, zt + 0.34),
+           (0.56, zt + 0.4), (0.0, zt + 0.4)], carved, seg=48, name="capital")
+    # foliage crockets: one leaf baked off-axis + radial array modifier
+    lf = leaf((0.0, 0.0, 0.0), 0.34, 0.1, (0, rad(-80), 0),
+              mat=M_stone("leafstone", (0.46, 0.45, 0.47), scale=6.0, crack=0.005), depth=0.03)
+    bake(lf, Matrix.Translation((0.0, -0.43, zt + 0.04)) @ Matrix.Rotation(rad(32), 4, "X")
+         @ lf.matrix_basis.copy())
+    radial_array(lf, 8)
+    lathe([(0.0, zt + 0.4), (0.62, zt + 0.4), (0.64, zt + 0.46), (0.62, zt + 0.52),
+           (0.0, zt + 0.52)], stone, seg=8, smooth=False, name="abacus")
+    view(pitch=6, fill=0.96, glow=0.0)
+
+
+BOOK_COLORS = [(0.32, 0.03, 0.04), (0.06, 0.16, 0.08), (0.05, 0.08, 0.2), (0.3, 0.16, 0.06),
+               (0.06, 0.05, 0.05), (0.22, 0.05, 0.18), (0.36, 0.26, 0.12), (0.12, 0.2, 0.22)]
+
+
+def M_book(i):
+    c = BOOK_COLORS[i % len(BOOK_COLORS)]
+    return pbr("book%d" % i, c, rough=0.5, coat=0.25, coat_rough=0.3, pattern="bands",
+               band=(0.95, 0.68, 0.28), pos=(0.1, 0.14, 0.84, 0.88))
+
+
+def skull(loc, s, mat, rot=(0, 0, 0)):
+    with sub(loc=loc, rot=rot, scale=s):
+        sphere(0.5, mat, loc=(0, 0, 0.1), scale=(0.9, 1.05, 0.95), seg=24, rings=12)
+        sphere(0.5, mat, loc=(0, -0.22, -0.18), scale=(0.62, 0.5, 0.42), seg=20, rings=10)
+        dark = pbr("socket", (0.02, 0.01, 0.01), rough=0.9)
+        for sx in (-1, 1):
+            sphere(0.13, dark, loc=(sx * 0.17, -0.4, 0.0), seg=12, rings=8)
+        cone(0.07, 0.12, dark, loc=(0, -0.46, -0.16), rot=(rad(90), 0, 0), seg=3)
+        for k in range(6):
+            box((0.05, 0.05, 0.07), mat, loc=(-0.13 + k * 0.052, -0.45, -0.34), bev=0.01)
+
+
+@item("prop_bookshelf", "prop", (128, 192))
+def build_prop_bookshelf():
+    wood = M_wood((0.25, 0.12, 0.05), "shelfwood", axis="Z", grain=1.2)
+    wood_h = M_wood((0.25, 0.12, 0.05), "shelfwood_h", axis="X", grain=1.2)
+    back = M_wood((0.08, 0.04, 0.02), "shelfback", axis="Z", grain=1.0)
+    W, D, H = 1.3, 0.42, 2.0
+    for sx in (-1, 1):
+        box((0.08, D, H), wood, loc=(sx * (W / 2 - 0.04), 0, H / 2), bev=0.012, name="side")
+    box((W - 0.1, 0.03, H - 0.05), back, loc=(0, D / 2 - 0.015, H / 2), name="back")
+    box((W + 0.14, D + 0.08, 0.1), wood_h, loc=(0, 0, H + 0.05), bev=0.02, name="crown")
+    box((W + 0.06, D + 0.04, 0.06), wood_h, loc=(0, -0.01, H - 0.01), bev=0.015)
+    box((W + 0.08, D + 0.06, 0.12), wood_h, loc=(0, 0, 0.06), bev=0.02, name="plinth")
+    arch = [_arch_pt(0.6, 0.3, 0.0, i / 20) for i in range(21)]
+    extrude([(x, z) for (x, z) in arch] + [(0.3, -0.02), (-0.3, -0.02)], 0.06, wood_h,
+            loc=(0, -D / 2 - 0.02, H + 0.1), bev=0.01, name="pediment")
+    brass = M_brass()
+    shelves = [0.12, 0.56, 1.0, 1.44]
+    for z in shelves:
+        box((W - 0.1, D - 0.04, 0.05), wood_h, loc=(0, -0.01, z + 0.025), bev=0.008,
+            name="shelf")
+        box((W - 0.1, 0.02, 0.04), brass, loc=(0, -D / 2 + 0.005, z + 0.03))
+    rng = random.Random(12)
+    for si, z in enumerate(shelves):
+        z0 = z + 0.05
+        top = (shelves[si + 1] if si + 1 < len(shelves) else H - 0.05) - 0.02
+        x = -W / 2 + 0.1
+        xend = W / 2 - 0.1
+        special = {0: "stack", 1: "skull", 2: None, 3: "candle"}[si]
+        sp_at = rng.uniform(-0.2, 0.25)
+        while x < xend - 0.04:
+            if special and abs(x - sp_at) < 0.05:
+                if special == "stack":
+                    for k in range(4):
+                        w_, h_ = rng.uniform(0.3, 0.36), rng.uniform(0.05, 0.07)
+                        box((w_, 0.26, h_), M_book(rng.randrange(8)),
+                            loc=(x + 0.17, -0.04, z0 + 0.03 + k * 0.065), rot=(0, 0, rad(rng.uniform(-8, 8))),
+                            bev=0.008, name="flatbook")
+                    x += 0.38
+                elif special == "skull":
+                    skull((x + 0.14, -0.05, z0 + 0.13), 0.28, M_bone("skullbone", (0.8, 0.74, 0.6)))
+                    x += 0.3
+                elif special == "candle":
+                    lathe([(0.0, 0.0), (0.08, 0.0), (0.09, 0.02), (0.03, 0.03), (0.0, 0.03)], brass,
+                          seg=20, loc=(x + 0.1, -0.08, z0))
+                    candle((x + 0.1, -0.08, z0 + 0.02), 0.035, 0.2, drip_seed=3, power=10)
+                    x += 0.22
+                special = None
+                continue
+            w_ = rng.uniform(0.05, 0.1)
+            h_ = min(rng.uniform(0.26, 0.38), top - z0 - 0.02)
+            lean = 0.0
+            if rng.random() < 0.08 and x > -0.3:
+                lean = rng.choice((-1, 1)) * rng.uniform(8, 16)
+            box((w_, 0.28, h_), M_book(rng.randrange(8)),
+                loc=(x + w_ / 2, -0.04, z0 + h_ / 2), rot=(0, rad(lean), 0), bev=0.007,
+                name="book")
+            x += w_ + (0.012 if lean == 0 else 0.05)
+    view(pitch=5, fill=0.95, glow=0.6)
+
+
+@item("prop_gear", "prop", (192, 192))
+def build_prop_gear():
+    brass = pbr("gearbrass", (0.74, 0.5, 0.22), metal=1, rough=0.3, noise_rough=0.14,
+                bump=0.08, bump_scale=20)
+    dark = M_wrought()
+    N, Rr, Rt = 16, 0.84, 1.0
+    pts = []
+    for k in range(N):
+        a0 = TAU * k / N
+        da = TAU / N
+        for (f, r) in ((0.0, Rr), (0.12, Rr), (0.28, Rt), (0.52, Rt), (0.68, Rr)):
+            a = a0 + f * da
+            pts.append((r * math.cos(a), r * math.sin(a)))
+    gear = extrude(pts, 0.22, brass, name="gear", sharp=30)
+    # spoke windows cut with one boolean (six disjoint cutter pieces)
+    bm = bmesh.new()
+    for k in range(6):
+        a0 = TAU * k / 6 + rad(8)
+        a1 = TAU * (k + 1) / 6 - rad(8)
+        corner = [(0.34, a0 + 0.1), (0.66, a0 + 0.05), (0.66, a1 - 0.05), (0.34, a1 - 0.1)]
+        win = [(r * math.cos(a), r * math.sin(a)) for (r, a) in corner]
+        win = catmull2d(win, 6, closed=True)
+        if _poly_area(win) < 0:
+            win = win[::-1]
+        vs_front = [bm.verts.new((x, -0.5, z)) for (x, z) in win]
+        vs_back = [bm.verts.new((x, 0.5, z)) for (x, z) in win]
+        bm.faces.new(vs_front)
+        bm.faces.new(vs_back[::-1])
+        n = len(win)
+        for i in range(n):
+            j = (i + 1) % n
+            bm.faces.new((vs_front[i], vs_back[i], vs_back[j], vs_front[j]))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    cutter = bm_obj("windows", bm, None)
+    boolean(gear, cutter)
+    bevel(gear, 0.02, 1, angle=30)     # after the boolean so the windows get chamfers
+    gear.data.shade_flat()
+    torus(0.8, 0.018, dark, rot=(rad(90), 0, 0), loc=(0, -0.115, 0), seg=96, rseg=6)
+    with sub(rot=(rad(90), 0, 0)):
+        lathe([(0.0, -0.17), (0.26, -0.17), (0.28, -0.13), (0.28, 0.13), (0.26, 0.17),
+               (0.0, 0.17)], brass, seg=48, name="hub")
+        lathe([(0.0, -0.22), (0.1, -0.22), (0.1, 0.24), (0.0, 0.24)], dark, seg=6,
+              smooth=False, name="axle")
+        bolt = lathe([(0.0, 0.16), (0.035, 0.16), (0.035, 0.2), (0.0, 0.2)], dark, seg=6,
+                     smooth=False, name="bolt")
+        bake(bolt, Matrix.Translation((0.19, 0.0, 0.0)))
+        radial_array(bolt, 6)
+    view(pitch=6, yaw=14, anchor="center", fill=0.94, glow=0.0)
+
+
+@item("prop_vat", "prop", (128, 192))
+def build_prop_vat():
+    brass = M_brass()
+    iron = M_wrought()
+    glass = M_glass("vatglass", (0.9, 1.0, 0.95))
+    lathe([(0.0, 0.0), (0.64, 0.0), (0.66, 0.05), (0.6, 0.1), (0.56, 0.3), (0.62, 0.34),
+           (0.62, 0.42), (0.0, 0.42)], iron, seg=48, sharp=40, name="base")
+    torus(0.63, 0.025, brass, loc=(0, 0, 0.38), seg=64)
+    for k in range(10):
+        a = TAU * k / 10
+        sphere(0.02, brass, loc=(0.61 * math.cos(a), 0.61 * math.sin(a), 0.2), seg=8, rings=4)
+    tube = lathe([(0.5, 0.42), (0.5, 1.9)], glass, seg=64, cap=False, name="tube")
+    solidify(tube, 0.025)
+    liq = pbr("vatliquid", (0.2, 0.9, 0.25), rough=0.05, trans=0.55, ior=1.33,
+              emit=(0.25, 1.0, 0.3), emit_str=1.0)
+    lathe([(0.0, 0.43), (0.465, 0.43), (0.465, 1.62), (0.0, 1.62)], liq, seg=64, name="liquid")
+    rng = random.Random(8)
+    bub = pbr("vatbubble", (0.8, 1.0, 0.85), rough=0.02, trans=1.0, ior=1.1,
+              emit=(0.4, 1.0, 0.5), emit_str=0.6)
+    for i in range(22):
+        a = rng.uniform(0, TAU)
+        rr = rng.uniform(0.05, 0.4)
+        sphere(rng.uniform(0.015, 0.045), bub, loc=(rr * math.cos(a), rr * math.sin(a) - 0.1,
+                                                    rng.uniform(0.5, 1.58)), seg=10, rings=6)
+    flesh = pbr("specimen", (0.05, 0.1, 0.06), rough=0.5, sss=0.3, sss_radius=(0.3, 1.0, 0.4))
+    with sub(loc=(0, 0.05, 1.0), rot=(0, rad(-15), 0)):
+        sphere(0.15, flesh, loc=(0, 0, 0.28), scale=(1.0, 1.0, 1.1), seg=20, rings=10)
+        sphere(0.5, flesh, loc=(0, 0.03, 0.0), scale=(0.26, 0.24, 0.4), seg=20, rings=10)
+        sweep(catmull([(0.1, -0.05, 0.1), (0.2, -0.12, -0.05), (0.08, -0.14, -0.15)], 6), 0.035,
+              flesh, segs=8)
+        sweep(catmull([(-0.08, -0.03, -0.15), (0.05, -0.12, -0.25), (-0.05, -0.1, -0.35)], 6),
+              0.04, flesh, segs=8)
+        eye = M_glow("specimeneye", (1.0, 0.9, 0.3), 3.0)
+        sphere(0.02, eye, loc=(0.05, -0.14, 0.3), seg=8, rings=4)
+        sphere(0.02, eye, loc=(-0.05, -0.14, 0.3), seg=8, rings=4)
+    torus(0.515, 0.03, brass, loc=(0, 0, 0.46), seg=64, rz=1.5)
+    torus(0.515, 0.03, brass, loc=(0, 0, 1.86), seg=64, rz=1.5)
+    torus(0.515, 0.02, brass, loc=(0, 0, 1.16), seg=64)
+    for k in range(4):
+        a = TAU * k / 4 + TAU / 8
+        cyl(0.025, 1.46, brass, loc=(0.55 * math.cos(a), 0.55 * math.sin(a), 1.16), seg=12)
+    lathe([(0.0, 1.88), (0.56, 1.88), (0.6, 1.93), (0.55, 2.0), (0.42, 2.08), (0.25, 2.16),
+           (0.15, 2.18), (0.0, 2.18)], brass, seg=48, name="cap")
+    for k in range(12):
+        a = TAU * k / 12
+        sphere(0.018, iron, loc=(0.57 * math.cos(a), 0.57 * math.sin(a), 1.95), seg=8, rings=4)
+    pipe = catmull([(0.0, 0.0, 2.1), (0.0, 0.0, 2.45), (0.12, 0.0, 2.6), (0.4, 0.0, 2.62),
+                    (0.56, 0.0, 2.5), (0.6, 0.0, 2.2)], 8)
+    sweep(pipe, 0.055, brass, segs=14, name="pipe")
+    for p in (pipe[4], pipe[-6]):
+        torus(0.075, 0.02, iron, loc=p, seg=20, rseg=6)
+    with sub(loc=(0.1, -0.08, 2.35), rot=(rad(90), 0, 0)):
+        torus(0.12, 0.018, M_darkiron(), seg=32, rseg=8)
+        for k in range(4):
+            box((0.24, 0.02, 0.02), M_darkiron(), rot=(0, 0, TAU * k / 8))
+    with sub(loc=(0, -0.63, 0.22), rot=(rad(90), 0, 0)):
+        cyl(0.1, 0.04, brass, seg=24)
+        cyl(0.085, 0.01, pbr("gaugeface", (0.9, 0.86, 0.75), rough=0.4), loc=(0, 0, 0.02), seg=24)
+        box((0.012, 0.07, 0.01), M_black(), loc=(0.015, 0.02, 0.028), rot=(0, 0, rad(-30)))
+    point_light((0, -0.2, 1.1), (0.3, 1.0, 0.35), 60, 0.3)
+    point_light((0, -0.9, 1.1), (0.3, 1.0, 0.35), 20, 0.3)
+    view(pitch=7, fill=0.95, glow=0.7, glow_beauty=0.35)
 
 
 # ==== END OF BUILDERS ====

@@ -395,8 +395,6 @@ def pbr(name, color, metal=0.0, rough=0.5, emit=None, emit_str=0.0,
         bn.inputs["Distance"].default_value = 0.02
         _link(nt, bump_height[0], bn.inputs["Height"])
         _link(nt, bn.outputs["Normal"], I["Normal"])
-        if coat > 0:
-            pass
 
     if glow is not None:
         m["glow"] = list(glow)
@@ -910,8 +908,7 @@ def extrude(pts, depth, mat, loc=(0, 0, 0), rot=(0, 0, 0), bev=0.0, bev_seg=2,
             x = cx + (x - cx) * (1 - taper)
             z = cz + (z - cz) * (1 - taper)
         verts.append((x, depth / 2, z))
-    faces = [tuple(range(n))[::-1] if False else tuple(range(n)),
-             tuple(range(2 * n - 1, n - 1, -1))]
+    faces = [tuple(range(n)), tuple(range(2 * n - 1, n - 1, -1))]
     for i in range(n):
         j = (i + 1) % n
         faces.append((i, n + i, n + j, j))
@@ -1552,12 +1549,10 @@ def book(w, h, t, cover_mat, page_mat, trim_mat=None, spine_mat=None, corners=Tr
     if corners:
         cm = corner_mat or trim_mat or cover_mat
         c = w * 0.2
-        for sx in (1,):
-            for sz in (-1, 1):
-                tri = [(0, 0), (-c, 0), (0, -c)]
-                pts = [(w / 2 + x * 1.0, z) for x, z in [(0.004, 0.004), (-c, 0.004), (0.004, -c)]]
-                pts = [(x, sz * (h / 2) + (z if sz > 0 else -z)) for x, z in pts]
-                extrude(pts, t + ct * 0.6, cm, bev=0.006, name="corner")
+        for sz in (-1, 1):
+            pts = [(w / 2 + x, z) for x, z in [(0.004, 0.004), (-c, 0.004), (0.004, -c)]]
+            pts = [(x, sz * (h / 2) + (z if sz > 0 else -z)) for x, z in pts]
+            extrude(pts, t + ct * 0.6, cm, bev=0.006, name="corner")
     if clasp:
         box((w * 0.18, t * 0.6, h * 0.12), trim_mat or cover_mat,
             loc=(w / 2 + w * 0.02, 0, 0), bev=0.008, name="clasp")
@@ -1594,10 +1589,6 @@ def grip_shape(x_top, z_top, length, width, angle=18, butt=1.25, curve=0.05):
 
     def tangent(t):
         return (d * length - side * (2 * curve * t)).normalized()
-
-    def normal(t):
-        tg = tangent(t)
-        return Vector((-tg.z, 0, tg.x)) if False else Vector((tg.z * -1, 0, tg.x)) * -1
 
     pts = []
     n = 12
@@ -1897,10 +1888,9 @@ def whip_4():
 def whip_5():
     """Holy golden whip: gold braided lash, cross-shaped handle."""
     gold = M_gold()
-    lash = pbr("holy_lash", (1.0, 0.85, 0.5), metal=0.6, rough=0.3, coat=0.3,
-               emit=(1.0, 0.85, 0.5), emit_str=0.06, glow_str=0.12,
+    lash = pbr("holy_lash", (1.0, 0.74, 0.34), metal=0.85, rough=0.28, coat=0.3,
                pattern="braid", pattern_args=dict(freq=22.0, strands=2.0,
-                                                  dark=(0.55, 0.36, 0.12)))
+                                                  dark=(0.42, 0.25, 0.08)))
     white = M_leather((0.9, 0.87, 0.8), "white_leather")
     holy = M_gem((0.8, 0.9, 1.0), "holy_gem", 2.0)
     with group((0, 0, 0), (0, rad(-8), 0)):
@@ -1931,8 +1921,8 @@ def whip_5():
 def whip_6():
     """Crimson blood whip: glowing vertebra segments, skull pommel."""
     black = M_blackmetal()
-    seg_mat = pbr("blood_seg", (0.30, 0.015, 0.025), metal=0.5, rough=0.25, coat=0.8,
-                  emit=(1.0, 0.04, 0.03), emit_str=0.35, glow_str=0.35)
+    seg_mat = pbr("blood_seg", (0.22, 0.01, 0.02), metal=0.6, rough=0.22, coat=0.8,
+                  emit=(1.0, 0.03, 0.02), emit_str=0.12, glow_str=0.18)
     core = M_glow((1.0, 0.08, 0.04), "blood_core", 12)
     veins = pbr("black_veins", (0.05, 0.04, 0.05), metal=1, rough=0.3, pattern="veins",
                 pattern_args=dict(color=(1.0, 0.05, 0.03), strength=10, density=5, width=0.06))
@@ -1972,7 +1962,7 @@ def whip_6():
             sp_p.append(c + side * sg * 0.03 * sc)
             sp_n.append((side * sg + t * -0.6).normalized())
     spikes_on_points(sp_p, sp_n, 0.05, 0.012, black, name="vspike")
-    view(diag=0, glow=1.1)
+    view(diag=0, glow=0.9)
 
 
 # =============================================================================
@@ -2419,7 +2409,7 @@ def greatsword_6():
     """Demon cleaver: black single-edged slab with red veins, spine spikes,
     horned hilt."""
     black = pbr("cleaver_black", (0.04, 0.035, 0.04), metal=1, rough=0.3, pattern="veins",
-                pattern_args=dict(color=(1.0, 0.05, 0.02), strength=9.0, density=3.2, width=0.045,
+                pattern_args=dict(color=(1.0, 0.05, 0.02), strength=6.0, density=2.6, width=0.03,
                                   scale=(2.5, 2.5, 2.5)))
     edge = pbr("cleaver_edge", (0.35, 0.05, 0.05), metal=1, rough=0.2,
                emit=(1.0, 0.06, 0.02), emit_str=1.2, glow_str=0.5)
@@ -2524,7 +2514,7 @@ def dagger_2():
 @item("dagger_3")
 def dagger_3():
     """Kris: wavy pamor blade, carved wooden hilt with a silver cup."""
-    pamor = pbr("pamor", (0.6, 0.62, 0.66), metal=1, rough=0.3, grunge=0.55, grunge_scale=14)
+    pamor = pbr("pamor", (0.34, 0.35, 0.38), metal=1, rough=0.36, grunge=0.5, grunge_scale=16)
     edge = pbr("kris_edge", (0.9, 0.9, 0.93), metal=1, rough=0.1)
     silver = M_silver()
     wood = M_darkwood()
@@ -2726,7 +2716,7 @@ def gun_1():
     extrude([(0.06, 0.03), (0.09, 0.03), (0.09, 0.1), (0.07, 0.1)], 0.02, iron,
             loc=(0, -0.045, 0), bev=0.004, name="frizzen")
     trigger_guard(-0.06, 0.1, -0.06, 0.08, 0.009, brass)
-    view(diag=12, yaw=-22)
+    view(diag=24, yaw=-22)
 
 
 @item("gun_2")
@@ -2735,7 +2725,7 @@ def gun_2():
     steel = pbr("blued_steel", (0.35, 0.38, 0.44), metal=1, rough=0.25, noise_rough=0.08)
     wood = M_wood((0.38, 0.17, 0.07), "walnut")
     revolver(steel, wood, M_brass())
-    view(diag=12, yaw=-22)
+    view(diag=24, yaw=-22)
 
 
 @item("gun_3")
@@ -2766,7 +2756,7 @@ def gun_3():
     extrude(gp, 0.075, wood, bev=0.02, name="grip", bev_angle=50)
     bc = grip_end(-0.07, -0.01, 0.26, 34, 0.06)
     sphere(0.045, silver, loc=bc, scale=(1.0, 0.9, 0.6), name="butt_cap")
-    view(diag=12, yaw=-26)
+    view(diag=24, yaw=-26)
 
 
 @item("gun_4")
@@ -2785,7 +2775,7 @@ def gun_4():
         name="medallion")
     torus(0.022, 0.005, gold, loc=(-0.14, -0.036, -0.13), rot=(rad(90), 0, 0), seg=24, rseg=6,
           name="medallion_rim")
-    view(diag=12, yaw=-22, glow=0.8)
+    view(diag=24, yaw=-22, glow=0.8)
 
 
 @item("gun_5")
@@ -2803,7 +2793,7 @@ def gun_5():
     torus(0.045, 0.008, light, loc=(0.5, 0, zb - 0.02), rot=(0, rad(90), 0), seg=32, rseg=6,
           name="halo")
     gem(0.022, M_gem((1.0, 0.95, 0.85), "holy_gem", 2.0), loc=(0.04, -0.03, 0.07 - 0.005), seg=10)
-    view(diag=12, yaw=-22, glow=0.9)
+    view(diag=24, yaw=-22, glow=0.9)
 
 
 @item("gun_6")
@@ -2854,7 +2844,7 @@ def gun_6():
         cone(0.012, 0.045, bone, loc=bc + Vector((0.05 + 0.03 * k, 0, 0.06 + 0.07 * k)),
              rot=(0, rad(64), 0), seg=8, name="grip_spike")
     gem(0.028, M_gem((1.0, 0.05, 0.02), "blood_gem", 3.0), loc=(-0.05, -0.062, 0.05), seg=10)
-    view(diag=12, yaw=-32, glow=1.0)
+    view(diag=24, yaw=-32, glow=1.0)
 
 
 # =============================================================================
@@ -2980,11 +2970,11 @@ def staff_4():
     crys = pbr("staff_crystal", (0.25, 0.55, 1.0), rough=0.02, trans=0.55, ior=1.6, spec=1.0,
                emit=(0.3, 0.65, 1.0), emit_str=1.6, glow_str=0.7)
     core = M_glow((0.5, 0.85, 1.0), "crystal_core", 8)
-    lathe([(0, -1.0), (0.022, -1.0), (0.026, 0.55), (0, 0.56)], silver, seg=20, name="shaft")
+    lathe([(0, -0.85), (0.024, -0.85), (0.028, 0.55), (0, 0.56)], silver, seg=20, name="shaft")
     grip(-0.3, 0.05, 0.03, wrap, wraps=9, name="grip")
-    for z in (-0.95, -0.31, 0.06, 0.4):
-        torus(0.03, 0.009, silver, loc=(0, 0, z), seg=24, rseg=6, name="band")
-    cone(0.026, 0.08, silver, loc=(0, 0, -1.0), rot=(math.pi, 0, 0), seg=12, name="tip")
+    for z in (-0.8, -0.31, 0.06, 0.4):
+        torus(0.032, 0.009, silver, loc=(0, 0, z), seg=24, rseg=6, name="band")
+    cone(0.026, 0.08, silver, loc=(0, 0, -0.85), rot=(math.pi, 0, 0), seg=12, name="tip")
     # collar + claws
     lathe(smooth_profile([(0, 0.5), (0.03, 0.5), (0.06, 0.58), (0.07, 0.62), (0, 0.62)], 3),
           silver, seg=24, name="collar")
@@ -2995,8 +2985,8 @@ def staff_4():
         pts = bezier(p0, p0 + d * 0.12 + Vector((0, 0, 0.05)), p0 + d * 0.12 + Vector((0, 0, 0.25)),
                      p0 + d * 0.02 + Vector((0, 0, 0.34)), 20)
         sweep(pts, lambda s: 0.02 * (1 - 0.8 * s) + 0.003, silver, segs=10, name="claw")
-    crystal(0.075, 0.36, crys, loc=(0, 0, 0.58), sides=6, tip=0.3, base_tip=0.2)
-    crystal(0.03, 0.2, core, loc=(0, 0, 0.64), sides=6, tip=0.3, base_tip=0.2, name="core")
+    crystal(0.09, 0.42, crys, loc=(0, 0, 0.57), sides=6, tip=0.3, base_tip=0.2)
+    crystal(0.035, 0.24, core, loc=(0, 0, 0.64), sides=6, tip=0.3, base_tip=0.2, name="core")
     for (x, z, s) in ((0.17, 0.82, 0.5), (-0.14, 0.9, 0.4)):
         crystal(0.03 * s * 2, 0.12 * s * 2, crys, loc=(x, 0, z), rot=(0, rad(25 * (1 if x > 0 else -1)), 0),
                 sides=6, name="shard")
@@ -3011,15 +3001,15 @@ def staff_5():
     tip = pbr("wing_gold", (1.0, 0.82, 0.45), metal=0.7, rough=0.3)
     light = M_glow((1.0, 0.92, 0.7), "holy_orb", 8.0, base=(1.0, 0.95, 0.85))
     wrap = M_leather((0.9, 0.87, 0.8), "white_leather")
-    lathe([(0, -1.0), (0.024, -1.0), (0.028, 0.48), (0, 0.5)], gold, seg=20, name="shaft")
+    lathe([(0, -0.85), (0.026, -0.85), (0.03, 0.48), (0, 0.5)], gold, seg=20, name="shaft")
     grip(-0.3, 0.05, 0.032, wrap, wraps=9, name="grip")
-    for z in (-0.9, -0.31, 0.06):
-        torus(0.032, 0.01, gold, loc=(0, 0, z), seg=24, rseg=6, name="band")
-    lathe([(0, -1.08), (0.02, -1.06), (0.035, -1.0), (0, -0.98)], gold, seg=16, name="butt")
+    for z in (-0.78, -0.31, 0.06):
+        torus(0.034, 0.01, gold, loc=(0, 0, z), seg=24, rseg=6, name="band")
+    lathe([(0, -0.93), (0.02, -0.91), (0.037, -0.85), (0, -0.83)], gold, seg=16, name="butt")
     lathe(smooth_profile([(0, 0.44), (0.035, 0.44), (0.07, 0.52), (0.06, 0.58), (0.03, 0.6),
                           (0, 0.6)], 3), gold, seg=24, name="head_base")
     for side in (-1, 1):
-        wing(side, white, loc=(side * 0.04, 0.02, 0.56), scale=0.42, n=7, accent=tip)
+        wing(side, white, loc=(side * 0.04, 0.02, 0.56), scale=0.56, n=7, accent=tip)
     torus(0.13, 0.014, gold, loc=(0, 0.03, 0.8), rot=(rad(90), 0, 0), seg=48, rseg=8, name="halo")
     sphere(0.075, light, loc=(0, 0, 0.8), name="orb")
     cross_emblem(0.1, gold, (0, 0, 1.0), depth=0.02, flare=0.01)
@@ -3287,7 +3277,7 @@ def body_5():
     white = pbr("enamel_white", (0.9, 0.9, 0.88), metal=0.0, rough=0.2, coat=1.0)
     gold = M_gold()
     cloth = M_cloth((0.9, 0.88, 0.82), "cloth_white")
-    light = M_glow((1.0, 0.85, 0.5), "holy_cross", 5.0, base=(1.0, 0.85, 0.5))
+    light = M_glow((1.0, 0.8, 0.4), "holy_cross", 1.2, base=(1.0, 0.75, 0.35))
     xs = ridge_xsec(0.1, 0.4)
     torso_shell(white, 0.36, 0.93, xsec=xs, name="breastplate", thick=0.025)
     band_at(0.365, gold, r=0.016, xsec=xs, off=0.012, name="trim")
@@ -3304,9 +3294,9 @@ def body_5():
             loc=(0, p.y, 0), bev=0.004, name="tabard")
     extrude([(-0.13, 0.36), (0.13, 0.36), (0.13, -0.2), (0.0, -0.28), (-0.13, -0.2)], 0.008, gold,
             loc=(0, p.y + 0.004, 0), scale=(1.06, 1, 1.02), name="tabard_trim")
-    cross_emblem(0.3, light, (0, p.y - 0.01, 0.06), depth=0.012, flare=0.012)
-    cross_emblem(0.2, gold, (0, torso_pt(-math.pi / 2, 0.68, off=0.03, xsec=xs).y, 0.68), depth=0.015,
-                 flare=0.01)
+    cross_emblem(0.3, gold, (0, p.y - 0.012, 0.06), depth=0.014, flare=0.012)
+    cross_emblem(0.22, light, (0, torso_pt(-math.pi / 2, 0.68, off=0.03, xsec=xs).y, 0.68),
+                 depth=0.015, flare=0.01)
     for side in (-1, 1):
         pauldron(gold, side, (side * 0.37, 0.0, 0.84), 0.21, 2, trim=white)
         wing(side, gold, loc=(side * 0.45, 0.03, 0.9), scale=0.2, n=5, rows=2)
@@ -3319,7 +3309,7 @@ def body_6():
     """Dark plate: black armour with crimson trims, spiked pauldrons and a
     glowing blood gem."""
     black = pbr("dark_plate", (0.045, 0.04, 0.05), metal=1, rough=0.3, pattern="veins",
-                pattern_args=dict(color=(1.0, 0.05, 0.03), strength=5.0, density=4.0, width=0.025,
+                pattern_args=dict(color=(1.0, 0.05, 0.03), strength=3.0, density=2.2, width=0.014,
                                   scale=(2.5, 2.5, 2.5)))
     bm = M_blackmetal()
     crimson = pbr("crimson_trim", (0.55, 0.03, 0.04), metal=1, rough=0.25,
@@ -4101,10 +4091,8 @@ def amulet_3():
     tooth = pbr("tooth", (0.9, 0.84, 0.68), rough=0.35, coat=0.4, sss=0.1)
     bead = M_wood((0.35, 0.18, 0.08), "bead_wood")
     path = necklace("cord", cord, bail_z=0.26)
-    pts = resample(path[:len(path) // 2 + 20], 0.01)
     # pick positions along the lower arc
-    lower = [p for p in resample(catmull([(-0.3, -0.01, 0.46), (-0.16, -0.02, 0.3), (0, -0.02, 0.26),
-                                          (0.16, -0.02, 0.3), (0.3, -0.01, 0.46)], 10), 0.005)]
+    lower = [p for p in resample(path, 0.005) if p.y < 0.03 and p.z < 0.5]
     n = 5
     for k in range(n):
         t = 0.1 + 0.8 * k / (n - 1)
@@ -4130,12 +4118,12 @@ def amulet_4():
     """Heart locket: silver filigree heart framing a glowing crimson crystal
     heart."""
     silver = M_silver()
-    crys = pbr("heart_crystal", (0.6, 0.01, 0.06), rough=0.05, trans=0.4, spec=1.0, coat=1.0,
-               emit=(1.0, 0.03, 0.12), emit_str=0.5, glow_str=0.45)
+    crys = pbr("heart_crystal", (0.45, 0.005, 0.03), rough=0.05, trans=0.4, spec=1.0, coat=1.0,
+               emit=(1.0, 0.02, 0.06), emit_str=0.25, glow_str=0.35)
     necklace("chain", silver, bail_z=0.24)
     heart = shape_heart(0.24)
     extrude([(x, z - 0.02) for x, z in heart], 0.06, silver, bev=0.02, name="locket")
-    inner = shape_heart(0.17)
+    inner = shape_heart(0.15)
     extrude([(x, z - 0.02) for x, z in inner], 0.08, crys, bev=0.025, name="heart_gem",
             loc=(0, -0.012, 0))
     torus(0.03, 0.009, silver, loc=(0, 0, 0.22), rot=(0, rad(90), 0), seg=16, rseg=6, name="bail")
@@ -4166,7 +4154,7 @@ def amulet_6():
     """Star pendant: black spiked star around a blazing violet-crimson core."""
     bm = M_blackmetal()
     core = pbr("star_core", (0.5, 0.1, 0.9), rough=0.05, trans=0.3, spec=1.0,
-               emit=(0.6, 0.12, 1.0), emit_str=1.8, glow_str=0.8)
+               emit=(0.6, 0.12, 1.0), emit_str=0.9, glow_str=0.6)
     red = M_glow((1.0, 0.1, 0.2), "star_red", 6)
     necklace("chain", bm, bail_z=0.3)
     star = shape_star(8, 0.34, 0.14)
@@ -4177,7 +4165,7 @@ def amulet_6():
     extrude(inner, 0.07, core, bev=0.012, name="core_star", loc=(0, -0.01, 0))
     sphere(0.05, red, loc=(0, -0.04, 0), name="heart")
     torus(0.028, 0.009, bm, loc=(0, 0, 0.3), rot=(0, rad(90), 0), seg=16, rseg=6, name="bail")
-    view(pitch=4, glow=1.1)
+    view(pitch=4, glow=0.9)
 
 
 # ----------------------------------------------------------------------------
@@ -4303,6 +4291,11 @@ def post_process(main_png, glow_png, out_png, size, glow_k=1.0, outline=0.55):
         G1 = _blur(gs, size / 64.0)
         G2 = _blur(gs, size / 18.0)
         Gt = (0.9 * G1 + 0.8 * G2) * glow_k
+        # fade the halo out toward the icon border so it never gets clipped
+        idx = np.arange(size, dtype=np.float32)
+        edge = np.minimum(idx, size - 1 - idx) / (size / 12.0)
+        fade = np.clip(np.minimum(edge[:, None], edge[None, :]), 0, 1) ** 1.5
+        Gt *= fade[..., None]
         P = P + Gt[..., :3] * (1 - 0.35 * A)
         A = A + np.clip(Gt[..., 3:4], 0, 1) * (1 - A)
         A = np.clip(A, 0, 1)
