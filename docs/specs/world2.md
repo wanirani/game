@@ -680,6 +680,26 @@ Chandeliers (`4`) are placed in the empty cell directly below a ceiling tile; th
 | r5 | 여제의 복도 | 100×15 | `S` col 4. Gauntlet with 2 `Q`, 2 `B`, `$`. | enemies 1×3, 3×2, 2×2, 4×2; `chests: ['m_stone_6']`; `exitRight: 'boss'` |
 | boss | 만경의 옥좌 | 56×16 | `P` col 2, `T` torches, `G` col 8, `X` col 16; arena cols 17–55; floor rows 14–15; `=` platforms row 9 at cols 24–29 and 42–47. No `Q`, no phase tiles. | `boss: true`, `gimmick: null` |
 
+Illustration — the first 40 columns of s14 r1 (tutorial). In phase A the `aa` wall blocks and the floor gap at cols
+26–37 is a one-tile spike pit; hitting/touching the mirror `Q` flips to B: the wall vanishes and the `b` bridge appears.
+```
+    0         1         2         3
+    0123456789012345678901234567890123456789
+ 0  ########################################…
+ 1  ####    W          W          W        …
+ 2  #                                      …
+ 6  #    C         C        C              …
+ 7  #                     aa               …
+ 8  #                     aa               …
+ 9  #                     aa               …
+10  #                     aa               …
+11  # P     ! T       Q   aa               …
+12  ##########################bbbbbbbbbbbb##…
+13  ##########################^^^^^^^^^^^^##…
+14  ########################################…
+```
+(rows 3–5 omitted: empty with the left wall.)
+
 #### s15 영겁의 용광로 — digits `1 forge_imp, 2 slag_golem, 3 chain_warden, 4 bellows, 5 hellhound, 6 gear_golem, 7 mimic`
 Floors: walkable floor top at row 13 (solid rows 13–14); magma basins are floor cut-outs (rows 13–14 empty down to the
 map bottom). Tide `high: 12` floods one tile above the floor → every ≤ 6 columns there must be a raised stone/ledge
@@ -743,9 +763,9 @@ cell, as in Part 1). Wrong doors lead to loop rooms that exit back to the maze r
 | room | name | size | layout / beats | markers & params |
 |---|---|---|---|---|
 | r1 | 무너지는 길 | 150×15 | Chase: floating path, small gaps (≤ 3), few enemies. `!` s20_t1 at col 6. | `gimmick: { kind: 'voidwall', mode: 'chase', speed: 115, delay: 3, startTx: -3, stopTx: 140 }`; enemies 2×6, 1×2; `triggers: ['s20_t1']`; `exitRight: 'r2'` |
-| r2 | 거울의 기억 | 90×15 | Mirror puzzles (`a`/`b`, 4 `Q`). | `gimmick: { kind: 'mirror', start: 'A' }`; enemies 3×3, 1×1, 2×2; `exitRight: 'r3'` |
+| r2 | 거울의 기억 | 90×15 | Mirror puzzles (`a`/`b`, 4 `Q`); `@` lore l34 near the far end (84,11). | `gimmick: { kind: 'mirror', start: 'A' }`; enemies 3×3, 1×1, 2×2; `items: ['lore:l34']`; `exitRight: 'r3'` |
 | r3 | 불의 기억 | 34×44 (ascent) | `P` (3,41), floor rows 42–43; ledges; exit right wall rows 2–4. | `gimmick: { kind: 'magma', mode: 'rise', y0: 43, y1: 4, speed: 52, trigger: 37 }`; enemies 2×3, 1×1, 4×1 (upper ledge); `exitRight: 'r4'` |
-| r4 | 물과 바람의 기억 | 110×20 | `S` col 4; lower rows 12–17 water, upper islands; 2 `u`; one updraft column. | `liquid: 'deep'`, `gimmick: [{ kind: 'deep' }, { kind: 'wind', dir: 1, force: 800, on: 2.2, off: 3.5 }]`; enemies 5×3, 6×3, 2×2; `exitRight: 'r5'` |
+| r4 | 물과 바람의 기억 | 110×20 | `S` col 4; lower rows 12–17 water, upper islands (floors rows ≤ 10); 2 `u`; one updraft column; `@` lore l33 on an island (60,9). | `liquid: 'deep'`, `gimmick: [{ kind: 'deep' }, { kind: 'wind', dir: 1, force: 800, on: 2.2, off: 3.5 }]`; enemies 5×3, 6×3, 2×2; `items: ['lore:l33']`; `exitRight: 'r5'` |
 | r5 | 꿈과 부패의 기억 | 100×15 | `S` col 4; `z`/`Z` gates; 3 `y`; `G` col 70; `H` (d27) (86,11); `!` s20_t2 col 92. | `gimmick: [{ kind: 'heartbeat', beat: 3.0 }, { kind: 'blight', spores: [[50, 5, 14, 8]] }]`; enemies 7×2, 8×1, 9×3, 1×1; `docs: ['d27']`; `triggers: ['s20_t2']`; `exitRight: 'boss'` |
 | boss | 공허의 중심 | 60×18 | `G` col 8, `X` col 16; floor rows 16–17; `=` row 11 at cols 24–28 and 46–50; `=` row 7 at cols 34–40. | `boss: true`, `gimmick: { kind: 'voidwall', mode: 'arena' }` |
 
@@ -971,8 +991,12 @@ with the current hero's look in a silver-glass tint `#cfe8ff` + crack lines, lik
   `choose()`, `restTime()`, `zone()`, `hitParts()` (parts with `defMul` and optional `onHit`), `contactParts()`,
   `onReset()`, `debugAct()/debugPhase()`, warn helpers, `impact()`, `trySpawn()`. Do not edit `b_common.js`; put shared
   Part 2 helpers in `c_common.js` (WP-D1 owns; WP-D2 may import, not edit).
-- **State names below are a contract** (tests call `boss.debugAct(name)` for each). `idle` chooses the next pattern with
-  `choose()` weights per phase; rest after each pattern = `restTime(0.9–1.3)`.
+- **State names below are a contract** (tests call `boss.debugAct(name)` for every *attack pattern*; the transition
+  states `shatter1`, `shatter`, `hornbreak`, `dreamshift`, `form2`, `final` and helper states such as `stun`/`kneel`
+  are only entered through `debugPhase(n)` or by gameplay, and must also be safe if `debugAct` is called on them).
+  Every attack pattern must work in any phase when forced (tests force P2/P3 patterns in phase 0 too — e.g. `tide`
+  when magma is at rest, `flood` when water is low, `collapse` when walls are open). `idle` chooses the next pattern
+  with `choose()` weights per phase; rest after each pattern = `restTime(0.9–1.3)`.
 - Phase transitions: invulnerable 1.2–2.0 s transition state (`s_phaseN` or named below), then the phase's pattern set.
   Phase scripts (`b_narkissa_shatter`, `b_mara_dream`, `b_nihil_form2`, `b_nihil_final`) are pushed as dialogue overlays
   in story mode once (copy the `b_dracula` pattern) and set `world.cutscene` during them.
@@ -1220,7 +1244,7 @@ Death (4 s): cracks of light spread across the void, white-out flash, silence, t
   `.hp` 140; `A_BASE.cloak.def` 20, `.res` 29; `T_APRICE` adds 18000; `T_CPRICE` adds 26000; `U_PRICE` adds 150000.
 - `tierForLevel` loops to 7; `baseIdFor` clamps to 7; `rollItem` clamps tier to 7 and widens the nearest-tier search to 7.
 - `render/icons.js` fallback arrays get a 7th colour (`metal` `#dff4ff`, cloak `#1a1030`).
-- Arcade `buildArcadeState` uses `Math.min(7, P.wtier)`.
+- (WP-G, §11) arcade `buildArcadeState` uses `Math.min(7, P.wtier)`.
 
 ### 7.2 Tier-7 bases (appended as rows 13–14 of each table; ids follow the existing numbering)
 Weapons (`w_<type>_13` standard, `w_<type>_14` upper; icon `<type>_7`; visual `{ style: 6, rift: true, color?, glow? }` —
@@ -1300,10 +1324,9 @@ new `MYTHIC_WEAPONS_P2` = tier-7 mythics. `loot.js` `mythicDrop(world)` uses P2 
 
 ### 7.6 Shop
 - `chapterTier(ch)`: unchanged up to 13; `ch === 14 → 6`, `ch >= 15 → 7`. `smithStock` `topR`: `ch >= 16 → 3`.
-- `ROOK_GOODS` add `['m_stone_4', 14, 1.35]`, `['m_stone_5', 16, 1.4, '한정 입고']`, `['c_elixir', 14, 1.0]` (already
-  from 9 — keep one entry), `['m_scroll_protect', 14, 1.1]` (cheaper from 14 — replace the existing multiplier only when
-  `chapter >= 14`).
-- `ROOK_ACC` add `['a_ring_11', 14], ['a_amulet_11', 14], ['a_ring_13', 16], ['a_amulet_13', 16]`.
+- `ROOK_GOODS` append `['m_stone_4', 14, 1.35]` and `['m_stone_5', 16, 1.4, '한정 입고']`; existing entries unchanged.
+- `ROOK_ACC` append `['a_ring_11', 14], ['a_amulet_11', 14], ['a_ring_13', 16], ['a_amulet_13', 16]` (the existing
+  rarity rule `accR` applies).
 
 ---
 
@@ -1485,7 +1508,8 @@ emotional (“허허… 이게 새벽꽃인가. 곱구먼. 정말로 곱구먼.�
 - `BOSS_ORDER` appends `'b_narkissa','b_moloch','b_dagon','b_ziz','b_mara','b_behemoth','b_nihil'`.
 - `COURSES` appends (keep existing indices 0–2): `{ name: '이계편', sub: '14~20장 보스', from: 13, to: 20, p2: true }`,
   `{ name: '전 보스 연속', sub: '20연전', from: 0, to: 20, p2: true }`.
-- `LEVEL_PRESETS` appends `{ name: '이계의 순례자', lv: 68, tier: 2, wtier: 7, rarity: 4, enh: 13, docs: 99, potions: 7, p2: true }`.
+- `LEVEL_PRESETS` appends `{ name: '이계의 순례자', lv: 68, tier: 2, wtier: 7, rarity: 4, enh: 13, docs: 99, potions: 7, p2: true }`;
+  `buildArcadeState` changes both `Math.min(6, P.wtier)` to `Math.min(7, P.wtier)` (weapon and armour).
 - `p2Known(game)` = any slot has `s14` unlocked, or `meta.endingsSeen` contains a p2 ending, or `meta.konami`. Rows
   hide `p2` courses/presets when `!p2Known`; a saved `arcadeCfg` pointing at a hidden option falls back to index 0.
 - Practice mode picks up s14–s20 automatically through `practiceStages()` (unlock union).
@@ -1728,8 +1752,9 @@ server via `tools/serve.mjs start(port)`); each package runs the subset for its 
    - s19 r1: player inside a spore rect → `meter > 20` after 1 s; at 100 `status` true and `player.heal()` heals half; Statue/food cleanse.
    - s20 r1: after `delay + 1` s `wallX` increased; standing still → damaged and pushed right.
 6. Bosses (each of the 7): load `room=boss`, walk right into the arena, dismiss dialogues (Enter), wait for
-   `world.bossActive && !world.cutscene`; for every state in §6 call `boss.debugAct(name)` and run 3.5 s; `debugPhase(n)`
-   for each phase then repeat the phase's states; force a player death (`player.hp = 0` path) during P2 and verify
+   `world.bossActive && !world.cutscene`; for every attack pattern in §6 (not the transition states) call
+   `boss.debugAct(name)` and run 3.5 s; `debugPhase(n)` for each phase (dialogue overlays dismissed with Enter) then
+   repeat that phase's patterns; force a player death (`player.hp = 0` path) during P2 and verify
    `onReset` restores phase 0 visuals/arena (walls open, magma/water back, beat default); finally set `boss.hp = 1`,
    hit it → `world.cleared` → results scene → no errors. Screenshots per phase to `/tmp/claude-0/proto/wpj/`.
 7. Flow: fixture state with `cleared.s13` + `flags.abyss_open`: `game.go('credits', { kind: 'true', fromEnding: true })`,

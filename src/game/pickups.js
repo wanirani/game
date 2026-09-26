@@ -41,7 +41,9 @@ export class Pickup extends Entity {
     const dist = p ? Math.hypot(p.cx - this.cx, p.cy - this.cy) : Infinity;
     // 보스 격파(스테이지 클리어) 후에는 남은 전리품을 플레이어에게 끌어모음
     const vacuum = world.cleared && p && !p.dead && this.t > this.delay + 0.8 && VACUUM.has(this.type);
-    if (p && this.t > this.delay && (this.magnet || vacuum || dist < this.pull || (mag && dist < 320))) {
+    // 아직 드러나지 않은 비밀 방(가짜 벽) 속의 물건은 벽 너머로 끌려 나오지 않는다 (이미 날아오던 것·클리어 후 회수는 그대로)
+    const pullable = (dist < this.pull || (mag && dist < 320)) && !world.inUnrevealedFake?.(this);
+    if (p && this.t > this.delay && (this.magnet || vacuum || pullable)) {
       this.magnet = true;
       const dx = p.cx - this.cx, dy = p.cy - this.cy, d = Math.hypot(dx, dy) || 1;
       const sp = 700;
