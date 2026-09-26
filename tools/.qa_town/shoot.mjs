@@ -28,6 +28,14 @@ const SC = {
     await page.screenshot({ path: `${out}/worldmap.png` });
     await ctx.close();
   },
+  async wmfresh() {
+    const { page, ctx } = await open('index.html?scene=hub');
+    await page.evaluate(() => { const g = window.__game, P = g.state.progress; for (const id of ['s01','s02','s03','s04','s05','s06','s07','s08','s09','s10']) { if (!P.unlocked.includes(id)) P.unlocked.push(id); if (id !== 's10') P.cleared[id] = { rank: 'SS', time: 300, score: 12345 }; } g.push('worldmap', { world: g.world }); });
+    await wait(page, 1.2);
+    await page.screenshot({ path: `${out}/wm_s10.png` });
+    for (const k of ['ArrowRight', 'ArrowRight', 'ArrowRight']) { await key(page, k); await wait(page, 0.9); await page.screenshot({ path: `${out}/wm_next_${Math.random().toString(36).slice(2,5)}.png` }); }
+    await ctx.close();
+  },
   async party() {
     const { page, ctx } = await open('index.html?scene=hub');
     await page.evaluate(() => { const g = window.__game; g.meta.unlockedChars = ['kael', 'sera', 'lia', 'victor', 'iris', 'ren']; g.push('party', { world: g.world }); });

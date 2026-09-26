@@ -27,16 +27,16 @@ export const TILE_STYLES = {
   dirt:   { base: '#2e2418', edge: '#100a06', top: '#4a3a24', topDeco: 'grass' },
 };
 
-// 테마별 배경 장식 소품 (Blender 렌더: assets/props/<id>.png). a:'floor'|'ceil', w/h: 그릴 크기(px)
-const D = (id, w, h, a = 'floor', wt = 1) => ({ id, w, h, a, wt });
+// 테마별 배경 장식 소품 (Blender 렌더: assets/props/<id>.png). a:'floor'|'ceil', w/h: 그릴 크기(px), wt: 배치 가중치, dim: 어둡게 누르는 정도
+const D = (id, w, h, a = 'floor', wt = 1, dim = 0.5) => ({ id, w, h, a, wt, dim });
 export const DECOR_SETS = {
   village: [D('deco_village_well', 144, 144), D('deco_village_cart', 192, 120), D('deco_village_fence', 192, 72, 'floor', 2), D('deco_village_haybale', 96, 72, 'floor', 2), D('deco_village_lamppost', 64, 192), D('prop_barrel', 72, 72, 'floor', 2), D('prop_crate', 72, 72)],
   town: [D('deco_village_well', 144, 144), D('deco_village_cart', 192, 120), D('deco_village_haybale', 96, 72), D('deco_village_lamppost', 64, 192, 'floor', 2), D('prop_barrel', 72, 72, 'floor', 2), D('prop_crate', 72, 72)],
   graveyard: [D('deco_grave_tomb1', 72, 96, 'floor', 3), D('deco_grave_tomb2', 64, 112, 'floor', 3), D('deco_grave_tomb3', 96, 80, 'floor', 2), D('deco_grave_angel', 96, 192), D('deco_grave_deadtree', 192, 288), D('deco_grave_fence', 192, 96, 'floor', 2)],
   gate: [D('deco_gate_banner', 64, 192, 'ceil', 2), D('deco_gate_portcullis', 144, 192), D('deco_gate_brazier', 72, 120, 'floor', 2), D('prop_gargoyle', 96, 120)],
   arena: [D('deco_gate_banner', 64, 192, 'ceil', 2), D('deco_gate_brazier', 72, 120, 'floor', 2)],
-  // 갑옷 장식은 갑옷 적(armor_knight/spear_guard)과 헷갈리지 않도록 빈도를 낮춤
-  hall: [D('deco_hall_armor', 72, 160),D('deco_hall_vase', 64, 96, 'floor', 2), D('deco_hall_bust', 64, 120, 'floor', 2), D('deco_hall_curtain', 144, 288, 'ceil', 2), D('deco_gate_banner', 64, 192, 'ceil'), D('prop_pillar', 72, 192)],
+  // 갑옷 장식은 갑옷 적(armor_knight/spear_guard)과 헷갈리지 않도록 빈도를 낮추고 더 어둡게
+  hall: [D('deco_hall_armor', 72, 160, 'floor', 1, 0.66), D('deco_hall_vase', 64, 96, 'floor', 2), D('deco_hall_bust', 64, 120, 'floor', 2), D('deco_hall_curtain', 144, 288, 'ceil', 2), D('deco_gate_banner', 64, 192, 'ceil'), D('prop_pillar', 72, 192)],
   catacombs: [D('deco_cata_bonepile', 144, 72, 'floor', 3), D('deco_cata_skullpile', 96, 80, 'floor', 2), D('deco_cata_sarcophagus', 192, 96, 'floor', 2), D('deco_cata_urn', 56, 80, 'floor', 2)],
   library: [D('deco_lib_desk', 144, 96, 'floor', 2), D('deco_lib_globe', 72, 120), D('deco_lib_bookstack', 72, 72, 'floor', 3), D('deco_lib_ladder', 64, 240), D('prop_bookshelf', 128, 192, 'floor', 3)],
   alchemy: [D('deco_lab_alembic', 120, 144, 'floor', 2), D('deco_lab_cauldron', 120, 96, 'floor', 2), D('deco_lab_flaskrack', 144, 120, 'floor', 2), D('deco_lab_tesla', 96, 192), D('prop_vat', 128, 192, 'floor', 2)],
@@ -106,8 +106,8 @@ export class TileRenderer {
     return out;
   }
   /** 배경용으로 채도를 낮추고 어둡게 톤다운한 소품 이미지 (캐시) — 적·파괴 가능한 오브젝트와 구분되게 */
-  darkProp(id, w, h) {
-    const key = id + w + 'x' + h;
+  darkProp(id, w, h, dim = 0.5) {
+    const key = id + w + 'x' + h + ':' + dim;
     let c = this.darkCache.get(key);
     if (c) return c;
     const img = assets.get('props/' + id);
@@ -127,7 +127,7 @@ export class TileRenderer {
       g.putImageData(data, 0, 0);
     } catch { /* 캔버스 오염 등으로 픽셀 접근 불가 → 어둡게만 */ }
     g.globalCompositeOperation = 'source-atop';
-    g.fillStyle = rgba(this.style.edge, 0.5);
+    g.fillStyle = rgba(this.style.edge, dim);
     g.fillRect(0, 0, w, h);
     this.darkCache.set(key, c);
     return c;
@@ -375,7 +375,7 @@ export class TileRenderer {
   drawDecor(ctx, cam, t) {
     for (const p of this.props) {
       if (p.x + p.d.w < cam.x - 50 || p.x > cam.x + cam.vw + 50 || p.y + p.d.h < cam.y - 50 || p.y > cam.y + cam.vh + 50) continue;
-      const c = this.darkProp(p.d.id, p.d.w, p.d.h);
+      const c = this.darkProp(p.d.id, p.d.w, p.d.h, p.d.dim);
       if (c) ctx.drawImage(c, p.x, p.y);
     }
     const openSky = OPEN_SKY_THEMES.has(this.stage.theme);
@@ -423,7 +423,7 @@ export class TileRenderer {
     const c = document.createElement('canvas');
     c.width = S; c.height = S * 3;
     const g = c.getContext('2d');
-    const dark = st.edge, body = mix(st.base, st.top, 0.2), lit = mix(st.base, st.top, 0.55);
+    const dark = st.edge, body = mix(st.base, st.top, 0.3), lit = mix(st.base, st.top, 0.75);
     const hgrad = (x0, x1) => {
       const gr = g.createLinearGradient(x0, 0, x1, 0);
       gr.addColorStop(0, dark); gr.addColorStop(0.28, lit); gr.addColorStop(0.6, body); gr.addColorStop(1, dark);
@@ -459,7 +459,7 @@ export class TileRenderer {
     g.fillStyle = rgba(st.edge, 0.9); g.fillRect(2, S * 3 - 2, 44, 2);
     // 배경 톤으로 눌러 게임 레이어(벽/발판)와 구분
     g.globalCompositeOperation = 'source-atop';
-    g.fillStyle = rgba(st.edge, 0.3); g.fillRect(0, 0, S, S * 3);
+    g.fillStyle = rgba(st.edge, 0.25); g.fillRect(0, 0, S, S * 3);
     this.pillarCanvas = c;
     return c;
   }

@@ -16,8 +16,16 @@ async function boot() {
   registerScenes(game);
   initQuests(game);
   game.recordScore = (score, stageId, mode = 'story') => {
-    const m = game.meta;
-    m.highScores.push({ score, stageId, charId: game.state?.charId, diff: game.state?.difficulty, date: Date.now(), mode, name: game.state?.name ?? '' });
+    const m = game.meta, st = game.state;
+    const run = st?.created ? `${st.slot ?? 1}:${st.created}` : null;
+    const e = { score, stageId, charId: st?.charId, diff: st?.difficulty, date: Date.now(), mode, name: st?.name ?? '', run };
+    // 같은 스토리 진행(세이브)의 기록은 하나만 남긴다 (스테이지마다 누적 점수로 중복 등록되지 않도록)
+    if (run && mode === 'story') {
+      const old = m.highScores.filter((h) => h.run === run && (h.mode || 'story') === mode);
+      for (const h of old) { e.score = Math.max(e.score, h.score); e.name ||= h.name; }
+      m.highScores = m.highScores.filter((h) => !old.includes(h));
+    }
+    m.highScores.push(e);
     m.highScores.sort((a, b) => b.score - a.score);
     m.highScores = m.highScores.slice(0, 20);
     saves.saveMeta(m);

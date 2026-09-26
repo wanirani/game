@@ -81,12 +81,17 @@ export class SaveCodeScene extends Scene {
       font: '12px/1.45 ui-monospace, Menlo, Consolas, monospace', outline: 'none', wordBreak: 'break-all',
       boxShadow: 'inset 0 0 18px rgba(179,18,46,0.35)', touchAction: 'auto', userSelect: 'text', webkitUserSelect: 'text',
     });
-    // 게임 키 매핑(preventDefault)이 타이핑/붙여넣기를 막지 않도록 전파 차단
-    const stop = (e) => {
+    // 게임 키 매핑(preventDefault)이 타이핑/붙여넣기를 막지 않도록 전파 차단.
+    //  · 내보내기(읽기 전용): 복사 단축키(Ctrl/⌘+C 등)만 막고 나머지(Z·X·방향키·Enter·Esc)는 게임으로 흘려 버튼을 키보드로 조작
+    //  · 가져오기: Enter = 가져오기, Esc = 입력 칸에서 빠져나와 키보드로 버튼 조작 (한 번 더 Esc/X 면 닫기)
+    const onKey = (e) => {
+      if (ta.readOnly && !(e.ctrlKey || e.metaKey)) return;
       e.stopPropagation();
-      if (e.type === 'keydown' && e.key === 'Escape') { e.preventDefault(); this.close(false); }
+      if (e.type !== 'keydown' || e.isComposing) return;
+      if (e.key === 'Escape') { e.preventDefault(); ta.blur(); }
+      else if (e.key === 'Enter' && !e.shiftKey && !ta.readOnly) { e.preventDefault(); audio.sfx('menu_ok'); this.doImport(); }
     };
-    ta.addEventListener('keydown', stop); ta.addEventListener('keyup', stop);
+    ta.addEventListener('keydown', onKey); ta.addEventListener('keyup', onKey);
     ta.addEventListener('pointerdown', (e) => e.stopPropagation());
     ta.addEventListener('touchmove', (e) => e.stopPropagation(), { passive: true });
     document.body.appendChild(ta);
@@ -165,6 +170,7 @@ export class SaveCodeScene extends Scene {
       gbutton(ctx, r, l, { selected: this.menu.index === i, size: 16 });
     });
     if (this.mode === 'export' && !this.code) text(ctx, '(이 슬롯은 비어 있습니다)', vw / 2, y + 190, { size: 15, align: 'center', color: '#ff9a9a' });
+    if (!input.touchMode) text(ctx, this.mode === 'export' ? '←→ 선택   Z 결정   X 닫기   (Ctrl+C 복사)' : '입력 칸에서 Enter: 가져오기   Esc: 입력 칸 나가기   X 취소', vw / 2, y + h - 10, { size: 11, align: 'center', color: DIM, ow: 2 });
     ctx.restore();
   }
 }

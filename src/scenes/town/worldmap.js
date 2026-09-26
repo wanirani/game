@@ -257,7 +257,7 @@ export class WorldMapScene extends Scene {
     // 이름
     if (open || sel) {
       const label = open ? n.stage.name : '???';
-      const ly = this.labelSide(n) < 0 ? p.y - R - (rec?.rank ? 16 : 9) : p.y + R + 16;
+      const ly = this.labelSide(n) < 0 ? Math.max(74, p.y - R - (rec?.rank ? 16 : 9)) : p.y + R + 16; // 위쪽 이름표는 상단 바(0~58)에 가리지 않게
       text(ctx, label, p.x, ly, { size: sel ? 14 : 12, weight: 800, family: FONT.title, align: 'center', color: sel ? '#5a0a10' : INK, outline: 'rgba(245,232,200,0.92)', ow: 4 });
     }
     ctx.restore();
@@ -274,7 +274,8 @@ export class WorldMapScene extends Scene {
       for (const o of this.nodes) {
         const q = this.pos(o.stage.mapPos), w = (o.stage.name?.length ?? 4) * 13 + 8;
         const dn = { x: q.x - w / 2, y: q.y + 26, w, h: 16 }, up = { x: q.x - w / 2, y: q.y - 44, w, h: 16 };
-        const sd = hitN(dn) * 2 + hitB(dn), su = hitN(up) * 2 + hitB(up) + 0.5;
+        // 위쪽 이름표가 상단 바(0~58)에 걸리면 약간 감점 (그릴 때 바 아래로 내려 그린다)
+        const sd = hitN(dn) * 2 + hitB(dn), su = hitN(up) * 2 + hitB(up) + 0.5 + (up.y < 62 ? 1 : 0);
         const side = su < sd ? -1 : 1;
         this._lb.set(o.id, side); boxes.push(side < 0 ? up : dn);
       }

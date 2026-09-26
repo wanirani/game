@@ -42,7 +42,8 @@ export class StoryScene extends Scene {
     if (!L || !L.length) { this.lines = []; this.empty = true; this.finish(true); return; }
     this.lines = L;
     this.labels = {};
-    L.forEach((l, k) => { if (l.label) this.labels[l.label] = k; });
+    // { label } 줄만 이동 목표. { if, cmd:'goto', label } (ifChar/ifFlag) 은 조건부 이동 명령이다
+    L.forEach((l, k) => { if (l.label && !l.cmd) this.labels[l.label] = k; });
     const st = this.game.state;
     if (script && st?.progress && !st.progress.seenScripts.includes(script)) st.progress.seenScripts.push(script);
     this.setImage(imgKey(bg) ?? 'bg/title', true);
@@ -107,7 +108,7 @@ export class StoryScene extends Scene {
       this.i++;
       if (this.i >= this.lines.length) { this.finish(); return; }
       const l = this.lines[this.i];
-      if (l.label && !l.text) continue;
+      if (l.label && !l.text && !l.cmd) continue;
       if (l.if && !this.check(l.if)) continue;
       if (l.cmd) {
         this.runCmd(l);
@@ -125,6 +126,9 @@ export class StoryScene extends Scene {
     this.shown = 0;
     this.menu = l.choice ? new ListMenu(l.choice.length) : null;
     const sp = speaker(l.who, this.state);
+    // 줄 단위 덮어쓰기: 이름을 밝히기 전의 명패(name), 변신 등 다른 초상화(portrait)
+    if (l.name) sp.name = this.fill(l.name);
+    if (l.portrait) sp.portrait = l.portrait;
     this.sp = sp;
     const key = sp.portrait;
     if (key !== this.port.key) { this.port.prev = this.port.key; this.port.prevSide = this.port.side; this.port.key = key; this.port.t = 0; }
@@ -138,7 +142,7 @@ export class StoryScene extends Scene {
       this.i++;
       if (this.i >= this.lines.length) { this.finish(); return; }
       const l = this.lines[this.i];
-      if (l.label && !l.text) continue;
+      if (l.label && !l.text && !l.cmd) continue;
       if (l.if && !this.check(l.if)) continue;
       if (l.cmd) { if (l.cmd !== 'wait' && l.cmd !== 'title') this.runCmd(l, true); continue; }
       if (l.goto && !l.text) { this.i = (this.labels[l.goto] ?? this.lines.length) - 1; continue; }

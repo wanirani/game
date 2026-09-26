@@ -148,4 +148,60 @@ await run('kchest', 'index.html?scene=stage&stage=s02&room=r2&char=bran', async 
   }
   return r;
 });
+// 9) K 상자 반복 (s02 r2, s03 r3, s04 r2)
+for (const [st, room, tx, ty, dir] of [['s02', 'r2', 1, 13, -1], ['s03', 'r3', 1, 17, -1], ['s04', 'r2', 34, 9, 1]]) {
+  for (let k = 0; k < 3; k++) {
+    await run('krep', `index.html?scene=stage&stage=${st}&room=${room}&char=${k % 2 ? 'lia' : 'bran'}`, async (page) => {
+      await page.evaluate(([tx, ty, dir]) => { const w = __game.world, p = w.player; for (const e of w.enemies()) e.dead = true; p.x = dir < 0 ? (tx + 1) * 48 + 2 : tx * 48 - p.w - 2; p.y = (ty + 1) * 48 - p.h; p.facing = dir; }, [tx, ty, dir]);
+      await W(page, 400);
+      const s0 = await page.evaluate(() => ({ gold: __game.state.gold, inv: (__game.state.inventory ?? __game.state.bag ?? []).map((i) => i.baseId + 'x' + (i.qty ?? 1)).join(','), hp: __game.world.player.hp }));
+      const key = dir < 0 ? 'ArrowLeft' : 'ArrowRight';
+      await page.keyboard.down(key); await W(page, 150); await page.keyboard.up(key);
+      await page.keyboard.press('KeyX'); await W(page, 500);
+      const c0 = await page.evaluate(() => { const c = __game.world.entities.find((e) => e.hiddenNiche); return c ? { open: c.open, near: c.near } : null; });
+      await page.keyboard.press('ArrowUp'); await W(page, 300);
+      if (!(await page.evaluate(() => __game.world.entities.find((e) => e.hiddenNiche)?.open))) { await page.keyboard.press('KeyX'); await W(page, 300); }
+      const spawned = await page.evaluate(() => __game.world.entities.filter((e) => e.kind === 'pickup' && !e.dead).map((e) => e.type + '@' + Math.round(e.x) + ',' + Math.round(e.y)));
+      await page.keyboard.down(key); await W(page, 2500); await page.keyboard.up(key);
+      const s1 = await page.evaluate(() => ({ gold: __game.state.gold, inv: (__game.state.inventory ?? __game.state.bag ?? []).map((i) => i.baseId + 'x' + (i.qty ?? 1)).join(','), left: __game.world.entities.filter((e) => e.kind === 'pickup' && !e.dead).map((e) => e.type + '@' + Math.round(e.x) + ',' + Math.round(e.y)) }));
+      return { st, c0, spawned, dGold: s1.gold - s0.gold, invChanged: s0.inv !== s1.inv, left: s1.left };
+    });
+  }
+}
+// 10) K 상자 ▲ 범위 + H 문서 (s09 r3 H(110,11))
+await run('knear', 'index.html?scene=stage&stage=s02&room=r2&char=bran', async (page) => {
+  await page.evaluate(() => { const w = __game.world, p = w.player; for (const e of w.enemies()) e.dead = true; p.x = 2 * 48 + 0.5; p.y = 14 * 48 - p.h; p.facing = -1; w.breakTilesIn({ x: 1 * 48 + 10, y: 13 * 48 + 10, w: 4, h: 4 }, {}); });
+  await W(page, 300);
+  const a = await page.evaluate(() => { const c = __game.world.entities.find((e) => e.hiddenNiche); const p = __game.world.player; return { near: c.near, d: Math.abs(p.cx - c.cx), db: Math.abs(p.bottom - c.bottom) }; });
+  await page.keyboard.press('ArrowUp'); await W(page, 200);
+  const b = await page.evaluate(() => __game.world.entities.find((e) => e.hiddenNiche).open);
+  await page.screenshot({ path: '/tmp/claude-0/fix_engine_knear.png' });
+  return { a, openedByUp: b };
+});
+await run('docs09', 'index.html?scene=stage&stage=s09&room=r3&char=azel', async (page) => {
+  await page.evaluate(() => { const w = __game.world, p = w.player; for (const e of w.enemies()) e.dead = true; p.x = 110 * 48 - p.w - 1; p.y = 12 * 48 - p.h; p.facing = 1; w.breakTilesIn({ x: 110 * 48 + 10, y: 11 * 48 + 10, w: 4, h: 4 }, {}); });
+  await W(page, 1500);
+  for (let i = 0; i < 5; i++) { const t = await top(page); if (!/document/.test(t)) break; await page.keyboard.press('KeyX'); await page.keyboard.press('Escape'); await W(page, 300); }
+  return page.evaluate(() => ({ docs: __game.state.progress.docs.slice(), p: [Math.round(__game.world.player.x), Math.round(__game.world.player.y)], left: __game.world.entities.filter((e) => e.kind === 'pickup' && !e.dead).map((e) => e.type + '@' + Math.round(e.x) + ',' + Math.round(e.y)) }));
+});
+for (const [st, ch] of [['s12', 'azel'], ['s13', 'kael'], ['s09', 'lia']]) {
+  await run('post_' + st, `index.html?scene=stage&stage=${st}&room=boss&char=${ch}`, async (page) => {
+    await page.evaluate(() => { const w = __game.world; w.player.x = w.arenaX + 48 * 2; w.startBoss(); });
+    for (let i = 0; i < 60; i++) { const t = await top(page); if (!/dialogue|bossIntro/.test(t)) break; await page.keyboard.press('KeyX'); await W(page, 250); }
+    await W(page, 1500);
+    const id = await page.evaluate(() => __game.world.boss.def.id);
+    let guard = 0;
+    while (guard++ < 12 && !(await page.evaluate(() => __game.world.cleared))) {
+      await page.evaluate(() => { const w = __game.world, b = w.boss; if (!b || b.dying > 0) return; b.invuln = false; b.takeHit(b.hp + 10, {}, w, {}); });
+      for (let i = 0; i < 20; i++) { const t = await top(page); if (!/dialogue|bossIntro|ultCutin/.test(t)) break; await page.keyboard.press('KeyX'); await W(page, 200); }
+      await W(page, 800);
+    }
+    let dlg = null;
+    for (let i = 0; i < 60; i++) { const t = await top(page); if (/dialogue/.test(t)) { dlg = await page.evaluate(() => __game.scenes.at(-1).lines?.[0]); break; } if (/results/.test(t)) break; await W(page, 200); }
+    const seen = await page.evaluate(() => __game.state.progress.seenScripts.slice());
+    for (let i = 0; i < 60; i++) { const t = await top(page); if (!/dialogue/.test(t)) break; await page.keyboard.press('KeyX'); await W(page, 150); }
+    await W(page, 1500);
+    return { id, dlg: dlg && JSON.stringify(dlg).slice(0, 80), seen, final: await top(page) };
+  });
+}
 await browser.close(); srv.close();

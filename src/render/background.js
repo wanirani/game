@@ -92,9 +92,9 @@ export function createBackground(stage, map) {
       let ox = -(iw - vw) * px;
       if (iw < vw) ox = (vw - iw) / 2;
       let oy = -(ih - vh) * py;
-      // 세로로 긴 방(화면 1.6배 초과): 같은 원경(지평선·바닥)이 층마다 반복되지 않도록
+      // 세로로 긴 방(화면 높이 2배 초과, 줌과 무관하게 판정): 같은 원경(지평선·바닥)이 층마다 반복되지 않도록
       // 원경은 방 바닥 근처에만 두고, 위로 올라갈수록 느린 패럴랙스로 아래로 빠지며 윗부분은 하늘/어둠으로 녹아든다
-      const tall = spanY > vh * 0.6;
+      const tall = roomH > vh * 2;
       if (tall) {
         const up = spanY * (1 - py); // 카메라가 가장 낮은 위치에서 올라간 거리
         oy = -(ih - vh) + up * TALL_PARALLAX;
