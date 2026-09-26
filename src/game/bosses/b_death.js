@@ -725,9 +725,9 @@ function drawSkull(ctx, cx, cy, s, t, fl, jaw = 0.1) {
     // 눈구멍 + 영혼불
     // 눈구멍 (분노한 사선) + 눈썹뼈
     ctx.fillStyle = '#050305';
-    ctx.beginPath(); ctx.moveTo(2.5, -6.5); ctx.lineTo(9.5, -4.5); ctx.quadraticCurveTo(9.5, 0.5, 6, 0.8); ctx.quadraticCurveTo(2.5, 0.5, 2.5, -6.5); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(-5, -5); ctx.lineTo(0.5, -6.8); ctx.quadraticCurveTo(1, 0, -2, 0.5); ctx.quadraticCurveTo(-5, 0, -5, -5); ctx.fill();
-    ctx.strokeStyle = 'rgba(60,50,36,0.8)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-6, -7); ctx.lineTo(1, -8.5); ctx.lineTo(10, -6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(2.5, -4.2); ctx.lineTo(9.8, -6.8); ctx.quadraticCurveTo(10, 0.5, 6.2, 0.8); ctx.quadraticCurveTo(2.6, 0.6, 2.5, -4.2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-5.2, -6.8); ctx.lineTo(0.8, -4.6); ctx.quadraticCurveTo(1, 0.2, -2, 0.5); ctx.quadraticCurveTo(-5, 0, -5.2, -6.8); ctx.fill();
+    ctx.strokeStyle = 'rgba(60,50,36,0.85)'; ctx.lineWidth = 1.1; ctx.beginPath(); ctx.moveTo(-6, -8.6); ctx.lineTo(1.6, -5.6); ctx.lineTo(10.6, -8.8); ctx.stroke();
     const fk = 0.8 + 0.2 * Math.sin(t * 13);
     glow(ctx, 6, -2.5, 12 * fk, SOUL, 0.9); glow(ctx, -2, -2.5, 8 * fk, SOUL, 0.7);
     ctx.fillStyle = SOUL_L; ctx.beginPath(); ctx.arc(6.3, -2.5, 1.3, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.arc(-2, -2.5, 0.9, 0, TAU); ctx.fill();

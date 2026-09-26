@@ -6,7 +6,7 @@ import { enemyStrike } from '../combat.js';
 import { isSolidType } from '../../core/physics.js';
 import { TILE } from '../../core/game.js';
 import { audio } from '../../core/audio.js';
-import { TAU, clamp, rand, rgba } from '../../core/math.js';
+import { TAU, clamp, rand, rgba, mix } from '../../core/math.js';
 import { ENEMIES } from '../../data/enemies.js';
 
 export const PI = Math.PI;
@@ -510,6 +510,20 @@ export function trySpawn(world, ids, x, y, opts = {}) {
 }
 
 // ───────────────────────── 곡선/도형 ─────────────────────────
+/** 원통형 팔다리: (x0,y0)→(x1,y1), 반지름 r0→r1, 원통 음영 (지역 그라디언트 캐시 key) */
+export function tube(ctx, x0, y0, x1, y1, r0, r1, col, key = 'tube', lw = 3) {
+  const L = Math.hypot(x1 - x0, y1 - y0);
+  ctx.save();
+  ctx.translate(x0, y0); ctx.rotate(Math.atan2(y1 - y0, x1 - x0));
+  ctx.beginPath();
+  ctx.moveTo(0, -r0); ctx.lineTo(L, -r1); ctx.arc(L, 0, r1, -PI / 2, PI / 2); ctx.lineTo(0, r0); ctx.arc(0, 0, r0, PI / 2, -PI / 2);
+  ctx.closePath();
+  const rr = Math.max(r0, r1);
+  const g = R.fl ? '#fff' : LG(ctx, key + col + rr, 0, -rr, 0, rr, [0, mix(col, '#fff0d8', 0.4), 0.28, col, 0.72, mix(col, '#000000', 0.5), 0.92, mix(col, '#9fb8ff', 0.3), 1, mix(col, '#000000', 0.6)]);
+  ink(ctx, g, lw);
+  ctx.restore();
+}
+
 /** 점 배열(평면 Float32Array [x0,y0,x1,y1...])로 부드러운 닫힌 곡선 */
 export function smoothClosed(ctx, P, n) {
   let px = (P[(n - 1) * 2] + P[0]) / 2, py = (P[(n - 1) * 2 + 1] + P[1]) / 2;

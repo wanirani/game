@@ -481,8 +481,8 @@ export class Chimera extends ABoss {
         i ? ctx.quadraticCurveTo(-10 + Math.cos(a - 0.12) * rr * 0.8, Math.sin(a - 0.12) * rr * 0.8, x, y) : ctx.moveTo(x, y);
       }
       ctx.closePath();
-      ink(ctx, ghost ? '#6a8a3a' : rg(ctx, 'chmane' + L + (this.enraged ? 1 : 0), 4, -6, 6, -8, 0, 60, [0, C(L ? '#7a4c2a' : MANE2), 0.6, C(MANE), 1, C(this.enraged ? '#1a3a10' : '#120804')]), L ? 1.5 : 2.5);
-      if (!ghost && !L) rim(ctx, -70, -10, RIM, 4, 0.55);
+      ink(ctx, ghost ? '#6a8a3a' : rg(ctx, 'chmane' + L + (this.enraged ? 1 : 0), 4, -6, 6, -8, 0, 60, [0, C(L ? '#7a4c2a' : MANE2), 0.6, C(MANE), 1, C(this.enraged ? '#0e1a08' : '#120804')]), L ? 1.5 : 2.5);
+      if (!ghost && !L) rim(ctx, -70, -10, RIM, 3, 0.35);
     }
     // 얼굴
     ctx.beginPath();
