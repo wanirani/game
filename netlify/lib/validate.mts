@@ -32,7 +32,7 @@ export function checkNewId(raw: unknown): string {
 }
 
 // C0 제어 문자, DEL, C1 제어 문자, 줄/문단 구분자
-const CONTROL_RE = /[\u0000-\u001f\u007f-\u009f  ]/;
+const CONTROL_RE = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/;
 
 /** 비밀번호 형식이 맞으면 true (길이는 코드 포인트 기준 8~64자) */
 export function passwordShapeOk(pw: unknown): pw is string {

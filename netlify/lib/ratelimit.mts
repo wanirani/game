@@ -13,8 +13,10 @@ async function read(st: KV, key: string): Promise<{ rec: Counter | null; etag?: 
   return { rec: r.data as Counter, etag: r.etag };
 }
 
+/** 조건부 쓰기: 새 키는 onlyIfNew, 기존 키는 onlyIfMatch(ETag). ETag 를 주지 않는 환경(로컬 에뮬레이터)에서는 그냥 덮어쓴다 */
 async function write(st: KV, key: string, rec: Counter, etag: string | undefined, existed: boolean): Promise<boolean> {
-  const res = await st.setJSON(key, rec, existed && etag ? { onlyIfMatch: etag } : { onlyIfNew: true });
+  const cond = existed ? (etag ? { onlyIfMatch: etag } : {}) : { onlyIfNew: true };
+  const res = await st.setJSON(key, rec, cond);
   return res.modified;
 }
 
@@ -54,11 +56,12 @@ export async function countSignup(c: Ctx): Promise<void> {
 // ── 아이디별 실패 잠금 (kind: 'login' = 로그인·비밀번호 확인, 'recover' = 복구 코드) ──
 const lockKey = (kind: string, id: string): string => `id/${kind}/${id}`;
 
-/** 잠겨 있으면 429 locked */
-export async function assertNotLocked(c: Ctx, kind: string, id: string): Promise<void> {
-  const { rec } = await read(c.store(STORES.limits), lockKey(kind, id));
+/** 잠겨 있으면 429 locked. 지우고 싶은 실패 기록이 남아 있으면 true */
+export async function assertNotLocked(c: Ctx, kind: string, id: string): Promise<boolean> {
+  const { rec, etag } = await read(c.store(STORES.limits), lockKey(kind, id));
   const t = now();
   if (rec && Number.isFinite(rec.lockedUntil) && (rec.lockedUntil as number) > t) failRetry('locked', ((rec.lockedUntil as number) - t) / 1000);
+  return !!rec || !!etag;
 }
 
 /** 실패 1회 기록. 이번 실패로 잠기면 잠금 남은 초, 아니면 0 */

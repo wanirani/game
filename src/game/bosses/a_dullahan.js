@@ -249,7 +249,7 @@ export class Dullahan extends ABoss {
   // ── (도보) 도약 내려찍기 ──
   s_leap(dt, world, p) {
     const A = this.A, W = 0.45;
-    if (this.at(0)) { this.facePlayer(); this.vx = 0; audio.sfx('jump', { pitch: 0.6 }); this.landed = false; }
+    if (this.at(0)) { this.facePlayer(); this.vx = 0; audio.sfx('jump', { pitch: 0.6 }); this.leapLanded = false; }
     if (this.stateT < W) { this.lanceA = lerp(this.lanceA, -1.3, Math.min(1, dt * 8)); return; }
     if (this.at(W)) {
       this.tx = clamp(p.cx, A.x0 + 60, A.x1 - 60);
@@ -257,10 +257,10 @@ export class Dullahan extends ABoss {
       this.warnCircle(this.tx, this.floorY, 80, 0.95, { color: '#ff4a5a' });
       this.warn({ type: 'column', cx0: this.tx, cw: 100, y0: this.floorY - 320, y1: this.floorY, life: 0.95, color: '#ff4a5a' });
     }
-    if (!this.landed) {
+    if (!this.leapLanded) {
       this.lanceA = lerp(this.lanceA, PI / 2, Math.min(1, dt * 5));
       if (this.stateT > W + 0.1 && this.onGround) {
-        this.landed = true; this.vx = 0;
+        this.leapLanded = true; this.vx = 0;
         this.impact(this.cx, this.floorY, 14, 0.07, '#9ac0ff');
         audio.sfx('hit_heavy', { pitch: 0.5 }); audio.sfx('explode', { pitch: 0.8, vol: 0.7 });
         this.strikeRect({ x: this.cx - 80, y: this.floorY - 90, w: 160, h: 90 }, 1.3);
@@ -268,7 +268,7 @@ export class Dullahan extends ABoss {
         if (this.phase >= 2) for (const s of [-1, 1]) erupt(this, this.cx + s * 150, { delay: 0.25, life: 0.45, w: 56, h: 200, color: BFIRE, style: 'soul', burst: 'soul', mv: 1, element: 'fire', fxColor: BFIRE });
         this.landT = this.stateT;
       }
-      if (this.stateT > W + 2.5) this.landed = true, this.landT = this.stateT;
+      if (this.stateT > W + 2.5) this.leapLanded = true, this.landT = this.stateT;
       return;
     }
     if (this.stateT - this.landT > 0.6) this.rest(0.8);

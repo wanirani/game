@@ -81,18 +81,18 @@ export class Chimera extends ABoss {
     const A = this.A, W = 0.55, n = this.phase >= 2 || this.inferno ? 2 : 1, per = 1.5;
     const i = Math.floor(this.stateT / per), u = this.stateT - i * per;
     if (i >= n) { if (this.stateT > n * per) this.rest(0.9); return; }
-    if (this.at(i * per)) { this.facePlayer(); this.vx = 0; this.landed = false; audio.sfx('boss_roar', { pitch: 1.2, vol: 0.5 }); }
+    if (this.at(i * per)) { this.facePlayer(); this.vx = 0; this.leapLanded = false; audio.sfx('boss_roar', { pitch: 1.2, vol: 0.5 }); }
     if (u < W) {
       this.crouch = ease.outCubic(u / W); this.vx *= 0.8;
       if (this.at(i * per + 0.25)) { this.tx = clamp(p.cx, A.x0 + this.w / 2 + 10, A.x1 - this.w / 2 - 10); this.warnCircle(this.tx, this.floorY, 120, W - 0.25 + 0.7, { color: '#ffb040' }); }
       return;
     }
     if (this.at(i * per + W)) { this.vy = -980; this.vx = (this.tx - this.cx) / 0.9; this.crouch = 0; this.claw = 1; this.roar = 1; audio.sfx('jump', { pitch: 0.5 }); if (this.phase >= 2) this.spitVenom(3); }
-    if (!this.landed) {
+    if (!this.leapLanded) {
       this.claw = 1; this.lean = this.vy < 0 ? -0.2 : 0.25;
       this.strikeRect({ x: this.x, y: this.y, w: this.w, h: this.h }, 1.2, { kb: [460, -420] });
       if (u > W + 0.15 && this.onGround) {
-        this.landed = true; this.vx = 0; this.crouch = 0.6;
+        this.leapLanded = true; this.vx = 0; this.crouch = 0.6;
         this.impact(this.cx + this.facing * 60, this.floorY, 12, 0.05, '#ffd090');
         audio.sfx('hit_heavy', { pitch: 0.6 });
         for (const s of [-1, 1]) groundWave(this, this.cx + s * 70, s, { speed: 440, color: '#ffc070', style: 'dust', mv: 0.8, h: 40 });

@@ -181,22 +181,22 @@ export class Grimoire extends ABoss {
   // ── 내려찍기 ──
   s_slam(dt, world, p) {
     const A = this.A, TR = 0.75;
-    if (this.at(0)) { this.landed = false; audio.sfx('magic', { pitch: 0.4 }); this.warn({ type: 'column', cx0: this.cx, cw: 150, y0: A.floor - 360, y1: A.floor, life: TR + 0.2, color: ARC, follow: (tg) => { if (this.stateT < TR) tg.cx0 = this.cx; } }); }
+    if (this.at(0)) { this.leapLanded = false; audio.sfx('magic', { pitch: 0.4 }); this.warn({ type: 'column', cx0: this.cx, cw: 150, y0: A.floor - 360, y1: A.floor, life: TR + 0.2, color: ARC, follow: (tg) => { if (this.stateT < TR) tg.cx0 = this.cx; } }); }
     this.open = lerp(this.open, 0, Math.min(1, dt * 8));
     if (this.stateT < TR) { this.flyTo(clamp(p.cx, A.x0 + 80, A.x1 - 80), A.floor - 330, 6, 560, dt); return; }
     if (this.stateT < TR + 0.2) { this.vx = 0; this.vy = -80; this.tilt = 0; return; }
-    if (!this.landed) {
+    if (!this.leapLanded) {
       if (this.at(TR + 0.2)) { this.vy = 1450; audio.sfx('dash', { pitch: 0.5 }); }
       this.vx = 0;
       for (const hb of this.hurtboxes()) this.strikeRect(hb, 1.3);
       if (this.bottom >= this.floorY - 2) {
-        this.y = this.floorY - 2 - this.h; this.vy = 0; this.landed = true; this.landT = this.stateT;
+        this.y = this.floorY - 2 - this.h; this.vy = 0; this.leapLanded = true; this.landT = this.stateT;
         this.impact(this.cx, this.floorY, 13, 0.06, ARC2);
         audio.sfx('hit_heavy', { pitch: 0.6 }); audio.sfx('explode', { pitch: 0.9, vol: 0.5 });
         for (const s of [-1, 1]) groundWave(this, this.cx + s * 40, s, { speed: 500 + this.phase * 40, color: ARC, color2: '#fff0ff', style: 'arcane', mv: 0.9, element: 'dark', type: 'mag' });
         world.fx.burst('shard', this.cx, this.floorY - 20, 16, { color: PAGE, speed: 320, grav: 200 });
       }
-      if (this.stateT > TR + 2.2) { this.landed = true; this.landT = this.stateT; }
+      if (this.stateT > TR + 2.2) { this.leapLanded = true; this.landT = this.stateT; }
       return;
     }
     if (this.stateT - this.landT > 0.55) { this.vy = -380; this.rest(0.8); }

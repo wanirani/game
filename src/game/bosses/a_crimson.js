@@ -139,7 +139,7 @@ export class CrimsonArmor extends ABoss {
   }
   s_leap(dt, world, p) {
     const A = this.A, W = 0.55;
-    if (this.at(0)) { this.facePlayer(); this.vx = 0; this.landed = false; audio.sfx('clang', { pitch: 0.4 }); }
+    if (this.at(0)) { this.facePlayer(); this.vx = 0; this.leapLanded = false; audio.sfx('clang', { pitch: 0.4 }); }
     if (this.stateT < W) {
       this.crouch = ease.outCubic(this.stateT / W); this.hA = lerp(this.hA, -2.0, Math.min(1, dt * 6));
       if (this.at(0.3)) {
@@ -149,11 +149,11 @@ export class CrimsonArmor extends ABoss {
       return;
     }
     if (this.at(W)) { this.vy = -1250; this.vx = (this.tx - this.cx) / 1.0; this.crouch = 0; audio.sfx('jump', { pitch: 0.4 }); this.shake(5, 0.2); }
-    if (!this.landed) {
+    if (!this.leapLanded) {
       this.hA = lerp(this.hA, -2.2, Math.min(1, dt * 5));
       if (this.vy > 0) this.hA = lerp(this.hA, 0.9, Math.min(1, dt * 7));
       if (this.stateT > W + 0.15 && this.onGround) {
-        this.landed = true; this.vx = 0; this.landT = this.stateT; this.crouch = 0.8;
+        this.leapLanded = true; this.vx = 0; this.landT = this.stateT; this.crouch = 0.8;
         this.impact(this.cx, this.floorY, 17, 0.09, '#ffb070');
         audio.sfx('explode', { pitch: 0.5 }); audio.sfx('hit_heavy', { pitch: 0.4 });
         world.game.flash?.('#ff6a3a', 0.25, 4);
@@ -167,7 +167,7 @@ export class CrimsonArmor extends ABoss {
             onLand: (pr, w) => { w.fx.burst('shard', pr.cx, A.floor - 6, 8, { color: '#6a5a50', speed: 240, angle: -PI / 2, spread: 1.2 }); audio.sfx('break_wall', { vol: 0.5, pitch: rand(0.8, 1.2) }); } });
         }
       }
-      if (this.stateT > W + 2.5) { this.landed = true; this.landT = this.stateT; }
+      if (this.stateT > W + 2.5) { this.leapLanded = true; this.landT = this.stateT; }
       return;
     }
     this.crouch = lerp(this.crouch, 0, Math.min(1, dt * 3));
@@ -344,7 +344,7 @@ export class CrimsonArmor extends ABoss {
   }
   s_crush(dt, world, p) {
     const A = this.A, TR = 0.9;
-    if (this.at(0)) { audio.sfx('clang', { pitch: 0.4 }); this.landed = false; this.warn({ type: 'column', cx0: this.cx, cw: 150, y0: A.floor - 360, y1: A.floor, life: TR + 0.25, color: '#ff3a2a', follow: (tg) => { if (this.stateT < TR) tg.cx0 = this.cx; } }); }
+    if (this.at(0)) { audio.sfx('clang', { pitch: 0.4 }); this.leapLanded = false; this.warn({ type: 'column', cx0: this.cx, cw: 150, y0: A.floor - 360, y1: A.floor, life: TR + 0.25, color: '#ff3a2a', follow: (tg) => { if (this.stateT < TR) tg.cx0 = this.cx; } }); }
     if (this.stateT < TR) {
       this.flyTo(clamp(p.cx, A.x0 + 70, A.x1 - 70), A.floor - 330, 6, 600, dt);
       for (const k in this.pc) { const pc = this.pc[k]; pc.busy = true; pc.x = lerp(pc.x, this.cx + (k === 'gF' ? 50 : k === 'gB' ? -50 : 0) * this.facing, dt * 6); pc.y = lerp(pc.y, this.cy + (k === 'helm' ? -70 : k === 'hal' ? -20 : 30), dt * 6); pc.vx = pc.vy = 0; }
@@ -352,20 +352,20 @@ export class CrimsonArmor extends ABoss {
       return;
     }
     if (this.stateT < TR + 0.25) { this.vx = 0; this.vy = -60; return; }
-    if (!this.landed) {
+    if (!this.leapLanded) {
       if (this.at(TR + 0.25)) { this.vy = 1500; audio.sfx('dash', { pitch: 0.5 }); }
       this.vx = 0;
       for (const k in this.pc) { const pc = this.pc[k]; pc.x = lerp(pc.x, this.cx + (k === 'gF' ? 50 : k === 'gB' ? -50 : 0) * this.facing, 0.5); pc.y = this.cy + (k === 'helm' ? -70 : k === 'hal' ? -20 : 30); }
       this.strikeRect({ x: this.x - 20, y: this.y, w: this.w + 40, h: this.h + 40 }, 1.4);
       if (this.bottom + 40 >= this.floorY) {
-        this.y = this.floorY - 40 - this.h; this.vy = 0; this.landed = true; this.landT = this.stateT;
+        this.y = this.floorY - 40 - this.h; this.vy = 0; this.leapLanded = true; this.landT = this.stateT;
         this.impact(this.cx, this.floorY, 17, 0.09, '#ffb070');
         world.game.flash?.('#ff6a3a', 0.25, 4);
         audio.sfx('explode', { pitch: 0.5 }); audio.sfx('hit_heavy', { pitch: 0.4 });
         for (const s of [-1, 1]) groundWave(this, this.cx + s * 40, s, { speed: 560, color: '#ff5a2a', color2: '#ffe0a0', style: 'fire', mv: 1.0, element: 'fire', h: 52 });
         for (let i = 0; i < 4; i++) dropHazard(this, rand(A.x0 + 40, A.x1 - 40), { delay: 0.7 + i * 0.12, render: drawRock, w: 30, h: 30, speed: 300, gravity: 0.8, spin: rand(-6, 6), mv: 0.8, warnColor: '#ff8a4a', warnW: 50, top: A.floor - 560 });
       }
-      if (this.stateT > TR + 2.5) { this.landed = true; this.landT = this.stateT; }
+      if (this.stateT > TR + 2.5) { this.leapLanded = true; this.landT = this.stateT; }
       return;
     }
     if (this.stateT - this.landT > 0.7) { for (const k in this.pc) this.pc[k].busy = false; this.vy = -300; this.rest(0.9); }

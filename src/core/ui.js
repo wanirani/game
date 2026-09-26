@@ -4,7 +4,8 @@ import { clamp, rgba } from './math.js';
 
 /**
  * 글꼴 묶음. 모든 글꼴은 assets/fonts/ 에 woff2 로 들어 있다 (오프라인·APK 대응, css/style.css 의 @font-face).
- * 한글 글꼴은 게임에 쓰인 글자 + KS X 1001 한글 2350자로 서브셋 (tools/fonts/build_fonts.py 로 다시 만든다).
+ * 한글 글꼴은 게임에 쓰인 글자(기본 파일) + KS X 1001 한글 2350자의 나머지("… Ext", 필요할 때만 받음)로 서브셋.
+ * 새 대사를 많이 넣었으면 python3 tools/fonts/build_fonts.py 로 다시 만든다. 새 묶음을 만들 때도 Ext 이름을 기본 글꼴 바로 뒤에 둔다.
  *  - blood : 큰 제목·보스 이름·STAGE CLEAR 같은 피 글씨 (라틴: Grenze Gotisch 블랙레터 / 한글: Hahmlet 블랙)
  *  - logo  : 영문 장식 제목 (블랙레터, 굵게 900)
  *  - title : 고딕 세리프 소제목·이름 (Hahmlet, 700~900)
@@ -12,11 +13,11 @@ import { clamp, rgba } from './math.js';
  *  - num   : 숫자·점수·데미지 (Cinzel, 한글은 본문 글꼴로)
  */
 export const FONT = {
-  body: '"Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif',
-  title: '"Hahmlet", "Nanum Myeongjo", "Noto Serif KR", serif',
-  logo: '"Grenze Gotisch", "Hahmlet", "Cinzel", serif',
-  blood: '"Grenze Gotisch", "Hahmlet", serif',
-  num: '"Cinzel", "Noto Sans KR", sans-serif',
+  body: '"Noto Sans KR", "Noto Sans KR Ext", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif',
+  title: '"Hahmlet", "Hahmlet Ext", serif',
+  logo: '"Grenze Gotisch", "Hahmlet", "Hahmlet Ext", serif',
+  blood: '"Grenze Gotisch", "Hahmlet", "Hahmlet Ext", serif',
+  num: '"Cinzel", "Noto Sans KR", "Noto Sans KR Ext", sans-serif',
 };
 
 export const COLORS = {
@@ -224,10 +225,12 @@ export function hint(ctx, w, h, keysText, touchText) {
 }
 
 // ───────────────────────── 글꼴 로딩 ─────────────────────────
-/** 첫 화면 전에 받아 둘 글꼴 (굵기별). css/style.css 의 @font-face 와 짝을 이룬다 */
+/**
+ * 첫 화면 전에 받아 둘 글꼴 (css/style.css 의 @font-face 와 짝). 가변 굵기 파일이라 글꼴마다 하나씩이면 된다.
+ * "Nanum Myeongjo" 는 예전 코드(타이틀 로고 부제)가 부르는 이름으로, Hahmlet 파일을 가리킨다. "… Ext" 확장 한글은 필요할 때만 받는다.
+ */
 export const FONT_FACES = [
-  '400 16px "Noto Sans KR"', '700 16px "Noto Sans KR"', '900 16px "Noto Sans KR"',
-  '800 16px "Hahmlet"', '900 16px "Hahmlet"',
+  '700 16px "Noto Sans KR"', '800 16px "Hahmlet"', '800 16px "Nanum Myeongjo"',
   '900 16px "Grenze Gotisch"', '900 16px "Cinzel"', '900 16px "Cinzel Decorative"',
 ];
 /**
@@ -250,7 +253,7 @@ await fontsReady;
 // ───────────────────────── 피 글씨 ─────────────────────────
 /**
  * 피 글씨 스타일. grad: 위→아래 채움, edge: 바깥 테두리, inner: 안쪽 어두운 테, hi: 젖은 윗면 광택,
- * glow: 뒤쪽 발광, bevel: 금박 양각(왼쪽 위 밝게·오른쪽 아래 어둡게), drips: 기본 피 방울 양(0~1), drip: 방울 색 [어두움, 중간, 밝음]
+ * glow: 뒤쪽 발광, bevel: 금박 양각(왼쪽 위 밝게·오른쪽 아래 어둡게), drips: 기본 피 방울 양(0~1), drip: 방울 색 [어두움, 중간, 밝음, 반사광]
  */
 export const TEXT_STYLES = {
   blood: {
@@ -272,7 +275,7 @@ export const TEXT_STYLES = {
 
 const TXT_CACHE = new Map();
 const TXT_CACHE_MAX = 48;
-const SCRATCH = []; // 0: 읽기용(마스크 분석), 1: 글자 몸통, 2: 광택, 3: 저해상도 발광
+const SCRATCH = []; // 작업용 캔버스 0: 읽기용(방울 자리 분석), 1: 글자 몸통, 2: 광택, 3: 저해상도 발광, 4: 글자 마스크, 5: 테두리 포함 마스크, 6: 글자 폭 재기
 function mkCanvas(w, h) {
   if (typeof OffscreenCanvas !== 'undefined' && typeof document === 'undefined') return new OffscreenCanvas(w, h);
   const c = document.createElement('canvas'); c.width = w; c.height = h; return c;
@@ -379,7 +382,7 @@ function findDrips(g, PW, PH, S, oy, size, amount, str, seed) {
 /** 캐시 비트맵 한 장 만들기 (글자 + 테두리 + 발광 + 광택 + 방울 뿌리) */
 function buildText(str, size, weight, family, styleName, st, spacing, amount, S, glow) {
   const fontStr = `${weight} ${size}px ${family}`;
-  const [, mg] = scratch(0, 4, 4);
+  const mg = (SCRATCH[6] ||= mkCanvas(1, 1)).getContext('2d'); // 재기 전용 (크기를 바꾸지 않는다)
   mg.font = fontStr; setSpacing(mg, spacing);
   const m = mg.measureText(str);
   const adv = m.width;
@@ -472,7 +475,8 @@ function buildText(str, size, weight, family, styleName, st, spacing, amount, S,
   return { c: out, S, W, H, ox, oy, adv, asc, desc, fAsc, fDesc, drips, st, styleName, fontStr, fontOk: fontLoaded(fontStr, str), checkAt: 0, size, px: 0 };
 }
 function fontLoaded(fontStr, str) {
-  try { return typeof document === 'undefined' || document.fonts.check(fontStr, str); } catch { return true; }
+  // "… Ext" 확장 글꼴은 기본 파일에 없는 글자에만 쓰이므로 준비 여부 판단에서 뺀다 (넣으면 쓸데없이 내려받는다)
+  try { return typeof document === 'undefined' || document.fonts.check(fontStr.replace(/,\s*"[^"]+ Ext"/g, ''), str); } catch { return true; }
 }
 
 /** 피 방울 그리기 (캐시 원점 기준 좌표) */
@@ -583,3 +587,5 @@ function dropEntry(key) {
 }
 /** 피 글씨 캐시 비우기 (글꼴 교체 등) */
 export function clearTextCache() { TXT_CACHE.clear(); TXT_PX = 0; }
+// 글꼴 파일이 늦게 도착하면(예: 확장 한글 "… Ext") 그 전에 대체 글꼴로 구운 비트맵을 버리고 다시 굽는다
+try { document.fonts.addEventListener('loadingdone', () => { if (TXT_CACHE.size) clearTextCache(); }); } catch { /* 문서 없음(노드 도구) */ }

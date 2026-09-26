@@ -84,8 +84,8 @@ export function migrateState(s) {
   s.inventory = (Array.isArray(s.inventory) ? s.inventory : []).filter((it) => isObj(it) && typeof it.baseId === 'string' && it.uid);
   // 영웅: 존재하지 않는 캐릭터는 버리고, 현재 캐릭터가 없으면 새로 만든다
   if (!isObj(s.heroes)) s.heroes = {};
-  for (const id of Object.keys(s.heroes)) if (!CHARACTERS[id] || !isObj(s.heroes[id])) delete s.heroes[id];
-  if (!CHARACTERS[s.charId]) s.charId = Object.keys(s.heroes)[0] ?? 'kael';
+  for (const id of Object.keys(s.heroes)) if (!Object.hasOwn(CHARACTERS, id) || !isObj(s.heroes[id])) delete s.heroes[id];
+  if (!Object.hasOwn(CHARACTERS, s.charId)) s.charId = Object.keys(s.heroes)[0] ?? 'kael';
   const uids = new Set(s.inventory.map((it) => it.uid));
   for (const [id, h] of Object.entries(s.heroes)) {
     const ch = CHARACTERS[id];

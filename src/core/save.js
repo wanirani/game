@@ -25,9 +25,9 @@ const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
  */
 export function isValidSave(s) {
   if (!isObj(s) || !isObj(s.heroes) || !Array.isArray(s.inventory) || !isObj(s.progress)) return false;
-  if (typeof s.charId !== 'string' || !CHARACTERS[s.charId] || !isObj(s.heroes[s.charId])) return false;
+  if (typeof s.charId !== 'string' || !Object.hasOwn(CHARACTERS, s.charId) || !Object.hasOwn(s.heroes, s.charId) || !isObj(s.heroes[s.charId])) return false;
   for (const [id, h] of Object.entries(s.heroes)) {
-    if (!CHARACTERS[id] || !isObj(h) || !isObj(h.equip) || !Number.isFinite(h.level)) return false;
+    if (!Object.hasOwn(CHARACTERS, id) || !isObj(h) || !isObj(h.equip) || !Number.isFinite(h.level)) return false;
   }
   return true;
 }

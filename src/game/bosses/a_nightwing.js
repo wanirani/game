@@ -151,7 +151,7 @@ export class Nightwing extends ABoss {
   s_talon(dt, world, p) {
     const A = this.A, TR = 0.85, HOLD = 0.3 - this.phase * 0.05;
     if (this.at(0)) {
-      this.landed = false;
+      this.leapLanded = false;
       this.warnMark(this.cx, this.y - 40, 0.5);
       this.warn({ type: 'column', cx0: this.cx, cw: 110, y0: A.floor - 300, y1: A.floor, life: TR + HOLD, color: '#ff3040', follow: (tg) => { if (this.state === 'talon' && this.stateT < TR) tg.cx0 = this.cx; } });
       audio.sfx('bat', { pitch: 0.6 });
@@ -163,7 +163,7 @@ export class Nightwing extends ABoss {
       return;
     }
     if (this.stateT < TR + HOLD) { this.vx = 0; this.vy = -80; this.flapRate = 2; return; }
-    if (!this.landed && this.state === 'talon') {
+    if (!this.leapLanded && this.state === 'talon') {
       if (this.at(TR + HOLD)) { this.vy = 1350; audio.sfx('dash', { pitch: 0.6 }); }
       this.vx = 0;
       this.spread = lerp(this.spread, 0.45, Math.min(1, dt * 10));
@@ -171,7 +171,7 @@ export class Nightwing extends ABoss {
       for (const hb of this.hurtboxes()) this.strikeRect(hb, 1.1, { kb: [300, -520] });
       if (this.bottom >= this.floorY - 2) {
         this.y = this.floorY - this.h; this.vy = 0;
-        this.landed = true; this.landT = this.stateT;
+        this.leapLanded = true; this.landT = this.stateT;
         this.impact(this.cx, this.floorY, 12, 0.06, '#ffc090');
         world.fx.burst('shard', this.cx, this.floorY - 4, 10, { color: '#6a5a4a', speed: 320, angle: -PI / 2, spread: 1.2 });
         audio.sfx('hit_heavy', { pitch: 0.6 });
@@ -186,12 +186,12 @@ export class Nightwing extends ABoss {
           }
         }
       }
-      if (this.stateT > TR + HOLD + 1.5) this.landed = true;
+      if (this.stateT > TR + HOLD + 1.5) this.leapLanded = true;
       return;
     }
     // 착지 후 발톱을 뽑고 다시 상승
     this.claw = 1; this.spread = lerp(this.spread, 1.1, Math.min(1, dt * 4));
-    if (this.stateT - this.landT > 0.5) { this.landed = false; this.vy = -420; this.rest(0.9); }
+    if (this.stateT - this.landT > 0.5) { this.leapLanded = false; this.vy = -420; this.rest(0.9); }
   }
 
   // ── 핏빛 칼날: 날개를 뒤로 젖혔다가 부채꼴로 막 발사 ──

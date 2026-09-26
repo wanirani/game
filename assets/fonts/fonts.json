@@ -1,26 +1,56 @@
 [
  {
   "family": "Noto Sans KR",
+  "alias": [],
   "file": "noto-sans-kr.woff2",
-  "bytes": 298896,
-  "glyphs": 2709,
-  "hangul": 2351,
+  "part": "core",
+  "bytes": 169816,
+  "glyphs": 1529,
+  "hangul": 1171,
+  "weight": "400 900",
+  "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/notosanskr/NotoSansKR[wght].ttf"
+ },
+ {
+  "family": "Noto Sans KR Ext",
+  "alias": [],
+  "file": "noto-sans-kr-ext.woff2",
+  "part": "ext",
+  "bytes": 160480,
+  "glyphs": 1180,
+  "hangul": 1180,
   "weight": "400 900",
   "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/notosanskr/NotoSansKR[wght].ttf"
  },
  {
   "family": "Hahmlet",
+  "alias": [
+   "Nanum Myeongjo"
+  ],
   "file": "hahmlet.woff2",
-  "bytes": 389284,
-  "glyphs": 2680,
-  "hangul": 2351,
+  "part": "core",
+  "bytes": 249716,
+  "glyphs": 1500,
+  "hangul": 1171,
+  "weight": "600 900",
+  "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/hahmlet/Hahmlet[wght].ttf"
+ },
+ {
+  "family": "Hahmlet Ext",
+  "alias": [],
+  "file": "hahmlet-ext.woff2",
+  "part": "ext",
+  "bytes": 241388,
+  "glyphs": 1180,
+  "hangul": 1180,
   "weight": "600 900",
   "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/hahmlet/Hahmlet[wght].ttf"
  },
  {
   "family": "Grenze Gotisch",
+  "alias": [],
   "file": "grenze-gotisch.woff2",
-  "bytes": 24436,
+  "part": "core",
+  "bytes": 24460,
   "glyphs": 212,
   "hangul": 0,
   "weight": "700 900",
@@ -28,8 +58,10 @@
  },
  {
   "family": "Cinzel",
+  "alias": [],
   "file": "cinzel.woff2",
-  "bytes": 23740,
+  "part": "core",
+  "bytes": 23780,
   "glyphs": 210,
   "hangul": 0,
   "weight": "600 900",
@@ -37,11 +69,13 @@
  },
  {
   "family": "Cinzel Decorative",
+  "alias": [],
   "file": "cinzel-decorative-900.woff2",
-  "bytes": 13444,
+  "part": "core",
+  "bytes": 13464,
   "glyphs": 208,
   "hangul": 0,
-  "weight": null,
+  "weight": "400 900",
   "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/cinzeldecorative/CinzelDecorative-Black.ttf"
  }
 ]
