@@ -1,6 +1,6 @@
 {
  "_about": "Part 2 (world2 WP-H1) Kling art. model kling-image-v3_0_omni, 2k. Processing: bg/worldmap2 height 1080 then bottom cut >= 7% (watermark + flat band), WebP q80; cg height 1080 then bottom cut 7.5%, q82; portraits height 1024 then bottom cut 5.5%, q82; tex centre square -> 512 -> seamless_lib.make_seamless, q82. Quality lowered in steps of 2 only when a file exceeded the spec size budget (bg 180 KB, cg 170 KB, portrait 90 KB, tex 60 KB). \"assets\" lists accepted files, \"generations\" lists every Kling job (including rejected retries) with its prompt and generation id.",
- "images_generated": 29,
+ "images_generated": 32,
  "assets": {
   "s15_forge": {
    "group": "bg",
@@ -69,6 +69,108 @@
    ],
    "kb": 179.0,
    "webp_quality": "74+blur0.65"
+  },
+  "tex_mirror": {
+   "group": "tex",
+   "aspect_ratio": "1:1",
+   "model": "kling-image-v3_0_omni",
+   "tool": "text_to_image",
+   "generationId": "AXNW5sw-F8fKn171Sj5GDZbZSpeK8O1zZ2pJ-5FRwuWwyC8RJLclEULCulvX4v1KlGqr6YTn",
+   "prompt": "black obsidian glass tiles with silver filigree seams and faint cracked mirror shards. Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture.",
+   "reference": null,
+   "attempt": 1,
+   "file": "assets/tex/tex_mirror.webp",
+   "size": [
+    512,
+    512
+   ],
+   "kb": 48.9,
+   "webp_quality": 82
+  },
+  "tex_forge": {
+   "group": "tex",
+   "aspect_ratio": "1:1",
+   "model": "kling-image-v3_0_omni",
+   "tool": "text_to_image",
+   "generationId": "AVPgmu7GnPFEiKNJJ89-UmwAELfFcZhLwSK81WTQpB_9PFmntxLUvYoS0XXUuf-xoHCC2Yef",
+   "prompt": "dark riveted iron plates with glowing orange molten seams and soot. Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture.",
+   "reference": null,
+   "attempt": 1,
+   "file": "assets/tex/tex_forge.webp",
+   "size": [
+    512,
+    512
+   ],
+   "kb": 45.3,
+   "webp_quality": 82
+  },
+  "tex_sky_marble": {
+   "group": "tex",
+   "aspect_ratio": "1:1",
+   "model": "kling-image-v3_0_omni",
+   "tool": "text_to_image",
+   "generationId": "AU4fpdGtLfAstb58ZlB3UJJW6eu9UTTLp44gRZM1zMq-DDrfrx3qRSkE19r0gy_JkxN1Y7nA",
+   "prompt": "weathered white marble blocks with gold inlay and wind-worn cracks. Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture.",
+   "reference": null,
+   "attempt": 1,
+   "file": "assets/tex/tex_sky_marble.webp",
+   "size": [
+    512,
+    512
+   ],
+   "kb": 46.6,
+   "webp_quality": 82
+  },
+  "tex_rotwood": {
+   "group": "tex",
+   "aspect_ratio": "1:1",
+   "model": "kling-image-v3_0_omni",
+   "tool": "text_to_image",
+   "generationId": "AZbQRE8Vm0je1y3uGEVqWELm_fQ_l0llGD2UCXuzguxKZe0Iq_i3L9k-gTosrIQnaOFDg7cL",
+   "prompt": "rotten dark tree bark with pale fungus shelves and faint yellow-green glowing spores. Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture.",
+   "reference": null,
+   "attempt": 1,
+   "file": "assets/tex/tex_rotwood.webp",
+   "size": [
+    512,
+    512
+   ],
+   "kb": 59.6,
+   "webp_quality": "76+blur0.3"
+  },
+  "b_narkissa": {
+   "group": "portrait",
+   "aspect_ratio": "3:4",
+   "model": "kling-image-v3_0_omni",
+   "tool": "text_to_image",
+   "generationId": "ATYpOlybKvk3wLffBX109ZVjOD5lRwIuQzm6DD2485Nia2xu16UnOgKC8SlgK6FYtkzk3BGO",
+   "prompt": "Narkissa, the Empress of Ten Thousand Mirrors, a towering gothic queen of black glass and silver, a cracked porcelain mask covered with dozens of mismatched reflected eyes, a gown of hanging mirror shards each reflecting a screaming face, six long jointed glass arms ending in shard blades, spider-like glass legs beneath the gown, cold prismatic light. Dark gothic horror boss monster concept art, menacing, grotesque, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, a single creature, no text, no watermark.",
+   "reference": null,
+   "attempt": 1,
+   "file": "assets/portraits/b_narkissa.webp",
+   "size": [
+    761,
+    968
+   ],
+   "kb": 87.6,
+   "webp_quality": 82
+  },
+  "b_moloch": {
+   "group": "portrait",
+   "aspect_ratio": "3:4",
+   "model": "kling-image-v3_0_omni",
+   "tool": "text_to_image",
+   "generationId": "AR_rn7Pox8DlHF6mc_xoLskqB0vwDE4WzSzBU736pN8HWUAXCpE9AysvUUpMiD79adQEP4u7",
+   "prompt": "Moloch, a colossal bull-headed bronze furnace idol, an open ribcage furnace in its belly with a glowing grate and tormented souls pressed against the bars, a giant forge hammer fused to its right arm, molten tongs for a left hand, chimneys on its back belching fire, hooked chains hanging from its body, standing in a pool of magma. Dark gothic horror boss monster concept art, menacing, grotesque, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, a single creature, no text, no watermark.",
+   "reference": null,
+   "attempt": 1,
+   "file": "assets/portraits/b_moloch.webp",
+   "size": [
+    761,
+    968
+   ],
+   "kb": 83.7,
+   "webp_quality": 82
   }
  },
  "generations": [
@@ -212,7 +314,7 @@
    "attempt": 1,
    "tool": "text_to_image",
    "generationId": "AXNW5sw-F8fKn171Sj5GDZbZSpeK8O1zZ2pJ-5FRwuWwyC8RJLclEULCulvX4v1KlGqr6YTn",
-   "status": "submitted",
+   "status": "accepted",
    "note": null,
    "prompt": "black obsidian glass tiles with silver filigree seams and faint cracked mirror shards. Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture."
   },
@@ -221,7 +323,7 @@
    "attempt": 1,
    "tool": "text_to_image",
    "generationId": "AVPgmu7GnPFEiKNJJ89-UmwAELfFcZhLwSK81WTQpB_9PFmntxLUvYoS0XXUuf-xoHCC2Yef",
-   "status": "submitted",
+   "status": "accepted",
    "note": null,
    "prompt": "dark riveted iron plates with glowing orange molten seams and soot. Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture."
   },
@@ -230,8 +332,8 @@
    "attempt": 1,
    "tool": "text_to_image",
    "generationId": "AcoZRDJ0CbZATV1SfQ-s-6t0SazLce46RU0eO9LN8EWQKzckLrVflPwK3Zs19V296btaqDKD",
-   "status": "submitted",
-   "note": null,
+   "status": "rejected",
+   "note": "perspective underwater scene instead of a flat texture",
    "prompt": "sunken barnacle-encrusted pale marble blocks with teal algae and small corals. Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture."
   },
   {
@@ -239,7 +341,7 @@
    "attempt": 1,
    "tool": "text_to_image",
    "generationId": "AU4fpdGtLfAstb58ZlB3UJJW6eu9UTTLp44gRZM1zMq-DDrfrx3qRSkE19r0gy_JkxN1Y7nA",
-   "status": "submitted",
+   "status": "accepted",
    "note": null,
    "prompt": "weathered white marble blocks with gold inlay and wind-worn cracks. Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture."
   },
@@ -248,8 +350,8 @@
    "attempt": 1,
    "tool": "text_to_image",
    "generationId": "Ab1VKIwws6t2lloPmHlj6APE_lXfCxY59YApfMRwL3Xmvjk2BlLoI7UQHAOIhIR1NJzwwqZM",
-   "status": "submitted",
-   "note": null,
+   "status": "rejected",
+   "note": "single stitched cushion band object, not an all-over surface",
    "prompt": "stitched pale flesh-like wallpaper with faded purple damask pattern and bone buttons. Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture."
   },
   {
@@ -257,7 +359,7 @@
    "attempt": 1,
    "tool": "text_to_image",
    "generationId": "AZbQRE8Vm0je1y3uGEVqWELm_fQ_l0llGD2UCXuzguxKZe0Iq_i3L9k-gTosrIQnaOFDg7cL",
-   "status": "submitted",
+   "status": "accepted",
    "note": null,
    "prompt": "rotten dark tree bark with pale fungus shelves and faint yellow-green glowing spores. Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture."
   },
@@ -266,8 +368,8 @@
    "attempt": 1,
    "tool": "text_to_image",
    "generationId": "AVz0h3LTieyNDNo7SHRUuF0aIu1A2qPS6KCPPukxhVQf-pzAOCNDMNOSpKNhkV3FkFvDU6BR",
-   "status": "submitted",
-   "note": null,
+   "status": "rejected",
+   "note": "3D faceted crystals with perspective depth, not a flat surface",
    "prompt": "black crystal stone with tiny embedded stars and faint prismatic cracks. Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture."
   },
   {
@@ -275,7 +377,7 @@
    "attempt": 1,
    "tool": "text_to_image",
    "generationId": "ATYpOlybKvk3wLffBX109ZVjOD5lRwIuQzm6DD2485Nia2xu16UnOgKC8SlgK6FYtkzk3BGO",
-   "status": "submitted",
+   "status": "accepted",
    "note": null,
    "prompt": "Narkissa, the Empress of Ten Thousand Mirrors, a towering gothic queen of black glass and silver, a cracked porcelain mask covered with dozens of mismatched reflected eyes, a gown of hanging mirror shards each reflecting a screaming face, six long jointed glass arms ending in shard blades, spider-like glass legs beneath the gown, cold prismatic light. Dark gothic horror boss monster concept art, menacing, grotesque, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, a single creature, no text, no watermark."
   },
@@ -284,7 +386,7 @@
    "attempt": 1,
    "tool": "text_to_image",
    "generationId": "AR_rn7Pox8DlHF6mc_xoLskqB0vwDE4WzSzBU736pN8HWUAXCpE9AysvUUpMiD79adQEP4u7",
-   "status": "submitted",
+   "status": "accepted",
    "note": null,
    "prompt": "Moloch, a colossal bull-headed bronze furnace idol, an open ribcage furnace in its belly with a glowing grate and tormented souls pressed against the bars, a giant forge hammer fused to its right arm, molten tongs for a left hand, chimneys on its back belching fire, hooked chains hanging from its body, standing in a pool of magma. Dark gothic horror boss monster concept art, menacing, grotesque, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, a single creature, no text, no watermark."
   },
@@ -293,8 +395,8 @@
    "attempt": 1,
    "tool": "text_to_image",
    "generationId": "AUyAN2217-NgItgZOYazcVhNMSeergI6wYIjzxLCH8aUUaVW_wL7glWb-honLtrLW1HSvPjz",
-   "status": "submitted",
-   "note": null,
+   "status": "rejected",
+   "note": "angler lures rendered as fish on fishing lines, comical fish face",
    "prompt": "Dagon, the drowned priest-king, a colossal fish-headed humanoid with barnacle-crusted grey-green flesh, gill slits across his ribs, a crown of bioluminescent angler lures, a coral crozier, lower body a mass of eel-like tentacles, fused with a sunken cathedral pipe organ, drowned pilgrims embedded in his back like pearls. Dark gothic horror boss monster concept art, menacing, grotesque, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, a single creature, no text, no watermark."
   },
   {
@@ -302,8 +404,8 @@
    "attempt": 1,
    "tool": "text_to_image",
    "generationId": "AcIG3884G3g9O7ETH2sJGMpRovLYbUQKGbXikkB1K5tq9pUAZuJZhwTOf1pyrU-dUFMVD9Ld",
-   "status": "submitted",
-   "note": null,
+   "status": "processed",
+   "note": "fallback: good skull beak and wing eyes but feathers not storm clouds",
    "prompt": "Ziz, a colossal storm bird whose wings eclipse the sky, a bare skull beak, rows of glowing eyes along the leading edges of its wings, feathers made of storm cloud and crackling lightning, an exposed ribcage full of ball lightning, talons like broken spires. Dark gothic horror boss monster concept art, menacing, grotesque, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, a single creature, no text, no watermark."
   },
   {
@@ -311,8 +413,8 @@
    "attempt": 1,
    "tool": "text_to_image",
    "generationId": "AUCKQLmT7BKiUcnGOcktZKeOX1jIaGPa6Y57T7WfOgJo5dozkBV8Lo3gZfAGpLTYWICRHCL2",
-   "status": "submitted",
-   "note": null,
+   "status": "rejected",
+   "note": "skull face with eyes instead of eyeless porcelain doll face with stitched vertical mouth; two arms",
    "prompt": "Mara, the Mother of Nightmares, a gaunt elongated hag with four long arms and a cracked porcelain doll face with no eyes and a stitched vertical mouth, squatting on a giant iron baby cradle, her long hair made of threads tied to floating sleeping faces, broken doll limbs crawling from under the cradle. Dark gothic horror boss monster concept art, menacing, grotesque, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, a single creature, no text, no watermark."
   },
   {
@@ -320,8 +422,8 @@
    "attempt": 1,
    "tool": "text_to_image",
    "generationId": "AVS1glTUudVbYXzVgFpBh4ML5x5bXc-gUA2ycC5HguVvNtFs4DJoBrqfEo4Gkl0577yDh0Ba",
-   "status": "submitted",
-   "note": null,
+   "status": "rejected",
+   "note": "bipedal demon, queen inside ribcage, not a mountain-sized quadruped",
    "prompt": "Behemoth, a mountain-sized rotting beast like a colossal boar and hippopotamus, half its face bare skull, trees and giant pale mushrooms growing from its back, exposed ribs with pulsing fungal sacs, a pale humanoid fungal queen fused to its spine controlling it with root tendrils. Dark gothic horror boss monster concept art, menacing, grotesque, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, a single creature, no text, no watermark."
   },
   {
@@ -329,9 +431,36 @@
    "attempt": 1,
    "tool": "text_to_image",
    "generationId": "AWvFNbuKkh50fdsWxsW63QTM0CynvUZTmwZSSqUAyRBWX_VJV8_5kW5BLSt7o21fPbQoQFag",
+   "status": "processed",
+   "note": "fallback: strong, but mask has skull eyes/teeth instead of featureless, white hood",
+   "prompt": "Nihil, the Primordial Void, a colossal hooded silhouette cut out of reality with a starfield inside its body, a white featureless porcelain mask, two gigantic floating hands each with an eye in the palm, prismatic cracks around its outline. Dark gothic horror boss monster concept art, menacing, grotesque, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, a single creature, no text, no watermark."
+  },
+  {
+   "asset": "tex_coral",
+   "attempt": 2,
+   "tool": "text_to_image",
+   "generationId": "AcSZYlxULsaB2HxMWPBZa8LAkFUqfnaa1Q6epDOqzGK9XVv5x_3Xtb8-HXIrugw4cQOlb876",
    "status": "submitted",
    "note": null,
-   "prompt": "Nihil, the Primordial Void, a colossal hooded silhouette cut out of reality with a starfield inside its body, a white featureless porcelain mask, two gigantic floating hands each with an eye in the palm, prismatic cracks around its outline. Dark gothic horror boss monster concept art, menacing, grotesque, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, a single creature, no text, no watermark."
+   "prompt": "Flat straight-on view of a wall made of square sunken pale marble blocks with mortar lines filling the whole frame, the blocks encrusted with barnacles, patches of teal algae and small corals. Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture."
+  },
+  {
+   "asset": "tex_nightmare",
+   "attempt": 2,
+   "tool": "text_to_image",
+   "generationId": "AXUJ-JtNlORXfQXm_xhGKhlDlNVE-QNd1RxC4soLiRkhARBlHEGTRhQ1sPK4A297P_hTMa0c",
+   "status": "submitted",
+   "note": null,
+   "prompt": "An all-over repeating wallpaper surface filling the whole frame: pale flesh-like leather panels sewn together with dark thread stitch seams, a faded purple damask pattern printed across them, small bone buttons at the seam crossings. Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture."
+  },
+  {
+   "asset": "tex_void",
+   "attempt": 2,
+   "tool": "text_to_image",
+   "generationId": "Ac8kK5yCfD4oAP-pHqBRoJZseecrzO_0tUyLH6tMFOouNAqTPMwnLdFljCJEnDFBh1JoJ_Os",
+   "status": "submitted",
+   "note": null,
+   "prompt": "A flat polished wall surface of black crystal stone slabs filling the whole frame, tiny glittering stars embedded inside the black stone like a night sky, faint thin prismatic iridescent cracks. Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture."
   }
  ]
 }

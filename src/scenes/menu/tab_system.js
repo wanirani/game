@@ -1,4 +1,5 @@
 // 기록/시스템 탭: 모험 기록(통계) · 스테이지 랭크 · 드라큘라의 유물 · 저장(마을에서만) · 설정 · 타이틀로
+// + 클라우드: 로그인 상태와 '지금 동기화'(로그인 안 했으면 '로그인' → 계정 화면). 계정을 쓸 수 없는 환경이면 안내 한 줄
 import { text, FONT } from '../../core/ui.js';
 import { audio } from '../../core/audio.js';
 import { clamp, fmtTime } from '../../core/math.js';
@@ -8,6 +9,8 @@ import { getDiff } from '../../data/difficulty.js';
 import { Tab } from './base.js';
 import { PAL, frame, heading, divider, brackets, glow, glowOval, gbutton, rr, glyph, Confirm } from './common.js';
 import * as D from './access.js';
+import { cloud } from '../../core/cloud.js';
+import { drawCloudIcon, accountBadge } from '../front/cloud_ui.js';
 
 const RANK_COL = { D: '#a0a0a0', C: '#7ee07e', B: '#5aa8ff', A: '#c07cff', S: '#ffa640', SS: '#ff5a4a', SSS: '#ffe070' };
 
@@ -16,11 +19,29 @@ export class SystemTab extends Tab {
   get canSave() { return !this.world || this.world.mode === 'town'; }
   actions() {
     const g = this.game;
-    return [
+    const acts = [
       { id: 'save', label: '저장하기', icon: 'save', disabled: !this.canSave, sub: this.canSave ? `슬롯 ${this.state.slot ?? 1}에 기록` : '세이브 포인트에서 저장할 수 있습니다', run: () => this.save() },
       { id: 'options', label: '설정', icon: 'gear', disabled: !g.registry.options, sub: g.registry.options ? '소리 · 화면 · 조작' : '준비 중입니다', run: () => { audio.sfx('menu_ok'); g.push('options', {}); } },
       { id: 'title', label: '타이틀로', icon: 'door', sub: '진행 중인 모험을 떠납니다', run: () => this.toTitle() },
     ];
+    // 클라우드 (계정을 쓸 수 있는 환경에서만 버튼)
+    if (cloud.eligible() && g.registry.account) {
+      if (!cloud.loggedIn) acts.push({ id: 'cloud', label: '로그인', sub: '게스트 · 계정에 로그인하면 클라우드에 보관', run: () => { audio.sfx('menu_ok'); g.push('account', { overlay: true, screen: 'login' }); } });
+      else acts.push({ id: 'cloud', label: this.syncing ? '동기화 중…' : '지금 동기화', disabled: this.syncing, sub: `${cloud.id} · ${cloud.overall().text}`, run: () => this.syncNow() });
+    }
+    return acts;
+  }
+  async syncNow() {
+    if (this.syncing) return;
+    audio.sfx('menu_ok');
+    this.syncing = true;
+    // 이미 저장된 기록만 주고받는다 (지금 게임 중인 슬롯은 받지 않는다 — cloud.activeSlot)
+    const out = await cloud.syncNow();
+    this.syncing = false;
+    if (!out?.ok) { this.m.notify(out?.message ?? '동기화하지 못했습니다', PAL.bad); return; }
+    if (out.conflicts.length) this.m.notify(`슬롯 ${out.conflicts.join(', ')}: 클라우드 기록과 달라요 — 타이틀의 세이브 슬롯 화면에서 고르세요`, PAL.warn);
+    else if (out.failed.length) this.m.notify(`슬롯 ${out.failed.join(', ')}을(를) 동기화하지 못했습니다`, PAL.bad);
+    else this.m.notify('클라우드와 동기화했습니다', PAL.good);
   }
   save() {
     const st = this.state;
@@ -133,16 +154,26 @@ export class SystemTab extends Tab {
     heading(ctx, '시스템', RX + 16, A.y + 26, RW - 32);
     const acts = this.actions();
     this.btns.length = 0;
-    const bh = input.touchMode ? 64 : 58;
+    const hasCloud = acts.some((a) => a.id === 'cloud');
+    const bh = hasCloud ? (input.touchMode ? 56 : 52) : (input.touchMode ? 64 : 58), gap = hasCloud ? 10 : 12;
+    const main = acts.filter((a) => a.id !== 'cloud').length;
     acts.forEach((a, k) => {
-      const r = { x: RX + 16, y: A.y + 46 + k * (bh + 12), w: RW - 32, h: bh };
+      // 클라우드 버튼은 오른쪽 칸 맨 아래에 따로 둔다
+      const r = a.id === 'cloud'
+        ? { x: RX + 16, y: A.y + A.h - 14 - 52, w: RW - 32, h: 52 }
+        : { x: RX + 16, y: A.y + 46 + k * (bh + gap), w: RW - 32, h: bh };
       this.btns.push(r);
       const sel = k === this.i;
       gbutton(ctx, r, a.label, { hot: sel && (focused || this.m.ges.over(r)), disabled: a.disabled, icon: a.icon, size: 16, t, sub: a.sub, accent: a.id === 'title' ? '#6a1020' : undefined });
+      if (a.id === 'cloud') drawCloudIcon(ctx, r.x + 24, r.y + r.h / 2, 26, cloud.loggedIn ? (this.syncing ? 'pending' : accountBadge().status) : 'guest', t);
       if (sel && focused) brackets(ctx, r.x, r.y, r.w, r.h, t);
     });
+    if (!hasCloud && !cloud.eligible()) {
+      drawCloudIcon(ctx, RX + 30, A.y + A.h - 24, 20, 'blocked', t);
+      text(ctx, '클라우드 저장은 공식 사이트·앱에서 사용할 수 있습니다', RX + 46, A.y + A.h - 20, { size: 11, weight: 600, color: PAL.dim, maxWidth: RW - 62 });
+    }
     // 저장 안내
-    const iy = A.y + 46 + acts.length * (bh + 12) + 20;
+    const iy = A.y + 46 + main * (bh + gap) + 20;
     divider(ctx, RX + 16, iy, RW - 32, { center: false, a: 0.4 });
     const saved = st.savedAt ? new Date(st.savedAt) : null;
     const when = saved ? `${saved.getMonth() + 1}월 ${saved.getDate()}일 ${String(saved.getHours()).padStart(2, '0')}:${String(saved.getMinutes()).padStart(2, '0')}` : '기록 없음';

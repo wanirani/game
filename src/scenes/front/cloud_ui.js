@@ -67,6 +67,14 @@ export function drawCloudBadge(ctx, xr, y, status, t = 0, { size = 12, label = n
   return tw + iw + 6;
 }
 
+/** 계정 표시용 상태: 게스트 / 아이디 + 동기화 상태 */
+export function accountBadge() {
+  if (!cloud.loggedIn) return { status: 'guest', label: '게스트' };
+  const k = cloud.overall().key;
+  const status = k === 'offline' || k === 'conflict' || k === 'synced' ? k : 'pending';
+  return { status, label: cloud.id };
+}
+
 /** 요약 한 줄 (예: '카엘 Lv.12 · 2장까지 돌파') */
 export function summaryLine(sum) {
   if (!sum) return '';

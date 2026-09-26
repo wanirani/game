@@ -1,4 +1,6 @@
 // 세이브 슬롯 선택: 슬롯 3개(초상화·레벨·직업·챕터·플레이 시간·난이도·저장 일시) + 동작(불러오기/새로 시작/삭제/코드 내보내기·가져오기)
+// 로그인 중이면 들어올 때 클라우드 목록을 받아 슬롯마다 구름 상태(동기화됨/서버가 최신/기기가 최신/충돌)를 보이고,
+// 클라우드에서 받기·클라우드에 올리기(충돌이면 두 기록을 나란히 보여 주는 cloudConflict)를 제공한다
 import { Scene } from '../../core/game.js';
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
@@ -11,6 +13,9 @@ import { CLASSES } from '../../data/classes.js';
 import { getDiff } from '../../data/difficulty.js';
 import { STAGES, STAGE_ORDER } from '../../data/stages.js';
 import { migrateState } from '../../game/state.js';
+import { bus } from '../../core/events.js';
+import { cloud } from '../../core/cloud.js';
+import { drawCloudBadge, accountBadge, summaryLine, spinner } from './cloud_ui.js';
 import {
   Ambience, kenBurns, shade, frame, heading, portraitIn, gbutton, menuItem, backButton, footer, setPad,
   fmtDate, fmtPlay, goSafe, follow, TapZones, GOLD, BONE, DIM, CRIMSON,
@@ -35,27 +40,64 @@ export class SlotsScene extends Scene {
     this.act = null; // 동작 선택 팝업
     this.selK = [0, 0, 0];
     this.taps = new TapZones();
+    // 클라우드 (로그인 중일 때만)
+    this.alive = true;
+    this.cloudBusy = false;
+    this.offs = [
+      bus.on('cloud:sync', (e) => { if (e?.phase === 'done' && this.alive) this.refresh(); }),
+      bus.on('cloud:logout', () => { if (this.alive) this.refresh(); }),
+    ];
+    if (cloud.loggedIn) {
+      this.cloudBusy = true;
+      cloud.refresh({ reason: 'slots' }).then((out) => {
+        if (!this.alive) return;
+        this.cloudBusy = false;
+        this.refresh();
+        if (out?.ok && out.downloaded.length) this.game.toast(`클라우드에서 슬롯 ${out.downloaded.join(', ')}의 기록을 받았습니다`, '#9fe8ff');
+        else if (out && !out.ok && out.error !== 'logged_out') this.game.toast(out.message ?? '클라우드에 연결하지 못했습니다', '#ffb070');
+      });
+    }
   }
-  exit() { setPad(true); }
+  exit() { this.alive = false; for (const off of this.offs ?? []) off(); setPad(true); }
   onResume() { setPad(false); this.refresh(); }
   refresh() {
+    const on = cloud.loggedIn;
     this.slots = saves.list().map((s) => {
-      if (s.empty) return s;
+      const c = on ? cloud.slotInfo(s.slot) : null;
+      if (s.empty) return { ...s, cloud: c };
       const raw = saves.read(s.slot);
       const st = raw ? migrateState(raw) : null;
       const unlocked = st?.progress?.unlocked ?? ['s01'];
       const far = STAGE_ORDER.filter((id) => unlocked.includes(id)).pop() ?? 's01';
       return {
         ...s, raw: st, stage: STAGES[far], relics: st?.progress?.relics?.length ?? 0, docs: st?.progress?.docs?.length ?? 0,
-        heroes: Object.keys(st?.heroes ?? {}), cls: CLASSES[s.classId]?.name ?? '',
+        heroes: Object.keys(st?.heroes ?? {}), cls: CLASSES[s.classId]?.name ?? '', cloud: c,
       };
+    });
+  }
+  /** 클라우드에 이 슬롯의 기록이 있는가 → 클라우드 항목 {rev, summary, …} 또는 null */
+  cloudOf(s) { const c = s?.cloud?.cloud; return cloud.loggedIn && c && !c.empty ? c : null; }
+  /** 클라우드 작업 실행 + 결과 알림 */
+  cloudRun(p, okMsg) {
+    this.act = null;
+    this.cloudBusy = true;
+    p.then((r) => {
+      if (!this.alive) return;
+      this.cloudBusy = false;
+      this.refresh();
+      if (r?.ok) { audio.sfx('save'); this.game.toast(okMsg, '#9fe8ff'); }
+      else if (r?.error === 'conflict') this.game.toast('다른 기기에서 저장한 클라우드 기록과 달라 올리지 않았습니다. 다시 골라 주세요.', '#ffb070', 3.2);
+      else this.game.toast(r?.message ?? '처리하지 못했습니다', '#ff9a9a');
     });
   }
   openActions() {
     const s = this.slots[this.menu.index];
+    const st = s.cloud?.status;
+    const down = this.cloudOf(s) && st !== 'synced' ? [['cloudDown', '클라우드에서 받기', 'CLOUD → DEVICE']] : [];
+    const up = cloud.loggedIn && !s.empty && st !== 'synced' ? [['cloudUp', '클라우드에 올리기', 'DEVICE → CLOUD']] : [];
     const items = s.empty
-      ? [['new', '새로 시작', 'NEW GAME'], ['import', '코드 가져오기', 'IMPORT'], ['back', '취소', 'CANCEL']]
-      : [['load', '불러오기', 'LOAD'], ['new', '새로 시작', 'NEW GAME'], ['export', '코드 내보내기', 'EXPORT'], ['import', '코드 가져오기', 'IMPORT'], ['delete', '삭제', 'DELETE'], ['back', '취소', 'CANCEL']];
+      ? [...down, ['new', '새로 시작', 'NEW GAME'], ['import', '코드 가져오기', 'IMPORT'], ['back', '취소', 'CANCEL']]
+      : [['load', '불러오기', 'LOAD'], ...down, ...up, ['new', '새로 시작', 'NEW GAME'], ['export', '코드 내보내기', 'EXPORT'], ['import', '코드 가져오기', 'IMPORT'], ['delete', '삭제', 'DELETE'], ['back', '취소', 'CANCEL']];
     const start = this.mode === 'new' ? Math.max(0, items.findIndex((i) => i[0] === 'new')) : 0;
     this.act = { items, menu: new ListMenu(items.length, { index: start }), t: 0 };
     audio.sfx('menu_ok');
@@ -74,17 +116,46 @@ export class SlotsScene extends Scene {
         goSafe(g, 'hub', { from: 'load' }, { fadeTime: 0.6 });
         break;
       }
-      case 'new':
-        if (!s.empty) {
-          g.push('frontConfirm', { title: '새로 시작', message: `슬롯 ${slot}의 기록을 지우고 새로운 사냥을 시작할까요? 이 작업은 되돌릴 수 없습니다.`, yes: '새로 시작', no: '취소', danger: true, onYes: () => g.go('difficulty', { slot }) });
-        } else { audio.sfx('menu_ok'); g.go('difficulty', { slot }); }
+      case 'new': {
+        const cl = this.cloudOf(s);
+        const start = () => { if (cloud.loggedIn) cloud.markOverwrite(slot); g.go('difficulty', { slot }); };
+        if (!s.empty || cl) {
+          const message = s.empty
+            ? `클라우드에 슬롯 ${slot}의 기록(${summaryLine(cl.summary)})이 있습니다. 새로 시작하면 클라우드의 이 기록을 새 기록으로 덮어씁니다.`
+            : `슬롯 ${slot}의 기록을 지우고 새로운 사냥을 시작할까요? 이 작업은 되돌릴 수 없습니다.${cl ? ' 클라우드에 보관된 이 슬롯의 기록도 새 기록으로 바뀝니다.' : ''}`;
+          g.push('frontConfirm', { title: '새로 시작', message, yes: '새로 시작', no: '취소', danger: true, onYes: start });
+        } else { audio.sfx('menu_ok'); start(); }
         break;
-      case 'delete':
+      }
+      case 'delete': {
+        const cl = this.cloudOf(s);
         g.push('frontConfirm', {
-          title: '기록 삭제', message: `슬롯 ${slot}의 기록을 영구히 삭제합니다. 정말 삭제할까요?`, yes: '삭제', no: '취소', danger: true,
-          onYes: () => { saves.remove(slot); audio.sfx('break_wall'); g.toast(`슬롯 ${slot}의 기록을 삭제했습니다`, '#ff9a9a'); this.act = null; this.refresh(); },
+          title: '기록 삭제', yes: '삭제', no: '취소', danger: true,
+          message: cl ? `슬롯 ${slot}의 기록을 이 기기와 클라우드에서 모두 영구히 삭제합니다. 정말 삭제할까요?` : `슬롯 ${slot}의 기록을 영구히 삭제합니다. 정말 삭제할까요?`,
+          onYes: () => {
+            saves.remove(slot); audio.sfx('break_wall'); g.toast(`슬롯 ${slot}의 기록을 삭제했습니다`, '#ff9a9a'); this.act = null; this.refresh();
+            if (cl) {
+              cloud.removeSlot(slot, cl.rev).then((r) => {
+                if (!this.alive) return;
+                this.refresh();
+                if (!r?.ok) g.toast(r?.error === 'changed' ? r.message : '클라우드 기록은 지금 지우지 못했습니다. 다음에 연결되면 지웁니다.', '#ffb070', 3.2);
+              });
+            }
+          },
         });
         break;
+      }
+      case 'cloudDown': {
+        if (s.empty) this.cloudRun(cloud.download(slot), `슬롯 ${slot}에 클라우드 기록을 받았습니다`);
+        else g.push('cloudConflict', { slot, mode: s.cloud?.status === 'conflict' ? 'conflict' : 'download', onDone: (ok) => { if (ok) this.act = null; this.refresh(); } });
+        break;
+      }
+      case 'cloudUp': {
+        const cl = this.cloudOf(s);
+        if (!cl || s.cloud?.status === 'local') this.cloudRun(cloud.upload(slot), `슬롯 ${slot}의 기록을 클라우드에 올렸습니다`);
+        else g.push('cloudConflict', { slot, mode: s.cloud?.status === 'conflict' ? 'conflict' : 'upload', onDone: (ok) => { if (ok) this.act = null; this.refresh(); } });
+        break;
+      }
       case 'export': g.push('saveCode', { mode: 'export', slot }); break;
       case 'import': g.push('saveCode', { mode: 'import', slot, onDone: (ok) => { if (ok) { this.act = null; this.refresh(); } } }); break;
     }
@@ -106,7 +177,7 @@ export class SlotsScene extends Scene {
     if (this.menu.moved) audio.sfx('menu_move');
     if (r === 'confirm') {
       const s = this.slots[this.menu.index];
-      if (s.empty && this.mode === 'new') { audio.sfx('menu_ok'); g.go('difficulty', { slot: s.slot }); }
+      if (s.empty && this.mode === 'new' && !this.cloudOf(s)) { audio.sfx('menu_ok'); g.go('difficulty', { slot: s.slot }); }
       else this.openActions();
     } else if (r === 'cancel') this.leave();
   }
@@ -132,6 +203,12 @@ export class SlotsScene extends Scene {
       this.drawSlot(ctx, r, s, sel, k, i === this.menu.index);
     });
     if (this.act) this.drawActions(ctx, vw, vh);
+    if (cloud.loggedIn) {
+      // 오른쪽 위: 로그인한 계정과 전체 동기화 상태
+      const ab = accountBadge();
+      const bw = drawCloudBadge(ctx, vw - 18, 28, this.cloudBusy ? 'pending' : ab.status, g.time, { size: 13, label: ab.label });
+      if (this.cloudBusy) text(ctx, '클라우드 확인 중…', vw - 18 - bw - 8, 32, { size: 11, align: 'right', weight: 700, color: DIM, ow: 2 });
+    }
     backButton(ctx, 14, 12, '뒤로', this.taps);
     footer(ctx, vw, vh, this.act ? '↑↓ 선택   Z 결정   X 닫기' : '↑↓ 슬롯 선택   Z 결정   X 타이틀로', this.act ? '동작을 선택하세요' : '슬롯을 터치하세요');
   }
@@ -152,8 +229,11 @@ export class SlotsScene extends Scene {
     text(ctx, `SLOT ${s.slot}`, 0, 5, { size: 13, align: 'center', weight: 900, family: FONT.num, color: current ? '#ffe7a0' : '#c8a8a0', ow: 2 });
     ctx.restore();
     if (s.empty) {
+      const cl = this.cloudOf(s);
       text(ctx, '— 빈 슬롯 —', r.x + r.w / 2 + 18, r.y + r.h / 2 - 4, { size: 20, align: 'center', weight: 800, family: FONT.title, color: current ? '#f0e0c8' : '#8a7a70', ow: 3 });
-      text(ctx, '새로운 사냥의 기록을 남길 수 있습니다', r.x + r.w / 2 + 18, r.y + r.h / 2 + 22, { size: 13, align: 'center', color: DIM, ow: 2 });
+      if (cl) text(ctx, `클라우드: ${summaryLine(cl.summary)}`, r.x + r.w / 2 + 18, r.y + r.h / 2 + 22, { size: 13, align: 'center', weight: 700, color: '#9fd8ff', ow: 2 });
+      else text(ctx, '새로운 사냥의 기록을 남길 수 있습니다', r.x + r.w / 2 + 18, r.y + r.h / 2 + 22, { size: 13, align: 'center', color: DIM, ow: 2 });
+      this.drawCloud(ctx, r.x + r.w - 18, r.y + 24, s);
       ctx.restore();
       return;
     }
@@ -187,10 +267,18 @@ export class SlotsScene extends Scene {
     ctx.fillStyle = rgba(diff.color, 0.18); ctx.fillRect(rx - dw, r.y + 14, dw, 22);
     ctx.strokeStyle = rgba(diff.color, 0.8); ctx.lineWidth = 1; ctx.strokeRect(rx - dw + 0.5, r.y + 14.5, dw - 1, 21);
     text(ctx, diff.name, rx - dw / 2, r.y + 30, { size: 12, align: 'center', weight: 800, color: diff.color, ow: 2 });
+    this.drawCloud(ctx, rx - dw - 12, r.y + 25, s);
     text(ctx, `플레이 ${fmtPlay(s.playTime)}`, rx, r.y + 60, { size: 13, align: 'right', weight: 700, color: BONE, ow: 2 });
     text(ctx, `${fmt(s.gold)} G`, rx, r.y + 80, { size: 13, align: 'right', weight: 800, color: '#ffd84a', ow: 2 });
     text(ctx, fmtDate(s.savedAt), rx, r.y + 100, { size: 11, align: 'right', weight: 600, family: FONT.num, color: DIM, ow: 2 });
     ctx.restore();
+  }
+
+  /** 슬롯 카드의 구름 상태 (로그인 중일 때만) */
+  drawCloud(ctx, xr, y, s) {
+    const c = s.cloud;
+    if (!c || c.status === 'guest' || (c.status === 'empty' && !c.busy)) return;
+    drawCloudBadge(ctx, xr, y, c.busy || (this.cloudBusy && c.status === 'unknown') ? 'pending' : c.status, this.game.time, { size: 11 });
   }
 
   drawActions(ctx, vw, vh) {

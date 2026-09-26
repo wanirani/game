@@ -86,7 +86,7 @@ const RESERVED = new Set([
   'sudo', 'service', 'manager', 'console', 'bot', 'noreply', 'no_reply', 'postmaster', 'hostmaster', 'abuse',
 ]);
 const RESERVED_PREFIX = ['admin', 'system', 'official', 'moderator', 'gm_', 'staff_', 'netlify'];
-const CONTROL_RE = /[\u0000-\u001f\u007f-\u009f  ]/;
+const CONTROL_RE = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/;
 
 /** 아이디 정규화: 앞뒤 공백 제거 + 소문자 (서버와 같음) */
 export const normalizeId = (raw) => String(raw ?? '').trim().toLowerCase();
@@ -367,8 +367,13 @@ class Cloud {
   metaRec() { const m = this.recs().meta; return isObj(m) ? m : null; }
   setMetaRec(v) { if (!this.id) return; const r = this.recs(); r.meta = v; this.saveRecs(r); }
   dropRecs(id) { const d = this.syncDb(); delete d[id]; lsSet(K_SYNC, JSON.stringify(d)); }
-  /** 이 슬롯을 다음 업로드 때 서버 것과 상관없이 덮어쓰도록 표시 (사용자가 덮어쓰기를 확인한 경우) */
-  markOverwrite(slot) { if (this.auth && SLOTS.includes(slot)) this.patchRec(slot, { force: true }); }
+  /**
+   * '새로 시작' 확인: 지금부터 이 슬롯에 새로 만든 기록(created 가 지금 이후)은 클라우드 것과 상관없이 올린다.
+   * 새 게임을 시작하지 않고 돌아가면 예전 기록의 created 는 그대로라 덮어쓰지 않는다.
+   */
+  markOverwrite(slot) { if (this.auth && SLOTS.includes(slot)) this.patchRec(slot, { forceAfter: Date.now() }); }
+  /** 이 기록이 '새로 시작' 확인 뒤에 만들어진 새 게임인가 */
+  forced(rec, data) { return !!(rec?.forceAfter && Number.isFinite(data?.created) && data.created >= rec.forceAfter); }
 
   // ── 요청 ──
   async request(method, path, { body, auth = true, timeout = 10000 } = {}) {
@@ -443,6 +448,8 @@ class Cloud {
     if (!this.auth) return fail('logged_out');
     if (this._resume) return this._resume;
     this._resume = (async () => {
+      // 첫 장면이 뜬 뒤에 동기화한다 (어느 슬롯을 게임 중인지 알아야 그 슬롯에 받지 않는다)
+      for (let i = 0; i < 50 && this.game && !this.game.scenes?.length; i++) await new Promise((res) => setTimeout(res, 100));
       const r = await this.request('GET', '/auth/me', { timeout: 8000 });
       if (r.ok) {
         this.verified = true; this.createdAt = r.createdAt ?? null;
@@ -524,7 +531,7 @@ class Cloud {
     if (!SLOTS.includes(slot)) return;
     if (ev.type === 'remove') {
       clearTimeout(this.timers[slot]); delete this.timers[slot];
-      if (this.rec(slot)) this.patchRec(slot, { del: true, dirty: false, force: false });
+      if (this.rec(slot)) this.patchRec(slot, { del: true, dirty: false, forceAfter: null });
       return;
     }
     this.patchRec(slot, { dirty: true, del: false });
@@ -571,7 +578,7 @@ class Cloud {
     const data = saves.read(slot);
     if (!data || data.arcade) return { ok: true, skipped: true };
     const rec = this.rec(slot);
-    const forceIt = !!(force || rec?.force);
+    const forceIt = !!(force || this.forced(rec, data));
     let base = rec?.rev ?? 0;
     if (v.cloud?.empty) base = 0; // 빈 슬롯에는 0 이 항상 통한다
     v.busy = true; v.error = null;
@@ -601,7 +608,7 @@ class Cloud {
         const sv = isObj(r.server) ? r.server : {};
         v.cloud = { empty: !!sv.empty, rev: num(sv.rev), savedAt: sv.savedAt ?? null, summary: sv.summary ?? null };
         v.status = 'conflict';
-        this.patchRec(slot, { dirty: false, force: false });
+        this.patchRec(slot, { dirty: false });
         bus.emit('cloud:conflict', { slot });
       } else if (r.error === 'network' || r.error === 'timeout' || r.error === 'offline' || r.status >= 500 || r.status === 429) {
         v.error = r.message; // dirty 는 남겨 두었다가 다시 연결되면 올린다
@@ -745,7 +752,7 @@ class Cloud {
       const rec = this.rec(slot);
       let { status, auto } = classifySlot(local, v.cloud, rec);
       if (status === 'local' && !auto && adoptLocal && local) auto = 'upload';
-      if (rec?.force && local && (status === 'conflict' || status === 'cloud' || status === 'local')) auto = 'upload'; // 사용자가 덮어쓰기를 확인한 슬롯
+      if (status !== 'synced' && this.forced(rec, local)) auto = 'upload'; // '새로 시작'을 확인하고 만든 새 게임
       v.status = status;
       if (status === 'synced') this.setRec(slot, { rev: v.cloud.rev, at: local.savedAt });
       else if (status === 'empty') this.setRec(slot, { rev: v.cloud?.rev ?? 0, at: null });
@@ -794,7 +801,7 @@ class Cloud {
    */
   removeSlot(slot, seenRev = null) {
     // 먼저 '이 기기에서 지움' 표시 — 지금 서버에 닿지 않아도 다음 동기화 때 같은 rev 면 클라우드에서도 지운다
-    if (this.auth) this.patchRec(slot, { rev: seenRev ?? this.rec(slot)?.rev ?? null, at: null, del: true, dirty: false, force: false });
+    if (this.auth) this.patchRec(slot, { rev: seenRev ?? this.rec(slot)?.rev ?? null, at: null, del: true, dirty: false, forceAfter: null });
     return this.enqueue(async () => {
       if (!this.auth) return fail('logged_out');
       if (seenRev != null) {

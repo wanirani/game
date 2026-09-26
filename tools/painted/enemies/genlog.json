@@ -1,0 +1,7 @@
+[
+ {"id":"skeleton","step":"ref","tool":"text_to_image","count":2,"aspect":"3:4","generationId":"AZYHTiQH80zrH8Vp3VX6BNkg-AdoYfwammdGIinNZE7IEAemgNkwjNEHBV-fPCFWKazG2bj3"},
+ {"id":"armor_knight","step":"ref","tool":"text_to_image","count":2,"aspect":"3:4","generationId":"AZ-dhTHKJRe-ZHyVdNpeaNaOMlApX-8mjftsuEUhgzR4NxCDYY4vtm6pFFet2pAFApml2j00"},
+ {"id":"gravedigger","step":"ref","tool":"text_to_image","count":2,"aspect":"3:4","generationId":"AWFKJ_e1nMU-NNV7TECGxs18oL5vyILdQTfUoBsJ1rqCS8-5v9DO18M6pi4Ysb0MiuYxbKea"},
+ {"id":"bat","step":"ref","tool":"text_to_image","count":2,"aspect":"4:3","generationId":"AYwjhoD0D57BJeZtZ3LQ5AZwftF3Kp7nkDfGw1weu2Vccdf1PDdTQH4OxLFlVXQlnFsljW5K"},
+ {"id":"ghost","step":"ref","tool":"text_to_image","count":2,"aspect":"1:1","generationId":"ATKW7WdxAVIy1FsOouEpShkjpWVlla8IiqOkc77z1SuB_H8Q6vVKwvm8DEAOcM0jNDet_SVF"}
+]

@@ -1,0 +1,195 @@
+{
+ "cutin_kael": {
+  "group": "cutin",
+  "aspect_ratio": "21:9",
+  "generationId": "ATqvlcy1ftMqGrbaffNB2cJCJ8PcyQ1DebizadDj48DbtBrZnkpgV9Pfw64MCP1T3QABfjIz",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "The same hero as in 图片1 (keep the identical face, hairstyle, hair color, eye color and costume), redrawn as a brand-new close-up action illustration: Kael Valcrane, young human vampire hunter, long dark brown ponytail, crimson bandana headband, amber-brown eyes, dark brown leather hunter coat with high collar and silver trim, silver cross pendant, cracking a glowing golden holy whip that arcs across the frame, holy sparks, fierce determined shout. Human: no fangs, no glowing eyes. Extreme dynamic close-up for a fighting-game super-move cut-in, 21:9 ultra-wide cinematic framing, the character's face and upper body fill the right half of the frame, head turned three-quarters toward the viewer, intense eyes at about 40% from the top of the image, weapon crossing the frame diagonally, strong motion, wind-blown hair and cloth, dramatic rim light in golden holy light, dark background with crimson smoke and ember particles, the left 45% of the image is darker negative space, painterly anime-influenced dark gothic fantasy illustration, high detail, sharp focus on the eyes, single character only, no text, no letters, no logo, no watermark, no border, no frame.",
+  "file": "assets/cg/cutin_kael.webp",
+  "tool": "image_to_image",
+  "attempt": 1,
+  "ref": "assets/portraits/kael.webp",
+  "created": "2026-09-26T13:38:48Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzZhOGEzODEzLTIwYmEtNDJjZC04ODRkLTZlZjMwOGMwY2FkOS81Njg2NTA5MzgwMzM0OTQxODQwL3RlbXAxcGI4OS5wbmc.origin?x-kcdn-pid=112372",
+  "raw_face": [
+   0.657,
+   0.32
+  ],
+  "raw_eye": [
+   0.678,
+   0.233
+  ],
+  "retouch": [
+   [
+    "cloth_glyphs",
+    [
+     0.6,
+     0.075,
+     0.775,
+     0.225
+    ]
+   ]
+  ]
+ },
+ "cutin_sera": {
+  "group": "cutin",
+  "aspect_ratio": "21:9",
+  "generationId": "AdB_6x2g6iLgpzIzMDhnGDdEaPaSnwXWTJeJwtITAYIFo6LOU1gGZiAIgM_XIpCWWBLgsjxn",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "The same heroine as in 图片1 (keep the identical face, hairstyle, hair color, eye color, veil and costume), redrawn as a brand-new close-up action illustration: Seraphina Lux, young battle nun, long silver-white hair and white veil with a gold band, blue eyes, white-and-gold battle habit, both hands raising a golden rosary staff that crosses the frame diagonally, six radiant wings of light behind her (three on each side), drifting white feathers, serene but resolute expression, eyes wide open with luminous blue irises gazing toward the viewer, lips softly murmuring a prayer. Tight close-up framing from the chest up: the head is large and sits in the vertical middle of the image with dark space above it, the face centered at about 62% of the image width. Extreme dynamic close-up for a fighting-game super-move cut-in, 21:9 ultra-wide cinematic framing, the character's face and upper body fill the right half of the frame, head turned three-quarters toward the viewer, intense eyes at about 40% from the top of the image, weapon crossing the frame diagonally, strong motion, wind-blown hair and cloth, dramatic rim light in white-gold, dark background with crimson smoke and ember particles, the left 45% of the image is darker negative space, painterly anime-influenced dark gothic fantasy illustration, high detail, sharp focus on the eyes, single character only, no text, no letters, no logo, no watermark, no border, no frame.",
+  "file": "assets/cg/cutin_sera.webp",
+  "tool": "image_to_image",
+  "attempt": 3,
+  "ref": "assets/portraits/sera.webp",
+  "created": "2026-09-26T13:48:55Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2U4NjE3YWM1LTM5MzgtNDI0Ny1hZDkxLTk4ZjYxZjAxZjgxMC8tNzk4NDc0ODQxNDkwOTI1MjcyOC90ZW1wOHo5dDkucG5n.origin?x-kcdn-pid=112372",
+  "raw_face": [
+   0.628,
+   0.285
+  ],
+  "raw_eye": [
+   0.65,
+   0.236
+  ]
+ },
+ "cutin_victor": {
+  "group": "cutin",
+  "aspect_ratio": "21:9",
+  "generationId": "ATd6RbqWpOedvbakPeCXyqBmxvt1p8zwwkIHnYHbjD4yx8Z5fDx9_v85Se2QRwgZLIMcx9tF",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "The same gunslinger as in 图片1 (keep the identical face, hat, hair, bandolier and brown duster), redrawn as a brand-new close-up action illustration: Victor Grimm, rugged gunslinger in his thirties, black wide-brimmed hat shadowing one eye, stubble and a scar, long brown duster, an ornate silver revolver aimed straight at the viewer (foreshortened muzzle, spinning cylinder), a second revolver raised, gun smoke, playing cards (aces and eights) flying, cold smirk. Extreme dynamic close-up for a fighting-game super-move cut-in, 21:9 ultra-wide cinematic framing, the character's face and upper body fill the right half of the frame, head turned three-quarters toward the viewer, intense eyes at about 40% from the top of the image, weapon crossing the frame diagonally, strong motion, wind-blown hair and cloth, dramatic rim light in amber muzzle flash, dark background with crimson smoke and ember particles, the left 45% of the image is darker negative space, painterly anime-influenced dark gothic fantasy illustration, high detail, sharp focus on the eyes, single character only, no text, no letters, no logo, no watermark, no border, no frame.",
+  "file": "assets/cg/cutin_victor.webp",
+  "tool": "image_to_image",
+  "attempt": 1,
+  "ref": "assets/portraits/victor.webp",
+  "created": "2026-09-26T13:38:48Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzY4NmIwMGQ1LTMyNGYtNGNmNy05ZGQ0LWM2NGM3NzRkODM4Zi8tNzU3ODM1Mjk0NjYzNzc2MjI4OC90ZW1wcXVhaTIucG5n.origin?x-kcdn-pid=112372",
+  "raw_face": [
+   0.685,
+   0.28
+  ],
+  "raw_eye": [
+   0.703,
+   0.209
+  ],
+  "retouch": [
+   [
+    "smooth_ellipse",
+    [
+     0.5425,
+     0.4425
+    ],
+    [
+     0.0165,
+     0.0195
+    ],
+    17
+   ]
+  ]
+ },
+ "cutin_bran": {
+  "group": "cutin",
+  "aspect_ratio": "21:9",
+  "generationId": "AYUWCrVGrZGwF7CW3EiEwoK7EYPeebeIog6y9HLldFGL1cZ_yNvxfc-4th7mMGt2rXstDYSX",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "The same knight as in 图片1 (keep the identical face, red hair and beard, steel plate armor and tattered blue tabard), redrawn as a brand-new close-up action illustration: Bran Ironheart, huge muscular knight, short red hair and full red beard, battle-worn steel plate armor with a tattered blue tabard, roaring war cry, gripping an enormous greatsword wreathed in blue-steel fire that crosses the frame diagonally, faint semi-transparent spectral blue ghost knights raising swords far behind him in the dark smoke, painted in the same style, embers. Tight close-up framing from the chest up: the head is large and sits in the vertical middle of the image with dark space above it, the face centered at about 62% of the image width. Extreme dynamic close-up for a fighting-game super-move cut-in, 21:9 ultra-wide cinematic framing, the character's face and upper body fill the right half of the frame, head turned three-quarters toward the viewer, intense eyes at about 40% from the top of the image, weapon crossing the frame diagonally, strong motion, wind-blown hair and cloth, dramatic rim light in orange fire and steel-blue, dark background with crimson smoke and ember particles, the left 45% of the image is darker negative space, painterly anime-influenced dark gothic fantasy illustration, high detail, sharp focus on the eyes, single character only, no text, no letters, no logo, no watermark, no border, no frame.",
+  "file": "assets/cg/cutin_bran.webp",
+  "tool": "image_to_image",
+  "attempt": 2,
+  "ref": "assets/portraits/bran.webp",
+  "created": "2026-09-26T13:42:29Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzI0NjIyZTI3LWIxYTItNDdjMi1hNGZjLTBiODliYzYyYjYxMC81OTA2NjczODg4MTI1NzI4MDgyL3RlbXAzOW90ZC5wbmc.origin?x-kcdn-pid=112372",
+  "raw_face": [
+   0.69,
+   0.235
+  ],
+  "raw_eye": [
+   0.703,
+   0.188
+  ]
+ },
+ "cutin_lia": {
+  "group": "cutin",
+  "aspect_ratio": "21:9",
+  "generationId": "AbxFbq8QHpLo-K7pM_juEpsj3xGng0ys2KwnS8015QfJyBEURUDX3u-GS3-JxnvThmx7dQbo",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "The same assassin as in 图片1 (keep the identical face, black bob hair, black lower-face mask, crimson scarf and dark leather outfit with steel pauldrons), redrawn as a brand-new close-up action illustration: Lia Crow, agile young female assassin, short black bob hair, crimson eyes, lower-face mask, long crimson scarf flowing, dark leather ninja outfit, two curved daggers crossed in front of her face in reverse grip, black crow feathers swirling, a giant crow silhouette behind, cold killer gaze, single character only. Extreme dynamic close-up for a fighting-game super-move cut-in, 21:9 ultra-wide cinematic framing, the character's face and upper body fill the right half of the frame, head turned three-quarters toward the viewer, intense eyes at about 40% from the top of the image, weapon crossing the frame diagonally, strong motion, wind-blown hair and cloth, dramatic rim light in crimson, dark background with crimson smoke and ember particles, the left 45% of the image is darker negative space, painterly anime-influenced dark gothic fantasy illustration, high detail, sharp focus on the eyes, single character only, no text, no letters, no logo, no watermark, no border, no frame.",
+  "file": "assets/cg/cutin_lia.webp",
+  "tool": "image_to_image",
+  "attempt": 1,
+  "ref": "assets/portraits/lia.webp",
+  "created": "2026-09-26T13:38:48Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzA4ZmM0ZjQyLTljMWItNDUyMS1iNTZlLWYwZmJkMmM3YTk4ZS81NzQyNDM1MzM0MDcwNTM5MzgyL3RlbXBuYndnZy5wbmc.origin?x-kcdn-pid=112372",
+  "raw_face": [
+   0.709,
+   0.378
+  ],
+  "raw_eye": [
+   0.728,
+   0.302
+  ]
+ },
+ "cutin_azel": {
+  "group": "cutin",
+  "aspect_ratio": "21:9",
+  "generationId": "AW0OD8yBASOht9ULvdIsFfTzwyLVT7_lvzQFTrSk1rBgAdHZbvI-nXPI09V9uvxq843S5eiy",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "The same swordsman as in 图片1 (keep the identical face, long platinum-silver hair, golden eyes, black high-collar coat and black cape with crimson lining), redrawn as a brand-new close-up action illustration: Azel de Nocte, elegant pale dhampir swordsman, long flowing platinum-silver hair, glowing golden eyes, black aristocratic high-collar coat, black cape with crimson lining spreading like bat wings, a slender crimson-glowing longsword, an eclipsed blood moon with a red corona behind, floating blood droplets, faint fangs, melancholic cold expression. Extreme dynamic close-up for a fighting-game super-move cut-in, 21:9 ultra-wide cinematic framing, the character's face and upper body fill the right half of the frame, head turned three-quarters toward the viewer, intense eyes at about 40% from the top of the image, weapon crossing the frame diagonally, strong motion, wind-blown hair and cloth, dramatic rim light in blood red, dark background with crimson smoke and ember particles, the left 45% of the image is darker negative space, painterly anime-influenced dark gothic fantasy illustration, high detail, sharp focus on the eyes, single character only, no text, no letters, no logo, no watermark, no border, no frame.",
+  "file": "assets/cg/cutin_azel.webp",
+  "tool": "image_to_image",
+  "attempt": 1,
+  "ref": "assets/portraits/azel.webp",
+  "created": "2026-09-26T13:38:48Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzZiN2E5ZDNlLWZhMWMtNDllZS04NjZhLTQ1NTIxYTc2YWRjNy8tNDI4MTk1NjUyMDA2ODEyNDM0My90ZW1wcHJqcjMucG5n.origin?x-kcdn-pid=112372",
+  "raw_face": [
+   0.45,
+   0.3
+  ],
+  "raw_eye": [
+   0.446,
+   0.259
+  ]
+ },
+ "cutin_bran_a1": {
+  "group": "cutin",
+  "aspect_ratio": "21:9",
+  "generationId": "Acw-l9NVQKjN8puHfR_2l-UutOCWyr0GCvMFF-C-3XrUu_otHntAV-G3hEMFX23z3SRqZKic",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "The same knight as in 图片1 (keep the identical face, red hair and beard, steel plate armor and tattered blue tabard), redrawn as a brand-new close-up action illustration: Bran Ironheart, huge muscular knight, short red hair and full red beard, battle-worn steel plate armor with a tattered blue tabard, roaring war cry, gripping an enormous greatsword wreathed in blue-steel fire, ghostly translucent knights raising swords behind him, embers. Extreme dynamic close-up for a fighting-game super-move cut-in, 21:9 ultra-wide cinematic framing, the character's face and upper body fill the right half of the frame, head turned three-quarters toward the viewer, intense eyes at about 40% from the top of the image, weapon crossing the frame diagonally, strong motion, wind-blown hair and cloth, dramatic rim light in orange fire and steel-blue, dark background with crimson smoke and ember particles, the left 45% of the image is darker negative space, painterly anime-influenced dark gothic fantasy illustration, high detail, sharp focus on the eyes, single character only, no text, no letters, no logo, no watermark, no border, no frame.",
+  "file": null,
+  "tool": "image_to_image",
+  "attempt": 1,
+  "ref": "assets/portraits/bran.webp",
+  "created": "2026-09-26T13:38:48Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2Q5MjNiY2QzLTdkMTEtNDM5Ni1iMzY0LTQ2NTgzYzFjMzJiNC8tMzAzODQzMTAyMzkxMjAzOTg2NC90ZW1wazIwNDMucG5n.origin?x-kcdn-pid=112372",
+  "rejected": "off-style flat ghost figure, face high in frame; attempt 2 is stronger (orange/steel-blue fire)"
+ },
+ "cutin_sera_a1": {
+  "group": "cutin",
+  "aspect_ratio": "21:9",
+  "generationId": "AcIs6HdfX-mt250cwBW7WXGsYRdjaY1Oqq1PqvhWAw5_19kcFhZxRpSJ9-7QHc4RY8Br_V0e",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "The same heroine as in 图片1 (keep the identical face, hairstyle, hair color, eye color, veil and costume), redrawn as a brand-new close-up action illustration: Seraphina Lux, young battle nun, long silver-white hair and white veil with a gold band, blue eyes, white-and-gold battle habit, raising a golden rosary staff, six radiant wings of light behind her, drifting feathers, serene but resolute expression, lips in prayer. Extreme dynamic close-up for a fighting-game super-move cut-in, 21:9 ultra-wide cinematic framing, the character's face and upper body fill the right half of the frame, head turned three-quarters toward the viewer, intense eyes at about 40% from the top of the image, weapon crossing the frame diagonally, strong motion, wind-blown hair and cloth, dramatic rim light in white-gold, dark background with crimson smoke and ember particles, the left 45% of the image is darker negative space, painterly anime-influenced dark gothic fantasy illustration, high detail, sharp focus on the eyes, single character only, no text, no letters, no logo, no watermark, no border, no frame.",
+  "file": null,
+  "tool": "image_to_image",
+  "attempt": 1,
+  "ref": "assets/portraits/sera.webp",
+  "created": "2026-09-26T13:38:48Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2RjYjkxNTYzLTBjYTAtNDNmZS1hM2NkLTgwOWM0ZjUzMTg4Mi8tMTg1NTM3NjMzNzY5ODg2MzQwL3RlbXB1bGVwMC5wbmc.origin?x-kcdn-pid=112372",
+  "rejected": "medium shot instead of a close-up, startled expression, two wings; retried"
+ },
+ "cutin_sera_a2": {
+  "group": "cutin",
+  "aspect_ratio": "21:9",
+  "generationId": "AZ4bnaX-jKFqR_sC-BC0ditIvBXVCtfiCVdrmzHzoQTsx92xy_VoxfMgjGoiMBcod53KEhd5",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "The same heroine as in 图片1 (keep the identical face, hairstyle, hair color, eye color, veil and costume), redrawn as a brand-new close-up action illustration: Seraphina Lux, young battle nun, long silver-white hair and white veil with a gold band, blue eyes, white-and-gold battle habit, both hands raising a golden rosary staff that crosses the frame diagonally, six radiant wings of light behind her (three on each side), drifting white feathers, serene but resolute expression with calm narrowed eyes, lips softly murmuring a prayer. Tight close-up framing from the chest up: the head is large and sits in the vertical middle of the image with dark space above it, the face centered at about 62% of the image width. Extreme dynamic close-up for a fighting-game super-move cut-in, 21:9 ultra-wide cinematic framing, the character's face and upper body fill the right half of the frame, head turned three-quarters toward the viewer, intense eyes at about 40% from the top of the image, weapon crossing the frame diagonally, strong motion, wind-blown hair and cloth, dramatic rim light in white-gold, dark background with crimson smoke and ember particles, the left 45% of the image is darker negative space, painterly anime-influenced dark gothic fantasy illustration, high detail, sharp focus on the eyes, single character only, no text, no letters, no logo, no watermark, no border, no frame.",
+  "file": null,
+  "tool": "image_to_image",
+  "attempt": 2,
+  "ref": "assets/portraits/sera.webp",
+  "created": "2026-09-26T13:42:29Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0Lzk5OWFhZWRjLTcwODctNDM2NS1hMWUzLTA3YWRhZmIxYzYwOC84MTg3Nzk2OTQzNjk3Mzk3MzI0L3RlbXAzeWg3ZC5wbmc.origin?x-kcdn-pid=112372",
+  "rejected": "close-up OK but eyes closed (breaks the eye-glint anchor); retried"
+ }
+}

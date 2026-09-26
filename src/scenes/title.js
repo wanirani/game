@@ -4,14 +4,17 @@ import { input } from '../core/input.js';
 import { audio } from '../core/audio.js';
 import { assets } from '../core/assets.js';
 import { saves } from '../core/save.js';
+import { bus } from '../core/events.js';
+import { cloud, SLOTS } from '../core/cloud.js';
 import { text, FONT, ListMenu } from '../core/ui.js';
 import { clamp, ease, lerp, TAU, fmt, rand } from '../core/math.js';
 import { CHARACTERS, CHAR_ORDER } from '../data/characters.js';
 import { endArcade } from './front/arcade.js';
 import {
   Ambience, kenBurns, shade, menuItem, ornament, setPad, applySettings, installRecordScore,
-  GOLD, BONE, DIM, CRIMSON, follow, MODE_NAME,
+  GOLD, BONE, DIM, CRIMSON, follow, MODE_NAME, TapZones,
 } from './front/common.js';
+import { drawCloudBadge, accountBadge } from './front/cloud_ui.js';
 
 const KONAMI = ['up', 'up', 'down', 'down', 'left', 'right', 'left', 'right', 'attack', 'jump'];
 const WATCH = ['up', 'down', 'left', 'right', 'attack', 'jump', 'confirm', 'cancel', 'menu', 'dash', 'sub'];
@@ -110,20 +113,30 @@ export class TitleScene extends Scene {
     this.selY = 0;
     this.sweep = -1; this.nextSweep = 2.2;
     if (!LOGO || !LOGO_FONT_OK) { LOGO_FONT_OK = fontsReady(); buildLogo(); }
+    this.taps = new TapZones();
+    // 클라우드에서 기록을 받거나 로그인 상태가 바뀌면 '이어하기' 활성 여부를 다시 계산
+    const rebuild = () => { if (this.game.top === this) this.buildMenu(this.menu.index); };
+    this.offs = [bus.on('cloud:sync', (e) => { if (e?.phase === 'done') rebuild(); }), bus.on('cloud:login', rebuild), bus.on('cloud:logout', rebuild)];
   }
-  exit() { setPad(true); }
+  exit() { setPad(true); for (const off of this.offs ?? []) off(); }
   buildMenu(index) {
     this.saveCount = saves.list().filter((s) => !s.empty).length;
-    const hasSave = this.saveCount > 0;
+    const cloudSave = cloud.loggedIn && SLOTS.some((s) => cloud.view[s].cloud && !cloud.view[s].cloud.empty);
+    const hasSave = this.saveCount > 0 || cloudSave;
     this.items = [
       { id: 'new', label: '새 게임', sub: 'NEW GAME' },
       { id: 'continue', label: '이어하기', sub: 'CONTINUE', disabled: !hasSave },
       { id: 'arcade', label: '아케이드 모드', sub: 'ARCADE MODE' },
       { id: 'hof', label: '명예의 전당', sub: 'HALL OF FAME' },
+      { id: 'account', label: '계정', sub: 'ACCOUNT' },
       { id: 'options', label: '설정', sub: 'OPTIONS' },
       { id: 'credits', label: '크레딧', sub: 'CREDITS' },
     ];
     this.menu = new ListMenu(this.items.length, { index: index ?? (hasSave ? 1 : 0) });
+  }
+  openAccount() {
+    const i = this.items.findIndex((it) => it.id === 'account');
+    this.game.go('account', { backIndex: i >= 0 ? i : 0 });
   }
   onResume() { setPad(false); applySettings(this.game); this.buildMenu(this.menu.index); }
 
@@ -172,6 +185,8 @@ export class TitleScene extends Scene {
     if (this.checkKonami()) { this.unlockAll(); return; }
 
     if (input.anyPressed() || input.pointer.justDown) this.idle = 0; else this.idle += dt;
+    // 오른쪽 위 계정 표시를 누르면 계정 화면
+    if (this.mode !== 'intro' && this.taps.hit() === 'account') { audio.sfx('menu_ok'); this.openAccount(); return; }
 
     if (this.mode === 'intro') {
       if (this.modeT > 2.2 || (this.modeT > 0.3 && (input.pressed('confirm') || input.pressed('menu') || input.pointer.tapped))) { this.mode = 'press'; this.modeT = 0; }
@@ -202,6 +217,7 @@ export class TitleScene extends Scene {
       case 'continue': g.go('slots', { mode: 'load' }); break;
       case 'arcade': g.go('arcade', {}); break;
       case 'hof': g.go('highscore', { back: 'title' }); break;
+      case 'account': this.openAccount(); break;
       case 'options': g.push('options', {}); break;
       case 'credits': g.go('credits', { back: 'title' }); break;
     }
@@ -245,6 +261,11 @@ export class TitleScene extends Scene {
       text(ctx, 'HI-SCORE', vw - 16, 24, { size: 11, align: 'right', weight: 800, family: FONT.num, color: '#ff5a6a', ow: 3 });
       text(ctx, fmt(hi?.score ?? 0).padStart(9, ' '), vw - 16, 46, { size: 20, align: 'right', weight: 900, family: FONT.num, color: '#fff', ow: 4 });
       if (hi) text(ctx, `${hi.name || CHARACTERS[hi.charId]?.name?.split(' ')[0] || '???'} · ${MODE_NAME[hi.mode || 'story'] ?? ''}`, vw - 16, 62, { size: 11, align: 'right', weight: 700, color: DIM, ow: 2 });
+      // 계정 (로그인한 아이디 또는 게스트) — 누르면 계정 화면
+      const ab = accountBadge();
+      const bw = drawCloudBadge(ctx, vw - 16, 90, ab.status, t, { size: 13, label: ab.label });
+      this.taps.clear();
+      if (this.mode !== 'intro') this.taps.add('account', { x: vw - 16 - bw - 10, y: 72, w: bw + 20, h: 36 });
       text(ctx, '© 2026 BLOOD NOCTURNE PROJECT', vw - 14, vh - 12, { size: 10, align: 'right', weight: 700, family: FONT.num, color: 'rgba(200,180,160,0.55)', ow: 2 });
       // 좌하단은 메뉴 조작 안내 자리 → 저작권 표기 위(우하단)에 표시
       if (this.game.meta?.konami) text(ctx, '✦ 비밀 코드 적용됨', vw - 14, vh - 28, { size: 10, align: 'right', weight: 700, color: 'rgba(255,224,112,0.7)', ow: 2 });
@@ -369,12 +390,13 @@ export class TitleScene extends Scene {
   }
 
   drawMenu(ctx, vw, vh, t, mk) {
-    const x = 36, w = Math.min(330, vw * 0.36), h = 50, y0 = 186;
+    const many = this.items.length > 6;
+    const x = 36, w = Math.min(330, vw * 0.36), h = many ? 44 : 50, gap = many ? 3 : 4, y0 = many ? 176 : 186;
     this.menu.clearHits();
     this.items.forEach((it, i) => {
       const k = ease.outCubic(clamp(mk * 1.6 - i * 0.1, 0, 1));
       if (k <= 0) return;
-      const r = { x: x - (1 - k) * 60, y: y0 + i * (h + 4), w, h };
+      const r = { x: x - (1 - k) * 60, y: y0 + i * (h + gap), w, h };
       this.menu.hit(i, r);
       ctx.save(); ctx.globalAlpha = k;
       menuItem(ctx, r, it.label, { selected: this.menu.index === i && this.mode === 'menu', disabled: it.disabled, sub: it.sub, k });

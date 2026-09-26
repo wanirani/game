@@ -110,6 +110,8 @@ def prop(item_id, size, anchor="bottom"):
 RIFT_STOPS = [(0.0, (0.18, 0.95, 1.0)), (0.2, (0.32, 0.5, 1.0)), (0.4, (0.66, 0.3, 1.0)),
               (0.6, (1.0, 0.3, 0.78)), (0.8, (1.0, 0.8, 0.4)), (1.0, (0.18, 0.95, 1.0))]
 STAR_WHITE = (1.0, 0.93, 0.78)          # warm white star light
+RIFT_K = 0.3     # global multiplier of rift seam emission (keeps the colours saturated)
+GLOW_K = 0.35    # global multiplier of solid rift-light emission (rings, cores)
 WORLD_COLORS = {1: "#dff4ff", 2: "#ff7a2a", 3: "#3ad0c8", 4: "#bfe0ff", 5: "#c060ff",
                 6: "#9ad040"}
 
@@ -170,7 +172,7 @@ def _bsdf(m):
 
 
 def add_rift(m, along="Z", across="X", center=0.0, amp=0.05, freq=2.2, width=0.012,
-             halo=0.07, strength=14.0, halo_str=1.4, seed=0.0, col_freq=0.9, span=None,
+             halo=0.07, strength=14.0, halo_str=1.4, seed=0.0, col_freq=2.0, span=None,
              taper=None, branches=0.0, depth=None, base_scorch=(0.1, 0.02, 0.16),
              coord="Object", bend=0.0, polar=None):
     """Add an emissive iridescent rift crack to a Principled material.
@@ -265,10 +267,11 @@ def add_rift(m, along="Z", across="X", center=0.0, amp=0.05, freq=2.2, width=0.0
     col = _ramp(nt, cph, RIFT_STOPS)
     hot = nt.nodes.new("ShaderNodeMix")
     hot.data_type = "RGBA"
-    nt.links.new(_m(nt, "MULTIPLY", _m(nt, "POWER", seam, 4.0), 0.4), hot.inputs["Factor"])
+    nt.links.new(_m(nt, "MULTIPLY", _m(nt, "POWER", seam, 4.0), 0.15), hot.inputs["Factor"])
     nt.links.new(col, hot.inputs[6])
     hot.inputs[7].default_value = (1.0, 0.97, 0.92, 1)
-    em = _m(nt, "ADD", _m(nt, "MULTIPLY", seam, strength), _m(nt, "MULTIPLY", glow_sq, halo_str))
+    em = _m(nt, "ADD", _m(nt, "MULTIPLY", seam, strength * RIFT_K),
+            _m(nt, "MULTIPLY", glow_sq, halo_str * RIFT_K))
     # combine with an existing emission (e.g. star speckle) if any
     es = I["Emission Strength"]
     if es.links:
@@ -339,8 +342,8 @@ def thin_film(m, thickness=460.0, ior=1.75, vary=None, scale=2.5):
 # =============================================================================
 #  Tier-7 materials / parts for the equipment pipeline (module E)
 # =============================================================================
-def EM_void(name="voidmetal", color=(0.028, 0.025, 0.048), rough=0.3, film=(230.0, 390.0),
-            rift=None, stars=0.0, glow_str=0.75, metal=1.0, film_ior=1.3):
+def EM_void(name="voidmetal", color=(0.024, 0.022, 0.044), rough=0.33, film=(230.0, 390.0),
+            rift=None, stars=0.0, glow_str=0.75, metal=1.0, film_ior=1.33):
     """Void metal: near-black, polished, thin-film iridescent sheen (film
     thickness varies over the surface: teal / violet / magenta glints).
     rift = dict(add_rift kwargs) adds the emissive crack seam."""
@@ -355,7 +358,7 @@ def EM_void(name="voidmetal", color=(0.028, 0.025, 0.048), rough=0.3, film=(230.
     if rift is not None or stars:
         m["glow"] = list(RIFT_STOPS[2][1])
         m["glow_str"] = glow_str
-        m["glow_norm"] = 1.0 / max(rift.get("strength", 14.0) if rift else 6.0, 1.0)
+        m["glow_norm"] = 1.0 / max(rift.get("strength", 14.0) * RIFT_K if rift else 6.0, 1.0)
     return m
 
 
@@ -377,6 +380,7 @@ def EM_riftglow(name="riftglow", strength=8.0, col=(0.6, 0.35, 1.0)):
     """Solid iridescent emissive (floating shard cores, energy)."""
     if name in E.G.mats:
         return E.G.mats[name]
+    strength *= GLOW_K
     m = E.pbr(name, tuple(c * 0.3 for c in col), rough=0.2, emit=col, emit_str=strength,
               glow=col, glow_str=1.0)
     nt = m.node_tree
@@ -616,22 +620,22 @@ def whip_7():
                                                 width=0.009, halo=0.022, strength=11.0,
                                                 halo_str=0.6, span=(0.04, 0.46),
                                                 depth=("Y", 0.004)))
-    bead_m = EM_void("lash_void", film=(260.0, 420.0))
+    bead_m = EM_riftshard("lash_crys")
     with E.group((0, 0, 0), (0, rad(-8), 0)):
-        top = E.whip_handle(handle_m, void, ferrule_mat=gold, knot_mat=void, length=0.5, r=0.038)
+        top = E.whip_handle(handle_m, void, ferrule_mat=gold, knot_mat=void, length=0.5, r=0.046)
         for z in (0.05, 0.27):
-            E.torus(0.041, 0.009, gold, loc=(0, 0, z), seg=24, rseg=6, name="band")
-        star_mesh_E(0.075, 0.026, 0.03, n=4, mat=EM_stargem(), loc=(0, -0.01, -0.13))
+            E.torus(0.05, 0.011, gold, loc=(0, 0, z), seg=24, rseg=6, name="band")
+        star_mesh_E(0.085, 0.03, 0.035, n=4, mat=EM_stargem(), loc=(0, -0.01, -0.14))
     path = E.coil_path((top.x + 0.07, 0, top.z + 0.02), turns=2.0, center=(0.42, 0, 0.86))
     path = E.lash_with_tail(path, drop=(0.2, -0.5))
-    E.sweep(path, lambda s: 0.011 * (1 - 0.6 * s) + 0.003, EM_riftglow("lash_core", 7.0),
+    E.sweep(path, lambda s: 0.014 * (1 - 0.6 * s) + 0.004, EM_riftglow("lash_core", 8.0),
             segs=8, name="lash_core")
-    pts = E.resample(path, 0.056)
+    pts = E.resample(path, 0.062)
     n = len(pts)
     for i in range(n - 1):
         a, b = pts[i], pts[i + 1]
-        sc = 1 - 0.62 * i / n
-        void_bead((a + b) / 2, b - a, 0.03 * sc, 0.044, bead_m, sides=6)
+        sc = 1 - 0.6 * i / n
+        void_bead((a + b) / 2, b - a, 0.036 * sc, 0.054, bead_m if i % 3 else gold, sides=4)
     tip = path[-1]
     star_mesh_E(0.07, 0.024, 0.03, n=4, mat=EM_stargem(), loc=tip + Vector((0, -0.01, -0.02)))
     glint_E(tip + Vector((0.02, -0.05, -0.02)), 0.08)
@@ -719,12 +723,13 @@ def dagger_7():
             w *= ((1 - t) / 0.3) ** 0.9
         return w, CURVE * t * t, 0.02 * (1 - 0.5 * t), 0.0
     E.blade(L, fn, blade_m, edge_m, cross="hex", n=56)
-    moon = E.shape_crescent(0.17, 0.15, 0.075)
-    # crescent opening upward (toward the blade)
-    E.extrude([(-z, x - 0.02) for x, z in moon], 0.05, void, bev=0.008, name="moon_guard",
-              loc=(0, 0, -0.05))
-    E.extrude([(-z * 0.8, (x - 0.02) * 0.8) for x, z in moon], 0.062, gold, bev=0.005,
-              name="moon_inlay", loc=(0, 0, -0.05))
+    # guard: star-gold horns curving up along the blade, void boss with the seam
+    horn = [(0.0, -0.02), (0.06, -0.03), (0.12, -0.02), (0.17, 0.02), (0.2, 0.08), (0.21, 0.15)]
+    for sx in (-1, 1):
+        E.extrude(E.thick_polyline([(sx * x, z) for x, z in horn], 0.05, 0.012), 0.045, gold,
+                  bev=0.008, name="horn", loc=(0, 0, -0.03))
+    E.lathe(E.smooth_profile([(0, -0.1), (0.045, -0.09), (0.055, -0.05), (0.04, -0.01), (0, 0.0)],
+                             3), void, seg=24, sy=0.7, name="boss")
     E.torus(0.03, 0.009, gold, loc=(0, 0, -0.07), seg=24, rseg=6, name="collar")
     E.handle_oval(-0.3, -0.07, 0.026, E.pbr("wrap_night", (0.05, 0.04, 0.09), rough=0.4, coat=0.4),
                   name="handle")
@@ -739,50 +744,57 @@ def dagger_7():
 
 @equip("gun_7")
 def gun_7():
-    """Astral carbine: long octagonal void-metal barrel with a rift seam,
-    star-gold bands and muzzle crown, crystal chamber with a star gem, a ring
-    of rift light at the muzzle."""
+    """Astral hand-cannon: heavy octagonal void-metal barrel with a rift seam
+    and star-gold bands, a flared star-gold muzzle full of rift light, a
+    crystal chamber holding a star gem, night-leather grip."""
     gold = EM_stargold()
     void = EM_void("voidmetal")
-    barrel_m = EM_void("barrel_void", rift=dict(along="Z", across="X", center=0.0, amp=0.012,
-                                                freq=5.0, width=0.008, halo=0.02, strength=11.0,
-                                                halo_str=0.6, span=(0.02, 0.6),
+    barrel_m = EM_void("barrel_void", rift=dict(along="Z", across="X", center=0.0, amp=0.016,
+                                                freq=4.0, width=0.011, halo=0.03, strength=11.0,
+                                                halo_str=0.8, span=(0.0, 0.56),
                                                 depth=("Y", 0.0)))
-    z = 0.04
-    x0, x1 = 0.12, 0.8
-    E.barrel_x(x0, x1, z, 0.036, barrel_m, sides=8, r_end=0.03, name="barrel")
-    E.barrel_x(x0, x0 + 0.44, z - 0.058, 0.014, void, bore=False, name="rail")
-    for x in (0.2, 0.46, 0.72):
-        E.torus(0.04, 0.01, gold, loc=(x, 0, z), rot=(0, rad(90), 0), seg=32, rseg=6, name="band")
-    # muzzle crown: four star-gold prongs
-    for k in range(4):
-        a = TAU * (k + 0.5) / 4
+    z = 0.06
+    x0, x1 = 0.08, 0.66
+    E.barrel_x(x0, x1, z, 0.058, barrel_m, sides=8, r_end=0.05, bore=False, name="barrel")
+    E.barrel_x(x0, x0 + 0.38, z - 0.078, 0.02, void, bore=False, name="rail")
+    for x in (0.16, 0.36, 0.56):
+        E.torus(0.062, 0.013, gold, loc=(x, 0, z), rot=(0, rad(90), 0), seg=32, rseg=6, name="band")
+    # flared muzzle with rift light inside
+    E.lathe([(0.052, 0.0), (0.06, 0.04), (0.1, 0.11), (0.115, 0.13), (0.09, 0.13), (0.05, 0.06),
+             (0.0, 0.06)], gold, seg=40, loc=(x1 - 0.01, 0, z), rot=(0, rad(90), 0), name="muzzle")
+    E.cyl(0.085, 0.01, EM_riftglow("maw", 9.0), loc=(x1 + 0.1, 0, z), rot=(0, rad(90), 0), seg=32,
+          name="maw")
+    for k in range(6):
+        a = TAU * k / 6
         d = Vector((0, math.cos(a), math.sin(a)))
-        p0 = Vector((x1 - 0.02, 0, z)) + d * 0.03
-        E.sweep(E.bezier(p0, p0 + Vector((0.04, 0, 0)) + d * 0.02, p0 + Vector((0.08, 0, 0)) + d * 0.03,
-                         p0 + Vector((0.11, 0, 0)) + d * 0.012, 12),
-                lambda s: 0.01 * (1 - 0.7 * s), gold, segs=8, name="prong")
-    E.torus(0.06, 0.007, EM_riftglow("muzzle_ring", 8.0), loc=(x1 + 0.12, 0, z),
+        p0 = Vector((x1 + 0.1, 0, z)) + d * 0.1
+        E.lathe([(0, 0), (0.014, 0.01), (0, 0.06)], gold, seg=4, loc=p0,
+                rot=(d + Vector((0.6, 0, 0))).normalized().to_track_quat("Z", "Y").to_euler(),
+                smooth=False, name="crown_tip")
+    E.torus(0.07, 0.008, EM_riftglow("muzzle_ring", 8.0), loc=(x1 + 0.2, 0, z),
             rot=(0, rad(90), 0), seg=48, rseg=6, name="muzzle_ring")
-    # frame + chamber
-    frame = [(-0.12, 0.09), (0.14, 0.09), (0.16, 0.07), (0.16, -0.03), (0.08, -0.06),
-             (-0.03, -0.07), (-0.09, -0.05), (-0.14, 0.03)]
-    E.extrude(frame, 0.05, void, bev=0.01, name="frame")
-    E.extrude([(x * 0.9 + 0.005, zz * 0.8 + 0.005) for x, zz in frame], 0.058, gold, bev=0.004,
-              name="frame_trim").scale = (1.0, 1.0, 1.0)
-    E.fluted_cylinder(-0.01, 0.13, z - 0.006, 0.06, EM_riftshard("chamber_crys"))
-    star_gem(0.045, (0.06, -0.07, z - 0.006), n=4)
-    ham = [(-0.08, 0.075), (-0.11, 0.12), (-0.15, 0.135), (-0.16, 0.12), (-0.13, 0.1),
-           (-0.1, 0.06)]
-    E.extrude(ham, 0.022, gold, bev=0.004, name="hammer")
-    E.trigger_guard(-0.03, 0.09, -0.06, 0.075, 0.009, gold)
-    gp = E.grip_shape(-0.085, -0.035, 0.26, 0.08, angle=24, butt=1.15, curve=0.07)
-    E.extrude(gp, 0.066, E.pbr("grip_night", (0.04, 0.035, 0.07), rough=0.45, coat=0.4,
-                               bump=0.2, bump_scale=60), bev=0.016, name="grip", bev_angle=50)
-    bc = E.grip_end(-0.085, -0.035, 0.26, 24, 0.07)
-    star_mesh_E(0.05, 0.018, 0.024, n=4, mat=EM_stargem(), loc=bc + Vector((-0.01, -0.02, -0.02)))
-    glint_E((x1 + 0.12, -0.08, z + 0.06), 0.06)
-    E.view(diag=24, yaw=-30, glow=1.0)
+    # frame
+    frame = [(-0.16, 0.12), (0.1, 0.13), (0.12, 0.1), (0.12, -0.04), (0.04, -0.07),
+             (-0.05, -0.08), (-0.12, -0.05), (-0.18, 0.05)]
+    E.extrude(frame, 0.09, void, bev=0.016, name="frame")
+    E.extrude([(x * 0.86 - 0.01, zz * 0.78 + 0.01) for x, zz in frame], 0.1, gold, bev=0.005,
+              name="frame_trim")
+    # crystal chamber with the star gem
+    E.sphere(0.075, EM_riftshard("chamber_crys"), loc=(-0.02, 0.0, 0.1), scale=(1.2, 1.0, 1.0),
+             seg=8, rings=5, name="chamber")
+    star_gem(0.05, (-0.02, -0.085, 0.1), n=4)
+    ham = [(-0.14, 0.12), (-0.18, 0.17), (-0.22, 0.185), (-0.23, 0.17), (-0.19, 0.15),
+           (-0.16, 0.1)]
+    E.extrude(ham, 0.03, gold, bev=0.005, name="hammer")
+    E.trigger_guard(-0.06, 0.07, -0.07, 0.08, 0.011, gold)
+    gp = E.grip_shape(-0.11, -0.04, 0.27, 0.095, angle=26, butt=1.2, curve=0.07)
+    E.extrude(gp, 0.08, E.pbr("grip_night", (0.04, 0.035, 0.07), rough=0.45, coat=0.4,
+                              bump=0.2, bump_scale=60), bev=0.018, name="grip", bev_angle=50)
+    bc = E.grip_end(-0.11, -0.04, 0.27, 26, 0.07)
+    E.sphere(0.045, gold, loc=bc, scale=(1.0, 0.9, 0.65), name="butt_cap")
+    star_mesh_E(0.05, 0.018, 0.024, n=4, mat=EM_stargem(), loc=bc + Vector((-0.01, -0.045, -0.02)))
+    glint_E((x1 + 0.2, -0.1, z + 0.09), 0.06)
+    E.view(diag=24, yaw=-32, glow=1.0)
     face_camera()
 
 
@@ -805,15 +817,15 @@ def staff_7():
             name="butt")
     E.lathe(E.smooth_profile([(0, 0.46), (0.04, 0.46), (0.075, 0.54), (0.06, 0.6), (0, 0.6)], 3),
             void, seg=24, name="head_base")
-    moon = E.shape_crescent(0.3, 0.26, 0.12)
+    moon = E.shape_crescent(0.36, 0.31, 0.15)
     pts = [(-zz, x + 0.02) for x, zz in moon]
-    E.extrude([(x, zz + 0.84) for x, zz in pts], 0.06, gold, bev=0.01, name="crescent")
-    E.extrude([(x * 0.9, zz * 0.9 + 0.84) for x, zz in pts], 0.075, void, bev=0.006,
+    E.extrude([(x, zz + 0.9) for x, zz in pts], 0.065, gold, bev=0.012, name="crescent")
+    E.extrude([(x * 0.9, zz * 0.9 + 0.9) for x, zz in pts], 0.08, void, bev=0.006,
               name="crescent_core")
-    SZ = 0.9
-    star_mesh_E(0.16, 0.05, 0.08, n=4, mat=EM_stargem(), loc=(0, -0.02, SZ))
-    star_mesh_E(0.1, 0.04, 0.05, n=4, mat=EM_stargem(), loc=(0, -0.01, SZ), rot0=math.pi / 4 + math.pi / 2)
-    E.torus(0.22, 0.007, EM_riftglow("orbit", 8.0), loc=(0, 0, SZ), rot=(rad(70), rad(-20), 0),
+    SZ = 0.97
+    star_mesh_E(0.2, 0.065, 0.1, n=4, mat=EM_stargem(), loc=(0, -0.02, SZ))
+    star_mesh_E(0.13, 0.05, 0.06, n=4, mat=EM_stargem(), loc=(0, -0.01, SZ), rot0=math.pi / 4 + math.pi / 2)
+    E.torus(0.27, 0.008, EM_riftglow("orbit", 8.0), loc=(0, 0, SZ), rot=(rad(70), rad(-20), 0),
             seg=64, rseg=6, name="orbit")
     for (x, zz, r, h, a) in ((0.26, 1.08, 0.024, 0.07, 30), (-0.25, 1.12, 0.02, 0.06, -35),
                              (0.3, 0.8, 0.016, 0.05, 60)):
@@ -836,37 +848,41 @@ def head_7():
     gold = EM_stargold()
     void = EM_void("voidmetal")
     inner = E.pbr("helm_void_in", (0.0, 0.0, 0.0), rough=1.0, spec=0.0)
-    helm = E.lathe(E.smooth_profile([(0.0, 0.0), (0.3, 0.0), (0.33, 0.15), (0.32, 0.45),
-                                     (0.28, 0.64), (0.16, 0.8), (0.0, 0.88)], 5), helm_m, seg=64,
-                   sy=1.08, xsec=E.ridge_xsec(0.16, 0.3), name="helm")
+    helm = E.lathe(E.smooth_profile([(0.0, 0.0), (0.27, 0.0), (0.3, 0.14), (0.315, 0.4),
+                                     (0.29, 0.6), (0.21, 0.78), (0.09, 0.93), (0.0, 1.0)], 5),
+                   helm_m, seg=64, sy=1.08, xsec=E.ridge_xsec(0.2, 0.28), name="helm")
     # T visor
-    c1 = E.box((0.36, 0.4, 0.05), void, loc=(0, -0.3, 0.46), name="visor_cut")
-    c2 = E.box((0.06, 0.4, 0.26), void, loc=(0, -0.3, 0.33), name="visor_cut2")
+    c1 = E.box((0.4, 0.4, 0.06), void, loc=(0, -0.3, 0.46), name="visor_cut")
+    c2 = E.box((0.07, 0.4, 0.28), void, loc=(0, -0.3, 0.32), name="visor_cut2")
     E.boolean(helm, c1)
     E.boolean(helm, c2)
     E.lathe([(0.0, 0.02), (0.27, 0.02), (0.28, 0.7), (0.0, 0.7)], inner, seg=32, name="void")
-    E.box((0.3, 0.02, 0.035), EM_riftglow("visor_glow", 9.0), loc=(0, -0.24, 0.46), name="visor_l")
-    E.box((0.035, 0.02, 0.2), EM_riftglow("visor_glow", 9.0), loc=(0, -0.26, 0.34), name="visor_v")
-    # star-gold crown band + crystal spikes
-    E.torus(0.325, 0.022, gold, loc=(0, 0, 0.56), sy=1.08, seg=72, rseg=8, name="crown_band")
-    spike_m = EM_riftshard("crown_crys")
-    for k in range(7):
-        a = -math.pi / 2 + (k - 3) * 0.42
-        p = Vector((0.33 * math.cos(a), 0.33 * 1.08 * math.sin(a), 0.56))
-        h = 0.34 - 0.07 * abs(k - 3)
-        d = Vector((math.cos(a) * 0.25, math.sin(a) * 0.25, 1.0)).normalized()
-        q = d.to_track_quat("Z", "Y")
-        E.lathe([(0, 0), (0.035, 0.03), (0.03, h * 0.7), (0, h)], spike_m if k != 3 else gold,
-                seg=4, loc=p, rot=q.to_euler(), smooth=False, name="crown_spike")
-    star_gem(0.065, (0, -0.37, 0.58), rot=(rad(-8), 0, 0), n=4)
-    # swept fins
-    fin = [(0.0, 0.0), (0.1, 0.03), (0.24, 0.1), (0.36, 0.22), (0.3, 0.19), (0.34, 0.26),
-           (0.22, 0.17), (0.25, 0.23), (0.12, 0.12), (0.02, 0.07)]
+    E.box((0.36, 0.02, 0.045), EM_riftglow("visor_glow", 12.0), loc=(0, -0.29, 0.46),
+          name="visor_l")
+    E.box((0.05, 0.02, 0.24), EM_riftglow("visor_glow", 12.0), loc=(0, -0.3, 0.33), name="visor_v")
+    # cheek guards
     for sx in (-1, 1):
-        E.extrude([(sx * x, zz) for x, zz in fin], 0.025, gold, bev=0.006,
-                  loc=(sx * 0.3, 0.05, 0.36), rot=(0, 0, sx * rad(-35)), name="fin")
-    E.torus(0.46, 0.012, EM_riftglow("halo", 7.0), loc=(0, 0.28, 0.62), rot=(rad(90), 0, 0),
-            seg=72, rseg=8, name="halo")
+        cheek = [(sx * 0.06, 0.4), (sx * 0.26, 0.42), (sx * 0.3, 0.1), (sx * 0.12, -0.02)]
+        E.extrude(cheek, 0.03, void, loc=(0, -0.31, 0), rot=(0, 0, sx * 0.4), bev=0.008, name="cheek")
+        E.sweep([(sx * 0.07, -0.33, 0.39), (sx * 0.27, -0.33, 0.41)], 0.008, gold, segs=6,
+                name="cheek_trim")
+    # star-gold crown band: alternating star-gold spires and rift crystals
+    E.torus(0.3, 0.026, gold, loc=(0, 0, 0.6), sy=1.08, seg=72, rseg=8, name="crown_band")
+    spike_m = EM_riftshard("crown_crys")
+    for k in range(9):
+        a = -math.pi / 2 + (k - 4) * 0.36
+        p = Vector((0.3 * math.cos(a), 0.3 * 1.08 * math.sin(a), 0.6))
+        h = (0.36 - 0.05 * abs(k - 4)) * (1.0 if k % 2 == 0 else 0.75)
+        d = Vector((math.cos(a) * 0.22, math.sin(a) * 0.22, 1.0)).normalized()
+        q = d.to_track_quat("Z", "Y")
+        E.lathe([(0, 0), (0.038, 0.03), (0.03, h * 0.7), (0, h)], gold if k % 2 == 0 else spike_m,
+                seg=4, loc=p, rot=q.to_euler(), smooth=False, name="crown_spike")
+    star_gem(0.075, (0, -0.36, 0.63), rot=(rad(-8), 0, 0), n=4)
+    # swept star-gold feathers on the sides
+    for sx in (-1, 1):
+        for k, (L, W, ang) in enumerate(((0.36, 0.1, 52), (0.3, 0.09, 70), (0.22, 0.08, 88))):
+            E.feather(L, W, gold, loc=(sx * 0.3, 0.06 + 0.02 * k, 0.4 + 0.02 * k),
+                      rot=(0, sx * rad(ang), 0), name="feather")
     E.torus(0.3, 0.02, void, loc=(0, 0, 0.02), sy=1.08, seg=64, rseg=8, name="rim")
     E.torus(0.31, 0.009, gold, loc=(0, 0, 0.045), sy=1.08, seg=64, rseg=6, name="rim_trim")
     glint_E((0.3, -0.4, 0.95), 0.06)
@@ -986,9 +1002,8 @@ def ring_7():
     star_mesh_E(0.22, 0.075, 0.1, n=4, mat=EM_stargem(), loc=(0, -0.02, 0.62), back=0.06)
     star_mesh_E(0.13, 0.05, 0.06, n=4, mat=EM_stargem(), loc=(0, -0.01, 0.62),
                 rot0=math.pi / 2 + math.pi / 4)
-    E.torus(0.52, 0.006, EM_riftglow("orbit", 7.0), loc=(0, 0, 0.02), rot=(rad(75), rad(15), 0),
-            seg=72, rseg=6, name="orbit")
-    for (x, z, r, h, a) in ((0.5, 0.2, 0.03, 0.09, 30), (-0.52, -0.1, 0.026, 0.08, -40)):
+    for (x, z, r, h, a) in ((0.52, 0.34, 0.034, 0.1, 30), (-0.5, 0.22, 0.028, 0.085, -40),
+                            (0.46, -0.3, 0.022, 0.065, 70)):
         shard_E((x, -0.05, z), r, h, rot=(rad(20), rad(a), 0))
     glint_E((0.18, -0.12, 0.8), 0.08)
     E.view(yaw=24, pitch=14, glow=1.0)
@@ -1017,6 +1032,307 @@ def amulet_7():
     glint_E((0.2, -0.08, 0.16), 0.06)
     E.view(pitch=4, glow=1.0)
     face_camera()
+
+
+# =============================================================================
+#  KEY-ITEM ICONS (build_decor_b / build_icons_misc pipeline, module D)
+# =============================================================================
+def surface_D(fn, nu, nv, mat, name="surf", thick=0.0, smooth=True):
+    """Grid surface fn(u, v) -> (x, y, z) with per-vertex UV = (u, v)."""
+    verts, uvs = [], []
+    for j in range(nv + 1):
+        for i in range(nu + 1):
+            u, v = i / nu, j / nv
+            verts.append(fn(u, v))
+            uvs.append((u, v))
+    W = nu + 1
+    faces = []
+    for j in range(nv):
+        for i in range(nu):
+            a = j * W + i
+            faces.append((a, a + 1, a + W + 1, a + W))
+    ob = D.make_mesh(name, verts, faces, mat, smooth=smooth, uvs=uvs)
+    if thick:
+        D.solidify(ob, thick, offset=0.0)
+    return ob
+
+
+def leaf_D(loc, length, width, rot, mat, depth=0.016):
+    n = 12
+    up = [(length * i / n, width * math.sin(math.pi * i / n) ** 0.8) for i in range(n + 1)]
+    lo = [(length * i / n, -width * 0.8 * math.sin(math.pi * i / n) ** 0.8)
+          for i in range(n - 1, 0, -1)]
+    return D.inflate(up + lo, depth, mat, rings=3, center=(length * 0.45, 0.0), loc=loc, rot=rot,
+                     name="leaf")
+
+
+def DM_stargold():
+    return D.pbr("stargold", (1.0, 0.88, 0.62), metal=1.0, rough=0.18, noise_rough=0.05)
+
+
+def DM_riftglow(name="riftglow_d", strength=3.0):
+    """Solid emissive rift light for the D pipeline (colour cycles in Z)."""
+    if name in D.G.mats:
+        return D.G.mats[name]
+    m = D.pbr(name, (0.1, 0.06, 0.2), rough=0.3, emit=(0.6, 0.35, 1.0), emit_str=strength)
+    nt = m.node_tree
+    I = _bsdf(m).inputs
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+    nt.links.new(tc.outputs["Object"], sep.inputs[0])
+    nz = _n(nt, "ShaderNodeTexNoise", Scale=2.5, Detail=3.0)
+    nt.links.new(tc.outputs["Object"], nz.inputs["Vector"])
+    ph = _m(nt, "FRACT", _m(nt, "ADD", _m(nt, "MULTIPLY", sep.outputs["Z"], 1.6), nz.outputs["Fac"]))
+    nt.links.new(_ramp(nt, ph, RIFT_STOPS), I["Emission Color"])
+    return m
+
+
+def anchor_emblem(mat, s=1.0, y=0.0, loc=(0, 0, 0), glow=None):
+    """Ship's anchor in the XZ plane (ring on top), ~0.62*s tall, centred."""
+    with D.sub(loc=loc, scale=s):
+        r = 0.02
+        D.torus(0.055, 0.018, mat, loc=(0, y, 0.25), rot=(rad(90), 0, 0), seg=32, rseg=8,
+                name="a_ring")
+        D.box((0.036, 0.04, 0.44), mat, loc=(0, y, 0.0), bev=0.01, name="a_shank")
+        D.box((0.24, 0.04, 0.034), mat, loc=(0, y, 0.15), bev=0.01, name="a_stock")
+        for sx in (-1, 1):
+            D.sphere(0.024, mat, loc=(sx * 0.125, y, 0.15), seg=12, rings=8, name="a_knob")
+            arm = [(sx * math.sin(a) * 0.19, y, -0.03 - math.cos(a) * 0.19)
+                   for a in [rad(t) for t in range(0, 76, 5)]]
+            arm = [(0.0, y, -0.22)] + arm[1:]
+            D.sweep(arm, lambda t: r * (1.0 + 0.3 * t), mat, segs=10, name="a_arm")
+            tip = Vector(arm[-1])
+            d = (tip - Vector(arm[-4])).normalized()
+            # fluke: flat arrow head pointing along the arm
+            D.cone(0.05, 0.075, mat, loc=tuple(tip), rot=d.to_track_quat("Z", "Y").to_euler(),
+                   seg=4, name="a_fluke", scale=(1.0, 0.45, 1.0))
+        D.sphere(0.035, mat, loc=(0, y, -0.225), seg=12, rings=8, name="a_crown")
+
+
+def _wheart(n):
+    col = srgb(WORLD_COLORS[n])
+    S = 0.62
+    glow = 0.8 if n not in (1, 4) else 0.5
+    if n == 1:
+        # mirror world: silvery crystal that reflects like a mirror
+        gem = D.pbr("wheart_1", (0.82, 0.9, 0.98), metal=0.35, rough=0.03, trans=0.45, ior=2.1,
+                    spec=1.0, emit=col, emit_str=0.25)
+    else:
+        gem = D.M_gem("wheart_%d" % n, col, glow=glow, trans=0.5)
+    D.inflate(D.shape_heart(S, n=22), 0.3, gem, rings=3, flat=True, center=(0.0, 0.0),
+              name="heart")
+    metal = DM_stargold() if n not in (1, 4) else D.pbr("starsilver", (0.9, 0.93, 1.0), metal=1.0,
+                                                          rough=0.12)
+    rim = [(x * 1.05, 0.02, z * 1.05 - 0.004) for (x, z) in D.shape_heart(S, n=90)]
+    D.sweep(rim + rim[:3], 0.032, metal, segs=10, caps=False, name="rim")
+    # anchor emblem riding on the front facets
+    anchor_emblem(metal, s=0.9, loc=(0.0, -0.3, 0.02))
+    if n == 4:
+        rng = random.Random(4)
+        D.bolt((-0.12, -0.12, 0.3), (0.1, -0.12, -0.3), rng,
+               D.M_glow("stormbolt", (0.75, 0.9, 1.0), 12.0), n=7, jag=0.08, r=0.012, branches=1)
+    if n == 6:
+        leafm = D.pbr("sprout", (0.25, 0.6, 0.1), rough=0.45, sss=0.2, coat=0.3,
+                      emit=(0.4, 0.9, 0.2), emit_str=0.3)
+        D.sweep([(0.0, 0.0, 0.42), (0.01, 0.0, 0.5), (0.0, 0.0, 0.58)], 0.012, leafm, segs=8,
+                name="stem")
+        leaf_D((0.0, 0.0, 0.56), 0.2, 0.07, (0, rad(-35), 0), leafm, depth=0.012)
+        leaf_D((0.0, 0.0, 0.53), 0.16, 0.06, (0, rad(-150), 0), leafm, depth=0.012)
+    if n == 2:
+        D.flame((0.0, -0.05, -0.15), 0.34, light=False)
+    D.sparkle((0.36, -0.4, 0.36), 0.1, (1.0, 0.96, 0.9))
+    D.sparkle((-0.42, -0.4, -0.18), 0.07, (1.0, 0.96, 0.9))
+    D.point_light((0, -0.7, 0.1), col, 14, 0.3)
+    D.view(pitch=6, yaw=14, fill=0.9, glow=0.6)
+
+
+for _n_ in range(1, 7):
+    icon("wheart_%d" % _n_)(lambda _n_=_n_: _wheart(_n_))
+
+
+@icon("star_shard")
+def build_star_shard():
+    gem = D.pbr("starshard", (1.0, 0.95, 0.82), rough=0.02, trans=0.45, ior=2.0, spec=1.0,
+                emit=STAR_WHITE, emit_str=2.2)
+    D.inflate(D.shape_star(5, 0.6, 0.26), 0.2, gem, rings=2, flat=True, center=(0.0, 0.0),
+              name="star")
+    core = D.M_glow("starcore", (1.0, 0.9, 0.7), 6.0, base=(1.0, 0.95, 0.85))
+    D.inflate(D.shape_star(5, 0.28, 0.12), 0.24, core, rings=2, flat=True, center=(0.0, 0.0),
+              loc=(0, -0.02, 0), name="core")
+    D.sparkle((0.42, -0.35, 0.42), 0.12, (1.0, 0.95, 0.85), strength=8.0)
+    D.sparkle((-0.5, -0.35, -0.3), 0.07, (1.0, 0.95, 0.85), strength=8.0)
+    D.sparkle((0.5, -0.35, -0.42), 0.05, (0.8, 0.9, 1.0), strength=8.0)
+    D.point_light((0, -0.6, 0.2), (1.0, 0.9, 0.7), 16, 0.3)
+    D.view(pitch=10, yaw=16, diag=-12, fill=0.8, glow=0.9)
+
+
+def M_blackflame(name="blackflame"):
+    """Black flame: near-black body whose silhouette burns violet / rift
+    colours (emission from the grazing-angle layer weight), soft edges."""
+    if name in D.G.mats:
+        return D.G.mats[name]
+    m = bpy.data.materials.new(name)
+    nt = m.node_tree
+    nt.nodes.clear()
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+    nt.links.new(tc.outputs["Generated"], sep.inputs[0])
+    lw = _n(nt, "ShaderNodeLayerWeight", Blend=0.45)
+    edge = _m(nt, "POWER", lw.outputs["Facing"], 1.6)
+    ph = _m(nt, "FRACT", _m(nt, "ADD", _m(nt, "MULTIPLY", sep.outputs["Z"], 0.8), 0.35))
+    col = _ramp(nt, ph, RIFT_STOPS)
+    em = _n(nt, "ShaderNodeEmission")
+    nt.links.new(col, em.inputs["Color"])
+    nt.links.new(_m(nt, "MULTIPLY", edge, 7.0), em.inputs["Strength"])
+    dark = _n(nt, "ShaderNodeBsdfDiffuse", Color=(0.004, 0.002, 0.008, 1))
+    add = nt.nodes.new("ShaderNodeAddShader")
+    nt.links.new(dark.outputs[0], add.inputs[0])
+    nt.links.new(em.outputs[0], add.inputs[1])
+    # tip fades out
+    tr = nt.nodes.new("ShaderNodeBsdfTransparent")
+    mix = nt.nodes.new("ShaderNodeMixShader")
+    fade = _m(nt, "MULTIPLY", _m(nt, "POWER", sep.outputs["Z"], 3.0), 0.7)
+    nt.links.new(fade, mix.inputs["Fac"])
+    nt.links.new(add.outputs[0], mix.inputs[1])
+    nt.links.new(tr.outputs[0], mix.inputs[2])
+    nt.links.new(mix.outputs[0], out.inputs["Surface"])
+    D.G.mats[name] = m
+    return m
+
+
+def black_flame(loc, h, r=None, seed=0):
+    r = r or h * 0.24
+    prof = []
+    N = 18
+    for i in range(N + 1):
+        t = i / N
+        rr = r * math.sin(math.pi * t ** 0.55) ** 0.9 * (1 - 0.3 * t)
+        prof.append((max(rr, 0.0), h * t))
+    prof[0] = (0.0, 0.0)
+    prof[-1] = (0.0, h)
+    ph = random.Random(seed).uniform(0, TAU)
+    D.lathe(prof, M_blackflame(), seg=28, loc=loc, name="blackflame",
+            radial=lambda a, t: 1 + 0.28 * t * math.sin(3 * a + t * 8 + ph))
+    for k, (dx, hh) in enumerate(((-0.6, 0.55), (0.65, 0.5))):
+        p2 = [(x * 0.45, z * hh) for x, z in prof]
+        D.lathe(p2, M_blackflame(), seg=16, loc=(loc[0] + dx * r, loc[1] + 0.01, loc[2]),
+                rot=(0, rad(-18 * (1 if dx > 0 else -1)), 0), name="blackflame_lick")
+
+
+@icon("rift_lantern")
+def build_rift_lantern():
+    """Old iron lantern (rusted, dented), smoky glass panes and a black flame
+    burning with rift-coloured edges inside."""
+    iron = D.M_wrought()
+    dark = D.pbr("lantern_iron", (0.1, 0.09, 0.085), metal=1, rough=0.45, noise_rough=0.15,
+                 pattern="rust", rust=(0.24, 0.1, 0.05), scale=6.0)
+    glass = D.pbr("smokyglass", (0.62, 0.6, 0.7), rough=0.08, trans=1.0, ior=1.45, spec=0.6)
+    # base
+    D.lathe(D.catmull2d([(0.0, 0.0), (0.3, 0.0), (0.33, 0.04), (0.3, 0.08), (0.24, 0.1),
+                         (0.25, 0.14), (0.0, 0.14)], 3, closed=False), dark, seg=48, name="base")
+    # glass chimney and frame posts
+    D.lathe([(0.2, 0.14), (0.205, 0.5), (0.2, 0.86)], glass, seg=40, cap=False, name="glass")
+    for k in range(4):
+        a = TAU * k / 4 + TAU / 8
+        x, y = 0.22 * math.cos(a), 0.22 * math.sin(a)
+        D.box((0.03, 0.03, 0.74), iron, loc=(x, y, 0.5), rot=(0, 0, a), bev=0.006, name="post")
+    for z in (0.16, 0.52, 0.86):
+        D.torus(0.22, 0.014, iron, loc=(0, 0, z), seg=48, rseg=8, name="hoop")
+    # cap and handle
+    D.lathe(D.catmull2d([(0.24, 0.86), (0.25, 0.9), (0.18, 0.98), (0.1, 1.04), (0.06, 1.1),
+                         (0.07, 1.14), (0.0, 1.15)], 3, closed=False), dark, seg=48, name="cap")
+    for k in range(8):
+        a = TAU * k / 8
+        D.box((0.05, 0.012, 0.02), D.M_black(), loc=(0.19 * math.cos(a), 0.19 * math.sin(a), 0.95),
+              rot=(0, rad(35), a), name="vent")
+    D.torus(0.13, 0.016, iron, loc=(0, 0, 1.25), rot=(rad(90), 0, 0), seg=40, rseg=8,
+            name="handle")
+    # black flame on a wick
+    D.cyl(0.02, 0.06, dark, loc=(0, 0, 0.17), seg=12, name="wickholder")
+    black_flame((0, 0, 0.2), 0.52, seed=3)
+    D.point_light((0, -0.05, 0.45), (0.55, 0.3, 1.0), 20, 0.12)
+    D.point_light((0, -0.5, 0.5), (0.5, 0.35, 1.0), 8, 0.3)
+    D.sparkle((0.3, -0.4, 0.75), 0.06, (0.8, 0.7, 1.0))
+    D.view(pitch=10, yaw=18, diag=-6, fill=0.88, glow=0.8, glow_beauty=0.05)
+
+
+def M_petal(name="dawnpetal"):
+    """Pale-gold petal: creamy SSS body, glowing gold rim and tip (UV v = across
+    0..1, u = along 0..1)."""
+    if name in D.G.mats:
+        return D.G.mats[name]
+    m = D.pbr(name, (1.0, 0.88, 0.6), rough=0.4, sss=0.35, sss_radius=(1.0, 0.8, 0.4), sheen=0.3,
+              emit=(1.0, 0.82, 0.42), emit_str=0.0)
+    nt = m.node_tree
+    I = _bsdf(m).inputs
+    uvn = nt.nodes.new("ShaderNodeUVMap")
+    sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+    nt.links.new(uvn.outputs["UV"], sep.inputs[0])
+    across = _m(nt, "ABSOLUTE", _m(nt, "SUBTRACT", _m(nt, "MULTIPLY", sep.outputs["Y"], 2.0), 1.0))
+    edge = _n(nt, "ShaderNodeMapRange", **{"From Min": 0.72, "From Max": 1.0})
+    nt.links.new(across, edge.inputs["Value"])
+    tip = _n(nt, "ShaderNodeMapRange", **{"From Min": 0.75, "From Max": 1.0})
+    nt.links.new(sep.outputs["X"], tip.inputs["Value"])
+    g = _m(nt, "MAXIMUM", _m(nt, "POWER", edge.outputs["Result"], 1.5), tip.outputs["Result"])
+    nt.links.new(_m(nt, "MULTIPLY", g, 5.0), I["Emission Strength"])
+    # base: warmer toward the throat, paler toward the tip
+    col = _ramp(nt, sep.outputs["X"], [(0.0, (1.0, 0.72, 0.3)), (0.35, (1.0, 0.88, 0.58)),
+                                        (1.0, (1.0, 0.95, 0.82))])
+    nt.links.new(col, I["Base Color"])
+    return m
+
+
+@icon("dawnflower")
+def build_dawnflower():
+    """Pale-gold six-petalled lily whose petal edges glow like the first
+    light of dawn; gold stamens, a short stem with two leaves."""
+    pet = M_petal()
+    anth = D.M_glow("anther", (1.0, 0.7, 0.2), 4.0, base=(1.0, 0.6, 0.15))
+    stemm = D.pbr("lilystem", (0.2, 0.42, 0.1), rough=0.45, sss=0.2, coat=0.2)
+    leafm = D.pbr("lilyleaf", (0.18, 0.4, 0.08), rough=0.4, sss=0.2, coat=0.3)
+    L, Wd = 0.62, 0.15
+    with D.sub(loc=(0, 0, 0.05), rot=(rad(-18), 0, 0)):
+        for k in range(6):
+            a = TAU * k / 6 + (0.26 if k % 2 else 0.0)
+            ca, sa = math.cos(a), math.sin(a)
+            inner = k % 2 == 1
+            Lk = L * (0.92 if inner else 1.0)
+
+            def fn(u, v, ca=ca, sa=sa, Lk=Lk, inner=inner):
+                t = u
+                w = Wd * (math.sin(math.pi * min(1.0, t ** 0.75)) ** 0.8) * (1 - 0.15 * t)
+                s_ = (v * 2 - 1)
+                # radial distance and height: rise from the throat then recurve
+                r = Lk * (0.08 + 0.82 * t)
+                h = Lk * (0.62 * t - 0.5 * t * t * t) + (0.03 if inner else 0.0)
+                cup = 0.06 * (1 - s_ * s_) * math.sin(math.pi * t)
+                x = r * ca - s_ * w * sa
+                y = r * sa + s_ * w * ca
+                z = h + cup
+                return (x, y, z)
+            surface_D(fn, 20, 8, pet, name="petal", thick=0.012)
+        for k in range(6):
+            a = TAU * k / 6 + 0.13
+            d = Vector((math.cos(a), math.sin(a), 0))
+            p0 = Vector((0, 0, 0.02))
+            p3 = p0 + d * 0.16 + Vector((0, 0, 0.3))
+            D.sweep(D.bezier_pts(p0, p0 + Vector((0, 0, 0.12)), p3 - d * 0.04, p3, 10), 0.007,
+                    stemm, segs=6, name="filament")
+            D.sphere(0.022, anth, loc=tuple(p3), scale=(1.0, 1.0, 1.8), seg=12, rings=8,
+                     name="anther")
+        D.sweep([(0, 0, 0.0), (0, 0, 0.2), (0.01, -0.01, 0.38)], 0.009, stemm, segs=6, name="pistil")
+        D.sphere(0.02, D.M_glow("stigma", (1.0, 0.85, 0.5), 3.0), loc=(0.01, -0.01, 0.39),
+                 seg=12, rings=8)
+        D.sphere(0.06, stemm, loc=(0, 0, -0.01), scale=(1, 1, 0.8), seg=16, rings=8, name="receptacle")
+    stem = D.bezier_pts((0, 0.02, 0.0), (0.02, 0.05, -0.2), (-0.05, 0.08, -0.4), (-0.12, 0.1, -0.62), 16)
+    D.sweep(stem, lambda t: 0.028 - 0.006 * t, stemm, segs=10, name="stem")
+    leaf_D((-0.05, 0.08, -0.35), 0.4, 0.07, (rad(10), rad(-160), 0), leafm, depth=0.014)
+    leaf_D((-0.03, 0.06, -0.25), 0.34, 0.06, (rad(-10), rad(-30), 0), leafm, depth=0.014)
+    for (p, s_) in (((0.34, -0.5, 0.52), 0.07), ((-0.4, -0.5, 0.3), 0.05), ((0.42, -0.5, -0.1), 0.04)):
+        D.sparkle(p, s_, (1.0, 0.9, 0.65))
+    D.point_light((0, -0.4, 0.35), (1.0, 0.8, 0.45), 18, 0.3)
+    D.view(pitch=0, yaw=0, diag=-8, fill=0.88, glow=0.8)
 
 
 # ==== END OF BUILDERS ====

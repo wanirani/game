@@ -3,6 +3,7 @@ import { game } from './core/game.js';
 import { audio } from './core/audio.js';
 import { assets } from './core/assets.js';
 import { saves } from './core/save.js';
+import { cloud } from './core/cloud.js';
 import { registerScenes } from './scenes/index.js';
 import { initQuests } from './game/quests.js';
 
@@ -16,6 +17,7 @@ async function boot() {
   game.init(canvas);
   registerScenes(game);
   initQuests(game);
+  cloud.init(game); // 계정·클라우드 저장 (로그인한 적이 없으면 네트워크 요청 없음)
   game.recordScore = (score, stageId, mode = 'story') => {
     const m = game.meta, st = game.state;
     const run = st?.created ? `${st.slot ?? 1}:${st.created}` : null;
