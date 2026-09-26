@@ -21,6 +21,7 @@ import { Entity } from '../../game/entity.js';
 import { bus } from '../../core/events.js';
 import { quality, textureDensity, memoryBudgetMB } from './kit.js';
 import { STAGES } from '../../data/stages.js';
+import { REG_PACKAGES } from './reg/index.js';
 
 /** id → { kind, importer, mod, rig, state:'idle'|'loading'|'ready'|'failed', promise, err } */
 const REG = new Map();
@@ -28,6 +29,12 @@ let GAME = null;
 
 /** 기본 등록 (모듈 경로는 이 파일 기준). 새 채색 보스/적을 만들면 여기에 한 줄 추가한다 */
 registerPainted('b_bonedragon', { kind: 'boss', importer: () => import('./bosses/b_bonedragon.js') });
+// 패키지별 등록 모듈(reg/*.js)을 모은다 — 제작 패키지는 이 파일이 아니라 자기 reg 파일만 고친다 (R15)
+for (const pkg of REG_PACKAGES) {
+  for (const [id, importer] of Object.entries(pkg.bosses ?? {})) registerPainted(id, { kind: 'boss', importer });
+  for (const [id, importer] of Object.entries(pkg.companions ?? {})) registerPainted(id, { kind: 'companion', importer });
+  for (const [id, importer] of Object.entries(pkg.npcs ?? {})) registerPainted(id, { kind: 'npc', importer });
+}
 
 export function registerPainted(id, { kind = 'boss', importer = null, module = null } = {}) {
   const prev = REG.get(id);

@@ -314,7 +314,7 @@ export class Enemy extends Entity {
     if (this.noGravity || !world.map) return;
     const T = tables(), J = T.J, W = T.W;
     if (this.guardFall) this.gravity = this.baseGravity * (J.guardGrav ?? 1.3);
-    else if (this.jugg && !this.onGround) {
+    else if (this.jugg && (!this.onGround || this.vy < 0)) {
       const jg = W[this.effClass()]?.jg ?? 1;
       this.gravity = this.baseGravity * Math.min(J.gravCap ?? 1.15, jg + (J.gravStep ?? 0.05) * this.jn);
     } else this.gravity = this.baseGravity;

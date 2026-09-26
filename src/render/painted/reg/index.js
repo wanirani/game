@@ -1,0 +1,23 @@
+// 채색 등록 모음 (reg/*.js). 새 패키지가 생기면 여기에만 한 줄 추가한다 (리드 관리).
+import * as r0 from './art-boss-1.js';
+import * as r1 from './art-boss-2.js';
+import * as r2 from './art-boss-3.js';
+import * as r3 from './art-boss-4.js';
+import * as r4 from './art-boss-5.js';
+import * as r5 from './boss-p2-1.js';
+import * as r6 from './boss-p2-2.js';
+import * as r7 from './boss-p2-3.js';
+import * as r8 from './boss-p2-4.js';
+import * as r9 from './art-enemy-1.js';
+import * as r10 from './art-enemy-2.js';
+import * as r11 from './art-enemy-3.js';
+import * as r12 from './art-enemy-4.js';
+import * as r13 from './art-enemy-5.js';
+import * as r14 from './enemy-p2-c-art.js';
+import * as r15 from './enemy-p2-d-art.js';
+import * as r16 from './cmp-mount-art-a.js';
+import * as r17 from './cmp-mount-art-b.js';
+import * as r18 from './cmp-guard-art-a.js';
+import * as r19 from './cmp-guard-art-b.js';
+import * as r20 from './npcs.js';
+export const REG_PACKAGES = [r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, r16, r17, r18, r19, r20];

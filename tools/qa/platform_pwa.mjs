@@ -65,7 +65,10 @@ export async function pwaChecks(suite, env, group = 'pwa') {
     swOk = regs > 0;
     await suite.check({ id: `${group}.sw.localhost`, group, issue: 'P-27', gate: 'PLAT-BOOT', title: 'service worker registers on localhost' }, async () => ({ pass: regs > 0, detail: `${regs} registration(s)` }));
     if (swOk) {
-      // P-10: /api/ responses never reach Cache Storage (instrumented)
+      // P-10: /api/ responses never reach Cache Storage (instrumented). The first page load is controlled only if the
+      // SW calls clients.claim(); otherwise one reload (as a returning visitor) puts the page under the SW
+      await s.eval(() => navigator.serviceWorker.ready.then(() => true));
+      if (!(await s.eval(() => !!navigator.serviceWorker.controller))) { await s.page.reload(); await s.waitGame().catch(() => {}); }
       const r = await s.eval(async () => {
         await navigator.serviceWorker.ready;
         for (let i = 0; i < 20 && !navigator.serviceWorker.controller; i++) await new Promise((res) => setTimeout(res, 150));

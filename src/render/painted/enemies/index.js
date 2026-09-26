@@ -9,6 +9,7 @@ import * as ghost from './ghost.js';
 
 import { registerPainted } from '../registry.js';
 import { requestRig } from '../enemy_kit.js';
+import { REG_PACKAGES } from '../reg/index.js';
 
 export const PAINTED_ENEMIES = {};
 /** also listed in the shared painted registry (kind 'enemy') so tooling / kill switches see every painted creature;
@@ -25,3 +26,6 @@ reg(armor_knight);
 reg(gravedigger);
 reg(bat);
 reg(ghost);
+
+// 패키지별 등록 모듈(reg/*.js)의 적 렌더러 — 제작 패키지는 이 파일이 아니라 자기 reg 파일만 고친다 (R15)
+for (const pkg of REG_PACKAGES) for (const e of pkg.enemies ?? []) reg(e.mod ?? e, e.ids);
