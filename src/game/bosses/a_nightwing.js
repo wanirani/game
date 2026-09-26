@@ -4,6 +4,7 @@
 import { ABoss, opt, beginDraw, endDraw, C, rg, lg, glow, ink, rim, sheen, taper, eye, shadow, hash, PI, OUT, RIM, groundWave, dropHazard, erupt } from './a_common.js';
 import { rand, clamp, lerp, TAU, angleTo, ease, rgba } from '../../core/math.js';
 import { audio } from '../../core/audio.js';
+import { paintedDebris } from '../../render/painted/registry.js';
 
 const FUR = '#2e1b17', FUR2 = '#5a3a30', MEM = '#5a0c1c', MEM2 = '#b41c34', BONE = '#2a1712', CLAW = '#eadfcc';
 const _P = new Float32Array(16);
@@ -110,6 +111,9 @@ export class Nightwing extends ABoss {
     this.fx.ghost((ctx, a) => this.drawGhost(ctx, s, a), 0.26, 'back');
   }
   drawGhost(ctx, s, a) {
+    // 채색 퍼핏이 그리는 중이면 잔상도 채색 발광 실루엣으로 (그리기 전용)
+    const pp = this._painted?.proxy;
+    if (pp && !pp.dead && pp.entry?.state === 'ready' && pp.entry.mod?.ghost?.(ctx, this, s, a, pp.entry.rig, pp.st)) return;
     const keep = [this.flap, this.spread, this.claw, this.mouth];
     this.flap = s.flap; this.spread = s.spread; this.claw = s.claw; this.mouth = s.mouth;
     ctx.save();
@@ -297,7 +301,7 @@ export class Nightwing extends ABoss {
   }
   deathStart(world) { audio.sfx('bat', { pitch: 0.3, vol: 1 }); }
   deathTick(dt, world) { this.flap += dt * 20; this.spread = 1.3; this.mouth = 1.3; this.vy = 60; this.lean = Math.sin(this.deathT * 30) * 0.08; }
-  debrisPiece(i) { return { size: 10, draw: i % 3 ? drawFurTuft : drawFang }; }
+  debrisPiece(i) { return paintedDebris(this, i) ?? { size: 10, draw: i % 3 ? drawFurTuft : drawFang }; }
 
   extraLights(L) {
     L.add(this.cx + this.facing * 4, this.y + 6, 60 + this.rage * 60, '#ff2040', 0.9);

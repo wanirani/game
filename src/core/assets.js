@@ -208,8 +208,9 @@ class Assets {
 
   // ───────────────────────── 이미지 ─────────────────────────
   load(key, ver) {
-    let e = this.cache.get(key);
     const t = now();
+    this._checkBase(t);   // 새 장면의 enter() 안에서 미리 받는 이미지는 '전환 뒤에 쓰임' 으로 친다 (전환 시각 ≤ t)
+    let e = this.cache.get(key);
     if (e) { e.t = t; return e.promise; }
     if (t - this._pollT > POLL_MS) this._poll(t);
     const folder = folderOf(key);
@@ -395,7 +396,17 @@ class Assets {
   sceneChange(keep = []) {
     const t = now();
     for (const k of keep) { const e = this.cache.get(k); if (e) e.t = t; }
+    // game.go() 는 새 장면의 enter() 뒤에 부른다. enter() 안의 load() 가 이 전환을 이미 알아챘으면 그 (더 이른) 시각을 둔다
+    if (!this._checkBase(t) && this._sceneAt && t - this._sceneAt < SCENE_GRACE_MS) return;
     this._sceneAt = t;
+  }
+  /** 맨 아래 장면(window.__game.scenes[0])이 바뀌었으면 그 시각을 장면 전환 기준으로 삼는다 → 바뀌었는지 */
+  _checkBase(t) {
+    const base = hasWin ? window.__game?.scenes?.[0] ?? null : null;
+    if (!base || base === this._base) return false;
+    if (this._base) this._sceneAt = t;
+    this._base = base;
+    return true;
   }
   _sceneRelease(mark) {
     const quota = this.budget * ASSET_BUDGET.sceneShare;
@@ -442,9 +453,7 @@ class Assets {
     this._pollT = t;
     const w = this._computeWantLo();
     if (w !== this._wantLo) { this._wantLo = w; this._vEpoch++; }
-    const g = hasWin ? window.__game : null;
-    const base = g?.scenes?.[0] ?? null;
-    if (base && base !== this._base) { if (this._base) this._sceneAt = t; this._base = base; }
+    this._checkBase(t);
     if (this._sceneAt && t - this._sceneAt >= SCENE_GRACE_MS) { const m = this._sceneAt; this._sceneAt = 0; this._sceneRelease(m); }
     if (this.total > this.budget || this.paintedBytes > this.paintedBudget) this.trim(t);
   }

@@ -12,6 +12,8 @@
 // 세이브: state.quests = { active: { [qid]: { n, t, ready } }, done: [qid...] }
 // 메인 퀘스트는 챕터 조건이 맞으면 자동 수락, 달성 즉시 자동 보상.
 // 부가 효과: 유물 5개를 모으면 스토리 플래그 relics_all 을 켠다 (story.js 의 s12_outro 분기용).
+//           세계의 심장 6개 → hearts_all, 별의 조각 6개 → stars_all (2부; world.collect 와 같은 규칙, 멱등).
+// 보상: reward.flags 가 있으면 progress.flags 에 합친다 (예: 알베르토의 새벽꽃 → dawnflower_given).
 import { bus } from '../core/events.js';
 import { audio } from '../core/audio.js';
 import { QUESTS, QUEST_ORDER } from '../data/quests.js';
@@ -38,6 +40,8 @@ const fmtN = (n) => Math.floor(n).toLocaleString('ko-KR');
 const gameKey = (g) => String(g ?? '').replace(/^minigame_/, '');
 const rankOk = (have, want) => !!have && (!want || RANKS.indexOf(have) <= RANKS.indexOf(want));
 const enemyMatch = (want, id) => Array.isArray(want) ? want.includes(id) : want === id;
+// 2부 스테이지 이름 (맵 데이터가 아직 STAGES 에 없을 때의 대체 표기; world2 §4)
+const STAGE_NAME_P2 = { s14: '거울의 성', s15: '영겁의 용광로', s16: '가라앉은 성소', s17: '폭풍의 공중정원', s18: '악몽의 미궁', s19: '썩어가는 숲', s20: '태초의 공허' };
 
 function reqOk(s, q) {
   const r = q.req || {};
@@ -69,6 +73,7 @@ export function questProgress(s, qid) {
     case 'collect': cur = countItem(s, g.item); need = g.count; break;
     case 'docs': cur = p.docs?.length ?? 0; need = g.count; break;
     case 'relics': cur = p.relics?.length ?? 0; need = g.count; break;
+    case 'shards': cur = p.shards?.length ?? 0; need = g.count; break;
     case 'enhance': cur = Math.max(e.n, maxEnhance(s)); need = g.level; break;
     case 'minigame': cur = e.n; need = g.wins; break;
     case 'combo': cur = e.n; need = g.count; break;
@@ -87,10 +92,11 @@ function goalLabel(g) {
     }
     case 'killAny': return '마물 처치';
     case 'boss': return `${BOSSES[g.boss]?.name ?? g.boss} 처치`;
-    case 'clear': return `「${STAGES[g.stage]?.name ?? g.stage}」 클리어${g.rank ? ` (${g.rank} 랭크 이상)` : ''}`;
+    case 'clear': return `「${STAGES[g.stage]?.name ?? STAGE_NAME_P2[g.stage] ?? g.stage}」 클리어${g.rank ? ` (${g.rank} 랭크 이상)` : ''}`;
     case 'collect': return `${ITEMS[g.item]?.name ?? g.item} 전달`;
     case 'docs': return '비전서 발견';
     case 'relics': return '드라큘라의 유물';
+    case 'shards': return '별의 조각';
     case 'enhance': return `장비 +${g.level} 강화`;
     case 'minigame': return `${g.game ? MINIGAME_NAMES[gameKey(g.game)] ?? g.game : '여관 미니게임'} 승리`;
     case 'combo': return `${g.count} HIT 콤보`;
@@ -177,6 +183,7 @@ export function claimQuest(s, qid) {
   const r = q.reward || {};
   const out = { gold: r.gold ?? 0, exp: r.exp ?? 0, items: [], levelUps: 0 };
   s.gold = (s.gold ?? 0) + out.gold;
+  if (r.flags && s.progress) Object.assign((s.progress.flags ??= {}), r.flags);   // 이야기 분기용 플래그 (rewardText 에는 나오지 않는다)
   const hero = s.heroes?.[s.charId];
   claiming++;
   try {
@@ -196,6 +203,8 @@ function sync(s) {
   const qs = ensure(s);
   const p = s.progress;
   if (p && (p.relics?.length ?? 0) >= 5 && p.flags && !p.flags.relics_all) p.flags.relics_all = true;
+  if (p && (p.hearts?.length ?? 0) >= 6 && p.flags && !p.flags.hearts_all) p.flags.hearts_all = true;
+  if (p && (p.shards?.length ?? 0) >= 6 && p.flags && !p.flags.stars_all) p.flags.stars_all = true;
   for (const id of QUEST_ORDER) {
     const q = QUESTS[id];
     if (q.kind === 'main' && !qs.done.includes(id) && !qs.active[id] && reqOk(s, q)) acceptQuest(s, id);
@@ -271,5 +280,5 @@ export function initQuests(game) {
   on('enhance', (s, d) => { if (d.success !== false && !d.destroyed) setMax(s, 'enhance', d.level ?? d.item?.level ?? 0); });
   on('goldPicked', (s, d) => bump(s, (g) => g.type === 'gold', d.amount ?? 0));
   on('npcTalk', (s, d) => bump(s, (g) => g.type === 'talk' && g.npc === d.npcId));
-  for (const evt of ['stageCleared', 'stageEntered', 'itemPicked', 'docFound', 'relicFound']) on(evt, null);
+  for (const evt of ['stageCleared', 'stageEntered', 'itemPicked', 'docFound', 'relicFound', 'shardFound', 'heartFound']) on(evt, null);
 }

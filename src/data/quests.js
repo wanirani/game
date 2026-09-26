@@ -1,16 +1,18 @@
 // 퀘스트 데이터 (런타임은 game/quests.js)
-// QUESTS[id] = { id, kind:'main'|'side', name, giver:npcId|'board'|null, desc, goal, reward:{gold, exp, items:[{id,qty}]}, req:{chapter, flag?, relics?}, auto? }
+// QUESTS[id] = { id, kind:'main'|'side', name, giver:npcId|'board'|null, desc, goal, reward:{gold, exp, items:[{id,qty}], flags?:{}}, req:{chapter, flag?, relics?, quest?}, auto? }
 //  · goal.type:
 //     kill {enemy: id|[ids], count}   killAny {count}          boss {boss, again?}  (again=true: 수락 후 다시 처치해야 함)
 //     clear {stage, rank?}            collect {item, count}  (보상 수령 시 재료를 전달 = 소모)
 //     docs {count}  relics {count}    enhance {level}        minigame {game?, wins}   combo {count} (25의 배수)
-//     gold {amount} (수락 후 주운 금화)  talk {npc}
+//     gold {amount} (수락 후 주운 금화)  talk {npc}          shards {count} (별의 조각 = progress.shards 수)
+//  · reward.flags: 보상 수령 시 progress.flags 에 합친다 (예: { dawnflower_given: true })
+//  · req.quest: 이 퀘스트를 완료(보상 수령)해야 수락 가능
 //  · req.chapter: 이 챕터(= 마지막으로 클리어한 챕터 번호) 이상이면 수락 가능. main 퀘스트는 조건 충족 시 자동 수락, 달성 시 자동 보상(auto).
 //  · 퀘스트 대사(선택): story.js 의 q_<id>_start / q_<id>_done
 
 // 챕터별 보상 규모 (스테이지 적 레벨 기준 경험치) — game/stats.js expToNext 와 같은 공식 (순환 import 회피용 사본)
 const expToNext = (l) => Math.floor(30 * Math.pow(l, 1.65) + 20 * l);
-const LV = [1, 1, 3, 5, 8, 11, 14, 17, 20, 24, 28, 32, 36, 45];
+const LV = [1, 1, 3, 5, 8, 11, 14, 17, 20, 24, 28, 32, 36, 45, 46, 50, 53, 56, 60, 64, 68];   // 14~20 = 2부 (world2 §9.1)
 const xp = (ch, k = 0.6) => Math.round(expToNext(LV[ch] ?? 1) * k / 10) * 10;
 const it = (id, qty = 1) => ({ id, qty });
 const stoneFor = (ch) => `m_stone_${Math.min(6, Math.max(1, Math.ceil(ch / 2)))}`;
@@ -29,6 +31,14 @@ const MAIN = [
   ['s11', '사신의 장부', '피의 예배당에서 백작의 오른팔, 사신 데스를 쓰러뜨려라.'],
   ['s12', '영원한 밤의 끝', '드라큘라의 왕좌에 올라 백작을 쓰러뜨려라.'],
   ['s13', '거꾸로 선 성', '심연의 역성 가장 깊은 곳, 모든 밤의 근원인 혼돈의 군주를 쓰러뜨려라.'],
+  // ── 2부 「균열의 순례」 (world2 §9.1) ──
+  ['s14', '만경의 여제', '거울의 성 깊은 곳, 만경의 여제 나르키사의 가면을 깨뜨려라.'],
+  ['s15', '꺼지지 않는 불', '영겁의 용광로에서 세상을 끌어내리는 사슬을 벼리는 우상 몰록을 멈춰라.'],
+  ['s16', '심해의 설교', '가라앉은 성소의 사제왕 다곤에게 수면 위의 빛을 되돌려 주어라.'],
+  ['s17', '폭풍의 둥지', '폭풍의 공중정원을 뒤덮은 거신조 지즈를 잠재워라.'],
+  ['s18', '자장가가 끝나면', '악몽의 미궁 가장 깊은 요람에서 마라의 자장가를 멈춰라.'],
+  ['s19', '대지의 짐승', '썩어가는 숲의 짐승 베헤모스를 조종하는 균사의 여왕을 떼어 내라.'],
+  ['s20', '모든 것 이전의 어둠', '태초의 공허로 내려가 니힐과 맞서라.'],
 ];
 
 export const QUESTS = {};
@@ -37,12 +47,12 @@ MAIN.forEach(([stage, name, desc], i) => {
   const id = `main${String(ch).padStart(2, '0')}`;
   const items = [it(stoneFor(ch), 2)];
   if (ch % 3 === 0) items.push(it('m_scroll_bless', 1));
-  if (ch === 12 || ch === 13) items.push(it('m_scroll_protect', 2));
+  if (ch === 12 || ch === 13 || ch >= 17) items.push(it('m_scroll_protect', 2));
   QUESTS[id] = {
     id, kind: 'main', chapter: ch, name, giver: null, desc, auto: true,
     goal: { type: 'clear', stage },
     reward: { gold: 300 + 250 * ch, exp: xp(ch, 0.8), items },
-    req: ch === 13 ? { chapter: 12, relics: 5, flag: 'boss_b_dracula' } : { chapter: ch - 1 },
+    req: ch === 13 ? { chapter: 12, relics: 5, flag: 'boss_b_dracula' } : ch === 14 ? { chapter: 13, flag: 'p2_started' } : { chapter: ch - 1 },
   };
 });
 
@@ -127,5 +137,61 @@ side({ id: 'el_letter', name: '엘리제의 편지', giver: 'npc_elise', req: { 
 side({ id: 'cm_brides', name: '배신한 자매들', giver: 'npc_carmilla', req: { chapter: 11, flag: 'carmilla_trust1' },
   desc: '카밀라의 부탁. 왕좌를 지키는 흡혈 신부 10명을 처치해 달라. "자매들과는 오래된 악연이 있거든."',
   goal: { type: 'kill', enemy: 'vampire_bride', count: 10 }, reward: { gold: 6000, exp: xp(12, 1), items: [it('m_stone_6', 2)] } });
+
+// ══════════════ 2부 「균열의 순례」 부가 퀘스트 (world2 §9.2) ══════════════
+// ── 현상금 게시판 ──
+side({ id: 'bd_rift', name: '균열 청소부', giver: 'board', req: { chapter: 14 },
+  desc: '[까마귀 결사] 균열 너머에서 넘어오는 이계의 마물을 줄여야 한다. 종류를 가리지 말고 500마리를 처치하라.',
+  goal: { type: 'killAny', count: 500 }, reward: { gold: 12000, exp: xp(15, 1.2), items: [it('m_stone_6', 3)] } });
+side({ id: 'bd_mirror', name: '거울 기사 사냥', giver: 'board', req: { chapter: 14 },
+  desc: '[대장간] 거울 기사의 갑주는 최고급 은이다. 12기를 부숴라.',
+  goal: { type: 'kill', enemy: 'mirror_knight', count: 12 }, reward: { gold: 8000, exp: xp(15, 1), items: [it('m_stone_6', 2)] } });
+side({ id: 'bd_deep', name: '등불 달린 별미', giver: 'board', req: { chapter: 16 },
+  desc: '[흑묘 여관 요리부] 심해 아귀 8마리. 머리에 등불 달린 녀석이 그렇게 맛있다는데…',
+  goal: { type: 'kill', enemy: 'abyss_angler', count: 8 }, reward: { gold: 9000, exp: xp(17, 1), items: [it('c_elixir', 2)] } });
+side({ id: 'bd_storm', name: '폭풍 사냥', giver: 'board', req: { chapter: 17 },
+  desc: '[하늘을 잃은 자들] 폭풍 하피와 뇌조를 합쳐 15마리 쓰러뜨려 달라.',
+  goal: { type: 'kill', enemy: ['storm_harpy', 'thunder_roc'], count: 15 }, reward: { gold: 10000, exp: xp(18, 1), items: [it('m_scroll_protect', 2)] } });
+side({ id: 'bd_combo200', name: '이백 연격', giver: 'board', req: { chapter: 18 },
+  desc: '[흑묘 여관 내기판] 전설은 100에서 끝나지 않는다. 200연속 콤보를 보여 줘!',
+  goal: { type: 'combo', count: 200 }, reward: { gold: 20000, exp: xp(19, 1), items: [it('m_scroll_bless', 3)] } });
+// ── 하드윈 ──
+side({ id: 'hd_ember', name: '영겁의 불씨', giver: 'npc_hadwin', req: { chapter: 15 },
+  desc: '"용광로의 불씨 열 개. 그 불이라면 이계의 쇠도 벼릴 수 있다." 하드윈의 목소리가 평소보다 낮다.',
+  goal: { type: 'collect', item: 'm_ember', count: 10 }, reward: { gold: 6000, exp: xp(16, 1), items: [it('m_stone_6', 4), it('m_scroll_protect', 1)] } });
+side({ id: 'hd_plus15', name: '전설의 담금질', giver: 'npc_hadwin', req: { chapter: 16 },
+  desc: '"+15. 대장장이가 평생 한 번 볼까 말까 한 경지다. 보여 다오."',
+  goal: { type: 'enhance', level: 15 }, reward: { gold: 30000, exp: xp(17, 1), items: [it('m_scroll_protect', 3)] } });
+// ── 로크 ──
+side({ id: 'rk_stars', name: '별의 조각', giver: 'npc_rook', req: { chapter: 15, flag: 'p2_started' },
+  desc: '"세계마다 작은 별이 하나씩 숨어 있습니다요. 셋만 모아 보십쇼. 공허를 밝힐 등불이 될지도 모릅니다."',
+  goal: { type: 'shards', count: 3 }, reward: { gold: 15000, exp: xp(16, 1), items: [it('c_elixir', 2)] } });
+side({ id: 'rk_stars6', name: '새벽의 별', giver: 'npc_rook', req: { chapter: 18, quest: 'rk_stars' },
+  desc: '"여섯 조각이 모이면… 천 년 전 그 사람이 말한 별이 뜰 겁니다."',
+  goal: { type: 'shards', count: 6 }, reward: { gold: 30000, exp: xp(19, 1), items: [it('m_stone_6', 5)] } });
+// ── 엘리제 ──
+side({ id: 'el_pearl', name: '진주 묵주', giver: 'npc_elise', req: { chapter: 16 },
+  desc: '엘리제가 알베르토 신부님께 진주 묵주를 만들어 드리고 싶어 한다. 심해 진주 다섯 알이 필요하다.',
+  goal: { type: 'collect', item: 'm_pearl', count: 5 }, reward: { gold: 5000, exp: xp(17, 0.8), items: [it('c_elixir', 1)] } });
+// ── 알베르토 신부 ──
+side({ id: 'ab_dawnflower', name: '새벽꽃', giver: 'npc_alberto', req: { chapter: 18 },
+  desc: '"썩은 숲 깊은 곳, 세계수 꼭대기에 새벽꽃이 핀다지. 죽기 전에 한 번만 보고 싶구먼."',
+  goal: { type: 'collect', item: 'k_dawnflower', count: 1 }, reward: { gold: 3000, exp: xp(19, 1), items: [it('u_alberto', 1)], flags: { dawnflower_given: true } } });
+// ── 마르타 ──
+side({ id: 'mt_feast', name: '이계의 만찬', giver: 'npc_marta', req: { chapter: 15 },
+  desc: '"용광로 불씨로 고기를 구우면 어떤 맛일까? 불씨 다섯 개만 구해 와 봐!"',
+  goal: { type: 'collect', item: 'm_ember', count: 5 }, reward: { gold: 4000, exp: xp(16, 0.8), items: [it('c_meat', 10), it('c_hipotion', 5)] } });
+// ── 카밀라 ──
+side({ id: 'cm_dreams', name: '꿈속의 얼굴 없는 것들', giver: 'npc_carmilla', req: { chapter: 18, flag: 'carmilla_trust2' },
+  desc: '"꿈속에 얼굴 없는 것들이 가득해. 여덟만 치워 줘. 잠 좀 자게."',
+  goal: { type: 'kill', enemy: 'faceless', count: 8 }, reward: { gold: 20000, exp: xp(19, 1), items: [it('m_stone_6', 3)] } });
+
+// ── 그레타 (영혼의 마구간, companions §13) — 보상: 동료 합류 (companion_events 가 questClaimed 로 처리) ──
+side({ id: 'cq_hati', name: '묘지의 푸른 울음', giver: 'npc_greta', req: { chapter: 2 },
+  desc: '안개의 묘지에서 푸른 늑대의 영혼이 운다. 원혼·도깨비불 15마리를 쫓아내 영혼을 달래 주자. (보상: 수호신 「하티」 합류)',
+  goal: { type: 'kill', enemy: ['ghost', 'wisp'], count: 15 }, reward: { gold: 600, exp: xp(3, 1), items: [] } });
+side({ id: 'cq_skoll', name: '늑대 왕의 시험', giver: 'npc_greta', req: { chapter: 4 },
+  desc: '늑대 왕 스콜은 강한 자만 태운다. 굶주린 늑대·설원 늑대·지옥견 20마리를 쓰러뜨려 힘을 증명하자. (보상: 탈것 「스콜」 합류)',
+  goal: { type: 'kill', enemy: ['wolf', 'snow_wolf', 'hellhound'], count: 20 }, reward: { gold: 1500, exp: xp(5, 1), items: [] } });
 
 export const QUEST_ORDER = Object.keys(QUESTS);

@@ -55,6 +55,7 @@ const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const isKeyCode = (v) => typeof v === 'string' && /^[A-Za-z0-9]{1,32}$/.test(v);
 const nowMs = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 const MODES = new Set(['kb', 'pad', 'touch']);
+const ACTION_SET = new Set(ACTIONS);
 const SS_MODE = 'bn.inputMode', SS_GLYPHS = 'bn.padGlyphs';
 
 // 스틱 (platform §4.3). 방향이 걸리고 풀리는 문턱은 원래 기울기(데드존 전) 기준: 0.55 → 달리기, 0.30 → 멈춤 (WP-1 수용 조건)
@@ -141,7 +142,7 @@ class Input {
     this._modeFns = new Set();
     this._ptrXf = null;
     this._lastFramePoll = -1e9; this._pollN = 0; this._bindSig = ''; this._bindSettings = null;
-    this._legacySyncT = -1e9; this._padVis = null;
+    this._padVis = null; this._domPadKey = '';
     this._touchVec = { x: 0, y: 0, mag: 0, raw: 0 }; this._touchSt = { eng: false, sec: -1 }; this._touchSprint = false;
     this._touchTaps = new Map();
     this._bufWin = {};
@@ -229,7 +230,7 @@ class Input {
     import('./touchpad.js').then((m) => {
       let pad = null;
       try { pad = m.initTouchPad?.(this) ?? null; } catch (e) { console.error('[input] touchpad', e); pad = null; }
-      if (pad) { this.pad = pad; this._padVis = null; this._applyPad(true); } else this.setupTouchPad();
+      if (pad) { this.pad = pad; this._padVis = null; this._applyPad(); } else this.setupTouchPad();
     }).catch((e) => { console.error('[input] touchpad import', e); this.setupTouchPad(); });
   }
 
@@ -253,8 +254,8 @@ class Input {
     if (m !== 'touch') this._releaseTouch();
     ssSet(SS_MODE, m);
     if (this.game) this.game.dirty = true;
-    // 예전 game.js (setPadOff 로 표시를 맞추던 때) 또는 DOM 패드는 여기서 바로 반영
-    if (!this.pad || nowMs() - this._legacySyncT < 500) this._applyPad();
+    // DOM 패드 또는 syncPad 가 없는 예전 game.js 는 여기서 바로 반영 (캔버스 패드 표시는 game.syncPad 몫)
+    this._applyPad();
     for (const fn of [...this._modeFns]) { try { fn(m, old); } catch (e) { console.error('[input] onMode', e); } }
     if (old) this._emitDevice();
   }
@@ -283,7 +284,6 @@ class Input {
   // ── 가상 패드 표시 (예전 경로) ─────────────────────────────────────────
   /** 장면에 따라 가상 패드 표시/숨김 (예전 game.js 가 매 프레임 호출). 숨길 때 눌려 있던 버튼·스틱을 모두 뗀다 */
   setPadOff(off) {
-    this._legacySyncT = nowMs();
     off = !!off;
     if (this.padOff !== off) {
       this.padOff = off;
@@ -291,18 +291,24 @@ class Input {
     }
     this._applyPad();
   }
-  _applyPad(force = false) {
+  /**
+   * 가상 패드 표시. 캔버스 패드(touchpad.js)는 game.syncPad 가 유일한 주인이라 여기선 건드리지 않는다
+   * (game.syncPad 가 없는 예전 game.js 일 때만 여기서 켜고 끈다). 예전 DOM 패드(#touch)는 클래스만 바꾼다 (바뀔 때만).
+   */
+  _applyPad() {
     const vis = !this.padOff && this.mode === 'touch';
     if (this.pad) {
-      if (force && nowMs() - this._legacySyncT > 500 && this._padVis === null) return; // 새 game.syncPad 가 표시를 맡는다
-      if (vis === this._padVis) return;
+      if (typeof this.game?.syncPad === 'function' || vis === this._padVis) return;
       this._padVis = vis;
       try { this.pad.setVisible?.(vis); } catch (e) { console.error('[input] pad.setVisible', e); }
       return;
     }
+    const k = `${this.mode === 'touch'}|${this.padOff}`;
+    if (k === this._domPadKey) return;
     try {
       const root = document.getElementById('touch');
       if (!root) return;
+      this._domPadKey = k;
       root.classList.toggle('hidden', this.mode !== 'touch');
       root.classList.toggle('scene-off', this.padOff);
     } catch { /* 문서 없음 */ }
@@ -324,36 +330,55 @@ class Input {
   // ── 가상 패드 API ─────────────────────────────────────────────────────
   _makeTouchApi() {
     const self = this;
-    const list = (a) => (Array.isArray(a) ? a : String(a ?? '').split(',')).map((s) => String(s).trim()).filter(Boolean);
+    const list = (a) => (Array.isArray(a) ? a : String(a ?? '').split(',')).map((s) => String(s).trim()).filter((s) => ACTION_SET.has(s));
     return {
+      /** 버튼 (레벨 상태; 키·패드와 OR). 모르는 액션은 무시 */
       set(action, on) {
         const acts = list(action);
-        if (on) self.setMode('touch');
+        if (on && acts.length) self.setMode('touch');
         for (const a of acts) self.sources.touch[a] = !!on;
       },
-      axis(x, y, o = {}) {
+      /**
+       * 아날로그 스틱 벡터 (반지름 단위, 단위 원 안으로 자른다; 0,0 = 뗌/데드존). 방향(left/right/up/down)은 만들지 않는다:
+       * 가상 패드가 구역 판정을 직접 해서 set('left', …) 으로 보낸다. sprint: bool (또는 {sprint}) — 1.15R 바깥 고리
+       */
+      axis(x, y, sprint) {
         x = Number(x) || 0; y = Number(y) || 0;
-        const raw = Math.hypot(x, y);
+        let raw = Math.hypot(x, y);
+        if (!Number.isFinite(raw)) { x = 0; y = 0; raw = 0; }
         if (raw > 0) self.setMode('touch');
         const v = self._touchVec;
         v.raw = raw;
-        if (raw <= TOUCH_DZ) { v.x = 0; v.y = 0; v.mag = 0; } else {
-          const k = Math.min(1, (raw - TOUCH_DZ) / (1 - TOUCH_DZ));
+        if (raw <= 0) { v.x = 0; v.y = 0; v.mag = 0; } else {
+          const k = Math.min(1, raw);
           v.x = (x / raw) * k; v.y = (y / raw) * k; v.mag = k;
         }
-        self._touchSprint = typeof o?.sprint === 'boolean' ? o.sprint : raw >= TOUCH_SPRINT;
-        const t = self.sources.touch;
-        t.left = t.right = t.up = t.down = false;
-        const sec = stickDigital(self._touchSt, x, y, raw, TOUCH_ENGAGE, TOUCH_RELEASE);
-        if (sec >= 0) for (const d of SECT_DIRS[sec]) t[d] = true;
+        const sp = typeof sprint === 'boolean' ? sprint : typeof sprint?.sprint === 'boolean' ? sprint.sprint : raw >= TOUCH_SPRINT;
+        self._touchSprint = raw > 0 && sp;
       },
+      /** 한 스텝만 누름 (다음 스텝에 뗀다) */
       tap(action) {
+        const acts = list(action);
+        if (!acts.length) return;
         self.setMode('touch');
-        for (const a of list(action)) self._touchTaps.set(a, 2);
+        for (const a of acts) self._touchTaps.set(a, 2);
       },
+      /** 모든 터치 입력 해제 (패드 숨김·창 전환) */
       clear() { self._releaseTouch(); },
       get active() { return self.mode === 'touch'; },
     };
+  }
+  /** 예전 DOM 스틱: 반지름 단위 벡터 → 아날로그 + 8방향 구역 (캔버스 패드는 방향을 직접 보낸다) */
+  _legacyStick(x, y) {
+    const raw = Math.hypot(x, y);
+    if (raw <= TOUCH_DZ) this.touch.axis(0, 0, false); else {
+      const k = Math.min(1, (raw - TOUCH_DZ) / (1 - TOUCH_DZ));
+      this.touch.axis((x / raw) * k, (y / raw) * k, false);
+    }
+    const t = this.sources.touch;
+    t.left = t.right = t.up = t.down = false;
+    const sec = stickDigital(this._touchSt, x, y, raw, TOUCH_ENGAGE, TOUCH_RELEASE);
+    if (sec >= 0) for (const d of SECT_DIRS[sec]) t[d] = true;
   }
 
   /** 예전 모바일 가상 패드 (DOM): #touch 안의 [data-act] 버튼과 #stick 영역. 캔버스 패드가 없을 때만 */
@@ -368,7 +393,7 @@ class Input {
     let stickId = null, cx = 0, cy = 0;
     const setDir = (dx, dy) => {
       if (this.padOff) return;
-      this.touch.axis(dx / R, dy / R);
+      this._legacyStick(dx / R, dy / R);
       if (knob) {
         const m = Math.min(1, R / Math.max(1, Math.hypot(dx, dy)));
         knob.style.transform = `translate(${dx * m}px, ${dy * m}px)`;
@@ -384,7 +409,7 @@ class Input {
         this.game?.audio?.unlock();
       });
       stick.addEventListener('pointermove', (e) => { if (e.pointerId === stickId) setDir(e.clientX - cx, e.clientY - cy); });
-      const end = (e) => { if (e.pointerId === stickId) { stickId = null; this.touch.axis(0, 0); if (knob) knob.style.transform = ''; } };
+      const end = (e) => { if (e.pointerId === stickId) { stickId = null; this._legacyStick(0, 0); if (knob) knob.style.transform = ''; } };
       stick.addEventListener('pointerup', end);
       stick.addEventListener('pointercancel', end);
     }
@@ -566,7 +591,7 @@ class Input {
     this._setActivePad(info);
     if (this.mode === 'pad') this._emitDevice(); else this.setMode('pad');
     const g = this.game;
-    g?.toast?.(`🎮 ${info.name} 연결됨`, '#c8e0ff');
+    this._hotToast(`🎮 ${info.name} 연결됨`, '#c8e0ff', 2.4);
     if (!info.standard) g?.toast?.('이 컨트롤러는 표준 배치가 아닙니다. 설정 › 조작에서 버튼을 지정해 주세요', '#ffd890', 4);
     const meta = g?.meta;
     if (meta && !meta.tips?.pad) {
@@ -589,10 +614,21 @@ class Input {
     this.stickL.x = this.stickL.y = this.stickL.mag = 0;
     this.stickR.x = this.stickR.y = this.stickR.mag = 0;
     const g = this.game;
-    g?.toast?.('컨트롤러 연결이 끊어졌습니다', '#ffb0a0', 3);
+    this._hotToast('컨트롤러 연결이 끊어졌습니다', '#ffb0a0', 3);
     try { g?.autoPause?.(); } catch (e) { console.error(e); }
     haptics.reset();
     if (this.mode === 'pad') this.setMode(hasTouchScreen() || this._prevMode === 'touch' ? 'touch' : 'kb');
+  }
+  /** 연결/끊김 토스트: 아직 떠 있는 직전 연결 상태 토스트(이제 틀린 말)는 지우고 새로 띄운다 */
+  _hotToast(msg, color, time) {
+    const g = this.game;
+    if (!g?.toast) return;
+    const list = g.toasts;
+    const old = this._hotToastObj;
+    if (old && Array.isArray(list)) { const i = list.indexOf(old); if (i >= 0) list.splice(i, 1); }
+    g.toast(msg, color, time);
+    const last = Array.isArray(g.toasts) ? g.toasts[g.toasts.length - 1] : null;
+    this._hotToastObj = last && last.text === msg ? last : null;
   }
   _setActivePad(info) {
     const glyphs = info.set;

@@ -4,11 +4,20 @@
  "out": "assets/painted/bosses/b_frostqueen",
  "raw": "tools/painted/raw/b_frostqueen",
  "td": 2.0,
+ "_doc": "서리 여왕 이자벨라 채색 퍼핏. 좌표 = 원본 Kling 픽셀. lps = 논리 px / 원본 px (머리 0.036 · 몸통 0.040 · 치마 0.046 · 팔 0.034). 렌더러: src/render/painted/bosses/b_frostqueen.js",
  "matte": {
   "default": {
    "key": 9,
    "soft": 22,
    "hard": 6
+  },
+  "torso_a": {
+   "watermark": [
+    0.0,
+    0.88,
+    0.32,
+    1.0
+   ]
   },
   "cape_tex": {
    "rembg": null,
@@ -18,56 +27,827 @@
    "watermark": false
   }
  },
+ "cuts": {
+  "collar_a": {
+   "masks": {
+    "fan": [
+     {
+      "op": "rect",
+      "rect": [
+       0,
+       0,
+       2336,
+       1760
+      ]
+     },
+     {
+      "op": "minus",
+      "pts": [
+       [
+        955,
+        1300
+       ],
+       [
+        965,
+        1230
+       ],
+       [
+        1000,
+        1185
+       ],
+       [
+        1045,
+        1160
+       ],
+       [
+        1085,
+        1155
+       ],
+       [
+        1125,
+        1160
+       ],
+       [
+        1170,
+        1185
+       ],
+       [
+        1205,
+        1230
+       ],
+       [
+        1215,
+        1300
+       ],
+       [
+        1205,
+        1370
+       ],
+       [
+        965,
+        1370
+       ]
+      ],
+      "feather": 2
+     },
+     {
+      "op": "minus",
+      "color": "dark",
+      "rect": [
+       150,
+       1370,
+       2336,
+       1760
+      ]
+     }
+    ]
+   }
+  },
+  "torso_a": {
+   "masks": {
+    "body": [
+     {
+      "op": "poly",
+      "feather": 2.5,
+      "pts": [
+       [
+        60,
+        60
+       ],
+       [
+        1500,
+        60
+       ],
+       [
+        1500,
+        2010
+       ],
+       [
+        1175,
+        2010
+       ],
+       [
+        1100,
+        1935
+       ],
+       [
+        1000,
+        1845
+       ],
+       [
+        900,
+        1765
+       ],
+       [
+        800,
+        1728
+       ],
+       [
+        650,
+        1732
+       ],
+       [
+        540,
+        1782
+       ],
+       [
+        470,
+        1712
+       ],
+       [
+        60,
+        1712
+       ]
+      ]
+     }
+    ]
+   }
+  },
+  "arm_a": {
+   "masks": {
+    "upper": [
+     {
+      "op": "poly",
+      "feather": 8,
+      "pts": [
+       [
+        0,
+        0
+       ],
+       [
+        770,
+        0
+       ],
+       [
+        770,
+        1760
+       ],
+       [
+        0,
+        1760
+       ]
+      ]
+     }
+    ],
+    "fore": [
+     {
+      "op": "poly",
+      "feather": 22,
+      "pts": [
+       [
+        640,
+        0
+       ],
+       [
+        2336,
+        0
+       ],
+       [
+        2336,
+        1760
+       ],
+       [
+        640,
+        1760
+       ]
+      ]
+     }
+    ]
+   }
+  }
+ },
  "parts": [
   {
    "name": "head_a",
    "src": "head_a",
-   "lps": 0.1
+   "lps": 0.036,
+   "box": [
+    200,
+    0,
+    1720,
+    1990
+   ],
+   "pivots": {
+    "neck": [
+     955,
+     1850
+    ],
+    "eye": [
+     1228,
+     1087
+    ],
+    "mouth": [
+     1320,
+     1350
+    ],
+    "chin": [
+     1290,
+     1560
+    ],
+    "crown": [
+     1480,
+     40
+    ],
+    "nape": [
+     700,
+     1500
+    ],
+    "back": [
+     520,
+     900
+    ]
+   }
   },
   {
    "name": "head_b",
    "src": "head_b",
-   "lps": 0.1
+   "lps": 0.036,
+   "box": [
+    200,
+    0,
+    1720,
+    1990
+   ],
+   "pivots": {
+    "neck": [
+     955,
+     1850
+    ],
+    "eye": [
+     1245,
+     1003
+    ],
+    "mouth": [
+     1290,
+     1400
+    ],
+    "chin": [
+     1330,
+     1600
+    ],
+    "crown": [
+     1480,
+     40
+    ],
+    "nape": [
+     700,
+     1500
+    ],
+    "back": [
+     520,
+     900
+    ]
+   }
   },
   {
-   "name": "torso_a",
+   "name": "torso",
    "src": "torso_a",
-   "lps": 0.1
+   "lps": 0.04,
+   "box": [
+    120,
+    100,
+    1320,
+    2020
+   ],
+   "mask": "body",
+   "pivots": {
+    "hip": [
+     790,
+     1680
+    ],
+    "neck": [
+     872,
+     225
+    ],
+    "shN": [
+     430,
+     625
+    ],
+    "shF": [
+     1150,
+     545
+    ],
+    "heart": [
+     1180,
+     1120
+    ],
+    "nape": [
+     700,
+     330
+    ],
+    "back": [
+     300,
+     900
+    ]
+   }
   },
   {
-   "name": "skirt_a",
+   "name": "skirt",
    "src": "skirt_a",
-   "lps": 0.1
+   "lps": 0.046,
+   "box": [
+    100,
+    150,
+    1660,
+    2260
+   ],
+   "pivots": {
+    "waist": [
+     890,
+     330
+    ],
+    "hem": [
+     880,
+     2180
+    ],
+    "back": [
+     300,
+     2000
+    ],
+    "front": [
+     1500,
+     2000
+    ]
+   }
   },
   {
-   "name": "arm_a",
-   "src": "arm_a",
-   "lps": 0.1
-  },
-  {
-   "name": "collar_a",
+   "name": "collar",
    "src": "collar_a",
-   "lps": 0.1
+   "lps": 0.057,
+   "box": [
+    40,
+    50,
+    2300,
+    1560
+   ],
+   "mask": "fan",
+   "pivots": {
+    "root": [
+     1085,
+     1330
+    ],
+    "tip": [
+     1110,
+     170
+    ]
+   }
   },
   {
-   "name": "victims_a",
+   "name": "armU",
+   "src": "arm_a",
+   "lps": 0.034,
+   "box": [
+    120,
+    200,
+    790,
+    660
+   ],
+   "mask": "upper",
+   "pivots": {
+    "sh": [
+     215,
+     395
+    ],
+    "el": [
+     700,
+     360
+    ]
+   }
+  },
+  {
+   "name": "armU2",
+   "src": "arm_a",
+   "lps": 0.034,
+   "box": [
+    40,
+    690,
+    790,
+    1070
+   ],
+   "mask": "upper",
+   "pivots": {
+    "sh": [
+     150,
+     890
+    ],
+    "el": [
+     700,
+     845
+    ]
+   }
+  },
+  {
+   "name": "armC",
+   "src": "arm_a",
+   "lps": 0.034,
+   "box": [
+    600,
+    200,
+    2210,
+    660
+   ],
+   "mask": "fore",
+   "pivots": {
+    "el": [
+     700,
+     360
+    ],
+    "wr": [
+     1310,
+     345
+    ],
+    "tip": [
+     2080,
+     360
+    ],
+    "palm": [
+     1650,
+     400
+    ]
+   }
+  },
+  {
+   "name": "armO",
+   "src": "arm_a",
+   "lps": 0.034,
+   "box": [
+    600,
+    690,
+    2210,
+    1070
+   ],
+   "mask": "fore",
+   "pivots": {
+    "el": [
+     700,
+     845
+    ],
+    "wr": [
+     1310,
+     830
+    ],
+    "tip": [
+     2140,
+     820
+    ],
+    "palm": [
+     1700,
+     860
+    ]
+   }
+  },
+  {
+   "name": "armS",
+   "src": "arm_a",
+   "lps": 0.0245,
+   "box": [
+    60,
+    1170,
+    2300,
+    1610
+   ],
+   "pivots": {
+    "el": [
+     205,
+     1400
+    ],
+    "wr": [
+     1420,
+     1385
+    ],
+    "tip": [
+     2240,
+     1440
+    ],
+    "palm": [
+     1850,
+     1400
+    ]
+   }
+  },
+  {
+   "name": "vic0",
    "src": "victims_a",
-   "lps": 0.1
+   "lps": 0.036,
+   "box": [
+    100,
+    110,
+    690,
+    1390
+   ],
+   "pivots": {
+    "base": [
+     395,
+     1368
+    ],
+    "top": [
+     420,
+     140
+    ]
+   }
   },
   {
-   "name": "shards_a",
-   "src": "shards_a",
-   "lps": 0.1
+   "name": "vic1",
+   "src": "victims_a",
+   "lps": 0.036,
+   "box": [
+    800,
+    255,
+    1355,
+    1365
+   ],
+   "pivots": {
+    "base": [
+     1077,
+     1345
+    ],
+    "top": [
+     1150,
+     290
+    ]
+   }
   },
   {
-   "name": "hazard_a",
+   "name": "vic2",
+   "src": "victims_a",
+   "lps": 0.032,
+   "box": [
+    1450,
+    430,
+    1925,
+    1305
+   ],
+   "pivots": {
+    "base": [
+     1687,
+     1285
+    ],
+    "top": [
+     1687,
+     460
+    ]
+   }
+  },
+  {
+   "name": "vic3",
+   "src": "victims_a",
+   "lps": 0.036,
+   "box": [
+    2040,
+    140,
+    2545,
+    1378
+   ],
+   "pivots": {
+    "base": [
+     2292,
+     1356
+    ],
+    "top": [
+     2250,
+     170
+    ]
+   }
+  },
+  {
+   "name": "hz_pillar",
    "src": "hazard_a",
-   "lps": 0.1
+   "lps": 0.1,
+   "box": [
+    145,
+    135,
+    995,
+    1420
+   ],
+   "pivots": {
+    "base": [
+     570,
+     1398
+    ],
+    "tip": [
+     560,
+     160
+    ]
+   }
+  },
+  {
+   "name": "hz_icicle",
+   "src": "hazard_a",
+   "lps": 0.05,
+   "box": [
+    1180,
+    130,
+    1552,
+    1408
+   ],
+   "pivots": {
+    "root": [
+     1365,
+     150
+    ],
+    "tip": [
+     1370,
+     1388
+    ]
+   }
+  },
+  {
+   "name": "hz_spike",
+   "src": "hazard_a",
+   "lps": 0.07,
+   "box": [
+    1765,
+    150,
+    2585,
+    1425
+   ],
+   "pivots": {
+    "base": [
+     2175,
+     1402
+    ],
+    "tip": [
+     2180,
+     180
+    ]
+   }
   },
   {
    "name": "cape_tex",
    "src": "cape_tex",
-   "lps": 0.1
+   "lps": 0.5,
+   "box": [
+    0,
+    0,
+    256,
+    256
+   ],
+   "pivots": {
+    "c": [
+     128,
+     128
+    ]
+   }
   }
- ]
+ ],
+ "debris": [
+  {
+   "prefix": "sh",
+   "src": "shards_a",
+   "lps": 0.03,
+   "boxes": [
+    [
+     128,
+     995,
+     680,
+     1390
+    ],
+    [
+     192,
+     134,
+     557,
+     856
+    ],
+    [
+     645,
+     102,
+     1127,
+     783
+    ],
+    [
+     784,
+     823,
+     1362,
+     1438
+    ],
+    [
+     1213,
+     223,
+     1572,
+     800
+    ],
+    [
+     1439,
+     808,
+     1947,
+     1442
+    ],
+    [
+     1708,
+     158,
+     2096,
+     809
+    ],
+    [
+     2094,
+     902,
+     2666,
+     1395
+    ],
+    [
+     2184,
+     139,
+     2617,
+     825
+    ]
+   ]
+  }
+ ],
+ "kling": {
+  "model": "kling-image-v3_0_omni (image_to_image, img_resolution 2k unless noted)",
+  "prompts": "tools/painted/prompts/art-boss-4.mjs",
+  "manifest": "tools/kling/manifest_art-boss-4.json",
+  "images": [
+   {
+    "boss": "b_frostqueen",
+    "shot": "fq_head_a",
+    "generationId": "ATTyjLhpY587QnMiTbCcyXafNGK-v-XvKAUFFwIDeDghq_lapFpw3e1typiINx9V8gemuJ4E",
+    "aspect": "1:1",
+    "imageCount": 2,
+    "decision": "#1 kept → raw/b_frostqueen/head_a (profile right, icicle crown, cracked porcelain skin, frost veins, glowing eyes). #2 unused (ponytail, less regal)."
+   },
+   {
+    "boss": "b_frostqueen",
+    "shot": "fq_head_b",
+    "generationId": "AZxa6Od7QWxSbpNDkzU1PhlfBLsEfyVshOMDTY9PlHZeUb4pNn6xoI1gfMbamSi781BdaxIB",
+    "aspect": "1:1",
+    "imageCount": 1,
+    "decision": "kept → raw/head_b (screaming variant, image_2 = head_a Kling result URL; same crown/hair/cracks, split fanged mouth). Used for cast/attack/phase frames."
+   },
+   {
+    "boss": "b_frostqueen",
+    "shot": "fq_torso",
+    "generationId": "AQ3wSKOxSQZ6IQARu269vEFIQ95MX03ya76GZearrdmxKhEurL7Wk4xX7g-hH0GeVXlD0Pjv",
+    "aspect": "3:4",
+    "imageCount": 2,
+    "decision": "both rejected: #1 paper-craft bodice on a mannequin, #2 corset only (no shoulders/neck) with a stray grey disc."
+   },
+   {
+    "boss": "b_frostqueen",
+    "shot": "fq_torso_retry",
+    "generationId": "ARa9_T6JDVslCDM22ACed0zB6BTUu2yQijopSnlHtdRmBaqCw0e1nakctl-e7nevKKs3R6mr",
+    "aspect": "3:4",
+    "imageCount": 2,
+    "decision": "#2 kept → raw/torso_a (cracked-porcelain bodice in near profile, shoulder spikes, heart crystal). #1 unused (front 3/4 view, would not match the profile head).",
+    "prompt": "fq_torso prompt + \"not paper, not a mannequin, not a dress form … The living upper body … from the base of the neck down to the waist … both arms cut off at the shoulder joints leaving round stumps … sharp ice spikes rising from the shoulders\""
+   },
+   {
+    "boss": "b_frostqueen",
+    "shot": "fq_skirt",
+    "generationId": "AYV5wPa8P5DuvpICKilj8jTpgy8gvw0ZJ5aDtGdRvvc7ggyG-dTVlbjIgM6n5jelt8JLc5LS",
+    "aspect": "3:4",
+    "imageCount": 2,
+    "decision": "#1 kept → raw/skirt_a (ice bell with screaming frozen faces and hands trapped inside — the grotesque centrepiece). #2 unused (cleaner, less icy)."
+   },
+   {
+    "boss": "b_frostqueen",
+    "shot": "fq_arm",
+    "generationId": "ATdty1g9CaRUf_16jZoUUjv8EeoLLe6K-fvyve7NoyfqwNixJMqfQVdTWj2lxnk-HHKo67eF",
+    "aspect": "4:3",
+    "imageCount": 1,
+    "decision": "kept → raw/arm_a (3 whole arms: cracked claw arm, cracked open-hand arm, skeletal arm → phase-2 bone arm)."
+   },
+   {
+    "boss": "b_frostqueen",
+    "shot": "fq_collar",
+    "generationId": "Ads9v-_HKRDv8ouhWRa3tDrMns6cX3Qk2fhTClRIaPV9GufEgXTmgRMuwS-60NCPeT3tYVbc",
+    "aspect": "4:3",
+    "imageCount": 1,
+    "decision": "kept → raw/collar_a (ice-blade fan halo; grey root disc + floor shadow masked out in the config)."
+   },
+   {
+    "boss": "b_frostqueen",
+    "shot": "fq_victims",
+    "generationId": "AVDFJZW5NkHDhigB5FUoa3Fwff-VNPVurl0P3k2dmfCZdew3KTfO7lQAMVmNU4kM3fdC0Xtz",
+    "aspect": "16:9",
+    "imageCount": 1,
+    "decision": "kept → raw/victims_a (2 frozen arms on ice bases, frozen skull, skeletal hand) — writhing hem victims + death debris."
+   },
+   {
+    "boss": "b_frostqueen",
+    "shot": "fq_shards",
+    "generationId": "AXXXLkg70lpSMn2odM0SiH3rhJ54UmJGyStUUI0Pwy7k4G7a9XEJeY_x_sMbjeR2OHYgzXUf",
+    "aspect": "16:9",
+    "imageCount": 1,
+    "decision": "kept → raw/shards_a (9 ice shards/chunks) — death shatter, hit chips."
+   },
+   {
+    "boss": "b_frostqueen",
+    "shot": "fq_hazard",
+    "generationId": "AfwFGWDleWiyAVtuZYzX4jyzDgVAHOfUvCCuqznqaLcbbpCCA4b_xkkaxJyOgQlBBVNHgyt1",
+    "aspect": "16:9",
+    "imageCount": 1,
+    "decision": "kept → raw/hazard_a (crystal pillar, icicle, spike cluster) — painted hazards (pillars, icicle rain, wall spikes)."
+   },
+   {
+    "boss": "b_frostqueen",
+    "shot": "fq_cape_tex",
+    "generationId": "Aau4k_zhXhniIbY0SxIo7Ks-VWh9FNHncrjt48adhU-bLglDD6PxF3_Gg3alB_Hs6ztltVrm",
+    "aspect": "1:1",
+    "imageCount": 1,
+    "decision": "kept, 1k → centre crop, seamless (tools/kling/seamless_lib.make_seamless), 256² → raw/cape_tex (veil/cape pattern)."
+   }
+  ],
+  "imagesSpent": 15
+ }
 }

@@ -74,6 +74,7 @@ export const PAD_CONFIRM = { south: { confirm: [0], cancel: [1] }, east: { confi
 
 /** 가상 패드 버튼 id (touchpad.js). 없는 액션은 터치 글리프가 없다 (화면 탭 · 안내 문구) */
 export const TOUCH_BINDINGS = {
+  left: ['stick'], right: ['stick'], up: ['stick'], down: ['stick'],
   jump: ['jump'], attack: ['attack'], dash: ['dash'], sub: ['sub'], skill1: ['skill1'], skill2: ['skill2'],
   ult: ['ult'], swap: ['swap'], map: ['bag'], menu: ['pause'], mount: ['mount'], guard: ['guard'],
   awaken: ['ult'],
@@ -169,7 +170,7 @@ export function keyLabel(code) {
 /** 터치 글리프 (가상 패드 버튼과 같은 말) */
 export const TOUCH_LABELS = {
   jump: '점프', attack: '공격', dash: '대시', sub: '보조', skill1: 'S1', skill2: 'S2', ult: '필살', swap: '⇄',
-  bag: '가방', pause: 'Ⅱ', mount: '탑승', guard: '수호',
+  bag: '가방', pause: 'Ⅱ', mount: '탑승', guard: '수호', stick: '스틱',
 };
 
 /** 비표준 패드 햇(축 9): (v + 1) / (2/7) 를 반올림한 칸 → [x, y]. |v| > 1.05 이면 중립 */

@@ -1,12 +1,12 @@
 // 상점 데이터 — 챕터(state.progress.chapter: 마지막으로 클리어한 챕터)에 따라 품목이 늘어난다
 //  shopStock(chapter)  → [{ baseId, rarity, price, tag?, note? }]  떠돌이 상인 로크: 물약·에테르·해독제·강화석·주문서·기본 장신구
 //  smithStock(chapter) → [{ baseId, rarity, price, tag?, note? }]  대장장이 하드윈: 6계열 무기 + 머리·갑옷·망토
-//  chapterTier(chapter) → 판매 장비 최고 단계(1~6)
+//  chapterTier(chapter) → 판매 장비 최고 단계(1~7; 7단계 = 2부, 챕터 15부터)
 //  SHOPKEEPERS: 상점 주인 대사(인사·구매·판매·골드 부족)
 //  price 는 개당 가격. rarity > 0 인 장비는 구매 시 추가 옵션이 무작위로 붙는다 (note 로 안내).
 import { ITEMS, WTYPES, RARITIES, buyPrice } from './items.js';
 
-export function chapterTier(ch = 0) { return ch <= 1 ? 1 : ch <= 3 ? 2 : ch <= 5 ? 3 : ch <= 8 ? 4 : ch <= 11 ? 5 : 6; }
+export function chapterTier(ch = 0) { return ch <= 1 ? 1 : ch <= 3 ? 2 : ch <= 5 ? 3 : ch <= 8 ? 4 : ch <= 11 ? 5 : ch <= 14 ? 6 : 7; }   // world2 §7.6: 14 → 6, 15+ → 7
 
 // [baseId, 해금 챕터, 가격 배율, 태그]
 const ROOK_GOODS = [
@@ -14,12 +14,16 @@ const ROOK_GOODS = [
   ['c_antidote', 0, 1], ['c_bread', 0, 1], ['c_meat', 1, 1], ['c_holywater', 2, 1], ['c_rage_tonic', 4, 1], ['c_warp', 0, 1],
   ['m_stone_1', 0, 1.3], ['m_stone_2', 3, 1.3], ['m_stone_3', 6, 1.35, '한정 입고'],
   ['m_scroll_bless', 4, 1.2], ['m_scroll_protect', 5, 1.2, '비쌈'],
+  // 2부 (world2 §7.6)
+  ['m_stone_4', 14, 1.35], ['m_stone_5', 16, 1.4, '한정 입고'],
 ];
 // [baseId, 해금 챕터] — 기본 장신구
 const ROOK_ACC = [
   ['a_ring_1', 0], ['a_amulet_1', 0], ['a_ring_2', 1], ['a_amulet_2', 1],
   ['a_ring_3', 3], ['a_amulet_3', 3], ['a_ring_4', 4], ['a_amulet_4', 4],
   ['a_ring_5', 6], ['a_amulet_5', 6], ['a_ring_6', 7], ['a_amulet_6', 7],
+  // 2부 (world2 §7.6)
+  ['a_ring_11', 14], ['a_amulet_11', 14], ['a_ring_13', 16], ['a_amulet_13', 16],
 ];
 
 const rarNote = (r) => (r > 0 ? `${RARITIES[r].name} — 추가 옵션 ${RARITIES[r].affixes}개 무작위` : undefined);
@@ -43,7 +47,7 @@ export function shopStock(chapter = 0) {
 /** 대장장이 하드윈의 무기·방어구 */
 export function smithStock(chapter = 0) {
   const T = chapterTier(chapter);
-  const topR = chapter >= 9 ? 2 : chapter >= 4 ? 1 : 0;
+  const topR = chapter >= 16 ? 3 : chapter >= 9 ? 2 : chapter >= 4 ? 1 : 0;
   const out = [];
   const push = (id, r, tag) => { if (ITEMS[id]) out.push({ baseId: id, rarity: r, price: buyPrice(id, r), tag, note: rarNote(r) }); };
   for (const wt of WTYPES) {

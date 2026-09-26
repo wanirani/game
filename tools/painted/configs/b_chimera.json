@@ -5,19 +5,96 @@
  "raw": "tools/painted/raw/b_chimera",
  "td": 2.0,
  "matte": {
-  "default": {
-   "key": 9,
-   "soft": 22,
-   "hard": 6
-  },
+  "default": {"key": 9, "soft": 22, "hard": 6},
+  "body_a": {"watermark": [0.0, 0.86, 0.32, 1.0]}
+ },
+ "cuts": {
   "body_a": {
-   "watermark": [
-    0.0,
-    0.86,
-    0.32,
-    1.0
-   ]
+   "masks": {
+    "torso": [
+     {"op": "poly", "feather": 2.0, "pts": [[490, 380], [492, 700], [478, 900], [446, 1000], [432, 1075], [560, 1072], [700, 1100], [760, 1062], [900, 1085], [1000, 1085], [1190, 1080], [1262, 1012], [1650, 1010], [1700, 1016], [1985, 1012], [2150, 995], [2160, 800], [2140, 450], [2000, 60], [740, 60]]}
+    ],
+    "legH": [
+     {"op": "poly", "feather": 1.5, "pts": [[410, 1025], [560, 1025], [665, 1085], [676, 1180], [664, 1340], [735, 1378], [748, 1482], [385, 1486], [378, 1380], [418, 1250], [418, 1130]]},
+     {"op": "minus", "pts": [[378, 1432], [436, 1432], [440, 1498], [374, 1498]]}
+    ],
+    "legF": [
+     {"op": "poly", "feather": 1.5, "pts": [[1650, 965], [1985, 965], [1992, 1200], [1996, 1330], [2100, 1362], [2178, 1418], [2184, 1500], [1860, 1504], [1760, 1472], [1700, 1330], [1662, 1150]]}
+    ]
+   }
+  },
+  "head_a": {
+   "punch": [
+    {"type": "dark", "lum": 38, "open": 5, "dilate": 1, "k": 0.98, "poly": [[1262, 1000], [1300, 945], [1450, 925], [1600, 938], [1700, 952], [1790, 962], [1790, 1010], [1690, 1172], [1500, 1122], [1380, 1066]]}
+   ],
+   "masks": {
+    "jaw": [
+     {"op": "poly", "feather": 1.5, "pts": [[1200, 985], [1245, 1000], [1380, 1068], [1500, 1124], [1600, 1150], [1690, 1176], [1860, 1188], [1860, 1760], [1420, 1760], [1330, 1640], [1262, 1480], [1232, 1300], [1226, 1120]]}
+    ],
+    "chin": [
+     {"op": "poly", "feather": 1.5, "pts": [[1380, 1070], [1500, 1126], [1600, 1152], [1690, 1178], [1860, 1190], [1860, 1760], [1480, 1760], [1420, 1660], [1370, 1500], [1340, 1300], [1340, 1120]]}
+    ]
+   }
+  },
+  "goat_a": {
+   "masks": {
+    "goat": [
+     {"op": "poly", "feather": 1.5, "pts": [[40, 80], [1640, 80], [1640, 1560], [900, 1610], [800, 1735], [470, 1735], [440, 1500], [40, 1420]]}
+    ]
+   }
+  },
+  "snakehead_a": {
+   "masks": {
+    "sh": [
+     {"op": "poly", "feather": 1.5, "pts": [[760, 330], [1000, 170], [1500, 140], [2000, 240], [2000, 1330], [1500, 1335], [1300, 1262], [1150, 1200], [1000, 1010], [820, 780]]}
+    ]
+   }
   }
  },
- "parts": []
+ "parts": [
+  {"name": "torso", "src": "body_a", "mask": "torso", "lps": 0.13, "box": [420, 60, 2170, 1110],
+   "pivots": {"c": [1350, 1485], "cup0": [958, 246], "cup1": [1283, 258], "cup2": [1690, 228], "rump": [560, 660], "goatRoot": [1125, 395], "hipH": [520, 1075], "hipH2": [900, 1085], "hipF": [1820, 1014], "hipF2": [2110, 1000], "chest": [2050, 760], "core": [1250, 740]},
+   "points": {"seam": [[1150, 420], [1180, 560], [1210, 700], [1230, 840], [1250, 960]]}},
+  {"name": "legH", "src": "body_a", "mask": "legH", "lps": 0.13, "box": [370, 1020, 760, 1500],
+   "pivots": {"hip": [520, 1075], "foot": [560, 1478]}},
+  {"name": "legF", "src": "body_a", "mask": "legF", "lps": 0.13, "box": [1645, 960, 2190, 1508],
+   "pivots": {"hip": [1820, 1014], "foot": [1990, 1498]}},
+  {"name": "lion", "src": "head_a", "mask": "!chin", "lps": 0.08, "box": [190, 0, 1900, 1760],
+   "pivots": {"o": [1150, 850], "hinge": [1245, 1000], "eye": [1405, 620], "nose": [1800, 820], "mouth": [1560, 1150], "drip": [1560, 1330]},
+   "points": {"throat": [[1250, 990], [1330, 935], [1460, 925], [1600, 940], [1760, 960], [1760, 1180], [1600, 1158], [1480, 1126], [1380, 1072]]}},
+  {"name": "lion_jaw", "src": "head_a", "mask": "jaw", "lps": 0.08, "box": [1190, 960, 1870, 1760],
+   "pivots": {"hinge": [1245, 1000], "tip": [1600, 1330], "drip": [1560, 1360]}},
+  {"name": "goat", "src": "goat_a", "mask": "goat", "lps": 0.05, "box": [40, 80, 1650, 1740],
+   "pivots": {"neck": [640, 1690], "eye": [1030, 730], "mouth": [1330, 1090], "brow": [1000, 560]}},
+  {"name": "snake", "src": "snake_a", "lps": 0.085, "box": [262, 400, 2985, 892],
+   "pivots": {"root": [300, 645], "tip": [2955, 632]}},
+  {"name": "shead", "src": "snakehead_a", "mask": "sh", "lps": 0.042, "box": [740, 130, 2010, 1345],
+   "pivots": {"neck": [880, 600], "snout": [1940, 420], "eye": [1395, 395], "mouth": [1700, 720]}},
+  {"name": "tube0", "src": "tubes_a", "lps": 0.05, "box": [300, 110, 800, 1095], "pivots": {"base": [545, 1080], "liq": [545, 790], "top": [545, 150]}},
+  {"name": "tube1", "src": "tubes_a", "lps": 0.05, "box": [1090, 110, 1610, 1095], "pivots": {"base": [1345, 1080], "liq": [1345, 790], "top": [1345, 150]}},
+  {"name": "tube2", "src": "tubes_a", "lps": 0.05, "box": [1870, 110, 2410, 1095], "pivots": {"base": [2130, 1080], "liq": [2130, 790], "top": [2130, 150]}},
+  {"name": "tubeb0", "src": "tubesb_a", "lps": 0.05, "box": [430, 110, 880, 1060], "pivots": {"base": [650, 1040], "liq": [640, 700], "top": [640, 300]}},
+  {"name": "tubeb1", "src": "tubesb_a", "lps": 0.05, "box": [1140, 140, 1610, 1060], "pivots": {"base": [1375, 1040], "liq": [1375, 700], "top": [1375, 320]}},
+  {"name": "tubeb2", "src": "tubesb_a", "lps": 0.05, "box": [1840, 170, 2340, 1060], "pivots": {"base": [2085, 1040], "liq": [2080, 700], "top": [2080, 360]}}
+ ],
+ "debris": [
+  {"prefix": "deb", "src": "debris_a", "lps": 0.045, "boxes": [[150, 60, 430, 800], [500, 120, 730, 720], [780, 110, 1300, 900], [1340, 150, 1970, 650], [2120, 50, 2630, 840], [120, 870, 810, 1410], [770, 970, 1370, 1410], [1530, 810, 1990, 1440], [2090, 850, 2610, 1390]]}
+ ],
+ "kling": {
+  "model": "kling-image-v3_0_omni (image_to_image, img_resolution 2k)",
+  "prompts": "tools/painted/prompts/art-boss-3.mjs → PROMPTS.b_chimera",
+  "manifest": "tools/kling/manifest_art-boss-3.json",
+  "refs": {"image_1": "assets/portraits/b_chimera.webp (style, palette, anatomy)"},
+  "images": {
+   "body_a": {"call": "torso_a", "aspect": "16:9", "imageCount": 2, "decision": "kept 1 of 2 — the model painted the whole lion (head, legs, lion tail) instead of the torso only; used as the torso + both lower legs (cut), head/tail replaced by head_a / snake"},
+   "legs_a": {"call": "legs_a", "aspect": "16:9", "imageCount": 2, "decision": "rejected both — front views (shoulder girdle / pelvis seen from the front), unusable for a side-view puppet; lower legs are cut from body_a instead"},
+   "head_a": {"call": "head_a", "aspect": "4:3", "imageCount": 2, "decision": "kept 1 — mouth wide open with acid drool, stitched eye; jaw cut at the hinge (masks jaw/chin + throat punch)"},
+   "goat_a": {"call": "goat_a", "aspect": "3:4", "imageCount": 2, "decision": "kept 1 — ram horns with sigils, glowing eye; the thin stick below the neck stump is masked off"},
+   "snake_a": {"call": "snake_a", "aspect": "21:9", "imageCount": 1, "decision": "kept — straight tapering tail with stitches and glowing scales; drawn as bent strips along the logic tail curve"},
+   "snakehead_a": {"call": "snakehead_a", "aspect": "4:3", "imageCount": 1, "decision": "kept — venom fangs, rigid head (neck curve masked)"},
+   "tubes_a": {"call": "tubes_a", "aspect": "16:9", "imageCount": 1, "decision": "kept — 3 intact tubes with flesh grafts (bottom brass base cut off)"},
+   "tubesb_a": {"call": "tubesb_a", "aspect": "16:9", "imageCount": 1, "decision": "kept — 3 shattered tubes (phase 2)"},
+   "debris_a": {"call": "debris_a", "aspect": "16:9", "imageCount": 1, "decision": "kept — 9 pieces (vials, fur, flesh, snake skin, clamp)"}
+  }
+ }
 }

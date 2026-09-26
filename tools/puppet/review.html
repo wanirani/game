@@ -147,7 +147,7 @@ async function render(s) {
   // 관절 검사: 관절점·뼈 중간점 둘레(반지름 1.4 논리px)의 최소 알파 — 이음매 틈이면 낮다
   let joints = null;
   if (an && e.rig.P && !s.yaw) {
-    const Hh = _debugHost(), SK = Hh.SK, P = e.rig.P, O = [0, 0], fac = e.facing < 0 ? -1 : 1, hs = s.scale ?? 1;
+    const Hh = _debugHost(), SK = Hh.SK, P = e.rig.P, O = [0, 0], fac = e.facing < 0 ? -1 : 1, hs = (s.scale ?? 1) * (look.height ?? 1);  // drawHero 의 heroScale 과 같게 (영웅 키 배율 포함: 리아 0.94·브란 1.08)
     const pts = { neck: [SK.nx, SK.ny], sh1: [SK.s1x, SK.s1y], el1: [SK.e1x, SK.e1y], el2: [SK.e2x, SK.e2y], hip1: [SK.hp1x, SK.hp1y], hip2: [SK.hp2x, SK.hp2y],
       kn1: [SK.k1x, SK.k1y], kn2: [SK.k2x, SK.k2y],
       el1b: [SK.e1x, SK.e1y], ua1: [(SK.s1x + SK.e1x) / 2, (SK.s1y + SK.e1y) / 2], fa1: [(SK.e1x + SK.h1x) / 2, (SK.e1y + SK.h1y) / 2], ua2: [(SK.s2x + SK.e2x) / 2, (SK.s2y + SK.e2y) / 2], fa2: [(SK.e2x + SK.h2x) / 2, (SK.e2y + SK.h2y) / 2],

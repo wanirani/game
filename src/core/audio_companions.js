@@ -306,12 +306,14 @@ export const CMP_SFX = {
   } },
   mirror_chime: { max: 2, gap: 0.12, rev: 0.55, vary: 0.02, vol: 1.1, fn(S, { T, N, FM }) {
     // 거울 요정 미라: 유리 방울 두 음이 거울에 비친 듯 점점 작게 세 번 되울린다
+    //  변조파(음 × 3.1 ≈ 9.7 kHz)가 나이퀴스트를 넘으면 브라우저가 경고를 찍으므로 낮은 샘플레이트(16 kHz 블루투스 헤드셋 등)에서는 비율을 줄인다
+    const nq = (S.c.sampleRate || 44100) * 0.45, r1 = Math.min(3.1, nq / (2349 * S.p)), r2 = Math.min(3.1, nq / (3136 * S.p));
     for (let k = 0; k < 3; k++) {
       const at = k * 0.13, v = Math.pow(0.5, k);
-      FM(S, 2349, 3.1, 0.5, at, 0.5, 0.15 * v, { fd: 0.12, a: 0.002 });
-      FM(S, 3136, 3.1, 0.4, at + 0.05, 0.45, 0.1 * v, { fd: 0.1, a: 0.002 });
+      FM(S, 2349, r1, 0.5, at, 0.5, 0.15 * v, { fd: 0.12, a: 0.002 });
+      FM(S, 3136, r2, 0.4, at + 0.05, 0.45, 0.1 * v, { fd: 0.1, a: 0.002 });
     }
-    N(S, 0, 0.3, 0.05, { f: ['highpass', 7000], a: 0.02 });
+    N(S, 0, 0.3, 0.05, { f: ['highpass', Math.min(7000, nq / S.p)], a: 0.02 });
   } },
   jelly_zap: { max: 3, gap: 0.08, rev: 0.2, vary: 0.04, vol: 1.0, fn(S, { T, N, CRACKLE }) {
     // 등불 해파리 루멘: '삐릿— 삐릿—' 전기 짹짹 두 번 + 지직 + 물속 뽀록
@@ -349,15 +351,17 @@ try { registerCompanionSfx(); } catch { Promise.resolve().then(() => { try { reg
 // ─────────────────────────────── 재생 도우미 ───────────────────────────────
 /** 동료 울음소리: def.cry = { sfx, pitch, extra? } (data/companions.js). o = { vol, pitch(곱), pan, delay }.
  *  extra(예: 'bone_rattle', 'fire')는 0.06초 늦게 0.7 음량으로 겹친다. def 가 없거나 cry 가 없으면 아무것도 하지 않는다. */
-export function playCry(def, o = E0) {
+export function playCry(def, o) {
   const cry = def?.cry;
   if (!cry?.sfx) return;
+  o = o || E0; // null 옵션도 허용
   const vol = o.vol ?? 1, delay = o.delay ?? 0;
   audio.sfx(cry.sfx, { vol, pitch: (cry.pitch ?? 1) * (o.pitch ?? 1), pan: o.pan, delay });
   if (cry.extra) audio.sfx(cry.extra, { vol: vol * 0.7, pan: o.pan, delay: delay + 0.06 });
 }
 /** 낙마 (companions §3.7): knock_off 뒤에 그 탈것의 울음을 1.3배 높이로 */
-export function playKnockOff(def, o = E0) {
+export function playKnockOff(def, o) {
+  o = o || E0;
   const vol = o.vol ?? 1;
   audio.sfx('knock_off', { vol, pan: o.pan });
   playCry(def, { vol: vol * 0.55, pitch: 1.3, pan: o.pan, delay: 0.08 });

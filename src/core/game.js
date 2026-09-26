@@ -3,7 +3,9 @@
 //   game.safe {l,r,t,b}     기기 안전 영역 (논리 px; 두 safeArea 모드 모두 기기 인셋 그대로) · game.safeCss (CSS px)
 //   game.cssScale           CSS px / 논리 px (캔버스 CSS 높이 / 540) · game.canvasRect {x,y,w,h} 캔버스 CSS 상자
 //   game.uiK / uiW / uiH    UI 배율과 그 배율에서의 화면 크기 (scene.uiScale = true 인 장면만 ctx.scale(uiK) 로 그린다)
-//   game.tier / quality     실제 품질 등급 'low'|'medium'|'high' (설정 'auto' 는 품질 조절기가 정한다)
+//   game.tier / quality     실제 품질 등급 'low'|'medium'|'high' (설정 'auto' 는 품질 조절기가 정한다.
+//                           조절 결과는 settings.autoTier 로 남겨 다음 실행이 그 등급에서 시작한다 — game.onSettingsAuto(settings) 로 저장,
+//                           settings.quality 는 'auto' 그대로 둔다)
 //   game.dirty              true 면 다음 rAF 에 틱이 없어도 한 번 그린다 (fpsCap 60 은 틱이 돈 rAF 에서만 그린다)
 //   game.syncPad()          가상 패드 표시의 유일한 주인 (touchpad.setVisible)
 //   game.flash(color, strength, decay) · game.vignette(color, a, decay) · game.toast(text, color, time)
@@ -11,7 +13,7 @@
 // 주의 (순환 import): hud_layout.js · touchpad.js 등이 이 파일을 import 한다 → 모듈 최상위에서 import 값에 접근하지 않는다.
 import { input } from './input.js';
 import { clamp, rgba } from './math.js';
-import { font, wrap, FONT, setTextFloor, taps, onFontEpoch } from './ui.js';
+import { font, wrap, FONT, setTextFloor, taps, onFontEpoch, fontEpoch } from './ui.js';
 import { touchpad } from './touchpad.js';
 import { safeInsets } from './platform.js';
 import { hudLayout, hudSafe } from '../render/hud_layout.js';
@@ -104,7 +106,7 @@ class Game {
     // 품질 조절기 상태 (설정 'auto' 일 때만 등급을 바꾼다; 설정값 자체는 쓰지 않는다)
     this.gov = { start: null, tier: null, ema: STEP, slowT: 0, goodT: 0, lastChange: -Infinity, lastRaise: -Infinity, ceil: 2, top: null, toasted: false };
     this._watch = { q: undefined, u: undefined, a: undefined };
-    this._probe = null;
+    this._insErr = false;
   }
 
   /** 실제 품질 등급 'low'|'medium'|'high' (설정 'auto' 는 품질 조절기 결과) */
@@ -135,29 +137,12 @@ class Game {
   }
 
   // ─────────────────────────── 화면 배치 (platform §6.1, §6.2, §6.4) ───────────────────────────
-  /** 기기 안전 영역 (CSS px): platform.safeInsets() (env() 측정 + APK 브리지) 와 자체 env() 측정 중 큰 값 */
+  /** 기기 안전 영역 (CSS px): platform.safeInsets() (env(safe-area-inset-*) 측정 ⊕ APK 브리지 window.__BN_INSETS) */
   readInsets() {
     let a = null;
-    try { a = safeInsets?.(); } catch { a = null; }
-    const b = this.probeEnv();
-    const pick = (k) => Math.round(Math.max(0, Number(a?.[k]) || 0, b[k] || 0) * 10) / 10;
+    try { a = safeInsets?.(); } catch (e) { a = null; if (!this._insErr) { this._insErr = true; console.error(e); } }
+    const pick = (k) => Math.round(Math.max(0, Number(a?.[k]) || 0) * 10) / 10;
     return { l: pick('l'), r: pick('r'), t: pick('t'), b: pick('b') };
-  }
-  /** CSS env(safe-area-inset-*) 를 숨긴 고정 요소로 잰다 (CSS px) */
-  probeEnv() {
-    try {
-      if (!document.body) return ZERO;
-      let d = this._probe;
-      if (!d || !d.isConnected) {
-        d = document.createElement('div');
-        d.setAttribute('aria-hidden', 'true');
-        d.style.cssText = 'position:fixed;left:env(safe-area-inset-left,0px);right:env(safe-area-inset-right,0px);top:env(safe-area-inset-top,0px);bottom:env(safe-area-inset-bottom,0px);pointer-events:none;visibility:hidden;z-index:-1';
-        document.body.appendChild(d);
-        this._probe = d;
-      }
-      const r = d.getBoundingClientRect();
-      return { l: Math.max(0, r.left), r: Math.max(0, window.innerWidth - r.right), t: Math.max(0, r.top), b: Math.max(0, window.innerHeight - r.bottom) };
-    } catch { return ZERO; }
   }
   /** 터치 기기인가 (태블릿 띠 배치용; 주 입력이 마우스인 터치 노트북은 제외) */
   touchDevice() {
@@ -178,7 +163,9 @@ class Game {
       let s = 'high';
       try { s = SAVE.autoQualityTier?.() ?? 'high'; } catch { s = 'high'; }
       G.start = TIER_ORDER.includes(s) ? s : 'high';
-      G.tier = G.start;
+      // 지난 실행에서 조절기가 낮춘 등급이 있으면 거기서 시작 (시작 등급보다 높게는 시작하지 않는다; 잘 돌면 다시 올린다)
+      const h = this.settings?.autoTier;
+      G.tier = TIER_ORDER.includes(h) && TIER_ORDER.indexOf(h) < TIER_ORDER.indexOf(G.start) ? h : G.start;
     }
     return G.tier;
   }
@@ -232,7 +219,9 @@ class Game {
     // 세로: 휴대폰(짧은 변 < 600)만 회전 안내 + 자동 일시정지. 태블릿은 세로로도 플레이
     this.portraitAny = H > W;
     this.portrait = this.portraitAny && Math.min(W, H) < 600;
-    document.body.classList.toggle('portrait', this.portrait);
+    const bc = document.body.classList;
+    bc.toggle('portrait', this.portrait);
+    bc.toggle('portrait-play', this.portraitAny && !this.portrait); // 태블릿 세로 플레이: 회전 안내 없음 (style.css)
     const s0 = this.settings, w = this._watch;
     w.q = s0?.quality; w.u = s0?.uiScale; w.a = s0?.safeArea;
     this.dirty = true;
@@ -249,7 +238,9 @@ class Game {
   /**
    * 가상 패드 표시의 유일한 주인 (platform P-18, §5.1). 매 rAF 호출.
    * 보임 = 입력 모드 'touch' (패드·키보드로 바뀌면 0.25초 뒤 숨김) · 세로 잠금 아님 · 맨 위 장면이 showPad 이거나 PAD_SCENES, hidePad 아님.
-   * padHideButtons 는 그대로 touchpad 에 넘긴다. 예전 DOM 패드(#touch)가 남아 있으면 input.setPadOff 로도 알린다.
+   * padHideButtons 는 그대로 touchpad 에 넘긴다.
+   * 캔버스 패드(input.pad = touchpad.initTouchPad 결과)가 없어 예전 DOM 패드(#touch)를 쓰는 동안에만 input.setPadOff 로도 알린다
+   * (캔버스 패드가 있을 때 setPadOff 를 부르면 input 이 패드 표시를 한 번 더 정해 두 주인이 된다).
    */
   syncPad() {
     const top = this.top;
@@ -260,7 +251,7 @@ class Game {
     const o = this._padOpts;
     o.hideButtons = top?.padHideButtons ?? null;
     try { touchpad.setVisible?.(show, o); } catch (e) { if (!this._padErr) { this._padErr = true; console.error(e); } }
-    if (typeof document !== 'undefined' && document.getElementById('touch')) input.setPadOff?.(!scene);
+    if (!input.pad && typeof document !== 'undefined' && document.getElementById('touch')) input.setPadOff?.(!show);
   }
 
   register(name, SceneClass) { this.registry[name] = SceneClass; }
@@ -302,7 +293,7 @@ class Game {
   pop(result) {
     if (this.scenes.length <= 1) {
       if (this.fade.dir > 0 && this.fade.pending) return this.top; // 이미 다른 장면으로 가는 중
-      if (this.registry.title) this.go('title');
+      if (this.registry.title && this.top?.name !== 'title') this.go('title');
       return this.top;
     }
     const sc = this.scenes.pop();
@@ -429,6 +420,15 @@ class Game {
     if (dir > 0) G.lastRaise = this.realTime;
     G.tier = tier; G.lastChange = this.realTime; G.slowT = 0; G.goodT = 0;
     this.resize();
+    // 결과를 다음 실행에도 유지: settings.autoTier (시작 등급으로 돌아오면 지운다). settings.quality 는 'auto' 그대로
+    const st = this.settings;
+    if (st && typeof st === 'object') {
+      const hint = tier === G.start ? undefined : tier;
+      if (st.autoTier !== hint) {
+        if (hint) st.autoTier = hint; else delete st.autoTier;
+        try { this.onSettingsAuto?.(st); } catch (e) { console.error(e); }
+      }
+    }
     if (dir < 0 && !G.toasted) {
       G.toasted = true;
       this.toast(`화면이 버벅여 그래픽 품질을 '${TIER_NAME[tier]}'으로 낮췄습니다`, '#b8c4d8');
@@ -561,7 +561,7 @@ class Game {
       ctx.globalAlpha = a;
       const y = y0 + i * dy;
       const text = this.fitLine(ctx, t, maxX - minX - 36, 17);
-      const w = t._tw + 36;
+      const w = t._fw + 36;
       const x = clamp(x0, minX + w / 2, maxX - w / 2); // 줄이 한쪽으로 치우쳐도 화면 밖으로 잘리지 않게
       ctx.fillStyle = 'rgba(10,4,12,0.78)';
       ctx.fillRect(x - w / 2, y - 20, w, 28);
@@ -571,19 +571,24 @@ class Game {
       ctx.fillText(text, x, y);
     });
   }
-  /** 한 줄 토스트 문자열 (너무 길면 … 로 자른다). t._tw = 그린 폭. 폭이 같으면 다시 재지 않는다 */
+  /** 한 줄 토스트 문자열 (너무 길면 … 로 자른다). t._fw = 그린 폭. 폭·글꼴 세대가 같으면 다시 재지 않는다 */
   fitLine(ctx, t, maxW, size) {
-    const key = `1|${size}|${Math.round(maxW)}`;
+    const key = `${size}|${Math.round(maxW)}|${fontEpoch}`;
     if (t._fk !== key) {
       t._fk = key;
       t._line = ellipsize(ctx, t.text, maxW);
-      t._tw = ctx.measureText(t._line).width;
+      t._fw = ctx.measureText(t._line).width;
     }
     return t._line;
   }
+  /**
+   * 스테이지·마을 토스트: hudLayout().toast(i) 줄. 한 줄에 들어가면 한 줄, 아니면 아래 줄 칸까지 두 줄 (두 칸이 겹치는 가로 범위 안).
+   * 아래 줄 칸이 아직 앞 토스트 차지면 그 토스트가 사라질 때까지 기다린다 (보이지 않는 동안 시간도 멈춤).
+   * 줄이 하나뿐인 배치(위쪽 보스 바)나 아래 칸이 너무 좁은 배치에서는 한 줄로 줄인다 (… ).
+   */
   drawHudToasts(ctx, L) {
     const rows = L.toastRows;
-    const size = 15;
+    const size = 15, pad = 24;
     ctx.textAlign = 'center';
     ctx.font = font(size, 700, FONT.body);
     let r = 0;
@@ -591,15 +596,15 @@ class Game {
       if (r >= rows) { t.shown = false; continue; }
       const r0 = L.toast(r);
       if (r0.hidden || r0.w < 80) { t.shown = false; r = rows; continue; }
-      // 2줄이면 다음 줄 칸도 쓴다: 두 칸이 겹치는 가로 범위 안에서. 줄이 하나뿐인 배치(위쪽 보스 바)면 한 줄로 줄인다
       const r1 = r + 1 < rows ? L.toast(r + 1) : null;
       const pair = !!r1 && !r1.hidden && r1.w >= 80;
-      const lft = pair ? Math.max(r0.l, r1.l) : r0.l, rgt = pair ? Math.min(r0.r, r1.r) : r0.r;
-      const lines = this.wrapToast(ctx, t, rgt - lft - 24, size, rows >= 2 ? 2 : 1);
-      if (lines.length > 1 && !pair) { t.shown = false; r = rows; continue; } // 두 줄 칸이 날 때까지 기다린다 (시간도 멈춤)
-      const useL = lines.length > 1 ? lft : r0.l, useR = lines.length > 1 ? rgt : r0.r;
-      const cx = (useL + useR) / 2;
-      const w = Math.min(useR - useL, t._tw + 24);
+      let lft = r0.l, rgt = r0.r, lines;
+      if (rows < 2 || this.toastWidth(ctx, t, size) <= r0.w - pad) lines = this.wrapToast(ctx, t, r0.w - pad, size, 1);
+      else if (pair) { lft = Math.max(r0.l, r1.l); rgt = Math.min(r0.r, r1.r); lines = this.wrapToast(ctx, t, rgt - lft - pad, size, 2); }
+      else if (r > 0 && r + 1 >= rows) { t.shown = false; r = rows; continue; } // 두 줄 칸이 날 때까지 기다린다
+      else lines = this.wrapToast(ctx, t, r0.w - pad, size, 1);
+      const cx = (lft + rgt) / 2;
+      const w = Math.min(rgt - lft, t._ww + pad);
       t.shown = true;
       const a = Math.min(1, t.t * 3, (t.max - t.t) * 6);
       if (a > 0) {
@@ -616,9 +621,15 @@ class Game {
       r += lines.length;
     }
   }
-  /** HUD 토스트 줄바꿈 (≤ maxLines 줄, 넘치면 마지막 줄 … ). t._tw = 가장 긴 줄 폭. 같은 폭이면 다시 재지 않는다 */
+  /** 토스트 전체 문자열 한 줄 폭 (지금 ctx.font; 크기·글꼴 세대별로 한 번만 잰다) */
+  toastWidth(ctx, t, size) {
+    const key = `${size}|${fontEpoch}`;
+    if (t._mk !== key) { t._mk = key; t._mw = ctx.measureText(t.text.replace(/\n/g, ' ')).width; }
+    return t._mw;
+  }
+  /** HUD 토스트 줄바꿈 (≤ maxLines 줄, 넘치면 마지막 줄 … ). t._ww = 가장 긴 줄 폭. 같은 폭·글꼴 세대면 다시 재지 않는다 */
   wrapToast(ctx, t, maxW, size, maxLines) {
-    const key = `${maxLines}|${size}|${Math.round(maxW)}`;
+    const key = `${maxLines}|${size}|${Math.round(maxW)}|${fontEpoch}`;
     if (t._wk === key) return t._lines;
     const fnt = ctx.font;
     let lines = wrap(ctx, t.text, Math.max(20, maxW), size, 700, FONT.body).filter((s) => s.length);
@@ -630,7 +641,7 @@ class Game {
       lines = [...head, ellipsize(ctx, rest, maxW)];
     }
     t._wk = key; t._lines = lines;
-    t._tw = Math.max(...lines.map((s) => ctx.measureText(s).width));
+    t._ww = Math.max(...lines.map((s) => ctx.measureText(s).width));
     return lines;
   }
 }

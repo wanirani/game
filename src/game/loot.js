@@ -3,12 +3,29 @@
 //  rollCandleLoot(world, big) / rollEnemyLoot(world, enemy) / rollChestLoot(world, contents) / rollBossLoot(world, boss)
 //  rollPowerupId() / stoneForLevel(lv) / rollEquipDrop(world, level, opts)
 // 장비 드롭: 일반 적 2.5%, 정예 12% (행운·난이도·드롭 보너스 보정), 희귀도는 스테이지 레벨·행운에 비례.
+// 2부 규칙 (world2 §6.9):
+//  · 보스 drops 의 고유 장비는 1부와 같다 (첫 처치 확정, 재도전 40%). 세계의 심장(worldHeart)은 이미 얻었거나
+//    가방·바닥에 있으면 다시 떨어뜨리지 않는다 (중복 없음).
+//  · 신화 무기: 니힐 첫 처치 확정 · 이후 50%, 그 밖의 2부 보스 1.5%, 태초의 공허(s20) 정예 0.6%.
+//    2부(챕터 ≥ 14 스테이지 또는 2부 보스)는 MYTHIC_WEAPONS_P2(7단계)에서, 1부는 MYTHIC_WEAPONS(6단계)에서 뽑는다.
 import { chance, randi, weightedPick, pick } from '../core/math.js';
 import { POWERUPS } from '../data/powerups.js';
 import { SUB_ORDER } from '../data/subweapons.js';
-import { ITEMS, makeItem, rollItem, rollRarity, BOSS_UNIQUES, MYTHIC_WEAPONS, isEquipment } from '../data/items.js';
+import { ITEMS, makeItem, rollItem, rollRarity, BOSS_UNIQUES, MYTHIC_WEAPONS, MYTHIC_WEAPONS_P2, isEquipment } from '../data/items.js';
 
-const MYTHIC_LIST = () => Object.values(MYTHIC_WEAPONS);
+/** 's14' → 14 (스테이지 id 가 아니면 0) */
+const chapterOfStage = (id) => { const m = /^s(\d+)$/.exec(String(id ?? '')); return m ? +m[1] : 0; };
+/** 2부 드롭 규칙을 쓰는가: 챕터 ≥ 14 스테이지, 또는 2부 보스 (투기장 보스 러시 포함) */
+function isPart2(world, boss = null) {
+  return (world.stage?.chapter ?? 0) >= 14 || chapterOfStage(boss?.def?.stageId) >= 14;
+}
+/** 세계의 심장을 이미 가졌거나 가방·바닥에 있는가 (중복 드롭 방지) */
+function heartOwned(world, id) {
+  const st = world.state;
+  if (st?.progress?.hearts?.includes(id)) return true;
+  if (st?.inventory?.some?.((i) => i?.baseId === id)) return true;
+  return !!world.entities?.some?.((e) => e.kind === 'pickup' && !e.dead && e.data?.item?.baseId === id);
+}
 
 function luckOf(world) { return world.player?.stats?.luck ?? 0; }
 function dropMulOf(world) {
@@ -83,15 +100,18 @@ export function rollEnemyLoot(world, enemy) {
   if (chance((enemy.elite ? 0.3 : 0.03) * dropMul)) out.push(stoneDrop(lv, enemy.elite ? randi(1, 2) : 1));
   // 황금 박쥐: 고유 반지 (희귀)
   if (d.id === 'golden_bat' && chance(0.06 * dropMul)) out.push({ type: 'item', data: { item: makeItem('u_goldbat') } });
-  // 심연의 역성 정예: 신화 무기 (극히 희귀)
+  // 심연의 역성 정예: 신화 무기 (극히 희귀) · 태초의 공허 정예: 2부 신화 무기 0.6%
   if (enemy.elite && world.stage?.id === 's13' && chance(0.004 * dropMul)) out.push(mythicDrop(world));
+  if (enemy.elite && world.stage?.id === 's20' && chance(0.006 * dropMul)) out.push(mythicDrop(world, true));
   if (enemy.elite && chance(0.6)) out.push({ type: 'powerup', data: { id: rollPowerupId() } });
   return out;
 }
 
-function mythicDrop(world) {
+/** 신화 무기 (70%는 플레이어 무기 계열). p2 = 2부 목록(7단계) 사용 — 기본: 스테이지 챕터 ≥ 14 */
+function mythicDrop(world, p2 = isPart2(world)) {
+  const table = p2 && Object.keys(MYTHIC_WEAPONS_P2).length ? MYTHIC_WEAPONS_P2 : MYTHIC_WEAPONS;
   const wt = world.player?.stats?.weaponType;
-  const id = (chance(0.7) && MYTHIC_WEAPONS[wt]) || pick(MYTHIC_LIST());
+  const id = (chance(0.7) && table[wt]) || pick(Object.values(table));
   return { type: 'item', data: { item: makeItem(id) } };
 }
 
@@ -129,7 +149,7 @@ function rollRarityLite(lv, luck, world) {
   return rollRarity(lv, { luck, diff: world.diff, boost: 0.3 });
 }
 
-/** 보스: 골드 + 1UP + 고유 장비(첫 처치 확정, 재도전 40%) + 무작위 전설 + 강화석 + 신화 무기(혼돈의 군주) */
+/** 보스: 골드 + 1UP + 고유 장비(첫 처치 확정, 재도전 40%) + 세계의 심장(중복 없음) + 무작위 전설 + 강화석 + 신화 무기(혼돈의 군주·니힐) */
 export function rollBossLoot(world, boss) {
   const lv = Math.max(stageLv(world), boss.stats?.level ?? 0);
   const id = boss.def?.id;
@@ -142,6 +162,7 @@ export function rollBossLoot(world, boss) {
   const ids = (boss.def?.drops?.length ? boss.def.drops : BOSS_UNIQUES[id] || []).filter((x) => ITEMS[x]);
   for (const uid of ids) {
     const b = ITEMS[uid];
+    if (b.worldHeart) { if (!heartOwned(world, uid)) out.push({ type: 'item', data: { item: makeItem(uid) } }); continue; }
     if (b.unique ? first || chance(0.4) : true) out.push({ type: 'item', data: { item: makeItem(uid, { rarity: b.unique ? b.rarity : 4 }) } });
   }
   // 무작위 전설 장비 (재도전 시에도 확정, 영웅 이상)
@@ -150,7 +171,9 @@ export function rollBossLoot(world, boss) {
   out.push(stoneDrop(lv, randi(2, 4), 1));
   if (chance(0.35)) out.push({ type: 'item', data: { item: makeItem(chance(0.4) ? 'm_scroll_protect' : 'm_scroll_bless') } });
   out.push({ type: 'item', data: { item: makeItem('c_hipotion', { qty: 2 }) } });
-  // 신화 무기: 혼돈의 군주 50%(첫 처치 확정), 그 밖의 보스 1%
-  if (id === 'b_chaos' ? first || chance(0.5) : chance(0.01 * dropMulOf(world))) out.push(mythicDrop(world));
+  // 신화 무기: 혼돈의 군주·니힐 50%(첫 처치 확정), 그 밖의 보스 1% (2부 보스 1.5%)
+  const p2 = isPart2(world, boss);
+  const finalBoss = id === 'b_chaos' || id === 'b_nihil';
+  if (finalBoss ? first || chance(0.5) : chance((p2 ? 0.015 : 0.01) * dropMulOf(world))) out.push(mythicDrop(world, id === 'b_nihil' || p2));
   return out;
 }

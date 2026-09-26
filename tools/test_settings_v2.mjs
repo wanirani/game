@@ -462,9 +462,11 @@ if (!NODE_ONLY) {
         a._poll();
         const c = document.createElement('canvas'); let threw = null;
         try { c.getContext('2d').drawImage(titleImg, 0, 0, 10, 10); } catch (e) { threw = e.message; }
-        return { hasTitle: a.cache.has('bg/title'), ev: a.stats().evictions, threw, top: g.top?.name, blank: titleImg.src.slice(0, 5) };
+        const pre = ['bg/worldmap', 'bg/shop', 'bg/smith'].filter((k) => !a.cache.has(k));   // hub.enter() 가 미리 받는 배경
+        return { hasTitle: a.cache.has('bg/title'), ev: a.stats().evictions, threw, top: g.top?.name, blank: titleImg.src.slice(0, 5), pre };
       });
       ok(r1.top === 'hub' && !r1.hasTitle && r1.ev >= 1, `장면 전환(title→hub) 뒤 쓰이지 않은 bg/title 을 내림 (evictions ${r1.ev}, has ${r1.hasTitle})`);
+      ok(r1.pre.length === 0, `새 장면의 enter() 에서 미리 받은 배경은 전환 정리에서 남긴다 (game.go 가 enter 뒤 sceneChange 를 불러도) — 내려간 것: ${r1.pre.join(',')}`);
       ok(r1.threw === null && (r1.blank === 'blob:' || r1.blank === 'data:'), `내린 이미지를 그려도 예외 없음 (${r1.threw}, ${r1.blank})`);
       await page.evaluate(() => { const a = window.__game.assets; a.setBudget({ total: null }); });
       await page.goto(`http://localhost:${port}/index.html?scene=stage&stage=s01`);
