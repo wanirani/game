@@ -24,6 +24,28 @@ export const TILE_STYLES = {
   dirt:   { base: '#2e2418', edge: '#100a06', top: '#4a3a24', topDeco: 'grass' },
 };
 
+// 테마별 배경 장식 소품 (Blender 렌더: assets/props/<id>.png). a:'floor'|'ceil', w/h: 그릴 크기(px)
+const D = (id, w, h, a = 'floor', wt = 1) => ({ id, w, h, a, wt });
+export const DECOR_SETS = {
+  village: [D('deco_village_well', 144, 144), D('deco_village_cart', 192, 120), D('deco_village_fence', 192, 72, 'floor', 2), D('deco_village_haybale', 96, 72, 'floor', 2), D('deco_village_lamppost', 64, 192), D('prop_barrel', 72, 72, 'floor', 2), D('prop_crate', 72, 72)],
+  town: [D('deco_village_well', 144, 144), D('deco_village_cart', 192, 120), D('deco_village_haybale', 96, 72), D('deco_village_lamppost', 64, 192, 'floor', 2), D('prop_barrel', 72, 72, 'floor', 2), D('prop_crate', 72, 72)],
+  graveyard: [D('deco_grave_tomb1', 72, 96, 'floor', 3), D('deco_grave_tomb2', 64, 112, 'floor', 3), D('deco_grave_tomb3', 96, 80, 'floor', 2), D('deco_grave_angel', 96, 192), D('deco_grave_deadtree', 192, 288), D('deco_grave_fence', 192, 96, 'floor', 2)],
+  gate: [D('deco_gate_banner', 64, 192, 'ceil', 2), D('deco_gate_portcullis', 144, 192), D('deco_gate_brazier', 72, 120, 'floor', 2), D('prop_gargoyle', 96, 120)],
+  arena: [D('deco_gate_banner', 64, 192, 'ceil', 2), D('deco_gate_brazier', 72, 120, 'floor', 2)],
+  hall: [D('deco_hall_armor', 72, 160, 'floor', 3), D('deco_hall_vase', 64, 96, 'floor', 2), D('deco_hall_bust', 64, 120, 'floor', 2), D('deco_hall_curtain', 144, 288, 'ceil', 2), D('deco_gate_banner', 64, 192, 'ceil'), D('prop_pillar', 72, 192)],
+  catacombs: [D('deco_cata_bonepile', 144, 72, 'floor', 3), D('deco_cata_skullpile', 96, 80, 'floor', 2), D('deco_cata_sarcophagus', 192, 96, 'floor', 2), D('deco_cata_urn', 56, 80, 'floor', 2)],
+  library: [D('deco_lib_desk', 144, 96, 'floor', 2), D('deco_lib_globe', 72, 120), D('deco_lib_bookstack', 72, 72, 'floor', 3), D('deco_lib_ladder', 64, 240), D('prop_bookshelf', 128, 192, 'floor', 3)],
+  alchemy: [D('deco_lab_alembic', 120, 144, 'floor', 2), D('deco_lab_cauldron', 120, 96, 'floor', 2), D('deco_lab_flaskrack', 144, 120, 'floor', 2), D('deco_lab_tesla', 96, 192), D('prop_vat', 128, 192, 'floor', 2)],
+  waterway: [D('deco_water_grate', 144, 144, 'floor', 2), D('deco_water_chain', 32, 240, 'ceil', 3), D('deco_water_pipe', 192, 96, 'floor', 2), D('deco_water_barrel', 72, 96, 'floor', 2)],
+  clock: [D('deco_clock_pendulum', 96, 288, 'ceil', 2), D('deco_clock_face', 192, 192), D('deco_clock_bell', 120, 120, 'ceil'), D('prop_gear', 192, 192, 'floor', 2)],
+  spire: [D('deco_ice_crystal', 96, 144, 'floor', 3), D('deco_ice_statue', 96, 176, 'floor', 2), D('deco_ice_icicles', 192, 96, 'ceil', 3)],
+  chapel: [D('deco_chapel_pew', 192, 80, 'floor', 3), D('deco_chapel_altar', 192, 144), D('deco_chapel_window', 144, 288, 'floor', 2), D('deco_chapel_candles', 96, 96, 'floor', 2)],
+  throne: [D('deco_throne_chair', 192, 240), D('deco_throne_statue', 96, 224, 'floor', 2), D('deco_throne_candelabra', 96, 224, 'floor', 2), D('deco_hall_curtain', 144, 288, 'ceil', 2)],
+  abyss: [D('deco_abyss_crystal', 96, 160, 'floor', 3), D('deco_abyss_spire', 96, 240, 'floor', 2), D('deco_abyss_eye', 120, 120, 'floor')],
+};
+// 장식이 게임 요소를 가리지 않도록 마커 주변은 비움
+const DECOR_BLOCK = new Set(['D', 'S', 'G', '$', 'N', 'X', 'P', '@', 'H', 'K']);
+
 export class TileRenderer {
   constructor(stage, map) {
     this.stage = stage; this.map = map;
@@ -31,6 +53,70 @@ export class TileRenderer {
     this.chunks = new Map();
     this.version = -1;
     this.dirty = new Set();
+    this.props = this.placeProps();
+    this.darkCache = new Map();
+  }
+  /** 바닥/천장 표면에 테마 소품을 결정론적으로 배치 */
+  placeProps() {
+    const set = DECOR_SETS[this.stage.theme];
+    const m = this.map;
+    if (!set || !m) return [];
+    const rng = new RNG(hashStr(this.stage.id + ':' + m.w + 'x' + m.h));
+    const blocked = new Set();
+    for (const mk of m.markers) if (DECOR_BLOCK.has(mk.ch)) for (let d = -3; d <= 3; d++) blocked.add(mk.tx + d);
+    const solid = (tx, ty) => { const t = m.typeAt(tx, ty); return t === T.SOLID || t === T.BREAK; };
+    const empty = (tx, ty) => m.typeAt(tx, ty) === T.EMPTY && tx >= 0 && tx < m.w && ty >= 0;
+    const out = [];
+    const total = set.reduce((a, d) => a + d.wt, 0);
+    const pickD = (a) => {
+      const list = set.filter((d) => d.a === a);
+      if (!list.length) return null;
+      let r = rng.next() * list.reduce((s, d) => s + d.wt, 0);
+      for (const d of list) { r -= d.wt; if (r <= 0) return d; }
+      return list[0];
+    };
+    let lastFloor = -99, lastCeil = -99;
+    for (let tx = 1; tx < m.w - 1; tx++) {
+      if (blocked.has(tx)) continue;
+      for (let ty = 1; ty < m.h; ty++) {
+        // 바닥
+        if (empty(tx, ty) && solid(tx, ty + 1) && tx - lastFloor > 5 && rng.next() < 0.16) {
+          const d = pickD('floor');
+          if (!d) continue;
+          const wt = Math.ceil(d.w / TILE), ht = Math.ceil(d.h / TILE);
+          let ok = true;
+          for (let x = tx; x < tx + wt && ok; x++) { if (!solid(x, ty + 1)) ok = false; for (let y = ty - ht + 1; y <= ty && ok; y++) if (!empty(x, y)) ok = false; }
+          if (ok) { out.push({ d, x: tx * TILE + (wt * TILE - d.w) / 2, y: (ty + 1) * TILE - d.h }); lastFloor = tx + wt; }
+        }
+        // 천장 (위가 벽, 아래로 충분히 빈 공간)
+        if (empty(tx, ty) && solid(tx, ty - 1) && tx - lastCeil > 6 && rng.next() < 0.12) {
+          const d = pickD('ceil');
+          if (!d) continue;
+          const ht = Math.ceil(d.h / TILE) + 2;
+          let ok = true;
+          for (let y = ty; y < ty + ht && ok; y++) if (!empty(tx, y)) ok = false;
+          if (ok) { out.push({ d, x: tx * TILE + TILE / 2 - d.w / 2, y: ty * TILE }); lastCeil = tx; }
+        }
+      }
+    }
+    return out;
+  }
+  /** 배경용으로 어둡게 톤다운한 소품 이미지 (캐시) */
+  darkProp(id, w, h) {
+    const key = id + w + 'x' + h;
+    let c = this.darkCache.get(key);
+    if (c) return c;
+    const img = assets.get('props/' + id);
+    if (!img) return null;
+    c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const g = c.getContext('2d');
+    g.drawImage(img, 0, 0, w, h);
+    g.globalCompositeOperation = 'source-atop';
+    g.fillStyle = rgba(this.style.edge, 0.42);
+    g.fillRect(0, 0, w, h);
+    this.darkCache.set(key, c);
+    return c;
   }
   invalidate(tx, ty) {
     if (tx === undefined) { this.chunks.clear(); return; }
@@ -202,8 +288,13 @@ export class TileRenderer {
       } else ctx.fillRect(x, y, TILE, TILE);
     }
   }
-  /** 배경 장식 문자 ('W' 창문, '|' 기둥) */
+  /** 배경 장식 문자 ('W' 창문, '|' 기둥) + 테마 소품 */
   drawDecor(ctx, cam, t) {
+    for (const p of this.props) {
+      if (p.x + p.d.w < cam.x - 50 || p.x > cam.x + cam.vw + 50 || p.y + p.d.h < cam.y - 50 || p.y > cam.y + cam.vh + 50) continue;
+      const c = this.darkProp(p.d.id, p.d.w, p.d.h);
+      if (c) ctx.drawImage(c, p.x, p.y);
+    }
     for (const d of this.map.decor) {
       const x = d.tx * TILE, y = d.ty * TILE;
       if (x < cam.x - 200 || x > cam.x + cam.vw + 200) continue;
