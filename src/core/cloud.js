@@ -411,9 +411,14 @@ class Cloud {
       clearTimeout(timer);
     }
   }
-  /** 서버 작업을 한 줄로 세워 차례대로 실행 (같은 슬롯을 동시에 올려 충돌하는 일을 막는다) */
+  /**
+   * 서버 작업을 한 줄로 세워 차례대로 실행 (같은 슬롯을 동시에 올려 충돌하는 일을 막는다).
+   * 작업은 넣을 때의 계정에 묶인다 — 그 사이 로그아웃하거나 다른 계정으로 바뀌면 실행하지 않는다.
+   */
   enqueue(fn) {
-    const p = this.queue.then(() => fn()).catch((e) => { console.error('[cloud]', e); return fail('client_error'); });
+    const owner = this.id;
+    const run = () => (owner && this.id !== owner ? fail('logged_out') : fn());
+    const p = this.queue.then(run).catch((e) => { console.error('[cloud]', e); return fail('client_error'); });
     this.queue = p.then(() => {}, () => {});
     return p;
   }

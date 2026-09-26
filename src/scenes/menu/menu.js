@@ -59,7 +59,7 @@ export class MenuScene extends Scene {
     this.tabRects = []; this.closeRect = null; this.qeRects = [];
     this.qe = 0;
     this.msg = null;            // 하단 알림 {text, color, t}
-    this._onKey = (e) => { if (e.repeat) return; if (e.code === 'KeyQ') this.qe = -1; else if (e.code === 'KeyE') this.qe = 1; };
+    this._onKey = (e) => { if (e.repeat || /^(INPUT|TEXTAREA)$/.test(e.target?.tagName ?? '')) return; if (e.code === 'KeyQ') this.qe = -1; else if (e.code === 'KeyE') this.qe = 1; };
     this._onWheel = (e) => { this.ges.addWheel(e.deltaY * (e.deltaMode === 1 ? 32 : e.deltaMode === 2 ? 400 : 1) * 0.9); };
     window.addEventListener('keydown', this._onKey, true);
     window.addEventListener('wheel', this._onWheel, { passive: true });

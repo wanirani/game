@@ -15,7 +15,7 @@ import { STAGES, STAGE_ORDER } from '../../data/stages.js';
 import { migrateState } from '../../game/state.js';
 import { bus } from '../../core/events.js';
 import { cloud } from '../../core/cloud.js';
-import { drawCloudBadge, accountBadge, summaryLine, spinner } from './cloud_ui.js';
+import { drawCloudBadge, accountBadge, summaryLine } from './cloud_ui.js';
 import {
   Ambience, kenBurns, shade, frame, heading, portraitIn, gbutton, menuItem, backButton, footer, setPad,
   fmtDate, fmtPlay, goSafe, follow, TapZones, GOLD, BONE, DIM, CRIMSON,

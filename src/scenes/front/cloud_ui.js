@@ -8,7 +8,7 @@ import { assets } from '../../core/assets.js';
 import { saves } from '../../core/save.js';
 import { cloud, summarize } from '../../core/cloud.js';
 import { text, wrap, FONT, ListMenu } from '../../core/ui.js';
-import { clamp, ease, fmt, rgba, TAU } from '../../core/math.js';
+import { clamp, ease, rgba, TAU } from '../../core/math.js';
 import { CHARACTERS } from '../../data/characters.js';
 import { CLASSES } from '../../data/classes.js';
 import { getDiff } from '../../data/difficulty.js';
@@ -71,8 +71,16 @@ export function drawCloudBadge(ctx, xr, y, status, t = 0, { size = 12, label = n
 export function accountBadge() {
   if (!cloud.loggedIn) return { status: 'guest', label: '게스트' };
   const k = cloud.overall().key;
-  const status = k === 'offline' || k === 'conflict' || k === 'synced' ? k : 'pending';
+  const status = k === 'offline' || k === 'conflict' || k === 'synced' ? k : k === 'blocked' ? 'offline' : 'pending';
   return { status, label: cloud.id };
+}
+
+// 숫자 끝소리 받침 (영·일·삼·육·칠·팔 → 받침 있음)
+const BATCHIM = new Set([0, 1, 3, 6, 7, 8]);
+/** '슬롯 1, 3' + 마지막 숫자에 맞는 조사. slotsJosa([1, 3], '은', '는') → '슬롯 1, 3은', slotsJosa([2], '을', '를') → '슬롯 2를' */
+export function slotsJosa(list, withBatchim, without) {
+  const n = Math.abs(Number(list[list.length - 1])) % 10;
+  return `슬롯 ${list.join(', ')}${BATCHIM.has(n) ? withBatchim : without}`;
 }
 
 /** 요약 한 줄 (예: '카엘 Lv.12 · 2장까지 돌파') */

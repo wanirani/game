@@ -1,20 +1,504 @@
 {
-  "id": "b_bonedragon",
-  "kind": "boss",
-  "out": "assets/painted/bosses/b_bonedragon",
-  "raw": "tools/painted/raw/b_bonedragon",
-  "td": 2.0,
-  "matte": {
-    "default": { "key": 9, "soft": 22, "hard": 6 }
+ "id": "b_bonedragon",
+ "kind": "boss",
+ "out": "assets/painted/bosses/b_bonedragon",
+ "raw": "tools/painted/raw/b_bonedragon",
+ "td": 2.0,
+ "matte": {
+  "default": {
+   "key": 9,
+   "soft": 22,
+   "hard": 6
+  }
+ },
+ "cuts": {
+  "skull_a": {
+   "punch": [
+    {
+     "type": "dark",
+     "lum": 34,
+     "open": 7,
+     "dilate": 1,
+     "k": 0.98,
+     "poly": [
+      [
+       990,
+       850
+      ],
+      [
+       1270,
+       870
+      ],
+      [
+       1500,
+       925
+      ],
+      [
+       1700,
+       960
+      ],
+      [
+       2150,
+       990
+      ],
+      [
+       2150,
+       1160
+      ],
+      [
+       1900,
+       1205
+      ],
+      [
+       1650,
+       1245
+      ],
+      [
+       1400,
+       1170
+      ],
+      [
+       1200,
+       1110
+      ],
+      [
+       1080,
+       1070
+      ],
+      [
+       1020,
+       960
+      ]
+     ]
+    }
+   ],
+   "masks": {
+    "jaw": [
+     {
+      "op": "poly",
+      "feather": 1.0,
+      "pts": [
+       [
+        1000,
+        880
+       ],
+       [
+        1100,
+        905
+       ],
+       [
+        1250,
+        980
+       ],
+       [
+        1450,
+        1040
+       ],
+       [
+        1650,
+        1085
+       ],
+       [
+        1800,
+        1110
+       ],
+       [
+        1950,
+        1120
+       ],
+       [
+        2150,
+        1110
+       ],
+       [
+        2336,
+        1110
+       ],
+       [
+        2336,
+        1760
+       ],
+       [
+        1000,
+        1760
+       ],
+       [
+        900,
+        1420
+       ],
+       [
+        880,
+        1300
+       ],
+       [
+        905,
+        1200
+       ],
+       [
+        945,
+        1100
+       ],
+       [
+        975,
+        1000
+       ]
+      ]
+     },
+     {
+      "op": "minus",
+      "color": "red",
+      "rect": [
+       0,
+       0,
+       1070,
+       1760
+      ]
+     }
+    ]
+   }
+  }
+ },
+ "parts": [
+  {
+   "name": "skull_upper",
+   "src": "skull_a",
+   "mask": "!jaw",
+   "lps": 0.112,
+   "box": [
+    120,
+    0,
+    2336,
+    1740
+   ],
+   "pivots": {
+    "origin": [
+     1400,
+     830
+    ],
+    "hinge": [
+     1040,
+     895
+    ],
+    "eye": [
+     1265,
+     662
+    ],
+    "snout": [
+     2110,
+     905
+    ],
+    "nape": [
+     820,
+     760
+    ]
+   },
+   "points": {
+    "mouthUpper": [
+     [
+      1040,
+      895
+     ],
+     [
+      1250,
+      875
+     ],
+     [
+      1500,
+      915
+     ],
+     [
+      1750,
+      945
+     ],
+     [
+      2060,
+      960
+     ]
+    ],
+    "mouthLower": [
+     [
+      1040,
+      895
+     ],
+     [
+      1150,
+      1100
+     ],
+     [
+      1400,
+      1165
+     ],
+     [
+      1650,
+      1230
+     ],
+     [
+      1900,
+      1225
+     ],
+     [
+      2060,
+      1225
+     ]
+    ]
+   },
+   "extra": {
+    "jawOpen0": 0.27
+   }
   },
-  "cuts": {},
-  "parts": [],
-  "chains": [
-    { "prefix": "va", "src": "chain_a", "lps": 0.15, "joints": [344, 640, 948, 1290, 1655, 2041, 2461, 3040], "top": 430, "bot": 830, "axis": 640 },
-    { "prefix": "vb", "src": "chain_c2", "lps": 0.15, "joints": [0], "top": 430, "bot": 830, "axis": 640 },
-    { "prefix": "vc", "src": "chain_c1", "lps": 0.15, "joints": [0], "top": 430, "bot": 830, "axis": 640 }
+  {
+   "name": "skull_jaw",
+   "src": "skull_a",
+   "mask": "jaw",
+   "lps": 0.112,
+   "box": [
+    120,
+    0,
+    2336,
+    1740
+   ],
+   "pivots": {
+    "origin": [
+     1400,
+     830
+    ],
+    "hinge": [
+     1040,
+     895
+    ],
+    "tip": [
+     2060,
+     1225
+    ]
+   }
+  },
+  {
+   "name": "torso",
+   "src": "torso_a",
+   "lps": 0.15,
+   "box": [
+    360,
+    60,
+    1390,
+    1700
+   ],
+   "pivots": {
+    "base": [
+     850,
+     1650
+    ],
+    "neck": [
+     560,
+     150
+    ],
+    "shoulderN": [
+     470,
+     470
+    ],
+    "shoulderF": [
+     1210,
+     470
+    ],
+    "core": [
+     820,
+     900
+    ],
+    "legN": [
+     560,
+     640
+    ],
+    "legF": [
+     1180,
+     660
+    ]
+   }
+  },
+  {
+   "name": "wing",
+   "src": "wing_b",
+   "lps": 0.15,
+   "box": [
+    110,
+    130,
+    2290,
+    1640
+   ],
+   "pivots": {
+    "root": [
+     330,
+     1380
+    ],
+    "elbow": [
+     850,
+     1050
+    ],
+    "wrist": [
+     610,
+     430
+    ],
+    "tip": [
+     2230,
+     260
+    ],
+    "core": [
+     1150,
+     800
+    ]
+   }
+  },
+  {
+   "name": "leg",
+   "src": "leg_a",
+   "lps": 0.085,
+   "box": [
+    60,
+    40,
+    2000,
+    1990
+   ],
+   "pivots": {
+    "elbow": [
+     330,
+     420
+    ],
+    "plant": [
+     1450,
+     1880
+    ]
+   }
+  }
+ ],
+ "chains": [
+  {
+   "prefix": "va",
+   "src": "chain_a",
+   "lps": 0.15,
+   "joints": [
+    344,
+    640,
+    948,
+    1290,
+    1655,
+    2041,
+    2461,
+    3040
+   ],
+   "top": 430,
+   "bot": 830,
+   "axis": 640,
+   "tiles": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "splitSpines": true,
+   "spineOverlap": 26,
+   "trimDrips": {
+    "below": 30,
+    "thick": 8
+   }
+  },
+  {
+   "prefix": "vb",
+   "src": "chain_c2",
+   "lps": 0.15,
+   "joints": [
+    221,
+    538,
+    872,
+    1228,
+    1630,
+    2034,
+    2474,
+    3012
+   ],
+   "top": 430,
+   "bot": 830,
+   "axis": 640,
+   "tiles": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "splitSpines": true,
+   "spineOverlap": 26,
+   "trimDrips": {
+    "below": 30,
+    "thick": 8
+   }
+  }
+ ],
+ "debris": [
+  {
+   "prefix": "deb",
+   "src": "debris_a",
+   "lps": 0.06,
+   "boxes": [
+    [
+     602,
+     112,
+     907,
+     812
+    ],
+    [
+     982,
+     194,
+     1193,
+     649
+    ],
+    [
+     1282,
+     85,
+     1764,
+     717
+    ],
+    [
+     1798,
+     112,
+     2077,
+     730
+    ],
+    [
+     2152,
+     71,
+     2607,
+     690
+    ],
+    [
+     670,
+     1186,
+     1737,
+     1506
+    ],
+    [
+     1894,
+     1159,
+     2566,
+     1424
+    ]
+   ]
+  }
+ ],
+ "kling": {
+  "model": "kling-image-v3_0_omni",
+  "refs": [
+   "assets/portraits/b_bonedragon.webp (image_1, style/material)",
+   "raw chain_a (image_2, layout, for chain/debris)"
   ],
-  "debris": [
-    { "prefix": "deb", "src": "debris_a", "lps": 0.08, "boxes": [] }
-  ]
+  "images": {
+   "skull_a": "prototype B (tools/.proto_bossB): side-view skull, mouth wide open, flat grey bg \u2014 template 'part' (see docs/art/BOSS_PIPELINE.md \u00a73)",
+   "torso_a": "prototype B: rearing ribcage + neck stump, side view",
+   "wing_b": "prototype B: single spread bone wing, torn membrane with soul-fire veins",
+   "leg_a": "prototype B: single foreleg, elbow up, claws planted",
+   "chain_a": "prototype B: straight horizontal vertebra chain, 7 vertebrae",
+   "chain_c2": "this task: straight chain variant (image_to_image, refs portrait + chain_a, 21:9, 2 images; chain_c1 rejected: ran off both edges)",
+   "debris_a": "this task: 12 separate bone fragments on flat grey (16:9)"
+  }
+ }
 }

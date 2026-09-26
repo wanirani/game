@@ -322,11 +322,12 @@ export async function loadRig(dir, def = {}, env = {}) {
   // 예산: 변형 수를 세어 목표 밀도에서의 메모리를 추정 → 넘으면 밀도를 낮춘다
   let td = Math.min(srcTd, env.td ?? srcTd);
   const nVar = (name) => {
-    const o = def.parts?.[name] ?? {};
+    const o = { ...(def.defaults ?? {}), ...prefixOpts(def, name), ...(def.parts?.[name] ?? {}) };
     let n = o.noDmg ? 1 : 3; if (o.deep && !o.deepOnly) n += o.noDmg ? 1 : 3;
     if (o.flash) n += 0.5; // 흰/발광 실루엣(가산용, 외곽선 포함 크기)
     if (!o.noDmg && (def.glow)) n += 2 * 0.25;
-    for (const t of Object.values(def.tints ?? {})) if (!t.parts || t.parts.includes(name)) n += (t.levels?.length ?? 1) * (o.deep && !o.deepOnly ? 2 : 1);
+    for (const t of Object.values(def.tints ?? {})) if ((!t.parts || t.parts.includes(name)) && !(t.skip ?? []).some((p) => name.startsWith(p))) n += (o.noDmg ? 1 : (t.levels?.length ?? 1)) * (o.deep && !o.deepOnly ? 2 : 1);
+    if (!o.noDmg && budget < 8) n -= 1 + (def.glow ? 0.25 : 0);
     return n;
   };
   const memAt = (tdx) => { let b = 0; for (const [n, e] of Object.entries(man.parts)) { const f = tdx / srcTd; b += (e.w * f + PAD * 2) * (e.h * f + PAD * 2) * 4 * nVar(n); } return b / 1048576; };
@@ -334,13 +335,14 @@ export async function loadRig(dir, def = {}, env = {}) {
   const m0 = memAt(td);
   if (m0 > budget) td = Math.max(0.55, td * Math.sqrt(budget / m0) * 0.98);
   const f = td / srcTd;
+  const lite = env.lite ?? budget < 8;
   const rig = { dir, man, td, parts: {}, def, bakeMs: 0, memMB: 0, key, tintKeys: Object.keys(def.tints ?? {}) };
   const outline = def.outline ?? {};
   const names = Object.keys(man.parts);
   let i = 0;
   for (const name of names) {
     const e = man.parts[name];
-    const o = { ...(def.defaults ?? {}), ...(def.parts?.[name] ?? {}) };
+    const o = { ...(def.defaults ?? {}), ...prefixOpts(def, name), ...(def.parts?.[name] ?? {}) };
     const raw = scaledCopy(img, e.x, e.y, e.w, e.h, e.w * f, e.h * f);
     const part = { name, e, o, k: 1 / td, v: {}, gl: {}, sparks: [], pad: PAD, rawW: raw.width, rawH: raw.height, flashOK: !!o.flash };
     const ol = (c) => outlined(c, { width: (o.outline ?? outline.width ?? 2.2) * Math.min(1.4, Math.max(0.6, td / 1.6)), color: outline.color, pad: PAD });
@@ -349,8 +351,9 @@ export async function loadRig(dir, def = {}, env = {}) {
       const seed = hashName(dir + name);
       const d1 = bakeDamage(raw, 1, seed, { glow: def.glow, ...o }, !!def.glow);
       const d2 = bakeDamage(d1.canvas, 2, seed + 17, { glow: def.glow, ...o }, !!def.glow);
-      part.v.dmg1 = ol(d1.canvas); part.v.dmg2 = ol(d2.canvas);
-      part.gl.dmg1 = d1.glow; part.gl.dmg2 = d2.glow ?? d1.glow;
+      // 예산이 작으면(폰) 중간 단계를 생략: dmg1 은 base 로 대체된다 (pickVariant)
+      if (!lite) { part.v.dmg1 = ol(d1.canvas); part.gl.dmg1 = d1.glow; }
+      part.v.dmg2 = ol(d2.canvas); part.gl.dmg2 = d2.glow ?? d1.glow;
       part.sparks = [...d1.sparks, ...d2.sparks].map((q) => [q[0] + PAD, q[1] + PAD]);
     }
     if (o.flash) { part.v.flash = silhouette(part.v.base, '#fff6ee'); part.v.glow = silhouette(part.v.base, def.glow ?? '#ffffff'); }
@@ -372,7 +375,9 @@ export async function loadRig(dir, def = {}, env = {}) {
   for (const [tk, t] of Object.entries(def.tints ?? {})) {
     for (const part of Object.values(rig.parts)) {
       if (t.parts && !t.parts.includes(part.name)) continue;
-      for (const lv of t.levels ?? ['base']) {
+      if ((t.skip ?? []).some((p) => part.name.startsWith(p))) continue;
+      const lvs = part.o.noDmg ? ['base'] : (t.levels ?? ['base']);
+      for (const lv of lvs) {
         const src = part.v[lv] ?? part.v['deep_' + lv];
         if (!src) continue;
         const tc = recolor(src, t.rules);
@@ -389,6 +394,12 @@ export async function loadRig(dir, def = {}, env = {}) {
   rig.memMB = texMemMB(rig);
   rig.bakeMs = performance.now() - t0;
   return rig;
+}
+/** def.prefix = { 'va': {...}, 'deb': {...} } → 이름이 접두사로 시작하는 부품의 기본 옵션 (가장 긴 접두사 우선) */
+function prefixOpts(def, name) {
+  let best = null, bl = -1;
+  for (const [p, o] of Object.entries(def.prefix ?? {})) if (name.startsWith(p) && p.length > bl) { best = o; bl = p.length; }
+  return best ?? {};
 }
 function hashName(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) % 100000; }
 export function texMemMB(rig) {

@@ -10,7 +10,7 @@ import { Tab } from './base.js';
 import { PAL, frame, heading, divider, brackets, glow, glowOval, gbutton, rr, glyph, Confirm } from './common.js';
 import * as D from './access.js';
 import { cloud } from '../../core/cloud.js';
-import { drawCloudIcon, accountBadge } from '../front/cloud_ui.js';
+import { drawCloudIcon, accountBadge, slotsJosa } from '../front/cloud_ui.js';
 
 const RANK_COL = { D: '#a0a0a0', C: '#7ee07e', B: '#5aa8ff', A: '#c07cff', S: '#ffa640', SS: '#ff5a4a', SSS: '#ffe070' };
 
@@ -26,7 +26,7 @@ export class SystemTab extends Tab {
     ];
     // 클라우드 (계정을 쓸 수 있는 환경에서만 버튼)
     if (cloud.eligible() && g.registry.account) {
-      if (!cloud.loggedIn) acts.push({ id: 'cloud', label: '로그인', sub: '게스트 · 클라우드에 보관하려면', run: () => { audio.sfx('menu_ok'); g.push('account', { overlay: true, screen: 'login' }); } });
+      if (!cloud.loggedIn) acts.push({ id: 'cloud', label: '로그인', sub: '게스트 · 로그인하면 클라우드에 보관', run: () => { audio.sfx('menu_ok'); g.push('account', { overlay: true, screen: 'login' }); } });
       else acts.push({ id: 'cloud', label: this.syncing ? '동기화 중…' : '지금 동기화', disabled: this.syncing, sub: `${cloud.id} · ${cloud.overall().short}`, run: () => this.syncNow() });
     }
     return acts;
@@ -40,7 +40,7 @@ export class SystemTab extends Tab {
     this.syncing = false;
     if (!out?.ok) { this.m.notify(out?.message ?? '동기화하지 못했습니다', PAL.bad); return; }
     if (out.conflicts.length) this.m.notify(`슬롯 ${out.conflicts.join(', ')}: 클라우드 기록과 달라요 — 타이틀의 세이브 슬롯 화면에서 고르세요`, PAL.warn);
-    else if (out.failed.length) this.m.notify(`슬롯 ${out.failed.join(', ')}을(를) 동기화하지 못했습니다`, PAL.bad);
+    else if (out.failed.length) this.m.notify(`${slotsJosa(out.failed, '을', '를')} 동기화하지 못했습니다`, PAL.bad);
     else if (out.held.length) this.m.notify(`슬롯 ${out.held.join(', ')}: 다른 기기에 더 최근 기록이 있어요 — 타이틀의 이어하기에서 받을 수 있습니다`, PAL.warn);
     else this.m.notify('클라우드와 동기화했습니다', PAL.good);
   }

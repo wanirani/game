@@ -4,7 +4,9 @@ alpha = rembg (isnet-general-use) soft matte, forced to 0 where the pixel is wit
 colour (punches holes: torn wing membranes, gaps between bones), then colour decontamination (un-mix the grey fringe).
 The Kling watermark (bottom-right 'KlingAI 3.0 Omni') is painted over with the bg colour first.
 
-Usage: python3 matte.py <in.png> <out.png> [--soft]     (--soft: ghosts/ectoplasm keep translucent mist; weaker key)
+Usage: python3 matte.py <in.png> <out.png> [--soft|--rembg]
+  --soft : ghosts/ectoplasm keep translucent mist (weaker key)
+  --rembg: neural matte only (grey steel blades/armour on the grey background would be keyed out otherwise)
 """
 import sys
 import numpy as np
@@ -42,7 +44,7 @@ def kill_watermark(a, bg):
     return a
 
 
-def matte(src, dst, soft=False):
+def matte(src, dst, soft=False, rembg_only=False):
     im = Image.open(src).convert('RGB')
     a = np.asarray(im).astype(np.float32).copy()
     bg = bg_colour(a)
@@ -51,14 +53,18 @@ def matte(src, dst, soft=False):
     rowbg = np.median(np.concatenate([a[:, :20], a[:, -20:]], 1), axis=1)
     dist = np.sqrt(((a - rowbg[:, None, :]) ** 2).sum(2))
     ar = rembg_alpha(Image.fromarray(a.astype(np.uint8)))
-    if soft:
+    if rembg_only:
+        # grey steel on a grey background: the colour key would punch holes in blades -> trust the neural matte only
+        alpha = np.clip((ar - 0.08) / 0.84, 0, 1)
+    elif soft:
         key = np.clip((dist - 6.0) / 30.0, 0, 1)
         alpha = np.maximum(ar * np.clip((dist - 3.0) / 14.0, 0, 1), key * (ar > 0.01))
     else:
         key = np.clip((dist - 9.0) / 22.0, 0, 1)
         alpha = np.minimum(np.maximum(ar, key * (ar > 0.02)), np.clip((dist - 5.0) / 10.0, 0, 1))
     alpha = ndi.gaussian_filter(alpha, 0.6)
-    alpha[dist < (4 if soft else 6)] = 0
+    if not rembg_only:
+        alpha[dist < (4 if soft else 6)] = 0
     A = alpha[..., None]
     B = rowbg[:, None, :]
     col = np.where(A > 0.05, (a - (1 - A) * B) / np.maximum(A, 0.05), a)
@@ -69,4 +75,4 @@ def matte(src, dst, soft=False):
 
 if __name__ == '__main__':
     args = [x for x in sys.argv[1:] if not x.startswith('--')]
-    matte(args[0], args[1], soft='--soft' in sys.argv)
+    matte(args[0], args[1], soft='--soft' in sys.argv, rembg_only='--rembg' in sys.argv)

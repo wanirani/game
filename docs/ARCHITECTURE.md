@@ -30,14 +30,14 @@
 **규칙**: 자기 담당 파일만 수정한다. 다른 파일의 버그를 발견하면 최소 수정만 하고 보고한다. npm 의존성 추가 금지. 순환 import 시 **모듈 최상위에서 import 값에 접근하지 말 것**(함수 안에서만). 모든 사용자 노출 텍스트는 자연스러운 한국어.
 
 ## 코어 API 요약
-- `game` (`core/game.js`): `viewW/viewH`, `state`(세이브), `settings`, `meta`, `world`(현재 World), `go(name, params)`(스택 교체+페이드), `push(name, params)`(오버레이), `pop()`, `flash(color, a)`, `toast(text, color)`, `register(name, Class)`, `recordScore(score, stageId, mode)`.
+- `game` (`core/game.js`): `viewW/viewH`, `state`(세이브), `settings`, `meta`, `world`(현재 World), `go(name, params)`(스택 교체+페이드), `push(name, params)`(오버레이), `pop()`, `flash(color, a)`, `toast(text, color)` (장면별 줄 위치: `toastY/toastX/toastUp`, 숨김: `hideToasts`/`deferToasts`), `register(name, Class)`, `recordScore(score, stageId, mode)`.
 - `Scene`: `enter(params)`, `exit()`, `update(dt)`, `render(ctx)`, `opaque`(false면 아래 장면도 그림), `onResume(result)`.
 - `input` (`core/input.js`): 액션 `left right up down jump attack dash sub skill1 skill2 ult swap menu confirm cancel map`. `down(a) pressed(a) released(a) buffered(a, s) consume(a) axisX axisY command(seq, facing) pointer{ x,y,tapped,down } touchMode flush()`.
 - `ui` (`core/ui.js`): `text(ctx,str,x,y,{size,color,align,weight,family,outline})`, `wrap`, `paragraph`, `panel`, `bar`, `button(ctx, rect, label, {selected})→tapped`, `ListMenu`(키보드+터치 목록), `drawCover`, `vignette`, `FONT{body,title,logo,num}`, `COLORS`, `RARITY_NAMES`.
 - `audio`: `sfx(name,{vol,pitch})`, `music(id)`, `stopMusic(fade)`, `duck()`, `unlock()`.
 - `assets.get('bg/s01_village')` → Image|null (null이면 절차적 대체 그림으로 그릴 것).
 - `world.fx` (Particles): `emit/burst(type,x,y,n,{color,speed,angle,spread})` 타입 `spark hit blood dust smoke ember fire magic holy ice dark thunder shard soul gold water`, `ring`, `flash`, `slash`, `ghost(drawFn, life)`, `text(x,y,str,{color,size,crit})`.
-- `world.camera.shake(mag, time)`, `punchZoom(z, t)`; `world.lighting.add(x,y,r,color,i)` (엔티티의 `lights(L)`에서 호출); `world.hitstop = s`; `world.slowmo = s`; `world.timeStop`.
+- `world.camera.shake(mag, time)` (월드를 멈추는 오버레이는 `update` 에서 `camera.tickShake(dt)` 를 불러 흔들림을 제때 재생), `punchZoom(z, t)`; `world.lighting.add(x,y,r,color,i)` (엔티티의 `lights(L)`에서 호출); `world.hitstop = s`; `world.slowmo = s`; `world.timeStop`.
 - `world`: `player, map, stage, room, run{hp,mp,hearts,lives,score,sp,sub,time,kills,...}, diff, state, hero, entities, time`; `add(e)`, `spawnEnemy(id, footX, footY, {params,facing,elite})`, `spawnProjectile(opts)`, `spawnPickup(type,x,y,data)`, `enemies()`, `nearestEnemy(x,y,max)`, `gainExp(n)`, `addScore(n)`, `applyPowerup(id)`, `playScript(id)`, `gotoRoom(id)`.
 - 전투 (`game/combat.js`): `playerStrike(world, rect, attack)`, `enemyStrike(world, rect, attack)`, `hitTarget`. Attack 스키마는 파일 상단 주석. 대상은 `takeHit(dmg, attack, world, info)`와 `hurtbox()`, `stats{def,res,weak,resist}` 구현.
 - 투사체 (`game/projectiles.js`): `Projectile` 옵션 `{x,y,vx,vy,w,h,team,owner,attack,life,behavior,render,color,pierce,spin,gravity,light,trail,onHit,onExpire,onLand,homingTurn,orbitR,...}` / `Hitbox` 지속 판정 / `explode(world,x,y,{r,attack})` / `PROJ_RENDER` 키: `orb bullet knife axe cross flask flame bone fireball bolt shard book wave none`.
@@ -133,7 +133,9 @@ weapon:{type:'whip'|'sword'|'greatsword'|'dagger'|'gun'|'staff', style:1~6, colo
 `whip whip_crack slash slash_heavy gun shotgun magic holy fire ice thunder dark hit hit_heavy crit clang enemy_die explode jump double_jump land dash mist hurt death heart coin item powerup levelup menu_move menu_ok menu_cancel door candle break_wall secret save heal chest boss_roar boss_die warning thunderclap stopwatch cross axe dagger holywater_burn enhance_hit enhance_success enhance_fail enhance_destroy dice card slot_spin slot_win win lose ult combo footstep splash bat ghost bell clock_tick ready go coin_insert extra_life type charge_ready`
 
 ## 장면(Scene) 이름
-`title slots difficulty charselect story(컷신: {script, then, bg}) stage dialogue bossIntro ultCutin document gameover results pause menu options hub worldmap shop smith church inn minigame_dice minigame_blackjack minigame_slot minigame_duel minigame_memory ending credits arcade highscore`
+`title slots difficulty charselect story(컷신: {script, then, bg}) stage dialogue bossIntro ultCutin document gameover results pause menu options hub worldmap shop smith church inn minigame_dice minigame_blackjack minigame_slot minigame_duel minigame_memory ending credits arcade highscore account cloudConflict`
+(`account` = 계정·클라우드 저장 화면, `cloudConflict` = 클라우드 기록 받기/올리기 선택 — 계정 기능 전체는 `docs/ACCOUNTS.md`)
 
 ## 이벤트 버스 (`core/events.js`)
 `enemyKilled bossKilled itemPicked goldPicked docFound relicFound secretFound stageCleared stageEntered roomEntered playerHurt playerDied levelUp classChanged enhance minigame npcTalk questDone combo`
+계정(`core/cloud.js`): `cloud:status {state}` `cloud:login {id, resumed}` `cloud:logout {id, reason}` `cloud:sync {phase:'start'|'done', …}` `cloud:conflict {slot}`

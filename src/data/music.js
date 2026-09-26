@@ -889,7 +889,7 @@ export const TRACKS = {
   // ───────────────────────── Part 2: 균열의 순례 ─────────────────────────
   // 거울: 하프시코드·오르골 왈츠, B 섹션은 A 섹션의 완전한 역행(선율·코드 모두 거울상)
   s14: {
-    name: '14장: 거울의 성', gain: 1.0, bpm: 150, sig: 3, key: 'F# hmin',
+    name: '14장: 거울의 성', gain: 1.1, bpm: 150, sig: 3, key: 'F# hmin',
     ch: {
       lead: { inst: 'musicbox', vol: 0.5, pan: 0.1, tau: 0.55, dly: 0.22 },
       harm: { inst: 'celesta', from: 'lead', dia: -2, vol: 0.2, pan: -0.3, tau: 0.4 },
@@ -919,7 +919,7 @@ export const TRACKS = {
   },
   // 용광로: 파워코드 기타 + 금관 스탭 + 낮은 오르간 페달, 모루 타악, 7/8 브리지(C)
   s15: {
-    name: '15장: 영겁의 용광로', gain: 1.0, bpm: 168, key: 'E hmin',
+    name: '15장: 영겁의 용광로', gain: 1.14, bpm: 168, key: 'E hmin',
     ch: {
       lead: C.lead({ inst: 'sawlead', vol: 0.6 }),
       harm: C.harm({ inst: 'sawlead', vol: 0.22 }),
@@ -952,10 +952,10 @@ export const TRACKS = {
   },
   // 심해 성소: 오르간 + 5도 병행 성가(오르가눔), 물방울 하프시코드, 2마디마다 종, 성긴 드럼
   s16: {
-    name: '16장: 가라앉은 성소', gain: 1.0, bpm: 96, key: 'D hmin',
+    name: '16장: 가라앉은 성소', gain: 0.93, bpm: 96, key: 'D hmin',
     ch: {
-      orgl: { inst: 'organ', vol: 0.46, pan: 0.05, rev: 0.8 },
-      choir: { inst: 'choir', vol: 0.5, pan: 0.05, rev: 0.85 },
+      orgl: { inst: 'organ', vol: 0.58, pan: 0.05, rev: 0.8 },
+      choir: { inst: 'choir', vol: 0.42, pan: 0.05, rev: 0.85 },
       choir5: { inst: 'choir', from: 'choir', semi: -7, vowel: 'o', vol: 0.3, pan: -0.2, hv: 0.9, rev: 0.85 },
       low: { inst: 'choir', from: 'orgl', semi: -12, vowel: 'o', vol: 0.28, pan: 0.2, hv: 0.85, rev: 0.85 },
       org: C.pad('organ', { oct: 3, vol: 0.18, rev: 0.8 }),
@@ -987,7 +987,7 @@ export const TRACKS = {
   },
   // 공중정원: 현악 오스티나토 + 금관 팡파르, 드라이브/갤럽 드럼, B 섹션은 F# 단조로 전조
   s17: {
-    name: '17장: 폭풍의 공중정원', gain: 1.0, bpm: 176, key: 'A hmin',
+    name: '17장: 폭풍의 공중정원', gain: 1.19, bpm: 176, key: 'A hmin',
     ch: {
       lead: { inst: 'brass', vol: 0.52, pan: 0.05 },
       harm: { inst: 'brass', from: 'lead', dia: -2, vol: 0.3, pan: -0.25 },
@@ -995,8 +995,8 @@ export const TRACKS = {
       ost: { inst: 'strings', gen: 'R5O5T5O5', step: 16, oct: 4, vol: 0.2, gate: 0.55, pan: -0.2 },
       sky: C.pad('strings', { oct: 5, vol: 0.13, pan: 0.2 }),
       gtr: C.gtr('X.x.X.x.X.x.X.x.', { vol: 0.26 }),
-      bass: C.bass('RORORORO'),
-      timp: { inst: 'timp', gen: 'R.......R.R.R.R.', step: 16, oct: 2, vol: 0.42 },
+      bass: C.bass('RORORORO', { vol: 0.5 }),
+      timp: { inst: 'timp', gen: 'R.......R.R.R.R.', step: 16, oct: 2, vol: 0.34 },
       dr: C.kit({ vol: 0.48 }),
     },
     intro: 'I', order: ['A', 'B', 'A2', 'B2'],
@@ -1019,7 +1019,7 @@ export const TRACKS = {
   },
   // 악몽: 12칸 심장 박동 킥(4/4 위에서 어긋나며 맴돈다), 30센트 어긋난 오르골 자장가, 트라이톤 그림자, 속삭이는 합창
   s18: {
-    name: '18장: 악몽의 미궁', gain: 1.0, bpm: 120, key: 'C hmin',
+    name: '18장: 악몽의 미궁', gain: 1.3, bpm: 120, key: 'C hmin',
     ch: {
       lead: { inst: 'musicbox', vol: 0.5, pan: 0.08, tau: 0.6, dly: 0.25 },
       ghost: { inst: 'musicbox', from: 'lead', semi: 12.3, vol: 0.2, pan: -0.35, tau: 0.45, hv: 0.9 },
@@ -1052,7 +1052,7 @@ export const TRACKS = {
   },
   // 썩어가는 숲: 부족 타악(나무토막·셰이커·톰) + 피들 선율, 리드 화성, 피치카토 베이스, 포자 첼레스타
   s19: {
-    name: '19장: 썩어가는 숲', gain: 1.0, bpm: 132, key: 'G hmin',
+    name: '19장: 썩어가는 숲', gain: 1.58, bpm: 132, key: 'G hmin',
     ch: {
       lead: { inst: 'fiddle', vol: 0.46, pan: 0.1 },
       rh: { inst: 'reed', from: 'lead', dia: -2, vol: 0.28, pan: -0.2, hv: 0.8 },
@@ -1093,8 +1093,8 @@ export const TRACKS = {
       choir8: { inst: 'choir', from: 'choir', semi: -12, vowel: 'o', vol: 0.26, pan: 0.2, hv: 0.85 },
       orgc: { inst: 'organ', from: 'choir', vol: 0.26, pan: -0.1, hv: 0.85 },
       org: C.pad('organ', { vol: 0.18 }),
-      cosmos: { inst: 'lead2', wave: 'pulse12', gen: 'R5OTFTO53O5T', step: 16, oct: 4, vol: 0.13, gate: 0.4, pan: -0.3, dly: 0.35, rev: 0.5 },
-      stars: { inst: 'bells', gen: 'H' + dot(23), step: 16, oct: 4, vol: 0.14, pan: 0.35 },
+      cosmos: { inst: 'lead2', wave: 'pulse12', gen: 'R5OTFTO53O5T', step: 16, oct: 4, vol: 0.36, gate: 0.4, pan: -0.3, dly: 0.35, rev: 0.5 },
+      stars: { inst: 'bells', gen: 'H' + dot(23), step: 16, oct: 4, vol: 0.2, pan: 0.35 },
       gtr: C.gtr('X.xxX.xxX.xxX.xx', { vol: 0.3 }),
       bass: C.bass('RORORORO'),
       timp: { inst: 'timp', gen: 'R.......R.......', step: 16, oct: 2, vol: 0.44 },
@@ -1122,17 +1122,17 @@ export const TRACKS = {
   },
   // Part 2 보스 A (14·16·18장): 오르간 + 톱니 리드 + 합창 스탭
   boss3: {
-    name: '보스: 이계의 수호자', gain: 1.0, bpm: 178, key: 'D hmin',
+    name: '보스: 이계의 수호자', gain: 1.09, bpm: 178, key: 'D hmin',
     ch: {
       lead: C.lead({ inst: 'sawlead', vol: 0.62 }),
       harm: C.harm({ vol: 0.28 }),
       orgl: { inst: 'organ', vol: 0.42, pan: 0.1 },
       orgs: { inst: 'organ', gen: 'X..X..X.X..X..X.', step: 16, oct: 4, vol: 0.17, gate: 0.6, pan: -0.2 },
       stab: { inst: 'choir', gen: 'X.......X..X....', step: 16, oct: 4, vol: 0.34, gate: 0.35, pan: 0.15 },
-      choir: { inst: 'choir', vol: 0.46, pan: 0.05 },
-      choir2: { inst: 'choir', from: 'choir', dia: -2, vol: 0.3, pan: -0.2, hv: 0.9 },
+      choir: { inst: 'choir', vol: 0.32, pan: 0.05 },
+      choir2: { inst: 'choir', from: 'choir', dia: -2, vol: 0.2, pan: -0.2, hv: 0.9 },
       gtr: C.gtr('X.xxX.xxX.xxX.xx', { vol: 0.34 }),
-      bass: C.bass('RRRORRRO', { step: 16 }),
+      bass: C.bass('RRRORRRO', { step: 16, vol: 0.5 }),
       timp: { inst: 'timp', gen: 'R.......R.R.....', step: 16, oct: 2, vol: 0.44 },
       dr: C.kit({ vol: 0.5 }),
     },
@@ -1156,14 +1156,15 @@ export const TRACKS = {
   },
   // Part 2 보스 B (15·17·19장): 트윈 디스토션 기타 리드 + 금관, 쉼 없는 투베이스
   boss4: {
-    name: '보스: 폭주하는 닻', gain: 1.0, bpm: 186, key: 'G hmin',
+    name: '보스: 폭주하는 닻', gain: 0.98, bpm: 186, key: 'G hmin',
     ch: {
       glead: { inst: 'gtr', vol: 0.5, pan: 0.12 },
+      gdub: { inst: 'lead', from: 'glead', vol: 0.4, pan: 0.05, hv: 0.9 },
       gharm: { inst: 'gtr', from: 'glead', dia: -2, vol: 0.3, pan: -0.3 },
       br: { inst: 'brass', vol: 0.5, pan: 0.05 },
       brh: { inst: 'brass', from: 'br', dia: -2, vol: 0.3, pan: -0.25 },
       stab: { inst: 'brass', gen: 'X.......X..X....', step: 16, oct: 4, vol: 0.24, gate: 0.45, pan: 0.25 },
-      gtr: C.gtr('XxxxXxxxXxxxXxxx', { vol: 0.34, pan: -0.3 }),
+      gtr: C.gtr('XxxxXxxxXxxxXxxx', { vol: 0.28, pan: -0.3 }),
       bass: C.bass('RRRRRRRR', { step: 8 }),
       str: { inst: 'strings', gen: 'X.......X.......', step: 16, oct: 4, vol: 0.2, gate: 0.4 },
       timp: { inst: 'timp', gen: 'R.......R.R.R.R.', step: 16, oct: 2, vol: 0.44 },
@@ -1187,11 +1188,11 @@ export const TRACKS = {
   },
   // 최종 보스: 72 BPM 합창·오르간 서주(1회) → 196 BPM 본편(최고 속도, 전 악기), 본편만 반복
   nihil: {
-    name: '태초의 공허 니힐', gain: 1.0, bpm: 196, key: 'Bb hmin',
+    name: '태초의 공허 니힐', gain: 0.87, bpm: 196, key: 'Bb hmin',
     ch: {
       lead: C.lead({ inst: 'sawlead', vol: 0.6, vib: 24 }),
       harm: C.harm({ inst: 'lead', wave: 'pulse25', vol: 0.26 }),
-      hi: { inst: 'lead2', wave: 'pulse12', from: 'lead', semi: 12, vol: 0.14, pan: 0.3, hv: 0.8 },
+      hi: { inst: 'lead2', wave: 'pulse12', from: 'lead', semi: 12, vol: 0.24, pan: 0.3, hv: 0.8 },
       fid: { inst: 'fiddle', from: 'lead', vol: 0.22, pan: -0.35, hv: 0.85 },
       mbox: { inst: 'musicbox', step: 16, oct: 5, vol: 0.12, pan: 0.4, tau: 0.3 },
       br: { inst: 'brass', vol: 0.5, pan: 0.05 },
@@ -1205,7 +1206,7 @@ export const TRACKS = {
       harp: { inst: 'harpsi', step: 16, oct: 4, vol: 0.14, pan: -0.3 },
       pno: { inst: 'piano', step: 16, oct: 3, vol: 0.2, pan: 0.2 },
       str: { inst: 'strings', step: 16, oct: 4, vol: 0.18, gate: 0.4, pan: 0.3, max: 3 },
-      reed: { inst: 'reed', step: 8, oct: 4, vol: 0.16, gate: 0.5, pan: -0.25, max: 3 },
+      reed: { inst: 'reed', step: 8, oct: 4, vol: 0.22, gate: 0.5, pan: -0.25, max: 3 },
       pizz: { inst: 'pizz', step: 16, oct: 3, vol: 0.2, pan: 0.35 },
       gtr: { inst: 'gtr', step: 16, oct: 3, pow: true, vol: 0.34, pan: 0.3 },
       bass: C.bass('RORORORO'),
@@ -1244,14 +1245,14 @@ export const TRACKS = {
   },
   // 월드맵 2쪽: 첼레스타 아르페지오 + 합창 패드 + 현악, 드럼 없음
   worldmap2: {
-    name: '균열의 지도', gain: 1.0, bpm: 84, key: 'B hmin',
+    name: '균열의 지도', gain: 1.32, bpm: 84, key: 'B hmin',
     ch: {
-      mel: { inst: 'strings', vol: 0.42, pan: 0.05, rev: 0.55 },
-      mel2: { inst: 'celesta', vol: 0.46, pan: 0.1, tau: 0.9, dly: 0.3 },
+      mel: { inst: 'strings', vol: 0.5, pan: 0.05, rev: 0.55 },
+      mel2: { inst: 'celesta', vol: 0.5, pan: 0.1, tau: 0.9, dly: 0.3 },
       echo: { inst: 'celesta', from: 'mel', semi: 12, vol: 0.16, pan: -0.3, tau: 0.6, hv: 0.8 },
       under: { inst: 'strings', from: 'mel2', semi: -12, vol: 0.24, pan: -0.15, hv: 0.85 },
       arp: { inst: 'celesta', gen: 'R5OT5O35', step: 16, oct: 4, vol: 0.17, pan: -0.3, tau: 0.5 },
-      cpad: C.pad('choir', { vowel: 'o', vol: 0.2, rev: 0.7 }),
+      cpad: C.pad('choir', { vowel: 'o', vol: 0.14, rev: 0.7 }),
       str: C.pad('strings', { oct: 3, vol: 0.16 }),
       bass: { inst: 'fbass', gen: 'R.......', step: 8, oct: 2, vol: 0.34 },
       bell: { inst: 'bells', gen: 'O' + dot(31), step: 16, oct: 4, vol: 0.14, pan: 0.35 },

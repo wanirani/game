@@ -11,14 +11,14 @@ import { audio } from '../../core/audio.js';
 import { assets } from '../../core/assets.js';
 import { saves } from '../../core/save.js';
 import { bus } from '../../core/events.js';
-import { cloud, checkId, checkPassword, checkRecoveryCode, normalizeId, SLOTS } from '../../core/cloud.js';
+import { cloud, checkId, checkPassword, checkRecoveryCode, SLOTS } from '../../core/cloud.js';
 import { text, wrap, FONT } from '../../core/ui.js';
 import { clamp, ease } from '../../core/math.js';
 import {
   Ambience, kenBurns, shade, frame, heading, ornament, gbutton, menuItem, backButton, footer, setPad, fmtDate,
   TapZones, GOLD, BONE, DIM, CRIMSON,
 } from './common.js';
-import { drawCloudIcon, drawCloudBadge, accountBadge, summaryLine, spinner } from './cloud_ui.js';
+import { drawCloudIcon, drawCloudBadge, accountBadge, summaryLine, spinner, slotsJosa } from './cloud_ui.js';
 
 const STYLE_ID = 'bn-account-style';
 const CSS = `
@@ -482,7 +482,6 @@ export class AccountScene extends Scene {
   /** 입력값 검사 → { text, field } 또는 null */
   validate() {
     const s = this.screen, id = this.val('id'), pw = this.val('pw'), pw2 = this.val('pw2');
-    const need = (key, label) => (!this.val(key) ? { text: `${label}을(를) 입력해 주세요.`, field: key } : null);
     if (s === 'login') {
       const e = checkId(id); if (e) return { text: e, field: 'id' };
       if (!pw) return { text: '비밀번호를 입력해 주세요.', field: 'pw' };
@@ -502,7 +501,7 @@ export class AccountScene extends Scene {
       if (pw !== pw2) return { text: '새 비밀번호 확인이 일치하지 않습니다.', field: 'pw2' };
       return null;
     }
-    if (s === 'delete') return need('pw', '비밀번호');
+    if (s === 'delete' && !pw) return { text: '비밀번호를 입력해 주세요.', field: 'pw' };
     return null;
   }
   async submit() {
@@ -564,7 +563,7 @@ export class AccountScene extends Scene {
     this.setBusy(false);
     this.readSlots();
     if (r.ok && !r.conflicts.length) this.msg = { text: `슬롯 ${r.uploaded.join(', ')}의 기록을 클라우드에 올렸습니다.`, color: GOOD };
-    else if (r.conflicts.length) this.msg = { text: `슬롯 ${r.conflicts.join(', ')}은(는) 클라우드 기록과 달라 올리지 않았습니다. 세이브 슬롯 화면에서 골라 주세요.`, color: '#ffb070' };
+    else if (r.conflicts.length) this.msg = { text: `${slotsJosa(r.conflicts, '은', '는')} 클라우드 기록과 달라 올리지 않았습니다. 세이브 슬롯 화면에서 골라 주세요.`, color: '#ffb070' };
     else this.msg = { text: r.message ?? '올리지 못했습니다.', color: RED };
   }
   syncMsg(out) {
@@ -573,9 +572,9 @@ export class AccountScene extends Scene {
     if (out.downloaded.length) parts.push(`받음: 슬롯 ${out.downloaded.join(', ')}`);
     if (out.uploaded.length) parts.push(`올림: 슬롯 ${out.uploaded.join(', ')}`);
     if (out.deleted.length) parts.push(`클라우드에서 지움: 슬롯 ${out.deleted.join(', ')}`);
-    if (out.conflicts.length) return { text: `슬롯 ${out.conflicts.join(', ')}은(는) 이 기기와 클라우드 기록이 서로 다릅니다. 세이브 슬롯 화면에서 남길 기록을 골라 주세요.`, color: '#ffb070' };
-    if (out.failed.length) return { text: `슬롯 ${out.failed.join(', ')}을(를) 동기화하지 못했습니다. 잠시 후 다시 시도해 주세요.`, color: RED };
-    if (out.held?.length) return { text: `슬롯 ${out.held.join(', ')}은(는) 지금 플레이 중이라 받지 않았습니다. 타이틀의 이어하기에서 받을 수 있습니다.`, color: '#ffb070' };
+    if (out.conflicts.length) return { text: `${slotsJosa(out.conflicts, '은', '는')} 이 기기와 클라우드 기록이 서로 다릅니다. 세이브 슬롯 화면에서 남길 기록을 골라 주세요.`, color: '#ffb070' };
+    if (out.failed.length) return { text: `${slotsJosa(out.failed, '을', '를')} 동기화하지 못했습니다. 잠시 후 다시 시도해 주세요.`, color: RED };
+    if (out.held?.length) return { text: `${slotsJosa(out.held, '은', '는')} 지금 플레이 중이라 받지 않았습니다. 타이틀의 이어하기에서 받을 수 있습니다.`, color: '#ffb070' };
     return { text: parts.length ? `동기화를 마쳤습니다. (${parts.join(' · ')})` : '동기화를 마쳤습니다. 모든 기록이 최신입니다.', color: GOOD };
   }
   async doSync() {

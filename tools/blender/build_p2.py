@@ -491,76 +491,14 @@ def shard_E(loc, r, h, rot=(0, 0, 0), mat=None, name="rshard"):
                    mat or EM_riftshard(), seg=4, loc=loc, rot=rot, smooth=False, name=name)
 
 
-def blade_piece(L, fn, t0, t1, mat, edge_mat=None, cross="hex", n=24, jag0=0.0, jag1=0.0,
-                seed=1, point=False, name="blade_piece", loc=(0, 0, 0), rot=(0, 0, 0)):
-    """Section t0..t1 of a lofted blade (E.blade conventions: fn(t) ->
-    (halfwidth, centre_x, halfthick, fuller)).  Both ends are capped; jag0 /
-    jag1 give the cut ends a broken, jagged profile.  point=True closes the
-    top into the blade tip instead."""
-    X = [(u, v) for (u, v) in E.BLADE_X[cross] if not isinstance(v, str)]
-    k = len(X)
-    rng = random.Random(seed)
-    jr0 = [rng.uniform(-1, 1) for _ in range(k)]
-    jr1 = [rng.uniform(-1, 1) for _ in range(k)]
-    verts, faces, fm = [], [], []
-    edge_idx = [j for j, (u, v) in enumerate(X) if abs(u) == 1]
-    for i in range(n + 1):
-        s_ = i / n
-        t = t0 + (t1 - t0) * s_
-        w, cx, th, _fd = fn(min(t, 0.999))
-        z = t * L
-        for j, (u, v) in enumerate(X):
-            dz = 0.0
-            if i == 0:
-                dz = jag0 * jr0[j]
-            elif i == n and not point:
-                dz = jag1 * jr1[j]
-            verts.append((cx + u * w, v * th, z + dz))
-    for i in range(n):
-        for j in range(k):
-            j2 = (j + 1) % k
-            faces.append((i * k + j, i * k + j2, (i + 1) * k + j2, (i + 1) * k + j))
-            fm.append(1 if (j in edge_idx or j2 in edge_idx) and edge_mat else 0)
-    faces.append(tuple(range(k))[::-1])
-    fm.append(0)
-    last = n * k
-    if point:
-        w, cx, th, _fd = fn(1.0)
-        tip = len(verts)
-        verts.append((cx, 0.0, L * t1 + 0.0))
-        for j in range(k):
-            j2 = (j + 1) % k
-            faces.append((last + j, last + j2, tip))
-            fm.append(1 if (j in edge_idx or j2 in edge_idx) and edge_mat else 0)
-    else:
-        faces.append(tuple(last + j for j in range(k)))
-        fm.append(0)
-    mats = [mat, edge_mat] if edge_mat else [mat]
-    ob = E.make_mesh(name, verts, faces, mats=mats, face_mats=fm, smooth=False, loc=loc, rot=rot)
-    me = ob.data
-    bm = bmesh.new()
-    bm.from_mesh(me)
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-    bm.to_mesh(me)
-    bm.free()
-    me.shade_flat()
-    return ob
-
-
-def rift_tear(loc, rx, rz, rot=(0, 0, 0), strength=9.0, name="rift_tear"):
-    """Glowing lens-shaped tear in space (flattened ellipsoid of rift light)."""
-    return E.sphere(1.0, EM_riftglow("riftglow", strength), loc=loc, rot=rot,
-                    scale=(rx, rx * 0.35, rz), seg=24, rings=12, name=name)
-
-
 # =============================================================================
 #  TIER-7 EQUIPMENT ICONS
 # =============================================================================
 @equip("sword_7")
 def sword_7():
-    """Rift blade: void-metal blade split by an iridescent crack whose upper
-    third has broken away and floats above a tear of rift light; pale
-    star-gold crescent guard with a star gem."""
+    """Rift blade: void-metal blade split along its length by an iridescent
+    crack, chips of the edge drifting off near the tip, a ring of rift light
+    at the root, star-gold crescent guard with a star gem."""
     blade_m = EM_void("rift_blade", rift=dict(along="Z", across="X", center=0.0, amp=0.05,
                                               freq=2.2, width=0.022, halo=0.055, strength=12.0,
                                               halo_str=0.8, span=(0.0, 1.1),
@@ -952,11 +890,9 @@ def cloak_7():
                                              (0.62, (0.12, 0.03, 0.2)), (0.72, (0.02, 0.1, 0.18))])
         nt.links.new(neb, I["Base Color"])
         add_starfield(sky, density=34.0, size=0.14, strength=7.0)
-        nebE = _m(nt, "MULTIPLY", _m(nt, "POWER", nz.outputs["Fac"], 4.0), 0.0)
         sky["glow"] = list(STAR_WHITE)
         sky["glow_str"] = 0.5
         sky["glow_norm"] = 1.0 / 7.0
-        del nebE
     sky = E.G.mats["nightsky"]
     outer = EM_void("cloak_void", color=(0.03, 0.028, 0.06), rough=0.45, film=(250.0, 420.0),
                     metal=0.2)
@@ -1681,9 +1617,9 @@ def build_forge_anvil():
         a = rng.uniform(0.2, math.pi - 0.2)
         L = rng.uniform(0.08, 0.2)
         p0 = Vector((rng.uniform(-0.1, 0.1), -0.05, 0.8))
-        d = Vector((math.cos(a), 0, math.sin(a)))
-        p1 = p0 + d * rng.uniform(0.1, 0.35)
-        D.sweep([tuple(p1), tuple(p1 + d * L)], 0.006, spark, segs=4, name="spark")
+        d = Vector((math.cos(a), 0, math.sin(a) * 0.6))
+        p1 = p0 + d * rng.uniform(0.08, 0.22)
+        D.sweep([tuple(p1), tuple(p1 + d * L * 0.6)], 0.007, spark, segs=4, name="spark")
     # sledge hammer leaning on the block
     with D.sub(loc=(-0.44, -0.12, 0.0), rot=(0, rad(18), 0)):
         D.cyl(0.025, 0.62, wood, loc=(0, 0, 0.31), seg=12, name="haft")
@@ -1716,11 +1652,13 @@ def build_forge_crucible():
     for z in (0.7, 0.95):
         r = 0.53 if z < 0.9 else 0.575
         D.torus(r, 0.022, iron, loc=(0, 0, z), seg=48, rseg=6, name="hoop")
-    # pour lip + drip
-    D.lathe([(0.0, 0.0), (0.1, 0.0), (0.14, 0.2), (0.0, 0.2)], iron, seg=16,
-            loc=(0.56, -0.05, 1.08), rot=(0, rad(-70), 0), name="lip")
-    D.sweep([(0.72, -0.05, 1.12), (0.78, -0.05, 1.0), (0.8, -0.05, 0.75)], lambda t: 0.03 - 0.015 * t,
-            hot, segs=10, name="pour")
+    # molten metal brimming over the rim and running down the outer wall
+    for (a, L) in ((-1.2, 0.34), (-1.9, 0.22)):
+        d = Vector((math.cos(a), math.sin(a), 0))
+        pts = [tuple(d * 0.6 + Vector((0, 0, 1.16))), tuple(d * 0.62 + Vector((0, 0, 1.08))),
+               tuple(d * 0.6 + Vector((0, 0, 1.16 - L * 0.6))), tuple(d * 0.575 + Vector((0, 0, 1.16 - L)))]
+        D.sweep(D.catmull(pts, 5), lambda t: 0.035 * (1 - 0.3 * t), hot, segs=10, name="overflow")
+        D.sphere(0.035, hot, loc=pts[-1], seg=12, rings=8, name="drop")
     # trunnions and chain tackle
     for sx in (-1, 1):
         D.cyl(0.05, 0.12, iron, loc=(sx * 0.62, 0, 0.92), rot=(0, rad(90), 0), seg=16, name="trunnion")
@@ -1794,15 +1732,23 @@ def build_sunk_coral():
     D.rock((0, 0.05, 0.12), 0.46, rockm, scale=(1.25, 0.8, 0.42), seed=1)
     D.rock((-0.45, -0.1, 0.06), 0.18, rockm, scale=(1.2, 1.0, 0.7), seed=2)
     D.rock((0.5, -0.05, 0.05), 0.16, rockm, scale=(1.2, 1.0, 0.7), seed=3)
-    for (x, y, L, r, m) in ((-0.2, 0.0, 0.9, 0.05, red), (0.15, 0.1, 0.75, 0.045, orange),
-                            (-0.42, -0.1, 0.5, 0.035, orange)):
+    for (x, y, L, r, m) in ((-0.2, 0.0, 0.9, 0.075, red), (0.15, 0.1, 0.75, 0.065, orange),
+                            (-0.42, -0.1, 0.5, 0.05, orange)):
         coral_branch((x, y, 0.25), (x * 0.4, 0, 1.0), L, r, m, rng)
-    # sea fan: flat lacy disc (voronoi holes via alpha-less displacement)
-    fan = D.lathe([(0.0, 0.0), (0.001, 0.0)], fanm, seg=4)
-    D.G.coll.objects.unlink(fan)
+    # sea fan: lace of cells (voronoi edges opaque, cells dark)
+    if "coral_lace" not in D.G.mats:
+        lace = D.pbr("coral_lace", (0.62, 0.14, 0.5), rough=0.6, sss=0.2)
+        nt = lace.node_tree
+        I = _bsdf(lace).inputs
+        tc = nt.nodes.new("ShaderNodeTexCoord")
+        vo = _n(nt, "ShaderNodeTexVoronoi", Scale=14.0, _feature="DISTANCE_TO_EDGE")
+        nt.links.new(tc.outputs["Object"], vo.inputs["Vector"])
+        nt.links.new(_ramp(nt, vo.outputs["Distance"], [(0.0, (0.75, 0.2, 0.6)), (0.06, (0.62, 0.14, 0.5)),
+                                                        (0.1, (0.1, 0.02, 0.08))]), I["Base Color"])
+    lace = D.G.mats["coral_lace"]
     pts = [(0.0, 0.0)] + [(0.42 * math.cos(a), 0.55 * math.sin(a)) for a in
                           [math.pi * (0.1 + 0.8 * i / 20) for i in range(21)]]
-    D.extrude(pts, 0.02, fanm, loc=(0.3, 0.15, 0.3), rot=(0, rad(-12), rad(15)), name="fan")
+    D.extrude(pts, 0.02, lace, loc=(0.3, 0.15, 0.3), rot=(0, rad(-12), rad(15)), name="fan")
     for k in range(7):
         a = math.pi * (0.15 + 0.7 * k / 6)
         D.sweep([(0.3, 0.13, 0.3), (0.3 + 0.4 * math.cos(a), 0.13, 0.3 + 0.52 * math.sin(a))], 0.012,
@@ -1841,14 +1787,16 @@ def barnacles(ob_center, R, n, mat, rng, zmin=-1, zmax=1, scale=1.0):
 def build_sunk_bell():
     """A great bronze church bell fallen on its side on the sea floor, green
     with verdigris, crusted with barnacles and coral, seaweed streaming."""
-    bronze = D.M_copper("bell_bronze", patina=True)
+    bronze = D.pbr("verdigris", (0.2, 0.46, 0.38), metal=0.35, rough=0.5, pattern="rust",
+                   rust=(0.5, 0.3, 0.13), scale=3.5, bump=0.2)
     inner = D.pbr("bell_in", (0.04, 0.06, 0.05), rough=0.8)
     rockm = D.pbr("sand", (0.3, 0.28, 0.2), rough=0.9, bump=0.4, bump_scale=30)
     barn = D.pbr("barnacle", (0.72, 0.7, 0.62), rough=0.7, bump=0.4, bump_scale=60)
     weed = D.pbr("seaweed", (0.12, 0.35, 0.12), rough=0.5, sss=0.3, coat=0.3)
     red = DM_coral("coral_red", (0.7, 0.14, 0.12))
     rng = random.Random(5)
-    D.rock((0.0, 0.1, 0.0), 0.8, rockm, scale=(1.3, 0.6, 0.12), seed=4, strength=0.15)
+    for k, (x, r) in enumerate(((-0.55, 0.3), (0.0, 0.42), (0.55, 0.3), (-0.2, 0.25), (0.35, 0.28))):
+        D.rock((x, 0.1, 0.0), r, rockm, scale=(1.6, 0.9, 0.28), seed=k + 4, strength=0.25)
     prof = [(0.0, 1.2), (0.12, 1.2), (0.22, 1.16), (0.3, 1.05), (0.33, 0.85), (0.36, 0.62),
             (0.44, 0.4), (0.56, 0.22), (0.64, 0.12), (0.66, 0.06), (0.62, 0.04), (0.56, 0.1),
             (0.4, 0.3), (0.29, 0.6), (0.26, 0.9), (0.2, 1.08), (0.0, 1.12)]
@@ -1874,9 +1822,7 @@ def build_sunk_bell():
     for k in range(6):
         x = rng.uniform(-0.8, 0.8)
         pts = [(x + 0.08 * math.sin(i * 0.9 + k), -0.3 + 0.02 * i, 0.05 + 0.1 * i) for i in range(8)]
-        D.sweep(pts, lambda t: 0.025 * (1 - 0.6 * t), weed, segs=6, ellipse=None,
-                name="weed") if False else D.sweep(pts, lambda t: 0.022 * (1 - 0.6 * t), weed, segs=6,
-                                                    name="weed")
+        D.sweep(pts, lambda t: 0.022 * (1 - 0.6 * t), weed, segs=6, name="weed")
     D.point_light((0.0, -0.8, 1.0), (0.3, 0.9, 0.85), 18, 0.3)
     D.view(pitch=10, fill=0.95, glow=0.5)
 
@@ -1885,8 +1831,8 @@ def build_sunk_bell():
 def build_sunk_statue():
     """Drowned saint: a robed stone priestess with folded hands and a broken
     halo, overgrown with coral, barnacles and streaming kelp."""
-    stone = D.pbr("sunkstone", (0.42, 0.5, 0.5), rough=0.8, pattern="stone", scale=3.0, moss=True,
-                  moss_color=(0.06, 0.28, 0.2), moss_z0=-0.6, moss_z1=1.0)
+    stone = D.pbr("sunkstone", (0.46, 0.52, 0.52), rough=0.75, pattern="stone", scale=2.5,
+                  crack=0.004, moss=True, moss_color=(0.06, 0.28, 0.2), moss_z0=-0.6, moss_z1=1.0)
     weed = D.pbr("kelp", (0.14, 0.38, 0.12), rough=0.5, sss=0.3, coat=0.3)
     red = DM_coral("coral_red", (0.7, 0.14, 0.12))
     orange = DM_coral("coral_or", (0.85, 0.42, 0.14))
@@ -1930,6 +1876,669 @@ def build_sunk_statue():
         D.sweep(pts, lambda t: 0.024 * (1 - 0.7 * t), weed, segs=6, name="kelp")
     D.point_light((0, -0.7, 1.4), (0.3, 0.9, 0.85), 14, 0.3)
     D.view(pitch=6, fill=0.95, glow=0.5)
+
+
+# ---- sky kingdom -------------------------------------------------------------------
+def DM_whitemarble():
+    return D.M_marble("skymarble", (0.93, 0.91, 0.86), vein=(0.72, 0.68, 0.62), scale=1.4)
+
+
+def DM_skygold():
+    return D.pbr("skygold", (1.0, 0.76, 0.34), metal=1.0, rough=0.2, noise_rough=0.06)
+
+
+def cloud_puffs(center, rx, rz, n, rng, mat=None):
+    """Soft cloud tuft made of overlapping spheres (bright, slightly SSS)."""
+    mat = mat or D.pbr("cloud", (0.95, 0.96, 1.0), rough=0.9, sss=0.6,
+                       sss_radius=(1.0, 1.0, 1.0), emit=(0.8, 0.85, 1.0), emit_str=0.15)
+    cx, cy, cz = center
+    for k in range(n):
+        x = cx + rng.uniform(-rx, rx)
+        z = cz + rng.uniform(-rz * 0.3, rz) * (1 - abs(x - cx) / (rx * 1.3))
+        r = rng.uniform(0.4, 0.75) * rz
+        D.sphere(r, mat, loc=(x, cy + rng.uniform(-0.1, 0.1), z), scale=(1.6, 1.0, 0.8), seg=24,
+                 rings=12, name="cloud")
+
+
+@prop("deco_sky_column", (96, 240))
+def build_sky_column():
+    """White marble column of the sky palace: fluted shaft with gilded rings,
+    a gilded Corinthian-ish capital with volutes, stepped base on a cloud."""
+    marble = DM_whitemarble()
+    gold = DM_skygold()
+    rng = random.Random(4)
+    H = 2.3
+    D.box((0.62, 0.62, 0.1), marble, loc=(0, 0, 0.12), bev=0.02, name="plinth")
+    D.lathe(D.catmull2d([(0.0, 0.17), (0.28, 0.17), (0.3, 0.2), (0.26, 0.25), (0.24, 0.3),
+                         (0.27, 0.33), (0.0, 0.33)], 3, closed=False), marble, seg=48, name="base")
+    D.torus(0.25, 0.02, gold, loc=(0, 0, 0.35), seg=48, rseg=8, name="ring")
+    D.lathe([(0.0, 0.35), (0.22, 0.35), (0.2, H - 0.3), (0.0, H - 0.3)], marble, seg=64,
+            name="shaft", radial=lambda a, t: 1 - 0.07 * max(0.0, math.cos(20 * a)) ** 4)
+    for z in (0.9, H - 0.34):
+        D.torus(0.215, 0.02, gold, loc=(0, 0, z), seg=48, rseg=8, name="ring")
+    # capital: bell of gilded leaves + abacus with volutes
+    for k in range(12):
+        a = TAU * k / 12
+        d = Vector((math.cos(a), math.sin(a), 0))
+        p0 = Vector((0, 0, H - 0.3)) + d * 0.19
+        pts = D.bezier_pts(p0, p0 + d * 0.04 + Vector((0, 0, 0.12)), p0 + d * 0.12 + Vector((0, 0, 0.2)),
+                           p0 + d * 0.18 + Vector((0, 0, 0.16)), 10)
+        D.sweep(pts, lambda t: 0.04 * (1 - 0.6 * t), gold, segs=6, name="leaf")
+    D.lathe([(0.0, H - 0.32), (0.21, H - 0.32), (0.3, H - 0.1), (0.0, H - 0.1)], marble, seg=48,
+            name="bell")
+    D.box((0.72, 0.72, 0.09), marble, loc=(0, 0, H - 0.05), bev=0.02, name="abacus")
+    D.box((0.74, 0.74, 0.02), gold, loc=(0, 0, H - 0.095), bev=0.005, name="abacus_trim")
+    for sx in (-1, 1):
+        D.torus(0.06, 0.028, gold, loc=(sx * 0.3, -0.3, H - 0.14), rot=(rad(90), 0, 0), seg=24,
+                rseg=8, name="volute")
+    cloud_puffs((0, -0.12, 0.05), 0.5, 0.13, 14, rng)
+    D.view(pitch=6, fill=0.95, glow=0.3)
+
+
+@prop("deco_sky_statue", (120, 200))
+def build_sky_statue():
+    """Winged guardian of the sky kingdom: a white marble angel knight with
+    gilded wings, helm and spear, on a gilded pedestal."""
+    marble = DM_whitemarble()
+    gold = DM_skygold()
+    rng = random.Random(8)
+    D.box((0.84, 0.56, 0.14), marble, loc=(0, 0, 0.07), bev=0.02, name="plinth")
+    D.box((0.7, 0.48, 0.22), marble, loc=(0, 0, 0.25), bev=0.02, name="die")
+    D.box((0.72, 0.5, 0.03), gold, loc=(0, 0, 0.35), bev=0.008, name="trim")
+    with D.sub(loc=(0, 0.02, 0.37)):
+        robe = D.lathe(D.catmull2d([(0.0, 0.0), (0.26, 0.0), (0.22, 0.4), (0.17, 0.72), (0.2, 0.9),
+                                    (0.24, 1.0), (0.2, 1.06), (0.1, 1.1), (0.0, 1.1)], 3,
+                                   closed=False), marble, seg=40, sy=0.7, name="robe",
+                       radial=lambda a, t: 1 + 0.07 * math.sin(10 * a) * (1 - t) ** 2)
+        D.torus(0.18, 0.025, gold, loc=(0, 0, 0.72), sy=0.72, seg=40, rseg=8, name="belt")
+        D.sphere(0.1, marble, loc=(0, 0, 1.2), scale=(1.0, 1.0, 1.1), seg=24, rings=12, name="head")
+        D.lathe(D.catmull2d([(0.0, 1.36), (0.08, 1.34), (0.115, 1.25), (0.12, 1.16)], 3,
+                            closed=False), gold, seg=32, cap=False, name="helm")
+        D.cone(0.02, 0.14, gold, loc=(0, 0, 1.34), seg=8, name="crest")
+        for sx in (-1, 1):
+            D.sphere(0.1, gold, loc=(sx * 0.22, 0, 1.0), scale=(1.0, 0.8, 0.7), seg=20, rings=10,
+                     name="pauldron")
+        # arms: right holds a spear, left on a shield
+        D.sweep([(0.22, 0, 0.98), (0.3, -0.08, 0.8), (0.24, -0.16, 0.72)], 0.045, marble, segs=10)
+        D.cyl(0.018, 1.6, gold, loc=(0.26, -0.18, 0.95), seg=10, name="spear")
+        D.cone(0.04, 0.2, gold, loc=(0.26, -0.18, 1.75), seg=4, name="spearhead")
+        D.sweep([(-0.22, 0, 0.98), (-0.3, -0.1, 0.78), (-0.2, -0.2, 0.62)], 0.045, marble, segs=10)
+        sh = D.lathe([(0.0, 0.0), (0.18, 0.0), (0.2, 0.02), (0.0, 0.05)], marble, seg=32,
+                     loc=(-0.22, -0.24, 0.55), rot=(rad(90), 0, 0), sx=0.8, name="shield")
+        D.torus(0.18, 0.015, gold, loc=(-0.22, -0.25, 0.55), rot=(rad(90), 0, 0), sx=0.8, seg=32,
+                rseg=6, name="shield_rim")
+        D.extrude(D.shape_star(4, 0.09, 0.03), 0.02, gold, loc=(-0.22, -0.27, 0.55), name="shield_star")
+        # wings
+        for sx in (-1, 1):
+            with D.sub(loc=(sx * 0.14, 0.14, 0.98), rot=(0, 0, sx * rad(-12))):
+                for k in range(8):
+                    th = rad(8 + 11 * k)
+                    L = 0.42 + 0.055 * k
+                    p = [(0.0, 0.0), (L * 0.35, 0.055), (L, 0.025), (L * 0.97, -0.02), (L * 0.3, -0.06)]
+                    D.extrude([(sx * x, z) for x, z in p], 0.025, gold if k >= 6 else marble,
+                              loc=(0, 0.012 * k, 0.0), rot=(0, -sx * th, 0), bev=0.006,
+                              name="feather")
+                D.sphere(0.07, marble, scale=(1.4, 1.0, 1.0), seg=16, rings=8, name="wing_root")
+    D.view(pitch=6, fill=0.95, glow=0.3)
+
+
+@prop("deco_sky_urn", (72, 96))
+def build_sky_urn():
+    """Marble amphora with gilded bands, wing handles and a laurel of light."""
+    marble = DM_whitemarble()
+    gold = DM_skygold()
+    prof = [(0.0, 0.0), (0.2, 0.0), (0.22, 0.04), (0.12, 0.1), (0.14, 0.16), (0.3, 0.34),
+            (0.36, 0.52), (0.32, 0.72), (0.18, 0.86), (0.13, 0.94), (0.18, 1.0), (0.2, 1.04),
+            (0.0, 1.04)]
+    D.lathe(D.catmull2d(prof, 4, closed=False), marble, seg=48, name="urn")
+    for z, r in ((0.52, 0.365), (0.86, 0.185), (0.1, 0.13)):
+        D.torus(r, 0.018, gold, loc=(0, 0, z), seg=48, rseg=8, name="band")
+    D.torus(0.2, 0.02, gold, loc=(0, 0, 1.04), seg=40, rseg=8, name="lip")
+    for sx in (-1, 1):
+        wingp = [(0.0, 0.0), (0.1, 0.06), (0.2, 0.16), (0.24, 0.3), (0.18, 0.22), (0.19, 0.28),
+                 (0.12, 0.2), (0.12, 0.26), (0.05, 0.16)]
+        D.extrude([(sx * x, z) for x, z in wingp], 0.03, gold, loc=(sx * 0.3, 0.0, 0.58), bev=0.006,
+                  name="wing_handle")
+    # meander band (gold frieze)
+    for k in range(10):
+        a = -math.pi / 2 + (k - 4.5) * 0.28
+        D.box((0.05, 0.012, 0.05), gold, loc=(0.35 * math.cos(a), 0.35 * math.sin(a) * 1.0, 0.44),
+              rot=(0, 0, a + math.pi / 2), bev=0.004, name="meander")
+    D.view(pitch=6, fill=0.95, glow=0.2)
+
+
+# ---- nightmare labyrinth -------------------------------------------------------------
+def DM_dreamwood():
+    return D.pbr("dreamwood", (0.16, 0.08, 0.12), rough=0.55, coat=0.3, pattern="wood",
+                 dark=(0.04, 0.015, 0.03))
+
+
+def DM_dreamglow(name="dreamglow", strength=4.0):
+    return D.M_glow(name, (0.75, 0.3, 1.0), strength, base=(0.6, 0.3, 0.9))
+
+
+@prop("deco_dream_cradle", (160, 120))
+def build_dream_cradle():
+    """A lost child's rocking cradle: dark lacquered wood, a torn violet veil,
+    a mobile of glowing moons and stars hanging over it."""
+    wood = DM_dreamwood()
+    veil = D.pbr("veil", (0.42, 0.18, 0.55), rough=0.7, sheen=0.6, sss=0.3, alpha=0.85)
+    lace = D.pbr("lace", (0.85, 0.8, 0.85), rough=0.7, sheen=0.5)
+    brass = D.pbr("dreambrass", (0.55, 0.42, 0.3), metal=1.0, rough=0.4)
+    glow = DM_dreamglow()
+    star = D.M_glow("dreamstar", (1.0, 0.85, 0.6), 4.0)
+    # rockers
+    for sy in (-0.28, 0.28):
+        arc = [(0.72 * math.sin(a), sy, 0.34 - 0.34 * math.cos(a) * 0.9) for a in
+               [rad(-70 + 140 * i / 20) for i in range(21)]]
+        D.sweep(arc, 0.035, wood, segs=10, name="rocker")
+    # basket: box with slatted sides
+    D.box((1.0, 0.56, 0.06), wood, loc=(0, 0, 0.16), bev=0.02, name="floor")
+    for sx in (-1, 1):
+        D.box((0.06, 0.6, 0.6), wood, loc=(sx * 0.52, 0, 0.44), bev=0.02, name="end")
+        D.sphere(0.05, wood, loc=(sx * 0.52, -0.3, 0.78), seg=16, rings=8, name="knob")
+        D.sphere(0.05, wood, loc=(sx * 0.52, 0.3, 0.78), seg=16, rings=8, name="knob")
+    for k in range(9):
+        x = -0.44 + 0.11 * k
+        D.cyl(0.018, 0.4, wood, loc=(x, -0.28, 0.4), seg=8, name="slat")
+    D.box((1.02, 0.04, 0.05), wood, loc=(0, -0.28, 0.62), bev=0.01, name="rail")
+    D.box((1.02, 0.04, 0.05), wood, loc=(0, -0.28, 0.2), bev=0.01, name="rail")
+    # blanket spilling over
+    D.lathe([(0.0, 0.58), (0.42, 0.58), (0.36, 0.64), (0.0, 0.66)], lace, seg=24, sx=1.1, sy=0.6,
+            name="blanket")
+    # canopy post + torn veil
+    D.cyl(0.02, 0.8, wood, loc=(0.52, 0.2, 1.0), seg=8, name="post")
+    D.sweep(D.bezier_pts((0.52, 0.2, 1.38), (0.35, 0.2, 1.46), (0.0, 0.2, 1.42), (-0.1, 0.2, 1.36), 12),
+            0.015, wood, segs=6, name="arm")
+    rng = random.Random(3)
+
+    def vfn(u, v):
+        x = 0.52 - 0.7 * u
+        z = 1.38 - v * (0.55 + 0.25 * math.sin(u * 9) + 0.2 * u)
+        y = 0.2 - 0.12 * math.sin(u * math.pi) * v - 0.04 * math.sin(v * 12 + u * 7)
+        return (x, y, z)
+    surface_D(vfn, 24, 12, veil, name="veil", thick=0.006)
+    # mobile: moons and stars on threads
+    for k, (x, dz, kind) in enumerate(((-0.25, 0.28, "moon"), (-0.05, 0.36, "star"),
+                                       (0.15, 0.24, "moon"), (-0.4, 0.4, "star"))):
+        top = (x, -0.05, 1.42)
+        bot = (x, -0.05, 1.42 - dz)
+        D.sweep([top, bot], 0.003, brass, segs=4, name="thread")
+        if kind == "moon":
+            moon = [(0.07 * math.cos(a), 0.07 * math.sin(a)) for a in [TAU * i / 32 for i in range(32)]]
+            D.extrude([(x_ + 0.0, z_) for x_, z_ in moon], 0.02, glow, loc=(bot[0], bot[1], bot[2] - 0.07),
+                      name="moon")
+        else:
+            D.extrude(D.shape_star(5, 0.07, 0.03), 0.02, star, loc=(bot[0], bot[1], bot[2] - 0.07),
+                      name="star")
+    D.point_light((0, -0.6, 0.9), (0.7, 0.3, 1.0), 16, 0.3)
+    D.view(pitch=8, fill=0.95, glow=0.7)
+
+
+@prop("deco_dream_doll", (72, 80))
+def build_dream_doll():
+    """Cracked porcelain doll slumped against nothing: violet dress, one empty
+    socket, one glowing violet eye."""
+    porcelain = D.pbr("porcelain", (0.92, 0.88, 0.86), rough=0.2, coat=0.8, sss=0.2)
+    dress = D.pbr("dolldress", (0.32, 0.1, 0.4), rough=0.7, sheen=0.6, bump=0.2, bump_scale=120)
+    lace = D.pbr("lace", (0.85, 0.8, 0.85), rough=0.7, sheen=0.5)
+    hair = D.pbr("dollhair", (0.25, 0.15, 0.08), rough=0.6, sheen=0.5, bump=0.5, bump_scale=200)
+    eye = D.M_glow("dolleye", (0.8, 0.3, 1.0), 8.0)
+    black = D.M_black()
+    crack = D.pbr("dollcrack", (0.05, 0.02, 0.05), rough=0.9)
+    # skirt (sitting: wide bell) + legs forward
+    D.lathe(D.catmull2d([(0.0, 0.0), (0.42, 0.0), (0.4, 0.06), (0.28, 0.22), (0.18, 0.4),
+                         (0.14, 0.5), (0.0, 0.5)], 3, closed=False), dress, seg=40, sy=0.8,
+            name="dress", radial=lambda a, t: 1 + 0.07 * math.sin(12 * a) * (1 - t))
+    D.torus(0.4, 0.025, lace, loc=(0, 0, 0.03), sy=0.8, seg=48, rseg=6, name="hem")
+    for sx in (-1, 1):
+        D.sweep([(sx * 0.1, -0.1, 0.06), (sx * 0.14, -0.4, 0.05)], 0.045, porcelain, segs=10,
+                name="leg")
+        D.sphere(0.055, black, loc=(sx * 0.14, -0.44, 0.06), scale=(0.9, 1.3, 0.9), seg=12, rings=8)
+        D.sweep([(sx * 0.14, 0.0, 0.46), (sx * 0.24, -0.05, 0.3), (sx * 0.22, -0.14, 0.18)], 0.035,
+                porcelain, segs=10, name="arm")
+    D.torus(0.13, 0.03, lace, loc=(0, 0, 0.5), sy=0.8, seg=32, rseg=6, name="collar")
+    # head tilted
+    with D.sub(loc=(0, 0.0, 0.68), rot=(rad(-8), rad(14), 0)):
+        D.sphere(0.17, porcelain, scale=(1.0, 0.95, 1.05), seg=32, rings=16, name="head")
+        hr = D.sphere(0.185, hair, loc=(0, 0.04, 0.04), scale=(1.05, 1.0, 1.05), seg=32, rings=16,
+                      name="hair")
+        cut = D.box((0.5, 0.3, 0.3), hair, loc=(0, -0.2, -0.08), rot=(rad(-20), 0, 0))
+        D.boolean(hr, cut)
+        for sx in (-1, 1):
+            D.sweep([(sx * 0.16, 0.02, 0.02), (sx * 0.2, 0.0, -0.12), (sx * 0.18, -0.02, -0.26)],
+                    0.035, hair, segs=8, name="curl")
+        D.sphere(0.04, eye, loc=(-0.06, -0.15, 0.02), scale=(1.0, 0.5, 1.0), seg=16, rings=8,
+                 name="eye")
+        D.sphere(0.042, black, loc=(0.06, -0.14, 0.02), scale=(1.0, 0.5, 1.0), seg=16, rings=8,
+                 name="socket")
+        D.sweep([(0.02, -0.165, 0.12), (0.05, -0.17, 0.06), (0.03, -0.172, 0.0),
+                 (0.07, -0.165, -0.06)], 0.005, crack, segs=4, name="crack")
+        D.box((0.05, 0.02, 0.01), D.pbr("dolllip", (0.5, 0.08, 0.12), rough=0.3), loc=(0, -0.16, -0.08))
+        D.lathe([(0.0, 0.0), (0.08, 0.0), (0.1, 0.04), (0.0, 0.05)], lace, seg=24, loc=(0.08, 0.02, 0.16),
+                rot=(0, rad(30), 0), name="bow")
+    D.point_light((0, -0.5, 0.7), (0.7, 0.3, 1.0), 6, 0.2)
+    D.view(pitch=10, fill=0.95, glow=0.7)
+
+
+@prop("deco_dream_clock", (96, 220))
+def build_dream_clock():
+    """A grandfather clock that has started to melt: the case twists and sags,
+    the dial droops over its frame, the pendulum glows violet."""
+    wood = DM_dreamwood()
+    brass = D.pbr("dreambrass", (0.62, 0.46, 0.3), metal=1.0, rough=0.35)
+    dial = D.pbr("dial", (0.85, 0.8, 0.7), rough=0.5)
+    glow = DM_dreamglow("pendglow", 3.0)
+    black = D.M_black()
+    glass = D.pbr("clockglass", (0.3, 0.2, 0.4), rough=0.05, trans=0.8, ior=1.4)
+    parts = []
+    parts.append(D.box((0.6, 0.42, 0.16), wood, loc=(0, 0, 0.08), bev=0.02, name="foot"))
+    parts.append(D.box((0.5, 0.36, 1.2), wood, loc=(0, 0, 0.76), bev=0.02, name="trunk"))
+    parts.append(D.box((0.62, 0.44, 0.62), wood, loc=(0, 0, 1.66), bev=0.03, name="hood"))
+    top = [(-0.34, 0.0), (0.34, 0.0), (0.3, 0.1), (0.14, 0.2), (0.0, 0.28), (-0.14, 0.2), (-0.3, 0.1)]
+    parts.append(D.extrude(top, 0.44, wood, loc=(0, 0, 1.97), bev=0.02, name="bonnet"))
+    # window with glowing pendulum
+    D.box((0.3, 0.02, 0.8), glass, loc=(0, -0.185, 0.8), name="window")
+    D.cyl(0.012, 0.6, brass, loc=(0.03, -0.16, 0.95), rot=(0, rad(8), 0), seg=8, name="rod")
+    D.cyl(0.1, 0.03, glow, loc=(0.07, -0.16, 0.62), rot=(rad(90), 0, 0), seg=24, name="bob")
+    # drooping dial: surface that sags below the hood
+    def dfn(u, v):
+        a = TAU * u
+        r = 0.25 * v
+        x = r * math.cos(a)
+        z = r * math.sin(a)
+        sag = max(0.0, -z) * 0.9 * (v ** 2) + 0.12 * v ** 3 * max(0.0, math.sin(a + 0.6) * -1)
+        return (x, -0.235 - 0.02 * v, 1.66 + z - sag)
+    surface_D(dfn, 48, 8, dial, name="dial", thick=0.01)
+    torus = D.torus(0.26, 0.02, brass, loc=(0, -0.23, 1.66), rot=(rad(90), 0, 0), seg=48, rseg=6,
+                    name="bezel")
+    for k in range(12):
+        a = TAU * k / 12
+        r = 0.2
+        z = r * math.sin(a)
+        sag = max(0.0, -z) * 0.9 + 0.12 * max(0.0, math.sin(a + 0.6) * -1)
+        D.box((0.012, 0.01, 0.04), black, loc=(r * math.cos(a), -0.26, 1.66 + z - sag * 0.8),
+              rot=(0, -a + math.pi / 2, 0), name="tick")
+    D.box((0.012, 0.01, 0.16), black, loc=(0.02, -0.265, 1.6), rot=(0, rad(160), 0), name="hand")
+    D.box((0.012, 0.01, 0.12), black, loc=(-0.03, -0.265, 1.64), rot=(0, rad(50), 0), name="hand")
+    # twist + bend the whole case (melting)
+    for ob in list(D.G.coll.objects):
+        if ob.type == "MESH" and ob.name.split(".")[0] in ("trunk", "hood", "bonnet", "foot"):
+            md = ob.modifiers.new("Tw", "SIMPLE_DEFORM")
+            md.deform_method = "TWIST"
+            md.angle = rad(10)
+            md.deform_axis = "Z"
+    for (x, z) in ((0.28, 1.36), (-0.3, 1.2), (0.26, 0.4)):
+        D.sweep([(x, -0.2, z), (x + 0.01, -0.21, z - 0.08), (x, -0.22, z - 0.18)],
+                lambda t: 0.03 * (1 - 0.5 * t), wood, segs=8, name="drip")
+    D.point_light((0.0, -0.6, 0.7), (0.7, 0.3, 1.0), 10, 0.2)
+    D.view(pitch=5, fill=0.95, glow=0.6)
+
+
+# ---- blighted forest -----------------------------------------------------------------
+def DM_rotwood(name="rotwood"):
+    return D.pbr(name, (0.2, 0.15, 0.1), rough=0.8, pattern="wood", dark=(0.05, 0.035, 0.02),
+                 stain=0.6, moss=True, moss_color=(0.28, 0.36, 0.08), moss_z0=-0.4, moss_z1=0.6)
+
+
+def DM_capflesh(name, color, spots=None):
+    """Mushroom cap: sickly colour with pale warty spots."""
+    if name in D.G.mats:
+        return D.G.mats[name]
+    m = D.pbr(name, color, rough=0.55, sss=0.25, sss_radius=(1.0, 0.8, 0.4), coat=0.3,
+              bump=0.2, bump_scale=30)
+    if spots:
+        nt = m.node_tree
+        I = _bsdf(m).inputs
+        tc = nt.nodes.new("ShaderNodeTexCoord")
+        vo = _n(nt, "ShaderNodeTexVoronoi", Scale=9.0, _feature="F1")
+        nt.links.new(tc.outputs["Object"], vo.inputs["Vector"])
+        sp = _n(nt, "ShaderNodeMapRange", **{"From Min": 0.14, "From Max": 0.22})
+        nt.links.new(vo.outputs["Distance"], sp.inputs["Value"])
+        mix = nt.nodes.new("ShaderNodeMix")
+        mix.data_type = "RGBA"
+        nt.links.new(sp.outputs["Result"], mix.inputs["Factor"])
+        mix.inputs[6].default_value = (*spots, 1)
+        mix.inputs[7].default_value = (*color, 1)
+        nt.links.new(mix.outputs[2], I["Base Color"])
+        inv = _m(nt, "SUBTRACT", 1.0, sp.outputs["Result"])
+        I["Emission Color"].default_value = (*spots, 1)
+        nt.links.new(_m(nt, "MULTIPLY", inv, 2.5), I["Emission Strength"])
+    return m
+
+
+def DM_gills(name="gills", strength=2.5):
+    """Glowing yellow-green gills (radial stripes)."""
+    if name in D.G.mats:
+        return D.G.mats[name]
+    m = D.pbr(name, (0.55, 0.7, 0.2), rough=0.6, emit=(0.72, 1.0, 0.25), emit_str=strength)
+    nt = m.node_tree
+    I = _bsdf(m).inputs
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    gr = _n(nt, "ShaderNodeTexGradient", _gradient_type="RADIAL")
+    nt.links.new(tc.outputs["Object"], gr.inputs["Vector"])
+    st = _m(nt, "PINGPONG", _m(nt, "MULTIPLY", gr.outputs["Fac"], 48.0), 0.5)
+    nt.links.new(_m(nt, "MULTIPLY", _m(nt, "ADD", st, 0.2), strength), I["Emission Strength"])
+    return m
+
+
+def mushroom(base, h, cap_r, cap_mat, stem_mat, gill_mat, lean=0.0, cap_h=None, ring=None):
+    """Toadstool: curved stem, domed cap with glowing gills under it."""
+    cap_h = cap_h or cap_r * 0.6
+    bx, by, bz = base
+    top = Vector((bx + lean * h, by, bz + h))
+    pts = D.bezier_pts(Vector(base), Vector(base) + Vector((0, 0, h * 0.4)),
+                       top - Vector((lean * h * 0.3, 0, h * 0.3)), top, 16)
+    D.sweep(pts, lambda t: cap_r * 0.27 * (1.3 - 0.45 * t), stem_mat, segs=14, name="stem")
+    D.sphere(cap_r * 0.28, stem_mat, loc=(bx, by, bz + 0.02), scale=(1.2, 1.2, 0.6), seg=16, rings=8)
+    ang = math.atan2(lean * h, h) * 0.6
+    with D.sub(loc=tuple(top), rot=(rad(-22), ang, 0)):
+        D.lathe(D.catmull2d([(0.0, cap_h), (cap_r * 0.5, cap_h * 0.9), (cap_r * 0.9, cap_h * 0.5),
+                             (cap_r, cap_h * 0.12), (cap_r * 0.96, 0.0)], 4, closed=False),
+                cap_mat, seg=48, cap=False, name="cap",
+                radial=lambda a, t: 1 + 0.05 * math.sin(5 * a + 1.3) * t)
+        D.lathe([(cap_r * 0.95, 0.0), (cap_r * 0.25, -0.02), (0.0, -0.01)], gill_mat, seg=48,
+                name="gills")
+        if ring:
+            D.torus(cap_r * 0.3, cap_r * 0.05, stem_mat, loc=(0, 0, -cap_h * 0.5), seg=24, rseg=6)
+    return top
+
+
+@prop("deco_blight_shroom", (144, 160))
+def build_blight_shroom():
+    """Cluster of giant sickly toadstools with glowing yellow-green gills and
+    spots, spore motes drifting up."""
+    cap1 = DM_capflesh("cap_tox", (0.3, 0.36, 0.05), spots=(0.85, 1.0, 0.35))
+    cap2 = DM_capflesh("cap_purp", (0.3, 0.1, 0.28), spots=(0.85, 1.0, 0.35))
+    stem = D.pbr("shroomstem2", (0.46, 0.46, 0.34), rough=0.6, sss=0.3, sss_radius=(1.0, 0.9, 0.6),
+                 bump=0.3, bump_scale=40, pattern="stone", scale=6.0, crack=0.0,
+                 dark=(0.22, 0.24, 0.12))
+    gills = DM_gills("gills", 4.0)
+    soil = D.pbr("rotsoil", (0.12, 0.1, 0.06), rough=0.9, bump=0.5, bump_scale=20, pattern="stone",
+                 scale=3.0, moss=True, moss_color=(0.26, 0.34, 0.06), moss_z0=-0.2, moss_z1=0.4)
+    rng = random.Random(6)
+    D.rock((0.0, 0.1, 0.0), 0.62, soil, scale=(1.3, 0.8, 0.22), seed=3, strength=0.3)
+    mushroom((0.05, 0.05, 0.08), 1.05, 0.46, cap1, stem, gills, lean=-0.08, ring=True)
+    mushroom((-0.42, -0.05, 0.06), 0.62, 0.3, cap2, stem, gills, lean=-0.22)
+    mushroom((0.46, -0.08, 0.06), 0.72, 0.32, cap1, stem, gills, lean=0.18)
+    mushroom((0.22, -0.3, 0.04), 0.3, 0.15, cap2, stem, gills, lean=0.1)
+    mushroom((-0.2, -0.32, 0.04), 0.22, 0.12, cap1, stem, gills, lean=-0.15)
+    mote = D.M_glow("spore_mote", (0.8, 1.0, 0.4), 6.0)
+    for k in range(14):
+        D.sphere(rng.uniform(0.008, 0.018), mote, loc=(rng.uniform(-0.6, 0.6), -0.35,
+                 rng.uniform(0.3, 1.5)), seg=8, rings=4, name="mote")
+    D.point_light((0, -0.5, 0.8), (0.7, 1.0, 0.3), 24, 0.3)
+    D.view(pitch=8, fill=0.95, glow=0.7)
+
+
+@prop("deco_blight_stump", (144, 110))
+def build_blight_stump():
+    """Rotten hollow stump of a great tree: split bark, roots clawing the
+    ground, shelf fungi and a glowing rot inside."""
+    bark = DM_rotwood()
+    inner = D.pbr("rotcore", (0.1, 0.08, 0.04), rough=0.9, emit=(0.6, 0.9, 0.2), emit_str=0.6,
+                  bump=0.6, bump_scale=15)
+    shelf = DM_capflesh("shelf", (0.55, 0.45, 0.2), spots=None)
+    gills = DM_gills("shelfgills", 1.6)
+    rng = random.Random(2)
+    prof = [(0.0, 0.0), (0.62, 0.0), (0.5, 0.12), (0.44, 0.3), (0.42, 0.55), (0.44, 0.7)]
+    st = D.lathe(prof, bark, seg=40, cap=False, name="stump",
+                 radial=lambda a, t: 1 + 0.1 * math.sin(7 * a) + 0.05 * math.sin(13 * a + 1)
+                 + 0.12 * max(0.0, math.sin(a * 3 + 2)) * t)
+    D.solidify(st, 0.08)
+    # jagged broken rim
+    for k in range(9):
+        a = TAU * k / 9 + rng.uniform(-0.1, 0.1)
+        h = rng.uniform(0.1, 0.32)
+        D.cone(0.1, h, bark, loc=(0.4 * math.cos(a), 0.4 * math.sin(a), 0.66), seg=5,
+               scale=(1.0, 0.5, 1.0), rot=(0, 0, a + math.pi / 2), name="splinter")
+    D.lathe([(0.0, 0.5), (0.38, 0.5), (0.36, 0.62), (0.0, 0.58)], inner, seg=32, name="rot")
+    for k in range(7):
+        a = TAU * k / 7 + 0.3
+        d = Vector((math.cos(a), math.sin(a), 0))
+        p0 = Vector((0, 0, 0.18)) + d * 0.4
+        pts = D.bezier_pts(p0, p0 + d * 0.25 + Vector((0, 0, 0.02)), p0 + d * 0.45 + Vector((0, 0, -0.16)),
+                           p0 + d * rng.uniform(0.6, 0.8) + Vector((0, 0, -0.18)), 12)
+        D.sweep(pts, lambda t: 0.1 * (1 - 0.8 * t) + 0.01, bark, segs=10, name="root")
+    for (a, z, r) in ((-1.8, 0.42, 0.2), (-1.2, 0.3, 0.15), (-2.4, 0.22, 0.13), (-0.6, 0.5, 0.12)):
+        with D.sub(loc=(0.46 * math.cos(a), 0.46 * math.sin(a) * 0.9, z), rot=(0, 0, a)):
+            D.lathe([(0.0, 0.03), (r, 0.0), (r * 0.9, -0.03), (0.0, -0.02)], shelf, seg=24,
+                    a0=rad(-80), a1=rad(80), name="shelf")
+    mote = D.M_glow("spore_mote", (0.8, 1.0, 0.4), 6.0)
+    for k in range(8):
+        D.sphere(rng.uniform(0.01, 0.02), mote, loc=(rng.uniform(-0.3, 0.3), -0.1,
+                 rng.uniform(0.7, 1.0)), seg=8, rings=4, name="mote")
+    D.point_light((0, -0.2, 0.9), (0.7, 1.0, 0.3), 16, 0.3)
+    D.view(pitch=12, fill=0.95, glow=0.6)
+
+
+@prop("deco_blight_totem", (96, 200))
+def build_blight_totem():
+    """Blight shaman's totem: a rotten pole crowned with an antlered beast
+    skull, strung with bones and vines, fungus sprouting, eyes glowing green."""
+    bark = DM_rotwood("totemwood")
+    bone = D.M_bone("blightbone", (0.78, 0.74, 0.58))
+    vine = D.pbr("vine", (0.2, 0.3, 0.08), rough=0.6, coat=0.2)
+    eye = D.M_glow("totem_eye", (0.7, 1.0, 0.25), 9.0)
+    cap = DM_capflesh("cap_rot", (0.42, 0.3, 0.12), spots=(0.85, 1.0, 0.45))
+    gills = DM_gills()
+    stem = D.pbr("shroomstem", (0.72, 0.68, 0.5), rough=0.6, sss=0.3)
+    soil = D.pbr("rotsoil2", (0.12, 0.1, 0.06), rough=0.9, bump=0.5, bump_scale=20)
+    rng = random.Random(12)
+    D.rock((0, 0.05, 0.0), 0.35, soil, scale=(1.2, 0.9, 0.3), seed=2)
+    D.lathe([(0.0, 0.0), (0.1, 0.0), (0.085, 1.4), (0.0, 1.42)], bark, seg=16, name="pole",
+            radial=lambda a, t: 1 + 0.12 * math.sin(5 * a + t * 9))
+    D.box((0.7, 0.08, 0.07), bark, loc=(0, 0.02, 1.08), rot=(0, rad(-6), 0), bev=0.02, name="crossbar")
+    # beast skull: elongated cranium + snout, antlers
+    with D.sub(loc=(0, -0.04, 1.5)):
+        D.sphere(0.16, bone, scale=(1.0, 1.0, 0.9), seg=24, rings=12, name="cranium")
+        D.lathe([(0.0, 0.0), (0.1, 0.0), (0.07, 0.24), (0.0, 0.26)], bone, seg=16,
+                loc=(0, -0.06, -0.06), rot=(rad(160), 0, 0), sx=1.0, sy=0.7, name="snout")
+        for sx in (-1, 1):
+            D.sphere(0.045, D.M_black(), loc=(sx * 0.07, -0.13, 0.02), seg=12, rings=8)
+            D.sphere(0.022, eye, loc=(sx * 0.07, -0.16, 0.02), seg=12, rings=8)
+            p0 = Vector((sx * 0.1, 0.0, 0.1))
+            ant = D.bezier_pts(p0, p0 + Vector((sx * 0.15, 0, 0.1)), p0 + Vector((sx * 0.25, 0, 0.3)),
+                               p0 + Vector((sx * 0.22, 0, 0.5)), 16)
+            D.sweep(ant, lambda t: 0.03 * (1 - 0.6 * t), bone, segs=8, name="antler")
+            for (t, L, ang) in ((0.4, 0.14, 50), (0.7, 0.12, 30)):
+                q = ant[int(t * (len(ant) - 1))]
+                d = Vector((sx * math.cos(rad(ang)), 0, math.sin(rad(ang))))
+                D.sweep([tuple(q), tuple(q + d * L)], lambda s: 0.018 * (1 - 0.6 * s), bone, segs=6,
+                        name="tine")
+    # hanging bones and vines
+    for sx in (-1, 1):
+        x = sx * 0.3
+        D.sweep([(x, -0.02, 1.06), (x, -0.02, 0.86)], 0.004, vine, segs=4)
+        D.sweep([(x - 0.05, -0.02, 0.86), (x + 0.05, -0.02, 0.8)], 0.02, bone, segs=6, name="bone")
+        D.sphere(0.022, bone, loc=(x - 0.05, -0.02, 0.86), seg=10, rings=6)
+        D.sphere(0.022, bone, loc=(x + 0.05, -0.02, 0.8), seg=10, rings=6)
+    vpts = [(0.1 * math.cos(t * 9), -0.1 * abs(math.sin(t * 9)) - 0.02, 0.1 + 1.1 * t) for t in
+            [i / 40 for i in range(41)]]
+    D.sweep(vpts, 0.014, vine, segs=6, name="vine")
+    mushroom((0.08, -0.08, 0.5), 0.12, 0.1, cap, stem, gills, lean=0.8)
+    mushroom((-0.09, -0.06, 0.8), 0.1, 0.08, cap, stem, gills, lean=-0.9)
+    mushroom((0.15, -0.1, 0.05), 0.18, 0.1, cap, stem, gills, lean=0.1)
+    D.point_light((0, -0.5, 1.5), (0.7, 1.0, 0.3), 12, 0.2)
+    D.view(pitch=6, fill=0.95, glow=0.6)
+
+
+@prop("prop_spore_pod", (96, 96))
+def build_prop_spore_pod():
+    """Spore pod: bulbous fleshy fungus sac, translucent skin with glowing
+    yellow-green veins and pores, a stubby stalk and root tendrils."""
+    if "podskin" not in D.G.mats:
+        skin = D.pbr("podskin", (0.22, 0.26, 0.06), rough=0.35, sss=0.35, sss_radius=(0.6, 1.0, 0.2),
+                     coat=0.6, coat_rough=0.1, pattern="veins", vein_color=(0.62, 1.0, 0.18),
+                     density=3.0, width=0.03, strength=1.4)
+    skin = D.G.mats["podskin"]
+    pore = D.M_glow("podpore", (0.75, 1.0, 0.25), 4.0)
+    stalk = D.pbr("podstalk", (0.35, 0.3, 0.15), rough=0.6, sss=0.3, bump=0.4, bump_scale=40)
+    rng = random.Random(4)
+    pod = D.sphere(0.46, skin, loc=(0, 0, 0.5), scale=(1.0, 0.95, 0.92), seg=48, rings=24, name="pod")
+    D.displace(pod, 0.06, 0.35)
+    for k in range(5):
+        a = TAU * k / 5 + 0.2
+        D.sphere(0.2, skin, loc=(0.34 * math.cos(a), 0.34 * math.sin(a) * 0.8, 0.4 + 0.1 * math.sin(a * 2)),
+                 scale=(1.0, 1.0, 1.2), seg=24, rings=12, name="lobe")
+    for k in range(12):
+        a = rng.uniform(-2.6, -0.5)
+        z = rng.uniform(0.25, 0.85)
+        r = 0.46 * math.sqrt(max(0.0, 1 - ((z - 0.5) / 0.46) ** 2)) + 0.01
+        D.sphere(rng.uniform(0.02, 0.04), pore, loc=(r * math.cos(a), r * math.sin(a), z),
+                 scale=(1.0, 0.5, 1.0), seg=10, rings=6, name="pore")
+    D.lathe([(0.0, 0.9), (0.09, 0.88), (0.06, 1.0), (0.07, 1.06), (0.0, 1.08)], stalk, seg=16,
+            name="stalk")
+    for k in range(5):
+        a = TAU * k / 5 + 0.5
+        d = Vector((math.cos(a), math.sin(a), 0))
+        p0 = Vector((0, 0, 0.12)) + d * 0.15
+        D.sweep(D.bezier_pts(p0, p0 + d * 0.1 + Vector((0, 0, -0.08)), p0 + d * 0.22,
+                             p0 + d * 0.3 + Vector((0, 0, -0.1)), 10), lambda t: 0.03 * (1 - 0.8 * t),
+                stalk, segs=6, name="tendril")
+    mote = D.M_glow("spore_mote", (0.8, 1.0, 0.4), 6.0)
+    for k in range(6):
+        D.sphere(rng.uniform(0.012, 0.022), mote, loc=(rng.uniform(-0.55, 0.55), -0.4,
+                 rng.uniform(0.2, 1.0)), seg=8, rings=4, name="mote")
+    D.point_light((0, -0.7, 0.5), (0.7, 1.0, 0.3), 6, 0.3)
+    D.view(pitch=6, fill=0.92, glow=0.5)
+
+
+# ---- void ----------------------------------------------------------------------------
+def DM_voidrock(name="voidrock"):
+    if name in D.G.mats:
+        return D.G.mats[name]
+    m = D.pbr(name, (0.03, 0.028, 0.045), rough=0.55, coat=0.3, bump=0.4, bump_scale=12)
+    add_starfield(m, density=18.0, size=0.12, strength=6.0)
+    return m
+
+
+def DM_voidprism(name="voidprism"):
+    if name in D.G.mats:
+        return D.G.mats[name]
+    m = D.pbr(name, (0.12, 0.1, 0.2), rough=0.22, trans=0.3, ior=1.5, spec=0.35, coat=0.6,
+              coat_rough=0.3, emit=(0.6, 0.5, 1.0), emit_str=0.45)
+    thin_film(m, 400.0, 1.4, vary=(250.0, 600.0), scale=1.5)
+    nt = m.node_tree
+    I = _bsdf(m).inputs
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+    nt.links.new(tc.outputs["Object"], sep.inputs[0])
+    ph = _m(nt, "FRACT", _m(nt, "ADD", _m(nt, "MULTIPLY", sep.outputs["Z"], 1.2),
+                            _m(nt, "MULTIPLY", sep.outputs["X"], 0.8)))
+    nt.links.new(_ramp(nt, ph, RIFT_STOPS), I["Emission Color"])
+    return m
+
+
+@prop("deco_void_prism", (96, 160))
+def build_void_prism():
+    """Iridescent prism crystal hovering over a shattered void rock, shards
+    orbiting on a ring of light."""
+    rockm = DM_voidrock()
+    prism = DM_voidprism()
+    ring = DM_riftglow("void_ring", 1.3)
+    rng = random.Random(3)
+    D.rock((0, 0.02, 0.1), 0.4, rockm, scale=(1.1, 0.8, 0.4), seed=1)
+    D.rock((-0.32, -0.08, 0.05), 0.16, rockm, scale=(1.0, 0.9, 0.7), seed=2)
+    D.rock((0.34, -0.02, 0.05), 0.14, rockm, scale=(1.1, 0.9, 0.7), seed=3)
+    C = 1.02
+    D.lathe([(0.0, -0.52), (0.2, -0.05), (0.2, 0.18), (0.0, 0.62)], prism, seg=6, smooth=False,
+            loc=(0, 0, C), rot=(0, rad(8), rad(0)), name="prism")
+    D.torus(0.36, 0.008, ring, loc=(0, 0, C - 0.05), rot=(rad(76), rad(-10), 0), seg=72, rseg=6,
+            name="orbit")
+    for k in range(5):
+        a = TAU * k / 5 + 0.4
+        p = (0.36 * math.cos(a), 0.36 * math.sin(a) * 0.25, C - 0.05 + 0.09 * math.sin(a))
+        D.octa(rng.uniform(0.03, 0.05), rng.uniform(0.06, 0.1), prism, p,
+               rot=(rng.uniform(0, 1), rng.uniform(0, 1), rng.uniform(0, 1)))
+    for (p, s_) in (((0.2, -0.4, 1.5), 0.06), ((-0.25, -0.4, 0.8), 0.04)):
+        D.sparkle(p, s_, (0.9, 0.9, 1.0))
+    D.point_light((0, -0.5, C - 0.5), (0.7, 0.6, 1.0), 10, 0.3)
+    D.view(pitch=7, fill=0.95, glow=0.6, front=0.0)
+
+
+@prop("deco_void_monolith", (96, 240))
+def build_void_monolith():
+    """Black monolith of the void: a slab of star-flecked obsidian split by a
+    glowing white-iridescent crack, rubble at its foot."""
+    if "monolith" not in D.G.mats:
+        m = D.pbr("monolith", (0.02, 0.018, 0.03), rough=0.18, coat=0.6, coat_rough=0.05)
+        add_starfield(m, density=22.0, size=0.1, strength=5.0)
+        add_rift(m, along="Z", across="X", center=0.02, amp=0.12, freq=1.6, width=0.02, halo=0.07,
+                 strength=10.0, halo_str=1.0, span=(0.1, 2.3), depth=("Y", -0.1), branches=3.0,
+                 base_scorch=(0.05, 0.02, 0.08))
+    mono = D.G.mats["monolith"]
+    rockm = DM_voidrock()
+    H = 2.3
+    pts = [(-0.3, 0.0), (0.3, 0.0), (0.27, H * 0.7), (0.2, H * 0.92), (0.05, H), (-0.12, H * 0.95),
+           (-0.26, H * 0.75)]
+    D.extrude(pts, 0.24, mono, loc=(0, 0, 0.1), bev=0.03, name="monolith")
+    rng = random.Random(8)
+    for k in range(7):
+        x = rng.uniform(-0.45, 0.45)
+        D.rock((x, rng.uniform(-0.2, 0.1), 0.05), rng.uniform(0.07, 0.14), rockm,
+               scale=(1.3, 1.0, 0.7), seed=k + 1)
+    ring = DM_riftglow("void_ring", 1.3)
+    D.torus(0.42, 0.006, ring, loc=(0, 0, 1.5), rot=(rad(80), rad(8), 0), seg=72, rseg=6,
+            name="orbit")
+    for k in range(4):
+        D.octa(rng.uniform(0.025, 0.04), rng.uniform(0.05, 0.08), DM_voidprism(),
+               (rng.uniform(-0.4, 0.4), -0.2, rng.uniform(1.2, 2.2)),
+               rot=(rng.uniform(0, 1), rng.uniform(0, 1), 0))
+    D.view(pitch=5, fill=0.95, glow=0.7)
+
+
+@prop("deco_void_fragment", (144, 120))
+def build_void_fragment():
+    """A torn-away fragment of some world floating over the void: a chunk of
+    earth and flagstones with a broken pillar stump, its underside trailing
+    rock and roots; debris and star dust below."""
+    rockm = DM_voidrock()
+    earth = D.pbr("fragearth", (0.24, 0.18, 0.13), rough=0.85, pattern="stone", scale=4.0,
+                  crack=0.012, dark=(0.08, 0.06, 0.05))
+    flag = D.M_stone("flagstone", (0.45, 0.43, 0.4), scale=3.0)
+    marble = D.M_marble("fragmarble", (0.8, 0.78, 0.74), scale=1.5)
+    root = D.pbr("fragroot", (0.18, 0.12, 0.08), rough=0.8)
+    edge = DM_riftglow("frag_edge", 1.6)
+    rng = random.Random(5)
+    C = 0.72
+    # inverted cone of rock/earth
+    chunk = D.lathe(D.catmull2d([(0.0, -0.55), (0.18, -0.4), (0.4, -0.2), (0.62, -0.05), (0.66, 0.0),
+                                 (0.0, 0.0)], 3, closed=False), earth, seg=10, smooth=False,
+                    loc=(0, 0, C), sy=0.55, name="chunk",
+                    radial=lambda a, t: 1 + 0.18 * math.sin(3 * a + 1) * (1 - t))
+    D.displace(chunk, 0.08, 0.3)
+    D.lathe([(0.0, 0.0), (0.64, 0.0), (0.64, 0.04), (0.0, 0.04)], flag, seg=10, smooth=False,
+            loc=(0, 0, C), sy=0.55, name="flags")
+    # glowing torn rim
+    rim = [(0.65 * math.cos(TAU * i / 60) * (1 + 0.05 * math.sin(i * 1.7)), 0.36 * math.sin(TAU * i / 60),
+            C + 0.005) for i in range(61)]
+    D.sweep(rim, 0.012, edge, segs=6, caps=False, name="rim")
+    # broken pillar stump
+    D.lathe([(0.0, 0.0), (0.16, 0.0), (0.14, 0.06), (0.12, 0.08), (0.12, 0.42), (0.0, 0.42)], marble,
+            seg=24, loc=(-0.2, 0.05, C + 0.04), name="stump",
+            radial=lambda a, t: 1 - 0.06 * max(0.0, math.cos(12 * a)) ** 4)
+    for k in range(5):
+        D.cone(0.05, rng.uniform(0.04, 0.12), marble, loc=(-0.2 + 0.08 * math.cos(k * 1.3), 0.05,
+               C + 0.46), seg=5, name="break")
+    D.box((0.3, 0.14, 0.1), marble, loc=(0.28, -0.05, C + 0.09), rot=(0, rad(12), rad(20)), bev=0.02)
+    # hanging roots
+    for k in range(6):
+        x = rng.uniform(-0.4, 0.4)
+        pts = [(x, 0.0, C - 0.1), (x + rng.uniform(-0.08, 0.08), -0.02, C - 0.3),
+               (x + rng.uniform(-0.1, 0.1), -0.04, C - rng.uniform(0.45, 0.6))]
+        D.sweep(D.catmull(pts, 6), lambda t: 0.018 * (1 - 0.8 * t), root, segs=6, name="root")
+    # debris below
+    for k in range(9):
+        D.rock((rng.uniform(-0.6, 0.6), rng.uniform(-0.2, 0.1), rng.uniform(0.02, 0.1)),
+               rng.uniform(0.04, 0.09), rockm, scale=(1.2, 1.0, 0.8), seed=k + 3)
+    for k in range(5):
+        D.rock((rng.uniform(-0.5, 0.5), -0.1, rng.uniform(0.22, 0.45)), rng.uniform(0.02, 0.04),
+               rockm, seed=k + 20)
+    for (p, s_) in (((0.45, -0.4, 1.1), 0.05), ((-0.5, -0.4, 0.4), 0.04)):
+        D.sparkle(p, s_, (0.9, 0.9, 1.0))
+    D.point_light((0, -0.6, C + 0.2), (0.7, 0.6, 1.0), 16, 0.3)
+    D.view(pitch=10, fill=0.95, glow=0.6)
 
 
 # ==== END OF BUILDERS ====

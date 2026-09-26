@@ -104,7 +104,8 @@
    "ref#1",
    "sheet#1"
   ],
-  "generationId": "Ad-xPrWSUp-hfJd5kgoeWHNslpaS3notQ5AIRnm8KqN-LqjD2LWYOMz6jlcKDw05zT_pASpB"
+  "generationId": "Ad-xPrWSUp-hfJd5kgoeWHNslpaS3notQ5AIRnm8KqN-LqjD2LWYOMz6jlcKDw05zT_pASpB",
+  "note": "came back as a FRONT ribcage+pelvis with humerus stubs; kept as fallback"
  },
  {
   "id": "armor_knight",
@@ -116,7 +117,8 @@
    "ref#1",
    "sheet#2"
   ],
-  "generationId": "AXzoIBxx5jiiNoGmS9lu4T41Sr4D12keC7_WDpxkDsiHvxgDhwIbMY9EAB3syJ_JnZffEX0C"
+  "generationId": "AXzoIBxx5jiiNoGmS9lu4T41Sr4D12keC7_WDpxkDsiHvxgDhwIbMY9EAB3syJ_JnZffEX0C",
+  "note": "clean 3/4 cuirass with pauldrons + tabard: used"
  },
  {
   "id": "gravedigger",
@@ -128,6 +130,42 @@
    "ref#2",
    "sheet#2"
   ],
-  "generationId": "AX1-ruahCoElBcxGbi-ZFFpkxPZ9MprTvKmyP_k4GCIfwHt_DnFdAWvGflVq9CLF72YbRFFb"
+  "generationId": "AX1-ruahCoElBcxGbi-ZFFpkxPZ9MprTvKmyP_k4GCIfwHt_DnFdAWvGflVq9CLF72YbRFFb",
+  "note": "came back with head + near arm baked in -> edited (remove arm) next"
+ },
+ {
+  "id": "skeleton",
+  "step": "edit:side_no_limbs",
+  "tool": "image_to_image",
+  "count": 1,
+  "aspect": "3:4",
+  "refs": [
+   "upload: crop of sheet#1 side figure"
+  ],
+  "generationId": "Abtta1XEICphumGwtnuqwUrFSUCtSRm0Y74b8RGUzbqveXEKELPHGpDdzC4rN6qN_FiJKPPn",
+  "note": "arms removed (legs kept): skull/ribcage/pelvis+loincloth cut from it; femur over the cloth inpainted"
+ },
+ {
+  "id": "gravedigger",
+  "step": "edit:torso_no_arm",
+  "tool": "image_to_image",
+  "count": 1,
+  "aspect": "1:1",
+  "refs": [
+   "part:torso"
+  ],
+  "generationId": "AYM-Go7uax1Y_GqSp8vN6C20V_1wl88VVaS75RGs3k0ZYNHpVfMCZttFL0WNijSVW0FDrHmx",
+  "note": "hand removed but the sleeve stayed -> second edit"
+ },
+ {
+  "id": "gravedigger",
+  "step": "edit:torso_no_arm_2",
+  "tool": "image_to_image",
+  "count": 1,
+  "aspect": "1:1",
+  "refs": [
+   "edit:torso_no_arm"
+  ],
+  "generationId": "AbLTv6qaQS2brjNSLKRXXFmVEQiu-t03qjsvdMUFOmwCQI7gnmOwzUmN8YeVe8sk8b2SDClC"
  }
 ]
