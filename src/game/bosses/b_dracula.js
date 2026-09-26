@@ -400,8 +400,8 @@ export class Dracula extends BossB {
     const A = this.A, F = this.F, p = this.P, d = this.d2;
     this.facePlayer();
     d.jawT = t > 0.2 && t < 1 ? 1 : 0.2; d.wingT = 1;
-    this.hands.l.ty = this.bottom - 300 * d.scale; this.hands.r.ty = this.bottom - 300 * d.scale;
-    this.hands.l.tx = this.cx - 90; this.hands.r.tx = this.cx + 90;
+    this.hands.l.ty = this.bottom - 290 * d.scale; this.hands.r.ty = this.bottom - 290 * d.scale;
+    this.hands.l.tx = this.cx - 170 * d.scale; this.hands.r.tx = this.cx + 170 * d.scale;
     if (this.at(0.25)) { audio.sfx('boss_roar', { pitch: 0.7 }); impact(world, { shake: 8, time: 0.6 }); }
     if (this.at(0.4)) {
       const n = (this.phase >= 3 ? 11 : 8) + (this.inferno ? 3 : 0);
@@ -718,7 +718,9 @@ export class Dracula extends BossB {
     ctx.beginPath();
     ctx.moveTo(-14, -112);
     ctx.bezierCurveTo(-spread * 0.8, -110 + cp * 10, -spread - 6, -60, -spread - 10 + flow, 0);
-    ctx.lineTo(-spread * 0.4, -4 + flow * 0.4); ctx.lineTo(0, 2); ctx.lineTo(spread * 0.4, -4); ctx.lineTo(spread * 0.7 + flow * 0.5, 0);
+    // 박쥐 날개처럼 물결치는 밑단
+    const hemL = -spread - 10 + flow, hemR = spread * 0.7 + flow * 0.5;
+    for (let i = 1; i <= 4; i++) { const xa = lerp(hemL, hemR, (i - 0.5) / 4), xb = lerp(hemL, hemR, i / 4); ctx.quadraticCurveTo(xa, -12 - cp * 6, xb, (i % 2 ? 2 : -2)); }
     ctx.bezierCurveTo(spread * 0.6, -60, spread * 0.55, -104 + cp * 14, 16, -112);
     ctx.closePath();
     ink(ctx, fl ? '#fff' : LG(ctx, 'dr_capeIn' + Math.round(spread), -spread, 0, spread, 0, [0, '#3a0610', 0.3, LINING, 0.55, LINING_L, 0.75, LINING, 1, '#3a0610']), 3);
@@ -802,48 +804,74 @@ export class Dracula extends BossB {
     // 펼친 망토 앞자락 (앞손이 쥠)
     if (side > 0 && this.cape > 0.3 && this.wrap < 0.5) {
       const k = this.cape;
+      const ex2 = X(hx) + 2, ey2 = hy + 2, bot = 0;
+      const outX = ex2 + 18 * k;
       ctx.beginPath();
-      ctx.moveTo(14, -110); ctx.quadraticCurveTo(X(hx) + 8, hy - 10, X(hx) + 4, hy + 2);
-      ctx.quadraticCurveTo(X(hx) + 14 * k, lerp(hy, -10, 0.5), 30 * k + 10, -2);
-      ctx.lineTo(16, -2); ctx.quadraticCurveTo(18, -60, 14, -110);
-      ink(ctx, fl ? '#fff' : LG(ctx, 'dr_flap', 10, 0, 50, 0, [0, LINING, 0.6, LINING_L, 1, '#3a0610']), 2);
+      ctx.moveTo(14, -110);
+      ctx.quadraticCurveTo(lerp(14, ex2, 0.5), lerp(-110, ey2, 0.5) - 14 * k, ex2, ey2);
+      ctx.bezierCurveTo(outX + 10, lerp(ey2, bot, 0.35), outX, lerp(ey2, bot, 0.75), outX - 4, bot);
+      for (let i = 1; i <= 3; i++) { const xa = lerp(outX - 4, 16, (i - 0.5) / 3), xb = lerp(outX - 4, 16, i / 3); ctx.quadraticCurveTo(xa, bot - 12, xb, bot + (i % 2 ? -2 : 1)); }
+      ctx.quadraticCurveTo(20, -60, 14, -110);
+      ctx.closePath();
+      ink(ctx, fl ? '#fff' : LG(ctx, 'dr_flap', 10, 0, 70, 0, [0, '#5a0614', 0.35, LINING, 0.7, LINING_L, 1, '#4a0612']), 2);
+      if (!fl) {
+        ctx.strokeStyle = 'rgba(40,0,8,0.55)'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); for (let i = 1; i <= 2; i++) { const u = i / 3; ctx.moveTo(lerp(14, ex2, u), lerp(-108, ey2, u)); ctx.quadraticCurveTo(lerp(18, outX, u) + 4, -50, lerp(16, outX - 4, u), -4); } ctx.stroke();
+        // 겉감(검정) 가장자리
+        ctx.strokeStyle = CAPE; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(ex2, ey2); ctx.bezierCurveTo(outX + 10, lerp(ey2, bot, 0.35), outX, lerp(ey2, bot, 0.75), outX - 4, bot); ctx.stroke();
+      }
     }
     if (this.state === 'hellfire' && side > 0 && !fl) glow(ctx, X(hx), hy, 24, HELL, 0.8);
   }
   countHead(ctx, t) {
     const fl = R.fl;
-    ctx.save(); ctx.translate(2, -124);
-    // 뒷머리 (어깨까지)
-    ctx.beginPath(); ctx.moveTo(-9, -10); ctx.quadraticCurveTo(-14, 6, -12, 18 + Math.sin(t * 2) * 2); ctx.lineTo(-4, 14); ctx.quadraticCurveTo(-4, 0, 0, -8); ctx.closePath();
-    ink(ctx, C('#0c0a10'), 1.5);
+    ctx.save(); ctx.translate(2, -124); ctx.scale(0.92, 0.92);
+    // 뒷머리 (어깨까지 흐르는 흑발)
+    ctx.beginPath(); ctx.moveTo(-9, -12); ctx.quadraticCurveTo(-16, 4, -13, 20 + Math.sin(t * 2) * 2); ctx.lineTo(-7, 18); ctx.quadraticCurveTo(-6, 4, -1, -8); ctx.closePath();
+    ink(ctx, fl ? '#fff' : LG(ctx, 'dr_hb', 0, -12, 0, 20, [0, '#1a1622', 1, '#050308']), 1.5);
     // 목
-    ctx.fillStyle = C(SKIN_D); ctx.fillRect(-3, 6, 7, 10);
-    // 얼굴 (날카로운 옆선)
+    ctx.beginPath(); ctx.moveTo(-3, 4); ctx.lineTo(-3, 16); ctx.lineTo(5, 16); ctx.lineTo(5, 5); ctx.closePath();
+    ctx.fillStyle = fl ? '#fff' : LG(ctx, 'dr_nk', -3, 0, 5, 0, [0, SKIN_D, 1, SKIN]); ctx.fill();
+    // 얼굴: 각진 턱, 높은 광대, 매부리코
     ctx.beginPath();
-    ctx.moveTo(-7, -4); ctx.bezierCurveTo(-8, -14, 0, -16, 6, -13);
-    ctx.quadraticCurveTo(9, -10, 9, -5); ctx.lineTo(11.5, 0.5); ctx.lineTo(9, 1.5);
-    ctx.quadraticCurveTo(9.5, 4, 8, 5); ctx.quadraticCurveTo(7, 9, 3, 9); ctx.quadraticCurveTo(-3, 9, -6, 4); ctx.closePath();
-    ink(ctx, fl ? '#fff' : LG(ctx, 'dr_face', -7, 0, 11, 0, [0, SKIN_D, 0.5, SKIN, 1, '#ffffff']), 1.5);
+    ctx.moveTo(-7, -5);
+    ctx.bezierCurveTo(-8, -15, -1, -18, 5, -15);
+    ctx.quadraticCurveTo(9, -12, 9, -7);          // 이마
+    ctx.lineTo(12, 0);                            // 콧날
+    ctx.lineTo(9.5, 1.2);                         // 코밑
+    ctx.quadraticCurveTo(10, 3.5, 9, 4.5);        // 윗입술
+    ctx.lineTo(9.3, 6);                           // 아랫입술
+    ctx.quadraticCurveTo(8.5, 10, 5, 10.5);       // 턱
+    ctx.lineTo(-1, 9);                            // 턱선
+    ctx.quadraticCurveTo(-6, 5, -7, -5);
+    ink(ctx, fl ? '#fff' : LG(ctx, 'dr_face2', -7, 0, 12, 0, [0, '#7a6a88', 0.35, SKIN_D, 0.62, SKIN, 1, '#ffffff']), 1.4);
     if (!fl) {
-      ctx.fillStyle = 'rgba(80,60,110,0.35)'; ctx.beginPath(); ctx.ellipse(1, 2, 3.5, 2.5, 0, 0, TAU); ctx.fill();
-      // 붉은 눈
-      eye(ctx, 5.5, -5, 1.4, BLOOD, 1);
-      ctx.strokeStyle = '#1a0a10'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(2.5, -7.5); ctx.lineTo(9, -6.2); ctx.stroke();
+      // 광대 그늘 + 눈두덩
+      ctx.fillStyle = 'rgba(60,40,90,0.35)';
+      ctx.beginPath(); ctx.moveTo(1, -1); ctx.quadraticCurveTo(5, 1, 8, 5); ctx.quadraticCurveTo(3, 5, 0, 3); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(40,20,60,0.45)'; ctx.beginPath(); ctx.ellipse(5.5, -5, 3.6, 2, -0.1, 0, TAU); ctx.fill();
+      // 붉은 눈 (가는 불꽃)
+      ctx.fillStyle = '#ff2a3a'; ctx.beginPath(); ctx.moveTo(3.2, -5); ctx.quadraticCurveTo(5.8, -6.6, 8.4, -5.4); ctx.quadraticCurveTo(5.8, -4.2, 3.2, -5); ctx.fill();
+      glow(ctx, 6, -5.2, 5, BLOOD, 0.9);
+      ctx.fillStyle = '#fff0f0'; ctx.fillRect(5.6, -5.8, 1.1, 1.1);
+      // 눈썹 (날카로운)
+      ctx.strokeStyle = '#0a0610'; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(2.2, -7.8); ctx.lineTo(9.2, -7.2); ctx.stroke();
       // 입 + 송곳니
-      ctx.strokeStyle = '#4a1020'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(5, 4.5); ctx.lineTo(9, 4); ctx.stroke();
-      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(7.6, 4.2); ctx.lineTo(8.2, 6.8); ctx.lineTo(8.8, 4.1); ctx.fill();
+      ctx.strokeStyle = '#3a0818'; ctx.lineWidth = 0.9; ctx.beginPath(); ctx.moveTo(5.5, 5); ctx.lineTo(9.3, 4.9); ctx.stroke();
+      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(7.8, 5); ctx.lineTo(8.3, 7.4); ctx.lineTo(8.8, 5); ctx.fill();
+      // 코 하이라이트
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(9.5, -5); ctx.lineTo(11.3, -0.5); ctx.stroke();
       // 뾰족 귀
-      ctx.fillStyle = SKIN_D; ctx.beginPath(); ctx.moveTo(-3, -4); ctx.lineTo(-7, -13); ctx.lineTo(-1, -6); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = SKIN_D; ctx.beginPath(); ctx.moveTo(-2.5, -4); ctx.lineTo(-7.5, -12); ctx.lineTo(-0.5, -6.5); ctx.closePath(); ctx.fill();
     }
-    // 올백 머리 (M자 이마선)
+    // 올백 흑발 (M자 이마선)
     ctx.beginPath();
-    ctx.moveTo(-9, -2); ctx.bezierCurveTo(-11, -16, -2, -20, 6, -17); ctx.quadraticCurveTo(10, -15, 8.5, -11);
-    ctx.lineTo(5, -12.5); ctx.lineTo(3, -9.5); ctx.lineTo(0, -12); ctx.quadraticCurveTo(-5, -10, -6, -2); ctx.closePath();
-    ink(ctx, fl ? '#fff' : LG(ctx, 'dr_hair', 0, -20, 0, 0, [0, '#3a3448', 0.4, '#0e0a14', 1, '#050308']), 1.4);
-    if (!fl) { ctx.strokeStyle = 'rgba(180,190,240,0.45)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-6, -15); ctx.quadraticCurveTo(0, -19, 6, -16); ctx.stroke(); }
+    ctx.moveTo(-9, -3); ctx.bezierCurveTo(-11, -17, -2, -21, 6, -18); ctx.quadraticCurveTo(10.5, -16, 9, -11.5);
+    ctx.lineTo(6.5, -12.4); ctx.lineTo(4, -9.6); ctx.lineTo(1.2, -12); ctx.quadraticCurveTo(-4, -11, -5.5, -3); ctx.closePath();
+    ink(ctx, fl ? '#fff' : LG(ctx, 'dr_hair2', 0, -21, 0, -3, [0, '#4a4458', 0.35, '#141020', 1, '#050308']), 1.3);
+    if (!fl) { ctx.strokeStyle = 'rgba(190,200,255,0.5)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-6, -16); ctx.quadraticCurveTo(0, -20, 6, -17); ctx.moveTo(-8, -10); ctx.quadraticCurveTo(-5, -16, 0, -17); ctx.stroke(); }
     ctx.restore();
   }
-
   // ── 2형태: 마왕 ──
   paintDemon(ctx, x, y, f, t, s) {
     const fl = R.fl, d = this.d2;

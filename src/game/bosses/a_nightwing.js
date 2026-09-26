@@ -12,7 +12,7 @@ export class Nightwing extends ABoss {
   setup() {
     this.flap = 0; this.flapRate = 7; this.spread = 1; this.mouth = 0; this.claw = 0; this.lean = 0;
     this.lastX = this.cx; this.dvx = 0; this.rage = 0; this.gT = 0; this.cont = false; this.chainLeft = 0;
-    this.y = this.floorY - 250 - this.h;
+    this.y = this.floorY - 150 - this.h;
   }
   hurtboxes() { return [{ x: this.x + 10, y: this.y + 4, w: this.w - 20, h: this.h - 10 }]; }
   onIntro(world) {
@@ -32,7 +32,7 @@ export class Nightwing extends ABoss {
     const A = this.A;
     const side = this.cx > p.cx ? 1 : -1;
     const tx = clamp(p.cx + side * 290, A.x0 + 130, A.x1 - 130);
-    this.flyTo(tx, A.floor - 215 + Math.sin(this.t * 1.7) * 26, 2.2, 280, dt);
+    this.flyTo(tx, A.floor - 200 + Math.sin(this.t * 1.7) * 24, 2.2, 280, dt);
     this.facePlayer();
     this.relax(dt);
   }
@@ -66,7 +66,7 @@ export class Nightwing extends ABoss {
       audio.sfx('bat', { pitch: 0.5, vol: 0.8 });
     }
     if (this.stateT < lockT) {
-      this.flyTo(this.cx - this.facing * 30, A.floor - 290, 5, 480, dt);
+      this.flyTo(this.cx - this.facing * 30, A.floor - 265, 5, 480, dt);
       this.facePlayer();
     }
     if (this.at(lockT)) {
@@ -74,7 +74,7 @@ export class Nightwing extends ABoss {
       this.facing = dir;
       this.P0x = this.cx; this.P0y = this.cy;
       this.Lx = p.cx; this.Ly = clamp(p.cy - 6, A.floor - 150, A.floor - 60);
-      this.P2x = clamp(this.Lx + dir * 430, A.x0 + 80, A.x1 - 80); this.P2y = A.floor - 280;
+      this.P2x = clamp(this.Lx + dir * 430, A.x0 + 80, A.x1 - 80); this.P2y = A.floor - 255;
       if (Math.abs(this.P2x - this.Lx) < 150) this.P2x = clamp(this.Lx - dir * 380, A.x0 + 80, A.x1 - 80);
       this.P1x = 2 * this.Lx - (this.P0x + this.P2x) / 2; this.P1y = 2 * this.Ly - (this.P0y + this.P2y) / 2;
       const pts = [];
@@ -123,7 +123,7 @@ export class Nightwing extends ABoss {
   // ── 음파 고리: 입을 벌려 힘을 모은 뒤 틈이 있는 고리를 발사 ──
   s_screech(dt, world, p) {
     const A = this.A, n = (this.phase >= 1 ? 2 : 1) + (this.inferno ? 1 : 0), W = 0.8, iv = 0.75;
-    this.flyTo(clamp(this.cx, A.x0 + 150, A.x1 - 150), A.floor - 255, 3, 240, dt);
+    this.flyTo(clamp(this.cx, A.x0 + 150, A.x1 - 150), A.floor - 235, 3, 240, dt);
     this.facePlayer();
     this.spread = lerp(this.spread, 1.15, Math.min(1, dt * 5));
     if (this.at(0)) { this.warnMark(this.cx, this.y - 44, W); audio.sfx('bat', { pitch: 0.35, vol: 0.9 }); }
@@ -157,7 +157,7 @@ export class Nightwing extends ABoss {
       audio.sfx('bat', { pitch: 0.6 });
     }
     if (this.stateT < TR) {
-      this.flyTo(clamp(p.cx, A.x0 + 70, A.x1 - 70), A.floor - 300, 6, 560, dt);
+      this.flyTo(clamp(p.cx, A.x0 + 70, A.x1 - 70), A.floor - 275, 6, 560, dt);
       this.facePlayer();
       this.spread = lerp(this.spread, 1.2, Math.min(1, dt * 6)); this.claw = lerp(this.claw, 1, Math.min(1, dt * 4));
       return;
@@ -197,7 +197,7 @@ export class Nightwing extends ABoss {
   // ── 핏빛 칼날: 날개를 뒤로 젖혔다가 부채꼴로 막 발사 ──
   s_blades(dt, world, p) {
     const A = this.A, W = 0.6, n = this.phase >= 1 ? 7 : 5, vol = (this.phase >= 2 || this.inferno) ? 2 : 1;
-    this.flyTo(clamp(this.cx, A.x0 + 150, A.x1 - 150), A.floor - 230, 3, 200, dt);
+    this.flyTo(clamp(this.cx, A.x0 + 150, A.x1 - 150), A.floor - 215, 3, 200, dt);
     this.facePlayer();
     const cx = this.cx + this.facing * 10, cy = this.cy - 10;
     if (this.at(0)) {
@@ -228,7 +228,7 @@ export class Nightwing extends ABoss {
   // ── 박쥐 소환 ──
   s_summon(dt, world, p) {
     const A = this.A;
-    this.flyTo(clamp(this.cx, A.x0 + 160, A.x1 - 160), A.floor - 280, 3, 220, dt);
+    this.flyTo(clamp(this.cx, A.x0 + 160, A.x1 - 160), A.floor - 255, 3, 220, dt);
     this.facePlayer();
     this.spread = lerp(this.spread, 1.3, Math.min(1, dt * 5)); this.mouth = lerp(this.mouth, 1, Math.min(1, dt * 4));
     if (this.at(0)) { audio.sfx('bat', { pitch: 0.4, vol: 1 }); this.warnMark(this.cx, this.y - 40, 0.7); }
@@ -252,7 +252,7 @@ export class Nightwing extends ABoss {
   // ── 피의 비 (3페이즈): 천장 높이 떠올라 전장에 핏방울을 뿌림 ──
   s_bloodRain(dt, world, p) {
     const A = this.A, T0 = 0.8, T1 = 4.0;
-    this.flyTo(A.mid, A.floor - 330, 3, 360, dt);
+    this.flyTo(A.mid, A.floor - 290, 3, 360, dt);
     this.facePlayer();
     this.spread = lerp(this.spread, 1.3, Math.min(1, dt * 4)); this.flapRate = 4; this.mouth = lerp(this.mouth, 0.9, Math.min(1, dt * 3));
     if (this.at(0)) {
@@ -286,7 +286,7 @@ export class Nightwing extends ABoss {
   }
   transformTick(dt, world, p) {
     const A = this.A;
-    this.flyTo(clamp(this.cx, A.x0 + 160, A.x1 - 160), A.floor - 300, 3, 300, dt);
+    this.flyTo(clamp(this.cx, A.x0 + 160, A.x1 - 160), A.floor - 265, 3, 300, dt);
     this.spread = lerp(this.spread, 1.4, Math.min(1, dt * 6)); this.mouth = 1.3; this.flapRate = 12; this.claw = 1;
     if (this.at(0.25)) {
       this.phaseBurst(this.phase >= 2 ? '#ff1030' : '#ff4060');

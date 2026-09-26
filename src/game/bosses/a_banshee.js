@@ -13,7 +13,7 @@ const SC = 1.22; // 그림 배율
 
 export class Banshee extends ABoss {
   setup() {
-    this.y = this.floorY - 210 - this.h;
+    this.y = this.floorY - 110 - this.h;
     this.arms = 0.2; this.armsUp = 0; this.mouth = 0; this.alpha = 1; this.lean = 0; this.skull = 0; this.fury = 0;
     this.lastX = this.cx; this.dvx = 0;
     this.chainsV = [new VerletChain(7, 11, { gravity: 700, damping: 0.94 }), new VerletChain(7, 11, { gravity: 700, damping: 0.94 })];
@@ -31,7 +31,7 @@ export class Banshee extends ABoss {
   }
   idleMove(dt, world, p) {
     const A = this.A, side = this.cx > p.cx ? 1 : -1;
-    this.flyTo(clamp(p.cx + side * 260, A.x0 + 110, A.x1 - 110), A.floor - 205 + Math.sin(this.t * 1.4) * 22, 1.8, 220, dt);
+    this.flyTo(clamp(p.cx + side * 260, A.x0 + 110, A.x1 - 110), A.floor - 190 + Math.sin(this.t * 1.4) * 20, 1.8, 220, dt);
     this.facePlayer();
     this.relax(dt);
   }
@@ -68,7 +68,7 @@ export class Banshee extends ABoss {
   // ── 통곡: 입이 찢어지게 벌어지며 틈 있는 고리를 연속 방출 ──
   s_wail(dt, world, p) {
     const A = this.A, W = 0.85, n = this.phase >= 1 ? 3 : 2, iv = 0.7;
-    this.flyTo(clamp(this.cx, A.x0 + 150, A.x1 - 150), A.floor - 230, 2.5, 200, dt);
+    this.flyTo(clamp(this.cx, A.x0 + 150, A.x1 - 150), A.floor - 215, 2.5, 200, dt);
     this.facePlayer();
     this.arms = lerp(this.arms, 1, Math.min(1, dt * 5)); this.armsUp = lerp(this.armsUp, 0.3, Math.min(1, dt * 5));
     const hx = this.cx + this.facing * 5, hy = this.bottom - 195;
@@ -96,7 +96,7 @@ export class Banshee extends ABoss {
   // ── 영혼 사슬: 벽·천장에서 플레이어를 가로지르는 사슬이 박힌다 ──
   s_chains(dt, world, p) {
     const A = this.A, n = 3 + this.phase + (this.inferno ? 1 : 0);
-    this.flyTo(clamp(this.cx, A.x0 + 140, A.x1 - 140), A.floor - 250, 2, 180, dt);
+    this.flyTo(clamp(this.cx, A.x0 + 140, A.x1 - 140), A.floor - 230, 2, 180, dt);
     this.facePlayer();
     this.arms = lerp(this.arms, 0.9, Math.min(1, dt * 4)); this.armsUp = lerp(this.armsUp, 0.8, Math.min(1, dt * 4));
     if (this.at(0)) { audio.sfx('ghost', { pitch: 0.8 }); this.warnMark(this.cx, this.y - 36, 0.6); }
@@ -119,7 +119,7 @@ export class Banshee extends ABoss {
   // ── 무덤의 손: 바닥에서 유령 손이 연속으로 솟구친다 ──
   s_hands(dt, world, p) {
     const A = this.A, n = 5 + this.phase, iv = 0.2;
-    this.flyTo(clamp(this.cx, A.x0 + 140, A.x1 - 140), A.floor - 220, 2, 180, dt);
+    this.flyTo(clamp(this.cx, A.x0 + 140, A.x1 - 140), A.floor - 205, 2, 180, dt);
     this.facePlayer();
     this.arms = lerp(this.arms, 1, Math.min(1, dt * 4)); this.armsUp = lerp(this.armsUp, -0.5, Math.min(1, dt * 4));
     if (this.at(0)) {
@@ -152,7 +152,7 @@ export class Banshee extends ABoss {
     if (this.at(0.45)) {
       const side = p.cx > A.mid ? -1 : 1;
       this.tx = clamp(p.cx + (Math.random() < 0.65 ? -p.facing : side) * 230, A.x0 + 90, A.x1 - 90);
-      this.ty = A.floor - 190;
+      this.ty = A.floor - 180;
       this.warn({ type: 'ring', px: this.tx, py: this.ty, r: 60, life: 0.45, color: TEAL });
     }
     if (this.stateT < 0.9) {
@@ -199,7 +199,7 @@ export class Banshee extends ABoss {
   // ── 원혼 소환 ──
   s_summon(dt, world, p) {
     const A = this.A;
-    this.flyTo(clamp(this.cx, A.x0 + 150, A.x1 - 150), A.floor - 240, 2, 160, dt);
+    this.flyTo(clamp(this.cx, A.x0 + 150, A.x1 - 150), A.floor - 220, 2, 160, dt);
     this.arms = lerp(this.arms, 1, Math.min(1, dt * 4)); this.armsUp = lerp(this.armsUp, 1, Math.min(1, dt * 4)); this.mouth = lerp(this.mouth, 0.8, dt * 4);
     if (this.at(0)) { audio.sfx('ghost', { pitch: 0.45, vol: 1 }); this.warnMark(this.cx, this.y - 36, 0.7); }
     if (this.stateT < 0.8 && Math.random() < 0.7) this.fx.emit('soul', rand(A.x0, A.x1), A.floor - 4, { speed: 80, angle: -PI / 2 });
@@ -218,7 +218,7 @@ export class Banshee extends ABoss {
   // ── 레퀴엠 (3페이즈): 궤도를 도는 사슬추가 점점 넓게 퍼지다 사방으로 흩어진다 ──
   s_requiem(dt, world, p) {
     const A = this.A, n = this.inferno ? 8 : 6, T1 = 3.2;
-    this.flyTo(A.mid, A.floor - 250, 2.2, 260, dt);
+    this.flyTo(A.mid, A.floor - 230, 2.2, 260, dt);
     this.arms = 1; this.armsUp = lerp(this.armsUp, 0.9, Math.min(1, dt * 3)); this.mouth = lerp(this.mouth, 1.1, dt * 3);
     if (this.at(0)) {
       audio.sfx('boss_roar', { pitch: 1.6, vol: 0.7 });
@@ -259,7 +259,7 @@ export class Banshee extends ABoss {
   }
   transformTick(dt, world, p) {
     const A = this.A;
-    this.flyTo(clamp(this.cx, A.x0 + 160, A.x1 - 160), A.floor - 250, 3, 260, dt);
+    this.flyTo(clamp(this.cx, A.x0 + 160, A.x1 - 160), A.floor - 230, 3, 260, dt);
     this.arms = 1; this.armsUp = 0.9; this.mouth = 1.3;
     if (this.at(0.25)) {
       this.phaseBurst(TEAL);

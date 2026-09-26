@@ -12,7 +12,7 @@ const CYCLE = ['fire', 'ice', 'thunder'];
 
 export class Grimoire extends ABoss {
   setup() {
-    this.y = this.floorY - 200 - this.h;
+    this.y = this.floorY - 130 - this.h;
     this.open = 0; this.eyeOpen = 1; this.blink = 0; this.lookX = 0; this.lookY = 0; this.tilt = 0; this.fury = 0;
     this.elemI = 0; this.elem = 'fire'; this.runeK = 0; this.chainsBroken = false;
     this.flutter = 0;

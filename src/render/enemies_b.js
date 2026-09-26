@@ -303,6 +303,27 @@ function bubble(ctx, x, y, r, col) {
   ctx.fillStyle = 'rgba(255,255,255,0.7)';
   ctx.beginPath(); ctx.arc(x + r * 0.35, y - r * 0.35, Math.max(0.5, r * 0.3), 0, TAU); ctx.fill();
 }
+/** 가늘어지는 촉수 (이차곡선 x0→(cx,cy)→x1, 폭 w0→w1) — 채움 다각형 + 림 */
+const TNT = new Float32Array(40);
+function tentacle(ctx, x0, y0, qx, qy, x1, y1, w0, w1, col, rimA = 0.35) {
+  const N = 9;
+  for (let i = 0; i <= N; i++) {
+    const u = i / N, a = 1 - u;
+    const x = a * a * x0 + 2 * a * u * qx + u * u * x1, y = a * a * y0 + 2 * a * u * qy + u * u * y1;
+    const dx = 2 * a * (qx - x0) + 2 * u * (x1 - qx), dy = 2 * a * (qy - y0) + 2 * u * (y1 - qy);
+    const L = Math.hypot(dx, dy) || 1, w = lerp(w0, w1, u);
+    TNT[i * 4] = x - dy / L * w; TNT[i * 4 + 1] = y + dx / L * w; TNT[i * 4 + 2] = x + dy / L * w; TNT[i * 4 + 3] = y - dx / L * w;
+  }
+  ctx.beginPath(); ctx.moveTo(TNT[0], TNT[1]);
+  for (let i = 1; i <= N; i++) ctx.lineTo(TNT[i * 4], TNT[i * 4 + 1]);
+  ctx.arc(x1, y1, w1, 0, TAU);
+  for (let i = N; i >= 0; i--) ctx.lineTo(TNT[i * 4 + 2], TNT[i * 4 + 3]);
+  ctx.closePath();
+  ink(ctx, C(col), 1.5);
+  if (FL) return;
+  ctx.strokeStyle = `rgba(180,170,255,${rimA})`; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(TNT[2], TNT[3]); for (let i = 1; i <= N; i++) ctx.lineTo(TNT[i * 4 + 2], TNT[i * 4 + 3]); ctx.stroke();
+}
 /** 해시 난수 (결정적) */
 const h1 = (n) => { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
 
@@ -3251,10 +3272,7 @@ RENDER_B.chaos_spawn = (ctx, e, world, o) => {
   const tent = (i, near) => {
     const a0 = -PI * 0.1 - i * 0.55 + (near ? 0.25 : 0), bx = Math.cos(a0) * rx * 0.8, by = cy + Math.sin(a0) * ry * 0.6;
     const w = Math.sin(t * 4 + i * 1.7), L = 16 + h1(i) * 10;
-    ctx.lineCap = 'round';
-    ctx.strokeStyle = C(OUT); ctx.lineWidth = 5;
-    ctx.beginPath(); ctx.moveTo(bx, by); ctx.quadraticCurveTo(bx + Math.cos(a0) * L * 0.6 + w * 6, by + Math.sin(a0) * L * 0.6 - 4, bx + Math.cos(a0 + w * 0.5) * L, by + Math.sin(a0 + w * 0.5) * L); ctx.stroke();
-    ctx.strokeStyle = C(near ? fleshL : flesh); ctx.lineWidth = 3; ctx.stroke();
+    tentacle(ctx, bx, by, bx + Math.cos(a0) * L * 0.6 + w * 6, by + Math.sin(a0) * L * 0.6 - 4, bx + Math.cos(a0 + w * 0.5) * L, by + Math.sin(a0 + w * 0.5) * L, 3.4, 0.8, near ? fleshL : flesh);
   };
   for (let i = 0; i < 4; i++) tent(i, false);
   // 몸 (끓는 살덩이)
@@ -3346,11 +3364,8 @@ RENDER_B.abyss_eye = (ctx, e, world, o) => {
     const a0 = PI * 0.25 + (i / 7) * PI * 1.1 + PI * 0.15, bx = Math.cos(a0) * R * 0.85, by = cy + Math.sin(a0) * R * 0.85;
     const w = Math.sin(t * 2.4 + i * 1.3), L = R * (0.9 + h1(i) * 0.7);
     const ex = bx + Math.cos(a0 + w * 0.4) * L, ey = by + Math.sin(a0 + w * 0.4) * L + 6;
-    ctx.lineCap = 'round';
-    ctx.strokeStyle = C(OUT); ctx.lineWidth = 6.5;
-    ctx.beginPath(); ctx.moveTo(bx, by); ctx.quadraticCurveTo(bx + Math.cos(a0) * L * 0.5 + w * 8, by + Math.sin(a0) * L * 0.5, ex, ey); ctx.stroke();
-    ctx.strokeStyle = C(i % 2 ? '#4a1a3a' : '#5a2244'); ctx.lineWidth = 4; ctx.stroke();
-    if (!FL) { ctx.strokeStyle = 'rgba(180,160,255,0.35)'; ctx.lineWidth = 1; ctx.stroke(); ctx.fillStyle = '#ff4a5a'; ctx.beginPath(); ctx.arc(ex, ey, 1.2, 0, TAU); ctx.fill(); }
+    tentacle(ctx, bx, by, bx + Math.cos(a0) * L * 0.5 + w * 8, by + Math.sin(a0) * L * 0.5, ex, ey, 4.2, 1.2, i % 2 ? '#4a1a3a' : '#5a2244');
+    if (!FL) { ctx.fillStyle = '#ff4a5a'; ctx.beginPath(); ctx.arc(ex, ey, 1.2, 0, TAU); ctx.fill(); glow(ctx, ex, ey, 5, '#ff4a5a', 0.5); }
   }
   // 살 주머니 (눈꺼풀 뒤)
   ctx.beginPath(); ctx.ellipse(-2, cy, R * 1.12, R * 1.08, 0, 0, TAU);

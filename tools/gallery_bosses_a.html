@@ -46,7 +46,7 @@ function makeWorld() {
   };
   const w = {
     map, diff: getDiff(diffId), stage: { id: 's01', level: 1 }, state: { difficulty: diffId, progress: { bosses: [], flags: {} }, stats: {} },
-    fx: new Particles(1400), camera: { shake() {}, punchZoom() {} }, game: { flash() {}, settings: {}, debug: false, viewW: 1280, viewH: 540 },
+    fx: new Particles(1400), camera: { shake() {}, punchZoom() {} }, game: { flash() {}, settings: {}, debug: q.get('debug') === '1', viewW: 1280, viewH: 540 },
     lighting: { add() {} }, entities: [], platforms: [], debrisList: [], time: 0, hitstop: 0, slowmo: 0, timeStop: 0, cutscene: false,
     arena: { x0: 11 * TILE, x1: MW * TILE }, banner: null,
     add(e) { e.world = this; this.entities.push(e); return e; },
