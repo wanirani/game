@@ -998,7 +998,48 @@
   "footMinX": 960,
   "shinBootY": 2030
  },
- "hands": null,
+ "hands": {
+  "sheet": "sera/sera_exorcist_hands",
+  "grip": {
+   "box": [
+    450,
+    340,
+    1040,
+    880
+   ],
+   "center": [
+    740,
+    580
+   ],
+   "axis": [
+    -0.113,
+    0.994
+   ],
+   "rodHalf": 110,
+   "wrist": [
+    900,
+    860
+   ],
+   "scale": 0.19
+  },
+  "open": {
+   "box": [
+    1500,
+    15,
+    2240,
+    880
+   ],
+   "wrist": [
+    1950,
+    870
+   ],
+   "tip": [
+    1930,
+    30
+   ],
+   "scale": 0.2
+  }
+ },
  "materials": {
   "_replace": true,
   "armor": {
@@ -1058,5 +1099,19 @@
   "headK": 1.1,
   "armorBase": "#f0ece0"
  },
- "turn": null
+ "turn": {
+  "sheet5": "sera/sera_exorcist_turn5",
+  "views5": [
+   "y90",
+   "y135",
+   "y180",
+   "ym90",
+   "-"
+  ],
+  "qback": "sera/sera_exorcist_qback",
+  "viewsQ": [
+   "-",
+   "ym45"
+  ]
+ }
 }

@@ -27,7 +27,7 @@ export const INSTALL = `(async () => {
   const settle = (dist = 150) => {
     const b = B();
     if (b.dying > 0) return;
-    pd = dist;
+    pd = dist; b.invuln = false;
     if (!b.split) { b.x = HX - b.w / 2; b.y = b.floorY - b.h; b.vx = 0; b.vy = 0; }
     b.setState('idle'); b.cool = 99; for (let i = 0; i < 70; i++) { px(); step(1); if (!b.split) b.vx = 0; }
     pd = 260;

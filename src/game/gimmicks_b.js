@@ -684,7 +684,12 @@ export class BlightGimmick extends MemberB {
     else if (this.status && this.meter <= c.off) this.setStatus(false);
     if (this.status && !w.cleared) {
       const maxHp = p.stats?.hp ?? 100;
-      if (p.hp > 1) p.hp = Math.max(1, p.hp - c.dot * maxHp * dt);   // 1 아래로는 깎지 않는다
+      if (p.hp > 1) {
+        const hp0 = p.hp;
+        p.hp = Math.max(1, p.hp - c.dot * maxHp * dt);   // 1 아래로는 깎지 않는다
+        // 받은 피해로 센다 (결과 화면 무피해 보너스). 매 프레임 조금씩이라 onPlayerHurt(콤보 끊기·붉은 비네트)는 부르지 않는다
+        if (w.run && Number.isFinite(w.run.damageTaken)) w.run.damageTaken += hp0 - p.hp;
+      }
       this.fxAcc += dt * 5 * qualityOf(w);
       while (this.fxAcc >= 1) {
         this.fxAcc -= 1;

@@ -420,10 +420,478 @@
    "note": "OK: 레이아웃 참고 이미지 없이 글로만 배치 → 누수 없음, 탄띠 유지. 정면·3/4앞·옆(왼쪽)·뒤·뒤(중복)",
    "picked": "a",
    "src": "src/victor/victor_gunslinger_turn5.webp"
+  },
+  {
+   "id": "sera_priestess_turn5",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AXI_zT7p6eZD_mMF7bz46GFz1NjpgmFU6ZmBtCkvwtg4zJFiwT2jJzIGtVDw-rGpzmqcHhUr",
+   "inputs": [
+    "sera_priestess_side.jpg"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
+   "prompt": "Character turnaround sheet of the woman in 图片1, wearing exactly the outfit of 图片1: the white veil with a gold sun tiara, long silver-white hair, a pure white silk robe-coat with gold embroidery and gold edges open at the front, a gold sun-and-cross emblem on the chest, gold corset plates, a white shoulder capelet, white gloves, white leggings and white boots with gold toe caps; the same headwear in every view. Five full-body views of the same woman standing in a relaxed neutral A-pose with arms hanging down at her sides, side by side on one row, evenly spaced, well separated, all the same size on the same ground line, from left to right: 1 front view facing the viewer, 2 three-quarter front view turned toward the viewer's left, 3 side profile view facing the viewer's left, 4 back view, 5 three-quarter back view. Plain light-grey studio background, the same painting style as 图片1, soft even lighting, every view complete from head to boots, no cape, no wings, nothing held in the hands, no text, no labels, no watermark.",
+   "note": "레이아웃 참고 이미지 없음(글로 배치 지정)"
+  },
+  {
+   "id": "sera_priestess_qback",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "ATIE_nnLWhnYmaLvLsTL7Ehxr0S9KZQErK8W-iL-jbi-IV7GVbMXUWc5XGNMn7cQe_VMrAbg",
+   "inputs": [
+    "sera_priestess_side.jpg"
+   ],
+   "aspect_ratio": "3:4",
+   "img_resolution": "2k",
+   "prompt": "One single full-body THREE-QUARTER BACK view of the woman in 图片1, wearing exactly the outfit of 图片1: the white veil with a gold sun tiara, long silver-white hair, a pure white silk robe-coat with gold embroidery and gold edges open at the front, a gold sun-and-cross emblem on the chest, gold corset plates, a white shoulder capelet, white gloves, white leggings and white boots with gold toe caps. She stands in a relaxed neutral pose with arms hanging down, turned mostly away from the viewer toward the viewer's LEFT, so we see her back and the back of her head at a three-quarter angle, and only a sliver of her cheek; we cannot see her eyes. Centered in the frame, complete from head to boots. Plain light-grey studio background, the same painting style as 图片1, soft even lighting, no cape, no wings, nothing held in the hands, no text, no watermark.",
+   "note": "레이아웃 참고 이미지 없음(글로 배치 지정)"
+  },
+  {
+   "id": "sera_priestess_hands",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "Afzt_7VHJ5ld4PUejgyUmkwEbFHR25ts8FPGebQ9jun8imWC930oDmqrGRlu2QyLxf8NW1qc",
+   "inputs": [
+    "sera_priestess_side.jpg"
+   ],
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "prompt": "Hand reference sheet for the woman in 图片1. Paint ONLY her gloved hands with exactly the same gloves and sleeve cuffs as in 图片1, in the same painting style and lighting (not a 3D render), large and sharp, on a plain light-grey background. Two hands side by side, well separated, each cut off just after the cuff, no arms, no body, no text. LEFT: her hand clenched into a tight fist seen from the outside, back of the hand and knuckles facing the viewer, thumb wrapped over the fingers, the wrist and cuff entering from the lower right, gripping a straight thin cylindrical rod painted flat pure bright green that passes vertically BEHIND the curled fingers (the fingers wrap around it and hide it) and sticks out above and below the fist. RIGHT: the same hand open with the palm facing the viewer, fingers together and slightly curved as if casting a spell, the wrist and cuff at the bottom. No watermark.",
+   "note": ""
+  },
+  {
+   "id": "sera_elementalist_turn5",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AdJ9rA78Lbo3jZWo89onSdL6H1OIkHkT_GKVziLO5FQL7lDaqqiIrBPyFVjqXH23_vEFMUNt",
+   "inputs": [
+    "sera_elementalist_side.jpg"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
+   "prompt": "Character turnaround sheet of the woman in 图片1, wearing exactly the outfit of 图片1: a pointed wide-brimmed dark purple mage hat with a gold band, long silver-white hair hanging down her back, a dark plum-purple robe-coat with gold trim and glowing violet sigils open at the front, a dark purple corset with gold buckles, black gloves, dark leggings and dark brown boots; the same headwear in every view. Five full-body views of the same woman standing in a relaxed neutral A-pose with arms hanging down at her sides, side by side on one row, evenly spaced, well separated, all the same size on the same ground line, from left to right: 1 front view facing the viewer, 2 three-quarter front view turned toward the viewer's left, 3 side profile view facing the viewer's left, 4 back view, 5 three-quarter back view. Plain light-grey studio background, the same painting style as 图片1, soft even lighting, every view complete from head to boots, no cape, no wings, nothing held in the hands, no text, no labels, no watermark.",
+   "note": "레이아웃 참고 이미지 없음(글로 배치 지정)"
+  },
+  {
+   "id": "sera_elementalist_qback",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "Ad7A92DhTtjgIU-XeHxe_6EwWJJ2VxWj4Vq5EMl1_oTAIqgyNPv_YuHzS58vXc67Q3pF62o2",
+   "inputs": [
+    "sera_elementalist_side.jpg"
+   ],
+   "aspect_ratio": "3:4",
+   "img_resolution": "2k",
+   "prompt": "One single full-body THREE-QUARTER BACK view of the woman in 图片1, wearing exactly the outfit of 图片1: a pointed wide-brimmed dark purple mage hat with a gold band, long silver-white hair hanging down her back, a dark plum-purple robe-coat with gold trim and glowing violet sigils open at the front, a dark purple corset with gold buckles, black gloves, dark leggings and dark brown boots. She stands in a relaxed neutral pose with arms hanging down, turned mostly away from the viewer toward the viewer's LEFT, so we see her back and the back of her head at a three-quarter angle, and only a sliver of her cheek; we cannot see her eyes. Centered in the frame, complete from head to boots. Plain light-grey studio background, the same painting style as 图片1, soft even lighting, no cape, no wings, nothing held in the hands, no text, no watermark.",
+   "note": "레이아웃 참고 이미지 없음(글로 배치 지정)"
+  },
+  {
+   "id": "sera_elementalist_hands",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "ARCCmp8MikBwaBQnp2Ffs-c7y3soE1HJt1oXdusDYIU6Stc4lQ6IBcDwL5dYXG8yvXVl27rX",
+   "inputs": [
+    "sera_elementalist_side.jpg"
+   ],
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "prompt": "Hand reference sheet for the woman in 图片1. Paint ONLY her gloved hands with exactly the same gloves and sleeve cuffs as in 图片1, in the same painting style and lighting (not a 3D render), large and sharp, on a plain light-grey background. Two hands side by side, well separated, each cut off just after the cuff, no arms, no body, no text. LEFT: her hand clenched into a tight fist seen from the outside, back of the hand and knuckles facing the viewer, thumb wrapped over the fingers, the wrist and cuff entering from the lower right, gripping a straight thin cylindrical rod painted flat pure bright green that passes vertically BEHIND the curled fingers (the fingers wrap around it and hide it) and sticks out above and below the fist. RIGHT: the same hand open with the palm facing the viewer, fingers together and slightly curved as if casting a spell, the wrist and cuff at the bottom. No watermark.",
+   "note": ""
+  },
+  {
+   "id": "sera_saint_turn5",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AWbT_FFxkaSNcnVSuhzj4We01TB9x-9RZCiGhEyJfIKeIAfduroHpGiw96BPFzxRlsr3J4y9",
+   "inputs": [
+    "sera_saint_side.jpg"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
+   "prompt": "Character turnaround sheet of the woman in 图片1, wearing exactly the outfit of 图片1: the white veil with a tall ornate gold crown topped with a cross, long silver-white hair, layered white silk vestments with pale-gold embroidery and a softly glowing golden hem, gold filigree armour plates on the bodice and shoulders, white gloves, white leggings and ornate white-and-gold boots; the same headwear in every view. Five full-body views of the same woman standing in a relaxed neutral A-pose with arms hanging down at her sides, side by side on one row, evenly spaced, well separated, all the same size on the same ground line, from left to right: 1 front view facing the viewer, 2 three-quarter front view turned toward the viewer's left, 3 side profile view facing the viewer's left, 4 back view, 5 three-quarter back view. Plain light-grey studio background, the same painting style as 图片1, soft even lighting, every view complete from head to boots, no cape, no wings, nothing held in the hands, no text, no labels, no watermark.",
+   "note": "레이아웃 참고 이미지 없음(글로 배치 지정)"
+  },
+  {
+   "id": "sera_saint_qback",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AT1_4hS-9SHs3GOdo460HwvqS7vX_81ByPGm4pENg_sC2YBvdhXTKNS8ynpBtX251nSirtVT",
+   "inputs": [
+    "sera_saint_side.jpg"
+   ],
+   "aspect_ratio": "3:4",
+   "img_resolution": "2k",
+   "prompt": "One single full-body THREE-QUARTER BACK view of the woman in 图片1, wearing exactly the outfit of 图片1: the white veil with a tall ornate gold crown topped with a cross, long silver-white hair, layered white silk vestments with pale-gold embroidery and a softly glowing golden hem, gold filigree armour plates on the bodice and shoulders, white gloves, white leggings and ornate white-and-gold boots. She stands in a relaxed neutral pose with arms hanging down, turned mostly away from the viewer toward the viewer's LEFT, so we see her back and the back of her head at a three-quarter angle, and only a sliver of her cheek; we cannot see her eyes. Centered in the frame, complete from head to boots. Plain light-grey studio background, the same painting style as 图片1, soft even lighting, no cape, no wings, nothing held in the hands, no text, no watermark.",
+   "note": "레이아웃 참고 이미지 없음(글로 배치 지정)"
+  },
+  {
+   "id": "sera_saint_hands",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AXRkUxG9PE4jxiXBjmBMK9BrAazqMPr7lD66BA5rOyqqEE6-38AKC-U9aV1oRabohA_jHoD5",
+   "inputs": [
+    "sera_saint_side.jpg"
+   ],
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "prompt": "Hand reference sheet for the woman in 图片1. Paint ONLY her gloved hands with exactly the same gloves and sleeve cuffs as in 图片1, in the same painting style and lighting (not a 3D render), large and sharp, on a plain light-grey background. Two hands side by side, well separated, each cut off just after the cuff, no arms, no body, no text. LEFT: her hand clenched into a tight fist seen from the outside, back of the hand and knuckles facing the viewer, thumb wrapped over the fingers, the wrist and cuff entering from the lower right, gripping a straight thin cylindrical rod painted flat pure bright green that passes vertically BEHIND the curled fingers (the fingers wrap around it and hide it) and sticks out above and below the fist. RIGHT: the same hand open with the palm facing the viewer, fingers together and slightly curved as if casting a spell, the wrist and cuff at the bottom. No watermark.",
+   "note": ""
+  },
+  {
+   "id": "sera_oracle_turn5",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AW6X2BodvwroXGvAhYt4rM2SXQK6hgV_lv0LWKhgPsutqAUNgNU1arDhR6A0XrAAPMcvJd0v",
+   "inputs": [
+    "sera_oracle_side.jpg"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
+   "prompt": "Character turnaround sheet of the woman in 图片1, wearing exactly the outfit of 图片1: a long deep indigo veil edged with gold and a gold circlet with a small silver crescent moon, long silver-white hair, a deep indigo robe-coat with gold stars and glowing ice-blue edges open at the front, a silver-and-gold corset, indigo gloves, navy leggings and brown boots; the same headwear in every view. Five full-body views of the same woman standing in a relaxed neutral A-pose with arms hanging down at her sides, side by side on one row, evenly spaced, well separated, all the same size on the same ground line, from left to right: 1 front view facing the viewer, 2 three-quarter front view turned toward the viewer's left, 3 side profile view facing the viewer's left, 4 back view, 5 three-quarter back view. Plain light-grey studio background, the same painting style as 图片1, soft even lighting, every view complete from head to boots, no cape, no wings, nothing held in the hands, no text, no labels, no watermark.",
+   "note": "레이아웃 참고 이미지 없음(글로 배치 지정)"
+  },
+  {
+   "id": "sera_oracle_qback",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "ATBrwUCNn04aI2ufq5NqR4WDQpFYmxGkxxqLzv6JAoO0LVoXfNkcz45jCw7d6eBYR2qlgLqi",
+   "inputs": [
+    "sera_oracle_side.jpg"
+   ],
+   "aspect_ratio": "3:4",
+   "img_resolution": "2k",
+   "prompt": "One single full-body THREE-QUARTER BACK view of the woman in 图片1, wearing exactly the outfit of 图片1: a long deep indigo veil edged with gold and a gold circlet with a small silver crescent moon, long silver-white hair, a deep indigo robe-coat with gold stars and glowing ice-blue edges open at the front, a silver-and-gold corset, indigo gloves, navy leggings and brown boots. She stands in a relaxed neutral pose with arms hanging down, turned mostly away from the viewer toward the viewer's LEFT, so we see her back and the back of her head at a three-quarter angle, and only a sliver of her cheek; we cannot see her eyes. Centered in the frame, complete from head to boots. Plain light-grey studio background, the same painting style as 图片1, soft even lighting, no cape, no wings, nothing held in the hands, no text, no watermark.",
+   "note": "레이아웃 참고 이미지 없음(글로 배치 지정)"
+  },
+  {
+   "id": "sera_oracle_hands",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "ASvnED-XKIoy0mmPc36j3N4NmxRgGvxOj4FhxnQ1yd2bdih_fcNa5uP1jNMB-0seJvRRWdtb",
+   "inputs": [
+    "sera_oracle_side.jpg"
+   ],
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "prompt": "Hand reference sheet for the woman in 图片1. Paint ONLY her gloved hands with exactly the same gloves and sleeve cuffs as in 图片1, in the same painting style and lighting (not a 3D render), large and sharp, on a plain light-grey background. Two hands side by side, well separated, each cut off just after the cuff, no arms, no body, no text. LEFT: her hand clenched into a tight fist seen from the outside, back of the hand and knuckles facing the viewer, thumb wrapped over the fingers, the wrist and cuff entering from the lower right, gripping a straight thin cylindrical rod painted flat pure bright green that passes vertically BEHIND the curled fingers (the fingers wrap around it and hide it) and sticks out above and below the fist. RIGHT: the same hand open with the palm facing the viewer, fingers together and slightly curved as if casting a spell, the wrist and cuff at the bottom. No watermark.",
+   "note": ""
+  },
+  {
+   "id": "sera_archmage_turn5",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AV2jW5CwKtnf_QS7PQVa6APzDKrwtwCIGwjKN92C66gt1TRLMUV8A3FAis_J6KPkPaUSxP12",
+   "inputs": [
+    "sera_archmage_side.jpg"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
+   "prompt": "Character turnaround sheet of the woman in 图片1, wearing exactly the outfit of 图片1: a tall black-violet witch hat with an orange-lined brim, a gold band and a flame gem, long silver-white hair hanging down her back, a black-violet velvet robe-coat with flame-orange lining, gold filigree and burning orange runes along the hem, a black-and-gold corset, black gloves, dark leggings and black boots; the same headwear in every view. Five full-body views of the same woman standing in a relaxed neutral A-pose with arms hanging down at her sides, side by side on one row, evenly spaced, well separated, all the same size on the same ground line, from left to right: 1 front view facing the viewer, 2 three-quarter front view turned toward the viewer's left, 3 side profile view facing the viewer's left, 4 back view, 5 three-quarter back view. Plain light-grey studio background, the same painting style as 图片1, soft even lighting, every view complete from head to boots, no cape, no wings, nothing held in the hands, no text, no labels, no watermark.",
+   "note": "레이아웃 참고 이미지 없음(글로 배치 지정)"
+  },
+  {
+   "id": "sera_archmage_qback",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AacNrXMh6RhRGwRVXx76DluefXEKc0Cqy86QU1y-CPIFTxeQaGDVnfw89b91H85Tm77H0iKM",
+   "inputs": [
+    "sera_archmage_side.jpg"
+   ],
+   "aspect_ratio": "3:4",
+   "img_resolution": "2k",
+   "prompt": "One single full-body THREE-QUARTER BACK view of the woman in 图片1, wearing exactly the outfit of 图片1: a tall black-violet witch hat with an orange-lined brim, a gold band and a flame gem, long silver-white hair hanging down her back, a black-violet velvet robe-coat with flame-orange lining, gold filigree and burning orange runes along the hem, a black-and-gold corset, black gloves, dark leggings and black boots. She stands in a relaxed neutral pose with arms hanging down, turned mostly away from the viewer toward the viewer's LEFT, so we see her back and the back of her head at a three-quarter angle, and only a sliver of her cheek; we cannot see her eyes. Centered in the frame, complete from head to boots. Plain light-grey studio background, the same painting style as 图片1, soft even lighting, no cape, no wings, nothing held in the hands, no text, no watermark.",
+   "note": "레이아웃 참고 이미지 없음(글로 배치 지정)"
+  },
+  {
+   "id": "sera_archmage_hands",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AcFcuU8Wnq3pMNzTRFUMkJSEkoY99QHTW_Tanr05IjKefaRj1IjVYEgEjgDKMgS58af63HlM",
+   "inputs": [
+    "sera_archmage_side.jpg"
+   ],
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "prompt": "Hand reference sheet for the woman in 图片1. Paint ONLY her gloved hands with exactly the same gloves and sleeve cuffs as in 图片1, in the same painting style and lighting (not a 3D render), large and sharp, on a plain light-grey background. Two hands side by side, well separated, each cut off just after the cuff, no arms, no body, no text. LEFT: her hand clenched into a tight fist seen from the outside, back of the hand and knuckles facing the viewer, thumb wrapped over the fingers, the wrist and cuff entering from the lower right, gripping a straight thin cylindrical rod painted flat pure bright green that passes vertically BEHIND the curled fingers (the fingers wrap around it and hide it) and sticks out above and below the fist. RIGHT: the same hand open with the palm facing the viewer, fingers together and slightly curved as if casting a spell, the wrist and cuff at the bottom. No watermark.",
+   "note": ""
+  },
+  {
+   "id": "sera_stormcaller_turn5",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AQ4Fz2X11eAIcuATyexg7FlMTf_9C7s62p43KrbwBAUGUnc7Ckv8f7NwXCuULecAYEKfR4Lx",
+   "inputs": [
+    "sera_stormcaller_side.jpg"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
+   "prompt": "Character turnaround sheet of the woman in 图片1, wearing exactly the outfit of 图片1: a silver circlet with a glowing pale blue gem, long loose silver-white hair hanging down her back, a dark navy robe-coat with glowing pale lightning-blue trim and silver embroidery open at the front, silver corset plates, white gloves, navy leggings and brown boots; the same headwear in every view. Five full-body views of the same woman standing in a relaxed neutral A-pose with arms hanging down at her sides, side by side on one row, evenly spaced, well separated, all the same size on the same ground line, from left to right: 1 front view facing the viewer, 2 three-quarter front view turned toward the viewer's left, 3 side profile view facing the viewer's left, 4 back view, 5 three-quarter back view. Plain light-grey studio background, the same painting style as 图片1, soft even lighting, every view complete from head to boots, no cape, no wings, nothing held in the hands, no text, no labels, no watermark.",
+   "note": "레이아웃 참고 이미지 없음(글로 배치 지정)"
+  },
+  {
+   "id": "sera_stormcaller_qback",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AW8GIfBoYdNys4GrrYlEJrV76qcutf_ZOldTEmtuWGp6Lerh7d3KkrFB9wW2h7KNIdJI-KC3",
+   "inputs": [
+    "sera_stormcaller_side.jpg"
+   ],
+   "aspect_ratio": "3:4",
+   "img_resolution": "2k",
+   "prompt": "One single full-body THREE-QUARTER BACK view of the woman in 图片1, wearing exactly the outfit of 图片1: a silver circlet with a glowing pale blue gem, long loose silver-white hair hanging down her back, a dark navy robe-coat with glowing pale lightning-blue trim and silver embroidery open at the front, silver corset plates, white gloves, navy leggings and brown boots. She stands in a relaxed neutral pose with arms hanging down, turned mostly away from the viewer toward the viewer's LEFT, so we see her back and the back of her head at a three-quarter angle, and only a sliver of her cheek; we cannot see her eyes. Centered in the frame, complete from head to boots. Plain light-grey studio background, the same painting style as 图片1, soft even lighting, no cape, no wings, nothing held in the hands, no text, no watermark.",
+   "note": "레이아웃 참고 이미지 없음(글로 배치 지정)"
+  },
+  {
+   "id": "sera_stormcaller_hands",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "ARpr00rVWsc5B6hLgKT1kxk_nUxIcj0eZaYIRcqD866UwBdytrj5BkimyezCzdWM4qJ9bwN2",
+   "inputs": [
+    "sera_stormcaller_side.jpg"
+   ],
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "prompt": "Hand reference sheet for the woman in 图片1. Paint ONLY her gloved hands with exactly the same gloves and sleeve cuffs as in 图片1, in the same painting style and lighting (not a 3D render), large and sharp, on a plain light-grey background. Two hands side by side, well separated, each cut off just after the cuff, no arms, no body, no text. LEFT: her hand clenched into a tight fist seen from the outside, back of the hand and knuckles facing the viewer, thumb wrapped over the fingers, the wrist and cuff entering from the lower right, gripping a straight thin cylindrical rod painted flat pure bright green that passes vertically BEHIND the curled fingers (the fingers wrap around it and hide it) and sticks out above and below the fist. RIGHT: the same hand open with the palm facing the viewer, fingers together and slightly curved as if casting a spell, the wrist and cuff at the bottom. No watermark.",
+   "note": ""
+  },
+  {
+   "id": "victor_deadeye_turn5",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AexeZFbOKkv0VLtWdFxDPjXU23unuJ_6XiTFRYVFaHI5B07Jq_64Xqa0aWC7e97OWjwTkSEW",
+   "inputs": [
+    "victor_deadeye_side.jpg"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
+   "prompt": "Character turnaround sheet of the man in 图片1, wearing exactly the outfit of 图片1: a black wide-brimmed hat with a silver band, a slate-grey scarf, a charcoal-grey leather long coat with silver buckles open at the front, a silver-studded bullet bandolier across the chest, a belt with a pouch and an empty holster, black trousers, black boots and black gloves; his eyes glow faint red; the same headwear in every view. Five full-body views of the same man standing in a relaxed neutral A-pose with arms hanging down at his sides, side by side on one row, evenly spaced, well separated, all the same size on the same ground line, from left to right: 1 front view facing the viewer, 2 three-quarter front view turned toward the viewer's left, 3 side profile view facing the viewer's left, 4 back view, 5 three-quarter back view. Plain light-grey studio background, the same realistic painterly style as 图片1, soft even lighting, every view complete from head to boots, no cape, no wings, nothing held in the hands, no text, no labels, no watermark.",
+   "note": "레이아웃 참고 이미지 없음(글로 배치 지정)"
+  },
+  {
+   "id": "victor_deadeye_qback",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "ATADE0RdCFQN8kTLLv5H_5PG_CbDLo1v6BqNQ3gu6LvKvv7LPpldYRRhfB80wRQKTGF3wQpJ",
+   "inputs": [
+    "victor_deadeye_side.jpg"
+   ],
+   "aspect_ratio": "4:3",
+   "img_resolution": "2k",
+   "prompt": "Two full-body three-quarter BACK views of the man in 图片1, wearing exactly the outfit of 图片1: a black wide-brimmed hat with a silver band, a slate-grey scarf, a charcoal-grey leather long coat with silver buckles open at the front, a silver-studded bullet bandolier across the chest, a belt with a pouch and an empty holster, black trousers, black boots and black gloves; his eyes glow faint red. The man stands in a relaxed neutral pose with arms hanging down, seen mostly from behind (we see the back of the head, not the face); LEFT figure turned away to the viewer's left, RIGHT figure turned away to the viewer's right (mirror angles), both the same size on the same ground line, well separated. Plain light-grey studio background, the same realistic painterly style as 图片1, soft even lighting, complete from head to boots, no cape, nothing held in the hands, no text, no watermark.",
+   "note": "레이아웃 참고 이미지 없음(글로 배치 지정)"
+  },
+  {
+   "id": "victor_deadeye_hands",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "ARjLBmZVjJ9XgFL2yVus06GWcj6BmTJNAG69yizGA__ux-7bd0AvtkWAsEFmonsF6BUMzpJp",
+   "inputs": [
+    "victor_deadeye_side.jpg"
+   ],
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "prompt": "Hand reference sheet for the man in 图片1. Paint ONLY his gloved hands with exactly the same gloves and sleeve cuffs as in 图片1, in the same painting style and lighting (not a 3D render), large and sharp, on a plain light-grey background. Two hands side by side, well separated, each cut off just after the cuff, no arms, no body, no text. LEFT: his hand clenched into a tight fist seen from the outside, back of the hand and knuckles facing the viewer, thumb wrapped over the fingers, the wrist and cuff entering from the lower right, gripping a straight thin cylindrical rod painted flat pure bright green that passes vertically BEHIND the curled fingers (the fingers wrap around it and hide it) and sticks out above and below the fist. RIGHT: the same hand open with the palm facing the viewer, fingers together and slightly curved as if casting a spell, the wrist and cuff at the bottom. No watermark.",
+   "note": ""
+  },
+  {
+   "id": "victor_desperado_turn5",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AcBBAfJmBqCIMIjoebiZRlQbnZ185up7YVhvBQs1sEazVe8hKNkoj4OEmg9aZKyFoBFlzGTr",
+   "inputs": [
+    "victor_desperado_side.jpg"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
+   "prompt": "Character turnaround sheet of the man in 图片1, wearing exactly the outfit of 图片1: a brown wide-brimmed hat with a brass-studded band, a red-orange scarf, a rust-brown weathered leather duster open at the front, a shotgun-shell bandolier across the chest, a dark brown waistcoat, a belt with a pouch and an empty holster, brown trousers, brown gloves and brown boots with brass spurs; the same headwear in every view. Five full-body views of the same man standing in a relaxed neutral A-pose with arms hanging down at his sides, side by side on one row, evenly spaced, well separated, all the same size on the same ground line, from left to right: 1 front view facing the viewer, 2 three-quarter front view turned toward the viewer's left, 3 side profile view facing the viewer's left, 4 back view, 5 three-quarter back view. Plain light-grey studio background, the same realistic painterly style as 图片1, soft even lighting, every view complete from head to boots, no cape, no wings, nothing held in the hands, no text, no labels, no watermark.",
+   "note": "레이아웃 참고 이미지 없음(글로 배치 지정)"
+  },
+  {
+   "id": "victor_desperado_qback",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "ARnIksVDLR_DNhZbRsYUbaI1KSHCrmi2kuNSe4jvNrlzg9brggT4IVHx-GYOhNeU2ZkMy0wd",
+   "inputs": [
+    "victor_desperado_side.jpg"
+   ],
+   "aspect_ratio": "4:3",
+   "img_resolution": "2k",
+   "prompt": "Two full-body three-quarter BACK views of the man in 图片1, wearing exactly the outfit of 图片1: a brown wide-brimmed hat with a brass-studded band, a red-orange scarf, a rust-brown weathered leather duster open at the front, a shotgun-shell bandolier across the chest, a dark brown waistcoat, a belt with a pouch and an empty holster, brown trousers, brown gloves and brown boots with brass spurs. The man stands in a relaxed neutral pose with arms hanging down, seen mostly from behind (we see the back of the head, not the face); LEFT figure turned away to the viewer's left, RIGHT figure turned away to the viewer's right (mirror angles), both the same size on the same ground line, well separated. Plain light-grey studio background, the same realistic painterly style as 图片1, soft even lighting, complete from head to boots, no cape, nothing held in the hands, no text, no watermark.",
+   "note": "레이아웃 참고 이미지 없음(글로 배치 지정)"
+  },
+  {
+   "id": "victor_desperado_hands",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AUdCiEm7_5l8YxzNyROS_LewXV9waCcqppB1qctE-8GrL567x1Tp4r-kHw1X16gREo62D29r",
+   "inputs": [
+    "victor_desperado_side.jpg"
+   ],
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "prompt": "Hand reference sheet for the man in 图片1. Paint ONLY his gloved hands with exactly the same gloves and sleeve cuffs as in 图片1, in the same painting style and lighting (not a 3D render), large and sharp, on a plain light-grey background. Two hands side by side, well separated, each cut off just after the cuff, no arms, no body, no text. LEFT: his hand clenched into a tight fist seen from the outside, back of the hand and knuckles facing the viewer, thumb wrapped over the fingers, the wrist and cuff entering from the lower right, gripping a straight thin cylindrical rod painted flat pure bright green that passes vertically BEHIND the curled fingers (the fingers wrap around it and hide it) and sticks out above and below the fist. RIGHT: the same hand open with the palm facing the viewer, fingers together and slightly curved as if casting a spell, the wrist and cuff at the bottom. No watermark.",
+   "note": ""
+  },
+  {
+   "id": "victor_phantom_turn5",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AUbsLhCOCdeHgqIjOjs_cNa1daX_i8UHCZM5oAQ_zBRMDJz7wpxWn4g-WjIM8Uk4B0hP_6_j",
+   "inputs": [
+    "victor_phantom_side.jpg"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
+   "prompt": "Character turnaround sheet of the man in 图片1, wearing exactly the outfit of 图片1: a black hood pulled up over his head (face visible), a dark slate-blue scarf, a sleek pitch-black long coat with glowing pale ghost-blue edges and runes on the hem, a belt with an empty holster, black gloves, dark trousers and black boots; the same headwear in every view. Five full-body views of the same man standing in a relaxed neutral A-pose with arms hanging down at his sides, side by side on one row, evenly spaced, well separated, all the same size on the same ground line, from left to right: 1 front view facing the viewer, 2 three-quarter front view turned toward the viewer's left, 3 side profile view facing the viewer's left, 4 back view, 5 three-quarter back view. Plain light-grey studio background, the same realistic painterly style as 图片1, soft even lighting, every view complete from head to boots, no cape, no wings, nothing held in the hands, no text, no labels, no watermark.",
+   "note": "레이아웃 참고 이미지 없음(글로 배치 지정)"
+  },
+  {
+   "id": "victor_phantom_qback",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AUtAtNQJ8ONz8_r_iFm8vhElOE-7ywHi8MImz06XQLKAWvJ0Pk4DhJuvdId-TV-vQPSTcCak",
+   "inputs": [
+    "victor_phantom_side.jpg"
+   ],
+   "aspect_ratio": "4:3",
+   "img_resolution": "2k",
+   "prompt": "Two full-body three-quarter BACK views of the man in 图片1, wearing exactly the outfit of 图片1: a black hood pulled up over his head (face visible), a dark slate-blue scarf, a sleek pitch-black long coat with glowing pale ghost-blue edges and runes on the hem, a belt with an empty holster, black gloves, dark trousers and black boots. The man stands in a relaxed neutral pose with arms hanging down, seen mostly from behind (we see the back of the head, not the face); LEFT figure turned away to the viewer's left, RIGHT figure turned away to the viewer's right (mirror angles), both the same size on the same ground line, well separated. Plain light-grey studio background, the same realistic painterly style as 图片1, soft even lighting, complete from head to boots, no cape, nothing held in the hands, no text, no watermark.",
+   "note": "레이아웃 참고 이미지 없음(글로 배치 지정)"
+  },
+  {
+   "id": "victor_phantom_hands",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "ASEa-QV3OVafhEKam7P90yilg9LK83508EG5cdlHFvWfrfERQpVT2rtRh0tCO1E_km1ejSgT",
+   "inputs": [
+    "victor_phantom_side.jpg"
+   ],
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "prompt": "Hand reference sheet for the man in 图片1. Paint ONLY his gloved hands with exactly the same gloves and sleeve cuffs as in 图片1, in the same painting style and lighting (not a 3D render), large and sharp, on a plain light-grey background. Two hands side by side, well separated, each cut off just after the cuff, no arms, no body, no text. LEFT: his hand clenched into a tight fist seen from the outside, back of the hand and knuckles facing the viewer, thumb wrapped over the fingers, the wrist and cuff entering from the lower right, gripping a straight thin cylindrical rod painted flat pure bright green that passes vertically BEHIND the curled fingers (the fingers wrap around it and hide it) and sticks out above and below the fist. RIGHT: the same hand open with the palm facing the viewer, fingers together and slightly curved as if casting a spell, the wrist and cuff at the bottom. No watermark.",
+   "note": ""
+  },
+  {
+   "id": "victor_executioner_turn5",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "Abw0JkIN6uWeu7CYXA5aRXt0ZvaaQWX212pvd86k4s6Y7AoKfCfnhGqU3bAr8jaA-KrSjgT5",
+   "inputs": [
+    "victor_executioner_side.jpg"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
+   "prompt": "Character turnaround sheet of the man in 图片1, wearing exactly the outfit of 图片1: bare-headed with long black hair, a black leather mask covering his mouth and chin, a black leather long coat with blood-red lining open at the front, a spiked steel pauldron on his right shoulder, a blood-red sash at the waist, black gloves, black trousers and black boots with steel caps; the same headwear in every view. Five full-body views of the same man standing in a relaxed neutral A-pose with arms hanging down at his sides, side by side on one row, evenly spaced, well separated, all the same size on the same ground line, from left to right: 1 front view facing the viewer, 2 three-quarter front view turned toward the viewer's left, 3 side profile view facing the viewer's left, 4 back view, 5 three-quarter back view. Plain light-grey studio background, the same realistic painterly style as 图片1, soft even lighting, every view complete from head to boots, no cape, no wings, nothing held in the hands, no text, no labels, no watermark.",
+   "note": "레이아웃 참고 이미지 없음(글로 배치 지정)"
+  },
+  {
+   "id": "victor_executioner_qback",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AXr1HVOSixwOAOR18Grqskwr3j4cfIwhFGYl1kdHl4O4Zk1zhW11WIRm0c8QR0MMFexoOWvM",
+   "inputs": [
+    "victor_executioner_side.jpg"
+   ],
+   "aspect_ratio": "4:3",
+   "img_resolution": "2k",
+   "prompt": "Two full-body three-quarter BACK views of the man in 图片1, wearing exactly the outfit of 图片1: bare-headed with long black hair, a black leather mask covering his mouth and chin, a black leather long coat with blood-red lining open at the front, a spiked steel pauldron on his right shoulder, a blood-red sash at the waist, black gloves, black trousers and black boots with steel caps. The man stands in a relaxed neutral pose with arms hanging down, seen mostly from behind (we see the back of the head, not the face); LEFT figure turned away to the viewer's left, RIGHT figure turned away to the viewer's right (mirror angles), both the same size on the same ground line, well separated. Plain light-grey studio background, the same realistic painterly style as 图片1, soft even lighting, complete from head to boots, no cape, nothing held in the hands, no text, no watermark.",
+   "note": "레이아웃 참고 이미지 없음(글로 배치 지정)"
+  },
+  {
+   "id": "victor_executioner_hands",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AR9MlXxAKyFn_BrmNNMKo5YRTPGoNwJTcTJJxAKzewp2mLYM5GGrD1qrtxRAZT4c2FVjX5Ms",
+   "inputs": [
+    "victor_executioner_side.jpg"
+   ],
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "prompt": "Hand reference sheet for the man in 图片1. Paint ONLY his gloved hands with exactly the same gloves and sleeve cuffs as in 图片1, in the same painting style and lighting (not a 3D render), large and sharp, on a plain light-grey background. Two hands side by side, well separated, each cut off just after the cuff, no arms, no body, no text. LEFT: his hand clenched into a tight fist seen from the outside, back of the hand and knuckles facing the viewer, thumb wrapped over the fingers, the wrist and cuff entering from the lower right, gripping a straight thin cylindrical rod painted flat pure bright green that passes vertically BEHIND the curled fingers (the fingers wrap around it and hide it) and sticks out above and below the fist. RIGHT: the same hand open with the palm facing the viewer, fingers together and slightly curved as if casting a spell, the wrist and cuff at the bottom. No watermark.",
+   "note": ""
+  },
+  {
+   "id": "victor_hellfire_turn5",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "ARiFaJoQp5Uqqvozdt1tqxAYiOnreweJnhpN2rVXhtFgg2U2ql9ciyrVNeOZvI7Yn_K5CYl-",
+   "inputs": [
+    "victor_hellfire_side.jpg"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
+   "prompt": "Character turnaround sheet of the man in 图片1, wearing exactly the outfit of 图片1: a black wide-brimmed hat with a burning ember band, an orange-red scarf, a charred black leather duster with flame-orange lining and flames along the hem, a bandolier of glowing orange bullets across the chest, a belt with an empty holster, black gloves, black trousers and black boots; his eyes glow orange; the same headwear in every view. Five full-body views of the same man standing in a relaxed neutral A-pose with arms hanging down at his sides, side by side on one row, evenly spaced, well separated, all the same size on the same ground line, from left to right: 1 front view facing the viewer, 2 three-quarter front view turned toward the viewer's left, 3 side profile view facing the viewer's left, 4 back view, 5 three-quarter back view. Plain light-grey studio background, the same realistic painterly style as 图片1, soft even lighting, every view complete from head to boots, no cape, no wings, nothing held in the hands, no text, no labels, no watermark.",
+   "note": "레이아웃 참고 이미지 없음(글로 배치 지정)"
+  },
+  {
+   "id": "victor_hellfire_qback",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AXPNSM7p1BfhTnknDmYX72dpSPYsKNkS2xrAZS6zfLDFmGvt7D3YJZJwUhHTRdM4Pcgptn-_",
+   "inputs": [
+    "victor_hellfire_side.jpg"
+   ],
+   "aspect_ratio": "4:3",
+   "img_resolution": "2k",
+   "prompt": "Two full-body three-quarter BACK views of the man in 图片1, wearing exactly the outfit of 图片1: a black wide-brimmed hat with a burning ember band, an orange-red scarf, a charred black leather duster with flame-orange lining and flames along the hem, a bandolier of glowing orange bullets across the chest, a belt with an empty holster, black gloves, black trousers and black boots; his eyes glow orange. The man stands in a relaxed neutral pose with arms hanging down, seen mostly from behind (we see the back of the head, not the face); LEFT figure turned away to the viewer's left, RIGHT figure turned away to the viewer's right (mirror angles), both the same size on the same ground line, well separated. Plain light-grey studio background, the same realistic painterly style as 图片1, soft even lighting, complete from head to boots, no cape, nothing held in the hands, no text, no watermark.",
+   "note": "레이아웃 참고 이미지 없음(글로 배치 지정)"
+  },
+  {
+   "id": "victor_hellfire_hands",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "ARmrcfgOSxjuPaPcZDKwYqrqVJX3lb3lYfm8eiT1SkcdXl8SwxAfjxm6wtC19ufuu9ICAjBw",
+   "inputs": [
+    "victor_hellfire_side.jpg"
+   ],
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "prompt": "Hand reference sheet for the man in 图片1. Paint ONLY his gloved hands with exactly the same gloves and sleeve cuffs as in 图片1, in the same painting style and lighting (not a 3D render), large and sharp, on a plain light-grey background. Two hands side by side, well separated, each cut off just after the cuff, no arms, no body, no text. LEFT: his hand clenched into a tight fist seen from the outside, back of the hand and knuckles facing the viewer, thumb wrapped over the fingers, the wrist and cuff entering from the lower right, gripping a straight thin cylindrical rod painted flat pure bright green that passes vertically BEHIND the curled fingers (the fingers wrap around it and hide it) and sticks out above and below the fist. RIGHT: the same hand open with the palm facing the viewer, fingers together and slightly curved as if casting a spell, the wrist and cuff at the bottom. No watermark.",
+   "note": ""
+  },
+  {
+   "id": "victor_gunlord_turn5",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "ASjmOyy8pJwRPWseWqVYEr4hOqsQCXX8QvV5BpyWu1Ruo4ILuYxUKZUd96j8ofBRjiv60xLY",
+   "inputs": [
+    "victor_gunlord_side.jpg"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
+   "prompt": "Character turnaround sheet of the man in 图片1, wearing exactly the outfit of 图片1: a gold wide-brimmed hat with a gold band and a feather, a lordly dark olive-brown leather long coat with lavish gold embroidery, gold epaulettes and gold buttons, a gold-embroidered waistcoat, a gold-studded bullet bandolier across the chest, a belt with an empty holster, brown gloves, dark trousers and brown boots with gold spurs; the same headwear in every view. Five full-body views of the same man standing in a relaxed neutral A-pose with arms hanging down at his sides, side by side on one row, evenly spaced, well separated, all the same size on the same ground line, from left to right: 1 front view facing the viewer, 2 three-quarter front view turned toward the viewer's left, 3 side profile view facing the viewer's left, 4 back view, 5 three-quarter back view. Plain light-grey studio background, the same realistic painterly style as 图片1, soft even lighting, every view complete from head to boots, no cape, no wings, nothing held in the hands, no text, no labels, no watermark.",
+   "note": "레이아웃 참고 이미지 없음(글로 배치 지정)"
+  },
+  {
+   "id": "victor_gunlord_qback",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AdK3MCo8y4IOTUzovpP3KEfjdQjwBt6hscw9rRKz0q39v0zRtgjG9uZWFAyKaY4CzfbSEWxv",
+   "inputs": [
+    "victor_gunlord_side.jpg"
+   ],
+   "aspect_ratio": "4:3",
+   "img_resolution": "2k",
+   "prompt": "Two full-body three-quarter BACK views of the man in 图片1, wearing exactly the outfit of 图片1: a gold wide-brimmed hat with a gold band and a feather, a lordly dark olive-brown leather long coat with lavish gold embroidery, gold epaulettes and gold buttons, a gold-embroidered waistcoat, a gold-studded bullet bandolier across the chest, a belt with an empty holster, brown gloves, dark trousers and brown boots with gold spurs. The man stands in a relaxed neutral pose with arms hanging down, seen mostly from behind (we see the back of the head, not the face); LEFT figure turned away to the viewer's left, RIGHT figure turned away to the viewer's right (mirror angles), both the same size on the same ground line, well separated. Plain light-grey studio background, the same realistic painterly style as 图片1, soft even lighting, complete from head to boots, no cape, nothing held in the hands, no text, no watermark.",
+   "note": "레이아웃 참고 이미지 없음(글로 배치 지정)"
+  },
+  {
+   "id": "victor_gunlord_hands",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "Af5O_JpQttn9rhHjAfNkyCcey1ZQIXo5m6kPkywzxYxgTEJNqrjVjyeBdDFjHOYjO3dVF85i",
+   "inputs": [
+    "victor_gunlord_side.jpg"
+   ],
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "prompt": "Hand reference sheet for the man in 图片1. Paint ONLY his gloved hands with exactly the same gloves and sleeve cuffs as in 图片1, in the same painting style and lighting (not a 3D render), large and sharp, on a plain light-grey background. Two hands side by side, well separated, each cut off just after the cuff, no arms, no body, no text. LEFT: his hand clenched into a tight fist seen from the outside, back of the hand and knuckles facing the viewer, thumb wrapped over the fingers, the wrist and cuff entering from the lower right, gripping a straight thin cylindrical rod painted flat pure bright green that passes vertically BEHIND the curled fingers (the fingers wrap around it and hide it) and sticks out above and below the fist. RIGHT: the same hand open with the palm facing the viewer, fingers together and slightly curved as if casting a spell, the wrist and cuff at the bottom. No watermark.",
+   "note": ""
   }
  ],
  "images_used": {
-  "sera": 22,
-  "victor": 24
+  "sera": 40,
+  "victor": 42
  }
 }

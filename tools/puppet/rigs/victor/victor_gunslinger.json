@@ -327,16 +327,20 @@
     850
    ],
    [
-    590,
-    930
+    625,
+    900
    ],
    [
-    560,
-    1020
+    625,
+    1000
+   ],
+   [
+    580,
+    1060
    ],
    [
     520,
-    1100
+    1110
    ],
    [
     490,
@@ -828,7 +832,48 @@
   "footMinX": 950,
   "shinBootY": 2010
  },
- "hands": null,
+ "hands": {
+  "sheet": "victor/victor_gunslinger_hands",
+  "grip": {
+   "box": [
+    460,
+    340,
+    1080,
+    1060
+   ],
+   "center": [
+    745,
+    700
+   ],
+   "axis": [
+    0.145,
+    0.989
+   ],
+   "rodHalf": 34,
+   "wrist": [
+    800,
+    1050
+   ],
+   "scale": 0.23
+  },
+  "open": {
+   "box": [
+    1380,
+    20,
+    2260,
+    1060
+   ],
+   "wrist": [
+    1880,
+    1050
+   ],
+   "tip": [
+    1880,
+    40
+   ],
+   "scale": 0.25
+  }
+ },
  "materials": {
   "armor": {
    "parts": [
@@ -877,5 +922,19 @@
   "headK": 1.1,
   "armorBase": "#5a3a24"
  },
- "turn": null
+ "turn": {
+  "sheet5": "victor/victor_gunslinger_turn5",
+  "views5": [
+   "y90",
+   "y135",
+   "y180",
+   "ym90",
+   "-"
+  ],
+  "qback": "victor/victor_gunslinger_qback",
+  "viewsQ": [
+   "ym135",
+   "ym45"
+  ]
+ }
 }
