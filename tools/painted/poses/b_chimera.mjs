@@ -14,14 +14,14 @@ export const INSTALL = `(() => {
   p.hp = 1e9; p.stats.maxHp = 1e9; p.iframes = 1e9;
   const b = w.boss, A = b.A;
   const step = (n) => { for (let i = 0; i < n; i++) { g.__tick(1 / 60); g.__render(); p.iframes = 1e9; p.hurtT = 0; if (b.state === 'idle') b.cool = 99; } };   // 매 프레임 그려야 렌더러 쪽 시뮬레이션(입자·줄·파편)이 진행된다
-  let PX = 0.22;
+  let PX = 0.42;
   const px = () => { p.x = A.x0 + A.w * PX; p.vx = 0; };
   const clear = () => { for (const e of w.entities) if (e !== b && e.owner === b && !e.dead && e.kind !== 'painted') e.dead = true; };
-  const home = () => { b.x = A.x0 + A.w * 0.62 - b.w / 2; b.vx = 0; b.vy = 0; b.y = b.floorY - b.h; b.facing = PX < 0.5 ? -1 : 1; };
+  const home = () => { b.x = A.x0 + A.w * 0.7 - b.w / 2; b.vx = 0; b.vy = 0; b.y = b.floorY - b.h; b.facing = PX < 0.5 ? -1 : 1; };
   const hold = (st, t, pre) => { clear(); home(); b.setState(st); pre?.(); b.cool = 99; for (let i = 0; i < Math.round(t * 60); i++) { px(); step(1); if (b.state === 'idle') b.cool = 99; } };
   const settle = (ph = null, hp = null) => {
     if (b.dying > 0) return;
-    PX = 0.22;
+    PX = 0.42;
     if (ph != null) { b.phase = ph; b.phaseApply?.(ph); b.fury = ph / 2; if (ph < 2) { b.tubesBroken = false; b.enraged = false; } }
     if (hp != null) b.hp = b.stats.maxHp * hp;
     b.invuln = false; clear(); home(); b.setState('idle'); b.cool = 99; for (let i = 0; i < 50; i++) { px(); home(); step(1); }
@@ -30,7 +30,7 @@ export const INSTALL = `(() => {
   window.__pose = (name) => {
     switch (name) {
       case 'idle': settle(0, 1); hold('idle', 1.2); break;
-      case 'walk': settle(0, 1); clear(); b.x = A.x0 + A.w * 0.8; b.setState('idle'); for (let i = 0; i < 40; i++) { px(); step(1); } break;
+      case 'walk': settle(0, 1); clear(); b.x = A.x0 + A.w * 0.9; b.setState('idle'); for (let i = 0; i < 40; i++) { px(); step(1); } break;
       case 'pounce_w': settle(0, 1); hold('pounce', 0.42); break;
       case 'pounce_air': settle(0, 1); hold('pounce', 0.78); break;
       case 'pounce_land': settle(0, 1); hold('pounce', 1.3); break;
@@ -38,12 +38,12 @@ export const INSTALL = `(() => {
       case 'goat_flask': settle(1, 0.55); hold('goat', 1.05, () => { b.spellI = -1; }); break;
       case 'goat_homing': settle(1, 0.55); hold('goat', 1.0, () => { b.spellI = 0; }); break;
       case 'goat_bolt': settle(1, 0.55); hold('goat', 1.25, () => { b.spellI = 1; }); break;
-      case 'tail_whip_w': settle(0, 1); PX = 0.9; hold('tail', 0.4); break;
-      case 'tail_whip_a': settle(0, 1); PX = 0.9; hold('tail', 0.6); break;
+      case 'tail_whip_w': settle(0, 1); PX = 0.9; hold('tail', 0.4, () => { b.facing = -1; }); break;
+      case 'tail_whip_a': settle(0, 1); PX = 0.9; hold('tail', 0.6, () => { b.facing = -1; }); break;
       case 'tail_spit': settle(1, 0.55); hold('tail', 0.9); break;
       case 'acid': settle(0, 1); hold('acid', 0.95); break;
       case 'charge_w': settle(0, 1); hold('charge', 0.5); break;
-      case 'charge_run': settle(0, 1); PX = 0.1; hold('charge', 0.95); break;
+      case 'charge_run': settle(0, 1); PX = 0.3; hold('charge', 0.95); break;
       case 'swipe_w': settle(0, 1); PX = 0.5; hold('swipe', 0.26); break;
       case 'swipe_a': settle(0, 1); PX = 0.5; hold('swipe', 0.4); break;
       case 'hit': settle(0, 0.9); hold('idle', 0.4); b.takeHit(1, {}, w, {}); step(1); break;
