@@ -11,6 +11,7 @@ async function boot() {
   game.settings = saves.loadSettings();
   game.meta = saves.loadMeta();
   game.audio = audio; game.assets = assets; game.saves = saves;
+  game.onSettingsAuto = (st) => saves.saveSettings(st); // 자동 품질 조정 결과를 다음 실행에도 유지
   audio.setVolumes(game.settings.musicVol, game.settings.sfxVol);
   game.init(canvas);
   registerScenes(game);

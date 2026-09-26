@@ -4,6 +4,7 @@ import { Camera } from '../core/camera.js';
 import { Particles } from '../core/particles.js';
 import { Lighting } from '../core/lighting.js';
 import { T, Debris, isSolidType } from '../core/physics.js';
+import { input } from '../core/input.js';
 import { rand, randi, chance, clamp, overlap, TAU, pick } from '../core/math.js';
 import { audio } from '../core/audio.js';
 import { bus } from '../core/events.js';
@@ -93,7 +94,7 @@ export class World {
     this.fx.clear();
     this.boss = null; this.bossActive = false; this.arena = null;
     this.tiles = new TileRenderer(this.stage, this.map);
-    this.bg = createBackground({ ...this.stage, ...(room.theme ? { theme: room.theme } : {}) }, this.map);
+    this.bg = createBackground({ ...this.stage, ...(room.theme ? { theme: room.theme } : {}), ...(room.bg !== undefined ? { bg: room.bg } : {}) }, this.map);
     // 가독성: 스테이지 어둠 값을 완화 (촛불·횃불 광원 대비는 유지)
     this.lighting.darkness = Math.min(0.6, (room.darkness ?? this.stage.darkness ?? 0.4) * 0.62);
     this.lighting.color = this.stage.darkColor ?? '#06020c';
@@ -102,7 +103,19 @@ export class World {
     this.camera.zoom = 1; this.camera.zoomTarget = 1;
 
     // 플레이어
-    const start = this.map.markersOf('P')[0] || { tx: 2, ty: this.map.h - 3 };
+    let start = this.map.markersOf('P')[0] || { tx: 2, ty: this.map.h - 3 };
+    // 터치 모드: 왼쪽 끝 시작점은 가상 스틱에 가려지므로, 바닥이 이어지는 한 최대 3칸 오른쪽에서 시작
+    if (input.touchMode && start.tx < 6) {
+      const m = this.map, free = (x, y) => { const t = m.typeAt(x, y); return !isSolidType(t) && t !== T.SPIKE && t !== T.LIQUID; };
+      const floor = (x, y) => { const t = m.typeAt(x, y); return isSolidType(t) || t === T.ONEWAY; };
+      let tx = start.tx;
+      for (let k = 1; k <= 3; k++) {
+        const x = start.tx + k;
+        if (!(free(x, start.ty) && free(x, start.ty - 1) && floor(x, start.ty + 1))) break;
+        tx = x;
+      }
+      start = { tx, ty: start.ty };
+    }
     if (!this.player) this.player = new Player(this, this.state, this.hero);
     const p = this.player;
     p.world = this;
@@ -194,9 +207,15 @@ export class World {
   }
   spawnPickup(type, x, y, data = {}) { return this.add(new Pickup(type, x, y, data)); }
   hittables() {
-    return this.entities.filter((e) => (e.kind === 'enemy' || e.kind === 'boss' || (e.kind === 'prop' && e.takeHit)) && !e.dead && !e.hidden);
+    return this.entities.filter((e) => (e.kind === 'enemy' || e.kind === 'boss' || (e.kind === 'prop' && e.takeHit)) && !e.dead && !e.hidden && !this.inUnrevealedFake(e));
   }
-  enemies() { return this.entities.filter((e) => (e.kind === 'enemy' || e.kind === 'boss') && !e.dead && !e.hidden && !(e.dying > 0)); }
+  enemies() { return this.entities.filter((e) => (e.kind === 'enemy' || e.kind === 'boss') && !e.dead && !e.hidden && !(e.dying > 0) && !this.inUnrevealedFake(e)); }
+  /** 아직 드러나지 않은 가짜 벽 속에 있는가 (비밀 방 안의 개체는 그리지도, 때리지도 않는다) */
+  inUnrevealedFake(e) {
+    if (e === this.player) return false;
+    const m = this.map, tx = Math.floor(e.cx / TILE), ty = Math.floor(e.cy / TILE);
+    return m.typeAt(tx, ty) === T.FAKE && !m.revealed.has(m.idx(tx, ty));
+  }
   nearestEnemy(x, y, maxD = 9999) {
     let best = null, bd = maxD;
     for (const e of this.enemies()) { if (e.invuln) continue; const d = Math.hypot(e.cx - x, e.cy - y); if (d < bd) { bd = d; best = e; } }
@@ -269,7 +288,7 @@ export class World {
     if (this.banner) { this.banner.t -= dt; if (this.banner.t <= 0) this.banner = null; }
     // 조명 수집
     this.lighting.begin();
-    for (const e of this.entities) if (!e.dead) e.lights?.(this.lighting);
+    for (const e of this.entities) if (!e.dead && !this.inUnrevealedFake(e)) e.lights?.(this.lighting);
   }
 
   // ─────────────────────────── 렌더 ───────────────────────────
@@ -282,7 +301,7 @@ export class World {
     this.tiles.drawDecor(ctx, cam, this.time);
     this.tiles.draw(ctx, cam);
     // 엔티티 (z 정렬)
-    const list = this.entities.filter((e) => (!e.dead || e === this.player) && !e.hidden && (e.kind === 'player' || cam.visible(e.x, e.y, e.w, e.h, 200)));
+    const list = this.entities.filter((e) => (!e.dead || e === this.player) && !e.hidden && !this.inUnrevealedFake(e) && (e.kind === 'player' || cam.visible(e.x, e.y, e.w, e.h, 200)));
     list.sort((a, b) => a.z - b.z);
     this.fx.draw(ctx, 'back');
     for (const e of list) if (e.z < 0) e.draw(ctx, this);

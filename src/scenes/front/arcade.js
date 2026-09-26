@@ -248,7 +248,7 @@ export class ArcadeScene extends Scene {
     const br = { x: vw / 2 + ow / 2 - 200, y: by + 4, w: 200, h: 46 };
     gbutton(ctx, br, '헌터 선택으로', { selected: true, accent: M.color, size: 16, icon: '▶', zones: this.taps, id: 'start' });
     backButton(ctx, 14, 12, '뒤로', this.taps);
-    footer(ctx, vw, vh, this.row === 0 ? '←→ 모드   ↓ 옵션   Z 결정   X 뒤로' : '↑↓ 항목   ←→ 변경   Z 결정   X 모드 선택', '카드와 ◀ ▶ 를 터치하세요');
+    footer(ctx, vw, vh, this.row === 0 ? '←→ 모드   ↓ 옵션   Z 결정   X 뒤로' : '↑↓ 항목   ←→ 변경   Z 결정   X 모드 선택', '카드와 ◀ ▶ 버튼을 터치하세요');
   }
   bestText() {
     const m = this.game.meta;

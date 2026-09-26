@@ -146,6 +146,20 @@ class Game {
   flash(color = '#fff', strength = 0.8, decay = 4) {
     this.flashFx.color = color; this.flashFx.a = Math.max(this.flashFx.a, strength); this.flashFx.decay = decay;
   }
+  /** 터치 기기에서 게임플레이 중 40fps 미만이 8초 이어지면 그래픽 품질을 한 단계 낮춘다 (0.5초마다 호출) */
+  autoQuality() {
+    const top = this.top, st = this.settings;
+    if (!st || !input.touchMode || document.hidden || !top || (top.name !== 'stage' && top.name !== 'hub')) { this._slowN = 0; return; }
+    this._slowN = this.fps < 40 ? (this._slowN ?? 0) + 1 : 0;
+    if (this._slowN < 16) return;
+    this._slowN = 0;
+    const next = st.quality === 'high' ? 'medium' : st.quality === 'medium' ? 'low' : null;
+    if (!next) return;
+    st.quality = next;
+    this.onSettingsAuto?.(st);
+    this.resize();
+    this.toast(`화면이 버벅여 그래픽 품질을 '${next === 'low' ? '낮음' : '중간'}'으로 낮췄습니다`, '#b8c4d8');
+  }
   toast(text, color = '#f3e2b8', time = 2.4) {
     this.toasts.push({ text, color, t: time, max: time });
     if (this.toasts.length > 5) this.toasts.shift();
@@ -160,7 +174,7 @@ class Game {
       if (dt > 0.25) dt = 0.25;
       this.realTime += dt;
       this._fpsAcc += dt; this._fpsN++;
-      if (this._fpsAcc > 0.5) { this.fps = this._fpsN / this._fpsAcc; this._fpsAcc = 0; this._fpsN = 0; }
+      if (this._fpsAcc > 0.5) { this.fps = this._fpsN / this._fpsAcc; this._fpsAcc = 0; this._fpsN = 0; this.autoQuality(); }
       // 터치 기기를 세로로 돌리면 ('가로 모드로 돌려주세요' 안내가 덮는 동안) 게임 진행을 멈춘다
       const locked = input.touchMode && this.portrait;
       if (locked !== this._locked) { this._locked = locked; if (locked) this.autoPause(); }

@@ -52,6 +52,15 @@ export class TileMap {
         }
       }
     }
+    // 가짜 벽(h)으로 둘러싸인 표식 칸도 가짜 벽으로 메운다 — 비밀 방 안의 아이템·적이 밖에서 구멍처럼 보이지 않게
+    const W = this.w, H = this.h;
+    const closed = (x, y) => { const t = x < 0 || y < 0 || x >= W || y >= H ? T.SOLID : this.tiles[y * W + x]; return t === T.SOLID || t === T.BREAK || t === T.FAKE; };
+    for (const mk of this.markers) {
+      const i = mk.ty * W + mk.tx;
+      if (mk.breakable || this.tiles[i] !== T.EMPTY) continue;
+      const nb = [[mk.tx - 1, mk.ty], [mk.tx + 1, mk.ty], [mk.tx, mk.ty - 1], [mk.tx, mk.ty + 1]];
+      if (nb.every(([x, y]) => closed(x, y)) && nb.some(([x, y]) => x >= 0 && y >= 0 && x < W && y < H && this.tiles[y * W + x] === T.FAKE)) this.tiles[i] = T.FAKE;
+    }
   }
   get pxW() { return this.w * TILE; }
   get pxH() { return this.h * TILE; }

@@ -404,7 +404,7 @@ for (let i = 1; i <= 6; i++) def({ id: `m_stone_${i}`, name: STONE_NAMES[i - 1],
 def({ id: 'm_scroll_protect', name: '보호 주문서', slot: 'material', tier: 4, icon: 'scroll_protect', lvReq: 1, price: 3000, stack: 999, desc: '강화에 실패해도 단계가 내려가거나 장비가 파괴되지 않도록 지켜 준다. 강화 1회에 1장 소모.' });
 def({ id: 'm_scroll_bless', name: '축복 주문서', slot: 'material', tier: 3, icon: 'scroll_bless', lvReq: 1, price: 1500, stack: 999, desc: '강화 성공률을 10%p 높여 준다. 강화 1회에 1장 소모.' });
 const MATERIALS = [
-  ['m_bone', '해골 파편', 'relic_5', 1, 8, '해골 병사에게서 떨어져 나온 뼛조각. 대장장이가 골분 연마제로 쓴다.'],
+  ['m_bone', '해골 파편', 'bone', 1, 8, '해골 병사에게서 떨어져 나온 뼛조각. 대장장이가 골분 연마제로 쓴다.'],
   ['m_fang', '맹수의 송곳니', 'relic_1', 1, 12, '굶주린 짐승의 날카로운 송곳니. 부적 재료로 인기가 많다.'],
   ['m_cloth', '해진 천 조각', 'cloak_1', 1, 6, '망자의 옷에서 찢겨 나온 천. 빨면 아직 쓸 만하다.'],
   ['m_feather', '검은 깃털', 'sub_dagger', 1, 10, '시체 까마귀의 칼날 같은 깃털. 화살깃이나 펜으로 쓰인다.'],

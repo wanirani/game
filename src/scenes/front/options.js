@@ -161,7 +161,7 @@ export class OptionsScene extends Scene {
       }
     });
     const cur = this.rows[this.menu.index];
-    footer(ctx, vw, vh, cur.note ?? '↑↓ 항목   ←→ 값 변경   Z 결정   X 닫기', cur.note ?? '◀ ▶ 를 터치해 값을 바꾸세요');
+    footer(ctx, vw, vh, cur.note ?? '↑↓ 항목   ←→ 값 변경   Z 결정   X 닫기', cur.note ?? '◀ ▶ 버튼을 터치해 값을 바꾸세요');
   }
 
   // ── 조작 안내 ──

@@ -11,6 +11,7 @@ import {
 } from './common.js';
 import { fmtStatVal } from './tab_status.js';
 import * as D from './access.js';
+import { CHARACTERS } from '../../data/characters.js';
 
 const SUMMARY = ['hp', 'mp', 'atk', 'mag', 'def', 'res', 'crit'];
 const SLOT_ICON_EMPTY = { weapon: '무기', head: '머리', body: '몸', cloak: '망토', acc1: '장신구', acc2: '장신구' };
@@ -95,9 +96,11 @@ export class EquipTab extends Tab {
     } else {
       if (!row.ok) { audio.sfx('menu_cancel'); this.m.notify(row.reason || '장착할 수 없습니다', PAL.bad); return; }
       if (row.here) { audio.sfx('menu_move'); return; }
+      const from = D.equippedBy(st, row.inst.uid);
       D.equipTo(st, hero, row.inst.uid, slot);
       audio.sfx('item');
-      this.m.notify(`${D.nameOf(row.inst)} 장착!`, RARITY_COL[row.inst.rarity ?? 0]);
+      const other = from && from !== hero.charId ? CHARACTERS[from]?.name : null;
+      this.m.notify(`${D.nameOf(row.inst)} 장착!${other ? ` (${other}에게서 가져옴)` : ''}`, RARITY_COL[row.inst.rarity ?? 0]);
       if (slot === 'weapon') this.view.showcase(); else this.view.pose('cast', 0.55);
     }
     this.flashT = 1; this.flashSlot = slot;

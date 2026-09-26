@@ -373,11 +373,6 @@ export class TileRenderer {
   }
   /** 배경 장식 문자 ('W' 창문, '|' 기둥) + 테마 소품 */
   drawDecor(ctx, cam, t) {
-    for (const p of this.props) {
-      if (p.x + p.d.w < cam.x - 50 || p.x > cam.x + cam.vw + 50 || p.y + p.d.h < cam.y - 50 || p.y > cam.y + cam.vh + 50) continue;
-      const c = this.darkProp(p.d.id, p.d.w, p.d.h, p.d.dim);
-      if (c) ctx.drawImage(c, p.x, p.y);
-    }
     const openSky = OPEN_SKY_THEMES.has(this.stage.theme);
     for (const d of this.map.decor) {
       const x = d.tx * TILE, y = d.ty * TILE;
@@ -407,6 +402,12 @@ export class TileRenderer {
         ctx.drawImage(spr, 0, top ? S : 0, S, S, x, y, S, S);
         if (bot) ctx.drawImage(spr, 0, S * 3 - 16, S, 16, x, y + S - 16, S, 16);
       }
+    }
+    // 테마 소품은 창문·기둥 위에 그린다 (기둥에 가려지지 않게)
+    for (const p of this.props) {
+      if (p.x + p.d.w < cam.x - 50 || p.x > cam.x + cam.vw + 50 || p.y + p.d.h < cam.y - 50 || p.y > cam.y + cam.vh + 50) continue;
+      const c = this.darkProp(p.d.id, p.d.w, p.d.h, p.d.dim);
+      if (c) ctx.drawImage(c, p.x, p.y);
     }
   }
   isBar(tx, ty) {

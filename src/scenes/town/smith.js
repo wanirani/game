@@ -86,6 +86,7 @@ export class SmithScene extends ServiceScene {
     const lines = [`${nameOf(e.inst)}`, `+${inf.level} → +${inf.next}   ·   성공 확률 ${Math.round(inf.rate)}%`];
     if (inf.onFail === 'destroy') lines.push(`※ 실패하면 ${inf.destroyChance}% 확률로 장비가 파괴됩니다!`);
     else if (inf.onFail === 'down') lines.push('※ 실패하면 강화 단계가 1 하락합니다.');
+    if (inf.equippedBy) lines.push('※ 현재 장착 중인 장비입니다.');
     this.modal = new Modal({
       title: '강화하시겠습니까?', lines, width: 480,
       buttons: [{ label: '망치를 들어라!', value: 'ok', primary: inf.onFail !== 'destroy' }, { label: '그만두기', value: 'cancel', primary: inf.onFail === 'destroy' }],
@@ -147,6 +148,7 @@ export class SmithScene extends ServiceScene {
       this.talk((r.after ?? 0) >= 15 ? 'max' : 'ok');
     } else if (r.destroyed) {
       audio.sfx('enhance_destroy'); audio.sfx('break_wall', { vol: 0.7 });
+      if (r.replaced && r.msg) this.game.toast(r.msg, '#ffb040');
       this.game.flash('#ff1a30', 0.7, 2.2);
       this.fx.burst('shard', cx, cy, 40, { speed: 460, color: '#b8bcc8' });
       this.fx.burst('fire', cx, cy, 30, { speed: 240 });

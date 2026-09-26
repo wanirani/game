@@ -71,7 +71,7 @@ export class InventoryTab extends Tab {
     const st = this.state, hero = this.hero;
     const out = [];
     if (b.slot === 'consumable' && b.use) {
-      const can = !!this.world?.player;
+      const can = !!this.m.inStage && !!this.world?.player;
       out.push({ id: 'use', label: '사용하기', disabled: !can, reason: '스테이지 안에서만 사용할 수 있습니다', run: () => this.use(e) });
     }
     if (EQUIP_KINDS.has(b.slot)) {

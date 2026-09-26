@@ -2013,6 +2013,22 @@ def build_meat():
     view(diag=-28, pitch=20, yaw=-18, fill=0.92, glow=0.0)
 
 
+@item("bone")
+def build_bone():
+    """해골 파편: 끝이 둥근 뼛조각 두 개가 엇갈린 모양 (m_bone)"""
+    bone = M_bone(color=(0.84, 0.77, 0.6))
+    for ang, off in ((32, 0.0), (-38, 0.12)):
+        r = rad(ang)
+        cx, cz = math.cos(r), math.sin(r)
+        cyl(0.075, 1.5, bone, loc=(0, off, 0), rot=(0, rad(90) - r, 0), seg=24, name="shaft")
+        for sgn in (-1, 1):
+            ex, ez = sgn * 0.75 * cx, sgn * 0.75 * cz
+            px, pz = -cz * 0.07, cx * 0.07
+            for k in (-1, 1):
+                sphere(0.1, bone, loc=(ex + k * px, off, ez + k * pz), seg=20, rings=12, name="knob")
+    view(diag=-20, pitch=24, yaw=-14, fill=0.9, glow=0.0)
+
+
 @item("bread")
 def build_bread():
     crust = pbr("crust", (0.6, 0.3, 0.1), rough=0.55, coat=0.2, pattern="crust", flour=0.5)
