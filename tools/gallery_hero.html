@@ -16,7 +16,7 @@
 //  기본(채색 퍼펫): ?sec=pup,pupatk,pupw,pupeq,turn  — 카엘 7직업 × 모든 동작 / 채찍 기술 전부 / 무기 6종 손잡이 / 장비 색·망토 / 턴테이블 8방향
 //  벡터 인형:       ?sec=chars,seq,sim,attacks,classes,equip,npcs,rack,weapons  (&vector=1 이면 퍼펫을 끄고 순수 벡터)
 //  ?anim=1 실시간 / ?box=1 판정 상자 / ?cls=kael_templar (pup·pupw 를 한 직업만) / ?zoom=all|<캐릭터ID>&cls=&a= / ?turnlive=1 턴테이블 드래그
-import { drawHero, drawWeaponPreview, setPuppetEnabled, preloadPuppet, puppetStatus, HERO_DRAW_SCALE, registerHeroHooks, heroHooks } from './src/render/hero.js';
+import { drawHero, drawWeaponPreview, setPuppetEnabled, preloadPuppet, puppetStatus, HERO_DRAW_SCALE, registerHeroHooks, heroHooks, drawHeroTurntable, heroViewInfo } from './src/render/hero.js';
 import { assets } from './src/core/assets.js';
 import { PUPPETS } from './src/render/puppet_manifest.js';
 import { CHARACTERS, CHAR_ORDER } from './src/data/characters.js';
@@ -277,6 +277,13 @@ if (SEC.includes('turn') && !ZOOM) {
     row([...YAWS, 20, 67, 112, -30, -160].map((d) => ({ label: `${d}°`, turn: d, p: () => ent({ look: lookOf('kael', cls), ch: CHARACTERS.kael }) })), 104, 200, 1.7);
   }
 }
+if (SEC.includes('turn') && !ZOOM) {
+  header('drawHeroTurntable(ctx, look, yaw, x, y, height, t, {charId}) — 카엘(채색 8방향) · 세라·브란(벡터 카드 뒤집기 대체)');
+  const TT = [['kael', 'kael_templar'], ['sera', null], ['bran', null]];
+  const cellsTT = [];
+  for (const [id, cls] of TT) for (const d of [0, 45, 90, -90]) cellsTT.push({ label: `${id} ${d}°`, tt: { id, cls, d } });
+  row(cellsTT, 104, 200, 1.7);
+}
 Y += 20;
 cv.width = W; cv.height = Y;
 cv.style.width = W + 'px'; cv.style.height = Y + 'px';
@@ -340,8 +347,20 @@ function drawStrip(cell) {
   ctx.restore();
   ctx.fillStyle = '#c8b89a'; ctx.font = '12px sans-serif'; ctx.fillText(cell.label || '', x + 8, y + h - 6);
 }
+const TT_LOOKS = {};
 function drawCell(cell, time, live) {
   if (cell.rack) { drawRack(cell, time); return; }
+  if (cell.tt) { // drawHeroTurntable 계약 확인
+    const { x, y, w, h } = cell, { id, cls, d } = cell.tt;
+    const look = TT_LOOKS[id + cls] || (TT_LOOKS[id + cls] = lookOf(id, cls));
+    ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x + 2, y + 2, w - 4, h - 4);
+    drawHeroTurntable(ctx, look, (d * Math.PI) / 180, x + w / 2, y + h - 26, 150, time, { charId: id, classId: cls || undefined });
+    ctx.restore();
+    const info = heroViewInfo({ look, ch: CHARACTERS[id] });
+    ctx.fillStyle = '#c8b89a'; ctx.font = '12px sans-serif'; ctx.fillText(`${cell.label} ${info.painted ? '채색' : '벡터'}`, x + 8, y + h - 8);
+    return;
+  }
   if (cell.strip) { drawStrip(cell); return; }
   const { x, y, w, h, sc } = cell;
   ctx.save();

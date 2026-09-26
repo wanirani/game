@@ -495,7 +495,7 @@
    "skull_a": {
     "by": "prototype B (tools/.proto_bossB)",
     "aspect": "4:3",
-    "note": "side-view skull, mouth wide open (jaw cut), template §3.2 of docs/art/BOSS_PIPELINE.md"
+    "note": "side-view skull, mouth wide open (jaw cut), template \"head / skull with hinge\" in docs/art/BOSS_PIPELINE.md §3"
    },
    "torso_a": {
     "by": "prototype B",

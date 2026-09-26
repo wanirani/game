@@ -230,7 +230,9 @@ test('가입 성공: 201, 아이디 소문자 정규화, 토큰·복구 코드 �
 
 test('가입: 아이디 형식 오류 → 400 invalid_id', async () => {
   freshIp();
-  const bad = ['abc', 'a'.repeat(17), '1abc', '_abcd', 'ab-cd', 'ab cd', 'abc.d', '한글아이디', 'abcé', '', '    ', null, 123, ['abcd'], { a: 1 }, undefined, 'ａｂｃｄｅ'];
+  const bad = ['abc', 'a'.repeat(17), '1abc', '_abcd', 'ab-cd', 'ab cd', 'abc.d', '한글아이디', 'abcé', '', '    ', null, 123, ['abcd'], { a: 1 }, undefined, 'ａｂｃｄｅ',
+    // 저장소 키 주입·경로 조작 시도 (아이디가 bn-users 의 키가 된다)
+    '../admin', 'abcd/../x', 'abcd/slot1', '%2e%2e%2fx', 'abcd\\x', 'abcd\u0000', '/abcd'];
   for (const id of bad) {
     freshIp(); // IP 제한(10분 20회)에 걸리지 않도록 매번 다른 IP
     expectErr(await call('POST', '/api/auth/signup', { body: { id, password: PW } }), 400, 'invalid_id');
@@ -646,10 +648,11 @@ test('저장: 잘못된 baseRev·force → 400 bad_request, 잘못된 슬롯 →
     expectErr(await call('PUT', '/api/saves/1', { body: { data: s, baseRev }, token: u.token }), 400, 'bad_request');
   }
   for (const force of ['yes', 1, 0, {}]) expectErr(await call('PUT', '/api/saves/1', { body: { data: s, force }, token: u.token }), 400, 'bad_request');
-  for (const p of ['0', '4', '01', '1a', '%31', 'abc', '-1', '1.0', ' 1', '', '１']) {
+  for (const p of ['0', '4', '01', '1a', '%31', 'abc', '-1', '1.0', ' 1', '', '１', '..', '%2e%2e', '1%2F..%2Fmeta', '..%2F..%2Fbn-users']) {
     for (const m of ['GET', 'PUT', 'DELETE']) {
       const r = await call(m, `/api/saves/${p}`, { token: u.token, body: m === 'PUT' ? { data: s } : undefined });
       if (p === '') { assert.equal(r.status, m === 'GET' ? 200 : 405); continue; } // '/api/saves/' = 목록
+      if (p === '..' || p === '%2e%2e') { expectErr(r, 404, 'not_found'); continue; } // URL 파서가 점 경로를 먼저 정리 → '/api/' (저장소에 닿지 않음)
       expectErr(r, 400, 'invalid_slot');
     }
   }

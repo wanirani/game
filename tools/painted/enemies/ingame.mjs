@@ -1,7 +1,8 @@
 // In-game QA for painted enemies: a frozen "pose line" in the real stage (lighting, backdrop, camera, elite scale) plus
 // a live melee where the god-mode player kills them (death corpses / dissolves), desktop or 844x390 mobile.
 //   node tools/painted/enemies/ingame.mjs --stage s01 --line skeleton:idle,skeleton:walk,skeleton:attack@0.3,bat:fly,bat:hang \
-//        [--mobile] [--vec] [--out dir] [--live 1] [--zoom 2]
+//        [--mobile] [--vec] [--out dir] [--live 1] [--zoom 2] [--debug (hurtbox overlay)] [--elite] [--facing 1|-1|both]
+//        [--quality low|medium|high (persisted setting, applied before the rigs bake)] [--dpr 1.5]
 import { chromium } from 'playwright-core';
 import { start } from '../../serve.mjs';
 import fs from 'node:fs';
@@ -16,6 +17,7 @@ const srv = await start(port);
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--autoplay-policy=no-user-gesture-required', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
 const mobile = !!A.mobile;
 const ctx = await browser.newContext(mobile ? { viewport: { width: 844, height: 390 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true } : { viewport: { width: 1280, height: 720 }, deviceScaleFactor: Number(A.dpr ?? 1.5) });
+if (A.quality) await ctx.addInitScript((q) => { try { const k = 'bloodnocturne_settings'; const s = JSON.parse(localStorage.getItem(k) || '{}'); s.quality = q; localStorage.setItem(k, JSON.stringify(s)); } catch { /* ignore */ } }, String(A.quality));
 const page = await ctx.newPage();
 const errs = [];
 page.on('pageerror', (e) => errs.push('PAGEERROR ' + e.message + ' @ ' + (e.stack || '').split('\n').slice(1, 3).join(' | ')));
@@ -29,26 +31,29 @@ for (let i = 0; i < 6; i++) {
   await page.keyboard.press('Enter'); await page.waitForTimeout(350);
 }
 const tag = (A.tag ?? (A.vec ? 'vec' : 'painted')) + (mobile ? '_m' : '');
-const info = await page.evaluate(async ({ line, vec, gap, px }) => {
+const info = await page.evaluate(async ({ line, vec, gap, px, debug, elite, facing }) => {
   const kit = await import('/src/render/painted/enemy_kit.js');
   const { ENEMIES } = await import('/src/data/enemies.js');
   window.__rigStats = kit.rigStats;
   const g = window.__game, w = g.world, p = w.player;
   if (vec) globalThis.__paintedEnemies = false;
+  if (debug) g.debug = true;
   p.takeHit = () => false; p.hp = 9999;
   // clear existing enemies near the player so the line reads
   for (const e of w.enemies()) if (Math.abs(e.cx - p.cx) < 1400) e.dead = true;
   if (px) p.x += Number(px);
-  const items = line.split(',').filter(Boolean);
+  let items = line.split(',').filter(Boolean);
+  if (facing === 'both') items = items.flatMap((s) => [s + '#1', s + '#-1']);
   const spawned = [];
   items.forEach((s, i) => {
-    const [idAnim, at] = s.split('@');
+    const [spec0, fc] = s.split('#');
+    const [idAnim, at] = spec0.split('@');
     const [id, anim] = idAnim.split(':');
     const d = ENEMIES[id];
     const fx = p.cx + 120 + i * Number(gap ?? 90);
     let fy = p.bottom;
     if (d.flying) fy -= anim === 'hang' ? 150 : 70;
-    const e = w.spawnEnemy(id, fx, fy, { facing: -1 });
+    const e = w.spawnEnemy(id, fx, fy, { facing: Number(fc ?? (facing && facing !== 'both' ? facing : -1)), elite: !!elite });
     e.awake = true;
     e._pose = { anim, at: Number(at ?? 0) };
     e.update = function (dt) {
@@ -69,7 +74,7 @@ const info = await page.evaluate(async ({ line, vec, gap, px }) => {
   });
   window.__line = spawned;
   return { n: spawned.length, cam: [w.camera.x, w.camera.y], p: [p.cx, p.bottom] };
-}, { line: A.line ?? 'skeleton:idle', vec: !!A.vec, gap: A.gap, px: A.px });
+}, { line: A.line ?? 'skeleton:idle', vec: !!A.vec, gap: A.gap, px: A.px, debug: !!A.debug, elite: !!A.elite, facing: A.facing });
 await page.waitForTimeout(900);
 await page.screenshot({ path: `${out}/${tag}_line.png` });
 // zoomed crop around the line

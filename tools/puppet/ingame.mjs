@@ -46,7 +46,7 @@ await page.evaluate(async ({ vector, cls, equip, skipDlg, drawScale }) => {
   if (skipDlg) setInterval(() => { const g = window.__game, top = g.scenes[g.scenes.length - 1]; if (top && /Dialogue|BossIntro|Story/.test(top.constructor?.name || '')) g.pop(); else if (g.world && top?.constructor?.name === 'StageScene') { g.world.cutscene = false; g.world.inputLock = false; } }, 60);
 }, { vector, cls, equip: opt('equip', '') ? JSON.parse(opt('equip')) : null, skipDlg: !opt('dlg', false), drawScale: Number(opt('scale', 0)) });
 // 퍼펫 로드 대기 (최대 5초)
-if (!vector) await page.waitForFunction(() => { const s = window.__hero?.puppetStatus?.(); return s && Object.values(s).some((v) => v.state === 1); }, null, { timeout: 8000 }).catch(() => errs.push('PUPPET NOT READY'));
+if (!vector && (await page.evaluate(async (c) => { const m = await import('/src/render/puppet_manifest.js'); return !!m.PUPPETS[c]; }, char))) await page.waitForFunction(() => { const s = window.__hero?.puppetStatus?.(); return s && Object.values(s).some((v) => v.state === 1); }, null, { timeout: 8000 }).catch(() => errs.push('PUPPET NOT READY'));
 await page.waitForTimeout(400);
 const KEY = { right: 'ArrowRight', left: 'ArrowLeft', up: 'ArrowUp', down: 'ArrowDown', jump: 'KeyZ', attack: 'KeyX', dash: 'KeyC', sub: 'KeyA', skill1: 'KeyS', skill2: 'KeyD', ult: 'KeyF', menu: 'Escape', enter: 'Enter' };
 let n = 0;
