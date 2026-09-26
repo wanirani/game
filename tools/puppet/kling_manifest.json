@@ -144,7 +144,327 @@
    "picked": "a",
    "src": "src/kael/kael_nightraven_side.webp",
    "prompt": "Edit 图片1. Keep everything exactly the same (man, face, black hood with blue headband, navy scarf, black coat with silver trim, whip coil, pose, framing, background, style). Change ONLY the raven-feather mantle: a short, tidy capelet of glossy black raven feathers with a blue-violet sheen that sits tightly on the shoulders and upper chest and ends just above the elbow, like layered feathered pauldrons. No feathers hanging down the back or along the arm, no feathers sticking out behind him. No wings, no cape. No text, no watermark."
+  },
+  {
+   "id": "kael_crusader_turn5",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AXEOB_Is5YOr-EwtNq8iTkPrlsxuRqrCLhZmM0j3XHs68Gkmw-gIsLwmPKYJtWpYx2E84PHb",
+   "inputs": [
+    "kael_crusader_side.jpg",
+    "kael_hunter_turn5.jpg (layout)"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
+   "src": "src/kael/kael_crusader_turn5.webp",
+   "prompt": "Character turnaround sheet of the man in 图片1, wearing exactly the outfit of 图片1: <outfit + headgear 'in every view'>. Copy ONLY the layout of 图片2: five full-body views of the same man standing in a relaxed neutral pose with arms hanging down, side by side, evenly spaced, same size and same ground line, from left to right: 1 front view, 2 three-quarter front view, 3 side profile view, 4 back view, 5 three-quarter back view. Do not copy the brown clothes or the red bandana of 图片2; all clothing, colours and materials come from 图片1. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, every view complete from head to boots, no cape, nothing held in the hands, no text, no labels, no watermark.",
+   "note": "측면·뒷모습에 헌터의 붉은 머리띠가 새어 들어옴 → build_turn fixups 로 금색 보정"
+  },
+  {
+   "id": "kael_crusader_qback",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AeHoroWRrb5-LXIDLzo0xTERAVEUHKE3mmCAp_d1a3W_V242LeWXLw0J-AMgmhvwoHx2Q0oL",
+   "inputs": [
+    "kael_crusader_side.jpg",
+    "kael_hunter_qback.jpg (layout)"
+   ],
+   "aspect_ratio": "4:3",
+   "img_resolution": "2k",
+   "src": "src/kael/kael_crusader_qback.webp",
+   "prompt": "Two full-body three-quarter BACK views of the man in 图片1, wearing exactly the outfit of 图片1: <outfit>. Copy ONLY the layout and camera angles of 图片2: the man stands in a relaxed neutral pose with arms hanging down, seen mostly from behind; LEFT figure turned away to the viewer's left, RIGHT figure turned away to the viewer's right (mirror angles), both the same size on the same ground line. Do not copy the brown clothes of 图片2. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, complete from head to boots, no cape, nothing held in the hands, no text, no watermark.",
+   "note": "OK"
+  },
+  {
+   "id": "kael_templar_turn5",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AYHa4d9vuqgkwuHiGzd-YA1msYb9k4yr9PRaB7YzMOZ1rEN1KT6QTsztVhA7DSab8HRFKMcx",
+   "inputs": [
+    "kael_templar_side.jpg",
+    "kael_hunter_turn5.jpg (layout)"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
+   "src": "src/kael/kael_templar_turn5.webp",
+   "prompt": "Character turnaround sheet of the man in 图片1, wearing exactly the outfit of 图片1: <outfit + headgear 'in every view'>. Copy ONLY the layout of 图片2: five full-body views of the same man standing in a relaxed neutral pose with arms hanging down, side by side, evenly spaced, same size and same ground line, from left to right: 1 front view, 2 three-quarter front view, 3 side profile view, 4 back view, 5 three-quarter back view. Do not copy the brown clothes or the red bandana of 图片2; all clothing, colours and materials come from 图片1. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, every view complete from head to boots, no cape, nothing held in the hands, no text, no labels, no watermark.",
+   "note": "OK (5번째 뷰는 뒷모습 중복이라 버림)"
+  },
+  {
+   "id": "kael_templar_qback",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AWQwkc_w-3xuvfVb_uMGYQs7TFL2ZBVU-2Lcxvqi2lSCbRw-Vt7txd9fVXNQhQ_TrXvH9wO4",
+   "inputs": [
+    "kael_templar_side.jpg",
+    "kael_hunter_qback.jpg (layout)"
+   ],
+   "aspect_ratio": "4:3",
+   "img_resolution": "2k",
+   "src": "src/kael/kael_templar_qback.webp",
+   "prompt": "Two full-body three-quarter BACK views of the man in 图片1, wearing exactly the outfit of 图片1: <outfit>. Copy ONLY the layout and camera angles of 图片2: the man stands in a relaxed neutral pose with arms hanging down, seen mostly from behind; LEFT figure turned away to the viewer's left, RIGHT figure turned away to the viewer's right (mirror angles), both the same size on the same ground line. Do not copy the brown clothes of 图片2. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, complete from head to boots, no cape, nothing held in the hands, no text, no watermark.",
+   "note": "OK"
+  },
+  {
+   "id": "kael_inquisitor_turn5",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AdQn7yVNlgecHSdbYUcjRcY7dpV2dCLTpoT8TnnCbq_I9f19CPrY0swFE0XxU8zjNXYvFXjZ",
+   "inputs": [
+    "kael_inquisitor_side.jpg",
+    "kael_hunter_turn5.jpg (layout)"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
+   "src": "src/kael/kael_inquisitor_turn5.webp",
+   "prompt": "Character turnaround sheet of the man in 图片1, wearing exactly the outfit of 图片1: <outfit + headgear 'in every view'>. Copy ONLY the layout of 图片2: five full-body views of the same man standing in a relaxed neutral pose with arms hanging down, side by side, evenly spaced, same size and same ground line, from left to right: 1 front view, 2 three-quarter front view, 3 side profile view, 4 back view, 5 three-quarter back view. Do not copy the brown clothes or the red bandana of 图片2; all clothing, colours and materials come from 图片1. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, every view complete from head to boots, no cape, nothing held in the hands, no text, no labels, no watermark.",
+   "note": "OK (5번째 뷰는 뒷모습 중복이라 버림)"
+  },
+  {
+   "id": "kael_inquisitor_qback",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AUiju5OwC_1kbHoFKQFnNMqydJun33sYNd5qmHjkpbOEn3t_8CQZLb1ZStzEQCIXwthh-OeI",
+   "inputs": [
+    "kael_inquisitor_side.jpg",
+    "kael_hunter_qback.jpg (layout)"
+   ],
+   "aspect_ratio": "4:3",
+   "img_resolution": "2k",
+   "src": "src/kael/kael_inquisitor_qback.webp",
+   "prompt": "Two full-body three-quarter BACK views of the man in 图片1, wearing exactly the outfit of 图片1: <outfit>. Copy ONLY the layout and camera angles of 图片2: the man stands in a relaxed neutral pose with arms hanging down, seen mostly from behind; LEFT figure turned away to the viewer's left, RIGHT figure turned away to the viewer's right (mirror angles), both the same size on the same ground line. Do not copy the brown clothes of 图片2. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, complete from head to boots, no cape, nothing held in the hands, no text, no watermark.",
+   "note": "OK"
+  },
+  {
+   "id": "kael_stalker_turn5",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AeAGR5T14Goc1IGjY1txnhkpWdwWMthC_5AojtF-CCvBSGLZt34OQUBp4GzvDnrfXSFnvvpN",
+   "inputs": [
+    "kael_stalker_side.jpg",
+    "kael_hunter_turn5.jpg (layout)"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
+   "src": "src/kael/kael_stalker_turn5.webp",
+   "prompt": "Character turnaround sheet of the man in 图片1, wearing exactly the outfit of 图片1: <outfit + headgear 'in every view'>. Copy ONLY the layout of 图片2: five full-body views of the same man standing in a relaxed neutral pose with arms hanging down, side by side, evenly spaced, same size and same ground line, from left to right: 1 front view, 2 three-quarter front view, 3 side profile view, 4 back view, 5 three-quarter back view. Do not copy the brown clothes or the red bandana of 图片2; all clothing, colours and materials come from 图片1. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, every view complete from head to boots, no cape, nothing held in the hands, no text, no labels, no watermark.",
+   "note": "OK (5번째 뷰는 뒷모습 중복이라 버림)"
+  },
+  {
+   "id": "kael_stalker_qback",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "ARtQUFbplkdhXTvow_I1U-CP3DH9WDMAD_qmfInmdg4bCQTDdjv5Y3WZPBPFjYsk6Ua09762",
+   "inputs": [
+    "kael_stalker_side.jpg",
+    "kael_hunter_qback.jpg (layout)"
+   ],
+   "aspect_ratio": "4:3",
+   "img_resolution": "2k",
+   "src": null,
+   "prompt": "Two full-body three-quarter BACK views of the man in 图片1, wearing exactly the outfit of 图片1: <outfit>. Copy ONLY the layout and camera angles of 图片2: the man stands in a relaxed neutral pose with arms hanging down, seen mostly from behind; LEFT figure turned away to the viewer's left, RIGHT figure turned away to the viewer's right (mirror angles), both the same size on the same ground line. Do not copy the brown clothes of 图片2. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, complete from head to boots, no cape, nothing held in the hands, no text, no watermark.",
+   "note": "실패: 앞·옆·뒤 3인이 나옴 → 재생성(kael_stalker_qback_v2)"
+  },
+  {
+   "id": "kael_bloodhunter_turn5",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "ASreSabinIkvA4lZqluPP7eBbbm8bbB-fibqq_Z04xlQwjosxuO4NKQUo-R0p9b7-4F993VO",
+   "inputs": [
+    "kael_bloodhunter_side.jpg",
+    "kael_hunter_turn5.jpg (layout)"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
+   "src": "src/kael/kael_bloodhunter_turn5.webp",
+   "prompt": "Character turnaround sheet of the man in 图片1, wearing exactly the outfit of 图片1: <outfit + headgear 'in every view'>. Copy ONLY the layout of 图片2: five full-body views of the same man standing in a relaxed neutral pose with arms hanging down, side by side, evenly spaced, same size and same ground line, from left to right: 1 front view, 2 three-quarter front view, 3 side profile view, 4 back view, 5 three-quarter back view. Do not copy the brown clothes or the red bandana of 图片2; all clothing, colours and materials come from 图片1. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, every view complete from head to boots, no cape, nothing held in the hands, no text, no labels, no watermark.",
+   "note": "뒷모습 2장이 후드 없이 나옴 → 뒷모습은 kael_bloodhunter_back 으로 대체"
+  },
+  {
+   "id": "kael_bloodhunter_qback",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "ATTKR-rnrO2SbSKeYHC-GQZyXyIXIFesxpKwscJm1SramaUzfsd-d-xstaLW5GBawNYUvIng",
+   "inputs": [
+    "kael_bloodhunter_side.jpg",
+    "kael_hunter_qback.jpg (layout)"
+   ],
+   "aspect_ratio": "4:3",
+   "img_resolution": "2k",
+   "src": "src/kael/kael_bloodhunter_qback.webp",
+   "prompt": "Two full-body three-quarter BACK views of the man in 图片1, wearing exactly the outfit of 图片1: <outfit>. Copy ONLY the layout and camera angles of 图片2: the man stands in a relaxed neutral pose with arms hanging down, seen mostly from behind; LEFT figure turned away to the viewer's left, RIGHT figure turned away to the viewer's right (mirror angles), both the same size on the same ground line. Do not copy the brown clothes of 图片2. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, complete from head to boots, no cape, nothing held in the hands, no text, no watermark.",
+   "note": "왼쪽 인물이 앞모습 → 오른쪽(ym45)만 사용"
+  },
+  {
+   "id": "kael_nightraven_turn5",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AfaF0VJp6KfZ4jjU6Tsl712ocfNajyWOJgfmYbFtihqbSgKY_oJu5_CT1P9mIf_h2SRc3PuO",
+   "inputs": [
+    "kael_nightraven_side.jpg",
+    "kael_hunter_turn5.jpg (layout)"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
+   "src": "src/kael/kael_nightraven_turn5.webp",
+   "prompt": "Character turnaround sheet of the man in 图片1, wearing exactly the outfit of 图片1: <outfit + headgear 'in every view'>. Copy ONLY the layout of 图片2: five full-body views of the same man standing in a relaxed neutral pose with arms hanging down, side by side, evenly spaced, same size and same ground line, from left to right: 1 front view, 2 three-quarter front view, 3 side profile view, 4 back view, 5 three-quarter back view. Do not copy the brown clothes or the red bandana of 图片2; all clothing, colours and materials come from 图片1. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, every view complete from head to boots, no cape, nothing held in the hands, no text, no labels, no watermark.",
+   "note": "OK (5번째 뷰는 뒷모습 중복이라 버림)"
+  },
+  {
+   "id": "kael_nightraven_qback",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AaKtHYtxIADQa9upstgJJ_TsGiTRHd2mk4nAjpG_lssKNLXDBGzsckRRa67Plt110flrazl9",
+   "inputs": [
+    "kael_nightraven_side.jpg",
+    "kael_hunter_qback.jpg (layout)"
+   ],
+   "aspect_ratio": "4:3",
+   "img_resolution": "2k",
+   "src": "src/kael/kael_nightraven_qback.webp",
+   "prompt": "Two full-body three-quarter BACK views of the man in 图片1, wearing exactly the outfit of 图片1: <outfit>. Copy ONLY the layout and camera angles of 图片2: the man stands in a relaxed neutral pose with arms hanging down, seen mostly from behind; LEFT figure turned away to the viewer's left, RIGHT figure turned away to the viewer's right (mirror angles), both the same size on the same ground line. Do not copy the brown clothes of 图片2. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, complete from head to boots, no cape, nothing held in the hands, no text, no watermark.",
+   "note": "왼쪽 인물이 앞모습 → 오른쪽(ym45)만 사용, ym135 는 좌우 반전"
+  },
+  {
+   "id": "kael_hunter_hands",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AcFU8LyYqh8HZlcGPEJUl256HYXSGGIBT4ke1lPQpmcsS3ckYlpjMNLlQ-TXNnYbRqYnUg4h",
+   "inputs": [
+    "kael_hunter_side.jpg"
+   ],
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "src": "src/kael/kael_hunter_hands.webp",
+   "prompt": "Hand reference sheet for the man in 图片1. Paint ONLY his gloved hands with exactly the same <glove description> as in 图片1, in the same painterly game-art style and lighting (not a 3D render), large and sharp, on a plain light-grey background. Two hands side by side, well separated, each cut off just after the cuff, no arms, no body, no text. LEFT: his hand clenched into a tight fist seen from the outside, back of the hand and knuckles facing the viewer, thumb wrapped over the fingers, the wrist and cuff entering from the lower right, gripping a straight thin cylindrical rod painted flat pure bright green that passes vertically BEHIND the curled fingers (the fingers wrap around it and hide it) and sticks out above and below the fist. RIGHT: the same hand open with the palm facing the viewer, fingers together and slightly curved as if casting a spell, the wrist and cuff at the bottom. No watermark.",
+   "note": "헌터 첫 시도는 \"BEHIND the curled fingers\" 문구 없이 생성(막대가 손가락 앞을 지남 → build_rig 가 볼록 껍질 안 막대를 장갑색으로 메움)"
+  },
+  {
+   "id": "kael_crusader_hands",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AVlHyXNiH8428B5E2jPlSThNCkE_nVT_itdl4nvz1mCRpL5dsnql2KwzELAdfhoZ-PVKY8mT",
+   "inputs": [
+    "kael_crusader_side.jpg"
+   ],
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "src": "src/kael/kael_crusader_hands.webp",
+   "prompt": "Hand reference sheet for the man in 图片1. Paint ONLY his gloved hands with exactly the same <glove description> as in 图片1, in the same painterly game-art style and lighting (not a 3D render), large and sharp, on a plain light-grey background. Two hands side by side, well separated, each cut off just after the cuff, no arms, no body, no text. LEFT: his hand clenched into a tight fist seen from the outside, back of the hand and knuckles facing the viewer, thumb wrapped over the fingers, the wrist and cuff entering from the lower right, gripping a straight thin cylindrical rod painted flat pure bright green that passes vertically BEHIND the curled fingers (the fingers wrap around it and hide it) and sticks out above and below the fist. RIGHT: the same hand open with the palm facing the viewer, fingers together and slightly curved as if casting a spell, the wrist and cuff at the bottom. No watermark.",
+   "note": "막대 축·중심·손목을 rigs/kael/kael_crusader.json hands 에 기록"
+  },
+  {
+   "id": "kael_templar_hands",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AWeCZu29YE_2pXr1ad8HugKBHZ4l8d9QPBjEOU8rK9LTBEQbafnjyh0mM8_Bldl1_gQCMrKo",
+   "inputs": [
+    "kael_templar_side.jpg"
+   ],
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "src": "src/kael/kael_templar_hands.webp",
+   "prompt": "Hand reference sheet for the man in 图片1. Paint ONLY his gloved hands with exactly the same <glove description> as in 图片1, in the same painterly game-art style and lighting (not a 3D render), large and sharp, on a plain light-grey background. Two hands side by side, well separated, each cut off just after the cuff, no arms, no body, no text. LEFT: his hand clenched into a tight fist seen from the outside, back of the hand and knuckles facing the viewer, thumb wrapped over the fingers, the wrist and cuff entering from the lower right, gripping a straight thin cylindrical rod painted flat pure bright green that passes vertically BEHIND the curled fingers (the fingers wrap around it and hide it) and sticks out above and below the fist. RIGHT: the same hand open with the palm facing the viewer, fingers together and slightly curved as if casting a spell, the wrist and cuff at the bottom. No watermark.",
+   "note": "막대 축·중심·손목을 rigs/kael/kael_templar.json hands 에 기록"
+  },
+  {
+   "id": "kael_inquisitor_hands",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "ATlB-gaReYBTayP_NMvggdgTtDR4ACWFIFtx970cGNZSn2awmLxhYv8-snJwwTO8pSjFVq5y",
+   "inputs": [
+    "kael_inquisitor_side.jpg"
+   ],
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "src": "src/kael/kael_inquisitor_hands.webp",
+   "prompt": "Hand reference sheet for the man in 图片1. Paint ONLY his gloved hands with exactly the same <glove description> as in 图片1, in the same painterly game-art style and lighting (not a 3D render), large and sharp, on a plain light-grey background. Two hands side by side, well separated, each cut off just after the cuff, no arms, no body, no text. LEFT: his hand clenched into a tight fist seen from the outside, back of the hand and knuckles facing the viewer, thumb wrapped over the fingers, the wrist and cuff entering from the lower right, gripping a straight thin cylindrical rod painted flat pure bright green that passes vertically BEHIND the curled fingers (the fingers wrap around it and hide it) and sticks out above and below the fist. RIGHT: the same hand open with the palm facing the viewer, fingers together and slightly curved as if casting a spell, the wrist and cuff at the bottom. No watermark.",
+   "note": "막대 축·중심·손목을 rigs/kael/kael_inquisitor.json hands 에 기록"
+  },
+  {
+   "id": "kael_stalker_hands",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "ARV97lWT_u_aqGW0ugJkaMq0vL6F6ypvMTBD9c1smantzu3noU7_SwX7zkNZokiaqJDuxrSn",
+   "inputs": [
+    "kael_stalker_side.jpg"
+   ],
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "src": "src/kael/kael_stalker_hands.webp",
+   "prompt": "Hand reference sheet for the man in 图片1. Paint ONLY his gloved hands with exactly the same <glove description> as in 图片1, in the same painterly game-art style and lighting (not a 3D render), large and sharp, on a plain light-grey background. Two hands side by side, well separated, each cut off just after the cuff, no arms, no body, no text. LEFT: his hand clenched into a tight fist seen from the outside, back of the hand and knuckles facing the viewer, thumb wrapped over the fingers, the wrist and cuff entering from the lower right, gripping a straight thin cylindrical rod painted flat pure bright green that passes vertically BEHIND the curled fingers (the fingers wrap around it and hide it) and sticks out above and below the fist. RIGHT: the same hand open with the palm facing the viewer, fingers together and slightly curved as if casting a spell, the wrist and cuff at the bottom. No watermark.",
+   "note": "막대 축·중심·손목을 rigs/kael/kael_stalker.json hands 에 기록"
+  },
+  {
+   "id": "kael_bloodhunter_hands",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "ARWTvh6do5usBvgUaNL2nE9US9z5Apo9kYk6CoiD1ukaYEbhP1EoZtb-BeUcNxafZWJLmyal",
+   "inputs": [
+    "kael_bloodhunter_side.jpg"
+   ],
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "src": "src/kael/kael_bloodhunter_hands.webp",
+   "prompt": "Hand reference sheet for the man in 图片1. Paint ONLY his gloved hands with exactly the same <glove description> as in 图片1, in the same painterly game-art style and lighting (not a 3D render), large and sharp, on a plain light-grey background. Two hands side by side, well separated, each cut off just after the cuff, no arms, no body, no text. LEFT: his hand clenched into a tight fist seen from the outside, back of the hand and knuckles facing the viewer, thumb wrapped over the fingers, the wrist and cuff entering from the lower right, gripping a straight thin cylindrical rod painted flat pure bright green that passes vertically BEHIND the curled fingers (the fingers wrap around it and hide it) and sticks out above and below the fist. RIGHT: the same hand open with the palm facing the viewer, fingers together and slightly curved as if casting a spell, the wrist and cuff at the bottom. No watermark.",
+   "note": "막대 축·중심·손목을 rigs/kael/kael_bloodhunter.json hands 에 기록"
+  },
+  {
+   "id": "kael_nightraven_hands",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AeEvlA0z6-5h4tYXRUOTASm06_H3F5ijHQ3BlxT0tIF5yVcXopnCfsgT2-qhizlLT2ZPlzea",
+   "inputs": [
+    "kael_nightraven_side.jpg"
+   ],
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "src": "src/kael/kael_nightraven_hands.webp",
+   "prompt": "Hand reference sheet for the man in 图片1. Paint ONLY his gloved hands with exactly the same <glove description> as in 图片1, in the same painterly game-art style and lighting (not a 3D render), large and sharp, on a plain light-grey background. Two hands side by side, well separated, each cut off just after the cuff, no arms, no body, no text. LEFT: his hand clenched into a tight fist seen from the outside, back of the hand and knuckles facing the viewer, thumb wrapped over the fingers, the wrist and cuff entering from the lower right, gripping a straight thin cylindrical rod painted flat pure bright green that passes vertically BEHIND the curled fingers (the fingers wrap around it and hide it) and sticks out above and below the fist. RIGHT: the same hand open with the palm facing the viewer, fingers together and slightly curved as if casting a spell, the wrist and cuff at the bottom. No watermark.",
+   "note": "막대 축·중심·손목을 rigs/kael/kael_nightraven.json hands 에 기록"
+  },
+  {
+   "id": "kael_stalker_qback_v2",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "Af8PoiD3c_q6eQHqLCQIeNGIPaxkt9kBGnPp-KlDgb6XjmbqcHKPrKQSxF0B0J_1UZy821Qu",
+   "inputs": [
+    "kael_stalker_side.jpg",
+    "kael_hunter_qback.jpg (layout)"
+   ],
+   "aspect_ratio": "4:3",
+   "img_resolution": "2k",
+   "src": "src/kael/kael_stalker_qback.webp",
+   "prompt": "Two full-body views of the man in 图片1 seen FROM BEHIND ... Both figures turn their BACK to the viewer, we cannot see his face. Copy the layout and camera angles of 图片2: LEFT ... turned slightly toward the viewer's left, RIGHT ... toward the viewer's right ...",
+   "note": "OK (두 장 모두 거의 정면 뒷모습)"
+  },
+  {
+   "id": "kael_bloodhunter_back_v1",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AZ0b7c-kjEoq8yXFer-IpKXu3UCHc3SpWdUrCkO18jieodGpNSJsBICsTQQxODigFzQec9E0",
+   "inputs": [
+    "kael_bloodhunter_side.jpg"
+   ],
+   "aspect_ratio": "4:3",
+   "img_resolution": "2k",
+   "prompt": "Two full-body views ... seen FROM BEHIND ... LEFT straight back, RIGHT turned slightly ...",
+   "note": "실패: 왼쪽이 앞모습"
+  },
+  {
+   "id": "kael_bloodhunter_back",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AU48lrsqfw-BSZkM9AS1YN9hqyxiN78LDIvkRPtB9tjEhoz4VoMkezcAPaB0HAOcHlocQt2Q",
+   "inputs": [
+    "kael_bloodhunter_side.jpg"
+   ],
+   "aspect_ratio": "3:4",
+   "img_resolution": "2k",
+   "src": "src/kael/kael_bloodhunter_back.webp",
+   "prompt": "One single full-body view of the man in 图片1 seen exactly from behind (straight back view, perfectly symmetric, facing directly away from the viewer, we cannot see his face at all), wearing exactly the outfit of 图片1: <outfit, hood up, ponytail out of the hood>. He stands in a relaxed neutral pose with arms hanging down, centered in the frame. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, complete from head to boots, no cape, nothing held in the hands, no text, no watermark.",
+   "note": "OK — 한 장에 한 방향만 요구하면 성공률이 높다"
   }
  ],
- "images_used": 18
+ "images_used": 40
 }

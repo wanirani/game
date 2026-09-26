@@ -3,7 +3,7 @@ import { randomInt } from 'node:crypto';
 import { SLOTS, STORES } from './config.mts';
 import { hashSecret, newRecoveryCode, normalizeRecoveryCode } from './crypto.mts';
 import { dropSessionBlobs, getUser, purgeAccount, updateUser } from './accounts.mts';
-import { clearFailures } from './ratelimit.mts';
+import { clearLocks, lockStatus } from './ratelimit.mts';
 import { now } from './runtime.mts';
 import type { Ctx } from './runtime.mts';
 import { normalizeId } from './validate.mts';
@@ -20,11 +20,11 @@ async function must(c: Ctx, rawId: string) {
 export async function adminShow(c: Ctx, rawId: string): Promise<Record<string, unknown>> {
   const u = await must(c, rawId);
   const t = now();
-  const limits = c.store(STORES.limits);
   const saves = c.store(STORES.saves);
-  const lock = async (kind: string) => {
-    const r = await limits.get(`id/${kind}/${u.id}`, { type: 'json' });
-    return r ? { failures: r.n ?? 0, lockedUntil: r.lockedUntil && r.lockedUntil > t ? new Date(r.lockedUntil).toISOString() : null } : null;
+  // 아이디 전체 실패 수·잠금 + 잠긴 망 수 (망은 해시라 어느 IP 인지는 알 수 없다)
+  const lock = async (kind: 'login' | 'recover') => {
+    const s = await lockStatus(c, kind, u.id);
+    return { failures: s.failures, lockedUntil: s.lockedUntil ? new Date(s.lockedUntil).toISOString() : null, lockedNetworks: s.lockedNetworks };
   };
   const slots = await Promise.all(SLOTS.map(async (s) => {
     const m = await saves.getMetadata(`${u.uid}/slot${s}`);
@@ -47,7 +47,7 @@ export async function adminShow(c: Ctx, rawId: string): Promise<Record<string, u
 /** 로그인·복구 잠금 해제 */
 export async function adminUnlock(c: Ctx, rawId: string): Promise<void> {
   const u = await must(c, rawId);
-  await Promise.all([clearFailures(c, 'login', u.id), clearFailures(c, 'recover', u.id)]);
+  await Promise.all([clearLocks(c, 'login', u.id), clearLocks(c, 'recover', u.id)]);
 }
 
 /** 모든 기기 로그아웃 */
@@ -71,7 +71,7 @@ export async function adminResetPassword(c: Ctx, rawId: string): Promise<{ id: s
   let dropped: string[] = [];
   await updateUser(c, u.id, u.uid, (x) => { dropped = x.sessions.map((e) => e.h); x.sessions = []; x.pw = pw; x.rc = rc; });
   await dropSessionBlobs(c, dropped);
-  await Promise.all([clearFailures(c, 'login', u.id), clearFailures(c, 'recover', u.id)]);
+  await Promise.all([clearLocks(c, 'login', u.id), clearLocks(c, 'recover', u.id)]);
   return { id: u.id, tempPassword, recoveryCode };
 }
 

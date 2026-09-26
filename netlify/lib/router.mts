@@ -1,4 +1,5 @@
-// /api/* 라우터: 경로·메서드 확인(404/405), 오류를 JSON 으로 바꾸고 내부 정보는 응답·로그에 남기지 않는다.
+// /api/* 라우터: 경로·메서드 확인(404/405), 다른 사이트에서 온 요청 거절(403), 오류를 JSON 으로 바꾸고
+// 내부 정보는 응답에 넣지 않으며 로그에는 비밀처럼 보이는 부분을 가린 오류 종류만 남긴다.
 import type { Context } from '@netlify/functions';
 import { ApiError, errorResponse, json, MESSAGES, ok } from './http.mts';
 import { Ctx, now } from './runtime.mts';
@@ -31,6 +32,21 @@ const ROUTES: Route[] = [
   { name: 'meta', re: /^\/api\/meta$/, methods: { GET: (c) => getMeta(c), PUT: (c) => putMeta(c) } },
 ];
 
+/**
+ * 로그용 오류 문구 정리: URL, 메일 주소, IPv4·IPv6, 토큰·해시·저장소 키처럼 보이는 긴 문자열을 가린다.
+ * (Netlify Blobs 오류에는 저장소 응답 본문이 그대로 붙을 수 있다 — 키에는 아이디·토큰 해시가 들어 있다)
+ */
+export function redact(msg: string): string {
+  return String(msg)
+    .replace(/[a-z][a-z0-9+.-]*:\/\/[^\s'"<>()]+/gi, '[url]')
+    .replace(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g, '[email]')
+    .replace(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g, '[ip]')
+    .replace(/[0-9a-f]{0,4}(?::[0-9a-f]{0,4}){2,7}/gi, (m) => (m.includes('::') || (m.match(/:/g)?.length ?? 0) >= 5 ? '[ip]' : m))
+    .replace(/[A-Za-z0-9_-]{20,}/g, '[redacted]')
+    .replace(/\b[0-9a-f]{16,}\b/gi, '[redacted]')
+    .slice(0, 200);
+}
+
 export async function handle(req: Request, context?: Context): Promise<Response> {
   let routeName = '-';
   try {
@@ -50,12 +66,15 @@ export async function handle(req: Request, context?: Context): Promise<Response>
       const allow = Object.keys(route.methods).join(', ');
       return errorResponse(new ApiError('method_not_allowed', 405, undefined, { Allow: allow }));
     }
+    // 브라우저는 다른 사이트가 보낸 요청에 Sec-Fetch-Site: cross-site 를 붙인다. 이 API 는 같은 출처에서만 쓰므로 거절한다
+    // (응답은 어차피 못 읽지만, 방문자 브라우저를 빌린 가입·로그인 시도·잠금 공격을 막는다. 안드로이드 앱의 대리 요청은 헤더가 없거나 same-origin)
+    if ((req.headers.get('sec-fetch-site') ?? '').trim().toLowerCase() === 'cross-site') return errorResponse(new ApiError('forbidden', 403));
     return await h(new Ctx(req, context), param);
   } catch (e) {
     if (e instanceof ApiError) return errorResponse(e);
-    // 요청 본문·토큰·IP 는 기록하지 않는다. 오류 종류만 남긴다.
-    const name = e instanceof Error ? e.name : typeof e;
-    const msg = e instanceof Error ? String(e.message).slice(0, 160) : '';
+    // 요청 본문·토큰·IP 는 기록하지 않는다. 오류 종류와 가린 문구만 남긴다.
+    const name = e instanceof Error ? String(e.name).slice(0, 40) : typeof e;
+    const msg = e instanceof Error ? redact(e.message) : '';
     console.error(`[api] ${routeName} 처리 중 내부 오류: ${name} ${msg}`);
     return json(500, { ok: false, error: 'server_error', message: MESSAGES.server_error });
   }

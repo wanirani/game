@@ -6,15 +6,19 @@
  "sources": {
   "e": {
    "file": "skeleton_edit.png",
-   "k": 0.0355
+   "k": 0.0355,
+   "raw": "skeleton_edit.webp"
   },
   "s1": {
    "file": "skeleton_sheet1.png",
-   "k": 0.0485
+   "k": 0.0485,
+   "raw": "skeleton_sheet1.webp"
   },
   "s2r": {
    "file": "skeleton_sheet2_r.png",
-   "k": 0.05
+   "k": 0.05,
+   "raw": "skeleton_sheet2.webp",
+   "mode": "rembg"
   }
  },
  "parts": {

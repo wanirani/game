@@ -23,7 +23,7 @@ import { game } from '../../core/game.js';
 // existed this block held self-contained copies; the enemy renderers only use the API exported below, so the swap was
 // local to this file.
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════
-import { makeCanvas, silhouette as kSilhouette, outlined, darkened, bakeDamage, rr, hash1, seeded, textureDensity, nextIdle, sliceStart } from './kit.js';
+import { makeCanvas, silhouette as kSilhouette, outlined, darkened, bakeDamage, rr, hash1, seeded, textureDensity, nextIdle, sliceStart, quality } from './kit.js';
 
 /** runtime (GPU) canvas — scratch targets and sprites that are drawn every frame */
 export function mkCanvas(w, h) {
@@ -510,6 +510,10 @@ export const deathK = (e) => (e.dying > 0 ? 1 - clamp(e.dying / (e.def.dieTime ?
 export const squashK = (e) => (e.flashT > 0 ? clamp(e.flashT / 0.12, 0, 1) : 0);
 /** flash overlay strength for part blits */
 export const flashK = (e, o) => (o?.flash ? 0.82 : 0);
+/** level of detail from the shared quality flag: 'low' halves warp strips and drops secondary glow passes */
+export const lod = () => (quality(game).name === 'low' ? 0 : quality(game).name === 'medium' ? 1 : 2);
+/** strip count for warps at the current LOD */
+export const nStrips = (n) => (lod() === 0 ? Math.max(3, n >> 1) : n);
 /** clock for render-side dt (world time when available, else entity time) */
 export const clockOf = (e, world) => world?.time ?? e.t ?? 0;
 

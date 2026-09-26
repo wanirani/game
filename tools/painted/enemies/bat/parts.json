@@ -6,7 +6,8 @@
  "sources": {
   "s1": {
    "file": "bat_sheet1.png",
-   "k": 0.0185
+   "k": 0.0185,
+   "raw": "bat_sheet1.webp"
   }
  },
  "parts": {

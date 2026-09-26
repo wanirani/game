@@ -20,6 +20,9 @@ function giverName(q) {
 }
 
 export class QuestBoardScene extends ServiceScene {
+  // 알림은 오른쪽 상세 패널 아래쪽에 띄운다 (좁은 왼쪽 목록을 가리지 않게)
+  get toastX() { const d = this.detailRect; return d ? d.x + d.w / 2 : super.toastX; }
+  get toastY() { const d = this.detailRect; return d ? d.y + d.h - 14 : super.toastY; }
   setup() {
     this.bgKey = 'bg/hub'; this.title = '의뢰 게시판'; this.eng = 'NOTICE BOARD'; this.npcId = null;
     this.music = null; this.emberColor = '#c8ff90';

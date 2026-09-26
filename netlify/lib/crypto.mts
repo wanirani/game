@@ -16,6 +16,13 @@ export interface SecretHash {
   pep: 0 | 1; // AUTH_PEPPER 적용 여부
 }
 
+/** 지금 쓰는 비용 매개변수 (운영은 항상 config 의 SCRYPT) */
+let COST: { N: number; r: number; p: number } = { N: SCRYPT.N, r: SCRYPT.r, p: SCRYPT.p };
+/** 테스트 전용: 해시 비용을 낮춰 테스트를 빠르게 (null 이면 운영 값). HTTP·환경 변수로는 바꿀 수 없다 */
+export function setHashCostForTests(c: { N: number; r: number; p: number } | null): void {
+  COST = c ? { ...c } : { N: SCRYPT.N, r: SCRYPT.r, p: SCRYPT.p };
+}
+
 function derive(input: Buffer, salt: Buffer, len: number, N: number, r: number, p: number): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     scrypt(input, salt, len, { N, r, p, maxmem: SCRYPT.maxmem }, (err, key) => (err ? reject(err) : resolve(key)));
@@ -33,8 +40,8 @@ function prepare(secret: string, usePepper: boolean): Buffer | null {
 export async function hashSecret(secret: string): Promise<SecretHash> {
   const usePepper = !!env('AUTH_PEPPER');
   const salt = randomBytes(SCRYPT.saltLen);
-  const key = await derive(prepare(secret, usePepper) as Buffer, salt, SCRYPT.keyLen, SCRYPT.N, SCRYPT.r, SCRYPT.p);
-  return { alg: 'scrypt', N: SCRYPT.N, r: SCRYPT.r, p: SCRYPT.p, len: SCRYPT.keyLen, salt: salt.toString('base64'), hash: key.toString('base64'), pep: usePepper ? 1 : 0 };
+  const key = await derive(prepare(secret, usePepper) as Buffer, salt, SCRYPT.keyLen, COST.N, COST.r, COST.p);
+  return { alg: 'scrypt', N: COST.N, r: COST.r, p: COST.p, len: SCRYPT.keyLen, salt: salt.toString('base64'), hash: key.toString('base64'), pep: usePepper ? 1 : 0 };
 }
 
 function saneParams(h: SecretHash | undefined | null): h is SecretHash {
@@ -60,7 +67,7 @@ export async function verifySecret(secret: string, h: SecretHash | undefined | n
   const expected = Buffer.from(h.hash, 'base64');
   // 옛(더 가벼운) 매개변수로 만든 해시도 현재 매개변수 한 번만큼 시간을 쓰게 한다 — 없는 아이디(가짜 검증)와
   // 응답 시간이 달라 '재해시 전 계정이 있다'는 것이 드러나지 않게
-  const pad = cost(h.N, h.r, h.p) < cost(SCRYPT.N, SCRYPT.r, SCRYPT.p) ? burn(secret) : Promise.resolve();
+  const pad = cost(h.N, h.r, h.p) < cost(COST.N, COST.r, COST.p) ? burn(secret) : Promise.resolve();
   const [actual] = await Promise.all([derive(input, Buffer.from(h.salt, 'base64'), h.len, h.N, h.r, h.p), pad]);
   return expected.length === actual.length && timingSafeEqual(expected, actual);
 }
@@ -68,12 +75,12 @@ export async function verifySecret(secret: string, h: SecretHash | undefined | n
 const DUMMY_SALT = Buffer.alloc(SCRYPT.saltLen, 7);
 /** 없는 계정이나 형식이 틀린 코드에도 같은 시간을 쓰게 하는 가짜 검증 */
 export async function burn(secret: string): Promise<void> {
-  await derive(Buffer.from(String(secret).normalize('NFC'), 'utf8'), DUMMY_SALT, SCRYPT.keyLen, SCRYPT.N, SCRYPT.r, SCRYPT.p);
+  await derive(Buffer.from(String(secret).normalize('NFC'), 'utf8'), DUMMY_SALT, SCRYPT.keyLen, COST.N, COST.r, COST.p);
 }
 
 /** 매개변수·pepper 설정이 현재와 다르면 true (로그인 성공 시 재해시) */
 export function needsRehash(h: SecretHash): boolean {
-  return h.N !== SCRYPT.N || h.r !== SCRYPT.r || h.p !== SCRYPT.p || h.len !== SCRYPT.keyLen || h.pep !== (env('AUTH_PEPPER') ? 1 : 0);
+  return h.N !== COST.N || h.r !== COST.r || h.p !== COST.p || h.len !== SCRYPT.keyLen || h.pep !== (env('AUTH_PEPPER') ? 1 : 0);
 }
 
 // ── 세션 토큰 ──

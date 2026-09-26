@@ -1738,6 +1738,9 @@ export function registerHeroHooks(h) { Object.assign(heroHooks, h); return heroH
 
 /** 게임 속 플레이어 영웅 그리기 배율 (판정 상자는 그대로). 채색 퍼펫의 가독성 기준으로 정함 — docs/art/PUPPET_PIPELINE.md */
 export const HERO_DRAW_SCALE = 1.14;
+let drawScale = HERO_DRAW_SCALE;
+/** 테스트·옵션용: 플레이어 그리기 배율 바꾸기 (판정 상자와 무관) */
+export function setHeroDrawScale(v) { drawScale = v > 0 ? v : HERO_DRAW_SCALE; }
 /** 턴테이블 계약 (docs/specs/platform.md §7.3): 8방향 스냅 + 사이 구간은 가로 압축 교차 */
 export const HERO_VIEW = { continuous: false, steps: 8, painted: true };
 /** 이 엔티티가 턴테이블에서 채색 8방향을 쓰는가 (false 면 옆모습 카드 뒤집기 대체) */
@@ -1747,7 +1750,7 @@ export function heroViewInfo(p) {
   return { painted: !!(I && PUP.turnReady(I)), steps: HERO_VIEW.steps, continuous: HERO_VIEW.continuous };
 }
 function heroScale(p, world, opts, look, K) {
-  const base = opts.scale ?? (world && !p.npc && PUP.isPlayable(p.ch?.id) ? HERO_DRAW_SCALE : 1);
+  const base = opts.scale ?? (world && !p.npc && PUP.isPlayable(p.ch?.id) ? drawScale : 1);
   return base * (look.height ?? K.defH);
 }
 

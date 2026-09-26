@@ -136,7 +136,7 @@ function drawAll(e, q) {
     const p = PL[i];
     if (p.kind === 1) {
       const w = q.walking ? 1 : 0.3;
-      K.strips(p.name, p.pv, p.x, p.y, p.rot, p.sx, p.sy, 9, 'y', (u) => {
+      K.strips(p.name, p.pv, p.x, p.y, p.rot, p.sx, p.sy, K.nStrips(7), 'y', (u) => {
         _q[0] = -(u * u) * (q.walking ? 14 : 4) - Math.sin(t * (q.walking ? 10 : 2) - u * 3.5) * u * 6 * w; _q[1] = 0; return _q;
       }, 1, p.vn);
     } else K.put(p.name, p.pv, p.x, p.y, p.rot, p.sx, p.sy, 1, p.vn);

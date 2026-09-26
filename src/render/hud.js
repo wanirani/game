@@ -147,7 +147,7 @@ export function drawHUD(ctx, world, vw, vh) {
 
   // ── 보스 체력 ── (등장 연출·대화 중에는 숨김. 터치 모드는 엄지 패드에 가리지 않도록 화면 위쪽)
   const b = world.boss;
-  if (b && world.bossActive && !b.dead && !world.cutscene) {
+  if (b && world.bossActive && !b.dead && !(b.dying > 0) && !world.cutscene) {
     const w = T ? Math.min(560, vw - 320) : Math.min(640, vw - 260), x = (vw - w) / 2, y = T ? 164 : vh - 46;
     text(ctx, b.def.name, x, y - 8, { size: 16, weight: 800, family: FONT.title, color: '#ffd0d0' });
     if (b.def.title) text(ctx, b.def.title, x + w, y - 8, { size: 11, align: 'right', color: COLORS.dim });

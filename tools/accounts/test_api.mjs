@@ -261,8 +261,10 @@ test('가입: 비밀번호 규칙 (8~64자, 제어 문자 금지, 아이디와 �
   const e = await signup(newId(), '🦇🦇🦇🦇🌙🌙🌙🌙');
   expectOk(await login(e.id, '🦇🦇🦇🦇🌙🌙🌙🌙'), 200);
   freshIp();
-  const l = await signup(newId(), 'p'.repeat(64));
-  expectOk(await login(l.id, 'p'.repeat(64)), 200);
+  const long64 = 'nocturne-'.repeat(8).slice(0, 63) + '!';
+  assert.equal([...long64].length, 64);
+  const l = await signup(newId(), long64);
+  expectOk(await login(l.id, long64), 200);
 });
 
 test('가입: IP당 1시간 5개 → 6번째 429 signup_limited', async () => {
@@ -307,34 +309,42 @@ test('로그인: 성공(대소문자 무시), 틀린 비밀번호·없는 아이
   expectErr(await call('POST', '/api/auth/login', { body: { id: u.id, password: 'x'.repeat(300) } }), 400, 'bad_request');
 });
 
-test('로그인: 아이디별 5회 실패 → 10분 잠금 (맞는 비밀번호도 거부), 이후 해제·초기화', async () => {
+test('로그인: 아이디+망별 5회 실패 → 그 망에서 10분 잠금 (맞는 비밀번호도 거부), 이후 해제·초기화', async () => {
   const u = await signup(newId(), PW, { ip: freshIp() });
-  for (let i = 0; i < 4; i++) expectErr(await login(u.id, 'wrong-password', { ip: freshIp() }), 401, 'invalid_credentials');
-  const r5 = await login(u.id, 'wrong-password', { ip: freshIp() });
+  const ip = freshIp();
+  for (let i = 0; i < 4; i++) expectErr(await login(u.id, 'wrong-password', { ip }), 401, 'invalid_credentials');
+  const r5 = await login(u.id, 'wrong-password', { ip });
   expectErr(r5, 429, 'locked');
   assert.equal(r5.body.retryAfter, 600);
-  const r6 = await login(u.id, PW, { ip: freshIp() });
+  assert.equal(r5.headers.get('retry-after'), '600');
+  const r6 = await login(u.id, PW, { ip });
   expectErr(r6, 429, 'locked');
   advance(5 * MIN);
-  expectErr(await login(u.id, PW, { ip: freshIp() }), 429, 'locked');
+  expectErr(await login(u.id, PW, { ip }), 429, 'locked');
   advance(5 * MIN + 1000);
-  expectOk(await login(u.id, PW, { ip: freshIp() }));
-  // 성공하면 실패 횟수 초기화 → 다시 4번 틀려도 잠기지 않음
-  for (let i = 0; i < 4; i++) expectErr(await login(u.id, 'wrong-password', { ip: freshIp() }), 401, 'invalid_credentials');
-  expectOk(await login(u.id, PW, { ip: freshIp() }));
+  expectOk(await login(u.id, PW, { ip }));
+  // 성공하면 그 망의 실패 횟수 초기화 → 다시 4번 틀려도 잠기지 않음
+  for (let i = 0; i < 4; i++) expectErr(await login(u.id, 'wrong-password', { ip }), 401, 'invalid_credentials');
+  expectOk(await login(u.id, PW, { ip }));
 });
 
 test('로그인: 없는 아이디도 똑같이 잠김 (계정 존재 여부 노출 없음)', async () => {
   const ghost = 'ghost_' + (++idSeq);
-  for (let i = 0; i < 4; i++) expectErr(await login(ghost, 'wrong-password', { ip: freshIp() }), 401, 'invalid_credentials');
-  expectErr(await login(ghost, 'wrong-password', { ip: freshIp() }), 429, 'locked');
+  const ip = freshIp();
+  for (let i = 0; i < 4; i++) expectErr(await login(ghost, 'wrong-password', { ip }), 401, 'invalid_credentials');
+  expectErr(await login(ghost, 'wrong-password', { ip }), 429, 'locked');
+  // 아이디 전체 한도도 똑같이
+  const ghost2 = 'ghost_' + (++idSeq);
+  for (let i = 0; i < 19; i++) expectErr(await login(ghost2, 'wrong-password', { ip: freshIp() }), 401, 'invalid_credentials');
+  expectErr(await login(ghost2, 'wrong-password', { ip: freshIp() }), 429, 'locked');
 });
 
 test('로그인: 실패 창(10분)이 지나면 실패 횟수 다시 셈', async () => {
   const u = await signup(newId(), PW, { ip: freshIp() });
-  for (let i = 0; i < 4; i++) expectErr(await login(u.id, 'wrong-password', { ip: freshIp() }), 401, 'invalid_credentials');
+  const ip = freshIp();
+  for (let i = 0; i < 4; i++) expectErr(await login(u.id, 'wrong-password', { ip }), 401, 'invalid_credentials');
   advance(10 * MIN + 1);
-  expectErr(await login(u.id, 'wrong-password', { ip: freshIp() }), 401, 'invalid_credentials');
+  expectErr(await login(u.id, 'wrong-password', { ip }), 401, 'invalid_credentials');
 });
 
 test('IP당 인증 시도 10분 20회 → 21번째 429 rate_limited, 다른 IP·10분 후 가능', async () => {
@@ -463,14 +473,18 @@ test('비밀번호 변경: 성공 → 다른 세션 폐기, 현재 세션 유지
   expectOk(await login(u.id, NEW, { ip: freshIp() }));
 });
 
-test('비밀번호 변경: 현재 비밀번호 5회 틀리면 잠금 (로그인도 잠김)', async () => {
+test('비밀번호 변경: 현재 비밀번호 5회 틀리면 그 망에서 잠금 (로그인도 잠김), 다른 망은 영향 없음', async () => {
   const u = await signup(newId(), PW, { ip: freshIp() });
-  const req = () => call('POST', '/api/auth/password', { body: { oldPassword: 'wrong-password', newPassword: 'new-password-1' }, token: u.token, ip: freshIp() });
+  const ip = freshIp();
+  const req = () => call('POST', '/api/auth/password', { body: { oldPassword: 'wrong-password', newPassword: 'new-password-1' }, token: u.token, ip });
   for (let i = 0; i < 4; i++) expectErr(await req(), 403, 'wrong_password');
   expectErr(await req(), 429, 'locked');
-  expectErr(await login(u.id, PW, { ip: freshIp() }), 429, 'locked');
-  advance(10 * MIN + 1);
+  expectErr(await login(u.id, PW, { ip }), 429, 'locked');
+  expectErr(await call('POST', '/api/auth/account/delete', { body: { password: PW }, token: u.token, ip }), 429, 'locked');
+  expectOk(await call('GET', '/api/auth/me', { token: u.token })); // 세션은 그대로
   expectOk(await login(u.id, PW, { ip: freshIp() }));
+  advance(10 * MIN + 1);
+  expectOk(await login(u.id, PW, { ip }));
 });
 
 // ═════════ 복구 코드 ═════════
@@ -516,19 +530,27 @@ test('복구: 오류 경로 (없는 아이디·틀린 코드·형식 오류는 �
   expectOk(await rec({ id: u.id, recoveryCode: u.recoveryCode, newPassword: 'new-password-1' }));
 });
 
-test('복구: 5회 틀리면 10분 잠금, 복구하면 로그인 잠금도 풀림', async () => {
+test('복구: 같은 망에서 5회 틀리면 10분 잠금, 복구하면 로그인 잠금(망별·전체)도 풀림', async () => {
   const u = await signup(newId(), PW, { ip: freshIp() });
-  const rec = (code) => call('POST', '/api/auth/recover', { body: { id: u.id, recoveryCode: code, newPassword: 'new-password-1' }, ip: freshIp() });
+  const ip = freshIp();
+  const rec = (code, from = ip) => call('POST', '/api/auth/recover', { body: { id: u.id, recoveryCode: code, newPassword: 'new-password-1' }, ip: from });
   for (let i = 0; i < 4; i++) expectErr(await rec('ZZZZ-ZZZZ-ZZZZ-ZZZZ'), 401, 'invalid_recovery');
   const r = await rec('ZZZZ-ZZZZ-ZZZZ-ZZZZ');
   expectErr(r, 429, 'locked');
+  assert.equal(r.body.retryAfter, 600);
   expectErr(await rec(u.recoveryCode), 429, 'locked');
   advance(10 * MIN + 1);
-  // 로그인 잠금을 만든 뒤 복구로 풀기
-  for (let i = 0; i < 5; i++) await login(u.id, 'wrong-password', { ip: freshIp() });
+  // 로그인 잠금(한 망 + 아이디 전체)을 만든 뒤 복구로 풀기
+  const lockedNet = freshIp();
+  for (let i = 0; i < 5; i++) await login(u.id, 'wrong-password', { ip: lockedNet });
+  for (let i = 0; i < 15; i++) await login(u.id, 'wrong-password', { ip: freshIp() });
+  expectErr(await login(u.id, PW, { ip: lockedNet }), 429, 'locked');
   expectErr(await login(u.id, PW, { ip: freshIp() }), 429, 'locked');
-  expectOk(await rec(u.recoveryCode));
+  const b = expectOk(await rec(u.recoveryCode));
+  SECRETS.add(b.recoveryCode); SECRETS.add(b.recoveryCode.replace(/-/g, '')); SECRETS.add(b.token);
+  expectOk(await login(u.id, 'new-password-1', { ip: lockedNet }));
   expectOk(await login(u.id, 'new-password-1', { ip: freshIp() }));
+  SECRETS.add('new-password-1');
 });
 
 // ═════════ 탈퇴 ═════════
@@ -800,11 +822,15 @@ test('운영: show·unlock·revoke·reset·delete', async () => {
   const c = new rt.Ctx(new Request('https://admin.local/'), { ip: 'admin', deploy: { context: 'production' } });
   const u = await signup(newId(), PW, { ip: freshIp() });
   expectOk(await call('PUT', '/api/saves/2', { body: { data: validSave('bran'), baseRev: 0 }, token: u.token }));
-  for (let i = 0; i < 5; i++) await login(u.id, 'wrong-password', { ip: freshIp() });
+  const badNet = freshIp();
+  for (let i = 0; i < 5; i++) await login(u.id, 'wrong-password', { ip: badNet });
+  for (let i = 0; i < 15; i++) await login(u.id, 'wrong-password', { ip: freshIp() });
   let info = await admin.adminShow(c, u.id.toUpperCase());
   assert.equal(info.id, u.id);
   assert.equal(info.activeSessions, 1);
   assert.ok(info.loginLock?.lockedUntil, '잠금 표시');
+  assert.equal(info.loginLock.failures, 20);
+  assert.equal(info.loginLock.lockedNetworks, 1);
   assert.equal(info.slots[1].rev, 1);
   assert.equal(info.slots[1].summary.charId, 'bran');
   assert.ok(!JSON.stringify(info).includes('"hash"') && !JSON.stringify(info).includes('salt'));
@@ -812,12 +838,12 @@ test('운영: show·unlock·revoke·reset·delete', async () => {
   expectOk(await login(u.id, PW, { ip: freshIp() }));
   assert.equal(await admin.adminRevokeSessions(c, u.id), 2);
   expectErr(await call('GET', '/api/auth/me', { token: u.token }), 401, 'unauthorized');
-  for (let i = 0; i < 5; i++) await login(u.id, 'wrong-password', { ip: freshIp() });
+  for (let i = 0; i < 5; i++) await login(u.id, 'wrong-password', { ip: badNet });
   const r = await admin.adminResetPassword(c, u.id);
   SECRETS.add(r.tempPassword); SECRETS.add(r.recoveryCode); SECRETS.add(r.recoveryCode.replace(/-/g, ''));
   assert.match(r.tempPassword, /^[a-z2-9]{12}$/);
   expectErr(await login(u.id, PW, { ip: freshIp() }), 401, 'invalid_credentials');
-  const t = expectOk(await login(u.id, r.tempPassword, { ip: freshIp() })).token; // 잠금도 풀림
+  const t = expectOk(await login(u.id, r.tempPassword, { ip: badNet })).token; // 잠금도 풀림
   expectErr(await call('POST', '/api/auth/recover', { body: { id: u.id, recoveryCode: u.recoveryCode, newPassword: 'new-password-1' }, ip: freshIp() }), 401, 'invalid_recovery');
   await admin.adminDelete(c, u.id);
   expectErr(await call('GET', '/api/auth/me', { token: t }), 401, 'unauthorized');
@@ -837,7 +863,7 @@ test('보안: 저장소에 비밀번호·복구 코드·토큰 평문이 없음,
   assert.equal(rec.id, u.id);
   for (const k of ['pw', 'rc']) {
     assert.equal(rec[k].alg, 'scrypt');
-    assert.deepEqual([rec[k].N, rec[k].r, rec[k].p, rec[k].len], [16384, 8, 1, 64]);
+    assert.deepEqual([rec[k].N, rec[k].r, rec[k].p, rec[k].len], [32768, 8, 3, 64]);
     assert.equal(Buffer.from(rec[k].salt, 'base64').length, 32);
     assert.equal(Buffer.from(rec[k].hash, 'base64').length, 64);
   }
@@ -854,7 +880,7 @@ test('보안: 저장소에 비밀번호·복구 코드·토큰 평문이 없음,
     const [store, ...rest] = k.split('/');
     assert.ok(Buffer.byteLength(store) <= 64 && Buffer.byteLength(rest.join('/')) <= 600, k);
   }
-});
+}, { realHash: true });
 
 test('보안: 복구 코드 생성기 (Crockford Base32 16자, 중복 없음)', () => {
   const seen = new Set();
@@ -1145,7 +1171,7 @@ test('보안: 흔한 비밀번호·아이디가 들어간 비밀번호 거부 �
   const u = await signup(newId(), PW, { ip: freshIp() });
   expectErr(await call('POST', '/api/auth/password', { body: { oldPassword: PW, newPassword: 'qwer1234' }, token: u.token, ip: freshIp() }), 400, 'weak_password');
   expectErr(await call('POST', '/api/auth/recover', { body: { id: u.id, recoveryCode: u.recoveryCode, newPassword: '1q2w3e4r' }, ip: freshIp() }), 400, 'weak_password');
-  for (const ok of ['violet-bat-1987', '달빛아래검은성', 'x9!kQ2#mZ']) await signup(newId(), ok, { ip: freshIp() });
+  for (const ok of ['violet-bat-1987', '달빛아래검은성에서', 'x9!kQ2#mZ']) await signup(newId(), ok, { ip: freshIp() });
 });
 
 test('보안: scrypt N=2^15·r=8·p=3 (OWASP 최소 기준), 옛 매개변수 해시는 로그인 때 올라감', async () => {
@@ -1160,7 +1186,7 @@ test('보안: scrypt N=2^15·r=8·p=3 (OWASP 최소 기준), 옛 매개변수 �
   const after = JSON.parse(await readRaw('bn-users', u.id));
   assert.deepEqual([after.pw.N, after.pw.r, after.pw.p], [32768, 8, 3]);
   expectOk(await login(u.id, PW, { ip: freshIp() }));
-});
+}, { realHash: true });
 
 test('로그인 유지: remember:false → 12시간 세션(1시간 넘게 지나 쓰면 연장), 생략·true → 30일', async () => {
   const u = await signup(newId(), PW, { ip: freshIp() });
@@ -1258,6 +1284,8 @@ async function runMode(mode) {
     if (t.memOnly && mode !== 'memory') { skip++; continue; }
     T += HOUR; // 테스트끼리 시간 창이 겹치지 않게
     DEPLOY = 'production';
+    // 해시 비용: 대부분의 테스트는 가볍게(논리는 같다), realHash 테스트만 운영 매개변수로
+    scrypto.setHashCostForTests(t.realHash ? null : { N: 1024, r: 8, p: 1 });
     freshIp();
     try {
       await t.fn();
@@ -1280,5 +1308,6 @@ for (const mode of MODES) {
 }
 rt.setStoreFactory(null);
 rt.setClock(null);
+scrypto.setHashCostForTests(null);
 console.log(failures ? `\n실패 ${failures}건` : '\n모든 테스트 통과');
 process.exit(failures ? 1 : 0);

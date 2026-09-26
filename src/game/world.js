@@ -430,7 +430,7 @@ export class World {
     if (ups > 0) {
       const p = this.player;
       p.refreshStats();
-      p.hp = p.stats.hp; p.mp = p.stats.mp;
+      if (!p.dead) { p.hp = p.stats.hp; p.mp = p.stats.mp; }
       audio.sfx('levelup');
       this.fx.ring(p.cx, p.cy, { color: '#ffe070', r0: 10, r1: 120, life: 0.6, width: 6 });
       this.fx.burst('holy', p.cx, p.cy, 40, { speed: 260 });
@@ -563,6 +563,10 @@ export class World {
       const key = `${this.stage.id}:${this.roomId}:${tx},${ty}`;
       m.set(tx, ty, T.EMPTY);
       this.tiles.invalidate(tx, ty);
+      // 부순 벽 뒤가 가짜 벽으로 메운 비밀 공간이면 함께 드러낸다 (예: s07 r4)
+      for (const [nx, ny] of [[tx + 1, ty], [tx - 1, ty], [tx, ty + 1], [tx, ty - 1]]) {
+        if (m.typeAt(nx, ny) === T.FAKE && !m.revealed.has(m.idx(nx, ny))) this.revealFakeAt(nx, ny, tx * TILE + TILE / 2, ty * TILE + TILE / 2);
+      }
       const x = tx * TILE + TILE / 2, y = ty * TILE + TILE / 2;
       audio.sfx('break_wall');
       this.camera.shake(4, 0.15);
@@ -611,6 +615,14 @@ export class World {
     const t = Math.floor((p.y + 4) / TILE), b = Math.floor((p.y + p.h - 2) / TILE);
     for (let ty = t; ty <= b; ty++) for (let tx = l; tx <= r; tx++) {
       if (m.typeAt(tx, ty) !== T.FAKE || m.revealed.has(m.idx(tx, ty))) continue;
+      this.revealFakeAt(tx, ty, p.cx, p.cy);
+      return;
+    }
+  }
+  /** (tx,ty)에서 이어진 가짜 벽 덩어리를 드러낸다 (비밀 발견 처리 포함) */
+  revealFakeAt(tx, ty, fxX, fxY) {
+    const m = this.map;
+    {
       // 연결된 가짜 벽 flood fill
       const stack = [[tx, ty]];
       let n = 0;
@@ -624,9 +636,8 @@ export class World {
       }
       const key = `${this.stage.id}:${this.roomId}:fake${tx},${ty}`;
       audio.sfx('secret');
-      this.fx.burst('dust', p.cx, p.cy, 14, { speed: 120 });
+      this.fx.burst('dust', fxX, fxY, 14, { speed: 120 });
       if (!this.state.progress.secrets.includes(key)) { this.state.progress.secrets.push(key); this.run.secrets++; this.addScore(1000); this.game.toast('비밀 통로를 발견했다!', '#ffe7a0'); bus.emit('secretFound', { stageId: this.stage.id, key }); }
-      return;
     }
   }
   spawnBones(e) {

@@ -71,8 +71,8 @@ export function draw(ctx, e, world, o, rig) {
   K.pivotPos('body', 'a', 'wr', 0, cy + bob, tilt, sx, sy, _q); const wrx = _q[0], wry = _q[1];
   K.shadow(12, 0.18, 0);
   // far wing (left, behind), near wing (right)
-  K.chain('wing', wlx + 1, wly, PI - dirR + tilt, 0.9 * s, 6, (u) => -bend(u), alpha, 'deep', true);
-  K.chain('wing', wrx - 1, wry, dirR + tilt, s, 6, bend, alpha);
+  K.chain('wing', wlx + 1, wly, PI - dirR + tilt, 0.9 * s, K.nStrips(6), (u) => -bend(u), alpha, 'deep', true);
+  K.chain('wing', wrx - 1, wry, dirR + tilt, s, K.nStrips(6), bend, alpha);
   K.put('body', 'a', 0, cy + bob, tilt, sx, sy, alpha);
   if (!o.flash) {
     for (const pn of ['eyeL', 'eyeR']) { K.pivotPos('body', 'a', pn, 0, cy + bob, tilt, sx, sy, _q); K.glow(_q[0], _q[1], 2.4, '#ff2a3a', 0.7 * alpha); }

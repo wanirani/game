@@ -415,6 +415,17 @@ export async function loadRig(dir, def = {}, env = {}) {
     }
   }
   for (const part of Object.values(rig.parts)) delete part._raw;
+  // 완성된 변형을 ImageBitmap 으로 굳힌다: 불변 비트맵이라 GPU 캔버스에 한 번 올라가면 매 프레임 재업로드가 없다
+  if (typeof createImageBitmap === 'function' && env.bitmaps !== false) {
+    const t1 = performance.now();
+    for (const part of Object.values(rig.parts)) {
+      for (const store of [part.v, part.gl]) {
+        for (const [k2, c] of Object.entries(store)) if (c && !(c instanceof ImageBitmap)) { try { store[k2] = await createImageBitmap(c); } catch { /* 캔버스 유지 */ } }
+      }
+      await yieldNow();
+    }
+    tm.bitmap = performance.now() - t1;
+  }
   // 아틀라스 원본은 굽기 후 필요 없다 (디코딩된 비트맵을 붙잡지 않도록 캐시에서 뺀다)
   try { assets.cache?.delete?.(key); } catch { /* 무시 */ }
   rig.memMB = texMemMB(rig);

@@ -49,6 +49,8 @@ class TownAmbience extends Entity {
 }
 
 export class HubScene extends Scene {
+  /** 도착 배너(에슈빌)가 떠 있는 동안에는 밀린 알림을 잠시 보류한다 */
+  get deferToasts() { return !!this.banner && this.banner.t < 3.6; }
   enter(params = {}) {
     const g = this.game;
     if (!g.state) g.state = newGameState({ slot: 1, difficulty: 'normal', charId: 'kael' });

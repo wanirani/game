@@ -154,7 +154,8 @@ function variantLevel(E, V, L) {
       // 명암은 원화 그대로(대비만 재질별로), 색은 목표 색: 목표 밝기 × (원화 밝기 / 재질 평균 밝기)
       const k = Math.max(0, (lref + (l - lref) * con) / lref) * (tl / 255 < 0.2 ? 1.25 : 1);
       let nr = tr * k, ng = tg * k, nb = tb * k;
-      const hl = Math.max(0, (l - 160) / 95) + spec * Math.max(0, (l - lref * 1.4) / 120);
+      // 반사광(재질 평균보다 확실히 밝은 곳)만 흰빛 유지 — 밝은 원화(상아색 코트)를 어둡게 칠할 때 전체가 하얘지지 않게
+      const hl = Math.max(0, (l - Math.max(lref * 1.3, lref + 40)) / 90) + spec * Math.max(0, (l - lref * 1.4) / 120);
       if (hl > 0) { const q = Math.min(1, hl); nr += (255 - nr) * q * 0.55; ng += (255 - ng) * q * 0.55; nb += (255 - nb) * q * 0.55; }
       px[i] = Math.min(255, r + (nr - r) * w); px[i + 1] = Math.min(255, gg + (ng - gg) * w); px[i + 2] = Math.min(255, b + (nb - b) * w);
     }
@@ -397,17 +398,19 @@ function drawPonyPup(c, E, K, s) {
   const pt = R.parts.pony;
   if (!pt || !pt.strip || !LV.rects.pony) return;
   const st = pt.strip, rc = LV.rects.pony, ls = LV.scale;
+  // 긴 머리·베일 등은 리그 runtime.ponyN(마디 수)·ponyCfg(물리)로 조절
+  const N = R.opts.ponyN || PONY_N, cfg = R.opts.ponyCfg ? (R.ponyCfg ||= { ...PONY_CFG, ...R.opts.ponyCfg }) : PONY_CFG;
   headPt(s, K, pt.pivot[0], pt.pivot[1]); const T = toT0(E.P, Q[0], Q[1]);
-  const seg = (st.len * R.PS) / (PONY_N - 1);
-  const C = H.chain('hair', E, T[0], T[1], PONY_N, seg, PONY_CFG, T[0] + 1.5);
-  const bandL = st.len / (PONY_N - 1);
-  for (let i = 0; i < PONY_N - 1; i++) {
+  const seg = (st.len * R.PS) / (N - 1);
+  const C = H.chain('hair', E, T[0], T[1], N, seg, cfg, T[0] + 1.5);
+  const bandL = st.len / (N - 1);
+  for (let i = 0; i < N - 1; i++) {
     let dx = C[i * 2 + 2] - C[i * 2], dy = C[i * 2 + 3] - C[i * 2 + 1];
     const L = Math.hypot(dx, dy) || 1; dx /= L; dy /= L;
     const k = clamp(L / (bandL * R.PS), 0.8, 1.25);
     const a = dy * R.PS, b = -dx * R.PS, cc = dx * k * R.PS, dd = dy * k * R.PS;
     const yi = i * bandL;
-    const ya = i === 0 ? st.oy : yi, yb = i === PONY_N - 2 ? st.oy + pt.h : yi + bandL;
+    const ya = i === 0 ? st.oy : yi, yb = i === N - 2 ? st.oy + pt.h : yi + bandL;
     c.save();
     c.transform(a, b, cc, dd, C[i * 2] - cc * yi, C[i * 2 + 1] - dd * yi);
     const sy = (ya - st.oy) * ls, shh = Math.min(rc[3] - sy, (yb - ya) * ls + 1.2);

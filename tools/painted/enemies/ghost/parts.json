@@ -6,7 +6,9 @@
  "sources": {
   "s1": {
    "file": "ghost_sheet1.png",
-   "k": 0.04
+   "k": 0.04,
+   "raw": "ghost_sheet1.webp",
+   "mode": "soft"
   }
  },
  "parts": {

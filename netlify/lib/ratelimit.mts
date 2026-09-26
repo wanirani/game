@@ -90,16 +90,20 @@ interface Spec { key: string; max: number; windowMs: number; lockMs: number; per
 interface Held { spec: Spec; n: number }
 export interface Attempt { held: Held[] }
 
-const idKey = (kind: AttemptKind, id: string): string => `lock/${kind}/${id}`;
+// 키: lock/<kind>/<id>/all (아이디 전체), lock/<kind>/<id>/net/<망 해시> (아이디+망).
+// 한 키가 다른 키의 경로 앞부분이 되지 않게 한다 (로컬 Blobs 서버는 키를 파일 경로로 저장한다)
+const idDir = (kind: AttemptKind, id: string): string => `lock/${kind}/${id}/`;
+const allKey = (kind: AttemptKind, id: string): string => `${idDir(kind, id)}all`;
+const netDir = (kind: AttemptKind, id: string): string => `${idDir(kind, id)}net/`;
 
 function specs(c: Ctx, kind: AttemptKind, id: string): Spec[] {
-  const net = ipKey(c.ip);
+  const net = `${netDir(kind, id)}${ipKey(c.ip)}`;
   if (kind === 'recover') {
-    return [{ key: `${idKey(kind, id)}/${net}`, max: RATE.recoverFailMax, windowMs: RATE.recoverFailWindowMs, lockMs: RATE.recoverLockMs, perNet: true }];
+    return [{ key: net, max: RATE.recoverFailMax, windowMs: RATE.recoverFailWindowMs, lockMs: RATE.recoverLockMs, perNet: true }];
   }
   return [
-    { key: `${idKey(kind, id)}/${net}`, max: RATE.loginFailMax, windowMs: RATE.loginFailWindowMs, lockMs: RATE.loginLockMs, perNet: true },
-    { key: idKey(kind, id), max: RATE.idFailMax, windowMs: RATE.idFailWindowMs, lockMs: RATE.idLockMs, perNet: false },
+    { key: net, max: RATE.loginFailMax, windowMs: RATE.loginFailWindowMs, lockMs: RATE.loginLockMs, perNet: true },
+    { key: allKey(kind, id), max: RATE.idFailMax, windowMs: RATE.idFailWindowMs, lockMs: RATE.idLockMs, perNet: false },
   ];
 }
 
@@ -161,20 +165,21 @@ export async function attemptSucceeded(c: Ctx, a: Attempt): Promise<void> {
 /** 이 아이디의 모든 잠금·실패 기록 지우기 (복구 성공·탈퇴·운영자 잠금 해제) */
 export async function clearLocks(c: Ctx, kind: AttemptKind, id: string): Promise<void> {
   const st = c.store(STORES.limits);
-  const { blobs } = await st.list({ prefix: `${idKey(kind, id)}/` });
-  await Promise.all([st.delete(idKey(kind, id)), ...blobs.map((b) => st.delete(b.key))]);
+  const { blobs } = await st.list({ prefix: idDir(kind, id) });
+  await Promise.all([st.delete(allKey(kind, id)), ...blobs.map((b) => st.delete(b.key))]);
 }
 
 /** 운영 도구용: 아이디 전체 실패 수·잠금, 잠긴 망 수 */
 export async function lockStatus(c: Ctx, kind: AttemptKind, id: string): Promise<{ failures: number; lockedUntil: number | null; lockedNetworks: number }> {
   const st = c.store(STORES.limits);
   const t = now();
-  const { rec } = await read(st, idKey(kind, id));
-  const { blobs } = await st.list({ prefix: `${idKey(kind, id)}/` });
+  const { rec } = await read(st, allKey(kind, id));
+  const { blobs } = await st.list({ prefix: netDir(kind, id) });
   const nets = await Promise.all(blobs.map((b) => read(st, b.key)));
+  const locked = lockedFor(rec, t) > 0;
   return {
-    failures: isLive(rec, t, kind === 'login' ? RATE.idFailWindowMs : RATE.recoverFailWindowMs) ? rec.n : 0,
-    lockedUntil: lockedFor(rec, t) > 0 ? (rec!.lockedUntil as number) : null,
+    failures: locked || isLive(rec, t, kind === 'login' ? RATE.idFailWindowMs : RATE.recoverFailWindowMs) ? (rec as Counter).n : 0,
+    lockedUntil: locked ? ((rec as Counter).lockedUntil as number) : null,
     lockedNetworks: nets.filter((x) => lockedFor(x.rec, t) > 0).length,
   };
 }

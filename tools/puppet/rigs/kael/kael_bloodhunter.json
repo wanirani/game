@@ -226,6 +226,14 @@
   "viewsQ": [
    "-",
    "ym45"
+  ],
+  "extra": [
+   {
+    "sheet": "kael/kael_bloodhunter_back",
+    "views": [
+     "ym90"
+    ]
+   }
   ]
  }
 }

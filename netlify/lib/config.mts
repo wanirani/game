@@ -9,7 +9,7 @@ export const STORES = {
   users: 'bn-users', // key = 로그인 아이디 → 사용자 레코드
   sessions: 'bn-sessions', // key = SHA-256(토큰) hex → {id, uid, createdAt, expiresAt}
   saves: 'bn-saves', // key = <uid>/slot1..3, <uid>/meta → {rev, savedAt, data}
-  limits: 'bn-ratelimit', // key = ip/auth/<망 해시>, ip/signup/<망 해시>, lock/login/<id>, lock/login/<id>/<망 해시>, lock/recover/<id>/<망 해시>
+  limits: 'bn-ratelimit', // key = ip/auth/<망 해시>, ip/signup/<망 해시>, lock/login/<id>/all, lock/login/<id>/net/<망 해시>, lock/recover/<id>/net/<망 해시>
 } as const;
 
 /** 요청 본문 최대 크기 (바이트) */

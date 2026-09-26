@@ -55,12 +55,12 @@ export function draw(ctx, e, world, o, rig) {
     const w = Math.max(0, u - 0.18) / 0.82;
     _q[0] = (-(w * w) * trail - Math.sin(ph - u * 5) * w * 3.2) * rig.td / S; _q[1] = Math.sin(ph * 0.7 - u * 3) * w * 1.2 * rig.td; return _q;
   };
-  if (!o.flash) {           // additive ghost glow pass (baked colour silhouette), slightly larger
+  if (!o.flash && K.lod() > 0) {   // additive ghost glow pass (baked colour silhouette, unwarped: it is a soft halo)
     const gco = ctx.globalCompositeOperation; ctx.globalCompositeOperation = 'lighter';
-    K.warpY('body', 'top', tx + 1, ty - 1, lean, sx * 1.04, sy * 1.02, 10, off, 0.22, 'glow', 1);
+    K.put('body', 'top', tx - trail * 0.25, ty - 1, lean, sx * 1.05, sy * 1.02, 0.2, 'glow');
     ctx.globalCompositeOperation = gco;
   }
-  K.warpY('body', 'top', tx, ty, lean, sx, sy, 16, off, 1, 'base', 0);
+  K.warpY('body', 'top', tx, ty, lean, sx, sy, K.nStrips(12), off, 1, 'base', 0);
   // reaching arm from the sleeve: sways idle, reaches for the player when close
   K.pivotPos('body', 'top', 'arm', tx, ty, lean, sx, sy, _q);
   const arm = K.part('arm');

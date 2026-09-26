@@ -1,13 +1,14 @@
 // 클라우드 저장: 슬롯 1~3 과 전역 메타. rev(정수)로 낙관적 동시성 제어를 한다.
 //  - 저장값: {rev, savedAt, data}  (삭제된 슬롯은 {rev, savedAt, deleted:true} 묘비 — rev 가 되돌아가지 않게)
 //  - Blobs 메타데이터: {rev, savedAt, summary?, deleted?}  (목록은 본문을 받지 않고 메타데이터만 읽는다)
-import { BODY_LIMIT, CAS_RETRIES, SLOTS, STORES } from './config.mts';
+import { BODY_LIMIT, CAS_RETRIES, DATA_MAX_DEPTH, SLOTS, STORES } from './config.mts';
 import { fail, ok, readJson } from './http.mts';
 import type { Extra } from './http.mts';
-import { authenticate } from './accounts.mts';
+import { accountAlive, authenticate, unauthorized } from './accounts.mts';
+import type { Auth } from './accounts.mts';
 import { now } from './runtime.mts';
 import type { Ctx, KV } from './runtime.mts';
-import { isValidMeta, isValidSave, readBaseRev, readForce, saveSummary } from './validate.mts';
+import { isValidMeta, isValidSave, readBaseRev, readForce, safeTree, saveSummary } from './validate.mts';
 
 const slotKey = (uid: string, slot: number): string => `${uid}/slot${slot}`;
 const metaKey = (uid: string): string => `${uid}/meta`;
@@ -59,6 +60,16 @@ async function putDoc(
   fail('conflict', 409, { server: await conflictInfo(last!) });
 }
 
+/**
+ * 쓰기 뒤 계정이 아직 있는지 확인: 인증을 통과한 뒤 쓰기 전에 탈퇴가 끝났다면 방금 쓴 것을 지우고 401.
+ * (탈퇴 쪽은 사용자 레코드를 지운 뒤 한 번 더 쓸므로, 두 순서 모두에서 탈퇴한 계정의 데이터가 남지 않는다)
+ */
+async function ensureAlive(c: Ctx, a: Auth, st: KV, key: string): Promise<void> {
+  if (await accountAlive(c, a.id, a.uid)) return;
+  await st.delete(key);
+  unauthorized();
+}
+
 // ── 슬롯 ──
 
 export async function listSaves(c: Ctx): Promise<Response> {
@@ -90,10 +101,13 @@ export async function putSlot(c: Ctx, slot: number): Promise<Response> {
   const body = await readJson(c.req, BODY_LIMIT.save);
   const baseRev = readBaseRev(body.baseRev);
   const force = readForce(body.force);
-  if (!isValidSave(body.data)) fail('invalid_save', 422);
+  if (!safeTree(body.data, DATA_MAX_DEPTH) || !isValidSave(body.data)) fail('invalid_save', 422);
   const summary = saveSummary(body.data);
-  const r = await putDoc(c.store(STORES.saves), slotKey(a.uid, slot), { data: body.data }, baseRev, force, { summary },
+  const st = c.store(STORES.saves);
+  const key = slotKey(a.uid, slot);
+  const r = await putDoc(st, key, { data: body.data }, baseRev, force, { summary },
     async (s) => ({ rev: s.rev, savedAt: s.savedAt, empty: s.empty, summary: s.summary }));
+  await ensureAlive(c, a, st, key);
   return ok({ slot, rev: r.rev, savedAt: r.savedAt });
 }
 
@@ -107,7 +121,7 @@ export async function deleteSlot(c: Ctx, slot: number): Promise<Response> {
     const rev = cur.rev + 1;
     const savedAt = now();
     const res = await st.setJSON(key, { rev, savedAt, deleted: true }, { metadata: { rev, savedAt, deleted: true }, ...(cur.etag ? { onlyIfMatch: cur.etag } : {}) });
-    if (res.modified) return ok({ slot, rev });
+    if (res.modified) { await ensureAlive(c, a, st, key); return ok({ slot, rev }); }
   }
   throw new Error('slot delete contention');
 }
@@ -126,7 +140,7 @@ export async function putMeta(c: Ctx): Promise<Response> {
   const body = await readJson(c.req, BODY_LIMIT.meta);
   const baseRev = readBaseRev(body.baseRev);
   const force = readForce(body.force);
-  if (!isValidMeta(body.data)) fail('invalid_meta', 422);
+  if (!safeTree(body.data, DATA_MAX_DEPTH) || !isValidMeta(body.data)) fail('invalid_meta', 422);
   const st = c.store(STORES.saves);
   const key = metaKey(a.uid);
   const r = await putDoc(st, key, { data: body.data }, baseRev, force, {}, async () => {
@@ -135,5 +149,6 @@ export async function putMeta(c: Ctx): Promise<Response> {
     const s = stateOf(g);
     return { rev: s.rev, savedAt: s.savedAt, data: s.empty ? null : (g?.data?.data ?? null) };
   });
+  await ensureAlive(c, a, st, key);
   return ok({ rev: r.rev, savedAt: r.savedAt });
 }

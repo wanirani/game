@@ -87,7 +87,7 @@ function drawAll(e) {
     if (p.cape) {
       // cloth: horizontal strips, each pushed back (−x) more the lower it hangs; walk flutter + idle sway
       const sway = walk ? 1 : 0.35;
-      K.strips(p.name, p.pv, p.x, p.y, p.rot, p.sx, p.sy, 10, 'y', (u) => {
+      K.strips(p.name, p.pv, p.x, p.y, p.rot, p.sx, p.sy, K.nStrips(8), 'y', (u) => {
         _q[0] = -(u * u) * (walk ? 26 : 8) - Math.sin(t * (walk ? 9 : 2.2) - u * 3) * u * 7 * sway; _q[1] = 0; return _q;
       }, 1, p.vn);
     } else K.put(p.name, p.pv, p.x, p.y, p.rot, p.sx, p.sy, 1, p.vn);

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """턴어라운드 시트(5뷰 + 3/4 뒷모습 2뷰) → 인벤토리 회전용 8방향 스프라이트 시트
   python3 tools/puppet/build_turn.py tools/puppet/rigs/kael/kael_hunter.json
-리그 테이블 turn = {sheet5, views5:[라벨 5개], qback, viewsQ:[라벨 2개], fixups:[...]}
+리그 테이블 turn = {sheet5, views5:[라벨 5개], qback, viewsQ:[라벨 2개], extra:[{sheet, views}], fixups:[...]}
 라벨 = 그 그림이 보여 주는 yaw (0=오른쪽 옆모습, 90=정면, 180=왼쪽 옆모습, -90=뒷모습):
   y0 y45 y90 y135 y180 ym45 ym90 ym135, '-' = 버림. 시트의 인물은 왼쪽→오른쪽 순서로 라벨과 짝지어진다.
 없는 방향은 좌우 반전으로 채운다 (yaw θ 의 거울상 = 180-θ).
@@ -117,6 +117,8 @@ def build_turn(rig_path, quiet=False):
         views.update(cut_views(T['sheet5'], T['views5'], 'turn5'))
     if T.get('qback'):
         views.update(cut_views(T['qback'], T['viewsQ'], 'qback'))
+    for ex in T.get('extra', []):   # 추가 시트 (재생성한 한 장짜리 뒷모습 등): {sheet, views:[...]}
+        views.update(cut_views(ex['sheet'], ex['views'], 'extra'))
     for fx in T.get('fixups', []):
         if fx['view'] in views:
             views[fx['view']] = apply_fixups(views[fx['view']], [fx])
