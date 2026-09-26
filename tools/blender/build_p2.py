@@ -598,6 +598,427 @@ def sword_7():
     face_camera()
 
 
+def void_bead(p, t, r, h, mat, sides=6, name="bead"):
+    """Elongated faceted bead centred at p, long axis along tangent t."""
+    q = Vector(t).normalized().to_track_quat("Z", "Y")
+    return E.lathe([(0, -h / 2), (r, -h * 0.12), (r, h * 0.12), (0, h / 2)], mat, seg=sides,
+                   loc=p, rot=q.to_euler(), smooth=False, name=name)
+
+
+@equip("whip_7")
+def whip_7():
+    """Starlight lash: faceted void-crystal vertebrae threaded on a cord of
+    iridescent rift light, void-metal handle with a glowing seam, star-gold
+    fittings, a star crystal at the pommel and another as the cracker."""
+    void = EM_void("voidmetal")
+    gold = EM_stargold()
+    handle_m = EM_void("rift_handle", rift=dict(along="Z", across="X", amp=0.012, freq=5.0,
+                                                width=0.009, halo=0.022, strength=11.0,
+                                                halo_str=0.6, span=(0.04, 0.46),
+                                                depth=("Y", 0.004)))
+    bead_m = EM_void("lash_void", film=(260.0, 420.0))
+    with E.group((0, 0, 0), (0, rad(-8), 0)):
+        top = E.whip_handle(handle_m, void, ferrule_mat=gold, knot_mat=void, length=0.5, r=0.038)
+        for z in (0.05, 0.27):
+            E.torus(0.041, 0.009, gold, loc=(0, 0, z), seg=24, rseg=6, name="band")
+        star_mesh_E(0.075, 0.026, 0.03, n=4, mat=EM_stargem(), loc=(0, -0.01, -0.13))
+    path = E.coil_path((top.x + 0.07, 0, top.z + 0.02), turns=2.0, center=(0.42, 0, 0.86))
+    path = E.lash_with_tail(path, drop=(0.2, -0.5))
+    E.sweep(path, lambda s: 0.011 * (1 - 0.6 * s) + 0.003, EM_riftglow("lash_core", 7.0),
+            segs=8, name="lash_core")
+    pts = E.resample(path, 0.056)
+    n = len(pts)
+    for i in range(n - 1):
+        a, b = pts[i], pts[i + 1]
+        sc = 1 - 0.62 * i / n
+        void_bead((a + b) / 2, b - a, 0.03 * sc, 0.044, bead_m, sides=6)
+    tip = path[-1]
+    star_mesh_E(0.07, 0.024, 0.03, n=4, mat=EM_stargem(), loc=tip + Vector((0, -0.01, -0.02)))
+    glint_E(tip + Vector((0.02, -0.05, -0.02)), 0.08)
+    glint_E(Vector((0.62, -0.05, 1.12)), 0.04)
+    E.view(diag=0, glow=1.0)
+    face_camera()
+
+
+@equip("greatsword_7")
+def greatsword_7():
+    """Riven greatsword: a broad void-metal blade torn lengthwise by the rift,
+    iridescent light pouring through the gap, star-gold winged guard."""
+    half_m = EM_void("riven_void", rift=dict(along="Z", across="Y", center=0.0, amp=0.004,
+                                             freq=3.0, width=0.004, halo=0.012, strength=0.0,
+                                             halo_str=0.0), film=(240.0, 400.0))
+    edge_m = E.pbr("rift_edge", (0.62, 0.66, 0.78), metal=1.0, rough=0.12)
+    thin_film(edge_m, 300.0, 1.35, vary=(250.0, 380.0))
+    gold = EM_stargold()
+    void = EM_void("voidmetal")
+    L = 1.3
+
+    def W(t):
+        w = 0.17 * (1 + 0.08 * t)
+        if t > 0.74:
+            w *= max(0.0, (1 - t) / 0.26) ** 0.75
+        return w
+
+    def g(t):
+        if t < 0.05:
+            return 0.02 + 0.02 * t / 0.05
+        if t > 0.6:
+            return 0.04 * max(0.0, 1 - (t - 0.6) / 0.22) ** 1.3
+        return 0.04
+
+    for side in (-1, 1):
+        def fn(t, side=side):
+            ww, gg = W(t), g(t)
+            return max((ww - gg) / 2, 0.002), side * (ww + gg) / 2, 0.028 * (1 - 0.4 * t), 0.0
+        E.blade(L, fn, half_m, edge_m, cross="hex", n=64, name="half")
+    # rift light in the gap
+    ts = [i / 40 * 0.84 for i in range(41)]
+    out = [(g(t) * 0.9 + 0.004, t * L) for t in ts] + \
+        [(-(g(t) * 0.9 + 0.004), t * L) for t in reversed(ts)]
+    E.extrude(out, 0.03, EM_riftglow("gap_light", 9.0), name="gap_light")
+    # guard: void bar with star-gold swept wings
+    E.box((0.46, 0.08, 0.075), void, loc=(0, 0, -0.035), bev=0.02, name="guard")
+    for sx in (-1, 1):
+        wingp = [(0.0, 0.0), (0.1, 0.02), (0.2, 0.07), (0.28, 0.16), (0.3, 0.26), (0.24, 0.16),
+                 (0.16, 0.1), (0.2, 0.18), (0.14, 0.12), (0.06, 0.05)]
+        E.extrude([(sx * (0.2 + x), z - 0.06) for x, z in wingp], 0.05, gold, bev=0.008,
+                  name="wing")
+    star_gem(0.07, (0, -0.05, -0.035), n=4)
+    E.grip(-0.46, -0.075, 0.03, E.pbr("wrap_night", (0.05, 0.04, 0.09), rough=0.4, coat=0.4),
+           wraps=12, name="grip")
+    E.torus(0.036, 0.01, gold, loc=(0, 0, -0.08), seg=24, rseg=6, name="collar")
+    pz = E.pommel("pear", -0.46, 0.042, void, 0.03)
+    star_mesh_E(0.045, 0.016, 0.022, n=4, mat=EM_stargem(), loc=(0, 0, pz - 0.02))
+    for (x, z, r, h, a) in ((0.0, 1.16, 0.026, 0.08, 10), (0.08, 1.24, 0.02, 0.06, 40),
+                            (-0.06, 1.3, 0.016, 0.05, -30)):
+        shard_E((x, 0.0, z), r, h, rot=(rad(15), rad(a), 0))
+    glint_E((0.0, -0.06, 1.35), 0.06)
+    glint_E((0.18, -0.06, 0.02), 0.035)
+    E.view(diag=45, yaw=-22, glow=1.0)
+    face_camera()
+
+
+@equip("dagger_7")
+def dagger_7():
+    """Crescent fang: curved void-metal blade with a glowing rift crack,
+    crescent-moon guard, star-gold collar and a star gem pommel."""
+    CURVE = 0.14
+    L = 0.64
+    blade_m = EM_void("fang_blade", rift=dict(along="Z", across="X", center=0.0, amp=0.03,
+                                              freq=4.0, width=0.016, halo=0.04, strength=12.0,
+                                              halo_str=0.8, span=(0.02, 0.62),
+                                              taper=(0.0, 0.66), bend=CURVE / (L * L)))
+    edge_m = E.pbr("rift_edge", (0.62, 0.66, 0.78), metal=1.0, rough=0.12)
+    thin_film(edge_m, 300.0, 1.35, vary=(250.0, 380.0))
+    gold = EM_stargold()
+    void = EM_void("voidmetal")
+
+    def fn(t):
+        w = 0.07 * (1 + 0.25 * math.sin(t * math.pi * 0.8))
+        if t > 0.7:
+            w *= ((1 - t) / 0.3) ** 0.9
+        return w, CURVE * t * t, 0.02 * (1 - 0.5 * t), 0.0
+    E.blade(L, fn, blade_m, edge_m, cross="hex", n=56)
+    moon = E.shape_crescent(0.17, 0.15, 0.075)
+    # crescent opening upward (toward the blade)
+    E.extrude([(-z, x - 0.02) for x, z in moon], 0.05, void, bev=0.008, name="moon_guard",
+              loc=(0, 0, -0.05))
+    E.extrude([(-z * 0.8, (x - 0.02) * 0.8) for x, z in moon], 0.062, gold, bev=0.005,
+              name="moon_inlay", loc=(0, 0, -0.05))
+    E.torus(0.03, 0.009, gold, loc=(0, 0, -0.07), seg=24, rseg=6, name="collar")
+    E.handle_oval(-0.3, -0.07, 0.026, E.pbr("wrap_night", (0.05, 0.04, 0.09), rough=0.4, coat=0.4),
+                  name="handle")
+    E.torus(0.028, 0.008, gold, loc=(0, 0, -0.3), seg=24, rseg=6, name="collar2")
+    star_gem(0.05, (0, 0.0, -0.36), n=4)
+    for (x, z, r, h, a) in ((0.2, 0.52, 0.02, 0.06, 40), (0.07, 0.72, 0.016, 0.05, -20)):
+        shard_E((x, 0.0, z), r, h, rot=(rad(15), rad(a), 0))
+    glint_E((0.14, -0.05, 0.66), 0.06)
+    E.view(diag=45, yaw=-18, glow=1.0)
+    face_camera()
+
+
+@equip("gun_7")
+def gun_7():
+    """Astral carbine: long octagonal void-metal barrel with a rift seam,
+    star-gold bands and muzzle crown, crystal chamber with a star gem, a ring
+    of rift light at the muzzle."""
+    gold = EM_stargold()
+    void = EM_void("voidmetal")
+    barrel_m = EM_void("barrel_void", rift=dict(along="Z", across="X", center=0.0, amp=0.012,
+                                                freq=5.0, width=0.008, halo=0.02, strength=11.0,
+                                                halo_str=0.6, span=(0.02, 0.6),
+                                                depth=("Y", 0.0)))
+    z = 0.04
+    x0, x1 = 0.12, 0.8
+    E.barrel_x(x0, x1, z, 0.036, barrel_m, sides=8, r_end=0.03, name="barrel")
+    E.barrel_x(x0, x0 + 0.44, z - 0.058, 0.014, void, bore=False, name="rail")
+    for x in (0.2, 0.46, 0.72):
+        E.torus(0.04, 0.01, gold, loc=(x, 0, z), rot=(0, rad(90), 0), seg=32, rseg=6, name="band")
+    # muzzle crown: four star-gold prongs
+    for k in range(4):
+        a = TAU * (k + 0.5) / 4
+        d = Vector((0, math.cos(a), math.sin(a)))
+        p0 = Vector((x1 - 0.02, 0, z)) + d * 0.03
+        E.sweep(E.bezier(p0, p0 + Vector((0.04, 0, 0)) + d * 0.02, p0 + Vector((0.08, 0, 0)) + d * 0.03,
+                         p0 + Vector((0.11, 0, 0)) + d * 0.012, 12),
+                lambda s: 0.01 * (1 - 0.7 * s), gold, segs=8, name="prong")
+    E.torus(0.06, 0.007, EM_riftglow("muzzle_ring", 8.0), loc=(x1 + 0.12, 0, z),
+            rot=(0, rad(90), 0), seg=48, rseg=6, name="muzzle_ring")
+    # frame + chamber
+    frame = [(-0.12, 0.09), (0.14, 0.09), (0.16, 0.07), (0.16, -0.03), (0.08, -0.06),
+             (-0.03, -0.07), (-0.09, -0.05), (-0.14, 0.03)]
+    E.extrude(frame, 0.05, void, bev=0.01, name="frame")
+    E.extrude([(x * 0.9 + 0.005, zz * 0.8 + 0.005) for x, zz in frame], 0.058, gold, bev=0.004,
+              name="frame_trim").scale = (1.0, 1.0, 1.0)
+    E.fluted_cylinder(-0.01, 0.13, z - 0.006, 0.06, EM_riftshard("chamber_crys"))
+    star_gem(0.045, (0.06, -0.07, z - 0.006), n=4)
+    ham = [(-0.08, 0.075), (-0.11, 0.12), (-0.15, 0.135), (-0.16, 0.12), (-0.13, 0.1),
+           (-0.1, 0.06)]
+    E.extrude(ham, 0.022, gold, bev=0.004, name="hammer")
+    E.trigger_guard(-0.03, 0.09, -0.06, 0.075, 0.009, gold)
+    gp = E.grip_shape(-0.085, -0.035, 0.26, 0.08, angle=24, butt=1.15, curve=0.07)
+    E.extrude(gp, 0.066, E.pbr("grip_night", (0.04, 0.035, 0.07), rough=0.45, coat=0.4,
+                               bump=0.2, bump_scale=60), bev=0.016, name="grip", bev_angle=50)
+    bc = E.grip_end(-0.085, -0.035, 0.26, 24, 0.07)
+    star_mesh_E(0.05, 0.018, 0.024, n=4, mat=EM_stargem(), loc=bc + Vector((-0.01, -0.02, -0.02)))
+    glint_E((x1 + 0.12, -0.08, z + 0.06), 0.06)
+    E.view(diag=24, yaw=-30, glow=1.0)
+    face_camera()
+
+
+@equip("staff_7")
+def staff_7():
+    """Star-crescent staff: void-metal shaft with a rift seam, a star-gold
+    crescent cradling a floating eight-point star crystal inside a tilted
+    orbit of rift light, drifting shards."""
+    gold = EM_stargold()
+    void = EM_void("voidmetal")
+    shaft = EM_void("shaft_void", rift=dict(along="Z", across="X", amp=0.01, freq=4.0,
+                                            width=0.007, halo=0.018, strength=10.0, halo_str=0.5,
+                                            span=(-0.8, 0.45), depth=("Y", 0.0)))
+    E.lathe([(0, -0.86), (0.026, -0.86), (0.03, 0.5), (0, 0.52)], shaft, seg=20, name="shaft")
+    E.grip(-0.3, 0.02, 0.033, E.pbr("wrap_night", (0.05, 0.04, 0.09), rough=0.4, coat=0.4),
+           wraps=9, name="grip")
+    for zz in (-0.8, -0.31, 0.04, 0.42):
+        E.torus(0.034, 0.01, gold, loc=(0, 0, zz), seg=24, rseg=6, name="band")
+    E.lathe([(0, -0.95), (0.018, -0.92), (0.034, -0.86), (0, -0.84)], gold, seg=4, smooth=False,
+            name="butt")
+    E.lathe(E.smooth_profile([(0, 0.46), (0.04, 0.46), (0.075, 0.54), (0.06, 0.6), (0, 0.6)], 3),
+            void, seg=24, name="head_base")
+    moon = E.shape_crescent(0.3, 0.26, 0.12)
+    pts = [(-zz, x + 0.02) for x, zz in moon]
+    E.extrude([(x, zz + 0.84) for x, zz in pts], 0.06, gold, bev=0.01, name="crescent")
+    E.extrude([(x * 0.9, zz * 0.9 + 0.84) for x, zz in pts], 0.075, void, bev=0.006,
+              name="crescent_core")
+    SZ = 0.9
+    star_mesh_E(0.16, 0.05, 0.08, n=4, mat=EM_stargem(), loc=(0, -0.02, SZ))
+    star_mesh_E(0.1, 0.04, 0.05, n=4, mat=EM_stargem(), loc=(0, -0.01, SZ), rot0=math.pi / 4 + math.pi / 2)
+    E.torus(0.22, 0.007, EM_riftglow("orbit", 8.0), loc=(0, 0, SZ), rot=(rad(70), rad(-20), 0),
+            seg=64, rseg=6, name="orbit")
+    for (x, zz, r, h, a) in ((0.26, 1.08, 0.024, 0.07, 30), (-0.25, 1.12, 0.02, 0.06, -35),
+                             (0.3, 0.8, 0.016, 0.05, 60)):
+        shard_E((x, 0.0, zz), r, h, rot=(rad(15), rad(a), 0))
+    glint_E((0.08, -0.12, SZ + 0.1), 0.09)
+    glint_E((-0.2, -0.1, 0.72), 0.04)
+    E.view(diag=40, yaw=-20, glow=1.0)
+    face_camera()
+
+
+@equip("head_7")
+def head_7():
+    """Rift crown-helm: void-metal helm split by a glowing crack, T visor
+    burning with rift light, a crown of crystal spikes on a star-gold band,
+    star gem on the brow, swept star-gold fins and a halo behind."""
+    helm_m = EM_void("helm_void", rift=dict(along="Z", across="X", center=0.1, amp=0.06,
+                                            freq=3.0, width=0.014, halo=0.04, strength=11.0,
+                                            halo_str=0.7, span=(0.08, 0.92), depth=("Y", -0.05),
+                                            branches=4.0))
+    gold = EM_stargold()
+    void = EM_void("voidmetal")
+    inner = E.pbr("helm_void_in", (0.0, 0.0, 0.0), rough=1.0, spec=0.0)
+    helm = E.lathe(E.smooth_profile([(0.0, 0.0), (0.3, 0.0), (0.33, 0.15), (0.32, 0.45),
+                                     (0.28, 0.64), (0.16, 0.8), (0.0, 0.88)], 5), helm_m, seg=64,
+                   sy=1.08, xsec=E.ridge_xsec(0.16, 0.3), name="helm")
+    # T visor
+    c1 = E.box((0.36, 0.4, 0.05), void, loc=(0, -0.3, 0.46), name="visor_cut")
+    c2 = E.box((0.06, 0.4, 0.26), void, loc=(0, -0.3, 0.33), name="visor_cut2")
+    E.boolean(helm, c1)
+    E.boolean(helm, c2)
+    E.lathe([(0.0, 0.02), (0.27, 0.02), (0.28, 0.7), (0.0, 0.7)], inner, seg=32, name="void")
+    E.box((0.3, 0.02, 0.035), EM_riftglow("visor_glow", 9.0), loc=(0, -0.24, 0.46), name="visor_l")
+    E.box((0.035, 0.02, 0.2), EM_riftglow("visor_glow", 9.0), loc=(0, -0.26, 0.34), name="visor_v")
+    # star-gold crown band + crystal spikes
+    E.torus(0.325, 0.022, gold, loc=(0, 0, 0.56), sy=1.08, seg=72, rseg=8, name="crown_band")
+    spike_m = EM_riftshard("crown_crys")
+    for k in range(7):
+        a = -math.pi / 2 + (k - 3) * 0.42
+        p = Vector((0.33 * math.cos(a), 0.33 * 1.08 * math.sin(a), 0.56))
+        h = 0.34 - 0.07 * abs(k - 3)
+        d = Vector((math.cos(a) * 0.25, math.sin(a) * 0.25, 1.0)).normalized()
+        q = d.to_track_quat("Z", "Y")
+        E.lathe([(0, 0), (0.035, 0.03), (0.03, h * 0.7), (0, h)], spike_m if k != 3 else gold,
+                seg=4, loc=p, rot=q.to_euler(), smooth=False, name="crown_spike")
+    star_gem(0.065, (0, -0.37, 0.58), rot=(rad(-8), 0, 0), n=4)
+    # swept fins
+    fin = [(0.0, 0.0), (0.1, 0.03), (0.24, 0.1), (0.36, 0.22), (0.3, 0.19), (0.34, 0.26),
+           (0.22, 0.17), (0.25, 0.23), (0.12, 0.12), (0.02, 0.07)]
+    for sx in (-1, 1):
+        E.extrude([(sx * x, zz) for x, zz in fin], 0.025, gold, bev=0.006,
+                  loc=(sx * 0.3, 0.05, 0.36), rot=(0, 0, sx * rad(-35)), name="fin")
+    E.torus(0.46, 0.012, EM_riftglow("halo", 7.0), loc=(0, 0.28, 0.62), rot=(rad(90), 0, 0),
+            seg=72, rseg=8, name="halo")
+    E.torus(0.3, 0.02, void, loc=(0, 0, 0.02), sy=1.08, seg=64, rseg=8, name="rim")
+    E.torus(0.31, 0.009, gold, loc=(0, 0, 0.045), sy=1.08, seg=64, rseg=6, name="rim_trim")
+    glint_E((0.3, -0.4, 0.95), 0.06)
+    E.view(yaw=22, pitch=6, glow=1.0)
+    face_camera()
+
+
+@equip("body_7")
+def body_7():
+    """Rift plate: void-metal cuirass torn by a glowing crack, star-gold
+    trims, crystal-spiked pauldrons and a star gem at the heart."""
+    xs = E.ridge_xsec(0.14, 0.35)
+    plate = EM_void("plate_void", rift=dict(along="Z", across="X", center=0.03, amp=0.14,
+                                            freq=2.2, width=0.016, halo=0.045, strength=11.0,
+                                            halo_str=0.7, span=(0.42, 0.95), depth=("Y", -0.05),
+                                            branches=3.0))
+    void = EM_void("voidmetal")
+    gold = EM_stargold()
+    E.torso_shell(plate, 0.42, 0.93, xsec=xs, name="breastplate", thick=0.025)
+    E.band_at(0.425, gold, r=0.013, xsec=xs, off=0.012, name="trim")
+    for k in range(3):
+        z1 = 0.42 - k * 0.085
+        z0 = z1 - 0.1
+        prof = [(E.torso_r(z0) * (1.06 + 0.02 * k), z0), (E.torso_r(z1) * (1.02 + 0.02 * k), z1)]
+        ob = E.lathe(prof, void, seg=64, sx=E.TSX, sy=E.TSY, cap=False, xsec=xs, name="lame")
+        E.solidify(ob, 0.018)
+        pts = [Vector((prof[0][0] * math.cos(TAU * i / 64) * xs(TAU * i / 64, 0) * E.TSX,
+                       prof[0][0] * math.sin(TAU * i / 64) * xs(TAU * i / 64, 0) * E.TSY, z0))
+               for i in range(65)]
+        E.sweep(pts, 0.009, gold, segs=6, caps=False, name="lame_trim")
+    for side in (-1, 1):
+        a = -math.pi / 2 + side * 0.5
+        p = E.torso_pt(a, 0.12, off=0.04, scale=1.12)
+        E.extrude([(-0.09, 0.0), (0.09, 0.0), (0.06, -0.18), (0.0, -0.26), (-0.06, -0.18)], 0.02,
+                  void, loc=(p.x, p.y, 0.12), rot=(0, 0, side * 0.25), bev=0.008, name="tasset")
+    E.torus(0.19, 0.04, void, loc=(0, 0, 0.95), sx=1.0, sy=0.72, name="gorget")
+    E.torus(0.2, 0.012, gold, loc=(0, 0, 0.98), sx=1.0, sy=0.74, name="gorget_trim")
+    spike_m = EM_riftshard("pauldron_crys")
+    for side in (-1, 1):
+        E.pauldron(void, side, (side * 0.38, 0.0, 0.84), 0.23, 3, trim=gold)
+        for k, (dx, h, tilt) in enumerate(((0.0, 0.3, 20), (0.08, 0.22, 40), (-0.07, 0.18, 5))):
+            p = Vector((side * (0.4 + dx), -0.02 * k, 0.94))
+            d = Vector((side * math.sin(rad(tilt)), 0.0, math.cos(rad(tilt))))
+            q = d.to_track_quat("Z", "Y")
+            E.lathe([(0, 0), (0.04, 0.03), (0.035, h * 0.7), (0, h)], spike_m, seg=4, loc=p,
+                    rot=q.to_euler(), smooth=False, name="p_spike")
+    p = E.torso_pt(-math.pi / 2, 0.68, off=0.03, xsec=xs)
+    star_gem(0.085, p + Vector((0, -0.01, 0)), n=4)
+    glint_E(p + Vector((0.12, -0.08, 0.1)), 0.06)
+    E.view(yaw=0, pitch=8, glow=1.0)
+    face_camera()
+
+
+@equip("cloak_7")
+def cloak_7():
+    """Night-sky mantle: iridescent void outside, a lining that is a starry
+    night full of nebula light, star-gold trims, star clasps; the hem frays
+    into drifting shards."""
+    if "nightsky" not in E.G.mats:
+        sky = E.pbr("nightsky", (0.02, 0.02, 0.06), rough=0.55, sheen=0.4)
+        nt = sky.node_tree
+        I = _bsdf(sky).inputs
+        tc = nt.nodes.new("ShaderNodeTexCoord")
+        nz = _n(nt, "ShaderNodeTexNoise", Scale=2.2, Detail=6.0, Roughness=0.6, Distortion=0.8)
+        nt.links.new(tc.outputs["Object"], nz.inputs["Vector"])
+        neb = _ramp(nt, nz.outputs["Fac"], [(0.3, (0.008, 0.01, 0.035)), (0.5, (0.03, 0.02, 0.1)),
+                                             (0.62, (0.12, 0.03, 0.2)), (0.72, (0.02, 0.1, 0.18))])
+        nt.links.new(neb, I["Base Color"])
+        add_starfield(sky, density=34.0, size=0.14, strength=7.0)
+        nebE = _m(nt, "MULTIPLY", _m(nt, "POWER", nz.outputs["Fac"], 4.0), 0.0)
+        sky["glow"] = list(STAR_WHITE)
+        sky["glow_str"] = 0.5
+        sky["glow_norm"] = 1.0 / 7.0
+        del nebE
+    sky = E.G.mats["nightsky"]
+    outer = EM_void("cloak_void", color=(0.03, 0.028, 0.06), rough=0.45, film=(250.0, 420.0),
+                    metal=0.2)
+    gold = EM_stargold()
+
+    def hem(u):
+        return 0.07 * abs(math.sin(u * 3.5 * math.pi)) ** 1.5 + 0.02 * math.sin(u * 13)
+    c = E.Cape(folds=7, fold_amp=0.06, hem=hem, wrap_bot=120, r_bot=0.6)
+    c.build(outer, sky)
+    for which in ("left", "right", "hem"):
+        E.sweep(c.edge_path(which, off=0.0), 0.014, gold, segs=6, name="trim")
+    E.collar_stand(outer, sky, r0=0.17, r1=0.3, h=0.3, wrap=125, flare=0.14)
+    pL, pR = E.clasp_pair(c, gold, chain_mat=gold, r=0.05)
+    for pp in (pL, pR):
+        star_mesh_E(0.06, 0.022, 0.03, n=4, mat=EM_stargem(), loc=pp + Vector((0, -0.03, 0)))
+    for (u, dz, r, h, a) in ((-0.5, 0.12, 0.03, 0.09, 20), (0.1, 0.16, 0.024, 0.07, -30),
+                             (0.6, 0.1, 0.02, 0.06, 45), (-0.15, 0.24, 0.016, 0.05, 10)):
+        p = c.P(u, 1.0, 0.02)
+        shard_E((p.x, p.y - 0.05, p.z - dz), r, h, rot=(rad(15), rad(a), 0))
+    glint_E(pR + Vector((0.08, -0.08, 0.08)), 0.06)
+    E.view(yaw=18, pitch=6, glow=1.0)
+    face_camera()
+
+
+@equip("ring_7")
+def ring_7():
+    """Rift ring: void-metal band with a glowing crack running around it,
+    star-gold claws holding a large star gem, orbiting shards."""
+    band = EM_void("ring_void", rift=dict(polar=("X", "Z", 0.39), amp=0.012, freq=6.0,
+                                          width=0.01, halo=0.022, strength=11.0, halo_str=0.6,
+                                          depth=("Y", -0.02)))
+    gold = EM_stargold()
+    E.ring_band(band, w=0.11, t=0.065, top_swell=0.9)
+    E.lathe([(0, 0.36), (0.12, 0.37), (0.15, 0.43), (0, 0.43)], gold, seg=8, smooth=False,
+            name="cup")
+    for k in range(4):
+        a = TAU * (k + 0.5) / 4
+        d = Vector((math.cos(a), math.sin(a), 0))
+        p0 = Vector((0, 0, 0.42)) + d * 0.1
+        E.sweep(E.bezier(p0, p0 + d * 0.14 + Vector((0, 0, 0.05)), p0 + d * 0.15 + Vector((0, 0, 0.2)),
+                         p0 + d * 0.04 + Vector((0, 0, 0.3)), 16), lambda s: 0.022 * (1 - 0.8 * s),
+                gold, segs=8, name="claw")
+    star_mesh_E(0.22, 0.075, 0.1, n=4, mat=EM_stargem(), loc=(0, -0.02, 0.62), back=0.06)
+    star_mesh_E(0.13, 0.05, 0.06, n=4, mat=EM_stargem(), loc=(0, -0.01, 0.62),
+                rot0=math.pi / 2 + math.pi / 4)
+    E.torus(0.52, 0.006, EM_riftglow("orbit", 7.0), loc=(0, 0, 0.02), rot=(rad(75), rad(15), 0),
+            seg=72, rseg=6, name="orbit")
+    for (x, z, r, h, a) in ((0.5, 0.2, 0.03, 0.09, 30), (-0.52, -0.1, 0.026, 0.08, -40)):
+        shard_E((x, -0.05, z), r, h, rot=(rad(20), rad(a), 0))
+    glint_E((0.18, -0.12, 0.8), 0.08)
+    E.view(yaw=24, pitch=14, glow=1.0)
+    face_camera()
+
+
+@equip("amulet_7")
+def amulet_7():
+    """Star reliquary: star-gold compass star behind a void-metal medallion
+    split by a glowing crack, a large star gem at its heart, a thin orbit of
+    rift light, star-gold chain."""
+    gold = EM_stargold()
+    med = EM_void("medallion_void", rift=dict(along="Z", across="X", center=0.0, amp=0.06,
+                                              freq=3.5, width=0.012, halo=0.035, strength=11.0,
+                                              halo_str=0.7, depth=("Y", -0.02), branches=5.0))
+    E.necklace("chain", gold, bail_z=0.32)
+    E.extrude(E.shape_star(8, 0.36, 0.13, rot=math.pi / 2), 0.03, gold, bev=0.006, name="compass",
+              loc=(0, 0.02, 0))
+    E.lathe([(0, -0.03), (0.2, -0.03), (0.215, 0.0), (0.2, 0.03), (0, 0.03)], med, seg=64,
+            rot=(rad(90), 0, 0), name="medallion")
+    E.torus(0.21, 0.018, gold, rot=(rad(90), 0, 0), seg=64, rseg=8, name="frame")
+    star_mesh_E(0.13, 0.045, 0.07, n=4, mat=EM_stargem(), loc=(0, -0.035, 0))
+    E.torus(0.3, 0.006, EM_riftglow("orbit", 7.0), rot=(rad(90 - 18), rad(20), 0), seg=72, rseg=6,
+            name="orbit")
+    E.torus(0.028, 0.009, gold, loc=(0, 0, 0.33), rot=(0, rad(90), 0), seg=16, rseg=6, name="bail")
+    glint_E((0.2, -0.08, 0.16), 0.06)
+    E.view(pitch=4, glow=1.0)
+    face_camera()
+
+
 # ==== END OF BUILDERS ====
 
 
