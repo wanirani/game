@@ -98,9 +98,9 @@
  "lia": {
   "group": "portrait",
   "aspect_ratio": "2:3",
-  "generationId": "AfmoeuLRMBsEWdgCwapnUkgqhyOWxF3wU5ZGrcYkiiz-rldCYHfmXAQJvsXyfwOJo-qFsTe3",
+  "generationId": "Ade0wR4MdaG8Fumvxl9s71XfboQnTltcVUvXL5pdQinz7q1OPwBIEUelaLsFfJt2b13uoiBH",
   "model": "kling-image-v3_0_omni",
-  "prompt": "Lia Crow, an agile young female assassin, short black hair, a long crimson scarf flowing, dark ninja-style leather outfit with light armor plates, twin curved daggers, lower face mask, crouching ready pose. Dark gothic fantasy character art, full body heroic standing pose, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with red moonlight glow, game character select art, no text, no letters, no watermark.",
+  "prompt": "A single character only: Lia Crow, one agile young female assassin, short black hair, a long crimson scarf flowing in the wind, dark ninja-style leather outfit with light armor plates, twin curved daggers, lower face mask, dynamic crouching ready pose, full body, solo, only one person. Dark gothic fantasy character art, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with red moonlight glow, game character select art, no text, no letters, no watermark.",
   "file": "assets/portraits/lia.webp"
  },
  "azel": {
@@ -478,5 +478,117 @@
   "model": "kling-image-v3_0_omni",
   "prompt": "The Chaos Lord, a cosmic eldritch entity of swirling darkness, many glowing eyes, a fractured crown, tendrils of void and violet fire. Dark gothic horror boss monster concept art, menacing, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, no text, no watermark.",
   "file": "assets/portraits/b_chaos.webp"
+ },
+ "cg_prologue_moon": {
+  "group": "cg",
+  "prompt": "A huge blood-red moon rising over a small medieval Eastern European mountain village at night while a colossal gothic demon castle emerges from rolling mist on a distant cliff, villagers looking up in fear. Cinematic dark gothic fantasy illustration, painterly digital art, highly detailed, dramatic lighting, rich atmosphere, visual novel event CG, no text, no letters, no watermark.",
+  "model": "kling-image-v3_0_omni",
+  "aspect_ratio": "16:9",
+  "generationId": "AfI3KiTk5kpWRrnicph21sQY5MyMYNoKsyb52MhfV8gfDblwV0ntRZ1IcmU9Cb4DTA_K89Gu",
+  "file": "assets/cg/cg_prologue_moon.webp"
+ },
+ "cg_prologue_attack": {
+  "group": "cg",
+  "prompt": "A swarm of giant bats and shadowy undead monsters attacking a medieval village at night, burning houses, villagers fleeing with torches, chaos and embers. Cinematic dark gothic fantasy illustration, painterly digital art, highly detailed, dramatic lighting, rich atmosphere, visual novel event CG, no text, no letters, no watermark.",
+  "model": "kling-image-v3_0_omni",
+  "aspect_ratio": "16:9",
+  "generationId": "AQdWwlyp27spZb5RPC-Tf_Mmk_zvDFhHLrXVj9RLPedb0gxk4upZXdzJbvbhm23y4iq5BsyP",
+  "file": "assets/cg/cg_prologue_attack.webp"
+ },
+ "cg_elise_taken": {
+  "group": "cg",
+  "prompt": "A giant vampire bat carrying away a small blonde girl holding a lantern into the night sky toward a distant gothic castle under a blood moon, her lantern light trailing. Cinematic dark gothic fantasy illustration, painterly digital art, highly detailed, dramatic lighting, rich atmosphere, visual novel event CG, no text, no letters, no watermark.",
+  "model": "kling-image-v3_0_omni",
+  "aspect_ratio": "16:9",
+  "generationId": "AQ2Bbs-TE46Qpz_GUoTTfprV1NuHapxMZmYYGjItQ_9Yt6mWOiTPsM7sdzNdtVgBGgGjJDwF",
+  "file": "assets/cg/cg_elise_taken.webp"
+ },
+ "cg_alberto_church": {
+  "group": "cg",
+  "prompt": "An old white-bearded priest in a candlelit gothic church handing an ornate silver cross relic to a cloaked vampire hunter seen from behind, stained glass glowing red. Cinematic dark gothic fantasy illustration, painterly digital art, highly detailed, dramatic lighting, rich atmosphere, visual novel event CG, no text, no letters, no watermark.",
+  "model": "kling-image-v3_0_omni",
+  "aspect_ratio": "16:9",
+  "generationId": "AY8SXoSus1UAaFi1xBnXf9pUe2l0sTwvlaR2cGhMOxo2gIwLopOEdL39YGXD9LU6_6wl7KbI",
+  "file": "assets/cg/cg_alberto_church.webp"
+ },
+ "cg_castle_gate": {
+  "group": "cg",
+  "prompt": "A lone hunter seen from behind approaching the massive iron gate and drawbridge of a demonic gothic castle in a thunderstorm, lightning, rain, torches on the walls. Cinematic dark gothic fantasy illustration, painterly digital art, highly detailed, dramatic lighting, rich atmosphere, visual novel event CG, no text, no letters, no watermark.",
+  "model": "kling-image-v3_0_omni",
+  "aspect_ratio": "16:9",
+  "generationId": "ASCsdbHNmIY6yjQbiCnQNeEOeZR2wW3MuRFwWNOr7r47uwmxczVQIXvCR9NCzbdkru5ldXFf",
+  "file": "assets/cg/cg_castle_gate.webp"
+ },
+ "cg_carmilla_library": {
+  "group": "cg",
+  "prompt": "A beautiful mysterious vampire noblewoman with long black hair and a black-red gown reading a book by candlelight in a vast forbidden library, looking over her shoulder with glowing crimson eyes, a wine glass on the table. Cinematic dark gothic fantasy illustration, painterly digital art, highly detailed, dramatic lighting, rich atmosphere, visual novel event CG, no text, no letters, no watermark.",
+  "model": "kling-image-v3_0_omni",
+  "aspect_ratio": "16:9",
+  "generationId": "AQafXn_0W15Xg9TZMF_Ox2FglHX5m5PGiqf90sg_z8AE8fhDoUf3VPkh_0_iLLQOWOj-nFRz",
+  "file": "assets/cg/cg_carmilla_library.webp"
+ },
+ "cg_elise_rescued": {
+  "group": "cg",
+  "prompt": "A vampire hunter kneeling to comfort a frightened little blonde girl holding a lantern in a dark gothic hall, broken chains on the floor, warm lantern light against deep shadows. Cinematic dark gothic fantasy illustration, painterly digital art, highly detailed, dramatic lighting, rich atmosphere, visual novel event CG, no text, no letters, no watermark.",
+  "model": "kling-image-v3_0_omni",
+  "aspect_ratio": "16:9",
+  "generationId": "AVSI3DIuMwGFylm6T0_OcgMVzO7OxhGYPJQ3JUP7OYjwn00411W-gtDxitp1xAV22CGz64Qn",
+  "file": "assets/cg/cg_elise_rescued.webp"
+ },
+ "cg_death_appears": {
+  "group": "cg",
+  "prompt": "The Grim Reaper, a towering skeletal figure in a tattered black hooded cloak with a gigantic scythe, looming in a blood-red corrupted cathedral, green soul fire, the hero small in the foreground. Cinematic dark gothic fantasy illustration, painterly digital art, highly detailed, dramatic lighting, rich atmosphere, visual novel event CG, no text, no letters, no watermark.",
+  "model": "kling-image-v3_0_omni",
+  "aspect_ratio": "16:9",
+  "generationId": "Af1dfIw_3P50mr8ShB2ls5YCRVTK-lXWZH7MRKd8-GZlxy5Shi2Y9wYbVX7_9cX2ezsfHGGh",
+  "file": "assets/cg/cg_death_appears.webp"
+ },
+ "cg_dracula_throne": {
+  "group": "cg",
+  "prompt": "Count Dracula seated on a colossal black and crimson throne at the top of a grand staircase under a giant blood moon window, holding a wine goblet, a hunter standing at the foot of the stairs, bats swirling. Cinematic dark gothic fantasy illustration, painterly digital art, highly detailed, dramatic lighting, rich atmosphere, visual novel event CG, no text, no letters, no watermark.",
+  "model": "kling-image-v3_0_omni",
+  "aspect_ratio": "16:9",
+  "generationId": "AUuS8yOURnE0gkkEGlxfZdKbjg3IZLpug4coL0_K557jfB8JrNunBonampid_As7xyy29Zep",
+  "file": "assets/cg/cg_dracula_throne.webp"
+ },
+ "cg_dracula_transform": {
+  "group": "cg",
+  "prompt": "Count Dracula transforming into a gigantic winged demon beast, his cape tearing into bat wings, horns erupting, hellfire and shattered stained glass exploding around him. Cinematic dark gothic fantasy illustration, painterly digital art, highly detailed, dramatic lighting, rich atmosphere, visual novel event CG, no text, no letters, no watermark.",
+  "model": "kling-image-v3_0_omni",
+  "aspect_ratio": "16:9",
+  "generationId": "AQtWneXwBITSdbqIJcyjAMfQQn39aoJhiLpuaQO2qhGVb8nwaTjCmcsJJowkEDwHCouaAhwf",
+  "file": "assets/cg/cg_dracula_transform.webp"
+ },
+ "cg_castle_collapse": {
+  "group": "cg",
+  "prompt": "A colossal gothic castle collapsing and crumbling into the abyss at dawn, golden sunrise light breaking through storm clouds, a lone hunter watching from a cliff edge, cape blowing. Cinematic dark gothic fantasy illustration, painterly digital art, highly detailed, dramatic lighting, rich atmosphere, visual novel event CG, no text, no letters, no watermark.",
+  "model": "kling-image-v3_0_omni",
+  "aspect_ratio": "16:9",
+  "generationId": "AS9aYfAFXLykckxUO4YlZVEq_VmdGBtqIiBFa0xzQ0y5arRkaxDrls0HuSmL17fEt7tyQRBP",
+  "file": "assets/cg/cg_castle_collapse.webp"
+ },
+ "cg_abyss_gate": {
+  "group": "cg",
+  "prompt": "A swirling violet-black portal opening in the sky above a ruined castle, revealing an upside-down inverted demonic castle floating in a chaotic void with giant eyes in the clouds. Cinematic dark gothic fantasy illustration, painterly digital art, highly detailed, dramatic lighting, rich atmosphere, visual novel event CG, no text, no letters, no watermark.",
+  "model": "kling-image-v3_0_omni",
+  "aspect_ratio": "16:9",
+  "generationId": "AUjMuELe3qyDieWGLLaeC_VItKs7N9EAWVlbAe914w04u4vOSlPNz0qGnkFaX4xiGzUGhSou",
+  "file": "assets/cg/cg_abyss_gate.webp"
+ },
+ "cg_true_ending": {
+  "group": "cg",
+  "prompt": "A peaceful sunrise over a restored medieval mountain village, cherry-blossom-like petals in the wind, six heroic silhouettes (a whip hunter, a nun, a gunslinger with wide hat, a huge knight, an agile assassin with a long scarf, and a silver-haired swordsman) standing on a hill looking at the dawn, hopeful and emotional. Cinematic dark gothic fantasy illustration, painterly digital art, highly detailed, dramatic lighting, rich atmosphere, visual novel event CG, no text, no letters, no watermark.",
+  "model": "kling-image-v3_0_omni",
+  "aspect_ratio": "16:9",
+  "generationId": "AXSJWESW1rnpamzTxtuHH08mBjxFpm3aowQ0F68yloD1WJjdafcJzQQdkvLgg4xtOexryaYp",
+  "file": "assets/cg/cg_true_ending.webp"
+ },
+ "cg_bad_ending": {
+  "group": "cg",
+  "prompt": "A gothic demon castle sinking back into thick mist under a fading blood moon, a lone hunter walking away in the rain, ominous feeling that the curse will return in a hundred years. Cinematic dark gothic fantasy illustration, painterly digital art, highly detailed, dramatic lighting, rich atmosphere, visual novel event CG, no text, no letters, no watermark.",
+  "model": "kling-image-v3_0_omni",
+  "aspect_ratio": "16:9",
+  "generationId": "ASSciJds7_VNohU83epAxzsvbUF31x4CbqKXkjhj8ZUAOgVncUKBBbiYFLE-9HzEl7fZH_vk",
+  "file": "assets/cg/cg_bad_ending.webp"
  }
 }
