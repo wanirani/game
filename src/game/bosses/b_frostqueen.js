@@ -68,6 +68,7 @@ export class FrostQueen extends BossB {
     this.crystals = [];              // 고드름 예고 {x, k}
   }
   setState(s) { super.setState(s); this.beamLine = null; this.windK = 0; this.firedI = -1; }
+  onReset(world) { this.vanish = 0; for (const c of this.clones) c.shatter(world); this.clones.length = 0; }
   setPose(la, le, ra, re, lean = 0) { const P = this.poseT; P.la = la; P.le = le; P.ra = ra; P.re = re; P.lean = lean; }
   tickB(dt, world) {
     const k = 1 - Math.exp(-10 * dt);
@@ -417,7 +418,9 @@ export class FrostQueen extends BossB {
     }
     audio.sfx('ice', { vol: 0.4, pitch: 1.8 });
   }
-  onHurt() {
+  onHurtFx(world, info) { world.fx.burst('ice', info?.hx ?? this.cx, info?.hy ?? this.cy, 6, { speed: 220 }); }
+  onHurt(dmg, attack, world, info) {
+    this.onHurtFx(world, info);
     // 본체가 맞으면 분신이 흔들림
     if (this.clones.length && this.state === 'mirror') for (const c of this.clones) c.life = Math.min(c.life, 0.6);
   }

@@ -27,6 +27,8 @@ export class Death extends BossB {
     for (let i = 0; i < 6; i++) this.souls.push({ a: i / 6 * TAU, r: rand(50, 80), s: rand(0.8, 1.4) });
   }
   setState(s) { super.setState(s); this.slashFx = null; this.dim = Math.max(0, this.dim); }
+  onHurt(dmg, attack, world, info) { world.fx.burst('soul', info?.hx ?? this.cx, info?.hy ?? this.cy, 5, { speed: 160 }); }
+  onReset() { this.form = 1; this.scale = 1; this.burn = 0; this.vanish = 0; this.dim = 0; this.hasScythe = true; }
   skipTransition() { this.form = this.phase >= 2 ? 2 : 1; this.scale = this.form === 2 ? 1.3 : 1; this.burn = 0; }
   get S() { return this.scale; }
   tickB(dt, world) {

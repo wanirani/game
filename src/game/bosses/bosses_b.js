@@ -4,6 +4,7 @@ import { Colossus } from './b_colossus.js';
 import { FrostQueen } from './b_frostqueen.js';
 import { Death } from './b_death.js';
 import { Dracula } from './b_dracula.js';
+import { ChaosLord } from './b_chaos.js';
 
 export const BOSS_B = {
   b_leviathan: Leviathan,
@@ -11,4 +12,5 @@ export const BOSS_B = {
   b_frostqueen: FrostQueen,
   b_death: Death,
   b_dracula: Dracula,
+  b_chaos: ChaosLord,
 };

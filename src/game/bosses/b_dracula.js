@@ -362,6 +362,20 @@ export class Dracula extends BossB {
       this.setState('d_idle');
     }
   }
+  onHurt(dmg, attack, world, info) {
+    const x = info?.hx ?? this.cx, y = info?.hy ?? this.cy;
+    if (this.form === 1) { if (Math.random() < 0.35) this.spawnBats(x, y, 1, 160); }
+    else { world.fx.burst('ember', x, y, 6, { speed: 220 }); world.fx.burst('fire', x, y, 3, { speed: 140 }); }
+  }
+  onReset(world) {
+    if (this.form === 2) {
+      const cx = this.cx;
+      this.form = 1; this.def = this.def0; this.w = this.def.size?.w ?? 56; this.h = this.def.size?.h ?? 126;
+      this.place(cx); this.d2.scale = 0; this.d2.hover = this.d2.hoverT = 0; this.redSky = 0;
+    }
+    this.vanish = 0; this.swarm = null; this.summoned = false; this.tfStarted = false;
+    if (world.cutscene && this.state === 'transform') world.cutscene = false;
+  }
   becomeDemon(instant) {
     const cx = this.cx, F = this.F;
     this.form = 2;

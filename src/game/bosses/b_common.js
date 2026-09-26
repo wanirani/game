@@ -366,6 +366,7 @@ export class BossB extends Boss {
     this.A = arenaOf(this.world, this);
     this.hitPart = null;
     this.alpha = 1;
+    this.def0 = this.def;
     this.setup?.();
   }
   setState(s) { super.setState(s); this.st = 0; this.pst = 0; }
@@ -421,6 +422,12 @@ export class BossB extends Boss {
   dirTo(x = this.cx) { const p = this.world.player; return p ? (Math.sign(p.cx - x) || 1) : this.facing; }
 
   think(dt, world) {
+    // 플레이어 부활 시 world.respawn() 이 보스 체력을 가득 채움 → 페이즈/형태도 처음으로
+    if (this.phase > 0 && this.hp >= this.stats.maxHp) {
+      this.phase = 0; this.clearJobs(); this.invuln = false; this.harmless = false;
+      this.onReset?.(world);
+      this.setState('idle');
+    }
     this.pst = this.st; this.st += dt;
     this.runJobs(dt);
     this.tickB?.(dt, world);

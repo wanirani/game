@@ -92,10 +92,10 @@ export class Leviathan extends BossB {
     this.ha += wrapAngle(this.ta - this.ha) * Math.min(1, k * 1.2);
     this.jaw += (this.jawT - this.jaw) * (1 - Math.exp(-16 * dt));
     this.mouthGlow = Math.max(0, this.mouthGlow - dt * 0.8);
-    this.x = this.hx - this.w / 2; this.y = this.hy - this.h / 2;
     this.vx = 0; this.vy = 0;
     if (this.mode === 'arc') this.pushHist();
     this.updateBody();
+    this.fitBox();
     // 수면 교차 지점 물보라
     this.foamT -= dt;
     if (this.foamT <= 0) {
@@ -717,6 +717,21 @@ export class Leviathan extends BossB {
     if (n >= 2) world.game.toast('레비아탄이 분노로 붉게 빛난다!', '#ff7ab0');
   }
   skipTransition() { this.enrage = 0; }
+  onHurt(dmg, attack, world, info) { const x = info?.hx ?? this.hx, y = info?.hy ?? this.hy; world.fx.burst('water', x, y, 5, { speed: 200 }); }
+  onReset() { this.enrage = 0; this.tail = null; if (this.mode === 'arc') this.mode = 'neck'; }
+  /** 화면 컬링용 AABB: 머리 + 수면 위 마디 전체를 감쌈 (판정은 hitParts/hurtboxes 가 따로 처리) */
+  fitBox() {
+    const F = this.A.floor;
+    let x0 = this.hx - 70, x1 = this.hx + 70, y0 = this.hy - 60, y1 = this.hy + 60;
+    for (let i = 0; i < N; i++) {
+      if (this.sy[i] - this.sr[i] > F) continue;
+      const r = this.sr[i];
+      if (this.sx[i] - r < x0) x0 = this.sx[i] - r; if (this.sx[i] + r > x1) x1 = this.sx[i] + r;
+      if (this.sy[i] - r < y0) y0 = this.sy[i] - r; if (this.sy[i] + r > y1) y1 = this.sy[i] + r;
+    }
+    y1 = Math.min(y1, F + 40);
+    this.x = x0; this.y = y0; this.w = Math.max(40, x1 - x0); this.h = Math.max(40, y1 - y0);
+  }
   onDeath(world) {
     this.dying = 3.2;
     this.clearJobs();

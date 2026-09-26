@@ -44,6 +44,7 @@ export class Colossus extends BossB {
     this.syncBox();
   }
   debugAct(s) { this.power = 1; super.debugAct(s); }
+  onReset() { this.crouchT = 0; this.doorT = 0; this.heat = 0; this.coreQueued = false; this.sinceCore = 0; this.gearSpd = 0.4; }
   setState(s) {
     super.setState(s);
     this.laneWarn = null; this.slamWarn = null; this.pend = null; this._pz = false; this._slamZ = false;
@@ -53,6 +54,11 @@ export class Colossus extends BossB {
   get bxMin() { return Math.max(this.A.x0 + 250, this.A.cx - 240); }
   get bxMax() { return Math.min(this.A.x1 - 250, this.A.cx + 240); }
   skipTransition() { this.power = 1; }
+  onHurt(dmg, attack, world, info, part) {
+    const x = info?.hx ?? this.bx, y = info?.hy ?? this.cy;
+    if (part === this.parts.core) { world.fx.burst('fire', x, y, 8, { speed: 220 }); world.fx.burst('ember', x, y, 6, { speed: 200 }); }
+    else if (!part?.armor) world.fx.burst('spark', x, y, 6, { color: '#ffd080', speed: 300 });
+  }
 
   // ───────────── 좌표 도우미 ─────────────
   get F() { return this.A.floor; }
