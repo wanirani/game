@@ -531,8 +531,7 @@ export class World {
       this.run.secrets++;
       if (kind === 'H') {
         const docs = this.stage.docs || [];
-        const order = hOrder;
-        const docId = this.room.docs?.[order] ?? docs.find((dd) => !this.state.progress.docs.includes(dd));
+        const docId = this.room.docs?.[hOrder] ?? docs.find((dd) => !this.state.progress.docs.includes(dd));
         if (docId) { this.spawnPickup('doc', x, y, { docId, vy: -300, ...out, pull: 140 }); audio.sfx('secret'); this.game.toast('숨겨진 공간을 발견했다!', '#ffe7a0'); }
         else this.spawnPickup('food', x, y, { heal: 0.5, icon: 'meat', vy: -200, ...out });
         bus.emit('secretFound', { stageId: this.stage.id, key });
