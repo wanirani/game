@@ -172,10 +172,13 @@ export class Session {
     await this.page.keyboard.up(code); await waitFrames(this.page, { ms: 40, frames: 2, ticks: 1 });
   }
   /** Advance dialogue / boss intro / story overlays until a gameplay scene is on top (keyboard Enter). */
-  async skipDialogue(maxSteps = 40) {
+  async skipDialogue(maxSteps = 60) {
+    // an intro dialogue can open a moment after the stage starts: wait for 1.2 s of world time with a gameplay scene on top
     for (let i = 0; i < maxSteps; i++) {
-      const top = await this.top();
-      if (!top || !/dialogue|bossIntro|story|document|ultCutin|awakenCutin|companionJoin/.test(top)) return top;
+      const st = await this.page.evaluate(() => ({ top: window.__game?.top?.name ?? null, t: window.__game?.world?.time ?? 99 }));
+      const cut = st.top && /dialogue|bossIntro|story|document|ultCutin|awakenCutin|companionJoin/.test(st.top);
+      if (!cut && st.t >= 1.2) return st.top;
+      if (!cut) { await this.page.waitForTimeout(150); continue; }
       await this.page.keyboard.press('Enter');
       await this.page.waitForTimeout(160);
     }

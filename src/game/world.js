@@ -44,10 +44,10 @@ const SLOWMO_BASE = 0.35;                      // 기본 슬로모션 배율 (�
 const KILL_SLOW_GAP = 1.5;                     // 처치 슬로모션 최소 간격 (실제 초)
 const MULTI_KILL_WIN = 0.5;                    // 다중 처치 판정 창 (실제 초)
 const COMBO_MILESTONES = new Set([10, 25, 50, 100, 150, 200, 300]);
-const AW_DEFAULT = { hit: 0.5, crit: 1, kill: 2, elite: 8, launch: 3, bounce: 3, counter: 3, rankUp: 1, bossIntro: 25, phase: 15, rage: 6, rageFrac: 0.1 };
+const AW_DEFAULT = { hit: 0.5, crit: 1, kill: 2, elite: 8, launch: 3, bounce: 3, counter: 3, rankUp: 1, bossIntro: 25, phase: 15, rage: 6, rageFrac: 0.1, minTier: 1, max: 100, ultGainDiv: 200 };
 const AW_NONE = ['ult', 'awaken', 'companion'];  // 필살기·각성기·동료 타격은 각성 게이지를 채우지 않는다
 const awGain = (k) => AW_GAIN?.[k] ?? AW_DEFAULT[k] ?? 0;
-const awBlocked = (attack) => !!attack?.tags?.some((t) => AW_NONE.includes(t));
+const awBlocked = (attack) => { const z = AW_GAIN?.zeroTags ?? AW_NONE; return !!attack?.tags?.some((t) => z.includes(t)); };
 
 export const STYLE_RANKS = [
   { n: 0, r: '', c: '#fff' }, { n: 5, r: 'D', c: '#a0a0a0' }, { n: 10, r: 'C', c: '#7ee07e' }, { n: 20, r: 'B', c: '#5aa8ff' },
@@ -91,6 +91,7 @@ export class World {
     this.freezeEnemies = false; this.freezeLog = []; this.frozenRecent = 0;   // [hook:feel]
     this.overlays = []; this.hudHidden = false; this.letterbox = 0;   // [hook:feel]
     this.roomFoes = 0;   // [hook:feel] 이 방에 나온 적 수 (마지막 적 처치 슬로모션)
+    this.killPend = [];   // [hook:feel] 이번 프레임의 처치 (슬로모션 판정은 프레임 끝: 죽으며 갈라지는 적의 새끼가 생긴 뒤)
     this.style = this.makePart('style', () => new Style(this));   // [hook:feel]
     this.run.aw = 0; this.awakenState = { ready: false, holdK: 0 };   // [hook:awaken]
     this.bossPhaseSeen = null; this.bossPhaseOf = null;   // [hook:awaken]
@@ -131,7 +132,7 @@ export class World {
     const room = this.stage.rooms[roomId];
     if (!room) { console.error('room not found', roomId); return; }
     this.gimmick?.dispose?.(); this.gimmick = null;   // [hook:gimmick]
-    this.fx.clearDecals?.(); this.overlays.length = 0; this.roomFoes = 0;   // [hook:feel]
+    this.fx.clearDecals?.(); this.overlays.length = 0; this.roomFoes = 0; this.killPend.length = 0;   // [hook:feel]
     this.room = room; this.roomId = roomId;
     this.map = new TileMap(room);
     this.entities = []; this.platforms = []; this.debrisList = [];
@@ -322,7 +323,7 @@ export class World {
       return;
     }
     let sdt = dt;
-    if (this.slowmo > 0) { this.slowmo -= dt; sdt = dt * this.slowmoScale; if (this.slowmo <= 0 || (this.slowScaleT > 0 && (this.slowScaleT -= dt) <= 0)) this.slowmoScale = SLOWMO_BASE; }   // [hook:feel] 처치 슬로모션 배율은 제 시간만큼만
+    if (this.slowmo > 0) { this.slowmo -= dt; sdt = dt * this.slowmoScale; if (this.slowmo <= 0 || (this.slowScaleT > 0 && (this.slowScaleT -= dt) <= 0)) { this.slowmoScale = SLOWMO_BASE; this.slowScaleT = 0; } }   // [hook:feel] 처치 슬로모션 배율은 제 시간만큼만 (남은 타이머가 다음 슬로모션 배율을 끊지 않게 0 으로)
     else if (this.slowmoScale !== SLOWMO_BASE) this.slowmoScale = SLOWMO_BASE;   // [hook:feel] 누가 slowmo 를 0 으로 끊어도 다음 슬로모션은 기본 배율
     this.time += sdt;
     if (!this.cutscene && !this.cleared) this.run.time += dt;
@@ -349,6 +350,7 @@ export class World {
     this.style?.update?.(dt);   // [hook:feel]
     this.tickOverlays(dt);   // [hook:feel]
     this.pollBossPhase();   // [hook:awaken] 보스 페이즈 변화마다 각성 게이지 +15
+    if (this.killPend.length) this.resolveKillSlow();   // [hook:feel] 처치 슬로모션 (마지막 적 > 정예 > 오버킬)
     if (this.frozenRecent > 0) this.frozenRecent = Math.max(0, this.frozenRecent - dt);   // [hook:feel] 초당 1초씩 감소
     // 콤보 타이머
     if (this.combo.n > 0) {
@@ -405,14 +407,15 @@ export class World {
     for (let i = L.length - 1; i >= 0; i--) { const o = L[i]; if (o.dead || (o.life != null && o.t >= o.life)) L.splice(i, 1); }
   }
   drawOverlays(ctx, vw, vh) {
+    // 레터박스가 먼저 (MASTER_PLAN §1.7 #13: letterbox → grade → radial lines → impact frame) — 오버레이 글자는 띠 위에도 그릴 수 있다
+    const lb = Math.min(vh * 0.2, this.letterbox || 0);
+    if (lb > 0.5) { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, vw, lb); ctx.fillRect(0, vh - lb, vw, lb); }
     for (const o of this.overlays) {
       if (o.dead) continue;
       ctx.save();
       try { o.draw?.(ctx, vw, vh, this); } catch (e) { o.dead = true; console.error('[world] overlay draw', e); }
       ctx.restore();
     }
-    const lb = Math.min(vh * 0.2, this.letterbox || 0);
-    if (lb > 0.5) { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, vw, lb); ctx.fillRect(0, vh - lb, vw, lb); }
   }
 
   // ─────────────────────────── 렌더 ───────────────────────────
@@ -507,7 +510,7 @@ export class World {
       this.addScore(bonus);
       this.fx.text(this.player.cx, this.player.y - 50, `COMBO BONUS +${bonus}`, { color: '#ffe070', size: 18, life: 1.4, vy: -50 });
     }
-    const ri = n > 0 ? (this.style?.rank ?? 0) : 0;   // [hook:feel] 스타일 보너스 rankIndex² × 500
+    const ri = n >= 10 ? (this.style?.rank ?? 0) : 0;   // [hook:feel] 스타일 보너스 rankIndex² × 500 — COMBO BONUS 와 함께 (10히트 이상). 1히트 콤보를 끊어 치며 높은 랭크로 점수·1UP 을 버는 것 방지
     if (ri > 0) { const sb = ri * ri * 500; this.addScore(sb); this.fx.text(this.player.cx, this.player.y - 72, `STYLE BONUS +${sb}`, { color: '#ffa640', size: 16, life: 1.4, vy: -50 }); }   // [hook:feel]
     if (n > (this.state.stats.maxCombo ?? 0)) this.state.stats.maxCombo = n;
     this.combo.best = Math.max(this.combo.best, n);
@@ -549,23 +552,42 @@ export class World {
     if (kc.n >= 2) this.style?.onEvent?.('multikill', { n: kc.n, pts: 60, enemy: e });   // [hook:feel] 두 번째부터 1마리당 +60
     this.style?.onKill?.(e, attack);   // [hook:feel]
     if (!awBlocked(attack)) this.addAw(e.elite ? 'elite' : 'kill');   // [hook:awaken]
-    if (e.kind !== 'enemy' || !this.killSlowOK()) return;
-    const last = this.roomFoes >= 3 && !this.entities.some((o) => o !== e && o.kind === 'enemy' && !o.dead && !(o.dying > 0) && !o.hidden && !this.inUnrevealedFake(o));
+    // 슬로모션은 이 프레임 끝(resolveKillSlow)에서 정한다: onDie 로 갈라지는 적(슬라임·엑토플라즘)의 새끼가 생긴 뒤에 '마지막 적'을 판정
+    if (e.kind === 'enemy' && this.killSlowOK()) this.killPend.push({ e, over: false });   // [hook:feel]
+  }
+  /** F 등급·치명타 처치에서 초과 피해가 최대 체력의 50% 이상이면 표시만 해 둔다 (0.12초 0.4배속 + '오버킬!' 은 resolveKillSlow) */
+  overkillSlowmo(target, info, attack) {
+    if (target.kind !== 'enemy' || !(info.cls === 'F' || info.crit)) return;
+    const k = this.killPend.find((q) => q.e === target);
+    if (!k) return;
+    const max = target.stats?.maxHp ?? target.stats?.hp ?? 0;
+    const over = info.overkill ?? (info.hpBefore != null && max > 0 ? (info.dmg - info.hpBefore) / max : null);
+    if (over >= 0.5) k.over = true;
+  }
+  /**
+   * 이번 프레임 처치들의 슬로모션 (1.5초에 한 번, 우선순위 마지막 적 > 정예 > 오버킬).
+   * 마지막 적: 이 방에 적이 3마리 이상 나왔고 남은 적이 없다. 숨은 소환 둥지(메두사 둥지 등)가 남아 있으면 방이 비지 않은 것으로 본다
+   */
+  resolveKillSlow() {   // [hook:feel]
+    const pend = this.killPend;
+    this.killPend = [];
+    if (!pend.length || !this.killSlowOK()) return;
+    const gone = new Set(pend.map((q) => q.e));
+    const e = pend[pend.length - 1].e;
+    const last = this.roomFoes >= 3 && !this.entities.some((o) => o.kind === 'enemy' && !gone.has(o) && !o.dead && !(o.dying > 0) && !this.inUnrevealedFake(o));
     if (last) {
       this.killSlowmo(e, 0.3, 0.25, 1.08, 1);
       this.style?.onEvent?.('lastkill', { pts: 50, enemy: e });   // [hook:feel]
-      const mat = e.def?.material, n = Math.max(3, Math.round(10 * (this.fx.quality ?? 1)));
-      this.fx.burst(mat === 'flesh' || mat === 'slime' || !mat ? 'blood' : 'dust', e.cx, e.cy, n, { speed: 300, ...(mat === 'slime' ? { color: '#6adf4a' } : {}) });
-    } else if (e.elite) this.killSlowmo(e, 0.2, 0.3, 1.05, 0.6);
-  }
-  /** F 등급·치명타 처치에서 초과 피해가 최대 체력의 50% 이상: 0.12초 0.4배속 + '오버킬!' */
-  overkillSlowmo(target, info, attack) {
-    if (target.kind !== 'enemy' || !(info.cls === 'F' || info.crit) || !this.killSlowOK()) return;
-    const max = target.stats?.maxHp ?? target.stats?.hp ?? 0;
-    const over = info.overkill ?? (info.hpBefore != null && max > 0 ? (info.dmg - info.hpBefore) / max : null);
-    if (!(over >= 0.5)) return;
-    this.killSlowmo(target, 0.12, 0.4, 0, 0);
-    if (this.game.settings?.showDamage !== false) this.fx.text(target.cx, target.y - 34, '오버킬!', { color: '#ff5a4a', size: 18, life: 0.6, vy: -70 });
+      const mat = e.def?.material;   // 피·먼지 ×1.5 (fx.burst 가 품질 배율을 곱한다: 15 / 11 / 8)
+      this.fx.burst(mat === 'flesh' || mat === 'slime' || !mat ? 'blood' : 'dust', e.cx, e.cy, 15, { speed: 300, ...(mat === 'slime' ? { color: '#6adf4a' } : {}) });
+      return;
+    }
+    const el = pend.find((q) => q.e.elite);
+    if (el) { this.killSlowmo(el.e, 0.2, 0.3, 1.05, 0.6); return; }
+    const ov = pend.find((q) => q.over);
+    if (!ov) return;
+    this.killSlowmo(ov.e, 0.12, 0.4, 0, 0);
+    if (this.game.settings?.showDamage !== false) this.fx.text(ov.e.cx, ov.e.y - 34, '오버킬!', { color: '#ff5a4a', size: 18, life: 0.6, vy: -70 });
   }
   /** 처치 슬로모션 허용: 컷신(필살기·각성 포함)·보스전·클리어·적 정지 중이 아니고 1.5초 간격 */
   killSlowOK() {
@@ -585,16 +607,17 @@ export class World {
     const n = typeof v === 'number' ? v : awGain(v);
     if (!(n > 0) || !this.awEnabled()) return 0;
     const before = this.run.aw ?? 0;
-    this.run.aw = Math.min(100, before + n * (1 + (this.player?.stats?.ultGain ?? 0) / 200));
+    this.run.aw = Math.min(awGain('max'), before + n * (1 + (this.player?.stats?.ultGain ?? 0) / awGain('ultGainDiv')));
     return this.run.aw - before;
   }
-  awEnabled() { return (CLASSES[this.hero?.classId]?.tier ?? 0) >= 1 && this.mode !== 'town'; }   // [hook:awaken]
+  awEnabled() { return (CLASSES[this.hero?.classId]?.tier ?? 0) >= awGain('minTier') && this.mode !== 'town'; }   // [hook:awaken]
   /** 적중당 각성 게이지: 일반 +0.5, 치명타 +1, 반격·띄우기 +3 (필살기·각성기·동료 타격은 0) */
   awOnHit(target, info, attack) {   // [hook:awaken]
     if (awBlocked(attack)) return;
     let g = info.crit ? awGain('crit') : awGain('hit');
     if (info.counter) g += awGain('counter');
-    else if (attack?.launch && target.kind === 'enemy') g += awGain('launch');
+    // 띄우기: impact.js 가 있으면 실제로 뜬 경우만 (info.launched — 무거운·고정·비행 적, 처치 타격 제외). 없으면 옛 판정
+    else if (info.cls ? info.launched : attack?.launch && target.kind === 'enemy') g += awGain('launch');
     this.addAw(g);
   }
   /** 보스 페이즈가 올라갈 때마다 각성 게이지 +15 (보스 파일을 고치지 않고 폴링) */

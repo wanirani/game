@@ -1,0 +1,77 @@
+{
+ "_doc": "heroes1 에이전트(sera, victor) 퍼펫 원화 클링 생성 기록. images = 과금 이미지 수(후보 포함). 채택본은 src/<charId>/ 에 워터마크 제거 후 저장. 공용 tools/puppet/kling_manifest.json 은 건드리지 않는다.",
+ "model": "kling-image-v3_0_omni",
+ "budget": {
+  "sera": 45,
+  "victor": 45
+ },
+ "uploads": {
+  "sera_portrait.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qTgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo0YWdlbnRfdXBsb2FkLzE3OTA0NDIwNzMvQWpUa0dWVHppTS9zZXJhX3BvcnRyYWl0LmpwZw.origin?x-kcdn-pid=112372",
+  "victor_portrait.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qUAoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo2YWdlbnRfdXBsb2FkLzE3OTA0NDIwNzUveDZZV2hDeDFuZC92aWN0b3JfcG9ydHJhaXQuanBn.origin?x-kcdn-pid=112372",
+  "kael_hunter_side.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qUQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo3YWdlbnRfdXBsb2FkLzE3OTA0NDIwNzkvNzQ5Qkw1bTl2YS9rYWVsX2h1bnRlcl9zaWRlLmpwZw.origin?x-kcdn-pid=112372",
+  "sera_base_b.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qTAoGdXBsb2FkEg55bGFiLXN0dW50LXNncBoyYWdlbnRfdXBsb2FkLzE3OTA0NDIyOTIvMzkzUkxObHM2Wi9zZXJhX2Jhc2VfYi5qcGc.origin?x-kcdn-pid=112372",
+  "victor_base_a.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qTgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo0YWdlbnRfdXBsb2FkLzE3OTA0NDIyOTgvUHdMRTdMYXhGZC92aWN0b3JfYmFzZV9hLmpwZw.origin?x-kcdn-pid=112372"
+ },
+ "entries": [
+  {
+   "id": "sera_exorcist_side_v1",
+   "tool": "image_to_image",
+   "images": 3,
+   "generationId": "AWo9poUezkjl-pHTA-BXWeq8aL0p7LkMMwjPYBfYX0hH9wm1U1m1YTjxZUHoR3aNI3ACTDu3",
+   "inputs": [
+    "sera_portrait.jpg (identity)",
+    "kael_hunter_side.jpg (pose/framing only)"
+   ],
+   "aspect_ratio": "9:16",
+   "img_resolution": "2k",
+   "prompt": "Full-body side view of the young woman in 图片1 (the same face, the same long silver-white hair, the same blue eyes, the same white nun's veil with the gold headband, the same white-and-gold battle-nun outfit), walking to the RIGHT in strict profile, in exactly the same pose, framing, scale and position on the canvas as the man in 图片2: the near arm hanging slightly behind the hip with a relaxed half-closed hand, the far arm swinging forward, legs in mid-stride. Copy ONLY the pose, camera angle and framing of 图片2, nothing else (not his face, hair, clothes or whip). Her outfit: a long ivory-white nun's robe with gold trim edges, a gold cross brooch on the chest, gold bodice plates at the waist, long white sleeves with gold cuffs, white gloves; the robe skirt is ankle-length and closed, the hem swings open with her stride so the dark navy leggings and dark boots show just below it; the white veil falls down her back to the shoulder blades, her long silver hair hangs below the veil down her back. Nothing at the hips. Plain light-grey studio background, realistic painterly dark-fantasy game-art style (not anime), soft even lighting from the upper left, full body visible from the top of the head to the boots with margin, nothing cropped, no cape, no cloak, no book, no staff, nothing held in the hands, no text, no watermark.",
+   "picked": "-",
+   "note": "실패: 3장 모두 애니 화풍 + 3/4 측면(엄격한 옆모습 아님) + 베일이 망토처럼 크게 펄럭임. 초상화를 image_1 로 두면 초상화 구도가 우선한다. 후보 b 는 디자인 참고(image_2)로만 사용"
+  },
+  {
+   "id": "victor_gunslinger_side_v1",
+   "tool": "image_to_image",
+   "images": 3,
+   "generationId": "AayN_6LfuCjXHyjAMafLRuCwpbs-cNdXGTz-GUk96rABNvpZRcriPFB8qKfZaAKsbQFOku4E",
+   "inputs": [
+    "victor_portrait.jpg (identity)",
+    "kael_hunter_side.jpg (pose/framing only)"
+   ],
+   "aspect_ratio": "9:16",
+   "img_resolution": "2k",
+   "prompt": "Full-body side view of the man in 图片1 (the same gaunt stubbled face, the same shoulder-length black hair, the same black wide-brimmed gunslinger hat, the same long brown leather duster coat with the bullet bandolier across the chest and the heavy belt), walking to the RIGHT in strict profile, in exactly the same pose, framing, scale and position on the canvas as the man in 图片2: the near arm hanging slightly behind the hip with a relaxed half-closed gloved hand, the far arm swinging forward, legs in mid-stride. Copy ONLY the pose, camera angle and framing of 图片2, nothing else (not his face, bandana, clothes or whip). His outfit: long weathered brown leather duster coat reaching below the knees, open at the front, a dark red scarf knotted at the neck, dark grey shirt, bullet bandolier, dark brown trousers, dark leather boots, dark brown leather gloves, a gun belt with two EMPTY leather holsters at the hips (no pistols in them). Pale grey eyes, not glowing. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting from the upper left, full body visible from the top of the hat to the boots with margin, nothing cropped, no cape, no cloak, no guns, nothing held in the hands, no text, no watermark.",
+   "picked": "-",
+   "note": "실패: 3장 모두 정면(초상화 구도가 우선). 후보 a 를 전신 디자인 참고(image_2)로만 사용"
+  },
+  {
+   "id": "sera_exorcist_side_v2",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AcsecNqJSltNhRV3FEx51XG1Ml3CcKD2tkGHEkyi4k1ZMfkpjMF8Ep601VT2Tve1F93-LDtA",
+   "inputs": [
+    "kael_hunter_side.jpg (pose/framing/style)",
+    "sera_base_b.jpg (identity+outfit, from v1 candidate b)"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "prompt": "Edit 图片1. Keep the exact same walking side pose facing right in strict profile, the same arm and leg positions (the near arm hanging slightly behind the hip with a relaxed half-closed hand, the far arm swinging forward, legs in mid-stride), the same camera angle, framing, scale and position on the canvas, the same plain light-grey studio background and the same realistic painterly dark-fantasy game-art style and lighting as 图片1. Replace the man completely with the young woman from 图片2: her face seen in right profile with the same blue eyes, the same long silver-white hair, the same white nun's veil with the gold headband (the veil hangs straight down behind her head to her shoulders, close to the head, not blowing), and the same white-and-gold battle-nun outfit: a long ivory-white robe-coat with gold trim edges, open at the front and reaching her ankles, a gold cross brooch on the chest, gold corset plates at the waist, long white sleeves, white gloves, dark navy leggings and dark brown knee boots. Her long silver hair falls down her back below the veil. Remove the whip and the bandana; nothing at the hips. No cape, no cloak, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark."
+  },
+  {
+   "id": "victor_gunslinger_side_v2",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "ATu_mRm59t0XC3LPeHrr5VKqEmYFfF9J1Jaf22YYQa9SgPuQZF6KPygXV6jjRGqWwjlbIJP3",
+   "inputs": [
+    "kael_hunter_side.jpg (pose/framing/style)",
+    "victor_base_a.jpg (identity+outfit, from v1 candidate a)"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "prompt": "Edit 图片1. Keep the exact same walking side pose facing right in strict profile, the same arm and leg positions (the near arm hanging slightly behind the hip with a relaxed half-closed gloved hand, the far arm swinging forward, legs in mid-stride), the same camera angle, framing, scale and position on the canvas, the same plain light-grey studio background and the same realistic painterly dark-fantasy game-art style and lighting as 图片1. Replace the man completely with the gunslinger from 图片2: his gaunt stubbled face seen in right profile, shoulder-length black hair, pale grey eyes, the same black wide-brimmed hat, the same dark red scarf at the neck, the same long weathered brown leather duster coat open at the front and reaching below the knees, the same bullet bandolier across the chest, the same heavy belt with an EMPTY leather holster at the hip (no pistol in it), dark grey trousers, brown leather knee boots, brown leather gloves. Remove the whip and the red bandana. No guns, no cape, no cloak, nothing held in the hands, full body visible from the top of the hat to the boots, nothing cropped, no text, no watermark."
+  }
+ ],
+ "images_used": {
+  "sera": 5,
+  "victor": 5
+ }
+}

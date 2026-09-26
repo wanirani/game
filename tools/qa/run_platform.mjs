@@ -2,7 +2,7 @@
 // Runs the platform suites one after another (each in its own process), then prints one summary by issue.
 //
 //   node tools/qa/run_platform.mjs [--only pad,touch,view,menu,pwa,load,turntable] [--strict] [--assume PKG,…] [--shots]
-//                                  [--jobs 2] (suites in parallel; output buffered per suite) [--timeout <s per suite>]
+//                                  [--jobs N] (suites in parallel, default 2; output buffered per suite) [--timeout <s per suite>]
 //   npm run qa:platform
 //
 // Suites: pad (platform_pad), touch (platform_touch + the --layout matrix), view (platform_view without its pwa group),
@@ -38,7 +38,7 @@ const SUITES = [
 ];
 const TIMEOUT_MS = Number(args.timeout || 15 * 60) * 1000;
 
-const JOBS = Math.max(1, Number(args.jobs) || 1);
+const JOBS = Math.max(1, Number(args.jobs) || 2); // two suites at a time by default (checks are frame-based, not wall-clock)
 function run(file, argv) {
   return new Promise((resolve) => {
     const t0 = Date.now();
@@ -71,7 +71,8 @@ async function runOne(s) {
   if (rp && fs.existsSync(rp)) { try { rep = JSON.parse(fs.readFileSync(rp, 'utf8')); } catch { rep = null; } }
   runs.push({ ...s, ...r, rep });
 }
-const queue = todo.slice();
+const COST = { view: 10, pad: 5, menu: 3, touch: 2, turntable: 2, pwa: 1, load: 1 }; // longest first packs the workers best
+const queue = todo.slice().sort((a, b) => (COST[b.key] ?? 1) - (COST[a.key] ?? 1));
 await Promise.all(Array.from({ length: Math.min(JOBS, queue.length) }, async () => { while (queue.length) await runOne(queue.shift()); }));
 runs.sort((a, b) => a.idx - b.idx);
 

@@ -179,6 +179,7 @@ export class Camera {
   /** target: {x,y,w,h,vx,vy,facing,onGround}. dt = 추적 속도용, fxDt = 흔들림·반동·줌 연출용 (히트스톱 중엔 실제 dt) */
   follow(t, dt, snap = false, fxDt = dt) {
     const cx = t.x + t.w / 2, cy = t.y + t.h / 2;
+    if (!(Number.isFinite(cx) && Number.isFinite(cy))) { this.tick(fxDt); return; }   // 잘못된 좌표 한 프레임이 추적 중심을 영구히 NaN 으로 만들지 않게
     const f = t.facing || 1;
     const vwB = this.w / this.baseZoom, vhB = this.h / this.baseZoom;
     // 룩어헤드: 이동 방향 앞쪽을 더 보여줌 (+질주·대시 추가, +터치 모드 오른쪽 바이어스)

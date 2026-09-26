@@ -479,8 +479,8 @@ export class HeartbeatGimmick extends MemberB {
       ctx.rect(c.tx * TILE + 1.5, c.ty * TILE + 1.5, TILE - 3, TILE - 3); any = true;
     }
     if (any) {
-      ctx.globalAlpha = 0.07 + 0.05 * pk; ctx.fillStyle = 'rgb(140,14,36)'; ctx.fill();
-      ctx.globalAlpha = 0.22; ctx.strokeStyle = 'rgb(220,70,90)'; ctx.lineWidth = 1; ctx.setLineDash([5, 5]); ctx.stroke(); ctx.setLineDash([]);
+      ctx.globalAlpha = 0.1 + 0.06 * pk; ctx.fillStyle = 'rgb(140,14,36)'; ctx.fill();
+      ctx.globalAlpha = 0.38 + 0.2 * pk; ctx.strokeStyle = 'rgb(230,80,100)'; ctx.lineWidth = 1.5; ctx.setLineDash([6, 5]); ctx.stroke(); ctx.setLineDash([]);
     }
     // 3) 경고: 곧 벽이 될 칸이 붉게 맥동 (보류 칸은 굵은 테두리)
     if (warn) {
@@ -513,7 +513,7 @@ export class HeartbeatGimmick extends MemberB {
     if (!v || a <= 0.004) return;
     ctx.save(); ctx.globalAlpha = a; ctx.drawImage(v, 0, 0, vw, vh); ctx.restore();
   }
-  dispose() { this.disposed = true; this.cells.length = 0; this.byIdx.clear(); }
+  dispose() { this.disposed = true; this.cells.length = 0; this.queue.length = 0; this.byIdx.clear(); }
 }
 
 // ─────────────────────────── blight ───────────────────────────
@@ -607,7 +607,7 @@ export class BlightGimmick extends MemberB {
     const k = Number.isFinite(v) ? Math.max(0, v) : 100;
     const before = this.meter;
     this.meter = Math.max(0, this.meter - k);
-    if (this.status && this.meter <= this.cfg.off) this.setStatus(false, true);
+    if (this.status && this.meter <= this.cfg.off) this.setStatus(false);
     return before > this.meter;
   }
   setStatus(on, quiet = false) {
@@ -904,7 +904,10 @@ export class VoidWallGimmick extends MemberB {
       w.onPlayerFell?.(p);
       if (!p.dead) {
         const mid = (this.wallX + this.wallR) / 2;
-        if (p.x < this.wallX || p.x + p.w > this.wallR) { p.x = mid - p.w / 2; p.vx = 0; }
+        if (p.x < this.wallX || p.x + p.w > this.wallR) {
+          p.x = mid - p.w / 2; p.vx = 0;
+          if (typeof GE.rectFree === 'function' && !GE.rectFree(w.map, p)) GE.liftOut?.(w, p, 6);   // 바닥 속이면 위로
+        }
       }
     }
   }

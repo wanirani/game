@@ -1,0 +1,44 @@
+{
+ "_doc": "퍼펫 원화 클링 생성 기록 — heroes2 (bran, lia). images = 과금 이미지 수(후보 포함). 채택본은 src/<charId>/ 에 워터마크 제거 후 저장. 형식은 kling_manifest.json 과 같다.",
+ "model": "kling-image-v3_0_omni",
+ "budget": {
+  "bran": 45,
+  "lia": 45
+ },
+ "entries": [
+  {
+   "id": "bran_knight_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "ARIpxmlBpwSSuaEMpX_T1DAWixh7zhhGI2GtNZ2No8MSszpTX4RDGRnU0eKg3RD_VfQ2TCzF",
+   "inputs": [
+    "bran_portrait.jpg",
+    "kael_hunter_side.jpg (pose/framing only)"
+   ],
+   "aspect_ratio": "9:16",
+   "img_resolution": "2k",
+   "picked": "-",
+   "prompt": "Full-body side view of the man in 图片1 (same face, copper-red hair shaved at sides, full copper-red beard, massive build), walking to the RIGHT in strict profile. 图片2 is ONLY a pose and framing reference ... Outfit: battered practical knight armour, steel plate, big rounded pauldron, chainmail at joints, brown belt, navy-blue tabard to just above the knees ... No weapon, no cape, no helmet ...",
+   "note": "FAILED: 두 후보 모두 초상화처럼 3/4 앞모습(왼쪽을 봄), b 는 망토까지. 초상화를 image_1 로 두면 초상화의 구도가 이긴다 → 기존 측면 원화를 image_1(편집 대상)로, 초상화를 image_2(정체성)로 바꿔 재시도"
+  },
+  {
+   "id": "lia_assassin_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "ASGbq9huMerfZj8RVe6yyYBemgcUZD5L78l3qDnf_RKDeHOP8olNO4QrQLqOFVVVL1892t-l",
+   "inputs": [
+    "lia_portrait.jpg",
+    "kael_hunter_side.jpg (pose/framing only)"
+   ],
+   "aspect_ratio": "9:16",
+   "img_resolution": "2k",
+   "picked": "-",
+   "prompt": "Full-body side view of the young woman in 图片1 (same face, short black bob, black mask) walking to the RIGHT in strict profile. 图片2 is ONLY a pose and framing reference ... tight black leather bodice, crimson scarf wrapped snugly (no hanging ends), grey steel pauldron, bare upper arms, black bracers, crimson sash with tiny knot, fitted black leather trousers, black boots. No weapons ... no long scarf tails, no loose flowing cloth ...",
+   "note": "FAILED: 둘 다 앞모습/3/4 앞모습, 스카프·허리띠 자락이 길게 날림(금지 문구 무시). 초상화를 image_1 로 두면 안 됨 → 측면 원화 편집 방식으로 재시도"
+  }
+ ],
+ "images_used": {
+  "bran": 2,
+  "lia": 2
+ }
+}

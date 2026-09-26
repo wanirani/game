@@ -15,7 +15,7 @@
 // 캐릭터 렌더러 갤러리
 //  기본(채색 퍼펫): ?sec=pup,pupatk,pupw,pupeq,turn  — 카엘 7직업 × 모든 동작 / 채찍 기술 전부 / 무기 6종 손잡이 / 장비 색·망토 / 턴테이블 8방향
 //  벡터 인형:       ?sec=chars,seq,sim,attacks,classes,equip,npcs,rack,weapons  (&vector=1 이면 퍼펫을 끄고 순수 벡터)
-//  ?anim=1 실시간 / ?box=1 판정 상자 / ?cls=kael_templar (pup·pupw 를 한 직업만) / ?zoom=all|<캐릭터ID>&cls=&a= / ?turnlive=1 턴테이블 드래그
+//  ?anim=1 실시간 / ?box=1 판정 상자 / ?cls=kael_templar (pup·pupw 를 한 직업만) / ?char=bran (퍼펫 섹션의 영웅, 기본 kael) / ?zoom=all|<캐릭터ID>&cls=&a= / ?turnlive=1 턴테이블 드래그
 import { drawHero, drawWeaponPreview, setPuppetEnabled, preloadPuppet, puppetStatus, HERO_DRAW_SCALE, registerHeroHooks, heroHooks, drawHeroTurntable, heroViewInfo } from './src/render/hero.js';
 import { assets } from './src/core/assets.js';
 import { PUPPETS } from './src/render/puppet_manifest.js';
@@ -180,8 +180,10 @@ if (SEC.includes('weapons') && !ZOOM) {
   }
 }
 // ───────── 채색 퍼펫 섹션 ─────────
-const KCLS = Object.values(CLASSES).filter((c) => c.charId === 'kael').sort((a, b) => a.tier - b.tier || a.id.localeCompare(b.id)).map((c) => c.id);
+// ?char=bran (기본 kael) 또는 ?cls=<직업> 으로 퍼펫 섹션의 영웅을 고른다
 const ONE = Q.get('cls');
+const PCH = Q.get('char') || (ONE && CLASSES[ONE]?.charId) || 'kael', PCHD = CHARACTERS[PCH];
+const KCLS = Object.values(CLASSES).filter((c) => c.charId === PCH).sort((a, b) => a.tier - b.tier || a.id.localeCompare(b.id)).map((c) => c.id);
 const PCLS = ONE ? [ONE] : KCLS;
 const ALL_ANIM = [
   ['idle', {}], ['run 1', { anim: 'run', vx: 280 }], ['run 2', { anim: 'run', vx: 280, _ph: 0.33 }], ['jump', { anim: 'jump', vy: -600, onGround: false }],
@@ -202,29 +204,32 @@ if (SEC.includes('pup') && !ZOOM) {
   for (const cls of PCLS) {
     header(`채색 퍼펫 · ${CLASSES[cls].name} (${cls}) — 모든 동작 (게임 배율 ×${HERO_DRAW_SCALE} 기준 ×1.6)`);
     const psc = Number(Q.get('psc') || 1.6);
-    row(ALL_ANIM.map(([name, o]) => ({ label: name, p: () => ent({ look: lookOf('kael', cls), ch: CHARACTERS.kael, ...o }) })), Math.round(156 * psc / 1.6), Math.round(190 * psc / 1.6), psc);
+    row(ALL_ANIM.map(([name, o]) => ({ label: name, p: () => ent({ look: lookOf(PCH, cls), ch: PCHD, ...o }) })), Math.round(156 * psc / 1.6), Math.round(190 * psc / 1.6), psc);
   }
 }
 if (SEC.includes('pupatk') && !ZOOM) {
   for (const cls of PCLS) {
-    header(`채색 퍼펫 · ${CLASSES[cls].name} — 채찍 기술 전부 (판정 중간 프레임)`);
-    row(movesOf('whip').map(([label, m, gnd]) => ({ label, wide: true, p: () => ent({ look: lookOf('kael', cls, { style: 3, level: 7 }), ch: CHARACTERS.kael, anim: m.anim, move: m, moveT: hitT(m), onGround: gnd }) })), 208, 200, 1.25);
+    header(`채색 퍼펫 · ${CLASSES[cls].name} — ${PCHD.weaponType} 기술 전부 (판정 중간 프레임)`);
+    row(movesOf(PCHD.weaponType).map(([label, m, gnd]) => ({ label, wide: true, p: () => ent({ look: lookOf(PCH, cls, { style: 3, level: 7 }), ch: PCHD, anim: m.anim, move: m, moveT: hitT(m), onGround: gnd, muzzleT: 0.05 }) })), 208, 200, 1.25);
   }
 }
 if (SEC.includes('pupw') && !ZOOM) {
-  const WCLS = ONE ? [ONE] : ['kael_hunter', 'kael_templar'];
-  for (const cls of WCLS) for (const type of ['sword', 'greatsword', 'dagger', 'gun', 'staff']) {
+  const WCLS = ONE ? [ONE] : PCH === 'kael' ? ['kael_hunter', 'kael_templar'] : [KCLS[0], KCLS[KCLS.length - 1]];
+  for (const cls of WCLS) for (const type of ['whip', 'sword', 'greatsword', 'dagger', 'gun', 'staff'].filter((t) => t !== 'whip' || PCH !== 'kael')) {
     header(`무기 손잡이 · ${CLASSES[cls].name} × ${type} (주먹·양손·조준·시전·투척)`);
-    const list = movesOf(type).map(([label, m, gnd]) => ({ label, wide: true, p: () => ent({ look: lookOf('kael', cls, { type, style: 3, level: 7 }), ch: CHARACTERS.kael, anim: m.anim, move: m, moveT: hitT(m), onGround: gnd, muzzleT: 0.05 }) }));
-    list.push({ label: 'idle', p: () => ent({ look: lookOf('kael', cls, { type, style: 3 }), ch: CHARACTERS.kael }) });
-    list.push({ label: 'run', p: () => ent({ look: lookOf('kael', cls, { type, style: 3 }), ch: CHARACTERS.kael, anim: 'run', vx: 280 }) });
-    list.push({ label: 'throw', p: () => ent({ look: lookOf('kael', cls, { type, style: 3 }), ch: CHARACTERS.kael, anim: 'throw', animT: 0.1 }) });
+    const list = movesOf(type).map(([label, m, gnd]) => ({ label, wide: true, p: () => ent({ look: lookOf(PCH, cls, { type, style: 3, level: 7 }), ch: PCHD, anim: m.anim, move: m, moveT: hitT(m), onGround: gnd, muzzleT: 0.05 }) }));
+    list.push({ label: 'idle', p: () => ent({ look: lookOf(PCH, cls, { type, style: 3 }), ch: PCHD }) });
+    list.push({ label: 'run', p: () => ent({ look: lookOf(PCH, cls, { type, style: 3 }), ch: PCHD, anim: 'run', vx: 280 }) });
+    list.push({ label: 'throw', p: () => ent({ look: lookOf(PCH, cls, { type, style: 3 }), ch: PCHD, anim: 'throw', animT: 0.1 }) });
     row(list, 208, 200, 1.25);
   }
 }
 if (SEC.includes('pupeq') && !ZOOM) {
   header('장비 색(재질 마스크) · 망토(절차적 + 벨벳 결) · 오라');
-  const EQ = [
+  const EQ = PCH !== 'kael' ? KCLS.flatMap((cls, i) => [[cls, '기본', {}], ...(i === 0 ? [
+    [cls, '가죽 #5a3a24', { armor: 'leather', armorColor: '#5a3a24' }], [cls, '판금 #a8b0bc', { armor: 'plate', armorColor: '#a8b0bc' }],
+    [cls, '청판금 #2a5a7a', { armor: 'plate', armorColor: '#2a5a7a', armorTrim: '#9fe8ff' }], [cls, '마왕 갑주 + 해진 망토', { armor: 'dark', armorColor: '#3a0a14', armorTrim: '#ff3a4a', cape: { color: '#2a0a14', color2: '#6a0a1a', len: 1.25, style: 'tattered' } }],
+  ] : i === KCLS.length - 1 ? [[cls, '미스릴 #cfe0f4', { armor: 'plate', armorColor: '#cfe0f4', armorTrim: '#8ab8ff' }], [cls, '검은 가죽 #1a1418', { armor: 'leather', armorColor: '#1a1418' }]] : [])]) : [
     ['kael_hunter', '기본', {}],
     ['kael_hunter', '가죽 #5a3a24', { armor: 'leather', armorColor: '#5a3a24' }],
     ['kael_hunter', '판금 #a8b0bc', { armor: 'plate', armorColor: '#a8b0bc' }],
@@ -239,7 +244,7 @@ if (SEC.includes('pupeq') && !ZOOM) {
     ['kael_nightraven', '기본(날개·긴 스카프)', {}],
     ['kael_nightraven', '성기사 망토', { cape: { color: '#efe6d0', color2: '#b8962a', len: 1.15, style: 'royal' } }],
   ];
-  row(EQ.map(([cls, label, over]) => ({ label: `${CLASSES[cls].name} · ${label}`, p: () => ent({ look: Object.assign(lookOf('kael', cls, { style: 3, level: 7 }), over), ch: CHARACTERS.kael, anim: 'run', vx: 200 }) })), 180, 200, 1.6);
+  row(EQ.map(([cls, label, over]) => ({ label: `${CLASSES[cls].name} · ${label}`, p: () => ent({ look: Object.assign(lookOf(PCH, cls, { style: 3, level: 7 }), over), ch: PCHD, anim: 'run', vx: 200 }) })), 180, 200, 1.6);
 }
 // 확장 훅 예시 (?sec=hooks): 기본 동작은 hero.js 가 hero_gait.js(WP1)·riderPose(C6)로 한다. 여기서는 등록형 덮어쓰기가 동작하는지 보여 주는 견본
 if (SEC.includes('hooks') && !ZOOM) {
@@ -274,7 +279,7 @@ const YAWS = [0, 45, 90, 135, 180, -135, -90, -45];
 if (SEC.includes('turn') && !ZOOM) {
   for (const cls of PCLS) {
     header(`턴테이블 · ${CLASSES[cls].name} — 8방향 (yaw: 0 오른쪽 옆 · 90 정면 · 180 왼쪽 옆 · −90 뒤) + 사이 각`);
-    row([...YAWS, 20, 67, 112, -30, -160].map((d) => ({ label: `${d}°`, turn: d, p: () => ent({ look: lookOf('kael', cls), ch: CHARACTERS.kael }) })), 104, 200, 1.7);
+    row([...YAWS, 20, 67, 112, -30, -160].map((d) => ({ label: `${d}°`, turn: d, p: () => ent({ look: lookOf(PCH, cls), ch: PCHD }) })), 104, 200, 1.7);
   }
 }
 if (SEC.includes('turn') && !ZOOM) {

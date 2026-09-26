@@ -20,9 +20,11 @@ async function stageWithPad(vp, stage = 's03', pad = {}, extra = {}) {
   await s.waitGame('!!g.world?.player');
   await connect(s.page);
   await s.wait(300);
-  for (let i = 0; i < 40; i++) {
-    const top = await s.top();
-    if (top === 'stage') break;
+  // skip the stage intro with the pad; the intro dialogue can start a moment after the stage, so wait for 1.2 s of stage time
+  for (let i = 0; i < 60; i++) {
+    const st = await s.eval(() => ({ top: window.__game.top?.name, t: window.__game.world?.time ?? 0 }));
+    if (st.top === 'stage' && st.t >= 1.2) break;
+    if (st.top === 'stage') { await s.wait(150); continue; }
     await press(s.page, BTN.A, 70, 120);
   }
   await s.wait(700);
