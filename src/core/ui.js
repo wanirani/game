@@ -255,7 +255,7 @@ await fontsReady;
 export const TEXT_STYLES = {
   blood: {
     grad: [[0, '#ff6a5e'], [0.22, '#e0242e'], [0.55, '#a00a1e'], [0.85, '#5e0412'], [1, '#34000a']],
-    edge: '#120003', inner: 'rgba(38,0,6,0.7)', hi: 'rgba(255,200,190,0.34)', glow: 'rgba(210,10,34,0.55)',
+    edge: '#120003', inner: 'rgba(38,0,6,0.7)', hi: 'rgba(255,170,160,0.26)', glow: 'rgba(210,10,34,0.55)',
     drips: 1, drip: ['#2a0006', '#8e0a1e', '#e8343c', '#ff9a90'],
   },
   gold: {
@@ -386,7 +386,7 @@ function buildText(str, size, weight, family, styleName, st, spacing, amount, S,
   const asc = m.actualBoundingBoxAscent ?? size * 0.8, desc = m.actualBoundingBoxDescent ?? size * 0.22;
   const left = m.actualBoundingBoxLeft ?? 0, right = m.actualBoundingBoxRight ?? adv;
   const fAsc = m.fontBoundingBoxAscent ?? size * 0.92, fDesc = m.fontBoundingBoxDescent ?? size * 0.24;
-  const pad = Math.ceil(size * (glow ? 0.42 : 0.22) + 4);
+  const pad = Math.ceil(size * (glow ? 0.62 : 0.22) + 6);
   const W = Math.ceil(left + right + pad * 2), H = Math.ceil(asc + desc + pad * 2);
   const PW = Math.ceil(W * S), PH = Math.ceil(H * S);
   const ox = pad + left, oy = pad + asc;
@@ -416,7 +416,7 @@ function buildText(str, size, weight, family, styleName, st, spacing, amount, S,
   const edgeW = Math.max(2.5, size * 0.1);
   // 2) 발광 + 그림자 + 바깥 테두리
   if (glow) {
-    c.save(); c.shadowColor = st.glow; c.shadowBlur = size * 0.34 * S;
+    c.save(); c.shadowColor = st.glow; c.shadowBlur = size * 0.28 * S;
     c.strokeStyle = st.edge; c.fillStyle = st.edge; c.lineWidth = edgeW; shape(c, 'stroke'); shape(c, 'fill'); c.restore();
   }
   c.save(); c.translate(size * 0.03, size * 0.07); c.globalAlpha = 0.7;
