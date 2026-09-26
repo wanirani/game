@@ -17,9 +17,17 @@
 //
 // Minimums in CSS px (§6.3): primary 44 (both sides), icon/arrow 44×44, list row 36 tall, dense row 28 tall.
 // yellow = below its kind's minimum; red = shorter side below 32. The effective size includes the region's slop.
+// Slop is measured as a phone user gets it (touch mode; the audit runs at phone sizes):
+//  - taps.add regions use the registry's own rule (core/ui.js tapSlop): max(opts.slop ?? taps.slop, half of what the
+//    kind's CSS minimum is short of), capped at SLOP_MAX_LOGICAL region px;
+//  - legacy helpers (ListMenu/Gesture/TapZones/Hits/fields) hit-test without slop;
+//  - §6.3 "gap ≥ 4 px, or no overlap of slop": on each side the slop stops at the midpoint of the gap to the nearest
+//    neighbouring target (0 when they touch), so a stack of thin rows cannot pass on overlapping slop.
 
 export const MIN_CSS = { primary: 44, icon: 44, row: 36, dense: 28 };
 export const RED_CSS = 32;
+/** core/ui.js TAP_SLOP_MAX (logical px); ui.taps.slopMax wins when the registry exposes it. */
+export const SLOP_MAX_LOGICAL = 28;
 
 export async function installTapRecorder(page) {
   await page.evaluate(async () => {
@@ -30,7 +38,7 @@ export async function installTapRecorder(page) {
     const rec = (src, kind) => (r, extra = {}) => {
       if (!R.on || !r || !(r.w > 0) || !(r.h > 0)) return;
       if (R.cur !== g.top) return;
-      R.list.push({ src, kind: KIND[extra.kind] || kind, id: extra.id ?? null, slop: extra.slop || 0, x: r.x, y: r.y, w: r.w, h: r.h, scene: g.top?.name, ui: !!g.top?.uiScale });
+      R.list.push({ src, kind: KIND[extra.kind] || kind, id: extra.id ?? null, slop: extra.slop || 0, auto: !!extra.auto, hit: extra.hit !== false, x: r.x, y: r.y, w: r.w, h: r.h, scene: g.top?.name, ui: !!g.top?.uiScale });
     };
     const wrapScene = (sc) => {
       if (!sc || sc.__qaTapWrap) return;
@@ -66,14 +74,12 @@ export async function installTapRecorder(page) {
     if (t && typeof t === 'object') {
       try { if ('record' in t) t.record = true; } catch { /* read-only */ }
       P(t, 'note', 'ui.taps', 'primary', 0, 1);
-      // taps.add(id, rect, {slop, kind}): the default slop (taps.slop) applies in touch mode only
+      // taps.add(id, rect, {slop, kind, disabled}): hit regions with the registry's touch slop (auto-grown to the kind's
+      // minimum, see the header); the audit applies it as a phone user gets it, whatever the current input mode is
       if (typeof t.add === 'function') {
         const o = t.add; const f = rec('ui.taps', 'primary');
         t.add = function (id, r, opts = {}) {
-          try {
-            const touch = g.input?.mode ? g.input.mode === 'touch' : !!g.input?.touchMode;
-            f(r, { id, kind: opts?.kind, slop: touch ? (opts?.slop ?? t.slop ?? 0) : 0 });
-          } catch { /* ignore */ }
+          try { f(r, { id, kind: opts?.kind, slop: opts?.slop ?? t.slop ?? 0, auto: true, hit: !opts?.disabled }); } catch { /* ignore */ }
           return o.apply(this, arguments);
         };
       }
