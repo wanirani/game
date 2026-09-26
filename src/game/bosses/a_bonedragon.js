@@ -18,11 +18,13 @@ class Wyrm {
     this.ext = 0; this.extT = this.N * this.L; this.extSp = 900;
     this.hx = x; this.hy = y; this.tx = x; this.ty = y - 200; this.follow = 5;
     this.a = -PI / 2; this.aT = -PI / 2; this.jaw = 0; this.flare = 0; this.wing = 0.5; this.k = 0;
-    this.hidden = true; this.st = 'idle'; this.stT = 0; this.cool = 2.5;
+    this.hidden = true; this.st = 'idle'; this.stT = 0; this.cool = 2.5; this.autoExt = true;
   }
   get maxLen() { return this.N * this.L; }
   setHole(x, y, nx, ny) { const h = this.hole; h.x = x; h.y = y; h.nx = nx; h.ny = ny; }
   update(dt) {
+    // 필요한 만큼만 목을 내민다 (남는 길이가 고리처럼 부풀지 않게)
+    if (this.autoExt) { const h = this.hole; this.extT = clamp(Math.hypot(this.tx - h.x, this.ty - h.y) * 1.22 + 50, 140, this.maxLen); }
     this.ext = approach(this.ext, this.extT, this.extSp * dt);
     this.hx += (this.tx - this.hx) * Math.min(1, dt * this.follow);
     this.hy += (this.ty - this.hy) * Math.min(1, dt * this.follow);
@@ -102,7 +104,7 @@ export class BoneDragon extends ABoss {
   }
   idleMove(dt, world, p) {
     const m = this.main, A = this.A;
-    m.follow = 3; m.extT = m.maxLen;
+    m.follow = 3; m.autoExt = true; m.extSp = 900;
     const side = Math.sign(p.cx - m.hole.x) || -1;
     m.tx = clamp(lerp(m.hole.x, p.cx, 0.45) + Math.sin(this.t * 0.9) * 40, A.x0 + 60, A.x1 - 60);
     m.ty = A.floor - 230 + Math.sin(this.t * 1.3) * 30;
@@ -210,7 +212,8 @@ export class BoneDragon extends ABoss {
   s_burrow(dt, world, p) {
     const m = this.main, A = this.A, n = this.phase >= 1 || this.inferno ? 2 : 1, per = 1.9;
     const i = Math.floor(this.stateT / per), u = this.stateT - i * per;
-    if (i >= n) { m.extT = m.maxLen; m.extSp = 700; if (this.stateT > n * per + 0.2) this.rest(0.9); return; }
+    if (i >= n) { m.autoExt = true; m.extSp = 700; if (this.stateT > n * per + 0.2) this.rest(0.9); return; }
+    m.autoExt = false;
     if (u < 0.5) {
       // 파고듦
       if (this.at(i * per)) { audio.sfx('break_wall', { pitch: 0.6 }); }
@@ -233,12 +236,13 @@ export class BoneDragon extends ABoss {
     }
     if (u < 1.6) this.strikeRect({ x: m.hole.x - 50, y: Math.min(m.hy - 40, A.floor - 40), w: 100, h: A.floor - Math.min(m.hy - 40, A.floor - 40) }, 1.35, { kb: [300, -700] });
     m.jaw = lerp(m.jaw, 0.2, dt * 3);
-    if (u > 1.6) { m.follow = 3; m.extSp = 700; m.extT = m.maxLen; }
+    if (u > 1.6) { m.follow = 3; m.extSp = 700; m.autoExt = true; m.tx = m.hole.x - Math.sign(m.hole.x - p.cx || 1) * 60; m.ty = A.floor - 240; }
   }
 
   // ── 벽 관통 돌격: 경기장 벽에서 머리가 튀어나와 가로지른다 ──
   s_wall(dt, world, p) {
     const m = this.main, A = this.A;
+    m.autoExt = this.stateT >= 2.5;
     if (this.stateT < 0.5) {
       m.follow = 10; m.tx = m.hole.x - m.hole.nx * 60; m.ty = m.hole.y - m.hole.ny * 60; m.extT = 0; m.extSp = 1500;
       if (this.at(0)) audio.sfx('break_wall', { pitch: 0.5 });
@@ -264,7 +268,7 @@ export class BoneDragon extends ABoss {
     if (this.at(2.5)) {
       // 벽 근처 바닥으로 복귀
       const x = m.hole.nx > 0 ? A.x0 + 170 : A.x1 - 170;
-      m.setHole(x, A.floor, 0, -1); m.ext = 0; m.k = 0; m.hx = m.tx = x; m.hy = A.floor + 30; m.ty = A.floor - 240; m.extT = m.maxLen; m.extSp = 1100; m.follow = 5;
+      m.setHole(x, A.floor, 0, -1); m.ext = 0; m.k = 0; m.hx = m.tx = x; m.hy = A.floor + 30; m.ty = A.floor - 240; m.extSp = 1100; m.follow = 5;
       this.impact(x, A.floor, 8, 0.03, '#b8ffc8'); world.fx.burst('shard', x, A.floor - 6, 10, { color: '#6a5a4a', speed: 320, angle: -PI / 2, spread: 0.9 });
     }
     if (this.stateT > 3.0) this.rest(0.8);
@@ -296,7 +300,7 @@ export class BoneDragon extends ABoss {
     const h = this.twin, A = this.A;
     h.stT += dt;
     if (h.st === 'idle') {
-      h.follow = 3; h.extT = h.maxLen;
+      h.follow = 3; h.autoExt = true;
       h.tx = clamp(lerp(h.hole.x, p.cx, 0.35), A.x0 + 60, A.x1 - 60); h.ty = A.floor - 250 + Math.sin(this.t * 1.1 + 2) * 30;
       h.aT = angleTo(h.hx, h.hy, p.cx, p.cy - 20); h.jaw = lerp(h.jaw, 0.1, dt * 4);
       h.cool -= dt * this.aggro;

@@ -2964,7 +2964,7 @@ RENDER_B.vampire_bride = (ctx, e, world, o) => {
 RENDER_B.demon_lord = (ctx, e, world, o) => {
   FL = !!o?.flash;
   const t = e.t, an = e.anim, at = e.animT;
-  const skin = '#6a1a1c', skinD = '#3a0c10', armor = '#2a2430', gold = '#c89a3a', crack = '#ff7a2a', capeC = '#3a0a18';
+  const skin = '#4a2228', skinD = '#241014', armor = '#24202c', gold = '#d8aa48', crack = '#ff7a2a', capeC = '#1e0a14';
   const walk = an === 'walk', swing = an === 'swing', fb = an === 'fireball', hf = an === 'hellfire';
   const wu = e.params?.windup ?? 0.6;
   const ph = t * 5;
@@ -3162,7 +3162,7 @@ RENDER_B.royal_guard = (ctx, e, world, o) => {
   }
   pose.farArm = 1.0; pose.farArm2 = 0.6;
   const K = {
-    H: 98, steel: '#8a1a24', trim: gold, cape: '#1a1a3a', eye: '#ffd060', bladeGlow: '#ffe0a0', reach: 92,
+    H: 98, steel: '#6a1822', trim: gold, cape: '#1a1a3a', eye: '#ffd060', bladeGlow: '#ffe0a0', reach: 92,
     helm(c, tt) {
       // 높은 붉은 깃털 장식
       c.fillStyle = '#c81a2a'; c.strokeStyle = OUT; c.lineWidth = 1;

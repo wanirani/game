@@ -303,7 +303,7 @@ function adsr(g, t, d, pk, a, dec, sus, rel) {
   g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(pk, t + a);
   if (sus < 1) g.gain.setTargetAtTime(pk * sus, t + a, dec);
   g.gain.setTargetAtTime(0, t + Math.max(d, a), rel / 3);
-  return t + Math.max(d, a) + rel * 1.4;
+  return t + Math.max(d, a) + rel * 2;
 }
 function pluck(g, t, d, pk, tau, rel = 0.05) {
   g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(pk, t + 0.003);
@@ -1092,7 +1092,7 @@ export class Engine {
   setVolumes(m, s) {
     const t = this.ctx.currentTime, mg = MUSIC_TRIM * Math.pow(Math.max(0, m), 1.5), sg = SFX_TRIM * Math.pow(Math.max(0, s), 1.5);
     this.musicG.gain.setTargetAtTime(mg, t, 0.03); this.musicRevG.gain.setTargetAtTime(mg, t, 0.03);
-    this.sfxG.gain.setTargetAtTime(sg, t, 0.03); this.sfxRev.gain.setTargetAtTime(sg, t, 0.03);
+    this.sfxG.gain.setTargetAtTime(sg, t, 0.03); this.sfxRev.gain.setTargetAtTime(sg * 0.6, t, 0.03);
   }
   duck(amount = 0.5, time = 0.5) {
     const t = this.ctx.currentTime, lvl = Math.max(0.05, 1 - amount);
@@ -1261,6 +1261,9 @@ class AudioSystem {
   setVolumes(m, s) {
     this.musicVol = m ?? this.musicVol; this.sfxVol = s ?? this.sfxVol;
     this.eng?.setVolumes(this.musicVol, this.sfxVol);
+    // 음악 음량 0 → 시퀀서 정지(모바일 CPU 절약), 다시 올리면 원하던 곡 재개
+    if (this.musicVol <= 0.001) { if (this.player) { this.player.kill(0.2); this.player = null; } }
+    else this._sync();
   }
   sfx(name, opts) {
     if (!this.eng || this.ctx.state !== 'running') return;
@@ -1282,7 +1285,7 @@ class AudioSystem {
   update() { this._tick(); }
   _sync() {
     if (!this.eng || this.ctx.state !== 'running') return;
-    if (!this.want) return;
+    if (!this.want || this.musicVol <= 0.001) return;
     if (this.player && this.player.id === this.want && !this.player.done) return;
     const now = this.ctx.currentTime, f = this.fade;
     if (this.player) this.player.kill(f ?? 0.9);

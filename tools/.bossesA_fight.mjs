@@ -36,7 +36,7 @@ while ((Date.now() - t0) / 1000 < T) {
     ph++;
     await page.evaluate((k) => { const w = window.__game.world; const b = w.boss; if (b && !b.dead) b.takeHit(Math.max(0, b.hp - b.stats.maxHp * (k === 1 ? 0.58 : 0.28)), {}, w, {}); }, ph);
   }
-  await page.evaluate(() => { const p = window.__game.world?.player; if (p) { p.hp = p.stats.hp; } });
+  await page.evaluate(() => { const p = window.__game.world?.player; if (p) { p.stats.hp = 99999; p.hp = 99999; } });
   const dir = Math.random() < 0.5 ? 'ArrowLeft' : 'ArrowRight';
   await page.keyboard.down(dir);
   if (Math.random() < 0.5) { await page.keyboard.down('KeyZ'); await page.waitForTimeout(120); await page.keyboard.up('KeyZ'); }

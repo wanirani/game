@@ -8,7 +8,7 @@ import { audio } from '../../core/audio.js';
 
 const FUR = '#8e6434', FUR2 = '#c8965a', FURD = '#2e1c0c', MANE = '#2a180e', MANE2 = '#5a3620', GOAT = '#8a8272', SNAKE = '#3a7a3a', SNAKE2 = '#c8d86a', ACID = '#7cff5a', GLASS = '#c8fff0';
 const _Q = new Float32Array(40);
-const S = 1.14; // 그림 배율
+const S = 1.04; // 그림 배율
 
 export class Chimera extends ABoss {
   setup() {
@@ -297,13 +297,13 @@ export class Chimera extends ABoss {
     this.legL(ctx, 48, -84 + bob, g + PI * 1.5, true, true, air, body);
     // 몸통 (사자)
     ctx.beginPath();
-    ctx.moveTo(-92, -96 + bob);
-    ctx.quadraticCurveTo(-96, -128 + bob, -60, -134 + bob);
-    ctx.quadraticCurveTo(-10, -128 + bob, 30, -138 + bob);
-    ctx.quadraticCurveTo(76, -146 + bob, 84, -108 + bob);
-    ctx.quadraticCurveTo(88, -70 + bob, 60, -62 + bob);
-    ctx.quadraticCurveTo(0, -52 + bob, -52, -62 + bob);
-    ctx.quadraticCurveTo(-90, -66 + bob, -92, -96 + bob);
+    ctx.moveTo(-100, -96 + bob);
+    ctx.quadraticCurveTo(-104, -128 + bob, -64, -132 + bob);
+    ctx.quadraticCurveTo(-10, -124 + bob, 34, -138 + bob);
+    ctx.quadraticCurveTo(84, -148 + bob, 92, -108 + bob);
+    ctx.quadraticCurveTo(96, -70 + bob, 64, -62 + bob);
+    ctx.quadraticCurveTo(0, -56 + bob, -56, -62 + bob);
+    ctx.quadraticCurveTo(-98, -66 + bob, -100, -96 + bob);
     ctx.closePath();
     ink(ctx, body ?? lg(ctx, 'chbody', 0, -146, 0, -52, [0, C(FUR2), 0.35, C(FUR), 0.8, C('#7a5a32'), 1, C(FURD)]), 3);
     if (!ghost) {
@@ -391,12 +391,14 @@ export class Chimera extends ABoss {
     }
   }
   drawGoat(ctx, t, bob, ghost) {
-    const up = this.goatUp, gx = -8 + up * 6, gy = -168 - up * 16 + bob * 0.5;
-    // 목
-    _Q[34] = -20; _Q[35] = -128 + bob; _Q[36] = gx - 4; _Q[37] = gy + 14;
-    ctx.beginPath(); ctx.moveTo(-34, -126 + bob); ctx.quadraticCurveTo(gx - 22, gy + 30, gx - 12, gy + 8); ctx.lineTo(gx + 10, gy + 12); ctx.quadraticCurveTo(gx + 4, gy + 40, 0, -128 + bob); ctx.closePath();
-    ink(ctx, ghost ? '#6a8a3a' : lg(ctx, 'chgneck', 0, gy, 0, -128, [0, C('#aaa290'), 1, C('#5a5448')]), 2.5);
-    ctx.save(); ctx.translate(gx, gy); ctx.rotate(-0.25 - up * 0.2); ctx.scale(1.3, 1.3);
+    const up = this.goatUp, gx = -4 + up * 8, gy = -170 - up * 14 + bob * 0.5;
+    // 목 (털 난 가는 목)
+    const nq = _Q.subarray(34, 40);
+    nq[0] = -22; nq[1] = -126 + bob; nq[2] = -18 + up * 2; nq[3] = (gy - 126 + bob) / 2 + 4; nq[4] = gx - 6; nq[5] = gy + 8;
+    taper(ctx, nq, 3, 22, 13);
+    ink(ctx, ghost ? '#6a8a3a' : lg(ctx, 'chgneck', -30, 0, 0, 0, [0, C('#6a6456'), 0.6, C('#9a927e'), 1, C('#b8b09a')]), 2.2);
+    if (!ghost) { ctx.strokeStyle = C('rgba(40,36,28,0.5)'); ctx.lineWidth = 1.2; ctx.beginPath(); for (let i = 0; i < 4; i++) { const y = -130 + bob - i * 10; ctx.moveTo(-26 + i, y); ctx.lineTo(-18 + i, y - 4); } ctx.stroke(); }
+    ctx.save(); ctx.translate(gx, gy); ctx.rotate(-0.25 - up * 0.2); ctx.scale(1.15, 1.15);
     // 뿔 (굵은 나선형 숫양 뿔)
     for (const k of [0.85, 1]) {
       ctx.beginPath();

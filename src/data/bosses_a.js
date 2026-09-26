@@ -30,7 +30,7 @@ export const BOSSES_A = {
     id: 'b_crimson', name: '진홍의 갑주군주', title: '피로 달궈진 살아있는 갑옷', hp: 1250, atk: 25, def: 16, res: 8, exp: 640, score: 32000,
     size: { w: 132, h: 226 }, contact: 0.8, material: 'metal', weak: ['thunder', 'ice'], resist: ['fire', 'dark'],
     phases: [0.6, 0.3], music: 'boss', portrait: 'portraits/b_crimson', stageId: 's04', drops: ['u_crimson'],
-    light: { r: 220, color: '#ff5a2a', i: 0.8 }, deathColor: '#ff7a3a', deathFx: 'ember',
+    light: { r: 200, color: '#ff5a2a', i: 0.45 }, deathColor: '#ff7a3a', deathFx: 'ember',
     intro: '(텅 빈 투구 속에서 검붉은 불꽃이 타오른다.)',
     desc: '대회랑을 지키는 진홍빛 거대 갑옷. 안에는 사람 대신 피로 달궈진 암흑의 불꽃이 들어차 있다.',
   },

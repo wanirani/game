@@ -758,24 +758,24 @@ export const TRACKS = {
     },
     order: ['A'],
     sec: {
-      A: { bars: 5, chords: 'D | D | G A | D | D',
-        lead: 'o4 l16 d8 d d d8 a8 > d4. c+8 | d4 < a4 f+4 a4 | b4 a8 g8 f+8 g8 a8 > c+8 | d1 | r1',
-        timp: 'o2 d8 d16 d16 d4 r2 | d4 r4 a4 r4 | g4 r4 a4 a8 a8 | d1 | r1',
+      A: { bars: 4, chords: 'D | D | G A | D',
+        lead: 'o4 l16 d8 d d d8 a8 > d4. c+8 | d4 < a4 f+4 a4 | b4 a8 g8 f+8 g8 a8 > c+8 | d1',
+        timp: 'o2 d8 d16 d16 d4 r2 | d4 r4 a4 r4 | g4 r4 a4 a8 a8 | d1',
         dr: { step: 16, c: 'X' + dot(47) + 'X' + dot(15), s: dot(32) + 'x.x.x.x.xxxxXXXX' + 'X' + dot(15), k: 'x' + dot(47) + 'X' + dot(15) } },
     },
   },
   gameover: {
-    name: '게임 오버', gain: 0.71, bpm: 72, key: 'D hmin', loop: false,
+    name: '게임 오버', gain: 0.71, bpm: 88, key: 'D hmin', loop: false,
     ch: {
       mel: { inst: 'organ2', vol: 0.42 },
       choir: C.pad('choir', { vowel: 'o', vol: 0.22 }),
       org: C.pad('organ', { vol: 0.2, oct: 3 }),
-      bell: { inst: 'bells', gen: 'R' + dot(63), step: 16, oct: 3, vol: 0.26 },
+      bell: { inst: 'bells', gen: 'R' + dot(47) + 'R' + dot(15), step: 16, oct: 3, vol: 0.26 },
     },
     order: ['A'],
     sec: {
-      A: { bars: 5, chords: 'Dm | Bb | Gm A | Dm | Dm',
-        mel: 'o5 a2 f2 | d2 f4 d4 | < b-4 g4 e4 c+4 | d1 | r1' },
+      A: { bars: 4, chords: 'Dm | Bb | Gm A | Dm',
+        mel: 'o5 a2 f2 | d2 f4 d4 | < b-4 g4 e4 c+4 | d1' },
     },
   },
   ending: {

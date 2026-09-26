@@ -428,8 +428,7 @@ export class CrimsonArmor extends ABoss {
   }
   drawAssembled(ctx, t) {
     const P = this.pose(), { H, T, G, dx, dy } = P, heat = this.heat, walk = clamp(Math.abs(this.vx) / 90, 0, 1);
-    glow(ctx, 0, -120, 190, '#3a0608', 0.6);
-    if (heat > 0.02) glow(ctx, 0, -120, 200, DFIRE, 0.12 * heat + 0.05 * Math.sin(t * 6) * heat);
+    if (heat > 0.02) glow(ctx, 0, -120, 200, DFIRE, 0.08 * heat + 0.04 * Math.sin(t * 6) * heat);
     if (this.state === 'transform' || this.state === 'splitting') glow(ctx, 0, -130, 240, '#ff5a2a', 0.4 + 0.2 * Math.sin(t * 30));
     const g0 = this.gait;
     // 뒷다리
@@ -486,16 +485,16 @@ export class CrimsonArmor extends ABoss {
 
 // ───────────────────────── 부품 그리기 (원점 = 부품 중심, 오른쪽 기준) ─────────────────────────
 function lavaCracks(ctx, heat, t, pts) {
-  const a = 0.35 + heat * 0.55 + Math.sin(t * 5) * 0.1;
+  const a = 0.25 + heat * 0.45 + Math.sin(t * 5) * 0.08;
   if (a <= 0.02) return;
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  ctx.strokeStyle = rgba(LAVA, 0.35 * a); ctx.lineWidth = 5;
+  ctx.strokeStyle = rgba(LAVA, 0.3 * a); ctx.lineWidth = 4;
   ctx.beginPath();
   for (let i = 0; i < pts.length; i += 6) { ctx.moveTo(pts[i], pts[i + 1]); ctx.lineTo(pts[i + 2], pts[i + 3]); ctx.lineTo(pts[i + 4], pts[i + 5]); }
   ctx.stroke();
-  ctx.strokeStyle = rgba('#ffd080', 0.9 * a); ctx.lineWidth = 1.6; ctx.stroke();
+  ctx.strokeStyle = rgba('#ffb060', 0.85 * a); ctx.lineWidth = 1.3; ctx.stroke();
   ctx.restore();
 }
 function drawHelm(ctx, t, visor, heat) {
@@ -534,7 +533,7 @@ function drawChest(ctx, t, heat, core) {
   ctx.beginPath();
   ctx.moveTo(-40, -36); ctx.quadraticCurveTo(-4, -46, 44, -34); ctx.quadraticCurveTo(52, -6, 36, 22);
   ctx.quadraticCurveTo(28, 40, 4, 44); ctx.quadraticCurveTo(-22, 40, -30, 22); ctx.quadraticCurveTo(-46, -6, -40, -36); ctx.closePath();
-  ink(ctx, lg(ctx, 'crchest', -46, 0, 52, 0, [0, C('#3a060c'), 0.2, C(DARKR), 0.5, C(RED), 0.78, C('#e4504c'), 0.9, C(RED), 1, C('#3a060c')]), 3.5);
+  ink(ctx, lg(ctx, 'crchest', -46, 0, 52, 0, [0, C('#2a040a'), 0.2, C(DARKR), 0.5, C(RED), 0.78, C('#c83a3a'), 0.9, C(RED), 1, C('#2a040a')]), 3.5);
   rim(ctx, -52, -10, RIM, 4, 0.55);
   sheen(ctx, 22, -40, 30, 10, WARM, 0.22);
   // 가운데 능선 + 금장

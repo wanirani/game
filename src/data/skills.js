@@ -295,7 +295,7 @@ tree('azel', [
     A('azel_bat_storm', '박쥐 폭풍', { cost: 20, cd: 10, color: '#c0103a', v: { dmg: [60, 10], n: [8, 2] },
       desc: '박쥐 {n}마리를 풀어 적을 쫓게 한다. 박쥐마다 {dmg}% 암흑 피해를 주고 체력을 흡수한다.' }),
     A('azel_crimson_feast', '혈왕의 연회', { cost: 26, cd: 16, color: '#ff1a2a', v: { dmg: [50, 8], r: [200, 20], t: [2.5, 0.3] },
-      desc: '핏빛 달 아래 {t}초 동안 반경 {r} 안의 적에게서 피를 빨아들인다. 타격당 {dmg}% 암흑 피해를 주고 그만큼 회복한다.' }),
+      desc: '핏빛 달 아래 {t}초 동안 반경 {r} 안의 적에게서 피를 빨아들인다. 타격당 {dmg}% 암흑 피해를 주고, 빨아들인 피로 체력을 회복한다.' }),
   ] },
   { id: 'azel_holysword', kind: 'class', gate: ['azel_holyblade', 'azel_dawnbringer', 'azel_seraph'], name: '성검', color: '#ffe070',
     desc: '어둠의 피를 빛으로 다스리는 성검의 길. 성검사 계열에서 꽃핀다.', skills: [
