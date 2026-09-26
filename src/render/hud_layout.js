@@ -175,10 +175,8 @@ function build(vw, vh, T, S, pad, bossOn, nM) {
   L.awGauge = R(106 + l, 126 + t, 120, 20);
   L.ready = R(106 + l, 148 + t, 130, 22);
   L.companions = R(244 + l, 92 + t, 128, 68);
-  // 오른쪽 위 점수 (패드가 거기까지 올라오면 — touchScale 1.3 같은 큰 패드 — 패드 왼쪽으로 비킨다)
-  const score = R(right - 164, 10 + t, 150, T ? 70 : 62);
-  for (const p of pad) if (overlaps(score, p)) score.x = Math.min(score.x, p.x - HUD_GAP - score.w);
-  L.score = score;
+  // 오른쪽 위 점수 (고정 영역: 패드가 여기까지 올라오면 패드 배치(PLAT-TOUCH)가 크기를 줄여야 한다)
+  L.score = R(right - 164, 10 + t, 150, T ? 70 : 62);
 
   // 패드 분석: 위쪽 가운데 시스템 버튼 / 버튼 묶음 (오른쪽, 왼손 모드면 왼쪽)
   const sides = padSides(pad, vw, vh);

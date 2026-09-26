@@ -15,7 +15,8 @@
 //   skip     not applicable here (reason in detail)
 // Checks for the headline defects of platform.md §0 are never gated: they must be red until fixed.
 //
-// Reports: /tmp/claude-0/qa/platform/<suite>.json (+ screenshots of failures under shots/<suite>/).
+// Reports: /tmp/claude-0/qa/platform/<suite>.json (+ a screenshot of the first red check per group under shots/<suite>/;
+// --shots keeps one for every red check).
 // Exit code: 1 when any check is red (fail/error), else 0.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -71,6 +72,7 @@ export class Suite {
     this.results = [];
     this.pageErrors = [];
     this.shotDir = path.join(REPORT_DIR, 'shots', name);
+    this.shotGroups = new Set();
     fs.mkdirSync(REPORT_DIR, { recursive: true });
     this.quiet = !!args.quiet;
   }
@@ -100,7 +102,9 @@ export class Suite {
       title: meta.title || '', status: r.status, detail: r.detail, metrics: r.metrics, ms: Date.now() - t, at: Date.now() - this.t0,
     };
     if ((r.status === 'fail' || r.status === 'error') && gated) { rec.status = 'pending'; rec.would = r.status; }
-    if ((rec.status === 'fail' || rec.status === 'error') && meta.session) {
+    // screenshot of a red check: the first per group by default, every one with --shots
+    if ((rec.status === 'fail' || rec.status === 'error') && meta.session && (this.args.shots || !this.shotGroups.has(meta.group))) {
+      this.shotGroups.add(meta.group);
       fs.mkdirSync(this.shotDir, { recursive: true });
       rec.shot = path.join(this.shotDir, `${meta.id.replace(/[^\w.-]+/g, '_')}.png`);
       await meta.session.screenshot(rec.shot);

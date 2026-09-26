@@ -703,10 +703,15 @@ export let fontEpoch = 0;
 const EPOCH_FNS = new Set();
 /** 글꼴 세대가 바뀔 때마다 fn(fontEpoch) 호출 (예: game.dirty = true). 반환: 구독 해제 함수 */
 export function onFontEpoch(fn) { EPOCH_FNS.add(fn); return () => EPOCH_FNS.delete(fn); }
-function bumpFontEpoch() {
+function bumpFontEpoch(ev) {
   fontEpoch++;
-  // 늦게 도착한 글꼴(예: 확장 한글 "… Ext", 붓글씨) 전에 대체 글꼴로 구운 피 글씨를 버린다 (다음에 그릴 때 다시 굽는다)
-  if (TXT_CACHE.size) clearTextCache();
+  // 늦게 도착한 글꼴(예: 확장 한글 "… Ext", 붓글씨) 전에 대체 글꼴로 구운 피 글씨를 버린다 (다음에 그릴 때 다시 굽는다).
+  // 도착한 글꼴 이름을 알면 그 글꼴을 쓰는 비트맵과 글꼴이 덜 준비된 채 구운 비트맵만 버린다 (나머지는 그대로 → 게임 중 끊김 없음)
+  if (TXT_CACHE.size) {
+    const fams = ev?.fontfaces ? [...ev.fontfaces].map((f) => `"${String(f.family).replace(/^["']|["']$/g, '')}"`) : [];
+    if (!fams.length) clearTextCache();
+    else for (const [k, e] of [...TXT_CACHE]) if (!e.fontOk || fams.some((f) => e.fontStr.includes(f))) dropEntry(k);
+  }
   for (const fn of EPOCH_FNS) { try { fn(fontEpoch); } catch (e) { console.error(e); } }
 }
 try { document.fonts.addEventListener('loadingdone', bumpFontEpoch); } catch { /* 문서 없음(노드 도구) */ }

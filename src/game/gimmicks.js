@@ -83,10 +83,16 @@ export function gimmickBodies(world, { player = true, bosses = true } = {}) {
   }
   return out;
 }
-/** 개체를 1~maxTiles 칸 위의 첫 빈자리로 올린다 (성공 true) */
+/**
+ * 벽에 낀 개체를 위쪽 첫 빈자리로 올린다 (성공 true). 발밑을 타일 윗면에 맞춰 올리므로 걷는 적은 새 바닥 위에 선다.
+ * 후보: 발이 든 칸의 윗면, 그보다 1칸·2칸… 위 (합쳐서 최대 maxTiles 칸 이내로만 올린다)
+ */
 export function liftOut(world, e, maxTiles = 3) {
-  for (let k = 1; k <= maxTiles; k++) {
-    const r = { x: e.x, y: e.y - k * TILE, w: e.w, h: e.h };
+  const b0 = Math.floor((e.y + e.h - 0.01) / TILE) * TILE;
+  for (let k = 0; k <= maxTiles; k++) {
+    const bottom = b0 - k * TILE;
+    if (e.y + e.h - bottom > maxTiles * TILE + 0.5) break;
+    const r = { x: e.x, y: bottom - e.h, w: e.w, h: e.h };
     if (rectFree(world.map, r)) { e.y = r.y; if (e.vy > 0) e.vy = 0; return true; }
   }
   return false;
@@ -639,7 +645,7 @@ class MagmaGimmick {
   rescue(p) {
     const w = this.world, m = w.map;
     const ptx = Math.floor(p.cx / TILE), topRow = Math.floor((this.level - 4) / TILE) - 1;
-    for (let d = 0; d <= 24; d++) {
+    for (let d = 0; d <= m.w; d++) {
       for (const tx of d ? [ptx - d, ptx + d] : [ptx]) {
         if (tx < 0 || tx >= m.w) continue;
         for (let ty = topRow; ty >= 1; ty--) {

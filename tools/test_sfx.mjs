@@ -28,8 +28,8 @@ const fail = (m) => fails.push(m), warn = (m) => warns.push(m), info = (m) => in
 // ── 정적 검사: sfx_feel.js 는 audio.js 를 import 하면 안 된다 ──
 {
   const src = fs.readFileSync(path.join(root, 'src/core/sfx_feel.js'), 'utf8').replace(/\/\/[^\n]*/g, '');
-  if (/\bimport\b[^;]*?['"][^'"]*\baudio\.js['"]/.test(src) || /\bimport\s*\(\s*['"][^'"]*\baudio\.js['"]/.test(src)) fail('sfx_feel.js 가 audio.js 를 import 함 (순환 금지)');
-  const other = [...src.matchAll(/\bimport\b[^;]*?['"]([^'"]+)['"]/g)].map((m) => m[1]);
+  if (/\b(?:import|export)\b[^;]*?['"][^'"]*\baudio\.js['"]/.test(src) || /\bimport\s*\(\s*['"][^'"]*\baudio\.js['"]/.test(src)) fail('sfx_feel.js 가 audio.js 를 import(또는 re-export) 함 (순환 금지)');
+  const other = [...src.matchAll(/\b(?:import|export)\b[^;'"]*?\bfrom\s*['"]([^'"]+)['"]|\bimport\s*\(?\s*['"]([^'"]+)['"]/g)].map((m) => m[1] || m[2]);
   if (other.length) warn(`sfx_feel.js 의 import: ${other.join(', ')} (간접 순환 여부 확인 필요)`);
 }
 for (const n of FEEL) if (BASE.includes(n) || CMP.includes(n)) fail(`체감 이름 충돌: ${n}`);
@@ -87,6 +87,20 @@ const res = await page.evaluate(async ({ only, FEEL }) => {
     ok(probe && need.every((k) => typeof probe[k] === 'function'), `fn(S, H) 의 H 에 ${need.join('/')} 가 모두 있어야 함 (받은 값: ${probe ? Object.keys(probe).join(',') : '없음'})`);
     ok(probe === SFX_KIT, 'H 와 SFX_KIT 이 같은 객체가 아님');
     delete SFX.__probe;
+    // 경계: 프로토타입 이름·이상한 이름·음수 vol, throw 하는 정의, 프로토타입 이름 재생
+    ok(defineSfx('__proto__', { fn() {} }) === false && Object.getPrototypeOf(SFX) === Object.prototype, "defineSfx('__proto__') 가 SFX 프로토타입을 바꿈");
+    ok(defineSfx('bad name', { fn() {} }) === false && !('bad name' in SFX), 'defineSfx 가 공백 들어간 이름을 받음');
+    ok(defineSfx('__probe_neg', { vol: 1, fn() {} }, -2) === true && SFX.__probe_neg.vol === 1, 'defineSfx 가 음수 vol 을 반영함');
+    delete SFX.__probe_neg;
+    defineSfx('__probe_throw', { fn(S, H) { H.T(S, 'sine', 440, 0, 0, 0.1, 0.2); throw new Error('probe'); } });
+    const e3 = new Engine(new OfflineAudioContext(2, 4410, 44100));
+    let threw = false; try { e3.sfx('__probe_throw'); } catch { threw = true; }
+    ok(threw && e3.live.some((x) => x.name === '__probe_throw'), 'fn 이 throw 하면 이미 만든 소리가 live 로 추적되지 않음 (노드 누수)');
+    delete SFX.__probe_throw;
+    let protoErr = null;
+    for (const n of ['constructor', 'toString', 'hasOwnProperty', '__proto__']) { try { e3.sfx(n); } catch (e) { protoErr = `${n}: ${e.message}`; } }
+    ok(!protoErr, `프로토타입 이름 재생이 _default 로 가지 않고 오류: ${protoErr}`);
+    ok(!audio.has('constructor') && audio.lead('constructor') === 0, 'audio.has/lead 가 프로토타입 이름을 등록된 것으로 봄');
   }
   for (const k of ['liveCount', 'stopSfx', 'has', 'lead', 'setQuality']) ok(typeof audio[k] === 'function', `audio.${k} 없음`);
   ok(audio.has('step_stone') && !audio.has('__nope__') && !audio.has('_default'), 'audio.has 결과 이상');
@@ -94,6 +108,13 @@ const res = await page.evaluate(async ({ only, FEEL }) => {
   ok(audio.stats && Number.isFinite(audio.stats.starts), 'audio.stats 없음');
   ok(audio.quality === 'high', `audio.quality 기본값 이상: ${audio.quality}`);
   audio.setQuality('low'); ok(audio.quality === 'low', 'audio.setQuality 무시됨'); audio.setQuality(null); ok(audio.quality === 'high', 'audio.setQuality(null) 복원 실패');
+  audio.setQuality('constructor'); ok(audio.quality === 'high', "audio.setQuality('constructor') 가 받아들여짐"); audio.setQuality(null);
+  // 품질 추종: world.fx.quality → game.quality('auto' 조절값) → settings.quality
+  const g0 = window.__game;
+  window.__game = { world: { fx: { quality: 0.75 } }, quality: 'low', settings: { quality: 'high' } }; ok(audio.quality === 'medium', `fx.quality 0.75 → medium 이어야 함 (${audio.quality})`);
+  window.__game = { world: null, quality: 'low', settings: { quality: 'auto' } }; ok(audio.quality === 'low', `월드 없을 때 game.quality 를 따라야 함 (${audio.quality})`);
+  window.__game = { settings: { quality: 'medium' } }; ok(audio.quality === 'medium', `settings.quality 를 따라야 함 (${audio.quality})`);
+  window.__game = g0;
   // ── 체감 예산 ──
   const B = (m) => out.budget.push(m);
   {
@@ -120,10 +141,13 @@ const res = await page.evaluate(async ({ only, FEEL }) => {
     e2.sfx('awaken_hold'); const x = e2.live.find((y) => y.name === 'awaken_hold'); e2.stopName('awaken_hold');
     if (!x || x.end > 0.07) B('stopName 이 소리를 멈추지 않음');
     if (e2.liveCount('awaken') !== 1 || e2.liveCount('zzz') !== 0) B('liveCount 결과 이상');
+    e2.sfx('awaken_hold'); // 홀드 취소 직후 다시 홀드 — gap(0.2초)에 막히면 안 된다
+    if (e2.live.filter((y) => y.name === 'awaken_hold').length !== 2) B('stopName 직후 같은 소리를 다시 재생하면 gap 에 막힘');
   }
   // ── 렌더 ──
   const SR = 44100, DELAY = 0.05;
-  const names = (only || Object.keys(SFX)).filter((n) => SFX[n]);
+  out.unknownOnly = (only || []).filter((n) => !Object.prototype.hasOwnProperty.call(SFX, n));
+  const names = (only || Object.keys(SFX)).filter((n) => Object.prototype.hasOwnProperty.call(SFX, n));
   const stat = (b, from) => {
     const L = b.getChannelData(0), Rr = b.getChannelData(1), n = L.length;
     let pk = 0, bad = 0, ss = 0;
@@ -159,6 +183,7 @@ const res = await page.evaluate(async ({ only, FEEL }) => {
 
 // ── 결과 판정 ──
 if (res.cmpErr) fail('audio_companions.js import 오류: ' + res.cmpErr);
+if (res.unknownOnly.length) fail(`--only 에 등록되지 않은 이름: ${res.unknownOnly.join(' ')}`);
 for (const m of res.api) fail('API: ' + m);
 for (const m of res.budget) fail('예산: ' + m);
 const names = new Set(res.names);

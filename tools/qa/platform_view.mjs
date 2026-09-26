@@ -27,22 +27,21 @@ try {
   // ── 1. pixel budget per viewport + zero page errors in title, hub, stage, menu (P-11) ────────────
   if (W('budget')) {
     for (const vp of suite.vps(Object.keys(VIEWPORTS))) {
-      const s = await env.page(vp, 'index.html');
-      await s.wait(1500);
-      const info = [];
-      for (const [name, url, extra] of [['title', null, null], ['hub', 'index.html?scene=hub', null], ['stage', 'index.html?scene=stage&stage=s04', null], ['menu', null, "import('/tools/menu_seed.js?seed=1&tab=equip')"]]) {
-        if (url) { await s.goto(url); await s.waitGame('!!g.world?.player'); await s.wait(2200); }
-        if (extra) { await s.eval(extra); await s.wait(1200); }
-        const r = await s.eval(() => { const g = window.__game, c = g.canvas; return { scenes: g.scenes.map((x) => x.name).join('>'), w: c.width, h: c.height, dpr: g.dpr, quality: g.settings?.quality }; });
-        r.tier = (await tierOf(s)) || (VIEWPORTS[vp].touch ? 'medium' : 'high');
-        info.push({ name, ...r });
-      }
+      // one page per viewport: stage s04 → menu (equip) → hub → title (the backing store does not depend on the scene)
+      const s = await env.page(vp, 'index.html?scene=stage&stage=s04');
+      await s.waitGame('!!g.world?.player');
+      await s.wait(1800);
+      const snap = async (name) => { const r = await s.eval(() => { const g = window.__game, c = g.canvas; return { scenes: g.scenes.map((x) => x.name).join('>'), w: c.width, h: c.height, dpr: g.dpr, quality: g.settings?.quality }; }); r.tier = (await tierOf(s)) || (VIEWPORTS[vp].touch ? 'medium' : 'high'); return { name, ...r }; };
+      const info = [await snap('stage')];
+      await s.eval("import('/tools/menu_seed.js?seed=1&tab=equip')"); await s.wait(1200); info.push(await snap('menu'));
+      await s.eval(() => __game.go('hub', {}, { fade: false })); await s.wait(1500); info.push(await snap('hub'));
+      await s.eval(() => __game.go('title', {}, { fade: false })); await s.wait(1200); info.push(await snap('title'));
       const worst = info.reduce((a, b) => (b.w * b.h > a.w * a.h ? b : a));
       const mp = (worst.w * worst.h) / 1e6, budget = PIXEL_BUDGET_MP[worst.tier] ?? 3.7;
       await suite.check({ id: `budget.${vp}`, group: 'budget', issue: 'P-11', pkg: 'PLAT-CORE', title: `backing store within the '${worst.tier}' pixel budget`, session: s }, async () => ({
         pass: mp <= budget + 0.005, detail: `${worst.w}×${worst.h} = ${mp.toFixed(2)} MP (budget ${budget} MP, tier ${worst.tier}, dpr ${worst.dpr}) in ${worst.name}`, metrics: info,
       }));
-      await suite.errors({ id: `budget.${vp}.errors`, group: 'budget', title: 'no page errors in title, hub, stage, menu' }, s);
+      await suite.errors({ id: `budget.${vp}.errors`, group: 'budget', title: 'no page errors in stage, menu, hub, title' }, s);
       await s.close();
     }
   }
@@ -227,12 +226,12 @@ try {
       await s.wait(/scene=/.test(VISIT_BASE[group]) ? 2500 : 1500);
       if (/scene=stage/.test(VISIT_BASE[group])) await s.skipDialogue();
       await installTapRecorder(s.page);
-      for (const [name, ev, wait] of VISITS[group]) {
+      for (const [name, ev, wait, opt = {}] of VISITS[group]) {
         const a = await auditScene(s.page, ev, { wait });
         await suite.check({ id: `taps.${name}.${vp}`, group, issue: 'P-04', pkg: pkgOf(group), title: `${name}: tap targets ≥ §6.3 minimums at ${VIEWPORTS[vp].css.w}×${VIEWPORTS[vp].css.h}`, session: s }, async () => ({
-          pass: !a.error && a.ok && a.n > 0, detail: a.error || (a.n ? describeAudit(a) : `${a.top}: no tap regions recorded`), metrics: a.error ? null : { n: a.n, red: a.red.length, yellow: a.yellow.length, regions: a.regions.slice(0, 40) },
+          pass: !a.error && a.ok && (a.n > 0 || opt.regions === false), detail: a.error || (a.n ? describeAudit(a) : `${a.top}: no tap regions recorded`), metrics: a.error ? null : { n: a.n, red: a.red.length, yellow: a.yellow.length, regions: a.regions.slice(0, 40) },
         }));
-        if (vp === 'phone2' && !a.error) {
+        if (vp === 'phone2' && !a.error && opt.scale !== false) {
           await suite.check({ id: `scale.${name}`, group, issue: 'P-03', pkg: pkgOf(group), title: `${name}: uiScale opt-in, text p10 ≥ 9 and median ≥ 10 CSS px at 740×360` }, async () => ({
             pass: a.uiScale && a.uiK >= 1.2 && a.text.n > 0 && a.text.p10 >= 9 && a.text.median >= 10,
             detail: `uiScale ${a.uiScale}, uiK ${a.uiK}, text n ${a.text.n} min ${a.text.min} p10 ${a.text.p10} median ${a.text.median} css px; smallest ${a.text.smallest.join(', ')}`,

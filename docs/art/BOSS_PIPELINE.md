@@ -577,8 +577,8 @@ form 2 winged demon (`d2`, `hands`, `redSky`) — portraits `b_dracula` and `b_d
 - Hurtbox widening for the Bone Dragon head is a recommendation only (§5.4) — needs a gameplay decision.
 - The vector wall-hole/burrow rubble of other bosses is untouched; the dragon's holes use the painted rim (§5.1).
 - Phase transitions: `ABoss.phaseBurst` calls `camera.punchZoom(1.08)` and the arena camera then frames the player,
-  so during the Bone Dragon's transform (and the twin's arrival) the dragon is often off-screen — vector and painted
-  alike. A camera/gameplay decision (e.g. punch-zoom toward the boss), not a renderer issue.
+  so during the Bone Dragon's transform (and the twin's arrival) the dragon can end up partly or fully off-screen
+  depending on where the player stands (seen in one of three pose runs) — vector and painted alike. A camera/gameplay decision (e.g. punch-zoom toward the boss), not a renderer issue.
 - Boss rush / arcade (`src/scenes/front/arcade_run.js`) spawns bosses directly in the arena (no `roomEntered`), so the
   bake starts at boss `init` and runs during the ≈3.8 s intro; on a slow phone it can finish after the intro starts
   (the cross-fade hides the switch). Recommendation for the arcade owner: call

@@ -57,7 +57,10 @@
     "skirtFar",
     "uarm",
     "farm",
-    "pad"
+    "pad",
+    "hand",
+    "grip",
+    "open"
    ],
    "hue": [
     18,

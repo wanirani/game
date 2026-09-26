@@ -201,7 +201,7 @@ export class Session {
     });
   }
   stopRec() { return this.page.evaluate(() => { const R = window.__qaRec; if (!R) return []; R.on = false; return R.frames; }); }
-  async screenshot(file) { try { await this.page.screenshot({ path: file }); } catch { /* page gone */ } }
+  async screenshot(file) { try { await this.page.screenshot({ path: file, scale: 'css', timeout: 15000 }); } catch { /* page gone */ } }
   async close() { try { await this.ctx.close(); } catch { /* closed */ } this._onClose?.(); }
 }
 

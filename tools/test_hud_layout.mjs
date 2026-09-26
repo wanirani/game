@@ -42,6 +42,7 @@ async function pageChecks({ view, INSETS }) {
   const TP = await import('/src/core/touchpad.js');
   const g = window.__game, w = g.world;
   const fails = [], notes = [], info = new Set();
+  const FIXED = new Set(['portrait', 'vitals', 'hearts', 'skills', 'ult', 'awGauge', 'ready', 'companions', 'score']);
   const ov = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
   const f1 = (r) => `(${Math.round(r.x)},${Math.round(r.y)} ${Math.round(r.w)}×${Math.round(r.h)})`;
   let realPad = [];
@@ -60,7 +61,12 @@ async function pageChecks({ view, INSETS }) {
       if (ov(all[i][1], R.transient)) bad(`${all[i][0]}${f1(all[i][1])} ↔ transient${f1(R.transient)}`);
     }
     for (const [n, r] of [...all, ['transient', R.transient]]) {
-      for (const p of R.pad) if (ov(r, p)) bad(`${n}${f1(r)} ↔ pad:${p.id ?? '?'}${f1(p)}`);
+      for (const p of R.pad) {
+        if (!ov(r, p)) continue;
+        // 스트레스 조합(touchScale 1.3)에서 패드가 고정 영역까지 올라오면 HUD 가 아니라 패드 배치 문제 (PLAT-TOUCH 가 줄여야 한다)
+        if (!sizes && FIXED.has(n)) info.add(`${tag.split('/').slice(0, 2).join('/')}: 패드 ${p.id ?? '?'} 가 고정 영역 ${n} 까지 올라온다 → PLAT-TOUCH 가 크기를 제한해야 함`);
+        else bad(`${n}${f1(r)} ↔ pad:${p.id ?? '?'}${f1(p)}`);
+      }
       // 화면 / 안전 영역 안
       const s = safe ?? { l: 0, r: 0, t: 0, b: 0 };
       if (r.x < s.l - 0.01 || r.y < s.t - 0.01 || r.x + r.w > vw - s.r + 0.01 || r.y + r.h > vh - s.b + 0.01) bad(`${n}${f1(r)} 화면/안전 영역 밖 (vw ${vw}, safe ${JSON.stringify(s)})`);

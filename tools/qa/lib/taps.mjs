@@ -87,14 +87,15 @@ export async function installTapRecorder(page) {
  * Run `ev` (a JS expression string or function) in the page, wait, clear, wait again (one fresh frame set), and audit.
  * cssScale is measured from the canvas box; uiK from game.uiK (1 when missing).
  */
-export async function auditScene(page, ev, { wait = 900, settle = 350 } = {}) {
+export async function auditScene(page, ev, { wait = 900, settle = 150 } = {}) {
   await page.evaluate(() => { window.__qaTaps.list.length = 0; window.__qaTaps.text.length = 0; });
   if (ev) {
     try { await page.evaluate(ev); } catch (e) { return { error: 'EVAL ' + String(e.message).slice(0, 160) }; }
   }
   await page.waitForTimeout(wait);
+  // clear, then let the game render a few fresh frames (frame-based so a loaded machine does not truncate the sample)
   await page.evaluate(() => { window.__qaTaps.list.length = 0; window.__qaTaps.text.length = 0; });
-  await page.waitForTimeout(settle);
+  await page.evaluate((ms) => new Promise((res) => { const t0 = performance.now(); let n = 0; const f = () => { if (++n >= 4 && performance.now() - t0 >= ms) res(); else requestAnimationFrame(f); }; requestAnimationFrame(f); }), settle);
   return page.evaluate(({ MIN, RED }) => {
     const g = window.__game, R = window.__qaTaps;
     const cv = g.canvas.getBoundingClientRect();
@@ -136,12 +137,16 @@ export function describeAudit(a, max = 5) {
   return `${a.top}: ${a.n} regions, red ${a.red.length}, yellow ${a.yellow.length}${ex.length ? ' — ' + ex.join(' | ') : ''} (cssScale ${a.cssScale}, uiK ${a.uiK}${a.uiScale ? ', uiScale' : ''})`;
 }
 
-/** Scene visits per platform_view group (expressions run in the page; `B` pops back to the base scene). */
+/**
+ * Scene visits per platform_view group: [name, expression run in the page, wait ms, opts].
+ * opts.regions false = the scene may have no tap regions (title attract); opts.scale false = not in the §6.2 uiScale opt-in list.
+ * BACK pops back to the base scene of the group (VISIT_BASE).
+ */
 export const BACK = '(()=>{const g=__game;while(g.scenes.length>1)g.pop()})()';
 export const VISITS = {
   front: [
-    ['title', "__game.go('title',{},{fade:false})", 2200],
-    ['title-menu', "(__game.top.mode='menu',0)", 700],
+    ['title', "__game.go('title',{},{fade:false})", 2200, { regions: false, scale: false }],
+    ['title-menu', "(__game.top.mode='menu',0)", 700, { scale: false }],
     ['slots', "__game.push('slots',{mode:'new'})", 1100],
     ['difficulty', `(${BACK},__game.push('difficulty',{slot:1}))`, 1100],
     ['charselect', `(${BACK},__game.push('charselect',{slot:1,difficulty:'normal'}))`, 1400],

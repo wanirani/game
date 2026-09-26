@@ -61,7 +61,13 @@ class Wyrm {
     }
     this.hx = P[0].x; this.hy = P[0].y;
   }
-  box() { const s = this.scale; return { x: this.hx - 44 * s, y: this.hy - 36 * s, w: 88 * s, h: 72 * s }; }
+  /** 머리 판정: 채색 두개골(주둥이 포함)에 맞춰 머리 방향으로 길게 — 가로면 128×76, 세로면 76×128, 주둥이 쪽으로 10px */
+  box() {
+    const s = this.scale, c = Math.cos(this.a), sn = Math.sin(this.a);
+    const w = (76 + 52 * Math.abs(c)) * s, h = (76 + 52 * Math.abs(sn)) * s;
+    const cx = this.hx + c * 10 * s, cy = this.hy + sn * 10 * s;
+    return { x: cx - w / 2, y: cy - h / 2, w, h };
+  }
   mouth() { const s = this.scale, c = Math.cos(this.a), sn = Math.sin(this.a); return { x: this.hx + c * 58 * s - sn * 6 * s, y: this.hy + sn * 58 * s + c * 6 * s }; }
 }
 
