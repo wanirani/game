@@ -8,6 +8,7 @@
   - `--steps` 토큰: `right|left|up|down|jump|attack|dash|sub|skill1|skill2|ult|menu|enter|swap[:초]`, `a+b:초`(동시), `wait:초`, `shot`, `eval=JS식`
   - `--mobile` : 844×390 터치 기기 에뮬레이션
 - 맵 검증: `node tools/validate_maps.mjs [stageId]` (오류 0이어야 함)
+- 안드로이드 APK: `tools/apk/build_apk.sh [--verify]` → `dist/BloodNocturne.apk` (Gradle 없이 aapt2·javac·d8·apksigner, SDK 자동 설치). 앱 셸은 `android/app/src/main/` (WebView가 `https://appassets.androidplatform.net/` 가상 출처로 APK `assets/www/` 제공, 뒤로=Escape, JS 브리지 `window.BNAndroid`, `html.bn-android`). 서명 키 `tools/android/`(git 무시, 백업 필수)
 
 ## 좌표/단위
 - 논리 해상도: 높이 540 고정, 폭 960~1280 (`game.viewW`). 타일 `TILE = 48`.

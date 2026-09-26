@@ -272,19 +272,19 @@ export const TEXT_STYLES = {
 
 const TXT_CACHE = new Map();
 const TXT_CACHE_MAX = 48;
-let _scratchA = null, _scratchB = null;
+const SCRATCH = []; // 0: 읽기용(마스크 분석), 1: 글자 몸통, 2: 광택, 3: 저해상도 발광
 function mkCanvas(w, h) {
   if (typeof OffscreenCanvas !== 'undefined' && typeof document === 'undefined') return new OffscreenCanvas(w, h);
   const c = document.createElement('canvas'); c.width = w; c.height = h; return c;
 }
 function scratch(which, w, h) {
-  let c = which ? _scratchB : _scratchA;
-  if (!c) { c = mkCanvas(w, h); if (which) _scratchB = c; else _scratchA = c; }
-  if (c.width < w || c.height < h) { c.width = Math.max(c.width, w); c.height = Math.max(c.height, h); }
+  let c = SCRATCH[which];
+  if (!c) c = SCRATCH[which] = mkCanvas(w, h);
   const g = c.getContext('2d', { willReadFrequently: which === 0 });
+  if (c.width !== w || c.height !== h) { c.width = w; c.height = h; } // 크기를 정확히 맞춰야 합성 연산이 필요한 영역만 건드린다 (크기 변경은 초기화도 겸한다)
+  else g.clearRect(0, 0, w, h);
   g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
   g.shadowColor = 'transparent'; g.shadowBlur = 0; g.shadowOffsetX = 0; g.shadowOffsetY = 0;
-  g.clearRect(0, 0, c.width, c.height);
   return [c, g];
 }
 function strHash(s) {
@@ -393,10 +393,14 @@ function buildText(str, size, weight, family, styleName, st, spacing, amount, S,
   const seed = strHash(`${str}|${size}|${family}`);
   const prep = (g) => { g.setTransform(S, 0, 0, S, 0, 0); g.font = fontStr; setSpacing(g, spacing); g.textAlign = 'left'; g.textBaseline = 'alphabetic'; g.lineJoin = 'round'; g.lineCap = 'round'; };
 
-  // 1) 마스크 → 피 방울 자리
-  const [, ag] = scratch(0, PW, PH);
-  prep(ag); ag.fillStyle = '#000'; ag.fillText(str, ox, oy);
-  const drips = findDrips(ag, PW, PH, S, oy, size, amount, str, seed);
+  // 1) 마스크(논리 해상도) → 피 방울 자리
+  let drips = [];
+  if (amount > 0) {
+    const [, ag] = scratch(0, W, H);
+    ag.font = fontStr; setSpacing(ag, spacing); ag.textAlign = 'left'; ag.textBaseline = 'alphabetic';
+    ag.fillStyle = '#000'; ag.fillText(str, ox, oy);
+    drips = findDrips(ag, W, H, 1, oy, size, amount, str, seed);
+  }
   const roots = drips.map((d) => { // 글자 아랫면에서 오목하게 좁아지며 방울 줄기로 이어지는 목
     const p = new Path2D(), w = d.w, x = d.x, y = d.y;
     p.moveTo(x - w * 1.25, y - w * 0.5);
@@ -411,24 +415,37 @@ function buildText(str, size, weight, family, styleName, st, spacing, amount, S,
     else { g.strokeText(str, ox, oy); for (const p of roots) g.stroke(p); }
   };
 
+  // 글자 모양은 두 번만 래스터화하고(M: 채움, E: 테두리 포함), 나머지는 비트맵 합성으로 만든다 (큰 글자 fillText 는 비싸다)
+  const edgeW = Math.max(2.5, size * 0.1);
+  const blit = (g, src, dx = 0, dy = 0) => { g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(src, 0, 0, PW, PH, dx * S, dy * S, PW, PH); g.restore(); };
+  const [mc, mk] = scratch(4, PW, PH);
+  prep(mk); mk.fillStyle = '#000'; shape(mk, 'fill');
+  const [ec, ek] = scratch(5, PW, PH);
+  prep(ek); ek.fillStyle = st.edge; ek.strokeStyle = st.edge; ek.lineWidth = edgeW; shape(ek, 'stroke'); shape(ek, 'fill');
+
   const out = mkCanvas(PW, PH), c = out.getContext('2d');
   prep(c);
-  const edgeW = Math.max(2.5, size * 0.1);
-  // 2) 발광 + 그림자 + 바깥 테두리
+  // 2) 발광(1/4 해상도로 흐려 늘림) + 그림자 + 바깥 테두리
   if (glow) {
-    c.save(); c.shadowColor = st.glow; c.shadowBlur = size * 0.28 * S;
-    c.strokeStyle = st.edge; c.fillStyle = st.edge; c.lineWidth = edgeW; shape(c, 'stroke'); shape(c, 'fill'); c.restore();
+    const gs = Math.max(0.25, S / 4), GW = Math.ceil(W * gs), GH = Math.ceil(H * gs);
+    const [gc, gg] = scratch(3, GW, GH);
+    gg.shadowColor = st.glow; gg.shadowBlur = size * 0.28 * gs;
+    gg.drawImage(ec, 0, 0, PW, PH, 0, 0, W * gs, H * gs);
+    gg.shadowColor = 'transparent'; gg.globalCompositeOperation = 'destination-out';
+    gg.drawImage(mc, 0, 0, PW, PH, 0, 0, W * gs, H * gs);
+    c.drawImage(gc, 0, 0, W * gs, H * gs, 0, 0, W, H);
   }
-  c.save(); c.translate(size * 0.03, size * 0.07); c.globalAlpha = 0.7;
-  c.strokeStyle = '#000'; c.fillStyle = '#000'; c.lineWidth = edgeW; shape(c, 'stroke'); shape(c, 'fill'); c.restore();
-  c.strokeStyle = st.edge; c.lineWidth = edgeW; shape(c, 'stroke');
+  c.save(); c.globalAlpha = 0.7; blit(c, ec, size * 0.03, size * 0.07); c.restore();
+  blit(c, ec);
 
   // 3) 글자 몸통: 세로 그라데이션 + 얼룩 + 안쪽 어두운 테 + 젖은 광택
-  const [fc, fg] = scratch(0, PW, PH);
+  const [fc, fg] = scratch(1, PW, PH);
   prep(fg);
+  blit(fg, mc);
+  fg.globalCompositeOperation = 'source-in';
   const gr = fg.createLinearGradient(0, oy - asc, 0, oy + Math.max(desc, size * 0.12));
   for (const [o, col] of st.grad) gr.addColorStop(o, col);
-  fg.fillStyle = gr; shape(fg, 'fill');
+  fg.fillStyle = gr; fg.fillRect(0, 0, W, H);
   fg.globalCompositeOperation = 'source-atop';
   const r = rng(seed ^ 0x9e3779b9);
   const blots = Math.round((left + right) / size * 5);
@@ -438,20 +455,21 @@ function buildText(str, size, weight, family, styleName, st, spacing, amount, S,
   }
   fg.strokeStyle = st.inner; fg.lineWidth = Math.max(1.5, size * (st.bevel ? 0.07 : 0.06)); shape(fg, 'stroke');
   // 광택: 글자 모양에서 아래로 민 모양을 빼면 윗면 초승달만 남는다
-  const [hc, hg] = scratch(1, PW, PH);
+  const [hc, hg] = scratch(2, PW, PH);
   const rim = (dx, dy, col) => {
     hg.setTransform(1, 0, 0, 1, 0, 0); hg.globalCompositeOperation = 'source-over'; hg.clearRect(0, 0, PW, PH);
-    prep(hg); hg.fillStyle = col; shape(hg, 'fill');
-    hg.globalCompositeOperation = 'destination-out'; hg.translate(dx, dy); hg.fillStyle = '#000'; shape(hg, 'fill');
-    fg.save(); fg.setTransform(1, 0, 0, 1, 0, 0); fg.drawImage(hc, 0, 0, PW, PH, 0, 0, PW, PH); fg.restore();
+    hg.drawImage(mc, 0, 0, PW, PH, 0, 0, PW, PH);
+    hg.globalCompositeOperation = 'source-in'; hg.fillStyle = col; hg.fillRect(0, 0, PW, PH);
+    hg.globalCompositeOperation = 'destination-out'; hg.drawImage(mc, 0, 0, PW, PH, dx * S, dy * S, PW, PH);
+    blit(fg, hc);
   };
   const d = Math.max(1, size * 0.04);
   if (st.bevel) { rim(d * 0.7, d, st.hi); rim(-d * 0.7, -d, st.lo); }
   else for (const k of [0.34, 0.67, 1]) rim(0, Math.max(0.6, size * 0.03 * k), st.hi); // 겹쳐 그려 위쪽으로 갈수록 밝은 젖은 광택
   fg.globalCompositeOperation = 'source-over';
-  c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(fc, 0, 0, PW, PH, 0, 0, PW, PH); c.restore();
+  blit(c, fc);
 
-  return { c: out, S, W, H, ox, oy, adv, asc, desc, fAsc, fDesc, drips, st, styleName, fontStr, fontOk: fontLoaded(fontStr, str), checkAt: 0 };
+  return { c: out, S, W, H, ox, oy, adv, asc, desc, fAsc, fDesc, drips, st, styleName, fontStr, fontOk: fontLoaded(fontStr, str), checkAt: 0, size, px: 0 };
 }
 function fontLoaded(fontStr, str) {
   try { return typeof document === 'undefined' || document.fonts.check(fontStr, str); } catch { return true; }
@@ -473,14 +491,16 @@ function drawDrips(ctx, e, t, time) {
     let sw = 0.85;
     if (d.falls) {
       if (cyc < 0.72) sw = 0.85 + 0.55 * (cyc / 0.72) ** 2;
-      else if (k >= 1) {
+      else if (k >= 1) { // 떨어진 방울은 짧게 떨어지다 사라진다 (화면 한가운데 떠 보이지 않도록)
         const ft = (cyc - 0.72) * d.period;
-        const fy = y0 + len + d.w * 0.6 + 0.5 * 900 * ft * ft;
-        const a = clamp(1 - (cyc - 0.72) / 0.28, 0, 1);
-        const br = d.w * 0.9;
-        ctx.save(); ctx.globalAlpha *= a;
-        ctx.drawImage(spr.bulb, d.x - br * 1.2, fy - br * 1.5, br * 2.4, br * 2.7 * (1 + ft * 0.8));
-        ctx.restore();
+        const fy = y0 + len + d.w * 0.6 + 0.5 * 700 * ft * ft;
+        const a = clamp(1 - ft / 0.42, 0, 1);
+        if (a > 0) {
+          const br = d.w * 0.9;
+          ctx.save(); ctx.globalAlpha *= a;
+          ctx.drawImage(spr.bulb, d.x - br * 1.2, fy - br * 1.5, br * 2.4, br * 2.7 * (1 + ft * 0.8));
+          ctx.restore();
+        }
       }
     }
     const br = d.w * sw * 0.8; // 줄기 끝에 맺힌 방울 (줄기보다 굵다)
@@ -502,26 +522,9 @@ function drawDrips(ctx, e, t, time) {
 export function bloodText(ctx, str, x, y, opts = {}) {
   str = String(str ?? '');
   if (!str) return { w: 0, h: 0 };
-  const { size = 48, weight = 900, family = FONT.blood, align = 'center', baseline = 'alphabetic', style = 'blood', t = null, alpha = 1, spacing = 0, maxWidth = null, glow = true } = opts;
-  const st = TEXT_STYLES[style] || TEXT_STYLES.blood;
-  const amount = clamp(opts.drips ?? st.drips, 0, 1);
-  const time = opts.time ?? (typeof performance !== 'undefined' ? performance.now() / 1000 : 0);
-  const tr = ctx.getTransform ? ctx.getTransform() : { a: 1, b: 0 };
-  const S = clamp(Math.round(Math.hypot(tr.a, tr.b) * 4) / 4, 1, 3);
-  const key = `${style}|${size}|${weight}|${family}|${spacing}|${amount}|${glow ? 1 : 0}|${S}|${str}`;
-  let e = TXT_CACHE.get(key);
-  if (e && !e.fontOk && time - e.checkAt > 0.5) { // 글꼴이 늦게 도착하면 다시 굽는다
-    e.checkAt = time;
-    if (fontLoaded(e.fontStr, str)) { TXT_CACHE.delete(key); e = null; }
-  }
-  if (!e) {
-    e = buildText(str, size, weight, family, style, st, spacing, amount, S, glow);
-    e.checkAt = time;
-    if (!e.fontOk) { try { document.fonts.load(e.fontStr, str); } catch { /* 무시 */ } }
-    if (TXT_CACHE.size >= TXT_CACHE_MAX) TXT_CACHE.delete(TXT_CACHE.keys().next().value);
-  } else TXT_CACHE.delete(key);
-  TXT_CACHE.set(key, e); // 최근 사용 순서 유지 (LRU)
-
+  const e = textEntry(ctx, str, opts);
+  const { align = 'center', baseline = 'alphabetic', t = null, alpha = 1, maxWidth = null } = opts;
+  const time = opts.time ?? nowSec();
   const ax = align === 'center' ? e.adv / 2 : align === 'right' || align === 'end' ? e.adv : 0;
   const by = baseline === 'middle' ? (e.fAsc - e.fDesc) / 2 : baseline === 'top' || baseline === 'hanging' ? e.fAsc : baseline === 'bottom' || baseline === 'ideographic' ? -e.fDesc : 0;
   const sx = maxWidth && e.adv > maxWidth ? maxWidth / e.adv : 1;
@@ -533,7 +536,50 @@ export function bloodText(ctx, str, x, y, opts = {}) {
   ctx.drawImage(e.c, 0, 0, e.c.width / e.S, e.c.height / e.S);
   if (e.drips.length) drawDrips(ctx, e, t, time);
   ctx.restore();
-  return { w: e.adv * sx, h: size };
+  return { w: e.adv * sx, h: e.size };
+}
+/**
+ * 피 글씨 비트맵을 미리 만들어 둔다 (장면 enter() 에서 부르면 처음 보이는 프레임이 끊기지 않는다).
+ * opts 는 bloodText 와 같다. 반환: 글자 폭(advance)
+ */
+export function prewarmText(ctx, str, opts = {}) {
+  str = String(str ?? '');
+  return str ? textEntry(ctx, str, opts).adv : 0;
+}
+const nowSec = () => (typeof performance !== 'undefined' ? performance.now() / 1000 : 0);
+const RES_STEPS = [1, 1.5, 2, 2.5];
+let TXT_PX = 0; // 캐시 비트맵 픽셀 합 (메모리 상한 관리)
+const TXT_PX_MAX = 6e6;
+function textEntry(ctx, str, opts) {
+  const { size = 48, weight = 900, family = FONT.blood, style = 'blood', spacing = 0, glow = true } = opts;
+  const st = TEXT_STYLES[style] || TEXT_STYLES.blood;
+  const amount = clamp(opts.drips ?? st.drips, 0, 1);
+  // 화면 배율에 맞춘 해상도 (계단식). 확대·축소 연출 중에도 매 프레임 다시 굽지 않도록, 이미 더 높은 해상도로 구운 것은 그대로 쓴다
+  const tr = ctx?.getTransform ? ctx.getTransform() : { a: 1, b: 0 };
+  const want = Math.hypot(tr.a, tr.b) || 1;
+  const S = RES_STEPS.find((v) => v >= want * 0.92) ?? RES_STEPS[RES_STEPS.length - 1];
+  const key = `${style}|${size}|${weight}|${family}|${spacing}|${amount}|${glow ? 1 : 0}|${str}`;
+  let e = TXT_CACHE.get(key);
+  const now = nowSec();
+  if (e && !e.fontOk && now - e.checkAt > 0.5) { // 글꼴이 늦게 도착하면 다시 굽는다
+    e.checkAt = now;
+    if (fontLoaded(e.fontStr, str)) e = dropEntry(key);
+  }
+  if (e && e.S < S) e = dropEntry(key);
+  if (!e) {
+    e = buildText(str, size, weight, family, style, st, spacing, amount, S, glow);
+    e.size = size; e.checkAt = now; e.px = e.c.width * e.c.height;
+    if (!e.fontOk) { try { document.fonts.load(e.fontStr, str); } catch { /* 무시 */ } }
+    TXT_PX += e.px;
+    while (TXT_CACHE.size && (TXT_CACHE.size >= TXT_CACHE_MAX || TXT_PX > TXT_PX_MAX)) dropEntry(TXT_CACHE.keys().next().value);
+  } else TXT_CACHE.delete(key);
+  TXT_CACHE.set(key, e); // 최근 사용 순서 유지 (LRU)
+  return e;
+}
+function dropEntry(key) {
+  const e = TXT_CACHE.get(key);
+  if (e) { TXT_PX -= e.px || 0; TXT_CACHE.delete(key); }
+  return null;
 }
 /** 피 글씨 캐시 비우기 (글꼴 교체 등) */
-export function clearTextCache() { TXT_CACHE.clear(); }
+export function clearTextCache() { TXT_CACHE.clear(); TXT_PX = 0; }
