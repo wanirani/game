@@ -4,3 +4,6 @@ node_modules/
 __pycache__/
 *.pyc
 tools/.qa_*/
+tools/.proto_*/
+dist/
+tools/android/*.keystore
