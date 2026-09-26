@@ -784,7 +784,10 @@ def _pat_staves(nt, I, tc, color, a):
     m2.inputs["Factor"].default_value = 1.0
     ln(nt, m1.outputs[2], m2.inputs[6])
     ln(nt, groove, m2.inputs[7])
-    ln(nt, m2.outputs[2], I["Base Color"])
+    col = m2.outputs[2]
+    if a.get("moss"):
+        col = _moss_mix(nt, col, vec, a)
+    ln(nt, col, I["Base Color"])
     bw = nn(nt, "ShaderNodeRGBToBW")
     ln(nt, groove, bw.inputs[0])
     add = math_node(nt, "ADD", bw.outputs[0],
@@ -816,16 +819,16 @@ def _pat_eye(nt, I, tc, color, a):
     wn = noise(nt, math_node(nt, "MULTIPLY", gr.outputs["Fac"], 40.0), 3.0, 2.0)
     iris_col = ramp(nt, math_node(nt, "ADD", math_node(nt, "DIVIDE", ri.outputs["Value"], ir),
                                   math_node(nt, "MULTIPLY", wn.outputs["Fac"], 0.35)),
-                    [(0.2, (1.0, 0.85, 0.2)), (0.55, (1.0, 0.35, 0.02)),
-                     (0.95, (0.5, 0.02, 0.01))])
+                    a.get("iris_cols", [(0.2, (1.0, 0.85, 0.2)), (0.55, (1.0, 0.35, 0.02)),
+                                        (0.95, (0.5, 0.02, 0.01))]))
     # sclera with veins
     vo = nn(nt, "ShaderNodeTexVoronoi", {"Scale": 6.0}, feature="DISTANCE_TO_EDGE")
     ln(nt, tc.outputs["Object"], vo.inputs["Vector"])
     veins = math_node(nt, "LESS_THAN", vo.outputs["Distance"], 0.02)
     scl = nn(nt, "ShaderNodeMix", data_type="RGBA")
     ln(nt, veins, scl.inputs["Factor"])
-    scl.inputs[6].default_value = (0.92, 0.86, 0.78, 1)
-    scl.inputs[7].default_value = (0.7, 0.04, 0.03, 1)
+    scl.inputs[6].default_value = (*a.get("sclera", (0.92, 0.86, 0.78)), 1)
+    scl.inputs[7].default_value = (*a.get("vein", (0.7, 0.04, 0.03)), 1)
     # iris mask (front and ri < ir)
     iris_m = math_node(nt, "MULTIPLY", front, math_node(nt, "LESS_THAN", ri.outputs["Value"], ir))
     m1 = nn(nt, "ShaderNodeMix", data_type="RGBA")
@@ -863,7 +866,59 @@ def _pat_prism(nt, I, tc, color, a):
     return None
 
 
-_PATTERNS = dict(wood=_pat_wood, rust=_pat_rust, stone=_pat_stone,
+def _moss_mix(nt, col, vec, a):
+    """Mix moss / algae into `col`: denser toward low object Z, noisy patches."""
+    nzm = noise(nt, vec, a.get("moss_scale", 2.5), 6.0, 0.7)
+    sep = nn(nt, "ShaderNodeSeparateXYZ")
+    ln(nt, vec, sep.inputs[0])
+    zf = nn(nt, "ShaderNodeMapRange", {"From Min": a.get("moss_z0", -1.0),
+                                       "From Max": a.get("moss_z1", 0.0),
+                                       "To Min": 0.35, "To Max": -0.2})
+    ln(nt, sep.outputs["Z"], zf.inputs["Value"])
+    add = math_node(nt, "ADD", nzm.outputs["Fac"], zf.outputs["Result"])
+    mf = ramp(nt, add, [(0.62, (0, 0, 0)), (0.72, (1, 1, 1))])
+    m2 = nn(nt, "ShaderNodeMix", data_type="RGBA")
+    ln(nt, mf, m2.inputs["Factor"])
+    ln(nt, col, m2.inputs[6])
+    m2.inputs[7].default_value = (*a.get("moss_color", (0.10, 0.14, 0.05)), 1)
+    return m2.outputs[2]
+
+
+def _pat_frost(nt, I, tc, color, a):
+    """Stone / metal with hoar-frost and snow settling on upward faces."""
+    vec = tc.outputs["Object"]
+    s = a.get("scale", 3.0)
+    nz = noise(nt, vec, s, 8.0, 0.6)
+    dark = a.get("dark", tuple(c * 0.55 for c in color))
+    col = ramp(nt, nz.outputs["Fac"], [(0.3, dark), (0.6, color),
+                                        (0.85, tuple(min(1, c * 1.15) for c in color))])
+    geo = nn(nt, "ShaderNodeNewGeometry")
+    sep = nn(nt, "ShaderNodeSeparateXYZ")
+    ln(nt, geo.outputs["Normal"], sep.inputs[0])
+    nzf = noise(nt, vec, a.get("frost_scale", 10.0), 6.0, 0.65)
+    f = math_node(nt, "ADD", math_node(nt, "MULTIPLY", sep.outputs["Z"], a.get("up", 0.8)),
+                  math_node(nt, "MULTIPLY", nzf.outputs["Fac"], 0.7))
+    thr = a.get("thr", 0.75)
+    fm = ramp(nt, f, [(thr, (0, 0, 0)), (thr + 0.15, (1, 1, 1))])
+    bw = nn(nt, "ShaderNodeRGBToBW")
+    ln(nt, fm, bw.inputs[0])
+    mix = nn(nt, "ShaderNodeMix", data_type="RGBA")
+    ln(nt, bw.outputs[0], mix.inputs["Factor"])
+    ln(nt, col, mix.inputs[6])
+    mix.inputs[7].default_value = (*a.get("frost_color", (0.84, 0.92, 1.0)), 1)
+    ln(nt, mix.outputs[2], I["Base Color"])
+    mr = nn(nt, "ShaderNodeMapRange", {"To Min": I["Roughness"].default_value,
+                                       "To Max": 0.75})
+    ln(nt, bw.outputs[0], mr.inputs["Value"])
+    ln(nt, mr.outputs["Result"], I["Roughness"])
+    mm = nn(nt, "ShaderNodeMapRange", {"To Min": I["Metallic"].default_value,
+                                       "To Max": 0.0})
+    ln(nt, bw.outputs[0], mm.inputs["Value"])
+    ln(nt, mm.outputs["Result"], I["Metallic"])
+    return (nzf.outputs["Fac"], a.get("bump", 0.3))
+
+
+_PATTERNS = dict(frost=_pat_frost, wood=_pat_wood, rust=_pat_rust, stone=_pat_stone,
                  marble=_pat_marble, parchment=_pat_parchment,
                  leather=_pat_leather, bands=_pat_bands, veins=_pat_veins,
                  roast=_pat_roast, crust=_pat_crust, staves=_pat_staves,
