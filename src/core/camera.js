@@ -1,6 +1,7 @@
 // 3인칭 추적 카메라: 캐릭터를 뒤따르며 진행 방향을 앞질러 보여주고(룩어헤드),
 // 콤보/보스 연출 시 줌인, 흔들림(쉐이크), 방 경계 클램프를 처리한다.
 import { clamp, lerp, rand } from './math.js';
+import { game } from './game.js';
 
 export class Camera {
   constructor(w, h) {
@@ -16,7 +17,11 @@ export class Camera {
   }
   setView(w, h) { this.w = w; this.h = h; }
   setBounds(x, y, w, h) { this.bounds = { x, y, w, h }; }
+  /** 화면 흔들림. 설정(화면 흔들림 배율)을 여기서 일괄 적용 — 호출부에서 따로 곱하지 말 것 */
   shake(mag = 6, time = 0.25) {
+    const k = game.settings?.screenShake ?? 1;
+    if (!(k > 0)) return;
+    mag *= k;
     this.shakeMag = Math.max(this.shakeMag, mag);
     this.shakeT = Math.max(this.shakeT, time);
   }

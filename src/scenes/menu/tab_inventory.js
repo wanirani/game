@@ -19,7 +19,7 @@ const FILTERS = [
   { id: 'acc', name: '장신구', test: (b) => b.slot === 'acc' },
   { id: 'consumable', name: '소모품', test: (b) => b.slot === 'consumable' },
   { id: 'material', name: '재료', test: (b) => b.slot === 'material' },
-  { id: 'key', name: '열쇠', test: (b) => b.slot === 'key' },
+  { id: 'key', name: '중요 물품', test: (b) => b.slot === 'key' },
 ];
 const EQUIP_KINDS = new Set(['weapon', 'head', 'body', 'cloak', 'acc']);
 const SORTS = [{ id: 'type', name: '종류순' }, { id: 'rarity', name: '희귀도순' }, { id: 'new', name: '최신순' }];
@@ -81,7 +81,8 @@ export class InventoryTab extends Tab {
         out.push({ id: 'equip', label: '장착하기', disabled: !chk.ok, reason: chk.reason, run: () => this.equip(e) });
       }
     }
-    out.push({ id: 'lock', label: inst.locked ? '잠금 해제' : '잠그기', sub: inst.locked ? '판매·분해 가능' : '실수로 팔지 않도록', run: () => this.lock(e) });
+    // 중요 물품은 애초에 팔거나 분해할 수 없으므로 잠금이 의미 없다
+    if (b.slot !== 'key') out.push({ id: 'lock', label: inst.locked ? '잠금 해제' : '잠그기', sub: inst.locked ? '판매·분해 가능' : '실수로 팔지 않도록', run: () => this.lock(e) });
     return out;
   }
   use(e) {
@@ -153,11 +154,12 @@ export class InventoryTab extends Tab {
     if (nav.down && this.i + C < n) { this.i += C; moved = true; } else if (nav.down && Math.floor(this.i / C) < Math.floor((n - 1) / C)) { this.i = n - 1; moved = true; }
     if (moved) audio.sfx('menu_move');
     if (nav.confirm && this.sel) this.openActions(this.sel);
-    if (nav.alt2 && this.sel) this.lock(this.sel);
+    if (nav.alt2 && this.sel && this.sel.b.slot !== 'key') this.lock(this.sel);
     if (nav.cancel) this.m.close();
   }
   hints() {
     if (this.sub === 'filter') return [['←→', '분류'], ['↓', '목록'], ['X', '돌아가기']];
+    if (this.sel?.b.slot === 'key') return [['↑↓←→', '고르기'], ['A', SORTS[this.sortMode].name]];
     return [['↑↓←→', '고르기'], ['Z', '행동', '아이템을 한 번 더 터치하면 행동 메뉴'], ['A', SORTS[this.sortMode].name], ['C', '잠금']];
   }
 

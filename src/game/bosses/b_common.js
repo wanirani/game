@@ -510,7 +510,7 @@ export class BossB extends Boss {
 
 /** 공용 화면 연출: 섬광 + 흔들림 + 번개 */
 export function impact(world, { shake = 8, time = 0.3, flash = null, fa = 0.35, stop = 0, zoom = 0 } = {}) {
-  world.camera.shake(shake * (world.game.settings?.screenShake ?? 1), time);
+  world.camera.shake(shake, time);
   if (flash) world.game.flash(flash, fa, 4);
   if (stop) world.hitstop = Math.max(world.hitstop, stop);
   if (zoom) world.camera.punchZoom?.(zoom, 0.2);

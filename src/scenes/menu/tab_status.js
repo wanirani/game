@@ -8,7 +8,7 @@ import * as D from './access.js';
 import { SUBWEAPONS } from '../../data/subweapons.js';
 
 export const STAT_DESC = {
-  hp: '0이 되면 쓰러진다. 레벨과 방어구로 늘어난다.',
+  hp: '체력의 최대치. 체력이 0이 되면 쓰러진다. 레벨과 방어구로 늘어난다.',
   mp: '스킬과 비전서 기술에 소모되는 마력.',
   atk: '채찍·검·총 등 물리 공격의 위력.',
   mag: '마법과 스킬의 위력. 신성·원소 기술에 주로 적용된다.',

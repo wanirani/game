@@ -72,7 +72,7 @@ function atk(p, o = {}) {
   };
 }
 const circ = (x, y, r) => ({ x: x - r, y: y - r, w: r * 2, h: r * 2 });
-function shake(w, m, t = 0.25) { w.camera.shake(m * (w.game.settings?.screenShake ?? 1), t); }
+function shake(w, m, t = 0.25) { w.camera.shake(m, t); }
 function viewRect(w, pad = 0) { const c = w.camera; return { x: c.x - pad, y: c.y - pad, w: c.vw + pad * 2, h: c.vh + pad * 2 }; }
 function enemiesIn(w, rect) { return w.enemies().filter((e) => !e.invuln && overlap(rect, e.hurtbox ? e.hurtbox() : e)); }
 function frontEnemies(w, p, range = 600) {

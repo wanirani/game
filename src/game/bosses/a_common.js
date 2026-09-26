@@ -667,7 +667,7 @@ export class ABoss extends Boss {
 
   // ── 연출 도우미 ──
   get fx() { return this.world.fx; }
-  shake(m, t = 0.3) { this.world.camera.shake(m * (this.world.game.settings?.screenShake ?? 1), t); }
+  shake(m, t = 0.3) { this.world.camera.shake(m, t); }
   impact(x, y, mag = 10, stop = 0.05, color = '#ffd8a0') {
     const w = this.world;
     this.shake(mag, 0.4);

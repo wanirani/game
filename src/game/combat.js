@@ -74,7 +74,7 @@ export function hitTarget(world, attack, target, hx, hy) {
   const heavy = (attack.hitstop ?? 0) >= 0.08 || res.crit;
   if (attack.team === 'player') {
     world.hitstop = Math.max(world.hitstop, (attack.hitstop ?? 0.05) * (res.crit ? 1.4 : 1) * (killed ? 1.3 : 1));
-    world.camera.shake((attack.shake ?? 3) * (res.crit ? 1.6 : 1) * (world.game.settings?.screenShake ?? 1), heavy ? 0.22 : 0.12);
+    world.camera.shake((attack.shake ?? 3) * (res.crit ? 1.6 : 1), heavy ? 0.22 : 0.12);
     world.onPlayerHit?.(target, info, attack);
     const mat = target.def?.material ?? 'flesh';
     const fx = world.fx;
@@ -100,7 +100,7 @@ export function hitTarget(world, attack, target, hx, hy) {
     }
     audio.sfx(res.crit ? 'crit' : heavy ? 'hit_heavy' : 'hit', { vol: 0.9, pitch: rand(0.92, 1.08) });
   } else {
-    world.camera.shake(5 * (world.game.settings?.screenShake ?? 1), 0.2);
+    world.camera.shake(5, 0.2);
     world.fx.burst('blood', px, py, 8, {});
     if (world.game.settings?.showDamage !== false) world.fx.text(px, py - 30, res.dmg, { color: '#ff5050', size: 22 });
   }

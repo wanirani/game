@@ -222,7 +222,7 @@ export class SkillsTab extends Tab {
     text(ctx, String(sp), x + 132, y + 26, { size: 24, align: 'right', weight: 900, family: FONT.num, color: sp ? PAL.goldHi : PAL.faint, ow: 4 });
     const ult = D.CHARACTERS()[hero.charId]?.ult;
     if (ult) text(ctx, ellipsize(ctx, `필살기 · ${ult.name}`, 132, 11, 700), x + 10, y + 50, { size: 11, weight: 700, color: ult.color ?? PAL.goldHi });
-    text(ctx, input.touchMode ? '⇄ 버튼: 페이지 전환' : 'Q·E: 페이지 전환', x + 10, y + 64, { size: 10, weight: 600, color: PAL.faint, ow: 2 });
+    text(ctx, input.touchMode ? '전투 중 ⇄ 버튼: 페이지 전환' : '전투 중 Q·E: 페이지 전환', x + 10, y + 64, { size: 10, weight: 600, color: PAL.faint, ow: 2 });
     const sx0 = x + 158, sw = (w - 166) / 4;
     for (let k = 0; k < 4; k++) {
       const id = hero.slots?.[k] ?? null, sk = id ? D.SKILLS()[id] : null;
