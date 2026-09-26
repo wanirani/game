@@ -486,19 +486,57 @@
   }
  ],
  "kling": {
-  "model": "kling-image-v3_0_omni",
-  "refs": [
-   "assets/portraits/b_bonedragon.webp (image_1, style/material)",
-   "raw chain_a (image_2, layout, for chain/debris)"
-  ],
+  "model": "kling-image-v3_0_omni (image_to_image, img_resolution 2k)",
+  "refs": {
+   "image_1": "assets/portraits/b_bonedragon.webp (style, material, anatomy)",
+   "image_2": "raw/chain_a (layout + bone material, only for chain/debris shots)"
+  },
   "images": {
-   "skull_a": "prototype B (tools/.proto_bossB): side-view skull, mouth wide open, flat grey bg \u2014 template 'part' (see docs/art/BOSS_PIPELINE.md \u00a73)",
-   "torso_a": "prototype B: rearing ribcage + neck stump, side view",
-   "wing_b": "prototype B: single spread bone wing, torn membrane with soul-fire veins",
-   "leg_a": "prototype B: single foreleg, elbow up, claws planted",
-   "chain_a": "prototype B: straight horizontal vertebra chain, 7 vertebrae",
-   "chain_c2": "this task: straight chain variant (image_to_image, refs portrait + chain_a, 21:9, 2 images; chain_c1 rejected: ran off both edges)",
-   "debris_a": "this task: 12 separate bone fragments on flat grey (16:9)"
+   "skull_a": {
+    "by": "prototype B (tools/.proto_bossB)",
+    "aspect": "4:3",
+    "note": "side-view skull, mouth wide open (jaw cut), template §3.2 of docs/art/BOSS_PIPELINE.md"
+   },
+   "torso_a": {
+    "by": "prototype B",
+    "aspect": "3:4",
+    "note": "rearing ribcage + neck stump + pelvis stub, soul fire inside"
+   },
+   "wing_b": {
+    "by": "prototype B",
+    "aspect": "4:3",
+    "note": "single spread wing, root at lower left, torn membrane (wing_a rejected: fire-orange glow)"
+   },
+   "leg_a": {
+    "by": "prototype B",
+    "aspect": "1:1",
+    "note": "single foreleg, elbow up-left, claws planted"
+   },
+   "chain_a": {
+    "by": "prototype B",
+    "aspect": "21:9",
+    "note": "straight vertebra chain, 7 vertebrae, head side = right"
+   },
+   "chain_c2": {
+    "by": "this task",
+    "generationId": "ATp2IFCGsE2NY2TXD8AFDN354PKePmKTNLpWUEzEs2YaMsrWlXxpzNUUi1Q2q-KrEcWTi0tI",
+    "aspect": "21:9",
+    "imageCount": 2,
+    "prompt": "Game asset sheet for a 2D cut-out puppet. Paint a single straight horizontal chain of 7 separate dragon neck vertebrae joined end to end, strict side view (profile), perfectly straight and level, the chain runs left to right across the whole image with empty margin at both ends. Same bone dragon as 图片1 and same painterly dark-fantasy illustration style, bone material and colours as 图片2, but every vertebra must look different from the others: dorsal spines of different lengths curving back, one dorsal spine snapped off with a jagged stump, chipped and notched edges, deep dark cracks, old bite marks, rotten dark-red sinew and dried tendons wrapped around some vertebrae, two vertebrae with short broken rib stubs hanging below, pale green soul fire glowing faintly from the gaps between vertebrae, thin black-green ichor drips hanging from the underside. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette with clear separation between each vertebra. Isolated object, nothing else in the image, no text, no labels.",
+    "result": "2 images; #2 kept (chain_c2). #1 (chain_c1) rejected: chain ran off both image edges. Lesson: with image_2 as layout ref the model copies the reference closely — variety came from repainting, not from the requested details; split spines + per-instance jitter supply the silhouette variety"
+   },
+   "debris_a": {
+    "by": "this task",
+    "generationId": "AQEkkzhMDxYc8ETgpTT1uXrGIDRWqL0ow-rOYT8QrUoPkLomhgBVEzrpkM0sGDw9XlVDmQ4G",
+    "aspect": "16:9",
+    "imageCount": 1,
+    "prompt": "Game asset sheet for a 2D cut-out puppet: 12 separate broken bone fragments of the bone dragon from 图片1, painted in the same painterly dark-fantasy illustration style and the same aged ivory bone material as 图片2. Arrange them in a loose 4 by 3 grid with wide empty space between pieces, no piece touches another: a vertebra split in half, a snapped curved dorsal spine, two broken rib pieces with jagged ends, a cracked skull shard with an empty eye socket edge, a broken lower jaw fragment with three teeth, two loose long fangs, a bone claw, a splintered long bone end, a small cluster of bone chips. Some fragments have dark-red dried sinew and black-green ichor stains, faint pale green soul fire in cracks. Strict side view, each piece fully in frame. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadows. Strong key light from the upper left. No text, no labels, no numbers.",
+    "result": "kept; 7 of the pieces are cut (boxes in 'debris'); the two long chains in the sheet are unused"
+   }
+  },
+  "spent": {
+   "prototypeB": 11,
+   "thisTask": 3
   }
  }
 }

@@ -76,7 +76,7 @@ export function preloadPainted(id, game = GAME) {
       e.rig = await e.mod.load(env);
       e.state = 'ready';
       e.loadMs = performance.now() - t0;
-      if (typeof window !== 'undefined') (window.__painted ??= {})[id] = { ms: Math.round(e.loadMs), memMB: +(e.rig?.memMB ?? 0).toFixed(2), td: +(e.rig?.td ?? 0).toFixed(3), bakeMs: Math.round(e.rig?.bakeMs ?? 0), timing: e.rig?.timing };
+      if (typeof window !== 'undefined') (window.__painted ??= {})[id] = { ms: Math.round(e.loadMs), memMB: +(e.rig?.memMB ?? 0).toFixed(2), td: +(e.rig?.td ?? 0).toFixed(3), bakeMs: Math.round(e.rig?.bakeMs ?? 0), estMB: +(e.rig?.estMB ?? 0).toFixed(2), budgetMB: env.budgetMB, timing: e.rig?.timing };
       return true;
     } catch (err) {
       e.state = 'failed'; e.err = err;
@@ -221,4 +221,10 @@ bus.on('roomEntered', ({ stageId, roomId } = {}) => {
   const rows = room.map?.length ?? 0;
   pendingZoom = rows ? Math.min(1, Math.max(0.74, (g?.viewH ?? 540) / (rows * 48 - 48))) : null;
   preloadPainted(id, g);
+});
+
+// 다른 스테이지로 가면 이전 보스의 구운 텍스처를 놓아 준다 (폰 메모리). 같은 보스 스테이지 재도전이면 유지.
+bus.on('stageEntered', ({ stageId } = {}) => {
+  const keep = STAGES[stageId]?.boss;
+  for (const [id, e] of REG) if (e.kind === 'boss' && id !== keep && e.state === 'ready') releasePainted(id);
 });

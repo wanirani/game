@@ -8,7 +8,7 @@
 //   transform(균열·영혼불 폭주) 쌍두(서리색 틴트, 등장 분출) · 피격 섬광 · 손상 단계 0~2(구운 균열/그을림/찢김 + 단계 상승 파편 폭발)
 //   death(머리부터 척추가 한 마디씩 떨어져 나가고 두개골·턱·날개·다리가 튕겨 굴러감, 흉곽은 구멍으로 가라앉음)
 // 절차적 그로테스크 층: 척수 힘줄 관(관절 틈 메움) · verlet 힘줄 줄 · 입 속 끈적한 줄 · 체액(ichor) 방울→바닥 튐 · 영혼불 · 재/뼛가루
-import { Drawer, Chain, Strand, Particles, DamageState, Shards, halo, puff, rr, hash1, loadRig, pickVariant, quality, drawStrand, angDiff } from '../kit.js';
+import { Drawer, Chain, Strand, Particles, DamageState, Shards, halo, puff, rr, hash1, loadRig, pickVariant, quality, drawStrand } from '../kit.js';
 
 const DIR = 'painted/bosses/b_bonedragon';
 const SOUL = '#6aff8a', TWIN = '#8ac8ff';
@@ -110,7 +110,10 @@ function seq(n, len, seed) {
 
 // ───────────────────────── 메인 그리기 ─────────────────────────
 function drawBoss(ctx, b, world, rig, st) {
-  const R = rig.parts, D = st.D, q = st.q;
+  const D = st.D;
+  // 설정의 그래픽 품질이 바뀌면(자동 품질 저하 포함) 플래그를 따라간다
+  const qn = world.game?.settings?.quality ?? 'high';
+  if (st.q.name !== qn && !st.qLock) st.q = quality(world.game);
   const now = world.time ?? b.t;
   const dt = st.lt == null ? 1 / 60 : clamp(now - st.lt, 0, 0.05); st.lt = now;
   const A = b.A, floor = A.floor;
@@ -254,9 +257,10 @@ function drawHead(ctx, D, b, h, world, rig, st, dt, dl, hit) {
   const tk = T.k * s, breath = 1 + Math.sin(t * 1.7) * 0.022 + flare * 0.03 + (transform ? Math.sin(t * 30) * 0.012 : 0);
   const tsx = tk * -fs, tsy = tk * breath;
   const tvx = (T.neck[0] - T.base[0]) * (tsx < 0 ? -1 : 1), tvy = T.neck[1] - T.base[1];
-  const trot = Math.atan2(axy, axx) - Math.atan2(tvy, tvx) + (hs.jolt > 0 && st.hitHead === h ? 0 : 0);
+  const trot = Math.atan2(axy, axx) - Math.atan2(tvy, tvx);
   const tp = (pv, out) => D.pt(T.neck[0], T.neck[1], pv[0], pv[1], qx, qy, trot, tsx, tsy, out);
-  const shN = tp(T.shoulderN, [0, 0]), shF = tp(T.shoulderF, [0, 0]), core = tp(T.core, [0, 0]), legN = tp(T.legN, [0, 0]), legF = tp(T.legF, [0, 0]);
+  const PP = hs._pp ??= { shN: [0, 0], shF: [0, 0], core: [0, 0], legN: [0, 0], legF: [0, 0] };   // 프레임마다 배열을 새로 만들지 않는다
+  const shN = tp(T.shoulderN, PP.shN), shF = tp(T.shoulderF, PP.shF), core = tp(T.core, PP.core), legN = tp(T.legN, PP.legN), legF = tp(T.legF, PP.legF);
   const baseVis = floorHole ? clamp((hole.y - Math.min(shN[1], shF[1]) - 10) / 60, 0, 1) : clamp((fe - 0.1) / 0.4, 0, 1);
   hs.core = core; hs.coreVis = dying ? 0 : baseVis;
 
@@ -334,15 +338,14 @@ function drawHead(ctx, D, b, h, world, rig, st, dt, dl, hit) {
     if (q.halos && !dying) for (let i = k - 2; i > 0; i -= 3) if (arc[i] > hideBelow) halo(ctx, Pt[i].x, Pt[i].y, (16 + F[i].bend * 26) * s, soul, 0.2 + fury * 0.12 + Math.sin(t * 6 + i) * 0.05);
   }
   const u0 = 1 / Math.max(1, h.N);
-  const tileX = (i) => {                          // 마디 i 의 타일 배치 계산 → hs._tx[i]
-    const f = F[i], tile = rig.parts[tiles[hs.tiles[i]]];
+  const TX = hs._tx ??= [];
+  for (let i = k - 1; i >= 0; i--) {             // 마디 i 의 타일 배치 (객체는 재사용)
+    const f = F[i], tile = rig.parts[tiles[hs.tiles[i]]], X = TX[i] ??= {};
     const tl = tile.jr[0] - tile.jl[0];
     const over = 1.22 + clamp(f.bend, 0, 0.9) * 0.55;   // 굽힘이 클수록 겹침 ↑ (바깥쪽 틈 방지)
-    const sx = f.len * over / tl, sy = sx * lerp(0.8, 1.2, i * u0) * s * fs;
-    return { tile, f, sx, sy, cx: (tile.jr[0] + tile.jl[0]) / 2, cy: tile.jr[1] };
-  };
-  const TX = hs._tx ??= [];
-  for (let i = k - 1; i >= 0; i--) TX[i] = tileX(i);
+    X.tile = tile; X.f = f; X.sx = f.len * over / tl; X.sy = X.sx * lerp(0.8, 1.2, i * u0) * s * fs;
+    X.cx = (tile.jr[0] + tile.jl[0]) / 2; X.cy = tile.jr[1]; X.c = X.c ?? [0, 0]; X.c[0] = X.cx; X.c[1] = X.cy;
+  }
   // 등가시 (몸통 뒤)
   for (let i = k - 1; i >= 0; i--) {
     const f = F[i], mid = (arc[i] + arc[i + 1]) / 2;
@@ -366,8 +369,8 @@ function drawHead(ctx, D, b, h, world, rig, st, dt, dl, hit) {
       if (tau > 0) { detachTile(st, hs, X, i, x, y, rot, V, rig, spines); continue; }
       x += (rr.next() - 0.5) * 3 * Math.min(1, dT * 3); y += (rr.next() - 0.5) * 3 * Math.min(1, dT * 3);
     }
-    D.part(X.tile, V(X.tile, false), [X.cx, X.cy], x, y, rot, X.sx, X.sy, 1);
-    if (i % 3 === 1) glowOver(ctx, D, X.tile, lvl, [X.cx, X.cy], x, y, rot, X.sx, X.sy, 0.45, st, t + i, false, tint);
+    D.part(X.tile, V(X.tile, false), X.c, x, y, rot, X.sx, X.sy, 1);
+    if (i % 3 === 1) glowOver(ctx, D, X.tile, lvl, X.c, x, y, rot, X.sx, X.sy, 0.45, st, t + i, false, tint);
     // 체액 방울 (목 아래쪽에서)
     if (!dying && i > 0 && rr.next() < dt * (0.3 + lvl * 0.3) * q.ambient) {
       const ox = -Math.sin(rot) * fsn, oy = Math.cos(rot) * fsn;

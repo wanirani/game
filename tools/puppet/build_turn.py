@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lib.pup import SRC, OUT, DBG, ensure, load_json, save_json, rgb_of, alpha_for, bleed, hsv_arrays, die, on_green
 from build_rig import load_rig
 
-TH = 640          # 정규화한 인물 높이(px)
+TH = 580          # 정규화한 인물 높이(px) — 메뉴 무대(≈300 논리px × DPR2)에 충분
 STEPS = [0, 45, 90, 135, 180, -135, -90, -45]
 LBL = {0: 'y0', 45: 'y45', 90: 'y90', 135: 'y135', 180: 'y180', -135: 'ym135', -90: 'ym90', -45: 'ym45'}
 
@@ -140,7 +140,7 @@ def build_turn(rig_path, quiet=False):
     sheet = Image.fromarray(Sa, 'RGBA')
     out_dir = ensure(os.path.join(OUT, cid, clsid))
     tp = os.path.join(out_dir, 'turn.webp')
-    sheet.save(tp, 'WEBP', quality=84, alpha_quality=90, method=6)
+    sheet.save(tp, 'WEBP', quality=80, alpha_quality=85, method=6)
     steps = {}
     for d in STEPS:
         l = LBL[d]

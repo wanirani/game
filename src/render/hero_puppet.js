@@ -102,6 +102,10 @@ function ready(E) {
 }
 /** 미리 불러 두기 (장면 진입 시 등, 선택) */
 export function preloadPuppet(charId, classId) { const E = entry(charId, classId); return E; }
+// 부팅 직후 각 영웅의 기본 직업(rig + lo/hi ≈60KB)을 미리 받아, 첫 스테이지에서 벡터→퍼펫 전환이 보이지 않게 한다
+if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+  setTimeout(() => { for (const cid in PUPPETS) { const root = CHARACTERS[cid]?.rootClass; if (root && PUPPETS[cid][root]) entry(cid, root); } }, 400);
+}
 
 // ───────────────────────── 장비 색 (재질 마스크) ─────────────────────────
 function hexRgb(h) {
@@ -509,8 +513,8 @@ export function drawLayers(c, E, K, P, W, tt) {
   // ── 먼 팔 (+ 보조 무기) ──
   const two = P.two && W.type !== 'none';
   const offW = K.off && W.type !== 'none';
-  const casting = ST.cast === 3 || (ST.cast && ST.atk?.cast && P.r2 > 0.8);
-  const throwing = !!ST.throwK;
+  const casting = ST.cast === 3 || (ST.cast && ST.atk?.cast && P.r2 > 0.8) || ST.throwK === 2; // 먼 손 편 손: 시전·(채찍 외) 투척
+  const throwing = ST.throwK === 1;                                                               // 가까운 손 편 손: 채찍 영웅 투척
   if (offW) drawWeapon(W, s.h2x, s.h2y, P.w2, { fire: ST.fire2 });
   const farMode = offW ? 'grip' : two ? 'none' : casting ? 'open' : 'hand';
   armPup(c, s.s2x, s.s2y, s.e2x, s.e2y, s.h2x, s.h2y, true, farMode === 'hand');

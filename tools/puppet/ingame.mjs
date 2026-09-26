@@ -2,6 +2,7 @@
 // node tools/puppet/ingame.mjs --stage s01 [--room boss] [--char kael] [--cls kael_templar] [--out /tmp/x] [--w 1280 --h 720 --dpr 1.5]
 //        [--mobile] [--vector] [--scale 1.14(플레이어 그리기 배율)] [--dlg(대사 창 자동 닫기 끔)] [--steps "wait:1,shot,right:1,attack:0.2,snap=..." ] [--equip body=#hex,plate]
 // 단계 토큰: key[:초] (right left up down jump attack dash sub skill1 skill2 ult) · a+b:초 · wait:초 · shot · eval=JS(;; 는 ,)
+//           snap=조건JS (조건이 참인 프레임의 게임 캔버스를 저장, 예: snap=window.__game.world.player.move&&window.__game.world.player.moveT>0.1)
 //           press=key@초 · down=key · up=key
 import { chromium } from 'playwright-core';
 import { start } from '../serve.mjs';
@@ -41,7 +42,8 @@ await page.evaluate(async ({ vector, cls, equip, skipDlg, drawScale }) => {
   window.__drawMs = [];
   proto.draw = function (c, ww) { const t0 = performance.now(); orig.call(this, c, ww); window.__drawMs.push(performance.now() - t0); };
   window.__hero = hero;
-  if (skipDlg) setInterval(() => { const g = window.__game, top = g.scenes[g.scenes.length - 1]; if (top && /Dialogue|BossIntro|Story/.test(top.constructor?.name || '')) g.pop(); }, 60);
+  // QA 편의: 대사·보스 소개 창을 닫고 연출 입력 잠금을 푼다 (--dlg 로 끔)
+  if (skipDlg) setInterval(() => { const g = window.__game, top = g.scenes[g.scenes.length - 1]; if (top && /Dialogue|BossIntro|Story/.test(top.constructor?.name || '')) g.pop(); else if (g.world && top?.constructor?.name === 'StageScene') { g.world.cutscene = false; g.world.inputLock = false; } }, 60);
 }, { vector, cls, equip: opt('equip', '') ? JSON.parse(opt('equip')) : null, skipDlg: !opt('dlg', false), drawScale: Number(opt('scale', 0)) });
 // 퍼펫 로드 대기 (최대 5초)
 if (!vector) await page.waitForFunction(() => { const s = window.__hero?.puppetStatus?.(); return s && Object.values(s).some((v) => v.state === 1); }, null, { timeout: 8000 }).catch(() => errs.push('PUPPET NOT READY'));
@@ -53,6 +55,18 @@ for (const s of steps.split(',')) {
   if (k === 'shot') { await page.screenshot({ path: `${outp}_${n++}.png` }); continue; }
   if (k === 'wait') { await page.waitForTimeout(Number(d) * 1000); continue; }
   if (s.startsWith('eval=')) { try { await page.evaluate(s.slice(5).replaceAll(';;', ',')); } catch (e) { errs.push('EVAL ' + e.message); } continue; }
+  if (s.startsWith('snap=')) {
+    // 조건이 참이 되는 프레임의 캔버스를 그대로 저장 (스크린샷 지연 없이 공격 판정 프레임 등을 잡는다)
+    const cond = s.slice(5).replaceAll(';;', ',');
+    const data = await page.evaluate((cond) => new Promise((res) => {
+      const f = new Function('return (' + cond + ')');
+      let k = 0;
+      const tick = () => { k++; let ok = false; try { ok = f(); } catch { /* 무시 */ } if (ok || k > 300) requestAnimationFrame(() => res(window.__game.canvas.toDataURL('image/png'))); else requestAnimationFrame(tick); };
+      tick();
+    }), cond);
+    fs.writeFileSync(`${outp}_${n++}.png`, Buffer.from(data.split(',')[1], 'base64'));
+    continue;
+  }
   if (s.startsWith('press=')) { const [kk, dd] = s.slice(6).split('@'); await page.keyboard.down(KEY[kk] || kk); await page.waitForTimeout(Number(dd || 0.08) * 1000); await page.keyboard.up(KEY[kk] || kk); continue; }
   if (s.startsWith('down=')) { await page.keyboard.down(KEY[s.slice(5)] || s.slice(5)); continue; }
   if (s.startsWith('up=')) { await page.keyboard.up(KEY[s.slice(3)] || s.slice(3)); continue; }

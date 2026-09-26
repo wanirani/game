@@ -1238,6 +1238,60 @@ test('배포 문맥을 알 수 없으면 저장소를 열지 않고 500 (운영 
   assert.match(errs[0], /deploy context/);
 });
 
+// ═════════ 클라이언트 (src/core/cloud.js) — 서버와 같은 규칙·받은 데이터 정리 ═════════
+const client = await import(path.join(ROOT, 'src/core/cloud.js'));
+
+test('클라이언트: 흔한 비밀번호 목록·약한 비밀번호 판정·아이디 규칙이 서버와 같음', () => {
+  assert.deepEqual([...client.COMMON_PASSWORDS], [...sval.COMMON_PASSWORDS]);
+  const ids = ['hunter01', 'kael', 'weak042', 'admin_x', 'gm_kael', 'root', 'Abc_1', 'ab', 'a'.repeat(17), '1abc', 'nobody_1', 'staff_q', 'official'];
+  const pws = ['12345678', 'Password1', 'qwer1234', 'crimson-moon-77', 'abababab', 'ㅁㄴㅇㄹㅁㄴㅇㄹ', '🦇🦇🦇🦇🌙🌙🌙🌙', 'hunter011', 'hunter01abcd',
+    '87654321', '78901234', 'abcdefgh', 'zyxwvuts', '가나다라마바사아', '달빛아래검은성에서', 'x9!kQ2#mZ', 'aaaaaaaaab', 'kaelkael'];
+  for (const id of ids) {
+    let server = null;
+    try { sval.checkNewId(id); } catch (e) { server = e.code; }
+    assert.equal(client.checkId(id, true) === null, server === null, `아이디 ${id}: 서버 ${server}`);
+    for (const pw of pws) assert.equal(client.isWeakPassword(pw, id), sval.isWeakPassword(pw, normalizeIdLike(id)), `${id} / ${pw}`);
+  }
+});
+const normalizeIdLike = (id) => String(id).trim().toLowerCase();
+
+test('클라이언트: 받은 메타·세이브의 __proto__·constructor 키를 버리고 깊은 트리를 자름 (프로토타입 오염 없음)', () => {
+  const evil = JSON.parse('{"unlockedChars":["kael"],"bestiary":{"__proto__":{"polluted":1},"bat":2},"constructor":{"prototype":{"x":1}},'
+    + '"bossRushBests":{"__proto__":{"time":1}},"highScores":[{"__proto__":{"admin":true},"score":5,"mode":"arcade"}]}');
+  const m = client.mergeMeta(evil, evil);
+  assert.equal(({}).polluted, undefined);
+  assert.equal(Object.getPrototypeOf(m.bestiary), Object.prototype);
+  assert.equal(Object.getPrototypeOf(m.highScores[0]), Object.prototype);
+  assert.equal(m.highScores[0].admin, undefined);
+  assert.ok(!Object.hasOwn(m, 'constructor'));
+  assert.deepEqual(m.bestiary, { bat: 2 });
+  const c = client.cleanMeta(evil);
+  assert.ok(!JSON.stringify(c).includes('__proto__') && !JSON.stringify(c).includes('polluted'));
+  // 대입해도 게임 객체의 프로토타입이 바뀌지 않는다
+  const target = {};
+  for (const k of Object.keys(m)) target[k] = m[k];
+  assert.equal(Object.getPrototypeOf(target), Object.prototype);
+  let deep = {};
+  const root = { a: deep };
+  for (let i = 0; i < 100; i++) { deep.x = {}; deep = deep.x; }
+  let depth = 0;
+  for (let o = client.sanitizeTree(root, 32); o && typeof o === 'object'; o = o.a ?? o.x) depth++;
+  assert.ok(depth <= 32, `깊이 ${depth}`);
+  assert.deepEqual(client.sanitizeTree([1, { __proto__: null, a: 1 }, undefined, () => 1]), [1, { a: 1 }, null, null]);
+});
+
+test('클라이언트: 시험용 API 주소(bn_api_base)는 같은 출처 경로만 — 다른 사이트로 비밀번호·토큰을 보내지 않음', () => {
+  assert.equal(client.safeBase('/api'), '/api');
+  assert.equal(client.safeBase(' /v2/api/ '), '/v2/api');
+  for (const bad of ['https://evil.example/api', '//evil.example/api', 'http:/evil', '/../api', '/api/../x', '/', '', 'api', '/api?x=1', '/api#x', '\\\\evil', null, 5]) {
+    assert.equal(client.safeBase(bad), null, String(bad));
+  }
+  assert.ok(client.isValidToken('A'.repeat(43)) && !client.isValidToken('A'.repeat(42)) && !client.isValidToken('<img src=x>'.padEnd(43, 'a')));
+  assert.ok(client.isValidId('hunter_01') && !client.isValidId('<b>x</b>') && !client.isValidId('Hunter'));
+  assert.equal(client.defaultRemember({ hostname: 'appassets.androidplatform.net' }), true);
+  assert.equal(client.defaultRemember({ hostname: 'bloodnocturne.netlify.app' }), false); // Node: 터치 판정 없음 → 데스크톱으로 봄
+});
+
 // ═════════ 실행 ═════════
 let currentBackend = null;
 let storageKeys = async () => [];

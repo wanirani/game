@@ -1,4 +1,5 @@
-// 계정 화면: 로그인 · 회원가입(복구 코드 1회 표시) · 비밀번호 변경 · 복구 코드로 재설정 · 로그아웃 · 계정 삭제 · 지금 동기화
+// 계정 화면: 로그인 · 회원가입(복구 코드 1회 표시) · 비밀번호 변경 · 복구 코드로 재설정 · 로그아웃(이 기기 / 모든 기기) · 계정 삭제 · 지금 동기화
+// 로그인·가입 화면의 '로그인 유지' 칸: 켜면 30일 동안 이 기기에 로그인이 남고, 끄면 창을 닫을 때 로그아웃된다 (공용 기기용)
 // 캔버스 게임이지만 글자 입력은 실제 <input> 을 캔버스 패널 위에 겹쳐 띄운다 (모바일 키보드·비밀번호 관리자 지원).
 //  - 화면(장면 안의 단계)이 바뀔 때 만들고 지우며, 매 프레임(requestAnimationFrame) 캔버스 크기·위치에 맞춰 옮긴다
 //  - 입력 칸에서: Enter = 다음 칸/제출 · Esc = 뒤로 · ↑↓·Tab = 칸 이동 (input.js 는 입력 칸의 키를 게임 키로 쓰지 않는다)
@@ -65,12 +66,13 @@ const SCREENS = {
       { id: 'sync', label: '지금 동기화', sub: 'SYNC NOW' },
       { id: 'password', label: '비밀번호 변경', sub: 'CHANGE PASSWORD' },
       { id: 'logout', label: '로그아웃', sub: 'LOG OUT' },
+      { id: 'logoutAll', label: '모든 기기에서 로그아웃', sub: 'EVERYWHERE' },
       { id: 'delete', label: '계정 삭제', sub: 'DELETE ACCOUNT', danger: true },
       { id: 'back', label: '돌아가기', sub: 'BACK' },
     ],
   },
-  login: { kind: 'form', title: '로그인', fields: [F_ID, F_PW], submit: '로그인', extra: { id: 'forgot', label: '비밀번호를 잊었나요?' } },
-  signup: { kind: 'form', title: '회원가입', fields: [F_ID, F_NEW, F_NEW2], submit: '가입하기' },
+  login: { kind: 'form', title: '로그인', fields: [F_ID, F_PW], submit: '로그인', remember: true, extra: { id: 'forgot', label: '비밀번호를 잊었나요?' } },
+  signup: { kind: 'form', title: '회원가입', fields: [F_ID, F_NEW, F_NEW2], submit: '가입하기', remember: true },
   password: { kind: 'form', title: '비밀번호 변경', fields: [F_OLD, { ...F_NEW, label: '새 비밀번호' }, { ...F_NEW2, label: '새 비밀번호 확인' }], submit: '변경하기', hiddenUser: true },
   recover: { kind: 'form', title: '복구 코드로 재설정', fields: [F_ID, F_CODE, { ...F_NEW, label: '새 비밀번호' }, { ...F_NEW2, label: '새 비밀번호 확인' }], submit: '재설정하기' },
   delete: { kind: 'form', title: '계정 삭제', fields: [{ ...F_PW, label: '비밀번호', ph: '확인을 위해 입력' }], submit: '계정 삭제', danger: true, hiddenUser: true },
@@ -94,13 +96,15 @@ const INFO_TEXT = {
   login: [
     { h: '로그인' },
     { b: '아이디는 대소문자를 구분하지 않습니다.' },
-    { b: '비밀번호를 5번 틀리면 10분 동안 로그인할 수 없습니다.' },
+    { b: '비밀번호를 5번 틀리면 10분 동안 이 기기(네트워크)에서 로그인할 수 없습니다.' },
+    { b: 'PC방·학교 같은 공용 기기에서는 「로그인 유지」를 끄고, 다 쓰면 로그아웃하세요.' },
     { b: '비밀번호를 잊었다면 가입할 때 받은 복구 코드로 새 비밀번호를 정할 수 있습니다.' },
   ],
   signup: [
     { h: '만들기 규칙' },
     RULES_ID, RULES_PW,
     { b: '가입이 끝나면 복구 코드를 한 번만 보여 드립니다. 비밀번호를 잊었을 때 꼭 필요하니 적어 두세요.' },
+    { b: '공용 기기에서는 「로그인 유지」를 끄세요.' },
     { t: '이 기기에 있는 세이브는 가입 뒤 클라우드에 올라갑니다.', c: DIM },
   ],
   password: [
@@ -142,6 +146,7 @@ export class AccountScene extends Scene {
     this.busy = false; this.msg = null; this.shakeT = 0;
     this.alive = true; this.leaving = false;
     this.code = null; this.codeNext = 'profile';
+    this.remember = cloud.rememberPref(); // '로그인 유지' 칸 (이 기기에 기억한 선택)
     this.infoT = 0; this.slotRows = [];
     this.offs = [
       bus.on('cloud:logout', (e) => {
@@ -204,7 +209,8 @@ export class AccountScene extends Scene {
     if (d.kind === 'list') d.items.forEach((x, i) => it.push({ kind: 'btn', id: x.id, label: x.label, sub: x.sub, danger: x.danger, row: i, col: 0 }));
     else if (d.kind === 'form') {
       d.fields.forEach((f, i) => it.push({ kind: 'field', id: f.key, fi: i, row: i, col: 0 }));
-      const r = d.fields.length;
+      let r = d.fields.length;
+      if (d.remember) it.push({ kind: 'check', id: 'remember', label: '로그인 유지', row: r++, col: 0 });
       it.push({ kind: 'btn', id: 'submit', label: d.submit, row: r, col: 0, primary: true, danger: d.danger });
       it.push({ kind: 'btn', id: 'cancel', label: '취소', row: r, col: 1 });
       if (d.extra) it.push({ kind: 'btn', id: d.extra.id, label: d.extra.label, row: r, col: 2, link: true });
@@ -351,6 +357,7 @@ export class AccountScene extends Scene {
   itemRect(it, G = this.geom()) {
     const d = this.def;
     if (it.kind === 'field') return this.fieldRect(it.fi, G);
+    if (it.kind === 'check') return { x: G.L.x + G.lab, y: G.y0 + 74 + d.fields.length * 52, w: G.L.w - G.lab, h: 30 };
     if (d.kind === 'list') return { x: G.L.x - 10, y: G.y0 + 72 + it.row * 54, w: G.L.w + 20, h: 50 };
     if (d.kind === 'form') {
       const by = this.formButtonsY(G), bw = Math.round((G.L.w - 12) * 0.6);
@@ -365,7 +372,7 @@ export class AccountScene extends Scene {
   }
 
   /** 입력 폼 버튼 줄의 y (칸이 적으면 칸 바로 아래로 올린다) */
-  formButtonsY(G) { return Math.min(G.y0 + G.H - 66, G.y0 + 74 + this.def.fields.length * 52 + 62); }
+  formButtonsY(G) { return Math.min(G.y0 + G.H - 66, G.y0 + 74 + this.def.fields.length * 52 + 62 + (this.def.remember ? 40 : 0)); }
 
   // ───────────────────────── 조작 ─────────────────────────
   /** ↑↓(dr) ←→(dc) 이동: 같은 줄에서는 좌우, 줄 사이는 가장 가까운 칸으로 */
@@ -410,6 +417,8 @@ export class AccountScene extends Scene {
       case 'submit': this.submit(); return;
       case 'sync': this.doSync(); return;
       case 'logout': this.confirmLogout(); return;
+      case 'logoutAll': this.confirmLogoutAll(); return;
+      case 'remember': this.remember = !this.remember; audio.sfx('menu_move'); return;
       case 'copy': this.copyCode(); return;
       case 'done': this.confirmCode(); return;
       case 'retry': audio.sfx('menu_ok'); this.start(); return;
@@ -514,8 +523,8 @@ export class AccountScene extends Scene {
     this.setBusy(true);
     const id = this.val('id'), pw = this.val('pw');
     let r;
-    if (s === 'login') r = await cloud.login(id, pw);
-    else if (s === 'signup') r = await cloud.signup(id, pw);
+    if (s === 'login') r = await cloud.login(id, pw, { remember: this.remember });
+    else if (s === 'signup') r = await cloud.signup(id, pw, { remember: this.remember });
     else if (s === 'recover') r = await cloud.recover(id, this.val('code'), pw);
     else if (s === 'password') r = await cloud.changePassword(this.val('old'), pw);
     if (!this.alive || this.screen !== s) return;
@@ -593,10 +602,30 @@ export class AccountScene extends Scene {
       title: '로그아웃', message: '로그아웃할까요? 이 기기에 저장된 세이브는 그대로 남고, 다시 로그인하면 이어서 동기화됩니다.', yes: '로그아웃', no: '취소',
       onYes: async () => {
         this.setBusy(true, '로그아웃하는 중…');
-        await cloud.logout();
+        const r = await cloud.logout();
         if (!this.alive) return;
         this.setBusy(false);
-        this.show('home', { msg: { text: '로그아웃했습니다. 게스트로 계속 플레이할 수 있습니다.', color: GOOD } });
+        // 서버에 닿지 못했으면 서버 쪽 로그인(토큰)은 만료될 때까지 남는다 — 그대로 알린다
+        this.show('home', {
+          msg: r.remote
+            ? { text: '로그아웃했습니다. 게스트로 계속 플레이할 수 있습니다.', color: GOOD }
+            : { text: '이 기기에서 로그아웃했습니다. 서버에 닿지 못했으니 다른 기기에서 「모든 기기에서 로그아웃」을 해 두세요.', color: '#ffb070' },
+        });
+      },
+    });
+  }
+  confirmLogoutAll() {
+    audio.sfx('menu_ok');
+    this.game.push('frontConfirm', {
+      title: '모든 기기에서 로그아웃', danger: true, yes: '모두 로그아웃', no: '취소',
+      message: '이 기기를 포함해 이 계정으로 로그인한 모든 기기(휴대폰·PC방 컴퓨터 등)에서 로그아웃합니다. 공용 기기에서 로그아웃을 잊었거나 기기를 잃어버렸을 때 쓰세요.',
+      onYes: async () => {
+        this.setBusy(true, '모든 기기에서 로그아웃하는 중…');
+        const r = await cloud.logout({ all: true });
+        if (!this.alive) return;
+        this.setBusy(false);
+        if (!r.ok) { this.fail(r.message ?? '로그아웃하지 못했습니다. 잠시 후 다시 시도해 주세요.'); return; }
+        this.show('home', { msg: { text: `모든 기기에서 로그아웃했습니다. (${Math.max(1, r.revoked ?? 1)}곳)`, color: GOOD } });
       },
     });
   }
@@ -691,7 +720,12 @@ export class AccountScene extends Scene {
       default: this.drawWait(ctx, G, t);
     }
     // 버튼 (목록 화면은 drawList 에서)
-    if (d.kind !== 'list') this.items.forEach((it, i) => { if (it.kind === 'btn') this.drawButton(ctx, it, i, G); });
+    if (d.kind !== 'list') {
+      this.items.forEach((it, i) => {
+        if (it.kind === 'btn') this.drawButton(ctx, it, i, G);
+        else if (it.kind === 'check') this.drawCheck(ctx, it, i, G);
+      });
+    }
     this.drawMsg(ctx, G, t);
     ctx.restore();
     backButton(ctx, 14, 12, '뒤로', this.taps);
@@ -714,6 +748,26 @@ export class AccountScene extends Scene {
     const label = waiting ? `${it.label} (${Math.ceil(3 - this.st)})` : it.label;
     const acc = it.danger ? '#ff4a5a' : it.link ? '#9fd8ff' : GOLD;
     gbutton(ctx, r, label, { selected: sel, disabled: this.busy || waiting, size: it.link ? 14 : 16, accent: acc, zones: this.taps, id: it.id });
+  }
+  /** '로그인 유지' 칸 (캔버스에 그리는 체크 상자 — 키보드·게임패드·터치로 켜고 끔) */
+  drawCheck(ctx, it, i, G) {
+    const r = this.itemRect(it, G);
+    const sel = this.focus === i && this.domFocus() < 0 && !this.busy;
+    const on = !!this.remember;
+    const cy = r.y + r.h / 2;
+    text(ctx, it.label, G.L.x, cy + 5, { size: 14, weight: 800, color: sel ? '#fff2cc' : BONE, ow: 2, maxWidth: G.lab - 8 });
+    ctx.save();
+    const bx = r.x, by = cy - 11;
+    ctx.fillStyle = 'rgba(10,4,12,0.9)'; ctx.fillRect(bx, by, 22, 22);
+    ctx.strokeStyle = sel ? GOLD : 'rgba(232,200,114,0.55)'; ctx.lineWidth = sel ? 2 : 1; ctx.strokeRect(bx + 0.5, by + 0.5, 21, 21);
+    if (on) {
+      ctx.strokeStyle = GOLD; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.beginPath(); ctx.moveTo(bx + 5, by + 11); ctx.lineTo(bx + 9.5, by + 16); ctx.lineTo(bx + 17, by + 6); ctx.stroke();
+    }
+    if (sel) { ctx.fillStyle = GOLD; ctx.beginPath(); ctx.moveTo(bx - 12, cy - 6); ctx.lineTo(bx - 5, cy); ctx.lineTo(bx - 12, cy + 6); ctx.fill(); }
+    ctx.restore();
+    text(ctx, on ? '켬 · 이 기기에 30일 동안 유지' : '끔 · 창을 닫으면 로그아웃', bx + 32, cy + 5, { size: 13, weight: 700, color: on ? '#ffe7a0' : DIM, ow: 2, maxWidth: r.w - 32 });
+    if (!this.busy) this.taps.add(it.id, { x: G.L.x, y: r.y, w: G.L.w, h: r.h });
   }
   drawInfo(ctx, G, lines, y = G.y0 + 40) {
     const x = G.R.x + 14, w = G.R.w - 20;
@@ -750,6 +804,7 @@ export class AccountScene extends Scene {
     if (cloud.createdAt) rows.push(['가입일', fmtDate(cloud.createdAt)]);
     const st = cloud.state === 'ready' ? '연결됨' : cloud.state === 'offline' ? '오프라인' : cloud.state === 'unavailable' ? '서버에 연결할 수 없음' : '확인 중';
     rows.push(['서버 연결', st]);
+    rows.push(['로그인 유지', cloud.auth?.remember ? '켬 (30일)' : '끔 (창을 닫으면 로그아웃)']);
     rows.push(['마지막 동기화', cloud.lastSync ? fmtDate(cloud.lastSync) : '-']);
     for (const [k, v] of rows) {
       text(ctx, k, x, y, { size: 13, weight: 600, color: DIM, ow: 2 });

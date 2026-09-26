@@ -29,7 +29,7 @@ const res = await s.page.evaluate(async ([script, frames, setq]) => {
   const patch = () => {
     const pr = b._painted?.proxy;
     if (pr && setq && !pr.__q) {
-      pr.__q = true;
+      pr.__q = true; pr.st.qLock = true;
       for (const kv of setq.split(',')) { const [k2, v] = kv.split('='); if (k2 === 'particles') { if (v === '0') pr.st.P.draw = () => {}; } else pr.st.q = { ...pr.st.q, [k2]: v === '0' ? 0 : v === '1' ? 1 : +v }; }
     }
     if (pr && !pr.__pt) { const od = pr.draw.bind(pr); pr.__pt = true; pr.draw = (c, wd) => { if (mode !== 'painted') return; const t0 = performance.now(); od(c, wd); stats.painted.js.push(performance.now() - t0); }; }

@@ -347,8 +347,12 @@ export async function loadRig(dir, def = {}, env = {}) {
   };
   const memAt = (tdx) => { let b = 0; for (const [n, e] of Object.entries(man.parts)) { const f = tdx / srcTd; b += (e.w * f + PAD * 2) * (e.h * f + PAD * 2) * 4 * nVar(n); } return b / 1048576; };
   const budget = env.budgetMB ?? 15;
-  const m0 = memAt(td);
-  if (m0 > budget) td = Math.max(0.55, td * Math.sqrt(budget / m0) * 0.98);
+  // 예산에 맞을 때까지 밀도를 낮춘다 (패드 때문에 td² 에 정확히 비례하지 않으므로 몇 번 반복)
+  for (let it = 0; it < 8; it++) {
+    const m = memAt(td);
+    if (m <= budget) break;
+    td = Math.max(0.55, td * Math.sqrt(budget / m) * 0.995);
+  }
   const f = td / srcTd;
   const lite = env.lite ?? budget < 8;
   const rig = { dir, man, td, parts: {}, def, bakeMs: 0, memMB: 0, key, tintKeys: Object.keys(def.tints ?? {}) };
@@ -429,6 +433,7 @@ export async function loadRig(dir, def = {}, env = {}) {
   // 아틀라스 원본은 굽기 후 필요 없다 (디코딩된 비트맵을 붙잡지 않도록 캐시에서 뺀다)
   try { assets.cache?.delete?.(key); } catch { /* 무시 */ }
   rig.memMB = texMemMB(rig);
+  rig.estMB = memAt(td);
   rig.bakeMs = performance.now() - t0;
   rig.timing = Object.fromEntries(Object.entries(tm).map(([k, v]) => [k, Math.round(v)]));
   return rig;
