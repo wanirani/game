@@ -491,7 +491,7 @@ def build_hands(C, rig):
         im = im.resize((max(1, round(im.width * sc)), max(1, round(im.height * sc))), Image.LANCZOS)
         # 원화 좌표계로: 기준점(center 또는 wrist)을 J['hand'] 에 둔다
         ref = np.array(c['center'] if kind == 'grip' else c['wrist'], float)
-        anchor = np.array(C.J['hand'], float)
+        anchor = np.array(C.J['hand'] if kind == 'grip' else C.J['wrist'], float)  # 주먹 중심=손 관절, 편 손 손목=손목 관절
         x0p = anchor[0] + (bx0 - ref[0]) * sc
         y0p = anchor[1] + (by0 - ref[1]) * sc
         wrist = (np.array(c['wrist'], float) - ref) * sc + anchor

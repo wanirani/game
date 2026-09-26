@@ -19,6 +19,7 @@ parts.json:
                "k": 0.05,                              # optional per-part scale override
                "flipX": false, "rot": 0,               # optional: mirror / rotate (degrees, CCW) the cut
                "fade": [[x0,y0,x1,y1, "down"|"up"|"left"|"right"]],  # soft alpha fades (source px) for cut edges
+               "minus": [[[x,y],...]],                  # polygons removed from the cut (e.g. the head from a torso)
                "inpaint": [[[x,y],...]],                # polygons repainted from their surroundings (cv2 Telea) before
                                                        # cutting, e.g. a thigh bone painted over the loincloth
                "piv": { "a": [x,y], "b": [x,y], ... } }  # pivots in source px (a→b = bone axis for limbs)
@@ -75,6 +76,8 @@ def cut(p):
     if p.get('poly'):
         pts = [(x - x0, y - y0) for x, y in p['poly']]
         a = a * poly_mask(rgba.shape, pts, p.get('feather', 1.0))
+    for mp in p.get('minus', []):
+        a = a * (1 - poly_mask(rgba.shape, [(x - x0, y - y0) for x, y in mp], p.get('feather', 1.0)))
     for f in p.get('fade', []):
         fx0, fy0, fx1, fy1, d = f
         yy, xx = np.mgrid[0:a.shape[0], 0:a.shape[1]]

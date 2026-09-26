@@ -57,3 +57,15 @@ export const INSTALL = `(() => {
     return { st: b.state, hp: +(b.hp / b.stats.maxHp).toFixed(2), head: [Math.round(m.hx), Math.round(m.hy)], hole: [Math.round(m.hole.x), m.hole.nx], twin: !!b.twin, dying: +(b.deathT ?? 0).toFixed(2), painted: !!b._painted?.proxy && !b._painted.proxy.dead };
   };
 })()`;
+
+/** 벤치마크 대본: i = 프레임 번호 (tools/painted/bench.mjs). 330 프레임 주기로 여러 상태를 돈다 (2페이즈 쌍두 포함) */
+export const BENCH = `(i, b, p, A, H0) => {
+  const k = i % 360;
+  if (k === 0) { b.hp = b.stats.maxHp; b.main.setHole(H0.x, H0.y, 0, -1); b.main.autoExt = true; b.setState('idle'); b.cool = 99; }
+  if (k === 50) { b.setState('bite'); b.cool = 99; }
+  if (k === 130) { b.setState('breath'); b.cool = 99; }
+  if (k === 230) { b.hp = b.stats.maxHp * 0.5; b.setState('spit'); b.cool = 99; }
+  if (k === 270) { if (!b.twin) { b.phase = 2; b.hp = b.stats.maxHp * 0.25; b.phaseApply(2); } b.setState('idle'); b.cool = 99; }
+  if (b.state === 'idle') b.cool = 99;
+  p.x = A.x0 + 330; p.iframes = 1e9;
+}`;

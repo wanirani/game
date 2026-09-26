@@ -100,3 +100,19 @@ export function claimDebris(world, e) {
   if (!L) return;
   for (const d of L) if (d.life > d.maxLife - 0.12 && Math.abs(d.x - e.cx) < 60 && Math.abs(d.y - e.cy) < 80) d.life = 0;
 }
+
+/**
+ * 2-bone IK: shoulder (sx,sy) reaching (tx,ty) with bone lengths L1,L2; bend = +1/-1 picks the elbow side.
+ * Returns [dir1, dir2] world directions (radians) of the upper and lower bone (reused array).
+ */
+const _ik = [0, 0];
+export function ik2(sx, sy, tx, ty, L1, L2, bend = 1) {
+  const dx = tx - sx, dy = ty - sy;
+  const d = Math.min(Math.hypot(dx, dy), L1 + L2 - 1e-3), base = Math.atan2(dy, dx);
+  const c1 = clamp((L1 * L1 + d * d - L2 * L2) / (2 * L1 * d || 1), -1, 1);
+  const a1 = Math.acos(c1);
+  _ik[0] = base - bend * a1;
+  const ex = sx + Math.cos(_ik[0]) * L1, ey = sy + Math.sin(_ik[0]) * L1;
+  _ik[1] = Math.atan2(ty - ey, tx - ex);
+  return _ik;
+}

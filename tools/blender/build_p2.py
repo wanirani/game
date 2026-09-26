@@ -1843,10 +1843,10 @@ def build_sunk_statue():
     D.box((0.8, 0.6, 0.18), stone, loc=(0, 0, 0.09), bev=0.03, name="plinth")
     D.box((0.64, 0.5, 0.14), stone, loc=(0, 0, 0.25), bev=0.03, name="plinth2")
     with D.sub(loc=(0, 0, 0.32)):
-        robe = D.lathe(D.catmull2d([(0.0, 0.0), (0.3, 0.0), (0.28, 0.25), (0.22, 0.6), (0.2, 0.85),
-                                    (0.23, 1.0), (0.16, 1.12), (0.08, 1.16), (0.0, 1.16)], 3,
-                                   closed=False), stone, seg=40, sy=0.75, name="robe",
-                       radial=lambda a, t: 1 + 0.06 * math.sin(9 * a) * (1 - t))
+        D.lathe(D.catmull2d([(0.0, 0.0), (0.3, 0.0), (0.28, 0.25), (0.22, 0.6), (0.2, 0.85),
+                             (0.23, 1.0), (0.16, 1.12), (0.08, 1.16), (0.0, 1.16)], 3,
+                            closed=False), stone, seg=40, sy=0.75, name="robe",
+                radial=lambda a, t: 1 + 0.06 * math.sin(9 * a) * (1 - t))
         # hood + head
         D.sphere(0.13, stone, loc=(0, -0.02, 1.26), scale=(1.0, 1.0, 1.15), seg=24, rings=12)
         hood = D.lathe(D.catmull2d([(0.0, 1.46), (0.1, 1.44), (0.17, 1.33), (0.18, 1.18),
@@ -1941,15 +1941,14 @@ def build_sky_statue():
     gilded wings, helm and spear, on a gilded pedestal."""
     marble = DM_whitemarble()
     gold = DM_skygold()
-    rng = random.Random(8)
     D.box((0.84, 0.56, 0.14), marble, loc=(0, 0, 0.07), bev=0.02, name="plinth")
     D.box((0.7, 0.48, 0.22), marble, loc=(0, 0, 0.25), bev=0.02, name="die")
     D.box((0.72, 0.5, 0.03), gold, loc=(0, 0, 0.35), bev=0.008, name="trim")
     with D.sub(loc=(0, 0.02, 0.37)):
-        robe = D.lathe(D.catmull2d([(0.0, 0.0), (0.26, 0.0), (0.22, 0.4), (0.17, 0.72), (0.2, 0.9),
-                                    (0.24, 1.0), (0.2, 1.06), (0.1, 1.1), (0.0, 1.1)], 3,
-                                   closed=False), marble, seg=40, sy=0.7, name="robe",
-                       radial=lambda a, t: 1 + 0.07 * math.sin(10 * a) * (1 - t) ** 2)
+        D.lathe(D.catmull2d([(0.0, 0.0), (0.26, 0.0), (0.22, 0.4), (0.17, 0.72), (0.2, 0.9),
+                             (0.24, 1.0), (0.2, 1.06), (0.1, 1.1), (0.0, 1.1)], 3,
+                            closed=False), marble, seg=40, sy=0.7, name="robe",
+                radial=lambda a, t: 1 + 0.07 * math.sin(10 * a) * (1 - t) ** 2)
         D.torus(0.18, 0.025, gold, loc=(0, 0, 0.72), sy=0.72, seg=40, rseg=8, name="belt")
         D.sphere(0.1, marble, loc=(0, 0, 1.2), scale=(1.0, 1.0, 1.1), seg=24, rings=12, name="head")
         D.lathe(D.catmull2d([(0.0, 1.36), (0.08, 1.34), (0.115, 1.25), (0.12, 1.16)], 3,
@@ -1963,8 +1962,8 @@ def build_sky_statue():
         D.cyl(0.018, 1.6, gold, loc=(0.26, -0.18, 0.95), seg=10, name="spear")
         D.cone(0.04, 0.2, gold, loc=(0.26, -0.18, 1.75), seg=4, name="spearhead")
         D.sweep([(-0.22, 0, 0.98), (-0.3, -0.1, 0.78), (-0.2, -0.2, 0.62)], 0.045, marble, segs=10)
-        sh = D.lathe([(0.0, 0.0), (0.18, 0.0), (0.2, 0.02), (0.0, 0.05)], marble, seg=32,
-                     loc=(-0.22, -0.24, 0.55), rot=(rad(90), 0, 0), sx=0.8, name="shield")
+        D.lathe([(0.0, 0.0), (0.18, 0.0), (0.2, 0.02), (0.0, 0.05)], marble, seg=32,
+                loc=(-0.22, -0.24, 0.55), rot=(rad(90), 0, 0), sx=0.8, name="shield")
         D.torus(0.18, 0.015, gold, loc=(-0.22, -0.25, 0.55), rot=(rad(90), 0, 0), sx=0.8, seg=32,
                 rseg=6, name="shield_rim")
         D.extrude(D.shape_star(4, 0.09, 0.03), 0.02, gold, loc=(-0.22, -0.27, 0.55), name="shield_star")
@@ -2048,7 +2047,6 @@ def build_dream_cradle():
     D.cyl(0.02, 0.8, wood, loc=(0.52, 0.2, 1.0), seg=8, name="post")
     D.sweep(D.bezier_pts((0.52, 0.2, 1.38), (0.35, 0.2, 1.46), (0.0, 0.2, 1.42), (-0.1, 0.2, 1.36), 12),
             0.015, wood, segs=6, name="arm")
-    rng = random.Random(3)
 
     def arm_z(x):
         return 1.38 + 0.08 * math.sin(math.pi * (0.52 - x) / 0.62)
@@ -2156,8 +2154,8 @@ def build_dream_clock():
         sag = max(0.0, -z) * 0.9 * (v ** 2) + 0.12 * v ** 3 * max(0.0, math.sin(a + 0.6) * -1)
         return (x, -0.235 - 0.02 * v, 1.66 + z - sag)
     surface_D(dfn, 48, 8, dial, name="dial", thick=0.01)
-    torus = D.torus(0.26, 0.02, brass, loc=(0, -0.23, 1.66), rot=(rad(90), 0, 0), seg=48, rseg=6,
-                    name="bezel")
+    D.torus(0.26, 0.02, brass, loc=(0, -0.23, 1.66), rot=(rad(90), 0, 0), seg=48, rseg=6,
+            name="bezel")
     for k in range(12):
         a = TAU * k / 12
         r = 0.2
@@ -2285,7 +2283,6 @@ def build_blight_stump():
     inner = D.pbr("rotcore", (0.1, 0.08, 0.04), rough=0.9, emit=(0.6, 0.9, 0.2), emit_str=0.6,
                   bump=0.6, bump_scale=15)
     shelf = DM_capflesh("shelf", (0.55, 0.45, 0.2), spots=None)
-    gills = DM_gills("shelfgills", 1.6)
     rng = random.Random(2)
     prof = [(0.0, 0.0), (0.62, 0.0), (0.5, 0.12), (0.44, 0.3), (0.42, 0.55), (0.44, 0.7)]
     st = D.lathe(prof, bark, seg=40, cap=False, name="stump",
@@ -2330,7 +2327,6 @@ def build_blight_totem():
     gills = DM_gills()
     stem = D.pbr("shroomstem", (0.72, 0.68, 0.5), rough=0.6, sss=0.3)
     soil = D.pbr("rotsoil2", (0.12, 0.1, 0.06), rough=0.9, bump=0.5, bump_scale=20)
-    rng = random.Random(12)
     D.rock((0, 0.05, 0.0), 0.35, soil, scale=(1.2, 0.9, 0.3), seed=2)
     D.lathe([(0.0, 0.0), (0.1, 0.0), (0.085, 1.4), (0.0, 1.42)], bark, seg=16, name="pole",
             radial=lambda a, t: 1 + 0.12 * math.sin(5 * a + t * 9))

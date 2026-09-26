@@ -29,7 +29,7 @@ const DEF = {
     leg: { deep: 0.8, cracks: 2, holes: 1 },
   },
   prefix: {
-    va: { cracks: 2, holes: 1, char: 2 }, vb: { cracks: 2, holes: 1, char: 2 },
+    va: { cracks: 2, holes: 1, char: 1 }, vb: { cracks: 2, holes: 1, char: 1 },
     vas: { noDmg: true, outline: 1.8 }, vbs: { noDmg: true, outline: 1.8 },
     deb: { noDmg: true, outline: 1.6 },
   },
@@ -487,7 +487,11 @@ function drawSkull(ctx, D, b, h, hs, rig, st, dt, lvl, hit, V) {
   const R = rig.parts, S = R.skull_upper, J = R.skull_jaw, q = st.q, P = st.P;
   const s = h.scale ?? 1, soul = hs.soul, t = b.t, twin = hs.twin;
   const dying = b.dying > 0, dT = b.deathT ?? 0, fury = b.fury ?? 0, flare = h.flare ?? 0;
-  const flip = Math.cos(h.a) < 0 ? -1 : 1;
+  // 좌우 뒤집기 히스테리시스: 머리가 거의 수직(뼈의 비·포효)일 때 매 프레임 뒤집혀 깜빡이지 않게
+  const ca = Math.cos(h.a);
+  if (hs.flip == null) hs.flip = ca < 0 ? -1 : 1;
+  else if (ca < -0.22) hs.flip = -1; else if (ca > 0.22) hs.flip = 1;
+  const flip = hs.flip;
   const jolt = hs.jolt > 0 && st.hitHead === h ? hs.jolt : 0;
   const hx = h.hx + (jolt ? (rr.next() - 0.5) * 7 * jolt : 0), hy = h.hy + (jolt ? (rr.next() - 0.5) * 7 * jolt : 0);
   const ha = h.a + (jolt ? (rr.next() - 0.5) * 0.08 * jolt : 0);
