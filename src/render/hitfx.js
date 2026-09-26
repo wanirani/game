@@ -45,12 +45,16 @@ export function budgetOf(fx) { const k = qualityKey(fx); return { ...BUDGET_DEF[
 // ───────────────────────── 색별 스프라이트 캐시 ─────────────────────────
 /** 종류마다 고정 크기 캔버스 + LRU (상한을 넘으면 가장 오래된 캔버스를 비워서 다시 쓴다) */
 class SpriteCache {
-  constructor(w, h, cap, bake) { this.w = w; this.h = h; this.cap = cap; this.bake = bake; this.map = new Map(); }
+  constructor(w, h, cap, bake) { this.w = w; this.h = h; this.cap = cap; this.bake = bake; this.map = new Map(); this.win = 0; this.nb = 0; }
   get(color) {
     const key = color || '#ffffff';
     const m = this.map;
     let c = m.get(key);
     if (c) { if (m.size > 8) { m.delete(key); m.set(key, c); } return c; }
+    // 굽기 속도 상한: 색이 제각각인 효과가 캐시를 계속 밀어내며 매 프레임 굽지 않게 (0.2초에 8장; 넘으면 null → 호출부 대체 경로)
+    const now = typeof performance !== 'undefined' ? performance.now() : 0;
+    if (now - this.win > 200) { this.win = now; this.nb = 0; }
+    if (++this.nb > 8) return null;
     if (m.size >= this.cap) { const k0 = m.keys().next().value; c = m.get(k0); m.delete(k0); }
     else c = mkCanvas(this.w, this.h);
     if (!c) return null;
