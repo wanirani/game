@@ -300,3 +300,8 @@ AI.mimic = {
     AI.jumper.update(e, world, dt);
   },
 };
+
+// 확장 행동 병합 (적 담당 에이전트 파일)
+import { AI_A } from './ai_a.js';
+import { AI_B } from './ai_b.js';
+Object.assign(AI, AI_A, AI_B);

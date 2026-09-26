@@ -866,8 +866,8 @@ _PATTERNS = dict(wood=_pat_wood, rust=_pat_rust, stone=_pat_stone,
                  eye=_pat_eye, prism=_pat_prism)
 
 
-def M_flame(name="flame", core=(1.0, 0.92, 0.65), mid=(1.0, 0.48, 0.08),
-            tip=(0.7, 0.08, 0.02), strength=14.0, soft=1.6):
+def M_flame(name="flame", core=(1.0, 0.62, 0.2), mid=(1.0, 0.3, 0.03),
+            tip=(0.8, 0.08, 0.02), strength=2.6, soft=1.6):
     """Emission flame: bright core at the base, reddening toward the tip,
     fading to transparent at grazing angles (soft edges)."""
     if name in G.mats:
@@ -965,7 +965,7 @@ def M_steel():
 
 
 def M_silver():
-    return pbr("silver", (0.94, 0.95, 0.98), metal=1, rough=0.12, noise_rough=0.05)
+    return pbr("silver", (0.94, 0.95, 0.98), metal=1, rough=0.2, noise_rough=0.06)
 
 
 def M_gold():
@@ -1725,11 +1725,11 @@ def rivet_row(p0, p1, n, r, mat, normal=(0, -1, 0)):
 def flame(loc, h, mat=None, core_mat=None, r=None, lean=0.0, light=True,
           power=None, parent=None):
     """Teardrop flame: outer translucent shell + hot inner core (+ light)."""
-    r = r or h * 0.24
+    r = r or h * 0.21
     mat = mat or M_flame()
-    core_mat = core_mat or M_flame("flame_core", core=(1.0, 0.98, 0.9),
-                                   mid=(1.0, 0.8, 0.4), tip=(1.0, 0.5, 0.1),
-                                   strength=22.0, soft=1.0)
+    core_mat = core_mat or M_flame("flame_core", core=(1.0, 0.85, 0.55),
+                                   mid=(1.0, 0.6, 0.2), tip=(1.0, 0.4, 0.06),
+                                   strength=4.0, soft=1.0)
     prof = []
     N = 16
     for i in range(N + 1):
@@ -1738,7 +1738,9 @@ def flame(loc, h, mat=None, core_mat=None, r=None, lean=0.0, light=True,
         prof.append((max(rr, 0.0), h * t))
     prof[0] = (0.0, 0.0)
     prof[-1] = (0.0, h)
-    ob = lathe(prof, mat, seg=20, loc=loc, name="flame", parent=parent)
+    ph = random.Random(int(loc[0] * 1000 + loc[2] * 77)).uniform(0, TAU)
+    ob = lathe(prof, mat, seg=24, loc=loc, name="flame", parent=parent,
+               radial=lambda a, t: 1 + 0.22 * t * math.sin(3 * a + t * 7 + ph))
     core = lathe([(x * 0.5, z * 0.62) for (x, z) in prof], core_mat, seg=16,
                  loc=(loc[0], loc[1] - r * 0.1, loc[2] + h * 0.02), name="flame_core",
                  parent=parent)
@@ -1776,7 +1778,7 @@ def candle(loc, r, h, drip_seed=0, wax=None, flame_h=None, light=True, power=Non
         sphere(dr * 1.15, wax, loc=pts[-1], seg=10, rings=6, name="dripend")
     top = z + h - r * 0.22
     cyl(r * 0.07, r * 0.5, M_black(), loc=(x, y, top + r * 0.2), seg=6, name="wick")
-    fh = flame_h if flame_h is not None else r * 2.6
+    fh = flame_h if flame_h is not None else r * 3.4
     if fh > 0:
         flame((x, y, top + r * 0.18), fh, light=light, power=power)
     return body
@@ -2446,9 +2448,9 @@ def build_sub_axe():
     head = [(0.05, -0.12), (0.2, -0.16), (0.36, -0.3), (0.48, -0.36), (0.52, -0.2),
             (0.55, 0.05), (0.53, 0.28), (0.48, 0.44), (0.36, 0.38), (0.2, 0.22), (0.05, 0.16)]
     for sx in (1, -1):
-        pts = [(sx * x, z) for (x, z) in head]
-        inflate(pts, 0.07, steel, rings=2, flat=True, profile=lambda t: min(1.0, t * 1.6),
-                center=(sx * 0.22, 0.02), loc=(0, 0, 0.55), name="bit")
+        pts = [(sx * x, z) for (x, z) in catmull2d(head, 3, closed=True)]
+        extrude(pts, 0.07, steel, bev=0.03, bev_seg=1, loc=(0, 0, 0.55), name="bit",
+                sharp=25)
     box((0.16, 0.16, 0.36), iron, loc=(0, 0, 0.56), bev=0.02)
     cone(0.06, 0.3, steel, loc=(0, 0, 0.74), seg=4, smooth=False, name="spike")
     view(diag=32, yaw=22, pitch=8, fill=0.9, glow=0.2)
@@ -2464,9 +2466,9 @@ def build_sub_holywater():
     lathe([(0.0, 1.16), (0.15, 1.16), (0.16, 1.3), (0.12, 1.34), (0.14, 1.4),
            (0.08, 1.44), (0.0, 1.45)], silver, seg=32, name="cap")
     torus(0.06, 0.018, silver, loc=(0, 0, 1.5), rot=(rad(90), 0, 0))
-    inflate(shape_cross(0.3, 0.44, 0.1, 0.29, 0.03), 0.05, silver, rings=3, flat=True,
-            loc=(0, -0.51, 0.26), name="cross")
-    sphere(0.035, M_gem("holygem", (0.2, 0.6, 1.0), glow=1.2), loc=(0, -0.57, 0.55),
+    extrude(shape_cross(0.3, 0.44, 0.1, 0.29, 0.03), 0.05, silver, bev=0.018, bev_seg=1,
+            loc=(0, -0.55, 0.25), rot=(rad(-8), 0, 0), name="cross", sharp=25)
+    sphere(0.035, M_gem("holygem", (0.2, 0.6, 1.0), glow=1.2), loc=(0, -0.59, 0.54),
            seg=12, rings=8)
     bubbles(8, 0.3, 0.2, 0.7, seed=11)
     # rosary beads hanging from the neck
@@ -2483,10 +2485,10 @@ def build_sub_holywater():
 def build_sub_cross():
     gold = M_gold()
     pal = M_palegold()
-    inflate(shape_cross(1.1, 1.3, 0.3, 0.82, 0.1), 0.12, gold, rings=3, flat=True,
-            profile=lambda t: min(1.0, 0.35 + t), name="cross")
-    inflate(shape_cross(0.64, 0.8, 0.1, 0.52, 0.04), 0.1, pal, rings=2, flat=True,
-            loc=(0, -0.08, 0.25), name="inlay")
+    extrude(shape_cross(1.1, 1.3, 0.3, 0.82, 0.1), 0.16, gold, bev=0.05, bev_seg=1,
+            name="cross", sharp=25)
+    extrude(shape_cross(0.7, 0.88, 0.1, 0.56, 0.035), 0.06, pal, bev=0.02, bev_seg=1,
+            loc=(0, -0.09, 0.21), name="inlay", sharp=25)
     with sub(loc=(0, -0.12, 0.82), rot=(rad(90), 0, 0)):
         torus(0.15, 0.03, pal, seg=40)
         lathe([(0.0, -0.02), (0.12, 0.02), (0.08, 0.08), (0.0, 0.09)],
@@ -2616,6 +2618,410 @@ def build_sub_bomb():
         sparkle((tip[0] + 0.14 * math.cos(a), tip[1] - 0.1, tip[2] + 0.12 + 0.14 * math.sin(a)),
                 0.05 + 0.03 * (k % 2), (1.0, 0.7, 0.2), strength=8.0)
     view(pitch=12, diag=-8, fill=0.86, glow=1.0)
+
+
+@item("heart_s")
+def build_heart_s():
+    ruby = M_gem("heartruby", (0.85, 0.0, 0.04), glow=0.55, trans=0.45)
+    inflate(shape_heart(0.5, n=18), 0.24, ruby, rings=3, flat=True, center=(0.0, 0.0),
+            name="heart")
+    sparkle((0.3, -0.3, 0.3), 0.08, (1.0, 0.85, 0.85))
+    view(pitch=6, yaw=18, fill=0.6, glow=0.5)
+
+
+@item("heart_l")
+def build_heart_l():
+    ruby = M_gem("heartruby", (0.85, 0.0, 0.04), glow=0.6, trans=0.45)
+    S = 0.62
+    inflate(shape_heart(S, n=22), 0.3, ruby, rings=3, flat=True, center=(0.0, 0.0),
+            name="heart")
+    gold = M_gold()
+    rim = [(x * 1.05, 0.02, z * 1.05 - 0.004) for (x, z) in shape_heart(S, n=90)]
+    sweep(rim + rim[:3], 0.035, gold, segs=10, caps=False, name="rim")
+    # little golden wings
+    wing = [(0.0, -0.05), (0.12, -0.07), (0.18, -0.01), (0.27, -0.04), (0.33, 0.05),
+            (0.41, 0.04), (0.46, 0.15), (0.48, 0.28), (0.38, 0.26), (0.24, 0.2),
+            (0.1, 0.14), (0.0, 0.1)]
+    for sx in (1, -1):
+        inflate([(sx * x, z) for (x, z) in wing], 0.03, M_palegold(), rings=3,
+                loc=(sx * 0.6, 0.05, 0.2), rot=(0, 0, rad(-25 * sx)), name="wing")
+    sparkle((0.34, -0.36, 0.34), 0.1, (1.0, 0.85, 0.85))
+    sparkle((-0.4, -0.36, -0.2), 0.07, (1.0, 0.85, 0.85))
+    point_light((0, -0.6, 0.1), (1.0, 0.1, 0.1), 10, 0.3)
+    view(pitch=6, yaw=14, fill=0.92, glow=0.6)
+
+
+@item("coin")
+def build_coin():
+    gold = pbr("coingold", (1.0, 0.7, 0.26), metal=1, rough=0.22, noise_rough=0.08,
+               bump=0.05, bump_scale=30)
+    with sub(rot=(rad(90), 0, 0)):
+        lathe([(0.0, -0.06), (0.44, -0.06), (0.47, -0.075), (0.52, -0.06), (0.53, 0.0),
+               (0.52, 0.06), (0.47, 0.075), (0.44, 0.06), (0.42, 0.045), (0.0, 0.045)][::-1][::-1],
+              gold, seg=64, name="coin")
+        for k in range(20):
+            a = TAU * k / 20
+            sphere(0.018, gold, loc=(0.4 * math.cos(a), 0.4 * math.sin(a), 0.045), seg=8, rings=4)
+    extrude(shape_cross(0.44, 0.56, 0.12, 0.36, 0.035), 0.04, gold, bev=0.015, bev_seg=1,
+            loc=(0, -0.065, -0.3), name="emboss", sharp=25)
+    # tiny skull above the cross arms: cranium + eye sockets
+    ink = pbr("coinshadow", (0.25, 0.14, 0.03), metal=1, rough=0.5)
+    sparkle((0.34, -0.2, 0.36), 0.1, (1.0, 0.95, 0.7))
+    view(yaw=28, pitch=8, diag=-12, fill=0.86, glow=0.4)
+
+
+@item("moneybag")
+def build_moneybag():
+    sack = M_leather((0.45, 0.28, 0.13), "sack", scale=3.0)
+    prof = [(0.0, 0.0), (0.3, 0.0), (0.5, 0.1), (0.6, 0.32), (0.58, 0.58), (0.44, 0.8),
+            (0.22, 0.95), (0.13, 1.02), (0.14, 1.07), (0.24, 1.14), (0.32, 1.24), (0.3, 1.28)]
+    bag = lathe(catmull2d(prof, 4, closed=False), sack, seg=64, cap=False, name="bag",
+                radial=lambda a, t: 1 + 0.16 * math.sin(9 * a) * max(0, t - 0.8) * 5
+                + 0.03 * math.sin(5 * a + 1) * (1 - t))
+    solidify(bag, 0.025)
+    rope = pbr("rope", (0.62, 0.48, 0.28), rough=0.9, bump=0.6, bump_scale=150)
+    torus(0.15, 0.035, rope, loc=(0, 0, 1.04), seg=32, rseg=10)
+    for sx, d in ((1, 0.2), (-1, 0.3)):
+        pts = [(sx * 0.12, -0.08, 1.02), (sx * 0.2, -0.15, 0.9), (sx * 0.24, -0.18, 1.02 - d - 0.4)]
+        sweep(catmull(pts, 6), 0.03, rope, segs=8, name="ropeend")
+    gold = M_gold()
+    # coins peeking out of the top and spilled in front
+    for (x, y, z, rx, ry) in ((0.05, 0.02, 1.2, 70, 20), (-0.1, 0.05, 1.18, 60, -30),
+                              (0.4, -0.5, 0.06, 0, 0), (0.62, -0.3, 0.14, 25, 10),
+                              (0.2, -0.6, 0.03, 0, 0)):
+        with sub(loc=(x, y, z), rot=(rad(rx), rad(ry), 0)):
+            lathe([(0.0, -0.03), (0.16, -0.03), (0.17, 0.0), (0.16, 0.03), (0.0, 0.03)], gold,
+                  seg=32, name="coin")
+    # gold emblem sewn on the bag
+    extrude(shape_cross(0.18, 0.24, 0.06, 0.15, 0.015), 0.02, gold, bev=0.006,
+            loc=(0, -0.6, 0.34), rot=(rad(-4), 0, 0), name="emblem")
+    view(pitch=12, yaw=8, fill=0.86, glow=0.2)
+
+
+def brilliant(r, mat, table=0.56, crown=0.2, pav=0.45, seg=16, **tf):
+    """Round brilliant cut: table, star ring, girdle, pavilion ring, culet."""
+    rings = [(r * table, crown, 0.0), (r * 0.82, crown * 0.55, 0.5), (r, 0.0, 0.0),
+             (r, -0.03 * r, 0.0), (r * 0.52, -pav * 0.55, 0.5)]
+    verts, faces = [], []
+    idx = []
+    for (rr, z, off) in rings:
+        ring = []
+        for i in range(seg):
+            a = TAU * (i + off) / seg
+            ring.append(len(verts))
+            verts.append((rr * math.cos(a), rr * math.sin(a), z))
+        idx.append(ring)
+    top = len(verts)
+    verts.append((0, 0, crown))
+    bot = len(verts)
+    verts.append((0, 0, -pav))
+    for i in range(seg):
+        faces.append((top, idx[0][i], idx[0][(i + 1) % seg]))
+    for k in range(len(idx) - 1):
+        A, B = idx[k], idx[k + 1]
+        for i in range(seg):
+            j = (i + 1) % seg
+            faces.append((A[i], B[i], A[j]) if rings[k + 1][2] == 0.5 else (A[i], B[i], B[j]))
+            faces.append((A[j], B[i], B[j]) if rings[k + 1][2] == 0.5 else (A[i], B[j], A[j]))
+    L = idx[-1]
+    for i in range(seg):
+        faces.append((L[i], bot, L[(i + 1) % seg]))
+    return make_mesh("brilliant", verts, faces, mat, smooth=False, fix_normals=True, **tf)
+
+
+@item("gem_crystal")
+def build_gem_crystal():
+    dia = pbr("diamond", (0.55, 0.88, 1.0), rough=0.0, trans=1.0, ior=2.42, spec=1.0,
+              emit=(0.3, 0.7, 1.0), emit_str=0.06)
+    brilliant(0.62, dia)
+    sparkle((0.42, -0.5, 0.3), 0.14, (0.8, 0.95, 1.0), strength=8.0)
+    sparkle((-0.5, -0.5, 0.05), 0.09, (0.8, 0.95, 1.0), strength=8.0)
+    sparkle((0.2, -0.5, -0.3), 0.07, (0.8, 0.95, 1.0), strength=8.0)
+    point_light((0, -0.4, 0.8), (0.7, 0.9, 1.0), 10, 0.2)
+    view(pitch=24, yaw=8, fill=0.84, glow=0.5, world=1.4, front=0.5)
+
+
+@item("oneup")
+def build_oneup():
+    gold = M_gold()
+    pal = pbr("statuegold", (1.0, 0.78, 0.4), metal=1, rough=0.2, noise_rough=0.06)
+    lathe([(0.0, 0.0), (0.5, 0.0), (0.52, 0.05), (0.46, 0.09), (0.44, 0.24), (0.5, 0.28),
+           (0.5, 0.33), (0.0, 0.33)], M_marble("blackmarble", (0.08, 0.06, 0.08),
+                                             vein=(0.35, 0.3, 0.3)), seg=48, sharp=40)
+    torus(0.5, 0.025, gold, loc=(0, 0, 0.31), seg=48)
+    torus(0.47, 0.025, gold, loc=(0, 0, 0.07), seg=48)
+    with sub(loc=(0, 0, 0.33)):
+        # legs + boots
+        for sx in (-1, 1):
+            sweep([(sx * 0.15, 0.0, 0.05), (sx * 0.12, 0.0, 0.35), (sx * 0.08, 0.0, 0.65)],
+                  lambda s: 0.06 + 0.02 * s, pal, segs=12, name="leg")
+            sphere(0.08, pal, loc=(sx * 0.16, -0.04, 0.05), scale=(1.0, 1.6, 0.8), seg=16,
+                   rings=8)
+        # long coat
+        lathe([(0.0, 0.35), (0.3, 0.3), (0.26, 0.55), (0.18, 0.75), (0.16, 0.8), (0.0, 0.8)],
+              pal, seg=32, radial=lambda a, t: 1 + 0.06 * math.sin(7 * a), name="coat")
+        sphere(0.2, pal, loc=(0, 0, 0.95), scale=(1.0, 0.72, 1.35), seg=24, rings=12)
+        # cape
+        cape = lathe([(0.42, 0.25), (0.34, 0.6), (0.24, 1.0), (0.17, 1.2)], pal, seg=24,
+                     a0=rad(10), a1=rad(170), cap=False, name="cape",
+                     radial=lambda a, t: 1 + 0.08 * math.sin(6 * a))
+        solidify(cape, 0.03)
+        sphere(0.11, pal, loc=(0, 0, 1.32), scale=(1.0, 1.0, 1.1), seg=24, rings=12,
+               name="head")
+        hair = ico(0.125, pal, loc=(0.0, 0.03, 1.36), subdiv=2, name="hair")
+        displace(hair, 0.05, 0.08, kind="VORONOI")
+        # arm raised with the whip, other arm on the hip
+        sweep([(0.18, 0.0, 1.12), (0.3, -0.02, 1.25), (0.3, -0.04, 1.48)],
+              lambda s: 0.055 - 0.015 * s, pal, segs=10, name="arm")
+        sphere(0.055, pal, loc=(0.3, -0.04, 1.52), seg=12, rings=8)
+        sweep([(-0.18, 0.0, 1.12), (-0.3, -0.02, 0.95), (-0.18, -0.06, 0.82)],
+              lambda s: 0.055 - 0.01 * s, pal, segs=10, name="arm")
+        whip = catmull([(0.3, -0.04, 1.52), (0.25, -0.06, 1.8), (-0.1, -0.05, 1.95),
+                        (-0.45, -0.02, 1.75), (-0.55, 0.0, 1.4), (-0.42, 0.02, 1.15)], 8)
+        sweep(whip, lambda s: 0.03 * (1 - s) + 0.008, gold, segs=8, name="whip")
+    sparkle((0.52, -0.4, 1.9), 0.12, (1.0, 0.9, 0.6))
+    sparkle((-0.6, -0.4, 0.9), 0.08, (1.0, 0.9, 0.6))
+    view(yaw=-18, pitch=6, fill=0.9, glow=0.5)
+
+
+@item("powerup")
+def build_powerup():
+    orb_glass = pbr("orbglass", (1.0, 0.92, 0.8), rough=0.02, trans=1.0, ior=1.3, spec=0.6)
+    sphere(0.55, orb_glass, seg=48, rings=24, name="orb")
+    sphere(0.3, M_glowshell("orbcore", (1.0, 0.22, 0.02), 1.2, 1.4), loc=(0, 0.15, 0), seg=32,
+           rings=16)
+    whipm = M_glow("whipglow", (1.0, 0.5, 0.05), 1.2, base=(0.9, 0.45, 0.04))
+    lash = catmull([(-0.1, -0.3, -0.08), (0.02, -0.32, 0.14), (0.2, -0.3, 0.26),
+                    (0.33, -0.28, 0.08), (0.22, -0.27, -0.1), (0.08, -0.28, -0.02),
+                    (0.12, -0.3, 0.1)], 8)
+    sweep(lash, lambda s: 0.05 * (1 - 0.75 * s), whipm, segs=10, name="whip")
+    handle = M_glow("whiphandle", (1.0, 0.08, 0.03), 1.0, base=(0.45, 0.03, 0.02))
+    sweep([(-0.32, -0.3, -0.36), (-0.1, -0.3, -0.08)], 0.06, handle, segs=12, name="handle")
+    sphere(0.07, whipm, loc=(-0.33, -0.3, -0.37), seg=12, rings=8)
+    gold = M_gold()
+    torus(0.64, 0.025, gold, rot=(rad(72), rad(20), 0), seg=64)
+    torus(0.64, 0.025, gold, rot=(rad(72), rad(-40), rad(60)), seg=64)
+    lathe([(0.0, -0.72), (0.2, -0.72), (0.24, -0.66), (0.18, -0.58), (0.1, -0.52), (0.0, -0.5)],
+          gold, seg=32, name="base")
+    point_light((0, -0.2, 0), (1.0, 0.5, 0.15), 30, 0.2)
+    sparkle((0.5, -0.6, 0.5), 0.1, (1.0, 0.85, 0.5))
+    sparkle((-0.55, -0.6, -0.3), 0.07, (1.0, 0.85, 0.5))
+    view(pitch=8, fill=0.86, glow=1.0, glow_beauty=0.4)
+
+
+# =============================================================================
+#  PROP BUILDERS (front view, slight top angle, anchored to the frame edge)
+# =============================================================================
+def bake(ob, M):
+    """Bake a matrix into the mesh data and reset the object transform (so an
+    array/radial modifier can use the object origin as its pivot)."""
+    ob.data.transform(M)
+    ob.matrix_basis = Matrix()
+    return ob
+
+
+def M_wrought():
+    return pbr("wrought", (0.17, 0.16, 0.16), metal=1, rough=0.36, noise_rough=0.12,
+               pattern="rust", rust=(0.22, 0.1, 0.05), scale=5.0)
+
+
+@item("prop_candelabra", "prop", (128, 192))
+def build_prop_candelabra():
+    iron = M_wrought()
+    brass = M_brass()
+    lathe([(0.0, 0.1), (0.34, 0.1), (0.36, 0.14), (0.3, 0.19), (0.18, 0.28), (0.11, 0.4),
+           (0.13, 0.45), (0.13, 0.49), (0.08, 0.53), (0.0, 0.53)], iron, seg=40, name="base")
+    for k in range(3):
+        a = TAU * k / 3 - math.pi / 2
+        c, s_ = math.cos(a), math.sin(a)
+        pts = [(0.22 * c, 0.22 * s_, 0.2), (0.4 * c, 0.4 * s_, 0.2), (0.5 * c, 0.5 * s_, 0.08),
+               (0.54 * c, 0.54 * s_, 0.03)]
+        sweep(catmull(pts, 6), lambda t: 0.045 - 0.01 * t, iron, segs=10, name="foot")
+        sphere(0.055, iron, loc=(0.55 * c, 0.55 * s_, 0.045), seg=14, rings=8, name="claw")
+    lathe([(0.05, 0.52), (0.05, 0.86), (0.09, 0.9), (0.12, 0.96), (0.09, 1.02), (0.05, 1.06),
+           (0.045, 1.66), (0.09, 1.7), (0.09, 1.76), (0.05, 1.8), (0.045, 2.18), (0.07, 2.22),
+           (0.0, 2.22)], iron, seg=24, name="stem")
+    for sx in (-1, 1):
+        arm = [(0.0, 0.0, 1.73), (sx * 0.25, 0.0, 1.62), (sx * 0.52, 0.0, 1.72),
+               (sx * 0.64, 0.0, 1.92), (sx * 0.64, 0.0, 2.02)]
+        curve_tube(arm, 0.036, iron, name="arm")
+        curl = [(sx * 0.12, 0, 1.64 - 0.0)]
+        for i in range(1, 16):
+            t = i / 15
+            ang = t * TAU * 1.1
+            rr = 0.12 * (1 - t * 0.8)
+            curl.append((sx * (0.28 - rr * math.cos(ang)), 0.0, 1.54 + rr * math.sin(ang) * 0.9))
+        curve_tube(curl, 0.02, iron, kind="POLY", name="curl")
+    pan = [(0.0, 0.0), (0.15, 0.0), (0.18, 0.04), (0.16, 0.055), (0.07, 0.03), (0.0, 0.03)]
+    for (x, z, h, seed) in ((-0.64, 2.02, 0.4, 1), (0.64, 2.02, 0.36, 2), (0.0, 2.22, 0.5, 3)):
+        lathe(pan, brass, seg=32, loc=(x, 0, z), name="pan")
+        candle((x, 0, z + 0.03), 0.07, h, drip_seed=seed, power=30)
+    view(pitch=6, fill=0.9, glow=1.0)
+
+
+@item("prop_torch", "prop", (96, 128))
+def build_prop_torch():
+    iron = M_wrought()
+    plate = mirror_x([(0.0, -0.55), (0.18, -0.55), (0.22, -0.48), (0.22, 0.12), (0.16, 0.3),
+                      (0.0, 0.44)])
+    extrude(plate, 0.06, iron, y0=0.05, bev=0.02, name="plate")
+    extrude([(x * 0.78, z * 0.82 - 0.03) for (x, z) in plate], 0.03, iron, y0=0.03,
+            bev=0.01, name="plate2")
+    for (x, z) in ((-0.13, -0.45), (0.13, -0.45), (-0.13, 0.12), (0.13, 0.12), (0.0, 0.3)):
+        sphere(0.025, iron, loc=(x, 0.02, z), scale=(1, 0.6, 1), seg=10, rings=6)
+    sweep(catmull([(0.0, 0.03, -0.3), (0.0, -0.12, -0.34), (0.0, -0.26, -0.22),
+                   (0.0, -0.3, -0.14)], 8), 0.03, iron, segs=10, name="bracket")
+    torus(0.075, 0.02, iron, loc=(0, -0.3, -0.12), rseg=8)
+    torus(0.07, 0.02, iron, loc=(0, -0.3, 0.1), rseg=8)
+    sweep([(0.0, 0.03, 0.1), (0.0, -0.23, 0.1)], 0.02, iron, segs=8)
+    wood = M_wood((0.3, 0.17, 0.08), "torchwood")
+    cyl(0.035, 0.75, wood, r2=0.05, loc=(0, -0.3, -0.16), seg=16, name="stick")
+    char = pbr("charcloth", (0.12, 0.07, 0.04), rough=0.9, bump=0.8, bump_scale=60,
+               emit=(1.0, 0.3, 0.05), emit_str=0.0)
+    wrapped_grip(0.18, 0.36, 0.075, char, wraps=4, depth=0.25, name="wrap")
+    for k in range(4):
+        a = TAU * k / 4 + 0.4
+        sweep([(0.05 * math.cos(a), -0.3 + 0.05 * math.sin(a), 0.14),
+               (0.1 * math.cos(a), -0.3 + 0.1 * math.sin(a), 0.3),
+               (0.09 * math.cos(a), -0.3 + 0.09 * math.sin(a), 0.4)], 0.013, iron, segs=6)
+    torus(0.095, 0.015, iron, loc=(0, -0.3, 0.38), rseg=6)
+    embers = M_glow("embers", (1.0, 0.35, 0.05), 3.0)
+    ico(0.07, embers, loc=(0, -0.3, 0.38), subdiv=1, scale=(1.1, 1.1, 0.5))
+    flame((0, -0.3, 0.33), 0.62, power=90)
+    flame((0.04, -0.33, 0.36), 0.34, lean=12, light=False)
+    flame((-0.05, -0.33, 0.35), 0.3, lean=-14, light=False)
+    view(pitch=6, fill=0.92, anchor="center", glow=1.0)
+
+
+@item("prop_candle", "prop", (64, 96))
+def build_prop_candle():
+    brass = M_brass()
+    lathe([(0.0, 0.0), (0.2, 0.0), (0.22, 0.03), (0.16, 0.06), (0.08, 0.1), (0.08, 0.14),
+           (0.26, 0.15), (0.3, 0.19), (0.28, 0.21), (0.12, 0.19), (0.12, 0.26), (0.1, 0.27),
+           (0.0, 0.27)], brass, seg=40, name="stand")
+    with sub(loc=(0.33, 0, 0.19), rot=(rad(90), 0, 0)):
+        torus(0.07, 0.016, brass, seg=24, rseg=8)
+    candle((0, 0, 0.25), 0.085, 0.7, drip_seed=5, power=35)
+    view(pitch=8, fill=0.9, glow=1.0)
+
+
+def _half_cyl_outline(R, h_scale, n=16):
+    return [(R * math.cos(math.pi * i / n), R * h_scale * math.sin(math.pi * i / n))
+            for i in range(n + 1)]
+
+
+def _build_chest(open_):
+    wood = M_wood((0.34, 0.12, 0.05), "chestwood", axis="X", grain=1.3)
+    iron = M_wrought()
+    gold = M_gold()
+    W, D, H = 1.4, 0.82, 0.62
+    box((W, D, H), wood, loc=(0, 0, H / 2), bev=0.02, name="body")
+    # horizontal plank grooves on the front
+    groove = pbr("groove", (0.05, 0.02, 0.01), rough=0.9)
+    for z in (0.21, 0.42):
+        box((W - 0.02, 0.01, 0.012), groove, loc=(0, -D / 2 - 0.001, z))
+    box((W + 0.08, D + 0.08, 0.07), gold, loc=(0, 0, 0.035), bev=0.015, name="foot_trim")
+    box((W + 0.05, D + 0.05, 0.05), gold, loc=(0, 0, H - 0.02), bev=0.012, name="rim")
+    for x in (-0.44, 0.44):
+        box((0.11, D + 0.03, H - 0.02), iron, loc=(x, 0, H / 2), bev=0.008, name="band")
+        rivet_row((x, -D / 2 - 0.02, 0.12), (x, -D / 2 - 0.02, H - 0.1), 4, 0.022, iron)
+    for sx in (-1, 1):
+        for (zc, sz) in ((0.07, 1), (H - 0.05, -1)):
+            pts = [(0, 0), (0.2, 0), (0.2, 0.05), (0.05, 0.05), (0.05, 0.2), (0, 0.2)]
+            extrude([(sx * (-x), sz * z) for (x, z) in pts], 0.02, gold, bev=0.006,
+                    loc=(sx * (W / 2 + 0.005), -D / 2 - 0.01, zc), name="corner")
+    lock = mirror_x([(0.0, -0.14), (0.1, -0.1), (0.13, 0.02), (0.1, 0.12), (0.0, 0.15)])
+    extrude(lock, 0.035, gold, loc=(0, -D / 2 - 0.02, H - 0.2), bev=0.01, name="lock")
+    extrude(mirror_x([(0.0, -0.06), (0.012, -0.06), (0.012, 0.0), (0.025, 0.02),
+                      (0.0, 0.04)]), 0.02, M_black(), loc=(0, -D / 2 - 0.035, H - 0.21),
+            name="keyhole")
+    R = D / 2 + 0.01
+    ang = -112 if open_ else 0
+    with sub(loc=(0, R, H + 0.005), rot=(rad(ang), 0, 0)):
+        with sub(loc=(0, -R, 0), rot=(0, 0, rad(90))):
+            extrude(_half_cyl_outline(R, 0.78), W + 0.02, wood, bev=0.02, name="lid")
+            for x in (-0.44, 0.44):
+                torus(R + 0.012, 0.03, iron, loc=(0, x, 0), rot=(rad(90), 0, 0), a0=0,
+                      a1=math.pi, sy=0.78, rz=1.9, rr=0.5, seg=24, name="lidband")
+            torus(R + 0.014, 0.025, gold, loc=(0, -(W / 2 + 0.005), 0), rot=(rad(90), 0, 0),
+                  a0=0, a1=math.pi, sy=0.78, seg=24, name="lidtrim")
+            torus(R + 0.014, 0.025, gold, loc=(0, W / 2 + 0.005, 0), rot=(rad(90), 0, 0),
+                  a0=0, a1=math.pi, sy=0.78, seg=24, name="lidtrim")
+        extrude(mirror_x([(0.0, -0.16), (0.06, -0.14), (0.07, 0.0), (0.0, 0.02)]), 0.03, gold,
+                loc=(0, -2 * R - 0.005, 0.02), bev=0.008, name="hasp")
+        if open_:
+            velvet = M_cloth((0.35, 0.02, 0.04), "velvet")
+            box((W - 0.06, 0.02, R * 1.4), velvet, loc=(0, -R, R * 0.35), name="lining")
+    if open_:
+        coins = pbr("coinpile", (1.0, 0.68, 0.22), metal=1, rough=0.22, emit=(1.0, 0.6, 0.15),
+                    emit_str=0.12, pattern="stone", scale=9.0, crack=0.08, bump=0.9,
+                    dark=(0.55, 0.3, 0.05))
+        pile = sphere(0.5, coins, loc=(0, 0, H - 0.02), scale=(W * 0.92, D * 0.86, 0.5), seg=48,
+                      rings=24, name="pile")
+        rng = random.Random(3)
+        for i in range(22):
+            x = rng.uniform(-0.55, 0.55)
+            y = rng.uniform(-0.3, 0.25)
+            zt = (H - 0.02) + 0.25 * math.sqrt(max(0, 1 - (x / 0.64) ** 2 - (y / 0.35) ** 2))
+            with sub(loc=(x, y, zt), rot=(rad(rng.uniform(-40, 40)), rad(rng.uniform(-40, 40)), 0)):
+                lathe([(0.0, -0.012), (0.075, -0.012), (0.08, 0.0), (0.075, 0.012),
+                       (0.0, 0.012)], gold, seg=20, name="coin")
+        for (x, col) in ((-0.3, (0.9, 0.02, 0.05)), (0.12, (0.05, 0.3, 1.0)), (0.4, (0.1, 0.9, 0.3))):
+            zt = (H - 0.02) + 0.25 * math.sqrt(max(0, 1 - (x / 0.64) ** 2)) - 0.02
+            lathe([(0.0, -0.07), (0.075, 0.0), (0.0, 0.07)], M_gem("chestgem_%s" % x, col, glow=0.7),
+                  seg=6, smooth=False, loc=(x, -0.15, zt + 0.03), rot=(rad(20), rad(30), 0),
+                  name="gem")
+        beam = extrude([(-0.6, 0.0), (0.6, 0.0), (0.8, 1.2), (-0.8, 1.2)], 0.01,
+                       M_beam("treasurebeam", (1.0, 0.7, 0.22), 0.7), loc=(0, -0.1, H + 0.12),
+                       name="beam")
+        beam["noframe"] = True
+        for x in (-0.35, 0.0, 0.35):
+            point_light((x, -0.25, H + 0.35), (1.0, 0.7, 0.3), 7, 0.2)
+        sparkle((0.45, -0.5, 1.1), 0.09, (1.0, 0.9, 0.6))
+        sparkle((-0.5, -0.5, 0.95), 0.07, (1.0, 0.9, 0.6))
+        sparkle((0.1, -0.5, 1.3), 0.06, (1.0, 0.9, 0.6))
+    view(pitch=14, fixed_ortho=1.86, anchor="bottom", glow=0.7 if open_ else 0.3)
+
+
+item("prop_chest_closed", "prop", (128, 128))(lambda: _build_chest(False))
+item("prop_chest_open", "prop", (128, 128))(lambda: _build_chest(True))
+
+
+@item("prop_coffin", "prop", (128, 192))
+def build_prop_coffin():
+    lac = pbr("coffinwood", (0.10, 0.025, 0.02), rough=0.35, coat=0.7, coat_rough=0.12,
+              pattern="wood", axis="Z", grain=1.2, dark=(0.03, 0.008, 0.006))
+    lid_m = pbr("coffinlid", (0.14, 0.03, 0.03), rough=0.3, coat=0.8, coat_rough=0.1,
+                pattern="wood", axis="Z", grain=1.2, dark=(0.04, 0.01, 0.008))
+    silver = M_silver()
+    gold = M_gold()
+    outline = [(-0.3, 0.12), (0.3, 0.12), (0.44, 1.52), (0.32, 2.1), (-0.32, 2.1), (-0.44, 1.52)]
+    extrude(outline, 0.46, lac, bev=0.03, name="body")
+    cx, cz = 0.0, 1.1
+
+    def shrink(pts, f):
+        return [(cx + (x - cx) * f, cz + (z - cz) * f) for (x, z) in pts]
+    extrude(shrink(outline, 0.9), 0.1, lid_m, y0=-0.33, bev=0.035, bev_seg=3, name="lid")
+    trim = [(x, -0.335, z) for (x, z) in shrink(outline, 0.93)]
+    sweep(trim + trim[:2], 0.022, gold, segs=8, caps=False, name="trim")
+    # glowing red seam between body and lid: the save-point aura
+    seam = [(x, -0.24, z) for (x, z) in shrink(outline, 1.0)]
+    sweep(seam + seam[:2], 0.01, M_glow("seamred", (1.0, 0.02, 0.04), 0.9), segs=8, caps=False,
+          name="seam")
+    extrude(shape_cross(0.5, 1.1, 0.13, 0.78, 0.04), 0.05, silver, loc=(0, -0.37, 0.62),
+            bev=0.016, bev_seg=1, name="cross", sharp=25)
+    with sub(loc=(0, -0.41, 1.4), rot=(rad(90), 0, 0)):
+        torus(0.1, 0.022, gold, seg=32)
+        lathe([(0.0, -0.02), (0.08, 0.02), (0.05, 0.07), (0.0, 0.08)],
+              M_gem("coffingem", (0.9, 0.0, 0.04), glow=1.2), seg=10, smooth=False)
+    for (x, z) in outline:
+        sphere(0.045, gold, loc=(x * 0.97, -0.25, z + (0.02 if z < 1 else -0.02)),
+               seg=12, rings=8)
+    box((1.05, 0.62, 0.12), M_stone("slab", (0.3, 0.29, 0.29), scale=3.0), loc=(0, 0, 0.06),
+        bev=0.02, name="slab")
+    point_light((0.0, 0.6, 1.3), (1.0, 0.04, 0.04), 70, 0.4)
+    point_light((0.0, -0.8, 0.3), (1.0, 0.1, 0.08), 8, 0.3)
+    view(pitch=5, fill=0.9, glow=0.55, rim=0.8)
 
 
 # ==== END OF BUILDERS ====

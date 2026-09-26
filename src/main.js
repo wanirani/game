@@ -4,6 +4,7 @@ import { audio } from './core/audio.js';
 import { assets } from './core/assets.js';
 import { saves } from './core/save.js';
 import { registerScenes } from './scenes/index.js';
+import { initQuests } from './game/quests.js';
 
 async function boot() {
   const canvas = document.getElementById('screen');
@@ -13,6 +14,7 @@ async function boot() {
   audio.setVolumes(game.settings.musicVol, game.settings.sfxVol);
   game.init(canvas);
   registerScenes(game);
+  initQuests(game);
   game.recordScore = (score, stageId, mode = 'story') => {
     const m = game.meta;
     m.highScores.push({ score, stageId, charId: game.state?.charId, diff: game.state?.difficulty, date: Date.now(), mode, name: game.state?.name ?? '' });

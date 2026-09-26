@@ -40,8 +40,9 @@ export class World {
   constructor(game, stageId, { roomId = null, mode = 'story', onExit = null } = {}) {
     this.game = game;
     this.state = game.state;
-    this.stage = STAGES[stageId];
+    this.stage = typeof stageId === 'object' ? stageId : STAGES[stageId];
     if (!this.stage) throw new Error('Unknown stage ' + stageId);
+    stageId = this.stage.id;
     this.mode = mode; // 'story' | 'bossrush' | 'survival'
     this.diff = getDiff(this.state.difficulty);
     this.hero = currentHero(this.state);
@@ -411,6 +412,14 @@ export class World {
         const name = itemName(it);
         if (res) { audio.sfx('item'); this.game.toast(`획득: ${name}${(it.qty ?? 1) > 1 ? ' ×' + it.qty : ''}`, ['#efe4cf', '#6fe07a', '#5aa8ff', '#c07cff', '#ffa640', '#ff4a5a'][it.rarity ?? 0]); }
         else this.game.toast('가방이 가득 찼다!', '#ff6060');
+        const base = ITEMS[it.baseId];
+        if (base?.relic && !st.progress.relics.includes(it.baseId)) {
+          st.progress.relics.push(it.baseId);
+          audio.sfx('secret');
+          this.game.flash('#ff2040', 0.6, 2);
+          this.banner = { text: '드라큘라의 유물', sub: `${base.name} (${st.progress.relics.length}/5)`, t: 3.5, color: '#ff4a5a', big: true };
+          bus.emit('relicFound', { id: it.baseId });
+        }
         break;
       }
       case 'doc': {
@@ -538,6 +547,11 @@ export class World {
     this.game.push('dialogue', { script: id, world: this });
   }
 
+  /** 문 진입: 'scene:이름' 이면 장면을 띄우고, 아니면 방 이동 (마을 허브 등에서 사용) */
+  enterDoor(target) {
+    if (typeof target === 'string' && target.startsWith('scene:')) { this.game.push(target.slice(6), { world: this }); return; }
+    this.gotoRoom(target);
+  }
   gotoRoom(roomId) {
     if (this.transitioning) return;
     this.transitioning = true;

@@ -178,7 +178,7 @@ export class Door extends Entity {
     this.near = p && p.cx > this.x && p.cx < this.x + this.w && Math.abs(p.bottom - this.bottom) < 20;
     if (this.near && this.target && input.pressed('up') && !world.transitioning) {
       audio.sfx('door');
-      world.gotoRoom(this.target);
+      world.enterDoor ? world.enterDoor(this.target) : world.gotoRoom(this.target);
     }
   }
   draw(ctx, world) {

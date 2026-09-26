@@ -179,9 +179,10 @@ def setup_world(sc, gloss=1.0):
     nt.links.new(mr.outputs["Result"], dim.inputs["Fac"])
     # glossy-only studio environment: dark floor, bright horizon band,
     # brighter toward the camera side and the key (left) side
-    gl = _ramp(nt, (0, -300), [(0.0, (0.004, 0.004, 0.005)), (0.44, (0.02, 0.02, 0.022)),
-                               (0.52, (0.20, 0.19, 0.18)), (0.62, (0.12, 0.12, 0.13)),
-                               (1.0, (0.05, 0.055, 0.07))])
+    gl = _ramp(nt, (0, -300), [(0.0, (0.006, 0.006, 0.007)), (0.2, (0.03, 0.028, 0.03)),
+                               (0.3, (0.07, 0.066, 0.064)),
+                               (0.42, (0.2, 0.19, 0.18)), (0.54, (0.26, 0.25, 0.24)),
+                               (0.7, (0.11, 0.11, 0.12)), (1.0, (0.05, 0.055, 0.07))])
     nt.links.new(mr.outputs["Result"], gl.inputs["Fac"])
     fy = nt.nodes.new("ShaderNodeMapRange")
     fy.inputs["From Min"].default_value = 1.0
@@ -3352,6 +3353,831 @@ def body_6():
           loc=p, rot=(rad(90), 0, 0), smooth=False, name="gem_setting")
     gem(0.06, M_gem((1.0, 0.04, 0.03), "blood_gem", 3.0), loc=p + Vector((0, -0.03, 0)), seg=12)
     view(yaw=0, pitch=8, glow=1.0)
+
+
+# =============================================================================
+#  HEADGEAR
+# =============================================================================
+def deform(ob, fn):
+    me = ob.data
+    for v in me.vertices:
+        v.co = fn(v.co.copy())
+    me.update()
+    return ob
+
+
+def ribbon_outline(pts2d, width_fn, n_cap=4):
+    """Outline around a 2D path whose half-width varies: width_fn(t)."""
+    P = [Vector(p) for p in pts2d]
+    n = len(P)
+    left, right = [], []
+    for i in range(n):
+        a = P[max(i - 1, 0)]
+        b = P[min(i + 1, n - 1)]
+        d = (b - a).normalized()
+        nr = Vector((-d.y, d.x))
+        w = width_fn(i / (n - 1))
+        left.append(P[i] + nr * w)
+        right.append(P[i] - nr * w)
+    return [tuple(p) for p in left] + [tuple(p) for p in reversed(right)]
+
+
+def plume(path2d, width, mat, y=0.0, depth=0.012, name="plume", rot=(0, 0, 0), loc=(0, 0, 0)):
+    """Curved ostrich plume: wavy-edged ribbon."""
+    def wfn(t):
+        return width * (math.sin(math.pi * min(1, t * 1.1)) ** 0.6) * (1 - 0.35 * t) * \
+            (1 + 0.12 * math.sin(t * 60))
+    pts = ribbon_outline(path2d, wfn)
+    return extrude(pts, depth, mat, loc=loc, rot=rot, bev=depth * 0.4, name=name, sharp=70)
+
+
+def fluffy_plume(path, mat, length=0.12, n=36, droop=0.5, r=0.006, tip_mat=None):
+    """Ostrich plume: a rachis along `path` (3D points) with drooping barbs."""
+    path = resample(catmull(path, 10), 0.005)
+    sweep(path, lambda s: r * (1 - 0.7 * s) + 0.001, mat, segs=6, name="rachis")
+    T, N, B = frame_path(path)
+    for i in range(n):
+        t = (i + 0.5) / n
+        k = int(t * (len(path) - 1))
+        L = length * math.sin(math.pi * min(1.0, t * 1.08)) ** 0.5 * (1 - 0.3 * t)
+        for sgn in (-1, 1):
+            side = (B[k] * sgn).normalized()
+            p0 = path[k]
+            d = (side + T[k] * 0.5).normalized()
+            p1 = p0 + d * L * 0.5 + Vector((0, 0, -droop * L * 0.15))
+            p2 = p0 + d * L + T[k] * L * 0.2 + Vector((0, 0, -droop * L * 0.45))
+            m = tip_mat if (tip_mat and t > 0.75) else mat
+            sweep(bezier(p0, p1, (p1 + p2) / 2, p2, 6), lambda s: r * 1.4 * (1 - 0.8 * s),
+                  m, segs=5, caps=False, name="barb")
+
+
+@item("head_1")
+def head_1():
+    """Leather hood with a peaked cowl and a laced collar."""
+    leather = pbr("hood_leather", (0.33, 0.2, 0.1), rough=0.6, bump=0.35, bump_scale=50, coat=0.1,
+                  grunge=0.4, grunge_scale=6)
+    void = pbr("hood_void", (0.0, 0.0, 0.0), rough=1.0, spec=0.0)
+    prof = smooth_profile([(0.58, 0.0), (0.5, 0.08), (0.34, 0.26), (0.36, 0.45), (0.37, 0.62),
+                           (0.3, 0.8), (0.14, 0.94), (0.0, 0.98)], 5)
+    hood = lathe(prof, leather, seg=64, sy=1.0, cap=False, name="hood")
+
+    def peak(co):
+        if co.z > 0.55:
+            k = (co.z - 0.55) / 0.43
+            co.y += 0.2 * k * k
+            co.z += 0.12 * k * k
+            co.x *= 1 - 0.25 * k
+        # hem wave
+        if co.z < 0.12:
+            a = math.atan2(co.y, co.x)
+            co.z += 0.025 * math.sin(a * 7) * (1 - co.z / 0.12)
+        return co
+    deform(hood, peak)
+    solidify(hood, 0.03)
+    cut = sphere(0.25, leather, loc=(0, -0.38, 0.55), scale=(1.0, 1.0, 1.3), name="cut")
+    boolean(hood, cut)
+    sphere(0.3, void, loc=(0, 0.02, 0.56), scale=(0.95, 0.9, 1.05), name="void")
+    # opening rim
+    rim = []
+    for i in range(49):
+        a = TAU * i / 48
+        rim.append((0.235 * math.cos(a), -0.3 - 0.06 * max(0, math.sin(a)) ** 2, 0.55 + 0.31 * math.sin(a)))
+    sweep(rim, 0.022, leather, segs=10, caps=False, name="rim")
+    # collar laces
+    cord = M_cloth((0.75, 0.66, 0.48), "cord")
+    for k in range(3):
+        z = 0.24 - k * 0.05
+        stroke2d((-0.06, z), (0.06, z - 0.035), 0.012, 0.012, cord, y=-0.36, name="lace")
+        stroke2d((0.06, z), (-0.06, z - 0.035), 0.012, 0.012, cord, y=-0.36, name="lace")
+    view(yaw=22, pitch=6)
+
+
+@item("head_2")
+def head_2():
+    """Feathered wide-brimmed cavalier hat with a steel buckle."""
+    felt = pbr("felt", (0.035, 0.025, 0.04), rough=0.7, sheen=0.0, spec=0.3, bump=0.2,
+               bump_scale=120)
+    band = M_cloth((0.5, 0.05, 0.05), "band_red")
+    steel = M_steel()
+    white = pbr("plume_white", (0.92, 0.9, 0.86), rough=0.7, sheen=0.9, sss=0.1)
+    red = pbr("plume_red", (0.7, 0.06, 0.05), rough=0.7, sheen=0.9)
+    brim = lathe(smooth_profile([(0.0, 0.0), (0.3, 0.0), (0.5, 0.01), (0.6, 0.045), (0.62, 0.07)], 4),
+                 felt, seg=72, sy=0.92, cap=False, name="brim")
+
+    def cock(co):
+        # cock the brim up on the left side
+        if co.x < -0.2:
+            k = (-co.x - 0.2) / 0.42
+            co.z += 0.22 * k * k
+        return co
+    deform(brim, cock)
+    solidify(brim, 0.02)
+    lathe(smooth_profile([(0.28, 0.0), (0.285, 0.12), (0.27, 0.22), (0.2, 0.3), (0.0, 0.33)], 4),
+          felt, seg=64, sy=0.92, name="crown")
+    solidify(lathe([(0.29, 0.0), (0.292, 0.07)], band, seg=64, sy=0.93, cap=False, name="band"),
+             0.012)
+    # buckle at the front
+    box((0.1, 0.02, 0.08), steel, loc=(0.0, -0.275, 0.035), bev=0.01, name="buckle")
+    box((0.06, 0.03, 0.045), band, loc=(0.0, -0.28, 0.035), bev=0.005, name="buckle_in")
+    # plumes sweeping back over the crown
+    fluffy_plume([(0.2, -0.18, 0.08), (0.34, -0.05, 0.2), (0.4, 0.12, 0.36), (0.22, 0.3, 0.46),
+                  (-0.02, 0.36, 0.42)], white, length=0.2, n=70, r=0.009, tip_mat=red)
+    fluffy_plume([(0.22, -0.2, 0.06), (0.38, -0.12, 0.12), (0.5, 0.0, 0.2), (0.56, 0.12, 0.16)],
+                 red, length=0.13, n=36, r=0.009)
+    view(yaw=18, pitch=16)
+
+
+@item("head_3")
+def head_3():
+    """Iron great helm: eye slits, breathing holes and a riveted cross."""
+    iron = pbr("helm_iron", (0.3, 0.29, 0.28), metal=1, rough=0.42, noise_rough=0.15, bump=0.1,
+               grunge=0.45, grunge_scale=5)
+    dark = M_darkiron()
+    void = pbr("helm_void", (0.0, 0.0, 0.0), rough=1.0, spec=0.0)
+    brass = M_brass()
+    helm = lathe(smooth_profile([(0.0, 0.0), (0.3, 0.0), (0.31, 0.2), (0.315, 0.45), (0.3, 0.6),
+                                 (0.24, 0.72), (0.12, 0.78), (0.0, 0.8)], 5), iron, seg=64,
+                 sy=1.05, name="helm", cap=True)
+    for sx in (-1, 1):
+        c = box((0.2, 0.3, 0.035), iron, loc=(sx * 0.12, -0.3, 0.5), name="slit")
+        boolean(helm, c)
+    for k in range(4):
+        for j in range(2):
+            c = cyl(0.014, 0.3, iron, loc=(0.06 + k * 0.05, -0.3, 0.26 - j * 0.06),
+                    rot=(rad(90), 0, 0), seg=10, name="breath")
+            boolean(helm, c)
+    lathe([(0.0, 0.02), (0.28, 0.02), (0.29, 0.7), (0.0, 0.7)], void, seg=32, sy=1.0, name="void")
+    # riveted cross reinforcement
+    front = []
+    for i in range(21):
+        z = 0.06 + 0.7 * i / 20
+        r = torso_r_generic(z)
+        front.append((0, -r * 1.05 - 0.01, z))
+    sweep(front, 0.03, dark, segs=4, ellipse=(0.4, 1.0), name="nasal")
+    band = [(0.325 * math.cos(a), 0.325 * 1.05 * math.sin(a), 0.585) for a in
+            [TAU * i / 64 for i in range(65)]]
+    sweep(band, 0.024, dark, segs=4, ellipse=(1.0, 0.6), caps=False, name="brow")
+    band2 = [(0.312 * math.cos(a), 0.312 * 1.05 * math.sin(a), 0.03) for a in
+             [TAU * i / 64 for i in range(65)]]
+    sweep(band2, 0.02, dark, segs=6, caps=False, name="rim")
+    for z in (0.12, 0.3, 0.68):
+        sphere(0.016, brass, loc=(0, -0.345, z), seg=10, rings=6, name="rivet")
+    for a in (-math.pi / 2 - 0.5, -math.pi / 2 + 0.5, -math.pi / 2 - 1.0, -math.pi / 2 + 1.0):
+        sphere(0.015, brass, loc=(0.34 * math.cos(a), 0.34 * 1.05 * math.sin(a), 0.585), seg=10,
+               rings=6, name="rivet")
+    view(yaw=24, pitch=6)
+
+
+def torso_r_generic(z):
+    prof = [(0.3, 0.0), (0.31, 0.2), (0.315, 0.45), (0.3, 0.6), (0.24, 0.72), (0.12, 0.78),
+            (0.0, 0.8)]
+    for (r0, z0), (r1, z1) in zip(prof[:-1], prof[1:]):
+        if z0 <= z <= z1:
+            t = (z - z0) / (z1 - z0)
+            return r0 + (r1 - r0) * t
+    return 0.0
+
+
+@item("head_4")
+def head_4():
+    """Silver circlet: filigree band with a glowing sapphire crest."""
+    silver = M_silver()
+    gem_m = M_gem((0.2, 0.5, 1.0), "sapphire_glow", 2.0)
+    rune = M_glow((0.35, 0.7, 1.0), "rune_blue", 8)
+    band = [(0.36 * math.cos(a), 0.36 * math.sin(a), 0.02 * math.cos(2 * a)) for a in
+            [TAU * i / 96 for i in range(97)]]
+    sweep(band, 0.022, silver, segs=10, ellipse=(0.45, 1.0), caps=False, name="band")
+    band2 = [(0.36 * math.cos(a), 0.36 * math.sin(a), 0.045 + 0.02 * math.cos(2 * a)) for a in
+             [TAU * i / 96 for i in range(97)]]
+    sweep(band2, 0.008, silver, segs=8, caps=False, name="band_top")
+    # crest at the front
+    half = [(0.0, 0.3), (0.04, 0.2), (0.1, 0.12), (0.2, 0.06), (0.24, 0.0), (0.12, 0.02),
+            (0.06, -0.02), (0.0, -0.03)]
+    extrude(mirror_x(half), 0.02, silver, loc=(0, -0.37, 0.02), bev=0.006, name="crest")
+    for sx in (-1, 1):
+        extrude(thick_polyline(catmull_2d([(sx * 0.03, 0.2), (sx * 0.09, 0.14), (sx * 0.17, 0.08),
+                                           (sx * 0.2, 0.03)], 6), 0.012), 0.024, rune,
+                loc=(0, -0.375, 0.02), name="filigree")
+    gem(0.06, gem_m, loc=(0, -0.39, 0.12), seg=12, cut="step", scale=(1, 1, 1.3))
+    for sx in (-1, 1):
+        gem(0.022, gem_m, loc=(sx * 0.14, -0.385, 0.06), seg=8)
+    view(yaw=0, pitch=24, glow=0.9)
+
+
+@item("head_5")
+def head_5():
+    """Gold crown: fleur-de-lis points, jewelled band, velvet cap and cross."""
+    gold = M_gold()
+    velvet = pbr("velvet", (0.12, 0.0, 0.012), rough=0.7, sheen=0.15, bump=0.2, bump_scale=80)
+    rubies = M_gem((0.95, 0.05, 0.08), "ruby", 1.0)
+    saph = M_gem((0.1, 0.3, 1.0), "sapphire", 1.0)
+    emer = M_gem((0.05, 0.8, 0.3), "emerald", 1.0)
+    pearl = pbr("pearl", (0.95, 0.93, 0.9), rough=0.25, coat=0.8)
+    solidify(lathe([(0.34, 0.0), (0.36, 0.02), (0.36, 0.16), (0.34, 0.18)], gold, seg=72,
+                   cap=False, name="band"), 0.02)
+    torus(0.365, 0.014, gold, loc=(0, 0, 0.02), seg=72, rseg=8, name="rim_low")
+    torus(0.36, 0.012, gold, loc=(0, 0, 0.17), seg=72, rseg=8, name="rim_high")
+    lathe(smooth_profile([(0.33, 0.1), (0.34, 0.25), (0.25, 0.4), (0.0, 0.45)], 4), velvet, seg=48,
+          cap=False, name="cap")
+    # fleur-de-lis and pearl points
+    fleur = [(0.0, 0.3), (0.035, 0.24), (0.03, 0.18), (0.08, 0.22), (0.1, 0.16), (0.06, 0.1),
+             (0.03, 0.1), (0.04, 0.0), (0.0, 0.0)]
+    n = 8
+    for k in range(n):
+        a = TAU * k / n - math.pi / 2
+        x, y = 0.355 * math.cos(a), 0.355 * math.sin(a)
+        rot = (0, 0, a + math.pi / 2)
+        if k % 2 == 0:
+            extrude(mirror_x(fleur), 0.02, gold, loc=(x, y, 0.16), rot=rot, bev=0.006,
+                    name="fleur")
+        else:
+            extrude(mirror_x([(0.0, 0.16), (0.02, 0.1), (0.04, 0.0), (0.0, 0.0)]), 0.02, gold,
+                    loc=(x, y, 0.16), rot=rot, bev=0.005, name="point")
+            sphere(0.022, pearl, loc=(x * 1.0, y * 1.0, 0.34), name="pearl")
+        gm = (rubies, saph, emer)[k % 3]
+        gem(0.03, gm, loc=(0.37 * math.cos(a + TAU / 16), 0.37 * math.sin(a + TAU / 16), 0.095),
+            rot=(0, rad(90), a + TAU / 16), seg=10, cut="cabochon")
+    # cross on the orb
+    sphere(0.05, gold, loc=(0, 0, 0.47), name="orb")
+    cross_emblem(0.14, gold, (0, 0, 0.58), depth=0.025, flare=0.012)
+    gem(0.04, rubies, loc=(0, -0.375, 0.095), rot=(rad(90), 0, 0), seg=12)
+    view(yaw=0, pitch=18)
+
+
+@item("head_6")
+def head_6():
+    """Horned demon helm: black spiked helm with ram horns and burning eyes."""
+    black = pbr("demon_helm", (0.05, 0.045, 0.055), metal=1, rough=0.3, pattern="veins",
+                pattern_args=dict(color=(1.0, 0.06, 0.02), strength=2.0, density=1.6, width=0.01,
+                                  scale=(3, 3, 3)))
+    bm = M_blackmetal()
+    horn = pbr("horn", (0.18, 0.12, 0.09), rough=0.4, coat=0.4, bump=0.3, bump_scale=30)
+    horn_tip = pbr("horn_tip", (0.85, 0.78, 0.62), rough=0.35, coat=0.4)
+    eye_m = M_glow((1.0, 0.12, 0.04), "demon_eyes", 14)
+    void = pbr("helm_void", (0.0, 0.0, 0.0), rough=1.0, spec=0.0)
+    helm = lathe(smooth_profile([(0.0, 0.0), (0.3, 0.0), (0.33, 0.15), (0.32, 0.45), (0.28, 0.64),
+                                 (0.16, 0.8), (0.0, 0.9)], 5), black, seg=64, sy=1.08,
+                 xsec=ridge_xsec(0.18, 0.3), name="helm")
+    # angular eye slits
+    for sx in (-1, 1):
+        c = extrude([(sx * 0.03, 0.45), (sx * 0.2, 0.52), (sx * 0.19, 0.46), (sx * 0.04, 0.41)], 0.4,
+                    bm, loc=(0, -0.3, 0), name="slit")
+        boolean(helm, c)
+    lathe([(0.0, 0.02), (0.27, 0.02), (0.28, 0.7), (0.0, 0.7)], void, seg=32, name="void")
+    for sx in (-1, 1):
+        sphere(0.05, eye_m, loc=(sx * 0.11, -0.27, 0.47), scale=(1.7, 0.5, 0.6), name="eye")
+    # angular brow plate and cheek guards
+    brow = [(-0.26, 0.56), (0.0, 0.5), (0.26, 0.56), (0.24, 0.62), (0.0, 0.58), (-0.24, 0.62)]
+    extrude(brow, 0.05, bm, loc=(0, -0.325, 0), bev=0.008, name="brow")
+    for sx in (-1, 1):
+        cheek = [(sx * 0.05, 0.38), (sx * 0.24, 0.42), (sx * 0.26, 0.14), (sx * 0.1, 0.04)]
+        extrude(cheek, 0.03, bm, loc=(0, -0.3, 0), rot=(0, 0, sx * 0.35), bev=0.006, name="cheek")
+    # mouth grille
+    for k in range(5):
+        x = -0.1 + k * 0.05
+        c = box((0.022, 0.4, 0.14), bm, loc=(x, -0.3, 0.2), name="grille")
+        boolean(helm, c)
+    # crest of spikes
+    pts, nrms = [], []
+    for k in range(5):
+        a = -0.5 + k * 0.25
+        pts.append((0, 0.3 * math.sin(a) * 1.0, 0.8 * math.cos(a) * 0.95))
+        nrms.append((0, math.sin(a) * 0.6, 1))
+    spikes_on_points(pts, nrms, 0.14, 0.03, bm, name="crest")
+    # ram horns
+    for sx in (-1, 1):
+        p0 = Vector((sx * 0.26, 0.02, 0.55))
+        path = bezier(p0, p0 + Vector((sx * 0.3, 0.02, 0.18)), p0 + Vector((sx * 0.5, 0.05, -0.1)),
+                      p0 + Vector((sx * 0.46, -0.1, 0.36)), 48)
+        sweep(path, lambda s: 0.11 * (1 - s) ** 0.8 + 0.004, horn, segs=16,
+              radial=lambda s, th, L: 1 + 0.06 * max(0, math.sin(L * 90)), name="horn")
+        tip = path[-10:]
+        sweep(tip, lambda s: 0.11 * (1 - (0.8 + 0.2 * s)) ** 0.8 * 1.05 + 0.004, horn_tip, segs=16,
+              name="horn_tip")
+    torus(0.3, 0.02, bm, loc=(0, 0, 0.02), sy=1.08, seg=64, rseg=8, name="rim")
+    view(yaw=22, pitch=6, glow=1.0)
+
+
+# =============================================================================
+#  CLOAKS
+# =============================================================================
+class Cape:
+    """Parametric cape surface.  u in [-1, 1] runs around the body (0 = back
+    centre, +-1 = front edges), v in [0, 1] from the neck down to the hem.
+    The camera sees the lining (inside) with the front edges wrapping toward
+    it."""
+
+    def __init__(self, H=1.1, r_neck=0.17, r_sh=0.34, r_bot=0.56, wrap_top=150, wrap_sh=118,
+                 wrap_bot=112, folds=7, fold_amp=0.07, hem=None, phase=0.3, sway=0.0):
+        self.__dict__.update(locals())
+        self.hem = hem or (lambda u: 0.0)
+
+    def R(self, v):
+        if v < 0.12:
+            k = v / 0.12
+            k = k * k * (3 - 2 * k)
+            return self.r_neck + (self.r_sh - self.r_neck) * k
+        k = (v - 0.12) / 0.88
+        return self.r_sh + (self.r_bot - self.r_sh) * k ** 0.9
+
+    def wrap(self, v):
+        if v < 0.12:
+            k = v / 0.12
+            return rad(self.wrap_top + (self.wrap_sh - self.wrap_top) * k)
+        k = (v - 0.12) / 0.88
+        return rad(self.wrap_sh + (self.wrap_bot - self.wrap_sh) * k)
+
+    def P(self, u, v, off=0.0):
+        phi = u * self.wrap(v)
+        amp = self.fold_amp * max(0.0, v - 0.1) ** 0.8
+        r = self.R(v) + amp * math.sin(u * self.folds * math.pi + self.phase) + off
+        z = -self.H * v * (1 + self.hem(u) * v ** 4)
+        z += 0.03 * math.sin(u * self.folds * math.pi + self.phase + 1.2) * v ** 4
+        x = r * math.sin(phi) + self.sway * v * v
+        y = r * math.cos(phi)
+        # shoulders: drop the sides a little
+        z -= 0.05 * abs(math.sin(phi)) * min(1.0, v / 0.12) * (1 - v)
+        return Vector((x, y, z))
+
+    def build(self, outer, inner, nu=96, nv=48, thick=0.018, name="cape"):
+        verts, faces = [], []
+        for j in range(nv + 1):
+            v = j / nv
+            for i in range(nu + 1):
+                u = -1 + 2 * i / nu
+                verts.append(self.P(u, v))
+        W = nu + 1
+        for j in range(nv):
+            for i in range(nu):
+                a = j * W + i
+                faces.append((a, a + 1, a + 1 + W, a + W))
+        ob = make_mesh(name, verts, faces, mats=[outer, inner], smooth=True)
+        md = ob.modifiers.new("Solidify", "SOLIDIFY")
+        md.thickness = thick
+        md.offset = -1.0
+        md.material_offset = 1
+        md.material_offset_rim = 0
+        return ob
+
+    def edge_path(self, which, off=0.012, n=60):
+        if which == "hem":
+            return [self.P(-1 + 2 * i / n, 1.0, off) + Vector((0, 0, -0.004)) for i in range(n + 1)]
+        u = -1.0 if which == "left" else 1.0
+        return [self.P(u * 0.995, i / n, off) for i in range(n + 1)]
+
+
+def collar_stand(outer, inner, r0=0.17, r1=0.34, h=0.34, wrap=135, flare=0.12, name="collar"):
+    verts, faces = [], []
+    nu, nv = 48, 10
+    for j in range(nv + 1):
+        t = j / nv
+        for i in range(nu + 1):
+            u = -1 + 2 * i / nu
+            phi = u * rad(wrap)
+            r = r0 + (r1 - r0) * t + flare * t * t * abs(u)
+            z = h * t * (1 + 0.35 * abs(u))
+            verts.append((r * math.sin(phi), r * math.cos(phi), z))
+    W = nu + 1
+    for j in range(nv):
+        for i in range(nu):
+            a = j * W + i
+            faces.append((a, a + W, a + 1 + W, a + 1))
+    ob = make_mesh(name, verts, faces, mats=[outer, inner], smooth=True)
+    md = ob.modifiers.new("Solidify", "SOLIDIFY")
+    md.thickness = 0.02
+    md.offset = 1.0
+    md.material_offset = 1
+    return ob
+
+
+def clasp_pair(cape, mat, jewel=None, chain_mat=None, v=0.04, r=0.045):
+    pL = cape.P(-0.97, v, 0.02)
+    pR = cape.P(0.97, v, 0.02)
+    for p in (pL, pR):
+        lathe([(0, -0.012), (r, -0.012), (r * 1.1, 0.0), (r * 0.8, 0.014), (0, 0.016)], mat,
+              seg=28, loc=p, rot=(rad(90), 0, 0), name="clasp")
+        if jewel:
+            gem(r * 0.55, jewel, loc=p + Vector((0, -0.016, 0)), seg=10)
+    if chain_mat:
+        mid = (pL + pR) / 2 + Vector((0, -0.02, -0.06))
+        chain(bezier(pL, pL + (mid - pL) * 0.6, pR + (mid - pR) * 0.6, pR, 20), chain_mat,
+              link_len=0.05, wire=0.007)
+    return pL, pR
+
+
+def fur_collar(cape, mat, r=0.06):
+    pts = [cape.P(-0.98 + 1.96 * i / 60, 0.02, 0.03) for i in range(61)]
+    ob = sweep(pts, r, mat, segs=16, radial=lambda s, th, L: 1 + 0.18 * math.sin(th * 7 + L * 80)
+               * math.sin(L * 37 + th * 3), name="fur")
+    return ob
+
+
+@item("cloak_1")
+def cloak_1():
+    """Brown wool travelling cloak with a wooden toggle."""
+    outer = pbr("wool_brown", (0.26, 0.15, 0.08), rough=0.9, sheen=0.4, bump=0.4, bump_scale=90,
+                grunge=0.35, grunge_scale=5)
+    inner = pbr("wool_brown_in", (0.17, 0.1, 0.06), rough=0.9, sheen=0.3, bump=0.3, bump_scale=90)
+    c = Cape(hem=lambda u: 0.03 * math.sin(u * 17) + 0.02 * math.sin(u * 7))
+    c.build(outer, inner)
+    # rolled hood lying on the shoulders
+    pts = [c.P(-0.9 + 1.8 * i / 50, 0.03, 0.05) + Vector((0, 0, 0.02)) for i in range(51)]
+    sweep(pts, lambda s: 0.06 + 0.03 * math.sin(s * math.pi), outer, segs=16, name="hood_roll")
+    wood = M_wood((0.4, 0.24, 0.1), "toggle_wood")
+    cord = M_cloth((0.6, 0.5, 0.35), "cord")
+    pL, pR = c.P(-0.97, 0.06, 0.03), c.P(0.97, 0.06, 0.03)
+    sweep(bezier(pL, pL + Vector((0.04, -0.03, -0.03)), pR + Vector((-0.04, -0.03, -0.03)), pR, 16),
+          0.008, cord, segs=6, name="cord")
+    cyl(0.018, 0.1, wood, loc=(pL + pR) / 2 + Vector((0, -0.04, -0.03)), rot=(0, rad(90), rad(10)),
+        seg=12, name="toggle")
+    view(yaw=18, pitch=6)
+
+
+@item("cloak_2")
+def cloak_2():
+    """Blue cape with a grey fur collar and steel clasps."""
+    outer = pbr("cape_blue", (0.06, 0.12, 0.38), rough=0.7, sheen=0.5, bump=0.2, bump_scale=110)
+    inner = pbr("cape_blue_in", (0.03, 0.05, 0.16), rough=0.7, sheen=0.4)
+    fur = pbr("fur_grey", (0.55, 0.53, 0.5), rough=0.9, sheen=1.0, bump=0.8, bump_scale=200)
+    steel = M_steel()
+    c = Cape(hem=lambda u: 0.015 * math.sin(u * 9))
+    c.build(outer, inner)
+    fur_collar(c, fur, r=0.065)
+    clasp_pair(c, steel, chain_mat=steel)
+    view(yaw=18, pitch=6)
+
+
+@item("cloak_3")
+def cloak_3():
+    """Crimson cape with silver trim and ruby clasps."""
+    outer = pbr("cape_red", (0.42, 0.02, 0.03), rough=0.55, sheen=0.5, coat=0.1)
+    inner = pbr("cape_red_in", (0.2, 0.01, 0.02), rough=0.6, sheen=0.4)
+    silver = M_silver()
+    c = Cape(folds=8, fold_amp=0.06)
+    c.build(outer, inner)
+    for which in ("left", "right", "hem"):
+        sweep(c.edge_path(which, off=0.0), 0.012, silver, segs=6, name="trim")
+    sweep([c.P(-0.98 + 1.96 * i / 60, 0.0, 0.01) for i in range(61)], 0.02, silver, segs=8,
+          name="collar_trim")
+    clasp_pair(c, silver, jewel=M_gem((0.9, 0.04, 0.06), "ruby", 1.0), chain_mat=silver)
+    view(yaw=18, pitch=6)
+
+
+@item("cloak_4")
+def cloak_4():
+    """Vampire cape: black outside, blood-red satin lining, high collar and a
+    glowing crystal clasp."""
+    outer = pbr("cape_black", (0.02, 0.018, 0.022), rough=0.45, sheen=0.3, coat=0.2)
+    inner = pbr("satin_red", (0.5, 0.01, 0.03), rough=0.28, sheen=0.4, coat=0.3)
+    c = Cape(folds=6, fold_amp=0.07, hem=lambda u: 0.05 * abs(math.sin(u * 2.5 * math.pi)))
+    c.build(outer, inner)
+    collar_stand(outer, inner, r0=0.17, r1=0.3, h=0.36, wrap=128)
+    bm = M_blackmetal()
+    clasp_pair(c, bm, jewel=M_gem((1.0, 0.05, 0.08), "blood_crystal", 2.5), chain_mat=bm)
+    view(yaw=18, pitch=6, glow=0.8)
+
+
+@item("cloak_5")
+def cloak_5():
+    """White holy mantle: layered capelet, gold trim, radiant cross clasp."""
+    outer = pbr("mantle_white", (0.88, 0.86, 0.82), rough=0.6, sheen=0.5, bump=0.15, bump_scale=110)
+    inner = pbr("mantle_cream", (0.72, 0.62, 0.45), rough=0.5, sheen=0.5)
+    gold = M_gold()
+    light = M_glow((1.0, 0.88, 0.55), "holy_light", 5.0, base=(1.0, 0.88, 0.6))
+    c = Cape(folds=7, fold_amp=0.05)
+    c.build(outer, inner)
+    for which in ("left", "right", "hem"):
+        sweep(c.edge_path(which, off=0.0), 0.016, gold, segs=6, name="trim")
+    cap = Cape(H=0.42, r_neck=0.18, r_sh=0.37, r_bot=0.46, wrap_top=150, wrap_sh=125, wrap_bot=122,
+               folds=9, fold_amp=0.03)
+    cap.build(outer, inner, name="capelet")
+    sweep(cap.edge_path("hem", off=0.0), 0.016, gold, segs=6, name="trim")
+    # gold crosses embroidered along the capelet hem
+    for u in (-0.55, -0.2, 0.2, 0.55):
+        p = cap.P(u, 0.85, -0.03)
+        q = cap.P(u, 0.85, 0.0)
+        n = (q - p).normalized()
+        cross_emblem(0.08, gold, p - n * 0.004, depth=0.01,
+                     rot=(0, 0, math.atan2(n.x, -n.y) + math.pi))
+    pL, pR = clasp_pair(c, gold, chain_mat=gold, r=0.05)
+    cross_emblem(0.13, light, (pL + pR) / 2 + Vector((0, -0.05, -0.07)), depth=0.02, flare=0.01)
+    view(yaw=18, pitch=6, glow=0.8)
+
+
+@item("cloak_6")
+def cloak_6():
+    """Bat-wing cloak: scalloped membrane between bony ribs, spiked collar and
+    a blood-red clasp."""
+    outer = pbr("membrane_out", (0.035, 0.02, 0.035), rough=0.4, sheen=0.3, coat=0.3,
+                bump=0.3, bump_scale=40)
+    inner = pbr("membrane_in", (0.13, 0.008, 0.025), rough=0.4, coat=0.3, pattern="veins",
+                pattern_args=dict(color=(0.9, 0.02, 0.05), strength=1.5, density=3.0, width=0.02,
+                                  scale=(2, 2, 2)))
+    rib_m = pbr("rib_bone", (0.32, 0.27, 0.24), rough=0.35, coat=0.5)
+    n_sc = 3.0
+
+    def hem(u):
+        # scallops: the membrane is pulled up between the ribs
+        return -0.22 * abs(math.sin(u * n_sc * math.pi / 2 * 2)) ** 0.8 + 0.05
+
+    c = Cape(folds=6, fold_amp=0.035, hem=hem, wrap_bot=125, r_bot=0.62)
+    c.build(outer, inner)
+    # ribs along the scallop points (where hem is lowest)
+    k = int(n_sc * 2)
+    for i in range(k + 1):
+        u = -1 + 2 * i / k
+        pts = [c.P(u, 0.05 + 0.95 * j / 30, 0.02) for j in range(31)]
+        sweep(pts, lambda s: 0.026 * (1 - 0.6 * s) + 0.005, rib_m, segs=8, name="rib")
+        cone(0.015, 0.07, rib_m, loc=pts[-1], rot=(math.pi, 0, 0), seg=8, name="claw")
+    collar_stand(outer, inner, r0=0.17, r1=0.32, h=0.3, wrap=125, flare=0.2)
+    spikes_on_points([c.P(u, 0.0, 0.0) + Vector((0, 0, 0.28 + 0.1 * abs(u))) for u in (-0.9, -0.6, 0.6, 0.9)],
+                     [(math.sin(u * 2), -0.2, 1) for u in (-0.9, -0.6, 0.6, 0.9)], 0.12, 0.025,
+                     rib_m, name="collar_spike")
+    bm = M_blackmetal()
+    clasp_pair(c, bm, jewel=M_gem((1.0, 0.04, 0.03), "blood_gem", 3.0), chain_mat=bm)
+    view(yaw=18, pitch=6, glow=1.0)
+
+
+# =============================================================================
+#  RINGS  (band in the XZ plane, hole facing the camera, top = +Z)
+# =============================================================================
+def ring_band(mat, R=0.36, w=0.09, t=0.05, seg=72, top_swell=0.6, twist=0, name="band"):
+    """Ring band; thicker/wider toward the top (shoulders)."""
+    verts, faces = [], []
+    rseg = 16
+    for i in range(seg):
+        a = TAU * i / seg + math.pi / 2
+        sw = 1 + top_swell * max(0.0, math.sin(a)) ** 3
+        ca, sa = math.cos(a), math.sin(a)
+        for j in range(rseg):
+            b = TAU * j / rseg + twist * a
+            cb, sb = math.cos(b), math.sin(b)
+            rr = t * sw * 0.5 * (abs(cb) ** 0.55) * (1 if cb >= 0 else -1)
+            yy = w * sw * 0.5 * (abs(sb) ** 0.55) * (1 if sb >= 0 else -1)
+            rad_ = R + t * 0.5 + rr
+            verts.append((rad_ * ca, yy, rad_ * sa))
+    for i in range(seg):
+        for j in range(rseg):
+            i2, j2 = (i + 1) % seg, (j + 1) % rseg
+            faces.append((i * rseg + j, i * rseg + j2, i2 * rseg + j2, i2 * rseg + j))
+    return make_mesh(name, verts, faces, mat)
+
+
+def twisted_band(mat, R=0.37, r=0.022, strands=2, turns=9, name="twist"):
+    for k in range(strands):
+        pts = []
+        for i in range(257):
+            a = TAU * i / 256
+            ph = a * turns + TAU * k / strands
+            rr = R + r * 0.9 * math.cos(ph)
+            pts.append((rr * math.cos(a), r * 0.9 * math.sin(ph), rr * math.sin(a)))
+        sweep(pts, r, mat, segs=10, caps=False, name=name)
+
+
+def prong_setting(mat, z, r, n=4, h=0.12, prong_r=0.013):
+    lathe([(0, z - 0.03), (r * 0.5, z - 0.03), (r * 0.9, z + h * 0.3),
+           (r * 0.95, z + h * 0.42), (0, z + h * 0.42)], mat, seg=28, name="setting")
+    for k in range(n):
+        a = TAU * (k + 0.5) / n
+        p0 = Vector((r * 0.6 * math.cos(a), r * 0.6 * math.sin(a), z))
+        p1 = Vector((r * 1.05 * math.cos(a), r * 1.05 * math.sin(a), z + h * 0.6))
+        p2 = Vector((r * 0.78 * math.cos(a), r * 0.78 * math.sin(a), z + h * 1.02))
+        sweep(bezier(p0, p0 + Vector((0, 0, h * 0.3)), p1, p2, 10),
+              lambda s: prong_r * (1 - 0.35 * s), mat, segs=8, name="prong")
+
+
+@item("ring_1")
+def ring_1():
+    """Iron signet ring."""
+    iron = pbr("ring_iron", (0.3, 0.29, 0.28), metal=1, rough=0.45, noise_rough=0.15,
+               grunge=0.5, grunge_scale=8, bump=0.15, bump_scale=30)
+    ring_band(iron, w=0.12, t=0.07, top_swell=0.5)
+    lathe(smooth_profile([(0, 0.38), (0.13, 0.38), (0.15, 0.42), (0.14, 0.45), (0, 0.46)], 3), iron,
+          seg=40, sy=0.8, name="signet")
+    dark = M_darkiron()
+    stroke2d((-0.05, 0.0), (0.05, 0.0), 0.02, 0.02, dark, y=0.0, name="mark").location = (0, 0, 0.462)
+    view(yaw=30, pitch=24)
+
+
+@item("ring_2")
+def ring_2():
+    """Steel ring set with a ruby."""
+    steel = M_steel()
+    ring_band(steel, top_swell=0.9)
+    prong_setting(steel, 0.4, 0.15, n=4, h=0.15, prong_r=0.016)
+    gem(0.16, M_gem((0.85, 0.02, 0.05), "ruby", 0.6), loc=(0, 0, 0.54), rot=(0, 0, 0), seg=12,
+        name="ruby")
+    view(yaw=32, pitch=18)
+
+
+@item("ring_3")
+def ring_3():
+    """Silver twisted ring: six-prong sapphire flanked by diamonds."""
+    silver = M_silver()
+    twisted_band(silver, R=0.37, r=0.024, strands=2, turns=10)
+    prong_setting(silver, 0.4, 0.17, n=6, h=0.16, prong_r=0.016)
+    gem(0.18, M_gem((0.1, 0.3, 1.0), "sapphire", 0.8), loc=(0, 0, 0.56), rot=(0, 0, 0), seg=14)
+    for sx in (-1, 1):
+        a = math.pi / 2 + sx * 0.42
+        p = Vector((0.43 * math.cos(a), -0.0, 0.43 * math.sin(a)))
+        gem(0.038, M_gem((0.9, 0.95, 1.0), "diamond", 0.8), loc=p, rot=(0, -sx * 0.42, 0), seg=10)
+    view(yaw=32, pitch=18)
+
+
+@item("ring_4")
+def ring_4():
+    """Runic emerald ring: engraved band with glowing green runes, large
+    step-cut emerald in a bezel."""
+    band_m = pbr("rune_silver", (0.75, 0.8, 0.82), metal=1, rough=0.22)
+    rune = M_glow((0.25, 1.0, 0.45), "rune_green", 8)
+    emer = M_gem((0.05, 0.85, 0.35), "emerald", 1.4)
+    ring_band(band_m, w=0.12, t=0.06, top_swell=0.8)
+    # runes around the visible front face of the band
+    for i in range(12):
+        a = math.pi / 2 + (i - 5.5) * 0.36
+        if abs(math.sin(a) - 1) < 0.05:
+            continue
+        p = Vector((0.39 * math.cos(a), -0.063, 0.39 * math.sin(a)))
+        box((0.016, 0.012, 0.055), rune, loc=p, rot=(0, -(a - math.pi / 2), 0), name="rune")
+        box((0.04, 0.012, 0.014), rune, loc=p + Vector((0.0, 0, 0.0)), rot=(0, -(a - math.pi / 2) + 0.7, 0),
+            name="rune")
+    # bezel
+    lathe([(0, 0.37), (0.22, 0.37), (0.24, 0.46), (0.21, 0.5), (0, 0.5)], band_m, seg=4,
+          sx=1.0, sy=0.8, a0=math.pi / 4, smooth=False, name="bezel")
+    lathe([(0, 0.46), (0.15, 0.46), (0.17, 0.54), (0.11, 0.6), (0, 0.61)], emer, seg=4,
+          sy=0.8, a0=math.pi / 4, smooth=False, name="emerald")
+    view(yaw=32, pitch=20, glow=0.9)
+
+
+@item("ring_5")
+def ring_5():
+    """Skull ring: heavy gold band crowned with a silver skull with ruby eyes."""
+    gold = M_gold()
+    silver = pbr("skull_silver", (0.88, 0.88, 0.9), metal=1, rough=0.22)
+    ruby = M_glow((1.0, 0.05, 0.05), "ruby_eye", 6)
+    ring_band(gold, w=0.13, t=0.07, top_swell=1.0)
+    skull(silver, loc=(0, -0.02, 0.6), rot=(rad(-8), 0, 0), scale=0.42, eye_mat=ruby,
+          socket_mat=pbr("skull_socket", (0.02, 0.01, 0.01), rough=0.9))
+    view(yaw=24, pitch=12, glow=0.9)
+
+
+@item("ring_6")
+def ring_6():
+    """Blood moon ring: black claw band gripping a huge glowing red orb, with
+    bat wings on the shoulders."""
+    bm = M_blackmetal()
+    orb = pbr("blood_moon", (0.6, 0.01, 0.02), rough=0.08, trans=0.3, coat=1.0,
+              emit=(1.0, 0.06, 0.03), emit_str=2.5, glow_str=0.8)
+    ring_band(bm, w=0.1, t=0.06, top_swell=0.9)
+    lathe([(0, 0.36), (0.12, 0.37), (0.14, 0.43), (0, 0.43)], bm, seg=8, smooth=False,
+          name="cup")
+    sphere(0.22, orb, loc=(0, 0, 0.62), name="orb")
+    for k in range(4):
+        a = TAU * (k + 0.5) / 4
+        d = Vector((math.cos(a), math.sin(a), 0))
+        p0 = Vector((0, 0, 0.42)) + d * 0.1
+        sweep(bezier(p0, p0 + d * 0.16 + Vector((0, 0, 0.06)), p0 + d * 0.17 + Vector((0, 0, 0.24)),
+                     p0 + d * 0.05 + Vector((0, 0, 0.38)), 16), lambda s: 0.026 * (1 - 0.8 * s),
+              bm, segs=8, name="claw")
+    for sx in (-1, 1):
+        wing_pts = [(0.0, 0.0), (0.12, 0.1), (0.24, 0.14), (0.3, 0.06), (0.24, 0.04), (0.2, -0.02),
+                    (0.14, 0.02), (0.1, -0.04), (0.05, 0.0)]
+        extrude([(sx * x, z) for x, z in wing_pts], 0.02, bm, loc=(sx * 0.14, -0.02, 0.36),
+                rot=(0, sx * rad(-20), 0), bev=0.004, name="bat_wing")
+    view(yaw=24, pitch=14, glow=1.0)
+
+
+# =============================================================================
+#  AMULETS  (necklace loop with a pendant hanging at the bottom centre)
+# =============================================================================
+def necklace(kind, mat, bail_z=0.2, top=None, half_w=0.3, back_y=0.2):
+    top = bail_z + 0.42 if top is None else top
+    pts_front = [(-half_w, 0.04, top), (-half_w * 0.95, 0.0, top - 0.25),
+                 (-half_w * 0.55, -0.02, bail_z + 0.1), (0, -0.02, bail_z)]
+    right = [(-x, y, z) for x, y, z in reversed(pts_front[:-1])]
+    front = catmull(pts_front + right, 10)
+    back = catmull([(half_w, 0.04, top), (half_w * 0.6, back_y, top + 0.08), (0, back_y * 1.2, top + 0.1),
+                    (-half_w * 0.6, back_y, top + 0.08), (-half_w, 0.04, top)], 8)
+    path = front + back[1:]
+    if kind == "chain":
+        chain(path, mat, link_len=0.048, wire=0.0075)
+    elif kind == "cord":
+        sweep(resample(path, 0.01), 0.012, mat, segs=8, name="cord")
+    return path
+
+
+@item("amulet_1")
+def amulet_1():
+    """Wooden cross pendant on a leather cord."""
+    wood = M_wood((0.45, 0.26, 0.11), "cross_wood")
+    cord = M_leather((0.2, 0.1, 0.05), "cord_leather")
+    necklace("cord", cord, bail_z=0.2)
+    pts = shape_cross(0.34, 0.5, 0.09, 0.34, flare=0.0)
+    extrude([(x, z - 0.36) for x, z in pts], 0.05, wood, bev=0.012, name="cross")
+    # binding at the crossing
+    for k in (-1, 1):
+        stroke2d((-0.05, -0.02 + 0.02 * k), (0.05, -0.02 - 0.02 * k), 0.012, 0.06, cord, y=0.0,
+                 name="binding")
+    torus(0.03, 0.009, cord, loc=(0, 0, 0.17), rot=(rad(90), 0, 0), seg=16, rseg=6, name="loop")
+    view(pitch=4)
+
+
+@item("amulet_2")
+def amulet_2():
+    """Silver crescent moon amulet with a small sapphire star."""
+    silver = M_silver()
+    necklace("chain", silver, bail_z=0.2)
+    moon = shape_crescent(0.22, 0.19, 0.1)
+    extrude([(x, z - 0.05) for x, z in moon], 0.05, silver, bev=0.012, name="moon")
+    torus(0.028, 0.009, silver, loc=(0, 0, 0.18), rot=(0, rad(90), 0), seg=16, rseg=6, name="bail")
+    gem(0.045, M_gem((0.2, 0.45, 1.0), "sapphire", 1.4), loc=(0.07, -0.03, -0.05), seg=8)
+    view(pitch=4, glow=0.7)
+
+
+@item("amulet_3")
+def amulet_3():
+    """Beast tooth necklace: leather thong with fangs and bone beads."""
+    cord = M_leather((0.22, 0.12, 0.06), "cord_leather")
+    tooth = pbr("tooth", (0.9, 0.84, 0.68), rough=0.35, coat=0.4, sss=0.1)
+    bead = M_wood((0.35, 0.18, 0.08), "bead_wood")
+    path = necklace("cord", cord, bail_z=0.26)
+    pts = resample(path[:len(path) // 2 + 20], 0.01)
+    # pick positions along the lower arc
+    lower = [p for p in resample(catmull([(-0.3, -0.01, 0.46), (-0.16, -0.02, 0.3), (0, -0.02, 0.26),
+                                          (0.16, -0.02, 0.3), (0.3, -0.01, 0.46)], 10), 0.005)]
+    n = 5
+    for k in range(n):
+        t = 0.1 + 0.8 * k / (n - 1)
+        p = lower[int(t * (len(lower) - 1))]
+        L = 0.24 if k == 2 else (0.18 if k in (1, 3) else 0.13)
+        side = (k - 2) * 0.18
+        tip = p + Vector((side * 0.3, 0, -L))
+        path_t = bezier(p, p + Vector((0, 0, -L * 0.4)), tip + Vector((-side * 0.2 + 0.03, 0, L * 0.3)),
+                        tip, 20)
+        sweep(path_t, lambda s, L=L: 0.045 * (L / 0.24) * (1 - s) ** 0.9 + 0.002, tooth, segs=12,
+              name="tooth")
+        torus(0.028 * (L / 0.24) + 0.012, 0.008, cord, loc=p + Vector((0, 0, -0.01)), seg=16, rseg=6,
+              name="wrap")
+    for k in range(4):
+        t = 0.22 + 0.56 * k / 3
+        p = lower[int(t * (len(lower) - 1))]
+        sphere(0.028, bead, loc=p + Vector((0, -0.005, 0.01)), name="bead")
+    view(pitch=4)
+
+
+@item("amulet_4")
+def amulet_4():
+    """Heart locket: silver filigree heart framing a glowing crimson crystal
+    heart."""
+    silver = M_silver()
+    crys = pbr("heart_crystal", (0.6, 0.01, 0.06), rough=0.05, trans=0.4, spec=1.0, coat=1.0,
+               emit=(1.0, 0.03, 0.12), emit_str=0.5, glow_str=0.45)
+    necklace("chain", silver, bail_z=0.24)
+    heart = shape_heart(0.24)
+    extrude([(x, z - 0.02) for x, z in heart], 0.06, silver, bev=0.02, name="locket")
+    inner = shape_heart(0.17)
+    extrude([(x, z - 0.02) for x, z in inner], 0.08, crys, bev=0.025, name="heart_gem",
+            loc=(0, -0.012, 0))
+    torus(0.03, 0.009, silver, loc=(0, 0, 0.22), rot=(0, rad(90), 0), seg=16, rseg=6, name="bail")
+    for sx in (-1, 1):
+        stroke2d((sx * 0.02, 0.2), (sx * 0.12, 0.25), 0.012, 0.012, silver, y=-0.02, name="filigree")
+    view(pitch=4, glow=0.9)
+
+
+@item("amulet_5")
+def amulet_5():
+    """Eye amulet: gold sunburst framing a watchful eye with a glowing iris."""
+    gold = M_gold()
+    necklace("chain", gold, bail_z=0.26)
+    rays = shape_star(16, 0.27, 0.19)
+    extrude(rays, 0.03, gold, bev=0.006, name="sunburst", loc=(0, 0.01, 0))
+    torus(0.18, 0.02, gold, rot=(rad(90), 0, 0), seg=48, rseg=10, name="frame")
+    lathe([(0, -0.02), (0.17, -0.02), (0.17, 0.02), (0, 0.02)], pbr("enamel_blue", (0.03, 0.05, 0.2),
+                                                                     rough=0.2, coat=1.0),
+          seg=48, rot=(rad(90), 0, 0), name="backplate")
+    eye(0.1, M_glow((1.0, 0.7, 0.2), "eye_iris", 5), loc=(0, -0.03, 0.0), slit=True,
+        lid_mat=gold)
+    torus(0.028, 0.009, gold, loc=(0, 0, 0.27), rot=(0, rad(90), 0), seg=16, rseg=6, name="bail")
+    view(pitch=4, glow=0.8)
+
+
+@item("amulet_6")
+def amulet_6():
+    """Star pendant: black spiked star around a blazing violet-crimson core."""
+    bm = M_blackmetal()
+    core = pbr("star_core", (0.5, 0.1, 0.9), rough=0.05, trans=0.3, spec=1.0,
+               emit=(0.6, 0.12, 1.0), emit_str=1.8, glow_str=0.8)
+    red = M_glow((1.0, 0.1, 0.2), "star_red", 6)
+    necklace("chain", bm, bail_z=0.3)
+    star = shape_star(8, 0.34, 0.14)
+    extrude(star, 0.06, bm, bev=0.01, name="star")
+    extrude(shape_star(8, 0.36, 0.1, rot=math.pi / 2 + math.pi / 8), 0.03, M_glow((1.0, 0.08, 0.15),
+            "star_rays", 3.0), name="rays", loc=(0, 0.02, 0))
+    inner = shape_star(4, 0.2, 0.07, rot=math.pi / 2)
+    extrude(inner, 0.07, core, bev=0.012, name="core_star", loc=(0, -0.01, 0))
+    sphere(0.05, red, loc=(0, -0.04, 0), name="heart")
+    torus(0.028, 0.009, bm, loc=(0, 0, 0.3), rot=(0, rad(90), 0), seg=16, rseg=6, name="bail")
+    view(pitch=4, glow=1.1)
 
 
 # ----------------------------------------------------------------------------

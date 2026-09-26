@@ -2,8 +2,10 @@
 // ENEMY_RENDER[renderId] = (ctx, e, world, pal) => void  — 원점: 발 중앙(e.cx, e.bottom), facing 반영은 여기서 처리
 // e: {cx, bottom, w, h, facing, anim, animT, t, flashT, state, def, elite, scale}
 import { TAU } from '../core/math.js';
+import { RENDER_A } from './enemies_a.js';
+import { RENDER_B } from './enemies_b.js';
 
-export const ENEMY_RENDER = {};
+export const ENEMY_RENDER = { ...RENDER_A, ...RENDER_B };
 
 export function drawEnemy(ctx, e, world) {
   const fn = ENEMY_RENDER[e.def.render];
