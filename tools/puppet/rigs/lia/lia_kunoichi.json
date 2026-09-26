@@ -1,0 +1,114 @@
+{
+ "_doc": "리아/카게로우(2차). 짙은 포도주색 짧은 기모노 재킷 + 장미색 띠·스카프 + 금 서클릿. 화염 오라는 절차적",
+ "extends": "lia_assassin",
+ "classId": "lia_kunoichi",
+ "src": "lia/lia_kunoichi_side",
+ "hands": {
+  "sheet": "lia/lia_kunoichi_hands",
+  "grip": {
+   "box": [
+    590,
+    370,
+    1080,
+    775
+   ],
+   "center": [
+    800,
+    560
+   ],
+   "axis": [
+    0,
+    1
+   ],
+   "rodHalf": 45,
+   "wrist": [
+    800,
+    770
+   ],
+   "scale": 0.24
+  },
+  "open": {
+   "box": [
+    1580,
+    40,
+    2100,
+    780
+   ],
+   "wrist": [
+    1830,
+    780
+   ],
+   "tip": [
+    1800,
+    60
+   ],
+   "scale": 0.2
+  }
+ },
+ "materials": {
+  "_replace": true,
+  "armor": {
+   "parts": [
+    "torso",
+    "uarm",
+    "farm",
+    "thigh",
+    "shin",
+    "foot"
+   ],
+   "hue": [
+    320,
+    12
+   ],
+   "sat": [
+    0.3,
+    1.01
+   ],
+   "val": [
+    0,
+    0.55
+   ],
+   "softTop": 0.08
+  },
+  "trim": {
+   "parts": [
+    "torso",
+    "uarm",
+    "farm",
+    "pad",
+    "shin",
+    "foot"
+   ],
+   "hue": [
+    330,
+    360
+   ],
+   "sat": [
+    0.15,
+    0.6
+   ],
+   "val": [
+    0.6,
+    1.01
+   ]
+  }
+ },
+ "runtime": {
+  "armorBase": "#2a0a1a"
+ },
+ "turn": {
+  "sheet5": "lia/lia_kunoichi_turn5",
+  "views5": [
+   "y90",
+   "y135",
+   "y180",
+   "ym90",
+   "-"
+  ],
+  "qback": "lia/lia_kunoichi_qback",
+  "viewsQ": [
+   "-",
+   "ym135"
+  ]
+ }
+}

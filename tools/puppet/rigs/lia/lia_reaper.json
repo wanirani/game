@@ -1,0 +1,178 @@
+{
+ "_doc": "리아/사신의 낫(2차). 두건 + 뼈 갑주·초록 룬 + 허리 녹색 띠 꼬리(skirt 한 장). 뼈 날개·오라는 절차적",
+ "extends": "lia_assassin",
+ "classId": "lia_reaper",
+ "src": "lia/lia_reaper_side",
+ "hands": {
+  "sheet": "lia/lia_reaper_hands",
+  "grip": {
+   "box": [
+    540,
+    380,
+    960,
+    790
+   ],
+   "center": [
+    769,
+    580
+   ],
+   "axis": [
+    -0.053,
+    0.999
+   ],
+   "rodHalf": 70,
+   "wrist": [
+    720,
+    790
+   ],
+   "scale": 0.29
+  },
+  "open": {
+   "box": [
+    1540,
+    110,
+    2310,
+    880
+   ],
+   "wrist": [
+    1900,
+    880
+   ],
+   "tip": [
+    1850,
+    130
+   ],
+   "scale": 0.2
+  }
+ },
+ "materials": {
+  "_replace": true,
+  "armor": {
+   "parts": [
+    "torso",
+    "uarm",
+    "farm",
+    "thigh",
+    "shin",
+    "foot"
+   ],
+   "sat": [
+    0,
+    0.45
+   ],
+   "val": [
+    0,
+    0.34
+   ],
+   "softTop": 0.06
+  },
+  "trim": {
+   "parts": [
+    "torso",
+    "pad",
+    "uarm",
+    "farm",
+    "shin"
+   ],
+   "sat": [
+    0,
+    0.14
+   ],
+   "val": [
+    0.55,
+    1.01
+   ]
+  }
+ },
+ "runtime": {
+  "armorBase": "#0a0a0a"
+ },
+ "turn": {
+  "sheet5": "lia/lia_reaper_turn5",
+  "views5": [
+   "y90",
+   "y135",
+   "y180",
+   "ym90",
+   "-"
+  ],
+  "qback": "lia/lia_reaper_qback",
+  "viewsQ": [
+   "-",
+   "ym135"
+  ]
+ },
+ "regions": {
+  "skirt": {
+   "pts": [
+    [
+     560,
+     1330
+    ],
+    [
+     720,
+     1340
+    ],
+    [
+     700,
+     1450
+    ],
+    [
+     640,
+     1560
+    ],
+    [
+     580,
+     1680
+    ],
+    [
+     520,
+     1800
+    ],
+    [
+     470,
+     1950
+    ],
+    [
+     400,
+     2120
+    ],
+    [
+     300,
+     2130
+    ],
+    [
+     250,
+     2050
+    ],
+    [
+     300,
+     1900
+    ],
+    [
+     380,
+     1750
+    ],
+    [
+     460,
+     1600
+    ],
+    [
+     520,
+     1450
+    ]
+   ],
+   "smooth": 3
+  }
+ },
+ "joints": {
+  "skirtPivot": [
+   640,
+   1380
+  ],
+  "skirtHem": [
+   340,
+   2050
+  ]
+ }
+}

@@ -1,0 +1,181 @@
+{
+ "_doc": "리아/블레이드 댄서+(2차). 자홍 비단 + 금세공·사슬 + 금 티아라 + 허리 뒤 금수 자락(skirt 한 장). 오라는 절차적",
+ "extends": "lia_assassin",
+ "classId": "lia_bladedancer",
+ "src": "lia/lia_bladedancer_side",
+ "hands": {
+  "sheet": "lia/lia_bladedancer_hands",
+  "grip": {
+   "box": [
+    470,
+    400,
+    970,
+    900
+   ],
+   "center": [
+    713,
+    650
+   ],
+   "axis": [
+    0,
+    1
+   ],
+   "rodHalf": 80,
+   "wrist": [
+    730,
+    900
+   ],
+   "scale": 0.25
+  },
+  "open": {
+   "box": [
+    1680,
+    55,
+    2230,
+    920
+   ],
+   "wrist": [
+    1950,
+    920
+   ],
+   "tip": [
+    1960,
+    70
+   ],
+   "scale": 0.17
+  }
+ },
+ "materials": {
+  "_replace": true,
+  "armor": {
+   "parts": [
+    "torso",
+    "farm",
+    "thigh",
+    "shin",
+    "foot",
+    "skirt"
+   ],
+   "hue": [
+    300,
+    12
+   ],
+   "sat": [
+    0.35,
+    1.01
+   ],
+   "val": [
+    0,
+    0.8
+   ],
+   "softTop": 0.08
+  },
+  "trim": {
+   "parts": [
+    "torso",
+    "farm",
+    "pad",
+    "uarm",
+    "thigh",
+    "shin",
+    "foot",
+    "skirt"
+   ],
+   "hue": [
+    30,
+    62
+   ],
+   "sat": [
+    0.4,
+    1.01
+   ],
+   "val": [
+    0.45,
+    1.01
+   ]
+  }
+ },
+ "runtime": {
+  "armorBase": "#5a0a2a"
+ },
+ "turn": {
+  "sheet5": "lia/lia_bladedancer_turn5",
+  "views5": [
+   "y90",
+   "y135",
+   "y180",
+   "ym90",
+   "-"
+  ],
+  "qback": "lia/lia_bladedancer_qback",
+  "viewsQ": [
+   "-",
+   "ym135"
+  ]
+ },
+ "regions": {
+  "skirt": {
+   "pts": [
+    [
+     600,
+     1330
+    ],
+    [
+     720,
+     1330
+    ],
+    [
+     720,
+     1420
+    ],
+    [
+     640,
+     1560
+    ],
+    [
+     560,
+     1700
+    ],
+    [
+     460,
+     1850
+    ],
+    [
+     340,
+     2000
+    ],
+    [
+     270,
+     1990
+    ],
+    [
+     300,
+     1880
+    ],
+    [
+     380,
+     1720
+    ],
+    [
+     470,
+     1560
+    ],
+    [
+     560,
+     1420
+    ]
+   ],
+   "smooth": 3
+  }
+ },
+ "joints": {
+  "skirtPivot": [
+   650,
+   1380
+  ],
+  "skirtHem": [
+   300,
+   1960
+  ]
+ }
+}

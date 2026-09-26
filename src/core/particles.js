@@ -48,7 +48,7 @@ const PRESETS = {
 export const PARTICLE_PRESETS = Object.keys(PRESETS);
 
 const COL_DEF = { gap: 0.5, step: 16, height: 8, totalAfter: 3, totalDelay: 0.35 };
-const COL_NUDGE = [0, 18, -18, 36, -36];   // 겹친 숫자 기둥 비키기 (px)
+const COL_NUDGE = [0, 26, -26, 52, -52];   // 겹친 숫자 기둥 비키기 (px, 22px 안에서 0.5초 안에 시작한 기둥이 있으면)
 const qKey = (q) => (q >= 0.95 ? 'high' : q >= 0.7 ? 'medium' : 'low');
 const DMG_CAP = { high: 24, medium: 16, low: 10 };
 
@@ -157,7 +157,7 @@ export class Particles {
     return p;
   }
   /**
-   * 새 숫자 기둥의 x: 0.5초 안에 20px 이내에서 시작한 다른 기둥이 있으면 ±18px 비켜 선다
+   * 새 숫자 기둥의 x: 0.5초 안에 22px 이내에서 시작한 다른 기둥이 있으면 ±26px(다음은 ±52px) 비켜 선다
    * (한 번 휘둘러 겹쳐 선 두 적을 맞히면 '43' '42' 가 '4342' 로 붙어 보이지 않게)
    */
   colX(x, y, now) {
@@ -166,7 +166,7 @@ export class Particles {
     let nx = x;
     for (const off of COL_NUDGE) {
       const cx = x + off;
-      if (!S.some((s) => Math.abs(s[0] - cx) < 20 && Math.abs(s[1] - y) < 48)) { nx = cx; break; }
+      if (!S.some((s) => Math.abs(s[0] - cx) < 22 && Math.abs(s[1] - y) < 48)) { nx = cx; break; }
     }
     S.push([nx, y, now]);
     if (S.length > 32) S.shift();

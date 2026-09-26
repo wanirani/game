@@ -1,0 +1,104 @@
+{
+ "_doc": "리아/닌자(1차). 남색 닌자 재킷(엉덩이까지)·남색 스카프·강철 견갑·정강이 감개. 암살자 리그 상속",
+ "extends": "lia_assassin",
+ "classId": "lia_ninja",
+ "src": "lia/lia_ninja_side",
+ "hands": {
+  "sheet": "lia/lia_ninja_hands",
+  "grip": {
+   "box": [
+    300,
+    280,
+    1110,
+    1180
+   ],
+   "center": [
+    798,
+    780
+   ],
+   "axis": [
+    0,
+    1
+   ],
+   "rodHalf": 105,
+   "wrist": [
+    950,
+    1170
+   ],
+   "scale": 0.165
+  },
+  "open": {
+   "box": [
+    1500,
+    30,
+    2250,
+    1190
+   ],
+   "wrist": [
+    1900,
+    1190
+   ],
+   "tip": [
+    1900,
+    50
+   ],
+   "scale": 0.13
+  }
+ },
+ "materials": {
+  "_replace": true,
+  "armor": {
+   "parts": [
+    "torso",
+    "uarm",
+    "farm",
+    "thigh",
+    "shin",
+    "foot"
+   ],
+   "sat": [
+    0,
+    0.6
+   ],
+   "val": [
+    0,
+    0.4
+   ],
+   "softTop": 0.06
+  },
+  "trim": {
+   "parts": [
+    "pad",
+    "torso",
+    "farm",
+    "uarm"
+   ],
+   "sat": [
+    0,
+    0.14
+   ],
+   "val": [
+    0.5,
+    1.01
+   ]
+  }
+ },
+ "runtime": {
+  "armorBase": "#141420"
+ },
+ "turn": {
+  "sheet5": "lia/lia_ninja_turn5",
+  "views5": [
+   "y90",
+   "y135",
+   "y180",
+   "ym90",
+   "-"
+  ],
+  "qback": "lia/lia_ninja_qback",
+  "viewsQ": [
+   "-",
+   "ym135"
+  ]
+ }
+}

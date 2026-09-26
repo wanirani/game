@@ -1,0 +1,114 @@
+{
+ "_doc": "리아/칼날 무희(1차). 진홍 비단 보디스 + 금 자수·동전 장식 + 금 스카프·띠. 맨 위팔(피부)은 재질 마스크 제외",
+ "extends": "lia_assassin",
+ "classId": "lia_dancer",
+ "src": "lia/lia_dancer_side",
+ "hands": {
+  "sheet": "lia/lia_dancer_hands",
+  "grip": {
+   "box": [
+    430,
+    260,
+    1010,
+    870
+   ],
+   "center": [
+    757,
+    560
+   ],
+   "axis": [
+    0,
+    1
+   ],
+   "rodHalf": 70,
+   "wrist": [
+    720,
+    870
+   ],
+   "scale": 0.23
+  },
+  "open": {
+   "box": [
+    1470,
+    60,
+    2160,
+    880
+   ],
+   "wrist": [
+    1850,
+    880
+   ],
+   "tip": [
+    1860,
+    75
+   ],
+   "scale": 0.18
+  }
+ },
+ "materials": {
+  "_replace": true,
+  "armor": {
+   "parts": [
+    "torso",
+    "farm",
+    "thigh",
+    "shin",
+    "foot"
+   ],
+   "hue": [
+    325,
+    12
+   ],
+   "sat": [
+    0.35,
+    1.01
+   ],
+   "val": [
+    0,
+    0.8
+   ],
+   "softTop": 0.08
+  },
+  "trim": {
+   "parts": [
+    "torso",
+    "farm",
+    "pad",
+    "uarm",
+    "thigh",
+    "shin",
+    "foot"
+   ],
+   "hue": [
+    30,
+    62
+   ],
+   "sat": [
+    0.4,
+    1.01
+   ],
+   "val": [
+    0.45,
+    1.01
+   ]
+  }
+ },
+ "runtime": {
+  "armorBase": "#3a0a1a"
+ },
+ "turn": {
+  "sheet5": "lia/lia_dancer_turn5",
+  "views5": [
+   "y90",
+   "y135",
+   "y180",
+   "ym90",
+   "-"
+  ],
+  "qback": "lia/lia_dancer_qback",
+  "viewsQ": [
+   "-",
+   "ym135"
+  ]
+ }
+}

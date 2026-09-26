@@ -1,0 +1,179 @@
+{
+ "_doc": "리아/그림자 군주(2차). 칠흑 옻칠 갑옷 + 보라 발광 문양 + 허리 뒤 갑옷 태싯(skirt 한 장). 오라·눈빛은 절차적",
+ "extends": "lia_assassin",
+ "classId": "lia_shadowmaster",
+ "src": "lia/lia_shadowmaster_side",
+ "hands": {
+  "sheet": "lia/lia_shadowmaster_hands",
+  "grip": {
+   "box": [
+    440,
+    300,
+    1100,
+    990
+   ],
+   "center": [
+    828,
+    638
+   ],
+   "axis": [
+    -0.055,
+    0.998
+   ],
+   "rodHalf": 60,
+   "wrist": [
+    780,
+    990
+   ],
+   "scale": 0.2
+  },
+  "open": {
+   "box": [
+    1420,
+    90,
+    2200,
+    1000
+   ],
+   "wrist": [
+    1880,
+    1000
+   ],
+   "tip": [
+    1880,
+    110
+   ],
+   "scale": 0.165
+  }
+ },
+ "materials": {
+  "_replace": true,
+  "armor": {
+   "parts": [
+    "torso",
+    "farm",
+    "thigh",
+    "shin",
+    "foot",
+    "skirt",
+    "pad",
+    "uarm"
+   ],
+   "sat": [
+    0,
+    0.45
+   ],
+   "val": [
+    0,
+    0.34
+   ],
+   "softTop": 0.06
+  },
+  "trim": {
+   "parts": [
+    "torso",
+    "farm",
+    "thigh",
+    "shin",
+    "foot",
+    "skirt",
+    "pad",
+    "uarm"
+   ],
+   "hue": [
+    255,
+    310
+   ],
+   "sat": [
+    0.35,
+    1.01
+   ],
+   "val": [
+    0.35,
+    1.01
+   ]
+  }
+ },
+ "runtime": {
+  "armorBase": "#0a0a10"
+ },
+ "turn": {
+  "sheet5": "lia/lia_shadowmaster_turn5",
+  "views5": [
+   "y90",
+   "y135",
+   "y180",
+   "ym90",
+   "-"
+  ],
+  "qback": "lia/lia_shadowmaster_qback",
+  "viewsQ": [
+   "-",
+   "ym135"
+  ]
+ },
+ "regions": {
+  "skirt": {
+   "pts": [
+    [
+     540,
+     1300
+    ],
+    [
+     700,
+     1310
+    ],
+    [
+     760,
+     1400
+    ],
+    [
+     740,
+     1520
+    ],
+    [
+     700,
+     1650
+    ],
+    [
+     640,
+     1780
+    ],
+    [
+     600,
+     1830
+    ],
+    [
+     480,
+     1820
+    ],
+    [
+     395,
+     1770
+    ],
+    [
+     400,
+     1650
+    ],
+    [
+     440,
+     1520
+    ],
+    [
+     500,
+     1400
+    ]
+   ],
+   "smooth": 3
+  }
+ },
+ "joints": {
+  "skirtPivot": [
+   620,
+   1360
+  ],
+  "skirtHem": [
+   500,
+   1790
+  ]
+ }
+}
