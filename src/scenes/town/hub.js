@@ -182,6 +182,7 @@ export class HubScene extends Scene {
   onResume() {
     const g = this.game, w = this.world;
     g.world = w;
+    audio.music('hub');
     this.refreshBoard();
     // 동료 교체 → 월드 재구성
     if (w.hero !== currentHero(g.state)) {
