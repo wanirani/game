@@ -213,10 +213,51 @@ for (const [st, ch] of [['s03', 'kael'], ['s04', 'bran'], ['s02', 'sera'], ['s08
     await W(page, 3500);
     const mid = await page.evaluate(() => { const b = __game.world.boss; return { hp: b.hp, phase: b.phase, w: b.w, h: b.h, mounted: b.mounted, split: b.split }; });
     await page.evaluate(() => { const w = __game.world, p = w.player; p.iframes = 0; p.hp = 1; p.takeHit(99999, { team: 'enemy', flat: 99999, dir: 1, kb: [0, 0] }, w, {}); });
-    await W(page, 5500);
+    for (let i = 0; i < 20; i++) { await W(page, 500); if (!(await page.evaluate(() => __game.world.player.dead))) break; }
+    await W(page, 800);
+    const dbg = await page.evaluate(() => { const w = __game.world, p = w.player; return { dead: p.dead, dh: p.deathHandled, deathT: p.deathT, y: Math.round(p.y), lives: w.run.lives, scenes: __game.scenes.map((s) => s.name).join('>') }; });
     const after = await page.evaluate(() => { const w = __game.world, b = w.boss; return { hp: b.hp, max: b.stats.maxHp, phase: b.phase, w: b.w, h: b.h, mounted: b.mounted, split: b.split, st: b.state, px: Math.round(w.player.x), x0: w.arena.x0, camx: Math.round(w.camera.x), pdead: w.player.dead, bosses: w.entities.filter((e) => e.kind === 'boss' && !e.dead).length }; });
     await page.screenshot({ path: `/tmp/claude-0/fix_engine_reset_${st}.png` });
-    return { mid, after };
+    return { mid, after, dbg };
+  });
+}
+await run('banner', 'index.html?scene=stage&stage=s04&char=bran', async (page) => {
+  await page.keyboard.down('ArrowRight');
+  let r = null;
+  for (let i = 0; i < 40; i++) { await W(page, 150); const t = await top(page); if (/dialogue/.test(t)) { r = await page.evaluate(() => ({ banner: __game.world.banner, t: __game.world.time })); break; } }
+  await page.keyboard.up('ArrowRight');
+  return r;
+});
+await run('lvup', 'index.html?scene=stage&stage=s02&room=boss&char=bran', async (page) => {
+  await page.evaluate(() => { const w = __game.world; w.player.x = w.arenaX + 48 * 2; w.startBoss(); });
+  for (let i = 0; i < 40; i++) { const t = await top(page); if (!/dialogue|bossIntro/.test(t)) break; await page.keyboard.press('KeyX'); await W(page, 250); }
+  const lv0 = await page.evaluate(() => __game.world.hero.level);
+  await page.evaluate(() => { const w = __game.world; w.boss.takeHit(w.boss.hp + 10, {}, w, {}); });
+  return page.evaluate((lv0) => ({ lv0, lv: __game.world.hero.level, banner: __game.world.banner?.text, toasts: __game.toasts.map((t) => t.text) }), lv0);
+});
+for (const [st, ch] of [['s09', 'azel'], ['s12', 'azel'], ['s13', 'azel'], ['s08', 'victor']]) {
+  await run('parts_' + st, `index.html?scene=stage&stage=${st}&room=boss&char=${ch}`, async (page) => {
+    await page.evaluate(() => { const w = __game.world; w.player.x = w.arenaX + 48 * 2; w.startBoss(); });
+    for (let i = 0; i < 60; i++) { const t = await top(page); if (!/dialogue|bossIntro/.test(t)) break; await page.keyboard.press('KeyX'); await W(page, 250); }
+    await W(page, 1200);
+    return page.evaluate(async (st) => {
+      const { playerStrike } = await import('/src/game/combat.js');
+      const w = __game.world, b = w.boss, p = w.player;
+      const out = {};
+      if (st === 's12') { b.invuln = false; b.takeHit(Math.floor(b.hp * 0.55), {}, w, {}); await new Promise((r) => setTimeout(r, 200)); for (let i = 0; i < 40 && !(b.form === 2); i++) { const s = __game.scenes.at(-1); if (s.name === 'dialogue') { __game.pop(); s.onEnd?.(); w.cutscene = false; } b.skipTransition?.(); await new Promise((r) => setTimeout(r, 300)); } out.form = b.form; }
+      await new Promise((r) => setTimeout(r, 500));
+      const parts = (b.hitParts() || []).filter((x) => !x.off);
+      out.parts = parts.length;
+      const res = [];
+      for (const pt of parts.slice(0, 4)) {
+        const hp0 = b.hp;
+        const n = playerStrike(w, { x: pt.x + pt.w / 2 - 5, y: pt.y + pt.h / 2 - 5, w: 10, h: 10 }, { owner: p, team: 'player', stats: p.stats, mv: 1, dir: 1, hitId: 't' + Math.random() });
+        res.push({ n, dmg: Math.round(hp0 - b.hp), defMul: pt.defMul ?? 1, same: b.hitPart === pt, eye: pt.eyeI !== undefined });
+      }
+      out.res = res;
+      if (st === 's13') out.liveEyes = b.liveEyes().length;
+      return out;
+    }, st);
   });
 }
 await browser.close(); srv.close();

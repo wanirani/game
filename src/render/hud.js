@@ -14,7 +14,7 @@ import { styleRank } from '../game/world.js';
 import { input } from '../core/input.js';
 
 // 버프 칸 글자 (이름 첫 글자는 '무적의 물약'·'무기 강화'처럼 겹치므로 버프마다 고유하게)
-const BUFF_GLYPH = { rage: '광', haste: '신', invincible: '적', magnet: '자', gunmode: '총', holyaura: '성', whipup: '강', double: 'Ⅱ', triple: 'Ⅲ' };
+const BUFF_GLYPH = { rage: '광', haste: '신', invincible: '무', magnet: '자', gunmode: '총', holyaura: '성', whipup: '강', double: 'Ⅱ', triple: 'Ⅲ' };
 
 export function drawHUD(ctx, world, vw, vh) {
   const p = world.player;
@@ -97,11 +97,13 @@ export function drawHUD(ctx, world, vw, vh) {
     }
     text(ctx, T ? ['S1', 'S2'][i] : ['S', 'D'][i], x + 3, y + 36, { size: T ? 12 : 10, weight: 800, color: '#e8c872' });
   }
-  // 스킬 페이지 (Q/E 또는 ⇄ 버튼으로 전환)
-  text(ctx, `${T ? '⇄' : 'Q·E'} 스킬 ${p.skillPage + 1}/2`, kx + 92, ky + 14, { size: T ? 12 : 10, weight: 700, color: COLORS.dim });
+  // 스킬 페이지 (Q/E 또는 ⇄ 버튼으로 전환) — 슬롯 바로 아래
+  text(ctx, `${T ? '⇄' : 'Q·E'} 페이지 ${p.skillPage + 1}/2`, kx, ky + (T ? 54 : 51), { size: T ? 12 : 10, weight: 700, color: COLORS.dim });
   // 필살 게이지 (가로 세그먼트)
   const ux = kx + 92, uy = ky + 20, uw = 120;
   const full = run.sp >= 100;
+  text(ctx, '필살', ux, uy - 6, { size: T ? 12 : 10, weight: 700, color: COLORS.dim });
+  text(ctx, `${Math.floor(run.sp)}%`, ux + uw, uy - 6, { size: T ? 12 : 10, align: 'right', weight: 700, family: FONT.num, color: full ? '#ffe070' : COLORS.dim });
   ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(ux, uy, uw, 10);
   const g = ctx.createLinearGradient(ux, 0, ux + uw, 0);
   g.addColorStop(0, '#ff8a2a'); g.addColorStop(1, full ? `hsl(${(world.time * 300) % 360},90%,60%)` : '#ffe070');

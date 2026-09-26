@@ -10,7 +10,7 @@ class Assets {
   constructor() {
     this.cache = new Map();   // key -> {img, ok, failed, promise}
     this.patterns = new Map();
-    this.version = 1;
+    this.version = 2;
   }
   url(key) {
     const folder = key.split('/')[0];

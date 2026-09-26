@@ -11,6 +11,23 @@ import { clamp, ease, rgba, TAU } from '../core/math.js';
 import { saves } from '../core/save.js';
 import { STAT_INFO } from '../game/stats.js';
 
+// 초상화 왼쪽 가장자리를 투명하게 (보스 등장 카드의 대각 영역에 사각 경계가 보이지 않도록) — 이미지별 캐시
+const _feather = new WeakMap();
+function featherLeft(img) {
+  let c = _feather.get(img);
+  if (c) return c;
+  c = document.createElement('canvas');
+  c.width = img.width; c.height = img.height;
+  const g = c.getContext('2d');
+  g.drawImage(img, 0, 0);
+  g.globalCompositeOperation = 'destination-in';
+  const hx = g.createLinearGradient(0, 0, c.width, 0);
+  hx.addColorStop(0, 'rgba(0,0,0,0)'); hx.addColorStop(0.3, 'rgba(0,0,0,1)'); hx.addColorStop(1, 'rgba(0,0,0,1)');
+  g.fillStyle = hx; g.fillRect(0, 0, c.width, c.height);
+  _feather.set(img, c);
+  return c;
+}
+
 /** 보스 등장: WARNING 경고 → 초상화 + 이름 */
 export class BossIntroScene extends Scene {
   constructor(g) { super(g); this.opaque = false; }
@@ -51,11 +68,7 @@ export class BossIntroScene extends Scene {
       const rg = ctx.createRadialGradient(vw - w * 0.5, vh * 0.45, 20, vw - w * 0.5, vh * 0.45, vw * 0.5);
       rg.addColorStop(0, 'rgba(150,10,30,0.45)'); rg.addColorStop(1, 'rgba(150,10,30,0)');
       ctx.fillStyle = rg; ctx.fillRect(dx, 0, vw - dx, vh);
-      ctx.drawImage(img, px, 0, w, h);
-      const fw = Math.min(140, w * 0.3);
-      const fg = ctx.createLinearGradient(px, 0, px + fw, 0);
-      fg.addColorStop(0, 'rgba(18,4,10,1)'); fg.addColorStop(1, 'rgba(18,4,10,0)');
-      ctx.fillStyle = fg; ctx.fillRect(px - 1, 0, fw + 1, vh);
+      ctx.drawImage(featherLeft(img), px, 0, w, h);
       const bg = ctx.createLinearGradient(0, vh * 0.7, 0, vh);
       bg.addColorStop(0, 'rgba(18,4,10,0)'); bg.addColorStop(1, 'rgba(18,4,10,0.85)');
       ctx.fillStyle = bg; ctx.fillRect(dx, vh * 0.7, vw - dx, vh * 0.3);

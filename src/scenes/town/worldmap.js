@@ -60,8 +60,8 @@ export class WorldMapScene extends Scene {
 
   layout() {
     const vw = this.game.viewW, vh = this.game.viewH;
-    // 아래: 정보 패널(vh-158 ~ vh-26) + 키 안내 줄(기준선 vh-8)
-    return { vw, vh, mx: 56, my: 76, mw: vw - 112, mh: vh - 76 - 172 };
+    // 위: 상단 바(0~58) + 맨 위 노드의 이름표 자리 / 아래: 정보 패널(vh-158 ~ vh-26) + 키 안내 줄(기준선 vh-8)
+    return { vw, vh, mx: 56, my: 84, mw: vw - 112, mh: vh - 84 - 172 };
   }
   pos(mp) { const L = this.layout(); return { x: L.mx + mp.x * L.mw, y: L.my + mp.y * L.mh }; }
 

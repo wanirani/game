@@ -252,8 +252,10 @@ export class OptionsScene extends Scene {
       const right = lx > cx;
       text(ctx, a, lx, ly, { size: 14, align: right ? 'right' : 'left', weight: 900, family: FONT.num, color: GOLD, ow: 2 });
       text(ctx, b, lx, ly + 17, { size: 12, align: right ? 'right' : 'left', weight: 700, color: BONE, ow: 2 });
+      ctx.font = `900 14px ${FONT.num}`;
+      const wa = ctx.measureText(a).width;
       ctx.font = `700 12px ${FONT.body}`;
-      const tw = Math.max(ctx.measureText(b).width, a.length * 8.5) + 10;
+      const tw = Math.max(ctx.measureText(b).width, wa) + 10;
       const sx = right ? lx - tw : lx + tw, sy = ly + 4, mx = sx + (right ? -14 : 14);
       let ex = px, ey = py;
       if (pr > 0) { const d = Math.hypot(mx - px, sy - py) || 1; ex = px + (mx - px) / d * pr; ey = py + (sy - py) / d * pr; }
