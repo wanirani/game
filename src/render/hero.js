@@ -98,6 +98,7 @@ function buildSpec(L, p) {
   K.off = K.W.type === 'dagger' || K.W.type === 'gun';
   K.auraC = K.aura?.color || '#b98cff';
   K.magicC = K.aura?.color || (K.W.element ? EL_COL[K.W.element] : o === 'nun' ? '#fff2b0' : '#b98cff');
+  K.trailC = L.trailColor || { azel: '#ff4a6a', lia: '#c8c0ff', bran: '#ffc080', sera: '#fff2b0', kael: '#ffe0b0', victor: '#ffd070' }[cid] || (K.W.type === 'greatsword' ? '#ffc080' : K.W.type === 'staff' ? '#fff2b0' : '#bcd8ff');
   return K;
 }
 const SPEC = new WeakMap();
@@ -111,11 +112,11 @@ function specOf(look, p) {
 // ───────────────────────── 자세(pose) ─────────────────────────
 // a1/a2: 어깨→손 방향(캔버스 각도, 0=앞, HP=아래, -HP=위), r1/r2: 팔 뻗음(0~1), w1/w2: 무기 방향
 // f1/f2: 발목 목표 위치(가까운/먼 다리), rot: 몸 회전(공중제비), sx: 가로 배율(회전 베기), sq: 찌그러짐
-const PK = ['px', 'py', 'lean', 'hd', 'f1x', 'f1y', 'f2x', 'f2y', 't1', 't2', 'a1', 'r1', 'a2', 'r2', 'w1', 'w2', 'rot', 'sx', 'sq'];
+const PK = ['px', 'py', 'lean', 'hd', 'f1x', 'f1y', 'f2x', 'f2y', 't1', 't2', 'a1', 'r1', 'a2', 'r2', 'w1', 'w2', 'rot', 'sx', 'sq', 'ox'];
 const PANG = { lean: 1, hd: 1, a1: 1, a2: 1, w1: 1, w2: 1, rot: 1 };
 function resetPose(P) {
   P.px = 0; P.py = -41; P.lean = 0.03; P.hd = 0; P.f1x = 5.5; P.f1y = -2.8; P.f2x = -6; P.f2y = -2.8; P.t1 = 0; P.t2 = 0;
-  P.a1 = HP - 0.25; P.r1 = 0.88; P.a2 = HP + 0.2; P.r2 = 0.9; P.w1 = HP; P.w2 = HP; P.rot = 0; P.sx = 1; P.sq = 1;
+  P.a1 = HP - 0.25; P.r1 = 0.88; P.a2 = HP + 0.2; P.r2 = 0.9; P.w1 = HP; P.w2 = HP; P.rot = 0; P.sx = 1; P.sq = 1; P.ox = 0;
   P.pvy = -46; P.e1 = 1; P.e2 = 1; P.two = 0;
   return P;
 }
@@ -192,11 +193,17 @@ function poseHurt(P, at) {
   P.a1 = lerp(HP, -0.8, k); P.r1 = 0.85; P.a2 = lerp(HP, -2.1, k); P.r2 = 0.85; P.sq = 1 - 0.05 * k;
 }
 function poseDeath(P, at) {
-  const k1 = ease.outCubic(clamp(at / 0.25, 0, 1)), k2 = ease.inOutQuad(clamp((at - 0.18) / 0.55, 0, 1)), bounce = at > 0.73 ? Math.exp(-(at - 0.73) * 10) * Math.sin((at - 0.73) * 30) * 0.04 : 0;
-  P.py = lerp(-40, -30, k2); P.lean = lerp(-0.4 * k1, 0.25, k2); P.hd = lerp(-0.5 * k1, 0.4, k2);
-  P.f1x = lerp(10, 16, k2); P.f1y = lerp(-8, -3, k2); P.f2x = lerp(-4, 6, k2); P.f2y = -2.8;
-  P.a1 = lerp(-0.9, 2.3, k2); P.r1 = 0.95; P.a2 = lerp(-2.2, 2.6, k2); P.r2 = 0.95;
-  P.rot = -1.52 * k2 + bounce; P.pvy = -3;
+  // 0~0.2 피격 반동(젖혀짐) → 0.16~0.62 뒤로 쓰러짐(가속) → 착지 반동 → 누운 자세(한쪽 무릎 세움)
+  const k1 = ease.outCubic(clamp(at / 0.2, 0, 1));
+  const u = clamp((at - 0.16) / 0.46, 0, 1), k2 = ease.inOutQuad(u);
+  const land = at > 0.62 ? at - 0.62 : 0;
+  const bounce = land ? Math.exp(-land * 9) * Math.sin(land * 26) * 0.08 : 0;
+  P.py = lerp(-40, -33, k2); P.lean = lerp(-0.45 * k1, -0.08, k2); P.hd = lerp(-0.55 * k1, -0.3, k2) + bounce * 2;
+  P.f1x = lerp(lerp(5, 11, k1), 3, k2); P.f1y = lerp(lerp(-2.8, -10, k1), -2.5, k2);
+  P.f2x = lerp(lerp(-6, -3, k1), 9, k2); P.f2y = lerp(-2.8, -12, k2); P.t1 = lerp(0.4 * k1, 0, k2); P.t2 = lerp(0, 0.5, k2);
+  P.a1 = lerp(lerp(HP, -0.8, k1), -2.05, k2); P.r1 = 0.95; P.a2 = lerp(lerp(HP, -2.2, k1), -2.65, k2); P.r2 = 0.95;
+  P.rot = -1.5 * ease.inQuad(u) + bounce; P.pvy = -6; P.ox = 30 * k2;
+  P.sq = land ? 1 - Math.exp(-land * 14) * 0.08 : 1;
 }
 function poseThrow(P, K, at) {
   const u = clamp(at / 0.22, 0, 1), k = ease.outCubic(u);
@@ -453,9 +460,10 @@ let TX = 0, TY = 0;
 function tx0(P, x, y) {
   let X = x, Y = y;
   if (P.rot) { const pv = P.pvy * LS, c = Math.cos(P.rot), s = Math.sin(P.rot), dy = Y - pv; X = x * c - dy * s; Y = pv + x * s + dy * c; }
-  TX = X * P.sx * (1 + (1 - P.sq) * 0.6); TY = Y * P.sq;
+  TX = X * P.sx * (1 + (1 - P.sq) * 0.6) + P.ox; TY = Y * P.sq;
 }
 function applyT1(c, P) {
+  if (P.ox) c.translate(P.ox, 0);
   c.scale(P.sx * (1 + (1 - P.sq) * 0.6), P.sq);
   if (P.rot) { c.translate(0, P.pvy * LS); c.rotate(P.rot); c.translate(0, -P.pvy * LS); }
 }
@@ -1196,6 +1204,20 @@ function headPt(s, K, x, y) {
   const hr = K.headR / 6.7, c = Math.cos(s.ha), si = Math.sin(s.ha);
   QX = s.hx + (x * c - y * si) * hr; QY = s.hy + (x * si + y * c) * hr;
 }
+/** 체인 띠(머리카락·스카프·베일)용 원통 음영: 시작→끝 현(chord)에 수직인 그라디언트. 굽은 띠도 끝단이 과하게 밝아지지 않도록 폭을 넉넉히 */
+function ribGrad(P, n, w, base, k = 1) {
+  const x0 = P[0], y0 = P[1], x1 = P[(n - 1) * 2], y1 = P[(n - 1) * 2 + 1];
+  let dx = x1 - x0, dy = y1 - y0;
+  const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d;
+  let nx = -dy, ny = dx;
+  if (nx * -0.8 + ny * -0.6 < 0) { nx = -nx; ny = -ny; }
+  // 현에서 가장 멀리 벗어난 점까지 포함
+  let dev = 0;
+  for (let i = 1; i < n - 1; i++) { const e = Math.abs((P[i * 2] - x0) * nx + (P[i * 2 + 1] - y0) * ny); if (e > dev) dev = e; }
+  const r = Math.max(w * 1.3, 4) + dev;
+  const mxp = (x0 + x1) / 2, myp = (y0 + y1) / 2;
+  return grad(mxp + nx * r, myp + ny * r, mxp - nx * r, myp - ny * r, base, k);
+}
 const HAIR_CFG = {
   ponytail: { n: 7, seg: 4.4, w0: 3.0, w1: 0.6, ax: -7.6, ay: -3.6, cfg: { g: 1150, d: 0.88, push: 260, rest: 0.75, curl: 0.1 } },
   long: { n: 6, seg: 4.6, w0: 4.2, w1: 2.4, ax: -4.6, ay: 1.5, cfg: { g: 1500, d: 0.9, push: 120, rest: 0.18, curl: 0.03 } },
@@ -1214,7 +1236,7 @@ function drawHairChains(s, K, E) {
     return;
   }
   ribbonPath(c, pts, cfg.n, WS, true);
-  c.fillStyle = grad(pts[0] - 4, pts[1], pts[0] + 4, pts[1] + 6, hc, 0.9); c.fill(); outline(hc, 0.7);
+  c.fillStyle = ribGrad(pts, cfg.n, cfg.w0, hc, 0.9); c.fill(); outline(hc, 0.7);
   if (!G.tint) {
     c.strokeStyle = ra(sh(hc, 0.5), 0.5); c.lineWidth = 0.6; c.beginPath(); c.moveTo(pts[0], pts[1]);
     for (let i = 1; i < cfg.n - 1; i++) c.lineTo(pts[i * 2] - 0.6, pts[i * 2 + 1]);
@@ -1225,7 +1247,7 @@ function drawHairChains(s, K, E) {
     const p2 = chain('hair2', E, TX, TY, 6, 4.4, { g: 1200, d: 0.88, push: 240, rest: 0.5, curl: 0.12, flut: 120 }, TX + 1);
     for (let i = 0; i < 6; i++) WS[i] = lerp(3.0, 0.6, i / 5);
     ribbonPath(c, p2, 6, WS, true);
-    c.fillStyle = grad(p2[0] - 3, p2[1], p2[0] + 3, p2[1] + 4, sh(hc, -0.08), 0.9); c.fill(); outline(hc, 0.6);
+    c.fillStyle = ribGrad(p2, 6, 3, sh(hc, -0.08), 0.9); c.fill(); outline(hc, 0.6);
   }
 }
 function drawVeil(s, K, E) {
@@ -1237,14 +1259,14 @@ function drawVeil(s, K, E) {
   for (let i = 0; i < n; i++) WS[i] = lerp(4.4, 7.2, i / (n - 1));
   const vc = K.hgC || K.se;
   ribbonPath(c, pts, n, WS, false);
-  c.fillStyle = grad(pts[0] - 6, pts[1], pts[0] + 6, pts[1] + 10, vc, 1); c.fill(); outline(vc, 0.7);
+  c.fillStyle = ribGrad(pts, n, 6, vc, 1); c.fill(); outline(vc, 0.7);
   if (!G.tint) { c.strokeStyle = ra(sh(vc, 0.35), 0.6); c.lineWidth = 0.5; c.beginPath(); c.moveTo(pts[0], pts[1]); for (let i = 1; i < n; i++) c.lineTo(pts[i * 2] + 1.2, pts[i * 2 + 1]); c.stroke(); }
   // 은발이 베일 밑으로
   if (K.hs === 'long' || K.hs === 'flowing') {
     headPt(s, K, -3.4, 2.8); tx0(E.P, QX, QY);
     const hp = chain('hair', E, TX, TY, 5, 4.4, { g: 1400, d: 0.9, push: 150, rest: 0.22, curl: 0.05 }, TX + 1);
     for (let i = 0; i < 5; i++) WS[i] = lerp(2.6, 1.2, i / 4);
-    ribbonPath(c, hp, 5, WS, true); c.fillStyle = grad(hp[0] - 3, hp[1], hp[0] + 3, hp[1] + 5, K.hair); c.fill(); outline(K.hair, 0.5);
+    ribbonPath(c, hp, 5, WS, true); c.fillStyle = ribGrad(hp, 5, 2.6, K.hair); c.fill(); outline(K.hair, 0.5);
   }
 }
 function drawScarfTail(s, K, E) {
@@ -1255,7 +1277,7 @@ function drawScarfTail(s, K, E) {
   const pts = chain('scarf', E, TX, TY, n, sc.long ? 5.6 : 4.6, { g: sc.long ? 700 : 1100, d: 0.9, push: sc.long ? 420 : 250, rest: sc.long ? 0.9 : 0.5, curl: 0.03, flut: sc.long ? 260 : 150 }, TX + 1);
   for (let i = 0; i < n; i++) WS[i] = lerp(2.4, sc.long ? 1.9 : 1.6, i / (n - 1));
   ribbonPath(c, pts, n, WS, false);
-  c.fillStyle = grad(pts[0] - 3, pts[1] - 3, pts[0] + 3, pts[1] + 3, sc.c, 0.8); c.fill(); outline(sc.c, 0.6);
+  c.fillStyle = ribGrad(pts, n, 2.4, sc.c, 0.8); c.fill(); outline(sc.c, 0.6);
   if (!G.tint) {
     c.strokeStyle = ra(sh(sc.c, -0.45), 0.6); c.lineWidth = 0.5; c.beginPath(); c.moveTo(pts[2], pts[3]); for (let i = 2; i < n; i++) c.lineTo(pts[i * 2], pts[i * 2 + 1] + 0.3); c.stroke();
     // 끝단 술
@@ -1374,99 +1396,120 @@ function drawCollar(s, K, back) {
 }
 
 // ───────────────────────── 효과 ─────────────────────────
-function bladeInfo(K, which) {
-  const W = K.W;
-  const L = weaponReach(W);
-  const b0 = W.type === 'greatsword' ? 6 : W.type === 'staff' ? 16 : 2;
-  return { L, b0 };
+const TN = 13;
+const TRX0 = new Float32Array(TN + 1), TRY0 = new Float32Array(TN + 1), TRX1 = new Float32Array(TN + 1), TRY1 = new Float32Array(TN + 1);
+const TRXM = new Float32Array(TN + 1), TRYM = new Float32Array(TN + 1), TRXE = new Float32Array(TN + 1), TRYE = new Float32Array(TN + 1);
+/** 점열을 중점 2차 곡선으로 잇기 (정방향) */
+function curveFwd(c, X, Y, n, move) {
+  if (move) c.moveTo(X[0], Y[0]); else c.lineTo(X[0], Y[0]);
+  for (let i = 1; i < n - 1; i++) c.quadraticCurveTo(X[i], Y[i], (X[i] + X[i + 1]) / 2, (Y[i] + Y[i + 1]) / 2);
+  c.lineTo(X[n - 1], Y[n - 1]);
 }
-const TRX0 = new Float32Array(24), TRY0 = new Float32Array(24), TRX1 = new Float32Array(24), TRY1 = new Float32Array(24), TRXM = new Float32Array(24), TRYM = new Float32Array(24);
-/** 무기 궤적: 과거 시점 자세를 다시 풀어 칼날 끝이 쓸고 간 초승달 띠를 그린다 */
+/** 역방향 */
+function curveBack(c, X, Y, n) {
+  c.lineTo(X[n - 1], Y[n - 1]);
+  for (let i = n - 2; i > 0; i--) c.quadraticCurveTo(X[i], Y[i], (X[i] + X[i - 1]) / 2, (Y[i] + Y[i - 1]) / 2);
+  c.lineTo(X[0], Y[0]);
+}
+/** 초승달 궤적 3겹(색 번짐 → 밝은 심 → 흰 칼날선). 바깥=TRX1, 안쪽=TRX0/TRXM/TRXE */
+function crescent(c, n, tc, a) {
+  c.fillStyle = ra(tc, 0.34 * a);
+  c.beginPath(); curveFwd(c, TRX1, TRY1, n, true); curveBack(c, TRX0, TRY0, n); c.closePath(); c.fill();
+  c.fillStyle = ra(mx(tc, '#ffffff', 0.45), 0.5 * a);
+  c.beginPath(); curveFwd(c, TRX1, TRY1, n, true); curveBack(c, TRXM, TRYM, n); c.closePath(); c.fill();
+  c.fillStyle = ra('#ffffff', 0.9 * a);
+  c.beginPath(); curveFwd(c, TRX1, TRY1, n, true); curveBack(c, TRXE, TRYE, n); c.closePath(); c.fill();
+}
+function trailColor(K, mv) {
+  const el = mv.element || K.W.element;
+  return mv.slash?.color || (el ? EL_COL[el] : K.trailC);
+}
+/** 무기 궤적: 과거 시점 자세를 다시 풀어 칼끝이 쓸고 간 초승달(최신일수록 두껍게)을 그린다. 판정 상자까지 닿도록 연장 */
 function drawTrail(E, K, p, mv, which) {
   if (G.tint || !G.fx) return;
   const ph = phaseAt(mv, ST.t);
   const t = ph.t, h0 = ph.h0, h1 = ph.h1;
-  const fade = t > h1 ? 1 - (t - h1) / 0.07 : 1;
+  const fade = t > h1 ? 1 - (t - h1) / 0.09 : 1;
   if (t < h0 - 0.004 || fade <= 0) return;
-  const tEnd = Math.min(t, h1), tStart = Math.max(h0 - 0.012, tEnd - (mv.finisher ? 0.1 : 0.075));
-  if (tEnd <= tStart + 0.001) return;
-  const { L } = bladeInfo(K, which);
-  // 판정 상자까지 닿도록 연장 (에너지 궤적)
+  const win = mv.finisher ? 0.12 : 0.085;
+  const tEnd = Math.min(t, h1 + 0.015), tStart = Math.max(h0 - 0.015, t - win);
+  if (tEnd <= tStart + 0.003) return;
+  const L = weaponReach(K.W);
   let ext = 0;
   if (mv.box) {
     const reach = 1 + ((p.stats?.reach ?? 0) / 100);
     const bx = (mv.box.x + mv.box.w * (mv.box.x >= 0 ? reach : 1)) / E.hs, by = (mv.box.y + mv.box.h * 0.5) / E.hs;
-    const need = Math.hypot(bx - SK.s1x, by - SK.s1y) * 0.9;
-    ext = clamp(need - (K.ua + K.fa + L), 0, 60);
+    const need = Math.hypot(bx - SK.s1x, by - SK.s1y) * 0.92;
+    ext = clamp(need - (K.ua + K.fa + L), 0, 64);
   }
-  const r0 = K.W.type === 'staff' ? 12 : L * 0.3, rm = lerp(L * 0.62, L + ext, 0.45);
-  const N = 9;
-  for (let k = 0; k <= N; k++) {
-    const tk = lerp(tStart, tEnd, k / N);
+  const Ro = L + ext;
+  const wmax = clamp(Ro * (K.W.type === 'greatsword' ? 0.6 : K.W.type === 'dagger' ? 0.7 : 0.52), 9, 50) * (mv.finisher ? 1.15 : 1);
+  const n = TN;
+  for (let k = 0; k < n; k++) {
+    const u = k / (n - 1), tk = lerp(tStart, tEnd, u);
     resetPose(PT); attackPose(PT, ST2, p, K, mv, tk);
     solveUpper(PT, K, SK2);
     const hx = which === 2 ? SK2.h2x : SK2.h1x, hy = which === 2 ? SK2.h2y : SK2.h1y, w = which === 2 ? PT.w2 : PT.w1;
     const cw = Math.cos(w), sw = Math.sin(w);
-    tx0(PT, hx + cw * r0, hy + sw * r0); TRX0[k] = TX; TRY0[k] = TY;
-    tx0(PT, hx + cw * rm, hy + sw * rm); TRXM[k] = TX; TRYM[k] = TY;
-    tx0(PT, hx + cw * (L + ext), hy + sw * (L + ext)); TRX1[k] = TX; TRY1[k] = TY;
+    const wk = wmax * Math.pow(u, 1.3);
+    tx0(PT, hx + cw * Ro, hy + sw * Ro); TRX1[k] = TX; TRY1[k] = TY;
+    tx0(PT, hx + cw * (Ro - wk * 0.12), hy + sw * (Ro - wk * 0.12)); TRXE[k] = TX; TRYE[k] = TY;
+    tx0(PT, hx + cw * (Ro - wk * 0.42), hy + sw * (Ro - wk * 0.42)); TRXM[k] = TX; TRYM[k] = TY;
+    tx0(PT, hx + cw * (Ro - wk), hy + sw * (Ro - wk)); TRX0[k] = TX; TRY0[k] = TY;
   }
-  solveUpper(E.P, K, SK2);
   const c = G.c;
-  const el = mv.element || K.W.element;
-  const tc = mv.slash?.color || (el ? EL_COL[el] : K.W.type === 'greatsword' ? '#ffd9a8' : K.W.type === 'staff' ? '#fff2b0' : '#cfe0ff');
-  const hot = mv.finisher ? 1.25 : 1;
   c.save(); c.globalCompositeOperation = 'lighter';
-  for (let k = 1; k <= N; k++) {
-    const a = Math.pow(k / N, 1.7) * fade * hot;
-    c.fillStyle = ra(tc, a * 0.2);
-    c.beginPath(); c.moveTo(TRX0[k - 1], TRY0[k - 1]); c.lineTo(TRXM[k - 1], TRYM[k - 1]); c.lineTo(TRXM[k], TRYM[k]); c.lineTo(TRX0[k], TRY0[k]); c.closePath(); c.fill();
-    c.fillStyle = ra(tc, a * 0.42);
-    c.beginPath(); c.moveTo(TRXM[k - 1], TRYM[k - 1]); c.lineTo(TRX1[k - 1], TRY1[k - 1]); c.lineTo(TRX1[k], TRY1[k]); c.lineTo(TRXM[k], TRYM[k]); c.closePath(); c.fill();
-  }
-  // 칼끝 빛줄기 (새로울수록 굵고 밝게)
-  c.lineCap = 'round';
-  for (let k = 1; k <= N; k++) {
-    const a = Math.pow(k / N, 1.3) * fade;
-    c.strokeStyle = ra('#ffffff', 0.9 * a); c.lineWidth = (mv.finisher ? 2.6 : 1.7) * (0.35 + 0.65 * k / N);
-    c.beginPath(); c.moveTo(TRX1[k - 1], TRY1[k - 1]); c.lineTo(TRX1[k], TRY1[k]); c.stroke();
-  }
+  crescent(c, n, trailColor(K, mv), fade * (mv.finisher ? 1.15 : 1));
+  // 칼끝 섬광
+  glow(TRX1[n - 1], TRY1[n - 1], 10 + wmax * 0.25, mx(trailColor(K, mv), '#ffffff', 0.5), 0.5 * fade);
   c.restore();
 }
-/** 회전 베기(가로) 궤적: 타원 */
+/** 회전 베기(가로) 궤적: 납작한 원 위의 초승달 + 옅은 전체 고리 */
 function drawSpinTrail(E, K, p, mv, R, cy) {
-  if (G.tint || !G.fx || ST.ph !== 1 && !(ST.ph === 2 && ST.u < 0.2)) return;
-  const c = G.c, th = ST.th, fade = ST.ph === 2 ? 1 - ST.u / 0.2 : 1;
-  const el = mv.element || K.W.element;
-  const tc = el ? EL_COL[el] : K.W.type === 'whip' ? '#fff2d0' : K.W.type === 'greatsword' ? '#ffe2b8' : '#dfeaff';
+  if (G.tint || !G.fx) return;
+  if (!(ST.ph === 1 || (ST.ph === 2 && ST.u < 0.25))) return;
+  const c = G.c, th = ST.th, fade = ST.ph === 2 ? 1 - ST.u / 0.25 : 1;
+  const tc = trailColor(K, mv);
+  const span = Math.min(th + 0.25, 3.8), wmax = R * 0.42, n = TN;
   c.save(); c.globalCompositeOperation = 'lighter';
-  c.translate(0, cy); c.scale(1, 0.24);
-  const seg = 18, span = Math.min(th + 0.3, 4.2);
-  for (let i = 0; i < seg; i++) {
-    const a0 = th - span * (i / seg), a1 = th - span * ((i + 1) / seg), k = 1 - i / seg;
-    c.strokeStyle = ra(tc, k * k * 0.55 * fade); c.lineWidth = k * 22 + 3;
-    c.beginPath(); c.arc(0, 0, R * (0.82 + 0.1 * k), a1, a0); c.stroke();
-    c.strokeStyle = ra('#ffffff', k * k * 0.9 * fade); c.lineWidth = 2.2 + k * 2.4;
-    c.beginPath(); c.arc(0, 0, R, a1, a0); c.stroke();
+  c.translate(0, cy); c.scale(1, 0.27);
+  c.strokeStyle = ra(tc, 0.13 * fade); c.lineWidth = wmax * 0.55;
+  c.beginPath(); c.arc(0, 0, R - wmax * 0.3, 0, TAU); c.stroke();
+  for (let k = 0; k < n; k++) {
+    const u = k / (n - 1), a = th - span * (1 - u), wk = wmax * Math.pow(u, 1.2), ca = Math.cos(a), sa = Math.sin(a);
+    TRX1[k] = ca * R; TRY1[k] = sa * R;
+    TRXE[k] = ca * (R - wk * 0.12); TRYE[k] = sa * (R - wk * 0.12);
+    TRXM[k] = ca * (R - wk * 0.42); TRYM[k] = sa * (R - wk * 0.42);
+    TRX0[k] = ca * (R - wk); TRY0[k] = sa * (R - wk);
   }
+  crescent(c, n, tc, fade * 1.1);
   c.restore();
 }
-/** 찌르기 섬광: 칼끝에서 판정 끝까지 */
+/** 찌르기 섬광: 칼끝에서 판정 끝까지 뻗는 창 모양 빛 + 흰 심 */
 function drawStreak(E, K, p, mv, which) {
   if (G.tint || !G.fx || ST.ph !== 1 || !mv.box) return;
   const reach = 1 + ((p.stats?.reach ?? 0) / 100);
   const s = SK, P = E.P;
   const hx = which === 2 ? s.h2x : s.h1x, hy = which === 2 ? s.h2y : s.h1y, w = which === 2 ? P.w2 : P.w1;
   const L = weaponReach(K.W);
-  tx0(P, hx + Math.cos(w) * L, hy + Math.sin(w) * L); const x0 = TX, y0 = TY;
+  tx0(P, hx + Math.cos(w) * L * 0.6, hy + Math.sin(w) * L * 0.6); const x0 = TX, y0 = TY;
   const x1 = (mv.box.x + mv.box.w * reach) / E.hs;
-  if (x1 <= x0) return;
-  const k = 1 - ST.u;
+  if (x1 <= x0 + 4) return;
+  const k = 1 - ST.u * 0.7, tc = trailColor(K, mv), hw = mv.finisher || mv.lunge > 300 ? 4.2 : 3;
   const c = G.c;
   c.save(); c.globalCompositeOperation = 'lighter';
-  const g = c.createLinearGradient(x0, 0, x1, 0);
-  g.addColorStop(0, ra('#ffffff', 0.9 * k)); g.addColorStop(0.6, ra(K.W.glowC || '#bfe0ff', 0.5 * k)); g.addColorStop(1, ra('#bfe0ff', 0));
-  c.fillStyle = g; c.beginPath(); c.moveTo(x0, y0 - 2.6); c.lineTo(x1, y0); c.lineTo(x0, y0 + 2.6); c.closePath(); c.fill();
+  let g = c.createLinearGradient(x0, 0, x1, 0);
+  g.addColorStop(0, ra(tc, 0)); g.addColorStop(0.25, ra(tc, 0.55 * k)); g.addColorStop(1, ra(tc, 0.1 * k));
+  c.fillStyle = g; c.beginPath(); c.moveTo(x0, y0 - hw * 0.4); c.quadraticCurveTo(lerp(x0, x1, 0.55), y0 - hw, x1, y0); c.quadraticCurveTo(lerp(x0, x1, 0.55), y0 + hw, x0, y0 + hw * 0.4); c.closePath(); c.fill();
+  g = c.createLinearGradient(x0, 0, x1, 0);
+  g.addColorStop(0, ra('#ffffff', 0.2 * k)); g.addColorStop(0.5, ra('#ffffff', 0.95 * k)); g.addColorStop(1, ra('#ffffff', 0));
+  c.fillStyle = g; c.beginPath(); c.moveTo(x0, y0 - 0.6); c.lineTo(x1, y0); c.lineTo(x0, y0 + 0.6); c.closePath(); c.fill();
+  // 속도선
+  c.strokeStyle = ra(tc, 0.45 * k); c.lineWidth = 0.6;
+  c.beginPath();
+  for (let i = 0; i < 3; i++) { const yy = y0 + (i - 1) * (hw + 2.5), xs = lerp(x0, x1, 0.15 + 0.2 * h01(i + Math.floor(ST.t * 60))); c.moveTo(xs, yy); c.lineTo(lerp(xs, x1, 0.7), yy); }
+  c.stroke();
+  glow(x1 - 4, y0, 12, tc, 0.55 * k);
   c.restore();
 }
 

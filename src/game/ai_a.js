@@ -91,6 +91,59 @@ AI_A.fleer = {
   },
 };
 
+// ───────────────────────── 흡혈 박쥐: 천장에 매달림(없으면 제자리 날갯짓) → 떨어지며 급강하 → 사인파 비행 ─────────────────────────
+AI_A.vbat = {
+  init(e) { e.phase = rand(0, TAU); e.placed = false; e.setState('hang'); },
+  update(e, world, dt) {
+    const p = e.player, P = e.params;
+    if (!e.placed) {
+      // 배치 보정: 위쪽 4타일 안에 천장이 있으면 그 밑에 매달리고, 없으면 공중에서 날갯짓하며 대기
+      e.placed = true;
+      let ceil = null;
+      for (let yy = e.y; yy > e.y - TILE * 4; yy -= TILE / 4) if (solidAt(world, e.cx, yy)) { ceil = (Math.floor(yy / TILE) + 1) * TILE; break; }
+      if (ceil != null && P.hang !== false) { e.y = ceil + 2; e.setState('hang'); }
+      else { if (solidAt(world, e.cx, e.bottom + 4)) e.y -= 60; e.setState('hover'); }
+      e.baseY = e.y; e.hx = e.cx;
+    }
+    if (!p) return;
+    const dx = p.cx - e.cx, adx = Math.abs(dx);
+    const wake = (P.wake ?? 260);
+    switch (e.state) {
+      case 'hang':
+        e.vx = 0; e.vy = 0; e.setAnim('hang');
+        if (adx < wake && p.bottom > e.y - 20 && p.y - e.bottom < 420) { e.setState('drop'); e.facing = Math.sign(dx) || 1; audio.sfx('bat', { vol: 0.5 }); }
+        return;
+      case 'hover':
+        e.setAnim('fly');
+        e.phase += dt * 3;
+        e.vx = (e.hx + Math.sin(e.phase * 0.5) * 16 - e.cx) * 2; e.vy = (e.baseY + Math.sin(e.phase) * 8 - e.y) * 3;
+        e.facing = Math.sign(dx) || e.facing;
+        if (adx < wake && Math.abs(p.cy - e.cy) < 300) { e.setState('drop'); audio.sfx('bat', { vol: 0.5 }); }
+        return;
+      case 'drop':
+        // 예비동작: 날개를 펴며 살짝 떨어짐 (0.28초)
+        e.setAnim('fly'); e.facing = Math.sign(dx) || e.facing;
+        e.vx *= 0.8; e.vy = 90 * (1 - e.stateT / 0.28);
+        if (e.stateT > 0.28 / Math.sqrt(e.aggro)) {
+          const a = angleTo(e.cx, e.cy, p.cx, p.cy - 12), sp = e.speed * 2.3;
+          e.vx = Math.cos(a) * sp; e.vy = Math.sin(a) * sp; e.setState('dive');
+        }
+        return;
+      case 'dive':
+        e.setAnim('fly');
+        if (e.stateT > 0.5 || (e.vy > 0 && e.cy > p.cy + 10) || solidAt(world, e.cx, e.bottom + 4)) { e.setState('fly'); e.baseY = Math.min(e.y, p.y + 10); e.facing = Math.sign(e.vx) || e.facing; }
+        return;
+    }
+    // 사인파 비행 (지나쳐 멀어지면 되돌아옴)
+    e.setAnim('fly');
+    e.phase += dt * (P.freq ?? 5);
+    e.vx = e.facing * e.speed * 1.4;
+    e.vy = Math.cos(e.phase) * (P.amp ?? 150) + (e.baseY - e.y) * 0.8;
+    if (e.stateT > 1.1 && Math.sign(dx) !== e.facing && adx > 220) { e.facing *= -1; e.setState('fly'); }
+    else if (e.stateT > 0.3 && solidAt(world, e.cx + e.facing * (e.w / 2 + 6), e.cy)) { e.facing *= -1; e.setState('fly'); }
+  },
+};
+
 // ───────────────────────── 시체 까마귀: 앉아 있다가 울고 급강하 ─────────────────────────
 AI_A.diver = {
   init(e) { e.setState(e.params.perch === false ? 'hover' : 'perch'); e.cool = rand(0.6, 1.4); },

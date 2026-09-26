@@ -26,7 +26,7 @@ export const ENEMIES_A = {
   // ───────────────────────── s01 불타는 마을 ─────────────────────────
   bat: {
     id: 'bat', name: '흡혈 박쥐', lv: 1, hp: 10, atk: 7, def: 0, exp: 3, gold: [1, 3], score: 100,
-    size: { w: 30, h: 22 }, ai: 'bat', aiParams: { wake: 260, amp: 150, freq: 5 }, render: 'bat', flying: true, speed: 110,
+    size: { w: 34, h: 26 }, ai: 'vbat', aiParams: { wake: 260, amp: 150, freq: 5 }, render: 'bat', flying: true, speed: 110,
     material: 'flesh', weak: ['holy', 'fire'], drops: [{ id: 'heart', p: 0.2 }, { id: 'm_fang', p: 0.04 }],
     sfxDie: 'bat', desc: '악마성의 그늘에서 번식하는 흡혈 박쥐. 처마 밑에 거꾸로 매달려 있다가 사람의 체온을 느끼면 급강하한다.',
   },

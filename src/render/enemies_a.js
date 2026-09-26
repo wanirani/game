@@ -1432,6 +1432,10 @@ function drawHumanoid(ctx, e, o) {
       ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = ga;
     }
   } else if (pose === 'shovel') {
+    // 삽날이 땅을 뚫지 않게: 평소엔 날 끝을 바닥에 대고 기대 서며, 퍼 올리기 예비동작에서도 지면 아래로 내려가지 않음
+    const gA = Math.acos(clamp(-bhy / (60 * s), 0.05, 1));
+    if (anim !== 'slam' && anim !== 'fling') wA = gA + (walking ? Math.sin(ph) * 0.05 : br * 0.015);
+    else if (anim === 'fling') wA = Math.max(wA, gA);
     ctx.save(); ctx.translate(bhx, bhy); ctx.rotate(-wA);
     drawShovel(ctx, s);
     ctx.restore();
@@ -1811,17 +1815,23 @@ function drawBat(ctx, e, pal) {
   ctx.save(); ctx.translate(2, -2); batWing(ctx, 22, dive ? 0.9 : fl, pal.fur, pal.mem, pal.bone); ctx.restore();
   ctx.restore();
 }
+/** 작은 비행체는 판정보다 크게 그려 실루엣을 살림 (몸통 중심 기준 확대) */
+function upscale(ctx, cy, k) { ctx.translate(0, cy); ctx.scale(k, k); ctx.translate(0, -cy); }
 RENDER_A.bat = (ctx, e, world, o) => {
   FL = !!o?.flash;
+  ctx.save(); upscale(ctx, e.anim === 'hang' ? -22 : -13, 1.4);
   drawBat(ctx, e, { fur: '#3a2a3a', mem: '#4a1a2e', bone: '#8a5a6a', ear: '#8a3a4a', eye: '#ff2a3a' });
+  ctx.restore();
   FL = false;
 };
 RENDER_A.golden_bat = (ctx, e, world, o) => {
   FL = !!o?.flash;
   const blink = (e.life ?? 9) < 2 ? (Math.sin(e.t * 40) > 0 ? 0.35 : 1) : 1;
   const ga = ctx.globalAlpha; ctx.globalAlpha = ga * blink;
-  glow(ctx, 0, -11, 34, '#ffd84a', 0.55 + 0.2 * Math.sin(e.t * 8));
+  glow(ctx, 0, -11, 40, '#ffd84a', 0.55 + 0.2 * Math.sin(e.t * 8));
+  ctx.save(); upscale(ctx, -12, 1.3);
   drawBat(ctx, e, { fur: '#c89a2a', mem: '#e8b83a', bone: '#fff0b0', ear: '#ffe080', eye: '#ffffff', flap: 24 });
+  ctx.restore();
   // 반짝이
   if (!FL) for (let i = 0; i < 4; i++) {
     const p = (e.t * 1.3 + i * 0.25) % 1;
@@ -1842,8 +1852,8 @@ RENDER_A.crow = (ctx, e, world, o) => {
   if (perch) { cy = -12; rot = -0.35; }
   if (alert) { cy = -12; rot = -0.2 - 0.1 * Math.sin(e.animT * 30); }
   if (dive) { const a = Math.atan2(e.vy ?? 200, Math.abs(e.vx ?? 200) + 1); rot = clamp(a, -0.6, 1.3); }
-  if (perch) shadow(ctx, 10, 0.3);
-  ctx.save(); ctx.translate(0, cy); ctx.rotate(rot);
+  if (perch) shadow(ctx, 12, 0.3);
+  ctx.save(); upscale(ctx, 0, 1.35); ctx.translate(0, cy); ctx.rotate(rot);
   // 뒤 날개
   if (!perch) { ctx.save(); ctx.translate(-2, -3); ctx.scale(-0.9, 1); featherWing(ctx, 22, dive ? -1.3 : alert ? 1.0 : flap, dk(col, -0.2), sheen); ctx.restore(); }
   // 꼬리
@@ -1873,7 +1883,7 @@ RENDER_A.crow = (ctx, e, world, o) => {
     ink(ctx, cyl(ctx, 'crowfw', -12, 6, dk(col, -0.05)), 1.6);
   } else { ctx.save(); ctx.translate(1, -3); featherWing(ctx, 24, dive ? -1.3 : alert ? 1.0 : flap, col, sheen); ctx.restore(); }
   ctx.restore();
-  if (alert && !FL) glint(ctx, 10, cy - 9, 7, '#ff6060', 0.5 + 0.5 * Math.sin(e.animT * 25));
+  if (alert && !FL) glint(ctx, 14, cy * 1.35 - 12, 8, '#ff6060', 0.5 + 0.5 * Math.sin(e.animT * 25));
   FL = false;
 };
 

@@ -111,6 +111,12 @@ export class Enemy extends Entity {
       if (this.dying <= 0) this.dead = true;
       return;
     }
+    // 잠복: 플레이어와 멀리 떨어진 적은 깨어나기 전까지 대기 (넓은 방의 비행형이 시작부터 한꺼번에 몰려오지 않도록)
+    if (!this.awake) {
+      const p = world.player;
+      if (p && (Math.abs(p.cx - this.cx) > (this.def.wakeX ?? 900) || Math.abs(p.cy - this.cy) > (this.def.wakeY ?? 620))) return;
+      this.awake = true;
+    }
     if (world.timeStop > 0 && !this.def.ignoreTimeStop) { return; }
     if (this.stun > 0) {
       this.stun -= dt;

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>레벨 미니맵 (levelsA)</title>
+<style>
+  body { margin: 0; background: #0a0710; color: #e8dcc0; font: 13px sans-serif; }
+  h2 { margin: 10px 12px 2px; font-size: 15px; color: #e8c872; }
+  .room { margin: 4px 12px 14px; }
+  .room span { display: block; margin-bottom: 3px; color: #b8a890; }
+  canvas { image-rendering: pixelated; border: 1px solid #3a2a40; }
+</style>
+</head>
+<body>
+<script type="module">
+// 스테이지 방들을 미니맵으로 그려 레이아웃을 한눈에 확인 (?stage=s01&s=6)
+import { STAGES } from '../src/data/stages.js';
+const q = new URLSearchParams(location.search);
+const sid = q.get('stage') || 's01';
+const S = Number(q.get('s') || 6);
+const st = STAGES[sid];
+const COL = {
+  '#': '#6a5a4a', '%': '#4a3a2a', '=': '#c8a060', B: '#a06a40', H: '#ff40ff', K: '#40ffff', '^': '#ff3030', '~': '#3070d0', h: '#8a6aff',
+  C: '#ffd060', T: '#ffa020', P: '#40ff40', S: '#ff2050', G: '#fff0b0', $: '#ffe000', D: '#8a4a20', X: '#ff0000', M: '#60c0ff', V: '#60ffc0', F: '#a08870',
+  N: '#40ff90', '!': '#ffffff', '@': '#ff80ff', p: '#80ffff', m: '#ff8080', L: '#ffb060', W: '#6070c0', '|': '#3a3050',
+};
+document.body.insertAdjacentHTML('beforeend', `<h2>${sid} ${st.name} — ${Object.keys(st.rooms).length}개 방</h2>`);
+for (const [id, room] of Object.entries(st.rooms)) {
+  const rows = room.map, H = rows.length, W = Math.max(...rows.map((r) => r.length));
+  const div = document.createElement('div'); div.className = 'room';
+  const exits = ['exitLeft', 'exitRight', 'exitUp', 'exitDown', 'next'].filter((k) => room[k]).map((k) => `${k}→${room[k]}`).join(' ');
+  div.innerHTML = `<span>${id} ${W}×${H} ${exits} ${room.doors ? 'doors→' + room.doors.join(',') : ''}</span>`;
+  const c = document.createElement('canvas'); c.width = W * S; c.height = H * S;
+  const g = c.getContext('2d');
+  g.fillStyle = '#120c18'; g.fillRect(0, 0, c.width, c.height);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const ch = rows[y][x] ?? ' ';
+    if (ch === ' ' || ch === '.') continue;
+    if (ch >= '1' && ch <= '9') { g.fillStyle = '#ff5050'; g.beginPath(); g.arc(x * S + S / 2, y * S + S / 2, S * 0.45, 0, 7); g.fill(); continue; }
+    g.fillStyle = COL[ch] || '#fff';
+    if ('CTPSG$DNm p!@LW'.includes(ch)) { g.fillRect(x * S + 1, y * S + 1, S - 2, S - 2); }
+    else g.fillRect(x * S, y * S, S, S);
+  }
+  div.appendChild(c); document.body.appendChild(div);
+}
+window.__done = true;
+</script>
+</body>
+</html>

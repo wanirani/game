@@ -161,7 +161,7 @@ export function h01(n) { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; ret
 
 // ───────────────────────── 무기 ─────────────────────────
 // 무기 로컬 좌표: 손잡이(쥔 곳)=원점, +x 방향이 칼끝/총구/지팡이 머리
-const BLADE_LEN = { sword: [48, 50, 52, 52, 54, 57], greatsword: [70, 74, 76, 78, 80, 84], dagger: [15, 18, 16, 15, 17, 19] };
+const BLADE_LEN = { sword: [48, 50, 52, 52, 54, 57], greatsword: [58, 61, 63, 64, 66, 70], dagger: [15, 18, 16, 15, 17, 19] };
 const MUZZLE = [17, 15, 20, 14, 17, 21];
 /** 무기 끝(칼끝·총구·지팡이 머리)까지 거리 */
 export function weaponReach(W) {
@@ -427,7 +427,8 @@ function paintWhipHandle(W) {
 }
 
 /** 강화/희귀도 발광: 칼날 따라 + 불꽃/번개 + 무지개 (무기 로컬 좌표, 길이 L) */
-function weaponAura(W, L, base) {
+/** 강화 발광: wm = 무기 계열별 폭 배율 (단검·총은 작게) */
+function weaponAura(W, L, base, wm = 1) {
   const lv = W.glowLv || 0;
   if (!lv || G.tint || !G.fx) return;
   const c = G.c, t = G.t;
@@ -436,12 +437,13 @@ function weaponAura(W, L, base) {
   c.save(); c.globalCompositeOperation = 'lighter';
   const pulse = 0.65 + 0.35 * Math.sin(t * 7);
   c.lineCap = 'round';
-  c.strokeStyle = lv >= 3 ? col : ra(col, 0.28 * pulse); c.lineWidth = 6 + lv * 1.2;
-  if (lv >= 3) c.globalAlpha = 0.28 * pulse;
+  // 바깥 번짐 → 안쪽 심지 (두 겹)
+  c.strokeStyle = lv >= 3 ? col : ra(col, 0.2 * pulse); c.lineWidth = (4.5 + lv * 1.3) * wm;
+  if (lv >= 3) c.globalAlpha = 0.22 * pulse;
   c.beginPath(); c.moveTo(base, 0); c.lineTo(L, 0); c.stroke();
   c.globalAlpha = 1;
-  c.strokeStyle = lv >= 3 ? col : ra(col, 0.55); c.lineWidth = 1.6;
-  if (lv >= 3) c.globalAlpha = 0.6;
+  c.strokeStyle = lv >= 3 ? col : ra(col, 0.3 * pulse); c.lineWidth = (2.2 + lv * 0.5) * wm;
+  if (lv >= 3) c.globalAlpha = 0.35;
   c.beginPath(); c.moveTo(base, 0); c.lineTo(L, 0); c.stroke();
   c.globalAlpha = 1;
   if (lv >= 2) {
@@ -451,9 +453,9 @@ function weaponAura(W, L, base) {
       c.beginPath();
       const seed = Math.floor(t * 18);
       for (let k = 0; k < 2; k++) {
-        let x = base + h01(seed + k * 7) * L * 0.3, y = 0;
+        let x = base + h01(seed + k * 7) * (L - base) * 0.2, y = 0;
         c.moveTo(x, y);
-        for (let i = 0; i < 5; i++) { x += L * 0.12; y = (h01(seed * 3 + i + k * 11) - 0.5) * 9; c.lineTo(x, y); }
+        for (let i = 0; i < 5; i++) { x += (L - base) * 0.16; y = (h01(seed * 3 + i + k * 11) - 0.5) * 9 * Math.max(0.5, wm); c.lineTo(x, y); }
       }
       c.stroke();
     } else {
@@ -462,7 +464,7 @@ function weaponAura(W, L, base) {
       for (let i = 0; i < 6; i++) {
         const u = (i + 0.5) / 6, x = base + (L - base) * u;
         const ph = (t * 3 + i * 0.37) % 1;
-        const hgt = (5 + 5 * h01(i + 3)) * (1 - ph);
+        const hgt = (5 + 5 * h01(i + 3)) * (1 - ph) * Math.max(0.5, wm);
         c.fillStyle = ra(fc, 0.55 * (1 - ph));
         c.beginPath(); c.moveTo(x - 2, -1); c.quadraticCurveTo(x - 1, -hgt * 0.6, x + 1.5 - ph * 3, -hgt); c.quadraticCurveTo(x + 1, -hgt * 0.5, x + 2.2, -1); c.fill();
       }
@@ -489,11 +491,11 @@ export function drawWeapon(W, x, y, ang, opt) {
   c.translate(x, y); c.rotate(ang);
   if (opt && opt.flipY) c.scale(1, -1);
   const type = W.type;
-  if (type === 'sword') { paintSword(W, 'sword'); weaponAura(W, weaponReach(W), 3); }
-  else if (type === 'greatsword') { paintSword(W, 'great'); weaponAura(W, weaponReach(W), 6); }
-  else if (type === 'dagger') { paintSword(W, 'dagger'); weaponAura(W, weaponReach(W), 2); }
-  else if (type === 'gun') { c.scale(1.3, 1.3); paintGun(W, opt?.fire ?? 0); weaponAura(W, MUZZLE[W.style - 1], 0); }
-  else if (type === 'staff') { paintStaff(W); weaponAura(W, 36, 18); }
+  if (type === 'sword') { paintSword(W, 'sword'); weaponAura(W, weaponReach(W), 3, 0.9); }
+  else if (type === 'greatsword') { paintSword(W, 'great'); weaponAura(W, weaponReach(W), 6, 1.1); }
+  else if (type === 'dagger') { paintSword(W, 'dagger'); weaponAura(W, weaponReach(W), 2, 0.55); }
+  else if (type === 'gun') { c.scale(1.3, 1.3); paintGun(W, opt?.fire ?? 0); weaponAura(W, MUZZLE[W.style - 1], 1, 0.42); }
+  else if (type === 'staff') { paintStaff(W); weaponAura(W, 36, 20, 0.9); }
   else if (type === 'whip') paintWhipHandle(W);
   c.restore();
 }
