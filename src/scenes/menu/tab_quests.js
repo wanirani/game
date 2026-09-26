@@ -51,14 +51,15 @@ export class QuestsTab extends Tab {
       if (nav.left) this.setSect(this.si - 1);
       if (nav.right) this.setSect(this.si + 1);
       if (nav.down || nav.confirm) { this.sub = 'list'; audio.sfx('menu_move'); }
-      if (nav.up || nav.cancel) { this.sub = 'list'; this.m.focusTabs(); }
+      if (nav.up) { this.sub = 'list'; this.m.focusTabs(); }
+      if (nav.cancel) { this.sub = 'list'; audio.sfx('menu_cancel'); }
       return;
     }
     if (nav.left) this.setSect(this.si - 1);
     if (nav.right) this.setSect(this.si + 1);
     if (nav.up) { if (this.i > 0) { this.i--; audio.sfx('menu_move'); } else { this.sub = 'sect'; audio.sfx('menu_move'); } }
     if (nav.down && this.i < n - 1) { this.i++; audio.sfx('menu_move'); }
-    if (nav.cancel) this.m.focusTabs();
+    if (nav.cancel) this.m.close();
   }
   hints() { return [['←→', '분류'], ['↑↓', '퀘스트', '퀘스트를 터치하면 자세히 볼 수 있습니다']]; }
 

@@ -611,6 +611,7 @@ export class MiniGame extends Scene {
     if (free) this.free = false;
     this.bet = affordableBet(st.gold, this.bet);
     const react = reactTo(rec, st);
+    rec.line = react.text; rec.mood = react.mood;
     this.result = popup ? { ...rec, title: title ?? DEFAULT_TITLE[tier], sub, t: -delay, shown: 0, line: react.text, mood: react.mood } : null;
     if (popup) this.phase = 'result';
     // 연출

@@ -142,7 +142,8 @@ export class InventoryTab extends Tab {
       if (nav.left) this.setFilter(this.fi - 1);
       if (nav.right) this.setFilter(this.fi + 1);
       if (nav.down || nav.confirm) { this.sub = 'grid'; audio.sfx('menu_move'); }
-      if (nav.up || nav.cancel) { this.sub = 'grid'; this.m.focusTabs(); }
+      if (nav.up) { this.sub = 'grid'; this.m.focusTabs(); }
+      if (nav.cancel) { this.sub = 'grid'; audio.sfx('menu_cancel'); }
       return;
     }
     let moved = false;
@@ -153,10 +154,10 @@ export class InventoryTab extends Tab {
     if (moved) audio.sfx('menu_move');
     if (nav.confirm && this.sel) this.openActions(this.sel);
     if (nav.alt2 && this.sel) this.lock(this.sel);
-    if (nav.cancel) this.m.focusTabs();
+    if (nav.cancel) this.m.close();
   }
   hints() {
-    if (this.sub === 'filter') return [['←→', '분류'], ['↓', '목록']];
+    if (this.sub === 'filter') return [['←→', '분류'], ['↓', '목록'], ['X', '돌아가기']];
     return [['↑↓←→', '고르기'], ['Z', '행동', '아이템을 한 번 더 터치하면 행동 메뉴'], ['A', SORTS[this.sortMode].name], ['C', '잠금']];
   }
 

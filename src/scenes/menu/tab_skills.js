@@ -78,7 +78,7 @@ export class SkillsTab extends Tab {
 
   update(dt, nav, ges, focused) {
     for (const [k, v] of this.pop) { const nv = v - dt * 1.6; if (nv <= 0) this.pop.delete(k); else this.pop.set(k, nv); }
-    if (!this.tree) { if (focused && (nav.cancel || nav.up)) this.m.focusTabs(); return; }
+    if (!this.tree) { if (focused && nav.up) this.m.focusTabs(); else if (focused && nav.cancel) this.m.close(); return; }
     // 포인터
     for (const n of this.nodeRects) {
       if (ges.hoverIn(n) && (this.sub !== 'tree' || this.col !== n.c || this.row !== n.r)) { this.sub = 'tree'; this.col = n.c; this.row = n.r; }
@@ -111,10 +111,10 @@ export class SkillsTab extends Tab {
     const id = this.idAt(this.col, this.row);
     if (nav.confirm && id) this.nodeMenu(id);
     if (nav.alt && id && D.isActive(D.SKILLS()[id]) && this.lv(id) > 0) this.slotMenu(id);
-    if (nav.cancel) this.m.focusTabs();
+    if (nav.cancel) this.m.close();
   }
   hints() {
-    if (this.sub === 'slots') return [['←→', '슬롯'], ['Z', '스킬 넣기', '슬롯을 터치해 스킬을 넣으세요']];
+    if (this.sub === 'slots') return [['←→', '슬롯'], ['Z', '스킬 넣기', '슬롯을 터치해 스킬을 넣으세요'], ['X', '트리로']];
     return [['↑↓←→', '스킬'], ['Z', '배우기·강화', '스킬을 한 번 더 터치하면 배우기'], ['A', '슬롯 등록']];
   }
 

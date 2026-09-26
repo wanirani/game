@@ -13,7 +13,7 @@ import { ensureHero } from '../../game/state.js';
 import { composeLook, expToNext } from '../../game/stats.js';
 import { findItem } from '../../game/inventory.js';
 import { ITEMS } from '../../data/items.js';
-import { hitRect, nameOf, Snap } from './common.js';
+import { hitRect, nameOf, Snap, padHidden } from './common.js';
 import { glow } from './facades.js';
 
 const STAR_KEYS = ['공격', '방어', '속도', '마법', '사거리'];
@@ -29,7 +29,9 @@ export class PartyScene extends Scene {
     this.fx = new Particles(300);
     this.leaving = null;
     audio.sfx('menu_ok');
+    padHidden(true);
   }
+  exit() { padHidden(false); }
   get state() { return this.game.state; }
 
   update(dt) {

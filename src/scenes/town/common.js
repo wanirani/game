@@ -15,6 +15,10 @@ import { currentHero } from '../../game/state.js';
 import { NPCS } from '../../data/npcs.js';
 import { TOWN_NPCS } from '../../data/town.js';
 import { glow } from './facades.js';
+import * as MenuUI from '../menu/common.js';
+
+/** 가상 패드 숨김 (메뉴 담당의 참조 카운트 방식 공유) */
+export function padHidden(on) { try { MenuUI.hidePad?.(on); } catch { /* 무시 */ } }
 
 export const SLOT_LABEL = { weapon: '무기', head: '투구', body: '갑옷', cloak: '망토', acc: '장신구', consumable: '소모품', material: '재료', key: '귀중품' };
 export const WTYPE_LABEL = { whip: '채찍', sword: '장검', greatsword: '대검', dagger: '단검', gun: '총', staff: '지팡이' };
@@ -405,8 +409,9 @@ export class ServiceScene extends Scene {
     for (let i = 0; i < 26; i++) this.embers.push({ x: rand(0, 1), y: rand(0, 1), v: rand(0.3, 1), p: rand(0, TAU), s: rand(0.6, 1.6) });
     if (this.music) audio.music(this.music);
     audio.sfx('door');
+    padHidden(true);
   }
-  exit() { if (this.music) audio.music('hub'); }
+  exit() { padHidden(false); if (this.music) audio.music('hub'); }
   get state() { return this.game.state; }
   get hero() { return currentHero(this.game.state); }
   talk(kindOrText) {

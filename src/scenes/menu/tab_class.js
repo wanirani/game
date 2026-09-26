@@ -101,7 +101,7 @@ export class ClassTab extends Tab {
     }
     if (nav.left && cur.parent) go(cur.parent);
     if (nav.confirm) this.view.showcase();
-    if (nav.cancel) this.m.focusTabs();
+    if (nav.cancel) this.m.close();
   }
   hints() { return [['↑↓←→', '직업 선택', '직업 카드를 터치해 자세히 보기'], ['Z', '동작 보기']]; }
 

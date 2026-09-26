@@ -2203,7 +2203,7 @@ function uHit(w, p, mv, o = {}) {
 }
 function ultFinal(w, p, mv, col, o = {}) {
   uHit(w, p, mv, { hitstop: 0.3, shake: 18, kb: [420, -620], launch: true, ...o });
-  w.game.flash(col, 0.95, 1.6);
+  w.game.flash(col, 0.85, 2.8);
   shake(w, 18, 0.6); w.camera.punchZoom(1.14, 0.3);
   audio.sfx('explode'); audio.sfx('crit', { pitch: 0.7 });
 }
@@ -2232,14 +2232,13 @@ ULTS.kael = (p, w) => {
       ctx.globalCompositeOperation = ADD;
       if (lt < 0.3) { glow(ctx, p.cx, p.cy - 10, 60 + lt * 300, '#fff2b0', lt / 0.3 * 0.6); return; }
       const g = ease.outCubic(clamp((lt - 0.3) / 0.22, 0, 1)), fin = lt > 1.25 ? clamp((lt - 1.25) / 0.12, 0, 1) : 0;
-      const fade = clamp((e.life - lt) / 0.5, 0, 1), th = (22 + Math.sin(lt * 30) * 3) * (1 + fin * 2.5) * fade;
+      const fade = clamp((e.life - lt) / 0.5, 0, 1), th = (34 + Math.sin(lt * 30) * 4) * (1 + fin * 2) * fade;
       beamV(ctx, cx, cy - cam.vh * g, cy + cam.vh * g, th * 1.6, '#ffd870', 0.55 * fade);
       beamV(ctx, cx, cy - cam.vh * g, cy + cam.vh * g, th * 0.55, '#ffffff', fade, '#ffffff');
       beamH(ctx, cx - cam.vw * g, cx + cam.vw * g, cy, th * 1.6, '#ffd870', 0.55 * fade);
       beamH(ctx, cx - cam.vw * g, cx + cam.vw * g, cy, th * 0.55, '#ffffff', fade, '#ffffff');
       glow(ctx, cx, cy, 160 * (1 + fin), '#fff2b0', 0.8 * fade);
-      flare(ctx, cx, cy, 220 * g * (1 + fin * 0.8), '#fff2b0', fade, lt * 0.6);
-      flare(ctx, cx, cy, 140 * g, '#ffffff', fade, -lt * 0.9 + 0.4);
+      flare(ctx, cx, cy, 150 * g * (1 + fin * 0.8), '#fff2b0', fade, Math.PI / 4 + lt * 0.3);
     },
     light(L, e) { L.add(cx, cy, 700, '#fff2b0', e.lt > 0.3 ? 1.5 : 0.6); L.add(p.cx, p.cy, 200, '#fff2b0', 1); },
   });
@@ -2262,7 +2261,7 @@ ULTS.sera = (p, w) => {
         while (e.d.rt >= 1) {
           e.d.rt--;
           const x = cam.x + rand(0, cam.vw), gy = groundAt(ww, x, cam.y + cam.vh * 0.3, 16 * TILE) ?? cam.y + cam.vh;
-          R.push({ x, gy, t: 0, wd: rand(3, 9) });
+          R.push({ x, gy, t: 0, wd: rand(7, 18) });
           if (Math.random() < 0.25) ww.fx.burst('holy', x, gy - 4, 3, { angle: -Math.PI / 2, spread: 1, speed: 180 });
         }
       }
@@ -2274,8 +2273,9 @@ ULTS.sera = (p, w) => {
       ctx.globalCompositeOperation = ADD;
       for (const r of e.d.rain) {
         const u = r.t / 0.28, y1 = lerp(cy, r.gy, Math.min(1, u * 3));
-        beamV(ctx, r.x, cy, y1, r.wd, '#fff2b0', (1 - u) * 0.9);
-        if (u > 0.3) glow(ctx, r.x, r.gy - 4, 40, '#fff2b0', (1 - u) * 0.7);
+        beamV(ctx, r.x, cy, y1, r.wd, '#ffe7a0', 1 - u);
+        beamV(ctx, r.x, y1 - 140, y1, r.wd * 0.5, '#ffffff', 1 - u, '#ffffff');
+        if (u > 0.3) glow(ctx, r.x, r.gy - 4, 50, '#fff2b0', (1 - u) * 0.8);
       }
       if (lt > 1.45) {
         const k = clamp((lt - 1.45) / 0.15, 0, 1), f2 = clamp((e.life - lt) / 0.5, 0, 1), W = cam.vw * 0.2 * k;

@@ -48,7 +48,7 @@ export class InnScene extends Scene {
     const rec = session.last;
     if (rec && rec !== this.lastSeen) {
       this.lastSeen = rec;
-      const r = reactTo(rec, st);
+      const r = rec.line ? { text: rec.line, mood: rec.mood } : reactTo(rec, st);
       this.say(r.text, r.mood);
       if (rec.win && !rec.free) this.fx.burst('gold', 130, 470, 18, { speed: 160 });
     }

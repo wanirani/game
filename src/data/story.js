@@ -1492,7 +1492,16 @@ export const SCRIPTS = {
 /** NPC 대화 스크립트 선택 (챕터/플래그/장소에 따라)
  *  1) 특수 상황(퀘스트 전달 등) → 2) 스테이지 전용 <npcId>_<stageId> → 3) 현재 챕터 이하의 가장 최근 _ch<N> (처음 한 번)
  *  → 4) default/팁/최근 챕터 대사 순환. stageId 는 대화가 일어난 World 의 스테이지 id (마을이면 생략) */
+const recentTalk = new Map(); // npcId → { id, t, state } : 같은 대화에서 여러 번 불려도(마을 허브의 존재 확인 + 대화 장면) 같은 결과를 돌려준다
 export function resolveNpcScript(npcId, state, stageId) {
+  const now = Date.now();
+  const r = recentTalk.get(npcId);
+  if (r && r.state === state && now - r.t < 1500) return r.id;
+  const id = pickNpcScript(npcId, state, stageId);
+  recentTalk.set(npcId, { id, t: now, state });
+  return id;
+}
+function pickNpcScript(npcId, state, stageId) {
   const p = state?.progress;
   const ch = p?.chapter ?? 0;
   if (npcId === 'npc_alberto' && state?.quests?.active?.el_letter && !p?.flags?.letter_delivered) return 'npc_alberto_letter';
@@ -1500,7 +1509,7 @@ export function resolveNpcScript(npcId, state, stageId) {
   let latest = null;
   for (let k = ch; k >= 0; k--) if (SCRIPTS[`${npcId}_ch${k}`]) { latest = `${npcId}_ch${k}`; break; }
   const seen = p?.seenScripts;
-  if (latest && seen && !seen.includes(latest)) { seen.push(latest); return latest; }
+  if (latest && seen && !seen.includes(latest)) { seen.push(latest); p.npcTalks ??= {}; p.npcTalks[npcId] = 0; return latest; } // 다음 대화부터 팁 순환
   if (latest && !seen) return latest;
   const pool = [];
   if (latest && !SCRIPTS[latest].some((l) => l.cmd === 'give' || l.cmd === 'gold' || l.cmd === 'unlockChar')) pool.push(latest);

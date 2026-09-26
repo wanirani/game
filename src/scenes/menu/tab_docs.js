@@ -64,7 +64,8 @@ export class DocsTab extends Tab {
     if (this.sub === 'mode') {
       if (nav.left || nav.right) this.setMode(1 - this.mode);
       if (nav.down || nav.confirm) { this.sub = 'grid'; audio.sfx('menu_move'); }
-      if (nav.up || nav.cancel) { this.sub = 'grid'; this.m.focusTabs(); }
+      if (nav.up) { this.sub = 'grid'; this.m.focusTabs(); }
+      if (nav.cancel) { this.sub = 'grid'; audio.sfx('menu_cancel'); }
       return;
     }
     if (this.mode === 0) {
@@ -82,7 +83,7 @@ export class DocsTab extends Tab {
       if (nav.left || nav.right) this.setMode(0);
     }
     if (nav.confirm) this.read();
-    if (nav.cancel) this.m.focusTabs();
+    if (nav.cancel) this.m.close();
   }
   hints() { return [['↑↓←→', '고르기'], ['Z', '읽기', '한 번 더 터치하면 읽을 수 있습니다']]; }
 

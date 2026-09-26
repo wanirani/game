@@ -77,7 +77,7 @@ export class BestiaryTab extends Tab {
     if (nav.down && this.i < n - 1) { this.i++; audio.sfx('menu_move'); }
     if (nav.left) { this.i = Math.max(0, this.i - 8); audio.sfx('menu_move'); }
     if (nav.right) { this.i = Math.min(n - 1, this.i + 8); audio.sfx('menu_move'); }
-    if (nav.cancel) this.m.focusTabs();
+    if (nav.cancel) this.m.close();
   }
   hints() { return [['↑↓', '고르기'], ['←→', '8칸씩'], ['', '', '끌어서 목록을 넘기세요']].filter((h) => h[0]); }
 

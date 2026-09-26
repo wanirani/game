@@ -260,7 +260,7 @@ export function circleStrike(world, attack, x, y, r) {
 let _zid = 0;
 /**
  * new Zone(boss, { x,y,w,h, warn(예고 초), life(판정 초), mv, element, kb, rehit, paint(ctx,z,world), tick(z,world,dt),
- *   onStart(z,world), onEnd(z,world), rects(z)→[rect] | line:{x0,y0,x1,y1,th} (판정 형태), harmless, z, light(L,z) })
+ *   onStart(z,world), onEnd(z,world), onHitP(z,world)(플레이어 적중 시), rects(z)→[rect] | line:{x0,y0,x1,y1,th} (판정 형태), harmless, z, light(L,z) })
  * z.k = 예고 진행 0→1, z.a = 판정 진행 0→1, z.on = 판정 중
  */
 export class Zone extends Entity {
@@ -270,7 +270,7 @@ export class Zone extends Entity {
     this.boss = boss; this.world = boss.world;
     this.z = o.z ?? 6;
     this.warn = o.warn ?? 0; this.dur = o.life ?? 0.3;
-    this.paint = o.paint; this.tick = o.tick; this.onStart = o.onStart; this.onEnd = o.onEnd; this.rects = o.rects; this.light = o.light;
+    this.paint = o.paint; this.tick = o.tick; this.onStart = o.onStart; this.onEnd = o.onEnd; this.rects = o.rects; this.light = o.light; this.onHitP = o.onHitP;
     this.line = o.line ?? null; this.circle = o.circle ?? null;
     this.harmless = !!o.harmless;
     this.data = o.data ?? {};
@@ -293,10 +293,12 @@ export class Zone extends Entity {
     const p = world.player;
     if (!p) return;
     this.attack.dir = Math.sign(p.cx - (this.line ? (this.line.x0 + this.line.x1) / 2 : this.cx)) || 1;
-    if (this.line) { const L = this.line; lineStrike(world, this.attack, L.x0, L.y0, L.x1, L.y1, L.th); }
-    else if (this.circle) circleStrike(world, this.attack, this.circle.x, this.circle.y, this.circle.r);
-    else if (this.rects) { for (const r of this.rects(this)) if (enemyStrike(world, r, this.attack)) break; }
-    else enemyStrike(world, this, this.attack);
+    let hit = false;
+    if (this.line) { const L = this.line; hit = lineStrike(world, this.attack, L.x0, L.y0, L.x1, L.y1, L.th); }
+    else if (this.circle) hit = circleStrike(world, this.attack, this.circle.x, this.circle.y, this.circle.r);
+    else if (this.rects) { for (const r of this.rects(this)) if (enemyStrike(world, r, this.attack)) { hit = true; break; } }
+    else hit = enemyStrike(world, this, this.attack);
+    if (hit) this.onHitP?.(this, world);
   }
   lights(L) { this.light?.(L, this); }
   draw(ctx, world) { if (this.paint) { ctx.save(); this.paint(ctx, this, world); ctx.restore(); } }

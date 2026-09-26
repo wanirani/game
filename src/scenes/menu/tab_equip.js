@@ -2,6 +2,7 @@
 import { text, FONT } from '../../core/ui.js';
 import { audio } from '../../core/audio.js';
 import { clamp } from '../../core/math.js';
+import { input } from '../../core/input.js';
 import { drawSlot } from '../../render/icons.js';
 import { Tab } from './base.js';
 import { HeroView, HeroStage, pedestal, accentOf } from './hero_view.js';
@@ -103,6 +104,7 @@ export class EquipTab extends Tab {
     this.m.changed();
     this.base();
     this.li = 0; this.sc.target = 0;
+    if (!input.touchMode) this.sub = 'slots';
   }
   unequipCurrent() {
     const slot = this.slot;
@@ -148,7 +150,7 @@ export class EquipTab extends Tab {
       if (nav.down && this.si < n - 1) { this.si++; this.li = 0; this.sc.reset(); this.rebuild(); audio.sfx('menu_move'); }
       if (nav.right || nav.confirm) { if (this.list.length) { this.sub = 'list'; this.li = 0; audio.sfx('menu_ok'); } else { audio.sfx('menu_cancel'); this.m.notify('교체할 수 있는 장비가 없습니다', PAL.dim); } }
       if (nav.alt) this.unequipCurrent();
-      if (nav.cancel) this.m.focusTabs();
+      if (nav.cancel) this.m.close();
     } else {
       const n = this.list.length;
       if (nav.up && this.li > 0) { this.li--; audio.sfx('menu_move'); }
@@ -159,7 +161,7 @@ export class EquipTab extends Tab {
     }
   }
   hints(focused) {
-    if (this.sub === 'list') return [['↑↓', '고르기'], ['Z', '장착', '한 번 더 터치하면 장착'], ['←', '장비 칸']];
+    if (this.sub === 'list') return [['↑↓', '고르기'], ['Z', '장착', '한 번 더 터치하면 장착'], [['←', 'X'], '장비 칸']];
     return [['↑↓', '장비 칸'], ['Z', '교체', '장비 칸을 터치해 교체할 장비를 고르세요'], ['A', '해제']];
   }
 

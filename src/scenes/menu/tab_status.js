@@ -96,7 +96,7 @@ export class StatusTab extends Tab {
       if (nav.right && this.col < 2) { this.col++; this.row = Math.min(this.row, this.colLen(this.col) - 1); }
     }
     if (nav.confirm) this.view.showcase();
-    if (nav.cancel) this.m.focusTabs();
+    if (nav.cancel) this.m.close();
   }
   hints() { return [['↑↓←→', '능력치 설명', '능력치를 터치하면 설명이 나옵니다'], ['Z', '동작 보기', '영웅을 터치하면 공격 동작을 봅니다']]; }
 

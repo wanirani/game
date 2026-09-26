@@ -51,7 +51,7 @@ export class SystemTab extends Tab {
     if (nav.up) { if (this.i > 0) { this.i--; audio.sfx('menu_move'); } else { this.m.focusTabs(); return; } }
     if (nav.down && this.i < acts.length - 1) { this.i++; audio.sfx('menu_move'); }
     if (nav.confirm) this.run(acts[this.i]);
-    if (nav.cancel) this.m.focusTabs();
+    if (nav.cancel) this.m.close();
   }
   hints() { return [['↑↓', '고르기'], ['Z', '결정', '버튼을 터치하세요']]; }
 

@@ -15,11 +15,12 @@ import { drawHero } from '../../render/hero.js';
 import { drawIcon } from '../../render/icons.js';
 import { CHARACTERS } from '../../data/characters.js';
 import { CLASSES } from '../../data/classes.js';
-import { NPCS } from '../../data/npcs.js';
+import * as NpcData from '../../data/npcs.js';
 import { SCRIPTS, resolveNpcScript } from '../../data/story.js';
 import * as QuestRt from '../../game/quests.js';
 import { TOWN_STAGE, BUILDINGS, TOWN_NPCS, TOWN_PROPS, TOWN_TALK, eliseInTown } from '../../data/town.js';
 import { FLOOR, drawFacades, facadeLights, prebakeFacades, setFacadeScale, anvilPos, glow } from './facades.js';
+import { padHidden } from './common.js';
 
 const RELIC_IDS = ['k_relic_1', 'k_relic_2', 'k_relic_3', 'k_relic_4', 'k_relic_5'];
 
@@ -65,7 +66,12 @@ export class HubScene extends Scene {
       if (e.kind === 'prop' && e.target !== undefined && e.constructor.name === 'Door') this.setupDoor(e);
       if (e.kind === 'npc') this.setupNpc(e);
     }
-    if (!eliseInTown(g.state)) for (const e of w.entities) if (e.npcId === 'npc_elise') e.dead = true;
+    for (const e of w.entities) {
+      if (e.kind !== 'npc') continue;
+      let vis = true;
+      try { vis = NpcData.npcVisible ? NpcData.npcVisible(e.npcId, g.state) : (e.npcId !== 'npc_elise' || eliseInTown(g.state)); } catch { vis = true; }
+      if (!vis) e.dead = true;
+    }
     w.entities = w.entities.filter((e) => !e.dead);
     w.enterDoor = (target) => this.enterTarget(target);
     w.drawNPC = (ctx, npc) => this.drawNpc(ctx, npc, w);
@@ -125,7 +131,7 @@ export class HubScene extends Scene {
     n.draw = (ctx, world) => {
       world.drawNPC(ctx, n);
       if (n.near) {
-        const nm = NPCS[n.npcId]?.name ?? spec.name ?? '';
+        const nm = NpcData.NPCS?.[n.npcId]?.name ?? spec.name ?? '';
         const y = n.y - 30 - Math.abs(Math.sin(world.time * 3)) * 3;
         text(ctx, nm, n.cx, y - 14, { size: 14, weight: 800, family: FONT.title, color: '#f3d690', align: 'center', ow: 3 });
         text(ctx, '▲ 대화', n.cx, y + 2, { size: 12, weight: 700, color: '#ffe7a0', align: 'center', ow: 3 });
@@ -136,7 +142,7 @@ export class HubScene extends Scene {
 
   drawNpc(ctx, npc, world) {
     const spec = TOWN_NPCS[npc.npcId] || {};
-    const look = NPCS[npc.npcId]?.look ?? spec.look;
+    const look = NpcData.NPCS?.[npc.npcId]?.look ?? spec.look;
     const moving = npc.moving && Math.abs(npc.vx) > 1;
     const pseudo = npc._pseudo ??= { rig: {}, ch: { move: { speed: 275 } }, stats: {}, npc: true, onGround: true, vy: 0 };
     pseudo.x = npc.x; pseudo.y = npc.y; pseudo.w = npc.w; pseudo.h = npc.h;
@@ -197,7 +203,7 @@ export class HubScene extends Scene {
     } catch (e) { this.boardInfo.boardNew = false; this.boardInfo.boardClaim = false; }
   }
 
-  exit() { if (this.game.world === this.world) this.game.world = null; }
+  exit() { if (this.menuOpen) padHidden(false); this.menuOpen = false; if (this.game.world === this.world) this.game.world = null; }
   resize() { this.world?.camera.setView(this.game.viewW, this.game.viewH); }
 
   // ───────────────────────── 업데이트 ─────────────────────────
@@ -267,8 +273,9 @@ export class HubScene extends Scene {
     this.menuItems = items;
     this.menu = new ListMenu(items.length);
     this.menuOpen = true; this.menuT = 0;
+    padHidden(true);
   }
-  closeMenu() { this.menuOpen = false; input.flush(); }
+  closeMenu() { if (this.menuOpen) padHidden(false); this.menuOpen = false; input.flush(); }
   doSave() {
     const g = this.game;
     const ok = saves.write(g.state.slot ?? 1, g.state);
@@ -343,8 +350,8 @@ export class HubScene extends Scene {
     // ── 하단: 상호작용 안내 ──
     const h = this.hint;
     if (h && !this.world.cutscene) {
-      const label = h.kind === 'npc' ? `대화 · ${NPCS[h.npcId]?.name ?? TOWN_NPCS[h.npcId]?.name ?? ''}` : `들어가기 · ${h.building?.name ?? ''}`;
-      const sub = h.kind === 'npc' ? (NPCS[h.npcId]?.title ?? TOWN_NPCS[h.npcId]?.title ?? '') : (h.building?.desc ?? '');
+      const label = h.kind === 'npc' ? `대화 · ${NpcData.NPCS?.[h.npcId]?.name ?? TOWN_NPCS[h.npcId]?.name ?? ''}` : `들어가기 · ${h.building?.name ?? ''}`;
+      const sub = h.kind === 'npc' ? (NpcData.NPCS?.[h.npcId]?.title ?? TOWN_NPCS[h.npcId]?.title ?? '') : (h.building?.desc ?? '');
       const aw = 300, ah = 54, ax = vw / 2 - aw / 2, ay = vh - ah - (input.touchMode ? 24 : 34);
       const rA = { x: ax, y: ay, w: aw, h: ah };
       const pulse = 0.5 + 0.5 * Math.sin(this.t * 5);

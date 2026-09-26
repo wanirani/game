@@ -347,7 +347,7 @@ export class MenuScene extends Scene {
       return;
     }
     if (!focused) items = [['←→', '탭 이동'], ...(this.cur.wantsFocus ? [['↓', '선택']] : []), ['X', '닫기']];
-    else items = [...items, ['X', '뒤로']];
+    else if (!items.some((it) => (Array.isArray(it[0]) ? it[0] : [it[0]]).includes('X'))) items = [...items, ['X', '닫기']];
     ctx.save();
     ctx.beginPath(); ctx.rect(0, H - BOT_H, rx - 10, BOT_H); ctx.clip();
     hintRow(ctx, items.map((it) => [it[0], it[1]]), 14, y);

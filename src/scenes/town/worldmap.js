@@ -14,7 +14,7 @@ import { ITEMS } from '../../data/items.js';
 import { CHARACTERS } from '../../data/characters.js';
 import { currentHero } from '../../game/state.js';
 import { drawIcon } from '../../render/icons.js';
-import { hitRect } from './common.js';
+import { hitRect, padHidden } from './common.js';
 import { glow } from './facades.js';
 
 const RANK_COL = { SSS: '#ffe070', SS: '#ff5a4a', S: '#ffa640', A: '#c07cff', B: '#5aa8ff', C: '#7ee07e', D: '#a0a0a0' };
@@ -52,7 +52,9 @@ export class WorldMapScene extends Scene {
     this.tok = null; // 캐릭터 말 위치
     assets.preload(['bg/worldmap']);
     audio.sfx('page', { vol: 0.5 });
+    padHidden(true);
   }
+  exit() { padHidden(false); }
   get state() { return this.game.state; }
   isOpen(n) { return n.arena ? true : this.state.progress.unlocked.includes(n.id); }
 
