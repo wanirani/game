@@ -58,7 +58,7 @@ class FakePlayer extends Entity {
   constructor(x, y) { super(x - 14, y - 64, 28, 64); this.kind = 'player'; this.stats = { hp: 9999, def: 10, res: 10 }; this.hp = 9999; this.facing = 1; this.hitT = 0; this.z = 5; this.hits = 0; }
   hurtbox() { return { x: this.x + 3, y: this.y + 6, w: this.w - 6, h: this.h - 6 }; }
   get invuln() { return this.iframes > 0; }
-  takeHit(d) { this.hitT = 0.25; this.hits++; this.iframes = live ? 1.1 : 0; return true; }
+  takeHit(d) { this.hitT = 0.25; this.hits++; this.iframes = 1.1; return true; }
   update(dt, w) {
     this.t += dt; if (this.hitT > 0) this.hitT -= dt; if (this.iframes > 0) this.iframes -= dt;
     const b = w.boss; if (b) this.facing = Math.sign(b.cx - this.cx) || 1;
@@ -191,12 +191,23 @@ const ff = Number(q.get('ff') || 0);
 for (const P of panels) {
   try {
     const n = Math.round((P.act.t + ff) * 60);
-    for (let i = 0; i < n; i++) step(P.W, DT);
+    for (let i = 0; i < n; i++) { step(P.W, DT); if (q.get('trace') === '1' && i % 30 === 0) console.warn(`[trace] t=${(i / 60).toFixed(1)} st=${P.W.boss.state} fx=${P.W.fx.list.length} ents=${P.W.entities.length}`); }
   } catch (err) { console.error('sim error', P.act.st, err); }
 }
 function frame() {
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, cv.width, cv.height);
   panels.forEach((P, i) => drawPanel(P.W, (i % COLS) * PW, Math.floor(i / COLS) * PH, `${P.act.st}@${P.act.t}s`));
+}
+if (q.get('bench') === '1') {
+  // 그리기 비용 측정 (패널 전체 · 100프레임): 콘솔 경고로 출력
+  const P = panels[0];
+  const t0 = performance.now();
+  for (let i = 0; i < 100; i++) { step(P.W, DT); drawPanel(P.W, 0, 0, 'bench'); }
+  const ms = (performance.now() - t0) / 100;
+  const t1 = performance.now();
+  for (let i = 0; i < 100; i++) { P.W.boss.draw(ctx, P.W); }
+  const bms = (performance.now() - t1) / 100;
+  console.warn(`[bench] ${ID} ${P.act.st}: frame ${ms.toFixed(2)}ms, boss draw ${bms.toFixed(2)}ms, ents ${P.W.entities.length}, fx ${P.W.fx.list.length}`);
 }
 if (live) {
   let last = performance.now();

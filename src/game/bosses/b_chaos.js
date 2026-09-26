@@ -455,7 +455,7 @@ export class ChaosLord extends BossB {
       world.fx.ring(this.cx, this.cy, { color: WHITE, r0: 10, r1: 800, life: 1.0, width: 20 });
       world.fx.ring(this.cx, this.cy, { color: VIOLET, r0: 10, r1: 600, life: 0.8, width: 12 });
       world.fx.burst('magic', this.cx, this.cy, 80, { color: VIOLET_L, speed: 560 });
-      impact(world, { shake: 26, time: 1.2 }); world.lighting.lightning = 1;
+      impact(world, { shake: 26, time: 1.2 }); this.lightning(1);
       audio.sfx('explode', { pitch: 0.35 }); audio.sfx('thunderclap', { pitch: 0.4 });
       this.dimT = 0;
     }

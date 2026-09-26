@@ -298,6 +298,7 @@ export class Dracula extends BossB {
   update(dt, world) {
     // 변신 연출 중에는 world.cutscene 이어도 직접 진행
     if (this.state === 'transform' && this.dying <= 0) {
+      this.decayLtn(dt, world);
       this.t += dt; this.animT += dt; this.stateT += dt;
       if (this.flashT > 0) this.flashT -= dt;
       this.pst = this.st; this.st += dt;
@@ -327,7 +328,7 @@ export class Dracula extends BossB {
       this.x += Math.sin(this.t * 50) * 1.2;
       if (Math.random() < 0.6) world.fx.emit('dark', this.cx + rand(-60, 60), this.bottom - rand(0, 140), { vx: 0, vy: 0, speed: 60 });
       if (this.every(0.07, 0.3, 1.6)) { const a = rand(0, TAU), r = rand(140, 260); world.fx.emit('fire', this.cx + Math.cos(a) * r, this.cy + Math.sin(a) * r, { vx: -Math.cos(a) * r * 2.4, vy: -Math.sin(a) * r * 2.4, speed: 0, grav: 0, color: BLOOD, color2: '#ff9090', life: 0.4 }); }
-      if (this.at(0.6) || this.at(1.1)) { world.lighting.lightning = 1; audio.sfx('thunderclap'); world.game.flash('#ff2040', 0.35, 4); }
+      if (this.at(0.6) || this.at(1.1)) { this.lightning(1); audio.sfx('thunderclap'); world.game.flash('#ff2040', 0.35, 4); }
     }
     // 2) 폭발적으로 갈라짐
     if (this.at(1.6)) {
@@ -352,7 +353,7 @@ export class Dracula extends BossB {
       audio.sfx('boss_roar', { pitch: 0.45 }); audio.sfx('boss_roar', { pitch: 0.6, vol: 0.7 });
       impact(world, { shake: 18, time: 1.2 });
       world.fx.ring(this.cx, this.bottom - 240, { color: HELL, r0: 30, r1: 600, life: 0.9, width: 14 });
-      world.lighting.lightning = 0.8;
+      this.lightning(0.8);
       world.banner = { text: this.def.name, sub: this.def.title, t: 3, color: '#ff3048', big: true };
       audio.music('dracula');
     }
@@ -1071,14 +1072,12 @@ export class Dracula extends BossB {
       ctx.fillStyle = LG(ctx, 'dm_memb', 0, -130, 0, 170, [0, 'rgba(110,14,26,0.96)', 0.55, 'rgba(60,6,14,0.96)', 1, 'rgba(30,2,6,0.9)']);
       ctx.fill();
       ctx.strokeStyle = OUT; ctx.lineWidth = 3; ctx.stroke();
-      // 혈관
-      ctx.save(); ctx.clip();
+      // 혈관 (막 안쪽에만 그려지도록 짧게)
       ctx.strokeStyle = 'rgba(255,80,60,0.25)'; ctx.lineWidth = 1.5;
       ctx.beginPath();
-      for (const [tx, ty] of tips) { const mx = (wx + tx) / 2, my = (wy + ty) / 2; ctx.moveTo(mx, my); ctx.quadraticCurveTo(mx - 30, my + 30, mx - 60, my + 50); }
+      for (const [tx, ty] of tips) { const mx = (wx + tx) / 2, my = (wy + ty) / 2; ctx.moveTo(mx, my); ctx.quadraticCurveTo(mx - 20, my + 22, mx - 40, my + 34); }
       ctx.stroke();
       ctx.fillStyle = 'rgba(255,120,80,0.1)'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(wx, wy); ctx.lineTo(tips[0][0], tips[0][1]); ctx.closePath(); ctx.fill();
-      ctx.restore();
     } else { ctx.fillStyle = '#fff'; ctx.fill(); }
     // 뼈대
     ctx.lineCap = 'round';

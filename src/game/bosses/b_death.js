@@ -460,7 +460,7 @@ export class Death extends BossB {
       world.fx.ring(this.cx, this.cy, { color: SOUL, r0: 20, r1: 360, life: 0.7, width: 12 });
       world.fx.burst('soul', this.cx, this.cy, 60, { speed: 420 });
       audio.sfx('thunderclap', { pitch: 0.6 }); audio.sfx('boss_roar', { pitch: 0.45 });
-      world.lighting.lightning = 0.8;
+      this.lightning(0.8);
     }
     if (t > dur) { this.invuln = false; this.harmless = false; this.burn = 0; this.setState('idle'); }
   }

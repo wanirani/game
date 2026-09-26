@@ -435,7 +435,15 @@ export class BossB extends Boss {
     if (f) f.call(this, dt, world, this.st);
     else this.setState('idle');
   }
+  /** 번개 섬광 (world.lighting.lightning) — 스스로 감쇠시킨다 */
+  lightning(v) { this.ltn = Math.max(this.ltn ?? 0, v); }
+  decayLtn(dt, world) {
+    if (!(this.ltn > 0) || !world.lighting) return;
+    this.ltn = Math.max(0, this.ltn - dt * 2.2);
+    world.lighting.lightning = this.ltn;
+  }
   update(dt, world) {
+    this.decayLtn(dt, world);
     if (this.dying > 0) {
       this.t += dt; this.animT += dt;
       if (this.flashT > 0) this.flashT -= dt;

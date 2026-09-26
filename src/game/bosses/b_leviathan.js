@@ -859,20 +859,28 @@ export class Leviathan extends BossB {
     }
     for (let i = i1; i >= i0; i--) ctx.lineTo(sx[i], sy[i]);
     ctx.closePath();
-    ctx.fillStyle = C('rgba(24,92,96,0.92)');
+    ctx.fillStyle = C('rgba(40,130,134,0.9)');
     ctx.lineJoin = 'round';
     if (!R.fl) { ctx.strokeStyle = OUT; ctx.lineWidth = 2.5; ctx.stroke(); }
     ctx.fill();
-    // 지느러미 가시 (뼈)
+    // 지느러미 가시 (뼈) + 발광 끝
     if (!R.fl) {
-      ctx.strokeStyle = HORN_D; ctx.lineWidth = 2;
-      ctx.beginPath();
-      for (let i = Math.max(3, i0); i <= i1; i += 2) {
-        const h = 1.15 * sr[i] * (0.6 + 0.4 * Math.sin(i * 0.9 + t * 3));
-        ctx.moveTo(sx[i] - nx(i) * sr[i] * 0.6, sy[i] - ny(i) * sr[i] * 0.6);
-        ctx.lineTo(sx[i] - nx(i) * (sr[i] + h) - Math.cos(sa[i]) * 10, sy[i] - ny(i) * (sr[i] + h) - Math.sin(sa[i]) * 10);
+      ctx.lineCap = 'round';
+      for (const [col, lw] of [[OUT, 4.5], [HORN, 2.2]]) {
+        ctx.strokeStyle = col; ctx.lineWidth = lw;
+        ctx.beginPath();
+        for (let i = Math.max(2, i0); i <= i1; i += 2) {
+          const h = 1.15 * sr[i] * (0.6 + 0.4 * Math.sin(i * 0.9 + t * 3));
+          ctx.moveTo(sx[i] - nx(i) * sr[i] * 0.7, sy[i] - ny(i) * sr[i] * 0.7);
+          ctx.lineTo(sx[i] - nx(i) * (sr[i] + h) - Math.cos(sa[i]) * 10, sy[i] - ny(i) * (sr[i] + h) - Math.sin(sa[i]) * 10);
+        }
+        ctx.stroke();
       }
-      ctx.stroke();
+      const bioF = this.phase >= 2 ? BIO2 : BIO;
+      for (let i = Math.max(2, i0); i <= i1; i += 4) {
+        const h = 1.15 * sr[i] * (0.6 + 0.4 * Math.sin(i * 0.9 + t * 3));
+        glow(ctx, sx[i] - nx(i) * (sr[i] + h) - Math.cos(sa[i]) * 10, sy[i] - ny(i) * (sr[i] + h) - Math.sin(sa[i]) * 10, 7, bioF, 0.6 * this.bio);
+      }
     }
     // 몸통 외곽 다각형
     ctx.beginPath();
@@ -898,23 +906,37 @@ export class Leviathan extends BossB {
     for (let i = i0; i <= i1; i++) ctx.lineTo(sx[i] + nx(i) * sr[i] * 0.78, sy[i] + ny(i) * sr[i] * 0.78);
     for (let i = i1; i >= i0; i--) ctx.lineTo(sx[i] + nx(i) * sr[i] * 0.42, sy[i] + ny(i) * sr[i] * 0.42);
     ctx.closePath();
-    ctx.fillStyle = BELLY; ctx.globalAlpha = 0.55; ctx.fill(); ctx.globalAlpha = 1;
-    // 배판 이음새
-    ctx.strokeStyle = 'rgba(20,34,30,0.75)'; ctx.lineWidth = 1.6;
+    ctx.fillStyle = BELLY; ctx.globalAlpha = 0.35; ctx.fill(); ctx.globalAlpha = 1;
+    // 배판 이음새 (머리 쪽으로 볼록한 곡선)
+    ctx.strokeStyle = 'rgba(20,34,30,0.45)'; ctx.lineWidth = 1.3;
     ctx.beginPath();
     for (let i = i0 + 1; i <= i1; i++) {
-      ctx.moveTo(sx[i] + nx(i) * sr[i] * 0.95, sy[i] + ny(i) * sr[i] * 0.95);
-      ctx.lineTo(sx[i] + nx(i) * sr[i] * 0.32 + Math.cos(sa[i]) * 4, sy[i] + ny(i) * sr[i] * 0.32 + Math.sin(sa[i]) * 4);
+      const c = Math.cos(sa[i]), sn = Math.sin(sa[i]), r = sr[i];
+      ctx.moveTo(sx[i] + nx(i) * r * 0.95, sy[i] + ny(i) * r * 0.95);
+      ctx.quadraticCurveTo(sx[i] + nx(i) * r * 0.62 + c * 6, sy[i] + ny(i) * r * 0.62 + sn * 6, sx[i] + nx(i) * r * 0.32, sy[i] + ny(i) * r * 0.32);
     }
     ctx.stroke();
-    // 옆구리 비늘 무늬
-    ctx.strokeStyle = 'rgba(4,16,20,0.55)'; ctx.lineWidth = 1.4;
+    // 옆구리 비늘 (두 줄 엇갈림, 윗면 하이라이트)
+    for (let row = 0; row < 2; row++) {
+      const off = row ? -0.48 : -0.08, rrK = row ? 0.3 : 0.36;
+      ctx.strokeStyle = 'rgba(4,16,20,0.6)'; ctx.lineWidth = 1.3;
+      ctx.beginPath();
+      for (let i = i0 + 1 + row; i <= i1; i += 1) {
+        const k = i + row * 0.5;
+        const px = lerp(sx[i], sx[i - 1], row * 0.5), py = lerp(sy[i], sy[i - 1], row * 0.5), r = sr[i];
+        const cx = px + (-nx(i)) * r * -off * -1, cy = py + (-ny(i)) * r * -off * -1;
+        const rr = r * rrK, a = sa[i] + PI;
+        ctx.moveTo(cx + Math.cos(a - 1.3) * rr, cy + Math.sin(a - 1.3) * rr);
+        ctx.arc(cx, cy, rr, a - 1.3, a + 1.3);
+      }
+      ctx.stroke();
+    }
+    ctx.strokeStyle = 'rgba(140,220,210,0.18)'; ctx.lineWidth = 1;
     ctx.beginPath();
-    for (let i = i0 + 1; i <= i1; i++) {
-      const cx = sx[i] - nx(i) * sr[i] * 0.2, cy = sy[i] - ny(i) * sr[i] * 0.2, rr = sr[i] * 0.42;
-      const a = sa[i] + PI;
-      ctx.moveTo(cx + Math.cos(a - 1.2) * rr, cy + Math.sin(a - 1.2) * rr);
-      ctx.arc(cx, cy, rr, a - 1.2, a + 1.2);
+    for (let i = i0 + 1; i <= i1; i += 1) {
+      const r = sr[i], cx = sx[i] - nx(i) * r * 0.08, cy = sy[i] - ny(i) * r * 0.08, rr = r * 0.36, a = sa[i] + PI;
+      ctx.moveTo(cx + Math.cos(a - 1.2) * rr * 0.8, cy + Math.sin(a - 1.2) * rr * 0.8);
+      ctx.arc(cx, cy, rr * 0.8, a - 1.2, a - 0.2);
     }
     ctx.stroke();
     // 등 하이라이트(따뜻한 키) + 차가운 림
@@ -1097,8 +1119,8 @@ export class Leviathan extends BossB {
       ctx.strokeStyle = 'rgba(160,230,220,0.7)'; ctx.lineWidth = 2; ctx.lineCap = 'round';
       for (let k = 0; k < 2; k++) {
         const w1 = Math.sin(t * 3 + k) * 12, w2 = Math.sin(t * 2.2 + k * 2) * 18;
-        ctx.beginPath(); ctx.moveTo(96 - k * 20, 10); ctx.bezierCurveTo(70 - k * 20, 40 + w1, 20, 50 + w2, -30 - k * 20, 60 + w2 * 1.3); ctx.stroke();
-        glow(ctx, -30 - k * 20, 60 + w2 * 1.3, 8, bio, 0.7 * this.bio);
+        ctx.beginPath(); ctx.moveTo(100 - k * 26, 12); ctx.bezierCurveTo(96 - k * 26, 36 + w1, 80 - k * 20 + w2 * 0.5, 56, 64 - k * 24 + w2, 80 + w1 * 0.6); ctx.stroke();
+        glow(ctx, 64 - k * 24 + w2, 80 + w1 * 0.6, 8, bio, 0.7 * this.bio);
       }
     }
     ctx.restore();
