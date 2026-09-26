@@ -1,0 +1,15 @@
+{
+  "name": "blood-nocturne",
+  "version": "1.0.0",
+  "private": true,
+  "description": "블러드 녹턴: 악마성 연대기 — 2D 고딕 아케이드 액션 (HTML5 Canvas)",
+  "type": "module",
+  "scripts": {
+    "serve": "node tools/serve.mjs",
+    "smoke": "node tools/smoke.mjs",
+    "validate": "node tools/validate_maps.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "1.56.1"
+  }
+}

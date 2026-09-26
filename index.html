@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#07030a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="description" content="블러드 녹턴: 악마성 연대기 — 고딕 호러 아케이드 액션">
+<title>블러드 녹턴</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@600;800;900&family=Nanum+Myeongjo:wght@700;800&family=Noto+Sans+KR:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <canvas id="screen" aria-label="게임 화면"></canvas>
+  <div id="touch" class="hidden" aria-hidden="true">
+    <div id="stick"><div class="ring"></div><div class="knob"></div></div>
+    <div id="btns">
+      <button class="b big atk" data-act="attack">공격</button>
+      <button class="b big jmp" data-act="jump,confirm">점프</button>
+      <button class="b dsh" data-act="dash">대시</button>
+      <button class="b sub" data-act="sub">보조</button>
+      <button class="b sk1" data-act="skill1">S1</button>
+      <button class="b sk2" data-act="skill2">S2</button>
+      <button class="b ult" data-act="ult">필살</button>
+      <button class="b swp" data-act="swap">⇄</button>
+    </div>
+    <button id="pauseBtn" class="b sys" data-act="menu,cancel">Ⅱ</button>
+    <button id="fsBtn" class="b sys" type="button">⛶</button>
+  </div>
+  <div id="rotate"><div>📱↻<br>가로 모드로 돌려주세요</div></div>
+  <div id="boot"><div class="t">BLOOD NOCTURNE</div><div class="s">악마성의 문이 열리고 있습니다…</div></div>
+</div>
+<script>
+  // 전체화면 버튼
+  document.getElementById('fsBtn').addEventListener('click', () => {
+    const el = document.documentElement;
+    if (!document.fullscreenElement) { (el.requestFullscreen || el.webkitRequestFullscreen)?.call(el); try { screen.orientation?.lock?.('landscape'); } catch (e) {} }
+    else document.exitFullscreen?.();
+  });
+  // 확대/스크롤 방지
+  document.addEventListener('gesturestart', (e) => e.preventDefault());
+  document.addEventListener('touchmove', (e) => { if (e.target.closest('#app')) e.preventDefault(); }, { passive: false });
+  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
