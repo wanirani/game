@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">블러드 녹턴</string>
+    <string name="exit_title">게임 종료</string>
+    <string name="exit_message">블러드 녹턴을 종료할까요?</string>
+    <string name="exit_ok">종료</string>
+    <string name="exit_cancel">계속하기</string>
+    <string name="no_webview">이 기기에는 Android System WebView 가 없거나 비활성화되어 있어 게임을 실행할 수 없습니다.\nPlay 스토어에서 \'Android System WebView\' 를 설치·업데이트한 뒤 다시 실행해 주세요.</string>
+</resources>

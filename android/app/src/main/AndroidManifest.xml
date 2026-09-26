@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  블러드 녹턴 안드로이드 래퍼 (WebView 한 장짜리 앱).
+  versionCode / versionName / minSdk(24) / targetSdk(34) 는 tools/apk/build_apk.sh 가 aapt2 link 에서 주입한다.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.bloodnocturne.game"
+    android:installLocation="auto">
+
+    <!-- 웹 폰트(Google Fonts) 로딩용. 게임 파일 자체는 전부 APK 안에서 읽는다 -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- navigator.vibrate() (타격 진동) -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- 터치스크린이 없는 기기(TV + 게임패드)에서도 설치 가능 -->
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+    <uses-feature android:name="android.hardware.gamepad" android:required="false" />
+    <uses-feature android:name="android.hardware.screen.landscape" android:required="false" />
+    <uses-feature android:glEsVersion="0x00020000" android:required="true" />
+
+    <application
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:theme="@style/Theme.BloodNocturne"
+        android:hardwareAccelerated="true"
+        android:allowBackup="true"
+        android:isGame="true"
+        android:appCategory="game"
+        android:resizeableActivity="true"
+        android:usesCleartextTraffic="false">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:screenOrientation="sensorLandscape"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode|density|fontScale|layoutDirection|locale|touchscreen|colorMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustNothing|stateAlwaysHidden"
+            android:theme="@style/Theme.BloodNocturne">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

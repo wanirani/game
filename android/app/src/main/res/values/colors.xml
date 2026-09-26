@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- index.html / manifest.webmanifest 의 배경색과 같게 (실행 직후 흰 화면 번쩍임 방지) -->
+    <color name="bn_background">#FF050207</color>
+    <color name="bn_icon_background">#FF050207</color>
+</resources>
