@@ -248,6 +248,10 @@ class Builder:
             man['parts'][name] = {'x': px, 'y': py, 'w': im.shape[1], 'h': im.shape[0], **ent}
         os.makedirs(out, exist_ok=True)
         atlas.save(os.path.join(out, 'atlas.webp'), 'WEBP', quality=int(self.cfg.get('quality', 90)), method=6)
+        # 내용 해시: 런타임이 아틀라스 URL 에 붙인다 (&h=) → 매니페스트와 아틀라스가 캐시에서 서로 다른 판으로 섞이지 않는다
+        import hashlib
+        with open(os.path.join(out, 'atlas.webp'), 'rb') as fa:
+            man['atlas']['hash'] = hashlib.sha1(fa.read()).hexdigest()[:10]
         with open(os.path.join(out, 'manifest.json'), 'w', encoding='utf-8') as f:
             json.dump(man, f, indent=1, ensure_ascii=False)
         kb = os.path.getsize(os.path.join(out, 'atlas.webp')) // 1024

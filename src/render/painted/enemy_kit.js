@@ -174,7 +174,15 @@ async function buildRig(rig, spec) {
     rig.parts[name] = part;
     await nextIdle(6);                        // time-slice the bake (behind the room fade, never one long frame)
   }
-  const { w, h } = pack(items, 1024);
+  // shelf-pack at the width that gives the smallest atlas (a tall part — the gravedigger's lengthened shovel — makes the
+  // first shelf tall; a narrower atlas wastes less of it)
+  let best = null;
+  for (const mw of [1024, 768, 640, 512]) {
+    if (items.some((it) => it.c.width + 1 > mw)) continue;
+    const r = pack(items, mw);
+    if (!best || r.w * r.h < best.w * best.h) best = { ...r, mw };
+  }
+  const { w, h } = best.mw === 512 ? best : pack(items, best.mw);   // re-run the winner so item x/y match it
   const atlas = mkCanvas(w, h), ag = atlas.getContext('2d');
   for (const it of items) { ag.drawImage(it.c, it.x, it.y); it.part.v[it.k] = [it.x, it.y, it.c.width, it.c.height]; it.c.width = it.c.height = 0; }
   rig.atlas = atlas; rig.td = td; rig.srcTD = srcTD; rig.man = man;

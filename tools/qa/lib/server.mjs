@@ -180,23 +180,29 @@ export class Session {
       return { x: p.x, y: p.y, vx: p.vx, vy: p.vy, anim: p.anim, move: p.move?.anim || null, onGround: !!p.onGround, facing: p.facing, mp: p.mp, hp: p.hp, hearts: w.run?.hearts, page: p.skillPage, sub: w.run?.sub ?? null };
     });
   }
+  /**
+   * Per-frame recorder (rAF) of the player/world/scene state; stopRec() returns the frames.
+   * Frame: {t, x, y, vx, vy, anim, move, mp, sp, hearts, page, top, n (scene count), toasts}
+   */
+  startRec() {
+    return this.page.evaluate(() => {
+      const R = window.__qaRec = { on: true, frames: [], t0: performance.now() };
+      const f = () => {
+        if (!R.on) return;
+        const g = window.__game, w = g?.world, p = w?.player;
+        R.frames.push({
+          t: Math.round(performance.now() - R.t0), top: g?.top?.name ?? null, n: g?.scenes?.length ?? 0,
+          x: p?.x, y: p?.y, vx: p?.vx, vy: p?.vy, anim: p?.anim, move: p?.move?.anim || null, mp: p?.mp, sp: w?.run?.sp, hearts: w?.run?.hearts,
+          page: p?.skillPage, toasts: (g?.toasts || []).map((t) => t.text).join(' | '),
+        });
+        if (R.frames.length < 3000) requestAnimationFrame(f);
+      };
+      requestAnimationFrame(f);
+    });
+  }
+  stopRec() { return this.page.evaluate(() => { const R = window.__qaRec; if (!R) return []; R.on = false; return R.frames; }); }
   async screenshot(file) { try { await this.page.screenshot({ path: file }); } catch { /* page gone */ } }
   async close() { try { await this.ctx.close(); } catch { /* closed */ } this._onClose?.(); }
 }
 
 export const KEY = { right: 'ArrowRight', left: 'ArrowLeft', up: 'ArrowUp', down: 'ArrowDown', jump: 'KeyZ', attack: 'KeyX', dash: 'KeyC', sub: 'KeyA', skill1: 'KeyS', skill2: 'KeyD', ult: 'KeyF', menu: 'Escape', enter: 'Enter', swap: 'KeyQ', tabR: 'KeyE', map: 'Tab' };
-
-/** Page-side helper source: records ctx.fillText calls made to the game canvas while the top scene renders. */
-export const TEXT_RECORDER = () => {
-  if (window.__qaText) return;
-  const R = window.__qaText = { on: false, list: [], max: 4000 };
-  const orig = CanvasRenderingContext2D.prototype.fillText;
-  CanvasRenderingContext2D.prototype.fillText = function (str, x, y, mw) {
-    if (R.on && this.canvas && this.canvas.id === 'screen' && R.list.length < R.max) {
-      const m = this.getTransform();
-      const px = parseFloat((/(\d+(?:\.\d+)?)px/.exec(this.font) || [])[1] || '0');
-      R.list.push({ s: String(str), x: m.a * x + m.c * y + m.e, y: m.b * x + m.d * y + m.f, px, k: Math.hypot(m.a, m.b) });
-    }
-    return orig.call(this, str, x, y, mw);
-  };
-};

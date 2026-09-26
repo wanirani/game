@@ -636,12 +636,21 @@ function weaponPup(c, W, x, y, ang, fire) {
 }
 
 // ───────────────────────── 턴테이블 (인벤토리) ─────────────────────────
-/** 이 look 의 퍼펫 턴테이블이 쓸 수 있는가 (시트 로드 전이면 요청하고 false) */
+/** 이 look 의 퍼펫 턴테이블이 쓸 수 있는가 (시트 로드 전이면 요청하고 false). 재질 마스크도 함께 요청 */
 export function turnReady(I) {
   const E = I?.E;
   if (!E?.rig?.turn) return false;
   if (!E.turnImg) E.turnImg = assets.get(`puppets/${E.key}/turn`, E.man.h);
+  if (E.rig.turn.mask && !E.turnMask) E.turnMask = assets.get(`puppets/${E.key}/turn_mask`, E.man.h);
   return !!E.turnImg;
+}
+/** 턴테이블 시트: 장비 갑옷 색이 원화와 다르면 turn_mask 로 다시 칠한 캔버스(변형별 1회) */
+function turnSrc(I) {
+  const E = I.E, V = I.V;
+  if (!V || !E.rig.turn.mask || typeof document === 'undefined') return E.turnImg;
+  if (V.turn) return V.turn;
+  if (!E.turnMask) return E.turnImg;
+  return (V.turn = recolorCanvas(E.turnImg, E.turnMask, V));
 }
 const STEPS = [0, 45, 90, 135, 180, -135, -90, -45];
 /**
@@ -658,9 +667,40 @@ export function drawTurnStep(ctx, I, deg, sx, alpha, t) {
   ctx.save();
   if (alpha < 1) ctx.globalAlpha *= alpha;
   ctx.scale((st.m ? -1 : 1) * s * sx, s * breath);
-  ctx.drawImage(E.turnImg, v.x, 0, v.w, v.h, -v.axisX, -v.footY, v.w, v.h);
+  ctx.drawImage(turnSrc(I), v.x, 0, v.w, v.h, -v.axisX, -v.footY, v.w, v.h);
   ctx.restore();
   return { s, v, m: st.m };
+}
+/**
+ * 턴테이블 채색 뷰의 무기 (원화에는 허리의 채찍 똬리만 있다). platform.md §7.3: 장착 무기가 8방향 모두에서 보이게.
+ * 손은 몸 옆에 늘어뜨린 자리(어깨 반폭, 엉덩이 높이), 오른손(가까운 손)의 화면 x = −sin(yaw)·반폭.
+ * front=false: 몸 뒤 패스(몸에 가려지는 쪽 손 / 앞모습의 등에 멘 대검), true: 몸 앞 패스.
+ */
+export function drawTurnWeapon(ctx, I, W, yaw, front, t) {
+  const type = W?.type;
+  if (!type || type === 'none' || type === 'whip') return;
+  const T = I.E.rig.turn, v = T.views.y90 || Object.values(T.views)[0];
+  const s = PUP_H / (v.footY - v.topY), hx = v.shW * s * 0.98, sn = Math.sin(yaw), cs = Math.cos(yaw);
+  const olw = G.olw; G.olw = 0.8;
+  const hand = (side) => {                                   // side +1 = 오른손(가까운 손), −1 = 왼손
+    const x = -sn * hx * side, depth = cs * side;             // depth > 0: 몸 앞
+    return { x, y: -43, depth };
+  };
+  const tilt = 0.28 * cs;                                     // 칼끝을 보는 쪽으로 조금
+  if (type === 'greatsword') {                                // 등에 멘 대검: 앞모습은 몸 뒤, 뒷모습은 등을 덮음
+    if ((sn < 0) !== front) { G.olw = olw; return; }
+    const xs = -sn * v.shW * s * 0.55 - cs * 4;
+    drawWeapon(W, xs, -76, HP + (xs >= 0 ? 0.5 : -0.5), {});
+    G.olw = olw; return;
+  }
+  const list = type === 'dagger' || type === 'gun' ? [1, -1] : [1];
+  for (const side of list) {
+    const h = hand(side);
+    if ((h.depth > -0.2) !== front) continue;
+    const ang = type === 'staff' ? -HP - 0.08 * cs : type === 'gun' ? HP - 0.45 * cs : HP - tilt;
+    drawWeapon(W, h.x, h.y + (type === 'staff' ? -2 : 0), ang, {});
+  }
+  G.olw = olw;
 }
 export function turnSteps() { return STEPS; }
 /** 턴테이블용 망토: 앞(뒤에 가려짐)·옆(뒤로 흐름)·뒤(몸을 덮음). yaw: 라디안, behind: 몸 뒤 패스인지 */
@@ -673,8 +713,11 @@ export function drawTurnCape(ctx, I, cape, yaw, behind, t) {
   const sn = Math.sin(yaw), cs = Math.cos(yaw);
   const back = sn < 0;
   if (behind === back) return;                          // 앞모습: 몸 뒤 패스 / 뒷모습: 몸 앞 패스
-  const wTop = shw * (0.55 + 0.45 * Math.abs(sn)), wBot = shw * (1.05 + 0.5 * Math.abs(sn)) + 6 * Math.abs(cs);
-  const dx = -cs * shw * 0.55;                           // 옆으로 돌면 등 쪽으로 밀림
+  // 앞모습(몸 뒤 패스): 어깨 너머로 옆만 보임. 뒷모습(몸을 덮는 패스): 화면에 보이는 폭은 |sin| 에 비례 —
+  // 옆모습 가까이(−160°, −20°)에서 망토가 몸 전체를 덮어 버리지 않게 등 쪽으로 좁게
+  const wTop = back ? shw * (0.22 + 0.78 * Math.abs(sn)) : shw * (0.55 + 0.45 * Math.abs(sn));
+  const wBot = back ? shw * (0.4 + 0.9 * Math.abs(sn)) + 4 * Math.abs(cs) : shw * (1.05 + 0.5 * Math.abs(sn)) + 6 * Math.abs(cs);
+  const dx = -cs * shw * (back ? 0.62 : 0.55);         // 옆으로 돌면 등 쪽으로 밀림
   const sway = Math.sin(t * 1.6) * 1.2;
   const c = ctx;
   c.save();

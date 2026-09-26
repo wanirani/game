@@ -2,21 +2,23 @@
 //
 // ── 베이스 스키마 ──
 //  ITEMS[id] = { id, name, slot:'weapon'|'head'|'body'|'cloak'|'acc'|'consumable'|'material'|'key',
-//    wtype?, tier(1~6), icon, lvReq, stats:{}, visual:{}, element?, price, stack?, use?, desc,
-//    relic?, unique?, rarity?(고유 아이템 고정 희귀도), effect?(고유 효과 문구), boss?(드롭 보스 id), quest? }
-//  visual — 무기 {style(1~6), color, glow} / 머리 {headgear, color} / 몸 {armor, color, trim}
+//    wtype?, tier(1~7; 7 = 2부), icon, lvReq, stats:{}, visual:{}, element?, price, stack?, use?, desc,
+//    relic?, unique?, rarity?(고유 아이템 고정 희귀도), effect?(고유 효과 문구), boss?(드롭 보스 id), quest?,
+//    mythic?(신화 무기), worldHeart?(세계의 심장 번호 1~6), starShard?(별의 조각 번호 1~6), color?(심장 색) }
+//  visual — 무기 {style(1~6), color, glow, rift?(7단계: 무지갯빛 균열 광택, 없으면 style 6 그대로)} / 머리 {headgear, color} / 몸 {armor, color, trim}
 //           망토 {cape:'plain'|'royal'|'tattered', color, color2, len} / 장신구 {aura:{color,type}}  (game/stats.js composeLook 가 해석)
 //  use — { heal(최대 HP 비율), mp(최대 MP 비율), cure, buff:{id(POWERUPS 키), time}, warp }
 // ── 인스턴스 ──
 //  { uid, baseId, slot, icon, rarity(0~5), level(강화 0~15), affixes:[{id, stat, value}], qty, locked?, t?(획득 순서) }
 // ── 공개 API ──
-//  RARITIES, ITEMS, AFFIXES, AFFIX_MAP, UNIQUES, BOSS_UNIQUES, MYTHIC_WEAPONS, WTYPES, WTYPE_NAMES, SLOT_LABELS, STAT_LABELS
+//  RARITIES, ITEMS, AFFIXES, AFFIX_MAP, UNIQUES, BOSS_UNIQUES, MYTHIC_WEAPONS(6단계 신화), MYTHIC_WEAPONS_P2(7단계 신화), WTYPES, WTYPE_NAMES, SLOT_LABELS, STAT_LABELS
+//  TIER_LV (세계의 심장·별의 조각 id 목록은 data/stages.js 의 HEARTS · SHARDS)
 //  makeItem(baseId, {rarity, level, affixes, qty}) → inst     (희귀도>0 인데 affixes 미지정이면 자동 추첨)
 //  rollItem(level, {luck, diff, slot, wtype, minRarity, maxRarity, tier}) → 무작위 장비 인스턴스
 //  rollRarity(level, opts), rollAffixes(base, rarity), tierForLevel(lv)
 //  itemStats(inst, {noAffix}) / itemName(inst, {full}) / itemDesc(inst) → string[] / itemDescRich(inst) → [{text,color}]
 //  itemColor(inst), buyPrice(baseId, rarity), sellPrice(inst), isEquipment(inst|base), isStackable(inst|base), fmtStat(stat, v)
-//  baseIdFor(slot, tier, {wtype, variant}) → 해당 단계 베이스 id (무기·방어구 id 번호는 1~12, 단계 = ceil(번호/2))
+//  baseIdFor(slot, tier, {wtype, variant}) → 해당 단계 베이스 id (무기·방어구 id 번호는 1~14, 단계 = ceil(번호/2))
 //  josa(word, '이/가'|'을/를'|'은/는'|'과/와'|'으로/로'|'이다/다'…) → 받침에 맞는 조사를 붙인 문자열
 import { uid } from '../core/math.js';
 
@@ -38,8 +40,9 @@ export const EQUIP_BASE_SLOTS = ['weapon', 'head', 'body', 'cloak', 'acc'];
 export const SLOT_LABELS = { weapon: '무기', head: '머리 방어구', body: '갑옷', cloak: '망토', acc: '장신구', consumable: '소모품', material: '재료', key: '중요 물품' };
 export const ELEMENT_LABELS = { fire: '화염', ice: '냉기', holy: '신성', dark: '암흑', thunder: '번개' };
 const EL_COLOR = { fire: '#ff7a2a', ice: '#9fe8ff', holy: '#fff2b0', dark: '#b060ff', thunder: '#bfe0ff' };
-export const TIER_LV = [1, 6, 13, 21, 30, 40];
-const TIER_ROMAN = ['', 'Ⅰ', 'Ⅱ', 'Ⅲ', 'Ⅳ', 'Ⅴ', 'Ⅵ'];
+export const TIER_LV = [1, 6, 13, 21, 30, 40, 50];   // 7단계 = 2부 (world2 §7.1)
+const MAX_TIER = TIER_LV.length;
+const TIER_ROMAN = ['', 'Ⅰ', 'Ⅱ', 'Ⅲ', 'Ⅳ', 'Ⅴ', 'Ⅵ', 'Ⅶ'];
 
 // 능력치 표시 이름 (game/stats.js STAT_INFO 와 동일 — 데이터 모듈을 게임 모듈에 묶지 않기 위해 복제)
 export const STAT_LABELS = {
@@ -72,15 +75,15 @@ function def(b) {
 const r0 = (v) => Math.max(1, Math.round(v));
 function mergeStats(a, b) { for (const k in b || {}) a[k] = (a[k] ?? 0) + b[k]; return a; }
 
-// ── 무기: 6계열 × 12종 (단계당 2종: a=표준, b=상위 변형) ──
-const T_ATK = [8, 17, 29, 44, 62, 84];
-const T_WPRICE = [120, 480, 1300, 3000, 6400, 13000];
+// ── 무기: 6계열 × 14종 (단계당 2종: a=표준, b=상위 변형; 13~14 = 7단계, 2부) ──
+const T_ATK = [8, 17, 29, 44, 62, 84, 110];
+const T_WPRICE = [120, 480, 1300, 3000, 6400, 13000, 26000];
 const W_MUL = {
   whip: { atk: 1.0 },
   sword: { atk: 1.1, mag: 0.3 },
   greatsword: { atk: 1.38 },
-  dagger: { atk: 0.76, crit: [3, 4, 5, 6, 7, 8] },
-  gun: { atk: 0.88, crit: [2, 3, 3, 4, 4, 5] },
+  dagger: { atk: 0.76, crit: [3, 4, 5, 6, 7, 8, 9] },
+  gun: { atk: 0.88, crit: [2, 3, 3, 4, 4, 5, 5] },
   staff: { atk: 0.5, mag: 1.05 },
 };
 // [이름, 속성, 추가 능력치, 색(외형), 설명]
@@ -98,6 +101,8 @@ const WEAPON_TABLE = {
     ['서리 사슬', 'ice', {}, '#a8d8f0', '얼어붙은 첨탑의 만년빙으로 벼린 사슬. 스치기만 해도 피가 얼어붙는다.'],
     ['핏빛 로사리오', 'dark', { lifesteal: 2 }, null, '피로 물든 묵주를 엮은 채찍. 신앙과 저주가 한데 뒤엉켜 있다.'],
     ['심판의 채찍', 'holy', { reach: 10, crit: 4 }, '#f0dca0', '교황청 비밀 기사단의 성유물. 휘두른 궤적에 성광의 잔상이 남는다.'],
+    ['균열의 사슬', 'dark', { lifesteal: 2 }, '#3a2a4a', '공허의 균열에서 건져 낸 사슬. 휘두르면 공간이 잠시 찢어진 채로 남는다.'],
+    ['별빛 채찍 아스트라', 'holy', { reach: 12, crit: 5 }, '#f4ecd0', '별빛을 꼬아 만들었다는 채찍. 밤하늘에 휘두르면 별자리가 그려진다.'],
   ],
   sword: [
     ['철 장검', null, {}, null, '대장간에서 흔히 볼 수 있는 철검. 튼튼하고 정직하다.'],
@@ -112,6 +117,8 @@ const WEAPON_TABLE = {
     ['뇌광검', 'thunder', { atkSpd: 5 }, '#d8e8ff', '번개를 벼려 만들었다는 전설의 검. 뽑는 순간 공기가 찢어진다.'],
     ['마검 아비스', 'dark', { lifesteal: 2 }, null, '심연에서 건져 올린 마검. 베어 낸 영혼을 삼키며 속삭인다.'],
     ['월광검', null, { crit: 6, mag: 12 }, '#dfe8ff', '달빛을 벼려 낸 검. 밤이 깊을수록 칼날이 푸르게 빛난다.'],
+    ['만경검', 'ice', { crit: 6 }, '#dff4ff', '만경궁의 거울을 녹여 벼린 검. 칼날에 벤 자의 얼굴이 비친다.'],
+    ['폭풍 참마검', 'thunder', { atkSpd: 6 }, '#bfe0ff', '하늘 왕국 근위대의 검. 칼집에서 뽑을 때마다 천둥이 먼저 운다.'],
   ],
   greatsword: [
     ['철 대검', null, {}, null, '어지간한 사람은 들지도 못할 무쇠 덩어리. 무게가 곧 위력이다.'],
@@ -126,6 +133,8 @@ const WEAPON_TABLE = {
     ['천둥의 대검', 'thunder', { critDmg: 10 }, '#c8d8f0', '폭풍신의 제단에서 발견된 대검. 내려칠 때마다 천둥이 울린다.'],
     ['혈마의 대검', 'dark', { lifesteal: 2 }, null, '핏빛 수정으로 이루어진 대검. 피를 마실수록 더욱 붉게 달아오른다.'],
     ['용살자의 대검', null, { critDmg: 22, hp: 40 }, null, '고룡의 목을 벤 영웅의 대검. 그 무게는 전설의 무게다.'],
+    ['용광로 대검', 'fire', { critDmg: 14 }, null, '영겁의 용광로에서 식지 않은 채 꺼낸 대검. 칼날이 늘 붉게 달아 있다.'],
+    ['세계수 파쇄검', null, { critDmg: 26, hp: 60 }, null, '썩은 세계수의 심재를 깎아 만든 대검. 쇠보다 무겁고 쇠보다 단단하다.'],
   ],
   dagger: [
     ['사냥 단검', null, {}, null, '짐승 가죽을 벗길 때 쓰던 단검. 가볍고 손에 잘 붙는다.'],
@@ -140,6 +149,8 @@ const WEAPON_TABLE = {
     ['서리송곳', 'ice', { crit: 3 }, '#bfe8ff', '만년빙을 깎아 만든 송곳. 결코 녹지 않는다.'],
     ['핏빛 초승달', null, { lifesteal: 3, critDmg: 10 }, null, '초승달처럼 휜 붉은 칼. 흡혈귀 사냥꾼들 사이에서 금기시된 무기.'],
     ['성흔의 단검', 'holy', { crit: 5 }, null, '성인의 성흔에서 흘러내린 빛으로 벼렸다는 단검.'],
+    ['악몽의 송곳', 'dark', { crit: 5 }, null, '꿈속에서 벼린 송곳. 깨어나면 상처만 남는다.'],
+    ['심해 가시 단검', 'ice', { critDmg: 20, lifesteal: 2 }, null, '심해 아귀의 이빨을 갈아 만든 단검. 물속에서 더 날카로워진다.'],
   ],
   gun: [
     ['부싯돌 권총', null, {}, null, '부싯돌로 점화하는 구식 권총. 재장전이 느리지만 믿음직하다.'],
@@ -154,6 +165,8 @@ const WEAPON_TABLE = {
     ['서리탄 장총', 'ice', { crit: 3 }, null, '냉기 결정을 탄환으로 쓰는 장총. 맞은 자리가 순식간에 언다.'],
     ['마탄총', 'dark', { crit: 4 }, null, '악마와 계약해 얻은 마탄을 쏘는 총. 일곱 번째 탄환은 악마의 것이다.'],
     ['연옥의 권총', 'fire', { critDmg: 18 }, null, '연옥의 불꽃으로 달군 권총. 총성은 망자의 비명과 닮았다.'],
+    ['뇌조의 장총', 'thunder', { crit: 5 }, null, '뇌조의 깃대를 총열로 쓴 장총. 방아쇠를 당기면 벼락이 날아간다.'],
+    ['용암 산탄포', 'fire', { critDmg: 22 }, null, '쇳물을 산탄으로 쏘는 대포. 한 발 한 발이 작은 용광로다.'],
   ],
   staff: [
     ['떡갈나무 지팡이', null, {}, null, '늙은 떡갈나무 가지로 만든 지팡이. 순례자의 길을 지켜 주었다.'],
@@ -168,6 +181,8 @@ const WEAPON_TABLE = {
     ['태양의 홀', 'fire', { skillDmg: 8 }, null, '태양신을 섬기던 고대 신전의 홀. 한낮의 열기를 품고 있다.'],
     ['금단의 마도서', 'dark', { skillDmg: 10 }, null, '대도서관 가장 깊은 곳에 봉인되어 있던 마도서. 읽는 자의 영혼을 갉아먹는다.'],
     ['천상의 성전', null, { mpRegen: 1, skillDmg: 12, res: 8 }, null, '천사의 깃펜으로 쓰였다는 성전. 책장을 넘기면 찬송이 들려온다.'],
+    ['산호 성장(聖杖)', 'holy', { mp: 30, mpRegen: 1 }, null, '가라앉은 성소의 사제들이 들던 산호 지팡이. 물속에서도 기도가 닿는다.'],
+    ['공허의 지팡이', 'dark', { skillDmg: 14 }, null, '공허의 조각을 박은 지팡이. 들여다보면 끝없이 빨려 든다.'],
   ],
 };
 for (const type of WTYPES) {
@@ -179,7 +194,8 @@ for (const type of WTYPES) {
     if (mul.crit) st.crit = mul.crit[t - 1];
     if (el) st[el] = 6 + t * 4;
     mergeStats(st, extra);
-    const visual = { style: t };
+    // 7단계(2부)는 새 무기 모양 없이 style 6 + 균열 광택(rift) — 영웅 렌더러가 모르는 style 번호를 받지 않도록
+    const visual = t >= 7 ? { style: 6, rift: true } : { style: t };
     if (color) visual.color = color;
     if (el) visual.glow = EL_COLOR[el];
     def({
@@ -190,12 +206,12 @@ for (const type of WTYPES) {
   });
 }
 
-// ── 방어구: 머리 / 갑옷 / 망토 각 12종 ──
-const T_APRICE = [80, 320, 900, 2100, 4500, 9000];
+// ── 방어구: 머리 / 갑옷 / 망토 각 14종 (13~14 = 7단계, 2부) ──
+const T_APRICE = [80, 320, 900, 2100, 4500, 9000, 18000];
 const A_BASE = {
-  head: { def: [2, 5, 9, 14, 20, 27], res: [1, 3, 5, 8, 11, 15] },
-  body: { def: [3, 8, 14, 21, 30, 40], res: [1, 2, 4, 7, 10, 14], hp: [0, 10, 25, 45, 70, 100] },
-  cloak: { def: [1, 3, 5, 8, 11, 15], res: [2, 4, 7, 11, 16, 22] },
+  head: { def: [2, 5, 9, 14, 20, 27, 35], res: [1, 3, 5, 8, 11, 15, 20] },
+  body: { def: [3, 8, 14, 21, 30, 40, 52], res: [1, 2, 4, 7, 10, 14, 18], hp: [0, 10, 25, 45, 70, 100, 140] },
+  cloak: { def: [1, 3, 5, 8, 11, 15, 20], res: [2, 4, 7, 11, 16, 22, 29] },
 };
 const FOCUS = { def: { def: 1.25, res: 0.6, hp: 1 }, res: { def: 0.65, res: 1.4, hp: 0.7 }, bal: { def: 1, res: 1, hp: 1 } };
 // [이름, 아이콘, 초점(def|res|bal), 외형, 추가 능력치, 설명, (고정 능력치)]
@@ -213,6 +229,8 @@ const ARMOR_TABLE = {
     ['악마의 뿔투구', 'head_6', 'def', { headgear: 'horns', color: '#d8ccb4' }, { atk: 6, critDmg: 8 }, '하급 악마의 뿔을 붙인 투구. 보는 것만으로도 기가 꺾인다.'],
     ['몰락한 왕의 관', 'head_5', 'bal', { headgear: 'crown', color: '#e8c872' }, { luck: 8, goldBonus: 10, hp: 40 }, '멸망한 왕국의 왕관. 루비는 아직도 피처럼 붉다.'],
     ['마왕의 뿔관', 'head_6', 'bal', { headgear: 'horns', color: '#3a1a2a' }, { atk: 8, mag: 8, resDark: 12 }, '마계 군주의 뿔로 만든 관. 어둠이 쓰는 이에게 고개를 숙인다.'],
+    ['거울 투구', 'head_7', 'def', { headgear: 'helm', color: '#dfe8f0' }, { hp: 50 }, '만경궁 근위대의 거울 투구. 뒤에서 오는 것도 비쳐 보인다.'],
+    ['폭풍 깃 왕관', 'head_7', 'res', { headgear: 'crown', color: '#9fc8ff' }, { jumpPow: 6, mag: 10 }, '하늘 왕국 왕족의 깃털 왕관. 바람이 쓰는 이를 떠받친다.'],
   ],
   body: [
     ['여행자 튜닉', 'body_1', 'bal', {}, {}, '두꺼운 천으로 지은 튜닉. 갑옷이라 부르기엔 민망하지만 움직이기 편하다.', { def: 3, res: 1 }],
@@ -227,6 +245,8 @@ const ARMOR_TABLE = {
     ['미스릴 판금', 'body_4', 'def', { armor: 'plate', color: '#cfe0f4', trim: '#8ab8ff' }, { agi: 4, hp: 20 }, '전설의 금속 미스릴로 만든 갑옷. 깃털처럼 가볍고 강철보다 단단하다.'],
     ['마왕의 갑주', 'body_6', 'def', { armor: 'dark', color: '#3a0a14', trim: '#ff3a4a' }, { atk: 10, resDark: 15 }, '마왕군 장군의 갑주. 틈새로 붉은 마력이 스며 나온다.'],
     ['천상의 성갑', 'body_5', 'res', { armor: 'holy', color: '#fff8ec', trim: '#ffd84a' }, { hpRegen: 1, resDark: 18, resHoly: 10 }, '천사가 벗어 두고 간 갑옷이라 전해진다. 입은 자는 결코 절망하지 않는다.'],
+    ['용광로 판금', 'body_7', 'def', { armor: 'plate', color: '#5a3020', trim: '#ff7a2a' }, { resFire: 18 }, '용광로의 열기로 담금질한 판금. 불길 속에서도 식지 않는다.'],
+    ['심해 비늘 흉갑', 'body_7', 'bal', { armor: 'chain', color: '#2a6a7a', trim: '#9fe8ff' }, { resIce: 15, hpRegen: 1 }, '심해 괴어의 비늘을 엮은 흉갑. 상처가 물처럼 아문다.'],
   ],
   cloak: [
     ['낡은 여행 망토', 'cloak_1', 'bal', { cape: 'plain', color: '#6a4a2a', color2: '#3a2818', len: 0.9 }, {}, '먼지투성이 여행용 망토. 밤바람 정도는 막아 준다.'],
@@ -241,6 +261,8 @@ const ARMOR_TABLE = {
     ['흡혈 백작의 망토', 'cloak_4', 'bal', { cape: 'royal', color: '#120a10', color2: '#a0101e', len: 1.2 }, { lifesteal: 1.5, moveSpd: 4 }, '어느 흡혈 백작이 두르던 망토. 박쥐의 날개처럼 펼쳐진다.'],
     ['마왕의 날개 망토', 'cloak_6', 'def', { cape: 'tattered', color: '#2a0a14', color2: '#6a0a1a', len: 1.25 }, { atk: 8, resFire: 15 }, '찢긴 악마의 날개를 이어 붙인 망토. 끝자락에서 불티가 떨어진다.'],
     ['천사의 망토', 'cloak_5', 'res', { cape: 'royal', color: '#fff8ec', color2: '#e8c872', len: 1.25 }, { moveSpd: 6, jumpPow: 8, resHoly: 10 }, '천사의 깃털로 짠 망토. 몸이 새털처럼 가벼워진다.'],
+    ['악몽의 장막', 'cloak_7', 'res', { cape: 'tattered', color: '#1a0a20', color2: '#6a2a8a', len: 1.2 }, { crit: 4 }, '악몽을 짜서 만든 망토. 두르면 적이 당신을 제대로 보지 못한다.'],
+    ['새벽 날개 망토', 'cloak_7', 'bal', { cape: 'royal', color: '#fff4e0', color2: '#ffd070', len: 1.25 }, { moveSpd: 7, resDark: 15 }, '새벽빛을 머금은 깃털 망토. 어둠 속에서도 길이 보인다.'],
   ],
 };
 for (const slot of ['head', 'body', 'cloak']) {
@@ -259,8 +281,8 @@ for (const slot of ['head', 'body', 'cloak']) {
   });
 }
 
-// ── 장신구: 반지 12 + 목걸이/부적 12 ──
-const T_CPRICE = [150, 500, 1300, 3000, 6500, 13000];
+// ── 장신구: 반지 14 + 목걸이/부적 14 (13~14 = 7단계, 2부) ──
+const T_CPRICE = [150, 500, 1300, 3000, 6500, 13000, 26000];
 // [id, 이름, 아이콘, 단계, 능력치, 오라, 설명]
 const ACC_TABLE = [
   ['a_ring_1', '철 반지', 'ring_1', 1, { atk: 2, def: 1 }, null, '투박한 쇠 반지. 주먹을 쥘 때 조금 든든하다.'],
@@ -275,6 +297,8 @@ const ACC_TABLE = [
   ['a_ring_10', '네잎클로버 반지', 'ring_4', 5, { luck: 15, dropBonus: 12, goldBonus: 12 }, null, '네잎클로버를 영원히 가둔 에메랄드 반지. 행운이 끊이지 않는다.'],
   ['a_ring_11', '죽음의 반지', 'ring_5', 6, { atk: 18, crit: 6, critDmg: 20, dark: 15 }, { color: '#b060ff', type: 'dark' }, '사신의 손가락에서 빠졌다는 반지. 끼는 순간 체온이 사라진다.'],
   ['a_ring_12', '진혈의 반지', 'ring_6', 6, { atk: 16, lifesteal: 3, hp: 60 }, { color: '#ff3040', type: 'blood' }, '고대 흡혈귀의 피를 응축한 반지. 맥박처럼 고동친다.'],
+  ['a_ring_13', '균열의 반지', 'ring_7', 7, { atk: 24, crit: 7, critDmg: 24, dark: 18 }, { color: '#b060ff', type: 'dark' }, '공허의 균열이 새겨진 반지. 끼는 순간 손가락 끝이 차가워진다.'],
+  ['a_ring_14', '닻의 반지', 'ring_7', 7, { atk: 20, lifesteal: 3, hp: 90 }, { color: '#ff8a9a', type: 'blood' }, '세계의 닻을 본떠 만든 반지. 무엇에도 휩쓸리지 않는다.'],
   ['a_amulet_1', '나무 십자가', 'amulet_1', 1, { res: 3, resDark: 5 }, null, '가죽끈에 꿴 나무 십자가. 마을 신부님이 손수 깎아 주셨다.'],
   ['a_amulet_2', '초승달 펜던트', 'amulet_2', 1, { mp: 10, mpRegen: 0.3 }, null, '은빛 초승달 펜던트. 밤이면 희미하게 빛난다.'],
   ['a_amulet_3', '늑대 이빨 목걸이', 'amulet_3', 2, { atk: 4, agi: 3 }, null, '굶주린 늑대의 송곳니를 엮은 목걸이. 사냥 본능이 깨어난다.'],
@@ -287,6 +311,8 @@ const ACC_TABLE = [
   ['a_amulet_10', '별빛 부적', 'amulet_6', 5, { mag: 16, skillDmg: 12 }, { color: '#c07cff', type: 'dark' }, '별의 파편을 담은 부적. 마력이 은하처럼 소용돌이친다.'],
   ['a_amulet_11', '성인의 유골함', 'amulet_1', 6, { res: 25, dmgReduce: 6, resDark: 20 }, { color: '#fff2b0', type: 'holy' }, '성인의 유골 한 조각을 모신 목걸이. 어떤 저주도 닿지 못한다.'],
   ['a_amulet_12', '심연의 별', 'amulet_6', 6, { mag: 20, skillDmg: 20, cdr: 8 }, { color: '#b060ff', type: 'dark' }, '심연 밑바닥에서 빛나던 별. 들여다보면 끝없이 빨려 든다.'],
+  ['a_amulet_13', '별의 목걸이', 'amulet_7', 7, { mag: 24, skillDmg: 22, cdr: 9 }, { color: '#fff2b0', type: 'holy' }, '작은 별 조각을 담은 목걸이. 밤이 깊을수록 밝아진다.'],
+  ['a_amulet_14', '새벽 성인의 유골함', 'amulet_7', 7, { res: 32, dmgReduce: 8, resDark: 25 }, { color: '#fff2b0', type: 'holy' }, '천 년 전 성녀의 유골 한 조각을 모신 목걸이. 공허도 이것을 삼키지 못한다.'],
 ];
 for (const [id, name, icon, t, stats, aura, desc] of ACC_TABLE) {
   const n = +id.split('_').pop();
@@ -363,15 +389,68 @@ const UNIQUE_LIST = [
   { id: 'u_seraphim', name: '대천사의 홀 세라핌', slot: 'weapon', wtype: 'staff', tier: 6, icon: 'staff_5', lvReq: 42, rarity: 5, mythic: true,
     stats: { atk: 40, mag: 116, holy: 35, skillDmg: 20, mpRegen: 1.5 }, element: 'holy', visual: { style: 5, glow: '#fff2b0' },
     effect: '여섯 날개의 축복 — 스킬 피해 +20%, MP 재생 +1.5/초', desc: '최상급 천사 세라핌의 깃털이 감긴 홀. 들어 올리면 여섯 날개의 환영이 펼쳐진다.' },
+
+  // ── 2부 보스 고유 (7단계, world2 §7.5) ──
+  { id: 'u_narkissa', name: '만경의 홀 나르키사', slot: 'weapon', wtype: 'staff', tier: 7, icon: 'staff_7', lvReq: 48, rarity: 5, boss: 'b_narkissa',
+    stats: { atk: 60, mag: 168, ice: 30, res: 20, skillDmg: 15 }, element: 'ice', visual: { style: 6, glow: '#dff4ff', rift: true },
+    effect: '만 개의 거울 — 냉기 피해 +30%, 스킬 피해 +15%', desc: '여제의 드레스에서 떨어진 거울 조각을 엮은 홀. 조각마다 갇힌 얼굴이 주인 대신 눈을 깜빡인다.' },
+  { id: 'u_moloch', name: '우상 파쇄 대검 몰록', slot: 'weapon', wtype: 'greatsword', tier: 7, icon: 'greatsword_7', lvReq: 52, rarity: 5, boss: 'b_moloch',
+    stats: { atk: 205, fire: 30, critDmg: 35, hp: 80 }, element: 'fire', visual: { style: 6, glow: '#ff7a2a', rift: true },
+    effect: '영겁의 불 — 화염 피해 +30%, 치명타 피해 +35%', desc: '몰록의 쇠뿔을 녹여 벼린 대검. 칼등에 녹아 붙은 영혼들이 휘두를 때마다 뜨겁게 울부짖는다.' },
+  { id: 'u_dagon', name: '심해 작살포 다곤', slot: 'weapon', wtype: 'gun', tier: 7, icon: 'gun_7', lvReq: 55, rarity: 5, boss: 'b_dagon',
+    stats: { atk: 150, ice: 30, crit: 10, critDmg: 25 }, element: 'ice', visual: { style: 6, glow: '#3ad0c8', rift: true },
+    effect: '심해의 압력 — 냉기 피해 +30%, 치명타 확률 +10%', desc: '사제왕의 산호 지팡이를 총신으로 깎은 작살포. 방아쇠를 당기면 깊은 바다의 수압이 함께 터져 나온다.' },
+  { id: 'u_ziz', name: '뇌조의 꽁지 채찍 지즈', slot: 'weapon', wtype: 'whip', tier: 7, icon: 'whip_7', lvReq: 58, rarity: 5, boss: 'b_ziz',
+    stats: { atk: 160, thunder: 35, reach: 15, atkSpd: 8 }, element: 'thunder', visual: { style: 6, glow: '#bfe0ff', rift: true },
+    effect: '폭풍의 꼬리 — 번개 피해 +35%, 공격 범위 +15%', desc: '거신조의 꽁지깃을 꼬아 만든 채찍. 깃털마다 잠든 번개가 휘두를 때마다 눈을 뜬다.' },
+  { id: 'u_ziz2', name: '지즈의 날개 망토', slot: 'cloak', tier: 7, icon: 'cloak_7', lvReq: 58, rarity: 5, boss: 'b_ziz',
+    stats: { def: 22, res: 34, airJumps: 1, moveSpd: 8, jumpPow: 10 }, visual: { cape: 'tattered', color: '#2a3a5a', color2: '#bfe0ff', len: 1.3 },
+    effect: '하늘의 기억 — 공중 점프 +1, 점프력 +10%', desc: '해를 가리던 거신조의 날개 한 자락. 두르면 발밑의 바람이 먼저 몸을 띄운다.' },
+  { id: 'u_mara', name: '악몽의 바늘 마라', slot: 'weapon', wtype: 'dagger', tier: 7, icon: 'dagger_7', lvReq: 62, rarity: 5, boss: 'b_mara',
+    stats: { atk: 118, crit: 20, critDmg: 40, dark: 30, atkSpd: 10 }, element: 'dark', visual: { style: 6, glow: '#c060ff', rift: true },
+    effect: '잠들지 않는 바늘 — 치명타 확률 +20%, 공격 속도 +10%', desc: '마라의 입을 꿰매고 있던 바늘. 찔린 자는 눈을 뜬 채로 악몽을 꾼다.' },
+  { id: 'u_behemoth', name: '베헤모스의 엄니검', slot: 'weapon', wtype: 'sword', tier: 7, icon: 'sword_7', lvReq: 66, rarity: 5, boss: 'b_behemoth',
+    stats: { atk: 170, mag: 45, lifesteal: 3, hp: 100, critDmg: 25 }, visual: { style: 6, glow: '#9ad040', rift: true },
+    effect: '대지의 이빨 — 흡혈 +3%, 최대 HP +100', desc: '썩지 않은 베헤모스의 엄니를 통째로 깎은 검. 칼자루에서는 아직도 여린 새싹이 돋는다.' },
+  { id: 'u_nihil', name: '무(無)의 왕관', slot: 'acc', tier: 7, icon: 'amulet_7', lvReq: 68, rarity: 5, boss: 'b_nihil',
+    stats: { atk: 32, mag: 32, skillDmg: 25, ultGain: 30, cdr: 12, dmgReduce: 6 }, visual: { aura: { color: '#ffffff', type: 'holy' } },
+    effect: '공허를 이긴 증표 — 필살 게이지 충전 +30%, 재사용 대기 −12%', desc: '니힐의 가면이 깨진 자리에 남은 하얀 고리. 머리에 얹는 순간 세상의 소리가 한 박자 멀어진다.' },
+  { id: 'u_nihil2', name: '공허를 두른 망토', slot: 'cloak', tier: 7, icon: 'cloak_7', lvReq: 68, rarity: 5, boss: 'b_nihil',
+    stats: { def: 26, res: 40, hp: 120, lifesteal: 2, moveSpd: 10, resDark: 30 }, visual: { cape: 'royal', color: '#05030a', color2: '#e8e0ff', len: 1.3 },
+    effect: '별 없는 밤 — 이동 속도 +10%, 암흑 저항 +30%', desc: '별 없는 밤을 잘라 지은 망토. 안감에는 아직 태어나지 않은 별들이 희미하게 떠다닌다.' },
+  { id: 'u_alberto', name: '알베르토의 묵주', slot: 'acc', tier: 7, icon: 'amulet_7', lvReq: 50, rarity: 4,
+    stats: { res: 20, holy: 20, hpRegen: 2, resDark: 20 }, visual: { aura: { color: '#fff2b0', type: 'holy' } },
+    effect: '늙은 사제의 기도 — HP 재생 +2/초, 신성 피해 +20%', desc: '알베르토 신부가 백 년 동안 굴린 묵주. 알 하나하나에 헌터들의 이름이 새겨져 있다.' },
+  // ── 2부 신화 무기 (7단계; 니힐 첫 처치, 2부 보스·태초의 공허 정예가 극히 드물게) ──
+  { id: 'u_dawn_whip', name: '새벽채찍 루미나', slot: 'weapon', wtype: 'whip', tier: 7, icon: 'whip_7', lvReq: 52, rarity: 5, mythic: true,
+    stats: { atk: 190, holy: 40, reach: 18, crit: 8 }, element: 'holy', visual: { style: 6, glow: '#fff2b0', rift: true },
+    effect: '성녀의 기도 — 신성 피해 +40%, 공격 범위 +18%', desc: '성녀 루미나의 마지막 기도가 깃든 채찍. 휘두른 자리마다 새벽빛이 번진다.' },
+  { id: 'u_dawn_sword', name: '여명검 아우로라', slot: 'weapon', wtype: 'sword', tier: 7, icon: 'sword_7', lvReq: 52, rarity: 5, mythic: true,
+    stats: { atk: 196, mag: 60, holy: 35, crit: 10 }, element: 'holy', visual: { style: 6, glow: '#fff2b0', rift: true },
+    effect: '첫 햇살 — 신성 피해 +35%, 치명타 확률 +10%', desc: '공허를 몰아낸 첫 햇살을 벼려 만든 검. 칼날이 밤을 가를 때마다 동이 튼다.' },
+  { id: 'u_dawn_great', name: '종언대검 오메가', slot: 'weapon', wtype: 'greatsword', tier: 7, icon: 'greatsword_7', lvReq: 52, rarity: 5, mythic: true,
+    stats: { atk: 250, critDmg: 50, dmgReduce: 6, hp: 120 }, visual: { style: 6, glow: '#fff2b0', rift: true },
+    effect: '끝의 무게 — 치명타 피해 +50%, 받는 피해 −6%', desc: '세상의 끝을 끝내기 위해 벼린 대검. 내려칠 때마다 공허가 한 걸음 물러선다.' },
+  { id: 'u_dawn_dagger', name: '별똥 단검 스텔라', slot: 'weapon', wtype: 'dagger', tier: 7, icon: 'dagger_7', lvReq: 52, rarity: 5, mythic: true,
+    stats: { atk: 142, crit: 22, critDmg: 45, holy: 30, atkSpd: 12 }, element: 'holy', visual: { style: 6, glow: '#fff2b0', rift: true },
+    effect: '떨어지는 별 — 치명타 확률 +22%, 공격 속도 +12%', desc: '떨어지는 별 하나를 붙잡아 벼린 단검. 칼끝이 지나간 자리에 꼬리별이 남는다.' },
+  { id: 'u_dawn_gun', name: '창세총 제네시스', slot: 'weapon', wtype: 'gun', tier: 7, icon: 'gun_7', lvReq: 52, rarity: 5, mythic: true,
+    stats: { atk: 168, crit: 14, holy: 35, subDmg: 30 }, element: 'holy', visual: { style: 6, glow: '#fff2b0', rift: true },
+    effect: '첫 번째 빛 — 신성 피해 +35%, 보조무기 피해 +30%', desc: '세상에 처음 비친 빛을 탄환으로 쓰는 총. 총성이 울리면 어둠이 먼저 무너진다.' },
+  { id: 'u_dawn_staff', name: '새벽의 홀 에오스', slot: 'weapon', wtype: 'staff', tier: 7, icon: 'staff_7', lvReq: 52, rarity: 5, mythic: true,
+    stats: { atk: 75, mag: 220, holy: 40, skillDmg: 25, mpRegen: 2 }, element: 'holy', visual: { style: 6, glow: '#fff2b0', rift: true },
+    effect: '여명의 여신 — 스킬 피해 +25%, MP 재생 +2/초', desc: '새벽 여신의 이름을 딴 홀. 들어 올리면 공허 한가운데서도 해가 뜬다.' },
 ];
-const U_PRICE = [2000, 5000, 12000, 25000, 50000, 90000];
+const U_PRICE = [2000, 5000, 12000, 25000, 50000, 90000, 150000];
 for (const u of UNIQUE_LIST) def({ ...u, unique: true, price: U_PRICE[u.tier - 1] * (u.rarity >= 5 ? 1.5 : 1) });
 export const UNIQUES = UNIQUE_LIST.map((u) => u.id);
 /** 보스 id → 고유 드롭 목록 */
 export const BOSS_UNIQUES = {};
 for (const u of UNIQUE_LIST) if (u.boss) (BOSS_UNIQUES[u.boss] ??= []).push(u.id);
-/** 무기 계열 → 신화 무기 id */
-export const MYTHIC_WEAPONS = Object.fromEntries(UNIQUE_LIST.filter((u) => u.mythic).map((u) => [u.wtype, u.id]));
+/** 무기 계열 → 신화 무기 id (1부: 6단계 신화만 — 기존 동작 그대로) */
+export const MYTHIC_WEAPONS = Object.fromEntries(UNIQUE_LIST.filter((u) => u.mythic && u.tier === 6).map((u) => [u.wtype, u.id]));
+/** 무기 계열 → 2부 신화 무기 id (7단계; game/loot.js 가 chapter ≥ 14 에서 쓴다) */
+export const MYTHIC_WEAPONS_P2 = Object.fromEntries(UNIQUE_LIST.filter((u) => u.mythic && u.tier === 7).map((u) => [u.wtype, u.id]));
 
 // ───────────────────────────── 소모품 ─────────────────────────────
 const CONSUMABLES = [
@@ -418,6 +497,14 @@ const MATERIALS = [
   ['m_scale', '심해의 비늘', 'amulet_2', 4, 75, '지하 수로의 어인과 괴어에게서 얻은 비늘. 칼날도 미끄러진다.'],
   ['m_ice', '만년빙 결정', 'gem_crystal', 5, 110, '얼어붙은 첨탑에서만 나는 결정. 한여름에도 녹지 않는다.'],
   ['m_herb', '월하초', 'antidote', 2, 18, '달빛 아래서만 피는 약초. 물약과 해독제의 원료가 된다.'],
+  // ── 2부 재료 (world2 §7.3; 기존 아이콘 재사용) ──
+  ['m_mirror', '거울 파편', 'gem_crystal', 5, 120, '만경궁의 깨진 거울 조각. 들여다보면 반 박자 늦게 눈을 깜빡인다.'],
+  ['m_ember', '영겁의 불씨', 'stone_6', 5, 140, '영겁의 용광로에서 꺼내 온 불씨. 물에 담가도 꺼지지 않는다.'],
+  ['m_pearl', '심해 진주', 'amulet_2', 5, 150, '빛이 닿지 않는 바다에서 스스로 빛나는 진주.'],
+  ['m_gale', '폭풍 깃털', 'sub_dagger', 6, 170, '번개가 흐르는 깃털. 손에 쥐면 머리카락이 곤두선다.'],
+  ['m_dream', '악몽의 모래', 'potion_mp', 6, 180, '꿈속에서 흘러나온 보랏빛 모래. 베개 밑에 두지 말 것.'],
+  ['m_spore', '역병 포자', 'antidote', 6, 160, '밀봉한 병 속의 포자. 병을 흔들면 안에서 무언가 꿈틀거린다.'],
+  ['m_void', '공허 정수', 'relic_4', 7, 260, '아무것도 없는 것을 병에 담은 것. 그런데 무겁다.'],
 ];
 for (const [id, name, icon, tier, price, desc] of MATERIALS) def({ id, name, slot: 'material', tier, icon, lvReq: 1, price, stack: 999, desc });
 
@@ -434,6 +521,29 @@ const KEYS = [
   ['k_seal', '봉인의 인장', 'coin', false, '심연의 역성으로 가는 문을 봉인한 성 금화. 다섯 유물에 반응해 떨린다.'],
 ];
 for (const [id, name, icon, relic, desc] of KEYS) def({ id, name, slot: 'key', tier: 1, icon, lvReq: 1, price: 0, relic: relic || undefined, quest: !relic || undefined, desc });
+// ── 2부 중요 물품 (world2 §7.4): 균열의 등불 · 세계의 심장 6 (보스 드롭, 중복 없음) · 별의 조각 6 (맵 '@') · 새벽꽃 ──
+const P2_WORLDS = ['거울', '불꽃', '바다', '폭풍', '꿈', '대지'];
+const HEART_COLOR = ['#dff4ff', '#ff7a2a', '#3ad0c8', '#bfe0ff', '#c060ff', '#9ad040'];
+const HEART_DESC = [
+  '만경궁의 닻. 은빛으로 고동치며 보는 이의 참된 얼굴을 비춘다.',
+  '영겁의 용광로의 닻. 쥐고 있으면 손바닥이 따뜻하다.',
+  '가라앉은 성소의 닻. 귀에 대면 파도 소리가 들린다.',
+  '하늘 왕국의 닻. 안에서 작은 번개가 쉬지 않고 친다.',
+  '악몽의 미궁의 닻. 들여다보면 졸음이 쏟아진다.',
+  '썩어가던 숲의 닻. 새싹 냄새가 난다.',
+];
+const STAR_DESC = '세계의 틈에 숨어 있던 작은 별. 여섯이 모이면 무언가가 떠오를 것만 같다.';
+def({ id: 'k_rift_lantern', name: '균열의 등불', slot: 'key', tier: 1, icon: 'rift_lantern', lvReq: 1, price: 0, quest: true,
+  desc: '레이븐이 건넨 낡은 등불. 검은 불꽃이 타오르는 한, 어느 세계에서든 돌아올 수 있다.' });
+for (let n = 1; n <= 6; n++) {
+  def({ id: `k_heart_${n}`, name: `세계의 심장: ${P2_WORLDS[n - 1]}`, slot: 'key', tier: 1, icon: `wheart_${n}`, lvReq: 1, price: 0,
+    worldHeart: n, color: HEART_COLOR[n - 1], desc: HEART_DESC[n - 1] });
+}
+for (let n = 1; n <= 6; n++) {
+  def({ id: `k_star_${n}`, name: `별의 조각: ${P2_WORLDS[n - 1]}`, slot: 'key', tier: 1, icon: 'star_shard', lvReq: 1, price: 0, starShard: n, desc: STAR_DESC });
+}
+def({ id: 'k_dawnflower', name: '새벽꽃', slot: 'key', tier: 1, icon: 'dawnflower', lvReq: 1, price: 0, quest: true,
+  desc: '공허의 부패가 걷힌 자리에서만 핀다는 꽃. 새벽빛을 머금어 은은하게 빛난다.' });
 
 // ───────────────────────────── 추가 옵션 (접두 · 접미) ─────────────────────────────
 // sl: 붙을 수 있는 부위 W무기 H머리 B갑옷 C망토 A장신구 / sc: 단계 보정 f(고정치) p(%) t(미세) / mt: 최소 단계 / w: 가중치
@@ -497,10 +607,10 @@ const baseOf = (x) => (typeof x === 'string' ? ITEMS[x] : x?.baseId ? ITEMS[x.ba
 export function isEquipment(x) { const b = baseOf(x); return !!b && EQUIP_BASE_SLOTS.includes(b.slot); }
 export function isStackable(x) { return !!baseOf(x)?.stack; }
 export function itemColor(inst) { return RARITIES[clampR(inst?.rarity)]?.color ?? RARITIES[0].color; }
-export function tierForLevel(lv = 1) { let t = 1; for (let i = 0; i < 6; i++) if (lv >= TIER_LV[i]) t = i + 1; return t; }
-/** 단계(1~6)에 해당하는 일반 베이스 id. 무기·방어구는 단계당 2종(variant 0=표준, 1=상위형) — 번호 = 단계×2-1+variant */
+export function tierForLevel(lv = 1) { let t = 1; for (let i = 0; i < MAX_TIER; i++) if (lv >= TIER_LV[i]) t = i + 1; return t; }
+/** 단계(1~7)에 해당하는 일반 베이스 id. 무기·방어구는 단계당 2종(variant 0=표준, 1=상위형) — 번호 = 단계×2-1+variant */
 export function baseIdFor(slot, tier, { wtype = null, variant = 1 } = {}) {
-  const t = Math.max(1, Math.min(6, tier | 0)), n = t * 2 - 1 + (variant ? 1 : 0);
+  const t = Math.max(1, Math.min(MAX_TIER, tier | 0)), n = t * 2 - 1 + (variant ? 1 : 0);
   if (slot === 'weapon') return `w_${wtype || 'whip'}_${n}`;
   if (slot === 'body') return `a_body_${n}`;
   if (slot === 'head' || slot === 'cloak') return `a_${slot}_${n}`;
@@ -584,11 +694,11 @@ export function rollItem(level = 1, { luck = 0, diff = null, slot = null, wtype 
   }
   let t = tier ?? tierForLevel(level);
   if (tier == null) { const q = Math.random(); if (q < 0.2) t--; else if (q > 0.86) t++; }
-  t = Math.max(1, Math.min(6, t));
+  t = Math.max(1, Math.min(MAX_TIER, t));
   let pool = (POOL[slot] || []).filter((b) => !wtype || b.wtype === wtype);
   if (!pool.length) pool = POOL.weapon;
   let cand = [];
-  for (let d = 0; d < 6 && !cand.length; d++) cand = pool.filter((b) => Math.abs(b.tier - t) === d);
+  for (let d = 0; d < MAX_TIER && !cand.length; d++) cand = pool.filter((b) => Math.abs(b.tier - t) === d);
   const base = cand[Math.floor(Math.random() * cand.length)];
   const r = rarity ?? rollRarity(level, { luck, diff, minRarity, maxRarity, boost });
   return makeItem(base.id, { rarity: r });
@@ -738,6 +848,8 @@ export function itemDescRich(inst) {
     if (b.use) L.push({ text: `사용 효과: ${useText(b.use)}`, color: '#7ee07e' });
     if (b.stone) L.push({ text: '강화 재료 — 대장장이 하드윈에게 가져가자', color: GRAY });
     else if (b.slot === 'material' && !b.id.startsWith('m_scroll')) L.push({ text: '의뢰·교환 재료 — 상점에 팔 수도 있다', color: GRAY });
+    if (b.worldHeart) L.push({ text: '세계의 심장 — 여섯 개를 모두 되찾으면 공허로 가는 길이 열린다', color: b.color ?? GOLD });
+    else if (b.starShard) L.push({ text: '별의 조각 — 여섯 개를 모두 모으면…', color: '#fff2b0' });
     if (b.relic) L.push({ text: '드라큘라의 유물 — 다섯 개를 모두 모으면…', color: '#ff8a9a' });
     else if (b.slot === 'key') L.push({ text: '버리거나 팔 수 없다', color: GRAY });
   }

@@ -32,6 +32,22 @@ import { TileRenderer } from '../render/tiles.js';
 import { drawHero } from '../render/hero.js';
 import { createBoss } from './bosses/index.js';
 import { SCRIPTS } from '../data/story.js';
+import { CLASSES } from '../data/classes.js';
+import { Style } from './style.js';   // [hook:feel]
+import { AW_GAIN } from '../data/feel_hit.js';   // [hook:awaken]
+import { createGimmick } from './gimmicks.js';   // [hook:gimmick]
+import { CompanionSystem } from './companions.js';   // [hook:cmp]
+import { touchpad } from '../core/touchpad.js';   // [hook:plat]
+
+// ── 손맛·각성 상수 (feel.md §4.9, §6.1). AW_GAIN(data/feel_hit.js)에 값이 없으면 이 기본값을 쓴다 ──
+const SLOWMO_BASE = 0.35;                      // 기본 슬로모션 배율 (보스 격파 등 옛 호출부)
+const KILL_SLOW_GAP = 1.5;                     // 처치 슬로모션 최소 간격 (실제 초)
+const MULTI_KILL_WIN = 0.5;                    // 다중 처치 판정 창 (실제 초)
+const COMBO_MILESTONES = new Set([10, 25, 50, 100, 150, 200, 300]);
+const AW_DEFAULT = { hit: 0.5, crit: 1, kill: 2, elite: 8, launch: 3, bounce: 3, counter: 3, rankUp: 1, bossIntro: 25, phase: 15, rage: 6, rageFrac: 0.1 };
+const AW_NONE = ['ult', 'awaken', 'companion'];  // 필살기·각성기·동료 타격은 각성 게이지를 채우지 않는다
+const awGain = (k) => AW_GAIN?.[k] ?? AW_DEFAULT[k] ?? 0;
+const awBlocked = (attack) => !!attack?.tags?.some((t) => AW_NONE.includes(t));
 
 export const STYLE_RANKS = [
   { n: 0, r: '', c: '#fff' }, { n: 5, r: 'D', c: '#a0a0a0' }, { n: 10, r: 'C', c: '#7ee07e' }, { n: 20, r: 'B', c: '#5aa8ff' },
@@ -69,6 +85,17 @@ export class World {
     };
     this.onExit = onExit;
     this.player = null;
+    // ── 손맛·각성·기믹·동료 (MASTER_PLAN §1.7 world.js #2; loadRoom 보다 먼저) ──
+    this.rt = 0;   // [hook:feel] 실제 경과 시간 (히트스톱·슬로모션 무관)
+    this.slowmoScale = SLOWMO_BASE; this.killSlowT = 0; this.killChain = { n: 0, t: -9 };   // [hook:feel]
+    this.freezeEnemies = false; this.freezeLog = []; this.frozenRecent = 0;   // [hook:feel]
+    this.overlays = []; this.hudHidden = false; this.letterbox = 0;   // [hook:feel]
+    this.roomFoes = 0;   // [hook:feel] 이 방에 나온 적 수 (마지막 적 처치 슬로모션)
+    this.style = this.makePart('style', () => new Style(this));   // [hook:feel]
+    this.run.aw = 0; this.awakenState = { ready: false, holdK: 0 };   // [hook:awaken]
+    this.bossPhaseSeen = null; this.bossPhaseOf = null;   // [hook:awaken]
+    this.gimmick = null;   // [hook:gimmick]
+    this.companions = this.makePart('companions', () => new CompanionSystem(this));   // [hook:cmp]
     this.loadRoom(roomId || this.stage.start || Object.keys(this.stage.rooms)[0]);
     bus.emit('stageEntered', { stageId });
     this.banner = { text: this.stage.name, sub: `CHAPTER ${this.stage.chapter ?? ''} · ${this.stage.sub ?? ''}`, t: 3.2, color: '#e8c872', big: true };
@@ -76,20 +103,35 @@ export class World {
 
   /** 그래픽 품질 설정 → 파티클 수·조명 해상도 (스테이지 도중 설정을 바꿔도 즉시 반영) */
   applyQuality() {
-    const q = this.game.settings?.quality ?? 'high';
+    const q = this.qualityNow();
     this.qualityApplied = q;
-    this.fx.max = q === 'low' ? 600 : 1400;
+    this.fx.max = q === 'low' ? 500 : q === 'medium' ? 900 : 1400;   // [hook:plat] MASTER_PLAN §5.2 파티클 예산
     this.fx.quality = q === 'low' ? 0.5 : q === 'medium' ? 0.75 : 1;
     this.lighting.res = q === 'low' ? 0.33 : 0.5;
     if (this.fx.list.length > this.fx.max) this.fx.list.splice(0, this.fx.list.length - this.fx.max);
   }
+  /** 실제 적용 품질 'low'|'medium'|'high' ('auto' 는 품질 조절기가 정한 game.quality, 없으면 high) */
+  qualityNow() {
+    const q = this.game.quality ?? this.game.settings?.quality ?? 'high';   // [hook:plat]
+    return q === 'low' || q === 'medium' ? q : 'high';
+  }
   /** 아케이드 계열 모드 (보스 러시·서바이벌·스테이지 연습): 세이브 기록 없음 */
   get arcade() { return this.mode === 'bossrush' || this.mode === 'survival' || this.mode === 'practice'; }
+  /** 이 방의 액체 종류 (방 설정 우선: world2 §3.1) */
+  get liquid() { return this.room?.liquid ?? this.stage.liquid ?? 'water'; }   // [hook:gimmick]
+  /** 방 기믹 중 kind 하나 (없으면 null — 호출부는 반드시 null 확인) */
+  gimmickOf(kind) { return this.gimmick?.get?.(kind) ?? null; }   // [hook:gimmick]
+  /** 다른 패키지의 런타임 부품 생성: 실패해도 스테이지는 뜨게 (오류는 콘솔에 남긴다) */
+  makePart(name, make) {
+    try { return make(); } catch (e) { console.error(`[world] ${name} 초기화 실패`, e); return null; }
+  }
 
   // ─────────────────────────── 방 로딩 ───────────────────────────
   loadRoom(roomId, { keepPlayer = true } = {}) {
     const room = this.stage.rooms[roomId];
     if (!room) { console.error('room not found', roomId); return; }
+    this.gimmick?.dispose?.(); this.gimmick = null;   // [hook:gimmick]
+    this.fx.clearDecals?.(); this.overlays.length = 0; this.roomFoes = 0;   // [hook:feel]
     this.room = room; this.roomId = roomId;
     this.map = new TileMap(room);
     this.entities = []; this.platforms = []; this.debrisList = [];
@@ -102,7 +144,7 @@ export class World {
     this.lighting.color = this.stage.darkColor ?? '#06020c';
     this.camera.setView(this.game.viewW, this.game.viewH);
     this.camera.setBounds(0, 0, this.map.pxW, this.map.pxH);
-    this.camera.zoom = 1; this.camera.zoomTarget = 1;
+    this.camera.reset();   // [hook:feel] 줌·연출 구도·흔들림·경기장 바닥 힌트 초기화
 
     // 플레이어
     const start = this.map.markersOf('P')[0] || { tx: 2, ty: this.map.h - 3 };
@@ -134,7 +176,7 @@ export class World {
           if (this.state.progress.secrets.includes(key)) c.open = true;
           this.add(c); break;
         }
-        case 'D': this.add(new Door(m.tx, m.ty, (room.doors?.[n]) ?? room.next)); break;
+        case 'D': { const door = new Door(m.tx, m.ty, (room.doors?.[n]) ?? room.next); door.mark = room.doorMarks?.[n] ?? null; this.add(door); break; }   // [hook:gimmick] 문 표식 (world2 §3.8)
         case 'M': { const pl = new MovingPlatform(m.tx, m.ty, false, room.platRange ?? 4, room.platSpeed ?? 80); this.add(pl); this.platforms.push(pl); break; }
         case 'V': { const pl = new MovingPlatform(m.tx, m.ty, true, room.platRange ?? 4, room.platSpeed ?? 70); this.add(pl); this.platforms.push(pl); break; }
         case 'F': { const pl = new CrumblePlatform(m.tx, m.ty); this.add(pl); this.platforms.push(pl); break; }
@@ -167,6 +209,9 @@ export class World {
     }
     // 장식 광원
     for (const d of this.map.decor) if (d.ch === 'L') this.add(new Lamp(d.tx, d.ty));
+    this.gimmick = createGimmick(this, room);   // [hook:gimmick]
+    this.companions?.onRoomLoaded(roomId);   // [hook:cmp] 수호신 배치·탈것 다시 태우기 (기믹이 생긴 뒤)
+    if (input.touchMode && p.mount?.riding) this.clearStickAtSpawn(start, place);   // [hook:plat] [hook:cmp] 탈것 몸이 넓어 스틱에 다시 가려질 수 있다
     // 가짜 벽은 드러나기 전 벽처럼 그림
     this.camera.follow(p, 1 / 60, true);
     const music = room.music ?? this.stage.music;
@@ -174,9 +219,11 @@ export class World {
     bus.emit('roomEntered', { stageId: this.stage.id, roomId });
   }
 
-  /** 가상 스틱(#stick)의 화면 영역 → 논리 좌표 {x0,x1,y0,y1}. 노치(safe-area)·작은 화면에서도 실제 위치를 쓴다 */
+  /** 가상 스틱의 화면 영역 → 논리 좌표 {x0,x1,y0,y1}. 캔버스 패드(touchpad.stickZone, 논리 px)를 먼저 쓰고, 없으면 DOM #stick, 그것도 없으면 대략값 */
   stickRect() {
     const vw = this.game.viewW, vh = this.game.viewH;
+    const z = touchpad.stickZone?.();   // [hook:plat]
+    if (z && z.w > 0 && z.h > 0) return { x0: z.x, x1: z.x + z.w, y0: z.y, y1: z.y + z.h };   // [hook:plat]
     try {
       const st = document.getElementById('stick'), cv = this.game.canvas;
       const r = st?.getBoundingClientRect(), c = cv?.getBoundingClientRect();
@@ -196,6 +243,7 @@ export class World {
     const free = (x, y) => { const t = m.typeAt(x, y); return !isSolidType(t) && t !== T.SPIKE && t !== T.LIQUID; };
     const floor = (x, y) => { const t = m.typeAt(x, y); return isSolidType(t) || t === T.ONEWAY; };
     const R = this.stickRect();
+    R.x1 = Math.min(R.x1, this.game.viewW * 0.4);   // [hook:plat] 떠 있는 스틱 영역이 넓게 와도 화면 왼쪽 40% 까지만 피한다
     // 착지해 선 자세로 카메라를 맞춰 판정 (공중 자세보다 시야가 20px 낮다). 세로는 한 칸 여유를 두어 경계에 걸친 경우도 옮긴다
     const covered = () => {
       p.onGround = true;
@@ -203,9 +251,16 @@ export class World {
       const z = cam.zoom, sx0 = (p.x - cam.x) * z, sy0 = (p.y - cam.y) * z, sy1 = (p.y + p.h - cam.y) * z;
       return sy1 + TILE * z > R.y0 && sy0 < R.y1 && sx0 < R.x1 + (TILE / 2) * z;
     };
+    // 후보 칸에 몸 전체(탈것에 탄 넓은 몸 포함)가 들어가는가
+    const fits = (x) => {
+      const cx = x * TILE + TILE / 2, l = Math.floor((cx - p.w / 2 + 1) / TILE), r = Math.floor((cx + p.w / 2 - 1) / TILE);
+      const top = start.ty + 1 - Math.ceil(p.h / TILE);   // [hook:cmp]
+      for (let tx = l; tx <= r; tx++) for (let ty = Math.min(top, start.ty - 1); ty <= start.ty; ty++) if (!free(tx, ty)) return false;
+      return floor(x, start.ty + 1);
+    };
     for (let k = 1; k <= 6 && covered(); k++) {
       const x = start.tx + k;
-      if (!(free(x, start.ty) && free(x, start.ty - 1) && floor(x, start.ty + 1))) break;
+      if (!fits(x)) break;
       place(x);
     }
     p.onGround = false;
@@ -231,6 +286,7 @@ export class World {
   spawnEnemy(id, fx, fy, opts = {}) {
     const elite = opts.elite ?? (chance(this.diff.elite ?? 0) && id !== 'medusa_head' && ENEMIES[id]?.elite !== false);
     const e = new Enemy(id, fx, fy, { level: opts.level ?? this.stage.level, elite, diff: this.diff, facing: opts.facing ?? -1, params: opts.params });
+    this.roomFoes++;   // [hook:feel]
     return this.add(e);
   }
   spawnPickup(type, x, y, data = {}) { return this.add(new Pickup(type, x, y, data)); }
@@ -253,24 +309,30 @@ export class World {
   // ─────────────────────────── 업데이트 ───────────────────────────
   update(dt) {
     this.debugRects.length = 0;
-    if ((this.game.settings?.quality ?? 'high') !== this.qualityApplied) this.applyQuality();
-    // 히트스톱: 월드 정지 (파티클/카메라는 조금 움직임)
+    if (this.qualityNow() !== this.qualityApplied) this.applyQuality();
+    this.rt += dt;   // [hook:feel]
+    if (this.killSlowT > 0) this.killSlowT -= dt;   // [hook:feel]
+    // 히트스톱: 월드 정지. 파티클은 0.3배속으로 피어나고, 흔들림·반동 스프링·화면 오버레이는 실제 시간으로 움직인다 (feel §4.1)
     if (this.hitstop > 0) {
       this.hitstop -= dt;
-      this.camera.follow(this.player, dt * 0.3);
+      this.frozenRecent += dt;   // [hook:feel] 입력 버퍼 보정 (player.js bufWin)
+      this.fx.update(dt * 0.3, this.map);   // [hook:feel]
+      this.tickOverlays(dt);   // [hook:feel]
+      this.camera.follow(this.player, dt * 0.3, false, dt);   // [hook:feel]
       return;
     }
     let sdt = dt;
-    if (this.slowmo > 0) { this.slowmo -= dt; sdt = dt * 0.35; }
+    if (this.slowmo > 0) { this.slowmo -= dt; sdt = dt * this.slowmoScale; if (this.slowmo <= 0) this.slowmoScale = SLOWMO_BASE; }   // [hook:feel]
     this.time += sdt;
     if (!this.cutscene && !this.cleared) this.run.time += dt;
     if (this.timeStop > 0) this.timeStop -= dt;
     this.bg.update?.(sdt, this);
 
+    const holdFoeShots = this.timeStop > 0 || this.freezeEnemies;   // [hook:feel] 각성 중엔 적 탄도 멈춘다 (timeStop 과 같은 규칙, 회색 화면 없음)
     for (let i = 0; i < this.entities.length; i++) {
       const e = this.entities[i];
       if (e.dead && e !== this.player) continue; // 죽은 플레이어는 사망 연출(updateDeath)을 위해 계속 갱신
-      if (this.timeStop > 0 && e.kind === 'projectile' && e.team === 'enemy') continue;
+      if (holdFoeShots && e.kind === 'projectile' && e.team === 'enemy') continue;   // [hook:feel]
       e.update(sdt, this);
     }
     for (const d of this.debrisList) d.update(sdt, this.map);
@@ -282,6 +344,11 @@ export class World {
       this.platforms = this.platforms.filter((e) => !e.dead);
     }
     this.fx.update(sdt, this.map);
+    this.gimmick?.update?.(sdt);   // [hook:gimmick] (world.cutscene 중에는 기믹이 스스로 진행을 멈춘다)
+    this.style?.update?.(dt);   // [hook:feel]
+    this.tickOverlays(dt);   // [hook:feel]
+    this.pollBossPhase();   // [hook:awaken] 보스 페이즈 변화마다 각성 게이지 +15
+    if (this.frozenRecent > 0) this.frozenRecent = Math.max(0, this.frozenRecent - dt);   // [hook:feel] 초당 1초씩 감소
     // 콤보 타이머
     if (this.combo.n > 0) {
       this.combo.t -= dt;
@@ -317,6 +384,34 @@ export class World {
     // 조명 수집
     this.lighting.begin();
     for (const e of this.entities) if (!e.dead && !this.inUnrevealedFake(e)) e.lights?.(this.lighting);
+    this.gimmick?.lights?.(this.lighting);   // [hook:gimmick]
+  }
+
+  // ─────────────────────────── 화면 오버레이 (필살기·각성 레이어) ───────────────────────────
+  /**
+   * world.overlays: 화면 좌표 레이어 {draw(ctx, vw, vh, world), update?(dt, world), life?, t, dead?}.
+   * lighting·bg.drawFront·기믹 drawScreen 다음, 'top' 파티클 전에 배열 순서대로 그린다.
+   * t 는 실제 시간으로 흐른다 (히트스톱 중에도). life 가 있으면 t ≥ life 에서, dead 가 true 면 곧바로 사라진다
+   */
+  addOverlay(o) { if (o) { o.t ??= 0; this.overlays.push(o); } return o; }   // [hook:feel]
+  tickOverlays(dt) {
+    const L = this.overlays;
+    if (!L.length) return;
+    for (const o of L) {
+      o.t = (o.t ?? 0) + dt;
+      try { o.update?.(dt, this); } catch (e) { o.dead = true; console.error('[world] overlay update', e); }
+    }
+    for (let i = L.length - 1; i >= 0; i--) { const o = L[i]; if (o.dead || (o.life != null && o.t >= o.life)) L.splice(i, 1); }
+  }
+  drawOverlays(ctx, vw, vh) {
+    for (const o of this.overlays) {
+      if (o.dead) continue;
+      ctx.save();
+      try { o.draw?.(ctx, vw, vh, this); } catch (e) { o.dead = true; console.error('[world] overlay draw', e); }
+      ctx.restore();
+    }
+    const lb = Math.min(vh * 0.2, this.letterbox || 0);
+    if (lb > 0.5) { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, vw, lb); ctx.fillRect(0, vh - lb, vw, lb); }
   }
 
   // ─────────────────────────── 렌더 ───────────────────────────
@@ -326,12 +421,16 @@ export class World {
     // 아이콘·초상 등 크게 축소되는 이미지가 있는 개체 층은 원래 품질로 되돌린다.
     const q0 = ctx.imageSmoothingQuality;
     ctx.imageSmoothingQuality = 'low';
-    this.bg.drawFar(ctx, cam, vw, vh, this.time);
+    const gm = this.gimmick;   // [hook:gimmick]
+    if (gm?.bgFlip) { ctx.save(); ctx.translate(vw, 0); ctx.scale(-1, 1); this.bg.drawFar(ctx, cam, vw, vh, this.time); ctx.restore(); }   // [hook:gimmick] 거울 허상 페이즈
+    else this.bg.drawFar(ctx, cam, vw, vh, this.time);
     ctx.save();
     cam.apply(ctx);
     this.bg.drawMid(ctx, cam, this.time);
+    gm?.drawWorld?.(ctx, cam, 'under');   // [hook:gimmick] 타일 뒤 (용암 몸통)
     this.tiles.drawDecor(ctx, cam, this.time);
     this.tiles.draw(ctx, cam);
+    gm?.drawWorld?.(ctx, cam, 'back');   // [hook:gimmick] 위상 칸·핏줄·상승 기류·포자 구름
     ctx.imageSmoothingQuality = q0;
     // 엔티티 (z 정렬)
     const list = this.entities.filter((e) => (!e.dead || e === this.player) && !e.hidden && !this.inUnrevealedFake(e) && (e.kind === 'player' || cam.visible(e.x, e.y, e.w, e.h, 200)));
@@ -341,12 +440,15 @@ export class World {
     for (const d of this.debrisList) this.drawDebris(ctx, d);
     for (const e of list) if (e.z >= 0) e.draw(ctx, this);
     ctx.imageSmoothingQuality = 'low';
-    this.tiles.drawLiquid(ctx, cam, this.time, this.stage.liquid);
+    this.tiles.drawLiquid(ctx, cam, this.time, this.liquid);   // [hook:gimmick] 방별 액체
+    gm?.drawWorld?.(ctx, cam, 'front');   // [hook:gimmick] 용암 수면·공허의 벽·기포 기둥
     this.fx.draw(ctx, 'front');
     if (this.game.debug) { ctx.strokeStyle = '#f00'; for (const r of this.debugRects) ctx.strokeRect(r.x, r.y, r.w, r.h); }
     ctx.restore();
     this.lighting.render(ctx, cam, vw, vh);
     this.bg.drawFront(ctx, cam, vw, vh, this.time);
+    gm?.drawScreen?.(ctx, vw, vh);   // [hook:gimmick] 화면 색조·게이지 (world.hudHidden 이면 게이지는 기믹이 숨긴다)
+    if (this.overlays.length || this.letterbox > 0) this.drawOverlays(ctx, vw, vh);   // [hook:feel] 레터박스·색보정·집중선·임팩트 프레임
     ctx.save(); cam.apply(ctx); this.fx.draw(ctx, 'top'); ctx.restore();
     if (this.timeStop > 0) {
       ctx.save(); ctx.globalCompositeOperation = 'saturation'; ctx.fillStyle = 'rgba(0,0,0,0.9)'; ctx.fillRect(0, 0, vw, vh); ctx.restore();
@@ -379,14 +481,23 @@ export class World {
   onPlayerHit(target, info, attack) {
     const p = this.player;
     if (target.kind === 'prop') return;
-    this.combo.n++; this.combo.t = 2.6 + (this.hero.classId?.startsWith('lia_dancer') || this.hero.classId === 'lia_bladedancer' || this.hero.classId === 'lia_reaper' ? 1 : 0);
+    const guardian = !!attack?.tags?.includes('guardian');   // [hook:cmp] 수호신 공격: 콤보 시간 연장 없음·SP ×0.4·흡혈 없음 (companions §5)
+    const n0 = this.combo.n;
+    this.combo.n++;
+    if (!guardian) this.combo.t = this.combo.window = 2.6 + (this.hero.classId?.startsWith('lia_dancer') || this.hero.classId === 'lia_bladedancer' || this.hero.classId === 'lia_reaper' ? 1 : 0);
+    else if (n0 === 0) this.combo.t = this.combo.window = 1.0;   // [hook:cmp]
     if (this.combo.n > this.combo.max) this.combo.max = this.combo.n;
     this.run.hits++;
     const rank = styleRank(this.combo.n);
     this.addScore(10 * (1 + Math.floor(this.combo.n / 10)));
-    this.run.sp = Math.min(100, this.run.sp + (info.crit ? 2.4 : 1.4) * (1 + (p.stats.ultGain ?? 0) / 100));
-    if (p.stats.lifesteal > 0 && info.dmg > 0) p.heal(info.dmg * p.stats.lifesteal / 100, false);
+    this.run.sp = Math.min(100, this.run.sp + (info.crit ? 2.4 : 1.4) * (1 + (p.stats.ultGain ?? 0) / 100) * (guardian ? 0.4 : 1));   // [hook:cmp]
+    if (!guardian && p.stats.lifesteal > 0 && info.dmg > 0) p.heal(info.dmg * p.stats.lifesteal / 100, false);   // [hook:cmp]
     if (this.combo.n % 25 === 0) { audio.sfx('combo'); this.fx.text(p.cx, p.y - 40, `${this.combo.n} HIT!`, { color: rank.c, size: 26 }); bus.emit('combo', { count: this.combo.n }); }
+    if (COMBO_MILESTONES.has(this.combo.n)) bus.emit('comboMilestone', { n: this.combo.n });   // [hook:feel]
+    this.style?.onHit?.(info, attack, target);   // [hook:feel]
+    this.awOnHit(target, info, attack);   // [hook:awaken]
+    if (info.killed) this.overkillSlowmo(target, info, attack);   // [hook:feel]
+    this.companions?.onHit(target, info, attack);   // [hook:cmp]
   }
   endCombo() {
     const n = this.combo.n;
@@ -395,6 +506,8 @@ export class World {
       this.addScore(bonus);
       this.fx.text(this.player.cx, this.player.y - 50, `COMBO BONUS +${bonus}`, { color: '#ffe070', size: 18, life: 1.4, vy: -50 });
     }
+    const ri = n > 0 ? (this.style?.rank ?? 0) : 0;   // [hook:feel] 스타일 보너스 rankIndex² × 500
+    if (ri > 0) { const sb = ri * ri * 500; this.addScore(sb); this.fx.text(this.player.cx, this.player.y - 72, `STYLE BONUS +${sb}`, { color: '#ffa640', size: 16, life: 1.4, vy: -50 }); }   // [hook:feel]
     if (n > (this.state.stats.maxCombo ?? 0)) this.state.stats.maxCombo = n;
     this.combo.best = Math.max(this.combo.best, n);
     this.combo.n = 0;
@@ -419,10 +532,78 @@ export class World {
     const p = this.player;
     const expGain = Math.round(e.stats.exp * (1 + (p.stats.expBonus ?? 0) / 100));
     this.gainExp(expGain);
+    this.companions?.onKill(e, expGain);   // [hook:cmp] 동료 경험치 분배
     this.addScore((e.def.score ?? 100) * (1 + this.combo.n / 20) * (e.elite ? 3 : 1));
     for (const d of rollEnemyLoot(this, e)) this.spawnPickup(d.type, e.cx, e.cy, d.data);
     if (this.hero.classId === 'lia_reaper') p.heal(p.stats.hp * 0.03, false);
     bus.emit('enemyKilled', { enemy: e, def: e.def, x: e.cx, y: e.cy, byPlayer: true });
+    this.killFeel(e, attack);   // [hook:feel] [hook:awaken]
+  }
+
+  // ─────────────────────────── 처치 손맛·각성 게이지 (feel §4.9, §6.1) ───────────────────────────
+  /** 다중 처치, 스타일, 각성 게이지, 처치 슬로모션 (마지막 적·정예) */
+  killFeel(e, attack) {
+    const kc = this.killChain;
+    kc.n = this.rt - kc.t <= MULTI_KILL_WIN ? kc.n + 1 : 1; kc.t = this.rt;
+    if (kc.n >= 2) this.style?.onEvent?.('multikill', { n: kc.n, pts: 60, enemy: e });   // [hook:feel] 두 번째부터 1마리당 +60
+    this.style?.onKill?.(e, attack);   // [hook:feel]
+    if (!awBlocked(attack)) this.addAw(e.elite ? 'elite' : 'kill');   // [hook:awaken]
+    if (e.kind !== 'enemy' || !this.killSlowOK()) return;
+    const last = this.roomFoes >= 3 && !this.entities.some((o) => o !== e && o.kind === 'enemy' && !o.dead && !(o.dying > 0) && !o.hidden && !this.inUnrevealedFake(o));
+    if (last) {
+      this.killSlowmo(e, 0.3, 0.25, 1.08, 1);
+      this.style?.onEvent?.('lastkill', { pts: 50, enemy: e });   // [hook:feel]
+      const mat = e.def?.material, n = Math.max(3, Math.round(10 * (this.fx.quality ?? 1)));
+      this.fx.burst(mat === 'flesh' || mat === 'slime' || !mat ? 'blood' : 'dust', e.cx, e.cy, n, { speed: 300, ...(mat === 'slime' ? { color: '#6adf4a' } : {}) });
+    } else if (e.elite) this.killSlowmo(e, 0.2, 0.3, 1.05, 0.6);
+  }
+  /** F 등급·치명타 처치에서 초과 피해가 최대 체력의 50% 이상: 0.12초 0.4배속 + '오버킬!' */
+  overkillSlowmo(target, info, attack) {
+    if (target.kind !== 'enemy' || !(info.cls === 'F' || info.crit) || !this.killSlowOK()) return;
+    const max = target.stats?.maxHp ?? target.stats?.hp ?? 0;
+    const over = info.overkill ?? (info.hpBefore != null && max > 0 ? (info.dmg - info.hpBefore) / max : null);
+    if (!(over >= 0.5)) return;
+    this.killSlowmo(target, 0.12, 0.4, 0, 0);
+    if (this.game.settings?.showDamage !== false) this.fx.text(target.cx, target.y - 34, '오버킬!', { color: '#ff5a4a', size: 18, life: 0.6, vy: -70 });
+  }
+  /** 처치 슬로모션 허용: 컷신(필살기·각성 포함)·보스전·클리어·적 정지 중이 아니고 1.5초 간격 */
+  killSlowOK() {
+    return this.killSlowT <= 0 && !this.cutscene && !this.bossActive && !this.cleared && !this.freezeEnemies && this.mode !== 'town' && !this.player?.dead;
+  }
+  killSlowmo(e, dur, scale, zoom, vol) {
+    this.killSlowT = KILL_SLOW_GAP;
+    this.slowmo = Math.max(this.slowmo, dur); this.slowmoScale = scale;
+    if (zoom > 1) {
+      this.camera.zoomPulse(zoom, 0.08, 0.15, 0.2);
+      this.camera.focus = { x: e.cx, y: e.cy, t: 0.45, w: 0.3 };
+    }
+    if (vol > 0) audio.sfx(audio.has?.('kill_slowmo') ? 'kill_slowmo' : 'hit_heavy', { vol, pitch: audio.has?.('kill_slowmo') ? 1 : 0.6 });
+  }
+  /** 각성 게이지 증가 (0..100). v = AW_GAIN 이름 또는 수치. 1차 전직(tier ≥ 1) 전에는 쌓이지 않는다. ultGain 배율 1 + ultGain/200 */
+  addAw(v) {   // [hook:awaken]
+    const n = typeof v === 'number' ? v : awGain(v);
+    if (!(n > 0) || !this.awEnabled()) return 0;
+    const before = this.run.aw ?? 0;
+    this.run.aw = Math.min(100, before + n * (1 + (this.player?.stats?.ultGain ?? 0) / 200));
+    return this.run.aw - before;
+  }
+  awEnabled() { return (CLASSES[this.hero?.classId]?.tier ?? 0) >= 1 && this.mode !== 'town'; }   // [hook:awaken]
+  /** 적중당 각성 게이지: 일반 +0.5, 치명타 +1, 반격·띄우기 +3 (필살기·각성기·동료 타격은 0) */
+  awOnHit(target, info, attack) {   // [hook:awaken]
+    if (awBlocked(attack)) return;
+    let g = info.crit ? awGain('crit') : awGain('hit');
+    if (info.counter) g += awGain('counter');
+    else if (attack?.launch && target.kind === 'enemy') g += awGain('launch');
+    this.addAw(g);
+  }
+  /** 보스 페이즈가 올라갈 때마다 각성 게이지 +15 (보스 파일을 고치지 않고 폴링) */
+  pollBossPhase() {   // [hook:awaken]
+    const b = this.boss;
+    if (!b || !this.bossActive || b.dead || this.cleared) { this.bossPhaseOf = null; return; }
+    const ph = b.phase ?? 0;
+    if (this.bossPhaseOf !== b) { this.bossPhaseOf = b; this.bossPhaseSeen = ph; return; }
+    if (ph > this.bossPhaseSeen) this.addAw('phase');
+    this.bossPhaseSeen = ph;
   }
   gainExp(n) {
     if (n <= 0) return;
@@ -441,11 +622,15 @@ export class World {
   onPlayerHurt(dmg) {
     this.run.damageTaken += dmg;
     if (this.combo.n > 0) this.endCombo();
+    this.style?.onHurt?.(dmg);   // [hook:feel] 스타일 한 랭크 하락
+    this.game.vignette?.('#ff0020', 0.45, 3);   // [hook:feel] 가장자리 붉은 비네트
+    if (dmg >= (this.player?.stats?.hp ?? Infinity) * awGain('rageFrac')) this.addAw('rage');   // [hook:awaken] 분노: 최대 HP 10% 이상 피격
   }
   healPlayer(frac, mpToo = false) {
     const p = this.player;
     p.heal(p.stats.hp * frac);
     if (mpToo) p.mp = p.stats.mp;
+    p.mount?.healFrac?.(frac ?? 1);   // [hook:cmp]
   }
 
   // ─────────────────────────── 드롭/수집 ───────────────────────────
@@ -480,7 +665,9 @@ export class World {
       }
       case 'mp': p.mp = Math.min(p.stats.mp, p.mp + (d.amount ?? 15)); audio.sfx('heart', { pitch: 1.4 }); break;
       case 'food': {
+        this.gimmick?.cleanse?.(30);   // [hook:gimmick] 부패 게이지 정화 (회복 감소가 풀린 뒤 회복)
         const got = p.heal(p.stats.hp * (d.heal ?? 0.25));
+        p.mount?.healFrac?.(d.heal ?? 0.25);   // [hook:cmp]
         audio.sfx('heal'); this.fx.burst('holy', p.cx, p.cy, 10, { color: '#7ee07e' });
         break;
       }
@@ -499,6 +686,7 @@ export class World {
           this.banner = { text: '드라큘라의 유물', sub: `${base.name} (${st.progress.relics.length}/5)`, t: 3.5, color: '#ff4a5a', big: true };
           bus.emit('relicFound', { id: it.baseId });
         }
+        if (base?.starShard || base?.worldHeart) this.collectP2Key(base, it.baseId);   // [hook:p2] 별의 조각·세계의 심장 (world2 §3.9)
         break;
       }
       case 'doc': {
@@ -528,6 +716,31 @@ export class World {
       }
       case 'powerup': this.applyPowerup(d.id); break;
       case 'oneup': this.run.lives++; audio.sfx('extra_life'); this.game.toast('★ 1UP ★', '#ffe070'); break;
+    }
+  }
+  /** 2부 핵심 아이템 기록 + 배너 + 버스 이벤트 (예전 세이브는 배열이 없을 수 있다) */
+  collectP2Key(base, id) {   // [hook:p2]
+    const st = this.state, pr = st.progress;
+    pr.flags ??= {};
+    if (base.starShard) {
+      pr.shards ??= [];
+      if (!pr.shards.includes(id)) {
+        pr.shards.push(id); const n = pr.shards.length;
+        audio.sfx('secret'); this.game.flash('#fff2b0', 0.6, 2);
+        this.banner = { text: '별의 조각', sub: `${base.name} (${n}/6)`, t: 3.5, color: '#fff2b0', big: true };
+        if (n >= 6) pr.flags.stars_all = true;
+        bus.emit('shardFound', { id });
+      }
+    }
+    if (base.worldHeart) {
+      pr.hearts ??= [];
+      if (!pr.hearts.includes(id)) {
+        pr.hearts.push(id); const n = pr.hearts.length;
+        audio.sfx('powerup');
+        this.banner = { text: '세계의 심장', sub: `${base.name} (${n}/6)`, t: 3.5, color: base.color ?? '#ff8a9a', big: true };
+        if (n >= 6) pr.flags.hearts_all = true;
+        bus.emit('heartFound', { id });
+      }
     }
   }
   applyPowerup(id) {
@@ -653,6 +866,7 @@ export class World {
   useSavePoint(sp) {
     const p = this.player;
     p.hp = p.stats.hp; p.mp = p.stats.mp;
+    p.mount?.healFrac?.(1);   // [hook:cmp]
     this.run.checkpoint = { roomId: this.roomId, x: sp.x, y: sp.bottom - p.h };
     if (this.arcade) {
       // 아케이드(연습 등)는 임시 상태라 세이브 슬롯에 기록하지 않음 — 회복·체크포인트만
@@ -706,6 +920,7 @@ export class World {
   // ─────────────────────────── 사망/재시작 ───────────────────────────
   onPlayerFell(p) {
     if (p.dead || this.transitioning) return;
+    if (p.mount?.riding) p.mount.dismount?.(this, p, 'fall');   // [hook:cmp]
     const dmg = Math.ceil(p.stats.hp * 0.25);
     p.hp -= dmg;
     this.run.damageTaken += dmg;
@@ -715,6 +930,7 @@ export class World {
     const cp = p.safeSpot?.roomId === this.roomId ? p.safeSpot : this.run.checkpoint;
     p.x = cp.x; p.y = cp.y; p.vx = 0; p.vy = 0; p.iframes = 1.5;
     this.game.flash('#000', 0.6, 3);
+    this.gimmick?.onFell?.(p);   // [hook:gimmick] (용암 수위 낮추기 등, 안전 지점으로 옮긴 뒤)
   }
   onPlayerDeath() {
     // 보스를 쓰러뜨린 뒤(또는 쓰러지는 도중 남은 보조무기로 보스를 끝낸 경우) 이미 클리어한 스테이지:
@@ -752,6 +968,9 @@ export class World {
     this.resetBoss();
     this.combo.n = 0;
     this.banner = { text: 'READY?', sub: `남은 목숨 ${this.run.lives}`, t: 1.6, color: '#ffe7a0' };
+    this.freezeEnemies = false; this.hudHidden = false; this.letterbox = 0;   // [hook:feel] 연출 도중 쓰러졌을 때 남지 않게
+    this.gimmick?.onRespawn?.();   // [hook:gimmick]
+    this.companions?.onRespawn();   // [hook:cmp]
   }
 
   // ─────────────────────────── 보스 ───────────────────────────
@@ -774,18 +993,30 @@ export class World {
     this.bossSpawn = { id, x: bx, y: by };
     this.boss = createBoss(this, id, bx, by);
     this.add(this.boss);
+    this.companions?.onBossStart(this.boss);   // [hook:cmp] (noMount 보스면 하차)
+    this.camera.floorY = this.arenaFloorY(x0, x1) ?? by;   // [hook:plat] 높은 경기장에서도 바닥이 화면 아래쪽에 보이게
     audio.stopMusic(0.5);
     this.cutscene = true;
     const intro = () => {
       this.cutscene = true;
       audio.sfx('warning');
-      this.game.push('bossIntro', { bossId: id, world: this, onDone: () => { this.cutscene = false; audio.music(this.boss?.def?.music ?? 'boss'); } });
+      this.game.push('bossIntro', { bossId: id, world: this, onDone: () => { this.cutscene = false; this.addAw('bossIntro'); audio.music(this.boss?.def?.music ?? 'boss'); } });   // [hook:awaken] 보스 등장 +25
     };
     const preId = `${id}_pre`;
     if (SCRIPTS[preId] && !this.state.progress.seenScripts.includes(preId) && this.mode === 'story') {
       this.state.progress.seenScripts.push(preId);
       this.game.push('dialogue', { script: preId, world: this, onEnd: intro });
     } else intro();
+  }
+  /** 경기장 바닥 높이(px): 경기장 칸들에서 맨 아래 단단한 땅 윗면의 중앙값 (구덩이·발판에 흔들리지 않게) */
+  arenaFloorY(x0, x1) {   // [hook:plat]
+    const m = this.map, ys = [];
+    for (let tx = Math.max(0, Math.floor(x0 / TILE)); tx < Math.min(m.w, Math.ceil(x1 / TILE)); tx++) {
+      for (let ty = m.h - 1; ty > 0; ty--) if (isSolidType(m.typeAt(tx, ty)) && !isSolidType(m.typeAt(tx, ty - 1))) { ys.push(ty * TILE); break; }
+    }
+    if (!ys.length) return null;
+    ys.sort((a, b) => a - b);
+    return ys[ys.length >> 1];
   }
   /** 플레이어 부활 시 보스전 초기화: 체력 회복 + 페이즈 되돌리기 */
   resetBoss() {
@@ -813,7 +1044,7 @@ export class World {
   onBossDefeated(boss) {
     if (this.cleared) return;
     this.cleared = true; this.clearT = 0;
-    this.slowmo = 1.6;
+    this.slowmo = 1.6; this.slowmoScale = SLOWMO_BASE;   // [hook:feel] 보스 격파 슬로모션은 기존 배율 그대로
     this.game.flash('#ffffff', 1, 1.2);
     this.camera.shake(16, 1.2);
     audio.stopMusic(0.3);
@@ -823,6 +1054,7 @@ export class World {
     st.progress.flags['boss_' + boss.def.id] = true;
     st.stats.bossKills = (st.stats.bossKills ?? 0) + 1;
     const lvUp = this.gainExp(Math.round((boss.stats.exp ?? 500) * (1 + (this.player.stats.expBonus ?? 0) / 100)));
+    this.companions?.onBossDefeated(boss);   // [hook:cmp] 유대 +10, 보스 경험치 분배
     // STAGE CLEAR 배너가 LEVEL UP 배너를 덮으므로 레벨업은 토스트로 따로 알림
     if (lvUp > 0) this.game.toast(`LEVEL UP! Lv.${this.hero.level} — 스킬 포인트 획득`, '#ffe070', 3.2);
     this.addScore((boss.def.score ?? 20000));

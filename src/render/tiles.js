@@ -1,6 +1,9 @@
 // 타일 렌더러: 스테이지 텍스처(Kling 생성 tex/*.webp)로 벽/바닥을 칠하고, 경계 음영·윗면 하이라이트·이끼/눈 장식을 얹어
 // 방 전체를 오프스크린 캔버스(청크)에 미리 구워 둔다. 타일이 바뀌면(부서진 벽) 해당 청크만 다시 굽는다.
-// new TileRenderer(stage, map) → draw(ctx, cam), drawDecor(ctx, cam, t), invalidate()
+// new TileRenderer(stage, map) → draw(ctx, cam), drawDecor(ctx, cam, t), drawLiquid(ctx, cam, t, kind), invalidate(tx, ty)
+// 2부(world2 §3.3·§4.1): 위상 타일(거울 a/b · 심장 박동 z/Z)은 청크에 굽지 않고 매 프레임 현재 상태로 그린다 → 기믹이 타일을
+// 뒤집어도 청크를 다시 굽지 않는다. invalidate 는 구운 그림이 실제로 달라지는 변화(벽 부숨·비밀 통로)만 다시 굽는다.
+// 액체: 'deep'(수영 구역) 팔레트, 좁고 긴 세로 물줄기는 흘러내리는 폭포로, 비밀 공간 속 액체는 드러나기 전까지 숨긴다.
 import { TILE } from '../core/game.js';
 import { T } from '../core/physics.js';
 import { assets } from '../core/assets.js';
@@ -8,8 +11,10 @@ import { RNG, hashStr, rgba, shade, mix, TAU } from '../core/math.js';
 
 const CHUNK = 16; // 타일 단위 청크 크기
 const DEPTH_R = 3; // 깊이 음영: 빈칸까지의 거리를 찾는 반경(타일)
+const MAX_CHUNKS = 8; // 구워 둔 청크 캔버스 상한 (청크 하나 768×768 ≈ 2.4MB). 화면 밖의 오래된 청크부터 버리고 캔버스는 재사용
+const PHASE_CH = new Set(['a', 'b', 'z', 'Z']); // 위상 타일 문자 (tilemap.js PHASE 와 같음)
 // 원경이 트인 하늘/달인 테마: 절차적 창문('W')이 허공에 떠 보이므로 그리지 않는다
-const OPEN_SKY_THEMES = new Set(['village', 'town', 'graveyard', 'gate', 'spire', 'throne', 'abyss']);
+export const OPEN_SKY_THEMES = new Set(['village', 'town', 'graveyard', 'gate', 'spire', 'throne', 'abyss', 'sky', 'void', 'blight']);
 
 export const TILE_STYLES = {
   // stage.tileStyle → 색/장식
@@ -25,6 +30,14 @@ export const TILE_STYLES = {
   blood:  { base: '#2a0e12', edge: '#0e0204', top: '#7a1a24', topDeco: 'gold' },
   abyss:  { base: '#1e0e26', edge: '#08020c', top: '#6a2a7a', topDeco: 'glow' },
   dirt:   { base: '#2e2418', edge: '#100a06', top: '#4a3a24', topDeco: 'grass' },
+  // ── 2부 (world2 §4.1). 선택 필드: glow·slime = 윗면 장식 색(없으면 기존 색), extra = 2부 전용 덧장식(굽기 때 한 번만 그림) ──
+  mirror: { base: '#2a3040', edge: '#0a0c14', top: '#dfe8f0', topDeco: 'glow', glow: 'rgba(223,232,240,0.32)', extra: 'glints' },
+  forge:  { base: '#2a1a14', edge: '#0a0402', top: '#ff7a2a', topDeco: 'rivets', extra: 'seams' },
+  coral:  { base: '#1a3a3e', edge: '#061416', top: '#7ad8c8', topDeco: 'wet', extra: 'coral' },
+  sky:    { base: '#6a7080', edge: '#2a2e38', top: '#f4ecd8', topDeco: 'gold', extra: 'veining' },
+  flesh:  { base: '#3a1420', edge: '#12040a', top: '#b04a5a', topDeco: 'slime', slime: 'rgba(200,40,80,0.4)', extra: 'veins' },
+  rot:    { base: '#2a2414', edge: '#0a0804', top: '#8ab040', topDeco: 'moss', extra: 'fungus' },
+  void:   { base: '#0a0810', edge: '#000000', top: '#e8e0ff', topDeco: 'glow', glow: 'rgba(232,224,255,0.3)', extra: 'specks' },
 };
 
 // 테마별 배경 장식 소품 (Blender 렌더: assets/props/<id>.png). a:'floor'|'ceil', w/h: 그릴 크기(px), wt: 배치 가중치, dim: 어둡게 누르는 정도
@@ -46,19 +59,94 @@ export const DECOR_SETS = {
   chapel: [D('deco_chapel_pew', 192, 80, 'floor', 3), D('deco_chapel_altar', 192, 144), D('deco_chapel_window', 144, 288, 'floor', 2), D('deco_chapel_candles', 96, 96, 'floor', 2)],
   throne: [D('deco_throne_chair', 192, 240), D('deco_throne_statue', 96, 224, 'floor', 2), D('deco_throne_candelabra', 96, 224, 'floor', 2), D('deco_hall_curtain', 144, 288, 'ceil', 2)],
   abyss: [D('deco_abyss_crystal', 96, 160, 'floor', 3), D('deco_abyss_spire', 96, 240, 'floor', 2), D('deco_abyss_eye', 120, 120, 'floor')],
+  // ── 2부 (world2 §4.1; Blender 렌더 assets/props/deco_*.png — 이미지가 없으면 그리지 않는다) ──
+  mirror:    [D('deco_mirror_frame', 96, 176, 'floor', 2), D('deco_mirror_shards', 144, 64, 'floor', 2), D('deco_mirror_chandelier', 144, 120, 'ceil', 2)],
+  forge:     [D('deco_forge_anvil', 120, 96, 'floor', 2), D('deco_forge_crucible', 144, 160), D('deco_forge_chains', 64, 240, 'ceil', 3)],
+  sunken:    [D('deco_sunk_coral', 120, 120, 'floor', 3), D('deco_sunk_bell', 144, 120), D('deco_sunk_statue', 96, 200, 'floor', 2)],
+  sky:       [D('deco_sky_column', 96, 240, 'floor', 2), D('deco_sky_statue', 120, 200), D('deco_sky_urn', 72, 96, 'floor', 2)],
+  nightmare: [D('deco_dream_cradle', 160, 120, 'floor', 2), D('deco_dream_doll', 72, 80, 'floor', 3), D('deco_dream_clock', 96, 220)],
+  blight:    [D('deco_blight_shroom', 144, 160, 'floor', 3), D('deco_blight_stump', 144, 110, 'floor', 2), D('deco_blight_totem', 96, 200)],
+  void:      [D('deco_void_prism', 96, 160, 'floor', 2), D('deco_void_monolith', 96, 240), D('deco_void_fragment', 144, 120, 'floor', 2)],
 };
-// 장식이 게임 요소를 가리지 않도록 마커 주변은 비움
-const DECOR_BLOCK = new Set(['D', 'S', 'G', '$', 'N', 'X', 'P', '@', 'H', 'K']);
+// 장식이 게임 요소를 가리지 않도록 마커 주변은 비움 (2부: 거울 스위치 Q · 포자 주머니 y · 기포 기둥 u · 상승 기류 U)
+export const DECOR_BLOCK = new Set(['D', 'S', 'G', '$', 'N', 'X', 'P', '@', 'H', 'K', 'Q', 'y', 'u', 'U']);
+// 테마별 'W' 창문 빛 [유리 위, 유리 아래, 빛줄기] — 없으면 기본 달빛
+const WINDOW_TINT = {
+  mirror: ['rgba(210,235,255,0.55)', 'rgba(80,110,160,0.25)', 'rgba(200,230,255,0.14)'],
+  forge: ['rgba(255,150,70,0.5)', 'rgba(140,40,10,0.25)', 'rgba(255,140,60,0.12)'],
+  sunken: ['rgba(90,230,220,0.45)', 'rgba(10,60,90,0.25)', 'rgba(90,220,230,0.1)'],
+  nightmare: ['rgba(200,120,255,0.5)', 'rgba(70,10,90,0.25)', 'rgba(190,110,255,0.12)'],
+};
+const WINDOW_MOON = ['rgba(160,180,255,0.5)', 'rgba(60,40,120,0.25)', 'rgba(140,160,255,0.12)'];
+// 액체 팔레트 [몸통, 수면·물줄기 빛] (world2 §3.3: deep 추가)
+const LIQUID = {
+  water: ['rgba(40,90,160,0.55)', '#8ad0ff'],
+  lava: ['rgba(255,80,20,0.85)', '#ffd070'],
+  poison: ['rgba(60,180,60,0.6)', '#a0ff80'],
+  blood: ['rgba(140,0,20,0.75)', '#ff4a5a'],
+  deep: ['rgba(8,38,66,0.74)', '#6fe8ff'],
+};
+// 깊은 물(수영 구역)은 몸통을 개체 뒤(DEEP_UNDER, draw)와 개체 앞(DEEP_FRONT, drawLiquid)으로 나눠 칠한다.
+// 겹친 결과는 팔레트 알파 0.74 와 같고(1 − 0.37 × 0.70), 물속의 영웅·적은 0.3 만 물들어 잘 보인다.
+const DEEP_UNDER = 'rgba(8,38,66,0.63)', DEEP_FRONT = 'rgba(8,38,66,0.3)';
+// 물속에 놓인 마커 칸(적·아이템·촛불 등)은 타일이 빈칸이라 물에 구멍이 뚫려 보인다 → 그릴 때만 액체로 메운다
+const WET_MARKERS = new Set(['1', '2', '3', '4', '5', '6', '7', '8', '9', '@', 'u', 'C', 'T', 'p', 'm', '$', '!']);
+// 폭포 줄무늬 3겹: 타일 안 레인 x 위치, 점선 [길이, 간격], 흐르는 속도(px/s), 굵기, 알파
+const FALL_FLOW = [
+  { lanes: [6, 29], dash: [30, 18], speed: 430, lw: 2, a: 0.32 },
+  { lanes: [17, 40], dash: [14, 38], speed: 520, lw: 1.5, a: 0.26 },
+  { lanes: [11, 35], dash: [8, 30], speed: 380, lw: 1.2, a: 0.22 },
+];
 
 export class TileRenderer {
   constructor(stage, map) {
     this.stage = stage; this.map = map;
     this.style = TILE_STYLES[stage.tileStyle] || TILE_STYLES.stone;
-    this.chunks = new Map();
+    this.chunks = new Map();   // "cx,cy" → { canvas, tex(구울 때 준비된 텍스처 비트), used(마지막으로 그린 프레임) }
+    this.pool = [];            // 버린 청크 캔버스 (다시 구울 때 재사용 — 새 캔버스를 만들지 않음)
+    this.frame = 0;
     this.version = -1;
     this.dirty = new Set();
+    this.initPhase();
+    this.cls = this.snapshot();
     this.props = this.placeProps();
     this.darkCache = new Map();
+    this.liquidKind = null; this.lastT = 0; // 마지막 drawLiquid 의 액체 종류·시간 (draw 에서 깊은 물 뒷면을 칠할 때 씀)
+  }
+  /**
+   * 위상 타일 목록: GIMMICK-ENGINE 의 tilemap 이 채우는 map.phaseTiles [{idx,tx,ty,key}] (없으면 a/b/z/Z 마커).
+   * 이 칸들은 청크에 굽지 않고(isSolid=false) drawPhase 가 현재 타일 상태대로 매 프레임 그린다.
+   */
+  initPhase() {
+    const m = this.map;
+    this.phaseIdx = new Set();
+    this.phaseList = [];
+    if (!m) return;
+    const src = Array.isArray(m.phaseTiles) ? m.phaseTiles : (m.markers || []).filter((mk) => PHASE_CH.has(mk.ch));
+    for (const p of src) {
+      if (p.tx < 0 || p.ty < 0 || p.tx >= m.w || p.ty >= m.h) continue;
+      const idx = p.idx ?? p.ty * m.w + p.tx;
+      if (this.phaseIdx.has(idx)) continue;
+      this.phaseIdx.add(idx);
+      this.phaseList.push({ idx, tx: p.tx, ty: p.ty });
+    }
+  }
+  /** 구운 그림 기준의 타일 분류 (같으면 다시 구울 필요 없음): 0 빈칸·액체·드러난 가짜 벽·위상 타일, 1 벽, 2 부서지는 벽, 3 발판, 4 가시, 5 숨은 가짜 벽 */
+  bakeClass(idx) {
+    const m = this.map, t = m.tiles[idx];
+    if (this.phaseIdx.has(idx)) return 0;
+    if (t === T.SOLID) return 1;
+    if (t === T.BREAK) return 2;
+    if (t === T.ONEWAY) return 3;
+    if (t === T.SPIKE) return 4;
+    if (t === T.FAKE) return m.revealed.has(idx) ? 0 : 5;
+    return 0;
+  }
+  snapshot() {
+    const m = this.map;
+    const n = m ? m.w * m.h : 0, c = new Uint8Array(n);
+    for (let i = 0; i < n; i++) c[i] = this.bakeClass(i);
+    return c;
   }
   /** 바닥/천장 표면에 테마 소품을 결정론적으로 배치 */
   placeProps() {
@@ -68,8 +156,10 @@ export class TileRenderer {
     const rng = new RNG(hashStr(this.stage.id + ':' + m.w + 'x' + m.h));
     const blocked = new Set();
     for (const mk of m.markers) if (DECOR_BLOCK.has(mk.ch)) for (let d = -3; d <= 3; d++) blocked.add(mk.tx + d);
-    const solid = (tx, ty) => { const t = m.typeAt(tx, ty); return t === T.SOLID || t === T.BREAK; };
-    const empty = (tx, ty) => m.typeAt(tx, ty) === T.EMPTY && tx >= 0 && tx < m.w && ty >= 0;
+    // 위상 타일은 켜졌다 꺼지므로 받침(바닥/천장)으로도, 빈 공간으로도 보지 않는다 (소품이 허공에 뜨거나 벽에 묻히지 않게)
+    const phase = (tx, ty) => tx >= 0 && ty >= 0 && tx < m.w && ty < m.h && this.phaseIdx.has(ty * m.w + tx);
+    const solid = (tx, ty) => { const t = m.typeAt(tx, ty); return (t === T.SOLID || t === T.BREAK) && !phase(tx, ty); };
+    const empty = (tx, ty) => m.typeAt(tx, ty) === T.EMPTY && tx >= 0 && tx < m.w && ty >= 0 && !phase(tx, ty);
     const out = [];
     const total = set.reduce((a, d) => a + d.wt, 0);
     const pickD = (a) => {
@@ -133,28 +223,69 @@ export class TileRenderer {
     return c;
   }
   invalidate(tx, ty) {
-    if (tx === undefined) { this.chunks.clear(); return; }
+    if (tx === undefined) {
+      for (const key of [...this.chunks.keys()]) this.drop(key);
+      this.cls = this.snapshot();
+      return;
+    }
+    const m = this.map;
+    if (!m || tx < 0 || ty < 0 || tx >= m.w || ty >= m.h) return;
+    // 구운 그림이 달라지지 않는 변화(위상 타일 전환, 물 ↔ 빈칸)는 다시 굽지 않는다 — 기믹이 자주 바꾸는 칸
+    const idx = ty * m.w + tx, c = this.bakeClass(idx);
+    if (c === this.cls[idx]) return;
+    this.cls[idx] = c;
     // 깊이 음영 반경만큼 떨어진 인접 청크까지 (청크 크기 > DEPTH_R 이므로 -R/0/+R 만 보면 충분)
     for (let dy = -DEPTH_R; dy <= DEPTH_R; dy += DEPTH_R) for (let dx = -DEPTH_R; dx <= DEPTH_R; dx += DEPTH_R) {
-      this.chunks.delete(`${Math.floor((tx + dx) / CHUNK)},${Math.floor((ty + dy) / CHUNK)}`);
+      this.drop(`${Math.floor((tx + dx) / CHUNK)},${Math.floor((ty + dy) / CHUNK)}`);
     }
+  }
+  /** 청크를 버리고 캔버스는 풀에 돌려 둔다 (최대 2장) */
+  drop(key) {
+    const c = this.chunks.get(key);
+    if (!c) return;
+    this.chunks.delete(key);
+    if (this.pool.length < 2) this.pool.push(c.canvas);
+  }
+  /** 구울 때 쓸 수 있는 텍스처 비트: 1 = 주 텍스처, 2 = 보조 텍스처 */
+  texState() {
+    const s = this.stage;
+    return (assets.get(s.tex) ? 1 : 0) | (assets.get(s.tex2 || s.tex) ? 2 : 0);
   }
   chunk(cx, cy) {
     const key = `${cx},${cy}`;
-    let c = this.chunks.get(key);
-    const texReady = !!assets.get(this.stage.tex);
-    if (c && (c.tex || !texReady)) return c.canvas;
-    const canvas = document.createElement('canvas');
-    canvas.width = CHUNK * TILE; canvas.height = CHUNK * TILE;
-    this.bake(canvas.getContext('2d'), cx * CHUNK, cy * CHUNK);
-    this.chunks.set(key, { canvas, tex: texReady });
+    const c = this.chunks.get(key);
+    const tex = this.texState();
+    // 새로 준비된 텍스처가 있을 때만 다시 굽는다 (이미지 캐시에서 빠져 null 이 되어도 구운 그림은 그대로 둔다)
+    if (c && !(tex & ~c.tex)) { c.used = this.frame; return c.canvas; }
+    const S = CHUNK * TILE;
+    let canvas = c ? c.canvas : this.pool.pop();
+    let g;
+    if (canvas) {
+      g = canvas.getContext('2d');
+      g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+      g.clearRect(0, 0, S, S);
+    } else {
+      canvas = document.createElement('canvas');
+      canvas.width = S; canvas.height = S;
+      g = canvas.getContext('2d');
+    }
+    this.bake(g, cx * CHUNK, cy * CHUNK);
+    this.chunks.set(key, { canvas, tex, used: this.frame });
     return canvas;
+  }
+  /** 청크가 상한을 넘으면 이번 프레임에 쓰지 않은 것부터 오래된 순으로 버린다 */
+  evict() {
+    const old = [];
+    for (const [key, c] of this.chunks) if (c.used !== this.frame) old.push([key, c.used]);
+    old.sort((a, b) => a[1] - b[1]);
+    for (const [key] of old) { if (this.chunks.size <= MAX_CHUNKS) break; this.drop(key); }
   }
   isSolid(tx, ty) {
     const m = this.map;
     if (tx < 0 || tx >= m.w || ty < 0 || ty >= m.h) return ty >= 0 && ty < m.h; // 좌우 밖은 벽으로 이어진 듯이
-    const t = m.tiles[ty * m.w + tx];
-    return t === T.SOLID || t === T.BREAK || (t === T.FAKE && !m.revealed.has(ty * m.w + tx));
+    const i = ty * m.w + tx, t = m.tiles[i];
+    if (this.phaseIdx.size && this.phaseIdx.has(i)) return false; // 위상 타일은 drawPhase 가 따로 그림
+    return t === T.SOLID || t === T.BREAK || (t === T.FAKE && !m.revealed.has(i));
   }
   bake(ctx, tx0, ty0) {
     const m = this.map, S = TILE, st = this.style;
@@ -188,14 +319,13 @@ export class TileRenderer {
             ctx.moveTo(x + ((off + S / 2) % S), y + S / 2); ctx.lineTo(x + ((off + S / 2) % S), y + S);
             ctx.stroke();
           }
+          if (st.extra) this.extraFace(ctx, x, y, st.extra, rng);
           // (깊이 음영은 청크 전체를 다 그린 뒤 bakeDepth 에서 부드럽게)
           // 윗면 (노출)
           if (!this.isSolid(tx, ty - 1)) {
-            const g = ctx.createLinearGradient(0, y, 0, y + 12);
-            g.addColorStop(0, st.top); g.addColorStop(1, rgba(st.top, 0));
-            ctx.fillStyle = g; ctx.fillRect(x, y, S, 12);
-            ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(x, y, S, 2);
+            ctx.drawImage(this.topStrip(), x, y);
             this.topDeco(ctx, x, y, st.topDeco, rng);
+            if (st.extra) this.extraTop(ctx, x, y, st.extra, rng);
           }
           // 경계선
           ctx.fillStyle = rgba(st.edge, 0.9);
@@ -299,7 +429,7 @@ export class TileRenderer {
         ctx.fillStyle = 'rgba(232,200,114,0.5)'; ctx.fillRect(x, y + 3, 48, 2);
         break;
       case 'slime':
-        ctx.fillStyle = 'rgba(100,255,100,0.35)';
+        ctx.fillStyle = this.style.slime ?? 'rgba(100,255,100,0.35)';
         if (rng.next() < 0.3) { ctx.beginPath(); ctx.ellipse(x + 24, y + 2, 10, 3, 0, 0, TAU); ctx.fill(); ctx.fillRect(x + 22, y + 2, 3, rng.range(6, 16)); }
         break;
       case 'wet':
@@ -309,13 +439,133 @@ export class TileRenderer {
         ctx.fillStyle = '#e8c070'; for (const rx of [8, 40]) { ctx.beginPath(); ctx.arc(x + rx, y + 8, 2, 0, TAU); ctx.fill(); }
         break;
       case 'glow':
-        ctx.fillStyle = 'rgba(255,90,255,0.25)'; ctx.fillRect(x, y, 48, 3);
+        ctx.fillStyle = this.style.glow ?? 'rgba(255,90,255,0.25)'; ctx.fillRect(x, y, 48, 3);
+        break;
+    }
+  }
+  /** 윗면 하이라이트 띠 (48×12, 캐시) — 타일마다 그라데이션을 새로 만들지 않는다 */
+  topStrip() {
+    if (this.topCanvas) return this.topCanvas;
+    const st = this.style, c = document.createElement('canvas');
+    c.width = TILE; c.height = 12;
+    const g = c.getContext('2d');
+    const gr = g.createLinearGradient(0, 0, 0, 12);
+    gr.addColorStop(0, st.top); gr.addColorStop(1, rgba(st.top, 0));
+    g.fillStyle = gr; g.fillRect(0, 0, TILE, 12);
+    g.fillStyle = 'rgba(255,255,255,0.12)'; g.fillRect(0, 0, TILE, 2);
+    this.topCanvas = c;
+    return c;
+  }
+  /** 2부 타일 면 덧장식 (굽기 때만): 거울 반사광·용광로 균열·산호 따개비·대리석 결·살점 혈관·이끼 얼룩·공허의 별빛 */
+  extraFace(ctx, x, y, kind, rng) {
+    switch (kind) {
+      case 'glints':
+        if (rng.next() < 0.2) {
+          const gx = x + rng.range(4, 26);
+          ctx.strokeStyle = 'rgba(235,245,255,0.14)'; ctx.lineWidth = 3;
+          ctx.beginPath(); ctx.moveTo(gx, y + 44); ctx.lineTo(gx + 16, y + 6); ctx.stroke();
+          ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(gx + 6, y + 44); ctx.lineTo(gx + 20, y + 12); ctx.stroke();
+        }
+        break;
+      case 'seams':
+        if (rng.next() < 0.22) {
+          const sx = x + rng.range(8, 40), sy = y + rng.range(10, 20);
+          ctx.beginPath(); ctx.moveTo(sx, sy);
+          ctx.lineTo(sx + rng.range(-8, 8), sy + 10); ctx.lineTo(sx + rng.range(-10, 10), sy + 20); ctx.lineTo(sx + rng.range(-6, 6), sy + 26);
+          ctx.strokeStyle = 'rgba(255,110,30,0.35)'; ctx.lineWidth = 4; ctx.stroke();
+          ctx.strokeStyle = 'rgba(255,200,90,0.7)'; ctx.lineWidth = 1.2; ctx.stroke();
+        }
+        break;
+      case 'coral':
+        if (rng.next() < 0.25) {
+          ctx.fillStyle = 'rgba(220,240,230,0.28)';
+          for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(x + rng.range(6, 42), y + rng.range(14, 42), rng.range(1.5, 3.2), 0, TAU); ctx.fill(); }
+        }
+        break;
+      case 'veining':
+        if (rng.next() < 0.3) {
+          const vy = y + rng.range(8, 40);
+          ctx.strokeStyle = 'rgba(255,255,255,0.13)'; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(x, vy); ctx.bezierCurveTo(x + 16, vy - rng.range(4, 12), x + 30, vy + rng.range(4, 12), x + 48, vy + rng.range(-6, 6)); ctx.stroke();
+        }
+        break;
+      case 'veins':
+        if (rng.next() < 0.32) {
+          const vx = x + rng.range(6, 42);
+          ctx.beginPath(); ctx.moveTo(vx, y + 2);
+          ctx.quadraticCurveTo(vx + rng.range(-14, 14), y + 24, vx + rng.range(-10, 10), y + 46);
+          ctx.strokeStyle = 'rgba(70,0,16,0.65)'; ctx.lineWidth = 3; ctx.stroke();
+          ctx.strokeStyle = 'rgba(190,50,80,0.35)'; ctx.lineWidth = 1; ctx.stroke();
+        }
+        break;
+      case 'fungus':
+        if (rng.next() < 0.16) {
+          ctx.fillStyle = 'rgba(150,190,70,0.22)';
+          ctx.beginPath(); ctx.ellipse(x + rng.range(10, 38), y + rng.range(14, 38), rng.range(5, 10), rng.range(3, 6), 0, 0, TAU); ctx.fill();
+        }
+        break;
+      case 'specks':
+        if (rng.next() < 0.5) {
+          const n = 1 + Math.floor(rng.next() * 3);
+          for (let i = 0; i < n; i++) {
+            ctx.fillStyle = rng.next() < 0.5 ? 'rgba(232,224,255,0.75)' : 'rgba(170,140,255,0.6)';
+            const s = rng.range(1, 2.2);
+            ctx.fillRect(x + rng.range(3, 45), y + rng.range(6, 44), s, s);
+          }
+        }
+        break;
+    }
+  }
+  /** 2부 윗면 덧장식 (노출된 윗면, 굽기 때만) */
+  extraTop(ctx, x, y, kind, rng) {
+    switch (kind) {
+      case 'glints':
+        if (rng.next() < 0.3) {
+          const gx = x + rng.range(6, 42), gy = y + 1;
+          ctx.fillStyle = 'rgba(255,255,255,0.8)';
+          ctx.beginPath(); ctx.moveTo(gx, gy - 5); ctx.lineTo(gx + 1.2, gy - 1.2); ctx.lineTo(gx + 5, gy); ctx.lineTo(gx + 1.2, gy + 1.2);
+          ctx.lineTo(gx, gy + 5); ctx.lineTo(gx - 1.2, gy + 1.2); ctx.lineTo(gx - 5, gy); ctx.lineTo(gx - 1.2, gy - 1.2); ctx.fill();
+        }
+        break;
+      case 'seams':
+        ctx.fillStyle = 'rgba(255,140,50,0.55)';
+        for (let i = 0; i < 3; i++) if (rng.next() < 0.4) ctx.fillRect(x + rng.range(2, 44), y - rng.range(1, 4), 2, 2);
+        break;
+      case 'coral':
+        if (rng.next() < 0.35) {
+          const cx = x + rng.range(8, 40), h = rng.range(7, 13);
+          ctx.strokeStyle = rng.next() < 0.5 ? 'rgba(232,122,138,0.85)' : 'rgba(122,216,200,0.85)'; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
+          ctx.beginPath(); ctx.moveTo(cx, y + 2); ctx.lineTo(cx, y - h);
+          ctx.moveTo(cx, y - h * 0.45); ctx.lineTo(cx - 4, y - h * 0.8);
+          ctx.moveTo(cx, y - h * 0.6); ctx.lineTo(cx + 4, y - h); ctx.stroke();
+          ctx.lineCap = 'butt';
+        }
+        break;
+      case 'veins':
+        if (rng.next() < 0.25) {
+          const px = x + rng.range(8, 40);
+          ctx.fillStyle = 'rgba(160,40,70,0.8)'; ctx.beginPath(); ctx.ellipse(px, y + 1, 5, 3.5, 0, 0, TAU); ctx.fill();
+          ctx.fillStyle = 'rgba(255,170,190,0.35)'; ctx.beginPath(); ctx.arc(px - 1.5, y, 1.4, 0, TAU); ctx.fill();
+        }
+        break;
+      case 'fungus':
+        if (rng.next() < 0.3) {
+          const mx = x + rng.range(8, 40), h = rng.range(5, 10), r = rng.range(4, 7);
+          ctx.fillStyle = 'rgba(214,204,170,0.85)'; ctx.fillRect(mx - 1.2, y - h, 2.4, h + 2);
+          ctx.fillStyle = rng.next() < 0.5 ? 'rgba(200,176,112,0.9)' : 'rgba(184,224,74,0.85)';
+          ctx.beginPath(); ctx.ellipse(mx, y - h, r, r * 0.55, 0, Math.PI, 0); ctx.fill();
+        }
+        break;
+      case 'specks':
+        if (rng.next() < 0.35) { ctx.fillStyle = 'rgba(232,224,255,0.9)'; ctx.fillRect(x + rng.range(4, 44), y - rng.range(2, 6), 1.5, 1.5); }
         break;
     }
   }
   draw(ctx, cam) {
     const m = this.map;
     const S = CHUNK * TILE;
+    this.frame++;
     const x0 = Math.floor(cam.x / S), x1 = Math.floor((cam.x + cam.vw) / S);
     const y0 = Math.floor(cam.y / S), y1 = Math.floor((cam.y + cam.vh) / S);
     for (let cy = Math.max(0, y0); cy <= Math.min(Math.floor((m.h - 1) / CHUNK), y1); cy++) {
@@ -323,53 +573,280 @@ export class TileRenderer {
         ctx.drawImage(this.chunk(cx, cy), cx * S, cy * S);
       }
     }
+    if (this.chunks.size > MAX_CHUNKS) this.evict();
+    if (this.phaseList.length) this.drawPhase(ctx, cam);
+    // 깊은 물: 개체 뒤쪽 몸통 (앞쪽 옅은 층과 수면선은 drawLiquid 가 개체 위에 그린다)
+    if ((this.liquidKind ?? this.stage.liquid) === 'deep') {
+      const info = this.liquidInfo('deep');
+      if (info.count) this.liquidBody(ctx, cam, this.lastT, DEEP_UNDER, info);
+    }
     // 방 밖(좌우)으로 이어지는 벽 표현: 방 경계 바깥을 어둡게
     ctx.fillStyle = '#050206';
     if (!m.openLeft) ctx.fillRect(-400, -400, 400, m.pxH + 800);
     if (!m.openRight) ctx.fillRect(m.pxW, -400, 400, m.pxH + 800);
   }
-  /** 액체 (물/용암) — 매 프레임 애니메이션 */
-  drawLiquid(ctx, cam, t, kind = 'water') {
-    const m = this.map;
-    const col = { water: ['rgba(40,90,160,0.55)', '#8ad0ff'], lava: ['rgba(255,80,20,0.85)', '#ffd070'], poison: ['rgba(60,180,60,0.6)', '#a0ff80'], blood: ['rgba(140,0,20,0.75)', '#ff4a5a'] }[kind] || ['rgba(40,90,160,0.55)', '#8ad0ff'];
-    const tx0 = Math.max(0, Math.floor(cam.x / TILE)), tx1 = Math.min(m.w - 1, Math.floor((cam.x + cam.vw) / TILE));
-    const ty0 = Math.max(0, Math.floor(cam.y / TILE)), ty1 = Math.min(m.h - 1, Math.floor((cam.y + cam.vh) / TILE));
-    for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) {
-      if (m.tiles[ty * m.w + tx] !== T.LIQUID) continue;
-      const x = tx * TILE, y = ty * TILE;
-      const surface = m.tiles[(ty - 1) * m.w + tx] !== T.LIQUID;
-      ctx.fillStyle = col[0];
-      if (surface) {
-        const w1 = Math.sin(t * 3 + tx * 0.9) * 3;
-        ctx.beginPath(); ctx.moveTo(x, y + 8 + w1); ctx.quadraticCurveTo(x + 24, y + 4 - w1, x + 48, y + 8 + Math.sin(t * 3 + (tx + 1) * 0.9) * 3); ctx.lineTo(x + 48, y + 48); ctx.lineTo(x, y + 48); ctx.fill();
-        ctx.strokeStyle = col[1]; ctx.globalAlpha = 0.6; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(x, y + 8 + w1); ctx.quadraticCurveTo(x + 24, y + 4 - w1, x + 48, y + 8 + Math.sin(t * 3 + (tx + 1) * 0.9) * 3); ctx.stroke();
-        ctx.globalAlpha = 1;
-      } else ctx.fillRect(x, y, TILE, TILE);
-      // 폭포(좌우가 액체가 아닌 좁은 기둥): 흘러내리는 물줄기
-      const L = m.tiles[ty * m.w + tx - 1] === T.LIQUID, R = m.tiles[ty * m.w + tx + 1] === T.LIQUID;
-      const below = ty + 1 < m.h ? m.tiles[(ty + 1) * m.w + tx] : T.SOLID;
-      const fall = !(L && R) && (below === T.LIQUID || below === T.EMPTY) && (!surface || m.tiles[(ty - 1) * m.w + tx] === T.SOLID);
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      if (fall || (!surface && !(L && R))) {
-        ctx.strokeStyle = col[1]; ctx.lineWidth = 2;
-        for (let k = 0; k < 5; k++) {
-          const sx = x + 5 + k * 9 + Math.sin(tx * 3 + k) * 2;
-          const off = ((t * 420 + k * 37 + tx * 53) % 64) - 16;
-          ctx.globalAlpha = 0.18 + (k % 2) * 0.12;
-          ctx.beginPath(); ctx.moveTo(sx, y + off); ctx.lineTo(sx, y + off + 22); ctx.stroke();
-        }
-      } else if (!surface) {
-        // 넓은 수면 아래: 은은한 반짝임
-        const a = 0.06 + 0.05 * Math.sin(t * 2 + tx * 1.7 + ty * 2.3);
-        ctx.globalAlpha = a; ctx.fillStyle = col[1];
-        ctx.fillRect(x + ((t * 20 + tx * 13) % 40), y + 10 + (ty % 3) * 10, 8, 2);
-      }
-      if (surface && below !== T.LIQUID && kind !== 'lava') { /* 얕은 물 */ }
-      if (kind === 'lava' && surface && Math.random() < 0.02) { /* 거품은 파티클이 담당 */ }
-      ctx.restore();
+  /**
+   * 위상 타일(거울 a/b · 심장 박동 z/Z) 중 지금 벽인 것만 그린다: 주 텍스처(청크와 같은 월드 정렬·배율) + 바탕색 + 윗면 띠 + 테두리.
+   * 모든 칸을 경로 몇 개로 묶어 채우므로 프레임 비용이 작다. 유령 윤곽·혈관 등 기믹 표시는 기믹의 'back' 층이 덧그린다.
+   */
+  drawPhase(ctx, cam) {
+    const m = this.map, S = TILE, st = this.style, tl = m.tiles;
+    const L = cam.x - S, R = cam.x + cam.vw, U = cam.y - S, B = cam.y + cam.vh;
+    const vis = this.phaseVis || (this.phaseVis = []);
+    vis.length = 0;
+    for (const p of this.phaseList) {
+      const x = p.tx * S, y = p.ty * S;
+      if (x < L || x > R || y < U || y > B || tl[p.idx] !== T.SOLID) continue;
+      vis.push(p);
     }
+    if (!vis.length) return;
+    const solidAt = (tx, ty) => {
+      if (tx < 0 || tx >= m.w || ty < 0 || ty >= m.h) return ty >= 0 && ty < m.h;
+      const i = ty * m.w + tx, t = tl[i];
+      return t === T.SOLID || t === T.BREAK || (t === T.FAKE && !m.revealed.has(i));
+    };
+    const pat = this.phasePattern(ctx);
+    ctx.beginPath();
+    for (const p of vis) ctx.rect(p.tx * S, p.ty * S, S, S);
+    ctx.fillStyle = pat || st.base; ctx.fill();
+    if (pat) { ctx.fillStyle = rgba(st.base, 0.45); ctx.fill(); }
+    const top = this.topStrip();
+    ctx.beginPath();
+    for (const p of vis) {
+      const x = p.tx * S, y = p.ty * S;
+      if (!solidAt(p.tx, p.ty - 1)) ctx.drawImage(top, x, y);
+      if (!solidAt(p.tx, p.ty + 1)) ctx.rect(x, y + S - 3, S, 3);
+      if (!solidAt(p.tx - 1, p.ty)) ctx.rect(x, y, 3, S);
+      if (!solidAt(p.tx + 1, p.ty)) ctx.rect(x + S - 3, y, 3, S);
+    }
+    ctx.fillStyle = rgba(st.edge, 0.9); ctx.fill();
+  }
+  /** 위상 타일용 주 텍스처 패턴 (월드 원점 정렬, 청크와 같은 0.75 배율 → 384px 주기로 이웃 벽과 무늬가 이어진다) */
+  phasePattern(ctx) {
+    const img = assets.get(this.stage.tex);
+    if (!img) return null;
+    if (this.patImg !== img) {
+      this.patImg = img;
+      this.pat = ctx.createPattern(img, 'repeat');
+      if (this.pat && typeof DOMMatrix === 'function') this.pat.setTransform?.(new DOMMatrix().scaleSelf(0.75, 0.75));
+    }
+    return this.pat;
+  }
+  /**
+   * 액체 분석 (타일이 바뀌거나 비밀 통로가 드러날 때만 다시 계산):
+   *  liq  — 그릴 액체 칸 (물속에 놓인 마커 칸 포함, 드러나지 않은 비밀 공간 속 액체 제외)
+   *  surf — 수면 칸 (위가 액체가 아님; 폭포 꼭대기가 벽에 붙은 칸은 제외)
+   *  fall — 폭포 칸: 폭 3칸 이하의 좁은 액체가 세로로 3칸 이상 이어진 기둥 (깊은 물은 헤엄치는 물길이라 폭포 없음)
+   *  falls — 폭포 기둥 [{ tx, y0, y1 }] (타일 행, 끝 포함), count — 액체 칸 수
+   */
+  liquidInfo(kind) {
+    const m = this.map;
+    const key = kind + ':' + m.version + ':' + m.revealed.size;
+    if (this.liq && this.liq.key === key) return this.liq;
+    const W = m.w, H = m.h, N = W * H, tl = m.tiles;
+    const liq = new Uint8Array(N);
+    let any = false;
+    for (let i = 0; i < N; i++) if (tl[i] === T.LIQUID) { liq[i] = 1; any = true; }
+    if (any) {
+      // 물속 마커 칸 (위가 액체이거나 좌우가 모두 액체) — 위에서 아래로 훑어 겹친 마커도 메운다
+      const wet = (m.markers || []).filter((mk) => WET_MARKERS.has(mk.ch) && tl[mk.ty * W + mk.tx] === T.EMPTY).sort((a, b) => a.ty - b.ty);
+      for (const mk of wet) {
+        const i = mk.ty * W + mk.tx;
+        if ((mk.ty > 0 && liq[i - W]) || (mk.tx > 0 && mk.tx < W - 1 && liq[i - 1] && liq[i + 1])) liq[i] = 1;
+      }
+      this.hideSecretLiquid(liq);
+    }
+    const run = new Uint8Array(N);
+    for (let y = 0; y < H; y++) {
+      let x = 0;
+      while (x < W) {
+        if (!liq[y * W + x]) { x++; continue; }
+        let e = x;
+        while (e < W && liq[y * W + e]) e++;
+        const w = Math.min(255, e - x);
+        for (let k = x; k < e; k++) run[y * W + k] = w;
+        x = e;
+      }
+    }
+    const fall = new Uint8Array(N), falls = [];
+    if (kind !== 'deep') {
+      for (let x = 0; x < W; x++) {
+        let y = 0;
+        while (y < H) {
+          const i = y * W + x;
+          if (!liq[i] || run[i] > 3) { y++; continue; }
+          let e = y;
+          while (e < H && liq[e * W + x] && run[e * W + x] <= 3) e++;
+          if (e - y >= 3) { for (let k = y; k < e; k++) fall[k * W + x] = 1; falls.push({ tx: x, y0: y, y1: e - 1 }); }
+          y = e;
+        }
+      }
+    }
+    const surf = new Uint8Array(N);
+    let count = 0;
+    for (let i = 0; i < N; i++) {
+      if (!liq[i]) continue;
+      count++;
+      if (i >= W && liq[i - W]) continue;
+      const above = i >= W ? tl[i - W] : T.EMPTY;
+      surf[i] = fall[i] && (above === T.SOLID || above === T.BREAK) ? 0 : 1;
+    }
+    this.liq = { key, liq, surf, fall, falls, count };
+    return this.liq;
+  }
+  /**
+   * 비밀 공간 속 액체 숨기기: 가짜 벽(h)으로 메운 비밀 방 안의 액체는 타일이 그대로 LIQUID 라 벽 속에 물웅덩이가 비쳐 보인다.
+   * 빈칸·드러난 가짜 벽·방 가장자리에 닿지 않고, 숨은 가짜 벽에만 둘러싸인 액체 덩어리는 드러날 때까지 그리지 않는다.
+   */
+  hideSecretLiquid(liq) {
+    const m = this.map, W = m.w, H = m.h, tl = m.tiles;
+    let fake = false;
+    for (let i = 0; i < tl.length; i++) if (tl[i] === T.FAKE && !m.revealed.has(i)) { fake = true; break; }
+    if (!fake) return;
+    const seen = new Uint8Array(W * H), stack = [], comp = [];
+    const pass = (i) => liq[i] || tl[i] === T.SPIKE || tl[i] === T.ONEWAY || tl[i] === T.BREAK;
+    for (let i0 = 0; i0 < tl.length; i0++) {
+      if (!liq[i0] || seen[i0]) continue;
+      comp.length = 0; stack.length = 0;
+      seen[i0] = 1; stack.push(i0);
+      let open = false, hidden = false;
+      while (stack.length) {
+        const i = stack.pop(), x = i % W, y = (i - x) / W;
+        comp.push(i);
+        if (x === 0 || y === 0 || x === W - 1 || y === H - 1) open = true;
+        for (const j of [x > 0 ? i - 1 : -1, x < W - 1 ? i + 1 : -1, y > 0 ? i - W : -1, y < H - 1 ? i + W : -1]) {
+          if (j < 0 || seen[j]) continue;
+          if (pass(j)) { seen[j] = 1; stack.push(j); continue; }
+          const t = tl[j];
+          if (t === T.EMPTY || (t === T.FAKE && m.revealed.has(j))) open = true;
+          else if (t === T.FAKE) hidden = true;
+        }
+      }
+      if (hidden && !open) for (const i of comp) liq[i] = 0;
+    }
+  }
+  /** 액체 몸통 채우기 (수면은 물결, 나머지는 행 단위 사각형으로 묶어 한 번에 채움) */
+  liquidBody(ctx, cam, t, fill, info) {
+    const m = this.map, W = m.w, S = TILE, { liq, surf } = info;
+    const tx0 = Math.max(0, Math.floor(cam.x / S)), tx1 = Math.min(W - 1, Math.floor((cam.x + cam.vw) / S));
+    const ty0 = Math.max(0, Math.floor(cam.y / S)), ty1 = Math.min(m.h - 1, Math.floor((cam.y + cam.vh) / S));
+    const wave = (tx) => Math.sin(t * 3 + tx * 0.9) * 3;
+    ctx.beginPath();
+    for (let ty = ty0; ty <= ty1; ty++) {
+      const row = ty * W, y = ty * S;
+      let tx = tx0;
+      while (tx <= tx1) {
+        const i = row + tx;
+        if (!liq[i]) { tx++; continue; }
+        const s = surf[i];
+        let e = tx;
+        while (e < tx1 && liq[row + e + 1] && surf[row + e + 1] === s) e++;
+        if (s) {
+          ctx.moveTo(tx * S, y + 8 + wave(tx));
+          for (let k = tx; k <= e; k++) ctx.quadraticCurveTo(k * S + 24, y + 4 - wave(k), (k + 1) * S, y + 8 + wave(k + 1));
+          ctx.lineTo((e + 1) * S, y + S); ctx.lineTo(tx * S, y + S); ctx.closePath();
+        } else ctx.rect(tx * S, y, (e - tx + 1) * S, S);
+        tx = e + 1;
+      }
+    }
+    ctx.fillStyle = fill; ctx.fill();
+  }
+  /** 액체 (물/용암/독/피/깊은 물) — 매 프레임 애니메이션. 몸통·수면선·반짝임·폭포를 종류별로 묶어 적은 호출로 그린다 */
+  drawLiquid(ctx, cam, t, kind = 'water') {
+    this.liquidKind = kind; this.lastT = t;
+    const info = this.liquidInfo(kind);
+    if (!info.count) return;
+    const m = this.map, W = m.w, S = TILE, { liq, surf, fall } = info;
+    const col = LIQUID[kind] || LIQUID.water, deep = kind === 'deep';
+    this.liquidBody(ctx, cam, t, deep ? DEEP_FRONT : col[0], info);
+    const tx0 = Math.max(0, Math.floor(cam.x / S)), tx1 = Math.min(W - 1, Math.floor((cam.x + cam.vw) / S));
+    const ty0 = Math.max(0, Math.floor(cam.y / S)), ty1 = Math.min(m.h - 1, Math.floor((cam.y + cam.vh) / S));
+    const wave = (tx) => Math.sin(t * 3 + tx * 0.9) * 3;
+    // 수면선
+    ctx.save();
+    ctx.beginPath();
+    for (let ty = ty0; ty <= ty1; ty++) {
+      const row = ty * W, y = ty * S;
+      let tx = tx0;
+      while (tx <= tx1) {
+        if (!surf[row + tx]) { tx++; continue; }
+        let e = tx;
+        while (e < tx1 && surf[row + e + 1]) e++;
+        ctx.moveTo(tx * S, y + 8 + wave(tx));
+        for (let k = tx; k <= e; k++) ctx.quadraticCurveTo(k * S + 24, y + 4 - wave(k), (k + 1) * S, y + 8 + wave(k + 1));
+        tx = e + 1;
+      }
+    }
+    ctx.strokeStyle = col[1]; ctx.globalAlpha = 0.6; ctx.lineWidth = 2; ctx.stroke();
+    ctx.globalCompositeOperation = 'lighter';
+    // 넓은 물 속: 은은한 반짝임 (폭이 숨 쉬듯 변함)
+    ctx.beginPath();
+    for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) {
+      const i = ty * W + tx;
+      if (!liq[i] || surf[i] || fall[i]) continue;
+      const k = 0.5 + 0.5 * Math.sin(t * 2 + tx * 1.7 + ty * 2.3);
+      ctx.rect(tx * S + ((t * 20 + tx * 13) % 40), ty * S + 10 + (ty % 3) * 10, 3 + k * 6, 2);
+    }
+    ctx.globalAlpha = deep ? 0.12 : 0.09; ctx.fillStyle = col[1]; ctx.fill();
+    if (info.falls.length) this.drawFalls(ctx, cam, t, info, col[1]);
+    ctx.restore();
+  }
+  /**
+   * 폭포: 좁은 세로 물줄기를 흘러내리는 줄무늬(점선 오프셋 애니메이션, 속도가 다른 3겹)로 그리고,
+   * 양쪽 가장자리 광택, 벽에서 쏟아지는 입구의 테, 떨어지는 곳의 물보라를 얹는다. (ctx: 'lighter' 상태로 호출)
+   */
+  drawFalls(ctx, cam, t, info, glow) {
+    const m = this.map, W = m.w, S = TILE, { fall, liq } = info;
+    const L = cam.x - S, R = cam.x + cam.vw + S, U = cam.y - S, B = cam.y + cam.vh + S;
+    const vis = [];
+    for (const f of info.falls) {
+      const x = f.tx * S;
+      if (x < L || x > R || (f.y1 + 1) * S < U || f.y0 * S > B) continue;
+      vis.push(f);
+    }
+    if (!vis.length) return;
+    ctx.strokeStyle = glow;
+    // 흐르는 줄무늬 3겹 (겹마다 길이·속도가 다르고, 레인 위치를 기둥마다 조금씩 흔들어 똑같아 보이지 않게)
+    for (const L of FALL_FLOW) {
+      ctx.beginPath();
+      for (const lx of L.lanes) {
+        for (const f of vis) {
+          const x = f.tx * S + lx + Math.sin(f.tx * 3.1 + lx) * 2;
+          ctx.moveTo(x, f.y0 * S); ctx.lineTo(x, (f.y1 + 1) * S);
+        }
+      }
+      ctx.setLineDash(L.dash); ctx.lineDashOffset = -(t * L.speed) % (L.dash[0] + L.dash[1]);
+      ctx.lineWidth = L.lw; ctx.globalAlpha = L.a; ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    // 가장자리 광택 (옆 칸이 폭포가 아닐 때만) + 벽에서 쏟아지는 입구의 테
+    ctx.beginPath();
+    for (const f of vis) {
+      const x = f.tx * S;
+      const lEdge = f.tx === 0 || !fall[f.y0 * W + f.tx - 1], rEdge = f.tx === W - 1 || !fall[f.y0 * W + f.tx + 1];
+      if (lEdge) { ctx.moveTo(x + 1.5, f.y0 * S); ctx.lineTo(x + 1.5, (f.y1 + 1) * S); }
+      if (rEdge) { ctx.moveTo(x + S - 1.5, f.y0 * S); ctx.lineTo(x + S - 1.5, (f.y1 + 1) * S); }
+      if (!info.surf[f.y0 * W + f.tx]) { ctx.moveTo(x, f.y0 * S + 3); ctx.quadraticCurveTo(x + S / 2, f.y0 * S + 9, x + S, f.y0 * S + 3); }
+    }
+    ctx.lineWidth = 1.5; ctx.globalAlpha = 0.3; ctx.stroke();
+    // 물보라: 떨어지는 곳(아래가 넓은 물이거나 바닥)에서 튀는 방울과 옅은 안개
+    ctx.beginPath();
+    const mist = [];
+    for (const f of vis) {
+      const below = f.y1 + 1 < m.h ? (f.y1 + 1) * W + f.tx : -1;
+      if (below >= 0 && !liq[below] && m.tiles[below] === T.EMPTY) continue; // 허공으로 떨어짐: 물보라 없음
+      const x = f.tx * S, yb = (f.y1 + 1) * S + (below >= 0 && liq[below] ? 8 : 0);
+      mist.push(x, yb);
+      for (let k = 0; k < 6; k++) {
+        const bx = x + 4 + k * 8 + Math.sin(t * 9 + k * 1.3 + f.tx) * 2;
+        const by = yb - 2 - Math.abs(Math.sin(t * 7 + k * 2.1 + f.tx * 0.7)) * 7;
+        const r = 1.5 + (k % 2);
+        ctx.moveTo(bx + r, by); ctx.arc(bx, by, r, 0, TAU);
+      }
+    }
+    ctx.fillStyle = glow; ctx.globalAlpha = 0.4; ctx.fill();
+    ctx.globalAlpha = 0.1;
+    for (let i = 0; i < mist.length; i += 2) ctx.fillRect(mist[i] - 6, mist[i + 1] - 12, S + 12, 12);
   }
   /** 배경 장식 문자 ('W' 창문, '|' 기둥) + 테마 소품 */
   drawDecor(ctx, cam, t) {
@@ -379,21 +856,13 @@ export class TileRenderer {
       if (x < cam.x - 200 || x > cam.x + cam.vw + 200) continue;
       if (d.ch === 'W') {
         if (openSky) continue;
-        // 달빛 고딕 창문
-        ctx.save();
-        ctx.fillStyle = '#0a0610';
-        ctx.beginPath(); ctx.moveTo(x - 8, y + 96); ctx.lineTo(x - 8, y + 20); ctx.arc(x + 24, y + 20, 32, Math.PI, 0); ctx.lineTo(x + 56, y + 96); ctx.fill();
-        const g = ctx.createLinearGradient(x, y - 10, x, y + 90);
-        g.addColorStop(0, 'rgba(160,180,255,0.5)'); g.addColorStop(1, 'rgba(60,40,120,0.25)');
-        ctx.fillStyle = g;
-        ctx.beginPath(); ctx.moveTo(x, y + 90); ctx.lineTo(x, y + 20); ctx.arc(x + 24, y + 20, 24, Math.PI, 0); ctx.lineTo(x + 48, y + 90); ctx.fill();
-        ctx.strokeStyle = '#140c18'; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.moveTo(x + 24, y - 4); ctx.lineTo(x + 24, y + 90); ctx.moveTo(x, y + 40); ctx.lineTo(x + 48, y + 40); ctx.stroke();
+        // 고딕 창문 (테마별 빛깔 — 기본 달빛): 창틀·유리·창살과 빛줄기를 스프라이트로 캐시해 그라데이션을 매 프레임 만들지 않는다
+        const w = this.windowSprites();
+        ctx.drawImage(w.win, x - 8, y - 12);
+        const op = ctx.globalCompositeOperation;
         ctx.globalCompositeOperation = 'lighter';
-        const lg = ctx.createLinearGradient(x, y, x + 120, y + 260);
-        lg.addColorStop(0, 'rgba(140,160,255,0.12)'); lg.addColorStop(1, 'rgba(140,160,255,0)');
-        ctx.fillStyle = lg; ctx.beginPath(); ctx.moveTo(x, y + 20); ctx.lineTo(x + 48, y + 20); ctx.lineTo(x + 180, y + 280); ctx.lineTo(x + 80, y + 280); ctx.fill();
-        ctx.restore();
+        ctx.drawImage(w.shaft, x, y);
+        ctx.globalCompositeOperation = op;
       } else if (d.ch === '|') {
         if (y + TILE < cam.y || y > cam.y + cam.vh) continue;
         // 기둥 줄기의 위/아래 끝이면 주두/주초
@@ -409,6 +878,31 @@ export class TileRenderer {
       const c = this.darkProp(p.d.id, p.d.w, p.d.h, p.d.dim);
       if (c) ctx.drawImage(c, p.x, p.y);
     }
+  }
+  /** 'W' 창문 스프라이트 (캐시): win = 창틀·유리·창살 (원점 = 창문 칸 좌상단 −8, −12), shaft = 비스듬한 빛줄기 (원점 = 칸 좌상단) */
+  windowSprites() {
+    if (this.winSpr) return this.winSpr;
+    const tint = WINDOW_TINT[this.stage.theme] || WINDOW_MOON;
+    const win = document.createElement('canvas');
+    win.width = 66; win.height = 110;
+    let g = win.getContext('2d');
+    g.translate(8, 12); // 창문 칸 좌상단 = (0,0)
+    g.fillStyle = '#0a0610';
+    g.beginPath(); g.moveTo(-8, 96); g.lineTo(-8, 20); g.arc(24, 20, 32, Math.PI, 0); g.lineTo(56, 96); g.fill();
+    const gl = g.createLinearGradient(0, -10, 0, 90);
+    gl.addColorStop(0, tint[0]); gl.addColorStop(1, tint[1]);
+    g.fillStyle = gl;
+    g.beginPath(); g.moveTo(0, 90); g.lineTo(0, 20); g.arc(24, 20, 24, Math.PI, 0); g.lineTo(48, 90); g.fill();
+    g.strokeStyle = '#140c18'; g.lineWidth = 3;
+    g.beginPath(); g.moveTo(24, -4); g.lineTo(24, 90); g.moveTo(0, 40); g.lineTo(48, 40); g.stroke();
+    const shaft = document.createElement('canvas');
+    shaft.width = 184; shaft.height = 284;
+    g = shaft.getContext('2d');
+    const lg = g.createLinearGradient(0, 0, 120, 260);
+    lg.addColorStop(0, tint[2]); lg.addColorStop(1, tint[2].replace(/[\d.]+\)$/, '0)'));
+    g.fillStyle = lg; g.beginPath(); g.moveTo(0, 20); g.lineTo(48, 20); g.lineTo(180, 280); g.lineTo(80, 280); g.fill();
+    this.winSpr = { win, shaft };
+    return this.winSpr;
   }
   isBar(tx, ty) {
     if (!this.barSet) this.barSet = new Set(this.map.decor.filter((d) => d.ch === '|').map((d) => d.ty * this.map.w + d.tx));

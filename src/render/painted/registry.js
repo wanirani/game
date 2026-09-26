@@ -67,6 +67,12 @@ export function preloadPainted(id, game = GAME, zoom = null) {
   if (e.promise) return e.promise;
   if (!paintedEnabled(game)) return Promise.resolve(false);
   if (game) GAME = game;
+  // 보스 리그는 하나만 상주: 다른 보스의 리그가 2초 넘게 그려지지 않았으면 놓는다
+  // (보스 러시처럼 스테이지 전환(stageEntered) 없이 보스가 바뀌는 모드에서도 메모리가 쌓이지 않게)
+  if (e.kind === 'boss') {
+    const now = performance.now();
+    for (const [oid, o] of REG) if (oid !== id && o.kind === 'boss' && o.state === 'ready' && now - (o.lastDraw ?? 0) > 2000) releasePainted(oid);
+  }
   e.state = 'loading';
   const t0 = performance.now();
   e.promise = (async () => {
@@ -168,6 +174,7 @@ class PaintedBody extends Entity {
     if (!this.alive(world) || b.hidden) return;
     const mod = this.entry.mod;
     const k = this.fadeK();
+    this.entry.lastDraw = performance.now();
     if (k <= 0.001) return;
     ctx.save();
     if (b.dying > 0 && !mod.ownsDeathFade) ctx.globalAlpha = Math.min(1, Math.max(0, b.dying / 2.4));

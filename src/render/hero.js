@@ -1867,14 +1867,19 @@ function drawHeroYaw(ctx, p, world, opts, K, look) {
   const k = smooth01((f - 0.42) / 0.16);                // 가운데 16% 에서만 교차 (겹쳐 보이는 구간 최소화)
   const sq = 1 - 0.24 * Math.sin(PI * f);               // 돌아가는 느낌의 가로 압축 (중간에서 가장 좁음)
   const views = [[d0, 1 - k], [d1, k]];
-  G.c = ctx; G.tint = opts.tint || null; G.t = tt; G.fx = !opts.tint && !opts.noFx;
+  G.c = ctx; G.tint = opts.tint || null; G.t = tt; G.fx = !opts.tint && !opts.noFx; G.olw = 0.85;
   const aBase = opts.alpha ?? 1;
-  // 1) 뒤 효과: 오라 · (앞모습) 망토 · (앞모습) 날개
+  // 옆모습(0°/180°)은 게임 퍼펫이 자기 망토·날개·무기를 그린다 → 턴테이블용 망토·날개·무기는 채색 뷰의 비중만큼만
+  const wPaint = views.reduce((a, [d, w]) => a + (d === 0 || d === 180 ? 0 : w), 0);
+  // 1) 뒤 효과: 오라 · (앞모습) 망토 · (앞모습) 날개 · 몸에 가려지는 쪽 무기
   ctx.save(); ctx.translate(p.cx, p.bottom); ctx.scale(hs, hs);
   if (G.fx && K.aura) glow(0, -44, 46, K.auraC, (0.2 + 0.06 * Math.sin(tt * 3)) * K.auraK);
-  ctx.globalAlpha = aBase;
-  PUP.drawTurnWings(ctx, I, K.wings, yaw, false, tt);
-  PUP.drawTurnCape(ctx, I, K.cape, yaw, true, tt);
+  ctx.globalAlpha = aBase * wPaint;
+  if (wPaint > 0.002) {
+    PUP.drawTurnWings(ctx, I, K.wings, yaw, false, tt);
+    PUP.drawTurnCape(ctx, I, K.cape, yaw, true, tt);
+    PUP.drawTurnWeapon(ctx, I, K.W, yaw, false, tt);
+  }
   ctx.restore();
   // 2) 몸: 옆모습(0°/180°)은 게임과 같은 퍼펫, 나머지는 채색 뷰
   for (const [d, w] of views) {
@@ -1884,11 +1889,15 @@ function drawHeroYaw(ctx, p, world, opts, K, look) {
     PUP.drawTurnStep(ctx, I, d, sq, w, tt);
     ctx.restore();
   }
-  // 3) 앞 효과: (뒷모습) 망토 · 날개, 후광, 오라 입자
-  ctx.save(); ctx.translate(p.cx, p.bottom); ctx.scale(hs, hs); ctx.globalAlpha = aBase;
-  G.c = ctx;
-  PUP.drawTurnCape(ctx, I, K.cape, yaw, false, tt);
-  PUP.drawTurnWings(ctx, I, K.wings, yaw, true, tt);
+  // 3) 앞 효과: (뒷모습) 망토 · 날개, 무기, 후광, 오라 입자
+  ctx.save(); ctx.translate(p.cx, p.bottom); ctx.scale(hs, hs); ctx.globalAlpha = aBase * wPaint;
+  G.c = ctx; G.tint = opts.tint || null; G.fx = !opts.tint && !opts.noFx; G.olw = 0.85;
+  if (wPaint > 0.002) {
+    PUP.drawTurnCape(ctx, I, K.cape, yaw, false, tt);
+    PUP.drawTurnWings(ctx, I, K.wings, yaw, true, tt);
+    PUP.drawTurnWeapon(ctx, I, K.W, yaw, true, tt);
+  }
+  ctx.globalAlpha = aBase;
   if (K.halo && G.fx) PUP.drawTurnHalo(ctx, K.aura?.color, tt);
   if (K.aura && G.fx) drawAuraMotes(K.aura.type || 'holy', K.auraC, K.auraK, K.auraK < 1 ? 5 : 8, 84);
   ctx.restore();

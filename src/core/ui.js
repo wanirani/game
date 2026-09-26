@@ -3,22 +3,35 @@ import { input } from './input.js';
 import { clamp, rgba } from './math.js';
 
 /**
- * 글꼴 묶음. 모든 글꼴은 assets/fonts/ 에 woff2 로 들어 있다 (오프라인·APK 대응, css/style.css 의 @font-face).
+ * 글꼴 묶음. 모든 글꼴은 assets/fonts/ 에 woff2 로 들어 있다 (오프라인·APK 대응).
+ * CSS 글꼴(css/style.css 의 @font-face): Noto Sans KR · Hahmlet · Grenze Gotisch · Cinzel · Cinzel Decorative.
+ * JS 글꼴(아래 JS_FACES, FontFace API 로 등록): BN Num(작은 숫자) · BN Dmg(데미지 숫자) · BN Brush(붓글씨, 필요할 때 받음) · BN Seal(한자·낙관).
  * 한글 글꼴은 게임에 쓰인 글자(기본 파일) + KS X 1001 한글 2350자의 나머지("… Ext", 필요할 때만 받음)로 서브셋.
- * 새 대사를 많이 넣었으면 python3 tools/fonts/build_fonts.py 로 다시 만든다. 새 묶음을 만들 때도 Ext 이름을 기본 글꼴 바로 뒤에 둔다.
- *  - blood : 큰 제목·보스 이름·STAGE CLEAR 같은 피 글씨 (라틴: Grenze Gotisch 블랙레터 / 한글: Hahmlet 블랙)
- *  - logo  : 영문 장식 제목 (블랙레터, 굵게 900)
- *  - title : 고딕 세리프 소제목·이름 (Hahmlet, 700~900)
- *  - body  : 작은 글씨·대화·설명 (Noto Sans KR, 가독성 우선)
- *  - num   : 숫자·점수·데미지 (Cinzel, 한글은 본문 글꼴로)
+ * 새 대사를 넣었으면 python3 tools/fonts/build_fonts.py 로 다시 만든다 (--check 가 빠진 글자를 알려 준다). 새 묶음을 만들 때도 Ext 이름을 기본 글꼴 바로 뒤에 둔다.
+ * 피 글씨·블랙레터(blood/logo)는 제목 전용: 로고, 스테이지 제목, 보스 이름, STAGE CLEAR/GAME OVER, 필살기 대사, 메뉴 큰 제목.
+ * 본문·목록·20px 미만 숫자·18px 미만 글자에는 쓰지 않는다 (platform §8.1).
+ *  - blood  : 큰 제목·보스 이름·STAGE CLEAR 같은 피 글씨 (라틴: Grenze Gotisch 블랙레터 / 한글: Hahmlet 블랙)
+ *  - logo   : 영문 장식 제목 (블랙레터, 굵게 900)
+ *  - title  : 고딕 세리프 소제목·이름 (Hahmlet, 700~900; 한자는 BN Seal)
+ *  - body   : 작은 글씨·대화·설명 (Noto Sans KR, 가독성 우선)
+ *  - num    : 숫자·점수 (숫자·숫자 기호는 BN Num 라이닝 숫자 → 작게 써도 1·0 이 I·O 로 읽히지 않는다, 영문은 Cinzel, 한글은 본문 글꼴)
+ *             font()/text() 로 24px 이상이면 numDeco(Cinzel 숫자)로 바뀐다 → 큰 점수·제목 숫자는 예전 장식 숫자 그대로
+ *  - numDeco: 큰 점수·제목 숫자 전용 장식 숫자 (Cinzel). 작은 글씨에는 쓰지 않는다
+ *  - dmg    : 데미지 숫자 (BN Dmg: 굵은 압축 산세리프 라이닝 숫자, CRITICAL 같은 영문도, 한글 꼬리표는 본문 글꼴)
+ *  - brush  : 붓글씨 (필살기·각성 이름, 시그니처 대사; 한자 낙관은 BN Seal). 처음 쓸 때(또는 한가할 때) 받으며, 받기 전에는 title 글꼴로 그려진다
  */
 export const FONT = {
   body: '"Noto Sans KR", "Noto Sans KR Ext", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif',
-  title: '"Hahmlet", "Hahmlet Ext", serif',
-  logo: '"Grenze Gotisch", "Hahmlet", "Hahmlet Ext", serif',
-  blood: '"Grenze Gotisch", "Hahmlet", "Hahmlet Ext", serif',
-  num: '"Cinzel", "Noto Sans KR", "Noto Sans KR Ext", sans-serif',
+  title: '"Hahmlet", "Hahmlet Ext", "BN Seal", serif',
+  logo: '"Grenze Gotisch", "Hahmlet", "Hahmlet Ext", "BN Seal", serif',
+  blood: '"Grenze Gotisch", "Hahmlet", "Hahmlet Ext", "BN Seal", serif',
+  num: '"BN Num", "Cinzel", "Noto Sans KR", "Noto Sans KR Ext", sans-serif',
+  numDeco: '"Cinzel", "Noto Sans KR", "Noto Sans KR Ext", sans-serif',
+  dmg: '"BN Dmg", "BN Num", "Noto Sans KR", "Noto Sans KR Ext", sans-serif',
+  brush: '"BN Brush", "BN Seal", "Hahmlet", "Hahmlet Ext", serif',
 };
+/** FONT.num 을 이 크기(px) 이상으로 쓰면 장식 숫자(numDeco)로 그린다 */
+export const NUM_DECO_MIN = 24;
 
 export const COLORS = {
   gold: '#e8c872', goldDark: '#8a6a2a', blood: '#b3122e', bloodDark: '#4a0612',
@@ -28,9 +41,30 @@ export const COLORS = {
 };
 export const RARITY_NAMES = ['일반', '고급', '희귀', '영웅', '전설', '신화'];
 
+/**
+ * ctx.font 문자열. 글자 크기 하한(setTextFloor)과 큰 숫자(FONT.num 24px 이상 → numDeco)를 여기서 적용한다
+ * → text/wrap/paragraph/button 과, font() 로 재는 모든 장면이 같은 크기로 재고 그린다.
+ */
 export function font(size, weight = 500, family = FONT.body) {
+  if (size < TEXT_FLOOR) size = TEXT_FLOOR;
+  if (family === FONT.num && size >= NUM_DECO_MIN) family = FONT.numDeco;
   return `${weight} ${size}px ${family}`;
 }
+
+// ───────────────────────── 글자 크기 하한 (platform §6.2) ─────────────────────────
+let TEXT_FLOOR = 0;
+/**
+ * 글자 크기 하한. game.js 가 uiScale 장면을 그리는 동안 setTextFloor(11) 로 켜고, 다 그리면 setTextFloor(0) 으로 끈다.
+ * 켜져 있으면 font()/text()/wrap()/paragraph()/button() 의 size 가 max(size, n) 이 된다 (피 글씨 bloodText 는 제외).
+ * 반환: 이전 값 (중첩해서 켤 때 되돌리기용)
+ */
+export function setTextFloor(n = 0) {
+  const prev = TEXT_FLOOR;
+  TEXT_FLOOR = Math.max(0, Number(n) || 0);
+  return prev;
+}
+/** 지금 글자 크기 하한 (0 = 꺼짐) */
+export function textFloor() { return TEXT_FLOOR; }
 
 /** 외곽선 텍스트 */
 export function text(ctx, str, x, y, { size = 16, color = COLORS.text, align = 'left', weight = 500, family = FONT.body, outline = 'rgba(0,0,0,0.85)', ow = 3, baseline = 'alphabetic', shadow = false, maxWidth } = {}) {
@@ -68,6 +102,7 @@ export function wrap(ctx, str, maxW, size = 16, weight = 500, family = FONT.body
 }
 /** 여러 줄 문단. 밝은 배경(양피지 등)에서는 outline:null 또는 ow:0 으로 외곽선을 끈다 */
 export function paragraph(ctx, str, x, y, maxW, { size = 16, lineH = 1.55, color = COLORS.text, weight = 500, family = FONT.body, align = 'left', maxLines = 99, outline = 'rgba(0,0,0,0.85)', ow = 2 } = {}) {
+  if (size < TEXT_FLOOR) size = TEXT_FLOOR; // 줄 간격도 하한 크기 기준
   const lines = wrap(ctx, str, maxW, size, weight, family).slice(0, maxLines);
   lines.forEach((l, i) => text(ctx, l, x, y + i * size * lineH, { size, color, weight, family, align, outline, ow }));
   return lines.length * size * lineH;
@@ -110,8 +145,9 @@ export function bar(ctx, x, y, w, h, ratio, { color = COLORS.hp, back = 'rgba(0,
   ctx.strokeStyle = edge; ctx.lineWidth = 1.5; ctx.strokeRect(x - 0.5, y - 0.5, w + 1, h + 1);
 }
 
-/** 포인터가 사각형 안에 있고 이번 프레임에 탭했는지 */
+/** 포인터가 사각형 안에 있고 이번 프레임에 탭했는지 (새 코드는 taps.add/taps.hit 를 쓴다) */
 export function tapped(r) {
+  if (taps.record) taps.note(r, 'primary', 'ui.tapped');
   const p = input.pointer;
   return p.tapped && p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
 }
@@ -182,7 +218,7 @@ export class ListMenu {
     if (input.pressed('cancel')) return 'cancel';
     return null;
   }
-  hit(i, rect) { this.rects[i] = rect; }
+  hit(i, rect) { this.rects[i] = rect; if (taps.record) taps.note(rect, 'list', 'ListMenu'); }
   clearHits() { this.rects.length = 0; }
 }
 function tappedRect(r) {
@@ -226,12 +262,49 @@ export function hint(ctx, w, h, keysText, touchText) {
 
 // ───────────────────────── 글꼴 로딩 ─────────────────────────
 /**
- * 첫 화면 전에 받아 둘 글꼴 (css/style.css 의 @font-face 와 짝). 가변 굵기 파일이라 글꼴마다 하나씩이면 된다.
+ * FontFace API 로 등록하는 글꼴 (CSS 에 없는 글꼴). tools/fonts/build_fonts.py 의 JS 글꼴·assets/fonts/fonts.json 과 짝이며
+ * build_fonts.py --check 가 이 표의 줄 모양 ['이름', '파일', '굵기', 'unicode-range', '받는 때'] 을 그대로 읽어 확인한다.
+ * 받는 때: first = 첫 화면 전(FONT_FACES 로 기다림) · early = 첫 화면 뒤 곧바로 · lazy = 처음 쓸 때(또는 한가할 때 미리)
+ */
+const JS_FACES = [
+  ['BN Num', 'bn-num.woff2', '100 900', 'U+0025, U+002B-003A', 'first'],
+  ['BN Dmg', 'bn-dmg.woff2', '100 900', 'U+0020-007E, U+00A0-00FF, U+2010-2027, U+2212', 'early'],
+  ['BN Brush', 'bn-brush.woff2', '100 900', 'U+0020-007E, U+00A0-00FF, U+2010-2027, U+3000-303F, U+AC00-D7A3, U+FF01-FF5E', 'lazy'],
+  ['BN Seal', 'bn-seal.woff2', '100 900', 'U+3400-4DBF, U+4E00-9FFF, U+F900-FAFF', 'early'],
+];
+/** 글꼴 폴더 (이 모듈 기준 → index.html·아티팩트·APK 어디서 열어도 같은 파일) */
+const FONT_DIR = (() => { try { return new URL('../../assets/fonts/', import.meta.url).href; } catch { return 'assets/fonts/'; } })();
+const FACES = new Map(); // 이름 → FontFace
+(function registerFaces() {
+  const fs = typeof document !== 'undefined' ? document.fonts : null;
+  if (!fs?.add || typeof FontFace === 'undefined') return;
+  for (const [family, file, weight, unicodeRange] of JS_FACES) {
+    try {
+      const f = new FontFace(family, `url("${FONT_DIR}${file}") format("woff2")`, { weight, unicodeRange, style: 'normal', display: 'swap' });
+      fs.add(f); // 등록만 한다: 이 이름으로 글자를 그리거나 load() 할 때 받는다
+      FACES.set(family, f);
+    } catch (e) { console.warn('글꼴 등록 실패', family, e); }
+  }
+})();
+/** 등록한 글꼴 하나를 받는다. 반환: 준비되면 true (없거나 실패하면 false, 오류를 던지지 않는다) */
+export function loadFace(family) {
+  const f = FACES.get(family);
+  if (!f) return Promise.resolve(false);
+  if (f.status === 'loaded') return Promise.resolve(true);
+  return f.load().then(() => true, () => false);
+}
+/** 붓글씨(FONT.brush) 글꼴을 미리 받는다 — 컷인·각성 장면 enter() 에서 부르면 첫 장면부터 붓글씨로 나온다 */
+export function loadBrush() { return loadFace('BN Brush'); }
+/** 글꼴이 준비되었는지 (FontFace 로 등록한 글꼴 이름) */
+export function faceReady(family) { return FACES.get(family)?.status === 'loaded'; }
+
+/**
+ * 첫 화면 전에 받아 둘 글꼴 (css/style.css 의 @font-face 와 JS_FACES 의 first). 가변 굵기 파일이라 글꼴마다 하나씩이면 된다.
  * "Nanum Myeongjo" 는 예전 코드(타이틀 로고 부제)가 부르는 이름으로, Hahmlet 파일을 가리킨다. "… Ext" 확장 한글은 필요할 때만 받는다.
  */
 export const FONT_FACES = [
   '700 16px "Noto Sans KR"', '800 16px "Hahmlet"', '800 16px "Nanum Myeongjo"',
-  '900 16px "Grenze Gotisch"', '900 16px "Cinzel"', '900 16px "Cinzel Decorative"',
+  '900 16px "Grenze Gotisch"', '900 16px "Cinzel"', '900 16px "Cinzel Decorative"', '800 16px "BN Num"',
 ];
 /**
  * 글꼴을 불러오고 최대 timeout(ms)까지만 기다린다. 실패·시간초과여도 게임은 시스템 글꼴로 계속된다.
@@ -249,6 +322,14 @@ export function loadFonts(timeout = 1800) {
 export const fontsReady = loadFonts(typeof performance !== 'undefined' ? clamp(2100 - performance.now(), 300, 1800) : 0);
 // 캔버스는 첫 그림 전에 글꼴이 있어야 제목 캐시 등이 시스템 글꼴로 굳지 않는다 → 이 모듈을 쓰는 모든 장면이 최대 약 1.8초 기다린다
 await fontsReady;
+// 첫 화면 뒤: 데미지 숫자·한자 글꼴(작다)은 곧바로, 붓글씨(큼)는 몇 초 뒤 한가할 때 미리 받는다 (데이터 절약 모드·2G 에서는 처음 쓸 때 받는다)
+for (const [family, , , , when] of JS_FACES) if (when === 'early') loadFace(family);
+if (typeof window !== 'undefined' && FACES.has('BN Brush')) {
+  const cn = navigator.connection;
+  if (!cn?.saveData && !/(^|-)2g$/.test(cn?.effectiveType ?? '')) {
+    setTimeout(() => { const go = () => loadBrush(); if (window.requestIdleCallback) window.requestIdleCallback(go, { timeout: 4000 }); else go(); }, 6000);
+  }
+}
 
 // ───────────────────────── 피 글씨 ─────────────────────────
 /**
@@ -590,5 +671,216 @@ function dropEntry(key) {
 }
 /** 피 글씨 캐시 비우기 (글꼴 교체 등) */
 export function clearTextCache() { TXT_CACHE.clear(); TXT_PX = 0; }
-// 글꼴 파일이 늦게 도착하면(예: 확장 한글 "… Ext") 그 전에 대체 글꼴로 구운 비트맵을 버리고 다시 굽는다
-try { document.fonts.addEventListener('loadingdone', () => { if (TXT_CACHE.size) clearTextCache(); }); } catch { /* 문서 없음(노드 도구) */ }
+
+// ───────────────────────── 글꼴 세대 (platform P-28) ─────────────────────────
+/**
+ * 글꼴 세대 번호. document.fonts 의 loadingdone(글꼴 파일 도착)마다 1 씩 오른다.
+ * 글자를 비트맵으로 캐시하는 곳(메뉴 Layer, 데미지 숫자 아틀라스 등)은 캐시 키에 넣거나 값이 바뀌면 다시 굽는다
+ * → 글꼴이 늦게 도착해도 대체 글꼴로 구운 글자가 남지 않는다.  import * as ui … ui.fontEpoch  또는  import { fontEpoch } (살아 있는 바인딩)
+ */
+export let fontEpoch = 0;
+const EPOCH_FNS = new Set();
+/** 글꼴 세대가 바뀔 때마다 fn(fontEpoch) 호출 (예: game.dirty = true). 반환: 구독 해제 함수 */
+export function onFontEpoch(fn) { EPOCH_FNS.add(fn); return () => EPOCH_FNS.delete(fn); }
+function bumpFontEpoch() {
+  fontEpoch++;
+  // 늦게 도착한 글꼴(예: 확장 한글 "… Ext", 붓글씨) 전에 대체 글꼴로 구운 피 글씨를 버린다 (다음에 그릴 때 다시 굽는다)
+  if (TXT_CACHE.size) clearTextCache();
+  for (const fn of EPOCH_FNS) { try { fn(fontEpoch); } catch (e) { console.error(e); } }
+}
+try { document.fonts.addEventListener('loadingdone', bumpFontEpoch); } catch { /* 문서 없음(노드 도구) */ }
+// 화면 크기가 바뀌면 피 글씨 캐시를 비운다 (배율이 바뀌어 예전 해상도 비트맵은 메모리만 차지한다; 다음 그릴 때 새 배율로 굽는다)
+let resizeT = 0;
+try {
+  window.addEventListener('resize', () => {
+    TAP_CSSK = 0;
+    clearTimeout(resizeT);
+    resizeT = setTimeout(() => { if (TXT_CACHE.size) clearTextCache(); }, 300);
+  });
+} catch { /* 창 없음(노드 도구) */ }
+
+// ───────────────────────── 탭 영역 공용 등록부 (platform §6.3) ─────────────────────────
+/**
+ * 모든 장면이 함께 쓰는 탭 영역 등록부. TapZones 와 같은 방식(render 에서 등록 → 다음 update 에서 판정)에 여유 영역(slop)을 더했다.
+ *   render: taps.add('buy', r, { owner: this, kind: 'primary' })   // 그린 버튼 영역 등록 (반환: r)
+ *   update: const id = taps.hit(this); if (id === 'buy') …        // 이번 틱에 탭된 영역 id (위에 그린 것 우선), 없으면 null
+ * - 한 번의 그리기(rAF 한 번)에 등록한 영역이 한 묶음이다. 묶음은 그 rAF 가 끝날 때 자동으로 닫히고(마이크로태스크), hit() 는 마지막으로
+ *   닫힌 묶음을 본다 → 게임 루프에 따로 부를 것이 없다. owner 를 주면 그 장면이 등록한 영역만 판정한다 (아래 장면의 버튼이 눌리지 않게).
+ * - 판정: 영역 안이면 그 영역(위에 그린 것 우선). 터치 모드에서는 영역 밖이어도 여유(slop) 안이면 가장 가까운 영역.
+ *   여유 = max(opts.slop ?? taps.slop, kind 의 최소 크기(CSS px)에 모자란 만큼의 절반) → 작게 그린 아이콘도 44 CSS px 로 눌린다.
+ * - kind(최소 CSS px): 'primary' 주 버튼 44 · 'list' 목록 줄 36 · 'icon' 아이콘·화살표 44×44 · 'dense' 촘촘한 정보 줄 28
+ * - 예전 도우미(ListMenu.hit, ui.tapped, TapZones.add, Hits.add, Gesture.tap)는 taps.note(r, kind, src) 로 영역만 알린다
+ *   (taps.record 일 때만 모음, 판정에는 안 씀) → ?debug=taps 오버레이와 QA 감사가 모든 영역을 본다.
+ * - ?debug=taps : 등록된 모든 영역을 화면에 그린다 (초록 OK · 노랑 최소 미달 · 빨강 32 CSS px 미만, 점선 = 여유 영역).
+ *   game.js 가 render 끝에서 taps.drawDebug(ctx) 를 부르면 거기서 그리고, 아니면 묶음이 닫힐 때 스스로 그린다.
+ * - game.js(uiScale): 장면을 ctx.scale(uiK) 로 그리는 동안 taps.setSpace(uiK) → 영역 좌표가 UI 공간임을 기록한다 (끝나면 1).
+ *   game.cssScale 을 알면 taps.cssScale 에 넣어 준다 (없으면 캔버스 크기로 잰다).
+ * - QA: taps.audit() → [{id, src, kind, x, y, w, h, k, css, hitCss, min, status: 'ok'|'small'|'tiny'}] (마지막 묶음)
+ */
+const TAP_MIN = { primary: 44, list: 36, icon: 44, dense: 28 };
+const TAP_TINY = 32;
+const TAP_SLOP_MAX = 28; // 여유 상한 (논리 px)
+const VIEW_H = 540; // 논리 화면 높이 (core/game.js)
+let TAP_CSSK = 0; // 논리 px → CSS px (0 = 다시 잰다)
+const tapNow = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+function tapCssK() {
+  if (taps.cssScale > 0) return taps.cssScale;
+  if (!TAP_CSSK) {
+    try {
+      const c = document.getElementById('screen');
+      const h = c ? c.getBoundingClientRect().height : 0;
+      TAP_CSSK = h > 0 ? h / VIEW_H : 1;
+    } catch { TAP_CSSK = 1; }
+  }
+  return TAP_CSSK;
+}
+function tapSlop(z) {
+  const per = z.k * tapCssK(); // 영역 1 px 이 몇 CSS px 인지
+  const need = per > 0 ? (TAP_MIN[z.kind] ?? TAP_MIN.primary) / per : 0;
+  return clamp(Math.max(z.slop, (need - Math.min(z.w, z.h)) / 2), 0, TAP_SLOP_MAX);
+}
+function tapOpen() {
+  if (taps._open) return;
+  taps._open = true; taps._n = 0;
+  queueMicrotask(tapSeal); // 지금 도는 rAF(또는 이벤트) 콜백이 끝나면 묶음을 닫는다
+}
+function tapSeal() {
+  if (!taps._open) return;
+  taps._open = false;
+  const a = taps._list; taps._list = taps._cur; taps._cur = a;
+  taps.n = taps._n; taps.sealedAt = tapNow();
+  if (taps.debug && !taps._drawn) {
+    try {
+      const c = document.getElementById('screen'), ctx = c?.getContext('2d');
+      if (ctx) { ctx.save(); const s = c.height / VIEW_H; ctx.setTransform(s, 0, 0, s, 0, 0); taps.drawDebug(ctx); ctx.restore(); }
+    } catch { /* 디버그 그리기 실패는 무시 */ }
+  }
+  taps._drawn = false;
+}
+function tapPush(id, r, slop, kind, src, owner, hit) {
+  tapOpen();
+  const z = taps._cur[taps._n] ||= { id: null, x: 0, y: 0, w: 0, h: 0, slop: 0, kind: 'primary', src: '', owner: null, k: 1, hit: true };
+  taps._n++;
+  z.id = id; z.x = r.x; z.y = r.y; z.w = r.w; z.h = r.h; z.slop = slop; z.kind = kind; z.src = src; z.owner = owner; z.k = taps.space; z.hit = hit;
+  return z;
+}
+
+export const taps = {
+  /** 기본 여유 영역 (논리 px, 터치 모드에서만) */
+  slop: 6,
+  /** kind 별 최소 크기 (CSS px) */
+  min: TAP_MIN,
+  /** ?debug=taps 오버레이 */
+  debug: false,
+  /** 예전 도우미의 note() 를 모을지 (debug 이거나 QA 가 켠다) */
+  record: false,
+  /** 지금 등록하는 영역의 좌표 배율 (uiScale 장면 = uiK) */
+  space: 1,
+  /** 논리 px → CSS px (0 이면 캔버스로 잰다) */
+  cssScale: 0,
+  /** 마지막 묶음이 이보다(ms) 오래되면 판정하지 않는다 (장면이 바뀐 뒤 옛 버튼이 눌리지 않게) */
+  maxAge: 1000,
+  n: 0, sealedAt: 0,
+  _list: [], _cur: [], _n: 0, _open: false, _drawn: false,
+
+  /**
+   * 탭 영역 등록 (render 에서, 그린 순서 = 아래 → 위). 반환: r
+   * opts: slop(논리 px), kind('primary'|'list'|'icon'|'dense'), owner(보통 장면 this), disabled(그리기만, 판정 안 함), src(디버그 이름)
+   */
+  add(id, r, { slop = taps.slop, kind = 'primary', owner = null, disabled = false, src = 'taps' } = {}) {
+    if (r && r.w > 0 && r.h > 0) tapPush(id, r, slop, kind, src, owner, !disabled);
+    return r;
+  },
+  /** 예전 도우미가 영역만 알린다 (판정 안 함, record 일 때만) */
+  note(r, kind = 'primary', src = 'legacy') {
+    if (this.record && r && r.w > 0 && r.h > 0) tapPush(null, r, 0, kind, src, null, false);
+    return r;
+  },
+  /** (x, y) 에 있는 영역 (owner 를 주면 그 owner 것만). 없으면 null */
+  at(x, y, owner = null) {
+    if (!this.n || tapNow() - this.sealedAt > this.maxAge) return null;
+    const touch = !!input.touchMode;
+    let best = null, bestD = Infinity;
+    for (let i = this.n - 1; i >= 0; i--) {
+      const z = this._list[i];
+      if (!z.hit || (owner != null && z.owner !== owner)) continue;
+      const dx = x < z.x ? z.x - x : x > z.x + z.w ? x - (z.x + z.w) : 0;
+      const dy = y < z.y ? z.y - y : y > z.y + z.h ? y - (z.y + z.h) : 0;
+      if (dx === 0 && dy === 0) return z; // 영역 안: 위에 있는 것 우선
+      if (!touch) continue;
+      const s = tapSlop(z);
+      if (dx <= s && dy <= s) { const d = Math.hypot(dx, dy); if (d < bestD) { bestD = d; best = z; } }
+    }
+    return best;
+  },
+  /** 이번 틱에 탭된 영역의 id (owner 를 주면 그 owner 것만). 없으면 null — update 에서 부른다 */
+  hit(owner = null) {
+    const p = input.pointer;
+    if (!p?.tapped) return null;
+    const z = this.at(p.x, p.y, owner);
+    return z ? z.id : null;
+  },
+  /** 포인터(마우스)가 올라가 있는 영역의 id. 없으면 null */
+  over(owner = null) {
+    const p = input.pointer;
+    if (!p?.active || input.touchMode) return null;
+    const z = this.at(p.x, p.y, owner);
+    return z ? z.id : null;
+  },
+  /** 모든 영역을 버린다 (장면을 통째로 바꿀 때) */
+  clear() { this.n = 0; this._n = 0; this.sealedAt = 0; },
+  /** uiScale 장면을 그리는 동안의 좌표 배율. 반환: 이전 값 */
+  setSpace(k = 1) { const prev = this.space; this.space = k > 0 ? k : 1; return prev; },
+  /** 지금 보이는 영역 목록 (그리는 중이면 이번 묶음, 아니면 마지막 묶음) — 복사본 */
+  zones() {
+    const [list, n] = this._open ? [this._cur, this._n] : [this._list, this.n];
+    return list.slice(0, n).map((z) => ({ ...z }));
+  },
+  /** QA 감사: 영역마다 CSS px 크기와 판정 (마지막 묶음 기준) */
+  audit() {
+    const k0 = tapCssK();
+    return this.zones().map((z) => {
+      const per = z.k * k0, min = TAP_MIN[z.kind] ?? TAP_MIN.primary;
+      const css = Math.min(z.w, z.h) * per;
+      const hitCss = z.hit ? (Math.min(z.w, z.h) + 2 * tapSlop(z)) * per : css;
+      return {
+        id: typeof z.id === 'object' && z.id !== null ? JSON.stringify(z.id) : z.id, src: z.src, kind: z.kind, hit: z.hit,
+        x: z.x, y: z.y, w: z.w, h: z.h, k: z.k, css: Math.round(css * 10) / 10, hitCss: Math.round(hitCss * 10) / 10, min,
+        status: hitCss >= min ? 'ok' : hitCss >= TAP_TINY ? 'small' : 'tiny',
+      };
+    });
+  },
+  /**
+   * ?debug=taps 오버레이. game.js 가 render 끝(논리 좌표 변환 상태)에서 부르면 이번 프레임 영역을 그린다.
+   * 초록 = 최소 크기 이상 · 노랑 = 최소 미달 · 빨강 = 32 CSS px 미만. 점선 = 터치 여유 영역, 회색 선 = 예전 도우미가 알린 영역
+   */
+  drawDebug(ctx) {
+    if (!ctx) return;
+    if (this._open) this._drawn = true;
+    const list = this.audit();
+    ctx.save();
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+    ctx.lineWidth = 1.5; ctx.font = '700 10px monospace'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    for (const z of list) {
+      const x = z.x * z.k, y = z.y * z.k, w = z.w * z.k, h = z.h * z.k;
+      const col = z.status === 'ok' ? '#3ee06a' : z.status === 'small' ? '#ffd23a' : '#ff3a3a';
+      ctx.fillStyle = rgba(col, 0.14); ctx.fillRect(x, y, w, h);
+      ctx.setLineDash(z.hit ? [] : [2, 3]);
+      ctx.strokeStyle = col; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+      if (z.hit && z.hitCss > z.css) {
+        const s = ((z.hitCss - z.css) / 2) / Math.max(1e-6, tapCssK()); // 여유(논리 px)
+        ctx.setLineDash([4, 4]); ctx.strokeStyle = rgba(col, 0.6);
+        ctx.strokeRect(x - s, y - s, w + 2 * s, h + 2 * s);
+      }
+      ctx.setLineDash([]);
+      const label = `${Math.round(z.hitCss)}${z.src !== 'taps' ? ' ' + z.src : ''}`;
+      ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(x, y, ctx.measureText(label).width + 4, 12);
+      ctx.fillStyle = col; ctx.fillText(label, x + 2, y + 1);
+    }
+    ctx.restore();
+  },
+};
+try {
+  const q = new URLSearchParams(location.search).getAll('debug');
+  if (q.some((v) => v.split(',').includes('taps'))) { taps.debug = true; taps.record = true; }
+} catch { /* 주소 없음(노드 도구) */ }

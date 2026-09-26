@@ -39,7 +39,12 @@ const start = await s.page.evaluate(async ([id, from]) => {
 await s.page.keyboard.down('ArrowRight');
 for (let i = 0; i < 600; i++) {
   await s.page.waitForTimeout(100);
-  const b = await s.page.evaluate(() => { const w = window.__game.world; w.player.hp = 1e9; w.player.iframes = 5; return !!w.boss; });
+  // 대화(방 이벤트·보스 사전 대사)는 닫고 계속 걷는다 — 보스 등장 연출(bossIntro)은 그대로 둔다
+  const b = await s.page.evaluate(() => {
+    const g = window.__game, w = g.world, top = g.scenes[g.scenes.length - 1];
+    if (top?.name === 'dialogue') { g.pop(); top.onDone?.(); top.onEnd?.(); }
+    w.player.hp = 1e9; w.player.iframes = 5; return !!w.boss;
+  });
   if (b) break;
 }
 await s.page.keyboard.up('ArrowRight');

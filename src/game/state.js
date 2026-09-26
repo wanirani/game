@@ -6,8 +6,11 @@ import { makeItem } from '../data/items.js';
 import { newHero } from './progression.js';
 import { addItem, ensureWeapon } from './inventory.js';
 import { MAX_LEVEL } from './stats.js';
+import { ensureCompanionState, migrateCompanions } from './companion_state.js';   // [hook:cmp]
 
-export const SAVE_VERSION = 1;
+// 세이브 스키마 버전 (MASTER_PLAN §1.6). 2 = 제2부: progress.shards/hearts + state.companions (동료) + hero.companions (편성)
+// migrateState 는 버전과 상관없이 매번 돌며 멱등이다 (두 번 돌려도 결과가 같다). 모르는 필드는 절대 지우지 않는다.
+export const SAVE_VERSION = 2;
 
 export function newGameState({ slot = 1, difficulty = 'normal', charId = 'kael' } = {}) {
   const diff = getDiff(difficulty);
@@ -28,6 +31,8 @@ export function newGameState({ slot = 1, difficulty = 'normal', charId = 'kael' 
       bosses: [],            // 처치한 보스 id
       relics: [],            // 드라큘라의 유물
       seenScripts: [],       // 이미 본 대사 id
+      shards: [],            // 별의 조각 k_star_1…6 (제2부, world.collect 가 기록)   [hook:p2]
+      hearts: [],            // 세계의 심장 k_heart_1…6 (제2부)   [hook:p2]
     },
     quests: { active: {}, done: [] },
     stats: { playTime: 0, kills: 0, deaths: 0, maxCombo: 0, goldEarned: 0, enhanceOk: 0, enhanceFail: 0, minigameWins: 0, bossKills: 0, docs: 0 },
@@ -39,6 +44,7 @@ export function newGameState({ slot = 1, difficulty = 'normal', charId = 'kael' 
   ensureHero(state, charId);
   // 시작 소모품
   addItem(state, Object.assign(makeItem('c_potion'), { qty: 3 }));
+  ensureCompanionState(state);   // [hook:cmp] 동료 상태 (아케이드 임시 세이브에도 생기지만 아케이드에선 쉰다)
   return state;
 }
 
@@ -66,11 +72,12 @@ const EQUIP_SLOTS = ['weapon', 'head', 'body', 'cloak', 'acc1', 'acc2'];
 
 /** 구버전·손상된 세이브 보정 (누락 필드 채움, 잘못된 값 교정 — 불러온 직후 게임이 멈추지 않도록) */
 export function migrateState(s) {
-  s.version ??= SAVE_VERSION;
-  if (!DIFF[s.difficulty]) s.difficulty = 'normal';
+  if (typeof s.difficulty !== 'string' || !Object.hasOwn(DIFF, s.difficulty)) s.difficulty = 'normal';
   if (!isObj(s.progress)) s.progress = {};
   for (const k of ['cleared', 'flags']) if (!isObj(s.progress[k])) s.progress[k] = {};
-  for (const k of ['unlocked', 'docs', 'lore', 'secrets', 'bosses', 'relics', 'seenScripts']) if (!Array.isArray(s.progress[k])) s.progress[k] = [];
+  for (const k of ['unlocked', 'docs', 'lore', 'secrets', 'bosses', 'relics', 'seenScripts', 'shards', 'hearts']) if (!Array.isArray(s.progress[k])) s.progress[k] = [];
+  // 별의 조각·세계의 심장: 문자열 id 만, 중복 없이 (개수로 진엔딩을 가르므로)   [hook:p2]
+  for (const k of ['shards', 'hearts']) s.progress[k] = [...new Set(s.progress[k].filter((id) => typeof id === 'string'))];
   if (!s.progress.unlocked.includes('s01')) s.progress.unlocked.push('s01');
   s.progress.chapter = Number.isFinite(s.progress.chapter) ? s.progress.chapter : 0;
   if (!isObj(s.quests)) s.quests = { active: {}, done: [] };
@@ -103,5 +110,14 @@ export function migrateState(s) {
     ensureWeapon(s, h); // 무기 칸은 비어 있으면 안 된다 (강화 파괴 등으로 비었던 세이브 복구)
   }
   if (!s.heroes[s.charId]) ensureHero(s, s.charId);
+  // 동료 (companions §8): 누락 구조 생성·잘못된 id 정리·이전 세이브 소급 해금. 실패해도 불러오기는 계속된다   [hook:cmp]
+  try { migrateCompanions(s); } catch (e) {
+    console.warn('[state] 동료 데이터가 손상되어 초기화합니다', e);
+    delete s.companions;
+    for (const h of Object.values(s.heroes)) delete h.companions;
+    try { ensureCompanionState(s); } catch (e2) { console.warn('[state] 동료 상태 생성 실패', e2); }
+  }
+  // 버전은 마지막에 (더 새 클라이언트가 올린 번호는 낮추지 않는다)
+  if (!(Number.isFinite(s.version) && s.version >= SAVE_VERSION)) s.version = SAVE_VERSION;
   return s;
 }

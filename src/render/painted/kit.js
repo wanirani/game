@@ -8,14 +8,15 @@
 //  loadRig(dir, def, env)                          assets/<dir>/manifest.json + atlas.webp → 부품별 변형을 구운 Rig
 //     변형: base(외곽선 포함) · deep(어둡게, 뒤쪽 부품) · dmg1/dmg2(균열·그을림·찢김·깨짐) · flash(흰 실루엣) ·
 //           glow(영혼색 실루엣, 잔상) · 틴트(예: 쌍두의 서리색) · 균열 발광 오버레이(gl)
-//  Drawer                                          부품 한 장 = setTransform 한 번 + drawImage 한 번 (save/restore 없음)
+//  Drawer                                          부품 한 장 = setTransform 한 번 + drawImage 한 번 (save/restore 없음). 클립은 D.save/D.restore (깊이 추적 → unwind)
 //  Chain                                           점 체인(척추·꼬리·촉수)의 호 길이/점/각도 + 굽힘에 따른 겹침 보정
 //  ik2                                             2관절 팔다리 (어깨→팔꿈치→손) 해석해
 //  Strand                                          verlet 줄 (힘줄·침·찢긴 막·사슬)
 //  Particles + PRESET                              풀링된 입자 (ash ember boneDust ichor(바닥 튐) smoke spore spark chip), 묶음 그리기
 //  puff / halo / glowSprite                        부드러운 발광 퍼프 (가산)
 //  DamageState                                     체력 비율 → 손상 단계 0..2, 단계가 오를 때 한 번 true (파편 폭발용)
-//  Shards                                          사망 붕괴용 강체 파편 (부품 이미지가 튀어 떨어지고 바닥에서 튕김)
+//  Shards                                          사망 붕괴용 강체 파편 (부품 이미지가 튀어 떨어지고 바닥에서 튕김, 바닥선에서 잘라 그림)
+//  ledgesOver(ctx, world, x0,y0,x1,y1)             한 방향 발판을 몸통 뒤층 위에 다시 그림 (크게 칠한 몸이 발판을 가리지 않게)
 //  texMemMB(rig)                                   구운 텍스처 메모리 추정
 //
 // ── 규칙 (docs/art/BOSS_PIPELINE.md 참고) ───────────────────────────────────────
@@ -316,7 +317,7 @@ export async function loadManifest(dir) {
 /** 부품 이미지 확보: 아틀라스(assets.js 키 '<dir>/atlas') 또는 부품별 파일 */
 async function loadAtlas(dir, man) {
   const key = `${dir}/${man.atlas?.file ?? 'atlas'}`;
-  const img = await assets.load(key);
+  const img = await assets.load(key, man.atlas?.hash);   // 내용 해시(&h=) → 매니페스트와 같은 판의 아틀라스만 쓴다
   if (!img) throw new Error('painted atlas missing ' + key);
   return { img, key };
 }

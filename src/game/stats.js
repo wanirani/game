@@ -5,6 +5,7 @@ import { itemStats, ITEMS } from '../data/items.js';
 import { SKILLS } from '../data/skills.js';
 import { DOCS } from '../data/lore.js';
 import { findItem } from './inventory.js';
+import { companionAuraStats } from './companion_state.js';   // [hook:cmp]
 
 export const EQUIP_SLOTS = ['weapon', 'head', 'body', 'cloak', 'acc1', 'acc2'];
 export const SLOT_NAMES = { weapon: '무기', head: '머리', body: '몸', cloak: '망토', acc1: '장신구1', acc2: '장신구2' };
@@ -82,6 +83,8 @@ export function computeStats(state, hero) {
   }
   // 비전서 (계정 공유 지식)
   for (const d of state.progress?.docs || []) addStats(s, DOCS[d]?.stats);
+  // 수호신 오라 (장착한 수호신만; 아케이드 모드에서는 동료가 쉰다)
+  if (!state.arcade) addStats(s, companionAuraStats(state, hero));   // [hook:cmp]
   // 배율 적용
   for (const k in mult) s[k] = (s[k] ?? 0) * mult[k];
   // 정리

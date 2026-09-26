@@ -4,7 +4,8 @@
  "atlas": {
   "file": "atlas",
   "w": 2048,
-  "h": 1001
+  "h": 1001,
+  "hash": "06e37ff3c4"
  },
  "parts": {
   "skull_upper": {

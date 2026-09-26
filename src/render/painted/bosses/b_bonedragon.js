@@ -8,6 +8,9 @@
 //   transform(균열·영혼불 폭주) 쌍두(서리색 틴트, 등장 분출) · 피격 섬광 · 손상 단계 0~2(구운 균열/그을림/찢김 + 단계 상승 파편 폭발)
 //   death(머리부터 척추가 한 마디씩 떨어져 나가고 두개골·턱·날개·다리가 튕겨 굴러감, 흉곽은 구멍으로 가라앉음)
 // 절차적 그로테스크 층: 척수 힘줄 관(관절 틈 메움) · verlet 힘줄 줄 · 입 속 끈적한 줄 · 체액(ichor) 방울→바닥 튐 · 영혼불 · 재/뼛가루
+// 그리기 순서 (머리마다): prepHead(프레임 값) → backHead(구멍·날개·다리·흉곽) → [발판 덧그리기 kit.ledgesOver] →
+//   frontHead(목·두개골·채색 구멍 테두리 rim·입자). 몸통이 경기장 발판을 덮어도 딛을 곳이 보이고, 판정 부위(머리)는 발판보다 앞.
+// 모든 층은 바닥선에서 잘린다 (벽 구멍·사망 파편 포함). 클립은 D.save/D.restore 로 (그리기 오류 시 registry 가 되돌림).
 import { Drawer, Chain, Strand, Particles, DamageState, Shards, halo, puff, rr, hash1, loadRig, pickVariant, quality, drawStrand, ledgesOver } from '../kit.js';
 
 const DIR = 'painted/bosses/b_bonedragon';

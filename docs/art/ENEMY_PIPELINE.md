@@ -11,9 +11,9 @@ Reference implementation (all states done, verified in-game desktop + 844×390 m
 |---|---|---|---|---|---|---|
 | `bat` | T1 | flying body (dedicated Step-3 part), wing (mirrored), hanging cocoon | 5 | 14 KB | 0.13 / 0.04 | `src/render/painted/enemies/bat.js` |
 | `ghost` | T1 + ectoplasm | shroud body, reaching arm, screaming head | 4 | 15 KB | 0.18 / 0.06 | `…/ghost.js` |
-| `skeleton` | T2 | skull, jaw, ribcage, pelvis+loincloth, thigh, shin+foot, upper arm, forearm+hand, sabre, buckler | 6 | 27 KB | 0.46 / 0.14 | `…/skeleton.js` |
-| `armor_knight` | T2 | cuirass+tabard, great helm, rerebrace (also cuisse), vambrace+gauntlet, greave+sabaton, longsword, tower shield, cape (`spec.scale 1.1`) | 5 | 38 KB | 0.76 / 0.20 | `…/armor_knight.js` |
-| `gravedigger` | T3 | head+hat, hunched torso+hump, sleeve upper/lower, hand, coat tails, boot, shovel (handle lengthened at bake), lantern (+ dmg1/dmg2) | 7 | 48 KB | 0.76 / 0.36 | `…/gravedigger.js` |
+| `skeleton` | T2 | skull, jaw, ribcage, pelvis+loincloth, thigh, shin+foot, upper arm, forearm+hand, sabre, buckler | 6 | 27 KB | 0.33 / 0.14 | `…/skeleton.js` |
+| `armor_knight` | T2 | cuirass+tabard, great helm, rerebrace (also cuisse), vambrace+gauntlet, greave+sabaton, longsword, tower shield, cape (`spec.scale 1.1`) | 5 | 38 KB | 0.55 / 0.20 | `…/armor_knight.js` |
+| `gravedigger` | T3 | head+hat, hunched torso+hump, sleeve upper/lower, hand, coat tails, boot, shovel (handle lengthened at bake), lantern (+ dmg1/dmg2) | 7 | 48 KB | 0.75 / 0.31 | `…/gravedigger.js` |
 
 Total Kling spend for the five: **27 images** (26 by the builder + 1 in the review pass: the bat's flying body, made by
 following §3 Step 3 as written). Generation log (generation ids, inputs, result decisions; Step 1/2 prompts are
@@ -306,17 +306,30 @@ roster (6–9 types) ≈ 3–5 MB desktop, ≈ 1–1.5 MB phone.
 
 - **Kling**: T1 3–4, T2 5–6, T3 6–8, reuse variants 0–2. Pick 2 references, 2 sheets; generate singles only for occluded parts.
 - **Assets**: atlas.webp 10–50 KB per enemy (srcTD 4).
-- **Memory** (baked runtime atlas, RGBA): desktop TD 2.4 → bat 0.08, ghost 0.18, skeleton 0.46, knight 0.76,
-  gravedigger 0.76 MB (2.24 MB for all five); phone TD 1.25 → 0.82 MB for all five. Bake 3–250 ms per type, time-sliced.
-- **Draw cost** (`tools/painted/enemies/perf.mjs`, frozen loop, SwiftShader CPU raster = worst case; Enemy.draw ms per frame):
+- **Memory** (baked runtime atlas, RGBA; the kit shelf-packs at 1024/768/640/512 px and keeps the smallest): desktop TD 2.4 →
+  bat 0.13, ghost 0.18, skeleton 0.33, knight 0.55, gravedigger 0.75 MB (1.94 MB for all five); phone TD 1.25 → bat 0.04,
+  ghost 0.06, skeleton 0.14, knight 0.20, gravedigger 0.31 MB (0.75 MB). Bake 3–250 ms per type, time-sliced.
+- **Draw cost** (`tools/painted/enemies/perf.mjs --ab`, frozen loop, SwiftShader CPU raster = worst case; the `--ab` mode
+  alternates painted and vector frame by frame in one page, so a busy shared machine loads both sides equally — the
+  sequential runs drifted by ±30 % between runs on the shared review machine). Enemy.draw JS ms / whole frame ms:
 
-| scene | painted | vector |
+| scene (review pass, 2026-09-26) | painted | vector |
 |---|---|---|
-| desktop 1280×720, 30 mixed enemies on screen | 3.2 ms | 3.7 ms |
-| desktop, 20 × bat / ghost / skeleton / knight / gravedigger | 1.05 / 0.82 / 1.55 / 1.31 / 2.91 | 1.56 / 0.63 / 2.56 / 3.08 / 3.70 |
-| mobile 844×390 dpr 2, CPU ×4 throttle, 60 mixed | 20.4 ms | 25.0 ms |
+| desktop 1280×720 (quality high), 30 mixed on screen | 4.47 / 51.3 | 4.99 / 66.1 |
+| desktop, 20 × bat | 0.81 / 27.5 | 1.06 / 32.0 |
+| desktop, 20 × ghost | 0.61–0.65 / 30.0 | 0.55–0.63 / 29.6 |
+| desktop, 20 × skeleton | 0.80 / 27.6 | 2.05 / 34.8 |
+| desktop, 20 × armor_knight | 1.01 / 30.8 | 1.98 / 39.5 |
+| desktop, 20 × gravedigger | 1.99–2.88 / 47.5–55.6 | 1.97–2.97 / 47.3–56.3 |
+| desktop, quality low, 30 mixed | 2.62 / 47.7 | 4.60 / 62.1 |
+| mobile 844×390 dpr 2, CPU ×4 throttle, quality medium, 60 mixed | 20.4 / 156 | 26.5 / 224 |
 
-  Targets: ≤ 0.35 ms/enemy on a mid phone with CPU raster; the painted path must never cost more than the vector path it replaces.
+  Ghost and gravedigger are at parity with their vector versions (±5 % JS, ±1 % frame), the others are cheaper. The ghost
+  got there by emitting wisps per second (16/s, 8/s on low), 9 warp bands, the extra glow pass on high only; the
+  gravedigger by baking its shovel extension, 5 coat-tail bands, one lantern glow and no per-frame allocations.
+  Targets: ≤ 0.35 ms/enemy on a mid phone with CPU raster; the painted path must never cost more than the vector path it
+  replaces — measure with `--ab`, and keep per-frame code allocation-free (reuse pose objects, hoist strip callbacks,
+  resolve sprites when a particle is added).
 
 ## 9. QA checklist (per enemy)
 
@@ -346,8 +359,8 @@ roster (6–9 types) ≈ 3–5 MB desktop, ≈ 1–1.5 MB phone.
 7. Fallback: rename `assets/painted/enemies/<id>` → vector art, no errors; `?painted=0` and `window.__paintedEnemies=false`.
 8. Late load: throttle the network — vector → painted 0.3 s crossfade, no pop.
 9. No `Math.random` in renderers (`grep -n "Math.random" src/render/painted/enemies`), no `world.fx.emit/burst` from draw.
-10. `node tools/painted/enemies/perf.mjs --n 30` (and `--mobile --throttle 4 --n 60`, and `--quality low|medium`):
-    painted ≤ vector. Emission of continuous VFX is per second (`FxPool.rate`), not per rendered frame.
+10. `node tools/painted/enemies/perf.mjs --n 30 --ab` (and `--types <id> --n 20 --ab`, `--mobile --throttle 4 --n 60`,
+    `--quality low|medium`): painted ≤ vector in the interleaved A/B line. Emission of continuous VFX is per second (`FxPool.rate`), not per rendered frame.
 11. `node tools/integration.mjs --only s01,s02,s03,s04,s05` (and `--mobile`) — no page errors.
 12. `node tools/painted/enemies/lifecycle.mjs`: growing the window re-bakes at the new texel density with no vector
     frame, a stage change releases unused rigs, `settings.painted=false` stops the preload.

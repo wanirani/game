@@ -148,11 +148,21 @@ def turn_mask(sheet, meta, rig, cid, clsid):
     f_hem = 1.0 if legs_armor else (J.get('skirtBot', so) - ft) / (so - ft)
     band = np.zeros(S.shape[:2], np.float32)
     YY = np.arange(S.shape[0], dtype=np.float32)[:, None]
+    pony = (rj.get('opts') or {}).get('pony', True) is not False
     for vname, vm in meta.items():
         hgt = vm['footY'] - vm['topY']
         y0, y1 = vm['topY'] + f_neck * hgt, vm['topY'] + f_hem * hgt
         ramp = np.clip((YY - y0) / (0.025 * hgt), 0, 1) * np.clip((y1 - YY) / (0.03 * hgt), 0, 1)
-        band[:, vm['x']:vm['x'] + vm['w']] = np.repeat(ramp, vm['w'], 1)
+        sub = np.repeat(ramp, vm['w'], 1)
+        dx = np.abs(np.arange(vm['w'], dtype=np.float32)[None, :] - vm['axisX']) / max(8.0, vm['shW'])
+        # 색만으로는 검은 가죽 코트와 바지·머리카락이 갈리지 않는다 → 자리로 거른다
+        if vname in ('y45', 'y90', 'y135') and not legs_armor:     # 앞모습: 벌어진 코트 자락 사이의 바지
+            yr = (YY - (vm['topY'] + 0.47 * hgt)) / (0.04 * hgt)
+            sub *= 1 - np.clip(yr, 0, 1) * np.clip((0.62 - dx) / 0.12, 0, 1)
+        if vname in ('ym45', 'ym90', 'ym135') and pony:              # 뒷모습: 등에 늘어진 포니테일
+            yr = ((vm['topY'] + 0.31 * hgt) - YY) / (0.03 * hgt)
+            sub *= 1 - np.clip(yr, 0, 1) * np.clip((0.42 - dx) / 0.1, 0, 1)
+        band[:, vm['x']:vm['x'] + vm['w']] = sub
     for ch in (0, 1):
         pos = al & (M[..., ch] > 150)
         neg = al & (M[..., ch] < 25) & ~(headish & (s < 0.25))     # 모자·두건(무채색)은 음성 표본에서 뺀다 (옷과 같은 색)
@@ -161,12 +171,12 @@ def turn_mask(sheet, meta, rig, cid, clsid):
         Hp, Hn = _hist(h, s, v, pos), _hist(h, s, v, neg)
         post = Hp / (Hp + Hn + 1e-6)
         pr = post[hi, si, vi]
-        w = np.clip((pr - 0.35) / 0.35, 0, 1) * band * (S[..., 3] / 255.0)
-        out[..., ch] = cv2.GaussianBlur(w.astype(np.float32), (0, 0), 1.0)
+        w = np.clip((pr - 0.3) / 0.3, 0, 1) * band * (S[..., 3] / 255.0)
+        out[..., ch] = cv2.GaussianBlur(w.astype(np.float32), (0, 0), 1.6)   # 가죽 결 때문에 픽셀 단위로 들쭉날쭉 → 부드럽게
     img = Image.fromarray((np.clip(out, 0, 1) * 255).astype(np.uint8), 'RGB')
     img = img.resize((max(1, img.width // 2), max(1, img.height // 2)), Image.LANCZOS)
     p = os.path.join(d, 'turn_mask.webp')
-    img.save(p, 'WEBP', lossless=True, quality=100, method=6)
+    img.save(p, 'WEBP', quality=72, method=6)                           # 손실 압축으로 충분 (≈20KB, 무손실이면 100KB+)
     return p
 
 

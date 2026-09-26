@@ -12,14 +12,24 @@
 //   음악: 트랙(채널별 패너) → musicIn → duck → musicVol → master   (wet 송신 → 잔향, 리드 → 딜레이)
 //   효과음: 인스턴스 out → sfxBus → master  (wet 송신 → 잔향)
 // 악보 형식(MML + 코드 진행 + 패턴 생성 + 드럼 레인)은 data/music.js 상단 주석 참조.
+//
+// 효과음 레지스트리: SFX = 내장 73종(+_default) + 체감 45종(sfx_feel.js, 병합) + defineSfx() 로 등록한 외부 효과음(audio_companions.js 등).
+//  각 정의의 fn(S, H) 는 H = { T, N, FM, ARP, BOOM, CRACKLE, mtof, R } 를 두 번째 인자로 받는다 (SFX_KIT 와 같은 객체).
+//  체감 효과음 예산: 100ms 창에서 시작 10개(보통 8, 낮음 6), 'hit' 재질 레이어는 hit* 7개 이상 재생 중이면 생략 (prio 는 예외).
+//  audio.liveCount(prefix) / audio.stopSfx(name) / audio.has(name) / audio.lead(name) / audio.setQuality(q) / audio.stats
 import { TRACKS } from '../data/music.js';
+import { FEEL_SFX } from './sfx_feel.js';
 
 const LOOKAHEAD = 0.16;          // 스케줄 선행 시간(초)
 const TICK_MS = 25;              // 스케줄러 주기
 const MUSIC_TRIM = 1.0, SFX_TRIM = 1.1;
 const MAX_SFX = 26;              // 동시 효과음 인스턴스 상한
+const FEEL_WIN = 0.1;            // 체감 효과음 예산 창(초)
+const FEEL_CAP = { high: 10, medium: 8, low: 6 }; // 창당 체감 효과음 시작 상한 (feel §8)
+const HIT_LAYER_MAX = 6;         // hit* 가 이보다 많이 울리면 재질 레이어 생략
 const MAX_MUSIC_VOICES = 90;     // 음악 동시 보이스 안전 상한
 const E0 = {};
+const STATS0 = Object.freeze({ starts: 0, feel: 0, dropped: 0, skipped: 0 });
 const R = Math.random;
 const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
 const BUILTIN = new Set(['sine', 'square', 'sawtooth', 'triangle']);
@@ -626,8 +636,13 @@ const ARP = (S, w, notes, step, dur, vol, o, at = 0) => notes.forEach((m, i) => 
 const FM = (S, f, ratio, idx, at, dur, vol, o = E0) => T(S, 'sine', f, o.f1 ?? 0, at, dur, vol, { ...o, fm: [ratio, idx, o.fd ?? dur * 0.5] });
 const CRACKLE = (S, at, dur, n, vol, f = 2500) => { for (let i = 0; i < n; i++) N(S, at + R() * dur, 0.012 + R() * 0.02, vol * (0.4 + R() * 0.6), { f: ['bandpass', f * (0.6 + R() * 0.9), 0, 2] }); };
 const BOOM = (S, at, dur, vol, f0 = 90) => { T(S, 'sine', f0, 28, at, dur, vol, { sw: dur * 0.7 }); N(S, at, dur * 1.1, vol * 0.8, { f: ['lowpass', 2600, 160, 0.7] }); };
+// fn(S, H) 의 두 번째 인자 — 합성 도우미 묶음 (기존 정의는 무시한다)
+const H = Object.freeze({ T, N, FM, ARP, BOOM, CRACKLE, mtof, R });
+/** 외부 효과음 모듈(audio_companions.js 등)용 합성 도우미: T 톤, N 노이즈, R 난수 (+ FM·ARP·BOOM·CRACKLE·mtof). H 와 같은 객체 */
+export const SFX_KIT = H;
 
-// 각 효과음: { fn(S), max(동명 동시), rev(잔향 송신), vol, vary(피치 랜덤), gap(중복 억제 초), duck:[amount,time] }
+// 각 효과음: { fn(S, H), max(동명 동시), rev(잔향 송신), vol, vary(피치 랜덤), gap(중복 억제 초), duck:[amount,time] }
+//   체감 효과음 전용: feel(예산 대상), prio(예산 제외), layer:'hit'(재질 레이어), lead(타격까지 선행 초) — sfx_feel.js 참조
 const SFX = {
   _default: { max: 3, fn(S) { T(S, 'triangle', 700, 560, 0, 0.08, 0.2); } },
   // ── 무기 ──
@@ -1005,6 +1020,7 @@ const SFX = {
   menu_cancel: { max: 2, gap: 0.05, fn(S) { T(S, 'square', 660, 0, 0, 0.06, 0.07, { hold: 0.03 }); T(S, 'square', 440, 0, 0.06, 0.12, 0.07, { hold: 0.03 }); } },
   type: { max: 2, gap: 0.03, vary: 0.08, fn(S) { T(S, 'square', 880, 0, 0, 0.025, 0.05, { f: ['lowpass', 2500] }); N(S, 0, 0.012, 0.06, { f: ['highpass', 4000] }); } },
 };
+Object.assign(SFX, FEEL_SFX); // 체감 효과음 45종 (sfx_feel.js — 이름 충돌 없음, tools/test_sfx.mjs 가 검사)
 
 // 체감 음량 보정 (오프라인 렌더 단기 RMS 측정 기반) — 호출부 vol 과 곱해짐
 const SFX_VOL = {
@@ -1017,12 +1033,27 @@ const SFX_VOL = {
 };
 for (const k in SFX_VOL) if (SFX[k]) SFX[k].vol = SFX_VOL[k];
 
+const BUILTIN_SFX = new Set(Object.keys(SFX)); // 내장 + 체감 — defineSfx 로 덮어쓸 수 없다
+/** 외부 모듈이 효과음을 등록한다 (audio_companions.js 가 import 시점에 호출).
+ *  def = { fn(S, H), max, gap, rev, vary, duck, prio, layer, lead }, vol = 체감 음량 보정(생략 시 def.vol).
+ *  내장·체감 이름이나 잘못된 정의는 등록하지 않고 false. 같은 외부 이름을 다시 등록하면 교체한다. */
+export function defineSfx(name, def, vol) {
+  if (typeof name !== 'string' || !name || !def || typeof def.fn !== 'function') return false;
+  if (BUILTIN_SFX.has(name)) { console.warn(`[audio] defineSfx: '${name}' 은(는) 내장 효과음 이름이라 등록하지 않습니다`); return false; }
+  const d = { ...def };
+  if (vol != null && Number.isFinite(+vol)) { d.vol = +vol; SFX_VOL[name] = +vol; }
+  SFX[name] = d;
+  return true;
+}
+
 // ─────────────────────────────── 엔진 ───────────────────────────────
 /** 한 AudioContext(실시간 또는 Offline) 위의 믹서·잔향·신스·시퀀서 */
 export class Engine {
   constructor(ctx) {
     const c = this.ctx = ctx;
     this.waves = {}; this.voices = 0; this.live = []; this.lastT = {}; this.lastV = {}; this.players = []; this.compiled = {}; this._curves = {};
+    // 체감 효과음 예산: 최근 100ms 시작 시각 / 창당 상한 (품질별 10·8·6) / 통계 (starts 전체, feel 체감, dropped 예산 초과, skipped 레이어 생략)
+    this.feelT = []; this.feelCap = FEEL_CAP.high; this.stats = { starts: 0, feel: 0, dropped: 0, skipped: 0 };
     const nb = c.createBuffer(1, c.sampleRate * 2, c.sampleRate), nd = nb.getChannelData(0);
     for (let i = 0; i < nd.length; i++) nd[i] = R() * 2 - 1;
     this.noise = nb;
@@ -1108,6 +1139,14 @@ export class Engine {
     if (vol <= 0.001) return;
     const lt = this.lastT[name];
     if (lt !== undefined && now - lt < (def.gap ?? 0.025) && vol <= this.lastV[name]) return;
+    if (def.feel) {
+      const ft = this.feelT;
+      while (ft.length && now - ft[0] >= FEEL_WIN) ft.shift();
+      if (!def.prio && ft.length >= this.feelCap) { this.stats.dropped++; return; }
+      if (def.layer === 'hit' && this.liveCount('hit', now) > HIT_LAYER_MAX) { this.stats.skipped++; return; }
+      ft.push(now); this.stats.feel++;
+    }
+    this.stats.starts++;
     this.lastT[name] = now; this.lastV[name] = vol;
     this.prune(now);
     let same = 0, oldest = null;
@@ -1120,11 +1159,22 @@ export class Engine {
     let wet = null;
     if (def.rev) { wet = c.createGain(); wet.gain.value = def.rev; node.connect(wet); wet.connect(this.sfxRev); }
     const S = { e: this, c, t: now + 0.004 + (o.delay || 0), p: pitch * (1 + (R() * 2 - 1) * (def.vary ?? 0.035)), v: vol * (def.vol ?? 1), out, end: 0 };
-    def.fn(S);
+    def.fn(S, H);
     this.live.push({ name, st: now, end: now + (o.delay || 0) + S.end + 0.05, out, node, wet });
     if (def.duck) this.duck(def.duck[0] * Math.min(1, vol), def.duck[1]);
   }
   steal(x, now) { x.out.gain.cancelScheduledValues(now); x.out.gain.setTargetAtTime(0, now, 0.012); x.end = Math.min(x.end, now + 0.06); }
+  /** 이름이 prefix 로 시작하는, 아직 울리는 효과음 수 */
+  liveCount(prefix = '', now = this.ctx.currentTime) {
+    let n = 0;
+    for (const x of this.live) if (x.end > now && x.name.startsWith(prefix)) n++;
+    return n;
+  }
+  /** 같은 이름의 울리는 효과음을 짧게 페이드아웃 (각성 홀드 취소 등) */
+  stopName(name) {
+    const now = this.ctx.currentTime;
+    for (const x of this.live) if (x.name === name && x.end > now) this.steal(x, now);
+  }
   prune(now) {
     let j = 0;
     for (let i = 0; i < this.live.length; i++) {
@@ -1267,8 +1317,28 @@ class AudioSystem {
   }
   sfx(name, opts) {
     if (!this.eng || this.ctx.state !== 'running') return;
+    this.eng.feelCap = FEEL_CAP[this.quality] ?? FEEL_CAP.high;
     try { this.eng.sfx(name, opts || E0); } catch { /* 효과음 실패는 무시 */ }
   }
+  /** 체감 효과음 예산용 품질: setQuality 로 고정하지 않으면 월드 파티클 품질(fx.quality) → 설정값 순으로 따른다 */
+  get quality() {
+    if (this._quality) return this._quality;
+    const g = typeof window !== 'undefined' ? window.__game : null, fq = g?.world?.fx?.quality;
+    if (typeof fq === 'number') return fq <= 0.55 ? 'low' : fq <= 0.8 ? 'medium' : 'high';
+    const q = g?.settings?.quality;
+    return q === 'low' || q === 'medium' ? q : 'high';
+  }
+  setQuality(q) { this._quality = FEEL_CAP[q] ? q : null; }
+  /** 이름이 prefix 로 시작하는, 지금 울리는 효과음 수 (예: liveCount('hit')) */
+  liveCount(prefix = '') { return this.eng && this.ctx.state === 'running' ? this.eng.liveCount(prefix) : 0; }
+  /** 울리는 같은 이름의 효과음을 멈춘다 (예: 각성 홀드 취소 시 stopSfx('awaken_hold')) */
+  stopSfx(name) { if (this.eng) { try { this.eng.stopName(name); } catch { /* 무시 */ } } }
+  /** 등록된 효과음 이름인가 (모르는 이름은 _default 로 재생된다) */
+  has(name) { return name !== '_default' && Object.prototype.hasOwnProperty.call(SFX, name); }
+  /** 타격 지점까지의 선행 시간(초) — 이만큼 먼저 재생하면 타격이 박자에 맞는다 (awaken_stinger 0.4) */
+  lead(name) { return SFX[name]?.lead ?? 0; }
+  /** 효과음 통계 {starts, feel, dropped, skipped} (__feelStats.sfxStarts 용) */
+  get stats() { return this.eng ? this.eng.stats : STATS0; }
   music(id, opts = E0) {
     if (!id) { this.stopMusic(opts.fade ?? 1); return; }
     id = String(id);

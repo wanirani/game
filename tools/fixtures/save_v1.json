@@ -1,0 +1,2417 @@
+{
+ "version": 1,
+ "slot": 2,
+ "created": 1789905600000,
+ "savedAt": 1789909200000,
+ "difficulty": "hard",
+ "charId": "kael",
+ "heroes": {
+  "kael": {
+   "charId": "kael",
+   "level": 48,
+   "exp": 1234,
+   "classId": "kael_templar",
+   "sp": 3,
+   "skills": {
+    "kael_vigilia": 3,
+    "kael_whip_mastery": 3,
+    "kael_chain_lash": 3,
+    "kael_tempest": 3,
+    "kael_long_arm": 3,
+    "kael_vampire_killer": 3,
+    "kael_faith": 3,
+    "kael_holy_cross": 3,
+    "kael_holy_imbue": 3,
+    "kael_blessed_body": 3
+   },
+   "equip": {
+    "weapon": "imu9rkw00eaw",
+    "head": "imu9rkw00fdj",
+    "body": "imu9rkw00go3",
+    "cloak": "imu9rkw00huh",
+    "acc1": "imu9rkw00igg",
+    "acc2": "imu9rkw00jyo"
+   },
+   "slots": [
+    "kael_vigilia",
+    "kael_tempest",
+    "kael_holy_cross",
+    "kael_sanctuary"
+   ],
+   "sub": "dagger"
+  },
+  "sera": {
+   "charId": "sera",
+   "level": 45,
+   "exp": 1234,
+   "classId": "sera_oracle",
+   "sp": 3,
+   "skills": {
+    "sera_holy_bolt": 3,
+    "sera_prayer": 3,
+    "sera_scripture": 3,
+    "sera_light_pillar": 3,
+    "sera_exorcism": 3,
+    "sera_saintly": 3,
+    "sera_elem_affinity": 3,
+    "sera_fireball": 3,
+    "sera_amplify": 3,
+    "sera_mana_flow": 3
+   },
+   "equip": {
+    "weapon": "imu9rkw00k1",
+    "head": "imu9rkw00lc9",
+    "body": "imu9rkw00mex",
+    "cloak": "imu9rkw00nom",
+    "acc1": "imu9rkw00ogd",
+    "acc2": "imu9rkw00pdc"
+   },
+   "slots": [
+    "sera_holy_bolt",
+    "sera_light_pillar",
+    "sera_fireball",
+    "sera_meteor"
+   ],
+   "sub": "holywater"
+  },
+  "victor": {
+   "charId": "victor",
+   "level": 44,
+   "exp": 1234,
+   "classId": "victor_gunlord",
+   "sp": 3,
+   "skills": {
+    "victor_marksman": 3,
+    "victor_pierce_shot": 3,
+    "victor_deadeye_focus": 3,
+    "victor_steady": 3,
+    "victor_phantom_bullet": 3,
+    "victor_execution": 3,
+    "victor_powder": 3,
+    "victor_dynamite": 3,
+    "victor_extra_charge": 3,
+    "victor_demolition": 3
+   },
+   "equip": {
+    "weapon": "imu9rkw00qn4",
+    "head": "imu9rkw00rda",
+    "body": "imu9rkw00s4q",
+    "cloak": "imu9rkw00tsy",
+    "acc1": "imu9rkw00u2r",
+    "acc2": "imu9rkw00vbm"
+   },
+   "slots": [
+    "victor_pierce_shot",
+    "victor_phantom_bullet",
+    "victor_execution",
+    "victor_dynamite"
+   ],
+   "sub": "pistol"
+  },
+  "bran": {
+   "charId": "bran",
+   "level": 43,
+   "exp": 1234,
+   "classId": "bran_warlord",
+   "sp": 3,
+   "skills": {
+    "bran_ground_split": 3,
+    "bran_gs_mastery": 3,
+    "bran_steel_body": 3,
+    "bran_whirlwind": 3,
+    "bran_decisive": 3,
+    "bran_ironheart": 3,
+    "bran_pride": 3,
+    "bran_shield_charge": 3,
+    "bran_divine_ward": 3,
+    "bran_oath": 3
+   },
+   "equip": {
+    "weapon": "imu9rkw00w4o",
+    "head": "imu9rkw00xq6",
+    "body": "imu9rkw00y1i",
+    "cloak": "imu9rkw00zpv",
+    "acc1": "imu9rkw0010f7",
+    "acc2": "imu9rkw00111c"
+   },
+   "slots": [
+    "bran_ground_split",
+    "bran_whirlwind",
+    "bran_shield_charge",
+    "bran_aegis"
+   ],
+   "sub": "axe"
+  },
+  "lia": {
+   "charId": "lia",
+   "level": 46,
+   "exp": 1234,
+   "classId": "lia_kunoichi",
+   "sp": 3,
+   "skills": {
+    "lia_shadow_step": 3,
+    "lia_vitals": 3,
+    "lia_lightfoot": 3,
+    "lia_cross_cut": 3,
+    "lia_focus": 3,
+    "lia_death_touch": 3,
+    "lia_ninjutsu_training": 3,
+    "lia_shuriken": 3,
+    "lia_ninja_art": 3,
+    "lia_phantom_step": 3
+   },
+   "equip": {
+    "weapon": "imu9rkw0012dr",
+    "head": "imu9rkw0013fg",
+    "body": "imu9rkw0014bu",
+    "cloak": "imu9rkw0015pe",
+    "acc1": "imu9rkw0016ef",
+    "acc2": "imu9rkw0017be"
+   },
+   "slots": [
+    "lia_shadow_step",
+    "lia_cross_cut",
+    "lia_shuriken",
+    "lia_shadow_clones"
+   ],
+   "sub": "dagger"
+  },
+  "azel": {
+   "charId": "azel",
+   "level": 45,
+   "exp": 1234,
+   "classId": "azel_nosferatu",
+   "sp": 3,
+   "skills": {
+    "azel_moon_slash": 3,
+    "azel_swordplay": 3,
+    "azel_noble": 3,
+    "azel_phantom_blades": 3,
+    "azel_sword_saint": 3,
+    "azel_awakening": 3,
+    "azel_hunger": 3,
+    "azel_blood_lance": 3,
+    "azel_true_blood": 3,
+    "azel_night_noble": 3
+   },
+   "equip": {
+    "weapon": "imu9rkw0018bb",
+    "head": "imu9rkw0019cf",
+    "body": "imu9rkw001afc",
+    "cloak": "imu9rkw001b8k",
+    "acc1": "imu9rkw001c1b",
+    "acc2": "imu9rkw001dz0"
+   },
+   "slots": [
+    "azel_moon_slash",
+    "azel_phantom_blades",
+    "azel_blood_lance",
+    "azel_bat_storm"
+   ],
+   "sub": "cross"
+  }
+ },
+ "gold": 123456,
+ "inventory": [
+  {
+   "uid": "imu9rkw001en",
+   "baseId": "w_whip_1",
+   "slot": "weapon",
+   "icon": "whip_1",
+   "rarity": 0,
+   "level": 0,
+   "affixes": [],
+   "qty": 1,
+   "t": 1789905600000001
+  },
+  {
+   "uid": "imu9rkw002jv",
+   "baseId": "a_body_1",
+   "slot": "body",
+   "icon": "body_1",
+   "rarity": 0,
+   "level": 0,
+   "affixes": [],
+   "qty": 1,
+   "t": 1789905600000002
+  },
+  {
+   "uid": "imu9rkw003gg",
+   "baseId": "c_potion",
+   "slot": "consumable",
+   "icon": "potion_hp",
+   "rarity": 0,
+   "level": 0,
+   "affixes": [],
+   "qty": 12,
+   "t": 1789905600000003
+  },
+  {
+   "uid": "imu9rkw004in",
+   "baseId": "w_staff_1",
+   "slot": "weapon",
+   "icon": "staff_1",
+   "rarity": 0,
+   "level": 0,
+   "affixes": [],
+   "qty": 1,
+   "t": 1789905600000004
+  },
+  {
+   "uid": "imu9rkw005ww",
+   "baseId": "a_body_1",
+   "slot": "body",
+   "icon": "body_1",
+   "rarity": 0,
+   "level": 0,
+   "affixes": [],
+   "qty": 1,
+   "t": 1789905600000005
+  },
+  {
+   "uid": "imu9rkw00663",
+   "baseId": "w_gun_1",
+   "slot": "weapon",
+   "icon": "gun_1",
+   "rarity": 0,
+   "level": 0,
+   "affixes": [],
+   "qty": 1,
+   "t": 1789905600000006
+  },
+  {
+   "uid": "imu9rkw007ra",
+   "baseId": "a_body_1",
+   "slot": "body",
+   "icon": "body_1",
+   "rarity": 0,
+   "level": 0,
+   "affixes": [],
+   "qty": 1,
+   "t": 1789905600000007
+  },
+  {
+   "uid": "imu9rkw0084",
+   "baseId": "w_greatsword_1",
+   "slot": "weapon",
+   "icon": "greatsword_1",
+   "rarity": 0,
+   "level": 0,
+   "affixes": [],
+   "qty": 1,
+   "t": 1789905600000008
+  },
+  {
+   "uid": "imu9rkw0096i",
+   "baseId": "a_body_3",
+   "slot": "body",
+   "icon": "body_3",
+   "rarity": 0,
+   "level": 0,
+   "affixes": [],
+   "qty": 1,
+   "t": 1789905600000009
+  },
+  {
+   "uid": "imu9rkw00a9a",
+   "baseId": "w_dagger_1",
+   "slot": "weapon",
+   "icon": "dagger_1",
+   "rarity": 0,
+   "level": 0,
+   "affixes": [],
+   "qty": 1,
+   "t": 1789905600000010
+  },
+  {
+   "uid": "imu9rkw00bky",
+   "baseId": "a_body_2",
+   "slot": "body",
+   "icon": "body_2",
+   "rarity": 0,
+   "level": 0,
+   "affixes": [],
+   "qty": 1,
+   "t": 1789905600000011
+  },
+  {
+   "uid": "imu9rkw00cfk",
+   "baseId": "w_sword_1",
+   "slot": "weapon",
+   "icon": "sword_1",
+   "rarity": 0,
+   "level": 0,
+   "affixes": [],
+   "qty": 1,
+   "t": 1789905600000012
+  },
+  {
+   "uid": "imu9rkw00dv4",
+   "baseId": "a_body_1",
+   "slot": "body",
+   "icon": "body_1",
+   "rarity": 0,
+   "level": 0,
+   "affixes": [],
+   "qty": 1,
+   "t": 1789905600000013
+  },
+  {
+   "uid": "imu9rkw00eaw",
+   "baseId": "w_whip_12",
+   "slot": "weapon",
+   "icon": "whip_6",
+   "rarity": 4,
+   "level": 12,
+   "affixes": [
+    {
+     "id": "p_atk",
+     "stat": "atk",
+     "value": 15
+    },
+    {
+     "id": "p_agi",
+     "stat": "agi",
+     "value": 21
+    },
+    {
+     "id": "s_critdmg",
+     "stat": "critDmg",
+     "value": 25
+    },
+    {
+     "id": "s_mpregen",
+     "stat": "mpRegen",
+     "value": 1.2
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000014
+  },
+  {
+   "uid": "imu9rkw00fdj",
+   "baseId": "a_head_12",
+   "slot": "head",
+   "icon": "head_6",
+   "rarity": 4,
+   "level": 8,
+   "affixes": [
+    {
+     "id": "p_atk",
+     "stat": "atk",
+     "value": 20
+    },
+    {
+     "id": "p_mag",
+     "stat": "mag",
+     "value": 19
+    },
+    {
+     "id": "s_guard",
+     "stat": "def",
+     "value": 17
+    },
+    {
+     "id": "s_crit",
+     "stat": "crit",
+     "value": 10
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000015
+  },
+  {
+   "uid": "imu9rkw00go3",
+   "baseId": "a_body_12",
+   "slot": "body",
+   "icon": "body_5",
+   "rarity": 4,
+   "level": 8,
+   "affixes": [
+    {
+     "id": "p_ls",
+     "stat": "lifesteal",
+     "value": 2.4
+    },
+    {
+     "id": "s_hp",
+     "stat": "hp",
+     "value": 115
+    },
+    {
+     "id": "s_heart",
+     "stat": "heartBonus",
+     "value": 58
+    },
+    {
+     "id": "s_agi",
+     "stat": "agi",
+     "value": 11
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000016
+  },
+  {
+   "uid": "imu9rkw00huh",
+   "baseId": "a_cloak_12",
+   "slot": "cloak",
+   "icon": "cloak_5",
+   "rarity": 4,
+   "level": 8,
+   "affixes": [
+    {
+     "id": "p_hp",
+     "stat": "hp",
+     "value": 92
+    },
+    {
+     "id": "p_agi",
+     "stat": "agi",
+     "value": 20
+    },
+    {
+     "id": "s_guard",
+     "stat": "def",
+     "value": 19
+    },
+    {
+     "id": "s_ice",
+     "stat": "resIce",
+     "value": 27
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000017
+  },
+  {
+   "uid": "imu9rkw00igg",
+   "baseId": "a_ring_11",
+   "slot": "acc",
+   "icon": "ring_5",
+   "rarity": 4,
+   "level": 8,
+   "affixes": [
+    {
+     "id": "p_sub",
+     "stat": "subDmg",
+     "value": 23
+    },
+    {
+     "id": "p_res",
+     "stat": "res",
+     "value": 18
+    },
+    {
+     "id": "s_saint",
+     "stat": "resDark",
+     "value": 28
+    },
+    {
+     "id": "s_guard",
+     "stat": "def",
+     "value": 13
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000018
+  },
+  {
+   "uid": "imu9rkw00jyo",
+   "baseId": "a_amulet_12",
+   "slot": "acc",
+   "icon": "amulet_6",
+   "rarity": 4,
+   "level": 8,
+   "affixes": [
+    {
+     "id": "p_dark",
+     "stat": "dark",
+     "value": 18
+    },
+    {
+     "id": "p_mag",
+     "stat": "mag",
+     "value": 16
+    },
+    {
+     "id": "p_holy",
+     "stat": "holy",
+     "value": 27
+    },
+    {
+     "id": "s_saint",
+     "stat": "resDark",
+     "value": 23
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000019
+  },
+  {
+   "uid": "imu9rkw00k1",
+   "baseId": "w_staff_12",
+   "slot": "weapon",
+   "icon": "staff_6",
+   "rarity": 4,
+   "level": 12,
+   "affixes": [
+    {
+     "id": "p_fire",
+     "stat": "fire",
+     "value": 19
+    },
+    {
+     "id": "p_mag2",
+     "stat": "mag",
+     "value": 31
+    },
+    {
+     "id": "p_critdmg",
+     "stat": "critDmg",
+     "value": 24
+    },
+    {
+     "id": "s_cdr",
+     "stat": "cdr",
+     "value": 9
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000020
+  },
+  {
+   "uid": "imu9rkw00lc9",
+   "baseId": "a_head_12",
+   "slot": "head",
+   "icon": "head_6",
+   "rarity": 4,
+   "level": 8,
+   "affixes": [
+    {
+     "id": "p_mag",
+     "stat": "mag",
+     "value": 14
+    },
+    {
+     "id": "p_atk",
+     "stat": "atk",
+     "value": 13
+    },
+    {
+     "id": "s_holy",
+     "stat": "resHoly",
+     "value": 29
+    },
+    {
+     "id": "s_fire",
+     "stat": "resFire",
+     "value": 35
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000021
+  },
+  {
+   "uid": "imu9rkw00mex",
+   "baseId": "a_body_12",
+   "slot": "body",
+   "icon": "body_5",
+   "rarity": 4,
+   "level": 8,
+   "affixes": [
+    {
+     "id": "p_def",
+     "stat": "def",
+     "value": 16
+    },
+    {
+     "id": "p_ls",
+     "stat": "lifesteal",
+     "value": 1.9
+    },
+    {
+     "id": "s_agi",
+     "stat": "agi",
+     "value": 20
+    },
+    {
+     "id": "s_res",
+     "stat": "res",
+     "value": 18
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000022
+  },
+  {
+   "uid": "imu9rkw00nom",
+   "baseId": "a_cloak_12",
+   "slot": "cloak",
+   "icon": "cloak_5",
+   "rarity": 4,
+   "level": 8,
+   "affixes": [
+    {
+     "id": "p_def",
+     "stat": "def",
+     "value": 18
+    },
+    {
+     "id": "s_agi",
+     "stat": "agi",
+     "value": 17
+    },
+    {
+     "id": "s_holy",
+     "stat": "resHoly",
+     "value": 31
+    },
+    {
+     "id": "s_ice",
+     "stat": "resIce",
+     "value": 23
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000023
+  },
+  {
+   "uid": "imu9rkw00ogd",
+   "baseId": "a_ring_11",
+   "slot": "acc",
+   "icon": "ring_5",
+   "rarity": 4,
+   "level": 8,
+   "affixes": [
+    {
+     "id": "p_ls",
+     "stat": "lifesteal",
+     "value": 1.7
+    },
+    {
+     "id": "p_hp",
+     "stat": "hp",
+     "value": 102
+    },
+    {
+     "id": "s_res",
+     "stat": "res",
+     "value": 15
+    },
+    {
+     "id": "s_speed",
+     "stat": "moveSpd",
+     "value": 15
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000024
+  },
+  {
+   "uid": "imu9rkw00pdc",
+   "baseId": "a_amulet_12",
+   "slot": "acc",
+   "icon": "amulet_6",
+   "rarity": 4,
+   "level": 8,
+   "affixes": [
+    {
+     "id": "p_atk",
+     "stat": "atk",
+     "value": 13
+    },
+    {
+     "id": "p_res",
+     "stat": "res",
+     "value": 20
+    },
+    {
+     "id": "s_exp",
+     "stat": "expBonus",
+     "value": 12
+    },
+    {
+     "id": "s_guard",
+     "stat": "def",
+     "value": 15
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000025
+  },
+  {
+   "uid": "imu9rkw00qn4",
+   "baseId": "w_gun_12",
+   "slot": "weapon",
+   "icon": "gun_6",
+   "rarity": 4,
+   "level": 12,
+   "affixes": [
+    {
+     "id": "p_reach",
+     "stat": "reach",
+     "value": 15
+    },
+    {
+     "id": "p_agi",
+     "stat": "agi",
+     "value": 18
+    },
+    {
+     "id": "p_atk",
+     "stat": "atk",
+     "value": 12
+    },
+    {
+     "id": "s_cdr",
+     "stat": "cdr",
+     "value": 7
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000026
+  },
+  {
+   "uid": "imu9rkw00rda",
+   "baseId": "a_head_12",
+   "slot": "head",
+   "icon": "head_6",
+   "rarity": 4,
+   "level": 8,
+   "affixes": [
+    {
+     "id": "p_agi",
+     "stat": "agi",
+     "value": 14
+    },
+    {
+     "id": "s_res",
+     "stat": "res",
+     "value": 16
+    },
+    {
+     "id": "s_thunder",
+     "stat": "resThunder",
+     "value": 34
+    },
+    {
+     "id": "s_mpregen",
+     "stat": "mpRegen",
+     "value": 1
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000027
+  },
+  {
+   "uid": "imu9rkw00s4q",
+   "baseId": "a_body_12",
+   "slot": "body",
+   "icon": "body_5",
+   "rarity": 4,
+   "level": 8,
+   "affixes": [
+    {
+     "id": "p_agi",
+     "stat": "agi",
+     "value": 13
+    },
+    {
+     "id": "s_saint",
+     "stat": "resDark",
+     "value": 19
+    },
+    {
+     "id": "s_ice",
+     "stat": "resIce",
+     "value": 35
+    },
+    {
+     "id": "s_thunder",
+     "stat": "resThunder",
+     "value": 34
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000028
+  },
+  {
+   "uid": "imu9rkw00tsy",
+   "baseId": "a_cloak_12",
+   "slot": "cloak",
+   "icon": "cloak_5",
+   "rarity": 4,
+   "level": 8,
+   "affixes": [
+    {
+     "id": "p_hp",
+     "stat": "hp",
+     "value": 91
+    },
+    {
+     "id": "p_sub",
+     "stat": "subDmg",
+     "value": 36
+    },
+    {
+     "id": "s_regen",
+     "stat": "hpRegen",
+     "value": 1.4
+    },
+    {
+     "id": "s_reduce",
+     "stat": "dmgReduce",
+     "value": 2.9
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000029
+  },
+  {
+   "uid": "imu9rkw00u2r",
+   "baseId": "a_ring_11",
+   "slot": "acc",
+   "icon": "ring_5",
+   "rarity": 4,
+   "level": 8,
+   "affixes": [
+    {
+     "id": "p_crit",
+     "stat": "crit",
+     "value": 7
+    },
+    {
+     "id": "s_speed",
+     "stat": "moveSpd",
+     "value": 13
+    },
+    {
+     "id": "s_thunder",
+     "stat": "resThunder",
+     "value": 29
+    },
+    {
+     "id": "s_ice",
+     "stat": "resIce",
+     "value": 34
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000030
+  },
+  {
+   "uid": "imu9rkw00vbm",
+   "baseId": "a_amulet_12",
+   "slot": "acc",
+   "icon": "amulet_6",
+   "rarity": 4,
+   "level": 8,
+   "affixes": [
+    {
+     "id": "p_mag2",
+     "stat": "mag",
+     "value": 34
+    },
+    {
+     "id": "p_agi",
+     "stat": "agi",
+     "value": 21
+    },
+    {
+     "id": "s_drop",
+     "stat": "dropBonus",
+     "value": 18
+    },
+    {
+     "id": "s_cdr",
+     "stat": "cdr",
+     "value": 9
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000031
+  },
+  {
+   "uid": "imu9rkw00w4o",
+   "baseId": "w_greatsword_12",
+   "slot": "weapon",
+   "icon": "greatsword_6",
+   "rarity": 4,
+   "level": 12,
+   "affixes": [
+    {
+     "id": "p_critdmg",
+     "stat": "critDmg",
+     "value": 19
+    },
+    {
+     "id": "p_skill",
+     "stat": "skillDmg",
+     "value": 15
+    },
+    {
+     "id": "p_crit",
+     "stat": "crit",
+     "value": 10
+    },
+    {
+     "id": "s_ult",
+     "stat": "ultGain",
+     "value": 19
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000032
+  },
+  {
+   "uid": "imu9rkw00xq6",
+   "baseId": "a_head_12",
+   "slot": "head",
+   "icon": "head_6",
+   "rarity": 4,
+   "level": 8,
+   "affixes": [
+    {
+     "id": "p_hp",
+     "stat": "hp",
+     "value": 105
+    },
+    {
+     "id": "p_luck",
+     "stat": "luck",
+     "value": 27
+    },
+    {
+     "id": "p_mp",
+     "stat": "mp",
+     "value": 72
+    },
+    {
+     "id": "s_res",
+     "stat": "res",
+     "value": 12
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000033
+  },
+  {
+   "uid": "imu9rkw00y1i",
+   "baseId": "a_body_12",
+   "slot": "body",
+   "icon": "body_5",
+   "rarity": 4,
+   "level": 8,
+   "affixes": [
+    {
+     "id": "p_def",
+     "stat": "def",
+     "value": 18
+    },
+    {
+     "id": "s_ice",
+     "stat": "resIce",
+     "value": 28
+    },
+    {
+     "id": "s_reduce",
+     "stat": "dmgReduce",
+     "value": 4.5
+    },
+    {
+     "id": "s_saint",
+     "stat": "resDark",
+     "value": 21
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000034
+  },
+  {
+   "uid": "imu9rkw00zpv",
+   "baseId": "a_cloak_12",
+   "slot": "cloak",
+   "icon": "cloak_5",
+   "rarity": 4,
+   "level": 8,
+   "affixes": [
+    {
+     "id": "p_agi",
+     "stat": "agi",
+     "value": 22
+    },
+    {
+     "id": "s_fire",
+     "stat": "resFire",
+     "value": 32
+    },
+    {
+     "id": "s_reduce",
+     "stat": "dmgReduce",
+     "value": 4.1
+    },
+    {
+     "id": "s_jump",
+     "stat": "jumpPow",
+     "value": 16
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000035
+  },
+  {
+   "uid": "imu9rkw0010f7",
+   "baseId": "a_ring_11",
+   "slot": "acc",
+   "icon": "ring_5",
+   "rarity": 4,
+   "level": 8,
+   "affixes": [
+    {
+     "id": "p_hp",
+     "stat": "hp",
+     "value": 56
+    },
+    {
+     "id": "s_ult",
+     "stat": "ultGain",
+     "value": 18
+    },
+    {
+     "id": "s_drop",
+     "stat": "dropBonus",
+     "value": 25
+    },
+    {
+     "id": "s_jump",
+     "stat": "jumpPow",
+     "value": 23
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000036
+  },
+  {
+   "uid": "imu9rkw00111c",
+   "baseId": "a_amulet_12",
+   "slot": "acc",
+   "icon": "amulet_6",
+   "rarity": 4,
+   "level": 8,
+   "affixes": [
+    {
+     "id": "p_fire",
+     "stat": "fire",
+     "value": 20
+    },
+    {
+     "id": "p_thunder",
+     "stat": "thunder",
+     "value": 27
+    },
+    {
+     "id": "s_guard",
+     "stat": "def",
+     "value": 20
+    },
+    {
+     "id": "s_hp",
+     "stat": "hp",
+     "value": 79
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000037
+  },
+  {
+   "uid": "imu9rkw0012dr",
+   "baseId": "w_dagger_12",
+   "slot": "weapon",
+   "icon": "dagger_6",
+   "rarity": 4,
+   "level": 12,
+   "affixes": [
+    {
+     "id": "p_skill",
+     "stat": "skillDmg",
+     "value": 19
+    },
+    {
+     "id": "p_crit",
+     "stat": "crit",
+     "value": 7
+    },
+    {
+     "id": "p_sub",
+     "stat": "subDmg",
+     "value": 31
+    },
+    {
+     "id": "s_mpregen",
+     "stat": "mpRegen",
+     "value": 0.9
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000038
+  },
+  {
+   "uid": "imu9rkw0013fg",
+   "baseId": "a_head_12",
+   "slot": "head",
+   "icon": "head_6",
+   "rarity": 4,
+   "level": 8,
+   "affixes": [
+    {
+     "id": "p_def",
+     "stat": "def",
+     "value": 13
+    },
+    {
+     "id": "s_regen",
+     "stat": "hpRegen",
+     "value": 1
+    },
+    {
+     "id": "s_cdr",
+     "stat": "cdr",
+     "value": 10
+    },
+    {
+     "id": "s_exp",
+     "stat": "expBonus",
+     "value": 16
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000039
+  },
+  {
+   "uid": "imu9rkw0014bu",
+   "baseId": "a_body_12",
+   "slot": "body",
+   "icon": "body_5",
+   "rarity": 4,
+   "level": 8,
+   "affixes": [
+    {
+     "id": "p_hp",
+     "stat": "hp",
+     "value": 71
+    },
+    {
+     "id": "p_res",
+     "stat": "res",
+     "value": 15
+    },
+    {
+     "id": "s_holy",
+     "stat": "resHoly",
+     "value": 32
+    },
+    {
+     "id": "s_reduce",
+     "stat": "dmgReduce",
+     "value": 3.7
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000040
+  },
+  {
+   "uid": "imu9rkw0015pe",
+   "baseId": "a_cloak_12",
+   "slot": "cloak",
+   "icon": "cloak_5",
+   "rarity": 4,
+   "level": 8,
+   "affixes": [
+    {
+     "id": "p_mp",
+     "stat": "mp",
+     "value": 77
+    },
+    {
+     "id": "p_aspd",
+     "stat": "atkSpd",
+     "value": 14
+    },
+    {
+     "id": "s_ice",
+     "stat": "resIce",
+     "value": 25
+    },
+    {
+     "id": "s_regen",
+     "stat": "hpRegen",
+     "value": 1.3
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000041
+  },
+  {
+   "uid": "imu9rkw0016ef",
+   "baseId": "a_ring_11",
+   "slot": "acc",
+   "icon": "ring_5",
+   "rarity": 4,
+   "level": 8,
+   "affixes": [
+    {
+     "id": "p_mp",
+     "stat": "mp",
+     "value": 68
+    },
+    {
+     "id": "s_agi",
+     "stat": "agi",
+     "value": 12
+    },
+    {
+     "id": "s_res",
+     "stat": "res",
+     "value": 16
+    },
+    {
+     "id": "s_exp",
+     "stat": "expBonus",
+     "value": 22
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000042
+  },
+  {
+   "uid": "imu9rkw0017be",
+   "baseId": "a_amulet_12",
+   "slot": "acc",
+   "icon": "amulet_6",
+   "rarity": 4,
+   "level": 8,
+   "affixes": [
+    {
+     "id": "p_thunder",
+     "stat": "thunder",
+     "value": 28
+    },
+    {
+     "id": "p_mag",
+     "stat": "mag",
+     "value": 18
+    },
+    {
+     "id": "p_aspd",
+     "stat": "atkSpd",
+     "value": 11
+    },
+    {
+     "id": "s_guard",
+     "stat": "def",
+     "value": 20
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000043
+  },
+  {
+   "uid": "imu9rkw0018bb",
+   "baseId": "w_sword_12",
+   "slot": "weapon",
+   "icon": "sword_6",
+   "rarity": 4,
+   "level": 12,
+   "affixes": [
+    {
+     "id": "p_sub",
+     "stat": "subDmg",
+     "value": 32
+    },
+    {
+     "id": "p_ls",
+     "stat": "lifesteal",
+     "value": 1.6
+    },
+    {
+     "id": "p_mag",
+     "stat": "mag",
+     "value": 18
+    },
+    {
+     "id": "s_mpregen",
+     "stat": "mpRegen",
+     "value": 1.3
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000044
+  },
+  {
+   "uid": "imu9rkw0019cf",
+   "baseId": "a_head_12",
+   "slot": "head",
+   "icon": "head_6",
+   "rarity": 4,
+   "level": 8,
+   "affixes": [
+    {
+     "id": "p_skill",
+     "stat": "skillDmg",
+     "value": 17
+    },
+    {
+     "id": "p_mag",
+     "stat": "mag",
+     "value": 20
+    },
+    {
+     "id": "p_hp",
+     "stat": "hp",
+     "value": 100
+    },
+    {
+     "id": "s_holy",
+     "stat": "resHoly",
+     "value": 34
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000045
+  },
+  {
+   "uid": "imu9rkw001afc",
+   "baseId": "a_body_12",
+   "slot": "body",
+   "icon": "body_5",
+   "rarity": 4,
+   "level": 8,
+   "affixes": [
+    {
+     "id": "p_def",
+     "stat": "def",
+     "value": 19
+    },
+    {
+     "id": "s_regen",
+     "stat": "hpRegen",
+     "value": 1.4
+    },
+    {
+     "id": "s_agi",
+     "stat": "agi",
+     "value": 12
+    },
+    {
+     "id": "s_saint",
+     "stat": "resDark",
+     "value": 23
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000046
+  },
+  {
+   "uid": "imu9rkw001b8k",
+   "baseId": "a_cloak_12",
+   "slot": "cloak",
+   "icon": "cloak_5",
+   "rarity": 4,
+   "level": 8,
+   "affixes": [
+    {
+     "id": "p_def",
+     "stat": "def",
+     "value": 21
+    },
+    {
+     "id": "s_res",
+     "stat": "res",
+     "value": 15
+    },
+    {
+     "id": "s_agi",
+     "stat": "agi",
+     "value": 20
+    },
+    {
+     "id": "s_speed",
+     "stat": "moveSpd",
+     "value": 12
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000047
+  },
+  {
+   "uid": "imu9rkw001c1b",
+   "baseId": "a_ring_11",
+   "slot": "acc",
+   "icon": "ring_5",
+   "rarity": 4,
+   "level": 8,
+   "affixes": [
+    {
+     "id": "p_aspd",
+     "stat": "atkSpd",
+     "value": 10
+    },
+    {
+     "id": "s_mpregen",
+     "stat": "mpRegen",
+     "value": 1.1
+    },
+    {
+     "id": "s_hp",
+     "stat": "hp",
+     "value": 107
+    },
+    {
+     "id": "s_heart",
+     "stat": "heartBonus",
+     "value": 38
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000048
+  },
+  {
+   "uid": "imu9rkw001dz0",
+   "baseId": "a_amulet_12",
+   "slot": "acc",
+   "icon": "amulet_6",
+   "rarity": 4,
+   "level": 8,
+   "affixes": [
+    {
+     "id": "p_agi",
+     "stat": "agi",
+     "value": 19
+    },
+    {
+     "id": "p_mag",
+     "stat": "mag",
+     "value": 17
+    },
+    {
+     "id": "s_jump",
+     "stat": "jumpPow",
+     "value": 22
+    },
+    {
+     "id": "s_fire",
+     "stat": "resFire",
+     "value": 35
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000049
+  },
+  {
+   "uid": "imu9rkw001f1c",
+   "baseId": "m_stone_6",
+   "slot": "material",
+   "icon": "stone_6",
+   "rarity": 0,
+   "level": 0,
+   "affixes": [],
+   "qty": 20,
+   "t": 1789905600000051
+  },
+  {
+   "uid": "imu9rkw001gr4",
+   "baseId": "m_stone_5",
+   "slot": "material",
+   "icon": "stone_5",
+   "rarity": 0,
+   "level": 0,
+   "affixes": [],
+   "qty": 14,
+   "t": 1789905600000052
+  },
+  {
+   "uid": "imu9rkw001hvs",
+   "baseId": "m_scroll_protect",
+   "slot": "material",
+   "icon": "scroll_protect",
+   "rarity": 0,
+   "level": 0,
+   "affixes": [],
+   "qty": 4,
+   "t": 1789905600000053
+  },
+  {
+   "uid": "imu9rkw001int",
+   "baseId": "m_scroll_bless",
+   "slot": "material",
+   "icon": "scroll_bless",
+   "rarity": 0,
+   "level": 0,
+   "affixes": [],
+   "qty": 3,
+   "t": 1789905600000054
+  },
+  {
+   "uid": "imu9rkw001j1d",
+   "baseId": "w_whip_7",
+   "slot": "weapon",
+   "icon": "whip_4",
+   "rarity": 0,
+   "level": 0,
+   "affixes": [],
+   "qty": 1,
+   "t": 1789905600000055
+  },
+  {
+   "uid": "imu9rkw001kh1",
+   "baseId": "a_head_10",
+   "slot": "head",
+   "icon": "head_6",
+   "rarity": 1,
+   "level": 1,
+   "affixes": [
+    {
+     "id": "s_mpregen",
+     "stat": "mpRegen",
+     "value": 0.6
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000056
+  },
+  {
+   "uid": "imu9rkw001lab",
+   "baseId": "a_body_11",
+   "slot": "body",
+   "icon": "body_6",
+   "rarity": 2,
+   "level": 2,
+   "affixes": [
+    {
+     "id": "p_res",
+     "stat": "res",
+     "value": 18
+    },
+    {
+     "id": "p_def",
+     "stat": "def",
+     "value": 10
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000057
+  },
+  {
+   "uid": "imu9rkw001m5m",
+   "baseId": "a_cloak_8",
+   "slot": "cloak",
+   "icon": "cloak_5",
+   "rarity": 3,
+   "level": 3,
+   "affixes": [
+    {
+     "id": "p_agi",
+     "stat": "agi",
+     "value": 13
+    },
+    {
+     "id": "p_def",
+     "stat": "def",
+     "value": 9
+    },
+    {
+     "id": "s_res",
+     "stat": "res",
+     "value": 13
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000058
+  },
+  {
+   "uid": "imu9rkw001nux",
+   "baseId": "a_ring_9",
+   "slot": "acc",
+   "icon": "ring_3",
+   "rarity": 4,
+   "level": 4,
+   "affixes": [
+    {
+     "id": "p_dark",
+     "stat": "dark",
+     "value": 20
+    },
+    {
+     "id": "p_mag",
+     "stat": "mag",
+     "value": 18
+    },
+    {
+     "id": "s_mpregen",
+     "stat": "mpRegen",
+     "value": 0.9
+    },
+    {
+     "id": "s_ice",
+     "stat": "resIce",
+     "value": 18
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000059
+  },
+  {
+   "uid": "imu9rkw001ogm",
+   "baseId": "w_staff_12",
+   "slot": "weapon",
+   "icon": "staff_6",
+   "rarity": 0,
+   "level": 5,
+   "affixes": [],
+   "qty": 1,
+   "t": 1789905600000060
+  },
+  {
+   "uid": "imu9rkw001p1b",
+   "baseId": "a_head_7",
+   "slot": "head",
+   "icon": "head_3",
+   "rarity": 1,
+   "level": 6,
+   "affixes": [
+    {
+     "id": "s_regen",
+     "stat": "hpRegen",
+     "value": 0.5
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000061
+  },
+  {
+   "uid": "imu9rkw001qaq",
+   "baseId": "a_body_10",
+   "slot": "body",
+   "icon": "body_4",
+   "rarity": 2,
+   "level": 7,
+   "affixes": [
+    {
+     "id": "s_holy",
+     "stat": "resHoly",
+     "value": 23
+    },
+    {
+     "id": "s_hp",
+     "stat": "hp",
+     "value": 57
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000062
+  },
+  {
+   "uid": "imu9rkw001rd2",
+   "baseId": "a_cloak_11",
+   "slot": "cloak",
+   "icon": "cloak_6",
+   "rarity": 3,
+   "level": 8,
+   "affixes": [
+    {
+     "id": "s_saint",
+     "stat": "resDark",
+     "value": 21
+    },
+    {
+     "id": "s_mpregen",
+     "stat": "mpRegen",
+     "value": 0.7
+    },
+    {
+     "id": "s_luck",
+     "stat": "luck",
+     "value": 10
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000063
+  },
+  {
+   "uid": "imu9rkw001swe",
+   "baseId": "a_amulet_8",
+   "slot": "acc",
+   "icon": "amulet_4",
+   "rarity": 4,
+   "level": 0,
+   "affixes": [
+    {
+     "id": "p_ice",
+     "stat": "ice",
+     "value": 22
+    },
+    {
+     "id": "p_holy",
+     "stat": "holy",
+     "value": 17
+    },
+    {
+     "id": "s_saint",
+     "stat": "resDark",
+     "value": 17
+    },
+    {
+     "id": "s_luck",
+     "stat": "luck",
+     "value": 11
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000064
+  },
+  {
+   "uid": "imu9rkw001tof",
+   "baseId": "w_gun_9",
+   "slot": "weapon",
+   "icon": "gun_5",
+   "rarity": 0,
+   "level": 1,
+   "affixes": [],
+   "qty": 1,
+   "t": 1789905600000065
+  },
+  {
+   "uid": "imu9rkw001ug1",
+   "baseId": "a_head_12",
+   "slot": "head",
+   "icon": "head_6",
+   "rarity": 1,
+   "level": 2,
+   "affixes": [
+    {
+     "id": "p_agi",
+     "stat": "agi",
+     "value": 16
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000066
+  },
+  {
+   "uid": "imu9rkw001vdg",
+   "baseId": "a_body_7",
+   "slot": "body",
+   "icon": "body_4",
+   "rarity": 2,
+   "level": 3,
+   "affixes": [
+    {
+     "id": "s_ice",
+     "stat": "resIce",
+     "value": 15
+    },
+    {
+     "id": "s_saint",
+     "stat": "resDark",
+     "value": 19
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000067
+  },
+  {
+   "uid": "imu9rkw001we",
+   "baseId": "a_cloak_10",
+   "slot": "cloak",
+   "icon": "cloak_4",
+   "rarity": 3,
+   "level": 4,
+   "affixes": [
+    {
+     "id": "p_def",
+     "stat": "def",
+     "value": 13
+    },
+    {
+     "id": "p_mp",
+     "stat": "mp",
+     "value": 43
+    },
+    {
+     "id": "p_res",
+     "stat": "res",
+     "value": 14
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000068
+  },
+  {
+   "uid": "imu9rkw001xfg",
+   "baseId": "a_ring_11",
+   "slot": "acc",
+   "icon": "ring_5",
+   "rarity": 4,
+   "level": 5,
+   "affixes": [
+    {
+     "id": "p_skill",
+     "stat": "skillDmg",
+     "value": 14
+    },
+    {
+     "id": "s_cdr",
+     "stat": "cdr",
+     "value": 12
+    },
+    {
+     "id": "s_saint",
+     "stat": "resDark",
+     "value": 28
+    },
+    {
+     "id": "s_regen",
+     "stat": "hpRegen",
+     "value": 1.2
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000069
+  },
+  {
+   "uid": "imu9rkw001yed",
+   "baseId": "w_dagger_8",
+   "slot": "weapon",
+   "icon": "dagger_4",
+   "rarity": 0,
+   "level": 6,
+   "affixes": [],
+   "qty": 1,
+   "t": 1789905600000070
+  },
+  {
+   "uid": "imu9rkw001zt1",
+   "baseId": "a_head_9",
+   "slot": "head",
+   "icon": "head_4",
+   "rarity": 1,
+   "level": 7,
+   "affixes": [
+    {
+     "id": "s_res",
+     "stat": "res",
+     "value": 14
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000071
+  },
+  {
+   "uid": "imu9rkw0020nl",
+   "baseId": "a_body_12",
+   "slot": "body",
+   "icon": "body_5",
+   "rarity": 2,
+   "level": 8,
+   "affixes": [
+    {
+     "id": "p_agi",
+     "stat": "agi",
+     "value": 19
+    },
+    {
+     "id": "s_hp",
+     "stat": "hp",
+     "value": 80
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000072
+  },
+  {
+   "uid": "imu9rkw0021ky",
+   "baseId": "a_cloak_7",
+   "slot": "cloak",
+   "icon": "cloak_4",
+   "rarity": 3,
+   "level": 0,
+   "affixes": [
+    {
+     "id": "p_res",
+     "stat": "res",
+     "value": 8
+    },
+    {
+     "id": "p_agi",
+     "stat": "agi",
+     "value": 7
+    },
+    {
+     "id": "p_mp",
+     "stat": "mp",
+     "value": 32
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000073
+  },
+  {
+   "uid": "imu9rkw0022mi",
+   "baseId": "a_amulet_10",
+   "slot": "acc",
+   "icon": "amulet_6",
+   "rarity": 4,
+   "level": 1,
+   "affixes": [
+    {
+     "id": "p_agi",
+     "stat": "agi",
+     "value": 17
+    },
+    {
+     "id": "s_jump",
+     "stat": "jumpPow",
+     "value": 12
+    },
+    {
+     "id": "s_exp",
+     "stat": "expBonus",
+     "value": 14
+    },
+    {
+     "id": "s_drop",
+     "stat": "dropBonus",
+     "value": 20
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000074
+  },
+  {
+   "uid": "imu9rkw0023wi",
+   "baseId": "w_greatsword_11",
+   "slot": "weapon",
+   "icon": "greatsword_6",
+   "rarity": 0,
+   "level": 2,
+   "affixes": [],
+   "qty": 1,
+   "t": 1789905600000075
+  },
+  {
+   "uid": "imu9rkw0024xq",
+   "baseId": "a_head_8",
+   "slot": "head",
+   "icon": "head_3",
+   "rarity": 1,
+   "level": 3,
+   "affixes": [
+    {
+     "id": "s_gold",
+     "stat": "goldBonus",
+     "value": 15
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000076
+  },
+  {
+   "uid": "imu9rkw0025j3",
+   "baseId": "a_body_9",
+   "slot": "body",
+   "icon": "body_5",
+   "rarity": 2,
+   "level": 4,
+   "affixes": [
+    {
+     "id": "s_res",
+     "stat": "res",
+     "value": 11
+    },
+    {
+     "id": "s_holy",
+     "stat": "resHoly",
+     "value": 17
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000077
+  },
+  {
+   "uid": "imu9rkw0026vr",
+   "baseId": "a_cloak_12",
+   "slot": "cloak",
+   "icon": "cloak_5",
+   "rarity": 3,
+   "level": 5,
+   "affixes": [
+    {
+     "id": "p_def",
+     "stat": "def",
+     "value": 18
+    },
+    {
+     "id": "p_mp",
+     "stat": "mp",
+     "value": 44
+    },
+    {
+     "id": "s_reduce",
+     "stat": "dmgReduce",
+     "value": 4
+    }
+   ],
+   "qty": 1,
+   "t": 1789905600000078
+  },
+  {
+   "uid": "imu9rkw00274m",
+   "baseId": "k_relic_1",
+   "slot": "key",
+   "icon": "relic_1",
+   "rarity": 0,
+   "level": 0,
+   "affixes": [],
+   "qty": 1,
+   "t": 1789905600000079
+  },
+  {
+   "uid": "imu9rkw0028e5",
+   "baseId": "k_relic_2",
+   "slot": "key",
+   "icon": "relic_5",
+   "rarity": 0,
+   "level": 0,
+   "affixes": [],
+   "qty": 1,
+   "t": 1789905600000080
+  },
+  {
+   "uid": "imu9rkw00294e",
+   "baseId": "k_relic_3",
+   "slot": "key",
+   "icon": "relic_4",
+   "rarity": 0,
+   "level": 0,
+   "affixes": [],
+   "qty": 1,
+   "t": 1789905600000081
+  },
+  {
+   "uid": "imu9rkw002au3",
+   "baseId": "k_relic_4",
+   "slot": "key",
+   "icon": "relic_3",
+   "rarity": 0,
+   "level": 0,
+   "affixes": [],
+   "qty": 1,
+   "t": 1789905600000082
+  },
+  {
+   "uid": "imu9rkw002b8c",
+   "baseId": "k_relic_5",
+   "slot": "key",
+   "icon": "relic_2",
+   "rarity": 0,
+   "level": 0,
+   "affixes": [],
+   "qty": 1,
+   "t": 1789905600000083
+  }
+ ],
+ "progress": {
+  "chapter": 13,
+  "cleared": {
+   "s01": {
+    "rank": "S",
+    "time": 300,
+    "score": 40000
+   },
+   "s02": {
+    "rank": "A",
+    "time": 317,
+    "score": 43100
+   },
+   "s03": {
+    "rank": "B",
+    "time": 334,
+    "score": 46200
+   },
+   "s04": {
+    "rank": "S",
+    "time": 351,
+    "score": 49300
+   },
+   "s05": {
+    "rank": "A",
+    "time": 368,
+    "score": 52400
+   },
+   "s06": {
+    "rank": "B",
+    "time": 385,
+    "score": 55500
+   },
+   "s07": {
+    "rank": "S",
+    "time": 402,
+    "score": 58600
+   },
+   "s08": {
+    "rank": "A",
+    "time": 419,
+    "score": 61700
+   },
+   "s09": {
+    "rank": "B",
+    "time": 436,
+    "score": 64800
+   },
+   "s10": {
+    "rank": "S",
+    "time": 453,
+    "score": 67900
+   },
+   "s11": {
+    "rank": "A",
+    "time": 470,
+    "score": 71000
+   },
+   "s12": {
+    "rank": "B",
+    "time": 487,
+    "score": 74100
+   },
+   "s13": {
+    "rank": "S",
+    "time": 504,
+    "score": 77200
+   }
+  },
+  "unlocked": [
+   "s01",
+   "s02",
+   "s03",
+   "s04",
+   "s05",
+   "s06",
+   "s07",
+   "s08",
+   "s09",
+   "s10",
+   "s11",
+   "s12",
+   "s13"
+  ],
+  "flags": {
+   "elise_warned": true,
+   "elise_taken": true,
+   "elise_rescued": true,
+   "letter_delivered": true,
+   "registry_found": true,
+   "alberto_confessed": true,
+   "lia_joined": true,
+   "azel_joined": true,
+   "abyss_open": true,
+   "relics_all": true,
+   "ending_normal": true,
+   "ending_true": true,
+   "boss_b_nightwing": true,
+   "loot_b_nightwing": true,
+   "boss_b_banshee": true,
+   "loot_b_banshee": true,
+   "boss_b_dullahan": true,
+   "loot_b_dullahan": true,
+   "boss_b_crimson": true,
+   "loot_b_crimson": true,
+   "boss_b_bonedragon": true,
+   "loot_b_bonedragon": true,
+   "boss_b_grimoire": true,
+   "loot_b_grimoire": true,
+   "boss_b_chimera": true,
+   "loot_b_chimera": true,
+   "boss_b_leviathan": true,
+   "loot_b_leviathan": true,
+   "boss_b_colossus": true,
+   "loot_b_colossus": true,
+   "boss_b_frostqueen": true,
+   "loot_b_frostqueen": true,
+   "boss_b_death": true,
+   "loot_b_death": true,
+   "boss_b_dracula": true,
+   "loot_b_dracula": true,
+   "boss_b_chaos": true,
+   "loot_b_chaos": true
+  },
+  "docs": [
+   "d01",
+   "d02",
+   "d03",
+   "d04",
+   "d05",
+   "d06",
+   "d07",
+   "d08",
+   "d09",
+   "d10",
+   "d11",
+   "d12",
+   "d13",
+   "d14",
+   "d15",
+   "d16",
+   "d17",
+   "d18",
+   "d19",
+   "d20"
+  ],
+  "lore": [
+   "l01",
+   "l02",
+   "l03",
+   "l14",
+   "l04",
+   "l05",
+   "l15",
+   "l06",
+   "l16",
+   "l07",
+   "l17",
+   "l08",
+   "l09",
+   "l18",
+   "l10",
+   "l11",
+   "l19",
+   "l12",
+   "l20",
+   "l13"
+  ],
+  "secrets": [
+   "s01:r3:12,7",
+   "s05:r2:30,4",
+   "s09:r4:8,11"
+  ],
+  "bosses": [
+   "b_nightwing",
+   "b_banshee",
+   "b_dullahan",
+   "b_crimson",
+   "b_bonedragon",
+   "b_grimoire",
+   "b_chimera",
+   "b_leviathan",
+   "b_colossus",
+   "b_frostqueen",
+   "b_death",
+   "b_dracula",
+   "b_chaos"
+  ],
+  "relics": [
+   "k_relic_1",
+   "k_relic_2",
+   "k_relic_3",
+   "k_relic_4",
+   "k_relic_5"
+  ],
+  "seenScripts": [
+   "prologue",
+   "s01_intro",
+   "s01_outro",
+   "s02_intro",
+   "s02_outro",
+   "s03_intro",
+   "s03_outro",
+   "s04_intro",
+   "s04_outro",
+   "s05_intro",
+   "s05_outro",
+   "s06_intro",
+   "s06_outro",
+   "s07_intro",
+   "s07_outro",
+   "s08_intro",
+   "s08_outro",
+   "s09_intro",
+   "s09_outro",
+   "s10_intro",
+   "s10_outro",
+   "s11_intro",
+   "s11_outro",
+   "s12_intro",
+   "s12_outro",
+   "s13_intro",
+   "s13_outro",
+   "ending_true"
+  ]
+ },
+ "quests": {
+  "active": {},
+  "done": [
+   "main01",
+   "main02",
+   "main03",
+   "main04",
+   "main05",
+   "main06",
+   "main07",
+   "main08",
+   "main09",
+   "main10",
+   "main11",
+   "main12",
+   "main13",
+   "bd_ghoul",
+   "bd_wolves",
+   "bd_nightwing",
+   "bd_combo50",
+   "bd_gate_a",
+   "bd_armor",
+   "bd_slayer",
+   "bd_combo100",
+   "mt_herbs",
+   "mt_gambler",
+   "mt_feathers",
+   "rk_bones",
+   "rk_ecto",
+   "rk_goldrush",
+   "hd_plus5",
+   "hd_iron",
+   "hd_plus10",
+   "ab_docs",
+   "ab_souls",
+   "ab_relics",
+   "el_letter",
+   "cm_brides"
+  ]
+ },
+ "stats": {
+  "playTime": 61234,
+  "kills": 8123,
+  "deaths": 41,
+  "maxCombo": 212,
+  "goldEarned": 912345,
+  "enhanceOk": 88,
+  "enhanceFail": 31,
+  "minigameWins": 17,
+  "bossKills": 13,
+  "docs": 20
+ },
+ "lives": 3,
+ "score": 987654,
+ "bestiary": {
+  "bat": 311,
+  "skeleton": 280,
+  "zombie": 190,
+  "ghost": 120,
+  "armor_knight": 77,
+  "gargoyle": 51,
+  "merman": 64,
+  "gear_golem": 40,
+  "succubus": 22,
+  "chaos_spawn": 18
+ },
+ "lastStage": "s13"
+}

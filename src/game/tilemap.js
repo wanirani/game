@@ -7,6 +7,9 @@
 //  'D' 문(room.next 로 이동, 문 아래칸)  'X' 보스 트리거 열   'M' 좌우 이동 발판  'V' 상하 이동 발판  'F' 붕괴 발판
 //  'N' NPC(room.npcs 순서)  '!' 스토리 트리거(room.triggers 순서)  '@' 배치 아이템(room.items 순서)
 //  '1'~'9' 적(room.enemies[숫자])  'p' 파워업 구슬  'm' 고기  'L' 장식 램프(광원)  'W' 장식 창문  '|' 장식 기둥
+// ── 2부 기믹 문자 (world2 §3.4; 규칙은 game/gimmicks.js) ──
+//  'a' A상(실상)에서만 벽  'b' B상(허상)에서만 벽  'z' 짝수 박동에서만 벽  'Z' 홀수 박동에서만 벽   → 마커가 아니라 phaseTiles
+//  'Q' 거울 스위치  'u' 공기 방울 기둥 시작점(물 속이면 그 칸도 물)  'U' 상승 기류 칸(통과 가능)  'y' 포자 주머니   → 일반 마커
 import { TILE } from '../core/game.js';
 import { T } from '../core/physics.js';
 
@@ -15,6 +18,9 @@ const TILE_CHARS = {
   '^': T.SPIKE, '~': T.LIQUID, h: T.FAKE,
 };
 const DECOR_CHARS = new Set(['L', 'W', '|']);
+/** 위상 타일: 문자 → 키 ('A'|'B' 거울, 'even'|'odd' 심장 박동). 처음 상태는 A상·짝수 박동 (a·z 벽, b·Z 빈칸) */
+export const PHASE = { a: 'A', b: 'B', z: 'even', Z: 'odd' };
+const PHASE_SOLID0 = { a: true, b: false, z: true, Z: false };
 
 export class TileMap {
   constructor(room) {
@@ -30,13 +36,17 @@ export class TileMap {
     this.openTop = true; this.openBottom = true;
     this.revealed = new Set();                    // 드러난 가짜 벽 idx
     this.version = 0;                             // 타일 변경 시 증가 (렌더 캐시 무효화)
+    this.phaseTiles = [];                         // {idx, tx, ty, key:'A'|'B'|'even'|'odd'} — 이후 변화는 기믹이 map.set 으로 소유
     const counters = {};
     for (let ty = 0; ty < this.h; ty++) {
       const row = rows[ty];
       for (let tx = 0; tx < this.w; tx++) {
         const ch = row[tx] ?? ' ';
         const idx = ty * this.w + tx;
-        if (ch in TILE_CHARS) {
+        if (ch in PHASE) {
+          this.tiles[idx] = PHASE_SOLID0[ch] ? T.SOLID : T.EMPTY;
+          this.phaseTiles.push({ idx, tx, ty, key: PHASE[ch] });
+        } else if (ch in TILE_CHARS) {
           this.tiles[idx] = TILE_CHARS[ch];
           if (ch === '%') this.alt[idx] = 1;
           if (ch === 'B' || ch === 'H' || ch === 'K') {
@@ -49,6 +59,8 @@ export class TileMap {
         } else if (ch !== ' ' && ch !== '.') {
           counters[ch] = (counters[ch] ?? -1) + 1;
           this.markers.push({ ch, tx, ty, x: tx * TILE, y: ty * TILE, order: counters[ch] });
+          // 공기 방울 기둥 시작점이 물 속에 있으면 그 칸도 물 (수면에 구멍이 나지 않게)
+          if (ch === 'u' && [rows[ty - 1]?.[tx], rows[ty + 1]?.[tx], row[tx - 1], row[tx + 1]].includes('~')) this.tiles[idx] = T.LIQUID;
         }
       }
     }
@@ -67,7 +79,10 @@ export class TileMap {
     let hasFake = false;
     for (let i = 0; i < tiles.length; i++) if (tiles[i] === T.FAKE) { hasFake = true; break; }
     if (!hasFake) return;
-    const open = (i) => tiles[i] !== T.SOLID && tiles[i] !== T.FAKE;
+    // 위상 타일(a/b/z/Z)은 어느 위상에서든 지나갈 수 있으므로 열린 칸으로 보고, 가짜 벽으로 바꾸지도 않는다
+    const phase = new Uint8Array(W * H);
+    for (const pt of this.phaseTiles) phase[pt.idx] = 1;
+    const open = (i) => phase[i] === 1 || (tiles[i] !== T.SOLID && tiles[i] !== T.FAKE);
     const reached = new Uint8Array(W * H);
     const stack = [];
     const seed = (x, y) => { if (x < 0 || y < 0 || x >= W || y >= H) return; const i = y * W + x; if (open(i) && !reached[i]) { reached[i] = 1; stack.push(i); } };
@@ -96,7 +111,7 @@ export class TileMap {
       seen[i0] = 1; stack.push(i0);
       flood(seen, (j) => open(j) && !reached[j], comp);
       if (!comp.some(touchesFake)) continue;
-      for (const i of comp) if (tiles[i] === T.EMPTY) tiles[i] = T.FAKE;
+      for (const i of comp) if (tiles[i] === T.EMPTY && !phase[i]) tiles[i] = T.FAKE;
     }
   }
   get pxW() { return this.w * TILE; }
