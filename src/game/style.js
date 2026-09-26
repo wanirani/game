@@ -124,7 +124,7 @@ export class Style {
     if (!(w > 0)) return;
     // 다양성: 같은 휘두르기(hitId)의 다단 히트는 첫 타의 배율을 이어 쓴다
     const id = info.moveId ?? attack?.moveId ?? (tags?.includes('sub') ? 'sub' : tags?.includes('skill') ? 'skill:' + (attack?.skillId ?? '') : tags?.[0] ?? 'x');
-    const hid = attack?.hitId ?? null;
+    const hid = info.swing ?? attack?.hitId ?? null;   // 다단 히트('pl12:0', 'pl12:1')는 한 번의 휘두르기
     const last = this.last6[this.last6.length - 1];
     let v;
     if (hid && last && last.hitId === hid) v = last.v;

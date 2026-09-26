@@ -43,7 +43,7 @@ export function drawHUD(ctx, world, vw, vh) {
   if (!drawAwGauge(ctx, world, L.awGauge.x, L.awGauge.y, L.awGauge.w, T)) drawReadyText(ctx, L.ready, world, run, T); // [hook:feel]
   // 동료 위젯 (companions §7.1): 탭 판정용 사각형은 world.companions.hudRects 에 둔다
   const cr = drawCompanionHUD(ctx, world, { x: L.companions.x, y: L.companions.y, touch: T, rect: L.companions, lane: L.callouts, layout: L }); // [hook:cmp]
-  if (world.companions) { if (!cr) NO_RECTS.length = 0; world.companions.hudRects = cr || NO_RECTS; } // [hook:cmp]
+  if (world.companions) { if (!cr) NO_RECTS.length = 0; try { world.companions.hudRects = cr || NO_RECTS; } catch { /* 읽기 전용이면 동료 쪽이 직접 관리 */ } } // [hook:cmp]
   drawScore(ctx, L.score, world, hero, p, run, T);
   if (!drawComboHUD(ctx, world, vw, vh, T)) drawLegacyCombo(ctx, L.combo, world.combo); // [hook:feel]
   if (L.bossShown) drawBossBar(ctx, L.bossBar, world.boss);

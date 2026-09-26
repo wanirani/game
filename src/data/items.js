@@ -775,9 +775,11 @@ export function itemStats(inst, { noAffix = false } = {}) {
 // ───────────────────────────── 조사 ─────────────────────────────
 // 숫자 끝소리: 영 일 이 삼 사 오 육 칠 팔 구 (받침 유무 / ㄹ받침)
 const DIGIT_JONG = [21, 8, 0, 16, 0, 0, 1, 8, 8, 0];
+// 끝에 붙은 괄호 풀이(한자·부연)는 건너뛰고 괄호 앞 낱말에 맞춘다: '산호 성장(聖杖)' → '성장'에 맞춰 '을'
+const PAREN_TAIL = /(\S)\s*\([^()]*\)(?=[\s\]}」』>"'.,!?…·~]*$)/u;
 /** 마지막 글자의 종성 인덱스 (0 = 받침 없음, 8 = ㄹ, -1 = 판단 불가) */
 function finalJong(word) {
-  const s = String(word ?? '').replace(/[\s)\]}」』>"'.,!?…·~]+$/u, '');
+  const s = String(word ?? '').replace(PAREN_TAIL, '$1').replace(/[\s)\]}」』>"'.,!?…·~]+$/u, '');
   const c = s.charCodeAt(s.length - 1);
   if (c >= 0xac00 && c <= 0xd7a3) return (c - 0xac00) % 28;
   if (c >= 48 && c <= 57) return DIGIT_JONG[c - 48];

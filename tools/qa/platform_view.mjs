@@ -18,14 +18,13 @@ import { pwaChecks } from './platform_pwa.mjs';
 
 const suite = new Suite('platform_view');
 const env = await openEnv();
-const W = (g) => suite.wants(g);
 
 /** The effective tier the game is running at (for the pixel budget). */
 const tierOf = (s) => s.eval(`(() => { const g = window.__game; const t = ${TIER_EXPR}; return t === 'auto' ? null : t; })()`);
 
 try {
   // ── 1. pixel budget per viewport + zero page errors in title, hub, stage, menu (P-11) ────────────
-  if (W('budget')) {
+  await suite.group('budget', async () => {
     for (const vp of suite.vps(Object.keys(VIEWPORTS))) {
       // one page per viewport: stage s04 → menu (equip) → hub → title (the backing store does not depend on the scene)
       const s = await env.page(vp, 'index.html?scene=stage&stage=s04');
@@ -44,10 +43,10 @@ try {
       await suite.errors({ id: `budget.${vp}.errors`, group: 'budget', title: 'no page errors in stage, menu, hub, title' }, s);
       await s.close();
     }
-  }
+  }, env);
 
   // ── 2. safe area 47/47/0/21 with safeArea 'fit': canvas and HUD inside the safe rect (P-02) ────────
-  if (W('insets')) {
+  await suite.group('insets', async () => {
     for (const vp of suite.vps(['phone1', 'phone2'])) {
       const s = await env.page(vp, 'index.html?scene=stage&stage=s04', { insets: NOTCH_INSETS });
       await s.waitGame('!!g.world?.player');
@@ -65,10 +64,10 @@ try {
       await suite.errors({ id: `insets.${vp}.errors`, group: 'insets' }, s);
       await s.close();
     }
-  }
+  }, env);
 
   // ── 3. UI scale: game.uiK per viewport; uiScale scenes get pointer coordinates in UI space (P-03) ───
-  if (W('scale')) {
+  await suite.group('scale', async () => {
     const want = { phone1: 1.15, phone2: 1.25, tablet: 1.0, desk: 1.0 };
     for (const vp of suite.vps(Object.keys(want))) {
       const s = await env.page(vp, 'index.html?scene=hub');
@@ -99,10 +98,10 @@ try {
       await suite.errors({ id: `scale.${vp}.errors`, group: 'scale' }, s);
       await s.close();
     }
-  }
+  }, env);
 
   // ── 4. frame pacing: fpsCap 60 on a 120 Hz display → ≤ 61 render() per second (P-12) ──────────────
-  if (W('pacing')) {
+  await suite.group('pacing', async () => {
     const s = await env.page('desk', 'index.html?scene=stage&stage=s01');
     await s.waitGame('!!g.world?.player');
     await s.wait(1500);
@@ -113,10 +112,10 @@ try {
     await suite.check({ id: 'pacing.sim', group: 'pacing', issue: 'P-12', pkg: 'PLAT-CORE', title: 'simulation stays at 60 ticks/s' }, async () => ({ pass: ticks > 57 && ticks < 63, detail: `${ticks.toFixed(1)} ticks/s` }));
     await suite.errors({ id: 'pacing.errors', group: 'pacing' }, s);
     await s.close();
-  }
+  }, env);
 
   // ── 5. governor (quality 'auto'): 30 ms frames for 6 s drop one tier; 8 ms frames for 21 s raise it (P-13) ─
-  if (W('governor')) {
+  await suite.group('governor', async () => {
     const s = await env.page('desk', 'index.html?scene=stage&stage=s01', { settings: { quality: 'auto' } });
     await s.waitGame('!!g.world?.player');
     await s.wait(1500);
@@ -136,10 +135,10 @@ try {
     await suite.check({ id: 'governor.auto', group: 'governor', issue: 'P-13', gate: 'PLAT-CORE', title: 'symmetric quality governor with hysteresis', session: s }, async () => ({ pass, detail: start ? detail : "no effective tier (expected game.tier with settings.quality 'auto')" }));
     await suite.errors({ id: 'governor.errors', group: 'governor' }, s);
     await s.close();
-  }
+  }, env);
 
   // ── 6. ?scene=worldmap + cancel → title, never an empty stack (P-26) ──────────────────────────────
-  if (W('stack')) {
+  await suite.group('stack', async () => {
     const s = await env.page('desk', 'index.html?scene=worldmap');
     await s.wait(2000);
     await s.key('Escape', 90);
@@ -148,10 +147,10 @@ try {
     await suite.check({ id: 'stack.worldmap', group: 'stack', issue: 'P-26', gate: 'PLAT-CORE', title: 'worldmap opened directly, then cancel → title', session: s }, async () => ({ pass: /title$/.test(sc), detail: `scenes '${sc}'` }));
     await suite.errors({ id: 'stack.errors', group: 'stack' }, s);
     await s.close();
-  }
+  }, env);
 
   // ── 7. boot gate, boot error screen, boot progress (P-35, §6.7) ──────────────────────────────────
-  if (W('boot')) {
+  await suite.group('boot', async () => {
     {
       const s = await env.page('desk', 'index.html', { wait: false, initScripts: [() => { try { delete window.structuredClone; } catch { /* */ } try { delete Window.prototype.structuredClone; } catch { /* */ } }] });
       await s.wait(2500);
@@ -183,10 +182,10 @@ try {
       await suite.errors({ id: 'boot.errors', group: 'boot' }, s);
       await s.close();
     }
-  }
+  }, env);
 
   // ── 8. one pad-visibility owner: hidden on the title, visible in a stage on touch (P-18) ─────────
-  if (W('pad')) {
+  await suite.group('pad', async () => {
     const s = await env.page('phone1', 'index.html');
     await s.wait(2000);
     const t = new Touch(s.cdp, s.page);
@@ -204,23 +203,22 @@ try {
     await suite.check({ id: 'pad.visibility', group: 'pad', issue: 'P-18', gate: 'PLAT-CORE', title: 'pad hidden on title and pause, visible in stage (touch)', session: s }, async () => ({ pass: !title.visible && stage.visible && !pause.visible, detail: `title ${title.visible}, stage ${stage.visible}, pause ${pause.visible} [${stage.source}]` }));
     await suite.errors({ id: 'pad.errors', group: 'pad' }, s);
     await s.close();
-  }
+  }, env);
 
   // ── 9. settings v1 {quality:'medium'} loads as 'auto' with settingsVersion 2 (§10) ─────────────
-  if (W('settings')) {
+  await suite.group('settings', async () => {
     const s = await env.page('desk', 'index.html', { storage: { bloodnocturne_settings: { quality: 'medium', musicVol: 0.3 } } });
     await s.wait(1500);
     const r = await s.eval(() => { const st = window.__game.settings || {}; return { quality: st.quality, settingsVersion: st.settingsVersion, musicVol: st.musicVol }; });
     await suite.check({ id: 'settings.migrate', group: 'settings', issue: 'P-13', gate: 'PLAT-SAVE-ASSETS', title: "v1 settings: quality → 'auto', settingsVersion 2, other values kept" }, async () => ({ pass: r.quality === 'auto' && r.settingsVersion === 2 && r.musicVol === 0.3, detail: fmt(r) }));
     await suite.errors({ id: 'settings.errors', group: 'settings' }, s);
     await s.close();
-  }
+  }, env);
 
-  if (W('pwa')) await pwaChecks(suite, env, 'pwa');
+  await suite.group('pwa', () => pwaChecks(suite, env, 'pwa'), env);
 
   // ── tap-target audit (P-04) and UI scale opt-in / legibility (P-03) per scene group ────────────────
-  for (const group of Object.keys(VISITS)) {
-    if (!W(group)) continue;
+  for (const group of Object.keys(VISITS)) await suite.group(group, async () => {
     for (const vp of suite.vps(['phone2', 'phone1'])) {
       const s = await env.page(vp, VISIT_BASE[group]);
       await s.wait(/scene=/.test(VISIT_BASE[group]) ? 2500 : 1500);
@@ -241,7 +239,7 @@ try {
       await suite.errors({ id: `${group}.${vp}.errors`, group }, s);
       await s.close();
     }
-  }
+  }, env);
 } catch (e) {
   await suite.check({ id: 'harness', group: 'harness', title: 'suite ran to completion' }, async () => { throw e; });
 } finally {

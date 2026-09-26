@@ -50,6 +50,7 @@ await page.route('**/__test_sfx__.html', (r) => r.fulfill({ contentType: 'text/h
 await page.goto(`http://localhost:${port}/__test_sfx__.html`);
 
 const only = args.only ? String(args.only).split(',') : null;
+// 페이지 평가가 통째로 실패해도(모듈 문법 오류 등) 브라우저·서버를 닫고 실패로 보고한다
 const res = await page.evaluate(async ({ only, FEEL }) => {
   const out = { api: [], budget: [], renders: {}, names: [], cmpErr: null };
   const ok = (cond, msg) => { if (!cond) out.api.push(msg); };
@@ -180,7 +181,12 @@ const res = await page.evaluate(async ({ only, FEEL }) => {
     part.forEach((n, j) => { out.renders[n] = rs[j]; });
   }
   return out;
-}, { only, FEEL });
+}, { only, FEEL }).catch(async (e) => {
+  console.log('  ✗ 페이지 평가 실패: ' + String(e && e.message || e).split('\n').slice(0, 3).join(' | '));
+  for (const m of pageErrs) console.log('  ✗ ' + m);
+  await browser.close(); srv.close();
+  process.exit(1);
+});
 
 // ── 결과 판정 ──
 if (res.cmpErr) fail('audio_companions.js import 오류: ' + res.cmpErr);
@@ -197,11 +203,12 @@ else if (cmpHave.length < CMP.length) fail(`동료 효과음 누락 ${CMP.length
 const extra = res.names.filter((n) => n !== '_default' && !BASE.includes(n) && !FEEL.includes(n) && !CMP.includes(n));
 if (extra.length) info(`표에 없는 추가 등록 이름: ${extra.join(' ')}`);
 
-// 체감 효과음 예산: 소스 노드 수(모바일 비용), 음량 범위(sfxVol 0.8, vol 1 기준 단기 RMS: 발소리 ≈ footstep, 재질 레이어 ≈ hit 의 40%)
+// 체감 효과음 예산: 소스 노드 수(모바일 비용), 음량 범위(sfxVol 0.8, vol 1 기준 정상 상태 단기 RMS: 발소리 ≈ footstep(≈0.032) 의 1.1배 — 같은 호출 음량으로 옛 footstep 을 대체하므로,
+//   재질 레이어 ≈ hit(≈0.2) 의 40~50%)
 const SFXLAYER = new Set(res.layers);
 for (const n of ['hit_flesh', 'hit_bone', 'hit_ghost', 'hit_stone']) if (!SFXLAYER.has(n)) fail(`${n}: layer 'hit' 표시 없음 (재질 레이어 예산 미적용)`);
 const SRC_MAX = (n) => (!FEEL.includes(n) ? 60 : n.startsWith('step_') ? 6 : n.startsWith('hit_') ? 10 : 40);
-const ST_BAND = (n) => (n.startsWith('step_') ? [0.015, 0.06] : SFXLAYER.has(n) ? [0.03, 0.12] : [0.03, 0.5]);
+const ST_BAND = (n) => (n.startsWith('step_') ? [0.024, 0.045] : SFXLAYER.has(n) ? [0.05, 0.13] : [0.03, 0.5]);
 const LEN_MAX = (n) => (group(n) === 'feel' || group(n) === 'cmp' ? 3 : 6);
 const group = (n) => (FEEL.includes(n) ? 'feel' : CMP.includes(n) ? 'cmp' : BASE.includes(n) || n === '_default' ? 'base' : 'extra');
 let played = 0;
@@ -223,7 +230,7 @@ if (args.levels) {
   console.log('group  name              peak    st      len    src  nodes');
   for (const [n, r] of rows) console.log(`${group(n).padEnd(6)} ${n.padEnd(17)} ${r.peak.toFixed(3).padStart(6)}  ${r.st.toFixed(3).padStart(6)}  ${r.len.toFixed(2).padStart(5)}  ${String(r.srcs).padStart(4)}  ${String(r.nodes).padStart(5)}`);
 }
-if (args.json) fs.writeFileSync(String(args.json), JSON.stringify({ fails, warns, infos, renders: res.renders }, null, 1));
+if (args.json) fs.writeFileSync(args.json === true ? '/tmp/test_sfx.json' : String(args.json), JSON.stringify({ fails, warns, infos, renders: res.renders }, null, 1));
 
 const cnt = (g) => Object.keys(res.renders).filter((n) => group(n) === g).length;
 console.log(`효과음 ${played}/${Object.keys(res.renders).length}종 렌더 (내장 ${cnt('base')} · 체감 ${cnt('feel')} · 동료 ${cnt('cmp')} · 기타 ${cnt('extra')}), API ${res.api.length ? '✗' : '✓'}, 예산 ${res.budget.length ? '✗' : '✓'}`);

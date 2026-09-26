@@ -224,7 +224,7 @@ export const STYLE = {
  *  모든 획득 × (1 + ultGain/ultGainDiv). zeroTags 태그가 붙은 타격은 0. 전직(tier) minTier 미만은 게이지 없음.
  */
 export const AW_GAIN = {
-  hit: 0.5, crit: 1.0, kill: 2, eliteKill: 8,
+  hit: 0.5, crit: 1.0, kill: 2, elite: 8, eliteKill: 8,
   launch: 3, bounce: 3, counter: 3, rankUp: 1,
   bossIntro: 25, phase: 15, rage: 6, rageFrac: 0.10,
   ultGainDiv: 200, zeroTags: ['ult', 'awaken', 'companion'], minTier: 1, max: 100,

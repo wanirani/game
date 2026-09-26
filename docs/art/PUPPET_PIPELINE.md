@@ -40,6 +40,7 @@ build_all.py  ── 전부 + 망토 결 텍스처 + src/render/puppet_manifest.
 | `tools/puppet/shot.mjs` | 페이지 스크린샷(오류 수집) — 갤러리 QA |
 | `tools/puppet/ingame.mjs` | 스테이지 열고 조작 → 스크린샷 + 플레이어 그리기 ms (`--vector` 비교, `--mobile`) |
 | `tools/puppet/bench.mjs` | 퍼펫 vs 벡터 그리기 시간 벤치마크 |
+| `tools/puppet/review.html` + `review.mjs` | **QA 검사대**: 셀(직업·무기·기술·프레임·장비·yaw)을 투명 캔버스에 그려 PNG + 관절 이음매 검사(관절점·뼈 중간점 둘레 최소 알파) + 갇힌 구멍 목록. 프리셋 `atk:<cls>:<wt>`, `anims:<cls>`, `all`(7직업×6무기×모든 기술×5프레임, 관절 검사만) 또는 JSON 계획 파일 |
 | `tools/puppet/kling_manifest.json` | 클링 생성 기록 (프롬프트·생성 ID·채택/실패 사유·이미지 수) |
 | `tools/puppet/src/<char>/` | 원화 소스 (커밋). `_alpha.png` 는 rembg 결과를 고정해 재현성 확보 |
 | `tools/puppet/rigs/<char>/<class>.json` | 리그 테이블 (직업은 `extends` 로 기본 직업 상속) |
@@ -52,11 +53,12 @@ build_all.py  ── 전부 + 망토 결 텍스처 + src/render/puppet_manifest.
 | 항목 | 값 |
 |---|---|
 | 클링 이미지 | 영웅 1명 7직업 **40장** (측면 기본 1 + 직업 6×2후보 + 수정 재생성 6 + 턴5뷰 6 + 3/4뒤 6 + 손 7 + 재시도 3). 권장 상한 50장 |
-| 직업 1개 에셋 | atlas lo ≈16KB · hi ≈40KB · ui ≈85KB, mask 3개 ≈33KB, rig.json ≈4KB, turn.webp ≈150–220KB → **≈330–490KB** |
-| 카엘 7직업 합계 | `build_all.py` 끝의 보고 참조 (약 2.9MB, 대부분 turn.webp 로 인벤토리에서만 받는다) |
-| 게임 중 요청 | 직업당 rig.json + atlas_lo + atlas_hi (≈60KB). ui/turn/mask 는 필요할 때만 |
+| 직업 1개 에셋 | atlas lo ≈16KB · hi ≈40KB · ui ≈85KB, mask 3개 ≈33KB, rig.json ≈4KB, turn.webp ≈150–220KB, turn_mask.webp ≈16–28KB → **≈350–460KB** |
+| 카엘 7직업 합계 | `build_all.py` 끝의 보고 참조 (리뷰 후 2,838,685 바이트 ≈2.8MB, 대부분 turn.webp 로 인벤토리에서만 받는다) |
+| 게임 중 요청 | 직업당 rig.json + atlas_lo/hi + mask_lo/hi (≈75KB). **ui 아틀라스·turn 은 메뉴에서 그 배율이 필요할 때만** (리뷰 전에는 `ready()` 가 모든 레벨을 `assets.get` 해서 게임 중에도 ui 를 받았다 — 확인: 네트워크 로그에 `atlas_ui` 가 없어야 함). 한 직업이 준비되면 같은 영웅의 다른 직업(rig+lo/hi+mask)을 한가할 때 하나씩 받는다(교회·파티 카드가 벡터로 찍혀 남지 않게) |
 | 그리기 비용 | 벡터와 같거나 빠름 (`bench.mjs --n 300`, 1920×1080, 배율 2, 역광 포함, 헤드리스 SwiftShader 평균: 헌터 idle 4.49 / run 5.69 / attack 5.99 / jump 5.36 ms vs 벡터 5.90 / 6.00 / 5.73 / 5.64 ms, 템플러 6.71 / 7.58 / 6.61 / 4.99 ms vs 벡터 9.29 / 9.30 / 10.51 / 7.20 ms) |
-| 카엘 7직업 전체 | assets/puppets 합계 2,694,039 바이트 (≈2.6MB, 공용 망토 텍스처 포함) |
+| 카엘 7직업 전체 | assets/puppets 합계 2,838,685 바이트 (≈2.8MB, 공용 망토 텍스처·턴 재질 마스크 포함) |
+| 디코딩 메모리 | 직업당 lo+hi ≈1.1MB(+먼 팔다리 어두운 사본·장비 색 변형 캔버스 각 레벨 1장), 메뉴 ui 2.2MB, turn 3.4MB(변형 시 +1장) |
 | 원화 해상도 | 측면 1536×2720 (클링 2k, `aspect_ratio: auto`) — 이보다 작으면 ui 레벨이 흐려진다 |
 
 ---
@@ -258,6 +260,7 @@ python3 tools/puppet/ingest.py /tmp/dl/hands.png sera sera_exorcist_hands
 - `scale`: 시트 px → 원화 px. 주먹 너비(엄지 제외)가 원화 손 너비의 1.0~1.1배가 되게(카엘 0.18~0.24).
 - `open`: `tip` = 가운데 손가락 끝. 손목이 원화 `wrist` 관절에 붙는다.
 확인: `sheet.py` 의 grip/open 칸에 초록이 남지 않았는지, 갤러리 `?sec=pupw` 에서 무기 손잡이가 주먹 속으로 들어가는지.
+판금·건틀릿 직업(성전 기사·성광의 사냥꾼)은 재질 규칙 `armor.parts` 에 **`hand`, `grip`, `open` 도 넣는다** — 빠지면 장비 색을 바꿨을 때 팔은 검은데 주먹만 은색으로 남는다(리뷰에서 발견). 가죽 장갑 직업은 넣지 않는다(장갑은 코트와 다른 재질).
 
 ### 4.6 재질 마스크 (`materials`, 장비 색)
 
@@ -270,7 +273,13 @@ R 채널 `armor` = 장비 갑옷 색으로 다시 칠할 곳, G 채널 `trim` = 
 - 가죽 코트(갈색) `hue 6~48`, 검은 가죽 `sat<0.45 & val<0.34`, 상아/흰 옷 `hue 18~70, sat 0.03~0.45, val>0.5`, 강철 `sat<0.13, val>0.2`, 금 `hue 30~62, sat>0.4, val>0.45`.
 - 머리·손·머리카락은 목록에 넣지 않는다(피부·머리카락에 번지면 안 됨). 깃털처럼 재질이 다른 장식 부품(`pad`)은 빼도 된다.
 - `sheet.py` 두 번째 줄(빨강=armor, 초록=trim)로 새는 곳이 없는지 확인.
-- 런타임: `look.armorColor ≠ runtime.armorBase`(또는 직업 look.armorColor) 이면 변형 아틀라스를 1회 굽는다. 명암은 원화 그대로, 재질 종류(`look.armor`)에 따라 대비·반사 보정(leather 1.0, chain 1.12, plate 1.25, holy 1.2, dark 1.3).
+- 런타임: `look.armorColor ≠ runtime.armorBase`(또는 직업 look.armorColor) 이면 변형 아틀라스를 1회 굽는다 (`recolorPx`).
+  밝기 사상: 마스크 영역 평균 밝기 → 목표 밝기. 어두운 쪽은 비율(곱), 밝은 쪽은 원화의 절대 밝기 차를 유지하되 244 를 넘지 않게 압축, 채도는 밝은 곳에서 줄인다.
+  재질 종류(`look.armor`)별 [대비, 금속 반사]: leather [1,0], chain [1.12,0.1], plate [1.25,0.25], holy [1.2,0.3], dark [1.3,0.12].
+  마스크 값은 0.12~0.7 구간을 smoothstep 으로 올려 쓴다(그늘진 상아색처럼 규칙 경계의 어중간한 값이 반만 칠해져 원래 색이 비치지 않게).
+  - 리뷰에서 고친 것: 예전 식(k = 원화밝기/평균 × 목표색)은 **검은 가죽을 밝은 판금색(#a8b0bc, #8a8e9a)으로 칠하면 반사광 비율이 4~6배라 하얗게 타고**, 어두운 청강(#2a5a7a)은 형광 하늘색이 됐다. 새 직업을 만들면 검은 원화 → 밝은 목표, 밝은 원화 → 어두운 목표 두 방향을 반드시 본다(`review.mjs` 장비 계획, 아래 §7).
+- 마스크 로드 대기: 변형이 있는 인스턴스는 **그 레벨의 마스크까지 로드된 레벨만** 쓴다(없으면 가까운 레벨). lo/hi 마스크는 rig 과 함께 미리 받는다 → 장비를 바꾼 첫 프레임에 원래 색이 비치지 않는다.
+- 턴테이블 8방향도 같은 색으로 칠한다: `build_turn.py` 가 `turn_mask.webp` 를 만든다(§4.7).
 
 ### 4.7 턴테이블 (`turn`)
 
@@ -280,6 +289,8 @@ R 채널 `armor` = 장비 갑옷 색으로 다시 칠할 곳, G 채널 `trim` = 
          "extra": [{"sheet": "kael/kael_bloodhunter_back", "views": ["ym90"]}],
          "fixups": [{"view": "y180", "box": [0,0,1,0.16], "hue": [330,18], "sat": [0.3,1.01], "to": "#c89a3a"}]}
 ```
+- `fixups` 항목: `{view, box(0~1 비율), hue, sat, val?, to, gain?}` — 결과 밝기 = 원래 밝기 × gain (to 의 색조). 예: 대심문관 5뷰 시트의 **정면(y90)만 코트·장화가 갈색 가죽**으로 나와 돌리면 색이 바뀌었다 → `{"view":"y90","box":[0,0.24,1,1],"hue":[5,36],"sat":[0.18,1.01],"val":[0,0.62],"to":"#2a2628","gain":0.8}`. 뷰마다 옷 색이 같은지 `sheet.py` 셋째 줄을 마젠타 배경에서 비교해 볼 것(리뷰에서 원화 7장 중 1장).
+- **재질 마스크 `turn_mask.webp`**(R=갑옷, G=장식, 절반 해상도, 손실 압축 ≈20KB): 측면 ui 아틀라스의 재질 마스크를 정답으로 HSV 히스토그램 색 모델(갑옷 vs 그 밖)을 배워 각 뷰를 분류하고, 자리로 거른다 — 목 아래~옷자락 밑단(다리 부품이 갑옷이면 발까지), 앞모습은 벌어진 코트 사이 가운데 바지 띠 제외, 뒷모습은 포니테일 띠 제외. 검은 가죽 코트·짙은 바지·갈색 머리카락은 색만으로는 갈리지 않는다(사후확률 0.4~0.6). 모자·두건(무채색)은 음성 표본에서 뺀다.
 라벨 = 그 그림이 보여 주는 yaw: `y0` 오른쪽 옆, `y45` 3/4 앞(오른쪽을 봄), `y90` 정면, `y135` 3/4 앞(왼쪽을 봄), `y180` 왼쪽 옆, `ym45` 3/4 뒤(오른쪽으로 돌아섬), `ym90` 뒤, `ym135` 3/4 뒤(왼쪽으로 돌아섬), `-` 버림.
 시트의 인물은 왼쪽→오른쪽 순서로 라벨과 짝지어진다. 없는 방향은 거울상(yaw θ ↔ 180−θ)으로 채운다. 확인: `sheet.py` 셋째 줄.
 얼굴이 보이면 앞(yaw>0), 등이 보이면 뒤(yaw<0). 얼굴이 화면 왼쪽을 보면 y135/y180.
@@ -310,16 +321,22 @@ python3 tools/puppet/build_all.py                                               
 - 턴테이블(docs/specs/platform.md §7.3):
   - `drawHero(ctx, p, world, { yaw })` — yaw 정의 시 facing 무시. `HERO_VIEW = { continuous:false, steps:8, painted:true }`.
   - 채색 퍼펫: 0°/180° 는 게임과 같은 옆모습 퍼펫(움직임·무기), 나머지 6방향은 turn.webp. 스텝 사이는 가로 압축(최소 0.76)+가운데 16% 교차.
-  - 망토는 앞모습에선 몸 뒤, 뒷모습에선 몸을 덮는다. 날개는 앞/뒤 대칭 한 쌍. 후광·오라 포함.
+  - 장비: 갑옷 색은 `turn_mask` 로 채색 뷰에도 칠함(변형별 캔버스 1장). **무기는 채색 뷰에 절차적으로** — 검·단검·총·지팡이는 늘어뜨린 손(어깨 반폭, 엉덩이 높이, 오른손 x = −sin(yaw)·반폭, 몸에 가려지는 쪽 손은 몸 뒤 패스), 대검은 등에 멤(앞모습은 몸 뒤, 뒷모습은 등을 덮음), 채찍은 원화의 허리 똬리 그대로.
+  - 망토는 앞모습에선 몸 뒤, 뒷모습에선 몸을 덮는다(화면 폭 ∝ |sin yaw| — 옆모습 가까이 −160°/−20° 에서 몸 전체를 덮지 않게). 날개는 앞/뒤 대칭 한 쌍. 턴테이블용 망토·날개·무기는 **채색 뷰의 비중만큼만** 그린다(옆모습 퍼펫이 제 망토를 이미 그리므로 겹치지 않게). 후광·오라 포함.
   - 벡터 영웅(에셋 없음)·동작 시연 중에는 옆모습 카드 뒤집기(facing = sign(cos), 가로 |cos|).
   - `heroViewInfo(p) → {painted, steps, continuous}`, `drawHeroTurntable(ctx, look, yaw, x, y, height, t, {charId|ch, classId, anim, rig})`.
-- 확장 훅(등록 전 null = 아무 일 없음) — `import { registerHeroHooks } from '../render/hero.js'`:
-  - `gait(P, K, anim, p, at)` + `gaitAnims {walk:'run', sprint:'dash', run_start:'run', skid:'idle', pivot:'idle', land_heavy:'idle'}`: feel.md WP1 3.3.3. `anim` 이 gaitAnims 에 있으면 호출 후 `holdFor(P, K, gaitAnims[anim])`. `'run'` 은 `p.gaitPh` 가 숫자면 그것을 위상으로 쓴다.
-  - `blend(anim, prevKey) → 초`: 전환 블렌드 시간 (skid 0.06, walk↔run 0.12 등).
-  - `feel(P, p, K) → {tint, a}|void`: 블렌드 뒤·골격 풀이 전. `P.sq *= p.feel.sq`, `P.lean += accLean` 등 + 선택적 색 섬광.
-  - `rider(P, K, p, ride, hs) → {cx, bottom, skipFarLeg}`: companions.md §11.4. 자세를 앉은 자세로 강제하고 골반이 안장에 오도록 원점을 돌려준다.
-  - 견본 구현: `tools/gallery_hero.html?sec=hooks` (게임 코드가 아님).
+- **걸음(feel.md WP1 3.3.3) — hero.js 가 `./hero_gait.js` 를 직접 부른다** (리뷰 전에는 등록형 훅만 있어서, WP1 이 계약대로 `gaitPose/applyFeelOverlay/GAIT_ANIMS` 만 export 하면 hero.js 가 아무것도 부르지 않았다):
+  - anim 이 `GAIT_ANIMS` 에 있으면 `gaitPose(P, K, anim, p, at)` 후 `holdFor(P, K, GAIT_ANIMS[anim])` (값이 문자열이면 그대로, 객체면 `.hold`). `'run'` 은 `p.gaitPh` 가 숫자면 그 위상.
+  - 블렌드: skid·pivot·land_heavy 0.06초, walk↔run↔sprint 0.12초.
+  - 블렌드 뒤·풀이 전 `applyFeelOverlay(P, p)` (탈것 중에는 부르지 않음). 반환값이 `{tint, a}` 면 색 섬광.
+  - **hero_gait.js 는 hero.js 를 import 하면 안 된다** (순환 → `heroHooks` TDZ 오류). hero.js 는 `import * as GAIT` 로 늦게 읽는다.
+- **탈것 기수(companions.md §11.4, C6) — 기본 구현이 hero.js 에 있다** (`riderPose`, `rideAnim`): `p.ride` 가 있으면 자세 강제(px 0, py −41, rot 0, sx 1, lean = clamp(lean,−0.35,0.6)+ride.lean+0.6·duck), 발 = 등자 깊이 `footY`(월드 px → 자세 단위 ÷ (다리 배율 × hs)), 무릎 앞(t 0.6, kneel 0.9), 원점 = (sx, sy + 41·다리배율·hs) → 골반이 안장점에 정확히, 먼 다리 생략, 빈손은 고삐(공격·시전·투척·양손/쌍수 무기 중이 아닐 때). 기수 anim: `ride`(앉은 대기) · `ride_duck` · `ride_charge`(몸 +0.45, 무기 팔을 창처럼 앞으로) · `ride_rear`(몸 −0.3, 무기 팔을 들어 올림) · `ride_hurt`. 망토·머리카락 체인은 기수 원점에서 돈다.
+- 확장 훅(등록하면 위 기본 동작을 덮어씀) — `import { registerHeroHooks } from '../render/hero.js'`: `gait(P,K,anim,p,at)` + `gaitAnims`, `blend(anim, prevKey)`, `feel(P,p,K) → {tint,a}|void`, `rider(P,K,p,ride,hs) → {cx,bottom,skipFarLeg}`. 견본: `tools/gallery_hero.html?sec=hooks` (게임 코드가 아님).
+- 메뉴·UI 가 영웅 그림을 캐시(스냅샷)하면 키에 **`puppetRev()`**(hero_puppet.js, 새 퍼펫이 준비될 때마다 +1)를 넣을 것 — 넣지 않으면 로드 전에 찍힌 벡터 그림이 남는다(`town/church.js`·`town/party.js` 의 `Snap` 키가 현재 그렇다. 같은 영웅의 다른 직업을 미리 받아 대부분 피하지만 완전하지 않다). 장면 진입 전에 `preloadPuppet(charId, classId)` 를 부르면 스테이지 첫 프레임의 벡터→퍼펫 교체가 보이지 않는다.
+- 레벨(lo/hi/ui) 선택에는 인스턴스별 이력이 있다: 이전 레벨이 `0.78 × 필요 배율` 이상이고 `2.6 ×` 이하이면 유지 → 카메라 확대가 경계 근처에서 흔들려도 선명도가 깜빡이지 않는다.
 - 절차적 무기는 퍼펫 옆에서 윤곽선 0.8배 + 0.35 불투명 그림자 한 겹(`weaponPup`).
+- 지팡이 대기·웅크림: 퍼펫은 어깨가 원화 위치(몸 뒤쪽)라 곧게 세운 지팡이 머리가 얼굴을 가렸다 → `holdFor` 에서 퍼펫일 때 손을 앞으로(a1 −0.28), 지팡이를 앞으로 0.42(웅크림 0.62) 기울인다.
+- 망토: 절차적 띠 + 벨벳 결 + **주름 3줄**(띠 중심선을 따라 폭 방향으로 비킨 그늘·반사광, 결 텍스처 로드 전에도). 흰 망토(성전 기사)가 평평한 판처럼 보이던 문제.
 - 무기별 주먹 위치(무기 좌표계): sword −2.4, greatsword −3.2(먼 손 −6.5 는 hero.js 가 IK), dagger −1.4, gun (−2.0, +3.2), staff 0, whip −2.2 (`GRIP_OFF`).
 
 ---
@@ -334,6 +351,10 @@ python3 tools/puppet/build_all.py                                               
 6. `?sec=turn` 8방향 + 사이각, 망토가 뒷모습을 덮음, 앞/뒤 대칭.
 7. 게임: `node tools/puppet/ingame.mjs --stage s01 --cls <cls> --steps "wait:1,down=right,wait:0.9,shot,up=right,press=attack@0.08,wait:0.12,shot"` — 어두운 스테이지(s04·s10·s13)에서 역광 테두리로 윤곽이 읽히는지, 모바일 `--mobile` 에서도.
 8. `node tools/integration.mjs` 페이지 오류 0, `bench.mjs` 가 벡터 이하.
+9. **검사대** `node tools/puppet/review.mjs all /tmp/r` — 관절 이음매(`jointGaps`)가 회전 베기(spin, 몸이 가로로 접혀 검사점이 빗나감)와 극단적 뒤로 젖힘의 목 외에 없어야 한다. 의심 셀은 `atk:<cls>:<wt>` 로 PNG 를 뽑아 **마젠타 배경**(`bg:'#ff00ff'`)에서 본다 — 어두운 배경에서는 반투명 틈이 안 보인다.
+10. 장비 색: `review.mjs <계획.json>` 에 `{"cls":…, "equip":{"armor":"plate","armorColor":"#a8b0bc"}}` 처럼 밝은 목표·어두운 목표·채도 높은 목표를 넣어 본다(`equip` 이 있으면 마스크 로드를 기다림). 피부·머리카락·장갑·바지에 번지지 않는지, 판금 직업은 주먹까지 칠해지는지.
+11. 턴테이블 + 장비: `{"yaw":…, "equip":…, "wt":"greatsword"}` 로 8방향 + 사이각(20°, −20°, −160°) — 채색 뷰와 옆모습의 옷 색이 같은지, 무기가 보이는지, 망토가 옆모습 근처에서 몸을 통째로 덮지 않는지.
+12. 네트워크: 스테이지에서 `atlas_ui`·`turn` 요청이 없어야 한다(메뉴 전용).
 
 ## 8. 자주 나는 문제
 
@@ -350,6 +371,14 @@ python3 tools/puppet/build_all.py                                               
 | 무기가 주먹 밖에서 떠 보임 | `hands.grip.center`·`axis` 재측정, `GRIP_OFF` 확인 |
 | 새 아틀라스인데 부품이 이상하게 잘림 | `build_all.py` 를 안 돌려 매니페스트 해시가 옛것 → 브라우저가 옛 아틀라스 사용 |
 | 턴테이블 한 방향이 앞모습 | 3/4 뒷모습 시트 실패 → 라벨 `-` 로 버리고 거울상 사용, 또는 한 장짜리 뒷모습 재생성 |
+| 옷깃·어깨 테두리에 투명한 줄무늬(머리가 흔들리면 배경이 비침) | `clean.hairZone` 의 배경색 제거가 은색 테두리까지 지움 → build_rig 가 몸통·어깨 덮개에는 머리카락 정리 전 실루엣(안쪽 구멍 메움)을 쓴다. 새 규칙을 추가할 때도 hairZone 은 머리·포니테일에만 |
+| 장비 색을 바꾸면 하얗게 타거나 형광색 | 예전 곱셈 식. `recolorPx` 의 밝기 사상 사용(§4.6) |
+| 장비를 바꾼 첫 순간 원래 색이 비침 / 메뉴 스냅샷에 원래 색 | 마스크가 아직 없음 → lo/hi 마스크 선로딩 + 마스크 없는 레벨은 쓰지 않음(§4.6) |
+| 판금 직업: 팔은 새 색인데 주먹만 은색 | `armor.parts` 에 hand/grip/open (§4.5) |
+| 턴테이블에서 한 방향만 옷 색이 다름 | 클링 시트의 뷰별 색 드리프트 → `turn.fixups` (val·gain) |
+| 턴테이블 뒷모습 근처에서 망토가 몸 전체를 덮음 | drawTurnCape 폭 ∝ |sin| + 채색 뷰 비중만큼만 그림 (§6) |
+| 지팡이 머리가 얼굴을 가림 | holdFor 의 퍼펫 보정 (§6) |
+| 게임 중에 ui 아틀라스(≈90KB)까지 받음 | 준비 확인·대체 레벨 탐색은 `assets.has` 로 엿보기만 (`levelPeek`), 요청은 필요한 레벨만 |
 | 어두운 스테이지에서 안 보임 | 원화 자체가 어두운 옷(검은 가죽) → 역광 테두리(`PUP_RIM`)로 윤곽. 더 필요하면 `ui`/`hi` 이미지를 빌드에서 밝게(향후 `grade` 옵션) |
 
 ## 9. 영웅별 특이 사항 (남은 다섯 명)
@@ -369,3 +398,7 @@ python3 tools/puppet/build_all.py                                               
 - 먼 팔·먼 다리는 가까운 쪽 사본을 어둡게 한 것(좌우 비대칭 장식이 같아 보임). 게임 배율에서는 눈에 띄지 않는다.
 - 턴테이블 채색 뷰는 정지 그림(숨쉬기만). 동작 시연은 옆모습으로 돌아가서 재생한다(스펙 §7.2 와 같음).
 - 3/4 뷰의 망토는 단순한 절차적 형태(벨벳 결 + 주름 명암).
+- 턴테이블 재질 마스크는 색 모델 + 자리 거르기라서 짙은 바지 일부·장갑·코트 밑단 아래 장화 윗부분이 함께 칠해질 수 있다(옆모습 퍼펫은 칠하지 않음). 원화의 허리 채찍 똬리는 다른 무기를 들어도 턴테이블 채색 뷰에 남는다.
+- 회전 베기(채찍 spin, 대검 heavy_spin, 검 spin_blade 지상)는 벡터와 같은 가로 접기(최소 0.3)라서 채색 원화가 한두 프레임 얇은 판처럼 보인다.
+- 잔상(대시 유령)은 rig 없는 정지 근사라 망토가 긴 직업(성전 기사·대심문관·블러드 헌터)은 망토가 곧은 판 모양 실루엣으로 남는다.
+- 극단적으로 뒤로 젖히는 자세(찌르기 대시 slide_shoot, 급강하 예비)에서 목 뒤 1px 틈이 보일 수 있다(`neckCap` 을 더 내리면 해결).

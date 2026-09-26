@@ -1,6 +1,6 @@
 // Check runner and report writer for the platform QA suites.
 //
-//   const suite = new Suite('platform_pad');                  // parses process.argv (--only, --vp, --strict, --assume, --shots)
+//   const suite = new Suite('platform_pad');                  // parses process.argv (--only, --skip, --vp, --strict, --assume, --shots)
 //   if (suite.wants('glyphs')) await suite.check({ id: 'glyphs.ps', group: 'glyphs', issue: 'P-05', pkg: 'PLAT-INPUT', title: '…' },
 //     async () => ({ pass: set === 'ps', detail: `set ${set}`, metrics: {…} }));
 //   process.exit(await suite.finish());
@@ -36,7 +36,7 @@ export function parseArgs(argv = process.argv.slice(2)) {
     if (next !== undefined && !next.startsWith('--')) { a[v.slice(2)] = next; i++; } else a[v.slice(2)] = true;
   }
   const list = (x) => (x === undefined || x === true ? null : String(x).split(',').map((s) => s.trim()).filter(Boolean));
-  return { ...a, only: list(a.only), vp: list(a.vp), assume: list(a.assume) || [], strict: !!a.strict, shots: !!a.shots };
+  return { ...a, only: list(a.only), skip: list(a.skip) || [], vp: list(a.vp), assume: list(a.assume) || [], strict: !!a.strict, shots: !!a.shots };
 }
 
 const read = (p) => { try { return fs.readFileSync(path.join(ROOT, p), 'utf8'); } catch { return null; } };
@@ -77,7 +77,7 @@ export class Suite {
     this.quiet = !!args.quiet;
   }
   /** Group filter from --only (no filter = every group). */
-  wants(group) { return !this.args.only || this.args.only.includes(group); }
+  wants(group) { return (!this.args.only || this.args.only.includes(group)) && !this.args.skip.includes(group); }
   /** Viewport filter from --vp. */
   vps(defaults) { return this.args.vp ? defaults.filter((v) => this.args.vp.includes(v)) : defaults; }
   landed(pkg) { return this.args.strict || !pkg || !!this.markers[pkg]; }
@@ -115,6 +115,18 @@ export class Suite {
       console.log(`${ICON[rec.status]} ${rec.id}${tag ? ` [${tag}]` : ''}${rec.status === 'pending' ? ` (would ${rec.would}; waits for ${rec.gate})` : ''} — ${String(rec.detail).slice(0, 400)}`);
     }
     return rec;
+  }
+
+  /**
+   * Runs one group (if --only allows it). A harness exception inside the group becomes an 'error' check
+   * `<group>.harness` and the group's open pages are closed, so the next group still runs.
+   */
+  async group(name, fn, env = null) {
+    if (!this.wants(name)) return;
+    try { await fn(); } catch (e) {
+      await this.check({ id: `${name}.harness`, group: name, title: `group '${name}' ran to completion` }, async () => { throw e; });
+      await env?.closeSessions?.();
+    }
   }
 
   /** Records the page errors of a session as a check (every page and console error is a bug). */

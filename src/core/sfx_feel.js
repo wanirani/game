@@ -7,59 +7,60 @@
 //           duck [amount, time] 음악 덕킹, prio 예산 제외(연출음), layer 'hit' 재질 레이어(hit* 7개 이상 재생 중이면 생략),
 //           lead 타격 지점까지의 선행 시간(초) — awaken_stinger 는 0.4초 먼저 재생해야 타격이 박자에 맞는다.
 // 호출부 음량: 발소리 walk 0.12 / run 0.18 / sprint 0.24 (feel §3.4), 재질 레이어는 hit/hit_heavy 와 함께.
+// step_* 의 vol 은 같은 호출 음량에서 옛 footstep 과 비슷한 크기(정상 상태 단기 RMS ≈ 1.1배)가 되게 맞췄다 (tools/test_sfx.mjs --levels).
 
 const M = (m) => 440 * Math.pow(2, (m - 69) / 12);
 
 export const FEEL_SFX = {
   // ─────────────── 발소리 (표면별: 노이즈 클릭 + 낮은 사인 쿵) ───────────────
-  step_stone: { max: 3, gap: 0.05, vary: 0.02, vol: 0.75, fn(S, { T, N }) {
+  step_stone: { max: 3, gap: 0.05, vary: 0.02, vol: 0.57, fn(S, { T, N }) {
     N(S, 0, 0.045, 0.32, { f: ['lowpass', 2000, 520, 0.8] });
     N(S, 0.002, 0.012, 0.12, { f: ['highpass', 3800] });
     T(S, 'sine', 115, 62, 0, 0.055, 0.24);
     N(S, 0.008, 0.018, 0.07, { f: ['bandpass', 2600, 0, 2.5] });
   } },
-  step_dirt: { max: 3, gap: 0.05, vary: 0.02, vol: 0.75, fn(S, { T, N }) {
+  step_dirt: { max: 3, gap: 0.05, vary: 0.02, vol: 0.52, fn(S, { T, N }) {
     N(S, 0, 0.07, 0.34, { f: ['lowpass', 950, 240, 0.7], a: 0.004 });
     T(S, 'sine', 92, 54, 0, 0.065, 0.24);
     N(S, 0.006, 0.035, 0.08, { f: ['bandpass', 1700, 900, 1.1] });
   } },
-  step_wood: { max: 3, gap: 0.05, vary: 0.02, vol: 0.85, fn(S, { T, N }) {
+  step_wood: { max: 3, gap: 0.05, vary: 0.02, vol: 0.7, fn(S, { T, N }) {
     N(S, 0, 0.05, 0.42, { f: ['bandpass', 900, 0, 3.2] });
     T(S, 'triangle', 245, 185, 0, 0.065, 0.12);
     T(S, 'sine', 125, 78, 0, 0.06, 0.18);
     N(S, 0, 0.01, 0.08, { f: ['highpass', 3200] });
   } },
-  step_metal: { max: 3, gap: 0.05, vary: 0.02, vol: 1, fn(S, { T, N, FM }) {
+  step_metal: { max: 3, gap: 0.05, vary: 0.02, vol: 0.78, fn(S, { T, N, FM }) {
     N(S, 0, 0.014, 0.16, { f: ['highpass', 2600] });
     N(S, 0, 0.035, 0.14, { f: ['bandpass', 1250, 0, 2] });
     T(S, 'sine', 132, 80, 0, 0.05, 0.16);
     FM(S, 1850, 2.76, 1.2, 0.002, 0.2, 0.05, { fd: 0.07 });
   } },
-  step_snow: { max: 3, gap: 0.05, vary: 0.02, vol: 0.78, fn(S, { T, N, CRACKLE }) {
+  step_snow: { max: 3, gap: 0.05, vary: 0.02, vol: 0.63, fn(S, { T, N, CRACKLE }) {
     N(S, 0, 0.075, 0.26, { f: ['highpass', 2300, 0, 0.7], a: 0.012 });
     N(S, 0.01, 0.055, 0.14, { f: ['bandpass', 4200, 2200, 1.2] });
     CRACKLE(S, 0, 0.06, 3, 0.08, 5200);
     T(S, 'sine', 82, 54, 0, 0.05, 0.1);
   } },
-  step_water: { max: 3, gap: 0.05, vary: 0.02, vol: 1.05, fn(S, { T, N, R }) {
+  step_water: { max: 3, gap: 0.05, vary: 0.02, vol: 0.84, fn(S, { T, N, R }) {
     N(S, 0, 0.13, 0.3, { f: ['bandpass', 1500, 480, 0.9], a: 0.004 });
     N(S, 0, 0.045, 0.1, { f: ['highpass', 3600] });
     for (let i = 0; i < 2; i++) T(S, 'sine', 600 + R() * 500, 1500 + R() * 700, 0.02 + R() * 0.06, 0.04, 0.05);
     T(S, 'sine', 92, 56, 0, 0.05, 0.12);
   } },
-  step_bone: { max: 3, gap: 0.05, vary: 0.02, vol: 0.9, fn(S, { T, N, CRACKLE }) {
+  step_bone: { max: 3, gap: 0.05, vary: 0.02, vol: 0.63, fn(S, { T, N, CRACKLE }) {
     N(S, 0, 0.045, 0.28, { f: ['lowpass', 2000, 520, 0.8] });
     T(S, 'sine', 115, 62, 0, 0.055, 0.22);
     N(S, 0.003, 0.022, 0.12, { f: ['bandpass', 2900, 0, 4] });
     CRACKLE(S, 0.004, 0.05, 3, 0.12, 3000);
   } },
-  step_flesh: { max: 3, gap: 0.05, vary: 0.02, vol: 0.75, fn(S, { T, N }) {
+  step_flesh: { max: 3, gap: 0.05, vary: 0.02, vol: 0.59, fn(S, { T, N }) {
     N(S, 0, 0.085, 0.36, { f: ['lowpass', 760, 280, 1], a: 0.006 });
     N(S, 0.006, 0.065, 0.15, { f: ['bandpass', 950, 380, 4] });
     T(S, 'sine', 150, 68, 0, 0.08, 0.18);
     T(S, 'sine', 320, 130, 0.01, 0.06, 0.05, { f: ['lowpass', 900] });
   } },
-  step_push: { max: 2, gap: 0.06, vary: 0.03, vol: 1, fn(S, { T, N }) {
+  step_push: { max: 2, gap: 0.06, vary: 0.03, vol: 0.72, fn(S, { T, N }) {
     N(S, 0, 0.1, 0.3, { f: ['bandpass', 700, 2300, 1.2], a: 0.02 });
     T(S, 'sine', 104, 58, 0, 0.055, 0.18);
     N(S, 0, 0.012, 0.06, { f: ['highpass', 3400] });

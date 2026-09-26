@@ -176,8 +176,10 @@ function recolorPx(px, m, ch, tgt, fin, strength) {
   const dk = tl < 50 ? 1.2 : 1;                               // 아주 어두운 목표는 조금 들어 올림 (검은 덩어리 방지)
   const hiSpan = Math.max(6, p98 - p90);
   for (let i = 0; i < px.length; i += 4) {
-    const w = (m[i + ch] / 255) * strength;
-    if (w <= 0.02) continue;
+    // 마스크 곡선: 재질 규칙 경계(그늘진 상아색 등)의 어중간한 값이 반쯤만 칠해져 원래 색이 비치지 않게 (0.12 이하는 제외)
+    const mm = (m[i + ch] / 255 - 0.12) / 0.58;
+    if (mm <= 0) continue;
+    const w = (mm >= 1 ? 1 : mm * mm * (3 - 2 * mm)) * strength;
     const r = px[i], g = px[i + 1], b = px[i + 2];
     const l = lumOf(r, g, b);
     let L = (l <= lref ? tl - (lref - l) * dn : tl + (l - lref) * up) * dk;

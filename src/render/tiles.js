@@ -108,6 +108,7 @@ export class TileRenderer {
     this.version = -1;
     this.dirty = new Set();
     this.initPhase();
+    this.secretMask();
     this.cls = this.snapshot();
     this.props = this.placeProps();
     this.darkCache = new Map();
@@ -135,6 +136,7 @@ export class TileRenderer {
   bakeClass(idx) {
     const m = this.map, t = m.tiles[idx];
     if (this.phaseIdx.has(idx)) return 0;
+    if (this.sec?.mask[idx]) return 5;
     if (t === T.SOLID) return 1;
     if (t === T.BREAK) return 2;
     if (t === T.ONEWAY) return 3;
@@ -234,10 +236,63 @@ export class TileRenderer {
     const idx = ty * m.w + tx, c = this.bakeClass(idx);
     if (c === this.cls[idx]) return;
     this.cls[idx] = c;
-    // 깊이 음영 반경만큼 떨어진 인접 청크까지 (청크 크기 > DEPTH_R 이므로 -R/0/+R 만 보면 충분)
+    this.dropNear(tx, ty);
+  }
+  /** (tx,ty) 를 그리는 청크와 깊이 음영 반경 안의 이웃 청크를 버린다 (청크 크기 > DEPTH_R 이므로 -R/0/+R 만 보면 충분) */
+  dropNear(tx, ty) {
     for (let dy = -DEPTH_R; dy <= DEPTH_R; dy += DEPTH_R) for (let dx = -DEPTH_R; dx <= DEPTH_R; dx += DEPTH_R) {
       this.drop(`${Math.floor((tx + dx) / CHUNK)},${Math.floor((ty + dy) / CHUNK)}`);
     }
+  }
+  /**
+   * 비밀 공간 마스크 (타일이 바뀌거나 비밀 통로가 드러날 때만 다시 계산): tilemap 의 fillSecretPockets 는 비밀 방의 빈칸만
+   * 가짜 벽으로 메우므로, 안에 남은 액체·가시·발판이 벽 속에 비쳐 보였다. 빈칸·드러난 가짜 벽·방 가장자리에 닿지 않고
+   * 숨은 가짜 벽에만 둘러싸인 액체·가시·발판 덩어리 = 1 → 드러나기 전까지 벽으로 굽고 액체도 그리지 않는다.
+   * 다시 계산해서 바뀐 칸이 있으면 그 청크를 버려 다시 굽게 한다.
+   */
+  secretMask() {
+    const m = this.map;
+    if (!m) return null;
+    const key = m.version + ':' + m.revealed.size;
+    if (this.sec && this.sec.key === key) return this.sec.mask;
+    const W = m.w, H = m.h, tl = m.tiles, N = W * H;
+    const mask = new Uint8Array(N);
+    let fake = false;
+    for (let i = 0; i < N; i++) if (tl[i] === T.FAKE && !m.revealed.has(i)) { fake = true; break; }
+    if (fake) {
+      const seen = new Uint8Array(N), stack = [], comp = [];
+      const pass = (t) => t === T.LIQUID || t === T.SPIKE || t === T.ONEWAY || t === T.BREAK;
+      for (let i0 = 0; i0 < N; i0++) {
+        if (seen[i0] || !pass(tl[i0]) || tl[i0] === T.BREAK) continue;
+        comp.length = 0; stack.length = 0;
+        seen[i0] = 1; stack.push(i0);
+        let open = false, hidden = false;
+        while (stack.length) {
+          const i = stack.pop(), x = i % W, y = (i - x) / W;
+          comp.push(i);
+          if (x === 0 || y === 0 || x === W - 1 || y === H - 1) open = true;
+          for (let d = 0; d < 4; d++) {
+            const j = d === 0 ? (x > 0 ? i - 1 : -1) : d === 1 ? (x < W - 1 ? i + 1 : -1) : d === 2 ? (y > 0 ? i - W : -1) : (y < H - 1 ? i + W : -1);
+            if (j < 0 || seen[j]) continue;
+            const t = tl[j];
+            if (pass(t)) { seen[j] = 1; stack.push(j); continue; }
+            if (t === T.FAKE) { if (m.revealed.has(j)) open = true; else hidden = true; }
+            else if (t !== T.SOLID) open = true; // 빈칸(마커 칸 포함)
+          }
+        }
+        if (hidden && !open) for (const i of comp) if (tl[i] !== T.BREAK) mask[i] = 1;
+      }
+    }
+    const old = this.sec?.mask;
+    this.sec = { key, mask };
+    if (old && this.cls) {
+      for (let i = 0; i < N; i++) {
+        if (old[i] === mask[i]) continue;
+        this.cls[i] = this.bakeClass(i);
+        this.dropNear(i % W, Math.floor(i / W));
+      }
+    }
+    return mask;
   }
   /** 청크를 버리고 캔버스는 풀에 돌려 둔다 (최대 2장) */
   drop(key) {
@@ -285,7 +340,7 @@ export class TileRenderer {
     if (tx < 0 || tx >= m.w || ty < 0 || ty >= m.h) return ty >= 0 && ty < m.h; // 좌우 밖은 벽으로 이어진 듯이
     const i = ty * m.w + tx, t = m.tiles[i];
     if (this.phaseIdx.size && this.phaseIdx.has(i)) return false; // 위상 타일은 drawPhase 가 따로 그림
-    return t === T.SOLID || t === T.BREAK || (t === T.FAKE && !m.revealed.has(i));
+    return t === T.SOLID || t === T.BREAK || (t === T.FAKE && !m.revealed.has(i)) || this.sec.mask[i] === 1;
   }
   bake(ctx, tx0, ty0) {
     const m = this.map, S = TILE, st = this.style;
@@ -293,13 +348,14 @@ export class TileRenderer {
     const pat = tex ? ctx.createPattern(tex, 'repeat') : null;
     const pat2 = tex2 ? ctx.createPattern(tex2, 'repeat') : null;
     const rng = new RNG(hashStr(this.stage.id) + tx0 * 31 + ty0 * 17);
+    const sec = this.sec.mask; // 비밀 방 속 액체·가시·발판 → 드러나기 전까지 벽으로
     for (let ty = ty0; ty < ty0 + CHUNK; ty++) {
       for (let tx = tx0; tx < tx0 + CHUNK; tx++) {
         if (tx < 0 || ty < 0 || tx >= m.w || ty >= m.h) continue;
         const idx = ty * m.w + tx;
         const t = m.tiles[idx];
         const x = (tx - tx0) * S, y = (ty - ty0) * S;
-        if (t === T.SOLID || t === T.BREAK || (t === T.FAKE && !m.revealed.has(idx))) {
+        if (t === T.SOLID || t === T.BREAK || (t === T.FAKE && !m.revealed.has(idx)) || sec[idx]) {
           const alt = m.alt[idx];
           // 텍스처 (월드 좌표 기준으로 정렬되도록 패턴 이동)
           const p = alt ? pat2 : pat;
@@ -566,6 +622,7 @@ export class TileRenderer {
     const m = this.map;
     const S = CHUNK * TILE;
     this.frame++;
+    this.secretMask(); // 비밀 통로가 드러났으면 해당 청크를 먼저 버린다
     const x0 = Math.floor(cam.x / S), x1 = Math.floor((cam.x + cam.vw) / S);
     const y0 = Math.floor(cam.y / S), y1 = Math.floor((cam.y + cam.vh) / S);
     for (let cy = Math.max(0, y0); cy <= Math.min(Math.floor((m.h - 1) / CHUNK), y1); cy++) {
@@ -654,7 +711,8 @@ export class TileRenderer {
         const i = mk.ty * W + mk.tx;
         if ((mk.ty > 0 && liq[i - W]) || (mk.tx > 0 && mk.tx < W - 1 && liq[i - 1] && liq[i + 1])) liq[i] = 1;
       }
-      this.hideSecretLiquid(liq);
+      const sec = this.secretMask(); // 드러나지 않은 비밀 방 속 액체는 벽으로 구워 두었으므로 그리지 않는다
+      for (let i = 0; i < N; i++) if (sec[i]) liq[i] = 0;
     }
     const run = new Uint8Array(N);
     for (let y = 0; y < H; y++) {
@@ -693,37 +751,6 @@ export class TileRenderer {
     }
     this.liq = { key, liq, surf, fall, falls, count };
     return this.liq;
-  }
-  /**
-   * 비밀 공간 속 액체 숨기기: 가짜 벽(h)으로 메운 비밀 방 안의 액체는 타일이 그대로 LIQUID 라 벽 속에 물웅덩이가 비쳐 보인다.
-   * 빈칸·드러난 가짜 벽·방 가장자리에 닿지 않고, 숨은 가짜 벽에만 둘러싸인 액체 덩어리는 드러날 때까지 그리지 않는다.
-   */
-  hideSecretLiquid(liq) {
-    const m = this.map, W = m.w, H = m.h, tl = m.tiles;
-    let fake = false;
-    for (let i = 0; i < tl.length; i++) if (tl[i] === T.FAKE && !m.revealed.has(i)) { fake = true; break; }
-    if (!fake) return;
-    const seen = new Uint8Array(W * H), stack = [], comp = [];
-    const pass = (i) => liq[i] || tl[i] === T.SPIKE || tl[i] === T.ONEWAY || tl[i] === T.BREAK;
-    for (let i0 = 0; i0 < tl.length; i0++) {
-      if (!liq[i0] || seen[i0]) continue;
-      comp.length = 0; stack.length = 0;
-      seen[i0] = 1; stack.push(i0);
-      let open = false, hidden = false;
-      while (stack.length) {
-        const i = stack.pop(), x = i % W, y = (i - x) / W;
-        comp.push(i);
-        if (x === 0 || y === 0 || x === W - 1 || y === H - 1) open = true;
-        for (const j of [x > 0 ? i - 1 : -1, x < W - 1 ? i + 1 : -1, y > 0 ? i - W : -1, y < H - 1 ? i + W : -1]) {
-          if (j < 0 || seen[j]) continue;
-          if (pass(j)) { seen[j] = 1; stack.push(j); continue; }
-          const t = tl[j];
-          if (t === T.EMPTY || (t === T.FAKE && m.revealed.has(j))) open = true;
-          else if (t === T.FAKE) hidden = true;
-        }
-      }
-      if (hidden && !open) for (const i of comp) liq[i] = 0;
-    }
   }
   /** 액체 몸통 채우기 (수면은 물결, 나머지는 행 단위 사각형으로 묶어 한 번에 채움) */
   liquidBody(ctx, cam, t, fill, info) {

@@ -47,6 +47,10 @@ export const GIMMICK_KINDS = ['mirror', 'magma', 'deep', 'wind', 'heartbeat', 'b
 const _warned = new Set();
 /** 같은 key 의 경고는 한 번만 */
 export function warnOnce(key, ...msg) { if (_warned.has(key)) return; _warned.add(key); console.warn(...msg); }
+/** 입력 버퍼 창 + 최근 히트스톱 보정 (MASTER_PLAN R16 — 멈춘 동안 누른 입력도 놓치지 않게) */
+export function bufWindow(world, base) { return base + Math.min(0.3, world?.frozenRecent ?? 0); }
+/** 설정 '동작 줄이기' */
+export function reducedMotion(world) { return !!world?.game?.settings?.reduceMotion; }
 /** (tx,ty) 가 벽(SOLID/BREAK)인가 (맵 밖 규칙은 TileMap.typeAt) */
 export function solidAt(map, tx, ty) { const t = map.typeAt(tx, ty); return t === T.SOLID || t === T.BREAK; }
 /** 사각형(월드 px)이 벽 타일과 겹치지 않는가 */
@@ -383,7 +387,7 @@ class MirrorGimmick {
     if (n) {
       ctx.fillStyle = `rgba(200,230,255,${(0.07 + 0.16 * blink).toFixed(3)})`;
       ctx.fill();
-      ctx.setLineDash([6, 6]); ctx.lineDashOffset = -this.t * 10;
+      ctx.setLineDash([6, 6]); ctx.lineDashOffset = reducedMotion(this.world) ? 0 : -this.t * 10;
       ctx.strokeStyle = `rgba(200,230,255,${(0.35 + 0.4 * blink).toFixed(3)})`; ctx.lineWidth = 1.5;
       ctx.stroke();
       ctx.setLineDash([]);
@@ -430,7 +434,7 @@ export class MirrorSwitch extends Entity {
     if (this.glowT > 0) this.glowT -= dt;
     const p = world.player;
     this.near = !!p && !p.dead && Math.abs(p.cx - this.cx) < 40 && Math.abs(p.bottom - this.bottom) < 30;
-    if (this.near && !world.cutscene && !world.inputLock && input.buffered('up', 0.1)) {
+    if (this.near && !world.cutscene && !world.inputLock && input.buffered('up', bufWindow(world, 0.1))) {
       input.consume('up');
       this.mirror?.flip(false, this);
     }
@@ -737,7 +741,7 @@ class MagmaGimmick {
       const pulse = 0.5 + 0.5 * Math.sin(this.t * 9), a = 0.35 * pulse;
       const hr = this.openRuns(this.highPx + 2, cam);
       ctx.fillStyle = `rgba(255,120,40,${(0.06 + 0.1 * pulse).toFixed(3)})`;   // 잠길 구역
-      for (let i = 0; i < hr.length; i += 2) ctx.fillRect(hr[i], this.highPx, hr[i + 1] - hr[i], Math.max(0, lv - this.highPx));
+      for (let i = 0; i < hr.length; i += 2) ctx.fillRect(hr[i], this.highPx, hr[i + 1] - hr[i], clamp(lv - this.highPx, 0, TILE));
       ctx.fillStyle = `rgba(255,120,40,${a.toFixed(3)})`;   // 목표 수위 띠
       for (let i = 0; i < hr.length; i += 2) ctx.fillRect(hr[i], this.highPx - 5, hr[i + 1] - hr[i], 10);
       ctx.strokeStyle = `rgba(255,190,90,${(0.35 + 0.5 * pulse).toFixed(3)})`; ctx.lineWidth = 2; ctx.setLineDash([12, 8]); ctx.lineDashOffset = -this.t * 40;
@@ -829,8 +833,9 @@ class DeepGimmick {
   }
   onJumpInput(p) {
     if (!this.inWater || p.dead) return false;
-    if (!input.buffered('jump', 0.13)) return true;   // 물속에선 일반 점프 규칙(점프 끊기 포함)을 건너뛴다
-    const w = this.world, s = this.surfaceAbove(p);
+    const w = this.world;
+    if (!input.buffered('jump', bufWindow(w, 0.13))) return true;   // 물속에선 일반 점프 규칙(점프 끊기 포함)을 건너뛴다
+    const s = this.surfaceAbove(p);
     if ((s.above || p.y - s.y <= 40) && !s.blocked) {
       // 수면 가까이: 물 밖으로 도약
       p.vy = -(p.jumpVel?.() ?? 780) * 0.95;
@@ -1109,7 +1114,7 @@ class WindGimmick {
     if (layer !== 'front' || this.phase === 'off') return;
     const warn = this.phase === 'warn';
     const q = this.world.fx.quality ?? 1;
-    const n = Math.round((warn ? 10 : 24) * q);
+    const n = Math.round((warn ? 10 : 24) * q * (reducedMotion(this.world) ? 0.4 : 1));
     const a = warn ? 0.18 + 0.12 * this.phaseK : 0.5;
     const span = cam.vw + 240, sp = warn ? 420 : 900 + this.force * 0.3;
     ctx.save();

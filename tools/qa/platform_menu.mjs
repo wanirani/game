@@ -57,7 +57,7 @@ function scrollState(s) {
 
 try {
   // ── 1a. touch drag −160 CSS px keeps its position (P-01) ─────────────────────────────────────
-  if (suite.wants('scroll')) {
+  await suite.group('scroll', async () => {
     for (const vp of suite.vps(['phone2'])) {
       const s = await menuPage(vp, 'inventory');
       const t = new Touch(s.cdp, s.page);
@@ -81,10 +81,10 @@ try {
       await suite.errors({ id: `scroll.${vp}.errors`, group: 'scroll' }, s);
       await s.close();
     }
-  }
+  }, env);
 
   // ── 1b. 5 wheel notches keep their position (desktop, P-01) ────────────────────────────────────
-  if (suite.wants('wheel')) {
+  await suite.group('wheel', async () => {
     const s = await menuPage('desk', 'inventory');
     for (const tab of ['inventory', 'bestiary', 'quests']) {
       await openTab(s, tab);
@@ -105,10 +105,10 @@ try {
     }
     await suite.errors({ id: 'wheel.errors', group: 'wheel' }, s);
     await s.close();
-  }
+  }, env);
 
   // ── D-pad navigation still makes the list follow the selection (P-01 regression guard) ──────────
-  if (suite.wants('follow')) {
+  await suite.group('follow', async () => {
     const s = await menuPage('desk', 'inventory');
     const a = await scrollState(s);
     for (let i = 0; i < 14; i++) await s.key('ArrowDown', 50);
@@ -117,10 +117,10 @@ try {
     await suite.check({ id: 'follow.inventory', group: 'follow', issue: 'P-01', pkg: 'PLAT-MENU', title: 'D-pad down through the grid scrolls the selection into view', session: s }, async () => ({ pass: !!a && !!b && b.y > a.y + 20, detail: a && b ? `y ${a.y.toFixed(0)} → ${b.y.toFixed(0)} (max ${b.max.toFixed(0)})` : 'no scroller' }));
     await suite.errors({ id: 'follow.errors', group: 'follow' }, s);
     await s.close();
-  }
+  }, env);
 
   // ── 2. tap audit of every tab at 740×360 (P-04) ─────────────────────────────────────────────────
-  if (suite.wants('taps')) {
+  await suite.group('taps', async () => {
     for (const vp of suite.vps(['phone2'])) {
       const s = await menuPage(vp, 'status');
       await installTapRecorder(s.page);
@@ -133,10 +133,10 @@ try {
       await suite.errors({ id: `taps.${vp}.errors`, group: 'taps' }, s);
       await s.close();
     }
-  }
+  }, env);
 
   // ── 3. a PS pad shows controller glyphs, not keyboard keycaps, in the bottom bar (P-05) ─────────
-  if (suite.wants('glyphs')) {
+  await suite.group('glyphs', async () => {
     const s = await menuPage('desk', 'inventory', { initScripts: [fakePadInit({ id: PAD_IDS.ps })] });
     await installTapRecorder(s.page);
     await connect(s.page);
@@ -152,10 +152,10 @@ try {
     }));
     await suite.errors({ id: 'glyphs.errors', group: 'glyphs' }, s);
     await s.close();
-  }
+  }, env);
 
   // ── 4. swipe left on the content → next tab (§5.6) ───────────────────────────────────────────────
-  if (suite.wants('swipe')) {
+  await suite.group('swipe', async () => {
     const s = await menuPage('phone2', 'inventory');
     const t = new Touch(s.cdp, s.page);
     const a = await scrollState(s);
@@ -167,10 +167,10 @@ try {
     await suite.check({ id: 'swipe.next', group: 'swipe', issue: '§5.6', gate: 'PLAT-MENU', title: 'horizontal swipe left on the content → next tab', session: s }, async () => ({ pass: ti1 === ti0 + 1, detail: `ti ${ti0} → ${ti1}` }));
     await suite.errors({ id: 'swipe.errors', group: 'swipe' }, s);
     await s.close();
-  }
+  }, env);
 
   // ── 5. long-press on an inventory item opens the action menu (§5.6) ─────────────────────────────
-  if (suite.wants('longpress')) {
+  await suite.group('longpress', async () => {
     const s = await menuPage('phone2', 'inventory');
     const t = new Touch(s.cdp, s.page);
     const cell = await s.eval(() => {
@@ -189,7 +189,7 @@ try {
     await suite.check({ id: 'longpress.inventory', group: 'longpress', issue: '§5.6', gate: 'PLAT-MENU', title: 'long-press 450 ms on an item opens its action menu', session: s }, async () => ({ pass: !!modal?.open, detail: cell ? fmt(modal) : 'no inventory grid' }));
     await suite.errors({ id: 'longpress.errors', group: 'longpress' }, s);
     await s.close();
-  }
+  }, env);
 } catch (e) {
   await suite.check({ id: 'harness', group: 'harness', title: 'suite ran to completion' }, async () => { throw e; });
 } finally {

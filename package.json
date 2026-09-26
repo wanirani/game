@@ -9,7 +9,9 @@
     "smoke": "node tools/smoke.mjs",
     "validate": "node tools/validate_maps.mjs",
     "test:api": "node tools/accounts/test_api.mjs",
-    "test:client": "node tools/accounts/test_client.mjs"
+    "test:client": "node tools/accounts/test_client.mjs",
+    "qa:platform": "node tools/qa/run_platform.mjs",
+    "qa:platform:strict": "node tools/qa/run_platform.mjs --strict"
   },
   "devDependencies": {
     "playwright-core": "1.56.1"

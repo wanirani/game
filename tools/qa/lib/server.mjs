@@ -51,6 +51,13 @@ const COMPRESSIBLE = /\.(html|js|mjs|css|json|webmanifest|svg|txt)$/;
 export async function startStatic(dir, { brotli = true } = {}) {
   const root = path.resolve(dir);
   const cache = new Map();
+  if (brotli) {
+    // precompress like a CDN would, so the first request of a file does not pay the compression time
+    const walk = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { if (/^(node_modules|\.git)$/.test(e.name)) continue; const f = path.join(d, e.name); if (e.isDirectory()) walk(f); else if (COMPRESSIBLE.test(e.name)) files.push(f); } };
+    const files = [];
+    walk(root);
+    await Promise.all(files.map((f) => new Promise((res) => zlib.brotliCompress(fs.readFileSync(f), { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 9 } }, (err, b) => { if (!err) cache.set(f, b); res(); }))));
+  }
   const srv = http.createServer((req, res) => {
     let u = decodeURIComponent(req.url.split('?')[0]);
     if (u.endsWith('/')) u += 'index.html';
@@ -94,6 +101,7 @@ export async function openEnv({ server = null, browserArgs = [] } = {}) {
       sessions.add(s); s._onClose = () => sessions.delete(s);
       return s;
     },
+    async closeSessions() { for (const s of [...sessions]) await s.close().catch(() => {}); },
     async close() {
       for (const s of [...sessions]) await s.close().catch(() => {});
       await browser.close().catch(() => {});
@@ -149,7 +157,7 @@ export class Session {
     if (wait) await this.waitGame();
   }
   /** window.__game exists and has a scene (or the given predicate holds). */
-  async waitGame(pred = 'g.scenes.length > 0', timeout = 20000) {
+  async waitGame(pred = 'g.scenes.length > 0', timeout = 45000) {
     await this.page.waitForFunction(`(() => { const g = window.__game; return !!g && (${pred}); })()`, null, { timeout, polling: 50 });
   }
   eval(fn, arg) { return this.page.evaluate(fn, arg); }

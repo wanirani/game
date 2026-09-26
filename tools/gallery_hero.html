@@ -241,7 +241,7 @@ if (SEC.includes('pupeq') && !ZOOM) {
   ];
   row(EQ.map(([cls, label, over]) => ({ label: `${CLASSES[cls].name} · ${label}`, p: () => ent({ look: Object.assign(lookOf('kael', cls, { style: 3, level: 7 }), over), ch: CHARACTERS.kael, anim: 'run', vx: 200 }) })), 180, 200, 1.6);
 }
-// 확장 훅 예시 (?sec=hooks): 실제 구현은 WP1(hero_gait.js)·C6(탈것)이 등록. 여기서는 계약이 동작하는지만 보여 주는 견본
+// 확장 훅 예시 (?sec=hooks): 기본 동작은 hero.js 가 hero_gait.js(WP1)·riderPose(C6)로 한다. 여기서는 등록형 덮어쓰기가 동작하는지 보여 주는 견본
 if (SEC.includes('hooks') && !ZOOM) {
   registerHeroHooks({
     gaitAnims: { walk: 'run' },
@@ -259,7 +259,7 @@ if (SEC.includes('hooks') && !ZOOM) {
       return { cx: ride.sx, bottom: ride.sy + 41 * hs, skipFarLeg: true };
     },
   });
-  header('확장 훅 견본: gait(walk) · feel(찌그러짐·섬광) · rider(앉은 자세·먼 다리 생략) — 등록 전에는 아무 효과 없음');
+  header('확장 훅 견본(등록형 덮어쓰기): gait(walk) · feel(찌그러짐·섬광) · rider — 기본은 hero_gait.js(WP1)·hero.js riderPose(C6)');
   const base = (o) => () => ent({ look: lookOf('kael', 'kael_hunter'), ch: CHARACTERS.kael, ...o });
   row([
     { label: 'walk (gait 훅)', p: base({ anim: 'walk', vx: 120 }) },

@@ -237,25 +237,9 @@ export function applyHitstop(world, dur, cls = 'L') {
 }
 
 // ───────────────────────── 연출 보조 ─────────────────────────
-function sfxIf(name, o) { if (name && SFX[name]) { audio.sfx(name, o); return true; } return false; }
-const _sfxLog = [];   // 최근 타격 효과음 시작 시각 (ms)
-function sfxBudget(world, n = 1) {
-  const now = performance.now();
-  while (_sfxLog.length && now - _sfxLog[0] > 150) _sfxLog.shift();
-  let in100 = 0;
-  for (const t of _sfxLog) if (now - t <= 100) in100++;
-  return in100 + n <= (BUDGET[qualityKey(world)]?.sfxPer100ms ?? 10);
-}
-function sfxPlay(world, name, o, layer = false) {
-  if (!name) return false;
-  if (layer) {
-    if (!sfxBudget(world)) return false;
-    if (_sfxLog.length > (BUDGET.hitVoices ?? 6)) return false;
-  }
-  const ok = layer ? sfxIf(name, o) : (audio.sfx(name, o), true);
-  if (ok) _sfxLog.push(performance.now());
-  return ok;
-}
+/** 등록된 효과음만 재생 (sfx_feel.js 이름이 아직 없으면 기본 삑 소리 대신 조용히). 예산·재질 층 상한은 audio.js 가 적용 */
+function sfxHas(name) { return !!name && (audio.has ? audio.has(name) : !!SFX[name]); }
+function sfxPlay(name, o) { if (!sfxHas(name)) return false; audio.sfx(name, o); return true; }
 
 let _hfxLive = null, _hfxCheckT = -1e9;
 /** render/hitfx.js 가 실제 구현인가 (스텁은 캐시 스프라이트로 null 을 돌려준다) */
@@ -467,58 +451,58 @@ function hitVisuals(world, attack, target, info, cls, px, py, dir) {
 function legacyVisuals(world, fx, attack, info, cls, px, py, dir, mat, rim, el, qk, small, typ, size) {
   const ci = SIZE_I[cls] ?? 0, theta = dir > 0 ? 0 : Math.PI;
   const heavy = ci >= 2 || info.crit;
+  const cap = BUDGET[qualityKey(world)]?.perHit ?? 28;
+  const rings = small ? 0 : (info.crit ? 1 : 0) + (info.counter ? 1 : 0) + ((cls === 'F' || cls === 'S' || cls === 'A') ? 1 : 0);
   fx.flash(px, py, { color: info.counter ? COUNTER.color : rim, size: small ? 34 : [48, 58, 72, 92][ci], life: 0.1 });
-  let n = 0;
-  n += emitN(fx, 'hit', px, py, (small ? 3 : [5, 6, 8, 10][ci]) * qk, { color: rim, angle: theta, spread: typ === 'streak' ? 0.5 : 1.1 });
+  let n = 1 + rings;   // 섬광 1 + 고리를 예산에 미리 넣는다
+  const put = (type, k, opts) => { const m = Math.min(Math.round(k), Math.max(0, cap - n)); n += emitN(fx, type, px, py, m, opts); };
+  put('hit', (small ? 3 : [5, 6, 8, 10][ci]) * qk, { color: rim, angle: theta, spread: typ === 'streak' ? 0.5 : 1.1 });
   const M = MATERIAL[mat] ?? MATERIAL.flesh;
-  const mk = small ? 0.4 : 1;
-  const cnt = (M.n?.[Math.min(3, ci)] ?? 6) * mk * qk;
+  const cnt = (M.n?.[Math.min(3, ci)] ?? 6) * (small ? 0.4 : 1) * qk;
+  const extra = !small && qk > 0.5;   // 연기·먼지 한 개짜리 덧층은 낮은 품질에서 생략
   switch (mat) {
     case 'flesh':
-      n += emitN(fx, 'blood', px, py, cnt * 0.8, { angle: dir > 0 ? -0.35 : Math.PI + 0.35, spread: M.cone ?? 0.5, speed: 300 });
-      if (heavy && !small) n += emitN(fx, 'smoke', px, py, 1, { color: M.mist, alpha: 0.4, speed: 40 });
+      put('blood', cnt * 0.8, { angle: dir > 0 ? -0.35 : Math.PI + 0.35, spread: M.cone ?? 0.5, speed: 300 });
+      if (heavy && extra) put('smoke', 1, { color: M.mist, alpha: 0.4, speed: 40 });
       break;
-    case 'bone': n += emitN(fx, 'shard', px, py, cnt, { color: M.color, size: 3 }); if (!small) n += emitN(fx, 'dust', px, py, 1, {}); break;
-    case 'metal': n += emitN(fx, 'spark', px, py, cnt * 0.8, { color: M.color, speed: 500, grav: M.grav }); break;
-    case 'ghost': n += emitN(fx, 'soul', px, py, cnt, {}); if (!small) fx.ring(px, py, { color: '#8affc8', r0: 6, r1: 46, life: 0.3, width: 3 }); break;
-    case 'stone': n += emitN(fx, 'shard', px, py, cnt, { color: M.color }); if (!small) n += emitN(fx, 'dust', px, py, 2, {}); break;
-    case 'slime': n += emitN(fx, 'blood', px, py, cnt, { color: M.color }); break;
-    case 'paper': n += emitN(fx, 'shard', px, py, cnt, { color: M.color, grav: 200 }); break;
-    case 'ice': n += emitN(fx, 'ice', px, py, cnt, {}); if (!small) n += emitN(fx, 'smoke', px, py, 1, { color: M.mist, alpha: 0.3 }); break;
-    case 'fire': n += emitN(fx, 'ember', px, py, cnt, {}); if (!small) n += emitN(fx, 'fire', px, py, 1, {}); break;
-    case 'prop': n += emitN(fx, 'spark', px, py, 3 * qk, { color: M.color }); break;
+    case 'bone': put('shard', cnt, { color: M.color, size: 3 }); if (extra) put('dust', 1, {}); break;
+    case 'metal': put('spark', cnt * 0.8, { color: M.color, speed: 500, grav: M.grav }); break;
+    case 'ghost': put('soul', cnt, {}); if (extra && n < cap) { fx.ring(px, py, { color: '#8affc8', r0: 6, r1: 46, life: 0.3, width: 3 }); n++; } break;
+    case 'stone': put('shard', cnt, { color: M.color }); if (extra) put('dust', 2, {}); break;
+    case 'slime': put('blood', cnt, { color: M.color }); break;
+    case 'paper': put('shard', cnt, { color: M.color, grav: 200 }); break;
+    case 'ice': put('ice', cnt, {}); if (extra) put('smoke', 1, { color: M.mist, alpha: 0.3 }); break;
+    case 'fire': put('ember', cnt, {}); if (extra) put('fire', 1, {}); break;
+    case 'prop': put('spark', 3 * qk, { color: M.color }); break;
     default: break;
   }
-  if (el && EL_PRESET[el]) emitN(fx, EL_PRESET[el], px, py, Math.min(6 * qk, Math.max(0, BUDGET.high.perHit * qk - n)), {});
+  if (el && EL_PRESET[el]) put(EL_PRESET[el], 6 * qk, {});
   if (info.crit && !small) fx.ring(px, py, { color: '#ffe080', r0: 6, r1: 60, life: 0.25, width: 5 });
-  if (info.counter) fx.ring(px, py, { color: COUNTER.color, r0: 4, r1: 50, life: 0.22, width: 4 });
+  if (info.counter && !small) fx.ring(px, py, { color: COUNTER.color, r0: 4, r1: 50, life: 0.22, width: 4 });
   if ((cls === 'F' || cls === 'S' || cls === 'A') && !small) fx.ring(px, py, { color: rim, r0: 10, r1: size * 0.7, life: 0.3, width: 6 });
 }
 
 function hitSounds(world, attack, target, info, cls, cmp) {
   const pitch = rand(0.92, 1.08);
-  if (info.prop) { sfxPlay(world, 'hit', { vol: 0.5, pitch }); return; }
-  if (cls === 'U') {
-    if (!info.cont && sfxBudget(world, 2)) sfxPlay(world, info.crit ? 'crit' : 'hit', { vol: 0.35, pitch });
-    return;
-  }
+  if (info.prop) { sfxPlay('hit', { vol: 0.5, pitch }); return; }
+  if (cls === 'U') { if (!info.cont) sfxPlay(info.crit ? 'crit' : 'hit', { vol: 0.35, pitch }); return; }
   const L = HIT_SFX[cls] ?? HIT_SFX.L;
-  const heavyName = (n) => (SFX[n] ? n : 'hit_heavy');   // ult_impact·awaken_boom 이 아직 없으면 기존 소리로
+  const main = (n) => (sfxHas(n) ? n : 'hit_heavy');   // ult_impact·awaken_boom 이 아직 없으면 기존 소리로
   const vol = cmp ? 0.55 : info.cont ? 0.6 : 0.9;
-  sfxPlay(world, info.crit ? 'crit' : L[0] ? heavyName(L[0]) : 'hit', { vol, pitch });
-  if (info.crit && L[0] && L[0] !== 'hit') sfxPlay(world, heavyName(L[0]), { vol: vol * 0.7, pitch }, true);
+  sfxPlay(info.crit ? 'crit' : L[0] ? main(L[0]) : 'hit', { vol, pitch });
+  if (info.crit && L[0] && L[0] !== 'hit') sfxPlay(main(L[0]), { vol: vol * 0.7, pitch });
   if (info.cont || cmp) return;
   const mat = info.part?.armor ? 'metal' : target.def?.material ?? 'flesh';
   const M = MATERIAL[mat];
   for (const layer of L.slice(1)) {
     if (layer === 'mat') {
-      if (M?.sfx) sfxPlay(world, M.sfx, { vol: 0.6, pitch }, true);
+      if (M?.sfx) sfxPlay(M.sfx, { vol: 0.6, pitch });
       const w = weightOf(target);
-      if (M?.clang && (w === 'HEAVY' || w === 'FIXED')) sfxPlay(world, 'clang', { vol: 0.45, pitch }, true);
-    } else sfxPlay(world, layer, { vol: 0.8, pitch }, true);
+      if (M?.clang && (w === 'HEAVY' || w === 'FIXED')) sfxPlay('clang', { vol: 0.45, pitch });
+    } else sfxPlay(layer, { vol: 0.8, pitch });
   }
-  if (info.counter) sfxPlay(world, COUNTER.sfx, { vol: 0.9 }, true);
-  if (info.back) sfxPlay(world, BACK.sfx, { vol: 0.7 }, true);
+  if (info.counter) sfxPlay(COUNTER.sfx, { vol: 0.9 });
+  if (info.back) sfxPlay(BACK.sfx, { vol: 0.7 });
 }
 
 /** 적 → 플레이어 피격 연출: 3프레임 경직, 카메라, 피, 숫자 (진동·비네트는 haptics.js / world.onPlayerHurt 담당) */

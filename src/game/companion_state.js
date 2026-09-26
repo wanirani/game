@@ -17,7 +17,7 @@ import { josa } from '../data/items.js';
 import {
   MOUNTS, GUARDIANS, COMPANION_ORDER, UNLOCK_ORDER, CMP_MAX_LV, BOND_MAX, BOND_NAMES, BOND_RANKS, BOND_GAIN,
   STABLE_SHOP, TRIBUTE, CMP_TEXT, companionDef, normCompanionId, cexpToNext, guardianShare, trampleRatio, cdMul,
-  mountHpMul, mountSpeedMul, bondRank, bondNext, cmpText, GUARD_RULES,
+  mountHpMul, mountSpeedMul, bondRank, bondNext, cmpText, GUARD_RULES, EGG_TEXT,
 } from '../data/companions.js';
 
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -512,7 +512,7 @@ export function eggStatus(state) {
     const at = Number.isFinite(c.eggs[id]?.at) ? c.eggs[id].at : -99;
     const left = Math.max(0, (o.hatchAfter ?? 2) - (c.clears - at));
     out.push({ id, egg: o.egg ?? '알', ready: left === 0, left,
-      text: left === 0 ? '금이 가기 시작했다!' : left === 1 ? '따뜻하다… (스테이지 1개 더 클리어)' : `따뜻하다… (스테이지 ${left}개 더 클리어)` });
+      text: left === 0 ? EGG_TEXT.ready : left === 1 ? EGG_TEXT.waiting : EGG_TEXT.waitingN.replace('{n}', String(left)) });
   }
   return out;
 }
@@ -618,9 +618,9 @@ export function applyCompanionDebug(state, params) {
     };
     const cmp = P.get('cmp');
     if (cmp) for (const id of (cmp === 'all' ? COMPANION_ORDER : idList(cmp))) grant(id);
-    const guards = P.has('guards') ? idList(P.get('guards')).map(grant).filter(Boolean).slice(0, 2) : null;
+    const guards = P.has('guards') ? idList(P.get('guards')).map(normCompanionId).filter(isGuard).map(grant).slice(0, 2) : null;
     if (guards && guards.length > 1 && guardianSlots(state) < 2) state.progress.chapter = Math.max(chapterOf(state), 8);
-    if (P.has('mount')) { const m = P.get('mount'); equipMount(state, null, m && m !== 'none' ? grant(m) : null); }
+    if (P.has('mount')) { const m = normCompanionId(P.get('mount')); if (isMount(m)) equipMount(state, null, grant(m)); else if (!P.get('mount') || P.get('mount') === 'none') equipMount(state, null, null); }
     if (guards) {
       const L = heroLoadout(state, null);
       L.guards = [null, null];

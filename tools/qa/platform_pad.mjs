@@ -9,6 +9,7 @@ import { Suite, fmt } from './lib/suite.mjs';
 import { openEnv } from './lib/server.mjs';
 import { fakePadInit, PAD_IDS, BTN, press, axes, setButton, connect, disconnect, rumbleLog } from './lib/fakepad.mjs';
 import { Touch, padVisible, waitPadVisible } from './lib/touch.mjs';
+import { prepPlayer, refill, during } from './lib/play.mjs';
 
 const suite = new Suite('platform_pad');
 const env = await openEnv();
@@ -29,39 +30,11 @@ async function stageWithPad(vp, stage = 's03', pad = {}, extra = {}) {
   return s;
 }
 
-/** Invulnerable, full MP/SP-less, hearts, two active skills in the slots, on the ground. */
-async function prepPlayer(s) {
-  await s.eval(async () => {
-    const g = window.__game, w = g.world, p = w.player;
-    p.buffs.invincible = 9999;
-    w.run.hearts = 60;
-    try {
-      const S = await import('/src/data/skills.js');
-      const hero = p.hero;
-      const tree = S.SKILL_TREES?.[hero.charId || g.state.charId];
-      const act = [];
-      if (tree) for (const b of tree.branches) for (const id of b.skills) if (S.SKILLS[id]?.type === 'active' && act.length < 4) act.push(id);
-      for (const id of act) hero.skills[id] = Math.max(1, hero.skills[id] || 0);
-      hero.slots = [act[0] ?? null, act[1] ?? null, act[2] ?? null, act[3] ?? null];
-      p.refreshStats?.();
-    } catch (e) { console.warn('qa seed skills', e); }
-    p.mp = p.stats?.mp ?? 999;
-    for (const e of w.enemies?.() || []) e.hp = 0, e.dead = true; // nothing to interfere
-  });
-  await s.wait(400);
-}
-/** Record frames while doing an action, return the frames. */
-async function during(s, fn, tail = 450) {
-  await s.startRec();
-  await fn();
-  await s.wait(tail);
-  return s.stopRec();
-}
-const settle = async (s) => { await axes(s.page, 0, 0); await s.wait(650); await s.eval(() => { const p = __game.world?.player; if (p) { p.mp = p.stats?.mp ?? 999; p.subCool = 0; p.dashCool = 0; for (const k of Object.keys(p.cool || {})) p.cool[k] = 0; } }); };
+const settle = async (s) => { await axes(s.page, 0, 0); await s.wait(650); await refill(s); };
 
 try {
   // ── 1. glyph sets per pad id (P-05) ───────────────────────────────────────────
-  if (suite.wants('glyphs')) {
+  await suite.group('glyphs', async () => {
     for (const [set, id] of [['xbox', PAD_IDS.xbox], ['ps', PAD_IDS.ps], ['nintendo', PAD_IDS.nintendo], ['generic', PAD_IDS.generic]]) {
       const s = await env.page('desk', 'index.html', { initScripts: [fakePadInit({ id })] });
       await s.wait(1500);
@@ -96,10 +69,10 @@ try {
       return { pass: r.mode !== 'pad' && !r.padInfo, detail: fmt(r) };
     });
     await s.close();
-  }
+  }, env);
 
   // ── 6. input mode on a touch device: pad press hides the virtual pad, touch shows it (P-06) ──
-  if (suite.wants('mode')) {
+  await suite.group('mode', async () => {
     for (const vp of suite.vps(['phone1', 'tablet'])) {
       const s = await env.page(vp, 'index.html?scene=stage&stage=s01', { initScripts: [fakePadInit({ id: PAD_IDS.xbox })] });
       await s.waitGame('!!g.world?.player');
@@ -129,10 +102,10 @@ try {
       await suite.errors({ id: `mode.${vp}.errors`, group: 'mode' }, s);
       await s.close();
     }
-  }
+  }, env);
 
   // ── 4. arcade preset rows in stage s03 (P-07) ───────────────────────────────────
-  if (suite.wants('mapping')) {
+  await suite.group('mapping', async () => {
     const s = await stageWithPad('desk', 's03', { id: PAD_IDS.xbox });
     const row = async (id, title, btn, judge, { ms = 90, tail = 450, pre = null } = {}) => {
       await settle(s);
@@ -165,10 +138,10 @@ try {
     await suite.check({ id: 'mapping.start', group: 'mapping', issue: 'P-07', pkg: 'PLAT-INPUT', title: 'START → pause', session: s }, async () => { const sc = await s.scenes(); return { pass: /pause$/.test(sc), detail: sc }; });
     await suite.errors({ id: 'mapping.errors', group: 'mapping' }, s);
     await s.close();
-  }
+  }, env);
 
   // ── menus with the pad: LB/RB tabs, B closes (P-07) ────────────────────────────
-  if (suite.wants('menus')) {
+  await suite.group('menus', async () => {
     const s = await stageWithPad('desk', 's02', { id: PAD_IDS.xbox });
     await s.eval(() => __game.push('menu', { world: __game.world, tab: 'status' }));
     await s.wait(700);
@@ -182,10 +155,10 @@ try {
     await suite.check({ id: 'menus.close', group: 'menus', issue: 'P-07', pkg: 'PLAT-INPUT', title: 'B backs out of the menu', session: s }, async () => { const sc = await s.scenes(); return { pass: !/menu/.test(sc), detail: sc }; });
     await suite.errors({ id: 'menus.errors', group: 'menus' }, s);
     await s.close();
-  }
+  }, env);
 
   // ── 2. sticks: radial deadzone, run threshold, release, diagonal stability (P-14) ─
-  if (suite.wants('stick')) {
+  await suite.group('stick', async () => {
     const s = await stageWithPad('desk', 's03', { id: PAD_IDS.xbox });
     const moveBy = async (x, y, ms) => { const a = await s.player(); await axes(s.page, x, y); await s.wait(ms); const b = await s.player(); return b.x - a.x; };
     const d015 = await moveBy(0.15, 0, 500);
@@ -215,10 +188,10 @@ try {
     await suite.check({ id: 'stick.tilt', group: 'stick', issue: 'P-14', gate: 'PLAT-INPUT', title: 'running with a slight upward tilt does not hold up', session: s }, async () => ({ pass: tilt.right && !tilt.up, detail: fmt(tilt) }));
     await suite.errors({ id: 'stick.errors', group: 'stick' }, s);
     await s.close();
-  }
+  }, env);
 
   // ── 3. triggers use value with 0.5 / 0.35 (P-14) ─────────────────────────────────
-  if (suite.wants('trigger')) {
+  await suite.group('trigger', async () => {
     const s = await stageWithPad('desk', 's03', { id: PAD_IDS.xbox });
     await s.eval(() => { __game.world.run.sp = 100; });
     const fr1 = await during(s, async () => { await setButton(s.page, BTN.RT, 0.3); await s.wait(350); await setButton(s.page, BTN.RT, 0); }, 300);
@@ -232,10 +205,10 @@ try {
     await suite.check({ id: 'trigger.press', group: 'trigger', issue: 'P-14', gate: 'PLAT-INPUT', title: 'RT 0.6 → ultimate', session: s }, async () => ({ pass: fired2, detail: fired2 ? 'ultimate fired' : 'no ultimate at RT 0.6' }));
     await suite.errors({ id: 'trigger.errors', group: 'trigger' }, s);
     await s.close();
-  }
+  }, env);
 
   // ── 5. hot-plug: disconnect pauses and toasts, reconnect toasts (P-15) ──────────
-  if (suite.wants('hotplug')) {
+  await suite.group('hotplug', async () => {
     const s = await stageWithPad('desk', 's03', { id: PAD_IDS.ps });
     const fr = await during(s, () => disconnect(s.page), 700);
     const paused = fr.some((f) => f.top === 'pause');
@@ -246,10 +219,10 @@ try {
     await suite.check({ id: 'hotplug.reconnect', group: 'hotplug', issue: 'P-15', gate: 'PLAT-INPUT', title: 'reconnect → "연결됨" toast', session: s }, async () => ({ pass: !!toastOn, detail: `toast ${fmt(toastOn)}` }));
     await suite.errors({ id: 'hotplug.errors', group: 'hotplug' }, s);
     await s.close();
-  }
+  }, env);
 
   // ── 7. haptics: playerHurt → dual-rumble with the §4.6 magnitudes; ctrlRumble 0 → none (P-16) ─
-  if (suite.wants('haptics')) {
+  await suite.group('haptics', async () => {
     for (const rumble of [0.8, 0]) {
       const s = await stageWithPad('desk', 's03', { id: PAD_IDS.xbox }, { settings: { ctrlRumble: rumble } });
       await press(s.page, BTN.RIGHT, 60);
@@ -269,10 +242,10 @@ try {
       await suite.errors({ id: `haptics.${rumble}.errors`, group: 'haptics' }, s);
       await s.close();
     }
-  }
+  }, env);
 
   // ── confirm position: Nintendo pads confirm with east in menus (§4.2, P-17); Xbox with south ──
-  if (suite.wants('confirm')) {
+  await suite.group('confirm', async () => {
     for (const [set, id, yesBtn, noBtn] of [['xbox', PAD_IDS.xbox, BTN.A, BTN.B], ['nintendo', PAD_IDS.nintendo, BTN.B, BTN.A]]) {
       const s = await env.page('desk', 'index.html', { initScripts: [fakePadInit({ id })] });
       await s.wait(1500);
@@ -290,10 +263,10 @@ try {
       await suite.errors({ id: `confirm.${set}.errors`, group: 'confirm' }, s);
       await s.close();
     }
-  }
+  }, env);
 
   // ── 8. remap model: swap on conflict, START and D-pad rejected (P-17) ───────────
-  if (suite.wants('remap')) {
+  await suite.group('remap', async () => {
     const s = await stageWithPad('desk', 's03', { id: PAD_IDS.xbox });
     const r = await s.eval(() => {
       const i = window.__game.input;
@@ -320,10 +293,10 @@ try {
     }
     await suite.errors({ id: 'remap.errors', group: 'remap' }, s);
     await s.close();
-  }
+  }, env);
 
   // ── classic preset keeps today's layout (§4.2, P-17) ─────────────────────────────
-  if (suite.wants('classic')) {
+  await suite.group('classic', async () => {
     const s = await stageWithPad('desk', 's03', { id: PAD_IDS.xbox }, { settings: { ctrlPreset: 'classic' } });
     const rows = [];
     for (const [name, btn, judge] of [
@@ -340,10 +313,10 @@ try {
     await suite.check({ id: 'classic.rows', group: 'classic', issue: 'P-17', gate: 'PLAT-INPUT', title: 'ctrlPreset classic: B attack, LT dash, SELECT swap', session: s }, async () => ({ pass: rows.every((r) => r[1]), detail: rows.map((r) => `${r[0]} ${r[1] ? 'ok' : 'NO'}`).join(', ') }));
     await suite.errors({ id: 'classic.errors', group: 'classic' }, s);
     await s.close();
-  }
+  }, env);
 
   // ── non-standard mapping: hat D-pad on axis 9 + toast (§4.2) ────────────────────
-  if (suite.wants('nonstd')) {
+  await suite.group('nonstd', async () => {
     const s = await env.page('desk', 'index.html?scene=stage&stage=s03', { initScripts: [fakePadInit({ id: 'USB Gamepad (Vendor: 0079 Product: 0011)', mapping: '' })] });
     await s.waitGame('!!g.world?.player');
     await s.eval(() => { window.__fakePad.axes = [0, 0, 0, 0, 0, 0, 0, 0, 0, 3.2857]; });
@@ -359,7 +332,7 @@ try {
     await suite.check({ id: 'nonstd.hat', group: 'nonstd', issue: 'P-14', gate: 'PLAT-INPUT', title: 'non-standard pad: hat on axis 9 moves right; "표준 배치가 아닙니다" toast', session: s }, async () => ({ pass: b.x - a.x > 20 && !!toast, detail: `dx ${(b.x - a.x).toFixed(0)} px, toast ${fmt(toast)}` }));
     await suite.errors({ id: 'nonstd.errors', group: 'nonstd' }, s);
     await s.close();
-  }
+  }, env);
 } catch (e) {
   await suite.check({ id: 'harness', group: 'harness', title: 'suite ran to completion' }, async () => { throw e; });
 } finally {

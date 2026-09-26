@@ -126,6 +126,15 @@ t('울음소리 배율·보조음 (§1.2)', () => {
   eq(D.GUARDIANS.gd_spiritwolf.cry, { sfx: 'wolf_howl', pitch: 1.3 });
   eq(D.GUARDIANS.gd_whelp.cry, { sfx: 'roar_small', pitch: 1.6, extra: 'bone_rattle' });
 });
+t('울음·발굽 효과음 이름이 MASTER_PLAN §1.9 등록부에 있다', () => {
+  const REG = new Set(('neigh gallop hoof_land boar_grunt wolf_howl wolf_bite wing_flap roar_small fire_breath screech bone_rattle fairy_chime knight_guard imp_cackle owl_hoot '
+    + 'gear_whir scythe soul_reap stag_call griffin_cry mirror_chime jelly_zap momo_gulp fire footstep').split(' '));
+  for (const id of D.COMPANION_ORDER) {
+    const d = D.companionDef(id);
+    ok(REG.has(d.cry.sfx) && (!d.cry.extra || REG.has(d.cry.extra)), id + ' 울음 ' + JSON.stringify(d.cry));
+    if (d.hoof) ok(REG.has(d.hoof.sfx), id + ' 발굽 ' + d.hoof.sfx);
+  }
+});
 t('보스 id 가 실제 보스 데이터에 있다', () => {
   for (const id of D.COMPANION_ORDER) { const o = D.companionDef(id).obtain; if (o.boss) ok(BOSSES[o.boss], id + ' → ' + o.boss); }
 });
@@ -725,6 +734,8 @@ t('bond · egg · 목록 · 객체 파라미터 · 잘못된 값', () => {
   eq(s, before, '알려진 키가 없으면 그대로');
   noThrow(() => S.applyCompanionDebug(null, 'cmp=all'), 'state 없음');
   noThrow(() => S.applyCompanionDebug(s, 'cmplv=abc&bond=x&ch=zz&guards=,,,&mount=gd_fairy'), '잘못된 숫자');
+  const k = freshState(); S.applyCompanionDebug(k, 'mount=gd_owl&guards=mt_boar,nope');
+  eq(S.ownedIds(k), [], '종류가 틀린 id 는 지급하지 않는다');
 });
 
 // ══ 7. 모듈 순수성 (node import · import 대상) ════════════════════════════════════════════
