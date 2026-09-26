@@ -140,19 +140,23 @@ export class Particles {
     const st = o.style ?? HFX.dmgStyle?.(key) ?? {};
     const C = FH.DMG_STYLE?.column ?? COL_DEF;
     const x = o.x ?? target?.cx ?? 0, y = o.y ?? target?.y ?? 0;
-    let px = x, py = y;
+    let px = x, py = y, col = null;
     if (target && typeof target === 'object' && key !== 'hurt' && key !== 'heal' && key !== 'total') {
       const now = this.clock;
-      let col = target._dmgCol;
-      if (!col || col.done || now - col.t > (C.gap ?? 0.5)) col = target._dmgCol = { n: 0, t: now, total: 0, hits: 0, x, y, done: false, queued: false };
+      col = target._dmgCol;
+      if (!col || col.done || now - col.t > (C.gap ?? 0.5)) col = target._dmgCol = { n: 0, t: now, t0: now, total: 0, hits: 0, x, y, done: false, queued: false };
       else col.n = (col.n + 1) % (C.height ?? 8);
       col.t = now; col.total += Number(value) || 0; col.hits++;
       px = col.x; py = col.y - col.n * (C.step ?? 16);
       if (col.hits >= (C.totalAfter ?? 3) && !col.queued) { col.queued = true; this._cols.push(col); }
     }
     if (key !== 'hurt' && key !== 'total' && this.dmgLive >= this.dmgCap() && this.recountDmg() >= this.dmgCap()) return null;
-    return this.spawnDmg(px, py, value, key, st, o.color ?? null);
+    const p = this.spawnDmg(px, py, value, key, st, o.color ?? null);
+    if (p && col) p.col = col;   // 기둥 숫자는 기둥과 함께 떠오른다 (간격 16px 유지)
+    return p;
   }
+  /** 숫자 기둥이 지금까지 떠오른 높이 (첫 타격부터 0.6초에 걸쳐 rise px) */
+  colRise(col, rise) { const u = Math.min(1, Math.max(0, (this.clock - col.t0) / 0.6)); return rise * (1 - (1 - u) * (1 - u) * (1 - u)); }
   spawnDmg(x, y, value, key, st, color) {
     const A = HFX.digitAtlas?.(key, color && color !== st.color ? color : null);
     let str = HFX.fmtDmg ? HFX.fmtDmg(value) : String(Math.round(value));
@@ -225,7 +229,8 @@ export class Particles {
         c.done = true;
         const st = HFX.dmgStyle?.('total') ?? {};
         const step = FH.DMG_STYLE?.column?.step ?? COL_DEF.step;
-        this.spawnDmg(c.x, c.y - (c.n + 1) * step - 8, c.total, 'total', st, null);
+        const top = c.y - (c.n + 1) * step - 8 - this.colRise(c, HFX.dmgStyle?.('normal')?.rise ?? 40);
+        this.spawnDmg(c.x, top, c.total, 'total', st, null);
       }
     }
   }
@@ -414,6 +419,7 @@ export class Particles {
     const sc = age < p.popT ? p.pop + (1 - p.pop) * (age / p.popT) : 1;
     let X = p.x, Y;
     if (p.fall) Y = p.y + 10 * age + 70 * age * age;
+    else if (p.col) Y = p.y - this.colRise(p.col, p.rise);
     else { const u = Math.min(1, age / Math.max(0.2, p.max)); Y = p.y - p.rise * (1 - (1 - u) * (1 - u) * (1 - u)); }
     if (p.jit && age < p.jitT) {
       // 떨림: 게임 프레임마다 한 번만 새 값 (고주사율 화면에서도 같은 떨림)

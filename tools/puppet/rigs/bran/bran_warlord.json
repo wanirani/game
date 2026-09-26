@@ -1,0 +1,117 @@
+{
+ "_doc": "브란/전쟁군주(2차). 검은 강철 가시 판금 + 금 테 + 핏빛 타바드 + 뿔 왕관. 망토·화염 오라는 절차적",
+ "extends": "bran_knight",
+ "classId": "bran_warlord",
+ "src": "bran/bran_warlord_side",
+ "hands": {
+  "sheet": "bran/bran_warlord_hands",
+  "grip": {
+   "box": [
+    0,
+    0,
+    1,
+    1
+   ],
+   "center": [
+    0,
+    0
+   ],
+   "axis": [
+    0,
+    1
+   ],
+   "wrist": [
+    0,
+    0
+   ],
+   "scale": 0.3,
+   "rodHalf": 60
+  },
+  "open": {
+   "box": [
+    0,
+    0,
+    1,
+    1
+   ],
+   "wrist": [
+    0,
+    0
+   ],
+   "tip": [
+    0,
+    0
+   ],
+   "scale": 0.28
+  }
+ },
+ "materials": {
+  "_replace": true,
+  "armor": {
+   "parts": [
+    "torso",
+    "uarm",
+    "farm",
+    "pad",
+    "thigh",
+    "shin",
+    "foot",
+    "hand",
+    "grip",
+    "open"
+   ],
+   "sat": [
+    0,
+    0.2
+   ],
+   "val": [
+    0.06,
+    0.75
+   ],
+   "softTop": 0.1
+  },
+  "trim": {
+   "parts": [
+    "torso",
+    "uarm",
+    "farm",
+    "pad",
+    "thigh",
+    "shin",
+    "foot",
+    "skirt"
+   ],
+   "hue": [
+    30,
+    62
+   ],
+   "sat": [
+    0.4,
+    1.01
+   ],
+   "val": [
+    0.45,
+    1.01
+   ]
+  }
+ },
+ "runtime": {
+  "armorBase": "#3a3a40"
+ },
+ "turn": {
+  "sheet5": "bran/bran_warlord_turn5",
+  "views5": [
+   "y90",
+   "y135",
+   "y180",
+   "ym90",
+   "-"
+  ],
+  "qback": "bran/bran_warlord_qback",
+  "viewsQ": [
+   "-",
+   "ym135"
+  ],
+  "fixups": null
+ }
+}

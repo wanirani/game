@@ -1,0 +1,111 @@
+{
+ "_doc": "브란/혈귀 광전사(2차). 맨팔(전투 문신) + 검붉은 가시 갑주 + 빛나는 룬 + 악마 뿔. 날개·피 오라는 절차적. 맨팔·손은 재질 마스크 제외",
+ "extends": "bran_knight",
+ "classId": "bran_bloodrage",
+ "src": "bran/bran_bloodrage_side",
+ "hands": {
+  "sheet": "bran/bran_bloodrage_hands",
+  "grip": {
+   "box": [
+    0,
+    0,
+    1,
+    1
+   ],
+   "center": [
+    0,
+    0
+   ],
+   "axis": [
+    0,
+    1
+   ],
+   "wrist": [
+    0,
+    0
+   ],
+   "scale": 0.3,
+   "rodHalf": 60
+  },
+  "open": {
+   "box": [
+    0,
+    0,
+    1,
+    1
+   ],
+   "wrist": [
+    0,
+    0
+   ],
+   "tip": [
+    0,
+    0
+   ],
+   "scale": 0.28
+  }
+ },
+ "materials": {
+  "_replace": true,
+  "armor": {
+   "parts": [
+    "torso",
+    "pad",
+    "farm",
+    "thigh",
+    "shin",
+    "foot"
+   ],
+   "sat": [
+    0,
+    0.35
+   ],
+   "val": [
+    0,
+    0.42
+   ],
+   "softTop": 0.08
+  },
+  "trim": {
+   "parts": [
+    "torso",
+    "pad",
+    "farm",
+    "thigh",
+    "shin",
+    "foot"
+   ],
+   "hue": [
+    340,
+    15
+   ],
+   "sat": [
+    0.6,
+    1.01
+   ],
+   "val": [
+    0.55,
+    1.01
+   ]
+  }
+ },
+ "runtime": {
+  "armorBase": "#2a0a0e"
+ },
+ "turn": {
+  "sheet5": "bran/bran_bloodrage_turn5",
+  "views5": [
+   "y90",
+   "y135",
+   "y180",
+   "ym90",
+   "-"
+  ],
+  "qback": "bran/bran_bloodrage_qback",
+  "viewsQ": [
+   "-",
+   "ym135"
+  ],
+  "fixups": null
+ }
+}

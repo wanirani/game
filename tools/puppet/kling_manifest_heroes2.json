@@ -170,10 +170,840 @@
    "picked": "-",
    "prompt": "Edit 图片1. Keep the SAME man with the exact same face, same short copper-red hair shaved at the sides, same thick full copper-red beard, same massive body proportions, the exact same walking side pose facing right, same arm and leg positions, same camera angle, same framing, scale and position on the canvas, same plain light-grey studio background, same realistic painterly dark-fantasy game-art style and lighting. The cloth panel stays hanging from the belt and trailing back behind his legs in the same place. Change ONLY his outfit into a demonic blood-rage berserker, two tiers grander and more savage: bare massively muscled arms with glowing crimson rune tattoos and red veins, black-and-crimson spiked bracers and black clawed gauntlets, jagged black-red spiked half-cuirass with glowing runes, one jagged black spiked pauldron, tattered black-and-crimson loincloth, black belt with demon skull buckle, blackened spiked greaves; two large curved black demon horns, face visible, glowing blood-red eyes. No wings, No cape, no cloak, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark.",
    "note": "FAILED: 두 후보 모두 정면(앞모습)으로 돌아섬 — '악마·대칭 룬' 같은 정면성 강한 묘사가 포즈 고정을 이김 → 이미 옆모습인 광전사 원화에서 편집 + 'strict side profile' 반복"
+  },
+  {
+   "id": "bran_knight_turn5",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AYFUhSgXnQjdtUjKok055-cfav3DzCq22Y4NRIdG6yFEYLKegIHI44uE4BOVakVXAaicT95G",
+   "inputs": [
+    "bran_knight_side.jpg",
+    "kael_hunter_turn5.jpg (layout)"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
+   "prompt": "Character turnaround sheet of the man in 图片1, wearing exactly the outfit of 图片1: battered steel-grey plate armour with a big rounded steel pauldron on each shoulder, chainmail at the joints, steel gauntlets, a brown leather belt with an iron buckle, a deep navy-blue cloth tabard hanging from the belt front and back to just above the knees, steel cuisses, greaves and sabatons; bare head with the same short copper-red hair shaved at the sides and the same thick full copper-red beard in every view. Keep his massive, broad-shouldered, heavily muscled build. Copy ONLY the layout of 图片2: five full-body views of the same man standing in a relaxed neutral pose with arms hanging down, side by side, evenly spaced, same size and same ground line, from left to right: 1 front view, 2 three-quarter front view, 3 side profile view, 4 back view, 5 three-quarter back view. Do not copy the brown clothes, the ponytail or the red bandana of 图片2; all clothing, colours and materials come from 图片1. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, every view complete from head to boots, no cape, no weapon, nothing held in the hands, no text, no labels, no watermark.",
+   "src": "src/bran/bran_knight_turn5.webp",
+   "note": "OK — 뷰 순서 정면·3/4(왼쪽)·옆(왼쪽)·뒤·뒤(중복). 뒷모습 두 장만 장화가 갈색 가죽(카엘 레이아웃 누출) → fixups"
+  },
+  {
+   "id": "bran_knight_qback",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AUFpkAGUBUSX6tDhPL3x9iikC8_2cKw_aJYz68bet2VHR0vZ-06wQ_t91B_ZCi3DXuvkCi5G",
+   "inputs": [
+    "bran_knight_side.jpg",
+    "kael_hunter_qback.jpg (layout)"
+   ],
+   "aspect_ratio": "4:3",
+   "img_resolution": "2k",
+   "prompt": "Two full-body three-quarter BACK views of the man in 图片1, wearing exactly the outfit of 图片1: battered steel-grey plate armour with a big rounded steel pauldron on each shoulder, chainmail at the joints, steel gauntlets, a brown leather belt with an iron buckle, a deep navy-blue cloth tabard hanging from the belt front and back to just above the knees, steel cuisses, greaves and sabatons; bare head with the same short copper-red hair shaved at the sides and the same thick full copper-red beard in every view. Keep his massive, broad-shouldered build. Copy ONLY the layout and camera angles of 图片2: the man stands in a relaxed neutral pose with arms hanging down, seen mostly from behind; LEFT figure turned away to the viewer's left, RIGHT figure turned away to the viewer's right (mirror angles), both the same size on the same ground line. Do not copy the brown clothes or the ponytail of 图片2. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, complete from head to boots, no cape, no weapon, nothing held in the hands, no text, no watermark.",
+   "src": "src/bran/bran_knight_qback.webp",
+   "note": "왼쪽은 거의 정면 뒤(중복), 오른쪽 = 3/4 뒤(왼쪽을 봄). 오른쪽 인물 허리에 단검·칼집이 새어 들어옴(\"no weapon\" 무시)"
+  },
+  {
+   "id": "bran_knight_hands",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AerSwk5qFbzKhtitKlmx2-KERyj1DymDW-J_lxkCpl2JigLqhlaZmhQs0TrNrG3p8C2NlhV8",
+   "inputs": [
+    "bran_knight_side.jpg"
+   ],
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "prompt": "Hand reference sheet for the man in 图片1. Paint ONLY his hands with exactly the same steel plate gauntlets with articulated steel finger plates and a short flared steel cuff as in 图片1, in the same painterly game-art style and lighting (not a 3D render), large and sharp, on a plain light-grey background. Two hands side by side, well separated, each cut off just after the cuff, no arms, no body, no text. LEFT: his hand clenched into a tight fist seen from the outside, back of the hand and knuckles facing the viewer, thumb wrapped over the fingers, the wrist and cuff entering from the lower right, gripping a straight thin cylindrical rod painted flat pure bright green that passes vertically BEHIND the curled fingers (the fingers wrap around it and hide it) and sticks out above and below the fist. RIGHT: the same hand open with the palm facing the viewer, fingers together and slightly curved as if casting a spell, the wrist and cuff at the bottom. No watermark.",
+   "src": "src/bran/bran_knight_hands.webp",
+   "note": "OK — 막대가 손가락 앞을 지나 손목 아래로 내려감(카엘 성전기사와 같은 배치)"
+  },
+  {
+   "id": "bran_paladin_turn5",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "Ac4WGMNbi_B7kRDC0OjKY4fF8WSht9pkzNDe3qIvw8C088KSiGEa5w0yPazqRR3NchRmMmRo",
+   "inputs": [
+    "bran_paladin_side.jpg",
+    "kael_hunter_turn5.jpg (layout)"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
+   "prompt": "Character turnaround sheet of the man in 图片1, wearing exactly the outfit of 图片1: polished pale silver-white plate armour with gold-rimmed edges and engraved gold crosses on the breastplate and pauldrons, silver gauntlets with gold rims, a royal-blue cloth tabard with a gold embroidered hem hanging from the belt front and back, a white belt with a gold buckle, silver-white greaves and sabatons; the same slim silver circlet with a small blue gem in every view, copper-red hair and full copper-red beard. Keep his massive, broad-shouldered, heavily muscled build. Copy ONLY the layout of 图片2: five full-body views of the same man standing in a relaxed neutral pose with arms hanging down, side by side, evenly spaced, same size and same ground line, from left to right: 1 front view, 2 three-quarter front view, 3 side profile view, 4 back view, 5 three-quarter back view. Do not copy the brown clothes, the ponytail or the red bandana of 图片2; all clothing, colours and materials come from 图片1. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, every view complete from head to boots, no cape, no weapon, nothing held in the hands, no text, no labels, no watermark.",
+   "src": "src/bran/bran_paladin_turn5.webp",
+   "note": "OK"
+  },
+  {
+   "id": "bran_paladin_qback",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AdOBNtSq1VBePugpzDZiGXL4XUxHDMvsl2iFuQWZPObyy-KXbT5x9ZdtRjjZk-NE4VTLgvgL",
+   "inputs": [
+    "bran_paladin_side.jpg",
+    "kael_hunter_qback.jpg (layout)"
+   ],
+   "aspect_ratio": "4:3",
+   "img_resolution": "2k",
+   "prompt": "Two full-body three-quarter BACK views of the man in 图片1, wearing exactly the outfit of 图片1: polished pale silver-white plate armour with gold-rimmed edges and engraved gold crosses on the breastplate and pauldrons, silver gauntlets with gold rims, a royal-blue cloth tabard with a gold embroidered hem hanging from the belt front and back, a white belt with a gold buckle, silver-white greaves and sabatons; the same slim silver circlet with a small blue gem in every view, copper-red hair and full copper-red beard. Keep his massive, broad-shouldered build. Copy ONLY the layout and camera angles of 图片2: the man stands in a relaxed neutral pose with arms hanging down, seen mostly from behind; LEFT figure turned away to the viewer's left, RIGHT figure turned away to the viewer's right (mirror angles), both the same size on the same ground line. Do not copy the brown clothes or the ponytail of 图片2. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, complete from head to boots, no cape, no weapon, nothing held in the hands, no text, no watermark.",
+   "src": "src/bran/bran_paladin_qback.webp",
+   "note": "OK"
+  },
+  {
+   "id": "bran_paladin_hands",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "Ac6sDOYPSFiJazRPoMmO-UKO7KxXsETQcS6GoFC5GbnJa6ap23SmFSIth2RfReyLgnLaBj7O",
+   "inputs": [
+    "bran_paladin_side.jpg"
+   ],
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "prompt": "Hand reference sheet for the man in 图片1. Paint ONLY his hands with exactly the same polished silver-white plate gauntlets with gold-rimmed edges and a short flared silver cuff as in 图片1, in the same painterly game-art style and lighting (not a 3D render), large and sharp, on a plain light-grey background. Two hands side by side, well separated, each cut off just after the cuff, no arms, no body, no text. LEFT: his hand clenched into a tight fist seen from the outside, back of the hand and knuckles facing the viewer, thumb wrapped over the fingers, the wrist and cuff entering from the lower right, gripping a straight thin cylindrical rod painted flat pure bright green that passes vertically BEHIND the curled fingers (the fingers wrap around it and hide it) and sticks out above and below the fist. RIGHT: the same hand open with the palm facing the viewer, fingers together and slightly curved as if casting a spell, the wrist and cuff at the bottom. No watermark.",
+   "src": "src/bran/bran_paladin_hands.webp",
+   "note": "OK"
+  },
+  {
+   "id": "bran_guardian_turn5",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "Adhe_OY5F16RWVdpgc1vxLV5icDgGDvalCs5Bg_HvFoqNicQYdCAe7EWUD9pq6dnyPNoNBuv",
+   "inputs": [
+    "bran_guardian_side.jpg",
+    "kael_hunter_turn5.jpg (layout)"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
+   "prompt": "Character turnaround sheet of the man in 图片1, wearing exactly the outfit of 图片1: massive gleaming white-silver full plate armour with ornate gold filigree, huge layered pauldrons with gold sunburst emblems, faint golden runes on the breastplate, white-silver gauntlets with gold knuckle plates, a deep royal-blue tabard with a gold sun-cross and a gold fringe hem hanging front and back, a white belt with a gold buckle, heavy white-silver greaves; the same gold laurel crown-circlet in every view, copper-red hair and full copper-red beard. Keep his massive, broad-shouldered, heavily muscled build. Copy ONLY the layout of 图片2: five full-body views of the same man standing in a relaxed neutral pose with arms hanging down, side by side, evenly spaced, same size and same ground line, from left to right: 1 front view, 2 three-quarter front view, 3 side profile view, 4 back view, 5 three-quarter back view. Do not copy the brown clothes, the ponytail or the red bandana of 图片2; all clothing, colours and materials come from 图片1. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, every view complete from head to boots, no cape, no weapon, nothing held in the hands, no text, no labels, no watermark.",
+   "src": "src/bran/bran_guardian_turn5.webp",
+   "note": "OK"
+  },
+  {
+   "id": "bran_guardian_qback",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "Afo7PNQNxZB89kkIMi4Gyw75Iy4n7U87y6ywC99tzTf8vv9MDyHfIj89vfvmUSsoJhL9hFzR",
+   "inputs": [
+    "bran_guardian_side.jpg",
+    "kael_hunter_qback.jpg (layout)"
+   ],
+   "aspect_ratio": "4:3",
+   "img_resolution": "2k",
+   "prompt": "Two full-body three-quarter BACK views of the man in 图片1, wearing exactly the outfit of 图片1: massive gleaming white-silver full plate armour with ornate gold filigree, huge layered pauldrons with gold sunburst emblems, faint golden runes on the breastplate, white-silver gauntlets with gold knuckle plates, a deep royal-blue tabard with a gold sun-cross and a gold fringe hem hanging front and back, a white belt with a gold buckle, heavy white-silver greaves; the same gold laurel crown-circlet in every view, copper-red hair and full copper-red beard. Keep his massive, broad-shouldered build. Copy ONLY the layout and camera angles of 图片2: the man stands in a relaxed neutral pose with arms hanging down, seen mostly from behind; LEFT figure turned away to the viewer's left, RIGHT figure turned away to the viewer's right (mirror angles), both the same size on the same ground line. Do not copy the brown clothes or the ponytail of 图片2. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, complete from head to boots, no cape, no weapon, nothing held in the hands, no text, no watermark.",
+   "src": "src/bran/bran_guardian_qback.webp",
+   "note": "OK"
+  },
+  {
+   "id": "bran_guardian_hands",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AdKFWH63aV9di_WxqUuvwFAIsvkR6sHvfBQ_c-zAOI1uI8wm_aDy0CkZDcjXHSexQ3hGiQXT",
+   "inputs": [
+    "bran_guardian_side.jpg"
+   ],
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "prompt": "Hand reference sheet for the man in 图片1. Paint ONLY his hands with exactly the same white-silver plate gauntlets with gold knuckle plates and a gold-filigree cuff as in 图片1, in the same painterly game-art style and lighting (not a 3D render), large and sharp, on a plain light-grey background. Two hands side by side, well separated, each cut off just after the cuff, no arms, no body, no text. LEFT: his hand clenched into a tight fist seen from the outside, back of the hand and knuckles facing the viewer, thumb wrapped over the fingers, the wrist and cuff entering from the lower right, gripping a straight thin cylindrical rod painted flat pure bright green that passes vertically BEHIND the curled fingers (the fingers wrap around it and hide it) and sticks out above and below the fist. RIGHT: the same hand open with the palm facing the viewer, fingers together and slightly curved as if casting a spell, the wrist and cuff at the bottom. No watermark.",
+   "src": "src/bran/bran_guardian_hands.webp",
+   "note": "편 손이 검지만 편 손짓 — 시전 손으로 사용 가능"
+  },
+  {
+   "id": "bran_crusader_turn5",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AVsgs0udho5-cNfXgX11Rj-tidWZbkpwyf3Z3j_yDM5vvDdQ4-5_6x_vb6fhfFWXCLtRLL2o",
+   "inputs": [
+    "bran_crusader_side.jpg",
+    "kael_hunter_turn5.jpg (layout)"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
+   "prompt": "Character turnaround sheet of the man in 图片1, wearing exactly the outfit of 图片1: ornate ivory-white enamelled plate armour with rich gold filigree borders and a large gold cross on the breastplate, big ivory-and-gold pauldrons, ivory gauntlets with gold rims, a crimson tabard with a large gold cross and a gold hem hanging front and back, a crimson sash under a gold-buckled belt, ivory greaves and sabatons; the same heavy gold crown with small crosses in every view, copper-red hair and full copper-red beard. Keep his massive, broad-shouldered, heavily muscled build. Copy ONLY the layout of 图片2: five full-body views of the same man standing in a relaxed neutral pose with arms hanging down, side by side, evenly spaced, same size and same ground line, from left to right: 1 front view, 2 three-quarter front view, 3 side profile view, 4 back view, 5 three-quarter back view. Do not copy the brown clothes, the ponytail or the red bandana of 图片2; all clothing, colours and materials come from 图片1. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, every view complete from head to boots, no cape, no weapon, nothing held in the hands, no text, no labels, no watermark.",
+   "src": "src/bran/bran_crusader_turn5.webp",
+   "note": "뒷모습 두 장에 진홍 망토가 그려짐 — 이 직업은 look.cape(진홍)가 있어 턴테이블 절차적 망토가 뒷모습을 덮으므로 허용"
+  },
+  {
+   "id": "bran_crusader_qback",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AeTVTIayvx_Yo7yB4r9xERaTaM7E-u7cFJccWQ-2uNeh8VUeaNCUqJ_cOpeCVG3U-o6aaWFm",
+   "inputs": [
+    "bran_crusader_side.jpg",
+    "kael_hunter_qback.jpg (layout)"
+   ],
+   "aspect_ratio": "4:3",
+   "img_resolution": "2k",
+   "prompt": "Two full-body three-quarter BACK views of the man in 图片1, wearing exactly the outfit of 图片1: ornate ivory-white enamelled plate armour with rich gold filigree borders and a large gold cross on the breastplate, big ivory-and-gold pauldrons, ivory gauntlets with gold rims, a crimson tabard with a large gold cross and a gold hem hanging front and back, a crimson sash under a gold-buckled belt, ivory greaves and sabatons; the same heavy gold crown with small crosses in every view, copper-red hair and full copper-red beard. Keep his massive, broad-shouldered build. Copy ONLY the layout and camera angles of 图片2: the man stands in a relaxed neutral pose with arms hanging down, seen mostly from behind; LEFT figure turned away to the viewer's left, RIGHT figure turned away to the viewer's right (mirror angles), both the same size on the same ground line. Do not copy the brown clothes or the ponytail of 图片2. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, complete from head to boots, no cape, no weapon, nothing held in the hands, no text, no watermark.",
+   "src": "src/bran/bran_crusader_qback.webp",
+   "note": "두 장 모두 진홍 망토(위와 같은 이유로 허용)"
+  },
+  {
+   "id": "bran_crusader_hands",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "ASPdiI-8clc5NPfyjTxewbMXeZ42qmR0iJRL63MRXnwMNFRQQeeNsexULZ9xzaMzgnI_wLvP",
+   "inputs": [
+    "bran_crusader_side.jpg"
+   ],
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "prompt": "Hand reference sheet for the man in 图片1. Paint ONLY his hands with exactly the same ivory-white enamelled plate gauntlets with gold rims and a short ivory cuff as in 图片1, in the same painterly game-art style and lighting (not a 3D render), large and sharp, on a plain light-grey background. Two hands side by side, well separated, each cut off just after the cuff, no arms, no body, no text. LEFT: his hand clenched into a tight fist seen from the outside, back of the hand and knuckles facing the viewer, thumb wrapped over the fingers, the wrist and cuff entering from the lower right, gripping a straight thin cylindrical rod painted flat pure bright green that passes vertically BEHIND the curled fingers (the fingers wrap around it and hide it) and sticks out above and below the fist. RIGHT: the same hand open with the palm facing the viewer, fingers together and slightly curved as if casting a spell, the wrist and cuff at the bottom. No watermark.",
+   "src": "src/bran/bran_crusader_hands.webp",
+   "note": "OK"
+  },
+  {
+   "id": "bran_berserker_turn5",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AU39fT7WDVV8oROIPdftV7IK8X_bS0IsL0fnyI-TtkIc_WZpXGZBpcM5JuLMVV66dmbxxZFg",
+   "inputs": [
+    "bran_berserker_side.jpg",
+    "kael_hunter_turn5.jpg (layout)"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
+   "prompt": "Character turnaround sheet of the man in 图片1, wearing exactly the outfit of 图片1: bare heavily muscled arms with dark-red war paint stripes, studded brown leather bracers and wrist wraps, a battered brown leather cuirass with iron studs, a short shaggy dark-brown fur mantle on the shoulders, a rust-red cloth loincloth panel hanging from a wide studded belt, brown leather trousers with iron knee guards, fur-trimmed boots; the same horned iron helmet in every view with his face and full copper-red beard visible, glowing orange-red eyes. Keep his massive, broad-shouldered, heavily muscled build. Copy ONLY the layout of 图片2: five full-body views of the same man standing in a relaxed neutral pose with arms hanging down, side by side, evenly spaced, same size and same ground line, from left to right: 1 front view, 2 three-quarter front view, 3 side profile view, 4 back view, 5 three-quarter back view. Do not copy the brown clothes, the ponytail or the red bandana of 图片2; all clothing, colours and materials come from 图片1. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, every view complete from head to boots, no cape, no weapon, nothing held in the hands, no text, no labels, no watermark.",
+   "src": "src/bran/bran_berserker_turn5.webp",
+   "note": "OK"
+  },
+  {
+   "id": "bran_berserker_qback",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AVPJpfh0Oz-fU64CJVoCwHqx9r1np7S3mi66E3De0YXjbPjD7y33wbeEsYgZ1zjNASf0w5pa",
+   "inputs": [
+    "bran_berserker_side.jpg",
+    "kael_hunter_qback.jpg (layout)"
+   ],
+   "aspect_ratio": "4:3",
+   "img_resolution": "2k",
+   "prompt": "Two full-body three-quarter BACK views of the man in 图片1, wearing exactly the outfit of 图片1: bare heavily muscled arms with dark-red war paint stripes, studded brown leather bracers and wrist wraps, a battered brown leather cuirass with iron studs, a short shaggy dark-brown fur mantle on the shoulders, a rust-red cloth loincloth panel hanging from a wide studded belt, brown leather trousers with iron knee guards, fur-trimmed boots; the same horned iron helmet in every view with his face and full copper-red beard visible, glowing orange-red eyes. Keep his massive, broad-shouldered build. Copy ONLY the layout and camera angles of 图片2: the man stands in a relaxed neutral pose with arms hanging down, seen mostly from behind; LEFT figure turned away to the viewer's left, RIGHT figure turned away to the viewer's right (mirror angles), both the same size on the same ground line. Do not copy the brown clothes or the ponytail of 图片2. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, complete from head to boots, no cape, no weapon, nothing held in the hands, no text, no watermark.",
+   "src": "src/bran/bran_berserker_qback.webp",
+   "note": "OK"
+  },
+  {
+   "id": "bran_berserker_hands",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "Ad7qfYnuDKNKulhoSFi9duA1czjZrjzNOyJF88xYnAlsDSubn4LNbsf5grhe1pzEK8AN5qT_",
+   "inputs": [
+    "bran_berserker_side.jpg"
+   ],
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "prompt": "Hand reference sheet for the man in 图片1. Paint ONLY his hands with exactly the same bare, big, rough, muscular hands (no gloves) with thick brown leather wrist wraps as in 图片1, in the same painterly game-art style and lighting (not a 3D render), large and sharp, on a plain light-grey background. Two hands side by side, well separated, each cut off just after the cuff, no arms, no body, no text. LEFT: his hand clenched into a tight fist seen from the outside, back of the hand and knuckles facing the viewer, thumb wrapped over the fingers, the wrist and cuff entering from the lower right, gripping a straight thin cylindrical rod painted flat pure bright green that passes vertically BEHIND the curled fingers (the fingers wrap around it and hide it) and sticks out above and below the fist. RIGHT: the same hand open with the palm facing the viewer, fingers together and slightly curved as if casting a spell, the wrist and cuff at the bottom. No watermark.",
+   "src": "src/bran/bran_berserker_hands.webp",
+   "note": "OK"
+  },
+  {
+   "id": "bran_warlord_turn5",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AWpPXg49YyHXFN24HGwvv-wRxmoT8XOfgmdOeTVAyAYbMPGXau2G8bKlNA_wn4DAueqtcFEp",
+   "inputs": [
+    "bran_warlord_side.jpg",
+    "kael_hunter_turn5.jpg (layout)"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
+   "prompt": "Character turnaround sheet of the man in 图片1, wearing exactly the outfit of 图片1: blackened dark gunmetal plate armour with gold-trimmed edges and short iron spikes, huge spiked dark pauldrons with gold rims, a short dark fur collar, dark spiked gauntlets, a blood-red cloth tabard with a gold hem hanging front and back, a black belt with a gold skull buckle, blackened spiked greaves and sabatons; the same black iron horned war-crown with two big curved horns in every view, face and full copper-red beard visible, glowing orange-red eyes. Keep his massive, broad-shouldered, heavily muscled build. Copy ONLY the layout of 图片2: five full-body views of the same man standing in a relaxed neutral pose with arms hanging down, side by side, evenly spaced, same size and same ground line, from left to right: 1 front view, 2 three-quarter front view, 3 side profile view, 4 back view, 5 three-quarter back view. Do not copy the brown clothes, the ponytail or the red bandana of 图片2; all clothing, colours and materials come from 图片1. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, every view complete from head to boots, no cape, no weapon, nothing held in the hands, no text, no labels, no watermark.",
+   "src": "src/bran/bran_warlord_turn5.webp",
+   "note": "OK"
+  },
+  {
+   "id": "bran_warlord_qback",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AeQABEy-x22xU-iKLxg7vPleeoqp9LtdYw5rR6xyudEKfRVJDiLpdlganSAgGaffcbCcthlt",
+   "inputs": [
+    "bran_warlord_side.jpg",
+    "kael_hunter_qback.jpg (layout)"
+   ],
+   "aspect_ratio": "4:3",
+   "img_resolution": "2k",
+   "prompt": "Two full-body three-quarter BACK views of the man in 图片1, wearing exactly the outfit of 图片1: blackened dark gunmetal plate armour with gold-trimmed edges and short iron spikes, huge spiked dark pauldrons with gold rims, a short dark fur collar, dark spiked gauntlets, a blood-red cloth tabard with a gold hem hanging front and back, a black belt with a gold skull buckle, blackened spiked greaves and sabatons; the same black iron horned war-crown with two big curved horns in every view, face and full copper-red beard visible, glowing orange-red eyes. Keep his massive, broad-shouldered build. Copy ONLY the layout and camera angles of 图片2: the man stands in a relaxed neutral pose with arms hanging down, seen mostly from behind; LEFT figure turned away to the viewer's left, RIGHT figure turned away to the viewer's right (mirror angles), both the same size on the same ground line. Do not copy the brown clothes or the ponytail of 图片2. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, complete from head to boots, no cape, no weapon, nothing held in the hands, no text, no watermark.",
+   "src": "src/bran/bran_warlord_qback.webp",
+   "note": "왼쪽 인물이 앞모습 → 버림(-)"
+  },
+  {
+   "id": "bran_warlord_hands",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AaVSBLiuq48M6uRva2GVp6mx87wKhX4gmmprlST-W-g6P0mRMtVxxopoe3oEm7cIyPN_HTAz",
+   "inputs": [
+    "bran_warlord_side.jpg"
+   ],
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "prompt": "Hand reference sheet for the man in 图片1. Paint ONLY his hands with exactly the same blackened spiked dark-steel plate gauntlets with gold trim and a short flared cuff as in 图片1, in the same painterly game-art style and lighting (not a 3D render), large and sharp, on a plain light-grey background. Two hands side by side, well separated, each cut off just after the cuff, no arms, no body, no text. LEFT: his hand clenched into a tight fist seen from the outside, back of the hand and knuckles facing the viewer, thumb wrapped over the fingers, the wrist and cuff entering from the lower right, gripping a straight thin cylindrical rod painted flat pure bright green that passes vertically BEHIND the curled fingers (the fingers wrap around it and hide it) and sticks out above and below the fist. RIGHT: the same hand open with the palm facing the viewer, fingers together and slightly curved as if casting a spell, the wrist and cuff at the bottom. No watermark.",
+   "src": "src/bran/bran_warlord_hands.webp",
+   "note": "OK"
+  },
+  {
+   "id": "bran_bloodrage_turn5",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "ATE-7PE7O7ZQ29JX4mZcdaDfNHZn1A3WDRCTQtbrBrNYuamQn4XqXZLlXQGNT3LXXN3SceR8",
+   "inputs": [
+    "bran_bloodrage_side.jpg",
+    "kael_hunter_turn5.jpg (layout)"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
+   "prompt": "Character turnaround sheet of the man in 图片1, wearing exactly the outfit of 图片1: bare heavily muscled arms with dark-red war paint stripes, black spiked bracers with glowing crimson runes, a black spiked leather-and-iron cuirass with glowing crimson runes on the chest, a jagged black spiked pauldron with a glowing crimson rune on each shoulder, a tattered dark crimson loincloth panel under a black belt with a small demon skull buckle, blackened plate greaves with glowing crimson runes and spiked boots; two large curved black demon horns growing from his head in every view, his face and full copper-red beard visible, glowing blood-red eyes. Keep his massive, broad-shouldered, heavily muscled build. Copy ONLY the layout of 图片2: five full-body views of the same man standing in a relaxed neutral pose with arms hanging down, side by side, evenly spaced, same size and same ground line, from left to right: 1 front view, 2 three-quarter front view, 3 side profile view, 4 back view, 5 three-quarter back view. Do not copy the brown clothes, the ponytail or the red bandana of 图片2; all clothing, colours and materials come from 图片1. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, every view complete from head to boots, no cape, no weapon, nothing held in the hands, no text, no labels, no watermark.",
+   "src": "src/bran/bran_bloodrage_turn5.webp",
+   "note": "OK"
+  },
+  {
+   "id": "bran_bloodrage_qback",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AYyd4q_M04gf5UQjmDBrLoFYlJYBWnxZkjzeRD9k_GzqM4GUXjjcz1ehlFbPEiZyTzZ446Go",
+   "inputs": [
+    "bran_bloodrage_side.jpg",
+    "kael_hunter_qback.jpg (layout)"
+   ],
+   "aspect_ratio": "4:3",
+   "img_resolution": "2k",
+   "prompt": "Two full-body three-quarter BACK views of the man in 图片1, wearing exactly the outfit of 图片1: bare heavily muscled arms with dark-red war paint stripes, black spiked bracers with glowing crimson runes, a black spiked leather-and-iron cuirass with glowing crimson runes on the chest, a jagged black spiked pauldron with a glowing crimson rune on each shoulder, a tattered dark crimson loincloth panel under a black belt with a small demon skull buckle, blackened plate greaves with glowing crimson runes and spiked boots; two large curved black demon horns growing from his head in every view, his face and full copper-red beard visible, glowing blood-red eyes. Keep his massive, broad-shouldered build. Copy ONLY the layout and camera angles of 图片2: the man stands in a relaxed neutral pose with arms hanging down, seen mostly from behind; LEFT figure turned away to the viewer's left, RIGHT figure turned away to the viewer's right (mirror angles), both the same size on the same ground line. Do not copy the brown clothes or the ponytail of 图片2. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, complete from head to boots, no cape, no weapon, nothing held in the hands, no text, no watermark.",
+   "src": "src/bran/bran_bloodrage_qback.webp",
+   "note": "OK"
+  },
+  {
+   "id": "bran_bloodrage_hands",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AZR_rluiSm5ms9WXoNtwAQe9fV9iMqzcWMsZR1tnEfali3I8k4GEW0_JIzXO8ID3IuhRFyJC",
+   "inputs": [
+    "bran_bloodrage_side.jpg"
+   ],
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "prompt": "Hand reference sheet for the man in 图片1. Paint ONLY his hands with exactly the same bare, big, rough, muscular hands (no gloves) with dark-red war paint, and a black spiked iron bracer cuff with a glowing crimson rune at the wrist as in 图片1, in the same painterly game-art style and lighting (not a 3D render), large and sharp, on a plain light-grey background. Two hands side by side, well separated, each cut off just after the cuff, no arms, no body, no text. LEFT: his hand clenched into a tight fist seen from the outside, back of the hand and knuckles facing the viewer, thumb wrapped over the fingers, the wrist and cuff entering from the lower right, gripping a straight thin cylindrical rod painted flat pure bright green that passes vertically BEHIND the curled fingers (the fingers wrap around it and hide it) and sticks out above and below the fist. RIGHT: the same hand open with the palm facing the viewer, fingers together and slightly curved as if casting a spell, the wrist and cuff at the bottom. No watermark.",
+   "src": "-",
+   "note": "FAILED: 손이 짙은 붉은 피부 — 원화의 맨팔(자연 피부)과 안 맞음 → v2",
+   "picked": "-"
+  },
+  {
+   "id": "bran_bloodrage_hands_v2",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AXSCN9y-scmA00dk1IPXP8hsGfF1xK3WtAFS5mOQx_01GMK_KGa17mIwGTHjFzu_6CjHA1rG",
+   "inputs": [
+    "bran_bloodrage_side.jpg"
+   ],
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "prompt": "Hand reference sheet for the man in 图片1. Paint ONLY his hands with exactly the same big, rough, muscular bare hands with natural pale skin exactly like the skin of his bare arms (not red), with a few thin dark-red war paint stripes, and a black spiked iron bracer cuff with a glowing crimson rune at the wrist as in 图片1, in the same painterly game-art style and lighting (not a 3D render), large and sharp, on a plain light-grey background. Two hands side by side, well separated, each cut off just after the cuff, no arms, no body, no text. LEFT: his hand clenched into a tight fist seen from the outside, back of the hand and knuckles facing the viewer, thumb wrapped over the fingers, the wrist and cuff entering from the lower right, gripping a straight thin cylindrical rod painted flat pure bright green that passes vertically BEHIND the curled fingers (the fingers wrap around it and hide it) and sticks out above and below the fist. RIGHT: the same hand open with the palm facing the viewer, fingers together and slightly curved as if casting a spell, the wrist and cuff at the bottom. No watermark.",
+   "src": "src/bran/bran_bloodrage_hands.webp",
+   "note": "OK — 자연 피부. 편 손은 OK 손짓(시전 손으로 사용)"
+  },
+  {
+   "id": "lia_assassin_turn5",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "Af66so-dALMvEXnJjVgM-mRsD0V1x7i_mel9dGuVU8AuQOKH0M9G6wg8Pr3rn872XuSf_Taf",
+   "inputs": [
+    "lia_assassin_side.jpg",
+    "kael_hunter_turn5.jpg (layout)"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
+   "prompt": "Character turnaround sheet of the young woman in 图片1, wearing exactly the outfit of 图片1: a tight black leather bodice, a crimson scarf wrapped snugly around the neck, a riveted grey steel pauldron on the left shoulder, bare upper arms, black leather bracers, a crimson sash tied at the waist, fitted black leather trousers with straps, tall black leather boots; the same black cloth mask over her nose and mouth and the same short black bob hair in every view. Keep her slim athletic female build. Copy ONLY the layout of 图片2: five full-body views of the same woman standing in a relaxed neutral pose with arms hanging down, side by side, evenly spaced, same size and same ground line, from left to right: 1 front view, 2 three-quarter front view, 3 side profile view, 4 back view, 5 three-quarter back view. Do not copy the man, the long coat, the ponytail or the red bandana of 图片2; all clothing, colours and materials come from 图片1. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, every view complete from head to boots, no cape, no weapon, no long scarf tails, nothing held in the hands, no text, no labels, no watermark.",
+   "src": "-",
+   "note": "FAILED(부분): 카엘 레이아웃의 긴 코트가 뒷모습 두 장에 새어 들어옴 → v2 (레이아웃을 같은 영웅의 여성 시트로)",
+   "picked": "-"
+  },
+  {
+   "id": "lia_assassin_qback",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AfKVVn2qLOm_Q1vJLEa3tqUd-94w6SR-oEJmizZ24SaFh2Ww-H55z5lQrc8cEqRD3LkY-Kd0",
+   "inputs": [
+    "lia_assassin_side.jpg",
+    "kael_hunter_qback.jpg (layout)"
+   ],
+   "aspect_ratio": "4:3",
+   "img_resolution": "2k",
+   "prompt": "Two full-body three-quarter BACK views of the young woman in 图片1, wearing exactly the outfit of 图片1: a tight black leather bodice, a crimson scarf wrapped snugly around the neck, a riveted grey steel pauldron on the left shoulder, bare upper arms, black leather bracers, a crimson sash tied at the waist, fitted black leather trousers with straps, tall black leather boots; the same black cloth mask over her nose and mouth and the same short black bob hair in every view. Keep her slim athletic female build. Copy ONLY the layout and camera angles of 图片2: she stands in a relaxed neutral pose with arms hanging down, seen mostly from behind; LEFT figure turned away to the viewer's left, RIGHT figure turned away to the viewer's right (mirror angles), both the same size on the same ground line. Do not copy the man, the long coat or the ponytail of 图片2. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, complete from head to boots, no cape, no weapon, no long scarf tails, nothing held in the hands, no text, no watermark.",
+   "src": "src/lia/lia_assassin_qback.webp",
+   "note": "왼쪽 = 앞모습(버림), 오른쪽 = 3/4 뒤(붉은 스카프 자락이 그려짐 — 턴테이블에서만 보임)"
+  },
+  {
+   "id": "lia_assassin_hands",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AcAU9GGFDNPjyY4pucvFX4LUm3-DOyXWLoSR8olH6PGWJ6aPbd6858dwuDQAM_9BCVpZ9Sz8",
+   "inputs": [
+    "lia_assassin_side.jpg"
+   ],
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "prompt": "Hand reference sheet for the young woman in 图片1. Paint ONLY her hands exactly as they appear in 图片1 (slender female hands, the same bare skin or gloves, the same bracer cuff at the wrist), in the same painterly game-art style and lighting (not a 3D render), large and sharp, on a plain light-grey background. Two hands side by side, well separated, each cut off just after the cuff, no arms, no body, no text. LEFT: her hand clenched into a tight fist seen from the outside, back of the hand and knuckles facing the viewer, thumb wrapped over the fingers, the wrist and cuff entering from the lower right, gripping a straight thin cylindrical rod painted flat pure bright green that passes vertically BEHIND the curled fingers (the fingers wrap around it and hide it) and sticks out above and below the fist. RIGHT: the same hand open with the palm facing the viewer, fingers together and slightly curved as if casting a spell, the wrist and cuff at the bottom. No watermark.",
+   "src": "-",
+   "note": "FAILED: 오른쪽이 편 손 대신 상반신 초상 → v2",
+   "picked": "-"
+  },
+  {
+   "id": "lia_ninja_turn5",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AbSiO5Dcjlqf-m7F5TJi6LGtk-xUlXzSkTMBnCCwXNKXwob03SZtFk4D4XSKtKftpMVMKpXN",
+   "inputs": [
+    "lia_ninja_side.jpg",
+    "kael_hunter_turn5.jpg (layout)"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
+   "prompt": "Character turnaround sheet of the young woman in 图片1, wearing exactly the outfit of 图片1: a fitted dark navy-black ninja jacket with a crossed collar and steel-grey trim, a deep indigo scarf wrapped around the neck, a small dark steel shoulder guard, dark indigo arm wraps and black steel bracers, a dark indigo obi sash, fitted dark grey ninja trousers with indigo shin wraps, black boots; the same black cloth mask and the same short black bob hair in every view. Keep her slim athletic female build. Copy ONLY the layout of 图片2: five full-body views of the same woman standing in a relaxed neutral pose with arms hanging down, side by side, evenly spaced, same size and same ground line, from left to right: 1 front view, 2 three-quarter front view, 3 side profile view, 4 back view, 5 three-quarter back view. Do not copy the man, the long coat, the ponytail or the red bandana of 图片2; all clothing, colours and materials come from 图片1. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, every view complete from head to boots, no cape, no weapon, no long scarf tails, nothing held in the hands, no text, no labels, no watermark.",
+   "src": "-",
+   "note": "FAILED: 짧은 재킷이 모든 뷰에서 긴 코트가 됨(카엘 레이아웃 누출) → v2",
+   "picked": "-"
+  },
+  {
+   "id": "lia_ninja_qback",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AW_bHs3zorgSwdu2LGCH0KWZVWsHHqNGOLP_i1QSHkIz797sXnh6DuKtte2VO8ud7hG7A6_a",
+   "inputs": [
+    "lia_ninja_side.jpg",
+    "kael_hunter_qback.jpg (layout)"
+   ],
+   "aspect_ratio": "4:3",
+   "img_resolution": "2k",
+   "prompt": "Two full-body three-quarter BACK views of the young woman in 图片1, wearing exactly the outfit of 图片1: a fitted dark navy-black ninja jacket with a crossed collar and steel-grey trim, a deep indigo scarf wrapped around the neck, a small dark steel shoulder guard, dark indigo arm wraps and black steel bracers, a dark indigo obi sash, fitted dark grey ninja trousers with indigo shin wraps, black boots; the same black cloth mask and the same short black bob hair in every view. Keep her slim athletic female build. Copy ONLY the layout and camera angles of 图片2: she stands in a relaxed neutral pose with arms hanging down, seen mostly from behind; LEFT figure turned away to the viewer's left, RIGHT figure turned away to the viewer's right (mirror angles), both the same size on the same ground line. Do not copy the man, the long coat or the ponytail of 图片2. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, complete from head to boots, no cape, no weapon, no long scarf tails, nothing held in the hands, no text, no watermark.",
+   "src": "src/lia/lia_ninja_qback.webp",
+   "note": "왼쪽 = 3/4 앞모습(버림), 오른쪽 = 뒤(중복)"
+  },
+  {
+   "id": "lia_ninja_hands",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AUoZzOX-PY8f38bc6zgkHy7sy3LYXhaJqWZRpkoiTTxwBz8wZegnXIoMTynoBut4xFwUMFOX",
+   "inputs": [
+    "lia_ninja_side.jpg"
+   ],
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "prompt": "Hand reference sheet for the young woman in 图片1. Paint ONLY her hands exactly as they appear in 图片1 (slender female hands, the same bare skin or gloves, the same bracer cuff at the wrist), in the same painterly game-art style and lighting (not a 3D render), large and sharp, on a plain light-grey background. Two hands side by side, well separated, each cut off just after the cuff, no arms, no body, no text. LEFT: her hand clenched into a tight fist seen from the outside, back of the hand and knuckles facing the viewer, thumb wrapped over the fingers, the wrist and cuff entering from the lower right, gripping a straight thin cylindrical rod painted flat pure bright green that passes vertically BEHIND the curled fingers (the fingers wrap around it and hide it) and sticks out above and below the fist. RIGHT: the same hand open with the palm facing the viewer, fingers together and slightly curved as if casting a spell, the wrist and cuff at the bottom. No watermark.",
+   "src": "src/lia/lia_ninja_hands.webp",
+   "note": "OK (사실적인 맨손)"
+  },
+  {
+   "id": "lia_shadowmaster_turn5",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AVQYSYczfo6cuXat98xcm68OEEehABrZBAtGaiGwO4mHme1H94pQQ-uvo4RV3RUm6XSdF5Zz",
+   "inputs": [
+    "lia_shadowmaster_side.jpg",
+    "kael_hunter_turn5.jpg (layout)"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
+   "prompt": "Character turnaround sheet of the young woman in 图片1, wearing exactly the outfit of 图片1: ornate jet-black lacquered shinobi armour with thin glowing violet trim lines and sigils, layered black-and-violet lacquered shoulder guards, a deep violet scarf around the neck, black armoured bracers with glowing violet runes, a violet obi with a silver clasp, a black lacquered armour tasset over the hip, fitted dark trousers with violet-trimmed shin guards, black boots; the same black mask and the same short black bob hair in every view. Keep her slim athletic female build. Copy ONLY the layout of 图片2: five full-body views of the same woman standing in a relaxed neutral pose with arms hanging down, side by side, evenly spaced, same size and same ground line, from left to right: 1 front view, 2 three-quarter front view, 3 side profile view, 4 back view, 5 three-quarter back view. Do not copy the man, the long coat, the ponytail or the red bandana of 图片2; all clothing, colours and materials come from 图片1. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, every view complete from head to boots, no cape, no weapon, no long scarf tails, nothing held in the hands, no text, no labels, no watermark.",
+   "src": "src/lia/lia_shadowmaster_turn5.webp",
+   "note": "OK — 허리 갑옷 자락이 뒤 무릎까지(원화의 태싯과 일치)"
+  },
+  {
+   "id": "lia_shadowmaster_qback",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "ARGLoQEIAl_Nsv4hzgGNqjb5NjXeZopxmIFXTnwoUjnfJwHxcKHCwpfJVzCowUItUTNZG4Bm",
+   "inputs": [
+    "lia_shadowmaster_side.jpg",
+    "kael_hunter_qback.jpg (layout)"
+   ],
+   "aspect_ratio": "4:3",
+   "img_resolution": "2k",
+   "prompt": "Two full-body three-quarter BACK views of the young woman in 图片1, wearing exactly the outfit of 图片1: ornate jet-black lacquered shinobi armour with thin glowing violet trim lines and sigils, layered black-and-violet lacquered shoulder guards, a deep violet scarf around the neck, black armoured bracers with glowing violet runes, a violet obi with a silver clasp, a black lacquered armour tasset over the hip, fitted dark trousers with violet-trimmed shin guards, black boots; the same black mask and the same short black bob hair in every view. Keep her slim athletic female build. Copy ONLY the layout and camera angles of 图片2: she stands in a relaxed neutral pose with arms hanging down, seen mostly from behind; LEFT figure turned away to the viewer's left, RIGHT figure turned away to the viewer's right (mirror angles), both the same size on the same ground line. Do not copy the man, the long coat or the ponytail of 图片2. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, complete from head to boots, no cape, no weapon, no long scarf tails, nothing held in the hands, no text, no watermark.",
+   "src": "src/lia/lia_shadowmaster_qback.webp",
+   "note": "왼쪽 = 앞모습(버림)"
+  },
+  {
+   "id": "lia_shadowmaster_hands",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AfIxK5mfyWSOF_bCNi2t9oOnZ6_vXKxOjc9dFubyf23FT3t4jL-ykV03o5s0oNBvCG2bKTEc",
+   "inputs": [
+    "lia_shadowmaster_side.jpg"
+   ],
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "prompt": "Hand reference sheet for the young woman in 图片1. Paint ONLY her hands exactly as they appear in 图片1 (slender female hands, the same bare skin or gloves, the same bracer cuff at the wrist), in the same painterly game-art style and lighting (not a 3D render), large and sharp, on a plain light-grey background. Two hands side by side, well separated, each cut off just after the cuff, no arms, no body, no text. LEFT: her hand clenched into a tight fist seen from the outside, back of the hand and knuckles facing the viewer, thumb wrapped over the fingers, the wrist and cuff entering from the lower right, gripping a straight thin cylindrical rod painted flat pure bright green that passes vertically BEHIND the curled fingers (the fingers wrap around it and hide it) and sticks out above and below the fist. RIGHT: the same hand open with the palm facing the viewer, fingers together and slightly curved as if casting a spell, the wrist and cuff at the bottom. No watermark.",
+   "src": "src/lia/lia_shadowmaster_hands.webp",
+   "note": "OK"
+  },
+  {
+   "id": "lia_kunoichi_turn5",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AWVn_rpIXy-A_WcgtvVak6ULoutlVsGWvpYD96ZqOntJoBoPieyCrq53Lu56RJCzSX2artso",
+   "inputs": [
+    "lia_kunoichi_side.jpg",
+    "kael_hunter_turn5.jpg (layout)"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
+   "prompt": "Character turnaround sheet of the young woman in 图片1, wearing exactly the outfit of 图片1: a fitted dark wine-red short kimono-style jacket with rose-red and pale-pink trim and flame-pattern embroidery, a rose-red scarf around the neck, a dark wine shoulder guard with gold rims, rose-red arm guards, a rose-red obi, fitted dark wine trousers with pale-pink shin wraps, dark wine boots; the same gold circlet with a pink crystal, the same black mask and the same short black bob hair in every view. Keep her slim athletic female build. Copy ONLY the layout of 图片2: five full-body views of the same woman standing in a relaxed neutral pose with arms hanging down, side by side, evenly spaced, same size and same ground line, from left to right: 1 front view, 2 three-quarter front view, 3 side profile view, 4 back view, 5 three-quarter back view. Do not copy the man, the long coat, the ponytail or the red bandana of 图片2; all clothing, colours and materials come from 图片1. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, every view complete from head to boots, no cape, no weapon, no long scarf tails, nothing held in the hands, no text, no labels, no watermark.",
+   "src": "src/lia/lia_kunoichi_turn5.webp",
+   "note": "OK — 옆모습에 작은 포니테일이 생김(무시)"
+  },
+  {
+   "id": "lia_kunoichi_qback",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AalvhCYFaFccsEs0zdxgLGJwHkrASSnCkB0EOuiUBfF5i9AOKLmaILv5pnNsKjEXJP4b3a2t",
+   "inputs": [
+    "lia_kunoichi_side.jpg",
+    "kael_hunter_qback.jpg (layout)"
+   ],
+   "aspect_ratio": "4:3",
+   "img_resolution": "2k",
+   "prompt": "Two full-body three-quarter BACK views of the young woman in 图片1, wearing exactly the outfit of 图片1: a fitted dark wine-red short kimono-style jacket with rose-red and pale-pink trim and flame-pattern embroidery, a rose-red scarf around the neck, a dark wine shoulder guard with gold rims, rose-red arm guards, a rose-red obi, fitted dark wine trousers with pale-pink shin wraps, dark wine boots; the same gold circlet with a pink crystal, the same black mask and the same short black bob hair in every view. Keep her slim athletic female build. Copy ONLY the layout and camera angles of 图片2: she stands in a relaxed neutral pose with arms hanging down, seen mostly from behind; LEFT figure turned away to the viewer's left, RIGHT figure turned away to the viewer's right (mirror angles), both the same size on the same ground line. Do not copy the man, the long coat or the ponytail of 图片2. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, complete from head to boots, no cape, no weapon, no long scarf tails, nothing held in the hands, no text, no watermark.",
+   "src": "src/lia/lia_kunoichi_qback.webp",
+   "note": "왼쪽 = 앞모습(버림)"
+  },
+  {
+   "id": "lia_kunoichi_hands",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "Ad83KbdRlgxnCJFXOWdX_S57euPfPYgSHNx0t2qTrzh3bEQOzt7fI5K3LSbMUJ-ZibaZcXMQ",
+   "inputs": [
+    "lia_kunoichi_side.jpg"
+   ],
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "prompt": "Hand reference sheet for the young woman in 图片1. Paint ONLY her hands exactly as they appear in 图片1 (slender female hands, the same bare skin or gloves, the same bracer cuff at the wrist), in the same painterly game-art style and lighting (not a 3D render), large and sharp, on a plain light-grey background. Two hands side by side, well separated, each cut off just after the cuff, no arms, no body, no text. LEFT: her hand clenched into a tight fist seen from the outside, back of the hand and knuckles facing the viewer, thumb wrapped over the fingers, the wrist and cuff entering from the lower right, gripping a straight thin cylindrical rod painted flat pure bright green that passes vertically BEHIND the curled fingers (the fingers wrap around it and hide it) and sticks out above and below the fist. RIGHT: the same hand open with the palm facing the viewer, fingers together and slightly curved as if casting a spell, the wrist and cuff at the bottom. No watermark.",
+   "src": "src/lia/lia_kunoichi_hands.webp",
+   "note": "막대가 십자(가로 막대 추가) — 초록 키잉으로 제거"
+  },
+  {
+   "id": "lia_dancer_turn5",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AUn3BL8LQjOPb4ztaL8I78SdQ9JrsTKrUnBIe0lzqShgZm1DVtm404KD5DrzhIvlqD5W6bMG",
+   "inputs": [
+    "lia_dancer_side.jpg",
+    "kael_hunter_turn5.jpg (layout)"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
+   "prompt": "Character turnaround sheet of the young woman in 图片1, wearing exactly the outfit of 图片1: a fitted dark crimson silk bodice with gold embroidery and a trim of small gold coins, a golden silk scarf around the neck, a crimson-and-gold shoulder guard, gold arm bands, crimson bracers with gold filigree, a golden sash at the waist, fitted dark crimson dancer's trousers gathered at the ankles with gold bands, crimson boots with gold trim; the same black mask and the same short black bob hair in every view. Keep her slim athletic female build. Copy ONLY the layout of 图片2: five full-body views of the same woman standing in a relaxed neutral pose with arms hanging down, side by side, evenly spaced, same size and same ground line, from left to right: 1 front view, 2 three-quarter front view, 3 side profile view, 4 back view, 5 three-quarter back view. Do not copy the man, the long coat, the ponytail or the red bandana of 图片2; all clothing, colours and materials come from 图片1. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, every view complete from head to boots, no cape, no weapon, no long scarf tails, nothing held in the hands, no text, no labels, no watermark.",
+   "src": "src/lia/lia_dancer_turn5.webp",
+   "note": "가면이 사라짐(원화는 가면) — 턴테이블 앞모습만 얼굴이 보임"
+  },
+  {
+   "id": "lia_dancer_qback",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AVvh78FkyGlgp16b6WPN7k0sytAkJzKp0lVOPVPSDtcvwgLisykdkNHs7KgaLnZLs-nL3DcG",
+   "inputs": [
+    "lia_dancer_side.jpg",
+    "kael_hunter_qback.jpg (layout)"
+   ],
+   "aspect_ratio": "4:3",
+   "img_resolution": "2k",
+   "prompt": "Two full-body three-quarter BACK views of the young woman in 图片1, wearing exactly the outfit of 图片1: a fitted dark crimson silk bodice with gold embroidery and a trim of small gold coins, a golden silk scarf around the neck, a crimson-and-gold shoulder guard, gold arm bands, crimson bracers with gold filigree, a golden sash at the waist, fitted dark crimson dancer's trousers gathered at the ankles with gold bands, crimson boots with gold trim; the same black mask and the same short black bob hair in every view. Keep her slim athletic female build. Copy ONLY the layout and camera angles of 图片2: she stands in a relaxed neutral pose with arms hanging down, seen mostly from behind; LEFT figure turned away to the viewer's left, RIGHT figure turned away to the viewer's right (mirror angles), both the same size on the same ground line. Do not copy the man, the long coat or the ponytail of 图片2. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, complete from head to boots, no cape, no weapon, no long scarf tails, nothing held in the hands, no text, no watermark.",
+   "src": "src/lia/lia_dancer_qback.webp",
+   "note": "OK"
+  },
+  {
+   "id": "lia_dancer_hands",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AWgK2Qr5RDP1b9Geq9yj9wzhAhNV0B7e8OzYzA9r39XqaZVBT-OJYZ1iuhR-lTeu9v2u5Jcz",
+   "inputs": [
+    "lia_dancer_side.jpg"
+   ],
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "prompt": "Hand reference sheet for the young woman in 图片1. Paint ONLY her hands exactly as they appear in 图片1 (slender female hands, the same bare skin or gloves, the same bracer cuff at the wrist), in the same painterly game-art style and lighting (not a 3D render), large and sharp, on a plain light-grey background. Two hands side by side, well separated, each cut off just after the cuff, no arms, no body, no text. LEFT: her hand clenched into a tight fist seen from the outside, back of the hand and knuckles facing the viewer, thumb wrapped over the fingers, the wrist and cuff entering from the lower right, gripping a straight thin cylindrical rod painted flat pure bright green that passes vertically BEHIND the curled fingers (the fingers wrap around it and hide it) and sticks out above and below the fist. RIGHT: the same hand open with the palm facing the viewer, fingers together and slightly curved as if casting a spell, the wrist and cuff at the bottom. No watermark.",
+   "src": "src/lia/lia_dancer_hands.webp",
+   "note": "OK"
+  },
+  {
+   "id": "lia_bladedancer_turn5",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "Ae-J1dvfX7sR5tPLNxsJKVo2p3WMCc3t2RUYdSQx2RMvr3stplICgNZHuM_lGf-dsRNqsGxP",
+   "inputs": [
+    "lia_bladedancer_side.jpg",
+    "kael_hunter_turn5.jpg (layout)"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
+   "prompt": "Character turnaround sheet of the young woman in 图片1, wearing exactly the outfit of 图片1: a fitted deep magenta-wine silk bodice covered in gold filigree, a golden silk scarf around the neck, an ornate gold shoulder guard, gold arm cuffs, ornate gold-and-magenta bracers, a wide gold-embroidered sash with a gold-embroidered crimson panel hanging at the back of the hip, fitted crimson trousers with gold ankle cuffs, crimson boots with gold toe caps; the same delicate gold tiara with a red jewel, the same black mask and the same short black bob hair in every view. Keep her slim athletic female build. Copy ONLY the layout of 图片2: five full-body views of the same woman standing in a relaxed neutral pose with arms hanging down, side by side, evenly spaced, same size and same ground line, from left to right: 1 front view, 2 three-quarter front view, 3 side profile view, 4 back view, 5 three-quarter back view. Do not copy the man, the long coat, the ponytail or the red bandana of 图片2; all clothing, colours and materials come from 图片1. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, every view complete from head to boots, no cape, no weapon, no long scarf tails, nothing held in the hands, no text, no labels, no watermark.",
+   "src": "src/lia/lia_bladedancer_turn5.webp",
+   "note": "OK"
+  },
+  {
+   "id": "lia_bladedancer_qback",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "ARXpQxLOisNcmJPoikWRIho6gk1uojaeF779frm5zkIwHl4zXowwX9VMbs_K-eOGipXsfaKP",
+   "inputs": [
+    "lia_bladedancer_side.jpg",
+    "kael_hunter_qback.jpg (layout)"
+   ],
+   "aspect_ratio": "4:3",
+   "img_resolution": "2k",
+   "prompt": "Two full-body three-quarter BACK views of the young woman in 图片1, wearing exactly the outfit of 图片1: a fitted deep magenta-wine silk bodice covered in gold filigree, a golden silk scarf around the neck, an ornate gold shoulder guard, gold arm cuffs, ornate gold-and-magenta bracers, a wide gold-embroidered sash with a gold-embroidered crimson panel hanging at the back of the hip, fitted crimson trousers with gold ankle cuffs, crimson boots with gold toe caps; the same delicate gold tiara with a red jewel, the same black mask and the same short black bob hair in every view. Keep her slim athletic female build. Copy ONLY the layout and camera angles of 图片2: she stands in a relaxed neutral pose with arms hanging down, seen mostly from behind; LEFT figure turned away to the viewer's left, RIGHT figure turned away to the viewer's right (mirror angles), both the same size on the same ground line. Do not copy the man, the long coat or the ponytail of 图片2. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, complete from head to boots, no cape, no weapon, no long scarf tails, nothing held in the hands, no text, no watermark.",
+   "src": "src/lia/lia_bladedancer_qback.webp",
+   "note": "두 뷰의 옷이 보라색으로 드리프트 → fixups"
+  },
+  {
+   "id": "lia_bladedancer_hands",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AUTkgw2wMiyggDSYr-apFhSmC5vBRVc5PIZGiIC-KyB7H7tGJoD3ExKZ2jmBsWMAyc5gZiRZ",
+   "inputs": [
+    "lia_bladedancer_side.jpg"
+   ],
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "prompt": "Hand reference sheet for the young woman in 图片1. Paint ONLY her hands exactly as they appear in 图片1 (slender female hands, the same bare skin or gloves, the same bracer cuff at the wrist), in the same painterly game-art style and lighting (not a 3D render), large and sharp, on a plain light-grey background. Two hands side by side, well separated, each cut off just after the cuff, no arms, no body, no text. LEFT: her hand clenched into a tight fist seen from the outside, back of the hand and knuckles facing the viewer, thumb wrapped over the fingers, the wrist and cuff entering from the lower right, gripping a straight thin cylindrical rod painted flat pure bright green that passes vertically BEHIND the curled fingers (the fingers wrap around it and hide it) and sticks out above and below the fist. RIGHT: the same hand open with the palm facing the viewer, fingers together and slightly curved as if casting a spell, the wrist and cuff at the bottom. No watermark.",
+   "src": "src/lia/lia_bladedancer_hands.webp",
+   "note": "막대 두 개 — 초록 키잉으로 제거"
+  },
+  {
+   "id": "lia_reaper_turn5",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AZjkxTlGqWdsLyT-rHA4PWvNbpnbNK1Tzo9MLE3ACikPJ8y1w9hK1CXJ23s2zHWMziX8x_mQ",
+   "inputs": [
+    "lia_reaper_side.jpg",
+    "kael_hunter_turn5.jpg (layout)"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
+   "prompt": "Character turnaround sheet of the young woman in 图片1, wearing exactly the outfit of 图片1: a black hood pulled up over her head with her black fringe visible, glowing mint-green eyes, a black mask, bone-white rib-like armour plates with glowing green runes over a black leather bodice, a bone-white skull shoulder guard, black bracers with bone plates and glowing green runes, a tarnished gold scarf around the neck, a dark green sash with a tattered dark green cloth tail at the back, fitted black trousers, black boots; the same hood in every view. Keep her slim athletic female build. Copy ONLY the layout of 图片2: five full-body views of the same woman standing in a relaxed neutral pose with arms hanging down, side by side, evenly spaced, same size and same ground line, from left to right: 1 front view, 2 three-quarter front view, 3 side profile view, 4 back view, 5 three-quarter back view. Do not copy the man, the long coat, the ponytail or the red bandana of 图片2; all clothing, colours and materials come from 图片1. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, every view complete from head to boots, no cape, no weapon, no long scarf tails, nothing held in the hands, no text, no labels, no watermark.",
+   "src": "-",
+   "note": "FAILED: 2·3번째 뷰가 카엘(레이아웃 인물)로 나옴 → v2",
+   "picked": "-"
+  },
+  {
+   "id": "lia_reaper_qback",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "ARJyMRPdrmd4mSzn2O32H5Qtnz5Xk_Rb54FZOP6f7ZYnoZnK3FpnA4B6nPJOpNrDYg2_Tb-6",
+   "inputs": [
+    "lia_reaper_side.jpg",
+    "kael_hunter_qback.jpg (layout)"
+   ],
+   "aspect_ratio": "4:3",
+   "img_resolution": "2k",
+   "prompt": "Two full-body three-quarter BACK views of the young woman in 图片1, wearing exactly the outfit of 图片1: a black hood pulled up over her head with her black fringe visible, glowing mint-green eyes, a black mask, bone-white rib-like armour plates with glowing green runes over a black leather bodice, a bone-white skull shoulder guard, black bracers with bone plates and glowing green runes, a tarnished gold scarf around the neck, a dark green sash with a tattered dark green cloth tail at the back, fitted black trousers, black boots; the same hood in every view. Keep her slim athletic female build. Copy ONLY the layout and camera angles of 图片2: she stands in a relaxed neutral pose with arms hanging down, seen mostly from behind; LEFT figure turned away to the viewer's left, RIGHT figure turned away to the viewer's right (mirror angles), both the same size on the same ground line. Do not copy the man, the long coat or the ponytail of 图片2. Plain light-grey studio background, realistic painterly dark-fantasy game-art style, soft even lighting, complete from head to boots, no cape, no weapon, no long scarf tails, nothing held in the hands, no text, no watermark.",
+   "src": "-",
+   "note": "FAILED: 오른쪽이 카엘 → v2",
+   "picked": "-"
+  },
+  {
+   "id": "lia_reaper_hands",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AbFjahsRZTI0H6UnS3o65tz0jvmZflYNlsCUhtlsoPAUEx9mCWrG-_aFGOq5D7B6Y0Oqb7zM",
+   "inputs": [
+    "lia_reaper_side.jpg"
+   ],
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "prompt": "Hand reference sheet for the young woman in 图片1. Paint ONLY her hands exactly as they appear in 图片1 (slender female hands, the same bare skin or gloves, the same bracer cuff at the wrist), in the same painterly game-art style and lighting (not a 3D render), large and sharp, on a plain light-grey background. Two hands side by side, well separated, each cut off just after the cuff, no arms, no body, no text. LEFT: her hand clenched into a tight fist seen from the outside, back of the hand and knuckles facing the viewer, thumb wrapped over the fingers, the wrist and cuff entering from the lower right, gripping a straight thin cylindrical rod painted flat pure bright green that passes vertically BEHIND the curled fingers (the fingers wrap around it and hide it) and sticks out above and below the fist. RIGHT: the same hand open with the palm facing the viewer, fingers together and slightly curved as if casting a spell, the wrist and cuff at the bottom. No watermark.",
+   "src": "-",
+   "note": "FAILED: 편 손에도 초록 막대 → v2",
+   "picked": "-"
+  },
+  {
+   "id": "lia_assassin_turn5_v2",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "Ab83gAArqbOSfcLwclvjT_QUiFhZd0fbTxv6HoB1tBHIAfzjw1Hw8nV4tq63vxH6X7u1QoiS",
+   "inputs": [
+    "lia_assassin_side.jpg",
+    "lia_kunoichi_turn5.jpg (layout)"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
+   "prompt": "(v1 프롬프트 + 레이아웃을 같은 영웅의 여성 시트로, \"No coat, no skirt\" / \"Only ONE green rod\" / \"nothing else (no face, no head)\" 보강)",
+   "src": "src/lia/lia_assassin_turn5.webp",
+   "note": "OK — 코트 없음, 가면·스카프 일치"
+  },
+  {
+   "id": "lia_ninja_turn5_v2",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "ASeqpXab5fZuSRLowneveL81rZ1g2XNvHFluz2VB-zLErQl2Cxtcs3Yuiqdruf-SRLAMI0b5",
+   "inputs": [
+    "lia_ninja_side.jpg",
+    "lia_kunoichi_turn5.jpg (layout)"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
+   "prompt": "(v1 프롬프트 + 레이아웃을 같은 영웅의 여성 시트로, \"No coat, no skirt\" / \"Only ONE green rod\" / \"nothing else (no face, no head)\" 보강)",
+   "src": "src/lia/lia_ninja_turn5.webp",
+   "note": "OK — 재킷이 엉덩이까지"
+  },
+  {
+   "id": "lia_reaper_turn5_v2",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "ARuTItW79d9BnNknFRQY8yV-AGdn-2WASWNRJ_EGEy32YZkM4HphxF23uxWLtd-8hrpP1_nE",
+   "inputs": [
+    "lia_reaper_side.jpg",
+    "lia_kunoichi_turn5.jpg (layout)"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
+   "prompt": "(v1 프롬프트 + 레이아웃을 같은 영웅의 여성 시트로, \"No coat, no skirt\" / \"Only ONE green rod\" / \"nothing else (no face, no head)\" 보강)",
+   "src": "src/lia/lia_reaper_turn5.webp",
+   "note": "OK — 다섯 뷰 모두 리아"
+  },
+  {
+   "id": "lia_reaper_qback_v2",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "ATz8FtNvSrkmTb8EgMNzEOClYXbw1Rn5WuMeUvj46nVIdLBccHVAWJSxdcbFdvF_O6FRtcJB",
+   "inputs": [
+    "lia_reaper_side.jpg",
+    "lia_bladedancer_qback.jpg (layout)"
+   ],
+   "aspect_ratio": "4:3",
+   "img_resolution": "2k",
+   "prompt": "(v1 프롬프트 + 레이아웃을 같은 영웅의 여성 시트로, \"No coat, no skirt\" / \"Only ONE green rod\" / \"nothing else (no face, no head)\" 보강)",
+   "src": "src/lia/lia_reaper_qback.webp",
+   "note": "왼쪽 = 앞모습(버림), 오른쪽 = 3/4 뒤"
+  },
+  {
+   "id": "lia_assassin_hands_v2",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AQHACy-lfqF-RzFTC8w77Xu_OqAyD6K5COm_S5vwZhHZguGJXaBN6UFIcb6bMDgnba7GDA2c",
+   "inputs": [
+    "lia_assassin_side.jpg"
+   ],
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "prompt": "(v1 프롬프트 + 레이아웃을 같은 영웅의 여성 시트로, \"No coat, no skirt\" / \"Only ONE green rod\" / \"nothing else (no face, no head)\" 보강)",
+   "src": "src/lia/lia_assassin_hands.webp",
+   "note": "OK"
+  },
+  {
+   "id": "lia_reaper_hands_v2",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AbVA3SQ99AwejXovxsv9bz41UbTO7jAx2zD8tir43CAc7NuSiy7CiHSYFXaNkt6q3gED9OeD",
+   "inputs": [
+    "lia_reaper_side.jpg"
+   ],
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "prompt": "(v1 프롬프트 + 레이아웃을 같은 영웅의 여성 시트로, \"No coat, no skirt\" / \"Only ONE green rod\" / \"nothing else (no face, no head)\" 보강)",
+   "src": "src/lia/lia_reaper_hands.webp",
+   "note": "OK — 막대는 주먹에만"
+  },
+  {
+   "id": "lia_ninja_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "ASIR39H-SPSZ2EKKLZl7171gH5dSi-noMm9ElrZnqA6PbwKICF03Lp9XB9W0MGOuU343LaLH",
+   "inputs": [
+    "lia_assassin_side.jpg"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": "a",
+   "prompt": "Edit 图片1. Keep the SAME young woman with the exact same face and eyes, (the same black cloth mask over her nose and mouth,) the same short black bob hair, the same slim body proportions, the exact same walking side pose facing right, same arm and leg positions, same camera angle, same framing, scale and position on the canvas, same plain light-grey studio background, same realistic painterly dark-fantasy game-art style and lighting. Change ONLY her outfit into a refined shinobi outfit, one tier grander: fitted dark navy-black ninja jacket with crossed collar and steel-grey trim, deep indigo scarf wrapped snugly and tucked in, small lacquered dark steel shoulder guard, dark indigo arm wraps and black steel bracers, dark indigo obi, fitted black ninja trousers with indigo shin wraps, black tabi boots. No hanging cloth tails or streamers, no cape, no cloak, no weapons, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark.",
+   "src": "src/lia/lia_ninja_side.webp",
+   "note": "OK — a: 부츠, b 는 발가락이 보이는 조리(다비)"
+  },
+  {
+   "id": "lia_shadowmaster_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AWEnsBd4zG391UT9KKNozYo3uN7QJG4qpPvBYV-ZG0LTsKXmvMbCXfoBO-n0iUxynPnAQJh2",
+   "inputs": [
+    "lia_assassin_side.jpg"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": "a",
+   "prompt": "Edit 图片1. Keep the SAME young woman with the exact same face and eyes, (the same black cloth mask over her nose and mouth,) the same short black bob hair, the same slim body proportions, the exact same walking side pose facing right, same arm and leg positions, same camera angle, same framing, scale and position on the canvas, same plain light-grey studio background, same realistic painterly dark-fantasy game-art style and lighting. Change ONLY her outfit into the grand armour of a shadow lord, two tiers grander: ornate jet-black lacquered shinobi armour with glowing violet trim lines and sigils, layered black-and-violet lacquered shoulder guard, deep violet scarf, black armoured bracers with glowing violet runes, violet obi with silver clasp, fitted black armoured trousers with lacquered shin guards, black armoured tabi boots; black face mask with a thin glowing violet line, eyes glowing violet. No hanging cloth tails or streamers, no cape, no cloak, no weapons, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark.",
+   "src": "src/lia/lia_shadowmaster_side.webp",
+   "note": "OK — a: 허리 뒤 갑옷 태싯(무릎까지) → skirt 영역. b 는 견갑이 망토처럼 등 전체를 덮음(자르기 불가)"
+  },
+  {
+   "id": "lia_kunoichi_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AeEsrS7l4Mg2nCAXNVN0sWN7vHN44o9-lB4rUvSXR4KKQYAz8p2avi3F8ww1UvgRVPwyWSHV",
+   "inputs": [
+    "lia_assassin_side.jpg"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": "a",
+   "prompt": "Edit 图片1. Keep the SAME young woman with the exact same face and eyes, (the same black cloth mask over her nose and mouth,) the same short black bob hair, the same slim body proportions, the exact same walking side pose facing right, same arm and leg positions, same camera angle, same framing, scale and position on the canvas, same plain light-grey studio background, same realistic painterly dark-fantasy game-art style and lighting. Change ONLY her outfit into the elegant battle outfit of a kunoichi illusionist, two tiers grander: fitted dark wine-red short kimono-style jacket with rose-red and pale-pink trim and flame embroidery, rose-red scarf, lacquered dark wine shoulder guard with gold rims, rose-red arm guards, rose-red obi, fitted dark wine trousers with pale-pink shin wraps, dark wine tabi boots; her face uncovered with NO mask, slim gold circlet with a pink crystal. No hanging cloth tails or streamers, no cape, no cloak, no weapons, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark.",
+   "src": "src/lia/lia_kunoichi_side.webp",
+   "note": "OK — 둘 다 가면이 남음(\"NO mask\" 무시, 정체성엔 오히려 유리). a: 서클릿이 잘 보임"
+  },
+  {
+   "id": "lia_dancer_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AWgizDrRMQhjtRjV-wOd8m6wkfxsJIdoGhbBguGFsuLEirHQanqMYTeNuj9u6Ys0Ou_mahM-",
+   "inputs": [
+    "lia_assassin_side.jpg"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": "a",
+   "prompt": "Edit 图片1. Keep the SAME young woman with the exact same face and eyes, (the same black cloth mask over her nose and mouth,) the same short black bob hair, the same slim body proportions, the exact same walking side pose facing right, same arm and leg positions, same camera angle, same framing, scale and position on the canvas, same plain light-grey studio background, same realistic painterly dark-fantasy game-art style and lighting. Change ONLY her outfit into a blade dancer costume, one tier more ornate: fitted dark crimson-wine silk bodice with gold embroidery and gold coins trim, golden silk scarf, small crimson shoulder guard with gold trim, bare upper arms with gold arm bands, crimson bracers with gold filigree, golden sash, fitted dark crimson trousers gathered at the ankles with gold bands, crimson boots with gold trim; face uncovered with NO mask. No hanging cloth tails or streamers, no cape, no cloak, no weapons, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark.",
+   "src": "src/lia/lia_dancer_side.webp",
+   "note": "OK — 가면이 남음(무시됨)"
+  },
+  {
+   "id": "lia_bladedancer_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AecJKLha4fRHz9kXLfRx16_kjP2fr4acjbyLskBCAQUCrcRMZG8g5LC8JqNjwexlVuvs54FR",
+   "inputs": [
+    "lia_assassin_side.jpg"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": "b",
+   "prompt": "Edit 图片1. Keep the SAME young woman with the exact same face and eyes, (the same black cloth mask over her nose and mouth,) the same short black bob hair, the same slim body proportions, the exact same walking side pose facing right, same arm and leg positions, same camera angle, same framing, scale and position on the canvas, same plain light-grey studio background, same realistic painterly dark-fantasy game-art style and lighting. Change ONLY her outfit into the dazzling costume of a master blade dancer, two tiers grander: fitted deep magenta-wine silk bodice with gold filigree and fine gold chains, golden silk scarf, ornate gold shoulder guard, gold arm cuffs, ornate gold-and-magenta bracers, wide gold-embroidered sash, fitted magenta trousers with gold ankle cuffs, magenta boots with gold toe caps; face uncovered with NO mask, delicate gold tiara with a red jewel. No hanging cloth tails or streamers, no cape, no cloak, no weapons, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark.",
+   "src": "src/lia/lia_bladedancer_side.webp",
+   "note": "b: 허리 뒤 금수 자락(무릎까지) → skirt 영역. a 는 금색 스카프 꼬리가 길게 날리고 머리가 짧아짐"
+  },
+  {
+   "id": "lia_reaper_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "Af53Mwh6XZPtfxAE0MsrCszQls-mL9li2a_ugda-U9CbJqBk6X6SJGi3Pxx-DjapG86wIY7c",
+   "inputs": [
+    "lia_assassin_side.jpg"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": "a",
+   "prompt": "Edit 图片1. Keep the SAME young woman with the exact same face and eyes, (the same black cloth mask over her nose and mouth,) the same short black bob hair, the same slim body proportions, the exact same walking side pose facing right, same arm and leg positions, same camera angle, same framing, scale and position on the canvas, same plain light-grey studio background, same realistic painterly dark-fantasy game-art style and lighting. Change ONLY her outfit into a death-reaper assassin outfit, two tiers grander and darker: black hood pulled up framing her face, glowing mint-green eyes, bone-white rib-like armour plates with glowing green runes over a black leather bodice, bone-white skeletal shoulder guard, black bracers with bone plates and green runes, tarnished gold scarf, dark green sash, fitted black trousers with bone-plated shin guards, black boots. No scythe. No hanging cloth tails or streamers, no cape, no cloak, no weapons, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark.",
+   "src": "src/lia/lia_reaper_side.webp",
+   "note": "a: 허리 녹색 띠 자락이 뒤로 길게(종아리까지) → skirt 영역(띠 꼬리로 흔들림). b 는 금색 천 자락 + 엉덩이의 뼈 장식"
+  },
+  {
+   "id": "bran_bloodrage_side_v2",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "Ac61Pomscb9q-UkYFqPHXPrDHe5_yHeedorCQpUhyHCX0Eo70krjdvjBnwuwLX-zNd5hWWTH",
+   "inputs": [
+    "bran_berserker_side.jpg"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": "b",
+   "prompt": "Edit 图片1. Keep the SAME man seen from exactly the same STRICT SIDE PROFILE facing right as in 图片1 (we see his left side, NOT his front), same face, copper-red hair and beard, same massive build, same walking pose ... Change ONLY his outfit into a demonic blood-rage berserker, more savage: bare arms with glowing crimson rune tattoos, black spiked bracers, jagged black-and-crimson spiked cuirass with glowing runes, one jagged black spiked pauldron instead of the fur, tattered black-and-crimson loincloth, black belt with small demon skull buckle, blackened spiked greaves; replace the helmet with two large curved black demon horns, face visible, glowing blood-red eyes. No wings, no tail, no cape ...",
+   "src": "src/bran/bran_bloodrage_side.webp",
+   "note": "OK — 광전사 원화(이미 옆모습·맨팔)에서 편집하니 옆모습 유지. b: 가시 견갑 + 룬, a 는 견갑 없음·발에 가시"
   }
  ],
  "images_used": {
-  "bran": 16,
-  "lia": 6
+  "bran": 40,
+  "lia": 45
  }
 }

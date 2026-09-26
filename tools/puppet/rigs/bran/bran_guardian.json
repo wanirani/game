@@ -1,0 +1,120 @@
+{
+ "_doc": "브란/수호성기사(2차). 흰 은 판금 + 금 태양 견갑 + 월계관. 후광은 절차적(look.halo)",
+ "extends": "bran_knight",
+ "classId": "bran_guardian",
+ "src": "bran/bran_guardian_side",
+ "hands": {
+  "sheet": "bran/bran_guardian_hands",
+  "grip": {
+   "box": [
+    480,
+    280,
+    1200,
+    900
+   ],
+   "center": [
+    794,
+    557
+   ],
+   "axis": [
+    -0.888,
+    0.46
+   ],
+   "rodHalf": 85,
+   "wrist": [
+    800,
+    900
+   ],
+   "scale": 0.29
+  },
+  "open": {
+   "box": [
+    1630,
+    90,
+    2400,
+    1010
+   ],
+   "wrist": [
+    2010,
+    1010
+   ],
+   "tip": [
+    1900,
+    110
+   ],
+   "scale": 0.23
+  }
+ },
+ "materials": {
+  "_replace": true,
+  "armor": {
+   "parts": [
+    "torso",
+    "uarm",
+    "farm",
+    "pad",
+    "thigh",
+    "shin",
+    "foot",
+    "hand",
+    "grip",
+    "open"
+   ],
+   "sat": [
+    0,
+    0.16
+   ],
+   "val": [
+    0.3,
+    1.01
+   ],
+   "softTop": 0
+  },
+  "trim": {
+   "parts": [
+    "torso",
+    "uarm",
+    "farm",
+    "pad",
+    "thigh",
+    "shin",
+    "foot",
+    "hand",
+    "grip",
+    "open",
+    "skirt"
+   ],
+   "hue": [
+    30,
+    62
+   ],
+   "sat": [
+    0.4,
+    1.01
+   ],
+   "val": [
+    0.45,
+    1.01
+   ]
+  }
+ },
+ "runtime": {
+  "armorBase": "#f0f0f8"
+ },
+ "turn": {
+  "sheet5": "bran/bran_guardian_turn5",
+  "views5": [
+   "y90",
+   "y135",
+   "y180",
+   "ym90",
+   "-"
+  ],
+  "qback": "bran/bran_guardian_qback",
+  "viewsQ": [
+   "-",
+   "ym135"
+  ],
+  "fixups": null
+ }
+}

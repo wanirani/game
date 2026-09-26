@@ -1,0 +1,120 @@
+{
+ "_doc": "브란/성기사(1차). 기사 리그 상속, 은백 판금·청색 타바드·은 서클릿. 성갑(holy) → 손·주먹까지 갑옷 색",
+ "extends": "bran_knight",
+ "classId": "bran_paladin",
+ "src": "bran/bran_paladin_side",
+ "hands": {
+  "sheet": "bran/bran_paladin_hands",
+  "grip": {
+   "box": [
+    480,
+    255,
+    1100,
+    855
+   ],
+   "center": [
+    815,
+    503
+   ],
+   "axis": [
+    0.984,
+    -0.176
+   ],
+   "rodHalf": 60,
+   "wrist": [
+    780,
+    855
+   ],
+   "scale": 0.32
+  },
+  "open": {
+   "box": [
+    1550,
+    130,
+    2250,
+    855
+   ],
+   "wrist": [
+    1920,
+    855
+   ],
+   "tip": [
+    1905,
+    150
+   ],
+   "scale": 0.29
+  }
+ },
+ "materials": {
+  "_replace": true,
+  "armor": {
+   "parts": [
+    "torso",
+    "uarm",
+    "farm",
+    "pad",
+    "thigh",
+    "shin",
+    "foot",
+    "hand",
+    "grip",
+    "open"
+   ],
+   "sat": [
+    0,
+    0.16
+   ],
+   "val": [
+    0.3,
+    1.01
+   ],
+   "softTop": 0
+  },
+  "trim": {
+   "parts": [
+    "torso",
+    "uarm",
+    "farm",
+    "pad",
+    "thigh",
+    "shin",
+    "foot",
+    "hand",
+    "grip",
+    "open",
+    "skirt"
+   ],
+   "hue": [
+    30,
+    62
+   ],
+   "sat": [
+    0.4,
+    1.01
+   ],
+   "val": [
+    0.45,
+    1.01
+   ]
+  }
+ },
+ "runtime": {
+  "armorBase": "#d8dce8"
+ },
+ "turn": {
+  "sheet5": "bran/bran_paladin_turn5",
+  "views5": [
+   "y90",
+   "y135",
+   "y180",
+   "ym90",
+   "-"
+  ],
+  "qback": "bran/bran_paladin_qback",
+  "viewsQ": [
+   "-",
+   "ym135"
+  ],
+  "fixups": null
+ }
+}

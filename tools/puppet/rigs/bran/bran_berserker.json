@@ -1,0 +1,110 @@
+{
+ "_doc": "브란/광전사(1차). 맨팔(전투 문신)·가죽 흉갑·털 망토·뿔 투구. 맨팔(uarm)·손은 재질 마스크에서 뺀다(피부)",
+ "extends": "bran_knight",
+ "classId": "bran_berserker",
+ "src": "bran/bran_berserker_side",
+ "hands": {
+  "sheet": "bran/bran_berserker_hands",
+  "grip": {
+   "box": [
+    0,
+    0,
+    1,
+    1
+   ],
+   "center": [
+    0,
+    0
+   ],
+   "axis": [
+    0,
+    1
+   ],
+   "wrist": [
+    0,
+    0
+   ],
+   "scale": 0.3,
+   "rodHalf": 60
+  },
+  "open": {
+   "box": [
+    0,
+    0,
+    1,
+    1
+   ],
+   "wrist": [
+    0,
+    0
+   ],
+   "tip": [
+    0,
+    0
+   ],
+   "scale": 0.28
+  }
+ },
+ "materials": {
+  "_replace": true,
+  "armor": {
+   "parts": [
+    "torso",
+    "pad",
+    "farm",
+    "thigh",
+    "shin",
+    "foot"
+   ],
+   "hue": [
+    6,
+    48
+   ],
+   "sat": [
+    0.12,
+    1.01
+   ],
+   "val": [
+    0,
+    0.5
+   ],
+   "softTop": 0.08
+  },
+  "trim": {
+   "parts": [
+    "torso",
+    "farm",
+    "thigh",
+    "shin",
+    "foot"
+   ],
+   "sat": [
+    0,
+    0.14
+   ],
+   "val": [
+    0.45,
+    1.01
+   ]
+  }
+ },
+ "runtime": {
+  "armorBase": "#5a3a24"
+ },
+ "turn": {
+  "sheet5": "bran/bran_berserker_turn5",
+  "views5": [
+   "y90",
+   "y135",
+   "y180",
+   "ym90",
+   "-"
+  ],
+  "qback": "bran/bran_berserker_qback",
+  "viewsQ": [
+   "-",
+   "ym135"
+  ],
+  "fixups": null
+ }
+}

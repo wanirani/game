@@ -417,7 +417,9 @@
    "aspect_ratio": "21:9",
    "img_resolution": "2k",
    "prompt": "Character turnaround sheet of the man in 图片1, wearing exactly the outfit of 图片1: a black wide-brimmed hat, a dark red scarf, a long glossy brown leather duster coat with dark red lining open at the front, a brass-and-silver bullet bandolier worn diagonally across his chest, a heavy belt with a pouch and an empty holster, dark grey trousers, brown leather knee boots and brown leather gloves; the same black wide-brimmed hat and the same shoulder-length loose black hair in every view. Five full-body views of the same man standing in a relaxed neutral A-pose with arms hanging down at his sides, side by side on one row, evenly spaced, well separated, all the same size on the same ground line, from left to right: 1 front view facing the viewer, 2 three-quarter front view turned toward the viewer's left, 3 side profile view facing the viewer's left, 4 back view, 5 three-quarter back view. No whip, no rope, no ponytail. Plain light-grey studio background, the same realistic painterly style as 图片1, soft even lighting, every view complete from head to boots, no cape, nothing held in the hands, no text, no labels, no watermark.",
-   "note": "레이아웃 참고 이미지 없이 글로만 배치 지정 (누수 방지 시험)"
+   "note": "OK: 레이아웃 참고 이미지 없이 글로만 배치 → 누수 없음, 탄띠 유지. 정면·3/4앞·옆(왼쪽)·뒤·뒤(중복)",
+   "picked": "a",
+   "src": "src/victor/victor_gunslinger_turn5.webp"
   }
  ],
  "images_used": {
