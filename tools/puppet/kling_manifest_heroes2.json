@@ -35,10 +35,26 @@
    "picked": "-",
    "prompt": "Full-body side view of the young woman in 图片1 (same face, short black bob, black mask) walking to the RIGHT in strict profile. 图片2 is ONLY a pose and framing reference ... tight black leather bodice, crimson scarf wrapped snugly (no hanging ends), grey steel pauldron, bare upper arms, black bracers, crimson sash with tiny knot, fitted black leather trousers, black boots. No weapons ... no long scarf tails, no loose flowing cloth ...",
    "note": "FAILED: 둘 다 앞모습/3/4 앞모습, 스카프·허리띠 자락이 길게 날림(금지 문구 무시). 초상화를 image_1 로 두면 안 됨 → 측면 원화 편집 방식으로 재시도"
+  },
+  {
+   "id": "bran_knight_side_v2",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AUjGuRQhw2vTvoPkqAujED-4SYuzHV9LGvPmI-Kpf0SColluafvUfBujZ172qKDgbCNJkxwb",
+   "inputs": [
+    "kael_hunter_side.jpg (edit target: pose/framing)",
+    "bran_portrait.jpg (identity)"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": "b",
+   "prompt": "Edit 图片1. Keep the exact same walking side pose facing RIGHT in strict profile, the same arm and leg positions (the near arm hanging slightly behind the hip, the far arm swinging forward, legs in mid-stride), the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and soft lighting. Replace the man with the knight from 图片2: his rugged middle-aged face in profile, his thick full copper-red beard, his short copper-red hair shaved at the sides (no ponytail, no bandana), and his massive, broad-shouldered, heavily muscled build — clearly bigger and bulkier than the man in 图片1. Dress him in battered practical knight armour of a fallen silver order: steel-grey plate breastplate, one big rounded steel pauldron on the near shoulder, steel vambraces and steel gauntlets, chainmail visible at the elbows and hips, a brown leather belt with an iron buckle, a deep navy-blue cloth tabard panel hanging from the belt to just above the knees, steel plate cuisses, greaves and sabatons. Remove the coiled whip. No weapon, no sword, no scabbard, nothing held in the hands, no cape, no cloak, no helmet, full body visible from the head to the boots, nothing cropped, no text, no watermark.",
+   "src": "src/bran/bran_knight_side.webp",
+   "note": "OK — a 는 카엘의 갈색 가죽 장화가 새어 들어옴, b 는 판금 장화·엄격한 옆모습. 파란 타바드가 카엘 코트 자락처럼 뒤로 흐름 → skirt 한 장"
   }
  ],
  "images_used": {
-  "bran": 2,
+  "bran": 4,
   "lia": 2
  }
 }

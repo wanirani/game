@@ -79,29 +79,38 @@ try {
       const s = await env.page(vp, 'index.html?scene=stage&stage=s01', { initScripts: [fakePadInit({ id: PAD_IDS.xbox })] });
       await s.waitGame('!!g.world?.player');
       await s.wait(1500);
-      await s.skipDialogue();
-      await s.wait(300);
       const t = new Touch(s.cdp, s.page);
       const [W, H] = await s.eval(() => [innerWidth, innerHeight]);
-      await t.tap(W * 0.5, H * 0.3);
-      await s.wait(400);
-      const before = await padVisible(s.page);
       await connect(s.page);
-      await setButton(s.page, BTN.RIGHT, 1);
-      const hide = await waitPadVisible(s.page, false, 1500);
-      await setButton(s.page, BTN.RIGHT, 0);
-      const mode1 = await s.eval(() => window.__game.input.mode ?? null);
-      await s.wait(200);
-      const tt = t.tap(W * 0.5, H * 0.3, 60);
-      const show = await waitPadVisible(s.page, true, 1500);
-      await tt;
-      const mode2 = await s.eval(() => window.__game.input.mode ?? null);
+      // up to 3 attempts: a stage script (intro/room dialogue) that opens meanwhile hides the pad for its own reason
+      let r = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        await s.skipDialogue();
+        await t.tap(W * 0.5, H * 0.3);
+        await s.wait(400);
+        const before = await padVisible(s.page);
+        await s.startRec();
+        await setButton(s.page, BTN.X, 1); // attack in place: a pad edge that does not walk into triggers
+        const hide = await waitPadVisible(s.page, false, 1500);
+        await setButton(s.page, BTN.X, 0);
+        const mode1 = await s.eval(() => window.__game.input.mode ?? null);
+        await s.wait(200);
+        const tt = t.tap(W * 0.5, H * 0.3, 60);
+        const show = await waitPadVisible(s.page, true, 1500);
+        await tt;
+        const mode2 = await s.eval(() => window.__game.input.mode ?? null);
+        const tops = [...new Set((await s.stopRec()).map((f) => f.top))];
+        r = { before, hide, show, mode1, mode2, tops };
+        if (tops.length === 1 && tops[0] === 'stage') break;
+        await s.wait(500);
+      }
       // 300 ms of wall time, or 18 game steps (300 ms of simulated time) when the machine is loaded
-      const quick = (r) => r.ok && (r.ms <= 300 || r.ticks <= 18);
+      const quick = (x) => x.ok && (x.ms <= 300 || x.ticks <= 18);
+      const { before, hide, show, mode1, mode2, tops } = r;
       await suite.check({ id: `mode.${vp}`, group: 'mode', issue: 'P-06', pkg: 'PLAT-INPUT', title: 'pad press hides the virtual pad within 300 ms; a touch shows it again', session: s }, async () => ({
-        pass: before.visible && quick(hide) && show.ok,
-        detail: `touch→visible ${before.visible}; pad press→hidden ${hide.ok ? `after ${hide.ms} ms / ${hide.ticks} steps` : 'never (1.5 s)'} (mode ${mode1}); touch→visible ${show.ok ? `after ${show.ms} ms` : 'never'} (mode ${mode2}) [${before.source}]`,
-        metrics: { before, hide, show, mode1, mode2 },
+        pass: before.visible && quick(hide) && show.ok && tops.join() === 'stage',
+        detail: `touch→visible ${before.visible}; pad press→hidden ${hide.ok ? `after ${hide.ms} ms / ${hide.ticks} steps` : 'never (1.5 s)'} (mode ${mode1}); touch→visible ${show.ok ? `after ${show.ms} ms` : 'never'} (mode ${mode2}) [${before.source}]${tops.join() !== 'stage' ? ` (scenes during the check: ${tops.join(',')})` : ''}`,
+        metrics: r,
       }));
       await suite.errors({ id: `mode.${vp}.errors`, group: 'mode' }, s);
       await s.close();
