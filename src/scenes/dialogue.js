@@ -86,6 +86,7 @@ export class DialogueScene extends Scene {
       case 'sfx': audio.sfx(l.id); break;
       case 'goto': this.i = (this.labels[l.label] ?? this.lines.length) - 1; break;
       case 'relic': if (st && !st.progress.relics.includes(l.id)) st.progress.relics.push(l.id); break;
+      case 'cg': this.cg = l.id ? 'cg/' + l.id.replace(/^cg\//, '') : null; this.cgT = 0; break;
     }
   }
   finish() {
@@ -123,6 +124,21 @@ export class DialogueScene extends Scene {
     const l = this.cur;
     const sp = speakerInfo(l.who, this.state);
     ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(0, 0, vw, vh);
+    // 이벤트 CG (스크립트 {cmd:'cg', id:'cg_xxx'} 로 표시, id:null 로 해제)
+    if (this.cg) {
+      const img = assets.get(this.cg);
+      if (img) {
+        this.cgT = (this.cgT ?? 0) + 1 / 60;
+        const a = Math.min(1, this.cgT * 2.5);
+        const s = Math.max(vw / img.width, vh / img.height) * (1.04 + this.cgT * 0.004);
+        ctx.save(); ctx.globalAlpha = a;
+        ctx.drawImage(img, (vw - img.width * s) / 2, (vh - img.height * s) / 2, img.width * s, img.height * s);
+        const g = ctx.createLinearGradient(0, vh * 0.45, 0, vh);
+        g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0.85)');
+        ctx.fillStyle = g; ctx.fillRect(0, 0, vw, vh);
+        ctx.restore();
+      }
+    }
     // 초상화
     const img = sp.portrait ? assets.get(sp.portrait) : null;
     const side = l.side ?? (sp.hero ? 'left' : 'right');

@@ -121,6 +121,10 @@ weapon:{type:'whip'|'sword'|'greatsword'|'dagger'|'gun'|'staff', style:1~6, colo
 ## 스토리 스크립트 ID 규칙
 `<stageId>_intro`(스테이지 시작 전), `<stageId>_outro`(클리어 후), `<bossId>_pre`(보스 등장 전 대사), `<bossId>_post`, `prologue`, `ending_bad`, `ending_normal`, `ending_true`, `<npcId>_default`, `<npcId>_ch<N>`, 퀘스트 `q_<id>_start|_done`.
 
+## 스토리 CG (Kling 생성, `assets/cg/<id>.webp`)
+대사 스크립트에서 `{ cmd:'cg', id:'cg_prologue_moon' }` 로 전체화면 이벤트 CG 표시, `{ cmd:'cg', id:null }` 로 해제.
+`cg_prologue_moon`(핏빛 달과 성의 출현) `cg_prologue_attack`(마을 습격) `cg_elise_taken`(엘리제 납치) `cg_alberto_church`(신부가 성물 전달) `cg_castle_gate`(성문 진입) `cg_carmilla_library`(도서관의 카밀라) `cg_elise_rescued`(엘리제 구출) `cg_death_appears`(사신 등장) `cg_dracula_throne`(왕좌의 드라큘라) `cg_dracula_transform`(악마 변신) `cg_castle_collapse`(성 붕괴·여명) `cg_abyss_gate`(심연의 문) `cg_true_ending`(진엔딩·여섯 영웅) `cg_bad_ending`(배드엔딩)
+
 ## 음악 트랙 ID
 `title prologue hub inn shop smith church worldmap s01 … s13 arena boss boss2 dracula chaos victory gameover ending credits minigame story sad`
 
