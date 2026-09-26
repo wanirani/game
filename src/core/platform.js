@@ -12,7 +12,7 @@
 //  onInsetsChange(cb) → off()          안전 영역이 바뀔 때 cb({l,r,t,b}) (회전, 앱 브리지 'bn-insets')
 //  safeRect() → {x,y,w,h,insets}       settings.safeArea('fit' | 'full')에 맞춰 캔버스가 들어갈 CSS px 사각형 (full = 창 전체)
 //  isApp() / isIOS() / isAndroid() / isAndroidWeb()   (isAndroidWeb: 안드로이드 브라우저, 앱·설치 PWA 아님 → 'APK 받기' 안내용)
-//  fullscreenAvailable() → bool         ⛶ 를 보여 줄지 (전체 화면 API 가 있고, APK·설치 앱·아이폰이 아님)
+//  fullscreenAvailable() / canFullscreen() → bool   ⛶ 를 보여 줄지 (전체 화면 API 가 있고, APK·설치 앱·아이폰이 아님)
 //  isFullscreen() / toggleFullscreen() / enterFullscreen() / exitFullscreen()   (enter/toggle 은 사용자 입력 처리 중에 불러야 한다)
 //  applyUpdate()                        대기 중인 새 버전 적용 (SKIP_WAITING 보내고 새로고침). updateReady() → bool
 //  audioHint() → bool, AUDIO_HINT_TEXT  컨트롤러만 쓰는 중인데 소리가 아직 잠겨 있다 (타이틀 안내, P-23)
@@ -151,6 +151,8 @@ function fsApi() {
 export function isFullscreen() { return !!fsElement(); }
 /** ⛶ 를 보여 줄지: 전체 화면 API 가 있고 APK·설치된 앱이 아니다 (아이폰 사파리는 API 가 없어 false) */
 export function fullscreenAvailable() { return fsApi() && !isApp() && !isStandalone(); }
+/** touchpad.js 가 캔버스 ⛶ 버튼을 그릴지 묻는 이름 (fullscreenAvailable 과 같다: 아이폰 사파리·설치 앱·APK 에서 false) */
+export function canFullscreen() { return fullscreenAvailable(); }
 function lockLandscape() {
   // 방향 고정은 전체 화면에서만 되고, 지원하지 않는 기기(데스크톱·iOS)는 거부된 Promise 를 돌려준다 → 조용히 무시
   if (!isTouchLike()) return;
@@ -371,7 +373,7 @@ function tick() {
 // ───────────────────────── 초기화 ─────────────────────────
 export const api = {
   safeInsets, safeRect, onInsetsChange, isStandalone, isApp, isIOS, isAndroid, isAndroidWeb,
-  fullscreenAvailable, isFullscreen, enterFullscreen, exitFullscreen, toggleFullscreen,
+  fullscreenAvailable, canFullscreen, isFullscreen, enterFullscreen, exitFullscreen, toggleFullscreen,
   onUpdateReady, applyUpdate, updateReady, audioHint, a2hsHint, dismissA2hs, requestPersist,
   AUDIO_HINT_TEXT, A2HS_TEXT, UPDATE_READY_TEXT,
   get audioHintOn() { return audioHint(); },

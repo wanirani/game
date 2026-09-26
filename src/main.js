@@ -53,7 +53,7 @@ async function boot() {
   const start = params.get('scene');
   // 타이틀 배경은 첫 화면의 일부라 부팅 진행률에 넣어 기다린다 (최대 2.5초, 실패해도 계속: 타이틀이 대체 그림을 그린다)
   if (!start || start === 'title' || !game.registry[start]) {
-    await Promise.race([assets.preload(['bg/title']), new Promise((r) => setTimeout(r, 2500))]);
+    await Promise.race([Promise.resolve(assets.preload(['bg/title'])).catch(() => null), new Promise((r) => setTimeout(r, 2500))]);
   }
   BOOT?.step?.('title');
   // 영웅 초상화는 첫 화면 뒤에 받는다 (부팅과 대역폭을 다투지 않고 페이지 load 를 늦추지 않게)
@@ -77,11 +77,11 @@ async function boot() {
       game.go(start, {}, { fade: false });
     }
   } else game.go('title', {}, { fade: false });
+  window.__game = game;
   // 첫 장면이 두 번 그려진 뒤 부팅 화면을 걷는다 (검은 캔버스가 비치지 않게 서서히 사라진다)
   await afterFrames(2, 200);
   BOOT?.done?.();
   if (!BOOT) document.getElementById('boot')?.remove();
-  window.__game = game;
 }
 /** rAF n 번 뒤 (탭이 숨어 rAF 가 멈춰도 ms 뒤에는 넘어간다) */
 function afterFrames(n, ms) {

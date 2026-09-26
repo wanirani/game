@@ -1,0 +1,14 @@
+{
+ "id": "b_leviathan",
+ "kind": "boss",
+ "out": "assets/painted/bosses/b_leviathan",
+ "raw": "tools/painted/raw/b_leviathan",
+ "td": 2.0,
+ "matte": {
+  "default": {"key": 9, "soft": 22, "hard": 6},
+  "head_a": {"watermark": [0.0, 0.86, 0.32, 1.0]},
+  "body_a": {"watermark": [0.0, 0.86, 0.32, 1.0]},
+  "body_b": {"watermark": [0.0, 0.86, 0.32, 1.0]}
+ },
+ "parts": []
+}

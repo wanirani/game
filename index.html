@@ -25,10 +25,13 @@
 <link rel="preload" href="assets/fonts/cinzel-decorative-900.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/bn-num.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/touchpad.css">
 </head>
 <body>
 <div id="app">
   <canvas id="screen" aria-label="게임 화면"></canvas>
+  <!-- 예전 DOM 가상 패드: 캔버스 패드(src/core/touchpad.js)가 뜨면 안의 버튼을 스스로 걷어 내고 빈 #touch 만 남긴다.
+       캔버스 패드가 실패하면(initTouchPad → null) input.js 가 이 DOM 패드로 되돌아가므로 그때까지 대체 수단으로 남겨 둔다 -->
   <div id="touch" class="hidden" aria-hidden="true">
     <div id="stick"><div class="ring"></div><div class="knob"></div></div>
     <div id="btns">
