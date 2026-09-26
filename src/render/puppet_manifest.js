@@ -178,7 +178,7 @@ export const PUPPETS = {
    ]
   },
   "lia_reaper": {
-   "h": "975e90e2c56f",
+   "h": "83b4420f11ae",
    "turn": true,
    "lv": [
     "hi",
@@ -197,6 +197,15 @@ export const PUPPETS = {
   }
  },
  "sera": {
+  "sera_archmage": {
+   "h": "e85228091e78",
+   "turn": false,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
   "sera_elementalist": {
    "h": "3076057c2568",
    "turn": false,
@@ -209,6 +218,15 @@ export const PUPPETS = {
   "sera_exorcist": {
    "h": "b3884ed45e50",
    "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "sera_oracle": {
+   "h": "de13ce74d39e",
+   "turn": false,
    "lv": [
     "hi",
     "lo",
@@ -232,6 +250,15 @@ export const PUPPETS = {
     "lo",
     "ui"
    ]
+  },
+  "sera_stormcaller": {
+   "h": "fad9fa374f14",
+   "turn": false,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
   }
  },
  "victor": {
@@ -244,9 +271,54 @@ export const PUPPETS = {
     "ui"
    ]
   },
+  "victor_desperado": {
+   "h": "1e341ba52058",
+   "turn": false,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "victor_executioner": {
+   "h": "b20ab9fff97b",
+   "turn": false,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "victor_gunlord": {
+   "h": "e536d74b1136",
+   "turn": false,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
   "victor_gunslinger": {
    "h": "5f2f4727a979",
    "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "victor_hellfire": {
+   "h": "a34c0d570897",
+   "turn": false,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "victor_phantom": {
+   "h": "fe20aac12cb0",
+   "turn": false,
    "lv": [
     "hi",
     "lo",
