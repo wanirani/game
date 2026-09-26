@@ -1,8 +1,922 @@
 {
- "id": "b_grimoire", "kind": "boss",
+ "id": "b_grimoire",
+ "kind": "boss",
  "out": "assets/painted/bosses/b_grimoire",
  "raw": "tools/painted/raw/b_grimoire",
  "td": 2.0,
- "matte": {"default": {"key": 9, "soft": 22, "hard": 6}},
- "cuts": {}, "parts": [], "debris": []
+ "quality": 90,
+ "matte": {
+  "default": {
+   "key": 9,
+   "soft": 22,
+   "hard": 6
+  }
+ },
+ "cuts": {
+  "cover_a1": {
+   "masks": {
+    "panel": [
+     {
+      "op": "rect",
+      "rect": [
+       414,
+       250,
+       1640,
+       2100
+      ]
+     },
+     {
+      "op": "minus",
+      "feather": 1.2,
+      "pts": [
+       [
+        712,
+        1165
+       ],
+       [
+        742,
+        1088
+       ],
+       [
+        800,
+        1035
+       ],
+       [
+        880,
+        1010
+       ],
+       [
+        960,
+        1012
+       ],
+       [
+        1030,
+        1038
+       ],
+       [
+        1078,
+        1085
+       ],
+       [
+        1104,
+        1148
+       ],
+       [
+        1082,
+        1208
+       ],
+       [
+        1030,
+        1248
+       ],
+       [
+        950,
+        1268
+       ],
+       [
+        870,
+        1268
+       ],
+       [
+        792,
+        1250
+       ],
+       [
+        742,
+        1214
+       ]
+      ]
+     }
+    ]
+   }
+  },
+  "maw_a1": {
+   "punch": [
+    {
+     "type": "dark",
+     "lum": 42,
+     "open": 7,
+     "dilate": 2,
+     "k": 0.97,
+     "poly": [
+      [
+       600,
+       920
+      ],
+      [
+       1210,
+       920
+      ],
+      [
+       1230,
+       1290
+      ],
+      [
+       580,
+       1290
+      ]
+     ]
+    }
+   ],
+   "masks": {
+    "mouth": [
+     {
+      "op": "poly",
+      "feather": 1.5,
+      "pts": [
+       [
+        612,
+        556
+       ],
+       [
+        700,
+        519
+       ],
+       [
+        812,
+        537
+       ],
+       [
+        887,
+        519
+       ],
+       [
+        950,
+        550
+       ],
+       [
+        1037,
+        531
+       ],
+       [
+        1125,
+        544
+       ],
+       [
+        1175,
+        587
+       ],
+       [
+        1200,
+        650
+       ],
+       [
+        1212,
+        775
+       ],
+       [
+        1250,
+        837
+       ],
+       [
+        1256,
+        1025
+       ],
+       [
+        1275,
+        1100
+       ],
+       [
+        1237,
+        1212
+       ],
+       [
+        1225,
+        1400
+       ],
+       [
+        1200,
+        1525
+       ],
+       [
+        1162,
+        1625
+       ],
+       [
+        1150,
+        1675
+       ],
+       [
+        1075,
+        1750
+       ],
+       [
+        950,
+        1775
+       ],
+       [
+        825,
+        1775
+       ],
+       [
+        700,
+        1750
+       ],
+       [
+        637,
+        1700
+       ],
+       [
+        600,
+        1650
+       ],
+       [
+        562,
+        1525
+       ],
+       [
+        525,
+        1400
+       ],
+       [
+        512,
+        1212
+       ],
+       [
+        519,
+        1087
+       ],
+       [
+        537,
+        962
+       ],
+       [
+        525,
+        900
+       ],
+       [
+        575,
+        775
+       ],
+       [
+        600,
+        650
+       ]
+      ]
+     }
+    ]
+   }
+  }
+ },
+ "parts": [
+  {
+   "name": "spine",
+   "src": "cover_a1",
+   "lps": 0.106,
+   "box": [
+    198,
+    360,
+    424,
+    2040
+   ],
+   "pivots": {
+    "hinge": [
+     418,
+     1200
+    ]
+   }
+  },
+  {
+   "name": "cover",
+   "src": "cover_a1",
+   "mask": "panel",
+   "lps": 0.106,
+   "box": [
+    410,
+    280,
+    1600,
+    2090
+   ],
+   "pivots": {
+    "hinge": [
+     416,
+     1200
+    ],
+    "eye": [
+     895,
+     1138
+    ],
+    "top": [
+     940,
+     385
+    ],
+    "bot": [
+     940,
+     2035
+    ],
+    "right": [
+     1470,
+     1200
+    ],
+    "chA": [
+     420,
+     1560
+    ],
+    "chB": [
+     1470,
+     1500
+    ]
+   }
+  },
+  {
+   "name": "inside",
+   "src": "inside_a",
+   "lps": 0.095,
+   "box": [
+    392,
+    225,
+    1725,
+    2075
+   ],
+   "pivots": {
+    "hinge": [
+     400,
+     1150
+    ],
+    "top": [
+     900,
+     250
+    ],
+    "bot": [
+     900,
+     2045
+    ],
+    "right": [
+     1600,
+     1150
+    ]
+   }
+  },
+  {
+   "name": "maw",
+   "src": "maw_a1",
+   "mask": "!mouth",
+   "lps": 0.0738,
+   "box": [
+    130,
+    50,
+    1760,
+    2250
+   ],
+   "pivots": {
+    "c": [
+     895,
+     1110
+    ],
+    "l": [
+     150,
+     1110
+    ],
+    "r": [
+     1640,
+     1110
+    ],
+    "top": [
+     895,
+     150
+    ],
+    "bot": [
+     895,
+     2170
+    ]
+   }
+  },
+  {
+   "name": "jawT",
+   "src": "maw_a1",
+   "lps": 0.0738,
+   "box": [
+    470,
+    420,
+    1330,
+    1114
+   ],
+   "pivots": {
+    "c": [
+     895,
+     1110
+    ]
+   }
+  },
+  {
+   "name": "jawB",
+   "src": "maw_a1",
+   "lps": 0.0738,
+   "box": [
+    470,
+    1106,
+    1330,
+    1830
+   ],
+   "pivots": {
+    "c": [
+     895,
+     1110
+    ]
+   }
+  },
+  {
+   "name": "edge",
+   "src": "edge_a",
+   "lps": 0.093,
+   "box": [
+    370,
+    80,
+    1240,
+    2660
+   ],
+   "pivots": {
+    "l": [
+     560,
+     1280
+    ],
+    "top": [
+     760,
+     330
+    ],
+    "bot": [
+     760,
+     2230
+    ]
+   }
+  },
+  {
+   "name": "sclera",
+   "src": "eye_a2",
+   "lps": 0.072,
+   "box": [
+    140,
+    410,
+    850,
+    1130
+   ],
+   "pivots": {
+    "c": [
+     495,
+     770
+    ]
+   }
+  },
+  {
+   "name": "iris",
+   "src": "eye_a2",
+   "lps": 0.0426,
+   "box": [
+    1000,
+    450,
+    1650,
+    1110
+   ],
+   "pivots": {
+    "c": [
+     1325,
+     780
+    ]
+   }
+  },
+  {
+   "name": "tent0",
+   "src": "tentacle_a",
+   "lps": 0.09,
+   "box": [
+    772,
+    400,
+    1108,
+    960
+   ],
+   "pivots": {
+    "jl": [
+     780,
+     650
+    ],
+    "jr": [
+     1100,
+     650
+    ]
+   }
+  },
+  {
+   "name": "tent1",
+   "src": "tentacle_a",
+   "lps": 0.09,
+   "box": [
+    1092,
+    420,
+    1428,
+    940
+   ],
+   "pivots": {
+    "jl": [
+     1100,
+     650
+    ],
+    "jr": [
+     1420,
+     650
+    ]
+   }
+  },
+  {
+   "name": "tent2",
+   "src": "tentacle_a",
+   "lps": 0.09,
+   "box": [
+    1412,
+    440,
+    1748,
+    920
+   ],
+   "pivots": {
+    "jl": [
+     1420,
+     650
+    ],
+    "jr": [
+     1740,
+     650
+    ]
+   }
+  },
+  {
+   "name": "tent3",
+   "src": "tentacle_a",
+   "lps": 0.09,
+   "box": [
+    1732,
+    450,
+    2068,
+    900
+   ],
+   "pivots": {
+    "jl": [
+     1740,
+     650
+    ],
+    "jr": [
+     2060,
+     650
+    ]
+   }
+  },
+  {
+   "name": "tent4",
+   "src": "tentacle_a",
+   "lps": 0.09,
+   "box": [
+    2052,
+    460,
+    2388,
+    880
+   ],
+   "pivots": {
+    "jl": [
+     2060,
+     650
+    ],
+    "jr": [
+     2380,
+     650
+    ]
+   }
+  },
+  {
+   "name": "tent5",
+   "src": "tentacle_a",
+   "lps": 0.09,
+   "box": [
+    2372,
+    470,
+    2708,
+    870
+   ],
+   "pivots": {
+    "jl": [
+     2380,
+     650
+    ],
+    "jr": [
+     2700,
+     650
+    ]
+   }
+  },
+  {
+   "name": "tenttip",
+   "src": "tentacle_a",
+   "lps": 0.09,
+   "box": [
+    2690,
+    480,
+    3070,
+    900
+   ],
+   "pivots": {
+    "jl": [
+     2700,
+     650
+    ]
+   }
+  },
+  {
+   "name": "chain0",
+   "src": "chain_a",
+   "lps": 0.05,
+   "box": [
+    566,
+    560,
+    984,
+    770
+   ],
+   "pivots": {
+    "jl": [
+     570,
+     660
+    ],
+    "jr": [
+     980,
+     660
+    ]
+   }
+  },
+  {
+   "name": "chain1",
+   "src": "chain_a",
+   "lps": 0.05,
+   "box": [
+    976,
+    560,
+    1404,
+    770
+   ],
+   "pivots": {
+    "jl": [
+     980,
+     660
+    ],
+    "jr": [
+     1400,
+     660
+    ]
+   }
+  },
+  {
+   "name": "chain2",
+   "src": "chain_a",
+   "lps": 0.05,
+   "box": [
+    1396,
+    560,
+    1794,
+    770
+   ],
+   "pivots": {
+    "jl": [
+     1400,
+     660
+    ],
+    "jr": [
+     1790,
+     660
+    ]
+   }
+  },
+  {
+   "name": "chain3",
+   "src": "chain_a",
+   "lps": 0.05,
+   "box": [
+    1786,
+    560,
+    2154,
+    770
+   ],
+   "pivots": {
+    "jl": [
+     1790,
+     660
+    ],
+    "jr": [
+     2150,
+     660
+    ]
+   }
+  },
+  {
+   "name": "lock",
+   "src": "chain_a",
+   "lps": 0.05,
+   "box": [
+    2490,
+    480,
+    2920,
+    1130
+   ],
+   "pivots": {
+    "hang": [
+     2510,
+     650
+    ],
+    "c": [
+     2705,
+     900
+    ]
+   }
+  }
+ ],
+ "debris": [
+  {
+   "prefix": "pg",
+   "src": "pages_a",
+   "lps": 0.044,
+   "boxes": [
+    [
+     820,
+     130,
+     1330,
+     750
+    ],
+    [
+     1440,
+     140,
+     1930,
+     750
+    ],
+    [
+     2020,
+     140,
+     2600,
+     760
+    ],
+    [
+     170,
+     880,
+     700,
+     1440
+    ],
+    [
+     810,
+     870,
+     1320,
+     1430
+    ],
+    [
+     1410,
+     880,
+     2000,
+     1440
+    ],
+    [
+     2090,
+     870,
+     2600,
+     1440
+    ]
+   ]
+  },
+  {
+   "prefix": "deb",
+   "src": "debris_a",
+   "lps": 0.06,
+   "boxes": [
+    [
+     1180,
+     230,
+     1480,
+     690
+    ],
+    [
+     1480,
+     200,
+     1660,
+     620
+    ],
+    [
+     1660,
+     160,
+     1850,
+     610
+    ],
+    [
+     1890,
+     190,
+     2050,
+     610
+    ],
+    [
+     2010,
+     100,
+     2290,
+     630
+    ],
+    [
+     2330,
+     100,
+     2610,
+     620
+    ],
+    [
+     1360,
+     770,
+     1760,
+     1410
+    ],
+    [
+     1820,
+     730,
+     2080,
+     1400
+    ],
+    [
+     2200,
+     710,
+     2580,
+     1390
+    ]
+   ]
+  }
+ ],
+ "kling": {
+  "model": "kling-image-v3_0_omni (image_to_image, img_resolution 2k)",
+  "refs": {
+   "image_1": "assets/portraits/b_grimoire.webp (converted to PNG, uploaded with file_upload)"
+  },
+  "prompts": "tools/painted/prompts/art-boss-2.mjs (GRIMOIRE.*) — exact text sent",
+  "images": {
+   "cover_a1": {
+    "generationId": "AZsaxFg2RSld619zJpGTBdlEv_xmQgZ5k9suC16l1Tkblf6zX0MuUo2SLvrLTP9GvrXAYOWf",
+    "prompt": "GRIMOIRE.cover_a",
+    "aspect": "3:4",
+    "imageCount": 2,
+    "result": "#1 kept: dark leather like the portrait, eye in a flesh socket, spine on the left, claws on the fore-edge. Eye cut out (mask 'panel') so a moving painted eyeball can sit behind it"
+   },
+   "cover_a2": {
+    "generationId": "AZsaxFg2RSld619zJpGTBdlEv_xmQgZ5k9suC16l1Tkblf6zX0MuUo2SLvrLTP9GvrXAYOWf",
+    "result": "rejected: purple leather, further from the portrait's near-black leather"
+   },
+   "eye_a2": {
+    "generationId": "AaOt_uyA1CHbxEGiY0YAOaeVl3_cjo4dZTB9QNwJF_eF2BNKt2wnzDN8lrOunsXcbWlLDttU",
+    "prompt": "GRIMOIRE.eye_a",
+    "aspect": "16:9",
+    "imageCount": 2,
+    "result": "#2 kept: clean bloodshot ball + separate slit-pupil iris disc (the eyelid came out as a whole lidded eye — unused; blinks are drawn procedurally)"
+   },
+   "eye_a1": {
+    "generationId": "AaOt_uyA1CHbxEGiY0YAOaeVl3_cjo4dZTB9QNwJF_eF2BNKt2wnzDN8lrOunsXcbWlLDttU",
+    "result": "rejected: the 'iris' was a full eyeball with white around it"
+   },
+   "maw_a1": {
+    "generationId": "ATCL5TKsTVX2Fsoh6G-Xyc4dXRBxYWpljRKVzjo6n2c_hMmChArVCCh0-2BvMqWBATjM2p-N",
+    "prompt": "GRIMOIRE.maw_a",
+    "aspect": "3:4",
+    "imageCount": 2,
+    "result": "#1 kept: flat page with a fanged mouth; cut into page frame (mask !mouth) + upper/lower jaw (boxes) so the mouth chomps; throat punched (dark) and drawn procedurally. Scribbled pseudo-letters are unreadable at game scale"
+   },
+   "maw_a2": {
+    "generationId": "ATCL5TKsTVX2Fsoh6G-Xyc4dXRBxYWpljRKVzjo6n2c_hMmChArVCCh0-2BvMqWBATjM2p-N",
+    "result": "rejected: whole book at an angle (spine + bookmark), not a flat page"
+   },
+   "inside_a": {
+    "generationId": "AfHCxu3NIKEFRWd_OYzq2EH7sl-pPn90ojYGI3a0DJtexDnlZAR52JFZbM4DMJN39u_TPbLX",
+    "prompt": "GRIMOIRE.inside_a",
+    "aspect": "3:4",
+    "imageCount": 1,
+    "result": "kept: stitched-flesh inside of the cover (also the dark back cover via its deep variant)"
+   },
+   "edge_a": {
+    "generationId": "AToEh6nTjxfGXOA9Q9bIL5SM3QYl5_nL1IeQMyv6fgLJwgo0Fw8TtOL7jBK1lqrYVGndOgq3",
+    "prompt": "GRIMOIRE.edge_a",
+    "aspect": "9:16",
+    "imageCount": 1,
+    "result": "kept: bloody fore-edge with claws, squashed at runtime as the page-block thickness"
+   },
+   "tentacle_a": {
+    "generationId": "AUSXfAwbTMI9b1ZpsxRA7Zq9zryfDutR6UvHHXiAL_-r9__3DfX6dADF9JYcKZjCc8UCcWmV",
+    "prompt": "GRIMOIRE.tentacle_a",
+    "aspect": "21:9",
+    "imageCount": 1,
+    "result": "kept: thorned tentacle cut into 6 tiles + claw tip (root pincer unused)"
+   },
+   "chain_a": {
+    "generationId": "ATKoIcFuFVJwTRgUiyHBc1LuMz7HNRAGOR75Yfam29j_roQPzGRZKc44B4-tNun20KArAi1l",
+    "prompt": "GRIMOIRE.chain_a",
+    "aspect": "21:9",
+    "imageCount": 1,
+    "result": "kept: 4 two-link tiles cut at the edge-on links + padlock"
+   },
+   "pages_a": {
+    "generationId": "Abxlj3OzmwsSGPSWpM233w4AdT6qQ6qMiEWJC8AZzi2aubc0g2qvde1i4e95D9rhp5Cvab8F",
+    "prompt": "GRIMOIRE.pages_a",
+    "aspect": "16:9",
+    "imageCount": 1,
+    "result": "kept: 7 loose pages (the small book top-left is unused)"
+   },
+   "debris_a": {
+    "generationId": "AWSX64x7tQPdWqRfQ5CWK3-zaUwxAf8AmrLe9rfil9_63IrCPOlil6QyqIW2-xY95gVwIwne",
+    "prompt": "GRIMOIRE.debris_a",
+    "aspect": "16:9",
+    "imageCount": 1,
+    "result": "kept: 9 fragments (padlock, chain bits, fangs, claws, torn cover, flesh); the mini book is unused"
+   }
+  }
+ }
 }

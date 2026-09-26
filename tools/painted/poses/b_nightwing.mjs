@@ -16,6 +16,7 @@ export const INSTALL = `(() => {
   const hold = (st, t) => { b.setState(st); b.cool = 99; for (let i = 0; i < Math.round(t * 60); i++) { px(); step(1); if (b.state === 'idle') b.cool = 99; } };
   const settle = () => {
     if (b.dying > 0) return;
+    b.invuln = false; b.harmless = false;
     b.x = A.mid + 80 - b.w / 2; b.y = A.floor - 200 - b.h / 2; b.vx = b.vy = 0;
     b.setState('idle'); b.cool = 99; for (let i = 0; i < 70; i++) { px(); step(1); }
   };

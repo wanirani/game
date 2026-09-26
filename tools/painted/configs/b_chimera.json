@@ -4,6 +4,20 @@
  "out": "assets/painted/bosses/b_chimera",
  "raw": "tools/painted/raw/b_chimera",
  "td": 2.0,
- "matte": { "default": { "key": 9, "soft": 22, "hard": 6 } },
+ "matte": {
+  "default": {
+   "key": 9,
+   "soft": 22,
+   "hard": 6
+  },
+  "body_a": {
+   "watermark": [
+    0.0,
+    0.86,
+    0.32,
+    1.0
+   ]
+  }
+ },
  "parts": []
 }

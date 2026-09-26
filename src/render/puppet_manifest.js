@@ -3,8 +3,17 @@
 export const PUPPETS = {
  "bran": {
   "bran_berserker": {
-   "h": "7c6a5d4aa2d2",
-   "turn": false,
+   "h": "9d6928801293",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "bran_bloodrage": {
+   "h": "327729e6e6f9",
+   "turn": true,
    "lv": [
     "hi",
     "lo",
@@ -12,8 +21,8 @@ export const PUPPETS = {
    ]
   },
   "bran_crusader": {
-   "h": "b09efa3767d2",
-   "turn": false,
+   "h": "fd6ff841872c",
+   "turn": true,
    "lv": [
     "hi",
     "lo",
@@ -21,8 +30,8 @@ export const PUPPETS = {
    ]
   },
   "bran_guardian": {
-   "h": "040d64876240",
-   "turn": false,
+   "h": "f37207c58762",
+   "turn": true,
    "lv": [
     "hi",
     "lo",
@@ -30,8 +39,8 @@ export const PUPPETS = {
    ]
   },
   "bran_knight": {
-   "h": "7597d1f2d2fe",
-   "turn": false,
+   "h": "b9d13d1d9317",
+   "turn": true,
    "lv": [
     "hi",
     "lo",
@@ -39,8 +48,8 @@ export const PUPPETS = {
    ]
   },
   "bran_paladin": {
-   "h": "25ad37e3dbb4",
-   "turn": false,
+   "h": "4635320c66b9",
+   "turn": true,
    "lv": [
     "hi",
     "lo",
@@ -48,8 +57,8 @@ export const PUPPETS = {
    ]
   },
   "bran_warlord": {
-   "h": "36c486c93885",
-   "turn": false,
+   "h": "912bcd33fcd9",
+   "turn": true,
    "lv": [
     "hi",
     "lo",
@@ -124,18 +133,61 @@ export const PUPPETS = {
  },
  "lia": {
   "lia_assassin": {
-   "h": "44d0ca2a9f62",
-   "turn": false,
+   "h": "f7724e80aa36",
+   "turn": true,
    "lv": [
     "hi",
     "lo",
     "ui"
    ]
-  }
- },
- "sera": {
-  "sera_exorcist": {
-   "h": "b3884ed45e50",
+  },
+  "lia_bladedancer": {
+   "h": "9dce95cc5104",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "lia_dancer": {
+   "h": "5a7107802560",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "lia_kunoichi": {
+   "h": "bee7fed192aa",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "lia_ninja": {
+   "h": "7ab21f8edfec",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "lia_reaper": {
+   "h": "975e90e2c56f",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "lia_shadowmaster": {
+   "h": "9eef7402dd44",
    "turn": true,
    "lv": [
     "hi",
@@ -144,7 +196,54 @@ export const PUPPETS = {
    ]
   }
  },
+ "sera": {
+  "sera_elementalist": {
+   "h": "3076057c2568",
+   "turn": false,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "sera_exorcist": {
+   "h": "b3884ed45e50",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "sera_priestess": {
+   "h": "a837cf1f6aa6",
+   "turn": false,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "sera_saint": {
+   "h": "f5aac85a18b6",
+   "turn": false,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  }
+ },
  "victor": {
+  "victor_deadeye": {
+   "h": "011e51c8bb17",
+   "turn": false,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
   "victor_gunslinger": {
    "h": "5f2f4727a979",
    "turn": true,

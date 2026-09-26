@@ -103,7 +103,7 @@ class Game {
     this._tier = 'high';
     // 품질 조절기 상태 (설정 'auto' 일 때만 등급을 바꾼다; 설정값 자체는 쓰지 않는다)
     this.gov = { start: null, tier: null, ema: STEP, slowT: 0, goodT: 0, lastChange: -Infinity, lastRaise: -Infinity, ceil: 2, top: null, toasted: false };
-    this._watch = null;
+    this._watch = { q: undefined, u: undefined, a: undefined };
     this._probe = null;
   }
 
@@ -358,7 +358,7 @@ class Game {
       this._fpsAcc += dt; this._fpsN++;
       if (this._fpsAcc > 0.5) { this.fps = this._fpsN / this._fpsAcc; this._fpsAcc = 0; this._fpsN = 0; }
       input.pollFrame?.();  // 게임패드는 rAF 마다 한 번 읽는다
-      if (this.settings && this.watchKey() !== this._watch) this.resize();
+      if (this.layoutSettingsChanged()) this.resize();
       // 터치 기기를 세로로 돌리면 ('가로 모드로 돌려주세요' 안내가 덮는 동안) 게임 진행을 멈춘다
       const locked = this.portraitLocked;
       if (locked !== this._locked) { this._locked = locked; if (locked) this.autoPause(); else this.dirty = true; }

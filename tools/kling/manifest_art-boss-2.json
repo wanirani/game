@@ -265,6 +265,39 @@
    ],
    "raw": "tools/painted/raw/b_grimoire/debris_a.webp",
    "downloaded": "2026-09-26T18:15:02Z"
+  },
+  {
+   "boss": "b_crimson",
+   "name": "leg_b1",
+   "generationId": "AUPKiSOfMUcZRPNkf0tUD2f4l927R-lHLVXEZeqHy1amdKOHSedKz3KkN8OqNiZ6XIwedTg2",
+   "size": [
+    2720,
+    1536
+   ],
+   "raw": "tools/painted/raw/b_crimson/leg_b1.webp",
+   "downloaded": "2026-09-26T18:18:57Z"
+  },
+  {
+   "boss": "b_crimson",
+   "name": "leg_b2",
+   "generationId": "AUPKiSOfMUcZRPNkf0tUD2f4l927R-lHLVXEZeqHy1amdKOHSedKz3KkN8OqNiZ6XIwedTg2",
+   "size": [
+    2720,
+    1536
+   ],
+   "raw": "tools/painted/raw/b_crimson/leg_b2.webp",
+   "downloaded": "2026-09-26T18:19:03Z"
+  },
+  {
+   "boss": "b_crimson",
+   "name": "waist_b",
+   "generationId": "AbfA4gx5JgmpWCwznkky-7hA7Rgu10cw_rQph0teTFHlzyFBEBYw5sBbbdbedkCGQtYMMl7q",
+   "size": [
+    2336,
+    1760
+   ],
+   "raw": "tools/painted/raw/b_crimson/waist_b.webp",
+   "downloaded": "2026-09-26T18:19:10Z"
   }
  ]
 }

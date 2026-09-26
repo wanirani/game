@@ -13,7 +13,8 @@
  *
  * main.js 쪽 계약: window.__BN_BOOT = { step(name), done(), fail(err), progress() → 0..100, blocked, failed, finished }
  *   step('main')  모든 정적 모듈을 받아 main.js 가 실행되기 시작함     step('fonts') 첫 화면 글꼴 준비 끝
- *   done()        game.start() 직후 — 오류 감시를 끝내고 #boot 를 걷는다
+ *   step('title') 타이틀 배경(bg/title)까지 준비 끝
+ *   done()        첫 장면이 그려진 직후 — 오류 감시를 끝내고 #boot 를 서서히 걷는다 (0.4초)
  */
 (function () {
   'use strict';
@@ -27,7 +28,7 @@
   var STALL_MS = 20000;
 
   var boot = d.getElementById('boot');
-  var st = { blocked: false, failed: false, finished: false, main: false, fonts: false, pct: 0, mods: {}, nMods: 0, fontsSeen: {}, nFonts: 0, lastChange: Date.now(), slow: false };
+  var st = { blocked: false, failed: false, finished: false, main: false, fonts: false, title: false, pct: 0, mods: {}, nMods: 0, fontsSeen: {}, nFonts: 0, lastChange: Date.now(), slow: false };
   var timer = 0, observer = null;
 
   function el(cls) { return boot ? boot.querySelector('.' + cls) : null; }
@@ -72,8 +73,8 @@
   function compute() {
     var mod = st.main ? 1 : Math.min(1, st.nMods / totalModules());
     var font = st.fonts ? 1 : Math.min(1, st.nFonts / FONT_FILES);
-    var p = 3 + 82 * mod + 13 * font;
-    if (st.main) p = Math.max(p, 88);
+    var p = 2 + 76 * mod + 12 * font + (st.title ? 10 : 0);
+    if (st.main) p = Math.max(p, 80);
     return Math.min(99, Math.floor(p));
   }
   function render() {
@@ -161,7 +162,7 @@
     render();
     boot.className = (boot.className ? boot.className + ' ' : '') + 'done';
     var b = boot;
-    setTimeout(function () { if (b.parentNode) b.parentNode.removeChild(b); }, 260);
+    setTimeout(function () { if (b.parentNode) b.parentNode.removeChild(b); }, 420);
   }
 
   w.__BN_BOOT = {
@@ -171,6 +172,7 @@
     step: function (name) {
       if (name === 'main') st.main = true;
       else if (name === 'fonts') { st.main = true; st.fonts = true; }
+      else if (name === 'title') { st.main = true; st.fonts = true; st.title = true; }
       if (timer) render();
     },
     progress: function () { return st.finished ? 100 : st.pct; },

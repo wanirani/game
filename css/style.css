@@ -48,7 +48,7 @@ html, body {
 #boot.err .s, #boot.old .s { animation: none; color: #f0d0c0; font-size: 15px; line-height: 1.6; }
 #boot.err .bar i { background: #6a2a30; box-shadow: none; }
 #boot.old .bar { display: none; }
-#boot.done { opacity: 0; pointer-events: none; transition: opacity 0.25s ease-out; }
+#boot.done { opacity: 0; pointer-events: none; transition: opacity 0.4s ease-out; }
 
 #rotate { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; text-align: center; background: rgba(5,2,7,0.96); z-index: 30; font-size: 20px; line-height: 1.8; color: var(--gold); }
 body.touch.portrait #rotate { display: flex; }
