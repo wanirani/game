@@ -311,6 +311,7 @@ class MirrorGimmick {
     this.switches = [];
     for (const mk of world.map.markersOf('Q')) this.switches.push(world.add(new MirrorSwitch(mk.tx, mk.ty, this)));
     if (this.start === 'B') this.apply('B');
+    mirrorScreenSprite();   // 허상 화면 덮개는 방 로딩 때 만든다 (첫 뒤집기 때 새 캔버스를 만들지 않게)
   }
   get bgFlip() { return this.phase === 'B'; }
   /** 자동 뒤집기 1초 전 경고 중 */
@@ -409,11 +410,33 @@ class MirrorGimmick {
   }
   drawScreen(ctx, vw, vh) {
     if (this.phase !== 'B') return;
-    ctx.save();
-    ctx.fillStyle = 'rgba(150,200,255,0.06)'; ctx.fillRect(0, 0, vw, vh);
-    ctx.globalAlpha = 0.12; ctx.drawImage(edgeVignette('rgb(90,220,255)'), 0, 0, vw, vh);
-    ctx.restore();
+    ctx.drawImage(mirrorScreenSprite(), 0, 0, vw, vh);   // 옅은 색조 + 청록 가장자리 비네트를 한 장으로 (전체 화면 1회)
   }
+}
+/** 허상(B) 화면 덮개: rgba(150,200,255,0.06) 색조 + 청록 가장자리 비네트 α 0.12 (캐시) */
+function mirrorScreenSprite() {
+  return cachedCanvas('mirror:screen', 192, 108, (g, w, h) => {
+    g.fillStyle = 'rgba(150,200,255,0.06)'; g.fillRect(0, 0, w, h);
+    const gr = g.createRadialGradient(w / 2, h / 2, h * 0.32, w / 2, h / 2, w * 0.62);
+    gr.addColorStop(0, 'rgba(90,220,255,0)'); gr.addColorStop(1, 'rgba(90,220,255,0.12)');
+    g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  });
+}
+/** 거울 스위치 그라데이션 (로컬 좌표 48×96, 그리는 문맥별 캐시 — 매 프레임 새로 만들지 않는다) */
+const _switchGrads = new WeakMap();
+function switchGrads(ctx) {
+  let G = _switchGrads.get(ctx);
+  if (G) return G;
+  const body = {};
+  for (const ph of ['A', 'B']) {
+    const g = ctx.createLinearGradient(0, 0, 48, 96);
+    g.addColorStop(0, MIRROR_TINT[ph]); g.addColorStop(1, ph === 'B' ? '#3a7a9a' : '#8a8478');
+    body[ph] = g;
+  }
+  const shine = (a) => { const g = ctx.createLinearGradient(0, -20, 48, 20); g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.5, `rgba(255,255,255,${a})`); g.addColorStop(1, 'rgba(255,255,255,0)'); return g; };
+  G = { body, shine: shine(0.22), shineCool: shine(0.08) };
+  _switchGrads.set(ctx, G);
+  return G;
 }
 
 /** 거울 스위치 'Q' (1×2칸, 아래끝 = 마커 칸 아래끝). 때리거나 ▲ 로 위상을 뒤집는다 */
@@ -444,28 +467,32 @@ export class MirrorSwitch extends Entity {
     }
   }
   lights(L) { L.add(this.cx, this.y + 36, 90, '#dff4ff', 0.5); }
-  /** 받침 그림을 위상 색으로 물들인 사본 (이미지별·위상별 캐시) */
+  /** 받침 그림을 위상 색으로 물들인 사본 (이미지별 캐시). 두 위상을 한꺼번에 만들어 첫 뒤집기 때 새 캔버스를 만들지 않는다 */
   tinted(img, phase) {
     const cache = (MirrorSwitch._tint ??= new Map());
-    let c = cache.get(phase);
+    const c = cache.get(phase);
     if (c && c.src === img) return c.canvas;
-    const cv = document.createElement('canvas');
-    cv.width = img.width; cv.height = img.height;
-    const g = cv.getContext('2d');
-    g.drawImage(img, 0, 0);
-    g.globalCompositeOperation = 'source-atop';
-    g.fillStyle = phase === 'B' ? 'rgba(120,220,255,0.38)' : 'rgba(255,236,200,0.22)';
-    g.fillRect(0, 0, cv.width, cv.height);
-    cache.set(phase, { src: img, canvas: cv });
-    return cv;
+    for (const ph of ['A', 'B']) {
+      const cv = document.createElement('canvas');
+      cv.width = img.width; cv.height = img.height;
+      const g = cv.getContext('2d');
+      g.drawImage(img, 0, 0);
+      g.globalCompositeOperation = 'source-atop';
+      g.fillStyle = ph === 'B' ? 'rgba(120,220,255,0.38)' : 'rgba(255,236,200,0.22)';
+      g.fillRect(0, 0, cv.width, cv.height);
+      cache.set(ph, { src: img, canvas: cv });
+    }
+    return cache.get(phase).canvas;
   }
   draw(ctx, world) {
-    const ph = this.mirror?.phase ?? 'A', tint = MIRROR_TINT[ph];
+    const ph = this.mirror?.phase ?? 'A';
     const sx = this.shakeT > 0 ? Math.sin(this.t * 90) * 3 * (this.shakeT / 0.25) : 0;
     const cool = (this.mirror?.cooldown ?? 0) > 0;
-    const x = this.x + sx, y = this.y, cx = this.cx + sx, b = this.bottom;
+    const x = 0, y = 0, cx = this.w / 2, b = this.h;   // 로컬 좌표 (캐시한 그라데이션을 그대로 쓴다)
     const img = assets.get('props/prop_mirror_switch');
+    const G = switchGrads(ctx);
     ctx.save();
+    ctx.translate(this.x + sx, this.y);
     if (img) ctx.drawImage(this.tinted(img, ph), x, y, this.w, this.h);
     else {
       // 은빛 아치 틀
@@ -473,9 +500,7 @@ export class MirrorSwitch extends Entity {
       ctx.fillStyle = '#b8bcc8';
       ctx.beginPath(); ctx.moveTo(x + 6, b - 8); ctx.lineTo(x + 6, y + 26); ctx.quadraticCurveTo(cx, y - 6, x + 42, y + 26); ctx.lineTo(x + 42, b - 8); ctx.closePath(); ctx.fill();
       ctx.strokeStyle = '#5a5e6a'; ctx.lineWidth = 2; ctx.stroke();
-      const g = ctx.createLinearGradient(x, y, x + 48, b);
-      g.addColorStop(0, tint); g.addColorStop(1, ph === 'B' ? '#3a7a9a' : '#8a8478');
-      ctx.fillStyle = g;
+      ctx.fillStyle = G.body[ph] ?? G.body.A;
       ctx.beginPath(); ctx.moveTo(x + 11, b - 12); ctx.lineTo(x + 11, y + 28); ctx.quadraticCurveTo(cx, y + 4, x + 37, y + 28); ctx.lineTo(x + 37, b - 12); ctx.closePath(); ctx.fill();
       ctx.fillStyle = '#dfe2ea'; ctx.beginPath(); ctx.arc(cx, y + 4, 3, 0, TAU); ctx.fill();
     }
@@ -485,9 +510,9 @@ export class MirrorSwitch extends Entity {
     ctx.globalCompositeOperation = 'lighter';
     const band = ((this.t * 0.35) % 1.6) - 0.3;
     const gy = y + 10 + band * 90;
-    const sh = ctx.createLinearGradient(x, gy - 20, x + 48, gy + 20);
-    sh.addColorStop(0, 'rgba(255,255,255,0)'); sh.addColorStop(0.5, `rgba(255,255,255,${cool ? 0.08 : 0.22})`); sh.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = sh; ctx.fillRect(x, y, 48, 96);
+    ctx.save(); ctx.translate(0, gy);
+    ctx.fillStyle = cool ? G.shineCool : G.shine; ctx.fillRect(x, y - gy, 48, 96);
+    ctx.restore();
     if (this.glowT > 0) { ctx.fillStyle = `rgba(200,240,255,${(0.6 * this.glowT / 0.5).toFixed(3)})`; ctx.fillRect(x, y, 48, 96); }
     ctx.globalCompositeOperation = 'source-over';
     ctx.strokeStyle = 'rgba(255,255,255,0.45)'; ctx.lineWidth = 1;
@@ -552,7 +577,8 @@ class MagmaGimmick {
     this.kind = 'magma'; this.world = world; this.set = set;
     const mode = params.mode ?? (params.low !== undefined ? 'tide' : params.y0 !== undefined ? 'rise' : 'manual');
     this.params = { period: 9, hold: 2.5, warn: 1.5, speed: 40, ...params, mode };
-    this.t = 0; this.emitAcc = 0; this.fellCd = 0; this.fellFlag = false;
+    this.t = 0; this.emitAcc = 0; this.fellCd = 0;
+    magmaBodySprite(); magmaBandSprite(); magmaCrustSprite(); heatSprite();   // 캐시 캔버스는 방 로딩 때
     this.reset();
   }
   /** 방 로딩 때의 상태로 (부활 · 보스 onReset) */
@@ -662,7 +688,6 @@ class MagmaGimmick {
     }
   }
   onFell(p) {
-    this.fellFlag = true;
     if (p.dead) return;
     if (this.mode === 'rise') {
       this.level = Math.min(this.y0px, Math.max(this.level, p.bottom + 5 * TILE));

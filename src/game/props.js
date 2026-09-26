@@ -232,6 +232,9 @@ function bloodGlowSprite() {
 /** 문 'D' — ▲ 로 다음 방. target: room id. mark: 'blood' 이면 문짝에 피 손자국 (world2 §3.8, room.doorMarks) */
 export class Door extends Entity {
   constructor(tx, ty, target) { super(tx * TILE, (ty + 1) * TILE - 96, 48, 96); this.kind = 'prop'; this.target = target; this.z = 0; this.openT = 0; this.mark = null; }
+  get mark() { return this._mark ?? null; }
+  /** world.loadRoom 이 room.doorMarks 로 정한다. 'blood' 면 손자국 스프라이트를 방 로딩 때 미리 만든다 (플레이 도중 새 캔버스 0) */
+  set mark(v) { this._mark = v ?? null; if (v === 'blood' && typeof document !== 'undefined') { bloodHandSprite(); bloodGlowSprite(); } }
   lights(L) { if (this.mark === 'blood') L.add(this.cx, this.bottom - 58, 80, '#ff2840', 0.35); }
   /** 피 손자국 + 흘러내리는 핏방울 3줄 + 옅은 붉은 빛 */
   drawBloodMark(ctx, t) {

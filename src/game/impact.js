@@ -301,6 +301,13 @@ export function dmgNumber(world, target, value, key = 'normal', o = {}) {
     col.t = now; col.total += value;
     dy = -col.n * C.step;
   }
+  // 살아 있는 숫자 상한 (feel §4.8: 24 / 보통 16 / 낮음 10). 넘으면 기둥 합계에만 더한다 (플레이어 피격 숫자는 항상)
+  if (key !== 'hurt') {
+    const live = (world._dmgLive ??= []);
+    while (live.length && live[0] <= now) live.shift();
+    if (live.length >= (BUDGET[qualityKey(world)]?.dmgNums ?? 24)) return;
+    live.push(now + 0.9);
+  }
   const str = key === 'crit' ? `${value}!` : key === 'heal' ? `+${value}` : String(value);
   fx.text(x, y + dy, str, { color: o.color ?? st.color, size: st.size, crit: key === 'crit', outline: st.outline ?? '#200008', vy: st.fall ? 60 : -90 });
 }
