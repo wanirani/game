@@ -1,0 +1,482 @@
+{
+ "s01_village": {
+  "group": "bg",
+  "aspect_ratio": "21:9",
+  "generationId": "AcjL4KjiJI0iZxXWlgfRiQ_klshmVtXTIq3p-jZh5pQcWfuC_9E9d-i1N3B_AE8ZdFyMK4nm",
+  "model": "kling-image-v3_0_omni",
+  "prompt": null,
+  "file": "assets/bg/s01_village.webp"
+ },
+ "s02_graveyard": {
+  "group": "bg",
+  "aspect_ratio": "21:9",
+  "generationId": "AT8K6ezbihOC3TeF_8CUgPFHBhmC_SX5TgfkZrtsMcBZjkJmgKjuIU7UNqmLqBvA173dptf9",
+  "model": "kling-image-v3_0_omni",
+  "prompt": null,
+  "file": "assets/bg/s02_graveyard.webp"
+ },
+ "s03_gate": {
+  "group": "bg",
+  "aspect_ratio": "21:9",
+  "generationId": "AcFYzQi4qHqVdBrYfATqdJ9IaqNRgPF3086kNErExWph0NpgRmfo196GvmDIvlAHbz7BUtc_",
+  "model": "kling-image-v3_0_omni",
+  "prompt": null,
+  "file": "assets/bg/s03_gate.webp"
+ },
+ "s04_hall": {
+  "group": "bg",
+  "aspect_ratio": "21:9",
+  "generationId": "AUKEY-8gA2kMPZFC-9vW7DanlPl9C7jkAfbgpVRQv7XhUL58hAz-6atCbZSqSF6P1BFbAzXM",
+  "model": "kling-image-v3_0_omni",
+  "prompt": null,
+  "file": "assets/bg/s04_hall.webp"
+ },
+ "s05_catacombs": {
+  "group": "bg",
+  "aspect_ratio": "21:9",
+  "generationId": "AYyCUX83GtqcJuN5vNP58oFsSm_ZQK623SSn8ws6ZjuDPwKF2CLMKSRW-K--Lr8JVxMXh5TS",
+  "model": "kling-image-v3_0_omni",
+  "prompt": null,
+  "file": "assets/bg/s05_catacombs.webp"
+ },
+ "s06_library": {
+  "group": "bg",
+  "aspect_ratio": "21:9",
+  "generationId": "AcBFjiyzQrAICpR92W2LBJH-GocceIM-uqqoozgT-gEN3kn6rITBVoKHrLiyeCjHck3RMjRA",
+  "model": "kling-image-v3_0_omni",
+  "prompt": null,
+  "file": "assets/bg/s06_library.webp"
+ },
+ "s07_alchemy": {
+  "group": "bg",
+  "aspect_ratio": "21:9",
+  "generationId": "AcA8rjmLVdutgeOll1eW8YbXsV-AqOmTxRbpMENVr04VybqdsrtjS4BOZmu58nHMwzHVnMmT",
+  "model": "kling-image-v3_0_omni",
+  "prompt": null,
+  "file": "assets/bg/s07_alchemy.webp"
+ },
+ "s08_waterway": {
+  "group": "bg",
+  "aspect_ratio": "21:9",
+  "generationId": "ARofd1aWiJqpQCcF_SbDXJG0zEmkFbnRaj32FLDHRoj6cCrtRQu3-7BuNIZTsmXzq5UfsXnx",
+  "model": "kling-image-v3_0_omni",
+  "prompt": null,
+  "file": "assets/bg/s08_waterway.webp"
+ },
+ "kael": {
+  "group": "portrait",
+  "aspect_ratio": "2:3",
+  "generationId": "ASPhBtzSbix3bofk7WmU-tfQXEMhOHP3LILRy-IH8ZTiQ5pOgpwH_PyUv5CBNlJXV6JpEVy3",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Kael Valcrane, a handsome young male vampire hunter in his twenties, long dark brown hair tied back, determined amber eyes, dark leather long coat with crimson inner lining and silver buckles, holding a long leather chain whip, a silver cross pendant. Dark gothic fantasy character art, full body heroic standing pose, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with red moonlight glow, game character select art, no text, no letters, no watermark.",
+  "file": "assets/portraits/kael.webp"
+ },
+ "sera": {
+  "group": "portrait",
+  "aspect_ratio": "2:3",
+  "generationId": "AdHD6XzCZzZ4wprWlcIrjE8qV6Hg7EaiTDvQz9NXlGyZI0EU2U8aIHyG17QaZ9rQj3jhW6X6",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Seraphina, a beautiful young female exorcist battle nun, long silver-white hair, blue eyes, white and gold battle habit with a flowing short cape, holding a glowing holy tome and a golden rosary staff, holy light particles. Dark gothic fantasy character art, full body heroic standing pose, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with red moonlight glow, game character select art, no text, no letters, no watermark.",
+  "file": "assets/portraits/sera.webp"
+ },
+ "victor": {
+  "group": "portrait",
+  "aspect_ratio": "2:3",
+  "generationId": "Aag3b3hFyewgw7XqIVVGf3jFG3TIGYQO7PKBoclqbMgz7oo-teTQ56Wj9AMSAzBJpE5HdVP_",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Victor Grimm, a rugged male monster-hunting gunslinger in his thirties, wide-brimmed black hat, scarred face with stubble, long brown duster coat, bandolier of silver bullets, two ornate revolvers in his hands, gun smoke curling. Dark gothic fantasy character art, full body heroic standing pose, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with red moonlight glow, game character select art, no text, no letters, no watermark.",
+  "file": "assets/portraits/victor.webp"
+ },
+ "bran": {
+  "group": "portrait",
+  "aspect_ratio": "2:3",
+  "generationId": "Ab_0C1f7B4Kmhe4iVGBuhOP3bdcWV67eZVl8E5dEU15ylI8e2Ey4cgldMX4MaSQ8G5se2ioo",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Bran Ironheart, a huge muscular male knight, short red beard, heavy battle-worn steel plate armor with a tattered blue tabard, wielding an enormous greatsword over his shoulder. Dark gothic fantasy character art, full body heroic standing pose, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with red moonlight glow, game character select art, no text, no letters, no watermark.",
+  "file": "assets/portraits/bran.webp"
+ },
+ "lia": {
+  "group": "portrait",
+  "aspect_ratio": "2:3",
+  "generationId": "AfmoeuLRMBsEWdgCwapnUkgqhyOWxF3wU5ZGrcYkiiz-rldCYHfmXAQJvsXyfwOJo-qFsTe3",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Lia Crow, an agile young female assassin, short black hair, a long crimson scarf flowing, dark ninja-style leather outfit with light armor plates, twin curved daggers, lower face mask, crouching ready pose. Dark gothic fantasy character art, full body heroic standing pose, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with red moonlight glow, game character select art, no text, no letters, no watermark.",
+  "file": "assets/portraits/lia.webp"
+ },
+ "azel": {
+  "group": "portrait",
+  "aspect_ratio": "2:3",
+  "generationId": "ASQvLkTdvtqwxHBMmqniiC8OgKRX0aznoRa5W8i5IepmDrx2_36uM1PXWr1U-QC5NqS3u1NH",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Azel de Nocte, an elegant pale dhampir swordsman, long flowing platinum-silver hair, golden glowing eyes, black aristocratic coat with a high collar and a long black cape with crimson lining, holding a slender glowing longsword. Dark gothic fantasy character art, full body heroic standing pose, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with red moonlight glow, game character select art, no text, no letters, no watermark.",
+  "file": "assets/portraits/azel.webp"
+ },
+ "npc_marta": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "AUYaEb4X9HIS7BcxL-SjI55d2dmnL0oDJ4nxpBaLSIQTZkhttIgCsoGq1VR0FBy6ou1NFb9A",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Marta, a plump cheerful middle-aged innkeeper woman, rosy cheeks, braided auburn hair, apron, holding a tankard, a black cat on her shoulder. Dark gothic fantasy character portrait, upper body, painterly digital illustration, warm candle rim light, dark background, visual novel dialogue portrait, no text, no watermark.",
+  "file": "assets/portraits/npc_marta.webp"
+ },
+ "npc_rook": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "Aaw7MwwVsRg0N55yxo5PtKmxYADXHDEkTbe6LbLPKu-nwcShD58uiZ_DH76tt7TGrQLBe2tS",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Rook, a mysterious hooded traveling merchant, only glowing eyes and a sly grin visible under the hood, many pouches, trinkets and a lantern. Dark gothic fantasy character portrait, upper body, painterly digital illustration, warm candle rim light, dark background, visual novel dialogue portrait, no text, no watermark.",
+  "file": "assets/portraits/npc_rook.webp"
+ },
+ "npc_hadwin": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "Aa2robC_MI23fXUp23cg4QHTijm9iBkBUnaUJFYExbHZ69us7FwGAfewFF-qq622tC8_qa4f",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Hadwin, a burly bald blacksmith with a thick grey braided beard, soot-covered muscular arms, leather apron, holding a hammer, forge glow. Dark gothic fantasy character portrait, upper body, painterly digital illustration, warm candle rim light, dark background, visual novel dialogue portrait, no text, no watermark.",
+  "file": "assets/portraits/npc_hadwin.webp"
+ },
+ "npc_alberto": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "ATgdRhwthKqWCSk5TiKOBFTmVOFrTN5yFFciBRFEglUMEDl7_7xwqQS3FiIj7wC6vZgjpqIj",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Father Alberto, an old wise priest with a white beard, round spectacles, black cassock, holding an old book and a lantern. Dark gothic fantasy character portrait, upper body, painterly digital illustration, warm candle rim light, dark background, visual novel dialogue portrait, no text, no watermark.",
+  "file": "assets/portraits/npc_alberto.webp"
+ },
+ "npc_elise": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "Aa7FbDj50mpOhRPbh1LcWFy4bxgxJBogVziF4nspGU3K0gVf8YvWP150g0Yz-GO8nb94Q46k",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Elise, a brave village girl of about twelve with blonde braids, simple peasant dress, holding a small lantern, frightened but hopeful expression. Dark gothic fantasy character portrait, upper body, painterly digital illustration, warm candle rim light, dark background, visual novel dialogue portrait, no text, no watermark.",
+  "file": "assets/portraits/npc_elise.webp"
+ },
+ "npc_carmilla": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "AZ1rKuggk3MJSWt9smw1hN2yZBBqLNBLWFk3UqYZmLSlPHWx0n6ya91fB9KZTujEoicIRNgt",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Carmilla, a mysterious beautiful vampire noblewoman, pale skin, long black hair, crimson eyes, elegant black and red gothic gown, holding a wine glass, enigmatic smile. Dark gothic fantasy character portrait, upper body, painterly digital illustration, warm candle rim light, dark background, visual novel dialogue portrait, no text, no watermark.",
+  "file": "assets/portraits/npc_carmilla.webp"
+ },
+ "tex_castle_stone": {
+  "group": "tex",
+  "aspect_ratio": "1:1",
+  "generationId": "ATPFlMSxa4YhiW_bQajddQGCp3umG4J6j1Cxy0aQ8IT_hEQr7Mja7M9A6dqP_c1qjRlNrzI7",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "large grey gothic castle stone blocks masonry with dark mortar lines Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture.",
+  "file": "assets/tex/tex_castle_stone.webp"
+ },
+ "tex_mossy_stone": {
+  "group": "tex",
+  "aspect_ratio": "1:1",
+  "generationId": "ARpXgSsZmonHjzVrX2p43AmSYPbkzFmExuUhrjB7vPXcPGnxLQl9UBptjQyDnVROMVO8BSPq",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "old cracked stone slabs covered with patches of green moss and lichen Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture.",
+  "file": "assets/tex/tex_mossy_stone.webp"
+ },
+ "tex_wood": {
+  "group": "tex",
+  "aspect_ratio": "1:1",
+  "generationId": "AdfFCYwjRltS2jiZ9p4seb5H8iuwwECW_ClpqlN5tnP7CznQAYiwnDUUUqT8JnVisexPGbe9",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "dark weathered wooden planks with iron nails, horizontal boards Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture.",
+  "file": "assets/tex/tex_wood.webp"
+ },
+ "tex_marble": {
+  "group": "tex",
+  "aspect_ratio": "1:1",
+  "generationId": "ARP8CwSbrN1SFtcKcnvtFMpcGQaPokwq848cIPj43svz-NYue3xmzZJ81621iuERpxBvTXdI",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "dark polished marble floor tiles with thin gold veins Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture.",
+  "file": "assets/tex/tex_marble.webp"
+ },
+ "tex_bone": {
+  "group": "tex",
+  "aspect_ratio": "1:1",
+  "generationId": "ARNs843rhnbJmXyHjeeXSkZidToc_YQKLlqNGwBbmlMWmSes7ItoaSLO2fEraqvFq9EWEIFY",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "wall of stacked skulls and bones tightly packed, ossuary Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture.",
+  "file": "assets/tex/tex_bone.webp"
+ },
+ "tex_library": {
+  "group": "tex",
+  "aspect_ratio": "1:1",
+  "generationId": "ARDhZit24BvJzaf335zbrlTEs66aDVOEr0G7CiDvTlJsWp9Wb7IQg3za8yaO9DLD_i3dBTJw",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "dark carved wooden paneling with gothic ornaments Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture.",
+  "file": "assets/tex/tex_library.webp"
+ },
+ "tex_lab": {
+  "group": "tex",
+  "aspect_ratio": "1:1",
+  "generationId": "ATEFwG9PDQtQSt4T4QBAl8GR4kxm_ORd8Dy4RO0DmetdcBnmDssGISpyWzFN943s4OTzLhgl",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "greenish stained stone tiles with copper inlays and faint alchemical symbols Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture.",
+  "file": "assets/tex/tex_lab.webp"
+ },
+ "tex_wet_stone": {
+  "group": "tex",
+  "aspect_ratio": "1:1",
+  "generationId": "AQ6lAJT8mhAVOdf-bpdEvKmJYHMu_muWz8lSVr3NcY1vXQFqCALT9ew6QcKjBsm1HR2BN5i6",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "wet dark blue slimy stone bricks with water stains Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture.",
+  "file": "assets/tex/tex_wet_stone.webp"
+ },
+ "tex_brass": {
+  "group": "tex",
+  "aspect_ratio": "1:1",
+  "generationId": "AdiyGgroM3uGBmLNtji4sQQxkOO5eJSg3Rl3ZxDA2ASTi6w5uC__JMlB98spVzX8G9FKOfY6",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "brass metal plates with rivets and engraved gear patterns Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture.",
+  "file": "assets/tex/tex_brass.webp"
+ },
+ "tex_ice": {
+  "group": "tex",
+  "aspect_ratio": "1:1",
+  "generationId": "ASJPTNTmdTm4HspbXcHPsBQSPs-3qnARziDcUVRX-qgXzvhIBAetLCW2tmeT5H48hzrHS6yh",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "ice-covered frozen stone blocks with frost crystals Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture.",
+  "file": "assets/tex/tex_ice.webp"
+ },
+ "tex_blood_marble": {
+  "group": "tex",
+  "aspect_ratio": "1:1",
+  "generationId": "AbMTZ__1Rmxa9DSom7C99aVEgb6HOfUDjnRjr22mYYebj8ahyes9IZBpu2Gr-mwZ42yO3Y6z",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "black marble with crimson red veins and gothic carvings Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture.",
+  "file": "assets/tex/tex_blood_marble.webp"
+ },
+ "tex_abyss": {
+  "group": "tex",
+  "aspect_ratio": "1:1",
+  "generationId": "AeAE3d_qKZXpDJPxZb84z69Oghz2xGUK_6pTpExV2B2UA3hOg5HPRYEXTYA83f3qHo-YCCeu",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "hellish obsidian rock with glowing purple and orange cracks Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture.",
+  "file": "assets/tex/tex_abyss.webp"
+ },
+ "tex_dirt": {
+  "group": "tex",
+  "aspect_ratio": "1:1",
+  "generationId": "AdO_cArX_lwcRfJsVmE9WogQjd4mf1YGhXixty63aOlOFdLxU8fmd5Vzf0x0vQr4eZKJHTV2",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "dark earth soil ground with small stones and roots Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture.",
+  "file": "assets/tex/tex_dirt.webp"
+ },
+ "s09_clocktower": {
+  "group": "bg",
+  "aspect_ratio": "21:9",
+  "generationId": "AdWeQY8CPLabrXIZu5jAh6GTj4mc1OXZ2W58TCwA_ElbJhfDiDZjN0XG3XcOmyCTYh8KMEjO",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Interior of a colossal gothic clock tower, gigantic brass gears and cogwheels, pendulums, huge clock faces backlit by the moon, chains and wooden beams, dust in moonbeams. Palette of brass gold, dark bronze and midnight blue. Wide panoramic 2D side-scrolling action game background art, dark gothic horror fantasy, painterly digital illustration with rich detail, dramatic cinematic lighting, strong atmospheric depth and fog layers, no characters, no people, no text, no letters, no UI, no watermark. The lower quarter of the image is darker and simpler so a gameplay floor can overlay it.",
+  "file": "assets/bg/s09_clocktower.webp"
+ },
+ "s10_spire": {
+  "group": "bg",
+  "aspect_ratio": "21:9",
+  "generationId": "Ad4zhi-08PCG2wXXq7EnGTOc5cPkZvX0B8CyagtTEMXbLtg3fjkWgxgG2dNeNDLQNWgMlnYv",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "A frozen gothic spire high above the clouds, ice-covered stone battlements, massive icicles, swirling blizzard snow, aurora in a black starry sky, frozen statues of knights. Palette of icy cyan, white and deep navy. Wide panoramic 2D side-scrolling action game background art, dark gothic horror fantasy, painterly digital illustration with rich detail, dramatic cinematic lighting, strong atmospheric depth and fog layers, no characters, no people, no text, no letters, no UI, no watermark. The lower quarter of the image is darker and simpler so a gameplay floor can overlay it.",
+  "file": "assets/bg/s10_spire.webp"
+ },
+ "s11_chapel": {
+  "group": "bg",
+  "aspect_ratio": "21:9",
+  "generationId": "AWsIRaIk4kycv1fjJq5aT5rBjdGe3wHfJ5cG14EjwHAW5D-Xzm45Zb8vHo3TDmcvVj91JPZ0",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "A corrupted gothic cathedral chapel inside a vampire castle, long nave, shattered stained glass windows with red light pouring in, wooden pews, a giant broken cross, black candles, crimson mist. Palette of deep red, black and pale bone. Wide panoramic 2D side-scrolling action game background art, dark gothic horror fantasy, painterly digital illustration with rich detail, dramatic cinematic lighting, strong atmospheric depth and fog layers, no characters, no people, no text, no letters, no UI, no watermark. The lower quarter of the image is darker and simpler so a gameplay floor can overlay it.",
+  "file": "assets/bg/s11_chapel.webp"
+ },
+ "s12_throne": {
+  "group": "bg",
+  "aspect_ratio": "21:9",
+  "generationId": "AS3t17ILBz4JveMOiH4nW_gFye8MM8MnM57m2E8vhgcMp7gZ2yFeRBYsE6hUe2_aguvX7WtR",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "The throne room at the top of a vampire lord castle, a colossal staircase leading to a dark throne, crimson curtains, an enormous blood-red moon filling a huge arched window, swarms of bats, ornate gothic gold architecture. Palette of crimson, black and antique gold. Wide panoramic 2D side-scrolling action game background art, dark gothic horror fantasy, painterly digital illustration with rich detail, dramatic cinematic lighting, strong atmospheric depth and fog layers, no characters, no people, no text, no letters, no UI, no watermark. The lower quarter of the image is darker and simpler so a gameplay floor can overlay it.",
+  "file": "assets/bg/s12_throne.webp"
+ },
+ "s13_abyss": {
+  "group": "bg",
+  "aspect_ratio": "21:9",
+  "generationId": "AZ6HOV6XDbA5IsOdbyaWjrEuyCn7OgXBJuMr4V7YJ_GVLT6byTeBc28Swb8hX4mY82uiA747",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "An upside-down demonic castle floating in a chaotic void, inverted towers, swirling purple-black vortex, fractured floating rock islands, rivers of hellfire, giant eldritch eyes in the clouds. Palette of violet, magenta and hellish orange. Wide panoramic 2D side-scrolling action game background art, dark gothic horror fantasy, painterly digital illustration with rich detail, dramatic cinematic lighting, strong atmospheric depth and fog layers, no characters, no people, no text, no letters, no UI, no watermark. The lower quarter of the image is darker and simpler so a gameplay floor can overlay it.",
+  "file": "assets/bg/s13_abyss.webp"
+ },
+ "s_arena": {
+  "group": "bg",
+  "aspect_ratio": "21:9",
+  "generationId": "AeE2Aw160b9ybMO-kMy-twonSM_X227_J3eW_AWroLo4pgJ8BypcuJbeuGF1Z-Bi7dsDeIDy",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "A gothic colosseum arena inside a demon castle, tiered stone stands with shadowy silhouettes, iron cages, torches, red banners, full moon above the open roof. Palette of sandstone, crimson and torch orange. Wide panoramic 2D side-scrolling action game background art, dark gothic horror fantasy, painterly digital illustration with rich detail, dramatic cinematic lighting, strong atmospheric depth and fog layers, no characters, no people, no text, no letters, no UI, no watermark. The lower quarter of the image is darker and simpler so a gameplay floor can overlay it.",
+  "file": "assets/bg/s_arena.webp"
+ },
+ "hub": {
+  "group": "bg",
+  "aspect_ratio": "21:9",
+  "generationId": "AQ84obhM-ytr9cVrQjkxm6bVLXIdi7peG_EbjqoJi7aMXu5kjZG8IlXsPibFQCmp-G64Ccj5",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "A small medieval Eastern European mountain village at night that is a safe haven, warm lantern-lit shop fronts, an inn with a black cat sign, a blacksmith forge glowing, cobblestone street, and the distant demon castle on a cliff under a red moon. Cozy warm lights contrasting with the ominous sky. Wide panoramic 2D side-scrolling action game background art, dark gothic horror fantasy, painterly digital illustration with rich detail, dramatic cinematic lighting, strong atmospheric depth and fog layers, no characters, no people, no text, no letters, no UI, no watermark. The lower quarter of the image is darker and simpler so a gameplay floor can overlay it.",
+  "file": "assets/bg/hub.webp"
+ },
+ "inn": {
+  "group": "bg",
+  "aspect_ratio": "16:9",
+  "generationId": "AWdPhEON7eq-916kFNFceDVlpmVCqwU3jpKKptPFHbFqhqfX6tCARvpJMdu6j8QPKbtPgmaL",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Cozy but eerie medieval tavern interior called the Black Cat Inn, wooden beams, a roaring fireplace, candles, card tables with dice and playing cards, barrels, a black cat sleeping on the counter, warm amber light, gothic details. Painterly 2D game background illustration, dark gothic fantasy, highly detailed, cinematic lighting, no characters, no people, no text, no letters, no watermark.",
+  "file": "assets/bg/inn.webp"
+ },
+ "shop": {
+  "group": "bg",
+  "aspect_ratio": "16:9",
+  "generationId": "AQV7i_i2GmOM0M8FBItFe0iLYHyEG08w5CYbFS7m63mf4QNKtEp8aSnAE7CmHfjk4O1zLEA_",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Cluttered medieval merchant shop interior, shelves full of colorful potions, weapons on racks, skulls, old maps, lanterns, gothic fantasy, warm candle light. Painterly 2D game background illustration, dark gothic fantasy, highly detailed, cinematic lighting, no characters, no people, no text, no letters, no watermark.",
+  "file": "assets/bg/shop.webp"
+ },
+ "smith": {
+  "group": "bg",
+  "aspect_ratio": "16:9",
+  "generationId": "AdGa90bGhusAn81wjNwphPLcF2Tz3-GjY5kEnIgvMSpn0Cvmdl_3JORDu40Gj82qzw5JLKI7",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Medieval blacksmith forge interior, glowing furnace, anvil with flying sparks, hanging swords, axes and armor, hammers and tongs, embers, orange light against dark stone. Painterly 2D game background illustration, dark gothic fantasy, highly detailed, cinematic lighting, no characters, no people, no text, no letters, no watermark.",
+  "file": "assets/bg/smith.webp"
+ },
+ "worldmap": {
+  "group": "bg",
+  "aspect_ratio": "16:9",
+  "generationId": "AeTS_00bQuqey96fQKpO_4GkjPuG67Ju7ZYfmOZm3_D-VQfLCxDfMF_rPH4jLJlN8Gy9-zq6",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "An old parchment fantasy map of a gothic mountain region: a small village, a graveyard, a river, dark forest, and a vast demonic castle on a cliff with many wings and towers, hand-drawn ink and watercolor on aged stained paper, decorative compass rose, no readable text, no letters. Painterly 2D game background illustration, dark gothic fantasy, highly detailed, cinematic lighting, no characters, no people, no text, no letters, no watermark.",
+  "file": "assets/bg/worldmap.webp"
+ },
+ "title": {
+  "group": "bg",
+  "aspect_ratio": "16:9",
+  "generationId": "Ad7hEmoBMd2eeAHPHelb0xetSBz9WcDRgmcewLVe6FvwkkV75vHt2dYZJib0frRq-rjaTk3m",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Epic key art for a gothic action game: a colossal demonic castle on a cliff under a gigantic blood-red moon, swarms of bats, lightning, a lone cloaked vampire hunter holding a whip standing on a rock in the foreground seen from behind, cinematic dark fantasy painting, no text, no letters, no logo. Painterly 2D game background illustration, dark gothic fantasy, highly detailed, cinematic lighting, no characters, no people, no text, no letters, no watermark.",
+  "file": "assets/bg/title.webp"
+ },
+ "ending": {
+  "group": "bg",
+  "aspect_ratio": "16:9",
+  "generationId": "AVNdkxdLmV6VEnFOuJ5LVaR0Q-OxEOhFeNCjaPyabGnfiDVa0piR9SLBpoxvq-XhRqcn-Toh",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Dawn breaking over a ruined crumbling gothic castle, golden sunrise light piercing the clouds, the castle dissolving into mist, birds flying, hopeful mood, painterly fantasy landscape, no text. Painterly 2D game background illustration, dark gothic fantasy, highly detailed, cinematic lighting, no characters, no people, no text, no letters, no watermark.",
+  "file": "assets/bg/ending.webp"
+ },
+ "b_nightwing": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "AYN2NvOuhV7VxUSln6XYBDe9e-HzT91nrxLKOVaUx8S6Wk63f5-wJ3WvZTpR6GAZhMZUwvFN",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Nightwing, a colossal vampire bat lord with tattered membranous wings, glowing red eyes, fangs, fur like smoke, hovering in a moonlit sky. Dark gothic horror boss monster concept art, menacing, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, no text, no watermark.",
+  "file": "assets/portraits/b_nightwing.webp"
+ },
+ "b_banshee": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "ARJc3nBmNOjhsvcBBHW49CsdDkP50w3fdnieBGKC35FFdXmWSkeBY7e2XMsrdyk1mqoNuzYk",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "The Banshee Queen, a wailing ghostly woman in torn white veils floating over graves, hollow glowing eyes, spectral chains, blue-green ectoplasm. Dark gothic horror boss monster concept art, menacing, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, no text, no watermark.",
+  "file": "assets/portraits/b_banshee.webp"
+ },
+ "b_dullahan": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "AQ-Wt4LvKQOU24IESvbHlf5dtunTDu-g3Xn_pRgzI88Lxx2GaiprYOf0stOV1RItZaZkPyCu",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Dullahan, a headless black knight in ornate spiked armor riding a spectral horse, holding its own flaming skull head in one hand and a huge lance in the other. Dark gothic horror boss monster concept art, menacing, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, no text, no watermark.",
+  "file": "assets/portraits/b_dullahan.webp"
+ },
+ "b_crimson": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "Ac0Hr30WiZaVJBMlZJxPxd7pWsWn9N__jGp_FkC7liNdRznKd_wLNy52c89gr3kC-SbvXDYK",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "The Crimson Armor Lord, a giant living suit of ornate blood-red plate armor filled with dark fire, wielding a massive halberd, empty glowing visor. Dark gothic horror boss monster concept art, menacing, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, no text, no watermark.",
+  "file": "assets/portraits/b_crimson.webp"
+ },
+ "b_bonedragon": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "AW5hhFemca54JILENrXsmSYdD2KuCs7NFI7ect8tOt2zS9GhPf7EE6bWE3Nnysx4ltcCYh6h",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "A bone dragon made of countless fused skeletons, long serpentine neck, green soul fire burning in its skull eye sockets. Dark gothic horror boss monster concept art, menacing, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, no text, no watermark.",
+  "file": "assets/portraits/b_bonedragon.webp"
+ },
+ "b_grimoire": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "AdNsOFTCl9XUgz__MB0x_FnfScnOX5JKPIfl6gi_Sdsc__vcxhyaZsxW_9dWUZpHkoHBkGow",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Grimoire, a gigantic living spellbook monster, pages like teeth, a huge single eye on its cover, orbiting runes and floating pages, purple arcane energy. Dark gothic horror boss monster concept art, menacing, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, no text, no watermark.",
+  "file": "assets/portraits/b_grimoire.webp"
+ },
+ "b_chimera": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "AVntWtKGLRhooKvvWnygazV0erbiiExhqMITq1K0qRacXckLOW-RgwflGwwyhRDhGkiZCFtr",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "A chimera homunculus created by alchemy, a fused body of lion, goat and serpent, glass tubes with glowing green fluid embedded in its hide, laboratory background. Dark gothic horror boss monster concept art, menacing, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, no text, no watermark.",
+  "file": "assets/portraits/b_chimera.webp"
+ },
+ "b_leviathan": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "AXYykcoBtDLwUyjKc-rWOVaKMmkZcXe0-__b_kYoaVEdpQDYeV3r2s9roTXX_Hb6u-z4GICI",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Leviathan, a monstrous sea serpent rising from dark water, bioluminescent scales, rows of teeth, crown of horns, water spraying. Dark gothic horror boss monster concept art, menacing, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, no text, no watermark.",
+  "file": "assets/portraits/b_leviathan.webp"
+ },
+ "b_colossus": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "AXEGDU4izoAl4uRXwJHQDDtNZqa0-a4d3ORhyqFCzB8TXKDxi2_W2EgIMOPBaJaNCw6D9pfz",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "The Clockwork Colossus, a giant gothic mechanical golem made of brass gears and pistons with a clock face for a chest, glowing orange furnace core. Dark gothic horror boss monster concept art, menacing, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, no text, no watermark.",
+  "file": "assets/portraits/b_colossus.webp"
+ },
+ "b_frostqueen": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "AZNObE6XrRYJpMHRjjtA6cnPDVIS56fvDkX1gVUfzNJKeu16WSGSpUGH-r82mnsS0JjEl0Q2",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Isabella the Frost Queen, a regal ice witch with a crown of icicles, flowing gown of frost and snow, pale blue skin, casting freezing magic, blizzard around her. Dark gothic horror boss monster concept art, menacing, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, no text, no watermark.",
+  "file": "assets/portraits/b_frostqueen.webp"
+ },
+ "b_death": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "AemYRGs2iMyN3FW0OwvPZXHlH91n6hc9NqrKkBDgZ3diC3ANfcffdQ7xLwC8WUjE339hEC8M",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Death, the Grim Reaper, a towering skeletal figure in a tattered black hooded cloak, wielding a gigantic curved scythe, green soul flames, floating. Dark gothic horror boss monster concept art, menacing, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, no text, no watermark.",
+  "file": "assets/portraits/b_death.webp"
+ },
+ "b_dracula": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "AZuipH9acjjuE8H6xpC2u2QAnDSbX__CtY02LWRnFZWcQGMQhcmUm3ycJR_KCq9jOJbUbDtH",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Count Dracula, an imposing ancient vampire lord, tall and regal, long black hair, pale skin, piercing red eyes, black and crimson high-collared cape, standing before his throne, commanding presence. Dark gothic horror boss monster concept art, menacing, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, no text, no watermark.",
+  "file": "assets/portraits/b_dracula.webp"
+ },
+ "b_dracula2": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "AUUnm-TJ5zYDBoAm-ltoARfMQUUmeTMKXyqP82C1m71G3jptNc0gTxZzsmeRjxokl4DA1zXv",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Count Dracula in his true demonic form, a gigantic winged demon beast with bat wings, great horns, crimson hide, glowing eyes, hellfire around him. Dark gothic horror boss monster concept art, menacing, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, no text, no watermark.",
+  "file": "assets/portraits/b_dracula2.webp"
+ },
+ "b_chaos": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "AbdK9Zrt3emCEcs1qV3U7Ogy_NHF8fI4muerl4knrIZMJTEc1qW14owOdMcGgpRrCcQ0IZZI",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "The Chaos Lord, a cosmic eldritch entity of swirling darkness, many glowing eyes, a fractured crown, tendrils of void and violet fire. Dark gothic horror boss monster concept art, menacing, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, no text, no watermark.",
+  "file": "assets/portraits/b_chaos.webp"
+ }
+}
