@@ -48,6 +48,7 @@ const PRESETS = {
 export const PARTICLE_PRESETS = Object.keys(PRESETS);
 
 const COL_DEF = { gap: 0.5, step: 16, height: 8, totalAfter: 3, totalDelay: 0.35 };
+const COL_NUDGE = [0, 18, -18, 36, -36];   // 겹친 숫자 기둥 비키기 (px)
 const qKey = (q) => (q >= 0.95 ? 'high' : q >= 0.7 ? 'medium' : 'low');
 const DMG_CAP = { high: 24, medium: 16, low: 10 };
 
@@ -61,7 +62,7 @@ export class Particles {
     this.dmgLive = 0;     // 살아 있는 데미지 숫자 수
     this._cols = [];      // 합계를 기다리는 숫자 기둥
   }
-  clear() { this.list.length = 0; this.decals.length = 0; this._cols.length = 0; this.dmgLive = 0; }
+  clear() { this.list.length = 0; this.decals.length = 0; this._cols.length = 0; this.dmgLive = 0; if (this._colStarts) this._colStarts.length = 0; }
   /** 자국만 비운다 (world.loadRoom) */
   clearDecals() { this.decals.length = 0; }
 
@@ -144,7 +145,7 @@ export class Particles {
     if (target && typeof target === 'object' && key !== 'hurt' && key !== 'heal' && key !== 'total') {
       const now = this.clock;
       col = target._dmgCol;
-      if (!col || col.done || now - col.t > (C.gap ?? 0.5)) col = target._dmgCol = { n: 0, t: now, t0: now, total: 0, hits: 0, x, y, done: false, queued: false };
+      if (!col || col.done || now - col.t > (C.gap ?? 0.5)) col = target._dmgCol = { n: 0, t: now, t0: now, total: 0, hits: 0, x: this.colX(x, y, now), y, done: false, queued: false };
       else col.n = (col.n + 1) % (C.height ?? 8);
       col.t = now; col.total += Number(value) || 0; col.hits++;
       px = col.x; py = col.y - col.n * (C.step ?? 16);
@@ -154,6 +155,22 @@ export class Particles {
     const p = this.spawnDmg(px, py, value, key, st, o.color ?? null);
     if (p && col) p.col = col;   // 기둥 숫자는 기둥과 함께 떠오른다 (간격 16px 유지)
     return p;
+  }
+  /**
+   * 새 숫자 기둥의 x: 0.5초 안에 20px 이내에서 시작한 다른 기둥이 있으면 ±18px 비켜 선다
+   * (한 번 휘둘러 겹쳐 선 두 적을 맞히면 '43' '42' 가 '4342' 로 붙어 보이지 않게)
+   */
+  colX(x, y, now) {
+    const S = (this._colStarts ??= []);
+    while (S.length && now - S[0][2] > 0.5) S.shift();
+    let nx = x;
+    for (const off of COL_NUDGE) {
+      const cx = x + off;
+      if (!S.some((s) => Math.abs(s[0] - cx) < 20 && Math.abs(s[1] - y) < 48)) { nx = cx; break; }
+    }
+    S.push([nx, y, now]);
+    if (S.length > 32) S.shift();
+    return nx;
   }
   /** 숫자 기둥이 지금까지 떠오른 높이 (첫 타격부터 0.6초에 걸쳐 rise px) */
   colRise(col, rise) { const u = Math.min(1, Math.max(0, (this.clock - col.t0) / 0.6)); return rise * (1 - (1 - u) * (1 - u) * (1 - u)); }
