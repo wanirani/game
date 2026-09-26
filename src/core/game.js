@@ -20,7 +20,8 @@ const PAD_SCENES = new Set(['stage', 'hub', 'bossrush', 'survival', 'practice', 
  *  opaque         : true면 아래 장면을 그리지 않음
  *  updateBelow    : true면 이 장면이 떠 있어도 아래 장면 update 계속 (예: 토스트)
  *  hidePad/showPad: 모바일 가상 패드 강제 숨김/표시 (미지정 시 PAD_SCENES 기준)
- *  hideToasts     : 토스트 숨김 / deferToasts: 숨기고 시간도 멈춤(장면을 벗어난 뒤 표시) / toastY: 토스트 줄 y 위치
+ *  hideToasts     : 토스트 숨김 / deferToasts: 숨기고 시간도 멈춤(장면을 벗어난 뒤 표시)
+ *  toastY/toastX  : 토스트 줄 기준 위치 (기본: 화면 가운데 위 y=92) / toastUp: true 면 기준선에서 위로 쌓는다
  *  autoPause()    : 기기를 세로로 돌리거나 탭이 숨겨질 때 호출 (게임플레이 장면이 일시정지 메뉴를 띄움)
  */
 export class Scene {
@@ -241,21 +242,22 @@ class Game {
     // 토스트
     const top = this.top;
     if (this.toasts.length && !top?.hideToasts && !top?.deferToasts && top?.name !== 'menu') {
-      const y0 = top?.toastY ?? 92;
+      const y0 = top?.toastY ?? 92, x0 = top?.toastX ?? this.viewW / 2, dy = top?.toastUp ? -30 : 30;
       ctx.save();
       ctx.textAlign = 'center';
       ctx.font = '700 17px "Noto Sans KR", sans-serif';
       this.toasts.forEach((t, k) => {
         const a = Math.min(1, t.t * 3, (t.max - t.t) * 6);
         ctx.globalAlpha = a;
-        const y = y0 + k * 30;
+        const y = y0 + k * dy;
         const w = ctx.measureText(t.text).width + 36;
+        const x = clamp(x0, w / 2 + 6, this.viewW - w / 2 - 6); // 줄이 한쪽으로 치우쳐도 화면 밖으로 잘리지 않게
         ctx.fillStyle = 'rgba(10,4,12,0.78)';
-        ctx.fillRect(this.viewW / 2 - w / 2, y - 20, w, 28);
+        ctx.fillRect(x - w / 2, y - 20, w, 28);
         ctx.strokeStyle = 'rgba(200,160,90,0.6)';
-        ctx.strokeRect(this.viewW / 2 - w / 2 + 0.5, y - 19.5, w - 1, 27);
+        ctx.strokeRect(x - w / 2 + 0.5, y - 19.5, w - 1, 27);
         ctx.fillStyle = t.color;
-        ctx.fillText(t.text, this.viewW / 2, y);
+        ctx.fillText(t.text, x, y);
       });
       ctx.restore();
     }

@@ -453,6 +453,11 @@ export class ServiceScene extends Scene {
     padHidden(true);
   }
   exit() { padHidden(false); if (this.music) audio.music('hub'); }
+  // 토스트 줄: 화면 위 가운데(기본값)는 탭 줄을 가리므로, 왼쪽 초상화 칸의 대사창 바로 위에서 위로 쌓는다
+  // (상점·대장간·의뢰 게시판·성당 공통 — 초상화 칸은 장식 영역이라 조작 요소를 가리지 않는다)
+  get toastX() { return this.layout().pw / 2; }
+  get toastY() { return this.game.viewH - 214; }
+  get toastUp() { return true; }
   get state() { return this.game.state; }
   get hero() { return currentHero(this.game.state); }
   talk(kindOrText) {

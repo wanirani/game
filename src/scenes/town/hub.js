@@ -6,7 +6,7 @@ import { audio } from '../../core/audio.js';
 import { assets } from '../../core/assets.js';
 import { saves } from '../../core/save.js';
 import { Entity } from '../../game/entity.js';
-import { text, panel, button, bar, ListMenu, FONT, COLORS, vignette } from '../../core/ui.js';
+import { text, font, panel, button, bar, ListMenu, FONT, COLORS, vignette } from '../../core/ui.js';
 import { TAU, clamp, rand, fmt, ease } from '../../core/math.js';
 import { World } from '../../game/world.js';
 import { newGameState, currentHero } from '../../game/state.js';
@@ -113,7 +113,7 @@ export class HubScene extends Scene {
     d.x = cx - wid / 2; d.w = wid;
     d.z = 20;
     d.draw = (ctx, world) => {
-      if (!d.near || this.game.top !== this) return; // 대화·메뉴가 위에 떠 있으면 안내 숨김
+      if (!d.near || this.hint !== d || this.game.top !== this) return; // 대화·메뉴가 위에 떠 있거나 다른 대상이 안내 중이면 숨김
       const t = world.time;
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
@@ -148,11 +148,11 @@ export class HubScene extends Scene {
           if (!n.moving) n.wait = rand(1, 2);
         }
       } else if (n.npcId === 'npc_hadwin') n.facing = -1;
-      if (n.near && !w.cutscene && !this.menuOpen && input.pressed('up')) this.talk(n);
+      // ↑ 는 HubScene.update 가 안내 중인 대상(this.hint) 하나에만 전달한다 (문과 NPC 가 겹칠 때 둘 다 반응하지 않게)
     };
     n.draw = (ctx, world) => {
       world.drawNPC(ctx, n);
-      if (n.near && this.game.top === this) { // 대화창이 떠 있는 동안에는 이름표·'▲ 대화' 를 숨긴다 (대화창 테두리와 겹침)
+      if (n.near && this.hint === n && this.game.top === this) { // 대화창이 떠 있거나 다른 대상(문)이 안내 중이면 이름표·'▲ 대화' 를 숨긴다
         const nm = NpcData.NPCS?.[n.npcId]?.name ?? spec.name ?? '';
         const y = n.y - 30 - Math.abs(Math.sin(world.time * 3)) * 3;
         text(ctx, nm, n.cx, y - 14, { size: 14, weight: 800, family: FONT.title, color: '#f3d690', align: 'center', ow: 3 });
@@ -243,14 +243,15 @@ export class HubScene extends Scene {
     // 전투 입력은 이번 스텝 동안만 뗀 것으로 보이게 한 뒤 World 갱신 (보조무기·스킬이 하트·MP 를 쓰지 않도록)
     const held = NO_COMBAT.map((a) => input.state[a]);
     for (const a of NO_COMBAT) { input.state[a] = false; input.consume(a); }
-    try { w.update(dt); } finally { NO_COMBAT.forEach((a, i) => { input.state[a] = held[i]; }); }
+    // ↑ 누름도 World 안의 문(Door.update)·NPC 에는 보이지 않게 하고, 아래에서 안내 대상 하나에만 전달한다
+    const upPressed = input.pressed('up'), upPrev = input.prev.up;
+    input.prev.up = input.state.up;
+    try { w.update(dt); } finally { NO_COMBAT.forEach((a, i) => { input.state[a] = held[i]; }); input.prev.up = upPrev; }
     const p = w.player;
     if (p) { p.hp = p.stats.hp; if (p.y > FLOOR + 200) { p.x = 29 * TILE; p.y = FLOOR - p.h; p.vy = 0; } }
-    // 상호작용 대상
-    this.hint = null;
-    for (const e of w.entities) {
-      if (e.near && (e.kind === 'npc' || e.building)) { this.hint = e; break; }
-    }
+    // 상호작용 대상: 가까운 문·NPC 중 하나 (가운데 아래 안내와 ↑ 입력이 같은 대상을 가리킨다)
+    this.hint = this.pickHint(w, p);
+    if (upPressed && this.hint && !w.cutscene && !w.transitioning && this.game.top === this) { this.act(this.hint); return; }
     // 대장간 망치질 불꽃 (분위기)
     this.anvilT -= dt;
     if (this.anvilT <= 0) {
@@ -266,6 +267,22 @@ export class HubScene extends Scene {
     }
   }
 
+  /** 상호작용 대상 고르기: 가까이 있는 NPC·문 가운데 플레이어와 가장 가까운 것 (같으면 NPC 우선) */
+  pickHint(w, p) {
+    let best = null, bd = Infinity;
+    for (const e of w.entities) {
+      if (!e.near || e.dead || !(e.kind === 'npc' || e.building)) continue;
+      const d = Math.abs((p?.cx ?? 0) - e.cx) - (e.kind === 'npc' ? 12 : 0);
+      if (d < bd) { bd = d; best = e; }
+    }
+    return best;
+  }
+  /** 안내 대상 실행: NPC 면 대화, 문이면 입장 */
+  act(h) {
+    if (h.kind === 'npc') this.talk(h);
+    else { audio.sfx('door'); this.enterTarget(h.target); }
+  }
+
   tapHud() {
     if (!input.pointer.tapped) return false;
     const r = this.hudRects;
@@ -273,12 +290,7 @@ export class HubScene extends Scene {
     const inR = (q) => q && input.pointer.x >= q.x && input.pointer.x <= q.x + q.w && input.pointer.y >= q.y && input.pointer.y <= q.y + q.h;
     if (inR(r.menu)) { this.openMenu(); return true; }
     if (inR(r.party)) { this.openParty(); return true; }
-    if (inR(r.act) && this.hint) {
-      const h = this.hint;
-      if (h.kind === 'npc') this.talk(h);
-      else { audio.sfx('door'); this.enterTarget(h.target); }
-      return true;
-    }
+    if (inR(r.act) && this.hint) { this.act(this.hint); return true; }
     return false;
   }
 
@@ -379,15 +391,24 @@ export class HubScene extends Scene {
     // ── 하단: 상호작용 안내 ──
     const h = this.hint;
     if (h && !this.world.cutscene) {
-      const label = h.kind === 'npc' ? `대화 · ${NpcData.NPCS?.[h.npcId]?.name ?? TOWN_NPCS[h.npcId]?.name ?? ''}` : `들어가기 · ${h.building?.name ?? ''}`;
+      // 발밑 흙길 띠(바닥 아래 48px)에 한 줄로: 캐릭터 다리를 가리지 않고, 제목·설명이 서로 닿지 않게
+      const label = '▲  ' + (h.kind === 'npc' ? `대화 · ${NpcData.NPCS?.[h.npcId]?.name ?? TOWN_NPCS[h.npcId]?.name ?? ''}` : `들어가기 · ${h.building?.name ?? ''}`);
       const sub = h.kind === 'npc' ? (NpcData.NPCS?.[h.npcId]?.title ?? TOWN_NPCS[h.npcId]?.title ?? '') : (h.building?.desc ?? '');
-      const aw = 300, ah = 54, ax = vw / 2 - aw / 2, ay = vh - ah - (input.touchMode ? 24 : 34);
-      const rA = { x: ax, y: ay, w: aw, h: ah };
+      ctx.font = font(16, 800, FONT.body); const lw = ctx.measureText(label).width;
+      ctx.font = font(12, 600, FONT.body); const sw = sub ? ctx.measureText(sub).width : 0;
+      const aw = Math.min(vw - 40, Math.max(240, lw + (sub ? sw + 26 : 0) + 56)), ah = 38;
+      const rA = { x: Math.round(vw / 2 - aw / 2), y: vh - ah - 6, w: aw, h: ah };
       const pulse = 0.5 + 0.5 * Math.sin(this.t * 5);
       ctx.save();
       ctx.shadowColor = `rgba(232,200,114,${0.3 + pulse * 0.3})`; ctx.shadowBlur = 16;
-      uiButton(ctx, rA, '▲  ' + label, { size: 16, sub, selected: true });
+      uiButton(ctx, rA, '', { size: 16, selected: true });
       ctx.restore();
+      const x0 = rA.x + rA.w / 2 - (lw + (sub ? sw + 26 : 0)) / 2, by = rA.y + rA.h / 2 + 6;
+      text(ctx, label, x0, by, { size: 16, weight: 800, color: '#fff4d8', ow: 3 });
+      if (sub) {
+        ctx.fillStyle = 'rgba(232,200,114,0.5)'; ctx.fillRect(x0 + lw + 12, rA.y + 11, 1.5, rA.h - 22);
+        text(ctx, sub, x0 + lw + 26, by - 1, { size: 12, weight: 600, color: '#d8c8b0', ow: 2 });
+      }
       this.hudRects.act = rA;
     }
     if (!h) uiHints(ctx, [[['←', '→'], '이동'], ['Z', '점프'], ['C', '대시'], ['↑', '들어가기·대화'], ['Esc', '메뉴']], vw / 2, vh - 8);

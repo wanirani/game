@@ -18,7 +18,7 @@ const MAP = [
   row(), row(), row(), row(), row(), row(),
   row({ ...range(9, 12, '='), ...range(39, 41, '=') }),   // 6: 여관 발코니 · 대장간 차양
   row(),
-  row({ 7: 'D', 10: 'N', 19: 'D', 22: 'N', 29: 'P', 32: 'D', 41: 'D', 46: 'N', 57: 'D', 61: 'N', 70: 'N', 78: 'D' }),
+  row({ 7: 'D', 10: 'N', 19: 'D', 22: 'N', 29: 'P', 32: 'D', 41: 'D', 46: 'N', 57: 'D', 61: 'N', 69: 'N', 78: 'D' }),
   '%'.repeat(W),
 ];
 
@@ -56,7 +56,8 @@ export const TOWN_PROPS = [
   { id: 'prop_crate', fx: 1150, w: 64, h: 64 }, { id: 'prop_crate', fx: 1160, w: 48, h: 48, dy: -58 },
   { id: 'deco_village_well', fx: 1360, w: 150, h: 150 },
   { id: 'deco_village_haybale', fx: 2380, w: 96, h: 72 },
-  { id: 'deco_village_cart', fx: 3420, w: 190, h: 118 },
+  // 수레는 엘리제 집과 성문 사이 골목에 (엘리제가 서는 집 앞·문 뒤를 가리지 않게)
+  { id: 'deco_village_cart', fx: 3508, w: 190, h: 118 },
   { id: 'deco_village_fence', fx: 3250, w: 180, h: 68 },
 ];
 
@@ -82,7 +83,7 @@ export const TOWN_NPCS = {
     look: { build: 'normal', skin: '#e0c0a0', hair: '#d8d4d0', hairStyle: 'short', outfit: 'priest', primary: '#16121a', secondary: '#3a2a4a', trim: '#e8c872', pants: '#16121a', boots: '#100c10', beard: 'full', height: 0.98 },
   },
   npc_elise: {
-    name: '엘리제', title: '마을 소녀', portrait: 'portraits/npc_elise', range: 150, speed: 55, idle: [1.2, 3],
+    name: '엘리제', title: '마을 소녀', portrait: 'portraits/npc_elise', range: 70, speed: 55, idle: [1.2, 3],
     look: { build: 'slim', skin: '#f8e0d0', hair: '#e8c070', hairStyle: 'braid', outfit: 'girl', primary: '#e8e0d0', secondary: '#8a6a4a', trim: '#c83a4a', pants: '#f0e8e0', boots: '#3a2418', height: 0.8 },
   },
 };
