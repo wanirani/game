@@ -1,7 +1,133 @@
 [
- {"id":"skeleton","step":"ref","tool":"text_to_image","count":2,"aspect":"3:4","generationId":"AZYHTiQH80zrH8Vp3VX6BNkg-AdoYfwammdGIinNZE7IEAemgNkwjNEHBV-fPCFWKazG2bj3"},
- {"id":"armor_knight","step":"ref","tool":"text_to_image","count":2,"aspect":"3:4","generationId":"AZ-dhTHKJRe-ZHyVdNpeaNaOMlApX-8mjftsuEUhgzR4NxCDYY4vtm6pFFet2pAFApml2j00"},
- {"id":"gravedigger","step":"ref","tool":"text_to_image","count":2,"aspect":"3:4","generationId":"AWFKJ_e1nMU-NNV7TECGxs18oL5vyILdQTfUoBsJ1rqCS8-5v9DO18M6pi4Ysb0MiuYxbKea"},
- {"id":"bat","step":"ref","tool":"text_to_image","count":2,"aspect":"4:3","generationId":"AYwjhoD0D57BJeZtZ3LQ5AZwftF3Kp7nkDfGw1weu2Vccdf1PDdTQH4OxLFlVXQlnFsljW5K"},
- {"id":"ghost","step":"ref","tool":"text_to_image","count":2,"aspect":"1:1","generationId":"ATKW7WdxAVIy1FsOouEpShkjpWVlla8IiqOkc77z1SuB_H8Q6vVKwvm8DEAOcM0jNDet_SVF"}
+ {
+  "id": "skeleton",
+  "step": "ref",
+  "tool": "text_to_image",
+  "count": 2,
+  "aspect": "3:4",
+  "generationId": "AZYHTiQH80zrH8Vp3VX6BNkg-AdoYfwammdGIinNZE7IEAemgNkwjNEHBV-fPCFWKazG2bj3",
+  "chosen": 1
+ },
+ {
+  "id": "armor_knight",
+  "step": "ref",
+  "tool": "text_to_image",
+  "count": 2,
+  "aspect": "3:4",
+  "generationId": "AZ-dhTHKJRe-ZHyVdNpeaNaOMlApX-8mjftsuEUhgzR4NxCDYY4vtm6pFFet2pAFApml2j00",
+  "chosen": 1
+ },
+ {
+  "id": "gravedigger",
+  "step": "ref",
+  "tool": "text_to_image",
+  "count": 2,
+  "aspect": "3:4",
+  "generationId": "AWFKJ_e1nMU-NNV7TECGxs18oL5vyILdQTfUoBsJ1rqCS8-5v9DO18M6pi4Ysb0MiuYxbKea",
+  "chosen": 2
+ },
+ {
+  "id": "bat",
+  "step": "ref",
+  "tool": "text_to_image",
+  "count": 2,
+  "aspect": "4:3",
+  "generationId": "AYwjhoD0D57BJeZtZ3LQ5AZwftF3Kp7nkDfGw1weu2Vccdf1PDdTQH4OxLFlVXQlnFsljW5K",
+  "chosen": 2
+ },
+ {
+  "id": "ghost",
+  "step": "ref",
+  "tool": "text_to_image",
+  "count": 2,
+  "aspect": "1:1",
+  "generationId": "ATKW7WdxAVIy1FsOouEpShkjpWVlla8IiqOkc77z1SuB_H8Q6vVKwvm8DEAOcM0jNDet_SVF",
+  "chosen": 1
+ },
+ {
+  "id": "skeleton",
+  "step": "sheet",
+  "tool": "image_to_image",
+  "count": 2,
+  "aspect": "4:3",
+  "ref": "ref#1",
+  "generationId": "ATb7QXPWYinGkz0PqU0oYD72sk5xataabHvxTitbvaddJBjlvcN_8tVdGlf9_PhnTI9WjyJf",
+  "note": "Kling returned a turnaround sheet (full figures + a few loose parts) instead of a pure parts sheet; loose parts + the side-view figure are cut, missing occluded parts are generated singly."
+ },
+ {
+  "id": "armor_knight",
+  "step": "sheet",
+  "tool": "image_to_image",
+  "count": 2,
+  "aspect": "4:3",
+  "ref": "ref#1",
+  "generationId": "ATuXN0Plo_q66FSEhTFWrHQxqFWg5i7ys3sIBiofahxI4Za4lHv22YNYX92FObgUZ_NpomIm",
+  "note": "Kling returned a turnaround sheet (full figures + a few loose parts) instead of a pure parts sheet; loose parts + the side-view figure are cut, missing occluded parts are generated singly."
+ },
+ {
+  "id": "gravedigger",
+  "step": "sheet",
+  "tool": "image_to_image",
+  "count": 2,
+  "aspect": "4:3",
+  "ref": "ref#2",
+  "generationId": "AQxagJ-ddTV5vrwuhvj85aqRxQaIl9iHhTU8Ti5cjgWGNTBlzyqHWyFsRN0UpUGw_M1GQJot",
+  "note": "Kling returned a turnaround sheet (full figures + a few loose parts) instead of a pure parts sheet; loose parts + the side-view figure are cut, missing occluded parts are generated singly."
+ },
+ {
+  "id": "bat",
+  "step": "sheet",
+  "tool": "image_to_image",
+  "count": 2,
+  "aspect": "4:3",
+  "ref": "ref#2",
+  "generationId": "AYARBoy3pPYSN5pGFFiUYf5owvhLcxzMjbjKHY8FgWcvYaSBbnzx5d353kmvr82x1jEaICue",
+  "note": "Kling returned a turnaround sheet (full figures + a few loose parts) instead of a pure parts sheet; loose parts + the side-view figure are cut, missing occluded parts are generated singly."
+ },
+ {
+  "id": "ghost",
+  "step": "sheet",
+  "tool": "image_to_image",
+  "count": 2,
+  "aspect": "4:3",
+  "ref": "ref#1",
+  "generationId": "AWnS9ApeTp9D4G8BqtLTa9phkMfOzM1joFb4RKkMOWsTrvz0Tzwe3oGpIP0lwVBD50WJ-dXg",
+  "note": "prompt + 'no mist on the background' (ref came back on a dark bg) Kling returned a turnaround sheet (full figures + a few loose parts) instead of a pure parts sheet; loose parts + the side-view figure are cut, missing occluded parts are generated singly."
+ },
+ {
+  "id": "skeleton",
+  "step": "part:torso",
+  "tool": "image_to_image",
+  "count": 1,
+  "aspect": "3:4",
+  "refs": [
+   "ref#1",
+   "sheet#1"
+  ],
+  "generationId": "Ad-xPrWSUp-hfJd5kgoeWHNslpaS3notQ5AIRnm8KqN-LqjD2LWYOMz6jlcKDw05zT_pASpB"
+ },
+ {
+  "id": "armor_knight",
+  "step": "part:torso",
+  "tool": "image_to_image",
+  "count": 1,
+  "aspect": "3:4",
+  "refs": [
+   "ref#1",
+   "sheet#2"
+  ],
+  "generationId": "AXzoIBxx5jiiNoGmS9lu4T41Sr4D12keC7_WDpxkDsiHvxgDhwIbMY9EAB3syJ_JnZffEX0C"
+ },
+ {
+  "id": "gravedigger",
+  "step": "part:torso",
+  "tool": "image_to_image",
+  "count": 1,
+  "aspect": "1:1",
+  "refs": [
+   "ref#2",
+   "sheet#2"
+  ],
+  "generationId": "AX1-ruahCoElBcxGbi-ZFFpkxPZ9MprTvKmyP_k4GCIfwHt_DnFdAWvGflVq9CLF72YbRFFb"
+ }
 ]

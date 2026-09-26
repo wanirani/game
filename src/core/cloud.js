@@ -339,7 +339,8 @@ class Cloud {
   expire() {
     const had = !!this.auth;
     this.clearAuth('expired');
-    if (had) this.game?.toast?.('로그인이 만료되었습니다. 계정 화면에서 다시 로그인해 주세요.', '#ffb070', 3.2);
+    // 계정 화면은 스스로 안내하므로 토스트는 그 밖의 화면에서만
+    if (had && this.game?.top?.name !== 'account') this.game?.toast?.('로그인이 만료되었습니다. 계정 화면에서 다시 로그인해 주세요.', '#ffb070', 3.2);
   }
 
   // ── 동기화 기록 (계정별) ──
@@ -555,7 +556,9 @@ class Cloud {
   warnConflict(slot) {
     if (this.warned.has(slot)) return;
     this.warned.add(slot);
-    this.game?.toast?.(`슬롯 ${slot}: 다른 기기에서 저장한 클라우드 기록과 달라 올리지 않았습니다. 세이브 슬롯 화면에서 남길 기록을 골라 주세요.`, '#ffb070', 4.5);
+    const top = this.game?.top?.name;
+    if (top === 'slots' || top === 'cloudConflict') return; // 슬롯 화면은 구름 표시로 이미 보여 준다
+    this.game?.toast?.(`슬롯 ${slot}: 클라우드 기록과 충돌 — 이어하기 화면에서 남길 기록을 고르세요`, '#ffb070', 4);
   }
 
   /** 지금 게임을 진행 중인 슬롯 (타이틀·슬롯 선택 같은 화면이면 null) */
@@ -722,7 +725,7 @@ class Cloud {
    * 충돌은 그대로 두고 알린다. 게임 중인 슬롯에는 받지 않는다.
    *  opts.downloads=false : 받기 없이 올리기만
    *  opts.adoptLocal      : 클라우드에 없는 이 기기 기록도 올림 (새 계정·사용자가 올리기를 고른 경우)
-   * → { ok, uploaded[], downloaded[], deleted[], conflicts[], localOnly[], failed[], error?, message? }
+   * → { ok, uploaded[], downloaded[], deleted[], conflicts[], localOnly[], failed[], held[](받을 것이 있지만 게임 중이라 둔 슬롯), error?, message? }
    */
   refresh(opts = {}) {
     if (!this.auth) return Promise.resolve(fail('logged_out'));
@@ -743,7 +746,7 @@ class Cloud {
     }
     this.verified = true;
     this.applyList(res);
-    const out = { ok: true, reason, uploaded: [], downloaded: [], deleted: [], conflicts: [], localOnly: [], failed: [] };
+    const out = { ok: true, reason, uploaded: [], downloaded: [], deleted: [], conflicts: [], localOnly: [], failed: [], held: [] };
     const active = this.activeSlot();
     for (const slot of SLOTS) {
       if (this.id !== id) return fail('logged_out');
@@ -757,7 +760,8 @@ class Cloud {
       if (status === 'synced') this.setRec(slot, { rev: v.cloud.rev, at: local.savedAt });
       else if (status === 'empty') this.setRec(slot, { rev: v.cloud?.rev ?? 0, at: null });
       let r = null;
-      if (auto === 'download' && downloads && slot !== active) { r = await this._download(slot); if (r.ok) out.downloaded.push(slot); }
+      if (auto === 'download' && (!downloads || slot === active)) out.held.push(slot); // 게임 중인 슬롯: 받지 않고 알림만
+      else if (auto === 'download') { r = await this._download(slot); if (r.ok) out.downloaded.push(slot); }
       else if (auto === 'upload') { r = await this._upload(slot); if (r.ok && !r.skipped) out.uploaded.push(slot); }
       else if (auto === 'delete') { r = await this._deleteCloud(slot); if (r.ok) out.deleted.push(slot); }
       if (r && !r.ok && r.error !== 'conflict') out.failed.push(slot);
@@ -826,17 +830,18 @@ class Cloud {
     else if (this.state === 'offline') status = 'offline';
     return { status, cloud: v.cloud, busy: this.pending(slot), error: v.error };
   }
-  /** 전체 상태 한 줄 (시스템 탭·계정 화면) → { key, text } */
+  /** 전체 상태 (시스템 탭·타이틀 표시) → { key, text, short } */
   overall() {
-    if (!this.eligible()) return { key: 'blocked', text: '공식 사이트·앱에서 사용 가능' };
-    if (!this.auth) return { key: 'guest', text: '로그인하지 않음' };
-    if (this.state === 'offline') return { key: 'offline', text: '오프라인 (연결되면 동기화)' };
-    if (this.state === 'unavailable') return { key: 'offline', text: '서버에 연결할 수 없음' };
-    if (this._refresh || SLOTS.some((s) => this.pending(s)) || this.timers.meta) return { key: 'pending', text: '동기화 중…' };
+    const o = (key, text, short = text) => ({ key, text, short });
+    if (!this.eligible()) return o('blocked', '공식 사이트·앱에서 사용 가능', '사용 불가');
+    if (!this.auth) return o('guest', '로그인하지 않음', '게스트');
+    if (this.state === 'offline') return o('offline', '오프라인 (연결되면 동기화)', '오프라인');
+    if (this.state === 'unavailable') return o('offline', '서버에 연결할 수 없음', '연결 안 됨');
+    if (this._refresh || SLOTS.some((s) => this.pending(s)) || this.timers.meta) return o('pending', '동기화 중…', '동기화 중');
     const n = SLOTS.filter((s) => this.view[s].status === 'conflict').length;
-    if (n) return { key: 'conflict', text: `충돌 ${n}개 — 세이브 슬롯 화면에서 선택` };
-    if (!this.lastSync) return { key: 'unknown', text: this.verified ? '동기화 전' : '연결 확인 중' };
-    return { key: 'synced', text: '동기화됨' };
+    if (n) return o('conflict', `충돌 ${n}개 — 세이브 슬롯 화면에서 선택`, `충돌 ${n}개`);
+    if (!this.lastSync) return o('unknown', this.verified ? '동기화 전' : '연결 확인 중');
+    return o('synced', '동기화됨');
   }
 }
 

@@ -1,0 +1,150 @@
+{
+ "_doc": "퍼펫 원화 클링 생성 기록. images = 과금 이미지 수(후보 포함). 채택본은 src/<charId>/ 에 워터마크 제거 후 저장.",
+ "model": "kling-image-v3_0_omni",
+ "budget": {
+  "kael": 70
+ },
+ "entries": [
+  {
+   "id": "kael_hunter_side",
+   "tool": "(prototype)",
+   "images": 0,
+   "src": "src/kael/kael_hunter_side.webp",
+   "note": "프로토타입 B 의 side_1.png (초상화 기반 측면 원화) 재사용"
+  },
+  {
+   "id": "kael_hunter_turn5",
+   "tool": "(prototype)",
+   "images": 0,
+   "src": "src/kael/kael_hunter_turn5.webp",
+   "note": "프로토타입 turn5_1.png"
+  },
+  {
+   "id": "kael_hunter_qback",
+   "tool": "(prototype)",
+   "images": 0,
+   "src": "src/kael/kael_hunter_qback.webp",
+   "note": "프로토타입 qback_1.png"
+  },
+  {
+   "id": "kael_crusader_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "Acvk4hRUivgPCDaiuxiEYeESSnitWydeiig4TDUhh1PCUl8NPsq6A0OjC2wW3irvewrXxr1U",
+   "inputs": [
+    "kael_hunter_side.jpg"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": "a",
+   "prompt": "Edit 图片1. Keep the SAME young man with the exact same face, same body proportions, the exact same walking side pose facing right, same arm and leg positions, same camera angle, same framing, scale and position on the canvas, same plain light-grey studio background, same realistic painterly dark-fantasy game-art style and lighting. The coiled brown leather whip stays hanging at his hip in the same place. Change ONLY his outfit into a holy crusader-hunter outfit, one tier grander: long ivory-white leather hunter's coat with polished gold trim and gold embroidered crosses, ivory vest, gold buckles on a warm brown belt, ivory bracers with gold rivets, ivory gloves, pale grey trousers, ivory-and-brown riding boots with gold toe caps; a slim gold circlet instead of the bandana; soft warm holy glow on gold. No cape, no cloak, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark.",
+   "src": "src/kael/kael_crusader_side.webp"
+  },
+  {
+   "id": "kael_templar_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "Ab0k1s5agyQ2XOZchWEKtoxLgS3tdUvY-94ap11s_ySw_fyHoNxHzVlYsd4JQ2UFnCO40X_5",
+   "inputs": [
+    "kael_hunter_side.jpg"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": "-",
+   "prompt": "Edit 图片1. Keep the SAME young man with the exact same face, same body proportions, the exact same walking side pose facing right, same arm and leg positions, same camera angle, same framing, scale and position on the canvas, same plain light-grey studio background, same realistic painterly dark-fantasy game-art style and lighting. The coiled brown leather whip stays hanging at his hip in the same place. Change ONLY his outfit into grand holy templar plate armour with gold filigree, crimson sash, white tabard skirt with crimson lining, open-faced helmet (FAILED: closed visor, face hidden) No cape, no cloak, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark."
+  },
+  {
+   "id": "kael_inquisitor_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AfeeZfjMjaEkv70rH845THFxGLy0m_8JhHXfYoqpvC4YKv-0-eYoqGtemL7sxxRZ7QZMSWEb",
+   "inputs": [
+    "kael_hunter_side.jpg"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": "a",
+   "prompt": "Edit 图片1. Keep the SAME young man with the exact same face, same body proportions, the exact same walking side pose facing right, same arm and leg positions, same camera angle, same framing, scale and position on the canvas, same plain light-grey studio background, same realistic painterly dark-fantasy game-art style and lighting. The coiled brown leather whip stays hanging at his hip in the same place. Change ONLY his outfit into grand inquisitor witch-hunter: long black leather greatcoat, crimson silk lining, heavy gold filigree trim and gold holy-fire sigils, high collar, crimson cravat with gold sun brooch, black gloves with gold cuffs, black wide-brimmed witch-hunter hat with crimson band and gold sun badge; ember glow. No cape, no cloak, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark.",
+   "src": "src/kael/kael_inquisitor_side.webp"
+  },
+  {
+   "id": "kael_stalker_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AcBp2QaOEnu2OsjM3wt9jLUhX_ComTgqJfIuWe9rx-ceyRv2TlFbHttuBKj8EH3UZDSwm4a2",
+   "inputs": [
+    "kael_hunter_side.jpg"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": "b",
+   "prompt": "Edit 图片1. Keep the SAME young man with the exact same face, same body proportions, the exact same walking side pose facing right, same arm and leg positions, same camera angle, same framing, scale and position on the canvas, same plain light-grey studio background, same realistic painterly dark-fantasy game-art style and lighting. The coiled brown leather whip stays hanging at his hip in the same place. Change ONLY his outfit into stealthy shadow-stalker: long charcoal-black leather coat with deep violet trim and gunmetal buckles, dark hood up (face visible, brown strands), violet scarf at the neck, black bracers/gloves, dark grey trousers, soft black buckled boots; no bandana. No cape, no cloak, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark.",
+   "src": "src/kael/kael_stalker_side.webp"
+  },
+  {
+   "id": "kael_bloodhunter_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "Aa1veey2R8tvmbEg0EQhiCFLMswLQe1qDZ566_wBtF9gOOUsLN5AK7NV9dipktzyFigQDG8A",
+   "inputs": [
+    "kael_hunter_side.jpg"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": "b",
+   "prompt": "Edit 图片1. Keep the SAME young man with the exact same face, same body proportions, the exact same walking side pose facing right, same arm and leg positions, same camera angle, same framing, scale and position on the canvas, same plain light-grey studio background, same realistic painterly dark-fantasy game-art style and lighting. The coiled brown leather whip stays hanging at his hip in the same place. Change ONLY his outfit into forbidden blood hunter: blood-black leather coat with crimson trim and faintly glowing crimson vein sigils, silver fang-and-bone ornaments, crimson hood up (face visible), glowing red eyes, crimson sash, black-and-crimson gloves with silver claws, tall black boots with crimson straps. No cape, no cloak, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark.",
+   "src": "src/kael/kael_bloodhunter_side.webp"
+  },
+  {
+   "id": "kael_nightraven_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AU3uiqwWHQMP3KdLR2JUL0gAynSVPZLGj9YGTFJkM2dgQtOA7fD963_U7GefDEGpZte3QgWt",
+   "inputs": [
+    "kael_hunter_side.jpg"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": "-",
+   "prompt": "Edit 图片1. Keep the SAME young man with the exact same face, same body proportions, the exact same walking side pose facing right, same arm and leg positions, same camera angle, same framing, scale and position on the canvas, same plain light-grey studio background, same realistic painterly dark-fantasy game-art style and lighting. The coiled brown leather whip stays hanging at his hip in the same place. Change ONLY his outfit into night raven: black coat with slate-blue accents and silver trim, raven-feather mantle on the shoulders, black hood, long navy scarf, silver raven-skull clasp (a: feathers too long down the back -> re-edited; b: hat instead of hood) No cape, no cloak, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark."
+  },
+  {
+   "id": "kael_templar_side_v2",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AQExlVp4sUV_2pUNLrCtUxjWQi7bWxXyl9ScsR492WpkWGeCBMfiMWF5O7_BzCZOfTeqAxm6",
+   "inputs": [
+    "templar_v1a.jpg",
+    "kael_hunter_side.jpg"
+   ],
+   "picked": "-",
+   "prompt": "Edit 图片1 ... Change ONLY the head: ornate OPEN-FACED silver helmet (sallet, no visor) ... face as 图片2 (FAILED again: Kling keeps the visor when the word 'helmet' is present)"
+  },
+  {
+   "id": "kael_templar_side_v3",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AYxUTknrKIBUcyAVCBZc38Jn77QzW9V5v3wCThhnFZHdfPpUZMFjTdeTrDdhTsZTXsMP23Ws",
+   "inputs": [
+    "templar_v1a.jpg",
+    "kael_hunter_side.jpg"
+   ],
+   "picked": "a",
+   "src": "src/kael/kael_templar_side.webp",
+   "prompt": "Edit 图片1. Keep the body exactly the same: the same silver-and-gold plate armour, white scarf collar, gold cross, crimson sash, white tabard with gold embroidery, the coiled whip at the hip, the same walking side pose facing right, same framing, scale and position, same light-grey background and painterly style. Change ONLY the head: REMOVE THE HELMET COMPLETELY. He is bare-headed, showing the same face and the same brown hair tied back in a ponytail as the man in 图片2, seen in right profile, and he wears an ornate gold laurel crown-circlet with a small holy cross at the front on his forehead. No helmet, no visor, no plume. No text, no watermark."
+  },
+  {
+   "id": "kael_nightraven_side_v2",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AVaBhSi8mfk8UO8ryoDEqFShnTxZV0iced9eaGoRyq-qbcWoXTCFD6WhPn7KXR0sFr2y-Nq9",
+   "inputs": [
+    "nightraven_v1a.jpg"
+   ],
+   "picked": "a",
+   "src": "src/kael/kael_nightraven_side.webp",
+   "prompt": "Edit 图片1. Keep everything exactly the same (man, face, black hood with blue headband, navy scarf, black coat with silver trim, whip coil, pose, framing, background, style). Change ONLY the raven-feather mantle: a short, tidy capelet of glossy black raven feathers with a blue-violet sheen that sits tightly on the shoulders and upper chest and ends just above the elbow, like layered feathered pauldrons. No feathers hanging down the back or along the arm, no feathers sticking out behind him. No wings, no cape. No text, no watermark."
+  }
+ ],
+ "images_used": 18
+}

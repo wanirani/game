@@ -1,4 +1,21 @@
 {
+ "_meta": {
+  "group": "meta",
+  "about": "Awakening cut-in illustrations (docs/specs/feel.md 6.6, WP7). Separate from tools/kling/manifest.json so the shared manifest never conflicts. Entries with `file` are the ones used; `*_aN` entries are rejected attempts with the reason.",
+  "model": "kling-image-v3_0_omni",
+  "tool": "image_to_image (image_1 = the hero portrait uploaded via the Kling file upload tool, referenced as 图片1)",
+  "aspect_ratio": "21:9",
+  "img_resolution": "2k",
+  "raw_size": [
+   3104,
+   1312
+  ],
+  "images_generated": 9,
+  "budget": "12 images per spec; 9 used (Sera 3 attempts, Bran 2)",
+  "credits_per_image": 2,
+  "processing": "tools/kling/cutin_process.py: retouch (pseudo-text print/engraving only) -> 1600:637 crop window chosen from raw_face with the bottom >= 8% always removed (watermark) -> 1600x637 WebP q82 m6 -> checks -> tools/kling/cutin_anchors.json",
+  "raw_face/raw_eye": "face centre / glint eye, 0..1 in the raw 3104x1312 Kling output (measured on a 0.02 grid)"
+ },
  "cutin_kael": {
   "group": "cutin",
   "aspect_ratio": "21:9",
@@ -29,7 +46,8 @@
      0.225
     ]
    ]
-  ]
+  ],
+  "ref_url": "https://s15-kling.klingai.com/kimg/EMXN1y8qRQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBorYWdlbnRfdXBsb2FkLzE3OTA0Mjk4NDAvdXQ2VWo4TDdnUy9rYWVsLmpwZw.origin?x-kcdn-pid=112372"
  },
  "cutin_sera": {
   "group": "cutin",
@@ -50,7 +68,8 @@
   "raw_eye": [
    0.65,
    0.236
-  ]
+  ],
+  "ref_url": "https://s15-kling.klingai.com/kimg/EMXN1y8qRQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBorYWdlbnRfdXBsb2FkLzE3OTA0Mjk4NTYvWnZOWmlaSTF1Uy9zZXJhLmpwZw.origin?x-kcdn-pid=112372"
  },
  "cutin_victor": {
   "group": "cutin",
@@ -85,7 +104,8 @@
     ],
     17
    ]
-  ]
+  ],
+  "ref_url": "https://s15-kling.klingai.com/kimg/EMXN1y8qRwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBotYWdlbnRfdXBsb2FkLzE3OTA0Mjk4NTgvRWNudElyMmFMWi92aWN0b3IuanBn.origin?x-kcdn-pid=112372"
  },
  "cutin_bran": {
   "group": "cutin",
@@ -106,7 +126,8 @@
   "raw_eye": [
    0.703,
    0.188
-  ]
+  ],
+  "ref_url": "https://s15-kling.klingai.com/kimg/EMXN1y8qRQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBorYWdlbnRfdXBsb2FkLzE3OTA0Mjk4NjEvREo5anFNbnA1Ti9icmFuLmpwZw.origin?x-kcdn-pid=112372"
  },
  "cutin_lia": {
   "group": "cutin",
@@ -127,7 +148,8 @@
   "raw_eye": [
    0.728,
    0.302
-  ]
+  ],
+  "ref_url": "https://s15-kling.klingai.com/kimg/EMXN1y8qRAoGdXBsb2FkEg55bGFiLXN0dW50LXNncBoqYWdlbnRfdXBsb2FkLzE3OTA0Mjk4NjMvZVFTaktNMUxOYy9saWEuanBn.origin?x-kcdn-pid=112372"
  },
  "cutin_azel": {
   "group": "cutin",
@@ -148,7 +170,8 @@
   "raw_eye": [
    0.446,
    0.259
-  ]
+  ],
+  "ref_url": "https://s15-kling.klingai.com/kimg/EMXN1y8qRQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBorYWdlbnRfdXBsb2FkLzE3OTA0Mjk4NjYvNnFtdFc4ZGFzMC9hemVsLmpwZw.origin?x-kcdn-pid=112372"
  },
  "cutin_bran_a1": {
   "group": "cutin",
@@ -162,7 +185,8 @@
   "ref": "assets/portraits/bran.webp",
   "created": "2026-09-26T13:38:48Z",
   "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2Q5MjNiY2QzLTdkMTEtNDM5Ni1iMzY0LTQ2NTgzYzFjMzJiNC8tMzAzODQzMTAyMzkxMjAzOTg2NC90ZW1wazIwNDMucG5n.origin?x-kcdn-pid=112372",
-  "rejected": "off-style flat ghost figure, face high in frame; attempt 2 is stronger (orange/steel-blue fire)"
+  "rejected": "off-style flat ghost figure, face high in frame; attempt 2 is stronger (orange/steel-blue fire)",
+  "ref_url": "https://s15-kling.klingai.com/kimg/EMXN1y8qRQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBorYWdlbnRfdXBsb2FkLzE3OTA0Mjk4NjEvREo5anFNbnA1Ti9icmFuLmpwZw.origin?x-kcdn-pid=112372"
  },
  "cutin_sera_a1": {
   "group": "cutin",
@@ -176,7 +200,8 @@
   "ref": "assets/portraits/sera.webp",
   "created": "2026-09-26T13:38:48Z",
   "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2RjYjkxNTYzLTBjYTAtNDNmZS1hM2NkLTgwOWM0ZjUzMTg4Mi8tMTg1NTM3NjMzNzY5ODg2MzQwL3RlbXB1bGVwMC5wbmc.origin?x-kcdn-pid=112372",
-  "rejected": "medium shot instead of a close-up, startled expression, two wings; retried"
+  "rejected": "medium shot instead of a close-up, startled expression, two wings; retried",
+  "ref_url": "https://s15-kling.klingai.com/kimg/EMXN1y8qRQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBorYWdlbnRfdXBsb2FkLzE3OTA0Mjk4NTYvWnZOWmlaSTF1Uy9zZXJhLmpwZw.origin?x-kcdn-pid=112372"
  },
  "cutin_sera_a2": {
   "group": "cutin",
@@ -190,6 +215,7 @@
   "ref": "assets/portraits/sera.webp",
   "created": "2026-09-26T13:42:29Z",
   "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0Lzk5OWFhZWRjLTcwODctNDM2NS1hMWUzLTA3YWRhZmIxYzYwOC84MTg3Nzk2OTQzNjk3Mzk3MzI0L3RlbXAzeWg3ZC5wbmc.origin?x-kcdn-pid=112372",
-  "rejected": "close-up OK but eyes closed (breaks the eye-glint anchor); retried"
+  "rejected": "close-up OK but eyes closed (breaks the eye-glint anchor); retried",
+  "ref_url": "https://s15-kling.klingai.com/kimg/EMXN1y8qRQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBorYWdlbnRfdXBsb2FkLzE3OTA0Mjk4NTYvWnZOWmlaSTF1Uy9zZXJhLmpwZw.origin?x-kcdn-pid=112372"
  }
 }

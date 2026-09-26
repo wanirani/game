@@ -1,0 +1,206 @@
+// 채색 렌더러 레지스트리: 보스 ID / 적 ID → 채색(컷아웃 퍼핏) 렌더러 모듈.
+//  - 등록된 렌더러가 있고 에셋이 구워졌으면 벡터 그리기 대신 채색 그림을 그린다. 아니면 기존 벡터 코드가 그대로 그린다 (대체).
+//  - 렌더러 모듈은 필요할 때만 동적 import (다른 스테이지는 비용 0).
+//  - 미리 굽기: 보스 방 진입(roomEntered) 때와 보스 생성 때 시작 → 대사/등장 연출 뒤에서 끝난다.
+//
+// 렌더러 모듈 계약 (export default):
+//   { id, kind:'boss'|'enemy',
+//     async load(env)            → rig (kit.loadRig 사용). env = { game, td, budgetMB, quality }
+//     init(ent, rig)             → 개체별 그리기 상태 (선택)
+//     draw(ctx, ent, world, rig, st)  월드 변환이 걸린 ctx 에 그린다 (ent 는 읽기 전용)
+//     bounds(ent, rig, st, out)  → {x,y,w,h} 그림 전체를 덮는 컬링 영역 (보스: 논리 판정보다 훨씬 큼)
+//     lights?(L, ent, rig, st)   추가 광원
+//     ownsDeathFade?: true       사망 중 Boss.draw 의 전체 투명도 감쇠를 쓰지 않음 (붕괴 연출을 보이게)
+//   }
+// 보스 훅 (a_common.js / b_common.js):  update 끝에 paintedTick(this, world),  draw 첫 줄에 if (paintedDraw(this, ctx, world)) return;
+// 적 훅 (render/enemies.js 등):          if (drawPaintedDirect(e, ctx, world)) return;   (판정≈그림 크기인 개체용, 대리 개체 없음)
+//
+// 끄기: URL ?painted=0 · window.__paintedOff = true · settings.painted === false  → 모든 개체가 벡터로 그려진다 (비교/문제 해결용)
+import { Entity } from '../../game/entity.js';
+import { bus } from '../../core/events.js';
+import { quality, textureDensity, memoryBudgetMB } from './kit.js';
+
+/** id → { kind, importer, mod, rig, state:'idle'|'loading'|'ready'|'failed', promise, err } */
+const REG = new Map();
+let GAME = null;
+
+/** 기본 등록 (모듈 경로는 이 파일 기준). 새 채색 보스/적을 만들면 여기에 한 줄 추가한다 */
+registerPainted('b_bonedragon', { kind: 'boss', importer: () => import('./bosses/b_bonedragon.js') });
+
+export function registerPainted(id, { kind = 'boss', importer = null, module = null } = {}) {
+  const prev = REG.get(id);
+  REG.set(id, { kind, importer, mod: module, rig: null, state: 'idle', promise: null, err: null, ...(prev?.state === 'ready' && !importer && !module ? prev : {}) });
+}
+export function hasPainted(id) { return REG.has(id); }
+export function paintedIds(kind = null) { return [...REG.entries()].filter(([, e]) => !kind || e.kind === kind).map(([id]) => id); }
+export function paintedState(id) { return REG.get(id)?.state ?? 'none'; }
+export function paintedRig(id) { const e = REG.get(id); return e?.state === 'ready' ? e.rig : null; }
+
+export function paintedEnabled(game = GAME) {
+  try {
+    if (typeof window !== 'undefined') {
+      if (window.__paintedOff) return false;
+      if (/[?&]painted=0\b/.test(window.location?.search ?? '')) return false;
+    }
+  } catch { /* 무시 */ }
+  return game?.settings?.painted !== false;
+}
+
+/** 카메라 줌 추정: 보스 경기장 줌(world.startBoss 와 같은 식)을 미리 계산 */
+function arenaZoom(game) {
+  const w = game?.world, m = w?.map;
+  if (w?.camera?.zoomTarget) return w.camera.zoomTarget;
+  if (m?.pxH && game?.viewH) return Math.min(1, Math.max(0.74, game.viewH / (m.pxH - 48)));
+  return 0.85;
+}
+
+/** 미리 굽기 시작 (여러 번 불러도 한 번만). → Promise<boolean> */
+export function preloadPainted(id, game = GAME) {
+  const e = REG.get(id);
+  if (!e) return Promise.resolve(false);
+  if (e.promise) return e.promise;
+  if (!paintedEnabled(game)) return Promise.resolve(false);
+  if (game) GAME = game;
+  e.state = 'loading';
+  const t0 = performance.now();
+  e.promise = (async () => {
+    try {
+      if (!e.mod) e.mod = (await e.importer()).default;
+      const env = { game, quality: quality(game), td: textureDensity(game, arenaZoom(game)), budgetMB: memoryBudgetMB(game) };
+      e.rig = await e.mod.load(env);
+      e.state = 'ready';
+      e.loadMs = performance.now() - t0;
+      if (typeof window !== 'undefined') (window.__painted ??= {})[id] = { ms: Math.round(e.loadMs), memMB: +(e.rig?.memMB ?? 0).toFixed(2), td: +(e.rig?.td ?? 0).toFixed(3), bakeMs: Math.round(e.rig?.bakeMs ?? 0) };
+      return true;
+    } catch (err) {
+      e.state = 'failed'; e.err = err;
+      console.warn('[painted] 불러오기 실패 → 벡터 그림 사용:', id, err?.message ?? err);
+      return false;
+    }
+  })();
+  return e.promise;
+}
+/** 구운 텍스처 해제 (다른 스테이지로 떠날 때 등) */
+export function releasePainted(id) {
+  const e = REG.get(id);
+  if (!e || e.state === 'loading') return;
+  e.rig = null; e.promise = null; e.state = 'idle';
+}
+
+function ready(id, game) {
+  const e = REG.get(id);
+  if (!e) return null;
+  if (e.state === 'ready') return paintedEnabled(game) ? e : null;
+  if (e.state === 'idle') preloadPainted(id, game);
+  return null;
+}
+
+// ───────────────────────── 보스: 컬링 대리 개체 ─────────────────────────
+// world.render 는 개체 사각형(x,y,w,h)으로 컬링한다. 보스 논리 사각형은 머리 판정뿐이라 채색 몸통(날개·흉곽)이
+// 화면에 있어도 보스 전체가 컬링될 수 있다. 대리 개체가 그림 전체 영역을 사각형으로 가지고 대신 그린다.
+// (보스의 x/y/w/h·판정은 건드리지 않는다: 게임플레이 불변)
+class PaintedBody extends Entity {
+  constructor(boss, entry) {
+    super(boss.x, boss.y, boss.w, boss.h);
+    this.kind = 'painted';
+    this.boss = null;       // BOSS_TRANSIENT 정리 규칙(e.boss === b)에 걸리지 않도록 다른 이름을 쓴다
+    this.host = boss; this.entry = entry; this.z = boss.z;
+    this.st = boss._painted?.st ?? entry.mod.init?.(boss, entry.rig) ?? {};
+    this.fail = 0;
+    this.syncBounds();
+  }
+  syncBounds() {
+    const b = this.host, r = this.entry.mod.bounds?.(b, this.entry.rig, this.st, this._r ??= { x: 0, y: 0, w: 0, h: 0 });
+    if (r && Number.isFinite(r.x + r.y + r.w + r.h)) { this.x = r.x; this.y = r.y; this.w = r.w; this.h = r.h; }
+    else { this.x = b.x - 200; this.y = b.y - 200; this.w = b.w + 400; this.h = b.h + 400; }
+  }
+  alive(world) { const b = this.host; return !b.dead && b.world === world && this.entry.state === 'ready' && paintedEnabled(world?.game); }
+  update(dt, world) {
+    this.t += dt;
+    if (!this.alive(world)) { this.dead = true; if (this.host._painted?.proxy === this) this.host._painted.proxy = null; return; }
+    this.z = this.host.z;
+    this.syncBounds();
+  }
+  draw(ctx, world) {
+    const b = this.host;
+    if (!this.alive(world) || b.hidden) return;
+    const mod = this.entry.mod;
+    ctx.save();
+    if (b.dying > 0 && !mod.ownsDeathFade) ctx.globalAlpha = Math.min(1, Math.max(0, b.dying / 2.4));
+    try {
+      mod.draw(ctx, b, world, this.entry.rig, this.st);
+    } catch (err) {
+      // 그리기 오류 → 이 보스는 벡터로 되돌린다 (게임은 계속)
+      console.error('[painted] 그리기 오류 → 벡터로 전환:', b.def?.id, err);
+      this.entry.state = 'failed'; this.dead = true;
+      if (b._painted) b._painted.proxy = null;
+    }
+    ctx.restore();
+    if (world.game?.debug) {
+      ctx.save();
+      ctx.strokeStyle = '#0ff'; for (const hb of b.hurtboxes()) ctx.strokeRect(hb.x, hb.y, hb.w, hb.h);
+      ctx.strokeStyle = 'rgba(255,0,255,0.6)'; ctx.setLineDash([6, 6]); ctx.strokeRect(this.x, this.y, this.w, this.h);
+      ctx.restore();
+    }
+  }
+  lights(L) { if (!this.dead && this.entry.state === 'ready') this.entry.mod.lights?.(L, this.host, this.entry.rig, this.st); }
+}
+
+function attach(boss, world, e) {
+  if (!world || !Array.isArray(world.entities) || typeof world.add !== 'function') return null;
+  const pb = new PaintedBody(boss, e);
+  boss._painted = { proxy: pb, st: pb.st };
+  world.add(pb);
+  return pb;
+}
+
+/** 보스 update 끝에서 호출: 미리 굽기 시작 / 준비되면 대리 개체 부착 */
+export function paintedTick(boss, world) {
+  const id = boss.def?.id;
+  if (!id || !REG.has(id)) return;
+  if (world?.game) GAME = world.game;
+  const e = ready(id, world?.game);
+  if (!e || boss.dead) return;
+  const p = boss._painted?.proxy;
+  if (!p || p.dead || p.world !== world) attach(boss, world, e);
+}
+/**
+ * 보스 draw 첫 줄에서 호출. true 면 채색 대리 개체가 그리므로 벡터 그리기를 건너뛴다.
+ * 준비가 막 끝난 프레임에는 여기서 부착하고 바로 한 번 그린다 (벡터 → 채색 한 프레임 깜빡임 방지).
+ */
+export function paintedDraw(boss, ctx, world) {
+  const id = boss.def?.id;
+  if (!id || !REG.has(id)) return false;
+  const e = ready(id, world?.game);
+  if (!e) return false;
+  let p = boss._painted?.proxy;
+  if (p && !p.dead && p.world === world) return true;
+  p = attach(boss, world, e);
+  if (!p) return false;
+  p.draw(ctx, world);
+  return true;
+}
+
+// ───────────────────────── 적/NPC: 직접 그리기 ─────────────────────────
+/** 판정 사각형이 그림과 비슷한 개체용: 준비됐으면 그리고 true (컬링은 호출 측 개체 사각형 기준) */
+export function drawPaintedDirect(ent, ctx, world, id = ent.def?.id ?? ent.id) {
+  if (!id || !REG.has(id)) return false;
+  const e = ready(id, world?.game);
+  if (!e) return false;
+  const st = ent._paintedSt ??= (e.mod.init?.(ent, e.rig) ?? {});
+  try { e.mod.draw(ctx, ent, world, e.rig, st); return true; } catch (err) {
+    console.error('[painted] 그리기 오류 → 벡터로 전환:', id, err); e.state = 'failed'; return false;
+  }
+}
+
+// ───────────────────────── 방 진입 시 미리 굽기 ─────────────────────────
+// 보스 방(또는 보스러시 방)에 들어서는 순간 굽기를 시작한다 → 보스 트리거·대사·등장 연출 동안 끝난다.
+bus.on('roomEntered', ({ stageId, roomId } = {}) => {
+  const w = GAME?.world ?? (typeof window !== 'undefined' ? window.__game?.world : null);
+  const g = w?.game ?? GAME ?? (typeof window !== 'undefined' ? window.__game : null);
+  if (g) GAME = g;
+  const room = w?.room ?? w?.stage?.rooms?.[roomId];
+  if (!room?.boss) return;
+  const id = room.bossId ?? w?.stage?.boss;
+  if (id && REG.has(id)) preloadPainted(id, g);
+});

@@ -1,0 +1,648 @@
+{
+ "_meta": {
+  "group": "meta",
+  "about": "Kling generations for the companion portraits (companions.md 11.5 / C9) and the six Part 2 companions (world2.md 14). Separate from tools/kling/manifest.json on purpose (another agent appends to that file).",
+  "model": "kling-image-v3_0_omni",
+  "tool": "text_to_image",
+  "aspect_ratio": "3:4",
+  "img_resolution": "2k",
+  "raw_size": [
+   1760,
+   2368
+  ],
+  "processing": "same as existing 3:4 portraits (tools/kling/clean_watermark.py portrait branch): crop bottom 5.5% (130 px; the KlingAI 3.0 Omni mark starts at 95.3% of the height) -> 1760x2238 -> LANCZOS resize to 761x968 -> WebP quality 82, method 6 (all files <= 90 KB so no quality step-down was needed). Files are NOT listed in tools/kling/cleaned.json, so re-running clean_watermark.py would crop them a second time.",
+  "iconFocus": "square crop for the 40 px HUD circles: centre (x * width, y * height), side s * width, all in the final 761x968 image",
+  "images_generated": 30,
+  "credits_per_image": 2
+ },
+ "cmp_m_warhorse": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "Adp739H7mHeg3nCCwVLIidYYAxcA4QgLgD-ffc9TPIJ3YN0Yn3xBlHtkxBCNm9iFjTA8UOUx",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "A majestic black warhorse destrier with a flowing crimson mane, its face covered by a riveted iron chanfron armor plate with a short blunt iron stud on the brow, glowing ember eyes, crimson and gold saddle cloth, smoke from its nostrils, rearing slightly. Dark gothic fantasy creature portrait, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with crimson moonlight, video game companion card art, no text, no letters, no watermark.",
+  "file": "assets/portraits/cmp_m_warhorse.webp",
+  "tool": "text_to_image",
+  "attempt": 3,
+  "created": "2026-09-26T13:52:32Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2NmNjZiZjIxLWVmOWUtNDU0Ni1iM2UxLTEyZTAyNzA1MGNhNC8tMzQwNDA2ODUzMDkzNTkwMjM4OS90ZW1wdHJhdHUucG5n.origin?x-kcdn-pid=112372",
+  "source": "docs/specs/companions.md 11.5 (subject verbatim)",
+  "iconFocus": {
+   "x": 0.64,
+   "y": 0.31,
+   "s": 0.46
+  },
+  "size": [
+   761,
+   968
+  ],
+  "bytes": 61354,
+  "quality": 82
+ },
+ "cmp_m_boar": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "AZPAsbTt2nmm5Vb6C4_Sy6LvZrXrm1oL0l3rcFChA8v3H2mlHR96D8zEKq5d0z9aqoK5XjDH",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "A giant battle boar with steel-plated riveted tusks, scarred dark-brown hide, spiky bristle mane, studded leather harness and saddle, small furious red eyes. Dark gothic fantasy creature portrait, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with crimson moonlight, video game companion card art, no text, no letters, no watermark.",
+  "file": "assets/portraits/cmp_m_boar.webp",
+  "tool": "text_to_image",
+  "attempt": 1,
+  "created": "2026-09-26T13:42:57Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzIzYTNmZTA2LWE3MzgtNGRlNC1iNjgyLTllOTU0ODgwMDIyNS80MzMxMzY0NDQwNzExMzIyODUyL3RlbXA3Nno1by5wbmc.origin?x-kcdn-pid=112372",
+  "source": "docs/specs/companions.md 11.5 (subject verbatim)",
+  "iconFocus": {
+   "x": 0.62,
+   "y": 0.35,
+   "s": 0.55
+  },
+  "size": [
+   761,
+   968
+  ],
+  "bytes": 65636,
+  "quality": 82
+ },
+ "cmp_m_skelsteed": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "AcH7YCgQfrWkukNe6vdKQSfqlDQivXAHKrI64xrEeTVMe7CmuAN76A1DLKimCzK7nkc96Dqb",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "A skeletal undead horse with blue soul-fire burning inside its ribcage and eye sockets, a mane and tail of blue flames, tattered black barding and chain reins. Dark gothic fantasy creature portrait, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with crimson moonlight, video game companion card art, no text, no letters, no watermark.",
+  "file": "assets/portraits/cmp_m_skelsteed.webp",
+  "tool": "text_to_image",
+  "attempt": 1,
+  "created": "2026-09-26T13:42:57Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzYxMzcwNjA0LWQ3OTYtNDNlZC1iNzZiLWYzMmE5ZWFlYzRjNS83MzAxNjcyNTkzNzcyMTQ2OTkzL3RlbXAxbHJidi5wbmc.origin?x-kcdn-pid=112372",
+  "source": "docs/specs/companions.md 11.5 (subject verbatim)",
+  "iconFocus": {
+   "x": 0.44,
+   "y": 0.27,
+   "s": 0.4
+  },
+  "size": [
+   761,
+   968
+  ],
+  "bytes": 68378,
+  "quality": 82
+ },
+ "cmp_m_direwolf": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "ARXtLaH6iSh__XButausCb9Q8m8T4Dt8vhI5VokovXRgZ6VPn5Qmbbgrvn9Su5v0X78pyw_p",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "A huge frost dire wolf with white and blue-grey fur, glowing icy blue eyes, frost breath, a bone-ornamented leather saddle and fur mantle. Dark gothic fantasy creature portrait, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with crimson moonlight, video game companion card art, no text, no letters, no watermark.",
+  "file": "assets/portraits/cmp_m_direwolf.webp",
+  "tool": "text_to_image",
+  "attempt": 1,
+  "created": "2026-09-26T13:42:57Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzQ0NzIxZGU4LTA0NjktNGM4NC05N2IxLTY2NTFiNWM1NmRmMy8tMjE0Mzc5NTAzOTYzNTQ0MTYzOS90ZW1wZzBxeHYucG5n.origin?x-kcdn-pid=112372",
+  "source": "docs/specs/companions.md 11.5 (subject verbatim)",
+  "iconFocus": {
+   "x": 0.68,
+   "y": 0.27,
+   "s": 0.4
+  },
+  "size": [
+   761,
+   968
+  ],
+  "bytes": 64114,
+  "quality": 82
+ },
+ "cmp_m_wyvern": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "ARFsXh4dlUhCiFoLb1G3m16az_DoBJMK6i4TJsCG2lDg1CCYgrSLhdEPjljAvHapAru4dAdm",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "A young crimson wyvern: a two-legged dragon with no arms, its huge bat-like wings are its front limbs and it leans on its folded wing-knuckles like a bat, standing on two strong hind legs, orange-gold belly scales, dark horns, veined membranous wings, a spade-tipped tail, embers glowing in its throat, a leather war saddle strapped on its back. Dark gothic fantasy creature portrait, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with crimson moonlight, video game companion card art, no text, no letters, no watermark.",
+  "file": "assets/portraits/cmp_m_wyvern.webp",
+  "tool": "text_to_image",
+  "attempt": 3,
+  "created": "2026-09-26T13:52:32Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2Q5YjJhOTYzLTFlZGYtNDgwMi04NjJmLTg3MjkwNjM4MjI4OS8tNTk3Mzg2MjY3MzA1OTM0MDcyMC90ZW1wNGdhNWIucG5n.origin?x-kcdn-pid=112372",
+  "source": "docs/specs/companions.md 11.5 (subject verbatim)",
+  "iconFocus": {
+   "x": 0.52,
+   "y": 0.25,
+   "s": 0.36
+  },
+  "size": [
+   761,
+   968
+  ],
+  "bytes": 79698,
+  "quality": 82
+ },
+ "cmp_m_giantbat": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "AV2_TXXMG1JETbh_T95bJLcC1rxdtgatScSCOok77zJ9D8vrTUYf4RENBhWga2ZRnBW1_8Ka",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "An enormous vampire bat with crimson-veined wings, huge ears, glowing red eyes and fangs, a silver saddle with chains on its back, hanging under a blood moon. Dark gothic fantasy creature portrait, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with crimson moonlight, video game companion card art, no text, no letters, no watermark.",
+  "file": "assets/portraits/cmp_m_giantbat.webp",
+  "tool": "text_to_image",
+  "attempt": 1,
+  "created": "2026-09-26T13:42:57Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2IxMjgyOGFlLWEzYjYtNDNmZi1iNDBhLWZlMjUwMWUyMmFlNi8tODIyMDkwODM3MDc0Mjc4MDUyMy90ZW1wZG9lenMucG5n.origin?x-kcdn-pid=112372",
+  "source": "docs/specs/companions.md 11.5 (subject verbatim)",
+  "iconFocus": {
+   "x": 0.52,
+   "y": 0.42,
+   "s": 0.38
+  },
+  "size": [
+   761,
+   968
+  ],
+  "bytes": 76788,
+  "quality": 82
+ },
+ "cmp_g_fairy": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "AceeQq3fpkyFkp5CD9sss3Yn26S_ca0ktXU98PnTeeXhvMGAibuXj_GMrLfVrSRO63R5mX17",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "A tiny glowing fairy girl with golden hair, a leaf-petal dress and two pairs of iridescent dragonfly wings, holding a star wand, surrounded by sparkles. Dark gothic fantasy creature portrait, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with crimson moonlight, video game companion card art, no text, no letters, no watermark.",
+  "file": "assets/portraits/cmp_g_fairy.webp",
+  "tool": "text_to_image",
+  "attempt": 1,
+  "created": "2026-09-26T13:42:57Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzE0YjY4OTU0LTlkNzMtNGNmMy1hMjcxLWRlM2VkYWE3ZjAyZS8tNDU2NjM1NjgwNDQ2MzY4ODAxL3RlbXBoeXEyYy5wbmc.origin?x-kcdn-pid=112372",
+  "source": "docs/specs/companions.md 11.5 (subject verbatim)",
+  "iconFocus": {
+   "x": 0.45,
+   "y": 0.28,
+   "s": 0.38
+  },
+  "size": [
+   761,
+   968
+  ],
+  "bytes": 84224,
+  "quality": 82
+ },
+ "cmp_g_spiritwolf": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "AWcVkgACMEJxYpVGST9VajXj17nhLItwV8vNb80yLVW7C222tnVfFtYUtpeWArNMBliztpew",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "A translucent spectral cyan wolf spirit with stars inside its body, flame-like tail, glowing white eyes, howling in a misty graveyard. Dark gothic fantasy creature portrait, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with crimson moonlight, video game companion card art, no text, no letters, no watermark.",
+  "file": "assets/portraits/cmp_g_spiritwolf.webp",
+  "tool": "text_to_image",
+  "attempt": 1,
+  "created": "2026-09-26T13:43:25Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2U1NTEyOWViLTdjMDYtNDg4Yy1iODAxLWYwMDY3YzRmMmU4Yi82Nzk0NTczMjYyNDU5MzEwNjcyL3RlbXBsYXlvdC5wbmc.origin?x-kcdn-pid=112372",
+  "source": "docs/specs/companions.md 11.5 (subject verbatim)",
+  "iconFocus": {
+   "x": 0.44,
+   "y": 0.28,
+   "s": 0.34
+  },
+  "size": [
+   761,
+   968
+  ],
+  "bytes": 61792,
+  "quality": 82
+ },
+ "cmp_g_imp": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "AbAUPRT_iVpVRXZhMBsOJUVeH0WpoYVFuGNuXF6azsmRZV8_YiQH906bcXA5poKyNqIqNr7A",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "A mischievous small red-violet imp mage with a toothy grin, curled horns, bat wings, a pointed tail, holding a tiny skull staff with a flame. Dark gothic fantasy creature portrait, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with crimson moonlight, video game companion card art, no text, no letters, no watermark.",
+  "file": "assets/portraits/cmp_g_imp.webp",
+  "tool": "text_to_image",
+  "attempt": 1,
+  "created": "2026-09-26T13:43:25Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2NjZTE1OWUwLWUxODUtNGQzMi05ODY0LTQ1ZGFhNGVkOWNiNy8tNDYwMTkyNjQ4ODA2Mjc1MjY4MC90ZW1wdzI3NTUucG5n.origin?x-kcdn-pid=112372",
+  "source": "docs/specs/companions.md 11.5 (subject verbatim)",
+  "iconFocus": {
+   "x": 0.5,
+   "y": 0.33,
+   "s": 0.5
+  },
+  "size": [
+   761,
+   968
+  ],
+  "bytes": 62200,
+  "quality": 82
+ },
+ "cmp_g_knight": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "Ae266OV7yi7J9WM6SQJEL0-BPE2y6pw1zqi6LcewWxEngDi4VBh9XiUJY89NZJsdUo1bTVd7",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "A translucent blue ghost knight in full plate armor with a great helm glowing white through the slit, tattered cape, kite shield with a faded cross and a longsword, lower body fading into mist. Dark gothic fantasy creature portrait, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with crimson moonlight, video game companion card art, no text, no letters, no watermark.",
+  "file": "assets/portraits/cmp_g_knight.webp",
+  "tool": "text_to_image",
+  "attempt": 1,
+  "created": "2026-09-26T13:43:25Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0Lzc0ZjAyOTc3LTAxYzYtNGQ4NS05ZTJhLTZmZjZjMDE5MjMwOC8tNDIxMzkxMzI2ODk0NzU4NjQzNS90ZW1wM3puZTAucG5n.origin?x-kcdn-pid=112372",
+  "source": "docs/specs/companions.md 11.5 (subject verbatim)",
+  "iconFocus": {
+   "x": 0.47,
+   "y": 0.22,
+   "s": 0.3
+  },
+  "size": [
+   761,
+   968
+  ],
+  "bytes": 71768,
+  "quality": 82
+ },
+ "cmp_g_whelp": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "AcohzgTs2xsZD_8GYT8aF2OdZySjNImhQpklfBgikEN4mZyZDKFKRxO8JIYBfOqKdUptndGG",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "A cute baby skeletal dragon with an oversized skull, purple soulfire glowing inside its ribcage, tiny bone wings with torn membranes, curled bone tail. Dark gothic fantasy creature portrait, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with crimson moonlight, video game companion card art, no text, no letters, no watermark.",
+  "file": "assets/portraits/cmp_g_whelp.webp",
+  "tool": "text_to_image",
+  "attempt": 1,
+  "created": "2026-09-26T13:43:25Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzRhMDdlYjM1LWQzNTctNDExMC05OGU1LWE3YzUxYzQwYzk1ZS8tNzgwMjQwMTE1ODU3NjE3MDczOS90ZW1wYWZueGkucG5n.origin?x-kcdn-pid=112372",
+  "source": "docs/specs/companions.md 11.5 (subject verbatim)",
+  "iconFocus": {
+   "x": 0.5,
+   "y": 0.35,
+   "s": 0.62
+  },
+  "size": [
+   761,
+   968
+  ],
+  "bytes": 57486,
+  "quality": 82
+ },
+ "cmp_g_owl": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "ASDvcviwlTePsR4xRFvzJl8Ivw-_UBiLLvJbg2OS8dnjZPaaKw9IHHP1Vesl_ljq3IbgRN7t",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "A holy white-and-gold barn owl with a thin golden halo behind its head, glowing golden eyes, detailed layered feathers, perched on a gothic candelabra. Dark gothic fantasy creature portrait, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with crimson moonlight, video game companion card art, no text, no letters, no watermark.",
+  "file": "assets/portraits/cmp_g_owl.webp",
+  "tool": "text_to_image",
+  "attempt": 1,
+  "created": "2026-09-26T13:43:25Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzY4ZDQyOGE5LThhYjMtNDk0Mi04YzYwLTA1YzNlZjgzMzJiMy82NjgwMjQ4Njc1MDI1MDA0MzU5L3RlbXBxNXQxaC5wbmc.origin?x-kcdn-pid=112372",
+  "source": "docs/specs/companions.md 11.5 (subject verbatim)",
+  "iconFocus": {
+   "x": 0.48,
+   "y": 0.26,
+   "s": 0.38
+  },
+  "size": [
+   761,
+   968
+  ],
+  "bytes": 79532,
+  "quality": 82
+ },
+ "cmp_g_clock": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "AXVxUXt84BYFf-xWMRb8rX-Ce99C_dzC3tpfd71y2sUXEg7qBbSlrvUfsUJzlsUp4upbOfSD",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "A floating porcelain clockwork doll with a cracked painted face, brass ball joints, Victorian dress, a wind-up key turning on its back, gears orbiting around it. Dark gothic fantasy creature portrait, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with crimson moonlight, video game companion card art, no text, no letters, no watermark.",
+  "file": "assets/portraits/cmp_g_clock.webp",
+  "tool": "text_to_image",
+  "attempt": 1,
+  "created": "2026-09-26T13:43:25Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzJmYjQ1OTAyLTAxNmUtNDMyMC04Mzc0LTFmMTJmMWJhMzM2Ny8tNDgxMjE5Njk5Mzc1MjkwODEwNC90ZW1wdGpzZTkucG5n.origin?x-kcdn-pid=112372",
+  "source": "docs/specs/companions.md 11.5 (subject verbatim)",
+  "iconFocus": {
+   "x": 0.39,
+   "y": 0.25,
+   "s": 0.44
+  },
+  "size": [
+   761,
+   968
+  ],
+  "bytes": 73614,
+  "quality": 82
+ },
+ "cmp_g_reaper": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "AT-c--rPVoITGS-zmlbePtHL2_HJloOzQTAI1uY7t5aL7NOwmmR8sBQAazLyoRfbziRA9kfS",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "A tiny cute hooded skeleton reaper child in a black robe holding an oversized scythe with a hanging green soul lantern, glowing green eyes, a ledger book floating beside it. Dark gothic fantasy creature portrait, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with crimson moonlight, video game companion card art, no text, no letters, no watermark.",
+  "file": "assets/portraits/cmp_g_reaper.webp",
+  "tool": "text_to_image",
+  "attempt": 1,
+  "created": "2026-09-26T13:43:25Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2MyMGZhMDFlLWJjMTUtNDY5Yi1hMTAxLTA4MmNkZWY0NjNiMi8xODMzNDg3MTgzODkxNTMyNTc2L3RlbXBocHd0by5wbmc.origin?x-kcdn-pid=112372",
+  "source": "docs/specs/companions.md 11.5 (subject verbatim)",
+  "iconFocus": {
+   "x": 0.52,
+   "y": 0.36,
+   "s": 0.36
+  },
+  "size": [
+   761,
+   968
+  ],
+  "bytes": 60860,
+  "quality": 82
+ },
+ "npc_greta": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "AUFKFLmdLT1n6ci4NhVR9xw1aIGQHyY9pRvBEs1FSxKV6BDTysgABnMp58GtDvgLAw7tOj3i",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Greta, a sturdy weathered middle-aged woman stablekeeper in her late forties, a tanned lined face with crow's feet and a small scar on her chin, grey-blond hair in a thick braid over her shoulder, pale blue eyes, a wide-brimmed worn leather hat, a rust-red scarf, leather work clothes and gloves, holding a lit lantern beside a black horse's head, calm stern expression, semi-realistic painterly style. Dark gothic fantasy character portrait, upper body, painterly digital illustration, warm candle rim light, dark background, visual novel dialogue portrait, no text, no watermark.",
+  "file": "assets/portraits/npc_greta.webp",
+  "tool": "text_to_image",
+  "attempt": 2,
+  "created": "2026-09-26T13:48:12Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2QzNzVkMWRmLWE2NDctNDA3OS05ZTE4LTNjMDI2NjI4MThkNi8tMzQ5MjEwNjM0MjI3NTg3MTczNS90ZW1wZ3RlMmkucG5n.origin?x-kcdn-pid=112372",
+  "source": "docs/specs/companions.md 11.5 (subject); NPC suffix used to match existing town NPC portraits",
+  "iconFocus": {
+   "x": 0.57,
+   "y": 0.33,
+   "s": 0.36
+  },
+  "size": [
+   761,
+   968
+  ],
+  "bytes": 73828,
+  "quality": 82
+ },
+ "cmp_gd_mirra": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "Ad_9RokqZPRYaXIr44GUYs9-6BXqGsdZa3aux35xo1VED7PgOKq4STlLIbrVmjHCoOOh_PQM",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Mirra, a small ethereal girl spirit made of silver light, the cast-away true reflection of a mirror empress, luminous pale silver skin, long flowing silver-white hair, gentle sorrowful pale cyan eyes, a simple flowing white and silver dress that dissolves into light at the hem, a ring of floating mirror shards orbiting around her and reflecting prismatic moonlight, holding a small ornate silver hand mirror to her chest, hairline cracks of light on her cheek. Dark gothic fantasy creature portrait, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with crimson moonlight, video game companion card art, no text, no letters, no watermark.",
+  "file": "assets/portraits/cmp_gd_mirra.webp",
+  "tool": "text_to_image",
+  "attempt": 1,
+  "created": "2026-09-26T13:43:57Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2RjM2JhZDkwLTgxYTItNGFlOC05OWY2LWI0YjlhNGI0MWJkNS8xNDE5NDM5MjE2NjI1Mzc0MTMyL3RlbXBhbDdray5wbmc.origin?x-kcdn-pid=112372",
+  "source": "docs/specs/world2.md 14 (concept column); subject written for this package",
+  "iconFocus": {
+   "x": 0.52,
+   "y": 0.28,
+   "s": 0.38
+  },
+  "size": [
+   761,
+   968
+  ],
+  "bytes": 65472,
+  "quality": 82
+ },
+ "cmp_mt_ignis": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "AXgdEYpAAqk1BuWowgNY9YLKBY5_tLePuKwN8APZ388zHFttVOmuJ8pCJHeN_N9IwnCDx9S5",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Ignis, a powerful flaming warhorse charger freed from forge chains, cracked obsidian-black hide with glowing molten orange fissures, a mane and tail of roaring orange fire, blazing yellow ember eyes, snapped iron shackles and broken chain links still hanging from its neck and legs, a forged bronze and iron war saddle, sparks and embers streaming behind it, galloping forward. Dark gothic fantasy creature portrait, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with crimson moonlight, video game companion card art, no text, no letters, no watermark.",
+  "file": "assets/portraits/cmp_mt_ignis.webp",
+  "tool": "text_to_image",
+  "attempt": 1,
+  "created": "2026-09-26T13:43:57Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2ZhYzI4OWZhLTQwZmMtNGUxNi1iZmI1LTZkZWI1ZTRkYzgzZS82NDUxODQzMDAwNTU2ODIzMjE2L3RlbXA2ZHU0by5wbmc.origin?x-kcdn-pid=112372",
+  "source": "docs/specs/world2.md 14 (concept column); subject written for this package",
+  "iconFocus": {
+   "x": 0.3,
+   "y": 0.33,
+   "s": 0.42
+  },
+  "size": [
+   761,
+   968
+  ],
+  "bytes": 88042,
+  "quality": 82
+ },
+ "cmp_gd_lumen": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "AW_IlrfLtTbO6-pavmy3YhivCuxJiwVhQUEVPhLAqfZknxidAvDZrX4fcq0gS6xBkNSPKC_h",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Lumen, a bioluminescent lantern jellyfish spirit, a translucent glowing bell dome with a warm golden lantern-like core of light inside, long trailing ribbon tentacles glowing cyan and teal, tiny sparks of electricity crackling between the tentacles, floating in dark deep water inside a sunken gothic cathedral, columns of rising air bubbles, a gentle cute presence. Dark gothic fantasy creature portrait, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with crimson moonlight, video game companion card art, no text, no letters, no watermark.",
+  "file": "assets/portraits/cmp_gd_lumen.webp",
+  "tool": "text_to_image",
+  "attempt": 1,
+  "created": "2026-09-26T13:43:57Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzU5ZDBjZjViLThhYTUtNGIzNS04NmUwLTcwYjNiOWYwYWIyYS81MTA1NzI4NDA1Mzk0ODg4MjUzL3RlbXA3eG9jbC5wbmc.origin?x-kcdn-pid=112372",
+  "source": "docs/specs/world2.md 14 (concept column); subject written for this package",
+  "iconFocus": {
+   "x": 0.6,
+   "y": 0.26,
+   "s": 0.6
+  },
+  "size": [
+   761,
+   968
+  ],
+  "bytes": 74944,
+  "quality": 82
+ },
+ "cmp_mt_gale": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "AejTH-1BAWhnDHTyb-oKavNgMBfp8x_Eg2qY2FzgSvexIbFwv-ket4nVTllHD9JM714twhhw",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Gale, a young storm griffin with the head of an eagle (white feathered head, hooked golden beak, no mane, no ears), eagle front legs with golden talons and the hind body and tail of a lion, storm-grey and white feathers with gold-tipped flight feathers, fierce glowing electric cyan eyes, crackling lightning running along its spread wings, a light leather riding saddle with brass fittings, soaring above floating sky ruins among towering storm clouds. Dark gothic fantasy creature portrait, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with crimson moonlight, video game companion card art, no text, no letters, no watermark.",
+  "file": "assets/portraits/cmp_mt_gale.webp",
+  "tool": "text_to_image",
+  "attempt": 2,
+  "created": "2026-09-26T13:48:12Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzQxMjBmZTEzLWY4MTQtNGIyMy1iODQ5LTBjOTg4YTQwNjQ1Yi8tNjEzMzEzODAzNTU1NjA1NTkyNy90ZW1wbnFzdXEucG5n.origin?x-kcdn-pid=112372",
+  "source": "docs/specs/world2.md 14 (concept column); subject written for this package",
+  "iconFocus": {
+   "x": 0.76,
+   "y": 0.56,
+   "s": 0.3
+  },
+  "size": [
+   761,
+   968
+  ],
+  "bytes": 60042,
+  "quality": 82
+ },
+ "cmp_gd_momo": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "AQ-1AY0ctoqSX4v3DDmT7AO9BdmdrYUnNfy3ABrF5GBt2l6WWPavDZE0Osz4vjFBZc5Bfei1",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Momo, a baku: a small cute round baby tapir dream-eater spirit with a short elephant-like trunk for a nose, small rounded ears, stubby legs, soft indigo and cream fur, sleepy half-closed lavender eyes, glowing star and crescent moon patterns on its fur, a wisp of dark purple nightmare mist being sucked up into the tip of its trunk, floating on a small violet cloud among drifting dream bubbles. Dark gothic fantasy creature portrait, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with crimson moonlight, video game companion card art, no text, no letters, no watermark.",
+  "file": "assets/portraits/cmp_gd_momo.webp",
+  "tool": "text_to_image",
+  "attempt": 3,
+  "created": "2026-09-26T13:52:32Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2NiMWEzYWJmLWIwMWMtNDFlNC1iNjgxLThkMDFiZmJhN2EwZC82MDgxNDE5NjAzNTc5MjUzMDQ2L3RlbXA1NHN4bC5wbmc.origin?x-kcdn-pid=112372",
+  "source": "docs/specs/world2.md 14 (concept column); subject written for this package",
+  "iconFocus": {
+   "x": 0.38,
+   "y": 0.41,
+   "s": 0.5
+  },
+  "size": [
+   761,
+   968
+  ],
+  "bytes": 52302,
+  "quality": 82
+ },
+ "cmp_mt_silva": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "AZREcNPswhv53OXje4oWSnlCe521nYjxURdpGyu7e6RFj4iiNf98XBMezbOLVSnZj4czM70D",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Silva, a majestic white stag forest spirit with realistic deer anatomy, a powerful muscular body with pure white softly glowing fur, a short white tail, enormous branching antlers with faint green-gold light and small leaves and moss growing on them, gentle luminous jade-green eyes, a bridle and saddle blanket woven from vines and silver leaves, fireflies and drifting glowing spores around it, standing proudly in an ancient dark forest. Dark gothic fantasy creature portrait, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with crimson moonlight, video game companion card art, no text, no letters, no watermark.",
+  "file": "assets/portraits/cmp_mt_silva.webp",
+  "tool": "text_to_image",
+  "attempt": 2,
+  "created": "2026-09-26T13:58:19Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzBkODk1ZmEzLThjMmYtNDczMC1hNDdhLTNjOTUyMmFiNjRlMS84NDI4NDg4NjYzODAzMjI2NzI3L3RlbXBxa2lxdS5wbmc.origin?x-kcdn-pid=112372",
+  "source": "docs/specs/world2.md 14 (concept column); subject written for this package",
+  "iconFocus": {
+   "x": 0.47,
+   "y": 0.44,
+   "s": 0.34
+  },
+  "size": [
+   761,
+   968
+  ],
+  "bytes": 60722,
+  "quality": 82
+ },
+ "cmp_gd_momo_a1": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "AZfNxlBsV92kAwlrINQFibyE4zmro1VWSANqJnlxLrhxYXif52Z1t1Tg8Xz8t84ZmRQ8Ydh5",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Momo, a small cute dream-eating tapir spirit (a baku), a round chubby body with soft indigo and cream fur, a short curled trunk-like snout, sleepy half-closed lavender eyes, glowing star and crescent moon patterns on its fur, slurping up a wisp of black nightmare smoke, floating on a small violet cloud among drifting dream bubbles. Dark gothic fantasy creature portrait, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with crimson moonlight, video game companion card art, no text, no letters, no watermark.",
+  "file": null,
+  "tool": "text_to_image",
+  "attempt": 1,
+  "created": "2026-09-26T13:43:57Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2U4YWJkNjViLWZlYzYtNDZkZC05NDYzLTNiZTk1OGIwNmUxZC8tMTY2MjE5MDIyODUyNzcxNjczOS90ZW1waTdoNm4ucG5n.origin?x-kcdn-pid=112372",
+  "source": "docs/specs/world2.md 14 (concept column); subject written for this package",
+  "rejected": "hamster-like, no tapir trunk"
+ },
+ "cmp_gd_momo_a2": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "AWwzPnseodeg7OuelFF4eplsjdo56EkaB1c3NUQzrJFcvTOGtGaxfnjMLXj3KHIw7Ljpt6pw",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Momo, a small cute dream-eating baku spirit shaped like a baby tapir, a round chubby tapir body with a short flexible tapir trunk-like nose, small rounded ears, stubby legs, soft indigo and cream fur, sleepy half-closed lavender eyes, glowing star and crescent moon patterns on its fur, inhaling a wisp of black nightmare smoke into its trunk, floating on a small violet cloud among drifting dream bubbles. Dark gothic fantasy creature portrait, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with crimson moonlight, video game companion card art, no text, no letters, no watermark.",
+  "file": null,
+  "tool": "text_to_image",
+  "attempt": 2,
+  "created": "2026-09-26T13:48:12Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzdlYjcyNDFkLTQ0YWUtNGU3Yy1iNDQ3LTg1ZWE5ZDE5N2NjMy8tNDc0MTcwNTA3Mzg4NjU5MTcwMi90ZW1wbXozM3MucG5n.origin?x-kcdn-pid=112372",
+  "source": "docs/specs/world2.md 14 (concept column); subject written for this package",
+  "rejected": "tobacco pipe instead of trunk"
+ },
+ "cmp_m_warhorse_a1": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "AWTo_Vp0voJDiB1JyJUBfwjBGY3odXeUN_JHlHB7JhFyQ3ocCmeJsVphWJCuwICfy11PnuVI",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "A majestic black warhorse destrier with a flowing crimson mane, an iron chanfron face plate with a short horn spike, glowing ember eyes, crimson and gold saddle cloth, smoke from its nostrils, rearing slightly. Dark gothic fantasy creature portrait, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with crimson moonlight, video game companion card art, no text, no letters, no watermark.",
+  "file": null,
+  "tool": "text_to_image",
+  "attempt": 1,
+  "created": "2026-09-26T13:42:57Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2U1NzMzNDhkLWM2NTgtNDA4ZC1hNmY0LWMyMDZiYWQ1NzQ4ZS8zNDY0MzQ5MjU5NTcxNTExMzExL3RlbXAyZzExMi5wbmc.origin?x-kcdn-pid=112372",
+  "source": "docs/specs/companions.md 11.5 (subject verbatim)",
+  "rejected": "long unicorn horn instead of a short chanfron spike"
+ },
+ "cmp_m_warhorse_a2": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "ARgMO0kt-ggGzA4MB_r-Y7N0j65QYpBKuOBJG0aYbGTx42Pt3kwPHHWKO6aofGWSKV4Ut0f_",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "A majestic black warhorse destrier with a flowing crimson mane, an iron chanfron face plate with a short stubby horn spike on its forehead (a small spike, not a unicorn horn), glowing ember eyes, crimson and gold saddle cloth, smoke from its nostrils, rearing slightly. Dark gothic fantasy creature portrait, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with crimson moonlight, video game companion card art, no text, no letters, no watermark.",
+  "file": null,
+  "tool": "text_to_image",
+  "attempt": 2,
+  "created": "2026-09-26T13:48:12Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzViNDM1YmE3LTU5NGQtNGE0My1hZTc5LWY5MmI3NTEzODk5Ni8tODg1MzI4MDMzNTY2OTUyMjkwMC90ZW1wOGE5cjcucG5n.origin?x-kcdn-pid=112372",
+  "source": "docs/specs/companions.md 11.5 (subject verbatim)",
+  "rejected": "still a long unicorn horn"
+ },
+ "cmp_m_wyvern_a1": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "ASTdpoGHE99ts352v6njoyxctQZT3QX6u1Fnr6XZVAcCM9JNrMdkn25C26KhZmckPfAw0d6U",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "A young crimson wyvern with orange-gold belly scales, dark horns, wide veined membranous wings, a spade-tipped tail, embers in its throat, wearing a war saddle. Dark gothic fantasy creature portrait, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with crimson moonlight, video game companion card art, no text, no letters, no watermark.",
+  "file": null,
+  "tool": "text_to_image",
+  "attempt": 1,
+  "created": "2026-09-26T13:42:57Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2UyOThiNGRjLTRkMjctNDhkMS05NjJiLWFmZjcwNzZiNjg4Zi8tNzA2MDA5MDM1NjU4NDY4ODcwMy90ZW1wcWZsYTIucG5n.origin?x-kcdn-pid=112372",
+  "source": "docs/specs/companions.md 11.5 (subject verbatim)",
+  "rejected": "four-legged dragon, not a two-legged wyvern"
+ },
+ "cmp_m_wyvern_a2": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "AecDaO9xzZJIgwa3iViBOdhfYaGxzsdi_8mkxj1Mh_Tkqo1LpuL--J6Tcy-IyMDFABNdFIZA",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "A young crimson wyvern with only two legs, its wings are its forelimbs (bat-like wing arms with a clawed thumb, no separate front legs), orange-gold belly scales, dark horns, wide veined membranous wings, a spade-tipped tail, embers glowing in its throat, wearing a war saddle on its back. Dark gothic fantasy creature portrait, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with crimson moonlight, video game companion card art, no text, no letters, no watermark.",
+  "file": null,
+  "tool": "text_to_image",
+  "attempt": 2,
+  "created": "2026-09-26T13:48:12Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzAxOWVmOTZiLTYwM2YtNDNjOS04YmIwLTk0NGM4OTY3ODE2Ni8tMTY2Nzg0ODg1NTUxOTk5MTE4MS90ZW1wazdsMXcucG5n.origin?x-kcdn-pid=112372",
+  "source": "docs/specs/companions.md 11.5 (subject verbatim)",
+  "rejected": "six limbs (extra chest arms)"
+ },
+ "cmp_mt_gale_a1": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "AWUXu0kzKSvTSGF_iJJCrP3qhS_EwM0xKbULNVtmFbiOsrtWBvUh6HOMPFzG3vd59Ksjtols",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Gale, a young storm griffin with the head, wings and talons of an eagle and the hind body of a lion, storm-grey and white feathers with gold-tipped flight feathers, fierce glowing electric cyan eyes, crackling lightning running along its spread wings, a light leather riding saddle with brass fittings, soaring above floating sky ruins among towering storm clouds. Dark gothic fantasy creature portrait, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with crimson moonlight, video game companion card art, no text, no letters, no watermark.",
+  "file": null,
+  "tool": "text_to_image",
+  "attempt": 1,
+  "created": "2026-09-26T13:43:57Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2JlYmQ5OWMyLWIzMzUtNGE0YS04ZDVhLWRmMGIwNzUzM2YxNC8tMTAxNjI5NzMxMzIwNjc5Mjk5L3RlbXBuZmN6MC5wbmc.origin?x-kcdn-pid=112372",
+  "source": "docs/specs/world2.md 14 (concept column); subject written for this package",
+  "rejected": "lion face with a beak instead of an eagle head"
+ },
+ "cmp_mt_silva_a1": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "AfAvnJaMIygKSU9dZO2K6Ys1UAPYKEy4aDKP2tFIYx2nSAXwzvaureVFy8vBJ5QcMhF888u6",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Silva, a majestic white stag forest spirit, pure white fur glowing softly, enormous branching antlers with faint green-gold light and small leaves and moss growing on them, gentle luminous jade-green eyes, a bridle and saddle blanket woven from vines and silver leaves, fireflies and drifting glowing spores around it, standing in an ancient dark forest. Dark gothic fantasy creature portrait, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with crimson moonlight, video game companion card art, no text, no letters, no watermark.",
+  "file": null,
+  "tool": "text_to_image",
+  "attempt": 1,
+  "created": "2026-09-26T13:43:57Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzI0YTBjZjY4LWYwZmEtNGZlYS04NDBhLWE2YzA1ODBmN2UwMi84ODE5MDQ2ODE0NTgyMTM4NzkzL3RlbXB2N2F6ZC5wbmc.origin?x-kcdn-pid=112372",
+  "source": "docs/specs/world2.md 14 (concept column); subject written for this package",
+  "rejected": "flat anime shading (off-style vs the painterly set) and a fox-like fluffy tail"
+ },
+ "npc_greta_a1": {
+  "group": "portrait",
+  "aspect_ratio": "3:4",
+  "generationId": "Aclcv1clmt6UGm_cwIbLiJlhoeOI3BVUiVXrZSE6xqEHe7fQNMg-eIqBH8YjBinwfGpujiOa",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "Greta, a sturdy weathered woman stablekeeper in her forties with grey-blond braided hair and pale blue eyes, a wide-brimmed leather hat, a rust-red scarf, leather work clothes, holding a lantern beside a black horse's head, calm stern expression. Dark gothic fantasy character portrait, upper body, painterly digital illustration, warm candle rim light, dark background, visual novel dialogue portrait, no text, no watermark.",
+  "file": null,
+  "tool": "text_to_image",
+  "attempt": 1,
+  "created": "2026-09-26T13:43:57Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2EyOTgyOWUzLTQ5MjQtNGNjYS04OGYxLTgxZTc1NmU0ZjRhMi8tMjc0MzAwODYxMDI2MDI5MzgwOC90ZW1wODU3MWcucG5n.origin?x-kcdn-pid=112372",
+  "source": "docs/specs/companions.md 11.5 (subject); NPC suffix used to match existing town NPC portraits",
+  "rejected": "young anime woman, not a weathered forties stablekeeper; off-style vs town NPCs"
+ }
+}

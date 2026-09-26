@@ -134,6 +134,7 @@ export class AccountScene extends Scene {
     ensureStyle();
     this.overlay = !!params.overlay;
     this.backIndex = params.backIndex ?? 4;
+    this.toastY = 88; // 제목 장식과 패널 사이
     this.amb = new Ambience({ embers: 36, motes: 18, bats: 4, lightning: false });
     this.taps = new TapZones();
     this.inputs = []; this.form = null; this.values = {};
@@ -352,7 +353,7 @@ export class AccountScene extends Scene {
     if (it.kind === 'field') return this.fieldRect(it.fi, G);
     if (d.kind === 'list') return { x: G.L.x - 10, y: G.y0 + 72 + it.row * 54, w: G.L.w + 20, h: 50 };
     if (d.kind === 'form') {
-      const by = G.y0 + G.H - 66, bw = Math.round((G.L.w - 12) * 0.6);
+      const by = this.formButtonsY(G), bw = Math.round((G.L.w - 12) * 0.6);
       if (it.col === 0) return { x: G.L.x, y: by, w: bw, h: 46 };
       if (it.col === 1) return { x: G.L.x + bw + 12, y: by, w: G.L.w - bw - 12, h: 46 };
       return { x: G.R.x + 8, y: by, w: G.R.w - 8, h: 46 };
@@ -362,6 +363,9 @@ export class AccountScene extends Scene {
     const bx = G.x0 + G.W / 2 - (n * bw + (n - 1) * gap) / 2;
     return { x: bx + row.indexOf(it) * (bw + gap), y: G.y0 + G.H - 70, w: bw, h: 48 };
   }
+
+  /** 입력 폼 버튼 줄의 y (칸이 적으면 칸 바로 아래로 올린다) */
+  formButtonsY(G) { return Math.min(G.y0 + G.H - 66, G.y0 + 74 + this.def.fields.length * 52 + 62); }
 
   // ───────────────────────── 조작 ─────────────────────────
   /** ↑↓(dr) ←→(dc) 이동: 같은 줄에서는 좌우, 줄 사이는 가장 가까운 칸으로 */
@@ -527,25 +531,22 @@ export class AccountScene extends Scene {
     if (s === 'login') this.afterLogin(r.id);
     else if (s === 'signup') {
       this.values.id = r.id;
-      this.game.toast(`${r.id} 계정을 만들었습니다`, '#ffe7a0');
-      this.showCode(r.recoveryCode, 'profile');
+      this.showCode(r.recoveryCode, 'profile', `${r.id} 계정을 만들었습니다.`);
       cloud.refresh({ reason: 'signup', adoptLocal: true }).then(() => { if (this.alive) this.readSlots(); });
     } else if (s === 'recover') {
       this.values.id = r.id;
-      this.game.toast('새 비밀번호로 바꾸고 로그인했습니다', '#ffe7a0');
-      this.showCode(r.recoveryCode, 'profile');
+      this.showCode(r.recoveryCode, 'profile', '새 비밀번호로 바꾸고 로그인했습니다.');
       cloud.refresh({ reason: 'login' }).then((out) => { if (this.alive) { this.readSlots(); cloud.announce(out); } });
     } else if (s === 'password') {
       this.show('profile', { msg: { text: '비밀번호를 바꿨습니다. 다른 기기에서는 모두 로그아웃되었습니다.', color: GOOD } });
     }
   }
   async afterLogin(id) {
-    this.game.toast(`${id} 님, 어서 오세요`, '#ffe7a0');
-    this.show('profile', { msg: { text: '클라우드와 동기화하는 중…', color: DIM, spin: true } });
+    this.show('profile', { msg: { text: `${id} 님, 어서 오세요. 클라우드와 동기화하는 중…`, color: DIM, spin: true } });
     const out = await cloud.refresh({ reason: 'login' });
     if (!this.alive) return;
     this.readSlots();
-    if (this.screen === 'profile') this.msg = this.syncMsg(out);
+    if (this.screen === 'profile') { const m = this.syncMsg(out); this.msg = { ...m, text: `${id} 님, 어서 오세요. ${m.text}` }; }
     if (out?.ok && out.localOnly?.length && this.game.top === this) {
       const list = out.localOnly.join(', ');
       this.game.push('frontConfirm', {
@@ -574,6 +575,7 @@ export class AccountScene extends Scene {
     if (out.deleted.length) parts.push(`클라우드에서 지움: 슬롯 ${out.deleted.join(', ')}`);
     if (out.conflicts.length) return { text: `슬롯 ${out.conflicts.join(', ')}은(는) 이 기기와 클라우드 기록이 서로 다릅니다. 세이브 슬롯 화면에서 남길 기록을 골라 주세요.`, color: '#ffb070' };
     if (out.failed.length) return { text: `슬롯 ${out.failed.join(', ')}을(를) 동기화하지 못했습니다. 잠시 후 다시 시도해 주세요.`, color: RED };
+    if (out.held?.length) return { text: `슬롯 ${out.held.join(', ')}은(는) 지금 플레이 중이라 받지 않았습니다. 타이틀의 이어하기에서 받을 수 있습니다.`, color: '#ffb070' };
     return { text: parts.length ? `동기화를 마쳤습니다. (${parts.join(' · ')})` : '동기화를 마쳤습니다. 모든 기록이 최신입니다.', color: GOOD };
   }
   async doSync() {
@@ -583,8 +585,8 @@ export class AccountScene extends Scene {
     if (!this.alive) return;
     this.setBusy(false);
     this.readSlots();
-    if (this.screen === 'profile') this.msg = this.syncMsg(out);
-    else if (!cloud.loggedIn) this.show('login', { msg: { text: out?.message ?? '다시 로그인해 주세요.', color: '#ffb070' } });
+    if (this.screen === 'profile' && cloud.loggedIn) this.msg = this.syncMsg(out);
+    else if (!cloud.loggedIn && this.screen !== 'login') this.show('login', { msg: { text: '로그인이 만료되었습니다. 다시 로그인해 주세요.', color: '#ffb070' } });
   }
   confirmLogout() {
     audio.sfx('menu_ok');
@@ -618,9 +620,10 @@ export class AccountScene extends Scene {
       },
     });
   }
-  showCode(code, next) {
+  showCode(code, next, note = '') {
     this.code = String(code ?? '');
     this.codeNext = next;
+    this.codeNote = note;
     this.show('code');
   }
   async copyCode() {
@@ -787,6 +790,7 @@ export class AccountScene extends Scene {
     const cx = G.x0 + G.W / 2;
     text(ctx, '복구 코드', cx, G.y0 + 40, { size: 22, align: 'center', weight: 800, family: FONT.title, color: '#ffe7a0', ow: 3 });
     ornament(ctx, cx, G.y0 + 56, 300);
+    if (this.codeNote) text(ctx, this.codeNote, G.x0 + 24, G.y0 + 28, { size: 12, weight: 800, color: GOOD, ow: 2 });
     text(ctx, '이 코드는 지금 한 번만 보여 드립니다', cx, G.y0 + 90, { size: 16, align: 'center', weight: 800, color: '#ff9a9a', ow: 3 });
     text(ctx, '비밀번호를 잊었을 때 이 코드로만 계정을 되찾을 수 있습니다.', cx, G.y0 + 114, { size: 13, align: 'center', color: BONE, ow: 2 });
     const r = this.fieldRect(0, G);
@@ -835,7 +839,7 @@ export class AccountScene extends Scene {
     if (!m) return;
     const d = this.def;
     let x, y, w, align;
-    if (d.kind === 'form') { x = G.L.x; y = G.y0 + G.H - 100; w = G.L.w; align = 'left'; }
+    if (d.kind === 'form') { x = G.L.x; y = this.formButtonsY(G) - 20; w = G.L.w; align = 'left'; }
     else if (d.kind === 'list') { x = G.R.x + 14; y = G.y0 + G.H - 52; w = G.R.w - 20; align = 'left'; }
     else { x = G.x0 + G.W / 2; y = G.y0 + G.H - 90; w = G.W - 60; align = 'center'; }
     const lines = wrap(ctx, m.text, w - (m.spin ? 22 : 0), 13, 700).slice(0, 2);

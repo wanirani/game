@@ -5,6 +5,7 @@ __pycache__/
 *.pyc
 tools/.qa_*/
 tools/.proto_*/
+tools/painted/.work/
 dist/
 tools/android/*.keystore
 tools/android/keystore.properties

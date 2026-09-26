@@ -23,8 +23,8 @@ export const ENEMIES = {
     subject: 'A vampire bat monster the size of a cat: sooty black-brown fur, huge torn leathery wings with visible finger bones and dark crimson membranes lit from behind, tall pointed ears with pink insides, a snub pig-like nose, small glowing red eyes, open mouth with tiny white fangs, small clawed hind feet.',
     view: 'Front three-quarter view, the body turned slightly to the right, both wings spread wide open to the sides.',
     parts: [
-      'the bat\'s furry body with head, ears, face and small hind feet, WITHOUT any wings',
-      'its left wing alone, fully spread, with the shoulder joint at the right end of the piece',
+      'the bat\'s furry body in flight seen from the front three-quarter view, with head, big ears and snarling face, the small clawed hind legs tucked up under the belly, no tail, WITHOUT any wings',
+      'one wing alone, fully spread flat like an open hand with the finger bones fanning out, the shoulder joint at the right end of the piece',
       'the same bat hanging upside down asleep with both wings wrapped tightly around its body like a cloak',
     ],
     sheetView: 'front three-quarter view',

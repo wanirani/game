@@ -1,0 +1,20 @@
+{
+  "id": "b_bonedragon",
+  "kind": "boss",
+  "out": "assets/painted/bosses/b_bonedragon",
+  "raw": "tools/painted/raw/b_bonedragon",
+  "td": 2.0,
+  "matte": {
+    "default": { "key": 9, "soft": 22, "hard": 6 }
+  },
+  "cuts": {},
+  "parts": [],
+  "chains": [
+    { "prefix": "va", "src": "chain_a", "lps": 0.15, "joints": [344, 640, 948, 1290, 1655, 2041, 2461, 3040], "top": 430, "bot": 830, "axis": 640 },
+    { "prefix": "vb", "src": "chain_c2", "lps": 0.15, "joints": [0], "top": 430, "bot": 830, "axis": 640 },
+    { "prefix": "vc", "src": "chain_c1", "lps": 0.15, "joints": [0], "top": 430, "bot": 830, "axis": 640 }
+  ],
+  "debris": [
+    { "prefix": "deb", "src": "debris_a", "lps": 0.08, "boxes": [] }
+  ]
+}

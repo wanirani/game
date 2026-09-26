@@ -1,6 +1,6 @@
 {
  "_about": "Part 2 (world2 WP-H1) Kling art. model kling-image-v3_0_omni, 2k. Processing: bg/worldmap2 height 1080 then bottom cut >= 7% (watermark + flat band), WebP q80; cg height 1080 then bottom cut 7.5%, q82; portraits height 1024 then bottom cut 5.5%, q82; tex centre square -> 512 -> seamless_lib.make_seamless, q82. Quality lowered in steps of 2 only when a file exceeded the spec size budget (bg 180 KB, cg 170 KB, portrait 90 KB, tex 60 KB). \"assets\" lists accepted files, \"generations\" lists every Kling job (including rejected retries) with its prompt and generation id.",
- "images_generated": 32,
+ "images_generated": 62,
  "assets": {
   "s15_forge": {
    "group": "bg",
@@ -104,6 +104,23 @@
    "kb": 45.3,
    "webp_quality": 82
   },
+  "tex_coral": {
+   "group": "tex",
+   "aspect_ratio": "1:1",
+   "model": "kling-image-v3_0_omni",
+   "tool": "text_to_image",
+   "generationId": "AcSZYlxULsaB2HxMWPBZa8LAkFUqfnaa1Q6epDOqzGK9XVv5x_3Xtb8-HXIrugw4cQOlb876",
+   "prompt": "Flat straight-on view of a wall made of square sunken pale marble blocks with mortar lines filling the whole frame, the blocks encrusted with barnacles, patches of teal algae and small corals. Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture.",
+   "reference": null,
+   "attempt": 2,
+   "file": "assets/tex/tex_coral.webp",
+   "size": [
+    512,
+    512
+   ],
+   "kb": 32.1,
+   "webp_quality": 82
+  },
   "tex_sky_marble": {
    "group": "tex",
    "aspect_ratio": "1:1",
@@ -138,6 +155,23 @@
    "kb": 59.6,
    "webp_quality": "76+blur0.3"
   },
+  "tex_void": {
+   "group": "tex",
+   "aspect_ratio": "1:1",
+   "model": "kling-image-v3_0_omni",
+   "tool": "text_to_image",
+   "generationId": "Ac8kK5yCfD4oAP-pHqBRoJZseecrzO_0tUyLH6tMFOouNAqTPMwnLdFljCJEnDFBh1JoJ_Os",
+   "prompt": "A flat polished wall surface of black crystal stone slabs filling the whole frame, tiny glittering stars embedded inside the black stone like a night sky, faint thin prismatic iridescent cracks. Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture.",
+   "reference": null,
+   "attempt": 2,
+   "file": "assets/tex/tex_void.webp",
+   "size": [
+    512,
+    512
+   ],
+   "kb": 46.5,
+   "webp_quality": 82
+  },
   "b_narkissa": {
    "group": "portrait",
    "aspect_ratio": "3:4",
@@ -170,6 +204,40 @@
     968
    ],
    "kb": 83.7,
+   "webp_quality": 82
+  },
+  "b_ziz": {
+   "group": "portrait",
+   "aspect_ratio": "3:4",
+   "model": "kling-image-v3_0_omni",
+   "tool": "text_to_image",
+   "generationId": "AZvcH5uB5ixFUYclFKvaeuz5bUpAbW3dF3BGGvfgKoPxz3RVI3hwJHPKUjt8l5W_wEgC6pU-",
+   "prompt": "Ziz, a colossal grotesque storm bird whose vast wings eclipse the sky, a bare bleached skull for a head with a long cracked skull beak, rows of glowing eyes along the leading edges of its wings, its feathers dissolving into dark storm clouds crackling with lightning, an exposed ribcage full of ball lightning, talons like broken stone spires, seen from below against a stormy sky. Dark gothic horror boss monster concept art, menacing, grotesque, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, a single creature, no text, no watermark.",
+   "reference": null,
+   "attempt": 2,
+   "file": "assets/portraits/b_ziz.webp",
+   "size": [
+    761,
+    968
+   ],
+   "kb": 56.0,
+   "webp_quality": 82
+  },
+  "b_nihil": {
+   "group": "portrait",
+   "aspect_ratio": "3:4",
+   "model": "kling-image-v3_0_omni",
+   "tool": "text_to_image",
+   "generationId": "ATD6nkgK50lKkXOzDSi7pghoG89o6Z7MglOntBpg0-0TKPgqOk13WnSt8ObEPg3J_nxHjOHX",
+   "prompt": "Nihil, the Primordial Void, a colossal hooded figure whose hood and robe are a black silhouette cut out of reality with a starfield and nebulae visible inside its body, a smooth white featureless porcelain mask with no eyes and no mouth, two gigantic disembodied hands floating beside it, each with a single open eye in the palm, prismatic rainbow cracks around its outline. Dark gothic horror boss monster concept art, menacing, grotesque, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, a single creature, no text, no watermark.",
+   "reference": null,
+   "attempt": 2,
+   "file": "assets/portraits/b_nihil.webp",
+   "size": [
+    761,
+    968
+   ],
+   "kb": 76.9,
    "webp_quality": 82
   }
  },
@@ -404,8 +472,8 @@
    "attempt": 1,
    "tool": "text_to_image",
    "generationId": "AcIG3884G3g9O7ETH2sJGMpRovLYbUQKGbXikkB1K5tq9pUAZuJZhwTOf1pyrU-dUFMVD9Ld",
-   "status": "processed",
-   "note": "fallback: good skull beak and wing eyes but feathers not storm clouds",
+   "status": "rejected",
+   "note": "superseded by attempt 2 (skull head, clearer spec match)",
    "prompt": "Ziz, a colossal storm bird whose wings eclipse the sky, a bare skull beak, rows of glowing eyes along the leading edges of its wings, feathers made of storm cloud and crackling lightning, an exposed ribcage full of ball lightning, talons like broken spires. Dark gothic horror boss monster concept art, menacing, grotesque, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, a single creature, no text, no watermark."
   },
   {
@@ -431,8 +499,8 @@
    "attempt": 1,
    "tool": "text_to_image",
    "generationId": "AWvFNbuKkh50fdsWxsW63QTM0CynvUZTmwZSSqUAyRBWX_VJV8_5kW5BLSt7o21fPbQoQFag",
-   "status": "processed",
-   "note": "fallback: strong, but mask has skull eyes/teeth instead of featureless, white hood",
+   "status": "rejected",
+   "note": "superseded by attempt 2 (void robe silhouette, floating eye hands, featureless mask)",
    "prompt": "Nihil, the Primordial Void, a colossal hooded silhouette cut out of reality with a starfield inside its body, a white featureless porcelain mask, two gigantic floating hands each with an eye in the palm, prismatic cracks around its outline. Dark gothic horror boss monster concept art, menacing, grotesque, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, a single creature, no text, no watermark."
   },
   {
@@ -440,7 +508,7 @@
    "attempt": 2,
    "tool": "text_to_image",
    "generationId": "AcSZYlxULsaB2HxMWPBZa8LAkFUqfnaa1Q6epDOqzGK9XVv5x_3Xtb8-HXIrugw4cQOlb876",
-   "status": "submitted",
+   "status": "accepted",
    "note": null,
    "prompt": "Flat straight-on view of a wall made of square sunken pale marble blocks with mortar lines filling the whole frame, the blocks encrusted with barnacles, patches of teal algae and small corals. Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture."
   },
@@ -449,8 +517,8 @@
    "attempt": 2,
    "tool": "text_to_image",
    "generationId": "AXUJ-JtNlORXfQXm_xhGKhlDlNVE-QNd1RxC4soLiRkhARBlHEGTRhQ1sPK4A297P_hTMa0c",
-   "status": "submitted",
-   "note": null,
+   "status": "rejected",
+   "note": "luxury tufted sofa leather, not flesh-like; diagonal tufting breaks at the seams",
    "prompt": "An all-over repeating wallpaper surface filling the whole frame: pale flesh-like leather panels sewn together with dark thread stitch seams, a faded purple damask pattern printed across them, small bone buttons at the seam crossings. Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture."
   },
   {
@@ -458,9 +526,279 @@
    "attempt": 2,
    "tool": "text_to_image",
    "generationId": "Ac8kK5yCfD4oAP-pHqBRoJZseecrzO_0tUyLH6tMFOouNAqTPMwnLdFljCJEnDFBh1JoJ_Os",
-   "status": "submitted",
+   "status": "accepted",
    "note": null,
    "prompt": "A flat polished wall surface of black crystal stone slabs filling the whole frame, tiny glittering stars embedded inside the black stone like a night sky, faint thin prismatic iridescent cracks. Seamless tileable texture, flat orthographic front view, even diffuse lighting, no perspective, no cast shadows, no objects, highly detailed PBR-style game texture."
+  },
+  {
+   "asset": "b_narkissa2",
+   "attempt": 1,
+   "tool": "image_to_image",
+   "generationId": "AW0ABLgohPnhijR59xA5FSH0Gk-smmFyz7GQvpg2hp4kx7LJ2asVjklRHWtxkdlPHrlhyeKt",
+   "status": "rejected",
+   "note": "almost identical to the base image, only the head swapped for a dark spiky hole; no eyes or mirror teeth",
+   "prompt": "Transform the empress in 图片1 into her shattered second form, keeping the same black glass and silver body, mirror-shard gown, six jointed glass arms and cold prismatic light: the same empress with her mask shattered, a hollow face full of hundreds of eyes and a mouth of mirror teeth, shards orbiting her, grotesque and terrifying. Dark gothic horror boss monster concept art, menacing, grotesque, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, a single creature, no text, no watermark."
+  },
+  {
+   "asset": "b_dagon",
+   "attempt": 2,
+   "tool": "text_to_image",
+   "generationId": "AdQYoktV2sWBNjbi6ODaViNDJx2Q2T-YqMUDOVUWK6wB07Gf2ekZtm11px8jugdK-NDQvHoJ",
+   "status": "processed",
+   "note": "fallback: good lure crown, but bat wings and no gills/pilgrims",
+   "prompt": "Dagon, the drowned priest-king, a colossal grotesque fish-headed humanoid with a gaping anglerfish maw full of needle teeth and milky dead eyes, barnacle-crusted rotting grey-green flesh, gill slits across his ribs, a crown of glowing bioluminescent anglerfish lure bulbs on long fleshy stalks growing from his skull, holding a coral crozier, his lower body a writhing mass of eel-like tentacles fused into a sunken cathedral pipe organ, drowned pilgrims embedded in the flesh of his back and shoulders like pearls, deep-sea gloom with teal bioluminescence. Dark gothic horror boss monster concept art, menacing, grotesque, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, a single creature, no text, no watermark."
+  },
+  {
+   "asset": "b_ziz",
+   "attempt": 2,
+   "tool": "text_to_image",
+   "generationId": "AZvcH5uB5ixFUYclFKvaeuz5bUpAbW3dF3BGGvfgKoPxz3RVI3hwJHPKUjt8l5W_wEgC6pU-",
+   "status": "accepted",
+   "note": null,
+   "prompt": "Ziz, a colossal grotesque storm bird whose vast wings eclipse the sky, a bare bleached skull for a head with a long cracked skull beak, rows of glowing eyes along the leading edges of its wings, its feathers dissolving into dark storm clouds crackling with lightning, an exposed ribcage full of ball lightning, talons like broken stone spires, seen from below against a stormy sky. Dark gothic horror boss monster concept art, menacing, grotesque, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, a single creature, no text, no watermark."
+  },
+  {
+   "asset": "b_mara",
+   "attempt": 2,
+   "tool": "text_to_image",
+   "generationId": "AZhKZTxQSDeessy-ePSsRy1De_lHIQKrZk5_IQNR6kPo4TmeO1tqsXO7jz5jrzEBU3RjlBox",
+   "status": "rejected",
+   "note": "still a skull face with eye sockets; two arms",
+   "prompt": "Mara, the Mother of Nightmares, a gaunt elongated hag with four long spindly arms, her face is a cracked white porcelain doll mask with no eyes at all, only smooth empty porcelain, and a single vertical mouth stitched shut with black thread running from forehead to chin, squatting on top of a giant rusted iron baby cradle, her long hair made of threads tied to floating sleeping faces, broken porcelain doll limbs crawling from under the cradle, dim nursery darkness with purple light. Dark gothic horror boss monster concept art, menacing, grotesque, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, a single creature, no text, no watermark."
+  },
+  {
+   "asset": "b_behemoth",
+   "attempt": 2,
+   "tool": "text_to_image",
+   "generationId": "AY90CZUxLfaapILAkE6vWQA7UgAo1jVNCpHHQQe7UF356_Yxrq597pZUqYKG2Krz6txrRCJo",
+   "status": "rejected",
+   "note": "ordinary pig face, not rotting or skull; nude female queen",
+   "prompt": "Behemoth, a mountain-sized rotting quadruped beast standing on four legs like a colossal boar crossed with a hippopotamus, seen in three-quarter view, half of its face rotted away to bare skull with huge tusks, a whole forest of dead trees and giant pale glowing mushrooms growing from its back, exposed ribs on its flank with pulsing yellow-green fungal sacs, a pale thin humanoid fungal queen fused waist-deep into its spine on its back controlling it with root tendrils, spores drifting. Dark gothic horror boss monster concept art, menacing, grotesque, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, a single creature, no text, no watermark."
+  },
+  {
+   "asset": "b_nihil",
+   "attempt": 2,
+   "tool": "text_to_image",
+   "generationId": "ATD6nkgK50lKkXOzDSi7pghoG89o6Z7MglOntBpg0-0TKPgqOk13WnSt8ObEPg3J_nxHjOHX",
+   "status": "accepted",
+   "note": null,
+   "prompt": "Nihil, the Primordial Void, a colossal hooded figure whose hood and robe are a black silhouette cut out of reality with a starfield and nebulae visible inside its body, a smooth white featureless porcelain mask with no eyes and no mouth, two gigantic disembodied hands floating beside it, each with a single open eye in the palm, prismatic rainbow cracks around its outline. Dark gothic horror boss monster concept art, menacing, grotesque, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, a single creature, no text, no watermark."
+  },
+  {
+   "asset": "npc_rook2",
+   "attempt": 1,
+   "tool": "image_to_image",
+   "generationId": "ARY4Ep6g4DcJeqG-YtR13-gj4i6YNAtoN0jaFQgtdTj283N3O-FOJVXuhZCL03CQpo3AV3Sk",
+   "status": "rejected",
+   "note": "looks middle-aged not ancient, blue eyes, anime-clean style",
+   "prompt": "The same hooded merchant from 图片1 with the same black feathered cloak, pouches and costume, now unmasked: an ancient man with a kind weathered face, sharp black eyes with thin golden rings, long grey-black hair braided with raven feathers, holding his black crow-beak mask in one hand, black feathered cloak, warm morning sunlight, gentle smile. Dark gothic fantasy character portrait, upper body, painterly digital illustration, warm rim light, visual novel dialogue portrait, no text, no watermark."
+  },
+  {
+   "asset": "cg_rift_sky",
+   "attempt": 1,
+   "tool": "text_to_image",
+   "generationId": "AfQzEf0XkxENr7tJhx5weaiWOtwi9fG2llCtQjI7wo0UzNAkIUNr97KCY_RP7fShBzgDxcAc",
+   "status": "submitted",
+   "note": null,
+   "prompt": "A small gothic mountain village at night during a harvest festival with bonfires, the night sky cracked like broken glass with silver light and stars leaking through the fissures, villagers looking up in fear, a church bell tower in the foreground. Cinematic dark gothic fantasy illustration, painterly digital art, highly detailed, dramatic lighting, rich atmosphere, visual novel event CG, full-bleed edge to edge, no borders, no black bars, no text, no letters, no watermark."
+  },
+  {
+   "asset": "cg_rook_reveal",
+   "attempt": 1,
+   "tool": "text_to_image",
+   "generationId": "ASinUol7-4XAMVV0804PejPCdt2pdA5oIF6IPbLRkrMiDfPRU7XoxfltQivkDc_JbMT1Mzlg",
+   "status": "submitted",
+   "note": null,
+   "prompt": "A mysterious figure in a black feathered cloak and crow-beak mask standing in a village square at night under a cracked sky, ravens circling, holding up an old lantern with a black flame inside, dramatic backlight. Cinematic dark gothic fantasy illustration, painterly digital art, highly detailed, dramatic lighting, rich atmosphere, visual novel event CG, full-bleed edge to edge, no borders, no black bars, no text, no letters, no watermark."
+  },
+  {
+   "asset": "cg_rift_gate",
+   "attempt": 1,
+   "tool": "text_to_image",
+   "generationId": "AS6jB0pWfAPIH9_3Nsm7C8GSM3LG-Sfd9HGa9tSWGMlAG5nOzKDj0H5lAjFZZjn81b2bCQ-c",
+   "status": "submitted",
+   "note": null,
+   "prompt": "A lone hunter silhouette seen from behind before a colossal gate of light torn in the sky beyond a village gate, seven doorways to different worlds visible inside the rift, a raven on a signpost. Cinematic dark gothic fantasy illustration, painterly digital art, highly detailed, dramatic lighting, rich atmosphere, visual novel event CG, full-bleed edge to edge, no borders, no black bars, no text, no letters, no watermark."
+  },
+  {
+   "asset": "cg_mirror_empress",
+   "attempt": 1,
+   "tool": "text_to_image",
+   "generationId": "AX0J4htr31k7yvjgk9lMgIv4t5qT6dSvaQf-YCTjRoAqvRb0inBl4KH7EBDOL-10GjaWEC2r",
+   "status": "submitted",
+   "note": null,
+   "prompt": "Inside an infinite mirror palace, a towering empress of black glass with a cracked porcelain mask looms over a lone hunter silhouette seen from behind; countless reflections show different versions of the hunter. Cinematic dark gothic fantasy illustration, painterly digital art, highly detailed, dramatic lighting, rich atmosphere, visual novel event CG, full-bleed edge to edge, no borders, no black bars, no text, no letters, no watermark."
+  },
+  {
+   "asset": "cg_forge_idol",
+   "attempt": 1,
+   "tool": "text_to_image",
+   "generationId": "AeJIMicL_z1hvOmkmHjVn0-NBYXvG9_ot60YcSb0-_TBXHnB6LAKCOzDInyREMpo-pJ04aUS",
+   "status": "submitted",
+   "note": null,
+   "prompt": "A colossal bull-horned bronze idol with a furnace in its belly rises from a lake of molten metal, chains everywhere, a lone hunter silhouette seen from behind on a narrow bridge before it. Cinematic dark gothic fantasy illustration, painterly digital art, highly detailed, dramatic lighting, rich atmosphere, visual novel event CG, full-bleed edge to edge, no borders, no black bars, no text, no letters, no watermark."
+  },
+  {
+   "asset": "cg_sunken_cathedral",
+   "attempt": 1,
+   "tool": "text_to_image",
+   "generationId": "AfxztwUVnO6Vdl7hr77rXPJ9H8W7DepNp4XFvx25y1jdzKt0G-Y8n6esoWc5Yvi-KLOV6SR2",
+   "status": "submitted",
+   "note": null,
+   "prompt": "A drowned cathedral at the bottom of the sea lit by bioluminescent jellyfish; a giant fish-headed priest-king with a crown of glowing lures rises behind the altar; a lone hunter silhouette seen from behind swimming toward him. Cinematic dark gothic fantasy illustration, painterly digital art, highly detailed, dramatic lighting, rich atmosphere, visual novel event CG, full-bleed edge to edge, no borders, no black bars, no text, no letters, no watermark."
+  },
+  {
+   "asset": "cg_ziz_storm",
+   "attempt": 1,
+   "tool": "text_to_image",
+   "generationId": "AXl3LEXc2L8W1B1EOPw-RcR2dRsfEKssBCCQu7HkrSfNgMH7p34npQq-FSEm9RKgB1tkFX9b",
+   "status": "submitted",
+   "note": null,
+   "prompt": "A gigantic storm bird with a skull beak and lightning feathers spreads its wings across the entire sky above floating ruins; a lone hunter silhouette seen from behind on a broken bridge. Cinematic dark gothic fantasy illustration, painterly digital art, highly detailed, dramatic lighting, rich atmosphere, visual novel event CG, full-bleed edge to edge, no borders, no black bars, no text, no letters, no watermark."
+  },
+  {
+   "asset": "cg_mara_cradle",
+   "attempt": 1,
+   "tool": "text_to_image",
+   "generationId": "Af6zjV3QGUMd2mYpTzQHWBEcpW0rQWI31VkX3wrcGOk7OB8sc7wpapeRMXAs2UYtXWCES_C4",
+   "status": "submitted",
+   "note": null,
+   "prompt": "A nightmare nursery in darkness, a gaunt four-armed hag with a porcelain doll face crouches on a giant iron cradle singing, threads tied to floating sleeping faces; a lone hunter silhouette seen from behind at the door. Cinematic dark gothic fantasy illustration, painterly digital art, highly detailed, dramatic lighting, rich atmosphere, visual novel event CG, full-bleed edge to edge, no borders, no black bars, no text, no letters, no watermark."
+  },
+  {
+   "asset": "cg_behemoth_rot",
+   "attempt": 1,
+   "tool": "text_to_image",
+   "generationId": "ASQHvLvhwtu4l8wsYqWppicsA_TIEJM6SXKOADyYirePWLQinxwczEC8oy36pI7j3_bFoI8D",
+   "status": "submitted",
+   "note": null,
+   "prompt": "A mountain-sized rotting beast with trees and mushrooms growing from its back stomps through a dying forest, spores falling like snow, a pale fungal queen on its spine; a lone hunter silhouette seen from behind and a white stag spirit. Cinematic dark gothic fantasy illustration, painterly digital art, highly detailed, dramatic lighting, rich atmosphere, visual novel event CG, full-bleed edge to edge, no borders, no black bars, no text, no letters, no watermark."
+  },
+  {
+   "asset": "cg_void_descent",
+   "attempt": 1,
+   "tool": "text_to_image",
+   "generationId": "AWFT4trx-gy_UNGCRGPZbB8Lc-buYvgmfI1tdunX1-QzVAgpQow2HFkkaVaNUPi_xWKVl3WD",
+   "status": "submitted",
+   "note": null,
+   "prompt": "A lone hunter silhouette seen from behind with a lantern descending a path of floating fragments into an infinite black void full of dying stars, six glowing hearts of different colours orbiting the lantern, a raven flying alongside. Cinematic dark gothic fantasy illustration, painterly digital art, highly detailed, dramatic lighting, rich atmosphere, visual novel event CG, full-bleed edge to edge, no borders, no black bars, no text, no letters, no watermark."
+  },
+  {
+   "asset": "cg_nihil",
+   "attempt": 1,
+   "tool": "text_to_image",
+   "generationId": "AVNrlZZbIEY-sf398Z9tPKOnzVzQX2cXbBU2EwefQH1OXO-0KlmVxPMto9dAf8AfcFY98UPY",
+   "status": "submitted",
+   "note": null,
+   "prompt": "A colossal hooded silhouette made of stars with a white mask and giant hands with eyes in the palms looms over a tiny hunter silhouette seen from behind in an infinite black void. Cinematic dark gothic fantasy illustration, painterly digital art, highly detailed, dramatic lighting, rich atmosphere, visual novel event CG, full-bleed edge to edge, no borders, no black bars, no text, no letters, no watermark."
+  },
+  {
+   "asset": "cg_p2_ending",
+   "attempt": 1,
+   "tool": "text_to_image",
+   "generationId": "AcD3zi9469Pt2smK8NcEmvtsxVUMNdYrAk3undTF7MO4z8pS4d1ZYEFzmrOSpCv6Kz3rQ5xe",
+   "status": "submitted",
+   "note": null,
+   "prompt": "Night, a crow-masked figure in a black feathered cloak sits alone on a church bell tower holding a small lantern, watching a thin healed silver scar across the starry sky above a sleeping village; bittersweet. Cinematic dark gothic fantasy illustration, painterly digital art, highly detailed, dramatic lighting, rich atmosphere, visual novel event CG, full-bleed edge to edge, no borders, no black bars, no text, no letters, no watermark."
+  },
+  {
+   "asset": "cg_p2_true",
+   "attempt": 1,
+   "tool": "text_to_image",
+   "generationId": "ATmaSopyOi3_vV5BNSksRzHdtP3IITWYFdy8mtAL5RcG6cX3HkwwGEonl8U-Vj9DB4d3prEy",
+   "status": "submitted",
+   "note": null,
+   "prompt": "Sunrise on a village inn terrace, a bright morning star still shining in the dawn sky, an old man with raven-feather braids holding a crow mask smiles; warm crowd silhouettes, a white stag, a griffin, a flaming horse and small glowing spirits around them; hopeful new dawn. Cinematic dark gothic fantasy illustration, painterly digital art, highly detailed, dramatic lighting, rich atmosphere, visual novel event CG, full-bleed edge to edge, no borders, no black bars, no text, no letters, no watermark."
+  },
+  {
+   "asset": "b_narkissa2",
+   "attempt": 2,
+   "tool": "image_to_image",
+   "generationId": "AcsFoyjRf-X_0-SIP-Q4zG2noyCsbbtntf5pYqNQ1q8ieUhc0CnpanBJXIBL6Q7dR-N6YsMN",
+   "status": "submitted",
+   "note": null,
+   "prompt": "Edit 图片1: keep the same black glass spider-legged body, the gown of mirror shards with screaming faces and the cold prismatic light, but her porcelain mask has shattered and its pieces orbit around her head; where her face was is now a hollow cavity crammed with hundreds of staring human eyes of different sizes and colours, and a wide vertical mouth lined with jagged mirror-shard teeth splits the face, grotesque and terrifying, the head is larger and clearly visible. Dark gothic horror boss monster concept art, menacing, grotesque, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, a single creature, no text, no watermark."
+  },
+  {
+   "asset": "b_nihil2",
+   "attempt": 1,
+   "tool": "image_to_image",
+   "generationId": "Adx0uVvOgiT5vd_szYoZ7DwH4TJKnxMAfmCqqW6T6qeE31XqgjrgKZa6qdurH8Q33r0eDzHT",
+   "status": "submitted",
+   "note": null,
+   "prompt": "Transform the entity in 图片1 into its second form, keeping the same black hooded starfield robe, the two giant floating white hands with eyes in the palms and the prismatic cracks: the white mask has split open down the middle into a gaping maw of collapsing stars and rows of jagged teeth, and the lower body is tearing apart into a swirling vortex of black nebula, cosmic horror. Dark gothic horror boss monster concept art, menacing, grotesque, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, a single creature, no text, no watermark."
+  },
+  {
+   "asset": "npc_rook2",
+   "attempt": 2,
+   "tool": "image_to_image",
+   "generationId": "AYJb8OrPjyT3gOeCFbAW7ZF44D63q5Xt-mp1RCrA-SFmvxOHFH9hPWb_laVmE3vqIpj8rElE",
+   "status": "submitted",
+   "note": null,
+   "prompt": "Using the man in 图片1 as reference for the same costume, show him unmasked in the same pose and framing: a very old man, over seventy, with a kind, deeply wrinkled and weathered face and grey stubble, sharp black eyes with thin golden rings around the irises, long grey-black hair braided with raven feathers, still wearing the same dark hood pushed back and the same black feathered cloak, pouches and belts, holding his black crow-beak mask in one hand, warm golden morning sunlight from the side, gentle smile, painterly style matching 图片1. Dark gothic fantasy character portrait, upper body, painterly digital illustration, warm rim light, visual novel dialogue portrait, no text, no watermark."
+  },
+  {
+   "asset": "b_mara",
+   "attempt": 3,
+   "tool": "text_to_image",
+   "generationId": "Ace-ryN-Nq91WQVguSG5uAjBm4gTGf6A9JjbXPtn7rdcI4O12wI_cztOskVwvsAWdFa46PWM",
+   "status": "submitted",
+   "note": null,
+   "prompt": "Mara, the Mother of Nightmares, a gaunt elongated hag with two pairs of long spindly arms (four arms in total), her head is a cracked white porcelain doll head with a completely blank smooth face: no eyes, no eye sockets, no nose, only a single vertical seam of black stitches running down the centre of the face where a mouth is sewn shut; she squats on top of a giant rusted iron baby cradle, her long hair is made of threads tied to floating sleeping faces, broken porcelain doll limbs crawl from under the cradle, dim nursery darkness with purple light. Dark gothic horror boss monster concept art, menacing, grotesque, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, a single creature, no text, no watermark."
+  },
+  {
+   "asset": "b_behemoth",
+   "attempt": 3,
+   "tool": "text_to_image",
+   "generationId": "ARn313ackJ8T0iTOSw2AFqIuJDsRL3Qc6qQMLde1WoalfpnX6yuudzNBzA0BmNLSkQIPW-_k",
+   "status": "submitted",
+   "note": null,
+   "prompt": "Behemoth, a colossal rotting beast the size of a mountain, a hulking quadruped like a giant boar crossed with a hippopotamus, its hide sloughing off in rotten strips, the left half of its face is exposed bare skull with an empty eye socket and huge broken tusks, a dead forest of trees and giant pale glowing mushrooms growing out of its back, a torn flank showing exposed ribs with pulsing yellow-green fungal sacs, on its back a pale ghostly fungal queen in a gown of bark and white mycelium, fused into its spine from the waist down, controlling it with root tendrils, spores drifting in sickly green fog. Dark gothic horror boss monster concept art, menacing, grotesque, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, a single creature, no text, no watermark."
+  },
+  {
+   "asset": "b_dagon",
+   "attempt": 3,
+   "tool": "text_to_image",
+   "generationId": "AT9rL8xO9SKLNcdHI2-RIjQ3xzuSK0kzXIK2iIYm4oo-ieOsuyBtm8jcrMabuEtiZjF32c28",
+   "status": "submitted",
+   "note": null,
+   "prompt": "Dagon, the drowned priest-king, a colossal hunched fish-headed humanoid, the head of a deep-sea anglerfish with a gaping maw of needle teeth and milky dead eyes, rotting barnacle-crusted grey-green flesh, rows of red gill slits across his exposed ribs, a crown of glowing bioluminescent lure bulbs on long fleshy stalks, tattered priestly vestments, holding a coral crozier, below the waist a writhing mass of eel-like tentacles fused into a ruined cathedral pipe organ, pale drowned pilgrims half-sunk into the flesh of his back and shoulders like pearls, dark deep-sea gloom with teal bioluminescence. Dark gothic horror boss monster concept art, menacing, grotesque, highly detailed painterly digital illustration, dramatic lighting, dark background, video game boss portrait, a single creature, no text, no watermark."
+  },
+  {
+   "asset": "s14_mirror",
+   "attempt": 3,
+   "tool": "text_to_image",
+   "generationId": "AeUPhXLlb4icdeV_jfhVUET01vmf0Bc1sriKFMwHzVVTuXnA1e1ql9l5YtKwl0yksSdBgihP",
+   "status": "submitted",
+   "note": null,
+   "prompt": "A vast gothic hall of mirrors and black glass seen from the side, rows of tall arched mirror panels and black glass pillars receding into infinity, upside-down crystal chandeliers hanging from the vaulted ceiling, silver filigree arches, some mirror panes cracked with faint ghostly pale faces drifting inside like mist, cold moonlight refracting into prismatic rainbow beams. Palette of silver white, obsidian black, pale cyan and faint rose-crimson accents. Wide panoramic matte painting landscape used as a parallax backdrop, dark gothic horror fantasy, painterly digital illustration with rich detail, dramatic cinematic lighting, strong atmospheric depth and fog layers, distant scenery. Full-bleed painting edge to edge, the scenery fills the entire canvas including all four corners and the bottom edge, no borders, no frame, no black bars, no letterbox, no interface, no HUD, no health bars, no buttons, no icons, no inventory slots, no characters, no people, no text, no letters, no watermark. The ground in the lower quarter is darker black glass floor reflecting the silver light, still painted with detail."
+  },
+  {
+   "asset": "s18_nightmare",
+   "attempt": 3,
+   "tool": "text_to_image",
+   "generationId": "AXbiFObLRyfq9Sl7Yj8xeUjZZtPEL8y05q9ixciL2uG-VOoyTzDD8JbZ-FWRhqxS9IOVUIHL",
+   "status": "submitted",
+   "note": null,
+   "prompt": "A surreal nightmare dreamscape: a labyrinth of stitched fleshy purple walls, impossible Escher-like staircases and lone doorways floating in the dark sky, giant antique iron cradles and broken porcelain dolls, melting clocks draped over the walls, a huge pale moon with a peaceful sleeping human face with closed eyes, threads hanging from the sky like puppet strings. Palette of bruised purple, sickly green, bone white and deep black with blood red highlights. Wide panoramic matte painting landscape used as a parallax backdrop, dark gothic horror fantasy, painterly digital illustration with rich detail, dramatic cinematic lighting, strong atmospheric depth and fog layers, distant scenery. Full-bleed painting edge to edge, the scenery fills the entire canvas including all four corners and the bottom edge, no borders, no frame, no black bars, no letterbox, no interface, no HUD, no health bars, no buttons, no icons, no inventory slots, no characters, no people, no text, no letters, no watermark. The ground in the lower quarter is darker shadowy fleshy ground with scattered doll parts and threads, still painted with detail."
+  },
+  {
+   "asset": "s19_blight",
+   "attempt": 3,
+   "tool": "text_to_image",
+   "generationId": "ASO86YLwMZQBQ5jJiIxEe4z44E_Le1KB-3Oy09ndIO11lawOTtGeUgw_GvrZGHOS3pQsI654",
+   "status": "submitted",
+   "note": null,
+   "prompt": "Cinematic wide view deep inside a dying primeval forest rotting from a fungal blight, colossal world-tree roots and trunks covered in pale glowing mushrooms, spores drifting like snow, sickly yellow-green mist, the skeleton of a gigantic beast overgrown with fungus in the distance, toxic swamp pools. Palette of sickly yellow-green, rot brown, bruised violet and fungus white. Wide panoramic matte painting landscape used as a parallax backdrop, dark gothic horror fantasy, painterly digital illustration with rich detail, dramatic cinematic lighting, strong atmospheric depth and fog layers, distant scenery. Full-bleed painting edge to edge, the scenery fills the entire canvas including all four corners and the bottom edge, no borders, no frame, no black bars, no letterbox, no interface, no HUD, no health bars, no buttons, no icons, no inventory slots, no characters, no people, no text, no letters, no watermark. The ground in the lower quarter is darker rotting roots, mud and toxic puddles, still painted with detail."
+  },
+  {
+   "asset": "s20_void",
+   "attempt": 3,
+   "tool": "text_to_image",
+   "generationId": "AeO00f-TjBIkz-lppl1d8PbxNLLkjPGspPn6NzKcJVuGeGX5JUQz0g5Ziw5tlrJdrcAAI4ZP",
+   "status": "submitted",
+   "note": null,
+   "prompt": "The primordial void before creation: an endless black abyss with swirling violet, teal and gold nebulae and scattered dying stars; large fragments of other worlds float in the midground and dissolve into glittering dust: a giant cracked mirror shard, a broken molten chain glowing orange, a drowned cathedral spire dripping water, a floating broken marble ruin, a rusted iron cradle, giant twisted tree roots; prismatic cracks of light split the darkness; far in the distance a faint colossal hooded silhouette formed of stars. Palette of absolute black, starlight white, prismatic iridescent edges and faint gold. Wide panoramic matte painting landscape used as a parallax backdrop, dark gothic horror fantasy, painterly digital illustration with rich detail, dramatic cinematic lighting, strong atmospheric depth and fog layers, distant scenery. Full-bleed painting edge to edge, the scenery fills the entire canvas including all four corners and the bottom edge, no borders, no frame, no black bars, no letterbox, no interface, no HUD, no health bars, no buttons, no icons, no inventory slots, no characters, no people, no text, no letters, no watermark. The ground in the lower quarter is darker floating dark rock fragments and faint starlit mist, still painted with detail."
   }
  ]
 }

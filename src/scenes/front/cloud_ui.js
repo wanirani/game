@@ -135,7 +135,7 @@ export function spinner(ctx, x, y, r, t, color = GOLD) {
 
 // ───────────────────────── 충돌 선택 ─────────────────────────
 export class CloudConflictScene extends Scene {
-  constructor(g) { super(g); this.opaque = false; }
+  constructor(g) { super(g); this.opaque = false; this.hideToasts = true; }
   enter({ slot = 1, mode = 'conflict', onDone } = {}) {
     Object.assign(this, { slot, mode, onDone });
     const raw = saves.read(slot);
