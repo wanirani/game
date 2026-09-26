@@ -3098,18 +3098,19 @@ RENDER_B.bat_swarm = (ctx, e, world, o) => {
   for (let i = 0; i < n; i++) {
     const s = h1(i * 7.3), s2 = h1(i * 3.1 + 2);
     const sp = 1.6 + s * 1.8, a = t * sp * (i % 2 ? 1 : -1) + s2 * TAU;
-    let rx = 30 * (0.4 + s * 0.6), ry = 18 * (0.4 + s2 * 0.6);
+    let rx = 34 * (0.4 + s * 0.6), ry = 21 * (0.4 + s2 * 0.6);
     if (gather) { rx *= 1 - gk * 0.6; ry *= 1 - gk * 0.6; }
     let x = Math.cos(a) * rx, y = cy + Math.sin(a * 1.3) * ry;
     if (charge) { x = (s - 0.5) * 70 - ((t * 8 + s * 5) % 1) * 6; y = cy + (s2 - 0.5) * 26 + Math.sin(t * 10 + i) * 3; }
     const flap = Math.sin(t * (18 + s * 8) + i);
-    const sc = 0.55 + s2 * 0.35;
+    const sc = 0.85 + s2 * 0.4;
     ctx.save(); ctx.translate(x, y); ctx.scale(sc, sc);
     if (charge || Math.cos(a) * (i % 2 ? 1 : -1) < 0 && !gather) ctx.scale(charge ? 1 : -1, 1);
     // 날개
-    ctx.fillStyle = C(i % 3 ? '#2a1420' : '#3a1a2a');
-    ctx.beginPath(); ctx.moveTo(-2, -1); ctx.quadraticCurveTo(-8, -6 - flap * 6, -14, -2 - flap * 7); ctx.lineTo(-11, 0 - flap * 3); ctx.lineTo(-8, 2 - flap * 2); ctx.lineTo(-5, 1); ctx.closePath(); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(2, -1); ctx.quadraticCurveTo(8, -6 - flap * 6, 14, -2 - flap * 7); ctx.lineTo(11, 0 - flap * 3); ctx.lineTo(8, 2 - flap * 2); ctx.lineTo(5, 1); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = C(i % 3 ? '#4a1a34' : '#5a2240'); ctx.strokeStyle = C(OUT); ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(-2, -1); ctx.quadraticCurveTo(-8, -6 - flap * 6, -14, -2 - flap * 7); ctx.lineTo(-11, 0 - flap * 3); ctx.lineTo(-8, 2 - flap * 2); ctx.lineTo(-5, 1); ctx.closePath(); ctx.stroke(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(2, -1); ctx.quadraticCurveTo(8, -6 - flap * 6, 14, -2 - flap * 7); ctx.lineTo(11, 0 - flap * 3); ctx.lineTo(8, 2 - flap * 2); ctx.lineTo(5, 1); ctx.closePath(); ctx.stroke(); ctx.fill();
+    if (!FL) { ctx.strokeStyle = 'rgba(190,160,255,0.45)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(-3, -1.5); ctx.quadraticCurveTo(-8, -6.5 - flap * 6, -13.5, -2.5 - flap * 7); ctx.moveTo(3, -1.5); ctx.quadraticCurveTo(8, -6.5 - flap * 6, 13.5, -2.5 - flap * 7); ctx.stroke(); }
     // 몸
     ctx.fillStyle = C('#1a0c14'); ctx.beginPath(); ctx.ellipse(0, 0, 3.4, 4, 0, 0, TAU); ctx.fill();
     ctx.beginPath(); ctx.moveTo(-2.4, -3); ctx.lineTo(-2, -6.5); ctx.lineTo(-0.6, -3.6); ctx.moveTo(2.4, -3); ctx.lineTo(2, -6.5); ctx.lineTo(0.6, -3.6); ctx.fill();

@@ -4,6 +4,7 @@ import { DiceScene } from './games/dice.js';
 import { BlackjackScene } from './games/blackjack.js';
 import { SlotScene } from './games/slot.js';
 import { DuelScene } from './games/duel.js';
+import { MemoryScene } from './games/memory.js';
 
 export function register(game) {
   game.register('inn', InnScene);
@@ -11,4 +12,5 @@ export function register(game) {
   game.register('minigame_blackjack', BlackjackScene);
   game.register('minigame_slot', SlotScene);
   game.register('minigame_duel', DuelScene);
+  game.register('minigame_memory', MemoryScene);
 }
