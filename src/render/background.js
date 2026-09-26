@@ -169,11 +169,25 @@ export function createBackground(stage, map) {
     // 날씨
     drawWeather(ctx, bg, cam, vw, vh, t);
     // 비네팅
-    const vg = ctx.createRadialGradient(vw / 2, vh / 2, vh * 0.4, vw / 2, vh / 2, vh * 1.0);
-    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.55)');
-    ctx.fillStyle = vg; ctx.fillRect(0, 0, vw, vh);
+    const q = ctx.imageSmoothingQuality; ctx.imageSmoothingQuality = 'low';
+    ctx.drawImage(vignetteSprite(vw, vh), 0, 0, vw, vh);
+    ctx.imageSmoothingQuality = q;
   };
   return bg;
+}
+
+// 비네팅은 1/4 해상도로 한 번 그려 두고 늘여 쓴다 (매 프레임 전체 화면 방사형 그라데이션 생성 방지)
+let _vig = null;
+function vignetteSprite(vw, vh) {
+  const w = Math.ceil(vw / 4), h = Math.ceil(vh / 4);
+  if (_vig && _vig.width === w && _vig.height === h) return _vig;
+  _vig = document.createElement('canvas');
+  _vig.width = w; _vig.height = h;
+  const g = _vig.getContext('2d');
+  const vg = g.createRadialGradient(w / 2, h / 2, h * 0.4, w / 2, h / 2, h * 1.0);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.55)');
+  g.fillStyle = vg; g.fillRect(0, 0, w, h);
+  return _vig;
 }
 
 function drawSilhouette(ctx, kind, x, by, s, k, t, h) {

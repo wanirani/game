@@ -294,12 +294,17 @@ export class World {
   // ─────────────────────────── 렌더 ───────────────────────────
   render(ctx) {
     const cam = this.camera, vw = this.game.viewW, vh = this.game.viewH;
+    // 배경·타일처럼 화면을 크게 덮는 층은 저품질 보간으로 그린다 (고품질 보간은 전체 화면 확대 시 매우 느림).
+    // 아이콘·초상 등 크게 축소되는 이미지가 있는 개체 층은 원래 품질로 되돌린다.
+    const q0 = ctx.imageSmoothingQuality;
+    ctx.imageSmoothingQuality = 'low';
     this.bg.drawFar(ctx, cam, vw, vh, this.time);
     ctx.save();
     cam.apply(ctx);
     this.bg.drawMid(ctx, cam, this.time);
     this.tiles.drawDecor(ctx, cam, this.time);
     this.tiles.draw(ctx, cam);
+    ctx.imageSmoothingQuality = q0;
     // 엔티티 (z 정렬)
     const list = this.entities.filter((e) => (!e.dead || e === this.player) && !e.hidden && !this.inUnrevealedFake(e) && (e.kind === 'player' || cam.visible(e.x, e.y, e.w, e.h, 200)));
     list.sort((a, b) => a.z - b.z);
@@ -307,6 +312,7 @@ export class World {
     for (const e of list) if (e.z < 0) e.draw(ctx, this);
     for (const d of this.debrisList) this.drawDebris(ctx, d);
     for (const e of list) if (e.z >= 0) e.draw(ctx, this);
+    ctx.imageSmoothingQuality = 'low';
     this.tiles.drawLiquid(ctx, cam, this.time, this.stage.liquid);
     this.fx.draw(ctx, 'front');
     if (this.game.debug) { ctx.strokeStyle = '#f00'; for (const r of this.debugRects) ctx.strokeRect(r.x, r.y, r.w, r.h); }
@@ -318,6 +324,7 @@ export class World {
       ctx.save(); ctx.globalCompositeOperation = 'saturation'; ctx.fillStyle = 'rgba(0,0,0,0.9)'; ctx.fillRect(0, 0, vw, vh); ctx.restore();
       ctx.fillStyle = 'rgba(80,100,200,0.12)'; ctx.fillRect(0, 0, vw, vh);
     }
+    ctx.imageSmoothingQuality = q0;
   }
   drawDebris(ctx, d) {
     ctx.save(); ctx.translate(d.x + d.w / 2, d.y + d.h / 2); ctx.rotate(d.rot);

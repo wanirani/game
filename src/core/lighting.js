@@ -2,6 +2,34 @@
 // world.lighting.add(x, y, radius, color, intensity)  — 매 프레임 추가 (프레임 시작 시 비워짐)
 import { rgba } from './math.js';
 
+// 광원 스프라이트 캐시: 매 프레임 방사형 그라데이션을 새로 만드는 대신 미리 그린 원을 늘여 그린다 (모바일 성능)
+const SPR = 128;
+let _hole = null;
+const _glow = new Map();
+function radialSprite(stops) {
+  const c = document.createElement('canvas');
+  c.width = c.height = SPR;
+  const g = c.getContext('2d'), h = SPR / 2;
+  const gr = g.createRadialGradient(h, h, 0, h, h, h);
+  for (const [o, col] of stops) gr.addColorStop(o, col);
+  g.fillStyle = gr; g.fillRect(0, 0, SPR, SPR);
+  return c;
+}
+/** 어둠에 구멍을 내는 검은 원 (세기 1 기준, globalAlpha 로 조절) */
+function holeSprite() {
+  return (_hole ??= radialSprite([[0, 'rgba(0,0,0,1)'], [0.5, 'rgba(0,0,0,0.55)'], [1, 'rgba(0,0,0,0)']]));
+}
+/** 색광 원 (세기 2 기준 알파 0.44 — globalAlpha = 세기/2) */
+function glowSprite(color) {
+  let c = _glow.get(color);
+  if (!c) {
+    if (_glow.size > 48) _glow.clear();
+    c = radialSprite([[0, rgba(color, 0.44)], [1, rgba(color, 0)]]);
+    _glow.set(color, c);
+  }
+  return c;
+}
+
 export class Lighting {
   constructor() {
     this.canvas = document.createElement('canvas');
@@ -33,28 +61,25 @@ export class Lighting {
       for (const L of this.lights) {
         const sx = (L.x - cam.x - cam.shakeX) * z, sy = (L.y - cam.y - cam.shakeY) * z, r = L.r * z;
         if (sx + r < 0 || sy + r < 0 || sx - r > W || sy - r > H) continue;
-        const g = l.createRadialGradient(sx, sy, 0, sx, sy, r);
-        g.addColorStop(0, `rgba(0,0,0,${Math.min(1, L.i)})`);
-        g.addColorStop(0.5, `rgba(0,0,0,${Math.min(1, L.i) * 0.55})`);
-        g.addColorStop(1, 'rgba(0,0,0,0)');
-        l.fillStyle = g;
-        l.fillRect(sx - r, sy - r, r * 2, r * 2);
+        l.globalAlpha = Math.min(1, L.i);
+        l.drawImage(holeSprite(), sx - r, sy - r, r * 2, r * 2);
       }
+      l.globalAlpha = 1;
+      const q = ctx.imageSmoothingQuality; ctx.imageSmoothingQuality = 'low';
       ctx.drawImage(this.canvas, 0, 0, viewW, viewH);
+      ctx.imageSmoothingQuality = q;
     }
     // 색광 (가산 합성)
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
+    ctx.imageSmoothingQuality = 'low'; // 흐린 원을 늘이는 것이라 저품질 보간으로 충분 (고품질은 매우 느림)
     const zz = cam.zoom;
     for (const L of this.lights) {
       if (!L.glow) continue;
       const sx = (L.x - cam.x - cam.shakeX) * zz, sy = (L.y - cam.y - cam.shakeY) * zz, r = L.r * zz * 0.7;
       if (sx + r < 0 || sy + r < 0 || sx - r > viewW || sy - r > viewH) continue;
-      const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, r);
-      g.addColorStop(0, rgba(L.color, 0.22 * L.i));
-      g.addColorStop(1, rgba(L.color, 0));
-      ctx.fillStyle = g;
-      ctx.fillRect(sx - r, sy - r, r * 2, r * 2);
+      ctx.globalAlpha = Math.min(1, L.i / 2);
+      ctx.drawImage(glowSprite(L.color), sx - r, sy - r, r * 2, r * 2);
     }
     ctx.restore();
     if (this.lightning > 0) {
