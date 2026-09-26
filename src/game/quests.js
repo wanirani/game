@@ -205,6 +205,7 @@ function check(s) {
   const qs = ensure(s);
   for (const id of Object.keys(qs.active)) {
     const e = qs.active[id], q = QUESTS[id];
+    if (!e) continue; // 자동 보상으로 목록이 바뀐 경우
     if (!q) { delete qs.active[id]; continue; }
     const done = questProgress(s, id).done;
     if (done && !e.ready) {
