@@ -98,7 +98,7 @@ class Game {
     this._locked = false; this._pageHidden = false;
     this.toasts = [];
     this.debug = false;
-    this.padShown = false; this._touchAt = -Infinity; this._padErr = false;
+    this.padShown = false; this._touchAt = -Infinity; this._padErr = false; this._padOpts = { hideButtons: null };
     this._ptrK = 1;
     this._tier = 'high';
     // 품질 조절기 상태 (설정 'auto' 일 때만 등급을 바꾼다; 설정값 자체는 쓰지 않는다)
@@ -233,13 +233,14 @@ class Game {
     this.portraitAny = H > W;
     this.portrait = this.portraitAny && Math.min(W, H) < 600;
     document.body.classList.toggle('portrait', this.portrait);
-    this._watch = this.watchKey();
+    const s0 = this.settings, w = this._watch;
+    w.q = s0?.quality; w.u = s0?.uiScale; w.a = s0?.safeArea;
     this.dirty = true;
   }
-  /** 화면 배치에 영향을 주는 설정 (옵션에서 바뀌면 다음 rAF 에 다시 배치) */
-  watchKey() {
-    const s = this.settings;
-    return s ? `${s.quality}|${s.uiScale}|${s.safeArea}` : '';
+  /** 화면 배치에 영향을 주는 설정이 바뀌었나 (옵션에서 바꾸면 다음 rAF 에 다시 배치) */
+  layoutSettingsChanged() {
+    const s = this.settings, w = this._watch;
+    return !!s && (s.quality !== w.q || s.uiScale !== w.u || s.safeArea !== w.a);
   }
 
   /** 맨 위 장면에 자동 일시정지 요청 (세로 회전·백그라운드 전환) */
@@ -256,7 +257,9 @@ class Game {
     const scene = !!top && !top.hidePad && (!!top.showPad || PAD_SCENES.has(top.name)) && !this.portraitLocked;
     const show = scene && this.realTime - this._touchAt < PAD_HIDE_DELAY;
     this.padShown = show;
-    try { touchpad.setVisible?.(show, { hideButtons: top?.padHideButtons ?? null }); } catch (e) { if (!this._padErr) { this._padErr = true; console.error(e); } }
+    const o = this._padOpts;
+    o.hideButtons = top?.padHideButtons ?? null;
+    try { touchpad.setVisible?.(show, o); } catch (e) { if (!this._padErr) { this._padErr = true; console.error(e); } }
     if (typeof document !== 'undefined' && document.getElementById('touch')) input.setPadOff?.(!scene);
   }
 
@@ -632,15 +635,15 @@ class Game {
   }
 }
 
-/** str 이 maxW 를 넘으면 뒤를 잘라 … 를 붙인다 (force: 이미 잘린 문장 — 맞아도 … 를 붙일지 판단하지 않고 폭만 맞춘다) */
-function ellipsize(ctx, str, maxW, force = false) {
+/** str 이 maxW 를 넘으면 뒤를 잘라 … 를 붙인다 (지금 ctx.font 로 잰다) */
+function ellipsize(ctx, str, maxW) {
   if (ctx.measureText(str).width <= maxW) return str;
   let lo = 0, hi = str.length;
   while (lo < hi) {
     const mid = (lo + hi + 1) >> 1;
     if (ctx.measureText(str.slice(0, mid).trimEnd() + '…').width <= maxW) lo = mid; else hi = mid - 1;
   }
-  return force || lo < str.length ? str.slice(0, lo).trimEnd() + '…' : str;
+  return str.slice(0, lo).trimEnd() + '…';
 }
 
 export const game = new Game();
