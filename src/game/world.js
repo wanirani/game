@@ -685,7 +685,7 @@ export class World {
     this.arena = { x0, x1, cam: { x: camX0, y: 0, w: x1 - camX0, h: m.pxH } };
     // 보스전 중 사망 시 경기장 안쪽(왼쪽 경계에서 두 칸)에서 부활
     const p = this.player, rtx = Math.floor((x0 + TILE * 2) / TILE);
-    const gy = m.groundBelow(rtx, Math.max(0, Math.floor(p.y / TILE))) ?? (p.y + p.h);
+    const gy = m.groundBelow(rtx, Math.max(0, Math.floor(Math.min(p.y, this.run.checkpoint.y) / TILE))) ?? (p.y + p.h);
     this.run.checkpoint = { roomId: this.roomId, x: rtx * TILE + TILE / 2 - p.w / 2, y: gy - p.h };
     // 3인칭 카메라: 경기장 높이가 화면보다 크면 살짝 줌아웃해 보스 전신이 보이게
     this.camera.zoomTarget = clamp(this.game.viewH / (m.pxH - TILE), 0.74, 1);
@@ -772,7 +772,7 @@ export class World {
       } else this.collect(e);
       n++;
     }
-    if (n > 0) this.game.toast(`남은 전리품 ${n}개를 자동으로 챙겼다`, '#ffe070');
+    if (n > 0) { this.player.refreshStats(); this.game.toast(`남은 전리품 ${n}개를 자동으로 챙겼다`, '#ffe070'); }
   }
   finishStage() {
     this.collectLeftovers();

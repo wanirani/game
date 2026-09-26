@@ -551,6 +551,14 @@ export function recordHighScore(game, entry) {
   m.highScores ??= [];
   const e = { name: '', score: 0, mode: 'story', date: Date.now(), ...entry };
   e.score = Math.max(0, Math.floor(e.score || 0));
+  // 스토리 모드는 한 회차(세이브 슬롯+생성 시각)당 한 줄만 남긴다
+  const st = game.state;
+  if (e.mode === 'story' && !e.run && st?.created) e.run = `${st.slot ?? 1}:${st.created}`;
+  if (e.run) {
+    const old = m.highScores.filter((h) => h.run === e.run && (h.mode || 'story') === e.mode);
+    for (const h of old) { e.score = Math.max(e.score, h.score); if (!e.name) e.name = h.name; }
+    m.highScores = m.highScores.filter((h) => !old.includes(h));
+  }
   m.highScores.push(e);
   m.highScores.sort((a, b) => b.score - a.score);
   const cnt = {};

@@ -43,7 +43,7 @@ export const BOSSES_A = {
     desc: '수천 구의 유골이 엉겨 붙어 태어난 용. 눈구멍에는 녹색 영혼의 불이 타오르고, 벽과 바닥을 뚫고 목을 뻗는다.',
   },
   b_grimoire: {
-    id: 'b_grimoire', name: '그리모어', title: '금단의 살아있는 마도서', hp: 1200, atk: 26, def: 6, res: 18, exp: 800, score: 40000,
+    id: 'b_grimoire', name: '그리모어', title: '금단의 살아 있는 마도서', hp: 1200, atk: 26, def: 6, res: 18, exp: 800, score: 40000,
     size: { w: 150, h: 178 }, flying: true, contact: 0.7, material: 'paper', weak: ['fire'], resist: ['dark', 'thunder'],
     phases: [0.6, 0.3], music: 'boss', portrait: 'portraits/b_grimoire', stageId: 's06', drops: ['u_grimoire'],
     light: { r: 250, color: '#b060ff', i: 0.8 }, deathColor: '#c080ff', deathFx: 'magic',

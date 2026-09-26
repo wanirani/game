@@ -44,7 +44,7 @@ export class PauseScene extends Scene {
         // 마을로 돌아가면 목숨을 난이도 기본값까지 회복 (포기·클리어와 동일. 1UP 으로 늘어난 목숨은 유지)
         const st = this.game.state, full = w?.diff?.lives;
         if (st && full) st.lives = Math.max(st.lives ?? 0, full);
-        this.game.go(this.game.registry.hub ? 'hub' : 'title', {});
+        this.game.go(this.game.registry.hub ? 'hub' : 'title', { from: w?.stage?.id });
       },
     });
   }

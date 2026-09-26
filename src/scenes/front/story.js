@@ -90,7 +90,7 @@ export class StoryScene extends Scene {
         break;
       }
       case 'relic': if (st && !st.progress.relics.includes(l.id)) st.progress.relics.push(l.id); break;
-      case 'shake': if (!quiet) { this.shakeT = l.time ?? 0.5; this.shakeP = l.power ?? 8; g.flash(l.color ?? '#fff', 0.35); } break;
+      case 'shake': if (!quiet) { this.shakeT = l.time ?? 0.5; this.shakeP = (l.power ?? 8) * (g.settings?.screenShake ?? 1); g.flash(l.color ?? '#fff', 0.35); } break;
       case 'flash': if (!quiet) g.flash(l.color ?? '#fff', l.a ?? 0.7, l.decay ?? 3); break;
       case 'music': audio.music(l.id); break;
       case 'sfx': if (!quiet) audio.sfx(l.id); break;

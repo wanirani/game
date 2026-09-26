@@ -280,6 +280,6 @@ export class NPC extends Entity {
   lights(L) { L.add(this.cx, this.cy, 90, '#ffd9a0', 0.5); }
   draw(ctx, world) {
     world.drawNPC?.(ctx, this);
-    if (this.near) text(ctx, '▲ 대화', this.cx, this.y - 12, { size: 13, align: 'center', color: '#ffe7a0', weight: 700 });
+    if (this.near && !world.cutscene) text(ctx, '▲ 대화', this.cx, this.y - 12, { size: 13, align: 'center', color: '#ffe7a0', weight: 700 });
   }
 }

@@ -158,7 +158,7 @@ export class DialogueScene extends Scene {
     if (!this.cur) return;
     const vw = this.game.viewW, vh = this.game.viewH;
     const l = this.cur;
-    const sp = speakerInfo(l.who, this.state);
+    const sp = { ...speakerInfo(l.who, this.state), ...(l.name ? { name: l.name } : {}), ...(l.portrait ? { portrait: l.portrait } : {}) };
     ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(0, 0, vw, vh);
     // 이벤트 CG (스크립트 {cmd:'cg', id:'cg_xxx'} 로 표시, id:null 로 해제)
     if (this.cg) {
@@ -193,7 +193,7 @@ export class DialogueScene extends Scene {
     }
     // 대화창
     const bx = 60, bw = vw - 120, bh = 150, by = vh - bh - 18;
-    panel(ctx, bx, by, bw, bh, { glow: 'rgba(180,20,40,0.4)' });
+    panel(ctx, bx, by, bw, bh, { glow: 'rgba(180,20,40,0.4)', fill: 'rgba(24,8,16,0.97)' });
     if (sp.name) {
       panel(ctx, bx + 24, by - 22, Math.max(140, sp.name.length * 20 + 40), 36, { corner: false });
       text(ctx, sp.name, bx + 44, by + 3, { size: 18, weight: 800, family: FONT.title, color: '#f3d690' });

@@ -64,7 +64,7 @@ STAGE_ORDER.forEach((sid, i) => {
   let bh = 0, bt = 0, bhp = 0;
   if (b) {
     const bs = enemyStats({ ...b, lv: st.level }, st.level, { ...diff, enemyHp: diff.bossHp ?? diff.enemyHp }, false);
-    bhp = Math.round(bs.maxHp * (b.hpMul ?? 1) * (1 + Math.max(0, 10 - (st.level - 1)) * 0.1));
+    bhp = Math.round(bs.maxHp * (b.hpMul ?? 1) * (1 + Math.max(0, 10 - (st.level - 1)) * 0.1) / (1 + Math.max(0, st.level - 24) * 0.035));
     bh = Math.ceil(bhp / dmg(P, bs, 1.0, mag));
     bt = dmg(bs, { def: P.def, dmgReduce: P.dmgReduce }, 1.2) / P.hp * 100;
   }

@@ -205,7 +205,7 @@ export class GameOverScene extends Scene {
     // 기록 등록
     this.game.recordScore?.(w.run.score, w.stage.id);
     saves.write(st.slot, st);
-    this.game.go(this.game.registry.hub ? 'hub' : 'title', {});
+    this.game.go(this.game.registry.hub ? 'hub' : 'title', { from: w.stage.id });
   }
   render(ctx) {
     const vw = this.game.viewW, vh = this.game.viewH;

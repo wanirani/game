@@ -42,11 +42,11 @@ export function drawHUD(ctx, world, vw, vh) {
   // ── HP / MP / EXP ──
   const bx = px + 76, bw = 230;
   text(ctx, CHARACTERS[hero.charId].name, bx, py + 12, { size: 13, weight: 700, color: '#f3e2b8' });
-  text(ctx, CLASSES[hero.classId]?.name ?? '', bx + bw, py + 12, { size: 11, align: 'right', color: COLORS.dim });
+  text(ctx, CLASSES[hero.classId]?.name ?? '', bx + bw, py + 12, { size: T ? 12 : 11, align: 'right', color: COLORS.dim });
   bar(ctx, bx, py + 18, bw, 13, p.hp / st.hp, { color: '#d81c34', ghost: p.hpGhost / st.hp });
-  text(ctx, `${Math.ceil(p.hp)} / ${st.hp}`, bx + bw - 4, py + 29, { size: 10, align: 'right', weight: 700, color: '#fff', ow: 2 });
+  text(ctx, `${Math.ceil(p.hp)} / ${st.hp}`, bx + bw - 4, py + 29, { size: T ? 12 : 10, align: 'right', weight: 700, color: '#fff', ow: 2 });
   bar(ctx, bx, py + 34, bw * 0.8, 8, p.mp / st.mp, { color: '#3a7aff' });
-  text(ctx, `${Math.floor(p.mp)}`, bx + bw * 0.8 + 6, py + 42, { size: 10, weight: 700, color: '#8ac8ff', ow: 2 });
+  text(ctx, `${Math.floor(p.mp)}`, bx + bw * 0.8 + 6, py + 42, { size: T ? 12 : 10, weight: 700, color: '#8ac8ff', ow: 2 });
   const need = expToNext(hero.level);
   bar(ctx, bx, py + 46, bw * 0.8, 3, hero.exp / need, { color: '#e8c872', shine: false });
 

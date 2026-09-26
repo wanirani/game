@@ -25,7 +25,9 @@ export class Boss extends Entity {
     const s = enemyStats({ ...def, lv: world.stage.level }, world.stage.level, { ...diff, enemyHp: (diff.bossHp ?? diff.enemyHp) }, false);
     // 초반 보스는 짧게 끝나지 않도록 보정 (레벨 1: ×2.0 → 레벨 11 이상: ×1.0)
     const early = 1 + Math.max(0, 10 - (world.stage.level - 1)) * 0.1;
-    s.maxHp = Math.round(s.maxHp * (def.hpMul ?? 1) * early);
+    // 후반(Lv25~) 보스는 체력 곡선이 가팔라 전투가 늘어지므로 완만하게 깎는다 (목표: 기본기 100~160타)
+    const late = 1 / (1 + Math.max(0, world.stage.level - 24) * 0.035);
+    s.maxHp = Math.round(s.maxHp * (def.hpMul ?? 1) * early * late);
     s.hp = s.maxHp;
     s.exp = Math.round((def.exp ?? 400) * (1 + world.stage.level * 0.35) * (diff.exp ?? 1));
     this.stats = s;
