@@ -183,6 +183,21 @@ function podFallback() {
     g.fillStyle = '#8a7a3a'; g.beginPath(); g.ellipse(48, 14, 6, 4, 0, 0, TWO_PI); g.fill();
   });
 }
+/** 포자 주머니 그림: 불러온 96×96 이미지를 64×64 로 한 번만 줄여 둔 캔버스 (매 프레임 큰 축소를 피한다). 로딩 전엔 절차적 그림 */
+function podImage() {
+  const c = SPR.podimg;
+  if (c) return c;
+  const img = assets.get('props/prop_spore_pod');
+  if (!img) return podFallback();
+  if (typeof document === 'undefined') return img;
+  const cv = document.createElement('canvas');
+  cv.width = 64; cv.height = 64;
+  const g = cv.getContext('2d');
+  g.imageSmoothingQuality = 'high';
+  g.drawImage(img, 0, 0, 64, 64);
+  SPR.podimg = cv;
+  return cv;
+}
 function glowSprite() {
   return sprite('podglow', 64, 64, (g) => {
     const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
@@ -507,16 +522,16 @@ const BLIGHT_DEF = { kind: 'blight', gain: 30, decay: 12, on: 100, off: 40, dot:
 const MAX_DYN_CLOUDS = 16;
 const MAX_PODS = 24;
 /** 포자 구름 텍스처 (공용, 변형 2개). 부드러운 덩어리들을 한 캔버스에 구워 두고 구름마다 drawImage 한 번으로 늘여 그린다.
- *  텍스처의 가운데 [0.12, 0.88] × [0.15, 0.85] 가 판정 사각형에 맞는다 (바깥은 부드러운 가장자리) */
-const CLOUD_IN = { x0: 0.12, x1: 0.88, y0: 0.15, y1: 0.85 };
+ *  텍스처의 가운데 CLOUD_IN 영역이 판정 사각형에 맞는다 (바깥은 부드러운 가장자리) */
+const CLOUD_IN = { x0: 0.08, x1: 0.92, y0: 0.1, y1: 0.9 };
 function cloudSprite(v) {
   return sprite('cloud' + v, 256, 160, (g, w, h) => {
     const rng = new RNG(v ? 31 : 17);
     const b0 = blobSprite(0), b1 = blobSprite(1);
     if (!b0 || !b1) return;
     for (let i = 0; i < 40; i++) {
-      const x = w * rng.range(CLOUD_IN.x0 + 0.04, CLOUD_IN.x1 - 0.04), y = h * rng.range(CLOUD_IN.y0 + 0.06, CLOUD_IN.y1 - 0.06);
-      const r = rng.range(24, 44);
+      const x = w * rng.range(CLOUD_IN.x0 + 0.05, CLOUD_IN.x1 - 0.05), y = h * rng.range(CLOUD_IN.y0 + 0.08, CLOUD_IN.y1 - 0.08);
+      const r = rng.range(20, 36);
       g.globalAlpha = rng.range(0.5, 0.9);
       g.drawImage(rng.next() < 0.3 ? b1 : b0, x - r, y - r, r * 2, r * 2);
     }
@@ -692,7 +707,7 @@ export class BlightGimmick extends MemberB {
           if (c.flip) { ctx.save(); ctx.translate(x + dw * br, y); ctx.scale(-1, 1); ctx.drawImage(spr, 0, 0, dw * br, dh * br); ctx.restore(); }
           else ctx.drawImage(spr, x, y, dw * br, dh * br);
         }
-        const r0 = Math.min(c.w, c.h) * 0.42 + 16;
+        const r0 = Math.min(c.w, c.h) * 0.3 + 14;
         for (let i = 0; i < Math.min(nw, c.wisps.length); i++) {
           const wp = c.wisps[i], b = blobSprite(wp.tone);
           if (!b) continue;
@@ -1135,7 +1150,7 @@ export class SporePod extends Entity {
     } else {
       const b = Math.sin(t * 2.2); sx = 1 + 0.035 * b; sy = 1 - 0.035 * b;
     }
-    const img = assets.get('props/prop_spore_pod') || podFallback();
+    const img = podImage();
     const W = 58, H = 58;
     ctx.save();
     ctx.translate(this.cx + ox, this.hang ? this.y - 4 : this.bottom + 3);

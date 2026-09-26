@@ -21,7 +21,9 @@
 //   onJumpInput(p) → bool     true = 이번 스텝 점프 처리를 기믹이 가져감 (수영)
 //   healMul() → n · noRegen · speedMul · bgFlip         합성: 곱 · OR · 곱 · OR
 //   lights(L) · drawWorld(ctx, cam, 'under'|'back'|'front') · drawScreen(ctx, vw, vh, hud)
-//        hud.meter() → 다음 게이지 줄 {x,y,w,h} (hudLayout().meter(i), 최대 3줄, world.hudHidden 이면 null)
+//        hud.meter() → 다음 게이지 줄 {x,y,w,h} (hudLayout().meter(i), 최대 3줄, world.hudHidden 이면 null).
+//        게이지는 world.hudHidden 이면 그리지 않고, 화면 색조(물속·허상·박동 등 세계 연출)는 그대로 그린다.
+//        set.meterRows = 이번 프레임에 쓴 줄 수 (hudLayout 이 토스트를 올릴 때 읽는다)
 //   onFell(p) · onRespawn() · cleanse(n) · reset() · dispose()
 //  몸 판정: 플레이어는 AABB(x,y,w,h) 그대로 — 탈것을 타면 그 몸이 탈것 몸으로 바뀌어 있다 (companions §3). 수호신은 판정에서 뺀다.
 //  공용 도우미 (function 선언이라 순환 import 에서도 안전 — 모듈 최상위가 아니라 메서드 안에서 부를 것):
@@ -199,7 +201,7 @@ export function createGimmick(world, room) {
   for (const params of cfg) {
     const kind = params.kind;
     if (set.get(kind)) { warnOnce('gdup:' + kind, `[gimmick] 같은 종류 '${kind}' 가 두 번 설정됨 — 두 번째는 무시`); continue; }
-    const K = KINDS[kind] ?? GIMMICKS_B?.[kind];
+    const K = (Object.hasOwn(KINDS, kind) ? KINDS[kind] : null) ?? (GIMMICKS_B && Object.hasOwn(GIMMICKS_B, kind) ? GIMMICKS_B[kind] : null);
     if (!K) { warnOnce('gkind:' + kind, `[gimmick] 알 수 없는 기믹 종류 '${kind}' — 무시`); continue; }
     let m = null;
     try { m = instantiate(K, world, params, set); } catch (e) { console.error(`[gimmick] '${kind}' 생성 실패`, e); }
@@ -233,6 +235,7 @@ export class GimmickSet {
     this.director = null;
     this._hudI = 0; this._hudLay = null; this._hudVW = 0; this._hudVH = 0;
     this.hud = { meter: () => this._meter() };
+    this.meterRows = 0;   // 지난 drawScreen 에서 쓴 게이지 줄 수 (0~3) — hudLayout 이 토스트 줄을 올릴 때 읽는다
   }
   get kinds() { return this.members.map((m) => m.kind); }
   get(kind) { for (const m of this.members) if (m.kind === kind) return m; return null; }
@@ -274,6 +277,7 @@ export class GimmickSet {
   drawScreen(ctx, vw, vh) {
     this._hudI = 0; this._hudLay = null; this._hudVW = vw; this._hudVH = vh;
     for (const m of this.members) m.drawScreen?.(ctx, vw, vh, this.hud);
+    this.meterRows = this._hudI;
   }
   _meter() {
     const w = this.world;

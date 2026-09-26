@@ -1882,8 +1882,10 @@ function drawHeroYaw(ctx, p, world, opts, K, look) {
   }
   ctx.restore();
   // 2) 몸: 옆모습(0°/180°)은 게임과 같은 퍼펫, 나머지는 채색 뷰
-  for (const [d, w] of views) {
-    if (w <= 0.002) continue;
+  // 교차: 앞 스텝을 먼저, 뒤 스텝을 위에 — 불투명도 min(1, 2·가중치). 둘 다 반투명해져 배경이 비치는 '유령' 구간이 없고 k 에 연속
+  for (const [d, w0] of views) {
+    const w = Math.min(1, 2 * w0);
+    if (w0 <= 0.002) continue;
     if (d === 0 || d === 180) { drawProfile(ctx, p, world, opts, d === 0 ? 1 : -1, sq, w); continue; }
     ctx.save(); ctx.translate(p.cx, p.bottom); ctx.scale(hs, hs); ctx.globalAlpha = aBase;
     PUP.drawTurnStep(ctx, I, d, sq, w, tt);

@@ -8,7 +8,7 @@
 //      evaluate(opts): evaluateUnlocks (플래그·유물·보스·의뢰 조건) → 새로 합류한 id[]
 //    · 버스 구독 (스토리 세이브만; 아케이드 임시 세이브·아케이드 월드는 무시):
 //      bossKilled   → 보스형 합류('새 동료 합류 — 「코슈타」! …' 토스트), 알형 알 획득('「본 드래곤의 알」을 손에 넣었다 …')
-//      stageCleared → clears +1 (알·공물 주기), 장착한 동료 유대 +6
+//      stageCleared → clears +1 (알·공물 주기), 장착한 동료 유대 +6, 이번에 부화 가능해진 알 토스트('「…의 알」에 금이 가기 시작했다 …')
 //      questClaimed → 의뢰형 합류 (그레타의 의뢰)
 //      relicFound   → 유물 5개면 녹티스 합류 (마을에서 cmp_bat_arrive 뒤에 합류 연출)
 //      bondUp       → '「아리아」와의 유대가 깊어졌다 — 공명' 토스트 (유대가 오르는 모든 곳의 토스트는 여기서만 띄운다)
@@ -88,7 +88,10 @@ export function initCompanions(game) {
     for (const id of r.unlocked) toast(game, cmpText('joined', { name: nameOf(id) }), COLOR.join, 3.2);
     for (const id of r.eggs) toast(game, cmpText('egg', { egg: companionDef(id).obtain.egg }), COLOR.egg, 3.2);
   });
-  on('stageCleared', (st) => { stageClearUpdate(st); });
+  on('stageCleared', (st) => {
+    const r = stageClearUpdate(st);
+    for (const id of r.eggsReady) toast(game, cmpText('eggReady', { egg: companionDef(id).obtain.egg }), COLOR.egg, 3.2);
+  });
   on('questClaimed', (st, d) => {
     for (const id of questClaimUpdate(st, d.questId)) toast(game, cmpText('joinedTown', { name: nameOf(id) }), COLOR.join, 3.2);
   });

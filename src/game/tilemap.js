@@ -21,6 +21,8 @@ const DECOR_CHARS = new Set(['L', 'W', '|']);
 /** 위상 타일: 문자 → 키 ('A'|'B' 거울, 'even'|'odd' 심장 박동). 처음 상태는 A상·짝수 박동 (a·z 벽, b·Z 빈칸) */
 export const PHASE = { a: 'A', b: 'B', z: 'even', Z: 'odd' };
 const PHASE_SOLID0 = { a: true, b: false, z: true, Z: false };
+/** 물속에 놓일 수 있는 마커 (render/tiles.js WET_MARKERS 와 같음): 위 칸이 액체(또는 이미 젖은 마커)이거나 좌우가 모두 액체면 그 칸도 액체 */
+const WET_MARKERS = new Set(['1', '2', '3', '4', '5', '6', '7', '8', '9', '@', 'u', 'C', 'T', 'p', 'm', '$', '!']);
 
 export class TileMap {
   constructor(room) {
@@ -64,7 +66,20 @@ export class TileMap {
         }
       }
     }
+    this.wetMarkers();
     this.fillSecretPockets(room);
+  }
+  /**
+   * 물속 마커 칸을 액체로: 적·아이템·촛불 등을 물속에 두어도 그 칸만 빈칸(공기 구멍)이 되지 않게 한다.
+   * 위에서 아래로 훑어 겹쳐 쌓인 마커도 차례로 적신다 (렌더러가 물로 그리는 칸과 물리 판정을 일치시킨다)
+   */
+  wetMarkers() {
+    const W = this.w, tl = this.tiles;
+    const wet = this.markers.filter((mk) => WET_MARKERS.has(mk.ch) && tl[mk.ty * W + mk.tx] === T.EMPTY).sort((a, b) => a.ty - b.ty);
+    for (const mk of wet) {
+      const i = mk.ty * W + mk.tx;
+      if ((mk.ty > 0 && tl[i - W] === T.LIQUID) || (mk.tx > 0 && mk.tx < W - 1 && tl[i - 1] === T.LIQUID && tl[i + 1] === T.LIQUID)) tl[i] = T.LIQUID;
+    }
   }
   /**
    * 비밀 방 메우기: 가짜 벽(h) 너머에만 있는 빈 공간도 가짜 벽으로 바꿔, 밖에서 창문처럼 뚫려 보이거나

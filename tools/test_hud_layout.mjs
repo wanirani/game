@@ -32,8 +32,8 @@ const VIEWS = [
 ];
 const INSETS = { l: 47, r: 47, t: 0, b: 21 };
 
-const port = 8000 + Math.floor(Math.random() * 900);
-const srv = await start(port);
+const srv = await start(0);             // 빈 포트 (다른 에이전트의 서버와 부딪히지 않게)
+const port = srv.address().port;
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--autoplay-policy=no-user-gesture-required'] });
 
 /** 페이지 안에서 도는 검사 (문자열로 넘기지 않고 함수로 넘긴다) */
@@ -71,6 +71,10 @@ async function pageChecks({ view, INSETS }) {
       const s = safe ?? { l: 0, r: 0, t: 0, b: 0 };
       if (r.x < s.l - 0.01 || r.y < s.t - 0.01 || r.x + r.w > vw - s.r + 0.01 || r.y + r.h > vh - s.b + 0.01) bad(`${n}${f1(r)} 화면/안전 영역 밖 (vw ${vw}, safe ${JSON.stringify(s)})`);
       if (r.w < 0 || r.h < 0) bad(`${n} 음수 크기 ${f1(r)}`);
+    }
+    // 터치: y 297 아래(엄지·떠 있는 스틱 자리)에는 상시 영역이 없다 (§1.8 '터치 패드' 행; 아래 보스 칸만 예외)
+    if (L.touch && R.pad.length) {
+      for (const [n, r] of R.persistent) if (n !== 'boss' && r.h > 0 && r.y + r.h > M.TOUCH_FLOOR + 1 + 0.01) bad(`${n}${f1(r)} 가 터치 y 297 아래로 내려온다`);
     }
     // 최소 크기
     for (const [n, r] of R.toasts) if (r.w < 120) small(`${n} 너무 좁다 ${f1(r)}`);
@@ -119,6 +123,23 @@ async function pageChecks({ view, INSETS }) {
   check(`${view.id}/live`, live, { boss: live.bossShown, meters: 3, safe: live.safe, vw: g.viewW, vh: g.viewH });
   // 같은 입력 → 같은 객체 (한 프레임에 여러 번 불러도 할당 없음)
   if (M.hudLayout(w, g.viewW, g.viewH) !== live) fails.push(`${view.id}/live: 같은 입력인데 새 객체를 만든다 (기억 실패)`);
+  // 기억: 패드 쪽이 같은 사각형 객체를 제자리에서 고쳐도 배치를 다시 계산한다 / 숫자가 아닌 사각형은 무시하고, 매번 다시 계산하지도 않는다
+  if (view.touch) {
+    const mv = M.modelView(view.w, view.h);
+    const pad = M.modelPadRects({ vw: mv.vw, cssW: view.w, cssH: view.h, canvas: mv.canvas, inset: { l: 0, r: 0, t: 0, b: 0 } });
+    const o = { touch: true, safe: { l: 0, r: 0, t: 0, b: 0 }, boss: false, meters: 3 };
+    const A = M.hudLayout(null, mv.vw, 540, pad, o);
+    const top = pad.filter((p) => p.y > 162).reduce((m, p) => (p.y < m.y ? p : m));
+    const y0 = top.y; top.y = 60; // 제자리 수정 (touchScale 편집 흉내)
+    const B = M.hudLayout(null, mv.vw, 540, pad, o);
+    if (B === A || B.combo.h === A.combo.h) fails.push(`${view.id}/memo: 패드 사각형을 제자리에서 고쳤는데 배치가 그대로다 (combo h ${A.combo.h} → ${B.combo.h})`);
+    top.y = y0;
+    const withNaN = [...pad, { id: 'nan', x: NaN, y: NaN, w: 44, h: 44 }];
+    const C = M.hudLayout(null, mv.vw, 540, withNaN, o);
+    if (M.hudLayout(null, mv.vw, 540, withNaN, o) !== C) fails.push(`${view.id}/memo: NaN 사각형이 있으면 매번 다시 계산한다`);
+    for (const k of ['combo', 'transient', 'bossTop', 'bossBottom']) if (![C[k].x, C[k].y, C[k].w, C[k].h].every(Number.isFinite)) fails.push(`${view.id}/nan: ${k} 가 숫자가 아니다 ${JSON.stringify(C[k])}`);
+    if (C.pad.some((p) => p.id === 'nan')) fails.push(`${view.id}/nan: 숫자가 아닌 패드 사각형이 L.pad 에 남았다`);
+  }
   return { fails, notes, info: [...info], combos, padSource, vw: g.viewW, liveSlot: live.bossSlot, livePad: live.pad.length };
 }
 

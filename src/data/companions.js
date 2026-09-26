@@ -25,7 +25,7 @@
 //  body {w,h}(탑승 중 충돌 AABB, h ≤ 90), seat {x,y}(발 중앙 기준 안장점, 오른쪽을 볼 때), footY(골반→발걸이 깊이)
 //  move { speed, airSpeed, accel, decel, airAccel, jump, airJumps, wallJump, gallopAfter }  (Lv 1, §3.4)
 //  flight null | {type:'glide', flaps, flapVy, glideFall, glideSpeed} | {type:'fly', stamina, ascend, hoverFall, regen, airSpeed, dive, takeoff}
-//  charge { name, desc, dur, speed, mv, type, element, kb, launch, stun, cd, iframes, invuln?, pass?, superArmor?, breakWalls?,
+//  charge { name, desc, dur, speed, mv, type, element, kb, launch, stun, cd, iframes, sfx(§3.6.5 돌진 효과음, 기본 'dash'), invuln?, pass?, superArmor?, breakWalls?,
 //           trail? {life, mv, element, rehit}, dir8?, heal?, air? {name, angle, speed, maxT, mv, element, shock{r,mv}} }
 //  special { name, desc, kind, cd, air(공중 사용 가능), …kind 별 수치 }   (↓+공격, §3.9)
 //  ride {stat: value}, rideDesc          탑승 중 영웅 능력치 보너스 (유대 2단계부터 ×1.5)
@@ -120,7 +120,7 @@ const mount = (o) => {
   const d = { kind: 'mount', ...MOUNT_DEFAULTS, ...o };
   d.hazard = { spike: 1, lava: 1, poison: 1, blood: 1, ...(o.hazard || {}) };
   d.move = { airSpeed: null, wallJump: false, gallopAfter: MOUNT_RULES.gallopAfter, ...o.move };
-  d.charge = { type: 'phys', element: null, kb: [360, -220], launch: false, stun: MOUNT_RULES.charge.stun, iframes: 0, breakWalls: false, ...o.charge };
+  d.charge = { type: 'phys', element: null, kb: [360, -220], launch: false, stun: MOUNT_RULES.charge.stun, iframes: 0, breakWalls: false, sfx: 'dash', ...o.charge };
   d.special = { type: 'phys', element: null, air: false, ...o.special };
   return d;
 };

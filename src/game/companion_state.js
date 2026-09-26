@@ -428,7 +428,7 @@ export function companionAuraStats(state, hero) {
     const n = guardianSlots(state);
     for (let i = 0; i < n; i++) {
       const id = L.guards?.[i];
-      if (!isGuard(id) || !Object.hasOwn(c.owned, id)) continue;
+      if (!isGuard(id) || !Object.hasOwn(c.owned, id) || (i > 0 && id === L.guards[0])) continue; // 같은 수호신이 두 칸이면 한 번만
       const e = c.owned[id], a = GUARDIANS[id].aura;
       const mul = bondRank(e.bond) >= 2 ? 1.5 : 1, lv = intIn(e.lv, 1, CMP_MAX_LV, 1);
       for (const k of new Set([...Object.keys(a.base || {}), ...Object.keys(a.perLv || {})])) {

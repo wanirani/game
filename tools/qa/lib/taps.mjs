@@ -9,7 +9,9 @@
 //  - ui.taps (platform §6.3 registry; FONTS-FU/PLAT-CORE): taps.note(rect, kind, src) and taps.add(id, rect, {kind, slop})
 //    are wrapped (taps.record is switched on); kinds 'list'→row, 'primary', 'icon'/'arrow', 'dense';
 //  - the legacy helpers, patched on their prototypes (the audit prototype): ListMenu.hit (row), Gesture.tap (row),
-//    TapZones.add (primary), Hits.add (primary).
+//    TapZones.add (primary), Hits.add (primary);
+//  - when nothing at all was recorded (town scenes hit-test privately today): the top scene's rect fields
+//    (closeRect, tabRects, rects, …, ScrollList rows) as src 'fields'.
 // Only regions registered while the TOP scene runs update()/render() count (scenes underneath are not tappable).
 // Rect coordinates are the scene's own: UI px for scenes with uiScale (× game.uiK) and logical px otherwise.
 //
@@ -120,6 +122,23 @@ export async function auditScene(page, ev, { wait = 900, settle = 150 } = {}) {
       const prev = seen.get(k);
       if (!prev || (r.src === 'ui.taps' && prev.src !== 'ui.taps')) seen.set(k, r);
     }
+    // fallback for scenes whose hit tests go through no helper at all (town hitRect, ScrollList rows): read the
+    // well-known rect fields of the top scene (only when nothing was recorded, so a registered scene is never guessed)
+    if (!seen.size && top) {
+      const isR = (r) => r && typeof r === 'object' && ['x', 'y', 'w', 'h'].every((k) => typeof r[k] === 'number') && r.w > 0 && r.h > 0;
+      const add = (r, kind, id) => { if (isR(r)) seen.set(`f${seen.size}`, { src: 'fields', kind, id, slop: 0, x: r.x, y: r.y, w: r.w, h: r.h, ui: !!top.uiScale }); };
+      const scan = (o, depth) => {
+        if (!o || typeof o !== 'object' || depth > 1) return;
+        for (const [k, v] of Object.entries(o)) {
+          if (/^(closeRect|backRect|okRect|readRect|sortRect)$/.test(k)) add(v, 'icon', k);
+          else if (/^(tabRects|btnRects|buttonRects|rects|qRects|filterRects|modeRects|sectRects)$/.test(k) && Array.isArray(v)) v.forEach((r, i) => add(Array.isArray(r) ? r[0] : r, 'primary', `${k}[${i}]`));
+          else if (v && typeof v === 'object' && isR(v.rect) && typeof v.rowH === 'number' && typeof v.count === 'number') {
+            for (let i = 0; i < Math.min(v.count, 12); i++) add({ x: v.rect.x, y: v.rect.y + i * v.rowH - (v.scroll || 0), w: v.rect.w, h: v.rowH }, 'row', `${k}.row${i}`);
+          } else if (/^(list|modal|popup|cur|panel)$/.test(k)) scan(v, depth + 1);
+        }
+      };
+      scan(top, 0);
+    }
     const vw = top?.uiScale ? (g.uiW ?? g.viewW / uiK) : g.viewW, vh = top?.uiScale ? (g.uiH ?? g.viewH / uiK) : g.viewH;
     const regions = [];
     for (const r of seen.values()) {
@@ -189,7 +208,7 @@ export const VISITS = {
     ['church', `(${BACK},__game.push('church',{world:__game.world,from:'hub'}))`, 1200],
     ['questboard', `(${BACK},__game.push('questboard',{world:__game.world,from:'hub'}))`, 1200],
     ['party', `(${BACK},__game.push('party',{world:__game.world,from:'hub'}))`, 1200],
-    ['worldmap', `(${BACK},__game.push('worldmap',{world:__game.world,from:'hub'}))`, 1300],
+    ['worldmap', `(${BACK},__game.push('worldmap',{world:__game.world,from:'hub'}))`, 1300, { pkg: 'WORLDMAP-P2' }],
   ],
   games: [
     ['inn', "__game.go('inn',{},{fade:false})", 1500],
@@ -201,7 +220,7 @@ export const VISITS = {
   ],
   pause: [['pause', "__game.push('pause',{world:__game.world})", 1000]],
   dialogue: [['dialogue', "__game.push('dialogue',{npc:'npc_marta',world:__game.world})", 2400]],
-  results: [['results', "__game.push('results',{world:__game.world})", 2600]],
+  results: [['results', "__game.push('results',{world:__game.world})", 2600, { regions: false }]], // tap anywhere = continue
 };
 /** Base URL per group (the scene the visits start from). */
 export const VISIT_BASE = {

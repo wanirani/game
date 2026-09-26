@@ -24,6 +24,7 @@ export const HUD_GAP = 8;        // 영역 사이 최소 간격
 export const TOAST_ROW = 26;     // 토스트 한 줄 높이
 export const METER_ROW = 20;     // 기믹 게이지 줄 간격
 export const METER_H = 16;       // 기믹 게이지 한 줄 높이
+export const TOUCH_FLOOR = 296;  // 터치: 상시 영역의 아래 끝 한계 (§1.8 'no persistent HUD below y 297 on touch'; 아래 보스 칸만 예외)
 
 const R = (x, y, w, h) => ({ x, y, w, h });
 const ZERO = Object.freeze({ l: 0, r: 0, t: 0, b: 0 });
@@ -284,32 +285,44 @@ function build(vw, vh, T, S, pad, bossOn, nM) {
   return L;
 }
 
-// 한 칸짜리 기억 (같은 입력 → 같은 객체)
+// 한 칸짜리 기억 (같은 입력 → 같은 객체).
+// 패드는 사각형 객체가 아니라 숫자 값(x,y,w,h)을 적어 둔다: 패드 쪽이 같은 객체를 제자리에서 고쳐도(크기·배치 편집) 바뀐 것을 알아챈다
 let memo = null;
 const memoArgs = [];
-function samePad(a, b) {
-  if (a === b) return true;
-  if (!a || !b || a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i++) {
-    const p = a[i], q = b[i];
-    if (p.x !== q.x || p.y !== q.y || p.w !== q.w || p.h !== q.h) return false;
+const memoPad = [];
+function samePad(snap, pad) {
+  if (snap.length !== pad.length * 4) return false;
+  for (let i = 0, j = 0; i < pad.length; i++, j += 4) {
+    const p = pad[i];
+    if (!p || !Object.is(snap[j], p.x) || !Object.is(snap[j + 1], p.y) || !Object.is(snap[j + 2], p.w) || !Object.is(snap[j + 3], p.h)) return false;
   }
   return true;
+}
+/** 패드 사각형 복사본 (숫자가 아니거나 크기가 없는 것은 버린다 — 배치 전 NaN 등) */
+function cleanPad(pad) {
+  const out = [];
+  for (const p of pad) {
+    if (!p || !(Number.isFinite(p.x) && Number.isFinite(p.y) && p.w > 0 && p.h > 0 && Number.isFinite(p.w) && Number.isFinite(p.h))) continue;
+    out.push(p.id != null ? { id: p.id, x: p.x, y: p.y, w: p.w, h: p.h } : { x: p.x, y: p.y, w: p.w, h: p.h });
+  }
+  return out;
 }
 
 export function hudLayout(world, vw, vh, pad, opts) {
   vw = vw ?? game.viewW; vh = vh ?? game.viewH ?? VIEW_H;
-  const T = opts?.touch ?? hudTouch();
+  const T = !!(opts?.touch ?? hudTouch());
   const S = opts?.safe ?? hudSafe(world?.game ?? game);
   if (!Array.isArray(pad)) pad = hudPadRects(T);
-  const bossOn = opts?.boss ?? bossBarShown(world);
+  const bossOn = !!(opts?.boss ?? bossBarShown(world));
   const gm = world?.gimmick?.meterRows;
-  const nM = opts?.meters ?? (Number.isFinite(gm) ? gm : 3);
+  const nM = clamp(Math.round(Number(opts?.meters ?? (Number.isFinite(gm) ? gm : 3))) || 0, 0, 3);
   const a = memoArgs;
   if (memo && a[0] === vw && a[1] === vh && a[2] === T && a[3] === (S.l || 0) && a[4] === (S.r || 0) && a[5] === (S.t || 0) && a[6] === (S.b || 0)
-    && a[7] === bossOn && a[8] === nM && samePad(a[9], pad)) return memo;
-  memo = build(vw, vh, T, S, pad, bossOn, nM);
-  a.length = 0; a.push(vw, vh, T, S.l || 0, S.r || 0, S.t || 0, S.b || 0, bossOn, nM, pad.slice());
+    && a[7] === bossOn && a[8] === nM && samePad(memoPad, pad)) return memo;
+  memo = build(vw, vh, T, S, cleanPad(pad), bossOn, nM);
+  a.length = 0; a.push(vw, vh, T, S.l || 0, S.r || 0, S.t || 0, S.b || 0, bossOn, nM);
+  memoPad.length = 0;
+  for (const p of pad) memoPad.push(p?.x, p?.y, p?.w, p?.h);
   return memo;
 }
 

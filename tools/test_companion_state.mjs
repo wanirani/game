@@ -128,11 +128,12 @@ t('울음소리 배율·보조음 (§1.2)', () => {
 });
 t('울음·발굽 효과음 이름이 MASTER_PLAN §1.9 등록부에 있다', () => {
   const REG = new Set(('neigh gallop hoof_land boar_grunt wolf_howl wolf_bite wing_flap roar_small fire_breath screech bone_rattle fairy_chime knight_guard imp_cackle owl_hoot '
-    + 'gear_whir scythe soul_reap stag_call griffin_cry mirror_chime jelly_zap momo_gulp fire footstep').split(' '));
+    + 'gear_whir scythe soul_reap stag_call griffin_cry mirror_chime jelly_zap momo_gulp fire footstep dash').split(' '));
   for (const id of D.COMPANION_ORDER) {
     const d = D.companionDef(id);
     ok(REG.has(d.cry.sfx) && (!d.cry.extra || REG.has(d.cry.extra)), id + ' 울음 ' + JSON.stringify(d.cry));
     if (d.hoof) ok(REG.has(d.hoof.sfx), id + ' 발굽 ' + d.hoof.sfx);
+    if (d.charge) ok(REG.has(d.charge.sfx), id + ' 돌진 효과음 ' + d.charge.sfx);
   }
 });
 t('보스 id 가 실제 보스 데이터에 있다', () => {
@@ -536,6 +537,9 @@ t('오라 능력치 (computeStats 훅 값)', () => {
   eq(S.companionAuraStats(s, 'kael'), { hpRegen: 1.2, resHoly: 15, luck: 10, dropBonus: 12 });
   s.progress.chapter = 7; // 2번 칸 잠김 → 오라도 1칸만
   eq(S.companionAuraStats(s, null), { hpRegen: 1.2, resHoly: 15 });
+  s.progress.chapter = 8; s.heroes.kael.companions.guards = ['gd_fairy', 'gd_fairy']; // 런타임이 잘못 써 넣어도
+  eq(S.companionAuraStats(s, null), { hpRegen: 1.2, resHoly: 15 }, '같은 수호신 두 칸 → 오라 한 번');
+  s.progress.chapter = 7; s.heroes.kael.companions.guards = ['gd_fairy', 'gd_owl'];
   eq(S.companionAuraStats(oldSave(), null), {}, '동료 필드가 없는 세이브는 {}');
   eq(S.companionAuraStats(null, null), {});
   // computeStats 에 더하면 (GAME-HOOKS 훅과 같은 줄) 능력치 키가 모두 유효
@@ -686,6 +690,11 @@ t('스테이지 클리어 → clears · 유대 · 유대 토스트 (월드 없�
   bus.emit('stageCleared', { stageId: 's04', rank: 'A' });
   eq([st.companions.clears, st.companions.owned.mt_boar.bond], [1, 16]);
   eq(g.toasts, [['「바르그」와의 유대가 깊어졌다 — 신뢰', '#ffb0d0', 2.8]]);
+  S.obtainEgg(st, 'gd_whelp', { silent: true }); g.toasts.length = 0;
+  bus.emit('stageCleared', { stageId: 's05' }); eq(g.toasts.length, 0, '알은 아직');
+  bus.emit('stageCleared', { stageId: 's06' });
+  eq(g.toasts.map((x) => x[0]), ['「본 드래곤의 알」에 금이 가기 시작했다 — 영혼의 마구간으로 가 보자']);
+  bus.emit('stageCleared', { stageId: 's06' }); eq(g.toasts.length, 1, '이미 부화 가능한 알은 다시 알리지 않는다');
 });
 t('의뢰 보상 수령(마을) → 하티 합류', () => {
   const g = fakeGame(freshState({ chapter: 2 }), 'town'); E.initCompanions(g);

@@ -29,12 +29,12 @@ try {
       // one page per viewport: stage s04 → menu (equip) → hub → title (the backing store does not depend on the scene)
       const s = await env.page(vp, 'index.html?scene=stage&stage=s04');
       await s.waitGame('!!g.world?.player');
-      await s.wait(1800);
+      await s.wait(1200);
       const snap = async (name) => { const r = await s.eval(() => { const g = window.__game, c = g.canvas; return { scenes: g.scenes.map((x) => x.name).join('>'), w: c.width, h: c.height, dpr: g.dpr, quality: g.settings?.quality }; }); r.tier = (await tierOf(s)) || (VIEWPORTS[vp].touch ? 'medium' : 'high'); return { name, ...r }; };
       const info = [await snap('stage')];
-      await s.eval("import('/tools/menu_seed.js?seed=1&tab=equip')"); await s.wait(1200); info.push(await snap('menu'));
-      await s.eval(() => __game.go('hub', {}, { fade: false })); await s.wait(1500); info.push(await snap('hub'));
-      await s.eval(() => __game.go('title', {}, { fade: false })); await s.wait(1200); info.push(await snap('title'));
+      await s.eval("import('/tools/menu_seed.js?seed=1&tab=equip')"); await s.wait(900); info.push(await snap('menu'));
+      await s.eval(() => __game.go('hub', {}, { fade: false })); await s.wait(1000); info.push(await snap('hub'));
+      await s.eval(() => __game.go('title', {}, { fade: false })); await s.wait(800); info.push(await snap('title'));
       const worst = info.reduce((a, b) => (b.w * b.h > a.w * a.h ? b : a));
       const mp = (worst.w * worst.h) / 1e6, budget = PIXEL_BUDGET_MP[worst.tier] ?? 3.7;
       await suite.check({ id: `budget.${vp}`, group: 'budget', issue: 'P-11', pkg: 'PLAT-CORE', title: `backing store within the '${worst.tier}' pixel budget`, session: s }, async () => ({
@@ -226,11 +226,11 @@ try {
       await installTapRecorder(s.page);
       for (const [name, ev, wait, opt = {}] of VISITS[group]) {
         const a = await auditScene(s.page, ev, { wait });
-        await suite.check({ id: `taps.${name}.${vp}`, group, issue: 'P-04', pkg: pkgOf(group), title: `${name}: tap targets ≥ §6.3 minimums at ${VIEWPORTS[vp].css.w}×${VIEWPORTS[vp].css.h}`, session: s }, async () => ({
+        await suite.check({ id: `taps.${name}.${vp}`, group, issue: 'P-04', pkg: opt.pkg || pkgOf(group), title: `${name}: tap targets ≥ §6.3 minimums at ${VIEWPORTS[vp].css.w}×${VIEWPORTS[vp].css.h}`, session: s }, async () => ({
           pass: !a.error && a.ok && (a.n > 0 || opt.regions === false), detail: a.error || (a.n ? describeAudit(a) : `${a.top}: no tap regions recorded`), metrics: a.error ? null : { n: a.n, red: a.red.length, yellow: a.yellow.length, regions: a.regions.slice(0, 40) },
         }));
         if (vp === 'phone2' && !a.error && opt.scale !== false) {
-          await suite.check({ id: `scale.${name}`, group, issue: 'P-03', pkg: pkgOf(group), title: `${name}: uiScale opt-in, text p10 ≥ 9 and median ≥ 10 CSS px at 740×360` }, async () => ({
+          await suite.check({ id: `scale.${name}`, group, issue: 'P-03', pkg: opt.pkg || pkgOf(group), title: `${name}: uiScale opt-in, text p10 ≥ 9 and median ≥ 10 CSS px at 740×360` }, async () => ({
             pass: a.uiScale && a.uiK >= 1.2 && a.text.n > 0 && a.text.p10 >= 9 && a.text.median >= 10,
             detail: `uiScale ${a.uiScale}, uiK ${a.uiK}, text n ${a.text.n} min ${a.text.min} p10 ${a.text.p10} median ${a.text.median} css px; smallest ${a.text.smallest.join(', ')}`,
           }));
