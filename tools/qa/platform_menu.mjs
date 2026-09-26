@@ -126,7 +126,11 @@ try {
     for (const vp of suite.vps(['phone2', 'phone1'])) {
       const s = await menuPage(vp, 'status');
       await installTapRecorder(s.page);
-      for (const tab of ALL_TABS) {
+      // every tab the menu really has (MENU_TABS), so a tab added later (동료, PLAT-MENU) is audited too
+      const tabs = await s.eval(async (fallback) => {
+        try { const M = await import('/src/scenes/menu/menu.js'); const ids = (M.MENU_TABS || []).map((t) => t.id).filter(Boolean); return ids.length ? ids : fallback; } catch { return fallback; }
+      }, ALL_TABS);
+      for (const tab of tabs) {
         const a = await auditScene(s.page, `import('/tools/menu_seed.js?tab=${tab}&n=${tab}${vp}')`, { wait: 1000 });
         await suite.check({ id: `taps.${tab}.${vp}`, group: 'taps', issue: 'P-04', pkg: 'PLAT-MENU', title: `menu ${tab}: tap targets ≥ §6.3 minimums at ${VIEWPORTS[vp].css.w}×${VIEWPORTS[vp].css.h}`, session: s }, async () => ({
           pass: !a.error && a.ok && a.n > 0, detail: a.error || (a.n ? describeAudit(a) : 'no tap regions recorded'), metrics: a.error ? null : { n: a.n, red: a.red.length, yellow: a.yellow.length, regions: a.regions.slice(0, 40), text: a.text },

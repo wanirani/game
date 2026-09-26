@@ -543,7 +543,7 @@ export function prewarm() {
   HITFX_STATS.prewarmed = true;
   const jobs = [];
   for (const c of WARM_COLORS) jobs.push(() => { cut(c); glow(c); }, () => { star(c); streak(c); ring(c); });
-  jobs.push(() => { star('#aef0ff'); star('#ffe080'); star('#fff0b0'); glow('#ff9a30'); glow('#ffffff'); });
+  jobs.push(() => { star('#aef0ff'); star('#ffe080'); star('#fff0b0'); glow('#ff9a30'); glow('#ffb050'); glow('#ffffff'); soft('rgba(255,40,70,0.35)'); });
   for (const s of ['normal', 'crit', 'weak', 'resist', 'counter', 'ult', 'total', 'hurt', 'heal']) jobs.push(() => digitAtlas(s));
   jobs.push(() => { for (const c of ['#8a8074', '#3a3440', '#ff7a1a', '#ffd070', '#5a1a7a', '#5a0610', '#bff4ff', '#fff', '#ff2040', '#ffffff']) soft(c); });
   jobs.push(() => { for (const k of Object.keys(DECAL_KIND)) for (let i = 0; i < DECAL_KIND[k].n; i++) decalSprite(k, i); });

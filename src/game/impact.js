@@ -252,9 +252,14 @@ function hitfxLive() {
   return _hfxLive;
 }
 
-/** 캐시 스프라이트 한 장을 가산 합성으로 튀겨 그린다 (0.7→1.2배로 2프레임 안에 커졌다가 사라짐) */
+/**
+ * 캐시 스프라이트 한 장을 가산 합성으로 튀겨 그린다 (2프레임 안에 1.2배까지 커졌다가 사라짐). 반환: 방출 수 (0|1)
+ * particles.js 의 'sprite' 모양(fx.sprite, FEEL-REACT)이 있으면 그걸 쓰고, 없으면 fx.ghost 로 그린다.
+ */
 function emitSprite(fx, img, x, y, size, angle = 0, life = 0.12, alpha = 1) {
-  if (!img || !fx?.ghost) return;
+  if (!img) return 0;
+  if (typeof fx?.sprite === 'function') return fx.sprite(img, x, y, { size, angle, life, alpha }) ? 1 : 0;
+  if (!fx?.ghost) return 0;
   const iw = img.width || 1, ih = img.height || 1, s0 = size / Math.max(iw, ih);
   fx.ghost((ctx, a) => {
     const k = clamp(1 - a * 2, 0, 1);
@@ -268,6 +273,7 @@ function emitSprite(fx, img, x, y, size, angle = 0, life = 0.12, alpha = 1) {
     ctx.drawImage(img, -iw * sc / 2, -ih * sc / 2, iw * sc, ih * sc);
     ctx.restore();
   }, life, 'front');
+  return 1;
 }
 /** 품질 예산에 맞춘 정확한 개수 방출 (fx.burst 의 품질 배율을 두 번 곱하지 않도록) */
 function emitN(fx, type, x, y, n, opts) {
@@ -459,15 +465,21 @@ function hitVisuals(world, attack, target, info, cls, px, py, dir) {
     else if (typ === 'star') { img = HFX.star(rim); ang = rand(0, Math.PI); }
     else if (typ === 'bullet') { img = HFX.star('#fff0b0'); ang = rand(0, Math.PI); }
     else img = HFX.glow(rim);
-    emitSprite(fx, img, px, py, size, ang, spr.life);
-    if (typ === 'star' && !small) emitSprite(fx, HFX.ring(rim), px, py, size * 1.4, 0, spr.life * 1.4, 0.8);
-    if (info.counter) emitSprite(fx, HFX.star(COUNTER.color), px, py, 80, rand(0, 1), 0.16);
-    if (info.crit && !small) emitSprite(fx, HFX.star('#ffe080'), px, py, size * 0.9, rand(0, 1), 0.16, 0.9);
+    // 한 타격의 파티클 합계 ≤ BUDGET[q].perHit (스프라이트·재질 파편·속성 강조 모두 포함; 재질 파편은 hitfx 가 perHit − 6 안에서)
+    const cap = BUDGET[q]?.perHit ?? 28;
+    let n = emitSprite(fx, img, px, py, size, ang, spr.life);
+    if (typ === 'star' && !small) {
+      n += emitSprite(fx, HFX.ring(rim), px, py, size * 1.4, 0, spr.life * 1.4, 0.8);
+      // 둔기: 땅에 선 대상이면 발밑 타원 고리 (feel §4.7 (1))
+      if (target.onGround && typeof fx.ering === 'function' && n < cap) { fx.ering(px, target.bottom ?? py, { color: rim, r0: 8, r1: size * 0.55, ry: 0.28, life: 0.22, width: 3 }); n++; }
+    }
+    if (info.counter) n += emitSprite(fx, HFX.star(COUNTER.color), px, py, 80, rand(0, 1), 0.16);
+    if (info.crit && !small) n += emitSprite(fx, HFX.star('#ffe080'), px, py, size * 0.9, rand(0, 1), 0.16, 0.9);
     // (2) 재질 파편 (hitfx 가 예산 안에서 방출; 소품은 불꽃 몇 개)
-    if (mat === 'prop') emitN(fx, 'spark', px, py, 4 * qk, { color: MATERIAL.prop.color });
-    else if (!small || Math.random() < 0.5) HFX.materialBurst(fx, mat, px, py, dir, small ? 'L' : (cls === 'S' || cls === 'A') ? 'F' : cls, el ? rim : null);   // hitfx 표는 L/M/H/F
-    // (3) 속성 강조
-    if (el && EL_PRESET[el]) emitN(fx, EL_PRESET[el], px, py, (small ? 3 : 6) * qk, {});
+    if (mat === 'prop') n += emitN(fx, 'spark', px, py, Math.min(4 * qk, Math.max(0, cap - n)), { color: MATERIAL.prop.color });
+    else if (!small || Math.random() < 0.5) n += HFX.materialBurst(fx, mat, px, py, dir, small ? 'L' : (cls === 'S' || cls === 'A') ? 'F' : cls, el ? rim : null) || 0;   // hitfx 표는 L/M/H/F
+    // (3) 속성 강조 (남은 예산 안에서)
+    if (el && EL_PRESET[el]) emitN(fx, EL_PRESET[el], px, py, Math.min((small ? 3 : 6) * qk, Math.max(0, cap - n)), {});
     // (4) 자국
     const M = MATERIAL[mat];
     if (M?.decal && q !== 'low' && !small) {

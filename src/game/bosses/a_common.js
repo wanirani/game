@@ -546,6 +546,12 @@ function heldHitboxUpdate(dt, world) {   // [hook:feel]
   if (heldByFreeze(world, this.owner)) return;
   Hitbox.prototype.update.call(this, dt, world);
 }
+/** 보스가 직접 만드는 판정(장판 등)용 Hitbox: new Hitbox(o) 와 같지만 적 정지 중에는 멈춘다. o.owner = 보스 */
+export function bossHitbox(o) {   // [hook:feel]
+  const hb = new Hitbox(o);
+  hb.update = heldHitboxUpdate;
+  return hb;
+}
 function drawEruption(ctx, h, world) {
   const floor = h.y + h.h, cx = h.x + h.w / 2;
   if (h.owner && (h.owner.dying > 0)) { h.dead = true; return; }

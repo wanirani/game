@@ -33,13 +33,13 @@ export const SLOP_MAX_LOGICAL = 28;
 export async function installTapRecorder(page) {
   await page.evaluate(async () => {
     if (window.__qaTaps) return;
-    const R = window.__qaTaps = { list: [], text: [], cur: null, on: true };
+    const R = window.__qaTaps = { list: [], text: [], cur: null, on: true, frame: 0 };
     const g = window.__game;
     const KIND = { list: 'row', row: 'row', primary: 'primary', icon: 'icon', dense: 'dense', arrow: 'icon', button: 'primary' };
     const rec = (src, kind) => (r, extra = {}) => {
       if (!R.on || !r || !(r.w > 0) || !(r.h > 0)) return;
       if (R.cur !== g.top) return;
-      R.list.push({ src, kind: KIND[extra.kind] || kind, id: extra.id ?? null, slop: extra.slop || 0, auto: !!extra.auto, hit: extra.hit !== false, x: r.x, y: r.y, w: r.w, h: r.h, scene: g.top?.name, ui: !!g.top?.uiScale });
+      R.list.push({ src, kind: KIND[extra.kind] || kind, id: extra.id ?? null, slop: extra.slop || 0, auto: !!extra.auto, hit: extra.hit !== false, x: r.x, y: r.y, w: r.w, h: r.h, scene: g.top?.name, ui: !!g.top?.uiScale, f: R.frame });
     };
     const wrapScene = (sc) => {
       if (!sc || sc.__qaTapWrap) return;
@@ -51,9 +51,9 @@ export async function installTapRecorder(page) {
       }
     };
     const T = g.tick.bind(g);
-    g.tick = function (dt) { for (const sc of g.scenes) wrapScene(sc); return T(dt); };
+    g.tick = function (...a) { for (const sc of g.scenes) wrapScene(sc); return T(...a); };
     const Rn = g.render.bind(g);
-    g.render = function () { for (const sc of g.scenes) wrapScene(sc); return Rn(); };
+    g.render = function (...a) { R.frame++; for (const sc of g.scenes) wrapScene(sc); return Rn(...a); };
     const P = (obj, name, src, kind, argi, optsi = -1) => {
       if (!obj || typeof obj[name] !== 'function') return;
       const o = obj[name]; const f = rec(src, kind);
@@ -123,9 +123,14 @@ export async function auditScene(page, ev, { wait = 900, settle = 150 } = {}) {
     const backingPerCss = g.canvas.width / cv.width;
     const uiK = typeof g.uiK === 'number' && g.uiK > 0 ? g.uiK : 1;
     const top = g.top;
-    // one region per geometry; an explicit registry kind wins over a guessed one
+    // one region per geometry; an explicit registry kind wins over a guessed one. taps.add regions are re-registered
+    // every drawn frame and the registry hit-tests only the last batch, so only the newest frame of them counts (a
+    // button that bobs or slides by a pixel is one target, not two overlapping ones); legacy helpers are unioned
+    // over the sampled frames (some only report a rect on the frames they hit-test)
+    const lastAdd = R.list.reduce((m, r) => (r.auto && r.f > m ? r.f : m), -1);
     const seen = new Map();
     for (const r of R.list) {
+      if (r.auto && r.f !== lastAdd) continue;
       const k = [Math.round(r.x), Math.round(r.y), Math.round(r.w), Math.round(r.h)].join(',');
       const prev = seen.get(k);
       if (!prev || (r.src === 'ui.taps' && prev.src !== 'ui.taps')) seen.set(k, r);

@@ -169,7 +169,8 @@ try {
     const L = await padLayout(s.page);
     const main = ['attack', 'jump', 'dash'].map((id) => L.buttons[id]).filter(Boolean);
     const low = main.length === 3 && main.every((b) => b.cy >= box.bottom + 40);
-    await suite.check({ id: 'band.tablet', group: 'band', issue: 'P-20', gate: PKG, title: 'tablet: canvas top-aligned; attack/jump/dash centred ≥ 40 px below the canvas (in the band)', session: s }, async () => ({ pass: box.y <= 1 && low, detail: `canvas y ${box.y.toFixed(0)}..${box.bottom.toFixed(0)}; button centres ${main.map((b) => b.cy.toFixed(0)).join(', ')} [${L.source}]` }));
+    // the canvas position comes from game.resize (PLAT-CORE), the band layout from touchpad.js: pending until both landed
+    await suite.check({ id: 'band.tablet', group: 'band', issue: 'P-20', gate: [PKG, 'PLAT-CORE'], title: 'tablet: canvas top-aligned; attack/jump/dash centred ≥ 40 px below the canvas (in the band)', session: s }, async () => ({ pass: box.y <= 1 && low, detail: `canvas y ${box.y.toFixed(0)}..${box.bottom.toFixed(0)}; button centres ${main.map((b) => b.cy.toFixed(0)).join(', ')} [${L.source}]` }));
     await suite.errors({ id: 'band.errors', group: 'band' }, s);
     await s.close();
   }, env);

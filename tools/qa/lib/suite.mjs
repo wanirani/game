@@ -80,10 +80,12 @@ export class Suite {
   wants(group) { return (!this.args.only || this.args.only.includes(group)) && !this.args.skip.includes(group); }
   /** Viewport filter from --vp. */
   vps(defaults) { return this.args.vp ? defaults.filter((v) => this.args.vp.includes(v)) : defaults; }
-  landed(pkg) { return this.args.strict || !pkg || !!this.markers[pkg]; }
+  /** pkg: a key, or an array of keys that must all have landed (a feature split over two packages). */
+  landed(pkg) { return this.args.strict || !pkg || (Array.isArray(pkg) ? pkg.every((k) => !!this.markers[k]) : !!this.markers[pkg]); }
 
   /**
-   * meta: { id, group, issue, pkg, gate, title, session? }  — gate = package key whose landing activates the check.
+   * meta: { id, group, issue, pkg, gate, title, session? }  — gate = package key (or keys, all needed) whose landing
+   * activates the check.
    * fn() → { pass, detail, metrics } | boolean. Thrown errors become status 'error'.
    */
   async check(meta, fn) {
@@ -97,8 +99,9 @@ export class Suite {
       r = { status: 'error', detail: 'HARNESS ' + String(e?.message || e).split('\n')[0].slice(0, 300) };
     }
     const gated = meta.gate && !HEADLINE.includes(meta.issue) && !this.landed(meta.gate);
+    const gateName = Array.isArray(meta.gate) ? meta.gate.join('+') : meta.gate;
     const rec = {
-      id: meta.id, group: meta.group, issue: meta.issue || null, pkg: meta.pkg || meta.gate || null, gate: meta.gate || null,
+      id: meta.id, group: meta.group, issue: meta.issue || null, pkg: meta.pkg || gateName || null, gate: gateName || null,
       title: meta.title || '', status: r.status, detail: r.detail, metrics: r.metrics, ms: Date.now() - t, at: Date.now() - this.t0,
     };
     if ((r.status === 'fail' || r.status === 'error') && gated) { rec.status = 'pending'; rec.would = r.status; }
