@@ -1,0 +1,185 @@
+{
+ "package": "ART-BOSS-4",
+ "model": "kling-image-v3_0_omni (image_to_image, img_resolution 2k unless noted)",
+ "prompts": "tools/painted/prompts/art-boss-4.mjs (SHOTS; fq_torso_retry prompt is logged below)",
+ "refs": {
+  "image_1": "portrait (assets/portraits/<boss>.webp → PNG, file_upload)"
+ },
+ "generations": [
+  {
+   "boss": "b_frostqueen",
+   "shot": "fq_head_a",
+   "generationId": "ATTyjLhpY587QnMiTbCcyXafNGK-v-XvKAUFFwIDeDghq_lapFpw3e1typiINx9V8gemuJ4E",
+   "aspect": "1:1",
+   "imageCount": 2,
+   "decision": "#1 kept → raw/b_frostqueen/head_a (profile right, icicle crown, cracked porcelain skin, frost veins, glowing eyes). #2 unused (ponytail, less regal)."
+  },
+  {
+   "boss": "b_frostqueen",
+   "shot": "fq_head_b",
+   "generationId": "AZxa6Od7QWxSbpNDkzU1PhlfBLsEfyVshOMDTY9PlHZeUb4pNn6xoI1gfMbamSi781BdaxIB",
+   "aspect": "1:1",
+   "imageCount": 1,
+   "decision": "kept → raw/head_b (screaming variant, image_2 = head_a Kling result URL; same crown/hair/cracks, split fanged mouth). Used for cast/attack/phase frames."
+  },
+  {
+   "boss": "b_frostqueen",
+   "shot": "fq_torso",
+   "generationId": "AQ3wSKOxSQZ6IQARu269vEFIQ95MX03ya76GZearrdmxKhEurL7Wk4xX7g-hH0GeVXlD0Pjv",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "decision": "both rejected: #1 paper-craft bodice on a mannequin, #2 corset only (no shoulders/neck) with a stray grey disc."
+  },
+  {
+   "boss": "b_frostqueen",
+   "shot": "fq_torso_retry",
+   "generationId": "ARa9_T6JDVslCDM22ACed0zB6BTUu2yQijopSnlHtdRmBaqCw0e1nakctl-e7nevKKs3R6mr",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "decision": "#2 kept → raw/torso_a (cracked-porcelain bodice in near profile, shoulder spikes, heart crystal). #1 unused (front 3/4 view, would not match the profile head).",
+   "prompt": "fq_torso prompt + \"not paper, not a mannequin, not a dress form … The living upper body … from the base of the neck down to the waist … both arms cut off at the shoulder joints leaving round stumps … sharp ice spikes rising from the shoulders\""
+  },
+  {
+   "boss": "b_frostqueen",
+   "shot": "fq_skirt",
+   "generationId": "AYV5wPa8P5DuvpICKilj8jTpgy8gvw0ZJ5aDtGdRvvc7ggyG-dTVlbjIgM6n5jelt8JLc5LS",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "decision": "#1 kept → raw/skirt_a (ice bell with screaming frozen faces and hands trapped inside — the grotesque centrepiece). #2 unused (cleaner, less icy)."
+  },
+  {
+   "boss": "b_frostqueen",
+   "shot": "fq_arm",
+   "generationId": "ATdty1g9CaRUf_16jZoUUjv8EeoLLe6K-fvyve7NoyfqwNixJMqfQVdTWj2lxnk-HHKo67eF",
+   "aspect": "4:3",
+   "imageCount": 1,
+   "decision": "kept → raw/arm_a (3 whole arms: cracked claw arm, cracked open-hand arm, skeletal arm → phase-2 bone arm)."
+  },
+  {
+   "boss": "b_frostqueen",
+   "shot": "fq_collar",
+   "generationId": "Ads9v-_HKRDv8ouhWRa3tDrMns6cX3Qk2fhTClRIaPV9GufEgXTmgRMuwS-60NCPeT3tYVbc",
+   "aspect": "4:3",
+   "imageCount": 1,
+   "decision": "kept → raw/collar_a (ice-blade fan halo; grey root disc + floor shadow masked out in the config)."
+  },
+  {
+   "boss": "b_frostqueen",
+   "shot": "fq_victims",
+   "generationId": "AVDFJZW5NkHDhigB5FUoa3Fwff-VNPVurl0P3k2dmfCZdew3KTfO7lQAMVmNU4kM3fdC0Xtz",
+   "aspect": "16:9",
+   "imageCount": 1,
+   "decision": "kept → raw/victims_a (2 frozen arms on ice bases, frozen skull, skeletal hand) — writhing hem victims + death debris."
+  },
+  {
+   "boss": "b_frostqueen",
+   "shot": "fq_shards",
+   "generationId": "AXXXLkg70lpSMn2odM0SiH3rhJ54UmJGyStUUI0Pwy7k4G7a9XEJeY_x_sMbjeR2OHYgzXUf",
+   "aspect": "16:9",
+   "imageCount": 1,
+   "decision": "kept → raw/shards_a (9 ice shards/chunks) — death shatter, hit chips."
+  },
+  {
+   "boss": "b_frostqueen",
+   "shot": "fq_hazard",
+   "generationId": "AfwFGWDleWiyAVtuZYzX4jyzDgVAHOfUvCCuqznqaLcbbpCCA4b_xkkaxJyOgQlBBVNHgyt1",
+   "aspect": "16:9",
+   "imageCount": 1,
+   "decision": "kept → raw/hazard_a (crystal pillar, icicle, spike cluster) — painted hazards (pillars, icicle rain, wall spikes)."
+  },
+  {
+   "boss": "b_frostqueen",
+   "shot": "fq_cape_tex",
+   "generationId": "Aau4k_zhXhniIbY0SxIo7Ks-VWh9FNHncrjt48adhU-bLglDD6PxF3_Gg3alB_Hs6ztltVrm",
+   "aspect": "1:1",
+   "imageCount": 1,
+   "decision": "kept, 1k → centre crop, seamless (tools/kling/seamless_lib.make_seamless), 256² → raw/cape_tex (veil/cape pattern)."
+  },
+  {
+   "boss": "b_death",
+   "shot": "dt_hood",
+   "generationId": "AWbBPVNf_H2g0o1I3QvfIjAwmnfKRQxsWLtwqFNfmfSRB2Vi4VMksRiQbrHvb70784mC9C1X",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "decision": "#1 kept → raw/b_death/hood_a (hooded cracked skull, green soul-fire eyes, bone studs on the hood; jaw cut by mask). #2 unused (no hood)."
+  },
+  {
+   "boss": "b_death",
+   "shot": "dt_torso",
+   "generationId": "Ac-K2si0huHXWpGK_w4yyYbtr4v2xeRyE2GQP99t7oLfDwsdlHxWJo2pFeAPyXda4yk3-h3D",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "decision": "#2 kept → raw/torso_a (headless cloaked torso, spiky mantle, open ribcage with soul fire, skull necklace). #1 rejected (includes the head)."
+  },
+  {
+   "boss": "b_death",
+   "shot": "dt_arm",
+   "generationId": "AQYnChgSyio1l9pLA4_pFfC2kfB2QTGE4o28tasphhC--BKcKUf5hl51ToSXn814ru-IPjwE",
+   "aspect": "4:3",
+   "imageCount": 1,
+   "decision": "kept → raw/arm_a (humerus, short bone, fist+forearm, open hand+forearm)."
+  },
+  {
+   "boss": "b_death",
+   "shot": "dt_scythe",
+   "generationId": "ARfLKZ5i0dLTX51nloI9kHhm16xrUB9XhYviYYXgtP0P3fLaAswLtgFid255rp4inW5arSBk",
+   "aspect": "21:9",
+   "imageCount": 1,
+   "decision": "kept → raw/scythe_a (blade and vertebra-wrapped shaft with skull cap, separate)."
+  },
+  {
+   "boss": "b_death",
+   "shot": "dt_skull2",
+   "generationId": "AWlKk13PRK2b31pXLs2AIn55C5D6qFOcGi5iQ3wHWhE1tbmFBiEnxXx2P0SLR5VcAS1J7f44",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "decision": "#2 kept → raw/skull2_a (horned skull facing right, open jaw, soul fire from the cracks). #1 unused (faces left)."
+  },
+  {
+   "boss": "b_death",
+   "shot": "dt_rib2",
+   "generationId": "AR80Jrpd8Gi20y70HflPAhRcnmnv9Qwom3Cokfb8erqAS_x3ORLXqIfbukNcg9zIGWP2NoaQ",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "decision": "#1 kept → raw/rib2_a (giant ribcage, soul-fire heart, demon-face pauldron, burnt rags, pelvis). #2 unused (arm bone fused to the shoulder)."
+  },
+  {
+   "boss": "b_death",
+   "shot": "dt_wing",
+   "generationId": "AbJXClKOVIpH3lgR62RVlzgjdGz6Zd_lrTQqlyqA2DqfSFqnKDK7ae8XXd6_kiP3zecu5Tnc",
+   "aspect": "4:3",
+   "imageCount": 1,
+   "decision": "kept → raw/wing_a (bone wing, torn black membrane, green fire at the joints)."
+  },
+  {
+   "boss": "b_death",
+   "shot": "dt_souls",
+   "generationId": "ASWTI_GS4cIRQAAtkCAyNpF84cjH0zjbDSxzBbsSqgiy6OF0zaI-R0kza9ZRoCUVq1VlgvtN",
+   "aspect": "16:9",
+   "imageCount": 1,
+   "decision": "kept → raw/souls_a (4 screaming ghost souls) — orbiting souls, drain vortex, death release."
+  },
+  {
+   "boss": "b_death",
+   "shot": "dt_debris",
+   "generationId": "Ac2a49_ApGVvftpW79yYcn7xkJOlRVhwIWvxMQjPuT_zOuVBPNW3uoy3vMmjNmQbucxTzS_q",
+   "aspect": "16:9",
+   "imageCount": 1,
+   "decision": "kept → raw/debris_a (skull, broken bones, spiked bone club) — death breakup, bone spears."
+  },
+  {
+   "boss": "b_death",
+   "shot": "dt_cloak_tex",
+   "generationId": "AYaWdBUMMGAuv7AGBaP9BRyOVjWkUMPZ-3D1t21-DmZC_ITkTIegf6NEcoTLGoGn-CUF6ewf",
+   "aspect": "1:1",
+   "imageCount": 1,
+   "decision": "kept, 1k → seamless 256² → raw/cloak_tex (procedural cloak pattern)."
+  }
+ ],
+ "imagesSpent": {
+  "b_frostqueen": 15,
+  "b_death": 14
+ },
+ "imagesTotal": 29,
+ "watermark": "bottom-right \"KlingAI 3.0 Omni\" removed by tools/painted/matte.py (textures: cropped away)"
+}

@@ -29,7 +29,8 @@
 // 맵 문자: z/Z 는 map.phaseTiles 의 key 'even'/'odd' (없으면 z/Z 마커) 를 읽어 이 파일이 고체/빈칸을 정한다.
 //          'y' 포자 주머니는 blight 구성원이 직접 만든다 (world·엔진은 만들지 않는다. 같은 칸에 둘이 생기면 첫 update 에서 하나만 남긴다).
 // SporePod(tx, ty, opts) — 타일 좌표 (props.js 의 다른 소품과 같은 규칙). 공격받으면 부풀었다 터지고, 화염 속성
-//  (또는 정화의 불꽃: attack.purge / tags 'purge' / id 'tech_purge') 에는 타 버린다. 수호신 공격(tags 'companion')은 무시한다.
+//  (또는 정화의 불꽃: attack.purge / tags 'purge' / id 'tech_purge') 에는 타 버린다. 수호신 공격(tags 'companion')은 무시하고,
+//  noGuardianHit = true 로 표시한다 (MirrorSwitch 와 같음 — 동료 쪽이 대상 목록에서 거른다). 맵 밖 좌표는 맵 안으로 옮긴다.
 // 순환 import: gimmicks.js ↔ 이 파일. 서로의 값을 모듈 최상위에서 쓰지 않는다 (함수 안에서만).
 //             gimmicks.js 는 이름공간(GE)으로만 불러 GE.drawMeter?.() 처럼 쓴다 (없으면 이 파일의 대체 그림).
 import { Entity } from './entity.js';

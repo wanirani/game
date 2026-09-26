@@ -1,0 +1,73 @@
+{
+ "id": "b_death",
+ "kind": "boss",
+ "out": "assets/painted/bosses/b_death",
+ "raw": "tools/painted/raw/b_death",
+ "td": 2.0,
+ "matte": {
+  "default": {
+   "key": 9,
+   "soft": 22,
+   "hard": 6
+  },
+  "cloak_tex": {
+   "rembg": null,
+   "key": -200,
+   "soft": 1,
+   "hard": -50,
+   "watermark": false
+  }
+ },
+ "parts": [
+  {
+   "name": "hood_a",
+   "src": "hood_a",
+   "lps": 0.1
+  },
+  {
+   "name": "torso_a",
+   "src": "torso_a",
+   "lps": 0.1
+  },
+  {
+   "name": "arm_a",
+   "src": "arm_a",
+   "lps": 0.1
+  },
+  {
+   "name": "scythe_a",
+   "src": "scythe_a",
+   "lps": 0.1
+  },
+  {
+   "name": "skull2_a",
+   "src": "skull2_a",
+   "lps": 0.1
+  },
+  {
+   "name": "rib2_a",
+   "src": "rib2_a",
+   "lps": 0.1
+  },
+  {
+   "name": "wing_a",
+   "src": "wing_a",
+   "lps": 0.1
+  },
+  {
+   "name": "souls_a",
+   "src": "souls_a",
+   "lps": 0.1
+  },
+  {
+   "name": "debris_a",
+   "src": "debris_a",
+   "lps": 0.1
+  },
+  {
+   "name": "cloak_tex",
+   "src": "cloak_tex",
+   "lps": 0.1
+  }
+ ]
+}

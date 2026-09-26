@@ -13,7 +13,7 @@
 //  정의 필드는 audio.js 와 같다: fn(S, H) 합성, max 동명 동시 수, gap 중복 억제(초), rev 잔향 송신, vary 피치 랜덤,
 //  vol 체감 음량 보정(명세 §10 표의 vol), duck [amount, time] 음악 덕킹.
 //  음량은 tools/test_sfx.mjs --levels 로 맞췄다 (정상 상태 단기 RMS 가 비슷한 역할의 내장 효과음과 같은 범위).
-//  모바일 비용: 한 번 재생에 소스 노드(발진기·노이즈) 최대 18개, 자주 울리는 gallop·fire_breath·bone_rattle 은 2~6개.
+//  모바일 비용: 한 번 재생에 소스 노드(발진기·노이즈) 최대 13개(mirror_chime), 자주 울리는 gallop·fire_breath 2개, bone_rattle 6개.
 import { defineSfx, audio } from './audio.js';
 
 const M = (m) => 440 * Math.pow(2, (m - 69) / 12);

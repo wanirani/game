@@ -89,8 +89,8 @@
  "params": {
   "hairLum": 90,
   "ponyTopY": 470,
-  "torsoTone": 0.3,
-  "torsoSrcMaxLum": null,
+  "torsoTone": 0.45,
+  "torsoSrcMaxLum": 95,
   "uarmTone": 0.25,
   "skirtTone": 0.4,
   "skirtSrcMaxLum": null,
@@ -269,19 +269,19 @@
      1300
     ],
     [
-     600,
+     618,
      1200
     ],
     [
-     640,
+     658,
      1100
     ],
     [
-     655,
+     672,
      1000
     ],
     [
-     660,
+     675,
      900
     ],
     [
@@ -728,45 +728,46 @@
   "shinBootY": 1980
  },
  "hands": {
-  "sheet": "lia/lia_assassin_hands",
+  "sheet": "lia/lia_dancer_hands",
+  "_why": "암살자 손 시트의 주먹은 관을 정면에서 쥔 모양이라 막대를 지우면 속이 빈 덩어리가 됨 → 같은 맨손인 무희 시트를 씀(팔찌는 손목선에서 잘림)",
   "grip": {
    "box": [
-    490,
-    380,
-    940,
-    790
+    430,
+    260,
+    1010,
+    870
    ],
    "center": [
-    748,
+    757,
     560
    ],
    "axis": [
-    0.046,
-    0.999
+    0,
+    1
    ],
-   "rodHalf": 100,
+   "rodHalf": 70,
    "wrist": [
-    700,
-    790
+    720,
+    870
    ],
-   "scale": 0.32
+   "scale": 0.23
   },
   "open": {
    "box": [
-    1640,
+    1470,
     60,
-    2340,
-    960
+    2160,
+    880
    ],
    "wrist": [
-    1870,
-    960
+    1850,
+    880
    ],
    "tip": [
-    1830,
-    80
+    1860,
+    75
    ],
-   "scale": 0.17
+   "scale": 0.18
   }
  },
  "materials": {

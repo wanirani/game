@@ -1,0 +1,270 @@
+{
+ "package": "ART-BOSS-2",
+ "model": "kling-image-v3_0_omni (image_to_image, 2k)",
+ "images": [
+  {
+   "boss": "b_crimson",
+   "name": "helm_a1",
+   "generationId": "AXWu1FTR74c8RKRtdzPdQV07MtGSu4bERjXDcOwmubM0m_dqNHj-yLWgh88iL5EytY9TcWgx",
+   "size": [
+    2336,
+    1760
+   ],
+   "raw": "tools/painted/raw/b_crimson/helm_a1.webp",
+   "downloaded": "2026-09-26T18:10:44Z"
+  },
+  {
+   "boss": "b_crimson",
+   "name": "helm_a2",
+   "generationId": "AXWu1FTR74c8RKRtdzPdQV07MtGSu4bERjXDcOwmubM0m_dqNHj-yLWgh88iL5EytY9TcWgx",
+   "size": [
+    2336,
+    1760
+   ],
+   "raw": "tools/painted/raw/b_crimson/helm_a2.webp",
+   "downloaded": "2026-09-26T18:10:47Z"
+  },
+  {
+   "boss": "b_crimson",
+   "name": "torso_a1",
+   "generationId": "AQbRp-s_fkG1EI0UYbZX3UAyje_ABjMeRvjBLmVEs_d8TBcTW0WU_WyeSXsoBvP_9fiQvVWB",
+   "size": [
+    1760,
+    2336
+   ],
+   "raw": "tools/painted/raw/b_crimson/torso_a1.webp",
+   "downloaded": "2026-09-26T18:10:51Z"
+  },
+  {
+   "boss": "b_crimson",
+   "name": "torso_a2",
+   "generationId": "AQbRp-s_fkG1EI0UYbZX3UAyje_ABjMeRvjBLmVEs_d8TBcTW0WU_WyeSXsoBvP_9fiQvVWB",
+   "size": [
+    1760,
+    2336
+   ],
+   "raw": "tools/painted/raw/b_crimson/torso_a2.webp",
+   "downloaded": "2026-09-26T18:10:56Z"
+  },
+  {
+   "boss": "b_crimson",
+   "name": "pauldron_a",
+   "generationId": "AbUk2mk23r4LPS6VRW-0ZvhHfKYKLOohSHCkuDh6GwaT8Qa8PJ8Y94KKp3lDDoHJ7GnIqYxw",
+   "size": [
+    2048,
+    2048
+   ],
+   "raw": "tools/painted/raw/b_crimson/pauldron_a.webp",
+   "downloaded": "2026-09-26T18:11:03Z"
+  },
+  {
+   "boss": "b_crimson",
+   "name": "arm_a1",
+   "generationId": "AcIGSneD-3kU1e9qeSvtxK1FE5dMZJEye7jx02Qaocub6PusB5QisxQpQPTr2utQCZVOJk0d",
+   "size": [
+    2720,
+    1536
+   ],
+   "raw": "tools/painted/raw/b_crimson/arm_a1.webp",
+   "downloaded": "2026-09-26T18:11:11Z"
+  },
+  {
+   "boss": "b_crimson",
+   "name": "arm_a2",
+   "generationId": "AcIGSneD-3kU1e9qeSvtxK1FE5dMZJEye7jx02Qaocub6PusB5QisxQpQPTr2utQCZVOJk0d",
+   "size": [
+    2720,
+    1536
+   ],
+   "raw": "tools/painted/raw/b_crimson/arm_a2.webp",
+   "downloaded": "2026-09-26T18:11:17Z"
+  },
+  {
+   "boss": "b_crimson",
+   "name": "leg_a",
+   "generationId": "AbOpmk4AxMHQeCV6WSv5chezeeyxznMkj6DUU8G_BoeVX3EWS8F5AWMzcPWQwux-Iulwh1ri",
+   "size": [
+    2720,
+    1536
+   ],
+   "raw": "tools/painted/raw/b_crimson/leg_a.webp",
+   "downloaded": "2026-09-26T18:11:22Z"
+  },
+  {
+   "boss": "b_crimson",
+   "name": "waist_a",
+   "generationId": "AcDWkfB0TPfktcRxvsII4zZ0JgZlWmDZz2htBCyd9E75Ir6xTEe_GD8hUp7DOt09y2eU1Kxb",
+   "size": [
+    2336,
+    1760
+   ],
+   "raw": "tools/painted/raw/b_crimson/waist_a.webp",
+   "downloaded": "2026-09-26T18:11:28Z"
+  },
+  {
+   "boss": "b_crimson",
+   "name": "halberd_a",
+   "generationId": "ARu8sqe80CqMLQKsnTVdEJ2bppgQ1lV1F9oe37GnXN-5h2_MJACmlxZDhCTb-wakK6yAxUmj",
+   "size": [
+    3104,
+    1312
+   ],
+   "raw": "tools/painted/raw/b_crimson/halberd_a.webp",
+   "downloaded": "2026-09-26T18:11:31Z"
+  },
+  {
+   "boss": "b_crimson",
+   "name": "core_a",
+   "generationId": "Af6d0KkcVOIxLFh9AFeuHjfBUPgU4hnqbsdEsNrL6X6BUtwlWklvugEUy4zVbOZVoUm6wEvc",
+   "size": [
+    2048,
+    2048
+   ],
+   "raw": "tools/painted/raw/b_crimson/core_a.webp",
+   "downloaded": "2026-09-26T18:11:35Z"
+  },
+  {
+   "boss": "b_crimson",
+   "name": "debris_a",
+   "generationId": "AVS3E16EfDPuB2x4Jd5EojBcVtGV7aMNWp6WuFBnzYNAp6jWoNuJPSeXbwTmLMnbGmzr6v1B",
+   "size": [
+    2720,
+    1536
+   ],
+   "raw": "tools/painted/raw/b_crimson/debris_a.webp",
+   "downloaded": "2026-09-26T18:11:39Z"
+  },
+  {
+   "boss": "b_grimoire",
+   "name": "cover_a1",
+   "generationId": "AZsaxFg2RSld619zJpGTBdlEv_xmQgZ5k9suC16l1Tkblf6zX0MuUo2SLvrLTP9GvrXAYOWf",
+   "size": [
+    1760,
+    2336
+   ],
+   "raw": "tools/painted/raw/b_grimoire/cover_a1.webp",
+   "downloaded": "2026-09-26T18:14:11Z"
+  },
+  {
+   "boss": "b_grimoire",
+   "name": "cover_a2",
+   "generationId": "AZsaxFg2RSld619zJpGTBdlEv_xmQgZ5k9suC16l1Tkblf6zX0MuUo2SLvrLTP9GvrXAYOWf",
+   "size": [
+    1760,
+    2336
+   ],
+   "raw": "tools/painted/raw/b_grimoire/cover_a2.webp",
+   "downloaded": "2026-09-26T18:14:17Z"
+  },
+  {
+   "boss": "b_grimoire",
+   "name": "eye_a1",
+   "generationId": "AaOt_uyA1CHbxEGiY0YAOaeVl3_cjo4dZTB9QNwJF_eF2BNKt2wnzDN8lrOunsXcbWlLDttU",
+   "size": [
+    2720,
+    1536
+   ],
+   "raw": "tools/painted/raw/b_grimoire/eye_a1.webp",
+   "downloaded": "2026-09-26T18:14:21Z"
+  },
+  {
+   "boss": "b_grimoire",
+   "name": "eye_a2",
+   "generationId": "AaOt_uyA1CHbxEGiY0YAOaeVl3_cjo4dZTB9QNwJF_eF2BNKt2wnzDN8lrOunsXcbWlLDttU",
+   "size": [
+    2720,
+    1536
+   ],
+   "raw": "tools/painted/raw/b_grimoire/eye_a2.webp",
+   "downloaded": "2026-09-26T18:14:25Z"
+  },
+  {
+   "boss": "b_grimoire",
+   "name": "maw_a1",
+   "generationId": "ATCL5TKsTVX2Fsoh6G-Xyc4dXRBxYWpljRKVzjo6n2c_hMmChArVCCh0-2BvMqWBATjM2p-N",
+   "size": [
+    1760,
+    2336
+   ],
+   "raw": "tools/painted/raw/b_grimoire/maw_a1.webp",
+   "downloaded": "2026-09-26T18:14:31Z"
+  },
+  {
+   "boss": "b_grimoire",
+   "name": "maw_a2",
+   "generationId": "ATCL5TKsTVX2Fsoh6G-Xyc4dXRBxYWpljRKVzjo6n2c_hMmChArVCCh0-2BvMqWBATjM2p-N",
+   "size": [
+    1760,
+    2336
+   ],
+   "raw": "tools/painted/raw/b_grimoire/maw_a2.webp",
+   "downloaded": "2026-09-26T18:14:38Z"
+  },
+  {
+   "boss": "b_grimoire",
+   "name": "inside_a",
+   "generationId": "AfHCxu3NIKEFRWd_OYzq2EH7sl-pPn90ojYGI3a0DJtexDnlZAR52JFZbM4DMJN39u_TPbLX",
+   "size": [
+    1760,
+    2336
+   ],
+   "raw": "tools/painted/raw/b_grimoire/inside_a.webp",
+   "downloaded": "2026-09-26T18:14:44Z"
+  },
+  {
+   "boss": "b_grimoire",
+   "name": "edge_a",
+   "generationId": "AToEh6nTjxfGXOA9Q9bIL5SM3QYl5_nL1IeQMyv6fgLJwgo0Fw8TtOL7jBK1lqrYVGndOgq3",
+   "size": [
+    1536,
+    2720
+   ],
+   "raw": "tools/painted/raw/b_grimoire/edge_a.webp",
+   "downloaded": "2026-09-26T18:14:47Z"
+  },
+  {
+   "boss": "b_grimoire",
+   "name": "tentacle_a",
+   "generationId": "AUSXfAwbTMI9b1ZpsxRA7Zq9zryfDutR6UvHHXiAL_-r9__3DfX6dADF9JYcKZjCc8UCcWmV",
+   "size": [
+    3104,
+    1312
+   ],
+   "raw": "tools/painted/raw/b_grimoire/tentacle_a.webp",
+   "downloaded": "2026-09-26T18:14:50Z"
+  },
+  {
+   "boss": "b_grimoire",
+   "name": "chain_a",
+   "generationId": "ATKoIcFuFVJwTRgUiyHBc1LuMz7HNRAGOR75Yfam29j_roQPzGRZKc44B4-tNun20KArAi1l",
+   "size": [
+    3104,
+    1312
+   ],
+   "raw": "tools/painted/raw/b_grimoire/chain_a.webp",
+   "downloaded": "2026-09-26T18:14:52Z"
+  },
+  {
+   "boss": "b_grimoire",
+   "name": "pages_a",
+   "generationId": "Abxlj3OzmwsSGPSWpM233w4AdT6qQ6qMiEWJC8AZzi2aubc0g2qvde1i4e95D9rhp5Cvab8F",
+   "size": [
+    2720,
+    1536
+   ],
+   "raw": "tools/painted/raw/b_grimoire/pages_a.webp",
+   "downloaded": "2026-09-26T18:14:58Z"
+  },
+  {
+   "boss": "b_grimoire",
+   "name": "debris_a",
+   "generationId": "AWSX64x7tQPdWqRfQ5CWK3-zaUwxAf8AmrLe9rfil9_63IrCPOlil6QyqIW2-xY95gVwIwne",
+   "size": [
+    2720,
+    1536
+   ],
+   "raw": "tools/painted/raw/b_grimoire/debris_a.webp",
+   "downloaded": "2026-09-26T18:15:02Z"
+  }
+ ]
+}

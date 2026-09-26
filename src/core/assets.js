@@ -32,8 +32,17 @@ import { saves, autoQualityTier, isTouchDevice } from './save.js';
 
 const EXT = { bg: 'webp', portraits: 'webp', tex: 'webp', cg: 'webp', icons: 'png', props: 'png', ui: 'png', painted: 'webp', puppets: 'webp' };
 // puppets = 영웅 채색 컷아웃 퍼펫(render/hero_puppet.js). get/load 의 두 번째 인자 ver 는 선택(파일 해시 → 캐시 무효화), json() 은 리그 데이터용
-export const ASSET_ROOT = 'assets/';
-export const LO_ROOT = 'lo/';                                   // assets/lo/<key>.<ext>
+// 에셋 루트: 게임 루트 기준 (이 모듈 주소에서 계산 → tools/ 아래 갤러리 페이지에서도 같은 파일을 받는다).
+// 모듈이 src/core/assets.js 로 서빙되지 않는 경우(번들·Node)에는 예전처럼 페이지 기준 'assets/'
+export const ASSET_ROOT = (() => {
+  try {
+    if (typeof window === 'undefined') return 'assets/';
+    const u = new URL(import.meta.url);
+    if (/^https?:$/.test(u.protocol) && /\/src\/core\/assets\.js$/.test(u.pathname)) return new URL('../../assets/', u).href;
+  } catch { /* 페이지 기준 */ }
+  return 'assets/';
+})();
+export const LO_ROOT = 'lo/';                                  // assets/lo/<key>.<ext>
 const MIME = { webp: 'image/webp', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', svg: 'image/svg+xml', json: 'application/json', txt: 'text/plain' };
 const LO_FOLDERS = new Set(['bg', 'cg', 'portraits']);           // lo/ 변형이 있는 폴더
 const SCENE_FOLDERS = new Set(['bg', 'cg']);                     // 장면 전환 때 정리

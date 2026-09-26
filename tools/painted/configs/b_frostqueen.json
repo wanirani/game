@@ -1,0 +1,73 @@
+{
+ "id": "b_frostqueen",
+ "kind": "boss",
+ "out": "assets/painted/bosses/b_frostqueen",
+ "raw": "tools/painted/raw/b_frostqueen",
+ "td": 2.0,
+ "matte": {
+  "default": {
+   "key": 9,
+   "soft": 22,
+   "hard": 6
+  },
+  "cape_tex": {
+   "rembg": null,
+   "key": -200,
+   "soft": 1,
+   "hard": -50,
+   "watermark": false
+  }
+ },
+ "parts": [
+  {
+   "name": "head_a",
+   "src": "head_a",
+   "lps": 0.1
+  },
+  {
+   "name": "head_b",
+   "src": "head_b",
+   "lps": 0.1
+  },
+  {
+   "name": "torso_a",
+   "src": "torso_a",
+   "lps": 0.1
+  },
+  {
+   "name": "skirt_a",
+   "src": "skirt_a",
+   "lps": 0.1
+  },
+  {
+   "name": "arm_a",
+   "src": "arm_a",
+   "lps": 0.1
+  },
+  {
+   "name": "collar_a",
+   "src": "collar_a",
+   "lps": 0.1
+  },
+  {
+   "name": "victims_a",
+   "src": "victims_a",
+   "lps": 0.1
+  },
+  {
+   "name": "shards_a",
+   "src": "shards_a",
+   "lps": 0.1
+  },
+  {
+   "name": "hazard_a",
+   "src": "hazard_a",
+   "lps": 0.1
+  },
+  {
+   "name": "cape_tex",
+   "src": "cape_tex",
+   "lps": 0.1
+  }
+ ]
+}

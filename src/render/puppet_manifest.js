@@ -2,8 +2,53 @@
 // 채색 컷아웃 퍼펫이 준비된 캐릭터/직업. h = 파일 묶음 해시(캐시 무효화), turn = 턴테이블 시트 유무.
 export const PUPPETS = {
  "bran": {
+  "bran_berserker": {
+   "h": "7c6a5d4aa2d2",
+   "turn": false,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "bran_crusader": {
+   "h": "b09efa3767d2",
+   "turn": false,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "bran_guardian": {
+   "h": "040d64876240",
+   "turn": false,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
   "bran_knight": {
    "h": "7597d1f2d2fe",
+   "turn": false,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "bran_paladin": {
+   "h": "25ad37e3dbb4",
+   "turn": false,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "bran_warlord": {
+   "h": "36c486c93885",
    "turn": false,
    "lv": [
     "hi",
@@ -77,10 +122,32 @@ export const PUPPETS = {
    ]
   }
  },
+ "lia": {
+  "lia_assassin": {
+   "h": "44d0ca2a9f62",
+   "turn": false,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  }
+ },
+ "sera": {
+  "sera_exorcist": {
+   "h": "b3884ed45e50",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  }
+ },
  "victor": {
   "victor_gunslinger": {
-   "h": "f3bebb290625",
-   "turn": false,
+   "h": "5f2f4727a979",
+   "turn": true,
    "lv": [
     "hi",
     "lo",
