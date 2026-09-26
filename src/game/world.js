@@ -514,19 +514,24 @@ export class World {
       this.camera.shake(4, 0.15);
       for (let i = 0; i < 6; i++) this.debrisList.push(new Debris(x + rand(-12, 12), y + rand(-12, 12), rand(-240, 240), rand(-420, -120), { size: randi(6, 12), color: '#5a5460', life: 2.2 }));
       this.fx.burst('dust', x, y, 10, { speed: 120 });
-      if (this.state.progress.secrets.includes(key)) continue;
-      this.state.progress.secrets.push(key);
-      this.run.secrets++;
       // 드롭은 트인 쪽(양쪽 다 트였으면 플레이어 쪽)으로 튀어나오게 — 1칸 벽 틈에 갇혀 못 줍는 문제 방지
       const openL = !isSolidType(m.typeAt(tx - 1, ty)), openR = !isSolidType(m.typeAt(tx + 1, ty));
       const pside = Math.sign(this.player.cx - x) || 1;
       const side = openL && openR ? pside : openR ? 1 : openL ? -1 : pside;
       const niche = isSolidType(m.typeAt(tx, ty - 1)) && isSolidType(m.typeAt(tx, ty + 1));
       const out = { vx: side * 150, ...(niche ? { pull: 140 } : {}) };
+      const hOrder = kind === 'H' ? m.markers.filter((mk) => mk.ch === 'H').findIndex((mk) => mk.tx === tx && mk.ty === ty) : -1;
+      if (this.state.progress.secrets.includes(key)) {
+        // 예전에 벽을 부쉈지만 비전서를 줍지 못한 세이브 복구: 이 벽에 지정된 비전서가 아직 없으면 다시 떨어뜨림
+        const lost = kind === 'H' ? this.room.docs?.[hOrder] : null;
+        if (lost && !this.state.progress.docs.includes(lost) && !this.entities.some((e) => e.kind === 'pickup' && !e.dead && e.data?.docId === lost)) this.spawnPickup('doc', x, y, { docId: lost, vy: -300, ...out, pull: 140 });
+        continue;
+      }
+      this.state.progress.secrets.push(key);
+      this.run.secrets++;
       if (kind === 'H') {
         const docs = this.stage.docs || [];
-        const hs = m.markers.filter((mk) => mk.ch === 'H');
-        const order = hs.findIndex((mk) => mk.tx === tx && mk.ty === ty);
+        const order = hOrder;
         const docId = this.room.docs?.[order] ?? docs.find((dd) => !this.state.progress.docs.includes(dd));
         if (docId) { this.spawnPickup('doc', x, y, { docId, vy: -300, ...out, pull: 140 }); audio.sfx('secret'); this.game.toast('숨겨진 공간을 발견했다!', '#ffe7a0'); }
         else this.spawnPickup('food', x, y, { heal: 0.5, icon: 'meat', vy: -200, ...out });

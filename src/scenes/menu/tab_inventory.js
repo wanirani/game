@@ -11,6 +11,7 @@ import {
 } from './common.js';
 import { fmtStatVal } from './tab_status.js';
 import * as D from './access.js';
+import { josa } from '../town/common.js';
 
 const FILTERS = [
   { id: 'all', name: '전체', test: () => true },
@@ -87,7 +88,7 @@ export class InventoryTab extends Tab {
   }
   use(e) {
     const r = D.useOf(this.state, this.hero, e.inst, this.world);
-    if (r.ok) { audio.sfx('heal'); this.m.notify(r.msg || `${e.b.name}을(를) 사용했습니다`, PAL.good); this.flash = 1; }
+    if (r.ok) { audio.sfx('heal'); this.m.notify(r.msg || `${josa(e.b.name, '을', '를')} 사용했습니다`, PAL.good); this.flash = 1; }
     else { audio.sfx('menu_cancel'); this.m.notify(r.msg || '사용할 수 없습니다', PAL.bad); }
     this.m.changed(); this.rebuild();
   }

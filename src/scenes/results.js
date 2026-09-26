@@ -24,7 +24,7 @@ function hasNewBranch(script, st) {
   for (const l of lines) {
     if (!(l.if && l.cmd === 'goto' && holds(l.if))) continue;
     const at = lines.findIndex((q) => q.label === l.label && !q.cmd);
-    if (at >= 0 && lines.slice(at + 1).some((q) => q.cmd === 'flag' && !f[q.key])) return true;
+    if (at >= 0 && lines.slice(at + 1).some((q) => q.cmd === 'flag' && f[q.key] !== (q.value ?? true))) return true;
   }
   return false;
 }

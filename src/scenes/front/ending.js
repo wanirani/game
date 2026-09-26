@@ -122,7 +122,7 @@ export class CreditsScene extends Scene {
     const g = this.game;
     this.kind = kind; this.fromEnding = fromEnding; this.back = back;
     this.E = ENDINGS[kind] ?? null;
-    const custom = STORY.CREDITS;
+    const custom = typeof STORY.creditsFor === 'function' ? STORY.creditsFor(kind, g.state, g.meta) : STORY.CREDITS;
     this.blocks = Array.isArray(custom) && custom.length ? this.normalize(custom) : defaultCredits();
     this.slides = [...SLIDES];
     if (kind === 'true') this.slides.push('cg/cg_true_ending', 'bg/ending');

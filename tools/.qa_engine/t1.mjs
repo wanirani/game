@@ -245,7 +245,8 @@ for (const [st, ch] of [['s09', 'azel'], ['s12', 'azel'], ['s13', 'azel'], ['s08
       const w = __game.world, b = w.boss, p = w.player;
       const out = {};
       if (st === 's12') { b.invuln = false; b.takeHit(Math.floor(b.hp * 0.55), {}, w, {}); await new Promise((r) => setTimeout(r, 200)); for (let i = 0; i < 40 && !(b.form === 2); i++) { const s = __game.scenes.at(-1); if (s.name === 'dialogue') { __game.pop(); s.onEnd?.(); w.cutscene = false; } b.skipTransition?.(); await new Promise((r) => setTimeout(r, 300)); } out.form = b.form; }
-      await new Promise((r) => setTimeout(r, 500));
+      for (let i = 0; i < 30; i++) { if ((b.hitParts() || []).filter((x) => !x.off).length) break; await new Promise((r) => setTimeout(r, 300)); }
+      out.st = [b.state, b.glitch, b.invuln, w.cutscene, __game.scenes.map((s) => s.name).join('>')];
       const parts = (b.hitParts() || []).filter((x) => !x.off);
       out.parts = parts.length;
       const res = [];
@@ -260,4 +261,10 @@ for (const [st, ch] of [['s09', 'azel'], ['s12', 'azel'], ['s13', 'azel'], ['s08
     }, st);
   });
 }
+await run('docrecover', 'index.html?scene=stage&stage=s03&room=r2&char=lia', async (page) => {
+  await page.evaluate(() => { const w = __game.world, p = w.player; __game.state.progress.secrets.push('s03:r2:1,12'); for (const e of w.enemies()) e.dead = true; p.x = 2 * 48 + 1; p.y = 13 * 48 - p.h; p.facing = -1; w.breakTilesIn({ x: 1 * 48 + 10, y: 12 * 48 + 10, w: 4, h: 4 }, {}); });
+  await W(page, 1500);
+  for (let i = 0; i < 5; i++) { const t = await top(page); if (!/document/.test(t)) break; await page.keyboard.press('KeyX'); await page.keyboard.press('Escape'); await W(page, 300); }
+  return page.evaluate(() => ({ docs: __game.state.progress.docs.slice(), secrets: __game.state.progress.secrets.filter((k) => k.includes('1,12')) }));
+});
 await browser.close(); srv.close();

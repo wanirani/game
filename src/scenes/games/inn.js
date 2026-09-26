@@ -288,9 +288,9 @@ export class InnScene extends Scene {
     ctx.restore();
     // 이름패
     const nw = 132, nx = x + w / 2 - nw / 2, ny = y + h - 20;
-    gPanel(ctx, nx, ny, nw, 30, { a: 0.95, r: 6, orn: false, edge: GOLD });
-    text(ctx, '마르타', nx + nw / 2, ny + 17, { size: 15, align: 'center', weight: 800, family: FONT.title, color: '#ffe7a0', ow: 3 });
-    text(ctx, '여관 주인', nx + nw / 2, ny + 28, { size: 9, align: 'center', weight: 700, color: '#b89a70', ow: 2 });
+    gPanel(ctx, nx, ny - 3, nw, 36, { a: 0.95, r: 6, orn: false, edge: GOLD });
+    text(ctx, '마르타', nx + nw / 2, ny + 15, { size: 15, align: 'center', weight: 800, family: FONT.title, color: '#ffe7a0', ow: 3 });
+    text(ctx, '여관 주인', nx + nw / 2, ny + 29, { size: 9, align: 'center', weight: 700, color: '#b89a70', ow: 2 });
     // 감정 표시
     if (this.mood !== 'idle' && this.emoteT < 2.2) {
       const k = ease.outBack(clamp(this.emoteT / 0.3, 0, 1)) * clamp((2.2 - this.emoteT) / 0.3, 0, 1);
