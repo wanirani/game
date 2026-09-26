@@ -32,11 +32,34 @@ html, body {
   background: radial-gradient(ellipse at center, #1a0610 0%, #050207 70%); z-index: 20;
 }
 #boot .t { font-family: "Grenze Gotisch", "Cinzel Decorative", serif; font-weight: 900; font-size: 40px; color: var(--gold); letter-spacing: 0.04em; text-shadow: 0 0 18px #b3122e; }
-#boot .s { margin-top: 12px; font-size: 14px; color: #9d8f80; animation: blink 1.2s infinite; }
+#boot .s { margin-top: 12px; font-size: 14px; color: #9d8f80; animation: blink 1.2s infinite; text-align: center; padding: 0 16px; }
 @keyframes blink { 50% { opacity: 0.3; } }
+/* 부팅 진행률 (src/boot-gate.js) */
+#boot .bar { width: min(320px, 70vw); height: 6px; margin-top: 18px; border-radius: 3px; background: rgba(255,255,255,0.07); box-shadow: inset 0 0 0 1px rgba(232,200,114,0.25); overflow: hidden; }
+#boot .bar i { display: block; width: 0; height: 100%; background: linear-gradient(90deg, #5a0716, var(--blood) 60%, #e0485e); box-shadow: 0 0 10px rgba(179,18,46,0.8); transition: width 0.2s linear; }
+#boot .pct { font-weight: 700; color: #cdbfa8; font-variant-numeric: tabular-nums; }
+#boot .slow { margin-top: 10px; font-size: 13px; color: #b8a890; text-align: center; padding: 0 16px; }
+#boot .reload {
+  margin-top: 18px; min-width: 132px; min-height: 44px; padding: 0 22px; border-radius: 6px; cursor: pointer;
+  border: 1px solid rgba(232,200,114,0.7); background: linear-gradient(#3a0a14, #1a0409); color: #f3e2b8;
+  font: 700 16px "Noto Sans KR", "Noto Sans KR Ext", sans-serif;
+}
+#boot .reload:hover, #boot .reload:focus-visible { background: linear-gradient(#5a1020, #2a0610); outline: 2px solid var(--gold); outline-offset: 2px; }
+#boot.err .s, #boot.old .s { animation: none; color: #f0d0c0; font-size: 15px; line-height: 1.6; }
+#boot.err .bar i { background: #6a2a30; box-shadow: none; }
+#boot.old .bar { display: none; }
+#boot.done { opacity: 0; pointer-events: none; transition: opacity 0.25s ease-out; }
 
 #rotate { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; text-align: center; background: rgba(5,2,7,0.96); z-index: 30; font-size: 20px; line-height: 1.8; color: var(--gold); }
 body.touch.portrait #rotate { display: flex; }
+/* 태블릿은 세로로도 플레이할 수 있다 (platform §6.6): game.js 가 body.portrait-play 를 켜면 회전 안내를 띄우지 않는다 */
+body.portrait-play #rotate { display: none; }
+
+/* ── src/core/platform.js 가 :root 에 다는 상태 클래스 ── */
+/* 전체 화면을 쓸 수 없는 곳(아이폰 사파리, 설치된 앱, APK)에서는 ⛶ 버튼을 숨긴다 */
+.bn-nofs #fsBtn { display: none; }
+/* 게임플레이 중 마우스를 2초 움직이지 않으면 커서를 숨긴다 (P-30) */
+.bn-nocursor, .bn-nocursor * { cursor: none !important; }
 
 /* ── 모바일 가상 패드 ── */
 #touch { position: absolute; inset: 0; pointer-events: none; z-index: 10; opacity: var(--touch-op); }

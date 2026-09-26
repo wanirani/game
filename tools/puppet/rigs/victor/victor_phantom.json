@@ -1,0 +1,154 @@
+{
+ "_doc": "빅터/팬텀 스나이퍼(2차). 모자 대신 두건 → head 가 목 뒤 두건 자락까지. 창백한 푸른 발광 테두리 = trim",
+ "extends": "victor_gunslinger",
+ "classId": "victor_phantom",
+ "src": "victor/victor_phantom_side",
+ "hands": {
+  "sheet": "victor/victor_phantom_hands",
+  "grip": {
+   "box": [
+    350,
+    240,
+    1080,
+    900
+   ],
+   "center": [
+    717,
+    557
+   ],
+   "axis": [
+    1,
+    0
+   ],
+   "rodHalf": 50,
+   "wrist": [
+    583,
+    907
+   ],
+   "scale": 0.23
+  },
+  "open": {
+   "box": [
+    1540,
+    120,
+    2580,
+    1060
+   ],
+   "wrist": [
+    2100,
+    1057
+   ],
+   "tip": [
+    1767,
+    157
+   ],
+   "scale": 0.23
+  }
+ },
+ "regions": {
+  "head": [
+   [
+    250,
+    0
+   ],
+   [
+    1400,
+    0
+   ],
+   [
+    1400,
+    445
+   ],
+   [
+    1010,
+    450
+   ],
+   [
+    985,
+    515
+   ],
+   [
+    940,
+    555
+   ],
+   [
+    880,
+    575
+   ],
+   [
+    820,
+    590
+   ],
+   [
+    760,
+    580
+   ],
+   [
+    700,
+    570
+   ],
+   [
+    640,
+    575
+   ],
+   [
+    590,
+    560
+   ],
+   [
+    560,
+    470
+   ],
+   [
+    250,
+    450
+   ]
+  ]
+ },
+ "materials": {
+  "_replace": true,
+  "armor": {
+   "parts": [
+    "torso",
+    "skirt",
+    "uarm",
+    "farm",
+    "pad"
+   ],
+   "sat": [
+    0,
+    0.45
+   ],
+   "val": [
+    0,
+    0.32
+   ],
+   "softTop": 0.06
+  },
+  "trim": {
+   "parts": [
+    "torso",
+    "skirt",
+    "uarm",
+    "farm",
+    "pad"
+   ],
+   "hue": [
+    170,
+    225
+   ],
+   "sat": [
+    0.3,
+    1.01
+   ],
+   "val": [
+    0.5,
+    1.01
+   ]
+  }
+ },
+ "runtime": {
+  "armorBase": "#141418"
+ },
+ "turn": null
+}

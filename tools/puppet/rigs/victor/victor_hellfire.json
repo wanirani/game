@@ -1,0 +1,154 @@
+{
+ "_doc": "빅터/헬파이어(2차). 모자 챙 위 불꽃·연기 → head 를 위·오른쪽으로 확장. 주황 발광 = trim",
+ "extends": "victor_gunslinger",
+ "classId": "victor_hellfire",
+ "src": "victor/victor_hellfire_side",
+ "hands": {
+  "sheet": "victor/victor_hellfire_hands",
+  "grip": {
+   "box": [
+    450,
+    290,
+    1180,
+    990
+   ],
+   "center": [
+    800,
+    607
+   ],
+   "axis": [
+    0.934,
+    -0.356
+   ],
+   "rodHalf": 60,
+   "wrist": [
+    800,
+    990
+   ],
+   "scale": 0.23
+  },
+  "open": {
+   "box": [
+    1440,
+    20,
+    2450,
+    1000
+   ],
+   "wrist": [
+    2000,
+    1007
+   ],
+   "tip": [
+    2000,
+    57
+   ],
+   "scale": 0.23
+  }
+ },
+ "regions": {
+  "head": [
+   [
+    250,
+    0
+   ],
+   [
+    1400,
+    0
+   ],
+   [
+    1400,
+    445
+   ],
+   [
+    1010,
+    450
+   ],
+   [
+    985,
+    515
+   ],
+   [
+    940,
+    555
+   ],
+   [
+    880,
+    575
+   ],
+   [
+    820,
+    590
+   ],
+   [
+    760,
+    580
+   ],
+   [
+    700,
+    565
+   ],
+   [
+    650,
+    545
+   ],
+   [
+    610,
+    490
+   ],
+   [
+    580,
+    450
+   ],
+   [
+    250,
+    450
+   ]
+  ]
+ },
+ "materials": {
+  "_replace": true,
+  "armor": {
+   "parts": [
+    "torso",
+    "skirt",
+    "uarm",
+    "farm",
+    "pad"
+   ],
+   "sat": [
+    0,
+    0.45
+   ],
+   "val": [
+    0,
+    0.32
+   ],
+   "softTop": 0.06
+  },
+  "trim": {
+   "parts": [
+    "torso",
+    "skirt",
+    "uarm",
+    "farm",
+    "pad"
+   ],
+   "hue": [
+    15,
+    48
+   ],
+   "sat": [
+    0.5,
+    1.01
+   ],
+   "val": [
+    0.55,
+    1.01
+   ]
+  }
+ },
+ "runtime": {
+  "armorBase": "#2a0a04"
+ },
+ "turn": null
+}

@@ -1,0 +1,159 @@
+{
+ "_doc": "세라/성녀(2차). 십자 왕관이 높음 → head 를 캔버스 위끝까지. 날개·후광은 절차적(look.wings/halo)",
+ "extends": "sera_exorcist",
+ "classId": "sera_saint",
+ "src": "sera/sera_saint_side",
+ "hands": {
+  "sheet": "sera/sera_saint_hands",
+  "grip": {
+   "box": [
+    480,
+    330,
+    1220,
+    1020
+   ],
+   "center": [
+    873,
+    690
+   ],
+   "axis": [
+    0,
+    1
+   ],
+   "rodHalf": 55,
+   "wrist": [
+    873,
+    1023
+   ],
+   "scale": 0.17
+  },
+  "open": {
+   "box": [
+    1450,
+    90,
+    2240,
+    1040
+   ],
+   "wrist": [
+    1950,
+    1040
+   ],
+   "tip": [
+    1967,
+    90
+   ],
+   "scale": 0.18
+  }
+ },
+ "regions": {
+  "head": [
+   [
+    380,
+    0
+   ],
+   [
+    1350,
+    0
+   ],
+   [
+    1350,
+    540
+   ],
+   [
+    965,
+    560
+   ],
+   [
+    905,
+    585
+   ],
+   [
+    875,
+    635
+   ],
+   [
+    800,
+    655
+   ],
+   [
+    755,
+    635
+   ],
+   [
+    700,
+    600
+   ],
+   [
+    665,
+    560
+   ],
+   [
+    645,
+    480
+   ],
+   [
+    635,
+    400
+   ],
+   [
+    610,
+    320
+   ],
+   [
+    560,
+    250
+   ],
+   [
+    380,
+    250
+   ]
+  ]
+ },
+ "materials": {
+  "_replace": true,
+  "armor": {
+   "parts": [
+    "torso",
+    "skirt",
+    "skirtFar",
+    "uarm",
+    "farm",
+    "pad"
+   ],
+   "sat": [
+    0,
+    0.2
+   ],
+   "val": [
+    0.5,
+    1.01
+   ]
+  },
+  "trim": {
+   "parts": [
+    "torso",
+    "skirt",
+    "skirtFar",
+    "uarm",
+    "farm",
+    "pad"
+   ],
+   "hue": [
+    30,
+    62
+   ],
+   "sat": [
+    0.35,
+    1.01
+   ],
+   "val": [
+    0.4,
+    1.01
+   ]
+  }
+ },
+ "runtime": {
+  "armorBase": "#ffffff"
+ },
+ "turn": null
+}

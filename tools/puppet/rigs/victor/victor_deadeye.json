@@ -1,0 +1,150 @@
+{
+ "_doc": "빅터/데드아이(1차). 기본과 같은 모자·코트 윤곽, 목탄색 가죽 + 은 장식",
+ "extends": "victor_gunslinger",
+ "classId": "victor_deadeye",
+ "src": "victor/victor_deadeye_side",
+ "hands": {
+  "sheet": "victor/victor_deadeye_hands",
+  "grip": {
+   "box": [
+    380,
+    320,
+    1210,
+    1000
+   ],
+   "center": [
+    783,
+    640
+   ],
+   "axis": [
+    0,
+    1
+   ],
+   "rodHalf": 110,
+   "wrist": [
+    560,
+    980
+   ],
+   "scale": 0.21
+  },
+  "open": {
+   "box": [
+    1330,
+    40,
+    2280,
+    1030
+   ],
+   "wrist": [
+    2133,
+    1007
+   ],
+   "tip": [
+    1600,
+    90
+   ],
+   "scale": 0.23
+  }
+ },
+ "regions": {
+  "head": [
+   [
+    250,
+    0
+   ],
+   [
+    1400,
+    0
+   ],
+   [
+    1400,
+    445
+   ],
+   [
+    1010,
+    450
+   ],
+   [
+    985,
+    515
+   ],
+   [
+    940,
+    555
+   ],
+   [
+    880,
+    575
+   ],
+   [
+    820,
+    590
+   ],
+   [
+    760,
+    580
+   ],
+   [
+    700,
+    565
+   ],
+   [
+    650,
+    545
+   ],
+   [
+    610,
+    490
+   ],
+   [
+    580,
+    450
+   ],
+   [
+    250,
+    450
+   ]
+  ]
+ },
+ "materials": {
+  "_replace": true,
+  "armor": {
+   "parts": [
+    "torso",
+    "skirt",
+    "uarm",
+    "farm",
+    "pad"
+   ],
+   "sat": [
+    0,
+    0.28
+   ],
+   "val": [
+    0,
+    0.5
+   ],
+   "softTop": 0.08
+  },
+  "trim": {
+   "parts": [
+    "torso",
+    "skirt",
+    "uarm",
+    "farm",
+    "pad"
+   ],
+   "sat": [
+    0,
+    0.14
+   ],
+   "val": [
+    0.55,
+    1.01
+   ]
+  }
+ },
+ "runtime": {
+  "armorBase": "#3a3a44"
+ },
+ "turn": null
+}

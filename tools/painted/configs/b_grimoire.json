@@ -1,0 +1,8 @@
+{
+ "id": "b_grimoire", "kind": "boss",
+ "out": "assets/painted/bosses/b_grimoire",
+ "raw": "tools/painted/raw/b_grimoire",
+ "td": 2.0,
+ "matte": {"default": {"key": 9, "soft": 22, "hard": 6}},
+ "cuts": {}, "parts": [], "debris": []
+}

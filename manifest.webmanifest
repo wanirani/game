@@ -1,14 +1,27 @@
 {
+  "id": "./",
   "name": "블러드 녹턴: 악마성 연대기",
   "short_name": "블러드 녹턴",
+  "description": "피로 물든 악마성을 누비는 고딕 호러 아케이드 액션. 여섯 영웅, 전직과 장비, 탈것과 수호신, 각성기까지 — 휴대폰·태블릿·PC·컨트롤러 어디서나.",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
   "orientation": "landscape",
   "background_color": "#050207",
   "theme_color": "#07030a",
   "lang": "ko",
+  "dir": "ltr",
+  "categories": ["games", "entertainment"],
+  "prefer_related_applications": false,
   "icons": [
-    { "src": "assets/ui/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "assets/ui/icon-512.png", "sizes": "512x512", "type": "image/png" }
+    { "src": "assets/ui/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/ui/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/ui/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "assets/ui/icon-180.png", "sizes": "180x180", "type": "image/png", "purpose": "any" }
+  ],
+  "screenshots": [
+    { "src": "assets/ui/screenshot-title.webp", "sizes": "1280x720", "type": "image/webp", "form_factor": "wide", "label": "블러드 녹턴 타이틀 화면" },
+    { "src": "assets/ui/screenshot-stage.webp", "sizes": "1280x720", "type": "image/webp", "form_factor": "wide", "label": "악마성 스테이지에서 싸우는 장면" }
   ]
 }
