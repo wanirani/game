@@ -51,7 +51,10 @@ const NON_ATK = [
   ['charge', { anim: 'charge', charging: 0.7 }], ['hurt', { anim: 'hurt', animT: 0.05, vx: -200 }], ['throw', { anim: 'throw', animT: 0.12 }],
 ];
 const ZOOM = Q.get('zoom');
-if (ZOOM) {
+if (ZOOM === 'all') {
+  header('6인 확대 (3.4배)');
+  row(CHAR_ORDER.map((id) => ({ label: CHARACTERS[id].name, p: () => ent({ look: lookOf(id, Q.get('cls')), ch: CHARACTERS[id], anim: Q.get('a') || 'idle', vx: Q.get('a') === 'run' ? 280 : 0 }) })), 420, 330, 3.4);
+} else if (ZOOM) {
   const id = ZOOM, ch = CHARACTERS[id];
   const cls = Q.get('cls');
   header(`${ch.name} 확대`);

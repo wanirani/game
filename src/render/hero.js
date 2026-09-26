@@ -61,8 +61,8 @@ function buildSpec(L, p) {
   const K = {
     L, o, fem, kid, B, cid, coat: L.coat || COAT_DEF[o] || 'short',
     hW: (fem ? 0.9 : 1) * (B > 1 ? 1 + (B - 1) * 0.85 : B),
-    thigh: kid ? 17 : fem ? 20.6 : 20.2, shin: kid ? 16.5 : fem ? 20.0 : 19.6,
-    torso: kid ? 18.5 : B >= 1.25 ? 23.4 : 22.5, neck: fem ? 4.4 : 4.1, headR: kid ? 7.6 : B >= 1.25 ? 6.9 : 6.7,
+    thigh: kid ? 17 : fem ? 21.6 : 21.2, shin: kid ? 16.5 : fem ? 21.0 : 20.6,
+    torso: kid ? 18.5 : B >= 1.25 ? 22.8 : 21.6, neck: fem ? 4.0 : 3.7, headR: kid ? 7.6 : B >= 1.25 ? 6.9 : 6.8,
     ua: kid ? 11.5 : 13.8, fa: kid ? 10.5 : 12.6, limb: B * (fem ? 0.88 : 1),
     skin, hair: col(L.hair, '#3a2a20'), eyes: col(L.eyes, '#6a4a2a'), eyeGlow: !!L.eyeGlow, beard: L.beard || null,
     hs: L.hairStyle || 'short', hg: L.headgear || null, hgC: L.headColor || null,
@@ -93,6 +93,7 @@ function buildSpec(L, p) {
   if (heavy) { fore = K.ac; glove = sh(K.ac, -0.08); }
   if (armor === 'chain') sleeve = K.ac;
   Object.assign(K, { torsoC, sleeve, fore, glove, belt, lining, tall, cuff });
+  K.ls = (K.thigh + K.shin) / 39.8;
   K.W = weaponSpec(L.weapon, p);
   K.off = K.W.type === 'dagger' || K.W.type === 'gun';
   K.auraC = K.aura?.color || '#b98cff';
@@ -158,10 +159,10 @@ function poseRun(P, K, ph, sp) {
 }
 function poseAir(P, vy) {
   const k = clamp((vy + 250) / 700, 0, 1);
-  P.py = -41; P.lean = lerp(0.14, 0.02, k); P.hd = lerp(-0.12, 0.14, k);
-  P.f1x = lerp(8.5, 6, k); P.f1y = lerp(-18, -8, k); P.f2x = lerp(-5, -8.5, k); P.f2y = lerp(-5, -12, k);
-  P.t1 = lerp(0.55, 0.3, k); P.t2 = lerp(0.9, 0.5, k);
-  P.a1 = lerp(-0.7, -0.25, k); P.r1 = 0.82; P.a2 = lerp(2.3, 3.75, k); P.r2 = lerp(0.8, 0.92, k);
+  P.py = -41; P.lean = lerp(0.16, 0.04, k); P.hd = lerp(-0.14, 0.16, k);
+  P.f1x = lerp(9, 7, k); P.f1y = lerp(-19, -9, k); P.f2x = lerp(-4, -8, k); P.f2y = lerp(-4, -13, k);
+  P.t1 = lerp(0.55, 0.35, k); P.t2 = lerp(0.95, 0.55, k);
+  P.a1 = lerp(0.25, -0.55, k); P.r1 = lerp(0.72, 0.9, k); P.a2 = lerp(2.35, 3.4, k); P.r2 = lerp(0.85, 0.92, k);
 }
 function airLegs(P) { P.py = -41; P.f1x = 8; P.f1y = -14; P.f2x = -6; P.f2y = -8; P.t1 = 0.45; P.t2 = 0.7; }
 function poseCrouch(P) {
@@ -413,10 +414,12 @@ function ik(ax, ay, tx, ty, l1, l2, bend) {
   IKO[0] = ax + Math.cos(a) * l1; IKO[1] = ay + Math.sin(a) * l1; IKO[2] = ax + dx; IKO[3] = ay + dy;
 }
 /** 몸통·팔 (궤적 샘플링에도 사용) */
+let LS = 1; // 다리 길이 배율 (자세는 다리 39.8px 기준으로 작성)
 function solveUpper(P, K, s) {
+  LS = K.ls;
   s.ux = Math.sin(P.lean); s.uy = -Math.cos(P.lean);
   s.fx = -s.uy; s.fy = s.ux;
-  s.px = P.px; s.py = P.py;
+  s.px = P.px * LS; s.py = P.py * LS;
   s.nx = s.px + s.ux * K.torso; s.ny = s.py + s.uy * K.torso;
   const sd = 2.9;
   s.s1x = s.nx - s.ux * sd + s.fx * 1.3 * K.hW; s.s1y = s.ny - s.uy * sd + s.fy * 1.3 * K.hW;
@@ -435,9 +438,9 @@ function solve(P, K, s) {
   solveUpper(P, K, s);
   s.hp1x = s.px + s.fx * 1.0; s.hp1y = s.py + s.fy * 1.0 + 0.5;
   s.hp2x = s.px - s.fx * 1.4; s.hp2y = s.py - s.fy * 1.4 + 0.5;
-  ik(s.hp1x, s.hp1y, P.f1x, P.f1y, K.thigh, K.shin, -1);
+  ik(s.hp1x, s.hp1y, P.f1x * LS, P.f1y * LS, K.thigh, K.shin, -1);
   s.k1x = IKO[0]; s.k1y = IKO[1]; s.a1x = IKO[2]; s.a1y = IKO[3];
-  ik(s.hp2x, s.hp2y, P.f2x, P.f2y, K.thigh, K.shin, -1);
+  ik(s.hp2x, s.hp2y, P.f2x * LS, P.f2y * LS, K.thigh, K.shin, -1);
   s.k2x = IKO[0]; s.k2y = IKO[1]; s.a2x = IKO[2]; s.a2y = IKO[3];
   const ha = P.lean * 0.4 + P.hd;
   s.ha = ha;
@@ -449,12 +452,12 @@ function solve(P, K, s) {
 let TX = 0, TY = 0;
 function tx0(P, x, y) {
   let X = x, Y = y;
-  if (P.rot) { const c = Math.cos(P.rot), s = Math.sin(P.rot), dy = Y - P.pvy; X = x * c - dy * s; Y = P.pvy + x * s + dy * c; }
+  if (P.rot) { const pv = P.pvy * LS, c = Math.cos(P.rot), s = Math.sin(P.rot), dy = Y - pv; X = x * c - dy * s; Y = pv + x * s + dy * c; }
   TX = X * P.sx * (1 + (1 - P.sq) * 0.6); TY = Y * P.sq;
 }
 function applyT1(c, P) {
   c.scale(P.sx * (1 + (1 - P.sq) * 0.6), P.sq);
-  if (P.rot) { c.translate(0, P.pvy); c.rotate(P.rot); c.translate(0, -P.pvy); }
+  if (P.rot) { c.translate(0, P.pvy * LS); c.rotate(P.rot); c.translate(0, -P.pvy * LS); }
 }
 
 // ───────────────────────── 체인(천·머리카락) ─────────────────────────
@@ -611,7 +614,7 @@ function drawArm(s, K, near) {
       c.fillStyle = sh(K.sleeve, d - 0.05); c.fill(); outline(K.sleeve, 0.6);
       c.strokeStyle = sh(K.cuff, d); c.lineWidth = 0.9; c.stroke();
     } else if (!K.heavy && K.o !== 'smith' && K.fore !== K.skin) {
-      c.strokeStyle = sh(K.o === 'ninja' ? K.tr : K.cuff, d); c.lineWidth = 1.1;
+      c.strokeStyle = sh(K.o === 'ninja' ? K.tr : K.o === 'hunter' || K.o === 'noble' ? K.se : K.cuff, d - 0.1); c.lineWidth = 1.2;
       c.beginPath(); c.moveTo(cx - (dy / dd) * 2.7, cy + (dx / dd) * 2.7); c.lineTo(cx + (dy / dd) * 2.7, cy - (dx / dd) * 2.7); c.stroke();
     }
     if (K.o === 'ninja') { // 팔 붕대 감기
@@ -683,8 +686,8 @@ function drawTorso(s, K, E) {
     for (let t = 0.96; t >= 0.02; t -= 0.12) { sp(s, K, t, frontAt(K, t) - (o === 'noble' ? 2.4 : 3.3) - (t > 0.8 ? 1.2 : 0)); c.lineTo(QX, QY); }
     c.closePath(); c.fillStyle = grad(mx0, my0, mx0 + s.fx * 8, my0 + s.fy * 8, vest, 0.8); c.fill(); outline(vest, 0.6);
     // 단추/라펠 선
-    c.fillStyle = K.tr;
-    for (let t = 0.2; t < 0.8; t += 0.16) { sp(s, K, t, frontAt(K, t) - 1.6); c.beginPath(); c.arc(QX, QY, 0.55, 0, TAU); c.fill(); }
+    c.fillStyle = o === 'noble' ? '#e8c872' : sh(K.tr, -0.2);
+    if (o !== 'hunter') for (let t = 0.24; t < 0.8; t += 0.18) { sp(s, K, t, frontAt(K, t) - 1.5); c.beginPath(); c.arc(QX, QY, 0.42, 0, TAU); c.fill(); }
     c.strokeStyle = K.tr; c.lineWidth = o === 'noble' ? 0.9 : 0.6; c.beginPath();
     for (let t = 0.02; t <= 0.98; t += 0.12) { sp(s, K, t, frontAt(K, t) - (o === 'noble' ? 2.6 : 3.4) - (t > 0.8 ? 1.2 : 0)); if (t === 0.02) c.moveTo(QX, QY); else c.lineTo(QX, QY); }
     c.stroke();
@@ -812,7 +815,7 @@ function coatGeom(s, K, P) {
 function drawSkirt(s, K, P, near) {
   if (K.coat === 'none' || !HEM[K.coat]) return;
   const c = G.c;
-  const { hemY, flare } = coatGeom(s, K, P);
+  let { hemY, flare } = coatGeom(s, K, P);
   const d = near ? 0 : -0.32;
   sp(s, K, 0.22, frontAt(K, 0.22) + 0.3); const wfx = QX, wfy = QY;
   sp(s, K, 0.22, -backAt(K, 0.22) - 0.3); const wbx = QX, wby = QY;
@@ -823,8 +826,9 @@ function drawSkirt(s, K, P, near) {
   let hfx = Math.max(legx + 4.5 + flare * 0.5, wfx + (short ? 1.5 : 0.5));
   if (short) hfx = wfx + 1.2 + flare;
   const back = Math.min(wbx, Math.min(legx, other) - 4.5) - flare - SW.tr * (short ? 0.3 : 1) - (open ? 3 : 1);
-  const tailLift = SW.tr * (short ? 0.1 : 0.35) + SW.lift * 0.5;
+  const tailLift = SW.tr * (short ? 0.1 : 0.35) + SW.lift * 0.5 - (open ? 3 : 0);
   const hby = Math.min(-0.5, hemY - tailLift);
+  if (open) hemY -= 2.5;
   const midx = lerp(hfx, back, 0.5), midy = Math.min(-0.5, hemY + 0.8 + SW.fl * 0.6);
   c.beginPath();
   c.moveTo(wfx, wfy);
@@ -845,7 +849,7 @@ function drawSkirt(s, K, P, near) {
     for (let i = 1; i <= 3; i++) { const u = i / 4; c.moveTo(lerp(wfx, wbx, u), lerp(wfy, wby, u) + 2); c.quadraticCurveTo(lerp(hfx, back, u) + SW.fl, lerp(hemY, hby, u) - 6, lerp(hfx, back, u) + 0.5, lerp(hemY, hby, u) - 0.5); }
     c.stroke();
     // 앞단/밑단 트림
-    c.strokeStyle = K.o === 'knight' ? K.at : K.tr; c.lineWidth = K.coat === 'dress' ? 1.2 : 0.8;
+    c.strokeStyle = K.o === 'knight' ? K.at : K.o === 'hunter' ? sh(K.tr, -0.25) : K.tr; c.lineWidth = K.coat === 'dress' ? 1.1 : 0.65;
     c.beginPath(); c.moveTo(hfx, hemY); c.quadraticCurveTo(lerp(hfx, midx, 0.5), hemY + 1, midx, midy);
     if (K.coat === 'dress' || K.coat === 'robe') c.quadraticCurveTo(lerp(midx, back, 0.5), midy + 0.6, back, hby); else { c.lineTo(midx - 1, midy - 1.8); c.lineTo(back, hby); }
     c.stroke();
@@ -894,16 +898,23 @@ function drawNeck(s, K) {
   capsule(bx, by, hx, hy, 2.8 * K.hW * (K.fem ? 0.85 : 1), 2.5 * (K.fem ? 0.85 : 1), sh(K.skin, -0.12));
 }
 function hairCapPath(c, style) {
+  // 머리카락 덩어리: 뒤통수·목덜미 가닥 끝이 뾰족한 실루엣
+  const slick = style === 'ponytail' || style === 'braid';
   c.beginPath();
-  c.moveTo(6.3, -3.3);
-  c.quadraticCurveTo(6.6, -7.6, 1.8, -8.7);
-  c.quadraticCurveTo(-3.8, -9.8, -6.8, -6.2);
-  c.quadraticCurveTo(-8.4, -2.4, -7.0, 2.0);
-  c.quadraticCurveTo(-6.3, 3.8, -4.9, 3.2);
-  if (style === 'bob' || style === 'long' || style === 'flowing') { c.quadraticCurveTo(-3.0, 1.2, -1.6, -0.4); }
-  else { c.quadraticCurveTo(-3.4, 1.4, -2.4, -0.6); }
-  c.quadraticCurveTo(0.6, -2.4, 2.6, -3.0);
-  c.quadraticCurveTo(4.4, -2.6, 6.3, -3.3);
+  c.moveTo(6.7, -3.0);
+  c.quadraticCurveTo(7.0, -7.8, 2.4, -9.1);
+  c.quadraticCurveTo(-3.2, -10.3, -6.4, -7.0);
+  c.quadraticCurveTo(-8.8, -4.0, -8.0, -0.4);
+  if (slick) { c.quadraticCurveTo(-7.6, 2.4, -5.6, 2.6); c.lineTo(-4.4, 1.4); }
+  else {
+    c.lineTo(-9.0, 2.6); c.lineTo(-6.8, 1.4); c.lineTo(-7.2, 4.4); c.lineTo(-5.2, 2.4); c.lineTo(-4.6, 3.6);
+  }
+  c.quadraticCurveTo(-3.2, 0.6, -1.4, -1.0);
+  c.lineTo(-0.5, 1.6); c.lineTo(0.5, -1.4);
+  c.quadraticCurveTo(1.8, -2.6, 2.8, -2.6);
+  if (style === 'bob' || style === 'long' || style === 'flowing') { c.lineTo(3.6, -1.0); c.lineTo(4.4, -2.4); c.lineTo(5.6, -0.6); c.lineTo(5.7, -2.3); c.lineTo(7.0, -1.4); }
+  else if (!slick) { c.lineTo(3.4, -0.6); c.lineTo(4.3, -2.3); c.lineTo(6.2, -0.4); c.lineTo(6.0, -2.2); c.lineTo(7.5, -1.8); }
+  else { c.quadraticCurveTo(4.6, -3.2, 6.1, -2.2); c.lineTo(6.9, -1.2); }
   c.closePath();
 }
 function drawHairBackMass(K) {
@@ -935,7 +946,8 @@ function drawHead(s, K, E, P) {
     if (K.fem || K.kid) { c.fillStyle = ra('#ff8a8a', 0.22); ellipse(3.8, 2.4, 1.6, 0.9); c.fill(); }
     // 귀
     if (hs !== 'long' && hs !== 'flowing' && hs !== 'bob' && hg !== 'hood' && hg !== 'veil') {
-      ellipse(-1.4, 0.8, 1.3, 1.9, 0.2); c.fillStyle = sh(K.skin, -0.12); c.fill(); outline(K.skin, 0.5);
+      ellipse(-0.6, 1.0, 1.15, 1.7, 0.25); c.fillStyle = sh(K.skin, -0.1); c.fill();
+      c.strokeStyle = ra(sh(K.skin, -0.55), 0.7); c.lineWidth = 0.4; c.beginPath(); c.arc(-0.5, 1.0, 0.7, -1.2, 1.6); c.stroke();
     }
     drawFace(K, E, P);
     if (K.beard) drawBeard(K);
@@ -1009,31 +1021,28 @@ function drawHairFront(K) {
   const c = G.c, hs = K.hs, hc = K.hair;
   if (hs === 'bald') return;
   hairCapPath(c, hs);
-  c.fillStyle = grad(-8, -6, 7, 2, hc, 0.9); c.fill(); outline(hc, 0.7);
+  c.fillStyle = grad(-8, -7, 7, 2, hc, 0.9); c.fill(); outline(hc, 0.7);
+  let extra = true;
   c.beginPath();
-  if (hs === 'short') {
-    c.moveTo(6.6, -3.6); c.lineTo(7.7, -1.6); c.lineTo(5.3, -2.7); c.lineTo(5.2, -0.9); c.lineTo(3.6, -2.6); c.lineTo(2.2, -1.6); c.lineTo(2.6, -3.2); c.closePath();
-  } else if (hs === 'spiky') {
-    c.moveTo(6.4, -4); c.lineTo(9.6, -3.4); c.lineTo(5.8, -6.2); c.lineTo(7.4, -9.6); c.lineTo(2.6, -8.4); c.lineTo(1.6, -12.4); c.lineTo(-1.6, -8.9);
-    c.lineTo(-6.4, -11.2); c.lineTo(-5.9, -7.2); c.lineTo(-10.6, -6.1); c.lineTo(-7.2, -3.4); c.lineTo(-9.8, 0.4); c.lineTo(-6.4, 0.6); c.lineTo(-5.6, -3); c.lineTo(4.8, -4.4); c.closePath();
-    c.moveTo(6.2, -3.4); c.lineTo(7.4, -0.6); c.lineTo(4.6, -2.4); c.lineTo(4.2, -0.2); c.lineTo(2.4, -2.6); c.closePath();
+  if (hs === 'spiky') {
+    c.moveTo(6.4, -4.4); c.lineTo(9.8, -4.6); c.lineTo(6.2, -6.8); c.lineTo(7.2, -10.2); c.lineTo(2.8, -8.6); c.lineTo(1.2, -12.8); c.lineTo(-1.8, -9.2);
+    c.lineTo(-6.8, -11.4); c.lineTo(-6.0, -7.4); c.lineTo(-11.0, -6.0); c.lineTo(-7.8, -3.6); c.lineTo(-10.4, 0.2); c.lineTo(-7.2, 0.2); c.lineTo(-5.6, -3.4); c.lineTo(4.6, -4.8); c.closePath();
   } else if (hs === 'bob') {
-    c.moveTo(6.4, -3.8); c.quadraticCurveTo(7.4, -2.6, 6.9, -1.4); c.lineTo(4.4, -1.8); c.lineTo(3.4, -1.2); c.lineTo(1.4, -2.2); c.lineTo(0.8, 1.4);
-    c.quadraticCurveTo(1.2, 4.2, 2.8, 5.4); c.lineTo(0.2, 5.2); c.quadraticCurveTo(-1.8, 2.4, -1.4, -2.4); c.closePath();
+    c.moveTo(-1.6, -3.0); c.quadraticCurveTo(-2.4, 2.2, 0.2, 5.8); c.lineTo(1.4, 4.2); c.lineTo(2.4, 5.6); c.quadraticCurveTo(1.0, 2.2, 1.8, -2.4); c.closePath();
   } else if (hs === 'long' || hs === 'flowing') {
-    c.moveTo(6.4, -3.8); c.quadraticCurveTo(7.6, -2.2, 6.8, -0.8); c.lineTo(5.0, -2.0); c.lineTo(3.2, -1.0); c.lineTo(2.2, -2.2);
-    c.quadraticCurveTo(0.8, 2, 1.6, 6.5); c.quadraticCurveTo(2.2, 9, 1.6, hs === 'flowing' ? 12.5 : 10); c.quadraticCurveTo(-0.4, 7, -1.2, 3); c.quadraticCurveTo(-1.8, -1.2, -0.6, -3.4); c.closePath();
-  } else if (hs === 'ponytail' || hs === 'braid') {
-    c.moveTo(6.4, -3.8); c.quadraticCurveTo(7.3, -2.8, 6.8, -1.6); c.lineTo(5.0, -2.8); c.lineTo(4.4, -1.4); c.lineTo(3.0, -3.0); c.closePath();
-  }
-  c.fillStyle = grad(-2, -6, 7, 2, hc, 0.9); c.fill(); outline(hc, 0.6);
+    // 얼굴 옆으로 흘러내리는 앞머리 가닥
+    c.moveTo(1.0, -2.8); c.quadraticCurveTo(-0.6, 2.6, 1.2, 7.4); c.quadraticCurveTo(1.8, 10, 0.8, hs === 'flowing' ? 13.4 : 11); c.quadraticCurveTo(2.9, 8.8, 2.8, 5.6); c.quadraticCurveTo(2.2, 2.4, 2.9, -2.2); c.closePath();
+  } else extra = false;
+  if (extra) { c.fillStyle = grad(-2, -6, 7, 2, hc, 0.9); c.fill(); outline(hc, 0.6); }
   if (G.tint) return;
-  // 윤기
-  c.strokeStyle = ra(sh(hc, 0.55), 0.55); c.lineWidth = 1.1; c.lineCap = 'round';
-  c.beginPath(); c.moveTo(4.2, -6.6); c.quadraticCurveTo(0.5, -8.6, -3.8, -7.4); c.stroke();
-  c.strokeStyle = ra(sh(hc, -0.4), 0.5); c.lineWidth = 0.45;
-  c.beginPath(); c.moveTo(-6.4, -4.5); c.quadraticCurveTo(-7.2, -1, -6.2, 2); c.moveTo(-3.8, -7.6); c.quadraticCurveTo(-6, -5, -6.2, -1.5); c.stroke();
-  if (hs === 'ponytail') { ellipse(-6.2, -3.4, 1.4, 1.6, 0.3); c.fillStyle = K.o === 'hunter' ? '#8a1426' : sh(K.se, 0); c.fill(); outline('#3a0a10', 0.4); }
+  // 윤기 + 결
+  c.strokeStyle = ra(sh(hc, 0.6), 0.5); c.lineWidth = 1.1; c.lineCap = 'round';
+  c.beginPath(); c.moveTo(4.6, -7.0); c.quadraticCurveTo(0.8, -9.2, -4.2, -7.6); c.stroke();
+  c.strokeStyle = ra(sh(hc, -0.45), 0.55); c.lineWidth = 0.45;
+  c.beginPath(); c.moveTo(-6.6, -5.0); c.quadraticCurveTo(-7.6, -1.6, -7.4, 1.6); c.moveTo(-3.8, -8.2); c.quadraticCurveTo(-6.0, -5.2, -5.8, -1.0); c.moveTo(3.2, -8.2); c.quadraticCurveTo(4.8, -5.4, 4.6, -2.8); c.stroke();
+  if (hs === 'ponytail' || hs === 'braid') {
+    ellipse(-7.4, -3.9, 1.3, 1.9, 0.5); c.fillStyle = K.o === 'hunter' ? '#8a1426' : sh(K.se, 0); c.fill(); outline('#3a0a10', 0.45);
+  }
 }
 function drawHeadgear(K, E) {
   const c = G.c, hg = K.hg;
@@ -1188,7 +1197,7 @@ function headPt(s, K, x, y) {
   QX = s.hx + (x * c - y * si) * hr; QY = s.hy + (x * si + y * c) * hr;
 }
 const HAIR_CFG = {
-  ponytail: { n: 6, seg: 4.3, w0: 2.4, w1: 0.7, ax: -5.8, ay: -3.3, cfg: { g: 1300, d: 0.88, push: 180, rest: 0.55, curl: 0.12 } },
+  ponytail: { n: 7, seg: 4.4, w0: 3.0, w1: 0.6, ax: -7.6, ay: -3.6, cfg: { g: 1150, d: 0.88, push: 260, rest: 0.75, curl: 0.1 } },
   long: { n: 6, seg: 4.6, w0: 4.2, w1: 2.4, ax: -4.6, ay: 1.5, cfg: { g: 1500, d: 0.9, push: 120, rest: 0.18, curl: 0.03 } },
   flowing: { n: 7, seg: 5.0, w0: 5.4, w1: 1.4, ax: -5.2, ay: 0.5, cfg: { g: 1100, d: 0.9, push: 200, rest: 0.35, curl: 0.08, flut: 90 } },
   braid: { n: 6, seg: 4.2, w0: 1.8, w1: 1.1, ax: -5.6, ay: 1.8, cfg: { g: 1500, d: 0.9, push: 100, rest: 0.15, curl: 0.03 } },

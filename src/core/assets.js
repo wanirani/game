@@ -3,7 +3,7 @@
 //  assets.preload(['bg/hub', ...])  → Promise (실패해도 resolve)
 //  assets.pattern(ctx, 'tex/tex_castle_stone') → CanvasPattern | null
 // 폴더별 확장자: bg/portraits/tex = .webp, icons/props = .png
-const EXT = { bg: 'webp', portraits: 'webp', tex: 'webp', icons: 'png', props: 'png', ui: 'png' };
+const EXT = { bg: 'webp', portraits: 'webp', tex: 'webp', cg: 'webp', icons: 'png', props: 'png', ui: 'png' };
 export const ASSET_ROOT = 'assets/';
 
 class Assets {
