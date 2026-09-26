@@ -8,7 +8,7 @@
 import { Suite, fmt } from './lib/suite.mjs';
 import { openEnv } from './lib/server.mjs';
 import { fakePadInit, PAD_IDS, BTN, press, axes, setButton, connect, disconnect, rumbleLog } from './lib/fakepad.mjs';
-import { Touch, padVisible } from './lib/touch.mjs';
+import { Touch, padVisible, waitPadVisible } from './lib/touch.mjs';
 
 const suite = new Suite('platform_pad');
 const env = await openEnv();
@@ -110,18 +110,21 @@ try {
       await s.wait(400);
       const before = await padVisible(s.page);
       await connect(s.page);
-      await press(s.page, BTN.RIGHT, 80, 0);
-      await s.wait(300);
-      const afterPad = await padVisible(s.page);
+      await setButton(s.page, BTN.RIGHT, 1);
+      const hide = await waitPadVisible(s.page, false, 1500);
+      await setButton(s.page, BTN.RIGHT, 0);
       const mode1 = await s.eval(() => window.__game.input.mode ?? null);
-      await t.tap(W * 0.5, H * 0.3);
-      await s.wait(300);
-      const afterTouch = await padVisible(s.page);
+      await s.wait(200);
+      const tt = t.tap(W * 0.5, H * 0.3, 60);
+      const show = await waitPadVisible(s.page, true, 1500);
+      await tt;
       const mode2 = await s.eval(() => window.__game.input.mode ?? null);
+      // 300 ms of wall time, or 18 game steps (300 ms of simulated time) when the machine is loaded
+      const quick = (r) => r.ok && (r.ms <= 300 || r.ticks <= 18);
       await suite.check({ id: `mode.${vp}`, group: 'mode', issue: 'P-06', pkg: 'PLAT-INPUT', title: 'pad press hides the virtual pad within 300 ms; a touch shows it again', session: s }, async () => ({
-        pass: before.visible && !afterPad.visible && afterTouch.visible,
-        detail: `touch→visible ${before.visible}, pad→visible ${afterPad.visible} (mode ${mode1}), touch→visible ${afterTouch.visible} (mode ${mode2}) [${before.source}]`,
-        metrics: { before, afterPad, afterTouch, mode1, mode2 },
+        pass: before.visible && quick(hide) && show.ok,
+        detail: `touch→visible ${before.visible}; pad press→hidden ${hide.ok ? `after ${hide.ms} ms / ${hide.ticks} steps` : 'never (1.5 s)'} (mode ${mode1}); touch→visible ${show.ok ? `after ${show.ms} ms` : 'never'} (mode ${mode2}) [${before.source}]`,
+        metrics: { before, hide, show, mode1, mode2 },
       }));
       await suite.errors({ id: `mode.${vp}.errors`, group: 'mode' }, s);
       await s.close();

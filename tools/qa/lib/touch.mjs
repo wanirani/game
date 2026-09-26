@@ -9,6 +9,7 @@
 //   await pressButton(t, s.page, 'attack', 120);    // presses the canvas pad (#tpad) or the legacy DOM pad by button id
 //   await stickHold(t, s.page, 40, 0, 500);         // floating stick: touch in the left zone and push +40 px right
 //   await padVisible(s.page)                        // { visible, source }
+//   await waitPadVisible(s.page, false, 1500)       // { ok, ms, ticks, source } — frame-accurate latency
 //
 // Button ids: attack jump dash sub skill1 skill2 ult swap mount guard pause bag (fullscreen on the legacy pad).
 // Sources, in order: the canvas pad API touchpad.buttons() (PLAT-TOUCH), touchpad.occupiedRects() entries that carry an id,
@@ -127,6 +128,31 @@ export async function padLayout(page, { all = false } = {}) {
 export async function padVisible(page) {
   const L = await padLayout(page);
   return { visible: L.visible, source: L.source };
+}
+
+/**
+ * Wait (in the page, frame by frame) until the pad visibility equals `want`.
+ * → { ok, ms (wall time), ticks (game steps, 60 per simulated second), source }
+ */
+export async function waitPadVisible(page, want, timeoutMs = 1500) {
+  return page.evaluate(({ want, timeoutMs }) => new Promise((resolve) => {
+    const g = window.__game, t0 = performance.now(), f0 = g.frame;
+    const vis = () => {
+      const c = document.getElementById('tpadcv') || document.getElementById('tpad');
+      if (c) { const s = getComputedStyle(c); return { v: s.display !== 'none' && s.visibility !== 'hidden' && +s.opacity > 0.02, src: 'tpad' }; }
+      const root = document.getElementById('touch');
+      if (root) { const s = getComputedStyle(root); return { v: s.display !== 'none' && s.visibility !== 'hidden' && !root.classList.contains('hidden') && !root.classList.contains('scene-off'), src: 'dom' }; }
+      return { v: false, src: 'none' };
+    };
+    const f = () => {
+      const r = vis();
+      const ms = performance.now() - t0;
+      if (r.v === want) resolve({ ok: true, ms: Math.round(ms), ticks: g.frame - f0, source: r.src });
+      else if (ms > timeoutMs) resolve({ ok: false, ms: Math.round(ms), ticks: g.frame - f0, source: r.src });
+      else requestAnimationFrame(f);
+    };
+    f();
+  }), { want, timeoutMs });
 }
 
 async function buttonCenter(page, id) {
