@@ -173,26 +173,26 @@ function drawSkills(ctx, r, hero, p, T) {
 }
 
 // ── 필살(SP) 게이지 (120×28) ──
-let spGrad = null, spGradKey = '';
+// 그라데이션: 평소 1개 + 가득 찼을 때 색이 도는 36단계(10°)를 위치별로 한 번씩만 만든다 (매 프레임 새 그라데이션 없음)
+let spGrad = null, spFull = null, spX = NaN, spW = NaN;
+function spGradient(ctx, ux, uw, step) {
+  if (ux !== spX || uw !== spW) { spX = ux; spW = uw; spGrad = null; spFull = null; }
+  if (step < 0) {
+    if (!spGrad) { spGrad = ctx.createLinearGradient(ux, 0, ux + uw, 0); spGrad.addColorStop(0, '#ff8a2a'); spGrad.addColorStop(1, '#ffe070'); }
+    return spGrad;
+  }
+  spFull ??= new Array(36).fill(null);
+  let g = spFull[step];
+  if (!g) { g = spFull[step] = ctx.createLinearGradient(ux, 0, ux + uw, 0); g.addColorStop(0, '#ff8a2a'); g.addColorStop(1, `hsl(${step * 10},90%,60%)`); }
+  return g;
+}
 function drawUltGauge(ctx, r, world, run, T) {
   const ux = r.x, uy = r.y + 16, uw = r.w;
   const full = run.sp >= 100;
   text(ctx, '필살', ux, uy - 6, { size: T ? 12 : 10, weight: 700, color: COLORS.dim });
   text(ctx, `${Math.floor(run.sp)}%`, ux + uw, uy - 6, { size: T ? 12 : 10, align: 'right', weight: 700, family: FONT.num, color: full ? '#ffe070' : COLORS.dim });
   ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(ux, uy, uw, 10);
-  let g;
-  if (full) { // 가득 차면 색이 돌아간다 (그때만 매 프레임 새 그라데이션)
-    g = ctx.createLinearGradient(ux, 0, ux + uw, 0);
-    g.addColorStop(0, '#ff8a2a'); g.addColorStop(1, `hsl(${(world.time * 300) % 360},90%,60%)`);
-  } else {
-    const key = `${ux}|${uw}`;
-    if (!spGrad || spGradKey !== key) {
-      spGrad = ctx.createLinearGradient(ux, 0, ux + uw, 0);
-      spGrad.addColorStop(0, '#ff8a2a'); spGrad.addColorStop(1, '#ffe070');
-      spGradKey = key;
-    }
-    g = spGrad;
-  }
+  const g = spGradient(ctx, ux, uw, full ? Math.floor(Math.abs(world.time * 30)) % 36 || 0 : -1); // 가득 차면 색이 돈다 (300°/s)
   ctx.fillStyle = g; ctx.fillRect(ux, uy, uw * clamp(run.sp / 100, 0, 1), 10);
   ctx.fillStyle = 'rgba(0,0,0,0.7)';
   for (let i = 1; i < 4; i++) ctx.fillRect(ux + uw * i / 4, uy, 1.5, 10);

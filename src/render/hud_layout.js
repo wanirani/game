@@ -9,7 +9,9 @@
 //   toast(i)   토스트 i번째 줄 {x: 가운데, y: 15px 글자 기준선, l, r, w, top, h: 26, hidden}. 2줄 토스트는 두 줄 칸을 쓴다
 //   toastRows  이번 배치에서 쓸 수 있는 토스트 줄 수 (보통 3, 위쪽 보스 바가 보이면 1)
 //   gap {l, r} 가운데 빈 칸 (토스트·위쪽 보스 칸의 가로 범위)
-//   touch, safe {l,r,t,b} (HUD 여백: safeArea 'full' 일 때만 game.safe), pad [패드 사각형], padLeft/padTop (오른쪽 패드 묶음 | null)
+//   touch, safe {l,r,t,b} (HUD 여백: safeArea 'full' 일 때만 game.safe), pad [패드 사각형 복사본; 숫자가 아니거나 크기 0 인 것은 뺀다],
+//   padLeft/padTop (오른쪽 패드 묶음 | null). 패드 쪽이 사각형을 제자리에서 고쳐도 다음 호출에서 알아채고 다시 계산한다
+//   터치: 상시 영역은 y 297 위에만 둔다 (TOUCH_FLOOR; 아래 보스 칸은 예외 — 태블릿 띠, 위쪽 칸이 240 px 보다 좁을 때)
 // pad 를 생략하면 터치 모드에서 touchpad.occupiedRects() 를 쓰고, 그것이 비어 있으면(PLAT-TOUCH 이전 스텁)
 // §1.4 기본 터치 배치를 본뜬 모형(modelPadRects)을 쓴다. 키보드·패드 모드에서는 패드가 없다.
 // opts (시험·도구용 덮어쓰기): { touch, safe, boss, meters }  — meters = 토스트가 비켜 줄 기믹 게이지 줄 수 (기본:
