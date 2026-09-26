@@ -146,5 +146,19 @@
  "runtime": {
   "armorBase": "#3a3a44"
  },
- "turn": null
+ "turn": {
+  "sheet5": "victor/victor_deadeye_turn5",
+  "views5": [
+   "y90",
+   "y135",
+   "ym90",
+   "-",
+   "-"
+  ],
+  "qback": "victor/victor_deadeye_qback",
+  "viewsQ": [
+   "-",
+   "ym135"
+  ]
+ }
 }

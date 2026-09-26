@@ -46,15 +46,16 @@ export function budgetOf(fx) { const k = qualityKey(fx); return { ...BUDGET_DEF[
 /** 종류마다 고정 크기 캔버스 + LRU (상한을 넘으면 가장 오래된 캔버스를 비워서 다시 쓴다) */
 class SpriteCache {
   constructor(w, h, cap, bake) { this.w = w; this.h = h; this.cap = cap; this.bake = bake; this.map = new Map(); this.win = 0; this.nb = 0; }
-  get(color) {
+  get(color, force = false) {
     const key = color || '#ffffff';
     const m = this.map;
     let c = m.get(key);
     if (c) { if (m.size > 8) { m.delete(key); m.set(key, c); } return c; }
     // 굽기 속도 상한: 색이 제각각인 효과가 캐시를 계속 밀어내며 매 프레임 굽지 않게 (0.2초에 8장; 넘으면 null → 호출부 대체 경로)
+    // force = 미리 굽기 (prewarm 이 한 번에 여러 색을 구울 때는 상한을 쓰지 않는다)
     const now = typeof performance !== 'undefined' ? performance.now() : 0;
     if (now - this.win > 200) { this.win = now; this.nb = 0; }
-    if (++this.nb > 8) return null;
+    if (++this.nb > 8 && !force) return null;
     if (m.size >= this.cap) { const k0 = m.keys().next().value; c = m.get(k0); m.delete(k0); }
     else c = mkCanvas(this.w, this.h);
     if (!c) return null;
@@ -328,13 +329,18 @@ export function digitAtlas(style = 'normal', color = null) {
       if (!A.fontOk || A.fontStr !== dmgFont()) { A.fontStr = dmgFont(); bakeAtlas(A); HITFX_STATS.rebakes++; }
       else A.epoch = epochNow();
     }
+    if (A.color && ATLAS.size >= ATLAS_CAP - 4) { ATLAS.delete(key); ATLAS.set(key, A); }   // 상한 가까이: 최근에 쓴 색은 뒤로 (LRU)
     return A.canvas ? A : null;
   }
   let reuse = null;
   if (ATLAS.size >= ATLAS_CAP) {
-    // 스타일 기본색 아틀라스는 남기고, 가장 오래된 색 덮어쓰기 아틀라스를 다시 쓴다
-    for (const [k, a] of ATLAS) if (a.color) { reuse = a.canvas; ATLAS.delete(k); break; }
-    if (!reuse) { const k0 = ATLAS.keys().next().value; reuse = ATLAS.get(k0).canvas; ATLAS.delete(k0); }
+    // 스타일 기본색 아틀라스는 남기고, 가장 오래 안 쓴 색 덮어쓰기 아틀라스의 캔버스를 다시 쓴다.
+    // 밀려난 아틀라스는 캔버스를 놓는다 → 아직 떠 있는 그 숫자는 (다른 글자로 뒤섞여 보이지 않고) 그리지 않는다
+    let old = null, k0 = null;
+    for (const [k, a] of ATLAS) if (a.color) { old = a; k0 = k; break; }
+    if (!old) { k0 = ATLAS.keys().next().value; old = ATLAS.get(k0); }
+    ATLAS.delete(k0);
+    reuse = old.canvas; old.canvas = null;
   }
   A = { style, color, st: dmgStyle(style), canvas: reuse, fontStr: dmgFont() };
   bakeAtlas(A);
@@ -402,7 +408,7 @@ export function textSprite(text, o = {}) {
     return T.canvas ? T : null;
   }
   let reuse = null;
-  if (TXT.size >= TXT_CAP) { const k0 = TXT.keys().next().value; reuse = TXT.get(k0).canvas; TXT.delete(k0); }
+  if (TXT.size >= TXT_CAP) { const k0 = TXT.keys().next().value, old = TXT.get(k0); reuse = old.canvas; old.canvas = null; TXT.delete(k0); }   // 밀려난 문구는 캔버스를 놓는다 (떠 있던 것은 그리지 않음)
   T = { text: String(text), color, size, outline, skew, canvas: reuse };
   bakeText(T);
   if (!T.canvas) return null;
@@ -540,27 +546,49 @@ export function stampDecal(world, x, y, dir = 1, mat = 'flesh', opts = {}) {
 }
 
 // ───────────────────────── 미리 굽기 ─────────────────────────
-const WARM_COLORS = ['#ffffff', '#ff7a2a', '#9fe8ff', '#fff2a0', '#b060ff', '#bfe0ff'];
-/** 흔히 쓰는 스프라이트·아틀라스·문구를 한가할 때 조금씩 굽는다 (스테이지 도중 첫 타격 끊김 방지) */
+const WARM_COLORS = ['#ffffff', '#ff7a2a', '#9fe8ff', '#fff2a0', '#b060ff', '#bfe0ff'];   // 흰색 + 속성 색 (impact ELEMENT_COLORS)
+/** enemy.js 판정 문구 색 — prewarm 이 같은 (문구, 색, 크기) 키로 미리 굽도록 한곳에 둔다 */
+export const REACT_CALLOUT = { guard: '#ffffff', stagger: '#ffb050', otg: '#ffd0a0', bounce: '#ffe070' };
+/** 실제로 쓰는 판정 문구 [문구, 색, 크기] (impact.callout: COUNTER·BACK ATTACK, enemy.js: 가드·비틀·다운 추가타·바운드) */
+function warmCallouts() {
+  const CO = FH.CALLOUT ?? {}, big = CO.size ?? 15, small = CO.small ?? 12, R = REACT_CALLOUT;
+  return [
+    [FH.COUNTER?.callout ?? 'COUNTER', FH.COUNTER?.color ?? '#aef0ff', big],
+    [FH.BACK?.callout ?? 'BACK ATTACK', FH.BACK?.color ?? '#ffc890', small],
+    [FH.JUGGLE?.guardCallout ?? '가드!', R.guard, big],
+    [FH.WEIGHT?.stagger?.callout ?? '비틀!', R.stagger, big],
+    [FH.DOWN?.callout ?? '다운 추가타', R.otg, big],
+    [FH.BOUNCE?.wall?.callout ?? '벽 바운드!', R.bounce, big],
+    [FH.BOUNCE?.ground?.callout ?? '바닥 바운드!', R.bounce, big],
+  ];
+}
+/**
+ * 흔히 쓰는 스프라이트·아틀라스·문구를 한가할 때 굽는다 (스테이지 도중 캔버스 생성·첫 타격 끊김 방지, feel §8).
+ * 한가한 틈마다 남은 시간만큼(시간 초과로 불리면 4ms 까지) 여러 작업을 몰아서 → 바쁜 화면에서도 1~2초 안에 끝난다.
+ */
 export function prewarm() {
   if (HITFX_STATS.prewarmed || typeof document === 'undefined') return;
   HITFX_STATS.prewarmed = true;
   const jobs = [];
-  for (const c of WARM_COLORS) jobs.push(() => { cut(c); glow(c); }, () => { star(c); streak(c); ring(c); });
-  jobs.push(() => { star('#aef0ff'); star('#ffe080'); star('#fff0b0'); glow('#ff9a30'); glow('#ffb050'); glow('#ffffff'); soft('rgba(255,40,70,0.35)'); });
+  for (const c of WARM_COLORS) jobs.push(() => { C_CUT.get(c, true); C_GLOW.get(c, true); }, () => { C_STAR.get(c, true); C_STREAK.get(c, true); C_RING.get(c, true); });
+  jobs.push(() => { for (const c of ['#aef0ff', '#ffe080', '#fff0b0']) C_STAR.get(c, true); for (const c of ['#ff9a30', '#ffb050']) C_GLOW.get(c, true); C_SOFT.get('rgba(255,40,70,0.35)', true); });
   for (const s of ['normal', 'crit', 'weak', 'resist', 'counter', 'ult', 'total', 'hurt', 'heal']) jobs.push(() => digitAtlas(s));
-  jobs.push(() => { for (const c of ['#8a8074', '#3a3440', '#ff7a1a', '#ffd070', '#5a1a7a', '#5a0610', '#bff4ff', '#fff', '#ff2040', '#ffffff']) soft(c); });
+  // 연기·섬광 파티클 색 (particles 프리셋 + 속성 색 섬광)
+  jobs.push(() => { for (const c of ['#8a8074', '#3a3440', '#ff7a1a', '#ffd070', '#5a1a7a', '#5a0610', '#bff4ff', '#fff', '#ffffff', '#ff2040']) C_SOFT.get(c, true); });
+  jobs.push(() => { for (const c of WARM_COLORS) C_SOFT.get(c, true); });
   jobs.push(() => { for (const k of Object.keys(DECAL_KIND)) for (let i = 0; i < DECAL_KIND[k].n; i++) decalSprite(k, i); });
-  const CO = FH.CALLOUT ?? {};
-  jobs.push(() => {
-    for (const t of ['COUNTER', 'BACK ATTACK', '가드!', '비틀!', '다운 추가타', '벽 바운드!', '바닥 바운드!']) {
-      const small = t === 'BACK ATTACK';
-      const col = t === 'COUNTER' ? (FH.COUNTER?.color ?? '#aef0ff') : small ? (FH.BACK?.color ?? '#ffc890') : (CO.color ?? '#ffe8c0');
-      textSprite(t, { size: small ? CO.small ?? 12 : CO.size ?? 15, color: col });
-    }
-  });
-  const idle = typeof requestIdleCallback === 'function' ? (f) => requestIdleCallback(f, { timeout: 600 }) : (f) => setTimeout(f, 16);
-  const step = () => { const j = jobs.shift(); if (!j) return; try { j(); } catch (e) { console.warn('[hitfx] prewarm', e); } idle(step); };
+  jobs.push(() => { for (const [t, color, size] of warmCallouts()) textSprite(t, { size, color }); });
+  const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  const idle = typeof requestIdleCallback === 'function' ? (f) => requestIdleCallback(f, { timeout: 400 }) : (f) => setTimeout(f, 16);
+  const step = (dl) => {
+    const t0 = now();
+    do {
+      const j = jobs.shift();
+      if (!j) return;
+      try { j(); } catch (e) { console.warn('[hitfx] prewarm', e); }
+    } while (jobs.length && (dl && !dl.didTimeout && typeof dl.timeRemaining === 'function' ? dl.timeRemaining() > 2 : now() - t0 < 4));
+    if (jobs.length) idle(step);
+  };
   idle(step);
 }
 // 부팅 뒤(글꼴 도착 후) 조금 있다가 미리 굽는다. 모듈 최상단에서는 가져온 값을 건드리지 않는다 (순환 import 규칙)

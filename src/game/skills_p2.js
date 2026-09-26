@@ -253,7 +253,7 @@ function techWhirl(p, w) {
         const i = e.d.n++, last = i === HITS - 1;
         const r = { x: cx - R_HIT, y: cy - R_HIT, w: R_HIT * 2, h: R_HIT * 2 };
         const n = playerStrike(ww, r, tatk(p, {
-          mv: 0.5, element: 'ice', hitId: nid('wh'), fx: 'ice', dir: f,
+          mv: 0.5, element: null, hitId: nid('wh'), fx: 'magic', dir: f,
           kb: last ? [320, -420] : [20, -120], launch: last, hitstop: last ? 0.06 : 0.02, shake: last ? 6 : 2,
         }));
         if (ww.game?.debug) ww.debugRects?.push(r);

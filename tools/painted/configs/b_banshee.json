@@ -1,0 +1,12 @@
+{
+ "id": "b_banshee",
+ "kind": "boss",
+ "out": "assets/painted/bosses/b_banshee",
+ "raw": "tools/painted/raw/b_banshee",
+ "td": 2.0,
+ "matte": {"default": {"key": 9, "soft": 22, "hard": 6}},
+ "cuts": {},
+ "parts": [],
+ "debris": [],
+ "kling": {}
+}

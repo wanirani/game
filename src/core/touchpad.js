@@ -864,6 +864,7 @@ function drawButton(c, L, id, b, pressed, alpha, p, run, w, tsec) {
     }
     case 'mount': {
       const m = S.cmp?.mount;
+      if (m?.blocked && !m.riding) c.globalAlpha *= 0.45; // 보스전 등 탈것 금지
       label(c, m?.riding ? '하차' : LABEL.mount, cx, cy + 1, Math.max(12, r * 0.52), pressed);
       const cd = num(m?.cd, 0);
       if (cd > 0 && !pressed) cooldown(c, cx, cy, r, cd / Math.max(0.1, num(m?.cdMax, cd) || cd), cd);
@@ -1178,7 +1179,12 @@ function drawEditor(c, L, tsec) {
   c.strokeStyle = 'rgba(232,200,114,0.6)'; c.lineWidth = 2; c.setLineDash([4, 5]);
   c.beginPath(); c.arc(L.home.x, L.home.y, L.R, 0, TAU); c.stroke();
   c.setLineDash([]);
-  label(c, settings().touchStick === 'fixed' ? '이동 스틱' : '이동 스틱 (왼쪽 아무 곳)', L.home.x, L.home.y, 13, false, 'rgba(243,226,184,0.85)');
+  const stickTxt = settings().touchStick === 'fixed' ? '이동 스틱' : L.left ? '이동 스틱 (오른쪽 아무 곳)' : '이동 스틱 (왼쪽 아무 곳)';
+  label(c, stickTxt, L.home.x, L.home.y, 13, false, 'rgba(243,226,184,0.85)');
+  // 사용법 (도구 막대의 안내 문구가 좁은 화면에서 빠지므로 캔버스에도)
+  const hx = L.left ? L.W - L.ins.r - (L.W - L.ins.l - L.ins.r) * 0.3 : L.ins.l + (L.W - L.ins.l - L.ins.r) * 0.3;
+  label(c, '버튼을 끌어서 옮기고, 금색 점을 끌어 크기를 바꿉니다', hx, L.yMin + 40, 14, false, 'rgba(243,226,184,0.9)');
+  label(c, '버튼끼리 겹치지 않게 자동으로 밀려납니다', hx, L.yMin + 62, 12, false, 'rgba(184,168,144,0.9)');
   c.restore();
   for (const id of PAD_IDS) {
     const b = E.pos[id], sel = E.sel === id;

@@ -1,6 +1,10 @@
 // 스테이지 정의 (1부 13장 + 2부 14~20장 + 투기장). 맵은 data/maps/<id>.js 의 ROOMS.
-// 2부 스테이지 추가 필드 (world2 §4.2): part:2, page:1(월드맵 쪽), gimmick(world2 §3.1), shard, heart, liquid:'deep'.
+// 2부 스테이지 추가 필드 (world2 §4.2): part:2, page:1(월드맵 쪽), gimmick(world2 §3.1 — 모든 방의 기본값, { kind, …매개변수 } 또는 배열),
+//   shard(별의 조각 k_star_n: 맵 '@' 에 정확히 1개), heart(세계의 심장 k_heart_n: 보스 전리품), color(월드맵 노드 색), liquid 에 'deep'(깊은 물) 추가.
+//   1부 스테이지에는 새 필드가 없다 (page 는 월드맵에서 0 으로 본다).
+// 방(room) 추가 필드: gimmick(undefined = 스테이지 기본값, null = 기믹 없음, 객체/배열 = 이 방만), liquid(이 방만 다른 액체), doorMarks(['blood'|null, …] 문 순서).
 // 2부 스테이지는 맵 패키지별로 아래 앵커 주석 바로 뒤에 넣는다 (import 4곳, STAGES 4곳). 앵커 주석은 지우지 않는다.
+//   s14–s15 = MAPS-P2-A (이 파일의 주인), s16–s17 = MAPS-P2-B, s18–s19 = MAPS-P2-C, s20 = MAPS-P2-D. STAGE_ORDER_P2 는 STAGES 에 들어온 것만 담는다.
 // stage = { id, chapter, name, sub, theme(render/background THEMES 키), bg, tex, tex2, tileStyle(render/tiles TILE_STYLES 키), music,
 //   level(적 레벨), darkness(0~0.9), darkColor, liquid:'water'|'lava'|'poison'|'blood', boss, start(첫 방), rooms,
 //   enemies:[이 스테이지에 배치할 적 ID 후보], docs:[비전서 id(숨김 벽 'H' 순서대로)], relic(드라큘라 유물 id|null),

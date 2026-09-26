@@ -267,7 +267,7 @@ export class Chimera extends ABoss {
     const X = this.cx, B = this.bottom, t = this.t;
     shadow(ctx, X, this.floorY - 2, 140, 16, 0.6);
     ctx.save();
-    const jx = this.flashT > 0 ? rand(-2, 2) : 0;
+    const jx = this.flashT > 0 ? Math.sin(this.t * 97) * 2 : 0;   // 그리기에서 게임플레이 난수를 쓰지 않는다 (채색/벡터 결정성 A/B)
     ctx.translate(X + jx, B); ctx.scale(this.facing * S, S);
     if (this.enraged) glow(ctx, 0, -90, 220, ACID, 0.12 + 0.06 * Math.sin(t * 8));
     glow(ctx, 0, -90, 200, '#1a2a0a', 0.6);

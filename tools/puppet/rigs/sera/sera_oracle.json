@@ -159,5 +159,18 @@
  "runtime": {
   "armorBase": "#2a2a5a"
  },
- "turn": null
+ "turn": {
+  "sheet5": "sera/sera_oracle_turn5",
+  "views5": [
+   "y90",
+   "y135",
+   "y180",
+   "ym90",
+   "-"
+  ],
+  "qback": "sera/sera_oracle_qback",
+  "viewsQ": [
+   "ym135"
+  ]
+ }
 }

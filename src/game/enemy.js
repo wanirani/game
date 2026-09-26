@@ -76,6 +76,17 @@ export function weightClassOf(def) {
   return 'LIGHT';
 }
 const damp = (k, dt) => Math.pow(k, dt * 60);
+let _vibRT = NaN, _vibN = 0;
+/**
+ * 그린 프레임마다 번갈아 바뀌는 0/1 (히트스톱 떨림). game.frame 은 60Hz 틱 수라 30fps 로 그리면(틱 2번에 1번 그림)
+ * 늘 같은 짝수·홀수 → 떨리지 않고 한쪽으로 밀려 보인다. rAF 마다 바뀌는 game.realTime 으로 뒤집는다.
+ */
+function vibParity(g) {
+  const rt = g?.realTime;
+  if (typeof rt !== 'number') return (g?.frame ?? 0) & 1;
+  if (rt !== _vibRT) { _vibRT = rt; _vibN ^= 1; }
+  return _vibN;
+}
 function sfxIf(name, o) { if (audio.has ? audio.has(name) : true) audio.sfx(name, o); }
 function callout(world, x, y, text, color) {
   if (typeof IM.callout === 'function') IM.callout(world, x, y, text, { color });
@@ -383,7 +394,7 @@ export class Enemy extends Entity {
     const k = B.kick ?? 6;
     world.camera?.kick?.(-s * k, 0);
     sfxIf(B.sfx ?? 'wall_bounce', { vol: 0.85 });
-    callout(world, this.cx, this.y - 14, B.callout ?? '벽 바운드!', '#ffe070');
+    callout(world, this.cx, this.y - 14, B.callout ?? '벽 바운드!', HFX.REACT_CALLOUT?.bounce ?? '#ffe070');
     this.styleEvent(world, 'wallBounce');
   }
 
@@ -403,7 +414,7 @@ export class Enemy extends Entity {
     const kk = Array.isArray(B.kick) ? B.kick : [0, 7];
     world.camera?.kick?.(kk[0], kk[1]);
     sfxIf(B.sfx ?? 'ground_bounce', { vol: 0.85 });
-    callout(world, this.cx, this.y - 14, B.callout ?? '바닥 바운드!', '#ffe070');
+    callout(world, this.cx, this.y - 14, B.callout ?? '바닥 바운드!', HFX.REACT_CALLOUT?.bounce ?? '#ffe070');
     this.styleEvent(world, 'groundBounce');
   }
 
@@ -422,7 +433,7 @@ export class Enemy extends Entity {
     this.flashT = Math.max(this.flashT, 0.16);
     world.fx?.burst('spark', this.cx, this.cy, 8, { color: '#ffb050', speed: 260 });
     sfxIf('impact_crack', { vol: 0.5, pitch: 1.2 });
-    callout(world, this.cx, this.y - 14, S.callout ?? '비틀!', '#ffb050');
+    callout(world, this.cx, this.y - 14, S.callout ?? '비틀!', HFX.REACT_CALLOUT?.stagger ?? '#ffb050');
     world.style?.onEvent?.('stagger', { target: this });
   }
 
@@ -470,7 +481,7 @@ export class Enemy extends Entity {
     // 다운 추가타 (OTG)
     if (this.down > 0) {
       this.otg++;
-      if (!this.otgCalled) { this.otgCalled = true; callout(world, this.cx, this.y - 10, D.callout ?? '다운 추가타', '#ffd0a0'); }
+      if (!this.otgCalled) { this.otgCalled = true; callout(world, this.cx, this.y - 10, D.callout ?? '다운 추가타', HFX.REACT_CALLOUT?.otg ?? '#ffd0a0'); }
       if (info.otgStrong && !this.otgGbUsed) {
         // 강한 다운 추가타: 바닥 바운드 (콤보당 1번)
         this.otgGbUsed = true; this.gbUsed = true;
@@ -498,19 +509,20 @@ export class Enemy extends Entity {
     } else if (air && launchMul > 0) {
       // 공중 콤보
       this.jugg = true;
+      const jn0 = this.jn;   // 이번 타격 전까지의 공중 타수 (한계 14 → 15번째 공중 타격부터 '가드!', feel §10 C5)
       this.jn++;
       if (info.gb && !this.gbUsed) {
         // 바닥 바운드: 내리꽂기 → 착지 때 튀어오름
         this.gbUsed = true; this.gbArmed = true;
         this.vy = T.BG.slamVy ?? 900;
         this.vx = dir * kb[0] * kbMul * 0.4;
-      } else if (this.jn >= (J.limit ?? 14)) {
+      } else if (this.guardFall || jn0 >= (J.limit ?? 14)) {
         // 가드 (띄우기 한계): 더 뜨지 않고 빨리 떨어진다
         if (!this.guardFall) {
           this.guardFall = true;
           this.flashT = Math.max(this.flashT, 0.14);
           world.fx?.flash(this.cx, this.cy, { color: '#ffffff', size: 40, life: 0.1 });
-          callout(world, this.cx, this.y - 14, J.guardCallout ?? '가드!', '#ffffff');
+          callout(world, this.cx, this.y - 14, J.guardCallout ?? '가드!', HFX.REACT_CALLOUT?.guard ?? '#ffffff');
         }
         this.vx = dir * kb[0] * kbMul * 0.5;
       } else {
@@ -583,7 +595,7 @@ export class Enemy extends Entity {
       const V = T.W.vib ?? { base: 2, perClass: 1 };
       const amp = (V.base ?? 2) + (V.perClass ?? 1) * (this.hsCls ?? 0);
       if (!any) { this.camXf = ctx.getTransform(); any = true; }
-      ctx.translate(((world.game?.frame ?? 0) & 1) ? amp : -amp, 0);
+      ctx.translate(vibParity(world.game) ? amp : -amp, 0);
     }
     if (R.lie > 0.001) {
       if (!any) { this.camXf = ctx.getTransform(); any = true; }

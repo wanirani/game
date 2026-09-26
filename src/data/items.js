@@ -402,7 +402,7 @@ const UNIQUE_LIST = [
     effect: '심해의 압력 — 냉기 피해 +30%, 치명타 확률 +10%', desc: '사제왕의 산호 지팡이를 총신으로 깎은 작살포. 방아쇠를 당기면 깊은 바다의 수압이 함께 터져 나온다.' },
   { id: 'u_ziz', name: '뇌조의 꽁지 채찍 지즈', slot: 'weapon', wtype: 'whip', tier: 7, icon: 'whip_7', lvReq: 58, rarity: 5, boss: 'b_ziz',
     stats: { atk: 160, thunder: 35, reach: 15, atkSpd: 8 }, element: 'thunder', visual: { style: 6, glow: '#bfe0ff', rift: true },
-    effect: '폭풍의 꼬리 — 번개 피해 +35%, 공격 범위 +15%', desc: '거신조의 꽁지깃을 꼬아 만든 채찍. 깃털마다 잠든 번개가 휘두를 때마다 눈을 뜬다.' },
+    effect: '폭풍의 꼬리 — 번개 피해 +35%, 공격 범위 +15%', desc: '거신조의 꽁지깃을 꼬아 만든 채찍. 깃털 속에 잠든 번개가 휘두를 때마다 눈을 뜬다.' },
   { id: 'u_ziz2', name: '지즈의 날개 망토', slot: 'cloak', tier: 7, icon: 'cloak_7', lvReq: 58, rarity: 5, boss: 'b_ziz',
     stats: { def: 22, res: 34, airJumps: 1, moveSpd: 8, jumpPow: 10 }, visual: { cape: 'tattered', color: '#2a3a5a', color2: '#bfe0ff', len: 1.3 },
     effect: '하늘의 기억 — 공중 점프 +1, 점프력 +10%', desc: '해를 가리던 거신조의 날개 한 자락. 두르면 발밑의 바람이 먼저 몸을 띄운다.' },

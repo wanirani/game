@@ -308,5 +308,19 @@
  "runtime": {
   "armorBase": "#3a3020"
  },
- "turn": null
+ "turn": {
+  "sheet5": "victor/victor_gunlord_turn5",
+  "views5": [
+   "y90",
+   "y180",
+   "-",
+   "y135",
+   "ym90"
+  ],
+  "qback": "victor/victor_gunlord_qback",
+  "viewsQ": [
+   "-",
+   "ym45"
+  ]
+ }
 }

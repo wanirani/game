@@ -26,7 +26,11 @@
   min-width: 64px; min-height: 44px; padding: 0 12px; border-radius: 8px;
   border: 1.5px solid rgba(232, 200, 114, 0.7); background: rgba(60, 12, 24, 0.95); color: #f3e2b8;
   font: 800 15px "Noto Sans KR", "Noto Sans KR Ext", sans-serif; touch-action: manipulation; cursor: pointer;
+  white-space: nowrap; flex: 0 0 auto;
 }
 #tpad .tp-btn:active { background: #e8c872; color: #1a0608; }
 #tpad .tp-btn.tp-save { background: rgba(120, 18, 40, 0.98); border-color: #e8c872; }
-@media (max-width: 700px) { #tpad .tp-hint { display: none; } }
+#tpad .tp-btn:focus-visible { outline: 2px solid #e8c872; outline-offset: 2px; }
+/* 좁은 화면: 안내 문구는 빼고 제목·버튼만 */
+@media (max-width: 1000px) { #tpad .tp-hint { display: none; } }
+@media (max-width: 480px) { #tpad .tp-title { display: none; } }

@@ -1,0 +1,12 @@
+{
+ "id": "b_crimson",
+ "kind": "boss",
+ "out": "assets/painted/bosses/b_crimson",
+ "raw": "tools/painted/raw/b_crimson",
+ "td": 2.0,
+ "quality": 90,
+ "matte": {"default": {"key": 9, "soft": 22, "hard": 6}},
+ "cuts": {},
+ "parts": [],
+ "debris": []
+}

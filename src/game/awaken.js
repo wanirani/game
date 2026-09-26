@@ -100,6 +100,8 @@ const flushN = () => input.flushN ?? 0;
 /** 필살기·각성기 입력. true = 입력 소비 (나머지 공격 입력을 건너뛴다) */
 export function handleUltInput(p, world) {
   prepareAwakening(p, world);
+  const wallNow = nowMs(), wallPrev = p._awWall ?? -1e9;
+  p._awWall = wallNow;
   const st = awState(world);
   const H = holdOf(p);
   // 길게 누르는 중 한 프레임 이상 건너뛰었거나(피격 경직·연출·입력 잠금·사망) 장면이 쌓였으면 취소 (R16)
@@ -129,7 +131,7 @@ export function handleUltInput(p, world) {
       return false;
     }
     input.consume('ult');
-    startHold(p, world, H);
+    startHold(p, world, H, wallNow, wallPrev);
     if (!input.down('ult')) return resolveRelease(p, world, H);   // 히트스톱 동안 눌렀다 뗀 톡
     return true;
   }
@@ -138,6 +140,7 @@ export function handleUltInput(p, world) {
   H.lastT = p.t;
   if (!ready) { endHold(p, world, 'cancel'); return true; }
   if (input.down('ult')) {
+    H.downWall = wallNow;
     const held = heldFor(H);
     const k = clamp(held / R.holdFull, 0, 1);
     st.holdK = k; p.awakenHoldK = k;
@@ -153,30 +156,35 @@ export function handleUltInput(p, world) {
  * 기기가 느려 한 프레임에 스텝이 모자라면(게임 시간이 실제보다 느리게 흐름) 실제로 0.45초 누른 것으로도 각성이 된다.
  */
 function heldFor(H) { return Math.max(input.time - H.t0, (nowMs() - H.w0) / 1000); }
+// 뗀 순간의 실제 시각은 '마지막으로 눌린 것을 본 때' 와 '지금' 사이 → 가운데로 어림한다 (누른 순간도 같은 방식, startHold)
 
 /** 손을 뗐다: 톡(< 0.20초) → 일반 필살기, 0.20–0.45초 → 취소, 그 이상(얼어 있는 사이 완성) → 각성 */
 function resolveRelease(p, world, H) {
   const rel = input.releasedAt ? input.releasedAt('ult') : (input.releaseTime?.ult ?? input.time);
   const dur = Math.max(0, (rel >= H.t0 ? rel : input.time) - H.t0);   // 스텝 기준 (톡 판정은 이쪽이 정확하다)
-  const wall = (nowMs() - H.w0) / 1000 - Math.max(0, input.time - (rel >= H.t0 ? rel : input.time));   // 뗀 뒤 흐른 스텝 시간만큼 뺀 실제 시간
+  const now = nowMs(), lastDown = Math.min(now, H.downWall ?? H.w0);
+  const wall = Math.max(0, ((lastDown + now) / 2 - H.w0) / 1000);
   AWAKEN_DEBUG.holds.push({ dur: +dur.toFixed(3), wall: +wall.toFixed(3), t: +input.time.toFixed(3) });
   if (AWAKEN_DEBUG.holds.length > 16) AWAKEN_DEBUG.holds.shift();
-  if (dur < R.tapMax) {
+  // 느린 기기(한 프레임에 스텝이 모자람)에서는 스텝 시간이 실제보다 짧다: 각성은 둘 중 긴 쪽, 톡은 둘 중 짧은 쪽으로 판정
+  if (Math.max(dur, wall) >= R.holdFull) {
+    endHold(p, world, 'silent');
+    castAwakening(p, world);
+  } else if (Math.min(dur, wall) < R.tapMax) {
     endHold(p, world, 'silent');
     AWAKEN_DEBUG.taps++;
     castUltimate(p, world);
-  } else if (Math.max(dur, wall) < R.holdFull) {
-    endHold(p, world, 'cancel');
   } else {
-    endHold(p, world, 'silent');
-    castAwakening(p, world);
+    endHold(p, world, 'cancel');
   }
   return true;
 }
 
-function startHold(p, world, H) {
+function startHold(p, world, H, wallNow = nowMs(), wallPrev = -1e9) {
   H.on = true; H.t0 = input.pressTime?.ult ?? input.time; H.lastT = p.t; H.flushN = flushN(); H.beat2 = false;
-  H.w0 = nowMs() - Math.max(0, input.time - H.t0) * 1000;   // 누른 순간의 실제 시각 (버퍼만큼 앞당김)
+  const gap = wallNow - wallPrev;   // 직전 갱신과의 실제 간격: 누른 순간은 그 사이 어딘가 → 가운데로 어림
+  H.w0 = wallNow - (gap > 0 && gap < 300 ? gap / 2 : 0) - Math.max(0, input.time - H.t0 - 1 / 60) * 1000;
+  H.downWall = wallNow;
   p.superArmor = 1;   // 길게 누르는 동안: 피해는 받되 경직·넉백 없음 (player.takeHit, MASTER_PLAN §1.7 #21)
   sfx('heartbeat');
   sfx('awaken_hold');

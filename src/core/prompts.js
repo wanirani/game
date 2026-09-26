@@ -163,7 +163,7 @@ function scratchCtx() {
   return measureCtx;
 }
 /** 캐시 비우기 (설정 변경 등으로 모양이 바뀔 때; 보통은 키에 모두 들어 있어 필요 없다) */
-export function clearGlyphCache() { CACHE.clear(); }
+export function clearGlyphCache() { CACHE.clear(); SPEC_MEMO.clear(); }
 
 const labelSize = (h) => Math.round(Math.max(9, h * 0.62));
 const ellipsize = (s, n) => (s.length > n ? s.slice(0, n) : s);
@@ -412,11 +412,26 @@ function bitmapOf(spec, h, sc) {
   return e;
 }
 
+// 액션 → 글리프 설명 메모 (바인딩 객체·글리프 세트가 바뀌면 비운다): HUD 가 매 프레임 부를 때 배열을 새로 만들지 않는다
+const SPEC_MEMO = new Map();
+let memoBindings = null, memoSet = null;
+function specMemo(action, m) {
+  const b = input.bindings, set = m === 'pad' ? glyphSet() : null;
+  if (b !== memoBindings || (set && set !== memoSet)) { SPEC_MEMO.clear(); memoBindings = b; if (set) memoSet = set; }
+  const k = m + '|' + action;
+  let spec = SPEC_MEMO.get(k);
+  if (spec === undefined) {
+    try { spec = specOf(action, m); } catch (e) { console.error('[prompts] spec', e); spec = null; }
+    if (SPEC_MEMO.size > 256) SPEC_MEMO.clear();
+    SPEC_MEMO.set(k, spec);
+  }
+  return spec;
+}
+
 /** 글리프 하나 → 너비 (그릴 것이 없으면 0) */
 export function drawGlyph(ctx, action, x, y, h = 18, mode) {
   const m = normMode(mode) ?? promptMode();
-  let spec;
-  try { spec = specOf(action, m); } catch (e) { console.error('[prompts] spec', e); spec = null; }
+  const spec = specMemo(action, m);
   if (!spec) return 0;
   h = Math.max(8, Math.round(h));
   const bm = bitmapOf(spec, h, scaleOf(ctx));
@@ -433,7 +448,7 @@ export function drawGlyph(ctx, action, x, y, h = 18, mode) {
 /** 글리프 너비만 (그리지 않음) */
 export function glyphWidth(action, h = 18, mode) {
   const m = normMode(mode) ?? promptMode();
-  const spec = specOf(action, m);
+  const spec = specMemo(action, m);
   if (!spec) return 0;
   const mctx = scratchCtx();
   if (!mctx) return h;

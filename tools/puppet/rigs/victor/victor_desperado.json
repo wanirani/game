@@ -173,5 +173,22 @@
  "runtime": {
   "armorBase": "#7a3a1a"
  },
- "turn": null
+ "turn": {
+  "sheet5": "victor/victor_desperado_turn5",
+  "views5": [
+   "y90",
+   "y135",
+   "y180",
+   "ym90",
+   "-"
+  ],
+  "qback": "victor/victor_desperado_qback",
+  "viewsQ": [
+   "ym135",
+   "ym45"
+  ]
+ },
+ "legs": {
+  "pantsWarmMax": null
+ }
 }

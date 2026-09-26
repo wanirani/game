@@ -155,5 +155,18 @@
  "runtime": {
   "armorBase": "#ffffff"
  },
- "turn": null
+ "turn": {
+  "sheet5": "sera/sera_priestess_turn5",
+  "views5": [
+   "y90",
+   "y135",
+   "y180",
+   "ym90",
+   "-"
+  ],
+  "qback": "sera/sera_priestess_qback",
+  "viewsQ": [
+   "ym135"
+  ]
+ }
 }

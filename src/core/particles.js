@@ -401,6 +401,7 @@ export class Particles {
         case 'dmg': this.drawDmg(ctx, p); break;
         case 'callout': {
           const spr = p.spr, age = p.max - p.life;
+          if (!spr?.canvas) break;   // 캐시에서 밀려난 문구 (hitfx.textSprite 가 캔버스를 다른 문구에 넘김)
           const k = age < 0.08 ? 1.45 - 0.45 * (age / 0.08) : 1;
           ctx.globalCompositeOperation = 'source-over';
           ctx.globalAlpha = t < 0.65 ? 1 : clamp(1 - (t - 0.65) / 0.35, 0, 1);

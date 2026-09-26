@@ -154,6 +154,7 @@ function bakeLine(name, str, size, S, { glow = null } = {}) {
   if (glow) { g.shadowColor = glow; g.shadowBlur = size * 0.3; }
   g.fillStyle = '#ffffff'; g.fillText(str, pad, asc);
   g.shadowColor = 'transparent'; g.shadowBlur = 0;
+  g.strokeStyle = '#ffffff'; g.lineWidth = Math.max(1, size * 0.03); g.strokeText(str, pad, asc);   // 가는 붓획을 조금 두껍게
   // 아래쪽 옅은 붉은 번짐 (피 먹물 느낌)
   g.globalCompositeOperation = 'source-atop';
   const lg = g.createLinearGradient(0, asc - size * 0.2, 0, asc + size * 0.2);
@@ -247,10 +248,10 @@ function bakeText(a, vw, S, tier, charId, classId) {
   if (!probe) return null;
   const pg = probe.getContext('2d');
   const fit = (str, want, min) => { pg.font = `400 ${want}px ${FONT.brush}`; const w = pg.measureText(str).width; return w > zoneW ? Math.max(min, Math.floor(want * zoneW / w)) : want; };
-  const P0 = vw >= 1100 ? 48 : 44;
-  const P = fit(a.lines[n - 1], P0, 26);
-  const leadMax = Math.round(P0 * 0.64);
-  const leadSize = Math.min(...a.lines.slice(0, n - 1).map((s) => fit(s, leadMax, 18)), leadMax);
+  const P0 = vw >= 1100 ? 64 : 58;   // 붓글씨(East Sea Dokdo)는 글자가 좁고 가늘어 명세의 40/44 px 보다 크게 쓴다 (글자 칸 폭에 맞춰 줄인다)
+  const P = fit(a.lines[n - 1], P0, 30);
+  const leadMax = Math.round(P0 * 0.6);
+  const leadSize = Math.min(...a.lines.slice(0, n - 1).map((s) => fit(s, leadMax, 20)), leadMax);
   const lines = a.lines.map((s, i) => bakeLine('line' + i, s, i === n - 1 ? P : leadSize, S, { glow: i === n - 1 ? rgba(a.color, 0.9) : null }));
   const seal = bakeSeal(a.seal, S);
   const ch = CHARACTERS[charId];
@@ -365,11 +366,15 @@ export class AwakenCutinScene extends Scene {
     if (!tx) { this.lay = null; return; }
     const vw = this.vw, n = tx.lines.length;
     const x0 = vw * 0.05 - vw / 2;
-    const P = tx.P, lead = tx.leadSize;
-    const yP = 12 + (n > 1 ? P * 0.42 : 0) + (n > 2 ? lead * 0.55 : 0);
+    const P = tx.P, lead = tx.leadSize, H = bandSize(vw, this.vh).H;
+    // 줄 묶음을 이름표 아래 ~ 띠 아래 가장자리 사이 가운데에 (띠 좌표 y: 아래가 +)
+    const gapPL = P * 0.98, gapLL = lead * 1.16, m = n - 1;
+    const top0 = -H / 2 + 38, bot0 = H / 2 - 14;
+    const blockH = (m > 0 ? lead * 0.8 + (m - 1) * gapLL + gapPL : P * 0.8) + P * 0.18;
+    const yP = (top0 + bot0) / 2 + blockH / 2 - P * 0.18;
     const rows = tx.lines.map((L, i) => {
       if (!L) return null;
-      const y = i === n - 1 ? yP : yP - P * 1.02 - (n - 2 - i) * lead * 1.22;
+      const y = i === n - 1 ? yP : yP - gapPL - (n - 2 - i) * gapLL;
       return { L, x: x0, y };
     });
     // 한 글자씩 찍는 시각
@@ -658,7 +663,7 @@ export class AwakenCutinScene extends Scene {
       ctx.globalAlpha = k;
       ctx.font = `700 15px ${FONT.title}`; ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
       const nm = CHARACTERS[this.charId]?.eng ?? '';
-      const nx = -vw / 2 + vw * 0.05, ny = -H / 2 + 26;
+      const nx = -vw / 2 + vw * 0.05, ny = -H / 2 + 24;
       ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.strokeText(nm, nx, ny);
       ctx.fillStyle = GOLD; ctx.fillText(nm, nx, ny);
       ctx.fillStyle = rgba(a.color, 0.8); ctx.fillRect(nx, ny + 6, Math.min(vw * 0.3, 22 + nm.length * 9) * k, 2);
