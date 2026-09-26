@@ -70,6 +70,9 @@ rad = math.radians
 #  Registry / global build state
 # =============================================================================
 REGISTRY = {}   # id -> dict(id, fn, kind, size)
+# hanging decorations (anchored to the top edge); used by the contact sheet
+SPEC_ANCHOR = {"deco_water_chain": "top", "deco_clock_pendulum": "top",
+               "deco_clock_bell": "top", "deco_ice_icicles": "top"}
 
 
 def item(item_id, size=(128, 128), kind="prop"):
@@ -1926,8 +1929,8 @@ def M_blackwax():
                sss_radius=(1.0, 0.3, 0.2), coat=0.35, coat_rough=0.15)
 
 
-def M_velvet(name="velvet", color=(0.42, 0.012, 0.03)):
-    return pbr(name, color, rough=0.8, sheen=1.0, bump=0.2, bump_scale=160)
+def M_velvet(name="velvet", color=(0.3, 0.008, 0.022)):
+    return pbr(name, color, rough=0.75, sheen=0.3, bump=0.2, bump_scale=160)
 
 
 def M_lacquer():
@@ -1936,7 +1939,7 @@ def M_lacquer():
 
 
 def M_blackmarble(name="blackmarble"):
-    return M_marble(name, (0.045, 0.04, 0.05), vein=(0.36, 0.32, 0.36), scale=1.4)
+    return M_marble(name, (0.04, 0.036, 0.045), vein=(0.13, 0.115, 0.13), scale=1.1)
 
 
 def M_water(name="water", glow=0.2, tint=(0.35, 0.5, 0.45), emit=(0.3, 0.7, 0.6)):
@@ -2212,8 +2215,8 @@ def build_lab_alembic():
     brass = M_brass()
     copper = M_copper()
     glass = M_glass("alglass", (0.88, 1.0, 0.92))
-    green = M_liquid("algreen", (0.2, 1.0, 0.3), emit_str=2.0, trans=0.4)
-    red = M_liquid("alred", (1.0, 0.1, 0.08), emit_str=1.5, trans=0.4)
+    green = M_liquid("algreen", (0.12, 0.9, 0.18), emit_str=1.2, trans=0.35)
+    red = M_liquid("alred", (0.9, 0.05, 0.04), emit_str=1.0, trans=0.35)
     corkm = pbr("cork", (0.45, 0.3, 0.16), rough=0.85, bump=0.6, bump_scale=60)
     # workbench board with iron end caps
     box((1.74, 0.8, 0.14), wood, loc=(0, 0, 0.07), bev=0.02, name="board")
@@ -2284,7 +2287,7 @@ def build_lab_alembic():
 def build_lab_cauldron():
     iron = pbr("cauldron", (0.09, 0.085, 0.085), metal=1, rough=0.42, noise_rough=0.15,
                pattern="rust", rust=(0.22, 0.1, 0.04), scale=3.0)
-    brew = pbr("brew", (0.3, 0.95, 0.08), rough=0.12, emit=(0.4, 1.0, 0.1), emit_str=2.4,
+    brew = pbr("brew", (0.3, 0.95, 0.08), rough=0.12, emit=(0.35, 1.0, 0.06), emit_str=1.8,
                sss=0.2, sss_radius=(0.4, 1.0, 0.2), coat=0.5)
     foam = pbr("foam", (0.6, 1.0, 0.4), rough=0.15, emit=(0.5, 1.0, 0.25), emit_str=1.4,
                trans=0.35, ior=1.2)
@@ -2401,9 +2404,9 @@ def build_lab_flaskrack():
     glass = M_glass("rackglass", (0.92, 1.0, 0.96))
     dglass = pbr("darkglass", (0.1, 0.3, 0.12), rough=0.05, trans=0.8, ior=1.5)
     corkm = pbr("cork", (0.45, 0.3, 0.16), rough=0.85, bump=0.6, bump_scale=60)
-    cols = dict(red=(1.0, 0.08, 0.06), blue=(0.1, 0.4, 1.0), green=(0.2, 1.0, 0.3),
-                violet=(0.65, 0.15, 1.0), amber=(1.0, 0.55, 0.08))
-    L = {k: M_liquid("liq_" + k, c, emit_str=1.6, trans=0.45) for k, c in cols.items()}
+    cols = dict(red=(0.95, 0.04, 0.03), blue=(0.05, 0.3, 1.0), green=(0.12, 0.9, 0.18),
+                violet=(0.55, 0.08, 1.0), amber=(1.0, 0.45, 0.03))
+    L = {k: M_liquid("liq_" + k, c, emit_str=1.0, trans=0.35) for k, c in cols.items()}
     W, D = 2.3, 0.46
     for sx in (-1, 1):
         box((0.09, D, 1.72), wood, loc=(sx * 1.1, 0, 0.86), bev=0.015, name="upright")
@@ -2488,9 +2491,9 @@ def build_lab_tesla():
     brass = M_brass()
     cop = M_copper("coil", patina=False)
     ceramic = pbr("ceramic", (0.16, 0.05, 0.04), rough=0.25, coat=0.6, coat_rough=0.1)
-    rune = M_glow("rune", (0.65, 0.3, 1.0), 5.0)
-    arc = M_glow("arc", (0.75, 0.8, 1.0), 16.0, base=(0.8, 0.85, 1.0))
-    halo = M_glowshell("archalo", (0.55, 0.35, 1.0), 2.5, 1.0)
+    rune = M_glow("rune", (0.6, 0.2, 1.0), 2.5)
+    arc = M_glow("arc", (0.6, 0.68, 1.0), 7.0, base=(0.7, 0.75, 1.0))
+    halo = M_glowshell("archalo", (0.5, 0.25, 1.0), 1.0, 1.2)
     polished = pbr("polished", (0.88, 0.88, 0.94), metal=1, rough=0.12)
     lathe([(0.0, 0.0), (0.46, 0.0), (0.46, 0.07), (0.41, 0.1), (0.38, 0.26), (0.43, 0.29),
            (0.43, 0.34), (0.0, 0.34)], stone, seg=8, smooth=False, rot=(0, 0, rad(22.5)),
@@ -2519,7 +2522,7 @@ def build_lab_tesla():
     torus(0.2, 0.008, rune, loc=(0, 0, 1.08), rot=(rad(14), rad(8), 0), seg=48, rseg=6)
     torus(0.23, 0.008, rune, loc=(0, 0, 0.8), rot=(rad(-10), rad(-6), 0), seg=48, rseg=6)
     cyl(0.018, 0.12, brass, loc=(0, 0, 1.73), seg=12)
-    orb = M_glow("orb", (0.75, 0.6, 1.0), 7.0, base=(0.8, 0.7, 1.0))
+    orb = M_glow("orb", (0.65, 0.45, 1.0), 3.0, base=(0.7, 0.55, 1.0))
     sphere(0.085, orb, loc=(0, 0, 1.8), seg=24, rings=12)
     h = sphere(0.16, halo, loc=(0, 0, 1.8), seg=24, rings=12)
     h["noframe"] = True
@@ -2529,9 +2532,8 @@ def build_lab_tesla():
         bolt((0, -0.02, 1.8), p1, rng, arc, halo, n=9, jag=0.06, r=0.009)
     for p0, p1 in (((-0.3, 0, 1.64), (-0.45, -0.1, 1.2)), ((0.3, 0, 1.66), (0.46, -0.1, 1.98))):
         bolt(p0, p1, rng, arc, halo, n=7, jag=0.05, r=0.007, branches=0)
-    point_light((0, -0.3, 1.8), (0.6, 0.6, 1.0), 70, 0.15)
-    point_light((0, -0.6, 0.2), (0.6, 0.3, 1.0), 6, 0.1)
-    view(pitch=6, fill=0.95, glow=0.9)
+    point_light((0, -0.3, 1.8), (0.6, 0.6, 1.0), 50, 0.15)
+    view(pitch=6, fill=0.95, glow=0.6)
 
 
 # =============================================================================
@@ -2546,7 +2548,7 @@ def build_water_grate():
                pattern="rust", rust=(0.34, 0.13, 0.05), scale=7.0)
     slime = pbr("slime", (0.2, 0.4, 0.1), rough=0.1, trans=0.4, emit=(0.3, 0.7, 0.15),
                 emit_str=0.35, coat=0.8)
-    water = M_water("sewerwater", glow=0.25)
+    water = M_water("sewerwater", glow=0.12)
     w, zs, zb, D = 0.6, 0.92, 0.12, 0.5
     box((2.0, 0.66, 0.12), mossy, loc=(0, -0.06, 0.06), bev=0.02, name="sill")
     # jambs (quoined courses)
@@ -2569,7 +2571,7 @@ def build_water_grate():
                 y0=-D / 2 - (0.06 if i == n // 2 else 0.0), bev=0.02, name="voussoir")
     # dark tunnel behind
     opening = [(-w, zb), (w, zb)] + arc_pts(0, zs, w, 0, math.pi, 24)[1:-1]
-    extrude(opening, 0.02, M_void("sewervoid", (0.02, 0.08, 0.06), (0.0, 0.5), 0.8, 1.0),
+    extrude(opening, 0.02, M_void("sewervoid", (0.015, 0.06, 0.045), (0.0, 0.45), 0.75, 0.6),
             y0=0.16, name="void")
     eyes = M_glow("rateyes", (1.0, 0.05, 0.02), 8.0)
     for x in (-0.22, -0.175):
@@ -2642,7 +2644,7 @@ def build_water_pipe():
     brass = M_brass()
     conc = M_stone("pipeblock", (0.36, 0.35, 0.33), scale=4.0, moss=True, moss_z0=-0.2,
                    moss_z1=0.2)
-    water = M_water("pipewater", 0.3)
+    water = M_water("pipewater", 0.15)
     Pr, X, Z, bend = 0.13, 0.82, 0.62, 0.2
     path = [(-X, 0, z) for z in (0.0, 0.14, 0.28, Z - bend)]
     path += [(-X + bend + bend * math.cos(math.pi - (math.pi / 2) * i / 10), 0,
@@ -2734,7 +2736,7 @@ def build_water_barrel():
     cyl(0.03, 0.08, tw, loc=(0, -r0 - 0.1, 0.27), seg=12)
     box((0.14, 0.03, 0.03), tw, loc=(0, -r0 - 0.1, 0.39), bev=0.008)
     cyl(0.012, 0.05, tw, loc=(0, -r0 - 0.1, 0.36), seg=8)
-    water = M_water("barrelwater", 0.3)
+    water = M_water("barrelwater", 0.15)
     sweep([(0, -r0 - 0.1, 0.23), (0.0, -r0 - 0.1, 0.12), (0.0, -r0 - 0.1, 0.01)],
           lambda t: 0.013 + 0.006 * t, water, segs=10, name="stream")
     lathe([(0.0, 0.0), (0.34, 0.0), (0.32, 0.008), (0.0, 0.01)], water, seg=40, sy=0.45,
@@ -2946,9 +2948,9 @@ def build_clock_bell():
 # =============================================================================
 @item("deco_ice_crystal", (96, 144))
 def build_ice_crystal():
-    ice = M_ice("icecrys", tint=(0.62, 0.88, 1.0), glow=0.9, trans=0.75)
-    core = M_glow("icecore", (0.45, 0.85, 1.0), 4.0, base=(0.6, 0.9, 1.0))
-    rockm = M_stone("icerock", (0.2, 0.23, 0.28), scale=4.0)
+    ice = M_ice("icecrys", tint=(0.32, 0.62, 1.0), glow=0.22, trans=0.8)
+    core = M_glow("icecore", (0.25, 0.65, 1.0), 1.6, base=(0.3, 0.6, 1.0))
+    rockm = M_stone("icerock", (0.12, 0.14, 0.18), scale=4.0)
     snow = M_snow()
     rock((0, 0, 0.1), 0.5, rockm, scale=(1.05, 0.8, 0.4), seed=1)
     rock((-0.42, -0.05, 0.06), 0.2, rockm, scale=(1.0, 0.9, 0.6), seed=2)
@@ -2968,20 +2970,20 @@ def build_ice_crystal():
             crystal(b, d, r * 0.4, h * 0.8, core, twist=tw, sides=6, bev=0)
     for (p, s) in (((0.28, -0.45, 1.45), 0.07), ((-0.3, -0.45, 1.05), 0.05), ((0.05, -0.45, 1.9), 0.05)):
         sparkle(p, s, (0.8, 0.95, 1.0))
-    point_light((0, -0.4, 0.9), (0.5, 0.85, 1.0), 60, 0.3)
-    view(pitch=7, fill=0.95, glow=0.9, glow_beauty=0.3)
+    point_light((0, -0.4, 0.9), (0.4, 0.75, 1.0), 30, 0.3)
+    view(pitch=7, fill=0.95, glow=0.7, glow_beauty=0.08)
 
 
 @item("deco_ice_statue", (96, 176))
 def build_ice_statue():
-    ped = pbr("iceped", (0.34, 0.38, 0.44), rough=0.8, pattern="frost", scale=3.0, thr=0.6, bump=0.35)
-    armor = pbr("frozenarmor", (0.42, 0.47, 0.54), metal=0.85, rough=0.32, pattern="frost",
-                scale=5.0, thr=0.62, frost_scale=14.0)
-    capem = pbr("frozencape", (0.06, 0.1, 0.2), rough=0.8, sheen=0.5, pattern="frost", scale=4.0,
-                thr=0.55)
-    steel = pbr("frozensteel", (0.62, 0.68, 0.74), metal=1, rough=0.22, pattern="frost", scale=6.0,
-                thr=0.7)
-    ice = M_ice("statueice", tint=(0.66, 0.9, 1.0), glow=0.5, trans=0.8)
+    ped = pbr("iceped", (0.1, 0.115, 0.145), rough=0.8, pattern="frost", scale=3.0, thr=0.75, bump=0.35)
+    armor = pbr("frozenarmor", (0.3, 0.34, 0.4), metal=0.9, rough=0.3, pattern="frost",
+                scale=5.0, thr=0.85, frost_scale=14.0)
+    capem = pbr("frozencape", (0.05, 0.08, 0.18), rough=0.8, sheen=0.3, pattern="frost", scale=4.0,
+                thr=0.75)
+    steel = pbr("frozensteel", (0.6, 0.66, 0.72), metal=1, rough=0.22, pattern="frost", scale=6.0,
+                thr=0.85)
+    ice = M_ice("statueice", tint=(0.45, 0.78, 1.0), glow=0.15, trans=0.8)
     snow = M_snow()
     eyes = M_glow("knighteyes", (0.4, 0.85, 1.0), 10.0)
     black = M_black()
@@ -3040,9 +3042,10 @@ def build_ice_statue():
         # great helm with a glowing visor
         lathe([(0.0, 1.37), (0.1, 1.38), (0.115, 1.45), (0.12, 1.57), (0.112, 1.64), (0.08, 1.7),
                (0.0, 1.73)], armor, seg=32, name="helm")
-        box((0.18, 0.03, 0.022), black, loc=(0, -0.112, 1.565))
+        box((0.2, 0.04, 0.034), black, loc=(0, -0.108, 1.565))
+        box((0.034, 0.04, 0.1), black, loc=(0, -0.11, 1.53))
         for sx in (-1, 1):
-            sphere(0.013, eyes, loc=(sx * 0.035, -0.118, 1.565), seg=8, rings=4)
+            sphere(0.016, eyes, loc=(sx * 0.045, -0.125, 1.565), scale=(1.3, 1, 0.8), seg=8, rings=4)
         for x in (-0.04, -0.02, 0.0, 0.02, 0.04):
             box((0.008, 0.02, 0.05), black, loc=(x, -0.118, 1.47))
         sphere(0.09, snow, loc=(0, 0, 1.7), scale=(1, 1, 0.35), seg=20, rings=10)
@@ -3059,15 +3062,14 @@ def build_ice_statue():
                              ((-0.28, 0.0, 1.28), (-0.4, -0.1, 1.0), 0.05, 0.24),
                              ((-0.22, 0.05, 1.32), (-0.1, 0.0, 1.0), 0.04, 0.17)):
             crystal(b, d, r, h, ice, twist=rng.uniform(0, 1), sides=6)
-    point_light((0.0, -0.5, 1.9), (0.5, 0.8, 1.0), 12, 0.2)
-    point_light((0.0, -0.4, 0.7), (0.5, 0.85, 1.0), 10, 0.2)
-    view(pitch=6, fill=0.95, glow=0.7)
+    point_light((0.0, -0.5, 1.9), (0.5, 0.8, 1.0), 8, 0.2)
+    view(pitch=6, fill=0.95, glow=0.5)
 
 
 @item("deco_ice_icicles", (192, 96))
 def build_ice_icicles():
-    stone = pbr("icestone", (0.26, 0.3, 0.36), rough=0.8, pattern="frost", scale=3.5, thr=0.55)
-    ice = M_ice("icicle", tint=(0.7, 0.92, 1.0), glow=0.45, trans=0.85)
+    stone = pbr("icestone", (0.16, 0.18, 0.22), rough=0.8, pattern="frost", scale=3.5, thr=0.75)
+    ice = M_ice("icicle", tint=(0.5, 0.8, 1.0), glow=0.12, trans=0.85)
     snow = M_snow()
     water = M_water("meltwater", 0.3, tint=(0.8, 0.95, 1.0), emit=(0.5, 0.85, 1.0))
     rng = random.Random(12)
@@ -3106,8 +3108,8 @@ def build_ice_icicles():
         L = rng.uniform(0.1, 0.35)
         icicle(x, 0.05, bz(x) + 0.03, L, 0.03, ice, rng, lean=rng.uniform(-4, 4))
         x += rng.uniform(0.12, 0.2)
-    point_light((0, -0.6, -0.6), (0.5, 0.85, 1.0), 25, 0.3)
-    view(anchor="top", pitch=6, fill=0.97, glow=0.6, glow_beauty=0.2)
+    point_light((0, -0.6, -0.6), (0.4, 0.75, 1.0), 15, 0.3)
+    view(anchor="top", pitch=6, fill=0.97, glow=0.5, glow_beauty=0.05)
 
 
 # =============================================================================
@@ -3228,13 +3230,13 @@ def build_chapel_altar():
 
 @item("deco_chapel_window", (144, 288))
 def build_chapel_window():
-    stone = M_stone("chapelstone", (0.2, 0.19, 0.21), scale=4.0, crack=0.015)
-    stone2 = M_stone("chapelstone2", (0.15, 0.14, 0.16), scale=4.5, crack=0.015)
+    stone = M_stone("chapelstone", (0.1, 0.095, 0.11), scale=4.0, crack=0.012)
+    stone2 = M_stone("chapelstone2", (0.075, 0.07, 0.085), scale=4.5, crack=0.012)
     iron = M_blackmetal()
-    pal = [(0.2, 0.04, 0.6), (0.42, 0.05, 0.8), (0.68, 0.03, 0.45), (0.85, 0.02, 0.1),
-           (0.55, 0.0, 0.07), (0.95, 0.1, 0.08), (1.0, 0.5, 0.1)]
+    pal = [(0.12, 0.02, 0.5), (0.3, 0.02, 0.7), (0.5, 0.0, 0.45), (0.75, 0.0, 0.06),
+           (0.45, 0.0, 0.03), (0.9, 0.04, 0.03), (1.0, 0.45, 0.05)]
     w, zb, zs = 0.3, 0.13, 1.25
-    glassm = M_stained("stainedglass", pal, scale=15.0, lead=0.05, strength=3.2,
+    glassm = M_stained("stainedglass", pal, scale=15.0, lead=0.055, strength=1.1,
                        warm=(0.0, 1.64, 0.13, 0.45))
     box((1.0, 0.44, 0.1), stone, loc=(0, -0.06, 0.05), bev=0.02, name="sill")
     A = extrude(lancet(w, 0.1, zs, d=0.17), 0.3, stone, y0=-0.12, name="frameA")
@@ -3265,8 +3267,8 @@ def build_chapel_window():
     lathe([(0.0, 0.0), (0.045, 0.0), (0.03, 0.05), (0.018, 0.1), (0.0, 0.14)], stone, seg=8,
           smooth=False, loc=(0, -0.13, apex[2] + 0.02), name="finial")
     sphere(0.028, stone, loc=(0, -0.13, apex[2] + 0.16), seg=12, rings=6)
-    point_light((0, -0.35, 1.0), (0.8, 0.1, 0.4), 15, 0.3)
-    view(pitch=3, fill=0.97, glow=0.55)
+    point_light((0, -0.35, 1.0), (0.8, 0.1, 0.4), 10, 0.3)
+    view(pitch=3, fill=0.97, glow=0.35)
 
 
 @item("deco_chapel_candles", (96, 96))
@@ -3380,8 +3382,8 @@ def build_throne_chair():
 
 @item("deco_throne_statue", (96, 224))
 def build_throne_statue():
-    st = M_stone("demonstone", (0.2, 0.18, 0.21), scale=5.0, crack=0.012)
-    ped = M_stone("demonped", (0.14, 0.13, 0.15), scale=3.0)
+    st = M_stone("demonstone", (0.13, 0.115, 0.14), scale=5.0, crack=0.01)
+    ped = M_stone("demonped", (0.09, 0.085, 0.1), scale=3.0)
     gold = M_gold()
     eyes = M_glow("demoneyes", (1.0, 0.08, 0.02), 10.0)
     bone = M_bone("fangs", (0.75, 0.72, 0.66))
@@ -3406,13 +3408,19 @@ def build_throne_statue():
                 sweep([(sx * 0.3, 0.13, 1.44), (sx * x, 0.13, z)], lambda t: 0.014 - 0.008 * t, st,
                       segs=6, name="finger")
             cone(0.018, 0.07, st, loc=(sx * 0.3, 0.13, 1.45), rot=(0, rad(-20 * sx), 0), seg=8)
-            path = catmull([(sx * 0.13, -0.08, 0.05), (sx * 0.14, 0.06, 0.22), (sx * 0.15, -0.06, 0.44),
+            # digitigrade leg in a wide stance: hoof -> hock -> knee -> hip
+            path = catmull([(sx * 0.19, -0.08, 0.05), (sx * 0.2, 0.06, 0.2), (sx * 0.19, -0.07, 0.42),
                             (sx * 0.12, 0.0, 0.64)], 6)
-            part(sweep(path, lambda t: 0.035 + 0.055 * t ** 1.3, st, segs=14, name="leg"))
-            sphere(0.05, st, loc=(sx * 0.13, -0.1, 0.04), scale=(1, 1.4, 0.7), seg=14, rings=8)
+            part(sweep(path, lambda t: 0.028 + 0.012 * t + 0.045 * max(0.0, (t - 0.6) / 0.4) ** 0.7,
+                       st, segs=14, name="leg"))
+            part(sphere(0.5, st, loc=(sx * 0.16, -0.03, 0.54), scale=(0.15, 0.15, 0.24),
+                        rot=(0, rad(-25 * sx), 0), seg=16, rings=8, name="thigh"))
+            sphere(0.045, st, loc=(sx * 0.19, -0.08, 0.43), seg=12, rings=6, name="knee")
+            sphere(0.5, st, loc=(sx * 0.2, 0.04, 0.26), scale=(0.08, 0.1, 0.14), seg=12, rings=6)
+            sphere(0.05, st, loc=(sx * 0.19, -0.1, 0.04), scale=(1, 1.4, 0.7), seg=14, rings=8)
             for d in (-1, 0, 1):
-                cone(0.012, 0.05, st, loc=(sx * 0.13 + d * 0.025, -0.16, 0.03), rot=(rad(95), 0, 0), seg=6)
-            cone(0.015, 0.06, st, loc=(sx * 0.15, -0.09, 0.44), rot=(rad(80), 0, 0), seg=6)
+                cone(0.012, 0.05, st, loc=(sx * 0.19 + d * 0.025, -0.16, 0.03), rot=(rad(95), 0, 0), seg=6)
+            cone(0.016, 0.07, st, loc=(sx * 0.19, -0.11, 0.44), rot=(rad(80), 0, 0), seg=6)
             sphere(0.085, st, loc=(sx * 0.21, 0.0, 1.03), seg=16, rings=8)
             sphere(0.5, st, loc=(sx * 0.085, -0.09, 0.98), scale=(0.19, 0.1, 0.14), seg=16, rings=8)
             for row in range(3):
@@ -3524,21 +3532,21 @@ def build_throne_candelabra():
 # =============================================================================
 def M_abyssrock(name="abyssrock", strength=4.0):
     return pbr(name, (0.035, 0.025, 0.045), rough=0.35, coat=0.4, pattern="veins",
-               vein_color=(0.6, 0.12, 1.0), density=3.0, width=0.03, strength=strength)
+               vein_color=(0.55, 0.08, 1.0), density=3.0, width=0.018, strength=strength)
 
 
 def M_chaoscrys():
-    return pbr("chaoscrys", (0.4, 0.1, 0.8), rough=0.06, trans=0.45, ior=1.6, spec=0.8,
-               emit=(0.62, 0.18, 1.0), emit_str=2.0)
+    return pbr("chaoscrys", (0.35, 0.05, 0.75), rough=0.06, trans=0.5, ior=1.6, spec=0.8,
+               emit=(0.5, 0.08, 1.0), emit_str=0.7)
 
 
 @item("deco_abyss_crystal", (96, 160))
 def build_abyss_crystal():
-    obs = M_abyssrock()
+    obs = M_abyssrock("abyssrock", 3.0)
     crys = M_chaoscrys()
     dark = pbr("voidcrys", (0.02, 0.01, 0.035), metal=0.4, rough=0.12, coat=0.8,
                emit=(0.4, 0.05, 0.7), emit_str=0.15)
-    core = M_glow("chaoscore", (0.95, 0.5, 1.0), 6.0, base=(1.0, 0.7, 1.0))
+    core = M_glow("chaoscore", (0.8, 0.3, 1.0), 2.0, base=(0.8, 0.4, 1.0))
     rock((0, 0.02, 0.1), 0.42, obs, scale=(1.1, 0.8, 0.42), seed=1)
     rock((-0.36, -0.08, 0.06), 0.2, obs, scale=(1.0, 0.9, 0.6), seed=2)
     rock((0.38, -0.02, 0.06), 0.18, obs, scale=(1.1, 0.9, 0.7), seed=3)
@@ -3562,8 +3570,8 @@ def build_abyss_crystal():
         octa(r, h, crys, p, rot=(rng.uniform(-0.5, 0.5), rng.uniform(-0.5, 0.5), rng.uniform(0, 1)))
     for (p, s) in (((0.22, -0.4, 1.6), 0.06), ((-0.25, -0.4, 1.12), 0.05)):
         sparkle(p, s, (0.85, 0.6, 1.0))
-    point_light((0, -0.4, 0.9), (0.6, 0.2, 1.0), 70, 0.3)
-    view(pitch=7, fill=0.95, glow=0.9, glow_beauty=0.2)
+    point_light((0, -0.4, 0.9), (0.6, 0.2, 1.0), 35, 0.3)
+    view(pitch=7, fill=0.95, glow=0.6, glow_beauty=0.05)
 
 
 def twisted_column(z0, z1, rfun, lobes, twist, mat, n_z=72, n_a=48, lobe_amp=0.3, seed=0):
@@ -3597,9 +3605,9 @@ def twisted_column(z0, z1, rfun, lobes, twist, mat, n_z=72, n_a=48, lobe_amp=0.3
 
 @item("deco_abyss_spire", (96, 240))
 def build_abyss_spire():
-    obs = M_abyssrock("spirerock", 5.0)
+    obs = M_abyssrock("spirerock", 3.0)
     crys = M_chaoscrys()
-    ring = M_glow("voidring", (0.7, 0.25, 1.0), 5.0)
+    ring = M_glow("voidring", (0.6, 0.15, 1.0), 3.0)
 
     def rf(t):
         if t < 0.88:
@@ -3638,10 +3646,10 @@ def build_abyss_spire():
 
 @item("deco_abyss_eye", (120, 120))
 def build_abyss_eye():
-    disc_m = pbr("eyedisc", (0.2, 0.18, 0.23), rough=0.8, pattern="veins", vein_color=(0.55, 0.1, 0.9),
-                 density=2.5, width=0.02, strength=2.0)
-    st = M_stone("eyestone", (0.22, 0.2, 0.25), scale=4.0, crack=0.015)
-    st2 = M_stone("eyestone2", (0.15, 0.13, 0.17), scale=3.0)
+    disc_m = pbr("eyedisc", (0.13, 0.115, 0.15), rough=0.8, pattern="veins", vein_color=(0.55, 0.1, 0.9),
+                 density=2.5, width=0.015, strength=1.2)
+    st = M_stone("eyestone", (0.15, 0.135, 0.17), scale=4.0, crack=0.012)
+    st2 = M_stone("eyestone2", (0.1, 0.09, 0.115), scale=3.0)
     eye = pbr("abysseye", (0.9, 0.85, 0.75), rough=0.25, coat=0.6, pattern="eye", iris=0.2,
               pupil=0.15, slit=3.4, glow=3.0,
               iris_cols=[(0.2, (1.0, 0.6, 1.0)), (0.55, (0.7, 0.1, 1.0)), (0.95, (0.25, 0.0, 0.5))],
@@ -3788,6 +3796,7 @@ def build_one(spec, args, tmpdir):
     setup_world(sc)
     setup_rig(sc)
     frame_and_camera(sc)
+    SPEC_ANCHOR[spec["id"]] = G.view["anchor"]
     if G.view["transparent_glass"]:
         sc.cycles.film_transparent_glass = True
         sc.cycles.film_transparent_roughness = 0.1
@@ -3842,17 +3851,20 @@ def contact_sheet(ids, path, kind):
         pad = 12
         maxh = 0
         rows, row, rw = [], [], 0
+        def colw(i, im):
+            label = i.replace("deco_", "")
+            return max(im.width, int(font.getlength(label)) + 4)
         for i, f in files:
             im = Image.open(f).convert("RGBA")
-            if rw + im.width + pad > 1400 and row:
+            if rw + colw(i, im) + pad > 1400 and row:
                 rows.append(row)
                 row, rw = [], 0
             row.append((i, im))
-            rw += im.width + pad
+            rw += colw(i, im) + pad
         if row:
             rows.append(row)
         H = sum(max(im.height for _, im in r) + 30 for r in rows) + pad
-        Wd = max(sum(im.width + pad for _, im in r) for r in rows) + pad
+        Wd = max(sum(colw(i, im) + pad for i, im in r) for r in rows) + pad
         sheet = Image.new("RGBA", (Wd, H), bg)
         d = ImageDraw.Draw(sheet)
         y = pad
@@ -3860,10 +3872,16 @@ def contact_sheet(ids, path, kind):
             x = pad
             rh = max(im.height for _, im in r)
             for i, im in r:
-                d.rectangle([x, y, x + im.width - 1, y + rh - 1], fill=slot)
-                sheet.alpha_composite(im, (x, y + rh - im.height))
-                d.text((x, y + rh + 4), i, fill=(230, 210, 190, 255), font=font)
-                x += im.width + pad
+                cw = colw(i, im)
+                ox = x + (cw - im.width) // 2
+                # hanging sprites sit at the top of the row, the rest on the floor
+                top_anchored = SPEC_ANCHOR.get(i) == "top"
+                oy = y if top_anchored else y + rh - im.height
+                d.rectangle([ox, oy, ox + im.width - 1, oy + im.height - 1], fill=slot)
+                sheet.alpha_composite(im, (ox, oy))
+                d.text((x, y + rh + 4), i.replace("deco_", ""), fill=(230, 210, 190, 255),
+                       font=font)
+                x += cw + pad
             y += rh + 30
     os.makedirs(os.path.dirname(path), exist_ok=True)
     sheet.convert("RGB").save(path)

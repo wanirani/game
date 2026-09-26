@@ -1891,7 +1891,9 @@ def deco(item_id, size, anchor="bottom"):
     or 'top' (hangs from the ceiling)."""
     def wrap(fn):
         def run():
-            view(anchor=anchor, margin=0.0, fill=0.97, pitch=7.0, glow=0.0)
+            # background set dressing: softer frontal fill than the icon rig so
+            # flat stone / wood faces keep their texture instead of washing out
+            view(anchor=anchor, margin=0.0, fill=0.97, pitch=7.0, glow=0.0, front=0.3)
             fn()
         REGISTRY[item_id] = dict(id=item_id, fn=run, kind="prop", size=size,
                                  anchor=anchor)
@@ -2720,9 +2722,12 @@ def build_grave_tomb3():
 @deco("deco_grave_angel", (96, 192))
 def build_grave_angel():
     rng = random.Random(34)
-    stone = M_stone("angelstone", (0.4, 0.4, 0.42), scale=1.4, crack=0.003, moss=True,
-                    moss_z0=0.9, moss_z1=1.5, moss_color=(0.07, 0.09, 0.04),
-                    dark=(0.17, 0.17, 0.19))
+    stone = M_stone("angelstone", (0.36, 0.36, 0.38), scale=1.4, crack=0.003,
+                    dark=(0.15, 0.15, 0.17))
+    # robe parts are baked into the figure's own frame (z = 0 at its feet)
+    robe_m = M_stone("angelrobe", (0.36, 0.36, 0.38), scale=1.4, crack=0.003, moss=True,
+                     moss_z0=-0.6, moss_z1=0.3, moss_color=(0.07, 0.09, 0.04),
+                     dark=(0.15, 0.15, 0.17))
     ped = M_gravestone("angelped", (0.26, 0.255, 0.26), 0.0, 0.5, scale=2.4)
     box((1.24, 0.86, 0.18), ped, loc=(0, 0, 0.09), bev=0.03, name="plinth")
     box((0.92, 0.64, 0.64), ped, loc=(0, 0, 0.5), bev=0.02, name="die")
@@ -2753,7 +2758,7 @@ def build_grave_angel():
     with sub(loc=(0, 0.02, 0.96)):
         robe = [(0.0, 0.0), (0.4, 0.0), (0.39, 0.08), (0.33, 0.45), (0.27, 0.85), (0.22, 1.1),
                 (0.19, 1.26), (0.0, 1.26)]
-        lathe(robe, stone, seg=72, sy=0.78, name="robe",
+        lathe(robe, robe_m, seg=72, sy=0.78, name="robe",
               radial=lambda a, t: 1 + 0.1 * math.sin(13 * a + 0.4) * (1 - t) ** 1.1
               + 0.035 * math.sin(29 * a) * (1 - t))
         sphere(0.5, stone, loc=(0, 0.0, 1.42), scale=(0.38, 0.29, 0.5), seg=32, rings=16,
@@ -3085,20 +3090,23 @@ def build_gate_portcullis():
     box((w_in + 0.3, D + 0.1, 0.07), key_m, loc=(0, -0.02, 0.035), bev=0.02, name="threshold")
     # ---- portcullis grid (raised a little), clipped to the arch ----
     lift = 0.36
-    bm = bmesh.new()
-    xs = [-0.63 + 0.18 * i for i in range(8)]
-    for x in xs:
-        bm_box(bm, (0.09, 0.08, 3.0), Matrix.Translation((x, -0.02, lift + 1.5)))
-    zs = [lift + 0.18 + 0.33 * i for i in range(9)]
-    for z in zs:
-        bm_box(bm, (w_in + 0.2, 0.05, 0.075), Matrix.Translation((0, 0.035, z)))
-    grid = bm_obj("portcullis", bm, iron, sharp=30)
-    bevel(grid, 0.01, 1)
-    cutter = extrude([(x * 0.995, z) for (x, z) in opening], 1.0, None, name="clip")
-    boolean(grid, cutter, op="INTERSECT")
 
     def ztop(x):
         return hs + math.sqrt(max(0.0, r_in ** 2 - x * x))
+    # grid bars clipped analytically to the round arch
+    bm = bmesh.new()
+    xs = [-0.63 + 0.18 * i for i in range(8)]
+    for x in xs:
+        top = ztop(abs(x) + 0.045) - 0.01
+        bm_box(bm, (0.09, 0.08, top - lift), Matrix.Translation((x, -0.02, (top + lift) / 2)))
+    zs = [lift + 0.18 + 0.33 * i for i in range(9)]
+    for z in zs:
+        if z + 0.04 > hs + r_in:
+            continue
+        half = r_in if z <= hs else math.sqrt(max(0.0, r_in ** 2 - (z + 0.04 - hs) ** 2))
+        bm_box(bm, (2 * half - 0.02, 0.05, 0.075), Matrix.Translation((0, 0.035, z)))
+    grid = bm_obj("portcullis", bm, iron, sharp=30)
+    bevel(grid, 0.01, 1)
     for x in xs:
         cone(0.05, 0.22, iron, loc=(x, -0.02, lift + 0.01), rot=(math.pi, 0, 0), seg=8, name="spike")
         for z in zs:
@@ -3418,11 +3426,12 @@ def build_hall_bust():
 
 @deco("deco_hall_curtain", (144, 288), anchor="top")
 def build_hall_curtain():
-    vel = M_velvet("curtainvelvet", (0.2, 0.006, 0.014))
+    vel = pbr("curtainvelvet", (0.2, 0.006, 0.014), rough=0.78, sheen=0.45, bump=0.2,
+              bump_scale=160, noise_rough=0.1)
     gth = M_goldthread()
     gold = M_gold()
     brass = M_brass()
-    H, xo, vt = 5.6, 1.42, 0.6
+    H, xo, vt = 7.3, 1.42, 0.58
     ztop = -0.14
 
     def xin(v):
@@ -3439,7 +3448,7 @@ def build_hall_curtain():
         comp = max(0.0, 1 - w / (xo - 0.05))
         A = 0.06 + 0.17 * comp
         x = -xo + u * w
-        ph = u * TAU * 4.5 + 0.5 * math.sin(u * TAU * 1.7) + 0.4 + 0.3 * v
+        ph = u * TAU * 3.4 + 0.6 * math.sin(u * TAU * 1.3) + 0.4 + 0.3 * v
         y = A * (0.75 * math.sin(ph) + 0.25 * math.sin(2.3 * ph + 1.0)) + 0.04 * (1 - u)
         y -= 0.13 * math.exp(-((v - vt + 0.035) / 0.045) ** 2) * (0.4 + 0.6 * u)
         x -= 0.05 * math.exp(-((v - vt + 0.035) / 0.05) ** 2) * u
@@ -3686,8 +3695,8 @@ def build_cata_sarcophagus():
 
 @deco("deco_cata_urn", (56, 80))
 def build_cata_urn():
-    bronze = pbr("urnbronze", (0.46, 0.27, 0.12), metal=1, rough=0.34, noise_rough=0.12,
-                 pattern="rust", rust=(0.12, 0.3, 0.24), scale=2.2)
+    bronze = pbr("urnbronze", (0.3, 0.19, 0.09), metal=1, rough=0.42, noise_rough=0.15,
+                 pattern="rust", rust=(0.1, 0.26, 0.2), scale=2.0)
     dark = pbr("urndark", (0.12, 0.08, 0.05), metal=1, rough=0.45)
     prof = [(0.0, 0.0), (0.22, 0.0), (0.24, 0.035), (0.16, 0.08), (0.12, 0.14), (0.15, 0.2),
             (0.29, 0.36), (0.36, 0.55), (0.35, 0.72), (0.27, 0.88), (0.17, 0.96), (0.16, 1.02),
