@@ -588,12 +588,12 @@ class Game {
       if (r >= rows) { t.shown = false; continue; }
       const r0 = L.toast(r);
       if (r0.hidden || r0.w < 80) { t.shown = false; r = rows; continue; }
-      // 2줄이면 다음 줄 칸도 쓴다: 두 칸이 겹치는 가로 범위 안에서
+      // 2줄이면 다음 줄 칸도 쓴다: 두 칸이 겹치는 가로 범위 안에서. 줄이 하나뿐인 배치(위쪽 보스 바)면 한 줄로 줄인다
       const r1 = r + 1 < rows ? L.toast(r + 1) : null;
-      const two = !!r1 && !r1.hidden && r1.w >= 80;
-      const lft = two ? Math.max(r0.l, r1.l) : r0.l, rgt = two ? Math.min(r0.r, r1.r) : r0.r;
-      const lines = this.wrapToast(ctx, t, (two ? rgt - lft : r0.w) - 24, size, two ? 2 : 1);
-      if (lines.length > 1 && !two) { t.shown = false; r = rows; continue; }
+      const pair = !!r1 && !r1.hidden && r1.w >= 80;
+      const lft = pair ? Math.max(r0.l, r1.l) : r0.l, rgt = pair ? Math.min(r0.r, r1.r) : r0.r;
+      const lines = this.wrapToast(ctx, t, rgt - lft - 24, size, rows >= 2 ? 2 : 1);
+      if (lines.length > 1 && !pair) { t.shown = false; r = rows; continue; } // 두 줄 칸이 날 때까지 기다린다 (시간도 멈춤)
       const useL = lines.length > 1 ? lft : r0.l, useR = lines.length > 1 ? rgt : r0.r;
       const cx = (useL + useR) / 2;
       const w = Math.min(useR - useL, t._tw + 24);
@@ -624,7 +624,7 @@ class Game {
     if (lines.length > maxLines) {
       const head = lines.slice(0, maxLines - 1);
       const rest = lines.slice(maxLines - 1).join(' ');
-      lines = [...head, ellipsize(ctx, rest, maxW, true)];
+      lines = [...head, ellipsize(ctx, rest, maxW)];
     }
     t._wk = key; t._lines = lines;
     t._tw = Math.max(...lines.map((s) => ctx.measureText(s).width));

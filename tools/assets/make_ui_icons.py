@@ -38,8 +38,14 @@ def interior():
     im = Image.open(SRC).convert('RGB')
     w, h = im.size
     inner = im.crop((BORDER, BORDER, w - BORDER, h - BORDER))
+    # 금테는 모서리가 둥글어 네 귀퉁이에 곡선이 남는다 → 귀퉁이를 바탕색으로 지운다 (후광은 귀퉁이까지 닿지 않는다)
+    c = 58
+    for box in ((0, 0, c, c), (inner.width - c, 0, inner.width, c), (0, inner.height - c, c, inner.height), (inner.width - c, inner.height - c, inner.width, inner.height)):
+        inner.paste(BG, box)
     a = np.asarray(inner).astype(np.int32)
-    mask = a.max(axis=2) > 120            # 금빛 십자가·보석·해골·붉은 구슬 (후광은 대부분 이 값 아래)
+    R, G = a[..., 0], a[..., 1]
+    glow = (R > 2.5 * G) & (R < 200)      # 붉은 후광 (그림이 아니라 배경)
+    mask = (a.max(axis=2) > 120) & ~glow  # 금빛 십자가·보석·해골·구슬의 밝은 부분
     ys, xs = np.nonzero(mask)
     if len(xs) == 0:
         raise SystemExit('icon-512.png 에서 그림을 찾지 못했습니다')
