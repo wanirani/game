@@ -221,8 +221,7 @@ export function gauge(ctx, x, y, w, h, ratio, color, { back = 'rgba(0,0,0,0.55)'
 export function glyph(ctx, kind, x, y, s, color = PAL.gold, lw = 1.6) {
   ctx.save();
   ctx.translate(x, y); ctx.scale(s / 20, s / 20);
-  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = lw * 20 / s * (s / 20); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-  ctx.lineWidth = lw;
+  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = lw; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   ctx.beginPath();
   switch (kind) {
     case 'crest': // 방패 + 십자
@@ -578,7 +577,7 @@ export class Confirm {
       if (ges.tap(this.rects[k])) { this.close(this.single || k === 0); return false; }
     }
     if (nav.confirm) { this.close(this.single || this.i === 0); return false; }
-    if (nav.cancel || nav.menu) { this.close(!!this.single && false); return false; }
+    if (nav.cancel || nav.menu) { this.close(false); return false; }
     return true;
   }
   render(ctx, vw, vh) {

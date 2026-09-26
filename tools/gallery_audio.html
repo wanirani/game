@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>사운드 갤러리</title>
+<style>
+  :root { --bg: #07040a; --panel: #140c18; --line: #3a2433; --gold: #d9b56a; --bone: #e8dcc4; --crim: #b0203a; --dim: #8a7a70; }
+  html, body { margin: 0; background: radial-gradient(ellipse at top, #1d0f1c, var(--bg) 70%) fixed; color: var(--bone); font-family: 'Noto Sans KR', system-ui, sans-serif; }
+  header { padding: 18px 16px 8px; border-bottom: 1px solid var(--line); }
+  h1 { margin: 0; font-size: 22px; letter-spacing: 2px; color: var(--gold); text-shadow: 0 0 12px #b0203a88; }
+  h2 { font-size: 14px; color: var(--gold); margin: 18px 0 8px; letter-spacing: 1px; }
+  main { padding: 0 16px 40px; max-width: 1180px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+  button { background: linear-gradient(#24141f, #160c14); color: var(--bone); border: 1px solid var(--line); border-radius: 6px; padding: 8px 8px; font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+  button:hover { border-color: var(--gold); }
+  button.on { border-color: var(--crim); box-shadow: 0 0 10px #b0203a99 inset; }
+  button small { display: block; color: var(--dim); font-size: 11px; }
+  .bar { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin-top: 10px; font-size: 13px; }
+  #status { font-family: ui-monospace, monospace; font-size: 12px; color: var(--dim); white-space: pre; }
+  canvas { width: 100%; height: 70px; background: #0b060c; border: 1px solid var(--line); border-radius: 6px; margin-top: 10px; }
+  #report { font-family: ui-monospace, monospace; font-size: 11px; white-space: pre-wrap; color: var(--dim); }
+</style>
+</head>
+<body>
+<header>
+  <h1>BLOOD NOCTURNE — 사운드 갤러리</h1>
+  <div class="bar">
+    <label>음악 <input id="mv" type="range" min="0" max="1" step="0.05" value="0.6"></label>
+    <label>효과음 <input id="sv" type="range" min="0" max="1" step="0.05" value="0.8"></label>
+    <button id="stop">■ 음악 정지</button>
+    <button id="duck">덕킹 테스트</button>
+  </div>
+  <canvas id="scope" width="1100" height="70"></canvas>
+  <div id="status">버튼을 누르면 오디오가 활성화됩니다.</div>
+</header>
+<main>
+  <h2>배경음악</h2><div id="tracks" class="grid"></div>
+  <h2>효과음</h2><div id="sfx" class="grid"></div>
+  <h2>검증 리포트</h2><div id="report"></div>
+</main>
+<script type="module">
+// 사운드 갤러리: 곡/효과음 재생 + 오프라인 렌더 검증 훅(window.__audioTest)
+import { audio, Engine, compileTrack, SFX } from '../src/core/audio.js';
+import { TRACKS } from '../src/data/music.js';
+
+const SFX_NAMES = 'whip whip_crack slash slash_heavy gun shotgun magic holy fire ice thunder dark hit hit_heavy crit clang enemy_die explode jump double_jump land dash mist hurt death heart coin item powerup levelup menu_move menu_ok menu_cancel door candle break_wall secret save heal chest boss_roar boss_die warning thunderclap stopwatch cross axe dagger holywater_burn enhance_hit enhance_success enhance_fail enhance_destroy dice card slot_spin slot_win win lose ult combo footstep splash bat ghost bell clock_tick ready go coin_insert extra_life type charge_ready'.split(' ');
+const $ = (id) => document.getElementById(id);
+let analyser = null;
+function ensure() {
+  audio.unlock();
+  if (!analyser && audio.eng) { analyser = audio.ctx.createAnalyser(); analyser.fftSize = 2048; audio.eng.master.connect(analyser); }
+}
+for (const id of Object.keys(TRACKS)) {
+  const b = document.createElement('button'), d = TRACKS[id];
+  b.innerHTML = `${id}<small>${d.name ?? ''}${d.alias ? ' (편곡: ' + d.alias + ')' : ''}</small>`;
+  b.onclick = () => { ensure(); audio.music(id); document.querySelectorAll('#tracks button').forEach((x) => x.classList.toggle('on', x === b)); };
+  $('tracks').append(b);
+}
+for (const n of SFX_NAMES) {
+  const b = document.createElement('button');
+  b.innerHTML = `${n}${SFX[n] ? '' : '<small>기본음</small>'}`;
+  b.onclick = () => { ensure(); audio.sfx(n); };
+  $('sfx').append(b);
+}
+$('stop').onclick = () => { ensure(); audio.stopMusic(1); };
+$('duck').onclick = () => { ensure(); audio.duck(0.7, 1); };
+$('mv').oninput = $('sv').oninput = () => audio.setVolumes(+$('mv').value, +$('sv').value);
+const sc = $('scope'), g = sc.getContext('2d'); let buf = null;
+(function loop() {
+  requestAnimationFrame(loop);
+  const p = audio.player;
+  if (audio.eng) {
+    const sec = p ? p.comp.seq[p.si] : '-';
+    $('status').textContent = `곡: ${audio.want ?? '-'}  섹션: ${sec}  노트: ${p?.notes ?? 0}  보이스: ${audio.eng.voices}  효과음: ${audio.eng.live.length}  시간: ${audio.ctx.currentTime.toFixed(1)}s  상태: ${audio.ctx.state}`;
+  }
+  g.fillStyle = '#0b060c'; g.fillRect(0, 0, sc.width, sc.height);
+  if (!analyser) return;
+  buf = buf || new Float32Array(analyser.fftSize); analyser.getFloatTimeDomainData(buf);
+  g.strokeStyle = '#d9b56a'; g.lineWidth = 1.5; g.beginPath();
+  for (let i = 0; i < buf.length; i++) { const x = (i / buf.length) * sc.width, y = sc.height / 2 - buf[i] * sc.height * 0.45; i ? g.lineTo(x, y) : g.moveTo(x, y); }
+  g.stroke();
+})();
+
+// ── 오프라인 검증 ──
+function stats(b) {
+  const L = b.getChannelData(0), Rr = b.getChannelData(1), sr = b.sampleRate; let pk = 0, ss = 0; const win = []; let ws = 0, wn = 0;
+  for (let i = 0; i < L.length; i++) { const v = (L[i] + Rr[i]) * 0.5, a = Math.max(Math.abs(L[i]), Math.abs(Rr[i])); if (a > pk) pk = a; ss += v * v; ws += v * v; wn++; if (wn === sr) { win.push(Math.sqrt(ws / wn)); ws = 0; wn = 0; } }
+  return { peak: +pk.toFixed(3), rms: +Math.sqrt(ss / L.length).toFixed(4), minWin: +Math.min(...win).toFixed(4), win: win.map((x) => +x.toFixed(3)) };
+}
+window.__audioCompile = () => {
+  const out = {};
+  for (const id of Object.keys(TRACKS)) {
+    try {
+      const c = compileTrack(TRACKS[id], id); let notes = 0, beats = 0;
+      for (const s of c.seq) { notes += c.secs[s].ev.length; beats += c.secs[s].beats; }
+      const loopSec = c.seq.slice(c.loopAt).reduce((a, s) => a + c.secs[s].beats * 60 / c.secs[s].bpm, 0);
+      out[id] = { notes, bars: beats / c.bpb, loopSec: +loopSec.toFixed(1), warn: c.warn };
+    } catch (e) { out[id] = { error: String(e && e.stack || e) }; }
+  }
+  return out;
+};
+window.__audioTest = async (ids, sec = 8, skip = 0) => {
+  const res = {};
+  for (const id of ids) {
+    const oc = new OfflineAudioContext(2, Math.floor(44100 * sec), 44100);
+    const eng = new Engine(oc); eng.setVolumes(0.6, 0.8);
+    const p = eng.playTrack(id, 0.02, 0.02);
+    if (skip) { p.st -= skip * 60 / p.comp.bpm; }
+    p.schedule(sec);
+    const b = await oc.startRendering();
+    res[id] = { notes: p.notes, ...stats(b) };
+  }
+  return res;
+};
+window.__sfxTest = async (names = SFX_NAMES) => {
+  const res = {};
+  for (const n of names) {
+    const oc = new OfflineAudioContext(2, 44100 * 3, 44100);
+    const eng = new Engine(oc); eng.setVolumes(0.6, 0.8); eng.sfx(n);
+    const b = await oc.startRendering(); const s = stats(b);
+    res[n] = { peak: s.peak, rms: s.rms, has: !!SFX[n] };
+  }
+  return res;
+};
+$('report').textContent = Object.entries(window.__audioCompile()).map(([k, v]) => `${k.padEnd(10)} ${v.error ? '오류 ' + v.error : `${v.bars}마디 ${v.notes}노트 루프 ${v.loopSec}s ${v.warn.length ? '⚠ ' + v.warn.join(' / ') : ''}`}`).join('\n');
+</script>
+</body>
+</html>

@@ -75,7 +75,7 @@ function check(stage, roomId, room) {
   const MAXUP = 5, MAXDX = 6;
   while (q.length) {
     const [x, y] = q.shift();
-    const push = (nx, ny) => { const k = key(nx, ny); if (!seen.has(k)) { seen.add(k); q.push([nx, ny]); } };
+    const push = (nx, ny) => { if (nx < -1 || nx > W) return; /* 방 밖(천장 위 보이지 않는 벽) 무한 탐색 방지 */ const k = key(nx, ny); if (!seen.has(k)) { seen.add(k); q.push([nx, ny]); } };
     for (const dx of [-1, 1]) {
       const nx = x + dx;
       if (!free(nx, y) || !free(nx, y - 1)) continue;

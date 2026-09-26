@@ -1,0 +1,349 @@
+// 인게임 메인 메뉴 ('menu') — 스테이지 일시정지 / 마을 허브에서 연다.
+// game.push('menu', { world, tab:'status'|'equip'|'inventory'|'skills'|'class'|'quests'|'docs'|'bestiary'|'system' })
+// 조작: Q/E·S/D(패드 LB/RB) 탭 전환, 상단에서 ←→ 탭 이동, ↓/확인 본문 진입, ↑↓←→ 선택, Z 확인, X 뒤로, ESC 닫기
+//       터치: 탭/항목 터치, 목록 드래그 스크롤, 우상단 닫기
+import { Scene } from '../../core/game.js';
+import { input } from '../../core/input.js';
+import { audio } from '../../core/audio.js';
+import { assets } from '../../core/assets.js';
+import { text, font, FONT } from '../../core/ui.js';
+import { clamp, lerp, ease, fmtTime, TAU } from '../../core/math.js';
+import { drawIcon } from '../../render/icons.js';
+import { currentHero } from '../../game/state.js';
+import {
+  PAL, glow, glowOval, diamond, glyph, keycap, hintRow, Layer, Nav, Gesture, Embers, hidePad, brackets,
+} from './common.js';
+import { StatusTab } from './tab_status.js';
+import { EquipTab } from './tab_equip.js';
+import { InventoryTab } from './tab_inventory.js';
+import { SkillsTab } from './tab_skills.js';
+import { ClassTab } from './tab_class.js';
+import { QuestsTab } from './tab_quests.js';
+import { DocsTab } from './tab_docs.js';
+import { BestiaryTab } from './tab_bestiary.js';
+import { SystemTab } from './tab_system.js';
+
+export const MENU_TABS = [
+  { id: 'status', name: '상태', glyph: 'crest', C: () => StatusTab },
+  { id: 'equip', name: '장비', glyph: 'sword', C: () => EquipTab },
+  { id: 'inventory', name: '인벤토리', glyph: 'bag', C: () => InventoryTab },
+  { id: 'skills', name: '스킬', glyph: 'rune', C: () => SkillsTab },
+  { id: 'class', name: '직업', glyph: 'crown', C: () => ClassTab },
+  { id: 'quests', name: '퀘스트', glyph: 'scroll', C: () => QuestsTab },
+  { id: 'docs', name: '비전서', glyph: 'book', C: () => DocsTab },
+  { id: 'bestiary', name: '도감', glyph: 'bat', C: () => BestiaryTab },
+  { id: 'system', name: '기록', glyph: 'hourglass', C: () => SystemTab },
+];
+const TOP_H = 62, BOT_H = 34;
+
+export class MenuScene extends Scene {
+  constructor(g) { super(g); this.opaque = false; }
+
+  enter({ world = null, tab = 'status' } = {}) {
+    this.world = world ?? this.game.world ?? null;
+    this.state = this.game.state;
+    this.tabs = {};
+    this.ti = Math.max(0, MENU_TABS.findIndex((t) => t.id === tab));
+    this.focus = tab === 'status' ? 'tabs' : 'content';
+    this.nav = new Nav();
+    this.ges = new Gesture();
+    this.embers = new Embers(24);
+    this.bgLayer = new Layer();
+    this.snap = null;
+    this.modal = null;
+    this.rev = 0;               // 데이터 변경 버전 (캐시 무효화)
+    this.closing = 0;
+    this.tabX = null; this.tabSlide = 0; this.slideDir = 0;
+    this.tabRects = []; this.closeRect = null; this.qeRects = [];
+    this.qe = 0;
+    this.msg = null;            // 하단 알림 {text, color, t}
+    this._onKey = (e) => { if (e.repeat) return; if (e.code === 'KeyQ') this.qe = -1; else if (e.code === 'KeyE') this.qe = 1; };
+    this._onWheel = (e) => { this.ges.addWheel(e.deltaY * (e.deltaMode === 1 ? 32 : e.deltaMode === 2 ? 400 : 1) * 0.9); };
+    window.addEventListener('keydown', this._onKey, true);
+    window.addEventListener('wheel', this._onWheel, { passive: true });
+    hidePad(true);
+    audio.sfx('menu_ok');
+    if (!this.state) return;
+    this.cur.onShow();
+  }
+  exit() {
+    window.removeEventListener('keydown', this._onKey, true);
+    window.removeEventListener('wheel', this._onWheel);
+    hidePad(false);
+    for (const k in this.tabs) this.tabs[k].free?.();
+    this.bgLayer.free();
+    this.snap = null;
+    try { this.world?.player?.refreshStats(); } catch (e) { console.warn(e); }
+  }
+  get hero() { return this.state ? currentHero(this.state) : null; }
+  get cur() {
+    const d = MENU_TABS[this.ti];
+    return this.tabs[d.id] || (this.tabs[d.id] = new (d.C())(this));
+  }
+  /** 데이터가 바뀌었음을 알림 (장비·스킬·아이템 사용 등) */
+  changed() {
+    this.rev++;
+    try { this.world?.player?.refreshStats(); } catch (e) { console.warn(e); }
+  }
+  get inStage() { return !!this.world && this.world.mode !== 'town'; }
+  notify(textStr, color = PAL.goldHi) { this.msg = { text: textStr, color, t: 2.2 }; }
+  openModal(m) { this.modal = m; }
+  focusTabs() { if (this.focus !== 'tabs') { this.focus = 'tabs'; audio.sfx('menu_cancel'); } }
+  switchTab(dir, abs = null) {
+    const n = MENU_TABS.length;
+    const ni = abs !== null ? abs : (this.ti + dir + n) % n;
+    if (ni === this.ti) return;
+    this.cur.onHide();
+    this.slideDir = abs !== null ? Math.sign(ni - this.ti) : dir;
+    this.ti = ni; this.tabSlide = 1;
+    audio.sfx('menu_move');
+    this.cur.onShow();
+    if (this.focus === 'content' && !this.cur.wantsFocus) this.focus = 'tabs';
+  }
+  close() {
+    if (this.closing) return;
+    audio.sfx('menu_cancel');
+    this.closing = 0.001;
+  }
+
+  update(dt) {
+    if (this.closing) {
+      this.closing += dt;
+      if (this.closing >= 0.14) this.game.pop();
+      return;
+    }
+    const nav = this.nav.poll(dt), ges = this.ges;
+    ges.update();
+    this.embers.update(dt);
+    if (this.tabSlide > 0) this.tabSlide = Math.max(0, this.tabSlide - dt * 6);
+    if (this.msg) { this.msg.t -= dt; if (this.msg.t <= 0) this.msg = null; }
+    if (!this.state) { if (nav.cancel || nav.menu || nav.confirm || ges.tapOK) this.close(); return; }
+    // 모달 우선
+    if (this.modal) {
+      const open = this.modal.update(dt, nav, ges);
+      if (!open || !this.modal.open) this.modal = null;
+      this.qe = 0;
+      return;
+    }
+    // 탭 전환 (Q/E, 스왑, LB/RB)
+    const dir = this.qe || (nav.swap ? 1 : 0) || (nav.prevTab ? -1 : nav.nextTab ? 1 : 0);
+    this.qe = 0;
+    if (dir) { this.switchTab(dir); return; }
+    // 닫기 / 탭 터치
+    if (nav.menu || ges.tap(this.closeRect)) { this.close(); return; }
+    if (ges.tap(this.qeRects[0])) { this.switchTab(-1); return; }
+    if (ges.tap(this.qeRects[1])) { this.switchTab(1); return; }
+    for (let i = 0; i < this.tabRects.length; i++) {
+      if (ges.tap(this.tabRects[i])) {
+        if (i !== this.ti) this.switchTab(0, i);
+        this.focus = this.cur.wantsFocus && input.touchMode ? 'content' : 'tabs';
+        return;
+      }
+    }
+    const tab = this.cur;
+    tab.t += dt;
+    if (this.focus === 'tabs') {
+      if (nav.left) this.switchTab(-1);
+      else if (nav.right) this.switchTab(1);
+      else if ((nav.down || nav.confirm) && tab.wantsFocus) { this.focus = 'content'; audio.sfx('menu_ok'); nav.confirm = false; nav.down = false; }
+      else if (nav.cancel) { this.close(); return; }
+      tab.update(dt, nav, ges, false);
+    } else {
+      tab.update(dt, nav, ges, true);
+    }
+  }
+
+  // ─────────────────────────── 그리기 ───────────────────────────
+  captureSnapshot(ctx) {
+    const src = ctx.canvas;
+    const sw = Math.max(64, Math.round(this.game.viewW / 4)), sh = Math.max(36, Math.round(this.game.viewH / 4));
+    const c = document.createElement('canvas'); c.width = sw; c.height = sh;
+    const g = c.getContext('2d');
+    g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+    try {
+      // 두 단계 축소 → 부드러운 흐림
+      const mid = document.createElement('canvas'); mid.width = sw * 2; mid.height = sh * 2;
+      const mg = mid.getContext('2d'); mg.imageSmoothingQuality = 'high';
+      mg.drawImage(src, 0, 0, src.width, src.height, 0, 0, mid.width, mid.height);
+      g.drawImage(mid, 0, 0, sw, sh);
+    } catch (e) { g.fillStyle = '#0a0610'; g.fillRect(0, 0, sw, sh); }
+    this.snap = c;
+    this.opaque = true; // 이후로는 아래 장면을 그리지 않음 (성능)
+  }
+
+  render(ctx) {
+    const W = this.game.viewW, H = this.game.viewH;
+    if (!this.snap) this.captureSnapshot(ctx);
+    const kIn = ease.outCubic(clamp(this.t / 0.22, 0, 1));
+    const kOut = this.closing ? 1 - clamp(this.closing / 0.14, 0, 1) : 1;
+    const k = kIn * kOut;
+    // 배경: 흐린 스냅샷 + 어둠 + 질감 + 비네팅
+    ctx.drawImage(this.snap, 0, 0, W, H);
+    ctx.save();
+    ctx.globalAlpha = k;
+    this.bgLayer.draw(ctx, 'bg' + (assets.has('tex/tex_blood_marble') ? 1 : 0), 0, 0, W, H, this.game.scale, (c) => this.drawBackdrop(c, W, H));
+    this.embers.render(ctx, W, H, 0.9);
+    if (!this.state) {
+      text(ctx, '진행 중인 게임이 없습니다', W / 2, H / 2, { size: 22, align: 'center', family: FONT.title, weight: 800, color: PAL.gold });
+      ctx.restore();
+      return;
+    }
+    // 상단 탭 막대
+    ctx.save();
+    ctx.translate(0, (1 - kIn) * -20);
+    this.drawTabBar(ctx, W);
+    ctx.restore();
+    // 본문
+    const A = { x: 14, y: TOP_H + 10, w: W - 28, h: H - TOP_H - 10 - BOT_H - 6 };
+    ctx.save();
+    const sk = ease.outCubic(1 - this.tabSlide);
+    ctx.globalAlpha = k * (0.35 + 0.65 * sk);
+    ctx.translate(this.slideDir * 24 * (1 - sk), (1 - kIn) * 14);
+    try { this.cur.render(ctx, A); } catch (e) { if (!this._rerr) { console.error(e); this._rerr = true; } }
+    ctx.restore();
+    // 하단 막대
+    this.drawBottomBar(ctx, W, H);
+    // 모달
+    if (this.modal) this.modal.render(ctx, W, H);
+    ctx.restore();
+  }
+
+  drawBackdrop(c, W, H) {
+    c.fillStyle = 'rgba(6,3,10,0.8)'; c.fillRect(0, 0, W, H);
+    const pat = (() => { const img = assets.get('tex/tex_blood_marble'); return img ? c.createPattern(img, 'repeat') : null; })();
+    if (pat) { c.save(); c.globalAlpha = 0.07; c.fillStyle = pat; c.fillRect(0, 0, W, H); c.restore(); }
+    // 위쪽 핏빛 여명 + 아래 남빛
+    const g1 = c.createRadialGradient(W / 2, -60, 10, W / 2, -60, W * 0.7);
+    g1.addColorStop(0, 'rgba(150,20,40,0.35)'); g1.addColorStop(1, 'rgba(150,20,40,0)');
+    c.fillStyle = g1; c.fillRect(0, 0, W, H);
+    const g2 = c.createLinearGradient(0, H * 0.6, 0, H);
+    g2.addColorStop(0, 'rgba(20,14,50,0)'); g2.addColorStop(1, 'rgba(20,14,50,0.35)');
+    c.fillStyle = g2; c.fillRect(0, 0, W, H);
+    const v = c.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 1.0);
+    v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,0.7)');
+    c.fillStyle = v; c.fillRect(0, 0, W, H);
+    // 상단 막대
+    const tg = c.createLinearGradient(0, 0, 0, TOP_H);
+    tg.addColorStop(0, 'rgba(26,10,20,0.97)'); tg.addColorStop(1, 'rgba(10,4,10,0.95)');
+    c.fillStyle = tg; c.fillRect(0, 0, W, TOP_H);
+    c.fillStyle = 'rgba(0,0,0,0.9)'; c.fillRect(0, TOP_H, W, 2);
+    const lg = c.createLinearGradient(0, 0, W, 0);
+    lg.addColorStop(0, 'rgba(200,160,80,0.05)'); lg.addColorStop(0.5, 'rgba(232,200,114,0.85)'); lg.addColorStop(1, 'rgba(200,160,80,0.05)');
+    c.fillStyle = lg; c.fillRect(0, TOP_H - 1, W, 1); c.fillRect(0, TOP_H + 3, W, 1);
+    // 하단 막대
+    const by = H - BOT_H;
+    const bg = c.createLinearGradient(0, by, 0, H);
+    bg.addColorStop(0, 'rgba(14,6,14,0.94)'); bg.addColorStop(1, 'rgba(4,2,6,0.98)');
+    c.fillStyle = bg; c.fillRect(0, by, W, BOT_H);
+    c.fillStyle = lg; c.fillRect(0, by, W, 1);
+  }
+
+  drawTabBar(ctx, W) {
+    const t = this.t;
+    const capW = 30, closeW = 46, m = 10;
+    const x0 = m + capW + 6, x1 = W - m - closeW - 8 - capW - 6;
+    const n = MENU_TABS.length, tw = (x1 - x0) / n;
+    // Q/E 캡
+    const qx = m, ex = x1 + 6;
+    this.qeRects[0] = { x: qx - 4, y: 8, w: capW + 8, h: TOP_H - 16 };
+    this.qeRects[1] = { x: ex - 4, y: 8, w: capW + 8, h: TOP_H - 16 };
+    if (input.touchMode) {
+      for (const [r, d] of [[this.qeRects[0], -1], [this.qeRects[1], 1]]) {
+        const cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+        ctx.fillStyle = PAL.goldMid;
+        ctx.beginPath(); ctx.moveTo(cx + d * 7, cy); ctx.lineTo(cx - d * 5, cy - 9); ctx.lineTo(cx - d * 5, cy + 9); ctx.closePath(); ctx.fill();
+      }
+    } else {
+      keycap(ctx, 'Q', qx + 5, TOP_H / 2 - 10, { h: 20 });
+      keycap(ctx, 'E', ex + 5, TOP_H / 2 - 10, { h: 20 });
+    }
+    // 선택 표시 이동 애니메이션
+    const target = x0 + this.ti * tw;
+    if (this.tabX === null) this.tabX = target;
+    this.tabX = lerp(this.tabX, target, 1 - Math.pow(0.00002, 1 / 60));
+    const sx = this.tabX;
+    // 선택 판
+    const py = 6, ph = TOP_H - 10;
+    ctx.save();
+    const g = ctx.createLinearGradient(0, py, 0, py + ph);
+    g.addColorStop(0, 'rgba(150,22,44,0.95)'); g.addColorStop(0.55, 'rgba(90,10,28,0.92)'); g.addColorStop(1, 'rgba(40,4,14,0.9)');
+    ctx.beginPath();
+    ctx.moveTo(sx + 6, py + ph); ctx.lineTo(sx + 2, py + 8); ctx.quadraticCurveTo(sx + 2, py, sx + 10, py);
+    ctx.lineTo(sx + tw - 10, py); ctx.quadraticCurveTo(sx + tw - 2, py, sx + tw - 2, py + 8); ctx.lineTo(sx + tw - 6, py + ph); ctx.closePath();
+    ctx.fillStyle = g; ctx.fill();
+    ctx.strokeStyle = PAL.gold; ctx.lineWidth = 1.2; ctx.stroke();
+    glowOval(ctx, sx + tw / 2, py + ph * 0.55, tw * 0.7, ph * 0.8, '#ff3a50', 0.28 + 0.06 * Math.sin(t * 4));
+    ctx.fillStyle = 'rgba(255,230,180,0.25)'; ctx.fillRect(sx + 10, py + 2, tw - 20, 1);
+    diamond(ctx, sx + tw / 2, TOP_H + 1, 5, PAL.gold, '#000');
+    glow(ctx, sx + tw / 2, TOP_H + 1, 16, '#ffd070', 0.5);
+    ctx.restore();
+    // 탭들
+    this.tabRects.length = 0;
+    for (let i = 0; i < n; i++) {
+      const d = MENU_TABS[i];
+      const x = x0 + i * tw, r = { x, y: 4, w: tw, h: TOP_H - 6 };
+      this.tabRects.push(r);
+      const sel = i === this.ti, hov = this.ges.over(r);
+      const col = sel ? PAL.goldHi : hov ? PAL.bone : PAL.dim;
+      if (sel) glow(ctx, x + tw / 2, 22, 16, '#ffd070', 0.35);
+      glyph(ctx, d.glyph, x + tw / 2, 22, 17, col, sel ? 1.8 : 1.5);
+      text(ctx, d.name, x + tw / 2, 50, { size: tw < 80 ? 12 : 13, align: 'center', weight: sel ? 800 : 700, color: col, ow: 3 });
+      if (i > 0 && !sel && i - 1 !== this.ti) { ctx.fillStyle = 'rgba(200,160,90,0.18)'; ctx.fillRect(x, 16, 1, TOP_H - 30); }
+    }
+    if (this.focus === 'tabs') brackets(ctx, sx + 4, py + 2, tw - 8, ph - 4, t, PAL.goldHi);
+    // 닫기 버튼
+    const cr = { x: W - m - closeW, y: 8, w: closeW, h: TOP_H - 16 };
+    this.closeRect = { x: cr.x - 4, y: 0, w: cr.w + 8, h: TOP_H };
+    const hov = this.ges.over(this.closeRect);
+    const cx = cr.x + cr.w / 2, cy = cr.y + cr.h / 2;
+    ctx.beginPath(); ctx.arc(cx, cy, 17, 0, TAU);
+    const cg = ctx.createRadialGradient(cx - 4, cy - 5, 2, cx, cy, 18);
+    cg.addColorStop(0, hov ? '#8a1a2a' : '#3a1420'); cg.addColorStop(1, '#12060c');
+    ctx.fillStyle = cg; ctx.fill();
+    ctx.strokeStyle = hov ? PAL.gold : PAL.goldDim; ctx.lineWidth = 1.5; ctx.stroke();
+    glyph(ctx, 'cross', cx, cy, 16, hov ? PAL.goldHi : PAL.bone, 2);
+  }
+
+  drawBottomBar(ctx, W, H) {
+    const y = H - BOT_H / 2 + 5;
+    const st = this.state;
+    // 오른쪽: 골드 / 플레이 시간
+    let rx = W - 14;
+    const time = fmtTime(st.stats?.playTime ?? 0);
+    ctx.font = font(14, 800, FONT.num);
+    const tW = ctx.measureText(time).width;
+    text(ctx, time, rx, y, { size: 14, align: 'right', weight: 800, family: FONT.num, color: PAL.bone, ow: 3 });
+    rx -= tW + 14;
+    glyph(ctx, 'hourglass', rx, y - 5, 14, PAL.goldMid, 1.4);
+    rx -= 22;
+    const gold = Math.floor(st.gold ?? 0).toLocaleString('ko-KR');
+    ctx.font = font(15, 800, FONT.num);
+    const gW = ctx.measureText(gold).width;
+    text(ctx, gold, rx, y, { size: 15, align: 'right', weight: 800, family: FONT.num, color: '#ffd870', ow: 3 });
+    rx -= gW + 14;
+    drawIcon(ctx, 'coin', rx, y - 5, 18);
+    rx -= 16;
+    // 알림 or 키 안내
+    if (this.msg) {
+      const a = clamp(this.msg.t * 3, 0, 1);
+      ctx.globalAlpha *= a;
+      glyph(ctx, 'star', 24, y - 5, 12, this.msg.color, 1.4);
+      text(ctx, this.msg.text, 36, y, { size: 14, weight: 700, color: this.msg.color, ow: 3 });
+      ctx.globalAlpha /= a || 1;
+      return;
+    }
+    const focused = this.focus === 'content';
+    let items = this.cur.hints(focused) || [];
+    if (input.touchMode) {
+      const tips = items.filter((it) => it[2]).map((it) => it[2]);
+      text(ctx, tips.length ? tips.join('  ·  ') : '항목을 터치해 선택하세요  ·  목록은 끌어서 스크롤', 16, y, { size: 13, weight: 600, color: PAL.dim, ow: 2, maxWidth: rx - 30 });
+      return;
+    }
+    if (!focused) items = [['←→', '탭 이동'], ...(this.cur.wantsFocus ? [['↓', '선택']] : []), ['X', '닫기']];
+    else items = [...items, ['X', '뒤로']];
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0, H - BOT_H, rx - 10, BOT_H); ctx.clip();
+    hintRow(ctx, items.map((it) => [it[0], it[1]]), 14, y);
+    ctx.restore();
+  }
+}

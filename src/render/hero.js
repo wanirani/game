@@ -38,7 +38,7 @@ function weaponSpec(w, p) {
   if ((rar >= 4 || w.glow) && glowLv < 1) glowLv = 1;
   return {
     type, style, level: lv, rarity: rar, element: el, glowLv,
-    glowC: el ? EL_COL[el] : rar >= 2 ? ['#d8d0c0', '#6fe07a', '#5aa8ff', '#c07cff', '#ffa640', '#ff4a5a'][rar] : typeof w.glow === 'string' ? w.glow : w.glow ? '#ffd070' : null,
+    glowC: el ? EL_COL[el] : typeof w.glow === 'string' ? w.glow : rar >= 2 ? ['#d8d0c0', '#6fe07a', '#5aa8ff', '#c07cff', '#ffa640', '#ff4a5a'][rar] : w.glow ? '#ffd070' : null,
     blade: col(w.color, BLADE_DEF[type]?.[style - 1] || '#c8ccd8'),
     hilt: style >= 3 ? (style === 4 ? '#4a4450' : style === 6 ? '#2a1a1e' : '#c8a040') : '#6a6470',
     grip: style === 5 ? '#e8e0d0' : style === 6 ? '#3a0a12' : '#3a2418',
@@ -63,7 +63,7 @@ function buildSpec(L, p) {
     hW: (fem ? 0.9 : 1) * (B > 1 ? 1 + (B - 1) * 0.85 : B),
     thigh: kid ? 17 : fem ? 21.6 : 21.2, shin: kid ? 16.5 : fem ? 21.0 : 20.6,
     torso: kid ? 18.5 : B >= 1.25 ? 22.8 : 21.6, neck: fem ? 4.0 : 3.7, headR: kid ? 7.6 : B >= 1.25 ? 6.9 : 6.8,
-    ua: kid ? 11.5 : 13.8, fa: kid ? 10.5 : 12.6, limb: B * (fem ? 0.88 : 1),
+    ua: kid ? 11.5 : 13.8, fa: kid ? 10.5 : 12.6, limb: B * (fem ? (o === 'ninja' ? 0.93 : 0.88) : 1),
     skin, hair: col(L.hair, '#3a2a20'), eyes: col(L.eyes, '#6a4a2a'), eyeGlow: !!L.eyeGlow, beard: L.beard || null,
     hs: L.hairStyle || 'short', hg: L.headgear || null, hgC: L.headColor || null,
     pr, se, tr, pants: col(L.pants, '#2a2420'), boots: col(L.boots, '#1a1410'),
@@ -73,6 +73,9 @@ function buildSpec(L, p) {
     wings: L.wings || null, halo: !!L.halo,
     aura: L.aura || L.accAura || null, auraK: L.aura ? 1 : 0.55, runes: L.markings === 'runes',
     defH: kid ? 0.8 : 1,
+    // 머리띠: 헌터는 진홍 머리띠(꼬리 펄럭임), 닌자는 쇠 이마 보호대
+    band: L.band ?? (o === 'hunter' && !L.headgear ? col(L.secondary, '#8a1426') : null),
+    hachi: o === 'ninja' && (L.headgear === 'mask' || !L.headgear),
   };
   // 부위별 색
   let torsoC = pr, sleeve = pr, fore = pr, glove = '#2a1a14', belt = '#241410', lining = se, tall = true, cuff = tr;
@@ -98,7 +101,7 @@ function buildSpec(L, p) {
   K.off = K.W.type === 'dagger' || K.W.type === 'gun';
   K.auraC = K.aura?.color || '#b98cff';
   K.magicC = K.aura?.color || (K.W.element ? EL_COL[K.W.element] : o === 'nun' ? '#fff2b0' : '#b98cff');
-  K.trailC = L.trailColor || { azel: '#ff4a6a', lia: '#c8c0ff', bran: '#ffc080', sera: '#fff2b0', kael: '#ffe0b0', victor: '#ffd070' }[cid] || (K.W.type === 'greatsword' ? '#ffc080' : K.W.type === 'staff' ? '#fff2b0' : '#bcd8ff');
+  K.trailC = L.trailColor || { azel: '#ff2a50', lia: '#b8a8ff', bran: '#ffa040', sera: '#ffe890', kael: '#ffd8a0', victor: '#ffc860' }[cid] || (K.W.type === 'greatsword' ? '#ffa040' : K.W.type === 'staff' ? '#ffe890' : '#a8ccff');
   return K;
 }
 const SPEC = new WeakMap();
@@ -200,8 +203,10 @@ function poseDeath(P, at) {
   const bounce = land ? Math.exp(-land * 9) * Math.sin(land * 26) * 0.08 : 0;
   P.py = lerp(-40, -33, k2); P.lean = lerp(-0.45 * k1, -0.08, k2); P.hd = lerp(-0.55 * k1, -0.3, k2) + bounce * 2;
   P.f1x = lerp(lerp(5, 11, k1), 3, k2); P.f1y = lerp(lerp(-2.8, -10, k1), -2.5, k2);
-  P.f2x = lerp(lerp(-6, -3, k1), 9, k2); P.f2y = lerp(-2.8, -12, k2); P.t1 = lerp(0.4 * k1, 0, k2); P.t2 = lerp(0, 0.5, k2);
-  P.a1 = lerp(lerp(HP, -0.8, k1), -2.05, k2); P.r1 = 0.95; P.a2 = lerp(lerp(HP, -2.2, k1), -2.65, k2); P.r2 = 0.95;
+  P.f2x = lerp(lerp(-6, -3, k1), 7, k2); P.f2y = lerp(-2.8, -8, k2); P.t1 = lerp(0.4 * k1, 0, k2); P.t2 = lerp(0, 0.4, k2);
+  // 팔: 뒤로 휘둘려 벌어짐 → 누우면 머리 위 바닥에 늘어짐. 무기는 바닥과 나란히 떨어짐
+  P.a1 = lerp(lerp(HP, -2.5, k1), -2.1, k2); P.r1 = lerp(0.9, 0.95, k2); P.a2 = lerp(lerp(HP, 2.7, k1), -2.75, k2); P.r2 = 0.95;
+  P.w1 = lerp(P.a1 + 0.9, -1.72, k2); P.w2 = lerp(P.a2 + 0.9, -1.62, k2);
   P.rot = -1.5 * ease.inQuad(u) + bounce; P.pvy = -6; P.ox = 30 * k2;
   P.sq = land ? 1 - Math.exp(-land * 14) * 0.08 : 1;
 }
@@ -597,6 +602,12 @@ function drawLeg(s, K, near) {
       const nx = (ay - ky), ny = -(ax - kx), nd = Math.hypot(nx, ny) || 1;
       capsule(cx + (nx / nd) * 3.3 * bw, cy + (ny / nd) * 3.3 * bw, cx - (nx / nd) * 3.5 * bw, cy - (ny / nd) * 3.5 * bw, 1.25 * bw, 1.25 * bw, sh(boot, 0.16));
     }
+    if (K.o === 'ninja') { // 정강이 보호대 + 무릎
+      capsule(lerp(kx, ax, 0.14), lerp(ky, ay, 0.14), lerp(kx, ax, 0.72), lerp(ky, ay, 0.72), 2.7 * bw, 2.1 * bw, sh('#5e5c6e', d), 1.3);
+      ellipse(kx + 0.4, ky, 2.4 * bw, 2.2 * bw);
+      if (G.pass !== 1) G.c.fillStyle = grad(kx - 2, ky - 2, kx + 2, ky + 2, sh('#6e6c7e', d));
+      fl(); outline('#6e6c7e');
+    }
   } else {
     capsule(kx, ky, ax, ay, 3.4 * bw, 2.5 * bw, skirtLeg ? sh(mx(K.skin, '#e8e0e0', 0.4), d) : pants);
   }
@@ -612,6 +623,7 @@ function drawArm(s, K, near) {
   // 팔뚝: 손목 조금 앞까지
   const wx = lerp(ex, hx, 0.86), wy = lerp(ey, hy, 0.86);
   capsule(ex, ey, wx, wy, 3.0 * bw, 2.3 * bw, sh(K.fore, d));
+  if (K.o === 'ninja') capsule(lerp(ex, hx, 0.3), lerp(ey, hy, 0.3), lerp(ex, hx, 0.8), lerp(ey, hy, 0.8), 2.55 * bw, 2.2 * bw, sh('#6e6c7e', d), 1.3); // 쇠 팔 보호대
   const c = G.c;
   if (!G.tint && G.pass !== 1) {
     // 소맷부리
@@ -962,6 +974,8 @@ function drawHead(s, K, E, P) {
   }
   // 앞머리 / 머리장식
   if (!helm && hg !== 'hood' && hg !== 'veil') drawHairFront(K);
+  if (K.band && !hg) drawBand(K);
+  if (K.hachi) drawHachi(K);
   if (hg) drawHeadgear(K, E);
   if (K.hs === 'bald' && !hg && !G.tint) { c.fillStyle = ra('#ffffff', 0.35); ellipse(0.5, -6.2, 2.4, 0.9, -0.2); c.fill(); }
   // 눈빛
@@ -1224,6 +1238,40 @@ const HAIR_CFG = {
   flowing: { n: 7, seg: 5.0, w0: 5.4, w1: 1.4, ax: -5.2, ay: 0.5, cfg: { g: 1100, d: 0.9, push: 200, rest: 0.35, curl: 0.08, flut: 90 } },
   braid: { n: 6, seg: 4.2, w0: 1.8, w1: 1.1, ax: -5.6, ay: 1.8, cfg: { g: 1500, d: 0.9, push: 100, rest: 0.15, curl: 0.03 } },
 };
+/** 헌터 머리띠 (머리 로컬 좌표) */
+function drawBand(K) {
+  const c = G.c, bc = K.band;
+  c.beginPath(); c.moveTo(-8.4, -3.2); c.quadraticCurveTo(-1, -7.4, 7.0, -4.0); c.lineTo(6.9, -2.3); c.quadraticCurveTo(-1, -5.6, -8.0, -1.4); c.closePath();
+  c.fillStyle = grad(-8, -6, 7, -2, bc, 0.8); c.fill(); outline(bc, 0.55);
+  if (G.tint) return;
+  ellipse(-8.3, -2.4, 1.5, 1.8, 0.3); c.fillStyle = sh(bc, -0.15); c.fill(); outline(bc, 0.45); // 매듭
+  c.strokeStyle = ra(sh(bc, 0.45), 0.7); c.lineWidth = 0.4; c.beginPath(); c.moveTo(-6, -4.3); c.quadraticCurveTo(0, -6.8, 6.2, -3.8); c.stroke();
+}
+/** 닌자 이마 보호대(하치가네) */
+function drawHachi(K) {
+  const c = G.c, bc = sh(K.se, -0.1);
+  c.beginPath(); c.moveTo(-8.2, -3.6); c.quadraticCurveTo(-1, -7.8, 7.2, -4.4); c.lineTo(7.1, -2.4); c.quadraticCurveTo(-1, -5.8, -7.9, -1.6); c.closePath();
+  c.fillStyle = grad(-8, -6, 7, -2, bc, 0.8); c.fill(); outline(bc, 0.5);
+  // 쇠 판
+  c.beginPath(); c.moveTo(1.2, -6.2); c.quadraticCurveTo(4.4, -6.6, 7.3, -4.9); c.lineTo(7.2, -2.0); c.quadraticCurveTo(4.3, -3.4, 1.4, -3.2); c.closePath();
+  c.fillStyle = G.tint || (() => { const g = c.createLinearGradient(0, -6.5, 0, -2); g.addColorStop(0, '#d8dce8'); g.addColorStop(0.45, '#8a8e9e'); g.addColorStop(1, '#3a3a48'); return g; })();
+  c.fill(); outline('#6a6e7e', 0.45);
+  if (!G.tint) { c.strokeStyle = ra('#1a1a24', 0.8); c.lineWidth = 0.35; c.beginPath(); c.moveTo(3.2, -5.4); c.lineTo(4.6, -3.6); c.moveTo(4.6, -5.6); c.lineTo(3.2, -3.4); c.stroke(); }
+}
+/** 머리띠 꼬리 두 가닥 (베를레 체인) */
+function drawBandTails(s, K, E) {
+  if (!K.band || K.hg) return;
+  const c = G.c;
+  headPt(s, K, -8.4, -2.6); tx0(E.P, QX, QY);
+  const ax = TX, ay = TY;
+  for (let j = 1; j >= 0; j--) {
+    const n = 5, pts = chain(j ? 'band2' : 'band', E, ax, ay, n, j ? 3.1 : 3.8, { g: 900, d: 0.9, push: 360, rest: 0.95 + j * 0.45, curl: 0.12, flut: 240 }, ax + 1);
+    for (let i = 0; i < n; i++) WS[i] = lerp(1.05, 0.75, i / (n - 1));
+    ribbonPath(c, pts, n, WS, false);
+    const bc = sh(K.band, -0.22 * j);
+    c.fillStyle = ribGrad(pts, n, 1.1, bc, 0.8); c.fill(); outline(bc, 0.45);
+  }
+}
 function drawHairChains(s, K, E) {
   const cfg = HAIR_CFG[K.hs];
   if (!cfg || K.hg === 'helm' || K.hg === 'hood' || K.hg === 'veil') return;
@@ -1310,7 +1358,7 @@ function drawCape(s, K, E) {
   sp(s, K, 0.94, -backAt(K, 0.94) + 0.8); tx0(E.P, QX, QY);
   const n = 7, len = 44 * cp.len;
   const pts = chain('cape', E, TX, TY, n, len / (n - 1), { g: 1500, d: 0.93, push: 90, rest: 0.12, curl: 0.04, flut: 110 }, TX - 0.5);
-  for (let i = 0; i < n; i++) WS[i] = lerp(3.4, 9.5 + cp.len * 1.5, Math.pow(i / (n - 1), 0.8)) * K.hW;
+  for (let i = 0; i < n; i++) WS[i] = lerp(3.6, 9.8 + cp.len * 2.2, Math.pow(i / (n - 1), 0.75)) * K.hW;
   // 안감(앞쪽 가장자리로 살짝 보임)
   ribbonPath(c, pts, n, WS, false);
   c.fillStyle = grad(pts[0], pts[1], pts[0] + 6, pts[1] + 30, sh(cp.c2, -0.1), 0.9); c.fill(); outline(cp.c2, 0.7);
@@ -1319,7 +1367,7 @@ function drawCape(s, K, E) {
   for (let i = 0; i < n; i++) {
     const i0 = i > 0 ? i - 1 : 0, i1 = i < n - 1 ? i + 1 : n - 1;
     const tx = pts[i1 * 2] - pts[i0 * 2], ty = pts[i1 * 2 + 1] - pts[i0 * 2 + 1], d = Math.hypot(tx, ty) || 1;
-    const k = 1.8 * (i / (n - 1));
+    const k = 2.6 * (i / (n - 1));
     off[i * 2] = pts[i * 2] + (-ty / d) * k; off[i * 2 + 1] = pts[i * 2 + 1] + (tx / d) * k;
     WS[i] *= 0.92;
   }
@@ -1411,13 +1459,22 @@ function curveBack(c, X, Y, n) {
   for (let i = n - 2; i > 0; i--) c.quadraticCurveTo(X[i], Y[i], (X[i] + X[i - 1]) / 2, (Y[i] + Y[i - 1]) / 2);
   c.lineTo(X[0], Y[0]);
 }
-/** 초승달 궤적 3겹(색 번짐 → 밝은 심 → 흰 칼날선). 바깥=TRX1, 안쪽=TRX0/TRXM/TRXE */
-function crescent(c, n, tc, a) {
-  c.fillStyle = ra(tc, 0.34 * a);
+/** 초승달 궤적 3겹(색 번짐 → 밝은 심 → 흰 칼날선). 바깥=TRX1, 안쪽=TRX0/TRXM/TRXE. age: 오래된 끝을 투명하게 (현 방향 그라디언트) */
+function crescent(c, n, tc, a, age = true) {
+  const core = mx(tc, '#ffffff', 0.3);
+  let gx0 = 0, gy0 = 0, gx1 = 0, gy1 = 0;
+  if (age) { gx0 = TRX1[0]; gy0 = TRY1[0]; gx1 = TRX1[n - 1]; gy1 = TRY1[n - 1]; if (Math.abs(gx1 - gx0) + Math.abs(gy1 - gy0) < 4) age = false; }
+  const fill = (col, a0, am, a1) => {
+    if (!age) return ra(col, a1 * 0.8);
+    const g = c.createLinearGradient(gx0, gy0, gx1, gy1);
+    g.addColorStop(0, ra(col, a0)); g.addColorStop(0.55, ra(col, am)); g.addColorStop(1, ra(col, a1));
+    return g;
+  };
+  c.fillStyle = fill(tc, 0, 0.3 * a, 0.62 * a);
   c.beginPath(); curveFwd(c, TRX1, TRY1, n, true); curveBack(c, TRX0, TRY0, n); c.closePath(); c.fill();
-  c.fillStyle = ra(mx(tc, '#ffffff', 0.45), 0.5 * a);
+  c.fillStyle = fill(core, 0.05 * a, 0.45 * a, 0.85 * a);
   c.beginPath(); curveFwd(c, TRX1, TRY1, n, true); curveBack(c, TRXM, TRYM, n); c.closePath(); c.fill();
-  c.fillStyle = ra('#ffffff', 0.9 * a);
+  c.fillStyle = fill('#ffffff', 0.15 * a, 0.8 * a, 1 * a);
   c.beginPath(); curveFwd(c, TRX1, TRY1, n, true); curveBack(c, TRXE, TRYE, n); c.closePath(); c.fill();
 }
 function trailColor(K, mv) {
@@ -1472,7 +1529,7 @@ function drawSpinTrail(E, K, p, mv, R, cy) {
   const tc = trailColor(K, mv);
   const span = Math.min(th + 0.25, 3.8), wmax = R * 0.42, n = TN;
   c.save(); c.globalCompositeOperation = 'lighter';
-  c.translate(0, cy); c.scale(1, 0.27);
+  c.translate(0, cy); c.scale(1, 0.3);
   c.strokeStyle = ra(tc, 0.13 * fade); c.lineWidth = wmax * 0.55;
   c.beginPath(); c.arc(0, 0, R - wmax * 0.3, 0, TAU); c.stroke();
   for (let k = 0; k < n; k++) {
@@ -1482,7 +1539,7 @@ function drawSpinTrail(E, K, p, mv, R, cy) {
     TRXM[k] = ca * (R - wk * 0.42); TRYM[k] = sa * (R - wk * 0.42);
     TRX0[k] = ca * (R - wk); TRY0[k] = sa * (R - wk);
   }
-  crescent(c, n, tc, fade * 1.1);
+  crescent(c, n, tc, fade * 1.1, false);
   c.restore();
 }
 /** 찌르기 섬광: 칼끝에서 판정 끝까지 뻗는 창 모양 빛 + 흰 심 */
@@ -1689,8 +1746,8 @@ export function drawHero(ctx, p, world, opts = {}) {
       case 'jump': case 'fall': poseAir(P, p.vy ?? 0); holdFor(P, K, 'air'); break;
       case 'flip': {
         poseAir(P, -200); holdFor(P, K, 'air');
-        const u = clamp(at / 0.35, 0, 1), k = Math.sin(u * PI);
-        P.rot = TAU * ease.outCubic(u); P.pvy = -48;
+        const u = clamp(at / 0.36, 0, 1), k = Math.sin(u * PI);
+        P.rot = TAU * ease.outQuad(u); P.pvy = -48;
         P.f1x = lerp(P.f1x, 8, k); P.f1y = lerp(P.f1y, -27, k); P.f2x = lerp(P.f2x, 1, k); P.f2y = lerp(P.f2y, -22, k);
         P.a1 = lerp(P.a1, 0.8, k); P.r1 = lerp(P.r1, 0.62, k); P.a2 = lerp(P.a2, 1.0, k); P.r2 = lerp(P.r2, 0.6, k); P.lean = lerp(P.lean, 0.4, k);
         break;
@@ -1705,7 +1762,7 @@ export function drawHero(ctx, p, world, opts = {}) {
       }
       case 'wall': poseWall(P); holdFor(P, K, 'air'); if (W.type === 'dagger') { P.w1 = HP + 0.6; P.w2 = HP + 0.8; } break;
       case 'hurt': poseHurt(P, at); P.w1 = P.a1 + 0.8; P.w2 = P.a2 + 0.8; ST.hurt = clamp(1 - at / 0.12, 0, 1); break;
-      case 'death': poseDeath(P, at); P.w1 = P.a1 + 1.2; P.w2 = P.a2 + 1.2; break;
+      case 'death': poseDeath(P, at); break;
       case 'throw': poseIdle(P, K, tt, false); holdFor(P, K, 'idle'); poseThrow(P, K, at); break;
       case 'cast': poseIdle(P, K, tt, false); holdFor(P, K, 'idle'); poseCast(P, K, at, tt); ST.circle = clamp(at / 0.08, 0, 1) * (at < 0.3 ? 1 : clamp(1 - (at - 0.3) / 0.2, 0, 1)); ST.cast = 3; break;
       case 'charge': { ST.charge = clamp((p.charging ?? 0.3) / 0.55, 0, 1); poseCharge(P, K, ST.charge, tt); if (W.type === 'staff') ST.circle = ST.charge; break; }
@@ -1729,6 +1786,11 @@ export function drawHero(ctx, p, world, opts = {}) {
   swingOf(E0);
   ST.coil = W.type === 'whip' && !mv && anim !== 'charge';
 
+  // ── 실루엣 패스: 역광 테두리(플레이어) · 피격 섬광 ──
+  const flashK = ST.hurt > 0 && !G.tint ? ST.hurt : 0;
+  const wantRim = !opts._inner && G.fx && (opts.rim ?? !p.npc);
+  const off = (wantRim || flashK > 0) && typeof document !== 'undefined';
+
   // ── 그리기 ──
   ctx.save();
   ctx.translate(p.cx, p.bottom);
@@ -1750,45 +1812,13 @@ export function drawHero(ctx, p, world, opts = {}) {
     }
     if (ST.dash && ST.dashK > 0) drawDashFx(K, ST.dash, ST.dashK, tt);
   }
-  // 2) 날개 (몸 변환)
-  c.save(); applyT1(c, P);
-  if (K.wings) drawWings(SK, K, P, p, tt);
-  c.restore();
-  // 3) 망토·머리카락·스카프 꼬리 (월드 체인)
-  drawCape(SK, K, E);
-  drawHairChains(SK, K, E);
-  drawVeil(SK, K, E);
-  drawScarfTail(SK, K, E);
-  // 4) 본체
-  c.save(); applyT1(c, P);
-  // 먼 팔 + 보조 무기
-  if (K.off && W.type !== 'none') drawWeapon(W, SK.h2x, SK.h2y, P.w2, { fire: ST.fire2 });
-  group(drawArm, SK, K, false); drawPauldron(SK, K, false);
-  if (P.two || !K.off || W.type === 'none') drawHand(SK, K, false);
-  else drawHand(SK, K, false);
-  drawSkirt(SK, K, P, false);
-  group(drawLeg, SK, K, false);
-  drawTorso(SK, K, E);
-  drawSash(SK, K);
-  group(drawLeg, SK, K, true);
-  drawSkirt(SK, K, P, true);
-  drawTabard(SK, K);
-  if (ST.coil) { sp(SK, K, 0.1, -backAt(K, 0.1) * 0.3); drawWhipCoil(W, QX, QY, SW.tr * 0.05 + Math.sin(tt * 3) * 0.05); }
-  if (K.o === 'merchant') drawPack(SK, K);
-  drawMantle(SK, K);
-  drawCollar(SK, K, true);
-  drawNeck(SK, K);
-  drawHead(SK, K, E, P);
-  drawCollar(SK, K, false);
-  drawScarfWrap(SK, K);
-  // 가까운 팔 + 주무기
-  group(drawArm, SK, K, true); drawPauldron(SK, K, true);
-  const hasMain = W.type !== 'none' && W.type !== 'whip' || (W.type === 'whip' && !ST.coil);
-  if (hasMain) drawWeapon(W, SK.h1x, SK.h1y, P.w1, { fire: ST.fire1 });
-  drawHand(SK, K, true);
-  if (P.two && hasMain) { drawHand(SK, K, false); }
-  if (ST.hurt > 0 && !G.tint) hurtFlash(ST.hurt);
-  c.restore();
+  // 본체: 역광 테두리(뒤-위로 비켜 찍은 차가운 단색 복사본) → 본체 → 피격 섬광
+  if (off) {
+    const S = bodyOffscreen(ctx, K, P, W, tt, hs, fac, flashK > 0 ? FLASH_COL : RIM_COL);
+    if (wantRim) blitOff(ctx, TINTC, S, fac, hs, -fac * 1.25 * hs, -1.1 * hs, RIM_A, 'source-over');
+    blitOff(ctx, BODYC, S, fac, hs, 0, 0, 1, 'source-over');
+    if (flashK > 0) blitOff(ctx, TINTC, S, fac, hs, 0, 0, 0.75 * flashK, 'lighter');
+  } else drawLayers(c, E, K, P, W, tt);
   // 5) 채찍 끈 / 궤적 / 효과
   if (mv && ST.lash) {
     const n = lashPoints(E, K, p, mv, ST.lash, ST.t, LASH);
@@ -1813,7 +1843,8 @@ export function drawHero(ctx, p, world, opts = {}) {
   if (mv && ST.atk) {
     const A = ST.atk;
     if (ST.spin === 'great' || (ST.spin === 'blade' && !ST.air)) {
-      const R = (K.ua + K.fa + weaponReach(W)) * 0.95;
+      let R = (K.ua + K.fa + weaponReach(W)) * 0.95;
+      if (mv.box) R = Math.max(R, mv.box.w * 0.5 * (1 + ((p.stats?.reach ?? 0) / 100)) / hs * 0.92);
       drawSpinTrail(E, K, p, mv, R, (SK.s1y + SK.h1y) / 2);
     } else if (A.trail || (ST.spin === 'blade' && ST.air)) drawTrail(E, K, p, mv, A.trail === 2 ? 2 : 1);
     if (A.streak) drawStreak(E, K, p, mv, A.streak);
@@ -1835,6 +1866,93 @@ export function drawHero(ctx, p, world, opts = {}) {
   if (opts.debugBox && mv?.box) { c.strokeStyle = '#ff0'; c.lineWidth = 1 / hs; const b = mv.box, r = 1 + ((p.stats?.reach ?? 0) / 100); c.strokeRect(b.x / hs, b.y / hs, b.w * (b.x >= 0 ? r : 1) / hs, b.h / hs); }
   ctx.restore();
 }
+/** 몸 전체(날개 → 체인 천/머리카락 → 본체·무기). 실루엣 패스에서도 그대로 재사용 */
+function drawLayers(c, E, K, P, W, tt) {
+  // 날개 (몸 변환)
+  c.save(); applyT1(c, P);
+  if (K.wings) drawWings(SK, K, P, E.p, tt);
+  c.restore();
+  // 망토·머리카락·스카프 꼬리 (월드 체인)
+  drawCape(SK, K, E);
+  drawHairChains(SK, K, E);
+  drawBandTails(SK, K, E);
+  drawVeil(SK, K, E);
+  drawScarfTail(SK, K, E);
+  // 본체
+  c.save(); applyT1(c, P);
+  // 먼 팔 + 보조 무기
+  if (K.off && W.type !== 'none') drawWeapon(W, SK.h2x, SK.h2y, P.w2, { fire: ST.fire2 });
+  group(drawArm, SK, K, false); drawPauldron(SK, K, false);
+  drawHand(SK, K, false);
+  drawSkirt(SK, K, P, false);
+  group(drawLeg, SK, K, false);
+  drawTorso(SK, K, E);
+  drawSash(SK, K);
+  group(drawLeg, SK, K, true);
+  drawSkirt(SK, K, P, true);
+  drawTabard(SK, K);
+  if (ST.coil) { sp(SK, K, 0.1, -backAt(K, 0.1) * 0.3); drawWhipCoil(W, QX, QY, SW.tr * 0.05 + Math.sin(tt * 3) * 0.05); }
+  if (K.o === 'merchant') drawPack(SK, K);
+  drawMantle(SK, K);
+  drawCollar(SK, K, true);
+  drawNeck(SK, K);
+  drawHead(SK, K, E, P);
+  drawCollar(SK, K, false);
+  drawScarfWrap(SK, K);
+  // 가까운 팔 + 주무기
+  group(drawArm, SK, K, true); drawPauldron(SK, K, true);
+  const hasMain = W.type !== 'none' && W.type !== 'whip' || (W.type === 'whip' && !ST.coil);
+  if (hasMain) drawWeapon(W, SK.h1x, SK.h1y, P.w1, { fire: ST.fire1 });
+  drawHand(SK, K, true);
+  if (P.two && hasMain) drawHand(SK, K, false);
+  c.restore();
+}
+
+// ── 오프스크린 본체 패스 (역광 테두리 / 피격 섬광) ──
+// 몸 전체를 전용 캔버스(BODY)에 한 번 그리고 → 그 알파로 단색 복사본(TINT)을 만들어
+// 뒤-위로 비켜 찍으면 가장자리에 차가운 역광선이 남는다. 벡터 패스는 1회뿐이라 저렴하다.
+const RIM_COL = '#9fb6ff', RIM_A = 0.62, FLASH_COL = '#ffd0c0';
+let BODYC = null, TINTC = null;
+const OB = { W: 0, H: 0, bw: 0, bt: 0, bb: 0 };
+function offCanvas(cv, W, H) {
+  if (!cv) cv = document.createElement('canvas');
+  if (cv.width < W || cv.height < H) { cv.width = Math.max(cv.width, W); cv.height = Math.max(cv.height, H); }
+  return cv;
+}
+/** 본체 레이어를 BODYC 에 그리고, col 단색 복사본을 TINTC 에 만든다 */
+function bodyOffscreen(ctx, K, P, W, tt, hs, fac, col) {
+  const m = ctx.getTransform();
+  const rs = Math.min(Math.hypot(m.a, m.b) || 1, 2.5);
+  const bw = 112 * hs, bt = 132 * hs, bb = 20 * hs;
+  const Wd = Math.ceil(2 * bw * rs), Hd = Math.ceil((bt + bb) * rs);
+  BODYC = offCanvas(BODYC, Wd, Hd); TINTC = offCanvas(TINTC, Wd, Hd);
+  const oc = BODYC.getContext('2d');
+  oc.setTransform(1, 0, 0, 1, 0, 0); oc.globalAlpha = 1; oc.globalCompositeOperation = 'source-over';
+  oc.clearRect(0, 0, Wd + 2, Hd + 2);
+  oc.setTransform(rs * fac * hs, 0, 0, rs * hs, bw * rs, bt * rs);
+  oc.lineJoin = 'round'; oc.lineCap = 'round';
+  const gc = G.c;
+  G.c = oc;
+  drawLayers(oc, E0, K, P, W, tt);
+  G.c = gc;
+  const tc = TINTC.getContext('2d');
+  tc.setTransform(1, 0, 0, 1, 0, 0); tc.globalAlpha = 1;
+  tc.globalCompositeOperation = 'source-over'; tc.clearRect(0, 0, Wd + 2, Hd + 2);
+  tc.drawImage(BODYC, 0, 0, Wd, Hd, 0, 0, Wd, Hd);
+  tc.globalCompositeOperation = 'source-in'; tc.fillStyle = col; tc.fillRect(0, 0, Wd, Hd);
+  tc.globalCompositeOperation = 'source-over';
+  OB.W = Wd; OB.H = Hd; OB.bw = bw; OB.bt = bt; OB.bb = bb;
+  return OB;
+}
+/** 오프스크린 캔버스를 월드 좌표로 찍기 (현재 ctx 는 발 중앙·배율이 적용된 로컬 상태) */
+function blitOff(ctx, cv, S, fac, hs, dx, dy, alpha, op) {
+  ctx.save();
+  ctx.scale(fac / hs, 1 / hs); // 로컬 배율 해제 (fac 는 ±1)
+  ctx.globalAlpha = alpha; ctx.globalCompositeOperation = op;
+  ctx.drawImage(cv, 0, 0, S.W, S.H, -S.bw + dx, -S.bt + dy, 2 * S.bw, S.bt + S.bb);
+  ctx.restore();
+}
+
 const newST0 = newST();
 const GH = new Float32Array(48);
 
@@ -1865,18 +1983,6 @@ function drawPack(s, K) {
     c.fillStyle = '#8a3a2a'; ellipse(-1, -10.6, 4.8, 2.2); c.fill(); outline('#8a3a2a', 0.5);
     c.strokeStyle = '#9a8a6a'; c.lineWidth = 1; c.beginPath(); c.moveTo(-6.6, 6); c.lineTo(-8.8, 13); c.stroke();
   }
-  c.restore();
-}
-function hurtFlash(k) {
-  // 피격 순간 붉은-흰 섬광: 같은 뼈대 위에 실루엣을 덧칠
-  const c = G.c;
-  c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.55 * k;
-  const g = G.tint; G.tint = '#ff5a5a';
-  torsoPath(SK, E0.K); c.fillStyle = G.tint; c.fill();
-  capsule(SK.s1x, SK.s1y, SK.h1x, SK.h1y, 3, 2.4, G.tint, 1, false);
-  capsule(SK.hp1x, SK.hp1y, SK.a1x, SK.a1y, 4.2, 3, G.tint, 1, false);
-  ellipse(SK.hx, SK.hy, 7, 7.6); c.fill();
-  G.tint = g;
   c.restore();
 }
 function drawDashFx(K, type, k, t) {
@@ -1934,4 +2040,27 @@ function drawChargeFx(K, P, k, t) {
   }
   if (k >= 1) { c.strokeStyle = ra('#ffffff', 0.5 + 0.5 * Math.sin(t * 30)); c.lineWidth = 1; c.beginPath(); c.arc(x, y, 8 + Math.sin(t * 25) * 2, 0, TAU); c.stroke(); }
   c.restore();
+}
+
+/**
+ * 무기 단독 미리보기 (갤러리·상점 UI 등): weapon = look.weapon 형식 {type, style, level, rarity, element, color, glow}
+ * (x,y) 손잡이 위치, ang 방향, scale 배율, t 시간(발광 애니메이션)
+ */
+export function drawWeaponPreview(ctx, weapon, x, y, ang = 0, scale = 1, t = 0) {
+  const W = weaponSpec(weapon, null);
+  const gc = G.c, gt = G.tint, gf = G.fx, gtt = G.t;
+  G.c = ctx; G.tint = null; G.t = t; G.fx = true; G.olw = 0.85; G.pass = 0;
+  ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  if (W.type === 'whip') {
+    // 완만한 S자 채찍 끈
+    const n = LASH_N, L = 96, hx = Math.cos(ang) * 10, hy = Math.sin(ang) * 10;
+    for (let i = 0; i < n; i++) {
+      const u = i / (n - 1), d = u * L, w = Math.sin(u * PI * 1.4 + t * 3) * 7 * u;
+      LASH[i * 2] = hx + Math.cos(ang) * d - Math.sin(ang) * w; LASH[i * 2 + 1] = hy + Math.sin(ang) * d + Math.cos(ang) * w + u * u * 10;
+    }
+    drawLash(W, LASH, n);
+  }
+  drawWeapon(W, 0, 0, ang, {});
+  ctx.restore();
+  G.c = gc; G.tint = gt; G.fx = gf; G.t = gtt;
 }

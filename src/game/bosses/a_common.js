@@ -166,6 +166,8 @@ export function bolt(ctx, x0, y0, x1, y1, color, w = 3, seed = 0, jag = 18) {
   ctx.strokeStyle = '#ffffff'; ctx.lineWidth = w * 0.6; ctx.stroke();
   ctx.globalCompositeOperation = op;
 }
+/** 파티클 옵션에서 undefined 값 제거 (Object.assign 으로 프리셋 색이 지워지지 않게) */
+export function opt(o) { for (const k in o) if (o[k] === undefined) delete o[k]; return o; }
 /** 결정론적 의사난수 (그리기용, 할당 없음) */
 export function hash(i) { const s = Math.sin(i * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); }
 
@@ -187,6 +189,11 @@ export class Telegraph extends Entity {
       case 'band': this.x = o.x0; this.y = o.y0; this.w = o.x1 - o.x0; this.h = o.y1 - o.y0; break;
       case 'column': this.x = o.cx0 - o.cw; this.y = o.y0; this.w = o.cw * 2; this.h = o.y1 - o.y0; break;
       case 'arc': this.x = o.px - o.r1; this.y = o.py - o.r1; this.w = this.h = o.r1 * 2; break;
+      case 'path': {
+        let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+        for (let i = 0; i < o.pts.length; i += 2) { x0 = Math.min(x0, o.pts[i]); x1 = Math.max(x1, o.pts[i]); y0 = Math.min(y0, o.pts[i + 1]); y1 = Math.max(y1, o.pts[i + 1]); }
+        this.x = x0 - o.width; this.y = y0 - o.width; this.w = x1 - x0 + o.width * 2; this.h = y1 - y0 + o.width * 2; break;
+      }
       default: { const r = (o.r ?? 30) * 2.2; this.x = o.px - r; this.y = o.py - r; this.w = this.h = r * 2; }
     }
   }
@@ -220,6 +227,19 @@ export class Telegraph extends Entity {
           for (let x = off; x < L - 8; x += 44) { ctx.moveTo(x, -hw); ctx.lineTo(x + hw, 0); ctx.lineTo(x, hw); }
           ctx.stroke();
         }
+        break;
+      }
+      case 'path': {
+        const n = this.pts.length / 2;
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        curve(ctx, this.pts, n);
+        ctx.strokeStyle = rgba(col, 0.12 + 0.14 * blink); ctx.lineWidth = this.width; ctx.stroke();
+        ctx.strokeStyle = rgba(col, 0.85); ctx.lineWidth = 2; ctx.setLineDash([14, 10]); ctx.lineDashOffset = -this.t * 90; ctx.stroke();
+        ctx.setLineDash([]);
+        // 진행 표시 점
+        const m = Math.min(n - 1, Math.floor(k * (n - 1)));
+        glow(ctx, this.pts[m * 2], this.pts[m * 2 + 1], 26, col, 0.9);
         break;
       }
       case 'band': {
@@ -392,7 +412,7 @@ export class RingWave extends Entity {
     this.bbox();
     if (this.r > this.maxR) { this.dead = true; return; }
     const p = world.player;
-    if (p && !p.dead) {
+    if (p && !p.dead && !this.harmless) {
       const hb = p.hurtbox();
       const cx = hb.x + hb.w / 2, cy = hb.y + hb.h / 2;
       const d = Math.hypot(cx - this.px, cy - this.py);
@@ -459,7 +479,7 @@ function drawGroundWave(ctx, p, world) {
   // 부스러기/불꽃
   if (world && Math.random() < 0.5) {
     const type = { fire: 'fire', soul: 'soul', blood: 'blood', arcane: 'magic', acid: 'blood', dust: 'dust', ice: 'ice' }[p.style] || 'dust';
-    world.fx.emit(type, p.cx - d * 10, p.bottom - 6, { angle: -Math.PI / 2 - d * 0.5, spread: 0.5, speed: 160, color: p.style === 'acid' ? '#7cff5a' : undefined });
+    world.fx.emit(type, p.cx - d * 10, p.bottom - 6, opt({ angle: -Math.PI / 2 - d * 0.5, spread: 0.5, speed: 160, color: p.style === 'acid' ? '#7cff5a' : undefined }));
   }
 }
 /**
@@ -478,7 +498,7 @@ export function erupt(b, x, o = {}) {
       if (!h.fired) {
         h.fired = true;
         h.light.i = 1;
-        world.fx.burst(o.burst ?? 'fire', x, floor - 10, o.nfx ?? 10, { speed: 260, angle: -Math.PI / 2, spread: 0.5, color: o.fxColor });
+        world.fx.burst(o.burst ?? 'fire', x, floor - 10, o.nfx ?? 10, opt({ speed: 260, angle: -Math.PI / 2, spread: 0.5, color: o.fxColor }));
         world.camera.shake(o.shake ?? 4, 0.15);
         if (o.sfx !== null) audio.sfx(o.sfx ?? 'fire', { vol: 0.5, pitch: rand(0.9, 1.1) });
         o.onFire?.(h, world);
@@ -525,7 +545,7 @@ function drawEruption(ctx, h, world) {
   ctx.closePath(); ctx.fill();
   glow(ctx, x, floor - hh * 0.4, h.w * 1.6, h.color, k);
   ctx.restore();
-  if (world && Math.random() < 0.6) world.fx.emit(h.style === 'soul' ? 'soul' : h.style === 'arcane' ? 'magic' : h.style === 'ice' ? 'ice' : 'fire', x + rand(-h.w / 3, h.w / 3), floor - rand(0, hh), { speed: 80, angle: -PI / 2, color: h.style === 'soul' || h.style === 'arcane' ? h.color : undefined });
+  if (world && Math.random() < 0.6) world.fx.emit(h.style === 'soul' ? 'soul' : h.style === 'arcane' ? 'magic' : h.style === 'ice' ? 'ice' : 'fire', x + rand(-h.w / 3, h.w / 3), floor - rand(0, hh), opt({ speed: 80, angle: -PI / 2, color: h.style === 'soul' || h.style === 'arcane' ? h.color : undefined }));
 }
 /**
  * 낙하물: 바닥에 예고 기둥 → delay 후 위에서 떨어짐. o.render 로 모양, o.onLand 로 착지 효과
@@ -579,6 +599,19 @@ export class ABoss extends Boss {
     return -1;
   }
   get sp() { return 1 + this.phase * 0.14 + (this.inferno ? 0.18 : 0); }
+  /** 비행체: 목표점으로 부드럽게 가속 */
+  flyTo(tx, ty, k, maxSp, dt) {
+    const dx = tx - this.cx, dy = ty - this.cy, d = Math.hypot(dx, dy) || 1;
+    const sp = Math.min(maxSp, d * 3.2), a = Math.min(1, k * dt);
+    this.vx += (dx / d * sp - this.vx) * a; this.vy += (dy / d * sp - this.vy) * a;
+  }
+  /** 페이즈 전환 공통 상태: onPhase 에서 this.setState('transform') */
+  s_transform(dt, world, p) {
+    this.invuln = true;
+    this.vx *= 0.9; this.vy *= 0.9;
+    this.transformTick?.(dt, world, p);
+    if (this.stateT > (this.transformTime ?? 1.3)) { this.invuln = false; this.rest(0.35); }
+  }
   think(dt, world) {
     this.updArena();
     if (this.phaseFx > 0) this.phaseFx -= dt;

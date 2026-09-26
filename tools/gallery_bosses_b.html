@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>보스 갤러리 B</title>
+<style>
+  html, body { margin: 0; background: #05030a; color: #e8dcc0; font: 12px "Noto Sans KR", sans-serif; overflow: hidden; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script type="module">
+// 보스 B 갤러리/시뮬레이터
+//  ?id=b_leviathan&acts=idle~1,cannon~0.9,wave~1.2~2&cols=2   (상태~시뮬초~페이즈, 패널마다 독립 월드)
+//  &live=1        실시간 AI 구동 (패널 1개)   &ff=30  첫 그리기 전 30초 빠르게 돌려 오류 검사
+//  &player=0.3    가짜 플레이어 위치(경기장 비율)   &dark=0 조명 끄기   &debug 판정 표시   &diff=inferno
+import { Particles } from '../src/core/particles.js';
+import { Camera } from '../src/core/camera.js';
+import { Lighting } from '../src/core/lighting.js';
+import { Entity } from '../src/game/entity.js';
+import { Projectile } from '../src/game/projectiles.js';
+import { Enemy } from '../src/game/enemy.js';
+import { BOSSES } from '../src/data/bosses.js';
+import { BOSS_B } from '../src/game/bosses/bosses_b.js';
+import { getDiff } from '../src/data/difficulty.js';
+
+const q = new URLSearchParams(location.search);
+const ID = q.get('id') || 'b_leviathan';
+const DEF = BOSSES[ID];
+const acts = (q.get('acts') || 'idle~1.5').split(',').map((s) => { const [st, t, ph, hp] = s.split('~'); return { st, t: Number(t ?? 1), ph: Number(ph ?? 0), hp: hp !== undefined ? Number(hp) : null }; });
+const live = q.get('live') === '1';
+const COLS = live ? 1 : Number(q.get('cols') || Math.min(2, acts.length));
+const ROWS = live ? 1 : Math.ceil(acts.length / COLS);
+const VW = 1280, VH = 540;
+const PW = live ? VW : Math.floor(Number(q.get('pw') || (COLS === 1 ? 1280 : 640)));
+const PH = Math.round(PW * VH / VW);
+const cv = document.getElementById('c');
+const ctx = cv.getContext('2d');
+cv.width = PW * COLS; cv.height = PH * ROWS;
+const STAGE_BG = { s08: 's08_waterway', s09: 's09_clocktower', s10: 's10_spire', s11: 's11_chapel', s12: 's12_throne', s13: 's13_abyss' };
+const bgImg = new Image();
+bgImg.src = `../assets/bg/${STAGE_BG[DEF?.stageId] || 's12_throne'}.webp`;
+const DARK = { s08: 0.55, s09: 0.4, s10: 0.35, s11: 0.5, s12: 0.45, s13: 0.55 }[DEF?.stageId] ?? 0.45;
+
+const MAPW = 40, MAPH = 11, TILE = 48;
+const fakeMap = {
+  w: MAPW, h: MAPH, pxW: MAPW * TILE, pxH: MAPH * TILE, markers: [], decor: [],
+  typeAt(tx, ty) { return ty >= 9 || tx < 0 || tx >= MAPW ? 1 : 0; },
+  typeAtPx(x, y) { return this.typeAt(Math.floor(x / TILE), Math.floor(y / TILE)); },
+  isSolidPx(x, y) { return this.typeAtPx(x, y) === 1; },
+};
+
+class FakePlayer extends Entity {
+  constructor(x, y) { super(x - 14, y - 64, 28, 64); this.kind = 'player'; this.stats = { hp: 9999, def: 10, res: 10 }; this.hp = 9999; this.facing = 1; this.hitT = 0; this.z = 5; this.hits = 0; }
+  hurtbox() { return { x: this.x + 3, y: this.y + 6, w: this.w - 6, h: this.h - 6 }; }
+  get invuln() { return this.iframes > 0; }
+  takeHit(d) { this.hitT = 0.25; this.hits++; this.iframes = live ? 1.1 : 0; return true; }
+  update(dt, w) {
+    this.t += dt; if (this.hitT > 0) this.hitT -= dt; if (this.iframes > 0) this.iframes -= dt;
+    const b = w.boss; if (b) this.facing = Math.sign(b.cx - this.cx) || 1;
+    if (live) {
+      // 간단한 자동 회피: 좌우 왕복 + 가끔 점프
+      this.vx = Math.sin(this.t * 0.6) * 260;
+      if (this.onG && Math.random() < 0.012) { this.vy = -790; this.onG = false; }
+    }
+    this.vy += 2200 * dt; this.x += this.vx * dt; this.y += this.vy * dt;
+    const fl = 9 * TILE;
+    if (this.y + this.h >= fl) { this.y = fl - this.h; this.vy = 0; this.onG = true; }
+    const a = w.arena; this.x = Math.max(a.x0, Math.min(a.x1 - this.w, this.x));
+  }
+  draw(ctx) {
+    const x = this.cx, y = this.bottom, f = this.facing;
+    ctx.save(); ctx.translate(x, y); ctx.scale(f, 1);
+    ctx.fillStyle = this.hitT > 0 ? '#ff5060' : '#1a1420';
+    ctx.strokeStyle = '#9fb8ff'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(-10, 0); ctx.lineTo(-8, -30); ctx.lineTo(-13, -50); ctx.lineTo(-4, -58); ctx.lineTo(8, -56); ctx.lineTo(12, -30); ctx.lineTo(9, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#e8c8a8'; ctx.beginPath(); ctx.arc(2, -60, 7, 0, 7); ctx.fill();
+    ctx.fillStyle = '#a01020'; ctx.fillRect(-14, -52, 10, 26);
+    ctx.restore();
+  }
+}
+
+function makeWorld() {
+  const diff = getDiff ? getDiff(q.get('diff') || 'normal') : { enemyHp: 1, enemyAtk: 1, aggro: 1 };
+  const W = {
+    game: { flash(c, a) { W._flash = { c, a: a ?? 0.8 }; }, toast(t) { console.log('[toast]', t); }, debug: q.has('debug'), settings: {}, viewW: VW, viewH: VH },
+    state: { difficulty: q.get('diff') || 'normal', progress: { bosses: [], flags: {}, seenScripts: [] }, stats: {} },
+    diff, stage: { id: DEF?.stageId || 's12', level: Number(q.get('lv') || 20) },
+    fx: new Particles(1400), camera: new Camera(VW, VH), lighting: new Lighting(),
+    entities: [], platforms: [], debugRects: [], time: 0, hitstop: 0, slowmo: 0, timeStop: 0, cutscene: false, banner: null,
+    map: fakeMap, run: { score: 0 },
+    arena: { x0: 11 * TILE, x1: MAPW * TILE, cam: { x: 11 * TILE, y: 0, w: (MAPW - 11) * TILE, h: MAPH * TILE } },
+    add(e) { e.world = W; W.entities.push(e); return e; },
+    spawnProjectile(o) { return W.add(new Projectile(o)); },
+    spawnEnemy(id, x, y, o = {}) { return W.add(new Enemy(id, x, y, { level: W.stage.level, diff: W.diff, facing: o.facing ?? -1, params: o.params, elite: false })); },
+    spawnPickup() {}, enemies() { return W.entities.filter((e) => (e.kind === 'enemy' || e.kind === 'boss') && !e.dead); },
+    hittables() { return W.enemies(); }, nearestEnemy() { return null; },
+    onBossDefeated(b) { W.banner = { text: 'STAGE CLEAR', sub: b.def.name + ' 격파!' }; W.slowmo = 1.6; },
+    breakTilesIn() {}, onPlayerHit() {}, onPlayerHurt() {}, onEnemyKilled() {}, addScore() {}, gainExp() {},
+  };
+  W.lighting.darkness = q.get('dark') === '0' ? 0 : DARK;
+  W.lighting.res = 0.5;
+  W.camera.setBounds(W.arena.cam.x, 0, W.arena.cam.w, W.arena.cam.h);
+  return W;
+}
+
+function makePanel(act) {
+  const W = makeWorld();
+  const a = W.arena;
+  const pr = Number(q.get('player') ?? 0.3);
+  W.player = W.add(new FakePlayer(a.x0 + (a.x1 - a.x0) * pr, 9 * TILE));
+  const C = BOSS_B[ID];
+  const boss = new C(W, DEF, a.x0 + (a.x1 - a.x0) * 0.72, 9 * TILE);
+  W.boss = boss; W.add(boss); W.bossActive = true;
+  if (act.ph) boss.debugPhase?.(act.ph);
+  if (act.hp !== null) boss.hp = boss.stats.maxHp * act.hp;
+  if (act.st === 'death') { boss.invuln = false; boss.takeHit(boss.hp + 1, { dir: 1 }, W, {}); }
+  else if (act.st && act.st !== 'none') boss.debugAct?.(act.st);
+  return W;
+}
+
+function step(W, dt) {
+  if (W.hitstop > 0) { W.hitstop -= dt; return; }
+  let sdt = dt; if (W.slowmo > 0) { W.slowmo -= dt; sdt = dt * 0.35; }
+  W.time += sdt; if (W.timeStop > 0) W.timeStop -= dt;
+  for (let i = 0; i < W.entities.length; i++) { const e = W.entities[i]; if (!e.dead) e.update(sdt, W); }
+  W.entities = W.entities.filter((e) => !e.dead);
+  W.fx.update(sdt, W.map);
+  W.camera.follow(W.player, dt);
+  W.lighting.begin();
+  for (const e of W.entities) e.lights?.(W.lighting);
+  if (W._flash) { W._flash.a -= dt * 3; if (W._flash.a <= 0) W._flash = null; }
+}
+
+function drawPanel(W, px, py, label) {
+  ctx.save();
+  ctx.translate(px, py);
+  ctx.beginPath(); ctx.rect(0, 0, PW, PH); ctx.clip();
+  ctx.scale(PW / VW, PH / VH);
+  // 배경 (스테이지 원화 + 어둡게)
+  if (bgImg.complete && bgImg.naturalWidth) {
+    const s = Math.max(VW / bgImg.width, VH / bgImg.height);
+    ctx.drawImage(bgImg, (VW - bgImg.width * s) / 2 - (W.camera.x - W.arena.x0) * 0.2, (VH - bgImg.height * s) / 2, bgImg.width * s, bgImg.height * s);
+  } else { ctx.fillStyle = '#140a18'; ctx.fillRect(0, 0, VW, VH); }
+  const cam = W.camera;
+  ctx.save();
+  cam.apply(ctx);
+  // 바닥
+  const fl = 9 * TILE;
+  const g = ctx.createLinearGradient(0, fl, 0, fl + 100);
+  g.addColorStop(0, '#4a4050'); g.addColorStop(0.1, '#241c2a'); g.addColorStop(1, '#0a060c');
+  ctx.fillStyle = g; ctx.fillRect(0, fl, MAPW * TILE, 120);
+  ctx.fillStyle = 'rgba(255,230,200,0.25)'; ctx.fillRect(0, fl, MAPW * TILE, 2);
+  for (let x = 0; x < MAPW * TILE; x += TILE) { ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(x, fl, 2, 96); }
+  W.fx.draw(ctx, 'back');
+  const list = W.entities.slice().sort((a, b) => a.z - b.z);
+  for (const e of list) { try { e.draw(ctx, W); } catch (err) { console.error(err); } }
+  W.fx.draw(ctx, 'front');
+  if (W.game.debug) {
+    ctx.lineWidth = 1;
+    for (const e of W.entities) {
+      if (e.kind === 'boss') { ctx.strokeStyle = '#0ff'; for (const hb of e.hurtboxes()) ctx.strokeRect(hb.x, hb.y, hb.w, hb.h); ctx.strokeStyle = '#ff0'; for (const hb of e.hitParts()) if (hb && !hb.off) ctx.strokeRect(hb.x, hb.y, hb.w, hb.h); }
+      else if (e.kind === 'hazard' || e.kind === 'projectile') { ctx.strokeStyle = e.on === false ? 'rgba(255,0,255,0.3)' : '#f0f'; ctx.strokeRect(e.x, e.y, e.w, e.h); if (e.line) { ctx.beginPath(); ctx.moveTo(e.line.x0, e.line.y0); ctx.lineTo(e.line.x1, e.line.y1); ctx.stroke(); } }
+    }
+  }
+  ctx.restore();
+  W.lighting.render(ctx, cam, VW, VH);
+  ctx.save(); cam.apply(ctx); W.fx.draw(ctx, 'top'); ctx.restore();
+  if (W._flash) { ctx.globalAlpha = Math.min(1, W._flash.a); ctx.fillStyle = W._flash.c; ctx.fillRect(0, 0, VW, VH); ctx.globalAlpha = 1; }
+  // 보스 HP / 라벨
+  const b = W.boss;
+  ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0, 0, VW, 34);
+  ctx.font = 'bold 22px sans-serif'; ctx.fillStyle = '#ffd0d0'; ctx.textAlign = 'left';
+  ctx.fillText(`${label}   ${b.def.name} · ${b.def.title}   state=${b.state} ph=${b.phase} hp=${Math.round(b.hp / b.stats.maxHp * 100)}%  hits=${W.player.hits}  ents=${W.entities.length} fx=${W.fx.list.length}`, 12, 25);
+  if (W.banner) { ctx.font = 'bold 40px serif'; ctx.textAlign = 'center'; ctx.fillStyle = W.banner.color || '#ffe070'; ctx.fillText(W.banner.text, VW / 2, VH * 0.36); if (W.banner.sub) { ctx.font = '18px sans-serif'; ctx.fillText(W.banner.sub, VW / 2, VH * 0.36 + 30); } }
+  ctx.restore();
+}
+
+const panels = acts.map((a) => ({ act: a, W: makePanel(a) }));
+const DT = 1 / 60;
+const ff = Number(q.get('ff') || 0);
+for (const P of panels) {
+  try {
+    const n = Math.round((P.act.t + ff) * 60);
+    for (let i = 0; i < n; i++) step(P.W, DT);
+  } catch (err) { console.error('sim error', P.act.st, err); }
+}
+function frame() {
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, cv.width, cv.height);
+  panels.forEach((P, i) => drawPanel(P.W, (i % COLS) * PW, Math.floor(i / COLS) * PH, `${P.act.st}@${P.act.t}s`));
+}
+if (live) {
+  let last = performance.now();
+  const loop = (now) => {
+    const dt = Math.min(0.1, (now - last) / 1000); last = now;
+    let acc = dt; while (acc > 0) { const d = Math.min(DT, acc); try { step(panels[0].W, d); } catch (err) { console.error(err); } acc -= d; }
+    frame(); requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+} else {
+  bgImg.onload = frame; frame();
+}
+window.__panels = panels;
+</script>
+</body>
+</html>

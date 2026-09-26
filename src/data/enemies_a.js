@@ -45,7 +45,7 @@ export const ENEMIES_A = {
   },
   crow: {
     id: 'crow', name: '시체 까마귀', lv: 1, hp: 12, atk: 8, def: 0, exp: 4, gold: [1, 3], score: 150,
-    size: { w: 34, h: 26 }, ai: 'diver', aiParams: { wake: 330, alert: 0.45, diveSpeed: 500 }, render: 'crow', flying: true, speed: 140,
+    size: { w: 38, h: 30 }, ai: 'diver', aiParams: { wake: 330, alert: 0.45, diveSpeed: 500 }, render: 'crow', flying: true, speed: 140,
     material: 'flesh', weak: ['fire', 'thunder'], drops: [{ id: 'm_feather', p: 0.12 }],
     desc: '전장의 시체를 파먹으며 붉은 눈을 얻은 까마귀. 날카롭게 한 번 울고 나면 반드시 먹잇감을 향해 곤두박질친다.',
   },
@@ -227,14 +227,14 @@ export const ENEMIES_A = {
   // ───────────────────────── s06 대도서관 ─────────────────────────
   book_fiend: {
     id: 'book_fiend', name: '마도서 악령', lv: 14, hp: 30, atk: 12, def: 2, res: 8, exp: 16, gold: [3, 9], score: 500,
-    size: { w: 36, h: 30 }, ai: 'bookfiend', aiParams: { rate: 2.3 }, render: 'book_fiend', flying: true, speed: 105,
+    size: { w: 40, h: 34 }, ai: 'bookfiend', aiParams: { rate: 2.3 }, render: 'book_fiend', flying: true, speed: 105,
     kbResist: 0.3, material: 'paper', weak: ['fire'], resist: ['dark'],
     drops: [{ id: 'mp', p: 0.2 }, { id: 'm_soul', p: 0.05 }],
     desc: '금서에 깃든 악령. 책장을 날개처럼 퍼덕이며 날카로운 종이 칼날을 날린다. 표지 속 눈동자와 눈을 마주치지 말 것.',
   },
   flea_man: {
     id: 'flea_man', name: '벼룩 사내', lv: 14, hp: 22, atk: 11, def: 2, exp: 12, gold: [2, 7], score: 450,
-    size: { w: 22, h: 32 }, ai: 'flea', aiParams: { sight: 520, maxVx: 430 }, render: 'flea_man', speed: 90,
+    size: { w: 24, h: 38 }, ai: 'flea', aiParams: { sight: 520, maxVx: 430 }, render: 'flea_man', speed: 90,
     material: 'flesh', weak: ['fire', 'holy'], drops: [{ id: 'm_fang', p: 0.06 }],
     desc: '금서를 훔쳐 읽다 몸이 쪼그라든 사서 견습생. 키키킥 웃으며 쉴 새 없이 튀어 오른다. 몸을 웅크리는 순간이 도약 신호다.',
   },

@@ -427,13 +427,19 @@ function paintWhipHandle(W) {
 }
 
 /** 강화/희귀도 발광: 칼날 따라 + 불꽃/번개 + 무지개 (무기 로컬 좌표, 길이 L) */
+/** +13 무지개 발광: 무기 길이를 따라 흐르는 색상환 그라디언트 */
+export function prism(x0, y0, x1, y1, t, l = 70) {
+  const g = G.c.createLinearGradient(x0, y0, x1, y1), h = (t * 160) % 360;
+  for (let i = 0; i <= 4; i++) g.addColorStop(i / 4, `hsl(${(h + i * 80) % 360},100%,${l}%)`);
+  return g;
+}
 /** 강화 발광: wm = 무기 계열별 폭 배율 (단검·총은 작게) */
 function weaponAura(W, L, base, wm = 1) {
   const lv = W.glowLv || 0;
   if (!lv || G.tint || !G.fx) return;
   const c = G.c, t = G.t;
   let col = W.glowC || '#ffd070';
-  if (lv >= 3) col = `hsl(${(t * 220) % 360},100%,70%)`;
+  if (lv >= 3) col = prism(base, 0, L, 0, t);
   c.save(); c.globalCompositeOperation = 'lighter';
   const pulse = 0.65 + 0.35 * Math.sin(t * 7);
   c.lineCap = 'round';
@@ -472,7 +478,7 @@ function weaponAura(W, L, base, wm = 1) {
   }
   if (lv >= 3) {
     for (let i = 0; i < 3; i++) {
-      const u = ((t * 0.9 + i / 3) % 1), x = base + (L - base) * u, s = 1.8 * Math.sin(u * Math.PI);
+      const u = ((t * 0.9 + i / 3) % 1), x = base + (L - base) * u, s = 1.8 * Math.sin(u * Math.PI) * Math.max(0.6, wm);
       c.fillStyle = `hsla(${(t * 300 + i * 120) % 360},100%,80%,0.9)`;
       c.beginPath(); c.moveTo(x, -s * 2); c.lineTo(x + s * 0.5, 0); c.lineTo(x, s * 2); c.lineTo(x - s * 0.5, 0); c.closePath(); c.fill();
       c.beginPath(); c.moveTo(x - s * 2, 0); c.lineTo(x, s * 0.5); c.lineTo(x + s * 2, 0); c.lineTo(x, -s * 0.5); c.closePath(); c.fill();
@@ -506,7 +512,7 @@ export function drawLash(W, P, n, extend = 1) {
   if (n < 2) return;
   // 발광(강화)
   if ((W.glowLv || s >= 5) && !G.tint && G.fx) {
-    const gc = W.glowLv >= 3 ? `hsl(${(G.t * 220) % 360},100%,70%)` : (W.glowC || (s === 6 ? '#ff2a44' : '#fff2b0'));
+    const gc = W.glowLv >= 3 ? prism(P[0], P[1], P[(n - 1) * 2], P[(n - 1) * 2 + 1], G.t) : (W.glowC || (s === 6 ? '#ff2a44' : '#fff2b0'));
     c.save(); c.globalCompositeOperation = 'lighter'; c.lineCap = 'round'; c.lineJoin = 'round';
     c.globalAlpha = 0.22 + 0.08 * (W.glowLv || 0);
     c.strokeStyle = gc; c.lineWidth = 5 + (W.glowLv || 0) * 1.5;

@@ -1,2 +1,6 @@
-// 보스 구현 A (1~7장): BOSS_A[id] = class extends Boss
-export const BOSS_A = {};
+// 보스 구현 A (1~7장): BOSS_A[id] = class extends Boss (공용 툴킷: a_common.js)
+import { Nightwing } from './a_nightwing.js';
+
+export const BOSS_A = {
+  b_nightwing: Nightwing,
+};

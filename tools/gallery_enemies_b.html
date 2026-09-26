@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>적 갤러리 B</title>
+<style>
+  html, body { margin: 0; background: #07030a; color: #e8dcc0; font: 12px "Noto Sans KR", sans-serif; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script type="module">
+// 적 B 렌더러 갤러리: tools/gallery_enemies_b.html?ids=slime,merman&zoom=2&t=1.3&anim=1&proj=1
+//  ids: 표시할 적 (기본: 전체), zoom: 확대, t: 고정 시간, anim=1: 실시간 애니메이션, bg=light: 밝은 배경, proj=1: 투사체/장판 견본
+import { ENEMIES_B } from '../src/data/enemies_b.js';
+import { RENDER_B, PROJ_B, ZONE_B } from '../src/render/enemies_b.js';
+
+const q = new URLSearchParams(location.search);
+const ids = (q.get('ids') || Object.keys(ENEMIES_B).join(',')).split(',').filter((id) => ENEMIES_B[id]);
+const zoom = Number(q.get('zoom') || 1.4);
+const fixedT = q.has('t') ? Number(q.get('t')) : 1.37;
+const live = q.get('anim') === '1';
+const light = q.get('bg') === 'light';
+
+// 적별 표시 프레임: [라벨, {anim, animT, state, stateT, ...}]
+const HIT = { flashT: 0.1 };
+function frames(id) {
+  const F = {
+    slime: [['idle', { anim: 'idle' }], ['squash', { anim: 'squash', animT: 0.3 }], ['jump', { anim: 'jump', vy: -600 }], ['land', { anim: 'land', animT: 0.04 }], ['hit', { anim: 'idle', ...HIT }]],
+    homunculus: [['idle', { anim: 'idle' }], ['walk', { anim: 'walk' }], ['crouch', { anim: 'crouch', animT: 0.3 }], ['leap', { anim: 'leap' }], ['hit', { anim: 'idle', ...HIT }]],
+    flesh_golem: [['idle', { anim: 'idle' }], ['walk', { anim: 'walk' }], ['slam↑', { anim: 'slam', animT: 0.6 }], ['slam↓', { anim: 'slam', animT: 0.84 }], ['hit', { anim: 'idle', ...HIT }]],
+    plague_doctor: [['idle', { anim: 'idle' }], ['walk', { anim: 'walk' }], ['throw↑', { anim: 'throw', animT: 0.4 }], ['throw', { anim: 'throw', animT: 0.58 }], ['hop', { anim: 'hop' }]],
+    acid_turret: [['idle', { anim: 'idle' }], ['charge', { anim: 'charge', animT: 0.4 }], ['charge2', { anim: 'charge', animT: 0.75 }], ['fire', { anim: 'fire', animT: 0.05 }], ['hit', { anim: 'idle', ...HIT }]],
+    merman: [['lurk', { anim: 'lurk' }], ['rise', { anim: 'rise', animT: 0.3 }], ['leap', { anim: 'leap' }], ['walk', { anim: 'walk' }], ['spit', { anim: 'spit', animT: 0.4 }]],
+    killer_fish: [['swim', { anim: 'swim' }], ['ripple', { anim: 'ripple', animT: 0.2 }], ['leap↑', { anim: 'leap', vx: 200, vy: -600 }], ['leap↓', { anim: 'leap', vx: 200, vy: 500 }], ['hit', { anim: 'leap', vx: 200, vy: 0, ...HIT }]],
+    frog_demon: [['idle', { anim: 'idle' }], ['swell', { anim: 'swell', animT: 0.35 }], ['tongue', { anim: 'tongue', animT: 0.15, tongue: 150 }], ['jump', { anim: 'jump', vy: -400 }], ['land', { anim: 'land', animT: 0.05 }]],
+    drowned: [['rise', { anim: 'rise', animT: 0.5, stateT: 0.5, state: 'rise' }], ['idle', { anim: 'idle' }], ['walk', { anim: 'walk' }], ['bloat', { anim: 'spew', animT: 0.4 }], ['spew', { anim: 'spew', animT: 0.8 }]],
+    water_spirit: [['float', { anim: 'float' }], ['float2', { anim: 'float', t: 2.4 }], ['cast', { anim: 'cast', animT: 0.45 }], ['summon', { anim: 'summon', animT: 0.3 }], ['hit', { anim: 'float', ...HIT }]],
+    gear_golem: [['idle', { anim: 'idle' }], ['walk', { anim: 'walk' }], ['punch↑', { anim: 'punch', animT: 0.55 }], ['punch', { anim: 'punch', animT: 0.78 }], ['throw', { anim: 'throw', animT: 0.4 }]],
+    harpy: [['fly', { anim: 'fly' }], ['fly2', { anim: 'fly', t: 1.6 }], ['spread', { anim: 'spread', animT: 0.4 }], ['aim', { anim: 'aim', animT: 0.3 }], ['dive', { anim: 'dive' }]],
+    clockwork_soldier: [['idle', { anim: 'idle' }], ['walk', { anim: 'walk' }], ['aim', { anim: 'aim', animT: 0.5, aimA: -0.15, aimLen: 60 }], ['fire', { anim: 'fire', animT: 0.03, aimA: 0 }], ['winddown', { anim: 'winddown', animT: 0.8 }]],
+    cog_wheel: [['roll', { anim: 'roll', rot: 0.3 }], ['roll2', { anim: 'roll', rot: 1.1, vx: 300 }], ['wind', { anim: 'wind', animT: 0.3, rot: 0.8 }], ['hit', { anim: 'roll', ...HIT }]],
+    ice_golem: [['idle', { anim: 'idle' }], ['walk', { anim: 'walk' }], ['slam↑', { anim: 'slam', animT: 0.65 }], ['slam↓', { anim: 'slam', animT: 0.9 }], ['hit', { anim: 'idle', ...HIT }]],
+    frost_wraith: [['float', { anim: 'float' }], ['float2', { anim: 'float', t: 2.2 }], ['cast', { anim: 'cast', animT: 0.5 }], ['vanish', { anim: 'vanish', animT: 0.15, alpha: 0.5 }], ['hit', { anim: 'float', ...HIT }]],
+    snow_wolf: [['idle', { anim: 'idle' }], ['walk', { anim: 'walk' }], ['wind', { anim: 'wind', animT: 0.3 }], ['charge', { anim: 'charge' }], ['leap', { anim: 'leap' }]],
+    frozen_knight: [['idle', { anim: 'idle' }], ['walk', { anim: 'walk' }], ['windup', { anim: 'slash', animT: 0.45, stateT: 0.45, comboI: 1 }], ['slash', { anim: 'slash', animT: 0.7, stateT: 0.7, comboI: 1 }], ['guard', { anim: 'guard' }]],
+    ice_bat: [['hang', { anim: 'hang' }], ['fly', { anim: 'fly' }], ['fly2', { anim: 'fly', t: 1.45 }], ['shiver', { anim: 'shiver', animT: 0.2 }]],
+    succubus: [['fly', { anim: 'fly' }], ['fly2', { anim: 'fly', t: 2.0 }], ['kiss', { anim: 'kiss', animT: 0.5 }], ['fold', { anim: 'fold', animT: 0.3 }], ['dive', { anim: 'dive' }]],
+    blood_priest: [['idle', { anim: 'idle' }], ['walk', { anim: 'walk' }], ['cast', { anim: 'cast', animT: 0.4 }], ['channel', { anim: 'channel', animT: 0.4 }], ['hit', { anim: 'idle', ...HIT }]],
+    bone_angel: [['fly', { anim: 'fly' }], ['fly2', { anim: 'fly', t: 2.1 }], ['raise', { anim: 'raise', animT: 0.45 }], ['aim', { anim: 'aim', animT: 0.4, aimA: 0.7 }], ['dive', { anim: 'dive', aimA: 0.7 }]],
+    death_knight: [['idle', { anim: 'idle' }], ['walk', { anim: 'walk' }], ['windup', { anim: 'slash', animT: 0.4, stateT: 0.4, comboI: 2 }], ['slash', { anim: 'slash', animT: 0.62, stateT: 0.62, comboI: 2 }], ['guard', { anim: 'guard' }]],
+    cursed_nun: [['float', { anim: 'float' }], ['float2', { anim: 'float', t: 2.3 }], ['pray', { anim: 'pray', animT: 0.6 }], ['pray2', { anim: 'pray', animT: 1.3 }], ['hit', { anim: 'float', ...HIT }]],
+    vampire_bride: [['float', { anim: 'float' }], ['float2', { anim: 'float', t: 2.5 }], ['scream', { anim: 'scream', animT: 0.55 }], ['mist', { anim: 'mist', alpha: 0.5 }], ['claw', { anim: 'claw', animT: 0.3 }]],
+    demon_lord: [['idle', { anim: 'idle' }], ['walk', { anim: 'walk' }], ['swing↑', { anim: 'swing', animT: 0.5 }], ['swing', { anim: 'swing', animT: 0.7 }], ['hellfire', { anim: 'hellfire', animT: 0.45 }]],
+    bat_swarm: [['fly', { anim: 'fly' }], ['fly2', { anim: 'fly', t: 2.1 }], ['gather', { anim: 'gather', animT: 0.4 }], ['charge', { anim: 'charge', vx: 400 }], ['hurt', { anim: 'fly', hp: 15 }]],
+    royal_guard: [['idle', { anim: 'idle' }], ['walk', { anim: 'walk' }], ['sweep↑', { anim: 'sweep', animT: 0.5 }], ['sweep', { anim: 'sweep', animT: 0.72 }], ['thrust', { anim: 'thrust', animT: 0.6, high: true }]],
+    chaos_spawn: [['idle', { anim: 'idle' }], ['walk', { anim: 'walk' }], ['swell', { anim: 'swell', animT: 0.5 }], ['leap', { anim: 'leap' }], ['hit', { anim: 'idle', ...HIT }]],
+    hellhound: [['idle', { anim: 'idle' }], ['walk', { anim: 'walk' }], ['wind', { anim: 'wind', animT: 0.3 }], ['charge', { anim: 'charge' }], ['breath', { anim: 'breath', animT: 0.7 }]],
+    abyss_eye: [['idle', { anim: 'idle', lookA: 0.4 }], ['look', { anim: 'idle', lookA: 2.2 }], ['aim', { anim: 'aim', animT: 0.8, lookA: 0.6, stateT: 0.8 }], ['fire', { anim: 'fire', lookA: 0.6 }], ['hit', { anim: 'idle', lookA: 1, ...HIT }]],
+    shadow_hunter: [['idle', { anim: 'idle', heroAnim: 'idle' }], ['run', { anim: 'run', heroAnim: 'run', vx: 230 }], ['jump', { anim: 'act', heroAnim: 'jump', vy: -300 }], ['dash', { anim: 'act', heroAnim: 'dash', heroAnimT: 0.05 }], ['hit', { anim: 'idle', heroAnim: 'idle', ...HIT }]],
+    void_demon: [['float', { anim: 'float' }], ['cast', { anim: 'cast', animT: 0.5 }], ['rift', { anim: 'rift', animT: 0.4 }], ['blink', { anim: 'blink', animT: 0.15, alpha: 0.6 }], ['claw', { anim: 'claw', animT: 0.5 }]],
+  };
+  return F[id] || [['idle', { anim: 'idle' }], ['walk', { anim: 'walk' }], ['hit', { anim: 'idle', ...HIT }]];
+}
+
+const cv = document.getElementById('c');
+const ctx = cv.getContext('2d');
+const COLS = 5, CW = 150 * zoom, CH = 150 * zoom, LABEL = 18;
+const rows = ids.length;
+const PROJ_H = q.get('proj') === '1' ? 260 * zoom : 0;
+cv.width = 150 + COLS * CW; cv.height = rows * (CH + LABEL) + PROJ_H;
+cv.style.width = cv.width + 'px';
+
+function bg() {
+  const g = ctx.createLinearGradient(0, 0, 0, cv.height);
+  if (light) { g.addColorStop(0, '#6a6070'); g.addColorStop(1, '#3a3040'); }
+  else { g.addColorStop(0, '#140a1c'); g.addColorStop(0.5, '#1c0d18'); g.addColorStop(1, '#08040c'); }
+  ctx.fillStyle = g; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.globalAlpha = 0.18;
+  for (let y = 0; y < cv.height; y += 22) for (let x = (y / 22) % 2 ? 0 : 20; x < cv.width; x += 40) { ctx.strokeStyle = '#6a4a5a'; ctx.strokeRect(x, y, 40, 22); }
+  ctx.globalAlpha = 1;
+  for (let i = 0; i < 30; i++) {
+    const x = (i * 397) % cv.width, y = (i * 173) % cv.height;
+    const r = ctx.createRadialGradient(x, y, 0, x, y, 120);
+    r.addColorStop(0, i % 3 ? 'rgba(120,30,40,0.18)' : 'rgba(255,140,60,0.12)'); r.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = r; ctx.fillRect(x - 120, y - 120, 240, 240);
+  }
+}
+
+function makeEnt(id, f, t) {
+  const d = ENEMIES_B[id];
+  const maxHp = 100;
+  return Object.assign({
+    def: d, id, t, anim: 'idle', animT: t % 1, state: f.state ?? f.anim ?? 'idle', stateT: t % 1, flashT: 0, stun: 0, params: { ...(d.aiParams || {}) },
+    facing: 1, scale: 1, elite: false, dying: 0, vx: 0, vy: 0, alpha: 1, hp: maxHp, stats: { maxHp }, rig: {}, onGround: true,
+  }, f, { t: f.t ?? t });
+}
+
+function draw(now) {
+  const T = live ? now / 1000 : fixedT;
+  bg();
+  ctx.font = '12px sans-serif';
+  ids.forEach((id, r) => {
+    const y0 = r * (CH + LABEL);
+    ctx.fillStyle = '#e8c872'; ctx.textAlign = 'left';
+    ctx.fillText(`${id}`, 8, y0 + 14);
+    ctx.fillText(`${ENEMIES_B[id].name}`, 8, y0 + 30);
+    ctx.fillStyle = '#9a8a9a'; ctx.fillText(`${ENEMIES_B[id].size.w}×${ENEMIES_B[id].size.h}`, 8, y0 + 46);
+    frames(id).forEach(([label, f], c) => {
+      const x = 150 + c * CW + CW / 2, y = y0 + LABEL + CH - 24 * zoom;
+      ctx.fillStyle = '#9a8a9a'; ctx.textAlign = 'center'; ctx.fillText(label, x, y0 + LABEL + 10);
+      ctx.strokeStyle = 'rgba(200,160,120,0.25)'; ctx.beginPath(); ctx.moveTo(x - CW * 0.45, y); ctx.lineTo(x + CW * 0.45, y); ctx.stroke();
+      const e = makeEnt(id, f, live ? T + c * 0.13 : (f.t ?? T));
+      const fn = RENDER_B[ENEMIES_B[id].render];
+      ctx.save();
+      ctx.translate(x, y); ctx.scale(zoom * (e.scale || 1), zoom * (e.scale || 1));
+      ctx.globalAlpha = e.alpha ?? 1;
+      try { if (fn) fn(ctx, e, null, { flash: e.flashT > 0 }); else { ctx.fillStyle = '#f0f'; ctx.fillRect(-10, -20, 20, 20); } }
+      catch (err) { console.error(id, label, err); ctx.fillStyle = '#f00'; ctx.fillRect(-10, -30, 20, 30); }
+      ctx.restore();
+    });
+  });
+  // 투사체/장판 견본
+  if (PROJ_H) {
+    const y0 = rows * (CH + LABEL);
+    let x = 40, row = 0;
+    for (const k of Object.keys(PROJ_B)) {
+      const p = { t: T, vx: 300, vy: 0, w: 16, h: 16, rot: T * 5, color: '#ff7a2a', life: 1, maxLife: 2, scale: 1, cx: 0, cy: 0 };
+      ctx.save(); ctx.translate(x, y0 + 40 * zoom + row * 70 * zoom); ctx.scale(zoom, zoom); try { PROJ_B[k](ctx, p, null); } catch (err) { console.error(k, err); } ctx.restore();
+      ctx.fillStyle = '#ccc'; ctx.textAlign = 'center'; ctx.fillText(k, x, y0 + 70 * zoom + row * 70 * zoom);
+      x += 70 * zoom; if (x > cv.width - 40) { x = 40; row++; }
+    }
+    // 장판: 월드 좌표 렌더러 → 가짜 존
+    let zx = 40; const zy = y0 + PROJ_H - 20;
+    for (const k of Object.keys(ZONE_B)) {
+      const w = k === 'beam' ? 160 : 60, h = k === 'beam' ? 1 : k === 'pillar' || k === 'hellfire' || k === 'bloodspear' || k === 'icespike' ? 120 : k === 'rift' ? 68 : 24;
+      const z = { x: zx, y: zy - h, w, h, t: T % 1.6, delay: 0.5, life: 0.4, maxLife: 0.6, cx: zx + w / 2, cy: zy - h / 2, bottom: zy, data: { seed: 3, x0: zx, y0: zy - 60, x1: zx + 160, y1: zy - 40, a: 0.12, len: 162, aimK: 1 },
+        get active() { return this.t >= this.delay; }, get warnK() { return Math.min(1, this.t / this.delay); }, get liveK() { return this.t < this.delay ? 0 : Math.min(1, (this.t - this.delay) / this.maxLife); } };
+      try { ZONE_B[k](ctx, z, null); } catch (err) { console.error(k, err); }
+      ctx.fillStyle = '#ccc'; ctx.textAlign = 'center'; ctx.fillText(k, zx + w / 2, zy + 14);
+      zx += w + 40;
+    }
+  }
+  if (live) requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+window.__ready = true;
+</script>
+</body>
+</html>

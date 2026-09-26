@@ -388,6 +388,19 @@ export class BossB extends Boss {
   /** 공격 후 휴식 시간 (난이도/페이즈 반영) */
   restTime(base) { return base / (this.aggro * (1 + this.phase * 0.12) * (this.inferno ? 1.25 : 1)); }
   zone(o) { return this.world.add(new Zone(this, o)); }
+  /** 갤러리/테스트용: 특정 패턴 강제 시작 */
+  debugAct(s) { this.lastAtk = s; this.setState(s); }
+  /** 갤러리/테스트용: 페이즈 즉시 진입 (전환 연출 생략) */
+  debugPhase(n) {
+    const ph = this.def.phases || [0.5];
+    while (this.phase < n && this.phase < ph.length) {
+      this.hp = Math.floor(this.stats.maxHp * (ph[this.phase] - 0.01));
+      this.phase++;
+      this.onPhase?.(this.phase, this.world);
+    }
+    this.skipTransition?.();
+    this.clearJobs();
+  }
   get P() { return this.world.player; }
   /** 플레이어 방향 (±1) */
   dirTo(x = this.cx) { const p = this.world.player; return p ? (Math.sign(p.cx - x) || 1) : this.facing; }

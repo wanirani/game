@@ -3,6 +3,7 @@ import { expToNext, MAX_LEVEL } from './stats.js';
 import { CLASSES } from '../data/classes.js';
 import { CHARACTERS } from '../data/characters.js';
 import { bus } from '../core/events.js';
+import { STARTER_SKILLS } from '../data/skills.js';
 
 /** 경험치 획득. 반환: 오른 레벨 수 */
 export function addExp(hero, amount) {
@@ -43,9 +44,11 @@ export function changeClass(hero, classId) {
 /** 새 영웅 상태 */
 export function newHero(charId, level = 1) {
   const ch = CHARACTERS[charId];
+  // 시작 스킬(액티브 1레벨)을 무료로 지급하고 1번 슬롯(S)에 장착 → 새 게임부터 바로 스킬 사용 가능
+  const starter = STARTER_SKILLS[charId];
   return {
     charId, level, exp: 0, classId: ch.rootClass, sp: Math.max(0, level - 1) + 1,
-    skills: {}, equip: { weapon: null, head: null, body: null, cloak: null, acc1: null, acc2: null },
-    slots: [null, null, null, null], sub: ch.startSub,
+    skills: starter ? { [starter]: 1 } : {}, equip: { weapon: null, head: null, body: null, cloak: null, acc1: null, acc2: null },
+    slots: [starter ?? null, null, null, null], sub: ch.startSub,
   };
 }

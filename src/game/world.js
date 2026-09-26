@@ -18,6 +18,7 @@ import { ITEMS, makeItem, itemName } from '../data/items.js';
 import { TileMap } from './tilemap.js';
 import { Player } from './player.js';
 import { Enemy } from './enemy.js';
+import { ENEMIES } from '../data/enemies.js';
 import { Projectile, Hitbox } from './projectiles.js';
 import { Pickup } from './pickups.js';
 import { Candle, Chest, SavePoint, Statue, Door, MovingPlatform, CrumblePlatform, Lamp, StoryTrigger, NPC } from './props.js';
@@ -175,7 +176,7 @@ export class World {
   add(e) { e.world = this; this.entities.push(e); return e; }
   spawnProjectile(o) { return this.add(new Projectile(o)); }
   spawnEnemy(id, fx, fy, opts = {}) {
-    const elite = opts.elite ?? (chance(this.diff.elite ?? 0) && id !== 'medusa_head');
+    const elite = opts.elite ?? (chance(this.diff.elite ?? 0) && id !== 'medusa_head' && ENEMIES[id]?.elite !== false);
     const e = new Enemy(id, fx, fy, { level: opts.level ?? this.stage.level, elite, diff: this.diff, facing: opts.facing ?? -1, params: opts.params });
     return this.add(e);
   }

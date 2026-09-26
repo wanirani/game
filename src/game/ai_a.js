@@ -516,7 +516,8 @@ AI_A.reviver = {
       world.fx.text(e.cx, e.y - 10, '분쇄!', { color: '#ffb0a0', size: 18 });
       return;
     }
-    if (e.hp <= 0 && attack.element !== 'holy' && !e.params.noRevive) {
+    // 신성 속성이나 화면 전체 소멸(초대형 피해)이면 부활하지 못함
+    if (e.hp <= 0 && e.hp > -Math.max(5000, e.stats.maxHp * 20) && attack.element !== 'holy' && !e.params.noRevive) {
       e.hp = 1;
       e.setState('collapse'); e.harmless = true; e.revives++;
       audio.sfx('break_wall', { vol: 0.5, pitch: 1.3 });

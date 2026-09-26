@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<base href="../">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>마을 장면 테스트</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@600;800;900&family=Nanum+Myeongjo:wght@700;800&family=Noto+Sans+KR:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  #app { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<div id="app"><canvas id="screen"></canvas></div>
+<script type="module">
+// 마을 장면 단독 테스트 하네스: 다른 장면을 거치지 않고 ?scene=shop|smith|church|questboard|party|worldmap|hub 로 바로 연다.
+// 상태 프리셋: &gold=N &ch=N(클리어 챕터) &lv=N &char=id &relics=N &stones=N &scrolls=1 &cleared=1(ch까지 랭크 기록)
+import { game } from './src/core/game.js';
+import { audio } from './src/core/audio.js';
+import { assets } from './src/core/assets.js';
+import { saves } from './src/core/save.js';
+import { input } from './src/core/input.js';
+import { newGameState, ensureHero } from './src/game/state.js';
+import { addByBase } from './src/game/inventory.js';
+import { ITEMS } from './src/data/items.js';
+import { STAGE_ORDER } from './src/data/stages.js';
+
+const Q = new URLSearchParams(location.search);
+game.settings = saves.loadSettings(); game.meta = saves.loadMeta();
+game.audio = audio; game.assets = assets; game.saves = saves;
+game.init(document.getElementById('screen'));
+game.debug = Q.has('debug');
+const SC = {
+  hub: ['./src/scenes/town/hub.js', 'HubScene'], shop: ['./src/scenes/town/shop.js', 'ShopScene'], smith: ['./src/scenes/town/smith.js', 'SmithScene'],
+  church: ['./src/scenes/town/church.js', 'ChurchScene'], questboard: ['./src/scenes/town/questboard.js', 'QuestBoardScene'],
+  party: ['./src/scenes/town/party.js', 'PartyScene'], worldmap: ['./src/scenes/town/worldmap.js', 'WorldMapScene'],
+};
+for (const [k, [path, cls]] of Object.entries(SC)) {
+  try { const m = await import(path); game.register(k, m[cls]); } catch (e) { console.warn('[harness] skip', k, e.message); }
+}
+try { const d = await import('./src/scenes/dialogue.js'); game.register('dialogue', d.DialogueScene); } catch (e) { console.warn('[harness] no dialogue', e.message); }
+game.register('title', class extends (await import('./src/core/game.js')).Scene { render(ctx) { ctx.fillStyle = '#200'; ctx.fillRect(0, 0, game.viewW, game.viewH); } });
+
+const st = newGameState({ slot: 3, difficulty: 'normal', charId: Q.get('char') || 'kael' });
+const ch = +(Q.get('ch') || 0);
+st.progress.chapter = ch;
+for (let i = 0; i < ch; i++) {
+  const id = STAGE_ORDER[i];
+  st.progress.cleared[id] = { rank: ['S', 'A', 'B', 'SS', 'C', 'A', 'S', 'B', 'A', 'SSS', 'S', 'A'][i], time: 180 + i * 37, score: 42000 + i * 9100 };
+  if (!st.progress.unlocked.includes(STAGE_ORDER[i + 1]) && STAGE_ORDER[i + 1] && STAGE_ORDER[i + 1] !== 's13') st.progress.unlocked.push(STAGE_ORDER[i + 1]);
+}
+if (Q.get('gold')) st.gold = +Q.get('gold');
+if (Q.get('lv')) for (const h of Object.values(st.heroes)) h.level = +Q.get('lv');
+if (Q.get('relics')) st.progress.relics = ['k_relic_1', 'k_relic_2', 'k_relic_3', 'k_relic_4', 'k_relic_5'].slice(0, +Q.get('relics'));
+if (Q.get('stones')) for (let i = 1; i <= 6; i++) if (ITEMS['m_stone_' + i]) addByBase(st, 'm_stone_' + i, +Q.get('stones'));
+if (Q.get('scrolls')) { if (ITEMS.m_scroll_protect) addByBase(st, 'm_scroll_protect', 3); if (ITEMS.m_scroll_bless) addByBase(st, 'm_scroll_bless', 3); }
+if (Q.get('items')) for (const id of Q.get('items').split(';')) { const [b, r, l] = id.split(':'); if (ITEMS[b]) addByBase(st, b, 1, { rarity: +(r || 0), level: +(l || 0) }); }
+if (Q.get('party')) { game.meta.unlockedChars = Q.get('party').split(';'); for (const c of game.meta.unlockedChars.slice(0, 3)) ensureHero(st, c); }
+game.state = st;
+window.__game = game;
+game.start();
+game.go(Q.get('scene') || 'shop', {}, { fade: false });
+if (Q.has('touch')) input.setTouchMode(true);
+</script>
+</body>
+</html>
