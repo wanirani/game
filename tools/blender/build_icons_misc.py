@@ -1967,8 +1967,9 @@ def build_elixir():
             (0.48, 0.34), (0.36, 0.30), (0.24, 0.24), (0.12, 0.16), (0.0, 0.10)]
     for sx in (1, -1):
         pts = [(sx * x, z) for (x, z) in wing]
-        inflate(pts, 0.035, M_palegold(), rings=3, loc=(sx * 0.40, 0.0, 0.58),
-                rot=(0, 0, rad(-28 * sx)), name="wing")
+        inflate(pts, 0.035, pbr("winggold", (1.0, 0.8, 0.45), metal=1, rough=0.32),
+                rings=3, loc=(sx * 0.40, 0.0, 0.58), rot=(rad(-30), 0, rad(-28 * sx)),
+                name="wing")
     view(pitch=10, diag=0, fill=0.9, glow=1.0, glow_beauty=0.6)
 
 
@@ -2037,7 +2038,7 @@ STONE_TIERS = {
     1: dict(col=(0.55, 0.58, 0.62), glow=0.06, n=2, size=0.85, shards=0),
     2: dict(col=(0.03, 0.75, 0.16), glow=0.35, n=3, size=0.9, shards=0),
     3: dict(col=(0.02, 0.28, 1.0), glow=0.5, n=4, size=0.95, shards=0),
-    4: dict(col=(0.28, 0.02, 1.0), glow=0.5, n=5, size=1.0, shards=3),
+    4: dict(col=(0.22, 0.0, 1.0), glow=0.45, n=5, size=1.0, shards=3),
     5: dict(col=(1.0, 0.5, 0.02), glow=0.55, n=5, size=1.02, shards=4, band=True),
     6: dict(col=(0.72, 0.0, 0.025), glow=0.45, n=7, size=1.08, shards=6, obsidian=True),
 }
@@ -2213,8 +2214,8 @@ def build_scroll_bless():
 def build_doc():
     parch = M_parchment("parch_old", (0.80, 0.66, 0.44), dark=(0.32, 0.2, 0.08), scale=4.0,
                         lines=True, line_freq=22.0, line_dir="Z")
-    sheet, R = rolled_sheet(1.3, 0.05, 2.4, 0.014, parch, flap=0.3, droop=0.05,
-                            rough_edge=0.012, start=rad(150))
+    sheet, R = rolled_sheet(1.3, 0.05, 2.6, 0.014, parch, flap=0.22, droop=0.06,
+                            rough_edge=0.01, start=rad(40))
     red = pbr("redribbon", (0.5, 0.02, 0.03), rough=0.45, sheen=0.8, coat=0.2)
     ribbon_band(R + 0.012, 0.09, red, z=0.05)
     wax = M_sealwax("redwax", (0.55, 0.02, 0.02))
@@ -2227,7 +2228,7 @@ def build_doc():
         sweep(catmull(pts, 6), 0.03, red, segs=10, ellipse=(1.0, 0.25), name="tail")
     wax_seal((0, y0 - 0.01, 0.04), 0.11, wax,
              emblem=shape_star(6, 0.07, 0.03))
-    view(diag=38, pitch=24, yaw=-25, fill=0.9, glow=0.2)
+    view(diag=40, pitch=30, yaw=-20, fill=0.9, glow=0.2)
 
 
 @item("key")
@@ -2967,7 +2968,7 @@ def _build_chest(open_):
             lathe([(0.0, -0.07), (0.075, 0.0), (0.0, 0.07)], M_gem("chestgem_%s" % x, col, glow=0.7),
                   seg=6, smooth=False, loc=(x, -0.15, zt + 0.03), rot=(rad(20), rad(30), 0),
                   name="gem")
-        beam = extrude([(-0.6, 0.0), (0.6, 0.0), (0.8, 1.2), (-0.8, 1.2)], 0.01,
+        beam = extrude([(-0.6, 0.0), (0.6, 0.0), (0.76, 0.95), (-0.76, 0.95)], 0.01,
                        M_beam("treasurebeam", (1.0, 0.7, 0.22), 0.7), loc=(0, -0.1, H + 0.12),
                        name="beam")
         beam["noframe"] = True
@@ -3476,8 +3477,8 @@ def build_prop_bookshelf():
 
 @item("prop_gear", "prop", (192, 192))
 def build_prop_gear():
-    brass = pbr("gearbrass", (0.74, 0.5, 0.22), metal=1, rough=0.3, noise_rough=0.14,
-                bump=0.08, bump_scale=20)
+    brass = pbr("gearbrass", (0.56, 0.34, 0.11), metal=1, rough=0.42, noise_rough=0.16,
+                bump=0.1, bump_scale=20)
     dark = M_wrought()
     N, Rr, Rt = 16, 0.84, 1.0
     pts = []
@@ -3521,7 +3522,7 @@ def build_prop_gear():
                      smooth=False, name="bolt")
         bake(bolt, Matrix.Translation((0.19, 0.0, 0.0)))
         radial_array(bolt, 6)
-    view(pitch=6, yaw=14, anchor="center", fill=0.94, glow=0.0)
+    view(pitch=6, yaw=14, anchor="center", fill=0.94, glow=0.0, front=0.0)
 
 
 @item("prop_vat", "prop", (128, 192))
@@ -3662,7 +3663,7 @@ def postprocess(beauty_path, emit_path, out_path, out_size, v):
     P = np.minimum(P, al[..., None])
     rgb = np.where(al[..., None] > 1e-4, P / np.maximum(al[..., None], 1e-4), 0)
     # clean alpha: kill near-transparent dust, zero colour where alpha is 0
-    al = np.where(al < 1.5 / 255, 0, al)
+    al = np.where(al < 2.5 / 255, 0, al)
     rgb = np.where(al[..., None] > 0, rgb, 0)
     out = np.concatenate([np.clip(rgb, 0, 1), al[..., None]], axis=2)
     Image.fromarray((out * 255 + 0.5).astype(np.uint8), "RGBA").save(out_path, optimize=True)
