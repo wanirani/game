@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<base href="../../">
+<title>퍼펫 QA 검사대</title>
+<style>html,body{margin:0;background:#07040a;color:#d8ccb8;font:12px sans-serif}</style>
+</head>
+<body>
+<script type="module">
+// 퍼펫 QA 검사대 (tools/puppet/review.mjs 가 구동). 셀 하나 = 영웅 한 자세를 투명 캔버스에 그려
+//  ① PNG(dataURL) ② 실루엣 안에 갇힌 투명 구멍(이음매 틈) ③ 반투명 이음선 픽셀 수 ④ 발바닥/머리 위치 를 돌려준다.
+// window.__api.render(spec) — spec: {char, cls, wt, mk('g0'|'a1'|'up'|'down'|'crouch'|'dash'|'charge'), t | frac,
+//   anim, animT, facing, vx, vy, onGround, sc, W, H, fx, fy, bg, rim, noFx, equip{}, warm, tint, alpha, yaw, vector, world, charging, muzzleT}
+import { drawHero, setPuppetEnabled, puppetStatus, preloadPuppet, HERO_DRAW_SCALE } from './src/render/hero.js';
+import { CHARACTERS } from './src/data/characters.js';
+import { CLASSES, classChain } from './src/data/classes.js';
+import { MOVESETS } from './src/data/movesets.js';
+
+function lookOf(charId, classId, w = {}, equip = {}) {
+  const ch = CHARACTERS[charId];
+  const look = structuredClone(ch.look);
+  if (classId) for (const c of classChain(classId)) Object.assign(look, structuredClone(c.look || {}));
+  look.weapon = { type: w.type ?? ch.weaponType, style: w.style ?? 3, level: w.level ?? 0, rarity: w.rarity ?? 0, element: w.element ?? null };
+  return Object.assign(look, structuredClone(equip));
+}
+function moveOf(wt, mk) {
+  const ms = MOVESETS[wt];
+  if (!ms || !mk) return null;
+  if (/^g\d$/.test(mk)) return ms.ground[+mk[1]] || null;
+  if (/^a\d$/.test(mk)) return ms.air[+mk[1]] || null;
+  return ms[mk] || null;
+}
+function moveT(m, frac) {
+  const h0 = m.hit[0], h1 = Math.max(m.hit[1], h0 + 0.03);
+  // frac: 0~1 예비, 1~2 판정, 2~3 회수
+  if (frac < 1) return h0 * frac;
+  if (frac < 2) return h0 + (h1 - h0) * (frac - 1);
+  return Math.min(m.dur - 0.001, h1 + (m.dur - h1) * (frac - 2));
+}
+const cv = document.createElement('canvas');
+const ctx = cv.getContext('2d', { willReadFrequently: true });
+const scratch = document.createElement('canvas'); scratch.width = 800; scratch.height = 800;
+const sctx = scratch.getContext('2d');
+const FAKE_WORLD = { time: 0 };
+
+function analyse(W, H) {
+  const d = ctx.getImageData(0, 0, W, H).data;
+  const N = W * H, A = new Uint8Array(N);
+  let top = H, bot = -1, left = W, right = -1;
+  for (let i = 0; i < N; i++) {
+    const a = d[i * 4 + 3]; A[i] = a;
+    if (a > 128) { const y = (i / W) | 0, x = i - y * W; if (y < top) top = y; if (y > bot) bot = y; if (x < left) left = x; if (x > right) right = x; }
+  }
+  // 바깥에서 닿는 픽셀 표시 (thr 미만을 통과)
+  const flood = (thr) => {
+    const seen = new Uint8Array(N), st = [];
+    for (let x = 0; x < W; x++) { st.push(x, (H - 1) * W + x); }
+    for (let y = 0; y < H; y++) { st.push(y * W, y * W + W - 1); }
+    while (st.length) {
+      const i = st.pop();
+      if (seen[i] || A[i] >= thr) continue;
+      seen[i] = 1;
+      const y = (i / W) | 0, x = i - y * W;
+      if (x > 0) st.push(i - 1); if (x < W - 1) st.push(i + 1); if (y > 0) st.push(i - W); if (y < H - 1) st.push(i + W);
+    }
+    return seen;
+  };
+  // 구멍: 알파 < 96 이면서 바깥과 이어지지 않은 덩어리
+  const out = flood(96), lab = new Int32Array(N), holes = [];
+  let nl = 0;
+  for (let i = 0; i < N; i++) {
+    if (A[i] >= 96 || out[i] || lab[i]) continue;
+    nl++; let n = 0, sx = 0, sy = 0; const st = [i];
+    while (st.length) {
+      const j = st.pop();
+      if (lab[j] || A[j] >= 96 || out[j]) continue;
+      lab[j] = nl; n++;
+      const y = (j / W) | 0, x = j - y * W; sx += x; sy += y;
+      if (x > 0) st.push(j - 1); if (x < W - 1) st.push(j + 1); if (y > 0) st.push(j - W); if (y < H - 1) st.push(j + W);
+    }
+    holes.push({ x: Math.round(sx / n), y: Math.round(sy / n), n });
+  }
+  // 이음선: 바깥과 이어지지 않은 반투명(16~232) 픽셀
+  const out2 = flood(233);
+  let seam = 0;
+  for (let i = 0; i < N; i++) if (A[i] > 16 && A[i] < 233 && !out2[i] && !lab[i]) seam++;
+  holes.sort((a, b) => b.n - a.n);
+  return { holes: holes.slice(0, 12), holeN: holes.length, holeArea: holes.reduce((s, h) => s + h.n, 0), seam, top, bot, left, right };
+}
+
+async function render(s) {
+  if (s.vector) setPuppetEnabled(false); else setPuppetEnabled(true);
+  const W = s.W || 700, H = s.H || 560, sc = s.sc || 4;
+  const fx = s.fx ?? W * 0.42, fy = s.fy ?? H - 50;
+  cv.width = W; cv.height = H;
+  const charId = s.char || 'kael';
+  const look = lookOf(charId, s.cls, { type: s.wt, style: s.style ?? 3, level: s.level ?? 0, rarity: s.rarity ?? 0, element: s.element ?? null }, s.equip || {});
+  const wt = look.weapon.type;
+  const m = moveOf(wt, s.mk);
+  const air = s.mk ? (s.mk[0] === 'a' || s.mk === 'down') : false;
+  const e = { facing: s.facing ?? 1, anim: s.anim || (m ? m.anim : 'idle'), animT: s.animT ?? 0.5, move: m, moveT: m ? (s.t ?? moveT(m, s.frac ?? 1.5)) : 0,
+    vx: s.vx ?? 0, vy: s.vy ?? 0, onGround: s.onGround ?? !air, rig: {}, t: 3, stats: { reach: 0 }, charging: s.charging ?? 0.7, muzzleT: s.muzzleT ?? 0.05,
+    look, ch: CHARACTERS[charId], hero: s.cls ? { classId: s.cls } : undefined, npc: !!s.npc, cx: 0, bottom: 0 };
+  if (s.ride) e.ride = s.ride;
+  if (s.feel) e.feel = s.feel;
+  if (s.gaitPh !== undefined) e.gaitPh = s.gaitPh;
+  // 준비 대기 (퍼펫 로드)
+  for (let k = 0; k < 200; k++) {
+    sctx.setTransform(1, 0, 0, 1, 0, 0);
+    drawHero(sctx, e, null, {});
+    const st = puppetStatus();
+    const key = charId + '/' + (s.cls || '');
+    if (s.vector || !st[key] || st[key].state !== 0) break;
+    await new Promise((r) => setTimeout(r, 30));
+  }
+  // 천 물리 워밍업
+  const NW = s.warm ?? 50, vx = e.vx || 0;
+  const w0 = s.world ? FAKE_WORLD : null;
+  const baseAnimT = e.animT, baseMoveT = e.moveT;
+  for (let f = 0; f < NW; f++) {
+    e.t = 3 + f / 60; e.cx = -(vx * (NW - 1 - f)) / 60; e.bottom = 0;
+    if (s.animate) { e.animT = Math.max(0, baseAnimT - (NW - 1 - f) / 60); if (m) e.moveT = Math.max(0, baseMoveT - (NW - 1 - f) / 60); }
+    if (w0) w0.time = e.t;
+    sctx.setTransform(sc, 0, 0, sc, 400, 600);
+    drawHero(sctx, e, w0, {});
+  }
+  e.cx = 0; e.bottom = 0;
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, W, H);
+  if (s.bg && s.bg !== 'none') { ctx.fillStyle = s.bg; ctx.fillRect(0, 0, W, H); }
+  if (s.floor) { ctx.fillStyle = s.floor; ctx.fillRect(0, fy, W, 1); }
+  ctx.setTransform(sc, 0, 0, sc, fx, fy);
+  const opts = { rim: s.rim ?? false, noFx: s.noFx ?? true };
+  if (s.tint) opts.tint = s.tint;
+  if (s.alpha !== undefined) opts.alpha = s.alpha;
+  if (s.yaw !== undefined) opts.yaw = s.yaw;
+  if (s.scale !== undefined) opts.scale = s.scale;
+  if (w0) w0.time = e.t;
+  const t0 = performance.now();
+  drawHero(ctx, e, w0, opts);
+  const ms = performance.now() - t0;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const an = (!s.bg || s.bg === 'none') ? analyse(W, H) : null;
+  if (s.label) { ctx.fillStyle = '#fff'; ctx.font = '13px sans-serif'; ctx.fillText(s.label, 6, 16); }
+  const url = s.noPng ? null : cv.toDataURL('image/png');
+  const P = e.rig.P;
+  return { url, an, ms, anim: e.anim, moveT: e.moveT, fy, fx, sc, pose: P ? { py: P.py, rot: P.rot, lean: P.lean } : null };
+}
+window.__api = { render, lookOf, moveOf, MOVESETS, CLASSES, CHARACTERS, HERO_DRAW_SCALE, preloadPuppet, puppetStatus };
+window.__ready = true;
+</script>
+</body>
+</html>

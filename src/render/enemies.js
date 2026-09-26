@@ -8,7 +8,8 @@ import { TAU, clamp } from '../core/math.js';
 import { RENDER_A } from './enemies_a.js';
 import { RENDER_B } from './enemies_b.js';
 import { PAINTED_ENEMIES } from './painted/enemies/index.js';
-import { requestRig } from './painted/enemy_kit.js';
+import { requestRig, refreshRig, releaseRigs } from './painted/enemy_kit.js';
+import { game } from '../core/game.js';
 import { ENEMIES } from '../data/enemies.js';
 import { STAGES } from '../data/stages.js';
 import { bus } from '../core/events.js';
@@ -19,18 +20,32 @@ export const ENEMY_RENDER = { ...RENDER_A, ...RENDER_B };
 /** 채색 적 사용 여부: 공용 스위치(?painted=0 · window.__paintedOff · settings.painted=false) + 적 전용 window.__paintedEnemies=false */
 export const paintedEnemiesOn = (game) => globalThis.__paintedEnemies !== false && paintedEnabled(game);
 
-/** 이 적 ID 목록의 채색 리그를 미리 로드·베이크 (방 전환 페이드 동안) */
-export function preloadPaintedEnemies(ids) {
+/** 이 적 ID 목록이 쓰는 채색 모듈 (스포너가 만들어 내는 적 포함) */
+function paintedModsFor(ids) {
+  const out = new Set();
   for (const id of ids) {
     const d = ENEMIES[id];
     const m = PAINTED_ENEMIES[d?.render ?? id];
-    if (m) requestRig(m.spec);
+    if (m) out.add(m);
     const sp = d?.aiParams?.spawn;           // 스포너가 만들어 내는 적도 함께
-    if (sp && PAINTED_ENEMIES[ENEMIES[sp]?.render ?? sp]) requestRig(PAINTED_ENEMIES[ENEMIES[sp]?.render ?? sp].spec);
+    const ms = sp && PAINTED_ENEMIES[ENEMIES[sp]?.render ?? sp];
+    if (ms) out.add(ms);
   }
+  return out;
 }
-// 방 진입(로딩 페이드 뒤)에 스테이지 적 목록의 리그를 굽기 시작 → 첫 적이 보이기 전에 끝난다
-bus.on('roomEntered', ({ stageId } = {}) => { if (paintedEnemiesOn()) preloadPaintedEnemies(STAGES[stageId]?.enemies ?? []); });
+/** 이 적 ID 목록의 채색 리그를 미리 로드·베이크 (방 전환 페이드 동안). 화면 배율이 크게 바뀌었으면 다시 굽는다 */
+export function preloadPaintedEnemies(ids) {
+  for (const m of paintedModsFor(ids)) refreshRig(m.spec);
+}
+// 방 진입(로딩 페이드 뒤)에 스테이지 적 목록의 리그를 굽기 시작 → 첫 적이 보이기 전에 끝난다.
+// 다른 스테이지로 넘어가면 새 스테이지가 쓰지 않는 적 리그를 놓아 메모리가 스테이지 하나 분량을 넘지 않게 한다.
+let _stageId = null;
+bus.on('roomEntered', ({ stageId } = {}) => {
+  if (!paintedEnemiesOn(game)) return;
+  const ids = STAGES[stageId]?.enemies ?? [];
+  if (stageId !== _stageId) { _stageId = stageId; releaseRigs([...paintedModsFor(ids)].map((m) => m.spec.src)); }
+  preloadPaintedEnemies(ids);
+});
 let _preWorld = null;
 function preloadWorld(world) {
   _preWorld = world;
@@ -66,6 +81,7 @@ export function drawEnemy(ctx, e, world) {
     const q0 = ctx.imageSmoothingQuality;
     ctx.save();
     if (k < 1) ctx.globalAlpha *= k;
+    if (rig.scale !== 1) ctx.scale(rig.scale, rig.scale);     // spec.scale: painted figure sized to the logic rect
     pm.draw(ctx, e, world, { flash, cam }, rig);
     ctx.restore();
     ctx.imageSmoothingQuality = q0;

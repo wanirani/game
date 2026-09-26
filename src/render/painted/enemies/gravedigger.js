@@ -1,6 +1,9 @@
 // T3 painted large puppet: 저주받은 무덤지기 (gravedigger, 52×96). Boss-kit tech on a regular elite-sized enemy:
 // damage variants by HP (torn/charred coat, cracks: dmg1 < 60 %, dmg2 < 30 %), 2-bone IK keeps the near hand on the
 // shovel handle, swinging lantern (spring pendulum) with a flickering light, strip-warped coat tails, dust/ember FX.
+// Reach: the painted shovel is short, so its plain handle is lengthened at runtime (kit.putStretch, pivots h0..h1) and
+// the far hand holds it near the top end: the blade rests on the ground ahead like the vector shovel and the slam
+// lands where AI_A.digger puts its strike rect (x 8..122), dust ring and shock wave (≈72 px ahead).
 // States (AI_A.digger): idle (heavy breathing), walk (stride 5, shovel dragging on the ground), slam (shovel raised over
 // the head → strike frame at params.slamWind 0.7 → impact dust), fling (scoop wind-up → throw at flingWind 0.5 → dirt
 // spray), hurt (flash + squash + recoil), death (collapse forward: pieces tumble, lantern shatters in sparks).
@@ -20,8 +23,18 @@ export const spec = {
 const PL = []; let NP = 0;
 function place(name, x, y, rot, vn = 'base', sx = 1, sy = 1, pv = 'a', kind = 0) {
   const o = PL[NP] ?? (PL[NP] = {});
-  o.name = name; o.x = x; o.y = y; o.rot = rot; o.vn = vn; o.sx = sx; o.sy = sy; o.pv = pv; o.kind = kind; NP++;
+  o.name = name; o.x = x; o.y = y; o.rot = rot; o.vn = vn; o.sx = sx; o.sy = sy; o.pv = pv; o.kind = kind; o.stretch = null; NP++;
   return o;
+}
+const SH_EXT = 22;     // logical px added to the shovel's plain handle (hand → blade tip ≈ 68 px, vector shovel ≈ 69)
+const SH_NEAR = 15;    // the near hand grips the handle this far below the far hand
+/** shovel geometry for the baked rig (texel rows of the stretch, grip pivot, reach in logical px) */
+function shovelGeo(sp, td) {
+  if (sp._geo && sp._geo.td === td) return sp._geo;
+  const P = sp.piv, grip = P.grip ?? P.a;
+  const st = P.h0 && P.h1 ? [P.h0[1], P.h1[1], SH_EXT * td] : null;
+  const m = (y) => (st ? K.stretchMap(y, st) : y);
+  return (sp._geo = { td, st, grip, reach: (m(P.b[1]) - m(grip[1])) / td });
 }
 const _q = [0, 0];
 const HUNCH = 0.32;                   // lean already painted into the torso
@@ -31,7 +44,7 @@ function pose(e) {
   const t = e.t ?? 0, at = e.animT ?? 0, anim = e.anim, P = e.params || {};
   const hurt = hurtOf(e), walking = anim === 'walk';
   const ph = t * 5, sw = walking ? Math.sin(ph) : 0, cw = walking ? Math.cos(ph) : 0, br = Math.sin(t * 2.1);
-  const q = { walking, hurt, tele: 0, trail: null, stepX: 0, strike: 0, scoop: 0 };
+  const q = { walking, hurt, tele: 0, trail: null, stepX: 0, strike: 0, scoop: 0, slamK: -1 };
   q.bob = walking ? -Math.abs(cw) * 2.4 : br * 0.9;
   q.lean = HUNCH + (walking ? 0.05 : 0) + br * 0.015;
   q.hipF = walking ? sw * 0.45 : 0.14; q.hipB = walking ? -sw * 0.45 : -0.1;
@@ -45,6 +58,7 @@ function pose(e) {
     if (anim === 'slam') {
       q.shB = ap.s <= 0 ? lerp(0.2, 3.5, kw) : lerp(3.5, 1.15, ks); q.elB = ap.s <= 0 ? 0.4 : lerp(0.4, 0.1, ks);
       q.wA = ap.s <= 0 ? lerp(2.3, 3.9, kw) : lerp(3.9, 1.35, ks);
+      q.slamK = ap.s > 0 ? ks : -1;          // swing progress: layout() ends the swing with the blade on the ground
       q.lean = ap.s <= 0 ? lerp(0.25, -0.15, kw) : lerp(-0.15, 0.55, ks);
       if (ap.s > 0) q.trail = [3.9, q.wA, clamp(1 - ap.after / 0.3, 0, 1)];
       q.stepX = ap.s * 6; q.strike = ap.s > 0 ? clamp(1 - ap.after / 0.35, 0, 1) : 0;
@@ -65,7 +79,7 @@ function pose(e) {
   return q;
 }
 
-function layout(e, q, dl) {
+function layout(e, q, dl, rig) {
   NP = 0;
   const hipY = -45 + q.bob, x0 = q.stepX;
   const tr = q.lean - HUNCH;
@@ -80,14 +94,16 @@ function layout(e, q, dl) {
   const bex = sfx + Math.cos(d1) * UA, bey = sfy + Math.sin(d1) * UA;
   const bhx = bex + Math.cos(d2) * FA, bhy = bey + Math.sin(d2) * FA;
   // shovel angle: at rest the blade leans on the ground (as in the vector renderer), during attacks it follows wA
+  const sp = K.part('shovel'), G = shovelGeo(sp, rig.td);
   let wA = q.wA;
-  const gA = Math.acos(clamp(-bhy / 26, 0.05, 1));
+  // blade tip on the ground (never below it): hand height / reach
+  const gA = Math.acos(clamp(-bhy / G.reach, 0.05, 1));
   if (wA === null) wA = gA + (q.walking ? Math.sin((e.t ?? 0) * 5) * 0.05 : 0);
-  else if (e.anim === 'fling') wA = Math.max(wA, gA * 0.6);
+  else if (q.slamK >= 0) { wA = lerp(3.9, gA, q.slamK); if (q.trail) q.trail[1] = wA; }   // the slam ends planted in the ground
+  else wA = Math.max(wA, gA);
   const sd = dirOf(wA);
-  const sp = K.part('shovel');
-  // near hand grabs the upper handle (IK); far-side limbs darker
-  K.pivotPos('shovel', 'a', 'grip2', bhx, bhy, sd - sp.ang, 1, 1, _q); const g2x = _q[0], g2y = _q[1];
+  // near hand grabs the handle a little below the far hand (IK); far-side limbs darker
+  const g2x = bhx + Math.cos(sd) * SH_NEAR, g2y = bhy + Math.sin(sd) * SH_NEAR;
   // far arm (behind the torso)
   limbB('uarm', sfx, sfy, d1, UA, V('deep'), 1.35);
   limbB('farm', bex, bey, d2, FA, 'deep', 1);
@@ -108,7 +124,7 @@ function layout(e, q, dl) {
   const hr = q.head + (q.lean - HUNCH) * 0.3;
   place('head', nx, ny, hr, dl ? `dmg${dl}` : 'base');
   // shovel (handle in the far hand)
-  place('shovel', bhx, bhy, sd - sp.ang);
+  place('shovel', bhx, bhy, sd - sp.ang, 'base', 1, 1, G.grip).stretch = G.st;
   // lantern on the belt: spring pendulum
   const L = e._lan ?? (e._lan = { a: 0, v: 0, t: e.t ?? 0 });
   const now = e.t ?? 0, dt = clamp(now - L.t, 0, 0.05); L.t = now;
@@ -121,7 +137,7 @@ function layout(e, q, dl) {
   limbB('uarm', snx, sny, ik[0], UA, V('base'), 1.35);
   limbB('farm', nex, ney, ik[1], FA, dl ? `dmg${dl}` : 'base', 1);
   place('hand', g2x, g2y, ik[1] - HP, 'base', 1, 1, 'grip');
-  return { sfx, sfy, nx, ny, hr, blx, bly, tipx: bhx + Math.cos(sd) * sp.len, tipy: bhy + Math.sin(sd) * sp.len };
+  return { sfx, sfy, nx, ny, hr, blx, bly, reach: G.reach, tipx: bhx + Math.cos(sd) * G.reach, tipy: bhy + Math.sin(sd) * G.reach };
 }
 /** limb piece shorter than the bone: pivot b on the far joint, stretched along the bone by `st` */
 function limbB(name, x, y, dir, L, vn, st) {
@@ -139,7 +155,8 @@ function drawAll(e, q) {
       K.strips(p.name, p.pv, p.x, p.y, p.rot, p.sx, p.sy, K.nStrips(7), 'y', (u) => {
         _q[0] = -(u * u) * (q.walking ? 14 : 4) - Math.sin(t * (q.walking ? 10 : 2) - u * 3.5) * u * 6 * w; _q[1] = 0; return _q;
       }, 1, p.vn);
-    } else K.put(p.name, p.pv, p.x, p.y, p.rot, p.sx, p.sy, 1, p.vn);
+    } else if (p.stretch) K.putStretch(p.name, p.pv, p.x, p.y, p.rot, p.sx, p.sy, 1, p.vn, p.stretch[0], p.stretch[1], p.stretch[2]);
+    else K.put(p.name, p.pv, p.x, p.y, p.rot, p.sx, p.sy, 1, p.vn);
   }
 }
 
@@ -166,7 +183,7 @@ export function draw(ctx, e, world, o, rig) {
   const hpK = e.stats?.maxHp ? e.hp / e.stats.maxHp : 1;
   const dl = e.dying > 0 ? 2 : hpK < 0.3 ? 2 : hpK < 0.6 ? 1 : 0;
   if (e.dying > 0 && world) {
-    if (!e._pcorpse) { K.begin(ctx, rig, 0); layout(e, q, dl); K.end(); die(e, world, rig); }
+    if (!e._pcorpse) { K.begin(ctx, rig, 0); layout(e, q, dl, rig); K.end(); die(e, world, rig); }
     return;
   }
   const t = e.t ?? 0;
@@ -174,7 +191,7 @@ export function draw(ctx, e, world, o, rig) {
   if (sq > 0) ctx.scale(1 + 0.05 * sq, 1 - 0.05 * sq);
   K.begin(ctx, rig, K.flashK(e, o));
   K.shadow(28, 0.5);
-  const L = layout(e, q, dl);
+  const L = layout(e, q, dl, rig);
   drawAll(e, q);
   if (!o.flash) {
     // amber eyes under the brim (flare on wind-ups), lantern light with render-RNG flicker
@@ -187,14 +204,15 @@ export function draw(ctx, e, world, o, rig) {
       K.glow(_q[0], _q[1], 22 * fl, '#ffb050', 0.55 * fl);
       K.glow(_q[0], _q[1], 6, '#fff0c0', 0.8 * fl);
     }
-    if (q.trail) swingTrail(ctx, L.sfx, L.sfy, q.trail[0], q.trail[1], 17 + 16 + 30, 16, '#ffcf90', q.trail[2] * 0.85);
+    if (q.trail) swingTrail(ctx, L.sfx, L.sfy, q.trail[0], q.trail[1], 17 + 16 + L.reach - 4, 18, '#ffcf90', q.trail[2] * 0.85);
   }
   if (q.tele > 0.4) glint(ctx, L.tipx, L.tipy, 5 + 5 * q.tele, '#ffd8a0', (q.tele - 0.4) / 0.6);
   K.end();
   // impact dust / scoop spray: render-only particles in camera space
   if (world) {
     const pool = e._fx ?? (e._fx = new K.FxPool(26));
-    const f = e.facing < 0 ? -1 : 1, sc = e.scale || 1;
+    const f = e.facing < 0 ? -1 : 1, sc = (e.scale || 1) * (rig.scale ?? 1);
+    const dt = pool.step(K.clockOf(e, world));
     if (q.strike > 0.9 && !e._slamFx) {
       e._slamFx = true;
       for (let i = 0; i < 10; i++) pool.add(2, e.cx + f * sc * (L.tipx + K.frand(-8, 8)), e.bottom - K.frand(0, 6), K.frand(-90, 90), K.frand(-80, -20), K.frand(0.5, 0.9), K.frand(5, 10), '#6a5a48');
@@ -203,8 +221,7 @@ export function draw(ctx, e, world, o, rig) {
     if (q.strike <= 0) e._slamFx = false;
     if (q.scoop > 0.8 && !e._scoopFx) { e._scoopFx = true; for (let i = 0; i < 8; i++) pool.add(4, e.cx + f * sc * L.tipx, e.bottom - 6, f * K.frand(40, 220), K.frand(-360, -160), K.frand(0.4, 0.7), K.frand(1.5, 3), '#5a4230'); }
     if (q.scoop <= 0) e._scoopFx = false;
-    if (dl === 2 && K.fr() < 0.06) pool.add(3, e.cx + f * sc * K.frand(-10, 14), e.bottom - K.frand(40, 80) * sc, K.frand(-10, 10), K.frand(-40, -15), K.frand(0.4, 0.8), K.frand(1.5, 2.5), '#ff9a40');
-    pool.step(K.clockOf(e, world));
+    if (dl === 2) for (let n = pool.rate(3, 3.6, dt); n > 0; n--) pool.add(3, e.cx + f * sc * K.frand(-10, 14), e.bottom - K.frand(40, 80) * sc, K.frand(-10, 10), K.frand(-40, -15), K.frand(0.4, 0.8), K.frand(1.5, 2.5), '#ff9a40');
     if (pool.n && o.cam) { ctx.setTransform(o.cam); pool.draw(ctx); }
   }
 }

@@ -1,5 +1,6 @@
-// T1 painted sprite + procedural deformation: 흡혈 박쥐 (bat, also golden_bat-ready). Parts: furry body (front 3/4),
-// one painted wing (mirrored for the other side), wrapped hanging cocoon.
+// T1 painted sprite + procedural deformation: 흡혈 박쥐 (bat, also golden_bat-ready). Parts: compact furry flying body
+// ('fly', front 3/4, claws tucked — a dedicated Step-3 single-part image), one painted wing (mirrored for the other
+// side), wrapped hanging cocoon.
 // Wings flap through a mesh-free BENDING CHAIN (6 strips, root → tip, the tip lags the stroke), body squash/stretch and
 // bob synced to the wing beat, tilt toward the flight direction.
 // States (AI_A.vbat): hang (cocoon under the ceiling, breathing sway) · drop (0.28 s wake-up: cocoon → wings unfurl) ·
@@ -21,14 +22,17 @@ function wingDirs(e, t) {
   const st = e.state, anim = e.anim;
   let freq = st === 'hover' ? 14 : 19, open = 1, sweep = 0;
   if (st === 'dive') { freq = 26; sweep = 1; }
-  if (st === 'drop') open = clamp((e.stateT ?? 0) / 0.28, 0, 1);
+  if (st === 'drop') open = clamp((e.stateT ?? 0) / (0.28 / Math.sqrt(e.aggro || 1)), 0, 1);   // AI_A.vbat drop time
   if (anim === 'idle' && st !== 'fly') freq = 16;
   const A = Math.sin(t * freq);
   return { A, open, sweep, freq };
 }
 
+/** flying body part ('body' = name used by atlases built before the dedicated flight pose existed) */
+const bodyOf = (rig) => (rig.parts.fly ? 'fly' : 'body');
+
 export function draw(ctx, e, world, o, rig) {
-  const t = e.t ?? 0, s = 1;
+  const t = e.t ?? 0, s = 1, BODY = bodyOf(rig);
   const hanging = e.anim === 'hang' || e.state === 'hang';
   const W = wingDirs(e, t);
   if (e.dying > 0 && world) {
@@ -38,7 +42,7 @@ export function draw(ctx, e, world, o, rig) {
       K.spawnDissolve(world, e, rig, [
         { name: 'wing', pv: 'a', x: -6, y: cy - 2, rot: PI + 0.3, sx: 1, sy: -1, vn: 'deep' },
         { name: 'wing', pv: 'a', x: 6, y: cy - 2, rot: -0.3 },
-        { name: 'body', pv: 'a', x: 0, y: cy },
+        { name: BODY, pv: 'a', x: 0, y: cy },
       ], { life: 0.7, strips: 9, drift: 40, col: '#ff5a3a', n: 18, spread: 170, cy });
     }
     return;
@@ -51,7 +55,8 @@ export function draw(ctx, e, world, o, rig) {
     const k = hanging ? 1 : 1 - W.open;
     const br = 1 + Math.sin(t * 2.2) * 0.03;
     K.put('hang', 'a', 0, top, Math.sin(t * 1.8) * 0.08, 1 + sq * 0.1, br - sq * 0.1, k);
-    if (!o.flash) { K.pivotPos('hang', 'a', 'face', 0, top, Math.sin(t * 1.8) * 0.08, 1, br, _q); K.glow(_q[0], _q[1], 4, '#ff2a3a', 0.25 * k); }
+    // sleeping face: a slow red eye-glint so a hanging bat stays findable on dark stages and phones
+    if (!o.flash) { K.pivotPos('hang', 'a', 'face', 0, top, Math.sin(t * 1.8) * 0.08, 1, br, _q); K.glow(_q[0], _q[1], 6, '#ff2a3a', (0.45 + 0.2 * Math.sin(t * 2.2)) * k); }
     if (hanging) { K.end(); return; }
   }
   const cy = -13;
@@ -67,15 +72,15 @@ export function draw(ctx, e, world, o, rig) {
   let dirR = -0.12 - W.A * 0.62 + openA - (hurt ? 0.5 : 0);
   if (W.sweep) dirR = -0.95 + W.A * 0.12;
   const bend = (u) => (W.sweep ? -0.16 : 0.2 * Math.cos(t * W.freq) - 0.03) * (0.4 + u) + (1 - W.open) * -0.25;
-  K.pivotPos('body', 'a', 'wl', 0, cy + bob, tilt, sx, sy, _q); const wlx = _q[0], wly = _q[1];
-  K.pivotPos('body', 'a', 'wr', 0, cy + bob, tilt, sx, sy, _q); const wrx = _q[0], wry = _q[1];
+  K.pivotPos(BODY, 'a', 'wl', 0, cy + bob, tilt, sx, sy, _q); const wlx = _q[0], wly = _q[1];
+  K.pivotPos(BODY, 'a', 'wr', 0, cy + bob, tilt, sx, sy, _q); const wrx = _q[0], wry = _q[1];
   K.shadow(12, 0.18, 0);
   // far wing (left, behind), near wing (right)
   K.chain('wing', wlx + 1, wly, PI - dirR + tilt, 0.9 * s, K.nStrips(6), (u) => -bend(u), alpha, 'deep', true);
   K.chain('wing', wrx - 1, wry, dirR + tilt, s, K.nStrips(6), bend, alpha);
-  K.put('body', 'a', 0, cy + bob, tilt, sx, sy, alpha);
+  K.put(BODY, 'a', 0, cy + bob, tilt, sx, sy, alpha);
   if (!o.flash) {
-    for (const pn of ['eyeL', 'eyeR']) { K.pivotPos('body', 'a', pn, 0, cy + bob, tilt, sx, sy, _q); K.glow(_q[0], _q[1], 2.4, '#ff2a3a', 0.7 * alpha); }
+    for (const pn of ['eyeL', 'eyeR']) { K.pivotPos(BODY, 'a', pn, 0, cy + bob, tilt, sx, sy, _q); K.glow(_q[0], _q[1], 2.4, '#ff2a3a', 0.7 * alpha); }
   }
   K.end();
 }

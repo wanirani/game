@@ -15,7 +15,8 @@
 // Rules (boss-prototype lessons): visuals never touch gameplay Math.random (render RNG below); bake behind the room's
 // fade (preload by stage roster); bilinear 'low' smoothing; memory budget ≈ 0.3–1.5 MB per enemy type.
 import { clamp, lerp, TAU } from '../../core/math.js';
-import { game } from '../../core/game.js';
+import { game, TILE } from '../../core/game.js';
+import { isSolidType, T as TT } from '../../core/physics.js';
 
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 // SEAM ─ shared painted-kit primitives come from the boss core's src/render/painted/kit.js (bake canvases, outline,
@@ -45,7 +46,7 @@ export const damageVariant = (src, level, seed, o = {}) => bakeDamage(src, level
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════ /SEAM ═══
 
 const PAD = 3;               // texels around every baked part (outline room + bilinear bleed)
-export const stats = { rigs: 0, bakeMs: 0, bytes: 0 };
+export const stats = { bakes: 0, bakeMs: 0 };      // cumulative bake work (live memory: rigStats())
 
 /** texel density (device px per logical px) the runtime atlas is baked at (kit: canvas scale × quality, oversampled) */
 function chooseTD(srcTD) {
@@ -70,18 +71,52 @@ function pack(items, maxW = 1024) {
 // ─────────────────────────────────────────── rigs (one per enemy type) ───────────────────────────────────────────
 const RIGS = new Map();   // key -> rig
 /**
- * spec = { src:'skeleton', bake:{ outline:0.55 (logical px), deep:{part:k}, glow:{part:'#hex'}, flash:true|[parts],
- *          damage:{ part:{cracks,char,nicks,crackGlow} } } }
+ * spec = { src:'skeleton', scale:1 (whole-figure scale so the art fills the logic rect; applied by render/enemies.js
+ *          and by corpses/dissolves), bake:{ outline:0.55 (logical px), deep:{part:k}, glow:{part:'#hex'},
+ *          flash:true|[parts], damage:{ part:{cracks,char,nicks,crackGlow} } } }
  */
 export function requestRig(spec) {
   let rig = RIGS.get(spec.src);
   if (rig) return rig;
-  rig = { src: spec.src, ready: false, failed: false, parts: {}, atlas: null, td: 1, promise: null };
+  rig = newRig(spec);
   RIGS.set(spec.src, rig);
-  rig.promise = buildRig(rig, spec).catch((err) => { rig.failed = true; console.warn('[painted enemy]', spec.src, err?.message ?? err); });
+  return rig;
+}
+function newRig(spec, prev = null) {
+  const rig = { src: spec.src, spec, scale: spec.scale ?? 1, ready: false, failed: false, parts: {}, atlas: null, td: 1, promise: null };
+  rig.promise = buildRig(rig, spec)
+    .then(() => { if (prev && RIGS.get(spec.src) === prev) RIGS.set(spec.src, rig); })   // swap only when the re-bake is done
+    .catch((err) => { rig.failed = true; if (prev) prev.rebaking = false; console.warn('[painted enemy]', spec.src, err?.message ?? err); });
   return rig;
 }
 export const rigReady = (spec) => { const r = requestRig(spec); return r.ready ? r : null; };
+/**
+ * Texel density follows the canvas scale: if the window grew (small window → fullscreen, rotation, quality raised) or
+ * shrank (auto quality drop on a slow phone) by more than 25 % since the bake, re-bake in the background and swap the
+ * new rig in when it is ready (live entities pick it up on their next requestRig; corpses keep the old object, so
+ * nothing jumps or pops). Called on roomEntered, i.e. behind the room fade.
+ */
+export function refreshRig(spec) {
+  const rig = RIGS.get(spec.src);
+  if (!rig || !rig.ready || rig.rebaking) return rig ?? requestRig(spec);
+  const td = chooseTD(rig.srcTD ?? 4);
+  if (Math.abs(td / rig.td - 1) < 0.25) return rig;
+  rig.rebaking = true;
+  newRig(spec, rig);
+  return rig;
+}
+/**
+ * Drop the baked atlases of enemy types the new stage does not use (memory stays at one stage roster instead of
+ * growing with every stage visited). Safe while corpses of a released type are still falling: they hold their own
+ * reference to the rig object; a later requestRig simply bakes a fresh one.
+ */
+export function releaseRigs(keepSrcs) {
+  const keep = new Set(keepSrcs);
+  for (const [k, r] of RIGS) {
+    if (keep.has(k) || !r.ready) continue;
+    RIGS.delete(k);
+  }
+}
 
 async function buildRig(rig, spec) {
   const base = `assets/painted/enemies/${spec.src}/`;
@@ -132,15 +167,17 @@ async function buildRig(rig, spec) {
   rig.atlas = atlas; rig.td = td; rig.srcTD = srcTD; rig.man = man;
   rig.bytes = w * h * 4;
   rig.bakeMs = performance.now() - t0;
-  stats.rigs++; stats.bakeMs += rig.bakeMs; stats.bytes += rig.bytes;
+  stats.bakes++; stats.bakeMs += rig.bakeMs;
   rig.ready = true;
   return rig;
 }
 export function rigStats() {
   const out = {};
-  for (const [k, r] of RIGS) out[k] = { ready: r.ready, failed: r.failed, td: r.td, atlas: r.atlas ? `${r.atlas.width}x${r.atlas.height}` : null, MB: +(r.bytes / 1048576 || 0).toFixed(3), bakeMs: +(r.bakeMs ?? 0).toFixed(1) };
+  for (const [k, r] of RIGS) out[k] = { ready: r.ready, failed: r.failed, td: r.td, atlas: r.atlas ? `${r.atlas.width}x${r.atlas.height}` : null, MB: +(r.bytes / 1048576 || 0).toFixed(3), bakeMs: +(r.bakeMs ?? 0).toFixed(1), ...(r.rebaking ? { rebaking: true } : {}) };
   return out;
 }
+/** total baked MB of the rigs currently held */
+export const rigMemMB = () => { let b = 0; for (const r of RIGS.values()) b += r.bytes || 0; return b / 1048576; };
 
 // ─────────────────────────────────────────── drawing ───────────────────────────────────────────
 // Base matrix captured at the start of an enemy draw (camera · feet translate · facing flip · elite/bestiary scale).
@@ -182,6 +219,35 @@ export function put(name, pv, x, y, rot = 0, sx = 1, sy = 1, alpha = 1, vn = 'ba
   setT(q[0], q[1], x, y, rot, sx, sy);
   blit(variantOf(p, vn), alpha);
   if (FLASH > 0 && p.v.flash) blit(p.v.flash, alpha * FLASH);
+}
+/** texel row t of a part → row in the stretched part (rows y0..y1 stretched by ext texels, rows below shifted) */
+export function stretchMap(t, st) {
+  const y0 = st[0], y1 = st[1], ext = st[2];
+  return t < y0 ? t : t <= y1 ? y0 + (t - y0) * (y1 - y0 + ext) / (y1 - y0) : t + ext;
+}
+/**
+ * put() with one section of the part lengthened along its texel Y: rows y0..y1 are stretched by `ext` texels and
+ * everything below moves down by ext (three blits, the stretched middle first so the ends cover its 1-texel overlap).
+ * For uniform sections only — a tool handle, a spear shaft, a chain — so the painted head/blade keeps its proportions
+ * while the reach matches the AI's strike rect. The pivot pv is given in unstretched texels.
+ */
+export function putStretch(name, pv, x, y, rot, sx, sy, alpha, vn, y0, y1, ext) {
+  const p = RIG.parts[name];
+  if (!p || alpha <= 0.003) return;
+  if (!(ext > 0.5) || !(y1 > y0)) { put(name, pv, x, y, rot, sx, sy, alpha, vn); return; }
+  const q = typeof pv === 'string' ? (p.piv[pv] ?? [p.w / 2, p.h / 2]) : pv;
+  setT(q[0], stretchMap(q[1], [y0, y1, ext]), x, y, rot, sx, sy);
+  const ctx = CTX, ga = ctx.globalAlpha, a0 = Math.round(y0), a1 = Math.round(y1);
+  const draw = (v, a) => {
+    ctx.globalAlpha = ga * a;
+    const W = v[2], H = v[3], d1 = a1 + ext;
+    ctx.drawImage(RIG.atlas, v[0], v[1] + a0, W, a1 - a0, 0, a0 - 0.5, W, d1 - a0 + 1);   // stretched middle (+overlap)
+    ctx.drawImage(RIG.atlas, v[0], v[1], W, a0, 0, 0, W, a0);                             // top, unchanged
+    ctx.drawImage(RIG.atlas, v[0], v[1] + a1, W, H - a1, 0, d1, W, H - a1);               // bottom, shifted
+  };
+  draw(variantOf(p, vn), alpha);
+  if (FLASH > 0 && p.v.flash) draw(p.v.flash, alpha * FLASH);
+  ctx.globalAlpha = ga;
 }
 /**
  * limb helper: put part so its a→b axis points along angle `dir` (world radians, 0 = +x, π/2 = down) with pivot a at (x,y).
@@ -388,6 +454,15 @@ export class FxPool {
     const i = this.n++;
     this.k[i] = k; this.x[i] = x; this.y[i] = y; this.vx[i] = vx; this.vy[i] = vy; this.l[i] = this.l0[i] = life; this.s[i] = s; this.r[i] = fr() * TAU; this.c[i] = col;
   }
+  /** how many particles of stream `key` to emit this frame for `perSec` per second of the owner's clock (dt from
+   *  step(); fractional remainders carry over, so the density does not depend on the frame rate) */
+  rate(key, perSec, dt) {
+    const acc = (this.acc ??= [0, 0, 0, 0, 0, 0, 0, 0]);
+    acc[key] += perSec * dt;
+    const n = Math.floor(acc[key]);
+    acc[key] -= n;
+    return n;
+  }
   /** dt from the owner's clock (clamped); returns dt */
   step(now) {
     const dt = this.lt < 0 ? 0 : clamp(now - this.lt, 0, 0.05); this.lt = now;
@@ -444,14 +519,33 @@ export class FxPool {
 
 // ─────────────────────────────────────────── corpses (outlive the entity) ───────────────────────────────────────────
 /**
+ * Ground under a world point: top y of the first solid / one-way tile at or below (wx, wy), searched `maxTiles` down.
+ * Returns +Infinity over a pit (nothing within reach) so pieces keep falling out of view while they fade.
+ */
+export function groundBelow(world, wx, wy, maxTiles = 16) {
+  const map = world?.map;
+  if (!map?.typeAt) return Infinity;
+  const tx = Math.floor(wx / TILE);
+  let ty = Math.floor(wy / TILE);
+  if (isSolidType(map.typeAt(tx, ty))) return wy;                 // already inside a wall: rest where it is
+  for (let k = 0; k < maxTiles; k++) {
+    ty++;
+    const t = map.typeAt(tx, ty);
+    if (isSolidType(t) || t === TT.ONEWAY) return ty * TILE;
+  }
+  return Infinity;
+}
+/**
  * Death collapse: hand the posed parts to world.fx.ghost so they keep falling/tumbling after the entity is removed.
- * pieces: [{ name, pv, x, y, rot, sx, sy, vn, vx, vy, vr, z }] in the enemy's LOCAL frame (feet origin, facing right).
- * o: { life, floor (local y of the ground, default 0), bounce, fade, glowCol, burst:{kind,col,n} }
+ * pieces: [{ name, pv, x, y, rot, sx, sy, vn, vx, vy, vr, stretch? }] in the enemy's LOCAL frame (feet origin, facing
+ * right; stretch = [y0, y1, ext] like putStretch). Every piece lands on the real ground under ITS column (tile map):
+ * an enemy killed in the air (launcher / juggle) collapses onto the floor below, pieces that fly over a ledge or a pit
+ * keep falling. o: { life, bounce, fade, grav, dust:{n,w,h,col,k}, after(age, fade), layer }
  */
 export function spawnCorpse(world, e, rig, pieces, o = {}) {
   if (!world?.fx?.ghost) return;
-  const ox = e.cx, oy = e.bottom, fx = e.facing < 0 ? -1 : 1, sc = e.scale || 1;
-  const life = o.life ?? 1.3, t0 = world.time ?? 0, floor = o.floor ?? 0;
+  const ox = e.cx, oy = e.bottom, fx = e.facing < 0 ? -1 : 1, sc = (e.scale || 1) * (rig.scale ?? 1);
+  const life = o.life ?? 1.3, t0 = world.time ?? 0;
   let last = t0;
   // re-pivot every piece on its centre so it tumbles naturally and rests ON the floor (not on its joint pivot)
   const P = [];
@@ -459,16 +553,32 @@ export function spawnCorpse(world, e, rig, pieces, o = {}) {
     const part = rig.parts[p0.name];
     if (!part) continue;
     const p = { ...p0 };
+    const ext = p.stretch ? p.stretch[2] : 0;
     const c = [part.w / 2, part.h / 2];
     const q = typeof p.pv === 'string' ? (part.piv[p.pv] ?? c) : (p.pv ?? c);
-    const k = 1 / rig.td, lx = (c[0] - q[0]) * (p.sx ?? 1) * k, ly = (c[1] - q[1]) * (p.sy ?? 1) * k, cs = Math.cos(p.rot), sn = Math.sin(p.rot);
+    const my = (t) => (p.stretch ? stretchMap(t, p.stretch) : t);
+    const k = 1 / rig.td, lx = (c[0] - q[0]) * (p.sx ?? 1) * k, ly = (my(c[1]) - my(q[1])) * (p.sy ?? 1) * k, cs = Math.cos(p.rot), sn = Math.sin(p.rot);
     p.x += cs * lx - sn * ly; p.y += sn * lx + cs * ly; p.pv = c;
-    const hw = (part.w - 6) / 2 * k * Math.abs(p.sx ?? 1), hh = (part.h - 6) / 2 * k * Math.abs(p.sy ?? 1);
+    const hw = (part.w - 6) / 2 * k * Math.abs(p.sx ?? 1), hh = (part.h + ext - 6) / 2 * k * Math.abs(p.sy ?? 1);
     p.r = Math.min(hw, hh); p.long = hw >= hh ? 0 : Math.PI / 2;
+    p.col = null; p.fl = 0;
     P.push(p);
   }
+  // local floor (feet-origin frame) under a piece; cached per tile column
+  const floorOf = (p) => {
+    const wx = ox + fx * sc * p.x, col = Math.floor(wx / TILE);
+    if (p.col !== col) {
+      p.col = col;
+      const gy = groundBelow(world, wx, Math.min(oy - 2, oy + sc * p.y));
+      p.fl = gy === Infinity ? Infinity : (gy - oy) / sc;
+    }
+    return p.fl;
+  };
   const pool = o.dust ? new FxPool(28) : null;
-  if (pool) for (let i = 0; i < o.dust.n; i++) pool.add(o.dust.k ?? 2, ox + fx * sc * frand(-o.dust.w, o.dust.w), oy - frand(0, o.dust.h), frand(-40, 40), frand(-60, -10), frand(0.5, 1.1), frand(4, 9) * sc, o.dust.col);
+  if (pool) {
+    const gy = groundBelow(world, ox, oy - 2), dy = gy === Infinity || gy - oy > 400 ? 0 : gy - oy;   // dust on the floor below
+    for (let i = 0; i < o.dust.n; i++) pool.add(o.dust.k ?? 2, ox + fx * sc * frand(-o.dust.w, o.dust.w), oy + dy - frand(0, o.dust.h), frand(-40, 40), frand(-60, -10), frand(0.5, 1.1), frand(4, 9) * sc, o.dust.col);
+  }
   world.fx.ghost((ctx) => {
     const now = world.time ?? t0, dt = clamp(now - last, 0, 0.05); last = now;
     const age = now - t0, fade = clamp((life - age) / (o.fade ?? 0.45), 0, 1);
@@ -476,7 +586,7 @@ export function spawnCorpse(world, e, rig, pieces, o = {}) {
     for (const p of P) {
       if (p.static) continue;
       p.vy += (o.grav ?? 1500) * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt;
-      const fl = floor - (p.r ?? 3);
+      const fl = floorOf(p) - (p.r ?? 3);
       if (p.y >= fl - 0.5) {
         if (p.y > fl) { p.y = fl; p.vy *= -(o.bounce ?? 0.28); p.vx *= 0.6; p.vr *= 0.5; if (Math.abs(p.vy) < 40) p.vy = 0; }
         // resting: topple onto the long side
@@ -485,16 +595,23 @@ export function spawnCorpse(world, e, rig, pieces, o = {}) {
       }
     }
     ctx.save();
+    // fx.draw hands ghost callbacks whatever globalAlpha / composite the previous particle left behind → set both
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
     ctx.translate(ox, oy); ctx.scale(fx * sc, sc);
     begin(ctx, rig, 0);
-    const ga = ctx.globalAlpha;
     ctx.globalAlpha = fade;
-    for (const p of P) put(p.name, p.pv, p.x, p.y, p.rot, p.sx ?? 1, p.sy ?? 1, p.alpha ?? 1, p.vn ?? 'base');
+    for (const p of P) {
+      if (p.stretch) putStretch(p.name, p.pv, p.x, p.y, p.rot, p.sx ?? 1, p.sy ?? 1, p.alpha ?? 1, p.vn ?? 'base', p.stretch[0], p.stretch[1], p.stretch[2]);
+      else put(p.name, p.pv, p.x, p.y, p.rot, p.sx ?? 1, p.sy ?? 1, p.alpha ?? 1, p.vn ?? 'base');
+    }
     if (o.after) o.after(age, fade);
-    ctx.globalAlpha = ga;
     end();
     ctx.restore();
-    if (pool) { pool.step(now); pool.draw(ctx); }
+    if (pool) {
+      ctx.save(); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+      pool.step(now); pool.draw(ctx);
+      ctx.restore();
+    }
   }, life, o.layer ?? 'back');
 }
 
@@ -526,7 +643,7 @@ export const clockOf = (e, world) => world?.time ?? e.t ?? 0;
  */
 export function spawnDissolve(world, e, rig, placements, o = {}) {
   if (!world?.fx?.ghost) return;
-  const ox = e.cx, oy = e.bottom, fx = e.facing < 0 ? -1 : 1, sc = e.scale || 1;
+  const ox = e.cx, oy = e.bottom, fx = e.facing < 0 ? -1 : 1, sc = (e.scale || 1) * (rig.scale ?? 1);
   const life = o.life ?? 0.75, t0 = world.time ?? 0, N = o.strips ?? 10;
   const P = placements.map((p) => ({ ...p }));
   const pool = new FxPool(o.n ?? 20);
@@ -539,6 +656,8 @@ export function spawnDissolve(world, e, rig, placements, o = {}) {
     const now = world.time ?? t0, age = now - t0, k = clamp(age / life, 0, 1);
     if (k >= 1) return;
     ctx.save();
+    // fx.draw leaves the previous particle's globalAlpha/composite in place (embers flicker) → start from a clean state
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
     ctx.translate(ox, oy); ctx.scale(fx * sc, sc);
     begin(ctx, rig, k < 0.12 ? 0.8 * (1 - k / 0.12) : 0);
     const ga = ctx.globalAlpha;
@@ -555,7 +674,9 @@ export function spawnDissolve(world, e, rig, placements, o = {}) {
     ctx.globalAlpha = ga;
     end();
     ctx.restore();
+    ctx.save(); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
     pool.step(now); pool.draw(ctx);
+    ctx.restore();
   }, life + 0.4, o.layer ?? 'front');
 }
 const _dz = [0, 0];

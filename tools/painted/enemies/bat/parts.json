@@ -2,65 +2,20 @@
  "id": "bat",
  "tier": "T1",
  "srcTD": 4,
- "note": "T1: furry body = the sitting bat of sheet 1 cut above the legs (belly faded), one wing (sheet 1, painted hanging from the wrist) rotated 90 deg CCW so the root is at the left and the leading edge on top; mirrored at runtime for the other side. Hanging frame = the wrapped cocoon of sheet 1 flipped upside down.",
+ "note": "T1: furry body = the sitting bat of sheet 1 cut above the legs (belly faded), one wing (sheet 1, painted hanging from the wrist) rotated 90 deg CCW so the root is at the left and the leading edge on top; mirrored at runtime for the other side. Hanging frame = the wrapped cocoon of sheet 1 flipped upside down. Flying body 'fly' = dedicated Step-3 single-part image (src/bat_body_fly.webp, compact fur ball with tucked claws; replaces the sitting-figure body cut, whose config is kept as body_old (not built)). Cocoon k raised 0.021 -> 0.03 so the hanging bat is as big as the vector one (readable on phones / dark stages). Chosen Step-1 reference kept as src/bat_ref.webp for further single parts.",
  "sources": {
   "s1": {
    "file": "bat_sheet1.png",
    "k": 0.0185,
    "raw": "bat_sheet1.webp"
+  },
+  "f": {
+   "file": "bat_body_fly.png",
+   "k": 0.0145,
+   "raw": "bat_body_fly.webp"
   }
  },
  "parts": {
-  "body": {
-   "src": "s1",
-   "box": [
-    90,
-    80,
-    770,
-    1290
-   ],
-   "keep": "largest",
-   "fade": [
-    [
-     90,
-     1060,
-     770,
-     1290,
-     "down",
-     1.5
-    ]
-   ],
-   "piv": {
-    "a": [
-     470,
-     900
-    ],
-    "wl": [
-     240,
-     800
-    ],
-    "wr": [
-     700,
-     800
-    ],
-    "eyeL": [
-     400,
-     540
-    ],
-    "eyeR": [
-     540,
-     540
-    ],
-    "mouth": [
-     470,
-     700
-    ],
-    "top": [
-     470,
-     100
-    ]
-   }
-  },
   "wing": {
    "src": "s1",
    "box": [
@@ -127,7 +82,7 @@
    "keep": "largest",
    "rot": 180,
    "flipX": true,
-   "k": 0.021,
+   "k": 0.03,
    "piv": {
     "a": [
      1920,
@@ -138,6 +93,106 @@
      600
     ]
    }
+  },
+  "fly": {
+   "src": "f",
+   "box": [
+    250,
+    100,
+    1770,
+    1810
+   ],
+   "keep": "largest",
+   "fade": [
+    [
+     250,
+     1760,
+     1770,
+     1810,
+     "down",
+     1.2
+    ]
+   ],
+   "piv": {
+    "a": [
+     1010,
+     1250
+    ],
+    "wl": [
+     430,
+     1110
+    ],
+    "wr": [
+     1600,
+     1110
+    ],
+    "eyeL": [
+     1015,
+     828
+    ],
+    "eyeR": [
+     1240,
+     828
+    ],
+    "mouth": [
+     1150,
+     1010
+    ],
+    "top": [
+     1010,
+     120
+    ]
+   }
+  }
+ },
+ "body_old": {
+  "src": "s1",
+  "box": [
+   90,
+   80,
+   770,
+   1290
+  ],
+  "keep": "largest",
+  "fade": [
+   [
+    90,
+    1060,
+    770,
+    1290,
+    "down",
+    1.5
+   ]
+  ],
+  "piv": {
+   "a": [
+    470,
+    900
+   ],
+   "wl": [
+    240,
+    800
+   ],
+   "wr": [
+    700,
+    800
+   ],
+   "eyeL": [
+    400,
+    540
+   ],
+   "eyeR": [
+    540,
+    540
+   ],
+   "mouth": [
+    470,
+    700
+   ],
+   "top": [
+    470,
+    100
+   ]
   }
  }
 }

@@ -10,6 +10,7 @@ import { atkPhase } from '../enemy_kit.js';
 
 export const spec = {
   id: 'armor_knight', tier: 'T2', src: 'armor_knight',
+  scale: 1.1,        // the cut puppet stands 80 px; the logic rect / vector knight are 88–90 px (measure.mjs)
   bake: { outline: 0.42, deep: { '*': 0.62 }, deepTint: 'rgb(140,146,176)' },
 };
 

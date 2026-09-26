@@ -2,7 +2,7 @@
  "id": "gravedigger",
  "tier": "T3",
  "srcTD": 4,
- "note": "head, hunched torso+hump and the near sleeve (upper/lower) from the 2x-edited upper-body image (faces left -> flipX; Kling kept the sleeve, so it is cut out as the near arm and the coat behind it is inpainted); coat tails, boot, hand, lantern from sheet 2 loose parts; shovel from sheet 1.",
+ "note": "head, hunched torso+hump and the near sleeve (upper/lower) from the 2x-edited upper-body image (faces left -> flipX; Kling kept the sleeve, so it is cut out as the near arm and the coat behind it is inpainted); coat tails, boot, hand, lantern from sheet 2 loose parts; shovel from sheet 1. Shovel pivots grip/h0/h1 (review fix): the far hand holds 'grip' near the top end and the plain handle between h0..h1 is stretched at runtime (kit.putStretch) so the blade reaches the AI's slam rect like the vector shovel (painted handle alone is ~45 px short).",
  "sources": {
   "e": {
    "file": "digger_edit2.png",
@@ -591,6 +591,18 @@
     "grip2": [
      1656,
      420
+    ],
+    "grip": [
+     1656,
+     330
+    ],
+    "h0": [
+     1656,
+     350
+    ],
+    "h1": [
+     1656,
+     690
     ]
    }
   },

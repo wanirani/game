@@ -13,15 +13,21 @@ import { Entity } from './entity.js';
 import { playerStrike, hitTarget } from './combat.js';
 import { SKILLS, skillVal } from '../data/skills.js';
 import { CHARACTERS } from '../data/characters.js';
+import { CLASSES } from '../data/classes.js';   // [hook:feel] ultimateCast 의 tier
 import { drawHero } from '../render/hero.js';
+import { SKILL_IMPL_P2, TECH_NAMES_P2 } from './skills_p2.js';   // [hook:p2] 2부 비전서 기술 (skills_p2.js 는 이 파일을 import 하지 않는다)
 
 export const SKILL_IMPL = {};
+Object.assign(SKILL_IMPL, SKILL_IMPL_P2);   // [hook:p2]
 const ULTS = {};
+/** 필살기·각성기 연출 도우미 모음 (FX-ULTS 가 채운다; AWAKEN-CORE/DIR 가 import). W0 SKEL 자리 표시 */
+export const FXKIT = {};   // [hook:awaken]
 
 // ═══════════════════════════ 공개 API ═══════════════════════════
 export function castSkill(p, world, id, lv) {
   const fn = SKILL_IMPL[id];
   if (!fn) return false;
+  p.mount?.beforeCast?.(world, p, id);   // [hook:cmp] DISMOUNT_SKILLS 는 탈것에서 내린 뒤 시전
   return fn(p, world, Math.max(1, lv || 1)) !== false;
 }
 
@@ -30,6 +36,8 @@ export function castUltimate(p, world) {
   if ((p.run.sp ?? 0) < 100 || world.cutscene) return false;
   p.run.sp = 0;
   p.endMove?.();
+  p.mount?.beforeCast?.(world, p, 'ult');   // [hook:cmp] 필살기는 탈것에서 내린 뒤 시전 (MASTER_PLAN §1.14)
+  bus.emit('ultimateCast', { charId: p.hero.charId, tier: CLASSES[p.hero.classId]?.tier ?? 0, classId: p.hero.classId });   // [hook:feel] [hook:cmp]
   world.startUltimate?.(p);
   audio.sfx('ult');
   world.game.flash('#ffffff', 0.7, 3);
@@ -42,6 +50,7 @@ export function castUltimate(p, world) {
 export function castTechnique(p, world, tech) {
   const fn = SKILL_IMPL[tech?.id];
   if (!fn) return false;
+  p.mount?.beforeCast?.(world, p, tech.id);   // [hook:cmp]
   const ok = fn(p, world, 1) !== false;
   if (ok) {
     const name = tech.name?.replace(/^비전서:\s*/, '') || TECH_NAMES[tech.id] || '';
@@ -63,6 +72,7 @@ const TECH_NAMES = {
   tech_hadou: '파동참', tech_shoryu: '승천격', tech_tatsu: '선풍각', tech_palm: '백보신권', tech_hellslash: '지옥참',
   tech_thunder: '천뢰', tech_bomb: '연금 폭쇄', tech_hydro: '수룡참', tech_clone: '환영 분신', tech_freeze: '절대영도', tech_grandcross: '그랜드 크로스',
 };
+Object.assign(TECH_NAMES, TECH_NAMES_P2);   // [hook:p2]
 
 /** 스킬 공격 객체 */
 function atk(p, o = {}) {

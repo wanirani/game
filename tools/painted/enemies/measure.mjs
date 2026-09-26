@@ -30,7 +30,8 @@ const rows = await page.evaluate(async ({ ids, thr }) => {
   // strike rects of the AIs (feet-relative, facing right): walker reachX/reachY/reach/reachH, digger slam
   const hitRect = (d, label) => {
     const P = d.aiParams || {};
-    if (d.id === 'gravedigger') return /slam/.test(label) ? [8, -118, 114, 118] : null;
+    // only the frames around the AI's hit instant (strike / swing end); wind-up and recovery frames are not compared
+    if (d.id === 'gravedigger') return /slam (hit|end)/.test(label) ? [8, -118, 114, 118] : null;
     if (P.reach != null && /strike|follow/.test(label)) return [P.reachX ?? 10, -(P.reachY ?? d.size.h * 0.8), P.reach, P.reachH ?? d.size.h * 0.6];
     return null;
   };

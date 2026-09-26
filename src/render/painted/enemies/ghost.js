@@ -82,13 +82,14 @@ export function draw(ctx, e, world, o, rig) {
   // ectoplasm: wisps shed from the hem trail in world space; occasional drips; burst when hit
   if (world && o.cam) {
     const pool = e._fx ?? (e._fx = new K.FxPool(28));
-    const sc = e.scale || 1;
+    const sc = (e.scale || 1) * (rig.scale ?? 1);
     const hx = e.cx + f * sc * (ax - 10 - trail * 0.5), hy = e.bottom + sc * (ay + 20);
-    if (K.fr() < 0.45) pool.add(0, hx + K.frand(-8, 8), hy + K.frand(-6, 10), -f * K.frand(10, 40) - (e.vx ?? 0) * 0.2, K.frand(-30, -8), K.frand(0.6, 1.2), K.frand(5, 10), ECTO);
-    if (K.fr() < 0.04) pool.add(1, hx + K.frand(-6, 6), hy, 0, K.frand(10, 40), K.frand(0.6, 1.0), 1.4, '#9ff4ff');
+    const dt = pool.step(K.clockOf(e, world));
+    // emission per second of game time (not per rendered frame: same density at 30, 60 or 120 Hz)
+    for (let n = pool.rate(0, 27, dt); n > 0; n--) pool.add(0, hx + K.frand(-8, 8), hy + K.frand(-6, 10), -f * K.frand(10, 40) - (e.vx ?? 0) * 0.2, K.frand(-30, -8), K.frand(0.6, 1.2), K.frand(5, 10), ECTO);
+    for (let n = pool.rate(1, 2.4, dt); n > 0; n--) pool.add(1, hx + K.frand(-6, 6), hy, 0, K.frand(10, 40), K.frand(0.6, 1.0), 1.4, '#9ff4ff');
     if (e.flashT > 0.1 && !e._hitFx) { e._hitFx = true; for (let i = 0; i < 8; i++) pool.add(0, e.cx + K.frand(-10, 10), e.bottom - 30 + K.frand(-10, 10), K.frand(-120, 120), K.frand(-120, 60), K.frand(0.4, 0.7), K.frand(4, 8), ECTO); }
     if (e.flashT <= 0) e._hitFx = false;
-    pool.step(K.clockOf(e, world));
     ctx.setTransform(o.cam);
     pool.draw(ctx);
   }
