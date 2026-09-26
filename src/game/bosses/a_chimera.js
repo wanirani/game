@@ -52,7 +52,7 @@ export class Chimera extends ABoss {
   W(lx, ly) { return { x: this.cx + this.facing * lx * S, y: this.bottom + ly * S }; }
   snakeHead() { const pts = this.tailPts(); return this.W(pts[22], pts[23]); }
   goatHead() { return this.W(-8 + this.goatUp * 6, -168 - this.goatUp * 16); }
-  lionMouth() { return this.W(122, -96 + this.crouch * 20); }
+  lionMouth() { return this.W(134, -98 + this.crouch * 20); }
   spitVenom(n) {
     const p = this.player, h = this.snakeHead();
     for (let i = 0; i < n; i++) {
@@ -470,7 +470,7 @@ export class Chimera extends ABoss {
     ctx.restore();
   }
   drawLion(ctx, t, bob, ghost) {
-    const cr = this.crouch, hx = 96, hy = -112 + bob * 0.8 + cr * 12, r = this.roar;
+    const cr = this.crouch, hx = 108, hy = -114 + bob * 0.8 + cr * 12, r = this.roar;
     ctx.save(); ctx.translate(hx, hy); ctx.rotate(-r * 0.12 + cr * 0.1);
     // 갈기 (뒤)
     for (let L = 0; L < 2; L++) {
@@ -478,7 +478,7 @@ export class Chimera extends ABoss {
       const N = 26;
       for (let i = 0; i <= N; i++) {
         const a = (i / N) * TAU, back = Math.max(0, -Math.cos(a));
-        const rr = (L ? 40 : 52) + (i % 2 ? 10 + hash(i + L * 7) * 14 : 0) + back * (L ? 10 : 22) + Math.sin(t * 3 + i * 1.3) * 3 + (this.enraged ? 6 : 0);
+        const rr = (L ? 32 : 42) + (i % 2 ? 8 + hash(i + L * 7) * 12 : 0) + back * (L ? 10 : 20) + Math.sin(t * 3 + i * 1.3) * 3 + (this.enraged ? 5 : 0);
         const x = -10 + Math.cos(a) * rr * 0.92 - back * 6, y = Math.sin(a) * rr * 0.95 + (Math.sin(a) > 0 ? 6 : 0);
         i ? ctx.quadraticCurveTo(-10 + Math.cos(a - 0.12) * rr * 0.8, Math.sin(a - 0.12) * rr * 0.8, x, y) : ctx.moveTo(x, y);
       }

@@ -1,11 +1,12 @@
 // 오디오 시스템 — 절차적 WebAudio 엔진 (효과음 합성 + 룩어헤드 BGM 시퀀서 + 대성당 잔향)
 //  audio.unlock()                   첫 사용자 입력 시 AudioContext 활성화
-//  audio.sfx(name, {vol, pitch, pan, delay})
+//  audio.sfx(name, {vol, pitch, pan})
 //  audio.music(trackId, {fade})     BGM 전환 (같은 곡이면 무시)
 //  audio.stopMusic(fade)
 //  audio.duck(amount, time)         잠시 BGM 볼륨 낮춤
 //  audio.setVolumes(music, sfx)
 //  audio.suspend() / resume() / update(dt)
+//  (추가) sfx 옵션 delay: 초 단위 지연 재생 / audio.current: 현재 곡 ID
 //
 // 신호 흐름: master → 컴프레서 → 리미터 → 출력
 //   음악: 트랙(채널별 패너) → musicIn → duck → musicVol → master   (wet 송신 → 잔향, 리드 → 딜레이)
