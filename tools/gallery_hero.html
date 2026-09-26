@@ -62,11 +62,11 @@ if (ZOOM === 'all') {
   row(CHAR_ORDER.map((id) => ({ label: CHARACTERS[id].name, p: () => ent({ look: lookOf(id, Q.get('cls')), ch: CHARACTERS[id], anim: Q.get('a') || 'idle', vx: Q.get('a') === 'run' ? 280 : 0 }) })), 420, 390, 3.4);
 } else if (ZOOM && Q.get('move')) {
   // 공격 확대: ?zoom=bran&move=up (ground0~3 | air0~2 | up | down | crouch | dash | charge) — 예비/판정 시작/중간/끝/회수 5프레임
-  const id = ZOOM, ch = CHARACTERS[id], ms = MOVESETS[ch.weaponType], key = Q.get('move');
+  const id = ZOOM, ch = CHARACTERS[id], WT = Q.get('wt') || ch.weaponType, ms = MOVESETS[WT], key = Q.get('move');
   const m = /^ground\d$/.test(key) ? ms.ground[+key[6]] : /^air\d$/.test(key) ? ms.air[+key[3]] : ms[key];
   header(`${ch.name} · ${m.anim} 확대 (예비 → 판정 → 회수)`);
   const ts = [m.hit[0] * 0.6, m.hit[0] + 0.005, (m.hit[0] + m.hit[1]) / 2, m.hit[1] - 0.005, Math.min(m.dur - 0.01, m.hit[1] + 0.05)];
-  row(ts.map((t) => ({ label: `t=${t.toFixed(3)}`, wide: true, p: () => ent({ look: lookOf(id, Q.get('cls')), ch, anim: m.anim, move: m, moveT: t, onGround: key !== 'down' && !key.startsWith('air'), muzzleT: 0.05 }) })), 620, 520, 2.4);
+  row(ts.map((t) => ({ label: `t=${t.toFixed(3)}`, wide: true, p: () => ent({ look: lookOf(id, Q.get('cls'), { type: WT, style: 3 }), ch, anim: m.anim, move: m, moveT: t, onGround: key !== 'down' && !key.startsWith('air'), muzzleT: 0.05 }) })), 620, 520, Number(Q.get('zs') || 2.4));
 } else if (ZOOM) {
   const id = ZOOM, ch = CHARACTERS[id];
   const cls = Q.get('cls');
@@ -201,7 +201,8 @@ const hitT = (m) => (m.box ? (m.hit[0] + m.hit[1]) / 2 : m.hit[0] + 0.015);
 if (SEC.includes('pup') && !ZOOM) {
   for (const cls of PCLS) {
     header(`채색 퍼펫 · ${CLASSES[cls].name} (${cls}) — 모든 동작 (게임 배율 ×${HERO_DRAW_SCALE} 기준 ×1.6)`);
-    row(ALL_ANIM.map(([name, o]) => ({ label: name, p: () => ent({ look: lookOf('kael', cls), ch: CHARACTERS.kael, ...o }) })), 156, 190, 1.6);
+    const psc = Number(Q.get('psc') || 1.6);
+    row(ALL_ANIM.map(([name, o]) => ({ label: name, p: () => ent({ look: lookOf('kael', cls), ch: CHARACTERS.kael, ...o }) })), Math.round(156 * psc / 1.6), Math.round(190 * psc / 1.6), psc);
   }
 }
 if (SEC.includes('pupatk') && !ZOOM) {
@@ -325,10 +326,10 @@ function drawCell(cell, time, live) {
     cell.ent = e;
     // 체인 안정화(워밍업): 이동 중이면 실제로 이동시키며 시뮬
     const vx = e.vx || 0;
-    const ph = e._ph || 0;
-    for (let f = 0; f < 50 + Math.round(ph * 40); f++) {
+    const NW = 50 + Math.round((e._ph || 0) * 40);
+    for (let f = 0; f < NW; f++) {
       e.t = 3 + f / 60;
-      e.cx = -(vx * (49 - f)) / 60 / sc; e.bottom = 0;
+      e.cx = -(vx * (NW - 1 - f)) / 60 / sc; e.bottom = 0;
       sctx.setTransform(sc, 0, 0, sc, 450, 700);
       drawHero(sctx, e, null, {});
     }

@@ -42,6 +42,11 @@ if (mode === 'gallery') {
     if (/Stage/.test(top)) break;
     await page.keyboard.press('Enter'); await page.waitForTimeout(350);
   }
+  await page.evaluate(async () => {
+    window.__ENEMIES = (await import('/src/data/enemies.js')).ENEMIES;
+    const kit = await import('/src/render/painted/enemy_kit.js');
+    window.__rigStats = kit.rigStats;
+  });
   await page.evaluate(({ spawn, vec, frozen }) => {
     const g = window.__game, w = g.world, p = w.player;
     if (vec) globalThis.__paintedEnemies = false;

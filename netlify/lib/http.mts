@@ -1,15 +1,19 @@
-// HTTP 공통: JSON 응답, 오류 코드와 한국어 메시지, 크기 제한이 있는 JSON 본문 읽기.
+// HTTP 공통: JSON 응답, 오류 코드와 한국어 메시지, 크기·깊이 제한이 있는 JSON 본문 읽기.
 // 모든 응답은 {ok:boolean, error?:코드, message?:한국어 문장, ...} 형태의 UTF-8 JSON 이다.
+import { JSON_MAX_DEPTH } from './config.mts';
 
 export const MESSAGES: Record<string, string> = {
   bad_request: '요청 형식이 올바르지 않습니다.',
   bad_json: '요청 데이터를 읽을 수 없습니다.',
+  unsupported_media_type: '요청 형식이 올바르지 않습니다. (JSON 으로 보내야 합니다)',
+  forbidden: '허용되지 않는 요청입니다.',
   payload_too_large: '보내는 데이터가 너무 큽니다.',
   invalid_id: '아이디는 영문 소문자로 시작하는 4~16자의 영문 소문자, 숫자, 밑줄(_)로 만들어 주세요.',
   reserved_id: '사용할 수 없는 아이디입니다. 다른 아이디를 입력해 주세요.',
   id_taken: '이미 사용 중인 아이디입니다.',
   invalid_password: '비밀번호는 8~64자로 입력해 주세요. (줄바꿈 같은 제어 문자는 쓸 수 없습니다)',
   password_same_as_id: '비밀번호는 아이디와 다르게 정해 주세요.',
+  weak_password: '너무 흔하거나 추측하기 쉬운 비밀번호입니다. 아이디가 들어가지 않은, 다른 사람이 떠올리기 어려운 비밀번호로 정해 주세요.',
   same_password: '새 비밀번호가 지금 비밀번호와 같습니다.',
   invalid_credentials: '아이디 또는 비밀번호가 올바르지 않습니다.',
   wrong_password: '비밀번호가 올바르지 않습니다.',
@@ -61,6 +65,10 @@ const BASE_HEADERS: Record<string, string> = {
   'Cache-Control': 'no-store',
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'no-referrer',
+  // API 응답을 문서로 열거나 다른 사이트가 끼워 넣어도 아무것도 실행·표시되지 않게
+  'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'; sandbox",
+  'X-Frame-Options': 'DENY',
+  'Cross-Origin-Resource-Policy': 'same-origin',
 };
 
 export function json(status: number, body: Record<string, unknown>, headers?: Record<string, string>): Response {
@@ -78,16 +86,11 @@ export function errorResponse(err: ApiError): Response {
 
 export const isObj = (v: unknown): v is Record<string, any> => !!v && typeof v === 'object' && !Array.isArray(v);
 
-/**
- * 요청 본문을 최대 maxBytes 까지만 읽어 JSON 객체로 돌려준다.
- * - 크기 초과 → 413 payload_too_large (Content-Length 를 믿지 않고 실제로 센다)
- * - UTF-8 이 아니거나 JSON 이 아니거나 비어 있으면 → 400 bad_json
- * - 최상위가 객체가 아니면 → 400 bad_request
- */
-export async function readJson(req: Request, maxBytes: number): Promise<Record<string, any>> {
+/** 본문을 최대 maxBytes 까지만 읽는다 (Content-Length 를 믿지 않고 실제로 센다). 비었으면 빈 배열 */
+async function readBytes(req: Request, maxBytes: number): Promise<Uint8Array> {
   const declared = req.headers.get('content-length');
   if (declared !== null && /^\d+$/.test(declared) && Number(declared) > maxBytes) fail('payload_too_large', 413);
-  if (!req.body) fail('bad_json', 400);
+  if (!req.body) return new Uint8Array(0);
   const reader = req.body.getReader();
   const chunks: Uint8Array[] = [];
   let total = 0;
@@ -101,17 +104,74 @@ export async function readJson(req: Request, maxBytes: number): Promise<Record<s
     }
     chunks.push(value);
   }
-  if (total === 0) fail('bad_json', 400);
   const buf = new Uint8Array(total);
   let off = 0;
   for (const c of chunks) { buf.set(c, off); off += c.byteLength; }
+  return buf;
+}
+
+/**
+ * JSON 텍스트의 최대 중첩 깊이 ([ 와 { 를 문자열 밖에서만 센다). JSON.parse 전에 재서
+ * 수십만 겹 배열 같은 본문이 뒤의 재귀 처리(JSON.stringify 등)에서 스택을 넘치게 하지 못하게 한다.
+ */
+export function jsonDepth(text: string): number {
+  let depth = 0, max = 0, inStr = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text.charCodeAt(i);
+    if (inStr) {
+      if (ch === 92) i++; // \ 다음 글자 건너뜀
+      else if (ch === 34) inStr = false;
+    } else if (ch === 34) inStr = true;
+    else if (ch === 91 || ch === 123) { if (++depth > max) max = depth; }
+    else if (ch === 93 || ch === 125) depth--;
+  }
+  return max;
+}
+
+/**
+ * Content-Type 이 application/json 인가 (매개변수·대소문자 무시).
+ * 다른 사이트는 fetch(no-cors)·form 으로 text/plain·form 형식 본문만 사전 확인(preflight) 없이 보낼 수 있으므로,
+ * JSON 만 받으면 다른 사이트가 방문자 브라우저로 가입·로그인 요청을 대신 보내게(CSRF) 할 수 없다.
+ */
+function isJsonType(req: Request): boolean {
+  return (req.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase() === 'application/json';
+}
+
+function parseJsonObject(req: Request, buf: Uint8Array): Record<string, any> {
+  if (!isJsonType(req)) fail('unsupported_media_type', 415);
+  let text: string;
+  try {
+    text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: false }).decode(buf);
+  } catch {
+    fail('bad_json', 400);
+  }
+  if (jsonDepth(text!) > JSON_MAX_DEPTH) fail('bad_request', 400);
   let parsed: unknown;
   try {
-    const text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: false }).decode(buf);
-    parsed = JSON.parse(text);
+    parsed = JSON.parse(text!);
   } catch {
     fail('bad_json', 400);
   }
   if (!isObj(parsed)) fail('bad_request', 400);
   return parsed;
+}
+
+/**
+ * 요청 본문을 최대 maxBytes 까지만 읽어 JSON 객체로 돌려준다.
+ * - 크기 초과 → 413 payload_too_large (Content-Length 를 믿지 않고 실제로 센다)
+ * - 비어 있으면 → 400 bad_json
+ * - Content-Type 이 application/json 이 아니면 → 415 unsupported_media_type
+ * - UTF-8 이 아니거나 JSON 이 아니면 → 400 bad_json, 너무 깊게 중첩됐거나 최상위가 객체가 아니면 → 400 bad_request
+ */
+export async function readJson(req: Request, maxBytes: number): Promise<Record<string, any>> {
+  const buf = await readBytes(req, maxBytes);
+  if (buf.byteLength === 0) fail('bad_json', 400);
+  return parseJsonObject(req, buf);
+}
+
+/** 본문이 없어도 되는 요청용: 비었으면 {}, 있으면 readJson 과 같은 규칙 */
+export async function readOptionalJson(req: Request, maxBytes: number): Promise<Record<string, any>> {
+  const buf = await readBytes(req, maxBytes);
+  if (buf.byteLength === 0) return {};
+  return parseJsonObject(req, buf);
 }

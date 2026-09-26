@@ -55,7 +55,7 @@ function layout(e, q) {
   K.pivotPos('farm', 'a', 'grip', bex, bey, bfr, 1, 1, _q);
   const gx = _q[0], gy = _q[1];
   const swp = K.part('sword');
-  const hold = place('sword', gx, gy, dirOf(q.wA) - swp.ang, 'deep');
+  const hold = place('sword', gx, gy, dirOf(q.wA) - swp.ang, 'base');     // blade keeps its gleam even on the far arm
   place('farm', bex, bey, bfr, 'deep');
   // back leg
   b = limb('uarm', sx0 - 2, hipY, dirOf(q.hipB), 15, 'deep', 1.15, 1.2);
@@ -102,7 +102,7 @@ function die(e, world, rig) {
   for (let i = 0; i < NP; i++) {
     const p = PL[i];
     const heavy = p.name === 'torso' || p.name === 'shield';
-    pieces.push({ ...p, vx: kb * 40 + K.frand(-90, 90) * (heavy ? 0.4 : 1), vy: -K.frand(80, 300) * (heavy ? 0.5 : p.name === 'helm' ? 1.3 : 1), vr: K.frand(-7, 7) * (heavy ? 0.4 : 1), r: heavy ? 6 : 3 });
+    pieces.push({ ...p, vx: kb * 40 + K.frand(-90, 90) * (heavy ? 0.4 : 1), vy: -K.frand(80, 300) * (heavy ? 0.5 : p.name === 'helm' ? 1.3 : 1), vr: K.frand(-7, 7) * (heavy ? 0.4 : 1) });
   }
   K.spawnCorpse(world, e, rig, pieces, { life: 1.6, fade: 0.55, bounce: 0.2, dust: { n: 8, w: 18, h: 20, col: '#6a6470' } });
 }

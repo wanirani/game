@@ -89,7 +89,7 @@ function die(e, world, rig) {
   for (let i = 0; i < NP; i++) {
     const p = PL[i];
     const up = p.name === 'skull' ? 1.4 : p.name === 'sword' || p.name === 'shield' ? 0.6 : 1;
-    pieces.push({ ...p, vx: kb * 60 + K.frand(-110, 110), vy: -K.frand(120, 380) * up, vr: K.frand(-9, 9), r: p.name === 'skull' ? 4 : 2 });
+    pieces.push({ ...p, vx: kb * 60 + K.frand(-110, 110), vy: -K.frand(120, 380) * up, vr: K.frand(-9, 9) });
   }
   K.spawnCorpse(world, e, rig, pieces, { life: 1.5, fade: 0.5, bounce: 0.32, dust: { n: 7, w: 14, h: 30, col: '#c8b898' } });
 }

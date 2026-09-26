@@ -7,8 +7,18 @@ import * as gravedigger from './gravedigger.js';
 import * as bat from './bat.js';
 import * as ghost from './ghost.js';
 
+import { registerPainted } from '../registry.js';
+import { requestRig } from '../enemy_kit.js';
+
 export const PAINTED_ENEMIES = {};
-function reg(mod, ids = [mod.spec.id]) { for (const id of ids) PAINTED_ENEMIES[id] = mod; }
+/** also listed in the shared painted registry (kind 'enemy') so tooling / kill switches see every painted creature;
+ *  drawing goes through render/enemies.js (facing, elite scale, vector crossfade), not registry.drawPaintedDirect */
+function reg(mod, ids = [mod.spec.id]) {
+  for (const id of ids) {
+    PAINTED_ENEMIES[id] = mod;
+    registerPainted(id, { kind: 'enemy', module: { id, kind: 'enemy', tier: mod.spec.tier, async load() { const r = requestRig(mod.spec); await r.promise; if (!r.ready) throw new Error('rig ' + mod.spec.src); return r; }, draw() {} } });
+  }
+}
 
 reg(skeleton);
 reg(armor_knight);

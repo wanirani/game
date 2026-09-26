@@ -74,12 +74,20 @@ export function hash1(i) { const s = Math.sin(i * 127.1 + 311.7) * 43758.5453; r
 export function seeded(seed) { return new RenderRNG(Math.imul((seed | 0) + 1, 2654435761) ^ 0x9e3779b9); }
 
 // ───────────────────────── 캔버스 도우미 ─────────────────────────
+/**
+ * 굽기용 캔버스. 처음부터 willReadFrequently(=CPU 캔버스)로 만든다:
+ *  GPU 가속 캔버스에서 getImageData/그리기 복사를 하면 매번 GPU→CPU 읽기가 일어나 굽기가 수십 배 느려진다
+ *  (SwiftShader 측정: 손상+틴트 25초 → 1초 미만). 다 구운 캔버스를 메인 캔버스에 그리면 텍스처로 한 번 올라가 캐시된다.
+ */
 export function makeCanvas(w, h) {
   w = Math.max(1, Math.ceil(w)); h = Math.max(1, Math.ceil(h));
-  if (typeof document !== 'undefined') { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
-  return new OffscreenCanvas(w, h);
+  let c;
+  if (typeof document !== 'undefined') { c = document.createElement('canvas'); c.width = w; c.height = h; }
+  else c = new OffscreenCanvas(w, h);
+  c.getContext('2d', { willReadFrequently: true });
+  return c;
 }
-function ctx2d(c) { return c.getContext('2d', { willReadFrequently: false }); }
+function ctx2d(c) { return c.getContext('2d', { willReadFrequently: true }); }
 export function silhouette(src, color) {
   const c = makeCanvas(src.width, src.height), g = ctx2d(c);
   g.drawImage(src, 0, 0); g.globalCompositeOperation = 'source-in'; g.fillStyle = color; g.fillRect(0, 0, c.width, c.height);

@@ -13,7 +13,7 @@ export const spec = {
   id: 'gravedigger', tier: 'T3', src: 'gravedigger',
   bake: {
     outline: 0.5, deep: { uarm: 0.6, farm: 0.6, hand: 0.6, boot: 0.6 }, deepTint: 'rgb(150,140,150)',
-    damage: { torso: { char: 3, cracks: 1, nicks: 3, charCol: '24,14,8' }, head: { char: 1, cracks: 2, nicks: 1 }, tails: { char: 2, cracks: 0, nicks: 4 }, uarm: { char: 1, nicks: 2 }, farm: { char: 1, nicks: 2 } },
+    damage: { torso: { char: 3, cracks: 2, holes: 3, stain: '#2a1810', crackMinLum: 55 }, head: { char: 1.5, cracks: 2, holes: 1 }, tails: { char: 2, cracks: 1, holes: 4, crackMinLum: 45 }, uarm: { char: 1.5, holes: 2, cracks: 1, crackMinLum: 60 }, farm: { char: 1.5, holes: 2, cracks: 1, crackMinLum: 60 } },
   },
 };
 
@@ -151,7 +151,7 @@ function die(e, world, rig) {
     const p = PL[i];
     const heavy = p.name === 'torso' || p.name === 'tails';
     // collapses forward: the big body pitches over, head/hat/shovel/lantern fly
-    pieces.push({ ...p, vx: (heavy ? 50 : 30) + K.frand(-70, 90), vy: -K.frand(60, 240) * (heavy ? 0.4 : 1), vr: (heavy ? 1.6 : K.frand(-8, 8)), r: heavy ? 10 : 3 });
+    pieces.push({ ...p, vx: (heavy ? 50 : 30) + K.frand(-70, 90), vy: -K.frand(60, 240) * (heavy ? 0.4 : 1), vr: (heavy ? 1.6 : K.frand(-8, 8)) });
   }
   const lx = PL.find((p) => p.name === 'lantern');
   K.spawnCorpse(world, e, rig, pieces, {

@@ -37,6 +37,9 @@ export function env(name: string): string | undefined {
 }
 
 function openStore(name: string, deployContext: string | undefined): KV {
+  // 배포 문맥을 모르면 어느 저장소도 열지 않는다: 운영 요청이 배포별 저장소에 쓰면 다음 배포 때 데이터가 사라지고,
+  // 미리보기 요청이 운영 저장소에 쓰면 시험 데이터가 섞인다. (Netlify 는 항상 context.deploy.context 를 채운다)
+  if (typeof deployContext !== 'string' || deployContext === '') throw new Error('deploy context unavailable');
   if (storeFactory) return storeFactory(name, deployContext);
   if (deployContext === 'production') return getStore(name, { consistency: 'strong' }) as unknown as KV;
   return getDeployStore(name, { consistency: 'strong' }) as unknown as KV;
@@ -52,8 +55,10 @@ export class Ctx {
     this.req = req;
     const nc = (globalThis.Netlify?.context ?? context) as Context | null | undefined;
     this.deployContext = nc?.deploy?.context ?? context?.deploy?.context;
-    // context.ip 는 Netlify 가 채우는 실제 접속 IP. 클라이언트가 보낸 X-Forwarded-For 는 믿지 않는다.
-    this.ip = (context?.ip || nc?.ip || req.headers.get('x-nf-client-connection-ip') || 'unknown').slice(0, 64);
+    // context.ip 는 Netlify 가 채우는 실제 접속 IP. 요청 헤더(X-Forwarded-For, x-nf-client-connection-ip 등)는
+    // 클라이언트가 마음대로 넣을 수 있으므로 절대 쓰지 않는다. 없으면 모두 하나의 'unknown' 묶음으로 센다(느슨해지지 않게).
+    const ip = context?.ip || nc?.ip;
+    this.ip = typeof ip === 'string' && ip ? ip.slice(0, 64) : 'unknown';
     this.cache = new Map();
   }
   store(name: string): KV {

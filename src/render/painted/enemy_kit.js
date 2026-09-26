@@ -18,88 +18,38 @@ import { clamp, lerp, TAU } from '../../core/math.js';
 import { game } from '../../core/game.js';
 
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════
-// SEAM ─ shared painted-kit primitives. The boss core agent owns src/render/painted/kit.js; the functions in this block
-// mirror its bake helpers (outline / silhouette / darken / damage / render RNG). If kit.js exports the same names they
-// can be swapped for `import { … } from './kit.js'` without touching the enemy renderers (they only use the API below).
+// SEAM ─ shared painted-kit primitives come from the boss core's src/render/painted/kit.js (bake canvases, outline,
+// silhouette, darken, damage bake with cracks/char/holes, render RNG, texture density, bake time-slicing). Until kit.js
+// existed this block held self-contained copies; the enemy renderers only use the API exported below, so the swap was
+// local to this file.
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+import { makeCanvas, silhouette as kSilhouette, outlined, darkened, bakeDamage, rr, hash1, seeded, textureDensity, nextIdle, sliceStart } from './kit.js';
+
+/** runtime (GPU) canvas — scratch targets and sprites that are drawn every frame */
 export function mkCanvas(w, h) {
   const c = document.createElement('canvas');
   c.width = Math.max(1, Math.ceil(w)); c.height = Math.max(1, Math.ceil(h));
   return c;
 }
-/** render-only RNG (xorshift32): visuals must never consume gameplay Math.random */
-let _rs = 0x9e3779b9;
-export function fr() { _rs ^= _rs << 13; _rs >>>= 0; _rs ^= _rs >> 17; _rs ^= _rs << 5; _rs >>>= 0; return _rs / 4294967296; }
-export const frand = (a, b) => a + (b - a) * fr();
-/** stable hash 0..1 */
-export function h1(i) { const s = Math.sin(i * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); }
-/** seeded rng (bake-time) */
-export function srng(seed) { let s = (Math.imul(seed | 0, 2654435761) ^ 0x2545f491) >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
-
-export function silhouette(src, color) {
-  const c = mkCanvas(src.width, src.height), g = c.getContext('2d');
-  g.drawImage(src, 0, 0); g.globalCompositeOperation = 'source-in'; g.fillStyle = color; g.fillRect(0, 0, c.width, c.height);
-  return c;
-}
-/** thin dark outline (readability over painted backgrounds). r in texels */
-export function withOutline(img, r, color = 'rgba(8,4,8,0.92)') {
-  const c = mkCanvas(img.width, img.height), g = c.getContext('2d');
-  if (r > 0.2) {
-    const sil = silhouette(img, color), n = r > 1.4 ? 12 : 8;
-    for (let i = 0; i < n; i++) { const a = i / n * TAU; g.drawImage(sil, Math.cos(a) * r, Math.sin(a) * r); }
-  }
-  g.drawImage(img, 0, 0);
-  return c;
-}
-export function darken(src, k, tint = null) {
-  const c = mkCanvas(src.width, src.height), g = c.getContext('2d');
-  g.drawImage(src, 0, 0);
-  g.globalCompositeOperation = 'multiply'; g.fillStyle = tint ?? `rgb(${k * 255 | 0},${k * 255 | 0},${k * 255 | 0})`; g.fillRect(0, 0, c.width, c.height);
-  g.globalCompositeOperation = 'destination-in'; g.drawImage(src, 0, 0);
-  return c;
-}
-/** procedural wear for T3 damage states: soot/char blotches, scratches/cracks, torn edge nicks (all clipped to alpha) */
-export function damageVariant(src, level, seed, o = {}) {
-  const w = src.width, h = src.height, c = mkCanvas(w, h), g = c.getContext('2d');
-  g.drawImage(src, 0, 0);
-  const R = srng(seed * 7919 + level * 131), data = src.getContext('2d').getImageData(0, 0, w, h).data;
-  const A = (x, y) => (x < 0 || y < 0 || x >= w || y >= h) ? 0 : data[((y | 0) * w + (x | 0)) * 4 + 3];
-  const pick = (pred) => { for (let t = 0; t < 300; t++) { const x = R() * w, y = R() * h; if (A(x, y) > 200 && (!pred || pred(x, y))) return [x, y]; } return null; };
-  const sc = Math.sqrt(w * h) / 120;
-  g.globalCompositeOperation = 'source-atop';
-  for (let i = 0; i < (o.char ?? 3) * level; i++) {
-    const p = pick(); if (!p) break;
-    const r = (6 + R() * 12) * sc, gr = g.createRadialGradient(p[0], p[1], 0, p[0], p[1], r);
-    gr.addColorStop(0, `rgba(${o.charCol ?? '20,10,6'},0.75)`); gr.addColorStop(1, `rgba(${o.charCol ?? '20,10,6'},0)`);
-    g.fillStyle = gr; g.fillRect(p[0] - r, p[1] - r, r * 2, r * 2);
-  }
-  g.lineCap = 'round';
-  for (let i = 0; i < (o.cracks ?? 2) * level; i++) {
-    const p = pick(); if (!p) break;
-    let [x, y] = p, a = R() * TAU; g.beginPath(); g.moveTo(x, y);
-    for (let s = 0; s < 7; s++) { a += (R() - 0.5) * 1.2; x += Math.cos(a) * 3 * sc; y += Math.sin(a) * 3 * sc; g.lineTo(x, y); }
-    g.strokeStyle = 'rgba(14,8,6,0.85)'; g.lineWidth = Math.max(0.8, 0.9 * sc); g.stroke();
-    if (o.crackGlow) { g.strokeStyle = o.crackGlow; g.lineWidth = Math.max(0.5, 0.4 * sc); g.stroke(); }
-  }
-  g.globalCompositeOperation = 'destination-out';
-  for (let i = 0; i < (o.nicks ?? 2) * level; i++) {
-    const p = pick((x, y) => A(x + 4 * sc, y) < 30 || A(x - 4 * sc, y) < 30 || A(x, y + 4 * sc) < 30); if (!p) continue;
-    const r = (1.5 + R() * 3) * sc; g.beginPath();
-    for (let j = 0; j < 7; j++) { const aa = j / 7 * TAU, rr = r * (0.5 + R() * 0.8); j ? g.lineTo(p[0] + Math.cos(aa) * rr, p[1] + Math.sin(aa) * rr) : g.moveTo(p[0] + Math.cos(aa) * rr, p[1] + Math.sin(aa) * rr); }
-    g.closePath(); g.fill();
-  }
-  g.globalCompositeOperation = 'source-over';
-  return c;
-}
+/** render-only RNG (shared with the boss kit): visuals must never consume gameplay Math.random */
+export const fr = () => rr.next();
+export const frand = (a, b) => rr.range(a, b);
+export const h1 = hash1;
+export const srng = (seed) => { const R = seeded(seed); return () => R.next(); };
+export const silhouette = kSilhouette;
+/** thin dark outline around an already padded part canvas (r in texels) */
+export const withOutline = (img, r, color = 'rgba(8,4,8,0.92)') => outlined(img, { width: r > 0.2 ? r : 0, color, pad: 0 });
+export const darken = darkened;
+/** damage level 1/2 of a raw (un-outlined) part: kit.bakeDamage opts {char, cracks, holes, chips, stain, crackMinLum} */
+export const damageVariant = (src, level, seed, o = {}) => bakeDamage(src, level, seed, o, false).canvas;
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════ /SEAM ═══
 
 const PAD = 3;               // texels around every baked part (outline room + bilinear bleed)
 export const stats = { rigs: 0, bakeMs: 0, bytes: 0 };
 
-/** texel density (device px per logical px) the runtime atlas is baked at */
+/** texel density (device px per logical px) the runtime atlas is baked at (kit: canvas scale × quality, oversampled) */
 function chooseTD(srcTD) {
-  const s = game?.scale || 2;
-  return clamp(Math.round(s * 1.2 * 4) / 4, 1.25, Math.min(srcTD, 2.75));
+  return textureDensity(game, 1, { min: 1.25, max: Math.min(srcTD, 2.75), over: 1.2 });
 }
 function loadImg(src) {
   return new Promise((res, rej) => { const i = new Image(); i.decoding = 'async'; i.onload = () => res(i); i.onerror = () => rej(new Error('load ' + src)); i.src = src; });
@@ -139,6 +89,7 @@ async function buildRig(rig, spec) {
   const img = await loadImg(base + (man.atlas ?? 'atlas.webp') + (man.v ? `?v=${man.v}` : ''));
   if (img.decode) await img.decode().catch(() => {});
   const t0 = performance.now();
+  sliceStart();
   const srcTD = man.srcTD ?? 3, td = chooseTD(srcTD), f = td / srcTD;
   const B = spec.bake ?? {}, olr = (B.outline ?? 0.5) * td;
   const items = [];
@@ -146,7 +97,7 @@ async function buildRig(rig, spec) {
     const [rx, ry, rw, rh] = p.rect;
     const w = Math.ceil(rw * f) + PAD * 2, h = Math.ceil(rh * f) + PAD * 2;
     const dmg = B.damage?.[name] ?? B.damage?.['*'];
-    const raw = mkCanvas(w, h), g = raw.getContext('2d', dmg ? { willReadFrequently: true } : undefined);
+    const raw = makeCanvas(w, h), g = raw.getContext('2d', { willReadFrequently: true });
     g.imageSmoothingQuality = 'high';
     g.drawImage(img, rx, ry, rw, rh, PAD, PAD, rw * f, rh * f);
     const part = { name, w, h, v: {}, piv: {}, meta: p.meta ?? {} };
@@ -173,6 +124,7 @@ async function buildRig(rig, spec) {
     }
     for (const [k, c] of Object.entries(vars)) items.push({ part, k, c });
     rig.parts[name] = part;
+    await nextIdle(6);                        // time-slice the bake (behind the room fade, never one long frame)
   }
   const { w, h } = pack(items, 1024);
   const atlas = mkCanvas(w, h), ag = atlas.getContext('2d');
@@ -311,6 +263,43 @@ export function strips(name, pv, x, y, rot, sx, sy, n, axis, off, alpha = 1, vn 
   ctx.globalAlpha = ga;
 }
 const _zero = [0, 0];
+/**
+ * seam-free cloth warp for TRANSLUCENT parts (ghost shrouds, ectoplasm, mist): the part is re-rasterised into a small
+ * scratch canvas as horizontal strips on integer texel rows, each strip x-sheared between the offsets sampled at its
+ * edges (no strip boundaries are ever anti-aliased twice → no double-alpha lines, no conflation gaps), then blitted
+ * once with the part transform. off(u) → [dx] in texels (u = 0 at the pivot row). slot = scratch index (0..3).
+ */
+const SCR = [];
+export function warpY(name, pv, x, y, rot, sx, sy, n, off, alpha = 1, vn = 'base', slot = 0, pad = 24) {
+  const p = RIG.parts[name];
+  if (!p || alpha <= 0.003) return;
+  const v = variantOf(p, vn), fv = FLASH > 0 && vn !== 'glow' ? p.v.flash : null;
+  const q = typeof pv === 'string' ? (p.piv[pv] ?? [p.w / 2, p.h / 2]) : pv;
+  const W = v[2] + pad * 2, H = v[3];
+  let sc = SCR[slot];
+  if (!sc || sc.c.width < W || sc.c.height < H) { const c = mkCanvas(Math.max(W, sc?.c.width ?? 0), Math.max(H, sc?.c.height ?? 0)); sc = SCR[slot] = { c, g: c.getContext('2d') }; }
+  const g = sc.g;
+  g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.clearRect(0, 0, W, H);
+  g.imageSmoothingQuality = 'low';
+  const step = Math.max(1, Math.round(H / n)), span = Math.max(q[1], H - q[1]) || 1;
+  let o0 = off(Math.abs(0 - q[1]) / span)[0];
+  for (let t0 = 0; t0 < H; t0 += step) {
+    const t1 = Math.min(H, t0 + step);
+    const o1 = off(Math.abs(t1 - q[1]) / span)[0];
+    const sh = (o1 - o0) / (t1 - t0);
+    g.setTransform(1, 0, sh, 1, pad + o0 - sh * t0, 0);
+    g.globalAlpha = 1;
+    g.drawImage(RIG.atlas, v[0], v[1] + t0, v[2], t1 - t0, 0, t0, v[2], t1 - t0);
+    if (fv) { g.globalAlpha = FLASH; g.drawImage(RIG.atlas, fv[0], fv[1] + t0, fv[2], t1 - t0, 0, t0, fv[2], t1 - t0); }
+    o0 = o1;
+  }
+  setT(q[0] + pad, q[1], x, y, rot, sx, sy);
+  const ctx = CTX, ga = ctx.globalAlpha;
+  ctx.globalAlpha = ga * alpha;
+  ctx.drawImage(sc.c, 0, 0, W, H, 0, 0, W, H);
+  ctx.globalAlpha = ga;
+}
+
 /**
  * bending-chain warp (mesh-free): strips along texel X starting at pivot `a` towards pivot `b`; strip i is rotated by
  * the cumulative bend(u) (radians) about the end of the previous strip → wings curl, tails whip, tentacles sway.
@@ -464,7 +453,20 @@ export function spawnCorpse(world, e, rig, pieces, o = {}) {
   const ox = e.cx, oy = e.bottom, fx = e.facing < 0 ? -1 : 1, sc = e.scale || 1;
   const life = o.life ?? 1.3, t0 = world.time ?? 0, floor = o.floor ?? 0;
   let last = t0;
-  const P = pieces.map((p) => ({ ...p }));
+  // re-pivot every piece on its centre so it tumbles naturally and rests ON the floor (not on its joint pivot)
+  const P = [];
+  for (const p0 of pieces) {
+    const part = rig.parts[p0.name];
+    if (!part) continue;
+    const p = { ...p0 };
+    const c = [part.w / 2, part.h / 2];
+    const q = typeof p.pv === 'string' ? (part.piv[p.pv] ?? c) : (p.pv ?? c);
+    const k = 1 / rig.td, lx = (c[0] - q[0]) * (p.sx ?? 1) * k, ly = (c[1] - q[1]) * (p.sy ?? 1) * k, cs = Math.cos(p.rot), sn = Math.sin(p.rot);
+    p.x += cs * lx - sn * ly; p.y += sn * lx + cs * ly; p.pv = c;
+    const hw = (part.w - 6) / 2 * k * Math.abs(p.sx ?? 1), hh = (part.h - 6) / 2 * k * Math.abs(p.sy ?? 1);
+    p.r = Math.min(hw, hh); p.long = hw >= hh ? 0 : Math.PI / 2;
+    P.push(p);
+  }
   const pool = o.dust ? new FxPool(28) : null;
   if (pool) for (let i = 0; i < o.dust.n; i++) pool.add(o.dust.k ?? 2, ox + fx * sc * frand(-o.dust.w, o.dust.w), oy - frand(0, o.dust.h), frand(-40, 40), frand(-60, -10), frand(0.5, 1.1), frand(4, 9) * sc, o.dust.col);
   world.fx.ghost((ctx) => {
@@ -475,14 +477,19 @@ export function spawnCorpse(world, e, rig, pieces, o = {}) {
       if (p.static) continue;
       p.vy += (o.grav ?? 1500) * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt;
       const fl = floor - (p.r ?? 3);
-      if (p.y > fl) { p.y = fl; p.vy *= -(o.bounce ?? 0.28); p.vx *= 0.6; p.vr *= 0.5; if (Math.abs(p.vy) < 40) p.vy = 0; }
+      if (p.y >= fl - 0.5) {
+        if (p.y > fl) { p.y = fl; p.vy *= -(o.bounce ?? 0.28); p.vx *= 0.6; p.vr *= 0.5; if (Math.abs(p.vy) < 40) p.vy = 0; }
+        // resting: topple onto the long side
+        const flat = p.long + Math.round((p.rot - p.long) / Math.PI) * Math.PI;
+        p.rot += (flat - p.rot) * Math.min(1, dt * 10); p.vx *= Math.pow(0.02, dt);
+      }
     }
     ctx.save();
     ctx.translate(ox, oy); ctx.scale(fx * sc, sc);
     begin(ctx, rig, 0);
     const ga = ctx.globalAlpha;
     ctx.globalAlpha = fade;
-    for (const p of P) put(p.name, p.pv ?? 'a', p.x, p.y, p.rot, p.sx ?? 1, p.sy ?? 1, p.alpha ?? 1, p.vn ?? 'base');
+    for (const p of P) put(p.name, p.pv, p.x, p.y, p.rot, p.sx ?? 1, p.sy ?? 1, p.alpha ?? 1, p.vn ?? 'base');
     if (o.after) o.after(age, fade);
     ctx.globalAlpha = ga;
     end();

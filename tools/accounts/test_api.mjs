@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createRequire, syncBuiltinESMExports } from 'node:module';
 import { createMemoryBackend } from './mem_store.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -51,17 +52,24 @@ let DEPLOY = 'production';
 const SECRETS = new Set(); // 평문으로 저장되면 안 되는 값 (비밀번호, 복구 코드, 토큰)
 const HANGUL = /[가-힣]/;
 
-async function call(method, urlPath, { body, raw, token, auth, ip = IP, headers = {}, deploy = DEPLOY } = {}) {
+// ctype: 본문의 Content-Type (기본 application/json, null 이면 보내지 않음). ip: null 이면 context.ip 없음. deploy: null 이면 배포 문맥 없음
+async function call(method, urlPath, { body, raw, token, auth, ip = IP, headers = {}, deploy = DEPLOY, ctype } = {}) {
   const h = new Headers(headers);
   let payload;
   if (raw !== undefined) payload = raw;
-  else if (body !== undefined) { payload = JSON.stringify(body); h.set('content-type', 'application/json'); }
+  else if (body !== undefined) payload = JSON.stringify(body);
+  if (payload !== undefined && !h.has('content-type')) {
+    const ct = ctype === undefined ? 'application/json' : ctype;
+    if (ct) h.set('content-type', ct);
+  }
   if (token) h.set('authorization', `Bearer ${token}`);
   if (auth) h.set('authorization', auth);
   const init = { method, headers: h };
   if (payload !== undefined) { init.body = payload; init.duplex = 'half'; }
   const req = new Request('https://game.test' + urlPath, init);
-  const ctx = { ip, deploy: { context: deploy, id: '0123456789abcdef01234567', published: deploy === 'production' }, requestId: 'test' };
+  const ctx = { requestId: 'test' };
+  if (ip !== null) ctx.ip = ip;
+  if (deploy !== null) ctx.deploy = { context: deploy, id: '0123456789abcdef01234567', published: deploy === 'production' };
   const res = await api(req, ctx);
   const text = await res.text();
   let json = null;
@@ -862,6 +870,346 @@ test('보안: 복구 코드 생성기 (Crockford Base32 16자, 중복 없음)', 
   assert.equal(scrypto.normalizeRecoveryCode('UUUU-UUUU-UUUU-UUUU'), null);
   assert.equal(scrypto.normalizeRecoveryCode('AAAA-AAAA-AAAA'), null);
   assert.equal(scrypto.normalizeRecoveryCode(1234), null);
+});
+
+// ═════════ 보안 검토 (공격 시나리오) ═════════
+const quiet = async (fn) => {
+  const errs = [];
+  const orig = console.error;
+  console.error = (...a) => errs.push(a.map(String).join(' '));
+  try { await fn(); } finally { console.error = orig; }
+  return errs;
+};
+const countErr = (rs, code) => rs.filter((r) => r.body.error === code).length;
+const noteSignup = (r) => { if (r.body.ok) { SECRETS.add(r.body.token); SECRETS.add(r.body.recoveryCode); SECRETS.add(r.body.recoveryCode.replace(/-/g, '')); } };
+const adminCtx = () => new rt.Ctx(new Request('https://admin.local/'), { ip: 'admin', deploy: { context: 'production' } });
+
+// 비밀번호 확인 횟수 = scrypt 호출 수 (node:crypto 의 scrypt 를 감싸 센다)
+const cryptoCjs = createRequire(import.meta.url)('node:crypto');
+const scryptOrig = cryptoCjs.scrypt;
+let scryptCalls = 0;
+cryptoCjs.scrypt = function (...a) { scryptCalls++; return scryptOrig.apply(this, a); };
+syncBuiltinESMExports();
+
+/**
+ * 요청을 하나씩 들여보내 관문(isGate 에 맞는 저장소 연산)에 모두 세운 뒤 한꺼번에 풀어 준다.
+ * '검사 → (느린 비밀번호 확인) → 기록' 사이의 경합을 결정적으로 재현한다 (메모리 모드 전용).
+ */
+async function burst(n, makeCall, isGate) {
+  const b = currentBackend;
+  let arrived = 0, release;
+  const gate = new Promise((r) => { release = r; });
+  b.hook = async (op, store, key) => { if (isGate(op, store, key)) { arrived++; await gate; } };
+  const ps = [];
+  try {
+    for (let i = 0; i < n; i++) {
+      const before = arrived;
+      let done = false;
+      const p = makeCall(i).finally(() => { done = true; });
+      ps.push(p);
+      while (arrived === before && !done) await new Promise((r) => setImmediate(r));
+    }
+  } finally { release(); }
+  const rs = await Promise.all(ps);
+  b.hook = null;
+  return rs;
+}
+
+test('공격: 동시 요청으로 아이디 잠금 우회 불가 (같은 네트워크에서 비밀번호 확인은 5번까지)', async () => {
+  const u = await signup(newId(), PW, { ip: freshIp() });
+  const ip = freshIp();
+  const s0 = scryptCalls;
+  const rs = await burst(12, () => login(u.id, 'wrong-password', { ip }), (op, st, key) => op === 'getWithMetadata' && st === 'bn-users' && key === u.id);
+  for (const r of rs) assert.ok(r.status === 401 || r.status === 429, r.text);
+  for (let i = 0; i < 6; i++) assert.ok([401, 429].includes((await login(u.id, 'wrong-password', { ip })).status));
+  assert.equal(scryptCalls - s0, 5, `같은 네트워크에서 비밀번호를 ${scryptCalls - s0}번 확인함`);
+  expectErr(await login(u.id, PW, { ip }), 429, 'locked');
+}, { memOnly: true });
+
+test('공격: 여러 IP 동시 요청으로도 아이디 전체 한도(시간당 20번) 우회 불가', async () => {
+  const u = await signup(newId(), PW, { ip: freshIp() });
+  const s0 = scryptCalls;
+  await burst(40, () => login(u.id, 'wrong-password', { ip: freshIp() }), (op, st, key) => op === 'getWithMetadata' && st === 'bn-users' && key === u.id);
+  for (let i = 0; i < 10; i++) assert.ok([401, 429].includes((await login(u.id, 'wrong-password', { ip: freshIp() })).status));
+  assert.equal(scryptCalls - s0, 20, `여러 IP 에서 비밀번호를 ${scryptCalls - s0}번 확인함`);
+  expectErr(await login(u.id, PW, { ip: freshIp() }), 429, 'locked');
+}, { memOnly: true });
+
+test('공격: 잠금 악용 — 다른 네트워크에서 5번 틀려도 주인은 로그인·복구 가능', async () => {
+  const u = await signup(newId(), PW, { ip: freshIp() });
+  const attacker = freshIp();
+  for (let i = 0; i < 4; i++) expectErr(await login(u.id, 'wrong-password', { ip: attacker }), 401, 'invalid_credentials');
+  expectErr(await login(u.id, 'wrong-password', { ip: attacker }), 429, 'locked');
+  expectErr(await login(u.id, PW, { ip: attacker }), 429, 'locked'); // 공격자 네트워크는 잠김
+  expectOk(await login(u.id, PW, { ip: freshIp() }));                // 주인은 다른 네트워크에서 로그인
+  // 복구 코드도 네트워크별로 잠긴다
+  const rec = (code, ip) => call('POST', '/api/auth/recover', { body: { id: u.id, recoveryCode: code, newPassword: 'new-password-1' }, ip });
+  for (let i = 0; i < 4; i++) expectErr(await rec('ZZZZ-ZZZZ-ZZZZ-ZZZZ', attacker), 401, 'invalid_recovery');
+  expectErr(await rec('ZZZZ-ZZZZ-ZZZZ-ZZZZ', attacker), 429, 'locked');
+  expectErr(await rec(u.recoveryCode, attacker), 429, 'locked');
+  const b = expectOk(await rec(u.recoveryCode, freshIp()));
+  SECRETS.add(b.recoveryCode); SECRETS.add(b.recoveryCode.replace(/-/g, '')); SECRETS.add(b.token);
+  // 복구하면 공격자 네트워크의 로그인 잠금도 풀린다 (주인이 그 네트워크를 쓸 수도 있으므로)
+  expectOk(await login(u.id, 'new-password-1', { ip: attacker }));
+});
+
+test('공격: 분산 추측 — 여러 네트워크 합계 20번 실패하면 30분 동안 모두 잠김', async () => {
+  const u = await signup(newId(), PW, { ip: freshIp() });
+  for (let i = 0; i < 19; i++) expectErr(await login(u.id, 'wrong-password', { ip: freshIp() }), 401, 'invalid_credentials');
+  const r = await login(u.id, 'wrong-password', { ip: freshIp() });
+  expectErr(r, 429, 'locked');
+  assert.equal(r.body.retryAfter, 30 * 60);
+  expectErr(await login(u.id, PW, { ip: freshIp() }), 429, 'locked');
+  advance(30 * MIN + 1000);
+  expectOk(await login(u.id, PW, { ip: freshIp() }));
+});
+
+test('공격: 다른 사이트에서 보낸 요청(CSRF·no-cors) 차단 — JSON 이 아닌 Content-Type 415, Sec-Fetch-Site: cross-site 403', async () => {
+  const id = newId('csrf');
+  const raw = JSON.stringify({ id, password: PW });
+  for (const ctype of ['text/plain', 'text/plain;charset=UTF-8', 'application/x-www-form-urlencoded', 'multipart/form-data; boundary=x', null, 'application/jsonx']) {
+    expectErr(await call('POST', '/api/auth/signup', { raw, ctype, ip: freshIp() }), 415, 'unsupported_media_type');
+    expectErr(await call('POST', '/api/auth/login', { raw, ctype, ip: freshIp() }), 415, 'unsupported_media_type');
+  }
+  expectErr(await login(id, PW, { ip: freshIp() }), 401, 'invalid_credentials'); // 계정이 만들어지지 않았다
+  const xs = { 'sec-fetch-site': 'cross-site' };
+  expectErr(await call('POST', '/api/auth/signup', { body: { id, password: PW }, headers: xs, ip: freshIp() }), 403, 'forbidden');
+  expectErr(await login(id, PW, { ip: freshIp() }), 401, 'invalid_credentials');
+  // 같은 출처·주소창 직접 입력·헤더 없음은 허용, JSON 매개변수·대소문자 허용
+  const u = await signup(id, PW, { headers: { 'sec-fetch-site': 'same-origin' }, ip: freshIp() });
+  expectOk(await login(id, PW, { headers: { 'sec-fetch-site': 'none' }, ip: freshIp() }));
+  expectOk(await login(id, PW, { ctype: 'Application/JSON; charset=utf-8', ip: freshIp() }));
+  // 로그인이 필요한 요청도 막는다
+  expectErr(await call('PUT', '/api/saves/1', { body: { data: validSave(), baseRev: 0 }, token: u.token, headers: xs }), 403, 'forbidden');
+  expectErr(await call('GET', '/api/saves', { token: u.token, headers: xs }), 403, 'forbidden');
+  expectErr(await call('PUT', '/api/saves/1', { raw: JSON.stringify({ data: validSave(), baseRev: 0 }), ctype: 'text/plain', token: u.token }), 415, 'unsupported_media_type');
+  expectOk(await call('GET', '/api/saves', { token: u.token }));
+});
+
+test('공격: IPv6 주소를 바꿔 가며 IP 제한 우회 불가 (/64 단위), IPv4-mapped 주소는 IPv4 와 같음', async () => {
+  const net = `2001:db8:${(++idSeq).toString(16)}:7`;
+  for (let i = 1; i <= 20; i++) {
+    const r = await login('nobody_' + i, 'wrong-password', { ip: `${net}::${i.toString(16)}` });
+    assert.notEqual(r.body.error, 'rate_limited', `${i}번째에 이미 제한`);
+  }
+  expectErr(await login('nobody_x', 'wrong-password', { ip: `${net}:ffff:ffff:ffff:ffff` }), 429, 'rate_limited');
+  expectErr(await login('nobody_y', 'wrong-password', { ip: `${net}:0:0:0:abcd`.toUpperCase() }), 429, 'rate_limited');
+  expectErr(await login('nobody_z', 'wrong-password', { ip: `2001:db8:${idSeq.toString(16)}:8::1` }), 401, 'invalid_credentials'); // 다른 /64
+  const v4 = freshIp();
+  for (let i = 0; i < 20; i++) await login('nobody_' + i, 'wrong-password', { ip: i % 2 ? v4 : `::ffff:${v4}` });
+  expectErr(await login('nobody_q', 'wrong-password', { ip: `::FFFF:${v4}` }), 429, 'rate_limited');
+  // 가입 수 제한도 /64 단위
+  const net2 = `2001:db8:${(++idSeq).toString(16)}:9`;
+  for (let i = 1; i <= 5; i++) await signup(newId(), PW, { ip: `${net2}::${i}` });
+  expectErr(await call('POST', '/api/auth/signup', { body: { id: newId(), password: PW }, ip: `${net2}::99` }), 429, 'signup_limited');
+});
+
+test('공격: X-Forwarded-For·x-nf-client-connection-ip 위조 무시 (context.ip 만 믿음)', async () => {
+  const base = freshIp();
+  const spoof = (i) => ({ 'x-forwarded-for': `10.0.0.${i}`, 'x-nf-client-connection-ip': `10.0.1.${i}`, 'x-real-ip': `10.0.2.${i}`, 'client-ip': `10.0.3.${i}` });
+  for (let i = 0; i < 20; i++) await login('nobody_' + i, 'wrong-password', { ip: base, headers: spoof(i) });
+  expectErr(await login('nobody_x', 'wrong-password', { ip: base, headers: spoof(99) }), 429, 'rate_limited');
+  // context.ip 가 없으면 헤더로 대신하지 않고 하나의 '알 수 없음' 묶음으로 센다
+  for (let i = 0; i < 20; i++) await login('nobody_' + i, 'wrong-password', { ip: null, headers: spoof(100 + i) });
+  expectErr(await login('nobody_y', 'wrong-password', { ip: null, headers: spoof(200) }), 429, 'rate_limited');
+});
+
+test('공격: 동시 가입으로 IP당 가입 5개 제한 우회 불가', async () => {
+  const ip = freshIp();
+  const rs = await burst(12, () => call('POST', '/api/auth/signup', { body: { id: newId(), password: PW }, ip }), (op, st) => op === 'getMetadata' && st === 'bn-users');
+  rs.forEach(noteSignup);
+  let made = rs.filter((r) => r.status === 201).length;
+  for (const r of rs) assert.ok(r.status === 201 || r.status === 429, r.text);
+  for (let i = 0; i < 6; i++) {
+    const r = await call('POST', '/api/auth/signup', { body: { id: newId(), password: PW }, ip });
+    noteSignup(r);
+    if (r.status === 201) made++; else expectErr(r, 429, 'signup_limited');
+  }
+  assert.equal(made, 5, `한 IP 에서 ${made}개 가입`);
+}, { memOnly: true });
+
+test('경합: 로그인 도중 비밀번호가 바뀌면 그 로그인은 세션을 받지 못함', async () => {
+  const b = currentBackend;
+  const u = await signup(newId(), PW, { ip: freshIp() });
+  const NEW = 'changed-during-login-1';
+  SECRETS.add(NEW);
+  let fired = false;
+  b.hook = async (op, store) => {
+    if (fired || op !== 'setJSON' || store !== 'bn-sessions') return;
+    fired = true; // 로그인이 옛 비밀번호를 확인하고 세션을 만들기 직전, 주인이 비밀번호를 바꾼다
+    expectOk(await call('POST', '/api/auth/password', { body: { oldPassword: PW, newPassword: NEW }, token: u.token, ip: freshIp() }));
+  };
+  let r;
+  try { r = await login(u.id, PW, { ip: freshIp() }); } finally { b.hook = null; }
+  assert.ok(fired);
+  if (r.body.ok) expectErr(await call('GET', '/api/auth/me', { token: r.body.token }), 401, 'unauthorized');
+  else expectErr(r, 401, 'invalid_credentials');
+  expectOk(await call('GET', '/api/auth/me', { token: u.token }));
+  expectOk(await login(u.id, NEW, { ip: freshIp() }));
+}, { memOnly: true });
+
+test('경합: 로그인 재해시가 방금 바뀐 비밀번호를 옛 비밀번호로 되돌리지 않음', async () => {
+  const b = currentBackend;
+  ENV.delete('AUTH_PEPPER');
+  const u = await signup(newId(), PW, { ip: freshIp() });
+  ENV.set('AUTH_PEPPER', 'test-pepper-value-0123456789'); // 다음 로그인에서 재해시가 일어난다
+  const NEW = 'changed-during-rehash-2';
+  SECRETS.add(NEW);
+  let fired = false;
+  b.hook = async (op, store, key) => {
+    if (fired || op !== 'setJSON' || store !== 'bn-users' || key !== u.id) return;
+    fired = true;
+    expectOk(await call('POST', '/api/auth/password', { body: { oldPassword: PW, newPassword: NEW }, token: u.token, ip: freshIp() }));
+  };
+  try { await login(u.id, PW, { ip: freshIp() }); } finally { b.hook = null; }
+  assert.ok(fired);
+  expectErr(await login(u.id, PW, { ip: freshIp() }), 401, 'invalid_credentials');
+  expectOk(await login(u.id, NEW, { ip: freshIp() }));
+  ENV.delete('AUTH_PEPPER');
+}, { memOnly: true });
+
+test('경합: 탈퇴와 동시에 올린 세이브가 서버에 남지 않음', async () => {
+  const b = currentBackend;
+  const u = await signup(newId(), PW, { ip: freshIp() });
+  const uid = JSON.parse(await readRaw('bn-users', u.id)).uid;
+  let fired = false;
+  b.hook = async (op, store) => {
+    if (fired || op !== 'setJSON' || store !== 'bn-saves') return;
+    fired = true; // 세이브가 인증을 통과하고 쓰기 직전에 탈퇴가 끝난다
+    expectOk(await call('DELETE', '/api/auth/account', { body: { password: PW }, token: u.token, ip: freshIp() }));
+  };
+  let r;
+  try { r = await call('PUT', '/api/saves/2', { body: { data: validSave(), baseRev: 0 }, token: u.token }); } finally { b.hook = null; }
+  assert.ok(fired);
+  expectErr(r, 401, 'unauthorized');
+  assert.deepEqual((await storageKeys()).filter((k) => k.includes(uid)), [], '탈퇴한 계정의 세이브가 남음');
+}, { memOnly: true });
+
+test('공격: 너무 깊은 JSON·__proto__ 키 거부 (스택 넘침 DoS·프로토타입 오염 방지)', async () => {
+  const u = await signup(newId(), PW, { ip: freshIp() });
+  const s = validSave();
+  let node = {};
+  s.progress.flags.deep = node;
+  for (let i = 0; i < 40; i++) { node.x = {}; node = node.x; }
+  expectErr(await call('PUT', '/api/saves/1', { body: { data: s, baseRev: 0 }, token: u.token }), 422, 'invalid_save');
+  const n = 200000; // 512KB 안에 20만 겹 배열
+  const errs = await quiet(async () => {
+    expectErr(await call('PUT', '/api/saves/1', { raw: `{"data":${'['.repeat(n)}${']'.repeat(n)},"baseRev":0}`, token: u.token }), 400, 'bad_request');
+    expectErr(await call('PUT', '/api/meta', { raw: `{"data":{"bestiary":${'{"a":'.repeat(9000)}1${'}'.repeat(9000)}},"baseRev":0}`, token: u.token }), 400, 'bad_request');
+  });
+  assert.deepEqual(errs, [], '서버 내부 오류가 나면 안 됨');
+  const good = JSON.stringify({ data: validSave(), baseRev: 0 });
+  const proto = good.replace('"progress":{', '"progress":{"__proto__":{"polluted":true},');
+  assert.notEqual(proto, good);
+  expectErr(await call('PUT', '/api/saves/1', { raw: proto, token: u.token }), 422, 'invalid_save');
+  const meta = JSON.stringify({ data: { bestiary: { bat: 3 } }, baseRev: 0 }).replace('"bestiary":{', '"bestiary":{"__proto__":{"x":1},');
+  expectErr(await call('PUT', '/api/meta', { raw: meta, token: u.token }), 422, 'invalid_meta');
+  expectErr(await call('POST', '/api/auth/login', { raw: `{"id":${'['.repeat(100)}${']'.repeat(100)},"password":"x"}`, ip: freshIp() }), 400, 'bad_request');
+  expectOk(await call('PUT', '/api/saves/1', { body: { data: validSave(), baseRev: 0 }, token: u.token }));
+  assert.equal(({}).polluted, undefined);
+});
+
+test('보안: 내부 오류 로그에 토큰·키·IP·URL 이 남지 않음', async () => {
+  const b = currentBackend;
+  const tok = 'Qx7_' + 'aB3-'.repeat(10);
+  const hex = 'c0ffee'.repeat(11);
+  b.failAll = `Netlify Blobs has generated an internal error (502 status code, ID: 01J8Z): https://blobs.example.net/site:bn-sessions/${hex}?sig=${tok} from 203.0.113.9 / 2001:db8:abcd::17 mail a@b.io`;
+  let errs;
+  try {
+    errs = await quiet(async () => expectErr(await call('POST', '/api/auth/login', { body: { id: 'someone', password: 'whatever1' }, ip: freshIp() }), 500, 'server_error'));
+  } finally { b.failAll = false; }
+  assert.equal(errs.length, 1);
+  for (const bad of [tok, hex, '203.0.113.9', '2001:db8:abcd::17', 'https://', 'blobs.example.net', 'a@b.io', 'whatever1']) assert.ok(!errs[0].includes(bad), `로그에 남음: ${bad} → ${errs[0]}`);
+  assert.match(errs[0], /Netlify Blobs has generated an internal error/);
+}, { memOnly: true });
+
+test('보안: API 응답 보안 헤더 (CSP·프레임 금지·CORP·Referrer)', async () => {
+  const u = await signup(newId(), PW, { ip: freshIp() });
+  for (const r of [await call('GET', '/api/health'), await call('GET', '/api/nope'), await call('GET', '/api/saves'), await call('GET', '/api/saves', { token: u.token })]) {
+    assert.equal(r.headers.get('content-security-policy'), "default-src 'none'; frame-ancestors 'none'; sandbox");
+    assert.equal(r.headers.get('x-frame-options'), 'DENY');
+    assert.equal(r.headers.get('cross-origin-resource-policy'), 'same-origin');
+    assert.equal(r.headers.get('referrer-policy'), 'no-referrer');
+  }
+});
+
+test('보안: 흔한 비밀번호·아이디가 들어간 비밀번호 거부 → 400 weak_password (가입·변경·복구)', async () => {
+  const id = newId('weak');
+  const weak = ['12345678', 'password', 'Password1', 'qwer1234', '1q2w3e4r', 'QWERTY123', 'aaaaaaaa', 'abababab', '12121212', '가나다라마바사아',
+    'iloveyou', 'abcdefgh', '87654321', `${id}1`, `${id}!!`, `12${id}`, 'bloodnocturne', 'ㅁㄴㅇㄹㅁㄴㅇㄹ'];
+  for (const password of weak) {
+    const r = await call('POST', '/api/auth/signup', { body: { id, password }, ip: freshIp() });
+    assert.equal(r.body.error, 'weak_password', `${password} → ${r.text}`);
+    assert.equal(r.status, 400);
+  }
+  const u = await signup(newId(), PW, { ip: freshIp() });
+  expectErr(await call('POST', '/api/auth/password', { body: { oldPassword: PW, newPassword: 'qwer1234' }, token: u.token, ip: freshIp() }), 400, 'weak_password');
+  expectErr(await call('POST', '/api/auth/recover', { body: { id: u.id, recoveryCode: u.recoveryCode, newPassword: '1q2w3e4r' }, ip: freshIp() }), 400, 'weak_password');
+  for (const ok of ['violet-bat-1987', '달빛아래검은성', 'x9!kQ2#mZ']) await signup(newId(), ok, { ip: freshIp() });
+});
+
+test('보안: scrypt N=2^15·r=8·p=3 (OWASP 최소 기준), 옛 매개변수 해시는 로그인 때 올라감', async () => {
+  assert.deepEqual([cfg.SCRYPT.N, cfg.SCRYPT.r, cfg.SCRYPT.p], [32768, 8, 3]);
+  const { scryptSync, randomBytes } = await import('node:crypto');
+  const u = await signup(newId(), PW, { ip: freshIp() });
+  const rec = JSON.parse(await readRaw('bn-users', u.id));
+  const salt = randomBytes(32);
+  rec.pw = { alg: 'scrypt', N: 16384, r: 8, p: 1, len: 64, salt: salt.toString('base64'), hash: scryptSync(PW.normalize('NFC'), salt, 64, { N: 16384, r: 8, p: 1 }).toString('base64'), pep: 0 };
+  await adminCtx().store('bn-users').setJSON(u.id, rec);
+  expectOk(await login(u.id, PW, { ip: freshIp() }));
+  const after = JSON.parse(await readRaw('bn-users', u.id));
+  assert.deepEqual([after.pw.N, after.pw.r, after.pw.p], [32768, 8, 3]);
+  expectOk(await login(u.id, PW, { ip: freshIp() }));
+});
+
+test('로그인 유지: remember:false → 12시간 세션(1시간 넘게 지나 쓰면 연장), 생략·true → 30일', async () => {
+  const u = await signup(newId(), PW, { ip: freshIp() });
+  const loginR = (remember) => call('POST', '/api/auth/login', { body: { id: u.id, password: PW, remember }, ip: freshIp() });
+  const short = expectOk(await loginR(false)).token;
+  const idle = expectOk(await loginR(false)).token;
+  const long = expectOk(await loginR(true)).token;
+  [short, idle, long].forEach((t) => SECRETS.add(t));
+  const me = (token) => call('GET', '/api/auth/me', { token });
+  advance(2 * HOUR);
+  expectOk(await me(short)); // 연장 → 14시간째 만료
+  advance(11 * HOUR);        // 13시간째
+  expectErr(await me(idle), 401, 'unauthorized');
+  expectOk(await me(short)); // 연장 → 25시간째 만료
+  advance(12 * HOUR + 1);
+  expectErr(await me(short), 401, 'unauthorized');
+  expectOk(await me(long));
+  expectOk(await me(u.token));
+  for (const remember of ['no', 0, 1, {}]) expectErr(await loginR(remember), 400, 'bad_request');
+  const v = await call('POST', '/api/auth/signup', { body: { id: newId(), password: PW, remember: false }, ip: freshIp() });
+  noteSignup(v);
+  expectOk(v, 201);
+  advance(12 * HOUR + 1);
+  expectErr(await me(v.body.token), 401, 'unauthorized');
+});
+
+test('로그아웃: {all:true} → 모든 기기에서 로그아웃 (비밀번호는 그대로)', async () => {
+  const u = await signup(newId(), PW, { ip: freshIp() });
+  const t2 = expectOk(await login(u.id, PW, { ip: freshIp() })).token;
+  const t3 = expectOk(await login(u.id, PW, { ip: freshIp() })).token;
+  expectErr(await call('POST', '/api/auth/logout', { raw: '{"all":true}', ctype: 'text/plain', token: t2 }), 415, 'unsupported_media_type');
+  expectErr(await call('POST', '/api/auth/logout', { body: { all: 'yes' }, token: t2 }), 400, 'bad_request');
+  expectOk(await call('GET', '/api/auth/me', { token: t2 }));
+  const r = expectOk(await call('POST', '/api/auth/logout', { body: { all: true }, token: t2 }));
+  assert.equal(r.revoked, 3);
+  for (const t of [u.token, t2, t3]) expectErr(await call('GET', '/api/auth/me', { token: t }), 401, 'unauthorized');
+  const t4 = expectOk(await login(u.id, PW, { ip: freshIp() })).token;
+  const t5 = expectOk(await login(u.id, PW, { ip: freshIp() })).token;
+  assert.equal(expectOk(await call('POST', '/api/auth/logout', { body: { all: false }, token: t4 })).revoked, 1);
+  expectOk(await call('GET', '/api/auth/me', { token: t5 }));
+});
+
+test('배포 문맥을 알 수 없으면 저장소를 열지 않고 500 (운영 데이터가 배포별 저장소로 새지 않게)', async () => {
+  const errs = await quiet(async () => {
+    expectErr(await call('POST', '/api/auth/signup', { body: { id: newId(), password: PW }, ip: freshIp(), deploy: null }), 500, 'server_error');
+    expectOk(await call('GET', '/api/health', { deploy: null }));
+  });
+  assert.equal(errs.length, 1);
+  assert.match(errs[0], /deploy context/);
 });
 
 // ═════════ 실행 ═════════

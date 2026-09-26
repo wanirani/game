@@ -1820,8 +1820,8 @@ function drawHeroYaw(ctx, p, world, opts, K, look) {
   const deg = (yaw * 180) / PI, stepF = deg / 45, i0 = Math.floor(stepF), f = stepF - i0;
   const norm = (d) => { d = ((d + 180) % 360 + 360) % 360 - 180; return d === -180 ? 180 : d; };
   const d0 = norm(i0 * 45), d1 = norm((i0 + 1) * 45);
-  const k = smooth01((f - 0.35) / 0.3);                 // 가운데 30% 에서 교차
-  const sq = 1 - 0.16 * Math.sin(PI * f);               // 돌아가는 느낌의 가로 압축
+  const k = smooth01((f - 0.42) / 0.16);                // 가운데 16% 에서만 교차 (겹쳐 보이는 구간 최소화)
+  const sq = 1 - 0.24 * Math.sin(PI * f);               // 돌아가는 느낌의 가로 압축 (중간에서 가장 좁음)
   const views = [[d0, 1 - k], [d1, k]];
   G.c = ctx; G.tint = opts.tint || null; G.t = tt; G.fx = !opts.tint && !opts.noFx;
   const aBase = opts.alpha ?? 1;

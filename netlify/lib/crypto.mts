@@ -41,8 +41,10 @@ function saneParams(h: SecretHash | undefined | null): h is SecretHash {
   if (!h || h.alg !== 'scrypt' || typeof h.salt !== 'string' || typeof h.hash !== 'string') return false;
   const powerOf2 = Number.isInteger(h.N) && h.N >= 1024 && h.N <= 1 << 20 && (h.N & (h.N - 1)) === 0;
   return powerOf2 && Number.isInteger(h.r) && h.r >= 1 && h.r <= 32 && Number.isInteger(h.p) && h.p >= 1 && h.p <= 8
-    && Number.isInteger(h.len) && h.len >= 16 && h.len <= 128;
+    && Number.isInteger(h.len) && h.len >= 16 && h.len <= 128 && 129 * h.N * h.r <= SCRYPT.maxmem;
 }
+
+const cost = (N: number, r: number, p: number): number => N * r * p;
 
 let warnedPepper = false;
 
@@ -56,7 +58,10 @@ export async function verifySecret(secret: string, h: SecretHash | undefined | n
     return false;
   }
   const expected = Buffer.from(h.hash, 'base64');
-  const actual = await derive(input, Buffer.from(h.salt, 'base64'), h.len, h.N, h.r, h.p);
+  // 옛(더 가벼운) 매개변수로 만든 해시도 현재 매개변수 한 번만큼 시간을 쓰게 한다 — 없는 아이디(가짜 검증)와
+  // 응답 시간이 달라 '재해시 전 계정이 있다'는 것이 드러나지 않게
+  const pad = cost(h.N, h.r, h.p) < cost(SCRYPT.N, SCRYPT.r, SCRYPT.p) ? burn(secret) : Promise.resolve();
+  const [actual] = await Promise.all([derive(input, Buffer.from(h.salt, 'base64'), h.len, h.N, h.r, h.p), pad]);
   return expected.length === actual.length && timingSafeEqual(expected, actual);
 }
 
@@ -106,9 +111,69 @@ export function normalizeRecoveryCode(input: unknown): string | null {
   return /^[0-9A-HJKMNP-TV-Z]{16}$/.test(s) ? s : null;
 }
 
-/** IP 를 그대로 저장하지 않도록 키로 바꾼다 */
+// ── 요청 제한용 '망' ──
+function v4parts(t: string): number[] | null {
+  const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(t);
+  if (!m) return null;
+  const p = m.slice(1).map(Number);
+  return p.every((x) => x <= 255) ? p : null;
+}
+
+/** IPv6 문자열 → 16비트 8개 (끝의 IPv4 표기 포함). 형식이 틀리면 null */
+function parseV6(input: string): number[] | null {
+  let s = input;
+  const extra: number[] = [];
+  const lc = s.lastIndexOf(':');
+  if (s.slice(lc + 1).includes('.')) {
+    const p = v4parts(s.slice(lc + 1));
+    if (!p) return null;
+    extra.push((p[0] << 8) | p[1], (p[2] << 8) | p[3]);
+    s = s.slice(0, lc + 1);
+    if (!s.endsWith('::')) s = s.slice(0, -1);
+  }
+  const want = 8 - extra.length;
+  const groups = (part: string): number[] | null => {
+    if (part === '') return [];
+    const out: number[] = [];
+    for (const g of part.split(':')) {
+      if (!/^[0-9a-f]{1,4}$/.test(g)) return null;
+      out.push(parseInt(g, 16));
+    }
+    return out;
+  };
+  const dbl = s.indexOf('::');
+  if (dbl >= 0) {
+    if (s.indexOf('::', dbl + 1) >= 0) return null;
+    const head = groups(s.slice(0, dbl)), tail = groups(s.slice(dbl + 2));
+    if (!head || !tail || head.length + tail.length > want - 1) return null;
+    return [...head, ...new Array<number>(want - head.length - tail.length).fill(0), ...tail, ...extra];
+  }
+  const all = groups(s);
+  return all && all.length === want ? [...all, ...extra] : null;
+}
+
+/**
+ * 요청 제한에 쓰는 '망' 이름: IPv4 는 주소 그대로, IPv4-mapped IPv6(::ffff:a.b.c.d)는 IPv4 로, IPv6 는 앞 64비트(/64).
+ * 한 가입자·기기는 보통 IPv6 /64 전체를 받으므로 주소 하나하나를 따로 세면 주소만 바꿔 가며 제한을 무한히 피할 수 있다.
+ */
+export function netOf(ip: string): string {
+  let s = String(ip ?? '').trim().toLowerCase();
+  if (s.startsWith('[')) { const e = s.indexOf(']'); if (e > 0) s = s.slice(1, e); }
+  const z = s.indexOf('%');
+  if (z >= 0) s = s.slice(0, z);
+  const a = v4parts(s);
+  if (a) return a.join('.');
+  if (!s.includes(':')) return s ? `other:${s.slice(0, 64)}` : 'unknown';
+  const h = parseV6(s);
+  if (!h) return `other:${s.slice(0, 64)}`;
+  if (h.slice(0, 5).every((x) => x === 0) && h[5] === 0xffff) return [h[6] >> 8, h[6] & 255, h[7] >> 8, h[7] & 255].join('.');
+  return `${h.slice(0, 4).map((x) => x.toString(16)).join(':')}::/64`;
+}
+
+/** 망(netOf)을 그대로 저장하지 않도록 키로 바꾼다 (AUTH_PEPPER 가 있으면 HMAC) */
 export function ipKey(ip: string): string {
+  const net = netOf(ip);
   const pepper = env('AUTH_PEPPER');
-  const h = pepper ? createHmac('sha256', pepper).update('ip:' + ip) : createHash('sha256').update('bn-ip:' + ip);
+  const h = pepper ? createHmac('sha256', pepper).update('ip:' + net) : createHash('sha256').update('bn-ip:' + net);
   return h.digest('hex').slice(0, 40);
 }

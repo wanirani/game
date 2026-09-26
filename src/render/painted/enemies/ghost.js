@@ -19,7 +19,7 @@ const ECTO = '#8fe6ff';
 
 export function draw(ctx, e, world, o, rig) {
   const t = e.t ?? 0;
-  const S = 0.92;                                       // painted figure is a touch taller than the 56 px hurtbox
+  const S = 1.05;                                       // visible figure ≈ the 56 px hurtbox (hem fades into mist)
   const f = e.facing < 0 ? -1 : 1;
   const vx = (e.vx ?? 0) * f, vy = e.vy ?? 0, spd = Math.hypot(vx, vy);
   const p = world?.player;
@@ -57,10 +57,10 @@ export function draw(ctx, e, world, o, rig) {
   };
   if (!o.flash) {           // additive ghost glow pass (baked colour silhouette), slightly larger
     const gco = ctx.globalCompositeOperation; ctx.globalCompositeOperation = 'lighter';
-    K.strips('body', 'top', tx + 1, ty - 1, lean, sx * 1.04, sy * 1.02, 8, 'y', off, 0.22, 'glow');
+    K.warpY('body', 'top', tx + 1, ty - 1, lean, sx * 1.04, sy * 1.02, 10, off, 0.22, 'glow', 1);
     ctx.globalCompositeOperation = gco;
   }
-  K.strips('body', 'top', tx, ty, lean, sx, sy, 14, 'y', off, 1);
+  K.warpY('body', 'top', tx, ty, lean, sx, sy, 16, off, 1, 'base', 0);
   // reaching arm from the sleeve: sways idle, reaches for the player when close
   K.pivotPos('body', 'top', 'arm', tx, ty, lean, sx, sy, _q);
   const arm = K.part('arm');

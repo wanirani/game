@@ -610,9 +610,18 @@ export function drawTurnCape(ctx, I, cape, yaw, behind, t) {
     c.fillStyle = pat || cape.c;
   } else c.fillStyle = cape.c;
   c.fill();
+  // 주름: 세로 명암 띠 (어깨에서 모여 밑단으로 퍼짐) + 가장자리 어둡게
   const g = c.createLinearGradient(dx - wBot, 0, dx + wBot, 0);
-  g.addColorStop(0, ra('#000000', 0.45)); g.addColorStop(0.35, ra('#000000', 0)); g.addColorStop(0.7, ra('#000000', 0.05)); g.addColorStop(1, ra('#000000', 0.5));
+  const F = 5;
+  for (let i = 0; i <= F * 2; i++) {
+    const u = i / (F * 2), edge = Math.abs(u - 0.5) * 2;
+    const a = i % 2 ? 0.02 : 0.2;
+    g.addColorStop(u, ra('#000000', Math.min(0.6, a + edge * edge * 0.4)));
+  }
   c.fillStyle = g; c.fill();
+  const hi = c.createLinearGradient(0, sy, 0, hem);
+  hi.addColorStop(0, ra('#ffffff', 0.1)); hi.addColorStop(0.3, ra('#ffffff', 0)); hi.addColorStop(1, ra('#000000', 0.25));
+  c.fillStyle = hi; c.fill();
   c.strokeStyle = ra('#0a0306', 0.6); c.lineWidth = 0.6; c.stroke();
   if (!back) { c.strokeStyle = ra(cape.c2, 0.9); c.lineWidth = 1.1; c.beginPath(); c.moveTo(dx - wBot * 0.98, hem); c.lineTo(dx + wBot * 0.98, hem); c.stroke(); }
   if (cape.style === 'royal') { c.strokeStyle = '#e8c872'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(dx - wTop, sy + 0.5); c.quadraticCurveTo(dx, sy - 2, dx + wTop, sy + 0.5); c.stroke(); }

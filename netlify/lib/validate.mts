@@ -1,4 +1,4 @@
-// 입력 검증: 아이디, 비밀번호, 세이브 데이터 구조(isValidSave 복사본), 전역 메타, 슬롯 요약.
+// 입력 검증: 아이디, 비밀번호(흔한 비밀번호 거부 포함), 세이브 데이터 구조(isValidSave 복사본), 전역 메타, 슬롯 요약.
 import { CHARACTER_IDS } from './config.mts';
 import { fail, isObj } from './http.mts';
 
@@ -41,11 +41,79 @@ export function passwordShapeOk(pw: unknown): pw is string {
   return n >= 8 && n <= 64 && !CONTROL_RE.test(pw);
 }
 
+/**
+ * 흔한 비밀번호 (소문자로 비교, 8자 이상만 — 더 짧은 것은 길이 규칙에서 걸린다).
+ * 아이디별 잠금(10분에 5번·시간당 20번)만으로는 목록 앞쪽의 비밀번호가 하루 안에 뚫릴 수 있어 가입·변경 때 막는다.
+ * src/core/cloud.js 의 COMMON_PASSWORDS 와 같아야 한다 (tools/accounts/test_api.mjs 가 확인).
+ */
+export const COMMON_PASSWORDS: readonly string[] = [
+  'password', 'password1', 'password12', 'password123', 'password1!', 'password!', 'passw0rd', 'p@ssw0rd', 'p@ssword', 'p@ssw0rd1',
+  'passwords', 'pass1234', 'pass12345', 'mypassword', '12345678', '123456789', '1234567890', '0123456789', '12345678910',
+  '987654321', '0987654321', '11111111', '111111111', '00000000', '88888888', '12341234', '11223344', '11112222', '12344321',
+  '147258369', '159753456', '741852963', '123123123', '123qweasd', '1q2w3e4r', '1q2w3e4r!', '1q2w3e4r5t', '1q2w3e4r5t6y',
+  '1qaz2wsx', '1qazxsw2', '1qaz2wsx3edc', '2wsx3edc', 'q1w2e3r4', 'q1w2e3r4t5', 'qwer1234', 'qwer1234!', '1234qwer', '1234qwer!',
+  'qwerty12', 'qwerty123', 'qwerty1234', 'qwertyui', 'qwertyuiop', 'qwe123456', 'qweasdzxc', 'qweasd123', 'asdf1234', '1234asdf',
+  'asdfghjk', 'asdfghjkl', 'asdf1234!', 'zxcv1234', 'zxcvbnm1', 'zxcvbnm123', 'zxcvbnm!', 'a1234567', 'a12345678', 'a123456789',
+  'abcd1234', 'abcd1234!', 'abc12345', 'abc123456', 'abcdefg1', 'aa123456', 'iloveyou', 'iloveyou1', 'iloveyou!', 'sunshine',
+  'princess', 'football', 'baseball', 'basketball', 'superman', 'starwars', 'trustno1', 'whatever', 'welcome1', 'welcome123',
+  'letmein1', 'letmein123', 'dragon12', 'monkey12', 'master12', 'shadow12', 'michael1', 'jennifer', 'computer', 'internet',
+  'samsung1', 'samsung123', 'admin123', 'admin1234', 'administrator', 'root1234', 'test1234', 'testtest', 'guest123',
+  'dkssudgktpdy', '가나다라마바사아', 'bloodnocturne', 'blood_nocturne', 'bloodnocturne1', 'castlevania', 'dracula1',
+  'dracula123', 'vampire1', 'vampire123', 'nocturne1',
+];
+const COMMON = new Set(COMMON_PASSWORDS);
+
+/** 한 글자씩 1 씩 오르거나 내리는 문자열 (12345678, 87654321, abcdefgh). 숫자는 9 다음 0 도 이어진 것으로 본다 */
+function isRun(p: string): boolean {
+  const c = [...p].map((ch) => ch.codePointAt(0) as number);
+  if (c.length < 3) return false;
+  const step = (a: number, b: number): number => (a === 57 && b === 48 ? 1 : a === 48 && b === 57 ? -1 : b - a);
+  const d = step(c[0], c[1]);
+  return (d === 1 || d === -1) && c.every((x, i) => i === 0 || step(c[i - 1], x) === d);
+}
+
+/** 추측하기 쉬운 비밀번호인가: 흔한 비밀번호, 1~4글자 묶음 반복, 연속된 글자, 아이디 + 3글자 이하 */
+export function isWeakPassword(pw: string, id: string): boolean {
+  const p = pw.normalize('NFC').toLowerCase();
+  if (COMMON.has(p)) return true;
+  if (/^(.{1,4})\1+$/su.test(p)) return true;
+  if (isRun(p)) return true;
+  return !!id && p.includes(id) && [...p].length - id.length < 4;
+}
+
 /** 새 비밀번호 검사 (실패 시 400) */
 export function checkNewPassword(pw: unknown, id: string): string {
   if (!passwordShapeOk(pw)) fail('invalid_password', 400);
   if (pw.normalize('NFC').toLowerCase() === id) fail('password_same_as_id', 400);
+  if (isWeakPassword(pw, id)) fail('weak_password', 400);
   return pw;
+}
+
+/**
+ * 받은 데이터 트리 검사: 중첩 깊이가 maxDepth 이하이고 '__proto__' 키가 없어야 한다.
+ * 서버는 데이터를 그대로 저장했다가 돌려주고, 클라이언트는 그것을 합치거나 대입한다 — 깊은 트리는 재귀 처리의 스택을 넘치게 하고,
+ * JSON.parse 가 만든 자기 속성 '__proto__' 는 대입(obj[k] = v) 때 프로토타입을 바꾼다.
+ */
+export function safeTree(v: unknown, maxDepth: number): boolean {
+  const stack: [unknown, number][] = [[v, 1]];
+  while (stack.length) {
+    const [x, d] = stack.pop()!;
+    if (!x || typeof x !== 'object') continue;
+    if (d > maxDepth) return false;
+    if (Array.isArray(x)) { for (const y of x) stack.push([y, d + 1]); continue; }
+    for (const k of Object.keys(x)) {
+      if (k === '__proto__') return false;
+      stack.push([(x as Record<string, unknown>)[k], d + 1]);
+    }
+  }
+  return true;
+}
+
+/** 선택 불리언 필드 (생략·null = def, 불리언이 아니면 400) */
+export function readBool(v: unknown, def: boolean): boolean {
+  if (v === undefined || v === null) return def;
+  if (typeof v !== 'boolean') fail('bad_request', 400);
+  return v;
 }
 
 // ── 세이브 데이터 ──
@@ -108,7 +176,5 @@ export function readBaseRev(v: unknown): number | null {
 }
 
 export function readForce(v: unknown): boolean {
-  if (v === undefined || v === null) return false;
-  if (typeof v !== 'boolean') fail('bad_request', 400);
-  return v;
+  return readBool(v, false);
 }
