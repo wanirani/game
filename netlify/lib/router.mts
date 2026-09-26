@@ -1,7 +1,7 @@
 // /api/* 라우터: 경로·메서드 확인(404/405), 오류를 JSON 으로 바꾸고 내부 정보는 응답·로그에 남기지 않는다.
 import type { Context } from '@netlify/functions';
-import { ApiError, errorResponse, json, MESSAGES } from './http.mts';
-import { Ctx } from './runtime.mts';
+import { ApiError, errorResponse, json, MESSAGES, ok } from './http.mts';
+import { Ctx, now } from './runtime.mts';
 import { changePassword, deleteAccount, login, logout, me, recover, signup } from './accounts.mts';
 import { deleteSlot, getMeta, getSlot, listSaves, parseSlot, putMeta, putSlot } from './saves.mts';
 
@@ -9,6 +9,8 @@ type Handler = (c: Ctx, param: string) => Promise<Response>;
 interface Route { name: string; re: RegExp; methods: Record<string, Handler> }
 
 const ROUTES: Route[] = [
+  // 클라이언트가 API 사용 가능 여부를 확인하는 용도 (저장소에 접근하지 않음). api = 계약 버전, time = 서버 시각(ms)
+  { name: 'health', re: /^\/api\/health$/, methods: { GET: async () => ok({ api: 1, time: now() }) } },
   { name: 'signup', re: /^\/api\/auth\/signup$/, methods: { POST: (c) => signup(c) } },
   { name: 'login', re: /^\/api\/auth\/login$/, methods: { POST: (c) => login(c) } },
   { name: 'logout', re: /^\/api\/auth\/logout$/, methods: { POST: (c) => logout(c) } },

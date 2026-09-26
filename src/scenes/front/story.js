@@ -32,6 +32,8 @@ const imgKey = (id) => (!id ? null : id.includes('/') ? id : id.startsWith('cg_'
 
 export class StoryScene extends Scene {
   enter({ script = null, lines = null, then = 'hub', thenParams = {}, bg = null, title = null, music = null } = {}) {
+    // 컷신 동안 토스트(결과 화면에서 미뤄진 퀘스트 알림 등)는 CG 위에 뜨지 않도록 숨기고, 다음 장면에서 이어서 보여 준다
+    this.deferToasts = true;
     setPad(false);
     this.taps = new TapZones();
     this.script = script; this.then = then; this.thenParams = thenParams;
@@ -260,8 +262,17 @@ export class StoryScene extends Scene {
   }
   drawPortrait(ctx, vw, vh, t) {
     const P = this.port;
+    // 전체 화면 이벤트 CG 가 떠 있으면 CG 속 인물과 겹치지 않도록 초상화를 그리지 않는다 (명패·대사는 그대로, dialogue.js 와 같음)
+    // CG 가 크로스페이드로 들어오는 동안에는 그만큼 초상화를 흐리게
+    let hide = 0;
+    if (this.cg && assets.get(this.cg)) {
+      const L = this.layers.find((l) => l.key === this.cg);
+      hide = L ? ease.inOutQuad(clamp(L.t / 1.1, 0, 1)) : 1;
+    }
+    if (hide >= 1) return;
     const draw = (key, side, a, slide) => {
       const img = key ? assets.get(key) : null;
+      a *= 1 - hide;
       if (!img || a <= 0) return;
       const fp = featherPortrait(img, key);
       const h = (this.cg ? 0.84 : 0.94) * vh, w = h * img.width / img.height;

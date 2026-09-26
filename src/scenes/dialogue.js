@@ -117,6 +117,7 @@ export class DialogueScene extends Scene {
     this.onEnd?.();
   }
   update(dt) {
+    this.world?.camera.tickShake(dt); // 월드가 멈춘 동안에도 {cmd:'shake'} 흔들림을 바로 재생
     if (!this.cur) return;
     // 터치: 화면 오른쪽 위 '건너뛰기' 버튼 (가상 패드의 Ⅱ 는 대화 중 숨겨진다)
     if (this.skipRect && input.pointer.tapped && !this.menu && inRect(input.pointer, this.skipRect)) { audio.sfx('menu_cancel'); this.skipAll(); return; }
@@ -201,11 +202,12 @@ export class DialogueScene extends Scene {
     const lines = wrap(ctx, this.full.slice(0, Math.floor(this.shown)), bw - 70, 19, 500);
     lines.slice(0, 4).forEach((s, k) => text(ctx, s, bx + 34, by + 46 + k * 29, { size: 19, color: l.who === 'narrator' ? '#c8c0e0' : COLORS.text, ow: 2 }));
     if (this.shown >= this.full.length && !this.menu && Math.floor(this.t * 3) % 2 === 0) text(ctx, '▼', bx + bw - 34, by + bh - 16, { size: 14, color: COLORS.gold });
-    // 터치 모드: 건너뛰기 버튼
+    // 터치 모드: 건너뛰기 버튼 — 대화창 오른쪽 위 모서리에 붙여 HUD(점수·골드)를 가리지 않게, 불투명하게
     this.skipRect = null;
     if (input.touchMode && !this.menu) {
-      this.skipRect = { x: vw - 132, y: 12, w: 118, h: 38 };
-      button(ctx, this.skipRect, '건너뛰기 ▶▶', { size: 15 });
+      const r = this.skipRect = { x: bx + bw - 128, y: by - 46, w: 118, h: 38 };
+      ctx.fillStyle = '#0c0610'; ctx.fillRect(r.x, r.y, r.w, r.h);
+      button(ctx, r, '건너뛰기 ▶▶', { size: 15 });
     }
     if (this.menu && this.shown >= this.full.length) {
       const ch = this.cur.choice;

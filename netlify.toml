@@ -1,0 +1,162 @@
+# 블러드 녹턴 Netlify 배포 설정
+# - 저장소 루트가 그대로 정적 사이트다 (빌드 단계 없음, ES 모듈을 그대로 배포)
+# - 계정·클라우드 저장 API: netlify/functions/api.mts → /api/* (자세한 내용은 docs/ACCOUNTS.md)
+# - 비밀 값은 Netlify 환경 변수로만 설정한다 (선택: AUTH_PEPPER)
+
+[build]
+  publish = "."
+
+[build.environment]
+  # @netlify/blobs 11 은 Node.js 22.12 이상이 필요하다 (함수 런타임도 이 버전을 따른다)
+  NODE_VERSION = "22"
+
+[functions]
+  directory = "netlify/functions"
+
+# ── 공개하지 않을 개발용 파일 (정적 사이트에 필요 없음) ──
+# force = true 라 파일이 있어도 404 를 돌려준다. 서명 키 같은 로컬 파일이 실수로 올라가도 노출되지 않게 한다.
+[[redirects]]
+  from = "/node_modules/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/netlify/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/tools/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/android/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/docs/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/dist/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/package.json"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/package-lock.json"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/netlify.toml"
+  to = "/404.html"
+  status = 404
+  force = true
+
+# ── 보안 헤더 (모든 정적 파일) ──
+# 스크립트: index.html 의 인라인 스크립트(전체화면 버튼·서비스 워커 등록) 때문에 'unsafe-inline' 이 필요하다.
+# 글꼴: 게임은 assets/fonts 의 자체 글꼴을 쓰지만 Google Fonts 도 허용해 둔다.
+# API 는 같은 출처(/api/*)만 호출하므로 connect-src 'self' 로 충분하다 (CORS 헤더를 두지 않는다).
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+    Cross-Origin-Opener-Policy = "same-origin"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
+
+# ── 캐시 ──
+# 코드·문서: 매번 재검증 (ETag 로 바뀐 것만 받는다)
+[[headers]]
+  for = "/"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/src/*"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/css/*"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/manifest.webmanifest"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+# 이미지: src/core/assets.js 가 항상 ?v=<버전> 을 붙여 요청하므로 1년 캐시 (그림을 바꾸면 assets.js 의 version 을 올린다)
+[[headers]]
+  for = "/assets/bg/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/assets/portraits/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/assets/tex/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/assets/cg/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/assets/icons/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/assets/props/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# ?v= 없이 요청되는 파일(글꼴: css/style.css·index.html, 앱 아이콘: manifest)은 짧게
+[[headers]]
+  for = "/assets/fonts/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800, stale-while-revalidate=86400"
+
+[[headers]]
+  for = "/assets/ui/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
+
+[[headers]]
+  for = "/assets/audio/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"

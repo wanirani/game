@@ -34,6 +34,7 @@ export class BossIntroScene extends Scene {
   enter({ bossId, onDone }) { this.def = BOSSES[bossId] || { name: bossId }; this.onDone = onDone; this.dur = 3.6; audio.sfx('warning'); }
   update(dt) {
     if (this.t > 1.3 && !this.roared) { this.roared = true; audio.sfx('boss_roar'); this.game.world?.camera.shake(10, 0.6); }
+    this.game.world?.camera.tickShake(dt); // 월드가 멈춰 있어도 포효 흔들림을 소리와 함께 재생
     if (this.t > this.dur || (this.t > 1.5 && (input.pressed('confirm') || input.pointer.tapped))) { this.game.pop(); this.onDone?.(); }
   }
   render(ctx) {
@@ -94,7 +95,7 @@ export class BossIntroScene extends Scene {
 export class UltCutinScene extends Scene {
   constructor(g) { super(g); this.opaque = false; }
   enter({ charId }) { this.ch = CHARACTERS[charId]; this.dur = 1.1; }
-  update() { if (this.t > this.dur) this.game.pop(); }
+  update(dt) { this.game.world?.camera.tickShake(dt); if (this.t > this.dur) this.game.pop(); }
   render(ctx) {
     const vw = this.game.viewW, vh = this.game.viewH, t = this.t;
     const k = ease.outExpo(clamp(t / 0.25, 0, 1));
@@ -125,7 +126,7 @@ export class DocumentScene extends Scene {
     if (this.game.world) this.game.world.cutscene = true;
   }
   exit() { if (this.game.world) this.game.world.cutscene = false; }
-  update() { if (this.t > 0.6 && (input.pressed('confirm') || input.pressed('cancel') || input.pressed('attack') || input.pointer.tapped)) { audio.sfx('menu_cancel'); this.game.pop(); } }
+  update(dt) { this.game.world?.camera.tickShake(dt); if (this.t > 0.6 && (input.pressed('confirm') || input.pressed('cancel') || input.pressed('attack') || input.pointer.tapped)) { audio.sfx('menu_cancel'); this.game.pop(); } }
   render(ctx) {
     const vw = this.game.viewW, vh = this.game.viewH;
     ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(0, 0, vw, vh);

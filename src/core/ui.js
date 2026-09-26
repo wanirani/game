@@ -514,8 +514,11 @@ function drawDrips(ctx, e, t, time) {
 
 /**
  * 피 글씨: 짙은 진홍 그라데이션 + 어두운 안쪽 테 + 젖은 광택 + 글자에서 천천히 흘러내리는 핏방울.
- * 비트맵은 (문자열·크기·글꼴·스타일·화면배율)별로 캐시되므로 매 프레임 불러도 싸다. 방울만 매 프레임 움직인다.
+ * 비트맵은 (문자열·크기·글꼴·스타일)별로 캐시되므로 매 프레임 불러도 싸다 (방울만 매 프레임 움직인다).
+ * 처음 그릴 때 한 번 굽는 비용이 있으니 장면 enter() 에서 prewarmText(ctx, 같은 문자열, 같은 opts) 를 불러 두면 좋다.
+ * 방울은 글자 아래로 최대 글자 크기만큼 흘러내린다 → 바로 아래에 다른 글이 있으면 drips 를 0.3~0.5 로 줄인다.
  *   bloodText(ctx, '본 드래곤', vw/2, 200, { size: 64, t: this.t })
+ *   bloodText(ctx, 'STAGE CLEAR', vw/2, 70, { size: 50, style: 'gold', t: this.t })
  * opts:
  *   size=48, weight=900, family=FONT.blood, align='center'|'left'|'right', baseline='alphabetic'|'middle'|'top'|'bottom'
  *   style='blood'|'gold'|'bone' (gold/bone 은 양각 금박·뼈 글씨, 기본적으로 방울 없음)

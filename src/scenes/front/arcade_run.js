@@ -88,6 +88,8 @@ class ArcadeRunScene extends Scene {
     w.banner = { text: 'READY?', sub: `남은 목숨 ${w.run.lives}`, t: 1.6, color: '#ffe7a0' };
   }
   canPause() { const w = this.world; return !this.done && !w.player.dead && !w.cutscene && !w.transitioning; }
+  /** 기기를 세로로 돌리거나 탭이 백그라운드로 가면 일시정지 메뉴 (StageScene.autoPause 와 같음, core/game.js 가 호출) */
+  autoPause() { if (this.game.top === this && this.game.fade.dir <= 0 && this.canPause()) this.game.push('arcadePause', { run: this }); }
   update(dt) {
     const w = this.world;
     this.game.state.stats.playTime = (this.game.state.stats.playTime ?? 0) + dt;

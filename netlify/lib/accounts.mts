@@ -26,7 +26,7 @@ export interface Auth { id: string; uid: string; hash: string; user: UserRec }
 const MAX_SECRET_CHARS = 256;
 const unauthorized = (): never => fail('unauthorized', 401, undefined, { 'WWW-Authenticate': 'Bearer' });
 
-async function getUser(c: Ctx, id: string): Promise<{ user: UserRec; etag?: string } | null> {
+export async function getUser(c: Ctx, id: string): Promise<{ user: UserRec; etag?: string } | null> {
   const r = await c.store(STORES.users).getWithMetadata(id, { type: 'json' });
   if (!r || !r.data || typeof r.data !== 'object' || r.data.id !== id) return null;
   const user = r.data as UserRec;
@@ -35,7 +35,7 @@ async function getUser(c: Ctx, id: string): Promise<{ user: UserRec; etag?: stri
 }
 
 /** 조건부 쓰기로 사용자 레코드 수정 (동시 수정 시 다시 읽고 재시도). 계정이 없거나 바뀌었으면 401 */
-async function updateUser(c: Ctx, id: string, uid: string, mutate: (u: UserRec) => void): Promise<UserRec> {
+export async function updateUser(c: Ctx, id: string, uid: string, mutate: (u: UserRec) => void): Promise<UserRec> {
   const users = c.store(STORES.users);
   for (let i = 0; i < CAS_RETRIES; i++) {
     const got = await getUser(c, id);
@@ -49,7 +49,7 @@ async function updateUser(c: Ctx, id: string, uid: string, mutate: (u: UserRec) 
   throw new Error('user update contention');
 }
 
-async function dropSessionBlobs(c: Ctx, hashes: string[]): Promise<void> {
+export async function dropSessionBlobs(c: Ctx, hashes: string[]): Promise<void> {
   const st = c.store(STORES.sessions);
   await Promise.all(hashes.map((h) => st.delete(h)));
 }
@@ -103,11 +103,16 @@ export async function authenticate(c: Ctx): Promise<Auth> {
   let user = got!.user;
   if (t - (entry!.refreshedAt ?? entry!.createdAt) >= SESSION.refreshAfterMs) {
     const expiresAt = t + SESSION.ttlMs;
-    user = await updateUser(c, user.id, user.uid, (u) => {
-      const e = u.sessions.find((x) => x?.h === hash);
-      if (e) { e.expiresAt = expiresAt; e.refreshedAt = t; }
-    });
-    await sessions.setJSON(hash, { ...blob!, expiresAt });
+    try {
+      user = await updateUser(c, user.id, user.uid, (u) => {
+        const e = u.sessions.find((x) => x?.h === hash);
+        if (e) { e.expiresAt = expiresAt; e.refreshedAt = t; }
+      });
+      await sessions.setJSON(hash, { ...blob!, expiresAt });
+    } catch (e) {
+      if (e instanceof ApiError) throw e; // 그사이 계정이 삭제됨
+      // 연장 실패는 이번 요청을 막지 않는다 (다음 요청에서 다시 연장)
+    }
   }
   return { id: user.id, uid: user.uid, hash, user };
 }
@@ -254,13 +259,17 @@ export async function deleteAccount(c: Ctx): Promise<Response> {
     if (lock > 0) failRetry('locked', lock);
     fail('wrong_password', 403);
   }
-  // 저장 데이터 → 세션 → 제한 기록 → 사용자 레코드 순서로 지운다 (중간에 실패해도 다시 탈퇴하면 이어서 지워진다)
-  const saves = c.store(STORES.saves);
-  const listed = await saves.list({ prefix: `${a.uid}/` });
-  const keys = new Set([...listed.blobs.map((b) => b.key), ...SLOTS.map((s) => `${a.uid}/slot${s}`), `${a.uid}/meta`]);
-  await Promise.all([...keys].map((k) => saves.delete(k)));
-  await dropSessionBlobs(c, a.user.sessions.map((e) => e?.h).filter((h): h is string => typeof h === 'string'));
-  await Promise.all([clearFailures(c, 'login', a.id), clearFailures(c, 'recover', a.id)]);
-  await c.store(STORES.users).delete(a.id);
+  await purgeAccount(c, a.user);
   return ok();
+}
+
+/** 계정 완전 삭제: 저장 데이터 → 세션 → 제한 기록 → 사용자 레코드 순서 (중간에 실패해도 다시 실행하면 이어서 지워진다) */
+export async function purgeAccount(c: Ctx, user: UserRec): Promise<void> {
+  const saves = c.store(STORES.saves);
+  const listed = await saves.list({ prefix: `${user.uid}/` });
+  const keys = new Set([...listed.blobs.map((b) => b.key), ...SLOTS.map((s) => `${user.uid}/slot${s}`), `${user.uid}/meta`]);
+  await Promise.all([...keys].map((k) => saves.delete(k)));
+  await dropSessionBlobs(c, user.sessions.map((e) => e?.h).filter((h): h is string => typeof h === 'string'));
+  await Promise.all([clearFailures(c, 'login', user.id), clearFailures(c, 'recover', user.id)]);
+  await c.store(STORES.users).delete(user.id);
 }

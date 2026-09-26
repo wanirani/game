@@ -7,7 +7,8 @@
   "scripts": {
     "serve": "node tools/serve.mjs",
     "smoke": "node tools/smoke.mjs",
-    "validate": "node tools/validate_maps.mjs"
+    "validate": "node tools/validate_maps.mjs",
+    "test:api": "node tools/accounts/test_api.mjs"
   },
   "devDependencies": {
     "playwright-core": "1.56.1"

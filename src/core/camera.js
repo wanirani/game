@@ -55,7 +55,10 @@ export class Camera {
       this.y = lerp(this.y, ty, 1 - Math.pow(0.004, dt));
     }
     this.clamp();
-    // 쉐이크
+    this.tickShake(dt);
+  }
+  /** 흔들림 감쇠·오프셋 갱신. 월드를 멈추는 오버레이(보스 등장·대화)도 호출해서, 떠 있는 동안 시작된 흔들림이 제때 재생되게 한다 */
+  tickShake(dt) {
     if (this.shakeT > 0) {
       this.shakeT -= dt;
       const m = this.shakeMag * Math.min(1, this.shakeT * 6);

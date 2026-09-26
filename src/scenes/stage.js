@@ -14,6 +14,8 @@ export class StageScene extends Scene {
   exit() { if (this.game.world === this.world) this.game.world = null; }
   resize() { this.world?.camera.setView(this.game.viewW, this.game.viewH); }
   onResume() { this.world.player?.refreshStats(); }
+  /** 토스트 줄: 클리어 뒤에는 STAGE CLEAR 배너(화면 36% 높이) 아래로 내려 전리품·1UP 알림이 배너를 가리지 않게 */
+  get toastY() { return this.world?.cleared ? Math.round(this.game.viewH * 0.5) : undefined; }
   canPause() { const w = this.world; return !!w?.player && !w.cleared && !w.player.dead && !w.cutscene; }
   /** 기기를 세로로 돌리거나 탭이 백그라운드로 가면 일시정지 메뉴를 띄운다 (core/game.js) */
   autoPause() { if (this.game.top === this && this.game.fade.dir <= 0 && this.canPause()) this.game.push('pause', { world: this.world }); }

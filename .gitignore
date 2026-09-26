@@ -9,3 +9,6 @@ dist/
 tools/android/*.keystore
 tools/android/keystore.properties
 tools/android/*.jks
+
+# Netlify CLI 로컬 상태 (netlify dev / link)
+.netlify/

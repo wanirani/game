@@ -126,6 +126,14 @@ const test = (name, fn, opts = {}) => tests.push({ name, fn, ...opts });
 // ═════════ 라우팅·HTTP ═════════
 test('함수 설정: path /api/*', () => { assert.equal(fnConfig.path, '/api/*'); });
 
+test('GET /api/health → {ok, api:1, time} (인증·저장소 불필요)', async () => {
+  const b = expectOk(await call('GET', '/api/health'));
+  assert.deepEqual(b, { ok: true, api: 1, time: T });
+  const r = await call('POST', '/api/health');
+  expectErr(r, 405, 'method_not_allowed');
+  assert.equal(r.headers.get('allow'), 'GET');
+});
+
 test('알 수 없는 경로 → 404 not_found (JSON)', async () => {
   expectErr(await call('GET', '/api/nope'), 404, 'not_found');
   expectErr(await call('GET', '/api'), 404, 'not_found');
@@ -776,6 +784,39 @@ test('배포 문맥: 미리보기(deploy-preview) 데이터는 운영(production
   expectOk(await login(id, PW, { ip: freshIp(), deploy: 'deploy-preview' }));
   // 같은 아이디를 운영에서 따로 가입할 수 있다
   await signup(id, PW, { ip: freshIp(), deploy: 'production' });
+});
+
+// ═════════ 운영 도구 (netlify/lib/admin.mts) ═════════
+test('운영: show·unlock·revoke·reset·delete', async () => {
+  const admin = await import(path.join(ROOT, 'netlify/lib/admin.mts'));
+  const c = new rt.Ctx(new Request('https://admin.local/'), { ip: 'admin', deploy: { context: 'production' } });
+  const u = await signup(newId(), PW, { ip: freshIp() });
+  expectOk(await call('PUT', '/api/saves/2', { body: { data: validSave('bran'), baseRev: 0 }, token: u.token }));
+  for (let i = 0; i < 5; i++) await login(u.id, 'wrong-password', { ip: freshIp() });
+  let info = await admin.adminShow(c, u.id.toUpperCase());
+  assert.equal(info.id, u.id);
+  assert.equal(info.activeSessions, 1);
+  assert.ok(info.loginLock?.lockedUntil, '잠금 표시');
+  assert.equal(info.slots[1].rev, 1);
+  assert.equal(info.slots[1].summary.charId, 'bran');
+  assert.ok(!JSON.stringify(info).includes('"hash"') && !JSON.stringify(info).includes('salt'));
+  await admin.adminUnlock(c, u.id);
+  expectOk(await login(u.id, PW, { ip: freshIp() }));
+  assert.equal(await admin.adminRevokeSessions(c, u.id), 2);
+  expectErr(await call('GET', '/api/auth/me', { token: u.token }), 401, 'unauthorized');
+  for (let i = 0; i < 5; i++) await login(u.id, 'wrong-password', { ip: freshIp() });
+  const r = await admin.adminResetPassword(c, u.id);
+  SECRETS.add(r.tempPassword); SECRETS.add(r.recoveryCode); SECRETS.add(r.recoveryCode.replace(/-/g, ''));
+  assert.match(r.tempPassword, /^[a-z2-9]{12}$/);
+  expectErr(await login(u.id, PW, { ip: freshIp() }), 401, 'invalid_credentials');
+  const t = expectOk(await login(u.id, r.tempPassword, { ip: freshIp() })).token; // 잠금도 풀림
+  expectErr(await call('POST', '/api/auth/recover', { body: { id: u.id, recoveryCode: u.recoveryCode, newPassword: 'new-password-1' }, ip: freshIp() }), 401, 'invalid_recovery');
+  await admin.adminDelete(c, u.id);
+  expectErr(await call('GET', '/api/auth/me', { token: t }), 401, 'unauthorized');
+  expectErr(await login(u.id, r.tempPassword, { ip: freshIp() }), 401, 'invalid_credentials');
+  assert.ok(!(await storageKeys()).some((k) => k === `bn-users/${u.id}`));
+  await assert.rejects(admin.adminShow(c, u.id), /계정이 없습니다/);
+  await assert.rejects(admin.adminShow(c, '!!'), /아이디 형식/);
 });
 
 // ═════════ 보안 점검 ═════════

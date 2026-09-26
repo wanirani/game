@@ -37,6 +37,8 @@ export const STYLE_RANKS = [
   { n: 0, r: '', c: '#fff' }, { n: 5, r: 'D', c: '#a0a0a0' }, { n: 10, r: 'C', c: '#7ee07e' }, { n: 20, r: 'B', c: '#5aa8ff' },
   { n: 35, r: 'A', c: '#c07cff' }, { n: 50, r: 'S', c: '#ffa640' }, { n: 80, r: 'SS', c: '#ff5a4a' }, { n: 120, r: 'SSS', c: '#ffe070' },
 ];
+// 보스가 남기는 일시적인 개체 종류 (부활 시 정리 대상). 'hazard' = B계열 보스의 Zone(장판·광선 등)
+const BOSS_TRANSIENT = new Set(['projectile', 'hitbox', 'effect', 'hazard', 'zone']);
 export function styleRank(n) { let r = STYLE_RANKS[0]; for (const s of STYLE_RANKS) if (n >= s.n) r = s; return r; }
 
 export class World {
@@ -103,26 +105,15 @@ export class World {
     this.camera.zoom = 1; this.camera.zoomTarget = 1;
 
     // 플레이어
-    let start = this.map.markersOf('P')[0] || { tx: 2, ty: this.map.h - 3 };
-    // 터치 모드: 왼쪽 끝 시작점은 가상 스틱에 가려지므로, 바닥이 이어지는 한 최대 3칸 오른쪽에서 시작
-    if (input.touchMode && start.tx < 6) {
-      const m = this.map, free = (x, y) => { const t = m.typeAt(x, y); return !isSolidType(t) && t !== T.SPIKE && t !== T.LIQUID; };
-      const floor = (x, y) => { const t = m.typeAt(x, y); return isSolidType(t) || t === T.ONEWAY; };
-      let tx = start.tx;
-      for (let k = 1; k <= 3; k++) {
-        const x = start.tx + k;
-        if (!(free(x, start.ty) && free(x, start.ty - 1) && floor(x, start.ty + 1))) break;
-        tx = x;
-      }
-      start = { tx, ty: start.ty };
-    }
+    const start = this.map.markersOf('P')[0] || { tx: 2, ty: this.map.h - 3 };
     if (!this.player) this.player = new Player(this, this.state, this.hero);
     const p = this.player;
     p.world = this;
-    p.x = start.tx * TILE + TILE / 2 - p.w / 2;
-    p.y = (start.ty + 1) * TILE - p.h;
+    const place = (tx) => { p.x = tx * TILE + TILE / 2 - p.w / 2; p.y = (start.ty + 1) * TILE - p.h; };
+    place(start.tx);
     p.vx = 0; p.vy = 0; p.onGround = false;
     p.facing = room.facing ?? 1;
+    if (input.touchMode) this.clearStickAtSpawn(start, place);
     this.add(p);
     this.run.checkpoint = { roomId, x: p.x, y: p.y };
 
@@ -181,6 +172,40 @@ export class World {
     const music = room.music ?? this.stage.music;
     if (music && !room.boss) audio.music(music);
     bus.emit('roomEntered', { stageId: this.stage.id, roomId });
+  }
+
+  /** 가상 스틱(#stick)의 화면 영역 → 논리 좌표 {x0,x1,y0,y1}. 노치(safe-area)·작은 화면에서도 실제 위치를 쓴다 */
+  stickRect() {
+    const vw = this.game.viewW, vh = this.game.viewH;
+    try {
+      const st = document.getElementById('stick'), cv = this.game.canvas;
+      const r = st?.getBoundingClientRect(), c = cv?.getBoundingClientRect();
+      if (r && c && r.width > 0 && c.width > 0) {
+        const k = vw / c.width; // CSS px → 논리 px
+        return { x0: (r.left - c.left) * k, x1: (r.right - c.left) * k, y0: (r.top - c.top) * k, y1: (r.bottom - c.top) * k };
+      }
+    } catch { /* DOM 없음 */ }
+    return { x0: 0, x1: 240, y0: vh - 240, y1: vh }; // 스틱이 아직 배치되지 않았을 때의 대략값
+  }
+  /**
+   * 터치 모드: 시작 위치가 가상 스틱에 가려지면, 바닥이 이어지는 한 (벽·가시·액체에서 멈춤) 최대 6칸 오른쪽으로 옮겨
+   * 플레이어 왼쪽 끝이 스틱 오른쪽 끝보다 반 칸 이상 떨어지게 한다. 카메라는 후보 위치마다 스냅해서 실제 화면 위치로 판정
+   */
+  clearStickAtSpawn(start, place) {
+    const m = this.map, p = this.player, cam = this.camera;
+    const free = (x, y) => { const t = m.typeAt(x, y); return !isSolidType(t) && t !== T.SPIKE && t !== T.LIQUID; };
+    const floor = (x, y) => { const t = m.typeAt(x, y); return isSolidType(t) || t === T.ONEWAY; };
+    const R = this.stickRect();
+    const covered = () => {
+      cam.follow(p, 1 / 60, true);
+      const z = cam.zoom, sx0 = (p.x - cam.x) * z, sy0 = (p.y - cam.y) * z, sy1 = (p.y + p.h - cam.y) * z;
+      return sy1 > R.y0 && sy0 < R.y1 && sx0 < R.x1 + (TILE / 2) * z;
+    };
+    for (let k = 1; k <= 6 && covered(); k++) {
+      const x = start.tx + k;
+      if (!(free(x, start.ty) && free(x, start.ty - 1) && floor(x, start.ty + 1))) break;
+      place(x);
+    }
   }
 
   spawnPlaced(spec, x, y, key) {
@@ -678,6 +703,9 @@ export class World {
     this.game.flash('#000', 0.6, 3);
   }
   onPlayerDeath() {
+    // 보스를 쓰러뜨린 뒤(또는 쓰러지는 도중 남은 보조무기로 보스를 끝낸 경우) 이미 클리어한 스테이지:
+    // 목숨을 쓰거나 게임오버를 띄우지 않고 그 자리에서 일으켜 세운다 → afterClear 가 결과 화면까지 이어 간다
+    if (this.cleared) { this.reviveAfterClear(); return; }
     this.run.lives--;
     this.state.stats.deaths = (this.state.stats.deaths ?? 0) + 1;
     if (this.run.lives > 0) {
@@ -686,6 +714,17 @@ export class World {
       this.syncToState();
       this.game.push('gameover', { world: this });
     }
+  }
+  /** 클리어 뒤 쓰러진 플레이어를 제자리에서 부활 (구덩이 아래로 떨어졌다면 체크포인트로) */
+  reviveAfterClear() {
+    const p = this.player;
+    if (!p) return;
+    if (!this.entities.includes(p)) this.add(p);
+    p.dead = false; p.deathHandled = false; p.deathT = 0;
+    p.hp = Math.max(1, Math.ceil(p.stats.hp * 0.5));
+    p.vx = 0; p.vy = 0; p.iframes = Math.max(p.iframes ?? 0, 3);
+    if (p.y > this.map.pxH - p.h) { const cp = this.run.checkpoint; p.x = cp.x; p.y = cp.y; }
+    p.setAnim?.('idle');
   }
   respawn(full = false) {
     const p = this.player;
@@ -747,6 +786,14 @@ export class World {
       this.boss = this.add(nb);
       return;
     }
+    if (b.phase > 0) {
+      // 새로 만들지 않는 보스(B계열): 마지막 페이즈의 탄·판정·장판이 부활 직후까지 남지 않게 치운다
+      // (ABoss.onDeath 와 같은 규칙. 눈·분신처럼 형태에 딸린 부위는 보스의 onReset 이 되돌린다)
+      for (const e of this.entities) {
+        if (e === b || e === this.player || e.dead) continue;
+        if ((e.owner === b || e.boss === b) && BOSS_TRANSIENT.has(e.kind)) e.dead = true;
+      }
+    }
     b.hp = b.stats.maxHp;
   }
   onBossDefeated(boss) {
@@ -772,6 +819,7 @@ export class World {
   }
   /** 클리어 연출이 끝난 뒤: (스토리) 보스의 마지막 대사 `<bossId>_post` 를 한 번 보여 주고 결과 화면으로 */
   afterClear() {
+    if (this.player?.dead) this.reviveAfterClear(); // 사망 연출 도중 클리어 연출이 끝난 경우
     const id = this.boss?.def?.id;
     const postId = id ? `${id}_post` : null;
     const seen = this.state.progress.seenScripts;
