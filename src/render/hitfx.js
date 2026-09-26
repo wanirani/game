@@ -524,6 +524,7 @@ export function stampDecal(world, x, y, dir = 1, mat = 'flesh', opts = {}) {
         d.x = sd > 0 ? tx * TILE : (tx + 1) * TILE;
         d.y = y + rand(-8, 8);
         d.rot = sd > 0 ? -Math.PI / 2 : Math.PI / 2;
+        d.atx = tx; d.aty = Math.floor(y / TILE);   // 붙은 칸 (부서지면 자국도 지운다: particles.update)
         placed = true;
         break;
       }
@@ -536,6 +537,7 @@ export function stampDecal(world, x, y, dir = 1, mat = 'flesh', opts = {}) {
       const py = y + s;
       if (floorAt(map, fx0, py)) {
         d.x = fx0; d.y = Math.floor(py / TILE) * TILE + 1; d.rot = 0;
+        d.atx = Math.floor(fx0 / TILE); d.aty = Math.floor(py / TILE);
         placed = true;
         break;
       }

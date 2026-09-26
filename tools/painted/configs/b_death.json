@@ -4,6 +4,7 @@
  "out": "assets/painted/bosses/b_death",
  "raw": "tools/painted/raw/b_death",
  "td": 2.0,
+ "_doc": "사신 데스 채색 퍼핏 (1형태 망토 사신 + 2형태 뿔 달린 거대 해골, 한 아틀라스). 좌표 = 원본 Kling 픽셀. 렌더러: src/render/painted/bosses/b_death.js",
  "matte": {
   "default": {
    "key": 9,
@@ -18,56 +19,942 @@
    "watermark": false
   }
  },
+ "cuts": {
+  "hood_a": {
+   "masks": {
+    "jaw": [
+     {
+      "op": "poly",
+      "feather": 1.2,
+      "pts": [
+       [
+        1005,
+        860
+       ],
+       [
+        1110,
+        835
+       ],
+       [
+        1195,
+        900
+       ],
+       [
+        1222,
+        1045
+       ],
+       [
+        1262,
+        1072
+       ],
+       [
+        1310,
+        1068
+       ],
+       [
+        1360,
+        1082
+       ],
+       [
+        1425,
+        1088
+       ],
+       [
+        1480,
+        1080
+       ],
+       [
+        1512,
+        1090
+       ],
+       [
+        1520,
+        1205
+       ],
+       [
+        1485,
+        1285
+       ],
+       [
+        1420,
+        1305
+       ],
+       [
+        1250,
+        1295
+       ],
+       [
+        1150,
+        1265
+       ],
+       [
+        1075,
+        1245
+       ],
+       [
+        1025,
+        1205
+       ],
+       [
+        985,
+        1000
+       ]
+      ]
+     }
+    ]
+   }
+  },
+  "skull2_a": {
+   "masks": {
+    "jaw": [
+     {
+      "op": "poly",
+      "feather": 1.2,
+      "pts": [
+       [
+        855,
+        1060
+       ],
+       [
+        955,
+        1035
+       ],
+       [
+        1015,
+        1115
+       ],
+       [
+        1035,
+        1268
+       ],
+       [
+        1085,
+        1290
+       ],
+       [
+        1200,
+        1318
+       ],
+       [
+        1300,
+        1358
+       ],
+       [
+        1400,
+        1330
+       ],
+       [
+        1462,
+        1318
+       ],
+       [
+        1560,
+        1326
+       ],
+       [
+        1585,
+        1296
+       ],
+       [
+        1618,
+        1360
+       ],
+       [
+        1606,
+        1505
+       ],
+       [
+        1545,
+        1585
+       ],
+       [
+        1400,
+        1605
+       ],
+       [
+        1250,
+        1585
+       ],
+       [
+        1100,
+        1525
+       ],
+       [
+        978,
+        1445
+       ],
+       [
+        915,
+        1362
+       ],
+       [
+        875,
+        1250
+       ]
+      ]
+     }
+    ]
+   }
+  }
+ },
  "parts": [
   {
-   "name": "hood_a",
+   "name": "hood",
    "src": "hood_a",
-   "lps": 0.1
+   "lps": 0.042,
+   "box": [
+    330,
+    60,
+    1790,
+    1720
+   ],
+   "mask": "!jaw",
+   "pivots": {
+    "neck": [
+     1050,
+     1330
+    ],
+    "hinge": [
+     1100,
+     880
+    ],
+    "eyeN": [
+     1340,
+     700
+    ],
+    "eyeF": [
+     1555,
+     692
+    ],
+    "crown": [
+     1150,
+     120
+    ],
+    "back": [
+     520,
+     800
+    ]
+   },
+   "points": {
+    "mouth": [
+     [
+      1005,
+      860
+     ],
+     [
+      1110,
+      835
+     ],
+     [
+      1195,
+      900
+     ],
+     [
+      1222,
+      1045
+     ],
+     [
+      1262,
+      1072
+     ],
+     [
+      1310,
+      1068
+     ],
+     [
+      1360,
+      1082
+     ],
+     [
+      1425,
+      1088
+     ],
+     [
+      1480,
+      1080
+     ],
+     [
+      1512,
+      1090
+     ],
+     [
+      1520,
+      1205
+     ],
+     [
+      1485,
+      1285
+     ],
+     [
+      1420,
+      1305
+     ],
+     [
+      1250,
+      1295
+     ],
+     [
+      1150,
+      1265
+     ],
+     [
+      1075,
+      1245
+     ],
+     [
+      1025,
+      1205
+     ],
+     [
+      985,
+      1000
+     ]
+    ]
+   }
   },
   {
-   "name": "torso_a",
+   "name": "hjaw",
+   "src": "hood_a",
+   "lps": 0.042,
+   "box": [
+    330,
+    60,
+    1790,
+    1720
+   ],
+   "mask": "jaw",
+   "pivots": {
+    "neck": [
+     1050,
+     1330
+    ],
+    "hinge": [
+     1100,
+     880
+    ],
+    "chin": [
+     1470,
+     1270
+    ]
+   }
+  },
+  {
+   "name": "torso",
    "src": "torso_a",
-   "lps": 0.1
+   "lps": 0.06,
+   "box": [
+    200,
+    240,
+    1640,
+    2240
+   ],
+   "pivots": {
+    "neck": [
+     830,
+     280
+    ],
+    "shN": [
+     1130,
+     560
+    ],
+    "shF": [
+     520,
+     540
+    ],
+    "heart": [
+     1000,
+     1000
+    ],
+    "hem": [
+     830,
+     2180
+    ],
+    "back": [
+     330,
+     620
+    ],
+    "hemB": [
+     300,
+     2050
+    ],
+    "hemF": [
+     1350,
+     2050
+    ]
+   }
   },
   {
-   "name": "arm_a",
-   "src": "arm_a",
-   "lps": 0.1
-  },
-  {
-   "name": "scythe_a",
-   "src": "scythe_a",
-   "lps": 0.1
-  },
-  {
-   "name": "skull2_a",
+   "name": "skull2",
    "src": "skull2_a",
-   "lps": 0.1
+   "lps": 0.045,
+   "box": [
+    350,
+    40,
+    1720,
+    1640
+   ],
+   "mask": "!jaw",
+   "pivots": {
+    "neck": [
+     880,
+     1120
+    ],
+    "hinge": [
+     930,
+     1090
+    ],
+    "eyeN": [
+     1270,
+     800
+    ],
+    "eyeF": [
+     1575,
+     790
+    ],
+    "hornB": [
+     470,
+     180
+    ],
+    "hornF": [
+     1350,
+     120
+    ]
+   },
+   "points": {
+    "mouth": [
+     [
+      855,
+      1060
+     ],
+     [
+      955,
+      1035
+     ],
+     [
+      1015,
+      1115
+     ],
+     [
+      1035,
+      1268
+     ],
+     [
+      1085,
+      1290
+     ],
+     [
+      1200,
+      1318
+     ],
+     [
+      1300,
+      1358
+     ],
+     [
+      1400,
+      1330
+     ],
+     [
+      1462,
+      1318
+     ],
+     [
+      1560,
+      1326
+     ],
+     [
+      1585,
+      1296
+     ],
+     [
+      1618,
+      1360
+     ],
+     [
+      1606,
+      1505
+     ],
+     [
+      1545,
+      1585
+     ],
+     [
+      1400,
+      1605
+     ],
+     [
+      1250,
+      1585
+     ],
+     [
+      1100,
+      1525
+     ],
+     [
+      978,
+      1445
+     ],
+     [
+      915,
+      1362
+     ],
+     [
+      875,
+      1250
+     ]
+    ]
+   }
   },
   {
-   "name": "rib2_a",
+   "name": "sjaw",
+   "src": "skull2_a",
+   "lps": 0.045,
+   "box": [
+    350,
+    40,
+    1720,
+    1640
+   ],
+   "mask": "jaw",
+   "pivots": {
+    "neck": [
+     880,
+     1120
+    ],
+    "hinge": [
+     930,
+     1090
+    ],
+    "chin": [
+     1560,
+     1560
+    ]
+   }
+  },
+  {
+   "name": "rib2",
    "src": "rib2_a",
-   "lps": 0.1
+   "lps": 0.05,
+   "box": [
+    320,
+    60,
+    1590,
+    2330
+   ],
+   "pivots": {
+    "neck": [
+     840,
+     115
+    ],
+    "shN": [
+     1250,
+     430
+    ],
+    "shF": [
+     560,
+     390
+    ],
+    "heart": [
+     800,
+     900
+    ],
+    "hip": [
+     760,
+     1950
+    ],
+    "base": [
+     760,
+     2260
+    ],
+    "back": [
+     420,
+     700
+    ],
+    "ragB": [
+     470,
+     1500
+    ],
+    "ragF": [
+     1380,
+     1600
+    ]
+   }
   },
   {
-   "name": "wing_a",
+   "name": "wing",
    "src": "wing_a",
-   "lps": 0.1
+   "lps": 0.075,
+   "box": [
+    30,
+    70,
+    2060,
+    1690
+   ],
+   "pivots": {
+    "root": [
+     1880,
+     1470
+    ],
+    "wrist": [
+     1640,
+     380
+    ],
+    "tip": [
+     60,
+     480
+    ]
+   }
   },
   {
-   "name": "souls_a",
-   "src": "souls_a",
-   "lps": 0.1
+   "name": "humerus",
+   "src": "arm_a",
+   "lps": 0.017,
+   "box": [
+    140,
+    140,
+    560,
+    1710
+   ],
+   "pivots": {
+    "sh": [
+     380,
+     200
+    ],
+    "el": [
+     370,
+     1610
+    ]
+   }
   },
   {
-   "name": "debris_a",
+   "name": "foreFist",
+   "src": "arm_a",
+   "lps": 0.034,
+   "box": [
+    1236,
+    340,
+    1590,
+    1350
+   ],
+   "pivots": {
+    "el": [
+     1400,
+     1300
+    ],
+    "wr": [
+     1440,
+     720
+    ],
+    "grip": [
+     1440,
+     500
+    ],
+    "tip": [
+     1450,
+     380
+    ]
+   }
+  },
+  {
+   "name": "foreOpen",
+   "src": "arm_a",
+   "lps": 0.024,
+   "box": [
+    1755,
+    73,
+    2168,
+    1683
+   ],
+   "pivots": {
+    "el": [
+     1960,
+     1640
+    ],
+    "wr": [
+     1960,
+     800
+    ],
+    "palm": [
+     1975,
+     560
+    ],
+    "tip": [
+     1990,
+     120
+    ]
+   }
+  },
+  {
+   "name": "shaft",
+   "src": "scythe_a",
+   "lps": 0.075,
+   "box": [
+    120,
+    815,
+    2936,
+    1267
+   ],
+   "pivots": {
+    "butt": [
+     180,
+     1020
+    ],
+    "grip": [
+     1150,
+     1010
+    ],
+    "top": [
+     2660,
+     1000
+    ],
+    "mid": [
+     1500,
+     1010
+    ]
+   }
+  },
+  {
+   "name": "blade",
+   "src": "scythe_a",
+   "lps": 0.075,
+   "box": [
+    292,
+    130,
+    2945,
+    690
+   ],
+   "pivots": {
+    "tang": [
+     2000,
+     290
+    ],
+    "tip": [
+     330,
+     610
+    ],
+    "back": [
+     2905,
+     640
+    ],
+    "edge": [
+     1200,
+     420
+    ]
+   }
+  },
+  {
+   "name": "spike",
    "src": "debris_a",
-   "lps": 0.1
+   "lps": 0.1,
+   "box": [
+    2270,
+    190,
+    2597,
+    1443
+   ],
+   "pivots": {
+    "base": [
+     2433,
+     1415
+    ],
+    "tip": [
+     2420,
+     220
+    ]
+   }
   },
   {
    "name": "cloak_tex",
    "src": "cloak_tex",
-   "lps": 0.1
+   "lps": 0.5,
+   "box": [
+    0,
+    0,
+    256,
+    256
+   ],
+   "pivots": {
+    "c": [
+     128,
+     128
+    ]
+   }
   }
- ]
+ ],
+ "debris": [
+  {
+   "prefix": "deb",
+   "src": "debris_a",
+   "lps": 0.045,
+   "boxes": [
+    [
+     180,
+     150,
+     690,
+     955
+    ],
+    [
+     330,
+     1050,
+     2030,
+     1385
+    ],
+    [
+     855,
+     220,
+     1362,
+     512
+    ],
+    [
+     858,
+     582,
+     1582,
+     852
+    ],
+    [
+     950,
+     818,
+     1558,
+     1133
+    ],
+    [
+     1415,
+     110,
+     1820,
+     344
+    ],
+    [
+     1648,
+     616,
+     2050,
+     912
+    ],
+    [
+     1810,
+     304,
+     2086,
+     640
+    ]
+   ]
+  },
+  {
+   "prefix": "soul",
+   "src": "souls_a",
+   "lps": 0.05,
+   "boxes": [
+    [
+     175,
+     405,
+     690,
+     1405
+    ],
+    [
+     740,
+     388,
+     1296,
+     1283
+    ],
+    [
+     1408,
+     398,
+     1940,
+     1402
+    ],
+    [
+     2044,
+     384,
+     2620,
+     1254
+    ]
+   ]
+  }
+ ],
+ "kling": {
+  "model": "kling-image-v3_0_omni (image_to_image, img_resolution 2k unless noted)",
+  "prompts": "tools/painted/prompts/art-boss-4.mjs",
+  "manifest": "tools/kling/manifest_art-boss-4.json",
+  "images": [
+   {
+    "boss": "b_death",
+    "shot": "dt_hood",
+    "generationId": "AWbBPVNf_H2g0o1I3QvfIjAwmnfKRQxsWLtwqFNfmfSRB2Vi4VMksRiQbrHvb70784mC9C1X",
+    "aspect": "4:3",
+    "imageCount": 2,
+    "decision": "#1 kept → raw/b_death/hood_a (hooded cracked skull, green soul-fire eyes, bone studs on the hood; jaw cut by mask). #2 unused (no hood)."
+   },
+   {
+    "boss": "b_death",
+    "shot": "dt_torso",
+    "generationId": "Ac-K2si0huHXWpGK_w4yyYbtr4v2xeRyE2GQP99t7oLfDwsdlHxWJo2pFeAPyXda4yk3-h3D",
+    "aspect": "3:4",
+    "imageCount": 2,
+    "decision": "#2 kept → raw/torso_a (headless cloaked torso, spiky mantle, open ribcage with soul fire, skull necklace). #1 rejected (includes the head)."
+   },
+   {
+    "boss": "b_death",
+    "shot": "dt_arm",
+    "generationId": "AQYnChgSyio1l9pLA4_pFfC2kfB2QTGE4o28tasphhC--BKcKUf5hl51ToSXn814ru-IPjwE",
+    "aspect": "4:3",
+    "imageCount": 1,
+    "decision": "kept → raw/arm_a (humerus, short bone, fist+forearm, open hand+forearm)."
+   },
+   {
+    "boss": "b_death",
+    "shot": "dt_scythe",
+    "generationId": "ARfLKZ5i0dLTX51nloI9kHhm16xrUB9XhYviYYXgtP0P3fLaAswLtgFid255rp4inW5arSBk",
+    "aspect": "21:9",
+    "imageCount": 1,
+    "decision": "kept → raw/scythe_a (blade and vertebra-wrapped shaft with skull cap, separate)."
+   },
+   {
+    "boss": "b_death",
+    "shot": "dt_skull2",
+    "generationId": "AWlKk13PRK2b31pXLs2AIn55C5D6qFOcGi5iQ3wHWhE1tbmFBiEnxXx2P0SLR5VcAS1J7f44",
+    "aspect": "4:3",
+    "imageCount": 2,
+    "decision": "#2 kept → raw/skull2_a (horned skull facing right, open jaw, soul fire from the cracks). #1 unused (faces left)."
+   },
+   {
+    "boss": "b_death",
+    "shot": "dt_rib2",
+    "generationId": "AR80Jrpd8Gi20y70HflPAhRcnmnv9Qwom3Cokfb8erqAS_x3ORLXqIfbukNcg9zIGWP2NoaQ",
+    "aspect": "3:4",
+    "imageCount": 2,
+    "decision": "#1 kept → raw/rib2_a (giant ribcage, soul-fire heart, demon-face pauldron, burnt rags, pelvis). #2 unused (arm bone fused to the shoulder)."
+   },
+   {
+    "boss": "b_death",
+    "shot": "dt_wing",
+    "generationId": "AbJXClKOVIpH3lgR62RVlzgjdGz6Zd_lrTQqlyqA2DqfSFqnKDK7ae8XXd6_kiP3zecu5Tnc",
+    "aspect": "4:3",
+    "imageCount": 1,
+    "decision": "kept → raw/wing_a (bone wing, torn black membrane, green fire at the joints)."
+   },
+   {
+    "boss": "b_death",
+    "shot": "dt_souls",
+    "generationId": "ASWTI_GS4cIRQAAtkCAyNpF84cjH0zjbDSxzBbsSqgiy6OF0zaI-R0kza9ZRoCUVq1VlgvtN",
+    "aspect": "16:9",
+    "imageCount": 1,
+    "decision": "kept → raw/souls_a (4 screaming ghost souls) — orbiting souls, drain vortex, death release."
+   },
+   {
+    "boss": "b_death",
+    "shot": "dt_debris",
+    "generationId": "Ac2a49_ApGVvftpW79yYcn7xkJOlRVhwIWvxMQjPuT_zOuVBPNW3uoy3vMmjNmQbucxTzS_q",
+    "aspect": "16:9",
+    "imageCount": 1,
+    "decision": "kept → raw/debris_a (skull, broken bones, spiked bone club) — death breakup, bone spears."
+   },
+   {
+    "boss": "b_death",
+    "shot": "dt_cloak_tex",
+    "generationId": "AYaWdBUMMGAuv7AGBaP9BRyOVjWkUMPZ-3D1t21-DmZC_ITkTIegf6NEcoTLGoGn-CUF6ewf",
+    "aspect": "1:1",
+    "imageCount": 1,
+    "decision": "kept, 1k → seamless 256² → raw/cloak_tex (procedural cloak pattern)."
+   }
+  ],
+  "imagesSpent": 14
+ }
 }

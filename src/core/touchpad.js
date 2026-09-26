@@ -1000,13 +1000,23 @@ function drawStick(c, L, op) {
   if (dist > lim) { dx *= lim / dist; dy *= lim / dist; }
   const kr = KNOB_R * (R / STICK_R);
   const kx = ax + dx, ky = ay + dy;
-  const gr = c.createRadialGradient(kx - kr * 0.3, ky - kr * 0.35, kr * 0.1, kx, ky, kr);
-  if (s.sprint) { gr.addColorStop(0, '#ffd0a0'); gr.addColorStop(0.55, '#e0405a'); gr.addColorStop(1, '#5a0716'); }
-  else { gr.addColorStop(0, '#fff0c0'); gr.addColorStop(0.55, '#c89a48'); gr.addColorStop(1, '#5a3a14'); }
-  c.fillStyle = gr;
-  c.beginPath(); c.arc(kx, ky, kr, 0, TAU); c.fill();
+  c.translate(kx, ky); // 원점 기준 그라데이션을 재사용 (매번 새로 만들지 않는다)
+  c.fillStyle = knobGradient(c, kr, s.sprint);
+  c.beginPath(); c.arc(0, 0, kr, 0, TAU); c.fill();
   c.lineWidth = 1.5; c.strokeStyle = 'rgba(0,0,0,0.6)'; c.stroke();
   c.restore();
+}
+const KNOB_GRAD = { kr: 0, ctx: null, n: null, s: null };
+function knobGradient(c, kr, sprint) {
+  const G = KNOB_GRAD;
+  if (G.kr !== kr || G.ctx !== c) { G.kr = kr; G.ctx = c; G.n = null; G.s = null; }
+  let gr = sprint ? G.s : G.n;
+  if (!gr) {
+    gr = c.createRadialGradient(-kr * 0.3, -kr * 0.35, kr * 0.1, 0, 0, kr);
+    if (sprint) { gr.addColorStop(0, '#ffd0a0'); gr.addColorStop(0.55, '#e0405a'); gr.addColorStop(1, '#5a0716'); G.s = gr; }
+    else { gr.addColorStop(0, '#fff0c0'); gr.addColorStop(0.55, '#c89a48'); gr.addColorStop(1, '#5a3a14'); G.n = gr; }
+  }
+  return gr;
 }
 
 // ───────────────────────── 배치 편집기 (platform §5.3) ─────────────────────────
@@ -1252,7 +1262,9 @@ export function initTouchPad(input) {
     try { onFontEpoch?.(() => { S.fontEpoch++; S.pending = true; startLoop(); }); } catch { /* 글꼴 알림 없음 */ }
     try { S.input?.onMode?.((m) => { if (m !== 'touch' && !S.editor) releaseAll(); }); } catch { /* 예전 input */ }
     loadDrawAssets();
-    layout(true);
+    const L = layout(true);
+    // 버튼 그림은 미리 굽는다 (게임 도중 새 캔버스를 만들지 않게; 다시 구울 때는 같은 캔버스를 쓴다). 터치 기기에서만
+    if (L && touchMode()) { try { ensureCanvasSize(L); bakeSprites(L); } catch (e) { console.error('[touchpad] bake', e); } }
   }
   return padObject;
 }
@@ -1311,6 +1323,16 @@ export const touchpad = {
   },
   /** ⇄ 길게 누르기(350ms) 처리기: fn({x, y}) — 기술 원형 메뉴 (없으면 ⇄ 는 늘 손을 뗄 때 페이지 전환) */
   setTechRadial(fn) { S.radialFn = typeof fn === 'function' ? fn : null; },
+  /** 디버그: 지금 상태로 n 번 그려 평균 ms (성능 확인용) */
+  debugDraw(n = 50) {
+    const L = layout();
+    if (!L || !S.ctx) return null;
+    const g = game(), w = g?.world ?? null;
+    const t0 = now();
+    for (let i = 0; i < n; i++) draw(L, w);
+    S.pending = true;
+    return (now() - t0) / n;
+  },
   layoutInfo() {
     const L = layout();
     return L ? { sizeClass: L.cls, k: L.k, kEff: L.kEff, band: L.band, bandH: L.bandH, left: L.left, custom: L.custom, yMin: L.yMin, R: L.R, dpr: S.dpr ?? null } : null;

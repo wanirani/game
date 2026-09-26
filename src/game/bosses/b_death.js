@@ -4,11 +4,16 @@
 import { BossB, PI, OUT, R, C, LG, RG, ink, glow, glowE, eye, warnRect, warnFloor, warnLine, warnBang, lineStrike, circleStrike, impact, hash } from './b_common.js';
 import { audio } from '../../core/audio.js';
 import { TAU, clamp, lerp, rand, ease, rgba, mix } from '../../core/math.js';
+import { paintedRig, paintedEnabled } from '../../render/painted/registry.js';
 
 const SOUL = '#7dffb0', SOUL_D = '#1f8a5a', SOUL_L = '#d8ffe8';
 const BONE = '#e6dcc2', BONE_D = '#8a7e66', BONE_DD = '#3a3226';
 const CLOAK = '#0e0a14', CLOAK_M = '#241c30', CLOAK_L = '#4a3e5a';
 const STEEL = '#c8ccd8';
+/** 채색 리그의 그리기 도우미 (던진 낫·뼈 창·휩쓸기·흡수장 영혼·회전 낫). 준비 전이거나 채색이 꺼져 있으면 null → 기존 벡터 */
+const pArt = (world) => (paintedEnabled(world?.game) ? paintedRig('b_death')?.art : null) ?? null;
+/** 채색 퍼핏이 본체를 그리는 중인가 (그러면 벡터 잔상·예고 실루엣은 생략 — 채색 렌더러가 직접 그린다) */
+const pLive = (b) => !!(b._painted?.proxy && !b._painted.proxy.dead);
 
 export class Death extends BossB {
   setup() {
@@ -137,6 +142,8 @@ export class Death extends BossB {
       },
       onEnd: () => { if (returns) this.hasScythe = true; },
       paint: (ctx, z) => {
+        const art = pArt(this.world);
+        if (art) { glow(ctx, st.x, st.y, 80 * scale, SOUL, 0.35); art.thrown(ctx, st.x, st.y, -d * z.t * 14, 0.62 * scale, d); return; }   // 채색 낫
         ctx.translate(st.x, st.y); ctx.rotate(-d * z.t * 14);
         glow(ctx, 0, 0, 80 * scale, SOUL, 0.35);
         ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = rgba(SOUL, 0.35); ctx.lineWidth = 16 * scale;
@@ -260,7 +267,7 @@ export class Death extends BossB {
           }
           if (z.on && Math.random() < 0.3) w.fx.emit('soul', cx + rand(-20, 20), F - 30, { vx: (this.cx - cx) * 1.2, vy: (this.cy - F) * 1.2, speed: 0, grav: 0, life: 0.8, size: 3 });
         },
-        paint: (ctx, z) => this.paintVortex(ctx, cx, F, z),
+        paint: (ctx, z) => { this.paintVortex(ctx, cx, F, z); pArt(this.world)?.vortex(ctx, cx, F, z, this.t); },   // + 채색 영혼이 빨려 듦
         light: (L, z) => { if (z.on) L.add(cx, F - 40, 220, SOUL, 0.7); },
       });
     }
@@ -319,7 +326,7 @@ export class Death extends BossB {
       }
       if (Math.random() < 0.8) world.fx.emit('spark', this.cx + d * 70, F - 4, { color: SOUL, speed: 260, angle: PI + (d > 0 ? 0 : PI) - 0.4 * d, spread: 0.4 });
       const S = this.S, gx = this.cx, gy = this.bottom, f = this.facing, arm = { ...this.arm }, tt = this.t, form = this.form;
-      if (this.every(0.05)) world.fx.ghost((ctx, a) => { ctx.save(); ctx.globalAlpha = a * 0.4; this.paintReaper(ctx, gx, gy, f, tt, arm, form, S, true); ctx.restore(); }, 0.25);
+      if (this.every(0.05)) world.fx.ghost((ctx, a) => { if (pLive(this)) return; ctx.save(); ctx.globalAlpha = a * 0.4; this.paintReaper(ctx, gx, gy, f, tt, arm, form, S, true); ctx.restore(); }, 0.25);
     } else { this.armT.a = 0.6; }
   }
 
@@ -370,6 +377,8 @@ export class Death extends BossB {
         if (z.t < z.warn) { warnFloor(ctx, x, F, 44, z.k, SOUL, this.t); return; }
         const g = ease.outBack(Math.min(1, z.a * 6)), fade = z.a > 0.75 ? (1 - z.a) * 4 : 1;
         ctx.globalAlpha *= fade;
+        const art = pArt(this.world);
+        if (art) { art.spear(ctx, x, F, H * g); return; }   // 채색 뼈 창
         ctx.translate(x, F);
         drawBoneSpike(ctx, H * g);
       },
@@ -427,6 +436,8 @@ export class Death extends BossB {
       rects: () => { hb.x = st.x - 70; return [hb]; },
       tick: (z, w, dt) => { st.x += d * 1500 * dt; if (Math.random() < 0.9) w.fx.emit('soul', st.x - d * rand(0, 200), y0 + rand(0, h), { speed: 40, size: 3 }); },
       paint: (ctx, z) => {
+        const art = pArt(this.world);
+        if (art) { art.reap(ctx, st.x, y0, h, d, this.t); return; }   // 채색 유령 낫
         ctx.save();
         ctx.translate(st.x, y0 + h / 2); ctx.scale(d, 1);
         ctx.globalCompositeOperation = 'lighter';
@@ -517,7 +528,7 @@ export class Death extends BossB {
       warnBang(ctx, w.d > 0 ? Math.max(A.x0, cam.x) + 50 : Math.min(A.x1, cam.x + cam.vw) - 50, y0 - 40, 22, 0.6 + 0.4 * Math.sin(this.t * 18));
     }
     // 순간이동 예고 잔상
-    if (this.state === 'blink' && this.blinkTo && this.vanish > 0.9 && !R.fl) {
+    if (this.state === 'blink' && this.blinkTo && this.vanish > 0.9 && !R.fl && !pLive(this)) {
       const k = clamp((this.st % 1.25 - 0.25) / 0.37, 0, 1);
       ctx.save(); ctx.globalAlpha = 0.18 + 0.3 * k;
       this.paintReaper(ctx, this.blinkTo.x, this.blinkTo.y, this.P && this.P.cx < this.blinkTo.x ? -1 : 1, this.t, { a: -1.5, s: 0 }, this.form, this.S, true);
@@ -794,6 +805,7 @@ function drawBoneSpike(ctx, H) {
   glowE(ctx, 0, -6, 20, 10, SOUL, 0.5);
 }
 function sickleRender(ctx, p) {
+  if (pArt(p.world)?.sickle(ctx, p)) return;   // 채색 낫날
   ctx.rotate(p.rot || 0);
   glow(ctx, 0, 0, 30, SOUL, 0.5);
   ctx.beginPath(); ctx.arc(0, 0, 14, -0.3, PI * 1.25); ctx.arc(4, -2, 10, PI * 1.25, -0.3, true); ctx.closePath();

@@ -166,11 +166,13 @@ function resolveRelease(p, world, H) {
   const wall = Math.max(0, ((lastDown + now) / 2 - H.w0) / 1000);
   AWAKEN_DEBUG.holds.push({ dur: +dur.toFixed(3), wall: +wall.toFixed(3), t: +input.time.toFixed(3) });
   if (AWAKEN_DEBUG.holds.length > 16) AWAKEN_DEBUG.holds.shift();
-  // 느린 기기(한 프레임에 스텝이 모자람)에서는 스텝 시간이 실제보다 짧다: 각성은 둘 중 긴 쪽, 톡은 둘 중 짧은 쪽으로 판정
+  // 느린 기기(한 프레임에 스텝이 모자람)에서는 스텝 시간이 실제보다 짧다: 각성은 둘 중 긴 쪽,
+  // 톡/취소는 스텝 시간 (실제 시간이 뚜렷이 더 길 때만 실제 시간 어림값)
+  const est = wall > dur + 0.05 ? wall : dur;
   if (Math.max(dur, wall) >= R.holdFull) {
     endHold(p, world, 'silent');
     castAwakening(p, world);
-  } else if (Math.min(dur, wall) < R.tapMax) {
+  } else if (est < R.tapMax) {
     endHold(p, world, 'silent');
     AWAKEN_DEBUG.taps++;
     castUltimate(p, world);
@@ -321,13 +323,18 @@ function finishSession(cast, why) {
   if (AWAKEN_DEBUG.last) { AWAKEN_DEBUG.last.done = true; AWAKEN_DEBUG.last.why = why; }
 }
 
-/** 시전 자세 (가짜 동작으로 렌더러의 cast_up 자세를 붙잡는다; skills.js pose 와 같은 방식) */
-function castPose(p, world, dur) {
+/** 시전 자세 (가짜 동작으로 렌더러의 자세를 붙잡는다; skills.js pose 와 같은 방식). 판정·휘두르는 소리 없음 */
+function castPose(p, world, dur, anim = 'cast_up', id = 'aw_cast') {
   try {
-    p.startMove?.(world, { id: 'aw_cast', anim: 'cast_up', dur, hit: [dur, dur], box: null, skill: true, sfx: 'magic', cancel: dur, mv: 0, awaken: true });
-    p.moveHitDone = true;   // 휘두르는 소리·궤적 없음
+    p.startMove?.(world, { id, anim, dur, hit: [dur, dur], box: null, skill: true, sfx: 'magic', cancel: dur, mv: 0, awaken: true });
+    p.moveHitDone = true;
   } catch (e) { console.error(e); }
 }
+/** 무기별 휘두르기 자세 (대체 연출의 박자마다 번갈아) */
+const BEAT_ANIMS = {
+  whip: ['lash', 'spin'], sword: ['slash_wide', 'uppercut'], greatsword: ['heavy_spin', 'heavy_down'],
+  dagger: ['spin_blade', 'stab'], gun: ['shoot', 'shoot_double'], staff: ['staff_swing', 'cast'],
+};
 
 // ───────────────────────── 감독 문맥 v ─────────────────────────
 let _hid = 0;
@@ -384,9 +391,11 @@ function bossRoot(t, world) {
  */
 export function bossCapFn(world) {
   const used = new Map();
+  const dbg = AWAKEN_DEBUG.cap = { calls: 0, capped: 0, dealt: 0 };
   return (target, dmg) => {
     const b = bossRoot(target, world);
     if (!b) return dmg;
+    dbg.calls++;
     const max = maxHpOf(b);
     if (!(max > 0)) return dmg;
     const cap = Math.floor(max * R.bossCap), spare = Math.min(max * R.bossCapSpare, 80);
@@ -397,6 +406,7 @@ export function bossCapFn(world) {
     else if (room >= 2) d = Math.floor(room);
     else d = u + 1 <= cap ? 1 : 0;
     used.set(b, u + d);
+    dbg.dealt += d; if (d < dmg) dbg.capped++;
     return d;
   };
 }
@@ -493,6 +503,8 @@ function fallbackDirector(p, world, v) {
   try { ULTFX.begin?.(world, p, { color: col, accent: acc, tier: v.tier, dimCol: a.dark }); } catch (e) { console.error(e); }
   if (a.cue?.name) sfx(a.cue.name, { pitch: a.cue.pitch ?? 1 });
   sfx('awaken_charge', { vol: 0.5, pitch: 1.3 });
+  castPose(p, world, 0.3);
+  const anims = BEAT_ANIMS[p.stats?.weaponType] ?? BEAT_ANIMS.sword;
   world.fx.burst('holy', p.cx, p.cy - 10, 26, { speed: 380, color: col });
   world.fx.ring(p.cx, p.cy, { color: col, r0: 20, r1: 180, life: 0.45, width: 10 });
   const steps = [];
@@ -515,6 +527,7 @@ function fallbackDirector(p, world, v) {
   function beat(i) {
     const w = W[i];
     const list = targets();
+    castPose(p, world, 0.24, anims[i % 2], 'aw_beat');
     const vr = v.view(0);
     let rect = null;
     if (style === 'blink' || style === 'shot') {
@@ -571,6 +584,8 @@ function fallbackDirector(p, world, v) {
   }
   function final() {
     const f = focus();
+    if (Math.abs(f.x - p.cx) > 20) p.facing = f.x > p.cx ? 1 : -1;
+    castPose(p, world, 0.7, 'cast_up', 'aw_final');
     finalAt = { t: world.rt, x: f.x, y: f.y };
     v.final(null, W[W.length - 1], { element: v.t2?.element ?? null, crit: style === 'blink' ? 100 : 0 });
     sfx('awaken_boom');

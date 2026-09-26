@@ -5,6 +5,7 @@
 // npcs:       { '<npcId>': () => import('../npcs/<id>.js') }
 export const bosses = {
   b_frostqueen: () => import('../bosses/b_frostqueen.js'),   // 서리 여왕 이자벨라 (s10) — 거울 분신·위험 지대 그림 포함
+  b_death: () => import('../bosses/b_death.js'),             // 사신 데스 (s11) — 1형태 망토 사신 / 2형태 뿔 해골, 던진 낫·뼈 창·유령 낫 그림 포함
 };
 export const enemies = [];
 export const companions = {};

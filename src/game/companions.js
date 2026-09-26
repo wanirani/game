@@ -54,6 +54,15 @@ import {
 const ARCADE = new Set(['bossrush', 'survival', 'practice']);
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 let RSEQ = 0;
+// 필살기·각성기 이벤트는 모듈에서 한 번만 구독하고 지금 월드(game.world)의 동료 시스템으로 넘긴다
+// (월드마다 구독하면 버려진 World 가 다음 필살기까지 메모리에 남는다)
+let GAME = null, BOUND = false;
+function bindBus(game) {
+  if (game) GAME = game;
+  if (BOUND) return;
+  BOUND = true;
+  for (const evt of ['ultimateCast', 'awakenCast']) bus.on(evt, (d) => { try { GAME?.world?.companions?.onCast?.(evt, d); } catch (e) { console.warn('[companions]', evt, e); } });
+}
 
 /** 보이지 않는 감독: 엔티티 루프 안에서 CompanionSystem.update 를 부른다 (World.update 를 고치지 않고) */
 export class CompanionDirector extends Entity {
@@ -86,7 +95,6 @@ export class CompanionSystem {
     this.groundY = null; this.idleT = 0; this.lastGround = true;
     this.autoT = 0; this.autoCd = 0; this.syncT = 0; this.chainN = -1; this.needRefresh = false; this.rideDone = false;
     this._hud = null; this._hudAt = -1;
-    this.offs = [];
     const self = this;
     this.debug = {
       summon() { const w = self.world, p = w?.player, m = p?.mount; if (!m) return false; return !!(m.summon?.(w, p, { force: true, instant: true }) ?? m.debugSummon?.(w, p)); },
@@ -104,7 +112,7 @@ export class CompanionSystem {
     };
     if (this.active) {
       try { ensureCompanionState(st); } catch (e) { /* 손상된 세이브: 동료 없이 진행 */ }
-      for (const evt of ['ultimateCast', 'awakenCast']) this.offs.push(bus.on(evt, (d) => this.onCast(evt, d)));
+      bindBus(world.game);
     }
   }
 
@@ -129,16 +137,6 @@ export class CompanionSystem {
     if (!due.length) return;
     this.timers = this.timers.filter((tm) => tm.t > 0);
     for (const tm of due) { try { tm.fn(); } catch (e) { console.warn('[companions] timer', e); } }
-  }
-  /** 이 월드가 이미 버려졌으면 버스 구독을 푼다 */
-  stale() {
-    const g = this.world?.game;
-    if (g && g.world && g.world !== this.world) { this.dispose(); return true; }
-    return false;
-  }
-  dispose() {
-    for (const off of this.offs) { try { off(); } catch { /* 무시 */ } }
-    this.offs = [];
   }
 
   // ───────────────────────── 방 · 편성 ─────────────────────────
@@ -341,7 +339,7 @@ export class CompanionSystem {
 
   // ───────────────────────── 공명 (§4.7, 유대 3단계) ─────────────────────────
   onCast(evt, d) {
-    if (!this.active || this.stale()) return;
+    if (!this.active) return;
     const p = this.world.player;
     if (!p || p.dead) return;
     const any = this.guards.some((g) => g.d?.resonance) || this.mountResonance();

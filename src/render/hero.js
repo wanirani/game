@@ -421,7 +421,9 @@ function gunPose(P, S, p, K, ph, def, kind) {
   let k = t < h0 ? ease.outCubic(clamp(t / Math.max(0.01, h0), 0, 1)) : 1;
   if (t > h0) { const r = (t - h0) / Math.max(0.02, dur - h0); if (r > 0.62) k = 1 - ease.inOutQuad((r - 0.62) / 0.38) * 0.85; }
   lerpPose(P, PB, PE, k);
-  const kick = t >= h0 ? Math.exp(-(t - h0) * 26) : 0;
+  // 채색 퍼펫: 반동을 0.03초 늦춘다 — 발사 첫 프레임의 총구 섬광이 들린 총구(탄 생성점보다 ≈45px 위)가 아니라 수평 조준 총구에 찍히게
+  const kd = K.pup ? 0.03 : 0;
+  const kick = t >= h0 + kd ? Math.exp(-(t - h0 - kd) * 26) : 0;
   const g = def.gun;
   if (g & 1) { const sg = P.w1 > 1 ? 1 : -1; P.a1 += sg * kick * 0.42; P.w1 += sg * kick * 0.85; }
   if (g & 2) { const sg = P.w2 > 1 ? 1 : -1; P.a2 += sg * kick * 0.42; P.w2 += sg * kick * 0.85; }

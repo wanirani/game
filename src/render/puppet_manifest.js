@@ -178,7 +178,7 @@ export const PUPPETS = {
    ]
   },
   "lia_reaper": {
-   "h": "83b4420f11ae",
+   "h": "aff0558eab77",
    "turn": true,
    "lv": [
     "hi",
@@ -234,8 +234,8 @@ export const PUPPETS = {
    ]
   },
   "sera_priestess": {
-   "h": "a837cf1f6aa6",
-   "turn": false,
+   "h": "021ae9c26837",
+   "turn": true,
    "lv": [
     "hi",
     "lo",
@@ -272,8 +272,8 @@ export const PUPPETS = {
    ]
   },
   "victor_desperado": {
-   "h": "1e341ba52058",
-   "turn": false,
+   "h": "37c350e0768f",
+   "turn": true,
    "lv": [
     "hi",
     "lo",

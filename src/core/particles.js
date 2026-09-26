@@ -227,15 +227,24 @@ export class Particles {
         }
       }
     }
-    // 자국 수명 (FIFO 순서를 지키도록 앞에서부터)
+    // 자국 수명 (FIFO 순서를 지키도록 앞에서부터). 타일이 바뀌면(부서지는 벽·무너지는 발판) 붙어 있던 칸이 사라진 자국도 지운다
     const D = this.decals;
     if (D.length) {
+      const mv = map?.version;
+      const recheck = mv !== undefined && mv !== this._mapVer;
+      if (recheck) this._mapVer = mv;
       let w = 0;
-      for (let i = 0; i < D.length; i++) { const d = D[i]; d.life -= dt; if (d.life > 0) D[w++] = d; }
+      for (let i = 0; i < D.length; i++) {
+        const d = D[i]; d.life -= dt;
+        if (recheck && d.atx !== undefined) { const t = map.typeAt(d.atx, d.aty); if (!isSolidType(t) && t !== 2) d.life = 0; }
+        if (d.life > 0) D[w++] = d;
+      }
       D.length = w;
-    }
+    } else if (map?.version !== undefined) this._mapVer = map.version;
     // 숫자 기둥 합계
     const Cq = this._cols;
+    // 설정에서 데미지 숫자를 끈 뒤(일시정지 메뉴)에는 기다리던 합계도 띄우지 않는다
+    if (Cq.length && typeof window !== 'undefined' && window.__game?.settings?.showDamage === false) { for (const c of Cq) c.done = true; Cq.length = 0; }
     if (Cq.length) {
       const delay = FH.DMG_STYLE?.column?.totalDelay ?? COL_DEF.totalDelay;
       for (let i = Cq.length - 1; i >= 0; i--) {

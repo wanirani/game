@@ -562,10 +562,11 @@ export class AwakenCutinScene extends Scene {
         ctx.globalCompositeOperation = 'lighter';
         drawHero(ctx, this.snap, this.w, { tint: '#ffffff', alpha: 0.85 * fl });
       }
-      // 발밑 광채
+      // 발밑 기운 고리
+      const k = clamp(t / 0.12, 0, 1);
       ctx.globalCompositeOperation = 'lighter';
-      ctx.fillStyle = rgba(this.a.color, 0.25 * clamp(t / 0.12, 0, 1));
-      ctx.beginPath(); ctx.ellipse(p.cx, p.bottom, 70, 14, 0, 0, TAU); ctx.fill();
+      ctx.strokeStyle = rgba(this.a.color, 0.4 * k); ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.ellipse(p.cx, p.bottom - 2, 46 + 10 * Math.sin(t * 9), 9, 0, 0, TAU); ctx.stroke();
     } catch (e) { console.error('[awakenCutin] hero', e); }
     ctx.restore();
   }
@@ -613,10 +614,15 @@ export class AwakenCutinScene extends Scene {
       if (img) {
         const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
         let dw, dh;
-        if (!this.fallback) { dw = vw * 1.15 * (1 + 0.03 * imgK); dh = dw * ih / iw; } else { dh = H * 0.9 * 1.25; dw = dh * iw / ih; }
+        if (!this.fallback) { dw = vw * 1.15 * (1 + 0.03 * imgK); dh = dw * ih / iw; } else { dh = H * 1.45; dw = dh * iw / ih; }
         const fx = this.face[0], fy = this.face[1];
-        const left = vw * 0.66 - fx * dw + ix - vw / 2, top = (this.fallback ? -H * 0.08 : 0) - fy * dh;
+        const left = vw * 0.66 - fx * dw + ix - vw / 2, top = (this.fallback ? -H * 0.06 : 0) - fy * dh;
         ctx.drawImage(img, left, top, dw, dh);
+        if (this.fallback && sprites()) {   // 초상은 좁으니 오른쪽 끝도 어둡게 녹인다
+          ctx.save(); ctx.translate(left + dw, 0); ctx.scale(-1, 1);
+          ctx.drawImage(sprites().fade, 0, -vh, dw * 0.3, vh * 2);
+          ctx.restore();
+        }
         // 왼쪽 45% 어둠 (글자 자리)
         const sp = sprites();
         if (sp) {

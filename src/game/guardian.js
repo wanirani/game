@@ -939,6 +939,8 @@ const GENERIC = {
     world.fx?.ring(p.cx, p.cy, { color: col, r0: 20, r1: r * 1.1, life: 0.4, width: 8 });
     world.fx?.flash(p.cx, p.cy, { color: col, size: r * 1.6, life: 0.16 });
     world.fx?.burst(EL_FX[el] ?? 'magic', p.cx, p.cy, nq(world, 18), { speed: 260, color: col });
+    // 데이터가 숨(air)을 채운다면 깊은 물 기믹의 숨을 채운다 (루멘 「심해의 등불」: world2 §14, GIMMICK-ENGINE 요청)
+    if (Number.isFinite(sk.air)) { const deep = world.gimmickOf?.('deep'); if (deep && Number.isFinite(deep.air)) deep.air = Math.max(deep.air, sk.air); }
   },
 };
 /** id → AI (GUARDIAN_AI → GUARDIAN_AI_B → 기본). 순환 import 때문에 호출 시점에 찾는다 */
