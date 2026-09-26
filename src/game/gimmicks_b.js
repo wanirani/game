@@ -981,9 +981,11 @@ export class VoidWallGimmick extends MemberB {
     const cam = this.world?.camera;
     if (!cam) return;
     const vw = cam.vw ?? cam.w, vh = cam.vh ?? cam.h;
+    // 중간·낮음 품질: 가산 색광(전체 해상도) 없이 어둠에 구멍만, 간격도 넓게 — 가장자리 색은 drawVoid 의 보랏빛 띠가 낸다
+    const hi = qualityOf(this.world) >= 0.9, stepY = hi ? 200 : 260;
     const put = (X, side) => {
       if (X < cam.x - 120 || X > cam.x + vw + 120) return;
-      for (let y = cam.y + 70; y < cam.y + vh; y += 200) L.add(X - side * 14, y, 150, '#8a6aff', 0.42);
+      for (let y = cam.y + 70; y < cam.y + vh; y += stepY) L.add(X - side * 14, y, 150, '#8a6aff', 0.42, hi);
     };
     if (this.mode === 'chase') put(this.wallX, -1);
     else if (this.active) { const b = this.bounds(); if (this.wallX > b.x0 + 1) put(this.wallX, -1); if (this.wallR < b.x1 - 1) put(this.wallR, 1); }

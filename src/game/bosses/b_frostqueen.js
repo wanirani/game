@@ -2,6 +2,8 @@
 // 패턴: 빙결 순간이동 · 고드름 비 · 얼음 기둥 연쇄 · 눈보라(밀어내기) · 빙결 광선(동결) · 얼음 거울 분신 · 다이아몬드 더스트(3페이즈)
 import { BossB, PI, OUT, R, C, LG, RG, ink, glow, glowE, eye, warnRect, warnFloor, warnLine, warnBang, lineStrike, impact, hash, smoothOpen } from './b_common.js';
 import { Entity } from '../entity.js';
+import { heldByFreeze } from './boss.js';
+import { drawPaintedDirect, paintedRig } from '../../render/painted/registry.js';
 import { audio } from '../../core/audio.js';
 import { TAU, clamp, lerp, rand, ease, rgba, mix } from '../../core/math.js';
 
@@ -31,6 +33,7 @@ class MirrorClone extends Entity {
     audio.sfx('break_wall', { vol: 0.6, pitch: 1.4 });
   }
   update(dt, world) {
+    if (heldByFreeze(world, this.queen)) return;   // [hook:feel] 적 정지 중 분신도 멈춤 (FEEL-BOSSHOOKS 요청)
     if (world.timeStop > 0) dt *= 0.25;
     this.t += dt; this.life -= dt;
     const q = this.queen;
@@ -257,6 +260,7 @@ export class FrostQueen extends BossB {
     this.glide(dt, this.cx, (this.hoverY ?? this.homeY) + this.bobY, 3);
     const hx = this.cx + this.facing * 44, hy = this.y + 52;
     if (lt < 0.8) {
+      if (this.at(i * per + 0.001)) this.telegraphFor(0.8);   // [hook:feel] 조준 윈드업 동안 카운터 창
       this.pose.cast = Math.max(this.pose.cast, lt / 0.8);
       if (lt < 0.6 && p) { this.beamAim = Math.atan2(p.cy - hy, p.cx - hx); }
       if (this.every(0.03, i * per, i * per + 0.8)) { const a = rand(0, TAU), r = rand(30, 60); world.fx.emit('ice', hx + Math.cos(a) * r, hy + Math.sin(a) * r, { vx: -Math.cos(a) * r * 5, vy: -Math.sin(a) * r * 5, speed: 0, grav: 0, life: 0.2 }); }
@@ -385,6 +389,7 @@ export class FrostQueen extends BossB {
     const A = this.A, F = A.floor;
     this.facePlayer();
     this.setPose(2.2, 0.6, 2.2, 0.6, 0);
+    if (this.at(0.001)) this.telegraphFor(0.25);   // [hook:feel] 분신 소환 윈드업
     if (this.at(0.25)) {
       audio.sfx('magic', { pitch: 1.6 }); audio.sfx('ice', { pitch: 1.2 });
       const n = this.phase >= 2 || this.inferno ? 3 : 2;
@@ -432,7 +437,7 @@ export class FrostQueen extends BossB {
     this.setPose(1.6 + Math.sin(t * 6) * 0.2, 0.2, 1.6 + Math.cos(t * 6) * 0.2, 0.2, 0);
     this.glide(dt, this.cx, (this.hoverY ?? this.homeY) + this.bobY, 3);
     const dur = 3.4;
-    if (this.at(0.1)) { audio.sfx('magic', { pitch: 0.8 }); world.game.toast('다이아몬드 더스트!', ICE_L); }
+    if (this.at(0.1)) { audio.sfx('magic', { pitch: 0.8 }); world.game.toast('다이아몬드 더스트!', ICE_L); this.telegraphFor(0.4); }   // [hook:feel] 탄막 전 윈드업
     if (this.every(0.14, 0.5, dur)) {
       const arms = this.inferno ? 5 : 4;
       const base = t * 1.9;

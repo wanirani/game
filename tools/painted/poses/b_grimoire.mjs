@@ -21,7 +21,7 @@ export const INSTALL = `(() => {
   const hold = (st, t, f) => { b.setState(st); b.cool = 99; for (let i = 0; i < Math.round(t * 60); i++) { px(); f?.(i); step(1); } };
   const settle = () => {
     if (b.dying > 0) return;
-    b.invuln = false; b.blink = 1;
+    b.invuln = false; b.blink = 1; b.eyeOpen = 1;
     b.x = HX - b.w / 2 + 80; b.y = A.floor - 240 - b.h / 2; b.vx = 0; b.vy = 0;
     b.setState('idle'); b.cool = 99; for (let i = 0; i < 80; i++) { px(); step(1); }
   };

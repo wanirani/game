@@ -98,7 +98,7 @@ export class Death extends BossB {
     const p = this.P;
     this.facePlayer();
     this.glide(dt, this.cx, this.homeY + this.bob, 2);
-    if (t < 0.5) { this.armT.a = -1.4; if (this.at(0.05)) audio.sfx('charge_ready', { vol: 0.4, pitch: 0.6 }); }
+    if (t < 0.5) { this.armT.a = -1.4; if (this.at(0.05)) { audio.sfx('charge_ready', { vol: 0.4, pitch: 0.6 }); this.telegraphFor(0.45); } }   // [hook:feel] 투척 윈드업
     if (this.at(0.5)) {
       this.armT.a = 1.3; this.arm.s = 1; this.hasScythe = false;
       audio.sfx('slash_heavy', { pitch: 0.7 });
@@ -155,7 +155,7 @@ export class Death extends BossB {
     this.armT.a = -1.2;
     this.glide(dt, this.cx, this.homeY - 30 + this.bob, 2);
     const n = (this.form === 2 ? 8 : 5) + (this.inferno ? 2 : 0);
-    if (this.at(0.1)) { audio.sfx('dark', { pitch: 1.2 }); this.sickleSet = []; }
+    if (this.at(0.1)) { audio.sfx('dark', { pitch: 1.2 }); this.sickleSet = []; this.telegraphFor(0.8); }   // [hook:feel] 발사 전 윈드업
     for (let i = 0; i < n; i++) {
       if (this.at(0.15 + i * 0.07)) {
         const a = -PI / 2 + (i - (n - 1) / 2) * (PI * 1.3 / n);
@@ -216,6 +216,7 @@ export class Death extends BossB {
         this.place(this.blinkTo.x, this.blinkTo.y);
         this.facePlayer();
         this.armT.a = -1.5; this.arm.a = -1.5;
+        this.telegraphFor(0.16);   // [hook:feel] 등 뒤 출현 → 베기 윈드업
       }
       this.vanish = Math.max(0, this.vanish - dt * 8); this.invuln = this.vanish > 0.6;
       if (lt > 0.78 && lt < 0.78 + dt * 1.5) {
@@ -305,7 +306,7 @@ export class Death extends BossB {
       this.glide(dt, this.dashFrom, F - 6, 7);
       this.armT.a = 2.1;
       this.dashWarn = { x0: Math.min(this.dashFrom, this.dashTo) - 40, x1: Math.max(this.dashFrom, this.dashTo) + 40, k: lt / 0.7 };
-      if (lt < dt * 1.5) audio.sfx('warning', { vol: 0.35, pitch: 1.4 });
+      if (lt < dt * 1.5) { audio.sfx('warning', { vol: 0.35, pitch: 1.4 }); this.telegraphFor(0.7); }   // [hook:feel] 돌진 윈드업
     } else if (lt < 1.2) {
       this.dashWarn = null;
       const u = ease.inOutQuad((lt - 0.7) / 0.5);
@@ -328,7 +329,7 @@ export class Death extends BossB {
     this.armT.a = -2.4;
     this.glide(dt, clamp(this.cx, ...this.viewX(200)), this.homeY - 110 + this.bob, 2);
     const dur = 3.0;
-    if (this.at(0.1)) { audio.sfx('dark', { pitch: 0.9 }); impact(world, { shake: 5, time: 0.4 }); }
+    if (this.at(0.1)) { audio.sfx('dark', { pitch: 0.9 }); impact(world, { shake: 5, time: 0.4 }); this.telegraphFor(0.4); }   // [hook:feel] 낫 폭풍 윈드업
     if (this.every(this.inferno ? 0.16 : 0.2, 0.5, dur)) {
       const k = 3;
       for (let i = 0; i < k; i++) {
@@ -379,6 +380,7 @@ export class Death extends BossB {
     this.facePlayer();
     this.glide(dt, this.cx, this.homeY + this.bob, 2);
     this.armT.a = t < 0.55 ? -1.6 : 1.4;
+    if (this.at(0.001)) this.telegraphFor(0.55);   // [hook:feel] 쌍낫 투척 윈드업
     if (this.at(0.55)) {
       this.hasScythe = false; this.arm.s = 1;
       audio.sfx('slash_heavy', { pitch: 0.6 });
@@ -404,6 +406,7 @@ export class Death extends BossB {
         const d = p && p.cx > A.cx ? -1 : 1;
         this.reapWarn = { lane, d, k: 0, t0 };
         audio.sfx('warning', { vol: 0.5 });
+        this.telegraphFor(0.85);   // [hook:feel] 휩쓸기 예고 동안 카운터 창
       }
       if (this.at(t0)) { this.bigReap(world, this.reapWarn?.d ?? 1, lane); this.reapWarn = null; }
     }
