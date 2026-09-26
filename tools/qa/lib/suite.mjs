@@ -139,13 +139,14 @@ export class Suite {
   summary() {
     const by = (s) => this.results.filter((r) => r.status === s);
     const redIssues = [...new Set([...by('fail'), ...by('error')].map((r) => r.issue || '(no issue)'))].sort();
-    const pendingBy = {};
+    const pendingBy = {}, redBy = {};
     for (const r of by('pending')) (pendingBy[r.gate] ||= []).push(r.id);
+    for (const r of [...by('fail'), ...by('error')]) (redBy[r.pkg || '(page errors / harness)'] ||= []).push(r.id);
     return {
       suite: this.name, when: new Date().toISOString(), durationMs: Date.now() - this.t0, argv: process.argv.slice(2),
       strict: this.args.strict, markers: this.markers,
       counts: { pass: by('pass').length, fail: by('fail').length, error: by('error').length, pending: by('pending').length, skip: by('skip').length },
-      redIssues, pendingByPackage: pendingBy, checks: this.results, pageErrors: this.pageErrors,
+      redIssues, redByPackage: redBy, pendingByPackage: pendingBy, checks: this.results, pageErrors: this.pageErrors,
     };
   }
 
@@ -157,6 +158,8 @@ export class Suite {
     const c = s.counts;
     console.log(`\n${this.name}: ${c.pass} pass, ${c.fail} fail, ${c.error} error, ${c.pending} pending, ${c.skip} skip in ${(s.durationMs / 1000).toFixed(1)} s`);
     if (s.redIssues.length) console.log(`red issues: ${s.redIssues.join(', ')}`);
+    const redBy = Object.entries(s.redByPackage);
+    if (redBy.length) console.log(`red by package: ${redBy.map(([k, v]) => `${k} ×${v.length}`).join(', ')}`);
     const pend = Object.entries(s.pendingByPackage);
     if (pend.length) console.log(`pending (feature not landed): ${pend.map(([k, v]) => `${k} ×${v.length}`).join(', ')}`);
     console.log(`report: ${file}`);

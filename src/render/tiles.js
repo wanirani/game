@@ -302,6 +302,17 @@ export class TileRenderer {
     if (!c) return;
     this.chunks.delete(key);
     if (this.pool.length < 2) this.pool.push(c.canvas);
+    else c.canvas.width = c.canvas.height = 0; // 풀에 못 넣은 캔버스는 바로 비워 GPU/비트맵 메모리를 돌려준다 (GC 를 기다리지 않음)
+  }
+  /**
+   * (tx,ty) 가 드러나지 않은 비밀 공간 속이라 벽으로 그려지는 칸인가 (가짜 벽 + 그 안의 액체·가시·발판).
+   * world.inUnrevealedFake 가 이것도 보면 비밀 물웅덩이 속 적·아이템이 벽 위에 비쳐 보이지 않는다.
+   */
+  hiddenAt(tx, ty) {
+    const m = this.map;
+    if (!m || tx < 0 || ty < 0 || tx >= m.w || ty >= m.h) return false;
+    const i = ty * m.w + tx;
+    return (m.tiles[i] === T.FAKE && !m.revealed.has(i)) || this.secretMask()?.[i] === 1;
   }
   /** 구울 때 쓸 수 있는 텍스처 비트: 1 = 주 텍스처, 2 = 보조 텍스처 */
   texState() {
@@ -816,13 +827,16 @@ export class TileRenderer {
     }
     ctx.strokeStyle = col[1]; ctx.globalAlpha = 0.6; ctx.lineWidth = 2; ctx.stroke();
     ctx.globalCompositeOperation = 'lighter';
-    // 넓은 물 속: 은은한 반짝임 (폭이 숨 쉬듯 변함)
+    // 넓은 물 속: 은은한 반짝임 (폭이 숨 쉬듯 변함). 깊은 물(방 전체가 물)은 칸마다 찍으면 격자 무늬로 보이므로
+    // 해시로 고른 1/3 칸에만, 높이도 칸마다 흩어 찍는다
     ctx.beginPath();
     for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) {
       const i = ty * W + tx;
       if (!liq[i] || surf[i] || fall[i]) continue;
+      const h = deep ? ((tx * 73856093) ^ (ty * 19349663)) >>> 0 : 0;
+      if (deep && h % 3) continue;
       const k = 0.5 + 0.5 * Math.sin(t * 2 + tx * 1.7 + ty * 2.3);
-      ctx.rect(tx * S + ((t * 20 + tx * 13) % 40), ty * S + 10 + (ty % 3) * 10, 3 + k * 6, 2);
+      ctx.rect(tx * S + ((t * 20 + tx * 13) % 40), ty * S + 10 + (deep ? (h >>> 4) % 28 : (ty % 3) * 10), 3 + k * 6, 2);
     }
     ctx.globalAlpha = deep ? 0.12 : 0.09; ctx.fillStyle = col[1]; ctx.fill();
     if (info.falls.length) this.drawFalls(ctx, cam, t, info, col[1]);

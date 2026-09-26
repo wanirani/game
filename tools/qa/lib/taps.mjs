@@ -16,7 +16,8 @@
 // Rect coordinates are the scene's own: UI px for scenes with uiScale (× game.uiK) and logical px otherwise.
 //
 // Minimums in CSS px (§6.3): primary 44 (both sides), icon/arrow 44×44, list row 36 tall, dense row 28 tall.
-// yellow = below its kind's minimum; red = shorter side below 32. The effective size includes the region's slop.
+// ok = at least its kind's minimum; otherwise red when the shorter side is below 32, else yellow.
+// The effective size includes the region's slop.
 // Slop is measured as a phone user gets it (touch mode; the audit runs at phone sizes):
 //  - taps.add regions use the registry's own rule (core/ui.js tapSlop): max(opts.slop ?? taps.slop, half of what the
 //    kind's CSS minimum is short of), capped at SLOP_MAX_LOGICAL region px;
@@ -71,6 +72,7 @@ export async function installTapRecorder(page) {
     const gc = await tryImport('/src/scenes/games/common.js');
     // the shared registry (platform §6.3): taps.note(rect, kind, src) from the legacy helpers, taps.add(id, rect, opts) from new code
     const t = ui.taps;
+    R.slopMax = t && typeof t.slopMax === 'number' ? t.slopMax : null;
     if (t && typeof t === 'object') {
       try { if ('record' in t) t.record = true; } catch { /* read-only */ }
       P(t, 'note', 'ui.taps', 'primary', 0, 1);
@@ -114,7 +116,7 @@ export async function auditScene(page, ev, { wait = 900, settle = 150 } = {}) {
   // clear, then let the game render a few fresh frames (frame-based so a loaded machine does not truncate the sample)
   await page.evaluate(() => { window.__qaTaps.list.length = 0; window.__qaTaps.text.length = 0; });
   await page.evaluate((ms) => new Promise((res) => { const t0 = performance.now(); let n = 0; const f = () => { if (++n >= 4 && performance.now() - t0 >= ms) res(); else requestAnimationFrame(f); }; requestAnimationFrame(f); }), settle);
-  return page.evaluate(({ MIN, RED }) => {
+  return page.evaluate(({ MIN, RED, SMAX }) => {
     const g = window.__game, R = window.__qaTaps;
     const cv = g.canvas.getBoundingClientRect();
     const cssScale = cv.height / g.viewH;
@@ -146,23 +148,56 @@ export async function auditScene(page, ev, { wait = 900, settle = 150 } = {}) {
       scan(top, 0);
     }
     const vw = top?.uiScale ? (g.uiW ?? g.viewW / uiK) : g.viewW, vh = top?.uiScale ? (g.uiH ?? g.viewH / uiK) : g.viewH;
-    const regions = [];
+    // touch slop per side (region px): the registry rule for taps.add regions, none for legacy helpers
+    const smax = typeof R.slopMax === 'number' ? R.slopMax : SMAX;
+    const list = [];
     for (const r of seen.values()) {
       if (r.x + r.w <= 0 || r.y + r.h <= 0 || r.x >= vw || r.y >= vh) continue; // off screen (scrolled away)
       const k = cssScale * (r.ui ? uiK : 1);
-      const w = (r.w + 2 * r.slop) * k, h = (r.h + 2 * r.slop) * k;
       const kind = MIN[r.kind] ? r.kind : 'primary';
+      let s = Math.max(0, r.slop || 0);
+      if (r.auto) s = Math.min(smax, Math.max(s, (MIN[kind] / k - Math.min(r.w, r.h)) / 2));
+      s = Math.max(0, s);
+      list.push({ r, k, kind, s: { l: s, r: s, t: s, b: s } });
+    }
+    // §6.3 "no overlap of slop": each side's slop stops at the midpoint of the gap to the neighbour on that side
+    const contains = (p, q) => p.x <= q.x + 0.5 && p.y <= q.y + 0.5 && p.x + p.w >= q.x + q.w - 0.5 && p.y + p.h >= q.y + q.h - 0.5;
+    for (const A of list) {
+      const a = A.r;
+      if (!(A.s.l > 0)) continue;
+      for (const B of list) {
+        const b = B.r;
+        if (B === A || contains(a, b) || contains(b, a)) continue; // a panel around its buttons is not a neighbour
+        const ovY = b.y < a.y + a.h && b.y + b.h > a.y, ovX = b.x < a.x + a.w && b.x + b.w > a.x;
+        if (ovY && !ovX) {
+          if (b.x >= a.x + a.w) A.s.r = Math.min(A.s.r, (b.x - a.x - a.w) / 2);
+          else A.s.l = Math.min(A.s.l, (a.x - b.x - b.w) / 2);
+        } else if (ovX && !ovY) {
+          if (b.y >= a.y + a.h) A.s.b = Math.min(A.s.b, (b.y - a.y - a.h) / 2);
+          else A.s.t = Math.min(A.s.t, (a.y - b.y - b.h) / 2);
+        } else if (ovX && ovY) { // partial overlap: no slop towards the other target
+          if (b.x < a.x) A.s.l = 0;
+          if (b.x + b.w > a.x + a.w) A.s.r = 0;
+          if (b.y < a.y) A.s.t = 0;
+          if (b.y + b.h > a.y + a.h) A.s.b = 0;
+        }
+      }
+    }
+    const regions = [];
+    for (const { r, k, kind, s } of list) {
+      const w = (r.w + s.l + s.r) * k, h = (r.h + s.t + s.b) * k;
       const need = MIN[kind];
       const size = kind === 'row' || kind === 'dense' ? h : Math.min(w, h);
-      const level = Math.min(w, h) < RED ? 'red' : size < need ? 'yellow' : 'ok';
-      regions.push({ src: r.src, kind, id: r.id, w: +w.toFixed(1), h: +h.toFixed(1), level, lx: Math.round(r.x), ly: Math.round(r.y), lw: Math.round(r.w), lh: Math.round(r.h) });
+      // ok at the kind's minimum (a dense row needs 28, below the 32 px red line); otherwise red when a side is < 32
+      const level = size >= need ? 'ok' : Math.min(w, h) < RED ? 'red' : 'yellow';
+      regions.push({ src: r.src, kind, id: r.id, w: +w.toFixed(1), h: +h.toFixed(1), level, slop: +((s.l + s.r + s.t + s.b) / 4).toFixed(1), lx: Math.round(r.x), ly: Math.round(r.y), lw: Math.round(r.w), lh: Math.round(r.h) });
     }
     const red = regions.filter((r) => r.level === 'red'), yellow = regions.filter((r) => r.level === 'yellow');
     const sizes = R.text.map((t) => t.bpx / backingPerCss).sort((a, b) => a - b);
     const q = (p) => (sizes.length ? +sizes[Math.min(sizes.length - 1, Math.floor(p * sizes.length))].toFixed(2) : null);
     const text = { n: sizes.length, min: q(0), p10: q(0.1), median: q(0.5), smallest: R.text.slice().sort((a, b) => a.bpx - b.bpx).slice(0, 4).map((t) => `${t.s}@${(t.bpx / backingPerCss).toFixed(1)}`) };
     return { scene: g.scenes.map((s) => s.name).join('>'), top: top?.name, cssScale: +cssScale.toFixed(3), uiK: +uiK.toFixed(3), uiScale: !!top?.uiScale, n: regions.length, red, yellow, ok: red.length === 0 && yellow.length === 0, regions, text };
-  }, { MIN: MIN_CSS, RED: RED_CSS });
+  }, { MIN: MIN_CSS, RED: RED_CSS, SMAX: SLOP_MAX_LOGICAL });
 }
 
 /**

@@ -12,7 +12,7 @@ import { VIEWPORTS, NOTCH_INSETS, PIXEL_BUDGET_MP } from './lib/viewports.mjs';
 import { probeInsets, canvasBox, insideSafe, hudPortraitBox } from './lib/safearea.mjs';
 import { installTapRecorder, auditScene, describeAudit, VISITS, VISIT_BASE } from './lib/taps.mjs';
 import { runFrames, TIER_EXPR } from './lib/clock.mjs';
-import { Touch, padVisible } from './lib/touch.mjs';
+import { Touch, padVisible, ensureTouchMode } from './lib/touch.mjs';
 import { emulateNetwork } from './lib/net.mjs';
 import { pwaChecks } from './platform_pwa.mjs';
 
@@ -105,6 +105,7 @@ try {
     const s = await env.page('desk', 'index.html?scene=stage&stage=s01');
     await s.waitGame('!!g.world?.player');
     await s.wait(1500);
+    await s.skipDialogue();
     await runFrames(s.page, 1000 / 120, 60);
     const r = await runFrames(s.page, 1000 / 120, 240);
     const perSec = r.renders / (r.virtualMs / 1000), ticks = r.ticks / (r.virtualMs / 1000);
@@ -119,6 +120,7 @@ try {
     const s = await env.page('desk', 'index.html?scene=stage&stage=s01', { settings: { quality: 'auto' } });
     await s.waitGame('!!g.world?.player');
     await s.wait(1500);
+    await s.skipDialogue(); // the governor only runs while a gameplay scene is on top
     const order = ['low', 'medium', 'high'];
     const start = await tierOf(s);
     const slow = await runFrames(s.page, 30, 200, { sampleTier: true });
@@ -144,7 +146,8 @@ try {
     await s.key('Escape', 90);
     await s.wait(1500);
     const sc = await s.scenes();
-    await suite.check({ id: 'stack.worldmap', group: 'stack', issue: 'P-26', gate: 'PLAT-CORE', title: 'worldmap opened directly, then cancel → title', session: s }, async () => ({ pass: /title$/.test(sc), detail: `scenes '${sc}'` }));
+    // P-26: pop() on the last scene → title (PLAT-CORE); the worldmap may instead cancel to the hub (goSafe, §2 P-26)
+    await suite.check({ id: 'stack.worldmap', group: 'stack', issue: 'P-26', gate: 'PLAT-CORE', title: 'worldmap opened directly, then cancel → title (or hub), never an empty stack', session: s }, async () => ({ pass: /(^|>)(title|hub)$/.test(sc), detail: `scenes '${sc}'` }));
     await suite.errors({ id: 'stack.errors', group: 'stack' }, s);
     await s.close();
   }, env);
@@ -222,7 +225,11 @@ try {
     for (const vp of suite.vps(['phone2', 'phone1'])) {
       const s = await env.page(vp, VISIT_BASE[group]);
       await s.wait(/scene=/.test(VISIT_BASE[group]) ? 2500 : 1500);
-      if (/scene=stage/.test(VISIT_BASE[group])) await s.skipDialogue();
+      if (/scene=stage/.test(VISIT_BASE[group])) {
+        await s.skipDialogue();
+        // skipDialogue presses Enter (keyboard mode): phones are audited in touch mode (touch row heights, §6.3)
+        if (VIEWPORTS[vp].touch) await ensureTouchMode(new Touch(s.cdp, s.page), s.page);
+      }
       await installTapRecorder(s.page);
       for (const [name, ev, wait, opt = {}] of VISITS[group]) {
         const a = await auditScene(s.page, ev, { wait });

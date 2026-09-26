@@ -3,7 +3,7 @@
 // with the cache disabled, per network profile; counts requests/bytes and how spread out the module requests are.
 //
 //   node tools/qa/platform_load.mjs              # the repo tree (tools/serve.mjs, no compression): fast4g + wifi, metrics;
-//                                                # the budgets are checked but pending until the dist build exists
+//                                                # budgets pending until DELIVERY-WEB lands, skipped once dist/web exists
 //   node tools/qa/platform_load.mjs --dist       # dist/web (tools/deploy/serve_dist.mjs start() if it exports one,
 //                                                # else a brotli static server): slow4g + fast4g + wifi, budgets enforced
 //   [--net slow4g,fast4g,wifi] [--dir <build dir> (with --dist)] [--strict]
@@ -20,6 +20,11 @@ const args = parseArgs();
 if (args.dist) args.tag = 'dist';
 const suite = new Suite('platform_load', args);
 const nets = args.net ? String(args.net).split(',') : args.dist ? ['slow4g', 'fast4g', 'wifi'] : ['fast4g', 'wifi'];
+// The budgets are defined for the delivered build (brotli + modulepreload). Against the raw repo tree they are pending
+// until DELIVERY-WEB lands (or red with --strict when no build exists); once dist/web exists they are skipped here
+// and measured by --dist instead, so a repo-tree run never goes red on a budget it cannot meet by design.
+const distBuilt = fs.existsSync(path.join(ROOT, 'dist/web/index.html'));
+const repoSkip = !args.dist && distBuilt ? 'budgets apply to dist/web: run platform_load.mjs --dist' : null;
 
 let server = null, env = null;
 try {
@@ -54,10 +59,11 @@ try {
       const metrics = { net, firstFrameMs: firstFrame, titleBgMs: bg, ...m, moduleSpreadMs: spread, source: args.dist ? 'dist/web' : 'repo' };
       const budget = LOAD_BUDGET_MS[net];
       await suite.check({ id: `load.${net}`, group: 'load', issue: 'P-09', gate: 'DELIVERY-WEB', title: budget ? `${net}: first frame ≤ ${budget / 1000} s (${metrics.source})` : `${net}: cold load (metrics)` }, async () => (
-        budget ? { pass: firstFrame <= budget, detail: `first frame ${(firstFrame / 1000).toFixed(1)} s, title bg ${(bg / 1000).toFixed(1)} s, ${m.requests} requests, ${m.mb} MB, ${m.modules} modules requested over ${spread} ms`, metrics }
+        budget && repoSkip ? { skip: `${repoSkip} (repo tree: first frame ${(firstFrame / 1000).toFixed(1)} s, ${m.requests} requests, ${m.mb} MB)`, metrics }
+          : budget ? { pass: firstFrame <= budget, detail: `first frame ${(firstFrame / 1000).toFixed(1)} s, title bg ${(bg / 1000).toFixed(1)} s, ${m.requests} requests, ${m.mb} MB, ${m.modules} modules requested over ${spread} ms`, metrics }
           : { pass: true, detail: `first frame ${(firstFrame / 1000).toFixed(1)} s, title bg ${(bg / 1000).toFixed(1)} s, ${m.requests} requests, ${m.mb} MB, ${m.modules} modules over ${spread} ms`, metrics }));
       if (net !== 'wifi') {
-        await suite.check({ id: `load.${net}.preload`, group: 'load', issue: 'P-09', gate: 'DELIVERY-WEB', title: `${net}: every module requested within 2 RTT of the first (modulepreload)` }, async () => ({ pass: spread !== null && spread <= 2 * rtt + 250, detail: `module requests spread over ${spread} ms (2 RTT = ${2 * rtt} ms)` }));
+        await suite.check({ id: `load.${net}.preload`, group: 'load', issue: 'P-09', gate: 'DELIVERY-WEB', title: `${net}: every module requested within 2 RTT of the first (modulepreload)` }, async () => (repoSkip ? { skip: `${repoSkip} (repo tree: modules spread over ${spread} ms)` } : { pass: spread !== null && spread <= 2 * rtt + 250, detail: `module requests spread over ${spread} ms (2 RTT = ${2 * rtt} ms)` }));
       }
       await suite.errors({ id: `load.${net}.errors`, group: 'load' }, s);
       await s.close();

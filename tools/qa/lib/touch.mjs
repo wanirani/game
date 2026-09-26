@@ -10,6 +10,7 @@
 //   await stickHold(t, s.page, 40, 0, 500);         // floating stick: touch in the left zone and push +40 px right
 //   await padVisible(s.page)                        // { visible, source }
 //   await waitPadVisible(s.page, false, 1500)       // { ok, ms, ticks, source } — frame-accurate latency
+//   await ensureTouchMode(t, s.page)                // back to touch mode after a keyboard press (neutral tap)
 //
 import { waitFrames } from './server.mjs';
 
@@ -137,24 +138,48 @@ export async function padVisible(page) {
  * → { ok, ms (wall time), ticks (game steps, 60 per simulated second), source }
  */
 export async function waitPadVisible(page, want, timeoutMs = 1500) {
-  return page.evaluate(({ want, timeoutMs }) => new Promise((resolve) => {
-    const g = window.__game, t0 = performance.now(), f0 = g.frame;
-    const vis = () => {
-      const c = document.getElementById('tpadcv') || document.getElementById('tpad');
-      if (c) { const s = getComputedStyle(c); return { v: s.display !== 'none' && s.visibility !== 'hidden' && +s.opacity > 0.02, src: 'tpad' }; }
-      const root = document.getElementById('touch');
-      if (root) { const s = getComputedStyle(root); return { v: s.display !== 'none' && s.visibility !== 'hidden' && !root.classList.contains('hidden') && !root.classList.contains('scene-off'), src: 'dom' }; }
-      return { v: false, src: 'none' };
-    };
-    const f = () => {
-      const r = vis();
-      const ms = performance.now() - t0;
-      if (r.v === want) resolve({ ok: true, ms: Math.round(ms), ticks: g.frame - f0, source: r.src });
-      else if (ms > timeoutMs) resolve({ ok: false, ms: Math.round(ms), ticks: g.frame - f0, source: r.src });
-      else requestAnimationFrame(f);
-    };
-    f();
-  }), { want, timeoutMs });
+  return page.evaluate(async ({ want, timeoutMs }) => {
+    // the canvas pad may hide by its own flag (touchpad.visible) while its layers keep their CSS: read both
+    let tp = null;
+    if (document.getElementById('tpad')) { try { tp = (await import('/src/core/touchpad.js')).touchpad; } catch { tp = null; } }
+    return new Promise((resolve) => {
+      const g = window.__game, t0 = performance.now(), f0 = g.frame;
+      const vis = () => {
+        const c = document.getElementById('tpadcv') || document.getElementById('tpad');
+        if (c) { const s = getComputedStyle(c); return { v: s.display !== 'none' && s.visibility !== 'hidden' && +s.opacity > 0.02 && (typeof tp?.visible === 'boolean' ? tp.visible : true), src: 'tpad' }; }
+        const root = document.getElementById('touch');
+        if (root) { const s = getComputedStyle(root); return { v: s.display !== 'none' && s.visibility !== 'hidden' && !root.classList.contains('hidden') && !root.classList.contains('scene-off'), src: 'dom' }; }
+        return { v: false, src: 'none' };
+      };
+      const f = () => {
+        const r = vis();
+        const ms = performance.now() - t0;
+        if (r.v === want) resolve({ ok: true, ms: Math.round(ms), ticks: g.frame - f0, source: r.src });
+        else if (ms > timeoutMs) resolve({ ok: false, ms: Math.round(ms), ticks: g.frame - f0, source: r.src });
+        else requestAnimationFrame(f);
+      };
+      f();
+    });
+  }, { want, timeoutMs });
+}
+
+/** The game's current input device: input.mode (PLAT-INPUT) or the legacy touchMode flag → 'touch' | 'kb'. */
+export function inputMode(page) {
+  return page.evaluate(() => { const i = window.__game?.input; return i?.mode ?? (i?.touchMode ? 'touch' : 'kb'); });
+}
+
+/**
+ * Put the game back into touch mode (a keyboard press, e.g. skipDialogue's Enter, switches the device to 'kb').
+ * Taps once at (x, y) client px — pick a spot with no control under it (default: middle of the screen, 30 % down,
+ * which is empty in a stage). Returns the mode afterwards.
+ */
+export async function ensureTouchMode(t, page, at = null) {
+  if ((await inputMode(page)) === 'touch') return 'touch';
+  const [w, h] = await page.evaluate(() => [innerWidth, innerHeight]);
+  const [x, y] = at || [Math.round(w * 0.5), Math.round(h * 0.3)];
+  await t.tap(x, y, 50);
+  await waitFrames(page, { ms: 120, frames: 3, ticks: 2 });
+  return inputMode(page);
 }
 
 async function buttonCenter(page, id) {

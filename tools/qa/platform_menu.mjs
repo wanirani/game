@@ -7,7 +7,7 @@
 import { Suite, fmt } from './lib/suite.mjs';
 import { openEnv } from './lib/server.mjs';
 import { VIEWPORTS } from './lib/viewports.mjs';
-import { Touch } from './lib/touch.mjs';
+import { Touch, ensureTouchMode } from './lib/touch.mjs';
 import { installTapRecorder, auditScene, describeAudit, drawnText, KEYBOARD_LABEL } from './lib/taps.mjs';
 import { fakePadInit, PAD_IDS, BTN, press, connect } from './lib/fakepad.mjs';
 
@@ -22,6 +22,8 @@ async function menuPage(vp, tab, extra = {}) {
   await s.waitGame('!!g.world?.player');
   await s.wait(1500);
   await s.skipDialogue();
+  // skipDialogue presses Enter (keyboard mode): phones are measured in touch mode (touch row heights, §6.3)
+  if (VIEWPORTS[vp]?.touch) await ensureTouchMode(new Touch(s.cdp, s.page), s.page);
   await openTab(s, tab, true);
   return s;
 }

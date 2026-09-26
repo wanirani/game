@@ -24,6 +24,7 @@ const RENDER = await Promise.all([import('../src/render/background.js'), import(
 const argv = process.argv.slice(2);
 const si = argv.indexOf('--stages');
 const STAGES = si >= 0 ? (await import(pathToFileURL(resolve(argv[si + 1] ?? '')).href)).STAGES : GAME_STAGES;
+if (!STAGES || typeof STAGES !== 'object') { console.log(`--stages ${argv[si + 1] ?? ''}: 모듈이 STAGES 객체를 export 하지 않음`); process.exit(2); }
 const di = argv.indexOf('--debug');
 const DEBUG_ROOM = di >= 0 ? argv[di + 1] : null;
 const only = argv.find((a, i) => !a.startsWith('--') && !(si >= 0 && i === si + 1) && !(di >= 0 && i === di + 1));
@@ -186,6 +187,11 @@ function check(stage, roomId, room) {
   const liquid = roomLiquid(stage, room);
   if (room.liquid !== undefined && !LIQUIDS.includes(room.liquid)) err(`${roomId}: room.liquid '${room.liquid}' 는 ${LIQUIDS.join('/')} 중 하나`);
   const list = kinds(stage, room);
+  {
+    // 게임(gimmicks.js resolveGimmickConfig)은 객체가 아닌 항목을 조용히 버린다 → gimmick: 'mirror' 같은 오타는 기믹 없는 방이 됨
+    const raw = room.gimmick === undefined ? stage.gimmick : room.gimmick;
+    for (const o of raw ? (Array.isArray(raw) ? raw : [raw]) : []) if (!o || typeof o !== 'object') err(`${roomId}: 기믹 설정 ${JSON.stringify(o)} 는 { kind, …매개변수 } 객체여야 함 (무시됨)`);
+  }
   checkGimmicks(roomId, room, list, W, H, liquid, rows);
   const has = (k) => list.some((o) => o.kind === k);
   const mirror = list.find((o) => o.kind === 'mirror') ?? null;

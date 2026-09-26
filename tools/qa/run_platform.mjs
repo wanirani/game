@@ -97,10 +97,13 @@ for (const r of runs) {
   }
 }
 const redIssues = [...new Set(red.map((c) => c.issue || '(page errors / harness)'))].sort();
+// which package owns each red check (a W1/W2 package runs the whole suite and looks only at its own rows)
+const redByPackage = {};
+for (const c of red) redByPackage[c.pkg || '(page errors / harness)'] = (redByPackage[c.pkg || '(page errors / harness)'] || 0) + 1;
 const summary = {
   when: new Date().toISOString(), durationMs: Date.now() - t0, strict: args.strict, dist,
   suites: runs.map((r) => ({ file: r.file, extra: r.extra || [], exit: r.code ?? null, ms: r.ms ?? 0, skipped: r.skipped || null, counts: r.rep?.counts || null })),
-  redIssues, headline: HEADLINE, byIssue,
+  redIssues, headline: HEADLINE, byIssue, redByPackage,
   red: red.map((c) => ({ suite: c.suite, id: c.id, issue: c.issue, pkg: c.pkg, status: c.status, detail: String(c.detail || '').slice(0, 300), shot: c.shot })),
   pending: pending.map((c) => ({ suite: c.suite, id: c.id, issue: c.issue, gate: c.gate, would: c.would, detail: String(c.detail || '').slice(0, 200) })),
 };
@@ -117,6 +120,7 @@ if (red.length) {
 const pend = {};
 for (const c of pending) (pend[c.gate] ||= []).push(c.id);
 if (pending.length) console.log(`\npending (waiting for their package): ${Object.entries(pend).map(([k, v]) => `${k} ×${v.length}`).join(', ')}`);
+if (red.length) console.log(`\nred by package: ${Object.entries(redByPackage).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ×${v}`).join(', ')}`);
 console.log(`\nred issues: ${redIssues.join(', ') || 'none'}`);
 console.log(`total ${(summary.durationMs / 60000).toFixed(1)} min — ${path.join(REPORT_DIR, 'summary.json')}`);
 process.exit(red.length ? 1 : 0);
