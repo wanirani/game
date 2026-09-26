@@ -13,7 +13,14 @@ export const EL_COL = { holy: '#fff2b0', fire: '#ff7a2a', ice: '#9fe8ff', dark: 
 export const RARITY_COL = ['#d8d0c0', '#6fe07a', '#5aa8ff', '#c07cff', '#ffa640', '#ff4a5a'];
 
 /** 현재 그리기 상태 (drawHero 가 설정) */
-export const G = { c: null, tint: null, t: 0, olw: 0.85, fx: true };
+export const G = { c: null, tint: null, t: 0, olw: 0.85, fx: true, pass: 0 };
+/** 부위 묶음(팔·다리)을 이음매 없이: 1패스 외곽선(두껍게) → 2패스 채우기 */
+export function group(fn, a, b, cc) {
+  if (G.tint) { fn(a, b, cc); return; }
+  G.pass = 1; fn(a, b, cc); G.pass = 2; fn(a, b, cc); G.pass = 0;
+}
+/** 현재 path 채우기 (외곽선 패스에서는 생략) */
+export function fl() { if (G.pass !== 1) G.c.fill(); }
 
 // ───────────────────────── 색 캐시 ─────────────────────────
 const CC = new Map();
@@ -54,9 +61,9 @@ export function grad(x0, y0, x1, y1, base, k = 1) {
   return g;
 }
 export function outline(base, w = G.olw) {
-  if (G.tint) return;
+  if (G.tint || G.pass === 2) return;
   const c = G.c;
-  c.lineWidth = w; c.strokeStyle = olc(base); c.stroke();
+  c.lineWidth = G.pass === 1 ? w * 2.4 : w; c.strokeStyle = olc(base); c.stroke();
 }
 export function capsulePath(c, ax, ay, bx, by, r0, r1) {
   const dx = bx - ax, dy = by - ay, d = Math.hypot(dx, dy) || 0.001;
@@ -74,9 +81,9 @@ export function capsule(ax, ay, bx, by, r0, r1, base, k = 1, line = true) {
   let nx = -dy / d, ny = dx / d;
   if (nx * -0.8 + ny * -0.6 < 0) { nx = -nx; ny = -ny; }
   const cx = (ax + bx) / 2, cy = (ay + by) / 2, r = Math.max(r0, r1);
-  c.fillStyle = grad(cx + nx * r, cy + ny * r, cx - nx * r, cy - ny * r, base, k);
+  if (G.pass !== 1) c.fillStyle = grad(cx + nx * r, cy + ny * r, cx - nx * r, cy - ny * r, base, k);
   capsulePath(c, ax, ay, bx, by, r0, r1);
-  c.fill();
+  fl();
   if (line) outline(base);
 }
 /** 방향 벡터 기준 음영으로 현재 path 채우기 (nx,ny = 역광 방향) */
