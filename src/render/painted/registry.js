@@ -76,6 +76,7 @@ export function preloadPainted(id, game = GAME, zoom = null) {
       if (game) GAME = game;
       if (!e.mod) e.mod = (await e.importer()).default;
       const env = envOf(game, zoom);
+      e.bakeScale = game?.scale ?? 1;
       e.rig = await e.mod.load(env);
       e.state = 'ready';
       e.loadMs = performance.now() - t0;
@@ -101,7 +102,7 @@ export function refreshPainted(id, game = GAME, zoom = null) {
   const want = Math.min(env.td, env.budgetMB === r.budgetMB ? (r.tdMax ?? env.td) : env.td);
   const overBudget = (r.memMB ?? 0) > env.budgetMB * 1.05;
   if (!overBudget && Math.abs(want / r.td - 1) < 0.25) return false;
-  e.rebaking = true;
+  e.rebaking = true; e.bakeScale = game?.scale ?? 1;
   const t0 = performance.now();
   e.mod.load(env).then((rig) => {
     e.rebaking = false;
@@ -208,6 +209,10 @@ export function paintedTick(boss, world) {
   if (world?.game) GAME = world.game;
   const e = ready(id, world?.game);
   if (!e || boss.dead) return;
+  // 싸우는 도중 창이 크게 커졌으면(창 → 전체 화면) 뒤에서 더 선명하게 다시 굽는다. 줄어든 경우(자동 품질 저하)는
+  // 느린 기기에서 전투 중 굽기 부담을 주지 않도록 다음 방 진입 때 처리한다.
+  const sc = world?.game?.scale;
+  if (sc && e.bakeScale && sc > e.bakeScale * 1.4 && !e.rebaking && !refreshPainted(id, world.game)) e.bakeScale = sc;   // 예산이 막아 다시 구울 필요 없음
   const p = boss._painted?.proxy;
   if (!p || p.dead || p.world !== world) attach(boss, world, e);
 }

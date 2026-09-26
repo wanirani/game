@@ -114,6 +114,8 @@ async function render(s) {
     if (s.vector || !st[key] || st[key].state !== 0) break;
     await new Promise((r) => setTimeout(r, 30));
   }
+  // 장비 색 변형: 재질 마스크 로드 대기 (첫 프레임은 원래 색일 수 있다)
+  if (s.equip || s.waitMs) { for (let k = 0; k < 3; k++) { sctx.setTransform(sc, 0, 0, sc, 400, 600); drawHero(sctx, e, null, {}); await new Promise((r) => setTimeout(r, (s.waitMs ?? 250) / 3)); } }
   // 천 물리 워밍업
   const NW = s.warm ?? 50, vx = e.vx || 0;
   const w0 = s.world ? FAKE_WORLD : null;

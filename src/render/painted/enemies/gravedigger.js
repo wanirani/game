@@ -1,8 +1,8 @@
 // T3 painted large puppet: 저주받은 무덤지기 (gravedigger, 52×96). Boss-kit tech on a regular elite-sized enemy:
 // damage variants by HP (torn/charred coat, cracks: dmg1 < 60 %, dmg2 < 30 %), 2-bone IK keeps the near hand on the
 // shovel handle, swinging lantern (spring pendulum) with a flickering light, strip-warped coat tails, dust/ember FX.
-// Reach: the painted shovel is short, so its plain handle is lengthened at runtime (kit.putStretch, pivots h0..h1) and
-// the far hand holds it near the top end: the blade rests on the ground ahead like the vector shovel and the slam
+// Reach: the painted shovel is short, so its plain handle is lengthened when the rig is baked (spec.bake.stretch,
+// pivots h0..h1: one blit at runtime) and the far hand holds it near the top end ('grip'): the blade rests on the ground ahead like the vector shovel and the slam
 // lands where AI_A.digger puts its strike rect (x 8..122), dust ring and shock wave (≈72 px ahead).
 // States (AI_A.digger): idle (heavy breathing), walk (stride 5, shovel dragging on the ground), slam (shovel raised over
 // the head → strike frame at params.slamWind 0.7 → impact dust), fling (scoop wind-up → throw at flingWind 0.5 → dirt
@@ -16,6 +16,7 @@ export const spec = {
   id: 'gravedigger', tier: 'T3', src: 'gravedigger',
   bake: {
     outline: 0.5, deep: { uarm: 0.6, farm: 0.6, hand: 0.6, boot: 0.6 }, deepTint: 'rgb(150,140,150)',
+    stretch: { shovel: { from: 'h0', to: 'h1', ext: 22 } },   // +22 px of handle: hand → blade tip ≈ 68 px (vector ≈ 69)
     damage: { torso: { char: 3, cracks: 2, holes: 3, stain: '#2a1810', crackMinLum: 55 }, head: { char: 1.5, cracks: 2, holes: 1 }, tails: { char: 2, cracks: 1, holes: 4, crackMinLum: 45 }, uarm: { char: 1.5, holes: 2, cracks: 1, crackMinLum: 60 }, farm: { char: 1.5, holes: 2, cracks: 1, crackMinLum: 60 } },
   },
 };
@@ -23,18 +24,15 @@ export const spec = {
 const PL = []; let NP = 0;
 function place(name, x, y, rot, vn = 'base', sx = 1, sy = 1, pv = 'a', kind = 0) {
   const o = PL[NP] ?? (PL[NP] = {});
-  o.name = name; o.x = x; o.y = y; o.rot = rot; o.vn = vn; o.sx = sx; o.sy = sy; o.pv = pv; o.kind = kind; o.stretch = null; NP++;
+  o.name = name; o.x = x; o.y = y; o.rot = rot; o.vn = vn; o.sx = sx; o.sy = sy; o.pv = pv; o.kind = kind; NP++;
   return o;
 }
-const SH_EXT = 22;     // logical px added to the shovel's plain handle (hand → blade tip ≈ 68 px, vector shovel ≈ 69)
 const SH_NEAR = 15;    // the near hand grips the handle this far below the far hand
-/** shovel geometry for the baked rig (texel rows of the stretch, grip pivot, reach in logical px) */
+/** shovel geometry of the baked rig: grip pivot (far hand) and hand → blade-tip reach in logical px */
 function shovelGeo(sp, td) {
-  if (sp._geo && sp._geo.td === td) return sp._geo;
-  const P = sp.piv, grip = P.grip ?? P.a;
-  const st = P.h0 && P.h1 ? [P.h0[1], P.h1[1], SH_EXT * td] : null;
-  const m = (y) => (st ? K.stretchMap(y, st) : y);
-  return (sp._geo = { td, st, grip, reach: (m(P.b[1]) - m(grip[1])) / td });
+  if (sp._geo) return sp._geo;
+  const P = sp.piv, grip = P.grip ? 'grip' : 'a';
+  return (sp._geo = { grip, reach: Math.hypot(P.b[0] - P[grip][0], P.b[1] - P[grip][1]) / td });
 }
 const _q = [0, 0];
 const HUNCH = 0.32;                   // lean already painted into the torso
@@ -124,7 +122,7 @@ function layout(e, q, dl, rig) {
   const hr = q.head + (q.lean - HUNCH) * 0.3;
   place('head', nx, ny, hr, dl ? `dmg${dl}` : 'base');
   // shovel (handle in the far hand)
-  place('shovel', bhx, bhy, sd - sp.ang, 'base', 1, 1, G.grip).stretch = G.st;
+  place('shovel', bhx, bhy, sd - sp.ang, 'base', 1, 1, G.grip);
   // lantern on the belt: spring pendulum
   const L = e._lan ?? (e._lan = { a: 0, v: 0, t: e.t ?? 0 });
   const now = e.t ?? 0, dt = clamp(now - L.t, 0, 0.05); L.t = now;
@@ -152,11 +150,10 @@ function drawAll(e, q) {
     const p = PL[i];
     if (p.kind === 1) {
       const w = q.walking ? 1 : 0.3;
-      K.strips(p.name, p.pv, p.x, p.y, p.rot, p.sx, p.sy, K.nStrips(7), 'y', (u) => {
+      K.strips(p.name, p.pv, p.x, p.y, p.rot, p.sx, p.sy, K.nStrips(5), 'y', (u) => {
         _q[0] = -(u * u) * (q.walking ? 14 : 4) - Math.sin(t * (q.walking ? 10 : 2) - u * 3.5) * u * 6 * w; _q[1] = 0; return _q;
       }, 1, p.vn);
-    } else if (p.stretch) K.putStretch(p.name, p.pv, p.x, p.y, p.rot, p.sx, p.sy, 1, p.vn, p.stretch[0], p.stretch[1], p.stretch[2]);
-    else K.put(p.name, p.pv, p.x, p.y, p.rot, p.sx, p.sy, 1, p.vn);
+    } else K.put(p.name, p.pv, p.x, p.y, p.rot, p.sx, p.sy, 1, p.vn);
   }
 }
 
@@ -201,8 +198,7 @@ export function draw(ctx, e, world, o, rig) {
     if (lan) {
       K.pivotPos('lantern', 'a', 'glow', lan.x, lan.y, lan.rot, 1, 1, _q);
       const fl = 0.85 + 0.15 * Math.sin(t * 13) + (dl === 2 ? (K.fr() - 0.5) * 0.35 : 0);
-      K.glow(_q[0], _q[1], 22 * fl, '#ffb050', 0.55 * fl);
-      K.glow(_q[0], _q[1], 6, '#fff0c0', 0.8 * fl);
+      K.glow(_q[0], _q[1], 22 * fl, '#ffc060', 0.7 * fl, 0.12);   // warm halo with a hot core, one additive blit
     }
     if (q.trail) swingTrail(ctx, L.sfx, L.sfy, q.trail[0], q.trail[1], 17 + 16 + L.reach - 4, 18, '#ffcf90', q.trail[2] * 0.85);
   }

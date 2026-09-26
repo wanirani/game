@@ -132,11 +132,24 @@ async function buildRig(rig, spec) {
     const [rx, ry, rw, rh] = p.rect;
     const w = Math.ceil(rw * f) + PAD * 2, h = Math.ceil(rh * f) + PAD * 2;
     const dmg = B.damage?.[name] ?? B.damage?.['*'];
-    const raw = makeCanvas(w, h), g = raw.getContext('2d', { willReadFrequently: true });
+    let raw = makeCanvas(w, h), g = raw.getContext('2d', { willReadFrequently: true });
     g.imageSmoothingQuality = 'high';
     g.drawImage(img, rx, ry, rw, rh, PAD, PAD, rw * f, rh * f);
     const part = { name, w, h, v: {}, piv: {}, meta: p.meta ?? {} };
     for (const [k, q] of Object.entries(p.piv ?? {})) part.piv[k] = [q[0] * f + PAD, q[1] * f + PAD];
+    // bake-time lengthening of a uniform section (spec.bake.stretch[part] = { from, to, ext }): rows between the pivots
+    // `from`..`to` are stretched by `ext` logical px, everything below moves down, pivots follow (one blit at runtime)
+    const stS = B.stretch?.[name];
+    if (stS && part.piv[stS.from] && part.piv[stS.to]) {
+      const y0 = Math.round(part.piv[stS.from][1]), y1 = Math.round(part.piv[stS.to][1]), ext = Math.round(stS.ext * td);
+      const r2 = makeCanvas(w, h + ext), g2 = r2.getContext('2d', { willReadFrequently: true });
+      g2.imageSmoothingQuality = 'high';
+      g2.drawImage(raw, 0, y0, w, y1 - y0, 0, y0, w, y1 - y0 + ext);
+      g2.clearRect(0, 0, w, y0); g2.drawImage(raw, 0, 0, w, y0, 0, 0, w, y0);
+      g2.clearRect(0, y1 + ext, w, h - y1); g2.drawImage(raw, 0, y1, w, h - y1, 0, y1 + ext, w, h - y1);
+      raw = r2; g = g2; part.h = h + ext;
+      for (const k of Object.keys(part.piv)) part.piv[k] = [part.piv[k][0], stretchMap(part.piv[k][1], [y0, y1, ext])];
+    }
     if (part.piv.a && part.piv.b) {
       const dx = part.piv.b[0] - part.piv.a[0], dy = part.piv.b[1] - part.piv.a[1];
       part.ang = Math.atan2(dy, dx);           // intrinsic a→b direction in texel space
@@ -433,13 +446,13 @@ function hexA(hex, a) {
   const n = parseInt(hex.slice(1), 16);
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
 }
-/** additive glow at local (x,y) radius r (call between begin/end; resets transform to the base) */
-export function glow(x, y, r, color, a = 1) {
+/** additive glow at local (x,y) radius r (call between begin/end; resets transform to the base); hard = puff core size */
+export function glow(x, y, r, color, a = 1, hard = 0.45) {
   if (a <= 0.01 || r <= 0) return;
   local();
   const ctx = CTX, gco = ctx.globalCompositeOperation, ga = ctx.globalAlpha;
   ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = ga * clamp(a, 0, 1);
-  ctx.drawImage(puff(color), x - r, y - r, r * 2, r * 2);
+  ctx.drawImage(puff(color, hard), x - r, y - r, r * 2, r * 2);   // hard < 0.2 = hot core + wide falloff in one blit
   ctx.globalCompositeOperation = gco; ctx.globalAlpha = ga;
 }
 /** soft contact shadow ellipse at the feet (local space) */

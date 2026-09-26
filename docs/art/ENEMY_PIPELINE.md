@@ -13,7 +13,7 @@ Reference implementation (all states done, verified in-game desktop + 844×390 m
 | `ghost` | T1 + ectoplasm | shroud body, reaching arm, screaming head | 4 | 15 KB | 0.18 / 0.06 | `…/ghost.js` |
 | `skeleton` | T2 | skull, jaw, ribcage, pelvis+loincloth, thigh, shin+foot, upper arm, forearm+hand, sabre, buckler | 6 | 27 KB | 0.46 / 0.14 | `…/skeleton.js` |
 | `armor_knight` | T2 | cuirass+tabard, great helm, rerebrace (also cuisse), vambrace+gauntlet, greave+sabaton, longsword, tower shield, cape (`spec.scale 1.1`) | 5 | 38 KB | 0.76 / 0.20 | `…/armor_knight.js` |
-| `gravedigger` | T3 | head+hat, hunched torso+hump, sleeve upper/lower, hand, coat tails, boot, shovel (handle lengthened at runtime), lantern (+ dmg1/dmg2) | 7 | 48 KB | 0.76 / 0.36 | `…/gravedigger.js` |
+| `gravedigger` | T3 | head+hat, hunched torso+hump, sleeve upper/lower, hand, coat tails, boot, shovel (handle lengthened at bake), lantern (+ dmg1/dmg2) | 7 | 48 KB | 0.76 / 0.36 | `…/gravedigger.js` |
 
 Total Kling spend for the five: **27 images** (26 by the builder + 1 in the review pass: the bat's flying body, made by
 following §3 Step 3 as written). Generation log (generation ids, inputs, result decisions; Step 1/2 prompts are
@@ -99,7 +99,8 @@ What Kling actually does (learned on the five references — plan for it):
   above the shadow and add a short `fade` at the bottom edge.
 - Weapons/tools come out **shorter than the gameplay reach** (gravedigger shovel: hand→blade 24 px painted vs 69 px
   vector / 122 px strike rect). Do not scale the whole part (the blade balloons): give the plain shaft two pivots `h0`,
-  `h1` plus a `grip` pivot in `parts.json` and lengthen it at runtime with `putStretch` (§5). Check with `measure.mjs`.
+  `h1` plus a `grip` pivot in `parts.json` and lengthen that section when the rig is baked
+  (`spec.bake.stretch = { shovel: { from: 'h0', to: 'h1', ext: 22 } }`, §5). Check with `measure.mjs`.
 - Budget reality per enemy: T1 3–4 images, T2 5–6, T3 6–8 (refs ×2 + sheet ×2 + 1–3 single/edit). Recolour variants 0.
 
 ## 4. Cutting: sources → atlas (`tools/painted/enemies/`)
@@ -141,10 +142,12 @@ of a type samples the same texture.
 Per frame (inside `drawEnemy`'s feet-origin, facing-flipped, elite-scaled transform):
 - `begin(ctx, rig, flash)` captures the base matrix; `put(name, pivot, x, y, rot, sx, sy, alpha, variant)` = one
   `setTransform` + one `drawImage` (+ the flash overlay while hit); `bone()`/`pivotPos()` for FK chains; `end()`.
-- `putStretch(name, pv, x, y, rot, sx, sy, alpha, vn, y0, y1, ext)` / `stretchMap(t, [y0,y1,ext])`: a part with one
-  uniform section (shaft, handle, chain) lengthened by `ext` texels — 3 blits, used for the gravedigger's shovel so the
-  art reaches the AI's strike rect. `spec.scale` (e.g. knight 1.1) sizes the whole painted figure to its logic rect; the
-  dispatcher applies it and corpses/dissolves inherit it (`rig.scale`).
+- Reach fixes: `spec.bake.stretch[part] = { from, to, ext }` lengthens one uniform section (shaft, handle) between two
+  pivots by `ext` logical px **at bake time** (pivots below it move with it; one blit per frame) — the gravedigger's
+  shovel uses it so the art reaches the AI's strike rect. For a length that changes while playing (a thrusting spear, a
+  hook chain paying out) use `putStretch(name, pv, x, y, rot, sx, sy, alpha, vn, y0, y1, ext)` / `stretchMap()` (3 blits;
+  corpse pieces accept `stretch: [y0, y1, ext]`). `spec.scale` (e.g. knight 1.1) sizes the whole painted figure to its
+  logic rect; the dispatcher applies it and corpses/dissolves inherit it (`rig.scale`).
 - Warps (mesh-free): `chain()` bending chain (wings, tails, tentacles); `strips()` sheared strips for opaque cloth
   (capes, coat tails); `warpY()` seam-free re-raster of translucent parts into a small scratch canvas (ghost shrouds —
   per-strip overlap would double the alpha, abutting strips leave conflation seams; the scratch margins follow the
@@ -166,7 +169,7 @@ Per frame (inside `drawEnemy`'s feet-origin, facing-flipped, elite-scaled transf
 
 Renderer module contract:
 ```js
-export const spec = { id, tier, src /* assets folder */, scale /* optional, default 1 */, bake: { outline, deep:{part|'*':k}, deepTint, glow:{part:'#hex'}, damage:{part:{char,cracks,holes,stain,crackMinLum}}, flash, outlineParts } };
+export const spec = { id, tier, src /* assets folder */, scale /* optional, default 1 */, bake: { outline, deep:{part|'*':k}, deepTint, glow:{part:'#hex'}, damage:{part:{char,cracks,holes,stain,crackMinLum}}, flash, outlineParts, stretch:{part:{from,to,ext}} } };
 export function draw(ctx, e, world, o /* {flash, cam} */, rig) { … }   // world === null in the bestiary; must not mutate gameplay state
 ```
 Register in `enemies/index.js` with `reg(mod, [renderIds…])`. Dispatcher behaviour: painted when registered + rig ready

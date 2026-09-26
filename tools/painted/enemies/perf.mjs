@@ -2,6 +2,8 @@
 // (optionally CPU-throttled). The game loop is frozen and frames are stepped manually so both runs see identical states.
 //   node tools/painted/enemies/perf.mjs [--n 30] [--mobile] [--throttle 4] [--frames 120] [--types bat,skeleton,ghost,armor_knight,gravedigger]
 //        [--quality low|medium|high (persisted setting before load: canvas dpr cap, rig texel density, warp strip LOD)]
+//        [--ab (also an interleaved A/B in the painted page: painted and vector alternate frame by frame, so a busy shared
+//              machine loads both sides equally — use it when the two sequential runs disagree)]
 // Prints per-frame total render ms and the share spent inside Enemy.draw (avg / p95), and the rig memory.
 import { chromium } from 'playwright-core';
 import { start } from '../../serve.mjs';
@@ -24,7 +26,7 @@ for (const painted of [true, false]) {
   await page.goto(`http://localhost:${port}/index.html?scene=stage&stage=${A.stage ?? 's03'}`);
   await page.waitForFunction(() => window.__game?.world?.player, null, { timeout: 60000 });
   await page.waitForTimeout(1500);
-  const r = await page.evaluate(async ({ painted, n, types, frames }) => {
+  const r = await page.evaluate(async ({ painted, n, types, frames, abMode }) => {
     const g = window.__game, w = g.world, p = w.player;
     if (!painted) globalThis.__paintedEnemies = false;
     const kit = await import('/src/render/painted/enemy_kit.js');
@@ -66,11 +68,26 @@ for (const painted of [true, false]) {
       const dt = performance.now() - t0;
       if (f >= 20) { tot.push(dt); enm.push(acc); }
     }
+    const ab = { P: [], V: [], PF: [], VF: [] };
+    if (painted && abMode) {
+      for (let f = 0; f < frames * 2 + 20; f++) {
+        const on = f % 2 === 0;
+        globalThis.__paintedEnemies = on;
+        tick(1 / 60);
+        acc = 0;
+        const t0 = performance.now();
+        render();
+        ctx2.getImageData(0, 0, 1, 1);
+        const dt = performance.now() - t0;
+        if (f >= 20) { (on ? ab.P : ab.V).push(acc); (on ? ab.PF : ab.VF).push(dt); }
+      }
+      globalThis.__paintedEnemies = true;
+    }
     proto.draw = od;
     const s = (a) => { const b = [...a].sort((x, y) => x - y); return { avg: +(a.reduce((x, y) => x + y, 0) / a.length).toFixed(2), p95: +b[Math.floor(b.length * 0.95)].toFixed(2) }; };
     const visible = list.filter((e) => cam.visible(e.x, e.y, e.w, e.h, 0)).length;
-    return { painted, n: list.length, visible, frame: s(tot), enemyDraw: s(enm), rigs: kit.rigStats(), scale: g.scale, quality: g.settings?.quality };
-  }, { painted, n: Number(A.n ?? 30), types: A.types ?? 'bat,skeleton,ghost,armor_knight,gravedigger', frames: Number(A.frames ?? 120) });
+    return { painted, n: list.length, visible, frame: s(tot), enemyDraw: s(enm), rigs: kit.rigStats(), scale: g.scale, quality: g.settings?.quality, ...(ab.P.length ? { ab: { painted: s(ab.P), vector: s(ab.V), paintedFrame: s(ab.PF), vectorFrame: s(ab.VF) } } : {}) };
+  }, { painted, n: Number(A.n ?? 30), types: A.types ?? 'bat,skeleton,ghost,armor_knight,gravedigger', frames: Number(A.frames ?? 120), abMode: !!A.ab });
   r.errs = errs;
   results.push(r);
   await ctx.close();
@@ -78,6 +95,7 @@ for (const painted of [true, false]) {
 for (const r of results) console.log(JSON.stringify(r));
 const [P, V] = results;
 console.log(`frame ms painted ${P.frame.avg} (p95 ${P.frame.p95}) vs vector ${V.frame.avg} (p95 ${V.frame.p95}); enemy draw painted ${P.enemyDraw.avg} vs vector ${V.enemyDraw.avg} ms/frame for ${P.visible} visible enemies`);
+if (P.ab) console.log(`interleaved A/B (same page, alternating frames): enemy draw painted ${P.ab.painted.avg} vs vector ${P.ab.vector.avg} ms; frame ${P.ab.paintedFrame.avg} vs ${P.ab.vectorFrame.avg} ms`);
 const mem = Object.values(P.rigs).reduce((a, s) => a + (s.MB || 0), 0);
 console.log(`rig memory ${mem.toFixed(2)} MB`);
 await browser.close(); srv.close();

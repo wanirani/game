@@ -12,7 +12,8 @@ export const POSES = [
 export const INSTALL = `(() => {
   const g = window.__game, w = g.world, p = w.player;
   p.hp = 1e9; p.stats.maxHp = 1e9; p.iframes = 1e9;
-  const b = w.boss, A = b.A, H0 = { ...b.main.hole };
+  // 원래 구멍 (setup 과 같은 식). 굽기를 기다리는 동안 실제 루프가 돌아 보스가 벽 돌격 중일 수 있으므로 현재 구멍을 쓰지 않는다
+  const b = w.boss, A = b.A, H0 = { x: Math.min(Math.max(b.homeX, A.x0 + 200), A.x1 - 160), y: A.floor, nx: 0, ny: -1 };
   const step = (n) => { for (let i = 0; i < n; i++) { g.__tick(1 / 60); g.__render(); p.iframes = 1e9; p.hurtT = 0; if (b.state === 'idle') b.cool = 99; } };   // 매 프레임 그려야 렌더러 쪽 시뮬레이션(입자·줄·파편)이 진행된다
   const px = () => { p.x = A.x0 + 330; p.vx = 0; };
   const hold = (st, t) => { b.setState(st); b.cool = 99; for (let i = 0; i < Math.round(t * 60); i++) { px(); step(1); if (b.state === 'idle') b.cool = 99; } };
