@@ -259,10 +259,10 @@ export function pivotPos(name, pv, pn, x, y, rot = 0, sx = 1, sy = 1, out = [0, 
 
 /**
  * displacement-strip warp (mesh-free): the part is cut into n strips along its texel X (axis 'x') or Y (axis 'y');
- * strip i (u = 0 at pivot side … 1 far side) is shifted by off(u, i) → [dx, dy] in TEXELS of the part frame.
+ * strip i (u = 0 at pivot side … 1 far side) is shifted by off(u, i) → [dx, dy] in TEXELS of the part frame (null = skip).
  * Used for cloth/ectoplasm ripples, capes, coat tails. Strips overlap by 1 texel to hide seams.
  */
-export function strips(name, pv, x, y, rot, sx, sy, n, axis, off, alpha = 1, vn = 'base') {
+export function strips(name, pv, x, y, rot, sx, sy, n, axis, off, alpha = 1, vn = 'base', smooth = true) {
   const p = RIG.parts[name];
   if (!p || alpha <= 0.003) return;
   const q = typeof pv === 'string' ? (p.piv[pv] ?? [p.w / 2, p.h / 2]) : pv;
@@ -272,15 +272,35 @@ export function strips(name, pv, x, y, rot, sx, sy, n, axis, off, alpha = 1, vn 
   const e0 = x - (a * q[0] + cc * q[1]), f0 = y - (b * q[0] + d * q[1]);
   const ctx = CTX, ga = ctx.globalAlpha;
   ctx.globalAlpha = ga * alpha;
-  const L = axis === 'y' ? v[3] : v[2], step = L / n;
-  const pivU = axis === 'y' ? q[1] / L : q[0] / L;           // strips are ordered from the pivot side
+  const Y = axis === 'y', L = Y ? v[3] : v[2], step = L / n;
+  const pivT = Y ? q[1] : q[0], span = Math.max(pivT, L - pivT) || 1;
+  const uOf = (tt) => Math.abs(tt - pivT) / span;
+  // smooth: offsets are sampled at the strip edges and each strip is SHEARED between them (continuous silhouette,
+  // no stair steps); !smooth: one rigid offset per strip (used by the dissolve)
+  let o0x = 0, o0y = 0;
+  if (smooth) { const o = off(uOf(0), -1) ?? _zero; o0x = o[0]; o0y = o[1]; }
   for (let i = 0; i < n; i++) {
-    const t0 = Math.floor(i * step), t1 = Math.min(L, Math.ceil((i + 1) * step) + 1);
-    const um = (t0 + t1) / 2 / L, u = Math.abs(um - pivU) / Math.max(pivU, 1 - pivU);
-    const o = off(u, i);
-    const e = e0 + a * o[0] + cc * o[1], f = f0 + b * o[0] + d * o[1];
-    ctx.setTransform(M[0] * a + M[2] * b, M[1] * a + M[3] * b, M[0] * cc + M[2] * d, M[1] * cc + M[3] * d, M[0] * e + M[2] * f + M[4], M[1] * e + M[3] * f + M[5]);
-    if (axis === 'y') {
+    const t0 = Math.floor(i * step), t1 = Math.min(L, Math.ceil((i + 1) * step) + (i < n - 1 ? 1 : 0));
+    if (t1 <= t0) continue;
+    let lc, ld, le, lf, la, lb;                 // local affine (texel space) applied before the part transform
+    if (smooth) {
+      const o1 = off(uOf(Math.min(L, (i + 1) * step)), i);
+      if (!o1) { continue; }
+      const o1x = o1[0], o1y = o1[1], h = step || 1;
+      const shx = (o1x - o0x) / h, shy = (o1y - o0y) / h, tb = i * step;
+      if (Y) { la = 1; lb = shy * 0; lc = shx; ld = 1 + shy; le = o0x - shx * tb; lf = o0y - shy * tb; }
+      else { la = 1 + shx; lb = shy; lc = 0; ld = 1; le = o0x - shx * tb; lf = o0y - shy * tb; }
+      o0x = o1x; o0y = o1y;
+    } else {
+      const um = uOf((t0 + t1) / 2), o = off(um, i);
+      if (!o) continue;                                         // strip hidden (dissolve)
+      la = 1; lb = 0; lc = 0; ld = 1; le = o[0]; lf = o[1];
+    }
+    // compose: part (a b cc d e0 f0) × local (la lb lc ld le lf), then the captured base M
+    const A = a * la + cc * lb, B = b * la + d * lb, C = a * lc + cc * ld, D = b * lc + d * ld;
+    const E = a * le + cc * lf + e0, F = b * le + d * lf + f0;
+    ctx.setTransform(M[0] * A + M[2] * B, M[1] * A + M[3] * B, M[0] * C + M[2] * D, M[1] * C + M[3] * D, M[0] * E + M[2] * F + M[4], M[1] * E + M[3] * F + M[5]);
+    if (Y) {
       ctx.drawImage(RIG.atlas, v[0], v[1] + t0, v[2], t1 - t0, 0, t0, v[2], t1 - t0);
       if (fv) { ctx.globalAlpha = ga * alpha * FLASH; ctx.drawImage(RIG.atlas, fv[0], fv[1] + t0, fv[2], t1 - t0, 0, t0, fv[2], t1 - t0); ctx.globalAlpha = ga * alpha; }
     } else {
@@ -290,6 +310,7 @@ export function strips(name, pv, x, y, rot, sx, sy, n, axis, off, alpha = 1, vn 
   }
   ctx.globalAlpha = ga;
 }
+const _zero = [0, 0];
 /**
  * bending-chain warp (mesh-free): strips along texel X starting at pivot `a` towards pivot `b`; strip i is rotated by
  * the cumulative bend(u) (radians) about the end of the previous strip → wings curl, tails whip, tentacles sway.
@@ -484,3 +505,46 @@ export const squashK = (e) => (e.flashT > 0 ? clamp(e.flashT / 0.12, 0, 1) : 0);
 export const flashK = (e, o) => (o?.flash ? 0.82 : 0);
 /** clock for render-side dt (world time when available, else entity time) */
 export const clockOf = (e, world) => world?.time ?? e.t ?? 0;
+
+// ─────────────────────────────────────────── T1 death: strip dissolve ───────────────────────────────────────────
+/**
+ * Painted T1 death: the posed pieces are sliced into horizontal strips that drift apart, rise and wink out in a noise
+ * order (mesh-free dissolve), while render-only particles (embers / ectoplasm / feathers) burst out. Outlives the
+ * entity through world.fx.ghost. placements: [{ name, pv, x, y, rot, sx, sy, vn }] in the enemy's local frame.
+ * o: { life, strips, drift, rise, col (particle colour), kind (FxPool kind), n, spread, glow }
+ */
+export function spawnDissolve(world, e, rig, placements, o = {}) {
+  if (!world?.fx?.ghost) return;
+  const ox = e.cx, oy = e.bottom, fx = e.facing < 0 ? -1 : 1, sc = e.scale || 1;
+  const life = o.life ?? 0.75, t0 = world.time ?? 0, N = o.strips ?? 10;
+  const P = placements.map((p) => ({ ...p }));
+  const pool = new FxPool(o.n ?? 20);
+  const cy = o.cy ?? -(e.def?.size?.h ?? 40) / 2;
+  for (let i = 0; i < (o.n ?? 20); i++) {
+    const a = fr() * TAU, sp = frand(40, o.spread ?? 150);
+    pool.add(o.kind ?? 3, ox + fx * sc * frand(-10, 10), oy + sc * (cy + frand(-12, 12)), Math.cos(a) * sp, Math.sin(a) * sp - 60, frand(0.35, 0.8), frand(2, 5) * sc, o.col ?? '#ff9a40');
+  }
+  world.fx.ghost((ctx) => {
+    const now = world.time ?? t0, age = now - t0, k = clamp(age / life, 0, 1);
+    if (k >= 1) return;
+    ctx.save();
+    ctx.translate(ox, oy); ctx.scale(fx * sc, sc);
+    begin(ctx, rig, k < 0.12 ? 0.8 * (1 - k / 0.12) : 0);
+    const ga = ctx.globalAlpha;
+    for (let j = 0; j < P.length; j++) {
+      const p = P[j];
+      strips(p.name, p.pv ?? 'a', p.x, p.y - k * (o.rise ?? 14), p.rot, p.sx ?? 1, p.sy ?? 1, N, 'y', (u, i) => {
+        const h = h1(i * 3.7 + j * 11.1);
+        if (k * 1.35 > 1 - h) return null;
+        _dz[0] = (h1(i + j * 5.3) - 0.5) * k * (o.drift ?? 60) * RIG.td; _dz[1] = -k * k * h * 40 * RIG.td;
+        return _dz;
+      }, (1 - k) ** 0.6, p.vn ?? 'base', false);
+    }
+    if (o.glow) glow(P[0].x, cy, 30 * (1 - k), o.glow, 0.8 * (1 - k));
+    ctx.globalAlpha = ga;
+    end();
+    ctx.restore();
+    pool.step(now); pool.draw(ctx);
+  }, life + 0.4, o.layer ?? 'front');
+}
+const _dz = [0, 0];

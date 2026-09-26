@@ -228,7 +228,7 @@ function drawHead(ctx, D, b, h, world, rig, st, dt, dl, hit) {
   D.end();
   const hrot = floorHole ? 0 : nx > 0 ? -PI / 2 : PI / 2;
   D.img(puff('#000000'), 32, 32, hole.x, hole.y - (floorHole ? 2 : 0), hrot, 96 * s / 32, 20 / 32, 0.95);
-  if (q.halos) { D.end(); halo(ctx, hole.x - nx * 8, hole.y - (floorHole ? 12 : 0), 120 * s, soul, 0.2 + flare * 0.18 + fury * 0.08); }
+  if (q.halos) { D.end(); halo(ctx, hole.x - nx * 8, hole.y - (floorHole ? 10 : 0), 84 * s, soul, 0.22 + flare * 0.18 + fury * 0.08); }
 
   // ── 보이는 쪽만 (바닥 위 / 벽 안쪽) ──
   D.end();
@@ -273,7 +273,6 @@ function drawHead(ctx, D, b, h, world, rig, st, dt, dl, hit) {
     const sy = wk * (far ? 0.86 : 1) * (0.84 + open * 0.16 + Math.sin(t * 2.2 + 0.6) * 0.04);
     const wa = baseVis * (dying ? clamp(1 - (dT - 0.6) / 0.85, 0, 1) : 1);
     D.part(W, V(W, true), 'root', sh[0], sh[1], rot, wk * mir, sy, wa);
-    glowOver(ctx, D, W, lvl, 'root', sh[0], sh[1], rot, wk * mir, sy, 0.35 * wa, st, t, false, tint);
     return rot;
   };
   // ── 앞다리 (구멍 가장자리를 짚음) ──
@@ -298,8 +297,7 @@ function drawHead(ctx, D, b, h, world, rig, st, dt, dl, hit) {
   if (wingOn) wingDraw(shF, true);
   legDraw(legF, 58, true);
   if (wingOn) wingDraw(shN, false);
-  // 흉곽 속 영혼불 (뒤)
-  if (baseVis > 0.05 && !dying) { D.end(); halo(ctx, core[0], core[1] + 10 * s, 120 * s, soul, 0.3 * baseVis * (0.8 + 0.2 * Math.sin(t * 3.1))); }
+  // (흉곽 뒤 큰 발광은 조명 패스(lights)로 대신한다 — 가산 대형 스프라이트는 비싸다)
   D.part(T, V(T, true), 'neck', qx, qy, trot, tsx, tsy, dying ? clamp(1.9 - dT, 0, 1) : 1);
   glowOver(ctx, D, T, lvl, 'neck', qx, qy, trot, tsx, tsy, 0.5, st, t, transform, tint);
   // 흉곽 안 영혼불 (앞, 가산) + 불씨
@@ -308,7 +306,7 @@ function drawHead(ctx, D, b, h, world, rig, st, dt, dl, hit) {
   if (baseVis > 0.05 && fireK > 0.02) {
     halo(ctx, core[0], core[1], 70 * s * fireK, soul, 0.26 * baseVis, true);
     if (q.flames !== 0) soulFlame(ctx, core[0], core[1] + 18 * s, Math.atan2(axy, axx), 58 * s * fireK, 14 * s, t, soul, 0.42 * baseVis, twin ? 5 : 2);
-    if (rr.next() < dt * (3 + fury * 4) * q.ambient) P.emit('ember', core[0] + rr.range(-30, 30) * s, core[1] + rr.range(-40, 10) * s, rr.range(-20, 20), rr.range(-80, -30), { color: soul, layer: 1 });
+    if (rr.next() < dt * (2 + fury * 3) * q.ambient) P.emit('ember', core[0] + rr.range(-30, 30) * s, core[1] + rr.range(-40, 10) * s, rr.range(-20, 20), rr.range(-80, -30), { color: soul, layer: 1 });
     if (rr.next() < dt * 0.9 * q.ambient) P.emit('smoke', core[0] + rr.range(-50, 50) * s, core[1] - 60 * s, 0, -30, { color: twin ? '#1a2230' : '#1d2a1f', layer: 0 });
   }
   // 구덩이 그림자 (흉곽 잘린 선 가림)
@@ -330,11 +328,10 @@ function drawHead(ctx, D, b, h, world, rig, st, dt, dl, hit) {
       if (!started) { ctx.moveTo(Pt[i].x, Pt[i].y); started = true; } else ctx.lineTo(Pt[i].x, Pt[i].y);
     }
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    ctx.strokeStyle = twin ? '#141826' : '#1e0907'; ctx.lineWidth = 30 * s; ctx.stroke();
-    ctx.strokeStyle = twin ? '#2c3452' : '#4a1712'; ctx.lineWidth = 17 * s; ctx.stroke();
-    ctx.strokeStyle = twin ? 'rgba(150,190,255,0.35)' : 'rgba(170,80,60,0.45)'; ctx.lineWidth = 3 * s; ctx.stroke();
+    ctx.strokeStyle = twin ? '#141826' : '#1e0907'; ctx.lineWidth = 28 * s; ctx.stroke();
+    ctx.strokeStyle = twin ? '#2c3452' : '#4a1712'; ctx.lineWidth = 15 * s; ctx.stroke();
     // 관절마다 영혼불 (틈으로 새어 나옴)
-    if (q.halos && !dying) for (let i = k - 1; i > 0; i -= 2) if (arc[i] > hideBelow) halo(ctx, Pt[i].x, Pt[i].y, (20 + F[i].bend * 30) * s, soul, 0.16 + fury * 0.12 + Math.sin(t * 6 + i) * 0.05);
+    if (q.halos && !dying) for (let i = k - 2; i > 0; i -= 3) if (arc[i] > hideBelow) halo(ctx, Pt[i].x, Pt[i].y, (16 + F[i].bend * 26) * s, soul, 0.2 + fury * 0.12 + Math.sin(t * 6 + i) * 0.05);
   }
   const u0 = 1 / Math.max(1, h.N);
   const tileX = (i) => {                          // 마디 i 의 타일 배치 계산 → hs._tx[i]
@@ -370,7 +367,7 @@ function drawHead(ctx, D, b, h, world, rig, st, dt, dl, hit) {
       x += (rr.next() - 0.5) * 3 * Math.min(1, dT * 3); y += (rr.next() - 0.5) * 3 * Math.min(1, dT * 3);
     }
     D.part(X.tile, V(X.tile, false), [X.cx, X.cy], x, y, rot, X.sx, X.sy, 1);
-    if (i % 2 === 0) glowOver(ctx, D, X.tile, lvl, [X.cx, X.cy], x, y, rot, X.sx, X.sy, 0.4, st, t + i, false, tint);
+    if (i % 3 === 1) glowOver(ctx, D, X.tile, lvl, [X.cx, X.cy], x, y, rot, X.sx, X.sy, 0.45, st, t + i, false, tint);
     // 체액 방울 (목 아래쪽에서)
     if (!dying && i > 0 && rr.next() < dt * (0.3 + lvl * 0.3) * q.ambient) {
       const ox = -Math.sin(rot) * fsn, oy = Math.cos(rot) * fsn;
@@ -388,7 +385,7 @@ function drawHead(ctx, D, b, h, world, rig, st, dt, dl, hit) {
       const sd = hs.strands[j];
       sd.seg = (Math.hypot(a0.x - a1.x, a0.y - a1.y) * 1.25) / (sd.n - 1);
       sd.step(dt, a0.x + o0x, a0.y + o0y, a1.x + o1x, a1.y + o1y);
-      drawStrand(ctx, sd, 4.2 * s, twin ? ['#0c1020', '#2a3458', '#9ab8ff'] : ['#1a0605', '#5e1c12', '#b0604a']);
+      drawStrand(ctx, sd, 4.2 * s, twin ? ['#0c1020', '#2a3458', q.name === 'high' ? '#9ab8ff' : null] : ['#1a0605', '#5e1c12', q.name === 'high' ? '#b0604a' : null]);
     }
     if (nS === 0) {  // 저품질: 고정 곡선
       for (let i = 1; i + 2 < k; i += 3) {

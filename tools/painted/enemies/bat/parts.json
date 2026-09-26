@@ -1,0 +1,142 @@
+{
+ "id": "bat",
+ "tier": "T1",
+ "srcTD": 4,
+ "note": "T1: furry body = the sitting bat of sheet 1 cut above the legs (belly faded), one wing (sheet 1, painted hanging from the wrist) rotated 90 deg CCW so the root is at the left and the leading edge on top; mirrored at runtime for the other side. Hanging frame = the wrapped cocoon of sheet 1 flipped upside down.",
+ "sources": {
+  "s1": {
+   "file": "bat_sheet1.png",
+   "k": 0.0185
+  }
+ },
+ "parts": {
+  "body": {
+   "src": "s1",
+   "box": [
+    90,
+    80,
+    770,
+    1290
+   ],
+   "keep": "largest",
+   "fade": [
+    [
+     90,
+     1060,
+     770,
+     1290,
+     "down",
+     1.5
+    ]
+   ],
+   "piv": {
+    "a": [
+     470,
+     900
+    ],
+    "wl": [
+     240,
+     800
+    ],
+    "wr": [
+     700,
+     800
+    ],
+    "eyeL": [
+     400,
+     540
+    ],
+    "eyeR": [
+     540,
+     540
+    ],
+    "mouth": [
+     470,
+     700
+    ],
+    "top": [
+     470,
+     100
+    ]
+   }
+  },
+  "wing": {
+   "src": "s1",
+   "box": [
+    760,
+    130,
+    1540,
+    1665
+   ],
+   "keep": "largest",
+   "rot": 90,
+   "piv": {
+    "a": [
+     1420,
+     250
+    ],
+    "b": [
+     1330,
+     1640
+    ],
+    "claw": [
+     1480,
+     150
+    ]
+   },
+   "poly": [
+    [
+     1000,
+     130
+    ],
+    [
+     1540,
+     130
+    ],
+    [
+     1540,
+     1665
+    ],
+    [
+     1250,
+     1665
+    ],
+    [
+     1000,
+     1560
+    ],
+    [
+     760,
+     1100
+    ],
+    [
+     760,
+     700
+    ]
+   ]
+  },
+  "hang": {
+   "src": "s1",
+   "box": [
+    1630,
+    310,
+    2210,
+    1290
+   ],
+   "keep": "largest",
+   "rot": 180,
+   "flipX": true,
+   "k": 0.021,
+   "piv": {
+    "a": [
+     1920,
+     1282
+    ],
+    "face": [
+     1920,
+     600
+    ]
+   }
+  }
+ }
+}

@@ -2,6 +2,7 @@
 // 사용: node tools/painted/bench.mjs <bossId> [--dpr 1.5] [--mobile] [--frames 900] [--quality high|medium|low]
 //   JS  = 보스 draw() 호출 시간 (명령 기록), frame = 전체 프레임 + 강제 flush(getImageData) 중앙값, raster = frame − 없음
 //   --mobile : 844×390, dpr 3, 안드로이드 UA (폰 메모리 예산 경로)
+//   --gpu    : SwiftShader GL 가속 캔버스 (텍스처 블릿 경로). 기본은 CPU 래스터 (그림 면적에 비례, 더 비관적)
 import { open, startFight, freeze, waitPainted } from './lib.mjs';
 const argv = process.argv.slice(2);
 const id = argv[0];
@@ -10,8 +11,8 @@ const mobile = argv.includes('--mobile');
 const dpr = +val('dpr', mobile ? 3 : 1.5), frames = +val('frames', 900), q = val('quality', null);
 const setq = val('set', '');   // 예: --set halos=0,crackGlow=0,strands=0,particles=0 (렌더러 st.q 덮어쓰기 → 기능별 비용 분해)
 const mod = await import(`./poses/${id}.mjs`);
-const s = await open({ url: `index.html?scene=stage&stage=${mod.STAGE}&room=boss`, mobile, dpr });
-if (mobile) await s.page.evaluate(() => {});
+const gpu = argv.includes('--gpu');
+const s = await open({ url: `index.html?scene=stage&stage=${mod.STAGE}&room=boss`, mobile, dpr, gpu });
 if (q) await s.page.evaluate((q) => { window.__game.settings.quality = q; window.__game.resize(); }, q);
 await startFight(s.page);
 const bake = await waitPainted(s.page, id);
@@ -54,6 +55,6 @@ const res = await s.page.evaluate(async ([script, frames, setq]) => {
   out.rasterVector = +(out.vector.frameMed - out.none.frameMed).toFixed(2);
   return out;
 }, [mod.BENCH, frames, setq]);
-console.log(JSON.stringify({ id, dpr, mobile, set: setq, bake, ...res }, null, 1));
+console.log(JSON.stringify({ id, dpr, mobile, gpu, set: setq, bake, ...res }, null, 1));
 console.log(s.errors.join('\n') || 'NO ERRORS');
 await s.close();

@@ -1,7 +1,11 @@
-// 절차적 캐릭터 렌더러 — 플레이어블 6인 · 직업 42종 · 장비 외형 · NPC 공용
+// 캐릭터 렌더러 — 플레이어블 6인 · 직업 42종 · 장비 외형 · NPC 공용
+// 영웅은 채색 컷아웃 퍼펫(hero_puppet.js, 에셋이 있는 캐릭터/직업)으로, 나머지·로딩 중·NPC 는 절차적 벡터 인형으로 그린다.
 // drawHero(ctx, p, world, opts)
-//   p: {cx, bottom, facing, anim, animT, move, moveT, atkSpeedMul, look, ch, vx, vy, onGround, rig, t, stats, charging, muzzleT, dashT}
-//   opts: {alpha, tint(단색 잔상), scale(UI 확대), noFx(효과 생략)}
+//   p: {cx, bottom, facing, anim, animT, move, moveT, atkSpeedMul, look, ch, vx, vy, onGround, rig, t, stats, charging, muzzleT, dashT,
+//       gaitPh?(WP1 보행 위상), feel?(WP1 찌그러짐 등), ride?(탈것 C6), hero?{classId}}
+//   opts: {alpha, tint(단색 잔상), scale(UI 확대; 생략 시 게임 속 플레이어는 HERO_DRAW_SCALE), noFx(효과 생략), rim,
+//          yaw?(턴테이블 각도, 라디안 — 정의되면 facing 무시: 0 오른쪽 옆, +π/2 정면, π 왼쪽 옆, −π/2 뒤)}
+// 외부 훅(heroHooks): gait / gaitAnims / blend / feel / rider — 아래 '확장 훅' 절과 docs/art/PUPPET_PIPELINE.md 참고
 // 흐름: look → spec(치수·색, look 객체별 캐시) → 애니메이션 자세(pose) → 2관절 IK 골격
 //       → 베를레 체인(망토·머리카락·스카프·베일, p.rig 에 저장) → 레이어 순서대로 그리기
 // 좌표: 발 중앙(cx,bottom) 원점, 오른쪽을 보는 기준, y 위쪽 음수. facing(±1)으로 좌우 반전.
@@ -11,6 +15,7 @@ import {
   G, sh, mx, ra, F, capsule, grad, outline, ellipse, glow, ribbonPath, smoothClosed, WS, h01, group, fl,
   EL_COL, weaponReach, drawWeapon, drawLash, drawWhipCoil, drawWing, drawAuraMotes, drawMagicCircle, drawHalo, olc,
 } from './hero_parts.js';
+import * as PUP from './hero_puppet.js';
 
 const PI = Math.PI, HP = PI / 2;
 
@@ -108,7 +113,14 @@ const SPEC = new WeakMap();
 function specOf(look, p) {
   let K = SPEC.get(look);
   const cid = p?.ch?.id || null;
-  if (!K || K.cid !== cid) { K = buildSpec(look, p); SPEC.set(look, K); }
+  const pup = PUP.puppetFor(p, look);               // 채색 퍼펫 (준비 전·에셋 없음 → null = 벡터)
+  const pk = pup ? pup.key : null;
+  if (!K || K.cid !== cid || (K.pupKey ?? null) !== pk) {
+    K = buildSpec(look, p);
+    if (pup) PUP.applySpec(K, pup);
+    K.pupKey = pk;
+    SPEC.set(look, K);
+  }
   return K;
 }
 
@@ -438,9 +450,15 @@ function solveUpper(P, K, s) {
   s.fx = -s.uy; s.fy = s.ux;
   s.px = P.px * LS; s.py = P.py * LS;
   s.nx = s.px + s.ux * K.torso; s.ny = s.py + s.uy * K.torso;
-  const sd = 2.9;
-  s.s1x = s.nx - s.ux * sd + s.fx * 1.3 * K.hW; s.s1y = s.ny - s.uy * sd + s.fy * 1.3 * K.hW;
-  s.s2x = s.nx - s.ux * sd - s.fx * 2.4 * K.hW; s.s2y = s.ny - s.uy * sd - s.fy * 2.4 * K.hW;
+  if (K.pup) { // 채색 퍼펫: 원화에서 잰 어깨 위치(몸통 좌표계)
+    const a = K.pS1, b = K.pS2;
+    s.s1x = s.nx + s.ux * a[0] + s.fx * a[1]; s.s1y = s.ny + s.uy * a[0] + s.fy * a[1];
+    s.s2x = s.nx + s.ux * b[0] + s.fx * b[1]; s.s2y = s.ny + s.uy * b[0] + s.fy * b[1];
+  } else {
+    const sd = 2.9;
+    s.s1x = s.nx - s.ux * sd + s.fx * 1.3 * K.hW; s.s1y = s.ny - s.uy * sd + s.fy * 1.3 * K.hW;
+    s.s2x = s.nx - s.ux * sd - s.fx * 2.4 * K.hW; s.s2y = s.ny - s.uy * sd - s.fy * 2.4 * K.hW;
+  }
   const al = K.ua + K.fa;
   ik(s.s1x, s.s1y, s.s1x + Math.cos(P.a1) * P.r1 * al, s.s1y + Math.sin(P.a1) * P.r1 * al, K.ua, K.fa, P.e1);
   s.e1x = IKO[0]; s.e1y = IKO[1]; s.h1x = IKO[2]; s.h1y = IKO[3];
@@ -453,8 +471,14 @@ function solveUpper(P, K, s) {
 }
 function solve(P, K, s) {
   solveUpper(P, K, s);
-  s.hp1x = s.px + s.fx * 1.0; s.hp1y = s.py + s.fy * 1.0 + 0.5;
-  s.hp2x = s.px - s.fx * 1.4; s.hp2y = s.py - s.fy * 1.4 + 0.5;
+  if (K.pup) {
+    const a = K.pH1, b = K.pH2;
+    s.hp1x = s.px + s.ux * a[0] + s.fx * a[1]; s.hp1y = s.py + s.uy * a[0] + s.fy * a[1];
+    s.hp2x = s.px + s.ux * b[0] + s.fx * b[1]; s.hp2y = s.py + s.uy * b[0] + s.fy * b[1];
+  } else {
+    s.hp1x = s.px + s.fx * 1.0; s.hp1y = s.py + s.fy * 1.0 + 0.5;
+    s.hp2x = s.px - s.fx * 1.4; s.hp2y = s.py - s.fy * 1.4 + 0.5;
+  }
   ik(s.hp1x, s.hp1y, P.f1x * LS, P.f1y * LS, K.thigh, K.shin, -1);
   s.k1x = IKO[0]; s.k1y = IKO[1]; s.a1x = IKO[2]; s.a1y = IKO[3];
   ik(s.hp2x, s.hp2y, P.f2x * LS, P.f2y * LS, K.thigh, K.shin, -1);
@@ -1697,6 +1721,36 @@ function lassoPoints(E, K, outBuf, t) {
   return n;
 }
 
+// ───────────────────────── 확장 훅 (다른 작업 패키지가 등록) ─────────────────────────
+// 등록 전에는 모두 null → 아무 일도 하지 않는다. 등록: import { registerHeroHooks } from './hero.js' (또는 heroHooks 직접 대입).
+//  gait(P, K, anim, p, at)        docs/specs/feel.md WP1: hero_gait.js 의 gaitPose. gaitAnims[anim] 가 있는 애니메이션
+//                                  (walk sprint run_start skid pivot land_heavy)을 받아 자세 P 를 채운다. 무기 쥐는 법은
+//                                  hero.js 가 holdFor(P, K, gaitAnims[anim]) 로 이어서 적용 ('run'|'dash'|'idle').
+//  gaitAnims {anim: holdMode}     위 애니메이션 목록. 'run' 은 p.gaitPh(숫자)가 있으면 그것을 달리기 위상으로 쓴다.
+//  blend(anim, prevKey) → 초|undefined   애니메이션 전환 블렌드 시간 덮어쓰기 (예: skid 0.06, walk↔run 0.12)
+//  feel(P, p, K) → {tint, a}|void  feel overlay: 블렌드 뒤·골격 풀이 전에 호출. P.sq/P.lean 등을 곱·더해 찌그러짐·기울기를
+//                                  주고(applyFeelOverlay), 색 섬광이 필요하면 {tint:'#fff', a:0~1} 를 돌려준다(몸 실루엣에 가산).
+//  rider(P, K, p, ride, hs) → {cx, bottom, skipFarLeg}|null   docs/specs/companions.md C6 §11.4: p.ride 가 있을 때
+//                                  자세를 앉은 자세로 강제하고, 골반이 안장(ride.sx, ride.sy)에 오도록 원점을 돌려준다.
+//                                  skipFarLeg=true 면 먼 다리를 그리지 않는다(탈것 몸통 뒤).
+export const heroHooks = { gait: null, gaitAnims: null, blend: null, feel: null, rider: null };
+export function registerHeroHooks(h) { Object.assign(heroHooks, h); return heroHooks; }
+
+/** 게임 속 플레이어 영웅 그리기 배율 (판정 상자는 그대로). 채색 퍼펫의 가독성 기준으로 정함 — docs/art/PUPPET_PIPELINE.md */
+export const HERO_DRAW_SCALE = 1.14;
+/** 턴테이블 계약 (docs/specs/platform.md §7.3): 8방향 스냅 + 사이 구간은 가로 압축 교차 */
+export const HERO_VIEW = { continuous: false, steps: 8, painted: true };
+/** 이 엔티티가 턴테이블에서 채색 8방향을 쓰는가 (false 면 옆모습 카드 뒤집기 대체) */
+export function heroViewInfo(p) {
+  const look = p?.look;
+  const I = look ? PUP.puppetFor(p, look) : null;
+  return { painted: !!(I && PUP.turnReady(I)), steps: HERO_VIEW.steps, continuous: HERO_VIEW.continuous };
+}
+function heroScale(p, world, opts, look, K) {
+  const base = opts.scale ?? (world && !p.npc && PUP.isPlayable(p.ch?.id) ? HERO_DRAW_SCALE : 1);
+  return base * (look.height ?? K.defH);
+}
+
 // ───────────────────────── 잔상 합성 ─────────────────────────
 const POOL = [];
 let poolTick = 0;
@@ -1714,17 +1768,21 @@ function drawComposite(ctx, p, world, opts, K) {
   const m = ctx.getTransform();
   const sc = Math.hypot(m.a, m.b) || 1;
   const rs = Math.min(sc, opts.tint ? 1.5 : 2.5);
-  const hs = (opts.scale ?? 1) * (p.look?.height ?? K.defH);
+  const hs = heroScale(p, world, opts, p.look || DEF_LOOK, K);
   const bw = 130 * hs, bt = 150 * hs, bb = 24 * hs;
   const W = Math.ceil(2 * bw * rs), H = Math.ceil((bt + bb) * rs);
   const key = p.snapshot ? p : null;
   const e = poolGet(key, W, H);
-  if (!key || Math.abs(e.rs - rs) > 0.05 || e.tint !== opts.tint) {
+  if (!key || Math.abs(e.rs - rs) > 0.05 || e.tint !== opts.tint || e.pk !== K.pupKey) {
     const oc = e.cv.getContext('2d');
     oc.setTransform(1, 0, 0, 1, 0, 0); oc.clearRect(0, 0, W + 2, H + 2);
     oc.setTransform(rs, 0, 0, rs, (bw - p.cx) * rs, (bt - p.bottom) * rs);
     drawHero(oc, p, world, { tint: opts.tint, scale: opts.scale, noFx: opts.noFx, _inner: true });
-    e.rs = rs; e.tint = opts.tint;
+    if (opts.tint && K.pup) { // 채색 퍼펫은 부품이 그림이라 단색 잔상은 실루엣을 통째로 물들인다
+      oc.setTransform(1, 0, 0, 1, 0, 0); oc.globalCompositeOperation = 'source-in';
+      oc.fillStyle = opts.tint; oc.fillRect(0, 0, W + 2, H + 2); oc.globalCompositeOperation = 'source-over';
+    }
+    e.rs = rs; e.tint = opts.tint; e.pk = K.pupKey;
   }
   ctx.save();
   if (opts.alpha !== undefined) ctx.globalAlpha = clamp(opts.alpha, 0, 1);
@@ -1734,16 +1792,89 @@ function drawComposite(ctx, p, world, opts, K) {
   // 그리기 상태 복구 (중첩 호출로 G 가 바뀌었을 수 있음)
 }
 
+// ───────────────────────── 턴테이블 (opts.yaw) ─────────────────────────
+const TT_SIDE = {};
+const smooth01 = (x) => { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); };
+/** 옆모습(퍼펫/벡터)을 facing·가로 배율로 그린다 */
+function drawProfile(ctx, p, world, opts, facing, sx, alpha) {
+  if (alpha <= 0.002) return;
+  Object.assign(TT_SIDE, p); TT_SIDE.facing = facing; TT_SIDE.rig = p.rig;
+  ctx.save();
+  if (sx !== 1) { ctx.translate(p.cx, p.bottom); ctx.scale(sx, 1); ctx.translate(-p.cx, -p.bottom); }
+  const a = (opts.alpha ?? 1) * alpha;
+  drawHero(ctx, TT_SIDE, world, { scale: opts.scale, noFx: opts.noFx, rim: opts.rim, tint: opts.tint, alpha: a < 0.995 ? a : undefined, _turn: true });
+  ctx.restore();
+}
+function drawHeroYaw(ctx, p, world, opts, K, look) {
+  let yaw = Math.atan2(Math.sin(opts.yaw), Math.cos(opts.yaw));
+  const cs = Math.cos(yaw);
+  const I = K.pup;
+  const posed = (p.anim && p.anim !== 'idle') || p.move;
+  if (!I || !PUP.turnReady(I) || posed) {
+    // 대체(벡터·로딩 중·동작 시연): 옆모습 카드 뒤집기 — facing = sign(cos), 가로 배율 = |cos|
+    drawProfile(ctx, p, world, opts, cs >= 0 ? 1 : -1, Math.max(posed ? 0.35 : 0.12, Math.abs(cs)), 1);
+    return;
+  }
+  const tt = p.t ?? world?.time ?? performance.now() / 1000;
+  const hs = heroScale(p, world, opts, look, K);
+  const deg = (yaw * 180) / PI, stepF = deg / 45, i0 = Math.floor(stepF), f = stepF - i0;
+  const norm = (d) => { d = ((d + 180) % 360 + 360) % 360 - 180; return d === -180 ? 180 : d; };
+  const d0 = norm(i0 * 45), d1 = norm((i0 + 1) * 45);
+  const k = smooth01((f - 0.35) / 0.3);                 // 가운데 30% 에서 교차
+  const sq = 1 - 0.16 * Math.sin(PI * f);               // 돌아가는 느낌의 가로 압축
+  const views = [[d0, 1 - k], [d1, k]];
+  G.c = ctx; G.tint = opts.tint || null; G.t = tt; G.fx = !opts.tint && !opts.noFx;
+  const aBase = opts.alpha ?? 1;
+  // 1) 뒤 효과: 오라 · (앞모습) 망토 · (앞모습) 날개
+  ctx.save(); ctx.translate(p.cx, p.bottom); ctx.scale(hs, hs);
+  if (G.fx && K.aura) glow(0, -44, 46, K.auraC, (0.2 + 0.06 * Math.sin(tt * 3)) * K.auraK);
+  ctx.globalAlpha = aBase;
+  PUP.drawTurnWings(ctx, I, K.wings, yaw, false, tt);
+  PUP.drawTurnCape(ctx, I, K.cape, yaw, true, tt);
+  ctx.restore();
+  // 2) 몸: 옆모습(0°/180°)은 게임과 같은 퍼펫, 나머지는 채색 뷰
+  for (const [d, w] of views) {
+    if (w <= 0.002) continue;
+    if (d === 0 || d === 180) { drawProfile(ctx, p, world, opts, d === 0 ? 1 : -1, sq, w); continue; }
+    ctx.save(); ctx.translate(p.cx, p.bottom); ctx.scale(hs, hs); ctx.globalAlpha = aBase;
+    PUP.drawTurnStep(ctx, I, d, sq, w, tt);
+    ctx.restore();
+  }
+  // 3) 앞 효과: (뒷모습) 망토 · 날개, 후광, 오라 입자
+  ctx.save(); ctx.translate(p.cx, p.bottom); ctx.scale(hs, hs); ctx.globalAlpha = aBase;
+  G.c = ctx;
+  PUP.drawTurnCape(ctx, I, K.cape, yaw, false, tt);
+  PUP.drawTurnWings(ctx, I, K.wings, yaw, true, tt);
+  if (K.halo && G.fx) PUP.drawTurnHalo(ctx, K.aura?.color, tt);
+  if (K.aura && G.fx) drawAuraMotes(K.aura.type || 'holy', K.auraC, K.auraK, K.auraK < 1 ? 5 : 8, 84);
+  ctx.restore();
+}
+/**
+ * 인벤토리 턴테이블 편의 함수 (docs/specs/platform.md WP-5). look 만으로 영웅을 yaw 방향으로 그린다.
+ * (x, y) = 발 중앙, height = 발~정수리 화면 높이(px), t = 시간(초, 숨쉬기·천 흔들림)
+ * opts: { charId | ch, classId?, anim?, rig?(천 물리 유지용 객체), alpha, noFx, rim }
+ */
+const TT_P = { cx: 0, bottom: 0, facing: 1, anim: 'idle', animT: 0, move: null, moveT: 0, atkSpeedMul: 1, vx: 0, vy: 0, onGround: true, rig: null, t: 0, stats: { reach: 0 }, charging: 0, muzzleT: 0 };
+const TT_RIG = {};
+export function drawHeroTurntable(ctx, look, yaw, x, y, height, t = 0, opts = {}) {
+  const p = TT_P;
+  p.look = opts.classId && !look.classId ? Object.assign(look, { classId: opts.classId }) : look;
+  p.ch = opts.ch || PUP.charDef(opts.charId) || null;
+  p.cx = x; p.bottom = y; p.t = t; p.animT = t; p.anim = opts.anim || 'idle'; p.rig = opts.rig || TT_RIG;
+  drawHero(ctx, p, null, { yaw, scale: height / PUP.PUP_H, alpha: opts.alpha, noFx: opts.noFx, rim: opts.rim });
+}
+
 // ───────────────────────── 메인 ─────────────────────────
-const E0 = { p: null, rig: null, hs: 1, fac: 1, dt: 0, P: null, K: null };
+const E0 = { p: null, rig: null, hs: 1, fac: 1, dt: 0, P: null, K: null, skipFarLeg: false };
 const P_TMP = newPose(), P_FROM = newPose();
 
 export function drawHero(ctx, p, world, opts = {}) {
   if (!p) return;
   const look = p.look || DEF_LOOK;
   const K = specOf(look, p);
+  if (opts.yaw !== undefined && !opts._turn && !opts._inner) { drawHeroYaw(ctx, p, world, opts, K, look); return; }
   if (!opts._inner && (opts.tint || (opts.alpha !== undefined && opts.alpha < 0.995))) { drawComposite(ctx, p, world, opts, K); return; }
-  const hs = (opts.scale ?? 1) * (look.height ?? K.defH);
+  const hs = heroScale(p, world, opts, look, K);
   const fac = p.facing < 0 ? -1 : 1;
   const tt = p.t ?? world?.time ?? performance.now() / 1000;
   const rig = !opts._inner && p.rig && typeof p.rig === 'object' ? p.rig : null;
@@ -1770,7 +1901,8 @@ export function drawHero(ctx, p, world, opts = {}) {
       case 'run': {
         const spd = Math.abs(p.vx || 0), sp0 = p.ch?.move?.speed || 275;
         let ph;
-        if (rig) { rig.runPh = (rig.runPh || 0) + dt * Math.max(spd, 60) / 18; ph = rig.runPh; } else ph = tt * 15;
+        if (typeof p.gaitPh === 'number') ph = p.gaitPh;                       // WP1 보행 위상 (feel.md 3.3.1)
+        else if (rig) { rig.runPh = (rig.runPh || 0) + dt * Math.max(spd, 60) / 18; ph = rig.runPh; } else ph = tt * 15;
         poseRun(P, K, ph, spd / sp0 || 0.8); holdFor(P, K, 'run');
         break;
       }
@@ -1793,38 +1925,47 @@ export function drawHero(ctx, p, world, opts = {}) {
       }
       case 'wall': poseWall(P); holdFor(P, K, 'air'); if (W.type === 'dagger') { P.w1 = HP + 0.6; P.w2 = HP + 0.8; } break;
       case 'hurt': poseHurt(P, at); P.w1 = P.a1 + 0.8; P.w2 = P.a2 + 0.8; ST.hurt = clamp(1 - at / 0.12, 0, 1); break;
-      case 'death': poseDeath(P, at); break;
-      case 'throw': poseIdle(P, K, tt, false); holdFor(P, K, 'idle'); poseThrow(P, K, at); break;
+      case 'death': poseDeath(P, at); if (K.pup) P.pvy -= 3.5; break; // 퍼펫은 몸통이 길어 누웠을 때 머리가 바닥에 묻히지 않게
+      case 'throw': poseIdle(P, K, tt, false); holdFor(P, K, 'idle'); poseThrow(P, K, at); ST.throwK = W.type === 'whip' ? 1 : 2; break;
       case 'cast': poseIdle(P, K, tt, false); holdFor(P, K, 'idle'); poseCast(P, K, at, tt); ST.circle = clamp(at / 0.08, 0, 1) * (at < 0.3 ? 1 : clamp(1 - (at - 0.3) / 0.2, 0, 1)); ST.cast = 3; break;
       case 'charge': { ST.charge = clamp((p.charging ?? 0.3) / 0.55, 0, 1); poseCharge(P, K, ST.charge, tt); if (W.type === 'staff') ST.circle = ST.charge; break; }
-      default: poseIdle(P, K, tt, !!p.npc); holdFor(P, K, 'idle'); break;
+      default: {
+        const gm = heroHooks.gaitAnims?.[anim];                                   // WP1: walk/sprint/skid/…
+        if (gm && heroHooks.gait) { heroHooks.gait(P, K, anim, p, at); holdFor(P, K, gm); break; }
+        poseIdle(P, K, tt, !!p.npc); holdFor(P, K, 'idle'); break;
+      }
     }
   }
   // 애니메이션 전환 블렌드
   if (rig) {
     if (rig.akey !== akey) {
       if (rig.last) copyPose(rig.from || (rig.from = newPose()), rig.last);
+      const hb = heroHooks.blend ? heroHooks.blend(anim, rig.akey) : undefined;
       rig.akey = akey; rig.bt = 0;
-      rig.bd = mv ? 0.05 : anim === 'flip' || anim === 'hurt' ? 0.04 : anim === 'land' ? 0.05 : 0.1;
+      rig.bd = hb ?? (mv ? 0.05 : anim === 'flip' || anim === 'hurt' ? 0.04 : anim === 'land' ? 0.05 : 0.1);
     }
     rig.bt = (rig.bt || 0) + dt;
     if (rig.from && rig.bt < rig.bd) blendPose(P, rig.from, ease.outQuad(rig.bt / rig.bd));
     copyPose(rig.last || (rig.last = newPose()), P);
   }
+  // 확장 훅: 찌그러짐·기울기 오버레이(WP1) → 탈것 자세·원점(C6)
+  const feel = heroHooks.feel ? heroHooks.feel(P, p, K) : null;
+  const ride = p.ride && heroHooks.rider ? heroHooks.rider(P, K, p, p.ride, hs) : null;
   solve(P, K, SK);
   LEG_T1 = P.t1; LEG_T2 = P.t2;
-  E0.p = p; E0.rig = rig; E0.hs = hs; E0.fac = fac; E0.dt = dt; E0.P = P; E0.K = K;
+  E0.p = p; E0.rig = rig; E0.hs = hs; E0.fac = fac; E0.dt = dt; E0.P = P; E0.K = K; E0.skipFarLeg = !!ride?.skipFarLeg;
   swingOf(E0);
   ST.coil = W.type === 'whip' && !mv && anim !== 'charge';
 
-  // ── 실루엣 패스: 역광 테두리(플레이어) · 피격 섬광 ──
-  const flashK = ST.hurt > 0 && !G.tint ? ST.hurt : 0;
+  // ── 실루엣 패스: 역광 테두리(플레이어) · 피격 섬광 · feel 색 섬광 ──
+  let flashK = ST.hurt > 0 && !G.tint ? ST.hurt : 0, flashCol = FLASH_COL;
+  if (feel && feel.a > flashK && feel.tint && !G.tint) { flashK = clamp(feel.a, 0, 1); flashCol = feel.tint; }
   const wantRim = !opts._inner && G.fx && (opts.rim ?? !p.npc);
   const off = (wantRim || flashK > 0) && typeof document !== 'undefined';
 
   // ── 그리기 ──
   ctx.save();
-  ctx.translate(p.cx, p.bottom);
+  ctx.translate(ride ? ride.cx : p.cx, ride ? ride.bottom : p.bottom);
   ctx.scale(fac * hs, hs);
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   G.olw = 0.85;
@@ -1843,10 +1984,13 @@ export function drawHero(ctx, p, world, opts = {}) {
     }
     if (ST.dash && ST.dashK > 0) drawDashFx(K, ST.dash, ST.dashK, tt);
   }
-  // 본체: 역광 테두리(뒤-위로 비켜 찍은 차가운 단색 복사본) → 본체 → 피격 섬광
+  // 본체: 역광 테두리(뒤-위로 비켜 찍은 차가운 단색 복사본) → 본체 → 섬광
   if (off) {
-    const S = bodyOffscreen(ctx, K, P, W, tt, hs, fac, flashK > 0 ? FLASH_COL : RIM_COL);
-    if (wantRim) blitOff(ctx, TINTC, S, fac, hs, -fac * 1.05 * hs, -0.95 * hs, RIM_A, 'source-over');
+    const S = bodyOffscreen(ctx, K, P, W, tt, hs, fac, flashK > 0 ? flashCol : RIM_COL);
+    if (wantRim) { // 채색 퍼펫은 자체 명암이 있어 테두리를 가늘고 옅게
+      const pk = K.pup ? PUP_RIM : null;
+      blitOff(ctx, TINTC, S, fac, hs, -fac * (pk ? pk[0] : 1.05) * hs, -(pk ? pk[1] : 0.95) * hs, pk ? pk[2] : RIM_A, 'source-over');
+    }
     blitOff(ctx, BODYC, S, fac, hs, 0, 0, 1, 'source-over');
     if (flashK > 0) blitOff(ctx, TINTC, S, fac, hs, 0, 0, 0.75 * flashK, 'lighter');
   } else drawLayers(c, E, K, P, W, tt);
@@ -1906,6 +2050,7 @@ export function drawHero(ctx, p, world, opts = {}) {
 }
 /** 몸 전체(날개 → 체인 천/머리카락 → 본체·무기). 실루엣 패스에서도 그대로 재사용 */
 function drawLayers(c, E, K, P, W, tt) {
+  if (K.pup && PUP.drawLayers(c, E, K, P, W, tt)) return;   // 채색 퍼펫
   // 날개 (몸 변환)
   c.save(); applyT1(c, P);
   if (K.wings) drawWings(SK, K, P, E.p, tt);
@@ -1923,7 +2068,7 @@ function drawLayers(c, E, K, P, W, tt) {
   group(drawArm, SK, K, false); drawPauldron(SK, K, false);
   drawHand(SK, K, false);
   drawSkirt(SK, K, P, false);
-  group(drawLeg, SK, K, false);
+  if (!E.skipFarLeg) group(drawLeg, SK, K, false);
   drawTorso(SK, K, E);
   drawSash(SK, K);
   group(drawLeg, SK, K, true);
@@ -1945,6 +2090,8 @@ function drawLayers(c, E, K, P, W, tt) {
   if (P.two && hasMain) drawHand(SK, K, false);
   c.restore();
 }
+/** 채색 퍼펫 역광 테두리: [x 비킴, y 비킴, 불투명도] */
+const PUP_RIM = [0.8, 0.75, 0.5];
 
 // ── 오프스크린 본체 패스 (역광 테두리 / 피격 섬광) ──
 // 몸 전체를 전용 캔버스(BODY)에 한 번 그리고 → 그 알파로 단색 복사본(TINT)을 만들어
@@ -2102,3 +2249,11 @@ export function drawWeaponPreview(ctx, weapon, x, y, ang = 0, scale = 1, t = 0) 
   ctx.restore();
   G.c = gc; G.tint = gt; G.fx = gf; G.t = gtt;
 }
+
+// ── 채색 퍼펫 호스트 연결 (hero_puppet.js 는 hero.js 를 import 하지 않는다) ──
+PUP.bindHost({
+  SK, ST, SW, chain, applyT1, drawWings, drawScarfTail,
+  tx(P, x, y, out) { tx0(P, x, y); out[0] = TX; out[1] = TY; return out; },
+  CC: { CAPE: CC_CAPE, BAND: CC_BAND, BAND2: CC_BAND2 },
+});
+export { setPuppetEnabled, preloadPuppet, puppetStatus } from './hero_puppet.js';

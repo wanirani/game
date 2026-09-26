@@ -18,7 +18,7 @@ parts.json:
                "keep": "largest" | "all",              # connected components to keep inside box/poly (default all)
                "k": 0.05,                              # optional per-part scale override
                "flipX": false, "rot": 0,               # optional: mirror / rotate (degrees, CCW) the cut
-               "fade": [[x0,y0,x1,y1, "down"|"up"|"left"|"right"]],  # soft alpha fades (source px) for cut edges
+               "fade": [[x0,y0,x1,y1, "down"|"up"|"left"|"right", power]],  # soft alpha fades (source px) for cut edges
                "minus": [[[x,y],...]],                  # polygons removed from the cut (e.g. the head from a torso)
                "inpaint": [[[x,y],...]],                # polygons repainted from their surroundings (cv2 Telea) before
                                                        # cutting, e.g. a thigh bone painted over the loincloth
@@ -79,7 +79,7 @@ def cut(p):
     for mp in p.get('minus', []):
         a = a * (1 - poly_mask(rgba.shape, [(x - x0, y - y0) for x, y in mp], p.get('feather', 1.0)))
     for f in p.get('fade', []):
-        fx0, fy0, fx1, fy1, d = f
+        fx0, fy0, fx1, fy1, d = f[:5]
         yy, xx = np.mgrid[0:a.shape[0], 0:a.shape[1]]
         X, Y = xx + x0, yy + y0
         inside = (X >= fx0) & (X <= fx1) & (Y >= fy0) & (Y <= fy1)
@@ -87,7 +87,7 @@ def cut(p):
         elif d == 'up': t = np.clip((Y - fy0) / max(1, fy1 - fy0), 0, 1)
         elif d == 'right': t = np.clip((fx1 - X) / max(1, fx1 - fx0), 0, 1)
         else: t = np.clip((X - fx0) / max(1, fx1 - fx0), 0, 1)
-        a = np.where(inside, a * t, a)
+        a = np.where(inside, a * t ** (f[5] if len(f) > 5 else 1.0), a)
     if p.get('keep', 'all') == 'largest':
         lab, n = ndi.label(a > 0.25)
         if n > 1:

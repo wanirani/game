@@ -299,7 +299,7 @@ def build(rig_path, dbg=False, out=None, quiet=False):
             on_green(p['rgba'], s).save(os.path.join(dd, f'part_{k}.jpg'), quality=85)
 
     # ── 띠(strip) 부품: 축이 +y 를 향하도록 미리 회전 ──
-    for k in ('pony', 'skirt', 'skirtFar'):
+    for k in ('pony', 'skirt'):   # skirtFar 는 몸통 좌표계로 그리므로 회전하지 않는다
         if k in C.parts:
             to_strip(C.parts[k])
 

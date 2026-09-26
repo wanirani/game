@@ -8,12 +8,15 @@ import { start } from '../serve.mjs';
 
 export const CHROME = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 
-export async function open({ dpr = 1.5, w = 1280, h = 720, url = 'index.html?scene=stage&stage=s05&room=boss', mobile = false, log = false } = {}) {
+/** gpu=true: SwiftShader GL 로 가속 캔버스 경로(텍스처 블릿) 흉내 — 기본은 CPU 래스터(더 비관적) */
+export async function open({ dpr = 1.5, w = 1280, h = 720, url = 'index.html?scene=stage&stage=s05&room=boss', mobile = false, log = false, gpu = false } = {}) {
   const port = 8000 + Math.floor(Math.random() * 900);
   const srv = await start(port);
-  const browser = await chromium.launch({ executablePath: CHROME, args: ['--autoplay-policy=no-user-gesture-required'] });
+  const args = ['--autoplay-policy=no-user-gesture-required'];
+  if (gpu) args.push('--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--enable-gpu-rasterization', '--ignore-gpu-blocklist');
+  const browser = await chromium.launch({ executablePath: CHROME, args });
   const ctx = await browser.newContext(mobile
-    ? { viewport: { width: 844, height: 390 }, deviceScaleFactor: dpr ?? 2, hasTouch: true, isMobile: true }
+    ? { viewport: { width: 844, height: 390 }, deviceScaleFactor: dpr ?? 2, hasTouch: true, isMobile: true, userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Mobile Safari/537.36' }
     : { viewport: { width: w, height: h }, deviceScaleFactor: dpr });
   const page = await ctx.newPage();
   const errors = [];

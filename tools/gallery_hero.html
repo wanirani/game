@@ -2,7 +2,8 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<title>캐릭터 렌더 갤러리</title>
+<base href="../">
+<title>캐릭터 렌더 갤러리 (채색 퍼펫 + 벡터)</title>
 <style>
   html, body { margin: 0; background: #07040a; color: #d8ccb8; font-family: 'Noto Sans KR', sans-serif; }
   canvas { display: block; }
@@ -11,17 +12,22 @@
 <body>
 <canvas id="cv"></canvas>
 <script type="module">
-// 캐릭터 렌더러 갤러리: 6인 × 동작, 공격(판정 구간 중간 프레임 + 판정 상자), 직업 외형, NPC, 무기 단계
-// ?anim=1 : 실시간 애니메이션 / ?box=1 : 공격 판정 상자 표시 / ?sec=chars|seq|attacks|classes|npcs|weapons|rack / ?zoom=all|<캐릭터ID>&cls=&a=
-import { drawHero, drawWeaponPreview } from '../src/render/hero.js';
-import { CHARACTERS, CHAR_ORDER } from '../src/data/characters.js';
-import { CLASSES, classChain } from '../src/data/classes.js';
-import { MOVESETS } from '../src/data/movesets.js';
+// 캐릭터 렌더러 갤러리
+//  기본(채색 퍼펫): ?sec=pup,pupatk,pupw,pupeq,turn  — 카엘 7직업 × 모든 동작 / 채찍 기술 전부 / 무기 6종 손잡이 / 장비 색·망토 / 턴테이블 8방향
+//  벡터 인형:       ?sec=chars,seq,sim,attacks,classes,equip,npcs,rack,weapons  (&vector=1 이면 퍼펫을 끄고 순수 벡터)
+//  ?anim=1 실시간 / ?box=1 판정 상자 / ?cls=kael_templar (pup·pupw 를 한 직업만) / ?zoom=all|<캐릭터ID>&cls=&a= / ?turnlive=1 턴테이블 드래그
+import { drawHero, drawWeaponPreview, setPuppetEnabled, preloadPuppet, puppetStatus, HERO_DRAW_SCALE } from './src/render/hero.js';
+import { assets } from './src/core/assets.js';
+import { PUPPETS } from './src/render/puppet_manifest.js';
+import { CHARACTERS, CHAR_ORDER } from './src/data/characters.js';
+import { CLASSES, classChain } from './src/data/classes.js';
+import { MOVESETS } from './src/data/movesets.js';
 
 const Q = new URLSearchParams(location.search);
 const LIVE = Q.has('anim');
 const BOX = Q.has('box');
-const SEC = (Q.get('sec') || 'chars,seq,sim,attacks,classes,equip,npcs,rack,weapons').split(',');
+const SEC = (Q.get('sec') || (Q.has('vector') ? 'chars,seq,sim,attacks,classes,equip,npcs,rack,weapons' : 'pup,pupatk,pupw,pupeq,turn')).split(',');
+if (Q.has('vector')) setPuppetEnabled(false);
 const cv = document.getElementById('cv');
 const ctx = cv.getContext('2d');
 const W = 1280;
@@ -173,6 +179,74 @@ if (SEC.includes('weapons') && !ZOOM) {
     })), 210, 190, 1.6);
   }
 }
+// ───────── 채색 퍼펫 섹션 ─────────
+const KCLS = Object.values(CLASSES).filter((c) => c.charId === 'kael').sort((a, b) => a.tier - b.tier || a.id.localeCompare(b.id)).map((c) => c.id);
+const ONE = Q.get('cls');
+const PCLS = ONE ? [ONE] : KCLS;
+const ALL_ANIM = [
+  ['idle', {}], ['run 1', { anim: 'run', vx: 280 }], ['run 2', { anim: 'run', vx: 280, _ph: 0.33 }], ['jump', { anim: 'jump', vy: -600, onGround: false }],
+  ['fall', { anim: 'fall', vy: 500, onGround: false }], ['flip', { anim: 'flip', animT: 0.14, onGround: false, vy: -300 }], ['land', { anim: 'land', animT: 0.02 }],
+  ['crouch', { anim: 'crouch' }], ['dash', { anim: 'dash', animT: 0.06, vx: 650 }], ['wall', { anim: 'wall', onGround: false, vy: 150 }],
+  ['hurt', { anim: 'hurt', animT: 0.05, vx: -200 }], ['death', { anim: 'death', animT: 1.3 }], ['cast', { anim: 'cast', animT: 0.15 }],
+  ['throw', { anim: 'throw', animT: 0.1 }], ['charge', { anim: 'charge', charging: 0.7 }], ['left · run', { anim: 'run', vx: -280, facing: -1 }],
+];
+function movesOf(type) {
+  const ms = MOVESETS[type], list = [];
+  ms.ground.forEach((m, i) => list.push([`지상${i + 1} ${m.anim}`, m, true]));
+  ms.air.forEach((m, i) => list.push([`공중${i + 1} ${m.anim}`, m, false]));
+  for (const k of ['up', 'down', 'crouch', 'dash', 'charge']) if (ms[k]) list.push([`${k} ${ms[k].anim}`, ms[k], k !== 'down']);
+  return list;
+}
+const hitT = (m) => (m.box ? (m.hit[0] + m.hit[1]) / 2 : m.hit[0] + 0.015);
+if (SEC.includes('pup') && !ZOOM) {
+  for (const cls of PCLS) {
+    header(`채색 퍼펫 · ${CLASSES[cls].name} (${cls}) — 모든 동작 (게임 배율 ×${HERO_DRAW_SCALE} 기준 ×1.6)`);
+    row(ALL_ANIM.map(([name, o]) => ({ label: name, p: () => ent({ look: lookOf('kael', cls), ch: CHARACTERS.kael, ...o }) })), 156, 190, 1.6);
+  }
+}
+if (SEC.includes('pupatk') && !ZOOM) {
+  for (const cls of PCLS) {
+    header(`채색 퍼펫 · ${CLASSES[cls].name} — 채찍 기술 전부 (판정 중간 프레임)`);
+    row(movesOf('whip').map(([label, m, gnd]) => ({ label, wide: true, p: () => ent({ look: lookOf('kael', cls, { style: 3, level: 7 }), ch: CHARACTERS.kael, anim: m.anim, move: m, moveT: hitT(m), onGround: gnd }) })), 208, 200, 1.25);
+  }
+}
+if (SEC.includes('pupw') && !ZOOM) {
+  const WCLS = ONE ? [ONE] : ['kael_hunter', 'kael_templar'];
+  for (const cls of WCLS) for (const type of ['sword', 'greatsword', 'dagger', 'gun', 'staff']) {
+    header(`무기 손잡이 · ${CLASSES[cls].name} × ${type} (주먹·양손·조준·시전·투척)`);
+    const list = movesOf(type).map(([label, m, gnd]) => ({ label, wide: true, p: () => ent({ look: lookOf('kael', cls, { type, style: 3, level: 7 }), ch: CHARACTERS.kael, anim: m.anim, move: m, moveT: hitT(m), onGround: gnd, muzzleT: 0.05 }) }));
+    list.push({ label: 'idle', p: () => ent({ look: lookOf('kael', cls, { type, style: 3 }), ch: CHARACTERS.kael }) });
+    list.push({ label: 'run', p: () => ent({ look: lookOf('kael', cls, { type, style: 3 }), ch: CHARACTERS.kael, anim: 'run', vx: 280 }) });
+    list.push({ label: 'throw', p: () => ent({ look: lookOf('kael', cls, { type, style: 3 }), ch: CHARACTERS.kael, anim: 'throw', animT: 0.1 }) });
+    row(list, 208, 200, 1.25);
+  }
+}
+if (SEC.includes('pupeq') && !ZOOM) {
+  header('장비 색(재질 마스크) · 망토(절차적 + 벨벳 결) · 오라');
+  const EQ = [
+    ['kael_hunter', '기본', {}],
+    ['kael_hunter', '가죽 #5a3a24', { armor: 'leather', armorColor: '#5a3a24' }],
+    ['kael_hunter', '판금 #a8b0bc', { armor: 'plate', armorColor: '#a8b0bc' }],
+    ['kael_hunter', '마왕 갑주 + 해진 망토', { armor: 'dark', armorColor: '#3a0a14', armorTrim: '#ff3a4a', cape: { color: '#2a0a14', color2: '#6a0a1a', len: 1.25, style: 'tattered' } }],
+    ['kael_hunter', '진홍 망토', { cape: { color: '#8a1426', color2: '#3a0a12', len: 1.05, style: 'plain' } }],
+    ['kael_templar', '기본(망토 포함)', {}],
+    ['kael_templar', '미스릴 #cfe0f4', { armor: 'plate', armorColor: '#cfe0f4', armorTrim: '#8ab8ff' }],
+    ['kael_templar', '청판금 #2a5a7a', { armor: 'plate', armorColor: '#2a5a7a', armorTrim: '#9fe8ff' }],
+    ['kael_crusader', '사슬 #4a4a58', { armor: 'chain', armorColor: '#4a4a58', armorTrim: '#b01830' }],
+    ['kael_inquisitor', '기본(망토)', {}],
+    ['kael_bloodhunter', '기본(망토·오라)', {}],
+    ['kael_nightraven', '기본(날개·긴 스카프)', {}],
+    ['kael_nightraven', '성기사 망토', { cape: { color: '#efe6d0', color2: '#b8962a', len: 1.15, style: 'royal' } }],
+  ];
+  row(EQ.map(([cls, label, over]) => ({ label: `${CLASSES[cls].name} · ${label}`, p: () => ent({ look: Object.assign(lookOf('kael', cls, { style: 3, level: 7 }), over), ch: CHARACTERS.kael, anim: 'run', vx: 200 }) })), 180, 200, 1.6);
+}
+const YAWS = [0, 45, 90, 135, 180, -135, -90, -45];
+if (SEC.includes('turn') && !ZOOM) {
+  for (const cls of PCLS) {
+    header(`턴테이블 · ${CLASSES[cls].name} — 8방향 (yaw: 0 오른쪽 옆 · 90 정면 · 180 왼쪽 옆 · −90 뒤) + 사이 각`);
+    row([...YAWS, 20, 67, 112, -30, -160].map((d) => ({ label: `${d}°`, turn: d, p: () => ent({ look: lookOf('kael', cls), ch: CHARACTERS.kael }) })), 104, 200, 1.7);
+  }
+}
 Y += 20;
 cv.width = W; cv.height = Y;
 cv.style.width = W + 'px'; cv.style.height = Y + 'px';
@@ -251,7 +325,8 @@ function drawCell(cell, time, live) {
     cell.ent = e;
     // 체인 안정화(워밍업): 이동 중이면 실제로 이동시키며 시뮬
     const vx = e.vx || 0;
-    for (let f = 0; f < 50; f++) {
+    const ph = e._ph || 0;
+    for (let f = 0; f < 50 + Math.round(ph * 40); f++) {
       e.t = 3 + f / 60;
       e.cx = -(vx * (49 - f)) / 60 / sc; e.bottom = 0;
       sctx.setTransform(sc, 0, 0, sc, 450, 700);
@@ -260,6 +335,13 @@ function drawCell(cell, time, live) {
     e.cx = 0;
   }
   const e = cell.ent;
+  if (cell.turn !== undefined) { // 턴테이블 셀: opts.yaw
+    ctx.translate(footX, footY); ctx.scale(sc, sc); e.cx = 0; e.bottom = 0;
+    drawHero(ctx, e, null, { yaw: (cell.turn * Math.PI) / 180 + (live ? time * 0.6 : 0) });
+    ctx.restore();
+    ctx.fillStyle = '#c8b89a'; ctx.font = '12px sans-serif'; ctx.fillText(cell.label || '', x + 8, y + h - 8);
+    return;
+  }
   if (live) {
     e.t = time; e.animT = (e.anim === 'idle' || e.anim === 'run') ? time : e.animT;
     if (e.move) { e.moveT = (time * 0.6) % e.move.dur; }
@@ -287,7 +369,28 @@ async function renderProgressive(time) {
     if (++n % 6 === 0) await new Promise((r) => setTimeout(r, 0));
   }
 }
+/** 갤러리에 나오는 퍼펫(카엘 7직업)의 리그·레벨 이미지·마스크·턴테이블을 모두 받은 뒤 그린다 */
+async function waitPuppets() {
+  if (Q.has('vector')) return;
+  const keys = Object.entries(PUPPETS).flatMap(([cid, m]) => Object.keys(m).map((cls) => [cid, cls]));
+  for (const [cid, cls] of keys) preloadPuppet(cid, cls);
+  const t0 = performance.now();
+  while (performance.now() - t0 < 15000) {
+    const st = puppetStatus();
+    if (keys.every(([cid, cls]) => st[cid + '/' + cls]?.state !== 0 && st[cid + '/' + cls])) break;
+    await new Promise((r) => setTimeout(r, 50));
+  }
+  const loads = [assets.load('puppets/_shared/cape_tex')];
+  for (const [cid, cls] of keys) {
+    const h = PUPPETS[cid][cls].h;
+    for (const lv of PUPPETS[cid][cls].lv) { loads.push(assets.load(`puppets/${cid}/${cls}/atlas_${lv}`, h), assets.load(`puppets/${cid}/${cls}/mask_${lv}`, h)); }
+    if (PUPPETS[cid][cls].turn) loads.push(assets.load(`puppets/${cid}/${cls}/turn`, h));
+  }
+  await Promise.all(loads);
+  window.__pupStatus = puppetStatus();
+}
 setTimeout(async () => {
+  await waitPuppets();
   await renderProgressive(3.83);
   window.__ready = true;
   if (LIVE) { const t0 = performance.now(); const loop = () => { render(3 + (performance.now() - t0) / 1000); requestAnimationFrame(loop); }; requestAnimationFrame(loop); }

@@ -3,7 +3,7 @@
 export const PUPPETS = {
  "kael": {
   "kael_bloodhunter": {
-   "h": "f90e2d996bb8",
+   "h": "864ac2883c16",
    "turn": true,
    "lv": [
     "hi",
@@ -12,7 +12,7 @@ export const PUPPETS = {
    ]
   },
   "kael_crusader": {
-   "h": "917d7c7b5360",
+   "h": "36dcdf76403b",
    "turn": true,
    "lv": [
     "hi",
@@ -21,7 +21,7 @@ export const PUPPETS = {
    ]
   },
   "kael_hunter": {
-   "h": "59f11ee2779f",
+   "h": "f138aa663122",
    "turn": true,
    "lv": [
     "hi",
@@ -30,7 +30,7 @@ export const PUPPETS = {
    ]
   },
   "kael_inquisitor": {
-   "h": "9d7f616c2a9f",
+   "h": "7db265da0ab9",
    "turn": true,
    "lv": [
     "hi",
@@ -39,7 +39,7 @@ export const PUPPETS = {
    ]
   },
   "kael_nightraven": {
-   "h": "947144369821",
+   "h": "1ce57e8846c8",
    "turn": true,
    "lv": [
     "hi",
@@ -48,7 +48,7 @@ export const PUPPETS = {
    ]
   },
   "kael_stalker": {
-   "h": "f34d669142cc",
+   "h": "b3f85494c679",
    "turn": true,
    "lv": [
     "hi",
@@ -57,7 +57,7 @@ export const PUPPETS = {
    ]
   },
   "kael_templar": {
-   "h": "e7c111e26300",
+   "h": "0941f90bdec6",
    "turn": true,
    "lv": [
     "hi",

@@ -1,0 +1,650 @@
+// 채색 컷아웃 퍼펫 — 클링 측면 원화를 부위별로 잘라 만든 아틀라스를 hero.js 의 자세·IK 골격(SK)에 붙여 그린다.
+// 에셋: assets/puppets/<charId>/<classId>/{rig.json, atlas_{lo,hi,ui}.webp, mask_{lo,hi,ui}.webp, turn.webp}
+//       (tools/puppet/build_all.py 가 만들고, 목록은 ./puppet_manifest.js). 파이프라인 문서: docs/art/PUPPET_PIPELINE.md
+// 흐름: puppetFor(p, look) → (지연 로드, 준비 전 null = 벡터 대체) → applySpec(K, R) 로 골격 치수를 원화에 맞춤
+//       → drawLayers(...) 가 레이어 순서대로 부품을 그림 (hero.js drawLayers 대신)
+// 원칙: 부품 좌표는 원화 px. 뼈 부위는 원화의 두 관절 → 골격의 두 관절 (회전 + 뼈 방향으로만 늘임, 0.82~1.22 제한)
+//       먼 쪽 팔다리는 어둡게 구운 사본, 갑옷 색은 재질 마스크(R=갑옷, G=장식)로 다시 칠한 변형(장착 시 1회)
+//       망토는 절차적 베를레 띠 + 벨벳 결 텍스처, 무기·궤적·효과는 기존 절차적 코드(hero_parts.js)
+import { assets } from '../core/assets.js';
+import { CLASSES, classChain } from '../data/classes.js';
+import { CHARACTERS } from '../data/characters.js';
+import { PUPPETS } from './puppet_manifest.js';
+import { G, sh, ra, grad, ribbonPath, WS, drawWeapon, drawWing, glow, drawHalo } from './hero_parts.js';
+
+const PI = Math.PI, HP = PI / 2, TAU = PI * 2;
+const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+const lerp = (a, b, t) => a + (b - a) * t;
+const wrapPI = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+
+/** 발바닥~정수리 논리 높이(px). 벡터 영웅과 같은 키 */
+export const PUP_H = 90;
+/** 먼 쪽 팔다리 어둡게 (0~1) */
+const FAR_DARK = 0.42;
+
+let H = null;                      // 호스트(hero.js) 함수·상태 묶음 — bindHost 로 주입 (순환 import 방지)
+/** hero.js 가 모듈 초기화 때 한 번 호출: { SK, ST, SW, chain, tx(P,x,y,out), applyT1, drawWings, drawScarfTail, CC:{CAPE,BAND,BAND2} } */
+export function bindHost(h) { H = h; }
+let ENABLED = true;
+/** 전역 끄기 (디버그·비교용). false 면 모든 영웅이 벡터 렌더러로 그려진다 */
+export function setPuppetEnabled(v) { ENABLED = !!v; }
+export function puppetEnabled() { return ENABLED; }
+
+// ───────────────────────── 직업 판별 ─────────────────────────
+const EFF = new Map();
+/** 캐릭터 기본 look ← 직업 계보 look (장비 제외) */
+function effLook(classId) {
+  let e = EFF.get(classId);
+  if (!e) {
+    const c = CLASSES[classId];
+    e = Object.assign({}, CHARACTERS[c?.charId]?.look || {});
+    for (const x of classChain(classId)) Object.assign(e, x.look || {});
+    EFF.set(classId, e);
+  }
+  return e;
+}
+const CLS = new WeakMap();
+/** look 이 어느 직업의 것인지: look.classId → 색 지문(주/보조/장식색·머리 모양, 장비가 바꾸지 않는 값) → p.hero.classId */
+export function classOf(p, look) {
+  if (!look) return null;
+  if (look.classId) return look.classId;
+  let c = CLS.get(look);
+  if (c === undefined) {
+    const cid = p?.ch?.id;
+    c = null;
+    if (cid && CHARACTERS[cid]) {
+      let bt = -1;
+      for (const id in CLASSES) {
+        const k = CLASSES[id];
+        if (k.charId !== cid) continue;
+        const e = effLook(id);
+        if (e.primary === look.primary && e.secondary === look.secondary && e.trim === look.trim && (e.hairStyle ?? null) === (look.hairStyle ?? null) && k.tier > bt) { bt = k.tier; c = id; }
+      }
+    }
+    if (!c && p?.hero?.classId && CLASSES[p.hero.classId]?.charId === p?.ch?.id) c = p.hero.classId;
+    CLS.set(look, c);
+  }
+  return c;
+}
+
+// ───────────────────────── 로딩 ─────────────────────────
+const REG = new Map();              // 'kael/kael_hunter' → 퍼펫 항목
+const NONE = { state: -1 };
+function entry(cid, cls) {
+  const key = cid + '/' + cls;
+  let E = REG.get(key);
+  if (E) return E;
+  const man = PUPPETS[cid]?.[cls];
+  if (!man) { REG.set(key, NONE); return NONE; }
+  E = { key, cid, cls, man, state: 0, rig: null, PS: 1, J: null, parts: null, levels: [], lvIdx: {}, dark: {}, vars: new Map(), turnImg: null };
+  REG.set(key, E);
+  assets.json(`puppets/${key}/rig`, man.h).then((rig) => {
+    if (!rig || !rig.levels || !rig.parts) { E.state = -1; return; }
+    E.rig = rig; E.J = rig.joints; E.parts = rig.parts;
+    E.PS = PUP_H / (rig.sole - rig.figTop);
+    E.levels = Object.entries(rig.levels).map(([name, L]) => ({ name, scale: L.scale, rects: L.rects, size: L.size })).sort((a, b) => a.scale - b.scale);
+    E.levels.forEach((L, i) => { E.lvIdx[L.name] = i; });
+    E.opts = rig.opts || {};
+    // 게임 화면용 두 레벨을 먼저 (ui 는 필요할 때)
+    for (const L of E.levels) if (L.name !== 'ui') levelImg(E, L);
+  });
+  return E;
+}
+function levelImg(E, L) { return assets.get(`puppets/${E.key}/atlas_${L.name}`, E.man.h); }
+function maskImg(E, L) { return assets.get(`puppets/${E.key}/mask_${L.name}`, E.man.h); }
+/** 준비 상태: 리그 + 레벨 이미지 하나 이상 */
+function ready(E) {
+  if (E.state === 1) return true;
+  if (E.state < 0 || !E.rig) return false;
+  for (const L of E.levels) if (levelImg(E, L)) { E.state = 1; return true; }
+  if (E.levels.every((L) => assets.failed(`puppets/${E.key}/atlas_${L.name}`))) E.state = -1;
+  return false;
+}
+/** 미리 불러 두기 (장면 진입 시 등, 선택) */
+export function preloadPuppet(charId, classId) { const E = entry(charId, classId); return E; }
+
+// ───────────────────────── 장비 색 (재질 마스크) ─────────────────────────
+function hexRgb(h) {
+  if (typeof h !== 'string' || h[0] !== '#') return null;
+  const s = h.length === 4 ? h.slice(1).split('').map((c) => c + c).join('') : h.slice(1, 7);
+  const n = parseInt(s, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+/** look 의 갑옷 색·장식색이 직업 원화와 다르면 변형 키 */
+function variantKey(E, look) {
+  const eff = effLook(E.cls);
+  const base = eff.armorColor ?? E.opts?.armorBase ?? null;
+  const ac = look.armorColor && look.armorColor !== base ? look.armorColor : null;
+  const tc = look.armorTrim && look.armorTrim !== eff.armorTrim ? look.armorTrim : null;
+  if (!ac && !tc) return '';
+  return `${ac || '-'}|${tc || '-'}|${look.armor || '-'}`;
+}
+const FINISH = { leather: [1, 0], chain: [1.12, 0.1], plate: [1.25, 0.25], holy: [1.2, 0.3], dark: [1.3, 0.12] };
+function makeVariant(E, vk) {
+  const [ac, tc, kind] = vk.split('|');
+  return { vk, ac: ac === '-' ? null : hexRgb(ac), tc: tc === '-' ? null : hexRgb(tc), fin: FINISH[kind] || [1, 0], img: {}, dark: {}, pending: {} };
+}
+/** 변형 레벨 캔버스 (마스크 로드 전에는 null → 원본 사용) */
+function variantLevel(E, V, L) {
+  const got = V.img[L.name];
+  if (got !== undefined) return got;
+  const src = levelImg(E, L), mk = maskImg(E, L);
+  if (!src || !mk || typeof document === 'undefined') return null;
+  const W = src.naturalWidth || src.width, Hh = src.naturalHeight || src.height;
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = Hh;
+  const g = cv.getContext('2d', { willReadFrequently: true });
+  g.drawImage(src, 0, 0);
+  const d = g.getImageData(0, 0, W, Hh), px = d.data;
+  const mc = document.createElement('canvas'); mc.width = W; mc.height = Hh;
+  const mg = mc.getContext('2d', { willReadFrequently: true });
+  mg.imageSmoothingEnabled = true; mg.drawImage(mk, 0, 0, W, Hh);
+  const m = mg.getImageData(0, 0, W, Hh).data;
+  const recolor = (ch, tgt, fin, strength) => {
+    let sum = 0, cnt = 0;
+    for (let i = 0; i < px.length; i += 4) if (m[i + ch] > 200 && px[i + 3] > 200) { sum += 0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2]; cnt++; }
+    const lref = Math.max(18, cnt ? sum / cnt : 70);
+    const [tr, tg, tb] = tgt;
+    const tl = Math.max(12, 0.2126 * tr + 0.7152 * tg + 0.0722 * tb);
+    const con = fin[0], spec = fin[1];
+    for (let i = 0; i < px.length; i += 4) {
+      const w = (m[i + ch] / 255) * strength;
+      if (w <= 0.02) continue;
+      const r = px[i], gg = px[i + 1], b = px[i + 2];
+      const l = 0.2126 * r + 0.7152 * gg + 0.0722 * b;
+      // 명암은 원화 그대로(대비만 재질별로), 색은 목표 색: 목표 밝기 × (원화 밝기 / 재질 평균 밝기)
+      const k = Math.max(0, (lref + (l - lref) * con) / lref) * (tl / 255 < 0.2 ? 1.25 : 1);
+      let nr = tr * k, ng = tg * k, nb = tb * k;
+      const hl = Math.max(0, (l - 160) / 95) + spec * Math.max(0, (l - lref * 1.4) / 120);
+      if (hl > 0) { const q = Math.min(1, hl); nr += (255 - nr) * q * 0.55; ng += (255 - ng) * q * 0.55; nb += (255 - nb) * q * 0.55; }
+      px[i] = Math.min(255, r + (nr - r) * w); px[i + 1] = Math.min(255, gg + (ng - gg) * w); px[i + 2] = Math.min(255, b + (nb - b) * w);
+    }
+  };
+  if (V.ac) recolor(0, V.ac, V.fin, 0.9);
+  if (V.tc) recolor(1, V.tc, [1.1, 0.2], 0.85);
+  g.putImageData(d, 0, 0);
+  V.img[L.name] = cv;
+  return cv;
+}
+function bakeDark(src, a = FAR_DARK) {
+  const cv = document.createElement('canvas');
+  cv.width = src.naturalWidth || src.width; cv.height = src.naturalHeight || src.height;
+  const c = cv.getContext('2d');
+  c.drawImage(src, 0, 0);
+  c.globalCompositeOperation = 'source-atop'; c.fillStyle = `rgba(14,8,24,${a})`; c.fillRect(0, 0, cv.width, cv.height);
+  return cv;
+}
+
+// ───────────────────────── 퍼펫 인스턴스 (look 별) ─────────────────────────
+const INST = new WeakMap();
+/**
+ * 이 엔티티/look 을 퍼펫으로 그릴 수 있으면 인스턴스, 아니면 null (로드 중·에셋 없음·끔 → 벡터 대체).
+ * 호출할 때마다 필요한 로드를 건드리므로 매 프레임 불러도 된다 (캐시).
+ */
+export function puppetFor(p, look) {
+  if (!ENABLED || !look || look.puppet === false || p?.npc) return null;
+  let I = INST.get(look);
+  if (I === undefined) {
+    const cid = p?.ch?.id, cls = cid ? classOf(p, look) : null;
+    const E = cid && cls ? entry(cid, cls) : NONE;
+    I = E === NONE ? null : { E, look, vk: '', V: null, key: E.key };
+    if (I) { I.vk = variantKey(E, look) ; }
+    INST.set(look, I);
+  }
+  if (!I) return null;
+  const E = I.E;
+  if (!ready(E)) return null;
+  if (I.vk && !I.V) { I.V = E.vars.get(I.vk) || makeVariant(E, I.vk); E.vars.set(I.vk, I.V); }
+  I.key = E.key + (I.vk ? '#' + I.vk : '');
+  return I;
+}
+/** 플레이어블 캐릭터 id 인가 (그리기 배율 적용 대상 판별) */
+export function isPlayable(id) { return !!(id && CHARACTERS[id]); }
+export function charDef(id) { return id ? CHARACTERS[id] || null : null; }
+/** 이 캐릭터/직업에 퍼펫 에셋이 있는가 (로드 여부와 무관) */
+export function hasPuppet(charId, classId) { return !!PUPPETS[charId]?.[classId]; }
+
+// ───────────────────────── 골격 치수 ─────────────────────────
+/** 벡터 spec(K)을 원화 비율로 덮어쓴다: 뼈 길이·어깨/엉덩이 위치·코트 피벗·망토 고정점 */
+export function applySpec(K, I) {
+  const E = I.E, J = E.J, PS = E.PS;
+  const d = (a, b) => Math.hypot(b[0] - a[0], b[1] - a[1]);
+  K.pup = I;
+  K.thigh = d(J.hip, J.knee) * PS; K.shin = d(J.knee, J.ankle) * PS;
+  K.torso = d(J.pelvis, J.neck) * PS; K.ua = d(J.shoulder, J.elbow) * PS; K.fa = d(J.elbow, J.hand) * PS;
+  K.ls = (K.thigh + K.shin) / 39.8;
+  const tl = K.torso / PS, ux = (J.neck[0] - J.pelvis[0]) / tl, uy = (J.neck[1] - J.pelvis[1]) / tl, fx = -uy, fy = ux;
+  const rel = (q, o) => [((q[0] - o[0]) * ux + (q[1] - o[1]) * uy) * PS, ((q[0] - o[0]) * fx + (q[1] - o[1]) * fy) * PS];
+  K.pS1 = rel(J.shoulder, J.neck); K.pS2 = [K.pS1[0] + 0.4, K.pS1[1] + 3.4];
+  K.pH1 = rel(J.hip, J.pelvis); K.pH2 = [K.pH1[0], K.pH1[1] - 3.4];
+  K.pSk = rel(E.parts.skirt ? E.parts.skirt.pivot : J.pelvis, J.pelvis);
+  K.pCape = rel(J.capeAnchor || J.shoulder, J.neck);
+  K.footPivY = J.sole - (2.8 * K.ls) / PS;
+  K.pupHeadK = E.opts.headK ?? 1.1;
+  const o = E.opts || {};
+  K.band = o.band ? o.band.color : null;
+  K.pupBandAt = o.band ? (J[o.band.anchor] || J.bandAnchor) : null;
+  K.hs = o.pony === false ? 'none' : K.hs;
+}
+
+// ───────────────────────── 그리기 기본 ─────────────────────────
+let R = null, LV = null, IMG = null, DARK = null;   // 현재 그리는 퍼펫 / 레벨 / 이미지
+function pickLevel(E, c) {
+  const m = c.getTransform();
+  const sc = Math.hypot(m.a, m.b) * E.PS;   // 장치 px / 원화 px
+  let want = E.levels[E.levels.length - 1];
+  for (const L of E.levels) if (L.scale >= sc * 0.9) { want = L; break; }
+  if (levelImg(E, want)) return want;
+  // 원하는 레벨이 아직이면 가까운(큰 쪽 우선) 레벨로 대신
+  let best = null, bd = 1e9;
+  for (const L of E.levels) if (levelImg(E, L)) { const dd = Math.abs(L.scale - want.scale) * (L.scale < want.scale ? 1.5 : 1); if (dd < bd) { bd = dd; best = L; } }
+  return best;
+}
+function useLevel(I, c) {
+  const E = I.E;
+  R = E; LV = pickLevel(E, c);
+  if (!LV) return false;
+  let img = levelImg(E, LV);
+  let dk = E.dark;
+  if (I.V) { const v = variantLevel(E, I.V, LV); if (v) { img = v; dk = I.V.dark; } }
+  IMG = img;
+  DARK = dk[LV.name] || (typeof document !== 'undefined' ? (dk[LV.name] = bakeDark(img)) : img);
+  return true;
+}
+function blit(c, name, dark) {
+  const pt = R.parts[name], rc = LV.rects[name];
+  if (!pt || !rc) return;
+  c.drawImage(dark ? DARK : IMG, rc[0], rc[1], rc[2], rc[3], pt.x0, pt.y0, pt.w, pt.h);
+}
+/** 원화 선분 (a→b) 을 골격 선분 (A→B) 로 보내는 변환 (뼈 방향으로만 늘임) */
+function boneXf(c, a, b, AX, AY, BX, BY) {
+  const angS = Math.atan2(b[1] - a[1], b[0] - a[0]), lenS = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const angD = Math.atan2(BY - AY, BX - AX), lenD = Math.hypot(BX - AX, BY - AY);
+  const k = clamp(lenD / (lenS * R.PS), 0.82, 1.22);
+  c.translate(AX, AY); c.rotate(angD); c.scale(k * R.PS, R.PS); c.rotate(-angS); c.translate(-a[0], -a[1]);
+}
+function headXf(c, s, K) {
+  const J = R.J, k = R.PS * K.pupHeadK;
+  c.translate(s.nx, s.ny); c.rotate(s.ha); c.scale(k, k); c.translate(-J.neck[0], -J.neck[1]);
+}
+const Q = [0, 0];
+/** 머리 좌표계의 원화 점 → T1 좌표 */
+function headPt(s, K, qx, qy) {
+  const J = R.J, c = Math.cos(s.ha), si = Math.sin(s.ha), k = R.PS * K.pupHeadK, dx = (qx - J.neck[0]) * k, dy = (qy - J.neck[1]) * k;
+  Q[0] = s.nx + dx * c - dy * si; Q[1] = s.ny + dx * si + dy * c;
+}
+/** 몸통 좌표계의 원화 점 → T1 좌표 */
+function torsoPt(s, K, q) {
+  const J = R.J, tl = K.torso / R.PS, ux = (J.neck[0] - J.pelvis[0]) / tl, uy = (J.neck[1] - J.pelvis[1]) / tl, fx = -uy, fy = ux;
+  const a = ((q[0] - J.pelvis[0]) * ux + (q[1] - J.pelvis[1]) * uy) * R.PS, b = ((q[0] - J.pelvis[0]) * fx + (q[1] - J.pelvis[1]) * fy) * R.PS;
+  Q[0] = s.px + s.ux * a + s.fx * b; Q[1] = s.py + s.uy * a + s.fy * b;
+}
+const TXO = [0, 0];
+function toT0(P, x, y) { H.tx(P, x, y, TXO); return TXO; }
+
+function legPup(c, K, hx, hy, kx, ky, ax, ay, t, dark) {
+  const J = R.J;
+  c.save(); boneXf(c, J.hip, J.knee, hx, hy, kx, ky); blit(c, 'thigh', dark); c.restore();
+  c.save(); boneXf(c, J.knee, J.ankle, kx, ky, ax, ay); blit(c, 'shin', dark); c.restore();
+  c.save(); c.translate(ax, ay); c.rotate(t); c.scale(R.PS, R.PS); c.translate(-J.ankle[0], -K.footPivY); blit(c, 'foot', dark); c.restore();
+}
+function armPup(c, sx, sy, ex, ey, hx, hy, dark, hand) {
+  const J = R.J;
+  c.save(); boneXf(c, J.shoulder, J.elbow, sx, sy, ex, ey); blit(c, 'uarm', dark); c.restore();
+  c.save(); boneXf(c, J.elbow, J.hand, ex, ey, hx, hy); blit(c, 'farm', dark); if (hand) blit(c, 'hand', dark); c.restore();
+}
+
+// ── 손: 무기별 쥔 주먹(grip) · 편 손(open) ──
+// 주먹 중심을 무기 좌표계에서 얼마나 옮길지 (x=무기 방향, y=무기 법선, 논리 px)
+const GRIP_OFF = { sword: [-2.4, 0], greatsword: [-3.2, 0], dagger: [-1.4, 0], gun: [-2.0, 3.2], staff: [0, 0], whip: [-2.2, 0], none: [0, 0] };
+function gripPup(c, K, ex, ey, hx, hy, wAng, wtype, dark, k = 1) {
+  const g = R.rig.hands?.grip;
+  if (!g || !R.parts.grip) return false;
+  const off = GRIP_OFF[wtype] || GRIP_OFF.none;
+  let cx = hx, cy = hy;
+  if (wAng !== undefined) { const co = Math.cos(wAng), si = Math.sin(wAng); cx += co * off[0] - si * off[1]; cy += si * off[0] + co * off[1]; }
+  const fa = Math.atan2(hy - ey, hx - ex);                                   // 아래팔 방향
+  const wp = Math.atan2(g.pivot[1] - g.wrist[1], g.pivot[0] - g.wrist[0]);    // 원화: 손목 → 주먹 중심
+  let rot = fa - wp;
+  if (wAng !== undefined) {
+    // 막대 축을 무기 방향으로 (손목이 크게 꺾이지 않도록 ±0.6 rad 까지만)
+    let dd = wrapPI(wAng - (g.axisAng + rot));
+    if (dd > HP) dd -= PI; else if (dd < -HP) dd += PI;
+    rot += clamp(dd, -0.6, 0.6);
+  }
+  const s = R.PS * k;
+  c.save(); c.translate(cx, cy); c.rotate(rot); c.scale(s, s); c.translate(-g.pivot[0], -g.pivot[1]); blit(c, 'grip', dark); c.restore();
+  return true;
+}
+function openPup(c, K, ex, ey, hx, hy, dark) {
+  const o = R.rig.hands?.open, J = R.J;
+  if (!o || !R.parts.open) return false;
+  const fa = Math.atan2(hy - ey, hx - ex);
+  const ot = Math.atan2(o.tip[1] - o.wrist[1], o.tip[0] - o.wrist[0]);
+  // 골격의 손목점: 아래팔 위, 원화 손목 비율
+  const u = Math.hypot(J.wrist[0] - J.elbow[0], J.wrist[1] - J.elbow[1]) / (Math.hypot(J.hand[0] - J.elbow[0], J.hand[1] - J.elbow[1]) || 1);
+  const wx = lerp(ex, hx, u), wy = lerp(ey, hy, u);
+  const s = R.PS;
+  c.save(); c.translate(wx, wy); c.rotate(fa - ot); c.scale(s, s); c.translate(-o.pivot[0], -o.pivot[1]); blit(c, 'open', dark); c.restore();
+  return true;
+}
+
+// ── 코트 자락: 허리 피벗 회전 + 가로 띠 전단 (띠 경계에서 연속이라 틈이 없다) ──
+const SKN = 6, SK_B = new Float32Array(SKN + 2), SK_SL = new Float32Array(SKN + 1), SK_OFF = new Float32Array(SKN + 2);
+const SKS = { ax: 0, ay: 0, rot: 0, v: 1, on: false };
+function skirtSetup(K, s, P) {
+  const pt = R.parts.skirt;
+  SKS.on = !!(pt && pt.strip);
+  if (!SKS.on) return;
+  const st = pt.strip, SW = H.SW;
+  SKS.ax = s.px + s.ux * K.pSk[0] + s.fx * K.pSk[1]; SKS.ay = s.py + s.uy * K.pSk[0] + s.fy * K.pSk[1];
+  const run = clamp(SW.tr / 9, -0.6, 1.2), lift = clamp(SW.lift / 6, -0.6, 1.2);
+  const kneeFwd = clamp(((s.k1x - s.hp1x) + (s.k2x - s.hp2x)) * 0.5 / (K.thigh || 20), -1, 1);
+  // 쉴 때는 거의 수직(약간 뒤로), 몸 기울기 절반 + 달리면 뒤로 흩날림 + 무릎이 앞자락을 밀어냄
+  SKS.rot = 0.1 + P.lean * 0.45 + clamp(run, 0, 1.2) * 0.26 + lift * 0.2 - kneeFwd * 0.22 - (R.opts.skirtRest ?? 0);
+  if (P.rot) SKS.rot += 0;
+  // 전단: 아래로 갈수록 뒤로 굽음(+펄럭임). 띠 좌표 = 스트립 v (피벗 기준, 축 방향)
+  const v0 = st.oy, v1 = st.oy + pt.h, top = Math.max(0, v0);
+  const bend = -(0.04 + run * 0.22 + lift * 0.28 + SW.fl * 0.04) + kneeFwd * 0.08;
+  SK_B[0] = v0; SK_OFF[0] = 0; SK_SL[0] = 0;
+  SK_B[1] = top; SK_OFF[1] = 0;
+  for (let i = 1; i <= SKN; i++) {
+    const u = (i - 0.5) / SKN;
+    SK_SL[i] = bend * Math.pow(u, 1.4) + Math.sin(G.t * 7.3 - i * 0.9) * 0.025 * (0.3 + Math.abs(run)) * u;
+    SK_B[i + 1] = top + (v1 - top) * i / SKN;
+    SK_OFF[i + 1] = SK_OFF[i] + SK_SL[i] * (SK_B[i + 1] - SK_B[i]);
+  }
+  // 땅 아래로 파고들지 않게 세로 압축 (T1 근사)
+  const hemY = SKS.ay + Math.cos(SKS.rot) * (v1) * R.PS;
+  SKS.v = hemY > -0.4 ? clamp((-0.4 - SKS.ay) / (hemY - SKS.ay), 0.4, 1) : 1;
+}
+function drawSkirtPup(c, dark) {
+  if (!SKS.on) return;
+  const pt = R.parts.skirt, st = pt.strip, rc = LV.rects.skirt, ls = LV.scale;
+  if (!rc) return;
+  const img = dark ? DARK : IMG;
+  c.save();
+  c.translate(SKS.ax, SKS.ay); c.rotate(SKS.rot); c.scale(R.PS, R.PS * SKS.v);
+  for (let i = 0; i <= SKN; i++) {
+    const ya = SK_B[i], yb = SK_B[i + 1];
+    if (yb <= ya) continue;
+    const sl = SK_SL[i], off = SK_OFF[i];
+    c.save();
+    // x' = x + off + sl·(y - ya)
+    c.transform(1, 0, sl, 1, off - sl * ya, 0);
+    const ov = i < SKN ? 1.6 / ls : 0;                          // 띠 겹침 1.6 아틀라스 px (이음매 방지)
+    const sy = (ya - st.oy) * ls, shh = Math.min(rc[3] - sy, (yb - ya) * ls + ov * ls);
+    if (shh > 0.5) c.drawImage(img, rc[0], rc[1] + sy, rc[2], shh, st.ox, ya, pt.w, shh / ls);
+    c.restore();
+  }
+  c.restore();
+}
+/** 안쪽 자락(skirtFar): 몸통 좌표계 + 바깥 자락 회전의 일부만 따라감 */
+function drawSkirtFar(c, s, K, dark) {
+  const pt = R.parts.skirtFar;
+  if (!pt) return;
+  const J = R.J;
+  c.save();
+  boneXf(c, J.pelvis, J.neck, s.px, s.py, s.nx, s.ny);
+  const pv = R.parts.skirt ? R.parts.skirt.pivot : J.pelvis;
+  c.translate(pv[0], pv[1]); c.rotate((SKS.rot - 0.1) * 0.55); c.scale(1, SKS.v); c.translate(-pv[0], -pv[1]);
+  blit(c, 'skirtFar', dark);
+  c.restore();
+}
+
+// ── 포니테일: 베를레 체인 띠 ──
+const PONY_N = 5, PONY_CFG = { g: 1150, d: 0.88, push: 260, rest: 0.66, curl: 0.08, flut: 40 };
+function drawPonyPup(c, E, K, s) {
+  const pt = R.parts.pony;
+  if (!pt || !pt.strip || !LV.rects.pony) return;
+  const st = pt.strip, rc = LV.rects.pony, ls = LV.scale;
+  headPt(s, K, pt.pivot[0], pt.pivot[1]); const T = toT0(E.P, Q[0], Q[1]);
+  const seg = (st.len * R.PS) / (PONY_N - 1);
+  const C = H.chain('hair', E, T[0], T[1], PONY_N, seg, PONY_CFG, T[0] + 1.5);
+  const bandL = st.len / (PONY_N - 1);
+  for (let i = 0; i < PONY_N - 1; i++) {
+    let dx = C[i * 2 + 2] - C[i * 2], dy = C[i * 2 + 3] - C[i * 2 + 1];
+    const L = Math.hypot(dx, dy) || 1; dx /= L; dy /= L;
+    const k = clamp(L / (bandL * R.PS), 0.8, 1.25);
+    const a = dy * R.PS, b = -dx * R.PS, cc = dx * k * R.PS, dd = dy * k * R.PS;
+    const yi = i * bandL;
+    const ya = i === 0 ? st.oy : yi, yb = i === PONY_N - 2 ? st.oy + pt.h : yi + bandL;
+    c.save();
+    c.transform(a, b, cc, dd, C[i * 2] - cc * yi, C[i * 2 + 1] - dd * yi);
+    const sy = (ya - st.oy) * ls, shh = Math.min(rc[3] - sy, (yb - ya) * ls + 1.2);
+    if (shh > 0.5) c.drawImage(IMG, rc[0], rc[1] + sy, rc[2], shh, st.ox, ya, pt.w, shh / ls);
+    c.restore();
+  }
+}
+function drawBandPup(c, E, K, s) {
+  if (!K.band || !K.pupBandAt) return;
+  headPt(s, K, K.pupBandAt[0], K.pupBandAt[1]); const T = toT0(E.P, Q[0], Q[1]);
+  const ax = T[0], ay = T[1];
+  for (let j = 1; j >= 0; j--) {
+    const n = 5, pts = H.chain(j ? 'band2' : 'band', E, ax, ay, n, j ? 2.7 : 3.2, j ? H.CC.BAND2 : H.CC.BAND, ax + 1);
+    for (let i = 0; i < n; i++) WS[i] = lerp(0.95, 0.6, i / (n - 1));
+    ribbonPath(c, pts, n, WS, false);
+    const bc = sh(K.band, -0.25 * j);
+    c.fillStyle = G.tint || grad(pts[0], pts[1] - 2, pts[0], pts[1] + 2, bc, 0.8); c.fill();
+    if (!G.tint) { c.strokeStyle = ra('#1a0508', 0.55); c.lineWidth = 0.35; c.stroke(); }
+  }
+}
+
+// ── 망토: 절차적 베를레 띠 + 벨벳 결 텍스처 ──
+const CAPE_PAT = new Map();
+function capeTex() { return assets.get('puppets/_shared/cape_tex'); }
+/** 망토 색으로 물들인 벨벳 패턴 캔버스 (색별 캐시) */
+export function capeCanvas(col) {
+  let cv = CAPE_PAT.get(col);
+  if (cv === undefined) {
+    const tex = capeTex();
+    if (!tex || typeof document === 'undefined') return null;
+    cv = document.createElement('canvas'); cv.width = tex.naturalWidth || tex.width; cv.height = tex.naturalHeight || tex.height;
+    const g = cv.getContext('2d');
+    g.fillStyle = col; g.fillRect(0, 0, cv.width, cv.height);
+    g.globalCompositeOperation = 'overlay'; g.drawImage(tex, 0, 0);
+    g.globalCompositeOperation = 'destination-over'; g.fillStyle = col; g.fillRect(0, 0, cv.width, cv.height);
+    CAPE_PAT.set(col, cv);
+  }
+  return cv;
+}
+const CAPE_OFF = new Float32Array(32);
+function drawCapePup(c, E, K, s) {
+  const cp = K.cape; if (!cp) return;
+  const a = K.pCape;
+  const T = toT0(E.P, s.nx + s.ux * a[0] + s.fx * a[1], s.ny + s.uy * a[0] + s.fy * a[1]);
+  const n = 7, len = 58 * cp.len;
+  const pts = H.chain('cape', E, T[0], T[1], n, len / (n - 1), H.CC.CAPE, T[0] - 0.5);
+  for (let i = 0; i < n; i++) WS[i] = lerp(4.2, 11 + cp.len * 2.6, Math.pow(i / (n - 1), 0.7));
+  // 안감
+  ribbonPath(c, pts, n, WS, false);
+  c.fillStyle = G.tint || sh(cp.c2, -0.25); c.fill();
+  // 겉감: 안감 쪽으로 비켜 조금 좁게
+  const off = CAPE_OFF;
+  for (let i = 0; i < n; i++) {
+    const i0 = i > 0 ? i - 1 : 0, i1 = i < n - 1 ? i + 1 : n - 1;
+    const tx = pts[i1 * 2] - pts[i0 * 2], ty = pts[i1 * 2 + 1] - pts[i0 * 2 + 1], d = Math.hypot(tx, ty) || 1;
+    const k = 3.2 * (i / (n - 1));
+    off[i * 2] = pts[i * 2] + (-ty / d) * k; off[i * 2 + 1] = pts[i * 2 + 1] + (tx / d) * k;
+    WS[i] *= 0.9;
+  }
+  ribbonPath(c, off, n, WS, false);
+  const cv = G.tint ? null : capeCanvas(cp.c);
+  if (cv) {
+    const pat = c.createPattern(cv, 'repeat');
+    const e = (n - 1) * 2, ang = Math.atan2(off[e + 1] - off[1], off[e] - off[0]);
+    if (pat && typeof DOMMatrix !== 'undefined') {
+      pat.setTransform(new DOMMatrix().translateSelf(off[0], off[1]).rotateSelf(((ang + 0.95) * 180) / PI).scaleSelf(0.16, 0.16));
+      c.fillStyle = pat; c.fill();
+    } else { c.fillStyle = cp.c; c.fill(); }
+    // 부피감: 뒤쪽 가장자리 어둡게 + 윤곽
+    c.save(); c.globalAlpha = 0.35; c.fillStyle = grad(off[0] - 8, off[1], off[e] + 8, off[e + 1], sh(cp.c, -0.2), 1); c.fill(); c.restore();
+    c.strokeStyle = ra('#0a0306', 0.55); c.lineWidth = 0.5; c.stroke();
+    if (cp.style === 'royal' || cp.style === 'tattered') {
+      const tx = off[e] - off[e - 2], ty = off[e + 1] - off[e - 1], d = Math.hypot(tx, ty) || 1, w = WS[n - 1];
+      c.strokeStyle = cp.style === 'royal' ? '#e8c872' : ra(sh(cp.c2, 0.2), 0.9); c.lineWidth = 0.9;
+      c.beginPath(); c.moveTo(off[e] + (-ty / d) * w, off[e + 1] + (tx / d) * w); c.lineTo(off[e] - (-ty / d) * w, off[e + 1] - (tx / d) * w); c.stroke();
+    }
+  } else { c.fillStyle = G.tint || cp.c; c.fill(); }
+}
+
+// ───────────────────────── 레이어 ─────────────────────────
+/**
+ * 퍼펫 본체 레이어 (hero.js drawLayers 대신). E = hero.js 의 그리기 문맥 {p, rig, hs, fac, dt, P, K, skipFarLeg}
+ * 순서: 망토 → 머리띠 꼬리·포니테일 → [T1] 날개 → 먼 무기·먼 팔 → 머리 → 안쪽 자락 → 먼 다리 → 가까운 다리 → 바깥 자락
+ *       → 몸통(+채찍 똬리) → 가까운 위팔 → 어깨 덮개 → 가까운 아래팔 → 주무기 → 주먹 → (양손 무기) 먼 주먹
+ */
+export function drawLayers(c, E, K, P, W, tt) {
+  const I = K.pup;
+  if (!useLevel(I, c)) return false;
+  const s = H.SK, ST = H.ST, J = R.J;
+  drawCapePup(c, E, K, s);
+  if (K.scarf?.long && H.drawScarfTail) H.drawScarfTail(s, K, E);
+  drawBandPup(c, E, K, s);
+  drawPonyPup(c, E, K, s);
+  c.save(); H.applyT1(c, P);
+  if (K.wings) { c.save(); H.drawWings(s, K, P, E.p, tt); c.restore(); }
+  // ── 먼 팔 (+ 보조 무기) ──
+  const two = P.two && W.type !== 'none';
+  const offW = K.off && W.type !== 'none';
+  const casting = ST.cast === 3 || (ST.cast && ST.atk?.cast && P.r2 > 0.8);
+  const throwing = !!ST.throwK;
+  if (offW) drawWeapon(W, s.h2x, s.h2y, P.w2, { fire: ST.fire2 });
+  const farMode = offW ? 'grip' : two ? 'none' : casting ? 'open' : 'hand';
+  armPup(c, s.s2x, s.s2y, s.e2x, s.e2y, s.h2x, s.h2y, true, farMode === 'hand');
+  if (farMode === 'grip') gripPup(c, K, s.e2x, s.e2y, s.h2x, s.h2y, P.w2, W.type, true);
+  else if (farMode === 'open' && !openPup(c, K, s.e2x, s.e2y, s.h2x, s.h2y, true)) { c.save(); boneXf(c, J.elbow, J.hand, s.e2x, s.e2y, s.h2x, s.h2y); blit(c, 'hand', true); c.restore(); }
+  // ── 머리 (몸통 옷깃 뒤) + 후광 ──
+  if (K.halo && G.fx) { headPt(s, K, J.headPivot[0], R.rig.figTop + 10); drawHalo(Q[0] - 0.5, Q[1] - 3 + Math.sin(G.t * 2) * 0.6, 6.8, K.aura?.color || '#ffe9a0'); }
+  c.save(); headXf(c, s, K); blit(c, 'head'); c.restore();
+  // ── 자락 · 다리 ──
+  skirtSetup(K, s, P);
+  drawSkirtFar(c, s, K, false);
+  if (!E.skipFarLeg) legPup(c, K, s.hp2x, s.hp2y, s.k2x, s.k2y, s.a2x, s.a2y, P.t2, true);
+  legPup(c, K, s.hp1x, s.hp1y, s.k1x, s.k1y, s.a1x, s.a1y, P.t1, false);
+  drawSkirtPup(c, false);
+  // ── 몸통 (+ 허리의 채찍 똬리) ──
+  c.save(); boneXf(c, J.pelvis, J.neck, s.px, s.py, s.nx, s.ny); blit(c, 'torso'); if (ST.coil) blit(c, 'coil'); c.restore();
+  // ── 가까운 팔: 위팔 → 어깨 덮개 → 아래팔 → 주무기 → 주먹 ──
+  const hasMain = (W.type !== 'none' && W.type !== 'whip') || (W.type === 'whip' && !ST.coil);
+  c.save(); boneXf(c, J.shoulder, J.elbow, s.s1x, s.s1y, s.e1x, s.e1y); blit(c, 'uarm'); c.restore();
+  c.save(); boneXf(c, J.pelvis, J.neck, s.px, s.py, s.nx, s.ny); blit(c, 'pad'); c.restore();
+  c.save(); boneXf(c, J.elbow, J.hand, s.e1x, s.e1y, s.h1x, s.h1y); blit(c, 'farm'); if (!hasMain && !throwing) blit(c, 'hand'); c.restore();
+  if (hasMain) {
+    weaponPup(c, W, s.h1x, s.h1y, P.w1, ST.fire1);
+    gripPup(c, K, s.e1x, s.e1y, s.h1x, s.h1y, P.w1, W.type, false);
+    if (two) gripPup(c, K, s.e2x, s.e2y, s.h2x, s.h2y, P.w1, W.type, false, 0.96);
+  } else if (throwing) {
+    if (!openPup(c, K, s.e1x, s.e1y, s.h1x, s.h1y, false)) { c.save(); boneXf(c, J.elbow, J.hand, s.e1x, s.e1y, s.h1x, s.h1y); blit(c, 'hand'); c.restore(); }
+  }
+  c.restore();
+  return true;
+}
+/** 절차적 무기를 채색 원화 옆에 어울리게: 윤곽선을 조금 가늘게, 부드러운 접지 그림자 한 겹 */
+function weaponPup(c, W, x, y, ang, fire) {
+  const olw = G.olw;
+  if (!G.tint && G.pass !== 1 && G.fx) {
+    // 그림자: 같은 무기를 어둡게 한 번 (0.6px 아래·뒤로) — 그림에 붙은 느낌
+    const gt = G.tint;
+    c.save(); c.globalAlpha = 0.35; G.tint = '#07030a';
+    drawWeapon(W, x - 0.35, y + 0.6, ang, {});
+    G.tint = gt; c.restore();
+  }
+  G.olw = olw * 0.8;
+  drawWeapon(W, x, y, ang, { fire });
+  G.olw = olw;
+}
+
+// ───────────────────────── 턴테이블 (인벤토리) ─────────────────────────
+/** 이 look 의 퍼펫 턴테이블이 쓸 수 있는가 (시트 로드 전이면 요청하고 false) */
+export function turnReady(I) {
+  const E = I?.E;
+  if (!E?.rig?.turn) return false;
+  if (!E.turnImg) E.turnImg = assets.get(`puppets/${E.key}/turn`, E.man.h);
+  return !!E.turnImg;
+}
+const STEPS = [0, 45, 90, 135, 180, -135, -90, -45];
+/**
+ * 채색 8방향 뷰 하나를 그린다. ctx 는 발 중앙 원점·논리 배율(hs) 적용 상태. deg = 스텝 각(0,45,…,-45)
+ * sx = 가로 배율(회전 느낌), alpha = 불투명도. 반환: 뷰 정보(망토·날개 배치용) 또는 null
+ */
+export function drawTurnStep(ctx, I, deg, sx, alpha, t) {
+  const E = I.E, T = E.rig.turn;
+  const st = T.steps[String(deg)];
+  if (!st || !E.turnImg || alpha <= 0.002) return null;
+  const v = T.views[st.v];
+  const s = PUP_H / (v.footY - v.topY);
+  const breath = 1 + Math.sin(t * 2.2) * 0.006;
+  ctx.save();
+  if (alpha < 1) ctx.globalAlpha *= alpha;
+  ctx.scale((st.m ? -1 : 1) * s * sx, s * breath);
+  ctx.drawImage(E.turnImg, v.x, 0, v.w, v.h, -v.axisX, -v.footY, v.w, v.h);
+  ctx.restore();
+  return { s, v, m: st.m };
+}
+export function turnSteps() { return STEPS; }
+/** 턴테이블용 망토: 앞(뒤에 가려짐)·옆(뒤로 흐름)·뒤(몸을 덮음). yaw: 라디안, behind: 몸 뒤 패스인지 */
+export function drawTurnCape(ctx, I, cape, yaw, behind, t) {
+  if (!cape) return;
+  const E = I.E, T = E.rig.turn;
+  const v = T.views.y90 || Object.values(T.views)[0];
+  const s = PUP_H / (v.footY - v.topY);
+  const sy = (v.shY - v.footY) * s, shw = v.shW * s * 0.82, hem = -PUP_H * (1 - 0.8 * cape.len) + 2;
+  const sn = Math.sin(yaw), cs = Math.cos(yaw);
+  const back = sn < 0;
+  if (behind === back) return;                          // 앞모습: 몸 뒤 패스 / 뒷모습: 몸 앞 패스
+  const wTop = shw * (0.55 + 0.45 * Math.abs(sn)), wBot = shw * (1.05 + 0.5 * Math.abs(sn)) + 6 * Math.abs(cs);
+  const dx = -cs * shw * 0.55;                           // 옆으로 돌면 등 쪽으로 밀림
+  const sway = Math.sin(t * 1.6) * 1.2;
+  const c = ctx;
+  c.save();
+  c.beginPath();
+  c.moveTo(dx - wTop, sy); c.quadraticCurveTo(dx, sy - 2.5, dx + wTop, sy);
+  c.quadraticCurveTo(dx + wBot * 1.02 + sway, (sy + hem) / 2, dx + wBot + sway, hem);
+  for (let i = 1; i <= 6; i++) { const u = i / 6, x = dx + wBot + sway - u * 2 * wBot; c.lineTo(x, hem + (i % 2 ? 1.6 : -0.4)); }
+  c.quadraticCurveTo(dx - wBot * 1.02 + sway, (sy + hem) / 2, dx - wTop, sy);
+  c.closePath();
+  const cv = capeCanvas(cape.c);
+  if (cv) {
+    const pat = c.createPattern(cv, 'repeat');
+    if (pat && typeof DOMMatrix !== 'undefined') pat.setTransform(new DOMMatrix().translateSelf(dx - wBot, sy).scaleSelf(0.2, 0.2));
+    c.fillStyle = pat || cape.c;
+  } else c.fillStyle = cape.c;
+  c.fill();
+  const g = c.createLinearGradient(dx - wBot, 0, dx + wBot, 0);
+  g.addColorStop(0, ra('#000000', 0.45)); g.addColorStop(0.35, ra('#000000', 0)); g.addColorStop(0.7, ra('#000000', 0.05)); g.addColorStop(1, ra('#000000', 0.5));
+  c.fillStyle = g; c.fill();
+  c.strokeStyle = ra('#0a0306', 0.6); c.lineWidth = 0.6; c.stroke();
+  if (!back) { c.strokeStyle = ra(cape.c2, 0.9); c.lineWidth = 1.1; c.beginPath(); c.moveTo(dx - wBot * 0.98, hem); c.lineTo(dx + wBot * 0.98, hem); c.stroke(); }
+  if (cape.style === 'royal') { c.strokeStyle = '#e8c872'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(dx - wTop, sy + 0.5); c.quadraticCurveTo(dx, sy - 2, dx + wTop, sy + 0.5); c.stroke(); }
+  c.restore();
+}
+/** 턴테이블용 날개 한 쌍 (앞·뒤 모습에서 대칭). front=true 면 몸 앞 패스(뒷모습) */
+export function drawTurnWings(ctx, I, type, yaw, front, t) {
+  if (!type) return;
+  const E = I.E, T = E.rig.turn;
+  const v = T.views.y90 || Object.values(T.views)[0];
+  const s = PUP_H / (v.footY - v.topY);
+  const sy = (v.shY - v.footY) * s + 4, sn = Math.sin(yaw), cs = Math.cos(yaw);
+  const back = sn < 0;
+  if (front !== back) return;
+  const spread = 0.55 + Math.sin(t * 2.2) * 0.05;
+  for (const side of [-1, 1]) {
+    const k = side * cs;                                  // 옆으로 돌면 한쪽이 몸에 가려 좁아진다
+    const w = Math.max(0.15, Math.abs(sn) * 0.85 + (k > 0 ? 0.25 : 0.05) * Math.abs(cs));
+    ctx.save();
+    ctx.translate(side * 3 - cs * 5, sy);
+    ctx.scale(side * w, 1);
+    drawWing(type, spread, Math.sin(t * 2.2) * 0.06, side < 0 === back, false);
+    ctx.restore();
+  }
+}
+/** 후광 (턴테이블) */
+export function drawTurnHalo(ctx, col, t) { drawHalo(0, -PUP_H - 4 + Math.sin(t * 2) * 0.6, 7, col || '#ffe9a0'); }
+
+/** 디버그·갤러리: 로드 상태 */
+export function puppetStatus() {
+  const out = {};
+  for (const [k, E] of REG) if (E !== NONE) out[k] = { state: E.state, levels: E.levels.map((L) => L.name + (levelImg(E, L) ? '✓' : '…')), variants: [...E.vars.keys()] };
+  return out;
+}
+void glow; void TAU;
