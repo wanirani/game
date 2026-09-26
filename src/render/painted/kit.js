@@ -25,15 +25,17 @@
 //  4) 메모리 예산: 보스 1체 데스크톱 ≈15MB / 폰 ≈6MB (텍셀 밀도를 예산에 맞춰 자동으로 낮춘다).
 import { assets, ASSET_ROOT } from '../../core/assets.js';
 import { rgba } from '../../core/math.js';
+import { T as TILE_T } from '../../core/physics.js';
 
 export const PAD = 4;              // 외곽선 여유 (텍셀)
 const TAU = Math.PI * 2;
 
 // ───────────────────────── 품질 / 기기 ─────────────────────────
+// flames = 불꽃 퍼프 개수(영혼불 혀 1개당), tube = 척수 관 획 수 (0 = 안 그림), ledges = 발판 덧그리기 (가독성, 끄지 않는 것을 권장)
 export const QUALITY = {
-  high: { name: 'high', particles: 420, strands: 1, crackGlow: true, smear: true, halos: true, tdMul: 1, ambient: 1 },
-  medium: { name: 'medium', particles: 260, strands: 0.6, crackGlow: true, smear: true, halos: true, tdMul: 0.9, ambient: 0.7 },
-  low: { name: 'low', particles: 120, strands: 0, crackGlow: false, smear: false, halos: false, tdMul: 0.75, ambient: 0.4 },
+  high: { name: 'high', particles: 420, strands: 1, crackGlow: true, smear: true, halos: true, tdMul: 1, ambient: 1, flames: 5, tube: 2, ledges: true },
+  medium: { name: 'medium', particles: 260, strands: 0.6, crackGlow: true, smear: true, halos: true, tdMul: 0.9, ambient: 0.7, flames: 4, tube: 2, ledges: true },
+  low: { name: 'low', particles: 120, strands: 0, crackGlow: false, smear: false, halos: false, tdMul: 0.75, ambient: 0.4, flames: 2, tube: 1, ledges: true },
 };
 export function quality(game) {
   const q = game?.settings?.quality ?? 'high';
@@ -341,21 +343,24 @@ export async function loadRig(dir, def = {}, env = {}) {
     let n = o.noDmg ? 1 : 3; if (o.deep && !o.deepOnly) n += o.noDmg ? 1 : 3;
     if (o.flash) n += 2 + Object.keys(def.tints ?? {}).length; // 흰/발광 실루엣(가산용) + 틴트별 발광
     if (!o.noDmg && (def.glow)) n += 2 * 0.25;
-    for (const t of Object.values(def.tints ?? {})) if ((!t.parts || t.parts.includes(name)) && !(t.skip ?? []).some((p) => name.startsWith(p))) n += (o.noDmg ? 1 : (t.levels?.length ?? 1)) * (o.deep && !o.deepOnly ? 2 : 1);
+    for (const t of Object.values(def.tints ?? {})) if ((!t.parts || t.parts.includes(name)) && !(t.skip ?? []).some((p) => name.startsWith(p))) n += (o.noDmg ? 1 : (t.levels?.length ?? 1)) * ((o.deep && !o.deepOnly ? 2 : 1) + (def.glow ? 0.25 : 0));
     if (!o.noDmg && budget < 8) n -= 1 + (def.glow ? 0.25 : 0);
     return n;
   };
-  const memAt = (tdx) => { let b = 0; for (const [n, e] of Object.entries(man.parts)) { const f = tdx / srcTd; b += (e.w * f + PAD * 2) * (e.h * f + PAD * 2) * 4 * nVar(n); } return b / 1048576; };
+  const memAt = (tdx) => { let b = 0; for (const [n, e] of Object.entries(man.parts)) { const f = tdx / srcTd; b += (Math.ceil(e.w * f) + PAD * 2 + 1) * (Math.ceil(e.h * f) + PAD * 2 + 1) * 4 * nVar(n); } return b / 1048576; };
   const budget = env.budgetMB ?? 15;
-  // 예산에 맞을 때까지 밀도를 낮춘다 (패드 때문에 td² 에 정확히 비례하지 않으므로 몇 번 반복)
-  for (let it = 0; it < 8; it++) {
-    const m = memAt(td);
-    if (m <= budget) break;
-    td = Math.max(0.55, td * Math.sqrt(budget / m) * 0.995);
+  // 예산이 허용하는 최대 밀도 tdMax (패드 때문에 td² 에 정확히 비례하지 않으므로 몇 번 반복, 추정 오차 3% 여유)
+  // → 실제 밀도 = min(요청, tdMax). tdMax 를 리그에 남겨 두면 창 크기가 바뀌었을 때 다시 구울 가치가 있는지 판단할 수 있다
+  let tdMax = srcTd;
+  for (let it = 0; it < 10; it++) {
+    const m = memAt(tdMax);
+    if (m <= budget * 0.97) break;
+    tdMax = Math.max(0.55, tdMax * Math.sqrt(budget * 0.97 / m) * 0.995);
   }
+  td = Math.min(td, tdMax);
   const f = td / srcTd;
   const lite = env.lite ?? budget < 8;
-  const rig = { dir, man, td, parts: {}, def, bakeMs: 0, memMB: 0, key, tintKeys: Object.keys(def.tints ?? {}) };
+  const rig = { dir, man, td, tdMax, tdReq: env.td ?? srcTd, budgetMB: budget, parts: {}, def, bakeMs: 0, memMB: 0, key, tintKeys: Object.keys(def.tints ?? {}) };
   const outline = def.outline ?? {};
   const names = Object.keys(man.parts);
   const tm = { load: performance.now() - t0, outline: 0, dmg: 0, tint: 0, wait: 0 };
@@ -474,7 +479,12 @@ export function pickVariant(part, level = 0, deep = false, tint = null) {
 // ───────────────────────── 그리기 (변환 합성) ─────────────────────────
 /** 모든 부품을 ctx.setTransform(카메라 × 지역) 한 번 + drawImage 한 번으로 그린다 */
 export class Drawer {
-  constructor() { this.m = [1, 0, 0, 1, 0, 0]; this.ctx = null; this.log = []; this.rec = false; }
+  constructor() { this.m = [1, 0, 0, 1, 0, 0]; this.ctx = null; this.log = []; this.rec = false; this.depth = 0; }
+  /** ctx.save/restore 짝 (클립 등). 깊이를 세어 두면 그리기 도중 예외가 나도 registry 가 unwind() 로 상태 스택을 되돌린다 */
+  save() { this.ctx.save(); this.depth++; }
+  restore() { if (this.depth > 0) { this.depth--; this.ctx.restore(); } }
+  /** 예외 뒤 정리: 남은 save 를 모두 restore (호출 측 ctx 상태 스택이 어긋나지 않게) */
+  unwind(ctx = this.ctx) { while (this.depth > 0) { this.depth--; try { ctx?.restore(); } catch { /* 무시 */ } } this.rec = false; this.log.length = 0; }
   begin(ctx) { const t = ctx.getTransform(); const m = this.m; m[0] = t.a; m[1] = t.b; m[2] = t.c; m[3] = t.d; m[4] = t.e; m[5] = t.f; this.ctx = ctx; }
   /** 기준(카메라) 변환으로 되돌림 — 일반 경로 그리기 전에 호출 */
   end() { const m = this.m; this.ctx.setTransform(m[0], m[1], m[2], m[3], m[4], m[5]); }
@@ -627,6 +637,47 @@ export function drawStrand(ctx, st, w, cols = ['#1a0605', '#5e1c12', '#b0604a'],
   ctx.strokeStyle = cols[1]; ctx.lineWidth = w * 0.6; ctx.stroke();
   if (cols[2]) { ctx.strokeStyle = cols[2]; ctx.lineWidth = Math.max(0.6, w * 0.18); ctx.stroke(); }
   ctx.globalAlpha = ga;
+}
+
+// ───────────────────────── 발판 덧그리기 (가독성) ─────────────────────────
+/**
+ * 한 방향 발판(ONEWAY 타일)을 이미 그린 것 위에 다시 그린다 (타일 청크 캔버스에서 판자 줄만 복사).
+ * 타일은 개체보다 먼저 그려지므로, 크게 칠한 보스 몸통(날개·흉곽)이 발판을 덮으면 플레이어가 딛을 곳을 못 본다.
+ * 보스 렌더러는 몸통 뒤층을 그린 뒤, 목·머리(판정 부위)를 그리기 전에 몸통 영역(x0..x1, y0..y1 월드 px)으로 부른다.
+ * 비용: 발판 줄마다 drawImage 1번. ctx 는 카메라(월드) 변환 상태여야 한다.
+ */
+export function ledgesOver(ctx, world, x0, y0, x1, y1, h = 28) {
+  const m = world?.map, tr = world?.tiles;
+  if (!m?.tiles || !tr?.chunk || !(x1 > x0) || !(y1 > y0)) return 0;
+  const S = m.pxW / m.w;                              // 타일 크기 (world px)
+  const tx0 = Math.max(0, Math.floor(x0 / S)), tx1 = Math.min(m.w - 1, Math.floor(x1 / S));
+  const ty0 = Math.max(0, Math.floor(y0 / S)), ty1 = Math.min(m.h - 1, Math.floor(y1 / S));
+  let n = 0, per = 0;
+  for (let ty = ty0; ty <= ty1; ty++) {
+    let run = -1;
+    for (let tx = tx0; tx <= tx1 + 1; tx++) {
+      const on = tx <= tx1 && m.tiles[ty * m.w + tx] === TILE_T.ONEWAY;
+      if (on && run < 0) run = tx;
+      else if (!on && run >= 0) {
+        per ||= Math.max(1, Math.round((tr.chunk(0, 0)?.width || 16 * S) / S));   // 청크당 타일 수 (tiles.js CHUNK)
+        n += blitRun(ctx, tr, run, tx - 1, ty, S, h, per); run = -1;
+      }
+    }
+  }
+  return n;
+}
+/** 타일 tx a..b (한 줄 ty) 를 청크 캔버스에서 복사 (청크 경계에서 나눔) */
+function blitRun(ctx, tr, a, b, ty, S, h, per) {
+  let n = 0;
+  for (let t = a; t <= b;) {
+    const cx = Math.floor(t / per), cy = Math.floor(ty / per), end = Math.min(b, cx * per + per - 1);
+    const c = tr.chunk(cx, cy);
+    if (!c) return n;
+    const sx = (t - cx * per) * S, sy = (ty - cy * per) * S, w = (end - t + 1) * S, hh = Math.min(h, c.height - sy);
+    if (w > 0 && hh > 0) { ctx.drawImage(c, sx, sy, w, hh, t * S, ty * S, w, hh); n++; }
+    t = end + 1;
+  }
+  return n;
 }
 
 // ───────────────────────── 발광 퍼프 ─────────────────────────
@@ -852,6 +903,7 @@ export class Shards {
     this.list.push(s); return s;
   }
   update(dt, floorY) {
+    this.floorY = floorY;
     for (const s of this.list) {
       s.t += dt;
       s.vy += 1700 * dt; s.x += s.vx * dt; s.y += s.vy * dt; s.rot += s.vr * dt;
@@ -863,6 +915,13 @@ export class Shards {
     }
     this.list = this.list.filter((s) => s.a > 0);
   }
-  draw(D) { for (const s of this.list) D.img(s.img, s.px, s.py, s.x, s.y, s.rot, s.sx, s.sy, s.a); }
+  /** 바닥선(+sink) 아래는 잘라 그린다: 회전한 긴 조각(다리·척추)이 바닥 타일 위로 삐져나오지 않고 반쯤 묻힌 것처럼 보이게 */
+  draw(D, sink = 6) {
+    if (!this.list.length) return;
+    const clip = this.floorY != null && this.floorY < 1e8;
+    if (clip) { D.end(); D.save(); D.ctx.beginPath(); D.ctx.rect(-1e5, this.floorY - 1e5, 2e5, 1e5 + sink); D.ctx.clip(); }
+    for (const s of this.list) D.img(s.img, s.px, s.py, s.x, s.y, s.rot, s.sx, s.sy, s.a);
+    if (clip) { D.end(); D.restore(); }
+  }
   clear() { this.list.length = 0; }
 }

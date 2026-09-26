@@ -24,7 +24,7 @@ export function hudLayout(world, vw, vh, pad) {
     ready: R(106, 124, 130, 18),
     companions: R(244, 92, 128, 68),
     callouts: R(14, 176, 300, 52),
-    score: R(vw - 164, 10, 150, T ? 70 : 62),
+    score: T ? R(vw - 190, 10, 176, 70) : R(vw - 164, 10, 150, 62),   // hud.js: lx = vw − 14 − (터치 176 · 키보드 150)
     combo: R(vw - 140, 106, 126, 124),
     bossBar: R((vw - bw) / 2, T ? 148 : vh - 62, bw, 32),
     transient: R((vw - gw) / 2, 126, gw, 108),

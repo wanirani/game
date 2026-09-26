@@ -336,30 +336,42 @@ const _zero = [0, 0];
  * once with the part transform. off(u) → [dx] in texels (u = 0 at the pivot row). slot = scratch index (0..3).
  */
 const SCR = [];
-export function warpY(name, pv, x, y, rot, sx, sy, n, off, alpha = 1, vn = 'base', slot = 0, pad = 24) {
+const _wo = new Float32Array(66), _wt = new Int32Array(66);
+export function warpY(name, pv, x, y, rot, sx, sy, n, off, alpha = 1, vn = 'base', slot = 0) {
   const p = RIG.parts[name];
   if (!p || alpha <= 0.003) return;
   const v = variantOf(p, vn), fv = FLASH > 0 && vn !== 'glow' ? p.v.flash : null;
   const q = typeof pv === 'string' ? (p.piv[pv] ?? [p.w / 2, p.h / 2]) : pv;
-  const W = v[2] + pad * 2, H = v[3];
+  const H = v[3];
+  const step = Math.max(1, Math.round(H / Math.min(n, 64))), span = Math.max(q[1], H - q[1]) || 1;
+  // sample the row offsets first: the scratch margins follow the actual displacement (a fixed margin clipped the
+  // trailing hem of a fast ghost with a hard vertical edge)
+  let m = 0, lo = 0, hi = 0;
+  for (let t = 0; ; t = Math.min(H, t + step)) {
+    const o = off(Math.abs(t - q[1]) / span)[0];
+    _wt[m] = t; _wo[m++] = o; if (o < lo) lo = o; if (o > hi) hi = o;
+    if (t >= H || m >= 65) break;
+  }
+  const padL = Math.ceil(-lo) + 2, padR = Math.ceil(hi) + 2, W = v[2] + padL + padR;
   let sc = SCR[slot];
   if (!sc || sc.c.width < W || sc.c.height < H) { const c = mkCanvas(Math.max(W, sc?.c.width ?? 0), Math.max(H, sc?.c.height ?? 0)); sc = SCR[slot] = { c, g: c.getContext('2d') }; }
   const g = sc.g;
-  g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.clearRect(0, 0, W, H);
+  // clear everything the previous use dirtied too: the blit below samples bilinearly, and Chrome may read one texel
+  // past the source rect → stale pixels just outside W×H showed up as a thin vertical line beside the ghost
+  g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1;
+  g.clearRect(0, 0, Math.max(W, sc.dw ?? 0) + 2, Math.max(H, sc.dh ?? 0) + 2);
+  sc.dw = W; sc.dh = H;
   g.imageSmoothingQuality = 'low';
-  const step = Math.max(1, Math.round(H / n)), span = Math.max(q[1], H - q[1]) || 1;
-  let o0 = off(Math.abs(0 - q[1]) / span)[0];
-  for (let t0 = 0; t0 < H; t0 += step) {
-    const t1 = Math.min(H, t0 + step);
-    const o1 = off(Math.abs(t1 - q[1]) / span)[0];
-    const sh = (o1 - o0) / (t1 - t0);
-    g.setTransform(1, 0, sh, 1, pad + o0 - sh * t0, 0);
+  for (let i = 0; i < m - 1; i++) {
+    const t0 = _wt[i], t1 = _wt[i + 1];
+    if (t1 <= t0) continue;
+    const o0 = _wo[i], sh = (_wo[i + 1] - o0) / (t1 - t0);
+    g.setTransform(1, 0, sh, 1, padL + o0 - sh * t0, 0);
     g.globalAlpha = 1;
     g.drawImage(RIG.atlas, v[0], v[1] + t0, v[2], t1 - t0, 0, t0, v[2], t1 - t0);
     if (fv) { g.globalAlpha = FLASH; g.drawImage(RIG.atlas, fv[0], fv[1] + t0, fv[2], t1 - t0, 0, t0, fv[2], t1 - t0); }
-    o0 = o1;
   }
-  setT(q[0] + pad, q[1], x, y, rot, sx, sy);
+  setT(q[0] + padL, q[1], x, y, rot, sx, sy);
   const ctx = CTX, ga = ctx.globalAlpha;
   ctx.globalAlpha = ga * alpha;
   ctx.drawImage(sc.c, 0, 0, W, H, 0, 0, W, H);

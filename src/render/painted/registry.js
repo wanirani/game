@@ -12,7 +12,8 @@
 //     lights?(L, ent, rig, st)   추가 광원
 //     ownsDeathFade?: true       사망 중 Boss.draw 의 전체 투명도 감쇠를 쓰지 않음 (붕괴 연출을 보이게)
 //   }
-// 보스 훅 (a_common.js / b_common.js):  update 끝에 paintedTick(this, world),  draw 첫 줄에 if (paintedDraw(this, ctx, world)) return;
+// 보스 훅 (a_common.js / b_common.js):  update 끝에 paintedTick(this, world),  draw 첫 줄에
+//   const pd = paintedDraw(this, ctx, world); if (pd === true) return;  (pd 가 0<k<1 숫자면 벡터→채색 교차 페이드 중: 벡터를 알파 1−k 로)
 // 적 훅 (render/enemies.js 등):          if (drawPaintedDirect(e, ctx, world)) return;   (판정≈그림 크기인 개체용, 대리 개체 없음)
 //
 // 끄기: URL ?painted=0 · window.__paintedOff = true · settings.painted === false  → 모든 개체가 벡터로 그려진다 (비교/문제 해결용)
@@ -48,7 +49,6 @@ export function paintedEnabled(game = GAME) {
 }
 
 /** 카메라 줌 추정: 보스 경기장 줌(world.startBoss 와 같은 식)을 미리 계산 */
-let pendingZoom = null;
 function arenaZoom(game) {
   const w = game?.world, m = w?.map;
   if (w?.camera?.zoomTarget) return w.camera.zoomTarget;
@@ -56,8 +56,12 @@ function arenaZoom(game) {
   return 0.85;
 }
 
-/** 미리 굽기 시작 (여러 번 불러도 한 번만). → Promise<boolean> */
-export function preloadPainted(id, game = GAME) {
+const envOf = (game, zoom) => ({ game, quality: quality(game), td: textureDensity(game, zoom ?? arenaZoom(game)), budgetMB: memoryBudgetMB(game) });
+function report(id, e, env) {
+  if (typeof window !== 'undefined') (window.__painted ??= {})[id] = { ms: Math.round(e.loadMs ?? 0), memMB: +(e.rig?.memMB ?? 0).toFixed(2), td: +(e.rig?.td ?? 0).toFixed(3), bakeMs: Math.round(e.rig?.bakeMs ?? 0), estMB: +(e.rig?.estMB ?? 0).toFixed(2), budgetMB: env.budgetMB, timing: e.rig?.timing, rebakes: e.rebakes ?? 0 };
+}
+/** 미리 굽기 시작 (여러 번 불러도 한 번만). zoom = 경기장 줌 추정(없으면 현재 카메라). → Promise<boolean> */
+export function preloadPainted(id, game = GAME, zoom = null) {
   const e = REG.get(id);
   if (!e) return Promise.resolve(false);
   if (e.promise) return e.promise;
@@ -65,18 +69,17 @@ export function preloadPainted(id, game = GAME) {
   if (game) GAME = game;
   e.state = 'loading';
   const t0 = performance.now();
-  const zoom = pendingZoom; pendingZoom = null;
   e.promise = (async () => {
     try {
       await null;   // 첫 방은 Game 생성 도중(window.__game 지정 전)에 들어오므로 한 박자 늦춰 game 을 찾는다
       game ??= GAME ?? (typeof window !== 'undefined' ? window.__game : null);
       if (game) GAME = game;
       if (!e.mod) e.mod = (await e.importer()).default;
-      const env = { game, quality: quality(game), td: textureDensity(game, zoom ?? arenaZoom(game)), budgetMB: memoryBudgetMB(game) };
+      const env = envOf(game, zoom);
       e.rig = await e.mod.load(env);
       e.state = 'ready';
       e.loadMs = performance.now() - t0;
-      if (typeof window !== 'undefined') (window.__painted ??= {})[id] = { ms: Math.round(e.loadMs), memMB: +(e.rig?.memMB ?? 0).toFixed(2), td: +(e.rig?.td ?? 0).toFixed(3), bakeMs: Math.round(e.rig?.bakeMs ?? 0), estMB: +(e.rig?.estMB ?? 0).toFixed(2), budgetMB: env.budgetMB, timing: e.rig?.timing };
+      report(id, e, env);
       return true;
     } catch (err) {
       e.state = 'failed'; e.err = err;
@@ -85,6 +88,28 @@ export function preloadPainted(id, game = GAME) {
     }
   })();
   return e.promise;
+}
+/**
+ * 구운 밀도가 지금 화면에 맞는지 확인하고, 25% 넘게 어긋나면 뒤에서 다시 구워 준비되면 바꿔 끼운다
+ * (창 → 전체 화면, 폰 회전, 자동 품질 저하로 캔버스 배율·메모리 예산이 바뀐 경우). 예산이 막는 만큼은 다시 굽지 않는다.
+ * 바꿔 끼우는 동안에도 이전 리그로 계속 그린다 (팝 없음, 선명도만 바뀜). 방 진입 때 부른다.
+ */
+export function refreshPainted(id, game = GAME, zoom = null) {
+  const e = REG.get(id);
+  if (!e || e.state !== 'ready' || !e.rig || e.rebaking || !e.mod?.load || !paintedEnabled(game)) return false;
+  const env = envOf(game, zoom), r = e.rig;
+  const want = Math.min(env.td, env.budgetMB === r.budgetMB ? (r.tdMax ?? env.td) : env.td);
+  const overBudget = (r.memMB ?? 0) > env.budgetMB * 1.05;
+  if (!overBudget && Math.abs(want / r.td - 1) < 0.25) return false;
+  e.rebaking = true;
+  const t0 = performance.now();
+  e.mod.load(env).then((rig) => {
+    e.rebaking = false;
+    if (REG.get(id) !== e || e.state !== 'ready') return;
+    e.rig = rig; e.rebakes = (e.rebakes ?? 0) + 1; e.loadMs = performance.now() - t0;
+    report(id, e, env);
+  }, (err) => { e.rebaking = false; console.warn('[painted] 다시 굽기 실패 (이전 리그 유지):', id, err?.message ?? err); });
+  return true;
 }
 /** 구운 텍스처 해제 (다른 스테이지로 떠날 때 등) */
 export function releasePainted(id) {
@@ -100,6 +125,8 @@ function ready(id, game) {
   if (e.state === 'idle') preloadPainted(id, game);
   return null;
 }
+/** 벡터 → 채색 교차 페이드 길이 (ms). 굽기가 보스 등장보다 늦게 끝난 경우(느린 폰)에만 쓰인다 */
+const FADE_MS = 320;
 
 // ───────────────────────── 보스: 컬링 대리 개체 ─────────────────────────
 // world.render 는 개체 사각형(x,y,w,h)으로 컬링한다. 보스 논리 사각형은 머리 판정뿐이라 채색 몸통(날개·흉곽)이
@@ -113,7 +140,15 @@ class PaintedBody extends Entity {
     this.host = boss; this.entry = entry; this.z = boss.z;
     this.st = boss._painted?.st ?? entry.mod.init?.(boss, entry.rig) ?? {};
     this.fail = 0;
+    this.fadeT0 = null;     // 벡터로 보이던 보스에 붙었으면 교차 페이드 시작 시각 (performance.now)
     this.syncBounds();
+  }
+  /** 교차 페이드 진행 0..1 (1 = 채색만) */
+  fadeK() {
+    if (this.fadeT0 == null) return 1;
+    const k = (performance.now() - this.fadeT0) / FADE_MS;
+    if (k >= 1) { this.fadeT0 = null; return 1; }
+    return Math.max(0, k);
   }
   syncBounds() {
     const b = this.host, r = this.entry.mod.bounds?.(b, this.entry.rig, this.st, this._r ??= { x: 0, y: 0, w: 0, h: 0 });
@@ -131,12 +166,16 @@ class PaintedBody extends Entity {
     const b = this.host;
     if (!this.alive(world) || b.hidden) return;
     const mod = this.entry.mod;
+    const k = this.fadeK();
+    if (k <= 0.001) return;
     ctx.save();
     if (b.dying > 0 && !mod.ownsDeathFade) ctx.globalAlpha = Math.min(1, Math.max(0, b.dying / 2.4));
+    if (k < 1) ctx.globalAlpha *= k;
     try {
       mod.draw(ctx, b, world, this.entry.rig, this.st);
     } catch (err) {
-      // 그리기 오류 → 이 보스는 벡터로 되돌린다 (게임은 계속)
+      // 그리기 오류 → 이 보스는 벡터로 되돌린다 (게임은 계속). 렌더러가 연 save/clip 을 되돌려 ctx 상태 스택을 맞춘다
+      this.st?.D?.unwind?.(ctx);
       console.error('[painted] 그리기 오류 → 벡터로 전환:', b.def?.id, err);
       this.entry.state = 'failed'; this.dead = true;
       if (b._painted) b._painted.proxy = null;
@@ -156,6 +195,8 @@ function attach(boss, world, e) {
   if (!world || !Array.isArray(world.entities) || typeof world.add !== 'function') return null;
   const pb = new PaintedBody(boss, e);
   boss._painted = { proxy: pb, st: pb.st };
+  // 이미 벡터로 그려진 적이 있는 보스(굽기가 등장보다 늦게 끝남) → 뚝 바뀌지 않게 교차 페이드
+  if (boss._pvSeen) { pb.fadeT0 = performance.now(); boss._pvSeen = false; }
   world.add(pb);
   return pb;
 }
@@ -171,20 +212,27 @@ export function paintedTick(boss, world) {
   if (!p || p.dead || p.world !== world) attach(boss, world, e);
 }
 /**
- * 보스 draw 첫 줄에서 호출. true 면 채색 대리 개체가 그리므로 벡터 그리기를 건너뛴다.
+ * 보스 draw 첫 줄에서 호출. → true: 채색 대리 개체가 그리므로 벡터 그리기를 건너뛴다 / false: 벡터로 그린다 /
+ * 0<k<1 숫자: 교차 페이드 중 — 호출 측이 벡터를 알파 (1−k) 로 그린다 (채색은 대리 개체가 알파 k 로 그 위에).
  * 준비가 막 끝난 프레임에는 여기서 부착하고 바로 한 번 그린다 (벡터 → 채색 한 프레임 깜빡임 방지).
  */
 export function paintedDraw(boss, ctx, world) {
   const id = boss.def?.id;
   if (!id || !REG.has(id)) return false;
   const e = ready(id, world?.game);
-  if (!e) return false;
+  if (!e) {
+    const st = REG.get(id).state;
+    if ((st === 'loading' || st === 'idle') && paintedEnabled(world?.game)) boss._pvSeen = true;   // 채색 준비 전에 벡터로 보였다
+    return false;
+  }
   let p = boss._painted?.proxy;
-  if (p && !p.dead && p.world === world) return true;
-  p = attach(boss, world, e);
-  if (!p) return false;
-  p.draw(ctx, world);
-  return true;
+  if (!(p && !p.dead && p.world === world)) {
+    p = attach(boss, world, e);
+    if (!p) return false;
+    p.draw(ctx, world);
+  }
+  const k = p.fadeK();
+  return k >= 1 ? true : k;
 }
 
 /** 사망 파편(ABoss.spawnDebris → world.debrisList)용 채색 조각. 준비 안 됐으면 null → 보스의 벡터 조각 사용 */
@@ -210,17 +258,30 @@ export function drawPaintedDirect(ent, ctx, world, id = ent.def?.id ?? ent.id) {
 // ───────────────────────── 방 진입 시 미리 굽기 ─────────────────────────
 // 보스 방에 들어서는 순간(로딩 페이드 뒤) 굽기를 시작한다 → 경기장 트리거·대사·등장 연출 동안 끝난다.
 // roomEntered 는 World 생성자 안에서 불리므로 game.world 는 아직 이전 세계일 수 있다 → 스테이지 데이터에서 방을 찾는다.
+// 보스방 바로 앞 방(출구·문이 보스방으로 이어지는 방)에 들어설 때도 시작한다: 앞 방을 지나는 동안 굽기가 끝나
+// 느린 폰에서도 보스가 벡터로 먼저 보였다가 바뀌는 일이 거의 없다 (그래도 늦으면 교차 페이드).
+const EXIT_KEYS = ['exitRight', 'exitLeft', 'exitUp', 'exitDown', 'next'];
+function bossRoomsNear(stage, roomId) {
+  const out = [], room = stage?.rooms?.[roomId];
+  if (!room) return out;
+  if (room.boss) out.push(room);
+  const ids = [...EXIT_KEYS.map((k) => room[k]), ...Object.values(room.doors ?? {})];
+  for (const v of ids) { const r = stage.rooms[typeof v === 'string' ? v : v?.room]; if (r?.boss && !out.includes(r)) out.push(r); }
+  return out;
+}
 bus.on('roomEntered', ({ stageId, roomId } = {}) => {
   const g = GAME ?? (typeof window !== 'undefined' ? window.__game : null);
   if (g) GAME = g;
-  const room = STAGES[stageId]?.rooms?.[roomId];
-  if (!room?.boss) return;
-  const id = room.bossId ?? STAGES[stageId]?.boss;
-  if (!id || !REG.has(id)) return;
-  // 경기장 줌 추정 (world.startBoss 와 같은 식): 방 높이로 계산
-  const rows = room.map?.length ?? 0;
-  pendingZoom = rows ? Math.min(1, Math.max(0.74, (g?.viewH ?? 540) / (rows * 48 - 48))) : null;
-  preloadPainted(id, g);
+  const stage = STAGES[stageId];
+  for (const room of bossRoomsNear(stage, roomId)) {
+    const id = room.bossId ?? stage?.boss;
+    if (!id || !REG.has(id)) continue;
+    // 경기장 줌 추정 (world.startBoss 와 같은 식): 방 높이로 계산
+    const rows = room.map?.length ?? 0;
+    const zoom = rows ? Math.min(1, Math.max(0.74, (g?.viewH ?? 540) / (rows * 48 - 48))) : null;
+    if (REG.get(id).state === 'ready') refreshPainted(id, g, zoom);
+    else preloadPainted(id, g, zoom);
+  }
 });
 
 // 다른 스테이지로 가면 이전 보스의 구운 텍스처를 놓아 준다 (폰 메모리). 같은 보스 스테이지 재도전이면 유지.

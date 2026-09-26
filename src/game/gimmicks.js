@@ -5,6 +5,8 @@
 //  class MirrorSwitch extends Entity   맵 문자 'Q'
 //  SporePod (gimmicks_b.js 에서 다시 export) 맵 문자 'y'
 // 스텁: 기믹이 없다 (createGimmick 은 null) → 모든 호출부는 world.gimmick?.… 로 오늘처럼 동작한다.
+// 주의 (순환 import): gimmicks_b.js 는 이 파일보다 먼저 평가된다. 두 파일이 함께 쓰는 기반 클래스(Gimmick 등)는
+// 이 파일이 아니라 제3의 모듈에 두어야 gimmicks_b.js 의 `extends` 가 TDZ 오류 없이 동작한다.
 import { Entity } from './entity.js';
 export { SporePod } from './gimmicks_b.js';
 

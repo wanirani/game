@@ -3,7 +3,7 @@
 // 주요 이벤트 (payload):
 //  'enemyKilled'   {enemy, def, x, y, byPlayer}
 //  'bossKilled'    {bossId, stageId, time}
-//  'itemPicked'    {item}            (인벤토리에 들어간 아이템 인스턴스)
+//  'itemPicked'    {item, qty}       (인벤토리에 들어간 아이템 인스턴스)
 //  'itemUsed'      {item, baseId}
 //  'itemBought'    {baseId, qty, gold, item}
 //  'itemSold'      {baseId, qty, gold}
@@ -18,7 +18,7 @@
 //  'playerDied'    {}
 //  'levelUp'       {charId, level}
 //  'classChanged'  {charId, classId}
-//  'enhance'       {item, success, destroyed, level}
+//  'enhance'       {item, success, destroyed, level, before}
 //  'minigame'      {game, win, reward}
 //  'npcTalk'       {npcId}
 //  'questOffer'    {questId}

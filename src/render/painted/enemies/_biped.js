@@ -98,7 +98,13 @@ export function endOf(x, y, a, L, out) { out[0] = x + Math.sin(a) * L; out[1] = 
 export function claimDebris(world, e) {
   const L = world?.debrisList;
   if (!L) return;
-  for (const d of L) if (d.life > d.maxLife - 0.12 && Math.abs(d.x - e.cx) < 60 && Math.abs(d.y - e.cy) < 80) d.life = 0;
+  // world.spawnBones/spawnDebris scatter ±10 px around (cx, cy) with |v| ≤ 560 px/s; the painted renderer claims them on
+  // the render right after the death update, so only pieces at most a couple of frames old and still next to the body
+  // are this enemy's (a neighbour dying in the same frame 30+ px away keeps its own debris)
+  for (const d of L) {
+    const age = d.maxLife - d.life;
+    if (age < 0.06 && Math.abs(d.x - e.cx) < 12 + 280 * age + d.w && Math.abs(d.y - e.cy) < 22 + 580 * age + d.h) d.life = 0;
+  }
 }
 
 /**

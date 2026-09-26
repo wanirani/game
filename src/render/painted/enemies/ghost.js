@@ -86,7 +86,8 @@ export function draw(ctx, e, world, o, rig) {
     const hx = e.cx + f * sc * (ax - 10 - trail * 0.5), hy = e.bottom + sc * (ay + 20);
     const dt = pool.step(K.clockOf(e, world));
     // emission per second of game time (not per rendered frame: same density at 30, 60 or 120 Hz)
-    for (let n = pool.rate(0, 27, dt); n > 0; n--) pool.add(0, hx + K.frand(-8, 8), hy + K.frand(-6, 10), -f * K.frand(10, 40) - (e.vx ?? 0) * 0.2, K.frand(-30, -8), K.frand(0.6, 1.2), K.frand(5, 10), ECTO);
+    // ~15 wisps alive per ghost (each one additive blit) — half on the 'low' quality setting
+    for (let n = pool.rate(0, K.lod() === 0 ? 8 : 16, dt); n > 0; n--) pool.add(0, hx + K.frand(-8, 8), hy + K.frand(-6, 10), -f * K.frand(10, 40) - (e.vx ?? 0) * 0.2, K.frand(-30, -8), K.frand(0.6, 1.2), K.frand(6, 11), ECTO);
     for (let n = pool.rate(1, 2.4, dt); n > 0; n--) pool.add(1, hx + K.frand(-6, 6), hy, 0, K.frand(10, 40), K.frand(0.6, 1.0), 1.4, '#9ff4ff');
     if (e.flashT > 0.1 && !e._hitFx) { e._hitFx = true; for (let i = 0; i < 8; i++) pool.add(0, e.cx + K.frand(-10, 10), e.bottom - 30 + K.frand(-10, 10), K.frand(-120, 120), K.frand(-120, 60), K.frand(0.4, 0.7), K.frand(4, 8), ECTO); }
     if (e.flashT <= 0) e._hitFx = false;

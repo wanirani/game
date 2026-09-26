@@ -8,7 +8,7 @@
 //   transform(균열·영혼불 폭주) 쌍두(서리색 틴트, 등장 분출) · 피격 섬광 · 손상 단계 0~2(구운 균열/그을림/찢김 + 단계 상승 파편 폭발)
 //   death(머리부터 척추가 한 마디씩 떨어져 나가고 두개골·턱·날개·다리가 튕겨 굴러감, 흉곽은 구멍으로 가라앉음)
 // 절차적 그로테스크 층: 척수 힘줄 관(관절 틈 메움) · verlet 힘줄 줄 · 입 속 끈적한 줄 · 체액(ichor) 방울→바닥 튐 · 영혼불 · 재/뼛가루
-import { Drawer, Chain, Strand, Particles, DamageState, Shards, halo, puff, rr, hash1, loadRig, pickVariant, quality, drawStrand } from '../kit.js';
+import { Drawer, Chain, Strand, Particles, DamageState, Shards, halo, puff, rr, hash1, loadRig, pickVariant, quality, drawStrand, ledgesOver } from '../kit.js';
 
 const DIR = 'painted/bosses/b_bonedragon';
 const SOUL = '#6aff8a', TWIN = '#8ac8ff';
@@ -70,8 +70,9 @@ function bounds(b, st, out) {
     const s = h.scale ?? 1;
     add(h.hole.x, h.hole.y - (h.hole.ny < 0 ? 200 * s : 0), 380 * s);   // 흉곽·날개 (구멍 위)
     for (let i = 0; i <= h.k; i++) add(h.pts[i].x, h.pts[i].y, 110 * s);
-    add(h.hx, h.hy, 190 * s);                                              // 두개골 + 뿔 + 벌린 턱
+    add(h.hx, h.hy, 230 * s);                                              // 두개골 + 뿔 + 벌린 턱 + 주변 재(머리 위 200)
   }
+  for (const sc of st?.scars ?? []) add(sc.x, sc.y, 140 * sc.s);           // 옛 구멍 흉터 (구멍에서 멀리 떨어져 있을 수 있다)
   if (b.dying > 0 || st?.shards?.list.length) { add(b.A.x0 + b.A.w / 2, b.A.floor - 200, Math.max(b.A.w / 2, 300)); }
   if (x0 > x1) { x0 = b.x - 300; x1 = b.x + b.w + 300; y0 = b.y - 300; y1 = b.y + b.h + 300; }
   out.x = x0; out.y = y0; out.w = x1 - x0; out.h = y1 - y0;
@@ -111,6 +112,7 @@ function seq(n, len, seed) {
 // ───────────────────────── 메인 그리기 ─────────────────────────
 function drawBoss(ctx, b, world, rig, st) {
   const D = st.D;
+  if (st.rig !== rig) { st.rig = rig; st._gm = null; }   // 다시 구운 리그로 바뀜 (텍셀 좌표 캐시 초기화)
   // 설정의 그래픽 품질이 바뀌면(자동 품질 저하 포함) 플래그를 따라간다
   const qn = world.game?.settings?.quality ?? 'high';
   if (st.q.name !== qn && !st.qLock) st.q = quality(world.game);
@@ -137,8 +139,17 @@ function drawBoss(ctx, b, world, rig, st) {
   drawScars(ctx, D, st, dt, rig);
   D.end();
   P.draw(ctx, 0);
-  if (b.twin) drawHead(ctx, D, b, b.twin, world, rig, st, dt, dl, hit);
-  drawHead(ctx, D, b, b.main, world, rig, st, dt, dl, hit);
+  const heads = st._hl ??= [];
+  heads.length = 0; if (b.twin) heads.push(b.twin); heads.push(b.main);
+  // 3단계: 준비(프레임 값) → 뒤층(구멍·날개·흉곽·다리) → 발판 덧그리기 → 앞층(목·두개골·흙더미·입자)
+  // 몸통 뒤층은 크고 불투명해서 경기장 발판을 덮는다 → 발판을 그 위에 다시 그려 딛을 곳이 늘 보이게 한다.
+  // 목·두개골(판정·공격 부위)은 발판보다 앞.
+  const bb = st._bb ??= { x0: 0, y0: 0, x1: 0, y1: 0 };
+  bb.x0 = bb.y0 = 1e9; bb.x1 = bb.y1 = -1e9;
+  for (const h of heads) prepHead(b, h, rig, st, dt, dl);
+  for (const h of heads) backHead(ctx, D, b, h, rig, st, dt, bb);
+  if (st.q.ledges !== false && bb.x1 > bb.x0) { D.end(); ledgesOver(ctx, world, bb.x0, bb.y0, bb.x1, bb.y1); }
+  for (const h of heads) frontHead(ctx, D, b, h, world, rig, st, dt, dl, hit);
   st.shards.draw(D);
   D.end();
   P.draw(ctx, 1);

@@ -3,7 +3,7 @@
 // 스텁: 세이브를 건드리지 않고 "동료 없음" 을 돌려준다 → computeStats/state/menu 는 오늘과 같다.
 export function ensureCompanionState(state) { return state?.companions ?? null; }
 export function migrateCompanions(state) {}
-export function heroLoadout(state, hero) { return { mount: null, guards: [] }; }
+export function heroLoadout(state, hero) { return { mount: null, guards: [null, null] }; }   // 모양은 MASTER_PLAN §1.6 hero.companions
 export function isOwned(state, id) { return false; }
 export function ownedIds(state, kind) { return []; }
 export function ownedEntry(state, id) { return null; }

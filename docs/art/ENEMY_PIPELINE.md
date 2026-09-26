@@ -9,14 +9,18 @@ Reference implementation (all states done, verified in-game desktop + 844×390 m
 
 | id | tier | parts | Kling images | atlas webp | baked MB (desktop TD 2.4 / phone TD 1.25) | renderer |
 |---|---|---|---|---|---|---|
-| `bat` | T1 | body, wing (mirrored), hanging cocoon | 4 | 10 KB | 0.08 / 0.03 | `src/render/painted/enemies/bat.js` |
+| `bat` | T1 | flying body (dedicated Step-3 part), wing (mirrored), hanging cocoon | 5 | 14 KB | 0.13 / 0.04 | `src/render/painted/enemies/bat.js` |
 | `ghost` | T1 + ectoplasm | shroud body, reaching arm, screaming head | 4 | 15 KB | 0.18 / 0.06 | `…/ghost.js` |
 | `skeleton` | T2 | skull, jaw, ribcage, pelvis+loincloth, thigh, shin+foot, upper arm, forearm+hand, sabre, buckler | 6 | 27 KB | 0.46 / 0.14 | `…/skeleton.js` |
-| `armor_knight` | T2 | cuirass+tabard, great helm, rerebrace (also cuisse), vambrace+gauntlet, greave+sabaton, longsword, tower shield, cape | 5 | 38 KB | 0.76 / 0.22 | `…/armor_knight.js` |
-| `gravedigger` | T3 | head+hat, hunched torso+hump, sleeve upper/lower, hand, coat tails, boot, shovel, lantern (+ dmg1/dmg2) | 7 | 48 KB | 0.76 / 0.37 | `…/gravedigger.js` |
+| `armor_knight` | T2 | cuirass+tabard, great helm, rerebrace (also cuisse), vambrace+gauntlet, greave+sabaton, longsword, tower shield, cape (`spec.scale 1.1`) | 5 | 38 KB | 0.76 / 0.20 | `…/armor_knight.js` |
+| `gravedigger` | T3 | head+hat, hunched torso+hump, sleeve upper/lower, hand, coat tails, boot, shovel (handle lengthened at runtime), lantern (+ dmg1/dmg2) | 7 | 48 KB | 0.76 / 0.36 | `…/gravedigger.js` |
 
-Total Kling spend for the five: **26 images** (budget 90). Generation log with every prompt/result decision:
-`tools/painted/enemies/genlog.json`.
+Total Kling spend for the five: **27 images** (26 by the builder + 1 in the review pass: the bat's flying body, made by
+following §3 Step 3 as written). Generation log (generation ids, inputs, result decisions; Step 1/2 prompts are
+reproducible from `prompts.mjs`, single-part/edit prompts should be stored in the entry's `prompt` field — the builder's
+five did not record theirs): `tools/painted/enemies/genlog.json`.
+The chosen Step-1 reference of every enemy is kept as `tools/painted/enemies/<id>/src/<id>_ref.webp` (Step 3/4 need it
+as 图片1; Kling result URLs expire after 24 h, so download the reference the moment you pick it).
 
 ---
 
@@ -29,7 +33,7 @@ Total Kling spend for the five: **26 images** (budget 90). Generation log with e
 | `src/render/painted/enemies/_biped.js` | shared T2 biped pose (same contract as the vector `drawSkel/drawArmor`), swing trail, telegraph glint, IK, debris claim |
 | `src/render/painted/enemies/index.js` | registry: render id → module; also registers `kind:'enemy'` entries in the shared `registry.js` |
 | `src/render/enemies.js` | dispatcher hook: painted if registered + loaded, else vector (0.3 s crossfade when a rig finishes after the vector art was already shown); preload on `roomEntered` |
-| `tools/painted/enemies/` | `prompts.mjs` (templates), `matte.py`, `insp_sheet.py`, `build.py`, `pipeline.py`, `<id>/parts.json` + `<id>/src/*.webp` (Kling sources), `gallery.html/js`, `shot.mjs`, `ingame.mjs`, `perf.mjs`, `genlog.json` |
+| `tools/painted/enemies/` | `prompts.mjs` (templates), `matte.py`, `insp_sheet.py`, `build.py`, `pipeline.py`, `<id>/parts.json` + `<id>/src/*.webp` (Kling sources **and the chosen reference** `<id>_ref.webp`), `gallery.html/js`, `shot.mjs`, `ingame.mjs`, `perf.mjs`, QA: `measure.mjs` (art vs logic/strike rects), `deathcheck.mjs` (airborne deaths, alpha probe, debris claim), `lifecycle.mjs` (re-bake / stage release / off switch), `bestiary.mjs`; `genlog.json` |
 | `assets/painted/enemies/<id>/` | `atlas.webp` + `rig.json` (generated — never edit by hand) |
 
 `src/game/enemy.js` is unchanged: `Enemy.draw` already calls `drawEnemy`; the hook lives in `render/enemies.js`.
@@ -50,7 +54,8 @@ or an elite-feeling "mini boss" → T3. A **variant** of an existing rig (recolo
 ## 3. Kling prompt templates (`tools/painted/enemies/prompts.mjs`)
 
 Model `kling-image-v3_0_omni`, 2k. Download immediately with `curl` (URLs expire in 24 h), keep the chosen images as
-`tools/painted/enemies/<id>/src/*.webp` (q93), log everything in `genlog.json`.
+`tools/painted/enemies/<id>/src/*.webp` (q93) — **including the chosen Step-1 reference** as `<id>_ref.webp` even when
+nothing is cut from it (Steps 3/4 and every later fix need it as 图片1) — and log everything in `genlog.json`.
 
 **Shared suffixes** (keep them identical across the cast — this is what makes enemies match the portraits/backgrounds):
 - `BG` — *"Isolated on a plain flat uniform medium grey background (#808080), no floor, no ground, no cast shadow, no scenery, no border."*
@@ -66,6 +71,15 @@ Do **not** number the pieces (Kling paints the numbers).
 
 **Step 3 — single missing part** (`image_to_image`, image_1 = reference, image_2 = the sheet with the side view, `imageCount 1`):
 `Only one object in the whole image: the <part> of the same <who> as in 图片1 and 图片2 (identical …) painted alone as a separate cut-out game sprite piece: <part detail>, WITHOUT <every neighbouring part>. Strict side view in profile facing right, exactly like the side-view <who> in 图片2, centred with a wide empty margin around it. BG (no other objects) STYLE`
+For T1 creatures drawn in the front three-quarter view (bats, heads, blobs) replace the view sentence with the
+enemy's `sheetView`: *"Front three-quarter view exactly like the <part> in 图片2"* (the bat's flying body, genlog
+`part:fly_body`, came out usable on the first try this way; aspect 1:1).
+
+**Inputs for image_to_image** (`kling-image-v3_0_omni` accepts only `file_upload` URLs or URLs of earlier Kling
+results): convert the local `.webp` to JPG/PNG (`PIL … .save('x.jpg', quality=94)`; webp is rejected), call
+`file_upload` with `contentType`, `filename`, `size` (bytes) → `ticket` + `upload_url`, then
+`curl -X POST <upload_url> -F ticket=<ticket> -F "file=@x.jpg;type=image/jpeg"` → `data.url` is the input URL.
+A ticket is single-use; reuse the returned URL for the same file.
 
 **Step 4 — occluder removal edit** (`image_to_image` on an uploaded crop, `file_upload` → POST multipart):
 `Edit 图片1: remove BOTH arms completely (…), and repaint the <body part> that was hidden behind the arm. Keep everything else exactly identical: … same strict side view facing right, same size and position, same painting style and lighting, same flat plain medium grey background.`
@@ -81,6 +95,11 @@ What Kling actually does (learned on the five references — plan for it):
 - Side views often face **left** → `flipX` in `parts.json`. A pale ghost on grey may come back on a dark backdrop → the
   parts sheet with "no mist on the background" fixed it.
 - Grey steel on a grey background: the colour key punches holes in blades/plate → matte those sources with `--rembg`.
+- "no cast shadow" is not always honoured (bat flying body): the matte removes most of it; crop the part `box` just
+  above the shadow and add a short `fade` at the bottom edge.
+- Weapons/tools come out **shorter than the gameplay reach** (gravedigger shovel: hand→blade 24 px painted vs 69 px
+  vector / 122 px strike rect). Do not scale the whole part (the blade balloons): give the plain shaft two pivots `h0`,
+  `h1` plus a `grip` pivot in `parts.json` and lengthen it at runtime with `putStretch` (§5). Check with `measure.mjs`.
 - Budget reality per enemy: T1 3–4 images, T2 5–6, T3 6–8 (refs ×2 + sheet ×2 + 1–3 single/edit). Recolour variants 0.
 
 ## 4. Cutting: sources → atlas (`tools/painted/enemies/`)
@@ -101,7 +120,9 @@ Work files go to `tools/painted/.work/enemies/` (git-ignored); `preview_<id>.png
                           "fade": [[x0,y0,x1,y1,"down",power]], "keep": "largest", "flipX": false, "rot": 0, "k": 0.0355,
                           "piv": { "a": [x,y], "b": [x,y], "…": [x,y] } } } }
   ```
-  Pivots are in **source pixels** (read them off `insp_sheet.py` crops at `--scale 1`). Limbs: `a` = proximal joint,
+  Pivots are in **source pixels** (read them off `insp_sheet.py` crops at `--scale 1`). Choose `k` from the size the
+  part must have in game (logical px ÷ source px, e.g. the bat's flying body: 21 px wide / 1500 px = 0.0145); after a
+  build, `measure.mjs` tells you whether the figure fills its logic rect. Limbs: `a` = proximal joint,
   `b` = distal joint (the runtime aligns a→b with the bone direction, so parts may be painted at any angle).
   Scale `k` is anchored to the vector renderer's proportions (e.g. skeleton: 80 px tall → k = 80 / figure height).
 - `build.py` — cut (box ∩ poly − minus, inpaint, fades), premultiplied resample to `srcTD`, colour bleed into
@@ -120,25 +141,45 @@ of a type samples the same texture.
 Per frame (inside `drawEnemy`'s feet-origin, facing-flipped, elite-scaled transform):
 - `begin(ctx, rig, flash)` captures the base matrix; `put(name, pivot, x, y, rot, sx, sy, alpha, variant)` = one
   `setTransform` + one `drawImage` (+ the flash overlay while hit); `bone()`/`pivotPos()` for FK chains; `end()`.
+- `putStretch(name, pv, x, y, rot, sx, sy, alpha, vn, y0, y1, ext)` / `stretchMap(t, [y0,y1,ext])`: a part with one
+  uniform section (shaft, handle, chain) lengthened by `ext` texels — 3 blits, used for the gravedigger's shovel so the
+  art reaches the AI's strike rect. `spec.scale` (e.g. knight 1.1) sizes the whole painted figure to its logic rect; the
+  dispatcher applies it and corpses/dissolves inherit it (`rig.scale`).
 - Warps (mesh-free): `chain()` bending chain (wings, tails, tentacles); `strips()` sheared strips for opaque cloth
   (capes, coat tails); `warpY()` seam-free re-raster of translucent parts into a small scratch canvas (ghost shrouds —
-  per-strip overlap would double the alpha, abutting strips leave conflation seams); `lod()`/`nStrips()` halve strips on
+  per-strip overlap would double the alpha, abutting strips leave conflation seams; the scratch margins follow the
+  sampled offsets, so any trail length is safe); `lod()`/`nStrips()` halve strips on
   the `low` quality setting.
 - VFX: `glow()` cached additive puffs, `shadow()`, `FxPool` (tiny pooled render-only particles on the entity, drawn in
-  camera space via `o.cam`), render RNG `fr/frand` (= `kit.rr`, never gameplay `Math.random`).
+  camera space via `o.cam`), render RNG `fr/frand` (= `kit.rr`, never gameplay `Math.random`). Continuous streams use
+  `const dt = pool.step(now); for (let n = pool.rate(key, perSecond, dt); n > 0; n--) pool.add(…)` — never
+  `if (fr() < p)` per rendered frame (density would follow the monitor's refresh rate).
+- `world.fx.ghost(cb)` callbacks inherit whatever `globalAlpha` / composite the previous particle left (embers flicker
+  with `Math.random`): every callback sets `ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'` inside its
+  own save/restore (the kit's corpse and dissolve do; `deathcheck.mjs` probes it).
 - Death: `spawnCorpse()` (T2/T3) hands the posed parts to `world.fx.ghost` — pieces re-pivot on their centre, tumble,
-  bounce and topple flat, dust puffs, fade; outlives the entity (`dieTime` stays 0.35 s). `spawnDissolve()` (T1) slices
+  bounce and topple flat on the **real ground under each piece** (`groundBelow()` scans the tile map: an enemy killed in
+  the air by a launcher collapses onto the floor below, pieces over a pit keep falling), dust puffs on that floor,
+  fade; outlives the entity (`dieTime` stays 0.35 s). Pieces may carry `stretch` (drawn with `putStretch`). `spawnDissolve()` (T1) slices
   the pose into strips that drift, rise and wink out in noise order with ember/ectoplasm bursts. `claimDebris()` retires
   the generic vector bone/metal debris that `Enemy.die` spawned for the same body.
 
 Renderer module contract:
 ```js
-export const spec = { id, tier, src /* assets folder */, bake: { outline, deep:{part|'*':k}, deepTint, glow:{part:'#hex'}, damage:{part:{char,cracks,holes,stain,crackMinLum}}, flash, outlineParts } };
+export const spec = { id, tier, src /* assets folder */, scale /* optional, default 1 */, bake: { outline, deep:{part|'*':k}, deepTint, glow:{part:'#hex'}, damage:{part:{char,cracks,holes,stain,crackMinLum}}, flash, outlineParts } };
 export function draw(ctx, e, world, o /* {flash, cam} */, rig) { … }   // world === null in the bestiary; must not mutate gameplay state
 ```
 Register in `enemies/index.js` with `reg(mod, [renderIds…])`. Dispatcher behaviour: painted when registered + rig ready
 + enabled; else vector. Switches: shared `?painted=0` / `window.__paintedOff` / `settings.painted=false`; enemies only
-`window.__paintedEnemies = false`.
+`window.__paintedEnemies = false` (the `roomEntered` preload honours them too).
+
+Rig lifecycle (`render/enemies.js` on `roomEntered`, i.e. behind the room fade):
+- `refreshRig(spec)`: if the canvas scale changed by > 25 % since the bake (small window → fullscreen, rotation, quality
+  changed by the player or by `game.autoQuality` on a slow phone) the type is re-baked in the background and swapped in
+  when ready — live enemies never fall back to vector, corpses keep the old rig object.
+- `releaseRigs(keep)`: entering a **different stage** drops the rigs that stage's roster does not use, so baked memory
+  stays at one roster (≈ 3–5 MB desktop / 1–1.5 MB phone when all enemies are painted) instead of growing with every
+  stage visited. Enemies spawned outside the roster (boss summons) bake on first sight and cross-fade in.
 
 ## 6. Rig reuse (keeps the Kling budget small)
 
@@ -160,7 +201,7 @@ at LOD); ghost pipeline → `scholar_ghost`, `frost_wraith`, `glass_wraith`, `wa
 |---|---|---|---|---|---|
 | mimic | s04+ | 48×44 | T1 | 3 | chest body + hinged lid part (jaw hinge), tongue `chain`, gold sparkle; closed/open states, jump squash |
 | golden_bat | common | 30×24 | T1 | 0 | bat rig + `kit.recolor` gold, sparkles, blink when fleeing |
-| **bat ●** | s01 | 34×26 | T1 | 4 | body + wing (`chain` ×2 mirrored) + hanging cocoon; hang/drop/dive/fly/hover/hurt/dissolve |
+| **bat ●** | s01 | 34×26 | T1 | 5 | flying body + wing (`chain` ×2 mirrored) + hanging cocoon; hang/drop/dive/fly/hover/hurt/dissolve |
 | zombie | s01 | 32×78 | T2 | 5 | humanoid rig; rise-from-ground = clipped by ground line + dirt FxPool; shamble walk (short stride, arm reach) |
 | **skeleton ●** | s01 | 30×80 | T2 | 6 | 10 parts; walk/attack(overhead)/hurt/air/collapse |
 | crow | s01 | 38×30 | T1 | 3 | body + wing `chain`; perched frame; dive stretch; feather dissolve |
@@ -280,27 +321,51 @@ roster (6–9 types) ≈ 3–5 MB desktop, ≈ 1–1.5 MB phone.
    phases, wind-up with glint, strike frame with trail, follow-through, hurt flash+squash, stun, airborne, dying; T3: dmg 50 % / 20 %).
    Compare with `--vec` (A/B).
 2. Timing: the strike frame coincides with `params.windup` (AI hit frame) — the telegraph glint peaks just before it.
-3. Facing both ways, elite (`scale 1.15` + red aura), bestiary (`world === null`, big scale — no crash, readable).
+   **Reach**: `node tools/painted/enemies/measure.mjs --ids <id>` prints the painted and vector bounding boxes per state
+   next to the logic rect and the AI strike rect. At the strike frame the weapon must reach the far edge of the strike
+   rect within ~10 px (a player reads the range from the weapon; the gravedigger's first painted shovel stopped 50 px
+   short of its 122 px slam) and the standing figure should fill the logic rect height within ~5 % (`spec.scale`;
+   the first knight stood 80 px in an 88 px rect). Hit instants only — wind-up/recovery frames are not compared.
+3. Facing both ways, elite (`scale 1.15` + red aura), bestiary (`world === null`, big scale — no crash, readable):
+   `node tools/painted/enemies/bestiary.mjs [--mobile]` opens the real bestiary card for each painted enemy.
 4. `node tools/painted/enemies/ingame.mjs --stage <sNN> --line <id>:idle,<id>:walk,<id>:attack@0.4 --kill 1` and
    `--mobile`: art sits on the ground line, matches the painted backdrop and lighting, corpses/dissolves outlive the entity,
-   no duplicate vector debris, nothing sinks through the floor.
+   no duplicate vector debris, nothing sinks through the floor. `--debug` draws the hurtboxes, `--facing both` spawns
+   each pose in both directions, `--elite`, `--quality low|medium`. Check the darkest stage the enemy appears in
+   (s05 0.6, s08 0.55, s13 0.55 darkness) at phone size: small or dark states (a hanging bat) need an eye glint/rim.
+   `node tools/painted/enemies/deathcheck.mjs --ids <id>`: kills them mid-air (launcher juggle) — pieces must land on
+   the floor below — and probes that the death FX do not inherit another particle's alpha (ratio ≈ 1), debris left 0.
 5. `?debug` hurtbox overlay vs art: art may overhang (wings, shields, shovels) but the body mass must sit inside the logical
-   rect; if art grows, **document** the needed hurtbox change — never change gameplay silently. (Five references: art ≈ logic
-   rect; bat wings overhang ±15 px like the vector version; no hurtbox change needed.)
+   rect; if art grows, **document** the needed hurtbox change — never change gameplay silently. (Five references after the
+   review fixes: body ≈ logic rect — knight via `spec.scale 1.1`; bat wings overhang ±15 px and the gravedigger's hump
+   ±5 px behind, like the vector versions; no hurtbox change needed.)
 6. Culling: `world.render` culls with a 200 px margin — the painted overhang must stay inside it.
 7. Fallback: rename `assets/painted/enemies/<id>` → vector art, no errors; `?painted=0` and `window.__paintedEnemies=false`.
 8. Late load: throttle the network — vector → painted 0.3 s crossfade, no pop.
 9. No `Math.random` in renderers (`grep -n "Math.random" src/render/painted/enemies`), no `world.fx.emit/burst` from draw.
-10. `node tools/painted/enemies/perf.mjs --n 30` (and `--mobile --throttle 4 --n 60`): painted ≤ vector.
+10. `node tools/painted/enemies/perf.mjs --n 30` (and `--mobile --throttle 4 --n 60`, and `--quality low|medium`):
+    painted ≤ vector. Emission of continuous VFX is per second (`FxPool.rate`), not per rendered frame.
 11. `node tools/integration.mjs --only s01,s02,s03,s04,s05` (and `--mobile`) — no page errors.
+12. `node tools/painted/enemies/lifecycle.mjs`: growing the window re-bakes at the new texel density with no vector
+    frame, a stage change releases unused rigs, `settings.painted=false` stops the preload.
 
 ## 10. Notes / follow-ups
 
 - `Enemy.die` spawns generic vector debris (bones/metal); painted renderers call `claimDebris` on the death frame so the
   painted corpse is the only body. Enemies without a painted renderer are unaffected.
-- Corpse physics uses the enemy's feet line as the floor (enemies die standing on ground almost always); a knocked-back
-  enemy killed over a pit lets its pieces rest on that line for ~1.5 s.
-- Bat body is cut from a sitting figure (legs faded out); a dedicated flying-body single-part image (1 image) would
-  polish it further. Gravedigger's inpainted coat region is visible only when both arms are raised (slam wind-up).
+  `claimDebris` only takes debris at most 0.06 s old lying on this body, so a vector enemy dying in the same frame
+  30+ px away keeps its own bones.
+- Corpse pieces land on the tile-map ground under each piece (airborne kills, ledges and pits handled); moving
+  platforms are not considered (pieces of an enemy killed on one fall through it to the tiles below).
+- Review pass (2026-09-26) fixed: dissolve/corpse FX inheriting the previous particle's alpha (bat/ghost deaths drawn
+  at ~9 % opacity and flickering with the fire embers), corpses hovering in mid-air after airborne kills, gravedigger
+  shovel ~50 px short of the slam rect (now lengthened handle, blade planted where the AI's dust ring appears), knight
+  10 % shorter than its hurtbox, hanging bat half the vector size and nearly invisible on dark stages, bat drop
+  animation ignoring the difficulty's faster drop, frame-rate dependent wisp/ember emission, no re-bake on resize /
+  quality change, rigs never released across stages, `roomEntered` preload ignoring `settings.painted=false`.
+- Gravedigger's inpainted coat region is visible only when both arms are raised (slam wind-up).
+- Ghost shroud `warpY` re-rasterises into a shared scratch canvas per ghost per frame: cheap on the CPU raster
+  measured here, **untested on a real phone GPU** (canvas-to-canvas copies can stall there). If a GPU profile shows
+  it, give each on-screen ghost its own scratch slot or bake 4 ripple phases at load.
 - Next up for the enemy agent(s): rig-reuse variants (skeleton family, knight family, bat family: 0–2 images each), then
   the per-stage rosters in stage order so every stage ships fully painted.

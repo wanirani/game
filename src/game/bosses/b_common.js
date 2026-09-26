@@ -493,7 +493,9 @@ export class BossB extends Boss {
   // ── 그리기 ──
   /** 채색 렌더러가 준비됐으면 그쪽(컬링 대리 개체)이 그린다 — 아니면 기존 벡터 그리기 */
   draw(ctx, world) {
-    if (paintedDraw(this, ctx, world)) return;
+    const pd = paintedDraw(this, ctx, world);   // true = 채색만, 0<k<1 = 벡터→채색 교차 페이드 중
+    if (pd === true) return;
+    if (pd) { ctx.save(); ctx.globalAlpha *= 1 - pd; super.draw(ctx, world); ctx.restore(); return; }
     super.draw(ctx, world);
   }
   render(ctx, world) {

@@ -60,6 +60,9 @@ await page.evaluate(() => {
   // keep dim particles between every other ghost entry too
   for (let i = 0; i < 6; i++) { w.fx.emit('dust', 0, -999, { life: 30, alpha: 0.02, layer: 'back' }); w.fx.emit('dust', 0, -999, { life: 30, alpha: 0.02, layer: 'front' }); }
 });
+await page.waitForTimeout(40);
+const debrisLeft = await page.evaluate(() => window.__game.world.debrisList.filter((d) => d.life > 0).length);
+console.log('vector debris left after painted deaths (should be 0):', debrisLeft);
 const shots = [];
 for (const [i, ms] of [[0, 60], [1, 200], [2, 450], [3, 700]]) {
   await page.waitForTimeout(ms);

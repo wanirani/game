@@ -168,5 +168,32 @@
   ],
   "generationId": "AbLTv6qaQS2brjNSLKRXXFmVEQiu-t03qjsvdMUFOmwCQI7gnmOwzUmN8YeVe8sk8b2SDClC",
   "note": "sleeve still present (Kling will not drop the arm) -> sleeve cut out as the near arm, the coat behind it inpainted (cv2)"
+ },
+ {
+  "id": "bat",
+  "step": "part:fly_body",
+  "tool": "image_to_image",
+  "count": 1,
+  "aspect": "1:1",
+  "refs": [
+   "upload: src/bat_ref.webp (ref#2)",
+   "upload: src/bat_sheet1.webp (sheet#1)"
+  ],
+  "generationId": "ATivlL7RMcaCTY7jRj68xj-D03AKgpo0calyqy6MGz34sczztFHXOmEr1rE4MSmxZ9SgIknl",
+  "note": "review pass, playbook Step 3 followed as written (front-3/4 wording instead of 'strict side view'): compact fur-ball flying body with tucked claws, first try; Kling still painted a soft cast shadow (matte removed most, box cropped above it). Used as part 'fly' (replaces the sitting-figure body).",
+  "prompt": "Only one object in the whole image: the furry body of the same vampire bat as in 图片1 and 图片2 (keep the identical design, proportions, colours, sooty black-brown fur, face, ears and painting style) painted alone as a separate cut-out game sprite piece: the compact body in flight with the head, the tall pointed ears with pink insides, the glowing red eyes, the snub pig-like nose and the snarling mouth with tiny white fangs, a round furry chest and belly, and the small clawed hind feet tucked up tight under the belly, WITHOUT any wings, WITHOUT a tail, WITHOUT long hanging legs. Front three-quarter view exactly like the bat body in 图片2, centred with a wide empty margin around it. <BG> no other objects. <STYLE>",
+  "args": {
+   "model": "kling-image-v3_0_omni",
+   "img_resolution": "2k",
+   "aspect_ratio": "1:1",
+   "imageCount": "1"
+  }
+ },
+ {
+  "id": "*",
+  "step": "refs_recovered",
+  "tool": "query_tasks",
+  "count": 0,
+  "note": "review pass: the chosen Step-1 references were not stored; recovered from the ref generationIds while their URLs were still valid (24 h) and saved as <id>/src/<id>_ref.webp (bat_ref, skeleton_ref, knight_ref, digger_ref, ghost_ref)."
  }
 ]

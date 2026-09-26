@@ -15,12 +15,15 @@ const KEY_LABEL = {
   jump: 'Z', attack: 'X', dash: 'C', sub: 'A', skill1: 'S', skill2: 'D', ult: 'F', swap: 'Q',
   menu: 'Esc', confirm: 'Z', cancel: 'X', map: 'Tab',
   prevTab: 'Q', nextTab: 'E', alt: 'A', alt2: 'C',
+  // 아직 입력에 없는 새 액션 (MASTER_PLAN §1.4 기본 키; PLAT-INPUT 이 실제 바인딩을 만든다). 글자만 보여 주고 bindingOf 는 [].
+  awaken: 'V', mount: 'R', guard: 'G', viewL: ',', viewR: '.', viewReset: '/',
 };
+/** 오늘의 core/input.js KEYMAP 과 같은 키 (액션 → 키 코드) */
 const KEY_CODE = {
   left: ['ArrowLeft'], right: ['ArrowRight'], up: ['ArrowUp', 'KeyW'], down: ['ArrowDown'],
-  jump: ['KeyZ', 'Space'], attack: ['KeyX', 'KeyJ'], dash: ['KeyC', 'ShiftLeft', 'KeyK'], sub: ['KeyA'],
+  jump: ['KeyZ', 'Space'], attack: ['KeyX', 'KeyJ'], dash: ['KeyC', 'ShiftLeft', 'ShiftRight', 'KeyK'], sub: ['KeyA'],
   skill1: ['KeyS'], skill2: ['KeyD'], ult: ['KeyF', 'KeyV'], swap: ['KeyQ', 'KeyE'],
-  menu: ['Escape', 'Enter'], confirm: ['KeyZ', 'Enter'], cancel: ['KeyX', 'Escape'], map: ['Tab', 'KeyM'],
+  menu: ['Enter', 'Escape'], confirm: ['KeyZ', 'Space', 'Enter'], cancel: ['KeyX', 'Escape', 'Backspace'], map: ['Tab', 'KeyM'],
   prevTab: ['KeyQ'], nextTab: ['KeyE'], alt: ['KeyA'], alt2: ['KeyC'],
 };
 const LEGACY = {

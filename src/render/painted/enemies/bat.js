@@ -39,9 +39,13 @@ export function draw(ctx, e, world, o, rig) {
     if (!e._pcorpse) {
       e._pcorpse = true;
       const cy = -13;
+      K.begin(ctx, rig, 0);                        // wing roots from the body's pivots (same joints as in flight)
+      K.pivotPos(BODY, 'a', 'wl', 0, cy, 0, 1, 1, _q); const lx = _q[0] + 1, ly = _q[1];
+      K.pivotPos(BODY, 'a', 'wr', 0, cy, 0, 1, 1, _q); const rx = _q[0] - 1, ry = _q[1];
+      K.end();
       K.spawnDissolve(world, e, rig, [
-        { name: 'wing', pv: 'a', x: -6, y: cy - 2, rot: PI + 0.3, sx: 1, sy: -1, vn: 'deep' },
-        { name: 'wing', pv: 'a', x: 6, y: cy - 2, rot: -0.3 },
+        { name: 'wing', pv: 'a', x: lx, y: ly, rot: PI + 0.3, sx: 1, sy: -1, vn: 'deep' },
+        { name: 'wing', pv: 'a', x: rx, y: ry, rot: -0.3 },
         { name: BODY, pv: 'a', x: 0, y: cy },
       ], { life: 0.7, strips: 9, drift: 40, col: '#ff5a3a', n: 18, spread: 170, cy });
     }

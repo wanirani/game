@@ -21,7 +21,7 @@ export const CASES = {
     ['hurt', { anim: 'fly', state: 'fly', flashT: 0.11, stun: 0.2 }], ['dying', { anim: 'fly', dying: 0.15 }],
   ],
   ghost: () => [
-    ['float a', { anim: 'fly', tOff: 0 }], ['float b', { anim: 'fly', tOff: 0.6 }], ['move', { anim: 'fly', vx: 60, vy: -10 }], ['lunge', { anim: 'fly', vx: 70, near: 1 }],
+    ['float a', { anim: 'fly', tOff: 0 }], ['float b', { anim: 'fly', tOff: 0.6 }], ['move', { anim: 'fly', vx: 60, vy: -10 }], ['lunge', { anim: 'fly', vx: 70, near: 1 }], ['fast', { anim: 'fly', vx: 160 }],
     ['hurt', { anim: 'fly', flashT: 0.11, stun: 0.2 }], ['dying', { anim: 'fly', dying: 0.2 }],
   ],
   gravedigger: (d) => [
