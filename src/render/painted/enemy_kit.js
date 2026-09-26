@@ -145,7 +145,8 @@ async function buildRig(rig, spec) {
   for (const [name, p] of Object.entries(man.parts)) {
     const [rx, ry, rw, rh] = p.rect;
     const w = Math.ceil(rw * f) + PAD * 2, h = Math.ceil(rh * f) + PAD * 2;
-    const raw = mkCanvas(w, h), g = raw.getContext('2d');
+    const dmg = B.damage?.[name] ?? B.damage?.['*'];
+    const raw = mkCanvas(w, h), g = raw.getContext('2d', dmg ? { willReadFrequently: true } : undefined);
     g.imageSmoothingQuality = 'high';
     g.drawImage(img, rx, ry, rw, rh, PAD, PAD, rw * f, rh * f);
     const part = { name, w, h, v: {}, piv: {}, meta: p.meta ?? {} };
@@ -163,7 +164,6 @@ async function buildRig(rig, spec) {
     if (dk) vars.deep = darken(baseC, dk, B.deepTint);
     const gl = B.glow?.[name] ?? B.glow?.['*'];
     if (gl) vars.glow = silhouette(raw, gl);
-    const dmg = B.damage?.[name] ?? B.damage?.['*'];
     if (dmg) {
       for (const L of [1, 2]) {
         const d = withOutline(damageVariant(raw, L, name.length * 31 + L, dmg), olr * olK);

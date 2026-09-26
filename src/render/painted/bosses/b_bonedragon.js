@@ -307,7 +307,7 @@ function drawHead(ctx, D, b, h, world, rig, st, dt, dl, hit) {
   const fireK = (0.75 + fury * 0.5 + flare * 0.4 + (lvl >= 2 ? Math.sin(t * 23) * 0.12 : 0)) * (dying ? clamp(1 - dT, 0, 1) * 1.6 : 1);
   if (baseVis > 0.05 && fireK > 0.02) {
     halo(ctx, core[0], core[1], 70 * s * fireK, soul, 0.26 * baseVis, true);
-    soulFlame(ctx, core[0], core[1] + 18 * s, Math.atan2(axy, axx), 58 * s * fireK, 14 * s, t, soul, 0.42 * baseVis, twin ? 5 : 2);
+    if (q.flames !== 0) soulFlame(ctx, core[0], core[1] + 18 * s, Math.atan2(axy, axx), 58 * s * fireK, 14 * s, t, soul, 0.42 * baseVis, twin ? 5 : 2);
     if (rr.next() < dt * (3 + fury * 4) * q.ambient) P.emit('ember', core[0] + rr.range(-30, 30) * s, core[1] + rr.range(-40, 10) * s, rr.range(-20, 20), rr.range(-80, -30), { color: soul, layer: 1 });
     if (rr.next() < dt * 0.9 * q.ambient) P.emit('smoke', core[0] + rr.range(-50, 50) * s, core[1] - 60 * s, 0, -30, { color: twin ? '#1a2230' : '#1d2a1f', layer: 0 });
   }
@@ -321,7 +321,7 @@ function drawHead(ctx, D, b, h, world, rig, st, dt, dl, hit) {
   const arc = C.arc;
   const tiles = st.vert, spines = st.spine;
   // 척수 힘줄 관: 관절 틈(특히 급하게 굽은 바깥쪽)을 살점으로 메운다
-  if (k >= 2) {
+  if (k >= 2 && q.tube !== 0) {
     D.end();
     let started = false;
     ctx.beginPath();
@@ -580,7 +580,7 @@ function drawSkull(ctx, D, b, h, hs, rig, st, dt, lvl, hit, V) {
   // 눈구멍 영혼불
   const fk = (0.8 + flare * 0.7 + fury * 0.5 + (lvl >= 2 ? 0.3 : 0)) * (dying ? clamp(1.4 - dT * 2, 0, 1) : 1);
   if (fk > 0.02) {
-    soulFlame(ctx, eyeW[0], eyeW[1], ha + flip * (-PI / 2 - 0.55), 34 * s * fk, 8 * s, t, soul, 0.6, twin ? 3 : 0);
+    if (q.flames !== 0) soulFlame(ctx, eyeW[0], eyeW[1], ha + flip * (-PI / 2 - 0.55), 34 * s * fk, 8 * s, t, soul, 0.6, twin ? 3 : 0);
     halo(ctx, eyeW[0], eyeW[1], 26 * s * fk, soul, 0.75, true);
   }
   // 브레스: 입에서 쏟아지는 불길 (투사체는 로직이 그림, 여기선 입가 불꽃)

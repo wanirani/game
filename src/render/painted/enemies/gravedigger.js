@@ -1,0 +1,210 @@
+// T3 painted large puppet: 저주받은 무덤지기 (gravedigger, 52×96). Boss-kit tech on a regular elite-sized enemy:
+// damage variants by HP (torn/charred coat, cracks: dmg1 < 60 %, dmg2 < 30 %), 2-bone IK keeps the near hand on the
+// shovel handle, swinging lantern (spring pendulum) with a flickering light, strip-warped coat tails, dust/ember FX.
+// States (AI_A.digger): idle (heavy breathing), walk (stride 5, shovel dragging on the ground), slam (shovel raised over
+// the head → strike frame at params.slamWind 0.7 → impact dust), fling (scoop wind-up → throw at flingWind 0.5 → dirt
+// spray), hurt (flash + squash + recoil), death (collapse forward: pieces tumble, lantern shatters in sparks).
+import * as K from '../enemy_kit.js';
+import { dirOf, swingTrail, glint, claimDebris, ik2, HP } from './_biped.js';
+import { atkPhase, hurtOf, deathK } from '../enemy_kit.js';
+import { clamp, lerp, ease } from '../../../core/math.js';
+
+export const spec = {
+  id: 'gravedigger', tier: 'T3', src: 'gravedigger',
+  bake: {
+    outline: 0.5, deep: { uarm: 0.6, farm: 0.6, hand: 0.6, boot: 0.6 }, deepTint: 'rgb(150,140,150)',
+    damage: { torso: { char: 3, cracks: 1, nicks: 3, charCol: '24,14,8' }, head: { char: 1, cracks: 2, nicks: 1 }, tails: { char: 2, cracks: 0, nicks: 4 }, uarm: { char: 1, nicks: 2 }, farm: { char: 1, nicks: 2 } },
+  },
+};
+
+const PL = []; let NP = 0;
+function place(name, x, y, rot, vn = 'base', sx = 1, sy = 1, pv = 'a', kind = 0) {
+  const o = PL[NP] ?? (PL[NP] = {});
+  o.name = name; o.x = x; o.y = y; o.rot = rot; o.vn = vn; o.sx = sx; o.sy = sy; o.pv = pv; o.kind = kind; NP++;
+  return o;
+}
+const _q = [0, 0];
+const HUNCH = 0.32;                   // lean already painted into the torso
+
+/** pose — same numbers as the vector drawHumanoid(pose:'shovel') so the painted swing matches the AI hit frame */
+function pose(e) {
+  const t = e.t ?? 0, at = e.animT ?? 0, anim = e.anim, P = e.params || {};
+  const hurt = hurtOf(e), walking = anim === 'walk';
+  const ph = t * 5, sw = walking ? Math.sin(ph) : 0, cw = walking ? Math.cos(ph) : 0, br = Math.sin(t * 2.1);
+  const q = { walking, hurt, tele: 0, trail: null, stepX: 0, strike: 0, scoop: 0 };
+  q.bob = walking ? -Math.abs(cw) * 2.4 : br * 0.9;
+  q.lean = HUNCH + (walking ? 0.05 : 0) + br * 0.015;
+  q.hipF = walking ? sw * 0.45 : 0.14; q.hipB = walking ? -sw * 0.45 : -0.1;
+  q.knF = walking ? -Math.max(0, cw) * 0.85 - 0.1 : -0.15; q.knB = walking ? -Math.max(0, -cw) * 0.85 - 0.1 : -0.08;
+  q.shB = 0.55; q.elB = -0.1;
+  q.head = Math.sin(t * 1.3) * 0.05;
+  q.wA = null;
+  if (anim === 'slam' || anim === 'fling') {
+    const wu = anim === 'slam' ? (P.slamWind ?? 0.7) : (P.flingWind ?? 0.5);
+    const ap = atkPhase(at, wu, 0.1), kw = ease.outCubic(ap.w), ks = ease.outCubic(ap.s);
+    if (anim === 'slam') {
+      q.shB = ap.s <= 0 ? lerp(0.2, 3.5, kw) : lerp(3.5, 1.15, ks); q.elB = ap.s <= 0 ? 0.4 : lerp(0.4, 0.1, ks);
+      q.wA = ap.s <= 0 ? lerp(2.3, 3.9, kw) : lerp(3.9, 1.35, ks);
+      q.lean = ap.s <= 0 ? lerp(0.25, -0.15, kw) : lerp(-0.15, 0.55, ks);
+      if (ap.s > 0) q.trail = [3.9, q.wA, clamp(1 - ap.after / 0.3, 0, 1)];
+      q.stepX = ap.s * 6; q.strike = ap.s > 0 ? clamp(1 - ap.after / 0.35, 0, 1) : 0;
+      q.hipF = lerp(q.hipF, 0.5, kw); q.knF = lerp(q.knF, -0.5, kw);
+    } else {
+      q.shB = ap.s <= 0 ? lerp(0.2, -0.9, kw) : lerp(-0.9, 2.4, ks); q.elB = 0.3;
+      q.wA = ap.s <= 0 ? lerp(2.3, 0.4, kw) : lerp(0.4, 3.0, ks);
+      q.lean = ap.s <= 0 ? lerp(0.25, 0.5, kw) : lerp(0.5, -0.1, ks);
+      q.bob += ap.s <= 0 ? 6 * kw : 6 * (1 - ks);
+      if (ap.s > 0) q.trail = [0.4, q.wA, clamp(1 - ap.after / 0.25, 0, 1) * 0.7];
+      q.scoop = ap.s > 0 ? clamp(1 - ap.after / 0.3, 0, 1) : 0;
+      q.knF = lerp(q.knF, -0.7, kw); q.knB = lerp(q.knB, -0.5, kw);
+    }
+    q.tele = ap.w < 1 ? ap.w : 0;
+  }
+  if (hurt) { q.lean -= 0.3; q.head = -0.3; }
+  q.lean += deathK(e) * 0.5;
+  return q;
+}
+
+function layout(e, q, dl) {
+  NP = 0;
+  const hipY = -45 + q.bob, x0 = q.stepX;
+  const tr = q.lean - HUNCH;
+  const V = (base) => (dl ? `${base === 'deep' ? 'deep_' : ''}dmg${dl}` : base);
+  K.pivotPos('torso', 'a', 'neck', x0, hipY, tr, 1, 1, _q); const nx = _q[0], ny = _q[1];
+  K.pivotPos('torso', 'a', 'shN', x0, hipY, tr, 1, 1, _q); const snx = _q[0], sny = _q[1];
+  K.pivotPos('torso', 'a', 'shF', x0, hipY, tr, 1, 1, _q); const sfx = _q[0], sfy = _q[1];
+  K.pivotPos('torso', 'a', 'belt', x0, hipY, tr, 1, 1, _q); const blx = _q[0], bly = _q[1];
+  // back (shovel) arm: FK like the vector version; the shovel hangs from its hand
+  const UA = 17, FA = 16;
+  const d1 = dirOf(q.shB), d2 = dirOf(q.shB + q.elB);
+  const bex = sfx + Math.cos(d1) * UA, bey = sfy + Math.sin(d1) * UA;
+  const bhx = bex + Math.cos(d2) * FA, bhy = bey + Math.sin(d2) * FA;
+  // shovel angle: at rest the blade leans on the ground (as in the vector renderer), during attacks it follows wA
+  let wA = q.wA;
+  const gA = Math.acos(clamp(-bhy / 26, 0.05, 1));
+  if (wA === null) wA = gA + (q.walking ? Math.sin((e.t ?? 0) * 5) * 0.05 : 0);
+  else if (e.anim === 'fling') wA = Math.max(wA, gA * 0.6);
+  const sd = dirOf(wA);
+  const sp = K.part('shovel');
+  // near hand grabs the upper handle (IK); far-side limbs darker
+  K.pivotPos('shovel', 'a', 'grip2', bhx, bhy, sd - sp.ang, 1, 1, _q); const g2x = _q[0], g2y = _q[1];
+  // far arm (behind the torso)
+  limbB('uarm', sfx, sfy, d1, UA, V('deep'), 1.35);
+  limbB('farm', bex, bey, d2, FA, 'deep', 1);
+  place('hand', bhx, bhy, d2 - HP, 'deep', 1, 1, 'grip');
+  // far leg
+  const hbx = x0 - 3, hfx = x0 + 3;
+  const kbx = hbx + Math.sin(q.hipB) * 23, kby = hipY + Math.cos(q.hipB) * 23;
+  const bp = K.part('boot');
+  place('boot', kbx, kby, dirOf(q.hipB + q.knB) - bp.ang, 'deep');
+  // coat tails: strip-warped cloth from the belt line
+  place('tails', x0 - 1, hipY - 1, tr * 0.4, dl ? `dmg${dl}` : 'base', 1.05, 1, 'a', 1);
+  // torso + hump
+  place('torso', x0, hipY, tr, V('base'));
+  // near leg
+  const kfx = hfx + Math.sin(q.hipF) * 23, kfy = hipY + Math.cos(q.hipF) * 23;
+  place('boot', kfx, kfy, dirOf(q.hipF + q.knF) - bp.ang, 'base');
+  // head
+  const hr = q.head + (q.lean - HUNCH) * 0.3;
+  place('head', nx, ny, hr, dl ? `dmg${dl}` : 'base');
+  // shovel (handle in the far hand)
+  place('shovel', bhx, bhy, sd - sp.ang);
+  // lantern on the belt: spring pendulum
+  const L = e._lan ?? (e._lan = { a: 0, v: 0, t: e.t ?? 0 });
+  const now = e.t ?? 0, dt = clamp(now - L.t, 0, 0.05); L.t = now;
+  const target = -(e.vx ?? 0) * 0.002 * (e.facing < 0 ? -1 : 1) - (q.lean - HUNCH) * 0.8;
+  L.v += ((target - L.a) * 40 - L.v * 3) * dt; L.a += L.v * dt;
+  place('lantern', blx + 2, bly - 1, L.a, 'base', 1, 1, 'a', 2);
+  // near arm: IK onto the upper handle
+  const ik = ik2(snx, sny, g2x, g2y, UA, FA, -1);
+  const nex = snx + Math.cos(ik[0]) * UA, ney = sny + Math.sin(ik[0]) * UA;
+  limbB('uarm', snx, sny, ik[0], UA, V('base'), 1.35);
+  limbB('farm', nex, ney, ik[1], FA, dl ? `dmg${dl}` : 'base', 1);
+  place('hand', g2x, g2y, ik[1] - HP, 'base', 1, 1, 'grip');
+  return { sfx, sfy, nx, ny, hr, blx, bly, tipx: bhx + Math.cos(sd) * sp.len, tipy: bhy + Math.sin(sd) * sp.len };
+}
+/** limb piece shorter than the bone: pivot b on the far joint, stretched along the bone by `st` */
+function limbB(name, x, y, dir, L, vn, st) {
+  const p = K.part(name);
+  if (!p) return;
+  place(name, x + Math.cos(dir) * L, y + Math.sin(dir) * L, dir - p.ang, vn, 1, st, 'b');
+}
+
+function drawAll(e, q) {
+  const t = e.t ?? 0;
+  for (let i = 0; i < NP; i++) {
+    const p = PL[i];
+    if (p.kind === 1) {
+      const w = q.walking ? 1 : 0.3;
+      K.strips(p.name, p.pv, p.x, p.y, p.rot, p.sx, p.sy, 9, 'y', (u) => {
+        _q[0] = -(u * u) * (q.walking ? 14 : 4) - Math.sin(t * (q.walking ? 10 : 2) - u * 3.5) * u * 6 * w; _q[1] = 0; return _q;
+      }, 1, p.vn);
+    } else K.put(p.name, p.pv, p.x, p.y, p.rot, p.sx, p.sy, 1, p.vn);
+  }
+}
+
+function die(e, world, rig) {
+  e._pcorpse = true;
+  claimDebris(world, e);
+  const pieces = [];
+  for (let i = 0; i < NP; i++) {
+    const p = PL[i];
+    const heavy = p.name === 'torso' || p.name === 'tails';
+    // collapses forward: the big body pitches over, head/hat/shovel/lantern fly
+    pieces.push({ ...p, vx: (heavy ? 50 : 30) + K.frand(-70, 90), vy: -K.frand(60, 240) * (heavy ? 0.4 : 1), vr: (heavy ? 1.6 : K.frand(-8, 8)), r: heavy ? 10 : 3 });
+  }
+  const lx = PL.find((p) => p.name === 'lantern');
+  K.spawnCorpse(world, e, rig, pieces, {
+    life: 1.8, fade: 0.6, bounce: 0.18,
+    dust: { n: 12, w: 26, h: 20, col: '#5a4a3a' },
+    after: lx ? (age) => { if (age < 0.5) K.glow(lx.x, lx.y + 8, 30 * (1 - age * 1.6), '#ffb050', 0.9 * (1 - age * 2)); } : null,
+  });
+}
+
+export function draw(ctx, e, world, o, rig) {
+  const q = pose(e);
+  const hpK = e.stats?.maxHp ? e.hp / e.stats.maxHp : 1;
+  const dl = e.dying > 0 ? 2 : hpK < 0.3 ? 2 : hpK < 0.6 ? 1 : 0;
+  if (e.dying > 0 && world) {
+    if (!e._pcorpse) { K.begin(ctx, rig, 0); layout(e, q, dl); K.end(); die(e, world, rig); }
+    return;
+  }
+  const t = e.t ?? 0;
+  const sq = K.squashK(e);
+  if (sq > 0) ctx.scale(1 + 0.05 * sq, 1 - 0.05 * sq);
+  K.begin(ctx, rig, K.flashK(e, o));
+  K.shadow(28, 0.5);
+  const L = layout(e, q, dl);
+  drawAll(e, q);
+  if (!o.flash) {
+    // amber eyes under the brim (flare on wind-ups), lantern light with render-RNG flicker
+    K.pivotPos('head', 'a', 'eye', L.nx, L.ny, L.hr, 1, 1, _q);
+    K.glow(_q[0], _q[1], 3.2 + 3 * q.tele, '#ffb040', 0.7 + 0.3 * q.tele);
+    const lan = PL.find((p) => p.name === 'lantern');
+    if (lan) {
+      K.pivotPos('lantern', 'a', 'glow', lan.x, lan.y, lan.rot, 1, 1, _q);
+      const fl = 0.85 + 0.15 * Math.sin(t * 13) + (dl === 2 ? (K.fr() - 0.5) * 0.35 : 0);
+      K.glow(_q[0], _q[1], 22 * fl, '#ffb050', 0.55 * fl);
+      K.glow(_q[0], _q[1], 6, '#fff0c0', 0.8 * fl);
+    }
+    if (q.trail) swingTrail(ctx, L.sfx, L.sfy, q.trail[0], q.trail[1], 17 + 16 + 30, 16, '#ffcf90', q.trail[2] * 0.85);
+  }
+  if (q.tele > 0.4) glint(ctx, L.tipx, L.tipy, 5 + 5 * q.tele, '#ffd8a0', (q.tele - 0.4) / 0.6);
+  K.end();
+  // impact dust / scoop spray: render-only particles in camera space
+  if (world) {
+    const pool = e._fx ?? (e._fx = new K.FxPool(26));
+    const f = e.facing < 0 ? -1 : 1, sc = e.scale || 1;
+    if (q.strike > 0.9 && !e._slamFx) {
+      e._slamFx = true;
+      for (let i = 0; i < 10; i++) pool.add(2, e.cx + f * sc * (L.tipx + K.frand(-8, 8)), e.bottom - K.frand(0, 6), K.frand(-90, 90), K.frand(-80, -20), K.frand(0.5, 0.9), K.frand(5, 10), '#6a5a48');
+      for (let i = 0; i < 6; i++) pool.add(4, e.cx + f * sc * L.tipx, e.bottom - 4, K.frand(-160, 160), K.frand(-320, -120), K.frand(0.5, 0.8), K.frand(1.5, 3), '#4a3a2a');
+    }
+    if (q.strike <= 0) e._slamFx = false;
+    if (q.scoop > 0.8 && !e._scoopFx) { e._scoopFx = true; for (let i = 0; i < 8; i++) pool.add(4, e.cx + f * sc * L.tipx, e.bottom - 6, f * K.frand(40, 220), K.frand(-360, -160), K.frand(0.4, 0.7), K.frand(1.5, 3), '#5a4230'); }
+    if (q.scoop <= 0) e._scoopFx = false;
+    if (dl === 2 && K.fr() < 0.06) pool.add(3, e.cx + f * sc * K.frand(-10, 14), e.bottom - K.frand(40, 80) * sc, K.frand(-10, 10), K.frand(-40, -15), K.frand(0.4, 0.8), K.frand(1.5, 2.5), '#ff9a40');
+    pool.step(K.clockOf(e, world));
+    if (pool.n && o.cam) { ctx.setTransform(o.cam); pool.draw(ctx); }
+  }
+}

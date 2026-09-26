@@ -8,6 +8,7 @@ const id = argv[0];
 const val = (k, d) => { const i = argv.indexOf('--' + k); return i > 0 ? argv[i + 1] : d; };
 const mobile = argv.includes('--mobile');
 const dpr = +val('dpr', mobile ? 3 : 1.5), frames = +val('frames', 900), q = val('quality', null);
+const setq = val('set', '');   // 예: --set halos=0,crackGlow=0,strands=0,particles=0 (렌더러 st.q 덮어쓰기 → 기능별 비용 분해)
 const mod = await import(`./poses/${id}.mjs`);
 const s = await open({ url: `index.html?scene=stage&stage=${mod.STAGE}&room=boss`, mobile, dpr });
 if (mobile) await s.page.evaluate(() => {});
@@ -15,7 +16,7 @@ if (q) await s.page.evaluate((q) => { window.__game.settings.quality = q; window
 await startFight(s.page);
 const bake = await waitPainted(s.page, id);
 await freeze(s.page);
-const res = await s.page.evaluate(async ([script, frames]) => {
+const res = await s.page.evaluate(async ([script, frames, setq]) => {
   const g = window.__game, w = g.world, b = w.boss, p = w.player, A = b.A, H0 = { ...b.main.hole };
   p.hp = 1e9; p.stats.maxHp = 1e9;
   let x = 99; Math.random = () => { x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0; return x / 4294967296; };
@@ -26,6 +27,10 @@ const res = await s.page.evaluate(async ([script, frames]) => {
   const ctx = g.ctx;
   const patch = () => {
     const pr = b._painted?.proxy;
+    if (pr && setq && !pr.__q) {
+      pr.__q = true;
+      for (const kv of setq.split(',')) { const [k2, v] = kv.split('='); if (k2 === 'particles') { if (v === '0') pr.st.P.draw = () => {}; } else pr.st.q = { ...pr.st.q, [k2]: v === '0' ? 0 : v === '1' ? 1 : +v }; }
+    }
     if (pr && !pr.__pt) { const od = pr.draw.bind(pr); pr.__pt = true; pr.draw = (c, wd) => { if (mode !== 'painted') return; const t0 = performance.now(); od(c, wd); stats.painted.js.push(performance.now() - t0); }; }
     b.draw = (c, wd) => { if (mode !== 'vector') return; const t0 = performance.now(); vectorDraw.call(b, c, wd); stats.vector.js.push(performance.now() - t0); };
   };
@@ -48,7 +53,7 @@ const res = await s.page.evaluate(async ([script, frames]) => {
   out.rasterPainted = +(out.painted.frameMed - out.none.frameMed).toFixed(2);
   out.rasterVector = +(out.vector.frameMed - out.none.frameMed).toFixed(2);
   return out;
-}, [mod.BENCH, frames]);
-console.log(JSON.stringify({ id, dpr, mobile, bake, ...res }, null, 1));
+}, [mod.BENCH, frames, setq]);
+console.log(JSON.stringify({ id, dpr, mobile, set: setq, bake, ...res }, null, 1));
 console.log(s.errors.join('\n') || 'NO ERRORS');
 await s.close();

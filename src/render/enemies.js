@@ -48,6 +48,7 @@ export function drawEnemy(ctx, e, world) {
   const pm = paintedEnemiesOn() ? PAINTED_ENEMIES[e.def.render] : null;
   const rig = pm ? requestRig(pm.spec) : null;
   ctx.save();
+  const cam = rig?.ready ? ctx.getTransform() : null;   // 카메라 공간 (채색 렌더러의 월드 좌표 파티클용)
   ctx.translate(e.cx, e.bottom);
   ctx.scale(e.facing < 0 ? -1 : 1, 1);
   if (e.scale && e.scale !== 1) ctx.scale(e.scale, e.scale);
@@ -59,7 +60,7 @@ export function drawEnemy(ctx, e, world) {
     const q0 = ctx.imageSmoothingQuality;
     ctx.save();
     if (k < 1) ctx.globalAlpha *= k;
-    pm.draw(ctx, e, world, { flash }, rig);
+    pm.draw(ctx, e, world, { flash, cam }, rig);
     ctx.restore();
     ctx.imageSmoothingQuality = q0;
   } else {
