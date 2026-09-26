@@ -73,7 +73,7 @@ export function createBackground(stage, map) {
       ctx.drawImage(img, ox, oy, iw, ih);
       if (iw < vw) { ctx.save(); ctx.scale(-1, 1); ctx.drawImage(img, -ox, oy, iw, ih); ctx.restore(); }
       // 어둡게 눌러서 게임 레이어와 분리
-      ctx.fillStyle = rgba(theme.sky[2], 0.28);
+      ctx.fillStyle = rgba(theme.sky[2], 0.12);
       ctx.fillRect(0, 0, vw, vh);
     } else if (theme.moon) {
       ctx.save(); ctx.globalCompositeOperation = 'lighter';
@@ -89,9 +89,12 @@ export function createBackground(stage, map) {
   // 월드 좌표에서 그리되, 카메라 이동보다 느리게 (패럴랙스)
   bg.drawMid = (ctx, cam, t) => {
     const vw = cam.vw, vh = cam.vh;
+    // 클링 원경이 있으면 절차적 실루엣은 생략 (그림과 겹쳐 이질감이 생김)
+    if (assets.get(stage.bg) && !stage.forceSilhouette) return;
     for (const layer of [0, 1]) {
       const f = layer === 0 ? 0.35 : 0.6;
-      const col = layer === 0 ? rgba(theme.sky[2], 0.55) : rgba('#000000', 0.55);
+      const painted = !!assets.get(stage.bg); // 클링 원경이 있으면 실루엣은 옅게
+      const col = layer === 0 ? rgba(theme.sky[2], painted ? 0.18 : 0.55) : rgba('#000000', painted ? 0.32 : 0.55);
       ctx.save();
       ctx.translate(cam.x * f, cam.y * f * 0.5);
       ctx.fillStyle = col;

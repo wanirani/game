@@ -619,7 +619,7 @@ export class Player extends Entity {
   }
 
   lights(L) {
-    L.add(this.cx, this.cy - 10, 210, '#ffe0c0', 0.55, false);
+    L.add(this.cx, this.cy - 10, 320, '#ffe0c0', 0.85, false);
     const aura = this.look?.aura;
     if (aura) L.add(this.cx, this.cy, 110, aura.color, 0.5);
     if (this.buffs.holyaura) L.add(this.cx, this.cy, 180, '#fff2b0', 0.8);

@@ -83,7 +83,8 @@ export class World {
     this.boss = null; this.bossActive = false; this.arena = null;
     this.tiles = new TileRenderer(this.stage, this.map);
     this.bg = createBackground({ ...this.stage, ...(room.theme ? { theme: room.theme } : {}) }, this.map);
-    this.lighting.darkness = room.darkness ?? this.stage.darkness ?? 0.4;
+    // 가독성: 스테이지 어둠 값을 완화 (촛불·횃불 광원 대비는 유지)
+    this.lighting.darkness = Math.min(0.6, (room.darkness ?? this.stage.darkness ?? 0.4) * 0.62);
     this.lighting.color = this.stage.darkColor ?? '#06020c';
     this.camera.setView(this.game.viewW, this.game.viewH);
     this.camera.setBounds(0, 0, this.map.pxW, this.map.pxH);
