@@ -15,7 +15,7 @@ import { TRACKS } from '../data/music.js';
 
 const LOOKAHEAD = 0.16;          // 스케줄 선행 시간(초)
 const TICK_MS = 25;              // 스케줄러 주기
-const MUSIC_TRIM = 0.62, SFX_TRIM = 0.78;
+const MUSIC_TRIM = 1.0, SFX_TRIM = 1.1;
 const MAX_SFX = 26;              // 동시 효과음 인스턴스 상한
 const MAX_MUSIC_VOICES = 90;     // 음악 동시 보이스 안전 상한
 const E0 = {};
@@ -477,7 +477,7 @@ const INST = {
     },
   },
   timp: {
-    rev: 0.4, norm: 1.3,
+    rev: 0.4, norm: 0.8,
     fx(e, ch, n) { ch.lp = e.ctx.createBiquadFilter(); ch.lp.type = 'lowpass'; ch.lp.frequency.value = 320; ch.lp.connect(n); return n; },
     play(e, ch, m, t, d, v) {
       const c = e.ctx, f = mtof(m), g = c.createGain(), a = e.osc('sine', f * 1.05, t);
@@ -1200,7 +1200,7 @@ class Player {
         const ch = this.chans[x.c];
         if (!ch) continue;
         if (x.c >= 0 && ch.inst !== INST.kit && e.voices > MAX_MUSIC_VOICES) continue;
-        ch.inst.play(e, ch, x.m, t, Math.max(0.03, x.d * spb), x.v);
+        ch.inst.play(e, ch, x.m, t < now ? now : t, Math.max(0.03, x.d * spb), x.v * (0.93 + R() * 0.1)); // 세기 미세 흔들림(인간미)
         this.notes++;
       }
       const end = this.st + sec.beats * spb;
@@ -1231,6 +1231,12 @@ class AudioSystem {
   constructor() {
     this.ctx = null; this.eng = null; this.musicVol = 0.6; this.sfxVol = 0.8;
     this.want = null; this.player = null; this.hidden = false; this.timer = 0;
+    // iOS 사파리 등: touchend/click 제스처에서만 오디오가 풀리는 환경 대비 (한 번 풀리면 해제)
+    if (typeof window !== 'undefined' && window.addEventListener) {
+      const evs = ['touchend', 'click', 'keydown', 'pointerup'];
+      const h = () => { this.unlock(); if (this.ctx && this.ctx.state === 'running') for (const ev of evs) window.removeEventListener(ev, h, true); };
+      for (const ev of evs) window.addEventListener(ev, h, { capture: true, passive: true });
+    }
   }
   get current() { return this.want; }
   unlock() {

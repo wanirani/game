@@ -148,7 +148,49 @@ window.__sfxTest = async (names = SFX_NAMES) => {
   }
   return res;
 };
-$('report').textContent = Object.entries(window.__audioCompile()).map(([k, v]) => `${k.padEnd(10)} ${v.error ? '오류 ' + v.error : `${v.bars}마디 ${v.notes}노트 루프 ${v.loopSec}s ${v.warn.length ? '⚠ ' + v.warn.join(' / ') : ''}`}`).join('\n');
+// ── 스펙트로그램 (?spec=1 : 효과음 전체, ?spec=트랙ID : 곡 8초) ──
+function fft(re, im) {
+  const n = re.length;
+  for (let i = 1, j = 0; i < n; i++) { let bit = n >> 1; for (; j & bit; bit >>= 1) j ^= bit; j ^= bit; if (i < j) { [re[i], re[j]] = [re[j], re[i]]; [im[i], im[j]] = [im[j], im[i]]; } }
+  for (let len = 2; len <= n; len <<= 1) {
+    const a = -2 * Math.PI / len, wr = Math.cos(a), wi = Math.sin(a);
+    for (let i = 0; i < n; i += len) { let cr = 1, ci = 0; for (let k = 0; k < len / 2; k++) { const ur = re[i + k], ui = im[i + k], vr = re[i + k + len / 2] * cr - im[i + k + len / 2] * ci, vi = re[i + k + len / 2] * ci + im[i + k + len / 2] * cr; re[i + k] = ur + vr; im[i + k] = ui + vi; re[i + k + len / 2] = ur - vr; im[i + k + len / 2] = ui - vi; const t = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = t; } }
+  }
+}
+function drawSpec(cv, b, sec) {
+  const g = cv.getContext('2d'), W = cv.width, H = cv.height, d = b.getChannelData(0), sr = b.sampleRate, N = 1024;
+  g.fillStyle = '#000'; g.fillRect(0, 0, W, H);
+  const hop = Math.max(1, Math.floor((sr * sec) / W));
+  const re = new Float32Array(N), im = new Float32Array(N);
+  for (let x = 0; x < W; x++) {
+    const o = x * hop; re.fill(0); im.fill(0);
+    for (let i = 0; i < N && o + i < d.length; i++) re[i] = d[o + i] * (0.5 - 0.5 * Math.cos((2 * Math.PI * i) / N));
+    fft(re, im);
+    for (let y = 0; y < H; y++) {
+      const f = 40 * Math.pow(16000 / 40, 1 - y / H), k = Math.round((f / sr) * N);
+      const m = Math.hypot(re[k], im[k]), db = 20 * Math.log10(m + 1e-9), v = Math.max(0, Math.min(1, (db + 50) / 50));
+      g.fillStyle = `hsl(${30 + (1 - v) * 250},90%,${v * 60}%)`; g.fillRect(x, y, 1, 1);
+    }
+  }
+}
+const SPEC = new URLSearchParams(location.search).get('spec');
+if (SPEC) {
+  (async () => {
+    document.querySelector('main').innerHTML = '<h2>스펙트로그램</h2><div id="specs" class="grid" style="grid-template-columns:repeat(auto-fill,minmax(236px,1fr));gap:2px"></div>';
+    const names = SPEC === '1' ? SFX_NAMES : SPEC.split(',');
+    for (const n of names) {
+      const isT = !!TRACKS[n], sec = isT ? 8 : 1.6;
+      const oc = new OfflineAudioContext(2, Math.floor(44100 * (sec + 0.7)), 44100), eng = new Engine(oc); eng.setVolumes(0.6, 0.8);
+      if (isT) eng.playTrack(n, 0.5, 0.02).schedule(sec + 0.7); else eng.sfx(n, { delay: 0.6 });
+      const b = await oc.startRendering();
+      const off = oc.createBuffer(1, Math.floor(44100 * sec), 44100); off.getChannelData(0).set(b.getChannelData(0).subarray(Math.floor(44100 * 0.6), Math.floor(44100 * 0.6) + off.length));
+      const box = document.createElement('div'); box.innerHTML = `<small>${n}</small>`; const cv = document.createElement('canvas'); cv.width = isT ? 1200 : 230; cv.height = 64; cv.style.height = '64px';
+      box.append(cv); $('specs').append(box); drawSpec(cv, off, sec);
+    }
+    document.body.dataset.done = '1';
+  })();
+}
+if ($('report')) $('report').textContent = Object.entries(window.__audioCompile()).map(([k, v]) => `${k.padEnd(10)} ${v.error ? '오류 ' + v.error : `${v.bars}마디 ${v.notes}노트 루프 ${v.loopSec}s ${v.warn.length ? '⚠ ' + v.warn.join(' / ') : ''}`}`).join('\n');
 </script>
 </body>
 </html>

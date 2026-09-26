@@ -20,7 +20,7 @@ import { SCRIPTS, resolveNpcScript } from '../../data/story.js';
 import * as QuestRt from '../../game/quests.js';
 import { TOWN_STAGE, BUILDINGS, TOWN_NPCS, TOWN_PROPS, TOWN_TALK, eliseInTown } from '../../data/town.js';
 import { FLOOR, drawFacades, facadeLights, prebakeFacades, setFacadeScale, anvilPos, glow } from './facades.js';
-import { padHidden } from './common.js';
+import { padHidden, uiPanel, uiButton, uiHints } from './common.js';
 
 const RELIC_IDS = ['k_relic_1', 'k_relic_2', 'k_relic_3', 'k_relic_4', 'k_relic_5'];
 
@@ -38,7 +38,7 @@ export class HubScene extends Scene {
     this.menuOpen = false; this.menu = null;
     this.hint = null; this.anvilT = 1.2;
     this.boardInfo = { boardNew: false, boardClaim: false };
-    setFacadeScale(Math.max(1, g.scale || 1));
+    setFacadeScale(g.settings?.quality === 'low' ? 1 : Math.max(1, g.scale || 1));
     prebakeFacades();
     this.buildWorld(this.from ? 'gate' : null);
     this.banner = { t: 0, text: '에슈빌', sub: this.from ? '무사히 돌아왔다 — 잠시 숨을 고르자' : '어둠 속에 등불이 남은 마지막 마을' };
@@ -77,7 +77,7 @@ export class HubScene extends Scene {
     w.drawNPC = (ctx, npc) => this.drawNpc(ctx, npc, w);
     // 시작 위치
     const p = w.player;
-    if (spawn === 'gate') { const gb = BUILDINGS.find((b) => b.kind === 'gate'); p.x = gb.door * TILE - 60; p.facing = -1; }
+    if (spawn === 'gate') { const gb = BUILDINGS.find((b) => b.kind === 'gate'); p.x = gb.door * TILE - 120; p.facing = -1; }
     else if (typeof spawn === 'number') { p.x = spawn; if (facing) p.facing = facing; }
     p.y = FLOOR - p.h;
     w.camera.follow(p, 1 / 60, true);
@@ -173,7 +173,10 @@ export class HubScene extends Scene {
       return;
     }
     w.syncRun?.();
-    g.push(name, { world: w, from: 'hub' });
+    if (this.entering) return;
+    this.entering = true;
+    // 문이 열리며 짧게 암전 → 장면 진입
+    g.fadeOut(() => { this.entering = false; g.push(name, { world: w, from: 'hub' }); }, 0.16);
   }
 
   onResume() {
@@ -327,7 +330,7 @@ export class HubScene extends Scene {
 
     // ── 우상단: 골드 · 유물 · 버튼 ──
     const gw = 190, gx = vw - gw - 14, gy = 12;
-    panel(ctx, gx, gy, gw, 40, { corner: false });
+    uiPanel(ctx, gx, gy, gw, 40, { corner: false });
     drawIcon(ctx, 'coin', gx + 22, gy + 20, 24);
     text(ctx, fmt(st.gold ?? 0), gx + gw - 14, gy + 27, { size: 19, weight: 900, family: FONT.num, color: '#ffd84a', align: 'right' });
     text(ctx, 'G', gx + 40, gy + 26, { size: 12, weight: 800, family: FONT.num, color: '#b89a50' });
@@ -344,8 +347,8 @@ export class HubScene extends Scene {
     }
     const bwd = 88, bh = 40, by = gy + 80;
     const rParty = { x: vw - 14 - bwd * 2 - 8, y: by, w: bwd, h: bh }, rMenu = { x: vw - 14 - bwd, y: by, w: bwd, h: bh };
-    if (g.registry.party) { button(ctx, rParty, '동료', { size: 15 }); this.hudRects.party = rParty; }
-    button(ctx, rMenu, '메뉴', { size: 15 }); this.hudRects.menu = rMenu;
+    if (g.registry.party) { uiButton(ctx, rParty, '동료', { size: 15 }); this.hudRects.party = rParty; }
+    uiButton(ctx, rMenu, '메뉴', { size: 15 }); this.hudRects.menu = rMenu;
 
     // ── 하단: 상호작용 안내 ──
     const h = this.hint;
@@ -357,11 +360,11 @@ export class HubScene extends Scene {
       const pulse = 0.5 + 0.5 * Math.sin(this.t * 5);
       ctx.save();
       ctx.shadowColor = `rgba(232,200,114,${0.3 + pulse * 0.3})`; ctx.shadowBlur = 16;
-      button(ctx, rA, '▲  ' + label, { size: 16, sub, selected: true });
+      uiButton(ctx, rA, '▲  ' + label, { size: 16, sub, selected: true });
       ctx.restore();
       this.hudRects.act = rA;
     }
-    if (!input.touchMode) text(ctx, '←→ 이동   Z 점프   C 대시   ▲ 들어가기·대화   Esc 메뉴', vw / 2, vh - 10, { size: 12, align: 'center', color: 'rgba(200,184,160,0.8)', ow: 2 });
+    if (!h) uiHints(ctx, [[['←', '→'], '이동'], ['Z', '점프'], ['C', '대시'], ['↑', '들어가기·대화'], ['Esc', '메뉴']], vw / 2, vh - 8);
   }
 
   drawBanner(ctx, vw, vh) {
@@ -396,7 +399,7 @@ export class HubScene extends Scene {
     this.menuItems.forEach(([label, sub], i) => {
       const r = { x: vw / 2 - bw / 2, y: y0 + i * (bh + gap), w: bw, h: bh };
       this.menu.hit(i, r);
-      button(ctx, r, label, { selected: this.menu.index === i, sub: sub || undefined, size: 17 });
+      uiButton(ctx, r, label, { selected: this.menu.index === i, sub: sub || undefined, size: 17 });
     });
     ctx.restore();
   }

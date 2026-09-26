@@ -44,7 +44,7 @@ export const BOSSES_A = {
   },
   b_grimoire: {
     id: 'b_grimoire', name: '그리모어', title: '금단의 살아있는 마도서', hp: 1200, atk: 26, def: 6, res: 18, exp: 800, score: 40000,
-    size: { w: 128, h: 146 }, flying: true, contact: 0.7, material: 'paper', weak: ['fire'], resist: ['dark', 'thunder'],
+    size: { w: 150, h: 178 }, flying: true, contact: 0.7, material: 'paper', weak: ['fire'], resist: ['dark', 'thunder'],
     phases: [0.6, 0.3], music: 'boss', portrait: 'portraits/b_grimoire', stageId: 's06', drops: ['u_grimoire'],
     light: { r: 250, color: '#b060ff', i: 0.8 }, deathColor: '#c080ff', deathFx: 'magic',
     intro: '(거대한 표지의 눈이 번쩍 뜨이고, 책장이 이빨처럼 갈린다.)',
@@ -52,7 +52,7 @@ export const BOSSES_A = {
   },
   b_chimera: {
     id: 'b_chimera', name: '키메라 호문쿨루스', title: '연금술이 낳은 세 머리 괴수', hp: 1400, atk: 28, def: 10, res: 10, exp: 900, score: 45000,
-    size: { w: 196, h: 146 }, contact: 0.8, material: 'flesh', weak: ['ice', 'holy'], resist: ['fire'],
+    size: { w: 210, h: 160 }, contact: 0.8, material: 'flesh', weak: ['ice', 'holy'], resist: ['fire'],
     phases: [0.6, 0.3], music: 'boss2', portrait: 'portraits/b_chimera', stageId: 's07', drops: ['u_chimera'],
     light: { r: 220, color: '#7cff5a', i: 0.6 }, deathColor: '#9aff6a', deathFx: 'ember',
     intro: '(사자, 산양, 뱀의 울음이 한데 뒤엉켜 실험실을 뒤흔든다.)',

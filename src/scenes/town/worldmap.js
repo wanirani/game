@@ -14,7 +14,7 @@ import { ITEMS } from '../../data/items.js';
 import { CHARACTERS } from '../../data/characters.js';
 import { currentHero } from '../../game/state.js';
 import { drawIcon } from '../../render/icons.js';
-import { hitRect, padHidden } from './common.js';
+import { hitRect, padHidden, ensureState, uiPanel, uiButton, uiHints } from './common.js';
 import { glow } from './facades.js';
 
 const RANK_COL = { SSS: '#ffe070', SS: '#ff5a4a', S: '#ffa640', A: '#c07cff', B: '#5aa8ff', C: '#7ee07e', D: '#a0a0a0' };
@@ -24,7 +24,7 @@ const VILLAGE = { x: 0.05, y: 0.9 };
 
 export class WorldMapScene extends Scene {
   enter(params = {}) {
-    const g = this.game, st = g.state;
+    const g = this.game, st = ensureState(g);
     this.world = params.world ?? null;
     this.fx = new Particles(500);
     this.reveal = null; this.depart = null;
@@ -51,7 +51,7 @@ export class WorldMapScene extends Scene {
     this.index = idx;
     this.tok = null; // 캐릭터 말 위치
     assets.preload(['bg/worldmap']);
-    audio.sfx('page', { vol: 0.5 });
+    audio.sfx('card', { vol: 0.5 });
     padHidden(true);
   }
   exit() { padHidden(false); }
@@ -90,8 +90,9 @@ export class WorldMapScene extends Scene {
     }
     if (input.pressed('confirm')) { this.start(); return; }
     if (input.pressed('cancel') || (input.pressed('menu') && !input.pressed('confirm'))) this.close();
-    // 말 이동
-    const tp = this.pos(this.nodes[this.index].stage.mapPos);
+    // 말 이동 (이름표가 위에 있으면 노드 왼쪽에 선다)
+    const cn = this.nodes[this.index], tp0 = this.pos(cn.stage.mapPos);
+    const tp = this.labelSide(cn) < 0 ? { x: tp0.x - 48, y: tp0.y + 36 } : tp0;
     if (!this.tok) this.tok = { x: tp.x, y: tp.y };
     const k = 1 - Math.pow(0.0005, dt);
     this.tok.x = lerp(this.tok.x, tp.x, k); this.tok.y = lerp(this.tok.y, tp.y, k);
@@ -172,7 +173,7 @@ export class WorldMapScene extends Scene {
     });
     text(ctx, `${P.relics?.length ?? 0}/5`, rx + 5 * 34 + 6, 36, { size: 15, weight: 900, family: FONT.num, color: (P.relics?.length ?? 0) >= 5 ? '#ff6a7a' : '#efe4cf' });
     this.closeRect = { x: vw - 64, y: 9, w: 52, h: 40 };
-    button(ctx, this.closeRect, '✕', { size: 20 });
+    uiButton(ctx, this.closeRect, '✕', { size: 20 });
     this.info(ctx, L);
     if (this.reveal) this.drawReveal(ctx, L);
     if (this.depart) { ctx.fillStyle = `rgba(120,0,20,${Math.min(0.5, this.depart.t)})`; ctx.fillRect(0, 0, vw, vh); }
@@ -256,12 +257,29 @@ export class WorldMapScene extends Scene {
     // 이름
     if (open || sel) {
       const label = open ? n.stage.name : '???';
-      // 아래쪽에 다른 노드가 가까우면 이름을 위로
-      const below = this.nodes.some((o) => o !== n && Math.abs(this.pos(o.stage.mapPos).x - p.x) < 70 && this.pos(o.stage.mapPos).y - p.y > 0 && this.pos(o.stage.mapPos).y - p.y < 58);
-      const ly = below ? p.y - R - (rec?.rank ? 16 : 9) : p.y + R + 16;
+      const ly = this.labelSide(n) < 0 ? p.y - R - (rec?.rank ? 16 : 9) : p.y + R + 16;
       text(ctx, label, p.x, ly, { size: sel ? 14 : 12, weight: 800, family: FONT.title, align: 'center', color: sel ? '#5a0a10' : INK, outline: 'rgba(245,232,200,0.92)', ow: 4 });
     }
     ctx.restore();
+  }
+
+  /** 이름표 위치(아래 +1 / 위 -1): 다른 노드·이름표와 덜 겹치는 쪽. 화면 폭이 바뀌면 다시 계산 */
+  labelSide(n) {
+    const vw = this.game.viewW;
+    if (this._lbW !== vw) {
+      this._lbW = vw; this._lb = new Map();
+      const boxes = [];
+      const hitN = (bx) => this.nodes.reduce((a, o) => { const q = this.pos(o.stage.mapPos); return a + (q.x + 22 > bx.x && q.x - 22 < bx.x + bx.w && q.y + 22 > bx.y && q.y - 22 < bx.y + bx.h ? 1 : 0); }, 0);
+      const hitB = (bx) => boxes.reduce((a, b) => a + (b.x < bx.x + bx.w && b.x + b.w > bx.x && b.y < bx.y + bx.h && b.y + b.h > bx.y ? 1 : 0), 0);
+      for (const o of this.nodes) {
+        const q = this.pos(o.stage.mapPos), w = (o.stage.name?.length ?? 4) * 13 + 8;
+        const dn = { x: q.x - w / 2, y: q.y + 26, w, h: 16 }, up = { x: q.x - w / 2, y: q.y - 44, w, h: 16 };
+        const sd = hitN(dn) * 2 + hitB(dn), su = hitN(up) * 2 + hitB(up) + 0.5;
+        const side = su < sd ? -1 : 1;
+        this._lb.set(o.id, side); boxes.push(side < 0 ? up : dn);
+      }
+    }
+    return this._lb.get(n.id) ?? 1;
   }
 
   token(ctx, x, y) {
@@ -281,7 +299,7 @@ export class WorldMapScene extends Scene {
     const { vw, vh } = L, st = this.state, P = st.progress;
     const n = this.nodes[this.index], s = n.stage, open = this.isOpen(n), rec = P.cleared?.[n.id];
     const x = 14, y = vh - 146, w = vw - 28, h = 132;
-    panel(ctx, x, y, w, h, { glow: n.id === 's13' ? 'rgba(160,60,255,0.5)' : 'rgba(180,20,40,0.35)' });
+    uiPanel(ctx, x, y, w, h, { glow: n.id === 's13' ? 'rgba(160,60,255,0.5)' : 'rgba(180,20,40,0.35)' });
     // 제목
     const chapTxt = n.arena ? 'ARENA' : `CHAPTER ${ROMAN[s.chapter] ?? s.chapter}`;
     text(ctx, chapTxt, x + 24, y + 26, { size: 12, weight: 800, family: FONT.num, color: n.id === 's13' ? '#d8a0ff' : '#c8a060' });
@@ -326,9 +344,9 @@ export class WorldMapScene extends Scene {
     const can = open && (!n.arena || this.game.registry.arcade);
     ctx.save();
     if (can) { ctx.shadowColor = `rgba(255,80,90,${0.4 + Math.sin(this.t * 4) * 0.2})`; ctx.shadowBlur = 18; }
-    button(ctx, this.goRect, can ? (n.arena ? '입장' : '출발!') : '잠김', { selected: can, disabled: !can, size: 22, sub: can && !n.arena && rec ? '다시 도전' : undefined });
+    uiButton(ctx, this.goRect, can ? (n.arena ? '입장' : '출발!') : '잠김', { selected: can, disabled: !can, size: 22, sub: can && !n.arena && rec ? '다시 도전' : undefined });
     ctx.restore();
-    if (!input.touchMode) text(ctx, '←→ 스테이지 선택   Z 출발   X 마을로', vw / 2, vh - 3, { size: 11, align: 'center', color: 'rgba(200,184,160,0.85)', ow: 2 });
+    uiHints(ctx, [[['←', '→'], '스테이지'], ['Z', '출발'], ['X', '마을로']], vw / 2, vh - 1);
   }
 
   drawReveal(ctx, L) {

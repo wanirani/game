@@ -641,7 +641,7 @@ const PAINT = {
 const baked = new Map();
 let bakeScale = 1;
 export function setFacadeScale(s) {
-  s = clamp(Math.round(s * 4) / 4, 1, 1.75);
+  s = clamp(Math.round(s * 4) / 4, 1, 1.5);
   if (s !== bakeScale) { bakeScale = s; baked.clear(); }
 }
 function getBaked(b) {
@@ -656,6 +656,13 @@ function getBaked(b) {
   c.lineJoin = 'round';
   b._win = []; b._lan = [];
   try { PAINT[b.kind]?.(c, b, new RNG(hashStr(b.id + ':facade'))); } catch (err) { console.error('[facade]', b.id, err); }
+  // 밤 색보정: 칠해진 픽셀만 남청색으로 눌러 원경(Kling 그림)과 톤을 맞춘다. 위쪽은 달빛이 남도록 덜 어둡게.
+  c.save();
+  c.globalCompositeOperation = 'source-atop';
+  const ng = c.createLinearGradient(0, y, 0, y + h);
+  ng.addColorStop(0, 'rgba(14,12,34,0.12)'); ng.addColorStop(0.6, 'rgba(12,8,26,0.26)'); ng.addColorStop(1, 'rgba(8,4,14,0.4)');
+  c.fillStyle = ng; c.fillRect(x, y, w, h);
+  c.restore();
   e = { cv, x, y, w, h };
   baked.set(b.id, e);
   return e;
@@ -751,8 +758,52 @@ function smoke(ctx, x, y, t, n = 7, col = '120,110,130', sparks = false) {
   }
 }
 
+/** 여관 앞 술통 위의 검은 고양이 「백작님」 (꼬리 흔들기 · 눈 깜빡임 · 귀 쫑긋) */
+function drawCat(ctx, x, y, t) {
+  ctx.save(); ctx.translate(x, y);
+  const tail = Math.sin(t * 1.7) * 0.5 + Math.sin(t * 0.6) * 0.3;
+  ctx.fillStyle = '#07050a'; ctx.strokeStyle = '#07050a'; ctx.lineCap = 'round';
+  // 꼬리
+  ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(8, -4); ctx.bezierCurveTo(20, -2, 22 + tail * 6, -14, 16 + tail * 10, -24 + Math.abs(tail) * 3); ctx.stroke();
+  // 몸 · 가슴
+  ctx.beginPath(); ctx.ellipse(2, -9, 10, 9, 0, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(-5, -14, 6, 9, -0.3, 0, TAU); ctx.fill();
+  // 머리
+  ctx.beginPath(); ctx.arc(-8, -25, 6.5, 0, TAU); ctx.fill();
+  const tw = Math.max(0, Math.sin(t * 0.9 + 1) - 0.92) * 20;
+  poly(ctx, [-14, -27, -13, -36 + tw, -9, -29]); ctx.fill();
+  poly(ctx, [-6, -29, -3, -36, -2, -27]); ctx.fill();
+  // 역광 테두리
+  ctx.strokeStyle = 'rgba(169,194,255,0.45)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(-8, -25, 6.5, -1.9, -0.3); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(2, -9, 10, 9, 0, -1.6, -0.2); ctx.stroke();
+  // 눈 (가끔 깜빡)
+  const blink = (t % 4.3) < 0.13;
+  if (!blink) {
+    ctx.globalCompositeOperation = 'lighter';
+    glow(ctx, -10.5, -26, 6, '#ffd84a', 0.6);
+    ctx.fillStyle = '#ffe070'; ctx.fillRect(-12.2, -27, 2.2, 1.8); ctx.fillRect(-8.6, -27, 2.2, 1.8);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  ctx.restore();
+}
+
+/** 붉은 달 앞을 스쳐 가는 박쥐 떼 (월드 좌표, 느린 패럴랙스) */
+function drawBats(ctx, cam, t) {
+  ctx.fillStyle = 'rgba(8,2,6,0.9)';
+  for (let i = 0; i < 5; i++) {
+    const period = 22 + i * 3.7;
+    const u = ((t + i * 7.3) % period) / period;
+    const x = cam.x + cam.vw * (1.15 - u * 1.4) + Math.sin(i * 4.1) * 60;
+    const y = 40 + i * 16 + Math.sin(t * 1.3 + i) * 14 + u * 30;
+    const f = Math.sin(t * 16 + i * 2) * 5, s = 0.8 + (i % 3) * 0.2;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 9 * s, y - f * s); ctx.lineTo(x - 4 * s, y + 2 * s); ctx.lineTo(x, y + 4 * s); ctx.lineTo(x + 4 * s, y + 2 * s); ctx.lineTo(x + 9 * s, y - f * s); ctx.closePath(); ctx.fill();
+  }
+}
+
 const LIVE = {
-  inn(ctx, b, t) { smoke(ctx, b._chim.x, b._chim.y, t); },
+  inn(ctx, b, t) { smoke(ctx, b._chim.x, b._chim.y, t); drawCat(ctx, 604, F - 58, t); },
   smith(ctx, b, t) {
     smoke(ctx, b._chim.x, b._chim.y, t + 3, 8, '90,80,90', true);
     // 화덕 불꽃
@@ -783,7 +834,7 @@ const LIVE = {
     text(ctx, b.name, b._label.x, b._label.y, { size: 16, weight: 800, family: FONT.title, color: '#f3d690', align: 'center', ow: 3 });
     const n = info?.boardClaim ? 2 : info?.boardNew ? 1 : 0;
     if (n) {
-      const cx = b.door * TILE + 24 + 120, y = F - 178 - Math.abs(Math.sin(t * 4)) * 10;
+      const cx = b.door * TILE + 24, y = F - 238 - Math.abs(Math.sin(t * 4)) * 10;
       ctx.globalCompositeOperation = 'lighter'; glow(ctx, cx, y, 30, n === 2 ? '#ffd84a' : '#ff6a4a', 0.7); ctx.globalCompositeOperation = 'source-over';
       text(ctx, n === 2 ? '★' : '!', cx, y + 9, { size: 26, weight: 900, family: FONT.num, color: n === 2 ? '#ffe070' : '#ff8a6a', align: 'center', ow: 4 });
     }
@@ -825,6 +876,7 @@ function drawLamp(ctx, x, t, k) {
 /** 중경 레이어에서 호출: 굽힌 파사드 + 움직이는 장식 */
 export function drawFacades(ctx, cam, t, info) {
   const L = cam.x - 60, R = cam.x + cam.vw + 60;
+  drawBats(ctx, cam, t);
   for (const b of BUILDINGS) {
     const e = getBaked(b);
     if (e.x + e.w < L || e.x > R) continue;

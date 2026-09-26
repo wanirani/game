@@ -25,9 +25,12 @@ const NO_SPAWN = new Set(['medusa_spawner', 'mimic', 'golden_bat']);
 /** 기둥 tx 에서 위→아래로 첫 바닥 윗면 y (없으면 맵 아래 - 2칸) */
 function groundY(map, tx) {
   tx = clamp(tx, 0, map.w - 1);
-  for (let ty = 1; ty < map.h; ty++) {
-    const t = map.typeAt(tx, ty), above = map.typeAt(tx, ty - 1);
-    if ((isSolidType(t) || t === T.ONEWAY) && !isSolidType(above) && ty > map.h * 0.45) return ty * TILE;
+  // 1순위: 화면 아래쪽 절반의 단단한 바닥, 2순위: 단방향 발판
+  for (const ok of [(t) => isSolidType(t), (t) => t === T.ONEWAY]) {
+    for (let ty = Math.floor(map.h * 0.45); ty < map.h; ty++) {
+      const t = map.typeAt(tx, ty), above = map.typeAt(tx, ty - 1);
+      if (ok(t) && !isSolidType(above) && above !== T.SPIKE) return ty * TILE;
+    }
   }
   return (map.h - 2) * TILE;
 }
@@ -216,7 +219,8 @@ export class BossRushScene extends ArcadeRunScene {
     this.log.push({ id: boss.def?.id, name: boss.def?.name ?? '', time: rt, perfect: !!perfect });
     const st = this.game.state;
     st.stats.bossKills = (st.stats.bossKills ?? 0) + 1;
-    for (let i = 0; i < 16; i++) setTimeout(() => w.fx?.burst('fire', boss.cx + rand(-80, 80), boss.cy + rand(-80, 80), 8, { speed: 200 }), i * 70);
+    w.fx.burst('fire', boss.cx, boss.cy, 30, { speed: 260, jitter: 60 });
+    w.fx.ring(boss.cx, boss.cy, { color: '#ffd070', r0: 20, r1: 220, life: 0.7, width: 8 });
     w.banner = { text: perfect ? 'PERFECT!' : 'ROUND CLEAR', sub: `${boss.def?.name ?? ''} 격파 · ${fmtClock(rt)}  +${fmt((base + timeBonus + perfect) * (w.diff.scoreMult ?? 1))}`, t: 3, color: perfect ? '#ffe070' : '#ffd0a0', big: true };
   }
   results(cleared) {
@@ -296,7 +300,7 @@ export class SurvivalScene extends ArcadeRunScene {
     this.phase = 'wave'; this.phaseT = 0;
     this.call = { main: this.bossWave ? `BOSS WAVE ${this.wave}` : `WAVE ${this.wave}`, sub: this.bossWave ? '거대한 기운이 다가온다…' : `적 ${n}마리 · 점수 배율 ×${this.mult.toFixed(2)}`, color: this.bossWave ? '#ff4a5a' : '#ffa640', t: 0 };
     audio.sfx(this.bossWave ? 'warning' : 'ready');
-    if (this.bossWave && this.bossId) setTimeout(() => this.spawnWaveBoss(), 1600);
+    this.bossSpawnT = this.bossWave && this.bossId ? 2.3 : 0;
   }
   level() { return Math.max(1, Math.round(this.P.lv * 0.6 + this.wave * 1.4)); }
   spawnOne(spec) {
@@ -330,12 +334,14 @@ export class SurvivalScene extends ArcadeRunScene {
     audio.sfx('boss_die');
     w.addScore((boss.def?.score ?? 20000));
     w.banner = { text: 'BOSS DOWN!', sub: `${boss.def?.name ?? ''} 격파`, t: 2.4, color: '#ffe070', big: true };
-    setTimeout(() => { if (!this.done) audio.music('arena'); }, 2500);
+    this.musicT = 2.5;
   }
   tick(dt) {
     const w = this.world;
     if (this.call) { this.call.t += dt / 2.2; if (this.call.t >= 1) this.call = null; }
     if (this.multFlash > 0) this.multFlash -= dt;
+    if (this.bossSpawnT > 0) { this.bossSpawnT -= dt; if (this.bossSpawnT <= 0) this.spawnWaveBoss(); }
+    if (this.musicT > 0) { this.musicT -= dt; if (this.musicT <= 0 && !this.done) audio.music('arena'); }
     if (this.phase !== 'intro0') this.clock += dt;
     if (this.phase === 'intro0' && this.phaseT > 2.4) this.startWave();
     if (this.phase === 'wave') {
@@ -346,7 +352,7 @@ export class SurvivalScene extends ArcadeRunScene {
         this.spawnOne(this.queue.shift());
         this.spawnT = Math.max(0.25, 0.9 - this.wave * 0.03);
       }
-      const bossPending = this.bossWave && this.bossId && this.phaseT < 2;
+      const bossPending = this.bossSpawnT > 0;
       if (!this.queue.length && alive === 0 && !bossPending && this.phaseT > 1.5) this.waveClear();
     }
     if (this.phase === 'clear' && this.phaseT > 3.2) this.startWave();

@@ -4,9 +4,9 @@
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
 import { text, FONT } from '../../core/ui.js';
-import { clamp, lerp, rand, ease, fmt, TAU } from '../../core/math.js';
+import { clamp, lerp, ease, fmt, TAU } from '../../core/math.js';
 import { MiniGame, innBackdrop, drawBtn, gPanel, goldText, record, GOLD } from './common.js';
-import { SLOT_SYMBOLS, SLOT_NAMES, slotSprite, glow, rr, star4 } from './art.js';
+import { SLOT_SYMBOLS, SLOT_NAMES, slotSprite, glow, rr } from './art.js';
 
 const COUNTS = { skull: 8, bat: 5, heart: 4, cross: 3, moon: 2, grail: 1, seven: 1 };
 const PAY = { skull: 2, bat: 3, heart: 6, cross: 12, moon: 30, grail: 80, seven: 100 };
@@ -124,7 +124,7 @@ export class SlotScene extends MiniGame {
     this.wins = wins; this.showT = 0;
     const notional = this.roundFree ? this.bet : this.roundBet;
     const pay = Math.round(notional * mult);
-    this.winAmt = pay; this.meter = 0;
+    this.winAmt = this.roundFree ? 0 : pay; this.meter = 0;
     this.tease = false;
     this.phase = 'ready';
     const top = wins.reduce((a, w) => (w.m > a.m ? w : a), { m: 0 });
@@ -132,7 +132,7 @@ export class SlotScene extends MiniGame {
       this.recent.unshift({ sym: top.sym, amt: this.roundFree ? 0 : pay, m: mult });
       if (this.recent.length > 5) this.recent.pop();
       const tier = jackpot ? 'jackpot' : mult >= 20 ? 'big' : 'win';
-      this.msg = jackpot ? '잭팟!!! 피의 7이 모였다!' : `${wins.length > 1 ? `${wins.length}줄 ` : ''}당첨! ${SLOT_NAMES[top.sym]} ×${mult}`;
+      this.msg = jackpot ? '잭팟!!! 피의 7이 모였다!' : `${wins.length > 1 ? `${wins.length}줄 ` : ''}당첨! ${SLOT_NAMES[top.sym]} ×${mult}${this.roundFree ? ' (무료 판)' : ''}`;
       this.msgCol = jackpot ? '#ffe070' : '#9af09a';
       const b = this.st.innGames.best;
       if (!this.roundFree) record(this.st, 'slotBest', pay);
@@ -146,12 +146,14 @@ export class SlotScene extends MiniGame {
     }
   }
 
-  step(dt, tap) {
+  animate(dt) {
     this.showT += dt; this.jackpotT += dt;
     this.meter = Math.min(this.winAmt, this.meter + Math.max(this.winAmt * dt * 1.2, 40 * dt));
     // 레버
     this.lever += (this.leverV - this.lever) * Math.min(1, dt * 18);
     if (this.lever > 0.95) this.leverV = 0;
+  }
+  step(dt, tap) {
     if (this.phase === 'spin') {
       this.spinT += dt;
       this.reels.forEach((r, i) => {

@@ -252,7 +252,7 @@ export class DocsTab extends Tab {
       cy += 44;
       cy += para(ctx, tech.desc ?? '', x + 20, cy, w - 40, { size: 13, color: PAL.bone, weight: 600, max: 2 });
       if (tech.mp) { text(ctx, `소모 MP ${tech.mp}`, x + 20, cy + 4, { size: 12, weight: 700, color: '#8ac8ff' }); cy += 18; }
-      text(ctx, '→ 는 바라보는 방향 기준입니다', x + 20, cy + 6, { size: 11, color: PAL.faint });
+      text(ctx, '→ 는 캐릭터가 바라보는 방향입니다', x + 20, cy + 6, { size: 11, color: PAL.faint });
       cy += 18;
     }
     if (d.stats) {

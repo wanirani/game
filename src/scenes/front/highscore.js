@@ -210,9 +210,9 @@ export class InitialsScene extends Scene {
   render(ctx) {
     const g = this.game, vw = g.viewW, vh = g.viewH, t = g.time;
     const k = ease.outCubic(clamp(this.t / 0.3, 0, 1));
-    ctx.fillStyle = `rgba(4,0,6,${0.84 * k})`; ctx.fillRect(0, 0, vw, vh);
+    ctx.fillStyle = `rgba(4,0,6,${0.93 * k})`; ctx.fillRect(0, 0, vw, vh);
     // 방사형 광선
-    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.12 * k;
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.07 * k;
     ctx.translate(vw / 2, vh * 0.45);
     for (let i = 0; i < 16; i++) { ctx.rotate(TAU / 16); ctx.fillStyle = i % 2 ? '#ffd070' : '#b3122e'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(vw, -60); ctx.lineTo(vw, 60); ctx.fill(); }
     ctx.restore();

@@ -75,7 +75,12 @@ export class DuelScene extends MiniGame {
   get F() { return FOES[this.foeIdx]; }
   unlocked(i) { return i <= this.st.innGames.duelRank; }
   canLeave() { return this.phase === 'ready' || this.phase === 'result'; }
-  onAgain() { this.resetStance(); }
+  onAgain() {
+    this.resetStance();
+    // 방금 새 결투자를 해금했다면 바로 그 상대를 고른다
+    if (this.pendingNext && this.foeIdx + 1 < FOES.length && this.unlocked(this.foeIdx + 1)) { this.foeIdx++; this.makeFoe(); this.say(this.F.taunt); }
+    this.pendingNext = false;
+  }
   resetStance() {
     for (const p of [this.me, this.foe]) { p.anim = 'idle'; p.animT = 0; p.move = null; p.kx = 0; p.dead = false; }
   }
@@ -162,6 +167,7 @@ export class DuelScene extends MiniGame {
       const avg = this.times.length ? this.times.reduce((a, b) => a + b, 0) / this.times.length : 0;
       let sub = win ? `${f.name} 격파! ${this.score[0]} : ${this.score[1]}` : `${this.score[0]} : ${this.score[1]} — ${f.name}의 승리`;
       if (avg) sub += ` · 평균 ${avg.toFixed(3)}초`;
+      this.pendingNext = win;
       if (win && this.foeIdx === this.st.innGames.duelRank && this.foeIdx < FOES.length) {
         this.st.innGames.duelRank = Math.min(FOES.length, this.foeIdx + 1);
         if (this.foeIdx + 1 < FOES.length) this.game.toast(`새 결투자 등장: ${FOES[this.foeIdx + 1].name}`, '#ffb070');
@@ -181,7 +187,7 @@ export class DuelScene extends MiniGame {
     return input.pressed('attack') || input.pressed('jump') || input.pressed('confirm') || input.pressed('sub');
   }
 
-  step(dt, tap) {
+  animate(dt) {
     const rdt = dt;
     // 슬로 모션
     if (this.slowT > 0) { this.slowT -= rdt; if (this.slowT <= 0) this.ts = 1; else this.ts = lerp(this.ts, 0.14, 0.2); }
@@ -209,7 +215,9 @@ export class DuelScene extends MiniGame {
     // 레터박스
     const cine = this.phase === 'standoff' || this.phase === 'draw' || this.phase === 'shot';
     this.bars += ((cine ? 1 : 0) - this.bars) * Math.min(1, rdt * 5);
-
+  }
+  step(dt, tap) {
+    const rdt = dt;
     if (this.phase === 'ready') {
       if (tap && tap.startsWith('foe:')) {
         const i = +tap.slice(4);

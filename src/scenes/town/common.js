@@ -11,12 +11,36 @@ import { drawIcon, drawSlot } from '../../render/icons.js';
 import * as Items from '../../data/items.js';
 import { STAT_INFO } from '../../game/stats.js';
 import { findItem, canEquip, addItem } from '../../game/inventory.js';
-import { currentHero } from '../../game/state.js';
+import { currentHero, newGameState } from '../../game/state.js';
 import { NPCS } from '../../data/npcs.js';
 import { TOWN_NPCS } from '../../data/town.js';
 import { glow } from './facades.js';
 import * as MenuUI from '../menu/common.js';
 
+/** 메뉴 담당의 고딕 UI 키트(frame/gbutton/hintRow/selBar)를 공유해 화면 간 이질감을 없앤다. 없으면 코어 ui 로 대체 */
+export function uiPanel(ctx, x, y, w, h, o = {}) {
+  if (MenuUI.frame) MenuUI.frame(ctx, x, y, w, h, { glowC: o.glow ?? null, corners: o.corner !== false, alpha: o.alpha ?? 1 });
+  else panel(ctx, x, y, w, h, o);
+}
+export function uiButton(ctx, r, label, { selected = false, disabled = false, size = 16, sub, color } = {}) {
+  if (!MenuUI.gbutton) return button(ctx, r, label, { selected, disabled, size, sub, color });
+  const hot = !disabled && (selected || hovered(r));
+  MenuUI.gbutton(ctx, r, label, { hot, disabled, size, sub, color, t: performance.now() / 1000 });
+  return !disabled && tappedR(r);
+}
+export function uiHints(ctx, items, x, y, align = 'center') {
+  if (input.touchMode) return;
+  if (MenuUI.hintRow) MenuUI.hintRow(ctx, items, x, y, { align, size: 11 });
+  else text(ctx, items.map(([k, d]) => `${Array.isArray(k) ? k.join('/') : k} ${d}`).join('   '), x, y, { size: 11, align, color: COLORS.dim });
+}
+function tappedR(r) { const p = input.pointer; return p.tapped && p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h; }
+function hovered(r) { const p = input.pointer; return p.active && !input.touchMode && p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h; }
+
+/** 테스트로 장면을 바로 열었을 때(?scene=shop 등) 세이브가 없으면 임시 상태를 만든다 */
+export function ensureState(game) {
+  if (!game.state) game.state = newGameState({ slot: 1, difficulty: 'normal', charId: 'kael' });
+  return game.state;
+}
 /** 가상 패드 숨김 (메뉴 담당의 참조 카운트 방식 공유) */
 export function padHidden(on) { try { MenuUI.hidePad?.(on); } catch { /* 무시 */ } }
 
@@ -163,10 +187,8 @@ export function rowBg(ctx, r, sel, { tint = null, dim = false } = {}) {
   ctx.strokeStyle = sel ? COLORS.gold : 'rgba(110,85,48,0.55)'; ctx.lineWidth = sel ? 2 : 1;
   ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
   if (sel) {
-    ctx.save(); ctx.globalCompositeOperation = 'lighter';
-    ctx.fillStyle = 'rgba(255,200,120,0.06)'; ctx.fillRect(r.x, r.y, r.w, r.h * 0.45);
-    ctx.restore();
-    ctx.fillStyle = COLORS.gold; ctx.beginPath(); ctx.moveTo(r.x - 7, r.y + r.h / 2 - 6); ctx.lineTo(r.x - 1, r.y + r.h / 2); ctx.lineTo(r.x - 7, r.y + r.h / 2 + 6); ctx.fill();
+    if (MenuUI.selBar) MenuUI.selBar(ctx, r.x, r.y, r.w, r.h, performance.now() / 1000);
+    else { ctx.fillStyle = COLORS.gold; ctx.beginPath(); ctx.moveTo(r.x - 7, r.y + r.h / 2 - 6); ctx.lineTo(r.x - 1, r.y + r.h / 2); ctx.lineTo(r.x - 7, r.y + r.h / 2 + 6); ctx.fill(); }
   }
 }
 
@@ -237,7 +259,7 @@ export class Modal {
     const qh = this.qty ? 92 : 0;
     const h = 70 + lines.length * 25 + this.bodyH + qh + 76;
     const x = vw / 2 - w / 2, y = vh / 2 - h / 2 + (1 - a) * 20;
-    panel(ctx, x, y, w, h, { glow: 'rgba(180,20,40,0.5)' });
+    uiPanel(ctx, x, y, w, h, { glow: 'rgba(180,20,40,0.5)' });
     text(ctx, this.title, vw / 2, y + 40, { size: 21, weight: 800, family: FONT.title, color: '#f3d690', align: 'center' });
     let yy = y + 72;
     for (const l of lines) { text(ctx, l, vw / 2, yy, { size: 16, align: 'center', color: COLORS.text, ow: 2 }); yy += 25; }
@@ -247,8 +269,8 @@ export class Modal {
       const bw = 50, bh = 46;
       const rMin = { x: vw / 2 - 190, y: cy - bh / 2, w: 58, h: bh }, rM10 = { x: vw / 2 - 126, y: cy - bh / 2, w: bw, h: bh }, rM1 = { x: vw / 2 - 70, y: cy - bh / 2, w: bw, h: bh };
       const rP1 = { x: vw / 2 + 20, y: cy - bh / 2, w: bw, h: bh }, rP10 = { x: vw / 2 + 76, y: cy - bh / 2, w: bw, h: bh }, rMax = { x: vw / 2 + 132, y: cy - bh / 2, w: 58, h: bh };
-      button(ctx, rMin, '최소', { size: 13 }); button(ctx, rM10, '-10', { size: 15 }); button(ctx, rM1, '−', { size: 20 });
-      button(ctx, rP1, '+', { size: 20 }); button(ctx, rP10, '+10', { size: 15 }); button(ctx, rMax, '최대', { size: 13 });
+      uiButton(ctx, rMin, '최소', { size: 13 }); uiButton(ctx, rM10, '-10', { size: 15 }); uiButton(ctx, rM1, '−', { size: 20 });
+      uiButton(ctx, rP1, '+', { size: 20 }); uiButton(ctx, rP10, '+10', { size: 15 }); uiButton(ctx, rMax, '최대', { size: 13 });
       this.qRects = [[rMin, 'min'], [rM10, -10], [rM1, -1], [rP1, 1], [rP10, 10], [rMax, 'max']];
       text(ctx, String(q.value), vw / 2 - 25 + 25, cy + 10, { size: 28, weight: 900, family: FONT.num, color: '#fff', align: 'center' });
       if (q.info) text(ctx, q.info(q.value), vw / 2, cy + 44, { size: 15, weight: 800, align: 'center', color: q.infoColor?.(q.value) ?? '#ffd84a' });
@@ -258,10 +280,10 @@ export class Modal {
     const bx0 = vw / 2 - (n * bw + (n - 1) * 14) / 2;
     this.rects = this.buttons.map((b, i) => {
       const r = { x: bx0 + i * (bw + 14), y: y + h - bh - 22, w: bw, h: bh };
-      button(ctx, r, b.label, { selected: i === this.sel && !this.qty ? true : (this.qty && b.primary), disabled: b.disabled, size: 16 });
+      uiButton(ctx, r, b.label, { selected: i === this.sel && !this.qty ? true : (this.qty && b.primary), disabled: b.disabled, size: 16 });
       return r;
     });
-    if (!input.touchMode) text(ctx, this.qty ? '←→ ±1   ↑↓ ±10   Z 확인   X 취소' : '←→ 선택   Z 확인   X 취소', vw / 2, y + h + 20, { size: 12, align: 'center', color: COLORS.dim });
+    uiHints(ctx, this.qty ? [[['←', '→'], '±1'], [['↑', '↓'], '±10'], ['Z', '확인'], ['X', '취소']] : [[['←', '→'], '선택'], ['Z', '확인'], ['X', '취소']], vw / 2, y + h + 24);
     ctx.restore();
   }
 }
@@ -302,7 +324,7 @@ export class RewardPopup {
     const h = 130 + rows * 44 + (this.sub ? 24 : 0);
     ctx.translate(vw / 2, vh / 2); ctx.scale(k, k); ctx.translate(-vw / 2, -vh / 2);
     const x = vw / 2 - w / 2, y = vh / 2 - h / 2;
-    panel(ctx, x, y, w, h, { glow: rgba(this.color, 0.6) });
+    uiPanel(ctx, x, y, w, h, { glow: rgba(this.color, 0.6) });
     text(ctx, this.title, vw / 2, y + 44, { size: 26, weight: 900, family: FONT.title, color: this.color, align: 'center', ow: 4 });
     let yy = y + 70;
     if (this.sub) { text(ctx, this.sub, vw / 2, yy + 4, { size: 14, align: 'center', color: '#d8c8b0' }); yy += 24; }
@@ -325,7 +347,7 @@ export class RewardPopup {
 // ───────────────────────── 아이템 상세 카드 ─────────────────────────
 /** 아이템 상세: 아이콘·이름·등급·부위·능력치(장착 비교)·설명·가격 */
 export function drawItemDetail(ctx, r, inst, { state, price = null, priceLabel = '가격', priceOk = true, footer = null, compare = true, note = null, tag = null } = {}) {
-  panel(ctx, r.x, r.y, r.w, r.h, { corner: false });
+  uiPanel(ctx, r.x, r.y, r.w, r.h, { corner: false });
   if (!inst) { text(ctx, '아이템을 선택하세요', r.x + r.w / 2, r.y + r.h / 2, { size: 15, align: 'center', color: COLORS.dim }); return; }
   const b = baseOf(inst) || {};
   const hero = state ? currentHero(state) : null;
@@ -398,6 +420,7 @@ export function drawItemDetail(ctx, r, inst, { state, price = null, priceLabel =
 export class ServiceScene extends Scene {
   constructor(g) { super(g); this.opaque = true; }
   enter(params = {}) {
+    ensureState(this.game);
     this.params = params;
     this.world = params.world ?? null;
     this.tab = 0; this.tabs = []; this.modal = null; this.popup = null;
@@ -421,9 +444,11 @@ export class ServiceScene extends Scene {
   }
   close() {
     if (this.modal || this.popup) return;
+    if (this.closing) return;
+    this.closing = true;
     audio.sfx('menu_cancel');
     this.onClose?.();
-    this.game.pop();
+    this.game.fadeOut(() => this.game.pop(), 0.14);
   }
   setTab(i) {
     if (i === this.tab || i < 0 || i >= this.tabs.length) return;
@@ -484,18 +509,19 @@ export class ServiceScene extends Scene {
     const hg = ctx.createLinearGradient(0, 0, 0, 58);
     hg.addColorStop(0, 'rgba(6,2,8,0.95)'); hg.addColorStop(1, 'rgba(6,2,8,0.55)');
     ctx.fillStyle = hg; ctx.fillRect(0, 0, vw, 56);
-    ctx.fillStyle = 'rgba(232,200,114,0.5)'; ctx.fillRect(0, 55, vw, 1.5);
+    if (MenuUI.divider) MenuUI.divider(ctx, 0, 55, vw, { center: false }); else { ctx.fillStyle = 'rgba(232,200,114,0.5)'; ctx.fillRect(0, 55, vw, 1.5); }
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; glow(ctx, 90, 30, 90, this.accentGlow ?? '#c8601a', 0.18); ctx.restore();
     text(ctx, this.title, 22, 37, { size: 26, weight: 800, family: FONT.title, color: '#f3d690', ow: 4 });
     ctx.font = font(26, 800, FONT.title);
     const tw = ctx.measureText(this.title).width;
     text(ctx, this.eng ?? '', 22 + tw + 14, 36, { size: 12, weight: 800, family: FONT.num, color: '#8a7a64' });
     // 골드
     const gx = vw - 72 - 180;
-    panel(ctx, gx, 9, 170, 38, { corner: false });
+    uiPanel(ctx, gx, 9, 170, 38, { corner: false });
     drawIcon(ctx, 'coin', gx + 22, 28, 22);
     text(ctx, fmt(this.state.gold ?? 0), gx + 158, 35, { size: 18, weight: 900, family: FONT.num, color: '#ffd84a', align: 'right' });
     this.closeRect = { x: vw - 64, y: 8, w: 52, h: 40 };
-    button(ctx, this.closeRect, '✕', { size: 20 });
+    uiButton(ctx, this.closeRect, '✕', { size: 20 });
     // 탭
     this.tabRects = null;
     if (this.tabs.length > 1) {
@@ -505,12 +531,16 @@ export class ServiceScene extends Scene {
         const r = { x: L.cx + i * (tw2 + 6), y: L.cy, w: tw2, h: th };
         this.tabRects.push(r);
         const sel = i === this.tab;
-        const tg = ctx.createLinearGradient(0, r.y, 0, r.y + r.h);
-        tg.addColorStop(0, sel ? 'rgba(150,24,44,0.95)' : 'rgba(26,14,24,0.9)'); tg.addColorStop(1, sel ? 'rgba(70,8,20,0.95)' : 'rgba(10,5,10,0.9)');
-        ctx.fillStyle = tg; ctx.fillRect(r.x, r.y, r.w, r.h);
-        ctx.strokeStyle = sel ? COLORS.gold : 'rgba(110,85,48,0.7)'; ctx.lineWidth = sel ? 2 : 1; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
-        if (sel) { ctx.fillStyle = COLORS.gold; ctx.fillRect(r.x + 8, r.y + r.h - 3, r.w - 16, 3); }
-        text(ctx, this.tabs[i].label, r.x + r.w / 2, r.y + 25, { size: 15, weight: 800, align: 'center', color: sel ? '#fff4d8' : '#b8a890' });
+        if (MenuUI.gbutton) {
+          MenuUI.gbutton(ctx, r, this.tabs[i].label, { hot: sel, size: 15, t: this.t, color: sel ? '#fff4d8' : '#b8a890' });
+          if (sel) { ctx.fillStyle = COLORS.gold; ctx.fillRect(r.x + 10, r.y + r.h - 3, r.w - 20, 2); }
+        } else {
+          const tg = ctx.createLinearGradient(0, r.y, 0, r.y + r.h);
+          tg.addColorStop(0, sel ? 'rgba(150,24,44,0.95)' : 'rgba(26,14,24,0.9)'); tg.addColorStop(1, sel ? 'rgba(70,8,20,0.95)' : 'rgba(10,5,10,0.9)');
+          ctx.fillStyle = tg; ctx.fillRect(r.x, r.y, r.w, r.h);
+          ctx.strokeStyle = sel ? COLORS.gold : 'rgba(110,85,48,0.7)'; ctx.lineWidth = sel ? 2 : 1; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
+          text(ctx, this.tabs[i].label, r.x + r.w / 2, r.y + 25, { size: 15, weight: 800, align: 'center', color: sel ? '#fff4d8' : '#b8a890' });
+        }
         if (this.tabs[i].badge) { ctx.fillStyle = '#e02a3a'; ctx.beginPath(); ctx.arc(r.x + r.w - 10, r.y + 9, 8, 0, TAU); ctx.fill(); text(ctx, this.tabs[i].badge, r.x + r.w - 10, r.y + 13, { size: 11, weight: 900, align: 'center', color: '#fff', ow: 0 }); }
       }
     }
@@ -518,9 +548,12 @@ export class ServiceScene extends Scene {
     this.renderBody?.(ctx, body, L);
     this.fx.draw(ctx, 'back'); this.fx.draw(ctx, 'front'); this.fx.draw(ctx, 'top');
     this.renderOver?.(ctx, L);
-    if (!input.touchMode && !this.modal && !this.popup && !this.busy && !this.lockTabs) {
-      const tabHint = this.tabs.length > 1 ? (this.useLeftRight ? 'S/D 탭   ' : '←→ 탭   ') : '';
-      text(ctx, `${tabHint}↑↓ 선택   Z 결정   X 닫기`, L.cx + L.cw / 2, vh - 3, { size: 11, align: 'center', color: 'rgba(157,143,128,0.8)', ow: 2 });
+    if (!this.modal && !this.popup && !this.busy && !this.lockTabs) {
+      const items = [];
+      if (this.tabs.length > 1) items.push([this.useLeftRight ? ['S', 'D'] : ['←', '→'], '탭']);
+      items.push([this.useLeftRight && this.tabs[this.tab]?.id === 'class' ? ['←', '→'] : ['↑', '↓'], '선택'], ['Z', '결정'], ['X', '닫기']);
+      if (this.extraHints) items.push(...this.extraHints());
+      uiHints(ctx, items, L.cx + L.cw / 2, vh - 2);
     }
     if (this.modal) this.modal.render(ctx, vw, vh);
     if (this.popup) this.popup.render(ctx, vw, vh);
@@ -549,10 +582,10 @@ export class ServiceScene extends Scene {
     }
     // 대사창
     const bx = 14, bw = L.pw - 24, bh = 108, by = vh - bh - 14;
-    panel(ctx, bx, by, bw, bh, { glow: 'rgba(180,20,40,0.35)' });
+    uiPanel(ctx, bx, by, bw, bh, { glow: 'rgba(180,20,40,0.35)' });
     ctx.font = font(15, 800, FONT.title);
     const nw = Math.max(110, ctx.measureText(info.name).width + 36);
-    panel(ctx, bx + 14, by - 18, nw, 30, { corner: false });
+    uiPanel(ctx, bx + 14, by - 18, nw, 30, { corner: false });
     text(ctx, info.name, bx + 14 + nw / 2, by + 3, { size: 15, weight: 800, family: FONT.title, color: '#f3d690', align: 'center' });
     const lines = wrap(ctx, this.say.text.slice(0, Math.floor(this.say.shown)), bw - 34, 15, 500);
     lines.slice(0, 3).forEach((l, i) => text(ctx, l, bx + 18, by + 40 + i * 23, { size: 15, color: COLORS.text, ow: 2 }));

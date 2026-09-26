@@ -143,6 +143,12 @@ function segDist(px, py, x1, y1, x2, y2) {
   return Math.hypot(px - (x1 + dx * u), py - (y1 + dy * u));
 }
 function addZone(world, o) { const z = new Zone(o); world.add(z); return z; }
+/** 부유형 선회 방향: 목표 지점이 맵 밖이거나 벽 속이면 반대쪽으로 */
+function sideFor(e, world, p, keep, dy = -110) {
+  const ok = (sd) => { const x = p.cx + sd * keep, y = p.bottom + dy; return x > 30 && x < world.map.pxW - 30 && !solidAt(world, x, y); };
+  if (!ok(e.side) && ok(-e.side)) e.side = -e.side;
+  return e.side;
+}
 function puff(world, type, x, y, n, o) { world.fx.burst(type, x, y, n, o); }
 /** 공중 투사체 공통 */
 function bolt(e, o) {
@@ -409,7 +415,7 @@ AI_B.merman = {
   sink(e, top) {
     e.water = top; e.setState('lurk'); e.setAnim('lurk');
     e.noGravity = true; e.invuln = true; e.harmless = true; e.vx = 0; e.vy = 0;
-    e.y = top + 14; e.cool = rand(0.8, 1.6);
+    e.y = top + 14; e.cool = rand(0.8, 1.6); e.poolX = e.cx; e.landT = 0;
   },
   update(e, world, dt) {
     const p = e.player, P = e.params;
@@ -440,7 +446,7 @@ AI_B.merman = {
         if (e.stateT > 0.5) {
           faceP(e);
           e.noGravity = false; e.invuln = false; e.harmless = false;
-          e.vy = -rand(980, 1080); e.vx = clamp(dx * 0.9, -250, 250);
+          e.vy = -rand(980, 1080); e.vx = e.leapVx = (Math.sign(dx) || e.facing) * clamp(Math.abs(dx) * 0.9, 150, 260);
           e.setState('leap'); e.setAnim('leap');
           puff(world, 'water', e.cx, e.water + 2, 24, { angle: -PI / 2, spread: 0.7, speed: 420 });
           world.fx.ring(e.cx, e.water + 6, { color: '#8ad0ff', r0: 6, r1: 60, life: 0.35, width: 4 });
@@ -449,6 +455,7 @@ AI_B.merman = {
         return;
       case 'leap':
         e.setAnim(e.vy < 0 ? 'leap' : 'fall');
+        if (!e.onGround) e.vx = e.leapVx ?? e.vx; // 물 밑 바닥에 걸려 수평 속도를 잃지 않도록
         if (e.vy > 0 && isLiquidPx(world, e.cx, e.bottom - 6)) {
           const top = liquidTop(world, e.cx, e.bottom - 6);
           if (top != null) { puff(world, 'water', e.cx, top + 2, 14, { angle: -PI / 2, spread: 0.8, speed: 300 }); audio.sfx('splash', { vol: 0.5 }); this.sink(e, top); return; }
@@ -471,7 +478,13 @@ AI_B.merman = {
     }
     // 지상
     if (isLiquidPx(world, e.cx, e.bottom - 8)) { const top = liquidTop(world, e.cx, e.bottom - 8); if (top != null) { this.sink(e, top); return; } }
-    if (seesP(e, p, P.sight ?? 420, 140)) {
+    e.landT = (e.landT ?? 0) + dt;
+    if (e.landT > 7 && e.poolX !== undefined && e.onGround) {
+      // 오래 뭍에 있으면 물로 돌아간다
+      e.facing = Math.sign(e.poolX - e.cx) || e.facing;
+      e.vx = e.facing * e.speed * 1.2;
+      if (e.wallAhead() && e.onGround) e.vy = -560;
+    } else if (seesP(e, p, P.sight ?? 420, 140)) {
       faceP(e);
       if (e.cool <= 0 && e.onGround) { e.setState('spit'); e.did = false; return; }
       chase(e, e.facing, adx > 140 ? e.speed : 0);
@@ -487,7 +500,16 @@ AI_B.fishleap = {
     const p = e.player, P = e.params;
     if (!e.inited) {
       e.inited = true;
-      e.baseY = liquidTop(world, e.cx, e.bottom) ?? e.bottom;
+      const top = liquidTop(world, e.cx, e.bottom);
+      e.baseY = top ?? e.bottom;
+      // 수조 좌우 범위 (수면 줄의 액체 칸)
+      if (top != null) {
+        const ty = Math.floor((top + 4) / TILE);
+        let l = Math.floor(e.cx / TILE), r = l;
+        while (l > 0 && world.map.typeAt(l - 1, ty) === T.LIQUID) l--;
+        while (r < world.map.w - 1 && world.map.typeAt(r + 1, ty) === T.LIQUID) r++;
+        e.poolL = l * TILE + 8; e.poolR = (r + 1) * TILE - 8;
+      } else { e.poolL = e.cx - 160; e.poolR = e.cx + 160; }
       e.y = e.baseY + 6; e.setState('under');
       e.invuln = true; e.harmless = true;
     }
@@ -497,6 +519,7 @@ AI_B.fishleap = {
       case 'under':
         e.setAnim('swim'); e.vy = 0; e.y = e.baseY + 6 + Math.sin(e.t * 3) * 2;
         e.vx += (clamp(dx, -1, 1) * e.speed * 0.7 - e.vx) * Math.min(1, 2 * dt);
+        if ((e.cx < e.poolL && e.vx < 0) || (e.cx > e.poolR && e.vx > 0)) e.vx = 0;
         if (Math.abs(e.vx) > 5) e.facing = Math.sign(e.vx);
         if (e.cool <= 0 && p && Math.abs(dx) < 440 && Math.abs(p.bottom - e.baseY) < 320) { e.setState('ripple'); e.vx *= 0.3; }
         return;
@@ -504,9 +527,12 @@ AI_B.fishleap = {
         e.setAnim('ripple'); e.vx *= 0.9; e.vy = 0;
         if (Math.random() < 0.3) world.fx.emit('water', e.cx + rand(-10, 10), e.baseY + 2, { angle: -PI / 2, spread: 0.5, speed: 120 });
         if (e.stateT > 0.35) {
-          const lead = p ? clamp(dx + (p.vx ?? 0) * 0.3, -300, 300) : 0;
-          e.vx = clamp(lead * 1.15, -330, 330) || e.facing * 120;
+          // 정점이 플레이어 위치에 오도록 겨누되, 착수 지점은 수조 안으로 제한
           e.vy = -(P.jumpV ?? 820) * rand(0.88, 1.05);
+          const air = -2 * e.vy / 2000;
+          const tx = p ? p.cx + (p.vx ?? 0) * 0.25 : e.cx;
+          const land = clamp(e.cx + (tx - e.cx) * 2, e.poolL, e.poolR);
+          e.vx = clamp((land - e.cx) / air, -340, 340);
           e.invuln = false; e.harmless = false;
           e.setState('leap');
           puff(world, 'water', e.cx, e.baseY + 2, 14, { angle: -PI / 2, spread: 0.6, speed: 340 });
@@ -604,6 +630,7 @@ AI_B.drowned = {
       faceP(e);
       if (adx < (P.spew ?? 150) + 10 && e.cool <= 0 && e.onGround) { e.setState('spew'); e.did = false; return; }
       chase(e, e.facing, adx < 50 ? 0 : e.speed * 1.2);
+      if (e.onGround && e.wallAhead() && adx > 50) { e.vy = -620; e.vx = e.facing * e.speed * 1.5; }
     } else patrol(e, 0.5);
     e.setAnim(Math.abs(e.vx) > 5 ? 'walk' : 'idle');
   },
@@ -618,6 +645,7 @@ AI_B.spirit = {
     e.cool -= dt * e.aggro;
     const keep = P.keep ?? 230;
     if (Math.abs(p.cx - e.cx) > keep * 2.2) e.side = Math.sign(e.cx - p.cx) || 1;
+    sideFor(e, world, p, keep);
     const tx = p.cx + e.side * keep, ty = p.bottom - 110 + Math.sin(e.t * 1.7) * 18;
     faceP(e);
     if (e.state === 'cast') {
@@ -767,6 +795,7 @@ AI_B.harpy = {
     }
     e.setAnim('fly');
     if (Math.abs(dx) > 360) e.side = -Math.sign(dx) || 1;
+    sideFor(e, world, p, 170);
     hover(e, p.cx + e.side * 170, p.cy - 150 + Math.sin(e.t * 2.2) * 24, 2.4, dt, e.speed * 1.3);
     faceP(e);
     if (e.cool <= 0 && e.distToPlayer() < 480) {
@@ -919,6 +948,7 @@ AI_B.wraith = {
     }
     const keep = P.keep ?? 240;
     if (Math.abs(p.cx - e.cx) > keep * 2) e.side = Math.sign(e.cx - p.cx) || 1;
+    sideFor(e, world, p, keep);
     hover(e, p.cx + e.side * keep, p.bottom - 120 + Math.sin(e.t * 1.5) * 20, 1.8, dt, e.speed * 1.5);
     e.setAnim('float');
     if (e.cool <= 0 && e.distToPlayer() < 560) {
@@ -1093,6 +1123,7 @@ AI_B.succubus = {
     }
     const keep = P.keep ?? 210;
     if (Math.abs(p.cx - e.cx) > keep * 2.2) e.side = Math.sign(e.cx - p.cx) || 1;
+    sideFor(e, world, p, keep);
     hover(e, p.cx + e.side * keep, p.bottom - 130 + Math.sin(e.t * 2.4) * 22, 2.2, dt, e.speed * 1.4);
     faceP(e); e.setAnim('fly');
     if (e.cool <= 0 && e.distToPlayer() < 520) {
@@ -1210,6 +1241,7 @@ AI_B.angel = {
         return;
     }
     if (Math.abs(p.cx - e.cx) > 320) e.side = Math.sign(e.cx - p.cx) || 1;
+    sideFor(e, world, p, 120);
     hover(e, p.cx + e.side * 120, p.cy - 200 + Math.sin(e.t * 1.6) * 20, 1.8, dt, e.speed * 1.4);
     faceP(e); e.setAnim('fly');
     if (e.cool <= 0 && e.distToPlayer() < 520) {
@@ -1316,6 +1348,7 @@ AI_B.bride = {
     }
     const keep = P.keep ?? 200;
     if (Math.abs(p.cx - e.cx) > keep * 2.3) e.side = Math.sign(e.cx - p.cx) || 1;
+    sideFor(e, world, p, keep);
     hover(e, p.cx + e.side * keep, p.bottom - 100 + Math.sin(e.t * 1.4) * 16, 1.6, dt, e.speed * 1.4);
     faceP(e); e.setAnim('float');
     if (e.cool <= 0 && e.distToPlayer() < 480) {
@@ -1772,6 +1805,7 @@ AI_B.voider = {
     }
     const keep = P.keep ?? 260;
     if (Math.abs(p.cx - e.cx) > keep * 2.2) e.side = Math.sign(e.cx - p.cx) || 1;
+    sideFor(e, world, p, keep);
     hover(e, p.cx + e.side * keep, p.bottom - 90 + Math.sin(e.t * 1.2) * 18, 1.6, dt, e.speed * 1.5);
     faceP(e); e.setAnim('float');
     if (e.cool <= 0 && e.distToPlayer() < 560) {

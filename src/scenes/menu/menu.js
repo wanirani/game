@@ -43,6 +43,7 @@ export class MenuScene extends Scene {
   enter({ world = null, tab = 'status' } = {}) {
     this.world = world ?? this.game.world ?? null;
     this.state = this.game.state;
+    if (this.state && !currentHero(this.state)) this.state = null;
     this.tabs = {};
     this.ti = Math.max(0, MENU_TABS.findIndex((t) => t.id === tab));
     this.focus = tab === 'status' ? 'tabs' : 'content';

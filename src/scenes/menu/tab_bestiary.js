@@ -201,7 +201,13 @@ export class BestiaryTab extends Tab {
       const g = ctx.createLinearGradient(0, y + h * 0.55, 0, y + h);
       g.addColorStop(0, 'rgba(6,3,10,0)'); g.addColorStop(1, 'rgba(6,3,10,0.9)');
       ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
-    } else this.silhouette(ctx, x, y, w, h, draw);
+    } else {
+      // 미발견 보스: 어둠 속에 희미하게 비치는 초상 + 붉은 안개
+      ctx.fillStyle = '#050208'; ctx.fillRect(x, y, w, h);
+      ctx.save(); ctx.globalAlpha *= 0.16 + 0.03 * Math.sin(t * 1.3); draw(ctx); ctx.restore();
+      glowOval(ctx, x + w / 2, y + h * 0.45, w * 0.4, h * 0.45, '#6a0a20', 0.35);
+      text(ctx, '?', x + w / 2, y + h / 2 + 16, { size: 46, align: 'center', weight: 900, family: FONT.num, color: 'rgba(230,190,160,0.4)', ow: 0 });
+    }
   }
 
   /** 오프스크린에 그린 뒤 검게 칠해 실루엣으로 */

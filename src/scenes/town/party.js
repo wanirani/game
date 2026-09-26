@@ -13,7 +13,7 @@ import { ensureHero } from '../../game/state.js';
 import { composeLook, expToNext } from '../../game/stats.js';
 import { findItem } from '../../game/inventory.js';
 import { ITEMS } from '../../data/items.js';
-import { hitRect, nameOf, Snap, padHidden } from './common.js';
+import { hitRect, nameOf, Snap, padHidden, ensureState, uiPanel, uiButton, uiHints } from './common.js';
 import { glow } from './facades.js';
 
 const STAR_KEYS = ['공격', '방어', '속도', '마법', '사거리'];
@@ -21,7 +21,7 @@ const STAR_KEYS = ['공격', '방어', '속도', '마법', '사거리'];
 export class PartyScene extends Scene {
   enter(params = {}) {
     this.world = params.world ?? null;
-    const st = this.game.state;
+    const st = ensureState(this.game);
     const unlocked = new Set(this.game.meta?.unlockedChars ?? ['kael']);
     for (const id in st.heroes || {}) unlocked.add(id);
     this.list = CHAR_ORDER.map((id) => ({ id, ch: CHARACTERS[id], open: unlocked.has(id), rig: {}, snap: new Snap() }));
@@ -74,7 +74,7 @@ export class PartyScene extends Scene {
     text(ctx, '동료', 24, 40, { size: 28, weight: 800, family: FONT.title, color: '#f3d690', ow: 4 });
     text(ctx, 'PARTY  ·  함께 싸울 헌터를 고르세요', 92, 38, { size: 12, weight: 800, family: FONT.num, color: '#8a7a64' });
     this.closeRect = { x: vw - 64, y: 10, w: 52, h: 40 };
-    button(ctx, this.closeRect, '✕', { size: 20 });
+    uiButton(ctx, this.closeRect, '✕', { size: 20 });
     ctx.fillStyle = 'rgba(232,200,114,0.45)'; ctx.fillRect(0, 58, vw, 1.5);
     // 카드
     const n = this.list.length, gap = 10, m = 18;
@@ -87,8 +87,8 @@ export class PartyScene extends Scene {
     });
     // 상세
     const e = this.list[this.index];
-    const dy = cy + ch + 12, dh = vh - dy - 70;
-    panel(ctx, m, dy, vw - m * 2, dh, { corner: false });
+    const dy = cy + ch + 12, dh = vh - dy - 76;
+    uiPanel(ctx, m, dy, vw - m * 2, dh, { corner: false });
     const c = e.ch;
     text(ctx, e.open ? c.name : '???', m + 20, dy + 32, { size: 20, weight: 800, family: FONT.title, color: e.open ? '#f3d690' : '#6a5a50' });
     text(ctx, `${c.eng} · ${c.title}`, m + 20, dy + 52, { size: 11, weight: 800, family: FONT.num, color: '#8a7a64' });
@@ -113,10 +113,10 @@ export class PartyScene extends Scene {
       bar(ctx, wx, dy + 80, Math.min(160, vw - m - wx - 20), 5, hero.exp / expToNext(hero.level), { color: '#e8c872', shine: false });
     } else if (e.open) text(ctx, '새 동료 — 선택하면 합류한다', sx + 150, dy + 40, { size: 13, weight: 700, color: '#8ae0a0' });
     // 버튼
-    this.actRect = { x: vw / 2 - 170, y: vh - 58, w: 340, h: 48 };
+    this.actRect = { x: vw / 2 - 170, y: vh - 64, w: 340, h: 46 };
     const label = !e.open ? '잠겨 있음' : e.id === st.charId ? '현재 동행 중' : `${c.name.split(' ')[0]}와(과) 함께 간다`;
-    button(ctx, this.actRect, label, { selected: e.open && e.id !== st.charId, disabled: !e.open, size: 17 });
-    if (!input.touchMode) text(ctx, '←→ 선택   Z 결정   X 닫기', vw / 2, vh - 3, { size: 11, align: 'center', color: 'rgba(157,143,128,0.8)', ow: 2 });
+    uiButton(ctx, this.actRect, label, { selected: e.open && e.id !== st.charId, disabled: !e.open, size: 17 });
+    uiHints(ctx, [[['←', '→'], '선택'], ['Z', '결정'], ['X', '닫기']], vw / 2, vh - 1);
     this.fx.draw(ctx, 'front');
     if (this.leaving) { ctx.fillStyle = `rgba(255,240,200,${Math.max(0, 0.5 - this.leaving.t)})`; ctx.fillRect(0, 0, vw, vh); }
   }
@@ -165,7 +165,15 @@ export class PartyScene extends Scene {
     ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
     if (sel) { ctx.shadowColor = 'rgba(232,200,114,0.6)'; ctx.shadowBlur = 16; ctx.strokeRect(r.x, r.y, r.w, r.h); ctx.shadowBlur = 0; }
     if (cur) { ctx.fillStyle = '#8a1426'; ctx.fillRect(r.x + 6, r.y + 6, 46, 20); text(ctx, '동행 중', r.x + 29, r.y + 20, { size: 11, weight: 800, align: 'center', color: '#ffe7a0', ow: 0 }); }
-    if (!e.open) text(ctx, '🔒', r.x + r.w / 2, r.y + r.h * 0.42, { size: 26, align: 'center', ow: 0 });
+    if (!e.open) {
+      // 자물쇠
+      const lx = r.x + r.w / 2, ly = r.y + r.h * 0.4;
+      ctx.strokeStyle = '#8a7a64'; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.arc(lx, ly - 6, 8, Math.PI, 0); ctx.stroke();
+      const lg = ctx.createLinearGradient(0, ly - 6, 0, ly + 12); lg.addColorStop(0, '#c8a060'); lg.addColorStop(1, '#6a4a20');
+      ctx.fillStyle = lg; ctx.fillRect(lx - 11, ly - 6, 22, 18);
+      ctx.strokeStyle = '#1a0a04'; ctx.lineWidth = 1.5; ctx.strokeRect(lx - 11, ly - 6, 22, 18);
+      ctx.fillStyle = '#1a0a04'; ctx.beginPath(); ctx.arc(lx, ly + 1, 2.5, 0, TAU); ctx.fill(); ctx.fillRect(lx - 1, ly + 2, 2, 5);
+    }
     ctx.restore();
   }
 }

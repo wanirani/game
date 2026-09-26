@@ -67,7 +67,7 @@ const C = {
 export const TRACKS = {
   // ───────────────────────── 타이틀 / 이야기 ─────────────────────────
   title: {
-    name: '피의 야상곡 (타이틀)', bpm: 76, key: 'D hmin', gain: 1,
+    name: '피의 야상곡 (타이틀)', bpm: 76, key: 'D hmin', gain: 0.56,
     ch: {
       org: C.pad('organ', { vol: 0.28 }),
       ped: { inst: 'organ', gen: 'R---R---', step: 8, oct: 2, vol: 0.3 },
@@ -78,7 +78,7 @@ export const TRACKS = {
       str: C.pad('strings', { vol: 0.2, oct: 3 }),
       bells: { inst: 'bells', gen: 'O...............................', step: 16, oct: 4, vol: 0.26, pan: -0.3 },
       timp: { inst: 'timp', vol: 0.55 },
-      dr: C.kit({ vol: 0.55 }),
+      dr: C.kit({ vol: 0.48 }),
     },
     intro: 'I', order: ['A', 'B'],
     sec: {
@@ -96,7 +96,7 @@ export const TRACKS = {
     },
   },
   prologue: {
-    name: '서곡: 붉은 달이 뜨는 밤', bpm: 66, key: 'E hmin',
+    name: '서곡: 붉은 달이 뜨는 밤', gain: 0.7, bpm: 66, key: 'E hmin',
     ch: {
       mel: { inst: 'piano', vol: 0.55, pan: 0.05 },
       mel2: { inst: 'strings', vol: 0.34, pan: 0.1 },
@@ -109,12 +109,12 @@ export const TRACKS = {
     sec: {
       A: { bars: 8, chords: 'Em | C | Am | B7 | Em | C | Am B7 | Em', choir: null,
         mel: 'o4 e2 g4 b4 | > c2. < b4 | a4 g4 f+4 e4 | d+2. r4 | e2 g4 b4 | > e2. d4 | c4 < a4 b4 f+4 | e1' },
-      B: { bars: 8, chords: 'C | D | Bm | Em | Am | D | B7sus4 | B7',
+      B: { bars: 8, chords: 'C | D | Bm | Em | Am | D | Am B7 | Em',
         mel2: 'o5 e2. d4 | f+4 e4 d2 | d2. c+8 < b8 | b1 | > c2 e2 | d4 c4 < b4 a4 | o4 a4 g4 f+2 | e1' },
     },
   },
   story: {
-    name: '이야기: 잿빛 기억', bpm: 76, key: 'A hmin',
+    name: '이야기: 잿빛 기억', gain: 0.72, bpm: 76, key: 'A hmin',
     ch: {
       mel: { inst: 'celesta', vol: 0.4, pan: 0.1, tau: 0.6 },
       pno: { inst: 'piano', gen: 'R5O5T5O5', step: 8, oct: 3, vol: 0.28, pan: -0.2 },
@@ -130,7 +130,7 @@ export const TRACKS = {
     },
   },
   sad: {
-    name: '슬픔: 꺼져가는 촛불', bpm: 60, key: 'B hmin',
+    name: '슬픔: 꺼져가는 촛불', gain: 0.76, bpm: 60, key: 'B hmin',
     ch: {
       mel: { inst: 'piano', vol: 0.55, pan: 0.05 },
       pno: { inst: 'piano', gen: 'L5R3', step: 8, oct: 3, vol: 0.22, pan: -0.2 },
@@ -140,14 +140,14 @@ export const TRACKS = {
     order: ['A', 'B'],
     sec: {
       A: { bars: 8, chords: 'Bm | G | Em | F#7 | Bm | G | Em F#7 | Bm', choir: null,
-        mel: 'o5 f+2 d4 c+4 | d2 < b2 | > e4 d4 c+4 < b4 | a+2. r4 | > f+2 g4 a4 | b2 g2 | g4 f+4 e4 c+4 | d2 < b2' },
-      B: { bars: 8, chords: 'G | D/F# | Em | Bm | G | A | F#sus4 | F#7',
+        mel: 'o5 f+2 d4 c+4 | d2 < b2 | > e4 d4 c+4 < b4 | a+2. r4 | > f+2 b4 a4 | b2 g2 | g4 f+4 e4 c+4 | d2 < b2' },
+      B: { bars: 8, chords: 'G | D/F# | Em | Bm | G | A | F#sus4 F# | F#7',
         mel: 'o5 b2. a4 | a2 f+2 | g4 f+4 e4 d4 | f+1 | g4 a4 b4 > d4 | c+2 < a2 | b2 a+4 b4 | > c+2 < a+2' },
     },
   },
   // ───────────────────────── 마을 ─────────────────────────
   hub: {
-    name: '잿빛 종소리의 마을', bpm: 96, key: 'G hmin',
+    name: '잿빛 종소리의 마을', gain: 0.92, bpm: 96, key: 'G hmin',
     ch: {
       mel: { inst: 'organ2', vol: 0.42, pan: 0.1, rev: 0.35 },
       mel2: { inst: 'organ2', from: 'mel', dia: -2, vol: 0.24, pan: -0.2 },
@@ -168,7 +168,7 @@ export const TRACKS = {
     },
   },
   inn: {
-    name: '검은 고양이 여관', bpm: 150, sig: 3, key: 'D dor',
+    name: '검은 고양이 여관', gain: 1.37, bpm: 150, sig: 3, key: 'D dor',
     ch: {
       mel: { inst: 'fiddle', vol: 0.42, pan: 0.12 },
       mel2: { inst: 'reed', from: 'mel', dia: -2, vol: 0.3, pan: -0.15, hv: 0.7 },
@@ -187,7 +187,7 @@ export const TRACKS = {
     },
   },
   shop: {
-    name: '떠돌이 상인 로크', bpm: 112, key: 'E hmin',
+    name: '떠돌이 상인 로크', gain: 0.85, bpm: 112, key: 'E hmin',
     ch: {
       mel: { inst: 'harpsi', vol: 0.46, pan: 0.1 },
       pizz: { inst: 'pizz', gen: 'R.5.O.5.', step: 8, oct: 2, vol: 0.4 },
@@ -206,7 +206,7 @@ export const TRACKS = {
     },
   },
   smith: {
-    name: '대장간의 불꽃', bpm: 100, key: 'E phr',
+    name: '대장간의 불꽃', gain: 0.88, bpm: 100, key: 'E phr',
     ch: {
       mel: { inst: 'brass', vol: 0.46, pan: 0.05 },
       mel2: { inst: 'brass', from: 'mel', dia: -2, vol: 0.28, pan: -0.25 },
@@ -226,7 +226,7 @@ export const TRACKS = {
     },
   },
   church: {
-    name: '성당: 알베르토의 기도', bpm: 66, key: 'F maj',
+    name: '성당: 알베르토의 기도', gain: 0.52, bpm: 66, key: 'F maj',
     ch: {
       sop: { inst: 'choir', vol: 0.46, pan: 0.05 },
       alto: { inst: 'choir', from: 'sop', dia: -2, vol: 0.32, pan: -0.2, hv: 0.9 },
@@ -243,7 +243,7 @@ export const TRACKS = {
     },
   },
   worldmap: {
-    name: '지도: 어둠을 가르는 길', bpm: 120, key: 'E hmin',
+    name: '지도: 어둠을 가르는 길', gain: 1.03, bpm: 120, key: 'E hmin',
     ch: {
       mel: { inst: 'brass', vol: 0.46, pan: 0.05 },
       mel2: { inst: 'strings', from: 'mel', semi: 12, vol: 0.2, pan: -0.15 },
@@ -265,7 +265,7 @@ export const TRACKS = {
   },
   // ───────────────────────── 스테이지 ─────────────────────────
   s01: {
-    name: '1장: 불타는 마을', bpm: 168, key: 'A hmin',
+    name: '1장: 불타는 마을', gain: 1.26, bpm: 168, key: 'A hmin',
     ch: {
       lead: C.lead(), harm: C.harm(),
       gtr: C.gtr('X.xxX.xxX.xxX.xx'),
@@ -278,10 +278,10 @@ export const TRACKS = {
     sec: {
       I: { bars: 2, chords: 'Am | Am', arp: null, pad: null, gtr: { gen: 'X...X...X.X.XXXX' },
         dr: drums(B.rock, 2, F.tom, false) },
-      A: { bars: 8, chords: 'Am | Am | F | G | Am | Am | F G | E', harm: null, pad: null,
+      A: { bars: 8, chords: 'Am | Am | F | G | Am | Dm | F G | E', harm: null, pad: null,
         lead: 'o5 l8 a4. b > c4 < b a | g+4 a b e2 | o6 c4. d c < b a g | a4 g f g2 | o5 a4. b > c4 d e | f e d c < b4 a4 | a b > c d < b4 g4 | g+4 e f g+2',
         dr: drums(B.rock, 4, F.sn) },
-      A2: { bars: 8, chords: 'Am | Am | F | G | Am | Am | F G | E', pad: null,
+      A2: { bars: 8, chords: 'Am | Am | F | G | Am | Dm | F G | E', pad: null,
         lead: 'o5 l8 a4. b > c4 < b a | g+4 a b e2 | o6 c4. d c < b a g | a4 g f g2 | o5 a4. b > c4 d e | f e d c < b4 a4 | a b > c d < b4 g4 | g+4 b > d e2',
         dr: drums(B.drive, 4, F.tom) },
       B: { bars: 8, chords: 'F | G | Em | Am | Dm | G | C | E7', key: 'C maj', gtr: { gen: 'X.x.X.x.X.x.X.x.' }, arp: { gen: 'R5O5T5O5' },
@@ -293,7 +293,7 @@ export const TRACKS = {
     },
   },
   s02: {
-    name: '2장: 안개의 묘지 (원혼의 왈츠)', bpm: 156, sig: 3, key: 'E hmin',
+    name: '2장: 안개의 묘지 (원혼의 왈츠)', gain: 1.0, bpm: 156, sig: 3, key: 'E hmin',
     ch: {
       lead: { inst: 'musicbox', vol: 0.46, pan: 0.1, tau: 0.5 },
       lead2: { inst: 'lead2', wave: 'pulse25', vol: 0.3, pan: 0.05 },
@@ -322,7 +322,7 @@ export const TRACKS = {
     },
   },
   s03: {
-    name: '3장: 악마성 정문 (진군)', bpm: 132, key: 'D hmin',
+    name: '3장: 악마성 정문 (진군)', gain: 1.33, bpm: 132, key: 'D hmin',
     ch: {
       lead: { inst: 'brass', vol: 0.5, pan: 0.05 },
       hi: { inst: 'lead', from: 'lead', semi: 12, vol: 0.2, pan: 0.2, hv: 0.8 },
@@ -352,15 +352,15 @@ export const TRACKS = {
     },
   },
   s04: {
-    name: '4장: 대회랑의 미뉴에트', bpm: 144, key: 'C hmin',
+    name: '4장: 대회랑의 미뉴에트', gain: 0.98, bpm: 144, key: 'C hmin',
     ch: {
-      lead: C.lead({ inst: 'sawlead', vol: 0.42 }),
-      harm: C.harm({ dia: -2, vol: 0.24 }),
+      lead: C.lead({ inst: 'sawlead', vol: 0.62 }),
+      harm: C.harm({ dia: -2, vol: 0.3 }),
       arp: C.arp('R5O5T5O5', { vol: 0.28 }),
       str: C.pad('strings', { vol: 0.2 }),
       bass: C.bass('R.RORORO'),
       gtr: C.gtr('X.......X.x.....', { vol: 0.26 }),
-      dr: C.kit({ vol: 0.56 }),
+      dr: C.kit({ vol: 0.48 }),
     },
     intro: 'I', order: ['A', 'A2', 'B', 'A'],
     sec: {
@@ -377,31 +377,31 @@ export const TRACKS = {
     },
   },
   s05: {
-    name: '5장: 지하 묘지의 행렬', bpm: 108, key: 'B hmin',
+    name: '5장: 지하 묘지의 행렬', gain: 0.71, bpm: 108, key: 'B hmin',
     ch: {
-      lead: C.lead({ vol: 0.44, rev: 0.4 }),
+      lead: C.lead({ vol: 0.64, rev: 0.4 }),
       harm: C.harm({ dia: -2 }),
       org: C.pad('organ', { oct: 3, vol: 0.18 }),
       choir: C.pad('choir', { vowel: 'o', vol: 0.2 }),
       bass: C.bass('R.RR.RO.', { vol: 0.5 }),
       pizz: { inst: 'pizz', gen: 'R5O5', step: 16, oct: 3, vol: 0.22, pan: -0.3 },
-      dr: C.kit({ vol: 0.55 }),
+      dr: C.kit({ vol: 0.48 }),
     },
     order: ['A', 'B', 'A2', 'B'],
     sec: {
-      A: { bars: 8, chords: 'Bm | Bm | C | Bm | Bm | Bm | G | F#7', harm: null, choir: null, pizz: null,
+      A: { bars: 8, chords: 'Bm | Bm | C | Bm | Bm Em | Bm | G | F#7', harm: null, choir: null, pizz: null,
         lead: 'o4 b2 > c2 | < b1 | > e2. c4 | d1 | f+2 g2 | f+2 d2 | e2 < b2 | a+1',
         dr: drums(B.tribal, 4, F.tom, false) },
       B: { bars: 8, chords: 'Em | Em | Bm | Bm | C | C | F#7 | F#7', harm: null, org: null,
         lead: 'o5 l16 e f+ g f+ e d+ e f+ g a b a g f+ e d+ | e4 g4 b4 > e4 | o5 l16 f+ e d c+ d e f+ g f+ e d c+ < b a+ b > c+ | d4 f+4 b4 > d4 | o5 l16 e d c < b > c d e f+ g f+ e d c < b > c d | e4 g4 > c4 e4 | o5 l8 f+ a+ > c+ e < a+ > c+ e f+ | e4 c+4 < a+4 f+4',
         dr: drums({ k: 'x.....x...x.....', s: '....X.......X...', f: '..............xx', h: 'x.x.x.x.x.x.x.x.' }, 4, F.tom) },
-      A2: { bars: 8, chords: 'Bm | Bm | C | Bm | Bm | Bm | G | F#7', pizz: null,
+      A2: { bars: 8, chords: 'Bm | Bm | C | Bm | Bm Em | Bm | G | F#7', pizz: null,
         lead: 'o4 b2 > c2 | < b1 | > e2. c4 | d1 | f+2 g2 | f+2 d2 | e2 < b2 | a+1',
         dr: drums(B.tribal, 4, F.tom) },
     },
   },
   s06: {
-    name: '6장: 금서의 대도서관', bpm: 126, key: 'G hmin',
+    name: '6장: 금서의 대도서관', gain: 0.74, bpm: 126, key: 'G hmin',
     ch: {
       lead: { inst: 'harpsi', vol: 0.5, pan: 0.15 },
       harm: { inst: 'harpsi', from: 'lead', dia: -5, vol: 0.3, pan: -0.35 },
@@ -429,9 +429,9 @@ export const TRACKS = {
     },
   },
   s07: {
-    name: '7장: 연금술사의 태엽 실험실', bpm: 138, key: 'F hmin',
+    name: '7장: 연금술사의 태엽 실험실', gain: 1.3, bpm: 138, key: 'F hmin',
     ch: {
-      lead: C.lead({ inst: 'sawlead', vol: 0.42 }),
+      lead: C.lead({ inst: 'sawlead', vol: 0.62 }),
       harm: C.harm({ dia: -2 }),
       seq: { inst: 'lead2', gen: 'R5O5T5O5', step: 16, oct: 4, vol: 0.18, pan: -0.3, gate: 0.45 },
       bub: { inst: 'celesta', gen: '..O...5...T...O.', step: 16, oct: 5, vol: 0.14, pan: 0.35, tau: 0.2 },
@@ -454,9 +454,9 @@ export const TRACKS = {
     },
   },
   s08: {
-    name: '8장: 지하 수로의 물결', bpm: 124, key: 'C# hmin',
+    name: '8장: 지하 수로의 물결', gain: 1.21, bpm: 124, key: 'C# hmin',
     ch: {
-      lead: C.lead({ inst: 'lead2', wave: 'pulse25', vol: 0.46, rev: 0.35, dly: 0.25 }),
+      lead: C.lead({ inst: 'lead2', wave: 'pulse25', vol: 0.64, rev: 0.35, dly: 0.25 }),
       harm: C.harm({ inst: 'lead2', dia: -2, vol: 0.24 }),
       arp: { inst: 'piano', gen: 'R5O3T5O5', step: 16, oct: 3, vol: 0.3, pan: -0.3 },
       str: C.pad('strings', { vol: 0.2 }),
@@ -477,7 +477,7 @@ export const TRACKS = {
     },
   },
   s09: {
-    name: '9장: 시계탑의 초침', bpm: 150, key: 'E hmin',
+    name: '9장: 시계탑의 초침', gain: 1.11, bpm: 150, key: 'E hmin',
     ch: {
       lead: C.lead(), harm: C.harm({ dia: -5, vol: 0.22 }),
       tick: { inst: 'pizz', gen: 'R5O5R5O5', step: 16, oct: 3, vol: 0.26, pan: -0.3 },
@@ -485,7 +485,7 @@ export const TRACKS = {
       pad: C.pad('strings', { vol: 0.2 }),
       bass: C.bass('R.R.R.RO'),
       gtr: C.gtr('X.x.X.x.X.x.X.x.', { vol: 0.26 }),
-      dr: C.kit({ vol: 0.56 }),
+      dr: C.kit({ vol: 0.48 }),
     },
     order: ['A', 'B', 'A2', 'B'],
     sec: {
@@ -501,9 +501,9 @@ export const TRACKS = {
     },
   },
   s10: {
-    name: '10장: 얼어붙은 첨탑', bpm: 112, key: 'F# hmin',
+    name: '10장: 얼어붙은 첨탑', gain: 1.13, bpm: 112, key: 'F# hmin',
     ch: {
-      lead: C.lead({ inst: 'lead2', wave: 'pulse12', vol: 0.4, rev: 0.5, dly: 0.3 }),
+      lead: C.lead({ inst: 'lead2', wave: 'pulse12', vol: 0.58, rev: 0.5, dly: 0.3 }),
       harm: C.harm({ inst: 'celesta', dia: -2, vol: 0.2, tau: 0.8 }),
       arp: { inst: 'celesta', gen: 'R5OTFTO5', step: 16, oct: 4, vol: 0.26, pan: -0.3, tau: 0.35 },
       bell: { inst: 'bells', gen: 'O' + dot(15), step: 16, oct: 5, vol: 0.12, pan: 0.35 },
@@ -526,12 +526,12 @@ export const TRACKS = {
     },
   },
   s11: {
-    name: '11장: 피의 예배당 (신성모독)', bpm: 112, key: 'Bb hmin',
+    name: '11장: 피의 예배당 (신성모독)', gain: 0.58, bpm: 112, key: 'Bb hmin',
     ch: {
       choir: { inst: 'choir', vol: 0.5, pan: 0.05 },
       choir5: { inst: 'choir', from: 'choir', semi: -7, vol: 0.34, pan: -0.2, hv: 0.9 },
       choir8: { inst: 'choir', from: 'choir', semi: -12, vowel: 'o', vol: 0.26, pan: 0.2, hv: 0.85 },
-      lead: C.lead({ inst: 'sawlead', vol: 0.42 }),
+      lead: C.lead({ inst: 'sawlead', vol: 0.62 }),
       harm: C.harm({ inst: 'sawlead', dia: -2, vol: 0.2 }),
       org: C.pad('organ', { vol: 0.24 }),
       gtr: C.gtr('X.X.....X.X.....', { vol: 0.34 }),
@@ -540,13 +540,13 @@ export const TRACKS = {
     },
     order: ['A', 'B', 'A2', 'B2'],
     sec: {
-      A: { bars: 8, chords: 'Bbm | Bbm | Gb | Ab | Bbm | Ebm | F | F', gtr: null, bass: null,
+      A: { bars: 8, chords: 'Bbm | Bbm | Gb | Ab | Bbm | Ebm | Ebm7 F | F', gtr: null, bass: null,
         choir: 'o4 b-2 b-4 > c4 | d-2 c4 < b-4 | b-4 a-4 g-2 | a-2 e-2 | f2 b-4 > c4 | d-4 e-4 g-4 f4 | e-4 d-4 c2 | c1',
         dr: { step: 16, z: 'X' + dot(63), f: dot(48) + '....x...x.xxXXXX' } },
       B: { bars: 8, chords: 'Bbm | Gb | Ebm | F | Bbm | Gb | Ebm F | Bbm', harm: null,
         lead: 'o5 f4. f8 f4 g-4 | b-2 a-4 g-4 | g-4. f8 e-4 d-4 | c2 < a2 | > d-4. c8 d-4 f4 | b-4. a-8 g-4 d-4 | e-4 g-4 f4 a4 | b-1',
         dr: drums(B.half, 4, F.tom) },
-      A2: { bars: 8, chords: 'Bbm | Bbm | Gb | Ab | Bbm | Ebm | F | F',
+      A2: { bars: 8, chords: 'Bbm | Bbm | Gb | Ab | Bbm | Ebm | Ebm7 F | F',
         choir: 'o4 b-2 b-4 > c4 | d-2 c4 < b-4 | b-4 a-4 g-2 | a-2 e-2 | f2 b-4 > c4 | d-4 e-4 g-4 f4 | e-4 d-4 c2 | c1',
         dr: drums({ k: 'x.x.....x.x.....', s: '........X.......', c: 'x...............' }, 4, F.tom) },
       B2: { bars: 8, chords: 'Bbm | Gb | Ebm | F | Bbm | Gb | Ebm F | Bbm', choir: null,
@@ -555,9 +555,9 @@ export const TRACKS = {
     },
   },
   s12: {
-    name: '12장: 드라큘라의 왕좌', bpm: 160, key: 'A hmin',
+    name: '12장: 드라큘라의 왕좌', gain: 1.06, bpm: 160, key: 'A hmin',
     ch: {
-      lead: C.lead({ inst: 'sawlead', vol: 0.44 }),
+      lead: C.lead({ inst: 'sawlead', vol: 0.62 }),
       harm: C.harm({ inst: 'lead', dia: -2, vol: 0.24 }),
       org: C.pad('organ', { vol: 0.22 }),
       orgl: { inst: 'organ', vol: 0.4, pan: -0.1 },
@@ -587,9 +587,9 @@ export const TRACKS = {
     },
   },
   s13: {
-    name: '13장: 심연의 역성', bpm: 176, key: 'C hmin',
+    name: '13장: 심연의 역성', gain: 0.98, bpm: 176, key: 'C hmin',
     ch: {
-      lead: C.lead({ inst: 'sawlead', vol: 0.44 }),
+      lead: C.lead({ inst: 'sawlead', vol: 0.62 }),
       harm: C.harm({ dia: -2 }),
       org: C.pad('organ', { vol: 0.2 }),
       choir: C.pad('choir', { vol: 0.18 }),
@@ -615,9 +615,9 @@ export const TRACKS = {
   },
   // ───────────────────────── 전투 ─────────────────────────
   arena: {
-    name: '투기장: 피의 콜로세움', bpm: 172, key: 'E hmin',
+    name: '투기장: 피의 콜로세움', gain: 1.13, bpm: 172, key: 'E hmin',
     ch: {
-      lead: C.lead({ inst: 'sawlead', vol: 0.42 }), harm: C.harm(),
+      lead: C.lead({ inst: 'sawlead', vol: 0.62 }), harm: C.harm(),
       gtr: C.gtr('X.xxX.xxX.xxX.xx'),
       arp: C.arp('R5O5T5O5', { vol: 0.2 }),
       bass: C.bass('RORORORO'),
@@ -637,14 +637,14 @@ export const TRACKS = {
     },
   },
   boss: {
-    name: '보스: 어둠의 사도', bpm: 170, key: 'C# hmin',
+    name: '보스: 어둠의 사도', gain: 1.2, bpm: 170, key: 'C# hmin',
     ch: {
-      lead: C.lead({ inst: 'sawlead', vol: 0.44 }), harm: C.harm({ inst: 'lead', vol: 0.24 }),
+      lead: C.lead({ inst: 'sawlead', vol: 0.62 }), harm: C.harm({ inst: 'lead', vol: 0.3 }),
       gtr: C.gtr('X.xxX.xxX.xxX.xx', { vol: 0.36 }),
       str: { inst: 'strings', gen: 'X.......X.......', step: 16, oct: 4, vol: 0.22, gate: 0.4 },
       org: C.pad('organ', { vol: 0.16 }),
       bass: C.bass('RRRORRRO', { step: 16 }),
-      dr: C.kit({ vol: 0.64 }),
+      dr: C.kit({ vol: 0.48 }),
     },
     intro: 'I', order: ['A', 'B', 'A2', 'B'],
     sec: {
@@ -661,15 +661,15 @@ export const TRACKS = {
     },
   },
   boss2: {
-    name: '보스: 심연의 관문지기', bpm: 176, key: 'G hmin',
+    name: '보스: 심연의 관문지기', gain: 1.25, bpm: 176, key: 'G hmin',
     ch: {
-      lead: C.lead({ wave: 'pulse25', vol: 0.46 }), harm: C.harm({ vol: 0.24 }),
+      lead: C.lead({ wave: 'pulse25', vol: 0.64 }), harm: C.harm({ vol: 0.3 }),
       orgs: { inst: 'organ', gen: 'X..X..X.X..X..X.', step: 16, oct: 4, vol: 0.2, gate: 0.6, pan: -0.2 },
       orgl: { inst: 'organ', vol: 0.4, pan: 0.1 },
       choir: C.pad('choir', { vol: 0.2 }),
       gtr: C.gtr('X.x.X.xxX.x.X.xx', { vol: 0.34 }),
       bass: C.bass('R.RRR.RO', { step: 8 }),
-      dr: C.kit({ vol: 0.64 }),
+      dr: C.kit({ vol: 0.48 }),
     },
     order: ['A', 'B', 'A2', 'B'],
     sec: {
@@ -685,12 +685,12 @@ export const TRACKS = {
     },
   },
   dracula: {
-    name: '드라큘라: 영원한 밤의 군주', bpm: 150, key: 'D hmin',
+    name: '드라큘라: 영원한 밤의 군주', gain: 1.13, bpm: 150, key: 'D hmin',
     ch: {
-      orgl: { inst: 'organ', vol: 0.46, pan: 0 },
+      orgl: { inst: 'organ', vol: 0.56, pan: 0 },
       hi: { inst: 'sawlead', from: 'orgl', semi: 12, vol: 0.18, pan: 0.2, hv: 0.8 },
-      harm: { inst: 'organ', from: 'orgl', dia: -2, vol: 0.26, pan: -0.2 },
-      org: C.pad('organ', { vol: 0.22 }),
+      harm: { inst: 'organ', from: 'orgl', dia: -2, vol: 0.28, pan: -0.2 },
+      org: C.pad('organ', { vol: 0.13 }),
       choir: { inst: 'choir', vol: 0.44 },
       choir2: { inst: 'choir', from: 'choir', dia: -2, vol: 0.3, pan: -0.2 },
       cpad: C.pad('choir', { vowel: 'o', vol: 0.18 }),
@@ -719,15 +719,15 @@ export const TRACKS = {
     },
   },
   chaos: {
-    name: '혼돈의 군주', bpm: 188, key: 'Bb hmin',
+    name: '혼돈의 군주', gain: 0.97, bpm: 188, key: 'Bb hmin',
     ch: {
-      lead: C.lead({ inst: 'sawlead', vol: 0.44, vib: 26 }), harm: C.harm({ dia: -3, vol: 0.22 }),
+      lead: C.lead({ inst: 'sawlead', vol: 0.62, vib: 26 }), harm: C.harm({ dia: -3, vol: 0.28 }),
       orgl: { inst: 'organ', vol: 0.34, pan: -0.15 },
       choir: C.pad('choir', { vol: 0.2 }),
       gtr: C.gtr('XxxxXxxxXxxxXxxx', { vol: 0.34 }),
       str: { inst: 'strings', gen: 'x.x.x.x.x.x.x.x.', step: 16, oct: 5, vol: 0.14, gate: 0.4, pan: 0.3 },
       bass: C.bass('RRRRRRRR', { step: 8 }),
-      dr: C.kit({ vol: 0.64 }),
+      dr: C.kit({ vol: 0.48 }),
     },
     order: ['A', 'B', 'A2', 'B2'],
     sec: {
@@ -747,14 +747,14 @@ export const TRACKS = {
   },
   // ───────────────────────── 짧은 곡 ─────────────────────────
   victory: {
-    name: '승리의 팡파르', bpm: 132, key: 'D maj', loop: false,
+    name: '승리의 팡파르', gain: 1.3, bpm: 132, key: 'D maj', loop: false,
     ch: {
       lead: { inst: 'brass', vol: 0.5 },
       harm: { inst: 'brass', from: 'lead', dia: -2, vol: 0.32, pan: -0.25 },
       hi: { inst: 'lead', from: 'lead', semi: 12, vol: 0.18, pan: 0.2 },
       str: C.pad('strings', { vol: 0.22 }),
       timp: { inst: 'timp', vol: 0.5 },
-      dr: C.kit({ vol: 0.55 }),
+      dr: C.kit({ vol: 0.48 }),
     },
     order: ['A'],
     sec: {
@@ -765,7 +765,7 @@ export const TRACKS = {
     },
   },
   gameover: {
-    name: '게임 오버', bpm: 72, key: 'D hmin', loop: false,
+    name: '게임 오버', gain: 0.71, bpm: 72, key: 'D hmin', loop: false,
     ch: {
       mel: { inst: 'organ2', vol: 0.42 },
       choir: C.pad('choir', { vowel: 'o', vol: 0.22 }),
@@ -775,11 +775,11 @@ export const TRACKS = {
     order: ['A'],
     sec: {
       A: { bars: 5, chords: 'Dm | Bb | Gm A | Dm | Dm',
-        mel: 'o5 a2 f2 | d2 f4 e4 | b-4 g4 e4 c+4 | d1 | r1' },
+        mel: 'o5 a2 f2 | d2 f4 d4 | < b-4 g4 e4 c+4 | d1 | r1' },
     },
   },
   ending: {
-    name: '엔딩: 새벽을 향해', bpm: 100, key: 'A hmin',
+    name: '엔딩: 새벽을 향해', gain: 0.77, bpm: 100, key: 'A hmin',
     ch: {
       mel: { inst: 'piano', vol: 0.55, pan: 0.05 },
       lead: { inst: 'brass', vol: 0.46 },
@@ -805,9 +805,9 @@ export const TRACKS = {
     },
   },
   credits: {
-    name: '크레딧: 끝나지 않는 밤의 노래', bpm: 128, key: 'D maj',
+    name: '크레딧: 끝나지 않는 밤의 노래', gain: 0.94, bpm: 128, key: 'D maj',
     ch: {
-      lead: C.lead({ vol: 0.46 }), harm: C.harm({ vol: 0.24 }),
+      lead: C.lead({ vol: 0.64 }), harm: C.harm({ vol: 0.3 }),
       mel: { inst: 'piano', vol: 0.5, pan: 0.05 },
       arp: C.arp('R5O5T5O5', { vol: 0.22 }),
       str: C.pad('strings', { vol: 0.2 }),
@@ -828,7 +828,7 @@ export const TRACKS = {
     },
   },
   minigame: {
-    name: '미니게임: 운명의 도박판', bpm: 140, key: 'D hmin',
+    name: '미니게임: 운명의 도박판', gain: 1.13, bpm: 140, key: 'D hmin',
     ch: {
       mel: { inst: 'fiddle', vol: 0.42, pan: 0.1 },
       comp: { inst: 'harpsi', gen: '.x.x', step: 4, oct: 4, vol: 0.22, pan: -0.3, gate: 0.4 },

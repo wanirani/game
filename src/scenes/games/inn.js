@@ -10,7 +10,7 @@ import { Particles } from '../../core/particles.js';
 import { drawIcon } from '../../render/icons.js';
 import {
   GAMES, GAME_ORDER, BETS, session, newVisit, ensureState, autosave, line, reactTo, grantItems, itemIcon,
-  Hits, gPanel, drawBtn, goldText, goldPlaque, Roller, bubble, bubbleText, padHidden, vignetteSoft, affordableBet, GOLD,
+  Hits, gPanel, drawBtn, goldText, goldPlaque, Roller, bubble, bubbleText, padPush, padPop, padHide, vignetteSoft, affordableBet, GOLD,
 } from './common.js';
 import { rr, glow, drawChip, drawEmblem, heartPath } from './art.js';
 
@@ -36,12 +36,12 @@ export class InnScene extends Scene {
     this.bgImg = null;
     this.motes = Array.from({ length: 22 }, () => ({ x: Math.random(), y: Math.random(), v: rand(0.006, 0.02), ph: rand(0, TAU), s: rand(0.6, 1.4) }));
     audio.music('inn');
-    padHidden(true);
+    padPush();
     assets.preload(['bg/inn', 'portraits/npc_marta']);
   }
-  exit() { padHidden(false); }
+  exit() { padPop(); }
   onResume() {
-    padHidden(true);
+    padHide();
     audio.music('inn');
     this.leaving = false;
     const st = this.game.state;
@@ -121,7 +121,7 @@ export class InnScene extends Scene {
     c.awake = 1.8;
     const r = this.catRect();
     if (r) {
-      for (let i = 0; i < 4; i++) c.hearts.push({ x: r.hx + rand(-10, 10), y: r.hy - 10, vx: rand(-30, 30), vy: rand(-90, -50), t: 0, life: rand(1, 1.5), s: rand(7, 11) });
+      for (let i = 0; i < 5; i++) c.hearts.push({ x: r.hx + rand(-6, 30), y: r.hy - 4, vx: rand(-20, 70), vy: rand(-110, -60), t: 0, life: rand(1.1, 1.6), s: rand(7, 11) });
       this.fx.text(r.hx, r.hy - 26, '냐옹~', { color: '#ffe7a0', size: 18, vy: -60, font: `800 18px ${FONT.body}` });
     }
     audio.sfx('menu_ok', { pitch: 1.7, vol: 0.7 });
@@ -158,7 +158,7 @@ export class InnScene extends Scene {
     if (this.leaving) return;
     if (session.freeUsed && this.free) this.free = false;
     const tap = this.hits.tapped();
-    if (tap === 'back' || (input.pressed('menu') && input.pressed('cancel'))) { this.leave(); return; }
+    if (tap === 'back' || (input.pressed('cancel') && !input.pressed('confirm'))) { this.leave(); return; }
     if (tap?.startsWith('game:')) { const i = +tap.slice(5); if (i === this.sel) this.start(); else this.select(i); return; }
     if (tap?.startsWith('bet:')) { this.setBet(+tap.slice(4)); return; }
     if (tap === 'start') { this.start(); return; }
@@ -168,7 +168,7 @@ export class InnScene extends Scene {
     if (input.pressed('right')) this.select(this.sel + 1);
     if (input.pressed('up')) this.cycleBet(1);
     if (input.pressed('down')) this.cycleBet(-1);
-    if (input.pressed('confirm') || input.pressed('attack')) this.start();
+    if (input.pressed('confirm')) this.start();
   }
 
   render(ctx) {
@@ -195,7 +195,7 @@ export class InnScene extends Scene {
     // 상단
     const back = this.hits.rect('back', 12, 10, 110, 40);
     this.hits.add('back', back);
-    drawBtn(ctx, back, '◀ 나가기', { tone: 'dark', size: 16, hot: this.hits.over(back), pressed: this.hits.pressed(back), key: 'Esc' });
+    drawBtn(ctx, back, '◀ 나가기', { tone: 'dark', size: 16, hot: this.hits.over(back), pressed: this.hits.pressed(back), key: 'X' });
     goldText(ctx, '흑묘 여관', 140, 40, 30, { align: 'left', glowCol: '#ff4060' });
     text(ctx, 'BLACK CAT INN · 미니게임 홀', 142, 56, { size: 11, weight: 700, family: FONT.num, color: '#b89a70', ow: 2 });
     goldPlaque(ctx, vw - 196, 10, 184, this.goldR.value, t, this.goldR.flash);
@@ -380,7 +380,7 @@ export class InnScene extends Scene {
     text(ctx, '배당', bx + 12, by + 20, { size: 12, weight: 800, color: GOLD, ow: 2 });
     G.pays.forEach((p, i) => text(ctx, p, bx + 12, by + 42 + i * 19, { size: 12.5, weight: 700, color: '#f0e4c8', ow: 2, maxWidth: pw - 20 }));
     text(ctx, recordText(id, st), bx + 12, by + bh - 10, { size: 11.5, weight: 700, color: '#9ad0ff', ow: 2, maxWidth: pw - 20 });
-    if (!input.touchMode) text(ctx, '← → 게임 선택 · ↑ ↓ 판돈 · Z 시작 · Esc 나가기', lx, y + h - 10, { size: 11, weight: 600, color: '#8a7a68', ow: 2 });
+    if (!input.touchMode) text(ctx, '← → 게임 선택 · ↑ ↓ 판돈 · Z 시작 · X 나가기', lx, y + h - 10, { size: 11, weight: 600, color: '#8a7a68', ow: 2 });
   }
 
   drawBetRow(ctx, x, y, w, h) {

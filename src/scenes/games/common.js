@@ -38,7 +38,7 @@ export const GAMES = {
   slot: {
     id: 'slot', scene: 'minigame_slot', name: '블러드 슬롯', sub: '3릴 · 5라인', accent: '#ff2040',
     rules: '레버를 당기면 세 릴이 돌아갑니다. 버튼을 누를 때마다 릴이 하나씩 멈춰요. 가로 세 줄과 대각선 두 줄 위에 같은 문양 셋이 나란히 서면 당첨! 가운데 줄에 피의 7 셋이면 잭팟입니다.',
-    pays: ['해골 ×1 · 박쥐 ×2 · 하트 ×3', '십자가 ×5 · 달 ×10 · 성배 ×25', '피의 7 ×40 · 가운데 줄 ×100'],
+    pays: ['해골 ×2 · 박쥐 ×3 · 하트 ×6', '십자가 ×12 · 달 ×30 · 성배 ×80', '피의 7 ×100 · 가운데 줄 ×250'],
   },
   duel: {
     id: 'duel', scene: 'minigame_duel', name: '황혼의 결투', sub: '3판 2선승 속사', accent: '#ff8a3a',
@@ -107,10 +107,11 @@ const betFactor = (bet) => (bet >= 1000 ? 1.8 : bet >= 500 ? 1.4 : bet >= 100 ? 
  * 승리 시 드롭 추첨. tier: 'win' | 'big' | 'jackpot'
  * 기본(100G 기준): 20% 하급 · 10% 중급 · 4% 상급 · 1% 최상급 강화석. 판돈/큰 승리/흑묘의 가호로 배율.
  * 잭팟은 상급 이상 확정. perfect 는 보호 주문서 8%, 축복 주문서 5%.
+ * scale: 일반 승리의 이익 비율(순이익/판돈, 0~1) — 거의 본전인 '안전한 승리'로 강화석을 캐는 것을 막는다.
  */
-export function rollDrops({ tier = 'win', bet = 100, perfect = false, luck = 0 }) {
+export function rollDrops({ tier = 'win', bet = 100, perfect = false, luck = 0, scale = 1 }) {
   const out = [];
-  let m = betFactor(bet) * (1 + luck) * (tier === 'big' ? 1.7 : 1);
+  let m = betFactor(bet) * (1 + luck) * (tier === 'big' ? 1.7 : 1) * scale;
   if (tier === 'jackpot') {
     const r = Math.random();
     out.push(r < 0.08 ? 'm_stone_5' : r < 0.4 ? 'm_stone_4' : 'm_stone_3');
@@ -208,10 +209,12 @@ export function reactTo(rec, state) {
 }
 
 // ───────────────────────── 가상 패드 ─────────────────────────
-export function padHidden(hide) {
-  const el = typeof document !== 'undefined' ? document.getElementById('touch') : null;
-  if (el) el.style.visibility = hide ? 'hidden' : '';
-}
+// 장면 진입 시 이전 표시 상태를 쌓아 두고, 나갈 때 그대로 되돌린다 (다른 장면의 숨김 상태를 깨지 않도록)
+const padStack = [];
+const padEl = () => (typeof document !== 'undefined' ? document.getElementById('touch') : null);
+export function padPush() { const el = padEl(); padStack.push(el ? el.style.visibility : ''); if (el) el.style.visibility = 'hidden'; }
+export function padPop() { const el = padEl(); const v = padStack.pop(); if (el) el.style.visibility = v ?? ''; }
+export function padHide() { const el = padEl(); if (el) el.style.visibility = 'hidden'; }
 
 // ───────────────────────── 탭 영역 ─────────────────────────
 export class Hits {
@@ -509,7 +512,7 @@ export function bubbleText(c, str, x, y, maxW, size = 15, n = 9999, maxLines = 4
 // ───────────────────────── 기본 장면 ─────────────────────────
 /**
  * 미니게임 공통 장면. 하위 클래스가 구현:
- *  init(params) · step(dt) · draw(ctx) · startRound() · (선택) drawReady(ctx) · canLeave()
+ *  init(params) · step(dt, tap)(입력·진행) · animate(dt)(연출 타이머, 결과 팝업 중에도 호출) · draw(ctx) · startRound() · (선택) canLeave() · onAgain()
  *  this.phase: 'ready'(판돈 선택) | 게임별 진행 단계 | 'result'
  * 정산: this.settle({win, payout, tier, perfect, title, sub, popup})
  */
@@ -537,12 +540,12 @@ export class MiniGame extends Scene {
     this.leaving = false;
     this.clock = 0;
     audio.music('minigame');
-    padHidden(true);
+    padPush();
     assets.preload(['bg/inn', 'portraits/npc_marta']);
     this.init?.(p);
   }
-  exit() { padHidden(false); }
-  onResume() { padHidden(true); }
+  exit() { padPop(); }
+  onResume() { padHide(); }
 
   // ── 판돈 ──
   betOptions() { return !session.freeUsed ? [0, ...BETS] : BETS; }
@@ -595,7 +598,8 @@ export class MiniGame extends Scene {
     let items = [];
     if (win && !free) {
       const luck = session.catLuck;
-      items = grantItems(st, rollDrops({ tier, bet: this.roundBet, perfect, luck }));
+      const scale = tier === 'win' ? clamp(gold / Math.max(1, this.roundBet) - 1, 0, 1) : 1;
+      items = grantItems(st, rollDrops({ tier, bet: this.roundBet, perfect, luck, scale }));
       session.catLuck = 0;
     }
     if (win) { st.stats.minigameWins = (st.stats.minigameWins ?? 0) + 1; session.wins++; session.loseStreak = 0; }
@@ -664,6 +668,7 @@ export class MiniGame extends Scene {
     this.shakeT = Math.max(0, this.shakeT - dt);
     if (this.shakeT <= 0) this.shakeMag = 0;
     this.flashA = Math.max(0, this.flashA - dt * 2.5);
+    this.animate?.(dt);
     if (this.leaving) return;
     const tap = this.hits.tapped();
     this._tap = tap;

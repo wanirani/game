@@ -15,7 +15,7 @@ import { availableClasses, canChangeClass, changeClass } from '../../game/progre
 import { composeLook, STAT_INFO } from '../../game/stats.js';
 import { addByBase } from '../../game/inventory.js';
 import { SHOP_LINES } from '../../data/town.js';
-import { ServiceScene, Modal, RewardPopup, makeInst, hitRect, rowBg, Snap } from './common.js';
+import { ServiceScene, Modal, RewardPopup, makeInst, hitRect, rowBg, Snap, uiPanel, uiButton } from './common.js';
 import { glow } from './facades.js';
 
 const TIER_NAME = ['기본 직업', '상급 직업', '최상급 직업'];
@@ -224,7 +224,7 @@ export class ChurchScene extends ServiceScene {
     const hero = this.hero, st = this.state;
     const cur = CLASSES[hero.classId];
     // 현재 직업
-    panel(ctx, body.x, body.y, body.w, 64, { corner: false });
+    uiPanel(ctx, body.x, body.y, body.w, 64, { corner: false });
     text(ctx, '현재 직업', body.x + 18, body.y + 24, { size: 12, color: '#9d8f80', weight: 700 });
     text(ctx, `${cur?.name ?? '-'}`, body.x + 18, body.y + 50, { size: 20, weight: 800, family: FONT.title, color: '#f3d690' });
     ctx.font = font(20, 800, FONT.title);
@@ -234,7 +234,7 @@ export class ChurchScene extends ServiceScene {
     const opts = this.options;
     const y0 = body.y + 76, h = body.h - 76 - 58;
     if (!opts.length) {
-      panel(ctx, body.x, y0, body.w, h + 50, { corner: false });
+      uiPanel(ctx, body.x, y0, body.w, h + 50, { corner: false });
       const look = composeLook(st, hero);
       this.preview(ctx, 'cur', look, body.x + body.w * 0.3, y0 + h - 10, 2.2, look.aura?.color);
       text(ctx, '최상급 직업에 도달했다', body.x + body.w * 0.62, y0 + 90, { size: 20, weight: 800, family: FONT.title, color: '#f3d690', align: 'center' });
@@ -288,7 +288,7 @@ export class ChurchScene extends ServiceScene {
     const c = opts[this.sel];
     this.actRect = { x: body.x + body.w / 2 - 170, y: body.y + body.h - 50, w: 340, h: 48 };
     const ok = c && canChangeClass(hero, c.id).ok;
-    button(ctx, this.actRect, c ? (ok ? `「${c.name}」(으)로 전직` : `레벨 ${c.reqLevel} 필요`) : '—', { selected: ok, size: 17 });
+    uiButton(ctx, this.actRect, c ? (ok ? `「${c.name}」(으)로 전직` : `레벨 ${c.reqLevel} 필요`) : '—', { selected: ok, size: 17 });
   }
 
   drawBless(ctx, body) {
@@ -331,7 +331,7 @@ export class ChurchScene extends ServiceScene {
   drawReset(ctx, body) {
     const hero = this.hero;
     const cost = this.resetCost();
-    panel(ctx, body.x, body.y, body.w, body.h - 60, { corner: false });
+    uiPanel(ctx, body.x, body.y, body.w, body.h - 60, { corner: false });
     text(ctx, '배운 기술을 모두 잊고 스킬 포인트를 돌려받습니다.', body.x + 20, body.y + 32, { size: 15, color: '#efe4cf' });
     text(ctx, '시작 기술은 1레벨로 남습니다.', body.x + 20, body.y + 56, { size: 12, color: '#9d8f80' });
     const learned = Object.entries(hero.skills || {}).filter(([, l]) => l > 0);
@@ -348,12 +348,12 @@ export class ChurchScene extends ServiceScene {
     });
     this.actRect = { x: body.x + body.w / 2 - 170, y: body.y + body.h - 50, w: 340, h: 48 };
     const ok = learned.length && this.state.gold >= cost;
-    button(ctx, this.actRect, `초기화  ·  ${fmt(cost)} G`, { selected: !!ok, size: 17 });
+    uiButton(ctx, this.actRect, `초기화  ·  ${fmt(cost)} G`, { selected: !!ok, size: 17 });
   }
 
   drawSave(ctx, body) {
     const st = this.state, hero = this.hero, ch = CHARACTERS[hero.charId];
-    panel(ctx, body.x, body.y, body.w, body.h - 60, { corner: false });
+    uiPanel(ctx, body.x, body.y, body.w, body.h - 60, { corner: false });
     const cx = body.x + 110;
     const look = composeLook(st, hero);
     this.preview(ctx, 'save', look, cx, body.y + body.h - 90, 1.9, look.aura?.color);
@@ -374,7 +374,7 @@ export class ChurchScene extends ServiceScene {
       text(ctx, v, body.x + body.w - 24, y, { size: 14, weight: 700, color: '#efe4cf', align: 'right' });
     });
     this.actRect = { x: body.x + body.w / 2 - 170, y: body.y + body.h - 50, w: 340, h: 48 };
-    button(ctx, this.actRect, '여정을 기록한다', { selected: true, size: 17 });
+    uiButton(ctx, this.actRect, '여정을 기록한다', { selected: true, size: 17 });
   }
 
   renderOver(ctx, L) {

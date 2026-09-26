@@ -10,10 +10,7 @@ import { countItem } from '../../game/inventory.js';
 import { drawIcon, drawSlot } from '../../render/icons.js';
 import { CHARACTERS } from '../../data/characters.js';
 import { SHOP_LINES } from '../../data/town.js';
-import {
-  ServiceScene, ScrollList, Modal, itemRow, drawItemDetail, baseOf, nameOf, makeInst, statsOf, statName, fmtStat,
-  isEquippedAny, SLOT_LABEL, WTYPE_LABEL, EQUIP_KINDS, hitRect, openBuy, mergeLines, rarityColor,
-} from './common.js';
+import { ServiceScene, ScrollList, Modal, itemRow, drawItemDetail, baseOf, nameOf, makeInst, statsOf, statName, fmtStat, isEquippedAny, SLOT_LABEL, WTYPE_LABEL, EQUIP_KINDS, hitRect, openBuy, mergeLines, rarityColor, uiPanel, uiButton } from './common.js';
 import { glow } from './facades.js';
 
 const FAIL_TEXT = { keep: ['실패 시 단계 유지', '#b8b0a0'], down: ['실패 시 1단계 하락', '#ffa640'], destroy: ['실패 시 하락 · 파괴 위험', '#ff5a5a'] };
@@ -30,6 +27,7 @@ export class SmithScene extends ServiceScene {
     this.talk('hello');
   }
   onTab() { this.list.index = 0; this.list.scroll = this.list.target = 0; this.refresh(); }
+  extraHints() { return this.tab === 0 ? [['A', '보호'], ['C', '축복']] : []; }
 
   refresh(keepUid = null) {
     const st = this.state;
@@ -187,16 +185,16 @@ export class SmithScene extends ServiceScene {
     if (this.tab === 1) {
       drawItemDetail(ctx, dr, e?.inst ?? null, { state: st, price: e ? e.price : null, priceLabel: '구매 가격', priceOk: e && st.gold >= e.price, note: e?.note, tag: e?.tag });
       const can = e && st.gold >= e.price;
-      button(ctx, this.actRect, e ? (can ? '구매하기' : '골드 부족') : '—', { selected: !!can, disabled: !e, size: 18 });
+      uiButton(ctx, this.actRect, e ? (can ? '구매하기' : '골드 부족') : '—', { selected: !!can, disabled: !e, size: 18 });
       return;
     }
     this.drawEnhanceDetail(ctx, dr, e?.inst ?? null);
   }
 
   drawEnhanceDetail(ctx, r, inst) {
-    panel(ctx, r.x, r.y, r.w, r.h, { corner: false });
+    uiPanel(ctx, r.x, r.y, r.w, r.h, { corner: false });
     this.chipRects = {};
-    if (!inst) { text(ctx, '강화할 장비를 고르세요', r.x + r.w / 2, r.y + r.h / 2, { size: 15, align: 'center', color: COLORS.dim }); button(ctx, this.actRect, '—', { disabled: true }); return; }
+    if (!inst) { text(ctx, '강화할 장비를 고르세요', r.x + r.w / 2, r.y + r.h / 2, { size: 15, align: 'center', color: COLORS.dim }); uiButton(ctx, this.actRect, '—', { disabled: true }); return; }
     const st = this.state, inf = this.info(inst);
     const rc = rarityColor(inst.rarity);
     const s = 60;
@@ -210,7 +208,7 @@ export class SmithScene extends ServiceScene {
     if (inf.maxed) {
       text(ctx, inf.invalid ? '강화 불가' : '★ 최고 단계 +15 ★', r.x + r.w / 2, y + 12, { size: 22, weight: 900, family: FONT.num, color: '#ffb040', align: 'center' });
       text(ctx, inf.reason ?? '', r.x + r.w / 2, y + 40, { size: 13, align: 'center', color: '#b8a890' });
-      button(ctx, this.actRect, '강화 불가', { disabled: true, size: 18 });
+      uiButton(ctx, this.actRect, '강화 불가', { disabled: true, size: 18 });
       return;
     }
     const mid = r.x + r.w / 2;
@@ -277,14 +275,14 @@ export class SmithScene extends ServiceScene {
       drawIcon(ctx, key === 'protect' ? 'scroll_protect' : 'scroll_bless', rr.x + 18, rr.y + 19, 24);
       ctx.globalAlpha = have ? 1 : 0.45;
       text(ctx, label, rr.x + 34, rr.y + 17, { size: 12, weight: 800, color: on ? '#fff' : '#d8ccb8', maxWidth: rr.w - 40 });
-      text(ctx, `${on ? '사용' : '미사용'} · ${have}장${!applicable ? ' (불필요)' : ''}${input.touchMode ? '' : key === 'protect' ? '  [A]' : '  [C]'}`, rr.x + 34, rr.y + 32, { size: 10, color: on ? '#ffe7a0' : '#9d8f80', maxWidth: rr.w - 40 });
+      text(ctx, `${on ? '사용' : '미사용'} · ${have}장${!applicable ? ' (불필요)' : ''}`, rr.x + 34, rr.y + 32, { size: 10, color: on ? '#ffe7a0' : '#9d8f80', maxWidth: rr.w - 40 });
       ctx.globalAlpha = 1;
       this.chipRects[key] = rr;
     };
     chip('protect', r.x + 12, 'm_scroll_protect', '보호 주문서', (inf.baseFail ?? inf.onFail) !== 'keep');
     chip('bless', r.x + 22 + cw, 'm_scroll_bless', '축복 주문서', true);
     const can = inf.canAfford !== false;
-    button(ctx, this.actRect, can ? `강화하기  (+${inf.next})` : '재료 부족', { selected: can, size: 18, sub: can ? undefined : (inf.reason ?? '') });
+    uiButton(ctx, this.actRect, can ? `강화하기  (+${inf.next})` : '재료 부족', { selected: can, size: 18, sub: can ? undefined : (inf.reason ?? '') });
   }
 
   renderOver(ctx, L) {

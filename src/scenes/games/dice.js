@@ -14,9 +14,10 @@ const pLower = (s) => { let n = 0; for (let k = 3; k < s; k++) n += WAYS[k - 3];
 const EDGE = 0.95;
 const multOf = (p) => (p <= 0 ? 0 : clamp(Math.round((EDGE / p) * 100) / 100, 1.02, 99));
 const TRIPLE_MULT = 30, MAX_STREAK = 8;
+const pct = (p) => (p < 0.01 ? (p * 100).toFixed(1) : Math.round(p * 100));
 
 export class DiceScene extends MiniGame {
-  constructor(g) { super(g, 'dice'); }
+  constructor(g) { super(g, 'dice'); this._dopt = { glow: '#ffd060', hot: 0 }; }
   init() {
     this.dice = [0, 1, 2].map((i) => ({ v: randi(1, 6), q: dieRestQ(randi(1, 6), rand(-0.6, 0.6), 0.5), x: 0, y: 0, x0: 0, y0: 0, x1: 0, y1: 0, t: 9, dur: 1, th0: 0, ax: [0, 1, 0], qF: null, bounces: 0, landed: true, hot: 0 }));
     this.layoutDice(true);
@@ -138,11 +139,14 @@ export class DiceScene extends MiniGame {
     this.settle({ win: false, tier: 'lose', title: '빗나감…', sub: this.streak ? `${this.streak}연승에서 멈췄어요 (배당 ×${this.mult.toFixed(2)})` : msg, cy: 232, delay: 0.8 });
   }
 
-  step(dt, tap) {
+  animate(dt) {
     this.verdictT += dt;
     this.sumPop = Math.max(0, this.sumPop - dt * 3);
     this.multShown += (this.mult - this.multShown) * Math.min(1, dt * 6);
-    for (const d of this.dice) d.hot = Math.max(this.phase === 'done' && this.triple ? d.hot : 0, d.hot - dt * 0.8);
+    const keep = (this.phase === 'done' || this.phase === 'result') && this.triple && this.guess === 'triple';
+    for (const d of this.dice) d.hot = keep ? d.hot : Math.max(0, d.hot - dt * 0.8);
+  }
+  step(dt, tap) {
     if (this.phase === 'ready') {
       if (tap === 'roll' || input.pressed('confirm') || input.pressed('attack')) this.startRound();
       return;
@@ -198,8 +202,9 @@ export class DiceScene extends MiniGame {
       ctx.fillStyle = `rgba(0,0,0,${0.45 - Math.min(0.3, hh / 300)})`;
       ctx.beginPath(); ctx.ellipse(d.x + 6 + hh * 0.2, d.y + hh + 30, 34 - hh * 0.08, 10, 0, 0, TAU); ctx.fill();
     }
-    const order = [...this.dice].sort((a, b) => a.y - b.y);
-    for (const d of order) drawDie(ctx, d.x, d.y, 62, d.q, { glow: '#ffd060', hot: d.hot });
+    const order = this._order ??= this.dice.slice();
+    order.sort((a, b) => a.y - b.y);
+    for (const d of order) { this._dopt.hot = d.hot; drawDie(ctx, d.x, d.y, 62, d.q, this._dopt); }
     if (this.phase === 'done' && this.triple && this.guess === 'triple') for (const d of this.dice) glow(ctx, d.x, d.y, 70, '#ffd060', 0.25 + 0.1 * Math.sin(t * 8));
     this.drawSum(ctx, vw / 2, ty + th + 40);
     this.drawStreak(ctx, 16, 118, 188, 212);
@@ -284,9 +289,9 @@ export class DiceScene extends MiniGame {
     const bw = Math.min(200, (vw - 120) / 3), bh = 58, gap = 14, y = 406;
     const x0 = vw / 2 - (bw * 3 + gap * 2) / 2;
     const defs = [
-      ['lo', '▼ 낮게', !g ? '' : pl > 0 ? `×${multOf(pl).toFixed(2)} · ${Math.round(pl * 100)}%` : '불가', 'blue', '←', pl <= 0],
+      ['lo', '▼ 낮게', !g ? '' : pl > 0 ? `×${multOf(pl).toFixed(2)} · ${pct(pl)}%` : '불가', 'blue', '←', pl <= 0],
       ['triple', '★ 트리플', `×${TRIPLE_MULT} · 3%`, 'gold', '↑', false],
-      ['hi', '▲ 높게', !g ? '' : ph > 0 ? `×${multOf(ph).toFixed(2)} · ${Math.round(ph * 100)}%` : '불가', 'crimson', '→', ph <= 0],
+      ['hi', '▲ 높게', !g ? '' : ph > 0 ? `×${multOf(ph).toFixed(2)} · ${pct(ph)}%` : '불가', 'crimson', '→', ph <= 0],
     ];
     defs.forEach(([id, lb, sub, tone, key, dis], i) => {
       const r = this.hits.rect(id, x0 + i * (bw + gap), y, bw, bh);

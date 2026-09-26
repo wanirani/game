@@ -6,10 +6,7 @@ import { fmt } from '../../core/math.js';
 import * as Shop from '../../data/shop.js';
 import { removeItem, countItem } from '../../game/inventory.js';
 import { SHOP_LINES } from '../../data/town.js';
-import {
-  ServiceScene, ScrollList, Modal, itemRow, drawItemDetail, baseOf, nameOf, makeInst, sellPriceOf,
-  isEquippedAny, SLOT_LABEL, WTYPE_LABEL, EQUIP_KINDS, hitRect, openBuy, mergeLines,
-} from './common.js';
+import { ServiceScene, ScrollList, Modal, itemRow, drawItemDetail, baseOf, nameOf, makeInst, sellPriceOf, isEquippedAny, SLOT_LABEL, WTYPE_LABEL, EQUIP_KINDS, hitRect, openBuy, mergeLines, uiButton } from './common.js';
 
 export class ShopScene extends ServiceScene {
   setup() {
@@ -105,6 +102,6 @@ export class ShopScene extends ServiceScene {
     drawItemDetail(ctx, dr, e?.inst ?? null, { state: st, price: e ? e.price : null, priceLabel: this.tab === 0 ? '구매 가격' : '판매 가격 (개당)', priceOk: this.tab === 1 || (e && st.gold >= e.price), note: e?.note, tag: e?.tag });
     this.actRect = { x: dr.x, y: dr.y + dr.h + 10, w: dr.w, h: 50 };
     const can = e && (this.tab === 1 || st.gold >= e.price);
-    button(ctx, this.actRect, e ? (this.tab === 0 ? (can ? '구매하기' : '골드 부족') : '판매하기') : '—', { selected: !!can, disabled: !e, size: 18, color: e ? undefined : '#6a6060' });
+    uiButton(ctx, this.actRect, e ? (this.tab === 0 ? (can ? '구매하기' : '골드 부족') : '판매하기') : '—', { selected: !!can, disabled: !e, size: 18, color: e ? undefined : '#6a6060' });
   }
 }

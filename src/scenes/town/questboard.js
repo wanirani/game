@@ -7,7 +7,7 @@ import * as Q from '../../game/quests.js';
 import { QUESTS } from '../../data/quests.js';
 import { ITEMS } from '../../data/items.js';
 import { drawIcon } from '../../render/icons.js';
-import { ServiceScene, ScrollList, Modal, RewardPopup, makeInst, hitRect, npcInfo } from './common.js';
+import { ServiceScene, ScrollList, Modal, RewardPopup, makeInst, hitRect, npcInfo, uiButton } from './common.js';
 import { glow } from './facades.js';
 
 const INK = '#2a1a10', INK2 = '#5a4630';
@@ -149,12 +149,12 @@ export class QuestBoardScene extends ServiceScene {
     const q = this.cur;
     this.drawParchment(ctx, dr, q);
     this.actRect = { x: dr.x, y: dr.y + dr.h + 10, w: dr.w, h: 50 };
-    if (!q) { button(ctx, this.actRect, '—', { disabled: true }); return; }
-    if (this.tab === 0) button(ctx, this.actRect, '의뢰 받기', { selected: true, size: 18 });
+    if (!q) { uiButton(ctx, this.actRect, '—', { disabled: true }); return; }
+    if (this.tab === 0) uiButton(ctx, this.actRect, '의뢰 받기', { selected: true, size: 18 });
     else if (this.tab === 1) {
       const ok = Q.canClaim(st, q.id);
-      button(ctx, this.actRect, ok ? '★ 보상 받기' : q.auto ? '스테이지를 클리어하면 자동 완료' : '진행 중…', { selected: ok, size: ok ? 18 : 15, color: ok ? '#ffe070' : '#a89880' });
-    } else button(ctx, this.actRect, '완료한 의뢰', { disabled: true, size: 16 });
+      uiButton(ctx, this.actRect, ok ? '★ 보상 받기' : q.auto ? '스테이지를 클리어하면 자동 완료' : '진행 중…', { selected: ok, size: ok ? 18 : 15, color: ok ? '#ffe070' : '#a89880' });
+    } else uiButton(ctx, this.actRect, '완료한 의뢰', { disabled: true, size: 16 });
   }
 
   paperRow(ctx, r, sel, q) {
@@ -170,7 +170,7 @@ export class QuestBoardScene extends ServiceScene {
     if (sel) { ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 3; ctx.shadowColor = 'rgba(255,210,120,0.7)'; ctx.shadowBlur = 12; ctx.strokeRect(r.x - 1, r.y - 1, r.w + 2, r.h + 2); ctx.shadowBlur = 0; }
     // 핀 / 인장
     ctx.fillStyle = main ? '#a01020' : '#6a4a2a'; ctx.beginPath(); ctx.arc(r.x + 22, r.y + r.h / 2, main ? 11 : 6, 0, TAU); ctx.fill();
-    if (main) { ctx.strokeStyle = '#e8c872'; ctx.lineWidth = 1.5; ctx.stroke(); text(ctx, '主', r.x + 22, r.y + r.h / 2 + 5, { size: 12, weight: 900, align: 'center', color: '#ffe7a0', ow: 0, family: FONT.title }); }
+    if (main) { ctx.strokeStyle = '#e8c872'; ctx.lineWidth = 1.5; ctx.stroke(); text(ctx, '★', r.x + 22, r.y + r.h / 2 + 5, { size: 13, weight: 900, align: 'center', color: '#ffe7a0', ow: 0 }); }
     text(ctx, q.name, r.x + 42, r.y + 26, { size: 16, weight: 800, family: FONT.title, color: INK, outline: null, ow: 0, maxWidth: r.w - 120 });
     const sub = this.tab === 1 ? (Q.questProgressText(st, q.id) || '') : giverName(q);
     text(ctx, sub, r.x + 42, r.y + 47, { size: 12, color: INK2, outline: null, ow: 0, maxWidth: r.w - 60 });
@@ -210,7 +210,7 @@ export class QuestBoardScene extends ServiceScene {
     text(ctx, q.kind === 'main' ? '— 메인 퀘스트 —' : '— 의 뢰 —', r.x + r.w / 2, y - 12, { size: 11, weight: 800, align: 'center', color: '#8a1426', outline: null, ow: 0, family: FONT.title });
     text(ctx, q.name, r.x + r.w / 2, y + 14, { size: 21, weight: 800, family: FONT.title, align: 'center', color: INK, outline: null, ow: 0, maxWidth: w });
     y += 30;
-    const gv = giverName(q);
+    const gv = q.kind === 'main' ? '' : giverName(q);
     if (gv) { text(ctx, `의뢰인: ${gv}`, r.x + r.w / 2, y + 4, { size: 12, align: 'center', color: INK2, outline: null, ow: 0 }); y += 12; }
     ctx.fillStyle = 'rgba(90,60,30,0.4)'; ctx.fillRect(x, y + 8, w, 1.5); y += 28;
     ctx.font = font(14, 500);

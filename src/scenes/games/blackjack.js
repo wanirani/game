@@ -4,7 +4,7 @@ import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
 import { text, FONT } from '../../core/ui.js';
 import { clamp, lerp, rand, ease, fmt, TAU, pick } from '../../core/math.js';
-import { MiniGame, innBackdrop, drawBtn, gPanel, bubble, candle, goldText, GOLD } from './common.js';
+import { MiniGame, innBackdrop, drawBtn, gPanel, bubble, candle, GOLD } from './common.js';
 import { drawCard, drawChip, glow, rr, catHead } from './art.js';
 
 const CW = 76, CH = 106;
@@ -40,7 +40,7 @@ export class BlackjackScene extends MiniGame {
     this.titleLeft = true;
     this.deck = newDeck();
     this.player = []; this.dealer = [];
-    this.anim = []; // 날아가는/뒤집히는 카드
+
     this.queue = []; this.qT = 0;
     this.mood = 'idle'; this.moodT = 0; this.talk = null; this.talkT = 0;
     this.blinkT = 2; this.dealFlick = 0;
@@ -56,7 +56,7 @@ export class BlackjackScene extends MiniGame {
   startRound() {
     if (!this.takeBet()) return;
     if (this.deck.length < 20) this.deck = newDeck();
-    this.player = []; this.dealer = []; this.anim = []; this.queue = [];
+    this.player = []; this.dealer = []; this.queue = [];
     this.doubled = false; this.outcome = null;
     this.phase = 'dealing';
     this.setMood('idle'); this.say('deal');
@@ -155,13 +155,15 @@ export class BlackjackScene extends MiniGame {
     this.settle({ win, payout, tier: kind === 'bj' ? 'big' : kind === 'push' ? 'push' : win ? 'win' : 'lose', title, sub: sub + (this.doubled ? ' · 더블' : ''), cy: 402, delay: 0.9 });
   }
 
-  step(dt, tap) {
+  animate(dt) {
     this.moodT += dt; this.talkT += dt; this.dealFlick = Math.max(0, this.dealFlick - dt * 4);
     this.blinkT -= dt; if (this.blinkT < -0.14) this.blinkT = rand(2, 4.5);
-    for (const c of [...this.player, ...this.dealer]) {
+    for (const h of [this.player, this.dealer]) for (const c of h) {
       c.fly = Math.min(1, c.fly + dt / 0.3);
       c.flip = c.up ? Math.min(1, c.flip + dt / 0.22) : Math.max(0, c.flip - dt / 0.22);
     }
+  }
+  step(dt, tap) {
     if (this.queue.length) {
       this.qT += dt;
       const q = this.queue[0];
@@ -190,7 +192,7 @@ export class BlackjackScene extends MiniGame {
     drawDealerHands(ctx, vw / 2, 214, t, this.dealFlick);
     // 카드
     const sh = this.shoe;
-    for (const c of [...this.dealer, ...this.player]) {
+    for (let k = 0; k < 2; k++) for (const c of k ? this.player : this.dealer) {
       const P = this.cardPos(c);
       const e = ease.outCubic(c.fly);
       const x = lerp(sh.x, P.x, e), y = lerp(sh.y, P.y, e) - Math.sin(e * Math.PI) * 40;

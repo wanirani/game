@@ -58,3 +58,4 @@ const w = g.world;
 if (which.startsWith('killboss') && w?.boss && !w.boss.dead) w.boss.takeHit(1e9, { dir: 1, kb: [0, 0] }, w, {});
 if (which.startsWith('killall') && w) for (const e of w.enemies()) e.takeHit?.(1e9, { dir: 1, kb: [0, -200] }, w, {});
 if (which.startsWith('die') && w?.player) { w.run.lives = 1; w.player.hp = 0; w.player.die(w); }
+if (which.startsWith('wave5')) { const sc = g.scenes[0]; sc.wave = 4; sc.queue.length = 0; for (const e of w.enemies()) e.takeHit?.(1e9, { dir: 1, kb: [0, -200] }, w, {}); }

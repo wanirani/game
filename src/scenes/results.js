@@ -76,8 +76,9 @@ export class ResultsScene extends Scene {
     this.left = true;
     const stage = this.world.stage;
     const next = this.game.registry.hub ? 'hub' : 'title';
-    if (stage.outro && this.game.registry.story) this.game.go('story', { script: stage.outro, then: stage.id === 's12' && this.game.registry.ending ? 'ending' : next, thenParams: { from: stage.id }, bg: stage.bg });
-    else if (stage.id === 's12' && this.game.registry.ending) this.game.go('ending', {});
+    const toEnding = (stage.id === 's12' || stage.id === 's13') && this.game.registry.ending; // 엔딩 장면이 endingAfter()로 최종 판정
+    if (stage.outro && this.game.registry.story) this.game.go('story', { script: stage.outro, then: toEnding ? 'ending' : next, thenParams: { from: stage.id }, bg: stage.bg });
+    else if (toEnding) this.game.go('ending', { from: stage.id });
     else this.game.go(next, { from: stage.id });
   }
   render(ctx) {

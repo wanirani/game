@@ -7,6 +7,7 @@ import { saves } from '../core/save.js';
 import { text, FONT, ListMenu } from '../core/ui.js';
 import { clamp, ease, lerp, TAU, fmt, rand } from '../core/math.js';
 import { CHARACTERS, CHAR_ORDER } from '../data/characters.js';
+import { endArcade } from './front/arcade.js';
 import {
   Ambience, kenBurns, shade, menuItem, ornament, setPad, applySettings, installRecordScore,
   GOLD, BONE, DIM, CRIMSON, follow, MODE_NAME,
@@ -92,6 +93,7 @@ export class TitleScene extends Scene {
   enter(params = {}) {
     const g = this.game;
     setPad(false);
+    endArcade(g);
     applySettings(g);
     installRecordScore(g);
     audio.music('title');
@@ -111,7 +113,8 @@ export class TitleScene extends Scene {
   }
   exit() { setPad(true); }
   buildMenu(index) {
-    const hasSave = saves.list().some((s) => !s.empty);
+    this.saveCount = saves.list().filter((s) => !s.empty).length;
+    const hasSave = this.saveCount > 0;
     this.items = [
       { id: 'new', label: '새 게임', sub: 'NEW GAME' },
       { id: 'continue', label: '이어하기', sub: 'CONTINUE', disabled: !hasSave },
@@ -331,9 +334,13 @@ export class TitleScene extends Scene {
     const y = vh * 0.52, w = Math.min(560, vw - 80), x = vw / 2 - w / 2;
     ctx.save();
     ctx.globalAlpha = a;
-    const bg = ctx.createLinearGradient(x, 0, x + w, 0);
-    bg.addColorStop(0, 'rgba(0,0,0,0)'); bg.addColorStop(0.2, 'rgba(6,2,8,0.72)'); bg.addColorStop(0.8, 'rgba(6,2,8,0.72)'); bg.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = bg; ctx.fillRect(x - 40, y - 30, w + 80, 150);
+    // 부드러운 타원형 어둠 (가장자리 없이)
+    ctx.save();
+    ctx.translate(vw / 2, y + 45); ctx.scale((w + 120) / 180, 1);
+    const bg = ctx.createRadialGradient(0, 0, 10, 0, 0, 90);
+    bg.addColorStop(0, 'rgba(6,2,8,0.8)'); bg.addColorStop(0.6, 'rgba(6,2,8,0.6)'); bg.addColorStop(1, 'rgba(6,2,8,0)');
+    ctx.fillStyle = bg; ctx.fillRect(-90, -90, 180, 180);
+    ctx.restore();
     if (idx === 0) {
       ATTRACT_STORY.forEach((s, i) => {
         const k = clamp(u * 5 - i * 0.7, 0, 1);
@@ -373,7 +380,7 @@ export class TitleScene extends Scene {
       ctx.restore();
     });
     ctx.save(); ctx.globalAlpha = mk;
-    const ver = saves.list().filter((s) => !s.empty).length;
+    const ver = this.saveCount;
     text(ctx, input.touchMode ? '항목을 터치하세요' : '↑↓ 선택   Z/Enter 결정   X 뒤로', x + 8, vh - 16, { size: 12, weight: 700, color: '#a89888', ow: 2 });
     if (ver) text(ctx, `저장된 기록 ${ver}개`, x + 8, y0 - 14, { size: 11, weight: 700, color: DIM, ow: 2 });
     ctx.restore();

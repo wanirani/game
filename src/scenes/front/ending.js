@@ -20,20 +20,32 @@ export const ENDINGS = {
   true: { id: 'true', eng: 'TRUE ENDING', name: '녹턴의 끝, 여명의 노래', color: '#fff2b0', bg: 'bg/ending', music: 'ending', no: 'Ⅲ' },
 };
 
-/** 진행도로 엔딩 종류 판정 */
-export function decideEnding(st) {
+/** 진행도로 엔딩 종류 판정 (from 스테이지가 있으면 data/story.js endingAfter 규칙을 우선). null = 엔딩 아님(계속 진행) */
+export function decideEnding(st, from = null) {
+  if (from && typeof STORY.endingAfter === 'function') {
+    const id = STORY.endingAfter(from, st);
+    return id ? id.replace(/^ending_/, '') : null;
+  }
   const p = st?.progress ?? {};
   if (p.cleared?.s13 || p.bosses?.includes('b_chaos') || p.flags?.boss_b_chaos) return 'true';
   const f = p.flags ?? {};
-  if (Object.keys(f).some((k) => k.startsWith('carmilla_trust') && f[k])) return 'normal';
+  if (f.carmilla_trust2 || f.carmilla_trust) return 'normal';
   return 'bad';
 }
 
 export class EndingScene extends Scene {
-  enter({ kind = null } = {}) {
+  enter({ kind = null, from = null } = {}) {
     setPad(false);
     const g = this.game, st = g.state;
-    this.kind = ENDINGS[kind] ? kind : decideEnding(st);
+    this.kind = ENDINGS[kind] ? kind : decideEnding(st, from);
+    if (!ENDINGS[this.kind]) {
+      // 유물을 모두 모은 채 드라큘라를 쓰러뜨림 → 엔딩 대신 심연의 문(13장)으로
+      this.skip = true;
+      if (st?.progress && !st.progress.unlocked.includes('s13')) st.progress.unlocked.push('s13');
+      goSafe(g, 'hub', { from }, { fadeTime: 0.8 });
+      this.E = ENDINGS.normal; this.amb = new Ambience({ embers: 0, motes: 0, bats: 0, fog: false, lightning: false });
+      return;
+    }
     this.E = ENDINGS[this.kind];
     const m = g.meta;
     if (m) {
@@ -54,6 +66,7 @@ export class EndingScene extends Scene {
   exit() { setPad(true); }
   update(dt) {
     this.amb.update(dt, this.game.viewW, this.game.viewH);
+    if (this.skip) return;
     if (this.t > 0.8 && !this.played) { this.played = true; audio.music(this.E.music); }
     const adv = this.t > 1.5 && (input.pressed('confirm') || input.pointer.tapped);
     if ((this.t > 5.2 || adv) && !this.went) {
@@ -122,7 +135,22 @@ export class CreditsScene extends Scene {
   }
   exit() { setPad(true); }
   normalize(list) {
-    // data/story.js CREDITS: [{title|h, names|rows:[...]}] 등 다양한 형태를 허용
+    // data/story.js CREDITS: 문자열 배열('— 제목 —' 은 소제목, '' 은 간격) 또는 [{title|h, names|rows}] 형태 모두 허용
+    if (list.every((x) => typeof x === 'string')) {
+      const out = [{ logo: true }];
+      let cur = null, i = 0;
+      if (list[0] === 'BLOOD NOCTURNE') i = list[1] && !list[1].startsWith('—') ? 2 : 1;
+      for (; i < list.length; i++) {
+        const s = list[i].trim();
+        if (!s) { cur = null; continue; }
+        const m = s.match(/^—\s*(.+?)\s*—$/);
+        if (m) { cur = { h: m[1], rows: [] }; out.push(cur); continue; }
+        if (!cur) { cur = { h: '', rows: [] }; out.push(cur); }
+        const parts = s.split(' — ');
+        cur.rows.push(parts.length === 2 ? [parts[0], parts[1]] : ['', s]);
+      }
+      return out;
+    }
     return list.map((b) => {
       if (b.logo) return b;
       const h = b.h ?? b.title ?? b.role ?? '';
@@ -153,7 +181,7 @@ export class CreditsScene extends Scene {
         ['벌어들인 골드', `${fmt(s.goldEarned ?? 0)} G`],
         ['최종 레벨', `Lv.${hero?.level ?? 1}`],
       ],
-      score: st.score ?? 0, diff: getDiff(st.difficulty), charId: st.charId,
+      score: st.score ?? 0, diff: getDiff(st.difficulty), charId: st.charId, relics: p.relics?.length ?? 0,
     };
   }
   notes() {
@@ -215,7 +243,7 @@ export class CreditsScene extends Scene {
       // 오른쪽 크레딧 영역: 은은한 진홍빛
       const rg = ctx.createRadialGradient(vw * 0.78, vh * 0.5, 20, vw * 0.78, vh * 0.5, vh * 0.7);
       rg.addColorStop(0, 'rgba(60,8,20,0.55)'); rg.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = rg; ctx.fillRect(sw - 2, 0, vw - sw + 2, vh);
+      ctx.fillStyle = rg; ctx.fillRect(0, 0, vw, vh);
     }
     const vg = ctx.createLinearGradient(0, 0, 0, vh);
     vg.addColorStop(0, 'rgba(0,0,0,0.7)'); vg.addColorStop(0.2, 'rgba(0,0,0,0)'); vg.addColorStop(0.8, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.7)');
@@ -245,8 +273,8 @@ export class CreditsScene extends Scene {
         if (y > -40 && y < vh + 40) {
           if (role) {
             text(ctx, role, cx - 10, y, { size: 13, align: 'right', weight: 600, color: DIM, ow: 2 });
-            text(ctx, name, cx + 10, y, { size: 16, weight: 800, color: BONE, ow: 2 });
-          } else text(ctx, name, cx, y, { size: 16, align: 'center', weight: 800, color: BONE, ow: 2 });
+            text(ctx, name, cx + 10, y, { size: 16, weight: 800, color: BONE, ow: 2, maxWidth: vw - cx - 24 });
+          } else text(ctx, name, cx, y, { size: 16, align: 'center', weight: 800, color: BONE, ow: 2, maxWidth: (vw - cx) * 2 - 30 });
         }
         y += 30;
       }
@@ -274,6 +302,18 @@ export class CreditsScene extends Scene {
       text(ctx, b, xx + w / 2 - 60, yy, { size: 15, align: 'right', weight: 800, color: '#fff', ow: 2 });
       ctx.restore();
     });
+    // 유물 5개 (보석)
+    const rc = S.relics ?? 0, gy = y + h - 96;
+    text(ctx, '드라큘라의 유물', vw / 2, gy - 18, { size: 12, align: 'center', weight: 700, color: DIM, ow: 2 });
+    for (let i = 0; i < 5; i++) {
+      const gx = vw / 2 + (i - 2) * 34, on = i < rc;
+      ctx.save(); ctx.translate(gx, gy); ctx.rotate(Math.PI / 4);
+      if (on) { ctx.shadowColor = '#ff2040'; ctx.shadowBlur = 12; }
+      ctx.fillStyle = on ? '#c0102a' : 'rgba(255,255,255,0.06)'; ctx.fillRect(-8, -8, 16, 16);
+      ctx.shadowBlur = 0; ctx.strokeStyle = on ? GOLD : 'rgba(232,200,114,0.3)'; ctx.lineWidth = 1.5; ctx.strokeRect(-8, -8, 16, 16);
+      if (on) { ctx.fillStyle = 'rgba(255,220,220,0.6)'; ctx.fillRect(-5, -5, 4, 4); }
+      ctx.restore();
+    }
     text(ctx, 'FINAL SCORE', x + 30, y + h - 36, { size: 15, weight: 900, family: FONT.num, color: DIM, ow: 2 });
     const sk = clamp((this.phaseT - 1.2) / 1.2, 0, 1);
     text(ctx, fmt(S.score * ease.outCubic(sk)), x + w - 30, y + h - 30, { size: 32, align: 'right', weight: 900, family: FONT.num, color: '#ffe070', ow: 4 });

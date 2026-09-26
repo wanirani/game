@@ -3,7 +3,7 @@
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
 import { text, FONT } from '../../core/ui.js';
-import { clamp, lerp, rand, ease, fmt, TAU } from '../../core/math.js';
+import { clamp, lerp, rand, ease, TAU } from '../../core/math.js';
 import { drawIcon } from '../../render/icons.js';
 import { MiniGame, innBackdrop, feltTable, drawBtn, gPanel, goldText, record, candle, GOLD } from './common.js';
 import { drawCard, glow, rr } from './art.js';
@@ -99,7 +99,7 @@ export class MemoryScene extends MiniGame {
     this.settle({ win: true, payout: notional * tier.m, tier: tier.r === 'S' ? 'big' : 'win', perfect, title: perfect ? `완벽한 기억! ${tier.r}` : `${tier.r} 랭크 클리어!`, sub: `${t.toFixed(1)}초 · ${this.moves}수 · 배당 ×${tier.m}`, delay: 0.9 });
   }
 
-  step(dt, tap) {
+  animate(dt) {
     this.msgT += dt;
     for (const c of this.cards) {
       c.flip = c.up ? Math.min(1, c.flip + dt / 0.16) : Math.max(0, c.flip - dt / 0.16);
@@ -107,6 +107,8 @@ export class MemoryScene extends MiniGame {
       c.pop = Math.max(0, c.pop - dt * 4);
       if (c.done) c.doneT += dt;
     }
+  }
+  step(dt, tap) {
     if (this.phase === 'ready') {
       if (tap === 'start' || input.pressed('confirm')) this.startRound();
       return;

@@ -226,19 +226,20 @@ function shadeCached(col, a) {
   if (!v) { v = shade(col, a); _shc.set(k, v); }
   return v;
 }
-// 2D 볼록 껍질 (모노톤 체인, 점 8개)
-const _pts = [], _hullOut = [];
+// 2D 볼록 껍질 (모노톤 체인, 점 8개) — 매 프레임 할당 없이 재사용 배열 사용
+const _P = Array.from({ length: 8 }, () => [0, 0]), _L = [], _U = [], _hullOut = [];
+const _cmp = (a, b) => a[0] - b[0] || a[1] - b[1];
+const _cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
 function convexHull(arr) {
-  _pts.length = 0;
-  for (let i = 0; i < arr.length; i += 2) _pts.push([arr[i], arr[i + 1]]);
-  _pts.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
-  const lower = [], upper = [];
-  for (const p of _pts) { while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop(); lower.push(p); }
-  for (let i = _pts.length - 1; i >= 0; i--) { const p = _pts[i]; while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop(); upper.push(p); }
-  upper.pop(); lower.pop();
+  for (let i = 0; i < 8; i++) { _P[i][0] = arr[i * 2]; _P[i][1] = arr[i * 2 + 1]; }
+  _P.sort(_cmp);
+  _L.length = 0; _U.length = 0;
+  for (let i = 0; i < 8; i++) { const p = _P[i]; while (_L.length >= 2 && _cross(_L[_L.length - 2], _L[_L.length - 1], p) <= 0) _L.pop(); _L.push(p); }
+  for (let i = 7; i >= 0; i--) { const p = _P[i]; while (_U.length >= 2 && _cross(_U[_U.length - 2], _U[_U.length - 1], p) <= 0) _U.pop(); _U.push(p); }
+  _L.pop(); _U.pop();
   _hullOut.length = 0;
-  for (const p of lower.concat(upper)) _hullOut.push(p[0], p[1]);
+  for (let i = 0; i < _L.length; i++) _hullOut.push(_L[i][0], _L[i][1]);
+  for (let i = 0; i < _U.length; i++) _hullOut.push(_U[i][0], _U[i][1]);
   return _hullOut;
 }
 

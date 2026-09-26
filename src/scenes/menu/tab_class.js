@@ -7,7 +7,7 @@ import { drawHero } from '../../render/hero.js';
 import * as ProgM from '../../game/progression.js';
 import { Tab } from './base.js';
 import { HeroView, HeroStage, pedestal, accentOf } from './hero_view.js';
-import { PAL, frame, heading, divider, brackets, glow, glowOval, pill, para, rr, glyph, ellipsize } from './common.js';
+import { PAL, frame, heading, divider, brackets, glow, glowOval, pill, para, rr, glyph, ellipsize, measure } from './common.js';
 import { fmtStatVal } from './tab_status.js';
 import * as D from './access.js';
 
@@ -66,12 +66,12 @@ export class ClassTab extends Tab {
     const chk = typeof f === 'function' ? f(hero, c.id) : { ok: false };
     if (chk.ok) return { key: 'ready', text: '전직 가능!', color: PAL.good };
     const curTier = D.CLASSES()[hero.classId]?.tier ?? 0;
-    if (c.tier <= curTier) return { key: 'closed', text: '다른 길을 걸었다', color: PAL.faint };
+    if (c.tier <= curTier) return { key: 'closed', text: '선택하지 않은 길', color: PAL.faint };
     let pid = c.parent;
     while (pid) {
       const pc = D.CLASSES()[pid];
       if (!pc) break;
-      if (pc.tier <= curTier) { if (!chain.includes(pid)) return { key: 'closed', text: '다른 길을 걸었다', color: PAL.faint }; break; }
+      if (pc.tier <= curTier) { if (!chain.includes(pid)) return { key: 'closed', text: '선택하지 않은 길', color: PAL.faint }; break; }
       pid = pc.parent;
     }
     return { key: 'locked', text: `Lv ${c.reqLevel} 필요`, color: PAL.dim };
@@ -180,7 +180,9 @@ export class ClassTab extends Tab {
     ctx.drawImage(img, 0, 0, img.width, img.height, r.x + 4, r.y, tw, th + 8);
     ctx.restore();
     const tx = r.x + tw + 12, w = r.w - tw - 18;
-    text(ctx, ellipsize(ctx, c.name, w - 14, 14, 800), tx, r.y + 24, { size: 14, weight: 800, color: st.key === 'closed' ? PAL.faint : sel ? PAL.goldHi : PAL.bone, ow: 3 });
+    const iconW = st.key === 'locked' || st.key === 'closed' || st.key === 'cur' ? 16 : 0;
+    const nsz = measure(ctx, c.name, 14, 800) <= w - iconW ? 14 : 12.5;
+    text(ctx, ellipsize(ctx, c.name, w - iconW, nsz, 800), tx, r.y + 24, { size: nsz, weight: 800, color: st.key === 'closed' ? PAL.faint : sel ? PAL.goldHi : PAL.bone, ow: 3 });
     text(ctx, c.eng ?? '', tx, r.y + 40, { size: 10, weight: 700, family: FONT.num, color: PAL.dim, ow: 2, maxWidth: w });
     text(ctx, st.text, tx, r.y + r.h - 12, { size: 11, weight: 800, color: st.color, ow: 2 });
     if (st.key === 'locked' || st.key === 'closed') glyph(ctx, 'lock', r.x + r.w - 14, r.y + 14, 10, PAL.faint, 1.3);
