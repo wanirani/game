@@ -20,6 +20,8 @@ import { ROOMS as S12 } from './maps/s12.js';
 import { ROOMS as S13 } from './maps/s13.js';
 import { ROOMS as ARENA } from './maps/arena.js';
 // ── P2 map imports s14–s15 (MAPS-P2-A) ──
+import { ROOMS as S14 } from './maps/s14.js';
+import { ROOMS as S15 } from './maps/s15.js';
 // ── P2 map imports s16–s17 (MAPS-P2-B) ──
 // ── P2 map imports s18–s19 (MAPS-P2-C) ──
 // ── P2 map imports s20 (MAPS-P2-D) ──
@@ -68,6 +70,14 @@ export const STAGES = {
     enemies: ['chaos_spawn', 'hellhound', 'abyss_eye', 'shadow_hunter', 'void_demon', 'death_knight', 'demon_lord'], docs: ['d20'], next: null, mapPos: { x: 0.5, y: 0.12 },
     req: '드라큘라의 유물 5개를 모두 모으고 드라큘라를 쓰러뜨리면 열린다' }),
   // ── P2 stages s14–s15 (MAPS-P2-A) ──
+  s14: S({ id: 's14', chapter: 14, part: 2, page: 1, name: '거울의 성', sub: '만경궁 — 비친 것이 먼저 움직이는 곳', theme: 'mirror', bg: 'bg/s14_mirror', tex: 'tex/tex_mirror', tex2: 'tex/tex_marble', tileStyle: 'mirror',
+    music: 's14', level: 46, darkness: 0.35, darkColor: '#04060c', liquid: 'water', boss: 'b_narkissa', rooms: S14, parTime: 480,
+    enemies: ['mirror_knight', 'glass_wraith', 'reflection', 'chandelier_fiend', 'phantom_sword', 'mimic'], docs: ['d21'], shard: 'k_star_1', heart: 'k_heart_1',
+    gimmick: { kind: 'mirror', start: 'A', cooldown: 0.8 }, color: '#cfe8ff', next: 's15', mapPos: { x: 0.16, y: 0.74 }, req: '진정한 새벽 뒤, 에슈빌 하늘에 균열이 열리면 갈 수 있다' }),
+  s15: S({ id: 's15', chapter: 15, part: 2, page: 1, name: '영겁의 용광로', sub: '쇳물이 차오르는 무쇠 지옥', theme: 'forge', bg: 'bg/s15_forge', tex: 'tex/tex_forge', tex2: 'tex/tex_brass', tileStyle: 'forge',
+    music: 's15', level: 50, darkness: 0.3, darkColor: '#0c0402', liquid: 'lava', boss: 'b_moloch', rooms: S15, parTime: 510,
+    enemies: ['forge_imp', 'slag_golem', 'chain_warden', 'bellows', 'hellhound', 'gear_golem', 'mimic'], docs: ['d22'], shard: 'k_star_2', heart: 'k_heart_2',
+    gimmick: { kind: 'magma', mode: 'tide', low: 14, high: 12, period: 9, hold: 2.5, warn: 1.5 }, color: '#ff7a2a', next: 's16', mapPos: { x: 0.1, y: 0.4 } }),
   // ── P2 stages s16–s17 (MAPS-P2-B) ──
   // ── P2 stages s18–s19 (MAPS-P2-C) ──
   // ── P2 stages s20 (MAPS-P2-D) ──

@@ -55,45 +55,9 @@ body.touch.portrait #rotate { display: flex; }
 /* 태블릿은 세로로도 플레이할 수 있다 (platform §6.6): game.js 가 body.portrait-play 를 켜면 회전 안내를 띄우지 않는다 */
 body.portrait-play #rotate { display: none; }
 
-/* ── src/core/platform.js 가 :root 에 다는 상태 클래스 ── */
-/* 전체 화면을 쓸 수 없는 곳(아이폰 사파리, 설치된 앱, APK)에서는 ⛶ 버튼을 숨긴다 */
-.bn-nofs #fsBtn { display: none; }
+/* ── src/core/platform.js 가 :root 에 다는 상태 클래스 ──
+   .bn-nofs  전체 화면을 쓸 수 없는 곳(아이폰 사파리, 설치된 앱, APK): 캔버스 패드는 platform.canFullscreen() 으로 ⛶ 를 뺀다
+   .bn-fs    전체 화면 중
+   가상 패드는 캔버스로 그린다 (src/core/touchpad.js + css/touchpad.css). 예전 DOM 패드(#touch) 규칙은 없앴다 */
 /* 게임플레이 중 마우스를 2초 움직이지 않으면 커서를 숨긴다 (P-30) */
 .bn-nocursor, .bn-nocursor * { cursor: none !important; }
-
-/* ── 모바일 가상 패드 ── */
-#touch { position: absolute; inset: 0; pointer-events: none; z-index: 10; opacity: var(--touch-op); }
-#touch.hidden { display: none; }
-/* 대화·비전서·보스 등장·게임오버·결과 등 게임플레이가 아닌 장면이 위에 있을 때 (core/game.js syncPad) */
-#touch.scene-off { visibility: hidden; }
-#touch .b, #touch #stick { pointer-events: auto; touch-action: none; }
-#stick {
-  position: absolute; left: calc(18px + env(safe-area-inset-left)); bottom: calc(18px + env(safe-area-inset-bottom));
-  width: 150px; height: 150px; border-radius: 50%;
-}
-#stick .ring { position: absolute; inset: 0; border-radius: 50%; border: 2px solid rgba(232,200,114,0.6); background: radial-gradient(circle, rgba(40,10,20,0.35), rgba(0,0,0,0.5)); }
-#stick .knob { position: absolute; left: 50%; top: 50%; width: 62px; height: 62px; margin: -31px 0 0 -31px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #7a2030, #2a0610); border: 2px solid var(--gold); box-shadow: 0 0 12px rgba(179,18,46,0.6); }
-#btns { position: absolute; right: calc(14px + env(safe-area-inset-right)); bottom: calc(14px + env(safe-area-inset-bottom)); width: 270px; height: 210px; }
-#touch .b {
-  position: absolute; border-radius: 50%; border: 2px solid rgba(232,200,114,0.75);
-  background: radial-gradient(circle at 35% 30%, rgba(120,24,44,0.9), rgba(30,6,14,0.92));
-  color: #f3e2b8; font: 800 13px "Noto Sans KR", sans-serif; display: flex; align-items: center; justify-content: center;
-  width: 54px; height: 54px; padding: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.6);
-}
-#touch .b.on { background: radial-gradient(circle at 35% 30%, #e8c872, #8a2a1a); color: #1a0608; transform: scale(0.94); }
-#touch .b.big { width: 78px; height: 78px; font-size: 16px; }
-#btns .atk { right: 92px; bottom: 6px; }
-#btns .jmp { right: 6px; bottom: 50px; }
-#btns .dsh { right: 176px; bottom: 16px; }
-#btns .sub { right: 100px; bottom: 96px; }
-#btns .sk1 { right: 164px; bottom: 82px; }
-#btns .sk2 { right: 40px; bottom: 140px; }
-#btns .ult { right: 216px; bottom: 136px; background: radial-gradient(circle at 35% 30%, #c8a040, #5a3a0a); }
-#btns .swp { right: 104px; bottom: 156px; width: 40px; height: 40px; font-size: 16px; }
-#touch .sys { width: 44px; height: 44px; border-radius: 10px; font-size: 18px; }
-#pauseBtn { top: calc(10px + env(safe-area-inset-top)); left: 50%; margin-left: -50px; }
-#fsBtn { top: calc(10px + env(safe-area-inset-top)); left: 50%; margin-left: 6px; }
-@media (max-height: 420px) {
-  #stick { width: 128px; height: 128px; }
-  #btns { transform: scale(0.86); transform-origin: right bottom; }
-}

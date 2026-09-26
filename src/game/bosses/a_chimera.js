@@ -5,6 +5,7 @@ import { ABoss, beginDraw, endDraw, C, rg, lg, glow, ink, rim, sheen, taper, eye
 import { Hitbox } from '../projectiles.js';
 import { rand, clamp, lerp, TAU, angleTo, rgba, ease } from '../../core/math.js';
 import { audio } from '../../core/audio.js';
+import { paintedDebris } from '../../render/painted/registry.js';   // 채색 파편 (ART-BOSS-3)
 
 const FUR = '#8e6434', FUR2 = '#c8965a', FURD = '#2e1c0c', MANE = '#2a180e', MANE2 = '#5a3620', GOAT = '#8a8272', SNAKE = '#3a7a3a', SNAKE2 = '#c8d86a', ACID = '#7cff5a', GLASS = '#c8fff0';
 const _Q = new Float32Array(40);
@@ -204,7 +205,7 @@ export class Chimera extends ABoss {
     this.vx = this.cdir * (820 + this.phase * 80); this.facing = this.cdir; this.roar = 0.6; this.crouch = 0;
     this.strikeRect({ x: this.x + 10, y: this.y + 10, w: this.w - 20, h: this.h - 10 }, 1.2, { kb: [520, -440] });
     if (Math.random() < 0.6) world.fx.emit('dust', this.cx - this.cdir * 80, this.floorY - 4, { speed: 80, angle: -PI / 2 - this.cdir * 0.8 });
-    if (this.every(W, 0.05, 60) >= 0) { const s = { x: this.cx, b: this.bottom, f: this.facing, g: this.gait }; this.fx.ghost((ctx, a) => { const kg = this.gait; this.gait = s.g; ctx.save(); ctx.globalAlpha = a * 0.4; ctx.translate(s.x, s.b); ctx.scale(s.f * S, S); this.drawBody(ctx, this.t, true); ctx.restore(); this.gait = kg; }, 0.22, 'back'); }
+    if (this.every(W, 0.05, 60) >= 0) { const s = { x: this.cx, b: this.bottom, f: this.facing, g: this.gait }; this.fx.ghost((ctx, a) => { if (this._painted?.proxy && !this._painted.proxy.dead) return; const kg = this.gait; this.gait = s.g; ctx.save(); ctx.globalAlpha = a * 0.4; ctx.translate(s.x, s.b); ctx.scale(s.f * S, S); this.drawBody(ctx, this.t, true); ctx.restore(); this.gait = kg; }, 0.22, 'back'); }
     const hit = this.cdir > 0 ? this.x + this.w >= A.x1 - 6 : this.x <= A.x0 + 6;
     if (hit || this.stateT > W + 2.2) {
       this.vx = 0; this.impact(this.cx + this.cdir * 100, this.floorY - 60, 12, 0.06, '#ffd090');
@@ -253,7 +254,7 @@ export class Chimera extends ABoss {
   phaseApply(n) { if (n >= 2) { this.tubesBroken = true; this.enraged = true; } }
   deathStart() { audio.sfx('boss_roar', { pitch: 0.5 }); }
   deathTick(dt) { this.vx = 0; this.roar = 1; this.goatUp = 1; this.crouch = Math.min(1, this.deathT * 0.6); this.snakeOpen = 1; }
-  debrisPiece(i) { return { size: 12, draw: i % 3 === 0 ? drawGlassBit : i % 3 === 1 ? drawScaleBit : drawFurBit }; }
+  debrisPiece(i) { return paintedDebris(this, i) ?? { size: 12, draw: i % 3 === 0 ? drawGlassBit : i % 3 === 1 ? drawScaleBit : drawFurBit }; }
   extraLights(L) {
     const g = this.goatHead(); L.add(g.x, g.y, 60 + this.goatGlow * 60, ACID, 0.8);
     const tb = this.W(0, -150); L.add(tb.x, tb.y, 110 + this.fury * 50, ACID, 0.6);

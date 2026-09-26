@@ -46,6 +46,8 @@ const DEF = {
 
 // 지역 좌표 배치 (logic px) — 벡터 그림(a_nightwing.js drawFigure)과 같은 틀
 const NECK_Y = -116, HEAD_S = 0.96, LEG_S = 0.84, WING_IN = 9;
+const G = 1.1;          // 전체 배율 (벡터보다 약간 크게 — 보스다운 존재감). 발 중앙 기준으로 커진다 (판정은 그대로)
+const WING_S = 1.12;     // 날개 추가 배율
 
 // ───────────────────────── 모듈 계약 ─────────────────────────
 export default {
@@ -62,7 +64,7 @@ export default {
   draw(ctx, b, world, rig, st) { drawBoss(ctx, b, world, rig, st); },
   bounds(b, rig, st, out) {
     const X = b.cx, B = b.bottom;
-    let x0 = X - 330, x1 = X + 330, y0 = B - 330, y1 = Math.max(B + 30, (b.A?.floor ?? B) + 10);
+    let x0 = X - 380, x1 = X + 380, y0 = B - 370, y1 = Math.max(B + 30, (b.A?.floor ?? B) + 10);
     if (b.dying > 0 || st?.shards?.list.length) { const A = b.A; x0 = Math.min(x0, A.x0 - 40); x1 = Math.max(x1, A.x1 + 40); y1 = Math.max(y1, A.floor + 20); }
     out.x = x0; out.y = y0; out.w = x1 - x0; out.h = y1 - y0;
     return out;
@@ -88,7 +90,7 @@ export default {
     D.begin(ctx);
     D.save();
     const fsx = s.f ?? 1;
-    ctx.translate(s.x, s.b - 60); ctx.rotate(s.lean ?? 0); ctx.scale(fsx, 1); ctx.translate(0, 60);
+    ctx.translate(s.x, s.b - 60); ctx.rotate(s.lean ?? 0); ctx.scale(fsx * G, G); ctx.translate(0, 60 / G);
     D.begin(ctx);
     drawFigure(D, ctx, b, rig, st, o, 'ghost', a * 0.42);
     D.end();
@@ -166,7 +168,7 @@ function drawBoss(ctx, b, world, rig, st) {
   const o = poseOf(st.pose, b, b, rig, t, st);
   // 지역 → 월드 (입자용)
   const cl = Math.cos(lean), sl = Math.sin(lean);
-  const W = (lx, ly, out = st.W) => { const x = fsx * lx, y = ly + 60; out[0] = X + cl * x - sl * y; out[1] = B - 60 + sl * x + cl * y; return out; };
+  const W = (lx, ly, out = st.W) => { const x = fsx * G * lx, y = G * ly + 60; out[0] = X + cl * x - sl * y; out[1] = B - 60 + sl * x + cl * y; return out; };
   st._Wf = W;
   const q0 = ctx.imageSmoothingQuality;
   ctx.imageSmoothingQuality = 'low';
@@ -176,13 +178,19 @@ function drawBoss(ctx, b, world, rig, st) {
   const bodyGone = st.dead.body;
   if (!bodyGone) D.img(puff('#000000'), 32, 32, X, floor - 2, 0, 150 * (1 - alt * 0.45) / 32, 18 * (1 - alt * 0.45) / 32, 0.6 * (1 - alt * 0.55));
   D.end();
+  // 실루엣 분리용 역광 (어두운 핏빛) + 격노·변신 발광
+  if (!bodyGone && q.halos) {
+    const c = W(0, -95, [0, 0]), rage = b.rage ?? 0, tr = b.state === 'transform' ? 1 : 0;
+    halo(ctx, c[0], c[1], 210 * G, '#5a0616', 0.5);
+    if (rage > 0.02 || tr) halo(ctx, c[0], c[1], 250 * G, '#ff1030', (0.14 + 0.08 * Math.sin(t * 6)) * rage + tr * (0.3 + 0.2 * Math.sin(t * 30)));
+  }
   P.draw(ctx, 0);
   // 레벨 상승 폭발
   if (up > 0 && !dying) levelBurst(P, W, up);
   // ── 몸 (지역 좌표) ──
   D.save();
   ctx.beginPath(); ctx.rect(A.x0 - 2000, floor - 3000, A.w + 4000, 3002); ctx.clip();   // 바닥 아래는 그리지 않는다
-  ctx.translate(X, B - 60); ctx.rotate(lean); ctx.scale(fsx, 1); ctx.translate(0, 60);
+  ctx.translate(X, B - 60); ctx.rotate(lean); ctx.scale(fsx * G, G); ctx.translate(0, 60 / G);
   D.begin(ctx);
   const rec = b.flashT > 0 && !dying;
   D.rec = rec; D.log.length = 0;
@@ -195,7 +203,7 @@ function drawBoss(ctx, b, world, rig, st) {
     D.begin(ctx);
     D.save();
     ctx.beginPath(); ctx.rect(A.x0 - 2000, floor - 3000, A.w + 4000, 3002); ctx.clip();
-    ctx.translate(X, B - 60); ctx.rotate(lean); ctx.scale(fsx, 1); ctx.translate(0, 60);
+    ctx.translate(X, B - 60); ctx.rotate(lean); ctx.scale(fsx * G, G); ctx.translate(0, 60 / G);
     D.begin(ctx);
     D.rec = rec;
   }
@@ -241,19 +249,25 @@ function drawWings(D, ctx, b, rig, st, o, mode, alpha) {
     const mir = s > 0 ? -1 : 1;                 // 그림은 왼쪽 날개 → 오른쪽(+x)은 뒤집기
     const rot = (o.wRot + (far ? 0.06 : 0)) * mir;
     const a1 = (1 - o.fold) * alpha, a2 = o.fold * alpha;
-    const wk = Wg.k * o.wK * kk;
+    const wk = Wg.k * o.wK * kk * WING_S;
     if (a1 > 0.01) {
       if (ghost) gpart(D, Wg, 'root', rx, ry, rot, wk * mir, wk * o.wSy, a1);
       else {
         part(D, st, Wg, 'root', rx, ry, rot, wk * mir, wk * o.wSy, a1, far);
         glowOver(ctx, D, st, Wg, 'root', rx, ry, rot, wk * mir, wk * o.wSy, 0.5 * a1, b.t + (far ? 1.3 : 0), veinBoost(b));
+        // 빛이 비치는 막 (반투명한 핏빛) — 격노할수록 강하게
+        if (st.q.halos) {
+          const m = D.pt(Wg.root[0], Wg.root[1], Wg.mid[0], Wg.mid[1], rx, ry, rot, wk * mir, wk * o.wSy, _c);
+          D.end();
+          halo(ctx, m[0], m[1], 95 * WING_S, '#ff2a3a', (0.1 + (b.rage ?? 0) * 0.12 + (b.state === 'blades' ? 0.15 : 0)) * a1 * (far ? 0.7 : 1));
+        }
       }
     }
     if (a2 > 0.01) {
-      const fk = Wf.k * kk;
-      const frot = (0.18 + o.claw * 0.1 + Math.sin(b.t * 5 + (far ? 1 : 0)) * 0.04) * mir;
-      if (ghost) gpart(D, Wf, 'root', rx, ry - 4, frot, fk * mir, fk, a2);
-      else part(D, st, Wf, 'root', rx, ry - 4, frot, fk * mir, fk, a2, far);
+      const fk = Wf.k * kk * WING_S;
+      const frot = (0.5 + o.claw * 0.12 + Math.sin(b.t * 5 + (far ? 1 : 0)) * 0.04) * mir;
+      if (ghost) gpart(D, Wf, 'root', rx + s * 4, ry - 12, frot, fk * mir, fk, a2);
+      else part(D, st, Wf, 'root', rx + s * 4, ry - 12, frot, fk * mir, fk, a2, far);
     }
   }
 }
@@ -289,7 +303,7 @@ function drawFigure(D, ctx, b, rig, st, o, mode, alpha, withBody = true) {
   }
   // 머리 + 턱
   if (!dead.head) {
-    D.pt(T.neck[0], T.neck[1], T.neck[0], T.neck[1] + 14, o.tx, o.ty, o.trot, o.tsx, o.tsy, _a);
+    D.pt(T.neck[0], T.neck[1], T.neck[0], T.neck[1] + 26, o.tx, o.ty, o.trot, o.tsx, o.tsy, _a);   // 목을 갈기 속으로 푹 묻어 웅크린 자세 (판정 상자와의 차이도 줄인다)
     const hx = _a[0] + 2, hy = _a[1];
     const hk = o.hk;
     D.pt(H.neck[0], H.neck[1], H.hinge[0], H.hinge[1], hx, hy, o.hrot, hk, hk, _h);
@@ -420,7 +434,7 @@ function deathFx(ctx, D, b, rig, st, o, W, dt, dT, fsx, X, B, lean) {
     const w = W(lx, ly, [0, 0]);
     const pv = typeof pivot === 'string' ? p[pivot] : pivot;
     const rot = fsx < 0 ? lean - lrot : lean + lrot;
-    st.shards.spawn(img, pv[0], pv[1], w[0], w[1], rot, sx * Math.sign(fsx), sy, vx, vy, vr, { r, bounce, fade });
+    st.shards.spawn(img, pv[0], pv[1], w[0], w[1], rot, sx * Math.sign(fsx) * G, sy * G, vx, vy, vr, { r: r * G, bounce, fade });
   };
   const V = (p, deep = false) => pickVariant(p, 2, deep, st.tintK > 0.5 ? 'blood' : null);
   if (!st.dBurst && dT > 0.3) {
@@ -450,8 +464,8 @@ function deathFx(ctx, D, b, rig, st, o, W, dt, dT, fsx, X, B, lean) {
       const s = far ? 1 : -1, shp = T[s < 0 ? 'shoulderL' : 'shoulderR'];
       const sh = D.pt(T.neck[0], T.neck[1], shp[0], shp[1], o.tx, o.ty, o.trot, o.tsx, o.tsy, [0, 0]);
       const mir = s > 0 ? -1 : 1, kk = far ? 0.9 : 1, useF = o.fold > 0.5, Pp = useF ? Wf : Wg;
-      const k = Pp.k * kk * (useF ? 1 : o.wK);
-      shard(Pp, V(Pp, far), 'root', sh[0] - s * WING_IN, sh[1] + 4, (useF ? 0.18 : o.wRot) * mir, k * mir, k, s * fsx * rr.range(60, 160), rr.range(-260, -120), s * fsx * rr.range(1.5, 3.5), 40, 0.15);
+      const k = Pp.k * kk * (useF ? 1 : o.wK) * WING_S;
+      shard(Pp, V(Pp, far), 'root', sh[0] - s * WING_IN + (useF ? s * 4 : 0), sh[1] + (useF ? -12 : 4), (useF ? 0.5 : o.wRot) * mir, k * mir, k, s * fsx * rr.range(60, 160), rr.range(-260, -120), s * fsx * rr.range(1.5, 3.5), 40, 0.15);
       for (let i = 0; i < 26; i++) { const p = W(s * rr.range(40, 220), rr.range(-230, -60), [0, 0]); P.emit(i % 3 ? 'ash' : 'ashLight', p[0], p[1], rr.range(-40, 40), rr.range(-60, 30), { layer: 1, color: i % 3 ? 'rgba(40,6,10,0.9)' : undefined, size: rr.range(2, 4.5), life: rr.range(1.2, 2.2) }); }
       const wp = W(s * 120, -170, [0, 0]);
       P.burst('blood', wp[0], wp[1], 10, { speed: 200, color: BLOOD, hi: BLOOD_HI });

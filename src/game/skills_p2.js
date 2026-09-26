@@ -153,7 +153,8 @@ function techMirror(p, w) {
   // 등 뒤의 거울 분신 (반대편을 본다, α 0.6, lighter)
   const snap0 = p.snapshot?.() ?? null;
   const snap = snap0 ? Object.assign(snap0, { facing: -f, move: mv, moveT: 0, anim, onGround: p.onGround }) : null;
-  const HIT = 0.09, LIFE = 0.5, IFR = 0.25;
+  const HIT = 0.09, LIFE = 0.55, IFR = 0.25;
+  p.iframes = Math.max(p.iframes ?? 0, 0.075);   // 시전 프레임부터 무적 (아래 tick 이 0.25초 동안 유지)
   fx(w, {
     life: LIFE, z: 9, d: { hit: false, gx: p.cx - f * 34, gb: p.bottom },
     follow(e) { e.d.gx = p.cx - f * 34; e.d.gb = p.bottom; e.x = p.cx - 200; e.y = p.bottom - 180; e.w = 400; e.h = 200; },
@@ -199,10 +200,15 @@ function techMirror(p, w) {
       g.addColorStop(0, rgba(MIRROR2, 0)); g.addColorStop(0.5, rgba('#ffffff', 0.55 * a)); g.addColorStop(1, rgba(MIRROR2, 0));
       ctx.fillStyle = g; ctx.fillRect(mx - 6, top, 12, p.h + 22);
       if (e.lt >= HIT - 0.03) {
-        const u = (e.lt - (HIT - 0.03)) / 0.16, fa = a * clamp(1.4 - u, 0, 1);
+        const u = (e.lt - (HIT - 0.03)) / 0.14, fa = a * clamp(2 - u, 0, 1);
+        if (u < 1.2) {   // 베는 순간의 은빛 섬광 (앞뒤)
+          const fl = a * (1 - u / 1.2);
+          glow(ctx, p.cx + f * 80, p.bottom - 52, 90, MIRROR, 0.5 * fl);
+          glow(ctx, e.d.gx - f * 80, p.bottom - 52, 90, MIRROR2, 0.5 * fl);
+        }
         mirrorArc(ctx, p.cx + f * 20, p.bottom - 52, f, u, fa);
         mirrorArc(ctx, e.d.gx - f * 20, p.bottom - 52, -f, u, fa);
-        if (u < 1) cutLine(ctx, p.cx - f * 150, p.bottom - 50, p.cx + f * 150, p.bottom - 54, 5, c, fa * (1 - u));
+        if (u < 1.5) cutLine(ctx, p.cx - f * 170, p.bottom - 50, p.cx + f * 170, p.bottom - 54, 5, c, fa * (1 - u / 1.5));
       }
     },
     end() { if ((p.iframes ?? 0) <= 0.075) p.iframes = 0; },

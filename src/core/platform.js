@@ -338,7 +338,8 @@ function flushUpdateToast() {
   const onTitle = G.top.name === 'title';
   if (onTitle && updFns.size) { updateToastQueued = false; return; }
   updateToastQueued = false; updateToastDone = true;
-  call(() => G.toast?.(onTitle ? `${UPDATE_READY_TEXT} — 새로고침하면 적용됩니다` : UPDATE_LATER_TEXT, '#b8c4d8', 3.2));
+  // 타이틀에 [업데이트] 버튼(onUpdateReady 구독)이 아직 없을 때: 새로고침만으로는 대기 중인 워커가 켜지지 않으므로 '다시 열기'로 안내
+  call(() => G.toast?.(onTitle ? `${UPDATE_READY_TEXT} — 게임을 닫았다가 다시 열면 적용됩니다` : UPDATE_LATER_TEXT, '#b8c4d8', 3.2));
 }
 export function updateReady() { return updReady; }
 export function onUpdateReady(cb) {
@@ -397,8 +398,7 @@ export function initPlatform(game) {
   D.addEventListener('gesturestart', (e) => e.preventDefault());
   D.addEventListener('touchmove', (e) => { if (e.target?.closest?.('#app')) e.preventDefault(); }, { passive: false });
 
-  // 전체 화면: ⛶ 버튼(있으면), Alt+Enter (데스크톱), 첫 탭 자동 (안드로이드 웹)
-  D.getElementById('fsBtn')?.addEventListener('click', () => { toggleFullscreen(); });
+  // 전체 화면: Alt+Enter (데스크톱), 첫 탭 자동 (안드로이드 웹). ⛶ 버튼은 캔버스 패드(touchpad.js)가 그리고 toggleFullscreen() 을 부른다
   W.addEventListener('keydown', (e) => {
     if (!e.altKey || e.repeat || (e.code !== 'Enter' && e.code !== 'NumpadEnter')) return;
     if (!fullscreenAvailable()) return;

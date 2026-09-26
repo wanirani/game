@@ -3,7 +3,7 @@
 import { BossB, PI, OUT, R, C, LG, RG, ink, glow, glowE, eye, warnRect, warnFloor, warnLine, warnBang, lineStrike, impact, hash, smoothOpen } from './b_common.js';
 import { Entity } from '../entity.js';
 import { heldByFreeze } from './boss.js';
-import { drawPaintedDirect, paintedRig } from '../../render/painted/registry.js';
+import { drawPaintedDirect, paintedRig, paintedEnabled } from '../../render/painted/registry.js';
 import { audio } from '../../core/audio.js';
 import { TAU, clamp, lerp, rand, ease, rgba, mix } from '../../core/math.js';
 
@@ -11,6 +11,10 @@ const ICE = '#9fe8ff', ICE_L = '#e6fbff', ICE_D = '#2c5a8a', ICE_DD = '#12264a';
 const SKIN = '#cfe6f4', SKIN_D = '#7fa4c4';
 const HAIR = '#eef6ff', HAIR_D = '#8aa6c8';
 const GEM = '#5fd0ff';
+/** 채색 리그의 그리기 도우미 (위험 지대·투사체). 준비 전이거나 채색이 꺼져 있으면 null → 기존 벡터 그림 */
+const pArt = (world) => (paintedEnabled(world?.game) ? paintedRig('b_frostqueen')?.art : null) ?? null;
+/** 채색 퍼핏이 본체를 그리는 중인가 (그러면 벡터 잔상은 생략 — 채색 렌더러가 자기 잔상을 그린다) */
+const pLive = (b) => !!(b._painted?.proxy && !b._painted.proxy.dead);
 
 /** 거울 분신: 한 번 맞으면 깨짐 */
 class MirrorClone extends Entity {
@@ -49,6 +53,7 @@ class MirrorClone extends Entity {
   }
   lights(L) { L.add(this.cx, this.cy, 110, ICE, 0.5); }
   draw(ctx, world) {
+    if (drawPaintedDirect(this, ctx, world, 'b_frostqueen')) return;   // 채색 분신 (여왕 리그 + 거울 틴트)
     ctx.save();
     ctx.globalAlpha = 0.72;
     this.queen.paintQueen(ctx, this.cx, this.bottom, this.facing, this.t + this.bobPh, this.pose, true);
@@ -135,7 +140,7 @@ export class FrostQueen extends BossB {
       this.warpKind = null;
       audio.sfx('ice', { vol: 0.8, pitch: 1.5 });
       const gx = this.cx, gy = this.bottom, f = this.facing, pz = { ...this.pose }, tt = this.t;
-      world.fx.ghost((ctx, a) => { ctx.save(); ctx.globalAlpha = a * 0.6; this.paintQueen(ctx, gx, gy, f, tt, pz, true); ctx.restore(); }, 0.35);
+      world.fx.ghost((ctx, a) => { if (pLive(this)) return; ctx.save(); ctx.globalAlpha = a * 0.6; this.paintQueen(ctx, gx, gy, f, tt, pz, true); ctx.restore(); }, 0.35);
     }
     if (t < T1) { this.vanish = t / T1; this.invuln = this.vanish > 0.6; }
     else if (t < T2) {
@@ -200,10 +205,11 @@ export class FrostQueen extends BossB {
           // 천장에서 자라는 고드름 + 낙하선
           warnLine(ctx, x, top + 20, x, F, k * 0.6, ICE, 1);
           ctx.translate(x, top); ctx.scale(0.4 + 0.6 * k, 0.4 + 0.6 * k);
-          drawIcicle(ctx, st.len, this.t + x);
+          const art0 = pArt(this.world); if (art0) art0.icicle(ctx, st.len); else drawIcicle(ctx, st.len, this.t + x);
           return;
         }
-        ctx.translate(x, st.y - st.len); drawIcicle(ctx, st.len, this.t + x);
+        ctx.translate(x, st.y - st.len);
+        const art = pArt(this.world); if (art) art.icicle(ctx, st.len); else drawIcicle(ctx, st.len, this.t + x);
         glowE(ctx, 0, -20, 10, 40, ICE, 0.4);
       },
     });
@@ -241,6 +247,8 @@ export class FrostQueen extends BossB {
         if (z.t < z.warn) { warnFloor(ctx, x, F, 64, z.k, ICE, this.t); return; }
         const grow = ease.outBack(Math.min(1, z.a * 5)), fade = z.a > 0.8 ? (1 - z.a) * 5 : 1;
         ctx.globalAlpha *= fade;
+        const art = pArt(this.world);
+        if (art) { art.pillar(ctx, x, F, H, grow, hash(x)); return; }
         ctx.translate(x, F);
         drawCrystal(ctx, 30, H * grow, hash(x));
       },
@@ -374,6 +382,8 @@ export class FrostQueen extends BossB {
     if (z.t < z.warn) warnRect(ctx, d > 0 ? wx : wx - 56, F - 220, 56, 220, z.k, ICE, this.t);
     const g = ease.outBack(Math.min(1, (z.t - z.warn) * 4));
     if (z.t < z.warn) return;
+    const art = pArt(this.world);
+    if (art) { art.spikes(ctx, wx, d, F, g); return; }
     ctx.save(); ctx.translate(wx, F);
     for (let i = 0; i < 7; i++) {
       const y = -16 - i * 30, len = (40 + hash(i) * 26) * g;
@@ -808,6 +818,7 @@ function drawCrystal(ctx, w, H, seed) {
   glowE(ctx, 0, -H * 0.5, w * 1.2, H * 0.6, '#9fe8ff', 0.35);
 }
 function shardRender(ctx, p) {
+  if (pArt(p.world)?.dart(ctx, p)) return;   // 채색 얼음 파편
   const a = Math.atan2(p.vy, p.vx);
   ctx.rotate(a);
   glowE(ctx, -6, 0, 22, 10, ICE, 0.6);
@@ -815,6 +826,7 @@ function shardRender(ctx, p) {
   ctx.fillStyle = 'rgba(210,245,255,0.95)'; ctx.fill(); ctx.strokeStyle = 'rgba(20,60,110,0.9)'; ctx.lineWidth = 1.2; ctx.stroke();
 }
 function diamondRender(ctx, p) {
+  if (pArt(p.world)?.diamond(ctx, p)) return;   // 채색 얼음 결정
   ctx.rotate(p.t * 6);
   glow(ctx, 0, 0, 18, ICE, 0.7);
   ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(6, 0); ctx.lineTo(0, 8); ctx.lineTo(-6, 0); ctx.closePath();

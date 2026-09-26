@@ -316,6 +316,26 @@ const MB = 1048576;
   a.sceneChange(['bg/l3']);
   a._poll(performance.now() + 2000);
   ok(!a.cache.has('bg/l1') && !a.cache.has('bg/l2') && a.cache.has('bg/l3'), '장면 전환 → 쓰이지 않은 bg 를 장면 몫(6 MB)까지 내림, keep 은 유지');
+  // 전환 알림이 유예(1.5초) 안에 또 오면 앞선 (더 이른) 기준 시각을 둔다: 그 사이에 쓴 이미지는 '전환 뒤 사용'
+  a = mk(); a.setEnv(env('high', 1000)); a.setBudget({ total: 20 * MB });
+  for (const k of ['bg/l1', 'bg/l2', 'bg/l3']) await a.load(k);
+  const t1 = performance.now();
+  for (const k of ['bg/l1', 'bg/l2', 'bg/l3']) a.cache.get(k).t = t1 - 5000;
+  a.sceneChange();
+  const m1 = a._sceneAt;
+  a.cache.get('bg/l2').t = m1 + 1;             // 첫 알림 뒤, 두 번째 알림 전에 쓰임 (enter() 에서 미리 받은 것처럼)
+  a.sceneChange();
+  ok(a._sceneAt === m1, `유예 안의 두 번째 sceneChange() 는 기준 시각을 늦추지 않는다 (${a._sceneAt === m1})`);
+  a._poll(m1 + 2000);
+  ok(!a.cache.has('bg/l1') && a.cache.has('bg/l2'), '첫 알림 뒤에 쓴 bg 는 남기고 그 전 것만 내림');
+  // 로딩 중에 내리기: 기다리던 쪽은 null 을 받고, 다음 get() 은 다시 받는다
+  a = mk(); a.setEnv(env('high', 1000));
+  const pend = a.load('bg/l3');
+  ok(a.release('bg/l3') === 0 && !a.cache.has('bg/l3'), '로딩 중 release → 바이트 0, 항목 삭제');
+  ok(await pend === null, '로딩 중에 내린 이미지를 기다리던 load() 는 null');
+  await tick(10);
+  ok(a.total === 0, `내린 뒤 늦게 끝난 로드는 바이트를 더하지 않는다 (${a.total})`);
+  ok(a.get('bg/l3') === null && (await a.load('bg/l3'))?.naturalWidth === 1024 && a.total === 4 * MB, '다시 get()/load() 하면 새로 받는다');
 
   // 팩
   a = mk(); a.setEnv(env('low', 400));

@@ -30,23 +30,7 @@
 <body>
 <div id="app">
   <canvas id="screen" aria-label="게임 화면"></canvas>
-  <!-- 예전 DOM 가상 패드: 캔버스 패드(src/core/touchpad.js)가 뜨면 안의 버튼을 스스로 걷어 내고 빈 #touch 만 남긴다.
-       캔버스 패드가 실패하면(initTouchPad → null) input.js 가 이 DOM 패드로 되돌아가므로 그때까지 대체 수단으로 남겨 둔다 -->
-  <div id="touch" class="hidden" aria-hidden="true">
-    <div id="stick"><div class="ring"></div><div class="knob"></div></div>
-    <div id="btns">
-      <button class="b big atk" data-act="attack">공격</button>
-      <button class="b big jmp" data-act="jump,confirm">점프</button>
-      <button class="b dsh" data-act="dash">대시</button>
-      <button class="b sub" data-act="sub">보조</button>
-      <button class="b sk1" data-act="skill1">S1</button>
-      <button class="b sk2" data-act="skill2">S2</button>
-      <button class="b ult" data-act="ult">필살</button>
-      <button class="b swp" data-act="swap">⇄</button>
-    </div>
-    <button id="pauseBtn" class="b sys" data-act="menu,cancel">Ⅱ</button>
-    <button id="fsBtn" class="b sys" type="button">⛶</button>
-  </div>
+  <!-- 가상 패드는 캔버스로 그린다: src/core/touchpad.js 가 #tpad(css/touchpad.css)를 만든다. ⛶·Ⅱ·가방 버튼도 거기에 있다 -->
   <div id="rotate"><div>📱↻<br>가로 모드로 돌려주세요</div></div>
   <div id="boot" role="status" aria-live="polite">
     <div class="t">BLOOD NOCTURNE</div>

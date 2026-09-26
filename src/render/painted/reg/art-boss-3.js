@@ -3,7 +3,9 @@
 // enemies:    [{ mod: <import * as x from '../enemies/<id>.js'>, ids?: ['<render id>', ...] }]  (적 렌더러 모듈, 에셋은 지연 로딩)
 // companions: { '<companionId>': () => import('../companions/<id>.js') }
 // npcs:       { '<npcId>': () => import('../npcs/<id>.js') }
-export const bosses = {};
+export const bosses = {
+  b_chimera: () => import('../bosses/b_chimera.js'),     // 키메라 호문쿨루스 (s07)
+};
 export const enemies = [];
 export const companions = {};
 export const npcs = {};

@@ -24,8 +24,8 @@ const G = 1.08;          // 그림 배율 (논리 판정 150×178 에 맞춤: �
 
 // 1페이즈 '붉은 잉크': 양피지(노랑) → 핏빛 분홍, 흰 부분 → 분홍. 어두운 글씨·가죽은 그대로
 const RED_INK = [
-  { when: (h, s, l) => h > 18 && h < 70 && s > 0.12 && l > 0.3, h: 352, s: 1.05, s0: 0.22, l: 0.84 },
-  { when: (h, s, l) => s < 0.16 && l > 0.58, h: 355, s0: 0.34, l: 0.9 },
+  { when: (h, s, l) => h > 18 && h < 70 && s > 0.12 && l > 0.3, h: 356, s: 0.72, s0: 0.08, l: 0.74 },
+  { when: (h, s, l) => s < 0.16 && l > 0.58, h: 356, s0: 0.24, l: 0.86 },
 ];
 // 2페이즈 '금단의 장': 홍채 → 자홍
 const FORB = [
@@ -69,7 +69,7 @@ export default {
     return {
       D: new Drawer(), P: new Particles(quality(boss.world?.game).particles), shards: new Shards(48),
       dmg: new DamageState(boss.def?.phases ?? [0.6, 0.3]), q: quality(boss.world?.game), lt: null, pf: 0, jolt: 0,
-      tents, trail: [], chainsSeen: !!boss.chainsBroken, stubs: [new Strand(5, 9, { g: 900, damp: 0.92 }), new Strand(5, 9, { g: 900, damp: 0.92 })],
+      tents, trail: [], chainsSeen: !!boss.chainsBroken, stubs: [new Strand(4, 19, { g: 900, damp: 0.92 }), new Strand(4, 19, { g: 900, damp: 0.92 })],
       d: {}, slamSeen: false, lastPhase: boss.phase ?? 0, mawK: 0, C: [0, 0],
     };
   },
@@ -254,8 +254,9 @@ function drawBook(ctx, D, b, rig, st, dt, t, lvl, tint, itint, hit, open, cw, hw
   const gap = clamp((open - 0.18) / 0.95, 0, 1.3) * 34 * G + (dying ? 6 + Math.sin(t * 22) * 5 : 0);
   if (cw < 0.97 || dying) {
     const mk = R.maw.k * G * 1.02, mx = 4 * G, my = 2;
+    // 종이 테두리 → 목구멍 (턱 사이: 어둠 + 보랏빛) → 턱 (입 모양으로 잘라 둔 위/아래 잇몸·이빨. 벌어지면 찢어진 종이 밖으로 살이 부풀어 나온다)
+    D.rec = rec;
     put(D, R.maw, V(R.maw), 'c', mx, my, 0, mk, mk * breath);
-    // 목구멍 (턱 사이: 어둠 + 보랏빛)
     if (gap > 1.5) {
       L(mx, my, _w);
       D.img(puff('#000000'), 32, 32, _w[0], _w[1], F.rot, 30 * G / 32 * 1.6, (gap * 0.75 + 6) / 32 * 1.4, 0.95);
@@ -267,21 +268,24 @@ function drawBook(ctx, D, b, rig, st, dt, t, lvl, tint, itint, hit, open, cw, hw
     put(D, R.jawB, V(R.jawB, false, null), 'c', mx, my + gap * 0.55, 0, jk, jk);
     D.rec = rec;
     put(D, R.jawT, V(R.jawT, false, null), 'c', mx, my - gap * 0.45, 0, jk, jk);
-    // 끈적한 침 줄 (위아래 송곳니 사이)
-    if (gap > 7 && !(dying && dT > 1.1)) {
+    // 끈적한 침 줄 (위아래 송곳니 사이, 많이 벌어지면 끊어짐)
+    const sa = clamp((gap - 6) / 6, 0, 1) * clamp((34 - gap) / 8, 0, 1);
+    if (sa > 0.02 && !(dying && dT > 1.1)) {
       D.end();
       ctx.lineCap = 'round';
-      for (let i = 0; i < 3; i++) {
-        const x = mx + (i - 1) * 17 * G + Math.sin(i * 2.1) * 3;
-        L(x, my - gap * 0.45 + 3, _w); L(x + 2, my + gap * 0.55 - 3, _w2);
-        L(x + Math.sin(t * 2 + i) * 3, my + gap * 0.3 + 6 + gap * 0.25, _w3);
-        const wv = (i === 1 ? 4.2 : 3) * clamp(1.4 - gap / 40, 0.5, 1.2);
+      for (let i = 0; i < 2; i++) {
+        const x = mx + (i ? 14 : -19) * G;
+        L(x, my - gap * 0.45 + 4, _w); L(x + (i ? -6 : 7), my + gap * 0.55 - 4, _w2);
+        L(x + (i ? 9 : -8) + Math.sin(t * 2 + i) * 3, my + gap * 0.05 + 10 + gap * 0.3, _w3);
+        const wv = (i ? 2.4 : 3.2) * clamp(1.3 - gap / 40, 0.5, 1.1);
         ctx.beginPath(); ctx.moveTo(_w[0], _w[1]); ctx.quadraticCurveTo(_w3[0], _w3[1], _w2[0], _w2[1]);
+        const ga = ctx.globalAlpha; ctx.globalAlpha = ga * sa;
         ctx.strokeStyle = 'rgba(30,6,34,0.85)'; ctx.lineWidth = wv; ctx.stroke();
         ctx.strokeStyle = 'rgba(210,150,255,0.45)'; ctx.lineWidth = wv * 0.3; ctx.stroke();
+        ctx.globalAlpha = ga;
       }
-      if (rr.next() < dt * 2.5 * q.ambient) { L(mx + rr.range(-18, 18) * G, my - gap * 0.45 + 4, _w); P.emit('blood', _w[0], _w[1], 0, 0, { color: '#2a0630', hi: '#d090ff', hang: rr.range(0.15, 0.4), layer: 1 }); }
     }
+    if (gap > 7 && !dying && rr.next() < dt * 2.5 * q.ambient) { L(mx + rr.range(-18, 18) * G, my - gap * 0.45 + 4, _w); P.emit('blood', _w[0], _w[1], 0, 0, { color: '#2a0630', hi: '#d090ff', hang: rr.range(0.15, 0.4), layer: 1 }); }
   }
   // 5) 눈 (표지 뒤, 표지의 눈구멍으로 보임) + 눈꺼풀
   const C = R.cover, ssy = k * breath * (1 + Math.max(0, Math.sin(th(open))) * 0.05);

@@ -15,7 +15,7 @@ export class StageScene extends Scene {
     this.stageId = stageId;
     // 영웅 채색 퍼펫을 입장 페이드 동안 받아 둔다 (첫 프레임에 벡터 → 퍼펫으로 바뀌어 보이지 않게)
     const h = this.world.player?.hero;
-    try { if (h?.charId) PUPPET.preloadPuppet?.(h.charId, h.classId); } catch (e) { console.error(e); }
+    try { if (h?.charId && PUPPET.puppetEnabled?.() !== false) PUPPET.preloadPuppet?.(h.charId, h.classId); } catch (e) { console.error(e); }   // [hook:plat]
   }
   exit() { if (this.game.world === this.world) this.game.world = null; }
   resize() { this.world?.camera.setView(this.game.viewW, this.game.viewH); }
@@ -31,7 +31,7 @@ export class StageScene extends Scene {
       this.game.push('pause', { world: w });
       return;
     }
-    if (input.pressed('map') && this.canPause() && this.game.registry.menu) {
+    if (input.pressed('map') && this.canPause() && this.game.registry.menu) {   // [hook:plat] 빠른 메뉴 → 인벤토리
       audio.sfx('menu_ok');
       this.game.push('menu', { world: w, tab: 'inventory' });
       return;

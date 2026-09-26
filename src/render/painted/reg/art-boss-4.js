@@ -3,7 +3,9 @@
 // enemies:    [{ mod: <import * as x from '../enemies/<id>.js'>, ids?: ['<render id>', ...] }]  (적 렌더러 모듈, 에셋은 지연 로딩)
 // companions: { '<companionId>': () => import('../companions/<id>.js') }
 // npcs:       { '<npcId>': () => import('../npcs/<id>.js') }
-export const bosses = {};
+export const bosses = {
+  b_frostqueen: () => import('../bosses/b_frostqueen.js'),   // 서리 여왕 이자벨라 (s10) — 거울 분신·위험 지대 그림 포함
+};
 export const enemies = [];
 export const companions = {};
 export const npcs = {};
