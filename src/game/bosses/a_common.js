@@ -218,6 +218,7 @@ export class Telegraph extends Entity {
     }
   }
   update(dt, world) {
+    if (world.timeStop > 0) dt *= 0.25;
     this.t += dt; this.life -= dt;
     if (this.follow) { this.follow(this, dt, world); this.bbox(); }
     const own = this.owner;
@@ -347,6 +348,7 @@ export class Beam extends Entity {
   bbox() { const w = this.width * 2; this.x = Math.min(this.x0, this.x1) - w; this.y = Math.min(this.y0, this.y1) - w; this.w = Math.abs(this.x1 - this.x0) + w * 2; this.h = Math.abs(this.y1 - this.y0) + w * 2; }
   get on() { return this.t >= this.warn && this.t < this.warn + this.active; }
   update(dt, world) {
+    if (world.timeStop > 0) dt *= 0.25;
     this.t += dt;
     const own = this.owner;
     if (own && (own.dead || own.dying > 0)) { this.dead = true; return; }
@@ -427,6 +429,7 @@ export class RingWave extends Entity {
     return false;
   }
   update(dt, world) {
+    if (world.timeStop > 0) dt *= 0.25;
     this.t += dt;
     this.r += this.speed * dt;
     this.bbox();
@@ -709,6 +712,8 @@ export class ABoss extends Boss {
     this.deathStart?.(world);
   }
   update(dt, world) {
+    // 시간 정지(스톱워치) 중에는 패턴 시계도 느리게 (기본 Boss.update 는 stateT 를 실시간으로 올린다)
+    if (world.timeStop > 0 && this.dying <= 0) { const k = dt * 0.75; this.stateT -= k; this.t -= k; }
     if (this.dying > 0) {
       this.deathT += dt;
       const before = this.deathT - dt;

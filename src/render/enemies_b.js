@@ -39,6 +39,7 @@ function radG(ctx, key, x0, y0, r0, x1, y1, r1, stops) {
 /** 원통형 음영: 뒤쪽 림 → 그림자 → 기본 → 앞쪽 하이라이트 (가로) */
 function cyl(ctx, key, x0, x1, base, y0 = 0, y1 = 0) {
   if (FL) return WHITE;
+  x0 = Math.round(x0); x1 = Math.round(x1); y0 = Math.round(y0); y1 = Math.round(y1);
   return grad('c' + key + base + x0 + '_' + x1 + '_' + y0 + '_' + y1, () => {
     const g = ctx.createLinearGradient(x0, y0, x1, y1);
     g.addColorStop(0, mix(base, RIM, 0.55));
@@ -52,6 +53,7 @@ function cyl(ctx, key, x0, x1, base, y0 = 0, y1 = 0) {
 /** 구형 음영: 앞-위 하이라이트 중심의 방사형 */
 function sph(ctx, key, cx, cy, r, base) {
   if (FL) return WHITE;
+  cx = Math.round(cx); cy = Math.round(cy); r = Math.max(1, Math.round(r));
   return grad('s' + key + base + cx + '_' + cy + '_' + r, () => {
     const g = ctx.createRadialGradient(cx + r * 0.35, cy - r * 0.4, r * 0.05, cx, cy, r * 1.05);
     g.addColorStop(0, mix(shade(base, 0.35), WARM, 0.2));
@@ -64,6 +66,7 @@ function sph(ctx, key, cx, cy, r, base) {
 /** 세로 음영: 위 밝고 아래 어둡게 */
 function vert(ctx, key, y0, y1, base, top = 0.2, bot = -0.5) {
   if (FL) return WHITE;
+  y0 = Math.round(y0); y1 = Math.round(y1);
   return grad('v' + key + base + y0 + '_' + y1 + top + bot, () => {
     const g = ctx.createLinearGradient(0, y0, 0, y1);
     g.addColorStop(0, shade(base, top));
@@ -252,7 +255,7 @@ function batWing(ctx, span, lift, mem, bone, rimA = 0.5) {
   ctx.quadraticCurveTo(S * 0.46, S * 0.28, S * 0.36, S * 0.44);
   ctx.quadraticCurveTo(S * 0.2, S * 0.26, 0, S * 0.24);
   ctx.closePath();
-  ink(ctx, FL ? WHITE : linG(ctx, 'bw' + mem + S, 0, -S * 0.2, 0, S * 0.45, [0, lt(mem, 0.14), 0.5, mem, 1, dk(mem, -0.5)]), 1.6);
+  ink(ctx, FL ? WHITE : linG(ctx, 'bw' + mem + Math.round(S), 0, -Math.round(S) * 0.2, 0, Math.round(S) * 0.45, [0, lt(mem, 0.14), 0.5, mem, 1, dk(mem, -0.5)]), 1.6);
   if (!FL) {
     ctx.strokeStyle = bone; ctx.lineWidth = Math.max(1, S * 0.045); ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(0, -2); ctx.lineTo(S * 0.42, -S * 0.2); ctx.lineTo(S * 1.0, -S * 0.12);
@@ -281,7 +284,7 @@ function featherWing(ctx, span, lift, col, tip, n = 7) {
   }
   ctx.lineTo(0, S * 0.2);
   ctx.closePath();
-  ink(ctx, FL ? WHITE : linG(ctx, 'fw' + col + tip + S, 0, -S * 0.3, 0, S * 0.35, [0, lt(col, 0.22), 0.55, col, 1, tip]), 1.6);
+  ink(ctx, FL ? WHITE : linG(ctx, 'fw' + col + tip + Math.round(S), 0, -Math.round(S) * 0.3, 0, Math.round(S) * 0.35, [0, lt(col, 0.22), 0.55, col, 1, tip]), 1.6);
   if (!FL) {
     ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 0.8;
     ctx.beginPath();
@@ -1850,7 +1853,8 @@ function crystal(ctx, pts, key, base = '#8ad8f8', lw = 1.6) {
   ctx.closePath();
   let minY = 1e9, maxY = -1e9, minX = 1e9, maxX = -1e9;
   for (let i = 0; i < pts.length; i += 2) { minX = Math.min(minX, pts[i]); maxX = Math.max(maxX, pts[i]); minY = Math.min(minY, pts[i + 1]); maxY = Math.max(maxY, pts[i + 1]); }
-  ink(ctx, linG(ctx, 'cr' + key + base, maxX, minY, minX, maxY, [0, '#f4feff', 0.3, lt(base, 0.25), 0.7, base, 1, dk(base, -0.5)]), lw);
+  minX = Math.round(minX / 3) * 3; maxX = Math.round(maxX / 3) * 3; minY = Math.round(minY / 3) * 3; maxY = Math.round(maxY / 3) * 3;
+  ink(ctx, linG(ctx, 'cr' + key + base + minX + '_' + minY + '_' + maxX + '_' + maxY, maxX, minY, minX, maxY, [0, '#f4feff', 0.3, lt(base, 0.25), 0.7, base, 1, dk(base, -0.5)]), lw);
   if (FL) return;
   ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 0.8;
   ctx.beginPath(); ctx.moveTo(pts[0], pts[1]); ctx.lineTo(pts[2], pts[3]); ctx.stroke();

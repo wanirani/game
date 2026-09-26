@@ -71,7 +71,7 @@ export class Zone extends Entity {
 
 // ───────────────────────── 공용 도우미 ─────────────────────────
 function ensureMag(e) { if (e.stats.mag == null) e.stats.mag = e.stats.atk; }
-function atk(e, mv, extra) { return { owner: e, stats: e.stats, mv, dir: e.facing, ...extra }; }
+function atk(e, mv, extra) { ensureMag(e); return { owner: e, stats: e.stats, mv, dir: e.facing, ...extra }; }
 function hover(e, tx, ty, accel, dt, maxSp) {
   const dx = tx - e.cx, dy = ty - e.cy, d = Math.hypot(dx, dy) || 1;
   const sp = Math.min(maxSp, d * 3);
@@ -1550,7 +1550,7 @@ AI_B.chaos = {
 
 /** 지옥견: 돌진(불타는 발자국) + 근거리 화염 브레스 */
 AI_B.hound = {
-  init(e) { e.cool = 0; e.breathCool = rand(1, 2); e.trailT = 0; e.trailId = 'ht' + (++_zid); },
+  init(e) { e.cool = 0; e.breathCool = rand(1, 2); e.trailT = 0; e.trailId = 'ht' + (++_zid); ensureMag(e); },
   update(e, world, dt) {
     const p = e.player, P = e.params;
     e.breathCool -= dt * e.aggro;
@@ -1642,7 +1642,7 @@ AI_B.eyebeam = {
           const hb = w.player.hurtbox();
           return segDist(hb.x + hb.w / 2, hb.y + hb.h / 2, z.data.x0, z.data.y0, z.data.x1, z.data.y1) < 16 + Math.min(hb.w, hb.h) * 0.5;
         },
-        light: null, data: {} });
+        light: { r: 110, color: '#ff3a4a', i: 0.9 }, data: {} });
     }
   },
 };

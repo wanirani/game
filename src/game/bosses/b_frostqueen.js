@@ -746,13 +746,15 @@ export class FrostQueen extends BossB {
     ctx.restore();
     // 레이스 소매 (팔꿈치에서 늘어짐)
     const sw = Math.sin(t * 2.4 + side) * 4;
+    ctx.save(); ctx.translate(ex, ey);
     ctx.beginPath();
-    ctx.moveTo(ex - 3, ey - 2);
-    ctx.quadraticCurveTo(ex - 10 + sw, ey + 14, ex - 16 + sw, ey + 30);
-    ctx.quadraticCurveTo(ex - 8 + sw * 0.5, ey + 26, ex - 5, ey + 30 + sw * 0.3);
-    ctx.quadraticCurveTo(ex, ey + 18, ex + Math.sin(ha) * 9 + 2, ey + Math.cos(ha) * 9);
+    ctx.moveTo(-3, -2);
+    ctx.quadraticCurveTo(-10 + sw, 14, -16 + sw, 30);
+    ctx.quadraticCurveTo(-8 + sw * 0.5, 26, -5, 30 + sw * 0.3);
+    ctx.quadraticCurveTo(0, 18, Math.sin(ha) * 9 + 2, Math.cos(ha) * 9);
     ctx.closePath();
-    ink(ctx, fl ? '#fff' : LG(ctx, 'fq2_slv' + side, 0, ey - 4, 0, ey + 32, [0, side > 0 ? 'rgba(235,250,255,0.95)' : 'rgba(160,205,240,0.9)', 1, 'rgba(100,160,220,0.35)']), 1);
+    ink(ctx, fl ? '#fff' : LG(ctx, 'fq2_slv' + side, 0, -4, 0, 32, [0, side > 0 ? 'rgba(235,250,255,0.95)' : 'rgba(160,205,240,0.9)', 1, 'rgba(100,160,220,0.35)']), 1);
+    ctx.restore();
     // 어깨 퍼프
     ctx.beginPath(); ctx.ellipse(sx, sy + 2, 5, 4, 0, 0, TAU); ink(ctx, C(side > 0 ? '#e6f8ff' : '#9ccaea'), 1);
     // 시전 빛

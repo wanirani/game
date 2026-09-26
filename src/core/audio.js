@@ -295,7 +295,6 @@ export function compileTrack(def0, id = '?') {
 
 // ─────────────────────────────── 악기 ───────────────────────────────
 // play(e, ch, m, t, d, v): e=엔진, ch=채널(in 노드 등), m=MIDI, t=시작, d=길이(초), v=세기
-function lfoFx(rate, depth) { return (e, ch, n) => { ch.vib = e.lfo(rate, depth, ch); return n; }; }
 function lpFx(f, q = 0.5, rate, depth) {
   return (e, ch, n) => { const b = e.ctx.createBiquadFilter(); b.type = 'lowpass'; b.frequency.value = f; b.Q.value = q; n.connect(b); if (rate) ch.vib = e.lfo(rate, depth, ch); return b; };
 }
@@ -1156,7 +1155,7 @@ export class Engine {
       const p = this.players[i];
       if (p.deadAt && now > p.deadAt) { p.dispose(); this.players.splice(i, 1); continue; }
       if (p.done && now > p.endT + 4) { p.dispose(); this.players.splice(i, 1); continue; }
-      if (!p.deadAt || until < p.deadAt + 0.05) p.schedule(until);
+      if (!p.deadAt || until < p.deadAt + 0.05) { try { p.schedule(until); } catch { /* 한 트랙 오류가 다른 트랙을 막지 않게 */ } }
     }
   }
 }
@@ -1272,6 +1271,7 @@ class AudioSystem {
   }
   music(id, opts = E0) {
     if (!id) { this.stopMusic(opts.fade ?? 1); return; }
+    id = String(id);
     if (!TRACKS[id]) id = id.startsWith('minigame') ? 'minigame' : id.startsWith('boss') ? 'boss' : id.startsWith('ending') ? 'ending' : null;
     if (!id || !TRACKS[id]) return; // 알 수 없는 곡 → 현재 곡 유지
     if (id === this.want) return;
@@ -1287,10 +1287,13 @@ class AudioSystem {
   _sync() {
     if (!this.eng || this.ctx.state !== 'running') return;
     if (!this.want || this.musicVol <= 0.001) return;
-    if (this.player && this.player.id === this.want && !this.player.done) return;
-    const now = this.ctx.currentTime, f = this.fade;
-    if (this.player) this.player.kill(f ?? 0.9);
-    try { this.player = this.eng.playTrack(this.want, now + 0.06, this.player ? Math.min(0.4, f ?? 0.3) : 0.02); }
+    if (this.player && this.player.id === this.want) return;
+    // 전환: 기본은 이전 곡을 빠르게 페이드아웃하고 새 곡은 첫 박부터 온전히 (아케이드식 컷),
+    //       fade 를 지정하면 그 시간만큼 교차 페이드
+    const now = this.ctx.currentTime, f = this.fade, prev = this.player;
+    let at = now + 0.06, fin = 0.02;
+    if (prev) { prev.kill(f ?? 0.6); if (f == null) at = now + 0.25; else fin = f * 0.7; }
+    try { this.player = this.eng.playTrack(this.want, at, fin); }
     catch { this.player = null; }
     this.fade = undefined;
     this._tick();

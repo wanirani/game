@@ -139,7 +139,7 @@ export class BoneDragon extends ABoss {
         audio.sfx('boss_roar', { pitch: 1.4, vol: 0.5 });
       }
       // 뒤로 젖힘
-      const bx = lerp(m.hole.x, this.tgx, 0.25), by = A.floor - 290;
+      const bx = lerp(m.hole.x, this.tgx, 0.25), by = A.floor - 270;
       m.follow = 6; m.tx = bx; m.ty = by; m.aT = angleTo(m.hx, m.hy, this.tgx, this.tgy);
       m.jaw = lerp(m.jaw, 0.9, Math.min(1, dt * 6)); m.flare = 1;
       if (this.at(i * per + 0.12)) this.warnLine(m.hx, m.hy, this.tgx, this.tgy, W - 0.12, { width: 70, color: '#8aff9a', follow: (tg) => { tg.x0 = m.hx; tg.y0 = m.hy; } });
@@ -168,7 +168,7 @@ export class BoneDragon extends ABoss {
       this.warn({ type: 'band', x0: Math.min(this.bx0, this.bx1), x1: Math.max(this.bx0, this.bx1), y0: A.floor - 90, y1: A.floor, life: W + 0.1, color: '#8aff9a', dir: Math.sign(this.bx1 - this.bx0) });
       this.warnMark(m.hx, m.hy - 70, W);
     }
-    m.follow = 4; m.tx = m.hole.x + (Math.sign(this.bx0 + this.bx1 - 2 * m.hole.x) || -1) * 90; m.ty = A.floor - 340;
+    m.follow = 4; m.tx = m.hole.x + (Math.sign(this.bx0 + this.bx1 - 2 * m.hole.x) || -1) * 90; m.ty = A.floor - 300;
     if (this.stateT < W) {
       m.aT = angleTo(m.hx, m.hy, this.bx0, A.floor); m.jaw = lerp(m.jaw, 0.8, Math.min(1, dt * 4)); m.flare = 1;
       const mo = m.mouth();
@@ -196,7 +196,7 @@ export class BoneDragon extends ABoss {
   // ── 뼈의 비 ──
   s_boneRain(dt, world, p) {
     const m = this.main, A = this.A, T0 = 0.7, n = 12 + this.phase * 3;
-    m.follow = 3; m.tx = m.hole.x; m.ty = A.floor - 380; m.aT = -PI / 2 + Math.sin(this.stateT * 10) * 0.1; m.jaw = 1; m.flare = 1;
+    m.follow = 3; m.tx = m.hole.x; m.ty = A.floor - 320; m.aT = -PI / 2 + Math.sin(this.stateT * 10) * 0.1; m.jaw = 1; m.flare = 1;
     if (this.at(0)) { audio.sfx('boss_roar', { pitch: 0.5 }); this.warnMark(m.hx, m.hy - 80, T0); }
     if (this.at(T0 - 0.2)) { this.shake(8, 1.4); world.fx.ring(m.hx, m.hy, { color: SOUL, r0: 20, r1: 260, life: 0.5, width: 6 }); }
     const k = this.every(T0, 0.14, n);
@@ -228,7 +228,7 @@ export class BoneDragon extends ABoss {
     }
     if (u < 1.3) { if (Math.random() < 0.7) world.fx.emit('dust', this.hx0 + rand(-50, 50), A.floor - 4, { speed: 120, angle: -PI / 2 }); if (Math.random() < 0.3) world.fx.emit('soul', this.hx0 + rand(-40, 40), A.floor - 4, { speed: 80, angle: -PI / 2, color: SOUL }); return; }
     if (this.at(i * per + 1.3)) {
-      m.extSp = 2600; m.extT = 380; m.follow = 30; m.tx = m.hole.x; m.ty = A.floor - 380; m.aT = -PI / 2; m.jaw = 1; m.flare = 1;
+      m.extSp = 2600; m.extT = 330; m.follow = 30; m.tx = m.hole.x; m.ty = A.floor - 320; m.aT = -PI / 2; m.jaw = 1; m.flare = 1;
       this.impact(m.hole.x, A.floor, 12, 0.05, '#b8ffc8');
       audio.sfx('explode', { pitch: 0.6 }); audio.sfx('boss_roar', { pitch: 1.2, vol: 0.7 });
       world.fx.burst('shard', m.hole.x, A.floor - 6, 16, { color: '#6a5a4a', speed: 420, angle: -PI / 2, spread: 0.9 });
@@ -345,7 +345,7 @@ export class BoneDragon extends ABoss {
   }
   transformTick(dt, world, p) {
     const m = this.main, A = this.A;
-    m.follow = 3; m.tx = m.hole.x; m.ty = A.floor - 360; m.aT = -PI / 2; m.jaw = 1; m.flare = 1;
+    m.follow = 3; m.tx = m.hole.x; m.ty = A.floor - 310; m.aT = -PI / 2; m.jaw = 1; m.flare = 1;
     if (this.at(0.3)) { this.phaseBurst(SOUL); audio.sfx('boss_roar', { pitch: 0.5 }); }
     if (this.phase >= 2 && this.at(0.7)) this.spawnTwin(true);
     if (Math.random() < 0.8) world.fx.emit('soul', m.hx + rand(-40, 40), m.hy + rand(-40, 40), { speed: 160, color: SOUL });
