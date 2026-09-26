@@ -5,7 +5,9 @@
 //       gaitPh?(WP1 보행 위상), feel?(WP1 찌그러짐 등), ride?(탈것 C6), hero?{classId}}
 //   opts: {alpha, tint(단색 잔상), scale(UI 확대; 생략 시 게임 속 플레이어는 HERO_DRAW_SCALE), noFx(효과 생략), rim,
 //          yaw?(턴테이블 각도, 라디안 — 정의되면 facing 무시: 0 오른쪽 옆, +π/2 정면, π 왼쪽 옆, −π/2 뒤)}
-// 외부 훅(heroHooks): gait / gaitAnims / blend / feel / rider — 아래 '확장 훅' 절과 docs/art/PUPPET_PIPELINE.md 참고
+// 걸음(WP1, feel.md 3.3.3): walk/sprint/run_start/skid/pivot/land_heavy → hero_gait.js gaitPose + GAIT_ANIMS, 풀이 전 applyFeelOverlay
+// 탈것(C6, companions.md §11.4): p.ride 가 있으면 앉은 자세·안장 원점·먼 다리 생략 (riderPose)
+// 외부 훅(heroHooks): gait / gaitAnims / blend / feel / rider — 등록하면 위 기본 동작을 덮어쓴다 (docs/art/PUPPET_PIPELINE.md §6)
 // 흐름: look → spec(치수·색, look 객체별 캐시) → 애니메이션 자세(pose) → 2관절 IK 골격
 //       → 베를레 체인(망토·머리카락·스카프·베일, p.rig 에 저장) → 레이어 순서대로 그리기
 // 좌표: 발 중앙(cx,bottom) 원점, 오른쪽을 보는 기준, y 위쪽 음수. facing(±1)으로 좌우 반전.
@@ -16,6 +18,7 @@ import {
   EL_COL, weaponReach, drawWeapon, drawLash, drawWhipCoil, drawWing, drawAuraMotes, drawMagicCircle, drawHalo, olc,
 } from './hero_parts.js';
 import * as PUP from './hero_puppet.js';
+import * as GAIT from './hero_gait.js'; // feel.md 3.3.3 (WP1) — hero_gait.js 는 hero.js 를 import 하면 안 된다 (순환 → TDZ)
 
 const PI = Math.PI, HP = PI / 2;
 
@@ -276,6 +279,8 @@ function holdFor(P, K, mode) {
     else if (mode === 'dash') { P.w1 = 2.9; }
     else if (mode === 'crouch') { P.a1 = HP - 0.9; P.r1 = 0.7; P.w1 = -HP - 0.35; }
     else { P.a1 = HP - 0.64; P.r1 = 0.66; P.w1 = -HP - 0.12; }
+    // 채색 퍼펫: 어깨가 원화 위치(몸 뒤쪽)라 곧게 세운 지팡이 머리가 얼굴을 가린다 → 손을 앞으로, 지팡이를 앞으로 기울임
+    if (K.pup && (mode === 'idle' || mode === 'stance' || mode === 'crouch')) { P.a1 -= 0.28; P.r1 = Math.max(P.r1, 0.74); P.w1 += mode === 'crouch' ? 0.62 : 0.42; }
   }
 }
 
@@ -1734,6 +1739,42 @@ function lassoPoints(E, K, outBuf, t) {
 //                                  자세를 앉은 자세로 강제하고, 골반이 안장(ride.sx, ride.sy)에 오도록 원점을 돌려준다.
 //                                  skipFarLeg=true 면 먼 다리를 그리지 않는다(탈것 몸통 뒤).
 export const heroHooks = { gait: null, gaitAnims: null, blend: null, feel: null, rider: null };
+// feel.md 3.3.3 블렌드: skid·pivot·land_heavy 0.06초, walk↔run↔sprint 0.12초 (그 밖은 undefined → 기본값)
+const WRS = new Set(['walk', 'run', 'sprint']);
+function gaitBlend(anim, prev) {
+  if (anim === 'skid' || anim === 'pivot' || anim === 'land_heavy') return 0.06;
+  if (WRS.has(anim) && WRS.has(prev)) return 0.12;
+  return undefined;
+}
+
+// ── 탈것 기수 (docs/specs/companions.md §11.4, WP C6) ──
+// p.ride = {sx, sy(안장점, 월드), lean, duck(0~1), footY(골반 아래 등자 깊이 px), legs:'straddle'|'kneel', reins, gait, phase}
+/** 기수 전용 애니메이션: ride(앉은 대기·고삐) · ride_duck · ride_charge(창처럼 앞으로) · ride_rear(무기 든 팔을 들어 올림) · ride_hurt */
+function rideAnim(P, K, anim, at, tt) {
+  if (anim === 'ride_hurt') { poseHurt(P, at); P.w1 = P.a1 + 0.8; P.w2 = P.a2 + 0.8; ST.hurt = clamp(1 - at / 0.12, 0, 1); return; }
+  poseIdle(P, K, tt, false); holdFor(P, K, 'idle');
+  if (anim === 'ride_charge') { P.lean += 0.45; P.hd -= 0.2; P.a1 = -0.05; P.r1 = 0.96; P.w1 = -0.04; }
+  else if (anim === 'ride_rear') { P.lean -= 0.3; P.hd += 0.12; P.a1 = -1.9; P.r1 = 0.9; P.w1 = -1.55; }
+}
+/** 앉은 자세 강제 + 골반이 안장점에 오도록 원점 계산. 반환 {cx, bottom, skipFarLeg} */
+const RIDE_O = { cx: 0, bottom: 0, skipFarLeg: true };
+function riderPose(P, K, p, ride, hs) {
+  const ls = K.ls || 1, duck = clamp(ride.duck ?? 0, 0, 1), kneel = ride.legs === 'kneel';
+  P.px = 0; P.py = -41; P.rot = 0; P.sx = 1; P.ox = 0; P.sq = 1; P.pvy = -46;
+  P.lean = clamp(P.lean, -0.35, 0.6) + (ride.lean ?? 0) + 0.6 * duck;
+  P.hd += 0.25 * duck;
+  const fy = -41 + (ride.footY ?? 18) / (ls * hs);             // 등자 깊이(월드 px) → 자세 단위
+  P.f1x = kneel ? 5 : 7; P.f1y = fy; P.f2x = kneel ? 1 : 3; P.f2y = fy - 2;
+  P.t1 = P.t2 = kneel ? 0.9 : 0.6;
+  // 빈손은 고삐 (공격·시전·투척·양손 무기 중이 아닐 때)
+  const busy = p.move || p.anim === 'cast' || p.anim === 'throw' || p.anim === 'ride_hurt' || P.two || K.off;
+  if (ride.reins !== false && !busy) { P.a2 = 0.62; P.r2 = 0.78; P.e2 = 1; }
+  RIDE_O.cx = ride.sx; RIDE_O.bottom = ride.sy + 41 * ls * hs;
+  return RIDE_O;
+}
+/** 천 물리(망토·머리카락)가 기수 원점에서 돌도록 p 를 대신하는 객체 */
+const RIDE_P = {};
+function rideProxy(p, o) { Object.assign(RIDE_P, p); RIDE_P.cx = o.cx; RIDE_P.bottom = o.bottom; return RIDE_P; }
 export function registerHeroHooks(h) { Object.assign(heroHooks, h); return heroHooks; }
 
 /** 게임 속 플레이어 영웅 그리기 배율 (판정 상자는 그대로). 채색 퍼펫의 가독성 기준으로 정함 — docs/art/PUPPET_PIPELINE.md */
@@ -1932,9 +1973,11 @@ export function drawHero(ctx, p, world, opts = {}) {
       case 'throw': poseIdle(P, K, tt, false); holdFor(P, K, 'idle'); poseThrow(P, K, at); ST.throwK = W.type === 'whip' ? 1 : 2; break;
       case 'cast': poseIdle(P, K, tt, false); holdFor(P, K, 'idle'); poseCast(P, K, at, tt); ST.circle = clamp(at / 0.08, 0, 1) * (at < 0.3 ? 1 : clamp(1 - (at - 0.3) / 0.2, 0, 1)); ST.cast = 3; break;
       case 'charge': { ST.charge = clamp((p.charging ?? 0.3) / 0.55, 0, 1); poseCharge(P, K, ST.charge, tt); if (W.type === 'staff') ST.circle = ST.charge; break; }
+      case 'ride': case 'ride_duck': case 'ride_charge': case 'ride_rear': case 'ride_hurt': rideAnim(P, K, anim, at, tt); break; // C6
       default: {
-        const gm = heroHooks.gaitAnims?.[anim];                                   // WP1: walk/sprint/skid/…
-        if (gm && heroHooks.gait) { heroHooks.gait(P, K, anim, p, at); holdFor(P, K, gm); break; }
+        // WP1 (feel.md 3.3.3): walk/sprint/run_start/skid/pivot/land_heavy → hero_gait.js (heroHooks 로 덮어쓸 수 있음)
+        const gm = heroHooks.gaitAnims?.[anim] ?? GAIT.GAIT_ANIMS?.[anim];
+        if (gm) { (heroHooks.gait || GAIT.gaitPose)(P, K, anim, p, at); holdFor(P, K, typeof gm === 'string' ? gm : gm.hold || 'run'); break; }
         poseIdle(P, K, tt, !!p.npc); holdFor(P, K, 'idle'); break;
       }
     }
@@ -1943,7 +1986,7 @@ export function drawHero(ctx, p, world, opts = {}) {
   if (rig) {
     if (rig.akey !== akey) {
       if (rig.last) copyPose(rig.from || (rig.from = newPose()), rig.last);
-      const hb = heroHooks.blend ? heroHooks.blend(anim, rig.akey) : undefined;
+      const hb = heroHooks.blend ? heroHooks.blend(anim, rig.akey) : gaitBlend(anim, rig.akey);
       rig.akey = akey; rig.bt = 0;
       rig.bd = hb ?? (mv ? 0.05 : anim === 'flip' || anim === 'hurt' ? 0.04 : anim === 'land' ? 0.05 : 0.1);
     }
@@ -1952,11 +1995,11 @@ export function drawHero(ctx, p, world, opts = {}) {
     copyPose(rig.last || (rig.last = newPose()), P);
   }
   // 확장 훅: 찌그러짐·기울기 오버레이(WP1) → 탈것 자세·원점(C6)
-  const feel = heroHooks.feel ? heroHooks.feel(P, p, K) : null;
-  const ride = p.ride && heroHooks.rider ? heroHooks.rider(P, K, p, p.ride, hs) : null;
+  const feel = heroHooks.feel ? heroHooks.feel(P, p, K) : (p.ride ? null : GAIT.applyFeelOverlay?.(P, p) || null);
+  const ride = p.ride ? (heroHooks.rider || riderPose)(P, K, p, p.ride, hs) : null;
   solve(P, K, SK);
   LEG_T1 = P.t1; LEG_T2 = P.t2;
-  E0.p = p; E0.rig = rig; E0.hs = hs; E0.fac = fac; E0.dt = dt; E0.P = P; E0.K = K; E0.skipFarLeg = !!ride?.skipFarLeg;
+  E0.p = ride ? rideProxy(p, ride) : p; E0.rig = rig; E0.hs = hs; E0.fac = fac; E0.dt = dt; E0.P = P; E0.K = K; E0.skipFarLeg = !!ride?.skipFarLeg;
   swingOf(E0);
   ST.coil = W.type === 'whip' && !mv && anim !== 'charge';
 

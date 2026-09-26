@@ -72,13 +72,23 @@ export function classOf(p, look) {
 // ───────────────────────── 로딩 ─────────────────────────
 const REG = new Map();              // 'kael/kael_hunter' → 퍼펫 항목
 const NONE = { state: -1 };
+let REV = 0;                        // 퍼펫이 하나 준비될 때마다 +1
+/** 퍼펫 준비 세대: 새 퍼펫이 준비될 때마다 증가. 영웅 그림을 캐시하는 쪽(메뉴 스냅샷 등)이 키에 넣으면 벡터 대체 그림이 남지 않는다 */
+export function puppetRev() { return REV; }
+const akey = (E, kind, L) => `puppets/${E.key}/${kind}_${L.name}`;
+/** 이미 로드된 이미지만 돌려준다 (요청하지 않음) */
+const peek = (k) => (assets.has(k) ? assets.get(k) : null);
+function levelImg(E, L) { return assets.get(akey(E, 'atlas', L), E.man.h); }   // 요청 + 로드됐으면 이미지
+function levelPeek(E, L) { return peek(akey(E, 'atlas', L)); }
+function maskImg(E, L) { return assets.get(akey(E, 'mask', L), E.man.h); }
+function maskPeek(E, L) { return peek(akey(E, 'mask', L)); }
 function entry(cid, cls) {
   const key = cid + '/' + cls;
   let E = REG.get(key);
   if (E) return E;
   const man = PUPPETS[cid]?.[cls];
   if (!man) { REG.set(key, NONE); return NONE; }
-  E = { key, cid, cls, man, state: 0, rig: null, PS: 1, J: null, parts: null, levels: [], lvIdx: {}, dark: {}, vars: new Map(), turnImg: null };
+  E = { key, cid, cls, man, state: 0, rig: null, PS: 1, J: null, parts: null, levels: [], lvIdx: {}, dark: {}, vars: new Map(), turnImg: null, turnMask: null };
   REG.set(key, E);
   assets.json(`puppets/${key}/rig`, man.h).then((rig) => {
     if (!rig || !rig.levels || !rig.parts) { E.state = -1; return; }
@@ -87,23 +97,33 @@ function entry(cid, cls) {
     E.levels = Object.entries(rig.levels).map(([name, L]) => ({ name, scale: L.scale, rects: L.rects, size: L.size })).sort((a, b) => a.scale - b.scale);
     E.levels.forEach((L, i) => { E.lvIdx[L.name] = i; });
     E.opts = rig.opts || {};
-    // 게임 화면용 두 레벨을 먼저 (ui 는 필요할 때)
-    for (const L of E.levels) if (L.name !== 'ui') levelImg(E, L);
+    // 게임 화면용 두 레벨 + 그 재질 마스크(≈14KB, 장비 색을 바꿀 때 원래 색이 한 프레임 비치지 않게). ui 레벨은 메뉴에서 필요할 때
+    for (const L of E.levels) if (L.name !== 'ui') { levelImg(E, L); maskImg(E, L); }
   });
   return E;
 }
-function levelImg(E, L) { return assets.get(`puppets/${E.key}/atlas_${L.name}`, E.man.h); }
-function maskImg(E, L) { return assets.get(`puppets/${E.key}/mask_${L.name}`, E.man.h); }
-/** 준비 상태: 리그 + 레벨 이미지 하나 이상 */
+/** 준비 상태: 리그 + 레벨 이미지 하나 이상 (ui 레벨은 여기서 요청하지 않는다) */
 function ready(E) {
   if (E.state === 1) return true;
   if (E.state < 0 || !E.rig) return false;
-  for (const L of E.levels) if (levelImg(E, L)) { E.state = 1; return true; }
-  if (E.levels.every((L) => assets.failed(`puppets/${E.key}/atlas_${L.name}`))) E.state = -1;
+  for (const L of E.levels) if (levelPeek(E, L)) { E.state = 1; REV++; preloadSiblings(E.cid); return true; }
+  if (E.levels.filter((L) => L.name !== 'ui').every((L) => assets.failed(akey(E, 'atlas', L)))) E.state = -1;
   return false;
 }
 /** 미리 불러 두기 (장면 진입 시 등, 선택) */
 export function preloadPuppet(charId, classId) { const E = entry(charId, classId); return E; }
+// 한 직업이 준비되면 같은 영웅의 다른 직업(rig + lo/hi ≈60KB씩)을 한가할 때 받아 둔다 —
+// 교회 전직 카드·파티·직업 탭이 처음 그릴 때 벡터로 찍혀 스냅샷에 남는 일을 막는다
+const SIB = new Set();
+function preloadSiblings(cid) {
+  if (SIB.has(cid) || typeof window === 'undefined') return;
+  SIB.add(cid);
+  const ids = Object.keys(PUPPETS[cid] || {});
+  let i = 0;
+  const next = () => { if (i >= ids.length) return; entry(cid, ids[i++]); idle(next); };
+  const idle = (f) => (typeof window.requestIdleCallback === 'function' ? window.requestIdleCallback(f, { timeout: 1500 }) : setTimeout(f, 120));
+  idle(next);
+}
 // 부팅 직후 각 영웅의 기본 직업(rig + lo/hi ≈60KB)을 미리 받아, 첫 스테이지에서 벡터→퍼펫 전환이 보이지 않게 한다
 if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   setTimeout(() => { for (const cid in PUPPETS) { const root = CHARACTERS[cid]?.rootClass; if (root && PUPPETS[cid][root]) entry(cid, root); } }, 400);
@@ -125,52 +145,74 @@ function variantKey(E, look) {
   if (!ac && !tc) return '';
   return `${ac || '-'}|${tc || '-'}|${look.armor || '-'}`;
 }
+// 재질별 [명암 대비, 금속 반사]
 const FINISH = { leather: [1, 0], chain: [1.12, 0.1], plate: [1.25, 0.25], holy: [1.2, 0.3], dark: [1.3, 0.12] };
 function makeVariant(E, vk) {
   const [ac, tc, kind] = vk.split('|');
-  return { vk, ac: ac === '-' ? null : hexRgb(ac), tc: tc === '-' ? null : hexRgb(tc), fin: FINISH[kind] || [1, 0], img: {}, dark: {}, pending: {} };
+  return { vk, ac: ac === '-' ? null : hexRgb(ac), tc: tc === '-' ? null : hexRgb(tc), fin: FINISH[kind] || [1, 0], img: {}, dark: {}, turn: undefined };
 }
-/** 변형 레벨 캔버스 (마스크 로드 전에는 null → 원본 사용) */
-function variantLevel(E, V, L) {
-  const got = V.img[L.name];
-  if (got !== undefined) return got;
-  const src = levelImg(E, L), mk = maskImg(E, L);
-  if (!src || !mk || typeof document === 'undefined') return null;
+const lumOf = (r, g, b) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
+/**
+ * 픽셀 배열(px, RGBA)의 마스크 채널(ch) 영역을 목표 색(tgt)으로 다시 칠한다.
+ * 밝기 사상: 마스크 영역 평균 밝기 → 목표 밝기. 어두운 쪽은 비율(곱)로, 밝은 쪽은 원화의 절대 밝기 차를
+ * 유지하되 흰색으로 넘치지 않게 압축한다 — 검은 가죽을 밝은 판금색으로 칠해도 하얗게 타지 않고, 상아색을 어둡게 칠해도 뭉개지지 않는다.
+ * 색: 밝기는 사상값 그대로, 채도는 밝은 곳에서 줄여(반사광은 흰빛) 채널 넘침으로 색이 틀어지지 않게 한다.
+ */
+function recolorPx(px, m, ch, tgt, fin, strength) {
+  const hist = new Uint32Array(256);
+  let n = 0, sum = 0;
+  for (let i = 0; i < px.length; i += 4) {
+    if (m[i + ch] > 200 && px[i + 3] > 200) { const l = lumOf(px[i], px[i + 1], px[i + 2]); hist[l | 0]++; n++; sum += l; }
+  }
+  const pct = (q) => { if (!n) return 0; let c = 0; const t = q * n; for (let k = 0; k < 256; k++) { c += hist[k]; if (c >= t) return k; } return 255; };
+  const lref = Math.max(14, n ? sum / n : 70), p03 = n ? pct(0.03) : lref * 0.4, p90 = n ? pct(0.9) : lref * 1.4, p98 = n ? pct(0.98) : lref * 1.8;
+  const [tr, tg, tb] = tgt;
+  const tl = Math.max(10, lumOf(tr, tg, tb));
+  const con = fin[0], spec = fin[1];
+  const lowT = Math.max(tl * 0.18, tl * Math.pow(Math.max(1, p03) / lref, con));
+  const dn = (tl - lowT) / Math.max(4, lref - p03);
+  const upWant = Math.max(0, Math.min((p98 - lref) * con, tl * (Math.max(1, p98) / lref - 1) * con));
+  const up = (Math.min(244, tl + upWant) - tl) / Math.max(4, p98 - lref);
+  const dk = tl < 50 ? 1.2 : 1;                               // 아주 어두운 목표는 조금 들어 올림 (검은 덩어리 방지)
+  const hiSpan = Math.max(6, p98 - p90);
+  for (let i = 0; i < px.length; i += 4) {
+    const w = (m[i + ch] / 255) * strength;
+    if (w <= 0.02) continue;
+    const r = px[i], g = px[i + 1], b = px[i + 2];
+    const l = lumOf(r, g, b);
+    let L = (l <= lref ? tl - (lref - l) * dn : tl + (l - lref) * up) * dk;
+    L = L < 0 ? 0 : L > 250 ? 250 : L;
+    const k = L / tl, sat = k <= 1 ? k : 1 + (k - 1) * 0.35;
+    let nr = L + (tr - tl) * sat, ng = L + (tg - tl) * sat, nb = L + (tb - tl) * sat;
+    if (spec > 0 && l > p90) { const q = spec * Math.min(1, (l - p90) / hiSpan) * 0.55; nr += (255 - nr) * q; ng += (255 - ng) * q; nb += (255 - nb) * q; }
+    nr = nr < 0 ? 0 : nr > 255 ? 255 : nr; ng = ng < 0 ? 0 : ng > 255 ? 255 : ng; nb = nb < 0 ? 0 : nb > 255 ? 255 : nb;
+    px[i] = r + (nr - r) * w; px[i + 1] = g + (ng - g) * w; px[i + 2] = b + (nb - b) * w;
+  }
+}
+/** 원본 이미지 + 재질 마스크 → 다시 칠한 캔버스 */
+function recolorCanvas(src, mk, V) {
   const W = src.naturalWidth || src.width, Hh = src.naturalHeight || src.height;
   const cv = document.createElement('canvas'); cv.width = W; cv.height = Hh;
   const g = cv.getContext('2d', { willReadFrequently: true });
   g.drawImage(src, 0, 0);
-  const d = g.getImageData(0, 0, W, Hh), px = d.data;
+  const d = g.getImageData(0, 0, W, Hh);
   const mc = document.createElement('canvas'); mc.width = W; mc.height = Hh;
   const mg = mc.getContext('2d', { willReadFrequently: true });
   mg.imageSmoothingEnabled = true; mg.drawImage(mk, 0, 0, W, Hh);
   const m = mg.getImageData(0, 0, W, Hh).data;
-  const recolor = (ch, tgt, fin, strength) => {
-    let sum = 0, cnt = 0;
-    for (let i = 0; i < px.length; i += 4) if (m[i + ch] > 200 && px[i + 3] > 200) { sum += 0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2]; cnt++; }
-    const lref = Math.max(18, cnt ? sum / cnt : 70);
-    const [tr, tg, tb] = tgt;
-    const tl = Math.max(12, 0.2126 * tr + 0.7152 * tg + 0.0722 * tb);
-    const con = fin[0], spec = fin[1];
-    for (let i = 0; i < px.length; i += 4) {
-      const w = (m[i + ch] / 255) * strength;
-      if (w <= 0.02) continue;
-      const r = px[i], gg = px[i + 1], b = px[i + 2];
-      const l = 0.2126 * r + 0.7152 * gg + 0.0722 * b;
-      // 명암은 원화 그대로(대비만 재질별로), 색은 목표 색: 목표 밝기 × (원화 밝기 / 재질 평균 밝기)
-      const k = Math.max(0, (lref + (l - lref) * con) / lref) * (tl / 255 < 0.2 ? 1.25 : 1);
-      let nr = tr * k, ng = tg * k, nb = tb * k;
-      // 반사광(재질 평균보다 확실히 밝은 곳)만 흰빛 유지 — 밝은 원화(상아색 코트)를 어둡게 칠할 때 전체가 하얘지지 않게
-      const hl = Math.max(0, (l - Math.max(lref * 1.3, lref + 40)) / 90) + spec * Math.max(0, (l - lref * 1.4) / 120);
-      if (hl > 0) { const q = Math.min(1, hl); nr += (255 - nr) * q * 0.55; ng += (255 - ng) * q * 0.55; nb += (255 - nb) * q * 0.55; }
-      px[i] = Math.min(255, r + (nr - r) * w); px[i + 1] = Math.min(255, gg + (ng - gg) * w); px[i + 2] = Math.min(255, b + (nb - b) * w);
-    }
-  };
-  if (V.ac) recolor(0, V.ac, V.fin, 0.9);
-  if (V.tc) recolor(1, V.tc, [1.1, 0.2], 0.85);
+  if (V.ac) recolorPx(d.data, m, 0, V.ac, V.fin, 0.92);
+  if (V.tc) recolorPx(d.data, m, 1, V.tc, [1.1, 0.2], 0.85);
   g.putImageData(d, 0, 0);
-  V.img[L.name] = cv;
+  mc.width = mc.height = 1;
   return cv;
+}
+/** 변형 레벨 캔버스 (그 레벨의 마스크가 로드 전이면 null) */
+function variantLevel(E, V, L) {
+  const got = V.img[L.name];
+  if (got) return got;
+  const src = levelPeek(E, L), mk = maskImg(E, L);
+  if (!src || !mk || typeof document === 'undefined') return null;
+  return (V.img[L.name] = recolorCanvas(src, mk, V));
 }
 function bakeDark(src, a = FAR_DARK) {
   const cv = document.createElement('canvas');
@@ -193,7 +235,7 @@ export function puppetFor(p, look) {
   if (I === undefined) {
     const cid = p?.ch?.id, cls = cid ? classOf(p, look) : null;
     const E = cid && cls ? entry(cid, cls) : NONE;
-    I = E === NONE ? null : { E, look, vk: '', V: null, key: E.key };
+    I = E === NONE ? null : { E, look, vk: '', V: null, key: E.key, lv: null };
     if (I) { I.vk = variantKey(E, look) ; }
     INST.set(look, I);
   }
@@ -235,22 +277,31 @@ export function applySpec(K, I) {
 
 // ───────────────────────── 그리기 기본 ─────────────────────────
 let R = null, LV = null, IMG = null, DARK = null;   // 현재 그리는 퍼펫 / 레벨 / 이미지
-function pickLevel(E, c) {
-  const m = c.getTransform();
+/**
+ * 그릴 레벨 고르기: "장치 px / 원화 px" 에 충분한 가장 작은 레벨. 인스턴스별 이력(hysteresis)이 있어
+ * 카메라 확대·축소가 경계 근처에서 흔들려도 lo↔hi 가 번갈아 바뀌며 선명도가 깜빡이지 않는다.
+ * 장비 색 변형이 있으면 그 레벨의 재질 마스크까지 로드된 레벨만 쓴다 (원래 색이 한 프레임 비치는 것 방지).
+ */
+function pickLevel(I, c) {
+  const E = I.E, m = c.getTransform();
   const sc = Math.hypot(m.a, m.b) * E.PS;   // 장치 px / 원화 px
   let want = E.levels[E.levels.length - 1];
   for (const L of E.levels) if (L.scale >= sc * 0.9) { want = L; break; }
-  if (levelImg(E, want)) return want;
-  // 원하는 레벨이 아직이면 가까운(큰 쪽 우선) 레벨로 대신
+  const prev = I.lv;
+  if (prev && prev !== want && prev.scale >= sc * 0.78 && prev.scale <= Math.max(sc * 2.6, E.levels[0].scale)) want = prev;
+  const ok = (L) => levelPeek(E, L) && (!I.V || I.V.img[L.name] || maskPeek(E, L));
+  if (ok(want)) { I.lv = want; return want; }
+  levelImg(E, want); if (I.V) maskImg(E, want);           // 요청해 두고 이번 프레임은 가까운 레벨로
   let best = null, bd = 1e9;
-  for (const L of E.levels) if (levelImg(E, L)) { const dd = Math.abs(L.scale - want.scale) * (L.scale < want.scale ? 1.5 : 1); if (dd < bd) { bd = dd; best = L; } }
+  for (const L of E.levels) if (ok(L)) { const dd = Math.abs(L.scale - want.scale) * (L.scale < want.scale ? 1.5 : 1); if (dd < bd) { bd = dd; best = L; } }
+  if (!best) for (const L of E.levels) if (levelPeek(E, L)) { const dd = Math.abs(L.scale - want.scale); if (dd < bd) { bd = dd; best = L; } }
   return best;
 }
 function useLevel(I, c) {
   const E = I.E;
-  R = E; LV = pickLevel(E, c);
+  R = E; LV = pickLevel(I, c);
   if (!LV) return false;
-  let img = levelImg(E, LV);
+  let img = levelPeek(E, LV);
   let dk = E.dark;
   if (I.V) { const v = variantLevel(E, I.V, LV); if (v) { img = v; dk = I.V.dark; } }
   IMG = img;
@@ -456,7 +507,27 @@ export function capeCanvas(col) {
   }
   return cv;
 }
-const CAPE_OFF = new Float32Array(32);
+const CAPE_OFF = new Float32Array(32), FOLD = new Float32Array(32);
+/** 망토 주름: 띠 중심선을 따라 폭 방향으로 비킨 세로 주름 3줄(그늘 + 옆 반사광). 밝은 망토(성기사 흰 망토)도 평평한 판처럼 보이지 않게 */
+function capeFolds(c, off, n, col) {
+  const light = lumOf(...(hexRgb(col) || [80, 60, 60])) > 150;
+  c.save(); c.clip();
+  for (const [f, a] of [[-0.55, 0.22], [0.05, 0.26], [0.5, 0.2]]) {
+    for (let i = 0; i < n; i++) {
+      const i0 = i > 0 ? i - 1 : 0, i1 = i < n - 1 ? i + 1 : n - 1;
+      const tx = off[i1 * 2] - off[i0 * 2], ty = off[i1 * 2 + 1] - off[i0 * 2 + 1], d = Math.hypot(tx, ty) || 1;
+      const u = i / (n - 1), k = f * WS[i] * (0.35 + 0.65 * u) + Math.sin(i * 1.7 + f * 5) * 0.4;
+      FOLD[i * 2] = off[i * 2] + (-ty / d) * k; FOLD[i * 2 + 1] = off[i * 2 + 1] + (tx / d) * k;
+    }
+    for (let i = 0; i < n; i++) WS[16 + i] = 0.25 + 1.6 * Math.pow(i / (n - 1), 0.8);
+    ribbonPath(c, FOLD, n, WS.subarray(16), false);
+    c.fillStyle = ra('#050208', a * (light ? 0.75 : 1)); c.fill();
+    for (let i = 0; i < n; i++) FOLD[i * 2] += 1.1;
+    ribbonPath(c, FOLD, n, WS.subarray(16), false);
+    c.fillStyle = ra('#ffffff', light ? 0.14 : 0.06); c.fill();
+  }
+  c.restore();
+}
 function drawCapePup(c, E, K, s) {
   const cp = K.cape; if (!cp) return;
   const a = K.pCape;
@@ -488,6 +559,7 @@ function drawCapePup(c, E, K, s) {
     // 부피감: 뒤쪽 가장자리 어둡게 + 윤곽
     c.save(); c.globalAlpha = 0.35; c.fillStyle = grad(off[0] - 8, off[1], off[e] + 8, off[e + 1], sh(cp.c, -0.2), 1); c.fill(); c.restore();
     c.strokeStyle = ra('#0a0306', 0.55); c.lineWidth = 0.5; c.stroke();
+    capeFolds(c, off, n, cp.c);                            // (현재 경로 = 망토 겉감 → 그 안으로 잘라 그림)
     if (cp.style === 'royal' || cp.style === 'tattered') {
       const tx = off[e] - off[e - 2], ty = off[e + 1] - off[e - 1], d = Math.hypot(tx, ty) || 1, w = WS[n - 1];
       c.strokeStyle = cp.style === 'royal' ? '#e8c872' : ra(sh(cp.c2, 0.2), 0.9); c.lineWidth = 0.9;
@@ -662,7 +734,7 @@ export function drawTurnHalo(ctx, col, t) { drawHalo(0, -PUP_H - 4 + Math.sin(t 
 /** 디버그·갤러리: 로드 상태 */
 export function puppetStatus() {
   const out = {};
-  for (const [k, E] of REG) if (E !== NONE) out[k] = { state: E.state, levels: E.levels.map((L) => L.name + (levelImg(E, L) ? '✓' : '…')), variants: [...E.vars.keys()] };
+  for (const [k, E] of REG) if (E !== NONE) out[k] = { state: E.state, levels: E.levels.map((L) => L.name + (levelPeek(E, L) ? '✓' : '…')), variants: [...E.vars.keys()] };
   return out;
 }
 void glow; void TAU;

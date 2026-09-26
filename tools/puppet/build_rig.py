@@ -97,14 +97,21 @@ def build(rig_path, dbg=False, out=None, quiet=False):
     if n > 1:
         sizes = ndi.sum(fig, lab, range(1, n + 1))
         fig = lab == (np.argmax(sizes) + 1)
+    # 몸통·어깨 덮개용 실루엣: 머리카락 틈 정리(hairZone) 전 + 안쪽 구멍 모두 메움.
+    # hairZone 은 배경과 비슷한 밝은 무채색을 지우는데, 옷깃·어깨의 은색 테두리도 그 색이라 몸통에 투명한 줄무늬가 생겼다
+    # (머리가 흔들리면 옷깃 사이로 배경이 비침). 머리카락 틈 정리는 머리·포니테일 부품에만 쓴다.
+    fig_body = fig.copy()
     hz = clean.get('hairZone')  # 머리카락 사이로 비치는 배경 제거
     if hz:
         zone = np.zeros((H, W), bool); zone[hz[1]:hz[3], hz[0]:hz[2]] = True
         fig &= ~(zone & (dist_bg < clean.get('hairBgDist', 26)))
     for box in clean.get('cutBoxes', []):  # 원화 밖으로 삐져나온 잡동사니 제거
         fig[box[1]:box[3], box[0]:box[2]] = False
+        fig_body[box[1]:box[3], box[0]:box[2]] = False
+    fig_body = ndi.binary_fill_holes(fig_body)
     C.fig = fig
     figE = cv2.erode(fig.astype(np.uint8), np.ones((3, 3), np.uint8), iterations=1) > 0
+    figEB = cv2.erode(fig_body.astype(np.uint8), np.ones((3, 3), np.uint8), iterations=1) > 0
     base = rgb.copy()
     C.parts = {}
     regs = rig.get('regions', {})
@@ -210,12 +217,12 @@ def build(rig_path, dbg=False, out=None, quiet=False):
     occl = R('uarm') | R('farm') | R('coil') | R('farArm') | R('head') | R('farArmHole')
     if pony_on:
         occl |= R('pony')
-    torso_vis = torso_full & figE & ~occl
+    torso_vis = torso_full & figEB & ~occl
     tsrc = (lum < P['torsoSrcMaxLum']) if P.get('torsoSrcMaxLum') else None
     img_t = inpaint(base, torso_vis, torso_full, 11, tone=P.get('torsoTone', 0.5), srcm=tsrc)
-    add('torso', img_t, torso_full & fig, J['pelvis'], J['neck'])
+    add('torso', img_t, torso_full & fig_body, J['pelvis'], J['neck'])
     if has('pad'):
-        add('pad', img_t, R('pad') & torso_full, J['shoulder'])
+        add('pad', img_t, R('pad') & torso_full & fig_body, J['shoulder'])
     # ── 위팔 (어깨 쪽·팔꿈치 쪽 덮개 연장) ──
     ua_vis = R('uarm') & figE & ~R('farm')
     ua_full = ua_vis | R('uarmCapTop') | R('uarmCapBot')

@@ -472,12 +472,14 @@ export class FxPool {
     this.max = max; this.n = 0;
     const F = () => new Float32Array(max);
     this.x = F(); this.y = F(); this.vx = F(); this.vy = F(); this.l = F(); this.l0 = F(); this.s = F(); this.r = F(); this.k = new Uint8Array(max); this.c = new Array(max);
+    this.sp = new Array(max);          // puff sprite resolved once at add() (no per-frame cache-key strings)
     this.lt = -1;
   }
   add(k, x, y, vx, vy, life, s, col) {
     if (this.n >= this.max) return;
     const i = this.n++;
     this.k[i] = k; this.x[i] = x; this.y[i] = y; this.vx[i] = vx; this.vy[i] = vy; this.l[i] = this.l0[i] = life; this.s[i] = s; this.r[i] = fr() * TAU; this.c[i] = col;
+    this.sp[i] = k === 0 || k === 3 ? puff(col ?? '#9fe8ff', k === 3 ? 0.2 : 0.45) : k === 2 ? puff(col ?? '#8a7a66', 0.5) : null;
   }
   /** how many particles of stream `key` to emit this frame for `perSec` per second of the owner's clock (dt from
    *  step(); fractional remainders carry over, so the density does not depend on the frame rate) */
@@ -506,32 +508,31 @@ export class FxPool {
   kill(i) {
     const j = --this.n;
     this.k[i] = this.k[j]; this.x[i] = this.x[j]; this.y[i] = this.y[j]; this.vx[i] = this.vx[j]; this.vy[i] = this.vy[j];
-    this.l[i] = this.l[j]; this.l0[i] = this.l0[j]; this.s[i] = this.s[j]; this.r[i] = this.r[j]; this.c[i] = this.c[j];
+    this.l[i] = this.l[j]; this.l0[i] = this.l0[j]; this.s[i] = this.s[j]; this.r[i] = this.r[j]; this.c[i] = this.c[j]; this.sp[i] = this.sp[j];
   }
   /** draw in camera space (ctx transform must be the camera transform) */
   draw(ctx) {
     if (!this.n) return;
     const ga = ctx.globalAlpha, gco = ctx.globalCompositeOperation;
+    let add = -1;                                  // composite state: set only when it changes (string parse per set)
     for (let i = 0; i < this.n; i++) {
       const k = this.k[i], u = this.l[i] / this.l0[i], s = this.s[i];
+      const a = k === 0 || k === 3 ? 1 : 0;
+      if (a !== add) { ctx.globalCompositeOperation = a ? 'lighter' : 'source-over'; add = a; }
       if (k === 0 || k === 3) {
-        ctx.globalCompositeOperation = 'lighter';
         ctx.globalAlpha = ga * u * (k === 3 ? 1 : 0.55);
         const r = k === 3 ? s : s * (1.4 - u * 0.6);
-        ctx.drawImage(puff(this.c[i] ?? '#9fe8ff', k === 3 ? 0.2 : 0.45), this.x[i] - r, this.y[i] - r, r * 2, r * 2);
+        ctx.drawImage(this.sp[i], this.x[i] - r, this.y[i] - r, r * 2, r * 2);
       } else if (k === 2) {
-        ctx.globalCompositeOperation = 'source-over';
         ctx.globalAlpha = ga * u * 0.5;
         const r = s * (1.6 - u * 0.8);
-        ctx.drawImage(puff(this.c[i] ?? '#8a7a66', 0.5), this.x[i] - r, this.y[i] - r, r * 2, r * 2);
+        ctx.drawImage(this.sp[i], this.x[i] - r, this.y[i] - r, r * 2, r * 2);
       } else if (k === 1) {
-        ctx.globalCompositeOperation = 'source-over';
         ctx.globalAlpha = ga * Math.min(1, u * 2);
         ctx.strokeStyle = this.c[i] ?? '#7affd8'; ctx.lineWidth = s; ctx.lineCap = 'round';
         const st = Math.min(4, 1 + Math.abs(this.vy[i]) * 0.01);
         ctx.beginPath(); ctx.moveTo(this.x[i], this.y[i] - s * st); ctx.lineTo(this.x[i], this.y[i]); ctx.stroke();
       } else if (k === 4) {
-        ctx.globalCompositeOperation = 'source-over';
         ctx.globalAlpha = ga * Math.min(1, u * 3);
         const c = Math.cos(this.r[i]) * s, sn = Math.sin(this.r[i]) * s;
         ctx.fillStyle = this.c[i] ?? '#d8cbb0';

@@ -12,7 +12,7 @@ Status
 
 | boss | painted | Kling images | atlas | baked MB desktop / phone | renderer |
 |---|---|---|---|---|---|
-| `b_bonedragon` (s05) | **done — every logic state, phase 2 twin, death breakup; verified desktop + 844×390** | 11 (prototype) + 3 | 370 KB (2048×1001, 36 parts) | 15.4 / 4.2 | `src/render/painted/bosses/b_bonedragon.js` |
+| `b_bonedragon` (s05) | **done — every logic state, phase 2 twin, death breakup; verified desktop + 844×390; adversarial review 2026‑09‑26 (§11)** | 11 (prototype) + 3 + 6 (review: burrow rim, 2 rejected calls) | 390 KB (2048×1001, 37 parts) | 14.1 / 4.2 | `src/render/painted/bosses/b_bonedragon.js` |
 | other 12 Part 1 bosses | vector (automatic fallback, unchanged) | — | — | — | §6 |
 | 7 Part 2 bosses | not built yet | — | — | — | §7 |
 
@@ -43,11 +43,20 @@ Status
 // ABoss (a_common.js) and BossB (b_common.js)
 init/setup … preloadPainted(this.def.id, this.world.game);   // start baking as early as possible
 update(dt, world) { … paintedTick(this, world); }             // attach the culling proxy when the rig is ready
-draw(ctx, world) { if (paintedDraw(this, ctx, world)) return; super.draw(ctx, world); }   // else: vector code
+draw(ctx, world) {
+  const pd = paintedDraw(this, ctx, world);   // true = painted only · false = vector · 0<k<1 = cross-fade in progress
+  if (pd === true) return;
+  if (pd) { ctx.save(); ctx.globalAlpha *= 1 - pd; super.draw(ctx, world); ctx.restore(); return; }
+  super.draw(ctx, world);
+}
 ```
 
 - **Fallback is automatic**: no module registered, rig still loading, load failed, a draw threw (logged once, entry
-  marked failed), or a kill switch is on → the boss draws with its existing vector code. The 12 non-painted bosses
+  marked failed; the registry calls `st.D.unwind(ctx)` so every `save()`/clip the renderer opened through
+  `D.save()` is restored and the canvas state stack stays balanced), or a kill switch is on → the boss draws with its
+  existing vector code.
+- **No pop when the bake is late.** If the boss was already drawn as vector while its rig was still baking (slow phone),
+  the proxy cross-fades vector → painted over 320 ms instead of switching in one frame. The 12 non-painted bosses
   run exactly the code they ran before (verified by `tools/integration.mjs`).
 - **The renderer never changes gameplay.** It receives the boss instance and world and only *reads* them
   (animation state, chain points, phase, hp, flash). Hurtboxes, x/y/w/h, timings and RNG are untouched.
@@ -80,12 +89,20 @@ Register it with one line in `registry.js`: `registerPainted('<id>', { kind: 'bo
 
 ### 1.4 Load / bake / memory flow
 
-1. `roomEntered` for a room with `boss: true` → `preloadPainted(id)` (the zoom of the arena is estimated from the room
-   height with the same formula as `world.startBoss`). Also called from boss `init` (boss rush, retries).
+1. `roomEntered` for a room with `boss: true` **or for the room just before it** (any `exitRight/Left/Up/Down`, `next`
+   or `doors` entry that leads to a boss room) → `preloadPainted(id, game, zoom)` (the arena zoom is estimated from the
+   boss room height with the same formula as `world.startBoss`). Also called from boss `init` (boss rush, retries).
+   Measured on an emulated mid-range phone (CPU ×5 throttle, 844×390): the bake takes ≈5 s of wall clock while the
+   player fights through the antechamber, so it is ready long before the arena trigger; started only at the boss-room
+   door it finished ≈1.5 s after the boss appeared (→ the cross-fade above). `node tools/painted/pop.mjs <id> --mobile
+   --cpu 5 [--from ante|boss]` measures this.
 2. The module is `import()`ed, `manifest.json` fetched, the atlas loaded through `assets.js`.
 3. `loadRig` picks the **texel density** `td = canvas scale × arena zoom × 1.1 × quality.tdMul` (clamped 0.7…2, and
-   ≤ the atlas td), then lowers it until the estimated baked memory fits the budget (**15 MB desktop, 6 MB phone or
-   quality low**). With a phone budget the middle damage level is skipped (dmg1 falls back to base).
+   ≤ the atlas td) and caps it at `tdMax`, the highest density whose estimated baked memory fits 97 % of the budget
+   (**15 MB desktop, 6 MB phone or quality low**; the estimate counts every variant incl. tint crack-glow overlays —
+   before the review it under-counted and desktop landed at 15.4 MB). With a phone budget the middle damage level is
+   skipped (dmg1 falls back to base, and no crack glow is drawn at level 1 — the glow must match the cracks drawn).
+   The rig keeps `td`, `tdMax`, `tdReq`, `budgetMB`.
 4. Per part: scaled copy → outline (thin dark rim, 12-tap) → damage 1 and 2 (cumulative) + half-res crack-glow
    overlays → flash/glow silhouettes (flash parts) → darkened "deep" variant (far limbs / body mass) → tints
    (e.g. the twin's frost). Work is time-sliced (`nextIdle`, 8 ms slices via MessageChannel — not
@@ -95,6 +112,12 @@ Register it with one line in `registry.js`: `registerPainted('<id>', { kind: 'bo
    are frozen to `ImageBitmap` (uploaded to the GPU once, no per-frame re-upload).
 6. The atlas image is dropped from the assets cache after baking. When the player enters a stage whose boss is
    different, the baked rig is released (`stageEntered`).
+7. **Re-bake when the screen changed** (`refreshPainted`): on room entry, if the density the screen now wants
+   (capped by `tdMax`) differs from the baked one by > 25 %, or the rig exceeds a smaller budget (auto quality drop), the
+   rig is re-baked in the background and swapped in when ready (the old rig keeps drawing, no pop). During a fight
+   only growth > 40 % (window → fullscreen) triggers it — never a shrink, so a slow phone that just dropped quality is
+   not given extra bake work mid-fight. Renderers must not cache texel-space data across rigs (`st.rig !== rig` → reset,
+   e.g. the dragon's mouth gradient).
 
 Measured bake (headless Chromium, loaded machine): desktop 2560×1440 td 1.40 → 15.4 MB, 1.8–2.5 s wall clock of
 which ~0.6 s is work and the rest yields to game frames; phone 844×390 (medium) td 0.80 → 4.2 MB, 0.5 s. All of it
@@ -116,7 +139,18 @@ happens behind the boss-room fade / pre-fight dialogue / boss intro (≥ 3.6 s).
 3. **Generate with Kling** (§3 templates): `image_to_image`, `kling-image-v3_0_omni`, 2k, the boss portrait
    (`assets/portraits/<id>.webp`) as `图片1`; for repaints of an existing part add that part as `图片2`. One shot per
    part group. Download with `curl`, convert to `tools/painted/raw/<id>/<name>.webp` (quality 95), and log prompt +
-   generation id + keep/reject reason in the config's `kling` block.
+   generation id + keep/reject reason (rejected calls too) in the config's `kling` block. Mechanics (verified in the
+   review):
+   - Load the tools with ToolSearch `kling`, call `who_am_i` with `tools: ["image_to_image"]` first (it lists the
+     argument names: `prompt`, `img_resolution`, `aspect_ratio`, `imageCount`; inputs `image_1`…`image_10`).
+   - Reference images must be **uploaded**: only PNG/JPG, so convert the webp portrait first
+     (`python3 -c "from PIL import Image; Image.open('assets/portraits/<id>.webp').convert('RGB').save('/tmp/p.png')"`),
+     call `file_upload` (content type, file name, byte size) → a single-use ticket, then
+     `curl -X POST https://kling.ai/api/mcp/files -F ticket=<ticket> -F "file=@/tmp/p.png;type=image/png"` → `data.url`.
+     Pass it as `{name: 'image_1', inputType: 'URL', url}`. Reuse the URL for further calls.
+   - `image_to_image` returns a generation id; poll `query_tasks` (≈50–60 s for 2 images at 2k). Result URLs expire
+     after 24 h — download immediately. The bottom-right "KlingAI 3.0 Omni" mark is removed by `matte.py`.
+   - `imageCount: 2` costs two images but usually saves a retry; budget the rejects (the review needed 3 calls for 1 part).
 4. **Author the config** `tools/painted/configs/<id>.json`. Use the grid helper for every coordinate:
    `python3 tools/painted/grid.py <id> <src> [x0 y0 x1 y1] --step 50 [--scale 0.5] [--matte]` — it overlays the config's
    boxes, pivots, point lists, mask/punch polygons, chain joints and debris boxes on the source, so you iterate by
@@ -158,7 +192,17 @@ corner.
 | debris / fragments | 16:9 | "…N separate broken fragments of 图片1 … arranged in a loose grid with wide empty space between pieces, no piece touches another…" | cut with `debris.boxes`; used for death breakup, hit chips and rubble mounds |
 | armour plates / mechanical | 4:3 | "…the separate armour pieces of 图片1 laid out apart from each other: helm with visor raised, breastplate, pauldron, gauntlet (open hand), greave…" | one plate per piece, hinge pieces (visor, jaw, covers) open |
 | cloth / hair texture swatch | 1:1 | "…a flat rectangular swatch of the gown fabric of 图片1, seen straight on, evenly lit, no folds, tileable…" | used as a pattern on procedural cloth (§6.4); matting not needed |
+| ground rim / burrow lip (review) | 21:9 | "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, … no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: … a single low wide heap of rubble that forms the torn rim of a hole in a catacomb floor, seen strictly from the side at ground level: broken grey flagstone slabs tilted up, dark earth, old skulls and snapped bones half buried … **No dragon, no spine, no vertebrae, no chain.** … bottom edge flat and horizontal, about five times wider than tall, a bit taller at both ends and lower in the middle…" (full text in `configs/b_bonedragon.json` → `kling.images.rim_a`) | portrait only as reference. Pivot `c` = bottom centre; crop the soft ground shadow off with the box |
 | second form / palette | — | **don't**: bake a tint (`kit.RECOLOR`, per-material HSL rules) unless the silhouette changes | the Bone Dragon twin is a frost tint of the same parts |
+
+**Reference-image rules learned in the review** (3 calls for one part):
+- `图片2` must be a *painted* asset in the target style. A photographic / tileable texture (tried: `assets/tex/tex_bone`)
+  pulled both results into paper-craft and cartoon-sticker styles with thick outlines.
+- The model copies the *content* of `图片2`, not only its material: with the debris sheet (which contains a vertebra
+  chain) both results were a vertebra chain lying on rocks. When the new part must not look like the sibling sheet, pass
+  the portrait alone and say what must *not* appear ("no spine, no vertebrae, no chain").
+- Lead with the style clause ("exactly the same painterly … as 图片1 … no outlines, not cartoon") — the "game asset"
+  wording alone drifts toward clean cel-shaded sticker art.
 
 Cost reference: Bone Dragon = 11 images in the prototype (skull ×2, torso, wing ×2, leg, chain ×2, vertebra sheets ×2,
 full body) + 3 here (chain repaint ×2, debris ×1). Budget per boss: 10–20 images.
@@ -192,6 +236,14 @@ D.rec = true → D.part logs flashable parts → D.flash(alpha) replays white si
 - `Shards` = rigid painted pieces for death breakups (gravity, floor bounce, rest, fade).
 - `halo(ctx,x,y,r,color,a,core)` = additive cached puff sprite — **the** glow primitive (no gradients per frame).
 - `rr` = render-only RNG (`next/range/chance/sign`), `hash1(i)` deterministic noise.
+- `D.save()` / `D.restore()` — use these (not `ctx.save/restore`) around clips; the Drawer counts the depth so the
+  registry can `D.unwind(ctx)` after a draw error.
+- `Shards.draw(D, sink = 6)` clips at the floor line (+sink) so long rotated pieces (legs, vertebrae) look half buried
+  instead of lying on top of the floor tiles.
+- `ledgesOver(ctx, world, x0, y0, x1, y1)` re-draws the one-way ledge planks (copied from the tile chunk canvases, one
+  `drawImage` per run) inside a world rect. Tiles are drawn before entities, so a big opaque painted body hides the
+  ledges the player must jump to; call it after the body's back layer, before the head/neck (§8.11).
+- `QUALITY.*.flames` (flame puffs per soul-flame tongue, 5/4/2), `.tube` (spinal-tube strokes 2/2/1), `.ledges`.
 
 ---
 
@@ -205,22 +257,23 @@ D.rec = true → D.part logs flashable parts → D.flash(alpha) replays white si
 | body | `torso`, `wing`, `leg` | `torso_a`, `wing_b`, `leg_a` | wing/torso baked `deep` only; far wing = same sprite mirrored + scaled 0.86; far leg = deep variant |
 | neck bodies | `va0…va5`, `vb0…vb5` (12) | `chain_a`, `chain_c2` | tiles between joints; long ichor strings trimmed (`trimDrips`) — drips are particles now, falling world-down |
 | dorsal spines | `vas0…`, `vbs0…` (12) | same chains | `splitSpines`: cut above `top`, 26 px overlap hidden behind the body; placed at each tile's `spn` anchor |
-| debris | `deb0…deb6` | `debris_a` | death breakup, rubble mounds at holes, world debris |
+| debris | `deb0…deb6` | `debris_a` | death breakup, world debris, fallback rubble when there is no rim |
+| rim | `rim` | `rim_a` (review) | painted burrow lip in front of every hole (floor, wall — rotated, clipped at the floor) and flattened at old-hole scars; frost-tinted for the twin; covers the ribcage's floor clip line |
 
 Baked (desktop): base + dmg1 + dmg2 per part, crack-glow overlays, flash/glow silhouettes for skull+jaw, frost tint of
-dmg2 for everything but debris → **15.4 MB at td 1.40**; phone budget → td 0.80, no dmg1 → **4.2 MB**.
+dmg2 for everything but debris → **14.1 MB at td 1.33** (budget-capped); phone budget → td 0.80, no dmg1 → **4.2 MB**.
 
 ### 5.2 How each logic state reads (all states in `a_bonedragon.js` are covered)
 
 | state / event | painted result |
 |---|---|
-| idle | ribcage breathing, slow wing flap, jaw idle, soul fire in ribcage/eyes, ichor drips from the neck underside, verlet sinew swaying |
+| idle | ribcage breathing, slow wing flap, jaw idle, soul fire in ribcage/eyes, ichor drips from the neck underside, verlet sinew swaying. The body turns (paper flip ≈ 0.3 s) only when the head crosses the hole by more than 56·s px — with the player standing on the hole it used to flip every ~3.5 s |
 | bite (windup/lunge) | neck reared (logic), jaw open with sticky ichor strands, lunge smear (additive glow silhouettes of the skull), bone dust |
 | breath | mouth fire (flame puffs) + embers streaming along the head angle; projectiles are still the logic's |
 | boneRain / transform | wings fully open + fast flap, crack glow ×1.8 during transform, head-up flip hysteresis (no flicker at vertical) |
 | spit | jaw open, mouth glow |
-| burrow (dive → eruption) | neck retracts into the hole, torso sinks below the floor line (clip + pit shadow); new hole: eruption burst (chips, dust, ichor, embers along the hole normal); old hole leaves a crater scar with painted rubble that fades |
-| wall charge | torso/wings/legs oriented on the wall normal, clipped to the arena side, wall crack lines, eruption burst sideways, scar when it returns to the floor |
+| burrow (dive → eruption) | neck retracts into the hole, torso sinks below the floor line (clip + pit shadow + painted rim); new hole: eruption burst (chips, dust, ichor, embers along the hole normal); the old hole leaves one crater scar (flattened rim) that fades. While the column warning tracks the player the hole moves every frame — scars are only left by holes the body actually came out of (`hs.opened`), otherwise a trail of 20+ rubble mounds followed the player |
+| wall charge | torso/wings/legs oriented on the wall normal, clipped to the arena side **and at the floor line** (the open jaw of a low charge used to hang over the floor tiles), wall crack lines, rim rotated on the wall (clipped at the floor), eruption burst sideways, scar when it returns to the floor |
 | hit | white flash replay on skull+jaw of the nearest head, head jolt, chips/dust/ichor burst |
 | damage 1 / 2 (60 % / 30 %) | baked cracks, char, chips, torn membrane; pulsing crack-glow overlays; burst when the level rises; loose chips fall from the neck at level 2 |
 | phase 2 twin | second full puppet from the opposite floor, **frost tint** (icy bone, violet sinew, blue soul fire, blue crack glow), eruption burst on arrival |
@@ -247,7 +300,9 @@ dmg2 for everything but debris → **15.4 MB at td 1.40**; phone budget → td 0
 
 - Head hurtbox (`Wyrm.box()`): 88×72 centred on `(hx,hy)`, not rotated. The painted cranium spans about
   −65…+80 px along the head axis and −30…+44 px across (jaw closed; horns excluded). The snout tip (≈36 px) and the
-  back of the skull (≈21 px) are outside the box, so a hit on the snout whiffs.
+  back of the skull (≈21 px) are outside the box, so a hit on the snout whiffs. **This is not a regression**: the vector
+  skull (`skull()` in `a_bonedragon.js`, scale 1.12) reaches −51…+78 px, i.e. the same snout overhang; the painted one
+  only adds ≈14 px at the back plus the horns.
   **Recommendation** (needs a gameplay owner's sign-off): `w 128·s, h 76·s`, centre shifted 10·s along the head
   direction (`hx + cos(a)·10·s`), or two boxes (cranium 90×70 + snout 50×40 rotated with `a`). Contact/bite damage uses
   the same box, so widening it also makes bites reach ~20 px further — re-tune `strikeRect` knockback if you change it.
@@ -460,6 +515,17 @@ form 2 winged demon (`d2`, `hands`, `redSky`) — portraits `b_dracula` and `b_d
 
 ---
 
+10. **Arena ledges stay readable**: a painted body that covers one-way ledges must re-draw them (`ledgesOver`) between
+    its back layer (body, wings, limbs) and its front layer (neck, head, attack parts). Split the renderer into
+    prepare → back → ledges → front passes (the dragon's `prepHead/backHead/frontHead`).
+11. **Nothing below the floor**: clip every body/limb/rubble layer at the arena floor (+2 px), also for wall holes and
+    death shards. Parts pushing through the floor tiles read as a rendering bug.
+12. **Telegraph-driven positions leave no trails**: when the logic moves an anchor every frame during a warning (the
+    burrow hole follows the player), effects keyed to "anchor moved" (scars, bursts, strand resets) must wait until the
+    anchor was actually used.
+13. **Facing needs hysteresis** when it is derived from a position difference that can hover around zero.
+14. **Cull bounds include lingering effects** (scars far from the current hole, ash spawned above the head, shards).
+
 ## 9. QA checklist (per boss, before sign-off)
 
 - [ ] `python3 tools/painted/build.py <id>` clean; parts sheet: no grey fringe (dark half), no dark halo (magenta half),
@@ -479,6 +545,12 @@ form 2 winged demon (`d2`, `hands`, `redSky`) — portraits `b_dracula` and `b_d
       JS draw ≤ 1.5 ms p95; `window.__painted[id].memMB` within budget.
 - [ ] `node tools/integration.mjs --only <stage>_boss,…` (+ a few other bosses) → no page errors, other bosses unchanged.
 - [ ] Config `kling` block lists every image with its prompt/decision; raw sources committed as webp.
+- [ ] `node tools/painted/rng.mjs <id>` → PASS (same `Math.random` call count and boss trajectory painted vs vector over
+      1500 frames incl. phase changes).
+- [ ] `node tools/painted/pop.mjs <id> --mobile --cpu 5` (antechamber) → `painted ready` before `boss created`, 0 vector
+      frames; `--from boss` → vector frames followed by a cross-fade, no errors.
+- [ ] Arena ledges visible over the body in every pose; nothing drawn below the floor (wall attacks, death shards).
+- [ ] Standing on the hole / under the head for 10 s: no repeated body flips.
 
 ## 10. Known limitations / next steps
 

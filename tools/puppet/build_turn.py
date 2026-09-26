@@ -7,7 +7,10 @@
 없는 방향은 좌우 반전으로 채운다 (yaw θ 의 거울상 = 180-θ).
 출력: assets/puppets/<charId>/<classId>/turn.webp (뷰들을 가로로 이어 붙임) + rig.json 의 turn 항목
   turn = {th, size:[w,h], views:{라벨:{x,w,h,footX,axisX,footY,shY,shW,hemY}}, steps:{"0":{v:라벨,m:0|1}, "45":..., ...}}
-fixups: [{view, box:[x0,y0,x1,y1](0~1 비율), hue:[a,b], sat:[a,b], to:'#rrggbb'}] — 시트 생성 때 새어 들어온 색(예: 다른 뷰의 붉은 머리띠)을 고친다."""
+fixups: [{view, box:[x0,y0,x1,y1](0~1 비율), hue:[a,b], sat:[a,b], val:[a,b]?, to:'#rrggbb', gain?}] — 시트 생성 때 새어 들어온 색
+  (예: 다른 뷰의 붉은 머리띠, 한 뷰만 갈색으로 나온 검은 가죽)을 고친다. 결과 밝기 = 원래 밝기 × gain (to 의 색조로).
+재질 마스크 turn_mask.webp (R=갑옷, G=장식, 절반 해상도): 측면 원화 부품의 재질 마스크에서 색 모델을 배워 각 뷰를 분류
+  → 런타임이 장비 갑옷 색을 턴테이블 8방향에도 칠한다 (옆모습 퍼펫과 같은 색)."""
 import argparse, os, sys, json
 import numpy as np, cv2
 from PIL import Image
@@ -94,6 +97,8 @@ def apply_fixups(img, fixes):
         a, b = fx['hue']
         m = ((hue >= a) & (hue <= b)) if a <= b else ((hue >= a) | (hue <= b))
         m &= (s >= fx.get('sat', [0.3, 1.01])[0]) & (s <= fx.get('sat', [0.3, 1.01])[1])
+        if 'val' in fx:
+            m &= (v >= fx['val'][0]) & (v <= fx['val'][1])
         if not m.any():
             continue
         t = np.array([int(fx['to'][i:i + 2], 16) for i in (1, 3, 5)], np.float32)
@@ -104,6 +109,65 @@ def apply_fixups(img, fixes):
         w = cv2.GaussianBlur(m.astype(np.float32), (0, 0), 1.0)[..., None]
         sub[..., :3] = np.clip(px * (1 - w) + new * w, 0, 255).astype(np.uint8)
     return Image.fromarray(A, 'RGBA')
+
+
+def _hist(h, s, v, sel):
+    """HSV 3차원 히스토그램 (색상 18 × 채도 8 × 명도 8), 합 1 로 정규화 + 약한 번짐"""
+    if not sel.any():
+        return np.zeros((18, 8, 8), np.float32)
+    H_, _ = np.histogramdd(np.stack([h[sel], s[sel], v[sel]], 1), bins=(18, 8, 8), range=((0, 360), (0, 1.0001), (0, 1.0001)))
+    H_ = ndi.gaussian_filter(H_.astype(np.float32), 0.6, mode=('wrap', 'nearest', 'nearest'))
+    return H_ / max(1e-6, H_.sum())
+
+
+def turn_mask(sheet, meta, rig, cid, clsid):
+    """턴테이블 재질 마스크: 측면 원화 부품(ui 아틀라스)의 재질 마스크를 정답으로 HSV 색 모델을 배워
+    (갑옷/장식 vs 그 밖: 피부·머리카락·바지·장화·허리띠 …) 각 뷰 픽셀의 사후확률로 칠한다.
+    세로 범위: 목 아래 ~ 옷자락 밑단 (다리 부품이 갑옷 규칙에 있으면 발끝까지) — 머리 장식·모자에 번지지 않게."""
+    d = os.path.join(OUT, cid, clsid)
+    rj = load_json(os.path.join(d, 'rig.json'))
+    ui = rj['levels'].get('ui') or rj['levels'][sorted(rj['levels'], key=lambda k: rj['levels'][k]['scale'])[-1]]
+    lv = [k for k, v in rj['levels'].items() if v is ui][0]
+    A = np.asarray(Image.open(os.path.join(d, f'atlas_{lv}.webp')).convert('RGBA'))
+    M = np.asarray(Image.open(os.path.join(d, f'mask_{lv}.webp')).convert('RGB').resize((A.shape[1], A.shape[0]), Image.BILINEAR))
+    h, s, v = hsv_arrays(A[..., :3])
+    al = A[..., 3] > 200
+    headish = np.zeros(al.shape, bool)
+    for k in ('head',):
+        r = ui['rects'].get(k)
+        if r:
+            headish[r[1]:r[1] + r[3], r[0]:r[0] + r[2]] = True
+    S = np.asarray(sheet)
+    sh_, ss_, sv_ = hsv_arrays(S[..., :3])
+    hi = np.clip((sh_ / 20).astype(int), 0, 17); si = np.clip((ss_ * 8).astype(int), 0, 7); vi = np.clip((sv_ * 8).astype(int), 0, 7)
+    out = np.zeros(S.shape[:2] + (3,), np.float32)
+    mats = rig.get('materials', {})
+    legs_armor = any(p_ in (r_.get('parts', []) if isinstance(r_, dict) else []) for r_ in ([mats.get('armor')] if isinstance(mats.get('armor'), dict) else (mats.get('armor') or [])) for p_ in ('thigh', 'shin', 'foot'))
+    J = rj['joints']; ft, so = rj['figTop'], rj['sole']
+    f_neck = (J['neck'][1] - ft) / (so - ft) + 0.015
+    f_hem = 1.0 if legs_armor else (J.get('skirtBot', so) - ft) / (so - ft)
+    band = np.zeros(S.shape[:2], np.float32)
+    YY = np.arange(S.shape[0], dtype=np.float32)[:, None]
+    for vname, vm in meta.items():
+        hgt = vm['footY'] - vm['topY']
+        y0, y1 = vm['topY'] + f_neck * hgt, vm['topY'] + f_hem * hgt
+        ramp = np.clip((YY - y0) / (0.025 * hgt), 0, 1) * np.clip((y1 - YY) / (0.03 * hgt), 0, 1)
+        band[:, vm['x']:vm['x'] + vm['w']] = np.repeat(ramp, vm['w'], 1)
+    for ch in (0, 1):
+        pos = al & (M[..., ch] > 150)
+        neg = al & (M[..., ch] < 25) & ~(headish & (s < 0.25))     # 모자·두건(무채색)은 음성 표본에서 뺀다 (옷과 같은 색)
+        if pos.sum() < 50:
+            continue
+        Hp, Hn = _hist(h, s, v, pos), _hist(h, s, v, neg)
+        post = Hp / (Hp + Hn + 1e-6)
+        pr = post[hi, si, vi]
+        w = np.clip((pr - 0.35) / 0.35, 0, 1) * band * (S[..., 3] / 255.0)
+        out[..., ch] = cv2.GaussianBlur(w.astype(np.float32), (0, 0), 1.0)
+    img = Image.fromarray((np.clip(out, 0, 1) * 255).astype(np.uint8), 'RGB')
+    img = img.resize((max(1, img.width // 2), max(1, img.height // 2)), Image.LANCZOS)
+    p = os.path.join(d, 'turn_mask.webp')
+    img.save(p, 'WEBP', lossless=True, quality=100, method=6)
+    return p
 
 
 def build_turn(rig_path, quiet=False):
@@ -153,7 +217,13 @@ def build_turn(rig_path, quiet=False):
     missing = [d for d in STEPS if str(d) not in steps]
     if missing:
         print(f'  ! {clsid}: 방향 없음 {missing}')
-    turn = dict(th=TH, size=[sheet.width, sheet.height], views=meta, steps=steps)
+    has_mask = False
+    if (rig.get('materials') or {}).get('armor') or (rig.get('materials') or {}).get('trim'):
+        try:
+            turn_mask(sheet, meta, rig, cid, clsid); has_mask = True
+        except Exception as e:  # 아틀라스가 아직 없는 등 — 마스크 없이 진행 (런타임은 원래 색)
+            print(f'  ! {clsid}: turn_mask 실패 {e}')
+    turn = dict(th=TH, size=[sheet.width, sheet.height], views=meta, steps=steps, mask=has_mask)
     rp = os.path.join(out_dir, 'rig.json')
     rj = load_json(rp) if os.path.exists(rp) else {}
     rj['turn'] = turn

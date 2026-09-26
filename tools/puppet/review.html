@@ -143,14 +143,14 @@ async function render(s) {
   drawHero(ctx, e, w0, opts);
   const ms = performance.now() - t0;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  const an = (!s.bg || s.bg === 'none') ? analyse(W, H) : null;
+  const an = (!s.bg || s.bg === 'none') ? (s.noHoles ? { holes: [], seam: 0 } : analyse(W, H)) : null;
   // 관절 검사: 관절점·뼈 중간점 둘레(반지름 1.4 논리px)의 최소 알파 — 이음매 틈이면 낮다
   let joints = null;
   if (an && e.rig.P && !s.yaw) {
     const Hh = _debugHost(), SK = Hh.SK, P = e.rig.P, O = [0, 0], fac = e.facing < 0 ? -1 : 1, hs = s.scale ?? 1;
     const pts = { neck: [SK.nx, SK.ny], sh1: [SK.s1x, SK.s1y], el1: [SK.e1x, SK.e1y], el2: [SK.e2x, SK.e2y], hip1: [SK.hp1x, SK.hp1y], hip2: [SK.hp2x, SK.hp2y],
-      kn1: [SK.k1x, SK.k1y], kn2: [SK.k2x, SK.k2y], an1: [SK.a1x, SK.a1y], an2: [SK.a2x, SK.a2y],
-      ua1: [(SK.s1x + SK.e1x) / 2, (SK.s1y + SK.e1y) / 2], fa1: [(SK.e1x + SK.h1x) / 2, (SK.e1y + SK.h1y) / 2], ua2: [(SK.s2x + SK.e2x) / 2, (SK.s2y + SK.e2y) / 2], fa2: [(SK.e2x + SK.h2x) / 2, (SK.e2y + SK.h2y) / 2],
+      kn1: [SK.k1x, SK.k1y], kn2: [SK.k2x, SK.k2y],
+      el1b: [SK.e1x, SK.e1y], ua1: [(SK.s1x + SK.e1x) / 2, (SK.s1y + SK.e1y) / 2], fa1: [(SK.e1x + SK.h1x) / 2, (SK.e1y + SK.h1y) / 2], ua2: [(SK.s2x + SK.e2x) / 2, (SK.s2y + SK.e2y) / 2], fa2: [(SK.e2x + SK.h2x) / 2, (SK.e2y + SK.h2y) / 2],
       th1: [(SK.hp1x + SK.k1x) / 2, (SK.hp1y + SK.k1y) / 2], sn1: [(SK.k1x + SK.a1x) / 2, (SK.k1y + SK.a1y) / 2], th2: [(SK.hp2x + SK.k2x) / 2, (SK.hp2y + SK.k2y) / 2], sn2: [(SK.k2x + SK.a2x) / 2, (SK.k2y + SK.a2y) / 2],
       belly: [(SK.px * 2 + SK.nx) / 3, (SK.py * 2 + SK.ny) / 3], chest: [(SK.px + SK.nx * 2) / 3, (SK.py + SK.ny * 2) / 3] };
     const d = ctx.getImageData(0, 0, W, H).data;

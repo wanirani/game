@@ -32,9 +32,10 @@ const DEF = {
     va: { cracks: 2, holes: 1, char: 1 }, vb: { cracks: 2, holes: 1, char: 1 },
     vas: { noDmg: true, outline: 1.8 }, vbs: { noDmg: true, outline: 1.8 },
     deb: { noDmg: true, outline: 1.6 },
+    rim: { noDmg: true, outline: 1.4 },
   },
   // 쌍두(3페이즈, 체력 30% 미만에서만 등장) → 가장 심한 손상 단계만 서리색으로 굽는다
-  tints: { frost: { rules: 'frost', levels: ['dmg2'], glow: TWIN, skip: ['deb'] } },
+  tints: { frost: { rules: 'frost', levels: ['dmg2'], glow: TWIN, skip: ['deb'] } },   // rim 도 서리색으로 (쌍두 구멍의 녹색 불꽃 → 청색)
 };
 
 // ───────────────────────── 모듈 계약 ─────────────────────────
@@ -148,7 +149,11 @@ function drawBoss(ctx, b, world, rig, st) {
   bb.x0 = bb.y0 = 1e9; bb.x1 = bb.y1 = -1e9;
   for (const h of heads) prepHead(b, h, rig, st, dt, dl);
   for (const h of heads) backHead(ctx, D, b, h, rig, st, dt, bb);
-  if (st.q.ledges !== false && bb.x1 > bb.x0) { D.end(); ledgesOver(ctx, world, bb.x0, bb.y0, bb.x1, bb.y1); }
+  if (st.q.ledges !== false && bb.x1 > bb.x0) {
+    // 화면 안쪽만 (화면 밖 청크를 굽게 만들지 않게)
+    const cam = world.camera, cx0 = cam?.x ?? -1e9, cy0 = cam?.y ?? -1e9, cx1 = cx0 + (cam?.vw ?? 2e9), cy1 = cy0 + (cam?.vh ?? 2e9);
+    D.end(); ledgesOver(ctx, world, Math.max(bb.x0, cx0), Math.max(bb.y0, cy0), Math.min(bb.x1, cx1), Math.min(bb.y1, cy1));
+  }
   for (const h of heads) frontHead(ctx, D, b, h, world, rig, st, dt, dl, hit);
   st.shards.draw(D);
   D.end();
@@ -188,11 +193,18 @@ function drawScars(ctx, D, st, dt, rig) {
     if (a <= 0) { S.splice(i, 1); continue; }
     const rot = s.ny < 0 ? 0 : s.nx > 0 ? -PI / 2 : PI / 2;
     D.img(puff('#000000'), 32, 32, s.x, s.y - 2, rot, 70 * s.s / 32, 12 / 32, 0.8 * a);
-    drawRubble(D, rig, st, s.x, s.y, rot, s.s, s.seed, a, true);
+    drawRubble(D, rig, st, s.x, s.y, rot, s.s, s.seed, a, true, s.tint);
   }
 }
 /** 흙더미 + 작은 뼈 조각 (채색 파편 스프라이트 재사용) */
-function drawRubble(D, rig, st, x, y, rot, s, seed, a = 1, flat = false) {
+function drawRubble(D, rig, st, x, y, rot, s, seed, a = 1, flat = false, tint = null) {
+  // 채색 구멍 테두리(rim: 깨진 바닥돌·해골·흙더미, Kling) 가 있으면 그것 하나로 — 흉곽 밑동의 잘린 선을 덮는다
+  const rim = rig.parts.rim;
+  if (rim) {
+    const k = rim.k * s * (flat ? 0.78 : 1), mir = hash1(seed * 0.37) < 0.5 ? -1 : 1;
+    D.img(pickVariant(rim, 0, false, tint), rim.c[0], rim.c[1], x, y + (flat ? 5 : 7), rot, k * mir, k * (flat ? 0.62 : 1), a);
+    return;
+  }
   const deb = st.debris; if (!deb?.length) return;
   const c = Math.cos(rot), sn = Math.sin(rot);
   D.img(puff('#1c1510'), 32, 32, x, y - 1, rot, 118 * s / 32, (flat ? 9 : 17) / 32, 0.95 * a);
@@ -232,7 +244,7 @@ function prepHead(b, h, rig, st, dt, dl) {
   // 구멍이 옮겨졌다 (잠행 분출 · 벽 돌격): 실제로 몸이 나왔던 구멍이면 옛 자리에 흉터, 줄·잔상 초기화.
   // (잠행 경고 동안 구멍은 플레이어를 따라 매 프레임 움직인다 — 그때는 아직 열리지 않은 구멍이라 흉터를 남기지 않는다)
   if (Math.abs(hole.x - hs.hx0) > 4 || Math.abs(hole.y - hs.hy0) > 4 || hole.nx !== hs.hnx) {
-    if (hs.opened) st.scars.push({ x: hs.hx0, y: hs.hy0, nx: hs.hnx, ny: hs.hnx ? 0 : -1, s, t: 0, seed: (hs.hx0 | 0) % 997 });
+    if (hs.opened) st.scars.push({ x: hs.hx0, y: hs.hy0, nx: hs.hnx, ny: hs.hnx ? 0 : -1, s, t: 0, seed: (hs.hx0 | 0) % 997, tint: hs.tint });
     hs.hx0 = hole.x; hs.hy0 = hole.y; hs.hnx = hole.nx; hs.trail.length = 0; hs.opened = false;
     for (const sd of hs.strands) sd.init = false;
     hs.erupted = false;
@@ -381,10 +393,11 @@ function frontHead(ctx, D, b, h, world, rig, st, dt, dl, hit) {
     let started = false;
     ctx.beginPath();
     for (let i = k; i >= 0; i--) {
-      if (arc[i] < hideBelow - 20 || hs.gone[Math.max(0, i - 1)]) { started = false; continue; }
+      if (arc[i] < hideBelow || hs.gone[Math.max(0, i - 1)]) { started = false; continue; }
       if (!started) { ctx.moveTo(Pt[i].x, Pt[i].y); started = true; } else ctx.lineTo(Pt[i].x, Pt[i].y);
     }
-    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    // 끝은 평평하게(butt): 둥근 끝은 흉곽 위에 붉은 원반처럼 드러났다. 시작점은 첫 타일 밑에 숨는다
+    ctx.lineCap = 'butt'; ctx.lineJoin = 'round';
     if (q.tube > 1) { ctx.strokeStyle = twin ? '#141826' : '#1e0907'; ctx.lineWidth = 28 * s; ctx.stroke(); }
     ctx.strokeStyle = twin ? '#2c3452' : '#4a1712'; ctx.lineWidth = (q.tube > 1 ? 15 : 22) * s; ctx.stroke();
     // 관절마다 영혼불 (틈으로 새어 나옴)
@@ -467,7 +480,7 @@ function frontHead(ctx, D, b, h, world, rig, st, dt, dl, hit) {
 
   // ── 구멍 앞 흙더미 (벽 구멍이면 바닥 아래로 삐져나오지 않게 바닥에서 자른다) ──
   if (!floorHole) { D.save(); ctx.beginPath(); ctx.rect(hole.x - 400, hole.y - 1000, 800, A.floor + 2 - (hole.y - 1000)); ctx.clip(); }
-  drawRubble(D, rig, st, hole.x, hole.y, f.hrot, s, (hole.x | 0) % 997);
+  drawRubble(D, rig, st, hole.x, hole.y, f.hrot, s, (hole.x | 0) % 997, 1, false, tint);
   // 벽 구멍: 벽 균열
   if (!floorHole) {
     D.end();

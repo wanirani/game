@@ -10,15 +10,21 @@ import { CHARACTERS } from '../data/characters.js';
 import { MOVESETS } from '../data/movesets.js';
 import { SUBWEAPONS } from '../data/subweapons.js';
 import { POWERUPS } from '../data/powerups.js';
-import { computeStats, composeLook } from './stats.js';
+import { computeStats, composeLook, addStats } from './stats.js';
 import { playerStrike } from './combat.js';
 import { castSkill, castUltimate, castTechnique, SKILL_IMPL } from './skills.js';
 import { SKILLS } from '../data/skills.js';
 import { DOCS } from '../data/lore.js';
 import { drawHero } from '../render/hero.js';
 import { Hitbox } from './projectiles.js';
+import { initFeel, updateGait, onJump, onLand, dashFx, squashSpring } from './feel_move.js';   // [hook:feel]
+import { handleUltInput } from './awaken.js';   // [hook:awaken]
 
 const COYOTE = 0.1, JUMP_BUF = 0.13, ATK_BUF = 0.16;
+const ZERO = Object.freeze({ dx: 0, dy: 0 });   // [hook:cmp] 탑승하지 않을 때의 공격 판정 보정 (riderLift)
+const FACE_RING_T = 1;   // [hook:plat] 방향 전환 기록 보관 시간(초) — facingAt(t)
+/** 히트스톱으로 멈춰 있던 시간만큼 입력 버퍼를 늘린다 (최대 0.3초; world.frozenRecent 는 WORLD-CAM) */
+const bufWin = (world, base) => base + Math.min(0.3, world.frozenRecent ?? 0);   // [hook:feel]
 
 export class Player extends Entity {
   constructor(world, state, hero) {
@@ -52,21 +58,30 @@ export class Player extends Entity {
     this.rig = {}; // 렌더러 전용 상태 (망토/머리카락 체인 등)
     this.auraT = 0;
     this.stepT = 0;
+    // ── 확장 훅 필드 (MASTER_PLAN §1.7 #1) ──
+    //  mount: MountRider | null (CompanionSystem 이 붙임) · superArmor > 0: 피해는 받되 경직·넉백 없음 (설정한 쪽이 해제)
+    //  awakenHoldK: 각성 길게 누르기 진행도 0..1 (awaken.js) · lastDashEnd: 대시가 자연 종료된 this.t (대시 연계 질주)
+    this.faceRing = []; this.faceNoted = this.facing;   // [hook:plat] 방향 전환 기록 (facingAt)
+    this.apexY = undefined;   // [hook:feel] 공중 최고점 y (착지 시 낙하 거리 fallPx)
+    initFeel?.(this); this.mount = null; this.superArmor = 0; this.awakenHoldK = 0; this.lastDashEnd = -9;   // [hook:feel] [hook:cmp] [hook:awaken]
   }
 
   // ── 능력치 ──
   refreshStats() {
     this.stats = computeStats(this.state, this.hero);
+    if (this.mount?.riding) addStats(this.stats, this.mount.rideStats());   // [hook:cmp] 탑승 보너스
     this.look = composeLook(this.state, this.hero);
     const b = this.buffs;
     if (b.whipup) this.stats.reach = (this.stats.reach ?? 0) + 25;
     this.moveSet = MOVESETS[this.stats.weaponType] || MOVESETS[this.ch.weaponType];
     if (this.hp > this.stats.hp) this.hp = this.stats.hp;
     if (this.mp > this.stats.mp) this.mp = this.stats.mp;
+    this.mount?.refresh(this); this.world?.companions?.onStatsChanged?.();   // [hook:cmp]
   }
   get run() { return this.world.run; }
   get invuln() {
-    return this.iframes > 0 || this.buffs.invincible > 0 || (this.dashT > 0 && this.dashInvuln) || this.dead || this.world.cutscene;
+    return this.iframes > 0 || this.buffs.invincible > 0 || (this.dashT > 0 && this.dashInvuln) || this.dead || this.world.cutscene
+      || this.mount?.invulnT > 0 || this.world?.companions?.shieldT > 0;   // [hook:cmp] 탑승 돌진 무적·수호 결계 (깜빡임 없음)
   }
   get speedMul() { return (1 + (this.stats.moveSpd ?? 0) / 100) * (this.buffs.haste ? 1.4 : 1); }
   get atkSpeedMul() { return (1 + (this.stats.atkSpd ?? 0) / 100) * (this.buffs.haste ? 1.3 : 1); }
@@ -78,10 +93,53 @@ export class Player extends Entity {
     return m;
   }
   hurtbox() {
+    if (this.mount?.riding) return this.mount.hurtbox(this);   // [hook:cmp]
     if (this.crouch) return { x: this.x + 3, y: this.y + this.h * 0.4, w: this.w - 6, h: this.h * 0.6 };
     return { x: this.x + 3, y: this.y + 6, w: this.w - 6, h: this.h - 6 };
   }
   maxAirJumps() { return (this.ch.move.airJumps ?? 1) + (this.stats.airJumps ?? 0); }
+
+  /**
+   * 단일 이동 프로필 (MASTER_PLAN §1.7 #5, companions §12.3 #4, world2 §3.3 #6) — 이동·점프 수치의 유일한 출처.
+   * gait: FEEL-MOVE updateGait() 의 반환값, null 이면 오늘의 수치 그대로.
+   *   { mul?: B 배율 (걷기 0.5 · 달리기 1 · 질주 k), accel?, decel?, airAccel?, airDecel? } — 모두 선택
+   * 탑승 중에는 mount.profile(this) 가 통째로 대신한다 (null 이면 일반 프로필).
+   * 반환 { speed, accel, decel, airAccel, airDecel, jump, airJumps, wallJump } — 일반 프로필 객체는 재사용되므로 보관하지 말 것.
+   */
+  moveProfile(gait = null) {
+    if (this.mount?.riding) { const mp = this.mount.profile(this); if (mp) return mp; }   // [hook:cmp]
+    const P = (this._prof ??= {});
+    const B = this.ch.move.speed * this.speedMul;
+    P.speed = B * (gait?.mul ?? 1) * (this.world?.gimmick?.speedMul ?? 1);   // [hook:feel] [hook:gimmick]
+    P.accel = gait?.accel ?? 3200; P.decel = gait?.decel ?? 3600;
+    P.airAccel = gait?.airAccel ?? 2200; P.airDecel = gait?.airDecel ?? 900;
+    P.jump = this.jumpVel(); P.airJumps = this.maxAirJumps(); P.wallJump = !!this.ch.move.wallJump;
+    return P;
+  }
+
+  // ── 방향 전환 기록 (MASTER_PLAN §1.21) ──
+  /** 이번 스텝의 facing 변화를 input.time 기준으로 기록 (1초 보관) */
+  noteFacing() {
+    const f = this.facing, ring = this.faceRing;
+    if (f !== this.faceNoted) {
+      ring.push({ t: input.time, prev: this.faceNoted, f });
+      this.faceNoted = f;
+    }
+    while (ring.length && (input.time - ring[0].t > FACE_RING_T || ring.length > 64)) ring.shift();
+  }
+  /**
+   * t (input.time 기준) 에 읽힌 입력을 받았을 때 영웅이 바라보던 방향 (±1).
+   * 같은 스텝에서 그 입력 때문에 돌아선 것은 포함하지 않는다 (돌아서기 "전" 방향) — input.command 의 f/b 판정용.
+   */
+  facingAt(t) {
+    const ring = this.faceRing;
+    let f = this.faceNoted ?? this.facing;
+    for (let i = ring.length - 1; i >= 0; i--) {
+      if (ring[i].t < t) return ring[i].f;
+      f = ring[i].prev;
+    }
+    return f;
+  }
 
   // ── 메인 업데이트 ──
   update(dt, world) {

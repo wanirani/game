@@ -366,6 +366,23 @@
      1880
     ]
    }
+  },
+  {
+   "name": "rim",
+   "src": "rim_a",
+   "lps": 0.085,
+   "box": [
+    40,
+    280,
+    3060,
+    928
+   ],
+   "pivots": {
+    "c": [
+     1546,
+     906
+    ]
+   }
   }
  ],
  "chains": [
@@ -532,11 +549,33 @@
     "imageCount": 1,
     "prompt": "Game asset sheet for a 2D cut-out puppet: 12 separate broken bone fragments of the bone dragon from 图片1, painted in the same painterly dark-fantasy illustration style and the same aged ivory bone material as 图片2. Arrange them in a loose 4 by 3 grid with wide empty space between pieces, no piece touches another: a vertebra split in half, a snapped curved dorsal spine, two broken rib pieces with jagged ends, a cracked skull shard with an empty eye socket edge, a broken lower jaw fragment with three teeth, two loose long fangs, a bone claw, a splintered long bone end, a small cluster of bone chips. Some fragments have dark-red dried sinew and black-green ichor stains, faint pale green soul fire in cracks. Strict side view, each piece fully in frame. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadows. Strong key light from the upper left. No text, no labels, no numbers.",
     "result": "kept; 7 of the pieces are cut (boxes in 'debris'); the two long chains in the sheet are unused"
+   },
+   "rim_a": {
+    "by": "painted boss review (playbook exercise)",
+    "aspect": "21:9",
+    "imageCount": 2,
+    "generationId": "AZT8FiBEZOlaOB80wbvfhO8laQzAdHguHzgJ-WZLCoziqVK7thDSKswNAsWKrVBrIQw1mWGt",
+    "refs": {
+     "image_1": "assets/portraits/b_bonedragon.webp (converted to PNG for file_upload)"
+    },
+    "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, muted aged ivory bone, dusty earth tones, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, a single low wide heap of rubble that forms the torn rim of a hole in a catacomb floor, seen strictly from the side at ground level: broken grey flagstone slabs tilted up at angles, chunks of dark packed earth, several old human skulls and scattered snapped human bones half buried in the dirt, a few pebbles. No dragon, no spine, no vertebrae, no chain, no tail. The heap spans the whole image width with a small empty margin at both ends, its bottom edge is flat and horizontal, it is about five times wider than tall, a bit taller at both ends and lower in the middle, irregular jagged top silhouette. A faint pale green soul-fire glow rises from behind the middle of the heap and a few black-green ichor stains are on the stones. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels.",
+    "result": "#1 kept (rim_a): rubble lip, low in the middle with a soft green flame where the hole is. #2 rejected: dark earth spill with drips hanging below the flat bottom.",
+    "rejected": [
+     {
+      "generationId": "AaArimNAurBowWRAXywcssNWqPsLglW3COAuq_EqmN84VjmAcLS4CpwxR2ecy1WIHGAePk4q",
+      "why": "image_2 = assets/tex/tex_bone (photographic tileable floor texture) → both results drifted to paper-craft / cartoon-sticker styles with thick outlines. Never use a photo or tile texture as a reference."
+     },
+     {
+      "generationId": "AfnPYPRirknYvkLVF-l83JcQ_2d8hGdjGxxmV7cHs-NR2BMMmLOAW13nJGNPG04NIatbKDAO",
+      "why": "image_2 = raw/debris_a (sheet with a long vertebra chain) → the model copied the chain into the rim both times. A reference image's content leaks; pass only the portrait when the new part should not contain what the sibling sheet shows."
+     }
+    ]
    }
   },
   "spent": {
    "prototypeB": 11,
-   "thisTask": 3
+   "thisTask": 3,
+   "review": 6
   }
  }
 }

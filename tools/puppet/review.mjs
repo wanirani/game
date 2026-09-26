@@ -29,7 +29,7 @@ function preset(p) {
   const list = [];
   if (kind === 'atk') for (const mk of MK[b]) for (const f of FR) list.push({ cls: a, wt: b, mk, frac: f, label: `${a.slice(5)} ${b} ${mk} f${f}` });
   if (kind === 'anims') for (const [n, o] of ANIMS) list.push({ cls: a, ...o, label: `${a.slice(5)} ${n}` });
-  if (kind === 'all') for (const cls of KCLS) for (const wt of WT) for (const mk of MK[wt]) for (const f of FR) list.push({ cls, wt, mk, frac: f, noPng: true, label: `${cls.slice(5)} ${wt} ${mk} f${f}` });
+  if (kind === 'all') for (const cls of KCLS) for (const wt of WT) for (const mk of MK[wt]) for (const f of FR) list.push({ cls, wt, mk, frac: f, noPng: true, noHoles: true, warm: 20, label: `${cls.slice(5)} ${wt} ${mk} f${f}` });
   if (kind === 'allanims') for (const cls of KCLS) for (const [n, o] of ANIMS) for (const wt of (b ? [b] : ['whip'])) list.push({ cls, wt, ...o, noPng: !a || a === '-' ? false : true, label: `${cls.slice(5)} ${wt} ${n}` });
   return list;
 }
