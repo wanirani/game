@@ -1628,3 +1628,9 @@ export function creditsFor(kind, state, meta) {
   const known = kind === 'true' || p?.unlocked?.includes('s13') || p?.flags?.abyss_open || meta?.endingsSeen?.includes('true');
   return known ? CREDITS : CREDITS.filter((s) => !SECRET_CREDITS.includes(s));
 }
+
+// ── 확장 스크립트 병합 (MASTER_PLAN §1.17): 동료 스크립트(story_companions.js) · 2부 스크립트(story_p2.js ⊃ story_p2b.js) ──
+// 두 모듈은 story.js 를 import 하지 않는다 (순환 금지). CREDITS_P2 는 creditsFor 가 읽는다 (STORY-P2-A).
+import { SCRIPTS_P2 } from './story_p2.js';   // [hook:p2]
+import { COMPANION_SCRIPTS } from './story_companions.js';   // [hook:cmp]
+Object.assign(SCRIPTS, COMPANION_SCRIPTS, SCRIPTS_P2);   // [hook:cmp] [hook:p2]

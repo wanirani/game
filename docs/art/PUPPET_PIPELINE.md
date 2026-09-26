@@ -55,7 +55,8 @@ build_all.py  ── 전부 + 망토 결 텍스처 + src/render/puppet_manifest.
 | 직업 1개 에셋 | atlas lo ≈16KB · hi ≈40KB · ui ≈85KB, mask 3개 ≈33KB, rig.json ≈4KB, turn.webp ≈150–220KB → **≈330–490KB** |
 | 카엘 7직업 합계 | `build_all.py` 끝의 보고 참조 (약 2.9MB, 대부분 turn.webp 로 인벤토리에서만 받는다) |
 | 게임 중 요청 | 직업당 rig.json + atlas_lo + atlas_hi (≈60KB). ui/turn/mask 는 필요할 때만 |
-| 그리기 비용 | 벡터와 같거나 빠름 (`bench.mjs`: 1920×1080, 배율 2, 역광 포함 퍼펫 idle ≈5ms vs 벡터 ≈7ms — 헤드리스 소프트웨어 렌더 기준) |
+| 그리기 비용 | 벡터와 같거나 빠름 (`bench.mjs --n 300`, 1920×1080, 배율 2, 역광 포함, 헤드리스 SwiftShader 평균: 헌터 idle 4.49 / run 5.69 / attack 5.99 / jump 5.36 ms vs 벡터 5.90 / 6.00 / 5.73 / 5.64 ms, 템플러 6.71 / 7.58 / 6.61 / 4.99 ms vs 벡터 9.29 / 9.30 / 10.51 / 7.20 ms) |
+| 카엘 7직업 전체 | assets/puppets 합계 2,694,039 바이트 (≈2.6MB, 공용 망토 텍스처 포함) |
 | 원화 해상도 | 측면 1536×2720 (클링 2k, `aspect_ratio: auto`) — 이보다 작으면 ui 레벨이 흐려진다 |
 
 ---
@@ -304,7 +305,7 @@ python3 tools/puppet/build_all.py                                               
 - 퍼펫 선택: `look.puppet === false` 면 끔 / NPC(`p.npc`) 는 항상 벡터. 직업은 `look.classId` → look 색 지문(primary·secondary·trim·hairStyle 가 직업 계보 look 과 같은가) → `p.hero.classId` 순. 매니페스트에 없는 조합은 요청하지 않는다(404 없음).
 - 로딩: `assets.json('puppets/<c>/<cls>/rig', hash)` + `assets.get('puppets/…/atlas_lo'|'atlas_hi', hash)`. 준비 전에는 **벡터로 그린다**. `preloadPuppet(charId, classId)` 로 미리 받을 수 있다.
 - `HERO_DRAW_SCALE = 1.14`: 게임 속(world 가 있을 때) 플레이어 영웅만 크게 그린다. 판정 상자는 그대로. `opts.scale` 이 주어지면(메뉴) 적용 안 함.
-  1.00/1.12/1.14/1.15 비교에서 1.14 가 모바일 844×390 에서도 얼굴·무기 방향이 읽히고 적과의 크기 비례가 무너지지 않는 가장 큰 값이었다.
+  1.00/1.12/1.14/1.15 를 모바일 844×390 에서 비교했다. 1.12–1.15 사이 차이는 작다. 1.14 는 얼굴과 무기 방향이 읽히면서 머리가 판정 상자 위로 크게 넘치지 않아서 골랐다 (`setHeroDrawScale(v)` 로 조정).
 - 잔상(`opts.tint`)은 퍼펫 실루엣 전체를 단색으로(source-in). 역광 테두리는 퍼펫에서 가늘고 옅게(`PUP_RIM`).
 - 턴테이블(docs/specs/platform.md §7.3):
   - `drawHero(ctx, p, world, { yaw })` — yaw 정의 시 facing 무시. `HERO_VIEW = { continuous:false, steps:8, painted:true }`.

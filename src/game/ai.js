@@ -301,7 +301,9 @@ AI.mimic = {
   },
 };
 
-// 확장 행동 병합 (적 담당 에이전트 파일)
+// 확장 행동 병합 (적 담당 에이전트 파일. C/D = 2부 14~16장 / 17~20장)
 import { AI_A } from './ai_a.js';
 import { AI_B } from './ai_b.js';
-Object.assign(AI, AI_A, AI_B);
+import { AI_C } from './ai_c.js';   // [hook:p2]
+import { AI_D } from './ai_d.js';   // [hook:p2]
+Object.assign(AI, AI_A, AI_B, AI_C, AI_D);   // [hook:p2]

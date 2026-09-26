@@ -1,4 +1,6 @@
-// 스테이지 정의 (13장 + 투기장). 맵은 data/maps/<id>.js 의 ROOMS.
+// 스테이지 정의 (1부 13장 + 2부 14~20장 + 투기장). 맵은 data/maps/<id>.js 의 ROOMS.
+// 2부 스테이지 추가 필드 (world2 §4.2): part:2, page:1(월드맵 쪽), gimmick(world2 §3.1), shard, heart, liquid:'deep'.
+// 2부 스테이지는 맵 패키지별로 아래 앵커 주석 바로 뒤에 넣는다 (import 4곳, STAGES 4곳). 앵커 주석은 지우지 않는다.
 // stage = { id, chapter, name, sub, theme(render/background THEMES 키), bg, tex, tex2, tileStyle(render/tiles TILE_STYLES 키), music,
 //   level(적 레벨), darkness(0~0.9), darkColor, liquid:'water'|'lava'|'poison'|'blood', boss, start(첫 방), rooms,
 //   enemies:[이 스테이지에 배치할 적 ID 후보], docs:[비전서 id(숨김 벽 'H' 순서대로)], relic(드라큘라 유물 id|null),
@@ -17,6 +19,10 @@ import { ROOMS as S11 } from './maps/s11.js';
 import { ROOMS as S12 } from './maps/s12.js';
 import { ROOMS as S13 } from './maps/s13.js';
 import { ROOMS as ARENA } from './maps/arena.js';
+// ── P2 map imports s14–s15 (MAPS-P2-A) ──
+// ── P2 map imports s16–s17 (MAPS-P2-B) ──
+// ── P2 map imports s18–s19 (MAPS-P2-C) ──
+// ── P2 map imports s20 (MAPS-P2-D) ──
 
 const S = (o) => ({ start: 'r1', parTime: 300, darkColor: '#06020c', liquid: 'water', docs: [], relic: null, unlocks: [], ...o, intro: o.intro ?? `${o.id}_intro`, outro: o.outro ?? `${o.id}_outro` });
 
@@ -61,9 +67,21 @@ export const STAGES = {
     music: 's13', level: 45, darkness: 0.55, liquid: 'lava', boss: 'b_chaos', rooms: S13, parTime: 480,
     enemies: ['chaos_spawn', 'hellhound', 'abyss_eye', 'shadow_hunter', 'void_demon', 'death_knight', 'demon_lord'], docs: ['d20'], next: null, mapPos: { x: 0.5, y: 0.12 },
     req: '드라큘라의 유물 5개를 모두 모으고 드라큘라를 쓰러뜨리면 열린다' }),
+  // ── P2 stages s14–s15 (MAPS-P2-A) ──
+  // ── P2 stages s16–s17 (MAPS-P2-B) ──
+  // ── P2 stages s18–s19 (MAPS-P2-C) ──
+  // ── P2 stages s20 (MAPS-P2-D) ──
   arena: S({ id: 'arena', chapter: 0, name: '피의 투기장', sub: '서바이벌 & 보스 러시', theme: 'arena', bg: 'bg/s_arena', tex: 'tex/tex_castle_stone', tex2: 'tex/tex_dirt', tileStyle: 'stone',
     music: 'arena', level: 10, darkness: 0.3, boss: null, rooms: ARENA, parTime: 600, intro: null, outro: null,
     enemies: [], next: null, mapPos: { x: 0.3, y: 0.3 } }),
 };
-export const STAGE_ORDER = ['s01', 's02', 's03', 's04', 's05', 's06', 's07', 's08', 's09', 's10', 's11', 's12', 's13'];
+/** 1부 스테이지 (월드맵 첫 쪽, 서바이벌 적 풀 등 1부만 쓰는 곳) */
+export const STAGE_ORDER_P1 = ['s01', 's02', 's03', 's04', 's05', 's06', 's07', 's08', 's09', 's10', 's11', 's12', 's13'];
+/** 2부 스테이지 중 STAGES 에 실제로 있는 것만 (맵이 한 묶음씩 들어와도 모든 소비처가 그대로 동작) */
+export const STAGE_ORDER_P2 = ['s14', 's15', 's16', 's17', 's18', 's19', 's20'].filter((id) => STAGES[id]);   // [hook:p2]
+/** 전체 스테이지 순서 (1부 + 있는 2부). 1부만 필요한 곳은 STAGE_ORDER_P1 을 쓴다 (MASTER_PLAN §1.14) */
+export const STAGE_ORDER = [...STAGE_ORDER_P1, ...STAGE_ORDER_P2];
 export const RELICS = ['k_relic_1', 'k_relic_2', 'k_relic_3', 'k_relic_4', 'k_relic_5'];
+/** 2부 별의 조각 (s14~s19 각 1개) · 세계의 심장 (s14~s19 각 1개, 6개를 모두 되찾으면 s20 이 열린다) */
+export const SHARDS = ['k_star_1', 'k_star_2', 'k_star_3', 'k_star_4', 'k_star_5', 'k_star_6'];   // [hook:p2]
+export const HEARTS = ['k_heart_1', 'k_heart_2', 'k_heart_3', 'k_heart_4', 'k_heart_5', 'k_heart_6'];   // [hook:p2]

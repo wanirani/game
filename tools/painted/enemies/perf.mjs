@@ -1,6 +1,7 @@
 // Draw-cost benchmark: N enemies of the reference types on screen, painted vs vector, desktop or 844x390 mobile
 // (optionally CPU-throttled). The game loop is frozen and frames are stepped manually so both runs see identical states.
 //   node tools/painted/enemies/perf.mjs [--n 30] [--mobile] [--throttle 4] [--frames 120] [--types bat,skeleton,ghost,armor_knight,gravedigger]
+//        [--quality low|medium|high (persisted setting before load: canvas dpr cap, rig texel density, warp strip LOD)]
 // Prints per-frame total render ms and the share spent inside Enemy.draw (avg / p95), and the rig memory.
 import { chromium } from 'playwright-core';
 import { start } from '../../serve.mjs';
@@ -15,6 +16,7 @@ const mobile = !!A.mobile;
 const results = [];
 for (const painted of [true, false]) {
   const ctx = await browser.newContext(mobile ? { viewport: { width: 844, height: 390 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true } : { viewport: { width: 1280, height: 720 }, deviceScaleFactor: Number(A.dpr ?? 1) });
+  if (A.quality) await ctx.addInitScript((q) => { try { const k = 'bloodnocturne_settings'; const s = JSON.parse(localStorage.getItem(k) || '{}'); s.quality = q; localStorage.setItem(k, JSON.stringify(s)); } catch { /* ignore */ } }, String(A.quality));
   const page = await ctx.newPage();
   const errs = [];
   page.on('pageerror', (e) => errs.push(e.message));
@@ -67,7 +69,7 @@ for (const painted of [true, false]) {
     proto.draw = od;
     const s = (a) => { const b = [...a].sort((x, y) => x - y); return { avg: +(a.reduce((x, y) => x + y, 0) / a.length).toFixed(2), p95: +b[Math.floor(b.length * 0.95)].toFixed(2) }; };
     const visible = list.filter((e) => cam.visible(e.x, e.y, e.w, e.h, 0)).length;
-    return { painted, n: list.length, visible, frame: s(tot), enemyDraw: s(enm), rigs: kit.rigStats(), scale: g.scale };
+    return { painted, n: list.length, visible, frame: s(tot), enemyDraw: s(enm), rigs: kit.rigStats(), scale: g.scale, quality: g.settings?.quality };
   }, { painted, n: Number(A.n ?? 30), types: A.types ?? 'bat,skeleton,ghost,armor_knight,gravedigger', frames: Number(A.frames ?? 120) });
   r.errs = errs;
   results.push(r);
