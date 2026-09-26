@@ -286,6 +286,29 @@ export class TileRenderer {
         ctx.beginPath(); ctx.moveTo(x, y + 8 + w1); ctx.quadraticCurveTo(x + 24, y + 4 - w1, x + 48, y + 8 + Math.sin(t * 3 + (tx + 1) * 0.9) * 3); ctx.stroke();
         ctx.globalAlpha = 1;
       } else ctx.fillRect(x, y, TILE, TILE);
+      // 폭포(좌우가 액체가 아닌 좁은 기둥): 흘러내리는 물줄기
+      const L = m.tiles[ty * m.w + tx - 1] === T.LIQUID, R = m.tiles[ty * m.w + tx + 1] === T.LIQUID;
+      const below = ty + 1 < m.h ? m.tiles[(ty + 1) * m.w + tx] : T.SOLID;
+      const fall = !(L && R) && (below === T.LIQUID || below === T.EMPTY) && (!surface || m.tiles[(ty - 1) * m.w + tx] === T.SOLID);
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      if (fall || (!surface && !(L && R))) {
+        ctx.strokeStyle = col[1]; ctx.lineWidth = 2;
+        for (let k = 0; k < 5; k++) {
+          const sx = x + 5 + k * 9 + Math.sin(tx * 3 + k) * 2;
+          const off = ((t * 420 + k * 37 + tx * 53) % 64) - 16;
+          ctx.globalAlpha = 0.18 + (k % 2) * 0.12;
+          ctx.beginPath(); ctx.moveTo(sx, y + off); ctx.lineTo(sx, y + off + 22); ctx.stroke();
+        }
+      } else if (!surface) {
+        // 넓은 수면 아래: 은은한 반짝임
+        const a = 0.06 + 0.05 * Math.sin(t * 2 + tx * 1.7 + ty * 2.3);
+        ctx.globalAlpha = a; ctx.fillStyle = col[1];
+        ctx.fillRect(x + ((t * 20 + tx * 13) % 40), y + 10 + (ty % 3) * 10, 8, 2);
+      }
+      if (surface && below !== T.LIQUID && kind !== 'lava') { /* 얕은 물 */ }
+      if (kind === 'lava' && surface && Math.random() < 0.02) { /* 거품은 파티클이 담당 */ }
+      ctx.restore();
     }
   }
   /** 배경 장식 문자 ('W' 창문, '|' 기둥) + 테마 소품 */

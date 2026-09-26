@@ -220,6 +220,7 @@ export class Player extends Entity {
   }
 
   startDash(ax, world) {
+    this.lastDashT = this.t;
     if (ax) this.facing = ax;
     const type = this.ch.move.dash;
     this.dashT = type === 'blink' ? 0.14 : type === 'mist' ? 0.24 : 0.2;

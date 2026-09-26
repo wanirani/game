@@ -15,6 +15,26 @@ import { bus } from '../core/events.js';
 import { saves } from '../core/save.js';
 import { clamp } from '../core/math.js';
 
+// 초상화 가장자리를 부드럽게 (배경/CG 위에서 사각 경계가 보이지 않도록) — 이미지별 캐시
+const _soft = new WeakMap();
+function softPortrait(img) {
+  let c = _soft.get(img);
+  if (c) return c;
+  c = document.createElement('canvas');
+  c.width = img.width; c.height = img.height;
+  const g = c.getContext('2d');
+  g.drawImage(img, 0, 0);
+  g.globalCompositeOperation = 'destination-in';
+  const hx = g.createLinearGradient(0, 0, c.width, 0);
+  hx.addColorStop(0, 'rgba(0,0,0,0)'); hx.addColorStop(0.12, 'rgba(0,0,0,1)'); hx.addColorStop(0.88, 'rgba(0,0,0,1)'); hx.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = hx; g.fillRect(0, 0, c.width, c.height);
+  const hy = g.createLinearGradient(0, 0, 0, c.height);
+  hy.addColorStop(0, 'rgba(0,0,0,0)'); hy.addColorStop(0.08, 'rgba(0,0,0,1)'); hy.addColorStop(1, 'rgba(0,0,0,1)');
+  g.fillStyle = hy; g.fillRect(0, 0, c.width, c.height);
+  _soft.set(img, c);
+  return c;
+}
+
 export function speakerInfo(who, state) {
   if (!who || who === 'narrator') return { name: '', portrait: null };
   if (who === 'hero') who = state?.charId ?? 'kael';
@@ -159,7 +179,7 @@ export class DialogueScene extends Scene {
       ctx.save();
       const grad = ctx.createLinearGradient(0, vh - h, 0, vh);
       ctx.globalAlpha = 0.97;
-      ctx.drawImage(img, x, vh - h - 40, w, h);
+      ctx.drawImage(softPortrait(img), x, vh - h - 40, w, h);
       const fade = ctx.createLinearGradient(0, vh - 200, 0, vh - 40);
       fade.addColorStop(0, 'rgba(0,0,0,0)'); fade.addColorStop(1, 'rgba(0,0,0,0.9)');
       ctx.fillStyle = fade; ctx.fillRect(x, vh - 200, w, 160);

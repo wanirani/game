@@ -199,7 +199,7 @@ class Game {
       ctx.restore();
     }
     // 토스트
-    if (this.toasts.length) {
+    if (this.toasts.length && !this.top?.hideToasts && this.top?.name !== 'menu') {
       ctx.save();
       ctx.textAlign = 'center';
       ctx.font = '700 17px "Noto Sans KR", sans-serif';

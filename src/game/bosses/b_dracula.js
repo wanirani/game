@@ -361,6 +361,8 @@ export class Dracula extends BossB {
       world.cutscene = false;
       this.invuln = false; this.harmless = false; this.tfStarted = false;
       this.setState('d_idle');
+      // 스토리 모드: 변신 직후 대사 (최초 1회)
+      if (world.mode === 'story' && !world.state?.progress?.seenScripts?.includes('b_dracula_transform')) world.playScript?.('b_dracula_transform');
     }
   }
   onHurt(dmg, attack, world, info) {

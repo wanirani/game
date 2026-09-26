@@ -244,6 +244,8 @@ export class World {
       else if (r.exitUp && p.y < -p.h * 0.5) this.gotoRoom(r.exitUp);
       else if (r.exitDown && p.y > this.map.pxH) this.gotoRoom(r.exitDown);
     }
+    // 가짜 벽(비밀 통로): 플레이어가 들어서면 연결된 가짜 벽 전체가 드러남
+    if (!p.dead) this.revealFake(p);
     // 보스 트리거
     if (this.arenaX !== undefined && !this.bossActive && !this.cleared && p.x > this.arenaX + TILE && this.room.boss) this.startBoss();
     // 스테이지 클리어 연출
@@ -518,6 +520,30 @@ export class World {
     }
     // 가짜 벽: 닿으면 드러남
   }
+  revealFake(p) {
+    const m = this.map;
+    const l = Math.floor((p.x + 4) / TILE), r = Math.floor((p.x + p.w - 4) / TILE);
+    const t = Math.floor((p.y + 4) / TILE), b = Math.floor((p.y + p.h - 2) / TILE);
+    for (let ty = t; ty <= b; ty++) for (let tx = l; tx <= r; tx++) {
+      if (m.typeAt(tx, ty) !== T.FAKE || m.revealed.has(m.idx(tx, ty))) continue;
+      // 연결된 가짜 벽 flood fill
+      const stack = [[tx, ty]];
+      let n = 0;
+      while (stack.length && n < 400) {
+        const [x, y] = stack.pop();
+        const i = m.idx(x, y);
+        if (x < 0 || y < 0 || x >= m.w || y >= m.h || m.revealed.has(i) || m.tiles[i] !== T.FAKE) continue;
+        m.revealed.add(i); n++;
+        this.tiles.invalidate(x, y);
+        stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+      }
+      const key = `${this.stage.id}:${this.roomId}:fake${tx},${ty}`;
+      audio.sfx('secret');
+      this.fx.burst('dust', p.cx, p.cy, 14, { speed: 120 });
+      if (!this.state.progress.secrets.includes(key)) { this.state.progress.secrets.push(key); this.run.secrets++; this.addScore(1000); this.game.toast('비밀 통로를 발견했다!', '#ffe7a0'); bus.emit('secretFound', { stageId: this.stage.id, key }); }
+      return;
+    }
+  }
   spawnBones(e) {
     const bone = (ctx) => { ctx.fillStyle = '#e8dcc0'; ctx.fillRect(-7, -1.5, 14, 3); ctx.beginPath(); ctx.arc(-7, 0, 2.5, 0, TAU); ctx.arc(7, 0, 2.5, 0, TAU); ctx.fill(); };
     const skull = (ctx) => { ctx.fillStyle = '#e8dcc0'; ctx.beginPath(); ctx.arc(0, 0, 7, 0, TAU); ctx.fill(); ctx.fillStyle = '#1a140a'; ctx.fillRect(-4, -2, 3, 3); ctx.fillRect(1, -2, 3, 3); };
@@ -615,6 +641,8 @@ export class World {
     const m = this.map;
     const x0 = this.arenaX, x1 = m.pxW;
     this.arena = { x0, x1, cam: { x: x0, y: 0, w: x1 - x0, h: m.pxH } };
+    // 3인칭 카메라: 경기장 높이가 화면보다 크면 살짝 줌아웃해 보스 전신이 보이게
+    this.camera.zoomTarget = clamp(this.game.viewH / (m.pxH - TILE), 0.74, 1);
     const id = this.room.bossId ?? this.stage.boss;
     const bx = x0 + (x1 - x0) * 0.72;
     const by = (m.h - 2) * TILE;

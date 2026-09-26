@@ -62,6 +62,7 @@ export function hitTarget(world, attack, target, hx, hy) {
     if (target._hits.size > 64) target._hits.delete(target._hits.keys().next().value);
   }
   const src = attack.stats || attack.owner?.stats;
+  if (attack.team === 'player' && attack.owner?.kind === 'player') attack = classPerkAttack(attack, target, world);
   const res = computeDamage(src, target, attack);
   const info = { ...res, hx, hy };
   const killed = target.takeHit(res.dmg, attack, world, info);
@@ -106,13 +107,33 @@ export function hitTarget(world, attack, target, hx, hy) {
   return info;
 }
 
+/** 직업(클래스) 특성: 공격 시점·대상에 따라 피해 배율/치명타 보정 (data/classes.js perk 설명과 대응) */
+function classPerkAttack(attack, target, world) {
+  const p = attack.owner, cls = p.hero?.classId ?? '', chain = cls;
+  let mult = attack.mult ?? 1, crit = attack.crit ?? 0;
+  const ts = target.stats || {};
+  const hpRatio = (target.hp ?? 1) / (ts.maxHp ?? target.hp ?? 1);
+  if (cls === 'victor_executioner' && hpRatio < 0.25) mult *= 1.6;
+  if (cls === 'victor_phantom' && p.lastDashT !== undefined && p.t - p.lastDashT < 1.2) mult *= 2;
+  if (cls === 'kael_nightraven' && !p.onGround) mult *= 1.3;
+  if (cls === 'bran_warlord') mult *= 1 + Math.min(0.5, Math.floor((world.combo?.n ?? 0) / 10) * 0.05);
+  // 암살자 계열: 등 뒤 공격 치명타 확정
+  if (chain.startsWith('lia_') && target.facing !== undefined && Math.sign(target.facing) === Math.sign(attack.dir || 0) && target.kind !== 'boss') crit += 100;
+  // 퇴마사 계열: 언데드 추가 피해
+  if (chain.startsWith('sera_') && (target.def?.material === 'bone' || target.def?.material === 'ghost')) mult *= 1.15;
+  if (mult === (attack.mult ?? 1) && crit === (attack.crit ?? 0)) return attack;
+  return { ...attack, mult, crit };
+}
+
 /** 플레이어 공격 판정 사각형으로 모든 적/부서지는 오브젝트 타격. 반환: 맞힌 수 */
 export function playerStrike(world, rect, attack) {
   let n = 0;
   for (const e of world.hittables()) {
     if (e.dead || e === attack.owner) continue;
-    const hb = e.hurtbox ? e.hurtbox() : e;
-    if (!overlap(rect, hb)) continue;
+    // 여러 피격 판정(보스 머리·몸통 등)을 모두 검사
+    const boxes = e.hurtboxes ? e.hurtboxes() : [e.hurtbox ? e.hurtbox() : e];
+    const hb = boxes.find((b) => b && overlap(rect, b));
+    if (!hb) continue;
     const hx = clamp(attack.dir > 0 ? rect.x + rect.w * 0.7 : rect.x + rect.w * 0.3, hb.x, hb.x + hb.w);
     const hy = clamp(rect.y + rect.h / 2, hb.y + 4, hb.y + hb.h - 4);
     if (hitTarget(world, attack, e, hx, hy)) n++;

@@ -11,7 +11,7 @@ import { CLASSES, classChain } from '../../data/classes.js';
 import { DIFFICULTIES, getDiff } from '../../data/difficulty.js';
 import { STAGES, STAGE_ORDER } from '../../data/stages.js';
 import { BOSSES } from '../../data/bosses.js';
-import { ITEMS, makeItem } from '../../data/items.js';
+import { baseIdFor, ITEMS, makeItem } from '../../data/items.js';
 import { SKILLS } from '../../data/skills.js';
 import { SCRIPTS } from '../../data/story.js';
 import * as QD from '../../data/quests.js';
@@ -73,15 +73,14 @@ export function buildArcadeState(cfg, charId) {
   for (let k = 0; k < P.tier; k++) { const nx = CLASSES[cls]?.next?.[k === 0 ? (charId.length % 2) : 0]; if (nx && CLASSES[nx]) cls = nx; }
   hero.classId = cls;
   // 무기·방어구
-  for (let n = P.wtier; n >= 1; n--) {
-    const id = `w_${ch.weaponType}_${n}`;
-    if (ITEMS[id]) { const it = makeItem(id, { rarity: P.rarity, level: P.enh }); if (it) { addItem(st, it); hero.equip.weapon = it.uid; } break; }
+  // 무기·방어구: 티어(1~6)에 맞는 베이스 (baseIdFor)
+  {
+    const id = baseIdFor('weapon', Math.min(6, P.wtier), { wtype: ch.weaponType, variant: 2 }) || baseIdFor('weapon', Math.min(6, P.wtier), { wtype: ch.weaponType });
+    if (id && ITEMS[id]) { const it = makeItem(id, { rarity: P.rarity, level: P.enh }); if (it) { addItem(st, it); hero.equip.weapon = it.uid; } }
   }
-  for (const [slot, pre] of [['body', 'a_body_'], ['head', 'a_head_'], ['cloak', 'a_cloak_']]) {
-    for (let n = Math.min(6, P.wtier + 1); n >= 1; n--) {
-      const id = pre + n;
-      if (ITEMS[id] && ITEMS[id].slot === slot) { const it = makeItem(id, { rarity: Math.max(0, P.rarity - 1), level: Math.floor(P.enh / 2) }); if (it) { addItem(st, it); hero.equip[slot] = it.uid; } break; }
-    }
+  for (const slot of ['body', 'head', 'cloak']) {
+    const id = baseIdFor(slot, Math.min(6, P.wtier));
+    if (id && ITEMS[id]) { const it = makeItem(id, { rarity: Math.max(0, P.rarity - 1), level: Math.floor(P.enh / 2) }); if (it) { addItem(st, it); hero.equip[slot] = it.uid; } }
   }
   // 비전서 (스테이지 순서대로 P.docs 개)
   const docIds = [];
