@@ -3697,11 +3697,11 @@ def build_one(spec, args, tmpdir):
     return out
 
 
-def contact_sheet(ids, path, kind):
+def contact_sheet(ids, path, kind, icon_dir=ICON_DIR, prop_dir=PROP_DIR):
     items = [(i, REGISTRY[i]) for i in ids if REGISTRY[i]["kind"] == kind]
     files = []
-    for i, spec in items:
-        d = ICON_DIR if kind == "icon" else PROP_DIR
+    for i, _spec in items:
+        d = icon_dir if kind == "icon" else prop_dir
         f = os.path.join(d, i + ".png")
         if os.path.exists(f):
             files.append((i, f))
@@ -3730,7 +3730,6 @@ def contact_sheet(ids, path, kind):
             d.text((x, y + 136), i, fill=(230, 210, 190, 255), font=font)
     else:
         pad = 12
-        maxh = 0
         rows, row, rw = [], [], 0
         for i, f in files:
             im = Image.open(f).convert("RGBA")
@@ -3800,9 +3799,9 @@ def main(argv=None):
         else:
             print("tmp:", tmpdir)
     all_ids = list(REGISTRY)
-    p1 = contact_sheet(all_ids, args.contact, "icon")
+    p1 = contact_sheet(all_ids, args.contact, "icon", args.out_icons, args.out_props)
     base, ext = os.path.splitext(args.contact)
-    p2 = contact_sheet(all_ids, base + "_props" + ext, "prop")
+    p2 = contact_sheet(all_ids, base + "_props" + ext, "prop", args.out_icons, args.out_props)
     print("contact sheets:", p1, p2)
     if failed:
         print("FAILED:", failed)
