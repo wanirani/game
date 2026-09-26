@@ -59,19 +59,22 @@ export const setButton = (page, i, v) => page.evaluate(([i, v]) => window.__padS
 export const axes = (page, x, y, rx = 0, ry = 0) => page.evaluate(([x, y, rx, ry]) => window.__padAxes(x, y, rx, ry), [x, y, rx, ry]);
 export const rumbleLog = (page) => page.evaluate(() => window.__rumble || []);
 
-/** Button edge: value 1 for ms, then 0, then a short settle (the game polls once per frame). */
+export { waitFrames } from './server.mjs';
+import { waitFrames } from './server.mjs';
+
+/** Button edge: value 1 for ≥ ms (and ≥ 3 frames / 2 steps), then 0, then settle (≥ 2 frames). */
 export async function press(page, i, ms = 90, settle = 90) {
   await setButton(page, i, 1);
-  await page.waitForTimeout(ms);
+  await waitFrames(page, { ms, frames: 3, ticks: 2 });
   await setButton(page, i, 0);
-  if (settle) await page.waitForTimeout(settle);
+  await waitFrames(page, { ms: settle, frames: 2, ticks: 1 });
 }
 export async function hold(page, i, ms) { await press(page, i, ms, 60); }
 
 /** Several buttons at once (e.g. a chord). */
 export async function chord(page, list, ms = 90) {
   for (const i of list) await setButton(page, i, 1);
-  await page.waitForTimeout(ms);
+  await waitFrames(page, { ms, frames: 3, ticks: 2 });
   for (const i of list) await setButton(page, i, 0);
-  await page.waitForTimeout(90);
+  await waitFrames(page, { ms: 90, frames: 2, ticks: 1 });
 }

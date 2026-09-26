@@ -11,6 +11,8 @@
 //   await padVisible(s.page)                        // { visible, source }
 //   await waitPadVisible(s.page, false, 1500)       // { ok, ms, ticks, source } — frame-accurate latency
 //
+import { waitFrames } from './server.mjs';
+
 // Button ids: attack jump dash sub skill1 skill2 ult swap mount guard pause bag (fullscreen on the legacy pad).
 // Sources, in order: the canvas pad API touchpad.buttons() (PLAT-TOUCH), touchpad.occupiedRects() entries that carry an id,
 // the legacy DOM pad (#touch [data-act]), and finally the MASTER_PLAN §1.4 layout model (layoutModel()).
@@ -170,9 +172,9 @@ async function buttonCenter(page, id) {
 export async function pressButton(t, page, id, ms = 100, finger = 11) {
   const b = await buttonCenter(page, id);
   await t.down(finger, b.cx, b.cy);
-  await page.waitForTimeout(ms);
+  await waitFrames(page, { ms, frames: 3, ticks: 2 });
   await t.up(finger);
-  await page.waitForTimeout(40);
+  await waitFrames(page, { ms: 40, frames: 2, ticks: 1 });
   return b;
 }
 /** Touch down on a button and keep holding (release with t.up(finger)). */
@@ -196,7 +198,7 @@ export async function stickHold(t, page, dx, dy, ms = 400, { finger = 21, keep =
   await t.down(finger, x0, y0);
   await page.waitForTimeout(30);
   for (let i = 1; i <= 4; i++) { await t.move(finger, x0 + (dx * i) / 4, y0 + (dy * i) / 4); await page.waitForTimeout(16); }
-  await page.waitForTimeout(ms);
-  if (!keep) { await t.up(finger); await page.waitForTimeout(40); }
+  await waitFrames(page, { ms, frames: 3, ticks: 2 });
+  if (!keep) { await t.up(finger); await waitFrames(page, { ms: 40, frames: 2, ticks: 1 }); }
   return { x0, y0 };
 }

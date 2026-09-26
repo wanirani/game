@@ -337,7 +337,7 @@ t('픽스처 save_ch6_nocmp: 아리아·코슈타·가웨인·미네르바 + 크
   eq(S.eggStatus(s).map((e) => [e.id, e.ready]), [['gd_whelp', true]]);
   for (const id of S.ownedIds(s)) eq([s.companions.owned[id].lv, s.companions.owned[id].src, s.companions.owned[id].seen], [13, 'migrate', false], id);
   eq(s.heroes.kael.companions, { mount: 'mt_skelsteed', guards: ['gd_fairy', null] }, '현재 영웅 자동 장착 (6장: 수호신 1칸)');
-  eq(s.heroes.sera.companions, { mount: null, guards: [null, null] }, '다른 영웅은 마이그레이션 당시의 last 복사');
+  eq(s.heroes.sera.companions, { mount: 'mt_skelsteed', guards: ['gd_fairy', null] }, '편성이 없던 다른 영웅은 소급 해금 뒤의 last 복사');
   eq(s.companions.last, { mount: 'mt_skelsteed', guards: ['gd_fairy', null] });
   eq(S.guardianSlots(s), 1);
 });
@@ -386,6 +386,17 @@ t('손상된 세이브를 견딘다 (§14 C1)', () => {
   eq(s.heroes.kael.companions, { mount: null, guards: ['gd_owl', null] }, '탈것 칸의 수호신 제거, 중복 제거');
   eq(s.heroes.sera.companions, { mount: 'mt_boar', guards: ['gd_imp', null] }, '3장: 2번 칸을 1번 칸으로');
   const once = clone(s); S.migrateCompanions(s); eq(s, once, '쓰레기 보정 후 멱등');
+});
+t('미래 시점(at > clears)으로 손상된 알도 부화할 수 있다', () => {
+  const s = freshState({ chapter: 5 }); s.companions.clears = 3;
+  s.companions.eggs = { gd_whelp: { at: 1e9, got: 0 }, mt_wyvern: { at: 4.7, got: 0 } };
+  S.migrateCompanions(s);
+  eq([s.companions.eggs.gd_whelp.at, s.companions.eggs.mt_wyvern.at], [3, 3]);
+  eq(S.eggStatus(s).map((e) => [e.id, e.left]), [['mt_wyvern', 2], ['gd_whelp', 2]]);
+  S.stageClearUpdate(s); S.stageClearUpdate(s);
+  ok(S.hatchEgg(s, 'gd_whelp'), '두 번 클리어하면 부화');
+  s.companions.eggs.mt_wyvern.at = 999; // 런타임에 망가져도 남은 수는 hatchAfter 를 넘지 않는다
+  eq(S.eggStatus(s)[0].left, 2);
 });
 t('영웅·진행도 자체가 손상돼도 던지지 않는다', () => {
   for (const mut of [(s) => { s.heroes = 5; }, (s) => { s.progress = null; }, (s) => { s.heroes.kael = null; }, (s) => { s.quests = 'x'; },
@@ -451,6 +462,9 @@ t('unlockCompanion: 멱등 · 이벤트 1번 · 따라잡기 레벨', () => {
   eq(S.startLevelFor(freshState({ level: 30 })), 21);
   const q = freshState(); S.unlockCompanion(q, 'gd_imp', { silent: true, reveal: false, equip: false });
   eq([q.companions.pending, q.companions.owned.gd_imp.seen, q.heroes.kael.companions.guards], [[], true, [null, null]]);
+  const nul = freshState({ chapter: 6 }); nul.progress.bosses = ['b_banshee', 'b_bonedragon'];
+  noThrow(() => { S.unlockCompanion(nul, 'mt_boar', null); S.evaluateUnlocks(nul, null); S.obtainEgg(nul, 'mt_wyvern', null); }, 'opts = null');
+  eq([S.ownedIds(nul), S.eggStatus(nul).map((e) => e.id)], [['mt_boar', 'gd_fairy'], ['mt_wyvern', 'gd_whelp']]);
 });
 t('자동 장착: 현재 영웅의 빈 칸만, last 갱신', () => {
   const s = freshState({ chapter: 8 });
@@ -586,7 +600,7 @@ t('공물: 가격 · 경험치 · 주기당 유대 1번 (§7.3)', () => {
   const s = freshState({ level: 10 }); S.unlockCompanion(s, 'gd_fairy'); // lv 7
   s.gold = 1000;
   eq(S.tributeCost(s, 'gd_fairy'), 100 + 30 * 7);
-  eq(S.tributePreview(s, 'gd_fairy'), { cost: 310, exp: Math.floor(D.cexpToNext(7) * 0.3), bond: 8 });
+  eq(S.tributePreview(s, 'gd_fairy'), { cost: 310, exp: Math.floor(D.cexpToNext(7) * 0.3), bond: 8, useful: true });
   const r1 = S.giveTribute(s, 'gd_fairy');
   eq([r1.ok, r1.cost, r1.exp, r1.bond, s.gold], [true, 310, Math.floor(D.cexpToNext(7) * 0.3), 8, 690]);
   eq(r1.msg, `아리아가 공물을 반겼다! (경험치 +${r1.exp} · 유대 +8)`);
@@ -601,7 +615,14 @@ t('공물: 가격 · 경험치 · 주기당 유대 1번 (§7.3)', () => {
   eq([S.giveTribute(s, 'gd_fairy').ok, S.giveTribute(s, 'gd_fairy').msg, s.gold], [false, '금화가 모자라다', 10]);
   eq(S.giveTribute(s, 'gd_owl').ok, false);
   s.gold = 1e6; s.companions.owned.gd_fairy.lv = 30; s.companions.owned.gd_fairy.exp = 0;
-  eq(S.giveTribute(s, 'gd_fairy').exp, 0, '최대 레벨은 경험치 없음');
+  // 최대 레벨 + 이번 주기 유대 이미 받음 → 얻을 게 없으니 금화를 받지 않는다
+  eq(S.tributePreview(s, 'gd_fairy'), { cost: 1000, exp: 0, bond: 0, useful: false });
+  eq([S.giveTribute(s, 'gd_fairy').ok, S.giveTribute(s, 'gd_fairy').msg, s.gold], [false, '유대는 다음 스테이지를 다녀온 뒤에 더 깊어진다', 1e6]);
+  S.stageClearUpdate(s);
+  const r4 = S.giveTribute(s, 'gd_fairy');
+  eq([r4.ok, r4.exp, r4.bond, s.gold], [true, 0, 8, 1e6 - 1000], '최대 레벨은 경험치 없이 유대만');
+  s.companions.owned.gd_fairy.bond = 200; S.stageClearUpdate(s);
+  eq([S.giveTribute(s, 'gd_fairy').ok, S.giveTribute(s, 'gd_fairy').msg, s.gold], [false, '아리아는 더 이상 공물이 필요 없다', 1e6 - 1000]);
 });
 t('마구간 구입: 입고 챕터 · 금화 · 중복 (§7.3)', () => {
   const s = freshState({ chapter: 1 }); s.gold = 20000;
@@ -702,6 +723,12 @@ t('unlock / evaluate API · 다시 init 해도 구독이 겹치지 않는다', (
   ok(g.companions.unlock('mt_boar', { source: 'shop', toast: true }), 'unlock');
   eq(g.toasts[1][0], '새 동료 합류 — 「바르그」! 마을로 돌아가면 만날 수 있다');
   g.companions.unlock('mt_boar', { toast: true }); eq(g.toasts.length, 2, '이미 있으면 토스트 없음');
+  noThrow(() => { eq(g.companions.unlock('gd_imp', null)?.src, 'story'); g.companions.evaluate(null); g.companions.recruit(undefined); }, 'API 에 null 인자');
+  const broken = fakeGame(freshState()); E.initCompanions(broken);
+  Object.defineProperty(broken.state, 'companions', { get() { throw new Error('boom'); }, configurable: true });
+  const warn = console.warn; console.warn = () => {};
+  try { noThrow(() => { eq(broken.companions.recruit('gd_mirra'), null); eq(broken.companions.evaluate(), []); }, '상태가 던져도 API 는 던지지 않는다'); }
+  finally { console.warn = warn; E.initCompanions(g); }
   st.progress.flags.stable_open = true; eq(g.companions.evaluate(), ['mt_warhorse']);
   eq(g.companions.state(), st.companions);
 });
@@ -736,6 +763,8 @@ t('bond · egg · 목록 · 객체 파라미터 · 잘못된 값', () => {
   noThrow(() => S.applyCompanionDebug(s, 'cmplv=abc&bond=x&ch=zz&guards=,,,&mount=gd_fairy'), '잘못된 숫자');
   const k = freshState(); S.applyCompanionDebug(k, 'mount=gd_owl&guards=mt_boar,nope');
   eq(S.ownedIds(k), [], '종류가 틀린 id 는 지급하지 않는다');
+  const d = freshState({ chapter: 3 }); S.applyCompanionDebug(d, 'guards=gd_fairy,g_fairy');
+  eq([d.heroes.kael.companions.guards, d.progress.chapter], [['gd_fairy', null], 3], '같은 수호신 두 번은 한 칸 (8장으로 올리지 않는다)');
 });
 
 // ══ 7. 모듈 순수성 (node import · import 대상) ════════════════════════════════════════════

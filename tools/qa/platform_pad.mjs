@@ -77,6 +77,8 @@ try {
       const s = await env.page(vp, 'index.html?scene=stage&stage=s01', { initScripts: [fakePadInit({ id: PAD_IDS.xbox })] });
       await s.waitGame('!!g.world?.player');
       await s.wait(1500);
+      await s.skipDialogue();
+      await s.wait(300);
       const t = new Touch(s.cdp, s.page);
       const [W, H] = await s.eval(() => [innerWidth, innerHeight]);
       await t.tap(W * 0.5, H * 0.3);

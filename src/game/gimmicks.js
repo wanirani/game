@@ -1097,15 +1097,20 @@ class WindGimmick {
         }
         ctx.stroke();
         // 위로 흐르는 갈매기 표시 (밝은 배경에서도 보이게 어두운 테두리 먼저)
-        const nch = Math.max(2, Math.round(h / 96));
+        const nch = Math.max(2, Math.round(h / 72));
         ctx.beginPath();
         for (let i = 0; i < nch; i++) {
           const cy = y + h - ((this.t * 120 + i * (h / nch)) % h), cx = x + TILE / 2;
-          if (cy < y + 10) continue;
-          ctx.moveTo(cx - 9, cy + 6); ctx.lineTo(cx, cy - 2); ctx.lineTo(cx + 9, cy + 6);
+          if (cy < y + 14) continue;
+          for (const d of [0, 7]) { ctx.moveTo(cx - 10, cy + 7 + d); ctx.lineTo(cx, cy - 2 + d); ctx.lineTo(cx + 10, cy + 7 + d); }
         }
-        ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(10,20,40,0.22)'; ctx.stroke();
-        ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(235,245,255,0.5)'; ctx.stroke();
+        ctx.lineWidth = 4.5; ctx.strokeStyle = 'rgba(10,20,40,0.25)'; ctx.stroke();
+        ctx.lineWidth = 2.2; ctx.strokeStyle = 'rgba(235,245,255,0.62)'; ctx.stroke();
+        // 기둥 양옆 옅은 경계선
+        ctx.setLineDash([10, 12]); ctx.lineDashOffset = reducedMotion(this.world) ? 0 : this.t * 60;
+        ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(230,240,255,0.28)';
+        ctx.beginPath(); ctx.moveTo(x + 3, y); ctx.lineTo(x + 3, y + h); ctx.moveTo(x + TILE - 3, y); ctx.lineTo(x + TILE - 3, y + h); ctx.stroke();
+        ctx.setLineDash([]);
         ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(230,240,255,0.22)';
       }
       ctx.restore();

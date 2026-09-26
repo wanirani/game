@@ -64,7 +64,17 @@ export async function installTapRecorder(page) {
     if (t && typeof t === 'object') {
       try { if ('record' in t) t.record = true; } catch { /* read-only */ }
       P(t, 'note', 'ui.taps', 'primary', 0, 1);
-      P(t, 'add', 'ui.taps', 'primary', 1, 2);
+      // taps.add(id, rect, {slop, kind}): the default slop (taps.slop) applies in touch mode only
+      if (typeof t.add === 'function') {
+        const o = t.add; const f = rec('ui.taps', 'primary');
+        t.add = function (id, r, opts = {}) {
+          try {
+            const touch = g.input?.mode ? g.input.mode === 'touch' : !!g.input?.touchMode;
+            f(r, { id, kind: opts?.kind, slop: touch ? (opts?.slop ?? t.slop ?? 0) : 0 });
+          } catch { /* ignore */ }
+          return o.apply(this, arguments);
+        };
+      }
     }
     P(ui.ListMenu?.prototype, 'hit', 'ListMenu', 'row', 1);
     P(mc.Gesture?.prototype, 'tap', 'Gesture', 'row', 0);

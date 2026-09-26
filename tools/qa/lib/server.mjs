@@ -165,10 +165,11 @@ export class Session {
   /** Scene stack names, e.g. 'stage>pause'. */
   scenes() { return this.page.evaluate(() => (window.__game?.scenes || []).map((s) => s.name).join('>')); }
   top() { return this.page.evaluate(() => window.__game?.top?.name ?? null); }
-  /** Press a keyboard key (e.code or KEY alias) for ms milliseconds. */
+  /** Press a keyboard key (e.code or KEY alias) for ≥ ms and ≥ 3 frames / 2 game steps (never lost on a loaded machine). */
   async key(k, ms = 90) {
     const code = KEY[k] || k;
-    await this.page.keyboard.down(code); await this.page.waitForTimeout(ms); await this.page.keyboard.up(code); await this.page.waitForTimeout(40);
+    await this.page.keyboard.down(code); await waitFrames(this.page, { ms, frames: 3, ticks: 2 });
+    await this.page.keyboard.up(code); await waitFrames(this.page, { ms: 40, frames: 2, ticks: 1 });
   }
   /** Advance dialogue / boss intro / story overlays until a gameplay scene is on top (keyboard Enter). */
   async skipDialogue(maxSteps = 40) {
@@ -211,6 +212,18 @@ export class Session {
   stopRec() { return this.page.evaluate(() => { const R = window.__qaRec; if (!R) return []; R.on = false; return R.frames; }); }
   async screenshot(file) { try { await this.page.screenshot({ path: file, scale: 'css', timeout: 15000 }); } catch { /* page gone */ } }
   async close() { try { await this.ctx.close(); } catch { /* closed */ } this._onClose?.(); }
+}
+
+/**
+ * Waits in the page until at least `ms` passed AND the game ran `frames` rAF frames with `ticks` fixed steps since the call,
+ * so a short press is never lost between two input polls on a loaded machine.
+ */
+export function waitFrames(page, { ms = 0, frames = 2, ticks = 1 } = {}) {
+  return page.evaluate(({ ms, frames, ticks }) => new Promise((res) => {
+    const g = window.__game, t0 = performance.now(), f0 = g?.frame ?? 0; let n = 0;
+    const f = () => { n++; if (performance.now() - t0 >= ms && n >= frames && (g?.frame ?? 0) - f0 >= ticks) res(); else requestAnimationFrame(f); };
+    requestAnimationFrame(f);
+  }), { ms, frames, ticks });
 }
 
 export const KEY = { right: 'ArrowRight', left: 'ArrowLeft', up: 'ArrowUp', down: 'ArrowDown', jump: 'KeyZ', attack: 'KeyX', dash: 'KeyC', sub: 'KeyA', skill1: 'KeyS', skill2: 'KeyD', ult: 'KeyF', menu: 'Escape', enter: 'Enter', swap: 'KeyQ', tabR: 'KeyE', map: 'Tab' };

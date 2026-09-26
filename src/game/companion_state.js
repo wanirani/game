@@ -94,11 +94,13 @@ function normalize(state) {
   if (!isObj(c.owned)) c.owned = {};
   normKeys(c.owned, () => true);
   for (const id of Object.keys(c.owned)) c.owned[id] = normEntry(c.owned[id]);
+  c.clears = intIn(c.clears, 0, 1e9, 0);
   if (!isObj(c.eggs)) c.eggs = {};
   normKeys(c.eggs, (id) => companionDef(id)?.obtain?.type === 'egg' && !Object.hasOwn(c.owned, id));
   for (const id of Object.keys(c.eggs)) {
     const e = isObj(c.eggs[id]) ? c.eggs[id] : {};
-    e.at = Number.isFinite(e.at) ? Math.floor(e.at) : -99;
+    // 알을 얻은 시점은 지금(clears)보다 뒤일 수 없다 — 손상된 미래 값이면 영영 부화하지 못하므로 지금으로 당긴다
+    e.at = Number.isFinite(e.at) ? Math.min(Math.floor(e.at), c.clears) : -99;
     e.got = Number.isFinite(e.got) ? e.got : 0;
     c.eggs[id] = e;
   }
@@ -108,7 +110,6 @@ function normalize(state) {
     if (id && Object.hasOwn(c.owned, id) && !pend.includes(id)) pend.push(id);
   }
   c.pending = pend;
-  c.clears = intIn(c.clears, 0, 1e9, 0);
   if (c.autoSkill !== true && c.autoSkill !== false) c.autoSkill = null;
   c.slot2Seen = c.slot2Seen === true;
   const slots = guardianSlots(state);
@@ -141,8 +142,16 @@ export function ensureCompanionState(state) {
 export function migrateCompanions(state) {
   if (!isObj(state)) return;
   try {
+    // 편성이 아직 없던 영웅(동료 기능 이전 세이브)은 소급 해금이 끝난 뒤의 last 를 받는다 — 현재 영웅만 동료를 두르고
+    // 나머지 영웅은 빈손이 되지 않도록. 두 번째 실행에서는 모두 편성이 있으므로 멱등.
+    const bare = isObj(state.heroes) ? Object.values(state.heroes).filter((h) => isObj(h) && !isObj(h.companions)) : [];
     normalize(state);
     if (!state.arcade) evaluateUnlocks(state, { source: 'migrate', silent: true });
+    const c = state.companions;
+    if (bare.length && isObj(c)) {
+      const slots = guardianSlots(state);
+      for (const h of bare) if (!isCurrentHero(state, h)) h.companions = normLoadout(copyLoadout(c.last), c, slots);
+    }
   } catch (e) {
     try { console.warn('[companions] 동료 데이터가 손상되어 초기화합니다', e); } catch { /* 무시 */ }
     try {
@@ -241,7 +250,8 @@ function autoEquip(state, id) {
  *  opts: source('story'|'boss'|'egg'|'quest'|'shop'|'relics'|'migrate'|'debug'), silent(버스 이벤트 없음),
  *        reveal(false 면 합류 연출 없이 이미 본 것으로), equip(false 면 자동 장착 안 함)
  */
-export function unlockCompanion(state, id, { source = 'story', silent = false, reveal = true, equip = true } = {}) {
+export function unlockCompanion(state, id, opts) {
+  const { source = 'story', silent = false, reveal = true, equip = true } = isObj(opts) ? opts : {};
   const c = cs(state), n = normCompanionId(id);
   if (!c || !n) return null;
   if (Object.hasOwn(c.owned, n)) return c.owned[n];
@@ -259,7 +269,8 @@ export function unlockCompanion(state, id, { source = 'story', silent = false, r
  *  flag(recruit_<id>, stable_open) · boss(progress.bosses) · quest(quests.done) · relics(유물 수) · egg(보스 처치 → 알, 바로 부화 가능)
  *  opts.source 를 주면 모든 해금의 출처를 그것으로 (마이그레이션은 'migrate'), opts.silent 면 버스 이벤트 없음. 아케이드 세이브는 무시.
  */
-export function evaluateUnlocks(state, opts = {}) {
+export function evaluateUnlocks(state, opts) {
+  if (!isObj(opts)) opts = {};
   const out = [];
   const c = cs(state);
   if (!c || state.arcade) return out;
@@ -493,7 +504,8 @@ export function guardianDerived(state, id, playerStats) {
 
 // ── 알 · 공물 · 구입 (§2.1, §7.3) ──────────────────────────────────────────────────────────
 /** 알 획득 (알형 동료만; 이미 있거나 합류했으면 false). opts.at = 시작 clears (기본 지금), opts.silent */
-export function obtainEgg(state, id, opts = {}) {
+export function obtainEgg(state, id, opts) {
+  if (!isObj(opts)) opts = {};
   const c = cs(state), n = normCompanionId(id);
   if (!c || !n || companionDef(n).obtain.type !== 'egg') return false;
   if (Object.hasOwn(c.owned, n) || Object.hasOwn(c.eggs, n)) return false;
@@ -510,7 +522,8 @@ export function eggStatus(state) {
     if (!Object.hasOwn(c.eggs, id)) continue;
     const o = companionDef(id).obtain;
     const at = Number.isFinite(c.eggs[id]?.at) ? c.eggs[id].at : -99;
-    const left = Math.max(0, (o.hatchAfter ?? 2) - (c.clears - at));
+    const need = o.hatchAfter ?? 2;
+    const left = Math.max(0, Math.min(need, need - (c.clears - at)));
     out.push({ id, egg: o.egg ?? '알', ready: left === 0, left,
       text: left === 0 ? EGG_TEXT.ready : left === 1 ? EGG_TEXT.waiting : EGG_TEXT.waitingN.replace('{n}', String(left)) });
   }
@@ -535,9 +548,10 @@ export function tributeCost(state, id) {
 /** 공물 바치기 여부 미리보기: { cost, exp, bond(유대가 오르면 8, 이번 주기에 이미 줬으면 0) } */
 export function tributePreview(state, id) {
   const c = cs(state), e = ownedEntry(state, id);
-  if (!c || !e) return { cost: 0, exp: 0, bond: 0 };
-  return { cost: tributeCost(state, id), exp: e.lv >= CMP_MAX_LV ? 0 : Math.floor(cexpToNext(e.lv) * TRIBUTE.expFrac),
-    bond: e.gift !== c.clears && e.bond < BOND_MAX ? TRIBUTE.bond : 0 };
+  if (!c || !e) return { cost: 0, exp: 0, bond: 0, useful: false };
+  const exp = e.lv >= CMP_MAX_LV ? 0 : Math.floor(cexpToNext(e.lv) * TRIBUTE.expFrac);
+  const bond = e.gift !== c.clears && e.bond < BOND_MAX ? TRIBUTE.bond : 0;
+  return { cost: tributeCost(state, id), exp, bond, useful: exp > 0 || bond > 0 };
 }
 /**
  * 공물: 금화를 내고 경험치 floor(cexpToNext(lv)·0.3), 스테이지 클리어 주기마다 한 번 유대 +8.
@@ -548,14 +562,16 @@ export function giveTribute(state, id) {
   const fail = (msg) => ({ ok: false, msg, exp: 0, bond: 0, cost: 0, levels: 0 });
   if (!c || !e) return fail(CMP_TEXT.notOwned);
   const cost = tributeCost(state, id);
-  if (!(Number.isFinite(state.gold) && state.gold >= cost)) return { ...fail(CMP_TEXT.poor), cost };
-  state.gold -= cost;
   const name = companionDef(id).name;
   const exp = e.lv >= CMP_MAX_LV ? 0 : Math.floor(cexpToNext(e.lv) * TRIBUTE.expFrac);
+  const cycle = e.gift !== c.clears;
+  // 최대 레벨이라 경험치가 없고 유대도 오르지 않으면 금화만 사라지므로 받지 않는다
+  if (!exp && !(cycle && e.bond < BOND_MAX)) return { ...fail(e.bond >= BOND_MAX ? cmpText('tributeDone', { name }) : TRIBUTE.noBondNote), cost };
+  if (!(Number.isFinite(state.gold) && state.gold >= cost)) return { ...fail(CMP_TEXT.poor), cost };
+  state.gold -= cost;
   const lv0 = e.lv;
   addCompanionExp(state, id, exp);
   let bond = 0;
-  const cycle = e.gift !== c.clears;
   if (cycle) {
     e.gift = c.clears;
     const b0 = e.bond;
@@ -618,7 +634,7 @@ export function applyCompanionDebug(state, params) {
     };
     const cmp = P.get('cmp');
     if (cmp) for (const id of (cmp === 'all' ? COMPANION_ORDER : idList(cmp))) grant(id);
-    const guards = P.has('guards') ? idList(P.get('guards')).map(normCompanionId).filter(isGuard).map(grant).slice(0, 2) : null;
+    const guards = P.has('guards') ? [...new Set(idList(P.get('guards')).map(normCompanionId).filter(isGuard))].map(grant).slice(0, 2) : null;
     if (guards && guards.length > 1 && guardianSlots(state) < 2) state.progress.chapter = Math.max(chapterOf(state), 8);
     if (P.has('mount')) { const m = normCompanionId(P.get('mount')); if (isMount(m)) equipMount(state, null, grant(m)); else if (!P.get('mount') || P.get('mount') === 'none') equipMount(state, null, null); }
     if (guards) {

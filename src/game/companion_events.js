@@ -56,19 +56,24 @@ export function initCompanions(game) {
   for (const off of offs) { try { off(); } catch { /* 무시 */ } }
   offs = [];
   if (!game || typeof game !== 'object') return null;
+  // 다른 패키지(스토리 명령·마을 장면)가 부르는 입구 — 예외가 대사 진행을 끊지 않도록 모두 감싼다 (R6)
+  const safe = (name, fn, dflt) => (...a) => {
+    try { return fn(...a); } catch (e) { try { console.warn('[companions]', name, e); } catch { /* 무시 */ } return dflt; }
+  };
   const api = {
-    recruit: (id) => recruit(game, id),
-    unlock: (id, opts = {}) => {
+    recruit: safe('recruit', (id) => recruit(game, id), null),
+    unlock: safe('unlock', (id, opts) => {
+      const o = isObj(opts) ? opts : {};
       const st = game.state;
       if (!isObj(st) || st.arcade) return null;
       const n = normCompanionId(id);
       const had = !!(n && st.companions?.owned && Object.hasOwn(st.companions.owned, n));
-      const e = unlockCompanion(st, n, opts);
-      if (e && !had && opts.toast) toast(game, cmpText(game.world?.mode === 'story' ? 'joined' : 'joinedTown', { name: nameOf(n) }), COLOR.join, 3.2);
+      const e = unlockCompanion(st, n, o);
+      if (e && !had && o.toast) toast(game, cmpText(game.world?.mode === 'story' ? 'joined' : 'joinedTown', { name: nameOf(n) }), COLOR.join, 3.2);
       return e;
-    },
-    evaluate: (opts) => (isObj(game.state) ? evaluateUnlocks(game.state, opts) : []),
-    state: () => ensureCompanionState(game.state),
+    }, null),
+    evaluate: safe('evaluate', (opts) => (isObj(game.state) ? evaluateUnlocks(game.state, opts) : []), []),
+    state: safe('state', () => ensureCompanionState(game.state), null),
   };
   game.companions = api;
   const on = (evt, fn) => offs.push(bus.on(evt, (d) => {

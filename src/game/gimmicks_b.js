@@ -89,15 +89,6 @@ function vignetteSprite(key, rgb) {
     g.fillStyle = gr; g.fillRect(0, 0, w, h);
   });
 }
-/** 부패 상태 화면: 초록 색조 rgba(90,140,20,0.12) + 초록 비네트를 한 장에 (전체 화면 그리기 1회) */
-function blightStatusSprite() {
-  return sprite('blight_status', 320, 180, (g, w, h) => {
-    g.fillStyle = 'rgba(90,140,20,0.12)'; g.fillRect(0, 0, w, h);
-    const gr = g.createRadialGradient(w / 2, h / 2, h * 0.3, w / 2, h / 2, w * 0.62);
-    gr.addColorStop(0, 'rgba(60,110,10,0)'); gr.addColorStop(0.55, 'rgba(60,110,10,0.16)'); gr.addColorStop(1, 'rgba(60,110,10,0.55)');
-    g.fillStyle = gr; g.fillRect(0, 0, w, h);
-  });
-}
 /** 포자 구름 덩어리 (부드러운 원) — tone 0 연두, 1 탁한 올리브 */
 function blobSprite(tone) {
   return sprite('blob' + tone, 128, 128, (g) => {
@@ -678,7 +669,8 @@ export class BlightGimmick extends MemberB {
     let n = 0;
     for (const c of this.visibleClouds(cam, 200)) {
       if (n++ >= 6) break;
-      L.add(c.x + c.w / 2, c.y + c.h / 2, Math.min(420, Math.max(c.w, c.h) * 0.55 + 40), '#9ad040', 0.24 * this.cloudAlpha(c));
+      // glow=false: 어둠에 구멍만 낸다 (구름 색은 구름 그림이 낸다 — 큰 가산 광원은 전체 해상도로 그려져 비싸다)
+      L.add(c.x + c.w / 2, c.y + c.h / 2, Math.min(420, Math.max(c.w, c.h) * 0.55 + 40), '#9ad040', 0.3 * this.cloudAlpha(c), false);
     }
   }
   drawWorld(ctx, cam, layer) {
@@ -739,16 +731,20 @@ export class BlightGimmick extends MemberB {
   }
   drawScreen(ctx, vw, vh, hud) {
     const w = this.world;
-    // 화면 색조: 상태 이상이면 초록 색조 + 비네트를 구워 둔 한 장 (전체 화면 1회), 게이지가 차는 중이면 옅은 비네트 (저품질은 생략)
+    // 화면 색조: 상태 이상이면 초록 색조(전체 화면 단색 1회) + 좌우 가장자리 초록 번짐, 게이지가 차는 중이면 가장자리 번짐만
+    const edge = bandSprite('blight', '60,110,10', 0.85);
+    const edges = (a) => {
+      if (!edge || a <= 0.01) return;
+      const bw = vw * 0.18;
+      ctx.globalAlpha = a;
+      ctx.drawImage(edge, 0, 0, bw, vh);
+      ctx.save(); ctx.translate(vw, 0); ctx.scale(-1, 1); ctx.drawImage(edge, 0, 0, bw, vh); ctx.restore();
+    };
     ctx.save();
     if (this.status) {
-      const st = blightStatusSprite();
-      if (st) { ctx.globalAlpha = 0.88 + 0.12 * Math.sin(this.t * 3); ctx.drawImage(st, 0, 0, vw, vh); }
-      else { ctx.fillStyle = 'rgba(90,140,20,0.12)'; ctx.fillRect(0, 0, vw, vh); }
-    } else if (this.meter > 1 && qualityOf(w) >= 0.6) {
-      const vg = vignetteSprite('blight', '60,110,10');
-      if (vg) { ctx.globalAlpha = 0.35 * (this.meter / 100); ctx.drawImage(vg, 0, 0, vw, vh); }
-    }
+      ctx.fillStyle = 'rgba(90,140,20,0.12)'; ctx.fillRect(0, 0, vw, vh);
+      edges(0.6 + 0.15 * Math.sin(this.t * 3));
+    } else if (this.meter > 1) edges(0.45 * (this.meter / 100));
     ctx.restore();
     if (!this.hasMeter) return;              // 게이지 줄은 그릴 때만 받는다 (hud.meter() 는 줄을 하나 소비한다)
     const r = meterRect(w, vw, vh, hud);

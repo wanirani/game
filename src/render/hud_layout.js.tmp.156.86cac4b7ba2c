@@ -24,6 +24,7 @@ export const HUD_GAP = 8;        // 영역 사이 최소 간격
 export const TOAST_ROW = 26;     // 토스트 한 줄 높이
 export const METER_ROW = 20;     // 기믹 게이지 줄 간격
 export const METER_H = 16;       // 기믹 게이지 한 줄 높이
+export const TOUCH_FLOOR = 296;  // 터치: 상시 영역의 아래 끝 한계 (§1.8 'no persistent HUD below y 297 on touch'; 아래 보스 칸만 예외)
 
 const R = (x, y, w, h) => ({ x, y, w, h });
 const ZERO = Object.freeze({ l: 0, r: 0, t: 0, b: 0 });

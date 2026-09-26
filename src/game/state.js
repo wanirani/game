@@ -117,7 +117,8 @@ export function migrateState(s) {
     for (const h of Object.values(s.heroes)) delete h.companions;
     try { ensureCompanionState(s); } catch (e2) { console.warn('[state] 동료 상태 생성 실패', e2); }
   }
-  // 버전은 마지막에 (더 새 클라이언트가 올린 번호는 낮추지 않는다)
-  if (!(Number.isFinite(s.version) && s.version >= SAVE_VERSION)) s.version = SAVE_VERSION;
+  // 버전은 마지막에 (MASTER_PLAN §1.6). 더 새 클라이언트의 세이브도 이 클라이언트 스키마로 보정했으니 이 번호로 적는다:
+  // 모르는 필드는 남아 있고, 새 클라이언트가 다시 불러오면 자기 마이그레이션을 한 번 더 돌린다 (멱등)
+  s.version = SAVE_VERSION;
   return s;
 }

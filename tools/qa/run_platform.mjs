@@ -2,6 +2,7 @@
 // Runs the platform suites one after another (each in its own process), then prints one summary by issue.
 //
 //   node tools/qa/run_platform.mjs [--only pad,touch,view,menu,pwa,load,turntable] [--strict] [--assume PKG,…] [--shots]
+//                                  [--jobs 2] (suites in parallel; output buffered per suite) [--timeout <s per suite>]
 //   npm run qa:platform
 //
 // Suites: pad (platform_pad), touch (platform_touch + the --layout matrix), view (platform_view without its pwa group),
@@ -37,22 +38,32 @@ const SUITES = [
 ];
 const TIMEOUT_MS = Number(args.timeout || 15 * 60) * 1000;
 
+const JOBS = Math.max(1, Number(args.jobs) || 1);
 function run(file, argv) {
   return new Promise((resolve) => {
     const t0 = Date.now();
-    const child = spawn(process.execPath, [path.join(HERE, file), ...argv], { stdio: 'inherit', cwd: ROOT });
+    // with --jobs > 1 each suite's output is buffered and printed when it ends (no interleaving)
+    const child = spawn(process.execPath, [path.join(HERE, file), ...argv], { stdio: JOBS > 1 ? ['ignore', 'pipe', 'pipe'] : 'inherit', cwd: ROOT });
+    let out = '';
+    child.stdout?.on('data', (d) => { out += d; });
+    child.stderr?.on('data', (d) => { out += d; });
     const timer = setTimeout(() => { child.kill('SIGKILL'); }, TIMEOUT_MS);
-    child.on('exit', (code, sig) => { clearTimeout(timer); resolve({ code, sig, ms: Date.now() - t0 }); });
+    child.on('exit', (code, sig) => { clearTimeout(timer); if (JOBS > 1) process.stdout.write(`\n══ ${file} ${argv.join(' ')} ══\n${out}`); resolve({ code, sig, ms: Date.now() - t0 }); });
   });
 }
 
 fs.mkdirSync(REPORT_DIR, { recursive: true });
 const t0 = Date.now();
+const todo = [];
 const runs = [];
-for (const s of SUITES) {
+for (const [idx, s0] of SUITES.entries()) {
+  const s = { ...s0, idx };
   if (args.only && !args.only.includes(s.key)) continue;
   if (s.optional && !fs.existsSync(path.join(HERE, s.file))) { runs.push({ ...s, skipped: 'not present yet (PLAT-TURNTABLE)' }); continue; }
-  console.log(`\n══ ${s.file} ${[...(s.extra || []), ...pass].join(' ')} ══`);
+  todo.push(s);
+}
+async function runOne(s) {
+  if (JOBS === 1) console.log(`\n══ ${s.file} ${[...(s.extra || []), ...pass].join(' ')} ══`);
   const rp = s.report && path.join(REPORT_DIR, s.report);
   if (rp && fs.existsSync(rp)) fs.rmSync(rp);
   const r = await run(s.file, [...(s.extra || []), ...pass]);
@@ -60,6 +71,9 @@ for (const s of SUITES) {
   if (rp && fs.existsSync(rp)) { try { rep = JSON.parse(fs.readFileSync(rp, 'utf8')); } catch { rep = null; } }
   runs.push({ ...s, ...r, rep });
 }
+const queue = todo.slice();
+await Promise.all(Array.from({ length: Math.min(JOBS, queue.length) }, async () => { while (queue.length) await runOne(queue.shift()); }));
+runs.sort((a, b) => a.idx - b.idx);
 
 // ── summary ───────────────────────────────────────────────────────────────────────────────────────
 const red = [], pending = [];

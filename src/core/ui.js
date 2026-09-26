@@ -677,7 +677,7 @@ function textEntry(ctx, str, opts) {
   if (e && e.S < S) e = dropEntry(key);
   if (!e) {
     e = buildText(str, size, weight, family, style, st, spacing, amount, S, glow);
-    e.size = size; e.checkAt = now; e.px = e.c.width * e.c.height;
+    e.size = size; e.checkAt = now; e.px = e.c.width * e.c.height; e.str = str;
     if (!e.fontOk) { try { document.fonts.load(e.fontStr, str); } catch { /* 무시 */ } }
     TXT_PX += e.px;
     while (TXT_CACHE.size && (TXT_CACHE.size >= TXT_CACHE_MAX || TXT_PX > TXT_PX_MAX)) dropEntry(TXT_CACHE.keys().next().value);
@@ -701,18 +701,44 @@ export function clearTextCache() { TXT_CACHE.clear(); TXT_PX = 0; }
  */
 export let fontEpoch = 0;
 const EPOCH_FNS = new Set();
-/** 글꼴 세대가 바뀔 때마다 fn(fontEpoch) 호출 (예: game.dirty = true). 반환: 구독 해제 함수 */
+/**
+ * 글꼴 세대가 바뀔 때마다 fn(fontEpoch, families) 호출 (예: game.dirty = true). families = 이번에 도착한 글꼴 이름 배열
+ * (모르면 빈 배열) → 데미지 숫자 아틀라스처럼 특정 글꼴만 쓰는 캐시는 families.includes('BN Dmg') 일 때만 다시 구우면 된다. 반환: 구독 해제 함수
+ */
 export function onFontEpoch(fn) { EPOCH_FNS.add(fn); return () => EPOCH_FNS.delete(fn); }
+const UR_CACHE = new Map(); // unicode-range 문자열 → [[처음, 끝], …]
+function urangeOf(ur) {
+  let r = UR_CACHE.get(ur);
+  if (r) return r;
+  r = [];
+  for (const part of String(ur || '').split(',')) {
+    const m = /U\+([0-9a-f?]+)(?:-([0-9a-f]+))?/i.exec(part);
+    if (!m) continue;
+    const lo = parseInt(m[1].replace(/\?/g, '0'), 16), hi = parseInt(m[2] ?? m[1].replace(/\?/g, 'f'), 16);
+    if (hi >= lo) r.push([lo, hi]);
+  }
+  if (!r.length) r.push([0, 0x10ffff]);
+  UR_CACHE.set(ur, r);
+  return r;
+}
+/** 글꼴 면(FontFace)의 unicode-range 가 문자열의 글자를 하나라도 덮는지 */
+function faceCovers(face, str) {
+  const r = urangeOf(face.unicodeRange);
+  for (const ch of str) { const c = ch.codePointAt(0); for (const [a, b] of r) if (c >= a && c <= b) return true; }
+  return false;
+}
 function bumpFontEpoch(ev) {
   fontEpoch++;
+  const faces = ev?.fontfaces ? [...ev.fontfaces] : [];
+  const fams = faces.map((f) => String(f.family).replace(/^["']|["']$/g, ''));
   // 늦게 도착한 글꼴(예: 확장 한글 "… Ext", 붓글씨) 전에 대체 글꼴로 구운 피 글씨를 버린다 (다음에 그릴 때 다시 굽는다).
-  // 도착한 글꼴 이름을 알면 그 글꼴을 쓰는 비트맵과 글꼴이 덜 준비된 채 구운 비트맵만 버린다 (나머지는 그대로 → 게임 중 끊김 없음)
+  // 버리는 것: 글꼴이 덜 준비된 채 구운 비트맵 + 도착한 글꼴을 묶음에 넣고 그 글꼴의 unicode-range 에 드는 글자가 있는 비트맵.
+  // 나머지는 그대로 둔다 → 첫 화면 직후 한자(BN Seal)·데미지 숫자 글꼴이 도착해도 영문·한글 제목을 다시 굽지 않는다 (끊김 없음)
   if (TXT_CACHE.size) {
-    const fams = ev?.fontfaces ? [...ev.fontfaces].map((f) => `"${String(f.family).replace(/^["']|["']$/g, '')}"`) : [];
-    if (!fams.length) clearTextCache();
-    else for (const [k, e] of [...TXT_CACHE]) if (!e.fontOk || fams.some((f) => e.fontStr.includes(f))) dropEntry(k);
+    if (!faces.length) clearTextCache();
+    else for (const [k, e] of [...TXT_CACHE]) if (!e.fontOk || faces.some((f, i) => e.fontStr.includes(`"${fams[i]}"`) && (e.str == null || faceCovers(f, e.str)))) dropEntry(k);
   }
-  for (const fn of EPOCH_FNS) { try { fn(fontEpoch); } catch (e) { console.error(e); } }
+  for (const fn of EPOCH_FNS) { try { fn(fontEpoch, fams); } catch (e) { console.error(e); } }
 }
 try { document.fonts.addEventListener('loadingdone', bumpFontEpoch); } catch { /* 문서 없음(노드 도구) */ }
 // 화면 크기가 바뀌면 피 글씨 캐시를 비운다 (배율이 바뀌어 예전 해상도 비트맵은 메모리만 차지한다; 다음 그릴 때 새 배율로 굽는다)
@@ -768,7 +794,8 @@ function tapSlop(z) {
 function tapOpen() {
   if (taps._open) return;
   taps._open = true; taps._n = 0;
-  queueMicrotask(tapSeal); // 지금 도는 rAF(또는 이벤트) 콜백이 끝나면 묶음을 닫는다
+  // 지금 도는 rAF(또는 이벤트) 콜백이 끝나면 묶음을 닫는다 (queueMicrotask 가 없는 옛 웹뷰는 Promise 로)
+  if (typeof queueMicrotask === 'function') queueMicrotask(tapSeal); else Promise.resolve().then(tapSeal);
 }
 function tapSeal() {
   if (!taps._open) return;

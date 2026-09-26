@@ -61,7 +61,7 @@ export class Player extends Entity {
     // ── 확장 훅 필드 (MASTER_PLAN §1.7 #1) ──
     //  mount: MountRider | null (CompanionSystem 이 붙임) · superArmor > 0: 피해는 받되 경직·넉백 없음 (설정한 쪽이 해제)
     //  awakenHoldK: 각성 길게 누르기 진행도 0..1 (awaken.js) · lastDashEnd: 대시가 자연 종료된 this.t (대시 연계 질주)
-    this.faceRing = []; this.faceNoted = this.facing;   // [hook:plat] 방향 전환 기록 (facingAt)
+    this.faceRing = []; this.faceNoted = this.facing; this.faceHoldT = 0;   // [hook:plat] 방향 전환 기록 (facingAt) · 커맨드 기술로 돌아선 뒤 방향 유지 시간
     this.apexY = undefined;   // [hook:feel] 공중 최고점 y (착지 시 낙하 거리 fallPx)
     initFeel?.(this); this.mount = null; this.superArmor = 0; this.awakenHoldK = 0; this.lastDashEnd = -9;   // [hook:feel] [hook:cmp] [hook:awaken]
   }
@@ -195,7 +195,7 @@ export class Player extends Entity {
         if (ax !== 0) {
           const acc = onGround ? prof.accel : prof.airAccel;
           this.vx = approach(this.vx, ax * maxSp, acc * dt);
-          if (!this.move) this.facing = ax;
+          if (!this.move && !(this.faceHoldT > 0)) this.facing = ax;   // [hook:plat] 커맨드 기술로 돌아선 직후엔 뒤로 누른 방향으로 바로 되돌지 않는다
         } else {
           this.vx = approach(this.vx, 0, (onGround ? prof.decel : prof.airDecel) * dt);
         }
@@ -207,7 +207,7 @@ export class Player extends Entity {
     this.noteFacing?.();   // [hook:plat] 방향 전환 기록 → facingAt(t)
 
     // ── 점프 ──
-    if (inp) this.handleJump(dt, world, { down, ax });
+    if (inp) this.handleJump(dt, world, { down, ax, wallJump: prof.wallJump });   // [hook:cmp] 벽차기 여부도 이동 프로필 (탑승 중엔 탈것)
 
     // 공중 공격 체공
     this.gravity = 1;
@@ -234,6 +234,7 @@ export class Player extends Entity {
     if (this.dashCool > 0) this.dashCool -= dt;
     if (this.subCool > 0) this.subCool -= dt;
     if (this.iframes > 0) this.iframes -= dt;
+    if (this.faceHoldT > 0) this.faceHoldT -= dt;   // [hook:plat]
     for (const k in this.skillCd) if (this.skillCd[k] > 0) this.skillCd[k] -= dt * (1 + (s.cdr ?? 0) / 100);
     // 버프 시간
     for (const k in this.buffs) {
@@ -259,7 +260,9 @@ export class Player extends Entity {
   physics(dt, world) {
     world.gimmick?.prePhysics?.(this, dt);   // [hook:gimmick]
     const vxBefore = this.vx, vyBefore = this.vy;
+    if (!(Math.abs(this.y - (this.physY ?? this.y)) <= 64)) this.apexY = this.y;   // [hook:feel] 방 이동·낙사 복귀·순간이동 뒤엔 예전 최고점을 버린다 (fallPx)
     moveBody(this, dt, world.map, world.platforms);
+    this.physY = this.y;   // [hook:feel]
     this.hitWallDir = this.hitWall;
     this.mount?.afterPhysics(dt, world, this, vyBefore);   // [hook:cmp] 착지 충격, 끼임 해소, 천장 제한
     if (!this.onGround && !(this.apexY <= this.y)) this.apexY = this.y;   // [hook:feel] 공중 최고점
@@ -324,7 +327,7 @@ export class Player extends Entity {
     dashFx?.(this, world, 'start');   // [hook:feel]
   }
 
-  handleJump(dt, world, { down, ax }) {
+  handleJump(dt, world, { down, ax, wallJump = this.ch.move.wallJump }) {
     if (this.mount?.riding && this.mount.handleJump(world, this, dt)) return;   // [hook:cmp] 탈것 점프·비행·활공
     if (world.gimmick?.onJumpInput?.(this)) return;   // [hook:gimmick] 깊은 물: 헤엄치기
     const onGround = this.onGround;
@@ -333,7 +336,7 @@ export class Player extends Entity {
         this.dropThrough = true; this.y += 2; input.consume('jump');
       } else if (onGround || this.coyote > 0) {
         this.doJump(world, false); input.consume('jump');
-      } else if (this.wallSlide || (this.ch.move.wallJump && this.hitWallDir && !onGround)) {
+      } else if (this.wallSlide || (wallJump && this.hitWallDir && !onGround)) {   // [hook:cmp] moveProfile().wallJump
         const dir = -(this.wallSlide || this.hitWallDir);
         this.vx = dir * 420; this.facing = dir;
         this.vy = -this.jumpVel() * 0.92; this.jumpCut = true;
@@ -409,7 +412,7 @@ export class Player extends Entity {
         input.consume('attack');
         const f0 = this.facing;
         if (r.facing === 1 || r.facing === -1) this.facing = r.facing;   // [hook:plat] 커맨드를 시작한 쪽으로 돌아서서 시전
-        if (castTechnique(this, world, tech)) return;
+        if (castTechnique(this, world, tech)) { if (this.facing !== f0) this.faceHoldT = 0.2; return; }   // [hook:plat] 같은 스텝의 이동 처리가 (아직 뒤로 누른) 방향으로 되돌리지 않게
         this.facing = f0;
       }
     }
@@ -639,7 +642,7 @@ export class Player extends Entity {
     }
     const mr = world.companions?.incoming?.(this, dmg, attack) ?? null;   // [hook:cmp] 수호 방벽·탈것이 먼저 받는다
     if (mr?.cancel) return false;   // [hook:cmp]
-    if (mr) dmg = mr.dmg;   // [hook:cmp]
+    if (mr && Number.isFinite(mr.dmg)) dmg = Math.max(0, mr.dmg);   // [hook:cmp] (dmg 가 빠진 응답은 원래 피해 그대로 — HP 가 NaN 이 되지 않게)
     const armored = this.superArmor > 0 || !!(mr?.mounted && mr.noStagger);   // [hook:awaken] [hook:cmp] 슈퍼아머: 경직·넉백 없음
     const heavyMounted = !!(mr?.mounted && !mr.noStagger);   // [hook:cmp] 탑승 중 강타: 짧은 경직, 넉백 절반
     this.hp -= dmg;

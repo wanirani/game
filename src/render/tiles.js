@@ -3,7 +3,9 @@
 // new TileRenderer(stage, map) → draw(ctx, cam), drawDecor(ctx, cam, t), drawLiquid(ctx, cam, t, kind), invalidate(tx, ty)
 // 2부(world2 §3.3·§4.1): 위상 타일(거울 a/b · 심장 박동 z/Z)은 청크에 굽지 않고 매 프레임 현재 상태로 그린다 → 기믹이 타일을
 // 뒤집어도 청크를 다시 굽지 않는다. invalidate 는 구운 그림이 실제로 달라지는 변화(벽 부숨·비밀 통로)만 다시 굽는다.
-// 액체: 'deep'(수영 구역) 팔레트, 좁고 긴 세로 물줄기는 흘러내리는 폭포로, 비밀 공간 속 액체는 드러나기 전까지 숨긴다.
+// 액체: 'deep'(수영 구역) 팔레트, 좁고 긴 세로 물줄기는 흘러내리는 폭포로 그린다.
+// 비밀 방(가짜 벽 h 로 메운 공간) 속에 남은 액체·가시·발판은 드러나기 전까지 벽으로 구워 밖에서 비쳐 보이지 않게 한다.
+// 청크 캔버스는 최대 MAX_CHUNKS 장만 두고 재사용한다 (모바일 메모리).
 import { TILE } from '../core/game.js';
 import { T } from '../core/physics.js';
 import { assets } from '../core/assets.js';
@@ -353,6 +355,7 @@ export class TileRenderer {
       for (let tx = tx0; tx < tx0 + CHUNK; tx++) {
         if (tx < 0 || ty < 0 || tx >= m.w || ty >= m.h) continue;
         const idx = ty * m.w + tx;
+        if (this.phaseIdx.has(idx)) continue; // 위상 타일은 굽지 않는다 (drawPhase 가 현재 상태로 그림)
         const t = m.tiles[idx];
         const x = (tx - tx0) * S, y = (ty - ty0) * S;
         if (t === T.SOLID || t === T.BREAK || (t === T.FAKE && !m.revealed.has(idx)) || sec[idx]) {
@@ -692,7 +695,7 @@ export class TileRenderer {
   /**
    * 액체 분석 (타일이 바뀌거나 비밀 통로가 드러날 때만 다시 계산):
    *  liq  — 그릴 액체 칸 (물속에 놓인 마커 칸 포함, 드러나지 않은 비밀 공간 속 액체 제외)
-   *  surf — 수면 칸 (위가 액체가 아님; 폭포 꼭대기가 벽에 붙은 칸은 제외)
+   *  surf — 수면 칸 (위가 트인 칸: 액체도 벽도 아님 — 천장·벽에 닿은 물과 벽에서 쏟아지는 폭포 입구는 평평하게)
    *  fall — 폭포 칸: 폭 3칸 이하의 좁은 액체가 세로로 3칸 이상 이어진 기둥 (깊은 물은 헤엄치는 물길이라 폭포 없음)
    *  falls — 폭포 기둥 [{ tx, y0, y1 }] (타일 행, 끝 포함), count — 액체 칸 수
    */
@@ -740,14 +743,17 @@ export class TileRenderer {
         }
       }
     }
+    // 수면: 위가 트인 칸만 (벽·부서지는 벽·숨은 가짜 벽 바로 아래의 물은 천장에 닿은 물이라 물결 없이 평평하게)
     const surf = new Uint8Array(N);
+    const sec = this.sec?.mask;
     let count = 0;
     for (let i = 0; i < N; i++) {
       if (!liq[i]) continue;
       count++;
-      if (i >= W && liq[i - W]) continue;
-      const above = i >= W ? tl[i - W] : T.EMPTY;
-      surf[i] = fall[i] && (above === T.SOLID || above === T.BREAK) ? 0 : 1;
+      if (i < W) { surf[i] = 1; continue; }
+      if (liq[i - W]) continue;
+      const a = tl[i - W];
+      surf[i] = a === T.SOLID || a === T.BREAK || (a === T.FAKE && !m.revealed.has(i - W)) || sec?.[i - W] ? 0 : 1;
     }
     this.liq = { key, liq, surf, fall, falls, count };
     return this.liq;

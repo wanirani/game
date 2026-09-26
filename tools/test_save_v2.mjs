@@ -1,7 +1,7 @@
 // 세이브 스키마 v2 테스트 (MASTER_PLAN §1.6, world2 §2.6, companions §8) — 사용: node tools/test_save_v2.mjs
 //  1) newGameState: version 2, progress.shards/hearts, 동료 상태 (companion_state 가 실제 구현이면)
 //  2) v1 고정 세이브(tools/fixtures/save_v1.json) → migrateState: v2 필드만 추가되고 나머지는 그대로, 멱등
-//  3) shards/hearts 정리 (문자열만, 중복 제거), 모르는 필드 보존 (구버전 클라이언트 호환), 더 새 버전 번호 유지
+//  3) shards/hearts 정리 (문자열만, 중복 제거), 모르는 필드 보존 (구버전 클라이언트 호환), version 은 항상 SAVE_VERSION
 //  4) 손상 세이브 퍼징: migrateState 는 절대 throw 하지 않는다, 결과는 isValidSave (클라이언트·서버 복사본)
 //  5) 프로토타입 키 방어 (charId/heroes/difficulty 에 '__proto__', 'constructor' …)
 //  6) 20장 완료 + 동료 20 + 7단계 장비 + 가방 가득 세이브가 256 KB 미만 (서버 한도 512 KB)
@@ -88,8 +88,9 @@ ok(isDeepStrictEqual(m3.progress.shards, ['k_star_1', 'k_star_2', 'k_star_9']), 
 ok(isDeepStrictEqual(m3.progress.hearts, []), 'hearts: 배열이 아니면 [] → ' + JSON.stringify(m3.progress.hearts));
 ok(isDeepStrictEqual(m3.futureField, { keep: [1, 2, 3] }) && m3.progress.futureProgress === 'x' && m3.heroes.kael.futureHeroField === 7, '모르는 필드는 지우지 않음');
 ok(m3.companions && typeof m3.companions === 'object', 'v2 세이브의 companions 는 유지');
-const s3b = clone(m1); s3b.version = 3;
-ok(migrateState(s3b).version === 3, '더 새 클라이언트의 버전 번호(3)는 낮추지 않음');
+const s3b = clone(m1); s3b.version = 3; s3b.v3Only = { a: 1 }; s3b.companions.v3Cmp = [1];
+const m3b = migrateState(s3b);
+ok(m3b.version === 2 && isDeepStrictEqual(m3b.v3Only, { a: 1 }) && isDeepStrictEqual(m3b.companions.v3Cmp, [1]), '더 새 클라이언트 세이브(3): 버전은 SAVE_VERSION 으로 (§1.6), 모르는 필드는 그대로');
 for (const bad of [undefined, null, 'x', 0, -1, NaN]) { const s = clone(v1); s.version = bad; ok(migrateState(s).version === 2, `version ${String(bad)} → 2`); }
 
 // ── 4. 손상 세이브 퍼징 ──
