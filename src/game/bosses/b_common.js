@@ -325,11 +325,17 @@ export function arenaOf(world, boss) {
     if (best !== null) floor = best * TILE;
   }
   let top = 0;
+  let X0 = x0, X1 = x1;
   if (map?.typeAt) {
     const tx = Math.floor(cx / TILE);
     for (let ty = Math.floor(floor / TILE) - 2; ty >= 0; ty--) if (solidAt(map, tx, ty)) { top = (ty + 1) * TILE; break; }
+    // 좌우 벽: 바닥 바로 위 두 줄에서 중앙부터 바깥으로 첫 고체 타일
+    const ty1 = Math.floor(floor / TILE) - 1, ty2 = ty1 - 1;
+    for (let t = tx; t * TILE < x1; t++) if (solidAt(map, t, ty1) && solidAt(map, t, ty2)) { X1 = Math.min(x1, t * TILE); break; }
+    for (let t = tx; (t + 1) * TILE > x0; t--) if (solidAt(map, t, ty1) && solidAt(map, t, ty2)) { X0 = Math.max(x0, (t + 1) * TILE); break; }
   }
-  return { x0, x1, w: x1 - x0, cx, floor, top, h: floor - top };
+  const CX = (X0 + X1) / 2;
+  return { x0: X0, x1: X1, w: X1 - X0, cx: CX, floor, top, h: floor - top };
 }
 
 // ───────────────────────── 기반 클래스 ─────────────────────────
@@ -473,8 +479,8 @@ export class BossB extends Boss {
   }
   paintBody(ctx) { this.defaultRender(ctx, this.world); }
   lights(L) {
+    if (this.lightsB) { this.lightsB(L); return; }
     if (this.def.light) L.add(this.cx, this.cy, this.def.light.r ?? 220, this.def.light.color ?? '#ff4060', this.def.light.i ?? 0.8);
-    this.lightsB?.(L);
   }
 }
 

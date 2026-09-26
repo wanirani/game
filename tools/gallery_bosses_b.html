@@ -34,6 +34,8 @@ const live = q.get('live') === '1';
 const COLS = live ? 1 : Number(q.get('cols') || Math.min(2, acts.length));
 const ROWS = live ? 1 : Math.ceil(acts.length / COLS);
 const VW = 1280, VH = 540;
+const ZOOM = Number(q.get('zoom') || 0);
+const clamp01 = (v) => Math.max(0, Math.min(1, v));
 const PW = live ? VW : Math.floor(Number(q.get('pw') || (COLS === 1 ? 1280 : 640)));
 const PH = Math.round(PW * VH / VW);
 const cv = document.getElementById('c');
@@ -142,9 +144,14 @@ function drawPanel(W, px, py, label) {
   // 배경 (스테이지 원화 + 어둡게)
   if (bgImg.complete && bgImg.naturalWidth) {
     const s = Math.max(VW / bgImg.width, VH / bgImg.height);
-    ctx.drawImage(bgImg, (VW - bgImg.width * s) / 2 - (W.camera.x - W.arena.x0) * 0.2, (VH - bgImg.height * s) / 2, bgImg.width * s, bgImg.height * s);
+    ctx.drawImage(bgImg, (VW - bgImg.width * s) / 2 - clamp01((W.camera.x - W.arena.x0) / 400) * 60, (VH - bgImg.height * s) / 2, bgImg.width * s, bgImg.height * s);
   } else { ctx.fillStyle = '#140a18'; ctx.fillRect(0, 0, VW, VH); }
   const cam = W.camera;
+  if (ZOOM) {
+    const b = W.boss;
+    const fx = q.has('fx') ? Number(q.get('fx')) : b.cx, fy = q.has('fy') ? Number(q.get('fy')) : b.cy;
+    cam.zoom = ZOOM; cam.x = fx - VW / ZOOM / 2; cam.y = fy - VH / ZOOM / 2; cam.shakeX = cam.shakeY = 0;
+  }
   ctx.save();
   cam.apply(ctx);
   // 바닥

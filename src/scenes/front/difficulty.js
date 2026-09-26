@@ -31,6 +31,7 @@ export class DifficultyScene extends Scene {
     this.sel = DIFFICULTIES.map((_, i) => (i === index ? 1 : 0));
     this.pick = -1; this.pickT = 0;
   }
+  exit() { setPad(true); }
   onResume() { setPad(false); }
   update(dt) {
     const g = this.game;
@@ -78,8 +79,8 @@ export class DifficultyScene extends Scene {
     heading(ctx, vw / 2, 48, 'DIFFICULTY', '사냥의 난이도를 선택하세요', { size: 30, alpha: ap });
 
     const n = DIFFICULTIES.length, gap = 10;
-    const cw = Math.min(176, (vw - 60 - gap * (n - 1)) / n), ch = 318;
-    const x0 = vw / 2 - (n * cw + (n - 1) * gap) / 2, y0 = 112;
+    const cw = Math.min(176, (vw - 60 - gap * (n - 1)) / n), ch = 332;
+    const x0 = vw / 2 - (n * cw + (n - 1) * gap) / 2, y0 = 106;
     this.menu.clearHits();
     // 선택되지 않은 카드 먼저, 선택 카드는 맨 위에
     const order = DIFFICULTIES.map((_, i) => i).sort((a, b) => this.sel[a] - this.sel[b]);
@@ -92,7 +93,7 @@ export class DifficultyScene extends Scene {
       this.drawCard(ctx, base, d, i, s, k);
     }
     // 시작 버튼
-    const br = { x: vw / 2 - 130, y: y0 + ch + 20, w: 260, h: 48 };
+    const br = { x: vw / 2 - 130, y: y0 + ch + 14, w: 260, h: 46 };
     if (gbutton(ctx, br, `「${cur.name}」 난이도로 시작`, { selected: true, accent: cur.color, size: 16 })) this.startTapped = true;
     if (backButton(ctx)) this.backTapped = true;
     footer(ctx, vw, vh, '←→ 선택   Z 결정   X 뒤로', null);
@@ -125,15 +126,15 @@ export class DifficultyScene extends Scene {
     text(ctx, d.eng, w / 2, 70, { size: w < 160 ? 13 : 15, align: 'center', weight: 900, family: FONT.logo, color: d.color, ow: 3 });
     text(ctx, d.name, w / 2, 100, { size: 24, align: 'center', weight: 800, family: FONT.title, color: '#fff4e0', ow: 4 });
     ornament(ctx, w / 2, 116, w - 30, { color: d.color, alpha: 0.8 });
-    const lines = wrap(ctx, d.desc, w - 24, 12, 500).slice(0, 5);
-    lines.forEach((l, j) => text(ctx, l, w / 2, 140 + j * 17, { size: 12, align: 'center', color: '#d8ccbc', ow: 2 }));
+    const lines = wrap(ctx, d.desc, w - 20, 12, 500).slice(0, 4);
+    lines.forEach((l, j) => text(ctx, l, w / 2, 138 + j * 16, { size: 12, align: 'center', color: '#d8ccbc', ow: 2 }));
     // 보정치
     const rows = diffRows(d);
-    const ry = h - rows.length * 18 - 12;
-    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(8, ry - 16, w - 16, rows.length * 18 + 10);
+    const ry = h - rows.length * 17 - 8;
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(8, ry - 15, w - 16, rows.length * 17 + 8);
     rows.forEach(([k2, v, c], j) => {
-      text(ctx, k2, 16, ry + j * 18, { size: 11, weight: 600, color: DIM, ow: 2 });
-      text(ctx, v, w - 16, ry + j * 18, { size: 12, align: 'right', weight: 800, family: FONT.num, color: c, ow: 2 });
+      text(ctx, k2, 16, ry + j * 17, { size: 11, weight: 600, color: DIM, ow: 2 });
+      text(ctx, v, w - 16, ry + j * 17, { size: 12, align: 'right', weight: 800, family: FONT.num, color: c, ow: 2 });
     });
     if (d.id === 'inferno' && s > 0.3) {
       // 지옥: 가장자리 불꽃 맥동

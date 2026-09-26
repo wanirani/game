@@ -8,7 +8,7 @@ import { clamp, ease } from '../../core/math.js';
 import { frame, gbutton, ornament, GOLD, BONE, DIM } from './common.js';
 
 /**
- * push('confirm', { title, message, yes, no, danger, onYes, onNo })
+ * push('frontConfirm', { title, message, yes, no, danger, onYes, onNo })
  * 키보드 ←→ 선택, Z 결정, X 취소 / 터치 버튼
  */
 export class ConfirmScene extends Scene {

@@ -35,6 +35,7 @@ export class SlotsScene extends Scene {
     this.act = null; // 동작 선택 팝업
     this.selK = [0, 0, 0];
   }
+  exit() { setPad(true); }
   onResume() { setPad(false); this.refresh(); }
   refresh() {
     this.slots = saves.list().map((s) => {
@@ -74,11 +75,11 @@ export class SlotsScene extends Scene {
       }
       case 'new':
         if (!s.empty) {
-          g.push('confirm', { title: '새로 시작', message: `슬롯 ${slot}의 기록을 지우고 새로운 사냥을 시작할까요? 이 작업은 되돌릴 수 없습니다.`, yes: '새로 시작', no: '취소', danger: true, onYes: () => g.go('difficulty', { slot }) });
+          g.push('frontConfirm', { title: '새로 시작', message: `슬롯 ${slot}의 기록을 지우고 새로운 사냥을 시작할까요? 이 작업은 되돌릴 수 없습니다.`, yes: '새로 시작', no: '취소', danger: true, onYes: () => g.go('difficulty', { slot }) });
         } else { audio.sfx('menu_ok'); g.go('difficulty', { slot }); }
         break;
       case 'delete':
-        g.push('confirm', {
+        g.push('frontConfirm', {
           title: '기록 삭제', message: `슬롯 ${slot}의 기록을 영구히 삭제합니다. 정말 삭제할까요?`, yes: '삭제', no: '취소', danger: true,
           onYes: () => { saves.remove(slot); audio.sfx('break_wall'); g.toast(`슬롯 ${slot}의 기록을 삭제했습니다`, '#ff9a9a'); this.act = null; this.refresh(); },
         });

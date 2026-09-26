@@ -10,7 +10,7 @@ import { Particles } from '../../core/particles.js';
 import { drawIcon, drawSlot } from '../../render/icons.js';
 import * as Items from '../../data/items.js';
 import { STAT_INFO } from '../../game/stats.js';
-import { findItem, canEquip } from '../../game/inventory.js';
+import { findItem, canEquip, addItem } from '../../game/inventory.js';
 import { currentHero } from '../../game/state.js';
 import { NPCS } from '../../data/npcs.js';
 import { TOWN_NPCS } from '../../data/town.js';
@@ -37,6 +37,27 @@ export function descLines(inst) {
     }
   } catch { /* 무시 */ }
   return b?.desc ? [b.desc] : [];
+}
+/** 상세 설명 줄 [{text,color}] — 이름/등급/기본 능력치 줄은 제외 (카드 위쪽에서 따로 보여 주므로) */
+export function richLines(inst, note = null) {
+  const b = baseOf(inst);
+  const out = [];
+  if (note) out.push({ text: note, color: '#8ac8ff' });
+  try {
+    if (Items.itemDescRich) {
+      const L = Items.itemDescRich(inst) || [];
+      const eq = b && EQUIP_KINDS.has(b.slot);
+      L.forEach((l, i) => {
+        if (i === 0) return;                       // 등급·종류
+        if (eq && i === 1) return;                 // 단계·요구 레벨
+        if (eq && l.color === '#efe4cf') return;   // 기본 능력치 (위 비교표에 있음)
+        out.push({ text: l.text, color: l.flavor ? '#a8987e' : l.color });
+      });
+      return out;
+    }
+  } catch { /* 무시 */ }
+  for (const d of descLines(inst)) out.push({ text: d, color: '#b8a890' });
+  return out;
 }
 export function fmtStat(k, v) {
   const info = STAT_INFO[k];
@@ -299,7 +320,7 @@ export class RewardPopup {
 
 // ───────────────────────── 아이템 상세 카드 ─────────────────────────
 /** 아이템 상세: 아이콘·이름·등급·부위·능력치(장착 비교)·설명·가격 */
-export function drawItemDetail(ctx, r, inst, { state, price = null, priceLabel = '가격', priceOk = true, footer = null, compare = true } = {}) {
+export function drawItemDetail(ctx, r, inst, { state, price = null, priceLabel = '가격', priceOk = true, footer = null, compare = true, note = null, tag = null } = {}) {
   panel(ctx, r.x, r.y, r.w, r.h, { corner: false });
   if (!inst) { text(ctx, '아이템을 선택하세요', r.x + r.w / 2, r.y + r.h / 2, { size: 15, align: 'center', color: COLORS.dim }); return; }
   const b = baseOf(inst) || {};
@@ -311,6 +332,7 @@ export function drawItemDetail(ctx, r, inst, { state, price = null, priceLabel =
   drawSlot(ctx, ix, iy, s, inst);
   const tx = ix + s + 16, tw = r.w - s - 50;
   text(ctx, nameOf(inst), tx, iy + 24, { size: 20, weight: 800, family: FONT.title, color: rc, maxWidth: tw });
+  if (tag) { ctx.font = font(11, 800); const w2 = ctx.measureText(tag).width + 14; ctx.fillStyle = '#8a1426'; ctx.fillRect(r.x + r.w - w2 - 12, r.y + 12, w2, 20); text(ctx, tag, r.x + r.w - 12 - w2 / 2, r.y + 26, { size: 11, weight: 800, align: 'center', color: '#ffe7a0', ow: 0 }); }
   const kind = [RARITY_NAMES[inst.rarity ?? 0], SLOT_LABEL[b.slot] ?? '', b.wtype ? WTYPE_LABEL[b.wtype] : ''].filter(Boolean).join(' · ');
   text(ctx, kind, tx, iy + 46, { size: 13, color: '#c8b8a0', weight: 600 });
   const lvReq = b.lvReq ?? 1;
@@ -346,12 +368,12 @@ export function drawItemDetail(ctx, r, inst, { state, price = null, priceLabel =
     try { chk = canEquip(state, hero, inst); } catch { /* 무시 */ }
     if (!chk.ok) { text(ctx, `※ ${chk.reason}`, r.x + 22, yy + 4, { size: 13, color: '#ff8a7a', weight: 700 }); yy += 22; }
   }
-  // 설명
+  // 설명 (아이템 담당의 itemDescRich 가 있으면 색 있는 줄 — 위에서 이미 보여 준 이름/등급/기본 능력치 줄은 생략)
   const bottom = r.y + r.h - (price !== null || footer ? 58 : 16);
   ctx.save(); ctx.beginPath(); ctx.rect(r.x, yy - 14, r.w, Math.max(0, bottom - yy + 14)); ctx.clip();
-  for (const d of descLines(inst)) {
-    for (const l of wrap(ctx, d, r.w - 44, 13)) { if (yy > bottom) break; text(ctx, l, r.x + 22, yy + 4, { size: 13, color: '#b8a890', ow: 2 }); yy += 19; }
-    yy += 4;
+  for (const d of richLines(inst, note)) {
+    for (const l of wrap(ctx, d.text, r.w - 44, 13)) { if (yy > bottom) break; text(ctx, l, r.x + 22, yy + 4, { size: 13, color: d.color ?? '#b8a890', ow: 2 }); yy += 19; }
+    yy += 3;
   }
   ctx.restore();
   if (price !== null) {
@@ -426,7 +448,7 @@ export class ServiceScene extends Scene {
       }
     }
     const res = this.updateBody?.(dt);
-    if (res === 'cancel' || (res !== 'handled' && input.pressed('menu'))) this.close();
+    if (res === 'cancel' || (res == null && input.pressed('menu') && !input.pressed('confirm'))) this.close();
   }
 
   // ── 그리기 ──
@@ -491,7 +513,7 @@ export class ServiceScene extends Scene {
     this.renderBody?.(ctx, body, L);
     this.fx.draw(ctx, 'back'); this.fx.draw(ctx, 'front'); this.fx.draw(ctx, 'top');
     this.renderOver?.(ctx, L);
-    if (!input.touchMode && !this.modal && !this.popup && !this.busy) {
+    if (!input.touchMode && !this.modal && !this.popup && !this.busy && !this.lockTabs) {
       const tabHint = this.tabs.length > 1 ? (this.useLeftRight ? 'S/D 탭   ' : '←→ 탭   ') : '';
       text(ctx, `${tabHint}↑↓ 선택   Z 결정   X 닫기`, L.cx + L.cw / 2, vh - 3, { size: 11, align: 'center', color: 'rgba(157,143,128,0.8)', ow: 2 });
     }
@@ -530,4 +552,55 @@ export class ServiceScene extends Scene {
     const lines = wrap(ctx, this.say.text.slice(0, Math.floor(this.say.shown)), bw - 34, 15, 500);
     lines.slice(0, 3).forEach((l, i) => text(ctx, l, bx + 18, by + 40 + i * 23, { size: 15, color: COLORS.text, ow: 2 }));
   }
+}
+
+// ───────────────────────── 구매 흐름 (상점·대장간 공용) ─────────────────────────
+/** e = { inst, price, tag?, note? }. scene.talk('buy'|'poor'|'full') 로 반응 */
+export function openBuy(scene, e) {
+  const st = scene.state, b = baseOf(e.inst);
+  if (!b) return;
+  if ((st.gold ?? 0) < e.price) { audio.sfx('menu_cancel'); scene.talk('poor'); scene.portraitShake = 6; return; }
+  audio.sfx('menu_ok');
+  if (b.stack) {
+    const own = st.inventory.filter((i) => i.baseId === b.id).reduce((a, i) => a + (i.qty ?? 1), 0);
+    const room = Math.max(0, (b.stack ?? 99) - own);
+    if (room <= 0) { scene.talk('full'); scene.game.toast('더 이상 가질 수 없다.', '#ff8a7a'); return; }
+    const max = Math.max(1, Math.min(room, Math.floor(st.gold / e.price), 99));
+    scene.modal = new Modal({
+      title: nameOf(e.inst), lines: ['몇 개 구매하시겠습니까?'],
+      qty: { min: 1, max, value: 1, info: (n) => `합계 ${fmt(n * e.price)} G`, infoColor: (n) => (n * e.price <= st.gold ? '#ffd84a' : COLORS.bad) },
+      buttons: [{ label: '구매', value: 'ok', primary: true }, { label: '취소', value: 'cancel' }],
+      onResult: (res) => { if (res.value === 'ok') doBuy(scene, e, res.qty); },
+    });
+  } else {
+    scene.modal = new Modal({
+      title: '구매 확인', lines: [nameOf(e.inst), `${fmt(e.price)} G에 구매하시겠습니까?`, ...(e.note ? [e.note] : [])],
+      buttons: [{ label: '구매', value: 'ok', primary: true }, { label: '취소', value: 'cancel' }],
+      onResult: (res) => { if (res.value === 'ok') doBuy(scene, e, 1); },
+    });
+  }
+}
+export function doBuy(scene, e, qty) {
+  const st = scene.state, b = baseOf(e.inst);
+  const cost = e.price * qty;
+  if (st.gold < cost) { scene.talk('poor'); audio.sfx('menu_cancel'); return null; }
+  let got = null;
+  if (b.stack) { const it = makeInst(b.id, { rarity: e.inst.rarity ?? 0 }); if (it) { it.qty = qty; got = addItem(st, it); } }
+  else for (let i = 0; i < qty; i++) got = addItem(st, makeInst(b.id, { rarity: e.inst.rarity ?? 0 })) || got;
+  if (!got) { scene.talk('full'); scene.game.toast('가방이 가득 찼다!', '#ff6060'); audio.sfx('menu_cancel'); return null; }
+  st.gold -= cost;
+  audio.sfx('coin'); audio.sfx('item', { vol: 0.7 });
+  scene.talk('buy');
+  const d = scene.detailRect;
+  const x = d ? d.x + 56 : scene.game.viewW / 2, y = d ? d.y + 56 : 200;
+  scene.fx.burst('gold', x, y, 26, { speed: 220 });
+  scene.fx.ring(x, y, { color: '#ffd84a', r0: 6, r1: 70, life: 0.45, width: 4 });
+  scene.game.toast(`구매: ${nameOf(got)}${qty > 1 ? ' ×' + qty : ''}`, rarityColor(got.rarity));
+  return got;
+}
+/** 대사 묶음 병합: 아이템 담당 SHOPKEEPERS 우선, 없으면 마을 기본 대사 */
+export function mergeLines(mine = {}, theirs = {}, alias = {}) {
+  const out = { ...mine };
+  for (const k in theirs) { const key = alias[k] ?? k; if (Array.isArray(theirs[k]) && theirs[k].length) out[key] = theirs[k]; }
+  return out;
 }

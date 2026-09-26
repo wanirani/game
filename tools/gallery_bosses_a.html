@@ -33,7 +33,7 @@ const DEF_CELLS = {
   b_chimera: 'idle@0.6,idle@0.6:1,idle@0.6:2,pounce@0.5,pounce@0.9,goat@0.8,tail@0.5,tail@0.8,acid@0.9,charge@0.7,swipe@0.4,roar@0.8:2',
 };
 const cells = (q.get('cells') || DEF_CELLS[id] || 'idle@0.6').split(',').map((s) => { const [st, rest] = s.split('@'); const [t, ph] = (rest || '0.6').split(':'); return { st, t: Number(t), ph: Number(ph || 0) }; });
-const COLS = Number(q.get('cols') || 3), CW = Number(q.get('cw') || 620), CH = Math.round(CW * 0.56), VW = Number(q.get('vw') || 1000);
+const COLS = Number(q.get('cols') || 3), CW = Number(q.get('cw') || 620), CH = Math.round(CW * (q.get('close') === '1' ? 0.8 : 0.56)), VW = Number(q.get('vw') || 1000);
 const close = q.get('close') === '1';
 const diffId = q.get('diff') || 'normal';
 

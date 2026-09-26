@@ -162,7 +162,14 @@ const LINES = {
   win: ['어머, 제법인데요?', '그 정도면 오늘 숙박비는 벌었네요!', '역시! 손끝에 감이 살아 있어요.', '호오~ 까망이도 박수 치는 중이에요.'],
   big: ['세상에! 오늘 제 금고가 울겠어요!', '와아, 소문나겠어요. 행운의 사냥꾼이 나타났다고!', '이 정도면 성 하나쯤 사도 되겠는데요?'],
   jackpot: ['잭팟이에요! 까망이도 벌떡 일어났다고요!', '말도 안 돼! 오늘 술값은 전부 제가 낼게요!'],
-  lose: ['아이고, 아깝다! 다음 판엔 분명 올 거예요… 아마도?', '운도 체력처럼 회복된답니다. 한숨 돌려요.', '딜러가 오늘 좀 독하네요. 제가 혼내 줄게요.', '괜찮아요, 괴물 한 마리 더 잡으면 되죠!'],
+  lose: ['아이고, 아깝다! 다음 판엔 분명 올 거예요… 아마도?', '운도 체력처럼 회복된답니다. 한숨 돌려요.', '괜찮아요, 괴물 한 마리 더 잡으면 되죠!'],
+  loseBy: {
+    dice: ['주사위가 오늘 삐졌나 봐요. 살살 굴려 봐요.', '욕심은 해골도 삼킨답니다. 다음엔 일찍 거둬요!'],
+    blackjack: ['마몬 녀석, 오늘 좀 독하네요. 제가 혼내 줄게요.', '21은 멀고 버스트는 가깝죠. 아깝다!'],
+    slot: ['슬롯은 원래 밀당을 해요. 다음엔 올 거예요!', '릴이 한 칸만 더 돌았어도…!'],
+    duel: ['손은 빨랐는데 운이 없었네요. 다시 겨뤄 봐요!', '총잡이들은 원래 성질이 급하답니다.'],
+    memory: ['영혼들이 장난을 쳤나 봐요. 천천히, 차분하게!', '제 기억력도 요즘 깜빡깜빡해요. 호호.'],
+  },
   push: ['비겼네요. 금화는 그대로! 한 판 더?'],
   streak: ['음… 오늘은 운이 영 아닌가 봐요. 무리하지 마요.', '잠깐 쉬어요. 따뜻한 수프라도 한 그릇 줄까요?'],
   free: ['첫 판은 제가 쏠게요! 대신 이겨도 돈은 안 나와요. 후훗.'],
@@ -197,7 +204,7 @@ export function reactTo(rec, state) {
   if (rec.tier === 'big') return { text: line('big'), mood: 'wow' };
   if (rec.win) return { text: line('win'), mood: 'happy' };
   if (session.loseStreak >= 3) return { text: line('streak'), mood: 'sad' };
-  return { text: line('lose'), mood: 'sad' };
+  return { text: Math.random() < 0.6 ? line('loseBy', rec.game) || line('lose') : line('lose'), mood: 'sad' };
 }
 
 // ───────────────────────── 가상 패드 ─────────────────────────
@@ -317,9 +324,10 @@ export function drawBtn(c, r, label, o = {}) {
   if (o.key && !input.touchMode) {
     c.font = `800 11px ${FONT.body}`;
     const kw = Math.max(18, c.measureText(o.key).width + 8);
-    rr(c, r.x + r.w - kw - 4, y + 4, kw, 16, 4); c.fillStyle = 'rgba(0,0,0,0.55)'; c.fill();
-    c.strokeStyle = 'rgba(232,200,114,0.5)'; c.lineWidth = 1; c.stroke();
-    text(c, o.key, r.x + r.w - kw / 2 - 4, y + 16, { size: 11, align: 'center', weight: 800, color: '#e8d8b0', ow: 0 });
+    const kx = r.x + r.w - kw + 6, ky = y - 8;
+    rr(c, kx, ky, kw, 16, 4); c.fillStyle = 'rgba(12,6,10,0.92)'; c.fill();
+    c.strokeStyle = 'rgba(232,200,114,0.7)'; c.lineWidth = 1; c.stroke();
+    text(c, o.key, kx + kw / 2, ky + 12, { size: 11, align: 'center', weight: 800, color: '#e8d8b0', ow: 0 });
   }
   c.restore();
 }
@@ -329,8 +337,8 @@ export function goldPlaque(c, x, y, w, value, t = 0, flash = 0) {
   gPanel(c, x, y, w, 40, { a: 0.8, r: 20, orn: false, edge: flash > 0 ? '#ffe7a0' : '#8a6a34' });
   drawCoin(c, x + 22, y + 20, 11, t * 2.2);
   if (flash > 0) glow(c, x + w / 2, y + 20, w * 0.6, '#ffd060', flash * 0.5);
-  text(c, fmt(value), x + w - 18, y + 28, { size: 21, align: 'right', weight: 900, family: FONT.num, color: '#ffe7a0', ow: 4 });
-  text(c, 'G', x + 44, y + 27, { size: 13, weight: 800, family: FONT.num, color: '#c8a050', ow: 3 });
+  text(c, fmt(value), x + w - 34, y + 28, { size: 21, align: 'right', weight: 900, family: FONT.num, color: '#ffe7a0', ow: 4 });
+  text(c, 'G', x + w - 16, y + 28, { size: 14, align: 'right', weight: 800, family: FONT.num, color: '#c8a050', ow: 3 });
 }
 
 /** 금화 카운터 (굴러 올라가는 숫자) */
@@ -657,7 +665,7 @@ export class MiniGame extends Scene {
     if (this.leaving) return;
     const tap = this.hits.tapped();
     this._tap = tap;
-    if (tap === 'back' || (input.pressed('menu') && !this.result)) { this.leave(); return; }
+    if (tap === 'back' || (input.pressed('menu') && input.pressed('cancel') && !this.result)) { this.leave(); return; }
     if (this.result) {
       const R = this.result;
       R.t += dt;
@@ -700,16 +708,21 @@ export class MiniGame extends Scene {
     const back = this.hits.rect('back', 12, 10, 104, 40);
     this.hits.add('back', back);
     drawBtn(ctx, back, '◀ 여관', { tone: 'dark', size: 16, hot: this.hits.over(back), pressed: this.hits.pressed(back), key: 'Esc', disabled: !this.canLeave() });
-    // 제목
-    const tw = 300;
-    ctx.save();
-    const g = ctx.createLinearGradient(vw / 2 - tw / 2, 0, vw / 2 + tw / 2, 0);
-    g.addColorStop(0, 'rgba(10,4,12,0)'); g.addColorStop(0.2, 'rgba(10,4,12,0.78)'); g.addColorStop(0.8, 'rgba(10,4,12,0.78)'); g.addColorStop(1, 'rgba(10,4,12,0)');
-    ctx.fillStyle = g; ctx.fillRect(vw / 2 - tw / 2, 6, tw, 50);
-    ctx.fillStyle = 'rgba(232,200,114,0.5)'; ctx.fillRect(vw / 2 - tw * 0.35, 55, tw * 0.7, 1);
-    ctx.restore();
-    goldText(ctx, this.info.name, vw / 2, 36, 26, { glowCol: this.info.accent });
-    text(ctx, this.info.sub, vw / 2, 51, { size: 11, align: 'center', weight: 700, color: '#b8a080', ow: 2 });
+    // 제목 (titleLeft: 가운데를 비워야 하는 장면용)
+    if (this.titleLeft) {
+      goldText(ctx, this.info.name, 130, 38, 24, { align: 'left', glowCol: this.info.accent });
+      text(ctx, this.info.sub, 132, 54, { size: 11, weight: 700, color: '#b8a080', ow: 2 });
+    } else {
+      const tw = 300;
+      ctx.save();
+      const g = ctx.createLinearGradient(vw / 2 - tw / 2, 0, vw / 2 + tw / 2, 0);
+      g.addColorStop(0, 'rgba(10,4,12,0)'); g.addColorStop(0.2, 'rgba(10,4,12,0.78)'); g.addColorStop(0.8, 'rgba(10,4,12,0.78)'); g.addColorStop(1, 'rgba(10,4,12,0)');
+      ctx.fillStyle = g; ctx.fillRect(vw / 2 - tw / 2, 6, tw, 50);
+      ctx.fillStyle = 'rgba(232,200,114,0.5)'; ctx.fillRect(vw / 2 - tw * 0.35, 55, tw * 0.7, 1);
+      ctx.restore();
+      goldText(ctx, this.info.name, vw / 2, 36, 26, { glowCol: this.info.accent });
+      text(ctx, this.info.sub, vw / 2, 51, { size: 11, align: 'center', weight: 700, color: '#b8a080', ow: 2 });
+    }
     // 금화 + 판돈
     goldPlaque(ctx, vw - 196, 10, 184, this.goldR.value, this.clock, this.goldR.flash);
     const bt = this.roundBet > 0 && this.phase !== 'ready' && this.phase !== 'result' ? `판돈 ${fmt(this.roundBet)} G` : this.free ? '무료 판' : `판돈 ${fmt(this.bet)} G`;
@@ -737,8 +750,11 @@ export class MiniGame extends Scene {
     const R = this.result, vw = this.vw, vh = this.vh;
     const k = ease.outBack(clamp(R.t / 0.4, 0, 1));
     const fa = clamp(R.t / 0.25, 0, 1);
-    ctx.fillStyle = `rgba(4,1,6,${0.55 * fa})`; ctx.fillRect(0, 0, vw, vh);
-    const w = 520, h = 300, x = vw / 2 - w / 2, y = vh / 2 - h / 2 + 14;
+    ctx.fillStyle = `rgba(4,1,6,${0.42 * fa})`; ctx.fillRect(0, 0, vw, vh);
+    const hasItems = R.items.length > 0;
+    const w = 520, h = hasItems ? 322 : 262, x = vw / 2 - w / 2;
+    const y = this.resultTop ?? vh - h - 10;
+    const rowY = y + (hasItems ? 228 : 172);
     const win = R.win, jp = R.tier === 'jackpot';
     ctx.save();
     ctx.translate(vw / 2, y + h / 2); ctx.scale(0.7 + 0.3 * k, 0.7 + 0.3 * k); ctx.translate(-vw / 2, -(y + h / 2));
@@ -760,10 +776,10 @@ export class MiniGame extends Scene {
     if (R.free) {
       text(ctx, '무료 판 — 보상은 없어요', vw / 2, y + 128, { size: 17, align: 'center', weight: 800, color: '#7affd8', ow: 3 });
     } else if (R.payout > 0) {
-      drawCoin(ctx, vw / 2 - 92, y + 121, 13, this.clock * 3);
-      text(ctx, `+${fmt(R.shown)} G`, vw / 2 + 12, y + 131, { size: 30, align: 'center', weight: 900, family: FONT.num, color: '#ffe070', ow: 5 });
+      drawCoin(ctx, vw / 2 - 92, y + 119, 13, this.clock * 3);
+      text(ctx, `+${fmt(R.shown)} G`, vw / 2 + 12, y + 129, { size: 30, align: 'center', weight: 900, family: FONT.num, color: '#ffe070', ow: 5 });
       const net = R.net;
-      text(ctx, `순이익 ${net >= 0 ? '+' : ''}${fmt(net)} G`, vw / 2, y + 153, { size: 13, align: 'center', weight: 700, color: net >= 0 ? '#9af09a' : '#ff9a9a', ow: 3 });
+      text(ctx, `순이익 ${net >= 0 ? '+' : ''}${fmt(net)} G`, vw / 2, y + 151, { size: 13, align: 'center', weight: 700, color: net >= 0 ? '#9af09a' : '#ff9a9a', ow: 3 });
     } else {
       text(ctx, `-${fmt(R.bet)} G`, vw / 2, y + 131, { size: 28, align: 'center', weight: 900, family: FONT.num, color: '#ff7a7a', ow: 5 });
     }
@@ -774,7 +790,7 @@ export class MiniGame extends Scene {
       R.items.forEach((it, i) => {
         const kk = ease.outBack(clamp((R.t - 0.5 - i * 0.25) / 0.35, 0, 1));
         if (kk <= 0) return;
-        const ix = x0 + i * iw, iy = y + 186;
+        const ix = x0 + i * iw, iy = y + 184;
         ctx.save(); ctx.translate(ix - 44, iy); ctx.scale(kk, kk);
         glow(ctx, 0, 0, 34, it.id.includes('scroll') ? '#8ac8ff' : '#ffd060', 0.55 + 0.2 * Math.sin(this.clock * 5));
         drawIcon(ctx, it.icon, 0, 0, 40);
@@ -786,14 +802,13 @@ export class MiniGame extends Scene {
       });
     }
     // 마르타 한마디
-    martaFace(ctx, x + 38, y + h - 76, 22, R.mood, this.clock);
-    ctx.font = `600 13px ${FONT.body}`;
-    text(ctx, R.line, x + 68, y + h - 72, { size: 13, weight: 600, color: '#e8dcc8', ow: 2, maxWidth: w - 90 });
+    martaFace(ctx, x + 40, rowY, 19, R.mood, this.clock);
+    text(ctx, R.line, x + 68, rowY + 5, { size: 13, weight: 600, color: '#e8dcc8', ow: 2, maxWidth: w - 88 });
     // 버튼
-    const bw = 190, bh = 46, by = y + h - 44 - 12;
+    const bw = 190, bh = 46, by = y + h - bh - 12;
     const ra = this.hits.rect('again', vw / 2 - bw - 8, by, bw, bh), rb = this.hits.rect('inn', vw / 2 + 8, by, bw, bh);
     const canAgain = this.free || this.st.gold >= this.bet;
-    if (R.t > 0.3) { this.hits.add('again', ra); this.hits.add('inn', rb); }
+    if (R.t > 0.3) { this.hits.add('again', ra, !canAgain); this.hits.add('inn', rb); }
     ctx.globalAlpha = fa;
     drawBtn(ctx, ra, '한 판 더', { tone: 'crimson', hot: this.hits.over(ra), pressed: this.hits.pressed(ra), sub: this.free ? '무료 판' : `판돈 ${fmt(this.bet)} G`, key: 'Z', disabled: !canAgain, pulse: canAgain, t: this.clock });
     drawBtn(ctx, rb, '여관으로', { tone: 'dark', hot: this.hits.over(rb), pressed: this.hits.pressed(rb), key: 'X' });

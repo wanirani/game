@@ -1,7 +1,7 @@
 // 8장 보스: 레비아탄 — 검은 물에서 솟구치는 생물발광 해룡
 // 패턴: 수압포(추적 물줄기) · 물덩이 투척 · 아래에서 물어뜯기 · 해일(점프 회피) · 몸통 도약 아치 · 간헐천(2페이즈) · 꼬리 내려치기(2페이즈)
 // 몸통은 '목 모드'(수면 닻 → 머리 베지어 곡선)와 '도약 모드'(머리 궤적을 따라가는 마디) 두 방식으로 계산한다.
-import { BossB, PI, OUT, R, C, LG, glow, glowE, eye, warnLine, warnFloor, warnCircle, warnBang, warnRect, impact, hash } from './b_common.js';
+import { BossB, PI, OUT, R, C, LG, RG, ink, glow, glowE, eye, warnLine, warnFloor, warnCircle, warnBang, warnRect, impact, hash } from './b_common.js';
 import { audio } from '../../core/audio.js';
 import { TAU, clamp, lerp, rand, ease, rgba, wrapAngle } from '../../core/math.js';
 
@@ -18,7 +18,7 @@ function segR(i) {
   const u = i / (N - 1);
   const grow = Math.sin(Math.min(1, u / 0.3) * PI / 2);
   const taper = 1 - 0.78 * Math.pow(Math.max(0, (u - 0.42) / 0.58), 1.25);
-  return (21 + 14 * grow) * taper + 2;
+  return (27 + 15 * grow) * taper + 3;
 }
 
 export class Leviathan extends BossB {
@@ -49,6 +49,16 @@ export class Leviathan extends BossB {
     this.updateBody();
   }
 
+  /** 갤러리/테스트: 자리 잡은 상태에서 패턴 시작 */
+  debugAct(s) {
+    const pp = this.perchPos();
+    this.mode = 'neck'; this.ax = pp.ax; this.facing = -this.side;
+    this.snap(pp.x, pp.y, this.aimAngle(0.5)); this.px0 = pp.x; this.py0 = pp.y;
+    this.sub = false; this.invuln = false; this.harmless = false;
+    this.updateBody();
+    super.debugAct(s);
+  }
+
   // ───────────── 판정 ─────────────
   hitParts() { return this.sub ? [] : this.hitList; }
   hurtboxes() {
@@ -62,9 +72,11 @@ export class Leviathan extends BossB {
   // ───────────── 운동/몸통 ─────────────
   snap(x, y, a) { this.hx = this.tx = x; this.hy = this.ty = y; if (a !== undefined) this.ha = this.ta = a; }
   perchPos(side = this.side) {
-    const A = this.A;
-    const ax = side > 0 ? A.x1 - 150 : A.x0 + 150;
-    return { ax, x: ax - side * 150, y: A.floor - 190 };
+    // 화면(카메라) 안쪽 가장자리에 자리 잡아 모바일 좁은 화면에서도 보이게 한다
+    const A = this.A, cam = this.world.camera;
+    const vx0 = cam ? Math.max(A.x0, cam.x) : A.x0, vx1 = cam ? Math.min(A.x1, cam.x + cam.vw) : A.x1;
+    const ax = side > 0 ? clamp(vx1 - 170, A.cx + 200, A.x1 - 150) : clamp(vx0 + 170, A.x0 + 150, A.cx - 200);
+    return { ax, x: ax - side * 165, y: A.floor - 190 };
   }
   aimAngle(spread = 0.7) {
     const p = this.P;
@@ -264,7 +276,7 @@ export class Leviathan extends BossB {
       ['cannon', 3], ['spit', 3], ['bite', 2.5], ['wave', 2], ['arc', 2],
       ['geyser', ph >= 1 ? 2.5 : 0], ['tail', ph >= 1 ? 2 : 0],
     ]);
-    if (a === 'cannon' || a === 'spit' || a === 'geyser' || a === 'tail') { this.perchN++; this.setState(a); }
+    if (a === 'cannon' || a === 'spit' || a === 'geyser' || a === 'tail' || a === 'wave') { this.perchN++; this.setState(a); }
     else this.diveTo(a);
   }
   diveTo(next, side) { this.after = next; this.nextSide = side ?? (this.P && this.P.cx > this.A.cx ? -1 : 1); this.setState('dive'); }
@@ -464,23 +476,35 @@ export class Leviathan extends BossB {
     }
   }
 
-  // 4) 해일: 뛰어넘어야 하는 파도
+  // 4) 해일: 레비아탄이 포효하며 일으키는 파도 (뛰어넘기)
   s_wave(dt, world, t) {
     const A = this.A, F = A.floor, p = this.P;
-    if (this.at(0.001)) {
-      this.waveDir = p && p.cx > A.cx ? 1 : -1;                // 플레이어 반대쪽에서 몰려옴
-      this.waveDir = -this.waveDir;
-      this.waveDir = p ? (p.cx < A.cx ? -1 : 1) * -1 : 1;
-      audio.sfx('warning', { vol: 0.6 });
-    }
-    const d = this.waveDir;                        // 파도 진행 방향
-    const sx = d > 0 ? A.x0 : A.x1;
+    this.fk = 5;
+    const d = -this.side;                          // 레비아탄 쪽에서 플레이어 쪽으로
+    this.tx = this.px0 - this.facing * 30; this.ty = this.py0 - 70 + (t > 0.5 && t < 1.3 ? Math.sin(t * 40) * 4 : 0);
+    this.ta = this.facing > 0 ? -0.75 : PI + 0.75;
+    this.jawT = t > 0.3 && t < 1.4 ? 1 : 0.1;
+    if (this.at(0.05)) audio.sfx('warning', { vol: 0.6 });
+    if (this.at(0.35)) { audio.sfx('boss_roar', { vol: 0.8, pitch: 0.8 }); impact(world, { shake: 8, time: 0.8 }); }
+    if (this.every(0.08, 0.2, 0.9)) { world.fx.burst('water', this.ax + rand(-60, 60), F - 4, 4, { speed: 340, angle: -PI / 2, spread: 0.5 }); this.ripple(this.ax, 0.9); }
     const tall = this.phase >= 2;
-    if (this.every(0.1, 0, 0.9)) { world.fx.burst('water', sx + d * rand(10, 70), F - 4, 4, { speed: 300, angle: -PI / 2, spread: 0.5 }); this.ripple(sx + d * 40, 0.8); }
-    if (this.at(0.9)) this.spawnWave(world, sx, d, tall ? 150 : 100, 560);
+    if (this.at(0.9)) this.spawnWave(world, this.ax + d * 40, d, tall ? 150 : 100, 560);
     const second = this.phase >= 1 || this.inferno;
-    if (second && this.at(2.0)) this.spawnWave(world, d > 0 ? A.x1 : A.x0, -d, 96, 600);
-    if (t > (second ? 3.4 : 2.4)) this.goRise(p && p.cx > A.cx ? -1 : 1);
+    if (second) {
+      const sx = d > 0 ? A.x1 : A.x0;
+      if (this.every(0.1, 1.2, 2.0)) world.fx.burst('water', sx - d * rand(10, 60), F - 4, 3, { speed: 300, angle: -PI / 2, spread: 0.5 });
+      if (this.at(1.2)) audio.sfx('warning', { vol: 0.5, pitch: 1.2 });
+      if (this.at(2.0)) this.spawnWave(world, sx, -d, 96, 600);
+    }
+    if (t > (second ? 3.0 : 2.0)) this.setState('idle');
+  }
+  paintWarnEdge(ctx, t) {
+    // 2차 해일 예고: 반대편 화면 가장자리 느낌표
+    if (this.state !== 'wave' || !(this.phase >= 1 || this.inferno) || this.st < 1.2 || this.st > 2.0) return;
+    const cam = this.world.camera, A = this.A;
+    const d = -this.side;
+    const x = d > 0 ? Math.min(A.x1, cam.x + cam.vw) - 60 : Math.max(A.x0, cam.x) + 60;
+    warnBang(ctx, x, A.floor - 140, 26, 0.6 + 0.4 * Math.sin(t * 20));
   }
   spawnWave(world, x, d, H, speed) {
     const F = this.A.floor, A = this.A;
@@ -635,16 +659,7 @@ export class Leviathan extends BossB {
       paint: (ctx, z) => {
         if (!z.on) { warnFloor(ctx, x, F, 90, z.k, WATER, this.t); return; }
         const grow = ease.outCubic(Math.min(1, z.a * 6)), fade = Math.min(1, (1 - z.a) * 4);
-        const h = (F - z.y) * grow;
-        ctx.globalAlpha *= fade;
-        const g = ctx.createLinearGradient(x - 34, 0, x + 34, 0);
-        g.addColorStop(0, 'rgba(40,140,200,0.2)'); g.addColorStop(0.3, 'rgba(120,220,255,0.75)'); g.addColorStop(0.5, 'rgba(230,252,255,0.95)'); g.addColorStop(0.7, 'rgba(120,220,255,0.75)'); g.addColorStop(1, 'rgba(40,140,200,0.2)');
-        ctx.fillStyle = g;
-        const wv = Math.sin(this.t * 30 + x) * 4;
-        ctx.beginPath(); ctx.moveTo(x - 26, F); ctx.lineTo(x - 30 + wv, F - h); ctx.lineTo(x + 30 - wv, F - h); ctx.lineTo(x + 26, F); ctx.closePath(); ctx.fill();
-        glowE(ctx, x, F - h * 0.5, 60, h * 0.55, WATER, 0.5);
-        ctx.fillStyle = 'rgba(240,252,255,0.9)';
-        for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.arc(x + (i - 2) * 12, F - h + Math.sin(this.t * 25 + i) * 5, 10, 0, TAU); ctx.fill(); }
+        this.paintGeyser(ctx, x, F, (F - z.y) * grow, fade);
       },
       light: (L, z) => { if (z.on) L.add(x, F - 150, 160, WATER, 0.6); },
     });
@@ -738,6 +753,38 @@ export class Leviathan extends BossB {
   }
 
   // ───────────── 그리기 ─────────────
+  paintGeyser(ctx, x, F, h, fade) {
+    const t = this.t;
+    ctx.globalAlpha *= fade;
+    glowE(ctx, x, F - h * 0.5, 80, h * 0.6, WATER, 0.45);
+    // 물기둥 (흔들리는 가장자리)
+    ctx.beginPath();
+    const n = 10;
+    for (let i = 0; i <= n; i++) { const k = i / n; const w = 30 + 10 * (1 - k) + Math.sin(t * 28 + k * 9 + x) * 5; ctx.lineTo(x - w, F - h * k); }
+    for (let i = n; i >= 0; i--) { const k = i / n; const w = 30 + 10 * (1 - k) + Math.sin(t * 31 + k * 8 + x * 1.3) * 5; ctx.lineTo(x + w, F - h * k); }
+    ctx.closePath();
+    const g = ctx.createLinearGradient(x - 40, 0, x + 40, 0);
+    g.addColorStop(0, 'rgba(30,120,180,0.35)'); g.addColorStop(0.25, 'rgba(110,210,250,0.8)'); g.addColorStop(0.5, 'rgba(220,250,255,0.92)'); g.addColorStop(0.75, 'rgba(110,210,250,0.8)'); g.addColorStop(1, 'rgba(30,120,180,0.35)');
+    ctx.fillStyle = g; ctx.fill();
+    ctx.strokeStyle = 'rgba(6,26,40,0.55)'; ctx.lineWidth = 2; ctx.stroke();
+    // 솟구치는 결
+    ctx.save(); ctx.clip();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.strokeStyle = 'rgba(255,255,255,0.45)'; ctx.lineWidth = 3;
+    ctx.beginPath();
+    for (let i = 0; i < 5; i++) {
+      const lx = x + (i - 2) * 12;
+      const off = (t * 900 + i * 57) % 120;
+      for (let y = F - off; y > F - h; y -= 120) { ctx.moveTo(lx, y); ctx.lineTo(lx + Math.sin(y * 0.05) * 3, y - 50); }
+    }
+    ctx.stroke();
+    ctx.restore();
+    // 기저 거품 + 꼭대기 물보라
+    ctx.fillStyle = 'rgba(236,252,255,0.92)';
+    for (let i = 0; i < 7; i++) { const a = i / 6 - 0.5; ctx.beginPath(); ctx.ellipse(x + a * 90, F - 6 - Math.abs(Math.sin(t * 14 + i)) * 10, 14, 8, 0, 0, TAU); ctx.fill(); }
+    for (let i = 0; i < 8; i++) { const a = i / 8 * TAU + t * 3; ctx.beginPath(); ctx.arc(x + Math.cos(a) * 30, F - h + Math.sin(a) * 12 - 6, 7 + (i % 3) * 3, 0, TAU); ctx.fill(); }
+    glow(ctx, x, F - h, 60, '#ffffff', 0.5);
+  }
   paintBack(ctx) {
     // 얕은 수막 + 파문
     const A = this.A, F = A.floor, t = this.t;
@@ -759,9 +806,9 @@ export class Leviathan extends BossB {
     this.paintSerpent(ctx);
     if (this.tail) this.paintTail(ctx, this.tail);
     const hvis = this.hy - 70 < F;
-    if (hvis) this.paintHead(ctx, this.hx, this.hy, this.ha, this.jaw, 1);
+    if (hvis) this.paintHead(ctx, this.hx, this.hy, this.ha, this.jaw, 1.12);
     ctx.restore();
-    if (!flash) this.paintFoam(ctx);
+    if (!flash) { this.paintFoam(ctx); this.paintWarnEdge(ctx, this.t); }
   }
   paintFoam(ctx) {
     const F = this.A.floor, t = this.t;
@@ -777,12 +824,11 @@ export class Leviathan extends BossB {
       }
     }
   }
-  paintSerpent(ctx) {
-    const sx = this.sx, sy = this.sy, sa = this.sa, sr = this.sr, t = this.t;
+  paintSerpent(ctx, sx = this.sx, sy = this.sy, sa = this.sa, sr = this.sr, n = N, bs = this.facing >= 0 ? 1 : -1) {
+    const t = this.t;
     const F = this.A.floor;
-    const bs = this.facing >= 0 ? 1 : -1;     // 배 쪽 부호
-    // 보이는 범위
-    let i0 = 0, i1 = N - 1;
+    // 보이는 범위 (bs: 배 쪽 부호)
+    let i0 = 0, i1 = n - 1;
     while (i1 > 0 && sy[i1] - sr[i1] > F + 4 && sy[i1 - 1] - sr[i1 - 1] > F + 4) i1--;
     if (i1 < 1) return;
     const bio = this.phase >= 2 ? BIO2 : BIO;
@@ -884,23 +930,34 @@ export class Leviathan extends BossB {
   paintTail(ctx, tl) {
     const F = this.A.floor;
     if (tl.warn && !R.fl) warnRect(ctx, this.tailX - 100, F - 170, 200, 170, tl.k, '#5fe8ff', this.t);
+    // 꼬리 줄기: 수면(기저) → 끝(tl.x, tl.y) 곡선을 몸통 방식으로 그림
+    const TN = 12, T = this._tail || (this._tail = { x: new Float32Array(TN), y: new Float32Array(TN), a: new Float32Array(TN), r: new Float32Array(TN) });
+    const bx = tl.x - this.facing * 90, by = F + 80;
+    const cx = (bx + tl.x) / 2 - this.facing * 60, cy = F - 40;
+    for (let i = 0; i < TN; i++) {
+      const u = i / (TN - 1), v = 1 - u;     // i=0 끝, i=TN-1 기저
+      T.x[i] = v * v * tl.x + 2 * v * u * cx + u * u * bx + Math.sin(this.t * 6 + i) * 3 * u;
+      T.y[i] = v * v * tl.y + 2 * v * u * cy + u * u * by;
+      T.r[i] = 13 + 22 * u;
+    }
+    T.a[0] = Math.atan2(T.y[0] - T.y[1], T.x[0] - T.x[1]);
+    for (let i = 1; i < TN; i++) T.a[i] = Math.atan2(T.y[i - 1] - T.y[i], T.x[i - 1] - T.x[i]);
+    this.paintSerpent(ctx, T.x, T.y, T.a, T.r, TN, this.facing >= 0 ? -1 : 1);
+    // 꼬리 지느러미 (끝)
     ctx.save();
-    ctx.translate(tl.x, tl.y); ctx.rotate(tl.a + PI / 2);
-    // 꼬리 줄기 (아래로 수면까지)
+    ctx.translate(T.x[0], T.y[0]); ctx.rotate(T.a[0] + PI / 2);
     ctx.beginPath();
-    ctx.moveTo(-16, 0); ctx.quadraticCurveTo(-22, 120, -26, 360); ctx.lineTo(26, 360); ctx.quadraticCurveTo(22, 120, 16, 0); ctx.closePath();
-    ink(ctx, C(BODY), 3);
-    // 지느러미 꼬리
-    ctx.beginPath();
-    ctx.moveTo(0, 10); ctx.bezierCurveTo(-40, -10, -90, -40, -110, -90); ctx.quadraticCurveTo(-50, -60, 0, -34);
-    ctx.quadraticCurveTo(50, -60, 110, -90); ctx.bezierCurveTo(90, -40, 40, -10, 0, 10);
-    ink(ctx, C('rgba(30,110,112,0.95)'), 3);
+    ctx.moveTo(0, 8); ctx.bezierCurveTo(-30, -6, -80, -30, -104, -84); ctx.quadraticCurveTo(-52, -58, -4, -30);
+    ctx.lineTo(4, -30); ctx.quadraticCurveTo(52, -58, 104, -84); ctx.bezierCurveTo(80, -30, 30, -6, 0, 8);
+    ink(ctx, R.fl ? '#fff' : LG(ctx, 'lv_fluke', 0, -80, 0, 8, [0, 'rgba(90,200,200,0.95)', 0.5, 'rgba(30,110,114,0.96)', 1, '#0e2c30']), 3);
     if (!R.fl) {
-      ctx.strokeStyle = HORN_D; ctx.lineWidth = 1.5;
+      ctx.strokeStyle = 'rgba(8,30,34,0.8)'; ctx.lineWidth = 1.5;
       ctx.beginPath();
-      for (let i = -4; i <= 4; i++) { if (!i) continue; ctx.moveTo(0, -10); ctx.lineTo(i * 25, -30 - Math.abs(i) * 13); }
+      for (let i = -4; i <= 4; i++) { if (!i) continue; ctx.moveTo(0, -6); ctx.quadraticCurveTo(i * 10, -24, i * 24, -30 - Math.abs(i) * 12); }
       ctx.stroke();
-      glow(ctx, 0, -30, 60, this.phase >= 2 ? BIO2 : BIO, 0.35);
+      ctx.strokeStyle = rgba(this.phase >= 2 ? BIO2 : BIO, 0.7); ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(-104, -84); ctx.quadraticCurveTo(-52, -58, -4, -30); ctx.moveTo(104, -84); ctx.quadraticCurveTo(52, -58, 4, -30); ctx.stroke();
+      glow(ctx, 0, -34, 70, this.phase >= 2 ? BIO2 : BIO, 0.35);
     }
     ctx.restore();
   }

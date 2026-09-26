@@ -335,7 +335,7 @@ export class Nightwing extends ABoss {
     const sp = this.spread, up = -fl * 0.5, t = this.t;
     const a1 = -0.78 - up * 0.9 + (1 - sp) * 1.35;
     const a2 = a1 + 0.58 - (sp - 1) * 0.35 + (1 - sp) * 0.9;
-    const Sx = 22, Sy = -98;
+    const Sx = 34, Sy = -100;
     const Ex = Sx + Math.cos(a1) * 46, Ey = Sy + Math.sin(a1) * 46;
     const Wx = Ex + Math.cos(a2) * 64, Wy = Ey + Math.sin(a2) * 64;
     const fan = 0.4 * sp + 0.14, base = a2 + 0.5 + up * 0.3 + (1 - sp) * 0.55, L = [108, 118, 104, 88], k = 0.55 + 0.45 * Math.min(sp, 1.2);
@@ -344,7 +344,7 @@ export class Nightwing extends ABoss {
       const a = base + i * fan + Math.sin(t * 5 + i) * 0.02;
       tip[i * 2] = Wx + Math.cos(a) * L[i] * k; tip[i * 2 + 1] = Wy + Math.sin(a) * L[i] * k;
     }
-    const Hx = 18, Hy = -26;
+    const Hx = 22, Hy = -24;
     ctx.save(); ctx.scale(s, 1);
     // 막
     ctx.beginPath();
@@ -412,128 +412,151 @@ export class Nightwing extends ABoss {
   legs(ctx) {
     const c = this.claw, t = this.t;
     for (const s of [-1, 1]) {
-      const hx = s * 15, hy = -40;
-      const kx = s * (22 + c * 4), ky = -22 + c * 8;
-      const ax = s * (14 + c * 6), ay = -6 + c * 14 + Math.sin(t * 3 + s) * 1.5;
+      const hx = s * 17, hy = -40;
+      const kx = s * (27 + c * 3), ky = -20 + c * 8;
+      const ax = s * (19 + c * 5), ay = -4 + c * 14 + Math.sin(t * 3 + s) * 1.5;
       _Q[0] = hx; _Q[1] = hy; _Q[2] = kx; _Q[3] = ky; _Q[4] = ax; _Q[5] = ay;
-      taper(ctx, _Q, 3, 16, 8);
-      ink(ctx, C('#24140f'), 2);
+      taper(ctx, _Q, 3, 22, 9);
+      ink(ctx, lg(ctx, 'nwleg', 0, -40, 0, 0, [0, C('#3a2420'), 1, C('#140a08')]), 2.5);
+      // 무릎 털
+      ctx.beginPath(); ctx.moveTo(kx - s * 4, ky - 6); ctx.lineTo(kx + s * 9, ky + 2); ctx.lineTo(kx - s * 2, ky + 4); ctx.closePath();
+      ctx.fillStyle = C('#1a0e0c'); ctx.fill();
       // 발톱 3개
       for (let i = -1; i <= 1; i++) {
-        const a = PI / 2 + i * (0.35 + c * 0.35) + s * 0.1;
-        const L = 13 + c * 5, bx = ax + Math.cos(a) * L, by = ay + Math.sin(a) * L;
-        ctx.beginPath(); ctx.moveTo(ax - 2.5, ay); ctx.quadraticCurveTo(bx + (i * 4), by - 2, bx - i * 2 + s * 2, by + 3 - c * 3); ctx.lineTo(ax + 2.5, ay); ctx.closePath();
-        ink(ctx, C(CLAW), 1.4);
+        const a = PI / 2 + i * (0.35 + c * 0.4) + s * 0.12;
+        const L = 15 + c * 6, bx = ax + Math.cos(a) * L, by = ay + Math.sin(a) * L;
+        ctx.beginPath(); ctx.moveTo(ax - 3, ay); ctx.quadraticCurveTo(bx + i * 4, by - 3, bx - i * 2 + s * 2, by + 3 - c * 3); ctx.lineTo(ax + 3, ay); ctx.closePath();
+        ink(ctx, lg(ctx, 'nwclaw', 0, ay, 0, ay + 20, [0, C('#3a2a22'), 0.4, C(CLAW), 1, C('#fff8ee')]), 1.4);
       }
     }
   }
   torso(ctx, ghost) {
-    const t = this.t;
-    // 털 몸통
+    const t = this.t, br = Math.sin(t * 2.4) * 1.2;
+    // 근육질 몸통 (부드러운 윤곽)
     ctx.beginPath();
-    const N = 30, cy = -70;
-    for (let i = 0; i <= N; i++) {
-      const a = (i / N) * TAU - PI / 2;
-      const jag = i % 2 ? 1.1 + Math.sin(t * 4 + i) * 0.03 : 0.97;
-      const narrow = 1 - 0.28 * Math.max(0, Math.sin(a));
-      const x = Math.cos(a) * 36 * narrow * jag, y = cy + Math.sin(a) * 44 * jag;
-      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
-    }
+    ctx.moveTo(-12, -114);
+    ctx.quadraticCurveTo(-30, -112 - br, -42, -101);
+    ctx.quadraticCurveTo(-47, -92, -38, -82);
+    ctx.quadraticCurveTo(-26, -68, -23, -54);
+    ctx.quadraticCurveTo(-27, -44, -24, -36);
+    ctx.quadraticCurveTo(-10, -28, 2, -29);
+    ctx.quadraticCurveTo(14, -28, 26, -36);
+    ctx.quadraticCurveTo(29, -44, 25, -54);
+    ctx.quadraticCurveTo(28, -68, 40, -82);
+    ctx.quadraticCurveTo(49, -92, 44, -101);
+    ctx.quadraticCurveTo(32, -112 - br, 14, -114);
     ctx.closePath();
-    const bodyFill = ghost ? '#6a1020' : rg(ctx, 'nwbody' + this.phase, 10, -90, 4, 0, -70, 60, [0, C(this.phase >= 2 ? '#7a2a2a' : FUR2), 0.55, C(FUR), 1, C('#0e0606')]);
+    const bodyFill = ghost ? '#6a1020' : rg(ctx, 'nwbody' + this.phase, 14, -92, 4, 2, -72, 62, [0, C(this.phase >= 2 ? '#8a3a34' : '#6e4a3c'), 0.45, C(FUR), 1, C('#0c0505')]);
     ink(ctx, bodyFill, 3);
     if (ghost) return;
-    rim(ctx, -44, 10, RIM, 4, 0.75);
-    sheen(ctx, 30, -110, 0, -60, '#ffcf9a', 0.18);
-    // 가슴 갈기
+    rim(ctx, -50, -8, RIM, 3.5, 0.6);
+    // 가슴·복근 음영
+    ctx.strokeStyle = C('#120808'); ctx.lineWidth = 2.2; ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(-32, -100);
-    for (let i = 0; i <= 12; i++) {
-      const u = i / 12, x = lerp(-32, 32, u), y = -98 + Math.sin(u * PI) * 12;
-      ctx.lineTo(x + (i % 2 ? 0 : 2), y + (i % 2 ? 18 + Math.sin(t * 3 + i) * 2 : 4));
-    }
-    ctx.lineTo(32, -100); ctx.quadraticCurveTo(0, -112, -32, -100); ctx.closePath();
-    ink(ctx, lg(ctx, 'nwruff', 0, -110, 0, -80, [0, C('#8a6a58'), 1, C('#3a2620')]), 2);
-    // 복부 털결
-    ctx.strokeStyle = C('rgba(0,0,0,0.45)'); ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    for (let i = 0; i < 5; i++) { const y = -74 + i * 8; ctx.moveTo(-10 + i, y); ctx.quadraticCurveTo(0, y + 4, 10 - i, y); }
+    ctx.moveTo(-28, -86); ctx.quadraticCurveTo(-14, -76, -2, -82);
+    ctx.moveTo(4, -82); ctx.quadraticCurveTo(18, -76, 32, -86);
+    ctx.moveTo(1, -98); ctx.lineTo(1, -44);
     ctx.stroke();
-    // 3페이즈: 핏빛 균열
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    for (let i = 0; i < 3; i++) { const y = -70 + i * 10; ctx.moveTo(-12, y); ctx.quadraticCurveTo(-6, y + 3, -1, y); ctx.moveTo(3, y); ctx.quadraticCurveTo(9, y + 3, 15, y); }
+    ctx.stroke();
+    // 근육 하이라이트 (따뜻한 키라이트)
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = rg(ctx, 'nwpec', 18, -92, 1, 18, -92, 18, [0, 'rgba(255,190,140,0.2)', 1, 'rgba(255,190,140,0)']);
+    ctx.beginPath(); ctx.arc(18, -92, 18, 0, TAU); ctx.fill();
+    ctx.fillStyle = rg(ctx, 'nwpec2', -12, -90, 1, -12, -90, 14, [0, 'rgba(255,190,140,0.1)', 1, 'rgba(255,190,140,0)']);
+    ctx.beginPath(); ctx.arc(-12, -90, 14, 0, TAU); ctx.fill();
+    ctx.restore();
+    // 옆구리 털
+    ctx.fillStyle = C('#1a0e0c');
+    for (const s of [-1, 1]) {
+      ctx.beginPath();
+      for (let i = 0; i < 4; i++) {
+        const y = -80 + i * 9, x = s * (36 - i * 3.5);
+        ctx.moveTo(x, y); ctx.lineTo(x + s * (9 + Math.sin(t * 4 + i) * 1.5), y + 5); ctx.lineTo(x - s * 1, y + 8);
+      }
+      ctx.fill();
+    }
+    // 갈기 (목·어깨)
+    ctx.beginPath();
+    ctx.moveTo(-40, -100);
+    for (let i = 0; i <= 14; i++) {
+      const u = i / 14, x = lerp(-40, 42, u), y = -104 + Math.sin(u * PI) * -8;
+      const len = 11 + Math.sin(u * PI) * 8 + (i % 3 === 0 ? 4 : 0) + Math.sin(t * 3 + i) * 1.5;
+      ctx.lineTo(x + (u - 0.5) * 6, y + (i % 2 ? len : 3));
+    }
+    ctx.lineTo(42, -102); ctx.quadraticCurveTo(22, -126, 0, -124); ctx.quadraticCurveTo(-22, -126, -40, -100); ctx.closePath();
+    ink(ctx, lg(ctx, 'nwruff', 0, -126, 0, -84, [0, C('#9a7a66'), 0.5, C('#5a4034'), 1, C('#241612')]), 2);
+    rim(ctx, -44, 0, RIM, 3, 0.55, -126, -90);
+    // 핏빛 균열 (1~2페이즈)
     if (this.phase >= 1) {
       const k = this.phase >= 2 ? 1 : 0.5;
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      ctx.strokeStyle = rgba('#ff2a40', (0.5 + 0.3 * Math.sin(t * 9)) * k); ctx.lineWidth = 2;
+      ctx.strokeStyle = rgba('#ff2a40', (0.55 + 0.3 * Math.sin(t * 9)) * k); ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(-20, -86); ctx.lineTo(-12, -70); ctx.lineTo(-18, -54);
-      ctx.moveTo(18, -84); ctx.lineTo(10, -66); ctx.lineTo(16, -50);
-      ctx.moveTo(-4, -60); ctx.lineTo(4, -46);
+      ctx.moveTo(-22, -84); ctx.lineTo(-13, -72); ctx.lineTo(-18, -56);
+      ctx.moveTo(22, -84); ctx.lineTo(12, -68); ctx.lineTo(17, -52);
+      ctx.moveTo(-5, -62); ctx.lineTo(5, -48);
       ctx.stroke();
       ctx.restore();
     }
   }
   head(ctx, ghost) {
-    const t = this.t, m = clamp(this.mouth, 0, 1.4), hx = 4, hy = -122;
+    const t = this.t, m = clamp(this.mouth, 0, 1.4), hx = 4, hy = -128;
     const sway = Math.sin(t * 2.2) * 2 - Math.sin(this.flap) * 2;
     // 귀 (뒤쪽 → 앞쪽)
     for (const s of [-1, 1]) {
-      const bx = hx + s * 11, tx = hx + s * (28 + (s > 0 ? 4 : 0)), ty = hy - 54 + sway * (s > 0 ? 1 : 0.6);
+      const bx = hx + s * 10, tx = hx + s * (30 + (s > 0 ? 4 : 0)), ty = hy - 50 + sway * (s > 0 ? 1 : 0.6);
       ctx.beginPath();
-      ctx.moveTo(bx - s * 8, hy - 6);
-      ctx.quadraticCurveTo(bx + s * 20, hy - 20, tx, ty);
-      ctx.quadraticCurveTo(bx - s * 4, hy - 30, bx - s * 2 - (s > 0 ? 6 : -6), hy - 12);
+      ctx.moveTo(bx - s * 10, hy - 8);
+      ctx.quadraticCurveTo(bx + s * 24, hy - 14, tx, ty);
+      ctx.quadraticCurveTo(bx - s * 6, hy - 30, bx - s * 8, hy - 14);
       ctx.closePath();
-      ink(ctx, ghost ? '#6a1020' : C(FUR), 2.5);
+      ink(ctx, ghost ? '#6a1020' : C('#2a1814'), 2.5);
       if (!ghost) {
         ctx.beginPath();
-        ctx.moveTo(bx - s * 2, hy - 10);
-        ctx.quadraticCurveTo(bx + s * 14, hy - 22, lerp(bx, tx, 0.85), lerp(hy, ty, 0.85));
-        ctx.quadraticCurveTo(bx + s * 2, hy - 24, bx - s * 1, hy - 12);
+        ctx.moveTo(bx - s * 4, hy - 12);
+        ctx.quadraticCurveTo(bx + s * 16, hy - 18, lerp(bx, tx, 0.86), lerp(hy, ty, 0.86));
+        ctx.quadraticCurveTo(bx - s * 1, hy - 26, bx - s * 4, hy - 14);
         ctx.closePath();
-        ctx.fillStyle = rg(ctx, 'nwear' + s, bx + s * 8, hy - 26, 2, bx + s * 8, hy - 26, 26, [0, C('#e04050'), 0.5, C('#8a1a2a'), 1, C('#3a0a12')]);
+        ctx.fillStyle = rg(ctx, 'nwear' + s, bx + s * 9, hy - 26, 2, bx + s * 9, hy - 26, 26, [0, C('#e84858'), 0.5, C('#8a1a2a'), 1, C('#3a0a12')]);
         ctx.fill();
-        glow(ctx, bx + s * 9, hy - 26, 22, '#ff3040', 0.25);
+        glow(ctx, bx + s * 10, hy - 28, 24, '#ff3040', 0.28);
       }
     }
     // 머리
-    ctx.beginPath(); ctx.ellipse(hx, hy, 22, 20, 0, 0, TAU);
-    ink(ctx, ghost ? '#6a1020' : rg(ctx, 'nwhead' + this.phase, hx + 8, hy - 8, 2, hx, hy, 24, [0, C(this.phase >= 2 ? '#6a2a28' : '#4a302a'), 0.6, C(FUR), 1, C('#0e0606')]), 3);
+    ctx.beginPath(); ctx.ellipse(hx, hy, 21, 19, 0, 0, TAU);
+    ink(ctx, ghost ? '#6a1020' : rg(ctx, 'nwhead' + this.phase, hx + 9, hy - 9, 2, hx, hy, 25, [0, C(this.phase >= 2 ? '#7a3430' : '#5a3a30'), 0.6, C(FUR), 1, C('#0c0505')]), 3);
     if (ghost) return;
-    rim(ctx, hx - 26, hx + 6, RIM, 4, 0.7);
-    // 이마 주름
-    ctx.strokeStyle = C('#140808'); ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(hx - 12, hy - 12); ctx.quadraticCurveTo(hx, hy - 4, hx + 14, hy - 12); ctx.stroke();
-    // 주둥이
-    ctx.beginPath(); ctx.ellipse(hx + 3, hy + 9, 13, 9 + m * 3, 0, 0, TAU);
-    ink(ctx, rg(ctx, 'nwsnout', hx + 6, hy + 5, 1, hx + 3, hy + 9, 14, [0, C('#7a5448'), 1, C('#3a2420')]), 2);
+    rim(ctx, hx - 27, hx + 4, RIM, 4, 0.65);
+    // 주둥이 (앞으로 돌출)
+    ctx.beginPath(); ctx.ellipse(hx + 7, hy + 10, 14, 10 + m * 3, 0.1, 0, TAU);
+    ink(ctx, rg(ctx, 'nwsnout', hx + 11, hy + 5, 1, hx + 7, hy + 10, 15, [0, C('#8a5e50'), 1, C('#3a2420')]), 2.2);
     // 코잎
-    ctx.beginPath(); ctx.moveTo(hx + 3, hy - 4); ctx.lineTo(hx + 9, hy + 4); ctx.lineTo(hx + 3, hy + 7); ctx.lineTo(hx - 3, hy + 4); ctx.closePath();
+    ctx.beginPath(); ctx.moveTo(hx + 8, hy - 3); ctx.lineTo(hx + 15, hy + 5); ctx.lineTo(hx + 8, hy + 8); ctx.lineTo(hx + 2, hy + 5); ctx.closePath();
     ink(ctx, C('#5a2a2a'), 1.5);
-    ctx.fillStyle = C('#0a0204'); ctx.beginPath(); ctx.arc(hx + 1, hy + 4, 1.4, 0, TAU); ctx.arc(hx + 5.5, hy + 4, 1.4, 0, TAU); ctx.fill();
+    ctx.fillStyle = C('#0a0204'); ctx.beginPath(); ctx.arc(hx + 6, hy + 5, 1.5, 0, TAU); ctx.arc(hx + 10.5, hy + 5, 1.5, 0, TAU); ctx.fill();
     // 입
-    const my = hy + 13, mh = 2 + m * 10;
-    ctx.beginPath(); ctx.ellipse(hx + 3, my + mh * 0.4, 9 + m * 2, mh * 0.6 + 1, 0, 0, TAU);
+    const mx = hx + 7, my = hy + 14, mh = 2 + m * 10;
+    ctx.beginPath(); ctx.ellipse(mx, my + mh * 0.4, 10 + m * 2, mh * 0.6 + 1, 0, 0, TAU);
     ink(ctx, C('#3a0610'), 2);
-    if (m > 0.2) { ctx.fillStyle = C('#8a1a2a'); ctx.beginPath(); ctx.ellipse(hx + 3, my + mh * 0.75, 5, mh * 0.25, 0, 0, TAU); ctx.fill(); }
-    // 송곳니
-    ctx.fillStyle = C('#f4ecd8');
+    if (m > 0.2) { ctx.fillStyle = C('#9a1a2a'); ctx.beginPath(); ctx.ellipse(mx, my + mh * 0.75, 5, mh * 0.25, 0, 0, TAU); ctx.fill(); }
+    ctx.fillStyle = C('#f6eedc');
     for (const s of [-1, 1]) {
-      const fx = hx + 3 + s * 5.5;
-      ctx.beginPath(); ctx.moveTo(fx - 2.2, my - 1); ctx.lineTo(fx + 2.2, my - 1); ctx.lineTo(fx + s * 0.5, my + 7 + m * 3); ctx.closePath(); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(fx - 1.6, my + mh + 1); ctx.lineTo(fx + 1.6, my + mh + 1); ctx.lineTo(fx, my + mh - 4); ctx.closePath(); ctx.fill();
+      const fx = mx + s * 6;
+      ctx.beginPath(); ctx.moveTo(fx - 2.4, my - 1); ctx.lineTo(fx + 2.4, my - 1); ctx.lineTo(fx + s * 0.6, my + 8 + m * 3); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(fx - 1.7, my + mh + 1); ctx.lineTo(fx + 1.7, my + mh + 1); ctx.lineTo(fx, my + mh - 4); ctx.closePath(); ctx.fill();
     }
-    // 눈 (눈썹 그림자 + 발광)
-    ctx.fillStyle = C('#0a0406');
-    for (const s of [-1, 1]) {
-      const ex = hx + s * 9 + 2, ey = hy - 3;
-      ctx.beginPath(); ctx.ellipse(ex, ey, 6.5, 5, s * -0.25, 0, TAU); ctx.fill();
-    }
-    const ec = this.phase >= 2 ? '#ff5060' : '#ff2a3a', er = 3.2 + this.rage * 1.4;
-    for (const s of [-1, 1]) eye(ctx, hx + s * 9 + 2, hy - 3, er, ec, 0.9 + this.rage * 0.4);
-    // 눈썹 (분노 각)
-    ctx.strokeStyle = C('#060203'); ctx.lineWidth = 3; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(hx - 16, hy - 12); ctx.lineTo(hx - 3, hy - 7); ctx.moveTo(hx + 20, hy - 12); ctx.lineTo(hx + 7, hy - 7); ctx.stroke();
+    // 눈 (움푹한 그늘 + 발광)
+    ctx.fillStyle = C('#080305');
+    for (const s of [-1, 1]) { ctx.beginPath(); ctx.ellipse(hx + s * 8 + 3, hy - 3, 6.5, 5, s * -0.3, 0, TAU); ctx.fill(); }
+    const ec = this.phase >= 2 ? '#ff5060' : '#ff2a3a', er = 3.2 + this.rage * 1.3;
+    for (const s of [-1, 1]) eye(ctx, hx + s * 8 + 3, hy - 3, er, ec, 0.9 + this.rage * 0.4);
+    ctx.strokeStyle = C('#050102'); ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(hx - 13, hy - 12); ctx.lineTo(hx - 1, hy - 7); ctx.moveTo(hx + 21, hy - 12); ctx.lineTo(hx + 8, hy - 7); ctx.stroke();
   }
 }
 const _Q = new Float32Array(8);

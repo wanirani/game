@@ -388,7 +388,7 @@ export class SurvivalScene extends ArcadeRunScene {
     text(ctx, 'MULTI', x, y - 12, { size: 9, weight: 800, family: FONT.num, color: DIM, ow: 2 });
     if (this.phase === 'wave') {
       const left = this.queue.length + this.world.enemies().length;
-      text(ctx, `남은 적 ${left}`, vw / 2 - 120, y + 4, { size: 13, align: 'right', weight: 800, color: '#e8d8c0', ow: 3 });
+      text(ctx, `남은 적 ${left}`, vw / 2, 78, { size: 13, align: 'center', weight: 800, color: '#e8d8c0', ow: 3 });
     }
     if (this.call) this.bigCall(ctx, vw, vh, this.call.main, this.call.sub, this.call.color, this.call.t);
   }
@@ -446,8 +446,8 @@ export class ArcadePauseScene extends Scene {
     this.items = [
       ['계속하기', 'RESUME', () => this.game.pop()],
       ['설정', 'OPTIONS', () => this.game.push('options', {})],
-      ['리타이어 (결과 보기)', 'RETIRE', () => this.game.push('confirm', { title: '리타이어', message: '도전을 포기하고 지금까지의 기록으로 정산할까요?', yes: '리타이어', danger: true, onYes: () => { this.game.pop(); run.finish(false, 'retire'); } })],
-      ['아케이드 메뉴로', 'EXIT', () => this.game.push('confirm', { title: '나가기', message: '기록을 남기지 않고 아케이드 메뉴로 돌아갈까요?', yes: '나가기', danger: true, onYes: () => { run.done = true; endArcade(this.game); this.game.go('arcade', {}); } })],
+      ['리타이어 (결과 보기)', 'RETIRE', () => this.game.push('frontConfirm', { title: '리타이어', message: '도전을 포기하고 지금까지의 기록으로 정산할까요?', yes: '리타이어', danger: true, onYes: () => { this.game.pop(); run.finish(false, 'retire'); } })],
+      ['아케이드 메뉴로', 'EXIT', () => this.game.push('frontConfirm', { title: '나가기', message: '기록을 남기지 않고 아케이드 메뉴로 돌아갈까요?', yes: '나가기', danger: true, onYes: () => { run.done = true; endArcade(this.game); this.game.go('arcade', {}); } })],
     ];
     this.menu = new ListMenu(this.items.length);
     audio.duck?.(0.4, 0.3);
@@ -473,7 +473,7 @@ export class ArcadePauseScene extends Scene {
       menuItem(ctx, r, l, { selected: this.menu.index === i, sub: s, size: 19 });
     });
     const w2 = this.run.world;
-    text(ctx, `SCORE ${fmt(w2.run.score)}   ·   ${fmtClock(this.run.clock || w2.run.time)}`, vw / 2, vh - 40, { size: 14, align: 'center', weight: 800, family: FONT.num, color: '#d8c8b0', ow: 3 });
+    text(ctx, `SCORE ${fmt(w2.run.score)}   ·   ${fmtClock(this.run.clock || w2.run.time)}`, vw / 2, 190 + this.items.length * 58 + 24, { size: 14, align: 'center', weight: 800, family: FONT.num, color: '#d8c8b0', ow: 3 });
     ctx.restore();
   }
 }

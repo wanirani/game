@@ -21,7 +21,7 @@ import { MOVESETS } from '../src/data/movesets.js';
 const Q = new URLSearchParams(location.search);
 const LIVE = Q.has('anim');
 const BOX = Q.has('box');
-const SEC = (Q.get('sec') || 'chars,seq,attacks,classes,equip,npcs,rack,weapons').split(',');
+const SEC = (Q.get('sec') || 'chars,seq,sim,attacks,classes,equip,npcs,rack,weapons').split(',');
 const cv = document.getElementById('cv');
 const ctx = cv.getContext('2d');
 const W = 1280;
@@ -54,6 +54,13 @@ const ZOOM = Q.get('zoom');
 if (ZOOM === 'all') {
   header('6인 확대 (3.4배)');
   row(CHAR_ORDER.map((id) => ({ label: CHARACTERS[id].name, p: () => ent({ look: lookOf(id, Q.get('cls')), ch: CHARACTERS[id], anim: Q.get('a') || 'idle', vx: Q.get('a') === 'run' ? 280 : 0 }) })), 420, 390, 3.4);
+} else if (ZOOM && Q.get('move')) {
+  // 공격 확대: ?zoom=bran&move=up (ground0~3 | air0~2 | up | down | crouch | dash | charge) — 예비/판정 시작/중간/끝/회수 5프레임
+  const id = ZOOM, ch = CHARACTERS[id], ms = MOVESETS[ch.weaponType], key = Q.get('move');
+  const m = /^ground\d$/.test(key) ? ms.ground[+key[6]] : /^air\d$/.test(key) ? ms.air[+key[3]] : ms[key];
+  header(`${ch.name} · ${m.anim} 확대 (예비 → 판정 → 회수)`);
+  const ts = [m.hit[0] * 0.6, m.hit[0] + 0.005, (m.hit[0] + m.hit[1]) / 2, m.hit[1] - 0.005, Math.min(m.dur - 0.01, m.hit[1] + 0.05)];
+  row(ts.map((t) => ({ label: `t=${t.toFixed(3)}`, wide: true, p: () => ent({ look: lookOf(id, Q.get('cls')), ch, anim: m.anim, move: m, moveT: t, onGround: key !== 'down' && !key.startsWith('air'), muzzleT: 0.05 }) })), 620, 520, 2.4);
 } else if (ZOOM) {
   const id = ZOOM, ch = CHARACTERS[id];
   const cls = Q.get('cls');
@@ -84,6 +91,10 @@ if (SEC.includes('seq') && !ZOOM) {
   for (const [id, anim, ts, o] of SQ) {
     row(ts.map((at) => ({ label: `${CHARACTERS[id].name.split(' ')[0]} · ${anim} ${at.toFixed(2)}s`, p: () => ent({ look: lookOf(id), ch: CHARACTERS[id], anim, animT: at, ...o }) })), 210, 170, 1.5);
   }
+}
+if (SEC.includes('sim') && !ZOOM) {
+  header('물리 시뮬레이션 스트립: 달리기 → 점프 → 착지 → 정지 (망토·머리카락·스카프 2차 운동)');
+  for (const id of CHAR_ORDER) row([{ label: CHARACTERS[id].name, strip: id }], 1260, 200, 1.4);
 }
 if (SEC.includes('attacks') && !ZOOM) {
   for (const id of CHAR_ORDER) {
@@ -193,8 +204,41 @@ function drawRack(cell, time) {
   ctx.restore();
   ctx.fillStyle = '#c8b89a'; ctx.font = '12px sans-serif'; ctx.fillText(cell.label || '', x + 8, y + h - 8);
 }
+// 달리기→점프→착지 시뮬레이션 (60fps) — 6프레임마다 한 컷씩 가로로 찍음
+function drawStrip(cell) {
+  const { x, y, w, h, sc } = cell, id = cell.strip, ch = CHARACTERS[id];
+  ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x + 2, y + 2, w - 4, h - 4);
+  const footY = y + h - 22;
+  ctx.fillStyle = 'rgba(80,60,70,0.35)'; ctx.fillRect(x + 4, footY, w - 8, 2);
+  const e = ent({ look: lookOf(id), ch, anim: 'run', vx: 280 });
+  let wx = 0, wy = 0, vy = 0, ground = true, shot = 0, animT = 0, prev = 'run';
+  const N = 96;
+  for (let f = 0; f < N; f++) {
+    const dt = 1 / 60;
+    let anim = 'run', vx = 280;
+    if (f === 18) { vy = -780; ground = false; }
+    if (!ground) { vy += 2200 * dt; wy += vy * dt; if (wy >= 0) { wy = 0; vy = 0; ground = true; e.landT = 0.12; } }
+    if (f > 60) vx = Math.max(0, 280 - (f - 60) * 40);
+    wx += vx * dt;
+    if (!ground) anim = vy < 0 ? 'jump' : 'fall'; else if ((e.landT ?? 0) > 0) { anim = 'land'; e.landT -= dt; } else anim = vx > 30 ? 'run' : 'idle';
+    if (anim !== prev) { animT = 0; prev = anim; } else animT += dt;
+    Object.assign(e, { anim, animT, vx, vy, onGround: ground, t: 3 + f / 60, facing: 1 });
+    e.cx = wx; e.bottom = wy;
+    if (f % 6 === 5) {
+      ctx.save(); ctx.translate(x + 40 + shot * 78, footY + wy * sc * 0.5); ctx.scale(sc, sc); ctx.translate(-wx, -wy);
+      drawHero(ctx, e, null, {}); ctx.restore(); shot++;
+    } else {
+      sctx.setTransform(sc, 0, 0, sc, 450 - wx * sc, 700);
+      drawHero(sctx, e, null, {});
+    }
+  }
+  ctx.restore();
+  ctx.fillStyle = '#c8b89a'; ctx.font = '12px sans-serif'; ctx.fillText(cell.label || '', x + 8, y + h - 6);
+}
 function drawCell(cell, time, live) {
   if (cell.rack) { drawRack(cell, time); return; }
+  if (cell.strip) { drawStrip(cell); return; }
   const { x, y, w, h, sc } = cell;
   ctx.save();
   ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();

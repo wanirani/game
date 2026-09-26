@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<base href="../">
+<title>아이템 갤러리</title>
+<style>
+  html, body { margin: 0; background: #07040a; color: #d8ccb8; font-family: 'Noto Sans KR', sans-serif; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<script type="module">
+// 아이템 갤러리: 아이콘·희귀도 테두리 / 장비 외형을 입은 캐릭터 / 고유 장비 / 툴팁 설명
+// ?sec=icons,wear,uniques,tips
+import { drawHero } from './src/render/hero.js';
+import { drawSlot } from './src/render/icons.js';
+import { assets } from './src/core/assets.js';
+import { CHARACTERS, CHAR_ORDER } from './src/data/characters.js';
+import { composeLook } from './src/game/stats.js';
+import { ITEMS, makeItem, itemName, itemDescRich, RARITIES, UNIQUES, rollItem } from './src/data/items.js';
+
+const Q = new URLSearchParams(location.search);
+const SEC = (Q.get('sec') || 'icons,wear,uniques,tips').split(',');
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const W = 1280;
+const cells = [];
+let Y = 10;
+function header(text) { cells.push({ kind: 'h', text, y: Y }); Y += 30; }
+
+// 1) 아이콘
+const all = Object.values(ITEMS);
+if (SEC.includes('icons')) {
+  const groups = [['무기', (b) => b.slot === 'weapon' && !b.unique], ['방어구', (b) => ['head', 'body', 'cloak'].includes(b.slot) && !b.unique], ['장신구', (b) => b.slot === 'acc' && !b.unique], ['고유', (b) => b.unique], ['소모품·재료·중요', (b) => ['consumable', 'material', 'key'].includes(b.slot)]];
+  for (const [title, f] of groups) {
+    header(title);
+    const list = all.filter(f);
+    const S = 46, CW = 104, CH = 78;
+    let x = 10;
+    list.forEach((b, i) => {
+      if (x + CW > W) { x = 10; Y += CH; }
+      const r = b.unique ? b.rarity : ['weapon', 'head', 'body', 'cloak', 'acc'].includes(b.slot) ? i % 6 : 0;
+      const it = makeItem(b.id, { rarity: r, level: b.slot === 'weapon' ? [0, 3, 7, 10, 13, 15][i % 6] : 0, qty: b.stack ? (i % 3) * 7 + 1 : 1 });
+      cells.push({ kind: 'icon', x, y: Y, S, it, label: b.name });
+      x += CW;
+    });
+    Y += CH + 8;
+  }
+}
+function ent(o) {
+  return Object.assign({ facing: 1, anim: 'idle', animT: 0.5, move: null, moveT: 0, vx: 0, vy: 0, onGround: true, rig: {}, t: 3, stats: { reach: 0 }, charging: 0, muzzleT: 0 }, o);
+}
+function wear(charId, ids) {
+  const state = { inventory: [], heroes: {}, progress: { docs: [] } };
+  const hero = { charId, classId: CHARACTERS[charId].rootClass, level: 99, equip: {} };
+  state.heroes[charId] = hero;
+  for (const [id, lv, r] of ids) {
+    const it = makeItem(id, { level: lv ?? 0, rarity: r ?? 0 });
+    if (!it) continue;
+    state.inventory.push(it);
+    const slot = it.slot === 'acc' ? 'acc1' : it.slot;
+    hero.equip[slot] = it.uid;
+  }
+  return composeLook(state, hero);
+}
+function row(items, cw, ch, sc) {
+  let x = 10;
+  items.forEach((it) => { if (x + cw > W) { x = 10; Y += ch; } cells.push({ kind: 'c', x, y: Y, w: cw, h: ch, sc, ...it }); x += cw; });
+  Y += ch + 6;
+}
+// 2) 단계별 장비 세트를 입은 6인
+const WT = { kael: 'whip', sera: 'staff', victor: 'gun', bran: 'greatsword', lia: 'dagger', azel: 'sword' };
+if (SEC.includes('wear')) {
+  header('단계별 장비 세트 (머리·갑옷·망토·무기) — 단계 1~6');
+  for (const id of CHAR_ORDER) {
+    const ch = CHARACTERS[id];
+    row([1, 2, 3, 4, 5, 6].map((t) => {
+      const v = (id.charCodeAt(0) + t) % 2;
+      const n = t * 2 - 1 + v;
+      const set = [[`w_${WT[id]}_${n}`, [0, 3, 5, 7, 10, 13][t - 1], t - 1], [`a_head_${n}`], [`a_body_${n}`], [`a_cloak_${t * 2 - v}`], [t >= 4 ? `a_ring_${n}` : `a_amulet_${n}`]];
+      return { label: `${ch.name.split(' ')[0]} T${t}: ${ITEMS[`a_head_${n}`].name}/${ITEMS[`a_body_${n}`].name}`, p: () => ent({ look: wear(id, set), ch }) };
+    }), 210, 196, 1.6);
+  }
+}
+// 3) 고유 장비
+if (SEC.includes('uniques')) {
+  header('보스 고유 · 신화 장비 착용');
+  const U = UNIQUES.map((u) => ITEMS[u]);
+  const list = [];
+  for (const b of U) {
+    const cid = b.wtype ? Object.keys(WT).find((k) => WT[k] === b.wtype) : ['kael', 'sera', 'victor', 'bran', 'lia', 'azel'][list.length % 6];
+    const set = [[b.id, b.mythic ? 10 : 0]];
+    if (!b.wtype) set.push([`w_${WT[cid]}_${b.tier * 2}`, 0, 2]);
+    list.push({ label: b.name, p: () => ent({ look: wear(cid, set), ch: CHARACTERS[cid], anim: 'idle' }) });
+  }
+  row(list, 180, 190, 1.5);
+}
+// 4) 툴팁
+if (SEC.includes('tips')) {
+  header('설명(툴팁) 미리보기');
+  const samples = [makeItem('w_sword_3', { rarity: 3, level: 7 }), makeItem('u_dracula', { level: 12 }), rollItem(40, { rarity: 5, slot: 'body' }), makeItem('c_elixir'), makeItem('k_relic_3'), makeItem('m_stone_4', { qty: 12 })];
+  let x = 10;
+  for (const it of samples) { cells.push({ kind: 'tip', x, y: Y, it }); x += 316; if (x > W - 300) { x = 10; Y += 330; } }
+  Y += 330;
+}
+Y += 20;
+cv.width = W; cv.height = Y;
+
+function bg() {
+  const g = ctx.createLinearGradient(0, 0, 0, Y);
+  g.addColorStop(0, '#120a18'); g.addColorStop(0.5, '#1a0c14'); g.addColorStop(1, '#0a0810');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, Y);
+}
+const scratch = document.createElement('canvas'); scratch.width = 900; scratch.height = 900;
+const sctx = scratch.getContext('2d');
+function drawCell(cell) {
+  const { x, y, w, h, sc } = cell;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x + 2, y + 2, w - 4, h - 4);
+  const footX = x + w / 2, footY = y + h - 26;
+  ctx.fillStyle = 'rgba(80,60,70,0.35)'; ctx.fillRect(x + 4, footY, w - 8, 2);
+  if (!cell.ent) {
+    const e = cell.p(); cell.ent = e;
+    for (let f = 0; f < 50; f++) { e.t = 3 + f / 60; e.cx = 0; e.bottom = 0; sctx.setTransform(sc, 0, 0, sc, 450, 700); drawHero(sctx, e, null, {}); }
+  }
+  const e = cell.ent;
+  ctx.translate(footX, footY); ctx.scale(sc, sc);
+  e.cx = 0; e.bottom = 0;
+  drawHero(ctx, e, null, {});
+  ctx.restore();
+  ctx.fillStyle = '#c8b89a'; ctx.font = '11px sans-serif'; ctx.fillText(cell.label || '', x + 6, y + h - 8, w - 12);
+}
+function drawTip(c) {
+  const lines = itemDescRich(c.it);
+  const x = c.x, y = c.y, w = 300;
+  ctx.fillStyle = 'rgba(12,6,14,0.94)'; ctx.fillRect(x, y, w, 320);
+  ctx.strokeStyle = RARITIES[c.it.rarity].color; ctx.lineWidth = 1.5; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, 319);
+  drawSlot(ctx, x + 10, y + 10, 48, c.it);
+  ctx.font = '700 15px "Noto Sans KR", sans-serif'; ctx.fillStyle = RARITIES[c.it.rarity].color;
+  ctx.fillText(itemName(c.it, { full: true }), x + 66, y + 30, w - 76);
+  let yy = y + 76;
+  for (const l of lines) {
+    ctx.font = (l.flavor ? 'italic 400 ' : '500 ') + '12px "Noto Sans KR", sans-serif'; ctx.fillStyle = l.color;
+    // 간단 줄바꿈
+    let s = l.text, line = '';
+    for (const ch of s) { if (ctx.measureText(line + ch).width > w - 20) { ctx.fillText(line, x + 10, yy); yy += 16; line = ''; } line += ch; }
+    ctx.fillText(line, x + 10, yy); yy += 17;
+  }
+}
+function render() {
+  bg();
+  for (const c of cells) {
+    if (c.kind === 'h') { ctx.fillStyle = '#e8c872'; ctx.font = 'bold 17px serif'; ctx.fillText(c.text, 12, c.y + 21); continue; }
+    if (c.kind === 'icon') {
+      drawSlot(ctx, c.x + 29, c.y + 2, c.S, c.it);
+      ctx.fillStyle = RARITIES[c.it.rarity].color; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(c.label, c.x + 52, c.y + c.S + 16, 100); ctx.textAlign = 'left';
+      continue;
+    }
+    if (c.kind === 'tip') { drawTip(c); continue; }
+    drawCell(c);
+  }
+}
+const ids = [...new Set(all.map((b) => 'icons/' + b.icon))];
+assets.preload(ids).then(() => { render(); setTimeout(() => { render(); window.__ready = true; }, 300); });
+</script>
+</body>
+</html>

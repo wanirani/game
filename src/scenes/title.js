@@ -109,7 +109,7 @@ export class TitleScene extends Scene {
     this.sweep = -1; this.nextSweep = 2.2;
     if (!LOGO || !LOGO_FONT_OK) { LOGO_FONT_OK = fontsReady(); buildLogo(); }
   }
-  exit() {}
+  exit() { setPad(true); }
   buildMenu(index) {
     const hasSave = saves.list().some((s) => !s.empty);
     this.items = [

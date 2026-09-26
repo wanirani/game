@@ -14,6 +14,7 @@ import * as StageM from '../../data/stages.js';
 import * as ClassM from '../../data/classes.js';
 import * as CharM from '../../data/characters.js';
 import * as StatsM from '../../game/stats.js';
+import * as NpcM from '../../data/npcs.js';
 import { STAT_INFO } from '../../game/stats.js';
 
 const fn = (...cands) => cands.find((f) => typeof f === 'function') || null;
@@ -58,7 +59,7 @@ export function canEquipOf(state, hero, inst) {
 /** 장착. 장신구는 선택한 칸(acc1/acc2)에 끼운다. 반환: 실제 칸 */
 export function equipTo(state, hero, uid, slot) {
   const prev = { ...hero.equip };
-  const got = InvM.equipItem(state, hero, uid);
+  const got = InvM.equipItem(state, hero, uid, slot ?? null);
   if (got && slot && got !== slot && (slot === 'acc1' || slot === 'acc2') && (got === 'acc1' || got === 'acc2')) {
     hero.equip[got] = prev[got] === uid ? null : prev[got];
     hero.equip[slot] = uid;
@@ -69,6 +70,19 @@ export function equipTo(state, hero, uid, slot) {
 export function unequipOf(state, hero, slot) { InvM.unequip(state, hero, slot); }
 export function equippedBy(state, uid) { const f = fn(InvM.isEquipped); return f ? f(state, uid) : null; }
 export function hasSort() { return !!fn(InvM.sortInventory); }
+export function toggleLockOf(state, inst) {
+  const f = fn(InvM.toggleLock);
+  if (f) { const r = safe(() => f(state, inst.uid), null); if (typeof r === 'boolean') return r; }
+  inst.locked = !inst.locked;
+  return inst.locked;
+}
+/** 색이 있는 설명 줄 [{text,color,flavor}] (items.js itemDescRich) — 없으면 null */
+export function richDesc(inst) {
+  const f = fn(ItemsM.itemDescRich);
+  if (!f) return null;
+  const r = safe(() => f(inst), null);
+  return Array.isArray(r) ? r : null;
+}
 export function sortInv(state, mode) {
   const f = fn(InvM.sortInventory);
   if (f) return safe(() => { f(state, mode); return true; }, false);
@@ -85,7 +99,7 @@ export function useOf(state, hero, inst, world) {
   const f = fn(InvM.useItem);
   const player = world?.player ?? null;
   if (f) {
-    const r = safe(() => f(state, hero, inst.uid, { world, player, game: world?.game }), null);
+    const r = safe(() => f(state, hero, inst.uid, player), null);
     if (r && typeof r === 'object') return { ok: r.ok !== false, msg: r.msg ?? r.message ?? r.reason ?? '' };
     return { ok: !!r, msg: r ? '' : '지금은 사용할 수 없습니다.' };
   }
@@ -182,6 +196,20 @@ export function doneQuestIds(state) {
   const d = state.quests?.done;
   return Array.isArray(d) ? d.map((q) => (typeof q === 'string' ? q : q?.id)).filter(Boolean) : Object.keys(d || {});
 }
+
+export function questProg(state, qid) {
+  const f = fn(QuestG.questProgress);
+  return f ? safe(() => f(state, qid), { cur: 0, need: 1, done: false }) : { cur: 0, need: 1, done: false };
+}
+export function questStatusOf(state, qid) { const f = fn(QuestG.questStatus); return f ? safe(() => f(state, qid), 'active') : 'active'; }
+export function questReward(qid) { const f = fn(QuestG.rewardText); return f ? safe(() => f(qid), '') : ''; }
+export function availQuestIds(state) {
+  const f = fn(QuestG.availableQuests);
+  if (!f) return [];
+  const r = safe(() => f(state), []);
+  return Array.isArray(r) ? r.map((q) => (typeof q === 'string' ? q : q?.id)).filter(Boolean) : [];
+}
+export function npcName(id) { if (!id) return ''; if (id === 'board') return '의뢰 게시판'; return NpcM.NPCS?.[id]?.name ?? id; }
 
 // ───────────────────────── 기록물 / 도감 / 기타 ─────────────────────────
 export const DOCS = () => LoreM.DOCS || {};

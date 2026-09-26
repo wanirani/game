@@ -14,6 +14,7 @@ import { BOSSES } from '../../data/bosses.js';
 import { ITEMS, makeItem } from '../../data/items.js';
 import { SKILLS } from '../../data/skills.js';
 import { SCRIPTS } from '../../data/story.js';
+import * as QD from '../../data/quests.js';
 import { newGameState } from '../../game/state.js';
 import { addItem, addByBase } from '../../game/inventory.js';
 import {
@@ -99,8 +100,9 @@ export function buildArcadeState(cfg, charId) {
   } catch { /* 스킬 데이터 교체 중 */ }
   // 소모품
   try { addByBase(st, 'c_potion', P.potions); } catch { /* 무시 */ }
-  // 스토리 대사는 건너뜀
+  // 스토리 대사·퀘스트 알림은 건너뜀
   st.progress.seenScripts = Object.keys(SCRIPTS);
+  st.quests = { active: {}, done: Object.keys(QD.QUESTS ?? {}) };
   st.progress.unlocked = [...STAGE_ORDER];
   const d = getDiff(cfg.diff);
   st.lives = cfg.kind === 'survival' ? 1 : d.lives;
@@ -135,6 +137,7 @@ export class ArcadeScene extends Scene {
     this.selK = [0, 0, 0];
     this.optRects = []; this.arrowRects = [];
   }
+  exit() { setPad(true); }
   onResume() { setPad(false); }
   get kind() { return MODE_ORDER[this.modeMenu.index]; }
   options() {
@@ -209,7 +212,7 @@ export class ArcadeScene extends Scene {
     const ap = ease.outCubic(clamp(this.t / 0.5, 0, 1));
     heading(ctx, vw / 2, 46, 'ARCADE MODE', '도전할 모드를 선택하세요', { size: 30, alpha: ap });
     // 카드
-    const gap = 16, cw = Math.min(270, (vw - 80 - gap * 2) / 3), ch = 226, x0 = vw / 2 - (cw * 3 + gap * 2) / 2, y0 = 104;
+    const gap = 16, cw = Math.min(270, (vw - 80 - gap * 2) / 3), ch = 212, x0 = vw / 2 - (cw * 3 + gap * 2) / 2, y0 = 100;
     this.modeMenu.clearHits();
     MODE_ORDER.forEach((id, i) => {
       const k = ease.outCubic(clamp((this.t - i * 0.07) / 0.45, 0, 1));
@@ -219,7 +222,7 @@ export class ArcadeScene extends Scene {
     });
     // 옵션
     const opts = this.options();
-    const ow = Math.min(560, vw - 120), ox = vw / 2 - ow / 2, oy = y0 + ch + 20, oh = 36;
+    const ow = Math.min(560, vw - 120), ox = vw / 2 - ow / 2, oy = y0 + ch + 18, oh = 34;
     frame(ctx, ox - 12, oy - 8, ow + 24, opts.length * oh + 16, { accent: '#8a6a3a', corners: false, edge: 0.4, fill0: 'rgba(14,6,16,0.8)' });
     opts.forEach((o, i) => {
       const y = oy + i * oh, sel = this.row === i + 1;
@@ -228,9 +231,9 @@ export class ArcadeScene extends Scene {
         lg.addColorStop(0, 'rgba(179,18,46,0)'); lg.addColorStop(0.5, 'rgba(179,18,46,0.55)'); lg.addColorStop(1, 'rgba(179,18,46,0)');
         ctx.fillStyle = lg; ctx.fillRect(ox, y, ow, oh);
       }
-      text(ctx, o.label, ox + 16, y + 24, { size: 15, weight: 800, color: sel ? '#fff4dc' : '#c8b8a8', ow: 2 });
+      text(ctx, o.label, ox + 16, y + 23, { size: 15, weight: 800, color: sel ? '#fff4dc' : '#c8b8a8', ow: 2 });
       const vx = ox + ow * 0.62;
-      text(ctx, o.value, vx, y + 24, { size: 15, align: 'center', weight: 800, color: o.color ?? (sel ? GOLD : BONE), ow: 2 });
+      text(ctx, o.value, vx, y + 23, { size: 15, align: 'center', weight: 800, color: o.color ?? (sel ? GOLD : BONE), ow: 2 });
       const lr = { x: vx - 170, y: y - 2, w: 44, h: oh + 4 }, rr = { x: vx + 126, y: y - 2, w: 44, h: oh + 4 };
       for (const [r, d, s] of [[lr, -1, '◀'], [rr, 1, '▶']]) {
         text(ctx, s, r.x + r.w / 2, r.y + r.h / 2 + 6, { size: 16, align: 'center', color: sel ? GOLD : 'rgba(232,200,114,0.45)', ow: 2 });
@@ -238,7 +241,7 @@ export class ArcadeScene extends Scene {
       }
     });
     // 기록 + 시작
-    const by = oy + opts.length * oh + 18;
+    const by = oy + opts.length * oh + 14;
     const best = this.bestText();
     if (best) text(ctx, best, ox, by + 30, { size: 12, weight: 700, color: '#d8c0a0', ow: 2 });
     const br = { x: vw / 2 + ow / 2 - 200, y: by + 4, w: 200, h: 46 };
@@ -262,23 +265,23 @@ export class ArcadeScene extends Scene {
     ctx.globalAlpha = k * (0.7 + 0.3 * s);
     ctx.translate(r.x + r.w / 2, r.y + r.h / 2); ctx.scale(sc, sc); ctx.translate(-r.w / 2, -r.h / 2);
     frame(ctx, 0, 0, r.w, r.h, { accent: M.color, glow: s * (cur && this.row === 0 ? 1.2 : 0.5), edge: 0.4 + 0.6 * s });
-    const ar = { x: 6, y: 6, w: r.w - 12, h: 118 };
+    const ar = { x: 6, y: 6, w: r.w - 12, h: 112 };
     const img = assets.get(M.art);
     portraitIn(ctx, img, ar, { fy: M.art.startsWith('portraits') ? 0.18 : 0.5, zoom: 1 + 0.03 * s, fadeBottom: 0.55 });
     if (M.id === 'bossrush') {
       // 보스 초상화 몽타주
       const ids = ['b_nightwing', 'b_death', 'b_chaos'];
       ids.forEach((id, j) => {
-        const pr = { x: 6 + j * (ar.w / 3), y: 6, w: ar.w / 3, h: 118 };
+        const pr = { x: 6 + j * (ar.w / 3), y: 6, w: ar.w / 3, h: 112 };
         portraitIn(ctx, assets.get(`portraits/${id}`), pr, { fy: 0.15, zoom: 1.2, fadeBottom: 0.6, alpha: 0.95 });
       });
     }
     const lg = ctx.createLinearGradient(0, 0, r.w, 0);
     lg.addColorStop(0, rgba(M.color, 0)); lg.addColorStop(0.5, rgba(M.color, 0.7)); lg.addColorStop(1, rgba(M.color, 0));
-    ctx.fillStyle = lg; ctx.fillRect(6, 123, r.w - 12, 2);
-    text(ctx, M.eng, r.w / 2, 116, { size: 14, align: 'center', weight: 900, family: FONT.logo, color: M.color, ow: 4 });
-    text(ctx, M.name, r.w / 2, 150, { size: 22, align: 'center', weight: 800, family: FONT.title, color: '#fff4e0', ow: 4 });
-    wrap(ctx, M.desc, r.w - 28, 12, 500).slice(0, 4).forEach((l, i) => text(ctx, l, r.w / 2, 172 + i * 16, { size: 12, align: 'center', color: '#d0c4b4', ow: 2 }));
+    ctx.fillStyle = lg; ctx.fillRect(6, 117, r.w - 12, 2);
+    text(ctx, M.eng, r.w / 2, 110, { size: 14, align: 'center', weight: 900, family: FONT.logo, color: M.color, ow: 4 });
+    text(ctx, M.name, r.w / 2, 146, { size: 22, align: 'center', weight: 800, family: FONT.title, color: '#fff4e0', ow: 4 });
+    wrap(ctx, M.desc, r.w - 24, 12, 500).slice(0, 3).forEach((l, i) => text(ctx, l, r.w / 2, 170 + i * 15, { size: 12, align: 'center', color: '#d0c4b4', ow: 2 }));
     ctx.restore();
   }
 }

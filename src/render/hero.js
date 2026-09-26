@@ -492,18 +492,24 @@ function chain(key, E, ax, ay, n, seg, cfg, lim) {
     const wx = p.cx + fac * hs * ax, wy = p.bottom + hs * ay;
     if (ch.fresh || Math.abs(wx - ch.lx) + Math.abs(wy - ch.ly) > 110 * hs) {
       const a = cfg.rest ?? 0.2;
-      ch.reset(wx, wy, -fac * Math.sin(a), Math.cos(a)); ch.fresh = 0;
+      ch.reset(wx, wy, -fac * Math.sin(a), Math.cos(a)); ch.fresh = 0; ch.lx = wx; ch.ly = wy;
+    }
+    // 관성 전달: 앵커 이동량의 일부를 체인 전체에 그대로 옮겨 (속도는 보존) 지나친 끌림을 줄인다.
+    // 가로는 적게(달릴 때 뒤로 흩날림), 세로는 많이(낙하 중 천이 수직으로 솟는 현상 방지)
+    if (dt > 0 && ch.lx !== undefined) {
+      const kx = cfg.ix ?? 0.3, ky = cfg.iy ?? 0.72, mx0 = (wx - ch.lx) * kx, my0 = (wy - ch.ly) * ky;
+      for (let i = 1; i < n; i++) { const q = ch.pts[i]; q.x += mx0; q.px += mx0; q.y += my0; q.py += my0; }
     }
     ch.lx = wx; ch.ly = wy;
     if (dt > 0) {
-      const flut = cfg.flut ? Math.sin(G.t * 11 + n) * cfg.flut * (0.35 + Math.min(1, Math.abs(vx) / 260)) : 0;
+      const flut = cfg.flut ? Math.sin(G.t * 11 + n) * cfg.flut * (0.18 + Math.min(1, Math.abs(vx) / 260)) : 0;
       ch.update(dt, wx, wy, -fac * (cfg.push ?? 0), flut, p.onGround !== false ? p.bottom - 0.6 * hs : null);
       if (lim !== undefined && !P.rot && P.sx > 0.95) {
         const L = p.cx + fac * hs * lim;
         for (let i = 1; i < n; i++) { const q = ch.pts[i]; if ((q.x - L) * fac > 0) { q.x = L; } }
       }
       if (cfg.flut) {
-        const A = cfg.flut * 14 * (0.3 + Math.min(1.2, Math.abs(vx) / 260)) * dt * dt;
+        const A = cfg.flut * 14 * (0.14 + Math.min(1.2, Math.abs(vx) / 260)) * dt * dt;
         for (let i = 2; i < n; i++) { const q = ch.pts[i]; q.y += Math.sin(G.t * 13 - i * 0.9) * A * (i / n); }
       }
     }
@@ -1303,8 +1309,8 @@ function drawVeil(s, K, E) {
   const c = G.c;
   headPt(s, K, -4.2, -5.2); tx0(E.P, QX, QY);
   const n = 5;
-  const pts = chain('veil', E, TX, TY, n, 5.6, { g: 1300, d: 0.9, push: 220, rest: 0.35, curl: 0.08, flut: 70 }, TX + 2);
-  for (let i = 0; i < n; i++) WS[i] = lerp(4.4, 7.2, i / (n - 1));
+  const pts = chain('veil', E, TX, TY, n, 5.6, { g: 1400, d: 0.9, push: 150, rest: 0.3, curl: 0.06, flut: 60 }, TX + 2);
+  for (let i = 0; i < n; i++) WS[i] = lerp(4.2, 6.4, i / (n - 1));
   const vc = K.hgC || K.se;
   ribbonPath(c, pts, n, WS, false);
   c.fillStyle = ribGrad(pts, n, 6, vc, 1); c.fill(); outline(vc, 0.7);
@@ -1459,15 +1465,24 @@ function curveBack(c, X, Y, n) {
   for (let i = n - 2; i > 0; i--) c.quadraticCurveTo(X[i], Y[i], (X[i] + X[i - 1]) / 2, (Y[i] + Y[i - 1]) / 2);
   c.lineTo(X[0], Y[0]);
 }
-/** 초승달 궤적 3겹(색 번짐 → 밝은 심 → 흰 칼날선). 바깥=TRX1, 안쪽=TRX0/TRXM/TRXE. age: 오래된 끝을 투명하게 (현 방향 그라디언트) */
-function crescent(c, n, tc, a, age = true) {
+/** 초승달 궤적 3겹(색 번짐 → 밝은 심 → 흰 칼날선). 바깥=TRX1, 안쪽=TRX0/TRXM/TRXE.
+ *  오래된 끝은 투명하게: 기본은 현(시작→끝) 방향 선형 그라디언트, cone 이 있으면 원뿔(각도) 그라디언트 */
+const CONE = { on: false, a0: 0, span: 0 };
+function crescent(c, n, tc, a) {
   const core = mx(tc, '#ffffff', 0.3);
-  let gx0 = 0, gy0 = 0, gx1 = 0, gy1 = 0;
-  if (age) { gx0 = TRX1[0]; gy0 = TRY1[0]; gx1 = TRX1[n - 1]; gy1 = TRY1[n - 1]; if (Math.abs(gx1 - gx0) + Math.abs(gy1 - gy0) < 4) age = false; }
+  const gx0 = TRX1[0], gy0 = TRY1[0], gx1 = TRX1[n - 1], gy1 = TRY1[n - 1];
+  const cone = CONE.on && typeof c.createConicGradient === 'function';
+  const lin = !cone && Math.abs(gx1 - gx0) + Math.abs(gy1 - gy0) >= 4;
   const fill = (col, a0, am, a1) => {
-    if (!age) return ra(col, a1 * 0.8);
-    const g = c.createLinearGradient(gx0, gy0, gx1, gy1);
-    g.addColorStop(0, ra(col, a0)); g.addColorStop(0.55, ra(col, am)); g.addColorStop(1, ra(col, a1));
+    let g;
+    if (cone) {
+      const f = clamp(CONE.span / TAU, 0.05, 0.999);
+      g = c.createConicGradient(CONE.a0, 0, 0);
+      g.addColorStop(0, ra(col, a0)); g.addColorStop(f * 0.55, ra(col, am)); g.addColorStop(f, ra(col, a1)); g.addColorStop(Math.min(1, f + 0.001), ra(col, 0));
+    } else if (lin) {
+      g = c.createLinearGradient(gx0, gy0, gx1, gy1);
+      g.addColorStop(0, ra(col, a0)); g.addColorStop(0.55, ra(col, am)); g.addColorStop(1, ra(col, a1));
+    } else return ra(col, a1 * 0.8);
     return g;
   };
   c.fillStyle = fill(tc, 0, 0.3 * a, 0.62 * a);
@@ -1530,7 +1545,7 @@ function drawSpinTrail(E, K, p, mv, R, cy) {
   const span = Math.min(th + 0.25, 3.8), wmax = R * 0.42, n = TN;
   c.save(); c.globalCompositeOperation = 'lighter';
   c.translate(0, cy); c.scale(1, 0.3);
-  c.strokeStyle = ra(tc, 0.13 * fade); c.lineWidth = wmax * 0.55;
+  c.strokeStyle = ra(tc, 0.12 * fade); c.lineWidth = wmax * 0.35;
   c.beginPath(); c.arc(0, 0, R - wmax * 0.3, 0, TAU); c.stroke();
   for (let k = 0; k < n; k++) {
     const u = k / (n - 1), a = th - span * (1 - u), wk = wmax * Math.pow(u, 1.2), ca = Math.cos(a), sa = Math.sin(a);
@@ -1539,7 +1554,9 @@ function drawSpinTrail(E, K, p, mv, R, cy) {
     TRXM[k] = ca * (R - wk * 0.42); TRYM[k] = sa * (R - wk * 0.42);
     TRX0[k] = ca * (R - wk); TRY0[k] = sa * (R - wk);
   }
-  crescent(c, n, tc, fade * 1.1, false);
+  CONE.on = true; CONE.a0 = th - span; CONE.span = span;
+  crescent(c, n, tc, fade * 1.15);
+  CONE.on = false;
   c.restore();
 }
 /** 찌르기 섬광: 칼끝에서 판정 끝까지 뻗는 창 모양 빛 + 흰 심 */
@@ -1823,9 +1840,13 @@ export function drawHero(ctx, p, world, opts = {}) {
   if (mv && ST.lash) {
     const n = lashPoints(E, K, p, mv, ST.lash, ST.t, LASH);
     if (G.fx && ST.ph === 1) { // 채찍이 공기를 가르는 빛
+      const kf = 1 - ST.u * 0.6, gc = W.glowC || '#ffe8c0';
       c.save(); c.globalCompositeOperation = 'lighter'; c.lineCap = 'round'; c.lineJoin = 'round';
-      c.strokeStyle = ra(W.glowC || '#ffe8c0', 0.28 * (1 - ST.u * 0.6)); c.lineWidth = 5;
+      c.strokeStyle = ra(gc, 0.3 * kf); c.lineWidth = 7;
       c.beginPath(); c.moveTo(LASH[0], LASH[1]); for (let i = 1; i < n; i++) c.lineTo(LASH[i * 2], LASH[i * 2 + 1]); c.stroke();
+      const i0 = Math.floor(n * 0.3);
+      c.strokeStyle = ra('#ffffff', 0.45 * kf); c.lineWidth = 1.2;
+      c.beginPath(); c.moveTo(LASH[i0 * 2], LASH[i0 * 2 + 1]); for (let i = i0 + 1; i < n; i++) c.lineTo(LASH[i * 2], LASH[i * 2 + 1]); c.stroke();
       c.restore();
     }
     drawLash(W, LASH, n);
@@ -1833,7 +1854,10 @@ export function drawHero(ctx, p, world, opts = {}) {
       const e = (n - 1) * 2, k = 1 - (ST.u - 0.35) / 0.65, x = LASH[e], y = LASH[e + 1];
       glow(x, y, 16, W.glowC || '#fff4d0', 0.85 * k);
       c.save(); c.globalCompositeOperation = 'lighter'; c.strokeStyle = ra('#ffffff', 0.9 * k); c.lineWidth = 1;
-      c.beginPath(); for (let i = 0; i < 6; i++) { const a = i * 1.047 + ST.t * 9, r0 = 3, r1 = 7 + 5 * k; c.moveTo(x + Math.cos(a) * r0, y + Math.sin(a) * r0); c.lineTo(x + Math.cos(a) * r1, y + Math.sin(a) * r1); } c.stroke(); c.restore();
+      c.beginPath(); for (let i = 0; i < 6; i++) { const a = i * 1.047 + ST.t * 9, r0 = 3, r1 = 7 + 5 * k; c.moveTo(x + Math.cos(a) * r0, y + Math.sin(a) * r0); c.lineTo(x + Math.cos(a) * r1, y + Math.sin(a) * r1); } c.stroke();
+      const rr = 4 + 13 * (1 - k); // 파열 충격파 고리
+      c.strokeStyle = ra(W.glowC || '#fff4d0', 0.75 * k); c.lineWidth = 1.2; c.beginPath(); c.ellipse(x, y, rr, rr * 0.65, 0, 0, TAU); c.stroke();
+      c.restore();
     }
     if (ST.lash === 4) drawSpinTrail(E, K, p, mv, (mv.box ? mv.box.w * 0.5 * (1 + ((p.stats?.reach ?? 0) / 100)) : 110) / hs, mv.box ? (mv.box.y + mv.box.h / 2) / hs : -62);
   } else if (ST.charge > 0 && W.type === 'whip') {
@@ -1922,8 +1946,8 @@ function offCanvas(cv, W, H) {
 /** 본체 레이어를 BODYC 에 그리고, col 단색 복사본을 TINTC 에 만든다 */
 function bodyOffscreen(ctx, K, P, W, tt, hs, fac, col) {
   const m = ctx.getTransform();
-  const rs = Math.min(Math.hypot(m.a, m.b) || 1, 2.5);
-  const bw = 112 * hs, bt = 132 * hs, bb = 20 * hs;
+  const rs = Math.min(Math.hypot(m.a, m.b) || 1, 3);
+  const bw = 122 * hs, bt = 152 * hs, bb = 22 * hs;
   const Wd = Math.ceil(2 * bw * rs), Hd = Math.ceil((bt + bb) * rs);
   BODYC = offCanvas(BODYC, Wd, Hd); TINTC = offCanvas(TINTC, Wd, Hd);
   const oc = BODYC.getContext('2d');

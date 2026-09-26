@@ -20,6 +20,7 @@ import { startArcade, ARCADE_MODES } from './arcade.js';
 
 const WNAME = { whip: '채찍', sword: '장검', greatsword: '대검', dagger: '쌍단검', gun: '쌍권총', staff: '지팡이·성서' };
 const DNAME = { dash: '돌진 대시', mist: '안개 변신', roll: '구르기', blink: '순간이동' };
+const STAGE_BG = { kael: 'bg/s03_gate', sera: 'bg/s11_chapel', victor: 'bg/s01_village', bran: 'bg/s04_hall', lia: 'bg/s09_clocktower', azel: 'bg/s12_throne' };
 const ACCENT = { kael: '#e8c872', sera: '#fff2b0', victor: '#ffb060', bran: '#8ab0ff', lia: '#ff4a6a', azel: '#ff2a4a' };
 
 export class CharSelectScene extends Scene {
@@ -38,6 +39,7 @@ export class CharSelectScene extends Scene {
     this.selK = this.list.map((_, i) => (i === this.cur ? 1 : 0));
     for (const c of this.list) assets.get(c.ch.portrait);
   }
+  exit() { setPad(true); }
   onResume() { setPad(false); }
   get sel() { return this.list[this.menu.index]; }
   buildSeq() {
@@ -59,7 +61,7 @@ export class CharSelectScene extends Scene {
     // 미리보기 동작 순서
     this.seqT += dt;
     const step = this.seq[this.seqI];
-    const len = step.idle ?? (step.mv.dur + 0.06);
+    const len = step.idle ?? step.cast ?? (step.mv.dur + 0.06);
     if (this.seqT >= len) { this.seqT = 0; this.seqI = (this.seqI + 1) % this.seq.length; }
     if (this.pick) {
       this.pickT += dt;
@@ -135,10 +137,22 @@ export class CharSelectScene extends Scene {
     if (!c.open) {
       text(ctx, '?', pw * 0.42, vh * 0.42, { size: 150, align: 'center', weight: 900, family: FONT.logo, color: 'rgba(179,18,46,0.35)', ow: 0 });
     }
-    // ── 미리보기 (받침 마법진 + drawHero) ──
-    this.drawPreview(ctx, vw * 0.22, vh - 62, c, acc, t);
     shade(ctx, vw, vh, { top: 0.4, bottom: 0.2, vig: 0.6 });
     this.amb.draw(ctx, vw, vh, 'front', t);
+    // ── 전투 미리보기 창 (무대 배경 + 받침 마법진 + drawHero) ──
+    const win = { x: 16, y: vh - 196, w: Math.min(340, pw - 40), h: 180 };
+    frame(ctx, win.x - 4, win.y - 4, win.w + 8, win.h + 8, { accent: acc, glow: 0.6, corners: true, edge: 0.8 });
+    ctx.save();
+    ctx.beginPath(); ctx.rect(win.x, win.y, win.w, win.h); ctx.clip();
+    kenBurns(ctx, assets.get(STAGE_BG[c.id] ?? 'bg/s03_gate'), win.w, win.h, t, { z0: 1.1, z1: 1.2, period: 40, px: win.x, py: win.y, alpha: 1 });
+    ctx.fillStyle = 'rgba(6,2,10,0.5)'; ctx.fillRect(win.x, win.y, win.w, win.h);
+    const fl = ctx.createLinearGradient(0, win.y + win.h - 34, 0, win.y + win.h);
+    fl.addColorStop(0, 'rgba(20,10,14,0.2)'); fl.addColorStop(0.15, 'rgba(40,24,26,0.95)'); fl.addColorStop(1, 'rgba(10,4,8,1)');
+    ctx.fillStyle = fl; ctx.fillRect(win.x, win.y + win.h - 34, win.w, 34);
+    ctx.fillStyle = rgba(acc, 0.35); ctx.fillRect(win.x, win.y + win.h - 29, win.w, 1);
+    this.drawPreview(ctx, win.x + Math.min(90, win.w * 0.26), win.y + win.h - 28, c, acc, t, 1.45);
+    ctx.restore();
+    text(ctx, 'BATTLE PREVIEW', win.x + 10, win.y + 18, { size: 10, weight: 900, family: FONT.num, color: rgba(acc, 0.9), ow: 3 });
 
     // ── 정보 패널 (우측) ──
     const ix = pw + 10, iw = vw - ix - 24;
@@ -207,13 +221,13 @@ export class CharSelectScene extends Scene {
     }
   }
 
-  drawPreview(ctx, fx, fy, c, acc, t) {
+  drawPreview(ctx, fx, fy, c, acc, t, sc = 2) {
     const p = c.pup;
     const step = this.seq[this.seqI];
     // 받침 마법진
     ctx.save();
     ctx.translate(fx, fy);
-    ctx.scale(1, 0.28);
+    ctx.scale(sc / 2.2, 0.28 * sc / 2.2);
     ctx.globalCompositeOperation = 'lighter';
     ctx.globalAlpha = c.open ? 0.7 : 0.3;
     ctx.drawImage(glowSprite(acc), -130, -130, 260, 260);
@@ -238,7 +252,6 @@ export class CharSelectScene extends Scene {
     } else {
       p.move = null; p.moveT = 0; p.anim = 'idle'; p.animT = t; p.muzzleT = 0; p.charging = 0;
     }
-    const sc = Math.min(2.25, this.game.viewH / 240);
     const shakeX = this.shakeT > 0 ? Math.sin(t * 90) * 6 * this.shakeT : 0;
     if (this.shakeT > 0) this.shakeT -= 1 / 60;
     ctx.save();

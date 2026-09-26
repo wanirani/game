@@ -12,7 +12,7 @@ export const BOSSES_A = {
   },
   b_banshee: {
     id: 'b_banshee', name: '밴시 여왕', title: '통곡하는 묘지의 여왕', hp: 950, atk: 21, def: 2, res: 10, exp: 480, score: 24000,
-    size: { w: 78, h: 150 }, flying: true, contact: 0.7, material: 'ghost', weak: ['holy', 'fire'], resist: ['dark', 'ice'],
+    size: { w: 86, h: 178 }, flying: true, contact: 0.7, material: 'ghost', weak: ['holy', 'fire'], resist: ['dark', 'ice'],
     phases: [0.6, 0.3], music: 'boss', portrait: 'portraits/b_banshee', stageId: 's02', drops: ['u_banshee'],
     light: { r: 260, color: '#5affd0', i: 0.75 }, deathColor: '#8affe0', deathFx: 'soul',
     intro: '아아… 또 한 사람이 이 언덕에 묻히러 왔구나.',

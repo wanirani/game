@@ -22,6 +22,7 @@ const FILTERS = [
   { id: 'key', name: '열쇠', test: (b) => b.slot === 'key' },
 ];
 const EQUIP_KINDS = new Set(['weapon', 'head', 'body', 'cloak', 'acc']);
+const SORTS = [{ id: 'type', name: '종류순' }, { id: 'rarity', name: '희귀도순' }, { id: 'new', name: '최신순' }];
 
 export class InventoryTab extends Tab {
   constructor(m) {
@@ -30,7 +31,7 @@ export class InventoryTab extends Tab {
     this.sc = new Scroller();
     this.rev = -1; this.items = []; this.cols = 8; this.cell = 56; this.gap = 6;
     this.cellRects = []; this.filterRects = []; this.sortRect = null; this.btnRects = [];
-    this.flash = 0;
+    this.flash = 0; this.sortMode = 0;
   }
   onShow() { this.rebuild(); }
   rebuild() {
@@ -55,9 +56,11 @@ export class InventoryTab extends Tab {
     this.fi = k; this.i = 0; this.sc.reset(); this.rebuild(); audio.sfx('menu_move');
   }
   sort() {
-    D.sortInv(this.state);
+    const mode = SORTS[this.sortMode];
+    D.sortInv(this.state, mode.id);
     audio.sfx('menu_ok');
-    this.m.notify('아이템을 정렬했습니다');
+    this.m.notify(`${mode.name}으로 정렬했습니다`);
+    this.sortMode = (this.sortMode + 1) % SORTS.length;
     this.m.changed(); this.rebuild();
   }
   /** 선택 아이템에 가능한 행동 목록 */
@@ -101,9 +104,9 @@ export class InventoryTab extends Tab {
     this.m.changed(); this.rebuild();
   }
   lock(e) {
-    e.inst.locked = !e.inst.locked;
-    audio.sfx(e.inst.locked ? 'clang' : 'menu_move');
-    this.m.notify(e.inst.locked ? '아이템을 잠갔습니다' : '잠금을 풀었습니다', PAL.gold);
+    const on = D.toggleLockOf(this.state, e.inst);
+    audio.sfx(on ? 'clang' : 'menu_move');
+    this.m.notify(on ? '아이템을 잠갔습니다 — 판매·분해되지 않습니다' : '잠금을 풀었습니다', PAL.gold);
   }
   openActions(e) {
     const acts = this.actions(e);
@@ -154,7 +157,7 @@ export class InventoryTab extends Tab {
   }
   hints() {
     if (this.sub === 'filter') return [['←→', '분류'], ['↓', '목록']];
-    return [['↑↓←→', '고르기'], ['Z', '행동', '아이템을 한 번 더 터치하면 행동 메뉴'], ['A', '정렬'], ['C', '잠금']];
+    return [['↑↓←→', '고르기'], ['Z', '행동', '아이템을 한 번 더 터치하면 행동 메뉴'], ['A', SORTS[this.sortMode].name], ['C', '잠금']];
   }
 
   render(ctx, A) {
@@ -185,6 +188,7 @@ export class InventoryTab extends Tab {
     const sw = 70;
     this.sortRect = { x: A.x + GW - sw - 12, y: fy, w: sw, h: fh };
     gbutton(ctx, this.sortRect, '정렬', { icon: 'sort', size: 13, hot: this.m.ges.over(this.sortRect), t });
+    if (this.m.ges.over(this.sortRect)) text(ctx, SORTS[this.sortMode].name, this.sortRect.x + sw / 2, this.sortRect.y + fh + 14, { size: 11, align: 'center', color: PAL.gold, weight: 700 });
     const cnt = `${this.state.inventory.length} / ${D.INV_LIMIT()}`;
     if (fx < this.sortRect.x - measure(ctx, cnt, 12, 700) - 16) text(ctx, cnt, this.sortRect.x - 10, fy + fh / 2 + 5, { size: 12, align: 'right', weight: 700, family: FONT.num, color: PAL.dim });
     divider(ctx, A.x + 12, fy + fh + 8, GW - 24, { center: false, a: 0.5 });
@@ -239,64 +243,71 @@ export class InventoryTab extends Tab {
     if (!e) { text(ctx, '아이템을 고르세요', x + w / 2, y + h / 2, { size: 14, align: 'center', color: PAL.faint }); return; }
     const { inst, b } = e;
     const rc = RARITY_COL[inst.rarity ?? 0];
-    // 머리: 큰 아이콘 + 이름
+    const equipKind = EQUIP_KINDS.has(b.slot);
+    const rich = D.richDesc(inst);
+    // 머리: 큰 아이콘 + 이름 + 분류
     const s = 76;
     glow(ctx, x + 18 + s / 2, y + 18 + s / 2, s * 0.95, rc, 0.28 + 0.08 * Math.sin(t * 3) + this.flash * 0.5);
     drawSlot(ctx, x + 18, y + 18, s, e.v);
+    if (inst.locked) { ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillRect(x + 20, y + s - 2, 18, 18); glyph(ctx, 'lock', x + 29, y + s + 7, 12, PAL.gold, 1.4); }
     const tx = x + 30 + s, tw = w - (tx - x) - 14;
     const nameLines = wrapC(ctx, D.nameOf(inst), tw, 17, 800, FONT.title).slice(0, 2);
     nameLines.forEach((l, k) => text(ctx, l, tx, y + 38 + k * 21, { size: 17, weight: 800, family: FONT.title, color: rc, ow: 3 }));
     let py = y + 38 + nameLines.length * 21 - 6;
-    const kind = b.slot === 'weapon' ? `무기 · ${D.WTYPE_NAME[b.wtype] ?? ''}` : D.SLOT_KIND[b.slot] ?? '';
-    let px = tx;
-    if (EQUIP_KINDS.has(b.slot)) px += pill(ctx, D.rarityName(inst.rarity ?? 0), px, py, { color: rc, size: 11, h: 18 }) + 6;
-    text(ctx, kind, px, py + 13, { size: 12, weight: 700, color: PAL.dim });
-    if (b.tier && EQUIP_KINDS.has(b.slot)) text(ctx, `${b.tier}등급`, x + w - 14, y + 22, { size: 11, align: 'right', weight: 700, family: FONT.num, color: PAL.dim });
-    // 요구/장착
-    let cy = y + 18 + s + 18;
-    divider(ctx, x + 14, cy, w - 28);
-    cy += 22;
-    const hero = this.hero;
-    if (EQUIP_KINDS.has(b.slot)) {
-      const lvOk = (b.lvReq ?? 1) <= hero.level;
-      text(ctx, `요구 레벨 ${b.lvReq ?? 1}`, x + 18, cy, { size: 12, weight: 700, color: lvOk ? PAL.text : PAL.bad });
-      if (e.by) text(ctx, `${D.CHARACTERS()[e.by]?.name?.split(' ')[0] ?? ''} 장착 중`, x + w - 16, cy, { size: 12, align: 'right', weight: 800, color: PAL.gold });
-      else if (b.slot === 'weapon' && b.wtype && !(D.CHARACTERS()[hero.charId]?.weaponTypes ?? []).includes(b.wtype)) text(ctx, '다룰 수 없는 무기', x + w - 16, cy, { size: 12, align: 'right', weight: 700, color: PAL.bad });
-      cy += 10;
-      // 능력치
-      const st = D.statsOf(inst);
-      const keys = Object.keys(st).filter((k) => Math.abs(st[k]) >= 0.05);
-      const affix = new Set((inst.affixes || []).map((a) => a.stat));
-      keys.forEach((k) => {
-        cy += 19;
-        text(ctx, D.STAT_INFO[k]?.name ?? k, x + 22, cy, { size: 13, weight: 600, color: affix.has(k) ? '#9ac8ff' : PAL.text, ow: 2 });
-        text(ctx, `+${fmtStatVal(k, st[k])}`, x + w - 18, cy, { size: 14, align: 'right', weight: 800, family: FONT.num, color: PAL.bone, ow: 3 });
-      });
-      if (b.element) { cy += 19; text(ctx, '속성', x + 22, cy, { size: 13, weight: 600, color: PAL.text }); text(ctx, ({ holy: '신성', fire: '화염', ice: '냉기', dark: '암흑', thunder: '번개' })[b.element] ?? b.element, x + w - 18, cy, { size: 13, align: 'right', weight: 800, color: '#ffd9a0' }); }
-      if ((inst.affixes || []).length) { cy += 16; text(ctx, `추가 옵션 ${inst.affixes.length}개 (파란색)`, x + 22, cy, { size: 11, color: '#7aa8e8', weight: 600 }); }
-      cy += 10;
-    } else if (inst.qty > 1 || b.stack) {
-      text(ctx, `보유 수량 ${inst.qty ?? 1}${b.stack ? ` / ${b.stack}` : ''}`, x + 18, cy, { size: 12, weight: 700, color: PAL.text });
-      cy += 6;
+    let body = rich;
+    if (rich && rich.length) {
+      text(ctx, rich[0].text, tx, py + 12, { size: 12, weight: 700, color: rich[0].color || PAL.dim, ow: 2, maxWidth: tw });
+      body = rich.slice(1);
+    } else {
+      const kind = b.slot === 'weapon' ? `무기 · ${D.WTYPE_NAME[b.wtype] ?? ''}` : D.SLOT_KIND[b.slot] ?? '';
+      let px = tx;
+      if (equipKind) px += pill(ctx, D.rarityName(inst.rarity ?? 0), px, py, { color: rc, size: 11, h: 18 }) + 6;
+      text(ctx, kind, px, py + 13, { size: 12, weight: 700, color: PAL.dim });
     }
-    // 설명
-    const lines = D.descLines(inst);
-    const btnH = 36, footer = y + h - btnH - 50;
-    cy += 18;
+    if ((inst.qty ?? 1) > 1) text(ctx, `× ${inst.qty}`, x + w - 16, y + 24, { size: 14, align: 'right', weight: 800, family: FONT.num, color: PAL.bone });
+    let cy = y + 18 + s + 16;
+    divider(ctx, x + 14, cy, w - 28);
+    cy += 8;
+    // 장착 상태 / 경고
+    const hero = this.hero;
+    const warn = [];
+    if (e.by) warn.push({ text: `${D.CHARACTERS()[e.by]?.name ?? ''} 장착 중`, color: PAL.gold });
+    if (equipKind && !e.by) { const chk = D.canEquipOf(this.state, hero, inst); if (!chk.ok) warn.push({ text: chk.reason, color: PAL.bad }); }
+    for (const wl of warn) { cy += 18; text(ctx, wl.text, x + 18, cy, { size: 12, weight: 800, color: wl.color }); }
+    // 본문
+    const btnH = 36, footer = y + h - btnH - 40;
+    cy += 8;
+    const lines = body ?? this.fallbackLines(inst, b);
+    let flavorDone = false;
     for (const l of lines) {
-      if (cy > footer - 14) break;
-      cy += para(ctx, l.text, x + 18, cy, w - 36, { size: 13, color: l.color || '#d8ccb8', lh: 1.5, max: Math.max(1, Math.floor((footer - cy) / 19)) });
+      if (cy > footer - 16) break;
+      if (l.flavor && !flavorDone) { cy += 4; divider(ctx, x + 18, cy, w - 36, { center: false, a: 0.35 }); cy += 8; flavorDone = true; }
+      const size = l.flavor ? 12 : 13;
+      const maxL = Math.max(1, Math.floor((footer - cy) / (size * 1.5)));
+      cy += 14 + para(ctx, l.text, x + 18, cy + 12, w - 36, { size, color: l.color || (l.flavor ? '#b8a88a' : PAL.text), lh: 1.5, max: maxL, weight: l.flavor ? 500 : 600 }) - size * 1.5 + 4;
     }
     // 바닥: 판매가 + 버튼
     const sell = D.sellOf(inst);
-    text(ctx, inst.locked ? '잠김 · 판매 불가' : `판매가 ${sell.toLocaleString('ko-KR')} G`, x + 18, y + h - btnH - 24, { size: 12, weight: 700, color: inst.locked ? PAL.gold : PAL.dim });
+    const sellTxt = b.slot === 'key' ? '판매 불가' : inst.locked ? '잠김 · 판매·분해 불가' : `판매가 ${sell.toLocaleString('ko-KR')} G`;
+    text(ctx, sellTxt, x + 18, y + h - btnH - 20, { size: 12, weight: 700, color: inst.locked ? PAL.gold : PAL.dim });
     const acts = this.actions(e);
     const bw = (w - 28 - (acts.length - 1) * 6) / Math.max(1, acts.length);
     acts.forEach((a, k) => {
       const r = { x: x + 14 + k * (bw + 6), y: y + h - btnH - 12, w: bw, h: btnH, act: a };
       if (!a.disabled) this.btnRects.push(r);
       const label = a.id === 'lock' ? (inst.locked ? '잠금 해제' : '잠금') : a.label.replace('하기', '');
-      gbutton(ctx, r, label, { hot: k === 0 && !a.disabled, disabled: a.disabled, size: 13, t, icon: a.id === 'lock' ? 'lock' : null });
+      gbutton(ctx, r, label, { hot: k === 0 && !a.disabled && acts.length > 1, disabled: a.disabled, size: 13, t, icon: a.id === 'lock' ? 'lock' : null });
     });
+  }
+  /** items.js 설명 함수가 없을 때의 대체 설명 */
+  fallbackLines(inst, b) {
+    const out = [];
+    if (EQUIP_KINDS.has(b.slot)) {
+      out.push({ text: `요구 레벨 ${b.lvReq ?? 1}`, color: PAL.dim });
+      const st = D.statsOf(inst);
+      for (const k in st) if (Math.abs(st[k]) >= 0.05) out.push({ text: `${D.STAT_INFO[k]?.name ?? k} +${fmtStatVal(k, st[k])}`, color: PAL.bone });
+    }
+    for (const l of D.descLines(inst)) out.push({ ...l, flavor: true });
+    return out;
   }
 }

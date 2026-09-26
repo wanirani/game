@@ -201,7 +201,7 @@ export class EquipTab extends Tab {
     // ── 가운데: 영웅 미리보기 + 요약 ──
     const MX = A.x + LW + 12;
     frame(ctx, MX, A.y, MW, A.h);
-    const sh = Math.round(A.h * 0.56);
+    const sh = Math.round(A.h * 0.52);
     const accent = accentOf(look);
     this.stage.draw(ctx, MX + 8, A.y + 8, MW - 16, sh, t, this.game.scale, accent);
     const scale = clamp((sh - 46) / 92, 1.5, 2.1);
@@ -209,17 +209,18 @@ export class EquipTab extends Tab {
     this.view.draw(ctx, MX + MW / 2, A.y + 8 + sh - 22, scale);
     ctx.strokeStyle = 'rgba(200,160,90,0.35)'; ctx.lineWidth = 1; ctx.strokeRect(MX + 8.5, A.y + 8.5, MW - 17, sh - 1);
     if (pv) pill(ctx, '미리보기', MX + MW / 2, A.y + 16, { align: 'center', color: PAL.goldHi, bg: 'rgba(110,14,34,0.92)', size: 11, h: 18 });
-    let y = A.y + sh + 34;
+    let y = A.y + sh + 32;
     heading(ctx, '주요 능력치', MX + 14, y, MW - 28, { size: 14 });
-    y += 10;
+    y += 8;
+    const rowS = Math.min(20, (A.y + A.h - 10 - y) / SUMMARY.length);
     const ns = pv?.stats || cur.stats;
     for (const k of SUMMARY) {
       const a = cur.stats[k] ?? 0, b = ns[k] ?? 0, d = b - a;
       text(ctx, D.STAT_INFO[k]?.name ?? k, MX + 18, y + 15, { size: 12, weight: 600, color: PAL.text, ow: 2 });
       const col = Math.abs(d) < 0.05 ? PAL.bone : d > 0 ? PAL.good : PAL.bad;
       text(ctx, fmtStatVal(k, b), MX + MW - 18, y + 15, { size: 13, align: 'right', weight: 800, family: FONT.num, color: col, ow: 3 });
-      if (Math.abs(d) >= 0.05) text(ctx, `${d > 0 ? '▲' : '▼'}`, MX + MW - 18 - 44, y + 14, { size: 9, align: 'right', color: col, ow: 2 });
-      y += 20;
+      if (Math.abs(d) >= 0.05) text(ctx, `${d > 0 ? '▲' : '▼'} ${d > 0 ? '+' : '-'}${fmtStatVal(k, Math.abs(d))}`, MX + MW - 18 - 48, y + 14, { size: 10, align: 'right', weight: 700, color: col, ow: 2 });
+      y += rowS;
     }
 
     // ── 오른쪽: 후보 목록 + 비교 ──
@@ -278,7 +279,7 @@ export class EquipTab extends Tab {
     text(ctx, '능력치 변화', RX + 18, cy + 22, { size: 13, weight: 800, color: PAL.gold, family: FONT.title });
     if (!diffs.length) text(ctx, hr.here ? '현재 장착 중인 장비입니다' : '변화 없음', RX + 18, cy + 46, { size: 13, color: PAL.dim });
     const cw = (RW - 36) / 2;
-    diffs.slice(0, 8).forEach(([k, d], i) => {
+    diffs.slice(0, canDoN(hr) ? 6 : 8).forEach(([k, d], i) => {
       const x = RX + 18 + (i % 2) * cw, yy = cy + 44 + Math.floor(i / 2) * 19;
       const col = d > 0 ? PAL.good : PAL.bad;
       text(ctx, D.STAT_INFO[k]?.name ?? k, x, yy, { size: 12, weight: 600, color: PAL.text, ow: 2 });
@@ -286,10 +287,11 @@ export class EquipTab extends Tab {
     });
     const canDo = hr.unequip || (hr.ok && !hr.here);
     if (canDo) {
-      const bw = 128, bh = 32;
-      this.btnRect = { x: RX + RW - bw - 14, y: cy + 12 - 2, w: bw, h: bh - 4 };
+      const bw = 124, bh = 30;
+      this.btnRect = { x: RX + RW - bw - 14, y: cy + cmpH - bh - 12, w: bw, h: bh };
       gbutton(ctx, this.btnRect, hr.unequip ? '해제하기' : '장착하기', { hot: true, t, size: 13 });
     }
   }
 }
 const input_rowH = () => 50;
+const canDoN = (hr) => hr && (hr.unequip || (hr.ok && !hr.here));

@@ -259,7 +259,7 @@ export class Hitbox extends Entity {
   constructor(o) {
     super(o.x, o.y, o.w, o.h);
     this.kind = 'hitbox';
-    Object.assign(this, { team: 'player', life: 0.1, draw: null, delay: 0 }, o);
+    Object.assign(this, { team: 'player', life: 0.1, delay: 0 }, o); // 주의: draw 를 인스턴스 속성으로 덮으면 draw() 메서드가 가려져 렌더 오류
     this.attack = { team: this.team, hitId: 'h' + (++_pid), tags: ['skill'], dir: 1, ...(o.attack || {}) };
     this.maxLife = this.life;
     this.z = 6;

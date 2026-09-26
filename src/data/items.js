@@ -16,6 +16,7 @@
 //  rollRarity(level, opts), rollAffixes(base, rarity), tierForLevel(lv)
 //  itemStats(inst, {noAffix}) / itemName(inst, {full}) / itemDesc(inst) → string[] / itemDescRich(inst) → [{text,color}]
 //  itemColor(inst), buyPrice(baseId, rarity), sellPrice(inst), isEquipment(inst|base), isStackable(inst|base), fmtStat(stat, v)
+//  baseIdFor(slot, tier, {wtype, variant}) → 해당 단계 베이스 id (무기·방어구 id 번호는 1~12, 단계 = ceil(번호/2))
 import { uid } from '../core/math.js';
 
 // ───────────────────────────── 희귀도 ─────────────────────────────
@@ -294,8 +295,8 @@ for (const [id, name, icon, t, stats, aura, desc] of ACC_TABLE) {
 // ───────────────────────────── 고유 아이템 (보스 · 신화 무기) ─────────────────────────────
 // 고유 아이템은 능력치가 고정(희귀도 배율 미적용, 무작위 옵션 없음)이며 effect 문구로 특수 효과를 설명한다.
 const UNIQUE_LIST = [
-  { id: 'u_nightwing', name: '나이트윙의 박쥐날개', slot: 'cloak', tier: 1, icon: 'cloak_4', lvReq: 3, rarity: 4, boss: 'b_nightwing',
-    stats: { def: 3, res: 5, agi: 3, moveSpd: 6, airJumps: 1 }, visual: { cape: 'tattered', color: '#1a1420', color2: '#5a0a2a', len: 1.2 },
+  { id: 'u_nightwing', name: '나이트윙의 박쥐날개', slot: 'cloak', tier: 1, icon: 'cloak_6', lvReq: 3, rarity: 4, boss: 'b_nightwing',
+    stats: { def: 3, res: 5, agi: 3, moveSpd: 6, airJumps: 1 }, visual: { cape: 'tattered', color: '#240a14', color2: '#7a0a1e', len: 1.2 },
     effect: '박쥐의 날개 — 공중 점프 횟수 +1', desc: '밤하늘의 박쥐왕 나이트윙의 날개막으로 지은 망토. 두르면 몸이 허공을 박찬다.' },
   { id: 'u_banshee', name: '밴시의 눈물', slot: 'acc', tier: 2, icon: 'amulet_2', lvReq: 5, rarity: 4, boss: 'b_banshee',
     stats: { mag: 6, res: 6, mp: 25, mpRegen: 0.8, resDark: 15 }, visual: { aura: { color: '#9fd8ff', type: 'ice' } },
@@ -496,6 +497,15 @@ export function isEquipment(x) { const b = baseOf(x); return !!b && EQUIP_BASE_S
 export function isStackable(x) { return !!baseOf(x)?.stack; }
 export function itemColor(inst) { return RARITIES[clampR(inst?.rarity)]?.color ?? RARITIES[0].color; }
 export function tierForLevel(lv = 1) { let t = 1; for (let i = 0; i < 6; i++) if (lv >= TIER_LV[i]) t = i + 1; return t; }
+/** 단계(1~6)에 해당하는 일반 베이스 id. 무기·방어구는 단계당 2종(variant 0=표준, 1=상위형) — 번호 = 단계×2-1+variant */
+export function baseIdFor(slot, tier, { wtype = null, variant = 1 } = {}) {
+  const t = Math.max(1, Math.min(6, tier | 0)), n = t * 2 - 1 + (variant ? 1 : 0);
+  if (slot === 'weapon') return `w_${wtype || 'whip'}_${n}`;
+  if (slot === 'body') return `a_body_${n}`;
+  if (slot === 'head' || slot === 'cloak') return `a_${slot}_${n}`;
+  if (slot === 'acc') return `a_${variant ? 'amulet' : 'ring'}_${n}`;
+  return null;
+}
 function clampR(r) { r = r | 0; return r < 0 ? 0 : r > 5 ? 5 : r; }
 
 // 슬롯별 일반 베이스 풀 (고유 제외)
