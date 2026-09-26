@@ -29,6 +29,7 @@ import { createBackground } from '../render/background.js';
 import { TileRenderer } from '../render/tiles.js';
 import { drawHero } from '../render/hero.js';
 import { createBoss } from './bosses/index.js';
+import { SCRIPTS } from '../data/story.js';
 
 export const STYLE_RANKS = [
   { n: 0, r: '', c: '#fff' }, { n: 5, r: 'D', c: '#a0a0a0' }, { n: 10, r: 'C', c: '#7ee07e' }, { n: 20, r: 'B', c: '#5aa8ff' },
@@ -618,9 +619,17 @@ export class World {
     this.boss = createBoss(this, id, bx, by);
     this.add(this.boss);
     audio.stopMusic(0.5);
-    audio.sfx('warning');
     this.cutscene = true;
-    this.game.push('bossIntro', { bossId: id, world: this, onDone: () => { this.cutscene = false; audio.music(this.boss?.def?.music ?? 'boss'); } });
+    const intro = () => {
+      this.cutscene = true;
+      audio.sfx('warning');
+      this.game.push('bossIntro', { bossId: id, world: this, onDone: () => { this.cutscene = false; audio.music(this.boss?.def?.music ?? 'boss'); } });
+    };
+    const preId = `${id}_pre`;
+    if (SCRIPTS[preId] && !this.state.progress.seenScripts.includes(preId) && this.mode === 'story') {
+      this.state.progress.seenScripts.push(preId);
+      this.game.push('dialogue', { script: preId, world: this, onEnd: intro });
+    } else intro();
   }
   onBossDefeated(boss) {
     if (this.cleared) return;

@@ -76,7 +76,7 @@ export class ResultsScene extends Scene {
     this.left = true;
     const stage = this.world.stage;
     const next = this.game.registry.hub ? 'hub' : 'title';
-    if (stage.outro && this.game.registry.story) this.game.go('story', { script: stage.outro, then: next, bg: stage.bg });
+    if (stage.outro && this.game.registry.story) this.game.go('story', { script: stage.outro, then: stage.id === 's12' && this.game.registry.ending ? 'ending' : next, thenParams: { from: stage.id }, bg: stage.bg });
     else if (stage.id === 's12' && this.game.registry.ending) this.game.go('ending', {});
     else this.game.go(next, { from: stage.id });
   }
