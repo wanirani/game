@@ -24,6 +24,12 @@ export class Dullahan extends ABoss {
     ];
     return [{ x: this.x + 10, y: this.y + 4, w: this.w - 20, h: this.h - 6 }];
   }
+  /** 플레이어 공격 판정: 기승 중에는 기사+말 몸통 전체 (다리 제외) */
+  hurtbox() {
+    if (!this.mounted) return this.hurtboxes()[0];
+    const S = this.S;
+    return { x: this.x + 14, y: this.bottom - 180 * S, w: this.w - 28, h: 116 * S };
+  }
   onIntro() { audio.sfx('boss_roar', { pitch: 0.7 }); this.rear = 0.6; this.skullUp = 1; }
   moves() {
     const ph = this.phase;

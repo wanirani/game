@@ -15,7 +15,11 @@ export class Chimera extends ABoss {
     this.crouch = 0; this.gait = 0; this.roar = 0; this.goatUp = 0; this.goatGlow = 0; this.tailA = 0; this.tailCoil = 0; this.snakeOpen = 0; this.claw = 0; this.lean = 0;
     this.snakeCool = 3; this.enraged = false; this.tubesBroken = false; this.fury = 0;
   }
-  hurtboxes() { return [{ x: this.x + 18, y: this.y + 20, w: this.w - 36, h: this.h - 22 }]; }
+  hurtboxes() {
+    // 사자 머리가 몸 앞으로 튀어나와 있으므로 앞쪽으로 치우친 판정
+    const x0 = this.facing > 0 ? this.cx - 96 * S : this.cx - 156 * S;
+    return [{ x: x0, y: this.bottom - 150 * S, w: 252 * S, h: 138 * S }];
+  }
   onIntro() { audio.sfx('boss_roar', { pitch: 0.7 }); this.roar = 1; this.goatUp = 1; }
   moves() {
     const p = this.player, far = p && Math.abs(p.cx - this.cx) > 380, behind = p && Math.sign(p.cx - this.cx) !== this.facing;
