@@ -3,7 +3,7 @@ import { TILE } from '../core/game.js';
 import { Camera } from '../core/camera.js';
 import { Particles } from '../core/particles.js';
 import { Lighting } from '../core/lighting.js';
-import { T, Debris } from '../core/physics.js';
+import { T, Debris, isSolidType } from '../core/physics.js';
 import { rand, randi, chance, clamp, overlap, TAU, pick } from '../core/math.js';
 import { audio } from '../core/audio.js';
 import { bus } from '../core/events.js';
@@ -49,10 +49,9 @@ export class World {
     this.diff = getDiff(this.state.difficulty);
     this.hero = currentHero(this.state);
     this.camera = new Camera(game.viewW, game.viewH);
-    this.fx = new Particles(game.settings?.quality === 'low' ? 600 : 1400);
-    this.fx.quality = game.settings?.quality === 'low' ? 0.5 : game.settings?.quality === 'medium' ? 0.75 : 1;
+    this.fx = new Particles(1400);
     this.lighting = new Lighting();
-    this.lighting.res = game.settings?.quality === 'low' ? 0.33 : 0.5;
+    this.applyQuality();
     this.entities = []; this.platforms = []; this.debrisList = []; this.debugRects = [];
     this.time = 0; this.hitstop = 0; this.slowmo = 0; this.timeStop = 0;
     this.cutscene = false; this.inputLock = false; this.transitioning = false;
@@ -71,6 +70,18 @@ export class World {
     bus.emit('stageEntered', { stageId });
     this.banner = { text: this.stage.name, sub: `CHAPTER ${this.stage.chapter ?? ''} · ${this.stage.sub ?? ''}`, t: 3.2, color: '#e8c872', big: true };
   }
+
+  /** 그래픽 품질 설정 → 파티클 수·조명 해상도 (스테이지 도중 설정을 바꿔도 즉시 반영) */
+  applyQuality() {
+    const q = this.game.settings?.quality ?? 'high';
+    this.qualityApplied = q;
+    this.fx.max = q === 'low' ? 600 : 1400;
+    this.fx.quality = q === 'low' ? 0.5 : q === 'medium' ? 0.75 : 1;
+    this.lighting.res = q === 'low' ? 0.33 : 0.5;
+    if (this.fx.list.length > this.fx.max) this.fx.list.splice(0, this.fx.list.length - this.fx.max);
+  }
+  /** 아케이드 계열 모드 (보스 러시·서바이벌·스테이지 연습): 세이브 기록 없음 */
+  get arcade() { return this.mode === 'bossrush' || this.mode === 'survival' || this.mode === 'practice'; }
 
   // ─────────────────────────── 방 로딩 ───────────────────────────
   loadRoom(roomId, { keepPlayer = true } = {}) {
@@ -195,6 +206,7 @@ export class World {
   // ─────────────────────────── 업데이트 ───────────────────────────
   update(dt) {
     this.debugRects.length = 0;
+    if ((this.game.settings?.quality ?? 'high') !== this.qualityApplied) this.applyQuality();
     // 히트스톱: 월드 정지 (파티클/카메라는 조금 움직임)
     if (this.hitstop > 0) {
       this.hitstop -= dt;
@@ -251,7 +263,8 @@ export class World {
     // 스테이지 클리어 연출
     if (this.cleared) {
       this.clearT += dt;
-      if (this.clearT > 4.2 && !this.exitCalled) { this.exitCalled = true; this.finishStage(); }
+      const b = this.boss, bossGone = !b || b.dead || !(b.dying > 0);
+      if (((this.clearT > 4.2 && bossGone) || this.clearT > 7) && !this.exitCalled) { this.exitCalled = true; this.afterClear(); }
     }
     if (this.banner) { this.banner.t -= dt; if (this.banner.t <= 0) this.banner = null; }
     // 조명 수집
@@ -335,11 +348,14 @@ export class World {
   addScore(n) {
     const s = Math.round(n * (this.diff.scoreMult ?? 1));
     this.run.score += s;
-    if (this.run.score >= this.nextExtraLife) {
-      this.nextExtraLife += 30000;
-      this.run.lives++;
+    // 점수 1UP 은 스토리 모드 전용 (아케이드는 모드별 목숨 규칙 유지, noExtraLives 로 끌 수 있음)
+    if (this.mode !== 'story' || this.noExtraLives) return;
+    let ups = 0;
+    while (this.run.score >= this.nextExtraLife) { this.nextExtraLife += 30000; ups++; }
+    if (ups > 0) {
+      this.run.lives += ups;
       audio.sfx('extra_life');
-      this.game.toast('★ 1UP! 목숨이 늘었다 ★', '#ffe070');
+      this.game.toast(ups > 1 ? `★ ${ups}UP! 목숨이 늘었다 ★` : '★ 1UP! 목숨이 늘었다 ★', '#ffe070');
     }
   }
   onEnemyKilled(e, attack) {
@@ -366,6 +382,7 @@ export class World {
       this.fx.burst('holy', p.cx, p.cy, 40, { speed: 260 });
       this.banner = { text: 'LEVEL UP!', sub: `Lv.${this.hero.level} — 스킬 포인트 획득`, t: 2.2, color: '#ffe070' };
     }
+    return ups;
   }
   onPlayerHurt(dmg) {
     this.run.damageTaken += dmg;
@@ -383,7 +400,10 @@ export class World {
   }
   openChest(chest) {
     if (chest.key) this.state.progress.secrets.push(chest.key);
-    for (const d of rollChestLoot(this, chest.contents)) this.spawnPickup(d.type, chest.cx, chest.y, d.data);
+    // 숨겨진 상자(벽 틈)는 내용물을 플레이어 쪽으로 튀기고, 가까이 가면 날아오게 함
+    const side = Math.sign(this.player.cx - chest.cx) || 1;
+    const extra = chest.hiddenNiche ? { vx: side * rand(60, 160), pull: 140 } : {};
+    for (const d of rollChestLoot(this, chest.contents)) this.spawnPickup(d.type, chest.cx, chest.y, { ...extra, ...d.data });
   }
   collect(pk) {
     if (pk.dead) return;
@@ -497,24 +517,31 @@ export class World {
       if (this.state.progress.secrets.includes(key)) continue;
       this.state.progress.secrets.push(key);
       this.run.secrets++;
+      // 드롭은 트인 쪽(양쪽 다 트였으면 플레이어 쪽)으로 튀어나오게 — 1칸 벽 틈에 갇혀 못 줍는 문제 방지
+      const openL = !isSolidType(m.typeAt(tx - 1, ty)), openR = !isSolidType(m.typeAt(tx + 1, ty));
+      const pside = Math.sign(this.player.cx - x) || 1;
+      const side = openL && openR ? pside : openR ? 1 : openL ? -1 : pside;
+      const niche = isSolidType(m.typeAt(tx, ty - 1)) && isSolidType(m.typeAt(tx, ty + 1));
+      const out = { vx: side * 150, ...(niche ? { pull: 140 } : {}) };
       if (kind === 'H') {
         const docs = this.stage.docs || [];
         const hs = m.markers.filter((mk) => mk.ch === 'H');
         const order = hs.findIndex((mk) => mk.tx === tx && mk.ty === ty);
         const docId = this.room.docs?.[order] ?? docs.find((dd) => !this.state.progress.docs.includes(dd));
-        if (docId) { this.spawnPickup('doc', x, y, { docId, vy: -300, vx: 0 }); audio.sfx('secret'); this.game.toast('숨겨진 공간을 발견했다!', '#ffe7a0'); }
-        else this.spawnPickup('food', x, y, { heal: 0.5, icon: 'meat', vy: -200 });
+        if (docId) { this.spawnPickup('doc', x, y, { docId, vy: -300, ...out, pull: 140 }); audio.sfx('secret'); this.game.toast('숨겨진 공간을 발견했다!', '#ffe7a0'); }
+        else this.spawnPickup('food', x, y, { heal: 0.5, icon: 'meat', vy: -200, ...out });
         bus.emit('secretFound', { stageId: this.stage.id, key });
       } else if (kind === 'K') {
         const c = new Chest(tx, ty, this.room.hiddenChest ?? null);
         c.y = (ty + 1) * TILE - c.h;
+        c.hiddenNiche = true;
         this.add(c); audio.sfx('secret');
         this.game.toast('숨겨진 보물을 발견했다!', '#ffe7a0');
         bus.emit('secretFound', { stageId: this.stage.id, key });
       } else {
         // 'B': 벽 고기(클래식) 또는 골드
-        if (chance(0.55)) this.spawnPickup('food', x, y, { heal: 0.4, icon: 'meat', vy: -250 });
-        else this.spawnPickup('gold', x, y, { amount: randi(30, 80) * (this.stage.level ?? 1), vy: -250 });
+        if (chance(0.55)) this.spawnPickup('food', x, y, { heal: 0.4, icon: 'meat', vy: -250, ...out });
+        else this.spawnPickup('gold', x, y, { amount: randi(30, 80) * (this.stage.level ?? 1), vy: -250, ...out });
         this.addScore(500);
       }
     }
@@ -558,6 +585,13 @@ export class World {
     const p = this.player;
     p.hp = p.stats.hp; p.mp = p.stats.mp;
     this.run.checkpoint = { roomId: this.roomId, x: sp.x, y: sp.bottom - p.h };
+    if (this.arcade) {
+      // 아케이드(연습 등)는 임시 상태라 세이브 슬롯에 기록하지 않음 — 회복·체크포인트만
+      audio.sfx('heal');
+      this.fx.burst('blood', sp.cx, sp.cy, 10, { speed: 60, color: '#ff3050' });
+      this.game.toast('체력과 마력이 회복되었다 (연습 중에는 저장되지 않는다)', '#ffb0b0');
+      return;
+    }
     this.syncToState();
     this.state.lastStage = { stageId: this.stage.id, roomId: this.roomId };
     saves.write(this.state.slot, this.state);
@@ -567,12 +601,14 @@ export class World {
     this.game.toast('저장 완료 — 체력과 마력이 회복되었다', '#ffb0b0');
   }
   talkTo(npc) {
+    this.banner = null; // 대화 중엔 월드가 멈춰 배너가 초상화 위에 계속 남으므로 치움
     bus.emit('npcTalk', { npcId: npc.npcId });
     this.game.push('dialogue', { npc: npc.npcId, world: this });
   }
   playScript(id, flagKey) {
     if (!id) return;
     if (!this.state.progress.seenScripts.includes(id)) this.state.progress.seenScripts.push(id);
+    this.banner = null; // 대화 중엔 월드가 멈춰 배너가 초상화 위에 계속 남으므로 치움
     this.game.push('dialogue', { script: id, world: this });
   }
 
@@ -606,8 +642,8 @@ export class World {
     this.run.damageTaken += dmg;
     audio.sfx('hurt');
     if (p.hp <= 0) { p.hp = 0; p.y = this.map.pxH + 40; p.die(this); p.vy = 0; return; }
-    // 가까운 안전 지점으로 복귀
-    const cp = this.run.checkpoint;
+    // 가까운 안전 지점으로 복귀: 마지막으로 딛고 선 단단한 땅 (없으면 체크포인트)
+    const cp = p.safeSpot?.roomId === this.roomId ? p.safeSpot : this.run.checkpoint;
     p.x = cp.x; p.y = cp.y; p.vx = 0; p.vy = 0; p.iframes = 1.5;
     this.game.flash('#000', 0.6, 3);
   }
@@ -630,7 +666,7 @@ export class World {
     p.buffs = {}; p.refreshStats();
     this.run.hearts = Math.max(this.run.hearts, 10);
     if (full) this.run.lives = this.diff.lives;
-    if (this.boss && !this.boss.dead) { this.boss.hp = this.boss.stats.maxHp; }
+    this.resetBoss();
     this.combo.n = 0;
     this.banner = { text: 'READY?', sub: `남은 목숨 ${this.run.lives}`, t: 1.6, color: '#ffe7a0' };
   }
@@ -640,12 +676,19 @@ export class World {
     this.bossActive = true;
     const m = this.map;
     const x0 = this.arenaX, x1 = m.pxW;
-    this.arena = { x0, x1, cam: { x: x0, y: 0, w: x1 - x0, h: m.pxH } };
+    // 카메라는 경기장 왼쪽 경계보다 한 칸 더 보여 줌 (경계에 붙은 캐릭터·글자가 화면 끝에서 잘리지 않게)
+    const camX0 = Math.max(0, x0 - TILE);
+    this.arena = { x0, x1, cam: { x: camX0, y: 0, w: x1 - camX0, h: m.pxH } };
+    // 보스전 중 사망 시 경기장 안쪽(왼쪽 경계에서 두 칸)에서 부활
+    const p = this.player, rtx = Math.floor((x0 + TILE * 2) / TILE);
+    const gy = m.groundBelow(rtx, Math.max(0, Math.floor(p.y / TILE))) ?? (p.y + p.h);
+    this.run.checkpoint = { roomId: this.roomId, x: rtx * TILE + TILE / 2 - p.w / 2, y: gy - p.h };
     // 3인칭 카메라: 경기장 높이가 화면보다 크면 살짝 줌아웃해 보스 전신이 보이게
     this.camera.zoomTarget = clamp(this.game.viewH / (m.pxH - TILE), 0.74, 1);
     const id = this.room.bossId ?? this.stage.boss;
     const bx = x0 + (x1 - x0) * 0.72;
     const by = (m.h - 2) * TILE;
+    this.bossSpawn = { id, x: bx, y: by };
     this.boss = createBoss(this, id, bx, by);
     this.add(this.boss);
     audio.stopMusic(0.5);
@@ -661,6 +704,21 @@ export class World {
       this.game.push('dialogue', { script: preId, world: this, onEnd: intro });
     } else intro();
   }
+  /** 플레이어 부활 시 보스전 초기화: 체력 회복 + 페이즈 되돌리기 */
+  resetBoss() {
+    const b = this.boss;
+    if (!b || b.dead || b.dying > 0) return;
+    if (b.phase > 0 && b.rebuildOnRetry && this.bossSpawn) {
+      // A계열 보스는 페이즈 변형(하마·분리·쌍두 등)을 되돌리는 훅이 없어 새로 만든다 (B계열은 think()에서 onReset)
+      for (const e of this.entities) if (e !== b && e !== this.player && (e.owner === b || e.summoner === b)) e.dead = true;
+      b.dead = true;
+      const nb = createBoss(this, this.bossSpawn.id, this.bossSpawn.x, this.bossSpawn.y);
+      nb.rest?.(1.2);
+      this.boss = this.add(nb);
+      return;
+    }
+    b.hp = b.stats.maxHp;
+  }
   onBossDefeated(boss) {
     if (this.cleared) return;
     this.cleared = true; this.clearT = 0;
@@ -673,14 +731,47 @@ export class World {
     if (!st.progress.bosses.includes(boss.def.id)) st.progress.bosses.push(boss.def.id);
     st.progress.flags['boss_' + boss.def.id] = true;
     st.stats.bossKills = (st.stats.bossKills ?? 0) + 1;
-    this.gainExp(Math.round((boss.stats.exp ?? 500) * (1 + (this.player.stats.expBonus ?? 0) / 100)));
+    const lvUp = this.gainExp(Math.round((boss.stats.exp ?? 500) * (1 + (this.player.stats.expBonus ?? 0) / 100)));
+    // STAGE CLEAR 배너가 LEVEL UP 배너를 덮으므로 레벨업은 토스트로 따로 알림
+    if (lvUp > 0) this.game.toast(`LEVEL UP! Lv.${this.hero.level} — 스킬 포인트 획득`, '#ffe070', 3.2);
     this.addScore((boss.def.score ?? 20000));
     for (const d of rollBossLoot(this, boss)) this.spawnPickup(d.type, boss.cx + rand(-40, 40), boss.cy, d.data);
     for (let i = 0; i < 20; i++) setTimeout(() => this.fx.burst('fire', boss.cx + rand(-80, 80), boss.cy + rand(-80, 80), 8, { speed: 200 }), i * 60);
     bus.emit('bossKilled', { bossId: boss.def.id, stageId: this.stage.id, time: this.run.time });
     this.banner = { text: 'STAGE CLEAR', sub: boss.def.name + ' 격파!', t: 4, color: '#ffe070', big: true };
   }
+  /** 클리어 연출이 끝난 뒤: (스토리) 보스의 마지막 대사 `<bossId>_post` 를 한 번 보여 주고 결과 화면으로 */
+  afterClear() {
+    const id = this.boss?.def?.id;
+    const postId = id ? `${id}_post` : null;
+    const seen = this.state.progress.seenScripts;
+    if (this.mode === 'story' && postId && SCRIPTS[postId] && !seen.includes(postId)) {
+      seen.push(postId);
+      this.banner = null;
+      this.game.push('dialogue', { script: postId, world: this, onEnd: () => this.finishStage() });
+      return;
+    }
+    this.finishStage();
+  }
+  /** 스테이지 종료 시 바닥에 남은 전리품(보스 드롭 등)을 자동 획득 */
+  collectLeftovers() {
+    let n = 0;
+    for (const e of this.entities) {
+      if (e.kind !== 'pickup' || e.dead || !['gold', 'item', 'oneup', 'doc'].includes(e.type)) continue;
+      if (e.type === 'doc') {
+        // 문서 장면은 띄우지 않고 기록만
+        e.dead = true;
+        const d = e.data, st = this.state;
+        if (e.secretKey) st.progress.secrets.push(e.secretKey);
+        if (d.docId && !st.progress.docs.includes(d.docId)) { st.progress.docs.push(d.docId); st.stats.docs = (st.stats.docs ?? 0) + 1; this.run.docsFound.push(d.docId); bus.emit('docFound', { docId: d.docId }); }
+        if (d.loreId && !st.progress.lore.includes(d.loreId)) st.progress.lore.push(d.loreId);
+      } else this.collect(e);
+      n++;
+    }
+    if (n > 0) this.game.toast(`남은 전리품 ${n}개를 자동으로 챙겼다`, '#ffe070');
+  }
   finishStage() {
+    this.collectLeftovers();
     this.syncRun(); this.syncToState();
     audio.music('victory');
     this.game.go('results', { world: this });

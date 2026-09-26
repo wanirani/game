@@ -174,7 +174,9 @@ export class DuelScene extends MiniGame {
         else this.game.toast('황혼의 결투 — 모든 결투자를 꺾었다!', '#ffe070');
       }
       const notional = this.roundFree ? this.bet : this.roundBet;
-      this.settle({ win, payout: win ? notional * f.mult : 0, tier: win ? (perfect || f.mult >= 3 ? 'big' : 'win') : 'lose', perfect, title: win ? (perfect ? '완벽한 승리!' : '결투 승리!') : '결투 패배…', sub, cy: 300, delay: 1.0 });
+      // 첫 결투자(잭)는 사람 손이면 거의 늘 2:0 완승이라, 대승리 등급·주문서 보너스는 두 번째 결투자부터 준다
+      const bonus = perfect && this.foeIdx > 0;
+      this.settle({ win, payout: win ? notional * f.mult : 0, tier: win ? (bonus || f.mult >= 3 ? 'big' : 'win') : 'lose', perfect: bonus, title: win ? (perfect ? '완벽한 승리!' : '결투 승리!') : '결투 패배…', sub, cy: 300, delay: 1.0 });
       return;
     }
     this.nextRound();
@@ -458,10 +460,11 @@ export class DuelScene extends MiniGame {
     // 하단: 상대 선택 + 판돈 + 결투
     const py = vh - 88, pw = Math.min(vw - 24, 920), px = vw / 2 - pw / 2;
     gPanel(ctx, px, py, pw, 84, { a: 0.85, r: 14 });
-    const n = FOES.length, fs = 50;
+    // 터치: 칸 사이를 넓히고 탭 영역을 패널 높이만큼 키운다 (그림은 그대로, 약 44 CSS px 이상)
+    const n = FOES.length, fs = 50, fg = input.touchMode ? 14 : 8;
     for (let i = 0; i < n; i++) {
-      const fx = px + 16 + i * (fs + 8), fy = py + 9;
-      const r = this.hits.rect('foe:' + i, fx, fy, fs, fs + 18);
+      const fx = px + 16 + i * (fs + fg), fy = py + 9;
+      const r = input.touchMode ? this.hits.rect('foe:' + i, fx - fg / 2, py + 2, fs + fg, 80) : this.hits.rect('foe:' + i, fx, fy, fs, fs + 18);
       this.hits.add('foe:' + i, r);
       const sel = i === this.foeIdx, un = this.unlocked(i);
       ctx.save();
@@ -479,7 +482,7 @@ export class DuelScene extends MiniGame {
       ctx.restore();
       text(ctx, un ? `×${FOES[i].mult}` : '잠김', fx + fs / 2, fy + fs + 14, { size: 11, align: 'center', weight: 800, color: un ? (sel ? '#ffe7a0' : '#c8b490') : '#6a5a4a', ow: 2 });
     }
-    const selW = 16 + n * (fs + 8);
+    const selW = 16 + n * (fs + fg);
     const btnW = 150;
     const chipsW = pw - selW - btnW - 30;
     this.drawBetBar(ctx, px + selW + chipsW / 2, py + 50, { r: 21, label: true });

@@ -4,9 +4,12 @@
 import { TILE } from '../core/game.js';
 import { T } from '../core/physics.js';
 import { assets } from '../core/assets.js';
-import { RNG, hashStr, rgba, shade, TAU } from '../core/math.js';
+import { RNG, hashStr, rgba, shade, mix, TAU } from '../core/math.js';
 
 const CHUNK = 16; // 타일 단위 청크 크기
+const DEPTH_R = 3; // 깊이 음영: 빈칸까지의 거리를 찾는 반경(타일)
+// 원경이 트인 하늘/달인 테마: 절차적 창문('W')이 허공에 떠 보이므로 그리지 않는다
+const OPEN_SKY_THEMES = new Set(['village', 'town', 'graveyard', 'gate', 'spire', 'throne', 'abyss']);
 
 export const TILE_STYLES = {
   // stage.tileStyle → 색/장식
@@ -32,7 +35,8 @@ export const DECOR_SETS = {
   graveyard: [D('deco_grave_tomb1', 72, 96, 'floor', 3), D('deco_grave_tomb2', 64, 112, 'floor', 3), D('deco_grave_tomb3', 96, 80, 'floor', 2), D('deco_grave_angel', 96, 192), D('deco_grave_deadtree', 192, 288), D('deco_grave_fence', 192, 96, 'floor', 2)],
   gate: [D('deco_gate_banner', 64, 192, 'ceil', 2), D('deco_gate_portcullis', 144, 192), D('deco_gate_brazier', 72, 120, 'floor', 2), D('prop_gargoyle', 96, 120)],
   arena: [D('deco_gate_banner', 64, 192, 'ceil', 2), D('deco_gate_brazier', 72, 120, 'floor', 2)],
-  hall: [D('deco_hall_armor', 72, 160, 'floor', 3), D('deco_hall_vase', 64, 96, 'floor', 2), D('deco_hall_bust', 64, 120, 'floor', 2), D('deco_hall_curtain', 144, 288, 'ceil', 2), D('deco_gate_banner', 64, 192, 'ceil'), D('prop_pillar', 72, 192)],
+  // 갑옷 장식은 갑옷 적(armor_knight/spear_guard)과 헷갈리지 않도록 빈도를 낮춤
+  hall: [D('deco_hall_armor', 72, 160),D('deco_hall_vase', 64, 96, 'floor', 2), D('deco_hall_bust', 64, 120, 'floor', 2), D('deco_hall_curtain', 144, 288, 'ceil', 2), D('deco_gate_banner', 64, 192, 'ceil'), D('prop_pillar', 72, 192)],
   catacombs: [D('deco_cata_bonepile', 144, 72, 'floor', 3), D('deco_cata_skullpile', 96, 80, 'floor', 2), D('deco_cata_sarcophagus', 192, 96, 'floor', 2), D('deco_cata_urn', 56, 80, 'floor', 2)],
   library: [D('deco_lib_desk', 144, 96, 'floor', 2), D('deco_lib_globe', 72, 120), D('deco_lib_bookstack', 72, 72, 'floor', 3), D('deco_lib_ladder', 64, 240), D('prop_bookshelf', 128, 192, 'floor', 3)],
   alchemy: [D('deco_lab_alembic', 120, 144, 'floor', 2), D('deco_lab_cauldron', 120, 96, 'floor', 2), D('deco_lab_flaskrack', 144, 120, 'floor', 2), D('deco_lab_tesla', 96, 192), D('prop_vat', 128, 192, 'floor', 2)],
@@ -101,7 +105,7 @@ export class TileRenderer {
     }
     return out;
   }
-  /** 배경용으로 어둡게 톤다운한 소품 이미지 (캐시) */
+  /** 배경용으로 채도를 낮추고 어둡게 톤다운한 소품 이미지 (캐시) — 적·파괴 가능한 오브젝트와 구분되게 */
   darkProp(id, w, h) {
     const key = id + w + 'x' + h;
     let c = this.darkCache.get(key);
@@ -112,16 +116,26 @@ export class TileRenderer {
     c.width = w; c.height = h;
     const g = c.getContext('2d');
     g.drawImage(img, 0, 0, w, h);
+    try {
+      // 채도 55% 감소 (알파는 그대로)
+      const data = g.getImageData(0, 0, w, h), px = data.data;
+      for (let i = 0; i < px.length; i += 4) {
+        if (!px[i + 3]) continue;
+        const l = px[i] * 0.3 + px[i + 1] * 0.59 + px[i + 2] * 0.11;
+        px[i] += (l - px[i]) * 0.55; px[i + 1] += (l - px[i + 1]) * 0.55; px[i + 2] += (l - px[i + 2]) * 0.55;
+      }
+      g.putImageData(data, 0, 0);
+    } catch { /* 캔버스 오염 등으로 픽셀 접근 불가 → 어둡게만 */ }
     g.globalCompositeOperation = 'source-atop';
-    g.fillStyle = rgba(this.style.edge, 0.42);
+    g.fillStyle = rgba(this.style.edge, 0.5);
     g.fillRect(0, 0, w, h);
     this.darkCache.set(key, c);
     return c;
   }
   invalidate(tx, ty) {
     if (tx === undefined) { this.chunks.clear(); return; }
-    // 인접 청크까지 (경계 음영)
-    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    // 깊이 음영 반경만큼 떨어진 인접 청크까지 (청크 크기 > DEPTH_R 이므로 -R/0/+R 만 보면 충분)
+    for (let dy = -DEPTH_R; dy <= DEPTH_R; dy += DEPTH_R) for (let dx = -DEPTH_R; dx <= DEPTH_R; dx += DEPTH_R) {
       this.chunks.delete(`${Math.floor((tx + dx) / CHUNK)},${Math.floor((ty + dy) / CHUNK)}`);
     }
   }
@@ -174,13 +188,7 @@ export class TileRenderer {
             ctx.moveTo(x + ((off + S / 2) % S), y + S / 2); ctx.lineTo(x + ((off + S / 2) % S), y + S);
             ctx.stroke();
           }
-          // 깊이 음영: 주변이 모두 벽이면 어둡게
-          const open = [[0, -1], [0, 1], [-1, 0], [1, 0]].filter(([dx, dy]) => !this.isSolid(tx + dx, ty + dy));
-          if (open.length === 0) { ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(x, y, S, S); }
-          else {
-            const d2 = [[0, -2], [0, 2], [-2, 0], [2, 0]].some(([dx, dy]) => !this.isSolid(tx + dx, ty + dy));
-            if (!d2 && open.length === 0) { ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x, y, S, S); }
-          }
+          // (깊이 음영은 청크 전체를 다 그린 뒤 bakeDepth 에서 부드럽게)
           // 윗면 (노출)
           if (!this.isSolid(tx, ty - 1)) {
             const g = ctx.createLinearGradient(0, y, 0, y + 12);
@@ -219,6 +227,58 @@ export class TileRenderer {
         }
       }
     }
+    this.bakeDepth(ctx, tx0, ty0);
+  }
+  /** 깊이 음영용 벽 판정: 방 위아래 바깥도 벽이 이어진 것으로 본다 */
+  depthSolid(tx, ty) {
+    if (ty < 0 || ty >= this.map.h) return true;
+    return this.isSolid(tx, ty);
+  }
+  /**
+   * 깊이 음영: 가장 가까운 빈칸까지의 거리로 벽 안쪽을 점점 어둡게.
+   * 타일당 1픽셀 알파맵(청크 + 테두리 1칸)을 만들어 부드럽게(쌍선형) 확대하고, 벽 타일 영역으로만 잘라 그린다.
+   * → 타일 단위의 딱딱한 검은 사각형(구멍·격자처럼 보이던 문제) 대신 매끄러운 그라데이션.
+   */
+  bakeDepth(ctx, tx0, ty0) {
+    const m = this.map, S = TILE, R = DEPTH_R, N = CHUNK + 2;
+    if (!this.depthCtx) {
+      const c = document.createElement('canvas'); c.width = N; c.height = N;
+      this.depthCtx = c.getContext('2d');
+    }
+    const g = this.depthCtx;
+    const img = g.createImageData(N, N);
+    let any = false;
+    for (let j = 0; j < N; j++) {
+      for (let i = 0; i < N; i++) {
+        const tx = tx0 + i - 1, ty = ty0 + j - 1;
+        if (!this.depthSolid(tx, ty)) continue;
+        // 상하좌우에 빈칸이 있으면 표면 타일 → 음영 없음
+        if (!this.depthSolid(tx + 1, ty) || !this.depthSolid(tx - 1, ty) || !this.depthSolid(tx, ty + 1) || !this.depthSolid(tx, ty - 1)) continue;
+        let q = (R + 1) * (R + 1);
+        for (let dy = -R; dy <= R; dy++) {
+          for (let dx = -R; dx <= R; dx++) {
+            const d = dx * dx + dy * dy;
+            if (d < q && !this.depthSolid(tx + dx, ty + dy)) q = d;
+          }
+        }
+        const a = Math.min(0.5, (Math.sqrt(q) - 1) * 0.18);
+        if (a > 0) { img.data[(j * N + i) * 4 + 3] = Math.round(a * 255); any = true; }
+      }
+    }
+    if (!any) return;
+    g.putImageData(img, 0, 0);
+    ctx.save();
+    ctx.beginPath();
+    for (let ty = Math.max(0, ty0); ty < Math.min(m.h, ty0 + CHUNK); ty++) {
+      for (let tx = Math.max(0, tx0); tx < Math.min(m.w, tx0 + CHUNK); tx++) {
+        if (this.isSolid(tx, ty)) ctx.rect((tx - tx0) * S, (ty - ty0) * S, S, S);
+      }
+    }
+    ctx.clip();
+    ctx.imageSmoothingEnabled = true;
+    // 알파맵 픽셀 i 의 중심 = 타일 (tx0 + i - 1) 의 중심
+    ctx.drawImage(g.canvas, -S, -S, N * S, N * S);
+    ctx.restore();
   }
   topDeco(ctx, x, y, kind, rng) {
     switch (kind) {
@@ -318,10 +378,12 @@ export class TileRenderer {
       const c = this.darkProp(p.d.id, p.d.w, p.d.h);
       if (c) ctx.drawImage(c, p.x, p.y);
     }
+    const openSky = OPEN_SKY_THEMES.has(this.stage.theme);
     for (const d of this.map.decor) {
       const x = d.tx * TILE, y = d.ty * TILE;
       if (x < cam.x - 200 || x > cam.x + cam.vw + 200) continue;
       if (d.ch === 'W') {
+        if (openSky) continue;
         // 달빛 고딕 창문
         ctx.save();
         ctx.fillStyle = '#0a0610';
@@ -338,10 +400,67 @@ export class TileRenderer {
         ctx.fillStyle = lg; ctx.beginPath(); ctx.moveTo(x, y + 20); ctx.lineTo(x + 48, y + 20); ctx.lineTo(x + 180, y + 280); ctx.lineTo(x + 80, y + 280); ctx.fill();
         ctx.restore();
       } else if (d.ch === '|') {
-        const g = ctx.createLinearGradient(x, 0, x + 48, 0);
-        g.addColorStop(0, '#16101a'); g.addColorStop(0.5, '#2a2230'); g.addColorStop(1, '#0e0a10');
-        ctx.fillStyle = g; ctx.fillRect(x + 6, y, 36, TILE);
+        if (y + TILE < cam.y || y > cam.y + cam.vh) continue;
+        // 기둥 줄기의 위/아래 끝이면 주두/주초
+        const spr = this.pillarSprite(), S = TILE;
+        const top = !this.isBar(d.tx, d.ty - 1), bot = !this.isBar(d.tx, d.ty + 1);
+        ctx.drawImage(spr, 0, top ? S : 0, S, S, x, y, S, S);
+        if (bot) ctx.drawImage(spr, 0, S * 3 - 16, S, 16, x, y + S - 16, S, 16);
       }
     }
+  }
+  isBar(tx, ty) {
+    if (!this.barSet) this.barSet = new Set(this.map.decor.filter((d) => d.ch === '|').map((d) => d.ty * this.map.w + d.tx));
+    return tx >= 0 && tx < this.map.w && this.barSet.has(ty * this.map.w + tx);
+  }
+  /**
+   * '|' 장식 기둥 스프라이트 (캐시): 타일 스타일 색으로 원통 음영을 준 세로 홈 기둥.
+   * 세로 3칸 = [0] 몸통, [1] 주두(윗끝), [2] 주초(아랫끝). 배경 요소라 전체를 한 톤 눌러 둔다.
+   */
+  pillarSprite() {
+    if (this.pillarCanvas) return this.pillarCanvas;
+    const st = this.style, S = TILE;
+    const c = document.createElement('canvas');
+    c.width = S; c.height = S * 3;
+    const g = c.getContext('2d');
+    const dark = st.edge, body = mix(st.base, st.top, 0.2), lit = mix(st.base, st.top, 0.55);
+    const hgrad = (x0, x1) => {
+      const gr = g.createLinearGradient(x0, 0, x1, 0);
+      gr.addColorStop(0, dark); gr.addColorStop(0.28, lit); gr.addColorStop(0.6, body); gr.addColorStop(1, dark);
+      return gr;
+    };
+    const shaft = (y0, h) => {
+      g.fillStyle = hgrad(9, 39); g.fillRect(9, y0, 30, h);
+      // 세로 홈 (어두운 홈 + 옆의 가는 반사광)
+      for (const fx of [15, 21, 27, 33]) {
+        g.fillStyle = rgba(st.edge, 0.5); g.fillRect(fx, y0, 2, h);
+        g.fillStyle = 'rgba(255,255,255,0.07)'; g.fillRect(fx + 2, y0, 1, h);
+      }
+    };
+    // [0] 몸통
+    shaft(0, S);
+    // [1] 주두: 몸통 위에 넓은 판(아바쿠스) + 둥근 받침(에키누스) + 그 아래 그림자
+    shaft(S, S);
+    g.fillStyle = hgrad(4, 44);
+    g.beginPath(); g.moveTo(5, S + 9); g.lineTo(43, S + 9); g.lineTo(38, S + 17); g.lineTo(10, S + 17); g.fill();
+    g.fillStyle = hgrad(1, 47); g.fillRect(1, S, 46, 9);
+    g.fillStyle = 'rgba(255,255,255,0.14)'; g.fillRect(1, S + 8, 46, 1);
+    g.fillStyle = rgba(st.edge, 0.9); g.fillRect(1, S, 46, 2); g.fillRect(10, S + 17, 28, 1);
+    const sh = g.createLinearGradient(0, S + 17, 0, S + 30);
+    sh.addColorStop(0, 'rgba(0,0,0,0.4)'); sh.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = sh; g.fillRect(9, S + 17, 30, 13);
+    // [2] 주초: 둥근 테(토루스) + 넓은 받침돌(플린스) — 아래 16px 만 잘라 몸통 끝에 덧그린다
+    shaft(S * 2, S);
+    const by = S * 3 - 16;
+    g.fillStyle = hgrad(6, 42); g.fillRect(6, by, 36, 6);
+    g.fillStyle = 'rgba(255,255,255,0.12)'; g.fillRect(6, by, 36, 1);
+    g.fillStyle = hgrad(2, 46); g.fillRect(2, by + 6, 44, 10);
+    g.fillStyle = 'rgba(255,255,255,0.12)'; g.fillRect(2, by + 6, 44, 1);
+    g.fillStyle = rgba(st.edge, 0.9); g.fillRect(2, S * 3 - 2, 44, 2);
+    // 배경 톤으로 눌러 게임 레이어(벽/발판)와 구분
+    g.globalCompositeOperation = 'source-atop';
+    g.fillStyle = rgba(st.edge, 0.3); g.fillRect(0, 0, S, S * 3);
+    this.pillarCanvas = c;
+    return c;
   }
 }

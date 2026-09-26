@@ -134,7 +134,7 @@ export function playerStrike(world, rect, attack) {
     let boxes;
     if (e.hitParts) { if (e.invuln) continue; boxes = e.hitParts() || []; }
     else boxes = e.hurtboxes ? e.hurtboxes() : [e.hurtbox ? e.hurtbox() : e];
-    const hb = boxes.find((b) => b && !b.off && overlap(rect, b));
+    const hb = e.hitParts ? pickPart(rect, boxes) : boxes.find((b) => b && !b.off && overlap(rect, b));
     if (!hb) continue;
     if (e.hitParts) {
       // 맞은 부위 기록 → takeHit 에서 부위 효과(약점 파괴·갑옷 반응) 적용, 부위 방어 배율 반영
@@ -148,6 +148,19 @@ export function playerStrike(world, rect, attack) {
   }
   if (attack.breakWalls !== false) world.breakTilesIn(rect, attack);
   return n;
+}
+
+/** 겹친 부위 중 공격 판정 중심에 가장 가까운 부위 (중심을 포함하는 부위가 여럿이면 더 작은 부위 = 머리·눈 같은 약점 우선) */
+function pickPart(rect, parts) {
+  const cx = rect.x + rect.w / 2, cy = rect.y + rect.h / 2;
+  let best = null, bd = Infinity;
+  for (const b of parts) {
+    if (!b || b.off || !overlap(rect, b)) continue;
+    const dx = cx - clamp(cx, b.x, b.x + b.w), dy = cy - clamp(cy, b.y, b.y + b.h);
+    const d = dx * dx + dy * dy + b.w * b.h * 1e-6;
+    if (d < bd) { bd = d; best = b; }
+  }
+  return best;
 }
 
 /** 적 → 플레이어 공격 판정 */

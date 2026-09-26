@@ -514,6 +514,9 @@ export class Colossus extends BossB {
   }
   onDeath(world) {
     this.dying = 3.4; this.clearJobs();
+    // 전투 안내 토스트(과열·폭주·자정의 종)가 STAGE CLEAR 위에 남지 않게 정리
+    const g = world.game;
+    if (Array.isArray(g.toasts)) g.toasts = g.toasts.filter((t) => !/과열!|폭주한다|자정의 종/.test(t.text));
     this.pend = null; this.laneWarn = null; this.slamWarn = null;
     for (const a of this.arms) { a.fly = false; a.planted = false; }
     audio.sfx('boss_roar', { pitch: 0.45 });

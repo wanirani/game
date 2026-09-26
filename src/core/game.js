@@ -7,6 +7,9 @@ export const MIN_VIEW_W = 960;   // 16:9
 export const MAX_VIEW_W = 1280;  // 초광폭 휴대폰 대응
 export const TILE = 48;          // 타일 한 칸 (논리 px)
 export const STEP = 1 / 60;
+// 가상 패드를 보여 주는 게임플레이 장면 (그 외 장면이 맨 위에 있으면 패드를 숨긴다)
+// 장면이 this.hidePad = true / this.showPad = true 로 직접 지정할 수도 있다
+const PAD_SCENES = new Set(['stage', 'hub', 'bossrush', 'survival', 'practice', 'ultCutin']);
 
 /**
  * Scene 기본 클래스. 모든 장면은 이를 상속한다.
@@ -16,6 +19,9 @@ export const STEP = 1 / 60;
  *  render(ctx)    : 스택 아래→위 순서로 모두 호출 (단, 아래 장면이 opaque면 그 아래는 생략)
  *  opaque         : true면 아래 장면을 그리지 않음
  *  updateBelow    : true면 이 장면이 떠 있어도 아래 장면 update 계속 (예: 토스트)
+ *  hidePad/showPad: 모바일 가상 패드 강제 숨김/표시 (미지정 시 PAD_SCENES 기준)
+ *  hideToasts     : 토스트 숨김 / deferToasts: 숨기고 시간도 멈춤(장면을 벗어난 뒤 표시) / toastY: 토스트 줄 y 위치
+ *  autoPause()    : 기기를 세로로 돌리거나 탭이 숨겨질 때 호출 (게임플레이 장면이 일시정지 메뉴를 띄움)
  */
 export class Scene {
   constructor(game) { this.game = game; this.opaque = true; this.updateBelow = false; this.t = 0; }
@@ -44,6 +50,7 @@ class Game {
     this.meta = null;       // 슬롯과 무관한 전역 해금/기록
     this.fps = 60; this._fpsAcc = 0; this._fpsN = 0;
     this.paused = false;
+    this.portrait = false; this._locked = false;
     this.toasts = [];
     this.debug = false;
   }
@@ -56,7 +63,7 @@ class Game {
     window.addEventListener('resize', () => this.resize());
     window.addEventListener('orientationchange', () => setTimeout(() => this.resize(), 200));
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden) { this.audio?.suspend(); } else { this.audio?.resume(); this.last = performance.now(); }
+      if (document.hidden) { this.autoPause(); this.audio?.suspend(); } else { this.audio?.resume(); this.last = performance.now(); }
     });
   }
 
@@ -78,7 +85,18 @@ class Game {
     this.ctx.imageSmoothingEnabled = true;
     this.ctx.imageSmoothingQuality = 'high';
     for (const sc of this.scenes) sc.resize?.();
-    document.body.classList.toggle('portrait', h > w);
+    this.portrait = h > w;
+    document.body.classList.toggle('portrait', this.portrait);
+  }
+
+  /** 맨 위 장면에 자동 일시정지 요청 (세로 회전·백그라운드 전환) */
+  autoPause() { try { this.top?.autoPause?.(); } catch (e) { console.error(e); } }
+
+  /** 맨 위 장면에 맞춰 가상 패드 표시/숨김 */
+  syncPad() {
+    const top = this.top;
+    const show = !!top && !top.hidePad && (top.showPad || PAD_SCENES.has(top.name));
+    input.setPadOff(!show);
   }
 
   register(name, SceneClass) { this.registry[name] = SceneClass; }
@@ -143,14 +161,20 @@ class Game {
       this.realTime += dt;
       this._fpsAcc += dt; this._fpsN++;
       if (this._fpsAcc > 0.5) { this.fps = this._fpsN / this._fpsAcc; this._fpsAcc = 0; this._fpsN = 0; }
-      this.acc += dt;
+      // 터치 기기를 세로로 돌리면 ('가로 모드로 돌려주세요' 안내가 덮는 동안) 게임 진행을 멈춘다
+      const locked = input.touchMode && this.portrait;
+      if (locked !== this._locked) { this._locked = locked; if (locked) this.autoPause(); }
+      this.acc = locked ? 0 : this.acc + dt;
       let steps = 0;
       while (this.acc >= STEP && steps < 5) {
         this.tick(STEP);
         this.acc -= STEP; steps++;
       }
       if (steps === 5) this.acc = 0;
+      input.beginRender();
       this.render();
+      input.endRender();
+      this.syncPad();
     };
     requestAnimationFrame(loop);
   }
@@ -169,8 +193,10 @@ class Game {
       } else if (f.dir < 0 && f.a <= 0) { f.a = 0; f.dir = 0; }
     }
     this.flashFx.a = Math.max(0, this.flashFx.a - this.flashFx.decay * dt);
-    for (const t of this.toasts) t.t -= dt;
-    this.toasts = this.toasts.filter((t) => t.t > 0);
+    if (!this.top?.deferToasts) {
+      for (const t of this.toasts) t.t -= dt;
+      this.toasts = this.toasts.filter((t) => t.t > 0);
+    }
     // 장면 업데이트: 최상단 + updateBelow 체인
     const n = this.scenes.length;
     if (!n) return;
@@ -199,14 +225,16 @@ class Game {
       ctx.restore();
     }
     // 토스트
-    if (this.toasts.length && !this.top?.hideToasts && this.top?.name !== 'menu') {
+    const top = this.top;
+    if (this.toasts.length && !top?.hideToasts && !top?.deferToasts && top?.name !== 'menu') {
+      const y0 = top?.toastY ?? 92;
       ctx.save();
       ctx.textAlign = 'center';
       ctx.font = '700 17px "Noto Sans KR", sans-serif';
       this.toasts.forEach((t, k) => {
         const a = Math.min(1, t.t * 3, (t.max - t.t) * 6);
         ctx.globalAlpha = a;
-        const y = 92 + k * 30;
+        const y = y0 + k * 30;
         const w = ctx.measureText(t.text).width + 36;
         ctx.fillStyle = 'rgba(10,4,12,0.78)';
         ctx.fillRect(this.viewW / 2 - w / 2, y - 20, w, 28);

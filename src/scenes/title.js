@@ -246,7 +246,8 @@ export class TitleScene extends Scene {
       text(ctx, fmt(hi?.score ?? 0).padStart(9, ' '), vw - 16, 46, { size: 20, align: 'right', weight: 900, family: FONT.num, color: '#fff', ow: 4 });
       if (hi) text(ctx, `${hi.name || CHARACTERS[hi.charId]?.name?.split(' ')[0] || '???'} · ${MODE_NAME[hi.mode || 'story'] ?? ''}`, vw - 16, 62, { size: 11, align: 'right', weight: 700, color: DIM, ow: 2 });
       text(ctx, '© 2026 BLOOD NOCTURNE PROJECT', vw - 14, vh - 12, { size: 10, align: 'right', weight: 700, family: FONT.num, color: 'rgba(200,180,160,0.55)', ow: 2 });
-      if (this.game.meta?.konami) text(ctx, '✦ 비밀 코드 적용됨', 14, vh - 12, { size: 10, weight: 700, color: 'rgba(255,224,112,0.7)', ow: 2 });
+      // 좌하단은 메뉴 조작 안내 자리 → 저작권 표기 위(우하단)에 표시
+      if (this.game.meta?.konami) text(ctx, '✦ 비밀 코드 적용됨', vw - 14, vh - 28, { size: 10, align: 'right', weight: 700, color: 'rgba(255,224,112,0.7)', ow: 2 });
       ctx.restore();
     }
     if (this.konamiT > 0) {

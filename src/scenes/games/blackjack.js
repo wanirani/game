@@ -292,7 +292,9 @@ export class BlackjackScene extends MiniGame {
   }
   drawReadyUI(ctx) {
     const vw = this.vw;
-    gPanel(ctx, vw / 2 - 250, 392, 500, 136, { a: 0.82, r: 14 });
+    // 테이블의 '판돈' 원(왼쪽)과 인쇄 문구(오른쪽)를 가리지 않도록 칩·버튼이 들어갈 폭만 쓴다
+    const pw = input.touchMode ? 380 : 356;
+    gPanel(ctx, vw / 2 - pw / 2, 392, pw, 136, { a: 0.82, r: 14 });
     this.drawBetBar(ctx, vw / 2, 434, { r: 23 });
     const r = this.hits.rect('deal', vw / 2 - 100, 468, 200, 52);
     const can = this.free || this.st.gold >= this.bet;

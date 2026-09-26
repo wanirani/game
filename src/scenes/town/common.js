@@ -111,6 +111,23 @@ export function npcInfo(id) {
 }
 export function pickLine(arr) { return arr?.length ? arr[Math.floor(Math.random() * arr.length)] : ''; }
 
+/**
+ * 받침에 맞는 조사를 붙인다: josa('세라피나', '과', '와') → '세라피나와', josa('「성기사」', '으로', '로') → '「성기사」로'.
+ * 뒤쪽의 괄호·기호는 건너뛰고 마지막 한글(또는 숫자)로 판별. '으로/로' 는 ㄹ 받침이면 '로'.
+ */
+const DIGIT_JONG = [1, 2, 0, 1, 0, 0, 1, 2, 2, 0]; // 영 일 이 삼 사 오 육 칠 팔 구 (0 없음 · 1 있음 · 2 ㄹ)
+export function josa(word, withJong, withoutJong) {
+  const s = String(word ?? '');
+  const pick = (jong) => s + (withJong === '으로' ? (jong === 0 || jong === 2 ? withoutJong : withJong) : jong ? withJong : withoutJong);
+  for (let i = s.length - 1; i >= 0; i--) {
+    const c = s.charCodeAt(i);
+    if (c >= 0xac00 && c <= 0xd7a3) { const j = (c - 0xac00) % 28; return pick(j === 0 ? 0 : j === 8 ? 2 : 1); }
+    if (c >= 48 && c <= 57) return pick(DIGIT_JONG[c - 48]);
+    if (/[A-Za-z]/.test(s[i])) return pick(0);
+  }
+  return pick(0);
+}
+
 // ───────────────────────── 스크롤 목록 ─────────────────────────
 export class ScrollList {
   constructor(rowH = 56) { this.rowH = rowH; this.index = 0; this.count = 0; this.scroll = 0; this.target = 0; this.rect = null; this.drag = null; this.repeat = 0; this.moved = false; }
@@ -374,8 +391,9 @@ export function drawItemDetail(ctx, r, inst, { state, price = null, priceLabel =
   const est = eq ? statsOf(eq) : {};
   const keys = [...new Set([...Object.keys(st), ...Object.keys(est)])].filter((k) => STAT_INFO[k] && (Math.abs(st[k] ?? 0) > 0.05 || Math.abs(est[k] ?? 0) > 0.05));
   if (keys.length) {
-    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(r.x + 14, yy - 16, r.w - 28, Math.min(keys.length, 7) * 21 + 12);
-    if (eq) text(ctx, `장착 중: ${nameOf(eq)}`, r.x + r.w - 20, yy - 22, { size: 11, color: '#9d8f80', align: 'right', maxWidth: r.w - 40 });
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(r.x + 14, yy - 16, r.w - 28, Math.min(keys.length, 7) * 21 + 12 + (eq ? 20 : 0));
+    // 비교 대상(장착 중) 은 헤더의 '강화 +N' 과 겹치지 않도록 능력치 표 첫 줄에
+    if (eq) { text(ctx, `비교 · 장착 중: ${nameOf(eq)}`, r.x + r.w - 24, yy + 1, { size: 11, color: '#9d8f80', align: 'right', maxWidth: r.w - 52 }); yy += 20; }
     for (const k of keys.slice(0, 7)) {
       const v = st[k] ?? 0;
       text(ctx, statName(k), r.x + 26, yy + 4, { size: 14, color: '#d8ccb8' });
@@ -485,7 +503,8 @@ export class ServiceScene extends Scene {
   layout() {
     const vw = this.game.viewW, vh = this.game.viewH;
     const pw = Math.round(clamp(vw * 0.3, 300, 360));
-    return { vw, vh, pw, cx: pw + 6, cy: 64, cw: vw - pw - 22, ch: vh - 64 - 16 };
+    // 아래 26px 는 키 안내 줄 자리 (vh-8 기준선, 키캡이 화면 끝에 잘리지 않도록)
+    return { vw, vh, pw, cx: pw + 6, cy: 64, cw: vw - pw - 22, ch: vh - 64 - 26 };
   }
   render(ctx) {
     const L = this.layout(), { vw, vh } = L;
@@ -553,7 +572,7 @@ export class ServiceScene extends Scene {
       if (this.tabs.length > 1) items.push([this.useLeftRight ? ['S', 'D'] : ['←', '→'], '탭']);
       items.push([this.useLeftRight && this.tabs[this.tab]?.id === 'class' ? ['←', '→'] : ['↑', '↓'], '선택'], ['Z', '결정'], ['X', '닫기']);
       if (this.extraHints) items.push(...this.extraHints());
-      uiHints(ctx, items, L.cx + L.cw / 2, vh - 2);
+      uiHints(ctx, items, L.cx + L.cw / 2, vh - 8);
     }
     if (this.modal) this.modal.render(ctx, vw, vh);
     if (this.popup) this.popup.render(ctx, vw, vh);
@@ -580,15 +599,17 @@ export class ServiceScene extends Scene {
       ctx.fillStyle = sfade; ctx.fillRect(L.pw - 70, 56, 76, vh);
       ctx.restore();
     }
-    // 대사창
-    const bx = 14, bw = L.pw - 24, bh = 108, by = vh - bh - 14;
+    // 대사창: 대사 전체의 줄 수에 맞춰 위로 늘어난다 (3~5줄) — 긴 기도 힌트 등이 잘리지 않도록
+    const bx = 14, bw = L.pw - 24;
+    const nl = clamp(wrap(ctx, this.say.text, bw - 34, 15, 500).length, 3, 5);
+    const bh = 108 + (nl - 3) * 23, by = vh - bh - 14;
     uiPanel(ctx, bx, by, bw, bh, { glow: 'rgba(180,20,40,0.35)' });
     ctx.font = font(15, 800, FONT.title);
     const nw = Math.max(110, ctx.measureText(info.name).width + 36);
     uiPanel(ctx, bx + 14, by - 18, nw, 30, { corner: false });
     text(ctx, info.name, bx + 14 + nw / 2, by + 3, { size: 15, weight: 800, family: FONT.title, color: '#f3d690', align: 'center' });
     const lines = wrap(ctx, this.say.text.slice(0, Math.floor(this.say.shown)), bw - 34, 15, 500);
-    lines.slice(0, 3).forEach((l, i) => text(ctx, l, bx + 18, by + 40 + i * 23, { size: 15, color: COLORS.text, ow: 2 }));
+    lines.slice(0, nl).forEach((l, i) => text(ctx, l, bx + 18, by + 40 + i * 23, { size: 15, color: COLORS.text, ow: 2 }));
   }
 }
 

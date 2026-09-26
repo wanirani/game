@@ -347,7 +347,8 @@ export class SlotScene extends MiniGame {
     for (let i = 0; i < 3; i++) {
       const r = this.reels[i], x = this.reelX(i) + rw / 2;
       const active = r.state === 'spin';
-      const br = this.hits.rect('stop' + i, x - 34, by - 2, 68, 30);
+      // 탭 영역은 버튼과 그 위의 릴 전체 (버튼 그림은 작아도 손가락으로 쉽게 멈출 수 있게)
+      const br = this.hits.rect('stop' + i, this.reelX(i) + 2, ry, rw - 4, by + 30 - ry);
       this.hits.add('stop' + i, br, !active);
       ctx.save();
       const pr = this.hits.pressed(br) && active;

@@ -14,7 +14,7 @@ import { newGameState } from '../../game/state.js';
 import { drawHero } from '../../render/hero.js';
 import {
   Ambience, kenBurns, shade, frame, ornament, portraitIn, gbutton, backButton, footer, setPad, stars, puppet,
-  glowSprite, follow, GOLD, BONE, DIM, CRIMSON,
+  glowSprite, follow, TapZones, GOLD, BONE, DIM, CRIMSON,
 } from './common.js';
 import { startArcade, ARCADE_MODES } from './arcade.js';
 
@@ -38,6 +38,7 @@ export class CharSelectScene extends Scene {
     this.pick = null; this.pickT = 0;
     this.selK = this.list.map((_, i) => (i === this.cur ? 1 : 0));
     for (const c of this.list) assets.get(c.ch.portrait);
+    this.taps = new TapZones();
   }
   exit() { setPad(true); }
   onResume() { setPad(false); }
@@ -68,8 +69,9 @@ export class CharSelectScene extends Scene {
       if (this.pickT > 1.25 && !this.went) { this.went = true; this.start(); }
       return;
     }
-    if (this.backTapped) { this.backTapped = false; this.leave(); return; }
-    if (this.startTapped) { this.startTapped = false; this.choose(); return; }
+    const tap = this.taps.hit();
+    if (tap === 'back') { this.leave(); return; }
+    if (tap === 'start') { this.choose(); return; }
     const r = this.menu.update(dt);
     if (this.menu.moved) {
       audio.sfx('menu_move');
@@ -97,7 +99,8 @@ export class CharSelectScene extends Scene {
     st.progress.flags.startChar = c.id;
     saves.write(this.slot, st);
     g.state = st;
-    g.go('story', { script: 'prologue', then: 'hub', thenParams: { from: 'prologue' }, bg: 'cg/cg_prologue_moon', title: { eng: 'PROLOGUE', kor: '프롤로그 — 핏빛 달이 뜨는 밤' }, music: 'prologue' }, { fadeTime: 0.8 });
+    // 제목 카드(PROLOGUE · 핏빛 달이 뜨는 밤)는 prologue 스크립트의 {cmd:'title'} 이 띄운다 (title 인자까지 넘기면 두 번 표시됨)
+    g.go('story', { script: 'prologue', then: 'hub', thenParams: { from: 'prologue' }, bg: 'cg/cg_prologue_moon', music: 'prologue' }, { fadeTime: 0.8 });
   }
   leave() {
     audio.sfx('menu_cancel');
@@ -189,7 +192,7 @@ export class CharSelectScene extends Scene {
     // ── 로스터 타일 ──
     const n = this.list.length, ts = Math.min(64, (iw - 5 * 8) / n), gap = 8;
     const tx0 = ix, ty = vh - 132;
-    this.menu.clearHits();
+    this.menu.clearHits(); this.taps.clear();
     this.list.forEach((it, i) => {
       const s = this.selK[i];
       const r = { x: tx0 + i * (ts + gap), y: ty - s * 6, w: ts, h: ts };
@@ -198,9 +201,9 @@ export class CharSelectScene extends Scene {
     });
     // 시작 버튼
     const br = { x: ix, y: vh - 58, w: Math.min(250, iw * 0.6), h: 46 };
-    if (gbutton(ctx, br, c.open ? (this.mode === 'arcade' ? '이 헌터로 도전' : '이 헌터로 출발') : '잠겨 있음', { selected: c.open, disabled: !c.open, accent: acc, size: 16 })) this.startTapped = true;
+    gbutton(ctx, br, c.open ? (this.mode === 'arcade' ? '이 헌터로 도전' : '이 헌터로 출발') : '잠겨 있음', { selected: c.open, disabled: !c.open, accent: acc, size: 16, zones: this.taps, id: 'start' });
     text(ctx, input.touchMode ? '초상화를 터치해 선택' : '←→ 선택  Z 결정  X 뒤로', br.x + br.w + 14, vh - 29, { size: 12, weight: 700, color: '#a89888', ow: 2 });
-    if (backButton(ctx)) this.backTapped = true;
+    backButton(ctx, 14, 12, '뒤로', this.taps);
 
     // 선택 확정 연출
     if (this.pick) {

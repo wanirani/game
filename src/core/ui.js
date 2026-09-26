@@ -55,9 +55,10 @@ export function wrap(ctx, str, maxW, size = 16, weight = 500, family = FONT.body
   }
   return out;
 }
-export function paragraph(ctx, str, x, y, maxW, { size = 16, lineH = 1.55, color = COLORS.text, weight = 500, family = FONT.body, align = 'left', maxLines = 99 } = {}) {
+/** 여러 줄 문단. 밝은 배경(양피지 등)에서는 outline:null 또는 ow:0 으로 외곽선을 끈다 */
+export function paragraph(ctx, str, x, y, maxW, { size = 16, lineH = 1.55, color = COLORS.text, weight = 500, family = FONT.body, align = 'left', maxLines = 99, outline = 'rgba(0,0,0,0.85)', ow = 2 } = {}) {
   const lines = wrap(ctx, str, maxW, size, weight, family).slice(0, maxLines);
-  lines.forEach((l, i) => text(ctx, l, x, y + i * size * lineH, { size, color, weight, family, align, ow: 2 }));
+  lines.forEach((l, i) => text(ctx, l, x, y + i * size * lineH, { size, color, weight, family, align, outline, ow }));
   return lines.length * size * lineH;
 }
 
@@ -129,7 +130,9 @@ export function button(ctx, r, label, { selected = false, disabled = false, size
  * 키보드/패드/터치 공용 목록 메뉴 상태.
  * const m = new ListMenu(items.length, {cols:1, wrap:true});
  * m.update() → 'confirm' | 'cancel' | null ; m.index
- * 터치는 m.hit(i, rect) 로 각 항목 영역 등록 (탭 시 선택+확정)
+ * 터치는 m.hit(i, rect) 로 각 항목 영역 등록.
+ *  - 마우스 클릭: 바로 선택+확정
+ *  - 터치: 선택되지 않은 항목을 처음 탭하면 선택만(moved=true, 미리보기), 선택된 항목을 다시 탭하면 확정
  */
 export class ListMenu {
   constructor(count, { cols = 1, wrap = true, index = 0 } = {}) {
@@ -160,7 +163,7 @@ export class ListMenu {
         const r = this.rects[i];
         if (r && tappedRect(r)) {
           if (this.index === i || !input.touchMode) { this.index = i; return 'confirm'; }
-          this.index = i; this.moved = true; return 'confirm';
+          this.index = i; this.moved = true; return null;
         }
       }
     }

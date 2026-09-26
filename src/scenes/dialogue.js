@@ -44,6 +44,8 @@ export function speakerInfo(who, state) {
   return { name: who, portrait: null };
 }
 
+const inRect = (p, r) => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
+
 export class DialogueScene extends Scene {
   constructor(g) { super(g); this.opaque = false; }
   enter({ script, npc, lines, onEnd, world }) {
@@ -56,7 +58,8 @@ export class DialogueScene extends Scene {
     this.lines = L || [];
     this.i = -1; this.shown = 0; this.menu = null;
     this.labels = {};
-    this.lines.forEach((l, k) => { if (l.label) this.labels[l.label] = k; });
+    // { label } 만 있는 줄이 이동 목표. { if, cmd:'goto', label } (ifFlag/ifChar) 은 조건부 이동 명령이다
+    this.lines.forEach((l, k) => { if (l.label && !l.cmd) this.labels[l.label] = k; });
     this.next();
   }
   exit() { if (this.world) this.world.cutscene = false; }
@@ -72,7 +75,7 @@ export class DialogueScene extends Scene {
       this.i++;
       if (this.i >= this.lines.length) { this.finish(); return; }
       const l = this.lines[this.i];
-      if (l.label) continue;
+      if (l.label && !l.cmd) continue;
       if (l.if && !this.check(l.if)) continue;
       if (l.cmd) { this.runCmd(l); if (l.cmd === 'goto') continue; continue; }
       if (l.goto && !l.text) { this.i = (this.labels[l.goto] ?? this.lines.length) - 1; continue; }
@@ -115,6 +118,8 @@ export class DialogueScene extends Scene {
   }
   update(dt) {
     if (!this.cur) return;
+    // 터치: 화면 오른쪽 위 '건너뛰기' 버튼 (가상 패드의 Ⅱ 는 대화 중 숨겨진다)
+    if (this.skipRect && input.pointer.tapped && !this.menu && inRect(input.pointer, this.skipRect)) { audio.sfx('menu_cancel'); this.skipAll(); return; }
     const speed = 42;
     if (this.shown < this.full.length) {
       const before = Math.floor(this.shown);
@@ -142,7 +147,7 @@ export class DialogueScene extends Scene {
   skipAll() {
     while (++this.i < this.lines.length) {
       const l = this.lines[this.i];
-      if (l.label || (l.if && !this.check(l.if))) continue;
+      if ((l.label && !l.cmd) || (l.if && !this.check(l.if))) continue;
       if (l.cmd) { if (l.cmd !== 'sfx' && l.cmd !== 'shake') this.runCmd(l); continue; }
       if (l.goto && !l.text) { this.i = (this.labels[l.goto] ?? this.lines.length) - 1; continue; }
       if (l.choice) { this.i--; this.next(); return; }
@@ -170,8 +175,9 @@ export class DialogueScene extends Scene {
         ctx.restore();
       }
     }
-    // 초상화
-    const img = sp.portrait ? assets.get(sp.portrait) : null;
+    // 초상화 (이벤트 CG 가 떠 있으면 CG 속 인물과 겹치지 않도록 생략)
+    const cgShown = this.cg && assets.get(this.cg);
+    const img = sp.portrait && !cgShown ? assets.get(sp.portrait) : null;
     const side = l.side ?? (sp.hero ? 'left' : 'right');
     if (img) {
       const h = vh * 0.78, w = h * (img.width / img.height);
@@ -195,6 +201,12 @@ export class DialogueScene extends Scene {
     const lines = wrap(ctx, this.full.slice(0, Math.floor(this.shown)), bw - 70, 19, 500);
     lines.slice(0, 4).forEach((s, k) => text(ctx, s, bx + 34, by + 46 + k * 29, { size: 19, color: l.who === 'narrator' ? '#c8c0e0' : COLORS.text, ow: 2 }));
     if (this.shown >= this.full.length && !this.menu && Math.floor(this.t * 3) % 2 === 0) text(ctx, '▼', bx + bw - 34, by + bh - 16, { size: 14, color: COLORS.gold });
+    // 터치 모드: 건너뛰기 버튼
+    this.skipRect = null;
+    if (input.touchMode && !this.menu) {
+      this.skipRect = { x: vw - 132, y: 12, w: 118, h: 38 };
+      button(ctx, this.skipRect, '건너뛰기 ▶▶', { size: 15 });
+    }
     if (this.menu && this.shown >= this.full.length) {
       const ch = this.cur.choice;
       const w = 360, h = 44;

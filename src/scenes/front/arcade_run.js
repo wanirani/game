@@ -18,9 +18,10 @@ import { POWERUPS } from '../../data/powerups.js';
 import { CHARACTERS } from '../../data/characters.js';
 import { getDiff } from '../../data/difficulty.js';
 import { ARCADE_MODES, LEVEL_PRESETS, COURSES, courseBosses, BOSS_ORDER, endArcade } from './arcade.js';
-import { frame, ornament, gbutton, menuItem, setPad, fmtClock, portraitIn, qualifies, heading, kenBurns, shade, GOLD, BONE, DIM, CRIMSON } from './common.js';
+import { frame, ornament, menuItem, setPad, fmtClock, portraitIn, qualifies, heading, kenBurns, shade, bossRushBests, GOLD, BONE, DIM, CRIMSON } from './common.js';
 
-const NO_SPAWN = new Set(['medusa_spawner', 'mimic', 'golden_bat']);
+// 서바이벌에 소환하지 않는 적: 생성기·위장·보너스 적 + 물이 있어야 싸울 수 있는 적(투기장엔 물이 없음)
+const NO_SPAWN = new Set(['medusa_spawner', 'mimic', 'golden_bat', 'killer_fish']);
 
 /** 기둥 tx 에서 위→아래로 첫 바닥 윗면 y (없으면 맵 아래 - 2칸) */
 function groundY(map, tx) {
@@ -240,9 +241,9 @@ export class BossRushScene extends ArcadeRunScene {
   overlay(ctx, vw, vh) {
     const g = this.game;
     this.modeTag(ctx, vw, `ROUND ${Math.min(this.round + 1, this.queue.length)} / ${this.queue.length}`, fmtClock(this.clock), '#ff6a7a');
-    if (this.call) this.bigCall(ctx, vw, vh, this.call.main, this.call.sub, this.call.color, this.call.t);
+    if (this.call && !this.paused) this.bigCall(ctx, vw, vh, this.call.main, this.call.sub, this.call.color, this.call.t);
     // 다음 보스 미리보기 (대기 중)
-    if (this.phase === 'ready' && this.round < this.queue.length) {
+    if (this.phase === 'ready' && this.round < this.queue.length && !this.paused) {
       const id = this.queue[this.round], img = assets.get(BOSSES[id]?.portrait ?? `portraits/${id}`);
       const k = ease.outCubic(clamp(this.phaseT / 0.5, 0, 1)) * clamp((2.3 - this.phaseT) / 0.3, 0, 1);
       if (img && k > 0) {
@@ -345,13 +346,14 @@ export class SurvivalScene extends ArcadeRunScene {
     if (this.phase !== 'intro0') this.clock += dt;
     if (this.phase === 'intro0' && this.phaseT > 2.4) this.startWave();
     if (this.phase === 'wave') {
-      const alive = w.enemies().length;
       const cap = Math.min(14, 7 + Math.floor(this.wave / 3));
       this.spawnT -= dt;
-      if (this.queue.length && this.spawnT <= 0 && alive < cap && !w.cutscene) {
+      if (this.queue.length && this.spawnT <= 0 && w.enemies().length < cap && !w.cutscene) {
         this.spawnOne(this.queue.shift());
         this.spawnT = Math.max(0.25, 0.9 - this.wave * 0.03);
       }
+      // 방금 소환한 적까지 포함해 센다 (소환 전 값을 쓰면 마지막 적이 나오는 틱에 곧바로 클리어됨)
+      const alive = w.enemies().length;
       const bossPending = this.bossSpawnT > 0;
       if (!this.queue.length && alive === 0 && !bossPending && this.phaseT > 1.5) this.waveClear();
     }
@@ -361,10 +363,12 @@ export class SurvivalScene extends ArcadeRunScene {
     const w = this.world, p = w.player, m = w.map;
     this.phase = 'clear'; this.phaseT = 0;
     const bonus = this.wave * 1000;
-    w.addScore(bonus);
+    const s0 = w.run.score;
+    w.addScore(bonus); // 현재 배율·난이도 배율 적용
+    const gained = w.run.score - s0;
     this.mult = +(this.mult + 0.25).toFixed(2);
     audio.sfx('win');
-    w.banner = { text: 'WAVE CLEAR', sub: `보너스 +${fmt(bonus * this.mult * (w.diff.scoreMult ?? 1))} · 배율 ×${this.mult.toFixed(2)}`, t: 2.6, color: '#ffd070', big: true };
+    w.banner = { text: 'WAVE CLEAR', sub: `보너스 +${fmt(gained)} · 배율 ×${this.mult.toFixed(2)}`, t: 2.6, color: '#ffd070', big: true };
     p.heal(p.stats.hp * 0.15);
     w.run.hearts = Math.min(99, w.run.hearts + 5);
     // 보상 드롭
@@ -400,7 +404,7 @@ export class SurvivalScene extends ArcadeRunScene {
       const left = this.queue.length + this.world.enemies().length;
       text(ctx, `남은 적 ${left}`, vw / 2, 78, { size: 13, align: 'center', weight: 800, color: '#e8d8c0', ow: 3 });
     }
-    if (this.call) this.bigCall(ctx, vw, vh, this.call.main, this.call.sub, this.call.color, this.call.t);
+    if (this.call && !this.paused) this.bigCall(ctx, vw, vh, this.call.main, this.call.sub, this.call.color, this.call.t);
   }
 }
 
@@ -445,7 +449,7 @@ export class PracticeScene extends ArcadeRunScene {
   }
   overlay(ctx, vw, vh) {
     text(ctx, 'PRACTICE', vw / 2, 22, { size: 13, align: 'center', weight: 900, family: FONT.logo, color: '#8ac8ff', ow: 3 });
-    if (this.call) this.bigCall(ctx, vw, vh, this.call.main, this.call.sub, this.call.color, this.call.t);
+    if (this.call && !this.paused) this.bigCall(ctx, vw, vh, this.call.main, this.call.sub, this.call.color, this.call.t);
   }
 }
 
@@ -454,6 +458,7 @@ export class ArcadePauseScene extends Scene {
   constructor(g) { super(g); this.opaque = false; }
   enter({ run }) {
     this.run = run;
+    run.paused = true; // 뒤 장면의 라운드 호출·NEXT 초상화 등 큰 연출을 숨김
     this.items = [
       ['계속하기', 'RESUME', () => this.game.pop()],
       ['설정', 'OPTIONS', () => this.game.push('options', {})],
@@ -463,6 +468,7 @@ export class ArcadePauseScene extends Scene {
     this.menu = new ListMenu(this.items.length);
     audio.duck?.(0.4, 0.3);
   }
+  exit() { this.run.paused = false; }
   onResume() { setPad(true); }
   update(dt) {
     const r = this.menu.update(dt);
@@ -473,7 +479,7 @@ export class ArcadePauseScene extends Scene {
   render(ctx) {
     const vw = this.game.viewW, vh = this.game.viewH;
     const k = ease.outCubic(clamp(this.t / 0.2, 0, 1));
-    ctx.fillStyle = `rgba(4,0,8,${0.62 * k})`; ctx.fillRect(0, 0, vw, vh);
+    ctx.fillStyle = `rgba(4,0,8,${0.74 * k})`; ctx.fillRect(0, 0, vw, vh);
     const M = ARCADE_MODES[this.run.cfg.kind];
     ctx.save(); ctx.globalAlpha = k;
     heading(ctx, vw / 2, 118, 'PAUSE', M?.name, { size: 42 });
@@ -501,8 +507,9 @@ export class ArcadeResultsScene extends Scene {
     // 최고 기록 갱신
     let best = false;
     if (p.kind === 'bossrush' && p.cleared) {
-      const b = m.bossRushBest;
-      if (!b || p.time < (b.time ?? 1e9) || (p.cfg.course ?? 0) > (b.course ?? 0)) { m.bossRushBest = { time: p.time, score: this.final, charId: p.charId, course: p.cfg.course ?? 0, date: this.date }; best = true; }
+      // 코스마다 보스 수가 달라 시간을 비교할 수 없으므로 코스별로 따로 보관
+      const bests = bossRushBests(m), course = p.cfg?.course ?? 0, b = bests[course];
+      if (!b || p.time < (b.time ?? 1e9)) { bests[course] = { time: p.time, score: this.final, charId: p.charId, course, date: this.date }; best = true; }
     }
     if (p.kind === 'survival' && (p.extra?.wave ?? 0) > (m.survivalBest ?? 0)) { m.survivalBest = p.extra.wave; best = true; }
     this.newBest = best;

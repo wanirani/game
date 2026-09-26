@@ -41,13 +41,19 @@ export function changeClass(hero, classId) {
   return { ok: true };
 }
 
+/** 1레벨부터 level 까지 자연스럽게 성장했을 때의 스킬 포인트 (시작 1 + 레벨업마다 1, 5의 배수 레벨은 2) — addExp 와 동일 규칙 */
+export function spForLevel(level = 1) {
+  const L = Math.max(1, Math.floor(level));
+  return 1 + (L - 1) + Math.floor(L / 5);
+}
+
 /** 새 영웅 상태 */
 export function newHero(charId, level = 1) {
   const ch = CHARACTERS[charId];
   // 시작 스킬(액티브 1레벨)을 무료로 지급하고 1번 슬롯(S)에 장착 → 새 게임부터 바로 스킬 사용 가능
   const starter = STARTER_SKILLS[charId];
   return {
-    charId, level, exp: 0, classId: ch.rootClass, sp: Math.max(0, level - 1) + 1,
+    charId, level, exp: 0, classId: ch.rootClass, sp: spForLevel(level),
     skills: starter ? { [starter]: 1 } : {}, equip: { weapon: null, head: null, body: null, cloak: null, acc1: null, acc2: null },
     slots: [starter ?? null, null, null, null], sub: ch.startSub,
   };

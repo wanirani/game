@@ -16,7 +16,7 @@ import { CHARACTERS } from '../../data/characters.js';
 import { NPCS } from '../../data/npcs.js';
 import { BOSSES } from '../../data/bosses.js';
 import { addByBase } from '../../game/inventory.js';
-import { Ambience, kenBurns, ornament, gbutton, menuItem, setPad, goSafe, glowSprite, featherPortrait, GOLD, BONE, DIM } from './common.js';
+import { Ambience, kenBurns, ornament, gbutton, menuItem, setPad, goSafe, glowSprite, featherPortrait, TapZones, GOLD, BONE, DIM } from './common.js';
 
 const BAR = 50;
 
@@ -33,6 +33,7 @@ const imgKey = (id) => (!id ? null : id.includes('/') ? id : id.startsWith('cg_'
 export class StoryScene extends Scene {
   enter({ script = null, lines = null, then = 'hub', thenParams = {}, bg = null, title = null, music = null } = {}) {
     setPad(false);
+    this.taps = new TapZones();
     this.script = script; this.then = then; this.thenParams = thenParams;
     this.layers = []; this.bars = 0;
     this.amb = new Ambience({ embers: 40, motes: 26, bats: 0, fog: true, lightning: false });
@@ -159,7 +160,7 @@ export class StoryScene extends Scene {
     this.bars = Math.min(1, this.bars + dt * 1.8);
     if (this.shakeT > 0) this.shakeT -= dt;
     if (this.ending || this.empty) return;
-    if (this.skipTapped) { this.skipTapped = false; this.askSkip(); return; }
+    if (this.taps.hit() === 'skip') { this.askSkip(); return; }
     if (input.pressed('menu') && !input.pressed('confirm')) { this.askSkip(); return; }
     if (this.card) {
       this.card.t += dt;
@@ -206,6 +207,7 @@ export class StoryScene extends Scene {
   // ───────────────────────── 그리기 ─────────────────────────
   render(ctx) {
     const g = this.game, vw = g.viewW, vh = g.viewH, t = g.time;
+    this.taps.clear();
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, vw, vh);
     const sx = this.shakeT > 0 ? Math.sin(t * 70) * this.shakeP * clamp(this.shakeT * 2, 0, 1) : 0;
     ctx.save(); ctx.translate(sx, 0);
@@ -234,7 +236,7 @@ export class StoryScene extends Scene {
     // 건너뛰기
     if (!this.empty && !this.ending) {
       const r = { x: vw - 128, y: 3, w: 116, h: 44 };
-      if (gbutton(ctx, r, 'SKIP ▶▶', { size: 13 })) this.skipTapped = true;
+      gbutton(ctx, r, 'SKIP ▶▶', { size: 13, zones: this.taps, id: 'skip' });
       if (!input.touchMode) text(ctx, 'Esc : 건너뛰기', vw - 140, 30, { size: 11, align: 'right', color: '#7a6e64', ow: 0 });
     }
     // 타이틀 카드

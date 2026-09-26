@@ -7,6 +7,7 @@ import { text, panel, FONT, COLORS, drawCover, vignette } from '../core/ui.js';
 import { fmt, fmtTime, clamp, ease } from '../core/math.js';
 import { saves } from '../core/save.js';
 import { STAGES } from '../data/stages.js';
+import { SCRIPTS } from '../data/story.js';
 import { bus } from '../core/events.js';
 
 const RANKS = [
@@ -14,7 +15,22 @@ const RANKS = [
   { r: 'C', c: '#7ee07e', min: 35 }, { r: 'D', c: '#a0a0a0', min: 0 },
 ];
 
+/** 이미 본 아웃트로라도, 지금 조건이 참인 분기 뒤에 아직 켜지지 않은 플래그가 있으면(예: s12 유물 5개 → 심연의 문) 다시 재생 */
+function hasNewBranch(script, st) {
+  const lines = SCRIPTS[script];
+  const f = st?.progress?.flags ?? {};
+  if (!lines) return false;
+  const holds = (c) => (typeof c === 'string' ? (c.startsWith('!') ? !f[c.slice(1)] : !!f[c]) : c?.char ? st?.charId === c.char : true);
+  for (const l of lines) {
+    if (!(l.if && l.cmd === 'goto' && holds(l.if))) continue;
+    const at = lines.findIndex((q) => q.label === l.label && !q.cmd);
+    if (at >= 0 && lines.slice(at + 1).some((q) => q.cmd === 'flag' && !f[q.key])) return true;
+  }
+  return false;
+}
+
 export class ResultsScene extends Scene {
+  constructor(g) { super(g); this.deferToasts = true; } // 퀘스트 완료 토스트가 표를 가리지 않도록 결과 화면을 나간 뒤 표시
   enter({ world }) {
     this.world = world;
     const run = world.run, st = this.game.state, stage = world.stage;
@@ -77,7 +93,11 @@ export class ResultsScene extends Scene {
     const stage = this.world.stage;
     const next = this.game.registry.hub ? 'hub' : 'title';
     const toEnding = (stage.id === 's12' || stage.id === 's13') && this.game.registry.ending; // 엔딩 장면이 endingAfter()로 최종 판정
-    if (stage.outro && this.game.registry.story) this.game.go('story', { script: stage.outro, then: toEnding ? 'ending' : next, thenParams: { from: stage.id }, bg: stage.bg });
+    // 아웃트로는 처음 클리어했을 때만 (재클리어 시 리아 합류·엘리제 납치 장면이 반복되지 않도록)
+    const st = this.game.state;
+    const seen = st?.progress?.seenScripts?.includes(stage.outro);
+    const playOutro = stage.outro && SCRIPTS[stage.outro] && this.game.registry.story && (!seen || hasNewBranch(stage.outro, st));
+    if (playOutro) this.game.go('story', { script: stage.outro, then: toEnding ? 'ending' : next, thenParams: { from: stage.id }, bg: stage.bg });
     else if (toEnding) this.game.go('ending', { from: stage.id });
     else this.game.go(next, { from: stage.id });
   }

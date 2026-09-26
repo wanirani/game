@@ -1,11 +1,15 @@
 // 줍는 아이템: 하트(서브웨폰 탄), 골드, 음식(회복), 장비/재료 아이템, 비전서, 서브웨폰, 파워업, 1UP, MP 구슬
 // world.spawnPickup(type, x, y, data)  type: 'heart'|'gold'|'food'|'item'|'doc'|'sub'|'powerup'|'oneup'|'mp'
 import { Entity } from './entity.js';
-import { moveBody } from '../core/physics.js';
+import { moveBody, isSolidType } from '../core/physics.js';
+import { TILE } from '../core/game.js';
 import { TAU, rand, clamp } from '../core/math.js';
 import { assets } from '../core/assets.js';
 import { COLORS } from '../core/ui.js';
 import { drawIcon } from '../render/icons.js';
+
+// 스테이지 클리어 후 자동으로 끌어모으는 종류 (파워업·보조무기·음식은 선택/즉시 효과라 제외)
+const VACUUM = new Set(['heart', 'gold', 'mp', 'item', 'oneup', 'doc']);
 
 export class Pickup extends Entity {
   constructor(type, x, y, data = {}) {
@@ -23,14 +27,21 @@ export class Pickup extends Entity {
     this.magnet = false;
     this.bob = rand(0, TAU);
     this.delay = data.delay ?? 0.35; // 생성 직후 줍기 방지
+    // 근접 자동 흡수 반경: 벽 틈(1칸 구멍)에 떨어져 몸이 닿지 않는 중요 아이템도 가까이 가면 날아옴
+    this.pull = data.pull ?? (type === 'doc' || type === 'item' || type === 'oneup' ? 90 : 0);
+    this.placed = false;
   }
   update(dt, world) {
     this.t += dt;
     this.life -= dt;
     if (this.life <= 0) { this.dead = true; return; }
+    if (!this.placed || (!this.magnet && world.map.isSolidPx(this.cx, this.cy))) { this.placed = true; this.unstick(world.map); }
     const p = world.player;
     const mag = p && (p.buffs?.magnet || (p.stats?.magnet ?? 0) > 0);
-    if (p && this.t > this.delay && (this.magnet || (mag && Math.hypot(p.cx - this.cx, p.cy - this.cy) < 320))) {
+    const dist = p ? Math.hypot(p.cx - this.cx, p.cy - this.cy) : Infinity;
+    // 보스 격파(스테이지 클리어) 후에는 남은 전리품을 플레이어에게 끌어모음
+    const vacuum = world.cleared && p && !p.dead && this.t > this.delay + 0.8 && VACUUM.has(this.type);
+    if (p && this.t > this.delay && (this.magnet || vacuum || dist < this.pull || (mag && dist < 320))) {
       this.magnet = true;
       const dx = p.cx - this.cx, dy = p.cy - this.cy, d = Math.hypot(dx, dy) || 1;
       const sp = 700;
@@ -50,6 +61,24 @@ export class Pickup extends Entity {
         world.collect(this);
       }
     }
+  }
+  /** 생성 위치가 벽과 겹치면 가장 가까운 빈 칸 안으로 옮김 (천장에 걸친 채 튕겨 벽 속에 박히는 문제 방지) */
+  unstick(map) {
+    const l = Math.floor(this.x / TILE), r = Math.floor((this.x + this.w - 0.01) / TILE);
+    const t = Math.floor(this.y / TILE), b = Math.floor((this.y + this.h - 0.01) / TILE);
+    let hit = false;
+    for (let ty = t; ty <= b && !hit; ty++) for (let tx = l; tx <= r; tx++) if (isSolidType(map.typeAt(tx, ty))) { hit = true; break; }
+    if (!hit) return;
+    const tx0 = Math.floor(this.cx / TILE), ty0 = Math.floor(this.cy / TILE);
+    let best = null, bd = Infinity;
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+      if (isSolidType(map.typeAt(tx0 + dx, ty0 + dy))) continue;
+      const d = dx * dx + dy * dy + (dy > 0 ? 0.1 : 0); // 동률이면 위쪽/옆 칸 우선
+      if (d < bd) { bd = d; best = { tx: tx0 + dx, ty: ty0 + dy }; }
+    }
+    if (!best) return;
+    this.x = clamp(this.x, best.tx * TILE + 1, (best.tx + 1) * TILE - this.w - 1);
+    this.y = clamp(this.y, best.ty * TILE + 1, (best.ty + 1) * TILE - this.h - 1);
   }
   lights(L) {
     if (this.type === 'item') {

@@ -5,7 +5,7 @@ import { audio } from '../../core/audio.js';
 import { saves, DEFAULT_SETTINGS } from '../../core/save.js';
 import { text, FONT, ListMenu } from '../../core/ui.js';
 import { clamp, ease, rgba, TAU } from '../../core/math.js';
-import { frame, heading, ornament, gbutton, backButton, footer, setPad, applySettings, menuItem, GOLD, BONE, DIM, CRIMSON } from './common.js';
+import { frame, heading, ornament, gbutton, backButton, footer, setPad, applySettings, menuItem, TapZones, GOLD, BONE, DIM, CRIMSON } from './common.js';
 
 const Q = [['low', '낮음'], ['medium', '보통'], ['high', '높음']];
 const SHAKE = [[0, '끔'], [0.5, '약하게'], [1, '보통'], [1.5, '강하게']];
@@ -33,7 +33,7 @@ export class OptionsScene extends Scene {
     this.menu = new ListMenu(this.rows.length);
     this.tabs = new ListMenu(3, { cols: 3, index: this.guideTab });
     this.flash = {};
-    this.lr = [];
+    this.taps = new TapZones();
   }
   exit() { this.save(); setPad(true); }
   onResume() { setPad(false); }
@@ -78,14 +78,15 @@ export class OptionsScene extends Scene {
   update(dt) {
     for (const k in this.flash) this.flash[k] = Math.max(0, this.flash[k] - dt * 3);
     if (this.shakeDemo > 0) this.shakeDemo -= dt;
-    if (this.backTapped) { this.backTapped = false; if (this.page === 1) { this.page = 0; audio.sfx('menu_cancel'); } else this.close(); return; }
+    const tap = this.taps.hit();
+    if (tap === 'back') { if (this.page === 1) { this.page = 0; audio.sfx('menu_cancel'); } else this.close(); return; }
     if (this.page === 1) {
       const r = this.tabs.update(dt);
       if (this.tabs.moved) audio.sfx('menu_move');
       if (r === 'cancel' || (r === 'confirm' && !input.pointer.tapped) || input.pressed('menu')) { this.page = 0; audio.sfx('menu_cancel'); }
       return;
     }
-    if (this.lrTap) { const [i, d] = this.lrTap; this.lrTap = null; this.menu.index = i; this.change(this.rows[i], d); return; }
+    if (tap?.[0] === 'lr') { const [, i, d] = tap; this.menu.index = i; this.change(this.rows[i], d); return; }
     const r = this.menu.update(dt);
     if (this.menu.moved) audio.sfx('menu_move');
     const row = this.rows[this.menu.index];
@@ -102,12 +103,13 @@ export class OptionsScene extends Scene {
   render(ctx) {
     const g = this.game, vw = g.viewW, vh = g.viewH, t = g.time;
     const k = ease.outCubic(clamp(this.t / 0.25, 0, 1));
+    this.taps.clear();
     ctx.fillStyle = `rgba(4,0,8,${0.8 * k})`; ctx.fillRect(0, 0, vw, vh);
     const sx = this.shakeDemo > 0 ? Math.sin(t * 90) * 10 * this.shakeDemo : 0;
     ctx.save(); ctx.globalAlpha = k; ctx.translate(sx, (1 - k) * 20);
     if (this.page === 0) this.drawSettings(ctx, vw, vh, t); else this.drawGuide(ctx, vw, vh, t);
     ctx.restore();
-    if (backButton(ctx, 14, 12, this.page === 1 ? '설정' : '닫기')) this.backTapped = true;
+    backButton(ctx, 14, 12, this.page === 1 ? '설정' : '닫기', this.taps);
   }
   drawSettings(ctx, vw, vh, t) {
     heading(ctx, vw / 2, 44, 'OPTIONS', '설정', { size: 30 });
@@ -155,8 +157,7 @@ export class OptionsScene extends Scene {
       const lr = { x: vx - off - 24, y, w: 48, h: rh }, rr2 = { x: vx + off - 24, y, w: 48, h: rh };
       for (const [q, d, s] of [[lr, -1, '◀'], [rr2, 1, '▶']]) {
         text(ctx, s, q.x + q.w / 2, ty - 1, { size: 15, align: 'center', color: sel ? GOLD : 'rgba(232,200,114,0.35)', ow: 2 });
-        const p = input.pointer;
-        if (p.tapped && p.x >= q.x && p.x <= q.x + q.w && p.y >= q.y && p.y <= q.y + q.h) this.lrTap = [i, d];
+        this.taps.add(['lr', i, d], q);
       }
     });
     const cur = this.rows[this.menu.index];
@@ -228,35 +229,43 @@ export class OptionsScene extends Scene {
     // D패드
     ctx.fillStyle = '#3a3240';
     ctx.fillRect(cx - 128, cy - 22, 48, 16); ctx.fillRect(cx - 112, cy - 38, 16, 48);
-    // 버튼 ABXY
-    const bt = [['A', 0, 18, '#7ee07e'], ['B', 18, 0, '#ff6060'], ['X', -18, 0, '#5aa8ff'], ['Y', 0, -18, '#ffd84a']];
-    for (const [l, dx, dy, c] of bt) {
-      ctx.fillStyle = rgba(c, 0.85); ctx.beginPath(); ctx.arc(cx + 104 + dx, cy - 14 + dy, 10, 0, TAU); ctx.fill();
-      text(ctx, l, cx + 104 + dx, cy - 10 + dy, { size: 11, align: 'center', weight: 900, color: '#111', ow: 0 });
-    }
-    ctx.fillStyle = '#3a3240'; ctx.fillRect(cx - 24, cy - 24, 16, 8); ctx.fillRect(cx + 8, cy - 24, 16, 8);
+    // SELECT/START, 숄더(LB/RB), 트리거(LT/RT)
+    ctx.fillRect(cx - 24, cy - 24, 16, 8); ctx.fillRect(cx + 8, cy - 24, 16, 8);
     ctx.fillRect(cx - 170, cy - 70, 60, 12); ctx.fillRect(cx + 110, cy - 70, 60, 12);
+    ctx.fillStyle = '#2c2632'; ctx.fillRect(cx - 164, cy - 86, 48, 12); ctx.fillRect(cx + 116, cy - 86, 48, 12);
     ctx.restore();
+    // 설명선 (라벨 x, y, 이름, 기능, 가리킬 점 x, y, 점을 버튼 가장자리로 뺄 반지름)
+    // 얼굴 버튼(ABXY)은 글자를 가리지 않도록 원 바깥 가장자리에서 멈춘다
     const L = [
-      [x + 24, y + 30, '방향패드 / 왼쪽 스틱', '이동 · 메뉴 선택', cx - 104, cy - 14],
-      [x + 24, y + 70, 'LB / RB', '스킬 1 / 스킬 2', cx - 140, cy - 64],
-      [x + 24, y + 110, 'LT / RT', '대시 / 필살기', cx - 140, cy - 64],
-      [x + 24, y + h - 40, 'SELECT', '지도', cx - 16, cy - 20],
-      [x + w - 24, y + 30, 'A', '점프 · 결정', cx + 104, cy + 4],
-      [x + w - 24, y + 70, 'B / X', '공격 · 취소', cx + 86, cy - 14],
-      [x + w - 24, y + 110, 'Y', '보조무기', cx + 104, cy - 32],
-      [x + w - 24, y + h - 40, 'START', '일시정지', cx + 16, cy - 20],
+      [x + 24, y + 30, 'LT', '대시', cx - 140, cy - 80, 0],
+      [x + 24, y + 70, 'LB', '스킬 1', cx - 140, cy - 64, 0],
+      [x + 24, y + 110, '방향패드 / 왼쪽 스틱', '이동 · 메뉴 선택', cx - 104, cy - 14, 0],
+      [x + 24, y + h - 40, 'SELECT', '지도', cx - 16, cy - 20, 0],
+      [x + w - 24, y + 30, 'RT', '필살기', cx + 140, cy - 80, 0],
+      [x + w - 24, y + 70, 'RB', '스킬 2', cx + 140, cy - 64, 0],
+      [x + w - 24, y + 110, 'Y', '보조무기', cx + 104, cy - 32, 13],
+      [x + w - 24, y + 150, 'B / X', '공격 · 취소', cx + 122, cy - 14, 13],
+      [x + w - 24, y + 190, 'A', '점프 · 결정', cx + 104, cy + 4, 13],
+      [x + w - 24, y + h - 40, 'START', '일시정지', cx + 16, cy - 20, 0],
     ];
-    for (const [lx, ly, a, b, px, py] of L) {
+    for (const [lx, ly, a, b, px, py, pr] of L) {
       const right = lx > cx;
       text(ctx, a, lx, ly, { size: 14, align: right ? 'right' : 'left', weight: 900, family: FONT.num, color: GOLD, ow: 2 });
       text(ctx, b, lx, ly + 17, { size: 12, align: right ? 'right' : 'left', weight: 700, color: BONE, ow: 2 });
       ctx.font = `700 12px ${FONT.body}`;
       const tw = Math.max(ctx.measureText(b).width, a.length * 8.5) + 10;
-      const sx = right ? lx - tw : lx + tw, sy = ly + 4;
+      const sx = right ? lx - tw : lx + tw, sy = ly + 4, mx = sx + (right ? -14 : 14);
+      let ex = px, ey = py;
+      if (pr > 0) { const d = Math.hypot(mx - px, sy - py) || 1; ex = px + (mx - px) / d * pr; ey = py + (sy - py) / d * pr; }
       ctx.strokeStyle = 'rgba(232,200,114,0.35)'; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + (right ? -14 : 14), sy); ctx.lineTo(px, py); ctx.stroke();
-      ctx.fillStyle = GOLD; ctx.beginPath(); ctx.arc(px, py, 2.5, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(mx, sy); ctx.lineTo(ex, ey); ctx.stroke();
+      ctx.fillStyle = GOLD; ctx.beginPath(); ctx.arc(ex, ey, 2.5, 0, TAU); ctx.fill();
+    }
+    // 버튼 ABXY (설명선 위에 그려 글자가 가려지지 않게)
+    const bt = [['A', 0, 18, '#7ee07e'], ['B', 18, 0, '#ff6060'], ['X', -18, 0, '#5aa8ff'], ['Y', 0, -18, '#ffd84a']];
+    for (const [l, dx, dy, c] of bt) {
+      ctx.fillStyle = rgba(c, 0.85); ctx.beginPath(); ctx.arc(cx + 104 + dx, cy - 14 + dy, 10, 0, TAU); ctx.fill();
+      text(ctx, l, cx + 104 + dx, cy - 10 + dy, { size: 11, align: 'center', weight: 900, color: '#111', ow: 0 });
     }
   }
   guideTouch(ctx, x, y, w, h) {

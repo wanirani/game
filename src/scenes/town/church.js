@@ -15,7 +15,7 @@ import { availableClasses, canChangeClass, changeClass } from '../../game/progre
 import { composeLook, STAT_INFO } from '../../game/stats.js';
 import { addByBase } from '../../game/inventory.js';
 import { SHOP_LINES } from '../../data/town.js';
-import { ServiceScene, Modal, RewardPopup, makeInst, hitRect, rowBg, Snap, uiPanel, uiButton } from './common.js';
+import { ServiceScene, Modal, RewardPopup, makeInst, hitRect, rowBg, Snap, uiPanel, uiButton, josa } from './common.js';
 import { glow } from './facades.js';
 
 const TIER_NAME = ['기본 직업', '상급 직업', '최상급 직업'];
@@ -43,6 +43,13 @@ export class ChurchScene extends ServiceScene {
     return o;
   }
   resetCost() { return 100 + (this.hero.level ?? 1) * 60; }
+  /** 초기화로 돌려받을 스킬 포인트 (무료로 받은 시작 기술 1레벨은 제외 — skills.resetSkills 와 같은 계산) */
+  refundable() {
+    const hero = this.hero, starter = SkillData.STARTER_SKILLS?.[hero.charId];
+    let n = 0;
+    for (const [id, lv] of Object.entries(hero.skills || {})) n += Math.max(0, (lv ?? 0) - (id === starter ? 1 : 0)) * (SkillData.SKILLS?.[id]?.spCost ?? 1);
+    return n;
+  }
 
   updateBody(dt) {
     if (this.cere) { this.updateCeremony(dt); return 'handled'; }
@@ -151,7 +158,7 @@ export class ChurchScene extends ServiceScene {
       const s = STAGES[id];
       if (s.relic && !P.relics.includes(s.relic)) out.push(`「${s.name}」 깊은 곳에 백작의 유물이 잠들어 있다네. 금이 간 벽과 닿지 않는 길을 살피게.`);
       const miss = (s.docs || []).filter((d) => !P.docs.includes(d)).length;
-      if (miss) out.push(`「${s.name}」에는 아직 찾지 못한 비전서가 ${miss}권 남아 있네. 수상한 벽은 채찍으로 두드려 보게.`);
+      if (miss) out.push(`「${s.name}」에는 아직 찾지 못한 비전서가 ${miss}권 남아 있네. 수상한 벽은 무기로 두드려 보게.`);
     }
     if ((P.relics?.length ?? 0) >= 5 && !P.cleared?.s12) out.push('유물 다섯이 모두 그대 손에 있군… 이제 왕좌의 방으로 가게. 그 너머에 진실이 기다린다네.');
     const gen = ['콤보가 길게 이어질수록 점수가 불어난다네. 쉬지 말고 몰아치게.', '가끔은 금빛 박쥐가 나타난다지. 놓치지 말게, 금화를 잔뜩 떨군다네.', '무기를 강화하려거든 하드윈을 찾게. 그 친구의 망치는 틀린 적이 없어.', '물러설 줄 아는 것도 용기라네. 성수는 넉넉히 챙기게.'];
@@ -161,8 +168,8 @@ export class ChurchScene extends ServiceScene {
   // ── 스킬 초기화 ──
   tryReset() {
     const st = this.state, hero = this.hero, cost = this.resetCost();
-    const learned = Object.entries(hero.skills || {}).filter(([, l]) => l > 0);
-    if (!learned.length) { audio.sfx('menu_cancel'); this.talk('아직 비울 것이 없구먼. 먼저 기술을 익히고 오게.'); return; }
+    // 시작 기술(1레벨)만 있으면 돌려받을 포인트가 없으므로 비용을 받지 않는다
+    if (this.refundable() <= 0) { audio.sfx('menu_cancel'); this.talk('아직 비울 것이 없구먼. 먼저 기술을 익히고 오게.'); return; }
     if ((st.gold ?? 0) < cost) { audio.sfx('menu_cancel'); this.talk(`의식에는 ${fmt(cost)} G가 필요하다네.`); return; }
     audio.sfx('menu_ok');
     this.modal = new Modal({
@@ -288,7 +295,7 @@ export class ChurchScene extends ServiceScene {
     const c = opts[this.sel];
     this.actRect = { x: body.x + body.w / 2 - 170, y: body.y + body.h - 50, w: 340, h: 48 };
     const ok = c && canChangeClass(hero, c.id).ok;
-    uiButton(ctx, this.actRect, c ? (ok ? `「${c.name}」(으)로 전직` : `레벨 ${c.reqLevel} 필요`) : '—', { selected: ok, size: 17 });
+    uiButton(ctx, this.actRect, c ? (ok ? `${josa(`「${c.name}」`, '으로', '로')} 전직` : `레벨 ${c.reqLevel} 필요`) : '—', { selected: ok, size: 17 });
   }
 
   drawBless(ctx, body) {
@@ -336,7 +343,9 @@ export class ChurchScene extends ServiceScene {
     text(ctx, '시작 기술은 1레벨로 남습니다.', body.x + 20, body.y + 56, { size: 12, color: '#9d8f80' });
     const learned = Object.entries(hero.skills || {}).filter(([, l]) => l > 0);
     let y = body.y + 92;
+    const refund = this.refundable();
     text(ctx, `보유 SP  ${hero.sp ?? 0}`, body.x + body.w - 20, body.y + 32, { size: 16, weight: 900, family: FONT.num, color: '#8ae0ff', align: 'right' });
+    text(ctx, refund > 0 ? `돌려받을 SP  ${refund}` : '돌려받을 SP 없음', body.x + body.w - 20, body.y + 56, { size: 12, weight: 800, color: refund > 0 ? '#8ae0ff' : '#9d8f80', align: 'right' });
     if (!learned.length) text(ctx, '익힌 기술이 없습니다.', body.x + body.w / 2, y + 40, { size: 14, color: COLORS.dim, align: 'center' });
     const colW = (body.w - 40) / 2;
     learned.slice(0, 12).forEach(([id, lv], i) => {
@@ -347,8 +356,8 @@ export class ChurchScene extends ServiceScene {
       text(ctx, `Lv.${lv}`, x + colW - 20, yy, { size: 13, weight: 800, family: FONT.num, color: '#ffe7a0', align: 'right' });
     });
     this.actRect = { x: body.x + body.w / 2 - 170, y: body.y + body.h - 50, w: 340, h: 48 };
-    const ok = learned.length && this.state.gold >= cost;
-    uiButton(ctx, this.actRect, `초기화  ·  ${fmt(cost)} G`, { selected: !!ok, size: 17 });
+    const ok = refund > 0 && this.state.gold >= cost;
+    uiButton(ctx, this.actRect, refund > 0 ? `초기화  ·  ${fmt(cost)} G` : '초기화할 기술 없음', { selected: !!ok, size: 17 });
   }
 
   drawSave(ctx, body) {
@@ -362,7 +371,7 @@ export class ChurchScene extends ServiceScene {
     text(ctx, ch.name, tx, body.y + 72, { size: 24, weight: 800, family: FONT.title, color: '#f3d690' });
     const rows = [
       ['직업', `${CLASSES[hero.classId]?.name ?? ''}  ·  Lv.${hero.level}`],
-      ['진행', `제${st.progress?.chapter ?? 0}장까지 클리어`],
+      ['진행', (st.progress?.chapter ?? 0) > 0 ? `제${st.progress.chapter}장까지 클리어` : '아직 클리어한 장 없음'],
       ['드라큘라의 유물', `${st.progress?.relics?.length ?? 0} / 5`],
       ['비전서', `${st.progress?.docs?.length ?? 0} / 20`],
       ['플레이 시간', fmtTime(st.stats?.playTime ?? 0)],

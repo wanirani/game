@@ -605,6 +605,7 @@ export class ABoss extends Boss {
     this.dropThrough = true;
     this.deathT = 0;
     this.phaseFx = 0;       // 페이즈 변신 연출 타이머
+    this.rebuildOnRetry = true; // 페이즈 변형을 되돌리는 훅이 없음 → 플레이어 부활 시 world.resetBoss() 가 새로 생성
     this.updArena();
     this.setup?.();
   }

@@ -673,6 +673,35 @@ export function prebakeFacades() { for (const b of BUILDINGS) getBaked(b); }
 // ───────────────────────── 실시간 오버레이 ─────────────────────────
 function flicker(t, k) { return 0.82 + Math.sin(t * 7.3 + k * 1.7) * 0.07 + Math.sin(t * 13.1 + k * 3.3) * 0.05; }
 
+/** 대장간 화덕 불: base = 화구 바닥 y. 화구(폭 50, 아치) 안으로 잘라 그린다 */
+const FORGE_TONGUES = [[-15, 7, 20, 0.0], [-7, 8, 30, 1.7], [4, 8, 27, 3.1], [14, 6, 19, 4.4], [-2, 6, 37, 5.8]]; // [dx, 반폭, 높이, 위상]
+const FORGE_LAYERS = [['#b82a14', 1], ['#ff6a1c', 0.8], ['#ffb040', 0.58], ['#fff0c0', 0.32]];             // [색, 크기 배율]
+function drawForgeFire(ctx, x, base, t) {
+  ctx.save();
+  ctx.beginPath(); ctx.moveTo(x - 25, base); ctx.lineTo(x - 25, base - 30); ctx.arc(x, base - 30, 25, Math.PI, 0); ctx.lineTo(x + 25, base); ctx.closePath(); ctx.clip();
+  // 숯불 바닥 (천천히 달아올랐다 식는다)
+  for (let i = 0; i < 7; i++) {
+    const p = 0.5 + 0.5 * Math.sin(t * 2.6 + i * 1.9);
+    ctx.fillStyle = `rgb(${Math.round(150 + p * 100)},${Math.round(40 + p * 80)},${Math.round(16 + p * 20)})`;
+    ctx.beginPath(); ctx.ellipse(x - 21 + i * 7, base - 2 - (i % 2) * 2, 5, 3.5, 0, 0, TAU); ctx.fill();
+  }
+  // 불길 (바깥 붉은 층 → 안쪽 흰 심지)
+  for (const [col, s] of FORGE_LAYERS) {
+    ctx.fillStyle = col;
+    for (const [dx, w, h, ph] of FORGE_TONGUES) {
+      const hh = h * s * (0.82 + Math.sin(t * 8.5 + ph) * 0.14 + Math.sin(t * 21 + ph * 2) * 0.06);
+      const sway = (Math.sin(t * 5.5 + ph) * 3 + Math.sin(t * 13 + ph * 1.3) * 1.2) * (0.6 + s * 0.4);
+      const ww = w * (0.45 + s * 0.55), bx = x + dx, by = base - 3;
+      ctx.beginPath();
+      ctx.moveTo(bx - ww, by);
+      ctx.bezierCurveTo(bx - ww, by - hh * 0.45, bx + sway * 0.4 - ww * 0.3, by - hh * 0.75, bx + sway, by - hh);
+      ctx.bezierCurveTo(bx + sway * 0.4 + ww * 0.3, by - hh * 0.75, bx + ww, by - hh * 0.45, bx + ww, by);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
 function drawFlame(ctx, x, y, s, t, k = 0) {
   const f = 1 + Math.sin(t * 21 + k) * 0.12 + Math.sin(t * 34 + k * 2) * 0.06;
   ctx.fillStyle = '#ff7a2a'; ctx.beginPath(); ctx.ellipse(x, y - 6 * s * f, 4.5 * s, 10 * s * f, Math.sin(t * 3 + k) * 0.08, 0, TAU); ctx.fill();
@@ -806,12 +835,14 @@ const LIVE = {
   inn(ctx, b, t) { smoke(ctx, b._chim.x, b._chim.y, t); drawCat(ctx, 604, F - 58, t); },
   smith(ctx, b, t) {
     smoke(ctx, b._chim.x, b._chim.y, t + 3, 8, '90,80,90', true);
-    // 화덕 불꽃
+    // 화덕 불꽃: 아치형 화구 안의 숯불 + 끝이 가늘어지는 불길 여러 갈래 (갈래마다 높이·흔들림이 다름)
     const f = b._forge, k = 0.8 + Math.sin(t * 9) * 0.1 + Math.sin(t * 23) * 0.06;
     ctx.globalCompositeOperation = 'lighter';
     glow(ctx, f.x, f.y - 14, 120 * k, '#ff6a1a', 0.55);
-    glow(ctx, f.x, f.y - 10, 44, '#ffd070', 0.8 * k);
-    for (let i = 0; i < 5; i++) { ctx.fillStyle = `rgba(255,${120 + i * 25},40,0.8)`; const fx = f.x - 16 + i * 8; ctx.beginPath(); ctx.ellipse(fx, f.y - 14 - Math.abs(Math.sin(t * 8 + i)) * 8, 4, 10 + Math.sin(t * 11 + i * 2) * 3, 0, 0, TAU); ctx.fill(); }
+    ctx.globalCompositeOperation = 'source-over';
+    drawForgeFire(ctx, f.x, f.y + 14, t);
+    ctx.globalCompositeOperation = 'lighter';
+    glow(ctx, f.x, f.y - 4, 40, '#ffd070', 0.45 * k);
     glow(ctx, b._anvil.x, b._anvil.y, 70, '#ff8a3a', 0.25 * k);
     ctx.globalCompositeOperation = 'source-over';
   },

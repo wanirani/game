@@ -41,8 +41,12 @@
   // 전체화면 버튼
   document.getElementById('fsBtn').addEventListener('click', () => {
     const el = document.documentElement;
-    if (!document.fullscreenElement) { (el.requestFullscreen || el.webkitRequestFullscreen)?.call(el); try { screen.orientation?.lock?.('landscape'); } catch (e) {} }
-    else document.exitFullscreen?.();
+    if (!document.fullscreenElement) {
+      // 방향 고정은 전체화면이 된 뒤에만 가능하고, 지원하지 않는 기기(iOS·데스크톱)는 거부된 Promise 를 돌려주므로 조용히 무시
+      const lock = () => { try { screen.orientation?.lock?.('landscape')?.catch?.(() => {}); } catch (e) {} };
+      try { const p = (el.requestFullscreen || el.webkitRequestFullscreen)?.call(el); if (p?.then) p.then(lock, () => {}); else lock(); } catch (e) {}
+    }
+    else document.exitFullscreen?.()?.catch?.(() => {});
   });
   // 확대/스크롤 방지
   document.addEventListener('gesturestart', (e) => e.preventDefault());

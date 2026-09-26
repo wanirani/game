@@ -5,8 +5,9 @@
 //  sortInventory(state, mode:'type'|'rarity'|'new') / sellItem(state, uid, qty) → 골드 / sellJunk(state, maxRarity) → {count, gold}
 //  toggleLock(state, uid) → locked / buyItem(state, baseId, {rarity, price, qty}) → {ok, msg, item}
 //  quickHeal(state, hero, player) → {ok, msg} (전투 중 가장 알맞은 회복약 자동 사용) / freeSlots(state)
+//  equippedByOther(state, hero, uid) → charId|null / ensureWeapon(state, hero) → 새로 낀 무기|null
 // 아이템 인스턴스: { uid, baseId, slot, icon, rarity(0~5), level(강화 0~15), affixes:[{stat,value,id}], qty, locked, t }
-import { ITEMS, makeItem, isEquipment, buyPrice, sellPrice, itemName } from '../data/items.js';
+import { ITEMS, makeItem, isEquipment, buyPrice, sellPrice, itemName, itemStats } from '../data/items.js';
 import { bus } from '../core/events.js';
 import { audio } from '../core/audio.js';
 import { CHARACTERS } from '../data/characters.js';
@@ -120,16 +121,55 @@ export function equipItem(state, hero, uid, slotHint = null) {
 
 export function unequip(state, hero, slot) { hero.equip[slot] = null; }
 
+/** 다른 영웅이 이 장비를 끼고 있으면 그 영웅의 charId (자기 자신이면 null) — 장착 전 확인·안내용 */
+export function equippedByOther(state, hero, uid) {
+  const who = isEquipped(state, uid);
+  return who && who !== hero?.charId ? who : null;
+}
+
+/**
+ * 무기 칸이 비었거나 사라진 아이템을 가리키면 쓸 수 있는 무기를 다시 끼운다
+ * (강화 파괴·손상된 세이브 대비 — '무기는 해제할 수 없다' 불변식 유지).
+ * 가방에 쓸 만한 무기가 없으면 시작 무기를 새로 지급한다. 반환: 새로 장착한 아이템 | null
+ */
+export function ensureWeapon(state, hero) {
+  if (!state || !hero) return null;
+  hero.equip ??= { weapon: null, head: null, body: null, cloak: null, acc1: null, acc2: null };
+  if (hero.equip.weapon && findItem(state, hero.equip.weapon)) return null;
+  hero.equip.weapon = null;
+  const power = (it) => { const st = itemStats(it); return (st.atk ?? 0) + (st.mag ?? 0); };
+  let best = null, bestP = -1;
+  for (const it of state.inventory || []) {
+    if (ITEMS[it.baseId]?.slot !== 'weapon' || isEquipped(state, it.uid) || !canEquip(state, hero, it).ok) continue;
+    const pw = power(it);
+    if (pw > bestP) { best = it; bestP = pw; }
+  }
+  if (!best) {
+    const sw = CHARACTERS[hero.charId]?.startWeapon;
+    best = sw ? addItem(state, makeItem(sw), { silent: true }) : null;
+  }
+  if (best) hero.equip.weapon = best.uid;
+  return best;
+}
+
 // ───────────────────────────── 사용 ─────────────────────────────
+const STATUS_KEYS = ['poison', 'curse', 'slow', 'freeze', 'stone', 'bleed', 'burn'];
+function hasStatus(p) {
+  return STATUS_KEYS.some((k) => p.buffs?.[k] || p.status?.[k] || p[k + 'T'] > 0);
+}
 function clearStatus(p) {
   let had = false;
-  for (const k of ['poison', 'curse', 'slow', 'freeze', 'stone', 'bleed', 'burn']) {
+  for (const k of STATUS_KEYS) {
     if (p.buffs?.[k]) { delete p.buffs[k]; had = true; }
     if (p.status?.[k]) { p.status[k] = 0; had = true; }
     const tk = k + 'T';
     if (p[tk] > 0) { p[tk] = 0; had = true; }
   }
   return had;
+}
+/** 마을(허브) 월드인지 — 허브 World 는 mode 'town' 이며 스테이지 id 는 'town' */
+function isTownWorld(w) {
+  return !!w && (w.mode === 'town' || w.stage?.town || w.stage?.theme === 'town' || w.stage?.id === 'town' || w.stage?.id === 'hub');
 }
 
 /**
@@ -144,8 +184,9 @@ export function useItem(state, hero, uid, player = null) {
   if (!b?.use) return { ok: false, msg: isEquipment(b) ? '장비는 장착해서 사용한다.' : '사용할 수 없는 물건이다.' };
   const u = b.use;
   const w = player?.world;
-  if (!player || !w) {
-    if (u.warp) return { ok: false, msg: '이미 안전한 곳에 있다.' };
+  // 스테이지 밖(메뉴) 또는 마을 허브: 아이템을 소모하지 않고 안내만
+  if (!player || !w || isTownWorld(w)) {
+    if (u.warp) return { ok: false, msg: w ? '이미 마을에 있다.' : '이미 안전한 곳에 있다.' };
     if (u.buff) return { ok: false, msg: '전투 중에만 사용할 수 있다.' };
     return { ok: false, msg: '마을에서는 휴식으로 기력이 가득 차 있다. 전투 중에 사용하자.' };
   }
@@ -154,11 +195,14 @@ export function useItem(state, hero, uid, player = null) {
   const parts = [];
   if (u.warp) {
     if (w.bossActive && !w.cleared) return { ok: false, msg: '보스의 결계가 귀환을 가로막는다!' };
-    if (w.stage?.town || w.stage?.id === 'hub') return { ok: false, msg: '이미 마을에 있다.' };
-  } else {
+  } else if (!u.buff) {
     const needHp = u.heal && player.hp < s.hp - 0.5;
     const needMp = u.mp && player.mp < s.mp - 0.5;
-    if (!needHp && !needMp && !u.cure && !u.buff) return { ok: false, msg: u.heal && u.mp ? 'HP와 MP가 이미 가득 찼다.' : u.mp ? 'MP가 이미 가득 찼다.' : 'HP가 이미 가득 찼다.' };
+    const needCure = u.cure && hasStatus(player);
+    if (!needHp && !needMp && !needCure) {
+      const full = u.heal && u.mp ? 'HP와 MP가 이미 가득 찼다.' : u.mp ? 'MP가 이미 가득 찼다.' : 'HP가 이미 가득 찼다.';
+      return { ok: false, msg: u.cure ? (u.heal || u.mp ? `상태 이상이 없고 ${full}` : '상태 이상이 없다.') : full };
+    }
   }
   if (u.heal) { const got = player.heal(s.hp * u.heal); if (got > 0) parts.push(`HP +${got}`); }
   if (u.mp) {

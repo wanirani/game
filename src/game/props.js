@@ -84,7 +84,9 @@ export class Chest extends Entity {
   update(dt, world) {
     this.t += dt;
     const p = world.player;
-    if (!this.open && p && Math.abs(p.cx - this.cx) < 34 && Math.abs(p.bottom - this.bottom) < 20 && input.pressed('up')) this.openChest(world);
+    // 범위 46: 가장 넓은 캐릭터(폭 36)가 1칸 벽 틈 속 상자에 붙어 섰을 때(중심 거리 42)도 열 수 있게
+    this.near = !this.open && !!p && Math.abs(p.cx - this.cx) < 46 && Math.abs(p.bottom - this.bottom) < 20;
+    if (this.near && input.pressed('up')) this.openChest(world);
   }
   openChest(world) {
     if (this.open) return;
@@ -97,12 +99,15 @@ export class Chest extends Entity {
   lights(L) { if (!this.open) L.add(this.cx, this.cy, 60, '#ffd070', 0.5); }
   draw(ctx, world) {
     const img = assets.get(this.open ? 'props/prop_chest_open' : 'props/prop_chest_closed');
-    if (img) { ctx.drawImage(img, this.cx - 30, this.bottom - 56, 60, 60); return; }
-    ctx.fillStyle = '#5a3418'; ctx.fillRect(this.x, this.y + 10, this.w, this.h - 10);
-    ctx.fillStyle = '#c8a040'; ctx.fillRect(this.x, this.y + 18, this.w, 4); ctx.fillRect(this.cx - 4, this.y + 14, 8, 10);
-    if (!this.open) { ctx.fillStyle = '#6a4020'; ctx.beginPath(); ctx.ellipse(this.cx, this.y + 12, this.w / 2, 10, 0, Math.PI, 0); ctx.fill(); }
-    else { ctx.fillStyle = '#2a1408'; ctx.fillRect(this.x + 3, this.y + 6, this.w - 6, 8); }
-    if (!this.open && Math.abs((world.player?.cx ?? -999) - this.cx) < 40) text(ctx, '▲', this.cx, this.y - 8, { size: 14, align: 'center', color: '#ffe7a0' });
+    if (img) ctx.drawImage(img, this.cx - 30, this.bottom - 56, 60, 60);
+    else {
+      ctx.fillStyle = '#5a3418'; ctx.fillRect(this.x, this.y + 10, this.w, this.h - 10);
+      ctx.fillStyle = '#c8a040'; ctx.fillRect(this.x, this.y + 18, this.w, 4); ctx.fillRect(this.cx - 4, this.y + 14, 8, 10);
+      if (!this.open) { ctx.fillStyle = '#6a4020'; ctx.beginPath(); ctx.ellipse(this.cx, this.y + 12, this.w / 2, 10, 0, Math.PI, 0); ctx.fill(); }
+      else { ctx.fillStyle = '#2a1408'; ctx.fillRect(this.x + 3, this.y + 6, this.w - 6, 8); }
+    }
+    // 열기 안내 (스프라이트 유무와 관계없이)
+    if (this.near) text(ctx, '▲', this.cx, this.bottom - (img ? 64 : this.h + 8), { size: 14, align: 'center', color: '#ffe7a0' });
   }
 }
 

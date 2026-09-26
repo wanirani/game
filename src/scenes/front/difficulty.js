@@ -6,7 +6,7 @@ import { assets } from '../../core/assets.js';
 import { text, wrap, FONT, ListMenu } from '../../core/ui.js';
 import { clamp, ease, rgba, lerp, TAU } from '../../core/math.js';
 import { DIFFICULTIES } from '../../data/difficulty.js';
-import { Ambience, kenBurns, shade, frame, heading, gbutton, backButton, footer, setPad, skull, ornament, follow, glowSprite, GOLD, BONE, DIM } from './common.js';
+import { Ambience, kenBurns, shade, frame, heading, gbutton, backButton, footer, setPad, skull, ornament, follow, glowSprite, TapZones, GOLD, BONE, DIM } from './common.js';
 
 const pct = (v) => `×${Number(v).toFixed(2).replace(/0$/, '')}`;
 
@@ -30,6 +30,7 @@ export class DifficultyScene extends Scene {
     this.amb = new Ambience({ embers: 60, motes: 16, bats: 4, lightning: false });
     this.sel = DIFFICULTIES.map((_, i) => (i === index ? 1 : 0));
     this.pick = -1; this.pickT = 0;
+    this.taps = new TapZones();
   }
   exit() { setPad(true); }
   onResume() { setPad(false); }
@@ -40,8 +41,9 @@ export class DifficultyScene extends Scene {
     this.amb.update(dt, g.viewW, g.viewH);
     this.sel = this.sel.map((v, i) => follow(v, i === this.menu.index ? 1 : 0, dt, 14));
     if (this.pick >= 0) { this.pickT += dt; if (this.pickT > 0.55 && !this.went) { this.went = true; this.proceed(); } return; }
-    if (this.backTapped) { this.backTapped = false; this.leave(); return; }
-    if (this.startTapped) { this.startTapped = false; this.choose(); return; }
+    const tap = this.taps.hit();
+    if (tap === 'back') { this.leave(); return; }
+    if (tap === 'start') { this.choose(); return; }
     const r = this.menu.update(dt);
     if (this.menu.moved) audio.sfx('menu_move');
     if (r === 'confirm') this.choose();
@@ -81,7 +83,7 @@ export class DifficultyScene extends Scene {
     const n = DIFFICULTIES.length, gap = 10;
     const cw = Math.min(176, (vw - 60 - gap * (n - 1)) / n), ch = 332;
     const x0 = vw / 2 - (n * cw + (n - 1) * gap) / 2, y0 = 106;
-    this.menu.clearHits();
+    this.menu.clearHits(); this.taps.clear();
     // 선택되지 않은 카드 먼저, 선택 카드는 맨 위에
     const order = DIFFICULTIES.map((_, i) => i).sort((a, b) => this.sel[a] - this.sel[b]);
     for (const i of order) {
@@ -94,9 +96,9 @@ export class DifficultyScene extends Scene {
     }
     // 시작 버튼
     const br = { x: vw / 2 - 130, y: y0 + ch + 14, w: 260, h: 46 };
-    if (gbutton(ctx, br, `「${cur.name}」 난이도로 시작`, { selected: true, accent: cur.color, size: 16 })) this.startTapped = true;
-    if (backButton(ctx)) this.backTapped = true;
-    footer(ctx, vw, vh, '←→ 선택   Z 결정   X 뒤로', null);
+    gbutton(ctx, br, `「${cur.name}」 난이도로 시작`, { selected: true, accent: cur.color, size: 16, zones: this.taps, id: 'start' });
+    backButton(ctx, 14, 12, '뒤로', this.taps);
+    footer(ctx, vw, vh, '←→ 선택   Z 결정   X 뒤로', '카드를 터치해 고르고 시작 버튼을 누르세요');
     if (this.pick >= 0) {
       const k = clamp(this.pickT / 0.55, 0, 1);
       ctx.fillStyle = `rgba(0,0,0,${k * 0.5})`; ctx.fillRect(0, 0, vw, vh);

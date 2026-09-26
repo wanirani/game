@@ -60,7 +60,8 @@ export class WorldMapScene extends Scene {
 
   layout() {
     const vw = this.game.viewW, vh = this.game.viewH;
-    return { vw, vh, mx: 56, my: 76, mw: vw - 112, mh: vh - 76 - 160 };
+    // 아래: 정보 패널(vh-158 ~ vh-26) + 키 안내 줄(기준선 vh-8)
+    return { vw, vh, mx: 56, my: 76, mw: vw - 112, mh: vh - 76 - 172 };
   }
   pos(mp) { const L = this.layout(); return { x: L.mx + mp.x * L.mw, y: L.my + mp.y * L.mh }; }
 
@@ -90,9 +91,8 @@ export class WorldMapScene extends Scene {
     }
     if (input.pressed('confirm')) { this.start(); return; }
     if (input.pressed('cancel') || (input.pressed('menu') && !input.pressed('confirm'))) this.close();
-    // 말 이동 (이름표가 위에 있으면 노드 왼쪽에 선다)
-    const cn = this.nodes[this.index], tp0 = this.pos(cn.stage.mapPos);
-    const tp = this.labelSide(cn) < 0 ? { x: tp0.x - 48, y: tp0.y + 36 } : tp0;
+    // 말 이동 (다른 노드·랭크 인장·이름표를 덜 가리는 자리에 선다)
+    const tp = this.tokenSpot(this.nodes[this.index]);
     if (!this.tok) this.tok = { x: tp.x, y: tp.y };
     const k = 1 - Math.pow(0.0005, dt);
     this.tok.x = lerp(this.tok.x, tp.x, k); this.tok.y = lerp(this.tok.y, tp.y, k);
@@ -267,7 +267,7 @@ export class WorldMapScene extends Scene {
   labelSide(n) {
     const vw = this.game.viewW;
     if (this._lbW !== vw) {
-      this._lbW = vw; this._lb = new Map();
+      this._lbW = vw; this._lb = new Map(); this._lbBoxes = [];
       const boxes = [];
       const hitN = (bx) => this.nodes.reduce((a, o) => { const q = this.pos(o.stage.mapPos); return a + (q.x + 22 > bx.x && q.x - 22 < bx.x + bx.w && q.y + 22 > bx.y && q.y - 22 < bx.y + bx.h ? 1 : 0); }, 0);
       const hitB = (bx) => boxes.reduce((a, b) => a + (b.x < bx.x + bx.w && b.x + b.w > bx.x && b.y < bx.y + bx.h && b.y + b.h > bx.y ? 1 : 0), 0);
@@ -278,8 +278,41 @@ export class WorldMapScene extends Scene {
         const side = su < sd ? -1 : 1;
         this._lb.set(o.id, side); boxes.push(side < 0 ? up : dn);
       }
+      this._lbBoxes = boxes;
     }
     return this._lb.get(n.id) ?? 1;
+  }
+
+  /**
+   * 말(현재 캐릭터 초상화 표식)의 자리. 반환값은 this.tok 좌표계(표식 원 중심 + 42).
+   * 노드 위 → 왼쪽 → 오른쪽 → 대각선 후보 중 다른 노드·랭크 인장·이름표·상단 바·정보 패널과 가장 덜 겹치는 곳.
+   */
+  tokenSpot(n) {
+    const L = this.layout();
+    this.labelSide(n);
+    if (this._tkW !== L.vw || this._tkN !== this.nodes.length) { this._tkW = L.vw; this._tkN = this.nodes.length; this._tk = new Map(); }
+    if (!this._tk.has(n.id)) {
+      const P = this.state.progress, q = this.pos(n.stage.mapPos), TR = 19;
+      const obst = [];
+      for (const o of this.nodes) {
+        const qo = this.pos(o.stage.mapPos);
+        if (o !== n) obst.push([qo.x, qo.y, 22]);
+        if (P.cleared?.[o.id]?.rank) obst.push([qo.x + 17, qo.y - 17, 11]);
+      }
+      const vp = this.pos(VILLAGE); obst.push([vp.x, vp.y - 4, 28]);
+      const cands = [[0, -44, 0], [-50, -8, 0.3], [50, -8, 0.4], [-40, -34, 0.6], [42, -38, 0.7]];
+      let best = null, bestS = Infinity;
+      for (const [dx, dy, pref] of cands) {
+        const cx = q.x + dx, cy = q.y + dy;
+        let sc = pref;
+        for (const [ox, oy, r] of obst) { const d = Math.hypot(cx - ox, cy - oy); if (d < TR + r) sc += 4 * (1 - d / (TR + r)) + 1; }
+        for (const b of this._lbBoxes ?? []) if (cx + TR > b.x && cx - TR < b.x + b.w && cy + TR > b.y && cy - TR < b.y + b.h) sc += 2;
+        if (cy - TR < 62 || cx - TR < 4 || cx + TR > L.vw - 4 || cy + 26 > L.my + L.mh + 40) sc += 6;
+        if (sc < bestS) { bestS = sc; best = { x: cx, y: cy + 42 }; }
+      }
+      this._tk.set(n.id, best);
+    }
+    return this._tk.get(n.id);
   }
 
   token(ctx, x, y) {
@@ -298,7 +331,7 @@ export class WorldMapScene extends Scene {
   info(ctx, L) {
     const { vw, vh } = L, st = this.state, P = st.progress;
     const n = this.nodes[this.index], s = n.stage, open = this.isOpen(n), rec = P.cleared?.[n.id];
-    const x = 14, y = vh - 146, w = vw - 28, h = 132;
+    const x = 14, y = vh - 158, w = vw - 28, h = 132;
     uiPanel(ctx, x, y, w, h, { glow: n.id === 's13' ? 'rgba(160,60,255,0.5)' : 'rgba(180,20,40,0.35)' });
     // 제목
     const chapTxt = n.arena ? 'ARENA' : `CHAPTER ${ROMAN[s.chapter] ?? s.chapter}`;
@@ -346,7 +379,7 @@ export class WorldMapScene extends Scene {
     if (can) { ctx.shadowColor = `rgba(255,80,90,${0.4 + Math.sin(this.t * 4) * 0.2})`; ctx.shadowBlur = 18; }
     uiButton(ctx, this.goRect, can ? (n.arena ? '입장' : '출발!') : '잠김', { selected: can, disabled: !can, size: 22, sub: can && !n.arena && rec ? '다시 도전' : undefined });
     ctx.restore();
-    uiHints(ctx, [[['←', '→'], '스테이지'], ['Z', '출발'], ['X', '마을로']], vw / 2, vh - 1);
+    uiHints(ctx, [[['←', '→'], '스테이지'], ['Z', '출발'], ['X', '마을로']], vw / 2, vh - 8);
   }
 
   drawReveal(ctx, L) {

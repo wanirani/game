@@ -10,11 +10,12 @@ import { text, panel, button, bar, ListMenu, FONT, COLORS, vignette } from '../.
 import { TAU, clamp, rand, fmt, ease } from '../../core/math.js';
 import { World } from '../../game/world.js';
 import { newGameState, currentHero } from '../../game/state.js';
-import { expToNext } from '../../game/stats.js';
+import { expToNext, MAX_LEVEL } from '../../game/stats.js';
 import { drawHero } from '../../render/hero.js';
 import { drawIcon } from '../../render/icons.js';
 import { CHARACTERS } from '../../data/characters.js';
 import { CLASSES } from '../../data/classes.js';
+import { ITEMS } from '../../data/items.js';
 import * as NpcData from '../../data/npcs.js';
 import { SCRIPTS, resolveNpcScript } from '../../data/story.js';
 import * as QuestRt from '../../game/quests.js';
@@ -23,6 +24,23 @@ import { FLOOR, drawFacades, facadeLights, prebakeFacades, setFacadeScale, anvil
 import { padHidden, uiPanel, uiButton, uiHints } from './common.js';
 
 const RELIC_IDS = ['k_relic_1', 'k_relic_2', 'k_relic_3', 'k_relic_4', 'k_relic_5'];
+// 처음 도착(프롤로그 직후) · 이어하기 — '돌아왔다' 가 아니라 환영 문구, 마을 한가운데에서 시작
+const ARRIVE_FROM = new Set(['prologue', 'load', 'title', 'new']);
+// 마을은 전투 없음: 이 입력들은 World 에 넘기지 않고(하트·MP 소모 방지) 가상 패드에서도 버튼을 숨긴다
+const NO_COMBAT = ['attack', 'sub', 'skill1', 'skill2', 'ult', 'swap'];
+
+/** 가상 패드의 전투 버튼(공격·보조·S1·S2·필살·⇄) 숨김/복원 — 스틱·점프·대시·일시정지만 남긴다 */
+function townPad(on) {
+  try {
+    const root = typeof document !== 'undefined' ? document.getElementById('touch') : null;
+    root?.querySelectorAll('#btns [data-act]').forEach((b) => {
+      const acts = b.dataset.act.split(',');
+      if (!acts.every((a) => NO_COMBAT.includes(a))) return;
+      b.style.display = on ? 'none' : '';
+      if (on) { b.classList.remove('on'); for (const a of acts) if (input.sources?.touch) input.sources.touch[a] = false; }
+    });
+  } catch { /* 무시 */ }
+}
 
 /** 광원만 등록하는 보이지 않는 엔티티 */
 class TownAmbience extends Entity {
@@ -40,15 +58,18 @@ export class HubScene extends Scene {
     this.boardInfo = { boardNew: false, boardClaim: false };
     setFacadeScale(g.settings?.quality === 'low' ? 1 : Math.max(1, g.scale || 1));
     prebakeFacades();
-    this.buildWorld(this.from ? 'gate' : null);
-    this.banner = { t: 0, text: '에슈빌', sub: this.from ? '무사히 돌아왔다 — 잠시 숨을 고르자' : '어둠 속에 등불이 남은 마지막 마을' };
+    // 스테이지·엔딩에서 돌아옴 → 동쪽 성문 앞 / 여관에서 나옴 → 여관 앞 / 첫 도착·이어하기 → 마을 한가운데
+    const back = !!this.from && !ARRIVE_FROM.has(this.from) && this.from !== 'inn';
+    this.buildWorld(back ? 'gate' : this.from === 'inn' ? 'inn' : null);
+    this.banner = { t: 0, text: '에슈빌', sub: back ? '무사히 돌아왔다 — 잠시 숨을 고르자' : '어둠 속에 등불이 남은 마지막 마을' };
+    townPad(true);
     audio.music('hub');
     assets.preload(['bg/worldmap', 'bg/shop', 'bg/smith', 'portraits/npc_rook', 'portraits/npc_hadwin', 'portraits/npc_alberto']);
     this.refreshBoard();
     if (g.settings?.autoSave) { try { saves.write(g.state.slot ?? 1, g.state); } catch (e) { /* 저장 실패 무시 */ } }
   }
 
-  /** World 생성 + 마을 전용 패치. spawn: 'gate' 면 동쪽 성문 앞, 숫자면 해당 x */
+  /** World 생성 + 마을 전용 패치. spawn: 'gate' 면 동쪽 성문 앞, 'inn' 이면 여관 문 앞, 숫자면 해당 x */
   buildWorld(spawn = null, facing = null) {
     const g = this.game;
     const w = new World(g, TOWN_STAGE, { mode: 'town' });
@@ -78,6 +99,7 @@ export class HubScene extends Scene {
     // 시작 위치
     const p = w.player;
     if (spawn === 'gate') { const gb = BUILDINGS.find((b) => b.kind === 'gate'); p.x = gb.door * TILE - 120; p.facing = -1; }
+    else if (spawn === 'inn') { const ib = BUILDINGS.find((b) => b.kind === 'inn'); p.x = ib.door * TILE + 70; p.facing = 1; }
     else if (typeof spawn === 'number') { p.x = spawn; if (facing) p.facing = facing; }
     p.y = FLOOR - p.h;
     w.camera.follow(p, 1 / 60, true);
@@ -91,7 +113,7 @@ export class HubScene extends Scene {
     d.x = cx - wid / 2; d.w = wid;
     d.z = 20;
     d.draw = (ctx, world) => {
-      if (!d.near) return;
+      if (!d.near || this.game.top !== this) return; // 대화·메뉴가 위에 떠 있으면 안내 숨김
       const t = world.time;
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
@@ -130,7 +152,7 @@ export class HubScene extends Scene {
     };
     n.draw = (ctx, world) => {
       world.drawNPC(ctx, n);
-      if (n.near) {
+      if (n.near && this.game.top === this) { // 대화창이 떠 있는 동안에는 이름표·'▲ 대화' 를 숨긴다 (대화창 테두리와 겹침)
         const nm = NpcData.NPCS?.[n.npcId]?.name ?? spec.name ?? '';
         const y = n.y - 30 - Math.abs(Math.sin(world.time * 3)) * 3;
         text(ctx, nm, n.cx, y - 14, { size: 14, weight: 800, family: FONT.title, color: '#f3d690', align: 'center', ow: 3 });
@@ -207,7 +229,7 @@ export class HubScene extends Scene {
     } catch (e) { this.boardInfo.boardNew = false; this.boardInfo.boardClaim = false; }
   }
 
-  exit() { if (this.menuOpen) padHidden(false); this.menuOpen = false; if (this.game.world === this.world) this.game.world = null; }
+  exit() { if (this.menuOpen) padHidden(false); this.menuOpen = false; townPad(false); if (this.game.world === this.world) this.game.world = null; }
   resize() { this.world?.camera.setView(this.game.viewW, this.game.viewH); }
 
   // ───────────────────────── 업데이트 ─────────────────────────
@@ -218,7 +240,10 @@ export class HubScene extends Scene {
     if (this.menuOpen) { this.updateMenu(dt); return; }
     if (input.pressed('menu') && !w.cutscene) { this.openMenu(); return; }
     if (this.tapHud()) return;
-    w.update(dt);
+    // 전투 입력은 이번 스텝 동안만 뗀 것으로 보이게 한 뒤 World 갱신 (보조무기·스킬이 하트·MP 를 쓰지 않도록)
+    const held = NO_COMBAT.map((a) => input.state[a]);
+    for (const a of NO_COMBAT) { input.state[a] = false; input.consume(a); }
+    try { w.update(dt); } finally { NO_COMBAT.forEach((a, i) => { input.state[a] = held[i]; }); }
     const p = w.player;
     if (p) { p.hp = p.stats.hp; if (p.y > FLOOR + 200) { p.x = 29 * TILE; p.y = FLOOR - p.h; p.vy = 0; } }
     // 상호작용 대상
@@ -301,7 +326,7 @@ export class HubScene extends Scene {
     const w = this.world, vw = this.game.viewW, vh = this.game.viewH;
     w.render(ctx);
     this.drawHUD(ctx, vw, vh);
-    this.drawBanner(ctx, vw, vh);
+    if (this.game.top === this) this.drawBanner(ctx, vw, vh); // 대화 중에는 (시간이 멈춘) 배너를 숨긴다
     if (this.menuOpen) this.drawMenu(ctx, vw, vh);
   }
 
@@ -324,9 +349,9 @@ export class HubScene extends Scene {
     ctx.fillStyle = 'rgba(8,4,10,0.55)'; ctx.fillRect(bx - 6, py + 2, bw + 12, 52);
     text(ctx, ch.name, bx, py + 18, { size: 15, weight: 800, family: FONT.title, color: '#f3e2b8' });
     text(ctx, CLASSES[hero.classId]?.name ?? ch.title, bx + bw, py + 18, { size: 12, align: 'right', color: '#c8b8a0', weight: 700 });
-    const need = expToNext(hero.level);
-    bar(ctx, bx, py + 28, bw, 7, hero.exp / need, { color: '#e8c872' });
-    text(ctx, `EXP ${fmt(hero.exp)} / ${fmt(need)}`, bx, py + 49, { size: 11, color: '#bca88a', weight: 700 });
+    const maxed = hero.level >= MAX_LEVEL, need = expToNext(hero.level);
+    bar(ctx, bx, py + 28, bw, 7, maxed ? 1 : hero.exp / need, { color: '#e8c872' });
+    text(ctx, maxed ? 'EXP MAX' : `EXP ${fmt(hero.exp)} / ${fmt(need)}`, bx, py + 49, { size: 11, color: maxed ? '#ffd84a' : '#bca88a', weight: 700 });
     if ((hero.sp ?? 0) > 0) text(ctx, `SP ${hero.sp}`, bx + bw, py + 49, { size: 11, align: 'right', color: '#8ae0ff', weight: 800, family: FONT.num });
 
     // ── 우상단: 골드 · 유물 · 버튼 ──
@@ -343,7 +368,7 @@ export class HubScene extends Scene {
       ctx.fillStyle = has ? 'rgba(120,10,24,0.8)' : 'rgba(10,4,10,0.6)';
       ctx.beginPath(); ctx.arc(rx, ry, 12, 0, TAU); ctx.fill();
       ctx.strokeStyle = has ? '#ff6a7a' : '#4a3a30'; ctx.lineWidth = 1.5; ctx.stroke();
-      if (has) drawIcon(ctx, 'relic_' + (i + 1), rx, ry, 22);
+      if (has) drawIcon(ctx, ITEMS[RELIC_IDS[i]]?.icon ?? 'relic_' + (i + 1), rx, ry, 22);
       else text(ctx, '?', rx, ry + 5, { size: 12, weight: 800, color: '#4a3a30', align: 'center', ow: 0 });
     }
     const bwd = 88, bh = 40, by = gy + 80;

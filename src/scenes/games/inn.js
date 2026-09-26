@@ -392,8 +392,9 @@ export class InnScene extends Scene {
     const bw = clamp(avail * 0.3, 128, 170), bh = 62;
     const chipsW = avail - bw - 16;
     const opts = this.betOptions();
-    const r = clamp(chipsW / opts.length / 2 - 7, 20, 28);
-    const gapC = Math.min(r * 2 + 16, chipsW / opts.length);
+    // 칩은 '도전하기!' 버튼 앞 여백까지만 쓴다 (마지막 칩이 버튼에 가려지지 않게: 선택 테두리 +3 포함)
+    const gapC = Math.min(72, (chipsW - 20) / opts.length);
+    const r = clamp(gapC / 2 - 6, 18, 28);
     const cy = y + 60;
     gPanel(ctx, x, y, avail, h, { a: 0.78, r: 12 });
     text(ctx, '판돈', x + 16, y + 22, { size: 13, weight: 800, family: FONT.title, color: GOLD, ow: 3 });

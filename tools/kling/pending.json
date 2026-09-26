@@ -8,8 +8,9 @@
  "s02_graveyard": {
   "group": "bg",
   "ar": "21:9",
-  "gid": "AT8K6ezbihOC3TeF_8CUgPFHBhmC_SX5TgfkZrtsMcBZjkJmgKjuIU7UNqmLqBvA173dptf9",
-  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2YxYjhmYzhkLWU3YjMtNDNiMC1iMDYwLTAwMTJjYTdiNGU1NC8tNDMyOTk1Mjk2OTgyNjkzNTc5NC90ZW1wdWMwMnYucG5n.origin?x-kcdn-pid=112372"
+  "gid": "ASQuQ4YQH79yz_x-EE0p1H1fR5qwayitmIVJDnRJ4HrtqD_XCgLt9K9xk-Nc59sFQWuS1mnS",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzIxZGFlMjk1LTJiYTUtNGMyOS04YTc4LTIzNzUwZTdhYWFiZC83MDIxMjIzNDMwNjUxNzU3ODIyL3RlbXB1b2ZyYi5wbmc.origin?x-kcdn-pid=112372",
+  "prompt": "A misty haunted graveyard at night beside a ruined gothic chapel, crooked tombstones and leaning stone crosses on rolling hills, dead twisted trees with bare branches, ghostly teal will-o'-wisp flames rising from graves, a full moon behind drifting violet clouds. Palette of cold violet, slate blue-grey and eerie teal. Wide panoramic matte painting landscape used as a parallax backdrop, dark gothic horror fantasy, painterly digital illustration with rich detail, dramatic cinematic lighting, strong atmospheric depth and fog layers. Full-bleed painting edge to edge, the scenery fills the entire canvas including all four corners and the bottom edge, no borders, no frame, no black bars, no letterbox, no interface, no HUD, no health bars, no buttons, no icons, no inventory slots, no characters, no people, no text, no letters, no watermark. The ground in the lower quarter is darker misty earth and grass, still painted with detail."
  },
  "s03_gate": {
   "group": "bg",
@@ -26,8 +27,9 @@
  "s05_catacombs": {
   "group": "bg",
   "ar": "21:9",
-  "gid": "AYyCUX83GtqcJuN5vNP58oFsSm_ZQK623SSn8ws6ZjuDPwKF2CLMKSRW-K--Lr8JVxMXh5TS",
-  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzUyYjkxOWY5LWJlZTUtNDZlYi1iYzlhLWJhZDQ4ODgwMmIxNS8yODYyODcxOTQyODg1OTM1ODI0L3RlbXAwZDFvdy5wbmc.origin?x-kcdn-pid=112372"
+  "gid": "AUf8AqbPF0tMmnYfBejNKtDc38Bym15plDtgyLq2GIuEgP2poaQkwQLVNXH1yJjlLQey4VMY",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzcwZGRkYTJmLTIwYjItNDg0YS04NTczLTMzOTc5NTIzZGQyZS8tNTI3Nzg1ODUzMjE5MzU5NDYzMi90ZW1wNHI2NWMucG5n.origin?x-kcdn-pid=112372",
+  "prompt": "Deep underground catacombs ossuary beneath a vampire castle, towering vaulted stone arches and pillars built from stacked skulls and bones, the vaulted bone ceiling fills the top of the image, candlelit wall niches, stone stairways, a long corridor receding into sickly green mist. Palette of bone ivory, moss green and deep shadow. Wide panoramic matte painting interior used as a parallax backdrop, dark gothic horror fantasy, painterly digital illustration with rich detail, dramatic cinematic lighting, strong atmospheric depth and fog layers. Full-bleed painting edge to edge, the scenery fills the entire canvas including the top edge and all four corners, no borders, no frame, no black bars, no letterbox, no interface, no HUD, no health bars, no buttons, no characters, no people, no text, no letters, no watermark. The floor in the lower quarter is darker worn flagstones, still painted with detail."
  },
  "s06_library": {
   "group": "bg",
@@ -50,9 +52,9 @@
  "kael": {
   "group": "portrait",
   "ar": "2:3",
-  "gid": "ASPhBtzSbix3bofk7WmU-tfQXEMhOHP3LILRy-IH8ZTiQ5pOgpwH_PyUv5CBNlJXV6JpEVy3",
-  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2YzOTlhZGE3LTJjNTEtNGNmZS05ZjYzLWZmYWM0ZDFlNTRhMC8tNjIzMjk1MjkzOTk0Mjc2NTIxL3RlbXA0cmxyeS5wbmc.origin?x-kcdn-pid=112372",
-  "prompt": "Kael Valcrane, a handsome young male vampire hunter in his twenties, long dark brown hair tied back, determined amber eyes, dark leather long coat with crimson inner lining and silver buckles, holding a long leather chain whip, a silver cross pendant. Dark gothic fantasy character art, full body heroic standing pose, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with red moonlight glow, game character select art, no text, no letters, no watermark."
+  "gid": "AacdEm5a2JKnspjuxtVneMh3kpneOz8GjZwqwYgrfDBRBiKLycQdGOZnwAZTTrBnXGLq3a4I",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzI5NDY0NjdiLTkzMjktNDY1OC04NDRhLTgzNTc5MTA2NDIxYi8yNzYwMjQ4NjIxNzQwMzczMzgyL3RlbXB5Mmp1ai5wbmc.origin?x-kcdn-pid=112372",
+  "prompt": "Kael Valcrane, a handsome young human man in his twenties, heroic monster hunter protagonist, warm healthy skin tone, long dark brown hair tied back in a ponytail, a crimson red bandana headband tied around his forehead, warm amber-brown human eyes, determined kind expression. He wears a dark brown leather long hunter coat with a high collar, crimson inner lining and silver trim, a diagonal leather bandolier strap with silver ornaments across the chest, dark trousers and boots, a silver cross pendant, holding a long coiled brown leather whip. A human hero, not a vampire: no fangs, no glowing eyes, no pale skin. Dark gothic fantasy character art, full body heroic standing pose, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with red moonlight glow, game character select art, no text, no letters, no watermark."
  },
  "sera": {
   "group": "portrait",

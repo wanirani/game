@@ -173,8 +173,13 @@ export class InventoryTab extends Tab {
     this.filterRects.length = 0;
     let fx = A.x + 12;
     const fy = A.y + 10, fh = input.touchMode ? 34 : 30;
+    const sw = 70, cnt = `${this.state.inventory.length} / ${D.INV_LIMIT()}`;
+    // 폭이 모자라면 분류 버튼의 좌우 여백을 줄여 오른쪽 수량 표시 자리를 남긴다
+    const nameW = FILTERS.map((f) => measure(ctx, f.name, 13, 800));
+    const room = (A.x + GW - sw - 12) - measure(ctx, cnt, 12, 700) - 18 - fx - 6 * FILTERS.length;
+    const pad = clamp(Math.floor((room - nameW.reduce((a, b) => a + b, 0)) / FILTERS.length), 14, 22);
     FILTERS.forEach((f, k) => {
-      const w = measure(ctx, f.name, 13, 800) + 22;
+      const w = nameW[k] + pad;
       const r = { x: fx, y: fy, w, h: fh };
       this.filterRects.push(r);
       const on = k === this.fi;
@@ -188,11 +193,9 @@ export class InventoryTab extends Tab {
       fx += w + 6;
     });
     // 정렬 버튼 + 수량
-    const sw = 70;
     this.sortRect = { x: A.x + GW - sw - 12, y: fy, w: sw, h: fh };
     gbutton(ctx, this.sortRect, '정렬', { icon: 'sort', size: 13, hot: this.m.ges.over(this.sortRect), t });
     if (this.m.ges.over(this.sortRect)) text(ctx, SORTS[this.sortMode].name, this.sortRect.x + sw / 2, this.sortRect.y + fh + 14, { size: 11, align: 'center', color: PAL.gold, weight: 700 });
-    const cnt = `${this.state.inventory.length} / ${D.INV_LIMIT()}`;
     if (fx < this.sortRect.x - measure(ctx, cnt, 12, 700) - 16) text(ctx, cnt, this.sortRect.x - 10, fy + fh / 2 + 5, { size: 12, align: 'right', weight: 700, family: FONT.num, color: PAL.dim });
     divider(ctx, A.x + 12, fy + fh + 8, GW - 24, { center: false, a: 0.5 });
     // ── 격자 ──

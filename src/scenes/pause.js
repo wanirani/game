@@ -39,7 +39,13 @@ export class PauseScene extends Scene {
     this.modal = new Confirm({
       title: '마을로 귀환', yes: '귀환한다', no: '취소', danger: true,
       text: '스테이지 진행 상황은 사라지지만,\n지금까지 얻은 경험치와 아이템은 그대로 남습니다.',
-      onYes: () => { try { w?.syncToState?.(); } catch (e) { /* 무시 */ } this.game.go(this.game.registry.hub ? 'hub' : 'title', {}); },
+      onYes: () => {
+        try { w?.syncToState?.(); } catch (e) { /* 무시 */ }
+        // 마을로 돌아가면 목숨을 난이도 기본값까지 회복 (포기·클리어와 동일. 1UP 으로 늘어난 목숨은 유지)
+        const st = this.game.state, full = w?.diff?.lives;
+        if (st && full) st.lives = Math.max(st.lives ?? 0, full);
+        this.game.go(this.game.registry.hub ? 'hub' : 'title', {});
+      },
     });
   }
   confirmTitle() {

@@ -17,6 +17,7 @@
 //  itemStats(inst, {noAffix}) / itemName(inst, {full}) / itemDesc(inst) → string[] / itemDescRich(inst) → [{text,color}]
 //  itemColor(inst), buyPrice(baseId, rarity), sellPrice(inst), isEquipment(inst|base), isStackable(inst|base), fmtStat(stat, v)
 //  baseIdFor(slot, tier, {wtype, variant}) → 해당 단계 베이스 id (무기·방어구 id 번호는 1~12, 단계 = ceil(번호/2))
+//  josa(word, '이/가'|'을/를'|'은/는'|'과/와'|'으로/로'|'이다/다'…) → 받침에 맞는 조사를 붙인 문자열
 import { uid } from '../core/math.js';
 
 // ───────────────────────────── 희귀도 ─────────────────────────────
@@ -605,6 +606,16 @@ export function enhanceScale(slot, L) {
   if (L >= 15) prim *= 1.12;
   return { kind, prim, sec: 1 + rate * 0.5 * L };
 }
+/** 장신구 강화 고정 보너스를 받을 대표 능력치: 정수 능력치 중 가장 큰 것 (HP/MP 는 1/5 로 환산해 비교) */
+function accMainStat(stats) {
+  let main = null, best = -Infinity;
+  for (const k in stats) {
+    if (!INT_STATS.has(k) || k === 'airJumps' || k === 'magnet') continue;
+    const v = stats[k] / (k === 'hp' || k === 'mp' ? 5 : 1);
+    if (v > best) { best = v; main = k; }
+  }
+  return main;
+}
 function roundStat(k, v) { return INT_STATS.has(k) ? Math.round(v) : Math.round(v * 10) / 10; }
 
 /**
@@ -638,6 +649,9 @@ export function itemStats(inst, { noAffix = false } = {}) {
       if (L >= 10) out.hp = (out.hp ?? 0) + 10 * t;
       if (L >= 15) out.dmgReduce = (out.dmgReduce ?? 0) + 3;
     } else {
+      // 장신구: 대표 정수 능력치에 단계마다 고정치 (단계마다 눈에 보이는 변화가 있도록 최소 +1, HP/MP 는 5배)
+      const main = accMainStat(b.stats);
+      if (main) out[main] += L * Math.max(1, 0.4 * t) * (main === 'hp' || main === 'mp' ? 5 : 1);
       if (L >= 10) out.luck = (out.luck ?? 0) + 5;
       if (L >= 15) { out.crit = (out.crit ?? 0) + 3; out.critDmg = (out.critDmg ?? 0) + 10; }
     }
@@ -648,6 +662,30 @@ export function itemStats(inst, { noAffix = false } = {}) {
 }
 
 // ───────────────────────────── 이름 / 설명 ─────────────────────────────
+// ───────────────────────────── 조사 ─────────────────────────────
+// 숫자 끝소리: 영 일 이 삼 사 오 육 칠 팔 구 (받침 유무 / ㄹ받침)
+const DIGIT_JONG = [21, 8, 0, 16, 0, 0, 1, 8, 8, 0];
+/** 마지막 글자의 종성 인덱스 (0 = 받침 없음, 8 = ㄹ, -1 = 판단 불가) */
+function finalJong(word) {
+  const s = String(word ?? '').replace(/[\s)\]}」』>"'.,!?…·~]+$/u, '');
+  const c = s.charCodeAt(s.length - 1);
+  if (c >= 0xac00 && c <= 0xd7a3) return (c - 0xac00) % 28;
+  if (c >= 48 && c <= 57) return DIGIT_JONG[c - 48];
+  if (/[lmnr]$/i.test(s)) return /[lr]$/i.test(s) ? 8 : 4;
+  return s ? 0 : -1;
+}
+/**
+ * 받침에 맞는 조사를 붙인다. pair 는 '받침 있을 때/없을 때' 순서: '이/가' '을/를' '은/는' '과/와' '으로/로' '이다/다'
+ *  josa('하급 강화석', '이/가') → '하급 강화석이' / josa('성기사', '으로/로') → '성기사로' ('으로'는 ㄹ받침도 '로')
+ */
+export function josa(word, pair) {
+  const [a, b] = String(pair).split('/');
+  const j = finalJong(word);
+  if (j < 0) return `${word}${a}(${b})`;
+  const useB = j === 0 || (a === '으로' && j === 8);
+  return `${word}${useB ? b : a}`;
+}
+
 export function itemName(inst, { full = false, noLevel = false } = {}) {
   const b = inst && ITEMS[inst.baseId];
   if (!b) return '???';

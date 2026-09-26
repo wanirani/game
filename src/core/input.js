@@ -54,6 +54,8 @@ class Input {
     this.lastDir = 'n';
     this.pointer = { x: 0, y: 0, down: false, tapped: false, active: false, justDown: false };
     this._tapQueued = false; this._downQueued = false;
+    this._tapLatch = false; // 이번 프레임 스텝에서 발생한 탭 → 같은 프레임의 render() 까지 유지
+    this.padOff = false;    // 가상 패드가 장면에 의해 꺼져 있으면 터치 버튼 입력 무시
     this.anyKeyPressed = false;
     this.touchMode = false;
     this.game = null;
@@ -105,6 +107,11 @@ class Input {
     });
     window.addEventListener('touchstart', () => this.setTouchMode(true), { passive: true });
     this.setupTouchPad();
+    // 터치 기기는 부팅 시점부터 터치 모드 (첫 터치 전에도 세로 모드 안내·터치용 안내문 표시)
+    try {
+      const coarse = window.matchMedia?.('(pointer: coarse)').matches;
+      if (coarse && (navigator.maxTouchPoints > 0 || 'ontouchstart' in window)) this.setTouchMode(true);
+    } catch { /* 무시 */ }
   }
 
   setTouchMode(on) {
@@ -112,6 +119,20 @@ class Input {
     this.touchMode = on;
     document.getElementById('touch')?.classList.toggle('hidden', !on);
     document.body.classList.toggle('touch', on);
+  }
+
+  /** 장면에 따라 가상 패드 표시/숨김 (game.js 가 매 프레임 호출). 숨길 때 눌려 있던 버튼·스틱을 모두 뗀다 */
+  setPadOff(off) {
+    if (this.padOff === off) return;
+    this.padOff = off;
+    const root = document.getElementById('touch');
+    root?.classList.toggle('scene-off', off);
+    if (off) {
+      this.sources.touch = {};
+      root?.querySelectorAll('.on').forEach((b) => b.classList.remove('on'));
+      const knob = root?.querySelector('#stick .knob');
+      if (knob) knob.style.transform = '';
+    }
   }
 
   /** 모바일 가상 패드: #touch 안의 [data-act] 버튼과 #stick 영역 */
@@ -122,6 +143,7 @@ class Input {
     const knob = root.querySelector('#stick .knob');
     let stickId = null, cx = 0, cy = 0;
     const setDir = (dx, dy) => {
+      if (this.padOff) return;
       const t = this.sources.touch;
       const dead = 18;
       t.left = dx < -dead; t.right = dx > dead;
@@ -149,6 +171,7 @@ class Input {
       const acts = btn.dataset.act.split(',');
       const on = (e) => {
         e.preventDefault();
+        if (this.padOff) return;
         btn.setPointerCapture?.(e.pointerId);
         btn.classList.add('on');
         for (const a of acts) this.sources.touch[a] = true;
@@ -207,10 +230,16 @@ class Input {
     for (const a of ['attack', 'jump', 'skill1', 'skill2', 'sub', 'dash']) {
       if (this.pressed(a)) { this.history.push({ dir: 'btn:' + a, t: this.time }); if (this.history.length > 16) this.history.shift(); }
     }
-    // 포인터 탭 엣지
-    this.pointer.tapped = this._tapQueued; this._tapQueued = false;
+    // 포인터 탭 엣지: update 에서는 탭 직후 첫 스텝에만 true.
+    // 한 프레임에 스텝이 여러 번 돌아도 render() 에서 판정하는 버튼이 탭을 놓치지 않도록 latch 해 둔다 (beginRender/endRender)
+    this.pointer.tapped = this._tapQueued;
+    if (this._tapQueued) { this._tapQueued = false; this._tapLatch = true; }
     this.pointer.justDown = this._downQueued; this._downQueued = false;
   }
+  /** 프레임 렌더 직전: 이번 프레임의 스텝들에서 발생한 탭을 render() 쪽에 보이게 한다 */
+  beginRender() { this.pointer.tapped = this._tapLatch; }
+  /** 프레임 렌더 직후: 탭 소진 (다음 프레임의 update/render 에서 중복 처리 방지) */
+  endRender() { this.pointer.tapped = false; this._tapLatch = false; }
 
   dirCode() {
     const x = this.axisX, y = this.axisY;
@@ -228,7 +257,7 @@ class Input {
   /** 모든 액션 입력을 무시 상태로 (장면 전환 직후 오입력 방지) */
   flush() {
     for (const a of ACTIONS) { this.consumed[a] = true; this.prev[a] = this.state[a]; }
-    this.pointer.tapped = false; this.pointer.justDown = false;
+    this.pointer.tapped = false; this.pointer.justDown = false; this._tapLatch = false;
     this.history.length = 0;
   }
   anyPressed() { return ACTIONS.some((a) => this.pressed(a)) || this.pointer.tapped; }

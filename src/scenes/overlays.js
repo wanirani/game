@@ -3,12 +3,13 @@ import { Scene } from '../core/game.js';
 import { input } from '../core/input.js';
 import { audio } from '../core/audio.js';
 import { assets } from '../core/assets.js';
-import { text, panel, paragraph, FONT, COLORS, ListMenu, button, vignette } from '../core/ui.js';
+import { text, panel, paragraph, font, FONT, COLORS, ListMenu, button, vignette } from '../core/ui.js';
 import { BOSSES } from '../data/bosses.js';
 import { CHARACTERS } from '../data/characters.js';
 import { DOCS, LORE } from '../data/lore.js';
 import { clamp, ease, rgba, TAU } from '../core/math.js';
 import { saves } from '../core/save.js';
+import { STAT_INFO } from '../game/stats.js';
 
 /** 보스 등장: WARNING 경고 → 초상화 + 이름 */
 export class BossIntroScene extends Scene {
@@ -39,18 +40,39 @@ export class BossIntroScene extends Scene {
     ctx.globalAlpha = out;
     ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(0, 0, vw, vh);
     const img = assets.get(this.def.portrait);
+    const dx = vw * 0.35; // 대각 구분선: 위 dx+80 → 아래 dx
     if (img) {
-      const h = vh * 0.95, w = h * img.width / img.height;
+      // 대각 영역을 빈틈없이 채운다: 어두운 바탕 + 화면 오른쪽·위에 붙인 초상화(아래쪽은 잘림) + 왼쪽 가장자리 페더
+      const h = vh * 1.18, w = h * img.width / img.height;
+      const px = vw - w + (1 - k) * 200;
       ctx.save();
-      ctx.beginPath(); ctx.moveTo(vw * 0.35 + 80, 0); ctx.lineTo(vw, 0); ctx.lineTo(vw, vh); ctx.lineTo(vw * 0.35, vh); ctx.clip();
-      ctx.drawImage(img, vw - w * k - 20 + (1 - k) * 200, vh - h, w, h);
+      ctx.beginPath(); ctx.moveTo(dx + 80, 0); ctx.lineTo(vw, 0); ctx.lineTo(vw, vh); ctx.lineTo(dx, vh); ctx.clip();
+      ctx.fillStyle = '#12040a'; ctx.fillRect(dx, 0, vw - dx, vh);
+      const rg = ctx.createRadialGradient(vw - w * 0.5, vh * 0.45, 20, vw - w * 0.5, vh * 0.45, vw * 0.5);
+      rg.addColorStop(0, 'rgba(150,10,30,0.45)'); rg.addColorStop(1, 'rgba(150,10,30,0)');
+      ctx.fillStyle = rg; ctx.fillRect(dx, 0, vw - dx, vh);
+      ctx.drawImage(img, px, 0, w, h);
+      const fw = Math.min(140, w * 0.3);
+      const fg = ctx.createLinearGradient(px, 0, px + fw, 0);
+      fg.addColorStop(0, 'rgba(18,4,10,1)'); fg.addColorStop(1, 'rgba(18,4,10,0)');
+      ctx.fillStyle = fg; ctx.fillRect(px - 1, 0, fw + 1, vh);
+      const bg = ctx.createLinearGradient(0, vh * 0.7, 0, vh);
+      bg.addColorStop(0, 'rgba(18,4,10,0)'); bg.addColorStop(1, 'rgba(18,4,10,0.85)');
+      ctx.fillStyle = bg; ctx.fillRect(dx, vh * 0.7, vw - dx, vh * 0.3);
       ctx.restore();
-      ctx.strokeStyle = '#e8c872'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(vw * 0.35 + 80, 0); ctx.lineTo(vw * 0.35, vh); ctx.stroke();
+      ctx.strokeStyle = '#e8c872'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(dx + 80, 0); ctx.lineTo(dx, vh); ctx.stroke();
     }
     const x = 60 - (1 - k) * 300;
-    text(ctx, this.def.title ?? '', x, vh * 0.42, { size: 18, weight: 600, color: '#e8c8a8' });
-    text(ctx, this.def.name, x, vh * 0.42 + 56, { size: 52, weight: 800, family: FONT.title, color: '#ff4a5a', ow: 6 });
-    ctx.fillStyle = '#e8c872'; ctx.fillRect(x, vh * 0.42 + 72, 320 * k, 3);
+    const ny = vh * 0.42 + 56;
+    // 이름이 대각 구분선을 넘지 않도록 글자 크기를 줄인다
+    const avail = Math.max(160, (img ? dx + 80 * (1 - ny / vh) : vw) - 60 - 18);
+    let ns = 52;
+    ctx.font = font(ns, 800, FONT.title);
+    const nw = ctx.measureText(this.def.name ?? '').width;
+    if (nw > avail) ns = Math.max(26, Math.floor(ns * avail / nw));
+    text(ctx, this.def.title ?? '', x, vh * 0.42, { size: 18, weight: 600, color: '#e8c8a8', maxWidth: avail });
+    text(ctx, this.def.name, x, ny, { size: ns, weight: 800, family: FONT.title, color: '#ff4a5a', ow: 6, maxWidth: avail });
+    ctx.fillStyle = '#e8c872'; ctx.fillRect(x, ny + 16, Math.min(320, avail) * k, 3);
     ctx.globalAlpha = 1;
   }
 }
@@ -83,7 +105,7 @@ export class UltCutinScene extends Scene {
 
 /** 비전서/기록물 열람 */
 export class DocumentScene extends Scene {
-  constructor(g) { super(g); this.opaque = false; }
+  constructor(g) { super(g); this.opaque = false; this.deferToasts = true; }
   enter({ docId, loreId }) {
     this.doc = docId ? DOCS[docId] : LORE[loreId];
     this.isDoc = !!docId;
@@ -104,13 +126,14 @@ export class DocumentScene extends Scene {
     text(ctx, this.isDoc ? '— 비 전 서 —' : '— 기 록 —', vw / 2, y + 44, { size: 14, align: 'center', color: '#6a3a1a', outline: null, family: FONT.title, weight: 700 });
     text(ctx, d.name, vw / 2, y + 80, { size: 26, align: 'center', color: '#3a1a0a', outline: null, family: FONT.title, weight: 800 });
     ctx.fillStyle = '#8a2a1a'; ctx.fillRect(vw / 2 - 80, y + 92, 160, 2);
-    paragraph(ctx, d.text ?? '', x + 40, y + 130, w - 80, { size: 16, color: '#2a1a0a', family: FONT.title, lineH: 1.6, maxLines: 8 });
+    paragraph(ctx, d.text ?? '', x + 40, y + 130, w - 80, { size: 16, color: '#2a1a0a', family: FONT.title, weight: 700, lineH: 1.6, maxLines: d.stats && !d.tech ? 7 : 8, outline: null });
     if (d.tech) {
       panel(ctx, x + 40, y + h - 84, w - 80, 56, { fill: 'rgba(60,10,10,0.85)' });
       text(ctx, `습득 기술: ${d.tech.name}`, x + 60, y + h - 58, { size: 16, weight: 800, color: '#ffe7a0' });
       text(ctx, `커맨드: ${cmdToText(d.tech.cmd)}   ${d.tech.desc ?? ''}`, x + 60, y + h - 36, { size: 13, color: '#e8d8c0' });
     } else if (d.stats) {
-      text(ctx, '영구 능력치 상승 효과를 얻었다', vw / 2, y + h - 40, { size: 15, align: 'center', weight: 800, color: '#8a1a0a', outline: null });
+      text(ctx, '영구 능력치 상승', vw / 2, y + h - 62, { size: 13, align: 'center', weight: 700, color: '#6a3a1a', outline: null });
+      text(ctx, statsText(d.stats), vw / 2, y + h - 38, { size: 17, align: 'center', weight: 800, color: '#8a1a0a', outline: null, maxWidth: w - 80 });
     }
   }
 }
@@ -118,6 +141,10 @@ function vignetteRect(ctx, x, y, w, h) {
   const g = ctx.createRadialGradient(x + w / 2, y + h / 2, h * 0.3, x + w / 2, y + h / 2, w * 0.7);
   g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(60,30,0,0.45)');
   ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
+}
+/** {agi:3, moveSpd:5} → '민첩 +3 · 이동 속도 +5%' */
+export function statsText(stats = {}) {
+  return Object.entries(stats).map(([k, v]) => `${STAT_INFO[k]?.name ?? k} ${v >= 0 ? '+' : ''}${v}${STAT_INFO[k]?.pct ? '%' : ''}`).join(' · ');
 }
 export function cmdToText(cmd = []) {
   const m = { u: '↑', d: '↓', f: '→', b: '←', df: '↘', db: '↙', uf: '↗', ub: '↖', 'btn:attack': '공격', 'btn:jump': '점프', 'btn:skill1': '스킬1', 'btn:skill2': '스킬2', 'btn:dash': '대시', 'btn:sub': '보조' };
@@ -128,14 +155,15 @@ export function cmdToText(cmd = []) {
 export class GameOverScene extends Scene {
   constructor(g) { super(g); this.opaque = false; }
   enter({ world }) {
-    this.world = world; this.count = 9.99; this.menu = new ListMenu(2);
+    this.world = world; this.count = 9.99; this.menu = new ListMenu(2, { cols: 2 }); // 버튼이 가로로 놓이므로 ←→ 로 이동
     this.canContinue = world.run.continues > 0;
     audio.music('gameover');
   }
   update(dt) {
     if (this.done) return;
     if (!this.canContinue) {
-      if (this.t > 2 && (input.anyPressed())) this.giveUp();
+      // 크레딧 소진: 2초 뒤부터 아무 입력으로, 8초가 지나면 자동으로 마을로
+      if ((this.t > 2 && input.anyPressed()) || this.t > 8) this.giveUp();
       return;
     }
     this.count -= dt * (input.pressed('attack') ? 0 : 1);
@@ -151,6 +179,7 @@ export class GameOverScene extends Scene {
     const w = this.world;
     w.run.continues--;
     w.run.score = 0; // 아케이드 규칙: 컨티뉴 시 점수 초기화
+    w.nextExtraLife = 30000; // 1UP 기준점도 점수와 함께 처음부터
     this.game.pop();
     w.respawn(true);
     audio.music(w.bossActive ? (w.boss?.def?.music ?? 'boss') : (w.room.music ?? w.stage.music));
@@ -182,6 +211,7 @@ export class GameOverScene extends Scene {
       });
     } else {
       text(ctx, '크레딧이 모두 소진되었다… 마을로 돌아갑니다', vw / 2, vh * 0.5, { size: 18, align: 'center', color: '#e8d8c0' });
+      if (this.t > 2 && Math.floor(this.t * 2) % 2 === 0) text(ctx, input.touchMode ? '화면을 터치하세요' : '아무 키나 누르세요', vw / 2, vh * 0.62, { size: 15, align: 'center', color: COLORS.dim });
     }
   }
 }

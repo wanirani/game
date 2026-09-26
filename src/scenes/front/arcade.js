@@ -19,7 +19,7 @@ import { newGameState } from '../../game/state.js';
 import { addItem, addByBase } from '../../game/inventory.js';
 import {
   Ambience, kenBurns, shade, frame, heading, ornament, portraitIn, gbutton, backButton, footer, setPad,
-  follow, fmtClock, GOLD, BONE, DIM, CRIMSON,
+  follow, fmtClock, TapZones, bossRushBests, GOLD, BONE, DIM, CRIMSON,
 } from './common.js';
 
 export const ARCADE_MODES = {
@@ -134,7 +134,7 @@ export class ArcadeScene extends Scene {
     this.amb = new Ambience({ embers: 50, motes: 20, bats: 6, lightning: true });
     this.amb.nextBolt = 3;
     this.selK = [0, 0, 0];
-    this.optRects = []; this.arrowRects = [];
+    this.taps = new TapZones();
   }
   exit() { setPad(true); }
   onResume() { setPad(false); }
@@ -164,9 +164,10 @@ export class ArcadeScene extends Scene {
     const g = this.game;
     this.amb.update(dt, g.viewW, g.viewH);
     this.selK = this.selK.map((v, i) => follow(v, i === this.modeMenu.index ? 1 : 0, dt, 12));
-    if (this.backTapped) { this.backTapped = false; this.leave(); return; }
-    if (this.startTapped) { this.startTapped = false; this.go(); return; }
-    if (this.arrowTap) { const [row, d] = this.arrowTap; this.arrowTap = null; this.row = row + 1; this.change(row, d); return; }
+    const tap = this.taps.hit();
+    if (tap === 'back') { this.leave(); return; }
+    if (tap === 'start') { this.go(); return; }
+    if (tap?.[0] === 'arrow') { const [, row, d] = tap; this.row = row + 1; this.change(row, d); return; }
     const opts = this.options();
     if (this.row === 0) {
       const r = this.modeMenu.update(dt);
@@ -183,7 +184,8 @@ export class ArcadeScene extends Scene {
     else if (input.pressed('right')) this.change(this.row - 1, 1);
     else if (input.pressed('confirm')) this.go();
     else if (input.pressed('cancel')) { this.row = 0; audio.sfx('menu_cancel'); }
-    if (input.pointer.tapped && this.modeMenu.update(0) === 'confirm') { this.row = 0; this.cfg.kind = this.kind; audio.sfx('menu_ok'); }
+    // 옵션 줄에 있을 때 모드 카드를 탭하면 그 모드 선택으로 돌아감 (터치: 첫 탭은 선택만 하므로 moved 도 처리)
+    if (input.pointer.tapped) { const r0 = this.modeMenu.update(0); if (r0 === 'confirm' || this.modeMenu.moved) { this.row = 0; this.cfg.kind = this.kind; audio.sfx('menu_ok'); } }
     this.row = clamp(this.row, 0, opts.length);
   }
   go() {
@@ -212,7 +214,7 @@ export class ArcadeScene extends Scene {
     heading(ctx, vw / 2, 46, 'ARCADE MODE', '도전할 모드를 선택하세요', { size: 30, alpha: ap });
     // 카드
     const gap = 16, cw = Math.min(270, (vw - 80 - gap * 2) / 3), ch = 212, x0 = vw / 2 - (cw * 3 + gap * 2) / 2, y0 = 100;
-    this.modeMenu.clearHits();
+    this.modeMenu.clearHits(); this.taps.clear();
     MODE_ORDER.forEach((id, i) => {
       const k = ease.outCubic(clamp((this.t - i * 0.07) / 0.45, 0, 1));
       const r = { x: x0 + i * (cw + gap), y: y0 + (1 - k) * 50, w: cw, h: ch };
@@ -236,7 +238,7 @@ export class ArcadeScene extends Scene {
       const lr = { x: vx - 170, y: y - 2, w: 44, h: oh + 4 }, rr = { x: vx + 126, y: y - 2, w: 44, h: oh + 4 };
       for (const [r, d, s] of [[lr, -1, '◀'], [rr, 1, '▶']]) {
         text(ctx, s, r.x + r.w / 2, r.y + r.h / 2 + 6, { size: 16, align: 'center', color: sel ? GOLD : 'rgba(232,200,114,0.45)', ow: 2 });
-        if (input.pointer.tapped) { const p = input.pointer; if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) this.arrowTap = [i, d]; }
+        this.taps.add(['arrow', i, d], r);
       }
     });
     // 기록 + 시작
@@ -244,15 +246,18 @@ export class ArcadeScene extends Scene {
     const best = this.bestText();
     if (best) text(ctx, best, ox, by + 30, { size: 12, weight: 700, color: '#d8c0a0', ow: 2 });
     const br = { x: vw / 2 + ow / 2 - 200, y: by + 4, w: 200, h: 46 };
-    if (gbutton(ctx, br, '헌터 선택으로', { selected: true, accent: M.color, size: 16, icon: '▶' })) this.startTapped = true;
-    if (backButton(ctx)) this.backTapped = true;
+    gbutton(ctx, br, '헌터 선택으로', { selected: true, accent: M.color, size: 16, icon: '▶', zones: this.taps, id: 'start' });
+    backButton(ctx, 14, 12, '뒤로', this.taps);
     footer(ctx, vw, vh, this.row === 0 ? '←→ 모드   ↓ 옵션   Z 결정   X 뒤로' : '↑↓ 항목   ←→ 변경   Z 결정   X 모드 선택', '카드와 ◀ ▶ 를 터치하세요');
   }
   bestText() {
     const m = this.game.meta;
     const hs = (m.highScores ?? []).filter((h) => h.mode === this.kind);
     const top = hs[0];
-    if (this.kind === 'bossrush' && m.bossRushBest) return `최고 기록  ${fmt(m.bossRushBest.score ?? 0)}점 · ${fmtClock(m.bossRushBest.time ?? 0)} · ${CHARACTERS[m.bossRushBest.charId]?.name ?? ''}`;
+    if (this.kind === 'bossrush') {
+      const b = bossRushBests(m)[this.cfg.course ?? 0];
+      if (b) return `${COURSES[this.cfg.course ?? 0]?.name ?? ''} 최단 기록  ${fmtClock(b.time ?? 0)} · ${fmt(b.score ?? 0)}점 · ${CHARACTERS[b.charId]?.name ?? ''}`;
+    }
     if (this.kind === 'survival' && (m.survivalBest ?? 0) > 0) return `최고 기록  웨이브 ${m.survivalBest}${top ? ` · ${fmt(top.score)}점` : ''}`;
     if (top) return `최고 점수  ${fmt(top.score)}점 · ${top.name || CHARACTERS[top.charId]?.name || ''}`;
     return '아직 기록이 없습니다';

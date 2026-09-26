@@ -59,7 +59,7 @@ function maxEnhance(s) {
 export function questProgress(s, qid) {
   const q = QUESTS[qid];
   if (!q || !s) return { cur: 0, need: 1, done: false };
-  const g = q.goal, e = ensure(s).active[qid] || { n: 0 };
+  const qs = ensure(s), g = q.goal, e = qs.active[qid] || { n: 0 };
   const p = s.progress || {};
   let cur = 0, need = 1;
   switch (g.type) {
@@ -75,6 +75,7 @@ export function questProgress(s, qid) {
     case 'gold': cur = e.n; need = g.amount; break;
     case 'talk': cur = e.n; break;
   }
+  if (qs.done.includes(qid)) cur = need; // 보상을 받은 퀘스트: 진행 기록(active)이 지워지고 재료도 소모되므로 달성으로 표시
   return { cur: Math.min(cur, need), need, done: cur >= need };
 }
 
@@ -104,6 +105,7 @@ export function questProgressText(s, qid) {
   if (!q) return '';
   const { cur, need } = questProgress(s, qid);
   const g = q.goal;
+  if (ensure(s).done.includes(qid) && (g.type === 'enhance' || g.type === 'combo')) return `${goalLabel(g)} (달성)`;
   if (g.type === 'gold') return `${goalLabel(g)} ${fmtN(cur)} / ${fmtN(need)} G`;
   if (g.type === 'enhance') return `${goalLabel(g)} (현재 최고 +${cur})`;
   if (g.type === 'combo') return `${goalLabel(g)} (최고 ${cur} HIT)`;

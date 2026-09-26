@@ -1,7 +1,8 @@
 // 플레이어 컨트롤러: 이동(가속/코요테/점프버퍼/이단점프/벽차기/대시), 콤보 공격, 모아베기, 보조무기, 스킬, 필살기, 피격/사망
 import { Entity } from './entity.js';
 import { input } from '../core/input.js';
-import { moveBody, touchesType, T, VerletChain } from '../core/physics.js';
+import { moveBody, touchesType, T, VerletChain, isSolidType } from '../core/physics.js';
+import { TILE } from '../core/game.js';
 import { approach, clamp, rand, TAU } from '../core/math.js';
 import { audio } from '../core/audio.js';
 import { bus } from '../core/events.js';
@@ -215,6 +216,14 @@ export class Player extends Entity {
       }
     }
     this.inLiquid = inLiquid;
+    // 낙사 복귀 지점: 양발 바깥쪽까지 단단한 땅을 딛고 선 마지막 위치 (발판·가장자리·가시·액체 제외)
+    if (this.onGround && !this.platform && !inLiquid && !this.dead) {
+      const m = world.map, gy = Math.floor((this.bottom + 2) / TILE);
+      if (isSolidType(m.typeAt(Math.floor((this.x - 10) / TILE), gy)) && isSolidType(m.typeAt(Math.floor((this.x + this.w + 10) / TILE), gy)) && !touchesType(this, m, T.SPIKE, 0)) {
+        const s = (this.safeSpot ??= {});
+        s.roomId = world.roomId; s.x = this.x; s.y = this.y;
+      }
+    }
     // 낙사
     if (this.y > world.map.pxH + 60) world.onPlayerFell(this);
   }

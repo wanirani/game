@@ -13,10 +13,14 @@ import { expToNext } from '../game/stats.js';
 import { styleRank } from '../game/world.js';
 import { input } from '../core/input.js';
 
+// 버프 칸 글자 (이름 첫 글자는 '무적의 물약'·'무기 강화'처럼 겹치므로 버프마다 고유하게)
+const BUFF_GLYPH = { rage: '광', haste: '신', invincible: '적', magnet: '자', gunmode: '총', holyaura: '성', whipup: '강', double: 'Ⅱ', triple: 'Ⅲ' };
+
 export function drawHUD(ctx, world, vw, vh) {
   const p = world.player;
   if (!p) return;
   const hero = world.hero, run = world.run, st = p.stats;
+  const T = input.touchMode; // 휴대폰에서는 작은 글자를 키운다 (캔버스가 0.7배 정도로 축소되어 보임)
   ctx.save();
   // ── 좌상단: 초상화 ──
   const px = 14, py = 12;
@@ -67,7 +71,7 @@ export function drawHUD(ctx, world, vw, vh) {
     const x = sx + 130 + bi * 26, y = sy + 1;
     ctx.fillStyle = rgba(pu.color, 0.25); ctx.fillRect(x, y, 22, 22);
     ctx.strokeStyle = pu.color; ctx.lineWidth = 1.5; ctx.strokeRect(x + 0.5, y + 0.5, 21, 21);
-    text(ctx, pu.name[0], x + 11, y + 16, { size: 12, align: 'center', weight: 800, color: '#fff' });
+    text(ctx, BUFF_GLYPH[k] ?? pu.name[0], x + 11, y + 16, { size: 12, align: 'center', weight: 800, color: '#fff' });
     const left = p.buffs[k];
     if (left < 9000) { ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(x, y + 22 * clamp(left / (pu.time || 1), 0, 1), 22, 22 * (1 - clamp(left / (pu.time || 1), 0, 1))); }
     bi++;
@@ -91,9 +95,10 @@ export function drawHUD(ctx, world, vw, vh) {
         text(ctx, cd.toFixed(1), x + 19, y + 24, { size: 11, align: 'center', weight: 800, color: '#fff' });
       } else if (p.mp < (sk.cost ?? 0)) { ctx.fillStyle = 'rgba(20,40,120,0.5)'; ctx.fillRect(x, y, 38, 38); }
     }
-    text(ctx, input.touchMode ? ['S1', 'S2'][i] : ['S', 'D'][i], x + 3, y + 36, { size: 10, weight: 800, color: '#e8c872' });
+    text(ctx, T ? ['S1', 'S2'][i] : ['S', 'D'][i], x + 3, y + 36, { size: T ? 12 : 10, weight: 800, color: '#e8c872' });
   }
-  text(ctx, `${p.skillPage + 1}/2`, kx + 92, ky + 14, { size: 10, color: COLORS.dim });
+  // 스킬 페이지 (Q/E 또는 ⇄ 버튼으로 전환)
+  text(ctx, `${T ? '⇄' : 'Q·E'} 스킬 ${p.skillPage + 1}/2`, kx + 92, ky + 14, { size: T ? 12 : 10, weight: 700, color: COLORS.dim });
   // 필살 게이지 (가로 세그먼트)
   const ux = kx + 92, uy = ky + 20, uw = 120;
   const full = run.sp >= 100;
@@ -103,17 +108,19 @@ export function drawHUD(ctx, world, vw, vh) {
   ctx.fillStyle = g; ctx.fillRect(ux, uy, uw * run.sp / 100, 10);
   for (let i = 1; i < 4; i++) { ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(ux + uw * i / 4, uy, 1.5, 10); }
   ctx.strokeStyle = full ? '#fff' : COLORS.goldDark; ctx.lineWidth = 1.5; ctx.strokeRect(ux - 0.5, uy - 0.5, uw + 1, 11);
-  if (full && Math.floor(world.time * 4) % 2 === 0) text(ctx, input.touchMode ? '필살기 준비!' : '필살기 준비! [F]', ux, uy + 24, { size: 11, weight: 800, color: '#ffe070' });
+  if (full && Math.floor(world.time * 4) % 2 === 0) text(ctx, T ? '필살기 준비!' : '필살기 준비! [F]', ux, uy + 24, { size: T ? 14 : 11, weight: 800, color: '#ffe070' });
 
   // ── 우상단: 점수/목숨/골드/시간 ──
-  const rx = vw - 14;
-  text(ctx, 'SCORE', rx - 150, 26, { size: 11, weight: 700, family: FONT.num, color: COLORS.dim });
+  const rx = vw - 14, lx = rx - (T ? 176 : 150), s1 = T ? 13 : 11, s2 = T ? 14 : 12, ly = T ? 3 : 0;
+  text(ctx, 'SCORE', lx, 26, { size: s1, weight: 700, family: FONT.num, color: COLORS.dim });
   text(ctx, fmt(run.score).padStart(9, ' '), rx, 28, { size: 20, align: 'right', weight: 800, family: FONT.num, color: '#fff' });
   const hi = Math.max(world.game.meta?.highScores?.[0]?.score ?? 0, run.score);
-  text(ctx, `HI ${fmt(hi)}`, rx, 46, { size: 11, align: 'right', weight: 700, family: FONT.num, color: '#e8c872' });
-  text(ctx, `♥×${run.lives}`, rx - 150, 46, { size: 12, weight: 800, color: '#ff8a9a' });
-  text(ctx, `${fmt(world.state.gold)} G`, rx, 64, { size: 12, align: 'right', weight: 700, color: '#ffd84a' });
-  text(ctx, fmtTime(run.time), rx - 150, 64, { size: 12, weight: 700, family: FONT.num, color: '#c8c0b0' });
+  text(ctx, `HI ${fmt(hi)}`, rx, 46 + ly, { size: s1, align: 'right', weight: 700, family: FONT.num, color: '#e8c872' });
+  // 목숨: 하트(보조무기 탄약)와 헷갈리지 않도록 영웅 얼굴 아이콘 × 남은 목숨
+  drawLifeIcon(ctx, lx + 8, 41 + ly, T ? 8.5 : 7.5, hero, p);
+  text(ctx, `×${run.lives}`, lx + 19, 46 + ly, { size: s2, weight: 800, family: FONT.num, color: '#ff8a9a' });
+  text(ctx, `${fmt(world.state.gold)} G`, rx, 64 + ly * 2, { size: s2, align: 'right', weight: 700, color: '#ffd84a' });
+  text(ctx, fmtTime(run.time), lx, 64 + ly * 2, { size: s2, weight: 700, family: FONT.num, color: '#c8c0b0' });
 
   // ── 콤보 ──
   const c = world.combo;
@@ -136,10 +143,10 @@ export function drawHUD(ctx, world, vw, vh) {
     }
   }
 
-  // ── 보스 체력 ──
+  // ── 보스 체력 ── (등장 연출·대화 중에는 숨김. 터치 모드는 엄지 패드에 가리지 않도록 화면 위쪽)
   const b = world.boss;
-  if (b && world.bossActive && !b.dead) {
-    const w = Math.min(640, vw - 260), x = (vw - w) / 2, y = vh - 46;
+  if (b && world.bossActive && !b.dead && !world.cutscene) {
+    const w = T ? Math.min(560, vw - 320) : Math.min(640, vw - 260), x = (vw - w) / 2, y = T ? 164 : vh - 46;
     text(ctx, b.def.name, x, y - 8, { size: 16, weight: 800, family: FONT.title, color: '#ffd0d0' });
     if (b.def.title) text(ctx, b.def.title, x + w, y - 8, { size: 11, align: 'right', color: COLORS.dim });
     bar(ctx, x, y, w, 14, b.hp / b.stats.maxHp, { color: '#b0102a', ghost: b.hpGhost / b.stats.maxHp, edge: '#e8c872' });
@@ -163,20 +170,81 @@ export function drawHUD(ctx, world, vw, vh) {
   ctx.restore();
 }
 
-/** 스킬 아이콘 (절차적 문양) */
+/** 목숨 아이콘: 영웅 초상화를 작은 원에 */
+function drawLifeIcon(ctx, x, y, r, hero, p) {
+  ctx.save();
+  ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fillStyle = '#12060c'; ctx.fill();
+  ctx.save(); ctx.clip();
+  const img = assets.get(CHARACTERS[hero.charId]?.portrait);
+  if (img) ctx.drawImage(img, x - r * 1.45, y - r * 1.05, r * 2.9, r * 2.9 * (img.height / img.width));
+  else { ctx.fillStyle = p.look?.primary ?? '#844'; ctx.fillRect(x - r, y - r, r * 2, r * 2); }
+  ctx.restore();
+  ctx.strokeStyle = '#ff8a9a'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.stroke();
+  ctx.restore();
+}
+
+// ── 스킬 문양: 이름의 핵심어로 문장(紋章)을 고르고, 액티브는 원형·패시브는 마름모 바탕 ──
+const EMBLEM_RULES = [
+  ['whip', /채찍/], ['clock', /시간|신탁|호흡/], ['shield', /방벽|수호|방패|가호|철심|철벽|강철|체력|육체/],
+  ['heal', /치유|자애|축복|회복/], ['star', /표창|단검|비연|찌르기/], ['cross', /십자|크로스|퇴마|성서|기도|신앙/],
+  ['spiral', /무도|난사/], ['moon', /팬텀/], ['bullet', /탄$|탄환|사격|저격|불릿|샷|개틀링|속사|데드아이/],
+  ['burst', /폭발|폭탄|폭파|폭쇄|다이너마이트|헬파이어|화약|메테오|함성/],
+  ['flame', /화염|불|화둔|화형|원소/], ['bolt', /뇌|번개|천뢰/], ['drop', /피|블러드|혈|흡혈|뱀파이어|진조|굶주림|갈증/],
+  ['wing', /박쥐|까마귀|날개|천사/], ['eye', /감각|눈|집중|급소|사냥꾼의/],
+  ['swift', /발놀림|보법|경공|신속|무희|리듬|연무|우아/], ['crown', /귀족|품격|군주|긍지|검성|기사|성녀|자질|배짱|현상금|도박|운/],
+  ['moon', /월광|밤|그림자|분신|환영|사신|암살|인술|낫/], ['spiral', /폭풍|회전|원무|난무|광란|함성|분노|광기|진격/],
+  ['sun', /성광|빛|여명|새벽|성역|성전|성검|서약|권능|강림/], ['sword', /검|참|베기|일섬|칼날|가르기|일격|킬러|헌트|처형|숙련|훈련|팔/],
+];
+function emblemOf(sk) {
+  if (sk.icon && EMBLEM_DRAW[sk.icon]) return sk.icon;
+  for (const [id, re] of EMBLEM_RULES) if (re.test(sk.name ?? '')) return id;
+  return 'star';
+}
+const EMBLEM_DRAW = {
+  // 모두 반지름 1 기준 좌표 (호출 측에서 scale)
+  cross(c) { c.fillRect(-0.16, -0.8, 0.32, 1.6); c.fillRect(-0.55, -0.42, 1.1, 0.3); },
+  sun(c) { c.beginPath(); c.arc(0, 0, 0.36, 0, TAU); c.fill(); for (let i = 0; i < 8; i++) { const a = i * TAU / 8; c.beginPath(); c.moveTo(Math.cos(a - 0.14) * 0.48, Math.sin(a - 0.14) * 0.48); c.lineTo(Math.cos(a) * 0.86, Math.sin(a) * 0.86); c.lineTo(Math.cos(a + 0.14) * 0.48, Math.sin(a + 0.14) * 0.48); c.fill(); } },
+  shield(c) { c.beginPath(); c.moveTo(-0.6, -0.62); c.lineTo(0.6, -0.62); c.lineTo(0.6, -0.05); c.quadraticCurveTo(0.55, 0.55, 0, 0.82); c.quadraticCurveTo(-0.55, 0.55, -0.6, -0.05); c.closePath(); c.rect(-0.08, -0.5, 0.16, 1.05); c.fill('evenodd'); },
+  flame(c) { c.beginPath(); c.moveTo(0, -0.85); c.bezierCurveTo(0.35, -0.35, 0.65, -0.05, 0.5, 0.35); c.quadraticCurveTo(0.35, 0.8, 0, 0.8); c.quadraticCurveTo(-0.35, 0.8, -0.5, 0.35); c.bezierCurveTo(-0.6, 0, -0.25, -0.2, -0.15, -0.5); c.quadraticCurveTo(0.05, -0.3, 0, -0.85); c.fill(); },
+  burst(c) { c.beginPath(); for (let i = 0; i < 16; i++) { const a = i * TAU / 16, r = i % 2 ? 0.38 : 0.86; c.lineTo(Math.cos(a) * r, Math.sin(a) * r); } c.closePath(); c.fill(); },
+  bolt(c) { c.beginPath(); c.moveTo(0.18, -0.88); c.lineTo(-0.42, 0.08); c.lineTo(-0.02, 0.08); c.lineTo(-0.2, 0.88); c.lineTo(0.45, -0.18); c.lineTo(0.05, -0.18); c.closePath(); c.fill(); },
+  drop(c) { c.beginPath(); c.moveTo(0, -0.85); c.bezierCurveTo(0.2, -0.45, 0.62, -0.05, 0.62, 0.3); c.arc(0, 0.3, 0.62, 0, Math.PI); c.bezierCurveTo(-0.62, -0.05, -0.2, -0.45, 0, -0.85); c.fill(); },
+  wing(c) { for (const sx of [-1, 1]) { c.save(); c.scale(sx, 1); c.beginPath(); c.moveTo(0.08, -0.1); c.quadraticCurveTo(0.5, -0.7, 0.92, -0.35); c.quadraticCurveTo(0.8, -0.05, 0.9, 0.25); c.quadraticCurveTo(0.68, 0.08, 0.55, 0.3); c.quadraticCurveTo(0.4, 0.12, 0.3, 0.32); c.quadraticCurveTo(0.2, 0.1, 0.08, 0.2); c.closePath(); c.fill(); c.restore(); } c.beginPath(); c.arc(0, 0.02, 0.14, 0, TAU); c.fill(); },
+  heal(c) { c.fillRect(-0.18, -0.66, 0.36, 1.32); c.fillRect(-0.66, -0.18, 1.32, 0.36); },
+  eye(c) { c.beginPath(); c.moveTo(-0.85, 0); c.quadraticCurveTo(0, -0.75, 0.85, 0); c.quadraticCurveTo(0, 0.75, -0.85, 0); c.closePath(); c.moveTo(0.3, 0); c.arc(0, 0, 0.3, 0, TAU); c.fill('evenodd'); c.beginPath(); c.arc(0, 0, 0.15, 0, TAU); c.fill(); },
+  star(c) { c.beginPath(); for (let i = 0; i < 8; i++) { const a = -Math.PI / 2 + i * TAU / 8, r = i % 2 ? 0.26 : 0.86; c.lineTo(Math.cos(a) * r, Math.sin(a) * r); } c.closePath(); c.fill(); },
+  swift(c) { for (const ox of [-0.42, 0.12]) { c.beginPath(); c.moveTo(ox - 0.2, -0.62); c.lineTo(ox + 0.32, 0); c.lineTo(ox - 0.2, 0.62); c.lineTo(ox, 0); c.closePath(); c.fill(); } },
+  crown(c) { c.beginPath(); c.moveTo(-0.72, 0.5); c.lineTo(-0.78, -0.45); c.lineTo(-0.38, -0.05); c.lineTo(0, -0.7); c.lineTo(0.38, -0.05); c.lineTo(0.78, -0.45); c.lineTo(0.72, 0.5); c.closePath(); c.fill(); },
+  moon(c) { c.save(); c.beginPath(); c.arc(0, 0, 0.75, 0, TAU); c.clip(); c.beginPath(); c.rect(-1, -1, 2, 2); c.moveTo(0.96, -0.18); c.arc(0.34, -0.18, 0.62, 0, TAU); c.fill('evenodd'); c.restore(); },
+  spiral(c) { c.lineWidth = 0.17; c.lineCap = 'round'; c.beginPath(); for (let i = 0; i <= 40; i++) { const a = i / 40 * TAU * 2.1, r = 0.08 + i / 40 * 0.72; c.lineTo(Math.cos(a) * r, Math.sin(a) * r); } c.stroke(); },
+  sword(c) { c.rotate(-Math.PI / 4); c.beginPath(); c.moveTo(0, -0.92); c.lineTo(0.13, -0.72); c.lineTo(0.13, 0.36); c.lineTo(-0.13, 0.36); c.lineTo(-0.13, -0.72); c.closePath(); c.fill(); c.fillRect(-0.42, 0.36, 0.84, 0.13); c.fillRect(-0.08, 0.49, 0.16, 0.34); },
+  bullet(c) { c.lineWidth = 0.13; c.beginPath(); c.arc(0, 0, 0.55, 0, TAU); c.stroke(); c.fillRect(-0.06, -0.9, 0.12, 0.5); c.fillRect(-0.06, 0.4, 0.12, 0.5); c.fillRect(-0.9, -0.06, 0.5, 0.12); c.fillRect(0.4, -0.06, 0.5, 0.12); c.beginPath(); c.arc(0, 0, 0.14, 0, TAU); c.fill(); },
+  whip(c) { c.lineWidth = 0.16; c.lineCap = 'round'; c.beginPath(); c.moveTo(-0.62, 0.72); c.lineTo(-0.35, 0.42); c.stroke(); c.lineWidth = 0.1; c.beginPath(); c.moveTo(-0.35, 0.42); c.bezierCurveTo(0.6, 0.3, -0.4, -0.3, 0.3, -0.5); c.quadraticCurveTo(0.65, -0.6, 0.75, -0.85); c.stroke(); },
+  clock(c) { c.lineWidth = 0.13; c.beginPath(); c.arc(0, 0, 0.7, 0, TAU); c.stroke(); c.lineCap = 'round'; c.beginPath(); c.moveTo(0, 0); c.lineTo(0, -0.48); c.moveTo(0, 0); c.lineTo(0.34, 0.14); c.stroke(); },
+};
+
+/** 스킬 아이콘 (절차적 문장) */
 export function drawSkillGlyph(ctx, sk, x, y, s) {
   const col = sk.color ?? '#e8c872';
+  const passive = sk.type === 'passive';
   ctx.save();
   ctx.translate(x, y);
+  const R = s * 0.45;
   const g = ctx.createRadialGradient(0, 0, 2, 0, 0, s * 0.6);
-  g.addColorStop(0, rgba(col, 0.9)); g.addColorStop(1, rgba(col, 0.1));
-  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, s * 0.45, 0, TAU); ctx.fill();
-  ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.8;
-  ctx.beginPath();
-  const n = 3 + ((sk.id?.length ?? 3) % 4);
-  for (let i = 0; i <= n; i++) { const a = -Math.PI / 2 + (i / n) * TAU; const r = s * 0.28; i ? ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r) : ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r); }
-  ctx.stroke();
-  ctx.globalAlpha = 1;
-  text(ctx, sk.name?.[0] ?? '?', 0, s * 0.16, { size: s * 0.42, align: 'center', weight: 900, color: '#fff', ow: 3 });
+  g.addColorStop(0, rgba(col, 0.85)); g.addColorStop(1, rgba(col, 0.12));
+  ctx.fillStyle = g; ctx.beginPath();
+  if (passive) { ctx.moveTo(0, -R); ctx.lineTo(R, 0); ctx.lineTo(0, R); ctx.lineTo(-R, 0); ctx.closePath(); } else ctx.arc(0, 0, R, 0, TAU);
+  ctx.fill();
+  ctx.strokeStyle = rgba('#ffffff', 0.55); ctx.lineWidth = 1.2; ctx.stroke();
+  // 문장 (그림자 → 본체)
+  const k = s * (passive ? 0.25 : 0.3);
+  const draw = EMBLEM_DRAW[emblemOf(sk)];
+  for (const [ox, oy, c] of [[s * 0.03, s * 0.04, 'rgba(0,0,0,0.55)'], [0, 0, '#fffaf0']]) {
+    ctx.save();
+    ctx.translate(ox, oy); ctx.scale(k, k);
+    ctx.fillStyle = c; ctx.strokeStyle = c;
+    draw(ctx);
+    ctx.restore();
+  }
   ctx.restore();
 }

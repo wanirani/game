@@ -23,7 +23,9 @@ export class Projectile extends Entity {
     this.x = o.x - this.w / 2; this.y = o.y - this.h / 2;
     this.vx = o.vx ?? 0; this.vy = o.vy ?? 0;
     this.maxLife = this.life;
-    this.attack = { team: this.team, hitId: 'p' + (++_pid), tags: ['projectile'], dir: Math.sign(this.vx) || 1, ...(o.attack || {}) };
+    this.attack = { team: this.team, tags: ['projectile'], dir: Math.sign(this.vx) || 1, ...(o.attack || {}) };
+    // 관통 투사체도 같은 대상은 투사체당 1회만 타격 (attack.hitId 가 undefined 로 덮여 와도 고유 ID 부여, rehit 지정 시 그 간격마다)
+    this.attack.hitId ??= 'p' + (++_pid);
     if (!this.attack.owner) this.attack.owner = o.owner;
     this.hits = 0;
     this.z = 5;
@@ -260,7 +262,8 @@ export class Hitbox extends Entity {
     super(o.x, o.y, o.w, o.h);
     this.kind = 'hitbox';
     Object.assign(this, { team: 'player', life: 0.1, delay: 0 }, o); // 주의: draw 를 인스턴스 속성으로 덮으면 draw() 메서드가 가려져 렌더 오류
-    this.attack = { team: this.team, hitId: 'h' + (++_pid), tags: ['skill'], dir: 1, ...(o.attack || {}) };
+    this.attack = { team: this.team, tags: ['skill'], dir: 1, ...(o.attack || {}) };
+    this.attack.hitId ??= 'h' + (++_pid);
     this.maxLife = this.life;
     this.z = 6;
   }

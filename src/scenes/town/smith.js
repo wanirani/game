@@ -10,7 +10,7 @@ import { countItem } from '../../game/inventory.js';
 import { drawIcon, drawSlot } from '../../render/icons.js';
 import { CHARACTERS } from '../../data/characters.js';
 import { SHOP_LINES } from '../../data/town.js';
-import { ServiceScene, ScrollList, Modal, itemRow, drawItemDetail, baseOf, nameOf, makeInst, statsOf, statName, fmtStat, isEquippedAny, SLOT_LABEL, WTYPE_LABEL, EQUIP_KINDS, hitRect, openBuy, mergeLines, rarityColor, uiPanel, uiButton } from './common.js';
+import { ServiceScene, ScrollList, Modal, itemRow, drawItemDetail, baseOf, nameOf, makeInst, statsOf, statName, fmtStat, isEquippedAny, SLOT_LABEL, WTYPE_LABEL, EQUIP_KINDS, hitRect, openBuy, mergeLines, rarityColor, uiPanel, uiButton, josa } from './common.js';
 import { glow } from './facades.js';
 
 const FAIL_TEXT = { keep: ['실패 시 단계 유지', '#b8b0a0'], down: ['실패 시 1단계 하락', '#ffa640'], destroy: ['실패 시 하락 · 파괴 위험', '#ff5a5a'] };
@@ -70,7 +70,7 @@ export class SmithScene extends ServiceScene {
   }
   toggle(k) {
     const id = k === 'protect' ? 'm_scroll_protect' : 'm_scroll_bless';
-    if (!this.opt[k] && countItem(this.state, id) <= 0) { audio.sfx('menu_cancel'); this.game.toast(`${Items.ITEMS[id]?.name ?? '주문서'}이(가) 없다.`, '#ff8a7a'); return; }
+    if (!this.opt[k] && countItem(this.state, id) <= 0) { audio.sfx('menu_cancel'); this.game.toast(`${josa(Items.ITEMS[id]?.name ?? '주문서', '이', '가')} 없다.`, '#ff8a7a'); return; }
     this.opt[k] = !this.opt[k];
     audio.sfx(this.opt[k] ? 'menu_ok' : 'menu_cancel');
   }

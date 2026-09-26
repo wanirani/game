@@ -1,15 +1,16 @@
 // 장비 강화 (대장장이 하드윈) — +1 ~ +15
 //  enhanceInfo(state, inst, {protect, bless}) → { level, next, rate, baseRate, diffBonus, pity, bless, gold, stones:{baseId, qty, have, name},
-//     onFail:'keep'|'down'|'destroy', baseFail, destroyChance, maxed, canAfford, reason }
-//  doEnhance(state, uid, {protect, bless}) → { ok, success, destroyed, protected, before, after, rate, msg, sfx, item }
+//     onFail:'keep'|'down'|'destroy', baseFail, destroyChance, maxed, canAfford, reason, equippedBy(장착 중인 영웅 charId|null) }
+//  doEnhance(state, uid, {protect, bless}) → { ok, success, destroyed, protected, before, after, rate, msg, sfx, item, replaced? }
+//   (장착 중인 무기가 파괴되면 가방의 다른 무기 또는 시작 무기를 자동으로 장착 → replaced = 새 무기 인스턴스)
 // 규칙: 목표 단계별 성공률 100·95·90·85·75·65·55·45·35·30·25·20·15·10·6 (%)
 //  + 난이도 enhanceBonus(%p) + 축복 주문서 10%p + 실패 누적 보정(실패 1회당 +2%p, 최대 +10%p, 성공 시 초기화)
 //  실패 시: 목표 +4 이하 유지 / +5~+9 한 단계 하락 / +10 이상 한 단계 하락 + 20% 확률로 파괴. 보호 주문서는 하락·파괴를 막는다.
 //  강화석: +1~3 하급, +4~6 중급, +7~9 상급, +10~12 최상급, +13~14 영웅, +15 전설
-import { ITEMS, STAT_LABELS, isEquipment, itemName } from '../data/items.js';
+import { ITEMS, STAT_LABELS, isEquipment, itemName, josa } from '../data/items.js';
 import { getDiff } from '../data/difficulty.js';
 import { bus } from '../core/events.js';
-import { findItem, countItem, consumeByBase, removeItem } from './inventory.js';
+import { findItem, countItem, consumeByBase, removeItem, isEquipped, ensureWeapon } from './inventory.js';
 
 export const MAX_ENHANCE = 15;
 export const ENHANCE_RATES = [100, 95, 90, 85, 75, 65, 55, 45, 35, 30, 25, 20, 15, 10, 6];
@@ -53,7 +54,7 @@ export function enhanceInfo(state, inst, { protect = false, bless = false } = {}
   const blessHave = state ? countItem(state, 'm_scroll_bless') : 0;
   let reason = null;
   if ((state?.gold ?? 0) < cost.gold) reason = `골드가 부족합니다. (${cost.gold.toLocaleString('ko-KR')}G 필요)`;
-  else if (have < cost.stones.qty) reason = `${ITEMS[cost.stones.baseId].name}이(가) 부족합니다. (${have}/${cost.stones.qty})`;
+  else if (have < cost.stones.qty) reason = `${josa(ITEMS[cost.stones.baseId].name, '이/가')} 부족합니다. (${have}/${cost.stones.qty})`;
   else if (useProtect && protectHave < 1) reason = '보호 주문서가 없습니다.';
   else if (bless && blessHave < 1) reason = '축복 주문서가 없습니다.';
   return {
@@ -61,6 +62,7 @@ export function enhanceInfo(state, inst, { protect = false, bless = false } = {}
     gold: cost.gold, stones: { ...cost.stones, have, name: ITEMS[cost.stones.baseId].name },
     onFail, baseFail, destroyChance: onFail === 'destroy' ? DESTROY_CHANCE : 0,
     protect: useProtect, protectHave, blessHave, maxed: false, canAfford: !reason, reason,
+    equippedBy: state ? isEquipped(state, inst.uid) : null,
   };
 }
 
@@ -79,7 +81,7 @@ export function doEnhance(state, uid, { protect = false, bless = false } = {}) {
   state.stats ??= {};
   const before = inst.level | 0;
   const success = Math.random() * 100 < info.rate;
-  let destroyed = false, prot = false, msg, sfx;
+  let destroyed = false, prot = false, replaced = null, msg, sfx;
   if (success) {
     inst.level = before + 1;
     inst.failStack = 0;
@@ -96,17 +98,23 @@ export function doEnhance(state, uid, { protect = false, bless = false } = {}) {
       msg = prot ? '강화 실패… 보호 주문서가 장비를 지켜 냈습니다.' : '강화 실패… 다행히 단계는 유지되었습니다.';
     } else if (info.onFail === 'destroy' && Math.random() * 100 < info.destroyChance) {
       destroyed = true;
-      msg = `${itemName(inst)}이(가) 강화의 불길을 견디지 못하고 산산조각 났습니다…`;
+      msg = `${josa(itemName(inst), '이/가')} 강화의 불길을 견디지 못하고 산산조각 났습니다…`;
       sfx = 'enhance_destroy';
       state.stats.enhanceDestroy = (state.stats.enhanceDestroy ?? 0) + 1;
+      // 장착 중이던 무기라면 무기 칸이 비지 않도록 예비 무기를 끼운다
+      const wearers = ITEMS[inst.baseId]?.slot === 'weapon' ? Object.values(state.heroes || {}).filter((h) => h.equip?.weapon === uid) : [];
       removeItem(state, uid, 1);
+      for (const h of wearers) {
+        const w = ensureWeapon(state, h);
+        if (w) { replaced = w; msg += ` 예비 무기로 ${josa(itemName(w), '을/를')} 장착했습니다.`; }
+      }
     } else {
       inst.level = Math.max(0, before - 1);
       msg = `강화 실패… +${before} → +${inst.level} 단계가 하락했습니다.`;
     }
   }
   bus.emit('enhance', { item: inst, success, destroyed, level: inst.level, before });
-  return { ok: true, success, destroyed, protected: prot, before, after: destroyed ? -1 : inst.level, rate: info.rate, msg, sfx, item: inst, info };
+  return { ok: true, success, destroyed, protected: prot, before, after: destroyed ? -1 : inst.level, rate: info.rate, msg, sfx, item: inst, replaced, info };
 }
 
 /** 다음 단계 능력치 미리보기용: 현재/다음 단계 itemStats 차이를 계산하는 도우미 */

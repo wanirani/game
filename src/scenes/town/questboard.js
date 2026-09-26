@@ -92,7 +92,7 @@ export class QuestBoardScene extends ServiceScene {
   layout() {
     const vw = this.game.viewW, vh = this.game.viewH;
     const pw = Math.round(clamp(vw * 0.22, 210, 280));
-    return { vw, vh, pw, cx: pw + 6, cy: 64, cw: vw - pw - 22, ch: vh - 64 - 16 };
+    return { vw, vh, pw, cx: pw + 6, cy: 64, cw: vw - pw - 22, ch: vh - 64 - 26 }; // 아래는 키 안내 줄 자리
   }
   renderPortrait(ctx, L) {
     // 왼쪽: 등불 아래 게시판 삽화 + 안내문

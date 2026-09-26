@@ -14,10 +14,13 @@ export class StageScene extends Scene {
   exit() { if (this.game.world === this.world) this.game.world = null; }
   resize() { this.world?.camera.setView(this.game.viewW, this.game.viewH); }
   onResume() { this.world.player?.refreshStats(); }
+  canPause() { const w = this.world; return !!w?.player && !w.cleared && !w.player.dead && !w.cutscene; }
+  /** 기기를 세로로 돌리거나 탭이 백그라운드로 가면 일시정지 메뉴를 띄운다 (core/game.js) */
+  autoPause() { if (this.game.top === this && this.game.fade.dir <= 0 && this.canPause()) this.game.push('pause', { world: this.world }); }
   update(dt) {
     const w = this.world;
     this.game.state.stats.playTime = (this.game.state.stats.playTime ?? 0) + dt;
-    if (input.pressed('menu') && !w.cleared && !w.player.dead && !w.cutscene) {
+    if (input.pressed('menu') && this.canPause()) {
       audio.sfx('menu_ok');
       this.game.push('pause', { world: w });
       return;

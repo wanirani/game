@@ -2,7 +2,29 @@
 // 그 위에 스테이지 테마별 절차적 중경 실루엣(기둥/아치/나무/톱니바퀴 등), 안개, 날씨(비/눈/불씨/재)를 얹는다.
 // createBackground(stage, map) → { update(dt, world), drawFar(ctx, cam, vw, vh, t), drawMid(ctx, cam, t), drawFront(ctx, cam, vw, vh, t) }
 import { assets } from '../core/assets.js';
-import { rand, RNG, hashStr, rgba, TAU, lerp, clamp } from '../core/math.js';
+import { rand, RNG, hashStr, rgba, hexToRgb, TAU, lerp, clamp } from '../core/math.js';
+
+const TALL_PARALLAX = 0.35; // 세로로 긴 방: 카메라가 올라간 거리 대비 원경이 따라 내려가는 비율
+const topColors = new WeakMap();
+/** 원경 이미지 맨 위 띠의 평균색 [r,g,b] (캐시) — 긴 방에서 원경 위쪽 빈 하늘을 이어 칠할 색 */
+function topColor(img, fallback) {
+  let c = topColors.get(img);
+  if (c) return c;
+  try {
+    const cv = document.createElement('canvas');
+    cv.width = 32; cv.height = 4;
+    const g = cv.getContext('2d');
+    g.drawImage(img, 0, 0, img.width, Math.max(1, img.height * 0.03), 0, 0, 32, 4);
+    const d = g.getImageData(0, 0, 32, 4).data;
+    let r = 0, gg = 0, b = 0;
+    for (let i = 0; i < d.length; i += 4) { r += d[i]; gg += d[i + 1]; b += d[i + 2]; }
+    const n = d.length / 4;
+    c = [r / n, gg / n, b / n];
+  } catch { c = hexToRgb(fallback); }
+  topColors.set(img, c);
+  return c;
+}
+const rgbCss = (c, a = 1, k = 1) => `rgba(${Math.round(c[0] * k)},${Math.round(c[1] * k)},${Math.round(c[2] * k)},${a})`;
 
 export const THEMES = {
   village:   { sky: ['#1a0610', '#3a0e10', '#120408'], fog: '#ff6a2a', mid: 'houses', weather: 'embers', moon: '#ff3a2a' },
@@ -69,9 +91,31 @@ export function createBackground(stage, map) {
       const py = clamp((cam.y - (cam.bounds?.y ?? 0)) / spanY, 0, 1);
       let ox = -(iw - vw) * px;
       if (iw < vw) ox = (vw - iw) / 2;
-      const oy = -(ih - vh) * py;
-      ctx.drawImage(img, ox, oy, iw, ih);
-      if (iw < vw) { ctx.save(); ctx.scale(-1, 1); ctx.drawImage(img, -ox, oy, iw, ih); ctx.restore(); }
+      let oy = -(ih - vh) * py;
+      // 세로로 긴 방(화면 1.6배 초과): 같은 원경(지평선·바닥)이 층마다 반복되지 않도록
+      // 원경은 방 바닥 근처에만 두고, 위로 올라갈수록 느린 패럴랙스로 아래로 빠지며 윗부분은 하늘/어둠으로 녹아든다
+      const tall = spanY > vh * 0.6;
+      if (tall) {
+        const up = spanY * (1 - py); // 카메라가 가장 낮은 위치에서 올라간 거리
+        oy = -(ih - vh) + up * TALL_PARALLAX;
+        const top = topColor(img, theme.sky[0]);
+        const fadeH = ih * 0.25;
+        if (oy > 0) {
+          const sg = ctx.createLinearGradient(0, oy - vh * 1.5, 0, oy);
+          sg.addColorStop(0, rgbCss(top, 1, 0.5)); sg.addColorStop(1, rgbCss(top));
+          ctx.fillStyle = sg; ctx.fillRect(0, 0, vw, oy + 1);
+        }
+        if (oy < vh) {
+          ctx.drawImage(img, ox, oy, iw, ih);
+          if (iw < vw) { ctx.save(); ctx.scale(-1, 1); ctx.drawImage(img, -ox, oy, iw, ih); ctx.restore(); }
+          const fg = ctx.createLinearGradient(0, oy, 0, oy + fadeH);
+          fg.addColorStop(0, rgbCss(top)); fg.addColorStop(1, rgbCss(top, 0));
+          ctx.fillStyle = fg; ctx.fillRect(0, oy, vw, fadeH);
+        }
+      } else {
+        ctx.drawImage(img, ox, oy, iw, ih);
+        if (iw < vw) { ctx.save(); ctx.scale(-1, 1); ctx.drawImage(img, -ox, oy, iw, ih); ctx.restore(); }
+      }
       // 어둡게 눌러서 게임 레이어와 분리
       ctx.fillStyle = rgba(theme.sky[2], 0.12);
       ctx.fillRect(0, 0, vw, vh);

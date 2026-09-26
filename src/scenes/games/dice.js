@@ -39,8 +39,9 @@ export class DiceScene extends MiniGame {
   get pot() { return Math.floor(this.notional * this.mult); }
 
   startRound() {
+    // 판 정보는 판돈 차감 전에 비운다 — 금화가 모자라 시작하지 못해도 지난 판의 연승·배당·기록이 남지 않게
+    this.streak = 0; this.mult = 1; this.multShown = 1; this.guess = null; this.history.length = 0; this.verdict = null; this.cur = 0;
     if (!this.takeBet()) return;
-    this.streak = 0; this.mult = 1; this.multShown = 1; this.guess = null; this.history.length = 0; this.verdict = null;
     this.roll(true);
   }
   onAgain() { this.startRound(); }

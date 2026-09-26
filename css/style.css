@@ -29,6 +29,8 @@ body.touch.portrait #rotate { display: flex; }
 /* ── 모바일 가상 패드 ── */
 #touch { position: absolute; inset: 0; pointer-events: none; z-index: 10; opacity: var(--touch-op); }
 #touch.hidden { display: none; }
+/* 대화·비전서·보스 등장·게임오버·결과 등 게임플레이가 아닌 장면이 위에 있을 때 (core/game.js syncPad) */
+#touch.scene-off { visibility: hidden; }
 #touch .b, #touch #stick { pointer-events: auto; touch-action: none; }
 #stick {
   position: absolute; left: calc(18px + env(safe-area-inset-left)); bottom: calc(18px + env(safe-area-inset-bottom));

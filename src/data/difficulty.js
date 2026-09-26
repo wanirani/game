@@ -11,7 +11,7 @@ export const DIFFICULTIES = [
     healDrop: 1.6, elite: 0.0, scoreMult: 0.5, bossHp: 0.65,
   },
   {
-    id: 'normal', name: '헌터', eng: 'HUNTER', color: '#e8c872',
+    id: 'normal', name: '숙련 헌터', eng: 'HUNTER', color: '#e8c872', // 카엘의 기본 직업 '헌터'와 구분
     desc: '표준 난이도. 악마성 본연의 긴장감을 즐길 수 있습니다.',
     enemyHp: 1.0, enemyAtk: 1.0, enemySpeed: 1.0, aggro: 1.0,
     exp: 1.0, gold: 1.0, drop: 1.0, enhanceBonus: 0, lives: 3, continues: 9,

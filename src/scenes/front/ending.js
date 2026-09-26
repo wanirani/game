@@ -14,10 +14,12 @@ import { NPCS } from '../../data/npcs.js';
 import { getDiff } from '../../data/difficulty.js';
 import { Ambience, kenBurns, ornament, frame, setPad, goSafe, qualifies, fmtPlay, GOLD, BONE, DIM } from './common.js';
 
+// name 은 ending_* 대사 끝의 '— ○○ END : 이름 —' 과 같아야 한다 (제목 카드·크레딧 달성 목록에 표시)
+// bg 는 제목 카드와 엔딩 컷신의 기본 배경 (배드 엔딩은 밝은 여명 대신 붉은 달의 성)
 export const ENDINGS = {
-  bad: { id: 'bad', eng: 'BAD ENDING', name: '끝나지 않는 밤', color: '#ff4a5a', bg: 'bg/ending', music: 'sad', no: 'Ⅰ' },
-  normal: { id: 'normal', eng: 'NORMAL ENDING', name: '새벽이 오는 성', color: '#ffd070', bg: 'bg/ending', music: 'ending', no: 'Ⅱ' },
-  true: { id: 'true', eng: 'TRUE ENDING', name: '녹턴의 끝, 여명의 노래', color: '#fff2b0', bg: 'bg/ending', music: 'ending', no: 'Ⅲ' },
+  bad: { id: 'bad', eng: 'BAD ENDING', name: '끝나지 않는 밤', color: '#ff4a5a', bg: 'cg/cg_bad_ending', music: 'sad', no: 'Ⅰ' },
+  normal: { id: 'normal', eng: 'NORMAL ENDING', name: '백 년의 새벽', color: '#ffd070', bg: 'bg/ending', music: 'ending', no: 'Ⅱ' },
+  true: { id: 'true', eng: 'TRUE ENDING', name: '영원한 새벽', color: '#fff2b0', bg: 'bg/ending', music: 'ending', no: 'Ⅲ' },
 };
 
 /** 진행도로 엔딩 종류 판정 (from 스테이지가 있으면 data/story.js endingAfter 규칙을 우선). null = 엔딩 아님(계속 진행) */
@@ -280,7 +282,11 @@ export class CreditsScene extends Scene {
       }
       y += 40;
     }
-    text(ctx, input.touchMode ? '길게 눌러 빨리 넘기기' : 'Z 길게: 빨리 넘기기   Esc: 건너뛰기', vw - 16, vh - 12, { size: 11, align: 'right', color: '#6a5e58', ow: 0 });
+    // 하단 안내 띠: 올라오는 크레딧 줄이 안내 문구와 겹치지 않도록 아래쪽을 어둡게 가린다
+    const hb = ctx.createLinearGradient(0, vh - 46, 0, vh);
+    hb.addColorStop(0, 'rgba(0,0,0,0)'); hb.addColorStop(0.45, 'rgba(0,0,0,0.88)'); hb.addColorStop(1, 'rgba(0,0,0,0.96)');
+    ctx.fillStyle = hb; ctx.fillRect(0, vh - 46, vw, 46);
+    text(ctx, input.touchMode ? '길게 눌러 빨리 넘기기' : 'Z 길게: 빨리 넘기기   Esc: 건너뛰기', vw - 16, vh - 12, { size: 11, align: 'right', color: '#8a7e76', ow: 0 });
   }
   drawStats(ctx, vw, vh, t) {
     const S = this.stats;

@@ -13,7 +13,7 @@ import { STAGES, STAGE_ORDER } from '../../data/stages.js';
 import { migrateState } from '../../game/state.js';
 import {
   Ambience, kenBurns, shade, frame, heading, portraitIn, gbutton, menuItem, backButton, footer, setPad,
-  fmtDate, fmtPlay, goSafe, follow, GOLD, BONE, DIM, CRIMSON,
+  fmtDate, fmtPlay, goSafe, follow, TapZones, GOLD, BONE, DIM, CRIMSON,
 } from './common.js';
 
 export class SlotsScene extends Scene {
@@ -34,6 +34,7 @@ export class SlotsScene extends Scene {
     this.menu = new ListMenu(3, { index: idx });
     this.act = null; // 동작 선택 팝업
     this.selK = [0, 0, 0];
+    this.taps = new TapZones();
   }
   exit() { setPad(true); }
   onResume() { setPad(false); this.refresh(); }
@@ -92,7 +93,7 @@ export class SlotsScene extends Scene {
     const g = this.game;
     this.amb.update(dt, g.viewW, g.viewH);
     for (let i = 0; i < 3; i++) this.selK[i] = follow(this.selK[i], i === this.menu.index ? 1 : 0, dt, 12);
-    if (this.backTapped) { this.backTapped = false; if (this.act) { this.act = null; audio.sfx('menu_cancel'); } else this.leave(); return; }
+    if (this.taps.hit() === 'back') { if (this.act) { this.act = null; audio.sfx('menu_cancel'); } else this.leave(); return; }
     if (this.act) {
       this.act.t += dt;
       const r = this.act.menu.update(dt);
@@ -122,7 +123,7 @@ export class SlotsScene extends Scene {
     heading(ctx, vw / 2, 50, this.mode === 'new' ? 'NEW GAME' : 'CONTINUE', this.mode === 'new' ? '기록할 슬롯을 선택하세요' : '이어서 할 기록을 선택하세요', { size: 30, alpha: ap });
 
     const w = Math.min(680, vw - 200), x0 = vw / 2 - w / 2, h = 112;
-    this.menu.clearHits();
+    this.menu.clearHits(); this.taps.clear();
     this.slots.forEach((s, i) => {
       const k = ease.outCubic(clamp((this.t - 0.08 * i) / 0.45, 0, 1));
       const sel = this.selK[i];
@@ -131,7 +132,7 @@ export class SlotsScene extends Scene {
       this.drawSlot(ctx, r, s, sel, k, i === this.menu.index);
     });
     if (this.act) this.drawActions(ctx, vw, vh);
-    if (backButton(ctx)) this.backTapped = true;
+    backButton(ctx, 14, 12, '뒤로', this.taps);
     footer(ctx, vw, vh, this.act ? '↑↓ 선택   Z 결정   X 닫기' : '↑↓ 슬롯 선택   Z 결정   X 타이틀로', this.act ? '동작을 선택하세요' : '슬롯을 터치하세요');
   }
 

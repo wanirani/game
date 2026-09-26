@@ -30,7 +30,7 @@ export const NPCS = {
   },
   npc_elise: {
     id: 'npc_elise', name: '엘리제', title: '에슈빌의 소녀', portrait: 'portraits/npc_elise', role: 'villager', services: ['quest'],
-    desc: '성 루미나의 피를 이은 마을 소녀. 겁이 많지만 누구보다 씩씩하다. 1장에서 진홍의 기병대에게 납치된다.',
+    desc: '성 루미나의 피를 이은 마을 소녀. 겁이 많지만 누구보다 씩씩하다. 1장에서 백작의 거대한 박쥐에게 납치된다.',
     appear: { hideFrom: 1, hideUntil: 4 },
     look: { build: 'slim', height: 0.78, skin: '#f8e0d0', hair: '#e8c070', hairStyle: 'braid', eyes: '#b08040', outfit: 'girl',
       primary: '#d8c8a4', secondary: '#8a5a3a', trim: '#f4ece0', pants: '#f0e8e0', boots: '#4a3020' },

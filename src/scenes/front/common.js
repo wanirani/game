@@ -3,7 +3,7 @@
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
 import { saves } from '../../core/save.js';
-import { text, FONT, COLORS, hovered, tapped } from '../../core/ui.js';
+import { text, FONT, COLORS, hovered } from '../../core/ui.js';
 import { clamp, lerp, rand, TAU, rgba, ease } from '../../core/math.js';
 import { CHARACTERS, CHAR_ORDER } from '../../data/characters.js';
 import { CLASSES, classChain } from '../../data/classes.js';
@@ -393,8 +393,32 @@ export function menuItem(ctx, r, label, { selected = false, disabled = false, su
   if (sub) text(ctx, sub, tx, r.y + r.h / 2 + 15, { size: 10, align, weight: 700, family: FONT.num, color: disabled ? '#4a4244' : hot ? GOLD : DIM, ow: 2 });
   ctx.restore();
 }
-/** 둥근 느낌의 고딕 버튼 (터치 44px 이상 권장). 반환: 탭 여부 */
-export function gbutton(ctx, r, label, { selected = false, disabled = false, size = 16, accent = GOLD, sub = null, icon = null } = {}) {
+// ───────────────────────── 탭 영역 ─────────────────────────
+/**
+ * 렌더에서 그린 버튼 영역을 기억해 두었다가 update 에서 탭을 판정한다 (ListMenu.hit 과 같은 방식).
+ * input.pointer.tapped 는 고정 스텝 한 틱 동안만 참이라, 한 프레임에 여러 틱이 도는 30Hz·저사양 기기에서
+ * render 안에서 검사하면 탭을 놓치고, 틱이 없는 120Hz 프레임에서는 두 번 잡힌다.
+ *   render: this.taps.clear(); gbutton(ctx, r, '시작', { zones: this.taps, id: 'start' });
+ *   update: const tap = this.taps.hit(); if (tap === 'start') …
+ */
+export class TapZones {
+  constructor() { this.list = []; }
+  clear() { this.list.length = 0; }
+  add(id, r) { if (r) this.list.push({ id, x: r.x, y: r.y, w: r.w, h: r.h }); return r; }
+  /** 이번 틱에 탭된 영역의 id (나중에 그린 = 위에 있는 영역 우선). 없으면 null */
+  hit() {
+    const p = input.pointer;
+    if (!p.tapped) return null;
+    for (let i = this.list.length - 1; i >= 0; i--) {
+      const z = this.list[i];
+      if (p.x >= z.x && p.x <= z.x + z.w && p.y >= z.y && p.y <= z.y + z.h) return z.id;
+    }
+    return null;
+  }
+}
+
+/** 둥근 느낌의 고딕 버튼 (터치 44px 이상 권장). 탭 판정은 zones(TapZones)에 id 로 등록 → update 에서 zones.hit() */
+export function gbutton(ctx, r, label, { selected = false, disabled = false, size = 16, accent = GOLD, sub = null, icon = null, zones = null, id = label } = {}) {
   const hot = (selected || hovered(r)) && !disabled;
   ctx.save();
   const g = ctx.createLinearGradient(r.x, r.y, r.x, r.y + r.h);
@@ -409,12 +433,12 @@ export function gbutton(ctx, r, label, { selected = false, disabled = false, siz
   text(ctx, (icon ? icon + ' ' : '') + label, r.x + r.w / 2, cy + (sub ? -2 : size * 0.36), { size, align: 'center', weight: 800, color: disabled ? '#6a5e5e' : hot ? '#fff4d8' : BONE, ow: 2 });
   if (sub) text(ctx, sub, r.x + r.w / 2, cy + 14, { size: 10, align: 'center', weight: 700, color: DIM, ow: 2 });
   ctx.restore();
-  return !disabled && tapped(r);
+  if (zones && !disabled) zones.add(id, r);
 }
-/** 좌상단 뒤로가기 버튼 (터치용, 키보드 사용자에게도 표시). 반환: 탭 여부 */
-export function backButton(ctx, x = 14, y = 12, label = '뒤로') {
+/** 좌상단 뒤로가기 버튼 (터치용, 키보드 사용자에게도 표시). zones 에 id 'back' 으로 등록 */
+export function backButton(ctx, x = 14, y = 12, label = '뒤로', zones = null) {
   const r = { x, y, w: 92, h: 44 };
-  return gbutton(ctx, r, label, { size: 15, icon: '◀' });
+  gbutton(ctx, r, label, { size: 15, icon: '◀', zones, id: 'back' });
 }
 /** 하단 조작 안내 (키보드/터치 자동 전환) */
 export function footer(ctx, vw, vh, keys, touch) {
@@ -540,6 +564,19 @@ export function qualifies(game, mode, score) {
   if (!(score > 0)) return false;
   const list = (game.meta?.highScores ?? []).filter((h) => (h.mode || 'story') === mode);
   return list.length < PER_MODE || score > list[list.length - 1].score;
+}
+/**
+ * 보스 러시 코스별 최단 기록 { [코스 번호]: { time, score, charId, course, date } }.
+ * 예전의 단일 기록(meta.bossRushBest)은 처음 읽을 때 그 기록의 코스로 옮긴다.
+ */
+export function bossRushBests(meta) {
+  if (!meta) return {};
+  if (!meta.bossRushBests || typeof meta.bossRushBests !== 'object') {
+    meta.bossRushBests = {};
+    const b = meta.bossRushBest;
+    if (b && b.time > 0) meta.bossRushBests[b.course ?? 0] = { ...b, course: b.course ?? 0 };
+  }
+  return meta.bossRushBests;
 }
 /** main.js 의 recordScore 를 모드별 보존 버전으로 교체 (시그니처 동일) */
 export function installRecordScore(game) {

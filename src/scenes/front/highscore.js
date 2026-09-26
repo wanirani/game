@@ -11,8 +11,9 @@ import { STAGES } from '../../data/stages.js';
 import { getDiff } from '../../data/difficulty.js';
 import {
   Ambience, kenBurns, shade, frame, heading, ornament, gbutton, backButton, footer, setPad, MODES, MODE_NAME,
-  recordHighScore, fmtDate, fmtClock, follow, GOLD, BONE, DIM, CRIMSON,
+  recordHighScore, fmtDate, fmtClock, follow, TapZones, bossRushBests, GOLD, BONE, DIM, CRIMSON,
 } from './common.js';
+import { COURSES } from './arcade.js';
 
 const MEDAL = ['#ffe070', '#d8dce8', '#e0a060'];
 const ORD = (i) => `${i + 1}${i === 0 ? 'ST' : i === 1 ? 'ND' : i === 2 ? 'RD' : 'TH'}`;
@@ -35,6 +36,7 @@ export class HighscoreScene extends Scene {
     this.amb = new Ambience({ embers: 60, motes: 20, bats: 5, lightning: false, emberColor: '#ffd070' });
     this.tabK = 0;
     this.page = 0;
+    this.taps = new TapZones();
     if (!this.game.registry.arcade && back === 'arcade') this.back = 'title';
     audio.music(this.game.state && !this.game.state.arcade ? 'hub' : 'title');
   }
@@ -49,7 +51,7 @@ export class HighscoreScene extends Scene {
     const g = this.game;
     this.amb.update(dt, g.viewW, g.viewH);
     this.tabK = follow(this.tabK, this.tabs.index, dt, 14);
-    if (this.backTapped) { this.backTapped = false; this.leave(); return; }
+    if (this.taps.hit() === 'back') { this.leave(); return; }
     const r = this.tabs.update(dt);
     if (this.tabs.moved) { audio.sfx('menu_move'); this.changedT = this.t; }
     if (r === 'cancel' || (r === 'confirm' && !input.pointer.tapped)) this.leave();
@@ -63,6 +65,7 @@ export class HighscoreScene extends Scene {
   }
   render(ctx) {
     const g = this.game, vw = g.viewW, vh = g.viewH, t = g.time;
+    this.taps.clear();
     kenBurns(ctx, assets.get('bg/s11_chapel'), vw, vh, t, { z0: 1.05, z1: 1.12, period: 60 });
     ctx.fillStyle = 'rgba(8,2,8,0.72)'; ctx.fillRect(0, 0, vw, vh);
     shade(ctx, vw, vh, { top: 0.5, bottom: 0.7, vig: 0.85 });
@@ -86,10 +89,15 @@ export class HighscoreScene extends Scene {
     const colW = Math.min(440, (vw - 60) / 2), cx0 = vw / 2 - colW - 6, rowH = 31, y0 = 156;
     const ck = ease.outCubic(clamp((this.t - (this.changedT ?? 0)) / 0.35, 0, 1));
     if (!L.length) {
-      text(ctx, '아직 이 부문의 기록이 없습니다', vw / 2, 290, { size: 18, align: 'center', weight: 800, family: FONT.title, color: BONE, ow: 3 });
-      text(ctx, '첫 번째 전설의 주인공이 되어 보세요!', vw / 2, 318, { size: 14, align: 'center', color: DIM, ow: 2 });
+      // 기록이 없으면 빈 순위 칸을 그리지 않고 안내 패널만 (글자가 순위 칸 위에 겹치지 않게)
+      const pw = Math.min(460, vw - 80), ph = 112, px = vw / 2 - pw / 2, py = y0 + 5 * rowH - ph / 2 - 8;
+      ctx.save(); ctx.globalAlpha = ck;
+      frame(ctx, px, py, pw, ph, { glow: 0.4, fill0: 'rgba(22,8,20,0.9)' });
+      text(ctx, '아직 이 부문의 기록이 없습니다', vw / 2, py + 48, { size: 18, align: 'center', weight: 800, family: FONT.title, color: BONE, ow: 3 });
+      text(ctx, '첫 번째 전설의 주인공이 되어 보세요!', vw / 2, py + 78, { size: 14, align: 'center', color: DIM, ow: 2 });
+      ctx.restore();
     }
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < (L.length ? 20 : 0); i++) {
       const col = i < 10 ? 0 : 1, row = i % 10;
       const x = cx0 + col * (colW + 12), y = y0 + row * rowH;
       const h = L[i];
@@ -120,11 +128,12 @@ export class HighscoreScene extends Scene {
     // 부가 기록
     const m = g.meta;
     const extra = [];
-    if (m.bossRushBest) extra.push(`보스 러시 최단 ${fmtClock(m.bossRushBest.time ?? 0)}`);
+    const brb = bossRushBests(m), brc = COURSES.map((c, i) => (brb[i] ? `${c.name} ${fmtClock(brb[i].time ?? 0)}` : null)).filter(Boolean);
+    if (brc.length) extra.push(`보스 러시 최단  ${brc.join(' · ')}`);
     if (m.survivalBest) extra.push(`서바이벌 최고 WAVE ${m.survivalBest}`);
     if (m.endingsSeen?.length) extra.push(`엔딩 ${m.endingsSeen.length}/3`);
-    if (extra.length) text(ctx, extra.join('   ·   '), vw / 2, y0 + 10 * rowH + 16, { size: 13, align: 'center', weight: 700, color: '#d8c0a0', ow: 2 });
-    if (backButton(ctx)) this.backTapped = true;
+    if (extra.length) text(ctx, extra.join('   ·   '), vw / 2, y0 + 10 * rowH + 16, { size: 13, align: 'center', weight: 700, color: '#d8c0a0', ow: 2, maxWidth: vw - 40 });
+    backButton(ctx, 14, 12, '뒤로', this.taps);
     footer(ctx, vw, vh, '←→ 부문 전환   X 돌아가기', '부문 탭을 터치하세요');
   }
 }
@@ -141,7 +150,7 @@ export class InitialsScene extends Scene {
     const last = (this.game.meta?.lastInitials || 'AAA').toUpperCase().padEnd(3, 'A').slice(0, 3);
     this.letters = [...last].map((c) => Math.max(0, CHARS.indexOf(c)));
     this.cur = 0; this.bump = [0, 0, 0, 0];
-    this.typed = false;
+    this.typedKey = null;
     input.textCapture = (k) => this.onType(k);
     // 예상 순위
     const list = (this.game.meta?.highScores ?? []).filter((h) => (h.mode || 'story') === mode);
@@ -150,14 +159,28 @@ export class InitialsScene extends Scene {
     this.hits = [];
   }
   exit() { input.textCapture = null; setPad(true); }
+  /**
+   * 키보드 문자 입력. Z·X·Space 처럼 결정/취소에 묶인 키는 글자가 아니라 조작(다음/이전)으로 처리한다.
+   * textCapture 는 keydown 처리 도중(키 상태 반영 전)에 불리므로, 키 상태가 반영된 뒤(마이크로태스크)에 판별한다.
+   * 실제 반영은 update 에서 (같은 키의 다른 액션 입력은 flush 로 무시)
+   */
   onType(k) {
-    const c = k.toUpperCase();
-    const i = CHARS.indexOf(c);
-    if (i < 0 || this.cur > 2) return;
+    const i = CHARS.indexOf(k.toUpperCase());
+    if (i < 0) return;
+    queueMicrotask(() => {
+      const key = input.sources?.key ?? {};
+      if (key.confirm || key.cancel) return;
+      if (this.cur <= 2 && !this.done) this.typedKey = i;
+    });
+  }
+  applyTyped() {
+    const i = this.typedKey;
+    this.typedKey = null;
+    if (i === null || this.cur > 2) return false;
     this.letters[this.cur] = i; this.bump[this.cur] = 1;
     this.cur = Math.min(3, this.cur + 1);
-    this.typed = true;
     audio.sfx('type');
+    return true;
   }
   cycle(d) {
     if (this.cur > 2) return;
@@ -181,7 +204,7 @@ export class InitialsScene extends Scene {
   }
   update(dt) {
     for (let i = 0; i < 4; i++) this.bump[i] = Math.max(0, this.bump[i] - dt * 5);
-    if (this.typed) { this.typed = false; input.flush(); return; }
+    if (this.applyTyped()) { input.flush(); return; }
     // 터치
     for (const h of this.hits) {
       const p = input.pointer;
@@ -240,7 +263,7 @@ export class InitialsScene extends Scene {
       this.hits.push({ r: up, act: 'up', i }, { r: dn, act: 'down', i }, { r: { x, y, w: bw, h: bh }, act: 'sel', i });
     }
     const er = { x: x0 + 3 * (bw + gap), y: y + 28, w: 110, h: 48 };
-    if (gbutton(ctx, er, '등록', { selected: this.cur === 3, size: 18, icon: '✔' })) { /* 탭은 hits 로 처리 */ }
+    gbutton(ctx, er, '등록', { selected: this.cur === 3, size: 18, icon: '✔' }); // 탭은 hits 로 처리
     this.hits.push({ r: er, act: 'ok', i: 3 });
     text(ctx, input.touchMode ? '▲▼ 로 글자를 바꾸고 「등록」을 누르세요' : '↑↓ 글자 변경   ←→ 칸 이동   Z 다음/등록   X 이전   (키보드로 직접 입력 가능)', vw / 2, vh - 30, { size: 13, align: 'center', color: '#b8aa98', ow: 2 });
     ctx.restore();

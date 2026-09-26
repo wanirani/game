@@ -28,7 +28,7 @@ export const GAMES = {
   dice: {
     id: 'dice', scene: 'minigame_dice', name: '해골 주사위', sub: '하이 & 로우', accent: '#ff5a5a',
     rules: '뼈로 깎은 주사위 세 개를 굴립니다. 다음 굴림의 합이 지금보다 높을지 낮을지 맞히세요. 맞힐수록 배당이 곱해지고, 언제든 거둘 수 있어요. 트리플(같은 눈 셋)을 맞히면 한 방에 30배!',
-    pays: ['높게·낮게: 확률 따라 ×1.1~×19', '트리플 적중: ×30 잭팟', '같은 합: 무승부, 다시 굴림'],
+    pays: ['높게·낮게: 확률 따라 ×1.02~×99', '트리플 적중: ×30 잭팟', '같은 합: 무승부, 다시 굴림'],
   },
   blackjack: {
     id: 'blackjack', scene: 'minigame_blackjack', name: '악마의 21', sub: '블랙잭', accent: '#ff3a5a',
@@ -43,7 +43,7 @@ export const GAMES = {
   duel: {
     id: 'duel', scene: 'minigame_duel', name: '황혼의 결투', sub: '3판 2선승 속사', accent: '#ff8a3a',
     rules: "해 질 녘 총잡이와 3판 2선승 결투. '준비…' 뒤에 '발사!'가 뜨는 순간 공격 버튼(또는 화면)을 누르세요. 신호 전에 쏘면 반칙패! 이길수록 더 빠른 총잡이가 도전해 옵니다.",
-    pays: ['승리: ×1.8~×4 (상대 등급)', '무실점 완승: 주문서 확률'],
+    pays: ['승리: ×1.8~×4 (상대 등급)', '무실점 완승: 주문서 확률', '※ 첫 번째 결투자는 제외'],
   },
   memory: {
     id: 'memory', scene: 'minigame_memory', name: '영혼의 카드', sub: '짝 맞추기', accent: '#8ab0ff',
@@ -539,6 +539,7 @@ export class MiniGame extends Scene {
     this.shakeT = 0; this.shakeMag = 0; this.flashA = 0; this.flashCol = '#fff';
     this.leaving = false;
     this.clock = 0;
+    this.betPop = null;
     audio.music('minigame');
     padPush();
     assets.preload(['bg/inn', 'portraits/npc_marta']);
@@ -577,7 +578,8 @@ export class MiniGame extends Scene {
     this.st.gold -= this.bet; session.net -= this.bet; this.roundBet = this.bet;
     this.st.innGames.plays++;
     audio.sfx('coin_insert');
-    this.fx.text(this.vw - 110, 70, `-${fmt(this.bet)}`, { color: '#ff9a9a', size: 18, vy: 40 });
+    // 차감 표시는 금화 판 바로 왼쪽에서 살짝 떠올랐다 사라진다 (파티클 글자는 중력으로 흘러내려 옆 패널 제목을 가렸다)
+    this.betPop = { str: `-${fmt(this.bet)}`, t: 0 };
     return true;
   }
   /** 추가 판돈 (블랙잭 더블 등) */
@@ -653,6 +655,7 @@ export class MiniGame extends Scene {
     if (this.fromInn && this.game.scenes.length > 1) this.game.fadeOut(() => this.game.pop({ game: this.id }), 0.3);
     else this.game.go(this.game.registry.inn ? 'inn' : 'title', {});
   }
+  canAgain() { return this.free || this.st.gold >= this.bet; }
   again() {
     this.result = null;
     this.phase = 'ready';
@@ -668,6 +671,7 @@ export class MiniGame extends Scene {
     this.shakeT = Math.max(0, this.shakeT - dt);
     if (this.shakeT <= 0) this.shakeMag = 0;
     this.flashA = Math.max(0, this.flashA - dt * 2.5);
+    if (this.betPop && (this.betPop.t += dt) > 1.1) this.betPop = null;
     this.animate?.(dt);
     if (this.leaving) return;
     const tap = this.hits.tapped();
@@ -678,7 +682,11 @@ export class MiniGame extends Scene {
       R.t += dt;
       if (R.t > 0) R.shown = Math.min(R.payout, R.shown + Math.max(R.payout * dt * 1.6, 60 * dt));
       if (R.t > 0.35) {
-        if (tap === 'again' || input.pressed('confirm') || input.pressed('jump')) { audio.sfx('menu_ok'); this.again(); return; }
+        if (tap === 'again' || input.pressed('confirm') || input.pressed('jump')) {
+          // 버튼이 비활성(금화 부족)이면 키 입력도 막는다 — 판돈 차감 실패로 지난 판 화면이 남는 일이 없도록
+          if (!this.canAgain()) this.poor();
+          else { audio.sfx('menu_ok'); this.again(); return; }
+        }
         if (tap === 'inn' || input.pressed('cancel')) { this.leave(); return; }
       }
       this.stepResult?.(dt);
@@ -713,7 +721,8 @@ export class MiniGame extends Scene {
   drawHUD(ctx) {
     const vw = this.vw;
     const back = this.hits.rect('back', 12, 10, 104, 40);
-    this.hits.add('back', back);
+    // 터치: 탭 영역만 모서리까지 넓힌다 (결투의 '화면 누르기' 제외 영역 x<130·y<60 과 맞춤)
+    this.hits.add('back', input.touchMode ? this.hits.rect('backHit', 0, 0, 128, 62) : back);
     drawBtn(ctx, back, '◀ 여관', { tone: 'dark', size: 16, hot: this.hits.over(back), pressed: this.hits.pressed(back), key: 'Esc', disabled: !this.canLeave() });
     // 제목 (titleLeft: 가운데를 비워야 하는 장면용)
     if (this.titleLeft) {
@@ -732,6 +741,12 @@ export class MiniGame extends Scene {
     }
     // 금화 + 판돈
     goldPlaque(ctx, vw - 196, 10, 184, this.goldR.value, this.clock, this.goldR.flash);
+    if (this.betPop) {
+      const k = this.betPop.t;
+      ctx.globalAlpha = clamp((1.1 - k) / 0.35, 0, 1) * clamp(k / 0.08, 0, 1);
+      text(ctx, this.betPop.str, vw - 206, 38 - ease.outCubic(clamp(k / 0.6, 0, 1)) * 12, { size: 18, align: 'right', weight: 900, family: FONT.num, color: '#ff9a9a', ow: 4 });
+      ctx.globalAlpha = 1;
+    }
     const bt = this.roundBet > 0 && this.phase !== 'ready' && this.phase !== 'result' ? `판돈 ${fmt(this.roundBet)} G` : this.free ? '무료 판' : `판돈 ${fmt(this.bet)} G`;
     const inRound = this.phase !== 'ready' && this.phase !== 'result';
     text(ctx, inRound && this.roundFree ? '무료 판 진행 중' : bt, vw - 20, 68, { size: 13, align: 'right', weight: 700, color: this.free || this.roundFree ? '#7affd8' : '#e8d8b0', ow: 3 });
@@ -740,12 +755,13 @@ export class MiniGame extends Scene {
   /** 판돈 칩 줄 (ready 단계용). cx 중심, y 칩 중심 */
   drawBetBar(ctx, cx, y, { r = 24, label = true } = {}) {
     const opts = this.betOptions();
-    const gap = r * 2 + 12;
+    // 터치: 칩 사이를 넓혀 탭 영역이 손가락 크기(약 44 CSS px) 이상이 되게 한다
+    const touch = input.touchMode, gap = r * 2 + (touch ? 20 : 12);
     const x0 = cx - ((opts.length - 1) * gap) / 2;
     if (label) text(ctx, input.touchMode ? '판돈을 고르세요' : '판돈 선택  ← →', cx, y - r - 12, { size: 12, align: 'center', weight: 700, color: '#c8b490', ow: 3 });
     opts.forEach((v, i) => {
       const x = x0 + i * gap;
-      const hr = this.hits.rect('bet:' + v, x - r - 4, y - r - 6, r * 2 + 8, r * 2 + 12);
+      const hr = touch ? this.hits.rect('bet:' + v, x - gap / 2, y - r - 10, gap, r * 2 + 20) : this.hits.rect('bet:' + v, x - r - 4, y - r - 6, r * 2 + 8, r * 2 + 12);
       const dis = v > 0 && this.st.gold < v;
       this.hits.add('bet:' + v, hr, false);
       drawChip(ctx, x, y, r, v, { selected: this.betValue === v, disabled: dis, t: this.clock });
@@ -814,7 +830,7 @@ export class MiniGame extends Scene {
     // 버튼
     const bw = 190, bh = 46, by = y + h - bh - 12;
     const ra = this.hits.rect('again', vw / 2 - bw - 8, by, bw, bh), rb = this.hits.rect('inn', vw / 2 + 8, by, bw, bh);
-    const canAgain = this.free || this.st.gold >= this.bet;
+    const canAgain = this.canAgain();
     if (R.t > 0.3) { this.hits.add('again', ra, !canAgain); this.hits.add('inn', rb); }
     ctx.globalAlpha = fa;
     drawBtn(ctx, ra, '한 판 더', { tone: 'crimson', hot: this.hits.over(ra), pressed: this.hits.pressed(ra), sub: this.free ? '무료 판' : `판돈 ${fmt(this.bet)} G`, key: 'Z', disabled: !canAgain, pulse: canAgain, t: this.clock });

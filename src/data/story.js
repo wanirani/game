@@ -1,6 +1,7 @@
 // 스토리 스크립트 (대사·컷신). dialogue 장면이 재생한다.
 // SCRIPTS[id] = [ line... ]
-//  line = { who:'hero'|charId|npcId|bossId|'narrator'|'임의 이름', text: '문자열' 또는 {kael:'..', sera:'..', victor:'..', bran:'..', lia:'..', azel:'..', default:'..'}, side?:'left'|'right' }
+//  line = { who:'hero'|charId|npcId|bossId|'narrator'|'임의 이름', text: '문자열' 또는 {kael:'..', sera:'..', victor:'..', bran:'..', lia:'..', azel:'..', default:'..'}, side?:'left'|'right',
+//           name?:'명패 이름 덮어쓰기(이름을 밝히기 전 등)', portrait?:'portraits/… 초상화 덮어쓰기' }
 //       | { choice:[{ text, set:{flag:true}, goto:'label' }] , who, text }
 //       | { label:'이름' } | { goto:'label' } | { if:'flag' | '!flag' | {char:'kael'}, ...line }
 //       | { cmd:'give', item, qty, name } | { cmd:'gold', amount } | { cmd:'flag', key, value } | { cmd:'quest', id }
@@ -10,12 +11,16 @@
 // ID 규칙: prologue · <stageId>_intro/_t1/_t2/_outro · <bossId>_pre/_post · b_dracula_transform(2페이즈 연출용)
 //          ending_bad/normal/true · <npcId>_ch<N>/_default/_tip<N>/_<stageId>(스테이지 안 NPC) · q_<questId>_start/_done
 // 챕터 N 대사 = N장을 클리어한 뒤(다음 장 출발 전)에 마을에서 듣는 대사.
-// 주요 플래그: elise_taken, lia_joined, elise_rescued, carmilla_trust1/2(+met1/2), azel_joined, alberto_confessed, relics_all(퀘스트 런타임이 설정), abyss_open
+// 주요 플래그: elise_taken, lia_joined, elise_rescued, carmilla_trust1/2(+met1/2, 노멀 엔딩은 trust2), azel_joined, alberto_confessed, relics_all(퀘스트 런타임이 설정), abyss_open
 
 const N = (text, x) => ({ who: 'narrator', text, ...x });
 const H = (text, x) => ({ who: 'hero', text, ...x });
 const S = (who, text, x) => ({ who, text, ...x });
 const R = (who, text) => ({ who, text, side: 'right' }); // 합류 전 영웅이 NPC로 말할 때
+const RN = (who, name, text) => ({ who, name, text, side: 'right' }); // 이름을 밝히기 전: 명패에 name 을 대신 표시
+// 변신한 드라큘라 (2페이즈 초상화 portraits/b_dracula2, 이름은 bosses_b form2 와 동일)
+const D2 = (text) => ({ who: 'b_dracula', name: '진·드라큘라', portrait: 'portraits/b_dracula2', text });
+const NOCT = '붉은 눈의 검사', CROW = '수수께끼의 소녀', VOICE = '수수께끼의 목소리', PALE = '창백한 귀부인';
 const cg = (id = null) => ({ cmd: 'cg', id });
 const bgm = (id) => ({ cmd: 'music', id });
 const se = (id) => ({ cmd: 'sfx', id });
@@ -124,7 +129,7 @@ export const SCRIPTS = {
     cg('cg_elise_taken'), se('thunderclap'), quake(8, 0.5, RED),
     S(EL, '살려 주세요! 신부님! 마르타 이모——!'),
     S('b_crimson', '성녀의 피를 이은 아이라… 백작님께 좋은 선물이 되겠군.'),
-    N('붉은 갑주의 기병대가 소녀를 태우고 안개 속 성으로 사라졌다.'),
+    N('백작의 거대한 박쥐가 소녀를 낚아채, 붉은 달 아래 안개 속 성으로 날아갔다.'),
     cg(),
     S(A, '엘리제…! 그 아이는 성 루미나의 혈통일세. 놈들이 그걸 어떻게…'),
     H({ kael: '반드시 데려오겠습니다. 발크레인의 이름을 걸고.',
@@ -154,14 +159,14 @@ export const SCRIPTS = {
   ],
   s02_t1: [
     ifChar('lia', 'self'),
-    R('lia', '멈춰. 한 발짝만 더 오면 목을 긋겠어.'),
+    RN('lia', CROW, '멈춰. 한 발짝만 더 오면 목을 긋겠어.'),
     H({ kael: '…결사의 사람인가. 칼 거둬. 우린 같은 사냥감을 쫓고 있어.',
       sera: '칼끝이 조금도 떨리지 않네요. 대단한 솜씨예요. 그래도 거둬 주실래요?',
       victor: '오, 무서워라. 근데 아가씨, 내 총구가 먼저 겨눴거든.',
       bran: '칼을 거두시오. 나는 적이 아니오.',
       azel: '결사의 까마귀인가. 내 피 냄새를 맡고 왔군.',
       default: '잠깐, 적이 아니야!' }),
-    R('lia', '…묘지의 여왕은 내 사냥감이야. 방해하면 너부터 묻어 줄 거야.'),
+    RN('lia', CROW, '…묘지의 여왕은 내 사냥감이야. 방해하면 너부터 묻어 줄 거야.'),
     N('소녀는 안개 속으로 녹아들 듯 사라졌다.'),
     go('end'),
     L('self'),
@@ -197,7 +202,7 @@ export const SCRIPTS = {
   s02_outro: [
     bgm('story'),
     ifChar('lia', 'self'),
-    R('lia', '…내 사냥감을 가로챘군.'),
+    RN('lia', CROW, '…내 사냥감을 가로챘군.'),
     R('lia', '리아 크로우. 까마귀 결사의 칼이야. 내 임무는 드라큘라의 목.'),
     H({ kael: '카엘 발크레인이다. 목표가 같다면 함께 가지.',
       sera: '세라피나예요. 혼자보단 둘이 기도도 잘 닿는답니다.',
@@ -206,8 +211,10 @@ export const SCRIPTS = {
       azel: '…아젤이다. 네가 노리는 자의 아들이지.',
       default: '함께 가자.' }),
     R('lia', { azel: '…알아. 결사 명단 두 번째 줄이 너니까. 일단은 보류해 두지.', default: '착각하지 마. 동료가 아니라 방패로 쓰려는 거니까.' }),
-    R('lia', '그리고 하나 더. 그 늙은 신부, 조심해. 결사의 명부에 그 이름이 있어.'),
+    // 합류 연출은 컷신 안에서 (마지막 명령이면 해금 토스트가 페이드아웃·마을 배너와 겹친다)
     { cmd: 'unlockChar', id: 'lia' },
+    { if: '!lia_joined', cmd: 'title', text: 'NEW HUNTER', sub: '그림자 암살자 리아 크로우 합류' },
+    R('lia', '그리고 하나 더. 그 늙은 신부, 조심해. 결사의 명부에 그 이름이 있어.'),
     go('end'),
     L('self'),
     H('밴시는 끝났다. 결사에 보고… 아니, 보고는 백작 목을 들고 하지.'),
@@ -238,8 +245,8 @@ export const SCRIPTS = {
   ],
   s03_t1: [
     N('성벽에 새겨진 부조. 박쥐 날개를 단 사내가 달을 삼키고 있다.'),
-    N('그 아래 녹슨 글귀. "송곳니는 문지기의 등 뒤, 무너지는 벽 너머에 잠든다."'),
-    H({ kael: '유물의 단서다. 벽을 부숴 봐야겠군.',
+    N('그 아래 녹슨 글귀. "송곳니는 성벽 위 통로 초입, 머리 위 석실에 잠든다. 그 방의 바닥은 거짓이니 아래에서 뛰어올라라."'),
+    H({ kael: '유물의 단서다. 성벽 위에 오르면 머리 위를 잘 살펴봐야겠군.',
       sera: '신부님 말씀이 맞았어요. 유물은 정말 있어요.',
       victor: '보물 지도 같은 거군. 이런 건 좋아.',
       bran: '숨겨진 방이 있다는 뜻이오. 눈여겨보겠소.',
@@ -279,7 +286,7 @@ export const SCRIPTS = {
     bgm('story'),
     N('정문을 넘어서자 등 뒤에서 도개교가 쿵, 하고 닫혔다.'),
     se('door'),
-    S(CA, '후후… 어서 오렴, 사냥꾼. 이 성은 손님을 오래오래 붙잡아 두는 걸 좋아한단다.'),
+    S(CA, '후후… 어서 오렴, 사냥꾼. 이 성은 손님을 오래오래 붙잡아 두는 걸 좋아한단다.', { name: VOICE }),
     H({ kael: '누구냐! 모습을 드러내라!',
       sera: '이 목소리… 흡혈귀예요. 그것도 아주 오래된.',
       victor: '여자 목소리인데. 미인이면 반만 쏘지.',
@@ -287,7 +294,7 @@ export const SCRIPTS = {
       lia: '…위치를 못 잡겠어. 보통 놈이 아니야.',
       azel: '…카밀라. 아직 이 성에 있었나.',
       default: '누구지…?' }),
-    S(CA, '곧 만나게 될 거야. 그때까지 죽지 말렴. 재미없어지니까.'),
+    S(CA, '곧 만나게 될 거야. 그때까지 죽지 말렴. 재미없어지니까.', { name: VOICE }),
   ],
 
   // ═══════════════════════════ 4장 대회랑 ═══════════════════════════
@@ -306,15 +313,15 @@ export const SCRIPTS = {
   s04_t1: [
     ifChar('azel', 'self'),
     se('slash_heavy'),
-    N('붉은 검광 한 줄기가 복도를 가르고, 하급 악마 셋이 한꺼번에 무너졌다.'),
-    R('azel', '돌아가라, 인간. 이 성은 너희가 끝낼 수 있는 곳이 아니다.'),
+    N('복도 저편 어둠 속에서 붉은 검광이 번뜩이더니, 마물의 비명이 뚝 끊겼다. 누군가 걸어 나온다.'),
+    RN('azel', NOCT, '돌아가라, 인간. 이 성은 너희가 끝낼 수 있는 곳이 아니다.'),
     H({ kael: '그 눈… 인간이 아니군. 너는 누구냐?',
       sera: '당신에게서 흡혈귀와 사람의 기운이 함께 느껴져요.',
       victor: '고맙다고 해야 하나? 아니면 쏴야 하나?',
       bran: '도와준 건 고맙소. 허나 정체를 밝히시오.',
       lia: '…결사 명단에 있는 얼굴이야. 드라큘라의 아들.',
       default: '너는 누구지?' }),
-    R('azel', '…이름은 아직 필요 없다. 다음에 만날 때까지 살아 있다면 말해 주지.'),
+    RN('azel', NOCT, '…이름은 아직 필요 없다. 다음에 만날 때까지 살아 있다면 말해 주지.'),
     go('end'),
     L('self'),
     H('이 복도에서 어머니의 손을 잡고 걸었었다. …감상은 나중이다.'),
@@ -332,7 +339,7 @@ export const SCRIPTS = {
   ],
   b_crimson_pre: [
     se('clang'),
-    N('홀 중앙, 철창에 갇힌 엘리제. 그 앞을 진홍빛 갑주의 거인이 가로막는다.'),
+    N('홀 저편 어딘가에서 엘리제의 흐느낌이 새어 나온다. 그 길을 진홍빛 갑주의 거인이 가로막는다.'),
     S('b_crimson', '성녀의 피는 붉은 달이 가장 높이 뜰 때 백작님께 바쳐진다. 물러가라.'),
     ifChar('bran', 'bran'),
     H({ kael: '아이를 제물로 쓰는 놈에게 물러설 이유는 없다!',
@@ -513,7 +520,7 @@ export const SCRIPTS = {
   ],
   s06_outro: [
     bgm('story'), cg('cg_carmilla_library'),
-    S(CA, '훌륭해. 그 수다쟁이 책을 닥치게 해 준 건 고마워, 사냥꾼.'),
+    S(CA, '훌륭해. 그 수다쟁이 책을 닥치게 해 준 건 고마워, 사냥꾼.', { name: PALE }),
     S(CA, { azel: '오랜만이야, 아젤 도련님. 백 년 만인가? 여전히 아버지를 닮아 무뚝뚝하네.', default: '카밀라라고 해. 백작의… 오래된 "딸" 중 하나지. 반갑진 않겠지만.' }),
     S(CA, '방금 그 페이지 읽었지? 백작은 죽지 않아. 너희가 백 번을 이겨도.'),
     S(CA, '나도 그 끝없는 굴레가 지겨워. 그래서 말인데… 잠시 손을 잡지 않을래?'),
@@ -532,7 +539,7 @@ export const SCRIPTS = {
     L('azel'),
     cg(),
     ifChar('azel', 'self'),
-    R('azel', '…카밀라와 이야기했나. 그녀의 말은 반만 믿어라. 나머지 반이 진실일 때가 많지만.'),
+    RN('azel', NOCT, '…카밀라와 이야기했나. 그녀의 말은 반만 믿어라. 나머지 반이 진실일 때가 많지만.'),
     R('azel', '아젤 드 녹트. 드라큘라의 아들이다. 나 역시 아버지의 밤을 끝내러 왔다.'),
     H({ kael: '드라큘라의 아들과 발크레인이 한편이라… 조상님이 벌떡 일어나시겠군. 좋아.',
       sera: '주님은 핏줄이 아니라 마음을 보세요. 환영해요, 아젤.',
@@ -540,8 +547,9 @@ export const SCRIPTS = {
       bran: '그대의 검엔 망설임이 없었소. 등을 맡기겠소.',
       lia: '결사 표적 명단엔 너도 있어. …일단은 보류해 두지.',
       default: '함께 가자, 아젤.' }),
-    R('azel', '고맙다. …아버지 앞에 서면, 그땐 내가 먼저 검을 뽑겠다.'),
     { cmd: 'unlockChar', id: 'azel' },
+    { if: '!azel_joined', cmd: 'title', text: 'NEW HUNTER', sub: '담피르 검사 아젤 드 녹트 합류' },
+    R('azel', '고맙다. …아버지 앞에 서면, 그땐 내가 먼저 검을 뽑겠다.'),
     go('end'),
     L('self'),
     H('카밀라… 그녀의 속을 읽어 낸 적은 한 번도 없었다.'),
@@ -562,7 +570,7 @@ export const SCRIPTS = {
       lia: '증거를 찾는다. 그 신부의 과거.',
       azel: '이 증기 냄새… 그 소년이 늘 뒤집어쓰고 있던 냄새다.',
       default: '신부님의 과거가 여기 있을까….' }),
-    { if: 'carmilla_trust1', who: CA, text: '(박쥐 한 마리가 귓가에 속삭인다) 검은 심장은 증류탑 꼭대기, 깨진 유리벽 뒤에 있단다.' },
+    { if: 'carmilla_trust1', who: CA, text: '(박쥐 한 마리가 귓가에 속삭인다) 검은 심장은 폐기물 처리장에 있단다. 독의 호수 위, 숨은 승강기 끝의 봉인실이야. 벽을 의심하렴.' },
   ],
   s07_t1: [
     N('책상 위의 낡은 일지. 서툰 글씨로 적혀 있다. "박사님이 또 실패작을 버렸다. 불쌍한 것…"'),
@@ -637,7 +645,7 @@ export const SCRIPTS = {
       default: '발밑을 조심하자.' }),
   ],
   s08_t1: [
-    N('물에 젖은 편지 한 장. "여보, 수문을 닫으러 내려가오. 저것이 깨어나기 전에…"'),
+    N('물에 젖은 편지 한 장. "여보, 수문을 닫으러 내려가오. 저것이 깨어나기 전에… 아, 지붕은 돌아가서 고치겠소."'),
     H({ kael: '돌아가지 못한 사람의 편지군. …마저 전해 줄 수 있으면 좋을 텐데.',
       sera: '돌아오지 못한 분을 위해 기도할게요.',
       victor: '"지붕은 돌아가서 고치겠소"라… 남자들은 다 똑같군.',
@@ -933,13 +941,13 @@ export const SCRIPTS = {
   ],
   b_dracula_transform: [
     cg('cg_dracula_transform'), se('boss_roar'), quake(14, 1.0, RED),
-    S('b_dracula', '크하하하! 이 몸을 여기까지 몰아붙인 건 네가 처음이다!'),
-    S('b_dracula', '보아라, 진정한 밤의 모습을! 공포에 떨며 무릎 꿇어라!'),
+    D2('크하하하! 이 몸을 여기까지 몰아붙인 건 네가 처음이다!'),
+    D2('보아라, 진정한 밤의 모습을! 공포에 떨며 무릎 꿇어라!'),
     cg(),
   ],
   b_dracula_post: [
-    S('b_dracula', '어리석은… 인간… 나는… 죽지 않는다…'),
-    S('b_dracula', '핏빛 달이 다시 뜨는 날… 백 년 후… 다시 만나자꾸나…'),
+    D2('어리석은… 인간… 나는… 죽지 않는다…'),
+    D2('핏빛 달이 다시 뜨는 날… 백 년 후… 다시 만나자꾸나…'),
     N('백작의 몸이 재가 되어 흩어진다. 왕좌 위로 첫 새벽빛이 스며들기 시작했다.'),
     H({ azel: '…안녕히, 아버지.', kael: '끝났다… 백 년의 밤이.', default: '끝났다…!' }),
   ],
@@ -1421,8 +1429,8 @@ export const SCRIPTS = {
   npc_carmilla_default: [S(CA, '햇빛 없는 자리가 좋아. 이 여관 구석처럼. …같이 한 잔 할래?')],
   npc_carmilla_s06: [
     ifFlag('carmilla_met1', 'met'),
-    S(CA, '후후, 서두르렴. 그 수다쟁이 책이 네 이야기를 전부 읽어 버리기 전에.'),
-    S(CA, '내가 누구냐고? 그 책을 닥치게 하면 알려 줄게.'),
+    S(CA, '후후, 서두르렴. 그 수다쟁이 책이 네 이야기를 전부 읽어 버리기 전에.', { name: PALE }),
+    S(CA, '내가 누구냐고? 그 책을 닥치게 하면 알려 줄게.', { name: PALE }),
     go('end'),
     L('met'),
     S(CA, '또 왔니? 이 도서관, 먼지 냄새가 좋아서 자주 와. 너도 그렇지 않니?'),
@@ -1539,7 +1547,8 @@ function pickNpcScript(npcId, state, stageId) {
 }
 
 /** 스테이지 클리어 후 재생할 엔딩 스크립트 id (없으면 null)
- *  s12: 유물 5개 → null(심연의 문이 열려 s13 으로) / 카밀라를 한 번이라도 믿음 → ending_normal / 아니면 ending_bad
+ *  s12: 유물 5개 → null(심연의 문이 열려 s13 으로) / 11장의 "마지막 기회"에 카밀라를 믿음(carmilla_trust2) → ending_normal / 아니면 ending_bad
+ *       (6장에서만 믿고 11장에서 거절하면 배드 엔딩 — ending_bad 의 "처음엔 믿어 주더니…" 대사가 이 경우)
  *  s13: ending_true   (엔딩 대사는 abyss_open 플래그에 따라 13장 안내로 분기하므로, s12 뒤에 엔딩을 틀어도 모순이 없다) */
 export function endingAfter(stageId, state) {
   const p = state?.progress ?? {};
@@ -1547,7 +1556,7 @@ export function endingAfter(stageId, state) {
   if (stageId === 's13') return 'ending_true';
   if (stageId !== 's12') return null;
   if (f.relics_all || (p.relics?.length ?? 0) >= 5) return null;
-  return f.carmilla_trust1 || f.carmilla_trust2 ? 'ending_normal' : 'ending_bad';
+  return f.carmilla_trust2 ? 'ending_normal' : 'ending_bad';
 }
 
 /** 엔딩 크레딧 (한 줄씩). '— 제목 —' 은 소제목, '역할 — 이름' 은 두 칸 행, 빈 문자열은 간격 */
@@ -1609,3 +1618,13 @@ export const CREDITS = [
   '— THANK YOU FOR PLAYING —',
   '밤은 끝났다. 좋은 아침을.',
 ];
+
+/** 숨겨진 13장을 아직 모르는 플레이어에게는 보여 주지 않을 크레딧 줄 */
+const SECRET_CREDITS = ['13장 — 혼돈의 군주'];
+/** 엔딩 종류·진행도에 맞춘 크레딧 (13장이 해금됐거나 진엔딩을 본 적이 있을 때만 13장 보스를 싣는다)
+ *  kind: 'bad'|'normal'|'true'|null, state: 세이브(없으면 null), meta: game.meta */
+export function creditsFor(kind, state, meta) {
+  const p = state?.progress;
+  const known = kind === 'true' || p?.unlocked?.includes('s13') || p?.flags?.abyss_open || meta?.endingsSeen?.includes('true');
+  return known ? CREDITS : CREDITS.filter((s) => !SECRET_CREDITS.includes(s));
+}
