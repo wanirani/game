@@ -161,8 +161,9 @@ function check(stage, roomId, room) {
   if (npcs > (room.npcs?.length ?? 0)) err(`${roomId}: 'N' ${npcs}개인데 npcs 배열 ${room.npcs?.length ?? 0}개`);
   if (trig > (room.triggers?.length ?? 0)) warn(`${roomId}: '!' ${trig}개인데 triggers ${room.triggers?.length ?? 0}개`);
   if (items > (room.items?.length ?? 0)) err(`${roomId}: '@' ${items}개인데 items ${room.items?.length ?? 0}개`);
-  for (const it of room.items ?? []) if (!itemOk(it)) err(`${roomId}: 배치 아이템 '${typeof it === 'string' ? it : JSON.stringify(it)}' 가 ITEMS/LORE/DOCS/SUBWEAPONS 에 없음`);
-  for (const id of room.triggers ?? []) if (!SCRIPTS[id]) err(`${roomId}: 트리거 스크립트 '${id}' 가 SCRIPTS 에 없음`);
+  // null/'' 칸은 "이 '@'·'!' 에는 없음" 자리 채움 (world.loadRoom 이 건너뜀) → 검사하지 않는다
+  for (const it of room.items ?? []) if (it && !itemOk(it)) err(`${roomId}: 배치 아이템 '${typeof it === 'string' ? it : JSON.stringify(it)}' 가 ITEMS/LORE/DOCS/SUBWEAPONS 에 없음`);
+  for (const id of room.triggers ?? []) if (id && !SCRIPTS[id]) err(`${roomId}: 트리거 스크립트 '${id}' 가 SCRIPTS 에 없음`);
   if (room.doorMarks !== undefined) {
     if (!Array.isArray(room.doorMarks)) err(`${roomId}: doorMarks 는 배열이어야 함`);
     else {

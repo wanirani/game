@@ -46,6 +46,7 @@ export const FEEL_MOVE_OVERRIDES = {
   dgDown: { cls: 'H', otg: true, gb: true },
   stDown: { cls: 'H', otg: true, gb: true },
   gnDown: { cls: 'H', otg: true },
+  gnDash: { cls: 'L' },   // 미끄러지며 4연사: 탄마다 H(6프레임)면 한 번에 누적 상한 0.40초를 다 쓴다 → 총탄 L (2프레임)
   whipA2: { gb: true },
   gsA1: { gb: true },
 };

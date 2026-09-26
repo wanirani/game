@@ -51,10 +51,129 @@
    "prompt": "Edit 图片1. Keep the exact same walking side pose facing RIGHT in strict profile, the same arm and leg positions (the near arm hanging slightly behind the hip, the far arm swinging forward, legs in mid-stride), the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and soft lighting. Replace the man with the knight from 图片2: his rugged middle-aged face in profile, his thick full copper-red beard, his short copper-red hair shaved at the sides (no ponytail, no bandana), and his massive, broad-shouldered, heavily muscled build — clearly bigger and bulkier than the man in 图片1. Dress him in battered practical knight armour of a fallen silver order: steel-grey plate breastplate, one big rounded steel pauldron on the near shoulder, steel vambraces and steel gauntlets, chainmail visible at the elbows and hips, a brown leather belt with an iron buckle, a deep navy-blue cloth tabard panel hanging from the belt to just above the knees, steel plate cuisses, greaves and sabatons. Remove the coiled whip. No weapon, no sword, no scabbard, nothing held in the hands, no cape, no cloak, no helmet, full body visible from the head to the boots, nothing cropped, no text, no watermark.",
    "src": "src/bran/bran_knight_side.webp",
    "note": "OK — a 는 카엘의 갈색 가죽 장화가 새어 들어옴, b 는 판금 장화·엄격한 옆모습. 파란 타바드가 카엘 코트 자락처럼 뒤로 흐름 → skirt 한 장"
+  },
+  {
+   "id": "lia_assassin_side_v2",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "ATeYEfJ0JSBdFxx6ZAfBcCYg0YQZeVf1brbrY-zGDLl8XNBZfMjwMkyngzkRm2EtBNE1Ur4z",
+   "inputs": [
+    "kael_hunter_side.jpg (edit target: pose/framing)",
+    "lia_portrait.jpg (identity)"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": "a (then fixed by v3)",
+   "prompt": "Edit 图片1. Keep the exact same walking side pose facing RIGHT in strict profile, the same arm and leg positions ..., the same camera angle, framing, scale and position on the canvas, same background, style and lighting. Replace the man with the young woman assassin from 图片2: her face in profile with the same sharp dark eyes, the same short black bob haircut with a choppy fringe, the same black cloth mask over her nose and mouth, slim athletic female build. Dress her in the outfit of 图片2: tight black leather bodice, crimson scarf wrapped snugly around the neck and tucked in, one riveted grey steel pauldron on the near shoulder, bare upper arms, black leather bracers, crimson sash tied tightly around the waist, fitted black leather trousers with thin straps, soft black leather boots. Remove the coiled whip and the long coat. The scarf and the sash have NO hanging ends or tails, nothing flowing. No weapons ...",
+   "note": "a = 옆모습 OK 이지만 스카프·허리띠 자락이 여전히 뒤로 길게 날림, b = 앞모습 → a 를 v3 편집으로 자락만 제거"
+  },
+  {
+   "id": "lia_assassin_side_v3",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "ATUWyHJMlNH9ycL2VIDP8t2Pl8awcocLaGa6AqiVoxURgDgvNO1UsqGwMMsApIdkEOH6QNo5",
+   "inputs": [
+    "lia_side_v2a.jpg"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": "b",
+   "prompt": "Edit 图片1. Keep the SAME young woman with the exact same face, same black mask, same short black bob hair, same body proportions, the exact same walking side pose facing right, same arm and leg positions, same camera angle, same framing, scale and position on the canvas, same background, style and lighting, same outfit. Change ONLY the red cloth: REMOVE all the long flowing red cloth tails and streamers behind her completely. The crimson scarf is only wrapped snugly around her neck and tucked in, and the crimson sash is tied tightly around her waist with only a tiny knot; nothing hangs down or flies behind her back, her back and her near arm are fully visible. No cape, no cloak, nothing held in the hands, full body visible, nothing cropped, no text, no watermark.",
+   "src": "src/lia/lia_assassin_side.webp",
+   "note": "OK — b 는 자락 없음(a 는 등 뒤 작은 매듭 리본이 팔에 겹침). 흘러내리는 천은 \"REMOVE all the long flowing ... tails\" 편집 1회로 지워진다"
+  },
+  {
+   "id": "bran_paladin_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AZXYbfggXB2HRnJkeE8laqIJbgTa0FsxcYnBiSO1QkgqWlU6D6BfjpU2jZcW57h9ruwTd6U7",
+   "inputs": [
+    "bran_knight_side.jpg"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": "a",
+   "prompt": "Edit 图片1. Keep the SAME man with the exact same face, same short copper-red hair shaved at the sides, same thick full copper-red beard, same massive body proportions, the exact same walking side pose facing right, same arm and leg positions, same camera angle, same framing, scale and position on the canvas, same plain light-grey studio background, same realistic painterly dark-fantasy game-art style and lighting. The cloth tabard stays hanging from the belt and trailing back behind his legs in the same place. Change ONLY his outfit into holy paladin armour, one tier grander: polished pale silver-white plate with gold-rimmed edges, engraved gold cross on breastplate and pauldron, silver gauntlets with gold rims, royal-blue tabard with gold embroidered hem, white belt with gold buckle, silver-white greaves and sabatons with gold trim; a slim silver circlet with a small blue gem, bare head. No cape, no cloak, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark.",
+   "src": "src/bran/bran_paladin_side.webp",
+   "note": "OK — a: 은 서클릿(얼굴 보임). b 는 서클릿 대신 왕관"
+  },
+  {
+   "id": "bran_guardian_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AfXRXpZEJN-w4_iGhyYOei3Zg_P1LtLq0YFuK1rwWXT5Hj529n5S7kOc16CH_pLHIsJNJFCy",
+   "inputs": [
+    "bran_knight_side.jpg"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": "a",
+   "prompt": "Edit 图片1. Keep the SAME man with the exact same face, same short copper-red hair shaved at the sides, same thick full copper-red beard, same massive body proportions, the exact same walking side pose facing right, same arm and leg positions, same camera angle, same framing, scale and position on the canvas, same plain light-grey studio background, same realistic painterly dark-fantasy game-art style and lighting. The cloth tabard stays hanging from the belt and trailing back behind his legs in the same place. Change ONLY his outfit into the grand armour of a holy guardian, two tiers grander: massive gleaming white-silver full plate with ornate gold filigree, huge layered pauldron with a gold sunburst, faintly glowing golden runes, white-silver gauntlets with gold knuckles, deep royal-blue tabard with gold sun-cross and gold fringe, gold-buckled white belt, heavy greaves and sabatons with gold trim; a gold laurel crown-circlet on his bare head. No cape, no cloak, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark.",
+   "src": "src/bran/bran_guardian_side.webp",
+   "note": "OK — a: 흰 은색 판금(armorColor #f0f0f8 에 가까움). b 는 견갑이 통째로 금색"
+  },
+  {
+   "id": "bran_crusader_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AWsHT48saQZ-CUxK-gNiZN_OIfZFGVEXn01j6SQDcNGWIugA1zTdRHDy2IixHgKJJCuQMXRZ",
+   "inputs": [
+    "bran_knight_side.jpg"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": "b",
+   "prompt": "Edit 图片1. Keep the SAME man with the exact same face, same short copper-red hair shaved at the sides, same thick full copper-red beard, same massive body proportions, the exact same walking side pose facing right, same arm and leg positions, same camera angle, same framing, scale and position on the canvas, same plain light-grey studio background, same realistic painterly dark-fantasy game-art style and lighting. The cloth tabard stays hanging from the belt and trailing back behind his legs in the same place. Change ONLY his outfit into the commanding armour of a crusader lord, two tiers grander: ornate ivory-white enamelled plate with rich gold filigree, large gold cross on the breastplate, big ivory-and-gold pauldron, ivory gauntlets with gold rims, crimson tabard with a large gold cross and gold hem, crimson sash under a gold-buckled belt, ivory greaves and sabatons; a heavy gold crown with small crosses. No cape, no cloak, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark.",
+   "src": "src/bran/bran_crusader_side.webp",
+   "note": "OK — a 는 어깨부터 진홍 망토(금지) → b(허리 타바드). 둘 다 상아색(크림) 판금"
+  },
+  {
+   "id": "bran_berserker_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AUGNAa-Q3XAXY4AVbzq0Vh9_ZuIJy09BhUB4AsxxVGDe7PTYlvpA_SBC3Q-_VEmvVUxKhrOp",
+   "inputs": [
+    "bran_knight_side.jpg"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": "b",
+   "prompt": "Edit 图片1. Keep the SAME man with the exact same face, same short copper-red hair shaved at the sides, same thick full copper-red beard, same massive body proportions, the exact same walking side pose facing right, same arm and leg positions, same camera angle, same framing, scale and position on the canvas, same plain light-grey studio background, same realistic painterly dark-fantasy game-art style and lighting. The cloth tabard stays hanging from the belt and trailing back behind his legs in the same place. Change ONLY his outfit into savage berserker gear: bare heavily muscled arms with dark-red war paint stripes, leather wrist wraps and studded bracers, battered brown leather cuirass with iron studs, short shaggy dark fur mantle only on the shoulders, rust-red loincloth panel from a wide studded belt, leather trousers with iron knee guards, fur-trimmed boots; short curved horns on an iron headband, face fully visible, glowing orange-red eyes. No helmet. No cape, no cloak, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark.",
+   "src": "src/bran/bran_berserker_side.webp",
+   "note": "OK — 둘 다 뿔 달린 투구(얼굴은 보임, 'horns on an iron headband' 은 투구가 됨). b: 팔 전투 문신 + 빛나는 눈 (look.eyeGlow)"
+  },
+  {
+   "id": "bran_warlord_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AV_kWRp4bflkXaSUYcJ6ghBNKtZm2_OqZC5G3W47qmb6K9KY-1_l9jYfS2sKC8hEKth6B9sy",
+   "inputs": [
+    "bran_knight_side.jpg"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": "a",
+   "prompt": "Edit 图片1. Keep the SAME man with the exact same face, same short copper-red hair shaved at the sides, same thick full copper-red beard, same massive body proportions, the exact same walking side pose facing right, same arm and leg positions, same camera angle, same framing, scale and position on the canvas, same plain light-grey studio background, same realistic painterly dark-fantasy game-art style and lighting. The cloth tabard stays hanging from the belt and trailing back behind his legs in the same place. Change ONLY his outfit into the tyrant armour of a warlord, two tiers grander: blackened dark gunmetal plate with gold-trimmed edges and short spikes, huge spiked pauldron with gold rim, short dark fur collar, dark spiked gauntlets, blood-red tabard with gold trimmed hem, black belt with gold skull buckle, blackened spiked greaves and sabatons; a black iron horned war-crown with two big curved horns, no face guard, glowing orange-red eyes. No cape, no cloak, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark.",
+   "src": "src/bran/bran_warlord_side.webp",
+   "note": "OK — a: 뿔 왕관(얼굴 보임). b 는 코 가리개 투구"
+  },
+  {
+   "id": "bran_bloodrage_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AWkurqlkpkDzUjR2XOPh9vQriDO6YSfLhkor4YB8ulUl0XVYrrld27Xuwl8fqiX_HBCIB3TS",
+   "inputs": [
+    "bran_knight_side.jpg"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": "-",
+   "prompt": "Edit 图片1. Keep the SAME man with the exact same face, same short copper-red hair shaved at the sides, same thick full copper-red beard, same massive body proportions, the exact same walking side pose facing right, same arm and leg positions, same camera angle, same framing, scale and position on the canvas, same plain light-grey studio background, same realistic painterly dark-fantasy game-art style and lighting. The cloth panel stays hanging from the belt and trailing back behind his legs in the same place. Change ONLY his outfit into a demonic blood-rage berserker, two tiers grander and more savage: bare massively muscled arms with glowing crimson rune tattoos and red veins, black-and-crimson spiked bracers and black clawed gauntlets, jagged black-red spiked half-cuirass with glowing runes, one jagged black spiked pauldron, tattered black-and-crimson loincloth, black belt with demon skull buckle, blackened spiked greaves; two large curved black demon horns, face visible, glowing blood-red eyes. No wings, No cape, no cloak, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark.",
+   "note": "FAILED: 두 후보 모두 정면(앞모습)으로 돌아섬 — '악마·대칭 룬' 같은 정면성 강한 묘사가 포즈 고정을 이김 → 이미 옆모습인 광전사 원화에서 편집 + 'strict side profile' 반복"
   }
  ],
  "images_used": {
-  "bran": 4,
-  "lia": 2
+  "bran": 16,
+  "lia": 6
  }
 }

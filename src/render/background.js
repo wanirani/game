@@ -43,10 +43,10 @@ export const THEMES = {
   abyss:     { sky: ['#10041a', '#2a0830', '#06020a'], fog: '#ff5aff', mid: 'rocks', weather: 'embers', moon: null },
   arena:     { sky: ['#1a0a08', '#3a1a10', '#0a0404'], fog: '#ff8a3a', mid: 'pillars', weather: 'dust', moon: '#f0e0d0' },
   town:      { sky: ['#0c0814', '#1c1224', '#06040a'], fog: '#ffb070', mid: 'houses', weather: 'fireflies', moon: '#ffe0c0' },
-  // ── 2부 (world2 §4.1): 새 날씨 spores(포자) · stars(별빛, 원경에 그림) ──
+  // ── 2부 (world2 §4.1): 새 날씨 spores(포자) · stars(별빛, 원경에 그림). 선택 필드 bubble = bubbles 날씨 거품 색 ──
   mirror:    { sky: ['#0a0e18', '#1a2232', '#04060c'], fog: '#bfe8ff', mid: 'windows', weather: 'dust',    moon: '#e8f4ff' },
   forge:     { sky: ['#1a0602', '#3a1204', '#0a0200'], fog: '#ff7a2a', mid: 'pipes',   weather: 'embers',  moon: null },
-  sunken:    { sky: ['#01101a', '#06283a', '#00060c'], fog: '#3ad0c8', mid: 'arches',  weather: 'bubbles', moon: null },
+  sunken:    { sky: ['#01101a', '#06283a', '#00060c'], fog: '#3ad0c8', mid: 'arches',  weather: 'bubbles', moon: null, bubble: 'rgba(150,236,255,0.4)' },
   sky:       { sky: ['#1a2a44', '#4a6a8a', '#0a1422'], fog: '#dfe8ff', mid: 'towers',  weather: 'rain',    moon: '#fff4d0' },
   nightmare: { sky: ['#0c0210', '#24062a', '#040008'], fog: '#c060ff', mid: 'pillars', weather: 'ash',     moon: '#f0e0ff' },
   blight:    { sky: ['#0c1004', '#1e2a08', '#040602'], fog: '#b8e04a', mid: 'trees',   weather: 'spores',  moon: null },
@@ -393,7 +393,7 @@ function drawWeather(ctx, bg, cam, vw, vh, t) {
       }
       break;
     case 'bubbles':
-      ctx.strokeStyle = 'rgba(140,255,140,0.45)';
+      ctx.strokeStyle = bg.theme.bubble ?? 'rgba(140,255,140,0.45)'; // 기본 = 연구소의 초록 거품, 심해(sunken)는 청록
       for (const p of W) {
         const x = wrapX(p.x - cam.x * 1.0 + Math.sin(t * 2 + p.p) * 8), y = wrapY(p.y - t * 50 * p.v - cam.y);
         ctx.beginPath(); ctx.arc(x, y, 3 * p.s, 0, TAU); ctx.stroke();

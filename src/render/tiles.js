@@ -696,7 +696,8 @@ export class TileRenderer {
    * 액체 분석 (타일이 바뀌거나 비밀 통로가 드러날 때만 다시 계산):
    *  liq  — 그릴 액체 칸 (물속에 놓인 마커 칸 포함, 드러나지 않은 비밀 공간 속 액체 제외)
    *  surf — 수면 칸 (위가 트인 칸: 액체도 벽도 아님 — 천장·벽에 닿은 물과 벽에서 쏟아지는 폭포 입구는 평평하게)
-   *  fall — 폭포 칸: 폭 3칸 이하의 좁은 액체가 세로로 3칸 이상 이어진 기둥 (깊은 물은 헤엄치는 물길이라 폭포 없음)
+   *  fall — 폭포 칸: 폭 3칸 이하의 좁은 액체가 세로로 3칸 이상 이어진 기둥 (깊은 물은 헤엄치는 물길이라 폭포 없음,
+   *         위가 트인 채 바닥에 얹힌 좁은 웅덩이도 폭포가 아님)
    *  falls — 폭포 기둥 [{ tx, y0, y1 }] (타일 행, 끝 포함), count — 액체 칸 수
    */
   liquidInfo(kind) {
@@ -729,20 +730,6 @@ export class TileRenderer {
         x = e;
       }
     }
-    const fall = new Uint8Array(N), falls = [];
-    if (kind !== 'deep') {
-      for (let x = 0; x < W; x++) {
-        let y = 0;
-        while (y < H) {
-          const i = y * W + x;
-          if (!liq[i] || run[i] > 3) { y++; continue; }
-          let e = y;
-          while (e < H && liq[e * W + x] && run[e * W + x] <= 3) e++;
-          if (e - y >= 3) { for (let k = y; k < e; k++) fall[k * W + x] = 1; falls.push({ tx: x, y0: y, y1: e - 1 }); }
-          y = e;
-        }
-      }
-    }
     // 수면: 위가 트인 칸만 (벽·부서지는 벽·숨은 가짜 벽 바로 아래의 물은 천장에 닿은 물이라 물결 없이 평평하게)
     const surf = new Uint8Array(N);
     const sec = this.sec?.mask;
@@ -754,6 +741,23 @@ export class TileRenderer {
       if (liq[i - W]) continue;
       const a = tl[i - W];
       surf[i] = a === T.SOLID || a === T.BREAK || (a === T.FAKE && !m.revealed.has(i - W)) || sec?.[i - W] ? 0 : 1;
+    }
+    const fall = new Uint8Array(N), falls = [];
+    if (kind !== 'deep') {
+      for (let x = 0; x < W; x++) {
+        let y = 0;
+        while (y < H) {
+          const i = y * W + x;
+          if (!liq[i] || run[i] > 3) { y++; continue; }
+          let e = y;
+          while (e < H && liq[e * W + x] && run[e * W + x] <= 3) e++;
+          // 위가 트였고(수면) 바닥에 얹힌 좁은 기둥은 고인 웅덩이 (s08 r4) — 흐르지 않는다.
+          // 폭포 = 벽에서 쏟아지거나(입구에 수면 없음) 방 위에서 내려오거나, 아래의 넓은 물·허공으로 떨어지는 기둥
+          const pool = y > 0 && surf[i] && e < H && tl[e * W + x] !== T.EMPTY && !liq[e * W + x];
+          if (e - y >= 3 && !pool) { for (let k = y; k < e; k++) fall[k * W + x] = 1; falls.push({ tx: x, y0: y, y1: e - 1 }); }
+          y = e;
+        }
+      }
     }
     this.liq = { key, liq, surf, fall, falls, count };
     return this.liq;

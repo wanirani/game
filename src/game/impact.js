@@ -324,9 +324,9 @@ export function impact(world, attack, target, info) {
   }
   // 1) 경직
   let hs;
-  if (info.prop) hs = HITSTOP.prop;
-  else if (attack.hitstop === 0) hs = 0;
+  if (attack.hitstop === 0) hs = 0;   // 명시한 0 은 소품(촛불·거울 스위치)을 쳐도 0 (수호신 자동 공격·오라)
   else if (cmp || mount) hs = attack.hitstop ?? 0;
+  else if (info.prop) hs = HITSTOP.prop;
   else if (info.cont) hs = HITSTOP.cont;
   else {
     const ov = info.moveId ? FEEL_MOVE_OVERRIDES[info.moveId] : null;
@@ -360,10 +360,10 @@ export function impact(world, attack, target, info) {
     if (info.counter) callout(world, px, py - 44, COUNTER.callout, { color: COUNTER.color });
     if (info.back) callout(world, px, py - (info.counter ? 60 : 44), BACK.callout, { color: BACK.color, size: CALLOUT.small });
   }
-  // 6) 효과음
-  hitSounds(world, attack, target, info, cls, cmp);
-  // 7) 진동과 이벤트
-  if (!info.prop && !guard && cls !== 'U') {
+  // 6) 효과음 (경직 0 잔타는 동료 타격처럼 작게, 재질 층 없이)
+  hitSounds(world, attack, target, info, cls, cmp || attack.hitstop === 0);
+  // 7) 진동과 이벤트 (경직 0 잔타는 진동 없음: 오라가 0.35초마다 진동을 울리지 않게)
+  if (!info.prop && !guard && cls !== 'U' && attack.hitstop !== 0) {
     const R = RUMBLE[cls];
     if (R) {
       let [s, w, ms] = R;
@@ -375,16 +375,36 @@ export function impact(world, attack, target, info) {
     if (info.crit) bus.emit('hitCrit', { target, cls });
     if (cls === 'F' || cls === 'S' || cls === 'A') bus.emit('hitHeavy', { cls, target });
   }
-  // 8) 공중 타격 부양 (플레이어가 공중에서 근접 타격을 맞히면 살짝 떠서 높이를 맞춘다)
+  // 8) 공중 타격 부양 (플레이어가 공중에서 근접 타격을 맞히면 살짝 떠서 높이를 맞춘다; 체공 1회당 floatMax 번, 휘두르기 1회 = 1번)
   const p = attack.owner;
   if (p?.kind === 'player' && !info.prop && !info.cont && hasTag(attack, 'melee') && !mount && !p.mount?.riding) {
     const mv = p.move;
-    if (p.onGround) p._hfN = 0;
+    if (p.onGround) { p._hfN = 0; p._hfAir = null; }
     else if (!(mv?.vy > 0) && !mv?.pogo && !mv?.groundPound && !(typeof info.moveId === 'string' && info.moveId.endsWith('Down'))) {
-      if (world.time - (p._hfT ?? -9) > 0.9) p._hfN = 0;
-      if ((p._hfN ?? 0) < JUGGLE.floatMax) { p._hfN = (p._hfN ?? 0) + 1; p._hfT = world.time; p.vy = Math.min(p.vy, JUGGLE.floatVy); }
+      if (newAirtime(p, world)) p._hfN = 0;
+      const sw = info.swing ?? attack.hitId ?? null;
+      if ((p._hfN ?? 0) < JUGGLE.floatMax && (sw == null || sw !== p._hfSwing)) {
+        p._hfN = (p._hfN ?? 0) + 1; p._hfT = world.time; p._hfSwing = sw;
+        p.vy = Math.min(p.vy, JUGGLE.floatVy);
+      }
     }
   }
+}
+
+/**
+ * 부양 횟수를 새로 셀 체공인가 (착지 후 다시 뜬 경우). player.update 는 공중에서 coyote 를 매 스텝 dt 씩 줄이고 t 를 dt 씩
+ * 늘리므로 t + coyote 는 한 번의 이륙(점프·낭떠러지) 동안 일정하다. 공중 점프(2단 점프)로 바뀐 값은 남은 공중 점프가
+ * 줄어 있으니 같은 체공으로 본다. 이 필드들이 없으면 마지막 부양 뒤 0.9초로 대신 판정.
+ */
+function newAirtime(p, world) {
+  const key = Number.isFinite(p.t) && Number.isFinite(p.coyote) ? Math.round((p.t + p.coyote) * 60) : null;
+  if (key === null) return world.time - (p._hfT ?? -9) > 0.9;
+  if (p._hfAir === key) return false;
+  const prev = p._hfAir;
+  p._hfAir = key;
+  if (prev == null) return true;
+  const maxAJ = typeof p.maxAirJumps === 'function' ? p.maxAirJumps() : null;
+  return !(Number.isFinite(maxAJ) && Number.isFinite(p.airJumpsLeft) && p.airJumpsLeft < maxAJ);
 }
 
 function camImpact(world, attack, info, cls, dir, cmp, guard) {
@@ -394,12 +414,17 @@ function camImpact(world, attack, info, cls, dir, cmp, guard) {
   let kick = C.kick, tr = C.trauma;
   const sh = attack.shake ?? 0;
   if (cmp) { kick = Math.min(kick, sh || 0.6); tr = guard ? 0 : tr * 0.3; }
+  else if (attack.hitstop === 0) { kick = Math.min(kick, sh); tr = Math.min(tr, sh / 22) * 0.5; }   // 경직 0 을 명시한 잔타(성광 오라·난무): attack.shake 만큼만
   else if (!info.cont) { kick = Math.max(kick, sh * 0.8); tr = Math.max(tr, Math.min(0.7, sh / 22)); }
   else { kick *= 0.5; tr *= 0.5; }
   if (info.crit && !cmp) { kick *= IMPACT_CAM.critMul; tr *= IMPACT_CAM.critMul; }
   if (typeof cam.kick === 'function') {
-    cam.kick(dir * kick, (attack.kb?.[1] ?? 0) > 0 ? kick * 0.5 : 0);
-    if (tr > 0) cam.addTrauma?.(tr);
+    // 한 프레임에 여러 대상을 맞혀도 반동·트라우마는 더하지 않고 가장 큰 것 하나 (경직과 같은 규칙: 5마리 = 1마리)
+    const now = world.game?.time ?? world.time ?? 0;
+    let F = world._impCam;
+    if (!F || F.t !== now) F = world._impCam = { t: now, kick: 0, tr: 0 };
+    if (kick > F.kick) { const d = kick - F.kick; cam.kick(dir * d, (attack.kb?.[1] ?? 0) > 0 ? d * 0.5 : 0); F.kick = kick; }
+    if (tr > F.tr) { cam.addTrauma?.(tr - F.tr); F.tr = tr; }
   } else {
     const heavy = (attack.hitstop ?? 0) >= 0.08 || info.crit;
     cam.shake((attack.shake ?? 3) * (info.crit ? 1.6 : 1), heavy ? 0.22 : 0.12);
@@ -433,7 +458,7 @@ function hitVisuals(world, attack, target, info, cls, px, py, dir) {
     if (info.crit && !small) emitSprite(fx, HFX.star('#ffe080'), px, py, size * 0.9, rand(0, 1), 0.16, 0.9);
     // (2) 재질 파편 (hitfx 가 예산 안에서 방출; 소품은 불꽃 몇 개)
     if (mat === 'prop') emitN(fx, 'spark', px, py, 4 * qk, { color: MATERIAL.prop.color });
-    else if (!small || Math.random() < 0.5) HFX.materialBurst(fx, mat, px, py, dir, small ? 'L' : cls, el ? rim : null);
+    else if (!small || Math.random() < 0.5) HFX.materialBurst(fx, mat, px, py, dir, small ? 'L' : (cls === 'S' || cls === 'A') ? 'F' : cls, el ? rim : null);   // hitfx 표는 L/M/H/F
     // (3) 속성 강조
     if (el && EL_PRESET[el]) emitN(fx, EL_PRESET[el], px, py, (small ? 3 : 6) * qk, {});
     // (4) 자국
@@ -511,7 +536,11 @@ function hurtImpact(world, attack, target, info) {
   if (!landed) return;
   const px = info.hx ?? target.cx, py = info.hy ?? target.cy;
   const isPlayer = target.kind === 'player';
-  if (isPlayer && info.dmg > 0) info.hitstop = applyHitstop(world, HITSTOP.hurt, 'hurt');
+  // 실제로 깎인 체력 (수호 방벽·탈것이 먼저 받은 만큼 줄어든 값). 사망·부활(성녀)로 체력이 뛰면 계산값 그대로
+  let shown = info.dmg;
+  if (isPlayer && Number.isFinite(info.hpBefore) && Number.isFinite(target.hp) && target.hp > 0 && target.hp <= info.hpBefore) shown = Math.round(info.hpBefore - target.hp);
+  if (isPlayer && !(shown > 0)) return;
+  if (isPlayer) info.hitstop = applyHitstop(world, HITSTOP.hurt, 'hurt');
   const cam = world.camera, dir = attack.dir > 0 ? 1 : attack.dir < 0 ? -1 : (px >= (attack.owner?.cx ?? px) ? 1 : -1);
   if (cam) {
     if (typeof cam.kick === 'function') { cam.kick(dir * IMPACT_CAM.hurt.kick, -IMPACT_CAM.hurt.kick * 0.4); cam.addTrauma?.(IMPACT_CAM.hurt.trauma); }
@@ -523,7 +552,7 @@ function hurtImpact(world, attack, target, info) {
     emitN(fx, 'blood', px, py, 9 * qk, { angle: dir > 0 ? -0.4 : Math.PI + 0.4, spread: 0.9 });
     fx.flash(px, py, { color: '#ff2040', size: 46, life: 0.1 });
   }
-  dmgNumber(world, target, info.dmg, isPlayer ? 'hurt' : 'normal', { x: px, y: py - 30, color: isPlayer ? null : '#ff5050' });
+  dmgNumber(world, target, shown, isPlayer ? 'hurt' : 'normal', { x: px, y: py - 30, color: isPlayer ? null : '#ff5050' });
 }
 
 /** 테스트·도구용 */

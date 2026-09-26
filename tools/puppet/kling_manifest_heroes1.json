@@ -12,7 +12,9 @@
   "sera_base_b.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qTAoGdXBsb2FkEg55bGFiLXN0dW50LXNncBoyYWdlbnRfdXBsb2FkLzE3OTA0NDIyOTIvMzkzUkxObHM2Wi9zZXJhX2Jhc2VfYi5qcGc.origin?x-kcdn-pid=112372",
   "victor_base_a.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qTgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo0YWdlbnRfdXBsb2FkLzE3OTA0NDIyOTgvUHdMRTdMYXhGZC92aWN0b3JfYmFzZV9hLmpwZw.origin?x-kcdn-pid=112372",
   "sera_v2_a.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qSgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBowYWdlbnRfdXBsb2FkLzE3OTA0NDI0Njkvb0ZCdVpKTkNKcy9zZXJhX3YyX2EuanBn.origin?x-kcdn-pid=112372",
-  "victor_v2_a.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qTAoGdXBsb2FkEg55bGFiLXN0dW50LXNncBoyYWdlbnRfdXBsb2FkLzE3OTA0NDI0NzEvcml0UEVENWVici92aWN0b3JfdjJfYS5qcGc.origin?x-kcdn-pid=112372"
+  "victor_v2_a.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qTAoGdXBsb2FkEg55bGFiLXN0dW50LXNncBoyYWdlbnRfdXBsb2FkLzE3OTA0NDI0NzEvcml0UEVENWVici92aWN0b3JfdjJfYS5qcGc.origin?x-kcdn-pid=112372",
+  "sera_exorcist_side.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qUwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo5YWdlbnRfdXBsb2FkLzE3OTA0NDI5NDYvbkxqYjN6WFFJcC9zZXJhX2V4b3JjaXN0X3NpZGUuanBn.origin?x-kcdn-pid=112372",
+  "victor_gunslinger_side.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qVwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo9YWdlbnRfdXBsb2FkLzE3OTA0NDI5NTAvNEo2WTFRc3VqUC92aWN0b3JfZ3Vuc2xpbmdlcl9zaWRlLmpwZw.origin?x-kcdn-pid=112372"
  },
  "entries": [
   {
@@ -74,10 +76,186 @@
    "prompt": "Edit 图片1. Keep the exact same walking side pose facing right in strict profile, the same arm and leg positions (the near arm hanging slightly behind the hip with a relaxed half-closed gloved hand, the far arm swinging forward, legs in mid-stride), the same camera angle, framing, scale and position on the canvas, the same plain light-grey studio background and the same realistic painterly dark-fantasy game-art style and lighting as 图片1. Replace the man completely with the gunslinger from 图片2: his gaunt stubbled face seen in right profile, shoulder-length black hair, pale grey eyes, the same black wide-brimmed hat, the same dark red scarf at the neck, the same long weathered brown leather duster coat open at the front and reaching below the knees, the same bullet bandolier across the chest, the same heavy belt with an EMPTY leather holster at the hip (no pistol in it), dark grey trousers, brown leather knee boots, brown leather gloves. Remove the whip and the red bandana. No guns, no cape, no cloak, nothing held in the hands, full body visible from the top of the hat to the boots, nothing cropped, no text, no watermark.",
    "picked": "-",
    "note": "a: 옷·자세는 좋으나 몸이 관객 쪽 3/4 로 돌아감(엄격한 옆모습 아님), b: 정면. a 를 디자인 참고로 v3 재생성"
+  },
+  {
+   "id": "sera_exorcist_side_v3",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AYoQLtpQ3BF_7ztkIzLdsTw4dbV1D44fxg8anlM0o6IyUL4-M9iYb_tK5V-x1IBFQxrr6sIQ",
+   "inputs": [
+    "sera_v2_a.jpg",
+    "kael_hunter_side.jpg (style)"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "prompt": "Edit 图片1. Keep the SAME young woman with the same face, the same blue eyes, the same silver-white hair, the exact same walking side pose facing right, the same arm and leg positions, the same framing, scale and position on the canvas, the same plain light-grey background, the same outfit and colours (white veil with gold headband, white robe-coat with gold trim and dark red lining, gold cross, gold corset plates, white gloves, navy leggings, brown boots). Change only two things. First: her white veil does not blow in the wind any more; it hangs straight down behind her head and the nape of her neck, close to her head and back, like a heavy linen cloth, and ends just below her shoulders; her long silver hair also hangs straight down her back, calm, not blowing. Second: repaint the whole picture in the realistic painterly dark-fantasy game-art style of 图片2 (realistic proportions, painted texture and soft realistic shading, not anime, not cel-shaded, no thick outlines), with the same soft lighting from the upper left. Do not copy the man, his clothes or his whip from 图片2. No cape, nothing held in the hands, full body visible, no text, no watermark.",
+   "picked": "a",
+   "src": "src/sera/sera_exorcist_side.webp",
+   "note": "채택 a: 베일이 등 뒤로 늘어짐(허리 위까지), 자세 카엘과 같음. 화풍 변환은 무시됨(애니풍 유지) — 초상화도 애니풍이라 정체성 우선으로 채택"
+  },
+  {
+   "id": "victor_gunslinger_side_v3",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AU-J5g3OaBvyvaFTfJgfh5hZuu6IyMgFerLlu02qzYVTRGitMW3fy4j7dST9TzCs0e6C8-6k",
+   "inputs": [
+    "kael_hunter_side.jpg (pose/framing/style)",
+    "victor_v2_a.jpg (identity+outfit)"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "prompt": "Edit 图片1. Keep exactly the same strict side profile as 图片1: the body is seen exactly from its right side, walking to the right, the face in pure profile (only one eye visible, nose pointing right), the chest and shoulders NOT turned toward the viewer; the same arm and leg positions (the near arm hanging slightly behind the hip with a relaxed half-closed gloved hand, the far arm swinging forward and partly hidden behind the body, legs in mid-stride), the same framing, scale and position on the canvas, the same plain light-grey background, the same realistic painterly style and lighting. Replace the man completely with the gunslinger from 图片2: his gaunt stubbled face and shoulder-length black hair, the same black wide-brimmed hat, the same dark red scarf at the neck, the same long glossy brown leather duster coat open at the front reaching below the knees with a dark red lining, the same bullet bandolier, the same heavy belt with a pouch and an EMPTY holster at the hip, dark grey trousers, brown leather knee boots, brown leather gloves. Remove the whip and the red bandana. No guns, no cape, nothing held in the hands, full body visible from the top of the hat to the boots, nothing cropped, no text, no watermark.",
+   "picked": "a",
+   "src": "src/victor/victor_gunslinger_side.webp",
+   "note": "채택 a: 옷·얼굴·모자 좋음. 몸통이 약간 3/4(카엘 원화 정도), 얼굴 3/4 측면. 엄격한 옆모습 요구는 image_2 구도에 밀림"
+  },
+  {
+   "id": "sera_priestess_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AXa2J9RLom1iVXdl0neIoFsEGggTKorEdeLiYEpqomvcXRIRxziDs2tAz9GE78J0BBLWaF10",
+   "inputs": [
+    "sera_exorcist_side.jpg"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "prompt": "Edit 图片1. Keep the SAME young woman with the exact same face, the same blue eyes, the same long silver-white hair, the same body proportions, the exact same walking side pose facing right, the same arm and leg positions, the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same painting style and lighting. Keep the same cut of the long robe-coat (open at the front, the long back panel reaching the ankles, slim sleeves) and the same knee boots. Change ONLY her outfit colours, materials and ornaments into a tier-one HIGH PRIESTESS: a pure white silk robe-coat with rich gold embroidery and gold filigree edges, a gold sun-and-cross emblem on the chest, polished gold corset plates, white sleeves with gold cuffs, white gloves, white leggings with gold trim, white boots with gold toe caps; the white veil now has a delicate gold tiara with a small sun crest on her forehead; soft warm holy glow on the gold. Her face stays fully visible. No cape, no cloak, no wings, no halo, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark."
+  },
+  {
+   "id": "sera_elementalist_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AR_0Q6CWDJlDUY3qwmeG9JiawLFuE_zP_vFTJyWP9zWvXSDB7MefWqzmc191EGV8ac5N6xpr",
+   "inputs": [
+    "sera_exorcist_side.jpg"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "prompt": "Edit 图片1. Keep the SAME young woman with the exact same face, the same blue eyes, the same long silver-white hair, the same body proportions, the exact same walking side pose facing right, the same arm and leg positions, the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same painting style and lighting. Keep the same cut of the long robe-coat (open at the front, the long back panel reaching the ankles, slim sleeves) and the same knee boots. Change ONLY her outfit colours, materials and ornaments into a tier-one battle ELEMENTALIST mage: a dark plum-purple robe-coat with gold trim edges and gold arcane sigils, a dark purple corset with gold buckles, dark purple sleeves with gold cuffs, black gloves, dark leggings, dark brown boots; NO veil: instead a pointed wide-brimmed dark purple mage hat with a gold band, and her long silver hair hangs straight down her back; faint violet magic glow on the sigils. Her face stays fully visible. No cape, no cloak, no wings, no halo, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark."
+  },
+  {
+   "id": "sera_saint_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AYO9Rp7FpoJCu7zblrrMpNZbABaodAyjnYQmjsJvnG1JvaPPz88LcBWjd27p-HONJkKn3nKX",
+   "inputs": [
+    "sera_exorcist_side.jpg"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "prompt": "Edit 图片1. Keep the SAME young woman with the exact same face, the same blue eyes, the same long silver-white hair, the same body proportions, the exact same walking side pose facing right, the same arm and leg positions, the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same painting style and lighting. Keep the same cut of the long robe-coat (open at the front, the long back panel reaching the ankles, slim sleeves) and the same knee boots. Change ONLY her outfit colours, materials and ornaments into a tier-two radiant SAINT: layered pure white silk vestments with pale-gold embroidered panels, ornate gold filigree armour plates on the bodice and shoulders, glowing golden holy runes along the hem, white leggings, white-and-gold ornate boots; the white veil with a tall ornate gold tiara crowned with a radiant sun cross; grand and holy, bright soft golden light. Her face stays fully visible. No cape, no cloak, no wings, no halo, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark."
+  },
+  {
+   "id": "sera_oracle_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AQOZKxg1FJw1JtuWrevVdXw-r1GWDlJuwklIajxzdqfp5F2wET2fDh7Bmtl0D-ZX6kzZgAnF",
+   "inputs": [
+    "sera_exorcist_side.jpg"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "prompt": "Edit 图片1. Keep the SAME young woman with the exact same face, the same blue eyes, the same long silver-white hair, the same body proportions, the exact same walking side pose facing right, the same arm and leg positions, the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same painting style and lighting. Keep the same cut of the long robe-coat (open at the front, the long back panel reaching the ankles, slim sleeves) and the same knee boots. Change ONLY her outfit colours, materials and ornaments into a tier-two ORACLE seer: a deep indigo robe-coat with gold star embroidery and pale ice-blue trim edges, a silver-and-gold corset, indigo sleeves with ice-blue cuffs, pale blue glowing runes; the veil is now long deep indigo silk edged with gold, worn with a gold circlet holding a small silver crescent moon on her forehead; faint cold blue glow; grand and mysterious. Her face stays fully visible. No cape, no cloak, no wings, no halo, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark."
+  },
+  {
+   "id": "sera_archmage_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AcO451sUo53C_xSEJmmpAFWVGZZlaVK-Upi7kB98CZRPUTYTAs6OJlaY8SnsZPHqkwD3iH8A",
+   "inputs": [
+    "sera_exorcist_side.jpg"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "prompt": "Edit 图片1. Keep the SAME young woman with the exact same face, the same blue eyes, the same long silver-white hair, the same body proportions, the exact same walking side pose facing right, the same arm and leg positions, the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same painting style and lighting. Keep the same cut of the long robe-coat (open at the front, the long back panel reaching the ankles, slim sleeves) and the same knee boots. Change ONLY her outfit colours, materials and ornaments into a tier-two grand ARCHMAGE: a black-violet velvet robe-coat with flame-orange silk lining, heavy ornate gold filigree edges, glowing orange arcane runes along the hem, a gold and black corset with a burning orange gem, black-violet sleeves with gold cuffs, black gloves, dark leggings, black boots with gold; NO veil: a tall ornate black-violet mage hat with a gold band and an orange flame gem, her long silver hair hangs straight down her back; ember glow. Her face stays fully visible. No cape, no cloak, no wings, no halo, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark."
+  },
+  {
+   "id": "sera_stormcaller_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AQ_p9LQZ2CcPsqenTb6Xg09JZEkd8TuilUPdL-i77L540Ao2oz-U0Nuw4yPyzwn3Hf8CmQ--",
+   "inputs": [
+    "sera_exorcist_side.jpg"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "prompt": "Edit 图片1. Keep the SAME young woman with the exact same face, the same blue eyes, the same long silver-white hair, the same body proportions, the exact same walking side pose facing right, the same arm and leg positions, the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same painting style and lighting. Keep the same cut of the long robe-coat (open at the front, the long back panel reaching the ankles, slim sleeves) and the same knee boots. Change ONLY her outfit colours, materials and ornaments into a tier-two STORMCALLER priestess: a dark navy robe-coat with pale lightning-blue zigzag trim and silver storm embroidery, silver corset plates, navy sleeves with pale blue cuffs, dark gloves, navy leggings, dark boots with silver; NO veil: a silver circlet with a glowing pale blue gem on her forehead, her long silver hair loose and hanging straight down her back; her eyes glow pale blue; faint crackling blue light. Her face stays fully visible. No cape, no cloak, no wings, no halo, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark."
+  },
+  {
+   "id": "victor_deadeye_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "ATFi8bDZNbMIfaupKv6t6d8lO5U2wGBgUkFcFwqxOrZQwWAmWExeal3fNJ-Ehap_mqArE8Zz",
+   "inputs": [
+    "victor_gunslinger_side.jpg"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "prompt": "Edit 图片1. Keep the SAME man with the exact same gaunt stubbled face, the same shoulder-length black hair, the same body proportions, the exact same walking pose facing right, the same arm and leg positions, the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly style and lighting. Keep the same cut of the long duster coat (open at the front, reaching below the knees), the same belt with the EMPTY holster at the hip and the same knee boots. Change ONLY his outfit colours, materials and ornaments into a tier-one DEADEYE sharpshooter: a charcoal-grey leather long coat with polished silver buckles and silver-grey trim, a slate-grey scarf, a dark grey waistcoat, a silver-studded bandolier, black trousers, black leather boots with silver buckles, black gloves, the same black wide-brimmed hat with a silver band; his eyes glow faint red. His face stays fully visible. No cape, no cloak, no guns, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark."
+  },
+  {
+   "id": "victor_desperado_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AXlFZWufucyMglS4ppYebQOA_han7O1NpwTfA6T6113xsCLgFnU97OmsWDqqvHGIkv3oX-Yl",
+   "inputs": [
+    "victor_gunslinger_side.jpg"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "prompt": "Edit 图片1. Keep the SAME man with the exact same gaunt stubbled face, the same shoulder-length black hair, the same body proportions, the exact same walking pose facing right, the same arm and leg positions, the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly style and lighting. Keep the same cut of the long duster coat (open at the front, reaching below the knees), the same belt with the EMPTY holster at the hip and the same knee boots. Change ONLY his outfit colours, materials and ornaments into a tier-one DESPERADO outlaw: a rust-brown weathered leather duster with brass buttons and short fringes on the sleeves, a bright red-orange scarf, a dark brown waistcoat, a shotgun-shell bandolier across the chest, brown trousers, brown boots with brass spurs, a darker brown wide-brimmed hat with a brass-studded band. His face stays fully visible. No cape, no cloak, no guns, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark."
+  },
+  {
+   "id": "victor_phantom_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AeiXOaYkRmu_V8zkHYOxstlNHFQZsJ39OnrhQkKtsUbTDsKWpuS8SAyRckcsS2D0YadJwVes",
+   "inputs": [
+    "victor_gunslinger_side.jpg"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "prompt": "Edit 图片1. Keep the SAME man with the exact same gaunt stubbled face, the same shoulder-length black hair, the same body proportions, the exact same walking pose facing right, the same arm and leg positions, the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly style and lighting. Keep the same cut of the long duster coat (open at the front, reaching below the knees), the same belt with the EMPTY holster at the hip and the same knee boots. Change ONLY his outfit colours, materials and ornaments into a tier-two PHANTOM sniper: a sleek pitch-black long coat with pale ghost-blue trim edges and silver buckles, a dark slate-blue scarf, black gloves, black boots, spectral pale-blue glowing runes along the coat hem; NO hat: a black hood is pulled up over his head (his face stays visible), a few strands of black hair; eerie, grand and cold. His face stays fully visible. No cape, no cloak, no guns, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark."
+  },
+  {
+   "id": "victor_executioner_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AdaZi19eQP2FgQzTgtiumPYkSeZK8POWabUB1WMPTPzK9BtRMXyOF_cR0CnVntEBEm0MbRgD",
+   "inputs": [
+    "victor_gunslinger_side.jpg"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "prompt": "Edit 图片1. Keep the SAME man with the exact same gaunt stubbled face, the same shoulder-length black hair, the same body proportions, the exact same walking pose facing right, the same arm and leg positions, the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly style and lighting. Keep the same cut of the long duster coat (open at the front, reaching below the knees), the same belt with the EMPTY holster at the hip and the same knee boots. Change ONLY his outfit colours, materials and ornaments into a tier-two EXECUTIONER: a black leather long coat with blood-red lining and steel studs, grey steel buckles and spiked steel pauldron on the near shoulder, a blood-red sash, black trousers, black boots with steel caps; NO hat: bare-headed with his black hair, and a black leather mask covering only his mouth and chin (eyes, nose and brow visible); grim and grand. His face stays fully visible. No cape, no cloak, no guns, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark."
+  },
+  {
+   "id": "victor_hellfire_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AWhlLVAyfpqKZa3mrv7t1XHMW22t6lCvaLdKRR6VL347SaUe5ADbH-_p_Wcl3v_2BbtPGL1Y",
+   "inputs": [
+    "victor_gunslinger_side.jpg"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "prompt": "Edit 图片1. Keep the SAME man with the exact same gaunt stubbled face, the same shoulder-length black hair, the same body proportions, the exact same walking pose facing right, the same arm and leg positions, the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly style and lighting. Keep the same cut of the long duster coat (open at the front, reaching below the knees), the same belt with the EMPTY holster at the hip and the same knee boots. Change ONLY his outfit colours, materials and ornaments into a tier-two HELLFIRE gunslinger: a charred black leather duster with glowing ember-orange cracks along the edges and flame-orange lining, brass and orange trim, an orange-red scarf, a bandolier of glowing orange bullets, black trousers, black boots with brass; a black wide-brimmed hat with a burning ember band; his eyes glow orange; grand and infernal. His face stays fully visible. No cape, no cloak, no guns, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark."
+  },
+  {
+   "id": "victor_gunlord_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AWswvgSHT-Ki1we-RYYpCJkVZrRLTRxFDb0_0Hvx-MtBtW4lZPwpaRRQr89KkM-CXxoGZUSr",
+   "inputs": [
+    "victor_gunslinger_side.jpg"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "prompt": "Edit 图片1. Keep the SAME man with the exact same gaunt stubbled face, the same shoulder-length black hair, the same body proportions, the exact same walking pose facing right, the same arm and leg positions, the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly style and lighting. Keep the same cut of the long duster coat (open at the front, reaching below the knees), the same belt with the EMPTY holster at the hip and the same knee boots. Change ONLY his outfit colours, materials and ornaments into a tier-two GUN LORD: a lordly dark olive-brown leather long coat with lavish gold embroidery, gold epaulettes and gold buttons, a gold-embroidered waistcoat, two crossed gold-studded bandoliers, dark trousers, brown boots with gold spurs; a tan-and-gold wide-brimmed hat with a gold band and a feather; majestic and grand. His face stays fully visible. No cape, no cloak, no guns, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark."
   }
  ],
  "images_used": {
-  "sera": 5,
-  "victor": 5
+  "sera": 19,
+  "victor": 19
  }
 }

@@ -44,6 +44,7 @@ import * as GE from './gimmicks.js';
 
 // ─────────────────────────── 공용 도우미 ───────────────────────────
 const TWO_PI = Math.PI * 2;
+const OVERLAP_EPS = 0.01;   // 몸-타일 겹침 허용치 (core/physics.js 의 collideX/collideY 와 같은 0.01 px)
 /** 모서리만 닿은 것은 겹침이 아니다 (e px 안쪽으로 줄여 판정) — 바닥 위에 선 몸은 그 타일과 겹치지 않는다 */
 function hits(a, b, e = 1) {
   return a.x < b.x + b.w - e && a.x + a.w > b.x + e && a.y < b.y + b.h - e && a.y + a.h > b.y + e;
@@ -183,20 +184,34 @@ function podFallback() {
     g.fillStyle = '#8a7a3a'; g.beginPath(); g.ellipse(48, 14, 6, 4, 0, 0, TWO_PI); g.fill();
   });
 }
-/** 포자 주머니 그림: 불러온 96×96 이미지를 64×64 로 한 번만 줄여 둔 캔버스 (매 프레임 큰 축소를 피한다). 로딩 전엔 절차적 그림 */
+/** 포자 주머니 그림: 불러온 96×96 이미지를 64×64 로 한 번만 줄여 둔 캔버스 (매 프레임 큰 축소를 피한다). 로딩 전엔 절차적 그림.
+ *  캔버스는 방 로딩 때(prewarm) 만들어 두고, 이미지가 도착하면 그 캔버스에 한 번 그린다 (플레이 중 새 캔버스를 만들지 않는다) */
+function podCanvas() { return sprite('podimg', 64, 64, () => {}); }
 function podImage() {
-  const c = SPR.podimg;
-  if (c) return c;
+  if (SPR.podReady) return SPR.podimg;
   const img = assets.get('props/prop_spore_pod');
   if (!img) return podFallback();
-  if (typeof document === 'undefined') return img;
-  const cv = document.createElement('canvas');
-  cv.width = 64; cv.height = 64;
+  const cv = podCanvas();
+  if (!cv) return img;
   const g = cv.getContext('2d');
+  g.clearRect(0, 0, 64, 64);
   g.imageSmoothingQuality = 'high';
   g.drawImage(img, 0, 0, 64, 64);
-  SPR.podimg = cv;
+  SPR.podReady = true;
   return cv;
+}
+// 그리기와 미리 굽기(prewarm)가 같은 인자를 쓰도록 이름을 붙인 캐시 스프라이트
+const heartVignette = () => vignetteSprite('heart', '120,0,20');
+const blightEdge = () => bandSprite('blight', '60,110,10', 0.85);
+const voidGlow = () => bandSprite('voidglow', '150,90,255', 0.5);
+const voidEdge = () => bandSprite('edge', '6,0,14', 1);
+/** 방 로딩 때 (기믹 생성자) 캐시 스프라이트를 미리 만든다 — 플레이 도중 오프스크린 캔버스를 새로 만들지 않게 (MASTER_PLAN §5.2) */
+function prewarm(kind) {
+  try {
+    if (kind === 'heartbeat') { veinSprite('flesh'); veinSprite('dark'); heartVignette(); }
+    else if (kind === 'blight') { blobSprite(0); blobSprite(1); cloudSprite(0); cloudSprite(1); blightEdge(); glowSprite(); podFallback(); podCanvas(); assets.get('props/prop_spore_pod'); }
+    else if (kind === 'voidwall') { starSprite(); voidGlow(); voidEdge(); }
+  } catch { /* 미리 굽기 실패는 무시 (그릴 때 다시 시도) */ }
 }
 function glowSprite() {
   return sprite('podglow', 64, 64, (g) => {
@@ -272,6 +287,7 @@ const HEARTBEAT_DEF = { kind: 'heartbeat', beat: 3.2, warn: 0.8, light: 260 };
 export class HeartbeatGimmick extends MemberB {
   constructor(world, cfg, room) {
     super(world, cfg, room, HEARTBEAT_DEF);
+    prewarm('heartbeat');
     const c = this.cfg;
     this.baseBeat = Math.max(0.4, Number(c.beat) || HEARTBEAT_DEF.beat);
     this.beat = this.baseBeat;
@@ -320,9 +336,10 @@ export class HeartbeatGimmick extends MemberB {
     }
     return out;
   }
+  /** 겹침은 0.01 px 까지 본다 (physics 의 판정 허용치와 같다). 1 px 미만으로 걸친 채 굳히면 점프 때 천장 판정으로 바닥 속으로 밀려난다 */
   blocked(c, bodies) {
     const r = { x: c.tx * TILE, y: c.ty * TILE, w: TILE, h: TILE };
-    for (const b of bodies) if (hits(r, b)) return true;
+    for (const b of bodies) if (hits(r, b, OVERLAP_EPS)) return true;
     return false;
   }
   setTile(c, type) {
@@ -334,7 +351,8 @@ export class HeartbeatGimmick extends MemberB {
   }
   /**
    * 현재 박자에 맞게 칸을 맞춘다 (겹치는 칸은 보류).
-   * stagger: 화면 근처에서 실제로 바뀌는 칸은 타일 청크(16칸) 묶음별로 한 프레임에 하나씩 적용한다 — 타일 렌더러가 바뀐
+   * stagger (타일 렌더러가 위상 칸을 청크에 구울 때만 — liveTiles() 가 false):
+   * 화면 근처에서 실제로 바뀌는 칸은 타일 청크(16칸) 묶음별로 한 프레임에 하나씩 적용한다 — 타일 렌더러가 바뀐
    * 청크 캔버스를 통째로 다시 굽기 때문에 한 프레임에 몰리지 않게 나눈다 (길어야 몇 프레임). 화면 밖 칸은 즉시.
    */
   apply(stagger = false) {
@@ -388,7 +406,8 @@ export class HeartbeatGimmick extends MemberB {
   /** 안전장치: 플레이어가 고체 박동 벽 안에 놓이면 (부활·낙사 복귀 등) 그 칸을 비우고 보류로 돌린다 */
   unstick() {
     const w = this.world, m = w?.map, p = w?.player;
-    const pb = playerBody(p);
+    // 물리 몸(AABB)만 본다 — 타일과 충돌하는 것은 이 몸이다 (탈것을 타면 탈것 몸). 피격 판정은 발밑 타일로 삐져나올 수 있다
+    const pb = p && !p.dead ? { x: p.x, y: p.y, w: p.w, h: p.h } : null;
     if (!pb || !m || !this.cells.length) return;
     const tx0 = Math.floor(pb.x / TILE), tx1 = Math.floor((pb.x + pb.w - 0.01) / TILE);
     const ty0 = Math.floor(pb.y / TILE), ty1 = Math.floor((pb.y + pb.h - 0.01) / TILE);
@@ -397,7 +416,7 @@ export class HeartbeatGimmick extends MemberB {
         if (tx < 0 || ty < 0 || tx >= m.w || ty >= m.h) continue;
         const c = this.byIdx.get(ty * m.w + tx);
         if (!c || m.tiles[c.idx] !== T.SOLID) continue;
-        if (!hits({ x: tx * TILE, y: ty * TILE, w: TILE, h: TILE }, pb)) continue;
+        if (!hits({ x: tx * TILE, y: ty * TILE, w: TILE, h: TILE }, pb, OVERLAP_EPS)) continue;
         this.setTile(c, T.EMPTY);
         if (this.wants(c) && !c.pending) { c.pending = true; this.pendingN++; }
       }
@@ -416,9 +435,14 @@ export class HeartbeatGimmick extends MemberB {
       this.doBeat();
     }
   }
+  /** 타일 렌더러가 위상 칸을 청크에 굽지 않고 매 프레임 그리는가 (render/tiles.js phaseIdx) → 나눠 적용할 필요 없이 한 번에 */
+  liveTiles() {
+    const pi = this.world?.tiles?.phaseIdx;
+    return !!(pi && typeof pi.has === 'function' && this.cells.length && pi.has(this.cells[0].idx));
+  }
   doBeat() {
     this.beatIndex++;
-    this.apply(true);
+    this.apply(!this.liveTiles());
     this.sinceBeat = 0;
     audio.sfx('hit_heavy', { pitch: 0.45, vol: 0.35 });
     this.dubT = 0.18;
@@ -509,7 +533,7 @@ export class HeartbeatGimmick extends MemberB {
     if (k <= 0.01) return;
     const s = settingsOf(this.world);
     const a = 0.32 * k * (s.flashFx ?? 1) * (s.reduceMotion ? 0.5 : 1);
-    const v = vignetteSprite('heart', '120,0,20');
+    const v = heartVignette();
     if (!v || a <= 0.004) return;
     ctx.save(); ctx.globalAlpha = a; ctx.drawImage(v, 0, 0, vw, vh); ctx.restore();
   }
@@ -550,6 +574,7 @@ function makeCloud(x, y, w, h, life, isStatic) {
 export class BlightGimmick extends MemberB {
   constructor(world, cfg, room) {
     super(world, cfg, room, BLIGHT_DEF);
+    prewarm('blight');
     const c = this.cfg;
     for (const k of ['gain', 'decay', 'on', 'off', 'dot', 'podRespawn']) { const v = Number(c[k]); c[k] = Number.isFinite(v) ? v : BLIGHT_DEF[k]; }
     this.meter = 0;
@@ -747,7 +772,7 @@ export class BlightGimmick extends MemberB {
   drawScreen(ctx, vw, vh, hud) {
     const w = this.world;
     // 화면 색조: 상태 이상이면 초록 색조(전체 화면 단색 1회) + 좌우 가장자리 초록 번짐, 게이지가 차는 중이면 가장자리 번짐만
-    const edge = bandSprite('blight', '60,110,10', 0.85);
+    const edge = blightEdge();
     const edges = (a) => {
       if (!edge || a <= 0.01) return;
       const bw = vw * 0.18;
@@ -783,6 +808,7 @@ const PUSH_V = 520;
 export class VoidWallGimmick extends MemberB {
   constructor(world, cfg, room) {
     super(world, cfg, room, VOIDWALL_DEF);
+    prewarm('voidwall');
     const c = this.cfg;
     this.mode = c.mode === 'arena' ? 'arena' : 'chase';
     for (const k of ['speed', 'delay', 'startTx', 'dmg']) { const v = Number(c[k]); c[k] = Number.isFinite(v) ? v : VOIDWALL_DEF[k]; }
@@ -993,7 +1019,7 @@ export class VoidWallGimmick extends MemberB {
       }
     }
     // 가장자리 바깥의 보랏빛 번짐
-    const band = bandSprite('voidglow', '150,90,255', 0.5);
+    const band = voidGlow();
     if (band) {
       ctx.globalAlpha = 0.75; ctx.globalCompositeOperation = 'lighter';
       if (side < 0) ctx.drawImage(band, X - 6, top, 110, bot - top);
@@ -1018,7 +1044,7 @@ export class VoidWallGimmick extends MemberB {
   drawScreen(ctx, vw, vh) {
     const p = this.world?.player;
     if (!p || p.dead) return;
-    const band = bandSprite('edge', '6,0,14', 1);
+    const band = voidEdge();
     if (!band) return;
     const put = (d, side) => {
       const k = clamp(1 - d / 300, 0, 1);
@@ -1045,6 +1071,7 @@ export class SporePod extends Entity {
     super(0, 0, 40, 40);
     this.kind = 'prop';
     this.z = 3;
+    this.noGuardianHit = true;   // 수호신 공격 대상에서 뺀다 (MASTER_PLAN §1.2 — MirrorSwitch 와 같은 표시, CMP-SYS 가 거른다)
     this.tx = Math.floor(Number(tx) || 0); this.ty = Math.floor(Number(ty) || 0);
     this.gimmick = opts.gimmick ?? null;
     this.respawn = opts.respawn !== false;
@@ -1064,10 +1091,11 @@ export class SporePod extends Entity {
     this.placed = true;
     if (!map?.typeAt) return;
     let { tx, ty } = this;
-    for (let k = 0; k < 3 && isSolidT(map.typeAt(tx, ty)); k++) ty--;   // 벽 속에 심으면 위로
+    if (Number.isFinite(map.w) && Number.isFinite(map.h)) { tx = clamp(tx, 0, map.w - 1); ty = clamp(ty, 0, map.h - 1); }   // 맵 밖 좌표는 맵 안으로
+    for (let k = 0; k < 3 && ty > 0 && isSolidT(map.typeAt(tx, ty)); k++) ty--;   // 벽 속에 심으면 위로
     this.hang = isSolidT(map.typeAt(tx, ty - 1)) && !isFloorT(map.typeAt(tx, ty + 1));
     if (!this.hang && this.drop) for (let k = 0; k < 14 && ty + 1 < map.h && !isFloorT(map.typeAt(tx, ty + 1)); k++) ty++;
-    this.ty = ty;
+    this.tx = tx; this.ty = ty;
     this.x = tx * TILE + TILE / 2 - this.w / 2;
     this.y = this.hang ? ty * TILE : (ty + 1) * TILE - this.h;
   }

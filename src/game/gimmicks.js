@@ -655,10 +655,10 @@ class MagmaGimmick {
       w.fx.burst('fire', p.cx, this.level, 10, { angle: -Math.PI / 2, spread: 0.8, speed: 160 });
     }
     // 완전히 잠김 → 낙사 처리 (체력 25%, 안전 지점으로)
-    if (p.y > this.level + 12 && this.fellCd <= 0 && !p.dead) {
-      this.fellCd = 1.0; this.fellFlag = false;
+    // (world.onPlayerFell 이 옮긴 뒤 world.gimmick.onFell → this.onFell 로 수위 조정·구조. 방 이동 중에는 건드리지 않는다)
+    if (p.y > this.level + 12 && this.fellCd <= 0 && !p.dead && !w.transitioning) {
+      this.fellCd = 1.0;
       w.onPlayerFell?.(p);
-      if (!this.fellFlag && !p.dead) this.onFell(p);   // world 의 onFell 훅이 아직 없을 때
     }
   }
   onFell(p) {
@@ -790,14 +790,15 @@ class MagmaGimmick {
 }
 
 // ───────────────────────────── deep: 깊은 물 · 산소 ─────────────────────────────
+const WATER_GRAV = 0.24, UPDRAFT_GRAV = 0.3;
 class DeepGimmick {
   constructor(world, params, set) {
     this.kind = 'deep'; this.world = world; this.set = set;
-    this.params = { air: 100, drain: 8, refill: 50, bubble: 60, choke: 0.06, stroke: 340, ...params };
+    this.params = { air: 100, drain: 8, refill: 50, bubble: 60, choke: 0.06, stroke: 340, diveFall: 260, ...params };
     this.air = clamp(+this.params.air || 100, 0, 100);
     this.inWater = false; this.headUnder = false; this.inBubble = false;
     this.strokeCd = 0; this.chokeT = 1.0; this.warned = false; this.t = 0; this.breathT = 0.6;
-    this.ownMaxFall = false;
+    this.ownMaxFall = false; this.ownGrav = false;
     this.added = new Set();   // setWaterRow 가 채운 칸 idx
     this.job = null;
     const m = world.map;
@@ -807,6 +808,7 @@ class DeepGimmick {
       while (top - 1 >= 0 && mk.ty - (top - 1) < 5 && m.typeAt(mk.tx, top - 1) === T.LIQUID) top--;
       return { tx: mk.tx, x: mk.tx * TILE, y: top * TILE, w: TILE, h: (mk.ty - top + 1) * TILE, seed: mk.tx * 7.3 + mk.ty };
     });
+    if (this.columns.length) bubbleSprite();   // 캐시 캔버스는 방 로딩 때 만든다 (MASTER_PLAN §5.2: 플레이 도중 새 캔버스 0)
     const liq = world.liquid ?? world.room?.liquid ?? world.stage?.liquid;
     if (liq !== 'deep') warnOnce('deepliq:' + world.stage?.id + ':' + world.roomId, `[gimmick] deep: ${world.stage?.id}/${world.roomId} 의 액체가 'deep' 이 아님 (${liq})`);
   }
@@ -825,11 +827,17 @@ class DeepGimmick {
     this.inWater = touchesType(p, m, T.LIQUID, 10);
     this.headUnder = m.typeAtPx(p.cx, p.y + 10) === T.LIQUID;
     if (this.inWater) {
-      if (p.gravity !== 0) p.gravity = 0.24;
-      p.maxFall = 150; this.ownMaxFall = true;
+      if (p.gravity !== 0) { p.gravity = WATER_GRAV; this.ownGrav = true; }
+      // ↓ 를 누르면 더 빨리 잠수 (+600 px/s², 가라앉는 한도 150 → diveFall)
+      const dive = !w.cutscene && !w.inputLock && input.down('down');
+      p.maxFall = dive ? (+this.params.diveFall || 150) : 150; this.ownMaxFall = true;
       p.airJumpsLeft = p.maxAirJumps?.() ?? p.airJumpsLeft;
-      if (!w.cutscene && !w.inputLock && input.down('down')) p.vy += 600 * dt;
-    } else if (this.ownMaxFall) { p.maxFall = undefined; this.ownMaxFall = false; }
+      if (dive) p.vy += 600 * dt;
+    } else {
+      if (this.ownMaxFall) { p.maxFall = undefined; this.ownMaxFall = false; }
+      // 피격 경직 중에는 player.update 가 gravity 를 1 로 되돌리지 않는다 → 물 밖으로 튕겨 나가도 물속 중력이 남지 않게
+      if (this.ownGrav) { if (p.gravity === WATER_GRAV) p.gravity = 1; this.ownGrav = false; }
+    }
   }
   postPhysics(p, dt) {
     // 탈것은 깊은 물에서 내린다 (탈것 쪽 hazard('deep') 가 처리하지 않았을 때의 안전망)
@@ -936,7 +944,12 @@ class DeepGimmick {
     this.onRespawn();
   }
   onRespawn() { this.air = 100; this.chokeT = 1.0; this.warned = false; }
-  dispose() { const p = this.world.player; if (p && this.ownMaxFall) p.maxFall = undefined; this.ownMaxFall = false; }
+  dispose() {
+    const p = this.world.player;
+    if (p && this.ownMaxFall) p.maxFall = undefined;
+    if (p && this.ownGrav && p.gravity === WATER_GRAV) p.gravity = 1;
+    this.ownMaxFall = false; this.ownGrav = false;
+  }
   drawWorld(ctx, cam, layer) {
     if (layer !== 'front' || !this.columns.length) return;
     const spr = bubbleSprite(), q = this.world.fx.quality ?? 1, n = Math.max(3, Math.round(7 * q));
@@ -988,8 +1001,9 @@ class WindGimmick {
     const ups = m.markersOf('U');
     for (const mk of ups) this.updraft.add(mk.ty * m.w + mk.tx);
     this.upCols = columnsOf(ups);
+    if (this.upCols.length) updraftSprite();   // 캐시 캔버스는 방 로딩 때
     this.t = 0;
-    this.W = 0; this.applied = 0; this.vxAfter = null;
+    this.W = 0; this.applied = 0; this.vxAfter = null; this.ownGrav = false;
     this.reset();
   }
   reset() {
@@ -1056,8 +1070,8 @@ class WindGimmick {
       const mul = p.mount?.riding ? (p.mount.def?.windMul ?? 1) : 1;
       const cap = this.params.maxPush * k * mul;
       this.W = approach(this.W, this.dir * cap, this.force * k * mul * dt);
-      // 바람 방향 총속도 ≤ 최고 속도 + maxPush
-      const maxSp = (p.ch?.move?.speed ?? 280) * (p.speedMul ?? 1);
+      // 바람 방향 총속도 ≤ 최고 속도 + maxPush (탈것을 타면 탈것 이동 프로필의 최고 속도)
+      const maxSp = (p.mount?.riding ? p.moveProfile?.()?.speed : null) ?? (p.ch?.move?.speed ?? 280) * (p.speedMul ?? 1);
       const lim = Math.max(0, maxSp + this.params.maxPush - p.vx * this.dir);
       if (this.W * this.dir > lim) this.W = lim * this.dir;
     } else {
@@ -1067,8 +1081,12 @@ class WindGimmick {
     // 상승 기류
     if (this.updraft.size && this.overlapsUpdraft(p)) {
       p.vy = approach(p.vy, -this.params.updraft, 2600 * dt);
-      if (p.gravity > 0.3) p.gravity = 0.3;
+      if (p.gravity > UPDRAFT_GRAV) { p.gravity = UPDRAFT_GRAV; this.ownGrav = true; }
       if (Math.random() < 0.25 * (w.fx.quality ?? 1)) w.fx.emit('dust', p.cx + rand(-14, 14), p.bottom, { angle: -Math.PI / 2, spread: 0.3, speed: 120, color: '#dfe8ff', alpha: 0.3, size: rand(4, 7) });
+    } else if (this.ownGrav) {
+      // 피격 경직 중(중력을 1 로 되돌리는 이동 코드를 건너뜀)에 기류를 벗어나도 약한 중력이 남지 않게
+      if (p.gravity === UPDRAFT_GRAV) p.gravity = 1;
+      this.ownGrav = false;
     }
   }
   postPhysics(p, dt) {
@@ -1083,7 +1101,11 @@ class WindGimmick {
     return false;
   }
   onRespawn() { this.reset(); this.applied = 0; this.vxAfter = null; }
-  dispose() { this.W = 0; this.applied = 0; }
+  dispose() {
+    const p = this.world.player;
+    if (p && this.ownGrav && p.gravity === UPDRAFT_GRAV) p.gravity = 1;
+    this.W = 0; this.applied = 0; this.ownGrav = false;
+  }
   drawWorld(ctx, cam, layer) {
     if (layer === 'back' && this.upCols.length) {
       const spr = updraftSprite();

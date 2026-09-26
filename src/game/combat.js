@@ -58,6 +58,8 @@ export function computeDamage(src, tgt, attack) {
  */
 export function hitTarget(world, attack, target, hx, hy) {
   if (target.dead || target.invuln || target.wakeInv > 0) return null;
+  // 수호신 공격은 거울 스위치 등 noGuardianHit 대상을 건드리지 않는다 (MASTER_PLAN §1.2: 경직·불꽃·효과음도 없음)
+  if (target.noGuardianHit && attack.tags?.includes('guardian')) return null;
   let rehit = false;
   if (attack.hitId) {
     target._hits ??= new Map();
