@@ -570,7 +570,7 @@ function drawSkelArm(ctx, sx, sy, sh, el, ua, fa, col, o, front, e, wA, pose, at
     const bh = e._bowHand;
     if (bh) {
       const aim = e.aimA ?? 0;
-      ctx.save(); ctx.translate(hx, hy); ctx.rotate(-aim);
+      ctx.save(); ctx.translate(hx, hy); ctx.rotate(aim);
       const nock = e.anim === 'draw' || e.anim === 'volley';
       if (nock) {
         ctx.strokeStyle = C('#6a4a2a'); ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(-2, 0); ctx.lineTo(30 * s, 0); ctx.stroke();

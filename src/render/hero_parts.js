@@ -167,7 +167,7 @@ const MUZZLE = [17, 15, 20, 14, 17, 21];
 export function weaponReach(W) {
   const s = W.style - 1;
   if (W.type === 'sword' || W.type === 'greatsword' || W.type === 'dagger') return BLADE_LEN[W.type][s];
-  if (W.type === 'gun') return MUZZLE[s];
+  if (W.type === 'gun') return MUZZLE[s] * 1.3;
   if (W.type === 'staff') return 32;
   return 10;
 }
@@ -373,11 +373,11 @@ function paintStaff(W) {
   const gc = W.glowC || (s === 3 ? '#8ac8ff' : s === 6 ? '#d0a0ff' : '#fff2b0');
   // 자루
   const shaft = s <= 2 ? col : s === 6 ? '#2a1a3a' : sh(col, -0.1);
-  roundRectPath(c, -34, -1, 58, 2, 1);
+  roundRectPath(c, -30, -1, 54, 2, 1);
   c.fillStyle = metalGradY(-1, 1, shaft); c.fill(); outline(shaft, 0.8);
   if (!G.tint) {
     const bc = s >= 4 ? '#e8c872' : '#8a8a94';
-    c.fillStyle = bc; c.fillRect(-35, -1.3, 2.2, 2.6); c.fillRect(-2.5, -1.3, 1, 2.6); c.fillRect(2, -1.3, 1, 2.6); c.fillRect(20, -1.5, 3, 3);
+    c.fillStyle = bc; c.fillRect(-31, -1.3, 2.2, 2.6); c.fillRect(-2.5, -1.3, 1, 2.6); c.fillRect(2, -1.3, 1, 2.6); c.fillRect(20, -1.5, 3, 3);
   }
   const hx = 24;
   glow(hx + 8, 0, 14 + (W.glowLv || 0) * 4, gc, 0.35 + 0.1 * Math.sin(t * 5));
@@ -492,7 +492,7 @@ export function drawWeapon(W, x, y, ang, opt) {
   if (type === 'sword') { paintSword(W, 'sword'); weaponAura(W, weaponReach(W), 3); }
   else if (type === 'greatsword') { paintSword(W, 'great'); weaponAura(W, weaponReach(W), 6); }
   else if (type === 'dagger') { paintSword(W, 'dagger'); weaponAura(W, weaponReach(W), 2); }
-  else if (type === 'gun') { paintGun(W, opt?.fire ?? 0); weaponAura(W, MUZZLE[W.style - 1], 0); }
+  else if (type === 'gun') { c.scale(1.3, 1.3); paintGun(W, opt?.fire ?? 0); weaponAura(W, MUZZLE[W.style - 1], 0); }
   else if (type === 'staff') { paintStaff(W); weaponAura(W, 36, 18); }
   else if (type === 'whip') paintWhipHandle(W);
   c.restore();
@@ -513,11 +513,14 @@ export function drawLash(W, P, n, extend = 1) {
   }
   if (s <= 2 || G.tint) {
     // 가죽 끈: 가늘어지는 띠
-    for (let i = 0; i < n; i++) WS[i] = lerp(s === 2 ? 1.25 : 1.05, 0.32, Math.pow(i / (n - 1), 0.8));
+    for (let i = 0; i < n; i++) WS[i] = lerp(s === 2 ? 1.7 : 1.5, 0.45, Math.pow(i / (n - 1), 0.85)) * extend;
     ribbonPath(c, P, n, WS, true);
+    if (!G.tint) { c.lineWidth = 1.2; c.strokeStyle = olc(col); c.stroke(); }
     c.fillStyle = F(col); c.fill();
     if (!G.tint) {
-      c.lineWidth = 0.5; c.strokeStyle = olc(col); c.stroke();
+      // 윗면 광택
+      c.strokeStyle = ra(sh(col, 0.55), 0.85); c.lineWidth = 0.55;
+      c.beginPath(); c.moveTo(P[0], P[1] - WS[0] * 0.4); for (let i = 1; i < n - 1; i++) c.lineTo(P[i * 2], P[i * 2 + 1] - WS[i] * 0.45); c.stroke();
       // 꼬임 무늬
       c.strokeStyle = ra(sh(col, 0.35), 0.8); c.lineWidth = 0.5;
       c.beginPath();

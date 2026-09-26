@@ -233,7 +233,7 @@ function holdFor(P, K, mode) {
   } else if (w === 'greatsword') {
     if (mode === 'dash') { P.w1 = 3.0; P.a1 = 2.4; }
     else if (mode === 'crouch') { P.a1 = 0.45; P.r1 = 0.62; P.w1 = -2.5; }
-    else { P.a1 = 0.6; P.r1 = 0.36 + (mode === 'run' ? 0.02 * Math.sin(P.py) : 0); P.w1 = -2.42; }
+    else { P.a1 = 0.75; P.r1 = 0.4; P.w1 = -2.72; }
   } else if (w === 'dagger') {
     if (mode === 'run' || mode === 'dash') { P.a1 = 2.35; P.r1 = 0.95; P.w1 = 2.95; P.a2 = 2.55; P.r2 = 0.95; P.w2 = 3.05; P.lean = Math.max(P.lean, 0.42); }
     else if (mode === 'air') { P.w1 = HP + 1.0; P.w2 = HP + 1.1; }
@@ -1287,7 +1287,7 @@ function drawCape(s, K, E) {
   const c = G.c;
   sp(s, K, 0.94, -backAt(K, 0.94) + 0.8); tx0(E.P, QX, QY);
   const n = 7, len = 44 * cp.len;
-  const pts = chain('cape', E, TX, TY, n, len / (n - 1), { g: 1500, d: 0.93, push: 300, rest: 0.25, curl: 0.04, flut: 110 }, TX - 0.5);
+  const pts = chain('cape', E, TX, TY, n, len / (n - 1), { g: 1500, d: 0.93, push: 90, rest: 0.12, curl: 0.04, flut: 110 }, TX - 0.5);
   for (let i = 0; i < n; i++) WS[i] = lerp(3.4, 9.5 + cp.len * 1.5, Math.pow(i / (n - 1), 0.8)) * K.hW;
   // 안감(앞쪽 가장자리로 살짝 보임)
   ribbonPath(c, pts, n, WS, false);
@@ -1380,52 +1380,57 @@ function bladeInfo(K, which) {
   const b0 = W.type === 'greatsword' ? 6 : W.type === 'staff' ? 16 : 2;
   return { L, b0 };
 }
-const TRX0 = new Float32Array(24), TRY0 = new Float32Array(24), TRX1 = new Float32Array(24), TRY1 = new Float32Array(24);
-/** 무기 궤적: 과거 시점 자세를 다시 풀어 칼날이 쓸고 간 면을 그린다 */
+const TRX0 = new Float32Array(24), TRY0 = new Float32Array(24), TRX1 = new Float32Array(24), TRY1 = new Float32Array(24), TRXM = new Float32Array(24), TRYM = new Float32Array(24);
+/** 무기 궤적: 과거 시점 자세를 다시 풀어 칼날 끝이 쓸고 간 초승달 띠를 그린다 */
 function drawTrail(E, K, p, mv, which) {
   if (G.tint || !G.fx) return;
   const ph = phaseAt(mv, ST.t);
   const t = ph.t, h0 = ph.h0, h1 = ph.h1;
-  const fade = t > h1 ? 1 - (t - h1) / 0.08 : 1;
-  if (t < h0 - 0.005 || fade <= 0) return;
-  const tEnd = Math.min(t, h1), tStart = Math.max(h0 - 0.02, t - 0.1);
+  const fade = t > h1 ? 1 - (t - h1) / 0.07 : 1;
+  if (t < h0 - 0.004 || fade <= 0) return;
+  const tEnd = Math.min(t, h1), tStart = Math.max(h0 - 0.012, tEnd - (mv.finisher ? 0.1 : 0.075));
   if (tEnd <= tStart + 0.001) return;
-  const { L, b0 } = bladeInfo(K, which);
+  const { L } = bladeInfo(K, which);
   // 판정 상자까지 닿도록 연장 (에너지 궤적)
   let ext = 0;
   if (mv.box) {
     const reach = 1 + ((p.stats?.reach ?? 0) / 100);
     const bx = (mv.box.x + mv.box.w * (mv.box.x >= 0 ? reach : 1)) / E.hs, by = (mv.box.y + mv.box.h * 0.5) / E.hs;
-    const need = Math.hypot(bx - SK.s1x, by - SK.s1y) * 0.92;
-    const have = K.ua + K.fa + L;
-    ext = clamp(need - have, 0, 70);
+    const need = Math.hypot(bx - SK.s1x, by - SK.s1y) * 0.9;
+    ext = clamp(need - (K.ua + K.fa + L), 0, 60);
   }
-  const N = 10;
-  const save = copyPose(PS, E.P);
+  const r0 = K.W.type === 'staff' ? 12 : L * 0.3, rm = lerp(L * 0.62, L + ext, 0.45);
+  const N = 9;
   for (let k = 0; k <= N; k++) {
     const tk = lerp(tStart, tEnd, k / N);
     resetPose(PT); attackPose(PT, ST2, p, K, mv, tk);
     solveUpper(PT, K, SK2);
     const hx = which === 2 ? SK2.h2x : SK2.h1x, hy = which === 2 ? SK2.h2y : SK2.h1y, w = which === 2 ? PT.w2 : PT.w1;
     const cw = Math.cos(w), sw = Math.sin(w);
-    tx0(PT, hx + cw * b0, hy + sw * b0); TRX0[k] = TX; TRY0[k] = TY;
+    tx0(PT, hx + cw * r0, hy + sw * r0); TRX0[k] = TX; TRY0[k] = TY;
+    tx0(PT, hx + cw * rm, hy + sw * rm); TRXM[k] = TX; TRYM[k] = TY;
     tx0(PT, hx + cw * (L + ext), hy + sw * (L + ext)); TRX1[k] = TX; TRY1[k] = TY;
   }
-  copyPose(E.P, save);
+  solveUpper(E.P, K, SK2);
   const c = G.c;
   const el = mv.element || K.W.element;
-  const tc = mv.slash?.color || (el ? EL_COL[el] : K.W.type === 'greatsword' ? '#ffe2b8' : K.W.type === 'staff' ? '#fff2b0' : '#dfeaff');
+  const tc = mv.slash?.color || (el ? EL_COL[el] : K.W.type === 'greatsword' ? '#ffd9a8' : K.W.type === 'staff' ? '#fff2b0' : '#cfe0ff');
+  const hot = mv.finisher ? 1.25 : 1;
   c.save(); c.globalCompositeOperation = 'lighter';
   for (let k = 1; k <= N; k++) {
-    const a = (k / N) * 0.75 * fade;
-    c.fillStyle = ra(tc, a * 0.55);
-    c.beginPath(); c.moveTo(TRX0[k - 1], TRY0[k - 1]); c.lineTo(TRX1[k - 1], TRY1[k - 1]); c.lineTo(TRX1[k], TRY1[k]); c.lineTo(TRX0[k], TRY0[k]); c.closePath(); c.fill();
+    const a = Math.pow(k / N, 1.7) * fade * hot;
+    c.fillStyle = ra(tc, a * 0.2);
+    c.beginPath(); c.moveTo(TRX0[k - 1], TRY0[k - 1]); c.lineTo(TRXM[k - 1], TRYM[k - 1]); c.lineTo(TRXM[k], TRYM[k]); c.lineTo(TRX0[k], TRY0[k]); c.closePath(); c.fill();
+    c.fillStyle = ra(tc, a * 0.42);
+    c.beginPath(); c.moveTo(TRXM[k - 1], TRYM[k - 1]); c.lineTo(TRX1[k - 1], TRY1[k - 1]); c.lineTo(TRX1[k], TRY1[k]); c.lineTo(TRXM[k], TRYM[k]); c.closePath(); c.fill();
   }
-  // 칼끝 빛줄기
-  c.strokeStyle = ra('#ffffff', 0.85 * fade); c.lineWidth = mv.finisher ? 2.4 : 1.5; c.lineCap = 'round'; c.lineJoin = 'round';
-  c.beginPath(); c.moveTo(TRX1[0], TRY1[0]); for (let k = 1; k <= N; k++) c.lineTo(TRX1[k], TRY1[k]); c.stroke();
-  c.strokeStyle = ra(tc, 0.5 * fade); c.lineWidth = mv.finisher ? 6 : 4;
-  c.beginPath(); c.moveTo(TRX1[0], TRY1[0]); for (let k = 1; k <= N; k++) c.lineTo(TRX1[k], TRY1[k]); c.stroke();
+  // 칼끝 빛줄기 (새로울수록 굵고 밝게)
+  c.lineCap = 'round';
+  for (let k = 1; k <= N; k++) {
+    const a = Math.pow(k / N, 1.3) * fade;
+    c.strokeStyle = ra('#ffffff', 0.9 * a); c.lineWidth = (mv.finisher ? 2.6 : 1.7) * (0.35 + 0.65 * k / N);
+    c.beginPath(); c.moveTo(TRX1[k - 1], TRY1[k - 1]); c.lineTo(TRX1[k], TRY1[k]); c.stroke();
+  }
   c.restore();
 }
 /** 회전 베기(가로) 궤적: 타원 */
@@ -1436,14 +1441,14 @@ function drawSpinTrail(E, K, p, mv, R, cy) {
   const tc = el ? EL_COL[el] : K.W.type === 'whip' ? '#fff2d0' : K.W.type === 'greatsword' ? '#ffe2b8' : '#dfeaff';
   c.save(); c.globalCompositeOperation = 'lighter';
   c.translate(0, cy); c.scale(1, 0.24);
-  const seg = 14, span = Math.min(th, 2.6);
+  const seg = 18, span = Math.min(th + 0.3, 4.2);
   for (let i = 0; i < seg; i++) {
-    const a0 = th - span * (i / seg), a1 = th - span * ((i + 1) / seg);
-    c.strokeStyle = ra(tc, (1 - i / seg) * 0.7 * fade); c.lineWidth = (1 - i / seg) * 14 + 2;
-    c.beginPath(); c.moveTo(Math.cos(a0) * R, Math.sin(a0) * R); c.lineTo(Math.cos(a1) * R, Math.sin(a1) * R); c.stroke();
+    const a0 = th - span * (i / seg), a1 = th - span * ((i + 1) / seg), k = 1 - i / seg;
+    c.strokeStyle = ra(tc, k * k * 0.55 * fade); c.lineWidth = k * 22 + 3;
+    c.beginPath(); c.arc(0, 0, R * (0.82 + 0.1 * k), a1, a0); c.stroke();
+    c.strokeStyle = ra('#ffffff', k * k * 0.9 * fade); c.lineWidth = 2.2 + k * 2.4;
+    c.beginPath(); c.arc(0, 0, R, a1, a0); c.stroke();
   }
-  c.strokeStyle = ra('#ffffff', 0.9 * fade); c.lineWidth = 2.5;
-  c.beginPath(); c.arc(0, 0, R, th - span * 0.5, th); c.stroke();
   c.restore();
 }
 /** 찌르기 섬광: 칼끝에서 판정 끝까지 */
@@ -1744,19 +1749,19 @@ export function drawHero(ctx, p, world, opts = {}) {
   // 5) 채찍 끈 / 궤적 / 효과
   if (mv && ST.lash) {
     const n = lashPoints(E, K, p, mv, ST.lash, ST.t, LASH);
-    if (G.fx && ST.ph === 1) { // 잔상 두 겹
-      const save = copyPose(PS, P);
-      for (const back of [0.03, 0.015]) {
-        resetPose(PT); attackPose(PT, ST2, p, K, mv, Math.max(0, ST.t - back)); copyPose(P, PT); solveUpper(P, K, SK);
-        const m = lashPoints(E, K, p, mv, ST.lash, Math.max(0, ST.t - back), GH);
-        c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = back > 0.02 ? 0.25 : 0.4;
-        c.strokeStyle = W.glowC || '#fff0d0'; c.lineWidth = 2.2; c.beginPath(); c.moveTo(GH[0], GH[1]); for (let i = 1; i < m; i++) c.lineTo(GH[i * 2], GH[i * 2 + 1]); c.stroke();
-        c.restore();
-      }
-      copyPose(P, save); solveUpper(P, K, SK);
+    if (G.fx && ST.ph === 1) { // 채찍이 공기를 가르는 빛
+      c.save(); c.globalCompositeOperation = 'lighter'; c.lineCap = 'round'; c.lineJoin = 'round';
+      c.strokeStyle = ra(W.glowC || '#ffe8c0', 0.28 * (1 - ST.u * 0.6)); c.lineWidth = 5;
+      c.beginPath(); c.moveTo(LASH[0], LASH[1]); for (let i = 1; i < n; i++) c.lineTo(LASH[i * 2], LASH[i * 2 + 1]); c.stroke();
+      c.restore();
     }
     drawLash(W, LASH, n);
-    if (ST.ph === 1 && ST.u > 0.45 && G.fx) { const e = (n - 1) * 2; glow(LASH[e], LASH[e + 1], 14, W.glowC || '#fff4d0', 0.7 * (1 - ST.u)); }
+    if (ST.ph === 1 && ST.u > 0.35 && G.fx) { // 채찍 끝 파열음 섬광
+      const e = (n - 1) * 2, k = 1 - (ST.u - 0.35) / 0.65, x = LASH[e], y = LASH[e + 1];
+      glow(x, y, 16, W.glowC || '#fff4d0', 0.85 * k);
+      c.save(); c.globalCompositeOperation = 'lighter'; c.strokeStyle = ra('#ffffff', 0.9 * k); c.lineWidth = 1;
+      c.beginPath(); for (let i = 0; i < 6; i++) { const a = i * 1.047 + ST.t * 9, r0 = 3, r1 = 7 + 5 * k; c.moveTo(x + Math.cos(a) * r0, y + Math.sin(a) * r0); c.lineTo(x + Math.cos(a) * r1, y + Math.sin(a) * r1); } c.stroke(); c.restore();
+    }
     if (ST.lash === 4) drawSpinTrail(E, K, p, mv, (mv.box ? mv.box.w * 0.5 * (1 + ((p.stats?.reach ?? 0) / 100)) : 110) / hs, mv.box ? (mv.box.y + mv.box.h / 2) / hs : -62);
   } else if (ST.charge > 0 && W.type === 'whip') {
     const n = lassoPoints(E, K, LASH, tt);
