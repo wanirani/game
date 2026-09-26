@@ -175,31 +175,46 @@ export class Statue extends Entity {
   }
 }
 
-/** 피 손자국 스프라이트 (문 표식 'blood', 한 번만 그림) */
+/** 피 손자국 스프라이트 (문 표식 'blood', 한 번만 그림): 거칠게 번진 검붉은 손바닥 + 아래로 끌린 손가락 자국 */
 let _bloodHand = null, _bloodGlow = null;
 function bloodHandSprite() {
   if (_bloodHand) return _bloodHand;
   const c = document.createElement('canvas');
-  c.width = 44; c.height = 52;
+  c.width = 64; c.height = 80;
   const g = c.getContext('2d');
-  g.translate(22, 30); g.rotate(-0.14);
-  const paint = (col, k) => {
-    g.fillStyle = col;
-    g.beginPath(); g.ellipse(0, 4, 10 * k, 11 * k, 0, 0, TAU); g.fill();                         // 손바닥
-    for (const [x, y, len, a] of [[-7, -5, 13, -0.2], [-2.5, -7, 16, -0.05], [2.5, -7, 15, 0.06], [7, -5, 12, 0.2]]) {   // 네 손가락
+  let seed = 7;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  g.translate(32, 38); g.rotate(-0.12);
+  const hand = (k) => {
+    g.beginPath(); g.ellipse(0, 6, 11 * k, 12 * k, 0, 0, TAU); g.fill();                              // 손바닥
+    for (const [x, y, len, a] of [[-8, -4, 14, -0.22], [-3, -7, 17, -0.06], [2.5, -7, 16, 0.07], [7.5, -4, 13, 0.22]]) {   // 네 손가락
       g.save(); g.translate(x * k, y * k); g.rotate(a);
-      g.beginPath(); g.ellipse(0, -len * k / 2, 2.4 * k, len * k / 2 + 1, 0, 0, TAU); g.fill(); g.restore();
+      g.beginPath(); g.ellipse(0, -len * k / 2, 2.7 * k, len * k / 2 + 1, 0, 0, TAU); g.fill(); g.restore();
     }
-    g.save(); g.translate(-10 * k, 5 * k); g.rotate(-0.95);                                          // 엄지
-    g.beginPath(); g.ellipse(0, -5 * k, 2.6 * k, 6.5 * k, 0, 0, TAU); g.fill(); g.restore();
+    g.save(); g.translate(-11 * k, 8 * k); g.rotate(-1.0);                                              // 엄지
+    g.beginPath(); g.ellipse(0, -5 * k, 2.8 * k, 7 * k, 0, 0, TAU); g.fill(); g.restore();
   };
-  paint('#4a040c', 1.08);
-  paint('#7a0a16', 1);
-  // 번진 자국과 젖은 광택
-  g.fillStyle = 'rgba(120,8,20,0.55)';
-  g.beginPath(); g.ellipse(3, 14, 6, 3, 0.3, 0, TAU); g.fill();
-  g.fillStyle = 'rgba(255,120,130,0.35)';
-  g.beginPath(); g.ellipse(-3, 0, 3, 1.4, -0.5, 0, TAU); g.fill();
+  g.fillStyle = 'rgba(40,2,6,0.75)'; hand(1.06);
+  g.fillStyle = 'rgba(92,8,18,0.92)'; hand(1);
+  // 아래로 끌린 자국 (손을 떼며 미끄러진 흔적)
+  for (const [x, w, len] of [[-6, 3.2, 20], [0, 3.8, 26], [6, 3, 16]]) {
+    const gr = g.createLinearGradient(0, 14, 0, 14 + len);
+    gr.addColorStop(0, 'rgba(92,8,18,0.85)'); gr.addColorStop(1, 'rgba(92,8,18,0)');
+    g.fillStyle = gr;
+    g.beginPath(); g.moveTo(x - w / 2, 12); g.lineTo(x + w / 2, 12); g.lineTo(x + w * 0.2, 14 + len); g.lineTo(x - w * 0.2, 14 + len); g.closePath(); g.fill();
+  }
+  // 거친 가장자리: 흩뿌린 핏방울과 긁힌 빈틈
+  for (let i = 0; i < 70; i++) {
+    const a = rnd() * TAU, r = 8 + rnd() * 16;
+    g.fillStyle = rnd() < 0.7 ? 'rgba(70,4,12,0.8)' : 'rgba(120,14,24,0.7)';
+    g.beginPath(); g.arc(Math.cos(a) * r * 0.9, 2 + Math.sin(a) * r, 0.4 + rnd() * 1.3, 0, TAU); g.fill();
+  }
+  g.globalCompositeOperation = 'destination-out';
+  for (let i = 0; i < 40; i++) { g.fillStyle = `rgba(0,0,0,${0.3 + rnd() * 0.5})`; g.fillRect(-12 + rnd() * 24, -18 + rnd() * 34, 0.8 + rnd() * 2, 0.6 + rnd() * 1.4); }
+  g.globalCompositeOperation = 'source-over';
+  // 젖은 광택 한 점
+  g.fillStyle = 'rgba(255,110,120,0.22)';
+  g.beginPath(); g.ellipse(-3, 2, 3.2, 1.3, -0.5, 0, TAU); g.fill();
   _bloodHand = c;
   return c;
 }
@@ -220,24 +235,25 @@ export class Door extends Entity {
   lights(L) { if (this.mark === 'blood') L.add(this.cx, this.bottom - 58, 80, '#ff2840', 0.35); }
   /** 피 손자국 + 흘러내리는 핏방울 3줄 + 옅은 붉은 빛 */
   drawBloodMark(ctx, t) {
-    const hx = this.cx - 2, hy = this.bottom - 58;
+    const hx = this.cx + 1, hy = this.bottom - 60;   // 문짝 윗부분 널빤지 위
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    const gs = 70 + Math.sin(t * 2.2) * 4;
+    const gs = 54 + Math.sin(t * 2.2) * 3;
     ctx.drawImage(bloodGlowSprite(), hx - gs / 2, hy - gs / 2, gs, gs);
     ctx.globalCompositeOperation = 'source-over';
-    ctx.drawImage(bloodHandSprite(), hx - 22, hy - 30, 44, 52);
-    ctx.strokeStyle = '#6a0812'; ctx.fillStyle = '#7a0a16'; ctx.lineCap = 'round'; ctx.lineWidth = 2.4;
+    ctx.drawImage(bloodHandSprite(), hx - 20, hy - 24, 40, 50);
+    // 흘러내리는 핏방울 3줄 (자라다가 떨어진다)
+    ctx.strokeStyle = 'rgba(88,6,16,0.9)'; ctx.fillStyle = 'rgba(104,8,20,0.95)'; ctx.lineCap = 'round'; ctx.lineWidth = 1.6;
     for (let i = 0; i < 3; i++) {
-      const dx = hx - 6 + i * 6.5 + (i === 1 ? 1 : 0), y0 = hy + 12 + (i === 1 ? 3 : 0);
-      const ph = (t * 0.33 + i * 0.37) % 1;
-      const len = 4 + 16 * ease.inQuad(Math.min(1, ph / 0.8));
+      const dx = hx - 4 + i * 4.2, y0 = hy + 10 + (i === 1 ? 4 : i * 1.5);
+      const ph = (t * 0.3 + i * 0.37) % 1;
+      const len = 3 + 12 * ease.inQuad(Math.min(1, ph / 0.8));
       ctx.beginPath(); ctx.moveTo(dx, y0); ctx.lineTo(dx, y0 + len); ctx.stroke();
-      ctx.beginPath(); ctx.arc(dx, y0 + len, 1.8, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.arc(dx, y0 + len, 1.3, 0, TAU); ctx.fill();
       if (ph > 0.8) {   // 떨어지는 방울
         const f = (ph - 0.8) / 0.2;
         ctx.globalAlpha = 1 - f;
-        ctx.beginPath(); ctx.arc(dx, y0 + len + 3 + f * 18, 1.6, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.arc(dx, y0 + len + 2 + f * 16, 1.1, 0, TAU); ctx.fill();
         ctx.globalAlpha = 1;
       }
     }

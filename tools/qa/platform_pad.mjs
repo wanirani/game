@@ -90,7 +90,7 @@ try {
     await s.wait(1500);
     await connect(s.page);
     await press(s.page, BTN.A);
-    await suite.check({ id: 'glyphs.filter', group: 'glyphs', issue: 'P-05', gate: 'PLAT-INPUT', title: "'uinput-fpc' pads are ignored" }, async () => {
+    await suite.check({ id: 'glyphs.filter', group: 'glyphs', issue: '§4.1', gate: 'PLAT-INPUT', title: "'uinput-fpc' pads are ignored" }, async () => {
       const r = await s.eval(() => ({ mode: window.__game.input.mode ?? null, padInfo: window.__game.input.padInfo ?? null }));
       if (typeof r.mode !== 'string') return { pass: false, detail: 'input.mode missing (no device model yet)' };
       return { pass: r.mode !== 'pad' && !r.padInfo, detail: fmt(r) };

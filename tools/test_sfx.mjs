@@ -145,7 +145,8 @@ const res = await page.evaluate(async ({ only, FEEL }) => {
     if (e2.live.filter((y) => y.name === 'awaken_hold').length !== 2) B('stopName 직후 같은 소리를 다시 재생하면 gap 에 막힘');
   }
   // ── 렌더 ──
-  const SR = 44100, DELAY = 0.05;
+  // DELAY 0.6: 마스터 컴프레서가 렌더 시작 후 ~0.5초 동안 짧은 소리를 30~45% 작게 내므로 정상 상태(게임에서 듣는 음량)에서 잰다
+  const SR = 44100, DELAY = 0.6;
   out.unknownOnly = (only || []).filter((n) => !Object.prototype.hasOwnProperty.call(SFX, n));
   const names = (only || Object.keys(SFX)).filter((n) => Object.prototype.hasOwnProperty.call(SFX, n));
   const stat = (b, from) => {

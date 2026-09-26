@@ -89,6 +89,15 @@ function vignetteSprite(key, rgb) {
     g.fillStyle = gr; g.fillRect(0, 0, w, h);
   });
 }
+/** 부패 상태 화면: 초록 색조 rgba(90,140,20,0.12) + 초록 비네트를 한 장에 (전체 화면 그리기 1회) */
+function blightStatusSprite() {
+  return sprite('blight_status', 320, 180, (g, w, h) => {
+    g.fillStyle = 'rgba(90,140,20,0.12)'; g.fillRect(0, 0, w, h);
+    const gr = g.createRadialGradient(w / 2, h / 2, h * 0.3, w / 2, h / 2, w * 0.62);
+    gr.addColorStop(0, 'rgba(60,110,10,0)'); gr.addColorStop(0.55, 'rgba(60,110,10,0.16)'); gr.addColorStop(1, 'rgba(60,110,10,0.55)');
+    g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  });
+}
 /** 포자 구름 덩어리 (부드러운 원) — tone 0 연두, 1 탁한 올리브 */
 function blobSprite(tone) {
   return sprite('blob' + tone, 128, 128, (g) => {
@@ -506,25 +515,31 @@ export class HeartbeatGimmick extends MemberB {
 const BLIGHT_DEF = { kind: 'blight', gain: 30, decay: 12, on: 100, off: 40, dot: 0.015, spores: [], podRespawn: 12 };
 const MAX_DYN_CLOUDS = 16;
 const MAX_PODS = 24;
+/** 포자 구름 텍스처 (공용, 변형 2개). 부드러운 덩어리들을 한 캔버스에 구워 두고 구름마다 drawImage 한 번으로 늘여 그린다.
+ *  텍스처의 가운데 [0.12, 0.88] × [0.15, 0.85] 가 판정 사각형에 맞는다 (바깥은 부드러운 가장자리) */
+const CLOUD_IN = { x0: 0.12, x1: 0.88, y0: 0.15, y1: 0.85 };
+function cloudSprite(v) {
+  return sprite('cloud' + v, 256, 160, (g, w, h) => {
+    const rng = new RNG(v ? 31 : 17);
+    const b0 = blobSprite(0), b1 = blobSprite(1);
+    if (!b0 || !b1) return;
+    for (let i = 0; i < 40; i++) {
+      const x = w * rng.range(CLOUD_IN.x0 + 0.04, CLOUD_IN.x1 - 0.04), y = h * rng.range(CLOUD_IN.y0 + 0.06, CLOUD_IN.y1 - 0.06);
+      const r = rng.range(24, 44);
+      g.globalAlpha = rng.range(0.5, 0.9);
+      g.drawImage(rng.next() < 0.3 ? b1 : b0, x - r, y - r, r * 2, r * 2);
+    }
+  });
+}
 function makeCloud(x, y, w, h, life, isStatic) {
   const area = w * h;
-  const sp = Math.max(64, Math.sqrt(area / 34));
-  const cols = Math.max(1, Math.round(w / sp)), rows = Math.max(1, Math.round(h / sp));
-  const blobs = [];
-  for (let j = 0; j < rows; j++) {
-    for (let i = 0; i < cols; i++) {
-      blobs.push({
-        x: x + (i + 0.5) * (w / cols) + rand(-0.22, 0.22) * (w / cols),
-        y: y + (j + 0.5) * (h / rows) + rand(-0.22, 0.22) * (h / rows),
-        r: Math.min(sp * rand(0.72, 0.98) + 18, Math.max(w, h) * 0.75 + 30),
-        ph: rand(0, TWO_PI), a: rand(0.7, 1), tone: (i + j) % 3 === 2 ? 1 : 0,
-      });
-    }
-  }
+  const wisps = [];
+  const nw = clamp(Math.round(area / 60000), 2, 4);
+  for (let i = 0; i < nw; i++) wisps.push({ u: rand(0.15, 0.85), v: rand(0.2, 0.8), ph: rand(0, TWO_PI), sp: rand(0.25, 0.5), tone: i % 2 });
   const nm = clamp(Math.round(area / 4200), 4, 40);
   const motes = [];
   for (let i = 0; i < nm; i++) motes.push({ u: Math.random(), v: Math.random(), sp: rand(10, 26), ph: rand(0, TWO_PI) });
-  return { x, y, w, h, life, max: life, age: 0, static: isStatic, blobs, motes };
+  return { x, y, w, h, life, max: life, age: 0, static: isStatic, v: Math.random() < 0.5 ? 0 : 1, flip: Math.random() < 0.5, ph: rand(0, TWO_PI), wisps, motes };
 }
 export class BlightGimmick extends MemberB {
   constructor(world, cfg, room) {
@@ -671,32 +686,40 @@ export class BlightGimmick extends MemberB {
     const list = this.visibleClouds(cam);
     if (!list.length) return;
     const q = qualityOf(this.world), t = this.t;
-    const s0 = blobSprite(0), s1 = blobSprite(1);
     ctx.save();
     if (layer === 'back') {
-      const step = q < 0.6 ? 2 : 1;
+      // 구름 몸통: 구워 둔 텍스처 한 장 (느린 흔들림·숨쉬기) + 떠도는 안개 몇 가닥
+      const nw = q < 0.6 ? 1 : q < 0.9 ? 2 : 4;
       for (const c of list) {
-        const ca = this.cloudAlpha(c);
-        for (let i = 0; i < c.blobs.length; i += step) {
-          const b = c.blobs[i], spr = b.tone ? s1 : s0;
-          if (!spr) continue;
-          const r = b.r * (1 + 0.06 * Math.sin(t * 0.6 + b.ph));
-          const x = b.x + Math.sin(t * 0.35 + b.ph) * 9, y = b.y + Math.cos(t * 0.27 + b.ph * 1.3) * 6;
-          ctx.globalAlpha = ca * b.a * 0.85;
-          ctx.drawImage(spr, x - r, y - r, r * 2, r * 2);
+        const ca = this.cloudAlpha(c), spr = cloudSprite(c.v);
+        if (spr) {
+          const dw = c.w / (CLOUD_IN.x1 - CLOUD_IN.x0), dh = c.h / (CLOUD_IN.y1 - CLOUD_IN.y0);
+          const sx = Math.sin(t * 0.4 + c.ph) * 6, br = 1 + 0.04 * Math.sin(t * 0.7 + c.ph);
+          const x = c.x - dw * CLOUD_IN.x0 + sx - (dw * (br - 1)) / 2, y = c.y - dh * CLOUD_IN.y0 - (dh * (br - 1)) / 2;
+          ctx.globalAlpha = ca * (0.88 + 0.12 * Math.sin(t * 0.9 + c.ph));
+          if (c.flip) { ctx.save(); ctx.translate(x + dw * br, y); ctx.scale(-1, 1); ctx.drawImage(spr, 0, 0, dw * br, dh * br); ctx.restore(); }
+          else ctx.drawImage(spr, x, y, dw * br, dh * br);
+        }
+        const r0 = Math.min(c.w, c.h) * 0.42 + 16;
+        for (let i = 0; i < Math.min(nw, c.wisps.length); i++) {
+          const wp = c.wisps[i], b = blobSprite(wp.tone);
+          if (!b) continue;
+          const x = c.x + c.w * (wp.u + 0.1 * Math.sin(t * wp.sp + wp.ph)), y = c.y + c.h * (wp.v + 0.12 * Math.cos(t * wp.sp * 0.8 + wp.ph));
+          const r = r0 * (0.9 + 0.15 * Math.sin(t * 0.5 + wp.ph));
+          ctx.globalAlpha = ca * 0.45;
+          ctx.drawImage(b, x - r, y - r, r * 2, r * 2);
         }
       }
     } else {
-      // 앞쪽 옅은 안개 (몸이 구름 속에 잠겨 보이게) + 떠도는 포자 알갱이
+      // 앞쪽: 떠도는 포자 알갱이 (+ 고품질이면 옅은 안개 한 겹 — 몸이 구름 속에 잠겨 보이게)
       for (const c of list) {
         const ca = this.cloudAlpha(c);
-        if (s0) {
-          for (let i = 0; i < c.blobs.length; i += 3) {
-            const b = c.blobs[i];
-            const r = b.r * 0.8;
-            const x = b.x + Math.cos(t * 0.3 + b.ph) * 12, y = b.y + Math.sin(t * 0.22 + b.ph) * 8;
-            ctx.globalAlpha = ca * 0.28;
-            ctx.drawImage(s0, x - r, y - r, r * 2, r * 2);
+        if (q >= 1) {
+          const spr = cloudSprite(1 - c.v);
+          if (spr) {
+            const dw = c.w / (CLOUD_IN.x1 - CLOUD_IN.x0), dh = c.h / (CLOUD_IN.y1 - CLOUD_IN.y0);
+            ctx.globalAlpha = ca * 0.16;
+            ctx.drawImage(spr, c.x - dw * CLOUD_IN.x0 - Math.sin(t * 0.33 + c.ph) * 10, c.y - dh * CLOUD_IN.y0, dw, dh);
           }
         }
         ctx.globalCompositeOperation = 'lighter';
@@ -716,13 +739,15 @@ export class BlightGimmick extends MemberB {
   }
   drawScreen(ctx, vw, vh, hud) {
     const w = this.world;
-    const vg = vignetteSprite('blight', '60,110,10');
+    // 화면 색조: 상태 이상이면 초록 색조 + 비네트를 구워 둔 한 장 (전체 화면 1회), 게이지가 차는 중이면 옅은 비네트 (저품질은 생략)
     ctx.save();
     if (this.status) {
-      ctx.fillStyle = 'rgba(90,140,20,0.12)'; ctx.fillRect(0, 0, vw, vh);
-      if (vg) { ctx.globalAlpha = 0.5 + 0.12 * Math.sin(this.t * 3); ctx.drawImage(vg, 0, 0, vw, vh); }
-    } else if (this.meter > 1 && vg) {
-      ctx.globalAlpha = 0.35 * (this.meter / 100); ctx.drawImage(vg, 0, 0, vw, vh);
+      const st = blightStatusSprite();
+      if (st) { ctx.globalAlpha = 0.88 + 0.12 * Math.sin(this.t * 3); ctx.drawImage(st, 0, 0, vw, vh); }
+      else { ctx.fillStyle = 'rgba(90,140,20,0.12)'; ctx.fillRect(0, 0, vw, vh); }
+    } else if (this.meter > 1 && qualityOf(w) >= 0.6) {
+      const vg = vignetteSprite('blight', '60,110,10');
+      if (vg) { ctx.globalAlpha = 0.35 * (this.meter / 100); ctx.drawImage(vg, 0, 0, vw, vh); }
     }
     ctx.restore();
     if (!this.hasMeter) return;              // 게이지 줄은 그릴 때만 받는다 (hud.meter() 는 줄을 하나 소비한다)

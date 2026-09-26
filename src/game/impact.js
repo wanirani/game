@@ -29,7 +29,7 @@ import { audio, SFX } from '../core/audio.js';
 import { bus } from '../core/events.js';
 import { input } from '../core/input.js';
 import { FONT } from '../core/ui.js';
-import * as hitfx from '../render/hitfx.js';
+import * as HITFX_MOD from '../render/hitfx.js';
 import { MOVESETS } from '../data/movesets.js';
 import {
   CLASS_INDEX, STRENGTH_RULES, FEEL_MOVE_OVERRIDES, HITSTOP, HS_CAP, HS_WINDOW, IMPACT_CAM, HIT_SFX, COUNTER, BACK, CALLOUT,
@@ -43,6 +43,7 @@ export const ELEMENT_NAMES = { fire: '화염', ice: '냉기', holy: '신성', da
 const EL_PRESET = { fire: 'fire', ice: 'ice', holy: 'holy', dark: 'dark', thunder: 'thunder' };
 const SIZE_I = { L: 0, M: 1, H: 2, F: 3, U: 0, S: 3, A: 3 };
 const FRAME = 1 / 60;
+let HFX = HITFX_MOD;   // render/hitfx.js (FEEL-REACT); 테스트는 IMPACT_DEBUG.useHitfx 로 바꿔 끼운다
 
 // ───────────────────────── 동작 색인 ─────────────────────────
 let MOVE_IX = null;
@@ -263,7 +264,7 @@ function hitfxLive() {
   const now = performance.now();
   if (now - _hfxCheckT < 2000) return false;
   _hfxCheckT = now;
-  try { _hfxLive = !!hitfx.glow?.('#ffffff'); } catch { _hfxLive = false; }
+  try { _hfxLive = !!HFX.glow?.('#ffffff'); } catch { _hfxLive = false; }
   return _hfxLive;
 }
 
@@ -437,25 +438,25 @@ function hitVisuals(world, attack, target, info, cls, px, py, dir) {
     // (1) 무기 타격 스프라이트
     let img = null, ang = 0;
     const swing = info.moveId ? moveIndex().get(info.moveId)?.mv?.slash?.angle ?? 0 : 0;
-    if (typ === 'cut') { img = hitfx.cut(rim); ang = (dir > 0 ? swing : Math.PI - swing) + rand(-0.3, 0.3); }
-    else if (typ === 'streak') { img = hitfx.streak(rim); ang = theta; }
-    else if (typ === 'star') { img = hitfx.star(rim); ang = rand(0, Math.PI); }
-    else if (typ === 'bullet') { img = hitfx.star('#fff0b0'); ang = rand(0, Math.PI); }
-    else img = hitfx.glow(rim);
+    if (typ === 'cut') { img = HFX.cut(rim); ang = (dir > 0 ? swing : Math.PI - swing) + rand(-0.3, 0.3); }
+    else if (typ === 'streak') { img = HFX.streak(rim); ang = theta; }
+    else if (typ === 'star') { img = HFX.star(rim); ang = rand(0, Math.PI); }
+    else if (typ === 'bullet') { img = HFX.star('#fff0b0'); ang = rand(0, Math.PI); }
+    else img = HFX.glow(rim);
     emitSprite(fx, img, px, py, size, ang, spr.life);
-    if (typ === 'star' && !small) emitSprite(fx, hitfx.ring(rim), px, py, size * 1.4, 0, spr.life * 1.4, 0.8);
-    if (info.counter) emitSprite(fx, hitfx.star(COUNTER.color), px, py, 80, rand(0, 1), 0.16);
-    if (info.crit && !small) emitSprite(fx, hitfx.star('#ffe080'), px, py, size * 0.9, rand(0, 1), 0.16, 0.9);
+    if (typ === 'star' && !small) emitSprite(fx, HFX.ring(rim), px, py, size * 1.4, 0, spr.life * 1.4, 0.8);
+    if (info.counter) emitSprite(fx, HFX.star(COUNTER.color), px, py, 80, rand(0, 1), 0.16);
+    if (info.crit && !small) emitSprite(fx, HFX.star('#ffe080'), px, py, size * 0.9, rand(0, 1), 0.16, 0.9);
     // (2) 재질 파편 (hitfx 가 예산 안에서 방출; 소품은 불꽃 몇 개)
     if (mat === 'prop') emitN(fx, 'spark', px, py, 4 * qk, { color: MATERIAL.prop.color });
-    else if (!small || Math.random() < 0.5) hitfx.materialBurst(fx, mat, px, py, dir, small ? 'L' : cls, el ? rim : null);
+    else if (!small || Math.random() < 0.5) HFX.materialBurst(fx, mat, px, py, dir, small ? 'L' : cls, el ? rim : null);
     // (3) 속성 강조
     if (el && EL_PRESET[el]) emitN(fx, EL_PRESET[el], px, py, (small ? 3 : 6) * qk, {});
     // (4) 자국
     const M = MATERIAL[mat];
     if (M?.decal && q !== 'low' && !small) {
       const p = cls === 'H' || cls === 'F' || cls === 'S' || cls === 'A' ? (M.decalHeavy ?? M.decal) : M.decal;
-      if (Math.random() < p) hitfx.stampDecal(world, px, py, dir, mat);
+      if (Math.random() < p) HFX.stampDecal(world, px, py, dir, mat);
     }
     return;
   }
@@ -542,4 +543,8 @@ function hurtImpact(world, attack, target, info) {
 }
 
 /** 테스트·도구용 */
-export const IMPACT_DEBUG = { moveIndex, resolveMove, weightOf, qualityKey, hitfxLive };
+export const IMPACT_DEBUG = {
+  moveIndex, resolveMove, weightOf, qualityKey, hitfxLive,
+  /** 테스트용: hitfx 구현을 바꿔 끼운다 (null = 원래 모듈) */
+  useHitfx(m) { HFX = m || HITFX_MOD; _hfxLive = null; _hfxCheckT = -1e9; },
+};

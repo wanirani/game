@@ -93,9 +93,9 @@ const DEEP_UNDER = 'rgba(8,38,66,0.63)', DEEP_FRONT = 'rgba(8,38,66,0.3)';
 const WET_MARKERS = new Set(['1', '2', '3', '4', '5', '6', '7', '8', '9', '@', 'u', 'C', 'T', 'p', 'm', '$', '!']);
 // 폭포 줄무늬 3겹: 타일 안 레인 x 위치, 점선 [길이, 간격], 흐르는 속도(px/s), 굵기, 알파
 const FALL_FLOW = [
-  { lanes: [6, 29], dash: [30, 18], speed: 430, lw: 2, a: 0.32 },
-  { lanes: [17, 40], dash: [14, 38], speed: 520, lw: 1.5, a: 0.26 },
-  { lanes: [11, 35], dash: [8, 30], speed: 380, lw: 1.2, a: 0.22 },
+  { lanes: [6, 29], dash: [30, 18], speed: 430, lw: 2, a: 0.42 },
+  { lanes: [17, 40], dash: [14, 38], speed: 520, lw: 1.5, a: 0.34 },
+  { lanes: [11, 35], dash: [8, 30], speed: 380, lw: 1.2, a: 0.28 },
 ];
 
 export class TileRenderer {
@@ -805,6 +805,10 @@ export class TileRenderer {
       vis.push(f);
     }
     if (!vis.length) return;
+    // 물줄기 광택: 가로 명암(가장자리 어둡고 굵은 빛줄기 몇 개)을 세로로 늘여 붙인다. 기둥마다 좌우를 바꿔 반복 티가 덜 나게
+    const sheen = this.fallSheen(glow);
+    ctx.globalAlpha = 0.55;
+    for (const f of vis) ctx.drawImage(sheen, (f.tx & 1) * S, 0, S, 8, f.tx * S, f.y0 * S, S, (f.y1 - f.y0 + 1) * S);
     ctx.strokeStyle = glow;
     // 흐르는 줄무늬 3겹 (겹마다 길이·속도가 다르고, 레인 위치를 기둥마다 조금씩 흔들어 똑같아 보이지 않게)
     for (const L of FALL_FLOW) {
@@ -878,6 +882,24 @@ export class TileRenderer {
       const c = this.darkProp(p.d.id, p.d.w, p.d.h, p.d.dim);
       if (c) ctx.drawImage(c, p.x, p.y);
     }
+  }
+  /** 폭포 광택 띠 (96×8 캐시: 왼쪽 48px = 기본, 오른쪽 48px = 좌우 반전) */
+  fallSheen(glow) {
+    if (this.sheen && this.sheenCol === glow) return this.sheen;
+    const c = this.sheen || document.createElement('canvas');
+    c.width = TILE * 2; c.height = 8;
+    const g = c.getContext('2d');
+    g.clearRect(0, 0, c.width, c.height);
+    for (let x = 0; x < TILE; x++) {
+      const u = x / (TILE - 1);
+      const edge = Math.min(1, Math.min(u, 1 - u) * 6);          // 가장자리로 갈수록 옅게
+      const band = Math.pow(Math.max(0, Math.sin(x * 0.33 + 0.6)), 4) * 0.55 + Math.pow(Math.max(0, Math.sin(x * 0.81 + 2.1)), 8) * 0.45;
+      const a = Math.min(1, (0.18 + band) * edge);
+      g.fillStyle = rgba(glow, a);
+      g.fillRect(x, 0, 1, 8); g.fillRect(TILE * 2 - 1 - x, 0, 1, 8);
+    }
+    this.sheen = c; this.sheenCol = glow;
+    return c;
   }
   /** 'W' 창문 스프라이트 (캐시): win = 창틀·유리·창살 (원점 = 창문 칸 좌상단 −8, −12), shaft = 비스듬한 빛줄기 (원점 = 칸 좌상단) */
   windowSprites() {

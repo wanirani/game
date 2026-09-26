@@ -510,6 +510,27 @@ function magmaBandSprite() {
     g.fillStyle = gr; g.fillRect(0, 0, w, h);
   });
 }
+/** 용암 표면의 굳은 껍질·갈라진 빛 (가로로 이어지는 256px 타일, 캐시) */
+function magmaCrustSprite() {
+  return cachedCanvas('magma:crust', 256, 64, (g, w, h) => {
+    let seed = 11;
+    const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+    for (let i = 0; i < 26; i++) {
+      const x = rnd() * w, y = 6 + rnd() * (h - 12), rx = 10 + rnd() * 26, ry = 3 + rnd() * 6;
+      for (const ox of [x - w, x, x + w]) {   // 가로로 이음매 없이
+        g.fillStyle = `rgba(90,12,2,${(0.25 + rnd() * 0.3).toFixed(2)})`;
+        g.beginPath(); g.ellipse(ox, y, rx, ry, (rnd() - 0.5) * 0.4, 0, TAU); g.fill();
+      }
+    }
+    g.strokeStyle = 'rgba(255,225,140,0.45)'; g.lineWidth = 1.2;
+    for (let i = 0; i < 14; i++) {
+      let x = rnd() * w, y = 8 + rnd() * (h - 16);
+      g.beginPath(); g.moveTo(x, y);
+      for (let k = 0; k < 4; k++) { x += 6 + rnd() * 12; y += (rnd() - 0.5) * 8; g.lineTo(x, y); }
+      g.stroke();
+    }
+  });
+}
 function heatSprite() {
   return cachedCanvas('magma:heat', 2, 64, (g, w, h) => {
     const gr = g.createLinearGradient(0, 0, 0, h);
@@ -685,6 +706,16 @@ class MagmaGimmick {
       if (lv + MAGMA_GRAD_H > cam.y - 8) ctx.drawImage(magmaBodySprite(), 0, 0, 2, 128, x0, lv - 4, vw, MAGMA_GRAD_H + 4);
       const dTop = Math.max(lv + MAGMA_GRAD_H, cam.y - 8), dBot = Math.min(mH + 400, cam.y + cam.vh + 8);
       if (dBot > dTop) { ctx.fillStyle = '#7a1004'; ctx.fillRect(x0, dTop, vw, dBot - dTop); }
+      // 굳은 껍질 두 겹 (느리게 흘러간다)
+      if (lv + 70 > cam.y) {
+        const cr = magmaCrustSprite();
+        for (let k = 0; k < 2; k++) {
+          const off = ((this.t * (k ? -6 : 11)) % 256 + 256) % 256, yy = lv + 4 + k * 40;
+          ctx.globalAlpha = k ? 0.45 : 0.85;
+          for (let x = Math.floor((x0 - off) / 256) * 256 + off; x < x0 + vw; x += 256) ctx.drawImage(cr, x, yy, 256, 48);
+        }
+        ctx.globalAlpha = 1;
+      }
       // 빛나는 결 (느리게 흐르는 밝은 선)
       ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = 'rgba(255,190,90,0.18)'; ctx.lineWidth = 2;
       ctx.beginPath();
@@ -703,11 +734,13 @@ class MagmaGimmick {
     ctx.save();
     // 차오르기 경고: 목표 수위까지 띠가 맥동
     if (this.mode === 'tide' && this.state === 'warn') {
-      const a = 0.35 * (0.5 + 0.5 * Math.sin(this.t * 9));
+      const pulse = 0.5 + 0.5 * Math.sin(this.t * 9), a = 0.35 * pulse;
       const hr = this.openRuns(this.highPx + 2, cam);
-      ctx.fillStyle = `rgba(255,120,40,${(a * 0.5).toFixed(3)})`;
+      ctx.fillStyle = `rgba(255,120,40,${(0.06 + 0.1 * pulse).toFixed(3)})`;   // 잠길 구역
       for (let i = 0; i < hr.length; i += 2) ctx.fillRect(hr[i], this.highPx, hr[i + 1] - hr[i], Math.max(0, lv - this.highPx));
-      ctx.strokeStyle = `rgba(255,150,60,${a.toFixed(3)})`; ctx.lineWidth = 3; ctx.setLineDash([12, 8]); ctx.lineDashOffset = -this.t * 40;
+      ctx.fillStyle = `rgba(255,120,40,${a.toFixed(3)})`;   // 목표 수위 띠
+      for (let i = 0; i < hr.length; i += 2) ctx.fillRect(hr[i], this.highPx - 5, hr[i + 1] - hr[i], 10);
+      ctx.strokeStyle = `rgba(255,190,90,${(0.35 + 0.5 * pulse).toFixed(3)})`; ctx.lineWidth = 2; ctx.setLineDash([12, 8]); ctx.lineDashOffset = -this.t * 40;
       ctx.beginPath(); for (let i = 0; i < hr.length; i += 2) { ctx.moveTo(hr[i], this.highPx); ctx.lineTo(hr[i + 1], this.highPx); } ctx.stroke(); ctx.setLineDash([]);
       this.openRuns(lv + 2, cam);   // _runs 재사용 → 다시 수면 구간
     }
@@ -1058,6 +1091,17 @@ class WindGimmick {
           ctx.moveTo(sx, y + h - off); ctx.lineTo(sx, y + h - off - 18);
         }
         ctx.stroke();
+        // 위로 흐르는 갈매기 표시 (밝은 배경에서도 보이게 어두운 테두리 먼저)
+        const nch = Math.max(2, Math.round(h / 96));
+        ctx.beginPath();
+        for (let i = 0; i < nch; i++) {
+          const cy = y + h - ((this.t * 120 + i * (h / nch)) % h), cx = x + TILE / 2;
+          if (cy < y + 10) continue;
+          ctx.moveTo(cx - 9, cy + 6); ctx.lineTo(cx, cy - 2); ctx.lineTo(cx + 9, cy + 6);
+        }
+        ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(10,20,40,0.22)'; ctx.stroke();
+        ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(235,245,255,0.5)'; ctx.stroke();
+        ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(230,240,255,0.22)';
       }
       ctx.restore();
       return;

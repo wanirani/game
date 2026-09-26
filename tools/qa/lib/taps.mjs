@@ -76,7 +76,7 @@ export async function installTapRecorder(page) {
       if (R.on && R.cur && R.cur === g.top && this.canvas === g.canvas && R.text.length < 5000) {
         const m = this.getTransform();
         const px = parseFloat((/([\d.]+)px/.exec(this.font) || [])[1] || '0');
-        if (px > 0) R.text.push({ s: String(str).slice(0, 24), bpx: px * Math.hypot(m.a, m.b) });
+        if (px > 0) R.text.push({ s: String(str).slice(0, 40), bpx: px * Math.hypot(m.a, m.b), ly: (m.b * x + m.d * y + m.f) / (g.scale || 1) });
       }
       return ft.call(this, str, x, y, mw);
     };
@@ -129,6 +129,19 @@ export async function auditScene(page, ev, { wait = 900, settle = 150 } = {}) {
     return { scene: g.scenes.map((s) => s.name).join('>'), top: top?.name, cssScale: +cssScale.toFixed(3), uiK: +uiK.toFixed(3), uiScale: !!top?.uiScale, n: regions.length, red, yellow, ok: red.length === 0 && yellow.length === 0, regions, text };
   }, { MIN: MIN_CSS, RED: RED_CSS });
 }
+
+/**
+ * Strings the top scene draws on the game canvas over a few fresh frames, optionally only those whose baseline
+ * lies in [minY, maxY] (logical view px, e.g. the bottom hint bar: minY = viewH - 48). Needs installTapRecorder().
+ */
+export async function drawnText(page, { minY = -Infinity, maxY = Infinity, frames = 4 } = {}) {
+  await page.evaluate(() => { window.__qaTaps.text.length = 0; });
+  await page.evaluate((n) => new Promise((res) => { let k = 0; const f = () => (++k >= n ? res() : requestAnimationFrame(f)); requestAnimationFrame(f); }), frames);
+  return page.evaluate(({ minY, maxY }) => [...new Set(window.__qaTaps.text.filter((t) => t.ly >= minY && t.ly <= maxY).map((t) => t.s))], { minY: Number.isFinite(minY) ? minY : -1e9, maxY: Number.isFinite(maxY) ? maxY : 1e9 });
+}
+
+/** Keyboard-only labels (keycaps and legacy hint text) that must not show while a controller is the active device. */
+export const KEYBOARD_LABEL = /^(Z|X|Q|E|S|D|A|C|F|V|R|G|W|J|K|M|I|Esc|ESC|Enter|Tab|Space|Shift|Backspace)$|Z\/Enter|Enter\/Z|\bEsc\b|\bESC\b/;
 
 /** Short text for a failing audit: counts and a few examples. */
 export function describeAudit(a, max = 5) {

@@ -12,7 +12,7 @@ export const PUPPETS = {
    ]
   },
   "kael_crusader": {
-   "h": "2422e52baf83",
+   "h": "6b0ba8a70883",
    "turn": true,
    "lv": [
     "hi",
@@ -57,7 +57,7 @@ export const PUPPETS = {
    ]
   },
   "kael_templar": {
-   "h": "29d94fc4f007",
+   "h": "a5095a41b87b",
    "turn": true,
    "lv": [
     "hi",
