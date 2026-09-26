@@ -7,12 +7,27 @@
 //   onPhase(n, world)        페이즈 전환 시 (n = 1, 2, ...)
 //   render(ctx, world)       그리기 (render/bosses.js 의 함수 호출 권장)
 //   hurtboxes()              [rect...] 여러 개의 피격 판정 (기본: 몸통 1개)
+// 타격감 훅 (feel §2.1, §4.6; MASTER_PLAN §1.14):
+//   world.freezeEnemies      true 인 동안 AI·이동·접촉 피해·자체 공격 시계를 멈춘다 (timeStop 처럼, 회색 화면 없이).
+//                            피격·피격 섬광·체력바 잔상과 사망 연출은 계속된다. 공격 개체는 heldByFreeze() 로 함께 멈춘다.
+//   boss.telegraph           예고(윈드업) 중이면 true → impact.js 카운터 판정. 경고 도우미(a_common/b_common)가 켜고,
+//                            보스 파일은 자기 윈드업에서 this.telegraphFor(초) 또는 this.telegraph = true/false 로 켜고 끈다.
 import { Entity } from '../entity.js';
 import { moveBody, isSolidType } from '../../core/physics.js';
 import { enemyStrike } from '../combat.js';
 import { enemyStats } from '../enemy.js';
 import { rand, clamp, angleTo } from '../../core/math.js';
 import { audio } from '../../core/audio.js';
+
+/** 경고 하나가 켜는 예고(카운터) 창의 최대 길이 (초) — 긴 연속 패턴 내내 카운터가 되지 않게 */
+const TG_MAX = 1.5;
+/**
+ * 적 정지(world.freezeEnemies) 중 보스와 보스 소유 공격 개체(예고·광선·고리·지대·분출)를 붙잡아 둘지.
+ * 주인이 죽는 중이면 붙잡지 않는다 (사망 연출이 흐르고 공격 개체가 스스로 정리되게). c_common.js 도 이것을 쓰면 된다.
+ */
+export function heldByFreeze(world, owner) {   // [hook:feel]
+  return !!world?.freezeEnemies && !(owner && (owner.dead || owner.dying > 0));
+}
 
 export class Boss extends Entity {
   constructor(world, def, x, y) {
@@ -43,9 +58,16 @@ export class Boss extends Entity {
     this.inferno = world.state.difficulty === 'inferno' || world.state.difficulty === 'nightmare';
     this.anim = 'idle'; this.animT = 0;
     this.dying = 0;
+    this._tgT = 0; this._tgOn = false;   // [hook:feel] 예고(윈드업) 창 — get telegraph
     this.init?.();
   }
   get player() { return this.world.player; }
+  /** 예고(윈드업) 중인가 — 카운터 판정 (feel §4.6). 죽는 중·무적(변신)·무해 상태에서는 false */
+  get telegraph() { return (this._tgOn || this._tgT > 0) && !(this.dying > 0) && !this.invuln && !this.harmless; }   // [hook:feel]
+  /** true: 끌 때까지 예고 중 / false: 예고 창을 모두 끈다 */
+  set telegraph(v) { this._tgOn = !!v; if (!v) this._tgT = 0; }   // [hook:feel]
+  /** sec 초 동안 예고 중 (최대 TG_MAX). 보스 시계와 같이 흐른다 (시간 정지 ×0.25, 적 정지 중 멈춤) */
+  telegraphFor(sec) { if (sec > 0) this._tgT = Math.max(this._tgT, Math.min(sec, TG_MAX)); }   // [hook:feel]
   setState(s) { this.state = s; this.stateT = 0; this.didAct = false; }
   facePlayer() { const p = this.player; if (p) this.facing = Math.sign(p.cx - this.cx) || this.facing; }
   hurtboxes() { return [{ x: this.x + 6, y: this.y + 6, w: this.w - 12, h: this.h - 12 }]; }
@@ -60,6 +82,7 @@ export class Boss extends Entity {
   aimAt(x, y, speed) { const a = angleTo(x, y, this.player.cx, this.player.cy); return { vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, a }; }
 
   update(dt, world) {
+    if (heldByFreeze(world, this)) { this._freezeTick(dt); return; }   // [hook:feel] 적 정지: AI·이동·접촉·패턴 시계 정지 (사망 연출은 계속)
     this.t += dt; this.stateT += dt; this.animT += dt;
     if (this.flashT > 0) this.flashT -= dt;
     this.hpGhost = this.hpGhost > this.hp ? Math.max(this.hp, this.hpGhost - this.stats.maxHp * 0.25 * dt) : this.hp;
@@ -71,6 +94,7 @@ export class Boss extends Entity {
     }
     if (world.cutscene) return;
     const ts = world.timeStop > 0 ? 0.25 : 1;
+    if (this._tgT > 0) this._tgT -= dt * ts;   // [hook:feel]
     this.think?.(dt * ts, world);
     if (!this.noGravity) moveBody(this, dt * ts, world.map, world.platforms);
     else { this.x += this.vx * dt * ts; this.y += this.vy * dt * ts; }
@@ -84,6 +108,12 @@ export class Boss extends Entity {
     if ((this.def.contact ?? 1) > 0 && !this.harmless) {
       for (const hb of this.hurtboxes()) enemyStrike(world, hb, { owner: this, stats: this.stats, mv: this.def.contact ?? 0.8, dir: Math.sign(world.player.cx - this.cx) || 1, kb: [340, -380], tags: ['contact'] });
     }
+  }
+
+  /** 적 정지 중 한 프레임: 피격 섬광과 체력바 잔상만 흐른다 (그림은 멈춘 자세 그대로) */
+  _freezeTick(dt) {   // [hook:feel]
+    if (this.flashT > 0) this.flashT -= dt;
+    this.hpGhost = this.hpGhost > this.hp ? Math.max(this.hp, this.hpGhost - this.stats.maxHp * 0.25 * dt) : this.hp;
   }
 
   takeHit(dmg, attack, world, info) {

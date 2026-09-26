@@ -452,6 +452,19 @@ export class MirrorSwitch extends Entity {
   hurtbox() { return this.rect(); }
   takeHit(dmg, attack, world) {
     if (attack?.tags?.includes('companion')) return false;
+    // 한 판정 = 한 번만: 같은 hitId 의 재타격(rehit 장판·지속 스킬)과 성광의 오라처럼 주기적으로 새 hitId 로 치는
+    // 몸 주변 지속 피해는 스위치를 뒤집지 않는다 (가까이 서 있기만 해도 0.8초마다 뒤집히지 않게)
+    let id = attack?.hitId;
+    if (typeof id === 'string') {
+      if (id.startsWith('aura')) return false;
+      id = id.replace(/:\d+$/, '');   // 여러 번 치는 휘두르기('pl12:0', 'pl12:1' …)는 한 번으로
+    }
+    if (id != null) {
+      const seen = (this._hitIds ??= new Set());
+      if (seen.has(id)) return false;
+      seen.add(id);
+      if (seen.size > 32) seen.delete(seen.values().next().value);
+    }
     this.mirror?.flip(false, this);
     return false;
   }

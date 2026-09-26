@@ -3,7 +3,9 @@
 // (the game draws at a fixed logical height of 540 px and a width clamped to 960..1280).
 //
 //   import { VIEWPORTS, phone1, phone2, tablet, contextOptions, logicalSize } from './viewports.mjs';
-//   phone1.vw === 1168, phone2.vw === 1110, tablet.vw === 960   (default safeArea, no insets)
+//   phone1.vw === 1169, phone2.vw === 1110, tablet.vw === 960   (default safeArea, no insets)
+//   (MASTER_PLAN §1.8 writes 1168 for phone1: game.resize rounds 540 × 844 / 390 = 1168.6 up to 1169, which is what
+//    the game really lays out with; anything that needs the plan's figure should read phone1.vw, not hard-code it)
 //   await browser.newContext(contextOptions('phone2'))
 
 export const VIEW_H = 540;

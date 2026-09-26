@@ -1,6 +1,8 @@
 // 보스 B 공용 도구: 기반 클래스(BossB), 위험 지대(Zone), 선분 판정, 그리기 도우미(발광 스프라이트/그라디언트 캐시/경고 표시)
 // 모든 b_*.js 보스가 사용한다. 좌표는 월드 px. 그리기 규칙: 뒤쪽 차가운 림라이트 + 앞/위 따뜻한 키라이트, 어두운 외곽선.
-import { Boss } from './boss.js';
+// 타격감 훅 (boss.js): Zone 은 적 정지(world.freezeEnemies) 중 멈추고(heldByFreeze), warn > 0 이면 보스의 예고 창(boss.telegraph, 카운터)을 켠다.
+// 상태 안에서 직접 그리는 윈드업(warnRect 등)은 보스 파일이 this.telegraphFor(초) 로 켠다.
+import { Boss, heldByFreeze } from './boss.js';
 import { Entity } from '../entity.js';
 import { enemyStrike } from '../combat.js';
 import { isSolidType } from '../../core/physics.js';
@@ -277,8 +279,10 @@ export class Zone extends Entity {
     this.data = o.data ?? {};
     this.attack = { owner: boss, stats: boss.stats, mv: o.mv ?? 1, kb: o.kb ?? [300, -380], element: o.element ?? null, hitId: 'bz' + (++_zid), rehit: o.rehit, tags: ['boss'], ...(o.attack || {}) };
     this.k = 0; this.a = 0; this.on = false;
+    if (this.warn > 0 && !this.harmless) boss.telegraphFor?.(this.warn);   // [hook:feel] 지대 예고 동안 카운터 (feel §4.6)
   }
   update(dt, world) {
+    if (heldByFreeze(world, this.boss)) return;   // [hook:feel] 적 정지 중 지대 시계도 멈춤
     if (world.timeStop > 0) dt *= 0.25;
     this.t += dt;
     if (this.boss.dying > 0 || this.boss.dead) { this.dead = true; return; }
@@ -456,7 +460,7 @@ export class BossB extends Boss {
       return;
     }
     super.update(dt, world);
-    if (this.world.cutscene) this.idleAnim?.(dt, world);
+    if (this.world.cutscene && !world.freezeEnemies) this.idleAnim?.(dt, world);   // [hook:feel]
   }
 
   // ── 판정 ──

@@ -23,7 +23,14 @@ export class Touch {
   _points() { return [...this.active.entries()].map(([id, p]) => ({ x: p.x, y: p.y, id, radiusX: 6, radiusY: 6, force: 1 })); }
   async down(id, x, y) { this.active.set(id, { x, y }); await this.cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: this._points() }); }
   async move(id, x, y) { if (!this.active.has(id)) return; this.active.set(id, { x, y }); await this.cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: this._points() }); }
-  async up(id) { if (!this.active.delete(id)) return; await this.cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: this._points() }); }
+  // CDP touchEnd releases the points it lists (verified on Chromium 1194: listing the fingers that stay down lifts
+  // those instead), so only the lifted finger is sent; the others stay pressed
+  async up(id) {
+    const p = this.active.get(id);
+    if (!p) return;
+    this.active.delete(id);
+    await this.cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [{ x: p.x, y: p.y, id, radiusX: 6, radiusY: 6, force: 1 }] });
+  }
   async upAll() { for (const id of [...this.active.keys()]) await this.up(id); }
   async tap(x, y, ms = 60, id = 91) { await this.down(id, x, y); await this.page.waitForTimeout(ms); await this.up(id); }
   /** Straight-line drag. hold: ms to wait at the end before lifting (0 = fling). */

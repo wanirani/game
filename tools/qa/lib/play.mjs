@@ -1,6 +1,7 @@
 // Gameplay helpers shared by the input suites (pad, touch).
 //
-//   await prepPlayer(s)                 // invulnerable, 60 hearts, full MP, 2–4 active skills in the slots, no enemies
+//   await prepPlayer(s)                 // invulnerable, 60 hearts, full MP, 2–4 active skills in the slots, no enemies,
+//                                       // story triggers of the room disarmed (no dialogue opens mid-check)
 //   const frames = await during(s, () => press(s.page, BTN.A), 450)   // per-frame state while doing something
 //   await refill(s)                     // MP, sub-weapon/dash/skill cooldowns back to ready
 
@@ -22,6 +23,9 @@ export async function prepPlayer(s) {
     } catch (e) { console.warn('qa seed skills', e); }
     p.mp = p.stats?.mp ?? 999;
     for (const e of w.enemies?.() || []) { e.hp = 0; e.dead = true; }
+    // story triggers ('!' props) open a dialogue when the hero walks through them (s01 has one a few steps right of
+    // the spawn): the input checks walk and dash, and a dialogue on top would hide the pad and swallow the input
+    for (const e of w.entities || []) if (e.kind === 'trigger') e.dead = true;
   });
   await s.wait(400);
 }

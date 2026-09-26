@@ -45,7 +45,7 @@ export async function pwaChecks(suite, env, group = 'pwa') {
 
   // runtime: manifest parse + installability in Chromium
   {
-    const s = await env.page('phone1', 'index.html');
+    const s = await env.page('phone1', 'index.html', { sw: true });
     await s.wait(2500);
     const man2 = await s.cdp.send('Page.getAppManifest').catch((e) => ({ errors: [{ message: e.message }] }));
     await suite.check({ id: `${group}.manifest.parse`, group, issue: 'P-27', title: 'manifest parses without errors' }, async () => ({ pass: !(man2.errors || []).length, detail: (man2.errors || []).map((e) => e.message).join('; ') || 'no errors' }));
@@ -59,7 +59,7 @@ export async function pwaChecks(suite, env, group = 'pwa') {
   // runtime: the service worker registers on localhost unless ?nosw (§9.3)
   let swOk = false;
   {
-    const s = await env.page('desk', 'index.html');
+    const s = await env.page('desk', 'index.html', { sw: true });
     let regs = 0;
     for (let i = 0; i < 16 && !regs; i++) { await s.wait(300); regs = await s.eval(async () => (await navigator.serviceWorker?.getRegistrations?.())?.length ?? 0); }
     swOk = regs > 0;

@@ -87,7 +87,10 @@ export async function launchBrowser(extraArgs = []) {
 /**
  * Server + browser. env.page(viewportId | contextOptions, url, opts) → Session.
  * opts: initScripts [fn|string|{fn,arg}], insets {l,r,t,b} (CDP safe-area override, applied before load),
- *       settings {…} (merged into the stored settings before load), storage {key: value} (localStorage before load),
+ *       settings {…} (merged into the stored settings before load, as settingsVersion 2 unless given),
+ *       storage {key: value} (raw localStorage before load),
+ *       sw (true = let the service worker register; by default page URLs get the ?nosw dev switch, platform §9.3, so
+ *       an unrelated check never installs the SW and precaches the whole game in the background of every context),
  *       wait (false = do not wait for window.__game), origin (serve another origin, e.g. dist/web)
  */
 export async function openEnv({ server = null, browserArgs = [] } = {}) {
@@ -127,8 +130,9 @@ async function openSession(browser, origin, vpOrOpts, url, opts) {
         sessionStorage.setItem('__qa_seeded', '1');
         if (storage) for (const [k, v] of Object.entries(storage)) localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v));
         if (settings) {
+          // saved as a current (v2) player would: without settingsVersion the v1 migration (platform §10) resets quality
           let cur = {}; try { cur = JSON.parse(localStorage.getItem(key)) || {}; } catch { cur = {}; }
-          localStorage.setItem(key, JSON.stringify({ ...cur, ...settings }));
+          localStorage.setItem(key, JSON.stringify({ settingsVersion: 2, ...cur, ...settings }));
         }
       } catch { /* storage blocked */ }
     }, { key: SETTINGS_KEY, settings: opts.settings || null, storage: opts.storage || null });
@@ -139,9 +143,16 @@ async function openSession(browser, origin, vpOrOpts, url, opts) {
   const errs = [];
   page.on('pageerror', (e) => errs.push('PAGEERROR ' + e.message + ' @ ' + (e.stack || '').split('\n').slice(1, 3).join(' | ')));
   page.on('console', (m) => { if (m.type() === 'error') { const t = m.text(); if (!IGNORE_CONSOLE.test(t)) errs.push('CONSOLE ' + t.slice(0, 300)); } });
-  const s = new Session(ctx, page, cdp, errs, origin);
+  const s = new Session(ctx, page, cdp, errs, origin, !!opts.sw);
   if (url) await s.goto(url, opts);
   return s;
+}
+
+/** Adds the dev switch ?nosw (no service worker, platform §9.3) to a page URL (.html or a directory) unless present. */
+export function noSw(u) {
+  const i = u.indexOf('#'), base = i < 0 ? u : u.slice(0, i), hash = i < 0 ? '' : u.slice(i);
+  if (/[?&]nosw(=|&|$)/.test(base) || !/(\.html?|\/)(\?|$)/.test(base)) return u;
+  return `${base}${base.includes('?') ? '&' : '?'}nosw${hash}`;
 }
 
 /** CDP Emulation.setSafeAreaInsetsOverride (env(safe-area-inset-*) values), CSS px. */
@@ -150,10 +161,10 @@ export async function setSafeAreaInsets(cdp, { l = 0, r = 0, t = 0, b = 0 } = {}
 }
 
 export class Session {
-  constructor(ctx, page, cdp, errs, origin) { this.ctx = ctx; this.page = page; this.cdp = cdp; this.errs = errs; this.origin = origin; }
+  constructor(ctx, page, cdp, errs, origin, sw = false) { this.ctx = ctx; this.page = page; this.cdp = cdp; this.errs = errs; this.origin = origin; this.sw = sw; }
   url(u) { return /^https?:/.test(u) ? u : `${this.origin}/${u.replace(/^\//, '')}`; }
-  async goto(u, { wait = true, timeout = 30000 } = {}) {
-    await this.page.goto(this.url(u), { timeout });
+  async goto(u, { wait = true, timeout = 30000, sw = this.sw } = {}) {
+    await this.page.goto(sw ? this.url(u) : noSw(this.url(u)), { timeout });
     if (wait) await this.waitGame();
   }
   /** window.__game exists and has a scene (or the given predicate holds). */
@@ -227,6 +238,20 @@ export function waitFrames(page, { ms = 0, frames = 2, ticks = 1 } = {}) {
     const f = () => { n++; if (performance.now() - t0 >= ms && n >= frames && (g?.frame ?? 0) - f0 >= ticks) res(); else requestAnimationFrame(f); };
     requestAnimationFrame(f);
   }), { ms, frames, ticks });
+}
+
+/**
+ * Init script: report a fixed device class (navigator.hardwareConcurrency / deviceMemory), so the quality start tier
+ * (platform §6.4: low when ≤ 4 cores or ≤ 2 GB) does not depend on the machine that runs the QA.
+ */
+export function deviceClassInit({ cores = 8, memory = 8 } = {}) {
+  return {
+    fn: ({ cores, memory }) => {
+      try { Object.defineProperty(Navigator.prototype, 'hardwareConcurrency', { get: () => cores, configurable: true }); } catch { /* */ }
+      try { Object.defineProperty(Navigator.prototype, 'deviceMemory', { get: () => memory, configurable: true }); } catch { /* */ }
+    },
+    arg: { cores, memory },
+  };
 }
 
 export const KEY = { right: 'ArrowRight', left: 'ArrowLeft', up: 'ArrowUp', down: 'ArrowDown', jump: 'KeyZ', attack: 'KeyX', dash: 'KeyC', sub: 'KeyA', skill1: 'KeyS', skill2: 'KeyD', ult: 'KeyF', menu: 'Escape', enter: 'Enter', swap: 'KeyQ', tabR: 'KeyE', map: 'Tab' };

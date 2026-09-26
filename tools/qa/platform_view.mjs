@@ -7,7 +7,7 @@
 //         front options account arcade town games pause dialogue results
 // Report: /tmp/claude-0/qa/platform/platform_view.json
 import { Suite, fmt, near } from './lib/suite.mjs';
-import { openEnv } from './lib/server.mjs';
+import { openEnv, deviceClassInit } from './lib/server.mjs';
 import { VIEWPORTS, NOTCH_INSETS, PIXEL_BUDGET_MP } from './lib/viewports.mjs';
 import { probeInsets, canvasBox, insideSafe, hudPortraitBox } from './lib/safearea.mjs';
 import { installTapRecorder, auditScene, describeAudit, VISITS, VISIT_BASE } from './lib/taps.mjs';
@@ -26,8 +26,10 @@ try {
   // ── 1. pixel budget per viewport + zero page errors in title, hub, stage, menu (P-11) ────────────
   await suite.group('budget', async () => {
     for (const vp of suite.vps(Object.keys(VIEWPORTS))) {
-      // one page per viewport: stage s04 → menu (equip) → hub → title (the backing store does not depend on the scene)
-      const s = await env.page(vp, 'index.html?scene=stage&stage=s04');
+      // one page per viewport: stage s04 → menu (equip) → hub → title (the backing store does not depend on the scene).
+      // The viewport's tier is set explicitly (desktops 'high', touch 'medium'): 'auto' would start low on a ≤ 4-core
+      // QA machine and never exercise the high-tier budget (fhd2x high ≤ 3.7 MP).
+      const s = await env.page(vp, 'index.html?scene=stage&stage=s04', { settings: { quality: VIEWPORTS[vp].quality } });
       await s.waitGame('!!g.world?.player');
       await s.wait(1200);
       const snap = async (name) => { const r = await s.eval(() => { const g = window.__game, c = g.canvas; return { scenes: g.scenes.map((x) => x.name).join('>'), w: c.width, h: c.height, dpr: g.dpr, quality: g.settings?.quality }; }); r.tier = (await tierOf(s)) || (VIEWPORTS[vp].touch ? 'medium' : 'high'); return { name, ...r }; };
@@ -117,7 +119,8 @@ try {
 
   // ── 5. governor (quality 'auto'): 30 ms frames for 6 s drop one tier; 8 ms frames for 21 s raise it (P-13) ─
   await suite.group('governor', async () => {
-    const s = await env.page('desk', 'index.html?scene=stage&stage=s01', { settings: { quality: 'auto' } });
+    // a fixed 8-core / 8 GB device class so 'auto' starts at 'high' on desktop whatever machine runs the QA (§6.4)
+    const s = await env.page('desk', 'index.html?scene=stage&stage=s01', { settings: { quality: 'auto' }, initScripts: [deviceClassInit()] });
     await s.waitGame('!!g.world?.player');
     await s.wait(1500);
     await s.skipDialogue(); // the governor only runs while a gameplay scene is on top

@@ -1,5 +1,5 @@
 // Menu suite — platform.md §11 WP-4 (acceptance 1–5), §5.6: scroll keeps its position after touch drag and wheel (P-01),
-// D-pad still follows the selection, tap audit of every menu tab at 740×360 (P-04), controller glyphs in the bottom bar
+// D-pad still follows the selection, tap audit of every menu tab at 740×360 and 844×390 (P-04), controller glyphs in the bottom bar
 // (P-05), swipe tabs and long-press action menu (§5.6).
 //
 //   node tools/qa/platform_menu.mjs [--only scroll,wheel,follow,taps,glyphs,swipe,longpress] [--vp phone2,phone1] [--strict]
@@ -121,9 +121,9 @@ try {
     await s.close();
   }, env);
 
-  // ── 2. tap audit of every tab at 740×360 (P-04) ─────────────────────────────────────────────────
+  // ── 2. tap audit of every tab at 740×360 (WP-4 acceptance 2) and 844×390 (§6.3 audits both phone sizes) (P-04) ──
   await suite.group('taps', async () => {
-    for (const vp of suite.vps(['phone2'])) {
+    for (const vp of suite.vps(['phone2', 'phone1'])) {
       const s = await menuPage(vp, 'status');
       await installTapRecorder(s.page);
       for (const tab of ALL_TABS) {

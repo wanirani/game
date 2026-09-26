@@ -706,11 +706,14 @@ export class BlightGimmick extends MemberB {
   lights(L) {
     const cam = this.world?.camera;
     if (!cam || !this.clouds.length) return;
+    // 큰 구멍 광원은 조명 패스에서 비싸다 (프레임 차이의 대부분): 낮은 품질이나 옅은 어둠(구멍이 거의 안 보임)에서는 생략,
+    // 그 밖에는 화면 근처 구름 3개까지·반지름 300 px 까지
+    if (qualityOf(this.world) < 0.6 || (L.darkness ?? 1) < 0.12) return;
     let n = 0;
-    for (const c of this.visibleClouds(cam, 200)) {
-      if (n++ >= 6) break;
+    for (const c of this.visibleClouds(cam, 120)) {
+      if (n++ >= 3) break;
       // glow=false: 어둠에 구멍만 낸다 (구름 색은 구름 그림이 낸다 — 큰 가산 광원은 전체 해상도로 그려져 비싸다)
-      L.add(c.x + c.w / 2, c.y + c.h / 2, Math.min(420, Math.max(c.w, c.h) * 0.55 + 40), '#9ad040', 0.3 * this.cloudAlpha(c), false);
+      L.add(c.x + c.w / 2, c.y + c.h / 2, Math.min(300, Math.max(c.w, c.h) * 0.45 + 30), '#9ad040', 0.3 * this.cloudAlpha(c), false);
     }
   }
   drawWorld(ctx, cam, layer) {

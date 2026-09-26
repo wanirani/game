@@ -43,7 +43,7 @@ try {
     }
     env = await openEnv({ server });
     for (const net of nets) {
-      const s = await env.page('phone1', null, { wait: false });
+      const s = await env.page('phone1', null, { wait: false, sw: true }); // the real page, service worker included
       await emulateNetwork(s.cdp, net);
       const meter = netMeter(s.cdp);
       const t0 = Date.now();

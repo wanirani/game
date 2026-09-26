@@ -1,5 +1,6 @@
 // 적 렌더 디스패처.
-// ENEMY_RENDER[renderId] = (ctx, e, world, pal) => void  — 원점: 발 중앙(e.cx, e.bottom), facing 반영은 여기서 처리
+// ENEMY_RENDER[renderId] = (ctx, e, world, { flash }) => void  — 원점: 발 중앙(e.cx, e.bottom), facing 반영은 여기서 처리
+// = { ...RENDER_A, ...RENDER_B, ...RENDER_C, ...RENDER_D } (2부 C/D: world2 §5.1, 렌더 ID = 적 id)
 // e: {cx, bottom, w, h, facing, anim, animT, t, flashT, state, def, elite, scale}
 // 채색 퍼핏(painted/enemies/*): 등록된 렌더러가 있고 리그(아틀라스)가 로드되면 그것을 그리고, 아니면 벡터 렌더러를 그린다.
 // 로드 중에 이미 벡터로 보인 개체는 0.3초 크로스페이드로 전환한다. 스테이지 진입 시 해당 스테이지 적 목록을 미리 굽는다.
@@ -7,6 +8,8 @@
 import { TAU, clamp } from '../core/math.js';
 import { RENDER_A } from './enemies_a.js';
 import { RENDER_B } from './enemies_b.js';
+import { RENDER_C } from './enemies_c.js';   // [hook:p2]
+import { RENDER_D } from './enemies_d.js';   // [hook:p2]
 import { PAINTED_ENEMIES } from './painted/enemies/index.js';
 import { requestRig, refreshRig, releaseRigs } from './painted/enemy_kit.js';
 import { game } from '../core/game.js';
@@ -16,6 +19,13 @@ import { bus } from '../core/events.js';
 import { paintedEnabled } from './painted/registry.js';
 
 export const ENEMY_RENDER = { ...RENDER_A, ...RENDER_B };
+// 2부(C/D) 병합. 2부 렌더 파일이 순환 import 로 이 모듈보다 늦게 초기화되는 경우(도우미를 보스/적 모듈에서 가져올 때)
+// 최상위에서 읽으면 초기화 전 참조 오류로 게임 전체가 멈추므로, 그때는 첫 그리기에서 다시 합친다.
+let p2Merged = false;
+function mergeP2() {   // [hook:p2]
+  try { Object.assign(ENEMY_RENDER, RENDER_C, RENDER_D); p2Merged = true; } catch { /* 초기화 전 → drawVector 에서 다시 */ }
+}
+mergeP2();
 
 /** 채색 적 사용 여부: 공용 스위치(?painted=0 · window.__paintedOff · settings.painted=false) + 적 전용 window.__paintedEnemies=false */
 export const paintedEnemiesOn = (game) => globalThis.__paintedEnemies !== false && paintedEnabled(game);
@@ -55,6 +65,7 @@ function preloadWorld(world) {
 }
 
 function drawVector(ctx, e, world, flash) {
+  if (!p2Merged) mergeP2();   // [hook:p2]
   const fn = ENEMY_RENDER[e.def.render];
   if (fn) fn(ctx, e, world, { flash });
   else {

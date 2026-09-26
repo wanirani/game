@@ -4,6 +4,12 @@
 // saves.onWrite(fn) → 해제 함수. 슬롯 저장·삭제·가져오기와 메타 저장 뒤 fn({ type:'write'|'remove'|'meta', slot }) 호출 (클라우드 동기화용)
 // saves.store(slot, data) → 클라우드에서 받은 기록을 savedAt 그대로 저장 (onWrite 알림 없음)
 // isValidSave(obj) → 불러와도 안전한 최소 구조인지 (가져오기 코드·손상된 슬롯 거부용)
+// 설정 (settingsVersion 2, MASTER_PLAN §1.5 · platform §10):
+//  DEFAULT_SETTINGS — 모든 설정 키의 기본값 (한 곳에서만 정의). SETTINGS_SCHEMA — 키별 허용 값 (옵션 화면이 값 목록으로 쓸 수 있다)
+//  saves.loadSettings() → 이전 판(v1) 이관 + 검증된 설정 객체 (saves.settings 로도 남는다). 이관·보정이 있었으면 한 번 다시 저장
+//    · v1(settingsVersion 없음)의 quality 는 detectQuality() 가 적은 값이라 'auto' 로 되돌린다 · 모르는 키는 보존 · 범위 밖 값은 기본값
+//  saves.saveSettings(s) → 항상 settingsVersion 2 로 기록 (다음 불러오기에서 품질 선택이 초기화되지 않게)
+//  migrateSettings(obj) → { settings, changed } (순수 함수, 테스트·도구용), autoQualityTier() → 'auto' 의 시작 등급 (platform §6.4)
 import { CHARACTERS } from '../data/characters.js';
 
 const PREFIX = 'bloodnocturne_';
@@ -34,22 +40,164 @@ export function isValidSave(s) {
   return true;
 }
 
-/** 기본 그래픽 품질: 터치·소형 화면(휴대폰)은 'medium', 그중 메모리 2GB 이하 저사양이면 'low', 그 외 'high' */
-function detectQuality() {
+/** 주 입력이 터치(coarse)이거나 화면이 작은 기기(휴대폰·태블릿) — 터치스크린 노트북(주 입력 마우스)은 제외 */
+export function isTouchDevice() {
   try {
-    if (typeof window === 'undefined' || typeof navigator === 'undefined') return 'high';
-    // 주 입력이 터치(coarse)인 기기 — 터치스크린 노트북(주 입력 마우스)은 제외
+    if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
     const touch = window.matchMedia ? window.matchMedia('(pointer: coarse)').matches : (navigator.maxTouchPoints ?? 0) > 0;
     const small = Math.min(window.screen?.width ?? 9999, window.screen?.height ?? 9999) < 600;
-    if (!touch && !small) return 'high';
-    return (navigator.deviceMemory ?? 8) <= 2 ? 'low' : 'medium';
-  } catch { return 'high'; }
+    return touch || small;
+  } catch { return false; }
 }
 
+/**
+ * quality 'auto' 의 시작 등급 (platform §6.4): 데스크톱 'high', 터치 기기 'medium',
+ * 메모리 2GB 이하(모든 기기) 또는 코어 4개 이하 터치 기기는 'low'.
+ * (코어 수 조건은 터치 기기에만 건다: 4스레드 데스크톱이 'low' 에서 시작하면 조절기가 시작 등급 위로 올리지 못한다)
+ * 품질 조절기(core/game.js)가 이 값에서 시작해 실제 등급(game.quality)을 정한다.
+ */
+export function autoQualityTier() {
+  try {
+    if (typeof window === 'undefined' || typeof navigator === 'undefined') return 'high';
+    if ((navigator.deviceMemory ?? 8) <= 2) return 'low';
+    if (!isTouchDevice()) return 'high';
+    return (navigator.hardwareConcurrency ?? 8) <= 4 ? 'low' : 'medium';
+  } catch { return 'high'; }
+}
+/** 예전 이름 (v1 에서 DEFAULT_SETTINGS.quality 를 정하던 함수). 이제 설정 기본값은 'auto' 이고 이 값은 시작 등급으로만 쓴다 */
+export const detectQuality = autoQualityTier;
+
+export const SETTINGS_VERSION = 2;
+
+/** 모든 설정 키의 기본값 (MASTER_PLAN §1.5 표 순서). 새 키는 여기와 SETTINGS_SCHEMA 에 함께 추가한다 */
 export const DEFAULT_SETTINGS = {
-  musicVol: 0.6, sfxVol: 0.8, quality: detectQuality(), vibration: true, screenShake: 1,
-  showDamage: true, touchOpacity: 0.55, autoSave: true, language: 'ko',
+  settingsVersion: SETTINGS_VERSION,
+  musicVol: 0.6, sfxVol: 0.8,
+  quality: 'auto', fpsCap: 60, uiScale: 'auto', safeArea: 'fit',
+  screenShake: 1, showDamage: true, flashFx: 1, cutinMode: 'full', reduceMotion: false,
+  ctrlPrompts: 'auto', ctrlPreset: 'arcade', ctrlConfirm: 'auto', ctrlMap: null, keyMap: null,
+  ctrlDeadzone: 0.2, ctrlRumble: 0.8, autoSprint: false,
+  touchOpacity: 0.55, touchScale: 1, touchStick: 'float', touchSlide: true, touchLeftHanded: false, touchLayout: null,
+  vibration: true, autoSave: true, keepAwake: true, turntableAuto: true, fullscreenAuto: true,
+  language: 'ko',
 };
+
+// ── 설정 검증 ──
+const UNSAFE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+const EPS = 1e-6;
+const num = (min, max) => Object.freeze({ type: 'num', min, max });
+const oneOf = (...values) => Object.freeze({ type: 'enum', values: Object.freeze(values) });
+const BOOL = Object.freeze({ type: 'bool' });
+/** 패드 버튼 번호 (표준 배치 0–16, 여유 있게 0–63) 또는 짧은 이름표 (예: 축 바인딩을 문자열로 쓰는 경우) */
+const isPadBinding = (v) => (Number.isInteger(v) && v >= 0 && v <= 63) || (typeof v === 'string' && /^[A-Za-z0-9:+\-_.]{1,24}$/.test(v));
+/** KeyboardEvent.code (예: 'KeyZ', 'Space', 'ArrowLeft', 'Numpad0') */
+const isKeyCode = (v) => typeof v === 'string' && /^[A-Za-z0-9]{1,32}$/.test(v);
+
+/** 키별 허용 값. type: 'num'(min..max) | 'enum'(values) | 'bool' | 'map'({action:[…]} | null) | 'layout'({id:{right,bottom,d}} | null) */
+export const SETTINGS_SCHEMA = Object.freeze({
+  musicVol: num(0, 1), sfxVol: num(0, 1),
+  quality: oneOf('auto', 'low', 'medium', 'high'),
+  fpsCap: oneOf(60, 0),
+  uiScale: oneOf('auto', 1, 1.15, 1.3, 1.5),
+  safeArea: oneOf('fit', 'full'),
+  screenShake: num(0, 1),
+  showDamage: BOOL,
+  flashFx: oneOf(0, 0.5, 1),
+  cutinMode: oneOf('full', 'short'),
+  reduceMotion: BOOL,
+  ctrlPrompts: oneOf('auto', 'keyboard', 'xbox', 'ps', 'nintendo'),
+  ctrlPreset: oneOf('arcade', 'classic', 'custom'),
+  ctrlConfirm: oneOf('auto', 'south', 'east'),
+  ctrlMap: Object.freeze({ type: 'map', item: isPadBinding }),
+  keyMap: Object.freeze({ type: 'map', item: isKeyCode }),
+  ctrlDeadzone: num(0.1, 0.4),
+  ctrlRumble: num(0, 1),
+  autoSprint: BOOL,
+  touchOpacity: num(0, 1),
+  touchScale: num(0.8, 1.3),
+  touchStick: oneOf('float', 'fixed'),
+  touchSlide: BOOL,
+  touchLeftHanded: BOOL,
+  touchLayout: Object.freeze({ type: 'layout' }),
+  vibration: BOOL, autoSave: BOOL, keepAwake: BOOL, turntableAuto: BOOL, fullscreenAuto: BOOL,
+  language: oneOf('ko'),
+});
+
+const INVALID = Symbol('invalid');
+/** 설정 값 하나 검증 → 정규화된 값 또는 INVALID */
+function checkSetting(spec, v) {
+  switch (spec.type) {
+    case 'num':
+      if (typeof v !== 'number' || !Number.isFinite(v) || v < spec.min - EPS || v > spec.max + EPS) return INVALID;
+      return Math.min(spec.max, Math.max(spec.min, v)); // 0.1 단위 누적 오차(0.7000000000000001 등)만 허용
+    case 'enum':
+      for (const x of spec.values) {
+        if (x === v) return x;
+        if (typeof x === 'number' && typeof v === 'number' && Math.abs(x - v) < EPS) return x;
+      }
+      return INVALID;
+    case 'bool': return typeof v === 'boolean' ? v : INVALID;
+    case 'map': {
+      if (v === null) return null;
+      if (!isObj(v)) return INVALID;
+      const out = {};
+      for (const [action, list] of Object.entries(v)) {
+        if (UNSAFE_KEYS.has(action) || !Array.isArray(list)) continue;
+        out[action] = list.filter(spec.item).slice(0, 8);
+      }
+      return out;
+    }
+    case 'layout': {
+      if (v === null) return null;
+      if (!isObj(v)) return INVALID;
+      const out = {};
+      const fin = (x, lo, hi) => typeof x === 'number' && Number.isFinite(x) && x >= lo && x <= hi;
+      for (const [id, b] of Object.entries(v)) {
+        if (UNSAFE_KEYS.has(id) || !isObj(b)) continue;
+        if (!fin(b.right, -200, 10000) || !fin(b.bottom, -200, 10000) || !fin(b.d, 20, 400)) continue;
+        out[id] = { right: b.right, bottom: b.bottom, d: b.d };
+      }
+      return out;
+    }
+    default: return v;
+  }
+}
+
+/**
+ * 저장된 설정(파싱된 JSON) → { settings, changed }. 순수 함수, 멱등.
+ *  - settingsVersion 이 없거나 2 미만(v1): quality 를 'auto' 로 (v1 의 값은 플레이어가 고른 것이 아니라 detectQuality() 결과)
+ *  - 모르는 키는 그대로 보존 (새 버전 클라이언트가 쓴 키, 디버그 키 settings.painted 등). 프로토타입 키는 버린다
+ *  - 형식이 틀리거나 범위를 벗어난 값은 기본값으로, 빠진 키는 기본값으로 채운다
+ *  - changed: 다시 저장할 가치가 있는 변경(이관, 잘못된 값 보정)이 있었는지 (빠진 키 채우기만으로는 false)
+ */
+export function migrateSettings(saved) {
+  const out = {};
+  let changed = false;
+  if (!isObj(saved)) {
+    for (const [k, v] of Object.entries(DEFAULT_SETTINGS)) out[k] = v;
+    return { settings: out, changed: saved != null };
+  }
+  const ver = saved.settingsVersion;
+  const v1 = !(Number.isInteger(ver) && ver >= SETTINGS_VERSION);
+  // 모르는 키 보존 (앞쪽), 알려진 키는 아래에서 검증한 값으로 덮어쓴다
+  for (const [k, v] of Object.entries(saved)) {
+    if (UNSAFE_KEYS.has(k)) { changed = true; continue; }
+    if (!Object.hasOwn(SETTINGS_SCHEMA, k) && k !== 'settingsVersion') out[k] = v;
+  }
+  out.settingsVersion = v1 ? SETTINGS_VERSION : ver;
+  if (v1) changed = true;
+  for (const [k, spec] of Object.entries(SETTINGS_SCHEMA)) {
+    const dflt = DEFAULT_SETTINGS[k];
+    if (v1 && k === 'quality') { out[k] = dflt; continue; }
+    if (!Object.hasOwn(saved, k)) { out[k] = dflt; continue; }
+    const v = checkSetting(spec, saved[k]);
+    if (v === INVALID) { out[k] = dflt; changed = true; continue; }
+    if (v !== saved[k] && (spec.type === 'num' || spec.type === 'enum')) changed = true;
+    else if ((spec.type === 'map' || spec.type === 'layout') && v !== null && JSON.stringify(v) !== JSON.stringify(saved[k])) changed = true;
+    out[k] = v;
+  }
+  return { settings: out, changed };
+}
 
 export const DEFAULT_META = {
   unlockedChars: ['kael', 'sera', 'victor', 'bran'],
@@ -59,7 +207,7 @@ export const DEFAULT_META = {
 };
 
 class SaveSystem {
-  constructor() { this.listeners = new Set(); }
+  constructor() { this.listeners = new Set(); this.settings = null; /* 마지막으로 불러오거나 저장한 설정 객체 (= game.settings) */ }
   /** 저장 알림 구독 (core/cloud.js 가 쓴다). 구독자 오류는 저장을 막지 않는다 */
   onWrite(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
   notify(ev) {
@@ -117,10 +265,23 @@ class SaveSystem {
       return true;
     } catch { return false; }
   }
+  /** 설정 불러오기: v1 → v2 이관과 값 검증(migrateSettings). 이관·보정이 있었으면 결과를 한 번 다시 저장한다 */
   loadSettings() {
-    try { return { ...DEFAULT_SETTINGS, ...(JSON.parse(lsGet(PREFIX + 'settings')) || {}) }; } catch { return { ...DEFAULT_SETTINGS }; }
+    const raw = lsGet(PREFIX + 'settings');
+    let saved = null;
+    if (raw) { try { saved = JSON.parse(raw); } catch { saved = raw; } } // 손상된 JSON(문자열 그대로) → 기본값으로 다시 저장
+    const { settings, changed } = migrateSettings(saved);
+    if (raw && changed) lsSet(PREFIX + 'settings', JSON.stringify(settings));
+    this.settings = settings;
+    return settings;
   }
-  saveSettings(s) { lsSet(PREFIX + 'settings', JSON.stringify(s)); }
+  /** 설정 저장. 기록에는 항상 settingsVersion 2 를 붙인다 (없으면 다음 불러오기에서 v1 로 보고 품질을 초기화하므로) */
+  saveSettings(s) {
+    if (!isObj(s)) return false;
+    this.settings = s;
+    const v = s.settingsVersion;
+    return lsSet(PREFIX + 'settings', JSON.stringify(Number.isInteger(v) && v >= SETTINGS_VERSION ? s : { ...s, settingsVersion: SETTINGS_VERSION }));
+  }
   loadMeta() {
     try {
       const m = JSON.parse(lsGet(PREFIX + 'meta')) || {};

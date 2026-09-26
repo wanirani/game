@@ -3,8 +3,10 @@
 //  - 예고(Telegraph): 경고선/띠/기둥/바닥원/느낌표/부채꼴 — 모든 큰 공격은 이것으로 먼저 알린다
 //  - 판정 엔티티: Beam(선분 광선·사슬), RingWave(틈이 있는 확장 고리), groundWave(지면 충격파), erupt(바닥 분출), dropHazard(낙하물)
 //  - 그리기 도우미: 피격 섬광 색(C), 그라디언트 캐시(lg/rg), 발광(glow), 외곽선+채우기(ink), 림라이트(rim), 테이퍼 경로(taper)
+//  - 타격감 훅 (boss.js): 예고·광선·고리·분출은 적 정지(world.freezeEnemies) 중 멈추고(heldByFreeze),
+//    예고·광선 예고선·분출 지연을 만들면 주인 보스의 예고 창(telegraphFor → boss.telegraph, 카운터)을 켠다
 // 순환 import 주의: import 한 값은 함수/클래스 본문 안에서만 사용한다 (Boss 상속만 최상위에서 필요).
-import { Boss } from './boss.js';
+import { Boss, heldByFreeze } from './boss.js';
 import { Entity } from '../entity.js';
 import { Hitbox } from '../projectiles.js';
 import { enemyStrike } from '../combat.js';
@@ -201,6 +203,7 @@ export class Telegraph extends Entity {
     this.kind = 'effect';
     Object.assign(this, { type: 'line', life: 0.8, color: '#ff2a3a', width: 26, z: 3, arrows: true }, o);
     this.maxLife = this.life;
+    this.owner?.telegraphFor?.(this.life);   // [hook:feel] 보스 예고 중 → 카운터 (feel §4.6)
     this.bbox();
   }
   bbox() {
@@ -219,6 +222,7 @@ export class Telegraph extends Entity {
     }
   }
   update(dt, world) {
+    if (heldByFreeze(world, this.owner)) return;   // [hook:feel] 적 정지 중 예고 시계도 멈춤
     if (world.timeStop > 0) dt *= 0.25;
     this.t += dt; this.life -= dt;
     if (this.follow) { this.follow(this, dt, world); this.bbox(); }
@@ -344,11 +348,13 @@ export class Beam extends Entity {
     const b = this.owner;
     this.attack = { team: 'enemy', owner: b, stats: b?.stats, mv: this.mv, type: this.type, element: this.element, kb: this.kb ?? [300, -320], dir: 1, hitId: 'bm' + (++_hid), tags: ['projectile'] };
     this.fired = false;
+    if (this.warn > 0) b?.telegraphFor?.(this.warn);   // [hook:feel] 광선 예고선 동안 카운터
     this.bbox();
   }
   bbox() { const w = this.width * 2; this.x = Math.min(this.x0, this.x1) - w; this.y = Math.min(this.y0, this.y1) - w; this.w = Math.abs(this.x1 - this.x0) + w * 2; this.h = Math.abs(this.y1 - this.y0) + w * 2; }
   get on() { return this.t >= this.warn && this.t < this.warn + this.active; }
   update(dt, world) {
+    if (heldByFreeze(world, this.owner)) return;   // [hook:feel]
     if (world.timeStop > 0) dt *= 0.25;
     this.t += dt;
     const own = this.owner;
@@ -430,6 +436,7 @@ export class RingWave extends Entity {
     return false;
   }
   update(dt, world) {
+    if (heldByFreeze(world, this.owner)) return;   // [hook:feel]
     if (world.timeStop > 0) dt *= 0.25;
     this.t += dt;
     this.r += this.speed * dt;
@@ -529,8 +536,15 @@ export function erupt(b, x, o = {}) {
       }
     },
   });
+  hb.update = heldHitboxUpdate;   // [hook:feel] 적 정지 중 분출 시계도 멈춤
+  b.telegraphFor?.(hb.delay);   // [hook:feel] 분출 예고 동안 카운터
   b.world.add(hb);
   return hb;
+}
+/** 보스 분출 판정: 적 정지(world.freezeEnemies) 중에는 멈춘다 */
+function heldHitboxUpdate(dt, world) {   // [hook:feel]
+  if (heldByFreeze(world, this.owner)) return;
+  Hitbox.prototype.update.call(this, dt, world);
 }
 function drawEruption(ctx, h, world) {
   const floor = h.y + h.h, cx = h.x + h.w / 2;
@@ -716,7 +730,7 @@ export class ABoss extends Boss {
   }
   update(dt, world) {
     // 시간 정지(스톱워치) 중에는 패턴 시계도 느리게 (기본 Boss.update 는 stateT 를 실시간으로 올린다)
-    if (world.timeStop > 0 && this.dying <= 0) { const k = dt * 0.75; this.stateT -= k; this.t -= k; }
+    if (world.timeStop > 0 && this.dying <= 0 && !world.freezeEnemies) { const k = dt * 0.75; this.stateT -= k; this.t -= k; }   // [hook:feel] 적 정지 중엔 Boss.update 가 시계를 아예 멈춘다
     if (this.dying > 0) {
       this.deathT += dt;
       const before = this.deathT - dt;
