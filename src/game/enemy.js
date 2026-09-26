@@ -20,9 +20,10 @@ import { TILE } from '../core/game.js';
 export function enemyStats(def, level, diff, elite = false) {
   const L = Math.max(1, level ?? def.lv ?? 1);
   const k = L - 1;
-  const hpMul = (1 + 0.32 * k + 0.018 * k * k) * (diff?.enemyHp ?? 1) * (elite ? 2.4 : 1);
-  const atkMul = (1 + 0.16 * k + 0.006 * k * k) * (diff?.enemyAtk ?? 1) * (elite ? 1.5 : 1);
-  const defMul = 1 + 0.12 * k;
+  // 체력은 플레이어 기대 공격력 성장(≈선형)에 맞춰 증가 + 후반으로 갈수록 타수 소폭 증가 (tools/balance.mjs 로 검증)
+  const hpMul = (1 + 0.354 * k) * (1 + 0.008 * k) * (diff?.enemyHp ?? 1) * (elite ? 2.4 : 1);
+  const atkMul = (1 + 0.17 * k + 0.009 * k * k) * (diff?.enemyAtk ?? 1) * (elite ? 1.5 : 1);
+  const defMul = 1 + 0.07 * k;
   const maxHp = Math.round((def.hp ?? 20) * hpMul);
   return {
     maxHp, hp: maxHp,

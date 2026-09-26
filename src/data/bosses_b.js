@@ -22,7 +22,7 @@ export const BOSSES_B = {
   },
   b_frostqueen: {
     id: 'b_frostqueen', name: '서리 여왕 이자벨라', title: '얼어붙은 첨탑의 여왕',
-    hp: 1150, atk: 27, def: 9, res: 16, exp: 1800, score: 40000,
+    hp: 1850, atk: 27, def: 9, res: 16, exp: 1800, score: 40000,
     size: { w: 64, h: 136 }, flying: true, material: 'ice', contact: 0.6,
     weak: ['fire'], resist: ['ice'], phases: [0.6, 0.3],
     music: 'boss2', portrait: 'portraits/b_frostqueen', stageId: 's10', drops: ['u_frostqueen'],
@@ -31,7 +31,7 @@ export const BOSSES_B = {
   },
   b_death: {
     id: 'b_death', name: '사신 데스', title: '영혼을 거두는 자',
-    hp: 1350, atk: 30, def: 12, res: 14, exp: 2000, score: 50000,
+    hp: 2050, atk: 30, def: 12, res: 14, exp: 2000, score: 50000,
     size: { w: 84, h: 150 }, flying: true, material: 'bone', contact: 0.7,
     weak: ['holy'], resist: ['dark', 'ice'], phases: [0.75, 0.5, 0.2],
     music: 'boss2', portrait: 'portraits/b_death', stageId: 's11', drops: ['u_death'],
