@@ -172,7 +172,7 @@ def _bsdf(m):
 def add_rift(m, along="Z", across="X", center=0.0, amp=0.05, freq=2.2, width=0.012,
              halo=0.07, strength=14.0, halo_str=1.4, seed=0.0, col_freq=0.9, span=None,
              taper=None, branches=0.0, depth=None, base_scorch=(0.1, 0.02, 0.16),
-             coord="Object"):
+             coord="Object", bend=0.0, polar=None):
     """Add an emissive iridescent rift crack to a Principled material.
 
     The seam runs along object axis `along`; its distance is measured along
@@ -181,14 +181,28 @@ def add_rift(m, along="Z", across="X", center=0.0, amp=0.05, freq=2.2, width=0.0
     (object units); span=(a0, a1): the seam fades in/out along `along`;
     taper=(a0, a1): width shrinks from a0 to a1.  Emission colour cycles
     through the rift spectrum along the seam, white-hot in the core.
+    bend: the centre line follows center + bend * along^2 (curved blades).
+    polar=(u, v, R): the seam runs around a circle of radius R in the
+    object's u/v plane (ring bands); `along` becomes arc length.
     Returns the (0..1) seam-mask socket."""
     nt = m.node_tree
     I = _bsdf(m).inputs
     tc = nt.nodes.new("ShaderNodeTexCoord")
     sep = nt.nodes.new("ShaderNodeSeparateXYZ")
     nt.links.new(tc.outputs[coord], sep.inputs[0])
-    a = sep.outputs[along]
-    x = sep.outputs[across]
+    if polar is not None:
+        pu, pv, R = polar
+        u_, v_ = sep.outputs[pu], sep.outputs[pv]
+        rr = _m(nt, "SQRT", _m(nt, "ADD", _m(nt, "MULTIPLY", u_, u_), _m(nt, "MULTIPLY", v_, v_)))
+        a = _m(nt, "MULTIPLY", _m(nt, "ARCTAN2", v_, u_), R)
+        x = _m(nt, "SUBTRACT", rr, R)
+    else:
+        a = sep.outputs[along]
+        x = sep.outputs[across]
+    if bend:
+        center_s = _m(nt, "ADD", _m(nt, "MULTIPLY", _m(nt, "MULTIPLY", a, a), bend), center)
+    else:
+        center_s = center
     # jagged centre line: two octaves of 1D-ish noise along the seam
     cb = nt.nodes.new("ShaderNodeCombineXYZ")
     nt.links.new(_m(nt, "MULTIPLY", a, freq), cb.inputs["X"])
@@ -203,7 +217,7 @@ def add_rift(m, along="Z", across="X", center=0.0, amp=0.05, freq=2.2, width=0.0
     nt.links.new(cb2.outputs[0], nz2.inputs["Vector"])
     jag = _m(nt, "ADD", _m(nt, "MULTIPLY", _m(nt, "SUBTRACT", nz.outputs["Fac"], 0.5), amp * 2.0),
              _m(nt, "MULTIPLY", _m(nt, "SUBTRACT", nz2.outputs["Fac"], 0.5), amp * 0.5))
-    d = _m(nt, "ABSOLUTE", _m(nt, "SUBTRACT", _m(nt, "SUBTRACT", x, center), jag))
+    d = _m(nt, "ABSOLUTE", _m(nt, "SUBTRACT", _m(nt, "SUBTRACT", x, center_s), jag))
     if depth is not None:
         # only on the camera-facing side (depth axis < limit)
         ax, lim = depth
