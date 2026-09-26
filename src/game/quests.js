@@ -24,6 +24,7 @@ import { addByBase, countItem, consumeByBase } from './inventory.js';
 import { addExp } from './progression.js';
 
 let G = null;
+let claiming = 0; // 보상 지급 중 발생하는 itemPicked/levelUp 등의 중첩 처리 방지
 const RANKS = 'SABCD';
 const MINIGAME_NAMES = { dice: '주사위', blackjack: '블랙잭', slot: '슬롯머신', duel: '결투', memory: '기억력 카드' };
 
@@ -175,11 +176,14 @@ export function claimQuest(s, qid) {
   const out = { gold: r.gold ?? 0, exp: r.exp ?? 0, items: [], levelUps: 0 };
   s.gold = (s.gold ?? 0) + out.gold;
   const hero = s.heroes?.[s.charId];
-  if (hero && out.exp) out.levelUps = addExp(hero, out.exp);
-  for (const i of r.items || []) {
-    if (!ITEMS[i.id]) continue;
-    if (addByBase(s, i.id, i.qty ?? 1)) out.items.push({ id: i.id, qty: i.qty ?? 1, name: ITEMS[i.id].name });
-  }
+  claiming++;
+  try {
+    if (hero && out.exp) out.levelUps = addExp(hero, out.exp);
+    for (const i of r.items || []) {
+      if (!ITEMS[i.id]) continue;
+      if (addByBase(s, i.id, i.qty ?? 1)) out.items.push({ id: i.id, qty: i.qty ?? 1, name: ITEMS[i.id].name });
+    }
+  } finally { claiming--; }
   if (out.levelUps && G?.world?.player?.hero === hero) G.world.player.refreshStats?.();
   bus.emit('questClaimed', { questId: qid, reward: out });
   return out;
@@ -249,10 +253,10 @@ export function initQuests(game) {
   };
   const on = (evt, fn) => bus.on(evt, (d) => {
     const s = game.state;
-    if (!s?.progress) return;
-    sync(s);
+    if (!s?.progress || claiming) return;
     fn?.(s, d || {});
     check(s);
+    sync(s); // 달성 알림 뒤에 다음 메인 퀘스트 수락
   });
   on('enemyKilled', (s, d) => {
     const id = d.def?.id ?? d.enemy?.def?.id;

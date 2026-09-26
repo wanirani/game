@@ -9,7 +9,7 @@ import { clamp, lerp, rand, ease, fmt, TAU, pick } from '../../core/math.js';
 import { CHARACTERS } from '../../data/characters.js';
 import { drawHero } from '../../render/hero.js';
 import { MiniGame, drawBtn, gPanel, goldText, record, vignetteSoft, GOLD } from './common.js';
-import { glow, rr, drawChip } from './art.js';
+import { glow, rr } from './art.js';
 
 const GUN = (style, element = null) => ({ type: 'gun', style, level: 0, rarity: 0, element });
 export const FOES = [
@@ -136,8 +136,9 @@ export class DuelScene extends MiniGame {
     this.shake(8, 0.25);
   }
   fireBullet(from, to, final) {
-    const mx = from.cx + from.facing * 44 * SC, my = from.bottom - 60 * SC;
-    const tx = to.cx - to.facing * 4, ty = to.bottom - 52 * SC;
+    const hs = SC * (from.look.height ?? 1), ht = SC * (to.look.height ?? 1);
+    const mx = from.cx + from.facing * 38 * hs, my = from.bottom - 77 * hs;
+    const tx = to.cx - to.facing * 4, ty = to.bottom - 58 * ht;
     this.bullet = { x0: mx, y0: my, x1: tx, y1: ty, t: 0, dur: 0.09, target: to, final, hit: false };
     this.flashes.push({ x: mx, y: my, t: 0, f: from.facing });
     this.flash('#fff', 0.5);
@@ -152,7 +153,6 @@ export class DuelScene extends MiniGame {
     audio.sfx('hit_heavy');
   }
   endRound() {
-    const w = this.roundWinner;
     const f = this.F;
     if (this.score[0] >= 2 || this.score[1] >= 2) {
       const win = this.score[0] >= 2;
@@ -172,11 +172,12 @@ export class DuelScene extends MiniGame {
       return;
     }
     this.nextRound();
-    void w;
   }
 
-  pressedFire(tap) {
-    if (tap && tap !== 'back') return true;
+  /** 발사 입력: 공격/점프/확인 키 또는 화면 누름(손을 뗄 때가 아니라 누르는 순간) */
+  pressedFire() {
+    const p = input.pointer;
+    if (p.justDown && !(p.x < 130 && p.y < 60)) return true;
     return input.pressed('attack') || input.pressed('jump') || input.pressed('confirm') || input.pressed('sub');
   }
 
@@ -188,7 +189,7 @@ export class DuelScene extends MiniGame {
     this.phaseT += rdt; this.sigT += rdt; this.bannerT += rdt; this.talkT += rdt;
     for (const p of [this.me, this.foe]) {
       p.t += gdt; p.animT += gdt;
-      if (p.move) { p.moveT += gdt; if (p.moveT > 0.45) p.move = null; else if (p.moveT > 0.12) p.moveT = Math.min(p.moveT, 0.13 + (p.moveT - 0.12) * 0.2); }
+      if (p.move) p.moveT = Math.min(p.moveT + gdt, 0.14);
       if (p.anim === 'hurt' || p.anim === 'death') p.kx += (p.dead ? 60 : 30) * gdt * -p.facing * Math.max(0, 1 - p.animT * 2);
     }
     for (const f of this.flashes) f.t += gdt;
@@ -221,11 +222,11 @@ export class DuelScene extends MiniGame {
       return;
     }
     if (this.phase === 'intro') {
-      if (this.phaseT > 2.0 || (this.phaseT > 0.6 && this.pressedFire(tap))) this.nextRound();
+      if (this.phaseT > 2.0 || (this.phaseT > 0.6 && this.pressedFire())) this.nextRound();
       return;
     }
     if (this.phase === 'standoff') {
-      if (this.pressedFire(tap)) { this.shoot('me', true); return; }
+      if (this.pressedFire()) { this.shoot('me', true); return; }
       if (this.foulAt > 0 && this.phaseT >= this.foulAt) { this.shoot('foe', true); return; }
       if (this.feintAt > 0 && !this.feintShown && this.phaseT >= this.feintAt) {
         this.feintShown = true;
@@ -237,7 +238,7 @@ export class DuelScene extends MiniGame {
     }
     if (this.phase === 'draw') {
       this.fireT += rdt;
-      if (this.pressedFire(tap)) { this.shoot('me'); return; }
+      if (this.pressedFire()) { this.shoot('me'); return; }
       if (this.fireT >= this.npcAt) { this.shoot('foe'); return; }
       return;
     }
@@ -255,7 +256,7 @@ export class DuelScene extends MiniGame {
   // ── 그리기 ──
   draw(ctx) {
     const vw = this.vw, vh = this.vh, t = this.clock;
-    const GY = 452;
+    const GY = 444;
     this.drawSky(ctx, vw, vh, t, GY);
     // 결투자
     const gap = Math.min(vw * 0.27, 300);
@@ -447,11 +448,11 @@ export class DuelScene extends MiniGame {
     const stars = Math.round((0.5 - f.react) / 0.055) + 1;
     text(ctx, `속사 ${'★'.repeat(clamp(stars, 1, 5))}${'☆'.repeat(5 - clamp(stars, 1, 5))}   배당 ×${f.mult}${f.feint ? '   가짜 신호 주의' : ''}`, ix + iw / 2, iy + 76, { size: 12, align: 'center', weight: 700, color: '#e8d8b0', ow: 2 });
     // 하단: 상대 선택 + 판돈 + 결투
-    const py = vh - 104, pw = Math.min(vw - 24, 920), px = vw / 2 - pw / 2;
-    gPanel(ctx, px, py, pw, 96, { a: 0.85, r: 14 });
+    const py = vh - 88, pw = Math.min(vw - 24, 920), px = vw / 2 - pw / 2;
+    gPanel(ctx, px, py, pw, 84, { a: 0.85, r: 14 });
     const n = FOES.length, fs = 50;
     for (let i = 0; i < n; i++) {
-      const fx = px + 16 + i * (fs + 8), fy = py + 14;
+      const fx = px + 16 + i * (fs + 8), fy = py + 9;
       const r = this.hits.rect('foe:' + i, fx, fy, fs, fs + 18);
       this.hits.add('foe:' + i, r);
       const sel = i === this.foeIdx, un = this.unlocked(i);
@@ -473,12 +474,11 @@ export class DuelScene extends MiniGame {
     const selW = 16 + n * (fs + 8);
     const btnW = 150;
     const chipsW = pw - selW - btnW - 30;
-    this.drawBetBar(ctx, px + selW + chipsW / 2, py + 54, { r: 21, label: true });
-    const br = this.hits.rect('duel', px + pw - btnW - 14, py + 18, btnW, 60);
+    this.drawBetBar(ctx, px + selW + chipsW / 2, py + 50, { r: 21, label: true });
+    const br = this.hits.rect('duel', px + pw - btnW - 14, py + 13, btnW, 58);
     const can = this.free || this.st.gold >= this.bet;
     this.hits.add('duel', br, !can);
     drawBtn(ctx, br, '결투 신청!', { tone: 'crimson', size: 19, sub: this.free ? '무료 한 판' : `${fmt(this.bet)} G`, key: 'Z', disabled: !can, hot: this.hits.over(br), pressed: this.hits.pressed(br), pulse: can, t });
-    if (!input.touchMode) text(ctx, '↑ ↓ 상대 선택 · ← → 판돈', px + 16, py - 8, { size: 11, weight: 700, color: '#9d8f80', ow: 2 });
-    void drawChip;
+    if (!input.touchMode) text(ctx, '↑ ↓ 상대 선택 · ← → 판돈', px + pw - 14, py - 8, { size: 11, align: 'right', weight: 700, color: '#c8b490', ow: 3 });
   }
 }

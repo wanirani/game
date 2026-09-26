@@ -209,16 +209,16 @@ export class World {
 
     for (let i = 0; i < this.entities.length; i++) {
       const e = this.entities[i];
-      if (e.dead) continue;
+      if (e.dead && e !== this.player) continue; // 죽은 플레이어는 사망 연출(updateDeath)을 위해 계속 갱신
       if (this.timeStop > 0 && e.kind === 'projectile' && e.team === 'enemy') continue;
       e.update(sdt, this);
     }
     for (const d of this.debrisList) d.update(sdt, this.map);
     this.debrisList = this.debrisList.filter((d) => d.life > 0);
-    const removed = this.entities.filter((e) => e.dead);
+    const removed = this.entities.filter((e) => e.dead && e !== this.player);
     if (removed.length) {
       for (const e of removed) e.onRemove?.(this);
-      this.entities = this.entities.filter((e) => !e.dead);
+      this.entities = this.entities.filter((e) => !e.dead || e === this.player);
       this.platforms = this.platforms.filter((e) => !e.dead);
     }
     this.fx.update(sdt, this.map);
@@ -266,7 +266,7 @@ export class World {
     this.tiles.drawDecor(ctx, cam, this.time);
     this.tiles.draw(ctx, cam);
     // 엔티티 (z 정렬)
-    const list = this.entities.filter((e) => !e.dead && !e.hidden && (e.kind === 'player' || cam.visible(e.x, e.y, e.w, e.h, 200)));
+    const list = this.entities.filter((e) => (!e.dead || e === this.player) && !e.hidden && (e.kind === 'player' || cam.visible(e.x, e.y, e.w, e.h, 200)));
     list.sort((a, b) => a.z - b.z);
     this.fx.draw(ctx, 'back');
     for (const e of list) if (e.z < 0) e.draw(ctx, this);

@@ -109,10 +109,32 @@ window.__audioTest = async (ids, sec = 8, skip = 0, solo = null) => {
     const eng = new Engine(oc); eng.setVolumes(0.6, 0.8);
     const p = eng.playTrack(id, 0.5, 0.02);
     if (skip) { p.st -= skip * 60 / p.comp.bpm; }
-    if (solo) for (const ch of p.chans) if (ch.def.id !== solo) ch.in.gain.value = 0;
+    if (solo) { eng.master.disconnect(); eng.master.connect(oc.destination); if (solo !== '*') for (const ch of p.chans) if (ch.def.id !== solo) ch.in.gain.value = 0; }
     p.schedule(sec);
     const b = await oc.startRendering();
     res[id] = { notes: p.notes, ...stats(b) };
+  }
+  return res;
+};
+// 악기 음량 교정: 악기별 표준 악구를 채널 vol 0.5 로 연주 (마스터 컴프레서 우회) → RMS
+window.__instTest = async (insts) => {
+  const res = {};
+  for (const inst of insts) {
+    const lines = {
+      kit: null,
+      bass: 'o2 l8 a a > a < a f f > f < f', fbass: 'o2 l4 a a f f', timp: 'o2 l4 a r e r f r e r',
+      organ: 'o4 l2 a > c < f a', organ2: 'o5 l4 a > c e c < f a > c < a', strings: 'o4 l2 a > c < f a', choir: 'o4 l2 a > c < f a',
+    };
+    const x = { inst, vol: 0.5 };
+    const sec = { bars: 2, chords: 'Am | F', x: lines[inst] ?? 'o5 l4 a > c e c < f a > c < a' };
+    if (inst === 'kit') { delete sec.x; sec.x = { step: 16, k: 'x.......x.x.....', s: '....X.......X...', h: 'x.x.x.x.x.x.x.x.' }; }
+    const def = { bpm: 120, ch: { x }, sec: { A: sec }, order: ['A'] };
+    const oc = new OfflineAudioContext(2, 44100 * 4.5, 44100);
+    const eng = new Engine(oc); eng.setVolumes(0.6, 0.8); eng.master.disconnect(); eng.master.connect(oc.destination);
+    eng.compiled.__t = compileTrack(def, '__t');
+    const p = eng.playTrack('__t', 0.1, 0.02); p.schedule(4.1);
+    const b = await oc.startRendering(); const st = stats(b);
+    res[inst] = { rms: st.rms, peak: st.peak, st: st.st };
   }
   return res;
 };

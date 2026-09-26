@@ -6,7 +6,7 @@ import { input } from '../../core/input.js';
 import { drawIcon } from '../../render/icons.js';
 import { getDiff } from '../../data/difficulty.js';
 import { Tab } from './base.js';
-import { PAL, frame, heading, divider, brackets, glow, glowOval, gbutton, pill, rr, glyph, Confirm } from './common.js';
+import { PAL, frame, heading, divider, brackets, glow, glowOval, gbutton, rr, glyph, Confirm } from './common.js';
 import * as D from './access.js';
 
 const RANK_COL = { D: '#a0a0a0', C: '#7ee07e', B: '#5aa8ff', A: '#c07cff', S: '#ffa640', SS: '#ff5a4a', SSS: '#ffe070' };
@@ -156,6 +156,5 @@ export class SystemTab extends Tab {
     } else if (this.game.settings?.autoSave) {
       text(ctx, '자동 저장이 켜져 있습니다', RX + 20, iy + 50, { size: 11, weight: 600, color: PAL.dim });
     }
-    void pill;
   }
 }

@@ -91,13 +91,8 @@ export class HubScene extends Scene {
       ctx.globalCompositeOperation = 'lighter';
       glow(ctx, d.cx, FLOOR - 40, 70, '#ffb45a', 0.35 + Math.sin(t * 5) * 0.08);
       ctx.globalCompositeOperation = 'source-over';
-      const ly = FLOOR - (b?.kind === 'board' ? 222 : b?.kind === 'church' ? 214 : b?.kind === 'gate' ? 226 : 138) - Math.abs(Math.sin(t * 3)) * 4;
-      const name = b?.name ?? '';
-      ctx.font = `800 15px ${FONT.title}`;
-      const tw = Math.max(ctx.measureText(name).width, 80) + 36;
-      panel(ctx, d.cx - tw / 2, ly - 40, tw, 46, { corner: false, glow: 'rgba(232,200,114,0.35)' });
-      text(ctx, name, d.cx, ly - 18, { size: 15, weight: 800, family: FONT.title, color: '#f3d690', align: 'center' });
-      text(ctx, input.touchMode ? '▲ 들어가기' : '▲ 들어가기', d.cx, ly, { size: 12, weight: 700, color: '#ffe7a0', align: 'center' });
+      const ly = FLOOR - (b?.kind === 'board' ? 214 : b?.kind === 'church' ? 150 : b?.kind === 'gate' ? 160 : 116) - Math.abs(Math.sin(t * 4)) * 6;
+      text(ctx, '▲', d.cx, ly, { size: 20, weight: 900, color: '#ffe7a0', align: 'center', ow: 4 });
       ctx.restore();
     };
   }

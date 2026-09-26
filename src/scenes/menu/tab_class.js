@@ -180,7 +180,7 @@ export class ClassTab extends Tab {
     ctx.drawImage(img, 0, 0, img.width, img.height, r.x + 4, r.y, tw, th + 8);
     ctx.restore();
     const tx = r.x + tw + 12, w = r.w - tw - 18;
-    text(ctx, ellipsize(ctx, c.name, w, 14, 800), tx, r.y + 24, { size: 14, weight: 800, color: st.key === 'closed' ? PAL.faint : sel ? PAL.goldHi : PAL.bone, ow: 3 });
+    text(ctx, ellipsize(ctx, c.name, w - 14, 14, 800), tx, r.y + 24, { size: 14, weight: 800, color: st.key === 'closed' ? PAL.faint : sel ? PAL.goldHi : PAL.bone, ow: 3 });
     text(ctx, c.eng ?? '', tx, r.y + 40, { size: 10, weight: 700, family: FONT.num, color: PAL.dim, ow: 2, maxWidth: w });
     text(ctx, st.text, tx, r.y + r.h - 12, { size: 11, weight: 800, color: st.color, ow: 2 });
     if (st.key === 'locked' || st.key === 'closed') glyph(ctx, 'lock', r.x + r.w - 14, r.y + 14, 10, PAL.faint, 1.3);
@@ -216,6 +216,17 @@ export class ClassTab extends Tab {
       text(ctx, '직업 특성', x + 18, cy + 4, { size: 12, weight: 800, color: PAL.gold });
       cy += 22;
       cy += para(ctx, c.perk, x + 18, cy, w - 36, { size: 13, color: '#ffe0a8', weight: 700, max: 2 }) + 2;
+    }
+    // 해금되는 스킬 계열
+    const unlocks = [];
+    for (const br of D.TREE(this.hero.charId)?.branches || []) {
+      const gi = (br.gate || []).indexOf(c.id);
+      if (gi >= 0) unlocks.push(`「${br.name}」 ${['3·4단', '5단', '6단'][gi] ?? ''}`);
+    }
+    if (unlocks.length) {
+      text(ctx, '스킬 해금', x + 18, cy + 6, { size: 12, weight: 800, color: '#9ac8ff' });
+      text(ctx, ellipsize(ctx, unlocks.join(' · '), w - 110, 12, 700), x + 84, cy + 6, { size: 12, weight: 700, color: PAL.bone });
+      cy += 20;
     }
     // 보정치
     const mods = [];

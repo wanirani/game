@@ -49,5 +49,6 @@ if (q.get('seed')) {
 }
 if (q.get('tab')) {
   while (g.scenes.length > 1 && g.top.name !== 'stage' && g.top.name !== 'hub') g.pop();
-  g.push('menu', { world: g.world, tab: q.get('tab') });
+  if (q.get('noworld')) { const w = g.world; g.world = null; g.push('menu', { world: null, tab: q.get('tab') }); g.world = w; }
+  else g.push('menu', { world: g.world, tab: q.get('tab') });
 }

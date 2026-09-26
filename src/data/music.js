@@ -55,13 +55,13 @@ const F = {
 };
 // 채널 프리셋
 const C = {
-  lead: (o) => ({ inst: 'lead', vol: 0.5, pan: 0.08, ...o }),
-  harm: (o) => ({ inst: 'lead2', from: 'lead', dia: -2, vol: 0.26, pan: -0.25, ...o }),
+  lead: (o) => ({ inst: 'lead', vol: 0.7, pan: 0.08, ...o }),
+  harm: (o) => ({ inst: 'lead2', from: 'lead', dia: -2, vol: 0.38, pan: -0.25, ...o }),
   gtr: (gen, o) => ({ inst: 'gtr', gen, step: 16, oct: 3, pow: true, vol: 0.34, pan: 0.3, ...o }),
-  arp: (gen, o) => ({ inst: 'harpsi', gen, step: 16, oct: 4, vol: 0.26, pan: -0.3, ...o }),
-  bass: (gen, o) => ({ inst: 'bass', gen, step: 8, oct: 2, vol: 0.5, ...o }),
+  arp: (gen, o) => ({ inst: 'harpsi', gen, step: 16, oct: 4, vol: 0.16, pan: -0.3, ...o }),
+  bass: (gen, o) => ({ inst: 'bass', gen, step: 8, oct: 2, vol: 0.6, ...o }),
   pad: (inst, o) => ({ inst, gen: 'pad', oct: 4, vol: 0.2, ...o }),
-  kit: (o) => ({ inst: 'kit', vol: 0.62, ...o }),
+  kit: (o) => ({ inst: 'kit', vol: 0.45, ...o }),
 };
 
 export const TRACKS = {

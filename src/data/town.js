@@ -3,7 +3,8 @@
 // BUILDINGS 는 허브 장면이 중경(mid) 레이어에 절차적으로 그리는 건물 파사드 정의 — 문('D') 위치와 정확히 맞물린다.
 // TOWN_NPCS 는 마을 NPC 의 배회 범위와 기본 외형(스토리 담당의 NPCS 데이터가 없을 때 대체용).
 
-// 12행 × 84열. 9행 = 바닥 바로 위(마커 줄), 10~11행 = 흙길('%' → tex2 흙 텍스처)
+// 10행 × 84열. 8행 = 바닥 바로 위(마커 줄), 9행 = 흙길('%' → tex2 흙 텍스처). 방 높이(480)가 화면(540)보다 낮아
+// 카메라는 바닥에 맞춰 세로 고정 — 위쪽 빈 하늘은 원경(Kling 그림)과 건물 지붕·첨탑이 채운다.
 //  문 순서(왼→오): 여관 · 잡화점 · 의뢰 게시판 · 대장간 · 성당 · 동쪽 성문(월드맵)
 //  NPC 순서(왼→오): 마르타 · 로크 · 하드윈 · 알베르토 신부 · 엘리제
 const W = 84;
@@ -11,14 +12,13 @@ const row = (marks = {}) => { const a = Array(W).fill(' '); for (const k in mark
 const range = (a, b, ch) => { const o = {}; for (let i = a; i <= b; i++) o[i] = ch; return o; };
 
 export const TOWN_W = W;
-export const TOWN_FLOOR_ROW = 10;
+export const TOWN_FLOOR_ROW = 9;
 
 const MAP = [
-  row(), row(), row(), row(), row(), row(), row(),
-  row({ ...range(9, 12, '='), ...range(39, 41, '=') }),   // 7: 여관 발코니 · 대장간 다락
+  row(), row(), row(), row(), row(), row(),
+  row({ ...range(9, 12, '='), ...range(39, 41, '=') }),   // 6: 여관 발코니 · 대장간 차양
   row(),
   row({ 7: 'D', 10: 'N', 19: 'D', 22: 'N', 29: 'P', 32: 'D', 41: 'D', 46: 'N', 57: 'D', 61: 'N', 70: 'N', 78: 'D' }),
-  '%'.repeat(W),
   '%'.repeat(W),
 ];
 
@@ -61,7 +61,7 @@ export const TOWN_PROPS = [
 ];
 
 // 가로등 (광원 + 그림) x 좌표
-export const TOWN_LAMPS = [720, 1260, 1740, 2380, 3100, 3540];
+export const TOWN_LAMPS = [720, 1260, 1740, 2380, 3100];
 
 // NPC 배회 설정 + 기본 외형 (render/hero.js look 스키마)
 export const TOWN_NPCS = {

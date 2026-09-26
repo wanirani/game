@@ -5,6 +5,18 @@ import { MOVESETS } from '../../data/movesets.js';
 import { TAU, rgba } from '../../core/math.js';
 import { glow, glowOval, Layer, PAL } from './common.js';
 
+/** 미리보기 품질: 큰 배율의 역광(림) 패스는 오프스크린 합성이 무거워 느린 기기에서는 자동으로 끈다 */
+export const HERO_Q = { rim: true, acc: 0, n: 0 };
+/** 메뉴가 프레임마다 자기 그리기 시간을 알려 준다 (ms) */
+export function heroPerfSample(ms) {
+  if (!HERO_Q.rim) return;
+  HERO_Q.acc += ms; HERO_Q.n++;
+  if (HERO_Q.n >= 24) {
+    if (HERO_Q.acc / HERO_Q.n > 12) HERO_Q.rim = false;
+    HERO_Q.acc = 0; HERO_Q.n = 0;
+  }
+}
+
 export class HeroView {
   constructor({ auto = true } = {}) {
     this.p = {
@@ -54,11 +66,12 @@ export class HeroView {
       if (this.auto) { this.cool -= dt; if (this.cool <= 0) this.showcase(); }
     }
   }
-  draw(ctx, cx, bottom, scale, { facing = 1, noFx = false } = {}) {
+  draw(ctx, cx, bottom, scale, { facing = 1, noFx = false, rim } = {}) {
     const p = this.p;
     if (!p.look) return;
     p.cx = cx; p.bottom = bottom; p.facing = facing;
-    try { drawHero(ctx, p, null, { scale, noFx }); } catch (e) { if (!this._err) { console.error(e); this._err = true; } }
+    const useRim = rim ?? (HERO_Q.rim ? undefined : false);
+    try { drawHero(ctx, p, null, useRim === undefined ? { scale, noFx } : { scale, noFx, rim: useRim }); } catch (e) { if (!this._err) { console.error(e); this._err = true; } }
   }
 }
 

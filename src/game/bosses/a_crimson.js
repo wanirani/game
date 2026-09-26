@@ -5,8 +5,9 @@ import { ABoss, beginDraw, endDraw, C, rg, lg, glow, ink, rim, sheen, taper, eye
 import { rand, clamp, lerp, TAU, angleTo, rgba, ease } from '../../core/math.js';
 import { audio } from '../../core/audio.js';
 
-const RED = '#8e1622', RED2 = '#d0303a', DARKR = '#30060c', GOLD = '#c89a48', LAVA = '#ff7a2a', DFIRE = '#ff3a1a';
+const RED = '#761019', RED2 = '#b8262e', DARKR = '#1e0308', GOLD = '#c89a48', LAVA = '#ff7a2a', DFIRE = '#ff3a1a';
 const _Q = new Float32Array(16);
+const S = 1.2; // 그림 배율
 
 export class CrimsonArmor extends ABoss {
   setup() {
@@ -58,7 +59,7 @@ export class CrimsonArmor extends ABoss {
     }
   }
   /** 로컬 → 월드 */
-  W(lx, ly) { return { x: this.cx + this.facing * lx, y: this.bottom + ly }; }
+  W(lx, ly) { return { x: this.cx + this.facing * lx * S, y: this.bottom + ly * S }; }
   pose() {
     const cr = this.crouch, H = { x: 0, y: -94 + cr * 30 };
     const T = { x: 4 + this.twist * 8, y: H.y - 44 };
@@ -395,7 +396,7 @@ export class CrimsonArmor extends ABoss {
       shadow(ctx, X, this.floorY - 2, 90, 14, 0.6);
       ctx.save();
       const jx = this.flashT > 0 ? rand(-2, 2) : 0;
-      ctx.translate(X + jx, B); ctx.scale(this.facing, 1);
+      ctx.translate(X + jx, B); ctx.scale(this.facing * S, S);
       this.drawAssembled(ctx, t);
       ctx.restore();
     } else {
@@ -407,7 +408,7 @@ export class CrimsonArmor extends ABoss {
       this.piece(ctx, c.gB, () => drawGauntlet(ctx, t, this.heat, 0.8));
       // 코어
       ctx.save();
-      ctx.translate(X + (this.flashT > 0 ? rand(-2, 2) : 0), this.cy); ctx.scale(f, 1);
+      ctx.translate(X + (this.flashT > 0 ? rand(-2, 2) : 0), this.cy); ctx.scale(f * S, S);
       glow(ctx, 0, 0, 170, '#5a0a08', 0.6);
       flames(ctx, 0, 30, PI / 2, 7, 90 + Math.sin(t * 4) * 10, t, DFIRE, 18, 3, '#ffb040', 0.5);
       drawPauldron(ctx, -40, -26, -1, t, this.heat);
@@ -420,7 +421,7 @@ export class CrimsonArmor extends ABoss {
     endDraw();
   }
   piece(ctx, pc, fn) {
-    ctx.save(); ctx.translate(pc.x, pc.y); ctx.scale(this.facing, 1); ctx.rotate(pc.a);
+    ctx.save(); ctx.translate(pc.x, pc.y); ctx.scale(this.facing * S, S); ctx.rotate(pc.a);
     glow(ctx, 0, 0, 50, DFIRE, 0.3 + this.heat * 0.2);
     fn();
     ctx.restore();
@@ -434,7 +435,7 @@ export class CrimsonArmor extends ABoss {
     // 뒷다리
     this.legD(ctx, H.x - 16, H.y + 4, -30 + Math.sin(g0 + PI) * 16 * walk, -Math.max(0, Math.cos(g0 + PI)) * 10 * walk, true);
     // 뒤 어깨·팔
-    const SB = { x: T.x - 36, y: T.y - 24 }, SF = { x: T.x + 42, y: T.y - 22 };
+    const SB = { x: T.x - 40, y: T.y - 26 }, SF = { x: T.x + 46, y: T.y - 24 };
     const BH = { x: G.x - dx * 22, y: G.y - dy * 22 }, FH = { x: G.x + dx * 18, y: G.y + dy * 18 };
     drawPauldron(ctx, SB.x, SB.y, -1, t, heat);
     this.armD(ctx, SB, BH, true);
@@ -443,7 +444,7 @@ export class CrimsonArmor extends ABoss {
     this.legD(ctx, H.x + 18, H.y + 4, 34 + Math.sin(g0) * 16 * walk, -Math.max(0, Math.cos(g0)) * 10 * walk, false);
     drawFaulds(ctx, H.x, H.y, t, heat);
     // 몸통 + 투구
-    ctx.save(); ctx.translate(T.x, T.y); drawChest(ctx, t, heat, false); ctx.restore();
+    ctx.save(); ctx.translate(T.x, T.y); ctx.scale(1.12, 1.08); drawChest(ctx, t, heat, false); ctx.restore();
     ctx.save(); ctx.translate(T.x + 8, T.y - 56 + Math.sin(t * 2) * 1); ctx.rotate(this.twist * 0.08); drawHelm(ctx, t, this.visor, heat); ctx.restore();
     // 할버드
     ctx.save(); ctx.translate(G.x, G.y); ctx.rotate(this.hA); drawHalberd(ctx, t, heat, false); ctx.restore();
@@ -462,7 +463,7 @@ export class CrimsonArmor extends ABoss {
     const fy = -6 - lift;
     const kx = (hx + fx) / 2 + (fx > hx ? 14 : -10) + cr * (fx > hx ? 14 : -10), ky = (hy + fy) / 2 - 4 - cr * 6;
     _Q[0] = hx; _Q[1] = hy; _Q[2] = kx; _Q[3] = ky; _Q[4] = fx; _Q[5] = fy;
-    taper(ctx, _Q, 3, far ? 30 : 34, 20);
+    taper(ctx, _Q, 3, far ? 36 : 40, 24);
     ink(ctx, lg(ctx, 'crleg' + far, hx - 20, 0, hx + 20, 0, [0, C(far ? '#3a0a10' : '#5a1018'), 0.35, C(far ? '#5a0e16' : RED), 0.8, C(far ? '#7a2028' : RED2), 1, C(DARKR)]), 3);
     if (!far) rim(ctx, hx - 30, hx, RIM, 3, 0.45);
     // 무릎 가시
@@ -476,7 +477,7 @@ export class CrimsonArmor extends ABoss {
   armD(ctx, S, Hn, far) {
     const ex = (S.x + Hn.x) / 2 + (far ? -8 : 6), ey = (S.y + Hn.y) / 2 + 14;
     _Q[0] = S.x; _Q[1] = S.y; _Q[2] = ex; _Q[3] = ey; _Q[4] = Hn.x; _Q[5] = Hn.y;
-    taper(ctx, _Q, 3, far ? 22 : 26, 16);
+    taper(ctx, _Q, 3, far ? 26 : 30, 18);
     ink(ctx, C(far ? '#4a0c14' : RED), 2.5);
     ctx.beginPath(); ctx.arc(ex, ey, far ? 8 : 10, 0, TAU); ink(ctx, C(far ? '#3a0a10' : '#b02a32'), 2);
     if (this.heat > 0.1) glow(ctx, ex, ey, 18, LAVA, this.heat * 0.5);
@@ -564,7 +565,7 @@ function drawPauldron(ctx, x, y, s, t, heat) {
     ctx.beginPath(); ctx.moveTo(Math.cos(a - 0.25) * 14, Math.sin(a - 0.25) * 11); ctx.lineTo(Math.cos(a) * (38 - i * 6), Math.sin(a) * (34 - i * 6)); ctx.lineTo(Math.cos(a + 0.25) * 14, Math.sin(a + 0.25) * 11); ctx.closePath();
     ink(ctx, lg(ctx, 'crspk' + i + s, 0, 0, Math.cos(a) * 36, Math.sin(a) * 32, [0, C('#3a0a10'), 1, C('#c8b0a0')]), 1.5);
   }
-  ctx.beginPath(); ctx.ellipse(0, 0, 24, 17, s * 0.25, 0, TAU);
+  ctx.beginPath(); ctx.ellipse(0, 0, 29, 20, s * 0.25, 0, TAU);
   ink(ctx, rg(ctx, 'crpaul' + s, s * 6, -6, 2, 0, 0, 26, [0, C('#f06058'), 0.4, C(RED), 1, C(DARKR)]), 3);
   if (s < 0) rim(ctx, -28, 0, RIM, 3, 0.4);
   ctx.strokeStyle = C(GOLD); ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(0, 3, 19, 11, s * 0.25, 0.2, PI - 0.2); ctx.stroke();

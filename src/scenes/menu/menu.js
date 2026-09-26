@@ -13,6 +13,7 @@ import { currentHero } from '../../game/state.js';
 import {
   PAL, glow, glowOval, diamond, glyph, keycap, hintRow, Layer, Nav, Gesture, Embers, hidePad, brackets,
 } from './common.js';
+import { heroPerfSample, HERO_Q } from './hero_view.js';
 import { StatusTab } from './tab_status.js';
 import { EquipTab } from './tab_equip.js';
 import { InventoryTab } from './tab_inventory.js';
@@ -62,6 +63,7 @@ export class MenuScene extends Scene {
     window.addEventListener('keydown', this._onKey, true);
     window.addEventListener('wheel', this._onWheel, { passive: true });
     hidePad(true);
+    if (this.game.settings?.quality === 'low') HERO_Q.rim = false;
     audio.sfx('menu_ok');
     if (!this.state) return;
     this.cur.onShow();
@@ -172,6 +174,11 @@ export class MenuScene extends Scene {
   }
 
   render(ctx) {
+    const t0 = performance.now();
+    this.draw(ctx);
+    if (this.t > 0.4 && !this.modal) heroPerfSample(performance.now() - t0);
+  }
+  draw(ctx) {
     const W = this.game.viewW, H = this.game.viewH;
     if (!this.snap) this.captureSnapshot(ctx);
     const kIn = ease.outCubic(clamp(this.t / 0.22, 0, 1));

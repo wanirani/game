@@ -222,8 +222,8 @@ export class SkillsTab extends Tab {
     text(ctx, String(sp), x + 132, y + 26, { size: 24, align: 'right', weight: 900, family: FONT.num, color: sp ? PAL.goldHi : PAL.faint, ow: 4 });
     const ult = D.CHARACTERS()[hero.charId]?.ult;
     if (ult) text(ctx, ellipsize(ctx, `필살기 · ${ult.name}`, 132, 11, 700), x + 10, y + 50, { size: 11, weight: 700, color: ult.color ?? PAL.goldHi });
-    text(ctx, input.touchMode ? '⇄ 로 1·2페이지 전환' : '전투 중 Q·E 로 1·2페이지 전환', x + 10, y + 64, { size: 10, weight: 600, color: PAL.faint, ow: 2 });
-    const sx0 = x + 150, sw = (w - 160) / 4;
+    text(ctx, input.touchMode ? '⇄ 버튼: 페이지 전환' : 'Q·E: 페이지 전환', x + 10, y + 64, { size: 10, weight: 600, color: PAL.faint, ow: 2 });
+    const sx0 = x + 158, sw = (w - 166) / 4;
     for (let k = 0; k < 4; k++) {
       const id = hero.slots?.[k] ?? null, sk = id ? D.SKILLS()[id] : null;
       const cx = sx0 + k * sw + 26, cy = y + h / 2 + 2;
@@ -235,7 +235,7 @@ export class SkillsTab extends Tab {
       ctx.fillStyle = '#0c070e'; ctx.fill();
       ctx.strokeStyle = sel ? PAL.goldHi : sk ? PAL.goldMid : '#3a2e2a'; ctx.lineWidth = sel ? 2 : 1.5; ctx.stroke();
       if (sk) { ctx.save(); rr(ctx, cx - 19, cy - 19, 38, 38, 5); ctx.clip(); try { drawSkillGlyph(ctx, sk, cx, cy, 40); } catch (e) { /* 무시 */ } ctx.restore(); }
-      keycap(ctx, k % 2 ? 'D' : 'S', cx - 27, cy + 8, { h: 16 });
+      keycap(ctx, input.touchMode ? (k % 2 ? 'S2' : 'S1') : k % 2 ? 'D' : 'S', cx - 27, cy + 8, { h: 16 });
       text(ctx, k < 2 ? 'Ⅰ' : 'Ⅱ', cx + 18, cy - 12, { size: 11, weight: 900, family: FONT.num, color: PAL.gold });
       text(ctx, sk ? ellipsize(ctx, sk.name, sw - 58, 12, 700) : '비어 있음', cx + 26, cy + 4, { size: 12, weight: 700, color: sk ? PAL.bone : PAL.faint, ow: 2 });
       if (sk) text(ctx, `Lv ${this.lv(id)}`, cx + 26, cy + 19, { size: 10, weight: 700, family: FONT.num, color: PAL.dim });

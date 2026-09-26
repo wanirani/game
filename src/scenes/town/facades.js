@@ -11,10 +11,10 @@ import { BUILDINGS, TOWN_FLOOR_ROW, TOWN_LAMPS } from '../../data/town.js';
 export const FLOOR = TOWN_FLOOR_ROW * TILE;
 
 const P = {
-  plaster: '#5a5262', plasterDark: '#2e2936',
+  plaster: '#4a4352', plasterDark: '#2a2530',
   timber: '#26180f', timberHi: '#4d3423', timberLo: '#110905',
-  stone: '#4a4754', stoneLo: '#24212c', mortar: '#141119',
-  cstone: '#4d4f62', cstoneLo: '#262838',
+  stone: '#35323f', stoneLo: '#1e1b25', mortar: '#0e0b12',
+  cstone: '#303242', cstoneLo: '#1c1e2a',
   slate: '#24222f', slateHi: '#3e3c55',
   rim: '#a9c2ff', warm: '#ffb45a', warmHi: '#ffe6a8',
   ol: '#07040a', gold: '#e8c872',
@@ -119,8 +119,6 @@ function windowBox(c, b, x, y, w, h, { lit = true, arch = false, shutters = fals
     else c.rect(x, y, w, h);
   };
   // 틀
-  c.save(); c.translate(-4, -4); c.scale(1, 1);
-  c.restore();
   c.fillStyle = P.timberLo; c.fillRect(x - 5, y + (arch ? w / 2 : -5), w + 10, h + (arch ? -w / 2 + 5 : 10));
   if (arch) { c.beginPath(); c.arc(x + w / 2, y + w / 2, w / 2 + 5, Math.PI, 0); c.fill(); }
   // 유리
@@ -294,8 +292,8 @@ const PAINT = {
     // 서쪽 성벽 + 닫힌 성문 + 망루
     stones(c, b.x0 - 40, F - 250, b.x1 - b.x0 + 40, 250, rng, P.stone);
     for (let x = b.x0 - 40; x < b.x1; x += 30) { stones(c, x, F - 272, 18, 22, rng, P.stone); }
-    stones(c, b.x1 - 70, F - 320, 70, 70, rng, '#43404e');
-    for (let x = b.x1 - 76; x < b.x1; x += 22) stones(c, x, F - 336, 14, 16, rng, '#43404e');
+    stones(c, b.x1 - 70, F - 320, 70, 70, rng, '#34313d');
+    for (let x = b.x1 - 76; x < b.x1; x += 22) stones(c, x, F - 336, 14, 16, rng, '#34313d');
     doorway(c, b.x0 + 40, F, 60, 110, { style: 'square', wood: '#2a1a12', rng });
     c.fillStyle = '#0a0608'; c.fillRect(b.x1 - 44, F - 290, 8, 26);
     c.strokeStyle = P.ol; c.lineWidth = 2; c.strokeRect(b.x0 - 40, F - 250, b.x1 - b.x0 + 40, 250);
@@ -317,7 +315,7 @@ const PAINT = {
       gableRoof(c, dx - 34, dx + 34, F - 344, dx, F - 382, 10, rng);
     }
     // 2층 (내닫이) 회반죽 + 목골조
-    plaster(c, x0 - 12, top, x1 - x0 + 24, gf - top, rng, '#5e5566');
+    plaster(c, x0 - 12, top, x1 - x0 + 24, gf - top, rng, '#4b4353');
     const cols = 8;
     for (let i = 0; i <= cols; i++) post(c, x0 - 12 + ((x1 - x0 + 24 - 9) * i) / cols, top, 9, gf - top);
     rail(c, x0 - 12, top, x1 - x0 + 24, 9); rail(c, x0 - 12, top + 58, x1 - x0 + 24, 7);
@@ -336,7 +334,7 @@ const PAINT = {
       c.fillStyle = P.timber; poly(c, [bx - 5, gf + 4, bx + 5, gf + 4, bx + 5, gf + 22, bx - 5, gf + 8]); c.fill();
     }
     // 1층: 벽 + 기단 석재
-    plaster(c, x0, gf + 4, x1 - x0, F - 56 - gf - 4, rng, '#524a58');
+    plaster(c, x0, gf + 4, x1 - x0, F - 56 - gf - 4, rng, '#423b48');
     post(c, x0, gf + 4, 10, F - gf); post(c, x1 - 10, gf + 4, 10, F - gf);
     stones(c, x0, F - 56, x1 - x0, 56, rng);
     // 1층 큰 창 (선술집)
@@ -355,7 +353,7 @@ const PAINT = {
     // 외곽선 + 우측 역광
     c.strokeStyle = P.ol; c.lineWidth = 2.5; c.strokeRect(x0 - 12, top, x1 - x0 + 24, gf - top); c.strokeRect(x0, gf, x1 - x0, F - gf);
     c.fillStyle = 'rgba(169,194,255,0.35)'; c.fillRect(x1 + 10, top, 2, gf - top);
-    b._sign = { hx: x0 + 118, hy: gf + 12, w: 128, h: 50, icon: 'cat', phase: 0.3 };
+    b._sign = { hx: x0 + 132, hy: gf + 12, w: 150, h: 50, icon: 'cat', phase: 0.3 };
     b._chim = { x: x1 - 92, y: F - 440 };
   },
 
@@ -364,7 +362,7 @@ const PAINT = {
     const gf = F - 188;
     // 박공 벽
     c.save(); poly(c, [x0, gf, mid, F - 336, x1, gf]); c.clip();
-    plaster(c, x0, F - 340, x1 - x0, 160, rng, '#5a5064');
+    plaster(c, x0, F - 340, x1 - x0, 160, rng, '#473f50');
     post(c, mid - 5, F - 336, 10, 150);
     brace(c, mid - 5, F - 250, x0 + 60, gf); brace(c, mid + 5, F - 250, x1 - 60, gf);
     rail(c, x0, F - 250, x1 - x0, 7);
@@ -379,7 +377,7 @@ const PAINT = {
     windowBox(c, b, x1 - 74, F - 238, 30, 36, { lit: true, shutters: true, rng });
     gableRoof(c, x0 - 6, x1 + 6, gf + 2, mid, F - 346, 16, rng);
     // 1층
-    plaster(c, x0, gf, x1 - x0, F - 40 - gf, rng, '#4e4658');
+    plaster(c, x0, gf, x1 - x0, F - 40 - gf, rng, '#3e3748');
     post(c, x0, gf, 11, F - gf); post(c, x1 - 11, gf, 11, F - gf); rail(c, x0, gf, x1 - x0, 10);
     stones(c, x0, F - 40, x1 - x0, 40, rng);
     // 진열창 (물약 선반)
@@ -412,7 +410,7 @@ const PAINT = {
     c.fillStyle = P.timberLo; c.fillRect(x0 + 4, ay0 - 4, x1 - x0 - 8, 5);
     c.strokeStyle = P.ol; c.lineWidth = 2.5; c.strokeRect(x0, gf, x1 - x0, F - gf);
     c.fillStyle = 'rgba(169,194,255,0.35)'; c.fillRect(x1 - 2, gf, 2, F - gf);
-    b._sign = { hx: x1 - 40, hy: gf - 6, w: 140, h: 48, icon: 'bag', phase: 1.7, dir: 1 };
+    b._sign = { hx: x1 - 40, hy: gf - 6, w: 164, h: 48, icon: 'bag', phase: 1.7, dir: 1 };
   },
 
   board(c, b, rng) {
@@ -446,14 +444,14 @@ const PAINT = {
     chimney(c, x1 - 90, F - 410, 44, F - 250, rng);
     // 석조 본채
     roofSlab(c, x0 - 24, split + 20, F - 238, F - 316, 50, rng);
-    stones(c, x0, F - 240, split - x0, 240, rng, '#4d4650');
+    stones(c, x0, F - 240, split - x0, 240, rng, '#3a343e');
     windowBox(c, b, x0 + 36, F - 196, 40, 46, { lit: true, rng, arch: true, color: '#ff8a3a' });
     windowBox(c, b, split - 76, F - 210, 36, 40, { lit: false, arch: true, rng });
     // 차양(발판 위치 F-144)
     const cx0 = 39 * TILE - 6, cx1 = 42 * TILE + 6;
     roofSlab(c, cx0 - 8, cx1 + 8, F - 144 + 10, F - 144 - 12, 6, rng, '#3a2e2a');
     for (const px of [cx0 + 2, cx1 - 8]) { c.fillStyle = P.timber; poly(c, [px, F - 136, px + 6, F - 136, px + 6, F - 110, px, F - 128]); c.fill(); }
-    doorway(c, dcx, F, 56, 100, { style: 'arch', wood: '#2e1c12', stone: '#4d4650', rng });
+    doorway(c, dcx, F, 56, 100, { style: 'arch', wood: '#2e1c12', stone: '#3a343e', rng });
     // 대장간 작업장 (열린 헛간)
     c.fillStyle = vgrad(c, F - 230, F, '#1a0e0a', '#0a0604'); c.fillRect(split, F - 226, x1 - split, 226);
     // 뒷벽 벽돌 + 걸린 무기
@@ -474,21 +472,29 @@ const PAINT = {
     c.fillStyle = '#0a0404'; c.beginPath(); c.moveTo(fx - 26, F - 30); c.lineTo(fx - 26, F - 60); c.arc(fx, F - 60, 26, Math.PI, 0); c.lineTo(fx + 26, F - 30); c.closePath(); c.fill();
     c.fillStyle = '#3a2a24'; poly(c, [fx - 50, F - 96, fx + 50, F - 96, fx + 26, F - 150, fx - 26, F - 150]); c.fill();
     c.strokeStyle = P.ol; c.lineWidth = 2; poly(c, [fx - 50, F - 96, fx + 50, F - 96, fx + 26, F - 150, fx - 26, F - 150]); c.stroke();
-    // 모루
-    const ax = split + 70;
-    c.fillStyle = '#2a2830'; c.fillRect(ax - 10, F - 30, 20, 30);
-    c.fillStyle = vgrad(c, F - 46, F - 30, '#6a6878', '#2a2830');
-    c.beginPath(); c.moveTo(ax - 28, F - 46); c.lineTo(ax + 20, F - 46); c.quadraticCurveTo(ax + 40, F - 44, ax + 42, F - 40); c.lineTo(ax + 14, F - 34); c.lineTo(ax - 18, F - 34); c.closePath(); c.fill();
-    c.fillStyle = 'rgba(255,170,90,0.5)'; c.fillRect(ax - 26, F - 46, 44, 1.5);
+    // 모루 (나무 그루터기 위)
+    const ax = split + 74;
+    c.fillStyle = hgrad(c, ax - 16, ax + 16, '#4a3020', '#1e120a'); c.fillRect(ax - 16, F - 34, 32, 34);
+    c.strokeStyle = 'rgba(0,0,0,0.5)'; c.lineWidth = 1; for (let i = 0; i < 4; i++) { c.beginPath(); c.moveTo(ax - 12 + i * 8, F - 32); c.lineTo(ax - 13 + i * 8, F); c.stroke(); }
+    c.fillStyle = vgrad(c, F - 58, F - 34, '#6a6878', '#1e1c24');
+    c.beginPath(); c.moveTo(ax - 40, F - 56); c.quadraticCurveTo(ax - 22, F - 58, ax - 18, F - 60); c.lineTo(ax + 26, F - 60); c.lineTo(ax + 28, F - 50);
+    c.lineTo(ax + 12, F - 46); c.quadraticCurveTo(ax + 8, F - 40, ax + 14, F - 34); c.lineTo(ax - 14, F - 34); c.quadraticCurveTo(ax - 8, F - 40, ax - 12, F - 46); c.quadraticCurveTo(ax - 28, F - 48, ax - 40, F - 56); c.closePath(); c.fill();
+    c.strokeStyle = P.ol; c.lineWidth = 2; c.stroke();
+    c.fillStyle = 'rgba(255,170,90,0.6)'; c.fillRect(ax - 18, F - 60, 44, 1.5);
+    c.fillStyle = 'rgba(169,194,255,0.4)'; c.fillRect(ax + 24, F - 58, 1.5, 8);
+    // 물통 + 집게
+    c.fillStyle = vgrad(c, F - 26, F, '#3a2a1c', '#1a100a'); c.fillRect(ax + 34, F - 26, 30, 26);
+    c.fillStyle = 'rgba(80,120,160,0.5)'; c.fillRect(ax + 36, F - 24, 26, 4);
+    c.strokeStyle = '#2a2830'; c.lineWidth = 2; c.beginPath(); c.moveTo(ax + 42, F - 40); c.lineTo(ax + 50, F - 22); c.moveTo(ax + 48, F - 40); c.lineTo(ax + 46, F - 22); c.stroke();
     // 헛간 기둥 + 경사 지붕
     for (const px of [split, x1 - 12]) post(c, px, F - 230, 12, 230);
     roofSlab(c, split - 10, x1 + 22, F - 222, F - 262, 8, rng, '#2e2a34');
-    stones(c, split - 14, F - 240, 16, 240, rng, '#4d4650');
+    stones(c, split - 14, F - 240, 16, 240, rng, '#3a343e');
     c.strokeStyle = P.ol; c.lineWidth = 2.5; c.strokeRect(x0, F - 240, split - x0, 240);
     c.fillStyle = 'rgba(169,194,255,0.35)'; c.fillRect(x1 - 1, F - 222, 2, 222);
-    b._sign = { hx: split - 6, hy: F - 190, w: 150, h: 48, icon: 'anvil', phase: 2.6, dir: 1 };
+    b._sign = { hx: split - 6, hy: F - 190, w: 176, h: 48, icon: 'anvil', phase: 2.6, dir: 1 };
     b._forge = { x: fx, y: F - 44 };
-    b._anvil = { x: ax, y: F - 48 };
+    b._anvil = { x: ax, y: F - 60 };
     b._chim = { x: x1 - 68, y: F - 420, sparks: true };
   },
 
@@ -567,8 +573,8 @@ const PAINT = {
     const x0 = b.x0 + 20, x1 = b.x1 - 20, mid = (x0 + x1) / 2, gf = F - 150;
     chimney(c, x0 + 40, F - 330, 26, F - 250, rng);
     c.save(); poly(c, [x0, F - 260, mid, F - 322, x1, F - 260]); c.clip();
-    plaster(c, x0, F - 330, x1 - x0, 80, rng, '#50485a'); c.restore();
-    plaster(c, x0 - 8, F - 262, x1 - x0 + 16, 112, rng, '#554c5e');
+    plaster(c, x0, F - 330, x1 - x0, 80, rng, '#403a4a'); c.restore();
+    plaster(c, x0 - 8, F - 262, x1 - x0 + 16, 112, rng, '#443d4d');
     for (let i = 0; i <= 5; i++) post(c, x0 - 8 + ((x1 - x0 + 7) * i) / 5, F - 262, 8, 112);
     rail(c, x0 - 8, F - 262, x1 - x0 + 16, 7);
     for (let i = 0; i < 5; i++) { const a = x0 - 8 + ((x1 - x0 + 7) * i) / 5 + 8, bb = x0 - 8 + ((x1 - x0 + 7) * (i + 1)) / 5; if (i % 2) brace(c, a, F - 255, bb, gf - 4); else brace(c, bb, F - 255, a, gf - 4); }
@@ -576,7 +582,7 @@ const PAINT = {
     windowBox(c, b, x1 - 76, F - 236, 30, 40, { lit: false, shutters: true, rng });
     gableRoof(c, x0 - 8, x1 + 8, F - 258, mid, F - 334, 14, rng);
     rail(c, x0 - 12, gf - 6, x1 - x0 + 24, 10);
-    plaster(c, x0, gf + 4, x1 - x0, F - 34 - gf - 4, rng, '#4a4254');
+    plaster(c, x0, gf + 4, x1 - x0, F - 34 - gf - 4, rng, '#3a3444');
     stones(c, x0, F - 34, x1 - x0, 34, rng);
     doorway(c, mid + 40, F, 46, 90, { style: 'arch', wood: '#3a2a1a', rng });
     windowBox(c, b, x0 + 30, F - 126, 50, 42, { lit: true, rng, box: true });
@@ -591,32 +597,32 @@ const PAINT = {
     c.save(); c.beginPath(); c.rect(lt1, F - 262, rt0 - lt1, 262);
     c.moveTo(cx - ow / 2, F); c.lineTo(cx - ow / 2, F - oh + ow / 2); c.arc(cx, F - oh + ow / 2, ow / 2, Math.PI, 0, false); c.lineTo(cx + ow / 2, F); c.closePath();
     c.clip('evenodd');
-    stones(c, lt1, F - 262, rt0 - lt1, 262, rng, '#474452');
+    stones(c, lt1, F - 262, rt0 - lt1, 262, rng, '#363342');
     c.restore();
-    for (let x = lt1; x < rt0; x += 28) stones(c, x + 3, F - 282, 18, 22, rng, '#474452');
+    for (let x = lt1; x < rt0; x += 28) stones(c, x + 3, F - 282, 18, 22, rng, '#363342');
     // 내리닫이 창살(올려진 상태) 끝
     c.fillStyle = '#16121a';
     for (let x = cx - ow / 2 + 8; x < cx + ow / 2 - 4; x += 14) { c.fillRect(x, F - oh + 6, 4, 24); poly(c, [x - 1, F - oh + 30, x + 5, F - oh + 30, x + 2, F - oh + 40]); c.fill(); }
     c.fillRect(cx - ow / 2 + 4, F - oh + 14, ow - 8, 4);
     // 아치 테두리
-    c.strokeStyle = '#6a6678'; c.lineWidth = 10; c.beginPath(); c.moveTo(cx - ow / 2 - 4, F); c.lineTo(cx - ow / 2 - 4, F - oh + ow / 2); c.arc(cx, F - oh + ow / 2, ow / 2 + 4, Math.PI, 0); c.lineTo(cx + ow / 2 + 4, F); c.stroke();
+    c.strokeStyle = '#4c4858'; c.lineWidth = 10; c.beginPath(); c.moveTo(cx - ow / 2 - 4, F); c.lineTo(cx - ow / 2 - 4, F - oh + ow / 2); c.arc(cx, F - oh + ow / 2, ow / 2 + 4, Math.PI, 0); c.lineTo(cx + ow / 2 + 4, F); c.stroke();
     c.strokeStyle = P.ol; c.lineWidth = 2; c.beginPath(); c.arc(cx, F - oh + ow / 2, ow / 2 + 9, Math.PI, 0); c.stroke();
     // 쐐기돌 + 문장
-    c.fillStyle = '#7a7688'; poly(c, [cx - 12, F - oh - 8, cx + 12, F - oh - 8, cx + 9, F - oh + 14, cx - 9, F - oh + 14]); c.fill();
+    c.fillStyle = '#5c586a'; poly(c, [cx - 12, F - oh - 8, cx + 12, F - oh - 8, cx + 9, F - oh + 14, cx - 9, F - oh + 14]); c.fill();
     c.fillStyle = '#8a1426'; c.beginPath(); c.moveTo(cx - 22, F - 250); c.lineTo(cx + 22, F - 250); c.lineTo(cx + 22, F - 222); c.quadraticCurveTo(cx, F - 204, cx - 22, F - 222); c.closePath(); c.fill();
     c.strokeStyle = P.gold; c.lineWidth = 2; c.stroke();
     c.fillStyle = P.gold; c.fillRect(cx - 2, F - 246, 4, 30); c.fillRect(cx - 10, F - 238, 20, 4);
     // 양쪽 탑
     for (const [a, z] of [[lt0, lt1], [rt0, rt1]]) {
-      stones(c, a, F - 330, z - a, 330, rng, '#4a4756', { rowH: [16, 21], bw: [26, 40] });
-      for (let x = a - 6; x < z + 6; x += 26) stones(c, x, F - 354, 17, 26, rng, '#4a4756');
-      stones(c, a - 8, F - 334, z - a + 16, 10, rng, '#5a5666');
+      stones(c, a, F - 330, z - a, 330, rng, '#383544', { rowH: [16, 21], bw: [26, 40] });
+      for (let x = a - 6; x < z + 6; x += 26) stones(c, x, F - 354, 17, 26, rng, '#383544');
+      stones(c, a - 8, F - 334, z - a + 16, 10, rng, '#46424f');
       c.fillStyle = '#07050a'; c.fillRect((a + z) / 2 - 4, F - 280, 8, 34); c.fillRect((a + z) / 2 - 4, F - 190, 8, 30);
       c.strokeStyle = P.ol; c.lineWidth = 2.5; c.strokeRect(a, F - 330, z - a, 330);
       c.fillStyle = 'rgba(169,194,255,0.4)'; c.fillRect(z - 2, F - 354, 2, 354);
     }
     // 오른쪽 성벽 이어짐
-    stones(c, rt1, F - 240, b.x1 - rt1 + 40, 240, rng, '#403d4a');
+    stones(c, rt1, F - 240, b.x1 - rt1 + 40, 240, rng, '#312e3a');
     c.fillStyle = 'rgba(0,0,0,0.35)'; c.fillRect(rt1, F - 240, b.x1 - rt1 + 40, 240);
     // 횃불 받침
     b._torch = [{ x: lt1 - 22, y: F - 150 }, { x: rt0 + 22, y: F - 150 }];
@@ -723,7 +729,7 @@ function drawSign(ctx, b, t) {
   ctx.strokeStyle = 'rgba(232,200,114,0.75)'; ctx.lineWidth = 1.2; ctx.strokeRect(-s.w / 2 + 4, y0 + 4, s.w - 8, h - 8);
   ctx.fillStyle = 'rgba(169,194,255,0.3)'; ctx.fillRect(-s.w / 2 + 6, y0 + 1, s.w - 12, 1.2);
   ICON[s.icon]?.(ctx, -s.w / 2 + 22, y0 + h / 2 + 2, 0.95, t);
-  text(ctx, b.name, 10, y0 + h / 2 + 7, { size: 17, weight: 800, family: FONT.title, color: '#f3d690', align: 'center', ow: 3, outline: 'rgba(10,4,2,0.95)' });
+  text(ctx, b.name, (-s.w / 2 + 40 + s.w / 2 - 8) / 2, y0 + h / 2 + 7, { size: 16, weight: 800, family: FONT.title, color: '#f3d690', align: 'center', ow: 3, outline: 'rgba(10,4,2,0.95)' });
   ctx.restore();
 }
 
@@ -777,7 +783,7 @@ const LIVE = {
     text(ctx, b.name, b._label.x, b._label.y, { size: 16, weight: 800, family: FONT.title, color: '#f3d690', align: 'center', ow: 3 });
     const n = info?.boardClaim ? 2 : info?.boardNew ? 1 : 0;
     if (n) {
-      const cx = b.door * TILE + 24, y = F - 200 - Math.abs(Math.sin(t * 4)) * 10;
+      const cx = b.door * TILE + 24 + 120, y = F - 178 - Math.abs(Math.sin(t * 4)) * 10;
       ctx.globalCompositeOperation = 'lighter'; glow(ctx, cx, y, 30, n === 2 ? '#ffd84a' : '#ff6a4a', 0.7); ctx.globalCompositeOperation = 'source-over';
       text(ctx, n === 2 ? '★' : '!', cx, y + 9, { size: 26, weight: 900, family: FONT.num, color: n === 2 ? '#ffe070' : '#ff8a6a', align: 'center', ow: 4 });
     }

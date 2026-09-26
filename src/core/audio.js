@@ -313,7 +313,7 @@ function pluck(g, t, d, pk, tau, rel = 0.05) {
 }
 const INST = {
   organ: {
-    rev: 0.45, norm: 1,
+    rev: 0.45, norm: 2.76,
     fx(e, ch, n) { const tr = e.ctx.createGain(); tr.gain.value = 0.92; n.connect(tr); const l = e.lfo(5.6, 0.09, ch); l.connect(tr.gain); return tr; },
     play(e, ch, m, t, d, v) {
       const f = mtof(m), g = e.ctx.createGain(), a = e.osc('organ', f, t), b = e.osc('organ', f * 1.0032, t);
@@ -322,7 +322,7 @@ const INST = {
     },
   },
   organ2: {
-    rev: 0.45, norm: 1,
+    rev: 0.45, norm: 1.95,
     fx(e, ch, n) { const tr = e.ctx.createGain(); tr.gain.value = 0.9; n.connect(tr); const l = e.lfo(5.2, 0.1, ch); l.connect(tr.gain); return tr; },
     play(e, ch, m, t, d, v) {
       const g = e.ctx.createGain(), a = e.osc('flute', mtof(m), t);
@@ -330,7 +330,7 @@ const INST = {
     },
   },
   harpsi: {
-    rev: 0.22, norm: 1,
+    rev: 0.22, norm: 5.84,
     play(e, ch, m, t, d, v) {
       const f = mtof(m), tau = 0.22 + Math.max(0, 90 - m) * 0.012;
       const g = e.ctx.createGain(), g2 = e.ctx.createGain(), a = e.osc('harpsi', f, t), b = e.osc('piano', f * 1.002, t);
@@ -339,7 +339,7 @@ const INST = {
     },
   },
   piano: {
-    rev: 0.32, norm: 1,
+    rev: 0.32, norm: 2.12,
     play(e, ch, m, t, d, v) {
       const f = mtof(m), tau = Math.min(1.6, 0.3 + Math.max(0, 100 - m) * 0.022);
       const g = e.ctx.createGain(), a = e.osc('piano', f, t), b = e.osc('piano', f * 1.0025, t);
@@ -348,7 +348,7 @@ const INST = {
     },
   },
   strings: {
-    rev: 0.4, norm: 1, fx: lpFx(2500, 0.5, 5.3, 9),
+    rev: 0.4, norm: 7.26, fx: lpFx(2500, 0.5, 5.3, 9),
     play(e, ch, m, t, d, v) {
       const f = mtof(m), g = e.ctx.createGain(), a = e.osc('sawtooth', f, t), b = e.osc('sawtooth', f, t);
       a.detune.value = -8; b.detune.value = 8; vibOn(ch, [a, b]);
@@ -357,7 +357,7 @@ const INST = {
     },
   },
   choir: {
-    rev: 0.55, norm: 1,
+    rev: 0.55, norm: 2.87,
     fx(e, ch, n) { return e.formants(ch, n, ch.def.vowel === 'o' ? [[380, 6, 1], [820, 8, 0.6], [2500, 10, 0.2]] : [[720, 6, 1], [1150, 8, 0.65], [2800, 10, 0.3]]); },
     play(e, ch, m, t, d, v) {
       const f = mtof(m), g = e.ctx.createGain(), a = e.osc('sawtooth', f, t), b = e.osc('sawtooth', f, t);
@@ -367,7 +367,7 @@ const INST = {
     },
   },
   lead: {
-    rev: 0.25, dly: 0.2, norm: 1,
+    rev: 0.25, dly: 0.2, norm: 4,
     fx(e, ch, n) { ch.lf = e.lfo(5.7, 1, ch, true); return n; },
     play(e, ch, m, t, d, v) {
       const c = e.ctx, f = mtof(m), g = c.createGain(), fl = c.createBiquadFilter(), a = e.osc(ch.def.wave || 'pulse25', f, t), b = e.osc('sawtooth', f, t);
@@ -382,7 +382,7 @@ const INST = {
     },
   },
   lead2: {
-    rev: 0.25, dly: 0.12, norm: 1,
+    rev: 0.25, dly: 0.12, norm: 3.49,
     fx(e, ch, n) { ch.lf = e.lfo(5.5, 1, ch, true); const b = e.ctx.createBiquadFilter(); b.type = 'lowpass'; b.frequency.value = 3200; n.connect(b); return b; },
     play(e, ch, m, t, d, v) {
       const c = e.ctx, g = c.createGain(), a = e.osc(ch.def.wave || 'square', mtof(m), t), vg = c.createGain();
@@ -393,7 +393,7 @@ const INST = {
     },
   },
   sawlead: {
-    rev: 0.3, dly: 0.2, norm: 1,
+    rev: 0.3, dly: 0.2, norm: 5.19,
     fx(e, ch, n) { ch.lf = e.lfo(5.8, 1, ch, true); const b = e.ctx.createBiquadFilter(); b.type = 'lowpass'; b.frequency.value = 3600; b.Q.value = 0.8; n.connect(b); return b; },
     play(e, ch, m, t, d, v) {
       const c = e.ctx, f = mtof(m), g = c.createGain(), a = e.osc('sawtooth', f, t), b = e.osc('sawtooth', f, t), vg = c.createGain();
@@ -405,7 +405,7 @@ const INST = {
     },
   },
   fiddle: {
-    rev: 0.3, norm: 1,
+    rev: 0.3, norm: 4.34,
     fx(e, ch, n) { const c = e.ctx, lp = c.createBiquadFilter(), hp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3400; lp.Q.value = 1.5; hp.type = 'highpass'; hp.frequency.value = 350; n.connect(hp); hp.connect(lp); ch.vib = e.lfo(6.2, 20, ch); return lp; },
     play(e, ch, m, t, d, v) {
       const g = e.ctx.createGain(), a = e.osc('sawtooth', mtof(m), t); vibOn(ch, [a]);
@@ -414,7 +414,7 @@ const INST = {
     },
   },
   reed: {
-    rev: 0.2, norm: 1, fx: lpFx(3000, 0.7),
+    rev: 0.2, norm: 4.73, fx: lpFx(3000, 0.7),
     play(e, ch, m, t, d, v) {
       const f = mtof(m), g = e.ctx.createGain(), a = e.osc('pulse35', f, t), b = e.osc('pulse35', f, t);
       a.detune.value = -13; b.detune.value = 13;
@@ -423,7 +423,7 @@ const INST = {
     },
   },
   brass: {
-    rev: 0.35, norm: 1,
+    rev: 0.35, norm: 4.25,
     play(e, ch, m, t, d, v) {
       const c = e.ctx, f = mtof(m), g = c.createGain(), fl = c.createBiquadFilter(), a = e.osc('sawtooth', f, t), b = e.osc('sawtooth', f, t);
       a.detune.value = -6; b.detune.value = 6;
@@ -433,7 +433,7 @@ const INST = {
     },
   },
   bass: {
-    rev: 0.05, norm: 1,
+    rev: 0.05, norm: 1.05,
     play(e, ch, m, t, d, v) {
       const c = e.ctx, f = mtof(m), g = c.createGain(), fl = c.createBiquadFilter(), a = e.osc('sawtooth', f, t), b = e.osc('sine', f, t);
       fl.type = 'lowpass'; fl.Q.value = 2.5; fl.frequency.setValueAtTime(260 + v * 1700, t); fl.frequency.setTargetAtTime(240, t + 0.005, 0.09);
@@ -443,7 +443,7 @@ const INST = {
     },
   },
   fbass: {
-    rev: 0.12, norm: 1,
+    rev: 0.12, norm: 1.5,
     play(e, ch, m, t, d, v) {
       const f = mtof(m), g = e.ctx.createGain(), a = e.osc('triangle', f, t), b = e.osc('sine', f * 2, t), bg = e.ctx.createGain(); bg.gain.value = 0.18;
       const end = pluck(g, t, d, v * 0.42, 0.6, 0.06);
@@ -451,14 +451,14 @@ const INST = {
     },
   },
   pizz: {
-    rev: 0.3, norm: 1, fx: lpFx(1700, 0.8),
+    rev: 0.3, norm: 6, fx: lpFx(1700, 0.8),
     play(e, ch, m, t, d, v) {
       const g = e.ctx.createGain(), a = e.osc('sawtooth', mtof(m), t);
       const end = pluck(g, t, Math.min(d, 0.5), v * 0.22, 0.11, 0.05); a.connect(g); g.connect(ch.in); a.stop(end); e.fin(a, g);
     },
   },
   bells: {
-    rev: 0.55, norm: 1,
+    rev: 0.55, norm: 2.12,
     play(e, ch, m, t, d, v) {
       const c = e.ctx, f = mtof(m), g = c.createGain(), a = e.osc('sine', f, t), mo = e.osc('sine', f * 3.5, t), mg = c.createGain();
       mg.gain.setValueAtTime(f * 2.2, t); mg.gain.setTargetAtTime(f * 0.15, t, 0.5); mo.connect(mg); mg.connect(a.frequency);
@@ -468,7 +468,7 @@ const INST = {
     },
   },
   celesta: {
-    rev: 0.45, dly: 0.15, norm: 1,
+    rev: 0.45, dly: 0.15, norm: 2.66,
     play(e, ch, m, t, d, v) {
       const c = e.ctx, f = mtof(m), g = c.createGain(), g2 = c.createGain(), a = e.osc('sine', f, t), b = e.osc('sine', f * 4.01, t);
       const tau = ch.def.tau ?? 0.45;
@@ -477,7 +477,7 @@ const INST = {
     },
   },
   timp: {
-    rev: 0.4, norm: 1,
+    rev: 0.4, norm: 1.3,
     fx(e, ch, n) { ch.lp = e.ctx.createBiquadFilter(); ch.lp.type = 'lowpass'; ch.lp.frequency.value = 320; ch.lp.connect(n); return n; },
     play(e, ch, m, t, d, v) {
       const c = e.ctx, f = mtof(m), g = c.createGain(), a = e.osc('sine', f * 1.05, t);
@@ -488,7 +488,7 @@ const INST = {
     },
   },
   gtr: {
-    rev: 0.12, norm: 1,
+    rev: 0.12, norm: 0.47,
     fx(e, ch, n) {
       const c = e.ctx, pre = c.createGain(), ws = c.createWaveShaper(), lp = c.createBiquadFilter(), hp = c.createBiquadFilter(), post = c.createGain();
       pre.gain.value = 2.2; ws.curve = e.curve(7); lp.type = 'lowpass'; lp.frequency.value = 2900; lp.Q.value = 0.9; hp.type = 'highpass'; hp.frequency.value = 110; post.gain.value = 0.22;
@@ -502,7 +502,7 @@ const INST = {
     },
   },
   kit: {
-    rev: 0.1, norm: 1,
+    rev: 0.1, norm: 0.798,
     fx(e, ch, n) {
       const c = e.ctx, mk = (type, f, q) => { const b = c.createBiquadFilter(); b.type = type; b.frequency.value = f; b.Q.value = q; b.connect(n); return b; };
       ch.hh = mk('highpass', 7200, 0.7); ch.cy = mk('highpass', 4200, 0.5); ch.sn = mk('highpass', 1100, 0.6); ch.bp = mk('bandpass', 1500, 1.2); ch.lo = mk('lowpass', 900, 0.7);

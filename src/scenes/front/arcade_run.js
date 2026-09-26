@@ -73,6 +73,7 @@ class ArcadeRunScene extends Scene {
   }
   respawnHere() {
     const w = this.world, p = w.player;
+    if (!w.entities.includes(p)) w.add(p);
     p.dead = false; p.deathHandled = false; p.deathT = 0;
     p.buffs = {}; p.refreshStats();
     p.hp = p.stats.hp; p.mp = p.stats.mp;
@@ -90,6 +91,9 @@ class ArcadeRunScene extends Scene {
     this.phaseT += dt;
     this.tick?.(dt);
     w.update(dt);
+    // 안전장치: 월드가 죽은 플레이어를 목록에서 빼 버리는 경우에도 사망 연출·처리를 이어간다
+    const p = w.player;
+    if (p?.dead && !p.deathHandled && !w.entities.includes(p)) p.updateDeath?.(dt, w);
   }
   render(ctx) {
     const w = this.world, vw = this.game.viewW, vh = this.game.viewH;

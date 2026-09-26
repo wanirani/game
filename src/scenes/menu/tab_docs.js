@@ -1,7 +1,7 @@
 // 비전서 탭: 숨겨진 비전서(DOCS) 수집 현황(책 표지 격자) · 커맨드 기술(방향 키캡) · 영구 능력치 · 기록물(LORE) 열람
 import { text, FONT } from '../../core/ui.js';
 import { audio } from '../../core/audio.js';
-import { clamp, rgba } from '../../core/math.js';
+import { clamp } from '../../core/math.js';
 import { input } from '../../core/input.js';
 import { cmdToText } from '../overlays.js';
 import * as LoreM from '../../data/lore.js';
@@ -302,6 +302,5 @@ export class DocsTab extends Tab {
     para(ctx, e.text ?? '', px + 20, py + 100, pw - 40, { size: 13, lh: 1.6, color: '#2a1a0a', family: FONT.title, weight: 700, ow: 0, max: lines });
     this.readRect = { x: x + w / 2 - 70, y: y + h - 46, w: 140, h: 34 };
     gbutton(ctx, this.readRect, '크게 읽기', { icon: 'book', size: 13, t, hot: this.m.ges.over(this.readRect) });
-    void rgba;
   }
 }

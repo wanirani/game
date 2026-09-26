@@ -16,6 +16,7 @@ const run = (id, patch) => {
 };
 out.push(`빈탭 ${run('status', (m) => { m.cur.render = () => {}; })}ms`);
 for (const id of tabs) out.push(`${id} ${run(id)}ms`);
+out.push(`status-림없음 ${run('status', (m) => { const v = m.cur.view; const d = v.draw.bind(v); v.draw = (ctx, a, b, c) => d(ctx, a, b, c, { rim: false }); })}ms`);
 out.push(`status-영웅없음 ${run('status', (m) => { m.cur.view.draw = () => {}; })}ms`);
 out.push(`status-무대없음 ${run('status', (m) => { m.cur.view.draw = () => {}; m.cur.stage.draw = () => {}; })}ms`);
 while (g.scenes.length > 1) g.pop();
