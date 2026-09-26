@@ -569,6 +569,7 @@ class Cloud {
   /** 지금 게임을 진행 중인 슬롯 (타이틀·슬롯 선택 같은 화면이면 null) */
   activeSlot() {
     const g = this.game, bottom = g?.scenes?.[0]?.name;
+    if (g?.fade?.pending && g.state?.slot) return g.state.slot; // 장면 전환 중 (예: 슬롯을 불러와 마을로 가는 중)
     if (!bottom || FRONT_SCENES.has(bottom)) return null;
     return g.state?.slot ?? null;
   }
@@ -629,7 +630,8 @@ class Cloud {
       v.busy = false;
     }
   }
-  async _download(slot) {
+  /** auto: 자동 동기화 — 받는 사이 그 슬롯으로 게임을 시작했다면 쓰지 않고 'held' */
+  async _download(slot, { auto = false } = {}) {
     if (!this.auth) return fail('logged_out');
     const id = this.id, v = this.view[slot];
     v.busy = true; v.error = null;
@@ -645,6 +647,7 @@ class Cloud {
       let data = r.data;
       if (!isValidSave(data)) { v.error = MESSAGES.invalid_save; return fail('invalid_save'); }
       try { const { migrateState } = await import('../game/state.js'); data = migrateState(data); } catch (e) { console.warn('[cloud] migrate', e); }
+      if (auto && this.activeSlot() === slot) return { ok: false, error: 'held' };
       // 덮어쓰기 전 이 기기의 기록을 한 벌 남겨 둔다 (bloodnocturne_slot_N_backup)
       const key = saves.slotKey(slot), prev = lsGet(key);
       if (prev) lsSet(`${key}_backup`, prev);
@@ -752,7 +755,6 @@ class Cloud {
     this.verified = true;
     this.applyList(res);
     const out = { ok: true, reason, uploaded: [], downloaded: [], deleted: [], conflicts: [], localOnly: [], failed: [], held: [] };
-    const active = this.activeSlot();
     for (const slot of SLOTS) {
       if (this.id !== id) return fail('logged_out');
       const v = this.view[slot];
@@ -765,8 +767,12 @@ class Cloud {
       if (status === 'synced') this.setRec(slot, { rev: v.cloud.rev, at: local.savedAt });
       else if (status === 'empty') this.setRec(slot, { rev: v.cloud?.rev ?? 0, at: null });
       let r = null;
-      if (auto === 'download' && (!downloads || slot === active)) out.held.push(slot); // 게임 중인 슬롯: 받지 않고 알림만
-      else if (auto === 'download') { r = await this._download(slot); if (r.ok) out.downloaded.push(slot); }
+      if (auto === 'download' && (!downloads || slot === this.activeSlot())) out.held.push(slot); // 게임 중인 슬롯: 받지 않고 알림만
+      else if (auto === 'download') {
+        r = await this._download(slot, { auto: true });
+        if (r.ok) out.downloaded.push(slot);
+        else if (r.error === 'held') { out.held.push(slot); r = null; }
+      }
       else if (auto === 'upload') { r = await this._upload(slot); if (r.ok && !r.skipped) out.uploaded.push(slot); }
       else if (auto === 'delete') { r = await this._deleteCloud(slot); if (r.ok) out.deleted.push(slot); }
       if (r && !r.ok && r.error !== 'conflict') out.failed.push(slot);

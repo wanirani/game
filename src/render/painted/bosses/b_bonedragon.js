@@ -136,7 +136,6 @@ function drawBoss(ctx, b, world, rig, st) {
   P.draw(ctx, 0);
   if (b.twin) drawHead(ctx, D, b, b.twin, world, rig, st, dt, dl, hit);
   drawHead(ctx, D, b, b.main, world, rig, st, dt, dl, hit);
-  D.begin(ctx);
   st.shards.draw(D);
   D.end();
   P.draw(ctx, 1);
@@ -239,7 +238,6 @@ function drawHead(ctx, D, b, h, world, rig, st, dt, dl, hit) {
   else if (nx < 0) ctx.rect(hole.x - 3000, hole.y - 2000, 3000, 4000);
   else ctx.rect(hole.x, hole.y - 2000, 3000, 4000);
   ctx.clip();
-  D.begin(ctx);
 
   const C = hs.chain.set(Pt, k);
   const ext = C.length;
@@ -273,8 +271,9 @@ function drawHead(ctx, D, b, h, world, rig, st, dt, dl, hit) {
     const mir = -fs * (far ? 0.86 : 1);
     const rot = wbase + (-fsn) * (-0.2 + open * 0.42 + flap + (far ? 0.28 : 0) - deathW * 1.1);
     const sy = wk * (far ? 0.86 : 1) * (0.84 + open * 0.16 + Math.sin(t * 2.2 + 0.6) * 0.04);
-    D.part(W, V(W, true), 'root', sh[0], sh[1], rot, wk * mir, sy, baseVis);
-    glowOver(ctx, D, W, lvl, 'root', sh[0], sh[1], rot, wk * mir, sy, 0.35 * baseVis, st, t);
+    const wa = baseVis * (dying ? clamp(1 - (dT - 0.6) / 0.85, 0, 1) : 1);
+    D.part(W, V(W, true), 'root', sh[0], sh[1], rot, wk * mir, sy, wa);
+    glowOver(ctx, D, W, lvl, 'root', sh[0], sh[1], rot, wk * mir, sy, 0.35 * wa, st, t, false, tint);
     return rot;
   };
   // ── 앞다리 (구멍 가장자리를 짚음) ──
@@ -300,21 +299,20 @@ function drawHead(ctx, D, b, h, world, rig, st, dt, dl, hit) {
   legDraw(legF, 58, true);
   if (wingOn) wingDraw(shN, false);
   // 흉곽 속 영혼불 (뒤)
-  if (baseVis > 0.05 && !dying) { D.end(); halo(ctx, core[0], core[1] + 10 * s, 130 * s, soul, 0.5 * baseVis * (0.8 + 0.2 * Math.sin(t * 3.1))); D.begin(ctx); }
+  if (baseVis > 0.05 && !dying) { D.end(); halo(ctx, core[0], core[1] + 10 * s, 120 * s, soul, 0.3 * baseVis * (0.8 + 0.2 * Math.sin(t * 3.1))); }
   D.part(T, V(T, true), 'neck', qx, qy, trot, tsx, tsy, dying ? clamp(1.9 - dT, 0, 1) : 1);
-  glowOver(ctx, D, T, lvl, 'neck', qx, qy, trot, tsx, tsy, 0.5, st, t, transform);
+  glowOver(ctx, D, T, lvl, 'neck', qx, qy, trot, tsx, tsy, 0.5, st, t, transform, tint);
   // 흉곽 안 영혼불 (앞, 가산) + 불씨
   D.end();
   const fireK = (0.75 + fury * 0.5 + flare * 0.4 + (lvl >= 2 ? Math.sin(t * 23) * 0.12 : 0)) * (dying ? clamp(1 - dT, 0, 1) * 1.6 : 1);
   if (baseVis > 0.05 && fireK > 0.02) {
-    halo(ctx, core[0], core[1], 90 * s * fireK, soul, 0.38 * baseVis, true);
-    soulFlame(ctx, core[0], core[1] + 18 * s, Math.atan2(axy, axx), 62 * s * fireK, 16 * s, t, soul, 0.55 * baseVis, twin ? 5 : 2);
+    halo(ctx, core[0], core[1], 70 * s * fireK, soul, 0.26 * baseVis, true);
+    soulFlame(ctx, core[0], core[1] + 18 * s, Math.atan2(axy, axx), 58 * s * fireK, 14 * s, t, soul, 0.42 * baseVis, twin ? 5 : 2);
     if (rr.next() < dt * (3 + fury * 4) * q.ambient) P.emit('ember', core[0] + rr.range(-30, 30) * s, core[1] + rr.range(-40, 10) * s, rr.range(-20, 20), rr.range(-80, -30), { color: soul, layer: 1 });
     if (rr.next() < dt * 0.9 * q.ambient) P.emit('smoke', core[0] + rr.range(-50, 50) * s, core[1] - 60 * s, 0, -30, { color: twin ? '#1a2230' : '#1d2a1f', layer: 0 });
   }
   // 구덩이 그림자 (흉곽 잘린 선 가림)
   if (floorHole) D.img(puff('#000000'), 32, 32, hole.x, hole.y, 0, 150 * s / 32, 54 * s / 32, 0.92);
-  D.begin(ctx);
   legDraw(legN, 112, false);
 
   // ── 목: 척수 관(뒤) → 등가시 → 척추 몸통 타일 (구멍 → 머리) ──
@@ -337,7 +335,6 @@ function drawHead(ctx, D, b, h, world, rig, st, dt, dl, hit) {
     ctx.strokeStyle = twin ? 'rgba(150,190,255,0.35)' : 'rgba(170,80,60,0.45)'; ctx.lineWidth = 3 * s; ctx.stroke();
     // 관절마다 영혼불 (틈으로 새어 나옴)
     if (q.halos && !dying) for (let i = k - 1; i > 0; i -= 2) if (arc[i] > hideBelow) halo(ctx, Pt[i].x, Pt[i].y, (20 + F[i].bend * 30) * s, soul, 0.16 + fury * 0.12 + Math.sin(t * 6 + i) * 0.05);
-    D.begin(ctx);
   }
   const u0 = 1 / Math.max(1, h.N);
   const tileX = (i) => {                          // 마디 i 의 타일 배치 계산 → hs._tx[i]
@@ -373,7 +370,7 @@ function drawHead(ctx, D, b, h, world, rig, st, dt, dl, hit) {
       x += (rr.next() - 0.5) * 3 * Math.min(1, dT * 3); y += (rr.next() - 0.5) * 3 * Math.min(1, dT * 3);
     }
     D.part(X.tile, V(X.tile, false), [X.cx, X.cy], x, y, rot, X.sx, X.sy, 1);
-    if (i % 2 === 0) glowOver(ctx, D, X.tile, lvl, [X.cx, X.cy], x, y, rot, X.sx, X.sy, 0.4, st, t + i);
+    if (i % 2 === 0) glowOver(ctx, D, X.tile, lvl, [X.cx, X.cy], x, y, rot, X.sx, X.sy, 0.4, st, t + i, false, tint);
     // 체액 방울 (목 아래쪽에서)
     if (!dying && i > 0 && rr.next() < dt * (0.3 + lvl * 0.3) * q.ambient) {
       const ox = -Math.sin(rot) * fsn, oy = Math.cos(rot) * fsn;
@@ -402,7 +399,6 @@ function drawHead(ctx, D, b, h, world, rig, st, dt, dl, hit) {
         ctx.strokeStyle = '#3a100c'; ctx.lineWidth = 3.5 * s; ctx.stroke();
       }
     }
-    D.begin(ctx);
   }
 
   // ── 두개골 + 경첩 턱 ──
@@ -415,7 +411,6 @@ function drawHead(ctx, D, b, h, world, rig, st, dt, dl, hit) {
   ctx.restore();   // clip
 
   // ── 구멍 앞 흙더미 ──
-  D.begin(ctx);
   drawRubble(D, rig, st, hole.x, hole.y, hrot, s, (hole.x | 0) % 997);
   // 벽 구멍: 벽 균열
   if (!floorHole) {
@@ -428,7 +423,6 @@ function drawHead(ctx, D, b, h, world, rig, st, dt, dl, hit) {
       ctx.lineTo(x0 + Math.cos(a) * r1 * 0.35 + hash1(i) * 6, y0 + Math.sin(a) * r1);
     }
     ctx.stroke();
-    D.begin(ctx);
   }
 
   // ── 반응 / 주변 입자 (그리기 전용 난수) ──
@@ -458,9 +452,9 @@ function drawHead(ctx, D, b, h, world, rig, st, dt, dl, hit) {
 }
 
 /** 손상 단계 균열 발광 오버레이 (반 해상도, 가산, 맥동) */
-function glowOver(ctx, D, part, lvl, pivot, x, y, rot, sx, sy, a, st, t, boost = false) {
+function glowOver(ctx, D, part, lvl, pivot, x, y, rot, sx, sy, a, st, t, boost = false, tint = null) {
   if (!st.q.crackGlow || lvl <= 0) return;
-  const g = part.gl[lvl === 1 ? 'dmg1' : 'dmg2'] ?? part.gl.dmg2;
+  const g = (tint && part.gl[tint + '_dmg2']) || part.gl[lvl === 1 ? 'dmg1' : 'dmg2'] || part.gl.dmg2;
   if (!g) return;
   const pv = typeof pivot === 'string' ? part[pivot] : pivot;
   const pa = a * (0.55 + 0.45 * Math.sin(t * 4.2 + part.w * 0.01)) * (boost ? 1.8 : 1) * (lvl > 1 ? 1.15 : 0.8);
@@ -575,7 +569,7 @@ function drawSkull(ctx, D, b, h, hs, rig, st, dt, lvl, hit, V) {
   D.rec = rec;
   D.part(S, V(S, false), 'origin', hx, hy, ha, ssx, ssy, 1);
   D.rec = rec;
-  glowOver(ctx, D, S, lvl, 'origin', hx, hy, ha, ssx, ssy, 0.6, st, t, b.state === 'transform');
+  glowOver(ctx, D, S, lvl, 'origin', hx, hy, ha, ssx, ssy, 0.6, st, t, b.state === 'transform', hs.tint);
   const eyeW = D.pt(S.origin[0], S.origin[1], S.eye[0], S.eye[1], hx, hy, ha, ssx, ssy, _e);
   const jawTip = D.pt(S.hinge[0], S.hinge[1], J.tip[0], J.tip[1] + 10, _h[0], _h[1], ha + jaw * flip, ssx, ssy, _m);
   D.end();
@@ -593,7 +587,6 @@ function drawSkull(ctx, D, b, h, hs, rig, st, dt, lvl, hit, V) {
   }
   // 턱에서 떨어지는 체액
   if (!dying && h.jaw > 0.25 && rr.next() < dt * (1.4 + lvl) * q.ambient) P.emit('ichor', jawTip[0], jawTip[1], 0, 0, { color: hs.ichor, hi: hs.ichorHi, hang: rr.range(0.15, 0.4), layer: 1 });
-  D.begin(ctx);
 }
 
 // ───────────────────────── 사망 붕괴 ─────────────────────────
@@ -613,16 +606,18 @@ function detachTile(st, hs, X, i, x, y, rot, V, rig, spines) {
 function deathParts(ctx, D, b, h, hs, rig, st, dt, dT, o) {
   st._dT = dT;
   const R = rig.parts, s = o.s;
-  // 날개: 접히며 떨어져 나감 (0.95s)
-  if (!hs.wingGone && dT > 0.95) {
-    hs.wingGone = true;
-    const W = R.wing, img = o.V(W, true);
-    for (const [sh, far] of [[o.shF, true], [o.shN, false]]) {
-      const mir = -o.fs * (far ? 0.86 : 1), rot = o.wbase + (-o.fsn) * (-0.2 + o.open * 0.42 + (far ? 0.28 : 0) - 0.5);
-      st.shards.spawn(img, W.root[0], W.root[1], sh[0], sh[1], rot, o.wk * mir, o.wk * (far ? 0.86 : 1), (far ? -1 : 1) * o.fsn * rr.range(40, 140), rr.range(-260, -120), o.fsn * rr.range(-2, 2), { r: 40 * s, bounce: 0.18, fade: 2.35 - dT });
-      for (let i = 0; i < 6; i++) st.P.emit('ash', sh[0] + rr.range(-120, 120) * s, sh[1] + rr.range(-120, 40) * s, rr.range(-30, 30), rr.range(-40, 20), { layer: 1, size: rr.range(2, 4) });
+  // 날개: 접히며(deathW) 막이 재로 부서져 흩어진다 — 큰 날개 통째로 튕기면 어색하므로 재 + 뼈 몇 조각
+  if (!hs.wingCrumble && dT > 0.7) {
+    hs.wingCrumble = true;
+    for (const sh of [o.shF, o.shN]) {
+      for (let i = 0; i < 26; i++) st.P.emit(i % 3 ? 'ash' : 'ashLight', sh[0] + o.fsn * rr.range(-40, 220) * s, sh[1] + rr.range(-200, 40) * s, rr.range(-40, 40), rr.range(-60, 30), { layer: 1, size: rr.range(2, 4.5), life: rr.range(1.2, 2.2) });
+      for (let i = 0; i < 2; i++) {
+        const p = rig.parts[st.debris[(i * 3 + 1) % st.debris.length]];
+        st.shards.spawn(p.v.base, p.c[0], p.c[1], sh[0] + o.fsn * rr.range(40, 160) * s, sh[1] - rr.range(40, 140) * s, rr.next() * TAU, p.k * s, p.k * s, o.fsn * rr.range(20, 140), rr.range(-200, -60), rr.range(-6, 6), { r: (p.r ?? 10) * 0.7, fade: 2.35 - dT });
+      }
     }
   }
+  if (dT > 1.45) hs.wingGone = true;
   // 앞다리: 떨어져 굴러감 (0.8s)
   if (!hs.legGone && dT > 0.8 && o.baseVis > 0.05) {
     hs.legGone = true;

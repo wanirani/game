@@ -10,7 +10,7 @@ from lib.pup import SRC, OUT, ensure, rgb_of
 
 ap = argparse.ArgumentParser()
 ap.add_argument('--src', default='_shared/cape_velvet')
-ap.add_argument('--box', default='60,880,520,1480')
+ap.add_argument('--box', default='40,980,500,1540')
 a = ap.parse_args()
 rgb = rgb_of(os.path.join(SRC, a.src + '.webp'))
 x0, y0, x1, y1 = map(int, a.box.split(','))

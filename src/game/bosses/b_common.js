@@ -8,6 +8,7 @@ import { TILE } from '../../core/game.js';
 import { audio } from '../../core/audio.js';
 import { TAU, clamp, rand, rgba, mix } from '../../core/math.js';
 import { ENEMIES } from '../../data/enemies.js';
+import { paintedTick, paintedDraw, preloadPainted } from '../../render/painted/registry.js';
 
 export const PI = Math.PI;
 export const OUT = '#07040c';     // 외곽선
@@ -368,6 +369,7 @@ export class BossB extends Boss {
     this.alpha = 1;
     this.def0 = this.def;
     this.setup?.();
+    preloadPainted(this.def.id, this.world.game);   // 채색 렌더러가 등록된 보스면 굽기 시작
   }
   setState(s) { super.setState(s); this.st = 0; this.pst = 0; }
   /** 이번 프레임에 시각 t 를 지났는가 */
@@ -444,6 +446,7 @@ export class BossB extends Boss {
   }
   update(dt, world) {
     this.decayLtn(dt, world);
+    paintedTick(this, world);
     if (this.dying > 0) {
       this.t += dt; this.animT += dt;
       if (this.flashT > 0) this.flashT -= dt;
@@ -488,6 +491,11 @@ export class BossB extends Boss {
   }
 
   // ── 그리기 ──
+  /** 채색 렌더러가 준비됐으면 그쪽(컬링 대리 개체)이 그린다 — 아니면 기존 벡터 그리기 */
+  draw(ctx, world) {
+    if (paintedDraw(this, ctx, world)) return;
+    super.draw(ctx, world);
+  }
   render(ctx, world) {
     ctx.globalAlpha *= this.alpha;
     this.paintBack?.(ctx, world);

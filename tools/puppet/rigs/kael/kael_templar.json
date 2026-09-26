@@ -1,0 +1,170 @@
+{
+ "_doc": "카엘/성전 기사(2차). 판금 다리라 바지 필터 끔. 큰 견갑 → pad 확장",
+ "extends": "kael_hunter",
+ "classId": "kael_templar",
+ "src": "kael/kael_templar_side",
+ "hands": {
+  "sheet": "kael/kael_templar_hands",
+  "grip": {
+   "box": [
+    500,
+    320,
+    1210,
+    930
+   ],
+   "center": [
+    815,
+    620
+   ],
+   "axis": [
+    0.047,
+    0.999
+   ],
+   "rodHalf": 40,
+   "wrist": [
+    850,
+    900
+   ],
+   "scale": 0.21
+  },
+  "open": {
+   "box": [
+    1420,
+    60,
+    2160,
+    950
+   ],
+   "wrist": [
+    1880,
+    950
+   ],
+   "tip": [
+    1830,
+    120
+   ],
+   "scale": 0.23
+  }
+ },
+ "legs": {
+  "pantsWarmMax": null
+ },
+ "regions": {
+  "pad": {
+   "pts": [
+    [
+     450,
+     690
+    ],
+    [
+     520,
+     640
+    ],
+    [
+     610,
+     628
+    ],
+    [
+     680,
+     650
+    ],
+    [
+     716,
+     720
+    ],
+    [
+     722,
+     810
+    ],
+    [
+     708,
+     880
+    ],
+    [
+     600,
+     890
+    ],
+    [
+     480,
+     880
+    ],
+    [
+     446,
+     780
+    ]
+   ],
+   "smooth": 3
+  }
+ },
+ "materials": {
+  "_replace": true,
+  "armor": {
+   "parts": [
+    "torso",
+    "uarm",
+    "farm",
+    "pad",
+    "thigh",
+    "shin",
+    "foot"
+   ],
+   "sat": [
+    0,
+    0.13
+   ],
+   "val": [
+    0.2,
+    1.01
+   ]
+  },
+  "trim": {
+   "parts": [
+    "torso",
+    "uarm",
+    "farm",
+    "pad",
+    "skirt",
+    "skirtFar",
+    "thigh",
+    "shin",
+    "foot"
+   ],
+   "hue": [
+    30,
+    62
+   ],
+   "sat": [
+    0.4,
+    1.01
+   ],
+   "val": [
+    0.45,
+    1.01
+   ]
+  }
+ },
+ "params": {
+  "torsoSrcMaxLum": null,
+  "skirtSrcMaxLum": null,
+  "torsoTone": 0.3,
+  "skirtTone": 0.35
+ },
+ "runtime": {
+  "band": null,
+  "armorBase": "#d8dce8"
+ },
+ "turn": {
+  "sheet5": "kael/kael_templar_turn5",
+  "views5": [
+   "y90",
+   "y135",
+   "y180",
+   "ym90",
+   "-"
+  ],
+  "qback": "kael/kael_templar_qback",
+  "viewsQ": [
+   "ym135",
+   "ym45"
+  ]
+ }
+}

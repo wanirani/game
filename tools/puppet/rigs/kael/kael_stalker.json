@@ -1,0 +1,172 @@
+{
+ "_doc": "카엘/그림자 추적자(1차). 후드 → 포니테일 없음, 머리 영역이 후드 뒤까지",
+ "extends": "kael_hunter",
+ "classId": "kael_stalker",
+ "src": "kael/kael_stalker_side",
+ "hands": {
+  "sheet": "kael/kael_stalker_hands",
+  "grip": {
+   "box": [
+    620,
+    340,
+    1220,
+    910
+   ],
+   "center": [
+    885,
+    650
+   ],
+   "axis": [
+    0,
+    1
+   ],
+   "rodHalf": 78,
+   "wrist": [
+    920,
+    900
+   ],
+   "scale": 0.24
+  },
+  "open": {
+   "box": [
+    1420,
+    100,
+    2080,
+    930
+   ],
+   "wrist": [
+    1800,
+    925
+   ],
+   "tip": [
+    1820,
+    120
+   ],
+   "scale": 0.23
+  }
+ },
+ "clean": {
+  "keepHoles": null,
+  "hairZone": null
+ },
+ "regions": {
+  "head": [
+   [
+    640,
+    180
+   ],
+   [
+    1070,
+    180
+   ],
+   [
+    1070,
+    575
+   ],
+   [
+    965,
+    585
+   ],
+   [
+    888,
+    568
+   ],
+   [
+    880,
+    645
+   ],
+   [
+    792,
+    648
+   ],
+   [
+    760,
+    640
+   ],
+   [
+    722,
+    615
+   ],
+   [
+    690,
+    580
+   ],
+   [
+    678,
+    500
+   ],
+   [
+    676,
+    420
+   ],
+   [
+    664,
+    330
+   ],
+   [
+    640,
+    260
+   ]
+  ],
+  "pony": null
+ },
+ "materials": {
+  "_replace": true,
+  "armor": {
+   "parts": [
+    "torso",
+    "skirt",
+    "skirtFar",
+    "uarm",
+    "farm",
+    "pad"
+   ],
+   "sat": [
+    0,
+    0.45
+   ],
+   "val": [
+    0,
+    0.34
+   ],
+   "softTop": 0.06
+  },
+  "trim": {
+   "parts": [
+    "torso",
+    "uarm",
+    "farm",
+    "pad",
+    "skirt"
+   ],
+   "sat": [
+    0,
+    0.14
+   ],
+   "val": [
+    0.55,
+    1.01
+   ]
+  }
+ },
+ "runtime": {
+  "band": null,
+  "pony": false,
+  "armorBase": "#1c1a22"
+ },
+ "turn": {
+  "sheet5": "kael/kael_stalker_turn5",
+  "views5": [
+   "y90",
+   "y135",
+   "y180",
+   "ym90",
+   "-"
+  ],
+  "qback": "kael/kael_stalker_qback",
+  "viewsQ": [
+   "ym135",
+   "ym45"
+  ]
+ }
+}

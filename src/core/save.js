@@ -79,8 +79,6 @@ class SaveSystem {
     data.slot = slot;
     return lsSet(this.slotKey(slot), JSON.stringify(data));
   }
-  /** 슬롯에 무언가 저장되어 있는가 (손상되어 read() 가 null 인 경우도 true) */
-  has(slot) { return lsGet(this.slotKey(slot)) != null; }
   read(slot) {
     const raw = lsGet(this.slotKey(slot));
     if (!raw) return null;

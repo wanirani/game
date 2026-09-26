@@ -19,6 +19,7 @@
 import { Entity } from '../../game/entity.js';
 import { bus } from '../../core/events.js';
 import { quality, textureDensity, memoryBudgetMB } from './kit.js';
+import { STAGES } from '../../data/stages.js';
 
 /** id → { kind, importer, mod, rig, state:'idle'|'loading'|'ready'|'failed', promise, err } */
 const REG = new Map();
@@ -47,6 +48,7 @@ export function paintedEnabled(game = GAME) {
 }
 
 /** 카메라 줌 추정: 보스 경기장 줌(world.startBoss 와 같은 식)을 미리 계산 */
+let pendingZoom = null;
 function arenaZoom(game) {
   const w = game?.world, m = w?.map;
   if (w?.camera?.zoomTarget) return w.camera.zoomTarget;
@@ -63,14 +65,18 @@ export function preloadPainted(id, game = GAME) {
   if (game) GAME = game;
   e.state = 'loading';
   const t0 = performance.now();
+  const zoom = pendingZoom; pendingZoom = null;
   e.promise = (async () => {
     try {
+      await null;   // 첫 방은 Game 생성 도중(window.__game 지정 전)에 들어오므로 한 박자 늦춰 game 을 찾는다
+      game ??= GAME ?? (typeof window !== 'undefined' ? window.__game : null);
+      if (game) GAME = game;
       if (!e.mod) e.mod = (await e.importer()).default;
-      const env = { game, quality: quality(game), td: textureDensity(game, arenaZoom(game)), budgetMB: memoryBudgetMB(game) };
+      const env = { game, quality: quality(game), td: textureDensity(game, zoom ?? arenaZoom(game)), budgetMB: memoryBudgetMB(game) };
       e.rig = await e.mod.load(env);
       e.state = 'ready';
       e.loadMs = performance.now() - t0;
-      if (typeof window !== 'undefined') (window.__painted ??= {})[id] = { ms: Math.round(e.loadMs), memMB: +(e.rig?.memMB ?? 0).toFixed(2), td: +(e.rig?.td ?? 0).toFixed(3), bakeMs: Math.round(e.rig?.bakeMs ?? 0) };
+      if (typeof window !== 'undefined') (window.__painted ??= {})[id] = { ms: Math.round(e.loadMs), memMB: +(e.rig?.memMB ?? 0).toFixed(2), td: +(e.rig?.td ?? 0).toFixed(3), bakeMs: Math.round(e.rig?.bakeMs ?? 0), timing: e.rig?.timing };
       return true;
     } catch (err) {
       e.state = 'failed'; e.err = err;
@@ -181,6 +187,14 @@ export function paintedDraw(boss, ctx, world) {
   return true;
 }
 
+/** 사망 파편(ABoss.spawnDebris → world.debrisList)용 채색 조각. 준비 안 됐으면 null → 보스의 벡터 조각 사용 */
+export function paintedDebris(boss, i) {
+  const id = boss.def?.id;
+  const e = id && REG.get(id);
+  if (!e || e.state !== 'ready' || !paintedEnabled(boss.world?.game) || !e.mod.debris) return null;
+  try { return e.mod.debris(i, e.rig); } catch { return null; }
+}
+
 // ───────────────────────── 적/NPC: 직접 그리기 ─────────────────────────
 /** 판정 사각형이 그림과 비슷한 개체용: 준비됐으면 그리고 true (컬링은 호출 측 개체 사각형 기준) */
 export function drawPaintedDirect(ent, ctx, world, id = ent.def?.id ?? ent.id) {
@@ -194,13 +208,17 @@ export function drawPaintedDirect(ent, ctx, world, id = ent.def?.id ?? ent.id) {
 }
 
 // ───────────────────────── 방 진입 시 미리 굽기 ─────────────────────────
-// 보스 방(또는 보스러시 방)에 들어서는 순간 굽기를 시작한다 → 보스 트리거·대사·등장 연출 동안 끝난다.
+// 보스 방에 들어서는 순간(로딩 페이드 뒤) 굽기를 시작한다 → 경기장 트리거·대사·등장 연출 동안 끝난다.
+// roomEntered 는 World 생성자 안에서 불리므로 game.world 는 아직 이전 세계일 수 있다 → 스테이지 데이터에서 방을 찾는다.
 bus.on('roomEntered', ({ stageId, roomId } = {}) => {
-  const w = GAME?.world ?? (typeof window !== 'undefined' ? window.__game?.world : null);
-  const g = w?.game ?? GAME ?? (typeof window !== 'undefined' ? window.__game : null);
+  const g = GAME ?? (typeof window !== 'undefined' ? window.__game : null);
   if (g) GAME = g;
-  const room = w?.room ?? w?.stage?.rooms?.[roomId];
+  const room = STAGES[stageId]?.rooms?.[roomId];
   if (!room?.boss) return;
-  const id = room.bossId ?? w?.stage?.boss;
-  if (id && REG.has(id)) preloadPainted(id, g);
+  const id = room.bossId ?? STAGES[stageId]?.boss;
+  if (!id || !REG.has(id)) return;
+  // 경기장 줌 추정 (world.startBoss 와 같은 식): 방 높이로 계산
+  const rows = room.map?.length ?? 0;
+  pendingZoom = rows ? Math.min(1, Math.max(0.74, (g?.viewH ?? 540) / (rows * 48 - 48))) : null;
+  preloadPainted(id, g);
 });

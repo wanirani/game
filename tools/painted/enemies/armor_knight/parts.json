@@ -1,0 +1,31 @@
+{
+ "id": "armor_knight", "tier": "T2", "srcTD": 4,
+ "note": "cuirass+pauldrons+tabard = single-part generation (faces left -> flipX); helm + thigh cut from the side figure of sheet 2 (faces left -> flipX); forearm, upper arm (vambrace), lower leg, cape from sheet 1 loose parts; sword + tower shield from sheet 2. All neural-only mattes (grey steel on grey).",
+ "sources": {
+  "t":  { "file": "knight_torso_r.png", "k": 0.0288 },
+  "s1": { "file": "knight_sheet1_r.png", "k": 0.0525 },
+  "s2": { "file": "knight_sheet2_r.png", "k": 0.0546 }
+ },
+ "parts": {
+  "torso": { "src": "t", "box": [400, 150, 1420, 2320], "keep": "largest", "flipX": true,
+    "piv": { "a": [880, 1250], "neck": [765, 290], "shN": [1120, 420], "shF": [560, 400], "hipN": [960, 1250], "hipF": [800, 1250] } },
+  "helm": { "src": "s2", "box": [1040, 55, 1270, 430], "flipX": true,
+    "poly": [[1235,62],[1226,110],[1246,160],[1256,200],[1251,245],[1216,290],[1176,320],[1151,345],[1126,390],[1101,420],[1086,400],[1081,360],[1071,320],[1061,290],[1076,250],[1101,210],[1131,165],[1171,125],[1210,90]],
+    "piv": { "a": [1150, 385], "eye": [1112, 282], "top": [1235, 66] } },
+  "thigh": { "src": "s2", "box": [1095, 985, 1275, 1280], "flipX": true,
+    "poly": [[1110,1000],[1250,990],[1266,1100],[1263,1180],[1251,1250],[1200,1272],[1130,1262],[1105,1200],[1100,1100]],
+    "piv": { "a": [1180, 1012], "b": [1185, 1218] } },
+  "shin": { "src": "s1", "box": [1895, 1150, 2120, 1630], "keep": "largest",
+    "piv": { "a": [1975, 1215], "b": [1962, 1560], "toe": [2105, 1612], "heel": [1915, 1592] } },
+  "uarm": { "src": "s1", "box": [1620, 585, 1775, 865], "keep": "largest",
+    "piv": { "a": [1688, 612], "b": [1690, 850] } },
+  "farm": { "src": "s1", "box": [1880, 660, 2065, 1095], "keep": "largest",
+    "piv": { "a": [1960, 715], "b": [1955, 965], "grip": [1960, 1025] } },
+  "cape": { "src": "s1", "box": [1485, 1008, 1830, 1642], "keep": "largest",
+    "piv": { "a": [1655, 1022] } },
+  "sword": { "src": "s2", "box": [1470, 52, 1785, 1210], "keep": "largest", "k": 0.039,
+    "piv": { "a": [1627, 1100], "b": [1620, 70], "guard": [1625, 1040] } },
+  "shield": { "src": "s2", "box": [1765, 40, 2265, 1060], "keep": "largest",
+    "piv": { "a": [2015, 520] } }
+ }
+}

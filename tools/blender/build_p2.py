@@ -1907,7 +1907,7 @@ def build_sky_column():
     marble = DM_whitemarble()
     gold = DM_skygold()
     rng = random.Random(4)
-    H = 2.3
+    H = 2.75
     D.box((0.62, 0.62, 0.1), marble, loc=(0, 0, 0.12), bev=0.02, name="plinth")
     D.lathe(D.catmull2d([(0.0, 0.17), (0.28, 0.17), (0.3, 0.2), (0.26, 0.25), (0.24, 0.3),
                          (0.27, 0.33), (0.0, 0.33)], 3, closed=False), marble, seg=48, name="base")
@@ -1931,7 +1931,7 @@ def build_sky_column():
     for sx in (-1, 1):
         D.torus(0.06, 0.028, gold, loc=(sx * 0.3, -0.3, H - 0.14), rot=(rad(90), 0, 0), seg=24,
                 rseg=8, name="volute")
-    cloud_puffs((0, -0.12, 0.05), 0.5, 0.13, 14, rng)
+    cloud_puffs((0, -0.12, 0.05), 0.34, 0.12, 12, rng)
     D.view(pitch=6, fill=0.95, glow=0.3)
 
 
@@ -2025,8 +2025,6 @@ def build_dream_cradle():
     veil = D.pbr("veil", (0.42, 0.18, 0.55), rough=0.7, sheen=0.6, sss=0.3, alpha=0.85)
     lace = D.pbr("lace", (0.85, 0.8, 0.85), rough=0.7, sheen=0.5)
     brass = D.pbr("dreambrass", (0.55, 0.42, 0.3), metal=1.0, rough=0.4)
-    glow = DM_dreamglow()
-    star = D.M_glow("dreamstar", (1.0, 0.85, 0.6), 4.0)
     # rockers
     for sy in (-0.28, 0.28):
         arc = [(0.72 * math.sin(a), sy, 0.34 - 0.34 * math.cos(a) * 0.9) for a in
@@ -2052,24 +2050,32 @@ def build_dream_cradle():
             0.015, wood, segs=6, name="arm")
     rng = random.Random(3)
 
+    def arm_z(x):
+        return 1.38 + 0.08 * math.sin(math.pi * (0.52 - x) / 0.62)
+
     def vfn(u, v):
-        x = 0.52 - 0.7 * u
-        z = 1.38 - v * (0.55 + 0.25 * math.sin(u * 9) + 0.2 * u)
-        y = 0.2 - 0.12 * math.sin(u * math.pi) * v - 0.04 * math.sin(v * 12 + u * 7)
-        return (x, y, z)
-    surface_D(vfn, 24, 12, veil, name="veil", thick=0.006)
-    # mobile: moons and stars on threads
-    for k, (x, dz, kind) in enumerate(((-0.25, 0.28, "moon"), (-0.05, 0.36, "star"),
-                                       (0.15, 0.24, "moon"), (-0.4, 0.4, "star"))):
-        top = (x, -0.05, 1.42)
-        bot = (x, -0.05, 1.42 - dz)
+        x = 0.5 - 0.62 * u
+        L = 0.5 + 0.22 * u + 0.07 * math.sin(u * 23.0) + 0.05 * math.sin(u * 41.0 + 1.0)
+        z = arm_z(x) - v * L
+        y = 0.2 - 0.16 * v * v - 0.03 * math.sin(u * 17.0 + v * 5.0)
+        return (x + 0.05 * v * math.sin(u * 3.0), y, z)
+    surface_D(vfn, 32, 14, veil, name="veil", thick=0.006)
+    # mobile: a small hoop hung from the canopy arm, moons and stars on threads
+    moon_m = D.M_glow("dreammoon", (0.85, 0.7, 1.0), 1.4, base=(0.8, 0.7, 0.95))
+    star_m = D.M_glow("dreamstar", (1.0, 0.85, 0.6), 1.6)
+    hx, hz = -0.12, 1.2
+    D.sweep([(hx, 0.1, arm_z(hx) - 0.02), (hx, 0.1, hz)], 0.004, brass, segs=4, name="thread")
+    D.torus(0.16, 0.008, brass, loc=(hx, 0.1, hz), sy=0.5, seg=32, rseg=6, name="hoop")
+    for k, (dx, dz, kind) in enumerate(((-0.16, 0.2, "moon"), (-0.05, 0.28, "star"),
+                                        (0.06, 0.18, "moon"), (0.16, 0.26, "star"))):
+        top = (hx + dx, 0.1 - 0.04, hz)
+        bot = (top[0], top[1], hz - dz)
         D.sweep([top, bot], 0.003, brass, segs=4, name="thread")
         if kind == "moon":
-            moon = [(0.07 * math.cos(a), 0.07 * math.sin(a)) for a in [TAU * i / 32 for i in range(32)]]
-            D.extrude([(x_ + 0.0, z_) for x_, z_ in moon], 0.02, glow, loc=(bot[0], bot[1], bot[2] - 0.07),
-                      name="moon")
+            moon = E.shape_crescent(0.06, 0.05, 0.03)
+            D.extrude(moon, 0.02, moon_m, loc=(bot[0], bot[1], bot[2] - 0.06), name="moon")
         else:
-            D.extrude(D.shape_star(5, 0.07, 0.03), 0.02, star, loc=(bot[0], bot[1], bot[2] - 0.07),
+            D.extrude(D.shape_star(5, 0.065, 0.028), 0.02, star_m, loc=(bot[0], bot[1], bot[2] - 0.065),
                       name="star")
     D.point_light((0, -0.6, 0.9), (0.7, 0.3, 1.0), 16, 0.3)
     D.view(pitch=8, fill=0.95, glow=0.7)
@@ -2083,7 +2089,7 @@ def build_dream_doll():
     dress = D.pbr("dolldress", (0.32, 0.1, 0.4), rough=0.7, sheen=0.6, bump=0.2, bump_scale=120)
     lace = D.pbr("lace", (0.85, 0.8, 0.85), rough=0.7, sheen=0.5)
     hair = D.pbr("dollhair", (0.25, 0.15, 0.08), rough=0.6, sheen=0.5, bump=0.5, bump_scale=200)
-    eye = D.M_glow("dolleye", (0.8, 0.3, 1.0), 8.0)
+    eye = D.M_glow("dolleye", (0.6, 0.12, 1.0), 1.4)
     black = D.M_black()
     crack = D.pbr("dollcrack", (0.05, 0.02, 0.05), rough=0.9)
     # skirt (sitting: wide bell) + legs forward
@@ -2547,6 +2553,42 @@ def build_void_fragment():
 # =============================================================================
 #  Driver
 # =============================================================================
+AURA_STOPS = [(0.0, (80, 235, 255)), (0.33, (150, 120, 255)), (0.66, (255, 110, 215)),
+              (1.0, (255, 215, 140))]   # sRGB rift spectrum for the tier-7 aura
+
+
+def rift_aura(path, strength=0.55, radius=4.0, grow=5):
+    """Tier-7 signature: a soft iridescent halo hugging the icon silhouette
+    (cyan lower-left -> violet -> magenta -> gold upper-right), composited
+    under the icon and faded before the frame border.  Keeps tier-7 gear
+    readable as 'legendary' down to 32 px slots."""
+    import numpy as np
+    from PIL import ImageFilter
+    im = np.asarray(Image.open(path).convert("RGBA")).astype(np.float32) / 255.0
+    H, W = im.shape[:2]
+    a = im[..., 3]
+    m = Image.fromarray(((a > 0.25) * 255).astype(np.uint8), "L")
+    m = m.filter(ImageFilter.MaxFilter(grow)).filter(ImageFilter.GaussianBlur(radius))
+    m = np.asarray(m).astype(np.float32) / 255.0
+    yy, xx = np.mgrid[0:H, 0:W]
+    t = np.clip(xx / (W - 1) * 0.6 + (1 - yy / (H - 1)) * 0.4, 0, 1)
+    col = np.zeros((H, W, 3), np.float32)
+    for (p0, c0), (p1, c1) in zip(AURA_STOPS[:-1], AURA_STOPS[1:]):
+        sel = (t >= p0) & (t <= p1)
+        f = ((t - p0) / (p1 - p0))[..., None]
+        col[sel] = (np.array(c0) * (1 - f) + np.array(c1) * f)[sel] / 255.0
+    idx = np.arange(W, dtype=np.float32)
+    edge = np.minimum(idx, W - 1 - idx) / (W / 14.0)
+    fade = np.clip(np.minimum(edge[:, None], edge[None, :]), 0, 1) ** 1.5
+    aa = np.clip(m * strength * fade, 0, 1)
+    A = a + aa * (1 - a)
+    C = (im[..., :3] * a[..., None] + col * aa[..., None] * (1 - a[..., None])) / \
+        np.maximum(A[..., None], 1e-4)
+    out = np.concatenate([np.clip(C, 0, 1), A[..., None]], axis=2)
+    out[out[..., 3] < 1.5 / 255] = 0
+    Image.fromarray((out * 255 + 0.5).astype(np.uint8), "RGBA").save(path, optimize=True)
+
+
 def render(pid, args, tmpdir):
     spec = P2[pid]
     t0 = time.time()
@@ -2554,6 +2596,7 @@ def render(pid, args, tmpdir):
         a = SimpleNamespace(samples=args.samples, res=256, size=128, out=args.out_icons,
                             outline=0.55, no_glow=False, blend=False)
         out = E.render_item(pid, a, tmpdir)
+        rift_aura(out)
     else:
         a = SimpleNamespace(samples=args.samples, ss=2, out_icons=args.out_icons,
                             out_props=args.out_props)
@@ -2599,7 +2642,7 @@ def contact_icons(ids, path, icon_dir):
     for r, line in enumerate(lines):
         for c, iid in enumerate(line):
             x, y = 8 + c * cw, 8 + r * ch
-            ref = iid.endswith("_6")
+            ref = iid not in P2
             f = os.path.join(ICON_DIR if ref else icon_dir, iid + ".png")
             d.rectangle([x, y, x + 127, y + 127], fill=(26, 22, 30, 255) if not ref else (20, 18, 22, 255),
                         outline=(60, 50, 64, 255))

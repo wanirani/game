@@ -2,8 +2,8 @@
 //  assets.get('bg/s01_village')      → HTMLImageElement | null (로드 전/실패 시 null)
 //  assets.preload(['bg/hub', ...])  → Promise (실패해도 resolve)
 //  assets.pattern(ctx, 'tex/tex_castle_stone') → CanvasPattern | null
-// 폴더별 확장자: bg/portraits/tex = .webp, icons/props = .png
-const EXT = { bg: 'webp', portraits: 'webp', tex: 'webp', cg: 'webp', icons: 'png', props: 'png', ui: 'png' };
+// 폴더별 확장자: bg/portraits/tex/painted = .webp, icons/props = .png (painted = 채색 퍼핏 부품 아틀라스, render/painted/kit.js)
+const EXT = { bg: 'webp', portraits: 'webp', tex: 'webp', cg: 'webp', icons: 'png', props: 'png', ui: 'png', painted: 'webp' };
 export const ASSET_ROOT = 'assets/';
 
 class Assets {

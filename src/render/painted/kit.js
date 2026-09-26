@@ -119,7 +119,7 @@ export const RECOLOR = {
     { when: (h, s, l) => h > 70 && h < 175 && s > 0.22 && l > 0.12, h: 203, s: 1.05, l: 1.06, l0: 0.04 },
     { when: (h, s, l) => (h < 28 || h > 320) && s > 0.28 && l < 0.62, h: 262, s: 0.62, l: 0.82 },
     { when: (h, s, l) => l < 0.14, h: 222, s: 0.6, s0: 0.08, l: 1 },
-    { when: () => true, h: 208, s: 0.3, s0: 0.05, l: 1.05, l0: 0.015 },
+    { when: () => true, h: 208, s: 0.3, s0: 0.05, l: 1.08, l0: 0.03 },
   ],
   // 피: 영혼불 → 선홍, 뼈 → 약간 따뜻하고 어둡게
   blood: [
@@ -213,13 +213,14 @@ export function bakeDamage(src, level, seed, opts = {}, withGlow = true) {
   const tmp = makeCanvas(w, h), tg = ctx2d(tmp);
   tg.drawImage(src, 0, 0);
   tg.globalCompositeOperation = 'multiply';
-  const nChar = Math.round((opts.char ?? 3) * level);
+  const nChar = Math.round((opts.char ?? 2) * level);
   for (let i = 0; i < nChar; i++) {
     const p = pick(); if (!p) break;
-    const r = (16 + R.next() * 30) * scale;
+    const r = (14 + R.next() * 24) * scale;
     const gr = tg.createRadialGradient(p[0], p[1], 0, p[0], p[1], r);
     const st = opts.stain;
-    gr.addColorStop(0, st ? st : 'rgba(40,22,12,1)'); gr.addColorStop(0.5, st ? rgba(st, 0.5) : 'rgba(110,80,60,1)'); gr.addColorStop(1, 'rgba(255,255,255,1)');
+    // 그을림은 부드럽게 (너무 검으면 손상 단계에서 몸 전체가 탁해진다)
+    gr.addColorStop(0, st ? st : 'rgb(78,52,36)'); gr.addColorStop(0.45, st ? rgba(st, 0.5) : 'rgb(150,118,92)'); gr.addColorStop(1, 'rgba(255,255,255,1)');
     tg.fillStyle = gr; tg.fillRect(p[0] - r, p[1] - r, r * 2, r * 2);
   }
   tg.globalCompositeOperation = 'destination-in'; tg.drawImage(src, 0, 0);
@@ -285,12 +286,18 @@ export function bakeDamage(src, level, seed, opts = {}, withGlow = true) {
 }
 
 // ───────────────────────── 리그 로딩 / 굽기 ─────────────────────────
-export function nextIdle(budgetMs = 12) {
+/** 굽기 양보: 한 조각(sliceMs)을 넘게 일했으면 다음 매크로태스크로 넘긴다 (한 프레임을 길게 막지 않게).
+ *  requestIdleCallback 은 게임 루프가 바쁘면 timeout 까지 기다리므로 쓰지 않는다 (굽기가 수 초로 늘어남) */
+let _slice = 0;
+export function nextIdle(sliceMs = 8) {
+  const now = performance.now();
+  if (now - _slice < sliceMs) return null;
   return new Promise((res) => {
-    if (typeof requestIdleCallback === 'function') requestIdleCallback(() => res(), { timeout: 60 });
-    else setTimeout(res, Math.min(16, budgetMs));
+    if (typeof MessageChannel !== 'undefined') { const ch = new MessageChannel(); ch.port1.onmessage = () => { _slice = performance.now(); res(); }; ch.port2.postMessage(0); }
+    else setTimeout(() => { _slice = performance.now(); res(); }, 0);
   });
 }
+export function sliceStart() { _slice = performance.now(); }
 export async function loadManifest(dir) {
   const r = await fetch(`${ASSET_ROOT}${dir}/manifest.json?v=${assets.version}`);
   if (!r.ok) throw new Error(`painted manifest ${dir}: ${r.status}`);
@@ -324,7 +331,7 @@ export async function loadRig(dir, def = {}, env = {}) {
   const nVar = (name) => {
     const o = { ...(def.defaults ?? {}), ...prefixOpts(def, name), ...(def.parts?.[name] ?? {}) };
     let n = o.noDmg ? 1 : 3; if (o.deep && !o.deepOnly) n += o.noDmg ? 1 : 3;
-    if (o.flash) n += 0.5; // 흰/발광 실루엣(가산용, 외곽선 포함 크기)
+    if (o.flash) n += 2 + Object.keys(def.tints ?? {}).length; // 흰/발광 실루엣(가산용) + 틴트별 발광
     if (!o.noDmg && (def.glow)) n += 2 * 0.25;
     for (const t of Object.values(def.tints ?? {})) if ((!t.parts || t.parts.includes(name)) && !(t.skip ?? []).some((p) => name.startsWith(p))) n += (o.noDmg ? 1 : (t.levels?.length ?? 1)) * (o.deep && !o.deepOnly ? 2 : 1);
     if (!o.noDmg && budget < 8) n -= 1 + (def.glow ? 0.25 : 0);
@@ -339,6 +346,10 @@ export async function loadRig(dir, def = {}, env = {}) {
   const rig = { dir, man, td, parts: {}, def, bakeMs: 0, memMB: 0, key, tintKeys: Object.keys(def.tints ?? {}) };
   const outline = def.outline ?? {};
   const names = Object.keys(man.parts);
+  const tm = { load: performance.now() - t0, outline: 0, dmg: 0, tint: 0, wait: 0 };
+  const lap = (k, t1) => { const n2 = performance.now(); tm[k] += n2 - t1; return n2; };
+  const yieldNow = async () => { const t1 = performance.now(), w = nextIdle(); if (w) { await w; lap('wait', t1); } };
+  sliceStart();
   let i = 0;
   for (const name of names) {
     const e = man.parts[name];
@@ -346,14 +357,18 @@ export async function loadRig(dir, def = {}, env = {}) {
     const raw = scaledCopy(img, e.x, e.y, e.w, e.h, e.w * f, e.h * f);
     const part = { name, e, o, k: 1 / td, v: {}, gl: {}, sparks: [], pad: PAD, rawW: raw.width, rawH: raw.height, flashOK: !!o.flash };
     const ol = (c) => outlined(c, { width: (o.outline ?? outline.width ?? 2.2) * Math.min(1.4, Math.max(0.6, td / 1.6)), color: outline.color, pad: PAD });
+    let t1 = performance.now();
     part.v.base = ol(raw);
+    t1 = lap('outline', t1);
     if (!o.noDmg) {
       const seed = hashName(dir + name);
       const d1 = bakeDamage(raw, 1, seed, { glow: def.glow, ...o }, !!def.glow);
       const d2 = bakeDamage(d1.canvas, 2, seed + 17, { glow: def.glow, ...o }, !!def.glow);
+      t1 = lap('dmg', t1);
       // 예산이 작으면(폰) 중간 단계를 생략: dmg1 은 base 로 대체된다 (pickVariant)
       if (!lite) { part.v.dmg1 = ol(d1.canvas); part.gl.dmg1 = d1.glow; }
       part.v.dmg2 = ol(d2.canvas); part.gl.dmg2 = d2.glow ?? d1.glow;
+      t1 = lap('outline', t1);
       part.sparks = [...d1.sparks, ...d2.sparks].map((q) => [q[0] + PAD, q[1] + PAD]);
     }
     if (o.flash) { part.v.flash = silhouette(part.v.base, '#fff6ee'); part.v.glow = silhouette(part.v.base, def.glow ?? '#ffffff'); }
@@ -369,7 +384,7 @@ export async function loadRig(dir, def = {}, env = {}) {
     part._raw = raw;
     rig.parts[name] = part;
     env.onProgress?.(++i / names.length);
-    await nextIdle();
+    await yieldNow();
   }
   // 틴트 변형 (예: 쌍두의 서리색) — 로딩 때 함께 굽는다 (전투 중 굽기 금지)
   for (const [tk, t] of Object.entries(def.tints ?? {})) {
@@ -377,6 +392,7 @@ export async function loadRig(dir, def = {}, env = {}) {
       if (t.parts && !t.parts.includes(part.name)) continue;
       if ((t.skip ?? []).some((p) => part.name.startsWith(p))) continue;
       const lvs = part.o.noDmg ? ['base'] : (t.levels ?? ['base']);
+      const t1 = performance.now();
       for (const lv of lvs) {
         const src = part.v[lv] ?? part.v['deep_' + lv];
         if (!src) continue;
@@ -385,7 +401,9 @@ export async function loadRig(dir, def = {}, env = {}) {
         if (part.o.deep) part.v[tk + '_deep_' + lv] = part.v[lv] ? darkened(tc, part.o.deep) : tc;
       }
       if (part.o.flash) part.v[tk + '_glow'] = silhouette(part.v.base ?? part.v.deep_base, t.glow ?? '#ffffff');
-      await nextIdle();
+      for (const lv of lvs) if (part.gl[lv]) part.gl[tk + '_' + lv] = recolor(part.gl[lv], t.rules);   // 균열 발광도 틴트 색으로
+      lap('tint', t1);
+      await yieldNow();
     }
   }
   for (const part of Object.values(rig.parts)) delete part._raw;
@@ -393,6 +411,7 @@ export async function loadRig(dir, def = {}, env = {}) {
   try { assets.cache?.delete?.(key); } catch { /* 무시 */ }
   rig.memMB = texMemMB(rig);
   rig.bakeMs = performance.now() - t0;
+  rig.timing = Object.fromEntries(Object.entries(tm).map(([k, v]) => [k, Math.round(v)]));
   return rig;
 }
 /** def.prefix = { 'va': {...}, 'deb': {...} } → 이름이 접두사로 시작하는 부품의 기본 옵션 (가장 긴 접두사 우선) */
@@ -406,7 +425,7 @@ export function texMemMB(rig) {
   let b = 0;
   for (const p of Object.values(rig.parts)) {
     for (const c of Object.values(p.v)) b += c.width * c.height * 4;
-    for (const c of Object.values(p.gl)) if (c) b += c.width * c.height * 4;
+    for (const c of Object.values(p.gl)) if (c) b += c.width * c.height * 4;   // (틴트 발광 포함)
   }
   return b / 1048576;
 }

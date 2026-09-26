@@ -5,6 +5,7 @@
 import { ABoss, beginDraw, endDraw, C, rg, lg, glow, ink, rim, sheen, taper, eye, shadow, hash, opt, flames, PI, OUT, RIM, groundWave, erupt, dropHazard } from './a_common.js';
 import { rand, clamp, lerp, TAU, angleTo, rgba, ease, approach } from '../../core/math.js';
 import { audio } from '../../core/audio.js';
+import { paintedDebris } from '../../render/painted/registry.js';
 
 const BONE = '#e6dac0', BONE2 = '#a8987a', BONED = '#4a3e30', SOUL = '#6aff8a', SOUL2 = '#b8ffc8';
 const _Q = new Float32Array(16);
@@ -373,7 +374,7 @@ export class BoneDragon extends ABoss {
     const i = Math.floor(rand(0, h.k)), pt = h.pts[i];
     return { x: pt.x + rand(-14, 14), y: Math.min(pt.y, this.floorY - 10) + rand(-14, 14) };
   }
-  debrisPiece(i) { return { size: 12, draw: i % 5 === 0 ? drawSkullBit : i % 2 ? drawVertebraBit : drawBoneBit }; }
+  debrisPiece(i) { return paintedDebris(this, i) ?? { size: 12, draw: i % 5 === 0 ? drawSkullBit : i % 2 ? drawVertebraBit : drawBoneBit }; }
   extraLights(L) {
     for (const h of this.heads) if (!h.hidden) { L.add(h.hx, h.hy, 100 + h.flare * 60, h.soul, 0.9); const mid = h.pts[Math.floor(h.k / 2)]; L.add(mid.x, mid.y, 110, h.soul, 0.35); }
   }

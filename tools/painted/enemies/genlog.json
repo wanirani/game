@@ -166,6 +166,7 @@
   "refs": [
    "edit:torso_no_arm"
   ],
-  "generationId": "AbLTv6qaQS2brjNSLKRXXFmVEQiu-t03qjsvdMUFOmwCQI7gnmOwzUmN8YeVe8sk8b2SDClC"
+  "generationId": "AbLTv6qaQS2brjNSLKRXXFmVEQiu-t03qjsvdMUFOmwCQI7gnmOwzUmN8YeVe8sk8b2SDClC",
+  "note": "sleeve still present (Kling will not drop the arm) -> sleeve cut out as the near arm, the coat behind it inpainted (cv2)"
  }
 ]

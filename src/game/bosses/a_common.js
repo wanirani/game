@@ -11,6 +11,7 @@ import { enemyStrike } from '../combat.js';
 import { Debris } from '../../core/physics.js';
 import { rand, clamp, lerp, TAU, mix, rgba } from '../../core/math.js';
 import { audio } from '../../core/audio.js';
+import { paintedTick, paintedDraw, preloadPainted } from '../../render/painted/registry.js';
 
 let _hid = 0;
 export const PI = Math.PI;
@@ -608,6 +609,7 @@ export class ABoss extends Boss {
     this.rebuildOnRetry = true; // 페이즈 변형을 되돌리는 훅이 없음 → 플레이어 부활 시 world.resetBoss() 가 새로 생성
     this.updArena();
     this.setup?.();
+    preloadPainted(this.def.id, this.world.game);   // 채색 렌더러가 등록된 보스면 굽기 시작 (등장 연출 뒤에서 끝남)
   }
   updArena() {
     const a = this.world.arena, A = this.A;
@@ -746,6 +748,12 @@ export class ABoss extends Boss {
       this.deathTick?.(dt, world);
     }
     super.update(dt, world);
+    paintedTick(this, world);
+  }
+  /** 채색 렌더러가 준비됐으면 그쪽(컬링 대리 개체)이 그린다 — 아니면 기존 벡터 그리기 */
+  draw(ctx, world) {
+    if (paintedDraw(this, ctx, world)) return;
+    super.draw(ctx, world);
   }
   spawnDebris(world, x, y, n) {
     if (!world.debrisList) return;
