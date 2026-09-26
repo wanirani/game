@@ -2,11 +2,12 @@
 //
 //   await installTapRecorder(s.page);               // once per page, after window.__game exists
 //   const r = await auditScene(s.page, "__game.push('options',{})", { wait: 1000 });
-//   r → { scene, cssScale, uiK, uiScale, n, red: [...], yellow: [...], ok, regions }
+//   r → { scene, cssScale, uiK, uiScale, n, red: [...], yellow: [...], ok, regions,
+//         text: {n, min, p10, median, smallest} }   ← font size (CSS px) of every fillText the top scene drew (P-03)
 //
-// Sources, merged:
-//  - ui.taps (platform §6.3 registry; FONTS-FU/PLAT-CORE): entries {id?, x, y, w, h, kind?, slop?} read through
-//    taps.list | taps.rects | taps.items | taps.all() | taps.snapshot() — the first that yields an array;
+// Sources, merged (one region per geometry; an explicit registry kind wins):
+//  - ui.taps (platform §6.3 registry; FONTS-FU/PLAT-CORE): taps.note(rect, kind, src) and taps.add(id, rect, {kind, slop})
+//    are wrapped (taps.record is switched on); kinds 'list'→row, 'primary', 'icon'/'arrow', 'dense';
 //  - the legacy helpers, patched on their prototypes (the audit prototype): ListMenu.hit (row), Gesture.tap (row),
 //    TapZones.add (primary), Hits.add (primary).
 // Only regions registered while the TOP scene runs update()/render() count (scenes underneath are not tappable).
@@ -21,14 +22,14 @@ export const RED_CSS = 32;
 export async function installTapRecorder(page) {
   await page.evaluate(async () => {
     if (window.__qaTaps) return;
-    const R = window.__qaTaps = { list: [], cur: null, on: true };
+    const R = window.__qaTaps = { list: [], text: [], cur: null, on: true };
     const g = window.__game;
+    const KIND = { list: 'row', row: 'row', primary: 'primary', icon: 'icon', dense: 'dense', arrow: 'icon', button: 'primary' };
     const rec = (src, kind) => (r, extra = {}) => {
       if (!R.on || !r || !(r.w > 0) || !(r.h > 0)) return;
       if (R.cur !== g.top) return;
-      R.list.push({ src, kind: extra.kind || kind, id: extra.id ?? null, slop: extra.slop || 0, x: r.x, y: r.y, w: r.w, h: r.h, scene: g.top?.name, ui: !!g.top?.uiScale });
+      R.list.push({ src, kind: KIND[extra.kind] || kind, id: extra.id ?? null, slop: extra.slop || 0, x: r.x, y: r.y, w: r.w, h: r.h, scene: g.top?.name, ui: !!g.top?.uiScale });
     };
-    R.rec = rec;
     const wrapScene = (sc) => {
       if (!sc || sc.__qaTapWrap) return;
       sc.__qaTapWrap = true;
@@ -42,27 +43,42 @@ export async function installTapRecorder(page) {
     g.tick = function (dt) { for (const sc of g.scenes) wrapScene(sc); return T(dt); };
     const Rn = g.render.bind(g);
     g.render = function () { for (const sc of g.scenes) wrapScene(sc); return Rn(); };
-    const P = (proto, name, src, kind, argi) => {
-      if (!proto || typeof proto[name] !== 'function') return;
-      const o = proto[name]; const f = rec(src, kind);
-      proto[name] = function (...a) { try { f(a[argi]); } catch { /* ignore */ } return o.apply(this, a); };
+    const P = (obj, name, src, kind, argi, optsi = -1) => {
+      if (!obj || typeof obj[name] !== 'function') return;
+      const o = obj[name]; const f = rec(src, kind);
+      obj[name] = function (...a) {
+        try {
+          const opts = optsi >= 0 && a[optsi] && typeof a[optsi] === 'object' ? a[optsi] : typeof a[optsi] === 'string' ? { kind: a[optsi] } : {};
+          f(a[argi], opts);
+        } catch { /* ignore */ }
+        return o.apply(this, a);
+      };
     };
     const tryImport = async (u) => { try { return await import(u); } catch { return {}; } };
     const ui = await tryImport('/src/core/ui.js');
     const mc = await tryImport('/src/scenes/menu/common.js');
     const fc = await tryImport('/src/scenes/front/common.js');
     const gc = await tryImport('/src/scenes/games/common.js');
+    // the shared registry (platform §6.3): taps.note(rect, kind, src) from the legacy helpers, taps.add(id, rect, opts) from new code
+    const t = ui.taps;
+    if (t && typeof t === 'object') {
+      try { if ('record' in t) t.record = true; } catch { /* read-only */ }
+      P(t, 'note', 'ui.taps', 'primary', 0, 1);
+      P(t, 'add', 'ui.taps', 'primary', 1, 2);
+    }
     P(ui.ListMenu?.prototype, 'hit', 'ListMenu', 'row', 1);
     P(mc.Gesture?.prototype, 'tap', 'Gesture', 'row', 0);
     P(fc.TapZones?.prototype, 'add', 'TapZones', 'primary', 1);
     P(gc.Hits?.prototype, 'add', 'Hits', 'primary', 1);
-    // the shared registry (when present) is read at audit time
-    R.registry = () => {
-      const t = ui.taps;
-      if (!t) return null;
-      for (const k of ['list', 'rects', 'items', 'zones']) if (Array.isArray(t[k])) return t[k];
-      for (const k of ['all', 'snapshot', 'debugList']) if (typeof t[k] === 'function') { try { const a = t[k](); if (Array.isArray(a)) return a; } catch { /* ignore */ } }
-      return null;
+    // legibility: font size of every fillText the top scene draws on the game canvas, in CSS px
+    const ft = CanvasRenderingContext2D.prototype.fillText;
+    CanvasRenderingContext2D.prototype.fillText = function (str, x, y, mw) {
+      if (R.on && R.cur && R.cur === g.top && this.canvas === g.canvas && R.text.length < 5000) {
+        const m = this.getTransform();
+        const px = parseFloat((/([\d.]+)px/.exec(this.font) || [])[1] || '0');
+        if (px > 0) R.text.push({ s: String(str).slice(0, 24), bpx: px * Math.hypot(m.a, m.b) });
+      }
+      return ft.call(this, str, x, y, mw);
     };
   });
 }
@@ -72,26 +88,26 @@ export async function installTapRecorder(page) {
  * cssScale is measured from the canvas box; uiK from game.uiK (1 when missing).
  */
 export async function auditScene(page, ev, { wait = 900, settle = 350 } = {}) {
-  await page.evaluate(() => { window.__qaTaps.list.length = 0; });
+  await page.evaluate(() => { window.__qaTaps.list.length = 0; window.__qaTaps.text.length = 0; });
   if (ev) {
-    try { await (typeof ev === 'function' ? page.evaluate(ev) : page.evaluate(ev)); } catch (e) { return { error: 'EVAL ' + String(e.message).slice(0, 160) }; }
+    try { await page.evaluate(ev); } catch (e) { return { error: 'EVAL ' + String(e.message).slice(0, 160) }; }
   }
   await page.waitForTimeout(wait);
-  await page.evaluate(() => { window.__qaTaps.list.length = 0; });
+  await page.evaluate(() => { window.__qaTaps.list.length = 0; window.__qaTaps.text.length = 0; });
   await page.waitForTimeout(settle);
   return page.evaluate(({ MIN, RED }) => {
     const g = window.__game, R = window.__qaTaps;
     const cv = g.canvas.getBoundingClientRect();
     const cssScale = cv.height / g.viewH;
+    const backingPerCss = g.canvas.width / cv.width;
     const uiK = typeof g.uiK === 'number' && g.uiK > 0 ? g.uiK : 1;
     const top = g.top;
-    const list = R.list.slice();
-    const reg = R.registry?.();
-    if (reg) for (const z of reg) if (z && z.w > 0 && z.h > 0 && (!z.scene || z.scene === top?.name)) list.push({ src: 'ui.taps', kind: z.kind || 'primary', id: z.id ?? null, slop: z.slop || 0, x: z.x, y: z.y, w: z.w, h: z.h, scene: top?.name, ui: !!top?.uiScale });
+    // one region per geometry; an explicit registry kind wins over a guessed one
     const seen = new Map();
-    for (const r of list) {
-      const k = [r.src, Math.round(r.x), Math.round(r.y), Math.round(r.w), Math.round(r.h)].join(',');
-      if (!seen.has(k)) seen.set(k, r);
+    for (const r of R.list) {
+      const k = [Math.round(r.x), Math.round(r.y), Math.round(r.w), Math.round(r.h)].join(',');
+      const prev = seen.get(k);
+      if (!prev || (r.src === 'ui.taps' && prev.src !== 'ui.taps')) seen.set(k, r);
     }
     const vw = top?.uiScale ? (g.uiW ?? g.viewW / uiK) : g.viewW, vh = top?.uiScale ? (g.uiH ?? g.viewH / uiK) : g.viewH;
     const regions = [];
@@ -106,7 +122,10 @@ export async function auditScene(page, ev, { wait = 900, settle = 350 } = {}) {
       regions.push({ src: r.src, kind, id: r.id, w: +w.toFixed(1), h: +h.toFixed(1), level, lx: Math.round(r.x), ly: Math.round(r.y), lw: Math.round(r.w), lh: Math.round(r.h) });
     }
     const red = regions.filter((r) => r.level === 'red'), yellow = regions.filter((r) => r.level === 'yellow');
-    return { scene: g.scenes.map((s) => s.name).join('>'), top: top?.name, cssScale: +cssScale.toFixed(3), uiK: +uiK.toFixed(3), uiScale: !!top?.uiScale, n: regions.length, red, yellow, ok: red.length === 0 && yellow.length === 0, regions };
+    const sizes = R.text.map((t) => t.bpx / backingPerCss).sort((a, b) => a - b);
+    const q = (p) => (sizes.length ? +sizes[Math.min(sizes.length - 1, Math.floor(p * sizes.length))].toFixed(2) : null);
+    const text = { n: sizes.length, min: q(0), p10: q(0.1), median: q(0.5), smallest: R.text.slice().sort((a, b) => a.bpx - b.bpx).slice(0, 4).map((t) => `${t.s}@${(t.bpx / backingPerCss).toFixed(1)}`) };
+    return { scene: g.scenes.map((s) => s.name).join('>'), top: top?.name, cssScale: +cssScale.toFixed(3), uiK: +uiK.toFixed(3), uiScale: !!top?.uiScale, n: regions.length, red, yellow, ok: red.length === 0 && yellow.length === 0, regions, text };
   }, { MIN: MIN_CSS, RED: RED_CSS });
 }
 

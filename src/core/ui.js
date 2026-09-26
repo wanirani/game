@@ -324,6 +324,27 @@ export const fontsReady = loadFonts(typeof performance !== 'undefined' ? clamp(2
 await fontsReady;
 // 첫 화면 뒤: 데미지 숫자·한자 글꼴(작다)은 곧바로, 붓글씨(큼)는 몇 초 뒤 한가할 때 미리 받는다 (데이터 절약 모드·2G 에서는 처음 쓸 때 받는다)
 for (const [family, , , , when] of JS_FACES) if (when === 'early') loadFace(family);
+loadPlusFaces();
+/**
+ * 한글 기본 글꼴이 첫 화면 예산을 넘으면 build_fonts.py 가 덜 쓰이는 글자를 "plus" 파일로 나눠 fonts.json 에 적는다.
+ * 같은 글꼴 이름 + 정확한 unicode-range 로 등록하면 그 글자만 plus 파일에서 그려진다 (CSS·FONT 묶음은 그대로) → 첫 화면 뒤 곧바로 받는다.
+ */
+function loadPlusFaces() {
+  const fs = typeof document !== 'undefined' ? document.fonts : null;
+  if (!fs?.add || typeof FontFace === 'undefined' || typeof fetch === 'undefined') return;
+  fetch(`${FONT_DIR}fonts.json`).then((r) => (r.ok ? r.json() : [])).then((list) => {
+    for (const i of Array.isArray(list) ? list : []) {
+      if (i?.part !== 'plus' || !i.urange || !i.file) continue;
+      for (const family of [i.family, ...(i.alias ?? [])]) {
+        try {
+          const f = new FontFace(family, `url("${FONT_DIR}${i.file}") format("woff2")`, { weight: i.weight || '100 900', unicodeRange: i.urange, style: 'normal', display: 'swap' });
+          fs.add(f); FACES.set(`${family}+`, f);
+          f.load().catch(() => {});
+        } catch (e) { console.warn('글꼴 등록 실패', family, e); }
+      }
+    }
+  }).catch(() => { /* 오프라인 등: 기본·확장 글꼴로 그린다 */ });
+}
 if (typeof window !== 'undefined' && FACES.has('BN Brush')) {
   const cn = navigator.connection;
   if (!cn?.saveData && !/(^|-)2g$/.test(cn?.effectiveType ?? '')) {

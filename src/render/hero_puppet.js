@@ -492,6 +492,7 @@ function drawBandPup(c, E, K, s) {
 // ── 망토: 절차적 베를레 띠 + 벨벳 결 텍스처 ──
 const CAPE_PAT = new Map();
 function capeTex() { return assets.get('puppets/_shared/cape_tex'); }
+if (typeof window !== 'undefined') setTimeout(capeTex, 450);   // 6KB — 망토를 처음 그리기 전에 받아 둔다
 /** 망토 색으로 물들인 벨벳 패턴 캔버스 (색별 캐시) */
 export function capeCanvas(col) {
   let cv = CAPE_PAT.get(col);
@@ -519,12 +520,13 @@ function capeFolds(c, off, n, col) {
       const u = i / (n - 1), k = f * WS[i] * (0.35 + 0.65 * u) + Math.sin(i * 1.7 + f * 5) * 0.4;
       FOLD[i * 2] = off[i * 2] + (-ty / d) * k; FOLD[i * 2 + 1] = off[i * 2 + 1] + (tx / d) * k;
     }
-    for (let i = 0; i < n; i++) WS[16 + i] = 0.25 + 1.6 * Math.pow(i / (n - 1), 0.8);
+    for (let i = 0; i < n; i++) WS[16 + i] = 0.35 + 2.1 * Math.pow(i / (n - 1), 0.8);
     ribbonPath(c, FOLD, n, WS.subarray(16), false);
-    c.fillStyle = ra('#050208', a * (light ? 0.75 : 1)); c.fill();
-    for (let i = 0; i < n; i++) FOLD[i * 2] += 1.1;
+    c.fillStyle = ra(light ? '#3a3020' : '#050208', a * (light ? 1.15 : 1)); c.fill();
+    for (let i = 0; i < n; i++) FOLD[i * 2] += 1.3;
+    for (let i = 0; i < n; i++) WS[16 + i] *= 0.6;
     ribbonPath(c, FOLD, n, WS.subarray(16), false);
-    c.fillStyle = ra('#ffffff', light ? 0.14 : 0.06); c.fill();
+    c.fillStyle = ra('#ffffff', light ? 0.2 : 0.07); c.fill();
   }
   c.restore();
 }
@@ -565,7 +567,10 @@ function drawCapePup(c, E, K, s) {
       c.strokeStyle = cp.style === 'royal' ? '#e8c872' : ra(sh(cp.c2, 0.2), 0.9); c.lineWidth = 0.9;
       c.beginPath(); c.moveTo(off[e] + (-ty / d) * w, off[e + 1] + (tx / d) * w); c.lineTo(off[e] - (-ty / d) * w, off[e + 1] - (tx / d) * w); c.stroke();
     }
-  } else { c.fillStyle = G.tint || cp.c; c.fill(); }
+  } else {
+    c.fillStyle = G.tint || cp.c; c.fill();
+    if (!G.tint) { c.strokeStyle = ra('#0a0306', 0.55); c.lineWidth = 0.5; c.stroke(); capeFolds(c, off, n, cp.c); }  // 결 텍스처 로드 전에도 주름
+  }
 }
 
 // ───────────────────────── 레이어 ─────────────────────────

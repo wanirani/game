@@ -14,25 +14,26 @@
 //         onHurt(dmg)                  world.onPlayerHurt 가 호출 (한 단계 아래 랭크 기준점으로 떨어짐)
 //         update(dt)                   world.update 가 매 프레임 호출 (감쇠, 알림 대기열)
 //         reset()                      점수·랭크 초기화
-//  사건: 랭크 상승 시 bus 'styleRankUp' {rank, r}, 각성 게이지 +AW_GAIN.rankUp; 콤보 이정표 bus 'comboMilestone' {n}
-//  각성 게이지: 띄우기·바운드·카운터 +3, 랭크 상승 +1 은 여기서 더한다 (타격·처치·보스 관련 획득은 world.js).
+//  사건: 랭크 상승 시 bus 'styleRankUp' {rank, r}, 각성 게이지 +AW_GAIN.rankUp (콤보 이정표 bus 'comboMilestone' 은 world.js 가 보냄)
+//  각성 게이지: 랭크 상승 +1, 벽·바닥 바운드 +3 은 여기서 더한다 (타격·치명·카운터·띄우기·처치·보스 관련 획득은 world.js).
 import { STYLE, AW_GAIN } from '../data/feel_hit.js';
 import { CLASSES } from '../data/classes.js';
 import { audio, SFX } from '../core/audio.js';
 import { bus } from '../core/events.js';
 
 const EV_ALIAS = { wallbounce: 'wallBounce', groundbounce: 'groundBounce', ground_bounce: 'groundBounce', wall_bounce: 'wallBounce', backAttack: 'back', back_attack: 'back', staggerBreak: 'stagger', chaseJump: 'chase' };
-const AW_EVENTS = { launch: 'launch', wallBounce: 'bounce', groundBounce: 'bounce', bounce: 'bounce', counter: 'counter' };
+const AW_EVENTS = { wallBounce: 'bounce', groundBounce: 'bounce', bounce: 'bounce' };   // 띄우기·카운터 게이지는 world.awOnHit
 
 /** 효과음 이름이 등록돼 있을 때만 재생 (sfx_feel.js 가 아직 없으면 기본 삑 소리 대신 조용히) */
 function sfxIf(name, o) { if (SFX[name]) audio.sfx(name, o); }
 
 /**
  * 각성 게이지 가산 (feel §6.1): 전직 tier ≥ AW_GAIN.minTier 일 때만, × (1 + ultGain/200), 상한 100.
- * world.gainAw 가 있으면 그쪽(WORLD-CAM)에 맡긴다. 반환: 실제 가산량
+ * world.addAw 가 있으면 그쪽(WORLD-CAM)에 맡긴다. 반환: 실제 가산량
  */
 export function addAwGain(world, n) {
   if (!(n > 0) || !world?.run) return 0;
+  if (typeof world.addAw === 'function') return world.addAw(n) ?? 0;
   if (typeof world.gainAw === 'function') return world.gainAw(n) ?? 0;
   const cid = world.hero?.classId;
   const tier = (cid && CLASSES[cid]?.tier) ?? 0;
@@ -118,7 +119,6 @@ export class Style {
         this.milestone = { n: m, age: 0 };
         const i = STYLE.milestones.indexOf(m);
         sfxIf('combo_milestone', { vol: 0.8, pitch: 1 + i * 0.08 });
-        bus.emit('comboMilestone', { n: m });
       }
     }
     if (!(w > 0)) return;
@@ -144,9 +144,9 @@ export class Style {
     const E = STYLE.events;
     let ev = 0;
     if (info.crit) ev += E.crit;
-    if (info.counter && this.mark('counter', target)) { ev += E.counter; if (!cmp) addAwGain(W, AW_GAIN.counter); }
+    if (info.counter && this.mark('counter', target)) ev += E.counter;
     if (info.back && this.mark('back', target)) ev += E.back;
-    if (info.launched && this.mark('launch', target)) { ev += E.launch; if (!cmp) addAwGain(W, AW_GAIN.launch); }
+    if (info.launched && this.mark('launch', target)) ev += E.launch;
     this.add(p + ev * (cmp ? STYLE.companion : 1));
   }
 
@@ -166,7 +166,7 @@ export class Style {
     const E = STYLE.events;
     const pts = data?.pts ?? E[name];
     if (!(pts > 0)) return;
-    if (!this.mark(name, data?.target)) return;
+    if (!this.mark(name, data?.target ?? data?.enemy)) return;
     this.sinceHit = Math.min(this.sinceHit, 0.2);
     this.add(pts);
     const aw = AW_EVENTS[name];
@@ -182,6 +182,7 @@ export class Style {
     K.push(this._t);
     let p = E.kill;
     if (K.length >= 2) p += E.multiKill;          // 두 번째 처치부터 추가 1명마다 +60
+    this.sinceHit = 0;
     this.add(p * (cmp ? STYLE.companion : 1));
   }
 

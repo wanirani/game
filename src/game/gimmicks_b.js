@@ -1,37 +1,37 @@
 // 기믹 종류 B — heartbeat(심장 박동 벽) · blight(부패 포자) · voidwall(공허의 벽) 과 포자 주머니 소품 SporePod ('y')
 // owner: GIMMICK-KINDS-B   (world2 §3.5, §14 · MASTER_PLAN §1.2 blightMul)
 //
-// ── 계약: GimmickSet 구성원 인터페이스 (gimmicks.js 의 GimmickSet 이 GIMMICKS_B[kind] 로 만들어 호출한다) ──
-//  GIMMICKS_B[kind](world, cfg, room) → member   new 로 불러도, 그냥 함수로 불러도 된다. 인자 순서도 가리지 않는다
-//                                               (world = entities 를 가진 객체, room = map 배열을 가진 객체, 나머지 = cfg).
-//                                               .create 도 같은 함수, .Class 는 실제 클래스.
+// ── 계약: gimmicks.js 머리말의 "멤버(종류별 기믹) 계약" 을 따른다 (GimmickSet 이 GIMMICKS_B[kind] 로 만들어 호출) ──
+//  GIMMICKS_B[kind](world, params, set) → member   그냥 함수 (new 로 불러도 된다). 인자 순서는 가리지 않는다
+//                                                 (world = entities 를 가진 객체, room = map 배열을 가진 객체, 나머지 첫 객체 = params).
+//                                                 .create 도 같은 함수, .Class 는 실제 클래스.
 //  member.kind
-//  update(dt)                     world 시간 간격 (히트스톱 중에는 불리지 않음). world.cutscene 중에는 스스로 진행을 멈춘다.
+//  update(dt, paused)             world 시간 간격 (히트스톱 중에는 불리지 않음). world.cutscene·transitioning 중에는 진행을 멈추고 연출만.
 //  prePhysics(p, dt) / postPhysics(p, dt)       Player.physics() 앞뒤 (voidwall 밀어내기)
 //  onJumpInput(p) → false
 //  healMul() → number             blight 상태 이상 0.5
 //  get noRegen → bool             blight 상태 이상
 //  get speedMul → number          blight 상태 이상 0.9
 //  get bgFlip → false
-//  get hasMeter → bool            이번 프레임에 HUD 게이지 1줄을 그리는가 (blight 만). GimmickSet 은 true 인 구성원마다 row 를 1 늘린다.
+//  get hasMeter → bool            이번 프레임에 HUD 게이지 1줄을 쓰는가 (blight 만)
 //  lights(L)
 //  drawWorld(ctx, cam, layer)     layer 'under' | 'back' | 'front' (카메라 변환이 적용된 월드 좌표)
-//  drawScreen(ctx, vw, vh, row = 0)   화면 좌표. row = hudLayout().meter(row) 줄 번호 (숫자) 또는 {x,y,w,h} 사각형.
-//                                     world.hudHidden 이면 게이지는 그리지 않는다 (화면 색조는 그대로).
-//  onFell(p) · onRespawn() · cleanse(n) · dispose()
+//  drawScreen(ctx, vw, vh, hud)   화면 좌표. 게이지는 hud.meter() 가 준 줄에만 그린다 (null = world.hudHidden 이거나 줄 없음 → 안 그림).
+//                                 hud 대신 줄 번호(숫자)나 {x,y,w,h} 를 넘겨도 된다. 화면 색조는 hudHidden 이어도 그린다.
+//  onFell(p) · onRespawn() · cleanse(n) · reset() · dispose()
 //
 // 종류별 API (world.gimmickOf(kind) 가 돌려주는 구성원)
 //  heartbeat { beatIndex, beat, warning, setBeat(sec), reset() }
-//  blight    { meter, status, addCloud(x, y, w, h, life = 5)(px), spawnPod(tx, ty, {respawn}), cleanse(n) }
+//  blight    { meter, status, addCloud(x, y, w, h, life = 5)(px), spawnPod(tx, ty, {respawn}), cleanse(n), reset() }
 //            포자 흡수량 × (p.mount?.riding ? p.mount.def.blightMul ?? 1 : 1)
 //  voidwall  { mode, wallX, wallR, closeIn(x0px, x1px, speed = 80), open(speed = 120), reset() }
 //
 // 맵 문자: z/Z 는 map.phaseTiles 의 key 'even'/'odd' (없으면 z/Z 마커) 를 읽어 이 파일이 고체/빈칸을 정한다.
 //          'y' 포자 주머니는 blight 구성원이 직접 만든다 (world·엔진은 만들지 않는다. 같은 칸에 둘이 생기면 첫 update 에서 하나만 남긴다).
-// SporePod(tx, ty, opts) — 타일 좌표 (props.js 의 다른 소품과 같은 규칙). 공격받으면 부풀었다 터지고, 화염(또는 정화의 불꽃) 에는 타 버린다.
-//  수호신 공격(tags 'companion')은 무시한다.
-// 순환 import: gimmicks.js 가 이 파일을 먼저 평가한다 → 이 파일은 gimmicks.js 를 import 하지 않고,
-//             import 한 값(TILE 등)을 모듈 최상위에서 쓰지 않는다 (함수 안에서만).
+// SporePod(tx, ty, opts) — 타일 좌표 (props.js 의 다른 소품과 같은 규칙). 공격받으면 부풀었다 터지고, 화염 속성
+//  (또는 정화의 불꽃: attack.purge / tags 'purge' / id 'tech_purge') 에는 타 버린다. 수호신 공격(tags 'companion')은 무시한다.
+// 순환 import: gimmicks.js ↔ 이 파일. 서로의 값을 모듈 최상위에서 쓰지 않는다 (함수 안에서만).
+//             gimmicks.js 는 이름공간(GE)으로만 불러 GE.drawMeter?.() 처럼 쓴다 (없으면 이 파일의 대체 그림).
 import { Entity } from './entity.js';
 import { TILE } from '../core/game.js';
 import { T } from '../core/physics.js';
@@ -40,6 +40,7 @@ import { assets } from '../core/assets.js';
 import { text } from '../core/ui.js';
 import { clamp, rand, approach, RNG } from '../core/math.js';
 import { hudLayout } from '../render/hud_layout.js';
+import * as GE from './gimmicks.js';
 
 // ─────────────────────────── 공용 도우미 ───────────────────────────
 const TWO_PI = Math.PI * 2;
@@ -189,21 +190,32 @@ function glowSprite() {
     g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
   });
 }
-/** HUD 게이지 한 줄 (hudLayout().meter(i) 사각형 안, 막대 높이 12) */
-function drawMeterBar(ctx, r, frac, color, label, labelColor) {
-  const x = Math.round(r.x), w = Math.round(r.w), h = 12, y = Math.round(r.y + Math.max(0, (r.h - h) / 2));
-  ctx.fillStyle = 'rgba(0,0,0,0.62)'; ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
-  ctx.fillStyle = color; ctx.fillRect(x, y, Math.round(w * clamp(frac, 0, 1)), h);
-  ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(x, y, Math.round(w * clamp(frac, 0, 1)), 3);
-  ctx.strokeStyle = 'rgba(30,18,6,0.95)'; ctx.lineWidth = 1; ctx.strokeRect(x - 1.5, y - 1.5, w + 3, h + 3);
-  if (label) text(ctx, label, x + 6, y + h / 2 + 0.5, { size: 11, weight: 700, color: labelColor, baseline: 'middle', ow: 3 });
-  return { x, y, w, h };
-}
-function meterRect(world, vw, vh, row) {
-  if (row && typeof row === 'object' && Number.isFinite(row.x)) return row;
-  const i = Number.isFinite(row) ? row : 0;
+/** 게이지 줄 사각형: GimmickSet 의 hud.meter() (null = 숨김·줄 없음) · 줄 번호 · {x,y,w,h} 를 모두 받는다 */
+function meterRect(world, vw, vh, hud) {
+  if (world?.hudHidden) return null;
+  if (hud && typeof hud.meter === 'function') { const r = hud.meter(); return r && Number.isFinite(r.x) ? r : null; }
+  if (hud && typeof hud === 'object' && Number.isFinite(hud.x)) return hud;
+  const i = Number.isFinite(hud) ? hud : 0;
   try { const r = hudLayout(world, vw, vh)?.meter?.(i); if (r && Number.isFinite(r.x)) return r; } catch { /* 배치 모듈 오류 → 기본값 */ }
   return { x: vw / 2 - 100, y: 12 + 20 * i, w: 200, h: 16 };
+}
+/** 게이지 한 줄 — 엔진(gimmicks.js)의 drawMeter 와 같은 모양 (없으면 같은 규격의 대체 그림). 막대 영역 {x,y,w,h} 를 돌려준다 */
+function drawGauge(ctx, r, label, ratio, color, opts = {}) {
+  const bh = Math.max(4, Math.min(12, r.h - 4)), bar = { x: r.x + 2, y: r.y + (r.h - bh) / 2, w: r.w - 4, h: bh };
+  if (typeof GE.drawMeter === 'function') { GE.drawMeter(ctx, r, label, ratio, color, opts); return bar; }
+  const fw = bar.w * clamp(ratio, 0, 1), ty = r.y + r.h / 2 + 1;
+  ctx.save();
+  ctx.globalAlpha = !opts.blink || Math.sin((opts.time ?? 0) * 16) > -0.3 ? 1 : 0.45;
+  ctx.fillStyle = 'rgba(8,4,12,0.72)'; ctx.fillRect(r.x, r.y, r.w, r.h);
+  ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect(bar.x, bar.y, bar.w, bh);
+  ctx.fillStyle = color; ctx.fillRect(bar.x, bar.y, fw, bh);
+  ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.fillRect(bar.x, bar.y, fw, Math.min(2, bh));
+  ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.lineWidth = 1; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
+  const lc = opts.labelColor ?? '#ffffff';
+  text(ctx, label, r.x + 8, ty, { size: 12, weight: 800, color: lc, baseline: 'middle', ow: 3 });
+  if (opts.sub) text(ctx, opts.sub, r.x + r.w - 8, ty, { size: 12, weight: 700, color: lc, align: 'right', baseline: 'middle', ow: 3 });
+  ctx.restore();
+  return bar;
 }
 
 // ─────────────────────────── 구성원 기반 ───────────────────────────
@@ -257,6 +269,7 @@ export class HeartbeatGimmick extends MemberB {
     this.cells = [];         // {tx, ty, idx, even, pending}
     this.byIdx = new Map();
     this.pendingN = 0;
+    this.queue = [];         // 다음 프레임들에 적용할 칸 묶음 (apply(stagger))
     this.collect();
     this.apply(false);
   }
@@ -304,16 +317,41 @@ export class HeartbeatGimmick extends MemberB {
     w.tiles?.invalidate?.(c.tx, c.ty);
     return true;
   }
-  /** 현재 박자에 맞게 모든 칸을 맞춘다 (겹치는 칸은 보류) */
-  apply(fx = true) {
-    const bodies = this.bodies();
-    let pend = 0;
+  /**
+   * 현재 박자에 맞게 칸을 맞춘다 (겹치는 칸은 보류).
+   * stagger: 화면 근처에서 실제로 바뀌는 칸은 타일 청크(16칸) 묶음별로 한 프레임에 하나씩 적용한다 — 타일 렌더러가 바뀐
+   * 청크 캔버스를 통째로 다시 굽기 때문에 한 프레임에 몰리지 않게 나눈다 (길어야 몇 프레임). 화면 밖 칸은 즉시.
+   */
+  apply(stagger = false) {
+    this.queue.length = 0;
+    const m = this.world?.map, cam = this.world?.camera;
+    if (!stagger || !m || !cam?.visible) { this.applyCells(this.cells); return; }
+    const now = [], groups = new Map();
     for (const c of this.cells) {
-      if (this.wants(c)) {
-        if (this.blocked(c, bodies)) { this.setTile(c, T.EMPTY); c.pending = true; pend++; }
-        else { this.setTile(c, T.SOLID); c.pending = false; }
-      } else { this.setTile(c, T.EMPTY); c.pending = false; }
+      const change = (this.wants(c) ? T.SOLID : T.EMPTY) !== m.tiles[c.idx];
+      if (!change || !cam.visible(c.tx * TILE, c.ty * TILE, TILE, TILE, 3 * TILE)) { now.push(c); continue; }
+      const k = (c.tx >> 4) * 4096 + (c.ty >> 4);
+      let g = groups.get(k);
+      if (!g) groups.set(k, (g = []));
+      g.push(c);
     }
+    const gs = [...groups.values()];
+    if (gs.length) now.push(...gs.shift());
+    this.applyCells(now);
+    for (const g of gs) this.queue.push(g);
+  }
+  applyCells(list) {
+    if (list.length) {
+      const bodies = this.bodies();
+      for (const c of list) {
+        if (this.wants(c)) {
+          if (this.blocked(c, bodies)) { this.setTile(c, T.EMPTY); c.pending = true; }
+          else { this.setTile(c, T.SOLID); c.pending = false; }
+        } else { this.setTile(c, T.EMPTY); c.pending = false; }
+      }
+    }
+    let pend = 0;
+    for (const c of this.cells) if (c.pending) pend++;
     this.pendingN = pend;
   }
   /** 보류된 칸: 아무것도 겹치지 않게 되면 굳힌다 */
@@ -350,12 +388,13 @@ export class HeartbeatGimmick extends MemberB {
       }
     }
   }
-  update(dt) {
+  update(dt, paused = false) {
     this.t += dt; this.sinceBeat += dt;
     if (this.dubT >= 0) { this.dubT -= dt; if (this.dubT < 0) audio.sfx('hit', { pitch: 0.5, vol: 0.25 }); }
+    if (this.queue.length) this.applyCells(this.queue.shift());   // 나눠 둔 박동 적용분
     this.unstick();
     this.settle();
-    if (this.paused()) return;
+    if (paused || this.paused()) return;
     this.timer += dt;
     if (this.timer >= this.beat) {
       this.timer = Math.min(this.timer - this.beat, this.beat * 0.5);
@@ -577,10 +616,10 @@ export class BlightGimmick extends MemberB {
     }
     return false;
   }
-  update(dt) {
+  update(dt, paused = false) {
     this.t += dt; this.statusT += dt;
     if (!this.adopted) this.adoptPods();
-    if (this.paused()) return;
+    if (paused || this.paused()) return;
     for (let i = this.clouds.length - 1; i >= 0; i--) {
       const c = this.clouds[i];
       c.age += dt;
@@ -675,7 +714,7 @@ export class BlightGimmick extends MemberB {
     }
     ctx.restore();
   }
-  drawScreen(ctx, vw, vh, row) {
+  drawScreen(ctx, vw, vh, hud) {
     const w = this.world;
     const vg = vignetteSprite('blight', '60,110,10');
     ctx.save();
@@ -686,19 +725,19 @@ export class BlightGimmick extends MemberB {
       ctx.globalAlpha = 0.35 * (this.meter / 100); ctx.drawImage(vg, 0, 0, vw, vh);
     }
     ctx.restore();
-    if (w?.hudHidden || !this.hasMeter) return;
-    const r = meterRect(w, vw, vh, row);
-    ctx.save();
+    if (!this.hasMeter) return;              // 게이지 줄은 그릴 때만 받는다 (hud.meter() 는 줄을 하나 소비한다)
+    const r = meterRect(w, vw, vh, hud);
+    if (!r) return;
     if (this.status) {
-      const blink = Math.floor(this.t * 4) % 2 === 0;
-      const bar = drawMeterBar(ctx, r, this.meter / 100, '#8a3aa8', blink ? '부패!' : '부패', blink ? '#ffd8ff' : '#e8c8f4');
-      const ox = bar.x + bar.w * clamp(this.cfg.off / 100, 0, 1);
-      ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.fillRect(Math.round(ox) - 1, bar.y - 2, 2, bar.h + 4);
+      const bar = drawGauge(ctx, r, '부패', this.meter / 100, '#8a3aa8', { blink: true, time: this.t, sub: '부패!', labelColor: '#f4e0ff' });
+      const ox = bar.x + bar.w * clamp(this.cfg.off / 100, 0, 1);   // 이 선 아래로 내려가야 풀린다
+      ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillRect(Math.round(ox) - 1, bar.y - 1, 2, bar.h + 2);
     } else {
-      drawMeterBar(ctx, r, this.meter / 100, '#9ad040', '부패', '#f4ffe0');
+      drawGauge(ctx, r, '부패', this.meter / 100, '#9ad040', { time: this.t, sub: `${Math.floor(this.meter)}`, labelColor: '#f4ffe0' });
     }
-    ctx.restore();
   }
+  /** 보스 재도전 등: 동적 구름·심은 주머니 정리, 게이지 0 */
+  reset() { this.onRespawn(); }
 }
 
 // ─────────────────────────── voidwall ───────────────────────────
@@ -761,11 +800,11 @@ export class VoidWallGimmick extends MemberB {
     this.hooked = true;
     if (this.pushDir && p && !p.dead) p.vx = this.pushDir > 0 ? Math.max(p.vx, PUSH_V) : Math.min(p.vx, -PUSH_V);
   }
-  update(dt) {
+  update(dt, paused = false) {
     this.t += dt;
     const w = this.world, p = w?.player;
     const hooked = this.hooked; this.hooked = false;
-    if (this.paused()) { this.pushDir = 0; return; }
+    if (paused || this.paused()) { this.pushDir = 0; return; }
     if (this.mode === 'chase') this.moveChase(dt, p); else this.moveArena(dt);
     this.pushDir = 0;
     if (p && !p.dead && !w.cleared) this.contact(p, hooked);

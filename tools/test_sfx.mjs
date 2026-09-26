@@ -3,7 +3,7 @@
 //  --levels  이름별 피크·단기 RMS·길이·노드 수 표 출력 (음량 보정용)
 //  --json    결과 전체를 파일로 저장
 // 검사 항목
-//  1. 레지스트리: 내장 76종 + 체감 45종(sfx_feel.js) + 동료 31종(audio_companions.js 가 하나라도 등록했으면 전부 필수), 이름 충돌 없음
+//  1. 레지스트리: 내장 73종(§1.9 표의 '76' 은 오기, 목록은 73개 +_default) + 체감 45종(sfx_feel.js) + 동료 31종(audio_companions.js 가 하나라도 등록했으면 전부 필수), 이름 충돌 없음
 //  2. sfx_feel.js 가 audio.js 를 import 하지 않음 (순환 금지)
 //  3. API: defineSfx(name, def, vol) / SFX_KIT {T, N, R} / fn(S, H) 의 H = {T, N, FM, ARP, BOOM, CRACKLE, mtof, R} / audio 도우미
 //  4. 체감 예산: 100ms 창 상한(10·8·6), prio 예외, hit* 7개 이상이면 재질 레이어 생략, stopName

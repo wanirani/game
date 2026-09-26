@@ -97,7 +97,7 @@ export class Suite {
     const gated = meta.gate && !HEADLINE.includes(meta.issue) && !this.landed(meta.gate);
     const rec = {
       id: meta.id, group: meta.group, issue: meta.issue || null, pkg: meta.pkg || meta.gate || null, gate: meta.gate || null,
-      title: meta.title || '', status: r.status, detail: r.detail, metrics: r.metrics, ms: Date.now() - t,
+      title: meta.title || '', status: r.status, detail: r.detail, metrics: r.metrics, ms: Date.now() - t, at: Date.now() - this.t0,
     };
     if ((r.status === 'fail' || r.status === 'error') && gated) { rec.status = 'pending'; rec.would = r.status; }
     if ((rec.status === 'fail' || rec.status === 'error') && meta.session) {

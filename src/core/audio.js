@@ -30,6 +30,7 @@ const HIT_LAYER_MAX = 6;         // hit* 가 이보다 많이 울리면 재질 �
 const MAX_MUSIC_VOICES = 90;     // 음악 동시 보이스 안전 상한
 const E0 = {};
 const STATS0 = Object.freeze({ starts: 0, feel: 0, dropped: 0, skipped: 0 });
+const HAS = Object.prototype.hasOwnProperty; // SFX 조회는 자기 속성만 ('constructor' 등 프로토타입 이름 차단)
 const R = Math.random;
 const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
 const BUILTIN = new Set(['sine', 'square', 'sawtooth', 'triangle']);
@@ -1038,10 +1039,10 @@ const BUILTIN_SFX = new Set(Object.keys(SFX)); // 내장 + 체감 — defineSfx 
  *  def = { fn(S, H), max, gap, rev, vary, duck, prio, layer, lead }, vol = 체감 음량 보정(생략 시 def.vol).
  *  내장·체감 이름이나 잘못된 정의는 등록하지 않고 false. 같은 외부 이름을 다시 등록하면 교체한다. */
 export function defineSfx(name, def, vol) {
-  if (typeof name !== 'string' || !name || !def || typeof def.fn !== 'function') return false;
+  if (typeof name !== 'string' || !/^\w+$/.test(name) || name === '__proto__' || !def || typeof def.fn !== 'function') return false;
   if (BUILTIN_SFX.has(name)) { console.warn(`[audio] defineSfx: '${name}' 은(는) 내장 효과음 이름이라 등록하지 않습니다`); return false; }
   const d = { ...def };
-  if (vol != null && Number.isFinite(+vol)) { d.vol = +vol; SFX_VOL[name] = +vol; }
+  if (vol != null && Number.isFinite(+vol) && +vol >= 0) { d.vol = +vol; SFX_VOL[name] = +vol; }
   SFX[name] = d;
   return true;
 }
@@ -1134,7 +1135,7 @@ export class Engine {
   }
   // ── 효과음 ──
   sfx(name, o = E0) {
-    const c = this.ctx, now = c.currentTime, def = SFX[name] || SFX._default;
+    const c = this.ctx, now = c.currentTime, def = (HAS.call(SFX, name) && SFX[name]) || SFX._default; // 'toString' 같은 이름도 _default 로
     const vol = o.vol ?? 1, pitch = o.pitch ?? 1;
     if (vol <= 0.001) return;
     const lt = this.lastT[name];
@@ -1159,8 +1160,8 @@ export class Engine {
     let wet = null;
     if (def.rev) { wet = c.createGain(); wet.gain.value = def.rev; node.connect(wet); wet.connect(this.sfxRev); }
     const S = { e: this, c, t: now + 0.004 + (o.delay || 0), p: pitch * (1 + (R() * 2 - 1) * (def.vary ?? 0.035)), v: vol * (def.vol ?? 1), out, end: 0 };
-    def.fn(S, H);
-    this.live.push({ name, st: now, end: now + (o.delay || 0) + S.end + 0.05, out, node, wet });
+    // 정의(외부 등록 포함)가 도중에 throw 해도 이미 만든 소리는 live 로 추적해 정리·스틸되게 한다
+    try { def.fn(S, H); } finally { this.live.push({ name, st: now, end: now + (o.delay || 0) + S.end + 0.05, out, node, wet }); }
     if (def.duck) this.duck(def.duck[0] * Math.min(1, vol), def.duck[1]);
   }
   steal(x, now) { x.out.gain.cancelScheduledValues(now); x.out.gain.setTargetAtTime(0, now, 0.012); x.end = Math.min(x.end, now + 0.06); }
@@ -1174,6 +1175,7 @@ export class Engine {
   stopName(name) {
     const now = this.ctx.currentTime;
     for (const x of this.live) if (x.name === name && x.end > now) this.steal(x, now);
+    delete this.lastT[name]; // 멈춘 직후 다시 부르면 gap 에 막히지 않게 (홀드 취소 → 곧바로 다시 홀드)
   }
   prune(now) {
     let j = 0;
@@ -1325,18 +1327,18 @@ class AudioSystem {
     if (this._quality) return this._quality;
     const g = typeof window !== 'undefined' ? window.__game : null, fq = g?.world?.fx?.quality;
     if (typeof fq === 'number') return fq <= 0.55 ? 'low' : fq <= 0.8 ? 'medium' : 'high';
-    const q = g?.settings?.quality;
+    const q = g?.quality ?? g?.settings?.quality; // game.quality = 'auto' 일 때 품질 조절기가 정한 값 (world.qualityNow 와 같은 순서)
     return q === 'low' || q === 'medium' ? q : 'high';
   }
-  setQuality(q) { this._quality = FEEL_CAP[q] ? q : null; }
+  setQuality(q) { this._quality = HAS.call(FEEL_CAP, q) ? q : null; }
   /** 이름이 prefix 로 시작하는, 지금 울리는 효과음 수 (예: liveCount('hit')) */
   liveCount(prefix = '') { return this.eng && this.ctx.state === 'running' ? this.eng.liveCount(prefix) : 0; }
   /** 울리는 같은 이름의 효과음을 멈춘다 (예: 각성 홀드 취소 시 stopSfx('awaken_hold')) */
   stopSfx(name) { if (this.eng) { try { this.eng.stopName(name); } catch { /* 무시 */ } } }
   /** 등록된 효과음 이름인가 (모르는 이름은 _default 로 재생된다) */
-  has(name) { return name !== '_default' && Object.prototype.hasOwnProperty.call(SFX, name); }
+  has(name) { return name !== '_default' && HAS.call(SFX, name); }
   /** 타격 지점까지의 선행 시간(초) — 이만큼 먼저 재생하면 타격이 박자에 맞는다 (awaken_stinger 0.4) */
-  lead(name) { return SFX[name]?.lead ?? 0; }
+  lead(name) { return (HAS.call(SFX, name) && SFX[name].lead) || 0; }
   /** 효과음 통계 {starts, feel, dropped, skipped} (__feelStats.sfxStarts 용) */
   get stats() { return this.eng ? this.eng.stats : STATS0; }
   music(id, opts = E0) {

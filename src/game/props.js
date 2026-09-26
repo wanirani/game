@@ -1,6 +1,6 @@
 // 스테이지 오브젝트: 촛불/촛대(부수면 드롭), 보물상자, 세이브 관, 여신상, 문, 이동/붕괴 발판, 보스 트리거, 스토리 트리거, NPC, 장식 램프
 import { Entity } from './entity.js';
-import { TAU, rand, chance, clamp } from '../core/math.js';
+import { TAU, rand, chance, clamp, ease } from '../core/math.js';
 import { audio } from '../core/audio.js';
 import { assets } from '../core/assets.js';
 import { input } from '../core/input.js';
@@ -149,6 +149,7 @@ export class Statue extends Entity {
     const p = world.player;
     if (!this.used && p && Math.abs(p.cx - this.cx) < 50 && Math.abs(p.bottom - this.bottom) < 30) {
       this.used = true;
+      world.gimmick?.cleanse?.(100);   // [hook:gimmick] 부패(blight) 먼저 정화 → 회복 반감 없이 완전 회복
       world.healPlayer(1, true);
       audio.sfx('heal');
       world.fx.burst('holy', p.cx, p.cy, 30, { speed: 160 });
@@ -174,9 +175,74 @@ export class Statue extends Entity {
   }
 }
 
-/** 문 'D' — ▲ 로 다음 방. target: room id */
+/** 피 손자국 스프라이트 (문 표식 'blood', 한 번만 그림) */
+let _bloodHand = null, _bloodGlow = null;
+function bloodHandSprite() {
+  if (_bloodHand) return _bloodHand;
+  const c = document.createElement('canvas');
+  c.width = 44; c.height = 52;
+  const g = c.getContext('2d');
+  g.translate(22, 30); g.rotate(-0.14);
+  const paint = (col, k) => {
+    g.fillStyle = col;
+    g.beginPath(); g.ellipse(0, 4, 10 * k, 11 * k, 0, 0, TAU); g.fill();                         // 손바닥
+    for (const [x, y, len, a] of [[-7, -5, 13, -0.2], [-2.5, -7, 16, -0.05], [2.5, -7, 15, 0.06], [7, -5, 12, 0.2]]) {   // 네 손가락
+      g.save(); g.translate(x * k, y * k); g.rotate(a);
+      g.beginPath(); g.ellipse(0, -len * k / 2, 2.4 * k, len * k / 2 + 1, 0, 0, TAU); g.fill(); g.restore();
+    }
+    g.save(); g.translate(-10 * k, 5 * k); g.rotate(-0.95);                                          // 엄지
+    g.beginPath(); g.ellipse(0, -5 * k, 2.6 * k, 6.5 * k, 0, 0, TAU); g.fill(); g.restore();
+  };
+  paint('#4a040c', 1.08);
+  paint('#7a0a16', 1);
+  // 번진 자국과 젖은 광택
+  g.fillStyle = 'rgba(120,8,20,0.55)';
+  g.beginPath(); g.ellipse(3, 14, 6, 3, 0.3, 0, TAU); g.fill();
+  g.fillStyle = 'rgba(255,120,130,0.35)';
+  g.beginPath(); g.ellipse(-3, 0, 3, 1.4, -0.5, 0, TAU); g.fill();
+  _bloodHand = c;
+  return c;
+}
+function bloodGlowSprite() {
+  if (_bloodGlow) return _bloodGlow;
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,40,60,0.25)'); gr.addColorStop(1, 'rgba(255,40,60,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+  _bloodGlow = c;
+  return c;
+}
+
+/** 문 'D' — ▲ 로 다음 방. target: room id. mark: 'blood' 이면 문짝에 피 손자국 (world2 §3.8, room.doorMarks) */
 export class Door extends Entity {
-  constructor(tx, ty, target) { super(tx * TILE, (ty + 1) * TILE - 96, 48, 96); this.kind = 'prop'; this.target = target; this.z = 0; this.openT = 0; }
+  constructor(tx, ty, target) { super(tx * TILE, (ty + 1) * TILE - 96, 48, 96); this.kind = 'prop'; this.target = target; this.z = 0; this.openT = 0; this.mark = null; }
+  lights(L) { if (this.mark === 'blood') L.add(this.cx, this.bottom - 58, 80, '#ff2840', 0.35); }
+  /** 피 손자국 + 흘러내리는 핏방울 3줄 + 옅은 붉은 빛 */
+  drawBloodMark(ctx, t) {
+    const hx = this.cx - 2, hy = this.bottom - 58;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const gs = 70 + Math.sin(t * 2.2) * 4;
+    ctx.drawImage(bloodGlowSprite(), hx - gs / 2, hy - gs / 2, gs, gs);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.drawImage(bloodHandSprite(), hx - 22, hy - 30, 44, 52);
+    ctx.strokeStyle = '#6a0812'; ctx.fillStyle = '#7a0a16'; ctx.lineCap = 'round'; ctx.lineWidth = 2.4;
+    for (let i = 0; i < 3; i++) {
+      const dx = hx - 6 + i * 6.5 + (i === 1 ? 1 : 0), y0 = hy + 12 + (i === 1 ? 3 : 0);
+      const ph = (t * 0.33 + i * 0.37) % 1;
+      const len = 4 + 16 * ease.inQuad(Math.min(1, ph / 0.8));
+      ctx.beginPath(); ctx.moveTo(dx, y0); ctx.lineTo(dx, y0 + len); ctx.stroke();
+      ctx.beginPath(); ctx.arc(dx, y0 + len, 1.8, 0, TAU); ctx.fill();
+      if (ph > 0.8) {   // 떨어지는 방울
+        const f = (ph - 0.8) / 0.2;
+        ctx.globalAlpha = 1 - f;
+        ctx.beginPath(); ctx.arc(dx, y0 + len + 3 + f * 18, 1.6, 0, TAU); ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    }
+    ctx.restore();
+  }
   update(dt, world) {
     this.t += dt;
     const p = world.player;
@@ -195,6 +261,7 @@ export class Door extends Entity {
       ctx.strokeStyle = '#5a5058'; ctx.lineWidth = 3; ctx.stroke();
       ctx.fillStyle = '#6a6070'; ctx.fillRect(this.x + 4, this.y + 40, this.w - 8, 4); ctx.fillRect(this.x + 4, this.y + 70, this.w - 8, 4);
     }
+    if (this.mark === 'blood') this.drawBloodMark(ctx, world.time ?? this.t);
     if (this.near) text(ctx, '▲', this.cx, this.y - 6, { size: 16, align: 'center', color: '#ffe7a0' });
   }
 }

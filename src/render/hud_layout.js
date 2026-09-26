@@ -136,19 +136,28 @@ export function hudPadRects(touch = hudTouch()) {
 }
 
 // ── 배치 계산 ──
-/** r 의 아래쪽을, r 의 가로 범위에 들어오고 r 의 윗변보다 아래에서 시작하는 패드 사각형 위 8 px 까지 줄인다 */
+/** 패드 사각형마다 막는 쪽: 0 = 위쪽 시스템 버튼(칸 가운데와 비교), +1 = 오른쪽 묶음, −1 = 왼쪽 묶음(왼손 모드) */
+function padSides(pad, vw, vh) {
+  let rightN = 0, leftN = 0;
+  for (const p of pad) if (p.y + p.h > vh * 0.3) { if (p.x + p.w / 2 >= vw / 2) rightN++; else leftN++; }
+  const side = rightN >= leftN ? 1 : -1;
+  return pad.map((p) => (p.y + p.h <= vh * 0.3 ? 0 : side));
+}
+/** r 의 아래 끝을, r 과 가로로 겹치고 r 아래로 내려오는 패드 사각형 위 8 px 까지 줄인다 (위에서 덮으면 높이 0) */
 function shrinkBottom(r, pad, bottom) {
-  for (const p of pad) if (p.x < r.x + r.w && p.x + p.w > r.x && p.y > r.y) bottom = Math.min(bottom, p.y - HUD_GAP);
+  for (const p of pad) if (p.x < r.x + r.w && p.x + p.w > r.x && p.y + p.h > r.y) bottom = Math.min(bottom, p.y - HUD_GAP);
   r.h = Math.max(0, bottom - r.y);
   return r;
 }
-/** 가로 칸 [l, r] 을 세로로 겹치는 패드 사각형에서 8 px 떨어지게 줄인다 → {l, r} */
-function clipSpan(l, r, top, h, pad) {
+/** 가로 칸 [l, r] 을, 세로로 겹치는 패드 사각형에서 8 px 떨어지게 줄인다 → {l, r} */
+function clipSpan(l, r, top, h, pad, sides) {
   const mid = (l + r) / 2;
-  for (const p of pad) {
+  for (let i = 0; i < pad.length; i++) {
+    const p = pad[i];
     if (!(p.y < top + h && p.y + p.h > top)) continue;
     if (p.x + p.w <= l || p.x >= r) continue;
-    if (p.x + p.w / 2 >= mid) r = Math.min(r, p.x - HUD_GAP); else l = Math.max(l, p.x + p.w + HUD_GAP);
+    const s = sides[i] || (p.x + p.w / 2 >= mid ? 1 : -1);
+    if (s > 0) r = Math.min(r, p.x - HUD_GAP); else l = Math.max(l, p.x + p.w + HUD_GAP);
   }
   return { l, r: Math.max(l, r) };
 }
@@ -166,56 +175,73 @@ function build(vw, vh, T, S, pad, bossOn, nM) {
   L.awGauge = R(106 + l, 126 + t, 120, 20);
   L.ready = R(106 + l, 148 + t, 130, 22);
   L.companions = R(244 + l, 92 + t, 128, 68);
-  // 오른쪽 위 점수
-  L.score = R(right - 164, 10 + t, 150, T ? 70 : 62);
+  // 오른쪽 위 점수 (패드가 거기까지 올라오면 — touchScale 1.3 같은 큰 패드 — 패드 왼쪽으로 비킨다)
+  const score = R(right - 164, 10 + t, 150, T ? 70 : 62);
+  for (const p of pad) if (overlaps(score, p)) score.x = Math.min(score.x, p.x - HUD_GAP - score.w);
+  L.score = score;
 
-  // 패드 분석: 위쪽 가운데 시스템 버튼 / 오른쪽 묶음 / 왼쪽 묶음 (왼손 모드)
-  let padLeft = null, padTop = null, inBand = false, clusters = 0;
-  const sys = [];
-  for (const p of pad) {
-    if (p.y + p.h <= vh * 0.3) { sys.push(p); continue; }
+  // 패드 분석: 위쪽 가운데 시스템 버튼 / 버튼 묶음 (오른쪽, 왼손 모드면 왼쪽)
+  const sides = padSides(pad, vw, vh);
+  let padLeft = null, padRight = null, padTop = null, inBand = false, clusters = 0;
+  for (let i = 0; i < pad.length; i++) {
+    const p = pad[i];
+    if (!sides[i]) continue;
     clusters++;
     if (p.y + p.h > vh + 40) inBand = true; // 태블릿: 패드가 캔버스 아래 띠에 있다
-    if (p.x + p.w / 2 >= vw / 2) { padLeft = padLeft == null ? p.x : Math.min(padLeft, p.x); padTop = padTop == null ? p.y : Math.min(padTop, p.y); }
+    padTop = padTop == null ? p.y : Math.min(padTop, p.y);
+    if (sides[i] > 0) padLeft = padLeft == null ? p.x : Math.min(padLeft, p.x);
+    else padRight = padRight == null ? p.x + p.w : Math.max(padRight, p.x + p.w);
   }
-  L.padLeft = padLeft; L.padTop = padTop;
+  L.padLeft = padLeft; L.padRight = padRight; L.padTop = padTop;
 
-  // 콤보·스타일 열 (DNF): 아래 끝 = min(200, 패드 위 − 8)
-  L.combo = shrinkBottom(R(right - 320, 90 + t, 306, 0), pad, 200 + t);
+  // 콤보·스타일 열 (DNF): 아래 끝 = min(200, 패드 위 − 8). 큰 패드(touchScale 1.3 등)가 오른쪽을 다 덮어
+  // 40 px 도 남지 않으면 왼쪽 동료 카드 줄 아래(알림 칸 왼쪽)로 옮긴다
+  let combo = shrinkBottom(R(right - 320, 90 + t, 306, 0), pad, 200 + t);
+  if (combo.h < 40) {
+    const alt = R(14 + l, 236 + t, 300, 104);
+    if (!hitsAny(alt, pad)) combo = alt;
+  }
+  L.combo = combo;
 
-  // 동료 스킬 카드 줄 (왼쪽 아래 패드가 있으면 오른쪽 콤보 열 아래로 옮긴다)
+  // 동료 스킬 카드 줄 (왼손 모드로 왼쪽 아래에 패드가 있으면 오른쪽 콤보 열 아래로 옮긴다)
   let lane = R(14 + l, 176 + t, 300, 52);
   if (hitsAny(lane, pad)) {
-    const alt = R(right - 314, L.combo.y + L.combo.h + HUD_GAP, 300, 52);
-    if (!hitsAny(alt, pad)) lane = alt;
+    const alt = R(right - 314, combo.y + combo.h + HUD_GAP, 300, 52);
+    if (!hitsAny(alt, pad) && !overlaps(alt, combo)) lane = alt;
   }
   L.callouts = lane;
 
-  // 기믹 게이지: 가운데 위, 시스템 버튼 아래로
+  // 기믹 게이지: 가운데 위 (터치는 시스템 버튼 아래). 옆 영역·패드에 닿으면 줄이거나 옆으로 민다
   const cx = (l + right) / 2;
   let mTop = (T ? 76 : 12) + t;
   for (let pass = 0; pass < 2; pass++) {
-    for (const p of sys) if (p.x < cx + 100 && p.x + p.w > cx - 100 && p.y < mTop + 3 * METER_ROW && p.y + p.h + 4 > mTop) mTop = p.y + p.h + 4;
+    for (let i = 0; i < pad.length; i++) {
+      const p = pad[i];
+      if (sides[i] === 0 && p.x < cx + 100 && p.x + p.w > cx - 100 && p.y < mTop + 3 * METER_ROW && p.y + p.h + 4 > mTop) mTop = p.y + p.h + 4;
+    }
   }
   const mBot = mTop + 3 * METER_ROW - (METER_ROW - METER_H);
-  let half = 100;
-  for (const q of [L.vitals, L.hearts, L.companions, L.score]) {
-    if (q.y >= mBot || q.y + q.h <= mTop) continue;
-    if (q.x + q.w <= cx) half = Math.min(half, cx - (q.x + q.w) - HUD_GAP);
-    else if (q.x >= cx) half = Math.min(half, q.x - HUD_GAP - cx);
+  const inRows = (q) => q.y < mBot && q.y + q.h > mTop;
+  let lo = -Infinity, hi = Infinity;
+  for (const q of [L.vitals, L.hearts, L.companions]) if (inRows(q)) lo = Math.max(lo, q.x + q.w + HUD_GAP);
+  for (const q of [L.score, combo]) if (inRows(q)) hi = Math.min(hi, q.x - HUD_GAP);
+  for (let i = 0; i < pad.length; i++) {
+    if (!sides[i] || !inRows(pad[i])) continue;
+    if (sides[i] > 0) hi = Math.min(hi, pad[i].x - HUD_GAP); else lo = Math.max(lo, pad[i].x + pad[i].w + HUD_GAP);
   }
-  half = Math.max(half, 50);
-  const meters = [0, 1, 2].map((i) => R(cx - half, mTop + i * METER_ROW, half * 2, METER_H));
+  const half = Math.max(0, Math.min(100, (hi - lo) / 2));
+  const mcx = clamp(cx, lo + half, hi - half);
+  const meters = [0, 1, 2].map((i) => R(mcx - half, mTop + i * METER_ROW, half * 2, METER_H));
   L.meters = meters;
-  L.meter = (i) => meters[i] ?? R(cx - half, mTop + i * METER_ROW, half * 2, METER_H);
+  L.meter = (i) => meters[i] ?? R(mcx - half, mTop + i * METER_ROW, half * 2, METER_H);
 
   // 가운데 빈 칸 (토스트, 위쪽 보스 칸)
   const gapL = 380 + l, gapR = vw - 328 - rr;
   L.gap = { l: gapL, r: gapR };
 
-  // 알림·배너 칸: y 230–294, 좌우 322 여백, 패드에 닿으면 패드 왼쪽 − 8 까지
+  // 알림·배너 칸: y 230–294, 좌우 322 여백, 패드에 닿으면 패드에서 8 px 떨어진 곳까지
   const ty = 230 + t, th = 64;
-  const ts = clipSpan(322 + l, right - 322, ty, th, pad);
+  const ts = clipSpan(322 + l, right - 322, ty, th, pad, sides);
   const tw = Math.min(560, ts.r - ts.l);
   L.transient = R(ts.l + (ts.r - ts.l - tw) / 2, ty, tw, th);
 
@@ -223,18 +249,19 @@ function build(vw, vh, T, S, pad, bossOn, nM) {
   // 위쪽 칸은 y 148 에서 시작하되, 큰 시스템 버튼 때문에 게이지 줄이 내려왔으면 그 아래로 비킨다
   const n = clamp(Math.round(nM), 0, 3);
   const bty = Math.max(148 + t, n ? meters[n - 1].y + METER_H + 4 : 0);
-  const tsl = clipSpan(gapL, gapR, bty, 36, pad);
+  const tsl = clipSpan(gapL, gapR, bty, 36, pad, sides);
   L.bossTop = R(tsl.l, bty, tsl.r - tsl.l, 36);
   const bw = Math.min(640, vw - 260 - l - rr), by = vh - 72 - b;
   const bx = (l + right - bw) / 2;
   let bottom = R(bx, by, bw, 48);
   if (hitsAny(bottom, pad)) {
-    const bs = clipSpan(bx, bx + bw, by, 48, pad);
+    const bs = clipSpan(bx, bx + bw, by, 48, pad, sides);
     bottom = R(bs.l, by, bs.r - bs.l, 48);
   }
   L.bossBottom = bottom;
   const padCoversBottom = T && clusters > 0 && !inBand;
-  L.bossSlot = !padCoversBottom && bottom.w >= 360 ? 'bottom' : 'top';
+  if (padCoversBottom) L.bossSlot = L.bossTop.w < 240 && bottom.w >= 240 && bottom.w > L.bossTop.w ? 'bottom' : 'top';
+  else L.bossSlot = bottom.w >= 360 || bottom.w >= L.bossTop.w ? 'bottom' : 'top';
   L.bossBar = L.bossSlot === 'top' ? L.bossTop : L.bossBottom;
   L.bossShown = !!bossOn;
 
@@ -245,7 +272,7 @@ function build(vw, vh, T, S, pad, bossOn, nM) {
   const rows = Math.max(0, Math.min(bossTopOn ? 1 : 3, Math.floor((L.transient.y - 4 - top0) / TOAST_ROW)));
   const rowAt = (i) => {
     const top = top0 + i * TOAST_ROW;
-    const s = clipSpan(gapL, gapR, top, TOAST_ROW, pad);
+    const s = clipSpan(gapL, gapR, top, TOAST_ROW, pad, sides);
     return { x: (s.l + s.r) / 2, y: top + 18, l: s.l, r: s.r, w: s.r - s.l, top, h: TOAST_ROW, hidden: i >= rows };
   };
   const toastList = [0, 1, 2].map(rowAt);

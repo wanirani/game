@@ -1,0 +1,261 @@
+{
+ "version": 1,
+ "slot": 1,
+ "created": 1758200000000,
+ "savedAt": 1758290000000,
+ "difficulty": "normal",
+ "charId": "kael",
+ "heroes": {
+  "kael": {
+   "charId": "kael",
+   "level": 19,
+   "exp": 1200,
+   "classId": "kael_crusader",
+   "sp": 2,
+   "skills": {
+    "kael_vigilia": 1
+   },
+   "equip": {
+    "weapon": "imuil6x8112",
+    "head": null,
+    "body": "imuil6x812qq",
+    "cloak": null,
+    "acc1": null,
+    "acc2": null
+   },
+   "slots": [
+    "kael_vigilia",
+    null,
+    null,
+    null
+   ],
+   "sub": "dagger"
+  },
+  "sera": {
+   "charId": "sera",
+   "level": 16,
+   "exp": 0,
+   "classId": "sera_exorcist",
+   "sp": 19,
+   "skills": {
+    "sera_holy_bolt": 1
+   },
+   "equip": {
+    "weapon": "imuil6x824xy",
+    "head": null,
+    "body": "imuil6x82542",
+    "cloak": null,
+    "acc1": null,
+    "acc2": null
+   },
+   "slots": [
+    "sera_holy_bolt",
+    null,
+    null,
+    null
+   ],
+   "sub": "holywater"
+  }
+ },
+ "gold": 8420,
+ "inventory": [
+  {
+   "uid": "imuil6x8112",
+   "baseId": "w_whip_1",
+   "slot": "weapon",
+   "icon": "whip_1",
+   "rarity": 0,
+   "level": 0,
+   "affixes": [],
+   "qty": 1,
+   "t": 1790439066289001
+  },
+  {
+   "uid": "imuil6x812qq",
+   "baseId": "a_body_1",
+   "slot": "body",
+   "icon": "body_1",
+   "rarity": 0,
+   "level": 0,
+   "affixes": [],
+   "qty": 1,
+   "t": 1790439066289002
+  },
+  {
+   "uid": "imuil6x813sm",
+   "baseId": "c_potion",
+   "slot": "consumable",
+   "icon": "potion_hp",
+   "rarity": 0,
+   "level": 0,
+   "affixes": [],
+   "qty": 3,
+   "t": 1790439066289003
+  },
+  {
+   "uid": "imuil6x824xy",
+   "baseId": "w_staff_1",
+   "slot": "weapon",
+   "icon": "staff_1",
+   "rarity": 0,
+   "level": 0,
+   "affixes": [],
+   "qty": 1,
+   "t": 1790439066290004
+  },
+  {
+   "uid": "imuil6x82542",
+   "baseId": "a_body_1",
+   "slot": "body",
+   "icon": "body_1",
+   "rarity": 0,
+   "level": 0,
+   "affixes": [],
+   "qty": 1,
+   "t": 1790439066290005
+  }
+ ],
+ "progress": {
+  "chapter": 6,
+  "cleared": {
+   "s01": {
+    "rank": "S",
+    "time": 320,
+    "score": 38000
+   },
+   "s02": {
+    "rank": "A",
+    "time": 345,
+    "score": 42200
+   },
+   "s03": {
+    "rank": "B",
+    "time": 370,
+    "score": 46400
+   },
+   "s04": {
+    "rank": "A",
+    "time": 395,
+    "score": 50600
+   },
+   "s05": {
+    "rank": "S",
+    "time": 420,
+    "score": 54800
+   },
+   "s06": {
+    "rank": "B",
+    "time": 445,
+    "score": 59000
+   }
+  },
+  "unlocked": [
+   "s01",
+   "s02",
+   "s03",
+   "s04",
+   "s05",
+   "s06",
+   "s07"
+  ],
+  "flags": {
+   "elise_warned": true,
+   "elise_taken": true,
+   "elise_rescued": true,
+   "lia_joined": true,
+   "boss_b_nightwing": true,
+   "loot_b_nightwing": true,
+   "boss_b_banshee": true,
+   "loot_b_banshee": true,
+   "boss_b_dullahan": true,
+   "loot_b_dullahan": true,
+   "boss_b_crimson": true,
+   "loot_b_crimson": true,
+   "boss_b_bonedragon": true,
+   "loot_b_bonedragon": true,
+   "boss_b_grimoire": true,
+   "loot_b_grimoire": true
+  },
+  "docs": [
+   "d01",
+   "d02",
+   "d03",
+   "d05",
+   "d06",
+   "d07",
+   "d09",
+   "d10",
+   "d11"
+  ],
+  "lore": [
+   "l01",
+   "l02",
+   "l03",
+   "l04",
+   "l05",
+   "l06"
+  ],
+  "secrets": [
+   "s01:r3:12,7",
+   "s05:r2:30,4"
+  ],
+  "bosses": [
+   "b_nightwing",
+   "b_banshee",
+   "b_dullahan",
+   "b_crimson",
+   "b_bonedragon",
+   "b_grimoire"
+  ],
+  "relics": [
+   "k_relic_1",
+   "k_relic_2"
+  ],
+  "seenScripts": [
+   "prologue",
+   "s01_intro",
+   "s01_outro",
+   "s02_intro",
+   "s02_outro",
+   "s03_intro",
+   "s03_outro",
+   "s04_intro",
+   "s04_outro",
+   "s05_intro",
+   "s05_outro",
+   "s06_intro",
+   "s06_outro"
+  ]
+ },
+ "quests": {
+  "active": {},
+  "done": [
+   "main01",
+   "main02",
+   "main03",
+   "main04",
+   "main05",
+   "main06",
+   "bd_ghoul",
+   "bd_wolves",
+   "mt_herbs",
+   "hd_plus5"
+  ]
+ },
+ "stats": {
+  "playTime": 11240,
+  "kills": 1432,
+  "deaths": 7,
+  "maxCombo": 88,
+  "goldEarned": 31200,
+  "enhanceOk": 0,
+  "enhanceFail": 0,
+  "minigameWins": 0,
+  "bossKills": 6,
+  "docs": 9
+ },
+ "lives": 3,
+ "score": 318400,
+ "bestiary": {},
+ "lastStage": "s06"
+}

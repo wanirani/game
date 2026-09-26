@@ -87,7 +87,7 @@ export class World {
     this.player = null;
     // ── 손맛·각성·기믹·동료 (MASTER_PLAN §1.7 world.js #2; loadRoom 보다 먼저) ──
     this.rt = 0;   // [hook:feel] 실제 경과 시간 (히트스톱·슬로모션 무관)
-    this.slowmoScale = SLOWMO_BASE; this.killSlowT = 0; this.killChain = { n: 0, t: -9 };   // [hook:feel]
+    this.slowmoScale = SLOWMO_BASE; this.slowScaleT = 0; this.killSlowT = 0; this.killChain = { n: 0, t: -9 };   // [hook:feel]
     this.freezeEnemies = false; this.freezeLog = []; this.frozenRecent = 0;   // [hook:feel]
     this.overlays = []; this.hudHidden = false; this.letterbox = 0;   // [hook:feel]
     this.roomFoes = 0;   // [hook:feel] 이 방에 나온 적 수 (마지막 적 처치 슬로모션)
@@ -322,7 +322,8 @@ export class World {
       return;
     }
     let sdt = dt;
-    if (this.slowmo > 0) { this.slowmo -= dt; sdt = dt * this.slowmoScale; if (this.slowmo <= 0) this.slowmoScale = SLOWMO_BASE; }   // [hook:feel]
+    if (this.slowmo > 0) { this.slowmo -= dt; sdt = dt * this.slowmoScale; if (this.slowmo <= 0 || (this.slowScaleT > 0 && (this.slowScaleT -= dt) <= 0)) this.slowmoScale = SLOWMO_BASE; }   // [hook:feel] 처치 슬로모션 배율은 제 시간만큼만
+    else if (this.slowmoScale !== SLOWMO_BASE) this.slowmoScale = SLOWMO_BASE;   // [hook:feel] 누가 slowmo 를 0 으로 끊어도 다음 슬로모션은 기본 배율
     this.time += sdt;
     if (!this.cutscene && !this.cleared) this.run.time += dt;
     if (this.timeStop > 0) this.timeStop -= dt;
@@ -572,7 +573,7 @@ export class World {
   }
   killSlowmo(e, dur, scale, zoom, vol) {
     this.killSlowT = KILL_SLOW_GAP;
-    this.slowmo = Math.max(this.slowmo, dur); this.slowmoScale = scale;
+    this.slowmo = Math.max(this.slowmo, dur); this.slowmoScale = scale; this.slowScaleT = dur;
     if (zoom > 1) {
       this.camera.zoomPulse(zoom, 0.08, 0.15, 0.2);
       this.camera.focus = { x: e.cx, y: e.cy, t: 0.45, w: 0.3 };

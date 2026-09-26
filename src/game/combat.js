@@ -1,23 +1,27 @@
-// 전투 판정/데미지 계산/타격 연출
+// 전투 판정/데미지 계산 (owner: FEEL-IMPACT). 타격 연출은 game/impact.js.
 //
 // Attack 객체 스키마:
 // {
 //   owner, team:'player'|'enemy', stats (공격자 스탯, 생략 시 owner.stats),
 //   mv: 모션 배율(1.0=기본), type:'phys'|'mag', element:null|'fire'|'ice'|'holy'|'dark'|'thunder',
-//   dir: ±1 (넉백 방향), kb:[x,y] 넉백 속도, hitstop: 초, shake: px,
+//   dir: ±1 (넉백 방향), kb:[x,y] 넉백 속도, hitstop: 초 (0 = 경직 없음), shake: px,
 //   hitId: 같은 hitId로는 대상당 1회만 타격 (휘두르기 1회 = hitId 1개), rehit: 초 (지속 판정 재타격 간격)
-//   crit: 추가 치명타 확률(%), mult: 추가 배율(버프), flat: 고정 피해, tags: ['melee','sub','skill','ult','projectile','contact']
+//   crit: 추가 치명타 확률(%), mult: 추가 배율(버프), flat: 고정 피해, tags: ['melee','sub','skill','ult','awaken','projectile','contact','companion','guardian','assist','mount']
 //   fx: 'slash'|'blunt'|'pierce'|'magic'|'fire'|'holy'|'ice'|'dark'|'thunder'|'bullet', launch: 띄우기, stun: 경직(초)
 //   breakWalls: 부서지는 벽 파괴 가능 여부 (기본 true for player)
+//   moveId: 무기 동작 id (player.makeAttack), final: 필살기/각성기 마지막 일격, finisher: 마무리 공격
+//   dmgColor: 데미지 숫자 색 (치명타가 아닐 때; 수호신 공격 등)
+//   capFn(target, dmg, world) → 이번 타격 최대 피해 (각성기 보스 상한 등, impact.modDamage)
+//   otg / gb: 강한 다운 추가타 / 바닥 바운드 동작 (보통은 data/feel_hit.js FEEL_MOVE_OVERRIDES 로 지정)
 // }
-import { rand, clamp, overlap } from '../core/math.js';
-import { audio } from '../core/audio.js';
+// 다중 부위 대상: target.hitParts() → [{x,y,w,h, off?, defMul?, defAdd?, armor?, onHit?(part, dmg, attack, world)}]
+//   playerStrike 가 공격 판정과 겹치는 부위 중 가장 가까운(작은) 부위를 골라 target.hitPart 에 두고,
+//   부위 방어 배율(defMul/defAdd)을 target.stats.def/res 에 반영한다. onHit 은 대상의 takeHit 이 부르지 않았다면 여기서 부른다.
+import { clamp, overlap } from '../core/math.js';
 import { bus } from '../core/events.js';
+import { preImpact, modDamage, hitInfo, impact, ELEMENT_COLORS, ELEMENT_NAMES } from './impact.js';
 
-export const ELEMENT_COLORS = {
-  fire: '#ff7a2a', ice: '#9fe8ff', holy: '#fff2a0', dark: '#b060ff', thunder: '#bfe0ff', none: '#ffffff',
-};
-export const ELEMENT_NAMES = { fire: '화염', ice: '냉기', holy: '신성', dark: '암흑', thunder: '번개' };
+export { ELEMENT_COLORS, ELEMENT_NAMES };
 
 /** 순수 데미지 계산 */
 export function computeDamage(src, tgt, attack) {
@@ -42,68 +46,48 @@ export function computeDamage(src, tgt, attack) {
   let crit = false;
   const critChance = (s.crit ?? 0) + (attack.crit ?? 0);
   if (Math.random() * 100 < critChance) { crit = true; dmg *= 1.5 + (s.critDmg ?? 0) / 100; }
-  dmg *= rand(0.92, 1.08);
+  dmg *= 0.92 + Math.random() * 0.16;
   return { dmg: Math.max(dmg > 0 ? 1 : 0, Math.round(dmg)), crit, weak, resist };
 }
 
 /**
  * 대상 타격. 대상은 takeHit(dmg, attack, world, info) 를 구현해야 함.
- * 반환: {dmg, crit, killed} 또는 null(무시됨)
+ * 순서: 중복 판정(hitId) → 직업 특성 → impact.preImpact(강도·카운터·백어택) → computeDamage → impact.modDamage
+ *       → takeHit(info) → impact.impact(연출)
+ * 반환: info {dmg, crit, weak, resist, killed, cls, counter, back, …} 또는 null(무시됨)
  */
 export function hitTarget(world, attack, target, hx, hy) {
-  if (target.dead || target.invuln) return null;
+  if (target.dead || target.invuln || target.wakeInv > 0) return null;
+  let rehit = false;
   if (attack.hitId) {
     target._hits ??= new Map();
     const last = target._hits.get(attack.hitId);
     if (last !== undefined) {
       if (!attack.rehit || world.time - last < attack.rehit) return null;
+      rehit = true;
     }
     target._hits.set(attack.hitId, world.time);
     if (target._hits.size > 64) target._hits.delete(target._hits.keys().next().value);
   }
   const src = attack.stats || attack.owner?.stats;
   if (attack.team === 'player' && attack.owner?.kind === 'player') attack = classPerkAttack(attack, target, world);
+  const pi = preImpact(world, attack, target, rehit);
+  attack = pi.attack;
   const res = computeDamage(src, target, attack);
-  const info = { ...res, hx, hy };
-  const killed = target.takeHit(res.dmg, attack, world, info);
+  modDamage(world, pi, res, target);
+  const info = hitInfo(pi, res, hx, hy, target);
+  if (attack.team === 'player' && !pi.prop) target.lastImpact = { cls: pi.cls, crit: res.crit, dmg: res.dmg, hpBefore: target.hp, counter: pi.counter, back: pi.back, t: world.time };
+  // 부위 onHit: 대상의 takeHit 이 직접 부르지 않았을 때만 여기서 부른다 (BossB 는 스스로 부름)
+  const part = info.part, pOn = typeof part?.onHit === 'function' ? part.onHit : null;
+  let partCalled = false;
+  if (pOn) part.onHit = function (...a) { partCalled = true; return pOn.apply(this, a); };
+  let killed;
+  try { killed = target.takeHit(res.dmg, attack, world, info); }
+  finally { if (pOn) part.onHit = pOn; }
+  if (pOn && !partCalled) pOn.call(part, part, res.dmg, attack, world);
   info.killed = !!killed;
-
-  // ── 연출 ──
-  const px = hx ?? target.cx, py = hy ?? target.cy;
-  const col = ELEMENT_COLORS[attack.element || 'none'];
-  const heavy = (attack.hitstop ?? 0) >= 0.08 || res.crit;
-  if (attack.team === 'player') {
-    world.hitstop = Math.max(world.hitstop, (attack.hitstop ?? 0.05) * (res.crit ? 1.4 : 1) * (killed ? 1.3 : 1));
-    world.camera.shake((attack.shake ?? 3) * (res.crit ? 1.6 : 1), heavy ? 0.22 : 0.12);
-    world.onPlayerHit?.(target, info, attack);
-    const mat = target.def?.material ?? 'flesh';
-    const fx = world.fx;
-    fx.flash(px, py, { color: col, size: heavy ? 70 : 44, life: 0.1 });
-    fx.burst('hit', px, py, heavy ? 10 : 6, { color: col, angle: attack.dir > 0 ? 0 : Math.PI, spread: 1.1 });
-    if (mat === 'flesh') fx.burst('blood', px, py, heavy ? 10 : 5, { angle: attack.dir > 0 ? -0.4 : Math.PI + 0.4, spread: 0.9 });
-    else if (mat === 'bone') fx.burst('shard', px, py, 5, { color: '#e8dcc0', size: 3 });
-    else if (mat === 'metal') fx.burst('spark', px, py, 10, { color: '#ffd080' });
-    else if (mat === 'ghost') fx.burst('soul', px, py, 6);
-    else if (mat === 'stone') fx.burst('shard', px, py, 6, { color: '#8a8480' });
-    else if (mat === 'slime') fx.burst('blood', px, py, 6, { color: '#6adf4a' });
-    else if (mat === 'paper') fx.burst('shard', px, py, 6, { color: '#e8e0c8', grav: 200 });
-    else if (mat === 'ice') fx.burst('ice', px, py, 8);
-    else if (mat === 'fire') fx.burst('fire', px, py, 6);
-    if (attack.element && attack.element !== 'none') {
-      const pt = { fire: 'fire', ice: 'ice', holy: 'holy', dark: 'dark', thunder: 'thunder' }[attack.element];
-      if (pt) fx.burst(pt, px, py, 6);
-    }
-    if (res.crit) fx.ring(px, py, { color: '#ffe080', r0: 6, r1: 60, life: 0.25, width: 5 });
-    if (world.game.settings?.showDamage !== false) {
-      const color = res.crit ? '#ffd24a' : res.weak ? '#ff8a4a' : res.resist ? '#9a9aa8' : '#ffffff';
-      fx.text(px, py - 20, res.crit ? `${res.dmg}!` : res.dmg, { color, size: res.crit ? 28 : 20, crit: res.crit });
-    }
-    audio.sfx(res.crit ? 'crit' : heavy ? 'hit_heavy' : 'hit', { vol: 0.9, pitch: rand(0.92, 1.08) });
-  } else {
-    world.camera.shake(5, 0.2);
-    world.fx.burst('blood', px, py, 8, {});
-    if (world.game.settings?.showDamage !== false) world.fx.text(px, py - 30, res.dmg, { color: '#ff5050', size: 22 });
-  }
+  if (attack.team !== 'player') info.landed = killed !== false;
+  impact(world, attack, target, info);
   return info;
 }
 
@@ -113,9 +97,13 @@ function classPerkAttack(attack, target, world) {
   let mult = attack.mult ?? 1, crit = attack.crit ?? 0;
   const ts = target.stats || {};
   const hpRatio = (target.hp ?? 1) / (ts.maxHp ?? target.hp ?? 1);
+  // 처형인: 체력 25% 이하 적에게 +60%
   if (cls === 'victor_executioner' && hpRatio < 0.25) mult *= 1.6;
+  // 팬텀: 대시 후 1초간(대시 0.25초 포함 1.2초) 피해 2배
   if (cls === 'victor_phantom' && p.lastDashT !== undefined && p.t - p.lastDashT < 1.2) mult *= 2;
+  // 나이트 레이븐: 공중 공격 +30%
   if (cls === 'kael_nightraven' && !p.onGround) mult *= 1.3;
+  // 워로드: 콤보 10마다 +5% (최대 +50%)
   if (cls === 'bran_warlord') mult *= 1 + Math.min(0.5, Math.floor((world.combo?.n ?? 0) / 10) * 0.05);
   // 암살자 계열: 등 뒤 공격 치명타 확정
   if (chain.startsWith('lia_') && target.facing !== undefined && Math.sign(target.facing) === Math.sign(attack.dir || 0) && target.kind !== 'boss') crit += 100;
@@ -130,7 +118,7 @@ export function playerStrike(world, rect, attack) {
   let n = 0;
   for (const e of world.hittables()) {
     if (e.dead || e === attack.owner) continue;
-    // 피격 판정: BossB 계열은 hitParts()(부위별 방어 배율·약점), 그 외는 hurtboxes()(여러 몸통) 또는 hurtbox()
+    // 피격 판정: hitParts()(부위별 방어 배율·약점) > hurtboxes()(여러 몸통) > hurtbox()
     let boxes;
     if (e.hitParts) { if (e.invuln) continue; boxes = e.hitParts() || []; }
     else boxes = e.hurtboxes ? e.hurtboxes() : [e.hurtbox ? e.hurtbox() : e];
@@ -139,8 +127,12 @@ export function playerStrike(world, rect, attack) {
     if (e.hitParts) {
       // 맞은 부위 기록 → takeHit 에서 부위 효과(약점 파괴·갑옷 반응) 적용, 부위 방어 배율 반영
       e.hitPart = hb;
-      const m = hb.defMul ?? 1;
-      if (e.baseDef !== undefined) { e.stats.def = Math.round(e.baseDef * m + (hb.defAdd ?? 0)); e.stats.res = Math.round((e.baseRes ?? e.baseDef) * m + (hb.defAdd ?? 0)); }
+      if (e.stats) {
+        if (e.baseDef === undefined) { e.baseDef = e.stats.def ?? 0; e.baseRes = e.stats.res ?? e.baseDef; }
+        const m = hb.defMul ?? 1;
+        e.stats.def = Math.round(e.baseDef * m + (hb.defAdd ?? 0));
+        e.stats.res = Math.round((e.baseRes ?? e.baseDef) * m + (hb.defAdd ?? 0));
+      }
     }
     const hx = clamp(attack.dir > 0 ? rect.x + rect.w * 0.7 : rect.x + rect.w * 0.3, hb.x, hb.x + hb.w);
     const hy = clamp(rect.y + rect.h / 2, hb.y + 4, hb.y + hb.h - 4);

@@ -1,5 +1,6 @@
 // 배경: Kling로 생성한 원경(assets/bg/*.webp)을 방 크기에 맞춘 동적 패럴랙스로 그리고,
-// 그 위에 스테이지 테마별 절차적 중경 실루엣(기둥/아치/나무/톱니바퀴 등), 안개, 날씨(비/눈/불씨/재)를 얹는다.
+// 그 위에 스테이지 테마별 절차적 중경 실루엣(기둥/아치/나무/톱니바퀴 등), 안개, 날씨(비/눈/불씨/재/포자, 공허의 별빛)를 얹는다.
+// 날씨 입자 수는 world.fx.quality 로 줄이고, 번개 번쩍임은 settings.flashFx 를 따른다.
 // createBackground(stage, map) → { update(dt, world), drawFar(ctx, cam, vw, vh, t), drawMid(ctx, cam, t), drawFront(ctx, cam, vw, vh, t) }
 import { assets } from '../core/assets.js';
 import { rand, RNG, hashStr, rgba, hexToRgb, TAU, lerp, clamp } from '../core/math.js';
@@ -42,7 +43,18 @@ export const THEMES = {
   abyss:     { sky: ['#10041a', '#2a0830', '#06020a'], fog: '#ff5aff', mid: 'rocks', weather: 'embers', moon: null },
   arena:     { sky: ['#1a0a08', '#3a1a10', '#0a0404'], fog: '#ff8a3a', mid: 'pillars', weather: 'dust', moon: '#f0e0d0' },
   town:      { sky: ['#0c0814', '#1c1224', '#06040a'], fog: '#ffb070', mid: 'houses', weather: 'fireflies', moon: '#ffe0c0' },
+  // ── 2부 (world2 §4.1): 새 날씨 spores(포자) · stars(별빛, 원경에 그림) ──
+  mirror:    { sky: ['#0a0e18', '#1a2232', '#04060c'], fog: '#bfe8ff', mid: 'windows', weather: 'dust',    moon: '#e8f4ff' },
+  forge:     { sky: ['#1a0602', '#3a1204', '#0a0200'], fog: '#ff7a2a', mid: 'pipes',   weather: 'embers',  moon: null },
+  sunken:    { sky: ['#01101a', '#06283a', '#00060c'], fog: '#3ad0c8', mid: 'arches',  weather: 'bubbles', moon: null },
+  sky:       { sky: ['#1a2a44', '#4a6a8a', '#0a1422'], fog: '#dfe8ff', mid: 'towers',  weather: 'rain',    moon: '#fff4d0' },
+  nightmare: { sky: ['#0c0210', '#24062a', '#040008'], fog: '#c060ff', mid: 'pillars', weather: 'ash',     moon: '#f0e0ff' },
+  blight:    { sky: ['#0c1004', '#1e2a08', '#040602'], fog: '#b8e04a', mid: 'trees',   weather: 'spores',  moon: null },
+  void:      { sky: ['#000000', '#08040e', '#000000'], fog: '#ffffff', mid: 'rocks',   weather: 'stars',   moon: null },
 };
+// 날씨 입자 수 (world.fx.quality 로 줄여 그림). spores = dust 의 60%
+const WEATHER_N = { rain: 140, snow: 110, embers: 70, ash: 80, dust: 40, pages: 16, bubbles: 30, drips: 20, fog: 0, bats: 10, fireflies: 30, spores: 24, stars: 70 };
+const STAR_COL = ['rgba(190,190,255,0.35)', 'rgba(225,225,255,0.6)', 'rgba(255,255,255,0.95)'];
 
 export function createBackground(stage, map) {
   const theme = THEMES[stage.theme] || THEMES.hall;
@@ -52,6 +64,8 @@ export function createBackground(stage, map) {
     parts: [],
     weather: [],
     lightningT: rand(3, 8), lightning: 0,
+    q: 1, wv: null, flashK: 1,        // 입자 품질 배율, 그릴 날씨 입자(품질 반영), 화면 번쩍임 배율(settings.flashFx)
+    shoot: null, shootT: rand(3, 6),  // stars: 떨어지는 별똥별 하나
   };
   // 중경 실루엣 요소 생성 (방 폭에 맞춰)
   const W = (map?.pxW ?? 2000) + 800;
@@ -63,16 +77,24 @@ export function createBackground(stage, map) {
     }
   }
   // 날씨 입자
-  const wn = { rain: 140, snow: 110, embers: 70, ash: 80, dust: 40, pages: 16, bubbles: 30, drips: 20, fog: 0, bats: 10, fireflies: 30 }[theme.weather] ?? 0;
+  const wn = WEATHER_N[theme.weather] ?? 0;
   for (let i = 0; i < wn; i++) bg.weather.push({ x: rand(0, 1600), y: rand(0, 600), v: rand(0.6, 1.4), p: rand(0, TAU), s: rand(0.5, 1.5) });
+  bg.wv = bg.weather;
 
   bg.update = (dt, world) => {
+    const q = world.fx?.quality ?? 1;
+    if (q !== bg.q) { bg.q = q; bg.wv = q < 1 ? bg.weather.slice(0, Math.ceil(bg.weather.length * q)) : bg.weather; }
+    bg.flashK = clamp(Number(world.game?.settings?.flashFx ?? 1) || 0, 0, 1);
     if (theme.weather === 'rain') {
       bg.lightningT -= dt;
       if (bg.lightningT <= 0) { bg.lightningT = rand(5, 12); bg.lightning = 1; world.game.audio?.sfx('thunderclap', { vol: 0.6 }); }
+    } else if (theme.weather === 'stars') {
+      bg.shootT -= dt;
+      if (bg.shootT <= 0) { bg.shootT = rand(3, 6); bg.shoot = { x: rand(0.2, 1.0), y: rand(0.04, 0.35), a: rand(2.35, 2.75), t: 0, life: rand(0.7, 1.1), len: rand(90, 170), v: rand(520, 720) }; }
+      if (bg.shoot && (bg.shoot.t += dt) >= bg.shoot.life) bg.shoot = null;
     }
     bg.lightning = Math.max(0, bg.lightning - dt * 2.5);
-    if (world.lighting) world.lighting.lightning = bg.lightning > 0.5 ? bg.lightning : bg.lightning * 0.3;
+    if (world.lighting) world.lighting.lightning = (bg.lightning > 0.5 ? bg.lightning : bg.lightning * 0.3) * bg.flashK;
   };
 
   bg.drawFar = (ctx, cam, vw, vh, t) => {
@@ -127,7 +149,9 @@ export function createBackground(stage, map) {
       ctx.fillStyle = mg; ctx.fillRect(mx - 160, my - 160, 320, 320);
       ctx.restore();
     }
-    if (bg.lightning > 0) { ctx.fillStyle = `rgba(200,210,255,${bg.lightning * 0.3})`; ctx.fillRect(0, 0, vw, vh); }
+    // 별빛은 먼 하늘에 속하므로 원경에 그린다 (게임 층 앞을 가리지 않음)
+    if (theme.weather === 'stars') drawStars(ctx, bg, cam, vw, vh, t);
+    if (bg.lightning > 0 && bg.flashK > 0) { ctx.fillStyle = `rgba(200,210,255,${bg.lightning * 0.3 * bg.flashK})`; ctx.fillRect(0, 0, vw, vh); }
   };
 
   // 월드 좌표에서 그리되, 카메라 이동보다 느리게 (패럴랙스)
@@ -276,9 +300,46 @@ function drawSilhouette(ctx, kind, x, by, s, k, t, h) {
   ctx.fill();
 }
 
+/**
+ * 'stars' 날씨 (공허): 화면 공간의 반짝이는 별(패럴랙스 0.1)을 밝기 3단계로 묶어 채우고, 3~6초마다 별똥별 하나.
+ * drawFar 에서 원경 위에 그린다.
+ */
+function drawStars(ctx, bg, cam, vw, vh, t) {
+  const W = bg.wv ?? bg.weather;
+  const wrapX = (x) => ((x % (vw + 100)) + vw + 100) % (vw + 100) - 50;
+  const wrapY = (y) => ((y % (vh + 100)) + vh + 100) % (vh + 100) - 50;
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  for (let b = 0; b < 3; b++) {
+    ctx.beginPath();
+    for (const p of W) {
+      const tw = 0.5 + 0.5 * Math.sin(t * (0.8 + p.v) + p.p * 7);
+      if ((tw > 0.78 ? 2 : tw > 0.4 ? 1 : 0) !== b) continue;
+      const x = wrapX(p.x - cam.x * 0.1), y = wrapY(p.y - cam.y * 0.1);
+      const s = p.s * (b === 2 ? 1.7 : 1.1);
+      ctx.rect(x - s / 2, y - s / 2, s, s);
+      if (b === 2 && p.s > 1.2) { ctx.rect(x - s * 2.2, y - 0.4, s * 4.4, 0.8); ctx.rect(x - 0.4, y - s * 2.2, 0.8, s * 4.4); } // 가장 밝은 별의 십자 빛
+    }
+    ctx.fillStyle = STAR_COL[b]; ctx.fill();
+  }
+  const s = bg.shoot;
+  if (s) {
+    const k = s.t / s.life, d = s.v * s.t;
+    const hx = s.x * vw + Math.cos(s.a) * d, hy = s.y * vh + Math.sin(s.a) * d;
+    const tx = hx - Math.cos(s.a) * s.len, ty = hy - Math.sin(s.a) * s.len;
+    const a = Math.sin(Math.PI * Math.min(1, k)) * 0.9;
+    const g = ctx.createLinearGradient(tx, ty, hx, hy);
+    g.addColorStop(0, 'rgba(220,220,255,0)'); g.addColorStop(1, `rgba(255,255,255,${a})`);
+    ctx.strokeStyle = g; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(hx, hy); ctx.stroke();
+    ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.beginPath(); ctx.arc(hx, hy, 1.8, 0, TAU); ctx.fill();
+  }
+  ctx.restore();
+}
+
 function drawWeather(ctx, bg, cam, vw, vh, t) {
   const kind = bg.theme.weather;
-  const W = bg.weather;
+  const W = bg.wv ?? bg.weather;
   if (!W.length) return;
   ctx.save();
   const wrapX = (x) => ((x % (vw + 100)) + vw + 100) % (vw + 100) - 50;
@@ -345,6 +406,23 @@ function drawWeather(ctx, bg, cam, vw, vh, t) {
         ctx.fillRect(x, y, 1.5, 6);
       }
       break;
+    case 'spores': {
+      // 천천히 흩날리며 내려앉는 황록색 포자 (큰 것은 옅은 번짐을 한 겹 더)
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.beginPath();
+      const halo = [];
+      for (const p of W) {
+        const x = wrapX(p.x - cam.x * 0.9 + Math.sin(t * 0.6 + p.p) * 36), y = wrapY(p.y + t * 16 * p.v - cam.y * 0.9);
+        const r = 1.2 * p.s + 0.5;
+        ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, TAU);
+        if (p.s > 1.1) halo.push(x, y, r * 3.2);
+      }
+      ctx.fillStyle = 'rgba(200,255,106,0.42)'; ctx.fill();
+      ctx.beginPath();
+      for (let i = 0; i < halo.length; i += 3) { ctx.moveTo(halo[i] + halo[i + 2], halo[i + 1]); ctx.arc(halo[i], halo[i + 1], halo[i + 2], 0, TAU); }
+      ctx.fillStyle = 'rgba(200,255,106,0.07)'; ctx.fill();
+      break;
+    }
     case 'bats':
       ctx.fillStyle = 'rgba(10,0,4,0.85)';
       for (const p of W) {

@@ -12,6 +12,9 @@
   Noto Sans KR(본문) · Hahmlet(제목) · Grenze Gotisch(블랙레터) · Cinzel(라틴 장식·큰 숫자) · Cinzel Decorative(로고)
   한글 글꼴은 두 파일: 기본(게임에 쓰인 글자, 첫 화면 전에 받음) + 확장("… Ext", KS X 1001 나머지, 필요할 때만 받음).
   확장은 별도 글꼴 이름이며 FONT 묶음에서 기본 글꼴 바로 뒤에 온다 (unicode-range 가 겹치면 크롬이 두 파일을 모두 받으므로 이름을 나눴다).
+  첫 화면 글꼴이 예산(FIRST_FRAME_TARGET)을 넘으면 덜 쓰이는 글자를 세 번째 파일 "plus"(-plus.woff2)로 옮긴다:
+  같은 글꼴 이름 + 정확한 unicode-range 로 ui.js 가 fonts.json 을 읽어 등록하고 첫 화면 뒤 곧바로 받는다 (CSS 는 그대로).
+  타이틀·프런트 화면(FORCED_GLOBS)의 글자는 늘 기본 파일에 남는다.
 - JS 글꼴 (src/core/ui.js 가 FontFace API 로 등록, CSS 에는 없다):
   BN Num   : 작은 숫자용 라이닝 숫자 (Spectral ExtraBold, 숫자·숫자 기호만) — 첫 화면에 필요해서 곧바로 받는다
   BN Dmg   : 데미지 숫자 (Anton) — 첫 화면 뒤에 곧바로 받는다
@@ -43,7 +46,8 @@ OUT = os.path.join(ROOT, 'assets', 'fonts')
 CACHE = os.environ.get('FONT_CACHE', os.path.expanduser('~/.cache/blood-nocturne-fonts'))
 GF = 'https://raw.githubusercontent.com/google/fonts/main/'
 UI_JS = os.path.join(ROOT, 'src', 'core', 'ui.js')
-FIRST_FRAME_BUDGET = 500 * 1024  # 첫 화면 전에 받는 글꼴 합계 상한 (platform §8.3)
+FIRST_FRAME_BUDGET = 500 * 1024  # 첫 화면 전에 받는 글꼴 합계 상한 (platform §8.3) — --check 가 넘으면 실패
+FIRST_FRAME_TARGET = int(os.environ.get('FONT_TARGET_KB', '480')) * 1024  # 빌드 목표 (여유 20 KB). 넘으면 덜 쓰이는 한글을 plus 파일로 나눈다
 
 # 각성 컷인 낙관 한자 (feel §2.1) — 데이터 파일이 아직 없어도 항상 넣는다
 SEAL_HANJA = '狩聖銃鐵鴉血'
@@ -83,6 +87,9 @@ FONTS = [
 ]
 
 SCAN_GLOBS = ['src/**/*', 'index.html', 'tools/artifact/*.html', 'manifest.webmanifest']
+# 첫 화면(타이틀·슬롯·계정·옵션 등 프런트 화면, 부팅·토스트 문구)에 나오는 글자: plus 로 옮기지 않는다
+FORCED_GLOBS = ['src/main.js', 'src/boot*.js', 'src/core/**/*', 'src/scenes/title.js', 'src/scenes/front/**/*', 'src/scenes/reg_front.js',
+                'index.html', 'manifest.webmanifest']
 JS_EXT = ('.js', '.mjs', '.cjs')
 
 
@@ -182,17 +189,22 @@ def scan_files():
             yield f
 
 
+def read_text(f):
+    try:
+        with open(f, encoding='utf-8') as fh:
+            text = fh.read()
+    except (UnicodeDecodeError, OSError):
+        return None  # 이미지 등 글자가 아닌 파일
+    return js_code_text(text) if f.endswith(JS_EXT) else text
+
+
 def game_chars():
     """게임에 쓰인 글자 집합과 글자별 첫 위치 {글자: 'src/…:줄'}"""
     chars, where = set(), {}
     for f in scan_files():
-        try:
-            with open(f, encoding='utf-8') as fh:
-                text = fh.read()
-        except (UnicodeDecodeError, OSError):
-            continue  # 이미지 등 글자가 아닌 파일
-        if f.endswith(JS_EXT):
-            text = js_code_text(text)
+        text = read_text(f)
+        if text is None:
+            continue
         rel = os.path.relpath(f, ROOT)
         for ln, line in enumerate(text.split('\n'), 1):
             for c in line:
@@ -200,6 +212,24 @@ def game_chars():
                     where[c] = f'{rel}:{ln}'
             chars |= set(line)
     return chars, where
+
+
+def hangul_stats():
+    """(한글 글자별 쓰인 횟수, 첫 화면에 나오는 한글 집합)"""
+    freq = {}
+    for f in scan_files():
+        text = read_text(f)
+        if text is None:
+            continue
+        for c in text:
+            if is_hangul(c):
+                freq[c] = freq.get(c, 0) + 1
+    forced = set()
+    for g in FORCED_GLOBS:
+        for f in glob.glob(os.path.join(ROOT, g), recursive=True):
+            if os.path.isfile(f):
+                forced |= {c for c in (read_text(f) or '') if is_hangul(c)}
+    return freq, forced
 
 
 def ksx1001_hangul():
@@ -229,11 +259,15 @@ def is_cjk(c):
     return 0x3400 <= o <= 0x4DBF or 0x4E00 <= o <= 0x9FFF or 0xF900 <= o <= 0xFAFF
 
 
-def charset(spec, used, part='core'):
-    """이 글꼴 파일에 넣을 글자. part: core(기본) | ext(한글 확장, 필요할 때만)"""
+def charset(spec, used, part='core', plus=frozenset()):
+    """이 글꼴 파일에 넣을 글자. part: core(기본) | plus(한글 기본의 덜 쓰이는 글자) | ext(한글 확장, 필요할 때만)"""
     kind = spec['kind']
     if part == 'ext':
         return ksx1001_hangul() - {c for c in used if is_hangul(c)}
+    if part == 'plus':
+        return set(plus)
+    if kind == 'ko' and plus:
+        used = set(used) - set(plus)
     if kind == 'digits':
         return set(NUM_CHARS + ' ')
     if kind == 'hanja':
@@ -276,19 +310,21 @@ def ranges(cps):
 
 
 def out_name(spec, part):
-    return spec['out'] if part == 'core' else spec['out'].replace('.woff2', '-ext.woff2')
+    return spec['out'] if part == 'core' else spec['out'].replace('.woff2', f'-{part}.woff2')
 
 
-def face_info(spec, part, size, glyphs, hangul, absent):
-    if spec['load'] == 'css':
+def face_info(spec, part, size, glyphs, hangul, absent, plus=frozenset()):
+    if part == 'plus':  # 같은 이름 + 정확한 글자 범위 → 그 글자만 이 파일에서 (ui.js 가 fonts.json 을 읽어 등록)
+        urange = ranges(ord(c) for c in plus)
+    elif spec['load'] == 'css':
         urange = None if part == 'core' else 'U+AC00-D7A3'
         if spec['kind'] != 'ko':  # 라틴 글꼴: 한글은 처음부터 건너뛰게 (받지 않고 다음 글꼴로)
             urange = 'U+0000-024F, U+2000-206F, U+20A0-20CF, U+2100-214F, U+2190-21FF, U+2200-22FF, U+25A0-25FF'
     else:
         urange = spec['urange']
-    return dict(family=spec['family'] if part == 'core' else spec['family'] + ' Ext',
-                alias=spec.get('alias', []) if part == 'core' else [],
-                file=out_name(spec, part), part=part, load=spec['load'] if part == 'core' else 'lazy',
+    return dict(family=spec['family'] + (' Ext' if part == 'ext' else ''),
+                alias=spec.get('alias', []) if part != 'ext' else [],
+                file=out_name(spec, part), part=part, load=spec['load'] if part == 'core' else ('early' if part == 'plus' else 'lazy'),
                 bytes=size, glyphs=glyphs, hangul=hangul,
                 weight=spec.get('weight') or (('%d %d' % spec['wght']) if 'wght' in spec else '400 900'),
                 urange=urange, source=GF + spec['src'], absent=''.join(sorted(absent)))
@@ -306,14 +342,15 @@ def fetch(rel):
     return dst
 
 
-def build(spec, used, part='core', dry=False):
+def build(spec, used, part='core', dry=False, plus=frozenset()):
     from fontTools import subset
     from fontTools.varLib import instancer
     src = fetch(spec['src'])
     font = TTFont(src, recalcTimestamp=False)  # 다시 빌드해도 같은 파일이 나오도록
-    want = charset(spec, used, part)
+    want = charset(spec, used, part, plus)
     src_cmap = font.getBestCmap() or {}
-    absent = {c for c in checked(spec, want) if ord(c) not in src_cmap} if part == 'core' else set()
+    # 원본에 없는 글자 (--check 가 빠짐으로 치지 않는다). plus 로 옮긴 글자까지 기본(core) 항목에 적는다
+    absent = {c for c in checked(spec, charset(spec, used, 'core')) if ord(c) not in src_cmap} if part == 'core' else set()
     opts = subset.Options()
     opts.flavor = 'woff2'
     opts.hinting = False
@@ -337,9 +374,10 @@ def build(spec, used, part='core', dry=False):
         font.flavor = 'woff2'
         font.save(out)
     size = os.path.getsize(out) if os.path.exists(out) else 0
-    print(f"  {spec['family'] + ('' if part == 'core' else ' Ext'):<18} {name:<28} {spec['load']:<5} glyphs={len(cmap):5d} hangul={n_h:5d} {size/1024:8.1f} KB"
+    info = face_info(spec, part, size, len(cmap), n_h, absent, plus)
+    print(f"  {info['family'] + (' +' if part == 'plus' else ''):<18} {name:<28} {info['load']:<5} glyphs={len(cmap):5d} hangul={n_h:5d} {size/1024:8.1f} KB"
           + (f"  (원본에 없음 {len(absent)}자)" if absent else ''))
-    return face_info(spec, part, size, len(cmap), n_h, absent)
+    return info
 
 
 def css_block(info):
@@ -420,10 +458,18 @@ def check():
             continue
         if os.path.getsize(path) != i['bytes']:
             warns.append(f"{spec['out']}: 크기가 fonts.json 과 다르다 ({os.path.getsize(path)} ≠ {i['bytes']})")
-        cmap = TTFont(path, lazy=True).getBestCmap() or {}
+        cmap = dict(TTFont(path, lazy=True).getBestCmap() or {})
+        for pi in info:  # 덜 쓰이는 글자를 옮긴 plus 파일도 기본으로 친다 (첫 화면 뒤 곧바로 받는다)
+            if pi['part'] == 'plus' and pi['family'] == spec['family']:
+                pp = os.path.join(OUT, pi['file'])
+                if os.path.exists(pp):
+                    cmap.update(TTFont(pp, lazy=True).getBestCmap() or {})
+                else:
+                    errors.append(f"{pi['file']}: fonts.json 에 있는 plus 파일이 없다 (빌드 필요)")
         miss = sorted(c for c in checked(spec, charset(spec, used)) if ord(c) not in cmap and c not in i.get('absent', ''))
         state = 'OK' if not miss else f'빠짐 {len(miss)}자'
-        print(f"  {spec['family']:<18} {spec['out']:<28} {spec['load']:<5} {i['bytes']/1024:7.1f} KB  {state}")
+        plus_kb = sum(pi['bytes'] for pi in info if pi['part'] == 'plus' and pi['family'] == spec['family']) / 1024
+        print(f"  {spec['family']:<18} {spec['out']:<28} {spec['load']:<5} {i['bytes']/1024:7.1f} KB  {state}" + (f"  (+ plus {plus_kb:.1f} KB)" if plus_kb else ''))
         if miss:
             errors.append(f"{spec['family']} ({spec['out']}) 에 없는 글자 {len(miss)}자: {''.join(miss)}\n      처음 쓰인 곳: "
                           + ', '.join(f'{c} {where.get(c, "?")}' for c in miss[:8]) + (' …' if len(miss) > 8 else ''))
@@ -457,19 +503,54 @@ def check():
     return 0
 
 
+def build_all(used, dry):
+    """모든 글꼴을 만든다. 첫 화면 글꼴이 FIRST_FRAME_TARGET 을 넘으면 덜 쓰이는 한글을 plus 로 옮겨 한글 기본 글꼴만 다시 만든다"""
+    freq, forced = hangul_stats()
+    fixed = {}  # plus 와 상관없는 파일 (라틴·JS 글꼴, 한글 확장) — 한 번만 만든다
+    for spec in FONTS:
+        if spec['kind'] != 'ko':
+            fixed[spec['out']] = [build(spec, used, 'core', dry)]
+        else:
+            fixed[spec['out']] = [build(spec, used, 'ext', dry)]
+    plus = frozenset()  # 늘 빈 상태에서 시작한다 → 같은 소스면 같은 파일 (글이 줄면 plus 도 없어진다)
+    for attempt in range(8):
+        ko = {}
+        for spec in FONTS:
+            if spec['kind'] == 'ko':
+                ko[spec['out']] = [build(spec, used, 'core', dry, plus)] + ([build(spec, used, 'plus', dry, plus)] if plus else [])
+        info = []
+        for spec in FONTS:  # fonts.json·CSS 블록 순서: 기본, (plus), 확장
+            info += ko[spec['out']] + fixed[spec['out']] if spec['kind'] == 'ko' else fixed[spec['out']]
+        ff = first_frame_bytes(info)
+        if dry or ff <= FIRST_FRAME_TARGET:
+            break
+        # 넘친 만큼(한글 한 자당 평균 크기로 어림) 덜 쓰이는 글자를 plus 로 옮긴다
+        per = sum(i['bytes'] / max(1, i['hangul']) for i in info if i['part'] == 'core' and i['load'] == 'css' and i['hangul'])
+        n = int((ff - FIRST_FRAME_TARGET) / max(1.0, per) * 1.25) + 8
+        cand = sorted((c for c in used if is_hangul(c) and c not in forced and c not in plus), key=lambda c: (freq.get(c, 0), ord(c)))
+        if not cand:
+            raise SystemExit(f'첫 화면 글꼴 {ff/1024:.1f} KB: 더 옮길 글자가 없다 (FORCED_GLOBS 의 글자만으로 넘친다)')
+        plus = frozenset(plus | set(cand[:n]))
+        print(f"  → 첫 화면 글꼴 {ff/1024:.1f} KB > {FIRST_FRAME_TARGET/1024:.0f} KB: 덜 쓰이는 한글 {min(n, len(cand))}자를 plus 로 옮겨 다시 만든다 (모두 {len(plus)}자)")
+    else:
+        raise SystemExit(f'첫 화면 글꼴 {ff/1024:.1f} KB: 여러 번 나눠도 목표 {FIRST_FRAME_TARGET/1024:.0f} KB 안으로 들어오지 않는다')
+    return info
+
+
 def main():
     if '--check' in sys.argv:
         sys.exit(check())
     dry = '--list' in sys.argv
     used, _ = game_chars()
     print(f"game text: {len(used)} distinct chars, {sum(1 for c in used if is_hangul(c))} hangul (주석 제외)")
-    info = []
-    for spec in FONTS:
-        info.append(build(spec, used, 'core', dry))
-        if spec['kind'] == 'ko':
-            info.append(build(spec, used, 'ext', dry))
+    info = build_all(used, dry)
     ok = True
     if not dry:
+        keep = {i['file'] for i in info}
+        for f in glob.glob(os.path.join(OUT, '*-plus.woff2')):  # 이번에 필요 없는 plus 파일은 지운다
+            if os.path.basename(f) not in keep:
+                os.remove(f)
+                print('  removed', os.path.basename(f))
         licenses()
         ok = write_css(info, '--write-css' in sys.argv)
         with open(os.path.join(OUT, 'fonts.json'), 'w', encoding='utf-8') as f:
