@@ -466,7 +466,7 @@ export class HubScene extends Scene {
       }
       rects.act = this.zone('act', rA, k, off);
     }
-    if (!h && !this.menuOpen) uiHints(ctx, [['dpadH', '이동'], ['jump', '점프'], ['dash', '대시'], ['up', '들어가기·대화'], ['map', '가방'], ['menu', '메뉴']], W / 2, H - 8);
+    if (!h && !this.menuOpen && this.game.top === this) uiHints(ctx, [['dpadH', '이동'], ['jump', '점프'], ['dash', '대시'], ['up', '들어가기·대화'], ['map', '가방'], ['menu', '메뉴']], W / 2, H - 8);
     ctx.restore();
     // 터치 패드는 맨 위 장면의 hudRects(논리 px) 위에서는 스틱을 만들지 않고 탭을 캔버스로 넘긴다
     this.hudRects = off ? {} : rects;
