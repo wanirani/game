@@ -191,6 +191,12 @@ const COLS = {
   sera: ['#fff8d0', '#fff2b0', '#ffe7a0', '#ffffff', '#c8a24a', '#d8f0ff', '#8ac8ff', '#ff7a2a', '#9fe8ff', '#fff2a0', '#bfe0ff', '#e0f0ff', '#ffd0a0'],
   victor: ['#ffd070', '#fff0b0', '#ffe0a0', '#ffffff', '#e8ecff', '#c8d4ff', '#9ab0ff', '#ff2030', '#ff8a90', '#ff7a2a', '#ffb060', '#ffd84a', '#fff0a0'],
 };
+/** 가로 빛기둥(beamH) 색: 카엘 십자가 금빛 · 세라 십자광 PCOL[0] · 빅터 은빛 십자 SIL (변형별) */
+const BEAMH = {
+  kael: ['#ffd870'],
+  sera: ['#fff2b0', '#d8f0ff', '#bfe0ff'],
+  victor: ['#e8ecff', '#9ab0ff', '#ff2030', '#ff7a2a'],
+};
 function mkCanvas(w, h) {
   if (typeof document === 'undefined' || !document.createElement) return null;
   const c = document.createElement('canvas'); c.width = w; c.height = h;
@@ -245,11 +251,9 @@ function prewarm(w, p) {
     if (!PREP.scratch) PREP.scratch = mkCanvas(4, 4);
     const sc = PREP.scratch?.getContext('2d');
     if (!sc) return false;
-    for (const c of COLS[ch]) {
-      K.glow(sc, 1, 1, 2, c, 1);
-      K.beamV(sc, 1, 0, 2, 1, c, 1); K.beamV(sc, 1, 0, 2, 1, c, 1, c);
-      K.beamH(sc, 0, 2, 1, 1, c, 1);
-    }
+    // 빛·세로 빛기둥은 쓰는 색 전부, 가로 빛기둥은 실제로 쓰는 색만 (skills.js 스프라이트 캐시 72칸을 밀어내지 않게)
+    for (const c of COLS[ch]) { K.glow(sc, 1, 1, 2, c, 1); K.beamV(sc, 1, 0, 2, 1, c, 1); }
+    for (const c of BEAMH[ch]) K.beamH(sc, 0, 2, 1, 1, c, 1);
     K.beamV(sc, 1, 0, 2, 1, '#ffffff', 1, '#ffffff'); K.beamH(sc, 0, 2, 1, 1, '#ffffff', 1, '#ffffff');
     if (ch === 'kael') { if (!PREP.dawn) PREP.dawn = bakeDawn(); ULTFX.sprite?.('crow'); }
     if (ch === 'sera') { K.glassRose?.(sc, 1, 1, 1, 0, 1, 1); ULTFX.sprite?.('wing'); ULTFX.sprite?.('clock'); }

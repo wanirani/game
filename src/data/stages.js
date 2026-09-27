@@ -33,6 +33,7 @@ import { ROOMS as S17 } from './maps/s17.js';
 import { ROOMS as S18 } from './maps/s18.js';
 import { ROOMS as S19 } from './maps/s19.js';
 // ── P2 map imports s20 (MAPS-P2-D) ──
+import { ROOMS as S20 } from './maps/s20.js';
 
 const S = (o) => ({ start: 'r1', parTime: 300, darkColor: '#06020c', liquid: 'water', docs: [], relic: null, unlocks: [], ...o, intro: o.intro ?? `${o.id}_intro`, outro: o.outro ?? `${o.id}_outro` });
 
@@ -105,6 +106,10 @@ export const STAGES = {
     enemies: ['rot_treant', 'plague_moth', 'fungal_husk', 'frog_demon', 'corpse_worm', 'slime', 'mimic'], docs: ['d26'], shard: 'k_star_6', heart: 'k_heart_6',
     gimmick: { kind: 'blight' }, color: '#9ad040', next: 's20', mapPos: { x: 0.88, y: 0.62 } }),
   // ── P2 stages s20 (MAPS-P2-D) ──
+  s20: S({ id: 's20', chapter: 20, part: 2, page: 1, name: '태초의 공허', sub: '모든 것이 태어나기 전의 어둠', theme: 'void', bg: 'bg/s20_void', tex: 'tex/tex_void', tex2: 'tex/tex_abyss', tileStyle: 'void',
+    music: 's20', level: 68, darkness: 0.5, darkColor: '#000000', liquid: 'lava', boss: 'b_nihil', rooms: S20, parTime: 600,
+    enemies: ['void_herald', 'nihil_spawn', 'mirror_knight', 'slag_golem', 'abyss_angler', 'storm_harpy', 'faceless', 'rot_treant', 'fungal_husk'], docs: ['d27'], shard: null, heart: null,
+    color: '#ffffff', next: null, mapPos: { x: 0.52, y: 0.46 }, req: '여섯 세계의 심장을 모두 되찾으면 공허로 가는 길이 열린다' }),
   arena: S({ id: 'arena', chapter: 0, name: '피의 투기장', sub: '서바이벌 & 보스 러시', theme: 'arena', bg: 'bg/s_arena', tex: 'tex/tex_castle_stone', tex2: 'tex/tex_dirt', tileStyle: 'stone',
     music: 'arena', level: 10, darkness: 0.3, boss: null, rooms: ARENA, parTime: 600, intro: null, outro: null,
     enemies: [], next: null, mapPos: { x: 0.3, y: 0.3 } }),

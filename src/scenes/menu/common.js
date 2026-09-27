@@ -1,11 +1,18 @@
-// 인게임 메뉴 공용 UI 키트
-//  - 고딕 패널/장식선/선택 막대/커서 괄호/키캡/문양(탭 아이콘)
-//  - 발광 스프라이트 캐시(glow), 줄바꿈 캐시(wrapC/para), 레이어 캐시(Layer)
-//  - 입력: Nav(방향키 반복), Gesture(탭·드래그 구분, 마우스 호버), Scroller(드래그·휠·관성 스크롤)
-//  - 모달: Popup(행동 선택), Confirm(예/아니오)
-//  - 가상 패드 숨김(hidePad, 참조 카운트)
+// 인게임 메뉴 공용 UI 키트 — owner: PLAT-MENU (platform §5.6, §6.2, §6.3, WP-4 · P-01/P-19/P-28)
+//  - 고딕 패널/장식선/선택 막대/커서 괄호/키캡/문양(탭 아이콘, 'paw' = 동료 탭)
+//  - 발광 스프라이트 캐시(glow), 줄바꿈 캐시(wrapC/para; 글자 크기 하한도 키에), 레이어 캐시(Layer: 글꼴 세대 키 + 픽셀 예산)
+//  - 입력
+//    · Nav: 방향 반복 + 메뉴 의미 액션 (confirm cancel prevTab nextTab alt alt2 map — input.bindings 기기별, MASTER_PLAN §1.4)
+//      Q·E 는 게임에선 둘 다 swap 이지만 메뉴에선 prevTab(Q·S·LB) / nextTab(E·D·RB). o.swap 은 호환용으로만 남긴다.
+//    · Gesture: 탭·드래그 구분, 마우스 호버, 길게 누르기(450 ms, 터치), 가로 밀기(swipe), claim()
+//      탭 영역은 ui.taps 공용 등록부로: render 에서 ges.zone(r, kind) 로 등록 → update 에서 ges.tap(r)
+//      (터치 모드에서는 등록부의 여유 영역(slop)으로 판정; 등록하지 않은 사각형은 예전처럼 안쪽만)
+//    · Scroller: 드래그(관성·고무줄) + 휠 + 오른쪽 스틱 Y + 선택 따라가기 (follow/shouldFollow — P-01)
+//  - 모달: Popup(행동 선택), Confirm(예/아니오) — 자기 탭 영역을 자기 이름(owner)으로 등록
+//  - 가상 패드: 장면 플래그(scene.hidePad)만 쓴다. hidePad() 는 아무것도 하지 않는 옛 이름 (platform §5.1)
 import { input } from '../../core/input.js';
-import { text, font, wrap, FONT } from '../../core/ui.js';
+import { text, font, wrap, FONT, taps, fontEpoch, textFloor } from '../../core/ui.js';
+import { drawHints } from '../../core/prompts.js';
 import { TAU, clamp, lerp, rgba, ease } from '../../core/math.js';
 import { audio } from '../../core/audio.js';
 
@@ -167,8 +174,18 @@ export function keycap(ctx, label, x, y, { h = 18, color = PAL.bone } = {}) {
   ctx.textBaseline = 'alphabetic';
   return w;
 }
-/** 키 안내 줄: items = [[키, 설명], ...] (키가 배열이면 여러 캡). 반환: 끝 x */
-export function hintRow(ctx, items, x, y, { align = 'left', size = 12 } = {}) {
+/**
+ * 키 안내 줄: items = [[키/액션(배열 가능), 설명, 터치 문구?], ...]. 반환: 끝 x
+ * 지금 기기의 글리프로 그린다 (prompts.drawHints: 예전 키 글자 'Z'·'X'·'Q'·'↑↓' 는 legacyKey 로 액션이 되어
+ * 키보드 = 키캡, 패드 = ✕○□△/A·B·X·Y/LB·RB …). drawHints 가 실패하면 예전 키캡 줄로 그린다.
+ */
+let hintErr = false;
+export function hintRow(ctx, items, x, y, { align = 'left', size = 12, color = PAL.dim } = {}) {
+  try { return drawHints(ctx, items, x, y, { align, size, color }); } catch (e) { if (!hintErr) { hintErr = true; console.error('[menu] hints', e); } }
+  return keyRow(ctx, items, x, y, { align, size });
+}
+/** 예전 키캡 안내 줄 (글자 그대로) */
+function keyRow(ctx, items, x, y, { align = 'left', size = 12 } = {}) {
   // 너비 측정 후 정렬
   let total = 0;
   const ws = [];
@@ -283,6 +300,18 @@ export function glyph(ctx, kind, x, y, s, color = PAL.gold, lw = 1.6) {
     case 'eye':
       ctx.moveTo(-10, 0); ctx.quadraticCurveTo(0, -9, 10, 0); ctx.quadraticCurveTo(0, 9, -10, 0); ctx.closePath(); ctx.stroke();
       ctx.beginPath(); ctx.arc(0, 0, 3.2, 0, TAU); ctx.fill(); break;
+    case 'paw': // 동료 탭: 발바닥 볼록살 하나 + 발가락 넷 (companions §7.2)
+      ctx.moveTo(0, 0.5);
+      ctx.bezierCurveTo(4.5, 0.5, 7.5, 5, 6.2, 7.8); ctx.bezierCurveTo(5.2, 9.8, 2.6, 9.4, 0, 8.6);
+      ctx.bezierCurveTo(-2.6, 9.4, -5.2, 9.8, -6.2, 7.8); ctx.bezierCurveTo(-7.5, 5, -4.5, 0.5, 0, 0.5); ctx.closePath(); ctx.fill();
+      for (const [tx, ty, rx, ry, rot] of [[-7.4, -2.4, 2.2, 2.9, -0.45], [-2.7, -6.6, 2.3, 3.1, -0.12], [2.7, -6.6, 2.3, 3.1, 0.12], [7.4, -2.4, 2.2, 2.9, 0.45]]) {
+        ctx.beginPath(); ctx.ellipse(tx, ty, rx, ry, rot, 0, TAU); ctx.fill();
+      }
+      break;
+    case 'chevronL': // 탭 화살표 (터치)
+      ctx.moveTo(4, -8); ctx.lineTo(-4, 0); ctx.lineTo(4, 8); ctx.stroke(); break;
+    case 'chevronR':
+      ctx.moveTo(-4, -8); ctx.lineTo(4, 0); ctx.lineTo(-4, 8); ctx.stroke(); break;
     default:
       ctx.arc(0, 0, 6, 0, TAU); ctx.stroke();
   }
@@ -291,10 +320,10 @@ export function glyph(ctx, kind, x, y, s, color = PAL.gold, lw = 1.6) {
 
 // ───────────────────────── 글자 배치 ─────────────────────────
 const WRAP = new Map();
-/** 줄바꿈 결과 캐시 (매 프레임 measureText 반복 방지) */
+/** 줄바꿈 결과 캐시 (매 프레임 measureText 반복 방지). 글자 크기 하한(uiScale 장면)과 글꼴 세대도 키에 넣는다 */
 export function wrapC(ctx, str, w, size, weight = 500, family = FONT.body) {
   str = String(str ?? '');
-  const k = size + '|' + weight + '|' + Math.round(w) + '|' + family.length + '|' + str;
+  const k = size + '|' + weight + '|' + Math.round(w) + '|' + family.length + '|' + textFloor() + '|' + fontEpoch + '|' + str;
   let v = WRAP.get(k);
   if (!v) {
     if (WRAP.size > 600) WRAP.clear();
@@ -329,11 +358,32 @@ export function ellipsize(ctx, str, w, size, weight = 500, family = FONT.body) {
 }
 
 // ───────────────────────── 레이어 캐시 ─────────────────────────
-/** 정적인 그림을 픽셀 배율에 맞춘 캔버스에 한 번 그려 두고 재사용 */
+/** ctx 의 지금 변환 배율 (논리 px → 캔버스 px) */
+export function ctxScale(ctx) {
+  try { const m = ctx.getTransform(); return Math.hypot(m.a, m.b) || 1; } catch { return 1; }
+}
+/**
+ * 레이어 배율을 픽셀 예산 안으로 (platform §6.4, P-11): 레이어 한 장의 픽셀 수가 그리는 캔버스의 백킹 픽셀 수
+ * (= 품질 등급의 예산으로 이미 잘린 크기)를 넘지 않게 하고, 4배를 넘지 않는다. 키가 흔들리지 않게 1/64 단위로 내린다.
+ */
+export function budgetScale(ctx, w, h, scale) {
+  let s = scale > 0 ? scale : ctxScale(ctx);
+  const cv = ctx?.canvas;
+  const maxPx = Math.max(2.5e5, (cv?.width || 0) * (cv?.height || 0));
+  if (w > 0 && h > 0) s = Math.min(s, Math.sqrt(maxPx / (w * h)));
+  s = Math.min(4, Math.max(0.25, s));
+  return Math.floor(s * 64) / 64;
+}
+/**
+ * 정적인 그림을 픽셀 배율에 맞춘 캔버스에 한 번 그려 두고 재사용.
+ * scale 을 주지 않으면(null) ctx 의 지금 변환에서 잰다 (uiScale 장면이면 uiK 까지 포함).
+ * 키에 ui.fontEpoch 가 들어 있어 웹 글꼴이 늦게 도착하면 다시 굽는다 (P-28). 배율은 픽셀 예산으로 자른다 (P-11).
+ */
 export class Layer {
   constructor() { this.cv = null; this.key = null; }
   draw(ctx, key, x, y, w, h, scale, fn) {
-    const k = key + '|' + w + '|' + h + '|' + scale;
+    scale = budgetScale(ctx, w, h, scale);
+    const k = key + '|' + w + '|' + h + '|' + scale + '|' + fontEpoch;
     if (this.key !== k || !this.cv) {
       const pw = Math.max(1, Math.ceil(w * scale)), ph = Math.max(1, Math.ceil(h * scale));
       if (!this.cv) this.cv = document.createElement('canvas');
@@ -353,82 +403,292 @@ export class Layer {
 
 // ───────────────────────── 입력 ─────────────────────────
 const DIRS = ['up', 'down', 'left', 'right'];
-/** 방향키 반복 + 메뉴 조작 입력 모음 (매 틱 poll) */
+const nowS = () => (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000;
+/**
+ * 메뉴 탐색 입력 세대. Nav 가 방향 입력을 한 번 낼 때마다 +1 → Scroller 가 "키·패드로 선택이 바뀌었다" 를 안다 (P-01).
+ * 포인터 호버·탭·드래그·휠로 바뀐 선택은 따라가지 않는다.
+ */
+export const NAV = { epoch: 0 };
+
+/**
+ * 방향 반복 + 메뉴 의미 입력 모음 (매 틱 poll). 의미 액션은 input.bindings 의 기기별 바인딩에서 읽는다 (MASTER_PLAN §1.4):
+ * 패드 B 는 게임에서 대시지만 메뉴에선 취소만, LT 는 스킬 페이지가 아니라 alt2. Q·E 는 prevTab / nextTab 로 구분된다.
+ */
 export class Nav {
   constructor() { this.rep = { up: 0, down: 0, left: 0, right: 0 }; this.o = {}; }
   poll(dt) {
     const o = this.o;
+    let any = false;
     for (const a of DIRS) {
       let hit = false;
       if (input.pressed(a)) { hit = true; this.rep[a] = 0.3; }
       else if (input.down(a)) { this.rep[a] -= dt; if (this.rep[a] <= 0) { hit = true; this.rep[a] = 0.075; } }
       o[a] = hit;
+      if (hit) any = true;
     }
     o.confirm = input.pressed('confirm');
     o.cancel = input.pressed('cancel');
-    o.menu = input.pressed('menu') && !o.confirm && !o.cancel; // 패드 START
-    o.alt = input.pressed('sub');       // A / 패드 Y : 보조 기능 (정렬·해제 등)
-    o.alt2 = input.pressed('dash');     // C / 패드 LT
-    o.prevTab = input.pressed('skill1'); // S / LB
-    o.nextTab = input.pressed('skill2'); // D / RB
-    o.swap = input.pressed('swap');     // Q / E
+    o.menu = input.pressed('menu') && !o.confirm && !o.cancel; // 패드 START (키보드 Enter·Esc 는 결정·취소로 온다)
+    o.map = input.pressed('map');         // 빠른 메뉴 (Tab·M·I / 패드 SELECT): 메뉴를 닫는다
+    o.alt = input.pressed('alt');         // A / 패드 Y : 보조 기능 (정렬·슬롯 등록 등)
+    o.alt2 = input.pressed('alt2');       // C / 패드 LT : 보조 기능 2 (잠금 등)
+    o.prevTab = input.pressed('prevTab'); // Q·S / LB
+    o.nextTab = input.pressed('nextTab'); // E·D / RB
+    o.swap = input.pressed('swap');       // 호환용 — 탭 전환에는 쓰지 않는다
+    if (any) NAV.epoch++;
     return o;
   }
   clear() { for (const k in this.o) this.o[k] = false; }
 }
 
-/** 포인터 제스처: 탭 vs 드래그 구분, 마우스 호버 이동 감지 */
+// ── 포인터 이벤트 기록 (창 단위, 한 번만 설치) ──
+// 누른 곳·뗀 곳·시각과 최근 이동 표본. 스텝이 밀려 한 스텝에 누름과 뗌이 함께 보여도
+// 밀기(swipe)·길게 누르기·튕기기 속도를 실제 손가락 움직임대로 잰다.
+const PTR = { id: null, down: null, up: null, moves: [], seq: 0, installed: false };
+function installPtr() {
+  if (PTR.installed || typeof window === 'undefined') return;
+  PTR.installed = true;
+  const opt = { capture: true, passive: true };
+  window.addEventListener('pointerdown', (e) => {
+    const cv = input.game?.canvas;
+    if (!cv || e.target !== cv) return;
+    if (PTR.down && !PTR.up && PTR.id !== e.pointerId) return; // 두 번째 손가락은 무시
+    PTR.id = e.pointerId; PTR.seq++;
+    PTR.down = { cx: e.clientX, cy: e.clientY, t: nowS(), max: 0, type: e.pointerType || 'mouse' };
+    PTR.up = null; PTR.moves.length = 0;
+  }, opt);
+  window.addEventListener('pointermove', (e) => {
+    const d = PTR.down;
+    if (!d || PTR.up || e.pointerId !== PTR.id) return;
+    const m = Math.hypot(e.clientX - d.cx, e.clientY - d.cy);
+    if (m > d.max) d.max = m;
+    PTR.moves.push({ cx: e.clientX, cy: e.clientY, t: nowS() });
+    if (PTR.moves.length > 16) PTR.moves.shift();
+  }, opt);
+  const end = (e, cancel) => {
+    if (!PTR.down || PTR.up || e.pointerId !== PTR.id) return;
+    PTR.up = { cx: e.clientX, cy: e.clientY, t: nowS(), cancel };
+  };
+  window.addEventListener('pointerup', (e) => end(e, false), opt);
+  window.addEventListener('pointercancel', (e) => end(e, true), opt);
+}
+/** CSS px(창 좌표) → 맨 위 장면의 좌표 (논리 px, uiScale 장면이면 UI px) + f = UI px 1 당 CSS px */
+function cssToUi(cx, cy) {
+  const g = input.game, cv = g?.canvas;
+  if (!cv) return null;
+  const r = cv.getBoundingClientRect();
+  const k = g.top?.uiScale ? g.uiK || 1 : 1;
+  const lw = (r.width || 1) / (g.viewW || 960), lh = (r.height || 1) / (g.viewH || 540);
+  return { x: (cx - r.left) / lw / k, y: (cy - r.top) / lh / k, f: lh * k };
+}
+/** 휴대폰 진동 (설정 '진동' 이 켜져 있을 때만) */
+export function buzz(ms = 10) {
+  try { if (input.game?.settings?.vibration !== false && typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(ms); } catch { /* 무시 */ }
+}
+
+const MOVE_PX = 10;          // 탭 ↔ 끌기 경계 (UI px)
+const LONG_PRESS = 0.45;     // 길게 누르기 (초, 터치·펜) — platform §5.6
+const SWIPE_DIST = 70, SWIPE_SPEED = 400, SWIPE_TAN = Math.tan(Math.PI / 6); // 탭 밀기: ≥ 70 px, 수평에서 30° 안, ≥ 400 px/s
+const FLING_WIN = 0.1;       // 손을 뗄 때 속도를 재는 구간 (초). 그동안 멈춰 있었으면 속도 0
+const LEGACY_ID = Object.freeze({ legacy: true });
+const same = (z, r) => Math.abs(z.x - r.x) < 0.5 && Math.abs(z.y - r.y) < 0.5 && Math.abs(z.w - r.w) < 0.5 && Math.abs(z.h - r.h) < 0.5;
+const regFresh = () => taps.n > 0 && (typeof performance !== 'undefined' ? performance.now() : Date.now()) - taps.sealedAt <= taps.maxAge;
+
+/**
+ * 탭 영역 등록 (render 에서; 그린 순서 = 아래 → 위). ui.taps 공용 등록부에 올리고, 사각형에 주인을 적어 둔다.
+ *   kind: 'primary' 주 버튼 44 · 'list' 목록 줄 36 · 'icon' 아이콘·화살표 44×44 · 'dense' 촘촘한 정보 줄 28 (CSS px, §6.3)
+ *   opts.clip: 이 사각형 안에 보이는 부분만 판정 (스크롤 목록). 안 보이면 등록하지 않고, 탭도 되지 않는다.
+ *   opts.slop, opts.src, opts.disabled: ui.taps.add 로 그대로
+ * 반환: r
+ */
+export function zone(r, kind = 'list', owner = null, { clip = null, slop, src = 'menu', disabled = false } = {}) {
+  if (!r) return r;
+  r.tzo = owner; r.thid = false;
+  let v = r;
+  if (clip) {
+    const x0 = Math.max(r.x, clip.x), y0 = Math.max(r.y, clip.y);
+    const x1 = Math.min(r.x + r.w, clip.x + clip.w), y1 = Math.min(r.y + r.h, clip.y + clip.h);
+    if (x1 - x0 < 2 || y1 - y0 < 2) { r.thid = true; return r; }
+    if (x0 !== r.x || y0 !== r.y || x1 !== r.x + r.w || y1 !== r.y + r.h) v = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+  }
+  const o = { kind, owner, src, disabled };
+  if (slop !== undefined) o.slop = slop;
+  taps.add(r, v, o);
+  return r;
+}
+
+/**
+ * 포인터 제스처: 탭 vs 끌기 구분, 마우스 호버, 길게 누르기, 가로 밀기, claim.
+ *  - update() 를 매 틱 한 번 (장면의 update 첫머리).
+ *  - zone(r, kind, opts) : render 에서 탭 영역 등록 (주인 = 이 Gesture). tap(r) 은 등록부 판정 (터치 여유 포함)
+ *  - tap(r)              : 이번 틱의 탭이 r 에 떨어졌나. 등록하지 않은 사각형은 안쪽만 (다음 그리기에서 'list' 로 올려 여유를 받는다)
+ *  - longPress {x, y}    : 이번 틱에 길게 누르기(450 ms, 터치)가 걸렸다 — held(r) 로 확인. 그 뒤의 뗌은 탭이 아니다
+ *  - swipe {dir, x, y}   : 이번 틱에 가로 밀기가 끝났다 (dir +1 = 왼쪽으로 밀기 = 다음 탭)
+ *  - claim()             : 지금 누르고 있는 손가락은 다른 조작(회전대 끌기 등)이 가져간다 → 탭·밀기·길게 누르기 없음
+ *  - releaseVel()        : 뗄 때 속도 {vx, vy} (UI px/초)
+ */
 export class Gesture {
-  constructor() { this.g = null; this.tapOK = false; this.hover = false; this.lx = -1; this.ly = -1; this.wheel = 0; this._wheel = 0; }
+  constructor() {
+    this.g = null; this.tapOK = false; this.hover = false; this.lx = -1; this.ly = -1; this.wheel = 0; this._wheel = 0;
+    this.justDown = false; this.released = false; this.longPress = null; this.swipe = null;
+    this._hits = new Map(); this._legacy = new Map(); this._seq = -1;
+    installPtr();
+  }
   update() {
     const p = input.pointer;
-    if (p.justDown) this.g = { x: p.x, y: p.y, moved: false };
-    if (this.g && p.down && !this.g.moved && Math.hypot(p.x - this.g.x, p.y - this.g.y) > 10) this.g.moved = true;
-    this.tapOK = p.tapped && !(this.g && this.g.moved);
+    const now = nowS();
+    this.longPress = null; this.swipe = null; this.released = false; this._hits.clear();
+    this.justDown = !!p.justDown;
+    if (p.justDown) {
+      const d = PTR.down && PTR.seq !== this._seq && !PTR.down.used ? PTR.down : null;
+      const q = d ? cssToUi(d.cx, d.cy) : null;
+      if (d) { d.used = true; this._seq = PTR.seq; }
+      this.g = { x: q ? q.x : p.x, y: q ? q.y : p.y, t: d ? d.t : now, moved: false, lp: false, claimed: false, done: false, touch: d ? d.type !== 'mouse' : !!input.touchMode, ptr: d };
+    }
+    const g = this.g;
+    if (g && !g.done) {
+      const f = g.ptr ? cssToUi(0, 0)?.f || 1 : 1;
+      if (!g.moved && ((g.ptr && g.ptr.max / f > MOVE_PX) || ((p.down || p.tapped) && Math.hypot(p.x - g.x, p.y - g.y) > MOVE_PX))) g.moved = true;
+      if (p.down && g.touch && !g.moved && !g.lp && !g.claimed && now - g.t >= LONG_PRESS) { g.lp = true; this.longPress = { x: g.x, y: g.y }; buzz(10); }
+      if (p.tapped) {
+        g.done = true; this.released = true;
+        const up = g.ptr && PTR.down === g.ptr && PTR.up ? PTR.up : null;
+        const dur = Math.max(1 / 120, (up ? up.t : now) - g.t);
+        // 스텝이 밀려 누르는 동안 길게 누르기를 못 봤으면 뗄 때 판정 (0.45초 넘게 제자리)
+        if (g.touch && !g.moved && !g.lp && !g.claimed && dur >= LONG_PRESS && !up?.cancel) { g.lp = true; this.longPress = { x: g.x, y: g.y }; buzz(10); }
+        if (g.touch && g.moved && !g.lp && !g.claimed && !up?.cancel) {
+          const e = up ? cssToUi(up.cx, up.cy) : { x: p.x, y: p.y };
+          const dx = e.x - g.x, dy = e.y - g.y, ax = Math.abs(dx);
+          if (ax >= SWIPE_DIST && Math.abs(dy) <= ax * SWIPE_TAN && ax / dur >= SWIPE_SPEED) this.swipe = { dir: dx < 0 ? 1 : -1, x: g.x, y: g.y, dx, dy };
+        }
+      }
+    }
+    this.tapOK = !!p.tapped && !(g && (g.moved || g.lp || g.claimed));
     this.hover = !input.touchMode && !p.down && p.active && (p.x !== this.lx || p.y !== this.ly);
     this.lx = p.x; this.ly = p.y;
     this.wheel = this._wheel; this._wheel = 0;
   }
   get moved() { return !!this.g?.moved; }
-  tap(r) { const p = input.pointer; return this.tapOK && inRect(p.x, p.y, r); }
+  /** 지금 누르고 있는 손가락을 다른 조작이 가져간다 (탭·밀기·길게 누르기 없음) */
+  claim() { if (this.g && !this.g.done) this.g.claimed = true; }
+  get claimed() { return !!this.g?.claimed; }
+  /** 탭 영역 등록 (render 에서). 주인 = 이 Gesture. 반환: r */
+  zone(r, kind = 'list', opts = {}) { return zone(r, kind, opts.owner ?? this, opts); }
+  /** 등록부 판정 결과 (주인별, 틱마다 한 번): undefined = 등록부가 비었거나 오래됨, null = 아무 영역도 아님 */
+  hitOf(owner) {
+    if (this._hits.has(owner)) return this._hits.get(owner);
+    let z;
+    if (regFresh()) { const p = input.pointer; z = taps.at(p.x, p.y, owner) ?? null; }
+    this._hits.set(owner, z);
+    return z;
+  }
+  tap(r) {
+    if (!r) return false;
+    const p = input.pointer;
+    if (r.tzo !== undefined) { // zone() 으로 등록한 영역: 등록부 판정 (터치 여유, 위에 그린 것 우선)
+      if (!this.tapOK || r.thid) return false;
+      const z = this.hitOf(r.tzo);
+      return z === undefined ? inRect(p.x, p.y, r) : !!z && z.id === r;
+    }
+    // 등록하지 않은 사각형: 다음 그리기(flush)에서 'list' 로 올려 여유 영역·?debug=taps·QA 감사에 보이게 한다
+    this._legacy.set(r.x + ',' + r.y + ',' + r.w + ',' + r.h, r);
+    taps.note(r, 'list', 'Gesture');
+    if (!this.tapOK) return false;
+    if (inRect(p.x, p.y, r)) return true;
+    if (!input.touchMode) return false;
+    const z = this.hitOf(this);
+    return !!z && z.id === LEGACY_ID && same(z, r);
+  }
+  /** render 끝에서 한 번: 지난 update 들에서 tap() 으로 본, 등록하지 않은 사각형을 등록부에 올린다 */
+  flush() {
+    for (const r of this._legacy.values()) taps.add(LEGACY_ID, r, { kind: 'list', owner: this, src: 'Gesture' });
+    this._legacy.clear();
+  }
+  /** 이번 틱에 길게 누르기가 r 안에서 걸렸나 */
+  held(r) { const l = this.longPress; return !!l && !!r && !r.thid && inRect(l.x, l.y, r); }
+  /** 뗄 때 속도 {vx, vy} (UI px/초). 뗄 무렵 0.1초 동안 움직임이 없었으면 0 */
+  releaseVel() {
+    const g = this.g, d = g?.ptr, up = PTR.up;
+    if (!d || PTR.down !== d || !up) return { vx: 0, vy: 0 };
+    const M = PTR.moves;
+    let i = M.length - 1;
+    if (i < 0 || up.t - M[i].t > FLING_WIN) return { vx: 0, vy: 0 };
+    while (i > 0 && up.t - M[i - 1].t <= FLING_WIN) i--;
+    const a = M[Math.max(0, i - 1)];
+    const dt = Math.max(1 / 60, up.t - a.t);
+    const f = cssToUi(0, 0)?.f || 1;
+    return { vx: (up.cx - a.cx) / dt / f, vy: (up.cy - a.cy) / dt / f };
+  }
   hoverIn(r) { const p = input.pointer; return this.hover && inRect(p.x, p.y, r); }
   over(r) { const p = input.pointer; return p.active && !input.touchMode && inRect(p.x, p.y, r); }
   downIn(r) { const p = input.pointer; return p.down && inRect(p.x, p.y, r); }
   addWheel(dy) { this._wheel += dy; }
 }
 
-/** 세로 스크롤: 드래그(관성·고무줄) + 마우스 휠 + 선택 항목 따라가기 */
+const SCROLL_EASE = 1e-6; // 목표까지 남은 비율 (초당): 휠·스틱·따라가기가 0.25초 안에 거의 붙는다
+/**
+ * 세로 스크롤: 드래그(관성·고무줄) + 마우스 휠 + 오른쪽 스틱 Y + 선택 따라가기.
+ * P-01: 사용자가 직접 스크롤하면(드래그·휠·관성·스틱) userScrolled = true → 다음 탐색 입력(Nav 방향)까지 ensure() 를 무시한다.
+ *   탭은 이렇게 부른다:  if (this.sc.shouldFollow(this.i)) this.sc.ensure(top, bottom, viewH)
+ *   shouldFollow(key) 는 키·패드 탐색으로 선택이 바뀐 프레임(또는 follow() 요청)에만 참이다.
+ * 움직임은 실제 경과 시간으로 (스텝이 밀려도 휠이 제때 붙는다; 스텝만 돌리는 시험에서는 dt).
+ */
 export class Scroller {
-  constructor() { this.y = 0; this.target = 0; this.max = 0; this.vel = 0; this.drag = null; }
+  constructor() {
+    this.y = 0; this.target = 0; this.max = 0; this.vel = 0; this.drag = null;
+    this.userScrolled = false;
+    this.fKey = undefined; this.fPending = false; this.navSeen = NAV.epoch; this.navNew = false; this._rt = 0;
+  }
   setMax(m) { this.max = Math.max(0, m); if (!this.drag) { this.target = clamp(this.target, 0, this.max); } }
-  reset() { this.y = this.target = 0; this.vel = 0; this.drag = null; }
+  reset() { this.y = this.target = 0; this.vel = 0; this.drag = null; this.userScrolled = false; this.fPending = false; }
+  /** 탐색 입력으로 선택을 바꿨다 → 다음 shouldFollow() 는 참 (직접 스크롤 상태도 푼다) */
+  follow(key) { this.fPending = true; this.userScrolled = false; if (key !== undefined) this.fKey = key; }
+  /** 이번 그리기에서 선택(key)을 따라가야 하나: 탐색 입력으로 선택이 바뀐 프레임이거나 follow() 요청이 있을 때만 */
+  shouldFollow(key) {
+    const changed = key !== this.fKey;
+    this.fKey = key;
+    const nav = this.navNew;
+    this.navNew = false;
+    if (this.fPending) { this.fPending = false; return true; }
+    return nav && changed;
+  }
   update(dt, rect, ges) {
     const p = input.pointer;
-    if (p.justDown && inRect(p.x, p.y, rect)) { this.drag = { y0: p.y, s0: this.y, last: p.y, v: 0 }; this.vel = 0; }
-    if (this.drag) {
-      if (p.down) {
-        if (ges.moved) {
-          let ny = this.drag.s0 - (p.y - this.drag.y0);
-          if (ny < 0) ny *= 0.4; else if (ny > this.max) ny = this.max + (ny - this.max) * 0.4;
-          this.drag.v = lerp(this.drag.v, (this.drag.last - p.y) / Math.max(dt, 1 / 120), 0.5);
-          this.drag.last = p.y;
-          this.y = this.target = ny;
-        }
-      } else {
-        if (ges.moved) this.vel = clamp(this.drag.v, -2600, 2600);
-        this.drag = null;
-      }
-      return;
+    // 탐색 입력이 들어왔다 → 직접 스크롤 상태를 풀고, 선택이 안 바뀌었어도 선택을 다시 보여 준다
+    if (NAV.epoch !== this.navSeen) {
+      this.navSeen = NAV.epoch; this.navNew = true;
+      if (this.userScrolled) { this.userScrolled = false; this.fPending = true; }
     }
-    if (ges.wheel && inRect(p.x, p.y, rect)) { this.target = clamp(this.target + ges.wheel, 0, this.max); this.vel = 0; }
-    if (Math.abs(this.vel) > 8) { this.target += this.vel * dt; this.vel *= Math.pow(0.03, dt); if (this.target < 0 || this.target > this.max) this.vel *= 0.5; }
+    const now = nowS();
+    const rdt = this._rt ? Math.min(0.25, Math.max(0, now - this._rt)) : dt;
+    this._rt = now;
+    const edt = Math.max(dt, rdt);
+    const g = ges?.g;
+    if (ges?.justDown && g && rect && inRect(g.x, g.y, rect)) { this.drag = { y0: g.y, s0: this.y }; this.vel = 0; }
+    if (this.drag) {
+      if (ges?.moved && !ges.claimed) {
+        let ny = this.drag.s0 - (p.y - this.drag.y0);
+        if (ny < 0) ny *= 0.4; else if (ny > this.max) ny = this.max + (ny - this.max) * 0.4;
+        this.y = this.target = ny;
+        this.userScrolled = true;
+      }
+      if (p.down) return;
+      if (ges?.moved && !ges.claimed) this.vel = clamp(-(ges.releaseVel?.().vy ?? 0), -2600, 2600);
+      this.drag = null;
+    }
+    if (ges?.wheel && rect && inRect(p.x, p.y, rect)) { this.target = clamp(this.target + ges.wheel, 0, this.max); this.vel = 0; this.userScrolled = true; }
+    // 오른쪽 스틱 Y (패드): 기울기² × 초당 900 px
+    const sy = input.mode === 'pad' ? input.stickR?.y ?? 0 : 0;
+    if (Math.abs(sy) > 0.08 && this.max > 0) { this.target = clamp(this.target + Math.sign(sy) * sy * sy * 900 * edt, 0, this.max); this.vel = 0; this.userScrolled = true; }
+    if (Math.abs(this.vel) > 8) { this.target += this.vel * edt; this.vel *= Math.pow(0.03, edt); if (this.target < 0 || this.target > this.max) this.vel *= 0.5; }
     else this.vel = 0;
     this.target = clamp(this.target, 0, this.max);
-    this.y = lerp(this.y, this.target, 1 - Math.pow(0.0004, dt));
+    this.y = lerp(this.y, this.target, 1 - Math.pow(SCROLL_EASE, edt));
     if (Math.abs(this.y - this.target) < 0.3) this.y = this.target;
   }
-  /** [top,bottom] 구간이 보이도록 목표 조정 */
+  /** [top,bottom] 구간이 보이도록 목표 조정. 사용자가 직접 스크롤한 뒤에는 (다음 탐색 입력까지) 아무것도 하지 않는다 */
   ensure(top, bottom, viewH, pad = 6) {
+    if (this.userScrolled || this.drag) return;
     if (top - pad < this.target) this.target = top - pad;
     else if (bottom + pad > this.target + viewH) this.target = bottom + pad - viewH;
     this.target = clamp(this.target, 0, this.max);
@@ -487,7 +747,7 @@ export function gbutton(ctx, r, label, { hot = false, disabled = false, size = 1
 // ───────────────────────── 모달: 행동 선택 팝업 ─────────────────────────
 /**
  * new Popup({ title, items:[{label, sub?, color?, disabled?, reason?, run()}], x, y, w, onClose })
- * update(dt, nav, ges) → 계속 열려 있으면 true
+ * update(dt, nav, ges) → 계속 열려 있으면 true. 줄은 자기 이름(owner = 팝업)으로 ui.taps 에 등록 ('list', 터치 48 px 줄)
  */
 export class Popup {
   constructor({ title = '', items = [], x = null, y = null, w = 240, onClose = null, anchor = 'left' } = {}) {
@@ -521,7 +781,7 @@ export class Popup {
   }
   render(ctx, vw, vh) {
     const k = ease.outBack(clamp(this.t / 0.16, 0, 1));
-    const rowH = input.touchMode ? 44 : 36;
+    const rowH = input.touchMode ? 48 : 36;
     const head = this.title ? 34 : 8;
     const w = this.w, h = head + this.items.length * rowH + 10;
     let x = this.x ?? (vw - w) / 2, y = this.y ?? (vh - h) / 2;
@@ -541,7 +801,7 @@ export class Popup {
     this.rects.length = 0;
     this.items.forEach((it, i) => {
       const r = { x: x + 8, y: y + head + i * rowH, w: w - 16, h: rowH - 4 };
-      this.rects.push(r);
+      this.rects.push(zone(r, 'list', this, { src: 'menu.popup' }));
       if (i === this.i) selBar(ctx, r.x, r.y, r.w, r.h, this.t);
       const col = it.disabled ? '#6a5e60' : it.color || (i === this.i ? PAL.goldHi : PAL.bone);
       text(ctx, it.label, r.x + 16, r.y + r.h / 2 + 5, { size: 15, weight: 700, color: col, ow: 3 });
@@ -602,20 +862,19 @@ export class Confirm {
     labels.forEach((lb, i) => {
       const bx = this.single ? vw / 2 - bw / 2 : vw / 2 + (i === 0 ? -bw - 10 : 10);
       const r = { x: bx, y: by, w: bw, h: bh };
-      this.rects.push(r);
+      this.rects.push(zone(r, 'primary', this, { src: 'menu.confirm' }));
       gbutton(ctx, r, lb, { hot: this.i === i, t: this.t, size: 15 });
     });
     ctx.restore();
   }
 }
 
-// ───────────────────────── 가상 패드 숨김 (참조 카운트) ─────────────────────────
-let padHide = 0;
-export function hidePad(on) {
-  padHide = Math.max(0, padHide + (on ? 1 : -1));
-  const el = typeof document !== 'undefined' ? document.getElementById('touch') : null;
-  if (el) el.style.visibility = padHide > 0 ? 'hidden' : '';
-}
+// ───────────────────────── 가상 패드 숨김 (옛 이름) ─────────────────────────
+/**
+ * 옛 호출부 호환용: 아무것도 하지 않는다. 가상 패드 표시는 game.syncPad 가 장면 플래그로만 정한다 (platform §5.1, P-18):
+ * 패드를 숨길 장면은 this.hidePad = true (메뉴 장면은 생성자에서 켠다).
+ */
+export function hidePad(on) { /* no-op: scene.hidePad */ }
 
 // ───────────────────────── 떠다니는 불티 (배경 장식) ─────────────────────────
 export class Embers {

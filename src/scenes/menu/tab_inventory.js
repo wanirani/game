@@ -1,4 +1,6 @@
 // 인벤토리 탭: 분류 필터 · 정렬 · 아이템 격자(희귀도 테두리/+강화/수량/E 장착/잠금) · 상세 정보 · 사용/장착/잠금
+// 터치: 아이템을 길게 누르면(0.45초) 바로 행동 메뉴, 한 번 더 누르기도 그대로. 목록은 끌거나 휠·오른쪽 스틱으로 스크롤 (P-01: 직접 스크롤한 뒤에는
+// 방향키·패드로 선택을 옮길 때만 선택을 따라간다). 탭 영역은 ui.taps 등록부 (§6.3: 칸 44 · 분류·단추 44 CSS px 이상)
 import { text, FONT } from '../../core/ui.js';
 import { audio } from '../../core/audio.js';
 import { clamp } from '../../core/math.js';
@@ -20,7 +22,7 @@ const FILTERS = [
   { id: 'acc', name: '장신구', test: (b) => b.slot === 'acc' },
   { id: 'consumable', name: '소모품', test: (b) => b.slot === 'consumable' },
   { id: 'material', name: '재료', test: (b) => b.slot === 'material' },
-  { id: 'key', name: '중요 물품', test: (b) => b.slot === 'key' },
+  { id: 'key', name: '중요 물품', short: '중요', test: (b) => b.slot === 'key' },
 ];
 const EQUIP_KINDS = new Set(['weapon', 'head', 'body', 'cloak', 'acc']);
 const SORTS = [{ id: 'type', name: '종류순' }, { id: 'rarity', name: '희귀도순' }, { id: 'new', name: '최신순' }];
@@ -121,6 +123,15 @@ export class InventoryTab extends Tab {
     if (this.rev !== this.m.rev) this.rebuild();
     if (this.flash > 0) this.flash = Math.max(0, this.flash - dt * 2.5);
     this.sc.update(dt, this.gridRect, ges);
+    // 길게 누르기 → 그 아이템의 행동 메뉴 (§5.6)
+    if (ges.longPress) {
+      for (let k = 0; k < this.cellRects.length; k++) {
+        if (!ges.held(this.cellRects[k])) continue;
+        this.m.focus = 'content'; this.sub = 'grid'; this.i = k;
+        this.openActions(this.sel);
+        return;
+      }
+    }
     // 포인터
     for (let k = 0; k < this.filterRects.length; k++) if (ges.tap(this.filterRects[k])) { this.m.focus = 'content'; this.sub = 'grid'; this.setFilter(k); return; }
     if (ges.tap(this.sortRect) || (focused && nav.alt)) { this.m.focus = 'content'; this.sort(); return; }
@@ -128,7 +139,7 @@ export class InventoryTab extends Tab {
     if (!this.sc.dragging) {
       for (let k = 0; k < this.cellRects.length; k++) {
         const r = this.cellRects[k];
-        if (!r || !inRect(r.x + r.w / 2, r.y + r.h / 2, this.gridRect)) continue;
+        if (!r || r.thid) continue;
         if (ges.hoverIn(r) && this.sub === 'grid') this.i = k;
         if (ges.tap(r)) {
           this.m.focus = 'content'; this.sub = 'grid';
@@ -161,7 +172,7 @@ export class InventoryTab extends Tab {
   hints() {
     if (this.sub === 'filter') return [['←→', '분류'], ['↓', '목록'], ['X', '돌아가기']];
     if (this.sel?.b.slot === 'key') return [['↑↓←→', '고르기'], ['A', SORTS[this.sortMode].name]];
-    return [['↑↓←→', '고르기'], ['Z', '행동', '아이템을 한 번 더 터치하면 행동 메뉴'], ['A', SORTS[this.sortMode].name], ['C', '잠금']];
+    return [['↑↓←→', '고르기'], ['Z', '행동', '아이템을 길게 누르거나 한 번 더 터치하면 행동 메뉴'], ['A', SORTS[this.sortMode].name], ['C', '잠금']];
   }
 
   render(ctx, A) {

@@ -1,9 +1,63 @@
-// 메뉴용 영웅 미리보기: 가짜 엔티티로 drawHero 를 구동 (대기 호흡 + 주기적 공격 시연)
-// + 고딕 무대(아치 창문 역광·빛줄기·마법진 받침대) 배경
-import { drawHero } from '../../render/hero.js';
+// 메뉴용 영웅 미리보기: 가짜 엔티티로 drawHero 를 구동 (대기 호흡 + 공격 시연) + 고딕 무대(아치 창문 역광·빛줄기·마법진 받침대)
+// + 턴테이블 (platform.md §7.1–7.3, WP-5 — 사용자 요청 #6: 인벤토리에서 영웅을 돌려 앞·옆·뒷모습 보기)
+//
+// HeroView (다른 화면도 그대로 쓴다: CMP-UI 동료 탭, 파티 화면 등 — 예전 API 는 바뀌지 않았다)
+//   new HeroView({ auto = true, turntable = false, game = null })
+//   set(look, ch, key?) · showcase(n?) · pose(anim, dur?) · update(dt) · draw(ctx, cx, bottom, scale, { facing, noFx, rim })
+// 턴테이블 (turntable: true 일 때):
+//   stage(rect)        render 에서 무대 사각형을 알린다 (끌기·휠·탭 판정 영역, 끌기 배율의 기준 너비)
+//   control(dt, ges)   update 에서 update(dt) 보다 먼저 부른다. 포커스와 무관하게 입력을 읽는다 → 무대를 탭했으면 true
+//                      · 끌기(터치·마우스): 무대 너비 2.2 배 = 한 바퀴. 뗄 때 마지막 80 ms 속도로 관성(최대 12 rad/s, v *= 0.02^dt),
+//                        0.6 rad/s 아래로 느려지면 가장 가까운 칸(HERO_VIEW.steps, 기본 8 × 45°)으로 0.25 초 임계 감쇠 스냅
+//                      · 탭 = 공격 시연, 두 번 탭 = 초기화 · 휠(무대 위) = 한 칸에 22.5° · , . 누르고 있기 = 2.6 rad/s
+//                      · / = 자동 회전 켜고 끄기, 빠르게 두 번 = 초기화 · 패드 오른쪽 스틱 X = × 3.2 rad/s, R3 = 자동 회전 켜고 끄기 + 초기화
+//                      · 터치 ⟲ ⟳ 버튼 (탭 = 45°, 누르고 있기 = 계속) · ▶/❚❚ 자동 회전 버튼
+//   drawDeck(ctx, t)   무대 위 안내(보는 방향 이름) + 버튼 (터치 모드 · 마우스가 무대 위에 있을 때). 영웅 다음에 그린다
+//   reveal()           장비 공개: 한 바퀴(0.8 초, ease-out). 움직임 줄이기면 예전처럼 시전 동작
+//   resetYaw() · toggleAuto() · swipeBlock(x, y) (메뉴의 가로 밀기 탭 전환이 무대에서 시작하면 무시) · viewLabel()
+//   상태: yaw, yawVel, yawGoal, autoSpin(자동 회전 켬), spinning(지금 도는 중), idleT(입력 없던 시간), userYaw(사용자가 고른 각)
+//   자동 회전: 입력이 6 초 없으면 0.6 rad/s (settings.turntableAuto, 기본 켬). 어떤 입력이든 멈춘다. 움직임 줄이기면 끔
+//   공격 시연은 옆모습으로 그린 동작이라 0.18 초 동안 가까운 옆모습(0 또는 π)으로 돌린 뒤 시연하고, 끝나면 userYaw 로 돌아간다
+// 각도: 0 = 오른쪽 옆모습(예전 모습), +π/2 = 앞모습, π = 왼쪽 옆모습, −π/2 = 뒷모습 (render/hero.js drawHero opts.yaw)
+// 렌더러 계약(HERO_VIEW, heroViewInfo)은 hero.js 의 W3 export 라 네임스페이스로만 읽는다 (MASTER_PLAN R6).
+// HERO_VIEW 가 없으면 임시 대체 (platform §7.3): facing = sign(cos yaw), 가로 배율 max(0.12, |cos|) 카드 뒤집기 · 이름은 '옆모습' · 자동 회전 끔.
+// 채색 8방향 뷰가 없는 영웅(벡터 대체·로딩 중)도 같은 규칙: 기본 각 0, 옆모습에서만 멈춘다.
+// 오프스크린(무대 레이어) 배율은 ctx 의 실제 픽셀 배율 이하로 자른다 — 캔버스 백킹이 이미 품질 예산에 묶여 있다 (P-11, platform §6.4).
+import * as HERO from '../../render/hero.js';
 import { MOVESETS } from '../../data/movesets.js';
-import { TAU, rgba } from '../../core/math.js';
-import { glow, glowOval, Layer, PAL } from './common.js';
+import { TAU, clamp, ease, rgba } from '../../core/math.js';
+import { input } from '../../core/input.js';
+import { text, taps } from '../../core/ui.js';
+import { glow, glowOval, Layer, PAL, inRect } from './common.js';
+import * as MENU from './common.js';
+
+const PI = Math.PI;
+const wrapA = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+
+/** 턴테이블 수치 (platform §7.2) */
+export const TT = Object.freeze({
+  DEFAULT_YAW: PI / 4,   // 3/4 앞모습 (채색 뷰가 있을 때)
+  DRAG_TURN: 2.2,        // 한 바퀴 = 무대 너비 × 2.2
+  TAP_PX: 10,            // 이보다 적게 움직이면 탭
+  VEL_WIN: 0.08,         // 뗄 때 속도를 재는 구간 (초)
+  VEL_MAX: 12,           // rad/s
+  DAMP: 0.02,            // 관성 감쇠 v *= DAMP^dt
+  SNAP_V: 0.6,           // 이보다 느려지면 칸에 맞춘다 (rad/s)
+  SNAP_W: 20,            // 임계 감쇠 스냅 고유 진동수 (≈ 0.25 초에 자리 잡음)
+  WHEEL_STEP: PI / 8,    // 휠 한 칸 22.5°
+  WHEEL_UNIT: 80,        // 휠 deltaY 누적 이만큼 = 한 칸 (메뉴 Gesture 는 마우스 한 칸 ≈ 90)
+  WHEEL_REST: 0.35,      // 휠이 멈추고 이만큼 뒤 칸 사이에 있으면 굴린 쪽 칸으로
+  KEY_RATE: 2.6,         // , . (rad/s)
+  STICK_RATE: 3.2,       // 오른쪽 스틱 X × (rad/s)
+  HOLD_T: 0.35,          // ⟲ ⟳ 버튼을 이만큼 누르고 있으면 계속 회전
+  DOUBLE_T: 0.4,         // 두 번 탭 / 두 번 누름 간격
+  AUTO_IDLE: 6,          // 자동 회전 시작까지 입력 없는 시간
+  AUTO_RATE: 0.6,        // 자동 회전 속도 (한 바퀴 10.5 초)
+  REVEAL_T: 0.8,         // 장비 공개 한 바퀴
+  SHOW_T: 0.18,          // 공격 시연 전 옆모습으로 도는 시간
+  BACK_T: 0.3,           // 시연 뒤 userYaw 로 돌아가는 시간
+  RESET_T: 0.35,
+});
 
 /** 미리보기 품질: 큰 배율의 역광(림) 패스는 오프스크린 합성이 무거워 느린 기기에서는 자동으로 끈다 */
 export const HERO_Q = { rim: true, acc: 0, n: 0 };
@@ -17,8 +71,46 @@ export function heroPerfSample(ms) {
   }
 }
 
+/**
+ * 오프스크린(레이어·썸네일) 배율: ctx 가 지금 쓰는 실제 픽셀 배율(논리 px → 캔버스 px, uiScale 이면 uiK 포함)을 넘지 않게.
+ * 캔버스 백킹은 품질 등급의 픽셀 예산으로 이미 잘려 있으므로 그 이상은 예산 초과 (platform §6.4, P-11). want = 호출측 희망 배율
+ */
+export function pxScale(ctx, want = Infinity) {
+  let s = 1;
+  try { const m = ctx.getTransform(); s = Math.hypot(m.a, m.b) || 1; } catch { s = 1; }
+  s = Math.min(s, want > 0 ? want : s);
+  return Math.floor(clamp(s, 0.5, 3) * 64) / 64;
+}
+
+/** 공통 안내 줄(menu/common.hintRow)이 액션 이름을 글리프로 그리는가 (PLAT-MENU 의 P-01 Scroller.follow 와 함께 들어온다) */
+function glyphHints() {
+  try { return typeof MENU.Scroller?.prototype?.follow === 'function' || typeof MENU.shouldFollow === 'function'; } catch { return false; }
+}
+/**
+ * 턴테이블 조작 안내 (탭의 hints() 에 덧붙인다): [키/액션, 설명, 터치 문구]
+ * 글리프 안내 줄이면 액션 이름(stickR = 오른쪽 스틱 X · , . 키, viewReset = R3 · /), 아니면 지금 기기의 글자 키캡
+ */
+export function turntableHints() {
+  if (glyphHints()) return [['stickR', '회전', '영웅을 끌어서 돌려 보기'], ['viewReset', '자동 회전']];
+  if (input.mode === 'pad') return [['RS', '회전'], ['R3', '자동 회전']];
+  return [[', .', '회전', '영웅을 끌어서 돌려 보기'], ['/', '자동 회전']];
+}
+
+/** 렌더러가 보고하는 뷰 지원: null = 계약 없음(임시 대체) */
+function viewSupport(p) {
+  const HV = HERO.HERO_VIEW;
+  if (!HV) return null;
+  let painted = true;
+  try { const info = HERO.heroViewInfo?.(p); if (info && info.painted === false) painted = false; } catch { painted = true; }
+  const steps = Math.max(1, Math.round(Number(HV.steps) || 8));
+  return { steps, continuous: !!HV.continuous, painted, full: painted, legacy: false };
+}
+const LEGACY_SUP = Object.freeze({ steps: 2, continuous: false, painted: false, full: false, legacy: true });
+
+const VIEW_NAMES = { 0: '옆모습(오른쪽)', 45: '3/4 앞모습', 90: '앞모습', 135: '3/4 앞모습', 180: '옆모습(왼쪽)', '-180': '옆모습(왼쪽)', '-135': '3/4 뒷모습', '-90': '뒷모습', '-45': '3/4 뒷모습' };
+
 export class HeroView {
-  constructor({ auto = true } = {}) {
+  constructor({ auto = true, turntable = false, game = null } = {}) {
     this.p = {
       cx: 0, bottom: 0, facing: 1, anim: 'idle', animT: 0, move: null, moveT: 0, atkSpeedMul: 1,
       look: null, ch: null, vx: 0, vy: 0, onGround: true, rig: {}, t: 0, stats: { reach: 0 },
@@ -28,7 +120,30 @@ export class HeroView {
     this.seq = null; this.si = 0; this.st = 0;
     this.auto = auto; this.cool = 2.2;
     this.key = null;
+    this.game = game;
+    // ── 턴테이블 ──
+    this.tt = !!turntable;
+    this.yaw = 0; this.yawVel = 0; this.yawGoal = 0; this.userYaw = 0;
+    this.autoSpin = game?.settings?.turntableAuto !== false;
+    this.spinning = false; this.spinNow = false; this.spinGuard = false; this.spinDir = 1;
+    this.idleT = 0;
+    this.mode = 'idle';          // idle | drag | free | settle | rate | tween | auto
+    this.tw = null;              // {from, to, t, dur, fn, user, done}
+    this.drag = null;            // {x0, y0, yaw0, moved, s: [t, yaw, …]}
+    this.hold = null;            // {id, dir, t}
+    this.rate = 0; this.rateSrc = null;
+    this.pending = null;         // 옆모습으로 돌고 나서 시작할 시연
+    this.wAcc = 0; this.wIdle = 0; this.wheelT = 0; this.wheelDir = 0;
+    this.ctime = 0; this.lastTap = -9; this.tapX = 0; this.tapY = 0; this.lastReset = -9;
+    this.touched = false;        // 사용자가 돌렸는가 (아니면 채색 뷰가 준비될 때 기본 각으로)
+    this.rect = null;
+    this.btns = []; this.btnA = 0;
+    this.px = null; this.py = null;
+    this.introT = 0;
+    this._sup = null; this._supLook = undefined; this._supT = -9; this._full = null;
+    this._err = false;
   }
+  // ───────────────────────── 예전 API ─────────────────────────
   /** look 객체가 바뀌면(장비 미리보기 등) 체인 상태를 새로 만든다 */
   set(look, ch, key = null) {
     const p = this.p;
@@ -45,13 +160,17 @@ export class HeroView {
     const type = this.p.look?.weapon?.type || this.p.ch?.weaponType;
     const ms = MOVESETS[type];
     if (!ms?.ground?.length) return;
-    this.seq = ms.ground.slice(0, n); this.si = 0; this.st = 0;
+    this.startSeq(ms.ground.slice(0, n));
   }
   /** 특정 동작 한 번 (cast/charge/throw 등) */
-  pose(anim, dur = 0.8) { this.seq = [{ anim, dur, _pose: true }]; this.si = 0; this.st = 0; }
+  pose(anim, dur = 0.8) { this.startSeq([{ anim, dur, _pose: true }]); }
+  /** 탭을 열 때 잠깐 뒤 한 번 시연 */
+  intro(delay = 0.8) { this.introT = delay; }
+
   update(dt) {
     const p = this.p;
     this.clock += dt; p.t = this.clock;
+    if (this.introT > 0) { this.introT -= dt; if (this.introT <= 0) { this.introT = 0; this.showcase(); } }
     if (this.seq) {
       const mv = this.seq[this.si];
       this.st += dt;
@@ -59,24 +178,423 @@ export class HeroView {
       else { p.move = mv; p.moveT = this.st; p.anim = mv.anim; p.muzzleT = this.st > (mv.hit?.[0] ?? 0) && this.st < (mv.hit?.[0] ?? 0) + 0.07 ? 0.05 : 0; }
       if (this.st >= (mv.dur ?? 0.4) + (mv._pose ? 0 : 0.03)) {
         this.si++; this.st = 0;
-        if (this.si >= this.seq.length) { this.seq = null; p.move = null; p.anim = 'idle'; p.animT = 0; p.charging = 0; p.muzzleT = 0; this.cool = 5 + Math.random() * 3; }
+        if (this.si >= this.seq.length) {
+          this.endSeq();
+          this.cool = 5 + Math.random() * 3;
+          if (this.tt) this.tweenTo(this.userYaw, TT.BACK_T, { user: true });
+        }
       }
     } else {
       p.anim = 'idle'; p.animT += dt;
-      if (this.auto) { this.cool -= dt; if (this.cool <= 0) this.showcase(); }
+      // 자동 시연: 턴테이블에선 자동 회전이 대기 동작이다. 자동 회전이 꺼져 있을 때만, 사용자가 돌려 보는 중(6초)이 아닐 때만
+      const autoShow = this.auto && !this.pending && (!this.tt || (!this.spinAllowed() && this.idleT >= TT.AUTO_IDLE && this.mode === 'idle'));
+      if (autoShow) { this.cool -= dt; if (this.cool <= 0) this.showcase(); }
     }
+    if (this.tt) this.stepYaw(dt);
   }
   draw(ctx, cx, bottom, scale, { facing = 1, noFx = false, rim } = {}) {
     const p = this.p;
     if (!p.look) return;
     p.cx = cx; p.bottom = bottom; p.facing = facing;
-    const useRim = rim ?? (HERO_Q.rim ? undefined : false);
-    try { drawHero(ctx, p, null, useRim === undefined ? { scale, noFx } : { scale, noFx, rim: useRim }); } catch (e) { if (!this._err) { console.error(e); this._err = true; } }
+    const useRim = rim ?? (HERO_Q.rim && !this.lowTier() ? undefined : false);
+    const o = useRim === undefined ? { scale, noFx } : { scale, noFx, rim: useRim };
+    try {
+      if (!this.tt) { HERO.drawHero(ctx, p, null, o); return; }
+      if (HERO.HERO_VIEW) { o.yaw = this.yaw; HERO.drawHero(ctx, p, null, o); return; }
+      // 임시 대체 (platform §7.3): 옆모습 카드 뒤집기
+      const cs = Math.cos(this.yaw);
+      p.facing = cs >= 0 ? 1 : -1;
+      ctx.save();
+      ctx.translate(cx, bottom); ctx.scale(Math.max(0.12, Math.abs(cs)), 1); ctx.translate(-cx, -bottom);
+      HERO.drawHero(ctx, p, null, o);
+      ctx.restore();
+    } catch (e) { if (!this._err) { console.error(e); this._err = true; } }
+  }
+
+  // ───────────────────────── 턴테이블 ─────────────────────────
+  get reduceMotion() { return !!this.game?.settings?.reduceMotion; }
+  lowTier() {
+    const g = this.game;
+    if (!g) return false;
+    return (g.tier ?? g.quality ?? g.settings?.quality) === 'low';
+  }
+  /** 지금 look 의 뷰 지원 (look 이 바뀌거나, 채색 뷰가 아직 없으면 0.5 초마다 다시 묻는다: 로딩이 끝나면 켜짐) */
+  support() {
+    const look = this.p.look;
+    if (!this._sup || this._supLook !== look || (!this._sup.full && this.clock - this._supT > 0.5)) {
+      this._sup = viewSupport(this.p) ?? LEGACY_SUP;
+      this._supLook = look; this._supT = this.clock;
+    }
+    return this._sup;
+  }
+  get defaultYaw() { return this.support().full ? TT.DEFAULT_YAW : 0; }
+  /** 칸 크기 (채색 뷰 = 360°/steps, 대체 = 180°: 옆모습에서만 멈춘다) */
+  stepSize() { const S = this.support(); return S.full ? TAU / S.steps : PI; }
+  continuous() { const S = this.support(); return S.full && S.continuous; }
+  snapOf(a) { if (this.continuous()) return a; const s = this.stepSize(); return Math.round(a / s) * s; }
+  spinAllowed() { return this.tt && !this.reduceMotion && this.support().full; }
+  /** 가장 가까운 옆모습(0 또는 π)의 연속 각 */
+  profileOf(a) { const prof = Math.cos(a) >= 0 ? 0 : PI; return a + wrapA(prof - a); }
+  /** 지금 멈춰 있을(멈출) 각 */
+  restYaw() { return this.mode === 'settle' ? this.yawGoal : this.mode === 'tween' && this.tw?.user ? this.tw.to : this.snapOf(this.yaw); }
+
+  stage(rect) { this.rect = rect; }
+  swipeBlock(x, y) { return this.tt && (!!this.drag || this.mode === 'drag' || (!!this.rect && inRect(x, y, this.rect))); }
+  /** 보는 방향 이름 */
+  viewLabel() {
+    if (!this.support().full) return '옆모습';
+    const deg = Math.round(wrapA(this.yaw) / (PI / 4)) * 45;
+    return VIEW_NAMES[deg] ?? '앞모습';
+  }
+
+  tweenTo(target, dur, { fn = ease.outCubic, user = true, done = null } = {}) {
+    const from = this.yaw;
+    this.tw = { from, to: from + wrapA(target - from), t: 0, dur: Math.max(0.01, dur), fn, user, done };
+    this.mode = 'tween'; this.yawVel = 0;
+  }
+  settleTo(goal) { this.yawGoal = goal; this.mode = 'settle'; }
+  /** 공격 시연/동작을 멈추고 대기로 */
+  endSeq() {
+    const p = this.p;
+    this.seq = null; this.pending = null;
+    p.move = null; p.anim = 'idle'; p.animT = 0; p.charging = 0; p.muzzleT = 0;
+  }
+  startSeq(seq) {
+    if (!this.tt) { this.seq = seq; this.si = 0; this.st = 0; return; }
+    if (this.mode === 'drag' || this.hold) return; // 돌리는 중에는 시연하지 않는다
+    const rest = this.restYaw();
+    if (this.mode !== 'tween' || this.tw?.user) this.userYaw = rest;
+    this.stopSpin(false);
+    this.seq = null; this.pending = seq; this.si = 0; this.st = 0;
+    const to = this.profileOf(this.yaw);
+    if (Math.abs(to - this.yaw) < 0.005) { this.yaw = to; this.tw = null; this.mode = 'idle'; this.beginSeq(); } else this.tweenTo(to, TT.SHOW_T, { user: false, done: () => this.beginSeq() });
+  }
+  beginSeq() { if (!this.pending) return; this.seq = this.pending; this.pending = null; this.si = 0; this.st = 0; }
+  /** 사용자가 돌리기 시작: 시연·자동 회전·트윈 취소 */
+  beginUser() {
+    this.touched = true; this.idleT = 0; this.introT = 0;
+    if (this.seq || this.pending) this.endSeq();
+    this.spinning = false; this.spinNow = false; this.spinGuard = false;
+    this.tw = null;
+    if (this.mode === 'tween' || this.mode === 'auto') this.mode = 'idle';
+  }
+  /** 자동 회전 멈춤 → 도는 쪽의 가까운 칸으로 */
+  stopSpin(settle = true) {
+    this.spinNow = false;
+    if (this.mode !== 'auto') { this.spinning = false; return; }
+    this.spinning = false;
+    if (settle) this.settleTo(this.snapOf(this.yaw + this.spinDir * 0.12)); else { this.mode = 'idle'; this.yawVel = 0; }
+  }
+  /** 자동 회전 켜고 끄기. 켜면 바로 돈다 (켠 입력 — 누르고 있는 버튼·키 — 이 회전을 바로 멈추지 않게 guard) */
+  toggleAuto() {
+    this.autoSpin = !this.autoSpin;
+    if (this.autoSpin && this.spinAllowed()) { this.spinNow = true; this.spinGuard = true; } else this.stopSpin(true);
+  }
+  resetYaw() {
+    this.beginUser();
+    this.userYaw = this.defaultYaw;
+    this.tweenTo(this.userYaw, TT.RESET_T, { user: true });
+  }
+  /** 장비 공개: 한 바퀴 (움직임 줄이기·옆모습 대체면 예전처럼 시전 동작) */
+  reveal() {
+    if (!this.tt || this.reduceMotion || !this.support().full) { this.pose('cast', 0.55); return; }
+    if (this.mode === 'drag' || this.hold) return;
+    const rest = this.restYaw();
+    this.endSeq(); this.stopSpin(false); this.idleT = 0;
+    this.yaw = wrapA(this.yaw);
+    const from = this.yaw;
+    // 한 바퀴 돌아 원래 각(rest)에서 멈춘다: to = rest − 2π (오른쪽으로 돈다)
+    this.tw = { from, to: from + wrapA(rest - from) - TAU, t: 0, dur: TT.REVEAL_T, fn: ease.outCubic, user: true, done: null };
+    this.mode = 'tween'; this.yawVel = 0;
+  }
+  /** 탭을 다시 열었을 때: 대기 시간을 새로 센다 */
+  wake() { this.idleT = 0; }
+
+  /** 한 칸 돌리기 (⟲ ⟳ 탭) */
+  stepBy(dir) {
+    const base = this.mode === 'settle' ? this.yawGoal : this.snapOf(this.yaw);
+    const s = this.continuous() ? PI / 4 : this.stepSize();
+    this.settleTo(this.snapOf(base) + dir * s);
+  }
+  /** 휠 k 칸 (deltaY > 0 = 아래로 = 오른쪽으로 돈다) */
+  wheelBy(k) {
+    this.beginUser();
+    const base = this.mode === 'settle' ? this.yawGoal : this.yaw;
+    const dir = k > 0 ? -1 : 1;
+    this.settleTo(base + dir * Math.abs(k) * TT.WHEEL_STEP);
+    this.wheelT = TT.WHEEL_REST; this.wheelDir = dir;
+  }
+
+  /** 버튼 id (그린 버튼 위, 터치면 여유 영역 포함) | null */
+  btnAt(x, y) {
+    if (!this.btns.length) return null;
+    try {
+      const z = taps.at?.(x, y, this);
+      if (z && typeof z.id === 'string' && z.id.startsWith('tt:')) return z.id;
+    } catch { /* 등록부 없음 */ }
+    for (const b of this.btns) if (Math.hypot(x - b.x, y - b.y) <= b.r + 2) return b.id;
+    return null;
+  }
+
+  /**
+   * 입력 (update 에서, update(dt) 보다 먼저). ges = 메뉴 Gesture (탭·휠). 반환: 무대를 탭했는가(시연/초기화를 이미 처리함)
+   */
+  control(dt, ges = null) {
+    if (!this.tt) return false;
+    this.ctime += dt;
+    const p = input.pointer, r = this.rect;
+    let any = false, tapped = false;
+    // ── 입력이 있었나 (자동 회전 멈춤 · 6초 대기 재시작) ──
+    const moved = p.active && this.px !== null && (p.x !== this.px || p.y !== this.py);
+    this.px = p.x; this.py = p.y;
+    // 마우스를 움직이기만 한 것(hover)은 대기 시간만 새로 세고, 돌고 있는 자동 회전은 누름·끌기·휠·키·스틱이 멈춘다
+    if (p.down || p.justDown || input.anyPressed?.() || (input.stickL?.mag ?? 0) > 0.3 || (input.stickR?.mag ?? 0) > 0.3 || (ges?.wheel ?? 0) !== 0) any = true;
+    else for (const a of HELD) if (input.down(a)) { any = true; break; }
+    if (moved) this.idleT = 0;
+    // ── 누름 시작: 버튼 / 무대 끌기 ──
+    if (p.justDown) {
+      const id = this.btnAt(p.x, p.y);
+      if (id === 'tt:auto') { this.idleT = 0; this.toggleAuto(); tapped = true; }
+      else if (id) {
+        const dir = id === 'tt:L' ? 1 : -1;
+        this.beginUser();
+        this.hold = { id, dir, t: 0 };
+        this.stepBy(dir);
+      } else if (r && inRect(p.x, p.y, r)) {
+        this.drag = { x0: p.x, y0: p.y, yaw0: this.yaw, moved: false, s: [] };
+      }
+    }
+    // ── ⟲ ⟳ 누르고 있기 ──
+    if (this.hold) {
+      if (p.down) {
+        this.hold.t += dt;
+        if (this.hold.t >= TT.HOLD_T) { this.mode = 'rate'; this.rate = this.hold.dir * TT.KEY_RATE; this.rateSrc = 'btn'; }
+      } else {
+        if (this.mode === 'rate' && this.rateSrc === 'btn') this.settleTo(this.snapOf(this.yaw + this.rate * 0.08));
+        this.hold = null; tapped = true;
+      }
+    }
+    // ── 끌기 ──
+    if (this.drag) {
+      const d = this.drag;
+      if (p.down) {
+        const dx = p.x - d.x0;
+        if (!d.moved && Math.hypot(dx, p.y - d.y0) > TT.TAP_PX) { d.moved = true; this.beginUser(); d.yaw0 = this.yaw; ges?.claim?.(); }
+        if (d.moved) {
+          const w = Math.max(40, r?.w ?? 200);
+          this.mode = 'drag'; this.tw = null;
+          this.yaw = d.yaw0 - (dx / (TT.DRAG_TURN * w)) * TAU;
+          d.s.push(this.ctime, this.yaw);
+          if (d.s.length > 64) d.s.splice(0, d.s.length - 64);
+        }
+      } else {
+        if (d.moved) {
+          const s = d.s, n = s.length / 2;
+          let v = 0;
+          if (n >= 2) {
+            const tl = s[(n - 1) * 2], yl = s[(n - 1) * 2 + 1];
+            let i = n - 1;
+            while (i > 0 && tl - s[(i - 1) * 2] <= TT.VEL_WIN + 1e-6) i--;
+            const dtS = tl - s[i * 2];
+            if (dtS > 1e-4) v = (yl - s[i * 2 + 1]) / dtS;
+          }
+          this.yawVel = clamp(v, -TT.VEL_MAX, TT.VEL_MAX);
+          if (Math.abs(this.yawVel) < TT.SNAP_V) this.settleTo(this.snapOf(this.yaw));
+          else this.mode = 'free';
+        }
+        this.drag = null;
+      }
+    }
+    // ── 무대 탭: 공격 시연 / 두 번 탭 = 초기화 ──
+    if (r && ges?.tap?.(r) && !this.btnAt(p.x, p.y) && !this.hold && !tapped) {
+      tapped = true;
+      if (this.ctime - this.lastTap < TT.DOUBLE_T && Math.hypot(p.x - this.tapX, p.y - this.tapY) < 40) { this.lastTap = -9; this.resetYaw(); }
+      else { this.lastTap = this.ctime; this.tapX = p.x; this.tapY = p.y; this.idleT = 0; this.showcase(); }
+    }
+    // ── 휠 (무대 위에서만) ──
+    const over = r && p.active && inRect(p.x, p.y, r);
+    if (over && ges) {
+      if (typeof ges.wheelNotches === 'number' && ges.wheelNotches) this.wheelBy(ges.wheelNotches);
+      else if (ges.wheel) {
+        this.wAcc += ges.wheel; this.wIdle = 0;
+        const k = Math.trunc(this.wAcc / TT.WHEEL_UNIT);
+        if (k) { this.wAcc -= k * TT.WHEEL_UNIT; this.wheelBy(k); }
+      }
+    }
+    this.wIdle += dt; if (this.wIdle > 0.25) this.wAcc = 0;
+    // ── , . 키 · 오른쪽 스틱 X ──
+    if (!this.drag?.moved && !(this.mode === 'rate' && this.rateSrc === 'btn')) {
+      const sx = input.stickR?.x || 0;
+      let rate = 0;
+      if ((input.stickR?.mag ?? 0) > 0 && Math.abs(sx) > 0.02) rate = -sx * TT.STICK_RATE;
+      else { const L = input.down('viewL'), R = input.down('viewR'); if (L !== R) rate = (L ? 1 : -1) * TT.KEY_RATE; }
+      if (rate) {
+        if (!(this.mode === 'rate' && this.rateSrc === 'key')) this.beginUser();
+        this.mode = 'rate'; this.rate = rate; this.rateSrc = 'key';
+      } else if (this.mode === 'rate' && this.rateSrc === 'key') this.settleTo(this.snapOf(this.yaw + this.rate * 0.08));
+    }
+    // ── / · R3 : 자동 회전 켜고 끄기 (키보드는 두 번 누르면 초기화, 패드 R3 는 한 번에 초기화까지) ──
+    if (input.pressed('viewReset')) {
+      if (input.mode === 'pad') { this.resetYaw(); this.toggleAuto(); this.lastReset = -9; }
+      else if (this.ctime - this.lastReset < TT.DOUBLE_T) { this.lastReset = -9; this.toggleAuto(); this.resetYaw(); } // 두 번째 누름: 켜고 끈 것을 되돌리고 초기화
+      else { this.lastReset = this.ctime; this.toggleAuto(); }
+    }
+    // 자동 회전을 켠 입력(누르고 있는 ▶ 버튼·/ 키·R3)은 뗄 때까지 회전을 멈추지 않는다
+    if (this.spinGuard && !p.down && !input.down('viewReset')) this.spinGuard = false;
+    if (any) {
+      this.idleT = 0;
+      if (this.mode === 'auto' && !this.spinNow && !this.spinGuard) this.stopSpin(true);
+    }
+    return tapped;
+  }
+
+  /** 각도 적분 (update 에서) */
+  stepYaw(dt) {
+    if (!this.p.look) return;
+    const S = this.support();
+    // 채색 뷰 지원이 바뀜: 사용자가 아직 안 돌렸으면 기본 각으로 (로딩 끝 → 3/4 앞모습), 대체로 바뀌면 옆모습으로
+    if (this._full !== S.full) {
+      const first = this._full === null;
+      this._full = S.full;
+      if (first) { this.yaw = this.yawGoal = this.userYaw = this.defaultYaw; }
+      else if (!this.touched && !this.seq && !this.pending) { this.userYaw = this.defaultYaw; if (this.mode !== 'drag') this.tweenTo(this.userYaw, 0.4, { user: true }); }
+      else if (!S.full && this.mode === 'idle') this.settleTo(this.snapOf(this.yaw));
+    }
+    this.idleT += dt;
+    // 자동 회전 시작
+    if (this.mode === 'idle' && !this.seq && !this.pending && !this.drag && !this.hold && this.spinAllowed() && this.autoSpin && (this.spinNow || this.idleT >= TT.AUTO_IDLE)) {
+      this.mode = 'auto'; this.spinning = true; this.spinNow = false;
+    }
+    if (this.mode === 'auto' && !this.spinAllowed()) this.stopSpin(true);
+    switch (this.mode) {
+      case 'tween': {
+        const w = this.tw;
+        if (!w) { this.mode = 'idle'; break; }
+        w.t += dt;
+        const u = clamp(w.t / w.dur, 0, 1);
+        this.yaw = w.from + (w.to - w.from) * w.fn(u);
+        this.yawVel = 0;
+        if (u >= 1) {
+          this.tw = null; this.yaw = this.yawGoal = w.to; this.mode = 'idle';
+          if (w.user) this.userYaw = w.to;
+          w.done?.();
+        }
+        break;
+      }
+      case 'rate': this.yaw += this.rate * dt; this.yawVel = this.rate; break;
+      case 'auto': this.yaw += TT.AUTO_RATE * this.spinDir * dt; this.yawVel = TT.AUTO_RATE * this.spinDir; break;
+      case 'free': {
+        this.yaw += this.yawVel * dt;
+        this.yawVel *= Math.pow(TT.DAMP, dt);
+        if (Math.abs(this.yawVel) < TT.SNAP_V) {
+          if (this.continuous()) { this.mode = 'idle'; this.yawVel = 0; this.userYaw = this.yawGoal = this.yaw; } else this.settleTo(this.snapOf(this.yaw + this.yawVel * 0.15));
+        }
+        break;
+      }
+      case 'settle': {
+        if (this.wheelT > 0) {
+          this.wheelT -= dt;
+          if (this.wheelT <= 0 && !this.continuous()) {
+            const s = this.stepSize(), k = this.yawGoal / s;
+            this.yawGoal = (this.wheelDir > 0 ? Math.ceil(k - 1e-6) : Math.floor(k + 1e-6)) * s;
+          }
+        }
+        const g = this.yawGoal, w0 = TT.SNAP_W;
+        const a = -2 * w0 * this.yawVel - w0 * w0 * (this.yaw - g);
+        this.yawVel += a * dt; this.yaw += this.yawVel * dt;
+        if (Math.abs(this.yaw - g) < 0.002 && Math.abs(this.yawVel) < 0.03 && this.wheelT <= 0) {
+          this.yaw = g; this.yawVel = 0; this.mode = 'idle'; this.userYaw = g;
+        }
+        break;
+      }
+      default: break;
+    }
+    // 수치 표류 방지: 몇 바퀴 이상 돌면 모든 각을 같은 만큼 되돌린다
+    if (Math.abs(this.yaw) > 4 * PI && this.mode !== 'tween') {
+      const k = Math.round(this.yaw / TAU) * TAU;
+      this.yaw -= k; this.yawGoal -= k; this.userYaw = wrapA(this.userYaw);
+      if (this.drag) this.drag.yaw0 -= k;
+    }
+  }
+
+  /** 무대 위 안내 + 버튼 (영웅 다음에 그린다). label=false 면 방향 이름 생략 */
+  drawDeck(ctx, t, { label = true, labelY = null } = {}) {
+    const r = this.rect;
+    this.btns.length = 0;
+    if (!this.tt || !r) return;
+    const S = this.support();
+    if (label) {
+      const name = this.viewLabel() + (this.spinning ? ' · 자동 회전' : '');
+      text(ctx, name, r.x + r.w / 2, labelY ?? r.y + 17, { size: 11, align: 'center', weight: 800, color: PAL.goldMid, ow: 3 });
+    }
+    // 버튼: 터치 모드, 또는 마우스가 무대 위에 있을 때 (패드에선 숨김 — 하단 안내 줄의 RS·R3)
+    const p = input.pointer;
+    const touch = !!input.touchMode;
+    const hover = !touch && input.mode !== 'pad' && p.active && inRect(p.x, p.y, r);
+    const want = touch || hover || !!this.hold;
+    this.btnA = want ? Math.min(1, this.btnA + 0.2) : Math.max(0, this.btnA - 0.12);
+    if (this.btnA <= 0.01) return;
+    const R = clamp(Math.min(r.w, r.h) * 0.075, 12, 16);
+    const cy = r.y + r.h * 0.46;
+    const L = { id: 'tt:L', x: r.x + 6 + R, y: cy, r: R }, RR = { id: 'tt:R', x: r.x + r.w - 6 - R, y: cy, r: R };
+    const list = [L, RR];
+    const canAuto = this.spinAllowed() && S.full;
+    const Ra = Math.round(R * 0.72);
+    if (canAuto) list.push({ id: 'tt:auto', x: r.x + r.w - 7 - Ra, y: r.y + r.h - 7 - Ra, r: Ra });
+    ctx.save();
+    ctx.globalAlpha *= this.btnA;
+    for (const b of list) {
+      const hot = (this.hold?.id === b.id) || (hover && Math.hypot(p.x - b.x, p.y - b.y) <= b.r + 2);
+      roundBtn(ctx, b.x, b.y, b.r, hot);
+      if (b.id === 'tt:auto') {
+        ctx.fillStyle = this.autoSpin ? PAL.goldHi : PAL.bone;
+        if (this.autoSpin) { const w = b.r * 0.22, h = b.r * 0.9; ctx.fillRect(b.x - w * 1.9, b.y - h / 2, w * 1.4, h); ctx.fillRect(b.x + w * 0.5, b.y - h / 2, w * 1.4, h); }
+        else { const s = b.r * 0.5; ctx.beginPath(); ctx.moveTo(b.x - s * 0.7, b.y - s); ctx.lineTo(b.x + s, b.y); ctx.lineTo(b.x - s * 0.7, b.y + s); ctx.closePath(); ctx.fill(); }
+      } else orbitArrow(ctx, b.x, b.y + 1, b.r * 0.62, b.id === 'tt:L' ? -1 : 1, hot ? PAL.goldHi : PAL.bone);
+      const rect = { x: b.x - b.r, y: b.y - b.r, w: b.r * 2, h: b.r * 2 };
+      if (this.btnA > 0.5) { try { taps.add?.(b.id, rect, { kind: 'icon', owner: this, src: 'turntable' }); } catch { /* 등록부 없음 */ } }
+      this.btns.push(b);
+    }
+    ctx.restore();
+    void t;
   }
 }
+/** '입력 있음' 으로 보는 누르고 있는 액션 */
+const HELD = ['left', 'right', 'up', 'down', 'confirm', 'cancel', 'viewL', 'viewR', 'prevTab', 'nextTab'];
 
-/** 마법진 받침대 (발밑) */
-export function pedestal(ctx, x, y, s, t, color = PAL.gold) {
+/** 둥근 고딕 버튼 바탕 */
+function roundBtn(ctx, x, y, r, hot) {
+  ctx.beginPath(); ctx.arc(x, y, r, 0, TAU);
+  const g = ctx.createRadialGradient(x - r * 0.3, y - r * 0.35, 1, x, y, r);
+  g.addColorStop(0, hot ? 'rgba(150,26,44,0.95)' : 'rgba(58,20,34,0.9)'); g.addColorStop(1, 'rgba(14,6,12,0.92)');
+  ctx.fillStyle = g; ctx.fill();
+  ctx.strokeStyle = hot ? PAL.goldHi : PAL.goldDim; ctx.lineWidth = 1.4; ctx.stroke();
+}
+/** 회전 화살표: 받침대 궤도처럼 앞쪽을 도는 타원 호 + 화살촉. dir +1 = 오른쪽으로 돈다(⟳), −1 = 왼쪽(⟲) */
+function orbitArrow(ctx, x, y, s, dir, color) {
+  ctx.save();
+  ctx.translate(x, y); ctx.scale(dir, 1);
+  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 1.8; ctx.lineCap = 'round';
+  const rx = s, ry = s * 0.62, a1 = (20 * PI) / 180;
+  ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, (160 * PI) / 180, a1, true); ctx.stroke();
+  const ex = Math.cos(a1) * rx, ey = Math.sin(a1) * ry;
+  const tx = Math.sin(a1) * rx, ty = -Math.cos(a1) * ry, tl = Math.hypot(tx, ty) || 1; // 반시계로 도는 접선 (화면에선 오른쪽 위)
+  const ux = tx / tl, uy = ty / tl, h = s * 0.62;
+  ctx.beginPath();
+  ctx.moveTo(ex + ux * h * 0.55, ey + uy * h * 0.55);
+  ctx.lineTo(ex - ux * h * 0.5 - uy * h * 0.55, ey - uy * h * 0.5 + ux * h * 0.55);
+  ctx.lineTo(ex - ux * h * 0.5 + uy * h * 0.55, ey - uy * h * 0.5 - ux * h * 0.55);
+  ctx.closePath(); ctx.fill();
+  // 가운데 축 (영웅 자리)
+  ctx.globalAlpha *= 0.55; ctx.beginPath(); ctx.moveTo(0, -s * 0.95); ctx.lineTo(0, s * 0.2); ctx.stroke();
+  ctx.restore();
+}
+
+/**
+ * 마법진 받침대 (발밑). yaw 를 주면 턴테이블: 룬 고리가 영웅과 함께 돌고(yaw), 바닥에 고정된 8방향 점 중
+ * 영웅이 보는 쪽 점이 켜진다. yaw 가 null 이면 예전처럼 천천히 돈다
+ */
+export function pedestal(ctx, x, y, s, t, color = PAL.gold, yaw = null) {
   ctx.save();
   // 바닥 그림자
   ctx.fillStyle = 'rgba(0,0,0,0.6)';
@@ -87,9 +605,10 @@ export function pedestal(ctx, x, y, s, t, color = PAL.gold) {
   ctx.beginPath(); ctx.ellipse(x, y, 62 * s, 12 * s, 0, 0, TAU); ctx.stroke();
   ctx.strokeStyle = rgba(color, 0.3); ctx.lineWidth = 1;
   ctx.beginPath(); ctx.ellipse(x, y, 50 * s, 9.6 * s, 0, 0, TAU); ctx.stroke();
-  // 회전하는 룬 눈금 (앞쪽이 밝게)
+  // 룬 눈금 (앞쪽이 밝게): 턴테이블이면 영웅과 함께 돈다
+  const spin = typeof yaw === 'number' ? yaw : t * 0.35;
   for (let i = 0; i < 28; i++) {
-    const a = i / 28 * TAU + t * 0.35;
+    const a = i / 28 * TAU + spin;
     const sa = Math.sin(a);
     const x1 = x + Math.cos(a) * 52 * s, y1 = y + sa * 10 * s;
     const x2 = x + Math.cos(a) * 60 * s, y2 = y + sa * 11.6 * s;
@@ -97,17 +616,29 @@ export function pedestal(ctx, x, y, s, t, color = PAL.gold) {
     ctx.lineWidth = i % 4 === 0 ? 2 : 1;
     ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
   }
+  if (typeof yaw === 'number') {
+    // 8방향 점 (바닥 고정): 영웅의 코가 가리키는 쪽이 켜진다 (0 = 오른쪽, π/2 = 앞)
+    const k0 = ((Math.round(wrapA(yaw) / (PI / 4)) % 8) + 8) % 8;
+    for (let k = 0; k < 8; k++) {
+      const a = (k * PI) / 4, sa = Math.sin(a);
+      const px = x + Math.cos(a) * 68 * s, py = y + sa * 13.2 * s;
+      const on = k === k0;
+      if (on) glow(ctx, px, py, 9 * Math.max(0.7, s), '#ffd070', 0.9);
+      ctx.fillStyle = on ? '#fff0c0' : rgba(color, 0.25 + 0.25 * (0.5 + 0.5 * sa));
+      ctx.beginPath(); ctx.arc(px, py, (on ? 2.6 : 1.6) * Math.max(0.75, Math.min(1.3, s)), 0, TAU); ctx.fill();
+    }
+  }
   ctx.restore();
 }
 
 /**
  * 고딕 무대 배경 (정적 부분은 레이어 캐시)
- * accent: 영웅 기운 색
+ * accent: 영웅 기운 색. scale: 레이어 픽셀 배율 희망값 — ctx 의 실제 배율(= 픽셀 예산 안)을 넘지 않게 자른다
  */
 export class HeroStage {
   constructor() { this.layer = new Layer(); }
   draw(ctx, x, y, w, h, t, scale, accent = '#e8c872') {
-    this.layer.draw(ctx, 'stage', x, y, w, h, scale, (c) => {
+    this.layer.draw(ctx, 'stage', x, y, w, h, pxScale(ctx, scale), (c) => {
       const g = c.createLinearGradient(0, y, 0, y + h);
       g.addColorStop(0, '#171028'); g.addColorStop(0.6, '#0d0816'); g.addColorStop(1, '#050308');
       c.fillStyle = g; c.fillRect(x, y, w, h);
