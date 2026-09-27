@@ -3,8 +3,17 @@
 export const PUPPETS = {
  "azel": {
   "azel_bloodking": {
-   "h": "3bd78b9fcb21",
-   "turn": false,
+   "h": "2396bc506534",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "azel_dawnbringer": {
+   "h": "435d9801c6c7",
+   "turn": true,
    "lv": [
     "hi",
     "lo",
@@ -12,7 +21,16 @@ export const PUPPETS = {
    ]
   },
   "azel_dhampir": {
-   "h": "f414fe559c04",
+   "h": "2c091d5dd05a",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "azel_holyblade": {
+   "h": "d873e8599766",
    "turn": true,
    "lv": [
     "hi",
@@ -21,8 +39,17 @@ export const PUPPETS = {
    ]
   },
   "azel_nosferatu": {
-   "h": "064c8944c42f",
-   "turn": false,
+   "h": "8b5f7981447e",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "azel_seraph": {
+   "h": "0dd08096f31a",
+   "turn": true,
    "lv": [
     "hi",
     "lo",
@@ -30,8 +57,8 @@ export const PUPPETS = {
    ]
   },
   "azel_vampire": {
-   "h": "e7024d68d854",
-   "turn": false,
+   "h": "24f2c92aab26",
+   "turn": true,
    "lv": [
     "hi",
     "lo",
@@ -234,6 +261,35 @@ export const PUPPETS = {
    ]
   }
  },
+ "npc": {
+  "npc_alberto": {
+   "h": "0f2fa9e1e796",
+   "turn": false,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "npc_carmilla": {
+   "h": "3cf0e14fa722",
+   "turn": false,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "npc_rook2": {
+   "h": "ecac50f6c298",
+   "turn": false,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  }
+ },
  "sera": {
   "sera_archmage": {
    "h": "8529bfd811e6",
@@ -301,7 +357,7 @@ export const PUPPETS = {
  },
  "victor": {
   "victor_deadeye": {
-   "h": "257382a47840",
+   "h": "816d4917e723",
    "turn": true,
    "lv": [
     "hi",
@@ -310,7 +366,7 @@ export const PUPPETS = {
    ]
   },
   "victor_desperado": {
-   "h": "089492d0a93f",
+   "h": "e3ca0109a9b6",
    "turn": true,
    "lv": [
     "hi",
@@ -319,7 +375,7 @@ export const PUPPETS = {
    ]
   },
   "victor_executioner": {
-   "h": "8c8321655ffa",
+   "h": "554ba2da7f2f",
    "turn": true,
    "lv": [
     "hi",
@@ -328,7 +384,7 @@ export const PUPPETS = {
    ]
   },
   "victor_gunlord": {
-   "h": "6977b84d5d23",
+   "h": "3d911d59f9f1",
    "turn": true,
    "lv": [
     "hi",
@@ -337,7 +393,7 @@ export const PUPPETS = {
    ]
   },
   "victor_gunslinger": {
-   "h": "c670e9d2a6c9",
+   "h": "f11c8f0ae74e",
    "turn": true,
    "lv": [
     "hi",
