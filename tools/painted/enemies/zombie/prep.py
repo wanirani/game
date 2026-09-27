@@ -23,7 +23,8 @@ for p in (ARM, HAND):
     cv2.fillPoly(m, [np.array(p, np.int32)], 255)
 # the arm lies ON the silhouette edge: bleed only from pixels outside the arm/hand, so the fill takes shirt / trouser
 # colours (not the arm's own pale skin or the grey backdrop)
-op = (a[..., 3] > 128) & (m == 0)
+far = np.zeros_like(m); cv2.fillPoly(far, [np.array([(480, 1450), (705, 1450), (705, 1960), (480, 1960)], np.int32)], 255)   # the far hand (yellow claws)
+op = ndi.binary_erosion((a[..., 3] > 250) & (m == 0) & (far == 0), iterations=8)   # solid interior only (edge texels are grey rim)
 idx = ndi.distance_transform_edt(~op, return_distances=False, return_indices=True)
 rgb = a[..., :3][idx[0], idx[1]].astype(np.uint8)
 out = cv2.inpaint(np.ascontiguousarray(rgb[..., ::-1]), m, 15, cv2.INPAINT_TELEA)[..., ::-1]

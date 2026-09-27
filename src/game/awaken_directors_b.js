@@ -1515,25 +1515,20 @@ function azel(p, w, v) {
       glow(ctx, '#ff1a2a', cx, cy, 70 * pul, 0.55 * a);
       img(ctx, c, cx, cy, 0.42 * pul, 0.42 * pul, 0, a, false);
     }
-    // 피의 초승달 (잔향 이중상 → 흉터 → 폭발)
+    // 피의 초승달: 휘두르는 0.1초만 잔향 이중상 스프라이트 (품질별 3/2/1 장), 그 뒤의 흉터와 일제 폭발은
+    // 색마다 한 경로로 묶은 초승달 벡터 (지름 400px 이 넘는 회전 가산 스프라이트 9장을 매 프레임 그리지 않는다: 채우기 면적 ≈ 1/20)
+    const echoN = S.q === 'high' ? 3 : S.q === 'medium' ? 2 : 1;
     for (const c of S.cres) {
-      const u = u01(lt, c.t, 0.1), eu = ease.outCubic(u), cs = spr(c.key);
-      if (lt < c.t) continue;
-      if (S.burst >= 0 && lt >= S.burst) {
-        const bu = u01(lt, S.burst, 0.3);
-        if (bu < 1) img(ctx, cs, c.x, c.y, c.sc * (1 + 0.4 * bu), c.sc * (1 + 0.4 * bu), c.a0 + c.sweep, 1 - bu, true);
-        continue;
-      }
-      if (u < 1) {
-        for (let k = 3; k >= 0; k--) {
-          const au = Math.max(0, eu - k * 0.14);
-          img(ctx, cs, c.x + k * 3, c.y + k * 2, c.sc, c.sc, c.a0 + c.sweep * au, k ? 0.42 / (k + 0.5) : 1, k ? true : c.add);
-        }
-      } else {
-        const sa = 0.3 + 0.1 * Math.sin(lt * 17 + c.a0 * 5);
-        img(ctx, cs, c.x, c.y, c.sc, c.sc, c.a0 + c.sweep, sa, true);
+      if (lt < c.t || (S.burst >= 0 && lt >= S.burst)) continue;
+      const u = u01(lt, c.t, 0.1);
+      if (u >= 1) continue;
+      const eu = ease.outCubic(u), cs = spr(c.key);
+      for (let k = echoN - 1; k >= 0; k--) {
+        const au = Math.max(0, eu - k * 0.14);
+        img(ctx, cs, c.x + k * 3, c.y + k * 2, c.sc, c.sc, c.a0 + c.sweep * au, k ? 0.42 / (k + 0.5) : 1, k ? true : c.add);
       }
     }
+    drawScars(ctx, S, lt);
     // 손가락 튕기기 섬광
     if (S.snap >= 0 && S.snapAt) { const a = 1 - u01(lt, S.snap, 0.3); glow(ctx, '#ffffff', S.snapAt.x, S.snapAt.y, 50, 0.8 * a); flare(ctx, S.snapAt.x, S.snapAt.y, 40, '#ffffff', a, 0.3); }
     // 박쥐 떼 (노스페라투)

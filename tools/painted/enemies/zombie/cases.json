@@ -1,0 +1,4 @@
+[["rise .3", {"anim": "rise", "state": "rise", "stateT": 0.27}], ["rise .7", {"anim": "rise", "state": "rise", "stateT": 0.6}],
+ ["idle", {"anim": "idle", "state": "walk"}], ["walk a", {"anim": "walk", "state": "walk"}], ["walk b", {"anim": "walk", "state": "walk", "tOff": 0.31}],
+ ["walk c", {"anim": "walk", "state": "walk", "tOff": 0.62}], ["hurt", {"anim": "walk", "flashT": 0.11, "stun": 0.2}], ["air", {"anim": "idle", "onGround": false}],
+ ["dying", {"anim": "idle", "dying": 0.15}]]

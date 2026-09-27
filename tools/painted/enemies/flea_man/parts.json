@@ -1,0 +1,12 @@
+{
+ "id": "flea_man",
+ "tier": "T1",
+ "srcTD": 4,
+ "note": "T1: three painted frames of one Kling image (flea take 1): crouch, idle, leap; cross-faded and squashed/stretched by the jump velocity.",
+ "sources": { "f": { "raw": "flea_man_ref.webp", "file": "a2_flea.png", "k": 0.057 } },
+ "parts": {
+  "crouch": { "src": "f", "box": [180, 470, 905, 1215], "keep": "largest", "piv": { "a": [500, 1195], "eye": [811, 634], "tip": [863, 771] } },
+  "idle": { "src": "f", "box": [925, 470, 1650, 1215], "keep": "largest", "piv": { "a": [1240, 1195], "eye": [1557, 643], "tip": [1617, 780] } },
+  "leap": { "src": "f", "box": [1700, 390, 2470, 1170], "keep": "largest", "piv": { "a": [2080, 900], "eye": [2371, 557], "tip": [2423, 694] } }
+ }
+}

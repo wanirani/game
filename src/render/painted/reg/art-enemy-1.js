@@ -15,6 +15,7 @@ import * as crow from '../enemies/crow.js';
 import * as medusa_head from '../enemies/medusa_head.js';
 import * as mimic from '../enemies/mimic.js';
 import * as wolf from '../enemies/wolf.js';
+import * as zombie from '../enemies/zombie.js';
 
 export const bosses = {};
 export const enemies = [
@@ -27,6 +28,7 @@ export const enemies = [
   { mod: medusa_head },
   { mod: mimic },
   { mod: wolf },
+  { mod: zombie },
 ];
 export const companions = {};
 export const npcs = {};

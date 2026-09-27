@@ -225,7 +225,11 @@ export class MenuScene extends Scene {
     const kOut = this.closing ? 1 - clamp(this.closing / 0.14, 0, 1) : 1;
     const k = kIn * kOut;
     // 배경: 흐린 스냅샷 + 어둠 + 질감 + 비네팅
+    // 1/4 해상도 흐린 스냅샷을 4배 확대: 흐림에는 쌍선형('low')이면 충분하고 'high' 는 매 프레임 수십 ms (P-11)
+    const sq = ctx.imageSmoothingQuality;
+    ctx.imageSmoothingQuality = 'low';
     ctx.drawImage(this.snap, 0, 0, W, H);
+    ctx.imageSmoothingQuality = sq;
     ctx.save();
     ctx.globalAlpha = k;
     this.bgLayer.draw(ctx, 'bg' + (assets.has('tex/tex_blood_marble') ? 1 : 0), 0, 0, W, H, null, (c) => this.drawBackdrop(c, W, H));

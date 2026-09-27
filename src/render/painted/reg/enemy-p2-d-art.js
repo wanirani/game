@@ -10,6 +10,8 @@ import * as nihil_spawn from '../enemies/nihil_spawn.js';
 import * as storm_harpy from '../enemies/storm_harpy.js';
 import * as thunder_roc from '../enemies/thunder_roc.js';
 import * as gale_knight from '../enemies/gale_knight.js';
+import * as puppeteer from '../enemies/puppeteer.js';
+import * as faceless from '../enemies/faceless.js';
 
 export const bosses = {};
 export const enemies = [
@@ -18,6 +20,8 @@ export const enemies = [
   { mod: storm_harpy },
   { mod: thunder_roc },
   { mod: gale_knight },
+  { mod: puppeteer },
+  { mod: faceless },
 ];
 export const companions = {};
 export const npcs = {};

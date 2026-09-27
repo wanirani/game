@@ -9,6 +9,7 @@ import * as glass_wraith from '../enemies/glass_wraith.js';
 import * as reflection from '../enemies/reflection.js';
 import * as siren from '../enemies/siren.js';
 import * as forge_imp from '../enemies/forge_imp.js';
+import * as abyss_angler from '../enemies/abyss_angler.js';
 
 export const bosses = {};
 export const enemies = [
@@ -17,6 +18,7 @@ export const enemies = [
   { mod: reflection },
   { mod: siren },
   { mod: forge_imp },
+  { mod: abyss_angler },
 ];
 export const companions = {};
 export const npcs = {};

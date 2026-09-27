@@ -24,10 +24,11 @@ function place(name, x, y, rot, vn = 'base', sx = 1, sy = 1, pv = 'a', kind = 0)
   o.name = name; o.x = x; o.y = y; o.rot = rot; o.vn = vn; o.sx = sx; o.sy = sy; o.pv = pv; o.kind = kind; NP++;
   return o;
 }
-let BEND = 0, CT = 0, CS = 0;
+let BEND = 0, CT = 0, CS = 0, TD = 2;
+const _w = [0, 0];
 const bendN = (u) => BEND * (0.4 + u);
 const bendF = (u) => -BEND * (0.4 + u);
-const capeOff = (u) => { _q[0] = (-u * u * CS - Math.sin(CT * 5 - u * 4) * u * 1.6) * 4; _q[1] = 0; return _q; };
+const capeOff = (u) => { _w[0] = (-u * u * CS - Math.sin(CT * 5 - u * 4) * u * 1.6) * TD; _w[1] = 0; return _w; };
 
 const Q = { lean: 0, bob: 0, el: 0, elF: 0, lanceA: 0, pull: 0, hipF: 0, hipB: 0, tele: 0, swing: 0, trail: null, head: 0, dash: 0, fold: 1, speed: 0 };
 function pose(e) {
@@ -129,7 +130,7 @@ export function draw(ctx, e, world, o, rig) {
     if (!e._pcorpse) { K.begin(ctx, rig, 0); layout(e, q); K.end(); die(e, world, rig); }
     return;
   }
-  CT = t; CS = 3 + q.speed * 9;
+  CT = t; TD = rig.td; CS = 3 + q.speed * 9;
   BEND = 0.1 * Math.cos(t * 6) - 0.02;
   const sq = K.squashK(e);
   if (sq > 0) ctx.scale(1 + 0.06 * sq, 1 - 0.06 * sq);

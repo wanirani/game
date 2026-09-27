@@ -49,18 +49,20 @@ function glowSprite(color) {
 /** 가산 합성 발광 (색은 #hex) */
 export function glow(ctx, x, y, r, color, a = 1) {
   if (a <= 0 || r <= 0) return;
-  const op = ctx.globalCompositeOperation, ga = ctx.globalAlpha;
+  const op = ctx.globalCompositeOperation, ga = ctx.globalAlpha, sq = ctx.imageSmoothingQuality;
   ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = ga * clamp(a, 0, 1);
+  ctx.imageSmoothingQuality = 'low'; // 부드러운 방사 그라디언트 확대: 쌍선형이면 충분 ('high' 는 소프트웨어 래스터에서 10배 느리다 — P-11)
   ctx.drawImage(glowSprite(color), x - r, y - r, r * 2, r * 2);
-  ctx.globalCompositeOperation = op; ctx.globalAlpha = ga;
+  ctx.globalCompositeOperation = op; ctx.globalAlpha = ga; ctx.imageSmoothingQuality = sq;
 }
 /** 가로로 긴 타원형 발광 */
 export function glowOval(ctx, x, y, rx, ry, color, a = 1) {
   if (a <= 0) return;
-  const op = ctx.globalCompositeOperation, ga = ctx.globalAlpha;
+  const op = ctx.globalCompositeOperation, ga = ctx.globalAlpha, sq = ctx.imageSmoothingQuality;
   ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = ga * clamp(a, 0, 1);
+  ctx.imageSmoothingQuality = 'low';
   ctx.drawImage(glowSprite(color), x - rx, y - ry, rx * 2, ry * 2);
-  ctx.globalCompositeOperation = op; ctx.globalAlpha = ga;
+  ctx.globalCompositeOperation = op; ctx.globalAlpha = ga; ctx.imageSmoothingQuality = sq;
 }
 
 // ───────────────────────── 기본 도형 ─────────────────────────
@@ -395,7 +397,11 @@ export class Layer {
       try { fn(c); } catch (e) { console.error(e); }
       this.key = k;
     }
+    // 거의 1:1 복사(배율을 1/64 로 내림)라 'medium' 이면 충분하다. 'high' 는 1:1 이 아닌 전체 화면 복사가 10배 느리다 (P-11)
+    const sq = ctx.imageSmoothingQuality;
+    if (sq === 'high') ctx.imageSmoothingQuality = 'medium';
     ctx.drawImage(this.cv, 0, 0, this.cv.width, this.cv.height, x, y, this.cv.width / scale, this.cv.height / scale);
+    ctx.imageSmoothingQuality = sq;
   }
   invalidate() { this.key = null; }
   free() { if (this.cv) { this.cv.width = this.cv.height = 1; } this.cv = null; this.key = null; }
@@ -696,9 +702,14 @@ export class Scroller {
       if (this.userScrolled) { this.userScrolled = false; this.fPending = true; }
     }
     const now = nowS();
-    const rdt = this._rt ? Math.min(0.25, Math.max(0, now - this._rt)) : dt;
+    const gap = this._rt ? now - this._rt : 0;
     this._rt = now;
-    const edt = Math.max(dt, rdt);
+    // 0.3초 넘게 불리지 않았다(다른 탭·모달 뒤에서 돌아옴) → 이어서 dt 로 (스틱·관성이 한 번에 튀지 않게)
+    const rdt = gap > 0.3 ? dt : Math.min(0.25, Math.max(0, gap));
+    // 한 rAF 에 틱이 여럿 돌면(30fps 기기 = 2틱) 틱마다 dt 로 이미 실제 시간과 같다 → dt.
+    // game 은 한 rAF 에 최대 5틱만 돌리고 남은 시간을 버리므로, 그보다 긴 정지 뒤 첫 틱에만 버려질 몫을 더한다
+    // (이전: max(dt, 실제 간격) → 같은 rAF 의 둘째 틱이 dt 를 한 번 더 세어 스틱·관성 스크롤이 1.5배 빨랐다)
+    const edt = rdt > 5 * dt ? rdt - 4 * dt : dt;
     const g = ges?.g;
     // 이 목록이 못 본 사이에 끝난 손가락(가로 밀기로 탭을 떠났다 돌아옴 등)의 끌기는 버린다 → 돌아와도 목록이 튀지 않는다
     if (this.drag && (!g || this.drag.g !== g || (g.done && !ges.released))) this.drag = null;

@@ -1,0 +1,12 @@
+{
+ "id": "corpse_worm",
+ "tier": "T1",
+ "srcTD": 4,
+ "note": "T1: one painted maggot (Kling worm take 2) bent along a bending chain (crawl wave, rear-up, lunge). The blood pool Kling painted under it is faded out at the bottom edge.",
+ "sources": { "w": { "raw": "corpse_worm_ref.webp", "file": "a2_worm.png", "k": 0.0255 } },
+ "parts": {
+  "body": { "src": "w", "box": [80, 330, 2330, 1168], "keep": "largest",
+   "fade": [[80, 1100, 2330, 1168, "down", 1.2]],
+   "piv": { "a": [100, 1043], "b": [2290, 1043], "eye": [2071, 812], "mouth": [2160, 990], "top": [1300, 360] } }
+ }
+}

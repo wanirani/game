@@ -1,0 +1,27 @@
+{
+ "id": "possessed",
+ "tier": "T2",
+ "srcTD": 4,
+ "note": "T2 humanoid, all from parts sheet 1: head with the straw hat (the 3/4 figure, ghost wisps cut away; faces left -> flipX), vest torso (the side piece minus its hanging arm), upper arm with the torn sleeve and forearm with the bare hand (the separate straight arm), thigh and shin+boot (the upright leg), the horizontal pitchfork. k 0.037 anchored to the 80 px logic height; the fork k 0.038 (~80 px, like the vector fork).",
+ "sources": {
+  "s1": { "raw": "possessed_sheet1.webp", "file": "e1_possessed_sheet1.png", "k": 0.037 }
+ },
+ "parts": {
+  "head": { "src": "s1", "box": [50, 80, 790, 520], "flipX": true,
+            "poly": [[60,320],[140,240],[260,190],[320,120],[460,90],[590,140],[640,200],[770,220],[750,290],[600,320],[540,380],[530,460],[470,490],[400,496],[330,460],[300,400],[240,350],[120,340]],
+            "piv": { "a": [410, 480], "eye": [410, 296], "eye2": [480, 300], "mouth": [380, 420] } },
+  "torso": { "src": "s1", "box": [920, 160, 1200, 800], "flipX": true,
+             "poly": [[930,180],[1120,170],[1156,236],[1132,400],[1120,524],[1130,600],[1140,720],[1124,764],[1020,784],[956,764],[930,640],[940,400]],
+             "piv": { "hip": [1040, 770], "neck": [1030, 196], "shoulder": [1100, 270], "shoulder2": [1060, 262] } },
+  "uarm": { "src": "s1", "box": [1566, 177, 1745, 690], "keep": "largest",
+            "piv": { "a": [1610, 225], "b": [1622, 640] } },
+  "farm": { "src": "s1", "box": [1570, 600, 1860, 1005], "keep": "largest",
+            "piv": { "a": [1625, 652], "b": [1760, 850], "grip": [1790, 930] } },
+  "thigh": { "src": "s1", "box": [1968, 158, 2140, 690], "keep": "largest",
+             "piv": { "a": [2050, 205], "b": [2045, 640] } },
+  "shin": { "src": "s1", "box": [1985, 600, 2235, 1160], "keep": "largest",
+            "piv": { "a": [2045, 640], "b": [2070, 1150], "toe": [2220, 1130] } },
+  "fork": { "src": "s1", "box": [121, 1237, 2240, 1507], "keep": "largest", "k": 0.038,
+            "piv": { "a": [1000, 1356], "grip": [1000, 1356], "grip2": [560, 1356], "tip": [2235, 1382], "neck": [1760, 1352] } }
+ }
+}

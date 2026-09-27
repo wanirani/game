@@ -705,7 +705,7 @@ export class RemapPage {
     text(ctx, `${Math.ceil(c.limit - c.t)}초`, x + w - 36, y + 83, { size: 12, align: 'left', weight: 800, family: FONT.num, color: DIM, ow: 2 });
     if (this.msg) text(ctx, this.msg, W / 2, y + 108, { size: 13, align: 'center', weight: 700, color: '#ff9a8a', ow: 2, maxWidth: w - 30 });
     if (touch) {
-      if (!this.msg && c.wizard) text(ctx, '기다리면 이 행동은 건너뜁니다', W / 2, y + 108, { size: 13, align: 'center', weight: 700, color: DIM, ow: 2, maxWidth: w - 30 });
+      if (!this.msg && c.wizard) text(ctx, '기다리면 다음 행동으로 넘어갑니다', W / 2, y + 108, { size: 13, align: 'center', weight: 700, color: DIM, ow: 2, maxWidth: w - 30 });
       const cw = Math.min(200, w - 60), r = { x: W / 2 - cw / 2, y: y + h - L.th - 14, w: cw, h: L.th };
       gbutton(ctx, r, '취소', { size: 16 });
       if (owner) taps.add('cap:cancel', r, { owner, kind: 'primary', src: 'options.capture' });

@@ -819,10 +819,11 @@ function kaelDirector(p, w, v) {
       if (lt < 0.3) { const h = hand(), k = 1 - lt / 0.3; ctx.globalCompositeOperation = 'lighter'; K.glow(ctx, h.x, h.y - 20, 70 + 40 * Math.sin(lt * 40), LASH[0], k); }
     },
     light(L, e) {
+      // 광원은 화면 크기 원을 두 번(구멍·색광) 그리므로 겹치는 큰 빛을 줄인다: 채찍은 막 휘두른 것만, 감옥 빛은 마무리 전까지
       L.add(p.cx, p.cy, 220, LASH[0], 1);
-      if (S.cage) L.add(S.cage.C.x, S.cage.C.y, 420, LASH[0], 1.3);
+      if (S.cage && !S.fin) L.add(S.cage.C.x, S.cage.C.y, 420, LASH[0], 1.3);
       if (S.fin) L.add(S.fin.C.x, S.fin.C.y, 900, GOLD, 2 * clamp((e.life - e.lt) / 0.6, 0, 1));
-      for (const Lh of lashes.slice(-3)) L.add(bzx(Lh, 0.5), bzy(Lh, 0.5), 260, LASH[0], 0.7);
+      else for (let i = Math.max(0, lashes.length - 2); i < lashes.length; i++) { const Lh = lashes[i]; if (e.lt - Lh.t0 < 0.35) L.add(bzx(Lh, 0.5), bzy(Lh, 0.5), 260, LASH[0], 0.7); }
     },
   });
 
@@ -1062,7 +1063,7 @@ function seraDirector(p, w, v) {
     },
     light(L, e) {
       L.add(p.cx, p.cy, 260, '#fff8d0', 1.2);
-      if (S.gate) L.add(S.gate.x, S.gate.y, 420, '#fff2b0', 1.4);
+      if (S.gate && !S.fin) L.add(S.gate.x, S.gate.y, 420, '#fff2b0', 1.4);   // 마무리 뒤에는 십자광 빛 하나로 (큰 광원 겹침 줄이기)
       for (const P of S.pillars) if (e.lt - P.t0 < PLIFE) L.add(P.x, P.gy - 120, 260, P.col[0], 1.2);
       if (S.fin) L.add(S.fin.x, S.fin.gy - 120, 900, '#fff2b0', 2 * clamp((e.life - e.lt) / 0.6, 0, 1));
     },
@@ -1360,8 +1361,9 @@ function victorDirector(p, w, v) {
     },
     light(L, e) {
       L.add(p.cx, p.cy, 220, '#ffd070', 1);
-      for (const T of S.trails) L.add(T.x1, T.y1, 160, TRACE, 0.9);
-      if (S.det && e.lt - S.det.t0 < 0.6) for (const q of S.det.pts) L.add(q.x, q.y, 260, SIL, 1.4);
+      // 광원은 화면 크기 원을 두 번 그리므로 수를 묶는다: 탄도는 최근 4개, 표식 폭발은 6곳까지
+      for (let i = Math.max(0, S.trails.length - 4); i < S.trails.length; i++) { const T = S.trails[i]; L.add(T.x1, T.y1, 160, TRACE, 0.9); }
+      if (S.det && e.lt - S.det.t0 < 0.6) for (let i = 0; i < S.det.pts.length && i < 6; i++) { const q = S.det.pts[i]; L.add(q.x, q.y, 260, SIL, 1.4); }
     },
   });
 }

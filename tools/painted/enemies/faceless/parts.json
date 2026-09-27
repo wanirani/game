@@ -1,0 +1,27 @@
+{
+ "id": "faceless",
+ "tier": "T2",
+ "srcTD": 4,
+ "note": "T2 tall stalker from parts sheet 2 (turnaround; the side figure faces LEFT -> flipX). Body = side figure from the skull to the jacket hem plus the long coat tails behind the legs; its hanging near arm is inpainted into the jacket (the silhouette keeps its width) and the legs below the hem are cut off. Arm = the straight hanging arm of the front figure (sleeve + white cuff + long clawed hand), one piece rotated at the shoulder and stretched along its length for the grab. Leg = the loose trouser leg with the polished shoe (x2, far leg darkened). k 0.065 -> 106 px tall (logic 36x104).",
+ "sources": {
+  "s2": { "raw": "faceless_sheet2.webp", "file": "faceless_sheet2.png", "k": 0.065 }
+ },
+ "parts": {
+  "body": {
+   "src": "s2", "box": [880, 70, 1272, 1720], "keep": "largest", "flipX": true,
+   "poly": [[880, 70], [1272, 70], [1272, 1720], [1088, 1720], [1088, 905], [880, 905]],
+   "inpaint": [[[1062, 310], [1150, 325], [1156, 500], [1142, 700], [1112, 905], [1040, 905], [1050, 700], [1066, 480]]],
+   "fade": [[880, 880, 1088, 905, "down", 1.0]],
+   "piv": { "a": [1030, 885], "hipN": [1045, 885], "hipF": [1015, 885], "shoulder": [1090, 335], "neck": [1015, 285], "face": [960, 150], "eyeL": [945, 140], "eyeR": [985, 145], "top": [990, 80] }
+  },
+  "arm": {
+   "src": "s2", "box": [555, 290, 700, 1115], "keep": "largest",
+   "poly": [[572, 300], [640, 300], [665, 420], [690, 700], [700, 900], [700, 1115], [590, 1115], [585, 880], [560, 600], [560, 380]],
+   "piv": { "a": [600, 345], "b": [640, 1090], "wrist": [640, 890], "tips": [630, 1095] }
+  },
+  "leg": {
+   "src": "s2", "box": [1275, 780, 1532, 1705], "keep": "largest", "flipX": true,
+   "piv": { "a": [1405, 800], "b": [1470, 1640], "knee": [1440, 1230] }
+  }
+ }
+}

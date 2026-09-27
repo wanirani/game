@@ -1,0 +1,12 @@
+{
+ "id": "ectoplasm",
+ "tier": "T1",
+ "srcTD": 4,
+ "note": "T1: one painted translucent blob with trapped faces (Kling ecto take 1); the long drip stalk Kling painted below is faded out. Wobble = seam-free warpY, squash/stretch, lunge stretch, strip dissolve.",
+ "sources": { "e": { "raw": "ectoplasm_ref.webp", "file": "a2_ecto.png", "k": 0.0263, "mode": "soft" } },
+ "parts": {
+  "body": { "src": "e", "box": [230, 80, 1810, 1860], "keep": "largest",
+   "fade": [[230, 1520, 1810, 1860, "down", 1.3]],
+   "piv": { "a": [1024, 806], "core": [1024, 704], "bottom": [1024, 1500] } }
+ }
+}
