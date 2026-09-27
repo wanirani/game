@@ -1089,6 +1089,26 @@ export function nudgePlayer(world, dx, dy = 0) {
   return moved;
 }
 
+// ═════════════════════════════ 경기장 경계 보정 ═════════════════════════════
+const solidT = (t) => t === T.SOLID || t === T.BREAK;
+/**
+ * b_common arenaOf 의 좌우 벽 보정: 경기장 가운데 열이 받침대·기둥 같은 고체면 벽 찾기가 그 자리에서 멈춰
+ * x0 > x1 (폭이 음수)이 된다 (몰록 제단: 가운데 36열이 받침대). 여기서는 world.arena 가장자리부터 바닥 위 두 줄이
+ * 연달아 고체인 열만 벽으로 본다 (진입 블록·방 끝 벽). 받침대·기둥·둔덕은 경기장 안의 지형으로 남는다.
+ */
+export function fixArena(world, base) {
+  const map = world?.map, a = world?.arena;
+  if (!base || !map?.typeAt || !a || !Number.isFinite(a.x0) || !Number.isFinite(a.x1)) return base;
+  const T_ = tile(), fy = Math.round(base.floor / T_);
+  const solidCol = (tx) => solidT(map.typeAt(tx, fy - 1)) && solidT(map.typeAt(tx, fy - 2));
+  const t0 = Math.floor(a.x0 / T_), t1 = Math.ceil(a.x1 / T_) - 1;
+  let c = t0; while (c <= t1 && solidCol(c)) c++;
+  let d = t1; while (d >= c && solidCol(d)) d--;
+  const X0 = Math.max(a.x0, c * T_), X1 = Math.min(a.x1, (d + 1) * T_);
+  if (!(X1 - X0 >= 4 * T_)) return base.w >= 4 * T_ ? base : { ...base, x0: a.x0, x1: a.x1, w: a.x1 - a.x0, cx: (a.x0 + a.x1) / 2 };
+  return { ...base, x0: X0, x1: X1, w: X1 - X0, cx: (X0 + X1) / 2 };
+}
+
 // ═════════════════════════════ 기반 클래스 BossC ═════════════════════════════
 /**
  * 2부 보스 기반 (BossB 상속). 클래스 필드는 쓰지 않는다: Boss 생성자가 init() 을 부른 뒤에 초기화되어 덮어쓴다.
@@ -1116,6 +1136,10 @@ export class BossC extends BossB {
       if (typeof this['s_' + s] !== 'function') this['s_' + s] = this.transitionTick;
     }
   }
+
+  /** 경기장 (BossB.init 의 arenaOf 결과를 fixArena 로 보정해 둔다 — setup() 보다 먼저) */
+  set A(v) { this._arena = fixArena(this.world, v); }
+  get A() { return this._arena; }
 
   // ── 계약 정보 (갤러리·테스트) ──
   attackNames() { return [...(this.p2.attacks ?? [])]; }
