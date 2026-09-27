@@ -87,6 +87,7 @@ export const SPRINT = {
 /** 미끄러짐 · 방향 전환 · 달리기 시작 (feel §3.2) */
 export const SKID = {
   runMin: 0.9,           // 달리기에서 방향을 놓을 때 |vx| ≥ 0.9·B 면 미끄러짐
+  minHold: 0.2,          // 이보다 짧게 누른 '톡' 을 놓을 때는 미끄러지지 않는다 (두 번 톡 질주 사이에 끼익 소리가 나지 않게)
   runT: 0.16, sprintT: 0.22,
   decel: 1800,           // 영웅별 값은 PERSONALITY.skidDecel
   edgeProbe: 6,          // 가장자리 보호: 앞쪽 6px 아래에 발판이 없으면 멈춤
@@ -125,10 +126,11 @@ export const SQUASH = {
 export const DASH_FX = {
   ghostEvery: 0.035, ghostLife: 0.2, ghostCap: { high: 6, medium: 5, low: 3 },
   lineLen: [60, 140], lineLife: 0.12, lineSpeed: 260, lineY: 40, lineW: 2, lineAlpha: 0.5,
+  // dust = startDash 의 먼지 8개에 더할 수 (dash 합계 10, roll 합계 12)
   dash:  { ring: { r0: 10, r1: 60, ry: 0.35, life: 0.18, color: 'rgba(255,255,255,0.8)' }, dust: 2, ghosts: 'trail', lineEvery: 0.03, lines: 2, lineColor: '#ffffff', lookBoost: 60, kick: 3, endDust: 4 },
   blink: { flash: 70, ring: { r0: 8, r1: 56, ry: 1, life: 0.2, color: 'rgba(255,242,176,0.9)' }, ghosts: 'ends', lines: 0, endSparkle: 6 },
-  roll:  { dust: 12, ring: { r0: 10, r1: 50, ry: 0.28, life: 0.22, color: 'rgba(216,200,176,0.8)' }, ghosts: 0, trailEvery: 0.03, lineEvery: 0.06, lines: 1, lineColor: '#fff4e0', endSkid: true },
-  mist:  { bats: 2, ghosts: 'trail', ghostEvery: 0.08, ghostTint: '#b0103a', lineEvery: 0.03, lines: 1, lineColor: '#ff3050', endMist: 6 },
+  roll:  { dust: 4, ring: { r0: 10, r1: 50, ry: 0.28, life: 0.22, color: 'rgba(216,200,176,0.8)' }, ghosts: 0, trailEvery: 0.03, lineEvery: 0.03, lines: 1, lineColor: '#fff4e0', endSkid: true },
+  mist:  { bats: 2, ghosts: 'trail', ghostEvery: 0.08, ghostTint: '#b0103a', lineEvery: 0.02, lines: 1, lineColor: '#ff3050', endMist: 6 },
 };
 
 /** 추격 점프 '추격!' (feel §4.3; 값은 data/feel_hit.js JUGGLE 가 있으면 그쪽) */

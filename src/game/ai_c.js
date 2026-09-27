@@ -363,12 +363,13 @@ AI_C.chandelier = {
     e.setState('fall'); e.setAnim('fall');
     e.anchorY = null; e.noGravity = false; e.gravity = 1.6; e.vx = 0; e.vy = 40;
     e.fallId = nid('cf');
+    e.harmless = true;   // 떨어지는 동안의 몸통 판정은 AI 가 mv 1.4 로 직접 한다 (기본 접촉 피해 mv 1 이 먼저 맞히지 않게)
   },
   /** 착지: 220×80 광역 화염 + 불씨 6개 → 기어 다니는 모드 */
   shatter(e, world) {
     const P = e.params;
     e.setState('shatter'); e.setAnim('shatter');
-    e.broken = true; e.vx = 0; e.sway = 0; e.gravity = 1;
+    e.broken = true; e.vx = 0; e.sway = 0; e.gravity = 1; e.harmless = false;
     e.strike(-110, -80, 220, 80, P.shatterMv ?? 1.4, { hitId: nid('cs'), element: 'fire', kb: [340, -520], hitstop: 0.07 });
     for (let i = 0; i < 6; i++) {
       const a = -PI / 2 + (i - 2.5) * 0.36 + rand(-0.08, 0.08), s = rand(260, 360);
@@ -413,7 +414,9 @@ AI_C.chandelier = {
       case 'fall': {
         e.noGravity = false; e.gravity = 1.6; e.vx = 0; e.sway *= 0.9;
         e.setAnim('fall');
-        e.strike(-e.w / 2, -e.h, e.w, e.h, P.fallMv ?? 1.4, { hitId: e.fallId, kb: [200, -320] });
+        // 몸통 + 이번 스텝에 떨어질 거리 (이동은 AI 뒤에 일어나므로 한 스텝 앞까지 판정)
+        const reach = Math.max(0, (e.vy + 2200 * 1.6 * dt) * dt) + 4;
+        e.strike(-e.w / 2, -e.h, e.w, e.h + reach, P.fallMv ?? 1.4, { hitId: e.fallId, kb: [200, -320] });
         if (e.onGround && e.stateT > 0.02) this.shatter(e, world);
         return;
       }
@@ -689,8 +692,9 @@ AI_C.chainhook = {
     if (d.back || d.hooked) return;
     const pl = w.player;
     if (!pl || pl.dead || !overlap(z, pl.hurtbox())) return;
-    // 맞으면 간수 쪽으로 넉백 (당겨 옴)
+    // 맞으면 간수 쪽으로 넉백 (당겨 옴). 세기는 거리에 맞춰 (최대 700) → 간수 바로 앞에 떨어진다 (지나쳐 날아가지 않게)
     z.attack.dir = Math.sign(e.cx - pl.cx) || -d.dir;
+    z.attack.kb = [clamp((Math.abs(e.cx - pl.cx) - 40) * 3, 240, e.params.hookKb ?? 700), -150];   // 넉백 이동 ≈ 0.33~0.4·kb − 20 px
     const info = hitTarget(w, { team: 'enemy', ...z.attack }, pl, pl.cx, pl.cy);
     if (info && info.landed !== false) {
       d.hooked = true; d.back = true; e.hooked = true;
@@ -926,8 +930,9 @@ AI_C.swimmer = {
     // ── 수면 위로 도약 ──
     if (e.state === 'leap') {
       e.noGravity = false; e.gravity = 1; e.setAnim('leap');
-      if (Math.abs(e.vx) > 5) e.facing = Math.sign(e.vx);
-      if (!e.didHit && e.strike(-e.w * 0.3, -e.h, e.w * 0.8 + 10, e.h, P.biteMv ?? 1.5, { hitId: e.leapId, kb: [360, -380] })) e.didHit = true;
+      if (!e.didHit) faceP(e);   // 기슭 벽에 막혀 vx 가 0 이 되어도 턱은 먹잇감 쪽
+      // 뛰어오르며 무는 턱은 몸보다 조금 더 앞으로 나온다 (물가 벽에 막혀도 가장자리에 선 먹잇감에 닿게)
+      if (!e.didHit && e.strike(-e.w * 0.3, -e.h - 6, e.w * 0.8 + 22, e.h + 6, P.biteMv ?? 1.5, { hitId: e.leapId, kb: [360, -380] })) e.didHit = true;
       if (wet && e.vy > 0 && e.stateT > 0.15) {
         const s = this.surfaceY(e, world) ?? e.cy;
         puff(world, 'water', e.cx, s + 2, 14, { angle: -PI / 2, spread: 0.8, speed: 280 });

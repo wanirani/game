@@ -1,6 +1,17 @@
 // 자동 생성: tools/puppet/build_all.py — 손으로 고치지 말 것.
 // 채색 컷아웃 퍼펫이 준비된 캐릭터/직업. h = 파일 묶음 해시(캐시 무효화), turn = 턴테이블 시트 유무.
 export const PUPPETS = {
+ "azel": {
+  "azel_dhampir": {
+   "h": "877d512b2c1b",
+   "turn": false,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  }
+ },
  "bran": {
   "bran_berserker": {
    "h": "9d6928801293",

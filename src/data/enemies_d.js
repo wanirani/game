@@ -1,11 +1,14 @@
-// 2부 적 데이터 D (s17 폭풍의 공중정원 · s18 악몽의 미궁 · s19 썩어가는 숲 · s20 태초의 공허; world2 §5.1, §5.2). 소유: P2-DATA (W1) → ENEMY-P2-D-AI (W2 조정)
+// 2부 적 데이터 D (s17 폭풍의 공중정원 · s18 악몽의 미궁 · s19 썩어가는 숲 · s20 태초의 공허; world2 §5.1, §5.2). 소유: P2-DATA (W1) → ENEMY-P2-D-AI (W2 조정 완료)
 // 스키마 = game/enemy.js 상단 주석. data/enemies.js 가 합친다.
 // hp/atk/def/res 는 레벨 1 기준값 — enemyStats() 가 스테이지 레벨(s17 lv56 · s18 lv60 · s19 lv64 · s20 lv68)로 스케일한다.
 // 등급: S 소형(hp 40~70) / M 중형(75~150) / L 대형(150~230). gold S·M [10,24] / L [16,40], score S 1400 / M 2000~2500 / L 3000~3200.
 // AI 종류: game/ai_d.js (AI_D: galeknight roc jelly puppeteer stalker treant moth husk herald) + 1부 재사용(harpy voider chaos).
-//   AI_D 가 들어오기 전에는 enemy.js 가 AI.walker 로 대체한다. 렌더 ID = 적 id (render/enemies_d.js RENDER_D; 없으면 palette.body 타원 대체).
+//   aiParams 의 뜻·기본값과 자세(anim) 이름 계약은 game/ai_d.js 머리 주석. 렌더 ID = 적 id (render/enemies_d.js RENDER_D; 없으면 palette.body 타원 대체).
 // noArena: 바람(돌풍) 등 방 기믹이 있어야 제대로 움직이는 적 → 아케이드 서바이벌이 소환하지 않는다 (MASTER_PLAN §1.14).
+//   cloud_jelly 는 돌풍에 떠밀려 다니는 것이 본령이라(바람이 없으면 느릿느릿 다가올 뿐) 서바이벌에서 뺀다.
+//   gale_knight 는 돌풍을 읽지만(맞바람이면 돌진 안 함) 바람 없이도 온전히 싸우므로 서바이벌에 나와도 된다.
 //   treant/moth/husk 의 포자는 blight 기믹이 없으면 독 Zone 으로 대체되므로(world2 §5.3) 서바이벌에 나와도 된다.
+//   puppeteer 가 부른 저주 인형(puppet_maiden)은 경험치 30%·재료 드롭 없음 (무한 사냥 방지, ai_d.js).
 
 const heart5 = (p) => ({ id: 'heart', p, qty: 5 });
 

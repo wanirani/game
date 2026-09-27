@@ -27,7 +27,11 @@ import { ROOMS as ARENA } from './maps/arena.js';
 import { ROOMS as S14 } from './maps/s14.js';
 import { ROOMS as S15 } from './maps/s15.js';
 // ── P2 map imports s16–s17 (MAPS-P2-B) ──
+import { ROOMS as S16 } from './maps/s16.js';
+import { ROOMS as S17 } from './maps/s17.js';
 // ── P2 map imports s18–s19 (MAPS-P2-C) ──
+import { ROOMS as S18 } from './maps/s18.js';
+import { ROOMS as S19 } from './maps/s19.js';
 // ── P2 map imports s20 (MAPS-P2-D) ──
 
 const S = (o) => ({ start: 'r1', parTime: 300, darkColor: '#06020c', liquid: 'water', docs: [], relic: null, unlocks: [], ...o, intro: o.intro ?? `${o.id}_intro`, outro: o.outro ?? `${o.id}_outro` });
@@ -83,7 +87,23 @@ export const STAGES = {
     enemies: ['forge_imp', 'slag_golem', 'chain_warden', 'bellows', 'hellhound', 'gear_golem', 'mimic'], docs: ['d22'], shard: 'k_star_2', heart: 'k_heart_2',
     gimmick: { kind: 'magma', mode: 'tide', low: 14, high: 12, period: 9, hold: 2.5, warn: 1.5 }, color: '#ff7a2a', next: 's16', mapPos: { x: 0.1, y: 0.4 } }),
   // ── P2 stages s16–s17 (MAPS-P2-B) ──
+  s16: S({ id: 's16', chapter: 16, part: 2, page: 1, name: '가라앉은 성소', sub: '빛이 닿지 않는 심해 대성당', theme: 'sunken', bg: 'bg/s16_sunken', tex: 'tex/tex_coral', tex2: 'tex/tex_wet_stone', tileStyle: 'coral',
+    music: 's16', level: 53, darkness: 0.55, darkColor: '#010812', liquid: 'deep', boss: 'b_dagon', rooms: S16, parTime: 540,
+    enemies: ['abyss_angler', 'sunken_priest', 'coral_crab', 'siren', 'merman', 'killer_fish', 'mimic'], docs: ['d23'], shard: 'k_star_3', heart: 'k_heart_3',
+    gimmick: { kind: 'deep' }, color: '#3ad0c8', next: 's17', mapPos: { x: 0.28, y: 0.12 } }),
+  s17: S({ id: 's17', chapter: 17, part: 2, page: 1, name: '폭풍의 공중정원', sub: '구름 위에 떠 있는 잊힌 왕국', theme: 'sky', bg: 'bg/s17_sky', tex: 'tex/tex_sky_marble', tex2: 'tex/tex_marble', tileStyle: 'sky',
+    music: 's17', level: 56, darkness: 0.15, darkColor: '#081020', liquid: 'water', boss: 'b_ziz', rooms: S17, parTime: 540,
+    enemies: ['storm_harpy', 'gale_knight', 'thunder_roc', 'cloud_jelly', 'harpy', 'gargoyle', 'mimic'], docs: ['d24'], shard: 'k_star_4', heart: 'k_heart_4',
+    gimmick: { kind: 'wind', dir: 1, force: 850, on: 2.4, off: 3.8 }, color: '#9fc8ff', next: 's18', mapPos: { x: 0.58, y: 0.06 } }),
   // ── P2 stages s18–s19 (MAPS-P2-C) ──
+  s18: S({ id: 's18', chapter: 18, part: 2, page: 1, name: '악몽의 미궁', sub: '심장 소리에 맞춰 뒤바뀌는 꿈', theme: 'nightmare', bg: 'bg/s18_nightmare', tex: 'tex/tex_nightmare', tex2: 'tex/tex_blood_marble', tileStyle: 'flesh',
+    music: 's18', level: 60, darkness: 0.7, darkColor: '#08020a', liquid: 'blood', boss: 'b_mara', rooms: S18, parTime: 570,
+    enemies: ['puppeteer', 'faceless', 'dream_eater', 'puppet_maiden', 'cursed_nun', 'shadow_hunter', 'mimic'], docs: ['d25'], shard: 'k_star_5', heart: 'k_heart_5',
+    gimmick: { kind: 'heartbeat', beat: 3.2, warn: 0.8 }, color: '#c060ff', next: 's19', mapPos: { x: 0.86, y: 0.2 } }),
+  s19: S({ id: 's19', chapter: 19, part: 2, page: 1, name: '썩어가는 숲', sub: '포자가 눈처럼 내리는 세계수의 뿌리', theme: 'blight', bg: 'bg/s19_blight', tex: 'tex/tex_rotwood', tex2: 'tex/tex_mossy_stone', tileStyle: 'rot',
+    music: 's19', level: 64, darkness: 0.45, darkColor: '#060a02', liquid: 'poison', boss: 'b_behemoth', rooms: S19, parTime: 570,
+    enemies: ['rot_treant', 'plague_moth', 'fungal_husk', 'frog_demon', 'corpse_worm', 'slime', 'mimic'], docs: ['d26'], shard: 'k_star_6', heart: 'k_heart_6',
+    gimmick: { kind: 'blight' }, color: '#9ad040', next: 's20', mapPos: { x: 0.88, y: 0.62 } }),
   // ── P2 stages s20 (MAPS-P2-D) ──
   arena: S({ id: 'arena', chapter: 0, name: '피의 투기장', sub: '서바이벌 & 보스 러시', theme: 'arena', bg: 'bg/s_arena', tex: 'tex/tex_castle_stone', tex2: 'tex/tex_dirt', tileStyle: 'stone',
     music: 'arena', level: 10, darkness: 0.3, boss: null, rooms: ARENA, parTime: 600, intro: null, outro: null,

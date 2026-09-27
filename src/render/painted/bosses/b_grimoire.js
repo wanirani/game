@@ -193,10 +193,14 @@ function drawBoss(ctx, b, world, rig, st) {
   P.draw(ctx, 0);
 
   // ── 뒤층: 오라 · 룬 원 · 촉수 · 뒤 낱장 ──
+  let clipped = false;
   if (!d.bookGone) {
     // 뒤 오라: 큰 가산 발광 하나 (예전엔 어두운 보라 r200 + 영혼색 r170 두 장 — CPU 래스터에서 채색 추가 비용의 대부분이라 하나로 합침)
     if (q.halos) halo(ctx, cx, cy, 185, soul, 0.24 + fury * 0.12 + (b.state === 'transform' ? 0.15 : 0));
     runeRing(ctx, D, b, t, cx, cy);
+    // 바닥 아래로는 그리지 않는다 (BOSS_PIPELINE §8.12): 내려찍기로 바닥에 앉은 책의 책배 핏물 자국·바닥에 닿은 촉수 끝이
+    //  바닥 타일을 뚫고 보이지 않게. 오라·룬 원(가산 빛)은 자르지 않는다. 사망 파편은 Shards.draw 가 따로 자른다
+    D.end(); D.save(); ctx.beginPath(); ctx.rect(A.x0 - 1200, floor - 6000, A.x1 - A.x0 + 2400, 6002); ctx.clip(); clipped = true;
     drawTentacles(ctx, D, b, rig, st, dt, t, lvl, floor, dying, dT);
     orbitPages(D, b, rig, t, 0, tint);
     // 발판 덧그리기 (BOSS_PIPELINE §8.11): 책 밑으로 늘어진 촉수·뒤 낱장은 경기장 발판 뒤, 책(판정)은 발판 앞
@@ -224,6 +228,7 @@ function drawBoss(ctx, b, world, rig, st) {
       for (let i = 0; i < 3; i++) { L((i - 1) * 40 * G, -hh + 6, _w); flame(ctx, _w[0], _w[1], -PI / 2 + rot + (i - 1) * 0.25, (54 + Math.sin(t * 5 + i) * 8) * G, 15 * G, t, ARC, 0.5, i * 2.1, q.flames); }
     }
   }
+  if (clipped) { D.end(); D.restore(); }
   ambient(ctx, b, st, dt, t, cx, cy, hw, hh, open, cw, lvl, ph, dying, dT, soul, hit);
   if (dying) death(ctx, D, b, rig, st, dt, dT, cx, cy, hw, hh, cw, tint, itint, lvl, soul);
   st.shards.draw(D);

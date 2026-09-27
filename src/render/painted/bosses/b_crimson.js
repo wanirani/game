@@ -178,8 +178,12 @@ function drawBoss(ctx, b, world, rig, st) {
   D.end();
   P.draw(ctx, 0);
   if (!st.d.gone) {
+    // 바닥 아래로는 그리지 않는다 (BOSS_PIPELINE §8.12): 바닥에 박힌 할버드(업화 기둥·회전 낙하 뒤)·기울어진 발끝·압살 착지 부품이
+    //  바닥 타일을 뚫고 보이지 않게 (박힌 것처럼 보인다). 사망 파편은 Shards.draw 가 따로 자른다
+    D.save(); ctx.beginPath(); ctx.rect(b.A.x0 - 1200, floor - 6000, b.A.x1 - b.A.x0 + 2400, 6002); ctx.clip();
     if (!b.split) drawAssembled(ctx, D, b, rig, st, dt, lvl, fx, hit, dying, dT);
     else drawSplit(ctx, D, b, rig, st, dt, lvl, fx, hit, dying, dT);
+    D.end(); D.restore();
   }
   if (dying) death(ctx, D, b, rig, st, dt, dT, fx, lvl);
   st.shards.draw(D);

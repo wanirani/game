@@ -2562,7 +2562,7 @@ ULTS.sera = (p, w, v = ultCtx(p, w)) => {
   steps.push([1.3, () => { audio.sfx('slash_heavy', { pitch: 0.5 }); audio.sfx('bell', { pitch: 1.4, vol: 0.6 }); }]);   // 심판의 검이 내려온다
   steps.push([1.55, (ww) => {
     ultFinal(ww, p, 5, '#ffffff', { element: 'holy' }, { v, x: cx, y: gy0 - 60, ground: true });
-    if (!v.low) grade(ww, '#fff4c8', 0.28, 0.7);   // 흰 금빛 색조 (저품질은 화면 전체 층 1장 예산)
+    if (!v.low) grade(ww, '#ffe9a8', 0.18, 0.8);   // 흰 금빛 색조 (번쩍임 0.6 위에 겹치므로 옅게; 저품질은 화면 전체 층 1장 예산)
     ww.fx.ering(cx, gy0 - 2, { color: '#fff2b0', r0: 20, r1: V0.w * 0.45, ry: 0.18, life: 0.5, width: 10 });
     ww.fx.burst('holy', cx, gy0 - 20, 40, { speed: 600 });
     ww.fx.burst('shard', cx, gy0 - 6, 14, { angle: -Math.PI / 2, spread: 1.2, speed: 420, color: '#d8d0c0' });

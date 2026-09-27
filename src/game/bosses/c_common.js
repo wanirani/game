@@ -1179,14 +1179,17 @@ export class BossC extends BossB {
     tickDark(this, dt); tickMute(this, dt);
     super.think(dt, world);
   }
-  /** 플레이어 사망 → 부활을 보면 한 번 resetFight (페이즈 0 에서 죽어도) */
+  /**
+   * 플레이어 사망 → 부활을 보면 한 번 resetFight (페이즈 0 에서 죽어도). 월드가 보스 체력을 가득 채운 부활(world.respawn →
+   * resetBoss)일 때만 — 보스 러시·서바이벌은 제자리에서 일으켜 세우고 보스 체력을 그대로 두므로 싸움도 이어 간다
+   */
   watchRespawn(world) {
     const p = world.player;
     if (!p) return;
     if (p.dead) { this._pDead = true; return; }
     if (!this._pDead) return;
     this._pDead = false;
-    if (!(this.dying > 0) && !this.dead && !world.cleared) this.resetFight(world);
+    if (!(this.dying > 0) && !this.dead && !world.cleared && this.hp >= this.stats.maxHp) this.resetFight(world);
   }
   /** 싸움을 처음 상태로: 페이즈 0, 형태·경기장·대사 대기열 되돌리기, onReset, idle */
   resetFight(world = this.world) {

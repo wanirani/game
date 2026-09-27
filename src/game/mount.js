@@ -44,6 +44,7 @@
 //    special?: (r, world, p) → bool   또는 { start(r, world, p) → bool }   (↓+공격; true = 시전함 → 재사용 대기는 여기서 건다)
 //    passive?: { tick?(r, world, p, dt), hazard?(r, kind, p, world) → true|false|undefined, land?(r, world, p, vyBefore) }
 //  }
+//  메뉴 미리보기: mountView(id, {anim, facing}) · updateMountView(v, dt, anim) · drawMountView(ctx, v, layer, opts) — v.ride 는 drawHero 의 p.ride
 //  도우미 (r = MountRider): r.atk(o) → 공격 객체 · r.strike(world, rect, atk) → 맞힌 수 · r.hit(world, o) → Hitbox · r.startAct(o) · r.showName(world, p, name)
 //   r.rect(p, rx, ry, rw, rh) (발 중앙 기준, 앞쪽 facing) · r.power(mv) (특수기 배율 반영) · r.d (mountDerived) · r.world
 //  mount_b.js 는 이 파일을 import 해도 되지만 모듈 최상위에서 그 값을 쓰면 안 된다 (순환 import 규칙).
@@ -972,15 +973,7 @@ export class MountRider {
     if (this.pose) {
       try { RIG.seatOf(this.pose, s); if (Number.isFinite(s.x) && Number.isFinite(s.y) && (s.x !== 0 || s.y !== 0)) return s; } catch { /* 대체 */ }
     }
-    const f = p.facing || 1, d = this.def?.seat ?? { x: -4, y: -56 };
-    let lx = d.x, ly = d.y + this.bob;
-    if (this.rearK > 0.001 || Math.abs(this.pitch) > 0.001) {
-      const px = FB_SHAPE[this.rig]?.hipX ?? -24, a = this.pitch, c = Math.cos(a), sn = Math.sin(a);
-      const dx = lx - px, dy = ly;
-      lx = px + dx * c - dy * sn; ly = dx * sn + dy * c;
-    }
-    s.x = p.cx + f * lx; s.y = p.bottom + ly; s.lean = 0;
-    return s;
+    return seatFallback(this, p.facing || 1, p.cx, p.bottom, s);
   }
   riderLean(p, a) {
     let l = 0;
@@ -1339,8 +1332,9 @@ export class MountGhost extends Entity {
     this.feetY = y; this.fell = false;
   }
   update(dt, world) {
-    this.t += dt; this.animT += dt;
     const m = this.mode;
+    if (m === 'view') return;   // 메뉴 미리보기: updateMountView 가 움직인다
+    this.t += dt; this.animT += dt;
     if (m === 'summon') {
       const r = this.rider, p = this.p;
       if (!r || !p || r.seated || r.state !== 'summoning' || this.t > 0.6) { this.dead = true; return; }
@@ -1393,6 +1387,67 @@ export class MountGhost extends Entity {
     drawMountAny(ctx, this, world, 'front', o);
     ctx.restore();
   }
+}
+
+// ───────────────────────── 메뉴 미리보기 (CMP-UI 「동료」 탭 · companions §7.2, §11.4 5번) ─────────────────────────
+/**
+ * 탈것 모습 하나 (월드 밖). 원점 = 발 중앙 (0, 0) → 그리는 쪽이 ctx 를 옮기고 확대한다.
+ *   const v = mountView('mt_warhorse');   매 프레임: updateMountView(v, dt, 'run');
+ *   drawMountView(ctx, v, 'back'); drawHero(ctx, { ...heroView, cx: 0, bottom: 0, ride: v.ride, rig: myRig }, null, {}); drawMountView(ctx, v, 'front');
+ * anim: 'idle' | 'walk' | 'run' | 'special' | 'charge' | 'jump' | 'fall' | 'glide' | 'hover' | … (탈것 애니메이션 이름)
+ * v.ride 는 drawHero 의 p.ride 계약 그대로 (sx, sy 는 이 원점 기준). 알 수 없는 id 면 null
+ */
+export function mountView(id, { anim = 'idle', facing = 1 } = {}) {
+  const def = id && Object.hasOwn(MOUNTS, id) ? MOUNTS[id] : null;
+  if (!def) return null;
+  const v = new MountGhost(0, 0, 120, 110, { mode: 'view', id, def, facing });
+  v.anim = anim; v.alpha = 1; v.onGround = true; v.state = 'view';
+  v.ride = { sx: 0, sy: 0, lean: 0, duck: 0, footY: def.footY ?? 20, legs: def.legs ?? 'straddle', reins: true, gait: 'idle', phase: 0 };
+  v.seatPt = { x: 0, y: 0, lean: 0 };
+  updateMountView(v, 0);
+  return v;
+}
+const VIEW_AIR = new Set(['jump', 'fall', 'glide', 'hover', 'flap', 'dive']);
+export function updateMountView(v, dt = 1 / 60, anim = null) {
+  if (!v) return v;
+  if (anim && anim !== v.anim) { v.anim = anim; v.animT = 0; }
+  v.t += dt; v.animT += dt;
+  const a = v.anim, run = a === 'run' || a === 'charge', sp = run ? 420 : a === 'walk' ? 200 : 0;
+  v.vx = sp * v.facing; v.vy = a === 'fall' ? 300 : a === 'jump' ? -300 : 0; v.speedK = sp / 400;
+  v.onGround = !VIEW_AIR.has(a);
+  v.gait = run ? 'run' : a === 'walk' ? 'walk' : v.onGround ? 'idle' : v.def?.flight ? 'fly' : 'air';
+  v.phase = (v.phase + sp * dt / (run ? 110 : 70)) % 1;
+  v.rearK = a === 'special' || a === 'rear' ? clamp(Math.sin(Math.min(1, v.animT / 0.6) * Math.PI) * 1.2, 0, 1) : 0;
+  v.pitch = -0.7 * v.rearK;
+  v.bob = run ? Math.sin(v.phase * TAU * 2) * 4.5 : a === 'walk' ? -Math.abs(Math.sin(v.phase * TAU * 2)) * 1.5 : a === 'idle' ? Math.sin(v.t * 2.2) * 0.8 : 0;
+  v.wingK = !v.def?.flight ? 0 : v.onGround ? 0.1 : a === 'glide' ? 1 : 0.85;
+  let pose = null;
+  try { pose = typeof RIG.mountPose === 'function' ? RIG.mountPose(v, dt) : null; } catch { pose = null; }
+  v.pose = pose; v.fallback = !pose;
+  const s = v.seatPt;
+  let ok = false;
+  if (pose) { try { RIG.seatOf(pose, s); ok = Number.isFinite(s.x) && Number.isFinite(s.y) && (s.x !== 0 || s.y !== 0); } catch { ok = false; } }
+  if (!ok) seatFallback(v, v.facing, v.cx, v.bottom, s);
+  const r = v.ride;
+  r.sx = s.x; r.sy = s.y; r.lean = (s.lean ?? 0) + (run ? 0.12 : 0) + (a === 'rear' || a === 'special' ? -0.25 : 0); r.gait = v.gait; r.phase = v.phase;
+  return v;
+}
+export function drawMountView(ctx, v, layer = 'back', o = {}) {
+  if (!v) return;
+  drawMountAny(ctx, v, null, layer, { alpha: 1, tint: null, scale: 1, noFx: false, flash: false, ...o });
+}
+/** 데이터 안장 + 들썩임 + 앞들기 회전 (리그가 없을 때) */
+function seatFallback(m, facing, cx, bottom, out) {
+  const f = facing < 0 ? -1 : 1, d = m.def?.seat ?? { x: -4, y: -56 };
+  let lx = d.x, ly = d.y + (m.bob ?? 0);
+  const a = m.pitch ?? 0;
+  if (Math.abs(a) > 0.001) {
+    const px = FB_SHAPE[m.rig]?.hipX ?? -24, c = Math.cos(a), sn = Math.sin(a);
+    const dx = lx - px, dy = ly;
+    lx = px + dx * c - dy * sn; ly = dx * sn + dy * c;
+  }
+  out.x = cx + f * lx; out.y = bottom + ly; out.lean = 0;
+  return out;
 }
 
 // ───────────────────────── 그림: 리그가 있으면 mounts.js, 없으면 대체 그림 ─────────────────────────

@@ -237,6 +237,10 @@ function blit(ctx, img, x, y, sx = 1, rot = 0, a = 1, add = false, ax = 0.5, ay 
     ctx.restore();
   } else ctx.drawImage(img, x - iw * ax * sx, y - ih * ay * sy, iw * sx, ih * sy);
 }
+/** 빛 스프라이트 (가산): 해상도(품질별 256/192/128px, hitfx 96px 대체)와 무관하게 GLOW_REF px 기준 배율 s 로 그린다 */
+function blitGlow(ctx, gl, x, y, s, a) {
+  if (gl?.width) blit(ctx, gl, x, y, s * GLOW_REF / gl.width, 0, a, true);
+}
 /** 가로로 늘어선 스프라이트 시트의 fi 번째 칸 */
 function drawFrame(ctx, img, fi, nf, x, y, sx, sy, rot, a, add = false) {
   if (!img || !(a > 0.004) || !sx || !sy) return;
@@ -284,14 +288,14 @@ function drawBolt(ctx, P, col, wd, a) {
 }
 
 // ═══════════════════════════ 캔버스 풀 · 캐시 스프라이트 ═══════════════════════════
-const GLOW_CAP = 24, LAYER = 512, SPR_CAP = 8;   // 빛 스프라이트 크기는 품질별 (Q.glow: 256 / 192 / 128)
+const GLOW_CAP = 24, GLOW_POOL = 12, GLOW_REF = 256, LAYER = 512, SPR_CAP = 8;   // 빛 스프라이트 해상도는 품질별 (Q.glow: 256 / 192 / 128), 그리는 크기는 GLOW_REF 기준
 const GH = { bw: 150, bt: 180, bb: 30 };   // 잔상 비트맵 상자 (발 중앙 기준 좌우 bw, 위 bt, 아래 bb; 월드 px)
 const POOL = { glow: new Map(), glowSpare: [], layers: [], sprites: new Map(), spriteSpare: [], ghosts: [], sil: null, scratch: null };
 /** 풀을 미리 만든다 (부팅 뒤 한가할 때 · 스테이지 진입 뒤 한가할 때). 이미 있으면 모자란 만큼만 */
 function ensurePools(q = 'high') {
   if (typeof document === 'undefined') return false;
   const B = Q[q] ?? Q.high;
-  while (POOL.glowSpare.length + POOL.glow.size < 6) { const c = mkCanvas(B.glow, B.glow); if (!c) return false; POOL.glowSpare.push(c); }
+  while (POOL.glowSpare.length + POOL.glow.size < GLOW_POOL) { const c = mkCanvas(B.glow, B.glow); if (!c) return false; POOL.glowSpare.push(c); }
   if (B.layer) while (POOL.layers.length < 2) POOL.layers.push({ key: null, c: mkCanvas(LAYER, LAYER), used: 0 });
   while (POOL.spriteSpare.length + POOL.sprites.size < 4) POOL.spriteSpare.push(mkCanvas(256, 256));
   const W = Math.ceil(2 * GH.bw * B.rs), H = Math.ceil((GH.bt + GH.bb) * B.rs);
@@ -316,16 +320,20 @@ function resetCtx(c) {
   g.clearRect(0, 0, c.width, c.height);
   return g;
 }
-export function glowSprite(color) {
+export function glowSprite(color, force = false) {
   const key = typeof color === 'string' && color ? color : '#ffffff';
   const M = POOL.glow;
   let c = M.get(key);
   if (c) { if (M.size > 4) { M.delete(key); M.set(key, c); } return c; }
-  // 굽기 속도 상한: 0.2초에 6장 (넘으면 hitfx 의 96px 빛으로)
-  const now = perfNow();
-  if (now - GLOW_WIN > 200) { GLOW_WIN = now; GLOW_N = 0; }
-  if (++GLOW_N > 6) return HFX.glow?.(key) ?? null;
-  c = POOL.glowSpare.pop() ?? (M.size < GLOW_CAP ? mkCanvas(Q[qk(game?.world)].glow, Q[qk(game?.world)].glow) : null);
+  // 굽기 속도 상한: 0.2초에 6장 (넘으면 hitfx 의 96px 빛으로). 미리 굽기(force)는 상한 없이 전부 굽는다
+  if (!force) {
+    const now = perfNow();
+    if (now - GLOW_WIN > 200) { GLOW_WIN = now; GLOW_N = 0; }
+    if (++GLOW_N > 6) return HFX.glow?.(key) ?? null;
+  }
+  // 시전 중에는 새 캔버스를 만들지 않는다: 풀에서 미리 만든 수(GLOW_POOL)를 넘으면 가장 오래 안 쓴 빛을 다시 굽는다 (feel §8)
+  const cap = live(game?.world) ? GLOW_POOL : GLOW_CAP;
+  c = POOL.glowSpare.pop() ?? (M.size < cap ? mkCanvas(Q[qk(game?.world)].glow, Q[qk(game?.world)].glow) : null);
   if (!c) { const k0 = M.keys().next().value; c = M.get(k0); M.delete(k0); }
   if (!c) return null;
   try { bakeGlow(resetCtx(c), key, c.width); } catch (e) { console.warn('[ultfx] glow', e); }
@@ -1280,7 +1288,7 @@ const FL = {
           const t = e.lt, k = t < 0.1 ? ease.inCubic(t / 0.1) : 1;
           const wob = t > 0.1 ? 1 + 0.05 * Math.sin((t - 0.1) * 20) * Math.exp(-(t - 0.1) * 6) : 1;
           const sc = lerp(2.6, 1, k) * wob, fade = clamp((1.55 - t) / 0.4, 0, 1), a = (t < 0.1 ? k : 1) * fade;
-          blit(ctx, gl, x, y, 1.9 * sc * (0.92 + 0.08 * Math.sin(t * 9)), 0, 0.75 * a, true);
+          blitGlow(ctx, gl, x, y, 1.9 * sc * (0.92 + 0.08 * Math.sin(t * 9)), 0.75 * a);
           if (ring) { blit(ctx, ring, x, y, 2.5 * sc, t * 0.8, 0.8 * a, true); blit(ctx, ring, x, y, 3.3 * sc, -t * 0.5, 0.45 * a, true); }
           rays(ctx, x, y, 12, 110 * sc, 330 * sc * (0.9 + 0.1 * Math.sin(t * 7)), t * 0.5, F.c[1], 0.4 * a, 0.035);
           blit(ctx, img, x, y, 0.95 * sc, 0, a, false);
@@ -1316,7 +1324,7 @@ const FL = {
             const t = e.lt - pt.t0;
             if (t < 0) continue;
             const k = ease.outBack(clamp(t / 0.12, 0, 1)), fl = 0.85 + 0.15 * Math.sin(e.lt * 40 + pt.x);
-            blit(ctx, gl, pt.x, pt.y, 0.9 * k, 0, 0.6 * fade * fl, true);
+            blitGlow(ctx, gl, pt.x, pt.y, 0.9 * k, 0.6 * fade * fl);
             blit(ctx, img, pt.x, pt.y, lerp(1.8, 1, clamp(t / 0.12, 0, 1)) * 0.9, 0, fade * clamp(t / 0.12, 0, 1), false);
             blit(ctx, img, pt.x, pt.y, 0.9, 0, 0.35 * fade * fl, true);
           }
@@ -1409,7 +1417,7 @@ const FL = {
         draw(ctx, e) {
           const t = e.lt, open = ease.outBack(clamp(t / 0.38, 0, 1)), fade = clamp((1.9 - t) / 0.45, 0, 1) * clamp(t / 0.08, 0, 1), r = root();
           const flap = Math.sin(t * 7) * 0.07 * open;
-          blit(ctx, gl, r.x, r.y, 1.5 + 0.3 * open, 0, 0.55 * fade, true);
+          blitGlow(ctx, gl, r.x, r.y, 1.5 + 0.3 * open, 0.55 * fade);
           for (const side of [-1, 1]) {
             ctx.save(); ctx.translate(r.x + side * 6, r.y); ctx.scale(side, 1); ctx.rotate(lerp(1.1, -0.2, open) + flap);
             blit(ctx, img, 0, 0, 0.9, 0, fade, false, 22 / 256, 178 / 200);
@@ -1446,7 +1454,7 @@ const FL = {
         },
         draw(ctx, e) {
           const t = e.lt, app = ease.outBack(clamp(t / 0.18, 0, 1)), fade = clamp((1.55 - t) / 0.4, 0, 1), a = clamp(t / 0.18, 0, 1) * fade, R = 150 * app;
-          blit(ctx, gl, x, y, 1.7 * app, 0, 0.45 * a, true);
+          blitGlow(ctx, gl, x, y, 1.7 * app, 0.45 * a);
           blit(ctx, img, x, y, 1.25 * app, t * 0.25, a, true);
           let k = 0; while (k < ticks.length && t >= ticks[k]) k++;
           const since = k ? t - ticks[k - 1] : 1, over = since < 0.08 ? Math.sin(since / 0.08 * Math.PI) * 0.12 : 0;
@@ -1485,7 +1493,7 @@ const FL = {
             blit(ctx, r.img, 0, 0, sc, r.sd * t * 2.4, a, true);
             ctx.restore();
           }
-          blit(ctx, gl, x, y, 1.1 + 0.2 * Math.sin(e.lt * 18), 0, clamp(1 - e.lt / 0.8, 0, 1) * 0.8, true);
+          blitGlow(ctx, gl, x, y, 1.1 + 0.2 * Math.sin(e.lt * 18), clamp(1 - e.lt / 0.8, 0, 1) * 0.8);
         },
       });
     },
@@ -1553,7 +1561,7 @@ const FL = {
             taper(ctx, tx0, ty0, hx, hy, 12, F.c[2], 0.35 * fade);
             taper(ctx, tx0, ty0, hx, hy, 6, F.c[0], 0.7 * fade);
             taper(ctx, tx0 + c * 200, ty0 + sn * 200, hx, hy, 2.2, '#ffffff', 0.95 * fade);
-            if (d <= s.L) blit(ctx, gl, hx, hy, 0.4, 0, fade, true);
+            if (d <= s.L) blitGlow(ctx, gl, hx, hy, 0.4, fade);
           }
         },
       });
@@ -1653,7 +1661,7 @@ const FL = {
             const a = 1 - t / 0.07;
             for (const front of [true, false]) {
               const g = gun(front);
-              blit(ctx, gl, g.x, g.y, 0.9, 0, a, true);
+              blitGlow(ctx, gl, g.x, g.y, 0.9, a);
               blit(ctx, img, g.x, g.y, 1.5 * g.d, (k & 1 ? 0.12 : -0.08) * g.d, a, true, 14 / 200, 0.5, 1.5);
             }
           }
@@ -1684,7 +1692,7 @@ const FL = {
           for (const pt of pulses) { const u = t - pt; if (u >= 0 && u < 0.2) pul = Math.max(pul, Math.sin(u / 0.2 * Math.PI)); }
           const out = t > 0.95 ? ease.outCubic(clamp((t - 0.95) / 0.42, 0, 1)) : 0;
           const sc = 1.45 * grow * (1 + 0.1 * pul + 0.6 * out), a = clamp(t / 0.06, 0, 1) * (1 - out);
-          blit(ctx, gl, bx(), by() - 70 * sc, 1.7 * sc, 0, 0.3 * a, true);
+          blitGlow(ctx, gl, bx(), by() - 70 * sc, 1.7 * sc, 0.3 * a);
           blit(ctx, img, bx(), by() + 2, sc, 0, a * (0.85 + 0.15 * pul), true, 0.5, 1);
         },
       });
@@ -1785,7 +1793,7 @@ const FL = {
             const hk = colH(u);
             if (hk <= 0.01) continue;
             blit(ctx, img, g.x, g.y + 4, 1.1, 0, 1, false, 0.5, 1, g.h * hk);
-            blit(ctx, gl, g.x, g.y - 40, 0.9, 0, 0.5 * Math.min(1, hk), true);
+            blitGlow(ctx, gl, g.x, g.y - 40, 0.9, 0.5 * Math.min(1, hk));
           }
         },
       });
@@ -1888,7 +1896,7 @@ const FL = {
               blit(ctx, img, x + Math.cos(ang) * r, y + Math.sin(ang) * r * 0.75, 1.1, rot, a * (k ? 0.3 / k : 1), true);
             }
           }
-          blit(ctx, gl, x, y, 1.2 + 0.3 * Math.sin(t * 20), 0, t < T0 ? 0.6 * clamp(t / 0.2, 0, 1) : clamp(1 - (t - T0) / 0.3, 0, 1), true);
+          blitGlow(ctx, gl, x, y, 1.2 + 0.3 * Math.sin(t * 20), t < T0 ? 0.6 * clamp(t / 0.2, 0, 1) : clamp(1 - (t - T0) / 0.3, 0, 1));
         },
       });
     },
@@ -1948,7 +1956,7 @@ const FL = {
         },
         draw(ctx, e) {
           const t = e.lt, fade = clamp((1.25 - t) / 0.3, 0, 1);
-          blit(ctx, gl, x, y, 1.1 + (t < 0.55 ? t : 0.55) * 1.2, 0, 0.5 * fade, true);
+          blitGlow(ctx, gl, x, y, 1.1 + (t < 0.55 ? t : 0.55) * 1.2, 0.5 * fade);
           for (const b of B) {
             const a = b.a0 + b.w * t;
             const r = t < 0.55 ? lerp(b.r0, 50, ease.inCubic(t / 0.55)) : 50 + b.out * ease.outCubic(clamp((t - 0.55) / 0.6, 0, 1));
@@ -1981,7 +1989,7 @@ const FL = {
         draw(ctx, e) {
           const t = e.lt, k = ease.outCubic(clamp(t / 0.1, 0, 1)), fade = clamp((1.35 - t) / 0.35, 0, 1);
           const sc = lerp(1.8, 1, k), pulse = 0.9 + 0.1 * Math.sin(t * 14);
-          blit(ctx, gl, x, cy, 1.8 * sc * pulse, 0, 0.6 * fade, true);
+          blitGlow(ctx, gl, x, cy, 1.8 * sc * pulse, 0.6 * fade);
           blit(ctx, img, x, cy, sc, 0, fade * k, false);
           if (t < 0.3) blit(ctx, img, x, cy, sc, 0, (0.3 - t) / 0.3, true);
         },
@@ -2004,7 +2012,7 @@ const FL = {
           const t = e.lt, x2 = clamp((t - 0.3) / 0.35, 0, 1), fade = clamp((1.9 - t) / 0.5, 0, 1) * clamp(t / 0.1, 0, 1);
           const cx = cam.x + cam.vw * 0.5, cy = cam.y + cam.vh * 0.32 - 50 * ease.outCubic(clamp((t - 0.3) / 0.8, 0, 1)), R = cam.vh * 0.22, sc = (2 * R) / 192;
           if (x2 > 0) rays(ctx, cx, cy, 9, R * 0.8, cam.vh * 1.2, Math.PI / 2 - 0.9 + Math.sin(t) * 0.05, F.c[0], 0.14 * x2 * fade, 0.06);
-          blit(ctx, glowSprite(x2 < 0.5 ? F.c[1] : F.c[0]), cx, cy, 3.2 * (R / 120), 0, 0.6 * fade, true);
+          blitGlow(ctx, glowSprite(x2 < 0.5 ? F.c[1] : F.c[0]), cx, cy, 3.2 * (R / 120), 0.6 * fade);
           blit(ctx, moon, cx, cy, sc, 0, (1 - x2) * fade, false);
           blit(ctx, sun, cx, cy, sc * 1.6 * (1 + 0.15 * x2), t * 0.3, x2 * fade, true);
           blit(ctx, sun, cx, cy, sc * 1.8, -t * 0.2, x2 * fade * 0.4, true);
@@ -2076,9 +2084,9 @@ function prepareFor(w, p) {
   const pairs = [[col, acc]];
   if (awCol && tier >= 1) pairs.push([awCol, awAcc ?? awCol]);
   const au = auraOf(cls, ch, acc);
-  glowSprite('#ffffff'); glowSprite(au.color);
+  glowSprite('#ffffff', true); glowSprite(au.color, true);
   for (const [c, a] of pairs) {
-    glowSprite(c); glowSprite(a); glowSprite(mixC(c, '#ffffff', 0.35));
+    glowSprite(c, true); glowSprite(a, true); glowSprite(mixC(c, '#ffffff', 0.35), true);
     try { HFX.star?.(a); HFX.streak?.(a); HFX.ring?.(a); } catch { /* hitfx 캐시 */ }
     if (Q[q].layer) layerFor(tier, c, a);
   }
@@ -2088,7 +2096,7 @@ function prepareFor(w, p) {
   const def = ULT_FLOURISH[cls];
   if (tier >= 2 && def) {
     for (const n of def.sprites) spriteOf(n);
-    for (const c of def.colors) glowSprite(c);
+    for (const c of def.colors) glowSprite(c, true);
     try { HFX.ring?.(def.colors[0]); HFX.cut?.(def.colors[0]); HFX.star?.(def.colors[0]); HFX.star?.('#ffffff'); } catch { /* hitfx 캐시 */ }
     soft.push(...(def.soft ?? []));
   }

@@ -162,6 +162,8 @@ export function handleUltInput(p, world) {
   // ── 길게 누르는 중 ──
   H.lastT = p.t;
   if (!ready) { endHold(p, world, 'cancel'); return true; }
+  // 누른 채 방을 옮겼다 (페이드 동안 장면이 멈춰 있어 놓친 프레임은 없다): 지워진 고리·어둠막을 새 방에 다시 붙인다
+  if ((H.ring && !world.entities.includes(H.ring)) || (H.veil && !world.overlays?.includes(H.veil))) attachHoldFx(p, world, H);
   if (input.down('ult')) {
     const held = heldFor(H);
     const k = clamp(held / R.holdFull, 0, 1);
@@ -223,7 +225,14 @@ function startHold(p, world, H) {
   p.superArmor = 1;   // 길게 누르는 동안: 피해는 받되 경직·넉백 없음 (player.takeHit, MASTER_PLAN §1.7 #21)
   sfx('heartbeat');
   sfx('awaken_hold');
+  attachHoldFx(p, world, H);
+}
+
+/** 길게 누르기 고리(월드)·가장자리 어둠막(오버레이). 누르는 채 방을 옮기면 loadRoom 이 둘 다 지우므로 다시 붙인다 */
+function attachHoldFx(p, world, H) {
   const a = AWAKEN[p.hero.charId];
+  if (H.ring) H.ring.dead = true;
+  if (H.veil) H.veil.dead = true;
   H.ring = world.add(new SkillFx({
     x: p.cx - 70, y: p.cy - 70, w: 140, h: 140, life: 30, z: 11,
     follow(e) { e.x = p.cx - 70; e.y = p.cy - 70; },
@@ -330,7 +339,10 @@ function startAwakening(cast, aborted) {
   if (fn) {
     try { ent = fn(p, world, v) ?? null; } catch (e) { console.error('[awaken] 감독 오류 → 대체 연출', e); fn = null; ent = null; }
   }
-  if (!fn) { AWAKEN_DEBUG.fallback++; ent = fallbackDirector(p, world, v); }
+  if (!fn) {
+    AWAKEN_DEBUG.fallback++; AWAKEN_DEBUG.last.director = 'fallback';
+    try { ent = fallbackDirector(p, world, v); } catch (e) { console.error('[awaken] 대체 연출', e); ent = null; }   // 진행자가 v.dur 뒤에 정리한다
+  }
   cast.ent = ent && typeof ent === 'object' && 'dead' in ent ? ent : null;
 }
 

@@ -3,6 +3,10 @@
 //  · SCRIPTS[script] 가 없으면 곧바로 then 으로 이동
 //  · 건너뛰기(메뉴/취소/SKIP 버튼) → 확인 후 다음 선택지 또는 끝까지 명령만 실행하며 빨리 감기
 //  · 추가 명령: {cmd:'cg', id|null} {cmd:'bg', id} {cmd:'wait', time} {cmd:'title', text, sub} {cmd:'flash', color}
+//               {cmd:'recruit', id} — 2부 동료 합류 (world2 §2.4): flags['recruit_'+id] = true + game.companions?.recruit?.(id)
+//               (건너뛰기도 다른 명령처럼 실행한다. 합류 연출은 마을의 companionJoin 이 맡는다)
+//  · 장면 플래그: uiScale (platform §6.2 — game.uiW × game.uiH 로 배치), hidePad, deferToasts
+//  · 줄 단위 덮어쓰기: { name } 명패, { portrait } 초상화, { side } 좌우
 import { Scene } from '../../core/game.js';
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
@@ -16,9 +20,15 @@ import { CHARACTERS } from '../../data/characters.js';
 import { NPCS } from '../../data/npcs.js';
 import { BOSSES } from '../../data/bosses.js';
 import { addByBase } from '../../game/inventory.js';
-import { Ambience, kenBurns, ornament, gbutton, menuItem, setPad, goSafe, glowSprite, featherPortrait, TapZones, GOLD, BONE, DIM } from './common.js';
+import { drawHints } from '../../core/prompts.js';
+import { Ambience, kenBurns, ornament, gbutton, menuItem, goSafe, glowSprite, featherPortrait, TapZones, GOLD, BONE, DIM } from './common.js';
 
 const BAR = 50;
+/** 버튼 최소 높이 (platform §6.3: 44 CSS px) → 이 장면 좌표(px) */
+function tapMin(g, sc) {
+  const k = (g.cssScale || 1) * (sc.uiScale ? g.uiK || 1 : 1);
+  return Math.max(44, Math.ceil(44 / Math.max(0.2, k)));
+}
 
 function speaker(who, state) {
   if (!who || who === 'narrator') return { name: '', portrait: null, side: 'center' };
@@ -34,7 +44,8 @@ export class StoryScene extends Scene {
   enter({ script = null, lines = null, then = 'hub', thenParams = {}, bg = null, title = null, music = null } = {}) {
     // 컷신 동안 토스트(결과 화면에서 미뤄진 퀘스트 알림 등)는 CG 위에 뜨지 않도록 숨기고, 다음 장면에서 이어서 보여 준다
     this.deferToasts = true;
-    setPad(false);
+    this.hidePad = true;   // 가상 패드 숨김 (game.syncPad 가 장면 플래그를 읽는다)
+    this.uiScale = true;   // 휴대폰에서 글자·버튼을 키운다 (배치는 game.uiW × game.uiH)
     this.taps = new TapZones();
     this.script = script; this.then = then; this.thenParams = thenParams;
     this.layers = []; this.bars = 0;
@@ -57,9 +68,12 @@ export class StoryScene extends Scene {
     if (music) audio.music(music);
     if (!this.card) this.next();
   }
-  exit() { setPad(true); }
-  onResume() { setPad(false); }
   get state() { return this.game.state; }
+  /** 배치 크기: uiScale 이면 UI 좌표 (game.render 가 ctx.scale(uiK) 로 감싼다) */
+  dims() {
+    const g = this.game;
+    return this.uiScale && g.uiW ? [g.uiW, g.uiH] : [g.viewW, g.viewH];
+  }
   setImage(key, instant = false) {
     if (!key) return;
     if (this.layers.length && this.layers[this.layers.length - 1].key === key) return;
@@ -92,6 +106,12 @@ export class StoryScene extends Scene {
         break;
       }
       case 'relic': if (st && !st.progress.relics.includes(l.id)) st.progress.relics.push(l.id); break;
+      case 'recruit': // world2 §2.4 — 플래그가 합류의 원본, 동료 시스템이 없으면 플래그만 남는다
+        if (st?.progress && l.id) {
+          (st.progress.flags ??= {})['recruit_' + l.id] = true;
+          try { g.companions?.recruit?.(l.id); } catch (e) { console.warn('[story] recruit', l.id, e); }
+        }
+        break;
       case 'shake': if (!quiet) { this.shakeT = l.time ?? 0.5; this.shakeP = (l.power ?? 8) * (g.settings?.screenShake ?? 1); g.flash(l.color ?? '#fff', 0.35); } break;
       case 'flash': if (!quiet) g.flash(l.color ?? '#fff', l.a ?? 0.7, l.decay ?? 3); break;
       case 'music': audio.music(l.id); break;
@@ -159,8 +179,8 @@ export class StoryScene extends Scene {
     goSafe(g, this.then, this.thenParams, { fadeTime: immediate ? 0.25 : 0.9 });
   }
   update(dt) {
-    const g = this.game;
-    this.amb.update(dt, g.viewW, g.viewH);
+    const [vw, vh] = this.dims();
+    this.amb.update(dt, vw, vh);
     for (const L of this.layers) L.t += dt;
     this.port.t += dt;
     this.bars = Math.min(1, this.bars + dt * 1.8);
@@ -212,7 +232,7 @@ export class StoryScene extends Scene {
 
   // ───────────────────────── 그리기 ─────────────────────────
   render(ctx) {
-    const g = this.game, vw = g.viewW, vh = g.viewH, t = g.time;
+    const g = this.game, [vw, vh] = this.dims(), t = g.time;
     this.taps.clear();
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, vw, vh);
     const sx = this.shakeT > 0 ? Math.sin(t * 70) * this.shakeP * clamp(this.shakeT * 2, 0, 1) : 0;
@@ -239,11 +259,12 @@ export class StoryScene extends Scene {
     const bh = BAR * ease.outCubic(this.bars);
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, vw, bh); ctx.fillRect(0, vh - bh, vw, bh);
     ctx.fillStyle = 'rgba(232,200,114,0.35)'; ctx.fillRect(0, bh, vw, 1); ctx.fillRect(0, vh - bh - 1, vw, 1);
-    // 건너뛰기
+    // 건너뛰기 (버튼은 44 CSS px 이상, 키보드·패드는 기기에 맞는 글리프 안내)
     if (!this.empty && !this.ending) {
-      const r = { x: vw - 128, y: 3, w: 116, h: 44 };
+      const bh = tapMin(g, this), bw = Math.max(116, bh * 2.4);
+      const r = { x: vw - bw - 12, y: Math.max(1, (BAR - bh) / 2), w: bw, h: bh };
       gbutton(ctx, r, 'SKIP ▶▶', { size: 13, zones: this.taps, id: 'skip' });
-      if (!input.touchMode) text(ctx, 'Esc : 건너뛰기', vw - 140, 30, { size: 11, align: 'right', color: '#7a6e64', ow: 0 });
+      if (!input.touchMode) drawHints(ctx, [['menu', '건너뛰기']], r.x - 12, r.y + r.h / 2 + 5, { align: 'right', size: 12, color: '#8a7e74' });
     }
     // 타이틀 카드
     if (this.card) this.drawCard(ctx, vw, vh);

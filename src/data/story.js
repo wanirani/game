@@ -1165,8 +1165,14 @@ export const SCRIPTS = {
     { if: 'abyss_open', who: MA, text: '…또 간다고? 거꾸로 선 성? 세상 참 요지경이네. 거꾸로 서서 싸우진 마. 피 쏠려.' },
   ],
   npc_marta_ch13: [
+    ifFlag('p2_started', 'p2'), // 2부 프롤로그 뒤의 첫 마을 방문 (world2 §1.4)
     S(MA, '영웅 양반, 이제 방값은 영원히 공짜야. 대신 가끔 들러서 무용담 좀 풀어 줘.'),
     S(MA, '손님들이 그 얘기만 들으면 술을 두 배로 마시거든. 호호!'),
+    go('end'),
+    L('p2'),
+    S(MA, '영웅 양반, 방값은 영원히 공짜라니까. …근데 저 하늘의 금은 뭐야? 또 가야 해?'),
+    S(MA, '가려거든 배부터 든든히 채우고 가. 이번엔 무용담도 두 배로 들고 와야 해. 약속!'),
+    L('end'),
   ],
   npc_marta_default: [
     S(MA, '성벽 안에 왜 통구이 고기가 들어 있는지 알아? 나도 몰라. 근데 먹으면 기운이 난대.'),
@@ -1219,8 +1225,14 @@ export const SCRIPTS = {
     S(RO, '마지막 판엔 좋은 물건만 챙기십쇼. 외상도 이번만 해 드리죠. 살아 돌아오시면.'),
   ],
   npc_rook_ch13: [
+    ifFlag('p2_started', 'p2'),
     S(RO, '밤이 끝나니 장사가 파리 날리는군요. 헤헤… 그래도 이 가면, 이제 벗어도 되겠습니다요.'),
     N('(로크는 끝내 가면을 벗지 않았다. 다만 부리 끝이 조금, 웃는 것처럼 보였다.)'),
+    go('end'),
+    L('p2'),
+    S(RO, '가면은… 모든 게 끝나면 벗겠습니다요. 그때까진 장사꾼 로크로 불러 주십쇼.'),
+    N('(부리 가면 너머의 눈이, 하늘의 은빛 금을 오래도록 올려다보았다.)'),
+    L('end'),
   ],
   npc_rook_default: [S(RO, '필요한 건 뭐든 있습죠. 없는 건 목숨뿐입니다요. 그건 직접 챙기십쇼.')],
   npc_rook_tip1: [S(RO, '상자가 덜그럭거리면 미믹입죠. 대신 떨어뜨리는 물건은 짭짤합니다요.')],
@@ -1319,8 +1331,14 @@ export const SCRIPTS = {
     { if: 'abyss_open', who: A, text: '심연의 문이 열려 있네. 준비가 되면 말하게. 이 늙은이가 문을 붙들겠네.' },
   ],
   npc_alberto_ch13: [
+    ifFlag('p2_started', 'p2'),
     S(A, '매일 아침 해가 뜨는 게 이렇게 고마울 줄이야. 거울을 보니 주름이 늘었더군. 허허.'),
     S(A, '사람답게 늙는다는 건 축복이라네. 자네도 부디 천천히, 행복하게 늙게.'),
+    go('end'),
+    L('p2'),
+    S(A, '허허, 머리가 하룻밤 새 하얗게 셌구먼. 사람답게 늙는 것도 한꺼번에 오니 숨이 차네.'),
+    S(A, '저 하늘의 금… 또 자네를 보내야 하는구먼. 종은 못 쳐도 기도는 할 수 있네. 부디 몸조심하게.'),
+    L('end'),
   ],
   npc_alberto_default: [S(A, '주님의 가호가 함께하기를. 전직을 원하면 언제든 말하게.')],
   npc_alberto_tip1: [S(A, '직업마다 길이 둘로 갈라지네. 어느 쪽이든 자네다운 길을 고르게.')],
@@ -1375,7 +1393,13 @@ export const SCRIPTS = {
     S(EL, '다들 무사히 돌아오게 해 달라고 매일 기도해요. 꼭 돌아와요. 약속!'),
   ],
   npc_elise_ch13: [
+    ifFlag('p2_started', 'p2'),
     S(EL, '해가 떴어요! 진짜 해요! 이제 밤에 불 안 켜고 잘 거예요. …아마도요.'),
+    go('end'),
+    L('p2'),
+    S(EL, '해가 떴는데도 하늘의 금 때문에 다시 불을 켜고 자요. …헌터님, 또 가시는 거죠?'),
+    S(EL, '신부님 대신 이번엔 제가 매일 기도할게요. 꼭 돌아와요. 약속!'),
+    L('end'),
   ],
   npc_elise_default: [S(EL, '오늘도 헌터님을 위해 기도했어요!')],
   npc_elise_tip1: [S(EL, '백작님(고양이)이 까마귀 깃털을 엄청 좋아해요. 마르타 이모한테 물어보세요!')],
@@ -1424,7 +1448,14 @@ export const SCRIPTS = {
     S(CA, '백작이 재가 됐는데… 이상하지. 난 아직 여기 있어. 굴레가 끊어지지 않았다는 뜻이야.'),
   ],
   npc_carmilla_ch13: [
+    ifFlag('p2_started', 'p2'),
     S(CA, '햇빛 아래서 포도주를 마시는 날이 올 줄이야. 후후, 생각보다 따뜻하네.'),
+    go('end'),
+    L('p2'),
+    { if: 'carmilla_trust2', who: CA, text: '햇빛 아래서 포도주를 마시는 날이 왔나 했더니, 이번엔 하늘이 깨졌네. 참 짧은 휴가였어.' },
+    { if: 'carmilla_trust2', who: CA, text: '…다녀오렴. 네가 없으면 이 여관, 너무 조용하거든.' },
+    { if: '!carmilla_trust2', who: CA, text: '저 금 너머에서 차가운 바람이 불어와. 백작의 성보다 더 텅 빈 냄새야. …흥, 조심하든가.' },
+    L('end'),
   ],
   npc_carmilla_default: [S(CA, '햇빛 없는 자리가 좋아. 이 여관 구석처럼. …같이 한 잔 할래?')],
   npc_carmilla_s06: [
@@ -1549,10 +1580,12 @@ function pickNpcScript(npcId, state, stageId) {
 /** 스테이지 클리어 후 재생할 엔딩 스크립트 id (없으면 null)
  *  s12: 유물 5개 → null(심연의 문이 열려 s13 으로) / 11장의 "마지막 기회"에 카밀라를 믿음(carmilla_trust2) → ending_normal / 아니면 ending_bad
  *       (6장에서만 믿고 11장에서 거절하면 배드 엔딩 — ending_bad 의 "처음엔 믿어 주더니…" 대사가 이 경우)
- *  s13: ending_true   (엔딩 대사는 abyss_open 플래그에 따라 13장 안내로 분기하므로, s12 뒤에 엔딩을 틀어도 모순이 없다) */
+ *  s13: ending_true   (엔딩 대사는 abyss_open 플래그에 따라 13장 안내로 분기하므로, s12 뒤에 엔딩을 틀어도 모순이 없다)
+ *  s20: 별의 조각 6개(progress.shards, 또는 그 결과인 stars_all 플래그) → ending_p2true (새벽의 별) / 아니면 ending_p2 (파수꾼의 밤)  [world2 §2.3] */
 export function endingAfter(stageId, state) {
   const p = state?.progress ?? {};
   const f = p.flags ?? {};
+  if (stageId === 's20') return (p.shards?.length ?? 0) >= 6 || f.stars_all ? 'ending_p2true' : 'ending_p2';   // [hook:p2]
   if (stageId === 's13') return 'ending_true';
   if (stageId !== 's12') return null;
   if (f.relics_all || (p.relics?.length ?? 0) >= 5) return null;
@@ -1622,15 +1655,26 @@ export const CREDITS = [
 /** 숨겨진 13장을 아직 모르는 플레이어에게는 보여 주지 않을 크레딧 줄 */
 const SECRET_CREDITS = ['13장 — 혼돈의 군주'];
 /** 엔딩 종류·진행도에 맞춘 크레딧 (13장이 해금됐거나 진엔딩을 본 적이 있을 때만 13장 보스를 싣는다)
- *  kind: 'bad'|'normal'|'true'|null, state: 세이브(없으면 null), meta: game.meta */
+ *  kind: 'bad'|'normal'|'true'|'p2'|'p2true'|null, state: 세이브(없으면 null), meta: game.meta
+ *  2부 (world2 §1.7): 2부 엔딩 크레딧이거나 2부 엔딩을 본 적이 있으면 CREDITS_P2 를 '— 제작 —' 바로 앞에 끼운다 (그때는 1부 보스도 모두 싣는다).
+ *  2부 엔딩이면 둘째 줄(부제)에 '— 제2부 균열의 순례' 를 붙이고, 새벽의 별(p2true)이면 마지막 줄을 '새벽의 별은 지지 않는다.' 로 바꾼다.
+ *  1부 엔딩은 2부 엔딩을 본 적이 없으면 2부 줄을 보여 주지 않는다. */
 export function creditsFor(kind, state, meta) {
   const p = state?.progress;
-  const known = kind === 'true' || p?.unlocked?.includes('s13') || p?.flags?.abyss_open || meta?.endingsSeen?.includes('true');
-  return known ? CREDITS : CREDITS.filter((s) => !SECRET_CREDITS.includes(s));
+  const p2Kind = kind === 'p2' || kind === 'p2true';
+  const p2Known = p2Kind || !!meta?.endingsSeen?.some?.((k) => typeof k === 'string' && k.startsWith('p2'));
+  const known = p2Known || kind === 'true' || p?.unlocked?.includes('s13') || p?.flags?.abyss_open || meta?.endingsSeen?.includes('true');
+  let list = known ? CREDITS.slice() : CREDITS.filter((s) => !SECRET_CREDITS.includes(s));
+  if (!p2Known || !CREDITS_P2?.length) return list;   // [hook:p2]
+  const at = list.indexOf('— 제작 —');
+  list.splice(at >= 0 ? at : list.length, 0, ...CREDITS_P2);
+  if (p2Kind && list[1] === '블러드 녹턴: 악마성 연대기') list[1] = '블러드 녹턴: 악마성 연대기 — 제2부 균열의 순례';
+  if (kind === 'p2true' && list[list.length - 1] === '밤은 끝났다. 좋은 아침을.') list[list.length - 1] = '새벽의 별은 지지 않는다.';
+  return list;
 }
 
 // ── 확장 스크립트 병합 (MASTER_PLAN §1.17): 동료 스크립트(story_companions.js) · 2부 스크립트(story_p2.js ⊃ story_p2b.js) ──
 // 두 모듈은 story.js 를 import 하지 않는다 (순환 금지). CREDITS_P2 는 creditsFor 가 읽는다 (STORY-P2-A).
-import { SCRIPTS_P2 } from './story_p2.js';   // [hook:p2]
+import { SCRIPTS_P2, CREDITS_P2 } from './story_p2.js';   // [hook:p2]
 import { COMPANION_SCRIPTS } from './story_companions.js';   // [hook:cmp]
 Object.assign(SCRIPTS, COMPANION_SCRIPTS, SCRIPTS_P2);   // [hook:cmp] [hook:p2]

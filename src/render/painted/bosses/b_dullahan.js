@@ -73,6 +73,13 @@ export default {
     let x0 = X - 480, x1 = X + 480, y0 = B - 460, y1 = Math.max(B + 30, (A?.floor ?? B) + 10);
     if (b.horseFade > 0 && b.fadeX != null) { x0 = Math.min(x0, b.fadeX - 320); x1 = Math.max(x1, b.fadeX + 320); y0 = Math.min(y0, b.fadeB - 420); y1 = Math.max(y1, b.fadeB + 20); }
     if (A && (b.dying > 0 || st?.shards?.list.length || st?.dfade)) { x0 = Math.min(x0, A.x0 - 40); x1 = Math.max(x1, A.x1 + 40); y0 = Math.min(y0, B - 520); y1 = Math.max(y1, A.floor + 20); }
+    // 남아 있는 입자(연기·불티)까지 덮는다: 도약·돌진으로 몸이 멀리 가도 뒤에 남은 입자가 컬링으로 한꺼번에 사라지지 않게 (BOSS_PIPELINE §8.15)
+    const P = st?.P;
+    if (P?.n) {
+      let px0 = x0 + 40, px1 = x1 - 40, py0 = y0 + 40;
+      for (let i = 0; i < P.n; i++) { const px = P.x[i], py = P.y[i]; if (px < px0) px0 = px; if (px > px1) px1 = px; if (py < py0) py0 = py; }
+      x0 = Math.min(x0, px0 - 40); x1 = Math.max(x1, px1 + 40); y0 = Math.min(y0, py0 - 40);
+    }
     out.x = x0; out.y = y0; out.w = x1 - x0; out.h = y1 - y0;
     return out;
   },

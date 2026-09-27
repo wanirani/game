@@ -349,7 +349,7 @@ AI_D.roc = {
         e.setState('cast'); e.fired = false; e.aimK = 0;
         audio.sfx('charge_ready', { vol: 0.4, pitch: 0.6 }); audio.sfx('bat', { vol: 0.3, pitch: 0.4 });
         for (const c of e.cols) {
-          warnZone(world, e, 'cast', 'roc_bolt', (z) => { z.data.k = e.aimK; setRect(z, c.x - 25, c.top, c.x + 25, c.bottom); }, { x: c.x, top: c.top, bottom: c.bottom, seed: rand(0, 99), live: false });
+          warnZone(world, e, 'cast', 'roc_bolt', (z) => { if (e.fired) { z.dead = true; return; } z.data.k = e.aimK; setRect(z, c.x - 25, c.top, c.x + 25, c.bottom); }, { x: c.x, top: c.top, bottom: c.bottom, seed: rand(0, 99), live: false });
         }
       } else {
         e.setState('windup'); e.aimK = 0;
@@ -698,7 +698,7 @@ AI_D.moth = {
     e.ph += dt * 3;
     if (e.state === 'dust') {
       e.setAnim('dust'); e.aimK = clamp(e.stateT / 0.45, 0, 1);
-      if (!e.fired) hover(e, e.dx0, e.dy0, 4, dt, e.speed * 1.6);
+      if (!e.fired) hover(e, e.dx0, e.dy0, 10, dt, e.speed * 3);
       else { e.vx *= Math.pow(0.2, dt); e.vy += (-120 - e.vy) * Math.min(1, 3 * dt); }
       if (Math.random() < 0.5 * qual(world)) world.fx?.emit('magic', e.cx + rand(-22, 22), e.cy + rand(0, 16), { color: '#c8ff6a', speed: 30 });
       if (e.stateT >= 0.45 && !e.fired) {
@@ -799,7 +799,9 @@ AI_D.herald = {
           let x = p.cx - side * 280;
           if (x < e.w || x > m.pxW - e.w) x = p.cx + side * 280;
           puff(world, 'magic', e.cx, e.cy, 10, { color: '#ffffff', speed: 120 });
-          e.cx = clamp(x, e.w, m.pxW - e.w); e.y = clamp(p.cy - e.h / 2, 8, m.pxH - e.h - 8);
+          e.cx = clamp(x, e.w, m.pxW - e.w);
+          const gy = floorBelow(world, e.cx, p.y - 20, 600) ?? m.pxH;
+          e.y = clamp(Math.min(p.cy - e.h / 2, gy - e.h - 8), 8, m.pxH - e.h - 8);
           e.side = Math.sign(e.cx - p.cx) || 1; faceP(e);
           world.fx?.ring(e.cx, e.cy, { color: '#ffffff', r0: 50, r1: 6, life: 0.25, width: 3 });
           audio.sfx('mist', { vol: 0.4, pitch: 1.3 });
@@ -814,10 +816,12 @@ AI_D.herald = {
     if (Math.abs(p.cx - e.cx) > keep * 2) e.side = Math.sign(e.cx - p.cx) || e.side;
     let tx = p.cx + e.side * keep;
     if (tx < 40 || tx > m.pxW - 40) { e.side = -e.side; tx = p.cx + e.side * keep; }
-    hover(e, tx, p.cy + Math.sin(e.t * 1.1) * 40, 1.8, dt, e.speed * 2);
+    // 플레이어 높이 ±40, 단 발밑 바닥 위로 (벽을 통과하는 몸이 바닥에 파묻히지 않게)
+    const gy = floorBelow(world, clamp(tx, 8, m.pxW - 8), p.y - 20, 600) ?? m.pxH;
+    hover(e, tx, Math.min(p.cy + Math.sin(e.t * 1.1) * 40, gy - e.h / 2 - 8), 1.8, dt, e.speed * 2);
     keepInMap(e, world);
     faceP(e);
-    if (e.cool <= 0 && e.distToPlayer() < 720) {
+    if (e.cool <= 0 && e.distToPlayer() < 720 && !solidAt(world, this.eye(e).x, this.eye(e).y)) {
       e.pick++;
       if (e.pick % 2 === 1) {
         e.setState('aim'); e.lock = false; e.aimK = 0;
@@ -945,8 +949,9 @@ ZF.roc_bolt = (ctx, z) => {
   if (!d.live) {
     // 경고: 옅은 기둥 + 바닥 표시
     const k = d.k ?? 0;
-    ctx.fillStyle = `rgba(170,210,255,${0.04 + 0.1 * k})`; ctx.fillRect(x - 25, top, 50, bot - top);
-    ctx.strokeStyle = `rgba(210,235,255,${0.25 + 0.5 * k})`; ctx.lineWidth = 1.5;
+    ctx.fillStyle = `rgba(170,210,255,${0.06 + 0.16 * k})`; ctx.fillRect(x - 25, top, 50, bot - top);
+    glowAt(ctx, '#bfe0ff', x, bot - 4, 60 + 30 * k, 0.25 + 0.45 * k);
+    ctx.strokeStyle = `rgba(210,235,255,${0.35 + 0.55 * k})`; ctx.lineWidth = 1.5 + k;
     ctx.setLineDash([6, 8]); ctx.lineDashOffset = z.t * 60;
     ctx.beginPath(); ctx.moveTo(x - 25, top); ctx.lineTo(x - 25, bot); ctx.moveTo(x + 25, top); ctx.lineTo(x + 25, bot); ctx.stroke();
     ctx.setLineDash([]);
@@ -1003,14 +1008,22 @@ ZF.root_spike = (ctx, z) => {
   const d = z.data, x = d.x, by = d.top;
   ctx.save();
   if (!z.active) {
-    // 경고: 땅이 갈라지며 흙이 들썩인다
+    // 경고: 솟을 자리가 옅게 빛나고, 땅이 갈라지며 가시 끝이 비죽 나온다
     const k = z.warnK;
-    ctx.fillStyle = `rgba(20,12,6,${0.35 + 0.4 * k})`;
-    ctx.beginPath(); ctx.ellipse(x, by - 1, 22 + 12 * k, 4 + 2 * k, 0, 0, TAU); ctx.fill();
-    ctx.strokeStyle = `rgba(200,255,140,${0.25 + 0.5 * k})`; ctx.lineWidth = 1.5;
+    ctx.fillStyle = `rgba(190,255,120,${0.04 + 0.08 * k})`;
+    ctx.fillRect(x - 35, by - z.h, 70, z.h);
+    glowAt(ctx, '#9ad040', x, by - 4, 70 + 40 * k, 0.3 + 0.4 * k);
+    ctx.fillStyle = `rgba(20,12,6,${0.5 + 0.4 * k})`;
+    ctx.beginPath(); ctx.ellipse(x, by - 1, 24 + 12 * k, 4 + 2 * k, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = `rgba(210,255,150,${0.35 + 0.55 * k})`; ctx.lineWidth = 1.5;
     ctx.beginPath();
-    for (let i = 0; i < 4; i++) { const a = h1(i + d.seed) * 26 - 13; ctx.moveTo(x + a, by - 1); ctx.lineTo(x + a * 1.6 + (i - 1.5) * 6, by - 1 - 4 * k); }
+    for (let i = 0; i < 4; i++) { const a = h1(i + d.seed) * 26 - 13; ctx.moveTo(x + a, by - 1); ctx.lineTo(x + a * 1.6 + (i - 1.5) * 6, by - 1 - 5 * k); }
     ctx.stroke();
+    ctx.fillStyle = '#5a4028';
+    for (let i = -1; i <= 1; i++) {
+      const bx = x + i * 16, hh = (4 + 12 * k) * (i === 0 ? 1 : 0.7) * (0.8 + 0.2 * Math.sin(z.t * 30 + i));
+      ctx.beginPath(); ctx.moveTo(bx - 5, by); ctx.lineTo(bx, by - hh); ctx.lineTo(bx + 5, by); ctx.closePath(); ctx.fill();
+    }
     ctx.restore();
     return;
   }
@@ -1071,8 +1084,13 @@ ZF.prism_beam = (ctx, z) => {
   ctx.lineCap = 'round';
   if (!d.fire) {
     const k = d.k ?? 0, blink = d.lock && ((z.t * 16) | 0) % 2 === 0;
-    ctx.strokeStyle = blink ? 'rgba(255,255,255,0.9)' : `rgba(230,220,255,${0.2 + 0.45 * k})`;
-    ctx.lineWidth = d.lock ? 2.5 : 1.5;
+    if (d.lock) {
+      // 고정된 조준선: 무지갯빛 번짐
+      ctx.lineWidth = 7; ctx.strokeStyle = 'rgba(190,150,255,0.18)';
+      ctx.beginPath(); ctx.moveTo(d.x0, d.y0); ctx.lineTo(d.x1, d.y1); ctx.stroke();
+    }
+    ctx.strokeStyle = blink ? 'rgba(255,255,255,0.95)' : `rgba(230,220,255,${0.3 + 0.5 * k})`;
+    ctx.lineWidth = d.lock ? 3 : 2;
     ctx.setLineDash(d.lock ? [] : [12, 8]); ctx.lineDashOffset = -z.t * 90;
     ctx.beginPath(); ctx.moveTo(d.x0, d.y0); ctx.lineTo(d.x1, d.y1); ctx.stroke();
     ctx.setLineDash([]);

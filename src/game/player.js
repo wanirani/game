@@ -17,7 +17,8 @@ import { SKILLS } from '../data/skills.js';
 import { DOCS } from '../data/lore.js';
 import { drawHero } from '../render/hero.js';
 import { Hitbox } from './projectiles.js';
-import { initFeel, updateGait, onJump, onLand, dashFx, squashSpring } from './feel_move.js';   // [hook:feel]
+import { initFeel, updateGait, onJump, onLand, dashFx, squashSpring, chaseJump, takeChaseStall, pivotCommit, resetMoveFeel } from './feel_move.js';   // [hook:feel]
+import { SPRINT } from '../data/feel_move.js';
 import { handleUltInput } from './awaken.js';   // [hook:awaken]
 
 const COYOTE = 0.1, JUMP_BUF = 0.13, ATK_BUF = 0.16;
@@ -57,7 +58,7 @@ export class Player extends Entity {
     this.skillPage = 0;
     this.rig = {}; // 렌더러 전용 상태 (망토/머리카락 체인 등)
     this.auraT = 0;
-    this.stepT = 0;
+    // 걸음·발소리는 feel_move.js (initFeel: gait, gaitPh, moveFx, moveFxT, sprinting, feel{sq, sqV, accLean}) — 예전 stepT 발소리 타이머는 없앴다
     // ── 확장 훅 필드 (MASTER_PLAN §1.7 #1) ──
     //  mount: MountRider | null (CompanionSystem 이 붙임) · superArmor > 0: 피해는 받되 경직·넉백 없음 (설정한 쪽이 해제)
     //  awakenHoldK: 각성 길게 누르기 진행도 0..1 (awaken.js) · lastDashEnd: 대시가 자연 종료된 this.t (대시 연계 질주)
@@ -175,8 +176,7 @@ export class Player extends Entity {
       this.dashT -= dt;
       this.vx = this.facing * this.dashSpeed;
       this.vy = this.dashAir ? 0 : this.vy;
-      if (Math.floor(this.t * 40) % 2 === 0) this.ghostTrail(world, this.ch.move.dash === 'mist' ? '#b0103a' : '#8ac8ff');
-      dashFx?.(this, world, 'step');   // [hook:feel]
+      dashFx?.(this, world, 'step');   // [hook:feel] 잔상(0.035초, 품질별 상한)·속도선은 feel_move.js
       if (this.dashT <= 0) { this.vx *= 0.5; this.lastDashEnd = this.t; dashFx?.(this, world, 'end'); }   // [hook:feel]
     } else if (inp && input.pressed('dash') && this.dashCool <= 0 && (onGround || !this.airDashUsed) && !this.moveLocked()) {
       this.startDash(ax, world);
@@ -195,7 +195,7 @@ export class Player extends Entity {
         if (ax !== 0) {
           const acc = onGround ? prof.accel : prof.airAccel;
           this.vx = approach(this.vx, ax * maxSp, acc * dt);
-          if (!this.move && !(this.faceHoldT > 0)) this.facing = ax;   // [hook:plat] 커맨드 기술로 돌아선 직후엔 뒤로 누른 방향으로 바로 되돌지 않는다
+          if (!this.move && !(this.faceHoldT > 0) && !gait?.holdFace) this.facing = ax;   // [hook:plat] [hook:feel] 커맨드 기술로 돌아선 직후엔 뒤로 누른 방향으로 바로 되돌지 않는다 · 방향 전환(pivot)은 절반 지나서 돈다
         } else {
           this.vx = approach(this.vx, 0, (onGround ? prof.decel : prof.airDecel) * dt);
         }
@@ -211,7 +211,8 @@ export class Player extends Entity {
 
     // 공중 공격 체공
     this.gravity = 1;
-    if (this.move?.airStall && !onGround && this.moveT < this.move.dur * this.move.airStall && this.vy > -50) {
+    const stall = this.move ? Math.max(this.move.airStall ?? 0, this.moveStall ?? 0) : 0;   // [hook:feel] 추격 점프 뒤 첫 공중 공격은 체공 0.5
+    if (stall && !onGround && this.moveT < this.move.dur * stall && this.vy > -50) {
       this.gravity = 0.25; if (this.vy > 120) this.vy = 120;
     }
     if (this.dashT > 0 && this.dashAir) this.gravity = 0;
@@ -268,6 +269,7 @@ export class Player extends Entity {
     if (!this.onGround && !(this.apexY <= this.y)) this.apexY = this.y;   // [hook:feel] 공중 최고점
     if (this.landed) {
       this.landT = 0.12;
+      this.landSlam = !!(this.move && (this.move.groundPound || this.move.id?.endsWith('Down') || this.move.anim === 'plunge' || this.move.anim === 'dive_kick'));   // [hook:feel] 내려찍기 착지는 무거운 착지 연출 없음
       world.fx.burst('dust', this.cx, this.bottom, 6, { angle: -Math.PI / 2, spread: 1.4, speed: 80 });
       audio.sfx('land', { vol: 0.4 });
       if (this.move?.groundPound) this.groundPound(world, this.move.groundPound);
@@ -335,7 +337,8 @@ export class Player extends Entity {
       if (onGround && down && this.onOneWay(world)) {
         this.dropThrough = true; this.y += 2; input.consume('jump');
       } else if (onGround || this.coyote > 0) {
-        this.doJump(world, false); input.consume('jump');
+        if (!chaseJump?.(this, world)) this.doJump(world, false);   // [hook:feel] 띄우기 적중 0.35초 안이면 추격 점프 '추격!'
+        input.consume('jump');
       } else if (this.wallSlide || (wallJump && this.hitWallDir && !onGround)) {   // [hook:cmp] moveProfile().wallJump
         const dir = -(this.wallSlide || this.hitWallDir);
         this.vx = dir * 420; this.facing = dir;
@@ -407,6 +410,7 @@ export class Player extends Entity {
     for (const d of this.state.progress?.docs || []) {
       const tech = DOCS[d]?.tech;
       if (!tech?.cmd) continue;
+      if (this.sprinting && tech.cmd[0] === 'f' && tech.cmd[1] === 'f' && input.time - (this.fm?.sprintAt ?? -9) > SPRINT.cmdWindow) continue;   // [hook:feel] →→ 뒤 0.25초가 지나면 질주 공격이 먼저 (MASTER_PLAN §1.4)
       const r = input.command(tech.cmd, faceFn, tech.window ?? 0.6);   // [hook:plat]
       if (r === true || r?.ok) {   // [hook:plat]
         input.consume('attack');
@@ -446,6 +450,8 @@ export class Player extends Entity {
   startMove(world, mv, kind) {
     if (!mv) return;
     if (this.mount?.riding) mv = this.mount.adaptMove(mv);   // [hook:cmp] 탑승 중: 돌진·체공·반동 제거, canMove
+    else { pivotCommit?.(this); if (this.onGround) this.sprinting = false; }   // [hook:feel] 방향 전환 중이면 새 방향으로 치고, 지상 공격은 질주를 끝낸다
+    this.moveStall = takeChaseStall?.(this) ?? 0;   // [hook:feel]
     this.move = mv; this.moveT = 0; this.moveHitDone = false; this.moveHits = 0;
     this.chainKind = kind === 'ground' || kind === 'air' ? kind : null;
     if (kind === 'air') { this.lastAirChain = this.chain; this.lastAirT = this.t; }
@@ -652,6 +658,7 @@ export class Player extends Entity {
       this.iframes = heavyMounted ? 1.0 : 1.1;
       this.hurtT = heavyMounted ? 0.2 : 0.28;
       this.endMove(); this.dashT = 0; this.charging = 0; this.holdT = 0;
+      resetMoveFeel?.(this, world);   // [hook:feel] 경직: 질주·미끄러짐 끝
       const dir = attack.dir || (Math.sign(this.cx - (attack.owner?.cx ?? this.cx)) || -this.facing);
       const kb = attack.kb || [240, -360];
       const km = heavyMounted ? 0.5 : 1;   // [hook:cmp]
@@ -683,6 +690,7 @@ export class Player extends Entity {
   }
   die(world) {
     this.mount?.dismount(world, this, 'death');   // [hook:cmp]
+    resetMoveFeel?.(this, world);   // [hook:feel]
     this.dead = true; this.deathT = 0;
     this.vx = -this.facing * 200; this.vy = -500;
     audio.sfx('death');
@@ -712,7 +720,8 @@ export class Player extends Entity {
       if (!this.move && !(this.throwT > 0) && !(this.castT > 0)) this.setAnim(this.mount.riderAnim(this));   // [hook:cmp]
       return;
     }
-    // 이동 손맛 우선순위 (FEEL-MOVE, W2): move > throw > cast > dash > air > land_heavy > skid > pivot > crouch > charge > run_start > walk/run/sprint > land > idle (stepT 발소리 블록 제거)
+    // 이동 손맛 우선순위 (FEEL-MOVE): move > throw > cast > dash > air > land_heavy > skid > pivot > crouch > charge > run_start > walk/run/sprint > land > idle
+    // 발소리는 걸음 위상(p.gaitPh)의 발 접지 순간에 feel_move.js 가 낸다 (예전 stepT 타이머 블록은 없앴다)
     if (this.move) { this.setAnim(this.move.anim); return; }
     if (this.throwT > 0) { this.setAnim('throw'); return; }
     if (this.castT > 0) { this.setAnim('cast'); return; }
@@ -723,14 +732,12 @@ export class Player extends Entity {
       else this.setAnim(this.vy < 0 ? 'jump' : 'fall');
       return;
     }
+    const mfx = this.moveFx;   // [hook:feel]
+    if (mfx === 'land_heavy' || mfx === 'skid' || mfx === 'pivot') { this.setAnim(mfx); return; }   // [hook:feel]
     if (this.crouch) { this.setAnim('crouch'); return; }
     if (this.charging > 0.1) { this.setAnim('charge'); return; }
-    if (Math.abs(this.vx) > 30) {
-      this.setAnim('run');
-      this.stepT -= dt * Math.abs(this.vx) / 250;
-      if (this.stepT <= 0) { this.stepT = 0.32; audio.sfx('footstep', { vol: 0.18, pitch: rand(0.9, 1.1) }); if (Math.random() < 0.5) world.fx.emit('dust', this.cx - this.facing * 8, this.bottom, { speed: 30, size: 5 }); }
-      return;
-    }
+    if (mfx === 'run_start') { this.setAnim('run_start'); return; }   // [hook:feel]
+    if (Math.abs(this.vx) > 30) { this.setAnim(this.gait === 'sprint' ? 'sprint' : this.gait === 'walk' ? 'walk' : 'run'); return; }   // [hook:feel]
     this.setAnim(this.landT > 0 ? 'land' : 'idle');
   }
 
