@@ -303,21 +303,22 @@ export function drawCompanionHUD(ctx, world, o = {}) {
   ctx.restore();
   // 터치: 공용 탭 등록부에도 올린다 — 가상 패드가 위젯 위(왼쪽 45 % 떠다니는 스틱 자리)에서 스틱을 만들지 않고
   // 탭을 캔버스로 넘기도록 (touchpad onCanvasUi). 주인 = 이 월드의 장면 (위에 다른 장면이 쌓이면 그 장면 것만 판정된다)
-  // 판정 사각형은 손가락 크기(44 CSS px)까지 넓힌 것 — 패드가 캔버스로 넘기는 영역과 CompanionSystem.handleTaps 가
-  // 보는 영역(돌려주는 배열)이 같아야 위젯 옆을 누른 탭이 스틱도 동료도 아닌 채로 사라지지 않는다
+  // 돌려주는 판정 사각형은 등록부와 같은 여유(손가락 44 CSS px)만큼 넓힌 것 — 패드가 캔버스로 넘기는 영역(위젯 + 여유)과
+  // CompanionSystem.handleTaps 가 보는 영역(돌려주는 배열)이 같아야 위젯 옆을 누른 탭이 스틱도 동료도 아닌 채로 사라지지 않는다
   if (T && RECTS.length) {
-    touchRects(RECTS, world);
     try {
       const owner = sceneOf(world);
-      for (const r of RECTS) taps.add(r.act === 'mount' ? 'cmp.mount' : 'cmp.guard' + (r.slot ?? 0), r, { owner, kind: 'icon', slop: 0, src: 'companion_hud' });
+      for (const r of RECTS) taps.add(r.act === 'mount' ? 'cmp.mount' : 'cmp.guard' + (r.slot ?? 0), r, { owner, kind: 'icon', slop: TOUCH_SLOP, src: 'companion_hud' });
     } catch (e) { warnOnce('taps', e); }
+    touchRects(RECTS, world);   // 등록부는 값을 복사해 두므로 등록한 뒤에 넓힌다
   }
   return RECTS.length ? RECTS : null;
 }
-const TOUCH_MIN_CSS = 44, TOUCH_SLOP = 4, TOUCH_SLOP_MAX = 28;   // core/ui.js 탭 등록부와 같은 규칙 (icon 44 CSS px, 여유 상한 28)
+const TOUCH_MIN_CSS = 44, TOUCH_SLOP = 4, TOUCH_SLOP_MAX = 28;   // core/ui.js 탭 등록부(tapSlop)와 같은 규칙 (icon 44 CSS px, 여유 상한 28)
 /**
- * 터치 판정 사각형: 위젯마다 짧은 변이 44 CSS px 가 되도록 사방으로 넓히되, 이웃 위젯과 맞닿는 쪽은 사이 간격의 가운데에서 멈춘다
- * (겹치지 않으므로 handleTaps 의 '첫 사각형' 판정과 탭 등록부의 '가장 가까운 영역' 판정이 같다). list 는 x 순서 (탈것 → 수호신 1 → 2)
+ * 터치 판정 사각형: 위젯마다 등록부와 같은 여유(max(4, 짧은 변이 44 CSS px 에 모자란 만큼의 절반), 상한 28)로 사방을 넓히되,
+ * 이웃 위젯과 맞닿는 쪽은 사이 간격의 가운데에서 멈춘다 (등록부의 '가장 가까운 영역' 판정과 같은 몫 → 겹치지 않아
+ * handleTaps 의 '첫 사각형' 판정과 같은 위젯이 눌린다). list 는 x 순서 (탈것 → 수호신 1 → 2)
  */
 function touchRects(list, world) {
   const css = world?.game?.cssScale > 0 ? world.game.cssScale : 1;

@@ -16,6 +16,15 @@ import { heldByFreeze } from './boss.js';
 import { Entity } from '../entity.js';
 import { audio } from '../../core/audio.js';
 import { TAU, clamp, lerp, rand, rgba } from '../../core/math.js';
+import { registerPainted, hasPainted, paintedRig, paintedEnabled, drawPaintedDirect } from '../../render/painted/registry.js';
+import { bosses as ART6 } from '../../render/painted/reg/art-boss-6.js';
+
+// ───────────────────────── 채색 퍼핏 (ART-BOSS-6) ─────────────────────────
+// 모음(reg/index.js)에 art-boss-6 줄이 아직 없으면 여기서 한 번 등록한다 (이미 있으면 아무것도 안 함).
+// 채색 준비 전·?painted=0·굽기 실패 때는 아래 벡터 그림이 그대로 쓰인다.
+if (!hasPainted('b_narkissa') && ART6.b_narkissa) registerPainted('b_narkissa', { kind: 'boss', importer: ART6.b_narkissa });
+/** 채색 소품 도우미 (벽거울·파편·잔상). 없으면 null → 벡터 */
+const pArt = (world) => (paintedEnabled(world?.game) ? paintedRig('b_narkissa')?.art ?? null : null);
 
 // ───────────────────────── 색 ─────────────────────────
 const GL = '#dff4ff', GL_C = '#9fe8ff', GL_V = '#c8b0ff', GOLD = '#ffd86a', RED = '#ff3050', GEM = '#40ffb0', EYE_C = '#bff6ff';
@@ -835,7 +844,8 @@ class NarkMirror extends Entity {
     const sx = this.hitT > 0 ? Math.sin(t * 90) * 3 * (this.hitT / 0.35) : 0;
     ctx.save();
     ctx.translate(sx, 0);
-    if (A?.frame) put(ctx, A.frame, x, y);
+    if (pArt(world)?.frame(ctx, x, y)) { /* 채색 틀 + 유리 */ }
+    else if (A?.frame) put(ctx, A.frame, x, y);
     else { ctx.fillStyle = '#2a2e44'; ctx.beginPath(); ctx.ellipse(x, y, 30, 54, 0, 0, TAU); ctx.fill(); }
     // 유리 속: 흐르는 윤슬 · 여제 그림자 (clip 없이: 유리 타원 안쪽에만 들어가는 모양으로)
     const band = ((t * 0.3 + this.i * 0.27) % 1.2) - 0.1, by = y - 40 + band * 80;
@@ -917,6 +927,7 @@ class NarkTwin extends Entity {
   draw(ctx, world) {
     const a = 0.62 * this.inT * (this.fadeT >= 0 ? clamp(1 - this.fadeT / 0.45, 0, 1) : 1);
     if (a <= 0.01) return;
+    if (drawPaintedDirect(this, ctx, world, 'b_narkissa')) return;   // 채색 퍼핏 (같은 리그, 옅게 + 청백 발광)
     const o = { t: this.t, form: this.boss.formPhase, dmg: 0, twin: true, legs: this.legs, lookX: 0, lookY: 0.3, floor: this.boss.A.floor };
     ctx.save();
     ctx.globalAlpha *= a;
@@ -1168,8 +1179,11 @@ export class Narkissa extends BossC {
       this.vx = dir * 900; this.vy = 0;
       const q = world.fx?.quality ?? 1;   // 잔상 예산 8/5/3 (MASTER_PLAN §5.2): 수명 0.2초 ÷ 간격 → 약 6.7 / 4.4 / 2.9 개
       if (this.every(q >= 1 ? 0.03 : q >= 0.75 ? 0.045 : 0.07)) {
-        const gx = this.cx, gy = this.bottom, P = { ...this.pose }, tt = this.t, f = this.facing, fm = this.formPhase;
-        world.fx.ghost((ctx, a) => { ctx.save(); ctx.globalAlpha = a * 0.3; drawNark(ctx, gx, gy, f, P, { t: tt, form: fm, dmg: 0, twin: true }); ctx.restore(); }, 0.2);
+        const gx = this.cx, gy = this.bottom, P = { ...this.pose }, tt = this.t, f = this.facing, fm = this.formPhase, PA = pArt(world);
+        world.fx.ghost((ctx, a) => {
+          if (PA?.ghost(ctx, gx, gy, f, P, fm, a * 0.35)) return;
+          ctx.save(); ctx.globalAlpha = a * 0.3; drawNark(ctx, gx, gy, f, P, { t: tt, form: fm, dmg: 0, twin: true }); ctx.restore();
+        }, 0.2);
       }
       if ((this.cx - endX) * dir >= 0 || t > 5) {
         this.dashing = false; this.harmless = false; this.vx = dir * 120;
@@ -1253,7 +1267,11 @@ export class Narkissa extends BossC {
       paint: (ctx, z, wd) => {
         if (!z.started) {
           warnRect(ctx, x - w / 2, top, w, F - top, z.k * 0.8, GL, wd.time);
-          for (let i = -1; i <= 1; i++) shardShape(ctx, x + i * w * 0.25 + Math.sin(wd.time * 30 + i) * 2 * z.k, top + 26, 16, 52, 0.55 + 0.45 * z.k);
+          const PA = R.fl ? null : pArt(wd);
+          for (let i = -1; i <= 1; i++) {
+            const sx = x + i * w * 0.25 + Math.sin(wd.time * 30 + i) * 2 * z.k, a = 0.55 + 0.45 * z.k;
+            if (!PA?.fallShard(ctx, sx, top + 26, 16, 52, a, k + i + 1)) shardShape(ctx, sx, top + 26, 16, 52, a);
+          }
           return;
         }
         if (st.landed) return;
@@ -1262,7 +1280,11 @@ export class Narkissa extends BossC {
           ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = 'rgba(220,245,255,0.45)'; ctx.lineWidth = 2;
           ctx.beginPath(); for (let i = -1; i <= 1; i++) { const sx = x + i * w * 0.25; ctx.moveTo(sx, st.y - 60 - Math.abs(i) * 18); ctx.lineTo(sx, st.y - 190 - Math.abs(i) * 18); } ctx.stroke(); ctx.restore();
         }
-        for (let i = -1; i <= 1; i++) shardShape(ctx, x + i * w * 0.25, st.y - 32 - Math.abs(i) * 18, 18, 64, 1);
+        const PA = R.fl ? null : pArt(wd);
+        for (let i = -1; i <= 1; i++) {
+          const sx = x + i * w * 0.25, sy = st.y - 32 - Math.abs(i) * 18;
+          if (!PA?.fallShard(ctx, sx, sy, 18, 64, 1, k + i + 1)) shardShape(ctx, sx, sy, 18, 64, 1);
+        }
       },
     });
   }
@@ -1375,11 +1397,13 @@ export class Narkissa extends BossC {
           return out;
         },
         paint: (ctx, z) => {
+          const PA = R.fl ? null : pArt(z.world ?? this.world);
           for (let ring = 0; ring < RING; ring++) for (let j = 0; j < PER; j++) {
             const s = shardAt(z, ring, j);
             if (!s) continue;
             if (!R.fl) glow(ctx, s.x, s.y, 20, ring === 1 ? GL_V : GL_C, 0.5);
-            put(ctx, ART?.orbit, s.x, s.y, s.a + PI / 2 + z.t * 6, 1.1);
+            const rot = s.a + PI / 2 + z.t * 6;
+            if (!PA?.shard(ctx, s.x, s.y, rot, 38, ring * PER + j)) put(ctx, ART?.orbit, s.x, s.y, rot, 1.1);
           }
         },
       });
@@ -1459,7 +1483,8 @@ export class Narkissa extends BossC {
         if (!z.started) {
           warnRect(ctx, x - 60, top, 120, F - top, Math.min(1, z.t / 0.9) * 0.8, GL, wd.time);
           if (!R.fl && z.t < 0.9) { ctx.strokeStyle = 'rgba(200,210,230,0.7)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, top - 20); ctx.lineTo(x, st.y - 64); ctx.stroke(); }
-          put(ctx, ART?.frame, x + Math.sin(wd.time * 20) * (z.t < 0.9 ? 2 : 0), st.y, Math.sin(wd.time * 3 + k) * 0.06, 0.85);
+          const mx = x + Math.sin(wd.time * 20) * (z.t < 0.9 ? 2 : 0), mr = Math.sin(wd.time * 3 + k) * 0.06;
+          if (R.fl || !pArt(wd)?.frame(ctx, mx, st.y, mr, 0.85)) put(ctx, ART?.frame, mx, st.y, mr, 0.85);
           return;
         }
         if (R.fl) return;

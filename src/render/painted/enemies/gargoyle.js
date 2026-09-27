@@ -26,10 +26,11 @@ let WN = 6, WB = 0;
 const wingBend = (u) => WB * (0.5 + u) / WN;
 
 const P = {};
-function pose(e) {
+function pose(e, card) {
   const t = e.t ?? 0, an = e.anim, at = e.animT ?? 0;
   const q = P, hurt = K.hurtOf(e);
-  q.statue = an === 'statue' || an === 'idle'; q.wake = an === 'wake' ? clamp(at / 0.7, 0, 1) : q.statue ? 0 : 1;
+  // idle = the perched statue in the world; the bestiary card (world === null) shows it alive, wings spread
+  q.statue = an === 'statue' || (an === 'idle' && !card); q.wake = an === 'wake' ? clamp(at / 0.7, 0, 1) : q.statue ? 0 : 1;
   q.cy = -26; q.rot = 0; q.shake = 0; q.eye = 1; q.fire = 0; q.burst = 0; q.tele = 0; q.clawG = 0;
   const ph = t * 9, flap = Math.sin(ph);
   q.dir = PI + 0.1 + 0.65 * flap; q.bend = -0.3 * Math.cos(ph); q.ws = WS; q.lag = 0.35;
@@ -75,7 +76,7 @@ function wing(x, y, dir, s, bend, vn, alpha = 1) {
 
 export function draw(ctx, e, world, o, rig) {
   const t = e.t ?? 0;
-  const q = pose(e);
+  const q = pose(e, !world);
   if (e.dying > 0 && world) {
     if (!e._pcorpse) {
       e._pcorpse = true;

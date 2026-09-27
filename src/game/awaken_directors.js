@@ -69,6 +69,28 @@ function room(D, n) {
   return Math.max(0, Math.min(Math.round(n * D.fq), Math.floor(cap - fx.list.length)));
 }
 function burst(D, type, x, y, n, o) { const k = room(D, n); for (let i = 0; i < k; i++) D.w.fx.emit(type, x, y, o); return k; }
+/**
+ * 각성 입자 상한 지키기 (감독이 도는 동안 매 프레임 끝, 월드 오버레이 갱신에서): 이 감독의 입자는 room() 이 막지만,
+ * 같은 프레임에 한꺼번에 쓰러지는 적의 소멸 연출·타격 불꽃·데미지 숫자·ULTFX 마무리(상한까지 채운 뒤 고리·스프라이트)는
+ * 막을 수 없어 저품질에서 250 을 넘을 수 있다 → 넘친 만큼 곧 사라질 입자부터 지운다 (particles.js 가 fx.max 에서 가장 오래된
+ * 입자를 밀어내는 것과 같은 방식). 데미지 숫자·판정 문구·글자는 남긴다 (개수 세기·숫자 기둥 연결).
+ * 오버레이 갱신 뒤에도 처치 슬로모션이 피를 조금 뿌리므로 (15 × 품질) 그만큼 여유를 둔다.
+ */
+function capPool(D) {
+  const fx = D.w.fx, L = fx?.list;
+  if (!L) return;
+  const cap = Math.floor(Math.min(AW_CAP[D.q], fx.max ?? 1400) - 16 * D.fq), over = L.length - cap;
+  if (over <= 0) return;
+  const cand = [];
+  for (let i = 0; i < L.length; i++) { const s = L[i].shape; if (s !== 'dmg' && s !== 'callout' && s !== 'text') cand.push(i); }
+  if (!cand.length) return;
+  cand.sort((a, b) => (L[a].life ?? 0) - (L[b].life ?? 0));
+  const drop = new Set(cand.slice(0, over));
+  let j = 0;
+  for (let i = 0; i < L.length; i++) if (!drop.has(i)) L[j++] = L[i];
+  L.length = j;
+  D.info.trimmed = (D.info.trimmed ?? 0) + drop.size;
+}
 /** 흐름 방출 (프레임마다 부른다): rate = 초당 개수 (high 기준). key 마다 따로 누적 */
 function drip(D, key, dt, rate, fn) {
   const A = (D.accs ??= {});
@@ -473,7 +495,7 @@ function director(D, o) {
   });
   // 방이 바뀌며 엔티티가 end 없이 버려지거나 awaken.js 가 먼저 끝내도 뒷정리는 한 번 (월드 층은 loadRoom 이 비운다 → roomEntered 에서 LIVE 로)
   LIVE.add(live);
-  const watch = w.addOverlay?.({ draw() {}, update() { if (ended) { this.dead = true; return; } if (!w.entities.includes(ent)) { this.dead = true; finish(ent, w); } } });
+  const watch = w.addOverlay?.({ draw() {}, update() { if (ended) { this.dead = true; return; } if (!w.entities.includes(ent)) { this.dead = true; finish(ent, w); return; } capPool(D); } });
   void watch;
   if (o.screen) K.holdOverlay(w, ent, function (ctx, vw, vh) { try { o.screen(ctx, vw, vh, ent); } catch (err) { fail(D, err); } });
   return ent;

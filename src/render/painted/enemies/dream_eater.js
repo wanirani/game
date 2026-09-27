@@ -1,6 +1,7 @@
 // T3 painted floating nightmare: 꿈 삼키는 자 (dream_eater, 64×80). Parts (Kling parts sheet 2): the bloated nebula body
 // (tiny stars inside, a dozen lashed eyes along the flank, stubby hoofed legs), the tusked tapir head, and the long
-// star-filled trunk with the toothed sucking maw — swung through the bending chain from the snout. The flank eyes are
+// star-filled trunk with the toothed sucking maw — swung through the bending chain from the snout (it hangs in a J,
+// the maw hooked forward). The flank eyes are
 // pivots: they glow and pulse (flaring while it casts), violet smoke streams off the back. Damage variants by HP.
 // States (AI_B.voider, animT = time in the pose): float (slow bob, trunk curling and uncurling) · cast (0.6 s: head
 // rears, trunk lifts forward, the maw gathers a violet orb, every eye flares → orbs fire at 0.6) · rift (0.5 s: the
@@ -27,7 +28,7 @@ const Q = { bob: 0, rot: 0, sx: 1, sy: 1, head: 0, tDir: 0, curl: 0, eyes: 0, ma
 function pose(e) {
   const t = e.t ?? 0, an = e.anim, at = e.animT ?? 0, q = Q;
   q.bob = Math.sin(t * 1.5) * 3; q.rot = Math.sin(t * 0.9) * 0.04; q.sx = 1 + Math.sin(t * 2) * 0.02; q.sy = 1 - Math.sin(t * 2) * 0.02;
-  q.head = Math.sin(t * 1.2) * 0.05; q.tDir = PI / 2 - 0.8 + Math.sin(t * 1.6) * 0.12; q.curl = 1.15 + Math.sin(t * 1.3) * 0.25;
+  q.head = Math.sin(t * 1.2) * 0.05; q.tDir = PI / 2 - 0.45 + Math.sin(t * 1.6) * 0.12; q.curl = -0.75 + Math.sin(t * 1.3) * 0.2;   // hangs, the tip hooks forward
   q.eyes = 0.35 + 0.15 * Math.sin(t * 3); q.maw = 0.2; q.trail = null; q.tele = 0; q.lash = 0;
   if (an === 'cast') {
     const k = ease.outCubic(clamp(at / 0.6, 0, 1)), fire = at > 0.6 ? clamp(1 - (at - 0.6) / 0.3, 0, 1) : 0;
@@ -43,7 +44,7 @@ function pose(e) {
     if (at < WU) { const k = ease.outCubic(at / WU); q.tDir = lerp(q.tDir, -1.9, k); q.curl = lerp(q.curl, -0.6, k); q.head = lerp(q.head, -0.25, k); q.tele = at / WU; q.eyes = 0.5 + 0.4 * k; }
     else { const s = clamp((at - WU) / 0.08, 0, 1), ks = ease.outCubic(s); q.tDir = lerp(-1.9, 0.12, ks); q.curl = lerp(-0.6, 0, ks); q.head = lerp(-0.25, 0.15, ks); q.lash = 1 - clamp((at - WU) / 0.35, 0, 1); q.trail = [-1.9, q.tDir, q.lash]; }
   }
-  if (K.hurtOf(e)) { q.rot -= 0.15; q.head -= 0.3; q.eyes = 0.05; q.curl += 0.8; }
+  if (K.hurtOf(e)) { q.rot -= 0.15; q.head -= 0.3; q.eyes = 0.05; q.curl -= 0.5; }
   return q;
 }
 
