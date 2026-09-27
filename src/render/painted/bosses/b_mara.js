@@ -151,15 +151,23 @@ function drawBoss(ctx, b, world, rig, st) {
   const dying = b.dying > 0, dT = dying ? (b.dieT ?? 0) : 0;
   const up = st.dmg.update(dying ? 0 : b.hp / b.stats.maxHp, dt);
   st.lvl = dying ? 2 : clamp(Math.max(b.formPhase | 0, st.dmg.level), 0, 2);
+  // 피격 부위 고정: 섬광이 다시 켜진 프레임(새 피격)의 b.hitPart — 그 뒤 hurtbox() 가 다시 불려 바뀌어도 섬광은 맞은 부위에만
+  if (b.flashT > st.pf + 1e-4) st.fp = b.hitPart ?? null;
   const hit = b.flashT > 0.06 && !(st.pf > 0.06); st.pf = b.flashT;
   if (hit) st.jolt = 1;
   st.jolt = Math.max(0, st.jolt - dt * 6);
+  // 부위별 피격 섬광 (BOSS_PIPELINE §9): 얼굴·상체 = 가면+몸통 · 입속 눈 = 가면 · 요람(P2 는 살덩이 포함) = 요람 ·
+  // 아기 머리 = 머리 자체 섬광(h.hitT)만 · 모르는 부위(null) = 벡터처럼 전부
+  const fp = st.fp, ff = st.ff ??= {};
+  ff.face = !fp || fp === b.pFace;
+  ff.head = ff.face || fp === b.pEye;
+  ff.cradle = !fp || fp === b.pCradle;
   if (!dying && (b.state === 'intro' || b.hp >= b.stats.maxHp)) { st.dead = {}; st.shards.clear(); }
   if (st.lastForm !== b.form) { if (b.form === 2) formBurst(P, b, st); st.lastForm = b.form; }
   const q0 = ctx.imageSmoothingQuality;
   ctx.imageSmoothingQuality = 'low';
   // ── 뒤: 꿈빛 기운 (로직 paintBack — 캐시 발광 스프라이트) · 뒤 입자 ──
-  if (!dying || dT < 2.6) b.paintBack?.(ctx, world);
+  if (!dying || dT < 3.0) b.paintBack?.(ctx, world);   // 로직 paintBack 은 dieT 3.0 에 0 으로 사그라든다 (2.6 에서 끊으면 뚝 사라짐)
   P.draw(ctx, 0);
   if (up > 0 && !dying) levelBurst(P, b, st, up);
   // ── 몸 (지역 좌표) ──
@@ -184,14 +192,14 @@ function drawBoss(ctx, b, world, rig, st) {
   if (!dead.hair) drawHairBack(ctx, D, st, R, b, J, t, f2);
   if (!dead.sleep) drawSleepers(ctx, D, st, R, b, J, t, f2);
   if (f2) {
-    for (const L of b.legs) if (!L.near) drawDollLeg(D, st, R, b, L, true);
+    if (!dead.body) for (const L of b.legs) if (!L.near) drawDollLeg(D, st, R, b, L, true);   // 몸이 무너진 뒤(1.6초) 먼 다리만 서 있지 않게
     if (!dead.arms) { drawArm(D, st, R, b, 3, true); drawArm(D, st, R, b, 1, true); }
-    if (!dead.body) drawBeastCore(ctx, D, st, R, b, J, t, rec, dying, dT);
+    if (!dead.body) drawBeastCore(ctx, D, st, R, b, J, t, rec && ff.cradle, dying, dT);
   } else {
     if (!dead.arms) { drawArm(D, st, R, b, 1, true); drawArm(D, st, R, b, 3, true); }
     if (!dead.body) {
       drawUnderDolls(D, st, R, b, t);
-      drawCradle1(ctx, D, st, R, b, t, rec);
+      drawCradle1(ctx, D, st, R, b, t, rec && ff.cradle);
       drawChains(ctx, D, b, t);
     }
   }
@@ -208,7 +216,7 @@ function drawBoss(ctx, b, world, rig, st) {
       drawHag(ctx, D, st, R, b, J, t, rec, 2);
       for (const h of b.heads) drawBaby(ctx, D, st, R, b, h, t);
     } else drawHag(ctx, D, st, R, b, J, t, rec, 1);
-  } else if (!dead.head) drawHead(ctx, D, st, R, b, J, t, rec);
+  } else if (!dead.head) drawHead(ctx, D, st, R, b, J, t, rec && ff.head);
   if (!dead.arms) { drawArm(D, st, R, b, 2, false); drawArm(D, st, R, b, 0, false); }
   if (!dead.hair) drawHairFront(ctx, D, b, J, t);
   if (rec) flashAff(D, st, clamp(b.flashT / 0.1, 0, 1) * 0.55); else st.nfl = 0;
@@ -354,8 +362,8 @@ function bloodBars(ctx, D, b, t, x0, y0, w, k) {
 function drawHag(ctx, D, st, R, b, J, t, rec, form) {
   const T = R.torso;
   if (form === 1) drawLegP1(D, st, R, b, J.hip[0] - 8, J.hip[1], J.kneeF, J.footF, true);
-  // 목 다리 (몸통 목 그루터기 → 머리 등뼈 끝) 는 머리 부품의 등뼈가 맡는다. 몸통: 엉덩이 → 어깨
-  D.rec = rec;
+  // 목 다리 (몸통 목 그루터기 → 머리 등뼈 끝) 는 머리 부품의 등뼈가 맡는다. 몸통: 엉덩이 → 어깨 (섬광 = 얼굴·상체 판정이 맞았을 때)
+  D.rec = rec && !!st.ff?.face;
   const wk = form === 2 ? 0.92 : 1;
   const br = 1 + Math.sin(t * 2.2) * 0.02 * (1 - b.pose.slump);
   limb(D, V(st, T), T, 'hip', 'sho', J.hip[0], J.hip[1] + (form === 2 ? 14 : 4), J.sho[0], J.sho[1], wk * br, true, 1, st);
@@ -370,7 +378,7 @@ function drawHag(ctx, D, st, R, b, J, t, rec, form) {
     for (let k = 0; k < 4; k++) { const x = J.hip[0] - 10 + k * 8; ctx.moveTo(x, J.hip[1] + 8); ctx.quadraticCurveTo(x - 18 - k * 4, J.hip[1] + 24, x - 36 - k * 8, J.hip[1] + 30 + k * 3); }
     ctx.stroke();
   }
-  drawHead(ctx, D, st, R, b, J, t, rec);
+  drawHead(ctx, D, st, R, b, J, t, rec && !!st.ff?.head);
 }
 /** 쪼그린 다리 하나: 넙다리 hip→knee · 정강이 knee→foot(무릎 혹이 위로 오게 뒤집음) · 난간을 움켜쥔 갈고리 발 */
 function drawLegP1(D, st, R, b, hx, hy, kn, ft, far) {
@@ -539,14 +547,17 @@ function ambient(P, b, st, dt, q, hit, t) {
   // 붕괴 · 가짜 새벽: 도자기 가루
   if ((b.collapsed || b.dawn?.fake) && rr.next() < dt * 10 * amb) { const f = b.faceP; P.emit('chip', f.x + rr.range(-20, 20), f.y - 30, rr.range(-60, 60), rr.range(-160, -40), { color: PORC }); }
   if (hit) {
-    const f = b.faceP;
-    P.burst('chip', f.x + rr.range(-12, 12), f.y + rr.range(-20, 20), 5, { speed: 220, color: PORC });
-    P.burst('spore', f.x, f.y, 5, { speed: 140, color: DREAM_L });
+    // 맞은 부위(고정한 b.hitPart) 가운데에서 — 모르면 얼굴
+    const hp = st.fp, fx = hp ? hp.x + hp.w / 2 : b.faceP.x, fy = hp ? hp.y + hp.h / 2 : b.faceP.y;
+    P.burst('chip', fx + rr.range(-12, 12), fy + rr.range(-20, 20), 5, { speed: 220, color: PORC });
+    P.burst('spore', fx, fy, 5, { speed: 140, color: DREAM_L });
   }
-  // 막 부서진 아기 머리 → 도자기 조각 · 피
-  for (const h of b.heads ?? []) {
-    if (!h.alive && !h._pb) { h._pb = true; P.burst('chip', h.x, h.y - 16, 14, { speed: 280, color: PORC }); P.burst('blood', h.x, h.y - 10, 10, { speed: 220, color: BLOOD, hi: BLOOD_HI }); }
-    else if (h.alive) h._pb = false;
+  // 막 부서진 아기 머리 → 도자기 조각 · 피 (부서짐 기억은 그리기 상태에 — 로직 개체에 필드를 쓰지 않는다)
+  const hb = st.hbk ??= [], H = b.heads ?? [];
+  for (let i = 0; i < H.length; i++) {
+    const h = H[i];
+    if (!h.alive && !hb[i]) { hb[i] = true; P.burst('chip', h.x, h.y - 16, 14, { speed: 280, color: PORC }); P.burst('blood', h.x, h.y - 10, 10, { speed: 220, color: BLOOD, hi: BLOOD_HI }); }
+    else if (h.alive) hb[i] = false;
   }
 }
 
@@ -598,13 +609,13 @@ function deathFx(ctx, b, rig, st, dt, dT) {
     const T = R.torso, C = R.cradle;
     shard(T, 'hip', J.hip[0], J.hip[1], mirRot(T, 'hip', 'sho', J.hip, J.sho), -T.k, T.k, rr.range(-60, 60), -160, rr.range(-2, 2), 30, 0.2);
     if (f2) {
-      shard(C, 'c', J.body[0], J.body[1] + 58, J.bodyA, C.k * 1.08 * CR_SX, C.k * 1.08, 0, -60, 0.4, 80, 0.1);
+      shard(C, 'c', J.body[0], J.body[1] + 58, J.bodyA, C.k * 1.08 * CR_SX, C.k * 1.08, 0, -60, 0.4, 4, 0.1);   // 피벗 c = 요람 밑 가운데
       for (const L of b.legs) {
         const Th = R.dthigh;
         const ang = Math.atan2(L.kl[1] - L.rl[1], L.kl[0] - L.rl[0]) - Math.atan2(Th.b[1] - Th.a[1], Th.b[0] - Th.a[0]);
         shard(Th, 'a', L.rl[0], L.rl[1], ang, Th.k * 0.9, Th.k * 0.4, rr.range(-160, 160), rr.range(-260, -80), rr.range(-5, 5), 30, 0.3);
       }
-    } else shard(C, 'c', 0, 2, 0, C.k * 1.02 * CR_SX, C.k * 1.02, rr.range(-30, 30), -40, rr.range(-0.8, 0.8), 80, 0.12);
+    } else shard(C, 'c', 0, 2, 0, C.k * 1.02 * CR_SX, C.k * 1.02, rr.range(-30, 30), -40, rr.range(-0.8, 0.8), 4, 0.12);   // 피벗 c = 요람 밑 가운데 → 반지름 작게 (80 이면 바닥 위 80px 에 떠서 멈췄다)
     for (let i = 1; i < st.debris.length; i++) {
       const p = R[st.debris[i]]; if (!p) continue;
       const W = b.toWorld(rr.range(-80, 80), f2 ? -100 : -80, w), a = -PI / 2 + (rr.next() - 0.5) * 2.4, sp = rr.range(220, 480);

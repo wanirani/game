@@ -61,7 +61,7 @@ export default {
   },
   draw(ctx, b, world, rig, st) { drawBoss(ctx, b, world, rig, st); },
   bounds(b, rig, st, out) {
-    let x0 = b.cx - 300, x1 = b.cx + 300, y0 = b.bottom - 470, y1 = b.bottom + 40;
+    let x0 = b.cx - 340, x1 = b.cx + 340, y0 = b.bottom - 640, y1 = b.bottom + 40;   // 망치를 치켜들면 머리가 바닥 위 ≈590px 까지 올라간다
     if (b.tongs) { x0 = Math.min(x0, b.tongs.x - 140); x1 = Math.max(x1, b.tongs.x + 140); y0 = Math.min(y0, b.tongs.y - 80); y1 = Math.max(y1, b.tongs.y + 80); }
     if ((b.dying > 0 || st?.shards?.list.length) && b.A) { x0 = Math.min(x0, b.A.x0); x1 = Math.max(x1, b.A.x1); y0 = Math.min(y0, b.bottom - 700); }
     // 남아 있는 입자 (불똥·연기·파편 불씨 — BOSS_PIPELINE §8.15)
@@ -165,7 +165,7 @@ function drawBoss(ctx, b, world, rig, st) {
   const lvl = b.dying > 0 ? 2 : ratio < 0.33 ? 2 : ratio < 0.66 ? 1 : 0;
   const form = b.formPhase ?? 0, f1 = form >= 1, f2 = form >= 2;
   const dying = b.dying > 0, el = dying ? 3.2 - b.dying : 0, exploded = !!b.exploded && dying;
-  const hit = b.flashT > 0.06 && !(st.pf > 0.06); st.pf = b.flashT;
+  const hit = b.flashT > 0.06 && (!(st.pf > 0.06) || b.flashT > st.pf + 1e-3); st.pf = b.flashT;   // 섬광이 다시 채워지면(연타) 새 피격 → 맞은 부위 갱신
   if (hit) { st.jolt = 1; st.sel = struckGroup(b); }
   st.jolt = Math.max(0, st.jolt - dt * 6);
   if (st.lvl >= 0 && lvl > st.lvl && !dying) levelBurst(st, b, rig);
@@ -463,6 +463,8 @@ function explodeBurst(st, rig, b, tk, Wd) {
 function makeArt(rig) {
   const R = rig.parts, GD = new Drawer();
   return {
+    /** 채색 굴뚝 꼭대기 (몸 좌표, 바라보는 쪽 굴뚝 기준 — 반대쪽은 x 부호만 바꾼다). 로직의 굴뚝 불꽃 터짐·굴뚝 조명 자리 */
+    chimneyTop: R.chimney?.top ? ptOf(R.chimney, 'base', R.chimney.top, CH_X, CH_Y, CH_ROT, 1, [0, 0]) : null,
     /** 유도 영혼 탄: 짓눌린 영혼 해골 (원점 = 탄 중심, 로직이 둘레 빛을 그린다) */
     soul(ctx, x, y, i, rot = 0, s = 0.6) {
       const L = rig.souls; if (!L.length) return false;

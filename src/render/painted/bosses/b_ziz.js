@@ -141,9 +141,17 @@ function drawBoss(ctx, b, world, rig, st) {
   // 손상 단계: 로직 dmg(페이즈) 와 체력 비율 중 큰 쪽
   const up = st.dmg.update(dying ? 0 : b.hp / b.stats.maxHp, dt);
   st.lvl = dying ? 2 : clamp(Math.max(b.dmg | 0, st.dmg.level), 0, 2);
+  // 피격 부위 고정: 섬광이 다시 켜진 프레임(새 피격)의 b.hitPart — 그 뒤 hurtbox() 가 다시 불려 바뀌어도 섬광은 맞은 부위에만
+  if (b.flashT > st.pf + 1e-4) st.fp = b.hitPart ?? null;
   const hit = b.flashT > 0.06 && !(st.pf > 0.06); st.pf = b.flashT;
   if (hit) st.jolt = 1;
   st.jolt = Math.max(0, st.jolt - dt * 6);
+  // 부위별 피격 섬광 (BOSS_PIPELINE §9: 맞은 부위만). 모르는 부위(null) = 벡터처럼 몸 전체, 눈 = 눈 자체 섬광(e.hitT)만
+  const fOn = b.flashT > 0 && !dying, fp = st.fp, ff = st.ff ??= {};
+  ff.head = fOn && (!fp || fp === b.pHead);
+  ff.core = fOn && (!fp || fp === b.pCore);
+  ff.wL = fOn && (!fp || fp === b.pWing?.[0]);
+  ff.wR = fOn && (!fp || fp === b.pWing?.[1]);
   if (st.fs == null) st.fs = b.facing || 1;
   st.fs = approach(st.fs, b.facing || 1, dt * 7);
   st.flashL = Math.max(0, (st.flashL ?? 0) - dt * 4);
@@ -183,14 +191,14 @@ function drawBoss(ctx, b, world, rig, st) {
     enter();
   }
   if (!dead.body) {
-    D.rec = rec;
+    D.rec = ff.core;
     drawTorso(D, ctx, st, R, b, s, t);
     drawLegs(D, st, R, b, s, t);
     drawCore(D, ctx, st, R, b, s, t, q);
     D.rec = false;
   }
   drawEyes(D, ctx, st, R, b, t, q);
-  if (!dead.head) { D.rec = rec; drawHead(D, ctx, st, R, b, s, t, q); }
+  if (!dead.head) { D.rec = ff.head; drawHead(D, ctx, st, R, b, s, t, q); }
   if (rec) D.flash(clamp(b.flashT / 0.1, 0, 1) * 0.55);
   else { D.rec = false; D.log.length = 0; }
   D.end();
@@ -288,7 +296,7 @@ function drawWings(D, ctx, st, R, b, t, rec) {
       glowOver(ctx, D, st, wB, 'el', Wg.E.x, Wg.E.y, rB, kB * sg, kB, 0.55, t + side * 2);
     }
     if (!st.dead['wA' + side]) {
-      D.rec = rec;
+      D.rec = rec && !!st.ff?.[side < 0 ? 'wL' : 'wR'];
       part(D, st, wA, 'sh', Wg.S.x, Wg.S.y, rA, kA * sg, kA);
       D.rec = false;
       glowOver(ctx, D, st, wA, 'sh', Wg.S.x, Wg.S.y, rA, kA * sg, kA, 0.5, t + side * 3);
@@ -480,14 +488,18 @@ function ambient(P, b, st, W, dt, q, hit, t) {
   // 기절: 온몸에서 스파크
   if (b.stunned && rr.next() < dt * 18 * amb) { const p = W(rr.range(-120, 120), rr.range(-80, 120), [0, 0]); P.emit('spark', p[0], p[1], rr.range(-200, 200), rr.range(-300, 0), { color: BOLT }); }
   if (hit) {
-    const p = W(rr.range(-30, 30), rr.range(-40, 40), [0, 0]);
+    // 맞은 부위(고정한 b.hitPart) 가운데에서 — 모르면 몸 가운데 근처
+    const hp = st.fp, p = hp ? st.W2h ??= [0, 0] : W(rr.range(-30, 30), rr.range(-40, 40), [0, 0]);
+    if (hp) { p[0] = hp.x + hp.w / 2 + rr.range(-8, 8); p[1] = hp.y + hp.h / 2 + rr.range(-8, 8); }
     P.burst('ash', p[0], p[1], 8, { speed: 220, color: FEATHER_C, size: 3.2 });
     P.burst('blood', p[0], p[1], 6, { speed: 240, angle: -PI / 2, spread: 1.4, color: BLOOD, hi: BLOOD_HI });
   }
-  // 막 터진 눈 → 피 분수
-  for (const e of b.eyes) {
-    if (!e.alive && !e._pb) { e._pb = true; P.burst('blood', e.x, e.y, 14, { speed: 260, color: BLOOD, hi: BLOOD_HI }); }
-    else if (e.alive) e._pb = false;
+  // 막 터진 눈 → 피 분수 (터짐 기억은 그리기 상태에 — 로직 개체에 필드를 쓰지 않는다)
+  const eb = st.eb ??= [];
+  for (let i = 0; i < b.eyes.length; i++) {
+    const e = b.eyes[i];
+    if (!e.alive && !eb[i]) { eb[i] = true; P.burst('blood', e.x, e.y, 14, { speed: 260, color: BLOOD, hi: BLOOD_HI }); }
+    else if (e.alive) eb[i] = false;
     if (!e.alive && rr.next() < dt * 1.2 * amb) P.emit('blood', e.x, e.y + 6, 0, 0, { color: BLOOD, hi: BLOOD_HI, hang: rr.range(0.2, 0.6), layer: 1 });
   }
 }

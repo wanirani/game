@@ -49,10 +49,12 @@ const SACS = ['sac0', 'sac1', 'sac2'];
 /** 등의 숲 (그린 등 윤곽 위, 몸 지역 x): 나무 [x, 부품, 배율, 부러지는 손상 단계] · 버섯 [x, 부품, 배율] */
 const TREES = [[-132, 'tree0', 0.95, 2], [-58, 'tree1', 1.05, 1], [22, 'tree2', 0.9, 99]];
 const MUSH = [[-100, 'mush0', 0.9], [126, 'mush0', 0.62], [-20, 'mush2', 0.85], [150, 'mush1', 0.7]];
+/** 체력이 줄수록 벌어지는 상처 [피해 비율, 몸 지역 점들] — 그린 몸통(x −166…176, 등 윤곽 아래 · 배 −125 위)의 옆구리에만 놓는다.
+ *  로직 벡터의 자리(−230…−138, −250…−190)는 채색 몸통 밖(꼬리 · 허공)이라 붉은 선이 떠 보였다. 주머니 그림(−104/−36/32, −244…−172)은 피한다 */
 const GASHES = [
-  [0.2, [[-200, -250], [-178, -238], [-160, -244], [-138, -230]]],
-  [0.45, [[120, -270], [138, -250], [132, -232], [150, -214]]],
-  [0.7, [[-230, -190], [-212, -206], [-190, -198], [-176, -214], [-160, -206]]],
+  [0.2, [[-150, -160], [-134, -150], [-118, -157], [-102, -144]]],
+  [0.45, [[118, -272], [134, -252], [128, -234], [144, -214]]],
+  [0.7, [[-64, -150], [-48, -136], [-30, -146], [-12, -130], [4, -140]]],
 ];
 
 // ───────────────────────── 모듈 계약 ─────────────────────────
@@ -143,9 +145,17 @@ function drawBoss(ctx, b, world, rig, st) {
   const dying = b.dying > 0, dT = dying ? (b.dieT ?? 0) : 0;
   const up = st.dmg.update(dying ? 0 : b.hp / b.stats.maxHp, dt);
   st.lvl = dying ? 2 : clamp(Math.max(b.dmgStage | 0, st.dmg.level), 0, 2);
+  // 피격 부위 고정: 섬광이 다시 켜진 프레임(새 피격)의 b.hitPart — 그 뒤 hurtbox() 가 다시 불려 바뀌어도 섬광은 맞은 부위에만
+  if (b.flashT > st.pf + 1e-4) st.fp = b.hitPart ?? null;
   const hit = b.flashT > 0.06 && !(st.pf > 0.06); st.pf = b.flashT;
   if (hit) st.jolt = 1;
   st.jolt = Math.max(0, st.jolt - dt * 6);
+  // 부위별 피격 섬광 (BOSS_PIPELINE §9): 몸통 · 두개골(+턱) · 여왕 · 주머니는 자기 섬광(sc.hitT)만 · 모르는 부위(null) = 벡터처럼 전부
+  const fp = st.fp, ff = st.ff ??= {};
+  ff.body = !fp || fp === b.pBody;
+  ff.head = !fp || fp === b.pSkull;
+  ff.queen = !fp || fp === b.pQueen;
+  ff.sacs = !fp;
   if (!dying && (b.state === 'intro' || b.hp >= b.stats.maxHp)) { st.dead = {}; st.fell = {}; st.shards.clear(); }
   const q0 = ctx.imageSmoothingQuality;
   ctx.imageSmoothingQuality = 'low';
@@ -182,12 +192,12 @@ function drawBoss(ctx, b, world, rig, st) {
   D.save(); bodyXf();
   drawForest(ctx, D, st, R, b, t, dying, dT);
   const T = R.torso;
-  D.rec = rec;
+  D.rec = rec && ff.body;
   D.part(T, V(st, T), 'org', 0, 0, st.jolt ? (rr.next() - 0.5) * 0.01 * st.jolt : 0, T.k, T.k * (1 + Math.sin(t * 1.6) * 0.006));
   D.rec = false;
   glowOver(ctx, D, st, T, 'org', 0, 0, 0, T.k, T.k, 0.5, t);
   drawGashes(ctx, D, b, t);
-  drawSacs(ctx, D, st, R, b, t, rec);
+  drawSacs(ctx, D, st, R, b, t, rec && ff.sacs);
   flash();
   leave();
   // 발판 덧그리기 (등의 숲이 '=' 발판을 덮어도 딛을 곳이 보이게) → 머리 · 여왕 · 가까운 다리는 그 위
@@ -198,11 +208,11 @@ function drawBoss(ctx, b, world, rig, st) {
     frame();
   }
   D.save(); bodyXf();
-  drawHead(ctx, D, st, R, b, t, rec);
+  drawHead(ctx, D, st, R, b, t, rec && ff.head);
   flash();
   drawBlooms(D, st, R, b);
   leave();
-  if (!b.qFall) drawQueen(ctx, D, st, R, b, t, rec);
+  if (!b.qFall) drawQueen(ctx, D, st, R, b, t, rec && ff.queen);
   flash();
   for (const L of b.legs) if (L.near) drawLeg(D, st, R, b, L, false);
   drawMoss(ctx, D, b, t);
@@ -274,7 +284,7 @@ function drawForest(ctx, D, st, R, b, t, dying, dT) {
 }
 
 // ───────────────────────── 몸통 위 ─────────────────────────
-/** 체력이 줄수록 벌어지는 깊은 상처 (로직 벡터와 같은 자리) */
+/** 체력이 줄수록 벌어지는 깊은 상처 (그린 몸통 옆구리 위) */
 function drawGashes(ctx, D, b, t) {
   const dm = clamp(1 - b.hp / Math.max(1, b.stats.maxHp), 0, 1);
   D.end();

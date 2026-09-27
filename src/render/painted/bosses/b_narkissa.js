@@ -160,7 +160,7 @@ function drawBoss(ctx, b, world, rig, st) {
   const lvl = b.dying > 0 ? 2 : ratio < 0.33 ? 2 : ratio < 0.66 ? 1 : 0;
   if (st.lvl >= 0 && lvl > st.lvl && !(b.dying > 0)) levelBurst(st, b, rig, lvl);
   st.lvl = lvl;
-  const hit = b.flashT > 0.06 && !(st.pf > 0.06); st.pf = b.flashT;
+  const hit = b.flashT > 0.06 && (!(st.pf > 0.06) || b.flashT > st.pf + 1e-3); st.pf = b.flashT;   // 섬광이 다시 채워지면(연타) 새 피격 → 맞은 부위 갱신
   if (hit) { st.jolt = 1; st.flashSel = struckGroup(b); hitBurst(st, b); }
   st.jolt = Math.max(0, st.jolt - dt * 6);
   // 산산조각 (사망 1.55초): 마지막 그린 부품 배치 그대로 강체 파편으로
@@ -603,7 +603,7 @@ function bakeMirror(f) {
 function makeArt(rig) {
   const R = rig.parts;
   let M = null;
-  const GD = new Drawer();
+  const GD = new Drawer(), GL_L = { x: 0, y: 0, f: 1, rot: 0, c: 1, s: 0, sc: 1, a: 1 };
   const glass = ['deb2', 'blade2', 'deb4', 'blade'].map((n) => R[n]).filter(Boolean);   // 밝은 유리 조각만 (검은 파편은 어두운 배경에서 얼룩처럼 보인다)
   const drawPart = (ctx, p, x, y, rot, kx, ky, alpha) => {
     const im = p.v.base, px = p.c?.[0] ?? p.w / 2, py = p.c?.[1] ?? p.h / 2;
@@ -641,7 +641,7 @@ function makeArt(rig) {
     /** 돌진 잔상: 드레스·몸통·머리의 청백 발광 실루엣 (fx.ghost 콜백에서) */
     ghost(ctx, x, y, f, P, form, a) {
       if (!R.gown || !R.torso) return false;
-      const L = { x: 0, y: 0, f: 1, rot: 0, c: 1, s: 0, sc: 1, a: 1 };
+      const L = GL_L;   // 잔상은 프레임마다 여러 개 → 변환 객체를 재사용 (setL 이 모든 값을 덮어쓴다)
       setL(L, x, y + (P.bob ?? 0), f, P.rot, P.scale, clamp(P.fade ?? 1, 0, 1) * a);
       GD.begin(ctx);
       const op = ctx.globalCompositeOperation; ctx.globalCompositeOperation = 'lighter';

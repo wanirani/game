@@ -808,7 +808,8 @@ export class Moloch extends BossC {
     if (this.at(0.001)) { telegraph(this, 0.6); audio.sfx('fire', { pitch: 0.4 }); world.camera.shake(3, 0.6); }
     if (this.at(0.6)) {
       audio.sfx('explode', { pitch: 0.7 }); audio.sfx('boss_roar', { pitch: 0.5, vol: 0.6 });
-      for (const s of [-1, 1]) world.fx.burst('fire', this.cx + this.turnK * s * 64, this.bottom - 356, 22, { speed: 380, angle: -PI / 2, spread: 0.35 });
+      const CT = pArt(world)?.chimneyTop;   // 채색 굴뚝은 머리에 가리지 않게 벡터보다 바깥에 선다 → 불꽃도 그 꼭대기에서 (그리기 자리만, 난수 쓰임은 같다)
+      for (const s of [-1, 1]) world.fx.burst('fire', this.cx + this.turnK * s * (CT ? CT[0] : 64), this.bottom + (CT ? CT[1] - 10 : -356), 22, { speed: 380, angle: -PI / 2, spread: 0.35 });
       const cam = world.camera;
       const x0 = Math.max(A.x0 + 60, (cam?.x ?? A.x0) + 60), x1 = Math.min(A.x1 - 60, (cam ? cam.x + cam.vw : A.x1) - 60);
       const xs = [clamp(p?.cx ?? (x0 + x1) / 2, x0, x1)];
@@ -1044,7 +1045,8 @@ export class Moloch extends BossC {
     L.add(G.x, G.y, 200 + this.heat * 140, FIRE, 0.55 + this.heat * 0.4);
     const H = this.headP();
     L.add(H.x, H.y - 50 * HEAD_S, 110, '#ff5020', 0.5 + this.pose.roar * 0.3);
-    for (const s of [-1, 1]) L.add(this.cx + this.turnK * s * 64, this.bottom - 360, 150 + this.pose.chim * 100, FIRE, 0.5 + this.pose.chim * 0.4);
+    const CT = pArt(this.world)?.chimneyTop;   // 채색 굴뚝 꼭대기 (없으면 벡터 자리)
+    for (const s of [-1, 1]) L.add(this.cx + this.turnK * s * (CT ? CT[0] : 64), this.bottom + (CT ? CT[1] - 14 : -360), 150 + this.pose.chim * 100, FIRE, 0.5 + this.pose.chim * 0.4);
     L.add(this.cx, this.bottom - 4, 260, LAVA, 0.5);
   }
   paintBack(ctx) {

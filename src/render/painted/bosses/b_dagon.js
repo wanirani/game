@@ -12,6 +12,7 @@
 // 좌표: 벡터 paintBody 와 같은 몸 좌표계 — translate(ox, oy−70) · scale(facing,1) · rotate(rot·π/2) · translate(0,70).
 //   원점 = 상체 밑 수면선, +x = 바라보는 쪽, 위 = −y. 바닥(A.floor) 아래는 잘라 그린다. 판정은 바꾸지 않는다.
 import { Drawer, Particles, Shards, halo, rr, loadRig, pickVariant, quality, QUALITY, makeCanvas, ik2 } from '../kit.js';
+import { isSolidType } from '../../../core/physics.js';
 
 const DIR = 'painted/bosses/b_dagon';
 const BIO = '#6fffe8', WATER = '#6fd8ff', ICHOR = '#58ffd8', GILLC = '#ff5a6a', CORAL_L = '#ff9d7e', PALE = '#bff4ff', HEART = '#4aa8ff';
@@ -221,7 +222,7 @@ function drawBoss(ctx, b, world, rig, st) {
   st.Wd = Wd; st.dt = dt;
   if (st.lvl >= 0 && lvl > st.lvl && !dying) levelBurst(st, rig, Wd);
   st.lvl = lvl;
-  const hit = b.flashT > 0.06 && !(st.pf > 0.06); st.pf = b.flashT;
+  const hit = b.flashT > 0.06 && (!(st.pf > 0.06) || b.flashT > st.pf + 1e-3); st.pf = b.flashT;   // 섬광이 다시 채워지면(연타) 새 피격 → 맞은 부위 갱신
   if (hit) { st.jolt = 1; st.sel = struckGroup(b); if (st.sel !== 'bulb') hitSpray(st, b, Wd); }
   st.jolt = Math.max(0, st.jolt - dt * 6);
   const flash = !dying && b.flashT > 0 ? clamp(b.flashT / 0.12, 0, 1) : 0;
@@ -250,6 +251,7 @@ function drawBoss(ctx, b, world, rig, st) {
     ctx.globalAlpha = ga * a0;
     D.save();
     ctx.beginPath(); ctx.rect((A?.x0 ?? b.ox - 2000) - 1200, F + 2 - 4000, (A?.w ?? 4000) + 2400, 4000); ctx.clip();   // 바닥 아래(심연)는 보이지 않는다
+    st.WM = ctx.getTransform(); st.ga = ga; st.wd = world;   // 월드 변환 (돌 발판 덧그리기용)
     ctx.translate(b.ox + tx, b.oy - 70); ctx.scale(f, 1); if (rot) ctx.rotate(ra); ctx.translate(0, 70);
     D.begin(ctx);
     if (flash > 0) D.startFlash(); else D.rec = false;
@@ -315,6 +317,17 @@ function figure(ctx, D, rig, b, st, lvl, t, flash, dying, el) {
   gills(ctx, rig, b, st, s, t, flash > 0 && (st.sel === 'gill' || st.sel === 'body') ? flash : 0);
   // 6) 등살에 박힌 순례자들 (합창 때 울부짖으며 눈이 빛난다)
   pilgrims(ctx, D, rig, st, s, t, dying);
+  // 6b) 돌 발판 덧그리기 (BOSS_PIPELINE §8.11 의 취지): s16 경기장에는 한쪽 발판(====)이 없고, 물이 차오를 때 딛는 곳은
+  //     공중에 뜬 한 칸 두께 돌 발판이다. 몸통·순례자(뒤층)가 덮어도 보이게 다시 그리고, 머리(판정)·앞팔·앞 촉수는 그 앞에 둔다
+  if (q.ledges !== false && st.WM && st.wd && !(b.rot > 0.3)) {
+    D.end();
+    const wd = st.wd, cam = wd.camera, g0 = ctx.globalAlpha;
+    const cx0 = cam?.x ?? -1e9, cy0 = cam?.y ?? -1e9, cx1 = cx0 + (cam?.vw ?? 2e9), cy1 = cy0 + (cam?.vh ?? 2e9);
+    ctx.setTransform(st.WM); ctx.globalAlpha = st.ga ?? g0;
+    platformsOver(ctx, wd, Math.max(b.ox - 380, cx0), Math.max(b.oy - 540, cy0), Math.min(b.ox + 380, cx1), Math.min((b.A?.floor ?? b.oy) - 8, cy1));
+    ctx.globalAlpha = g0;
+    D.end();
+  }
   // 7) 머리: 미끼 줄기(머리 뒤에서) → 입속 → 아래턱 → 머리 → 잔눈 → 왕관 → 전구
   headGroup(ctx, D, rig, b, st, s, t, lvl, recOn, dying);
   // 8) 앞팔 + 산호 목장
@@ -574,6 +587,42 @@ function frontArm(ctx, D, rig, b, st, s, t, lvl, recOn, V) {
     put(D, R.fist, R.fist.v.base, 'wr', J.hx, J.hy, Math.atan2(gy - J.hy, gx - J.hx) - fa.a, FIST_S);
   }
   D.rec = false;
+}
+
+// ───────────────────────── 돌 발판 덧그리기 ─────────────────────────
+/**
+ * 딛을 수 있는 단단한 타일 윗면을 타일 청크 그림에서 다시 복사한다 (kit.ledgesOver 의 단단한 발판판).
+ * 공중에 뜬 한 칸 두께 발판(위·아래 칸이 비었다)은 칸 전체, 기둥·벽 꼭대기(위 칸만 비었다)는 윗면 28px 만.
+ */
+function platformsOver(ctx, world, x0, y0, x1, y1) {
+  const m = world?.map, tr = world?.tiles;
+  if (!m?.tiles || !tr?.chunk || !(x1 > x0) || !(y1 > y0)) return 0;
+  const S = m.pxW / m.w, W = m.w;
+  const tx0 = Math.max(0, Math.floor(x0 / S)), tx1 = Math.min(W - 1, Math.floor(x1 / S));
+  const ty0 = Math.max(1, Math.floor(y0 / S)), ty1 = Math.min(m.h - 2, Math.floor(y1 / S));
+  const T = m.tiles, top = (tx, ty) => isSolidType(T[ty * W + tx]) && !isSolidType(T[(ty - 1) * W + tx]);
+  const kind = (tx, ty) => (!top(tx, ty) ? 0 : isSolidType(T[(ty + 1) * W + tx]) ? 2 : 1);   // 0 없음 · 1 뜬 발판(칸 전체) · 2 기둥 윗면
+  let n = 0, per = 0;
+  for (let ty = ty0; ty <= ty1; ty++) {
+    let run = -1, rk = 0;
+    for (let tx = tx0; tx <= tx1 + 1; tx++) {
+      const k = tx <= tx1 ? kind(tx, ty) : 0;
+      if (k && run < 0) { run = tx; rk = k; }
+      else if (run >= 0 && k !== rk) {
+        const hTile = rk === 1 ? S : 28;
+        per ||= Math.max(1, Math.round((tr.chunk(0, 0)?.width || 16 * S) / S));   // 청크당 타일 수
+        for (let a = run; a <= tx - 1;) {
+          const cx = Math.floor(a / per), cy = Math.floor(ty / per), end = Math.min(tx - 1, cx * per + per - 1), c = tr.chunk(cx, cy);
+          if (!c) break;
+          const sx = (a - cx * per) * S, sy = (ty - cy * per) * S, w = (end - a + 1) * S, hh = Math.min(hTile, c.height - sy);
+          if (w > 0 && hh > 0) { ctx.drawImage(c, sx, sy, w, hh, a * S, ty * S, w, hh); n++; }
+          a = end + 1;
+        }
+        run = k ? tx : -1; rk = k;
+      }
+    }
+  }
+  return n;
 }
 
 // ───────────────────────── 균열 발광 ─────────────────────────
