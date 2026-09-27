@@ -1,5 +1,8 @@
 // 흑묘 여관 — 미니게임 홀. 마르타(주인)의 입담, 게임 5종 카드 메뉴, 규칙/배당/기록, 판돈 선택(무료 한 판),
 // 방문 전적, 그림 속 검은 고양이 '까망이' 이스터에그(탭하면 깨어나 행운을 물어다 줌)
+//  - uiScale 장면 (platform §6.2): game.uiW × game.uiH 로 배치 (휴대폰 888×432 · 1013×468, 최소 720×400) — layout() 참고
+//  - 가상 패드는 hidePad 플래그로 숨긴다. 탭 영역은 ui.taps (Hits), 버튼 높이 ≥ 44 CSS px
+//  - 조작: ←→ 게임 · ↑↓ 판돈 · 결정 시작 · 취소(B/Esc) 나가기. 안내는 지금 기기의 글리프
 import { Scene } from '../../core/game.js';
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
@@ -10,7 +13,7 @@ import { Particles } from '../../core/particles.js';
 import { drawIcon } from '../../render/icons.js';
 import {
   GAMES, GAME_ORDER, BETS, session, newVisit, ensureState, autosave, line, reactTo, grantItems, itemIcon,
-  Hits, gPanel, drawBtn, goldText, goldPlaque, Roller, bubble, bubbleText, padPush, padPop, padHide, vignetteSoft, affordableBet, GOLD,
+  Hits, gPanel, drawBtn, goldText, goldPlaque, Roller, bubble, bubbleText, vignetteSoft, affordableBet, GOLD, keyHints, tapMinOf,
 } from './common.js';
 import { rr, glow, drawChip, drawEmblem, heartPath } from './art.js';
 
@@ -19,10 +22,19 @@ const CAT = { x0: 0.735, x1: 0.945, y0: 0.745, y1: 0.915, hx: 0.772, hy: 0.797 }
 const BG_OY = 0.75;
 
 export class InnScene extends Scene {
+  constructor(g) {
+    super(g);
+    this.uiScale = true;  // platform §6.2
+    this.hidePad = true;  // platform §5.1 (game.syncPad)
+  }
+  /** UI 좌표 화면 크기 */
+  get vw() { return this.game.uiW || this.game.viewW; }
+  get vh() { return this.game.uiH || this.game.viewH; }
+  get tapMin() { return tapMinOf(this); }
   enter() {
     const st = ensureState(this.game);
     newVisit();
-    this.hits = new Hits();
+    this.hits = new Hits(this);
     this.fx = new Particles(260);
     this.goldR = new Roller(st.gold);
     this.sel = Math.max(0, GAME_ORDER.indexOf(session.lastGame));
@@ -36,12 +48,9 @@ export class InnScene extends Scene {
     this.bgImg = null;
     this.motes = Array.from({ length: 22 }, () => ({ x: Math.random(), y: Math.random(), v: rand(0.006, 0.02), ph: rand(0, TAU), s: rand(0.6, 1.4) }));
     audio.music('inn');
-    padPush();
     assets.preload(['bg/inn', 'portraits/npc_marta']);
   }
-  exit() { padPop(); }
   onResume() {
-    padHide();
     audio.music('inn');
     this.leaving = false;
     const st = this.game.state;
@@ -50,7 +59,8 @@ export class InnScene extends Scene {
       this.lastSeen = rec;
       const r = rec.line ? { text: rec.line, mood: rec.mood } : reactTo(rec, st);
       this.say(r.text, r.mood);
-      if (rec.win && !rec.free) this.fx.burst('gold', 130, 470, 18, { speed: 160 });
+      const sm = this.L?.sum;
+      if (rec.win && !rec.free) this.fx.burst('gold', sm ? sm.x + sm.w / 2 : 130, sm ? sm.y + sm.h * 0.45 : this.vh - 70, 18, { speed: 160 });
     }
     this.betV = affordableBet(st.gold, session.lastBet ?? this.betV);
   }
@@ -110,7 +120,7 @@ export class InnScene extends Scene {
   catRect() {
     const img = this.bgImg;
     if (!img) return null;
-    const vw = this.game.viewW, vh = this.game.viewH;
+    const vw = this.vw, vh = this.vh;
     const s = Math.max(vw / img.width, vh / img.height);
     const dw = img.width * s, dh = img.height * s, ox = (vw - dw) / 2, oy = (vh - dh) * BG_OY;
     return { x: ox + CAT.x0 * dw, y: oy + CAT.y0 * dh, w: (CAT.x1 - CAT.x0) * dw, h: (CAT.y1 - CAT.y0) * dh, hx: ox + CAT.hx * dw, hy: oy + CAT.hy * dh, k: s };
@@ -171,9 +181,37 @@ export class InnScene extends Scene {
     if (input.pressed('confirm')) this.start();
   }
 
+  /**
+   * 화면 배치 (UI px). 높이 540(데스크톱)에서는 예전 배치 그대로이고, 휴대폰(432·468)·최소(400)에서는
+   * 게임 카드 → 설명 → 판돈 순으로 줄인다. 왼쪽 열은 초상화가 줄어든다.
+   */
+  layout() {
+    const W = this.vw, H = this.vh, compact = H < 500;
+    const top = 64, bot = H - 8, gap = 10, avail = bot - top;
+    const LW = clamp(Math.round(W * 0.23), 200, 280);
+    const RX = 16 + LW + 14, RW = W - 16 - RX;
+    // 왼쪽: 초상화 · 말풍선 · 오늘의 전적
+    const bubbleH = compact ? 92 : 104, sumH = compact ? 72 : 102;
+    const portH = Math.max(120, avail - bubbleH - sumH - gap * 2 - 2);
+    // 오른쪽: 게임 카드 · 설명 · 판돈 (줄일 수 있는 만큼 카드 → 설명 → 판돈 순)
+    let cardsH = 170, detH = 152, betH = 120;
+    let over = cardsH + detH + betH + gap * 2 - avail;
+    const cut = (v, min) => { const d = Math.min(Math.max(0, over), v - min); over -= d; return v - d; };
+    cardsH = cut(cardsH, 84); detH = cut(detH, 116); betH = cut(betH, 100);
+    return {
+      W, H, compact, top, gap, LW, RX, RW,
+      port: { x: 16, y: top, w: LW, h: portH },
+      bubble: { x: 16, y: top + portH + gap + 2, w: LW, h: bubbleH },
+      sum: { x: 16, y: top + portH + bubbleH + gap * 2 + 2, w: LW, h: sumH },
+      cards: { x: RX, y: top + 2, w: RW, h: cardsH },
+      det: { x: RX, y: top + 2 + cardsH + gap, w: RW, h: detH },
+      bet: { x: RX, y: top + 2 + cardsH + detH + gap * 2, w: RW, h: betH },
+    };
+  }
+
   render(ctx) {
     this.hits.clear();
-    const g = this.game, vw = g.viewW, vh = g.viewH, t = this.t, st = g.state;
+    const g = this.game, vw = this.vw, vh = this.vh, t = this.t, st = g.state;
     // 배경
     const img = assets.get('bg/inn');
     this.bgImg = img;
@@ -194,21 +232,22 @@ export class InnScene extends Scene {
 
     // 상단
     const back = this.hits.rect('back', 12, 10, 110, 40);
-    this.hits.add('back', back);
-    drawBtn(ctx, back, '◀ 나가기', { tone: 'dark', size: 16, hot: this.hits.over(back), pressed: this.hits.pressed(back), key: 'X' });
+    this.hits.add('back', back, false, 'icon');
+    drawBtn(ctx, back, '◀ 나가기', { tone: 'dark', size: 16, hot: this.hits.over(back), pressed: this.hits.pressed(back), key: 'cancel' });
     goldText(ctx, '흑묘 여관', 140, 40, 30, { align: 'left', glowCol: '#ff4060' });
     text(ctx, 'BLACK CAT INN · 미니게임 홀', 142, 56, { size: 11, weight: 700, family: FONT.num, color: '#b89a70', ow: 2 });
     goldPlaque(ctx, vw - 196, 10, 184, this.goldR.value, t, this.goldR.flash);
 
-    // 레이아웃
-    const LW = clamp(Math.round(vw * 0.23), 220, 280);
-    const RX = 16 + LW + 14, RW = vw - 16 - RX;
-    this.drawMarta(ctx, 16, 64, LW, 236);
-    this.drawBubble(ctx, 16, 312, LW, 104);
-    this.drawSummary(ctx, 16, 426, LW, 102);
-    this.drawCards(ctx, RX, 66, RW, 170);
-    this.drawDetail(ctx, RX, 246, RW, 152);
-    this.drawBetRow(ctx, RX, 408, RW, 120);
+    // 레이아웃 (UI px, layout() 참고)
+    const L = this.layout();
+    this.L = L;
+    const { port, bubble: bb, sum, cards, det, bet } = L;
+    this.drawMarta(ctx, port.x, port.y, port.w, port.h);
+    this.drawBubble(ctx, bb.x, bb.y, bb.w, bb.h);
+    this.drawSummary(ctx, sum.x, sum.y, sum.w, sum.h);
+    this.drawCards(ctx, cards.x, cards.y, cards.w, cards.h);
+    this.drawDetail(ctx, det.x, det.y, det.w, det.h);
+    this.drawBetRow(ctx, bet.x, bet.y, bet.w, bet.h);
     this.fx.draw(ctx, 'front');
     this.fx.draw(ctx, 'top');
   }
@@ -311,17 +350,32 @@ export class InnScene extends Scene {
     const n = Math.floor(this.sayT * 38);
     const prev = Math.floor((this.sayT - 1 / 60) * 38);
     if (n !== prev && n % 3 === 0 && n < (this.line?.length ?? 0)) audio.sfx('type', { vol: 0.12 });
-    bubbleText(ctx, this.line ?? '', x + 14, y + 26, w - 28, 14.5, n, 4);
+    // 말풍선 높이에 맞춰 글자 크기·줄 수를 정한다 (휴대폰: 13.5px 3줄)
+    const size = h < 100 ? 13.5 : 14.5, lh = size * 1.42;
+    const maxLines = Math.max(2, Math.floor((h - 24) / lh) + (h < 100 ? 0 : 1));
+    bubbleText(ctx, this.line ?? '', x + 14, y + (h < 100 ? 24 : 26), w - 28, size, n, Math.min(4, maxLines));
   }
 
   drawSummary(ctx, x, y, w, h) {
     gPanel(ctx, x, y, w, h, { a: 0.8 });
+    const net = session.net, netCol = net > 0 ? '#9af09a' : net < 0 ? '#ff8a8a' : '#e8dcc8';
     text(ctx, '오늘의 전적', x + 14, y + 24, { size: 14, weight: 800, family: FONT.title, color: GOLD, ow: 3 });
     text(ctx, `${session.games}판 · ${session.wins}승`, x + w - 14, y + 24, { size: 13, align: 'right', weight: 700, color: '#e8dcc8', ow: 2 });
-    const net = session.net;
-    text(ctx, '수익', x + 14, y + 50, { size: 13, weight: 700, color: '#b8a888', ow: 2 });
-    text(ctx, `${net > 0 ? '+' : ''}${fmt(net)} G`, x + w - 14, y + 51, { size: 18, align: 'right', weight: 900, family: FONT.num, color: net > 0 ? '#9af09a' : net < 0 ? '#ff8a8a' : '#e8dcc8', ow: 3 });
     const ids = Object.keys(session.drops);
+    if (h < 90) {
+      // 좁은 화면: 둘째 줄 = 전리품 아이콘(또는 '수익') + 수익
+      if (ids.length) {
+        ids.slice(0, 3).forEach((id, i) => {
+          const ix = x + 24 + i * 30, iy = y + 48;
+          drawIcon(ctx, itemIcon(id), ix, iy, 24);
+          text(ctx, '×' + session.drops[id], ix + 13, iy + 12, { size: 11, align: 'right', weight: 800, color: '#fff', ow: 3 });
+        });
+      } else text(ctx, session.catLuck ? '흑묘의 가호' : '수익', x + 14, y + 53, { size: 13, weight: 700, color: session.catLuck ? '#c8a0ff' : '#b8a888', ow: 2 });
+      text(ctx, `${net > 0 ? '+' : ''}${fmt(net)} G`, x + w - 14, y + 54, { size: 18, align: 'right', weight: 900, family: FONT.num, color: netCol, ow: 3 });
+      return;
+    }
+    text(ctx, '수익', x + 14, y + 50, { size: 13, weight: 700, color: '#b8a888', ow: 2 });
+    text(ctx, `${net > 0 ? '+' : ''}${fmt(net)} G`, x + w - 14, y + 51, { size: 18, align: 'right', weight: 900, family: FONT.num, color: netCol, ow: 3 });
     if (!ids.length) {
       text(ctx, session.catLuck ? '흑묘의 가호가 함께합니다' : '획득한 전리품 없음', x + 14, y + 80, { size: 12, weight: 600, color: session.catLuck ? '#c8a0ff' : '#7a6a5a', ow: 2 });
     } else {
@@ -337,27 +391,35 @@ export class InnScene extends Scene {
     const n = GAME_ORDER.length, gap = 12;
     const cw = Math.min(170, (w - gap * (n - 1)) / n);
     const x0 = x + (w - (cw * n + gap * (n - 1))) / 2;
+    const ch = h - 8;
+    // 카드 아래쪽은 이름(+부제), 위쪽 남는 칸에 문장(엠블럼)
+    const small = ch < 120;
+    const nameY = ch - (small ? 26 : 34), subY = ch - (small ? 9 : 16);
+    const embTop = 8, embBot = nameY - (small ? 18 : 22);
+    const embS = Math.max(24, Math.min(cw * 0.78, 110, embBot - embTop + (small ? 6 : 16)));
+    const embY = (embTop + embBot) / 2;
     GAME_ORDER.forEach((id, i) => {
       const k = this.cardT[i], G = GAMES[id];
       const cx = x0 + i * (cw + gap), cy = y + 8 - k * 8;
-      const r = this.hits.rect('game:' + i, cx, cy, cw, h - 8);
+      // 탭 영역은 들뜨지 않은 위치 그대로 (선택 연출로 1~8 px 움직여도 한 목표로 보이게)
+      const r = this.hits.rect('game:' + i, cx, y + 4, cw, ch);
       this.hits.add('game:' + i, r);
       const hov = this.hits.over(r);
       ctx.save();
-      ctx.fillStyle = 'rgba(0,0,0,0.5)'; rr(ctx, cx + 2, cy + 6, cw, h - 8, 12); ctx.fill();
-      if (k > 0.05) { ctx.save(); ctx.shadowColor = G.accent; ctx.shadowBlur = 22 * k; rr(ctx, cx, cy, cw, h - 8, 12); ctx.fillStyle = '#000'; ctx.fill(); ctx.restore(); }
+      ctx.fillStyle = 'rgba(0,0,0,0.5)'; rr(ctx, cx + 2, cy + 6, cw, ch, 12); ctx.fill();
+      if (k > 0.05) { ctx.save(); ctx.shadowColor = G.accent; ctx.shadowBlur = 22 * k; rr(ctx, cx, cy, cw, ch, 12); ctx.fillStyle = '#000'; ctx.fill(); ctx.restore(); }
       const bg = ctx.createLinearGradient(0, cy, 0, cy + h);
       bg.addColorStop(0, k > 0.5 ? '#3a1424' : '#22101c'); bg.addColorStop(1, '#0a0408');
-      rr(ctx, cx, cy, cw, h - 8, 12); ctx.fillStyle = bg; ctx.fill();
+      rr(ctx, cx, cy, cw, ch, 12); ctx.fillStyle = bg; ctx.fill();
       ctx.lineWidth = 1.5 + k; ctx.strokeStyle = k > 0.5 ? '#ffe7a0' : hov ? '#c8a050' : '#6a5030'; ctx.stroke();
-      rr(ctx, cx + 5, cy + 5, cw - 10, h - 18, 8); ctx.lineWidth = 1; ctx.strokeStyle = `rgba(232,200,114,${0.15 + k * 0.25})`; ctx.stroke();
+      rr(ctx, cx + 5, cy + 5, cw - 10, ch - 10, 8); ctx.lineWidth = 1; ctx.strokeStyle = `rgba(232,200,114,${0.15 + k * 0.25})`; ctx.stroke();
       // 문장
-      ctx.save(); rr(ctx, cx + 5, cy + 5, cw - 10, h - 18, 8); ctx.clip();
-      glow(ctx, cx + cw / 2, cy + 64, cw * 0.7, G.accent, 0.12 + k * 0.18);
-      drawEmblem(ctx, id, cx + cw / 2, cy + 64, Math.min(cw * 0.78, 110), this.t + i, k);
+      ctx.save(); rr(ctx, cx + 5, cy + 5, cw - 10, ch - 10, 8); ctx.clip();
+      glow(ctx, cx + cw / 2, cy + embY, Math.max(cw * 0.7, embS), G.accent, 0.12 + k * 0.18);
+      drawEmblem(ctx, id, cx + cw / 2, cy + embY, embS, this.t + i, k);
       ctx.restore();
-      goldText(ctx, G.name, cx + cw / 2, cy + h - 42, cw > 140 ? 19 : 17, { ow: 4, glowCol: k > 0.5 ? G.accent : null });
-      text(ctx, G.sub, cx + cw / 2, cy + h - 24, { size: 11, align: 'center', weight: 700, color: '#b8a080', ow: 2 });
+      goldText(ctx, G.name, cx + cw / 2, cy + nameY, cw > 140 ? 19 : 17, { ow: 4, glowCol: k > 0.5 ? G.accent : null, maxWidth: cw - 12 });
+      text(ctx, G.sub, cx + cw / 2, cy + subY, { size: 11, align: 'center', weight: 700, color: '#b8a080', ow: 2, maxWidth: cw - 10 });
       ctx.restore();
     });
   }
@@ -367,50 +429,63 @@ export class InnScene extends Scene {
     gPanel(ctx, x, y, w, h, { a: 0.84, glowCol: 'rgba(179,18,46,0.35)' });
     const pw = Math.min(250, w * 0.36);
     const lx = x + 18, lw = w - pw - 40;
+    const hintRow = !input.touchMode;
     goldText(ctx, G.name, lx, y + 32, 22, { align: 'left', glowCol: G.accent });
     ctx.font = `800 22px ${FONT.title}`;
     const nw = ctx.measureText(G.name).width;
     text(ctx, G.sub, lx + nw + 10, y + 31, { size: 12, weight: 700, color: '#b8a080', ow: 2 });
-    const lines = wrap(ctx, G.rules, lw, 13.5, 500);
-    lines.slice(0, 5).forEach((l, i) => text(ctx, l, lx, y + 56 + i * 19.5, { size: 13.5, weight: 500, color: '#e8dcc8', ow: 2 }));
+    // 규칙: 남는 높이만큼 (넘치면 마지막 줄 끝을 '…')
+    const size = h < 150 ? 13 : 13.5, lh = h < 150 ? 18 : 19.5;
+    const lines = wrap(ctx, G.rules, lw, size, 500);
+    const maxL = Math.max(1, Math.min(5, Math.floor((h - 50 - (hintRow ? 24 : 8)) / lh)));
+    lines.slice(0, maxL).forEach((l, i) => {
+      const s = i === maxL - 1 && lines.length > maxL ? l.replace(/.$/, '…') : l;
+      text(ctx, s, lx, y + 56 + i * lh, { size, weight: 500, color: '#e8dcc8', ow: 2 });
+    });
     // 배당 상자
     const bx = x + w - pw - 14, by = y + 14, bh = h - 28;
     ctx.fillStyle = 'rgba(0,0,0,0.4)'; rr(ctx, bx, by, pw, bh, 8); ctx.fill();
     ctx.strokeStyle = 'rgba(232,200,114,0.35)'; ctx.lineWidth = 1; ctx.stroke();
     text(ctx, '배당', bx + 12, by + 20, { size: 12, weight: 800, color: GOLD, ow: 2 });
-    G.pays.forEach((p, i) => text(ctx, p, bx + 12, by + 42 + i * 19, { size: 12.5, weight: 700, color: '#f0e4c8', ow: 2, maxWidth: pw - 20 }));
-    text(ctx, recordText(id, st), bx + 12, by + bh - 10, { size: 11.5, weight: 700, color: '#9ad0ff', ow: 2, maxWidth: pw - 20 });
-    if (!input.touchMode) text(ctx, '← → 게임 선택 · ↑ ↓ 판돈 · Z 시작 · X 나가기', lx, y + h - 10, { size: 11, weight: 600, color: '#8a7a68', ow: 2 });
+    const payH = Math.min(19, (bh - 56) / G.pays.length);
+    G.pays.forEach((p, i) => text(ctx, p, bx + 12, by + 40 + i * payH, { size: 12, weight: 700, color: '#f0e4c8', ow: 2, maxWidth: pw - 20 }));
+    text(ctx, recordText(id, st), bx + 12, by + bh - 9, { size: 11.5, weight: 700, color: '#9ad0ff', ow: 2, maxWidth: pw - 20 });
+    if (hintRow) keyHints(ctx, [['dpadH', '게임 선택'], ['dpadV', '판돈'], ['confirm', '시작'], ['cancel', '나가기']], lx, y + h - 11, { size: 11, color: '#a8988a' });
   }
 
   drawBetRow(ctx, x, y, w, h) {
     const st = this.game.state;
-    // 오른쪽 아래 고양이 영역은 비워 둔다
-    const cr = this.catRect();
-    const right = cr ? Math.min(x + w, cr.x - 8) : x + w;
-    const avail = right - x;
-    const bw = clamp(avail * 0.3, 128, 170), bh = 62;
-    const chipsW = avail - bw - 16;
     const opts = this.betOptions();
+    const tm = this.tapMin, big = input.touchMode || tm > 44;
+    // 오른쪽 아래 고양이 영역은 비워 둔다 (칩·버튼이 손가락 크기를 못 지킬 만큼 좁아지면 고양이를 덮는다)
+    const need = opts.length * (big ? tm : 44) + 10 + 112 + 16;
+    const cr = this.catRect();
+    let right = cr ? Math.min(x + w, cr.x - 8) : x + w;
+    if (right - x < need) right = x + w;
+    const avail = right - x;
+    const chipsW0 = Math.min(opts.length * 72 + 10, avail - 112 - 16);
+    const bw = clamp(avail - chipsW0 - 16, 112, 170), bh = Math.min(62, h - 22);
+    const chipsW = avail - bw - 16;
     // 칩은 '도전하기!' 버튼 앞 여백까지만 쓴다 (마지막 칩이 버튼에 가려지지 않게: 선택 테두리 +3 포함)
-    const gapC = Math.min(72, (chipsW - 20) / opts.length);
+    const gapC = Math.min(72, (chipsW - 10) / opts.length);
     const r = clamp(gapC / 2 - 6, 18, 28);
-    const cy = y + 60;
+    const cy = y + Math.round(h * 0.54);
     gPanel(ctx, x, y, avail, h, { a: 0.78, r: 12 });
     text(ctx, '판돈', x + 16, y + 22, { size: 13, weight: 800, family: FONT.title, color: GOLD, ow: 3 });
-    text(ctx, this.free ? '무료 한 판 — 이겨도 보상은 없어요' : session.freeUsed ? '' : '무료 한 판을 즐길 수 있어요!', x + 56, y + 22, { size: 11.5, weight: 700, color: '#7affd8', ow: 2 });
-    const x0 = x + 14 + gapC / 2;
+    text(ctx, this.free ? '무료 한 판 — 이겨도 보상은 없어요' : session.freeUsed ? '' : '무료 한 판을 즐길 수 있어요!', x + 56, y + 22, { size: 11.5, weight: 700, color: '#7affd8', ow: 2, maxWidth: avail - 72 });
+    const x0 = x + 10 + gapC / 2;
+    const hh = Math.max(r * 2 + 18, big ? tm : 0);
     opts.forEach((v, i) => {
       const px = x0 + i * gapC;
-      const hr = this.hits.rect('bet:' + v, px - gapC / 2, cy - r - 8, gapC, r * 2 + 18);
-      this.hits.add('bet:' + v, hr);
+      const hr = this.hits.rect('bet:' + v, px - gapC / 2, cy - hh / 2, gapC, hh);
+      this.hits.add('bet:' + v, hr, false, 'icon');
       drawChip(ctx, px, cy, r, v, { selected: this.betValue === v, disabled: v > 0 && st.gold < v, t: this.t });
-      if (v === 0) text(ctx, '1회', px, cy + r + 14, { size: 10, align: 'center', weight: 700, color: '#7affd8', ow: 2 });
+      if (v === 0) text(ctx, '1회', px, cy + r + 13, { size: 11, align: 'center', weight: 700, color: '#7affd8', ow: 2 });
     });
-    const sr = this.hits.rect('start', right - bw - 12, y + (h - bh) / 2 + 6, bw, bh);
+    const sr = this.hits.rect('start', right - bw - 10, y + (h - bh) / 2 + 4, bw, bh);
     const can = this.free || st.gold >= this.betV;
     this.hits.add('start', sr);
-    drawBtn(ctx, sr, '도전하기!', { tone: 'crimson', size: 20, hot: this.hits.over(sr) || can, pressed: this.hits.pressed(sr), sub: this.free ? '무료 한 판' : `${fmt(this.betV)} G 걸기`, key: 'Z', disabled: !can, pulse: can, t: this.t });
+    drawBtn(ctx, sr, '도전하기!', { tone: 'crimson', size: bw < 140 ? 18 : 20, hot: this.hits.over(sr) || can, pressed: this.hits.pressed(sr), sub: this.free ? '무료 한 판' : `${fmt(this.betV)} G 걸기`, key: 'confirm', disabled: !can, pulse: can, t: this.t });
   }
 }
 

@@ -1,9 +1,11 @@
 // 블러드 슬롯 — 3릴 × 3줄, 5개 페이라인(가로 3 + 대각 2). 모션 블러 릴, 버튼마다 릴 하나씩 정지(자동 정지 포함),
 // 7/성배 리치 시 3번 릴 '두근두근' 연장, 가운데 줄 피의 7 셋 = 잭팟(화면 섬광 + 코인 분수).
 // 배당(판돈 배수, 줄마다 합산): 해골 2 · 박쥐 3 · 하트 6 · 십자가 12 · 달 30 · 성배 80 · 피의 7 100 · 가운데 줄 7 250 (RTP ≈ 92%)
+// 배치: 기계(캐비닛·릴·레버)는 설계 좌표에 그려 배율 L.k 로 화면(UI px)에 맞추고, 정지 버튼·줄 번호·당첨 표시 글자·JACKPOT(피 글씨)은 배율 없이 그린다.
+// 조작: 결정 = 스핀 / 릴 하나씩 정지, 화면의 릴·정지 버튼·레버 탭. 취소(B·Esc)는 '그만두기' 확인 창.
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
-import { text, FONT } from '../../core/ui.js';
+import { text, FONT, bloodText, prewarmText } from '../../core/ui.js';
 import { clamp, lerp, ease, fmt, TAU } from '../../core/math.js';
 import { MiniGame, innBackdrop, drawBtn, gPanel, goldText, record, GOLD } from './common.js';
 import { SLOT_SYMBOLS, SLOT_NAMES, slotSprite, glow, rr } from './art.js';
@@ -33,6 +35,7 @@ const mod = (n, m) => ((n % m) + m) % m;
 export class SlotScene extends MiniGame {
   constructor(g) { super(g, 'slot'); }
   init() {
+    this.titleLeft = true; // 가운데 위는 기계 꼭대기(날개·붉은 달)
     this.reels = [0, 1, 2].map(() => {
       const strip = makeStrip();
       const p = Math.floor(Math.random() * strip.length);
@@ -90,8 +93,8 @@ export class SlotScene extends MiniGame {
   onReelLanded(i) {
     audio.sfx('clang', { vol: 0.45, pitch: 1.3 + i * 0.1 });
     this.shake(1.5, 0.08);
-    const c = this.cab, x = this.reelX(i) + this.reelW / 2;
-    this.fx.burst('spark', x, c.y + 84 + ROW_H * 1.5, 5, { speed: 180 });
+    const c = this.cab, S = this.P(this.reelX(i) + this.reelW / 2, c.y + 84 + ROW_H * 1.5);
+    this.fx.burst('spark', S.x, S.y, 5, { speed: 180 });
     // 리치 판정 (두 릴이 멈춘 뒤)
     if (i === 1 || (this.reels[0].state === 'idle' && this.reels[1].state === 'idle' && this.reels[2].state === 'spin')) {
       if (this.reels[2].state === 'spin' && !this.tease && this.reach()) {
@@ -137,9 +140,9 @@ export class SlotScene extends MiniGame {
       const b = this.st.innGames.best;
       if (!this.roundFree) record(this.st, 'slotBest', pay);
       if (jackpot) b.slotJackpots = (b.slotJackpots ?? 0) + 1;
-      const c = this.cab;
-      this.settle({ win: true, payout: pay, tier, popup: tier !== 'win', title: jackpot ? '잭팟!!!' : '대박 당첨!', sub: `${SLOT_NAMES[top.sym]} ${wins.length > 1 ? `외 ${wins.length - 1}줄` : ''} · 배당 ×${mult}`, cx: this.vw / 2, cy: c.y + 84 + ROW_H * 1.5, delay: jackpot ? 1.6 : 1.0 });
-      if (jackpot) { this.jackpotT = 0; this.coins.burst(this.vw / 2, c.y + 40, 60, { up: 1100, spread: 1.6 }); }
+      const c = this.cab, S = this.P(this.vw / 2, c.y + 84 + ROW_H * 1.5);
+      this.settle({ win: true, payout: pay, tier, popup: tier !== 'win', title: jackpot ? '잭팟!!!' : '대박 당첨!', sub: `${SLOT_NAMES[top.sym]} ${wins.length > 1 ? `외 ${wins.length - 1}줄` : ''} · 배당 ×${mult}`, cx: S.x, cy: S.y, delay: jackpot ? 1.6 : 1.0 });
+      if (jackpot) { this.jackpotT = 0; this._jpWarm = false; const T = this.P(this.vw / 2, c.y + 40); this.coins.burst(T.x, T.y, 60, { up: 1100, spread: 1.6 }); }
     } else {
       this.msg = this.spins % 4 === 0 ? '아깝다! 한 번만 더?' : '꽝… 다음 기회에!'; this.msgCol = '#b8a080';
       this.settle({ win: false, tier: 'lose', popup: false, quiet: true });
@@ -184,22 +187,53 @@ export class SlotScene extends MiniGame {
   get reelW() { return (this.cab.w - 80) / 3; }
   reelX(i) { const c = this.cab; return c.x + 40 + i * this.reelW; }
 
+  // ── 배치 (UI px) ──
+  /** 아래 판돈 패널 · 기계 배율 k (설계: 캐비닛 꼭대기 y 26 ~ 당첨 표시 아래 410) · 양옆 패널 */
+  lay() {
+    const W = this.vw, H = this.vh;
+    const ph = Math.max(110, this.bh(62) + 30), py = H - 8 - ph;
+    const k = clamp((py - 8 - 16) / 384, 0.55, 1);
+    const cw = this.cab.w * k;
+    const cabL = W / 2 - cw / 2, cabR = W / 2 + cw / 2 + 58 * k; // 오른쪽은 레버까지
+    const sideY = 64, sideH = Math.min(300, py - 8 - sideY);
+    const payW = Math.min(250, cabL - 30 - 16), sideX = cabR + 14, sideW = Math.min(250, W - 16 - sideX);
+    return { W, H, ph, py, k, oy: 16, sideY, sideH, payW, sideX, sideW };
+  }
+  get L() { return this._L ?? (this._L = this.lay()); }
+  /** 기계 설계 좌표 → 화면 좌표 */
+  P(x, y) { const L = this.L, cx = this.vw / 2; return { x: cx + (x - cx) * L.k, y: L.oy + (y - 26) * L.k }; }
+
   // ── 그리기 ──
   draw(ctx) {
     const vw = this.vw, vh = this.vh, t = this.clock;
+    const L = this._L = this.lay();
     innBackdrop(ctx, vw, vh, t, 0.74, 0.5);
     const c = this.cab;
+    // 기계: 설계 좌표 (배율 k)
+    ctx.save();
+    ctx.translate(vw / 2, L.oy); ctx.scale(L.k, L.k); ctx.translate(-vw / 2, -26);
     glow(ctx, vw / 2, c.y + c.h / 2, c.w * 0.9, '#a0102a', 0.3 + (this.jackpotT < 3 ? 0.3 * Math.abs(Math.sin(t * 12)) : 0));
     this.drawCabinet(ctx, c, t);
     this.drawReels(ctx, c, t);
     this.drawLever(ctx, c.x + c.w + 4, c.y + 150, t);
-    this.drawPayTable(ctx, 16, 96, c.x - 30, 300);
-    this.drawSide(ctx, c.x + c.w + 44, 96, vw - 16 - (c.x + c.w + 44), 300);
+    ctx.restore();
+    // 배율 없이: 줄 번호 보석 · 정지 버튼 · 당첨 표시 글자
+    this.drawReelUI(ctx, c, t);
+    if (L.sideH >= 150) {
+      this.drawPayTable(ctx, 16, L.sideY, L.payW, L.sideH);
+      this.drawSide(ctx, L.sideX, L.sideY, L.sideW, L.sideH);
+    }
     this.drawBottom(ctx);
     if (this.jackpotT < 2.6) {
-      const k = ease.outBack(clamp(this.jackpotT / 0.4, 0, 1)) * clamp((2.6 - this.jackpotT) / 0.4, 0, 1);
-      ctx.save(); ctx.translate(vw / 2, 250); ctx.scale(k, k); ctx.rotate(Math.sin(t * 8) * 0.04);
-      goldText(ctx, 'JACKPOT!!', 0, 0, 78, { family: FONT.logo, weight: 900, glowCol: '#ff2040', top: '#ffffff', mid: '#ffe070', bot: '#ff6a2a', ow: 8 });
+      // JACKPOT — 금박 피 글씨 (글자 크기는 고정, 등장은 ctx.scale 로: 비트맵을 다시 굽지 않게)
+      const size = Math.round(clamp(78 * L.k, 56, 78));
+      const opts = { size, style: 'gold', drips: 0.7, t: this.jackpotT, maxWidth: vw - 40 };
+      if (!this._jpWarm) { this._jpWarm = true; prewarmText(ctx, 'JACKPOT!!', opts); }
+      const kk = ease.outBack(clamp(this.jackpotT / 0.4, 0, 1)) * clamp((2.6 - this.jackpotT) / 0.4, 0, 1);
+      const J = this.P(vw / 2, 250);
+      ctx.save(); ctx.translate(vw / 2, J.y); ctx.scale(kk, kk); ctx.rotate(Math.sin(t * 8) * 0.04);
+      glow(ctx, 0, -size * 0.3, size * 2.2, '#ff2040', 0.45);
+      bloodText(ctx, 'JACKPOT!!', 0, size * 0.3, opts);
       ctx.restore();
     }
   }

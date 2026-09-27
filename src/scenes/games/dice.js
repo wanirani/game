@@ -85,7 +85,7 @@ export class DiceScene extends MiniGame {
     const mult = this.mult;
     this.phase = 'done';
     record(this.st, 'diceStreak', this.streak); record(this.st, 'diceMult', Math.round(mult * 10) / 10);
-    this.settle({ win: true, payout, tier: mult >= 5 ? 'big' : 'win', title: mult >= 5 ? '대박 수확!' : '거두기 성공!', sub: `${this.streak}연승 · 배당 ×${mult.toFixed(2)}`, cy: 232, delay: 0.3 });
+    this.settle({ win: true, payout, tier: mult >= 5 ? 'big' : 'win', title: mult >= 5 ? '대박 수확!' : '거두기 성공!', sub: `${this.streak}연승 · 배당 ×${mult.toFixed(2)}`, cy: this.stageY(232), delay: 0.3 });
   }
 
   resolve() {
@@ -106,7 +106,7 @@ export class DiceScene extends MiniGame {
         this.verdict = { txt: '트리플 적중!!', col: '#ffe070' }; this.verdictT = 0;
         this.phase = 'done';
         record(this.st, 'diceStreak', this.streak); record(this.st, 'diceMult', Math.round(this.mult * 10) / 10);
-        this.settle({ win: true, payout: this.pot, tier: 'jackpot', title: '트리플 잭팟!!', sub: `${this.dice[0].v} · ${this.dice[1].v} · ${this.dice[2].v} — 배당 ×${this.mult.toFixed(1)}`, cy: 232, delay: 0.9 });
+        this.settle({ win: true, payout: this.pot, tier: 'jackpot', title: '트리플 잭팟!!', sub: `${this.dice[0].v} · ${this.dice[1].v} · ${this.dice[2].v} — 배당 ×${this.mult.toFixed(1)}`, cy: this.stageY(232), delay: 0.9 });
       } else this.bust(s, '트리플이 아니네요…');
       return;
     }
@@ -124,8 +124,8 @@ export class DiceScene extends MiniGame {
     this.cur = s; this.history.push({ s, r: 1 });
     this.verdict = { txt: `적중! ×${m.toFixed(2)}`, col: '#9af09a' }; this.verdictT = 0;
     audio.sfx('combo', { pitch: 1 + this.streak * 0.08 });
-    this.fx.burst('gold', this.vw / 2, 232, 14 + this.streak * 3, { speed: 240 });
-    this.fx.text(this.vw / 2, 190, `${this.streak}연승!`, { color: '#ffe070', size: 26, crit: this.streak >= 3 });
+    this.fx.burst('gold', this.vw / 2, this.stageY(232), 14 + this.streak * 3, { speed: 240 });
+    this.fx.text(this.vw / 2, this.stageY(190), `${this.streak}연승!`, { color: '#ffe070', size: 26, crit: this.streak >= 3 });
     if (this.triple) this.dice.forEach((d) => (d.hot = 0.6));
     if (this.streak >= MAX_STREAK) { this.phase = 'guess'; this.cashOut(); return; }
     this.phase = 'guess';
@@ -136,8 +136,8 @@ export class DiceScene extends MiniGame {
     this.verdict = { txt: msg, col: '#ff7a7a' }; this.verdictT = 0;
     this.phase = 'done';
     this.shake(6, 0.3);
-    this.fx.burst('blood', this.vw / 2, 232, 18, { speed: 260 });
-    this.settle({ win: false, tier: 'lose', title: '빗나감…', sub: this.streak ? `${this.streak}연승에서 멈췄어요 (배당 ×${this.mult.toFixed(2)})` : msg, cy: 232, delay: 0.8 });
+    this.fx.burst('blood', this.vw / 2, this.stageY(232), 18, { speed: 260 });
+    this.settle({ win: false, tier: 'lose', title: '빗나감…', sub: this.streak ? `${this.streak}연승에서 멈췄어요 (배당 ×${this.mult.toFixed(2)})` : msg, cy: this.stageY(232), delay: 0.8 });
   }
 
   animate(dt) {
@@ -149,17 +149,41 @@ export class DiceScene extends MiniGame {
   }
   step(dt, tap) {
     if (this.phase === 'ready') {
-      if (tap === 'roll' || input.pressed('confirm') || input.pressed('attack')) this.startRound();
+      if (tap === 'roll' || input.pressed('confirm')) this.startRound();
       return;
     }
     if (this.phase === 'rolling') { this.stepRoll(dt); return; }
     if (this.phase === 'guess') {
+      // 메뉴 의미 입력만: ← 낮게 · → 높게 · ↑ 트리플 · ↓ / 보조(Y·A 키) 거두기 (패드 B 는 '그만두기')
       if (tap === 'lo' || input.pressed('left')) this.choose('lo');
       else if (tap === 'hi' || input.pressed('right')) this.choose('hi');
       else if (tap === 'triple' || input.pressed('up')) this.choose('triple');
-      else if (tap === 'cash' || input.pressed('down') || input.pressed('dash')) this.cashOut();
+      else if (tap === 'cash' || input.pressed('down') || input.pressed('alt')) this.cashOut();
     }
   }
+  quitNote() {
+    return this.phase === 'guess' && this.streak > 0 ? `먼저 '거두기'로 ${fmt(this.pot)} G를 챙길 수 있어요.` : null;
+  }
+
+  // ── 배치 (UI px) ──
+  /** 화면 배치: 아래 조작 줄 · 가운데 쟁반(주사위, 배율 k) + 합계 · 양옆 연승/기록 패널 */
+  lay() {
+    const W = this.vw, H = this.vh;
+    const bh = this.bh(58);
+    const ctrlH = Math.max(96, bh + 34), ctrlTop = H - 8 - ctrlH;
+    const top = 62, bot = ctrlTop - 8;
+    const trayH = clamp(bot - top - 88, 96, 200), k = trayH / 200;
+    const blockH = trayH + 26 + 60;
+    const trayTop = top + 14 + Math.max(0, (bot - top - 14 - blockH) / 2);
+    const sideW = clamp(Math.round(W * 0.2), 150, 188);
+    const sideY = 96, sideH = Math.min(240, bot - sideY);
+    const tw = Math.min(540 * k, W - 2 * (sideW + 16 + 26));
+    return { W, H, bh, ctrlTop, ctrlH, top, bot, k, trayTop, trayH, trayCy: trayTop + trayH / 2, tw, sumY: trayTop + trayH + 26 + 30, sideW, sideY: sideY + Math.max(0, (bot - sideY - sideH) / 2), sideH };
+  }
+  get L() { return this._L ?? (this._L = this.lay()); }
+  /** 쟁반 설계 좌표(가운데 x = vw/2, 쟁반 가운데 y = 224) → 화면 좌표 */
+  P(x, y) { const L = this.L, cx = this.vw / 2; return { x: cx + (x - cx) * L.k, y: L.trayCy + (y - 224) * L.k }; }
+  stageY(y) { const L = this.L; return L.trayCy + (y - 224) * L.k; }
   stepRoll(dt) {
     this.rollT += dt;
     let all = true;
@@ -175,7 +199,7 @@ export class DiceScene extends MiniGame {
       d.y = lerp(d.y0, d.y1, Math.min(1, u * 1.6)) - hgt;
       d.h = hgt;
       const b = Math.floor(u * bounceN);
-      if (b > d.bounces && u < 0.98) { d.bounces = b; audio.sfx('dice', { vol: 0.6 * (1 - u), pitch: 1 + rand(-0.1, 0.2) }); this.fx.burst('dust', d.x, d.y1 + 26, 3, { speed: 40 }); }
+      if (b > d.bounces && u < 0.98) { d.bounces = b; audio.sfx('dice', { vol: 0.6 * (1 - u), pitch: 1 + rand(-0.1, 0.2) }); const P = this.P(d.x, d.y1 + 26); this.fx.burst('dust', P.x, P.y, 3, { speed: 40 }); }
       // 회전: 최종 자세에 굴러 들어가며 수렴
       const th = d.th0 * Math.pow(1 - u, 2.2), th2 = d.th2 * Math.pow(1 - u, 2);
       d.q = Q.mul(Q.axis(d.ax[0], d.ax[1], d.ax[2], th), Q.mul(Q.axis(d.ax2[0], d.ax2[1], d.ax2[2], th2), d.qF));
@@ -188,9 +212,12 @@ export class DiceScene extends MiniGame {
   // ── 그리기 ──
   draw(ctx) {
     const vw = this.vw, vh = this.vh, t = this.clock;
+    const L = this._L = this.lay();
     innBackdrop(ctx, vw, vh, t, 0.66);
-    // 트레이
-    const tw = Math.min(540, vw - 420), tx = vw / 2 - tw / 2, ty = 124, th = 200;
+    // 트레이 (설계 좌표: 쟁반 y 124~324, 가운데 224 → 배율 L.k 로 화면에 맞춘다)
+    ctx.save();
+    ctx.translate(vw / 2, L.trayCy); ctx.scale(L.k, L.k); ctx.translate(-vw / 2, -224);
+    const tw = L.tw / L.k, tx = vw / 2 - tw / 2, ty = 124, th = 200;
     feltTable(ctx, tx, ty, tw, th, { felt: '#34184a', felt2: '#0e0618', r: 44 });
     ctx.save(); rr(ctx, tx, ty, tw, th, 44); ctx.clip();
     text(ctx, '해골 주사위', vw / 2, ty + th - 18, { size: 26, align: 'center', weight: 800, family: FONT.title, color: 'rgba(232,200,114,0.12)', ow: 0 });
@@ -207,9 +234,12 @@ export class DiceScene extends MiniGame {
     order.sort((a, b) => a.y - b.y);
     for (const d of order) { this._dopt.hot = d.hot; drawDie(ctx, d.x, d.y, 62, d.q, this._dopt); }
     if (this.phase === 'done' && this.triple && this.guess === 'triple') for (const d of this.dice) glow(ctx, d.x, d.y, 70, '#ffd060', 0.25 + 0.1 * Math.sin(t * 8));
-    this.drawSum(ctx, vw / 2, ty + th + 40);
-    this.drawStreak(ctx, 16, 118, 188, 212);
-    this.drawHistory(ctx, vw - 204, 118, 188, 212);
+    ctx.restore();
+    this.drawSum(ctx, vw / 2, L.sumY);
+    if (L.sideH >= 110) {
+      this.drawStreak(ctx, 16, L.sideY, L.sideW, L.sideH);
+      this.drawHistory(ctx, vw - 16 - L.sideW, L.sideY, L.sideW, L.sideH);
+    }
     if (this.phase === 'ready') this.drawReadyUI(ctx);
     else this.drawGuessUI(ctx);
   }
@@ -236,36 +266,39 @@ export class DiceScene extends MiniGame {
   }
   drawStreak(ctx, x, y, w, h) {
     gPanel(ctx, x, y, w, h, { a: 0.82 });
-    const t = this.clock;
-    text(ctx, '연승', x + w / 2, y + 30, { size: 14, align: 'center', weight: 800, family: FONT.title, color: GOLD, ow: 3 });
+    const t = this.clock, c = h < 190; // 좁은 화면: 줄 간격을 줄이고 꼬리말은 뺀다
+    const Y = c ? { title: 24, num: 62, numS: 38, gauge: 72, mult: 100, pot: 126 } : { title: 30, num: 90, numS: 50, gauge: 108, mult: 142, pot: 172 };
+    text(ctx, '연승', x + w / 2, y + Y.title, { size: 14, align: 'center', weight: 800, family: FONT.title, color: GOLD, ow: 3 });
     const s = this.streak;
     if (s > 0) {
       for (let i = 0; i < Math.min(8, 3 + s * 2); i++) {
         const u = (t * 1.3 + i / 7) % 1;
-        glow(ctx, x + w / 2 + Math.sin(i * 2.3 + t * 3) * 22 * (1 - u), y + 92 - u * 44, 16 * (1 - u) + 4, s >= 4 ? '#ffb040' : '#ff5a2a', 0.5 * (1 - u));
+        glow(ctx, x + w / 2 + Math.sin(i * 2.3 + t * 3) * 22 * (1 - u), y + Y.num + 2 - u * 44, 16 * (1 - u) + 4, s >= 4 ? '#ffb040' : '#ff5a2a', 0.5 * (1 - u));
       }
     }
-    goldText(ctx, String(s), x + w / 2, y + 90, 50, { family: FONT.num, weight: 900, glowCol: s ? '#ff7a2a' : null });
+    goldText(ctx, String(s), x + w / 2, y + Y.num, Y.numS, { family: FONT.num, weight: 900, glowCol: s ? '#ff7a2a' : null });
     // 배당 게이지
     for (let i = 0; i < MAX_STREAK; i++) {
       const bx = x + 18 + i * ((w - 36) / MAX_STREAK);
       ctx.fillStyle = i < s ? (i >= 5 ? '#ffd060' : '#ff6a3a') : 'rgba(255,255,255,0.1)';
-      rr(ctx, bx, y + 108, (w - 36) / MAX_STREAK - 3, 8, 3); ctx.fill();
+      rr(ctx, bx, y + Y.gauge, (w - 36) / MAX_STREAK - 3, 8, 3); ctx.fill();
     }
-    text(ctx, '현재 배당', x + 16, y + 142, { size: 12, weight: 700, color: '#b8a080', ow: 2 });
-    text(ctx, `×${this.multShown.toFixed(2)}`, x + w - 16, y + 143, { size: 18, align: 'right', weight: 900, family: FONT.num, color: '#ffe7a0', ow: 3 });
-    text(ctx, this.roundFree ? '거둘 금액(무료)' : '거둘 금액', x + 16, y + 172, { size: 12, weight: 700, color: '#b8a080', ow: 2 });
+    text(ctx, '현재 배당', x + 14, y + Y.mult, { size: 12, weight: 700, color: '#b8a080', ow: 2 });
+    text(ctx, `×${this.multShown.toFixed(2)}`, x + w - 14, y + Y.mult + 1, { size: 18, align: 'right', weight: 900, family: FONT.num, color: '#ffe7a0', ow: 3 });
+    text(ctx, this.roundFree ? '거둘 금액(무료)' : '거둘 금액', x + 14, y + Y.pot, { size: 12, weight: 700, color: '#b8a080', ow: 2 });
     const pot = this.phase === 'ready' ? 0 : this.streak ? this.pot : 0;
-    text(ctx, `${fmt(pot)} G`, x + w - 16, y + 174, { size: 18, align: 'right', weight: 900, family: FONT.num, color: pot ? '#9af09a' : '#7a6a5a', ow: 3 });
-    text(ctx, `최대 ${MAX_STREAK}연승`, x + w / 2, y + h - 12, { size: 11, align: 'center', weight: 600, color: '#7a6a5a', ow: 2 });
+    text(ctx, `${fmt(pot)} G`, x + w - 14, y + Y.pot + 2, { size: 18, align: 'right', weight: 900, family: FONT.num, color: pot ? '#9af09a' : '#7a6a5a', ow: 3 });
+    if (h >= Y.pot + 34) text(ctx, `최대 ${MAX_STREAK}연승`, x + w / 2, y + h - 12, { size: 11, align: 'center', weight: 600, color: '#7a6a5a', ow: 2 });
   }
   drawHistory(ctx, x, y, w, h) {
     gPanel(ctx, x, y, w, h, { a: 0.82 });
-    text(ctx, '굴림 기록', x + w / 2, y + 30, { size: 14, align: 'center', weight: 800, family: FONT.title, color: GOLD, ow: 3 });
-    const H = this.history.slice(-6);
-    if (!H.length) text(ctx, '아직 없음', x + w / 2, y + 110, { size: 13, align: 'center', weight: 600, color: '#7a6a5a', ow: 2 });
+    const c = h < 190, top = c ? 40 : 50;
+    text(ctx, '굴림 기록', x + w / 2, y + (c ? 24 : 30), { size: 14, align: 'center', weight: 800, family: FONT.title, color: GOLD, ow: 3 });
+    const n = clamp(Math.floor((h - top - 8) / 26), 1, 6);
+    const H = this.history.slice(-n);
+    if (!H.length) text(ctx, '아직 없음', x + w / 2, y + h / 2 + 10, { size: 13, align: 'center', weight: 600, color: '#7a6a5a', ow: 2 });
     H.forEach((e, i) => {
-      const yy = y + 50 + i * 26;
+      const yy = y + top + i * 26;
       const last = i === H.length - 1;
       ctx.fillStyle = last ? 'rgba(232,200,114,0.14)' : 'rgba(0,0,0,0.25)';
       rr(ctx, x + 14, yy, w - 28, 22, 6); ctx.fill();
@@ -274,36 +307,42 @@ export class DiceScene extends MiniGame {
       text(ctx, tag, x + w - 26, yy + 16, { size: 12, align: 'right', weight: 800, color: e.r > 0 ? '#9af09a' : e.r < 0 ? '#ff7a7a' : '#9d8f80', ow: 2 });
     });
   }
+  /** 판돈 칩 + '굴리기' 버튼 한 줄 (아래 조작 줄) */
   drawReadyUI(ctx) {
-    const vw = this.vw;
-    gPanel(ctx, vw / 2 - 260, 392, 520, 138, { a: 0.8, r: 14 });
-    this.drawBetBar(ctx, vw / 2, 434, { r: 23 });
-    const r = this.hits.rect('roll', vw / 2 - 110, 468, 220, 52);
+    const vw = this.vw, L = this.L;
+    const bw = 200, n = this.betOptions().length;
+    const chipGap = Math.max(46 + (input.touchMode || this.tapMin > 44 ? 20 : 12), this.tapMin > 44 ? this.tapMin : 0);
+    const chipsW = Math.min(n * chipGap, vw - 64 - bw - 24);
+    const pw = chipsW + bw + 48, px = vw / 2 - pw / 2, py = L.ctrlTop, ph = L.ctrlH;
+    gPanel(ctx, px, py, pw, ph, { a: 0.8, r: 14 });
+    const cy = py + ph / 2 + 8;
+    this.drawBetBar(ctx, px + 16 + chipsW / 2, cy, { r: 23, maxW: chipsW });
+    const bh = Math.min(this.bh(52), ph - 16);
+    const r = this.hits.rect('roll', px + pw - bw - 16, py + (ph - bh) / 2, bw, bh);
     const can = this.free || this.st.gold >= this.bet;
     this.hits.add('roll', r, !can);
-    drawBtn(ctx, r, '주사위 굴리기!', { tone: 'crimson', size: 19, hot: this.hits.over(r), pressed: this.hits.pressed(r), key: 'Z', disabled: !can, pulse: can, t: this.clock });
+    drawBtn(ctx, r, '주사위 굴리기!', { tone: 'crimson', size: 19, hot: this.hits.over(r), pressed: this.hits.pressed(r), key: 'confirm', disabled: !can, pulse: can, t: this.clock });
   }
+  /** 낮게 · 트리플 · 높게 · 거두기 — 한 줄 (아래 조작 줄) */
   drawGuessUI(ctx) {
-    const vw = this.vw, g = this.phase === 'guess';
+    const vw = this.vw, L = this.L, g = this.phase === 'guess';
     const s = this.cur;
     const ph = pHigher(s), pl = pLower(s);
-    const bw = Math.min(200, (vw - 120) / 3), bh = 58, gap = 14, y = 406;
-    const x0 = vw / 2 - (bw * 3 + gap * 2) / 2;
+    const gap = 12, bh = L.bh;
+    const bw = Math.min(190, (vw - 32 - gap * 3) / 4);
+    const x0 = vw / 2 - (bw * 4 + gap * 3) / 2, y = L.H - 8 - bh;
+    const canCash = g && this.streak > 0;
     const defs = [
-      ['lo', '▼ 낮게', !g ? '' : pl > 0 ? `×${multOf(pl).toFixed(2)} · ${pct(pl)}%` : '불가', 'blue', '←', pl <= 0],
-      ['triple', '★ 트리플', `×${TRIPLE_MULT} · 3%`, 'gold', '↑', false],
-      ['hi', '▲ 높게', !g ? '' : ph > 0 ? `×${multOf(ph).toFixed(2)} · ${pct(ph)}%` : '불가', 'crimson', '→', ph <= 0],
+      ['lo', '▼ 낮게', !g ? '' : pl > 0 ? `×${multOf(pl).toFixed(2)} · ${pct(pl)}%` : '불가', 'blue', 'left', !g || pl <= 0],
+      ['triple', '★ 트리플', `×${TRIPLE_MULT} · 3%`, 'gold', 'up', !g],
+      ['hi', '▲ 높게', !g ? '' : ph > 0 ? `×${multOf(ph).toFixed(2)} · ${pct(ph)}%` : '불가', 'crimson', 'right', !g || ph <= 0],
+      ['cash', '거두기', canCash ? `${fmt(this.pot)} G` : this.streak ? '' : '1승부터', 'teal', 'down', !canCash],
     ];
     defs.forEach(([id, lb, sub, tone, key, dis], i) => {
       const r = this.hits.rect(id, x0 + i * (bw + gap), y, bw, bh);
-      const disabled = !g || dis;
-      this.hits.add(id, r, disabled);
-      drawBtn(ctx, r, lb, { tone, size: 19, sub, key, hot: g && this.hits.over(r), pressed: this.hits.pressed(r), disabled, pulse: g && this.guess === id && false });
+      this.hits.add(id, r, dis);
+      drawBtn(ctx, r, lb, { tone, size: 18, sub, key, hot: !dis && this.hits.over(r), pressed: this.hits.pressed(r), disabled: dis, pulse: id === 'cash' && canCash && this.streak >= 3, t: this.clock });
     });
-    const canCash = g && this.streak > 0;
-    const cr = this.hits.rect('cash', vw / 2 - 150, 476, 300, 50);
-    this.hits.add('cash', cr, !canCash);
-    drawBtn(ctx, cr, canCash ? `거두기  ${fmt(this.pot)} G` : '거두기', { tone: 'teal', size: 18, key: '↓', hot: canCash && this.hits.over(cr), pressed: this.hits.pressed(cr), disabled: !canCash, pulse: canCash && this.streak >= 3, t: this.clock });
-    if (g && !input.touchMode) text(ctx, `다음 합이 ${s}보다 높을까, 낮을까?`, vw / 2, 397, { size: 13, align: 'center', weight: 700, color: '#e8d8b0', ow: 3 });
+    if (g) text(ctx, `다음 합이 ${s}보다 높을까, 낮을까?`, vw / 2, y - 10, { size: 13, align: 'center', weight: 700, color: '#e8d8b0', ow: 3 });
   }
 }

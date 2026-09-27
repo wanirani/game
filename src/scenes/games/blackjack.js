@@ -1,5 +1,7 @@
 // 악마의 21 — 악마 딜러 '마몬'과 블랙잭. 히트/스탠드/더블, 딜러는 17(소프트 포함)에서 멈춤, 블랙잭 3:2.
 // 카드는 슈에서 날아와 뒤집히며, 딜러는 표정(비웃음/광소/분노/경악)과 대사로 반응한다.
+// 배치: 딜러·테이블·카드는 설계 좌표(높이 540)에 그려 배율 L.k 로 화면(UI px)에 맞추고, 합계 배지·대사·버튼은 배율 없이 그린다.
+// 조작: 히트 = 결정(↑) · 스탠드 = 보조(↓, Y·A 키) · 더블 = 보조 2(→, LT·C 키). 취소(B·Esc)는 '그만두기' 확인 창.
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
 import { text, FONT } from '../../core/ui.js';
@@ -126,7 +128,8 @@ export class BlackjackScene extends MiniGame {
     if (!this.takeExtra(this.roundBet || this.bet)) return;
     this.doubled = true;
     this.say('double'); this.setMood('grin');
-    this.fx.text(this.vw / 2 - 230, 380, '더블!', { color: '#ffd060', size: 24, crit: true });
+    const D = this.P(this.vw / 2 - 230, 380);
+    this.fx.text(D.x, D.y, '더블!', { color: '#ffd060', size: 24, crit: true });
     this.hit();
   }
   finish() {
@@ -150,9 +153,9 @@ export class BlackjackScene extends MiniGame {
     const b = this.st.innGames.best;
     if (win) b.bjWins = (b.bjWins ?? 0) + 1;
     if (kind === 'bj') b.bjBlackjacks = (b.bjBlackjacks ?? 0) + 1;
-    if (win) { this.fx.burst('holy', this.vw / 2, 402, 26, { speed: 260 }); }
+    if (win) { this.fx.burst('holy', this.vw / 2, this.P(0, 402).y, 26, { speed: 260 }); }
     if (kind === 'lose' && p.v > 21) this.shake(6, 0.3);
-    this.settle({ win, payout, tier: kind === 'bj' ? 'big' : kind === 'push' ? 'push' : win ? 'win' : 'lose', title, sub: sub + (this.doubled ? ' · 더블' : ''), cy: 402, delay: 0.9 });
+    this.settle({ win, payout, tier: kind === 'bj' ? 'big' : kind === 'push' ? 'push' : win ? 'win' : 'lose', title, sub: sub + (this.doubled ? ' · 더블' : ''), cy: this.P(0, 402).y, delay: 0.9 });
   }
 
   animate(dt) {
@@ -174,16 +177,32 @@ export class BlackjackScene extends MiniGame {
       return;
     }
     if (this.phase === 'play') {
+      // 메뉴 의미 입력만 (패드 B·X 키는 '그만두기'): 히트 = 결정/↑ · 스탠드 = 보조/↓ · 더블 = 보조 2/→
       if (tap === 'hit' || input.pressed('confirm') || input.pressed('up')) this.hit();
-      else if (tap === 'stand' || input.pressed('attack') || input.pressed('down')) this.stand();
-      else if (tap === 'double' || input.pressed('dash') || input.pressed('right')) this.double();
+      else if (tap === 'stand' || input.pressed('alt') || input.pressed('down')) this.stand();
+      else if (tap === 'double' || input.pressed('alt2') || input.pressed('right')) this.double();
     }
   }
+
+  // ── 배치 (UI px) ──
+  /** 딜러·테이블·카드 배율 k (설계 높이 540 → 아래 버튼 줄 위까지), 버튼 높이 */
+  lay() {
+    const W = this.vw, H = this.vh, bh = this.bh(54);
+    const k = clamp((H - 8 - bh - 14) / 466, 0.62, 1);
+    return { W, H, bh, k };
+  }
+  get L() { return this._L ?? (this._L = this.lay()); }
+  /** 테이블 설계 좌표 → 화면 좌표 (가운데 x 기준 배율 k, 위쪽 기준) */
+  P(x, y) { const k = this.L.k, cx = this.vw / 2; return { x: cx + (x - cx) * k, y: y * k }; }
 
   // ── 그리기 ──
   draw(ctx) {
     const vw = this.vw, vh = this.vh, t = this.clock;
+    const L = this._L = this.lay(), k = L.k;
     innBackdrop(ctx, vw, vh, t, 0.72, 0.4);
+    // 딜러·테이블·카드: 설계 좌표 (가운데 x 기준 배율 k)
+    ctx.save();
+    ctx.translate(vw / 2, 0); ctx.scale(k, k); ctx.translate(-vw / 2, 0);
     // 딜러 뒤 붉은 기운
     glow(ctx, vw / 2, 130, 220, '#a0102a', 0.35 + 0.08 * Math.sin(t * 2));
     if (this.mood === 'angry') glow(ctx, vw / 2, 120, 180, '#ff4a1a', 0.3 * clamp(1 - this.moodT / 2, 0, 1));
@@ -192,7 +211,7 @@ export class BlackjackScene extends MiniGame {
     drawDealerHands(ctx, vw / 2, 214, t, this.dealFlick);
     // 카드
     const sh = this.shoe;
-    for (let k = 0; k < 2; k++) for (const c of k ? this.player : this.dealer) {
+    for (let kk = 0; kk < 2; kk++) for (const c of kk ? this.player : this.dealer) {
       const P = this.cardPos(c);
       const e = ease.outCubic(c.fly);
       const x = lerp(sh.x, P.x, e), y = lerp(sh.y, P.y, e) - Math.sin(e * Math.PI) * 40;
@@ -204,15 +223,16 @@ export class BlackjackScene extends MiniGame {
       drawCard(ctx, fk >= 0.5 ? c : null, 0, 0, CW, CH, { back: fk < 0.5, glow: '#ffd060', hl, t });
       ctx.restore();
     }
+    ctx.restore();
+    // 합계 배지·대사 (배율 없이 — 좁은 화면에서도 글자가 작아지지 않게)
     this.drawTotals(ctx);
-    // 대사
     if (this.talk && this.talkT < 3.2) {
       const a = clamp(this.talkT / 0.15, 0, 1) * clamp((3.2 - this.talkT) / 0.3, 0, 1);
       ctx.save(); ctx.globalAlpha = a;
       ctx.font = `700 14px ${FONT.body}`;
-      const w = Math.max(150, ctx.measureText(this.talk).width + 28), bx = vw / 2 + 78, by = 72;
+      const w = Math.min(vw / 2 - 40, Math.max(150, ctx.measureText(this.talk).width + 28)), bx = vw / 2 + 78 * k, by = 72;
       bubble(ctx, bx, by, w, 34, 'left', bx - 16, by + 40);
-      text(ctx, this.talk, bx + 14, by + 22, { size: 14, weight: 700, color: '#2a0a10', ow: 0 });
+      text(ctx, this.talk, bx + 14, by + 22, { size: 14, weight: 700, color: '#2a0a10', ow: 0, maxWidth: w - 24 });
       text(ctx, '마몬', bx + 10, by - 4, { size: 11, weight: 800, color: '#ff8a8a', ow: 3 });
       ctx.restore();
     }
@@ -220,14 +240,16 @@ export class BlackjackScene extends MiniGame {
     else this.drawPlayUI(ctx);
   }
   drawTable(ctx) {
-    const vw = this.vw, vh = this.vh, t = this.clock, cx = vw / 2;
+    const vw = this.vw, vh = this.vh, t = this.clock, cx = vw / 2, k = this.L.k;
+    // 배율 공간에서 화면 전체를 덮는 범위
+    const xL = cx - vw / (2 * k), wD = vw / k, hD = vh / k;
     const top = 206;
     // 펠트
-    const g = ctx.createRadialGradient(cx, 380, 40, cx, 400, vw * 0.7);
+    const g = ctx.createRadialGradient(cx, 380, 40, cx, 400, wD * 0.7);
     g.addColorStop(0, '#7a0e22'); g.addColorStop(0.6, '#4a0614'); g.addColorStop(1, '#1a0206');
-    ctx.fillStyle = g; ctx.fillRect(0, top, vw, vh - top);
+    ctx.fillStyle = g; ctx.fillRect(xL, top, wD, hD - top);
     ctx.save(); ctx.globalAlpha = 0.05; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.beginPath();
-    for (let i = -vh; i < vw; i += 9) { ctx.moveTo(i, top); ctx.lineTo(i + (vh - top), vh); }
+    for (let i = xL - hD; i < xL + wD; i += 9) { ctx.moveTo(i, top); ctx.lineTo(i + (hD - top), hD); }
     ctx.stroke(); ctx.restore();
     // 인쇄 문구
     ctx.save(); ctx.globalAlpha = 0.55;
@@ -235,15 +257,15 @@ export class BlackjackScene extends MiniGame {
     ctx.beginPath(); ctx.ellipse(cx, 150, 330, 190, 0, 0.35, Math.PI - 0.35); ctx.stroke();
     ctx.beginPath(); ctx.ellipse(cx, 150, 346, 206, 0, 0.35, Math.PI - 0.35); ctx.stroke();
     text(ctx, '블랙잭 3 : 2 지급', cx + 290, 404, { size: 15, align: 'center', weight: 800, family: FONT.title, color: '#e8c872', ow: 0 });
-    text(ctx, '딜러는 17에서 멈춘다', cx + 290, 426, { size: 12, align: 'center', weight: 700, family: FONT.title, color: '#e8c872', ow: 0 });
+    text(ctx, '딜러는 17에서 멈춘다', cx + 290, 426, { size: 13, align: 'center', weight: 700, family: FONT.title, color: '#e8c872', ow: 0 });
     ctx.restore();
     ctx.save(); ctx.globalAlpha = 0.1; catHead(ctx, cx, 480, 90, '#e8c872'); ctx.restore();
     // 딜러 쪽 난간(패딩)
     const rg = ctx.createLinearGradient(0, top - 14, 0, top + 12);
     rg.addColorStop(0, '#6a3a1e'); rg.addColorStop(0.5, '#2a1208'); rg.addColorStop(1, '#0a0402');
-    ctx.fillStyle = rg; ctx.fillRect(0, top - 12, vw, 22);
-    ctx.fillStyle = 'rgba(232,200,114,0.55)'; ctx.fillRect(0, top + 9, vw, 1.5);
-    ctx.fillStyle = 'rgba(255,220,180,0.15)'; ctx.fillRect(0, top - 11, vw, 3);
+    ctx.fillStyle = rg; ctx.fillRect(xL, top - 12, wD, 22);
+    ctx.fillStyle = 'rgba(232,200,114,0.55)'; ctx.fillRect(xL, top + 9, wD, 1.5);
+    ctx.fillStyle = 'rgba(255,220,180,0.15)'; ctx.fillRect(xL, top - 11, wD, 3);
     // 슈
     const s = this.shoe;
     ctx.save(); ctx.translate(s.x, s.y);
@@ -260,16 +282,16 @@ export class BlackjackScene extends MiniGame {
     const bx = cx - 250, by = 420;
     ctx.strokeStyle = 'rgba(232,200,114,0.6)'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.ellipse(bx, by, 52, 34, 0, 0, TAU); ctx.stroke();
-    text(ctx, '판돈', bx, by + 52, { size: 12, align: 'center', weight: 700, color: 'rgba(232,200,114,0.7)', ow: 0 });
+    text(ctx, '판돈', bx, by + 52, { size: 13, align: 'center', weight: 700, color: 'rgba(232,200,114,0.7)', ow: 0 });
     if (this.phase !== 'ready' || this.result) {
       const amt = this.roundFree ? 0 : this.roundBet;
       const stacks = this.doubled ? 2 : 1;
-      for (let k = 0; k < stacks; k++) for (let i = 0; i < 4; i++) drawChip(ctx, bx - 16 + k * 34, by + 6 - i * 5, 17, amt === 0 ? 0 : this.bet, { t });
+      for (let kk = 0; kk < stacks; kk++) for (let i = 0; i < 4; i++) drawChip(ctx, bx - 16 + kk * 34, by + 6 - i * 5, 17, amt === 0 ? 0 : this.bet, { t });
     }
   }
   drawTotals(ctx) {
     const vw = this.vw;
-    const badge = (hand, y, isDealer) => {
+    const badge = (hand, yD, isDealer) => {
       if (!hand.length) return;
       const shown = hand.filter((c) => c.flip >= 0.5 && c.fly >= 1);
       if (!shown.length) return;
@@ -280,7 +302,9 @@ export class BlackjackScene extends MiniGame {
       if (hv.v > 21) { lb = `${hv.v} 버스트`; col = '#ff6a6a'; }
       else if (hv.v === 21 && hand.length === 2 && all) { lb = '블랙잭!'; col = '#ffe070'; }
       const n = hand.length, sp = isDealer ? 52 : 58;
-      const x = vw / 2 + ((n - 1) / 2) * sp + CW * 0.5 + 34;
+      // 설계 좌표(카드 오른쪽 끝 + 34) → 화면
+      const P = this.P(vw / 2 + ((n - 1) / 2) * sp + CW * 0.5 + 34, yD);
+      const x = P.x, y = P.y;
       ctx.font = `900 18px ${FONT.num}`;
       const w = Math.max(54, ctx.measureText(lb).width + 26);
       gPanel(ctx, x - 10, y - 18, w, 34, { a: 0.9, r: 17, orn: false, edge: col === '#efe4cf' ? '#8a6a34' : col });
@@ -291,22 +315,26 @@ export class BlackjackScene extends MiniGame {
     badge(this.player, 402, false);
   }
   drawReadyUI(ctx) {
-    const vw = this.vw;
+    const vw = this.vw, L = this.L;
     // 테이블의 '판돈' 원(왼쪽)과 인쇄 문구(오른쪽)를 가리지 않도록 칩·버튼이 들어갈 폭만 쓴다
-    const pw = input.touchMode ? 380 : 356;
-    gPanel(ctx, vw / 2 - pw / 2, 392, pw, 136, { a: 0.82, r: 14 });
-    this.drawBetBar(ctx, vw / 2, 434, { r: 23 });
-    const r = this.hits.rect('deal', vw / 2 - 100, 468, 200, 52);
+    const n = this.betOptions().length, big = input.touchMode || this.tapMin > 44;
+    const chipGap = Math.max(46 + (big ? 20 : 12), big ? this.tapMin : 0);
+    const bh = this.bh(52);
+    const pw = Math.max(356, n * chipGap + 28), ph = Math.max(136, 83 + bh + 6);
+    const px = vw / 2 - pw / 2, py = L.H - 8 - ph;
+    gPanel(ctx, px, py, pw, ph, { a: 0.82, r: 14 });
+    this.drawBetBar(ctx, vw / 2, py + 42, { r: 23, maxW: pw - 20 });
+    const r = this.hits.rect('deal', vw / 2 - 100, py + 78, 200, bh);
     const can = this.free || this.st.gold >= this.bet;
     this.hits.add('deal', r, !can);
-    drawBtn(ctx, r, '카드 받기!', { tone: 'crimson', size: 19, hot: this.hits.over(r), pressed: this.hits.pressed(r), key: 'Z', disabled: !can, pulse: can, t: this.clock });
+    drawBtn(ctx, r, '카드 받기!', { tone: 'crimson', size: 19, hot: this.hits.over(r), pressed: this.hits.pressed(r), key: 'confirm', disabled: !can, pulse: can, t: this.clock });
   }
   drawPlayUI(ctx) {
-    const vw = this.vw, play = this.phase === 'play';
+    const vw = this.vw, L = this.L, play = this.phase === 'play';
     const canDouble = play && this.player.length === 2 && (this.roundFree || this.st.gold >= this.roundBet);
-    const bw = 168, bh = 54, gap = 14, y = 478;
+    const gap = 14, bh = L.bh, bw = Math.min(168, (vw - 32 - gap * 2) / 3), y = L.H - 8 - bh;
     const x0 = vw / 2 - (bw * 3 + gap * 2) / 2;
-    const defs = [['hit', '히트', '한 장 더', 'crimson', 'Z', !play], ['stand', '스탠드', '여기서 멈춤', 'blue', 'X', !play], ['double', '더블', this.roundFree ? '판돈 2배 (무료)' : `+${fmt(this.roundBet)} G · 1장`, 'gold', 'C', !canDouble]];
+    const defs = [['hit', '히트', '한 장 더', 'crimson', 'confirm', !play], ['stand', '스탠드', '여기서 멈춤', 'blue', 'alt', !play], ['double', '더블', this.roundFree ? '판돈 2배 (무료)' : `+${fmt(this.roundBet)} G · 1장`, 'gold', 'alt2', !canDouble]];
     defs.forEach(([id, lb, sub, tone, key, dis], i) => {
       const r = this.hits.rect(id, x0 + i * (bw + gap), y, bw, bh);
       this.hits.add(id, r, dis);
