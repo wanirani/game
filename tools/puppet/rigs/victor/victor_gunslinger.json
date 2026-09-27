@@ -847,7 +847,7 @@
   "footLine": [
    2390,
    1000,
-   0.05
+   -0.05
   ],
   "footMinX": 950,
   "shinBootY": 2010

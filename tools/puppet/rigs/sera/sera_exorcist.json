@@ -993,7 +993,7 @@
   "footLine": [
    2380,
    1000,
-   0.05
+   -0.05
   ],
   "footMinX": 960,
   "shinBootY": 2030
