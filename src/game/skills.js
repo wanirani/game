@@ -932,7 +932,7 @@ function pillarFx(w, p, x, base, W, mv, delay, life, col, extra = {}) {
         ww.fx.burst('holy', x, base - 10, 16, { angle: -Math.PI / 2, spread: 1.3, speed: 320 });
         ww.fx.ring(x, base - 4, { color: col, r0: W * 0.4, r1: W * 2.2, life: 0.35, width: 6 });
       }
-      if (e.d.on && Math.random() < 0.5) ww.fx.emit('holy', x + rand(-W, W), base - rand(0, 200), { angle: -Math.PI / 2, spread: 0.2, speed: 200 });
+      if (e.d.on && Math.random() < 0.5 * (ww.fx.quality ?? 1)) ww.fx.emit('holy', x + rand(-W, W), base - rand(0, 200), { angle: -Math.PI / 2, spread: 0.2, speed: 200 });
     },
     draw(ctx, e) {
       const k = e.k;
@@ -2288,6 +2288,8 @@ function ultCtx(p, w) {
 }
 /** 품질 배율을 곱한 개수 (최소 lo) */
 const qn = (v, n, lo = 1) => Math.max(lo, Math.round(n * (v?.q ?? 1)));
+/** 화면 번쩍임 설정 (settings.flashFx 0 / 0.5 / 1): 밝은 색조·임팩트 프레임에 곱한다 (광과민 대책, feel §7) */
+function flashK(w) { const k = Number(w?.game?.settings?.flashFx ?? 1); return Number.isFinite(k) ? clamp(k, 0, 1) : 1; }
 /** 필살기 최대 입자 수 (feel §8: 600 / 400 / 220) 안에서 더 뿌릴 수 있는 개수 */
 function ultRoom(w, v, n) {
   const cap = v.q >= 0.95 ? 600 : v.q >= 0.7 ? 400 : 220;
@@ -2373,6 +2375,8 @@ function emberRain(w, v, dur, col, rate = 60, col2 = '#ffffff') {
 }
 /** 화면 색조 한 겹 (a → 0 으로 life 초에 걸쳐). world.overlays (실제 시간으로 흐른다) */
 function grade(w, col, a, life, comp = 'source-over') {
+  a *= flashK(w);
+  if (!(a > 0.004)) return null;
   return w.addOverlay?.({
     life,
     draw(ctx, vw, vh) { const k = 1 - clamp(this.t / life, 0, 1); if (k <= 0) return; ctx.globalCompositeOperation = comp; ctx.globalAlpha = a * k; ctx.fillStyle = col; ctx.fillRect(0, 0, vw, vh); },
@@ -2805,10 +2809,12 @@ ULTS.bran = (p, w, v = ultCtx(p, w)) => {
 // 리아 — 천망회회: 붉은 비네트 속 색수차 참격 백 개, 그물이 빛나며 닫히면 검붉은 임팩트 프레임과 피보라, 그리고 납도
 /** 리아의 검붉은 임팩트 프레임: 2프레임 (검정 바탕 + 붉은 그물선 → 붉은 섬광). 저품질은 생략 (ultFinal 의 번쩍임만) */
 function liaImpactFrame(w, net) {
-  const cam = w.camera, lines = net.slice(0, 110);
+  const cam = w.camera, lines = net.slice(0, 110), fk = flashK(w);
+  if (!(fk > 0)) return null;   // 번쩍임 끔: 임팩트 프레임 없음
   return w.addOverlay?.({
     life: 3 / 60,
     draw(ctx, vw, vh) {
+      if (fk < 1) { ctx.globalAlpha = 0.3 * fk; ctx.fillStyle = '#c0102a'; ctx.fillRect(0, 0, vw, vh); return; }   // 약하게: 검정 반전 없이 옅은 붉은 빛
       if (this.t < 1.5 / 60) {
         ctx.fillStyle = 'rgba(0,0,0,0.9)'; ctx.fillRect(0, 0, vw, vh);
         ctx.save(); cam.apply(ctx);

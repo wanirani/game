@@ -1257,7 +1257,7 @@ export class BossC extends BossB {
     this._tr = null;
     this.applyPhasesTo(this.phase, world);
     this.invuln = false; this.harmless = false;
-    const f = this.transitionOf(this.phase).force;
+    const f = n === this.phase ? this.transitionOf(n).force : null;   // 지난 전환을 다시 보여 줄 때(debugAct)는 강제하지 않는다
     if (f) this.forceNext(f);
     safe('afterTransition', () => this.afterTransition?.(n, world));
     this.done(0.5);
