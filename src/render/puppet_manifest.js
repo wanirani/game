@@ -12,7 +12,7 @@ export const PUPPETS = {
    ]
   },
   "azel_dawnbringer": {
-   "h": "c4469f475c9a",
+   "h": "1e28dc6f332e",
    "turn": true,
    "lv": [
     "hi",
@@ -39,7 +39,7 @@ export const PUPPETS = {
    ]
   },
   "azel_nosferatu": {
-   "h": "5d78a71f423c",
+   "h": "63b2f8106496",
    "turn": true,
    "lv": [
     "hi",

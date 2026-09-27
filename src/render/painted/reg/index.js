@@ -21,4 +21,5 @@ import * as r18 from './cmp-guard-art-a.js';
 import * as r19 from './cmp-guard-art-b.js';
 import * as r20 from './npcs.js';
 import * as r21 from './art-boss-6.js';
-export const REG_PACKAGES = [r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, r16, r17, r18, r19, r20, r21];
+import * as r22 from './art-boss-7.js';
+export const REG_PACKAGES = [r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, r16, r17, r18, r19, r20, r21, r22];
