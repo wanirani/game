@@ -1,19 +1,26 @@
-// 스테이지 클리어 결과 (아케이드식 보너스 정산 + 랭크)
+// 스테이지 클리어 결과 (아케이드식 보너스 정산 + 랭크) — owner: PLAT-DIALOG
+//  - uiScale 장면 (platform §6.2): game.uiW × game.uiH 로 배치, 최소 720×400 에서 넘치지 않는다
+//  - 'STAGE CLEAR' 와 랭크 글자는 피 글씨(bloodText, 글꼴 후속 작업)
+//  - 계속: 결정(Z·Enter / 패드 A) · 공격 · START · 화면 아무 곳 터치 (안내는 prompts 글리프)
+//  - leave(): 아웃트로(처음 클리어 때만) → 엔딩(s12·s13·s20, world2 §2.3) 또는 마을
 import { Scene } from '../core/game.js';
 import { input } from '../core/input.js';
 import { audio } from '../core/audio.js';
 import { assets } from '../core/assets.js';
-import { text, panel, FONT, COLORS, drawCover, vignette } from '../core/ui.js';
+import { text, panel, FONT, COLORS, drawCover, vignette, bloodText, prewarmText } from '../core/ui.js';
+import { drawHints } from '../core/prompts.js';
 import { fmt, fmtTime, clamp, ease } from '../core/math.js';
 import { saves } from '../core/save.js';
-import { STAGES } from '../data/stages.js';
 import { SCRIPTS } from '../data/story.js';
 import { bus } from '../core/events.js';
 
 const RANKS = [
-  { r: 'S', c: '#ffe070', min: 90 }, { r: 'A', c: '#ffa640', min: 75 }, { r: 'B', c: '#5aa8ff', min: 55 },
-  { r: 'C', c: '#7ee07e', min: 35 }, { r: 'D', c: '#a0a0a0', min: 0 },
+  { r: 'S', c: '#ffe070', min: 90, style: 'gold' }, { r: 'A', c: '#ffa640', min: 75, style: 'blood' }, { r: 'B', c: '#5aa8ff', min: 55, style: 'bone' },
+  { r: 'C', c: '#7ee07e', min: 35, style: 'bone' }, { r: 'D', c: '#a0a0a0', min: 0, style: 'bone' },
 ];
+/** 클리어하면 엔딩 장면으로 가는 스테이지 (엔딩 장면이 data/story.js endingAfter() 로 최종 판정; world2 §2.3) */
+export const ENDING_STAGES = ['s12', 's13', 's20'];
+const RANK_W = 170, GAP = 20; // 오른쪽 랭크 도장 칸 폭, 표와의 간격 (UI px)
 
 /** 이미 본 아웃트로라도, 지금 조건이 참인 분기 뒤에 아직 켜지지 않은 플래그가 있으면(예: s12 유물 5개 → 심연의 문) 다시 재생 */
 function hasNewBranch(script, st) {
@@ -30,7 +37,12 @@ function hasNewBranch(script, st) {
 }
 
 export class ResultsScene extends Scene {
-  constructor(g) { super(g); this.deferToasts = true; } // 퀘스트 완료 토스트가 표를 가리지 않도록 결과 화면을 나간 뒤 표시
+  constructor(g) {
+    super(g);
+    this.deferToasts = true; // 퀘스트 완료 토스트가 표를 가리지 않도록 결과 화면을 나간 뒤 표시
+    this.uiScale = true;
+    this.hidePad = true;
+  }
   enter({ world }) {
     this.world = world;
     const run = world.run, st = this.game.state, stage = world.stage;
@@ -73,6 +85,21 @@ export class ResultsScene extends Scene {
     bus.emit('stageCleared', { stageId: stage.id, rank: this.rank.r, time: run.time, score: this.finalScore });
     saves.write(st.slot, st);
     this.shownRows = 0; this.rowT = 0; this.scoreShown = this.baseScore;
+    this.rankShown = 0; this.left = false;
+    this.prewarm();
+  }
+  /** 피 글씨 비트맵을 미리 굽는다 (첫 프레임·랭크 등장 프레임이 끊기지 않게). 실패해도 그릴 때 굽는다 */
+  prewarm() {
+    const g = this.game, ctx = g.ctx;
+    if (!ctx?.setTransform) return;
+    const L = this.layout();
+    const k = (g.scale || 1) * (g.uiK || 1);
+    ctx.save();
+    try {
+      ctx.setTransform(k, 0, 0, k, 0, 0);
+      prewarmText(ctx, 'STAGE CLEAR', { size: L.titleSize, style: 'gold' });
+      prewarmText(ctx, this.rank.r, { size: L.rankSize, style: this.rank.style, drips: 0.6 });
+    } catch (e) { /* 글꼴·캔버스 준비 전: 그릴 때 굽는다 */ } finally { ctx.restore(); }
   }
   update(dt) {
     this.rowT += dt;
@@ -81,7 +108,7 @@ export class ResultsScene extends Scene {
       this.scoreShown = Math.min(this.finalScore, this.scoreShown + Math.max(1, (this.finalScore - this.baseScore) * dt * 1.5));
       if (!this.rankShown && this.scoreShown >= this.finalScore) { this.rankShown = this.t; audio.sfx('levelup'); }
     }
-    const skip = input.pressed('confirm') || input.pressed('attack') || input.pointer.tapped;
+    const skip = input.pressed('confirm') || input.pressed('attack') || input.pressed('menu') || input.pointer.tapped;
     if (skip) {
       if (!this.rankShown) { this.shownRows = this.rows.length; this.scoreShown = this.finalScore; this.rankShown = this.t; }
       else if (this.t - this.rankShown > 0.5) this.leave();
@@ -92,7 +119,7 @@ export class ResultsScene extends Scene {
     this.left = true;
     const stage = this.world.stage;
     const next = this.game.registry.hub ? 'hub' : 'title';
-    const toEnding = (stage.id === 's12' || stage.id === 's13') && this.game.registry.ending; // 엔딩 장면이 endingAfter()로 최종 판정
+    const toEnding = ENDING_STAGES.includes(stage.id) && !!this.game.registry.ending; // 엔딩 장면이 endingAfter()로 최종 판정
     // 아웃트로는 처음 클리어했을 때만 (재클리어 시 리아 합류·엘리제 납치 장면이 반복되지 않도록)
     const st = this.game.state;
     const seen = st?.progress?.seenScripts?.includes(stage.outro);
@@ -101,31 +128,63 @@ export class ResultsScene extends Scene {
     else if (toEnding) this.game.go('ending', { from: stage.id });
     else this.game.go(next, { from: stage.id });
   }
+
+  /** 배치 (UI px). 최소 720×400 에서도 표·랭크·안내가 겹치지 않는다 */
+  layout() {
+    const g = this.game;
+    const W = this.uiScale ? g.uiW || g.viewW : g.viewW, H = this.uiScale ? g.uiH || g.viewH : g.viewH;
+    const small = H < 470;
+    const titleSize = small ? 44 : 50, titleY = small ? 54 : 70;
+    const subY = titleY + (small ? 28 : 32);
+    const w = clamp(W - 48 - RANK_W - GAP, 400, 560);
+    const x = Math.round((W - (w + GAP + RANK_W)) / 2);
+    const y = subY + 20;
+    const ph = clamp(H - y - 64, 220, 300);
+    return {
+      W, H, titleSize, titleY, subY, x, y, w, ph,
+      rowY0: y + 38, rowStep: (ph - 84) / 6, scoreY: y + ph - 20,
+      rankX: x + w + GAP + RANK_W / 2, rankY: y + ph / 2 + 20, rankSize: small ? 100 : 116,
+      rewardY: y + ph + 30, hintY: H - 16, midX: x + (w + GAP + RANK_W) / 2,
+    };
+  }
   render(ctx) {
-    const vw = this.game.viewW, vh = this.game.viewH;
-    drawCover(ctx, assets.get(this.world.stage.bg), vw, vh, { alpha: 1 });
-    ctx.fillStyle = 'rgba(6,2,8,0.72)'; ctx.fillRect(0, 0, vw, vh);
-    vignette(ctx, vw, vh, 0.7);
-    text(ctx, 'STAGE CLEAR', vw / 2, 70, { size: 46, align: 'center', weight: 900, family: FONT.logo, color: '#ffe070', ow: 6 });
-    text(ctx, `${this.world.stage.name} — ${this.world.stage.sub ?? ''}`, vw / 2, 102, { size: 17, align: 'center', color: '#e8d8c0' });
-    const w = 560, x = vw / 2 - w / 2, y = 130;
-    panel(ctx, x, y, w, 300);
+    const L = this.layout(), { W, H, x, y, w, ph } = L;
+    const stage = this.world.stage;
+    drawCover(ctx, assets.get(stage.bg), W, H, { alpha: 1 });
+    ctx.fillStyle = 'rgba(6,2,8,0.72)'; ctx.fillRect(0, 0, W, H);
+    vignette(ctx, W, H, 0.7);
+    bloodText(ctx, 'STAGE CLEAR', W / 2, L.titleY, { size: L.titleSize, style: 'gold', t: this.t, maxWidth: W - 40 });
+    text(ctx, `${stage.name ?? ''}${stage.sub ? ' — ' + stage.sub : ''}`, W / 2, L.subY, { size: 17, align: 'center', family: FONT.title, weight: 700, color: '#e8d8c0', maxWidth: W - 40 });
+    panel(ctx, x, y, w, ph);
+    const valX = x + Math.round(w * 0.5), rowSize = L.rowStep < 32 ? 16 : 17;
     this.rows.slice(0, this.shownRows).forEach((r, i) => {
-      const yy = y + 42 + i * 36;
-      text(ctx, r[0], x + 30, yy, { size: 17, color: '#e8dcc8' });
-      text(ctx, r[1], x + 280, yy, { size: 17, align: 'right', weight: 700, color: '#fff' });
-      text(ctx, r[2] ? `+${fmt(r[2])}` : '0', x + w - 30, yy, { size: 17, align: 'right', weight: 800, family: FONT.num, color: r[2] ? '#ffe070' : '#777' });
+      const yy = Math.round(L.rowY0 + i * L.rowStep);
+      text(ctx, r[0], x + 30, yy, { size: rowSize, color: '#e8dcc8' });
+      text(ctx, r[1], valX, yy, { size: rowSize, align: 'right', weight: 700, color: '#fff' });
+      text(ctx, r[2] ? `+${fmt(r[2])}` : '0', x + w - 30, yy, { size: rowSize, align: 'right', weight: 800, family: FONT.num, color: r[2] ? '#ffe070' : '#777' });
     });
-    text(ctx, 'SCORE', x + 30, y + 280, { size: 18, weight: 800, family: FONT.num, color: COLORS.dim });
-    text(ctx, fmt(this.scoreShown), x + w - 30, y + 282, { size: 28, align: 'right', weight: 900, family: FONT.num, color: '#fff' });
+    text(ctx, 'SCORE', x + 30, L.scoreY, { size: 18, weight: 800, family: FONT.num, color: COLORS.dim });
+    text(ctx, fmt(this.scoreShown), x + w - 30, L.scoreY + 2, { size: 28, align: 'right', weight: 900, family: FONT.num, color: '#fff' });
     if (this.rankShown) {
-      const k = ease.outBack(clamp((this.t - this.rankShown) / 0.4, 0, 1));
-      ctx.save(); ctx.translate(x + w + 90, y + 150); ctx.scale(k * 1.0, k * 1.0); ctx.rotate(-0.15);
-      text(ctx, 'RANK', 0, -70, { size: 18, align: 'center', weight: 800, family: FONT.num, color: '#e8d8c0' });
-      text(ctx, this.rank.r, 0, 30, { size: 120, align: 'center', weight: 900, family: FONT.logo, color: this.rank.c, ow: 8 });
+      const rt = this.t - this.rankShown;
+      const k = ease.outBack(clamp(rt / 0.4, 0, 1));
+      ctx.save();
+      ctx.translate(L.rankX, L.rankY);
+      // 랭크 색 후광 (피 글씨 스타일은 금·피·뼈 셋뿐이라 랭크 색은 뒤의 빛으로 보인다)
+      const gl = ctx.createRadialGradient(0, -L.rankSize * 0.3, 4, 0, -L.rankSize * 0.3, L.rankSize * 0.85);
+      gl.addColorStop(0, this.rank.c + '88'); gl.addColorStop(1, this.rank.c + '00');
+      ctx.globalAlpha = clamp(rt / 0.3, 0, 1);
+      ctx.fillStyle = gl; ctx.fillRect(-L.rankSize, -L.rankSize * 1.2, L.rankSize * 2, L.rankSize * 1.8);
+      ctx.globalAlpha = 1;
+      text(ctx, 'RANK', 0, -L.rankSize * 0.72, { size: 18, align: 'center', weight: 800, family: FONT.num, color: '#e8d8c0' });
+      ctx.scale(Math.max(0.01, k), Math.max(0.01, k)); ctx.rotate(-0.15);
+      bloodText(ctx, this.rank.r, 0, L.rankSize * 0.26, { size: L.rankSize, style: this.rank.style, drips: 0.6, t: rt });
       ctx.restore();
-      text(ctx, `보상 ${fmt(this.goldReward)} G`, vw / 2, y + 336, { size: 18, align: 'center', weight: 800, color: '#ffd84a' });
-      if (Math.floor(this.t * 2) % 2 === 0) text(ctx, input.touchMode ? '화면을 터치하세요' : 'Z / Enter 로 계속', vw / 2, vh - 30, { size: 15, align: 'center', color: COLORS.dim });
+      text(ctx, `보상 ${fmt(this.goldReward)} G`, L.midX, Math.min(L.rewardY, L.hintY - 24), { size: 18, align: 'center', weight: 800, color: '#ffd84a' });
+      if (Math.floor(this.t * 2) % 2 === 0) {
+        if (input.touchMode) text(ctx, '화면을 터치하세요', W / 2, L.hintY, { size: 15, align: 'center', color: COLORS.dim });
+        else drawHints(ctx, [['confirm', '계속']], W / 2, L.hintY, { align: 'center', size: 15, color: COLORS.dim });
+      }
     }
   }
 }

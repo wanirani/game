@@ -263,7 +263,7 @@ export const PUPPETS = {
  },
  "npc": {
   "npc_alberto": {
-   "h": "0f2fa9e1e796",
+   "h": "16c969611340",
    "turn": false,
    "lv": [
     "hi",
@@ -272,7 +272,7 @@ export const PUPPETS = {
    ]
   },
   "npc_carmilla": {
-   "h": "3cf0e14fa722",
+   "h": "e0945cdf0574",
    "turn": false,
    "lv": [
     "hi",
@@ -281,7 +281,7 @@ export const PUPPETS = {
    ]
   },
   "npc_elise": {
-   "h": "bc2be5691d96",
+   "h": "d25c0e1736ea",
    "turn": false,
    "lv": [
     "hi",
@@ -290,7 +290,7 @@ export const PUPPETS = {
    ]
   },
   "npc_greta": {
-   "h": "ad3dcbbd9b08",
+   "h": "153b8e0f25cf",
    "turn": false,
    "lv": [
     "hi",
@@ -299,7 +299,7 @@ export const PUPPETS = {
    ]
   },
   "npc_hadwin": {
-   "h": "e040892711f4",
+   "h": "2af0684e74e5",
    "turn": false,
    "lv": [
     "hi",
@@ -308,7 +308,7 @@ export const PUPPETS = {
    ]
   },
   "npc_marta": {
-   "h": "ea0653098f21",
+   "h": "72a27473c0ad",
    "turn": false,
    "lv": [
     "hi",
@@ -317,7 +317,7 @@ export const PUPPETS = {
    ]
   },
   "npc_rook": {
-   "h": "81d093e983ca",
+   "h": "45a18d00adaf",
    "turn": false,
    "lv": [
     "hi",
@@ -326,7 +326,7 @@ export const PUPPETS = {
    ]
   },
   "npc_rook2": {
-   "h": "ac55544b2675",
+   "h": "a38f2f46240c",
    "turn": false,
    "lv": [
     "hi",
@@ -337,7 +337,7 @@ export const PUPPETS = {
  },
  "sera": {
   "sera_archmage": {
-   "h": "8529bfd811e6",
+   "h": "39325ed4c58e",
    "turn": true,
    "lv": [
     "hi",
@@ -346,7 +346,7 @@ export const PUPPETS = {
    ]
   },
   "sera_elementalist": {
-   "h": "879c48774e02",
+   "h": "7fe7853b4103",
    "turn": true,
    "lv": [
     "hi",
@@ -355,7 +355,7 @@ export const PUPPETS = {
    ]
   },
   "sera_exorcist": {
-   "h": "2dde584309a5",
+   "h": "45d52a6ae893",
    "turn": true,
    "lv": [
     "hi",
@@ -364,7 +364,7 @@ export const PUPPETS = {
    ]
   },
   "sera_oracle": {
-   "h": "32e0cb97b2d7",
+   "h": "38096cce7872",
    "turn": true,
    "lv": [
     "hi",
@@ -373,7 +373,7 @@ export const PUPPETS = {
    ]
   },
   "sera_priestess": {
-   "h": "f3990cef213f",
+   "h": "b2e6b4467561",
    "turn": true,
    "lv": [
     "hi",
@@ -382,7 +382,7 @@ export const PUPPETS = {
    ]
   },
   "sera_saint": {
-   "h": "3c56de8b93d5",
+   "h": "ff7de3dfc768",
    "turn": true,
    "lv": [
     "hi",
@@ -391,7 +391,7 @@ export const PUPPETS = {
    ]
   },
   "sera_stormcaller": {
-   "h": "d06663b7506f",
+   "h": "32351fa124f3",
    "turn": true,
    "lv": [
     "hi",
@@ -456,7 +456,7 @@ export const PUPPETS = {
    ]
   },
   "victor_phantom": {
-   "h": "4f44506c1b38",
+   "h": "b7603ca73e48",
    "turn": true,
    "lv": [
     "hi",
