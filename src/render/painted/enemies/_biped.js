@@ -101,9 +101,13 @@ export function claimDebris(world, e) {
   // world.spawnBones/spawnDebris scatter ±10 px around (cx, cy) with |v| ≤ 560 px/s; the painted renderer claims them on
   // the render right after the death update, so only pieces at most a couple of frames old and still next to the body
   // are this enemy's (a neighbour dying in the same frame 30+ px away keeps its own debris)
+  // the age window follows the time since the death (e.dying counts down from dieTime), so slow frames — several fixed
+  // steps between Enemy.die and the next render — still claim every chip (same rule as skeleton.js claimDeathDebris)
+  const t0 = e.def?.dieTime ?? 0.35;
+  const win = Math.min(t0, Math.max(0, t0 - (e.dying ?? t0))) + 0.07;
   for (const d of L) {
     const age = d.maxLife - d.life;
-    if (age < 0.06 && Math.abs(d.x - e.cx) < 12 + 280 * age + d.w && Math.abs(d.y - e.cy) < 22 + 580 * age + d.h) d.life = 0;
+    if (age < win && Math.abs(d.x - e.cx) < 14 + 600 * age + d.w && Math.abs(d.y - e.cy) < 24 + 700 * age + 450 * age * age + d.h) d.life = 0;
   }
 }
 

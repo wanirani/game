@@ -16,6 +16,7 @@ export const spec = {
 const PRISM = ['#ff5a8a', '#ffe05a', '#5affb0', '#5a9aff', '#c86aff'];
 const SH = ['shardA', 'shardB', 'shardC'];
 const _q = [0, 0];
+const FRONT = new Float32Array(12);                 // near-half shards drawn after the core: (index, x, y, rot) × 3, reused
 
 export function draw(ctx, e, world, o, rig) {
   const t = e.t ?? 0, an = e.anim, at = e.animT ?? 0;
@@ -38,16 +39,16 @@ export function draw(ctx, e, world, o, rig) {
   if (!o.flash) K.glow(0, hov, 30 + 40 * sw, '#8a6aff', 0.28 + 0.4 * sw);
   // orbiting shards: pulled in while swelling, flung out when hit
   const R = (24 + 5 * Math.sin(t * 1.3)) * (1 - 0.45 * sw) + (hurt ? 8 : 0);
-  const front = [];
+  let nf = 0;
   for (let i = 0; i < 3; i++) {
     const a = t * (1.3 + i * 0.35) * (walk ? 1.5 : 1) + i * 2.1;
     const x = Math.cos(a) * R, y = hov + Math.sin(a) * R * 0.45 - (leap ? 6 : 0);
     const r = a * 0.7 + i;
     if (Math.sin(a) < 0) K.put(SH[i], 'a', x + shake, y, r, 0.9, 0.9, 1, 'deep');
-    else front.push(i, x, y, r);
+    else { FRONT[nf] = i; FRONT[nf + 1] = x; FRONT[nf + 2] = y; FRONT[nf + 3] = r; nf += 4; }
   }
   K.put('core', 'a', shake, hov, rot, sx, sy);
-  for (let j = 0; j < front.length; j += 4) K.put(SH[front[j]], 'a', front[j + 1] + shake, front[j + 2], front[j + 3], 1, 1);
+  for (let j = 0; j < nf; j += 4) K.put(SH[FRONT[j]], 'a', FRONT[j + 1] + shake, FRONT[j + 2], FRONT[j + 3], 1, 1);
   if (!o.flash) {
     // white-hot core + prismatic glints travelling along the crystal tips
     K.glow(shake, hov, 7 + 12 * sw, '#ffffff', 0.85, 0.2);

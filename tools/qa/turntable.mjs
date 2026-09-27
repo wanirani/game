@@ -401,6 +401,20 @@ try {
       pass: back.mode !== 'free' && Math.abs(back.vel) < 3 && onStep(back2.yaw, back2.step) && Math.abs(back2.yaw - a.yaw) <= PI / 2 + 1e-6,
       detail: `back on the tab: mode ${back.mode}, velocity ${back.vel.toFixed(2)} rad/s → rests at ${d(back2.yaw)} (was ${d(a.yaw)})`,
     }));
+    // (1b) a fling whose drag crosses the ±4π re-centre (yaw grows during long auto-spins) keeps its direction
+    await rest(s); await s.eval(() => { const v = window.__game.top.cur.view; v.yaw = v.yawGoal = v.userYaw = 4 * Math.PI - 0.05; }); await step(s, 2);
+    const w0 = await view(s);
+    const fx = w0.rect.x + w0.rect.w * 0.75, fy = w0.rect.y + w0.rect.h * 0.55;
+    await mmove(s, fx, fy); await step(s, 1);
+    await s.page.mouse.down(); await flush(s); await step(s, 2);
+    for (let i = 1; i <= 6; i++) { await mmove(s, fx - i * 10, fy); await step(s, 1); }   // drag left = yaw grows past 4π (≈ 5.7 rad/s)
+    await s.page.mouse.up(); await flush(s); await step(s, 1);
+    const w1 = await view(s);
+    await settle(s);
+    await suite.check({ id: 'edges.recentre', group: 'edges', ...G, title: 'a fling across the yaw re-centre keeps the drag direction (no reversed max-speed spin)' }, async () => ({
+      pass: w1.vel > 0.5 && w1.vel < 12 - 1e-6,
+      detail: `drag left from ${d(w0.yaw)}: release velocity ${w1.vel.toFixed(2)} rad/s (mode ${w1.mode}; + = the drag's direction)`,
+    }));
     // (2) ten short '.' taps (2 frames each) = ten 45° steps
     await rest(s); await step(s, 2);
     const k0 = await view(s);
@@ -536,11 +550,14 @@ try {
     const YAWSET = [45, 90, 135, -45, -90, -135, 20, -160, 0, 180];
     await s.eval((Y) => { window.__tt.bench(null, 3); window.__tt.bench(Y, 3); }, YAWSET);
     const cost = { side: [], yaw: [] };
-    for (let rep = 0; rep < 3; rep++) {
+    // ≈ 0.3 ms per drawHero: batches of 12 × 6 draws (≈ 20 ms) were too short for ThreadTime on a loaded machine
+    // (the ratio swung 0.65–1.46 between runs) → 40 × 6 draws per batch, 5 interleaved batches, best of each
+    const BN = 40;
+    for (let rep = 0; rep < 5; rep++) {
       for (const k of ['side', 'yaw']) {
         const c0 = await cpu();
-        await s.eval(([Y, k]) => window.__tt.bench(k === 'side' ? null : Y, 12), [YAWSET, k]);
-        cost[k].push(((await cpu()) - c0) * 1000 / (12 * 6));
+        await s.eval(([Y, k, n]) => window.__tt.bench(k === 'side' ? null : Y, n), [YAWSET, k, BN]);
+        cost[k].push(((await cpu()) - c0) * 1000 / (BN * 6));
       }
     }
     const side = Math.min(...cost.side), yawC = Math.min(...cost.yaw);

@@ -53,8 +53,10 @@ function layout(e, q) {
   K.pivotPos('body', 'a', 'shoulder', L.bx, L.by, q.rot, 1, 1, _q); L.sx = _q[0] - 2; L.sy = _q[1] + 1;
   let d = q.dir;
   if (q.aimW > 0) {
-    // point the hand at the beam line (the AI fires from (16, −h·0.62)), not just parallel to it
-    const ox = 16, oy = -(e.h ?? 100) * 0.62, tx = ox + Math.cos(q.aimDir) * 150, ty = oy + Math.sin(q.aimDir) * 150;
+    // point the hand at the beam line (the AI fires from (16, −h·0.62) world px), not just parallel to it;
+    // local units are world px ÷ the elite scale the dispatcher applies (e.h is already scaled for elites)
+    const s = e.scale || 1;
+    const ox = 16 / s, oy = -(e.h ?? 100) * 0.62 / s, tx = ox + Math.cos(q.aimDir) * 150, ty = oy + Math.sin(q.aimDir) * 150;
     const da = Math.atan2(ty - L.sy, tx - L.sx);
     d = lerpAng(d, da, q.aimW) - q.recoil * 0.25;
   }

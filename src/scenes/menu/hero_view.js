@@ -650,7 +650,12 @@ export class HeroView {
     if (Math.abs(this.yaw) > 4 * PI && this.mode !== 'tween') {
       const k = Math.round(this.yaw / TAU) * TAU;
       this.yaw -= k; this.yawGoal -= k; this.userYaw = wrapA(this.userYaw);
-      if (this.drag) this.drag.yaw0 -= k;
+      if (this.drag) {
+        this.drag.yaw0 -= k;
+        // 속도 표본도 같이 옮긴다 (안 그러면 끌던 중 되감긴 순간이 뗄 때 속도에 섞여 반대로 최대 속도 관성이 걸린다)
+        for (let i = 1; i < this.drag.s.length; i += 2) this.drag.s[i] -= k;
+      }
+      if (this.rateFrom != null) this.rateFrom -= k;   // 키를 오래 누르고 있던 중: 놓을 때의 칸 계산이 몇 바퀴 되감지 않게
     }
   }
 

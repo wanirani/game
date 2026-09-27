@@ -526,7 +526,7 @@ export class Nihil extends BossC {
     // 캐시 스프라이트는 등장 연출 동안 만든다 (싸움 중 새 캔버스 0 — MASTER_PLAN §5.2)
     for (const c of GLOW_COLS) { glowSprite(c, false); glowSprite(c, true); }
     for (const c of SOFT_COLS) { try { HFX.soft?.(c, true); } catch { /* hitfx 없음 */ } }
-    this._lw = 2;   // 조명 색광(lighting.js 캐시)도 첫 두 프레임에 세기 0 광원으로 미리 굽는다
+    prewarmLights(this.world?.lighting);   // 조명 색광(lighting.js 캐시)도 지금 굽는다
     for (const h of this.hands) this.resetHand(h);
     this.place(); this.syncParts();
   }
@@ -1251,7 +1251,6 @@ export class Nihil extends BossC {
 
   // ═════════════════════════════ 조명 ═════════════════════════════
   lightsB(L) {
-    if (this._lw > 0) { this._lw--; const cam = this.world?.camera; if (cam) for (const c of LIGHT_COLS) L.add(cam.x + 40, cam.y + 40, 4, c, 0); }
     const cy = this.by + this.bob, dk = this.dying > 0 ? (this.dieT < 2.7 ? 1 : 0) : this.introK;
     if (this.sunK > 0.2) {
       // 검은 태양은 검게: 가운데는 어둠만 걷고(가산 색광 없음) 흰 불꽃 테두리에만 색광을 둘러친다
@@ -1858,6 +1857,15 @@ function palmPath(ctx) {
   ctx.quadraticCurveTo(-42, 24, -40, -8);
   ctx.quadraticCurveTo(-40, -30, -34, -44);
   ctx.closePath();
+}
+/** lighting.js 의 색광 스프라이트 캐시(모듈 내부)를 채운다: 어둠 0 · 세기 0 광원만 든 가짜 조명으로 render 를 한 번 돌려
+ *  glowSprite(색) 만 부르게 한다. ctx 는 아무것도 그리지 않는 빈 객체. 업데이트/그리기 순서와 상관없이 등장 때 끝난다 */
+const NOCTX = { save() {}, restore() {}, drawImage() {}, fillRect() {} };
+function prewarmLights(L) {
+  const render = L?.render;
+  if (typeof render !== 'function') return;
+  const lights = LIGHT_COLS.map((color) => ({ x: 8, y: 8, r: 4, color, i: 0, glow: true }));
+  try { render.call({ enabled: true, darkness: 0, lightning: 0, res: 0.5, canvas: { width: 8, height: 8 }, lctx: null, lights }, NOCTX, { x: 0, y: 0, shakeX: 0, shakeY: 0, zoom: 1 }, 16, 16); } catch { /* 조명 구현이 바뀌면 조용히 건너뜀 */ }
 }
 function sparkle(ctx, x, y, s, rot) {
   ctx.save(); ctx.translate(x, y); ctx.rotate(rot);

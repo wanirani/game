@@ -82,6 +82,7 @@ export function draw(ctx, e, world, o, rig) {
       K.begin(ctx, rig, 0); layout(e, q); K.end();
       e._pcorpse = true; claimDebris(world, e);
       const legA = rig.parts.leg?.ang ?? PI / 2;
+      const gx = L.bx + 10, gy = L.by;   // death flash spot, captured now (L is shared by every roc drawn later)
       K.spawnCorpse(world, e, rig, [
         { name: 'wing', pv: 'a', x: L.fx, y: L.fy, rot: L.dF, sx: 0.92, sy: -0.92, vn: V[1], vx: K.frand(-90, -20), vy: -K.frand(80, 220), vr: K.frand(-4, 4) },
         { name: 'leg', pv: 'a', x: L.hBx, y: L.hBy, rot: PI / 2 - legA, vn: V[1], vx: K.frand(-60, 60), vy: -K.frand(100, 260), vr: K.frand(-8, 8) },
@@ -91,7 +92,7 @@ export function draw(ctx, e, world, o, rig) {
         { name: 'wing', pv: 'a', x: L.wx, y: L.wy, rot: L.dN, sx: 1, sy: -1, vn: V[0], vx: K.frand(-20, 90), vy: -K.frand(120, 280), vr: K.frand(-5, 5) },
       ], {
         life: 2.0, fade: 0.6, bounce: 0.2, dust: { n: 12, w: 50, h: 18, col: '#4a4e62' },
-        after: (age) => { if (age < 0.6) K.glow(L.bx + 10, L.by, 50 * (1 - age * 1.4), '#bfe0ff', 0.9 * (1 - age / 0.6)); },
+        after: (age) => { if (age < 0.6) K.glow(gx, gy, 50 * (1 - age * 1.4), '#bfe0ff', 0.9 * (1 - age / 0.6)); },
       });
     }
     return;
