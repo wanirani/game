@@ -881,5 +881,145 @@
    ]
   }
  ],
- "kling": {}
+ "kling": {
+  "model": "kling-image-v3_0_omni (image_to_image, 2k, 图片1 = portrait)",
+  "prompts": "tools/painted/prompts/art-boss-6.mjs",
+  "manifest": "tools/kling/manifest_art-boss-6.json",
+  "images": {
+   "mo_torso": {
+    "imageCount": 2,
+    "outputTasks": {
+     "mo_torso_1": "6388a7de-7839-48a3-ac7e-491dfbc272dc",
+     "mo_torso_2": "35918f43-ff61-4e40-bee1-854384a44d87"
+    },
+    "raw": [
+     "raw/torso_a"
+    ],
+    "decision": "torso_a → torso (hunched bronze chest, furnace hole, spiked pauldrons) | mo_torso_1: unused (narrow cuirass with small shoulders; torso_2 has the hunched spiked shoulders of the portrait)"
+   },
+   "mo_head": {
+    "imageCount": 2,
+    "outputTasks": {
+     "mo_head_1": "00022eb6-aa31-4b49-8fe7-a1bf30b177ae",
+     "mo_head_2": "542f9aa5-b1d5-4793-933b-774a698953d3"
+    },
+    "raw": [
+     "raw/head_a"
+    ],
+    "decision": "head_a → head + hornL/hornR sockets (snarling verdigris bull face, orange eyes, glowing mouth) | mo_head_2: unused (riveted helmet-like mask, reads as armour rather than a snarling bull face)"
+   },
+   "mo_horns": {
+    "imageCount": 1,
+    "outputTasks": {
+     "mo_horns_1": "d1aa5774-334f-427f-bb1e-7c1be679776b"
+    },
+    "raw": [
+     "raw/horns_a"
+    ],
+    "decision": "horns_a → hornL, hornR, stump (broken horn ring)"
+   },
+   "mo_arms": {
+    "imageCount": 2,
+    "outputTasks": {
+     "mo_arms_1": "2910f608-c2f2-4155-9512-ef8bba2c3a67",
+     "mo_arms_2": "011cde93-ce61-4a07-b53b-b545dbe2f88e"
+    },
+    "raw": [
+     "raw/arms_b",
+     "raw/arms_a"
+    ],
+    "decision": "arms_a → limb, foreH, foreT (muscular bronze limbs, furnace-window forearm+fist); arms_b = second forearm set"
+   },
+   "mo_hammer": {
+    "imageCount": 1,
+    "outputTasks": {
+     "mo_hammer_1": "a220fcfb-8295-40b7-8864-07b5484d7cf2"
+    },
+    "raw": [
+     "raw/hammer_a"
+    ],
+    "decision": "hammer_a → hammer (rune forge hammer)"
+   },
+   "mo_tongs": {
+    "imageCount": 1,
+    "outputTasks": {
+     "mo_tongs_1": "8ce2aa65-8b08-4ac2-90aa-e6594982689e"
+    },
+    "raw": [],
+    "decision": "unused (see image decision) → redone as mo_tongs2 | mo_tongs_1: unused (came out as an anvil with a glowing horn, not a tong arm)"
+   },
+   "mo_chimney": {
+    "imageCount": 1,
+    "outputTasks": {
+     "mo_chimney_1": "6d89d170-9aab-4696-b9e4-baa486e63f7f"
+    },
+    "raw": [
+     "raw/chimney_a"
+    ],
+    "decision": "chimney_a → chimney"
+   },
+   "mo_souls": {
+    "imageCount": 1,
+    "outputTasks": {
+     "mo_souls_1": "0b955ed3-25d2-4513-a4dd-049443ec42ba"
+    },
+    "raw": [
+     "raw/souls_a"
+    ],
+    "decision": "souls_a → soul0..soul2 (crushed soul skulls in the furnace, soul projectiles)"
+   },
+   "mo_apron": {
+    "imageCount": 1,
+    "outputTasks": {
+     "mo_apron_1": "7e6e37ae-f169-407c-8552-d73bb50120bf"
+    },
+    "raw": [
+     "raw/apron_a"
+    ],
+    "decision": "apron_a → apron"
+   },
+   "mo_grate": {
+    "imageCount": 1,
+    "outputTasks": {
+     "mo_grate_1": "c4f1c2ef-c703-4f79-8782-e0a8acd4b2f3"
+    },
+    "raw": [
+     "raw/grate_a"
+    ],
+    "decision": "grate_a → grate (furnace grate, folds up when the logic opens it)"
+   },
+   "mo_chain": {
+    "imageCount": 1,
+    "outputTasks": {
+     "mo_chain_1": "22d82df7-6488-4c0c-b826-6e3b98ecd724"
+    },
+    "raw": [
+     "raw/chain_a"
+    ],
+    "decision": "chain_a → link, hook (chain tiles)"
+   },
+   "mo_debris": {
+    "imageCount": 1,
+    "outputTasks": {
+     "mo_debris_1": "a5193252-01c2-4ecd-aef0-f064e6b67861"
+    },
+    "raw": [
+     "raw/debris_a"
+    ],
+    "decision": "debris_a → deb0..deb11 (bronze/molten fragments)"
+   },
+   "mo_tongs2": {
+    "imageCount": 2,
+    "outputTasks": {
+     "mo_tongs2_1": null,
+     "mo_tongs2_2": null
+    },
+    "raw": [
+     "raw/tongs_a"
+    ],
+    "decision": "tongs_a → tongs (glowing hooked tong half, mirrored for the pair) | mo_tongs2_1: unused (anvil-like block under the handle)"
+   }
+  },
+  "note": "generation ids were lost in a container restart; outputTasks = Kling output-task uuid from each result URL (see the manifest note)"
+ }
 }

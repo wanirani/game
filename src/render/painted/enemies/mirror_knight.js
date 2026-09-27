@@ -9,6 +9,7 @@
 // front, the mirror plates flare white — the reflected hit) · hurt (flash, squash, recoil) · death (the glass armour falls
 // apart: helm/torso, legs, arm, pauldron and sword tumble as corpse pieces with a burst of mirror shards).
 import * as K from '../enemy_kit.js';
+import { claimDebris } from './_biped.js';
 import { clamp, lerp } from '../../../core/math.js';
 
 export const spec = {
@@ -64,6 +65,7 @@ export function draw(ctx, e, world, o, rig) {
   if (e.dying > 0 && world) {
     if (!e._pcorpse) {
       e._pcorpse = true;
+      claimDebris(world, e);                 // metal material: Enemy.die spawned vector debris for this body
       K.begin(ctx, rig, 0);
       K.pivotPos('body', 'a', 'sh', ax, ay, rot, sx, sy, _q); const shx = _q[0], shy = _q[1];
       K.pivotPos('body', 'a', 'hipB', ax, ay, rot, sx, sy, _q); const bx = _q[0], by = _q[1];

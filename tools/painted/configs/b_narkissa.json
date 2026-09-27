@@ -668,7 +668,7 @@
   }
  ],
  "kling": {
-  "model": "kling-image-v3_0_omni (text_to_image, 2k, 2 images/request)",
+  "model": "kling-image-v3_0_omni (image_to_image, 2k, 图片1 = portrait b_narkissa / b_narkissa2)",
   "prompts": "tools/painted/prompts/art-boss-6.mjs",
   "manifest": "tools/kling/manifest_art-boss-6.json",
   "images": {
@@ -692,7 +692,7 @@
    },
    "nk_halo2": {
     "generationId": "ATvAdzpOK6_MNnRvi6S-CERgzPkdwbLs0kCNDEcVftV1md_HAiux2K0-wwSKXWDbwYjbNyn5",
-    "imageCount": 2,
+    "imageCount": 1,
     "raw": "raw/halo2_a",
     "decision": "#1 kept → raw/halo2_a (cracked mirror disc halo for form 2)."
    },
@@ -710,7 +710,7 @@
    },
    "nk_shards": {
     "generationId": "AZ17wMRnNr3rprRMLK5bFsADLCg1fPxbuWkDG-ECn3_WC6qbnGZ10pYl6A0aiga1h5AwU6un",
-    "imageCount": 2,
+    "imageCount": 1,
     "raw": "raw/shards_a",
     "decision": "#1 kept → raw/shards_a (5 mirror panels with screaming faces → sh0..sh4: hanging gown shards, kaleido/shard-rain projectiles)."
    },
@@ -728,13 +728,13 @@
    },
    "nk_mirror": {
     "generationId": "AWQuYNAFj61fVSHzZ5FK5VrIY2vZ2pBy84qRGvDkOabYR7wfYYemx2rQMjYXq2cKv-7KQ5-x",
-    "imageCount": 2,
+    "imageCount": 1,
     "raw": "raw/mirror_a",
     "decision": "#1 kept → raw/mirror_a (spiked wall-mirror frame; glass keyed out, drawn procedurally)."
    },
    "nk_debris": {
     "generationId": "ARPgyhtvRM8GkA83T2FaoH0oKgzI4OHXtK5ar2DRWP_giEuRH2a9997ro5GyS0Dgc2VMREUw",
-    "imageCount": 2,
+    "imageCount": 1,
     "raw": "raw/debris_a",
     "decision": "#1 kept → raw/debris_a (11 glass/mask fragments → deb0..deb10)."
    }

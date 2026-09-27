@@ -14,8 +14,6 @@ import { fmtStatVal } from './tab_status.js';
 import * as D from './access.js';
 
 const TIER_NAME = ['기본 직업', '1차 전직', '2차 전직'];
-/** 상세 판 위쪽 영웅 무대 높이 (판 높이 h) */
-const stageH = (h) => Math.round(clamp(h * 0.39, 118, 168));
 
 export class ClassTab extends Tab {
   constructor(m) {
@@ -133,12 +131,11 @@ export class ClassTab extends Tab {
     const t = this.t, focused = this.m.focus === 'content';
     const DW = Math.round(clamp(A.w * 0.35, 300, 380));
     const TW = A.w - DW - 12;
-    // 두 판의 틀 (정적 · 오른쪽 위 불투명한 영웅 무대 자리는 건너뛰고 붙인다 — drawDetail 과 같은 사각형)
-    const stageR = D.CLASSES()[this.sel] ? { x: A.x + TW + 20, y: A.y + 8, w: DW - 16, h: stageH(A.h) } : null;
+    // 두 판의 틀 (정적)
     this.bg.draw(ctx, `${TW}`, A.x - 3, A.y - 3, A.w + 6, A.h + 6, (c) => {
       frame(c, A.x, A.y, TW, A.h);
       frame(c, A.x + TW + 12, A.y, DW, A.h);
-    }, Infinity, stageR);
+    });
     const ch = D.CHARACTERS()[this.hero.charId];
     const T = this.tiers();
     const chain = this.chain;
@@ -233,7 +230,7 @@ export class ClassTab extends Tab {
     const t = this.t;
     const look = this.lookFor(c.id);
     this.view.set(look, D.CHARACTERS()[this.hero.charId]);
-    const sh = stageH(h);
+    const sh = Math.round(clamp(h * 0.39, 118, 168));
     const acc = accentOf(look);
     this.stage.draw(ctx, x + 8, y + 8, w - 16, sh, t, pxScale(ctx), acc);
     const scale = clamp((sh - 16 - 26) / 88, 0.95, 1.45);

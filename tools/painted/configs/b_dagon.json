@@ -597,5 +597,106 @@
    ]
   }
  ],
- "kling": {}
+ "kling": {
+  "model": "kling-image-v3_0_omni (image_to_image, 2k, 图片1 = portrait)",
+  "prompts": "tools/painted/prompts/art-boss-6.mjs",
+  "manifest": "tools/kling/manifest_art-boss-6.json",
+  "images": {
+   "dg_head": {
+    "imageCount": 2,
+    "outputTasks": {
+     "dg_head_1": "f494ea13-028f-4189-a0ba-7c4d71155a9f",
+     "dg_head_2": "47f1e222-8678-48f8-88f8-f3ee8048cf0b"
+    },
+    "raw": [
+     "raw/head_a"
+    ],
+    "decision": "head_a → head + jaw (hinge cut, bulging cloudy eye, needle teeth) | dg_head_2: unused (sticker-style white outline around the head; matting would leave a white rim)"
+   },
+   "dg_torso": {
+    "imageCount": 2,
+    "outputTasks": {
+     "dg_torso_1": "81df39b9-3c6b-4b25-bdbc-418d262e3917",
+     "dg_torso_2": "e4e1b38b-909e-4459-a095-1e7884ce3d71"
+    },
+    "raw": [
+     "raw/torso_a"
+    ],
+    "decision": "torso_a → torso (scaled fish body in rotten teal priest robe) | dg_torso_2: unused (empty robe without the fish body)"
+   },
+   "dg_crown": {
+    "imageCount": 1,
+    "outputTasks": {
+     "dg_crown_1": "cd55cd01-d25c-4d8b-b629-2e4c5e5391b6"
+    },
+    "raw": [
+     "raw/crown_a"
+    ],
+    "decision": "crown_a → crown (coral crown), bulb (bioluminescent lure bulb); the squid-like middle piece of the sheet is unused"
+   },
+   "dg_arm": {
+    "imageCount": 2,
+    "outputTasks": {
+     "dg_arm_1": "def32119-22c4-4c8a-9bae-a38727ef08a9",
+     "dg_arm_2": "809e0156-8b57-468e-b4f7-3b5d12c6bd0b"
+    },
+    "raw": [
+     "raw/arm_a"
+    ],
+    "decision": "arm_a → armU, armF, fist, claw | dg_arm_1: unused (sticker-style white outlines, a robe instead of an upper arm)"
+   },
+   "dg_crozier": {
+    "imageCount": 1,
+    "outputTasks": {
+     "dg_crozier_1": "c2d6f9e5-7286-4077-9074-6bc7441de1a0"
+    },
+    "raw": [
+     "raw/crozier_a"
+    ],
+    "decision": "crozier_a → staff, crook (coral crozier + spiral hook with pearl)"
+   },
+   "dg_tentacle": {
+    "imageCount": 2,
+    "outputTasks": {
+     "dg_tentacle_1": "307a5d58-be74-453b-9954-72f1771e2991",
+     "dg_tentacle_2": "4723ac30-1679-4080-8c28-dd7739532269"
+    },
+    "raw": [
+     "raw/tentacle_a"
+    ],
+    "decision": "tentacle_a → tent0..tent5 (straight eel tentacle cut into 6 tiles) | dg_tentacle_1: unused (a whole fish instead of a tentacle)"
+   },
+   "dg_organ": {
+    "imageCount": 1,
+    "outputTasks": {
+     "dg_organ_1": "03adf53e-ab3b-4d08-b997-3314632c747f"
+    },
+    "raw": [
+     "raw/organ_a"
+    ],
+    "decision": "organ_a → organ (corroded pipe organ with barnacles, black water drips)"
+   },
+   "dg_pilgrims": {
+    "imageCount": 1,
+    "outputTasks": {
+     "dg_pilgrims_1": "740aa0d5-b170-4aa1-9681-58d5e452c570"
+    },
+    "raw": [
+     "raw/pilgrims_a"
+    ],
+    "decision": "pilgrims_a → pil0..pil2 (drowned pilgrims in nacre cysts)"
+   },
+   "dg_debris": {
+    "imageCount": 1,
+    "outputTasks": {
+     "dg_debris_1": "e9571ee3-d700-403c-aedc-fce2da13ba73"
+    },
+    "raw": [
+     "raw/debris_a"
+    ],
+    "decision": "debris_a → deb0..deb10 (flesh/barnacle/organ chunks)"
+   }
+  },
+  "note": "generation ids were lost in a container restart; outputTasks = Kling output-task uuid from each result URL (see the manifest note)"
+ }
 }

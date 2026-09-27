@@ -46,7 +46,8 @@ const DRAC = '#ff2a3a', CHAOS = '#b060ff', GLASS = '#cfe8ff', BOLT = '#bfe0ff', 
 /** 싸움 중 새 캔버스 0: 이 보스와 공격이 쓰는 발광 · 조명 · 연기 파티클 색을 등장 때 모두 굽는다 */
 const GLOW_COLS = [VIO, VIO_L, VIO_D, NEB, PM, PC, WHITE, HOLY, DAWN, IRIS, BITE, STARC, DRAC, CHAOS, GLASS, BOLT, ERASE, '#c8a8ff', '#ff9070', '#ffe0b0', '#ff7a2a'];
 const LIGHT_COLS = [VIO, VIO_L, NEB, WHITE, DAWN, HOLY, IRIS, BITE, STARC, DRAC, CHAOS, GLASS, BOLT];
-const SOFT_COLS = ['#5a1a7a', '#3a3440', '#ff7a1a', '#ffd070', '#8a8074'];
+// 연기 · 섬광 파티클(hitfx soft): dark · smoke · fire · dust 프리셋 + 진짜 공허의 벽이 뿜는 보라(gimmicks_b) + 플레이어 피격 섬광(impact)
+const SOFT_COLS = ['#5a1a7a', '#3a3440', '#ff7a1a', '#ffd070', '#8a8074', '#8a6aff', '#ff2040'];
 /** 메아리 (P2): 쓰러뜨린 보스의 그림자 · 색 · 가면에 겹칠 얼굴 번호 */
 const ECHO = { dracula: { col: DRAC, face: 0 }, chaos: { col: CHAOS, face: 1 }, narkissa: { col: GLASS, face: 2 }, ziz: { col: BOLT, face: 3 } };
 const ECHO_KEYS = ['dracula', 'chaos', 'narkissa', 'ziz'];

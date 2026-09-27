@@ -230,7 +230,7 @@ export class EquipTab extends Tab {
     // ── 세 판의 틀 + 제목 (정적: 영웅·장비 칸·후보 수가 바뀔 때만 다시 굽는다) ──
     const slotName = D.SLOT_NAMES()[this.slot];
     const nCand = this.list.filter((r) => !r.unequip).length;
-    // 가운데 영웅 무대 (불투명 — 틀 레이어는 그 자리를 건너뛰고 붙인다)
+    // 가운데 영웅 무대 자리
     const sh = Math.round(clamp(A.h * 0.52, 128, 260));
     const stageR = { x: MX + 8, y: A.y + 8, w: MW - 16, h: sh };
     this.bg.draw(ctx, `${hero.charId}|${this.slot}|${nCand}|${touch ? 1 : 0}|${LW}|${MW}`, A.x - 3, A.y - 3, A.w + 6, A.h + 6, (c) => {
@@ -239,7 +239,7 @@ export class EquipTab extends Tab {
       frame(c, MX, A.y, MW, A.h);
       frame(c, RX, A.y, RW, A.h);
       heading(c, `${slotName} 교체`, RX + 16, A.y + 26, RW - 32, { sub: `${nCand}개` });
-    }, Infinity, stageR);
+    });
     // ── 왼쪽: 장비 칸 ──
     this.slotRects.length = 0;
     const rowH = Math.min(62, (A.h - top - 8) / 6);

@@ -326,18 +326,20 @@ export class ArcadeScene extends Scene {
     const L0 = this._L;
     if (L0 && L0.W === W && L0.H === H && L0.nOpt === nOpt) return L0;
     const small = H < 480;
+    // 최소 UI 높이 근처(400~420, platform §6.2)에서는 제목·카드를 조금 줄여 옵션 판과 시작 버튼이 아래 안내 줄과 겹치지 않게 한다
+    const tight = H < 420;
     const gap = small ? 12 : 16;
     const cw = Math.floor(Math.min(270, (W - 48 - gap * 2) / 3));
     const CW = cw * 3 + gap * 2, x0 = Math.round((W - CW) / 2);
-    const cardY = small ? 76 : 100, ch = small ? 118 : 172;
-    const descY = cardY + ch + (small ? 20 : 26), descLH = small ? 15 : 17, descSize = small ? 12 : 13;
-    const oy = descY + descLH + (small ? 12 : 18);
+    const cardY = tight ? 72 : small ? 76 : 100, ch = tight ? 108 : small ? 118 : 172;
+    const descY = cardY + ch + (tight ? 16 : small ? 20 : 26), descLH = small ? 15 : 17, descSize = small ? 12 : 13;
+    const oy = descY + descLH + (tight ? 10 : small ? 12 : 18);
     const rowH = small ? 46 : 44;
     const RW = small ? 250 : 270, PW = CW - RW - 16, rx = x0 + PW + 16;
     const panelH = nOpt * rowH + 12;
     return (this._L = {
-      W, H, small, nOpt, top: small ? 30 : 44, hs: small ? 24 : 30,
-      gap, cw, CW, x0, cardY, ch, artH: small ? 60 : 104, descY, descLH, descSize,
+      W, H, small, nOpt, top: tight ? 26 : small ? 30 : 44, hs: small ? 24 : 30,
+      gap, cw, CW, x0, cardY, ch, artH: tight ? 52 : small ? 60 : 104, descY, descLH, descSize,
       oy, rowH, PW, RW, rx, panelH, labelW: small ? 112 : 124,
       start: { x: rx, y: oy - 6 + panelH - 56, w: RW, h: 56 },
       back: { x: 12, y: 10, w: 104, h: 54 },

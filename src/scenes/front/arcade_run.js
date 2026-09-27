@@ -596,7 +596,9 @@ export class PracticeScene extends ArcadeRunScene {
 // ───────────────────────────── 일시정지 ─────────────────────────────
 export class ArcadePauseScene extends Scene {
   constructor(g) { super(g); this.opaque = false; this.uiScale = true; this.hidePad = true; }
-  enter({ run }) {
+  enter({ run = null } = {}) {
+    // 진행 중인 아케이드 장면 없이 열렸다 (?scene=arcadePause 등): 부팅이 멈추지 않게 아케이드 메뉴로 보낸다
+    if (!run?.world || !run.cfg) { this.run = null; this.game.go('arcade', {}, { fade: false }); return; }
     this.run = run;
     run.paused = true; // 뒤 장면의 라운드 호출·NEXT 초상화 등 큰 연출을 숨김
     this.items = [
@@ -608,9 +610,10 @@ export class ArcadePauseScene extends Scene {
     this.menu = new ListMenu(this.items.length);
     audio.duck?.(0.4, 0.3);
   }
-  exit() { this.run.paused = false; }
+  exit() { if (this.run) this.run.paused = false; }
   pick(i) { this.menu.index = i; audio.sfx('menu_ok'); this.items[i][2](); }
   update(dt) {
+    if (!this.run) return;
     const tap = taps.hit(this);
     if (typeof tap === 'string' && tap.startsWith('item:')) { this.pick(+tap.slice(5)); return; }
     const r = this.menu.update(dt);
@@ -619,12 +622,16 @@ export class ArcadePauseScene extends Scene {
     else if (r === 'cancel' || input.pressed('menu')) { audio.sfx('menu_cancel'); this.game.pop(); }
   }
   render(ctx) {
+    if (!this.run) return;
     const g = this.game, W = g.uiW || g.viewW, H = g.uiH || g.viewH;
     const k = ease.outCubic(clamp(this.t / 0.2, 0, 1));
     ctx.fillStyle = `rgba(4,0,8,${0.74 * k})`; ctx.fillRect(0, 0, W, H);
     const M = ARCADE_MODES[this.run.cfg.kind];
-    const small = H < 480, iw = 340, ih = 54, gap = small ? 8 : 10;
-    const hy = small ? 64 : 104, y0 = hy + (small ? 56 : 72);
+    const small = H < 480, iw = 340, ih = 54, n = this.items.length;
+    let gap = small ? 8 : 10, hy = small ? 64 : 104, y0 = hy + (small ? 56 : 72);
+    // 최소 UI 높이(400, platform §6.2)에서 점수 줄이 아래 안내 줄과 겹치면 제목을 올리고 간격을 줄인다 (항목 높이 54 = 44 CSS px 유지)
+    const over = y0 + n * (ih + gap) + 20 - (H - 36);
+    if (over > 0) { gap = 6; hy = Math.max(50, hy - over); y0 = hy + 54; }
     ctx.save(); ctx.globalAlpha = k;
     heading(ctx, W / 2, hy, 'PAUSE', M?.name, { size: small ? 34 : 42 });
     this.items.forEach(([l, s], i) => {
@@ -633,7 +640,7 @@ export class ArcadePauseScene extends Scene {
       taps.add(`item:${i}`, r, { owner: this, kind: 'primary', src: 'arcadePause.item' });
     });
     const w2 = this.run.world;
-    const sy = y0 + this.items.length * (ih + gap) + 20;
+    const sy = y0 + n * (ih + gap) + 20;
     text(ctx, `SCORE ${fmt(w2.run.score)}   ·   ${fmtClock(this.run.clock || w2.run.time)}`, W / 2, sy, { size: 14, align: 'center', weight: 800, family: FONT.num, color: '#d8c8b0', ow: 3 });
     const items = promptMode() === 'touch' ? [[null, '', '항목을 눌러 고르세요']] : [['dpadV', '선택'], ['confirm', '결정'], ['cancel', '계속하기']];
     drawHints(ctx, items, W / 2, H - 14, { align: 'center', size: 13, color: '#b8aa98' });

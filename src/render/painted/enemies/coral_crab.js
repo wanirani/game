@@ -7,6 +7,7 @@
 // lurches forward; recovery) · hurt (flash, squash, recoil) · death (the crab flips over, the claws and the shrine fall
 // off as corpse pieces with a puff of silt).
 import * as K from '../enemy_kit.js';
+import { claimDebris } from './_biped.js';
 import { clamp, lerp } from '../../../core/math.js';
 
 export const spec = {
@@ -39,6 +40,7 @@ export function draw(ctx, e, world, o, rig) {
   if (e.dying > 0 && world) {
     if (!e._pcorpse) {
       e._pcorpse = true;
+      claimDebris(world, e);                 // stone material: Enemy.die spawned vector debris for this body
       K.begin(ctx, rig, 0);
       K.pivotPos('body', 'a', 'clN', ax, ay, rot, sx, sy, _q); const nx = _q[0], ny = _q[1];
       K.pivotPos('body', 'a', 'seat', ax, ay, rot, sx, sy, _q); const kx = _q[0], ky = _q[1];

@@ -1,5 +1,7 @@
 // 인게임 오버레이 장면 — owner: OVERLAYS (feel §5.3 · MASTER_PLAN §1.13·§1.16 · platform §4.5·§6.2·§6.3·§8)
 //  bossIntro : WARNING(피 글씨, 붉은 경고 띠) → 초상화 + 보스 이름(피 글씨). 1.5초 뒤 결정/탭으로 건너뛰기(안내 글리프). 끝나면 pop → onDone.
+//              화면 전체 붉은 깜빡임은 설정 flashFx 를 따른다 (0 이면 깜빡이지 않음).
+//  bossIntro·ultCutin 이 떠 있는 동안 game.autoPause(탭 숨김·기기 회전·패드 끊김)가 오면 닫힐 때 아래 장면에 넘긴다.
 //  ultCutin  : 필살기 컷인 0.9초 (각성 컷인보다 한 단계 가벼운 연출). 캐릭터 색 띠와 검은 띠 두 줄이 엇갈려 들어오고,
 //              검은 띠 안으로 초상화가 미끄러져 들어와 1.0→1.06 으로 천천히 확대된다 (속도선 유지).
 //              기술명은 붓글씨(FONT.brush, 받기 전에는 FONT.title) 50px + 붉은 먹 밑줄이 쓸려 나가고, 그 위에 작게 직업명.
@@ -125,11 +127,14 @@ export class BossIntroScene extends Scene {
       } catch { /* 그릴 때 굽는다 */ }
     }
   }
+  /** 탭 숨김·기기 회전·패드 끊김 (game.autoPause): 연출은 그대로 두고, 끝나서 싸움이 시작될 때 아래 장면이 일시정지 메뉴를 띄운다 */
+  autoPause() { this.pauseAfter = true; }
   finish() {
     if (this.done) return;
     this.done = true;
     this.game.pop();
     this.onDone?.();
+    if (this.pauseAfter) this.game.autoPause();
   }
   update(dt) {
     // 초상화가 도착하면 WARNING 동안 가장자리 페더 사본을 미리 굽는다 (이름 카드가 미끄러져 들어오는 첫 프레임이 끊기지 않게)
@@ -348,9 +353,14 @@ export class UltCutinScene extends Scene {
     if (!hasDom()) return;
     try { this.nameSpr = bakeName(this.skill, this.col, clamp(this.game.scale || 1, 1, 2.5)); } catch (e) { console.error(e); this.nameSpr = null; }
   }
+  /** game.autoPause (탭 숨김·기기 회전·패드 끊김): 0.9초 컷인은 끝까지 두고, 닫힐 때 아래 장면에 넘긴다 */
+  autoPause() { this.pauseAfter = true; }
   update(dt) {
     this.game.world?.camera?.tickShake?.(dt);
-    if (!this.popped && this.t >= this.dur) { this.popped = true; this.game.pop(); }
+    if (!this.popped && this.t >= this.dur) {
+      this.popped = true; this.game.pop();
+      if (this.pauseAfter) this.game.autoPause();
+    }
   }
   render(ctx) {
     if (!(this.dur > 0)) return;

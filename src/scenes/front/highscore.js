@@ -159,7 +159,8 @@ export class HighscoreScene extends Scene {
         ctx.strokeStyle = 'rgba(232,200,114,0.7)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(px, py, pr + 0.5, 0, TAU); ctx.stroke();
         const name = h.name || ch?.name?.split(' ')[0] || '???';
         text(ctx, name, x + 80, y + tb, { size: h.name ? 15 : 13, weight: 900, family: h.name ? FONT.num : FONT.body, color: hl ? '#fff' : '#f0e4d0', ow: 2, maxWidth: 66 });
-        text(ctx, `${this.tabs.index === 0 ? modeName(h.mode) + ' · ' : ''}${detail(h)}`, x + 150, y + tb - 1, { size: 12, weight: 600, color: DIM, ow: 2, maxWidth: colW - 270 });
+        const mn = this.tabs.index === 0 ? modeName(h.mode) : '';
+        text(ctx, `${mn ? mn + ' · ' : ''}${detail(h)}`, x + 150, y + tb - 1, { size: 12, weight: 600, color: DIM, ow: 2, maxWidth: colW - 270 });
         text(ctx, fmt(h.score), x + colW - 10, y + tb, { size: 16, align: 'right', weight: 900, family: FONT.num, color: i === 0 ? '#ffe070' : '#fff', ow: 2 });
       } else text(ctx, '- - -', x + 80, y + tb, { size: 13, weight: 700, family: FONT.num, color: '#4a4040', ow: 0 });
       ctx.restore();

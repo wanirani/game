@@ -595,8 +595,10 @@ try {
       return Date.now() - w0;
     }, [n, chrome]);
     await run(6, false); await run(4, true);                     // warm-up (layer caches, glyphs, JIT)
+    // 4 interleaved batches, best of each: on this shared machine (load 20–45 on 4 cores) CPU time per frame swings ±20 %
+    // between batches (SMT/cache contention); the minimum is the estimate closest to an unloaded desktop
     const N = 16, res = { full: [], chrome: [], wall: [] };
-    for (let rep = 0; rep < 2; rep++) {
+    for (let rep = 0; rep < 4; rep++) {
       for (const chrome of [false, true]) {
         const c0 = await cpu();
         const wall = await run(N, chrome);

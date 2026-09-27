@@ -1,0 +1,667 @@
+{
+ "package": "ART-BOSS-6",
+ "bosses": [
+  "b_narkissa",
+  "b_moloch",
+  "b_dagon"
+ ],
+ "model": "kling-image-v3_0_omni",
+ "tool": "image_to_image (图片1 = the boss portrait uploaded as PNG; prompts reference 图片1)",
+ "resolution": "2k",
+ "prompts": "tools/painted/prompts/art-boss-6.mjs",
+ "watermark": "bottom-right KlingAI mark removed by tools/painted/matte.py",
+ "note": "Provenance recovered after a container restart (2026-09-27): narkissa generation ids come from configs/b_narkissa.json (written at generation time); the moloch/dagon generation ids were not saved before the restart, so each image is identified by the Kling output-task uuid embedded in its result URL (outputTask). Raw-source mapping was re-verified by comparing tools/painted/raw/* with the downloaded originals.",
+ "shots": {
+  "nk_head": {
+   "boss": "b_narkissa",
+   "aspect": "1:1",
+   "refs": [
+    "portrait"
+   ],
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, glossy black obsidian glass with cold silver-white rim highlights, pale cracked porcelain, iridescent mirror glass with faint rainbow sheen, no black outlines, not cartoon, not cel-shaded, not anime, not 3D render. Game asset for a 2D cut-out puppet. The head and long slender neck of the glass empress from 图片1 alone, seen straight from the front: an elegant expressionless porcelain mask face split vertically down the middle, the left half glossy black glass studded with many small mismatched staring eyes of different sizes, the right half smooth white cracked porcelain with one cold pale eye, fine hairline cracks spreading over the mask, a thin closed mouth, a slender black glass neck ending in a clean flat cut at the bottom. NO crown, NO halo, NO needles and NO spikes around the head. No smoke, no mist, no fire, no sparks, no particles, no glow haze, no magic effects around the object. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels.",
+   "imageCount": 2,
+   "images": {
+    "nk_head_1": {
+     "outputTask": "5c0f9f0a-730c-439c-a969-86c502a774e1",
+     "raw": null,
+     "decision": "see decision"
+    },
+    "nk_head_2": {
+     "outputTask": "f276f612-8386-4582-a401-5b8711aa0116",
+     "raw": null,
+     "decision": "see decision"
+    }
+   },
+   "generationId": "AQ49SCNdlsQhOlXVxjTIN_sOjgI2ZFKZbQPrMCw4pOTZWE2KyINNYs8jU2VGMBg_ZA0hVdFW",
+   "decision": "#1 kept → raw/head_a (half black glass with bubble eyes, half cracked porcelain face). #2 unused (less contrast)."
+  },
+  "nk_head2": {
+   "boss": "b_narkissa",
+   "aspect": "1:1",
+   "refs": [
+    "portrait2"
+   ],
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, glossy black obsidian glass with cold silver-white rim highlights, pale cracked porcelain, iridescent mirror glass with faint rainbow sheen, no black outlines, not cartoon, not cel-shaded, not anime, not 3D render. Game asset for a 2D cut-out puppet. The monstrous head of the broken glass empress from 图片1 alone, seen straight from the front: the mask shattered away into a hollow face of black glass and white porcelain crowded with dozens of glowing pale staring eyes of different sizes, the mouth torn impossibly wide open into a huge vertical maw lined with long jagged mirror-glass fangs on the upper and the lower jaw, the lower jaw hanging clearly separated below the upper head with a wide pitch-black gap (dark empty throat) between the teeth, the neck cut flat at the bottom. NO halo, NO flying shards, NO disc behind the head. No smoke, no mist, no fire, no sparks, no particles, no glow haze, no magic effects around the object. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels.",
+   "imageCount": 2,
+   "images": {
+    "nk_head2_1": {
+     "outputTask": "b0c2bede-58c9-4d1e-bb75-f5442502e24e",
+     "raw": null,
+     "decision": "see decision"
+    },
+    "nk_head2_2": {
+     "outputTask": "fb82dd02-2329-4889-ace2-af0f81d8c528",
+     "raw": null,
+     "decision": "see decision"
+    }
+   },
+   "generationId": "Aeova-fNhgfLS-OZLqL_WScskNYO6lFvrre8Jv9tLhX77xwQnaBWpQt98z8yRUmaX-s54_NU",
+   "decision": "#2 kept → raw/head2_a (eye-studded glass half + porcelain half, mirror-tooth maw; jaw cut as jaw2). #1 unused (face all black, eyes unreadable)."
+  },
+  "nk_crown": {
+   "boss": "b_narkissa",
+   "aspect": "16:9",
+   "refs": [
+    "portrait"
+   ],
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, glossy black obsidian glass with cold silver-white rim highlights, pale cracked porcelain, iridescent mirror glass with faint rainbow sheen, no black outlines, not cartoon, not cel-shaded, not anime, not 3D render. Game asset for a 2D cut-out puppet. A single crown-halo of the glass empress from 图片1 alone, seen straight from the front: about eleven long thin needle-like spikes of iridescent glass and sharp mirror slivers radiating outward in a wide upward half circle (a fan) from a small dark central hub at the bottom middle, the longest needle in the centre pointing straight up, the side needles getting shorter towards the left and right, small glass shards between the needles. No head, no face. No smoke, no mist, no fire, no sparks, no particles, no glow haze, no magic effects around the object. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels.",
+   "imageCount": 2,
+   "images": {
+    "nk_crown_1": {
+     "outputTask": "a6b70245-b4cd-46cd-9d07-d38c504c5a97",
+     "raw": null,
+     "decision": "see decision"
+    },
+    "nk_crown_2": {
+     "outputTask": "ae816d46-5647-4790-aa42-a2b7d2fa1b7b",
+     "raw": null,
+     "decision": "see decision"
+    }
+   },
+   "generationId": "AWL6fPrxzq9tJ5lRFdGG_ects6AHq9aUxdZpXhK_FHpbeS9TcOw-448wceJoesGa03TVH3mB",
+   "decision": "#1 kept → raw/crown_a (fan of glass needles). #2 unused (crown with solid base, reads as a hat)."
+  },
+  "nk_halo2": {
+   "boss": "b_narkissa",
+   "aspect": "1:1",
+   "refs": [
+    "portrait2"
+   ],
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, glossy black obsidian glass with cold silver-white rim highlights, pale cracked porcelain, iridescent mirror glass with faint rainbow sheen, no black outlines, not cartoon, not cel-shaded, not anime, not 3D render. Game asset for a 2D cut-out puppet. A single large round halo disc from behind the head of 图片1 alone, seen straight from the front: a circular shattered mirror made of many broken reflective glass pieces arranged radially around an empty dark round hole in the centre, black cracks between the pieces, jagged broken outer edge with a few long glass spikes sticking outward, cold pale silver-blue reflections. No head, no face. No smoke, no mist, no fire, no sparks, no particles, no glow haze, no magic effects around the object. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels.",
+   "imageCount": 1,
+   "images": {
+    "nk_halo2_1": {
+     "outputTask": "50392b2f-8c9d-42f2-a0fa-c3febeaa5ca7",
+     "raw": null,
+     "decision": "see decision"
+    }
+   },
+   "generationId": "ATvAdzpOK6_MNnRvi6S-CERgzPkdwbLs0kCNDEcVftV1md_HAiux2K0-wwSKXWDbwYjbNyn5",
+   "decision": "#1 kept → raw/halo2_a (cracked mirror disc halo for form 2)."
+  },
+  "nk_torso": {
+   "boss": "b_narkissa",
+   "aspect": "3:4",
+   "refs": [
+    "portrait"
+   ],
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, glossy black obsidian glass with cold silver-white rim highlights, pale cracked porcelain, iridescent mirror glass with faint rainbow sheen, no black outlines, not cartoon, not cel-shaded, not anime, not 3D render. Game asset for a 2D cut-out puppet. The upper body of the glass empress from 图片1 WITHOUT head and WITHOUT arms, seen straight from the front: a slender feminine torso of glossy sculpted black obsidian glass like an armoured bodice, sharp spiked glass pauldrons with clusters of long shards on both shoulders, round empty joint sockets where the arms would attach, a glowing green gem set in the centre of the chest, a very narrow waist cut cleanly and flat at the bottom, the neck stump cut cleanly and flat at the top. No smoke, no mist, no fire, no sparks, no particles, no glow haze, no magic effects around the object. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels.",
+   "imageCount": 2,
+   "images": {
+    "nk_torso_1": {
+     "outputTask": "ab044d5a-78de-442f-bb28-23e0d6dd75f5",
+     "raw": null,
+     "decision": "see decision"
+    },
+    "nk_torso_2": {
+     "outputTask": "e968e2b2-c086-41d9-8b2a-af9bbc34c88e",
+     "raw": null,
+     "decision": "see decision"
+    }
+   },
+   "generationId": "AaK3S-PnuCYN25ozcaTa28k5a9XA9BKh0CcfOXij1UyYvSyw6M5jXB5DfE1HMJ5xy1562Y9x",
+   "decision": "#1 kept → raw/torso_a (obsidian cuirass, glass spikes, green gem). #2 unused (stray ring on the chest)."
+  },
+  "nk_gown": {
+   "boss": "b_narkissa",
+   "aspect": "3:4",
+   "refs": [
+    "portrait"
+   ],
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, glossy black obsidian glass with cold silver-white rim highlights, pale cracked porcelain, iridescent mirror glass with faint rainbow sheen, no black outlines, not cartoon, not cel-shaded, not anime, not 3D render. Game asset for a 2D cut-out puppet. The long gown of the glass empress from 图片1 alone without any body, legs or arms, seen straight from the front: a tall bell-shaped skirt made of many long pointed vertical mirror shards joined edge to edge by black glass lead lines, each mirror shard reflecting a different pale screaming human face with a wide open mouth and white glowing eyes, very narrow at the top (the waist, cut flat) and very wide at the bottom, the hem made of jagged downward-pointing shard tips. No smoke, no mist, no fire, no sparks, no particles, no glow haze, no magic effects around the object. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels.",
+   "imageCount": 2,
+   "images": {
+    "nk_gown_1": {
+     "outputTask": "f45d55d4-7c03-46bc-9748-81a738a7ec8c",
+     "raw": null,
+     "decision": "see decision"
+    },
+    "nk_gown_2": {
+     "outputTask": "aa0d4612-4d54-4b18-b5a8-dcf9b402a36a",
+     "raw": null,
+     "decision": "see decision"
+    }
+   },
+   "generationId": "Ac2hQyro1nfgGHDSu4hZVrdYoLDUakvDMQxjr4vD1tUU32MBt8DgckaokvOM6drUr8j7Zg5R",
+   "decision": "#2 kept → raw/gown_a (bell gown of mirror shards reflecting screaming faces). #1 unused (fewer faces)."
+  },
+  "nk_shards": {
+   "boss": "b_narkissa",
+   "aspect": "16:9",
+   "refs": [
+    "portrait"
+   ],
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, glossy black obsidian glass with cold silver-white rim highlights, pale cracked porcelain, iridescent mirror glass with faint rainbow sheen, no black outlines, not cartoon, not cel-shaded, not anime, not 3D render. Game asset for a 2D cut-out puppet. Seven separate long narrow pointed mirror-glass shards from the gown of 图片1 laid out standing upright in one row with wide empty space between them, no shard touches another, each shard pointing down at the bottom, framed by a thin black glass edge, and each reflecting one pale screaming human face with a wide open mouth and white glowing eyes, iridescent rainbow sheen on the glass. No smoke, no mist, no fire, no sparks, no particles, no glow haze, no magic effects around the object. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels.",
+   "imageCount": 1,
+   "images": {
+    "nk_shards_1": {
+     "outputTask": "15f95f44-fd48-4a42-a5d8-56b9edea2a80",
+     "raw": null,
+     "decision": "see decision"
+    }
+   },
+   "generationId": "AZ17wMRnNr3rprRMLK5bFsADLCg1fPxbuWkDG-ECn3_WC6qbnGZ10pYl6A0aiga1h5AwU6un",
+   "decision": "#1 kept → raw/shards_a (5 mirror panels with screaming faces → sh0..sh4: hanging gown shards, kaleido/shard-rain projectiles)."
+  },
+  "nk_limbs": {
+   "boss": "b_narkissa",
+   "aspect": "16:9",
+   "refs": [
+    "portrait"
+   ],
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, glossy black obsidian glass with cold silver-white rim highlights, pale cracked porcelain, iridescent mirror glass with faint rainbow sheen, no black outlines, not cartoon, not cel-shaded, not anime, not 3D render. Game asset for a 2D cut-out puppet. Five separate body pieces of the glass empress from 图片1 laid out apart from each other in one row with wide empty space between them, no piece touches another: 1) a slender upper arm of glossy black glass lying horizontal with a round spiral joint cap at the left end, 2) a thinner forearm of glossy black glass lying horizontal, 3) a long thin clawed hand of black glass seen from the back, pointing right, five long thin fingers spread open ending in sharp silver talons, 4) a long curved blade made of one sharp iridescent mirror shard, pointing right, 5) a small ornate hand mirror with a thorny silver frame and handle. No smoke, no mist, no fire, no sparks, no particles, no glow haze, no magic effects around the object. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels.",
+   "imageCount": 2,
+   "images": {
+    "nk_limbs_1": {
+     "outputTask": "bb40f15c-fe3c-4e5c-aa53-9246be0b43bb",
+     "raw": null,
+     "decision": "see decision"
+    },
+    "nk_limbs_2": {
+     "outputTask": "59d0c8ef-003b-4270-8e66-92d8b96d3095",
+     "raw": null,
+     "decision": "see decision"
+    }
+   },
+   "generationId": "AYYCQJ1YlL1BYyrqyfVBjYmHZhNINi8ZCZCxjPRYOiyaTvGHv9Yncm8__-EcCX33xLrc2YUZ",
+   "decision": "#2 kept → raw/limbs_a (upper arm, shattered forearm, open claw hand, crescent blade, hand mirror). #1 kept → raw/limbs_b (upper2/fore2 back blade arms, iridescent crescent blade; claw hand + second mirror unused)."
+  },
+  "nk_legs": {
+   "boss": "b_narkissa",
+   "aspect": "21:9",
+   "refs": [
+    "portrait"
+   ],
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, glossy black obsidian glass with cold silver-white rim highlights, pale cracked porcelain, iridescent mirror glass with faint rainbow sheen, no black outlines, not cartoon, not cel-shaded, not anime, not 3D render. Game asset for a 2D cut-out puppet. Two separate pieces of one giant spider leg of the glass empress from 图片1, made of glossy black obsidian glass with cold silver highlights, strict side view, each piece lying perfectly straight and horizontal with wide empty space between them: 1) at the top, a long thick upper leg segment with a large round disc-shaped joint cap with a spiral groove at each end, 2) at the bottom, a long lower leg segment starting with a round joint cap on the left and tapering to a long sharp pale silver claw point on the right. No smoke, no mist, no fire, no sparks, no particles, no glow haze, no magic effects around the object. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels.",
+   "imageCount": 2,
+   "images": {
+    "nk_legs_1": {
+     "outputTask": "8bb2c355-7aaa-414d-bd7c-e43571edf641",
+     "raw": null,
+     "decision": "see decision"
+    },
+    "nk_legs_2": {
+     "outputTask": "06c9c84d-cc8c-4ef3-80cf-19f7119f85bb",
+     "raw": null,
+     "decision": "see decision"
+    }
+   },
+   "generationId": "AZWh6O-4gqPuNS3V1VrqrmIoQtgtHEy88EdxDdtTVaHwwbnt5Rh72j3ZHn_WXeS2QW4PwIJx",
+   "decision": "#2 kept → raw/legs_a (spider thigh + blade shin). #1 → raw/legs_b (not built: memory; kept as source for a later variant)."
+  },
+  "nk_mirror": {
+   "boss": "b_narkissa",
+   "aspect": "3:4",
+   "refs": [
+    "portrait"
+   ],
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, glossy black obsidian glass with cold silver-white rim highlights, pale cracked porcelain, iridescent mirror glass with faint rainbow sheen, no black outlines, not cartoon, not cel-shaded, not anime, not 3D render. Game asset for a 2D cut-out puppet. A single ornate oval wall mirror from the throne hall of 图片1, seen straight from the front: a tall oval frame of black obsidian glass and tarnished silver with thorny spikes and small sharp glass shards around the rim, the mirror glass inside plain pale grey-blue and empty (no reflection, no figure), a faint diagonal glare. No smoke, no mist, no fire, no sparks, no particles, no glow haze, no magic effects around the object. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels.",
+   "imageCount": 1,
+   "images": {
+    "nk_mirror_1": {
+     "outputTask": "02925405-fadc-4668-8906-8ceb10be25c6",
+     "raw": null,
+     "decision": "see decision"
+    }
+   },
+   "generationId": "AWQuYNAFj61fVSHzZ5FK5VrIY2vZ2pBy84qRGvDkOabYR7wfYYemx2rQMjYXq2cKv-7KQ5-x",
+   "decision": "#1 kept → raw/mirror_a (spiked wall-mirror frame; glass keyed out, drawn procedurally)."
+  },
+  "nk_debris": {
+   "boss": "b_narkissa",
+   "aspect": "16:9",
+   "refs": [
+    "portrait"
+   ],
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, glossy black obsidian glass with cold silver-white rim highlights, pale cracked porcelain, iridescent mirror glass with faint rainbow sheen, no black outlines, not cartoon, not cel-shaded, not anime, not 3D render. Game asset for a 2D cut-out puppet. About ten separate broken fragments of the glass empress from 图片1 arranged in a loose grid with wide empty space between pieces, no piece touches another: sharp shards of glossy black obsidian glass of different sizes, broken pieces of white porcelain mask with a staring eye, iridescent mirror shards, a snapped glass needle, a broken spiral joint cap. No smoke, no mist, no fire, no sparks, no particles, no glow haze, no magic effects around the object. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels.",
+   "imageCount": 1,
+   "images": {
+    "nk_debris_1": {
+     "outputTask": "f1302cb4-7e38-4113-9aa6-33320f33b249",
+     "raw": null,
+     "decision": "see decision"
+    }
+   },
+   "generationId": "ARPgyhtvRM8GkA83T2FaoH0oKgzI4OHXtK5ar2DRWP_giEuRH2a9997ro5GyS0Dgc2VMREUw",
+   "decision": "#1 kept → raw/debris_a (11 glass/mask fragments → deb0..deb10)."
+  },
+  "mo_torso": {
+   "boss": "b_moloch",
+   "aspect": "3:4",
+   "refs": [
+    "portrait"
+   ],
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, tarnished hammered bronze with green verdigris, soot and rivets, blackened iron, glowing molten orange heat in the cracks, no black outlines, not cartoon, not cel-shaded, not anime, not 3D render. Game asset for a 2D cut-out puppet. The massive torso of the bronze bull idol from 图片1 WITHOUT head, WITHOUT arms, WITHOUT legs and WITHOUT chains, seen straight from the front: huge hunched muscular shoulders with rows of small bone spikes, a barrel chest of tarnished hammered bronze with verdigris, rivet seams and cracks glowing faintly orange, a large round furnace opening in the middle of the belly framed by a thick riveted iron ring, the inside of the opening completely empty and flat black, round shoulder sockets, the neck stump cut flat at the top, cut flat at the hips at the bottom. No smoke, no mist, no fire, no sparks, no particles, no glow haze, no magic effects around the object. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels.",
+   "imageCount": 2,
+   "images": {
+    "mo_torso_1": {
+     "outputTask": "6388a7de-7839-48a3-ac7e-491dfbc272dc",
+     "raw": null,
+     "decision": "unused (narrow cuirass with small shoulders; torso_2 has the hunched spiked shoulders of the portrait)"
+    },
+    "mo_torso_2": {
+     "outputTask": "35918f43-ff61-4e40-bee1-854384a44d87",
+     "raw": "tools/painted/raw/b_moloch/torso_a.webp",
+     "decision": "kept"
+    }
+   },
+   "decision": "torso_a → torso (hunched bronze chest, furnace hole, spiked pauldrons)"
+  },
+  "mo_head": {
+   "boss": "b_moloch",
+   "aspect": "1:1",
+   "refs": [
+    "portrait"
+   ],
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, tarnished hammered bronze with green verdigris, soot and rivets, blackened iron, glowing molten orange heat in the cracks, no black outlines, not cartoon, not cel-shaded, not anime, not 3D render. Game asset for a 2D cut-out puppet. The head of the bronze bull idol from 图片1 alone, seen straight from the front, WITHOUT horns (only two short round horn sockets on the top of the skull): a snarling metal bull face with deep brow ridges, two glowing orange eyes, flaring nostrils with a heavy iron nose ring, the mouth slightly open with a molten orange glow inside, coarse bristly fur along the jaw and cheeks, the neck cut flat at the bottom. No smoke, no mist, no fire, no sparks, no particles, no glow haze, no magic effects around the object. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels.",
+   "imageCount": 2,
+   "images": {
+    "mo_head_1": {
+     "outputTask": "00022eb6-aa31-4b49-8fe7-a1bf30b177ae",
+     "raw": "tools/painted/raw/b_moloch/head_a.webp",
+     "decision": "kept"
+    },
+    "mo_head_2": {
+     "outputTask": "542f9aa5-b1d5-4793-933b-774a698953d3",
+     "raw": null,
+     "decision": "unused (riveted helmet-like mask, reads as armour rather than a snarling bull face)"
+    }
+   },
+   "decision": "head_a → head + hornL/hornR sockets (snarling verdigris bull face, orange eyes, glowing mouth)"
+  },
+  "mo_horns": {
+   "boss": "b_moloch",
+   "aspect": "16:9",
+   "refs": [
+    "portrait"
+   ],
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, tarnished hammered bronze with green verdigris, soot and rivets, blackened iron, glowing molten orange heat in the cracks, no black outlines, not cartoon, not cel-shaded, not anime, not 3D render. Game asset for a 2D cut-out puppet. Three separate pieces laid out apart from each other in one row with wide empty space between them, no piece touches another: 1) a single huge curved bull horn of ridged ivory and bronze, the thick round root at the lower left and the sharp tip curving up to the upper right, 2) a short thick broken horn stump with a jagged broken top that glows molten orange inside, 3) the broken-off tip of the horn. No smoke, no mist, no fire, no sparks, no particles, no glow haze, no magic effects around the object. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels.",
+   "imageCount": 1,
+   "images": {
+    "mo_horns_1": {
+     "outputTask": "d1aa5774-334f-427f-bb1e-7c1be679776b",
+     "raw": "tools/painted/raw/b_moloch/horns_a.webp",
+     "decision": "kept"
+    }
+   },
+   "decision": "horns_a → hornL, hornR, stump (broken horn ring)"
+  },
+  "mo_arms": {
+   "boss": "b_moloch",
+   "aspect": "16:9",
+   "refs": [
+    "portrait"
+   ],
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, tarnished hammered bronze with green verdigris, soot and rivets, blackened iron, glowing molten orange heat in the cracks, no black outlines, not cartoon, not cel-shaded, not anime, not 3D render. Game asset for a 2D cut-out puppet. Four separate body pieces of the bronze bull idol from 图片1 laid out apart from each other with wide empty space between them, no piece touches another: 1) a huge muscular bronze upper arm lying horizontal with a round shoulder ball at the left end, 2) a muscular bronze forearm lying horizontal with a spiked black iron bracer around it, 3) a huge clenched bronze fist seen from the side, holding nothing, with a round hole through the grip, 4) a massive bronze thigh and knee pointing down. No smoke, no mist, no fire, no sparks, no particles, no glow haze, no magic effects around the object. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels.",
+   "imageCount": 2,
+   "images": {
+    "mo_arms_1": {
+     "outputTask": "2910f608-c2f2-4155-9512-ef8bba2c3a67",
+     "raw": "tools/painted/raw/b_moloch/arms_b.webp",
+     "decision": "kept"
+    },
+    "mo_arms_2": {
+     "outputTask": "011cde93-ce61-4a07-b53b-b545dbe2f88e",
+     "raw": "tools/painted/raw/b_moloch/arms_a.webp",
+     "decision": "kept"
+    }
+   },
+   "decision": "arms_a → limb, foreH, foreT (muscular bronze limbs, furnace-window forearm+fist); arms_b = second forearm set"
+  },
+  "mo_hammer": {
+   "boss": "b_moloch",
+   "aspect": "16:9",
+   "refs": [
+    "portrait"
+   ],
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, tarnished hammered bronze with green verdigris, soot and rivets, blackened iron, glowing molten orange heat in the cracks, no black outlines, not cartoon, not cel-shaded, not anime, not 3D render. Game asset for a 2D cut-out puppet. A single giant forge hammer of the bronze idol from 图片1 lying perfectly horizontal: a long dark wooden handle wrapped with iron bands on the left, a massive square black iron hammer head on the right with engraved runes and rivets, the striking faces scorched and glowing faintly orange. No smoke, no mist, no fire, no sparks, no particles, no glow haze, no magic effects around the object. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels.",
+   "imageCount": 1,
+   "images": {
+    "mo_hammer_1": {
+     "outputTask": "a220fcfb-8295-40b7-8864-07b5484d7cf2",
+     "raw": "tools/painted/raw/b_moloch/hammer_a.webp",
+     "decision": "kept"
+    }
+   },
+   "decision": "hammer_a → hammer (rune forge hammer)"
+  },
+  "mo_tongs": {
+   "boss": "b_moloch",
+   "aspect": "16:9",
+   "refs": [
+    "portrait"
+   ],
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, tarnished hammered bronze with green verdigris, soot and rivets, blackened iron, glowing molten orange heat in the cracks, no black outlines, not cartoon, not cel-shaded, not anime, not 3D render. Game asset for a 2D cut-out puppet. A single half of a pair of giant blacksmith tongs from 图片1 lying horizontal: one long straight black iron arm with a riveted pivot ring near the middle and a hooked curved claw jaw at the right end glowing red-hot orange, dripping molten metal. Only one arm of the tongs. No smoke, no mist, no fire, no sparks, no particles, no glow haze, no magic effects around the object. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels.",
+   "imageCount": 1,
+   "images": {
+    "mo_tongs_1": {
+     "outputTask": "8ce2aa65-8b08-4ac2-90aa-e6594982689e",
+     "raw": null,
+     "decision": "unused (came out as an anvil with a glowing horn, not a tong arm)"
+    }
+   },
+   "decision": "unused (see image decision) → redone as mo_tongs2"
+  },
+  "mo_chimney": {
+   "boss": "b_moloch",
+   "aspect": "9:16",
+   "refs": [
+    "portrait"
+   ],
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, tarnished hammered bronze with green verdigris, soot and rivets, blackened iron, glowing molten orange heat in the cracks, no black outlines, not cartoon, not cel-shaded, not anime, not 3D render. Game asset for a 2D cut-out puppet. A single tall iron furnace chimney stack from the back of the idol in 图片1, standing upright: a tall cylinder of sooty riveted black iron and bronze bands, slightly wider at the top rim, the open top blackened, the bottom end cut flat. No smoke and no fire coming out. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels.",
+   "imageCount": 1,
+   "images": {
+    "mo_chimney_1": {
+     "outputTask": "6d89d170-9aab-4696-b9e4-baa486e63f7f",
+     "raw": "tools/painted/raw/b_moloch/chimney_a.webp",
+     "decision": "kept"
+    }
+   },
+   "decision": "chimney_a → chimney"
+  },
+  "mo_souls": {
+   "boss": "b_moloch",
+   "aspect": "16:9",
+   "refs": [
+    "portrait"
+   ],
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, tarnished hammered bronze with green verdigris, soot and rivets, blackened iron, glowing molten orange heat in the cracks, no black outlines, not cartoon, not cel-shaded, not anime, not 3D render. Game asset for a 2D cut-out puppet. Three separate tormented faces of souls trapped in the furnace of 图片1, laid out in one row with wide empty space between them, no face touches another: each a gaunt skull-like human face of pale ash-grey charred skin with hollow glowing orange eye sockets and a screaming wide open mouth, one with hands pressed against its cheeks. No smoke, no mist, no fire, no sparks, no particles, no glow haze, no magic effects around the object. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels.",
+   "imageCount": 1,
+   "images": {
+    "mo_souls_1": {
+     "outputTask": "0b955ed3-25d2-4513-a4dd-049443ec42ba",
+     "raw": "tools/painted/raw/b_moloch/souls_a.webp",
+     "decision": "kept"
+    }
+   },
+   "decision": "souls_a → soul0..soul2 (crushed soul skulls in the furnace, soul projectiles)"
+  },
+  "mo_apron": {
+   "boss": "b_moloch",
+   "aspect": "3:4",
+   "refs": [
+    "portrait"
+   ],
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, tarnished hammered bronze with green verdigris, soot and rivets, blackened iron, glowing molten orange heat in the cracks, no black outlines, not cartoon, not cel-shaded, not anime, not 3D render. Game asset for a 2D cut-out puppet. A single heavy torn leather blacksmith apron (loincloth) of the idol from 图片1 hanging straight down, seen from the front: dark scorched brown leather with burn holes, a riveted iron belt edge at the top (cut flat), long ragged tattered strips at the bottom hem. No smoke, no mist, no fire, no sparks, no particles, no glow haze, no magic effects around the object. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels.",
+   "imageCount": 1,
+   "images": {
+    "mo_apron_1": {
+     "outputTask": "7e6e37ae-f169-407c-8552-d73bb50120bf",
+     "raw": "tools/painted/raw/b_moloch/apron_a.webp",
+     "decision": "kept"
+    }
+   },
+   "decision": "apron_a → apron"
+  },
+  "mo_grate": {
+   "boss": "b_moloch",
+   "aspect": "1:1",
+   "refs": [
+    "portrait"
+   ],
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, tarnished hammered bronze with green verdigris, soot and rivets, blackened iron, glowing molten orange heat in the cracks, no black outlines, not cartoon, not cel-shaded, not anime, not 3D render. Game asset for a 2D cut-out puppet. A single round furnace grate door of the idol from 图片1 seen straight from the front: six thick vertical black iron bars inside a heavy riveted round iron frame, soot-blackened bars with red-hot orange edges, the gaps between the bars completely empty showing the plain grey background. No smoke, no mist, no fire, no sparks, no particles, no glow haze, no magic effects around the object. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels.",
+   "imageCount": 1,
+   "images": {
+    "mo_grate_1": {
+     "outputTask": "c4f1c2ef-c703-4f79-8782-e0a8acd4b2f3",
+     "raw": "tools/painted/raw/b_moloch/grate_a.webp",
+     "decision": "kept"
+    }
+   },
+   "decision": "grate_a → grate (furnace grate, folds up when the logic opens it)"
+  },
+  "mo_chain": {
+   "boss": "b_moloch",
+   "aspect": "21:9",
+   "refs": [
+    "portrait"
+   ],
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, tarnished hammered bronze with green verdigris, soot and rivets, blackened iron, glowing molten orange heat in the cracks, no black outlines, not cartoon, not cel-shaded, not anime, not 3D render. Game asset for a 2D cut-out puppet. A single heavy iron chain from 图片1 lying perfectly straight and level across the whole image width with empty margin at both ends, strict side view: about ten big oval rusted black iron links joined end to end, alternating links seen from the side and from the front, clear gaps inside every link, a big curved iron hook at the right end. No smoke, no mist, no fire, no sparks, no particles, no glow haze, no magic effects around the object. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels.",
+   "imageCount": 1,
+   "images": {
+    "mo_chain_1": {
+     "outputTask": "22d82df7-6488-4c0c-b826-6e3b98ecd724",
+     "raw": "tools/painted/raw/b_moloch/chain_a.webp",
+     "decision": "kept"
+    }
+   },
+   "decision": "chain_a → link, hook (chain tiles)"
+  },
+  "mo_debris": {
+   "boss": "b_moloch",
+   "aspect": "16:9",
+   "refs": [
+    "portrait"
+   ],
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, tarnished hammered bronze with green verdigris, soot and rivets, blackened iron, glowing molten orange heat in the cracks, no black outlines, not cartoon, not cel-shaded, not anime, not 3D render. Game asset for a 2D cut-out puppet. About ten separate broken pieces of the bronze idol from 图片1 arranged in a loose grid with wide empty space between pieces, no piece touches another: jagged torn plates of hammered bronze with glowing orange broken edges, big iron rivets, a broken chain link, chunks of black iron grate, cooling lumps of slag with molten orange cracks. No smoke, no mist, no fire, no sparks, no particles, no glow haze, no magic effects around the object. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels.",
+   "imageCount": 1,
+   "images": {
+    "mo_debris_1": {
+     "outputTask": "a5193252-01c2-4ecd-aef0-f064e6b67861",
+     "raw": "tools/painted/raw/b_moloch/debris_a.webp",
+     "decision": "kept"
+    }
+   },
+   "decision": "debris_a → deb0..deb11 (bronze/molten fragments)"
+  },
+  "dg_head": {
+   "boss": "b_dagon",
+   "aspect": "4:3",
+   "refs": [
+    "portrait"
+   ],
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, slimy wet grey-green fish flesh with barnacles and warts, rotten dark teal priest robes with tarnished gold trim, pale bioluminescent cyan glow, no black outlines, not cartoon, not cel-shaded, not anime, not 3D render. Game asset for a 2D cut-out puppet. The huge anglerfish head of the priest-king from 图片1 alone in strict side view (profile) facing right: a bulging cloudy white eye, barnacles and warts on the skull, a crest of thin spiny dorsal fin rays along the top of the head, gill folds behind the jaw, the mouth gaping wide open showing long crooked needle teeth and a dark red throat, the lower jaw clearly separate and dropped open at the hinge with a dark gap behind it, fleshy whisker barbels hanging from the chin, the neck cut at the bottom left. NO crown, NO lures, NO glowing bulbs. No smoke, no mist, no fire, no sparks, no particles, no glow haze, no magic effects around the object. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels.",
+   "imageCount": 2,
+   "images": {
+    "dg_head_1": {
+     "outputTask": "f494ea13-028f-4189-a0ba-7c4d71155a9f",
+     "raw": "tools/painted/raw/b_dagon/head_a.webp",
+     "decision": "kept"
+    },
+    "dg_head_2": {
+     "outputTask": "47f1e222-8678-48f8-88f8-f3ee8048cf0b",
+     "raw": null,
+     "decision": "unused (sticker-style white outline around the head; matting would leave a white rim)"
+    }
+   },
+   "decision": "head_a → head + jaw (hinge cut, bulging cloudy eye, needle teeth)"
+  },
+  "dg_torso": {
+   "boss": "b_dagon",
+   "aspect": "3:4",
+   "refs": [
+    "portrait"
+   ],
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, slimy wet grey-green fish flesh with barnacles and warts, rotten dark teal priest robes with tarnished gold trim, pale bioluminescent cyan glow, no black outlines, not cartoon, not cel-shaded, not anime, not 3D render. Game asset for a 2D cut-out puppet. The hunched bloated body of the fish priest-king from 图片1 WITHOUT head and WITHOUT arms, strict side view facing right: a massive barnacle-crusted grey-green fish-flesh torso with a slimy sheen and a sagging pale belly, three red gill slits across the ribs, a rotten dark teal priest robe with tarnished gold embroidered trim hanging open over the back and falling down in tattered folds, a red pleated vestment over the chest, the neck stump at the top right, the robe hem ragged at the bottom. No smoke, no mist, no fire, no sparks, no particles, no glow haze, no magic effects around the object. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels.",
+   "imageCount": 2,
+   "images": {
+    "dg_torso_1": {
+     "outputTask": "81df39b9-3c6b-4b25-bdbc-418d262e3917",
+     "raw": "tools/painted/raw/b_dagon/torso_a.webp",
+     "decision": "kept"
+    },
+    "dg_torso_2": {
+     "outputTask": "e4e1b38b-909e-4459-a095-1e7884ce3d71",
+     "raw": null,
+     "decision": "unused (empty robe without the fish body)"
+    }
+   },
+   "decision": "torso_a → torso (scaled fish body in rotten teal priest robe)"
+  },
+  "dg_crown": {
+   "boss": "b_dagon",
+   "aspect": "16:9",
+   "refs": [
+    "portrait"
+   ],
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, slimy wet grey-green fish flesh with barnacles and warts, rotten dark teal priest robes with tarnished gold trim, pale bioluminescent cyan glow, no black outlines, not cartoon, not cel-shaded, not anime, not 3D render. Game asset for a 2D cut-out puppet. Three separate pieces laid out apart from each other in one row with wide empty space between them, no piece touches another: 1) a small low crown of rusted gold seen from the side with branching red coral growing up from it and small pearls, 2) a single long thin fleshy anglerfish lure stalk curving up and to the right, 3) a single round anglerfish lure bulb, translucent pale cyan flesh glowing from inside. No smoke, no mist, no fire, no sparks, no particles, no glow haze, no magic effects around the object. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels.",
+   "imageCount": 1,
+   "images": {
+    "dg_crown_1": {
+     "outputTask": "cd55cd01-d25c-4d8b-b629-2e4c5e5391b6",
+     "raw": "tools/painted/raw/b_dagon/crown_a.webp",
+     "decision": "kept"
+    }
+   },
+   "decision": "crown_a → crown (coral crown), bulb (bioluminescent lure bulb); the squid-like middle piece of the sheet is unused"
+  },
+  "dg_arm": {
+   "boss": "b_dagon",
+   "aspect": "16:9",
+   "refs": [
+    "portrait"
+   ],
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, slimy wet grey-green fish flesh with barnacles and warts, rotten dark teal priest robes with tarnished gold trim, pale bioluminescent cyan glow, no black outlines, not cartoon, not cel-shaded, not anime, not 3D render. Game asset for a 2D cut-out puppet. Four separate body pieces of the fish priest-king from 图片1 laid out apart from each other with wide empty space between them, no piece touches another: 1) a thick barnacled grey-green upper arm lying horizontal with a ragged dark teal robe sleeve at the shoulder end on the left, 2) a slimy grey-green forearm lying horizontal, 3) a webbed fish hand clenched in a fist holding nothing, with a round hole through the grip, 4) a webbed fish hand spread open with long hooked black talons, pointing right. No smoke, no mist, no fire, no sparks, no particles, no glow haze, no magic effects around the object. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels.",
+   "imageCount": 2,
+   "images": {
+    "dg_arm_1": {
+     "outputTask": "def32119-22c4-4c8a-9bae-a38727ef08a9",
+     "raw": null,
+     "decision": "unused (sticker-style white outlines, a robe instead of an upper arm)"
+    },
+    "dg_arm_2": {
+     "outputTask": "809e0156-8b57-468e-b4f7-3b5d12c6bd0b",
+     "raw": "tools/painted/raw/b_dagon/arm_a.webp",
+     "decision": "kept"
+    }
+   },
+   "decision": "arm_a → armU, armF, fist, claw"
+  },
+  "dg_crozier": {
+   "boss": "b_dagon",
+   "aspect": "21:9",
+   "refs": [
+    "portrait"
+   ],
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, slimy wet grey-green fish flesh with barnacles and warts, rotten dark teal priest robes with tarnished gold trim, pale bioluminescent cyan glow, no black outlines, not cartoon, not cel-shaded, not anime, not 3D render. Game asset for a 2D cut-out puppet. A single tall coral crozier staff of the priest-king from 图片1 lying perfectly horizontal across the whole image width with empty margin at both ends: a long straight staff of dark red coral and wood on the left, ending on the right in a large curled spiral hook (crook) of spiky red coral with small branches and a pale glowing pearl set in the curl. No smoke, no mist, no fire, no sparks, no particles, no glow haze, no magic effects around the object. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels.",
+   "imageCount": 1,
+   "images": {
+    "dg_crozier_1": {
+     "outputTask": "c2d6f9e5-7286-4077-9074-6bc7441de1a0",
+     "raw": "tools/painted/raw/b_dagon/crozier_a.webp",
+     "decision": "kept"
+    }
+   },
+   "decision": "crozier_a → staff, crook (coral crozier + spiral hook with pearl)"
+  },
+  "dg_tentacle": {
+   "boss": "b_dagon",
+   "aspect": "21:9",
+   "refs": [
+    "portrait"
+   ],
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, slimy wet grey-green fish flesh with barnacles and warts, rotten dark teal priest robes with tarnished gold trim, pale bioluminescent cyan glow, no black outlines, not cartoon, not cel-shaded, not anime, not 3D render. Game asset for a 2D cut-out puppet. A single long eel-like tentacle of the priest-king from 图片1 lying perfectly straight and level across the whole image width with empty margin at both ends, strict side view: thick at the root on the left and tapering to a thin curled tip on the right, dark slate grey-green slimy skin on top with barnacles, a row of pale pink round suckers along the underside, clear segment wrinkles. No smoke, no mist, no fire, no sparks, no particles, no glow haze, no magic effects around the object. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels.",
+   "imageCount": 2,
+   "images": {
+    "dg_tentacle_1": {
+     "outputTask": "307a5d58-be74-453b-9954-72f1771e2991",
+     "raw": null,
+     "decision": "unused (a whole fish instead of a tentacle)"
+    },
+    "dg_tentacle_2": {
+     "outputTask": "4723ac30-1679-4080-8c28-dd7739532269",
+     "raw": "tools/painted/raw/b_dagon/tentacle_a.webp",
+     "decision": "kept"
+    }
+   },
+   "decision": "tentacle_a → tent0..tent5 (straight eel tentacle cut into 6 tiles)"
+  },
+  "dg_organ": {
+   "boss": "b_dagon",
+   "aspect": "3:4",
+   "refs": [
+    "portrait"
+   ],
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, slimy wet grey-green fish flesh with barnacles and warts, rotten dark teal priest robes with tarnished gold trim, pale bioluminescent cyan glow, no black outlines, not cartoon, not cel-shaded, not anime, not 3D render. Game asset for a 2D cut-out puppet. A cluster of seven tall corroded church organ pipes of different heights fused together side by side, seen from the side, green verdigris metal with tarnished gold bands, barnacles and fish flesh growing over their roots, dark open sound-mouths near the bottom of each pipe, the tallest pipes in the middle, the bottom edge ragged flesh. No smoke, no mist, no fire, no sparks, no particles, no glow haze, no magic effects around the object. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels.",
+   "imageCount": 1,
+   "images": {
+    "dg_organ_1": {
+     "outputTask": "03adf53e-ab3b-4d08-b997-3314632c747f",
+     "raw": "tools/painted/raw/b_dagon/organ_a.webp",
+     "decision": "kept"
+    }
+   },
+   "decision": "organ_a → organ (corroded pipe organ with barnacles, black water drips)"
+  },
+  "dg_pilgrims": {
+   "boss": "b_dagon",
+   "aspect": "16:9",
+   "refs": [
+    "portrait"
+   ],
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, slimy wet grey-green fish flesh with barnacles and warts, rotten dark teal priest robes with tarnished gold trim, pale bioluminescent cyan glow, no black outlines, not cartoon, not cel-shaded, not anime, not 3D render. Game asset for a 2D cut-out puppet. Three separate drowned pilgrims embedded in round pearly nacre cysts, laid out in one row with wide empty space between them, no piece touches another: each a pale bloated drowned human head and shoulders half sunk into a round shell of iridescent mother-of-pearl, eyes rolled white, mouth open in a silent moan, one reaching out with a pale hand. No smoke, no mist, no fire, no sparks, no particles, no glow haze, no magic effects around the object. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels.",
+   "imageCount": 1,
+   "images": {
+    "dg_pilgrims_1": {
+     "outputTask": "740aa0d5-b170-4aa1-9681-58d5e452c570",
+     "raw": "tools/painted/raw/b_dagon/pilgrims_a.webp",
+     "decision": "kept"
+    }
+   },
+   "decision": "pilgrims_a → pil0..pil2 (drowned pilgrims in nacre cysts)"
+  },
+  "dg_debris": {
+   "boss": "b_dagon",
+   "aspect": "16:9",
+   "refs": [
+    "portrait"
+   ],
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, slimy wet grey-green fish flesh with barnacles and warts, rotten dark teal priest robes with tarnished gold trim, pale bioluminescent cyan glow, no black outlines, not cartoon, not cel-shaded, not anime, not 3D render. Game asset for a 2D cut-out puppet. About ten separate chunks of the fish priest-king from 图片1 torn apart, arranged in a loose grid with wide empty space between pieces, no piece touches another: slimy grey-green flesh chunks with barnacles, torn fin membranes, broken needle teeth, broken pieces of red coral, a cracked pearl, a broken verdigris organ pipe. No smoke, no mist, no fire, no sparks, no particles, no glow haze, no magic effects around the object. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels.",
+   "imageCount": 1,
+   "images": {
+    "dg_debris_1": {
+     "outputTask": "e9571ee3-d700-403c-aedc-fce2da13ba73",
+     "raw": "tools/painted/raw/b_dagon/debris_a.webp",
+     "decision": "kept"
+    }
+   },
+   "decision": "debris_a → deb0..deb10 (flesh/barnacle/organ chunks)"
+  },
+  "mo_tongs2": {
+   "boss": "b_moloch",
+   "aspect": "16:9",
+   "refs": [
+    "portrait"
+   ],
+   "prompt": "(re-run of mo_tongs with a longer straight iron arm and a larger hooked claw jaw; the exact revised prompt text was not saved before the container restart)",
+   "imageCount": 2,
+   "images": {
+    "mo_tongs2_1": {
+     "outputTask": null,
+     "raw": null,
+     "decision": "unused (anvil-like block under the handle)"
+    },
+    "mo_tongs2_2": {
+     "outputTask": null,
+     "raw": "tools/painted/raw/b_moloch/tongs_a.webp",
+     "decision": "kept"
+    }
+   },
+   "decision": "tongs_a → tongs (glowing hooked tong half, mirrored for the pair)"
+  }
+ },
+ "totals": {
+  "images": 48,
+  "credits": 96
+ }
+}

@@ -7,6 +7,7 @@
 // (broken: skitters on the six legs, e.broken) · spit (P.spitWindup 0.4: rears back, the skull's maw fills with fire,
 // then the candle flame is spat) · hurt (flash, squash) · death (the core and the legs clatter apart in a spray of glass).
 import * as K from '../enemy_kit.js';
+import { claimDebris } from './_biped.js';
 import { clamp, lerp } from '../../../core/math.js';
 
 export const spec = {
@@ -45,6 +46,7 @@ export function draw(ctx, e, world, o, rig) {
   if (e.dying > 0 && world) {
     if (!e._pcorpse) {
       e._pcorpse = true;
+      claimDebris(world, e);                 // metal material: Enemy.die spawned vector debris for this body
       K.begin(ctx, rig, 0);
       K.pivotPos('core', 'top', 'hipL', 0, ty, rot, sx, sy, _q); const lx = _q[0], ly = _q[1];
       K.pivotPos('core', 'top', 'hipR', 0, ty, rot, sx, sy, _q); const rx = _q[0], ry = _q[1];
