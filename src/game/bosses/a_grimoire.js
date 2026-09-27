@@ -5,6 +5,7 @@
 import { ABoss, beginDraw, endDraw, C, rg, lg, glow, ink, rim, sheen, taper, eye, shadow, hash, opt, flames, bolt, PI, OUT, RIM, groundWave, erupt } from './a_common.js';
 import { rand, clamp, lerp, TAU, angleTo, rgba, ease } from '../../core/math.js';
 import { audio } from '../../core/audio.js';
+import { paintedDebris } from '../../render/painted/registry.js';
 
 const LEATHER = '#241a2a', LEATHER2 = '#4a3050', ARC = '#b060ff', ARC2 = '#e0b0ff', PAGE = '#efe2c4', IRON = '#8a8494', GOLD = '#c8a048';
 const ELEM = { fire: { c: '#ff7a2a', c2: '#ffd070', name: '화염' }, ice: { c: '#9fe8ff', c2: '#ffffff', name: '냉기' }, thunder: { c: '#bfe0ff', c2: '#ffffff', name: '번개' } };
@@ -242,7 +243,7 @@ export class Grimoire extends ABoss {
   phaseApply(n) { if (n >= 2) this.chainsBroken = true; }
   deathStart() { audio.sfx('magic', { pitch: 0.3 }); }
   deathTick(dt) { this.open = 1.2 + Math.sin(this.deathT * 30) * 0.1; this.flutter += dt * 40; this.vy = 30; if (Math.random() < 0.6) this.fx.emit('shard', this.cx, this.cy, { color: PAGE, speed: 300, grav: 150, size: 6 }); }
-  debrisPiece(i) { return { size: 12, draw: i % 3 ? drawPageBit : drawCornerBit }; }
+  debrisPiece(i) { return paintedDebris(this, i) ?? { size: 12, draw: i % 3 ? drawPageBit : drawCornerBit }; }   // 채색 렌더러가 준비됐으면 채색 낱장·표지 조각
   extraLights(L) { const e = this.eyePos; L.add(e.x, e.y, 90 + this.fury * 40, ARC, 0.9); if (this.runeK > 0.1) L.add(this.cx, this.cy, 180, ELEM[this.elem].c, 0.5 * this.runeK); }
 
   // ───────────────────────── 그리기 ─────────────────────────

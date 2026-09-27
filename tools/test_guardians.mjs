@@ -74,7 +74,12 @@ async function withPage(url, fn, { mobile = MOBILE } = {}) {
     await page.waitForFunction(() => window.__game?.world?.player || window.__game?.top?.name === 'hub', null, { timeout: 45000 });
     await page.waitForFunction(() => !!window.__game?.world?.player, null, { timeout: 45000 });
     await page.evaluate(installHelpers);
-    await page.evaluate(() => { window.__T.hook(); window.__T.p.iframes = 1e9; });
+    // 시작 대사(휴대폰 화면에서는 스틱을 피해 옮긴 시작 위치가 이야기 트리거에 닿기도 한다)를 닫고 시작
+    await page.evaluate(() => {
+      const T = window.__T, g = T.g;
+      for (let i = 0; i < 20 && g.top?.name === 'dialogue'; i++) { g.pop(); T.step(2 / 60); }
+      T.hook(); T.p.iframes = 1e9;
+    });
     const out = await fn(page);
     return { out, errs, page, ctx };
   } catch (e) {
@@ -141,6 +146,7 @@ await run('A', 'teleport', STAGE('s05', '&guards=gd_knight,gd_imp&cmplv=10'), (p
 await run('A', 'auto_attack', STAGE('s05', '&guards=gd_knight,gd_imp&cmplv=20'), (page) => page.evaluate(() => {
   const T = window.__T, w = T.w, p = T.p;
   T.clearFoes();
+  w.state.companions.autoSkill = false;   // 자동 공격만 본다 (터치 모드 기본값은 자동 스킬 켬)
   p.facing = 1;
   const zs = [T.spawn('zombie', 150), T.spawn('zombie', 210), T.spawn('zombie', -170)];
   const hp0 = zs.map((z) => z.hp);
@@ -156,7 +162,7 @@ await run('A', 'auto_attack', STAGE('s05', '&guards=gd_knight,gd_imp&cmplv=20'),
       ['수호신 자동 공격은 경직 0 (world.hitstop 0 유지)', maxHs === 0 && gh.every((h) => h.hs === 0), { maxHs, hs: [...new Set(gh.map((h) => h.hs))] }],
       ['콤보 수는 오르지만 시간(combo.t)은 1초를 넘게 연장하지 않음', comboMax > 0 && maxComboT <= 1.0001, { comboMax, maxComboT }],
       ['태그 companion+guardian', gh.every((h) => h.tags.includes('companion') && h.tags.includes('guardian'))],
-      ['키보드 모드: 자동 스킬 없음', !T.events.some((e) => e.ev === 'guardianSkill')],
+      ['autoSkill=false: 자동 스킬 없음', !T.events.some((e) => e.ev === 'guardianSkill')],
     ],
   };
 }));
@@ -459,6 +465,7 @@ await run('A', 'town', 'index.html?scene=hub&cmp=gd_knight,gd_imp&guards=gd_knig
       ['마을에서 활성', cs.active === true && w.mode === 'town'],
       ['마을에도 수호신이 따라다님', gs.length === 2, gs.length],
       ['G 무시', !T.events.some((e) => e.ev === 'guardianSkill')],
+      ['마을 hudInfo: 수호 버튼 정보 없음', (cs.hudInfo()?.guards?.length ?? 0) === 0, cs.hudInfo()],
       ['표적을 잡지 않음', !tg],
       ['공격하지 않음', z.hp === hp0 && !w.hits.some((h) => h.tags.includes('guardian')), [hp0, z.hp]],
     ],
@@ -546,9 +553,37 @@ function allGuardians(page) {
   });
 }
 
+await run('A', 'boss', STAGE('s03', '&room=boss&guards=gd_knight,gd_imp&cmplv=25'), (page) => page.evaluate(() => {
+  const T = window.__T, g = T.g, w = T.w, p = T.p, cs = w.companions;
+  const ax = w.arenaX ?? (w.map.pxW * 0.3);
+  let started = false;
+  for (let i = 0; i < 200 && !w.bossActive; i++) { p.x = ax + 96; T.step(1 / 60); }
+  started = !!w.bossActive;
+  for (let i = 0; i < 80 && g.top?.name !== 'stage'; i++) { T.press(i % 2 ? 'Enter' : 'KeyZ', 0.05); T.step(0.3); }
+  for (let i = 0; i < 20 && w.cutscene; i++) T.step(0.25);
+  const b = w.boss, hp0 = b?.hp;
+  w.state.companions.autoSkill = false;
+  let maxHs = 0;
+  T.step(5, () => { maxHs = Math.max(maxHs, w.hitstop); if (b) { p.x = Math.max(ax + 40, b.cx - 200 - p.w / 2); p.facing = 1; } }, 10);
+  const bh = w.hits.filter((h) => h.tags.includes('guardian') && h.t === b?.def?.id);
+  const man = cs.tryGuardianSkill(false);
+  T.step(1.5, null, 10);
+  return {
+    info: { boss: b?.def?.id, started, hp0, hp: b?.hp, hits: bh.length, maxHs, man },
+    checks: [
+      ['보스전 시작', started && !!b, { started, boss: b?.def?.id }],
+      ['수호신이 보스를 공격', bh.length >= 2 && b.hp < hp0, { hits: bh.length, hp0, hp: b?.hp }],
+      ['보스전 수호신 자동 공격 경직 0', bh.length > 0 && bh.every((h) => h.hs === 0), bh.map((h) => h.hs)],
+      ['보스전 중 수동 스킬', man === true],
+      ['noMount 없는 보스: mountBlocked false', cs.mountBlocked === false],
+    ],
+  };
+}));
+
 await run('A', 'perf', STAGE('s11', '&guards=gd_knight,gd_imp&cmplv=20'), (page) => page.evaluate(() => {
   const T = window.__T, w = T.w, p = T.p, cs = w.companions;
   T.clearFoes();
+  w.state.companions.autoSkill = false;   // 평상시 (자동 공격) 비용 — 스킬 폭발은 all_guardians 사례에서 오류 없이 도는지만 본다
   const spawn = () => { for (const dx of [160, 240, 320, -180, -260, -340]) { const z = T.spawn('zombie', dx); z.stats.maxHp = z.hp = 1e7; } };
   spawn();
   const time = () => { const r = []; for (let k = 0; k < 5; k++) { const t0 = performance.now(); for (let i = 0; i < 60; i++) w.update(1 / 60); r.push((performance.now() - t0) / 60); } r.sort((a, b) => a - b); return r[1]; };

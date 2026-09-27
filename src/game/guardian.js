@@ -142,14 +142,40 @@ export class GHit extends Entity {
 export class GFx extends GHit {
   constructor(o) { super({ ...o, noHit: true }); this.kind = 'effect'; }
 }
-/** 수호신 투사체: Projectile 의 이동·유도·벽·꼬리를 그대로 쓰고, 타격만 gStrike 로 (소품을 치지 않게) */
+/** 가장 가까운 수호신 표적 (noGuardianHit·무적 제외) */
+function nearestFoe(world, x, y, maxD) {
+  let best = null, bd = maxD;
+  for (const e of world.enemies()) {
+    if (e.invuln || e.noGuardianHit) continue;
+    const d = Math.hypot(e.cx - x, e.cy - y);
+    if (d < bd) { bd = d; best = e; }
+  }
+  return best;
+}
+/**
+ * 수호신 투사체: Projectile 의 이동·벽·꼬리를 그대로 쓰고, 타격은 gStrike 로만 (소품을 치지 않게).
+ * team 은 'guardian' (적 팀 분기의 enemyStrike 는 빈 사각형이라 곧바로 끝난다 — 투사체마다 hittables 를 두 번 훑지 않게).
+ * 공격 객체의 team 은 'player' 그대로. 유도(homing)는 여기서 한다 (기본 유도는 team 이 player 일 때만 적을 쫓는다).
+ */
 export class GProj extends Projectile {
   constructor(o) {
-    super(o);
-    this.hitRect = () => NOHIT;          // 기본 playerStrike 는 끄고
+    const homing = o.behavior === 'homing';
+    super({ ...o, team: 'guardian', behavior: homing ? 'straight' : (o.behavior ?? 'straight') });
+    this.gHoming = homing;
+    this.hitRect = () => NOHIT;
     this.gRect = o.gRect ?? null;
   }
   update(dt, world) {
+    if (this.gHoming && this.t > (this.homingDelay ?? 0.1) && this.life > dt) {
+      const tgt = nearestFoe(world, this.cx, this.cy, 600);
+      if (tgt) {
+        const want = Math.atan2(tgt.cy - this.cy, tgt.cx - this.cx);
+        let cur = Math.atan2(this.vy, this.vx);
+        const d = Math.atan2(Math.sin(want - cur), Math.cos(want - cur)), tn = (this.homingTurn ?? 6) * dt;
+        cur += clamp(d, -tn, tn);
+        this.vx = Math.cos(cur) * this.speed; this.vy = Math.sin(cur) * this.speed;
+      }
+    }
     super.update(dt, world);
     if (this.dead) return;
     const r = this.gRect ? this.gRect(this) : this.rect();

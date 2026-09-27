@@ -426,7 +426,7 @@ export function prepareAwakening(p, world) {
   s = { charId, classId: p.hero.classId, touchT: now, ok: false };
   PREP.set(world, s);
   const a = AWAKEN[charId];
-  if (!a || tierOf(p) < R.minTier) return;
+  if (!a || tierOf(p) < R.minTier || world.mode === 'town') return;   // 각성할 수 없는 곳에서는 받지 않는다 (디코딩 메모리 약 4 MB)
   s.ok = true;
   const decode = (img) => { try { img?.decode?.().catch(() => {}); } catch { /* 디코드 미지원 */ } };
   try { assets.load(a.cutin)?.then?.(decode); assets.load(a.portrait)?.then?.(decode); } catch (e) { console.error(e); }

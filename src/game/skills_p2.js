@@ -175,7 +175,8 @@ function techMirror(p, w) {
         const bottom = p.bottom, cx = p.cx;
         const front = { x: f > 0 ? cx - 10 : cx + 10 - 170, y: bottom - 95, w: 170, h: 90 };
         const back = { x: f > 0 ? cx + 10 - 170 : cx - 10, y: bottom - 95, w: 170, h: 90 };
-        const base = { mv: 2.2, hitstop: 0.08, shake: 5, kb: [340, -240], element: null };
+        // hitId 공유: 두 판정에 모두 걸친 큰 적(보스 등)은 한 번만 맞는다 (앞 판정 우선 — 2.2 배가 두 번 들어가지 않게)
+        const base = { mv: 2.2, hitstop: 0.08, shake: 5, kb: [340, -240], element: null, hitId: nid('mr') };
         const n1 = playerStrike(ww, front, tatk(p, { ...base, dir: f }));
         const n2 = playerStrike(ww, back, tatk(p, { ...base, dir: -f }));
         if (ww.game?.debug) ww.debugRects?.push(front, back);

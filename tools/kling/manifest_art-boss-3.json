@@ -8,26 +8,181 @@
   "b_colossus": "assets/portraits/b_colossus.webp (图片1)"
  },
  "calls": [
-  { "boss": "b_chimera", "name": "torso_a", "aspect": "16:9", "images": 2, "generationId": "AdNEQ_aLheNbQY6hRCBn9MY2IN8g2vDXhJzLG-u8uG_odZEsVht_09Te5tgHt_XGlBZj9Pvm" },
-  { "boss": "b_chimera", "name": "head_a", "aspect": "4:3", "images": 2, "generationId": "AZaASAvWAjOyedxtUrLIVJcAo9m2nc27vCRAy11e7sJ7u_01RqgEqhMW1mgBJDyGL0sshZmw" },
-  { "boss": "b_chimera", "name": "legs_a", "aspect": "16:9", "images": 2, "generationId": "AYxsiZgqIZfb8N_U5B-81BCD9Z19xJ55soYbTBJfh_wXCP-z9in2_2_6_DMsqNhzCvC1nTNH" },
-  { "boss": "b_chimera", "name": "goat_a", "aspect": "3:4", "images": 2, "generationId": "AdzPALK5DdjwTeiLRIMVbMeMXfMuIgPf2FJZlpn93niYcs609LyMeROjirZuKbSyaovhFSCj" },
-  { "boss": "b_chimera", "name": "snake_a", "aspect": "21:9", "images": 1, "generationId": "AdT66UxACeKRPC3isaqHBK9iGMZMeenDLP1yNgRFuQ9iEY_SzNBy9G18_6u_DG3WoeJF-qXI" },
-  { "boss": "b_chimera", "name": "snakehead_a", "aspect": "4:3", "images": 1, "generationId": "ASQ4Rnv1eIu6URX23mvxuHkuyB1kEsxo5mAE7pA0Nn2wwAwTiXo1fmnh0ZekSIzu6rJLkDyY" },
-  { "boss": "b_chimera", "name": "tubes_a", "aspect": "16:9", "images": 1, "generationId": "AeIl_88dvpw3VZPvlq12mAFtE-pGbulAYkpJ_LsFuK5AKyVCpyb90bzMGjV7kdk7Q-lCTcRP" },
-  { "boss": "b_chimera", "name": "tubesb_a", "aspect": "16:9", "images": 1, "generationId": "AWmiKHNgJjYgWzgtfI8NN19GZs4PMi3FjZi_jDlsflUSA_WTi1UUpRrt_li0gnzw8m7lvzzb" },
-  { "boss": "b_chimera", "name": "debris_a", "aspect": "16:9", "images": 1, "generationId": "AX1xVMj8I6YpBrICq4OCrc91Yjv0KMzgUolzJpjkEVHO_UHEhd-fzHOsGDPyc1fXN3C0obia" },
-  { "boss": "b_leviathan", "name": "head_a", "aspect": "4:3", "images": 2, "generationId": "AT9jvJqM5PsFiNLW8DvYHnqGw7zyKCushIf38Yw4mxAVnd40IF1X65ERicYbsk0-jAfgy5lu" },
-  { "boss": "b_leviathan", "name": "body_a", "aspect": "21:9", "images": 2, "generationId": "AfYBmCv1wrxfIlvtm_d7r-sqJnVBsS-E_QdGzSJrIr85Q34IaEfEIY4UpTNv84JGHMyA2MHa" },
-  { "boss": "b_leviathan", "name": "fins_a", "aspect": "16:9", "images": 1, "generationId": "AVomPowIJIyD9ydw3oCpo5bcTwQ0-X9za7M5utyUSJ9SPsH8YTr0wQ1T3-YV0SFaWCkgRR-9" },
-  { "boss": "b_leviathan", "name": "fluke_a", "aspect": "16:9", "images": 1, "generationId": "AU2mICAjNliFfJep2zAs7sFav56o1_hs0yLR1sNf33ITQEcxu6xyysL3gZeUM5AEljkWlQPT" },
-  { "boss": "b_leviathan", "name": "debris_a", "aspect": "16:9", "images": 1, "generationId": "AckqNbSZfpZ4dzKbRFvxS--cckYWpJ1auMsL0klugyJQXCEgyu06T4PmeEXbQ0qq92IWpFde" },
-  { "boss": "b_colossus", "name": "torso_a", "aspect": "1:1", "images": 2, "generationId": "AX16m23Hw1JPVlqReec2fNDoVTpMhe32KrF9tRDKtydvsV6eYfZVwvR22lk7V3V0Y8VEh1WA" },
-  { "boss": "b_colossus", "name": "head_a", "aspect": "1:1", "images": 2, "generationId": "AY_xuzxWe-gTZG9bgsXPepPuO0xUOSlkux6q8ZoElYt6EDoYen6qijR1DsQyMichvS8YuF4f" },
-  { "boss": "b_colossus", "name": "arm_a", "aspect": "16:9", "images": 2, "generationId": "ARvDY7LhITCKKTEw3k4XH_Fl4Jhhrp2HWWXqlNs2VOGyz7EKBJwBliGQYCoGeJ8bpVErYXJ5" },
-  { "boss": "b_colossus", "name": "leg_a", "aspect": "16:9", "images": 2, "generationId": "AV2I1Lv5nXlGNcUJKzNfI1CykBXZsdDmXzMc86FB2nyWmFUGQl61NNJk8mAQMo5xPwtfkvZ3" },
-  { "boss": "b_colossus", "name": "clock_a", "aspect": "16:9", "images": 1, "generationId": "AXRQu90u1wyZrl86ZH9l5si8F5S1-jBJjpHtC3JZcJg-ELLSntPiXQnDjbs1aMwG2lQfQ1yb" },
-  { "boss": "b_colossus", "name": "gears_a", "aspect": "16:9", "images": 1, "generationId": "ARAGqoS6XJX-oXlMM-CmBABeRxHnttCoIPSI1toG6LmbIv0Ag9kKt73r3sq6dH_tI8R7dnVY" },
-  { "boss": "b_colossus", "name": "debris_a", "aspect": "16:9", "images": 1, "generationId": "Aden7Yd4RtXEhNHbljBpd0TMg9rCn26hP1SMLd-FYKPtzRH6n0VyNi9WXffdmTz4kxOYq6s0" }
- ]
+  {
+   "boss": "b_chimera",
+   "name": "torso_a",
+   "aspect": "16:9",
+   "images": 2,
+   "generationId": "AdNEQ_aLheNbQY6hRCBn9MY2IN8g2vDXhJzLG-u8uG_odZEsVht_09Te5tgHt_XGlBZj9Pvm",
+   "decision": "kept 1 → raw/b_chimera/body_a.webp (whole lion painted; used as torso + lower legs)"
+  },
+  {
+   "boss": "b_chimera",
+   "name": "head_a",
+   "aspect": "4:3",
+   "images": 2,
+   "generationId": "AZaASAvWAjOyedxtUrLIVJcAo9m2nc27vCRAy11e7sJ7u_01RqgEqhMW1mgBJDyGL0sshZmw",
+   "decision": "kept 1 → head_a.webp"
+  },
+  {
+   "boss": "b_chimera",
+   "name": "legs_a",
+   "aspect": "16:9",
+   "images": 2,
+   "generationId": "AYxsiZgqIZfb8N_U5B-81BCD9Z19xJ55soYbTBJfh_wXCP-z9in2_2_6_DMsqNhzCvC1nTNH",
+   "decision": "rejected both (front views, not side view); legs cut from body_a"
+  },
+  {
+   "boss": "b_chimera",
+   "name": "goat_a",
+   "aspect": "3:4",
+   "images": 2,
+   "generationId": "AdzPALK5DdjwTeiLRIMVbMeMXfMuIgPf2FJZlpn93niYcs609LyMeROjirZuKbSyaovhFSCj",
+   "decision": "kept 1 → goat_a.webp"
+  },
+  {
+   "boss": "b_chimera",
+   "name": "snake_a",
+   "aspect": "21:9",
+   "images": 1,
+   "generationId": "AdT66UxACeKRPC3isaqHBK9iGMZMeenDLP1yNgRFuQ9iEY_SzNBy9G18_6u_DG3WoeJF-qXI",
+   "decision": "kept → snake_a.webp"
+  },
+  {
+   "boss": "b_chimera",
+   "name": "snakehead_a",
+   "aspect": "4:3",
+   "images": 1,
+   "generationId": "ASQ4Rnv1eIu6URX23mvxuHkuyB1kEsxo5mAE7pA0Nn2wwAwTiXo1fmnh0ZekSIzu6rJLkDyY",
+   "decision": "kept → snakehead_a.webp"
+  },
+  {
+   "boss": "b_chimera",
+   "name": "tubes_a",
+   "aspect": "16:9",
+   "images": 1,
+   "generationId": "AeIl_88dvpw3VZPvlq12mAFtE-pGbulAYkpJ_LsFuK5AKyVCpyb90bzMGjV7kdk7Q-lCTcRP",
+   "decision": "kept → tubes_a.webp"
+  },
+  {
+   "boss": "b_chimera",
+   "name": "tubesb_a",
+   "aspect": "16:9",
+   "images": 1,
+   "generationId": "AWmiKHNgJjYgWzgtfI8NN19GZs4PMi3FjZi_jDlsflUSA_WTi1UUpRrt_li0gnzw8m7lvzzb",
+   "decision": "kept → tubesb_a.webp"
+  },
+  {
+   "boss": "b_chimera",
+   "name": "debris_a",
+   "aspect": "16:9",
+   "images": 1,
+   "generationId": "AX1xVMj8I6YpBrICq4OCrc91Yjv0KMzgUolzJpjkEVHO_UHEhd-fzHOsGDPyc1fXN3C0obia",
+   "decision": "kept → debris_a.webp"
+  },
+  {
+   "boss": "b_leviathan",
+   "name": "head_a",
+   "aspect": "4:3",
+   "images": 2,
+   "generationId": "AT9jvJqM5PsFiNLW8DvYHnqGw7zyKCushIf38Yw4mxAVnd40IF1X65ERicYbsk0-jAfgy5lu",
+   "decision": "kept 1 (mirrored) → head_a.webp"
+  },
+  {
+   "boss": "b_leviathan",
+   "name": "body_a",
+   "aspect": "21:9",
+   "images": 2,
+   "generationId": "AfYBmCv1wrxfIlvtm_d7r-sqJnVBsS-E_QdGzSJrIr85Q34IaEfEIY4UpTNv84JGHMyA2MHa",
+   "decision": "both kept as raw (mirrored): body_b.webp used (strips), body_a.webp unused (weaker)"
+  },
+  {
+   "boss": "b_leviathan",
+   "name": "fins_a",
+   "aspect": "16:9",
+   "images": 1,
+   "generationId": "AVomPowIJIyD9ydw3oCpo5bcTwQ0-X9za7M5utyUSJ9SPsH8YTr0wQ1T3-YV0SFaWCkgRR-9",
+   "decision": "kept → fins_a.webp (4 of 8 fins used)"
+  },
+  {
+   "boss": "b_leviathan",
+   "name": "fluke_a",
+   "aspect": "16:9",
+   "images": 1,
+   "generationId": "AU2mICAjNliFfJep2zAs7sFav56o1_hs0yLR1sNf33ITQEcxu6xyysL3gZeUM5AEljkWlQPT",
+   "decision": "kept → fluke_a.webp (fluke used; right half is an unrequested head)"
+  },
+  {
+   "boss": "b_leviathan",
+   "name": "debris_a",
+   "aspect": "16:9",
+   "images": 1,
+   "generationId": "AckqNbSZfpZ4dzKbRFvxS--cckYWpJ1auMsL0klugyJQXCEgyu06T4PmeEXbQ0qq92IWpFde",
+   "decision": "kept → debris_a.webp (scales, bone, fin membrane = pectoral fin)"
+  },
+  {
+   "boss": "b_colossus",
+   "name": "torso_a",
+   "aspect": "1:1",
+   "images": 2,
+   "generationId": "AX16m23Hw1JPVlqReec2fNDoVTpMhe32KrF9tRDKtydvsV6eYfZVwvR22lk7V3V0Y8VEh1WA",
+   "decision": "kept 1 → torso_a.webp (torso + gearbox pelvis)"
+  },
+  {
+   "boss": "b_colossus",
+   "name": "head_a",
+   "aspect": "1:1",
+   "images": 2,
+   "generationId": "AY_xuzxWe-gTZG9bgsXPepPuO0xUOSlkux6q8ZoElYt6EDoYen6qijR1DsQyMichvS8YuF4f",
+   "decision": "kept 1 → head_a.webp"
+  },
+  {
+   "boss": "b_colossus",
+   "name": "arm_a",
+   "aspect": "16:9",
+   "images": 2,
+   "generationId": "ARvDY7LhITCKKTEw3k4XH_Fl4Jhhrp2HWWXqlNs2VOGyz7EKBJwBliGQYCoGeJ8bpVErYXJ5",
+   "decision": "kept both as raw: arm_a.webp used, arm_b.webp unused"
+  },
+  {
+   "boss": "b_colossus",
+   "name": "leg_a",
+   "aspect": "16:9",
+   "images": 2,
+   "generationId": "AV2I1Lv5nXlGNcUJKzNfI1CykBXZsdDmXzMc86FB2nyWmFUGQl61NNJk8mAQMo5xPwtfkvZ3",
+   "decision": "kept both as raw: leg_a.webp used (thigh + spiked boot as shin), leg_b.webp unused"
+  },
+  {
+   "boss": "b_colossus",
+   "name": "clock_a",
+   "aspect": "16:9",
+   "images": 1,
+   "generationId": "AXRQu90u1wyZrl86ZH9l5si8F5S1-jBJjpHtC3JZcJg-ELLSntPiXQnDjbs1aMwG2lQfQ1yb",
+   "decision": "kept → clock_a.webp (core cage) + derived clockface_a.webp (hands inpainted by raw/b_colossus/make_clockface.py)"
+  },
+  {
+   "boss": "b_colossus",
+   "name": "gears_a",
+   "aspect": "16:9",
+   "images": 1,
+   "generationId": "ARAGqoS6XJX-oXlMM-CmBABeRxHnttCoIPSI1toG6LmbIv0Ag9kKt73r3sq6dH_tI8R7dnVY",
+   "decision": "kept → gears_a.webp (pendulum rods + blade)"
+  },
+  {
+   "boss": "b_colossus",
+   "name": "debris_a",
+   "aspect": "16:9",
+   "images": 1,
+   "generationId": "Aden7Yd4RtXEhNHbljBpd0TMg9rCn26hP1SMLd-FYKPtzRH6n0VyNi9WXffdmTz4kxOYq6s0",
+   "decision": "kept → debris_a.webp (11 pieces, one small gear = knee gear)"
+  }
+ ],
+ "images": {
+  "b_chimera": 13,
+  "b_leviathan": 7,
+  "b_colossus": 11,
+  "total": 31,
+  "budget": "≈25 per boss (75)"
+ },
+ "note": "Every call used the boss portrait as 图片1 (uploaded PNG). Watermarks removed by tools/painted/matte.py (region per image in configs/<id>.json). Rejected results are not kept as raw files."
 }

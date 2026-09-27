@@ -60,7 +60,7 @@ export const ROOMS = {
       '#         aaaaa   C                #',
       '##                                 #',
       '#K                                 #',
-      '##=====         aaaaa              #',
+      '##==========    aaaaa              #',
       '#                            C     #',
       '#                                  #',
       '#           2          aaaaa       #',

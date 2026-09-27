@@ -19,7 +19,7 @@
 //    tryGuardianSkill(auto, g?)     → bool   첫 번째 준비된 수호신의 스킬 (없으면 '쿨타임')
 //    castSkill(g, {auto, resonance}) 스킬 시전 (공명이면 60% 위력, 재사용 대기 소모 없음)
 //    hudInfo() → { mount:{id,name,color,state,hp,maxHp,cd,cdMax,riding,stamina,staminaMax}|null,
-//                  guards:[{id,slot,name,color,cd,cdMax,ready,auto}], auto, town } | null      (HUD 위젯 · 터치 패드 탑승/수호 버튼 표시)
+//                  guards:[{id,slot,name,color,cd,cdMax,ready,auto}] (마을에서는 []), auto, town } | null   (HUD 위젯 · 터치 패드 탑승/수호 버튼 표시)
 //    hudRects                       companion_hud 가 그린 탭 영역: [{x,y,w,h, act:'mount'|'guard', slot?}] (객체 {mount:rect, guard0:rect} 도 받음)
 //    callouts                       스킬 카드 대기열 [{id, name, skill, line, color, portrait, t, auto, resonance}] (최대 2, HUD 가 읽고 t 를 쓴다)
 //    debug: { summon(), dismount(), knock(), skill(i), setLevel(id, lv), resonance() }   (window.__game.world.companions.debug)
@@ -230,7 +230,7 @@ export class CompanionSystem {
     if (this.callouts.length && this.callouts[0].t > 4) this.callouts.shift();
     // 입력 ('guard' 는 buffered 로 읽는다: 히트스톱 동안 엣지를 놓치지 않게 — MASTER_PLAN R16)
     if (w.mode !== 'town') {
-      if (input.buffered('guard', 0.25)) {
+      if (input.buffered('guard', 0.25 + Math.min(0.3, w.frozenRecent ?? 0))) {   // 히트스톱으로 멈춘 시간만큼 창을 늘린다 (player.js 와 같은 규칙)
         input.consume('guard');
         if (!p.dead && !w.cutscene && !w.inputLock) this.tryGuardianSkill(false);
       }
@@ -521,7 +521,8 @@ export class CompanionSystem {
         blocked: this.mountBlocked,
       };
     }
-    const guards = this.guards.map((g) => ({
+    // 마을에서는 수호신 스킬을 쓸 수 없으므로 수호 버튼·위젯 정보를 내지 않는다 (탈것은 마을에서도 탈 수 있다)
+    const guards = w.mode === 'town' ? [] : this.guards.map((g) => ({
       id: g.id, slot: g.slot, name: g.def?.name ?? '', color: g.def?.color ?? '#fff',
       cd: Math.max(0, g.skillCd), cdMax: g.skillCdMax, ready: g.skillCd <= 0, auto,
     }));

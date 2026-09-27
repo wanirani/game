@@ -4,6 +4,7 @@
 import { ABoss, beginDraw, endDraw, C, rg, lg, glow, ink, rim, sheen, taper, eye, shadow, hash, opt, flames, PI, OUT, RIM, WARM, groundWave, erupt, dropHazard } from './a_common.js';
 import { rand, clamp, lerp, TAU, angleTo, rgba, ease } from '../../core/math.js';
 import { audio } from '../../core/audio.js';
+import { paintedDebris } from '../../render/painted/registry.js';
 
 const RED = '#761019', RED2 = '#b8262e', DARKR = '#1e0308', GOLD = '#c89a48', LAVA = '#ff7a2a', DFIRE = '#ff3a1a';
 const _Q = new Float32Array(16);
@@ -380,7 +381,7 @@ export class CrimsonArmor extends ABoss {
     if (this.split) for (const k in this.pc) { const pc = this.pc[k]; pc.vy += 900 * dt; pc.y = Math.min(this.floorY - 16, pc.y + pc.vy * dt); pc.x += pc.vx * dt; pc.a += dt * 3; }
     this.visor = 2.5;
   }
-  debrisPiece(i) { return { size: 12, draw: i % 3 === 0 ? drawGoldShard : drawRedShard }; }
+  debrisPiece(i) { return paintedDebris(this, i) ?? { size: 12, draw: i % 3 === 0 ? drawGoldShard : drawRedShard }; }   // 채색 렌더러가 준비됐으면 채색 갑옷 조각
   deathPoint() { return { x: this.cx + rand(-this.w * 0.6, this.w * 0.6), y: this.bottom - rand(20, this.split ? this.h : 200) }; }
   extraLights(L) {
     const P = this.pose();

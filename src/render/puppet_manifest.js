@@ -207,7 +207,7 @@ export const PUPPETS = {
    ]
   },
   "sera_elementalist": {
-   "h": "3076057c2568",
+   "h": "d9578b388b57",
    "turn": false,
    "lv": [
     "hi",
@@ -243,8 +243,8 @@ export const PUPPETS = {
    ]
   },
   "sera_saint": {
-   "h": "f5aac85a18b6",
-   "turn": false,
+   "h": "d1745f1fd741",
+   "turn": true,
    "lv": [
     "hi",
     "lo",
@@ -317,8 +317,8 @@ export const PUPPETS = {
    ]
   },
   "victor_phantom": {
-   "h": "fe20aac12cb0",
-   "turn": false,
+   "h": "87893266c054",
+   "turn": true,
    "lv": [
     "hi",
     "lo",

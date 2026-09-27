@@ -74,3 +74,14 @@ export const BENCH = `(i, b, p, A) => {
   if (b.state === 'idle') b.rest = 99;
   p.x = A.x0 + A.w * 0.3; p.iframes = 1e9;
 }`;
+
+/** 결정성 A/B (tools/painted/rng.mjs): 굽기 대기 동안 실제 루프가 남긴 투사체·구역·입자를 지우고 같은 조건에서 시작 */
+export const RNG_SCRIPT = `(i, b, p, w) => {
+  if (i === 0) {
+    for (const e of w.entities) if (e !== b && e !== p && e.kind !== 'painted' && (e.owner === b || e.boss === b || e.owner?.owner === b)) e.dead = true;
+    if (w.fx?.list) w.fx.list.length = 0;
+    b.clearJobs?.(); b.st = 0; b.pst = 0; b.rest = undefined; b.lastAtk = null; b.flashT = 0;
+  }
+  if (i === 705) b.takeHit(b.stats.maxHp * 0.45, { stats: p.stats }, w, {});
+  if (i === 1095) b.takeHit(b.stats.maxHp * 0.3, { stats: p.stats }, w, {});
+}`;

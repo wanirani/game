@@ -5,7 +5,756 @@
  "raw": "tools/painted/raw/b_colossus",
  "td": 2.0,
  "matte": {
-  "default": {"key": 9, "soft": 22, "hard": 6}
+  "default": {
+   "key": 9,
+   "soft": 22,
+   "hard": 6
+  }
  },
- "parts": []
+ "cuts": {
+  "torso_a": {
+   "masks": {
+    "torso": [
+     {
+      "op": "poly",
+      "feather": 2.0,
+      "pts": [
+       [
+        110,
+        50
+       ],
+       [
+        1940,
+        50
+       ],
+       [
+        1940,
+        860
+       ],
+       [
+        1590,
+        1000
+       ],
+       [
+        1500,
+        1250
+       ],
+       [
+        1420,
+        1500
+       ],
+       [
+        1260,
+        1575
+       ],
+       [
+        800,
+        1575
+       ],
+       [
+        640,
+        1500
+       ],
+       [
+        560,
+        1250
+       ],
+       [
+        470,
+        1000
+       ],
+       [
+        110,
+        860
+       ]
+      ]
+     }
+    ],
+    "pelvis": [
+     {
+      "op": "poly",
+      "feather": 2.0,
+      "pts": [
+       [
+        500,
+        1430
+       ],
+       [
+        1560,
+        1430
+       ],
+       [
+        1585,
+        1930
+       ],
+       [
+        475,
+        1930
+       ]
+      ]
+     }
+    ]
+   }
+  },
+  "head_a": {
+   "masks": {
+    "head": [
+     {
+      "op": "poly",
+      "feather": 2.5,
+      "pts": [
+       [
+        140,
+        30
+       ],
+       [
+        1910,
+        30
+       ],
+       [
+        1910,
+        1490
+       ],
+       [
+        1540,
+        1510
+       ],
+       [
+        1320,
+        1560
+       ],
+       [
+        720,
+        1560
+       ],
+       [
+        520,
+        1510
+       ],
+       [
+        140,
+        1490
+       ]
+      ]
+     }
+    ]
+   }
+  },
+  "clockface_a": {
+   "masks": {
+    "face": [
+     {
+      "op": "poly",
+      "feather": 1.5,
+      "pts": [
+       [
+        1113,
+        779
+       ],
+       [
+        1100,
+        889
+       ],
+       [
+        1057,
+        989
+       ],
+       [
+        987,
+        1072
+       ],
+       [
+        897,
+        1127
+       ],
+       [
+        796,
+        1152
+       ],
+       [
+        693,
+        1159
+       ],
+       [
+        590,
+        1152
+       ],
+       [
+        489,
+        1127
+       ],
+       [
+        399,
+        1072
+       ],
+       [
+        329,
+        989
+       ],
+       [
+        286,
+        889
+       ],
+       [
+        273,
+        779
+       ],
+       [
+        286,
+        669
+       ],
+       [
+        329,
+        569
+       ],
+       [
+        399,
+        486
+       ],
+       [
+        489,
+        431
+       ],
+       [
+        590,
+        406
+       ],
+       [
+        693,
+        399
+       ],
+       [
+        796,
+        406
+       ],
+       [
+        897,
+        431
+       ],
+       [
+        987,
+        486
+       ],
+       [
+        1057,
+        569
+       ],
+       [
+        1100,
+        669
+       ]
+      ]
+     }
+    ]
+   }
+  }
+ },
+ "parts": [
+  {
+   "name": "torso",
+   "src": "torso_a",
+   "mask": "torso",
+   "lps": 0.16,
+   "box": [
+    100,
+    40,
+    1950,
+    1585
+   ],
+   "pivots": {
+    "clock": [
+     1030,
+     790
+    ],
+    "neck": [
+     1015,
+     330
+    ],
+    "shL": [
+     430,
+     770
+    ],
+    "shR": [
+     1630,
+     770
+    ],
+    "chL": [
+     625,
+     140
+    ],
+    "chR": [
+     1450,
+     140
+    ],
+    "furn": [
+     1035,
+     1360
+    ],
+    "handL": [
+     690,
+     1030
+    ],
+    "handR": [
+     1370,
+     1030
+    ]
+   }
+  },
+  {
+   "name": "pelvis",
+   "src": "torso_a",
+   "mask": "pelvis",
+   "lps": 0.16,
+   "box": [
+    470,
+    1420,
+    1590,
+    1940
+   ],
+   "pivots": {
+    "c": [
+     1030,
+     1665
+    ],
+    "hipL": [
+     640,
+     1665
+    ],
+    "hipR": [
+     1405,
+     1665
+    ]
+   }
+  },
+  {
+   "name": "head",
+   "src": "head_a",
+   "mask": "head",
+   "lps": 0.1,
+   "box": [
+    130,
+    20,
+    1920,
+    1570
+   ],
+   "pivots": {
+    "eyes": [
+     1017,
+     920
+    ],
+    "eyeL": [
+     835,
+     920
+    ],
+    "eyeR": [
+     1200,
+     920
+    ],
+    "top": [
+     1000,
+     80
+    ],
+    "mouth": [
+     1015,
+     1350
+    ]
+   }
+  },
+  {
+   "name": "uarm",
+   "src": "arm_a",
+   "lps": 0.113,
+   "box": [
+    680,
+    240,
+    1000,
+    1290
+   ],
+   "pivots": {
+    "top": [
+     840,
+     290
+    ],
+    "bot": [
+     840,
+     1240
+    ]
+   }
+  },
+  {
+   "name": "farm",
+   "src": "arm_a",
+   "lps": 0.12,
+   "box": [
+    1740,
+    320,
+    2040,
+    1270
+   ],
+   "pivots": {
+    "top": [
+     1890,
+     360
+    ],
+    "bot": [
+     1890,
+     1230
+    ]
+   }
+  },
+  {
+   "name": "egear",
+   "src": "arm_a",
+   "lps": 0.075,
+   "box": [
+    1080,
+    420,
+    1690,
+    1190
+   ],
+   "pivots": {
+    "c": [
+     1385,
+     800
+    ]
+   }
+  },
+  {
+   "name": "fist",
+   "src": "arm_a",
+   "lps": 0.1,
+   "box": [
+    2150,
+    130,
+    2660,
+    1350
+   ],
+   "pivots": {
+    "wrist": [
+     2380,
+     300
+    ],
+    "palm": [
+     2390,
+     820
+    ],
+    "tip": [
+     2420,
+     1320
+    ]
+   }
+  },
+  {
+   "name": "thigh",
+   "src": "leg_a",
+   "lps": 0.1,
+   "box": [
+    180,
+    190,
+    610,
+    1350
+   ],
+   "pivots": {
+    "top": [
+     395,
+     225
+    ],
+    "bot": [
+     395,
+     1330
+    ]
+   }
+  },
+  {
+   "name": "shin",
+   "src": "leg_a",
+   "lps": 0.1,
+   "box": [
+    1940,
+    240,
+    2630,
+    1370
+   ],
+   "pivots": {
+    "top": [
+     2285,
+     300
+    ],
+    "bot": [
+     2285,
+     1350
+    ]
+   }
+  },
+  {
+   "name": "kgear",
+   "src": "debris_a",
+   "lps": 0.12,
+   "box": [
+    1390,
+    160,
+    1750,
+    520
+   ],
+   "pivots": {
+    "c": [
+     1570,
+     340
+    ]
+   }
+  },
+  {
+   "name": "rod1",
+   "src": "gears_a",
+   "lps": 0.08,
+   "box": [
+    1010,
+    190,
+    1280,
+    1380
+   ],
+   "pivots": {
+    "top": [
+     1140,
+     240
+    ],
+    "bot": [
+     1140,
+     1360
+    ]
+   }
+  },
+  {
+   "name": "rod2",
+   "src": "gears_a",
+   "lps": 0.08,
+   "box": [
+    1480,
+    190,
+    1800,
+    1380
+   ],
+   "pivots": {
+    "top": [
+     1580,
+     230
+    ],
+    "bot": [
+     1580,
+     1350
+    ]
+   }
+  },
+  {
+   "name": "blade",
+   "src": "gears_a",
+   "lps": 0.1,
+   "box": [
+    1830,
+    120,
+    2650,
+    1440
+   ],
+   "pivots": {
+    "hub": [
+     2090,
+     770
+    ],
+    "tipA": [
+     1880,
+     170
+    ],
+    "tipB": [
+     1900,
+     1380
+    ],
+    "edge": [
+     2600,
+     780
+    ]
+   }
+  },
+  {
+   "name": "clock",
+   "src": "clockface_a",
+   "mask": "face",
+   "lps": 0.155,
+   "box": [
+    260,
+    385,
+    1125,
+    1170
+   ],
+   "pivots": {
+    "c": [
+     693,
+     779
+    ],
+    "hinge": [
+     283,
+     779
+    ]
+   }
+  },
+  {
+   "name": "core",
+   "src": "clock_a",
+   "lps": 0.1,
+   "box": [
+    1470,
+    90,
+    2420,
+    1400
+   ],
+   "pivots": {
+    "c": [
+     1940,
+     790
+    ],
+    "heart": [
+     1935,
+     900
+    ]
+   }
+  }
+ ],
+ "debris": [
+  {
+   "prefix": "deb",
+   "src": "debris_a",
+   "lps": 0.06,
+   "boxes": [
+    [
+     480,
+     380,
+     820,
+     700
+    ],
+    [
+     860,
+     80,
+     1060,
+     800
+    ],
+    [
+     1110,
+     120,
+     1300,
+     770
+    ],
+    [
+     1380,
+     580,
+     1700,
+     770
+    ],
+    [
+     1740,
+     90,
+     2000,
+     760
+    ],
+    [
+     2060,
+     100,
+     2620,
+     840
+    ],
+    [
+     840,
+     880,
+     1020,
+     1400
+    ],
+    [
+     1120,
+     880,
+     1300,
+     1400
+    ],
+    [
+     1480,
+     800,
+     1800,
+     1100
+    ],
+    [
+     1450,
+     1110,
+     1780,
+     1420
+    ],
+    [
+     100,
+     90,
+     760,
+     1420
+    ]
+   ]
+  }
+ ],
+ "kling": {
+  "model": "kling-image-v3_0_omni (image_to_image, img_resolution 2k)",
+  "prompts": "tools/painted/prompts/art-boss-3.mjs → PROMPTS.b_colossus",
+  "manifest": "tools/kling/manifest_art-boss-3.json",
+  "refs": {
+   "image_1": "assets/portraits/b_colossus.webp (style, palette, anatomy)"
+  },
+  "images": {
+   "torso_a": {
+    "call": "torso_a",
+    "aspect": "1:1",
+    "imageCount": 2,
+    "decision": "kept 1 — riveted brass shell, spiked pauldrons, chimneys, skeletal hands in the vents, furnace grate; split into torso + gearbox pelvis (hip hubs)"
+   },
+   "head_a": {
+    "call": "head_a",
+    "aspect": "1:1",
+    "imageCount": 2,
+    "decision": "kept 1 — spiked iron helm, bleeding skull, red eyes; lower collar ring cut off"
+   },
+   "arm_a": {
+    "call": "arm_a",
+    "aspect": "16:9",
+    "imageCount": 2,
+    "decision": "kept — upper arm cylinder, elbow gear, forearm piston, clawed gauntlet (the pauldron is already on the torso)"
+   },
+   "arm_b": {
+    "call": "arm_a",
+    "aspect": "16:9",
+    "imageCount": 2,
+    "decision": "second result, unused (raw kept for variety later)"
+   },
+   "leg_a": {
+    "call": "leg_a",
+    "aspect": "16:9",
+    "imageCount": 2,
+    "decision": "kept — brass thigh cylinder and the spiked armoured boot (used as the whole shin: it is the shin hurtbox)"
+   },
+   "leg_b": {
+    "call": "leg_a",
+    "aspect": "16:9",
+    "imageCount": 2,
+    "decision": "second result, unused"
+   },
+   "clock_a": {
+    "call": "clock_a",
+    "aspect": "16:9",
+    "imageCount": 1,
+    "decision": "kept — clock face (painted hands removed → clockface_a.webp by make_clockface.py, the runtime draws the hands from clockH/clockM) and the caged furnace heart (exposed core)"
+   },
+   "gears_a": {
+    "call": "gears_a",
+    "aspect": "16:9",
+    "imageCount": 1,
+    "decision": "kept — two pendulum rods and the bloody crescent pendulum blade (the overlapping gear cluster is not cut: its gears overlap each other)"
+   },
+   "debris_a": {
+    "call": "debris_a",
+    "aspect": "16:9",
+    "imageCount": 1,
+    "decision": "kept — 11 pieces (gears, bolts, springs, pipes, skull), one small gear also used as the knee gear"
+   }
+  }
+ }
 }

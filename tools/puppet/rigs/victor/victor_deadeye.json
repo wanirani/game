@@ -155,6 +155,7 @@
   "armorBase": "#3a3a44"
  },
  "turn": {
+  "_replace": true,
   "sheet5": "victor/victor_deadeye_turn5",
   "views5": [
    "y90",

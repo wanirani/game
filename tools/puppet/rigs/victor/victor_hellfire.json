@@ -151,6 +151,7 @@
   "armorBase": "#2a0a04"
  },
  "turn": {
+  "_replace": true,
   "sheet5": "victor/victor_hellfire_turn5",
   "views5": [
    "y90",

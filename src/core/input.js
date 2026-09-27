@@ -15,6 +15,7 @@
 //   input.sprintHint                              터치 스틱을 바깥 고리(1.15R) 너머로 밀었음
 //   input.stickL / stickR {x, y, mag}             데드존 적용 후 패드 스틱 (stickR: 메뉴 회전·스크롤)
 //   input.command(seq, facingAt, within) → {ok:true, facing} | false
+//   input.queueCommand(cmd | techId)              터치 기술 원형 메뉴(platform §5.5 P2): 고른 기술을 입력한 커맨드로 친다 (0.5초 안에 소비)
 //       seq 예: ['d','df','f','btn:attack'] (f=전방, b=후방). facingAt: (t) => 그 시각의 방향 (함수; valueOf() = 지금 방향)
 //       또는 예전처럼 숫자 facing. f/b 는 "첫 방향을 넣던 순간" 의 방향 기준 (MASTER_PLAN §1.21). 터치 모드는 창 0.8초 이상.
 //   input.pointer {x, y, down, tapped, justDown, active, rawX, rawY, type}   논리 좌표 (setPointerTransform 적용 후)
@@ -146,6 +147,7 @@ class Input {
     this._touchVec = { x: 0, y: 0, mag: 0, raw: 0 }; this._touchSt = { eng: false, sec: -1 }; this._touchSprint = false;
     this._touchTaps = new Map();
     this._bufWin = {};
+    this._queuedCmd = null;
     this._inited = false;
     this.touch = this._makeTouchApi();
     for (const a of ACTIONS) { this.state[a] = false; this.prev[a] = false; this.pressTime[a] = -99; this.releaseTime[a] = -99; }
@@ -825,13 +827,33 @@ class Input {
   flush() {
     for (const a of ACTIONS) { this.consumed[a] = true; this.prev[a] = this.state[a]; }
     this.pointer.tapped = false; this.pointer.justDown = false; this._tapLatch = false;
-    this.history.length = 0;
+    this.history.length = 0; this._queuedCmd = null;
     this.flushT = this.time; this.flushN++;
   }
   anyPressed() { return ACTIONS.some((a) => !!this.state[a] && !this.prev[a]) || this.pointer.tapped; }
 
   /** 진동 (haptics.js). strong/weak 0..1, ms */
   rumble(strong, weak, ms, o) { return haptics.rumble(strong, weak, ms, o); }
+
+  /**
+   * 터치 기술 원형 메뉴용 (platform §5.5 P2): 고른 커맨드 기술을 입력한 것으로 친다.
+   * cmd = 기술의 커맨드 배열 (DOCS[d].tech.cmd), 또는 기술 id ('tech_hadou' 등 — data/lore.js 에서 찾는다).
+   * 공격을 한 스텝 눌러 player 의 커맨드 판정이 돌게 하고, 그 판정의 command(seq) 가 이 커맨드면 성공을 돌려준다 (0.5초 안).
+   */
+  queueCommand(x) {
+    const put = (cmd) => {
+      if (!Array.isArray(cmd) || !cmd.length) return false;
+      this._queuedCmd = { key: cmd.join(','), t: this.time };
+      this._touchTaps.set('attack', 2);
+      return true;
+    };
+    if (Array.isArray(x)) return put(x);
+    if (typeof x !== 'string' || !x) return false;
+    import('../data/lore.js').then((m) => {
+      for (const d of Object.values(m.DOCS ?? {})) if (d?.tech?.id === x) { put(d.tech.cmd); return; }
+    }).catch((e) => console.error('[input] queueCommand', e));
+    return true;
+  }
 
   /**
    * 격투 게임식 커맨드 판정 (MASTER_PLAN §1.21).
@@ -843,6 +865,16 @@ class Input {
    */
   command(seq, facingAt, within = 0.6) {
     if (!Array.isArray(seq) || !seq.length) return false;
+    const q = this._queuedCmd;
+    if (q) {
+      if (this.time - q.t > 0.5) this._queuedCmd = null;
+      else if (q.key === seq.join(',')) {
+        this._queuedCmd = null;
+        this.history.length = 0;
+        const f = typeof facingAt === 'function' ? this._faceAt(facingAt, this.time, Number(facingAt) < 0 ? -1 : 1) : Number(facingAt) < 0 ? -1 : 1;
+        return { ok: true, facing: f };
+      }
+    }
     if (this.mode === 'touch') within = Math.max(within, CMD_TOUCH_WINDOW);
     const fn = typeof facingAt === 'function' ? facingAt : null;
     let cur = Number(facingAt);

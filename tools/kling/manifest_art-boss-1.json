@@ -1,0 +1,563 @@
+{
+ "package": "ART-BOSS-1",
+ "model": "kling-image-v3_0_omni",
+ "tool": "image_to_image",
+ "img_resolution": "2k",
+ "reference": "图片1 = assets/portraits/<bossId>.webp (converted to PNG and uploaded)",
+ "note": "Generation ids of the nightwing re-shoot batch (nw2_*) were not recorded before the interrupted run; its result URLs are listed. Result URLs expire after 24 h — the kept images are stored as q95 webp under tools/painted/raw/<id>/.",
+ "calls": [
+  {
+   "boss": "b_nightwing",
+   "shot": "head",
+   "batch": 1,
+   "generationId": "ATnEUUEjjFCJmsoKUiyLnE7TGAt8-4Bje2n5Sjzf5SGTtpuj1Xn21xNXraLlq7aEDnOS9NCa",
+   "aspect": "1:1",
+   "imageCount": 2,
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, only the head of the giant vampire bat lord from 图片1, seen from the front turned slightly to the right (three-quarter front view), the mouth gaping extremely wide open in a screech: the upper jaw with two long curved fangs, the separate lower jaw hanging far open below it at the hinge, dark red gums, rows of needle teeth, strings of saliva and blood between the jaws, a black throat. Two huge torn bat ears standing straight up with veined red inner membrane, a crumpled wrinkled leaf-shaped nose, deep-set glowing red eyes, grotesque wrinkled hairless grey skin around the snout, coarse black fur on the skull. Only the head: it ends at the top of the neck with a ragged fur edge, no body, no shoulders. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+   "images": [
+    {
+     "name": "nw_head_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2Q1MTY1NzQyLWFlZDctNDk3Yi04ZWFkLTkyYWJlYjRjZWRhNi81NDk2NjI2NTE5MzMzODk1MzczL3RlbXA4N2Vxdy5wbmc.origin?x-kcdn-pid=112372",
+     "kept": "tools/painted/raw/b_nightwing/head_a.webp",
+     "decision": "kept"
+    },
+    {
+     "name": "nw_head_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2Y0M2Q5MjU0LTRkY2EtNDliNC05NjliLWQ5MWI2NzU4YTM2OC8xMTIyNTMwODQwMjcxODA2MzQ2L3RlbXB4cDF4cy5wbmc.origin?x-kcdn-pid=112372",
+     "kept": null,
+     "decision": "rejected: cast shadow on the background (matte), kept take 1"
+    }
+   ]
+  },
+  {
+   "boss": "b_nightwing",
+   "shot": "torso",
+   "batch": 1,
+   "generationId": "AXS6Da6EUHEnAu7ZOv-zCrYMF6dOI-NqjUX1xlLuF_HlhyqGh90rseL1X-Lte2XYe0YolOUj",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, only the torso of the vampire bat lord from 图片1 seen straight from the front, NO head, NO arms, NO wings, NO legs: a hunched emaciated but muscular grotesque chest and belly, ribs pressing through thin grey-brown hairless skin, pulsing dark veins, old claw scars and stitched wounds, a shaggy black fur mane around the neck stump at the top and on the shoulders, bony knobbed wing-root shoulder joints on both sides, a furry pelvis at the bottom. The neck stump at the top centre, clean edges where the wings and legs attach. The torso is symmetrical and upright. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+   "images": [
+    {
+     "name": "nw_torso_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2U5NjA0YmVmLTFlYTktNGM0Yy1hYmQzLTFmNDBjNzA1OTcwZC84MTI1MDg0Njk3OTc1ODg4MDg3L3RlbXBvNnEwci5wbmc.origin?x-kcdn-pid=112372",
+     "kept": null,
+     "decision": "rejected: head and arms painted in (the prompt asked for a headless torso), white sticker outline"
+    },
+    {
+     "name": "nw_torso_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2ZkNzNjY2Q2LTc2NmMtNGNlYi05ZDZhLTVlMmI4Yjk0YTdlOS8yMzYxOTQwNDMzNjk1NzU0ODY3L3RlbXA0MWpnNC5wbmc.origin?x-kcdn-pid=112372",
+     "kept": null,
+     "decision": "rejected: paper-doll look with bone arms and a flat background card"
+    }
+   ]
+  },
+  {
+   "boss": "b_nightwing",
+   "shot": "torso",
+   "batch": 2,
+   "generationId": null,
+   "aspect": "3:4",
+   "imageCount": 2,
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, only the torso of the vampire bat lord from 图片1 seen straight from the front, NO head, NO arms, NO wings, NO legs: a hunched emaciated but muscular grotesque chest and belly, ribs pressing through thin grey-brown hairless skin, pulsing dark veins, old claw scars and stitched wounds, a shaggy black fur mane around the neck stump at the top and on the shoulders, bony knobbed wing-root shoulder joints on both sides, a furry pelvis at the bottom. The neck stump at the top centre, clean edges where the wings and legs attach. The torso is symmetrical and upright. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+   "images": [
+    {
+     "name": "nw2_torso_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2QzNWVlNjcxLTI4YzQtNGM1My05ZDExLTA5ODZmZDA1NWI1MS8tNjMyNjI0MzY0MTExMzE5MjcyNy90ZW1wdTRrbmoucG5n.origin?x-kcdn-pid=112372",
+     "kept": "tools/painted/raw/b_nightwing/torso_a.webp",
+     "decision": "kept → tools/painted/raw/b_nightwing/torso_a.webp (colour-graded darker/greyer skin to match the head and wings)"
+    },
+    {
+     "name": "nw2_torso_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzliM2NlMTU0LWFmMzktNGNiNC04MDkxLWY5ZTZjNjc4ZTg5ZS8tMTQ2NTg4NjY0ODUyOTY0NzI0Ny90ZW1waTh4ZmIucG5n.origin?x-kcdn-pid=112372",
+     "kept": null,
+     "decision": "rejected: head painted in again, board behind the torso"
+    }
+   ]
+  },
+  {
+   "boss": "b_nightwing",
+   "shot": "wing",
+   "batch": 1,
+   "generationId": "AWKt68LfFRMdzQM62vsr83TpUS8nJcyhThrmkS432dRSmge9SDEtZILww03kiCUMrkNhVgST",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, a single left bat wing of the vampire bat lord from 图片1, spread wide open and seen flat from the front: the shoulder joint at the lower RIGHT corner of the image, a thick sinewy forearm bone going up and to the left to the wrist, a big hooked thumb claw at the wrist, four very long bony fingers fanning out from the wrist to the upper left, left and lower left, a dark leathery membrane stretched between the fingers and down to the shoulder, translucent blood-red where the light passes through, many branching dark veins, several ragged tears and round holes, a scalloped torn trailing edge. The whole wing is inside the image with an empty margin. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+   "images": [
+    {
+     "name": "nw_wing_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2U4YzFhMDM2LWRmN2MtNDRjMC05MzkzLTlhMjRiMmM5NjQ1ZC8tODk5ODczOTY3MjI1NjcyMDg5OS90ZW1wZnRpMXgucG5n.origin?x-kcdn-pid=112372",
+     "kept": "tools/painted/raw/b_nightwing/wing_a.webp",
+     "decision": "kept"
+    },
+    {
+     "name": "nw_wing_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzJmYjI5MTUxLWZiOTMtNDliMi05Nzg3LTY0NGRlOGNjODc5Zi82NDQ0MjI0NTgyMTY3MTQ0NDAxL3RlbXB0aTIyYy5wbmc.origin?x-kcdn-pid=112372",
+     "kept": null,
+     "decision": "rejected: claw overlaps the root area, take 1 has a cleaner root"
+    }
+   ]
+  },
+  {
+   "boss": "b_nightwing",
+   "shot": "wingf",
+   "batch": 1,
+   "generationId": "Ab1BY8fwyyd5cbUdMTLNBwkVz9GCcZZyQpXL-lGT6nTHWPi0OCqwkjZeEE9t7OFT-FEDocla",
+   "aspect": "3:4",
+   "imageCount": 1,
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, a single left bat wing of the vampire bat lord from 图片1, FOLDED tightly shut like a closed umbrella and hanging down: the shoulder joint at the upper RIGHT, the wrist joint with a big hooked thumb claw at the top left, the long finger bones gathered together pointing straight down, the dark leathery blood-red membrane wrapped in deep folds between them, torn ragged tips at the bottom. The whole folded wing is inside the image with an empty margin. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+   "images": [
+    {
+     "name": "nw_wingf_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzI1ZGMzMmUyLTAyNDEtNDBhYS04ZTc4LTViMjI2ZmE0MTA4ZS8tMjY4OTM4MTg5MjI1NDUyMzg2NS90ZW1wcDluemgucG5n.origin?x-kcdn-pid=112372",
+     "kept": null,
+     "decision": "rejected: umbrella (took the \"closed umbrella\" simile literally) — re-shot as nw2_wingf"
+    }
+   ]
+  },
+  {
+   "boss": "b_nightwing",
+   "shot": "wingf",
+   "batch": 2,
+   "generationId": null,
+   "aspect": "3:4",
+   "imageCount": 2,
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, a single left bat wing of the vampire bat lord from 图片1, FOLDED tightly shut like a closed umbrella and hanging down: the shoulder joint at the upper RIGHT, the wrist joint with a big hooked thumb claw at the top left, the long finger bones gathered together pointing straight down, the dark leathery blood-red membrane wrapped in deep folds between them, torn ragged tips at the bottom. The whole folded wing is inside the image with an empty margin. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+   "images": [
+    {
+     "name": "nw2_wingf_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzcxZTAyNGI2LWIzZDgtNDkwMS04NjA1LWU0NTZjYWM3NDMzNi8zMDkxMTIzMjYzMzgzOTIzNjA2L3RlbXA1MG1iaS5wbmc.origin?x-kcdn-pid=112372",
+     "kept": null,
+     "decision": "rejected: grey frame around the image (matte edge)"
+    },
+    {
+     "name": "nw2_wingf_2",
+     "url": "https://s16-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzBlZDE5NDRiLWJkZTctNGNmOS1iZjQwLWVkOTBhZTk2MTdjNS8zMjIzMTM2MDUwNDc3NTQwNTg2L3RlbXBxaGZ2Zi5wbmc.origin?x-kcdn-pid=112372",
+     "kept": "tools/painted/raw/b_nightwing/wingf_a.webp",
+     "decision": "kept"
+    }
+   ]
+  },
+  {
+   "boss": "b_nightwing",
+   "shot": "leg",
+   "batch": 1,
+   "generationId": "AY9p9oRt13b9ImWWHkZ8MiDW9pXPoLAaT6dW5GGwrLgjyT9DkkJYMhWvGEvDbzY0KAV8qzLz",
+   "aspect": "1:1",
+   "imageCount": 2,
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, a single hind leg of the vampire bat lord from 图片1 seen from the side, hanging straight down: a furry muscular thigh at the top, a bony knee with shaggy black fur tufts, a thin sinewy shin, and a big grotesque clawed foot at the bottom with four long hooked black talons spread wide open like a grasping raptor foot. The leg is vertical, thigh top at the top of the image, talons at the bottom, empty margin all around. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+   "images": [
+    {
+     "name": "nw_leg_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2QwMjBhOTJmLTMzNzEtNDYwZC1hYWNiLTUyYjVjNDNkZDM3Zi82ODI1MzIzMDA4MDU3MTYyODE3L3RlbXBqbDR2cS5wbmc.origin?x-kcdn-pid=112372",
+     "kept": null,
+     "decision": "rejected: two legs in one image, kept take 2 (single leg, talons spread)"
+    },
+    {
+     "name": "nw_leg_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzUwMzRkMGE5LTUwN2YtNGVkNi04ZWNjLWNiMjEyNjRkYTM0ZC8tNDgyODI5NDMzOTk0MjU4NjE5NS90ZW1wYmNiNG0ucG5n.origin?x-kcdn-pid=112372",
+     "kept": "tools/painted/raw/b_nightwing/leg_a.webp",
+     "decision": "kept"
+    }
+   ]
+  },
+  {
+   "boss": "b_nightwing",
+   "shot": "debris",
+   "batch": 1,
+   "generationId": "Adbk6OoOBTcUzGchl7Ks5I74L2HCnoP3LogRnMfI2yDpCGiLCbpm6r4GymdX26ePSxNjCaGr",
+   "aspect": "16:9",
+   "imageCount": 1,
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, 12 separate small pieces of the vampire bat lord from 图片1 lying apart in a loose 4 by 3 grid with wide empty space between them, no piece touches another: three torn scraps of blood-red bat wing membrane with ragged edges, a snapped wing finger bone, two clumps of coarse black fur, two long curved fangs, a torn-off pointed bat ear, a broken hooked black talon, a bloody chunk of flesh with a rib, a small clot of dark blood. Each piece fully in frame. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+   "images": [
+    {
+     "name": "nw_debris_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzUwOWQ4MjJhLTVjM2ItNDg1MC1iNjA5LTMyMDM0YTJkMGVlMS8tOTEwOTkwNzkwNzQ0NjI4OTMyNi90ZW1wa3J4Y24ucG5n.origin?x-kcdn-pid=112372",
+     "kept": null,
+     "decision": "rejected: mostly whole bats, few loose pieces — re-shot as nw2_debris"
+    }
+   ]
+  },
+  {
+   "boss": "b_nightwing",
+   "shot": "debris",
+   "batch": 2,
+   "generationId": null,
+   "aspect": "16:9",
+   "imageCount": 1,
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, 12 separate small pieces of the vampire bat lord from 图片1 lying apart in a loose 4 by 3 grid with wide empty space between them, no piece touches another: three torn scraps of blood-red bat wing membrane with ragged edges, a snapped wing finger bone, two clumps of coarse black fur, two long curved fangs, a torn-off pointed bat ear, a broken hooked black talon, a bloody chunk of flesh with a rib, a small clot of dark blood. Each piece fully in frame. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+   "images": [
+    {
+     "name": "nw2_debris_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzBkNWY4NGExLTBjZmQtNDZiNi1hZjI3LWNmNDM1ODMwNjY3ZC8tMTM1ODU3MjY3NzcwMzE5NDg4OS90ZW1waWN3djcucG5n.origin?x-kcdn-pid=112372",
+     "kept": "tools/painted/raw/b_nightwing/debris_a.webp",
+     "decision": "kept"
+    }
+   ]
+  },
+  {
+   "boss": "b_banshee",
+   "shot": "face",
+   "batch": 1,
+   "generationId": "AeF32-yyhB_KTdmPqB5nuvH7WxTur-iSY3KyawsICE4uHGa3BbSmrbVh2eK_mrwYIrFhixpF",
+   "aspect": "1:1",
+   "imageCount": 2,
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, only the hooded head of the banshee queen from 图片1 seen from the front, but her face is NOT a skull: a gaunt emaciated ghostly woman's face with grey-white skin stretched tight over the bones, hollow dark eye sockets with small glowing teal pupils, black tears running down the cheeks, the mouth unnaturally wide open in a wailing scream with the lower jaw dislocated and hanging far down, long cracked teeth, a black throat. A tattered white hood and veil frames the face, thin pale hair strands. Only the head and hood, it ends at the neck, no shoulders. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+   "images": [
+    {
+     "name": "bs_face_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzdmMzZmMTQ2LWU4OGItNGVhNS1iZTY2LWJlYzUwYTBkMzRhMy8tMzcxNzczMDU3OTU0MTg2NzQ4Mi90ZW1wb3FlazkucG5n.origin?x-kcdn-pid=112372",
+     "kept": null,
+     "decision": "rejected: hard cast shadow on the background and stray yellow hair; take 2 has the long dislocated scream framed by the hood"
+    },
+    {
+     "name": "bs_face_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2IzNDIzMjgzLTE5NDYtNDExNC1hMDkzLTc2ZmIyNWFhMzM4MS80OTIxNjY2NTc0MzY2MTQ3ODcxL3RlbXBqZDQwby5wbmc.origin?x-kcdn-pid=112372",
+     "kept": "tools/painted/raw/b_banshee/face_a.webp",
+     "decision": "kept"
+    }
+   ]
+  },
+  {
+   "boss": "b_banshee",
+   "shot": "skull",
+   "batch": 1,
+   "generationId": "AbTwzLgmU8GoG_9NXXBKpftPMUVmXk_eqYPsu6iDXUf76AuFzVxST5YRxhmrAtCq5iI6-Ip1",
+   "aspect": "1:1",
+   "imageCount": 2,
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, only the hooded head of the banshee queen from 图片1 seen from the front, exactly like the portrait: the face is a bare grinning skull with glowing teal eyes in the sockets, but the lower jaw of the skull hangs wide open in a scream showing the black throat and long cracked teeth, cracks across the cranium, a tattered white hood and veil framing the skull. Only the head and hood, it ends at the neck, no shoulders. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+   "images": [
+    {
+     "name": "bs_skull_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzMxMTk2NTZhLTkzYTItNGE1Ni04YmI0LWI0ZWU5MjdlZTg2OS8tMTg2ODg5NzE5OTM4NDY0NzQ5OC90ZW1wN3FycWwucG5n.origin?x-kcdn-pid=112372",
+     "kept": "tools/painted/raw/b_banshee/skull_a.webp",
+     "decision": "kept"
+    },
+    {
+     "name": "bs_skull_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzliN2FhODAzLTBmMzEtNDU1OC05NWQyLWZhN2VhMjQxMzIyOC8tODM3NTY4NjI3MTM4NDY4NjA1Ni90ZW1wYjlxNjIucG5n.origin?x-kcdn-pid=112372",
+     "kept": null,
+     "decision": "rejected: hood drapes out wide at the bottom (would not sit on the gown); take 1 is compact with a cracked cranium"
+    }
+   ]
+  },
+  {
+   "boss": "b_banshee",
+   "shot": "body",
+   "batch": 1,
+   "generationId": "AcnGCKAwSMaNyIxhivL26RuTHhWvsQU0KhQwm3owG4XnZA_VDF2ZXPStmRme2aGIKb2NUYoE",
+   "aspect": "9:16",
+   "imageCount": 2,
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, the body of the banshee queen from 图片1 seen from the front WITHOUT head and WITHOUT arms: a slender ghostly grey-white torso in a tattered translucent white burial gown, a heavy dark iron chain wrapped around the waist and another across the chest, an iron chain necklace with a pendant, the gown flows down and widens into long ragged torn strips that dissolve into wisps of teal ectoplasm mist at the bottom, no feet visible. The shoulders are at the top with clean edges where the arms and neck attach. Symmetrical, upright, whole figure inside the image. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+   "images": [
+    {
+     "name": "bs_body_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2FjYjY5NjUxLWViNDEtNDMzNi1iZmNiLTYxN2FjNjVhZWUwZC82MzI0NTY3ODk1ODA3OTQzNzQ0L3RlbXBjbnJkNi5wbmc.origin?x-kcdn-pid=112372",
+     "kept": null,
+     "decision": "rejected: sticker look (white border, line art); take 2 is painted with the chains crossing the gown"
+    },
+    {
+     "name": "bs_body_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0Lzc2NWZmNzU3LWVkZjktNGNhMy1iMDQwLTRlMzEzYjJjOTM3Yi8tMjc0MzAzMjY4Nzg3MzY5MjMyMC90ZW1wOHllMDkucG5n.origin?x-kcdn-pid=112372",
+     "kept": "tools/painted/raw/b_banshee/body_a.webp",
+     "decision": "kept"
+    }
+   ]
+  },
+  {
+   "boss": "b_banshee",
+   "shot": "arm",
+   "batch": 1,
+   "generationId": "AU5fLaYbeksFs0Vu1jEk2vljjlJUfNnW3abZrNevP8nRb8KrK2Z1h6MPVMHPKl1D7CJplZdC",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, a single arm of the banshee queen from 图片1 stretched out straight horizontally to the right: the shoulder at the left edge, a thin grey-white upper arm, the forearm with a long torn translucent bell-shaped sleeve hanging down below it, a rusted iron manacle with a broken chain link on the wrist, and a skeletal hand with very long clawed bony fingers spread open, palm down, at the right. The arm is straight and level, empty margin all around. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+   "images": [
+    {
+     "name": "bs_arm_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2VjODcyNDNhLWQxZDMtNGVjNS1iM2MwLTVjNDBjZTAxZDgxOC84ODY3NjM5MzkzNTg2MzU1NTM5L3RlbXA0ajZzYS5wbmc.origin?x-kcdn-pid=112372",
+     "kept": null,
+     "decision": "rejected: take 2 has the manacle + chain and bony claws"
+    },
+    {
+     "name": "bs_arm_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzFiZGM1YTg3LWYxZDAtNDNiMy04ZDBhLWE2ZDBiZWJjNGEyYy8tNjIyMTQyMjIyNzM1MTMwNDM4NS90ZW1wNm04MjgucG5n.origin?x-kcdn-pid=112372",
+     "kept": "tools/painted/raw/b_banshee/arm_a.webp",
+     "decision": "kept"
+    }
+   ]
+  },
+  {
+   "boss": "b_banshee",
+   "shot": "veil",
+   "batch": 1,
+   "generationId": "Aafc5i-ptTpFfKXyn_W6E05h_zM5JD3qVOFF6rYZwjrAtE7vTrqOBSe3xDopD8F0iEwemWG-",
+   "aspect": "3:4",
+   "imageCount": 1,
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, only the long flowing back veil and loose hair of the banshee queen from 图片1 seen from the front, with nothing in front of it (no face, no body): a tall tattered translucent white veil that starts narrow at the top where it covers the back of the head and widens downwards like a cloak, long pale grey-white hair strands spilling over it, torn holes and ragged strips at the bottom, faint teal glow. Whole veil inside the image. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+   "images": [
+    {
+     "name": "bs_veil_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzE5ZDVmZWQ3LWYyYjYtNDkzZS05OTNlLTAzZmY3YWYwOTlhYi8xMTcyMTE3MzgwOTUyMTAyNDg2L3RlbXBxaWZ6Zy5wbmc.origin?x-kcdn-pid=112372",
+     "kept": "tools/painted/raw/b_banshee/veil_a.webp",
+     "decision": "kept"
+    }
+   ]
+  },
+  {
+   "boss": "b_banshee",
+   "shot": "chain",
+   "batch": 1,
+   "generationId": "Act4kvlug9dOB6VUDJZIKU9gPzG5y4kP0g_NA7ADCQglK3YbffNR6rLvVfDL4TInZekItOAf",
+   "aspect": "21:9",
+   "imageCount": 1,
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, a single straight horizontal chain of 8 heavy old iron links joined end to end, strict side view, perfectly straight and level, running left to right across the whole image with an empty margin at both ends, alternating link orientation (one link seen flat as an oval ring, the next seen edge-on as a thick bar), rusted dark iron with scratches and faint teal ghost glow in the grooves, like the chains of 图片1. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+   "images": [
+    {
+     "name": "bs_chain_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpbc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzhlZjJlMzA2LTg2ZjItNGMxOS1iNTRkLTNlMjEzNjkyMGM3Ny83ODE2NjYyMjMxMjU5OTc2NjIvdGVtcDVoYnhuLnBuZw.origin?x-kcdn-pid=112372",
+     "kept": "tools/painted/raw/b_banshee/chain_a.webp",
+     "decision": "kept"
+    }
+   ]
+  },
+  {
+   "boss": "b_banshee",
+   "shot": "debris",
+   "batch": 1,
+   "generationId": "AVP7Q9BTSToE6yESHsYZifP3IAH1Z09GEnuBIFtK2q38sV8tljQscnPGai4_47YFLDAA4pHi",
+   "aspect": "16:9",
+   "imageCount": 1,
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, 12 separate small pieces of the banshee queen from 图片1 lying apart in a loose 4 by 3 grid with wide empty space between them, no piece touches another: three torn scraps of white translucent veil cloth, two broken rusted chain links, a broken iron manacle, a cracked piece of skull, two long cracked teeth, a finger bone with a long claw, two blobs of glowing teal ectoplasm. Each piece fully in frame. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+   "images": [
+    {
+     "name": "bs_debris_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzUzMjgxODY0LWVhMTktNDM3OC05YjJlLWFkNTUyOGUwZGIzNC8tNDI5MDQyMjA2NTgwNzkzNDQzNS90ZW1wOTJ0MmoucG5n.origin?x-kcdn-pid=112372",
+     "kept": "tools/painted/raw/b_banshee/debris_a.webp",
+     "decision": "kept"
+    }
+   ]
+  },
+  {
+   "boss": "b_dullahan",
+   "shot": "horse",
+   "batch": 1,
+   "generationId": "AVpVrtqFFR7lhjJVev_uoH2BNNqiybs9ASsgGRVC8f2hJJU4sZ5OzLogPnMX5A-dTjRqtuHe",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, strict side view (profile) facing RIGHT of the body of the pale spectral warhorse from 图片1: only the barrel and haunches with the saddle, NO head, NO neck, NO legs, NO tail. The neck is cut off at its base with a clean edge at the upper right, the legs stop at the tops of the thighs with clean edges. A black leather saddle with a dark red saddle cloth with gold trim, girth and breast strap. The horse skin is ghostly pale blue-white and half rotten: large patches where the skin has sloughed off revealing the ribs and dark sinew underneath, stitched wounds, faint blue soul fire glowing between the ribs. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+   "images": [
+    {
+     "name": "dh_horse_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpbc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzQxNTgzNTM2LWU0MGMtNGRhMi05MmZmLTMwNGY2MDAxZTBkZS81MzM0MTQ5MjA5MjcyNDYwMzcvdGVtcG82cmljLnBuZw.origin?x-kcdn-pid=112372",
+     "kept": "tools/painted/raw/b_dullahan/horse_a.webp",
+     "decision": "kept"
+    },
+    {
+     "name": "dh_horse_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2JlNTE2OGMxLTM0NGMtNGE3MC1iYmFlLTUwMDExNzBiNDcxZi82MjExMTcyMTMyMTgyMzA4ODEyL3RlbXBsM2R6Mi5wbmc.origin?x-kcdn-pid=112372",
+     "kept": null,
+     "decision": "rejected: body turned toward the viewer and legs painted in (needs strict profile, no legs)"
+    }
+   ]
+  },
+  {
+   "boss": "b_dullahan",
+   "shot": "head",
+   "batch": 1,
+   "generationId": "ARzQMrprESaTxUQUiNP8bqW--dbt6PyNm196Dhw0Vkr72HJGGSSaVcwUajRwuWjUFaQvptvF",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, strict side view (profile) facing RIGHT of the head and long arched neck of the pale spectral warhorse from 图片1: the base of the neck at the lower left, the head at the upper right pointing right and slightly down, the horse skull half exposed where the skin is torn from the cheek and jaw, bared teeth, a hollow eye socket with a glowing blue eye, a leather bridle with gold studs, a wild flowing mane of white-blue ghost fire along the neck. Clean cut edge at the neck base. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+   "images": [
+    {
+     "name": "dh_head_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzcyN2M0Nzk2LWJhNmEtNDIyOS04ZWQ2LTg3OTM1NTJiZjEzZS8yODkyNzIzNjk0MjE4MjI0MzE1L3RlbXBoMGQwNi5wbmc.origin?x-kcdn-pid=112372",
+     "kept": null,
+     "decision": "rejected: neck covered by a blue caparison; take 2 has pale ghost skin, bare skull face and the ghost-fire mane"
+    },
+    {
+     "name": "dh_head_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzAzZmQwNjA1LWM2OTUtNDM1OS04YmM3LTg5YTRlMDgxOTY1ZC8tODYxNjI3MTA5NDk0ODczMTI5NC90ZW1wcnB2cDQucG5n.origin?x-kcdn-pid=112372",
+     "kept": "tools/painted/raw/b_dullahan/head_a.webp",
+     "decision": "kept"
+    }
+   ]
+  },
+  {
+   "boss": "b_dullahan",
+   "shot": "legs",
+   "batch": 1,
+   "generationId": "AZAkQYMy29g8qOa1cwVmhIlUDfcqs-tOnAhtT4j4wtUMizkeAkQVU7ccX-ynwr5H_-PVARxo",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, two separate legs of the pale spectral warhorse from 图片1 standing side by side with wide empty space between them, strict side view facing right, each leg perfectly straight and vertical from the top of the thigh down to the hoof: on the left a FORE leg, on the right a HIND leg with its backward-bent hock. Ghostly pale blue-white skin torn at the knees showing bone and sinew, iron-shod black hooves with faint blue flames licking around them. Clean cut edges at the top of each thigh. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+   "images": [
+    {
+     "name": "dh_legs_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzJkOGM3M2QxLTNkODktNGQwZi1iMTQ0LWM5MjRkNmQwNDRiNC8xNTY2NjEyNzg3Njk3NTY1NjQ1L3RlbXBhaml6ZC5wbmc.origin?x-kcdn-pid=112372",
+     "kept": null,
+     "decision": "rejected: thighs cut unevenly; take 2 has straight legs with clean thigh cuts, flaming hooves and the tail on the hind leg"
+    },
+    {
+     "name": "dh_legs_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzA5MmI4ZDFmLTRjMzUtNGNiNy05NDc4LTg3YjEzNGQ4ZGFiYy81MDkxOTkyNjEyNjE2MDU4Njc3L3RlbXBmcjJyYi5wbmc.origin?x-kcdn-pid=112372",
+     "kept": "tools/painted/raw/b_dullahan/legs_a.webp",
+     "decision": "kept"
+    }
+   ]
+  },
+  {
+   "boss": "b_dullahan",
+   "shot": "torso",
+   "batch": 1,
+   "generationId": "AYGhLAg15nXpGthX0SXzo-6AJAni-OXiFJQh3_-fibPlahlkfz6rEIZMD8_zM5i0lzPFSTzo",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, strict side view (profile) facing RIGHT of the armoured torso of the headless black knight from 图片1, with NO head, NO helmet, NO arms, NO legs, NO cape: the neck is an empty charred stump inside a jagged spiked iron gorget collar, blackened iron breastplate with gold filigree and dents, a huge spiked pauldron on the near shoulder, a skirt of overlapping fauld plates and tassets at the waist, clean edges where the arms and legs attach. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+   "images": [
+    {
+     "name": "dh_torso_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzUyYWQ1ZWI4LTExOTEtNDEwMy1hN2U3LTIwODIwZTMwMTVjMC85MTYwODYzNzQwMTk3NzkyMzU3L3RlbXBkaDV2Mi5wbmc.origin?x-kcdn-pid=112372",
+     "kept": "tools/painted/raw/b_dullahan/torso_a.webp",
+     "decision": "kept"
+    },
+    {
+     "name": "dh_torso_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2Y5Y2M4NmE1LTA4NTItNGFhMC1iODA3LWUxNzBjNDgwNjgwNS8tMjE3ODczNzAzNjgyMzEyNDA1L3RlbXB5aDY0OS5wbmc.origin?x-kcdn-pid=112372",
+     "kept": null,
+     "decision": "rejected: front view (the rider is drawn in profile); take 1 is a strict profile with the spiked pauldron"
+    }
+   ]
+  },
+  {
+   "boss": "b_dullahan",
+   "shot": "leg",
+   "batch": 1,
+   "generationId": "Af5QJ2nN-kHr8PIom-Hv5E4CQAiBPnfqD7P9AAMWNU2pq_ASrszi70QZQn0qqLzB718_HVKA",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, a single armoured leg of the black knight from 图片1, strict side view facing right, perfectly straight and vertical: a plated cuisse thigh at the top, a spiked poleyn knee, a greave, and a pointed black iron sabaton foot pointing to the right with a spur at the heel. Clean cut edge at the top of the thigh, empty margin all around. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+   "images": [
+    {
+     "name": "dh_leg_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2I5ZTdmZTc5LWJiZDQtNDVmNC1iNGY4LTE2ZjliOTVmM2IzMi80NDc0MTEzMjY2NTUzNjE5NjcyL3RlbXBoc254di5wbmc.origin?x-kcdn-pid=112372",
+     "kept": "tools/painted/raw/b_dullahan/leg_a.webp",
+     "decision": "kept"
+    },
+    {
+     "name": "dh_leg_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2Y1ZjFmNDY1LTA5YzYtNGU5YS05N2U4LTg5ZDM2YTkyNDU2Zi8tODc1MjkyMzQ5MTQyMTYxNTkwMi90ZW1wcGRuNW0ucG5n.origin?x-kcdn-pid=112372",
+     "kept": null,
+     "decision": "rejected: take 1 is straighter (easier knee cut)"
+    }
+   ]
+  },
+  {
+   "boss": "b_dullahan",
+   "shot": "arms",
+   "batch": 1,
+   "generationId": "Aalv_eWiDNcKD4ov4FRGtBXZy5JwLhLhblwFSvXldb86AVckyqn-4TIFYj9j-c2HYzVy-rzd",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, two separate armoured arms of the black knight from 图片1 lying apart with wide empty space between them, strict side view: on the left an arm reaching forward to the right, straight and level, with a spiked couter at the elbow and the black gauntlet clenched into a fist; on the right an arm reaching up with the gauntlet hand open palm up, clawed fingers curled as if holding a ball. Each arm starts with a clean edge at the shoulder. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+   "images": [
+    {
+     "name": "dh_arms_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0Lzg3ZTUyYzc1LWRhNWMtNDc1Yi1iNmExLWZkM2M3ODFkNWQyYS8tNDA2MTQ4MjM1NjIwODEzODQ4OC90ZW1wZmplOGQucG5n.origin?x-kcdn-pid=112372",
+     "kept": "tools/painted/raw/b_dullahan/arms_a.webp",
+     "decision": "kept"
+    },
+    {
+     "name": "dh_arms_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpbc3BlY2lhbC1lZmZlY3Qvb3V0cHV0Lzg4Njg4ZjM4LTQ2N2YtNDUxOC1hOTBhLWNjOTFjMzZkZjE5OC83NTI2MzI4NTM1OTYxNTAyMzAvdGVtcHJ6czdxLnBuZw.origin?x-kcdn-pid=112372",
+     "kept": null,
+     "decision": "rejected: take 1 poses (fist forward / open hand up) match the lance and skull arms"
+    }
+   ]
+  },
+  {
+   "boss": "b_dullahan",
+   "shot": "lance",
+   "batch": 1,
+   "generationId": "AcbYW7lIPzj0RD8YUkjsDys-A5V9h5vD4_cMabbkfqfYU5xUrtrS-iUMZoZQWZVtD_JFDwOu",
+   "aspect": "21:9",
+   "imageCount": 1,
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, a single long cruel war lance of the black knight from 图片1, perfectly straight and horizontal across the whole image, pointing RIGHT, with an empty margin at both ends: a long dark iron-banded wooden shaft, a flared conical black iron vamplate hand guard at the left third, and a long serrated spearhead with barbed side hooks at the right end, faint blue runes glowing on the blade. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+   "images": [
+    {
+     "name": "dh_lance_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2RkNTViMGM2LWNhYzItNGE5OC1iNGMwLWMxMDMyM2VkNGU1Yy81MzczMjc1NTkzNTU0MTU4MzUxL3RlbXA4ajByYy5wbmc.origin?x-kcdn-pid=112372",
+     "kept": "tools/painted/raw/b_dullahan/lance_a.webp",
+     "decision": "kept"
+    }
+   ]
+  },
+  {
+   "boss": "b_dullahan",
+   "shot": "skull",
+   "batch": 1,
+   "generationId": "AfLOLkifiBr1fs9xnBLnVowg98avdwGXylnIWIikjtClz-jUHlp5Ox_kPuUXUxZXg2qoFDrs",
+   "aspect": "1:1",
+   "imageCount": 1,
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, a single human skull, the severed head of the headless knight from 图片1, seen from the side facing right, cracked and charred black around the edges, some teeth missing, the eye sockets and cracks glowing bright orange from fire inside, no flames outside the skull, no body. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+   "images": [
+    {
+     "name": "dh_skull_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzhlNjFkYzgxLTc5MWEtNGI2ZS1iNzc4LTY3ZjdlNzc5M2JkOS8tOTE5NjE5OTgzNjU1MDQzNzEzMi90ZW1wazgwbXgucG5n.origin?x-kcdn-pid=112372",
+     "kept": "tools/painted/raw/b_dullahan/skull_a.webp",
+     "decision": "kept"
+    }
+   ]
+  },
+  {
+   "boss": "b_dullahan",
+   "shot": "cape",
+   "batch": 1,
+   "generationId": "ARyCE7LzbB3284s7_oyPNYUhfVsJxaUN8b5Ja7Cj-0siaudmHHoQwAxQfRDpjrtXOBRNRjqU",
+   "aspect": "3:4",
+   "imageCount": 1,
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, a single tattered dark crimson knight's cape from 图片1 hanging straight down from a straight horizontal top edge, seen from the side, heavy wool with a black lining visible at the edges, long ragged torn strips and holes at the bottom, burnt edges. Whole cape inside the image. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+   "images": [
+    {
+     "name": "dh_cape_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2E1YjJkZTFiLTQ0OGMtNGY5Yy05YTQ3LTQ5NWYzODA2ZjAzZS8yMzU3MDAxNDkyNTk4OTc3NzE0L3RlbXB0eG5kbC5wbmc.origin?x-kcdn-pid=112372",
+     "kept": "tools/painted/raw/b_dullahan/cape_a.webp",
+     "decision": "kept"
+    }
+   ]
+  },
+  {
+   "boss": "b_dullahan",
+   "shot": "debris",
+   "batch": 1,
+   "generationId": "AWjHvp-9WXIXOyIWUo2slLgFMQZy7c4yB1ygm2Uk4oaHDvTN83HEucwpKQWoNm7rBKjAgMJ0",
+   "aspect": "16:9",
+   "imageCount": 1,
+   "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, 12 separate small pieces of the headless black knight and his spectral horse from 图片1 lying apart in a loose 4 by 3 grid with wide empty space between them, no piece touches another: three broken blackened armour plate shards, a snapped iron spike, a bent gold-trimmed rivet plate, a charred skull fragment with an eye socket, a jaw bone with teeth, a horse rib, a horseshoe with nails, two chunks of pale ghostly horse flesh with glowing blue veins. Each piece fully in frame. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+   "images": [
+    {
+     "name": "dh_debris_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2VjODE0YWIwLWJhYmItNGQ5OS05Y2ExLWI5OGU5MWRkYWExOS8tMzA3MTExOTEwODkyNDA0ODQ1MC90ZW1wc3huamkucG5n.origin?x-kcdn-pid=112372",
+     "kept": "tools/painted/raw/b_dullahan/debris_a.webp",
+     "decision": "kept"
+    }
+   ]
+  }
+ ],
+ "totals": {
+  "b_nightwing": 15,
+  "b_banshee": 11,
+  "b_dullahan": 16,
+  "all": 42
+ },
+ "budget": {
+  "perBoss": 25,
+  "used": {
+   "b_nightwing": 15,
+   "b_banshee": 11,
+   "b_dullahan": 16,
+   "all": 42
+  }
+ }
+}

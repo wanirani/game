@@ -27,8 +27,10 @@ export const STEP = 1 / 60;
 // 가상 패드를 보여 주는 게임플레이 장면 (그 외 장면이 맨 위에 있으면 패드를 숨긴다)
 // 장면이 this.hidePad = true / this.showPad = true 로 직접 지정할 수도 있다
 export const PAD_SCENES = new Set(['stage', 'hub', 'bossrush', 'survival', 'practice', 'ultCutin']);
-/** 품질 조절기가 프레임 시간을 재는 장면 (게임플레이만) */
+/** 품질 조절기가 프레임 시간을 재는 장면 (게임플레이만). 토스트도 이 장면들이 그리는 HUD 위에서만 hudLayout 줄을 쓴다 */
 const GOV_SCENES = new Set(['stage', 'hub', 'bossrush', 'survival', 'practice']);
+/** 장면 플래그(deferToasts)가 아직 없어도 토스트를 미뤄 두는 연출 장면 (MASTER_PLAN §1.10: 필살 컷인 동안 토스트 없음) */
+const DEFER_TOAST_SCENES = new Set(['ultCutin']);
 /** 품질 등급별 DPR 상한·백킹 픽셀 예산·이미지 보간 (platform §6.4, MASTER_PLAN §5.2) */
 export const QUALITY_TIERS = Object.freeze({
   low: Object.freeze({ cap: 1, budget: 1.0e6, smooth: 'low' }),
@@ -323,15 +325,27 @@ class Game {
     const f = this.flashFx;
     if (a >= f.a) { f.color = color; f.decay = decay; f.a = a; }
   }
-  /** 화면 가장자리 비네트 (전체 화면 채우기 대신; 플레이어 피격 '#ff0020', 0.45, 3 등) */
+  /** 화면 가장자리 비네트 (전체 화면 채우기 대신; 플레이어 피격 '#ff0020', 0.45, 3 등). 세기 × settings.flashFx (번쩍임과 같은 설정) */
   vignette(color = '#ff0020', a = 0.45, decay = 3) {
     const v = this.vignetteFx;
-    const s = clamp(Number(a) || 0, 0, 0.85);
+    const k = Number(this.settings?.flashFx ?? 1);
+    const s = clamp((Number(a) || 0) * (Number.isFinite(k) ? clamp(k, 0, 1) : 1), 0, 0.85);
+    if (!(s > 0)) return;
     if (s >= v.a) { v.color = typeof color === 'string' && color[0] === '#' ? color : '#ff0020'; v.decay = decay; v.a = s; }
   }
   toast(text, color = '#f3e2b8', time = 2.4) {
     this.toasts.push({ text: String(text ?? ''), color, t: time, max: time, shown: undefined });
     if (this.toasts.length > 5) this.toasts.shift();
+  }
+  /** 토스트를 숨기고 시간도 멈출 장면인가 (scene.deferToasts 또는 연출 장면 이름) */
+  toastsDeferred(sc) { return !!sc && (!!sc.deferToasts || DEFER_TOAST_SCENES.has(sc.name)); }
+  /** 지금 화면에 HUD 가 보이는 게임플레이 장면 (맨 위이거나, 그 위에 반투명 장면만 있을 때) | null */
+  hudScene() {
+    const S = this.scenes;
+    let i = S.length - 1;
+    while (i > 0 && !S[i].opaque) i--;
+    const sc = S[i];
+    return sc && GOV_SCENES.has(sc.name) ? sc : null;
   }
 
   // ─────────────────────────── 루프 ───────────────────────────
@@ -359,6 +373,7 @@ class Game {
       while (this.acc >= STEP && steps < 5) {
         this.tick(STEP);
         this.acc -= STEP; steps++;
+        this.syncPointer(); // 스텝 중에 uiScale 장면이 쌓이거나 닫혔으면 다음 스텝부터 맞는 좌표로
       }
       if (steps === 5) this.acc = 0;
       this.govern(dt);
@@ -451,7 +466,7 @@ class Game {
     this.flashFx.a = Math.max(0, this.flashFx.a - this.flashFx.decay * dt);
     this.vignetteFx.a = Math.max(0, this.vignetteFx.a - this.vignetteFx.decay * dt);
     // 토스트 시간: 보이지 못하고 줄을 기다리는 것(shown === false)은 멈춰 둔다
-    if (!this.top?.deferToasts && this.toasts.length) {
+    if (this.toasts.length && !this.toastsDeferred(this.top)) {
       for (const t of this.toasts) if (t.shown !== false) t.t -= dt;
       this.toasts = this.toasts.filter((t) => t.t > 0);
     }
@@ -488,7 +503,7 @@ class Game {
     }
     // 토스트
     const top = this.top;
-    if (this.toasts.length && !top?.hideToasts && !top?.deferToasts && top?.name !== 'menu') {
+    if (this.toasts.length && !top?.hideToasts && !this.toastsDeferred(top) && top?.name !== 'menu') {
       ctx.save();
       try { this.drawToasts(ctx, top); } catch (e) { console.error(e); }
       ctx.restore();
@@ -536,14 +551,18 @@ class Game {
 
   /**
    * 토스트 (MASTER_PLAN §1.8, §1.10):
-   *  - world 가 있는 게임플레이 장면(스테이지·마을·아케이드)이 맨 위이고 toastX/toastY 를 정하지 않았으면 hudLayout().toast(i) 줄:
+   *  - 화면에 보이는 것이 게임플레이 장면(스테이지·마을·아케이드)의 HUD 이면 — 그 장면이 맨 위이거나, 그 위에 반투명 장면(대화 등)만
+   *    있으면 — 그리고 맨 위 장면이 toastX/toastY 를 정하지 않았으면 hudLayout().toast(i) 줄:
    *    15 px, 가운데 빈 칸 폭에서 ≤ 2줄로 줄바꿈 (2줄 토스트는 두 줄 칸을 쓴다), 보이는 줄 수까지 (보통 3, 위쪽 보스 바가 있으면 1)
-   *  - 그 밖: 장면의 toastX/toastY/toastUp (없으면 가운데 위 y=92), 17 px. uiScale 장면은 UI 좌표로
+   *  - 그 밖(월드맵·동료 화면·일시정지처럼 화면 전체를 덮는 장면 등): 장면의 toastX/toastY/toastUp (없으면 가운데 위 y=92), 17 px.
+   *    uiScale 장면은 UI 좌표로
    */
   drawToasts(ctx, top) {
-    if (top?.world && top.toastX === undefined && top.toastY === undefined && !top.uiScale) {
-      const L = hudLayout(top.world, this.viewW, this.viewH);
-      if (L?.toastRows >= 1) { this.drawHudToasts(ctx, L); return; }
+    const base = this.hudScene();
+    if (base?.world && top.toastX === undefined && top.toastY === undefined && !top.uiScale) {
+      const L = hudLayout(base.world, this.viewW, this.viewH);
+      const r0 = L?.toastRows >= 1 ? L.toast(0) : null;
+      if (r0 && !r0.hidden && r0.w >= 80) { this.drawHudToasts(ctx, L); return; }
     }
     const ui = !!top?.uiScale;
     const k = ui ? this.uiK : 1;

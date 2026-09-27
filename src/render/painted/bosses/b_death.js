@@ -240,12 +240,13 @@ function drawForm1(ctx, D, b, rig, st, o, V, a0, dt) {
   put(D, L, T, V(T), 'hem', tx, ty, trot, a0);
   // 두건 해골 + 경첩 턱 (입 속 어둠 → 턱 → 두건)
   const hx = neck[0] + 2, hy = neck[1] + 5, hrot = bob * 0.5 + Math.sin(t * 1.2) * 0.03 + (o.dying ? Math.sin(t * 30) * 0.05 : 0);
+  if (!st.gone.arms) heldScythe(ctx, D, b, rig, st, o, V, a0, 1);
   if (!o.glow) mouthFill(ctx, D, L, H, 'neck', hx, hy, hrot, a0);
   const hg = localPt(H, 'neck', H.hinge, hx, hy, hrot, 1, _q);
   put(D, L, J, V(J), 'hinge', hg[0], hg[1], hrot + st.jawA, a0);
   put(D, L, H, V(H), 'neck', hx, hy, hrot, a0);
-  // 앞팔 + 낫
-  if (!st.gone.arms) scytheArm(ctx, D, b, rig, st, o, V, shN, a0, 1);
+  // 앞팔 (낫 쥔 주먹)
+  if (!st.gone.arms) nearArm(D, rig, st, o, V, shN, a0);
   if (burnY != null && !o.glow) { D.end(); D.restore(); burnLine(ctx, st, o, burnY, dt); }
   if (o.glow) return;
   D.end();
@@ -284,15 +285,17 @@ function drawForm2(ctx, D, b, rig, st, o, V, a0, dt) {
   put(D, L, Rb, V(Rb), 'base', rx, ry, rrot, a0);
   if (!o.glow && rig.cloak) cloth(ctx, D, b, rig, st, st.rags[1], ragF, 5, 18, 58, o, '#0b0810', 0.9, true);
   // 해골 (입 속 → 턱 → 두개골). 사망 폭발 뒤엔 없음
-  const hx = neck[0] + 3, hy = neck[1] + 6, hrot = bob * 0.5 + Math.sin(t * 1.1) * 0.035 - (b.state === 'transform' ? 0.12 : 0) + (o.dying ? Math.sin(t * 34) * 0.06 : 0);
+  // 해골은 1.25배, 척추 위로 당겨 앉힘 (두개골 중심이 판정 기둥 안에 오게 — 목 피벗이 두개골 뒤쪽이라 그대로 두면 얼굴이 판정 앞으로 나간다)
+  const KS = 1.25, hx = neck[0] - 15, hy = neck[1] + 7, hrot = bob * 0.5 + Math.sin(t * 1.1) * 0.035 - (b.state === 'transform' ? 0.12 : 0) + (o.dying ? Math.sin(t * 34) * 0.06 : 0);
+  if (!st.gone.arms) heldScythe(ctx, D, b, rig, st, o, V, a0, 1.15);
   if (!st.gone.skull) {
-    if (!o.glow) mouthFill(ctx, D, L, K, 'neck', hx, hy, hrot, a0);
-    const hg = localPt(K, 'neck', K.hinge, hx, hy, hrot, 1, _q);
-    put(D, L, J, V(J), 'hinge', hg[0], hg[1], hrot + st.jawA * 1.1, a0);
-    put(D, L, K, V(K), 'neck', hx, hy, hrot, a0);
+    if (!o.glow) mouthFill(ctx, D, L, K, 'neck', hx, hy, hrot, a0, KS);
+    const hg = localPt(K, 'neck', K.hinge, hx, hy, hrot, KS, _q);
+    put(D, L, J, V(J), 'hinge', hg[0], hg[1], hrot + st.jawA * 1.1, a0, KS);
+    put(D, L, K, V(K), 'neck', hx, hy, hrot, a0, KS);
   }
-  // 앞팔 + 낫 (1.15배)
-  if (!st.gone.arms) scytheArm(ctx, D, b, rig, st, o, V, shN, a0, 1.15);
+  // 앞팔 (낫 쥔 주먹, 1.25배 뼈)
+  if (!st.gone.arms) nearArm(D, rig, st, o, V, shN, a0);
   if (o.glow) return;
   D.end();
   glowOver(ctx, D, L, Rb, o.lvl, 'base', rx, ry, rrot, 0.55 * a0, t, st);
@@ -300,10 +303,10 @@ function drawForm2(ctx, D, b, rig, st, o, V, a0, dt) {
   // 영혼 심장 (갇힌 비명 얼굴들) · 눈 · 뿔 위 영혼불 왕관
   const hw = W(L, heart[0], heart[1], st.heartW ??= [0, 0]);
   const pu = 0.7 + 0.3 * Math.sin(t * 6);
-  if (q.halos) { halo(ctx, hw[0], hw[1], 34 * pu * o.S, SOUL, 0.55 * a0, true); halo(ctx, hw[0], hw[1], 70 * o.S, SOUL_D, 0.25 * a0); }
+  if (q.halos) { halo(ctx, hw[0], hw[1], 26 * pu * o.S, SOUL, 0.4 * a0, true); halo(ctx, hw[0], hw[1], 60 * o.S, SOUL_D, 0.2 * a0); }
   if (!st.gone.skull) {
-    eyes(ctx, st, L, K, hx, hy, hrot, o, a0, 1.4);
-    if (q.flames) { const cw = W(L, hx + 4, hy - 46, st.W2); flame(ctx, cw[0], cw[1], -PI / 2, 40 * o.S, 12 * o.S, t, SOUL, 0.45 * a0, 3, q.flames); }
+    eyes(ctx, st, L, K, hx, hy, hrot, o, a0, 1.5, KS);
+    if (q.flames) { const cw = W(L, hx + 16, hy - 58, st.W2); flame(ctx, cw[0], cw[1], -PI / 2, 40 * o.S, 12 * o.S, t, SOUL, 0.45 * a0, 3, q.flames); }
   }
   if (rr.next() < dt * 10 * q.ambient) P.emit('ember', hw[0] + rr.range(-40, 40) * o.S, hw[1] + rr.range(-40, 40) * o.S, rr.range(-20, 20), rr.range(-90, -30), { color: SOUL, layer: 1 });
   orbitSouls(ctx, D, b, rig, st, o, a0);
@@ -311,9 +314,9 @@ function drawForm2(ctx, D, b, rig, st, o, V, a0, dt) {
 }
 
 /** 입 속 어둠 (턱을 잘라낸 자리 뒤) — 부품 텍셀 공간 폴리곤 */
-function mouthFill(ctx, D, L, H, pv, hx, hy, hrot, a) {
+function mouthFill(ctx, D, L, H, pv, hx, hy, hrot, a, sc = 1) {
   const M = H.mouth; if (!M) return;
-  const w = W(L, hx, hy, _q2), k = H.k * L.sc;
+  const w = W(L, hx, hy, _q2), k = H.k * L.sc * sc;
   D.set(H[pv][0], H[pv][1], w[0], w[1], L.f * (hrot + L.lean), k * L.f, k);
   ctx.beginPath(); ctx.moveTo(M[0][0], M[0][1]);
   for (let i = 1; i < M.length; i++) ctx.lineTo(M[i][0], M[i][1]);
@@ -332,19 +335,18 @@ function armTo(D, L, U, Fo, sx, sy, tx, ty, bend, alpha, V, far, endPv, sc = 1) 
   return r;
 }
 
-/** 낫 든 앞팔: 손(주먹) → 낫 자루 + 날. 낫이 날아가 있으면 편 손 */
-function scytheArm(ctx, D, b, rig, st, o, V, sh, a0, bs) {
-  const R = rig.parts, L = st.L, g = gripOf(o.a, o.s, o.form, st.grip);
+/** 든 낫 (몸통 앞 · 해골 뒤): 손 위치 계산 + 낫. 앞팔은 해골 뒤에 nearArm 으로 (벡터와 같은 순서) */
+function heldScythe(ctx, D, b, rig, st, o, V, a0, bs) {
+  const L = st.L, g = gripOf(o.a, o.s, o.form, st.grip);
   const hold = o.scythe && !st.gone.scythe;
-  const sc = o.form === 2 ? 1.25 : 1;
-  const ex = hold ? g[0] : g[0] + 6, ey = hold ? g[1] : g[1] + 8;
-  // 낫 (손 뒤로 자루가 지나감 → 먼저 그림)
-  const r = -0.25 + o.a * 0.55 + o.s * 0.6;
-  if (hold) {
-    drawScytheAt(ctx, D, L, rig, ex, ey, r, bs, a0, V, o, st);
-  }
-  armTo(D, L, R.humerus, hold ? R.foreFist : R.foreOpen, sh[0], sh[1], ex, ey, 1, a0, V, false, hold ? 'grip' : 'wr', sc);
-  W(L, ex, ey, st.gripW);
+  st._hold = hold; st._ex = hold ? g[0] : g[0] + 6; st._ey = hold ? g[1] : g[1] + 8;
+  if (hold) drawScytheAt(ctx, D, L, rig, st._ex, st._ey, -0.25 + o.a * 0.55 + o.s * 0.6, bs, a0, V, o, st);
+}
+/** 앞팔: 어깨 → 손 (주먹 = 낫 쥠, 편 손 = 낫이 날아가 있음) */
+function nearArm(D, rig, st, o, V, sh, a0) {
+  const R = rig.parts, L = st.L, sc = o.form === 2 ? 1.25 : 1;
+  armTo(D, L, R.humerus, st._hold ? R.foreFist : R.foreOpen, sh[0], sh[1], st._ex, st._ey, 1, a0, V, false, st._hold ? 'grip' : 'wr', sc);
+  W(L, st._ex, st._ey, st.gripW);
 }
 /** 낫 한 자루: 자루 grip 이 (gx,gy), 회전 r (0 = 자루가 위, 날이 앞으로), 배율 bs */
 function drawScytheAt(ctx, D, L, rig, gx, gy, r, bs, a0, V, o, st) {
@@ -365,11 +367,11 @@ function drawScytheAt(ctx, D, L, rig, gx, gy, r, bs, a0, V, o, st) {
 }
 
 /** 눈구멍 영혼불 (가까운 눈 + 먼 눈) */
-function eyes(ctx, st, L, H, hx, hy, hrot, o, a0, sz) {
+function eyes(ctx, st, L, H, hx, hy, hrot, o, a0, sz, sc = 1) {
   const q = st.q, t = o.t;
   const fk = (0.85 + 0.15 * Math.sin(t * 13)) * (o.dying ? 1.5 : 1);
   for (const [pv, k] of [['eyeN', 1], ['eyeF', 0.6]]) {
-    const e = localPt(H, 'neck', H[pv], hx, hy, hrot, 1, _q), ew = W(L, e[0], e[1], st.W);
+    const e = localPt(H, 'neck', H[pv], hx, hy, hrot, sc, _q), ew = W(L, e[0], e[1], st.W);
     if (q.flames && k === 1) flame(ctx, ew[0], ew[1], -PI / 2 - 0.25 * L.f, 16 * sz * L.sc * fk, 4.5 * sz * L.sc, t, SOUL, 0.6 * a0, pv === 'eyeN' ? 1 : 4, Math.max(2, q.flames - 1));
     if (q.halos) halo(ctx, ew[0], ew[1], 9 * sz * L.sc * fk * k, SOUL, 0.8 * a0, true);
   }
@@ -459,8 +461,8 @@ function burnLine(ctx, st, o, burnY, dt) {
   for (let i = 0; i < n; i++) {
     const u = i / (n - 1), x = lerp(x0, x1, u), y = y0 + Math.sin(o.t * 9 + i * 2) * 3;
     if (q.flames) flame(ctx, x, y, -PI / 2, 26 + hash1(i) * 16, 7, o.t, SOUL, 0.5, i, Math.min(3, q.flames));
-    if (rr.next() < dt * 20 * q.ambient) st.P.emit('ember', x, y, rr.range(-30, 30), rr.range(-120, -40), { color: SOUL, layer: 1 });
-    if (rr.next() < dt * 8 * q.ambient) st.P.emit('ash', x, y, rr.range(-30, 30), rr.range(-60, -10), { layer: 1 });
+    if (rr.next() < dt * 9 * q.ambient) st.P.emit('ember', x, y, rr.range(-30, 30), rr.range(-120, -40), { color: SOUL, layer: 1 });
+    if (rr.next() < dt * 5 * q.ambient) st.P.emit('ash', x, y, rr.range(-30, 30), rr.range(-60, -10), { layer: 1 });
   }
   if (q.halos) halo(ctx, (x0 + x1) / 2, y0, 70, SOUL, 0.35);
 }
@@ -580,9 +582,9 @@ function deathBreak(st, b, rig, dT, S, form) {
   }
   if (b._boom && !G.body) {
     G.body = true; G.skull = true;
-    const hp = W(L, 4, form === 2 ? -150 : -135, st.W);
+    const ks = form === 2 ? 1.25 : 1, hp = W(L, form === 2 ? -9 : 4, form === 2 ? -96 : -106, st.W);   // 목 피벗 자리
     const Kp = form === 2 ? R.skull2 : R.hood;
-    st.shards.spawn(pickVariant(Kp, 2), Kp.neck[0], Kp.neck[1], hp[0], hp[1] + 20 * S, 0, Kp.k * S * f, Kp.k * S, f * rr.range(60, 140), -520, f * 4, { r: 18 * S, fade: fade(0.95), bounce: 0.3 });
+    st.shards.spawn(pickVariant(Kp, 2), Kp.neck[0], Kp.neck[1], hp[0], hp[1], 0, Kp.k * S * ks * f, Kp.k * S * ks, f * rr.range(60, 140), -520, f * 4, { r: 18 * S, fade: fade(0.95), bounce: 0.3 });
     const Bp = form === 2 ? R.rib2 : R.torso, bpv = form === 2 ? 'base' : 'hem';
     const bw = W(L, 0, 0, st.W2);
     st.shards.spawn(pickVariant(Bp, 2), Bp[bpv][0], Bp[bpv][1], bw[0], bw[1], 0, Bp.k * S * f, Bp.k * S, rr.range(-40, 40), -120, rr.range(-2, 2), { r: 30 * S, fade: fade(0.9), bounce: 0.2 });

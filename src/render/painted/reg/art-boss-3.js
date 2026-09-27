@@ -6,6 +6,7 @@
 export const bosses = {
   b_chimera: () => import('../bosses/b_chimera.js'),     // 키메라 호문쿨루스 (s07)
   b_leviathan: () => import('../bosses/b_leviathan.js'), // 레비아탄 (s08)
+  b_colossus: () => import('../bosses/b_colossus.js'),   // 태엽 거신 (s09)
 };
 export const enemies = [];
 export const companions = {};

@@ -30,6 +30,7 @@ async function boot() {
   initQuests(game);
   initCompanions(game); // [hook:cmp] game.companions = {recruit, unlock, evaluate, state} + 버스 구독
   cloud.init(game); // 계정·클라우드 저장 (로그인한 적이 없으면 네트워크 요청 없음)
+  game.cloud = cloud; // platform.js 의 저장공간 안내가 로그인(클라우드 백업) 여부를 본다 (cloud.loggedIn)
   game.recordScore = (score, stageId, mode = 'story') => {
     const m = game.meta, st = game.state;
     const run = st?.created ? `${st.slot ?? 1}:${st.created}` : null;

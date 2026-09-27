@@ -309,6 +309,7 @@
   "armorBase": "#3a3020"
  },
  "turn": {
+  "_replace": true,
   "sheet5": "victor/victor_gunlord_turn5",
   "views5": [
    "y90",

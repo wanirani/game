@@ -280,6 +280,7 @@
   "armorBase": "#141418"
  },
  "turn": {
+  "_replace": true,
   "sheet5": "victor/victor_phantom_turn5",
   "views5": [
    "y90",

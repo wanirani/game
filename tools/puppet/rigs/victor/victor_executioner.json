@@ -341,6 +341,7 @@
   "armorBase": "#1a0a0a"
  },
  "turn": {
+  "_replace": true,
   "sheet5": "victor/victor_executioner_turn5",
   "views5": [
    "y90",

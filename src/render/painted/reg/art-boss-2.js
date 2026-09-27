@@ -4,6 +4,7 @@
 // companions: { '<companionId>': () => import('../companions/<id>.js') }
 // npcs:       { '<npcId>': () => import('../npcs/<id>.js') }
 export const bosses = {
+  b_crimson: () => import('../bosses/b_crimson.js'),
   b_grimoire: () => import('../bosses/b_grimoire.js'),
 };
 export const enemies = [];

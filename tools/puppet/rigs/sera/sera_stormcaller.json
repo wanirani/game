@@ -272,6 +272,7 @@
   "armorBase": "#1a2a4a"
  },
  "turn": {
+  "_replace": true,
   "sheet5": "sera/sera_stormcaller_turn5",
   "views5": [
    "y90",

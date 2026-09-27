@@ -5,6 +5,7 @@
 // npcs:       { '<npcId>': () => import('../npcs/<id>.js') }
 export const bosses = {
   b_nightwing: () => import('../bosses/b_nightwing.js'),
+  b_banshee: () => import('../bosses/b_banshee.js'),
 };
 export const enemies = [];
 export const companions = {};

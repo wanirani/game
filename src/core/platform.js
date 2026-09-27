@@ -16,7 +16,7 @@
 //  isFullscreen() / toggleFullscreen() / enterFullscreen() / exitFullscreen()   (enter/toggle 은 사용자 입력 처리 중에 불러야 한다)
 //  applyUpdate()                        대기 중인 새 버전 적용 (SKIP_WAITING 보내고 새로고침). updateReady() → bool
 //  audioHint() → bool, AUDIO_HINT_TEXT  컨트롤러만 쓰는 중인데 소리가 아직 잠겨 있다 (타이틀 안내, P-23)
-//  a2hsHint() → bool, dismissA2hs(), A2HS_TEXT   아이폰 사파리 '홈 화면에 추가' 안내 카드 (한 번 닫으면 meta.a2hsSeen)
+//  a2hsHint() → bool, dismissA2hs(), A2HS_TEXT   아이폰 사파리 '홈 화면에 추가' 안내 카드 (한 번 닫으면 meta.tips.a2hs, MASTER_PLAN §1.6)
 //  requestPersist() → Promise<bool>     저장공간 영구 보존 요청 (첫 슬롯 저장 뒤 자동으로 한 번)
 //  registerServiceWorker()              initPlatform 이 페이지 load 뒤 자동 호출 (https 또는 localhost, ?nosw·APK·아티팩트 제외)
 // ── 장면 플래그 (선택) ──
@@ -62,7 +62,15 @@ export function isIOS() {
   return /iPhone|iPad|iPod/.test(UA) || (/Macintosh/.test(UA) && (NAV?.maxTouchPoints ?? 0) > 1);
 }
 export function isAndroid() { return /Android/i.test(UA); }
-const mq = (q) => { try { return !!W?.matchMedia?.(q).matches; } catch { return false; } };
+// MediaQueryList 는 한 번 만들어 두고 .matches(실시간 값)만 읽는다: touchpad.js 가 매 프레임 canFullscreen() 을 묻는다
+const MQL = new Map();
+const mq = (q) => {
+  try {
+    let l = MQL.get(q);
+    if (l === undefined) { l = W?.matchMedia?.(q) || null; MQL.set(q, l); }
+    return !!l?.matches;
+  } catch { return false; }
+};
 /** 설치된 앱으로 실행 중 (브라우저 전체 화면 API 로 들어간 전체 화면은 아니다) */
 export function isStandalone() {
   if (!W) return false;
@@ -77,7 +85,7 @@ export function isAndroidWeb() { return isAndroid() && !isStandalone(); }
 // ───────────────────────── 안전 영역 (§6.1) ─────────────────────────
 const ZERO = Object.freeze({ l: 0, r: 0, t: 0, b: 0 });
 let probe = null;
-let insets = ZERO, insetsKey = '0,0,0,0', insetsDirty = true, sizeAt = '';
+let insets = ZERO, insetsKey = '0,0,0,0', insetsDirty = true, sizeAt = '', insetsNotify = false;
 const insetFns = new Set();
 const clampInset = (v) => { const n = +v; return Number.isFinite(n) && n > 0 ? Math.min(n, 400) : 0; };
 const sizeKey = () => (W ? `${W.innerWidth}x${W.innerHeight}:${W.screen?.orientation?.type || ''}` : '');
@@ -112,6 +120,11 @@ function measureInsets() {
   if (key === insetsKey) return false;
   insetsKey = key; insets = Object.freeze(n);
   writeInsetVars();
+  // 누가 다시 쟀든(game.resize 안의 safeInsets() 포함) 구독자에게 한 번 알린다 (마이크로태스크: resize 도중에 부르지 않게)
+  if (insetFns.size && !insetsNotify) {
+    insetsNotify = true;
+    Promise.resolve().then(() => { insetsNotify = false; const v = safeInsets(); for (const fn of [...insetFns]) call(fn, v); });
+  }
   return true;
 }
 /** DOM 오버레이(회전 안내, 계정 입력 칸 등)가 쓸 수 있게 :root 에 --bn-safe-l/r/t/b 를 적는다 */
@@ -133,12 +146,11 @@ export function safeRect() {
   const i = G?.settings?.safeArea === 'full' ? { ...ZERO } : safeInsets();
   return { x: i.l, y: i.t, w: Math.max(1, iw - i.l - i.r), h: Math.max(1, ih - i.t - i.b), insets: i };
 }
-/** 안전 영역이 창 크기 변화 없이 바뀌었을 수 있을 때 (앱 브리지, 회전 직후) */
+/** 안전 영역이 창 크기 변화 없이 바뀌었을 수 있을 때 (앱 브리지, 회전 직후, 크기가 그대로인 resize) → 바뀌었으면 다시 배치 */
 function recheckInsets(forceResize = false) {
   const changed = measureInsets();
   if (!changed && !forceResize) return;
   if (G) { G.dirty = true; call(() => G.resize?.()); }
-  if (changed) for (const fn of [...insetFns]) call(fn, safeInsets());
 }
 
 // ───────────────────────── 전체 화면·방향 (§6.6, P-21) ─────────────────────────
@@ -250,16 +262,27 @@ export function audioHint() {
   const ctx = G.audio?.ctx;
   return !ctx || ctx.state !== 'running';
 }
+/** 한 번만 보여 주는 안내를 봤는지: meta.tips = { a2hs, storage, remap, pad } (MASTER_PLAN §1.6). 예전 이름 meta.<key>Seen 도 읽는다 */
+const LEGACY_TIP = { a2hs: 'a2hsSeen', storage: 'storageTipSeen' };
+function tipSeen(key) {
+  const m = G?.meta;
+  if (!m) return false;
+  const t = m.tips;
+  return !!((t && typeof t === 'object' && t[key]) || (LEGACY_TIP[key] && m[LEGACY_TIP[key]]));
+}
+function markTip(key) {
+  const m = G?.meta;
+  if (!m) return;
+  const t = m.tips && typeof m.tips === 'object' && !Array.isArray(m.tips) ? m.tips : {};
+  m.tips = { ...t, [key]: true };
+  call(() => G.saves?.saveMeta?.(m));
+}
 /** 아이폰 사파리처럼 전체 화면 API 가 없는 iOS 브라우저: '홈 화면에 추가' 안내 카드를 한 번 보여 준다 */
 export function a2hsHint() {
   if (!G || !isIOS() || fsApi() || isStandalone()) return false;
-  return !G.meta?.a2hsSeen;
+  return !tipSeen('a2hs');
 }
-export function dismissA2hs() {
-  if (!G?.meta) return;
-  G.meta.a2hsSeen = true;
-  call(() => G.saves?.saveMeta?.(G.meta));
-}
+export function dismissA2hs() { markTip('a2hs'); }
 
 // ───────────────────────── 저장공간 보존 (§9.3 Storage) ─────────────────────────
 let persistAsked = false, storageTipPending = false;
@@ -277,7 +300,7 @@ function onFirstSave() {
   persistAsked = true;
   requestPersist().then((ok) => {
     // 보존이 안 되는 브라우저(특히 iOS 사파리는 7일 안 쓰면 지운다): 마을에 돌아왔을 때 백업 안내를 한 번
-    if (!ok && !isApp() && !isStandalone() && !G?.meta?.storageTipSeen && !G?.cloud?.loggedIn) storageTipPending = true;
+    if (!ok && !isApp() && !isStandalone() && !tipSeen('storage') && !G?.cloud?.loggedIn) storageTipPending = true;
   });
 }
 
@@ -359,14 +382,20 @@ export function applyUpdate() {
 }
 
 // ───────────────────────── 주기 점검 (0.5초) ─────────────────────────
+let lastTopName = null;
 function tick() {
   if (!G) return;
+  // 화면이 바뀌면 거절됐던 화면 꺼짐 방지를 한 번 더 시도한다 (컨트롤러만 쓰면 터치·키 입력이 없어 다시 시도할 계기가 없다)
+  const topName = G.top?.name ?? null;
+  if (topName !== lastTopName) { lastTopName = topName; wakeDenied = false; }
   syncWake();
   setCursorHidden(cursorWanted());
   flushUpdateToast();
   if (storageTipPending && G.top?.name === 'hub' && !(G.toasts?.length)) {
     storageTipPending = false;
-    if (G.meta) { G.meta.storageTipSeen = true; call(() => G.saves?.saveMeta?.(G.meta)); }
+    // 그사이 계정에 로그인했으면(클라우드 백업 중) 안내하지 않는다
+    if (tipSeen('storage') || G.cloud?.loggedIn) return;
+    markTip('storage');
     call(() => G.toast?.(STORAGE_TIP_TEXT, '#cfc2a8', 5));
   }
 }
@@ -389,9 +418,10 @@ export function initPlatform(game) {
   measureInsets();
   writeInsetVars();
 
-  // 안전 영역: 창 크기 변화는 game.js 가 직접 받는다 (그때 safeInsets() 가 다시 잰다). 앱 브리지·회전 직후 값만 여기서 챙긴다
+  // 안전 영역: 창 크기 변화는 game.js 가 먼저 받는다 (그때 safeInsets() 가 다시 잰다). 그 뒤 여기서 한 번 더 재서,
+  // 창 크기는 그대로인데 env() 만 바뀐 경우(game.js 가 옛 값을 썼다)에만 다시 배치한다. 앱 브리지·회전 직후 값도 여기서 챙긴다
   W.addEventListener('bn-insets', () => recheckInsets(true));
-  W.addEventListener('resize', () => { insetsDirty = true; });
+  W.addEventListener('resize', () => recheckInsets(false));
   W.addEventListener('orientationchange', () => { insetsDirty = true; setTimeout(() => recheckInsets(false), 250); });
 
   // 확대·스크롤 방지 (예전 index.html 인라인 스크립트)
@@ -416,6 +446,9 @@ export function initPlatform(game) {
   W.addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse') { lastMouse = now(); setCursorHidden(false); } }, { passive: true });
   W.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse') { mouseDown = true; lastMouse = now(); setCursorHidden(false); } wakeDenied = false; }, { passive: true });
   W.addEventListener('pointerup', (e) => { if (e.pointerType === 'mouse') { mouseDown = false; lastMouse = now(); } }, { passive: true });
+  // 창 밖에서 버튼을 놓으면 pointerup 이 오지 않는다 → '누르고 있음'을 풀어 커서가 다시 숨을 수 있게 한다
+  W.addEventListener('pointercancel', (e) => { if (e.pointerType === 'mouse') mouseDown = false; }, { passive: true });
+  W.addEventListener('blur', () => { mouseDown = false; });
 
   // 화면 꺼짐 방지: 탭이 숨으면 브라우저가 풀어 주므로 돌아올 때 다시 요청. 새 버전 확인도 이때 (30분마다)
   D.addEventListener('visibilitychange', () => {

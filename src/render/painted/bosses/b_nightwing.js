@@ -9,12 +9,14 @@
 // 절차적 그로테스크 층: 입 속 피 섞인 침 줄(verlet 아님, 턱 벌림에 따라 늘어짐) · 송곳니에서 떨어지는 핏방울(바닥 튐) · 빠지는 털 조각
 //   · 날개 막의 핏줄 발광(균열 발광 오버레이) · 눈의 붉은 불 · 바닥 그림자
 // 좌표: 로직의 벡터 그림과 같은 지역 좌표계 (발 중앙 원점, +x = 바라보는 쪽, y 위가 음수). 기울기(lean)·좌우 뒤집기 포함.
-import { Drawer, Particles, DamageState, Shards, halo, puff, rr, hash1, loadRig, pickVariant, quality, ledgesOver } from '../kit.js';
+import { Drawer, Particles, DamageState, Shards, halo, puff, rr, hash1, loadRig, pickVariant, quality, QUALITY, ledgesOver } from '../kit.js';
 
 const DIR = 'painted/bosses/b_nightwing';
 const RED = '#ff2a40', EYE = '#ff3040', BLOOD = '#3c0508', BLOOD_HI = '#ff5a5a';
 const PI = Math.PI, TAU = PI * 2;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+/** 실제 적용 품질 등급 (설정이 'auto' 면 조절기가 고른 game.quality/tier) */
+const qOf = (g) => QUALITY[g?.quality ?? g?.tier ?? g?.settings?.quality] ?? quality(g);
 const lerp = (a, b, t) => a + (b - a) * t;
 const approach = (v, t, s) => (v < t ? Math.min(v + s, t) : Math.max(v - s, t));
 
@@ -54,7 +56,7 @@ export default {
   id: 'b_nightwing', kind: 'boss', ownsDeathFade: true,
   async load(env) { return loadRig(DIR, DEF, env); },
   init(boss, rig) {
-    const q = quality(boss.world?.game);
+    const q = qOf(boss.world?.game);
     return {
       D: new Drawer(), P: new Particles(q.particles), shards: new Shards(40), q,
       dmg: new DamageState(boss.def?.phases ?? [0.6, 0.3]), lt: null, pf: 0, lvl: 0, tintK: -1, fs: null, jolt: 0,
@@ -141,8 +143,7 @@ function poseOf(o, b, s, rig, t, st, ghost = false) {
 function drawBoss(ctx, b, world, rig, st) {
   const D = st.D, P = st.P;
   if (st.rig !== rig) { st.rig = rig; st._gm = null; }
-  const qn = world.game?.settings?.quality ?? 'high';
-  if (st.q.name !== qn) st.q = quality(world.game);
+  st.q = qOf(world.game);
   const q = st.q;
   const now = world.time ?? b.t;
   const dt = st.lt == null ? 1 / 60 : clamp(now - st.lt, 0, 0.05); st.lt = now;
