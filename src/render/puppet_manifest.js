@@ -308,7 +308,7 @@ export const PUPPETS = {
    ]
   },
   "npc_marta": {
-   "h": "83021bc048db",
+   "h": "6a688b83a7c6",
    "turn": false,
    "lv": [
     "hi",

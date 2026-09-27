@@ -122,7 +122,7 @@
    "generationId": "ATMiNZ8FFNyhUIzYWUfcSfZ-0EBSrDrAEQ17yRyzGsZgJJrhGyR9GFYE-YQHzewmerYlolOw",
    "tool": "image_to_image",
    "imageCount": 2,
-   "decision": "2 images; sheet choice recorded when the parts are cut (see below)"
+   "decision": "2 images; sheet1 KEPT → src/mirror_knight_sheet1.webp (used by parts.json); sheet2 dropped (not cut; file removed)"
   },
   {
    "enemy": "glass_wraith",
@@ -131,7 +131,7 @@
    "generationId": "AWv9JMEBISXZjVf5t_qNwpk5ciZAx5tO6cAjA48TxDDlfIzcf80-fRYYBqa_8qUXENwziIfM",
    "tool": "image_to_image",
    "imageCount": 2,
-   "decision": "2 images; sheet choice recorded when the parts are cut (see below)"
+   "decision": "2 images; both KEPT → src/glass_wraith_sheet1.webp + _sheet2.webp (parts cut from both)"
   },
   {
    "enemy": "chandelier_fiend",
@@ -140,7 +140,7 @@
    "generationId": "Af17i9M7eR0vfBnZo76aJbiFCl1HHXgQu5X03SqNBCWlpYZJbBYzZlGFvu4RvcXAmvwzMOUD",
    "tool": "image_to_image",
    "imageCount": 2,
-   "decision": "2 images; sheet choice recorded when the parts are cut (see below)"
+   "decision": "2 images; sheet2 KEPT → src/chandelier_sheet2.webp (legs + chain cut from it); sheet1 dropped (not cut; file removed)"
   },
   {
    "enemy": "forge_imp",
@@ -149,7 +149,7 @@
    "generationId": "AeB71iUDdVbeAHCK1dMRjg7vvi_VkXURA--WPlrjkdKXKzC40HZNdcIlRoEDsYXuUWAGpZdq",
    "tool": "image_to_image",
    "imageCount": 2,
-   "decision": "2 images; sheet choice recorded when the parts are cut (see below)"
+   "decision": "2 images; sheet1 KEPT → src/forge_imp_sheet1.webp (used by parts.json); sheet2 dropped (not cut; file removed)"
   },
   {
    "enemy": "slag_golem",
@@ -158,7 +158,7 @@
    "generationId": "ASOuuWsI_uK2HkaIsG4tqytT24cxrv1_vp1uSnWCufBrH3-32a2AJoO53E6lZNiut50Trv_9",
    "tool": "image_to_image",
    "imageCount": 2,
-   "decision": "2 images; sheet choice recorded when the parts are cut (see below)"
+   "decision": "2 images; sheet2 KEPT → src/slag_golem_sheet2.webp (arm + legs cut from it); sheet1 dropped (not cut; file removed)"
   },
   {
    "enemy": "chain_warden",
@@ -167,7 +167,7 @@
    "generationId": "AU9n7d2kgibAaVOyvXIJRNoOri_2_eAyXbVgf0DyUmg-jpru1gbiseJQ0BHF0Fp2rURLNgj-",
    "tool": "image_to_image",
    "imageCount": 2,
-   "decision": "2 images; sheet choice recorded when the parts are cut (see below)"
+   "decision": "2 images; both KEPT → src/chain_warden_sheet1.webp + _sheet2.webp (parts cut from both)"
   },
   {
    "enemy": "bellows",
@@ -176,7 +176,7 @@
    "generationId": "AdimTyaxS-0vsgZbhM6WAjw3qNkFUMVzweULogEPO7PdP4Oc0DaPjZBNyWKRzjlOJ_r0iKs2",
    "tool": "image_to_image",
    "imageCount": 2,
-   "decision": "2 images; sheet choice recorded when the parts are cut (see below)"
+   "decision": "2 images; sheet1 KEPT → src/bellows_sheet1.webp (used by parts.json); sheet2 dropped (not cut; file removed)"
   },
   {
    "enemy": "abyss_angler",
@@ -185,7 +185,7 @@
    "generationId": "AXdw4q_xbR384qs1hUUJx9qr4bjZwTfGKhf5Z9IzgWvqNsntIoL889c11-xQDZHfuSDWWOry",
    "tool": "image_to_image",
    "imageCount": 2,
-   "decision": "2 images; sheet choice recorded when the parts are cut (see below)"
+   "decision": "2 images; sheet2 KEPT → src/abyss_angler_sheet2.webp (used by parts.json); sheet1 dropped (not cut; file removed)"
   },
   {
    "enemy": "sunken_priest",
@@ -194,7 +194,7 @@
    "generationId": "Aa6Te-OZ2QXi2AMTtjhwih_u3SKevu9AEreqyLzNpk_t8gr3-Y6GsT5an6jpCnxGA3QNJsLM",
    "tool": "image_to_image",
    "imageCount": 2,
-   "decision": "2 images; sheet choice recorded when the parts are cut (see below)"
+   "decision": "2 images; both KEPT → src/sunken_priest_sheet1.webp + _sheet2.webp (parts cut from both)"
   },
   {
    "enemy": "coral_crab",
@@ -203,7 +203,7 @@
    "generationId": "ASZuXuINn1RgnUEwvBle4WI0Ls3wzwouz-o8YeFBcpfDhwSaJL0yan2mJCprHnX2jqk-3xk3",
    "tool": "image_to_image",
    "imageCount": 2,
-   "decision": "2 images; sheet choice recorded when the parts are cut (see below)"
+   "decision": "2 images; sheet2 KEPT → src/coral_crab_sheet2.webp (claw + shrine cut from it); sheet1 dropped (not cut; file removed)"
   },
   {
    "enemy": "siren",
@@ -212,7 +212,7 @@
    "generationId": "AdUXxgkQa6jc6JbzwWkK1Tn7Ieskic2226viPvnFkbjWVJsc-5QCdz8wslvjG65Km-E9UJoi",
    "tool": "image_to_image",
    "imageCount": 2,
-   "decision": "2 images; sheet choice recorded when the parts are cut (see below)"
+   "decision": "2 images; sheet2 KEPT → src/siren_sheet2.webp (used by parts.json); sheet1 dropped (not cut; file removed)"
   },
   {
    "enemy": "mirror_knight",

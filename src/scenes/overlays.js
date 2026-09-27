@@ -104,6 +104,9 @@ export class BossIntroScene extends Scene {
     this.bossName = String(this.def.name ?? '???');
     this.onDone = onDone; this.dur = 3.6; this.done = false;
     this._nk = null; this._ns = NAME_MAX;
+    this.fe = !this.def.portrait;
+    // 초상화는 WARNING 동안(1.4초) 받아 둔다: 보스 초상화는 스테이지가 미리 받지 않으므로 이름 카드가 나올 때 비어 있지 않게
+    if (this.def.portrait) { try { assets.get(this.def.portrait); } catch (e) { console.error(e); } }
     audio.sfx('warning');
     prewarm(this.game, 1, [['WARNING', WARN_OPTS], [this.bossName, { ...NAME_OPTS, size: NAME_MAX }]]);
   }
@@ -114,6 +117,11 @@ export class BossIntroScene extends Scene {
     this.onDone?.();
   }
   update(dt) {
+    // 초상화가 도착하면 WARNING 동안 가장자리 페더 사본을 미리 굽는다 (이름 카드가 미끄러져 들어오는 첫 프레임이 끊기지 않게)
+    if (!this.fe && this.t > 0.1 && this.t < 1.4) {
+      const img = assets.get(this.def.portrait);
+      if (img?.width) { this.fe = true; try { featherLeft(img); } catch (e) { console.error(e); } }
+    }
     if (this.t > 1.3 && !this.roared) { this.roared = true; audio.sfx('boss_roar'); this.game.world?.camera?.shake(10, 0.6); }
     this.game.world?.camera?.tickShake?.(dt); // 월드가 멈춰 있어도 포효 흔들림을 소리와 함께 재생
     if (this.t > this.dur || (this.t > 1.5 && (input.pressed('confirm') || input.pointer.tapped))) this.finish();
@@ -240,7 +248,7 @@ let MEASURE = null;
  */
 function bakeName(str, color, S) {
   const brush = !!UI.faceReady?.('BN Brush');
-  const key = `${str}|${color}|${S}`;
+  const key = `${str}|${color}|${S}|${UI.fontEpoch ?? 0}`; // 글꼴이 늦게 도착하면(세대 변경) 대체 글꼴로 구운 것을 다시 쓰지 않는다
   const hit = NAME_CACHE.get(key + (brush ? '|b' : '|t'));
   if (hit) return hit;
   const fontStr = brush ? `400 ${NAME_PX}px ${FONT.brush}` : `900 ${NAME_PX}px ${FONT.title}`;
@@ -640,9 +648,11 @@ export class GameOverScene extends Scene {
     const sec = Math.max(0, Math.ceil(this.count) - 1);
     if (sec !== this.sec) { if (this.sec != null) audio.sfx('clock_tick'); this.sec = sec; this.secT = 0; }
     this.secT += dt;
-    if (!armed) return;
-    // 마우스: 포인터가 움직였을 때만 가리킨 버튼을 고른다 (가만히 둔 커서가 키보드 선택을 되돌리지 않게)
+    // 마우스: 포인터가 움직였을 때만 가리킨 버튼을 고른다 (가만히 둔 커서가 키보드 선택을 되돌리지 않게).
+    // 화면이 뜰 때 커서가 이미 '포기' 위에 멈춰 있던 것은 움직임이 아니다 → 입력을 받기 전까지는 자리만 기억한다
     const p = input.pointer;
+    if (!armed || this.px === undefined) { this.px = p.x; this.py = p.y; }
+    if (!armed) return;
     if (p.active && (p.x !== this.px || p.y !== this.py)) {
       this.px = p.x; this.py = p.y;
       const over = taps.over(this);
@@ -730,11 +740,17 @@ export class GameOverScene extends Scene {
     const bw = Math.min(220, (W - 80) / 2), by = y4 + g4;
     ctx.save();
     ctx.globalAlpha = clamp(t / GO_ARM, 0.3, 1); // 입력을 받기 전(GO_ARM)에는 버튼이 흐리게 떠오른다
-    ['이어하기', '포기 (마을로)'].forEach((l, k) => {
-      const r = { x: W / 2 - bw - 10 + k * (bw + 20), y: by, w: bw, h: bh };
-      button(ctx, r, l, { selected: this.menu.index === k });
-      taps.add(k === 0 ? 'go_cont' : 'go_quit', r, { owner: this, kind: 'primary', src: 'gameover' });
-    });
+    // 강조는 실제 선택(menu.index)만: 가만히 있는 커서 밑의 버튼까지 강조되면 두 버튼이 함께 골라진 것처럼 보인다
+    // (커서를 움직이면 update 가 그 버튼을 고르므로 마우스로 가리킨 버튼도 그대로 강조된다)
+    const ptr = input.pointer, act = ptr.active;
+    ptr.active = false;
+    try {
+      ['이어하기', '포기 (마을로)'].forEach((l, k) => {
+        const r = { x: W / 2 - bw - 10 + k * (bw + 20), y: by, w: bw, h: bh };
+        button(ctx, r, l, { selected: this.menu.index === k });
+        taps.add(k === 0 ? 'go_cont' : 'go_quit', r, { owner: this, kind: 'primary', src: 'gameover' });
+      });
+    } finally { ptr.active = act; }
     hintLine(ctx, [['dpadH', '선택'], ['confirm', '결정']], '버튼을 눌러 고르세요', W / 2, Math.max(by + bh + 24, hintY), { size: 13, color: COLORS.dim });
     ctx.restore();
   }

@@ -43,6 +43,8 @@ export class EquipTab extends Tab {
   get slots() { return D.EQUIP_SLOTS(); }
   get slot() { return this.slots[this.si]; }
   onShow() { this.rebuild(); this.view.wake(); }
+  /** 탭을 떠날 때: 끌기·누름·회전을 끝낸다 (돌아왔을 때 옛 끌기가 관성으로 튀지 않게) */
+  onHide() { this.view.sleep(); }
   free() { this.stage.free(); this.txt.free(); this.bg.free(); }
   /** 메뉴의 가로 밀기(탭 넘기기)를 무시할 곳: 회전 무대 (platform §5.6) */
   noSwipe(x, y) { return this.view.swipeBlock(x, y); }
@@ -204,8 +206,8 @@ export class EquipTab extends Tab {
     }
   }
   hints(focused) {
-    if (this.sub === 'list') return [['↑↓', '고르기'], ['Z', '장착', '한 번 더 터치하면 장착'], [['←', 'X'], '장비 칸'], ...turntableHints()];
-    return [['↑↓', '장비 칸'], ['Z', '교체', '장비 칸을 터치해 교체할 장비를 고르세요'], ['A', '해제'], ...turntableHints()];
+    if (this.sub === 'list') return [['↑↓', '고르기'], ['Z', '장착', '한 번 더 터치하면 장착'], [['←', 'X'], '장비 칸'], ...turntableHints(this.view)];
+    return [['↑↓', '장비 칸'], ['Z', '교체', '장비 칸을 터치해 교체할 장비를 고르세요'], ['A', '해제'], ...turntableHints(this.view)];
   }
 
   render(ctx, A) {

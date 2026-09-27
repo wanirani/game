@@ -558,30 +558,44 @@ export class HeroView {
       else if (this.ctime - this.lastReset < TT.DOUBLE_T) { this.lastReset = -9; this.toggleAuto(); this.resetYaw(); } // 두 번째 누름: 켜고 끈 것을 되돌리고 초기화
       else { this.lastReset = this.ctime; this.toggleAuto(); }
     }
-    // 자동 회전을 켠 입력(누르고 있는 ▶ 버튼·/ 키·R3)은 뗄 때까지 회전을 멈추지 않는다
-    if (this.spinGuard && !p.down && !input.down('viewReset')) this.spinGuard = false;
     if (any) {
       this.idleT = 0;
       if (this.mode === 'auto' && !this.spinNow && !this.spinGuard) this.stopSpin(true);
     }
+    // 자동 회전을 켠 입력(누르고 있는 ▶ 버튼·/ 키·R3)은 뗄 때까지 회전을 멈추지 않는다.
+    // 뗀 순간의 탭(pointer.tapped → anyPressed)도 그 입력의 일부라, 그 스텝이 지난 뒤에 푼다 (먼저 풀면 ▶ 를 눌러도 바로 멈췄다)
+    if (this.spinGuard && !p.down && !p.tapped && !p.justDown && !input.down('viewReset')) this.spinGuard = false;
     return tapped;
   }
 
   /** 각도 적분 (update 에서) */
   stepYaw(dt) {
     if (!this.p.look) return;
+    // 설정(영웅 자동 회전)이 메뉴 위에서 바뀌었으면 따른다 (옵션 화면은 메뉴 위에 열린다 — 탭은 새로 만들어지지 않는다)
+    if (this.game) {
+      const setAuto = this.game.settings?.turntableAuto !== false;
+      if (setAuto !== this._autoSet) { this._autoSet = setAuto; this.autoSpin = setAuto; if (!setAuto) this.stopSpin(true); }
+    }
+    // 채색 뷰 지원이 바뀜: 사용자가 아직 안 돌렸으면 기본 각으로 (로딩 끝 → 3/4 앞모습), 대체로 바뀌면 옆모습으로.
+    // 사용자가 돌려 둔 각은 대체 동안(아직 턴 시트를 읽는 다른 직업 등) 기억했다가 채색 뷰가 돌아오면 되돌린다
+    // (직업 탭: 직업을 바꿔 골라도 같은 방향에서 비교 — 그 사이 사용자가 다시 돌렸으면 새로 고른 각이 우선)
     const S = this.support();
-    // 채색 뷰 지원이 바뀜: 사용자가 아직 안 돌렸으면 기본 각으로 (로딩 끝 → 3/4 앞모습), 대체로 바뀌면 옆모습으로
+    if (this._full === true && !S.full && this.touched && this._keepYaw === null) this._keepYaw = this.paintedRest();
     if (this._full !== S.full) {
       const first = this._full === null;
       this._full = S.full;
+      const free = !this.seq && !this.pending && this.mode !== 'drag' && !this.hold;
       if (first) { this.yaw = this.yawGoal = this.userYaw = this.defaultYaw; }
       else if (!this.touched) {
         // 시연 중이면 끝난 뒤 돌아갈 각만 바꾼다 (시연이 끝나면 userYaw 로 돈다)
         this.userYaw = this.defaultYaw;
-        if (!this.seq && !this.pending && this.mode !== 'drag') this.tweenTo(this.userYaw, 0.4, { user: true });
+        if (free) this.tweenTo(this.userYaw, 0.4, { user: true });
       }
-      else if (!S.full && this.mode === 'idle') this.settleTo(this.snapOf(this.yaw));
+      else if (S.full && this._keepYaw !== null) {
+        this.userYaw = this._keepYaw; this._keepYaw = null;
+        if (free) this.tweenTo(this.userYaw, 0.4, { user: true });
+      }
+      else if (!S.full && (this.mode === 'idle' || this.mode === 'settle' || (this.mode === 'tween' && this.tw?.user))) { this.tw = null; this.settleTo(this.snapOf(this.yaw)); }
     }
     this.idleT += dt;
     // 자동 회전 시작
@@ -771,6 +785,9 @@ export function pedestal(ctx, x, y, s, t, color = PAL.gold, yaw = null) {
 export class HeroStage {
   constructor() { this.layer = new PixLayer(); }
   draw(ctx, x, y, w, h, t, scale, accent = '#e8c872') {
+    // 호출측이 보통 pxScale(ctx) 를 넘긴다: 그 값은 3 에서 잘리고 1/64 로 내림되어, 장치 배율이 3 을 넘으면(데스크톱 UI 배율 1.5 등)
+    // '희망 배율 < 장치 배율' 로 보여 매 프레임 확대 복사 경로를 탔다 → 장치 배율 이상을 원하면 화소 정렬 1:1 로
+    const want = Number.isFinite(scale) && scale > 0 && scale < pxScale(ctx) - 1e-6 ? scale : Infinity;
     this.layer.draw(ctx, 'stage|' + accent, x, y, w, h, (c) => {
       const g = c.createLinearGradient(0, y, 0, y + h);
       g.addColorStop(0, '#171028'); g.addColorStop(0.6, '#0d0816'); g.addColorStop(1, '#050308');
@@ -825,7 +842,7 @@ export class HeroStage {
       // 영웅 뒤 기운 (영웅 색): 무대 넓이만 한 가산 합성이라 매 프레임 그리면 비싸다 → 함께 굽는다 (P-11)
       c.imageSmoothingQuality = 'low';
       glow(c, x + w / 2, y + h * 0.5, h * 0.42, accent, 0.17);
-    }, scale);
+    }, want);
     // 동적: 떠다니는 먼지 (부드러운 발광 스프라이트 확대는 'low' 필터로 충분하고 훨씬 싸다 — P-11)
     ctx.save();
     ctx.imageSmoothingQuality = 'low';

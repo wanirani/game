@@ -367,9 +367,10 @@ function prewarm(w, p, force = false) {
     // 마무리 일격이 찍는 자국 (hitfx 가 부팅 뒤 한가할 때 굽지만, 그 전에 각성해도 감독 도중 캔버스를 만들지 않게: 있으면 Map 조회뿐)
     for (const k of ['crack', 'scorch', 'blood', 'frost', 'goo']) for (let i = 0; i < 3; i++) HFX.decalSprite?.(k, i);
     // ULTFX.begin/final/beat 이 쓰는 빛 (ULTFX 자체 캐시)
-    for (const c of ['#ffffff', S.col, T2[p.hero.classId]?.accent ?? AWAKEN[ch]?.accent, ...S.beat]) if (c) ULTFX.glow?.(c);
-    // 다른 모듈의 색별 캐시 (처음 쓰는 색이면 감독 도중 캔버스를 만든다): 연기 모양 입자 · 데미지 숫자 색 · 조명 색광
-    for (const c of S.soft) HFX.soft?.(c);
+    const acc = T2[p.hero.classId]?.accent ?? AWAKEN[ch]?.accent;
+    for (const c of ['#ffffff', S.col, acc, ...S.beat]) if (c) ULTFX.glow?.(c);
+    // 다른 모듈의 색별 캐시 (처음 쓰는 색이면 감독 도중 캔버스를 만든다): 연기 모양 입자(ULTFX 박자·마무리는 각성 색·강조색) · 데미지 숫자 색 · 조명 색광
+    for (const c of [...S.soft, S.col, acc]) if (c) HFX.soft?.(c);
     for (const c of S.dmg) HFX.digitAtlas?.('ult', c);
     sc.setTransform(1, 0, 0, 1, 0, 0);
     try { warmLights(w, S.light, sc); } catch (e) { console.warn('[awaken-dir-a] 조명 미리 굽기', e); }

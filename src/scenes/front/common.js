@@ -607,22 +607,28 @@ export function portraitIn(ctx, img, r, { fx = 0.5, fy = 0.22, zoom = 1, silhoue
     if (silhouette) {
       // 잠긴 캐릭터: 거의 검게 가리고 붉은 기운만 남김 (초상화는 불투명 이미지라 필터 대신 덮개 사용)
       ctx.fillStyle = 'rgba(5,0,6,0.9)'; ctx.fillRect(r.x, r.y, r.w, r.h);
-      const g = ctx.createLinearGradient(r.x, r.y + r.h, r.x + r.w, r.y);
-      g.addColorStop(0, 'rgba(150,10,30,0.35)'); g.addColorStop(0.6, 'rgba(20,4,10,0)'); g.addColorStop(1, 'rgba(70,40,140,0.25)');
-      ctx.fillStyle = g; ctx.fillRect(r.x, r.y, r.w, r.h);
+      // 크기별로 한 번 만든 대각선 그라데이션 (사각형 왼쪽 위 원점)
+      const W = R1(r.w), H = R1(r.h);
+      ctx.save(); ctx.translate(r.x, r.y);
+      ctx.fillStyle = linGrad(ctx, `piSil|${W}|${H}`, 0, H, W, 0, [[0, 'rgba(150,10,30,0.35)'], [0.6, 'rgba(20,4,10,0)'], [1, 'rgba(70,40,140,0.25)']]);
+      ctx.fillRect(0, 0, r.w, r.h);
+      ctx.restore();
     }
   } else {
-    const g = ctx.createLinearGradient(r.x, r.y, r.x, r.y + r.h);
-    g.addColorStop(0, silhouette ? '#1a0a10' : fallback); g.addColorStop(1, '#07030a');
-    ctx.fillStyle = g; ctx.fillRect(r.x, r.y, r.w, r.h);
+    const H = R1(r.h), c0 = silhouette ? '#1a0a10' : fallback;
+    ctx.save(); ctx.translate(r.x, r.y);
+    ctx.fillStyle = linGrad(ctx, `piFb|${c0}|${H}`, 0, 0, 0, H, [[0, c0], [1, '#07030a']]);
+    ctx.fillRect(0, 0, r.w, r.h);
+    ctx.restore();
     ctx.fillStyle = silhouette ? '#000' : 'rgba(0,0,0,0.5)';
     ctx.beginPath(); ctx.arc(r.x + r.w / 2, r.y + r.h * 0.34, r.w * 0.18, 0, TAU); ctx.fill();
     ctx.beginPath(); ctx.ellipse(r.x + r.w / 2, r.y + r.h * 0.9, r.w * 0.36, r.h * 0.4, 0, Math.PI, TAU); ctx.fill();
   }
   if (fadeBottom > 0) {
-    const g = ctx.createLinearGradient(0, r.y + r.h * (1 - fadeBottom), 0, r.y + r.h);
-    g.addColorStop(0, 'rgba(6,2,8,0)'); g.addColorStop(1, 'rgba(6,2,8,0.95)');
-    ctx.fillStyle = g; ctx.fillRect(r.x, r.y + r.h * (1 - fadeBottom), r.w, r.h * fadeBottom + 1);
+    const fh = R1(r.h * fadeBottom);
+    ctx.translate(0, r.y + r.h * (1 - fadeBottom));
+    ctx.fillStyle = linGrad(ctx, `piFade|${fh}`, 0, 0, 0, fh, [[0, 'rgba(6,2,8,0)'], [1, 'rgba(6,2,8,0.95)']]);
+    ctx.fillRect(r.x, 0, r.w, r.h * fadeBottom + 1);
   }
   ctx.restore();
 }

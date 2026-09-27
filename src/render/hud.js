@@ -45,8 +45,9 @@ export function drawHUD(ctx, world, vw, vh) {
   drawUltGauge(ctx, L.ult, world, run, T);
   // 각성 게이지 + 준비 문구 칸 L.ready ('필살기 준비!' · '각성 가능!' 모두 FEEL-HUD). SP 막대 위에 빛을 겹치므로 필살 게이지 다음에
   drawAwGauge(ctx, world, L.awGauge.x, L.awGauge.y, L.awGauge.w, T); // [hook:feel]
-  // 동료 위젯 (companions §7.1): 탭 판정용 사각형은 world.companions.hudRects 에 둔다
-  const cr = drawCompanionHUD(ctx, world, { x: L.companions.x, y: L.companions.y, touch: T, rect: L.companions, lane: L.callouts, layout: L }); // [hook:cmp]
+  // 동료 위젯 (companions §7.1): 칸 L.companions 안쪽 사각형 L.companionsDraw 에 (탑승·기력 고리가 칸 밖 하트 줄을 덮지 않게).
+  // 탭 판정용 사각형은 world.companions.hudRects 에 둔다
+  const cr = drawCompanionHUD(ctx, world, cmpOpts(L, T)); // [hook:cmp]
   if (world.companions) { if (!cr) NO_RECTS.length = 0; try { world.companions.hudRects = cr || NO_RECTS; } catch { /* 읽기 전용이면 동료 쪽이 직접 관리 */ } } // [hook:cmp]
   drawScore(ctx, L.score, world, hero, p, run, T);
   drawComboHUD(ctx, world, vw, vh, T); // [hook:feel] 콤보·스타일 열 (L.combo)
@@ -55,6 +56,17 @@ export function drawHUD(ctx, world, vw, vh) {
   if (world.banner) drawBanner(ctx, L.transient, world, world.banner);
   else drawAnnouncer(ctx, world, vw, vh); // [hook:feel]
   ctx.restore();
+}
+
+/** companion_hud 에 넘기는 칸 (배치 L 이 바뀔 때만 새로 만든다 — 매 프레임 할당 없음) */
+let cmpL = null, cmpT = false, cmpO = null;
+function cmpOpts(L, T) {
+  if (L !== cmpL || T !== cmpT || !cmpO) {
+    const r = L.companionsDraw ?? L.companions;
+    cmpO = { x: r.x, y: r.y, touch: T, rect: r, lane: L.callouts, layout: L };
+    cmpL = L; cmpT = T;
+  }
+  return cmpO;
 }
 
 /**
@@ -76,7 +88,7 @@ export function drawHUDPart(ctx, world, vw, vh, part) {
     case 'skills': drawSkills(ctx, L.skills, hero, p, T); break;
     case 'ult': drawUltGauge(ctx, L.ult, world, run, T); break;
     case 'awGauge': r = drawAwGauge(ctx, world, L.awGauge.x, L.awGauge.y, L.awGauge.w, T); break;
-    case 'companions': r = drawCompanionHUD(ctx, world, { x: L.companions.x, y: L.companions.y, touch: T, rect: L.companions, lane: L.callouts, layout: L }); break;
+    case 'companions': r = drawCompanionHUD(ctx, world, cmpOpts(L, T)); break;
     case 'score': drawScore(ctx, L.score, world, hero, p, run, T); break;
     case 'combo': r = drawComboHUD(ctx, world, vw, vh, T); break;
     case 'boss': if (L.bossShown) drawBossBar(ctx, L.bossBar, world.boss); break;

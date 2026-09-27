@@ -90,6 +90,8 @@ export class StatusTab extends Tab {
     this.view.set(this.look, D.CHARACTERS()[this.hero.charId]);
   }
   onShow() { this.refresh(); this.view.intro(0.8); this.view.wake(); }
+  /** 탭을 떠날 때: 끌기·누름·회전을 끝낸다 (돌아왔을 때 옛 끌기가 관성으로 튀지 않게) */
+  onHide() { this.view.sleep(); }
   free() { this.layer.free(); this.stage.free(); this.txt.free(); this.bg.free(); }
   /** 메뉴의 가로 밀기(탭 넘기기)를 무시할 곳: 회전 무대 (platform §5.6) */
   noSwipe(x, y) { return this.view.swipeBlock(x, y); }
@@ -140,8 +142,10 @@ export class StatusTab extends Tab {
     if (nav.confirm) this.view.showcase();
     if (nav.cancel) this.m.close();
   }
+  /** 포커스와 무관하게 늘 되는 조작 (탭 막대에 포커스가 있을 때 메뉴 하단 막대가 덧붙인다 — 턴테이블) */
+  idleHints() { return turntableHints(this.view); }
   hints() {
-    return [['↑↓←→', '능력치 설명', '능력치를 누르면 설명이 나옵니다'], ['Z', '동작 보기', '영웅을 터치하면 공격 동작을 봅니다'], ...turntableHints()];
+    return [['↑↓←→', '능력치 설명', '능력치를 누르면 설명이 나옵니다'], ['Z', '동작 보기', '영웅을 터치하면 공격 동작을 봅니다'], ...turntableHints(this.view)];
   }
 
   render(ctx, A) {

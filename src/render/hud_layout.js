@@ -3,6 +3,7 @@
 // hudLayout(world, vw, vh, pad?, opts?) → 레이아웃 L (논리 px, 사각형은 모두 {x,y,w,h}; 읽기 전용 — 고치지 말 것,
 //   같은 입력이면 같은 객체를 돌려주므로 한 프레임에 여러 번 불러도 할당이 없다)
 //   상시 영역: portrait vitals hearts skills ult awGauge ready companions callouts score combo
+//   companionsDraw  동료 위젯을 그릴 때 companion_hud 에 넘기는 안쪽 사각형 (L.companions 안; 바깥 고리가 칸을 넘지 않게 — CMP_INK)
 //   bossBar    지금 쓰는 보스 체력바 칸 (bossSlot 'top'|'bottom'; bossTop·bossBottom 은 두 후보, bossShown = 지금 보이는지)
 //   transient  알림(announcer)·배너 한 칸 (배너가 이긴다)
 //   meter(i)   기믹 게이지 i번째 줄 {x,y,w,h} (≤ 3줄, 가운데 위)
@@ -27,6 +28,12 @@ export const TOAST_ROW = 26;     // 토스트 한 줄 높이
 export const METER_ROW = 20;     // 기믹 게이지 줄 간격
 export const METER_H = 16;       // 기믹 게이지 한 줄 높이
 export const TOUCH_FLOOR = 296;  // 터치: 상시 영역의 아래 끝 한계 (§1.8 'no persistent HUD below y 297 on touch'; 아래 보스 칸만 예외)
+/**
+ * 동료 위젯(companion_hud, 설계 128×68)이 원점 밖으로 칠하는 폭 (설계 px): 탈것 바탕 원 r+3.5 · 탑승 금빛 고리 · 비행 탈것 기력 호 r+7
+ * → 왼쪽·위로 8, 수호신 바탕 원 r+3 → 오른쪽으로 4. hudLayout 은 이만큼 안쪽 사각형(companionsDraw)을 주어 잉크가 L.companions 안에 머물게 한다
+ */
+export const CMP_INK = Object.freeze({ l: 8, t: 8, r: 4 });
+const CMP_W = 128, CMP_H = 68;   // companion_hud 의 BASE_W × BASE_H (이 크기를 기준으로 줄여 그린다)
 
 const R = (x, y, w, h) => ({ x, y, w, h });
 const ZERO = Object.freeze({ l: 0, r: 0, t: 0, b: 0 });
@@ -180,6 +187,9 @@ function build(vw, vh, T, S, pad, bossOn, nM) {
   L.awGauge = R(106 + l, 126 + t, 120, 20);
   L.ready = R(106 + l, 148 + t, 130, 22);
   L.companions = R(244 + l, 92 + t, 128, 68);
+  // 동료 위젯 그리기 칸: 원점을 바깥 고리 폭만큼 안쪽으로, 크기는 남는 너비에 맞춘 배율(≈ 0.91)로 → 잉크 x 244–372, y 92–155
+  const cmpK = (L.companions.w - CMP_INK.l - CMP_INK.r) / CMP_W;
+  L.companionsDraw = R(L.companions.x + CMP_INK.l, L.companions.y + CMP_INK.t, CMP_W * cmpK, CMP_H * cmpK);
   // 오른쪽 위 점수 (고정 영역: 패드가 여기까지 올라오면 패드 배치(PLAT-TOUCH)가 크기를 줄여야 한다)
   L.score = R(right - 164, 10 + t, 150, T ? 70 : 62);
 

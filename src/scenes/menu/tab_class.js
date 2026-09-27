@@ -39,6 +39,8 @@ export class ClassTab extends Tab {
     return [t0, t1, t2];
   }
   onShow() { if (!this.sel) this.sel = this.hero.classId; this.view.wake(); }
+  /** 탭을 떠날 때: 끌기·누름·회전을 끝낸다 (돌아왔을 때 옛 끌기가 관성으로 튀지 않게) */
+  onHide() { this.view.sleep(); }
   lookFor(cid) {
     if (this.rev !== this.m.rev) { this.rev = this.m.rev; this.looks.clear(); this.dropThumbs(); }
     let L = this.looks.get(cid);
@@ -120,7 +122,7 @@ export class ClassTab extends Tab {
     if (nav.confirm) this.view.showcase();
     if (nav.cancel) this.m.close();
   }
-  hints() { return [['↑↓←→', '직업 선택', '직업 카드를 터치해 자세히 보기'], ['Z', '동작 보기'], ...turntableHints()]; }
+  hints() { return [['↑↓←→', '직업 선택', '직업 카드를 터치해 자세히 보기'], ['Z', '동작 보기'], ...turntableHints(this.view)]; }
 
   render(ctx, A) {
     if (!this.sel) this.sel = this.hero.classId;

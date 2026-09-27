@@ -43,7 +43,8 @@
 //  · 그리기 코드에서 그라디언트를 만들지 않는다: 달·코로나·날개·초승달·검·까마귀·깃발은 캔버스 풀(부팅 뒤 한가할 때 8장)에 굽고, 빛은 ULTFX.glow.
 //  · 입자는 각성 최대치(700/450/250)의 몫(75/70/55%) 안에서만 뿌린다 (다른 연출이 이미 뿌린 입자 수도 센다). 마무리 직전에는 앞 박자의
 //    오래된 연기·먼지를 최대치 절반까지 걷어 내 적 전원의 타격 불꽃·처치 파편이 들어올 자리를 남긴다 (번쩍임·임팩트 프레임이 덮는 순간).
-//  · 망령 기사 돌격의 잔향 그림은 기사마다 품질별 1/0/0 장 (잔상 예산 8/5/3). 리아는 키트의 색보정·집중선 층을 끈다 (거의 검은 화면 + 화면 전체 층 절약).
+//  · 망령 기사 돌격의 잔향 그림은 기사마다 품질별 1/0/0 장 (잔상 예산 8/5/3). 리아의 순간이동 잔향·그림자 분신도 가장 새것부터 8/5/3 장까지.
+//    리아는 키트의 색보정·집중선 층을 끈다 (거의 검은 화면 + 화면 전체 층 절약).
 //  · 채우는 넓이를 줄인다: 아젤의 초승달은 휘두르는 0.1초만 스프라이트, 흉터·일제 폭발은 색마다 한 경로의 초승달 벡터.
 //    리아의 거대 까마귀는 붉은 역광을 스프라이트에 함께 구워 한 장으로, 남은 베기 자국·깃털 소용돌이는 한 경로로 묶어 채운다.
 //    (headless 소프트웨어 래스터로 층별 비용을 재어 보니 큰 회전·확대 가산 그림이 가장 큰 몫이었다)
@@ -641,6 +642,7 @@ function xPath(ctx, list, w) {
   }
 }
 const PETALS = { high: 44, medium: 30, low: 16 };   // 진홍 꽃보라: 화면에 떠 있는 꽃잎 수 (품질별)
+const AFTER = { high: 8, medium: 5, low: 3 };       // 동시에 그리는 잔상(리아의 가산 잔향·그림자 분신) 상한 (feel §8 afterimages live)
 /** 화면(카메라 뷰)을 덮는 어둠막 (low 는 번쩍임이 켜진 동안 건너뛴다: 화면 전체 층 ≤ 1) */
 function dimFill(ctx, S, col, a) {
   if (!(a > 0.01)) return;
@@ -810,7 +812,7 @@ function begin(p, w, v, dur, kit = null) {
     col: v.color, acc: v.accent, dark: v.dark ?? '#05020a', f: p.facing < 0 ? -1 : 1,
     W: Array.isArray(v.data?.mvWeights) ? v.data.mvWeights : [], id: 'awb' + (++SEQ), DUR: dur,
     lt: null, over: false, main: null, steps: [], si: 0, pend: [], keep: new Set(), queue: [], bmp: {},
-    hits: 0, dmg: 0, kills: 0, healed: 0, beats: 0, peak: 0, pre: new Map(), mod: null, onKill: null, onDmg: null,
+    hits: 0, dmg: 0, kills: 0, healed: 0, beats: 0, peak: 0, ghosts: 0, pre: new Map(), mod: null, onKill: null, onDmg: null,
     fk: flashK(), calm: !!game?.settings?.reduceMotion, cined: false, x0: p.cx, b0: p.bottom,
   };
   LIVE = S;
@@ -868,7 +870,7 @@ function finish(S, o) {
   }
   AWAKEN_DIR_B_DEBUG.last = {
     charId: S.charId, classId: S.cls, tier: S.tier, hits: S.hits, dmg: Math.round(S.dmg), kills: S.kills, healed: Math.round(S.healed),
-    beats: S.beats, peak: S.peak, lt: +(S.lt ?? 0).toFixed(2), done: true,
+    beats: S.beats, peak: S.peak, ghosts: S.ghosts, lt: +(S.lt ?? 0).toFixed(2), done: true,
   };
 }
 /** 적 → 영웅으로 휘어 드는 흐름 (피·영혼): 곡선을 따라가는 방울들 */
@@ -905,7 +907,7 @@ function bran(p, w, v) {
   const warlord = cls === 'bran_warlord', crusader = cls === 'bran_crusader', blood = cls === 'bran_bloodrage', guardian = cls === 'bran_guardian';
   const wCleave = W[0] ?? 4, wKnight = (i) => W[1 + i] ?? 0.5, wFinal = W[W.length - 1] ?? 4;
   const bannerKey = 'banner:' + (BANNER[cls] ? cls : 'base');
-  const gy0 = ground(S, p.cx, p.bottom - 8, 3 * TILE) ?? p.bottom;
+  const gy0 = ground(S, p.cx, p.bottom - 8, 12 * TILE) ?? p.bottom;   // 점프 중에 시전해도 기사단은 아래 바닥에서 솟는다
   S.gy0 = gy0; S.kt = KT;
   /** 망령 기사 대열 (브란 뒤) */
   const formation = (cx, gy) => {
@@ -987,7 +989,10 @@ function bran(p, w, v) {
     for (const e of list) { const d = (e.cx - p.cx) * f; if (d > -20 && d < 720 && d < bd) { bd = d; best = e; } }
     if (best) tx = best.cx;
     tx = clamp(tx, V.x + 130, V.x + V.w - 130);
-    const gy = ground(S, tx, Math.min(p.bottom, gy0) - 60, 10 * TILE) ?? gy0;
+    // 브란은 아직 공중(도약 중)이다: 공중 높이에서 찾으면 사이의 발판(한쪽 통과 발판 등)에 균열이 생기고 기사 돌격도 허공을 달린다.
+    // 브란이 내려설 바닥(지금 열에서 아래로)을 기준으로, 그 높이 조금 위에서 목표 열의 바닥을 찾는다.
+    const base = ground(S, p.cx, p.bottom - 8, 12 * TILE) ?? gy0;
+    const gy = ground(S, tx, base - 60, 10 * TILE) ?? base;
     const pts = [];
     for (const s of [-1, 1]) {
       const P = [tx, gy];
@@ -1014,7 +1019,8 @@ function bran(p, w, v) {
   at(S, 1.0, (S) => {
     uncine(S, 0.35);
     cam.zoomPulse?.(S.calm ? 0.97 : 0.92, 0.22, 0.7, 0.35);
-    const V = view(S), gy = S.cut?.gy ?? gy0;
+    // 돌격 선 = 브란이 선 바닥 (균열은 목표 열의 바닥이라 높이가 다를 수 있다: 발판 위의 적을 노린 경우 등)
+    const V = view(S), gy = ground(S, p.cx, p.bottom - 8, 10 * TILE) ?? S.cut?.gy ?? gy0;
     for (let i = 0; i < 6; i++) {
       const row = i % 2;
       S.charge.push({ i, x: f > 0 ? V.x - 120 - i * 72 : V.x + V.w + 120 + i * 72, gy: gy - row * 16, row, hit: S.id + ':k' + i, beat: false, sc: row ? 0.92 : 1.04, banner: warlord || i % 2 === 0, ph: rand(0, TAU) });
@@ -1140,15 +1146,17 @@ function bran(p, w, v) {
     // 돌격하는 망령 기사단
     if (S.chargeT >= 0) {
       const b = S.bmp.charge;
+      let echoes = 0;
       for (const k of S.charge) {
         if (k.done) continue;
         const bob = Math.abs(Math.sin(lt * 18 + k.ph)) * -6;
         glow(ctx, KT, k.x, k.gy - 70 * k.sc, 64 * k.sc, 0.4);
         // 잔향은 high 에서만 기사마다 하나 (잔상 예산 8/5/3 — 큰 가산 그리기라 medium·low 는 본체만)
-        if (S.q === 'high') drawPose(ctx, b, k.x - f * 48, k.gy + bob, f, 0.28, true, k.sc);
+        if (S.q === 'high') { drawPose(ctx, b, k.x - f * 48, k.gy + bob, f, 0.28, true, k.sc); echoes++; }
         drawPose(ctx, b, k.x, k.gy + bob, f, 0.62, true, k.sc);
         if (k.banner) drawBanner(ctx, S, k.x - f * 20 * k.sc, k.gy - 70 * k.sc + bob, k.sc, 0.85, k.ph + lt * 3, warlord);
       }
+      S.ghosts = Math.max(S.ghosts, echoes);
     }
     // 하늘에서 떨어지는 빛의 대검
     const F = S.fall;
@@ -1372,15 +1380,23 @@ function lia(p, w, v) {
         for (let i = 0; i < linger.length; i += st) glow(ctx, RED, linger[i].x, linger[i].y, linger[i].L * 1.15, 0.55 * flashAll);
       }
     }
-    // 순간이동한 리아 (적 등 뒤) + 붉은 잔상
+    // 순간이동한 리아 (적 등 뒤) + 붉은 잔상. 잔상(가산 잔향)·그림자 분신은 feel §8 잔상 예산(8/5/3) 안에서 가장 새것부터
+    let ghostN = AFTER[S.q] ?? 3;
+    for (let i = S.blinks.length - 1; i >= 0; i--) {
+      const B = S.blinks[i];
+      if (lt - B.t > 0.34) { B.ok = false; B.echo = false; continue; }
+      if (B.clone) { B.ok = ghostN > 0; if (B.ok) ghostN--; }
+      else { B.ok = true; B.echo = ghostN > 0; if (B.echo) ghostN--; }
+    }
     for (const B of S.blinks) {
+      if (!B.ok) continue;
       const age = lt - B.t;
-      if (age > 0.34) continue;
       const a = age < 0.14 ? 1 : 1 - u01(age, 0.14, 0.2), bm = S.bmp[B.pose];
       glow(ctx, B.clone ? '#b060ff' : RED, B.x, B.b - 50, 70, 0.45 * a);
       drawPose(ctx, bm, B.x - B.face * 10 * u01(age, 0, 0.14), B.b, B.face, (B.clone ? 0.85 : 1) * a, false);
-      if (!B.clone && bm) drawPose(ctx, bm, B.x - B.face * (10 + 26 * u01(age, 0, 0.2)), B.b, B.face, 0.35 * a, true);
+      if (B.echo && bm) drawPose(ctx, bm, B.x - B.face * (10 + 26 * u01(age, 0, 0.2)), B.b, B.face, 0.35 * a, true);
     }
+    S.ghosts = Math.max(S.ghosts, (AFTER[S.q] ?? 3) - ghostN);
     // 황금 칼날 소용돌이 (칼날 무희)
     if (dancer) {
       const bl = kitSprite('blade');

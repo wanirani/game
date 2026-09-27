@@ -251,5 +251,9 @@
    "imageCount": 2,
    "decision": "FAILED brief: both came back as full figures with arms and legs (Kling ignored WITHOUT). r1 kept as rot_treant_body.webp (clean full figure): trunk cut out with polygons + inpaint instead"
   }
- ]
+ ],
+ "imagesGenerated": 50,
+ "creditsSpent": 100,
+ "creditsAfter": 5917,
+ "creditsNote": "own spend = 50 images x 2 = 100 credits (budget 900). The account balance fell 6397 -> 5917 over the session because other art packages generate on the same Kling account in parallel; this package's share is only the 100 logged here."
 }

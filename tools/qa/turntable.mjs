@@ -1,6 +1,6 @@
 // Turntable suite — platform.md §7.1–7.3, §11 WP-5 acceptance 1–6 (user request #6: rotate the hero in the menu).
 //
-//   node tools/qa/turntable.mjs [--only drag,fling,keys,stick,wheel,auto,showcase,reveal,touch,fallback,taps,gallery,perf] [--strict] [--shots]
+//   node tools/qa/turntable.mjs [--only drag,fling,keys,stick,wheel,auto,showcase,reveal,touch,edges,fallback,taps,gallery,perf] [--strict] [--shots]
 //
 // Checks (status, equip and class tabs unless noted):
 //   drag      mouse drag of 1.1 × stage width rotates 180° ± 10° (right = yaw decreases, grab-the-surface)       — acceptance 1
@@ -11,7 +11,11 @@
 //   auto      auto-spin starts after 6 s idle, stops on input, never with reduceMotion                              — acceptance 3
 //   showcase  a tap on the hero plays the showcase in profile and yaw returns to the user's angle; double tap resets — acceptance 4
 //   reveal    equipping armour/head/cloak/accessory spins one full turn (0.8 s) back to the same angle              — §7.2
-//   touch     phone2 touch: ⟳ tap = 45° step, ⟲ hold = continuous, a swipe on the stage rotates and keeps the tab   — §7.2, §5.6
+//             + a right stick pushed mostly up/down (list scroll) does not rotate
+//   touch     phone2 touch: ⟳ tap = 45° step, ⟲ hold = continuous (no long-press buzz), ▶ spins at once,
+//             a swipe on the stage rotates and keeps the tab                                                     — §7.2, §5.6
+//   edges     a drag cut short by a tab switch does not fling on return; a short , . tap = one step; the 영웅 자동 회전
+//             setting changed over the menu is followed; the class tab keeps the chosen angle across a view drop-out
 //   fallback  painted views unavailable (puppets off): label '옆모습', default 0°, no auto-spin, rests on a profile    — §7.3 fallback
 //   taps      tap audit of the three tabs at 740×360 and 844×390 (§6.3)                                               — P-04
 //   gallery   tools/gallery_turntable.html: 6 heroes × 3 looks × 8 yaws, zero page errors; with the renderer contract:
@@ -310,29 +314,54 @@ try {
       pass: Math.abs(c.yaw - c.def) > 0.3 && (Math.abs(r.yaw - r.def) < 0.01 || r.spinning) && r.auto === true,
       detail: `before R3: ${d(c.yaw)}, auto ${c.auto}; after R3: ${d(r.yaw)} (default ${d(r.def)}), auto ${r.auto}, spinning ${r.spinning}`,
     }));
+    // the right stick also scrolls lists (Scroller, Y): pushing it mostly up/down must not turn the hero
+    await rest(s); await step(s, 4);
+    const v0 = await view(s);
+    await axes(s.page, 0, 0, 0.25, 0.95); await step(s, 60); await axes(s.page, 0, 0, 0, 0); await step(s, 2); await settle(s);
+    const v1 = await view(s);
+    await suite.check({ id: 'stick.vertical', group: 'stick', ...G, title: 'right stick pushed mostly vertically (list scroll) does not rotate the hero' }, async () => ({
+      pass: Math.abs(v1.yaw - v0.yaw) < 1e-6,
+      detail: `RS (0.25, 0.95) for 1 s → ${d(v1.yaw - v0.yaw)}`,
+    }));
     await suite.errors({ id: 'stick.errors', group: 'stick' }, s);
     await s.close();
   }, env);
 
   // ── touch (phone2): buttons, swipe on the stage ───────────────────────────────────────────────
   await suite.group('touch', async () => {
-    const s = await menuPage('phone2', 'equip');
+    // navigator.vibrate is counted: holding ⟲ ⟳ is continuous rotation, not the menu's long press (no 10 ms buzz)
+    const vib = () => { window.__vib = 0; const f = navigator.vibrate?.bind(navigator); navigator.vibrate = (p) => { window.__vib++; try { return f?.(p) ?? true; } catch { return false; } }; };
+    const s = await menuPage('phone2', 'equip', { initScripts: [vib] });
     const t = new Touch(s.cdp, s.page);
     await freeze(s);
     await rest(s); await step(s, 8);
     const a = await view(s);
-    const R = a.btns.find((b) => b.id === 'tt:R'), L = a.btns.find((b) => b.id === 'tt:L');
+    const R = a.btns.find((b) => b.id === 'tt:R'), L = a.btns.find((b) => b.id === 'tt:L'), AU = a.btns.find((b) => b.id === 'tt:auto');
     if (!R || !L) {
       await suite.check({ id: 'touch.buttons', group: 'touch', ...G, title: 'touch: ⟲ ⟳ buttons are shown in touch mode', session: s }, async () => ({ pass: false, detail: `buttons ${fmt(a.btns)}` }));
     } else {
       await t.down(31, R.x, R.y); await step(s, 3); await t.up(31); await step(s, 2); await settle(s);
       const b = await view(s);
+      const vib0 = await s.eval(() => window.__vib);
       await t.down(32, L.x, L.y); await step(s, 54); await t.up(32); await step(s, 2); await settle(s);
       const c = await view(s);
-      await suite.check({ id: 'touch.buttons', group: 'touch', ...G, title: 'touch: ⟳ tap = one 45° step right, ⟲ hold = continuous rotation left', session: s }, async () => ({
-        pass: Math.abs((b.yaw - a.yaw) + b.step) < 0.01 && (c.yaw - b.yaw) > b.step + 0.3 && onStep(c.yaw, c.step) && R.r * 2 >= 24,
-        detail: `⟳ tap → ${d(b.yaw - a.yaw)}; ⟲ hold 0.9 s → ${d(c.yaw - b.yaw)} (rests on a step: ${onStep(c.yaw, c.step)}); button ⌀ ${(R.r * 2).toFixed(0)} CSS px + registry slop`,
+      const vib1 = await s.eval(() => window.__vib);
+      await suite.check({ id: 'touch.buttons', group: 'touch', ...G, title: 'touch: ⟳ tap = one 45° step right, ⟲ hold = continuous rotation left (no long-press buzz)', session: s }, async () => ({
+        pass: Math.abs((b.yaw - a.yaw) + b.step) < 0.01 && (c.yaw - b.yaw) > b.step + 0.3 && onStep(c.yaw, c.step) && R.r * 2 >= 24 && vib1 === vib0,
+        detail: `⟳ tap → ${d(b.yaw - a.yaw)}; ⟲ hold 0.9 s → ${d(c.yaw - b.yaw)} (rests on a step: ${onStep(c.yaw, c.step)}); vibrate calls during the hold ${vib1 - vib0}; button ⌀ ${(R.r * 2).toFixed(0)} CSS px + registry slop`,
       }));
+      // ▶ turns auto-spin on and spins at once (the finger's release must not stop it again)
+      if (AU) {
+        await s.eval(() => { const v = window.__game.top.cur.view; v.autoSpin = false; v.idleT = 0; });
+        await t.down(34, AU.x, AU.y); await step(s, 3); await t.up(34); await step(s, 12);
+        const on = await view(s);
+        await step(s, 30);
+        const on2 = await view(s);
+        await suite.check({ id: 'touch.auto', group: 'touch', ...G, title: 'touch: ▶ turns auto-spin on and the hero spins at once', session: s }, async () => ({
+          pass: on.auto === true && on.spinning && on2.spinning && Math.abs(on2.yaw - on.yaw) > 0.2,
+          detail: `after ▶: auto ${on.auto}, spinning ${on.spinning}; 0.5 s later spinning ${on2.spinning}, turned ${d(on2.yaw - on.yaw)}`,
+        }));
+      }
     }
     // swipe across the stage: rotates, the tab does not change (platform §5.6)
     await rest(s); await step(s, 2);
@@ -348,6 +377,69 @@ try {
       detail: `yaw ${d(s0.yaw)} → ${d(s1.yaw)}; tab index ${s0.ti} → ${s1.ti}`,
     }));
     await suite.errors({ id: 'touch.errors', group: 'touch' }, s);
+    await s.close();
+  }, env);
+
+  // ── edges: tab switch mid-drag, short key taps, settings changed over the menu, class angle kept across a load ──
+  await suite.group('edges', async () => {
+    const s = await menuPage('desk', 'status');
+    await freeze(s);
+    // (1) switch tabs (E) while dragging, release on the other tab, come back (Q): no stale fling
+    await rest(s); await step(s, 2);
+    const a = await view(s);
+    const cx = a.rect.x + a.rect.w * 0.3, cy = a.rect.y + a.rect.h * 0.55;
+    await mmove(s, cx, cy); await step(s, 1);
+    await s.page.mouse.down(); await flush(s); await step(s, 2);
+    for (let i = 1; i <= 6; i++) { await mmove(s, cx + i * 25, cy); await step(s, 1); }
+    await s.page.keyboard.down('KeyE'); await step(s, 3); await s.page.keyboard.up('KeyE'); await step(s, 3);
+    await s.page.mouse.up(); await flush(s); await step(s, 20);
+    await s.page.keyboard.down('KeyQ'); await step(s, 3); await s.page.keyboard.up('KeyQ'); await step(s, 2);
+    const back = await view(s);
+    await settle(s);
+    const back2 = await view(s);
+    await suite.check({ id: 'edges.tabswitch', group: 'edges', ...G, title: 'a drag cut short by a tab switch does not fling when the tab comes back', session: s }, async () => ({
+      pass: back.mode !== 'free' && Math.abs(back.vel) < 3 && onStep(back2.yaw, back2.step) && Math.abs(back2.yaw - a.yaw) <= PI / 2 + 1e-6,
+      detail: `back on the tab: mode ${back.mode}, velocity ${back.vel.toFixed(2)} rad/s → rests at ${d(back2.yaw)} (was ${d(a.yaw)})`,
+    }));
+    // (2) ten short '.' taps (2 frames each) = ten 45° steps
+    await rest(s); await step(s, 2);
+    const k0 = await view(s);
+    for (let i = 0; i < 10; i++) { await s.page.keyboard.down('Period'); await step(s, 2); await s.page.keyboard.up('Period'); await step(s, 1); }
+    await settle(s);
+    const k1 = await view(s);
+    await suite.check({ id: 'edges.keytaps', group: 'edges', ...G, title: 'a short , / . tap turns one step (ten taps = ten steps)' }, async () => ({
+      pass: Math.abs((k1.yaw - k0.yaw) / k1.step + 10) < 0.01,
+      detail: `${d(k0.yaw)} → ${d(k1.yaw)} (${((k1.yaw - k0.yaw) / k1.step).toFixed(2)} steps)`,
+    }));
+    // (3) the 영웅 자동 회전 setting changed while the menu is open (options opens over the menu) is followed
+    await rest(s, { autoSpin: true }); await step(s, 2);
+    await s.eval(() => { window.__game.settings.turntableAuto = false; }); await step(s, 3);
+    const off = await view(s);
+    await s.eval(() => { window.__game.settings.turntableAuto = true; }); await step(s, 3);
+    const onv = await view(s);
+    await suite.check({ id: 'edges.setting', group: 'edges', ...G, title: 'turning 영웅 자동 회전 off/on over the menu is followed by the open tab' }, async () => ({
+      pass: off.auto === false && onv.auto === true,
+      detail: `setting off → autoSpin ${off.auto}; on → ${onv.auto}`,
+    }));
+    await suite.errors({ id: 'edges.errors.status', group: 'edges' }, s);
+    // (4) class tab: the user's angle survives a moment without painted views (another class's turn sheet loading)
+    // (the loop is frozen: open the tab and step frames until it has rendered with painted views)
+    await s.eval(() => import(`/tools/menu_seed.js?tab=class&n=edges${Math.random().toString(36).slice(2)}`));
+    for (let i = 0; i < 80; i++) { await step(s, 6); const v = await view(s); if (v?.rect && v.full && /class/i.test(await s.eval(() => window.__game.top.cur.constructor.name))) break; await s.wait(50); }
+    await rest(s); await step(s, 2);
+    await s.page.keyboard.down('Comma'); await step(s, 30); await s.page.keyboard.up('Comma'); await step(s, 2); await settle(s);
+    const c0 = await view(s);
+    await s.eval(async () => { const P = await import('/src/render/hero_puppet.js'); P.setPuppetEnabled(false); });
+    await step(s, 45); await settle(s);
+    const c1 = await view(s);
+    await s.eval(async () => { const P = await import('/src/render/hero_puppet.js'); P.setPuppetEnabled(true); });
+    await step(s, 45); await settle(s);
+    const c2 = await view(s);
+    await suite.check({ id: 'edges.keepangle', group: 'edges', ...G, title: 'class tab: the chosen angle comes back after painted views drop out and return', session: s }, async () => ({
+      pass: !c1.full && c1.label === '옆모습' && Math.abs(Math.sin(c1.yaw)) < 1e-3 && c2.full && Math.abs(c2.yaw - c0.yaw) < 0.01 && Math.abs(Math.sin(c0.yaw)) > 0.5,
+      detail: `rotated to ${d(c0.yaw)} → painted views off: ${d(c1.yaw)} '${c1.label}' (full ${c1.full}) → on again: ${d(c2.yaw)} (full ${c2.full})`,
+    }));
+    await suite.errors({ id: 'edges.errors', group: 'edges' }, s);
     await s.close();
   }, env);
 
