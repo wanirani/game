@@ -191,7 +191,8 @@ export class CompanionJoinScene extends Scene {
     const p = input.pointer;
     const hit = input.pressed('confirm') || input.pressed('cancel') || input.pressed('menu') || input.pressed('attack') || input.pressed('jump') || !!p?.tapped;
     if (hit) {
-      if (this.t < MIN_SKIP) { if (!this.ff) { this.ff = true; this.t = Math.max(this.t, MIN_SKIP - 0.02); audio.sfx('menu_move', { vol: 0.5 }); } }
+      // 1.2초 전: 연출만 끝 장면으로 당긴다 (시계는 그대로 → 연타해도 1.2초 전에는 닫히지 않는다, companions §7.4)
+      if (this.t < MIN_SKIP) { if (!this.ff) { this.ff = true; audio.sfx('menu_move', { vol: 0.5 }); } }
       else { this.closing = 0.001; audio.sfx('menu_ok', { vol: 0.6 }); }
       if (p) p.tapped = false;
       return;

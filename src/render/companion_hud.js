@@ -4,6 +4,7 @@
 //      o = { x, y, touch, rect: L.companions (x 244–372, y 92–160), lane: L.callouts (300×52 카드 줄), layout: L }
 //      hud.js 가 돌려받은 배열을 world.companions.hudRects 에 둔다 (CompanionSystem.handleTaps 가 터치 대체 경로로 쓴다).
 //      배열·사각형은 모듈이 재사용한다 (프레임마다 할당 없음) — 다음 그리기까지만 유효.
+//      터치(o.touch)면 사각형은 손가락 판정 크기(44 CSS px, 이웃과는 간격 가운데까지)로 넓힌 것이고 ui.taps 에도 같은 영역을 올린다.
 //   · 탈것 위젯 (40 px 원): 초상화 크롭(iconFocus) · 바깥 고리 = 탈것 HP (#e8a040, 30 % 미만 빨강) · 재소환 대기 = 회색 막 + 초 ·
 //     탑승 중 = 금빛 고리 · 비행형(stamina) = 바깥 파란 호 · noMount 보스전 = 막 + 빗금. 라벨: 키보드 [R] · 패드 L3 · 터치 탑승/하차
 //   · 수호신 위젯 (38 px 원 × 1–2): 초상화 크롭 · 시계 방향 재사용 대기 부채꼴 + 초 · 준비되면 금빛 맥동(준비 순간 번쩍) ·
@@ -302,13 +303,36 @@ export function drawCompanionHUD(ctx, world, o = {}) {
   ctx.restore();
   // 터치: 공용 탭 등록부에도 올린다 — 가상 패드가 위젯 위(왼쪽 45 % 떠다니는 스틱 자리)에서 스틱을 만들지 않고
   // 탭을 캔버스로 넘기도록 (touchpad onCanvasUi). 주인 = 이 월드의 장면 (위에 다른 장면이 쌓이면 그 장면 것만 판정된다)
+  // 판정 사각형은 손가락 크기(44 CSS px)까지 넓힌 것 — 패드가 캔버스로 넘기는 영역과 CompanionSystem.handleTaps 가
+  // 보는 영역(돌려주는 배열)이 같아야 위젯 옆을 누른 탭이 스틱도 동료도 아닌 채로 사라지지 않는다
   if (T && RECTS.length) {
+    touchRects(RECTS, world);
     try {
       const owner = sceneOf(world);
-      for (const r of RECTS) taps.add(r.act === 'mount' ? 'cmp.mount' : 'cmp.guard' + (r.slot ?? 0), r, { owner, kind: 'icon', slop: 4, src: 'companion_hud' });
+      for (const r of RECTS) taps.add(r.act === 'mount' ? 'cmp.mount' : 'cmp.guard' + (r.slot ?? 0), r, { owner, kind: 'icon', slop: 0, src: 'companion_hud' });
     } catch (e) { warnOnce('taps', e); }
   }
   return RECTS.length ? RECTS : null;
+}
+const TOUCH_MIN_CSS = 44, TOUCH_SLOP = 4, TOUCH_SLOP_MAX = 28;   // core/ui.js 탭 등록부와 같은 규칙 (icon 44 CSS px, 여유 상한 28)
+/**
+ * 터치 판정 사각형: 위젯마다 짧은 변이 44 CSS px 가 되도록 사방으로 넓히되, 이웃 위젯과 맞닿는 쪽은 사이 간격의 가운데에서 멈춘다
+ * (겹치지 않으므로 handleTaps 의 '첫 사각형' 판정과 탭 등록부의 '가장 가까운 영역' 판정이 같다). list 는 x 순서 (탈것 → 수호신 1 → 2)
+ */
+function touchRects(list, world) {
+  const css = world?.game?.cssScale > 0 ? world.game.cssScale : 1;
+  const need = TOUCH_MIN_CSS / css;
+  const n = list.length;
+  let prevRight = -Infinity;
+  for (let i = 0; i < n; i++) {
+    const r = list[i], nx = i + 1 < n ? list[i + 1].x : Infinity;
+    const m = clamp(Math.max(TOUCH_SLOP, (need - Math.min(r.w, r.h)) / 2), 0, TOUCH_SLOP_MAX);
+    const x0 = r.x, x1 = r.x + r.w;
+    const L = Math.max(x0 - m, prevRight === -Infinity ? -Infinity : (prevRight + x0) / 2);
+    const R = Math.min(x1 + m, nx === Infinity ? Infinity : (x1 + nx) / 2);
+    prevRight = x1;
+    r.x = L; r.w = R - L; r.y -= m; r.h += m * 2;
+  }
 }
 /** 이 월드를 가진 장면 (스테이지). 없으면 null */
 function sceneOf(world) {
@@ -319,13 +343,27 @@ function sceneOf(world) {
 }
 
 // ───────────────────────── 스킬 카드 줄 ─────────────────────────
-function cardCanvas(c, w, h, k, T) {
+// 카드 비트맵은 몇 장만 돌려 쓴다 (카드마다 새 캔버스를 만들면 긴 판에서 iOS 캔버스 메모리가 쌓인다).
+// 칸의 주인이 대기열(list, 최대 2)에 없으면 그 칸을 넘겨받는다 → 많아야 list 길이 + 1 장
+const CARD_CVS = [];
+function cardSlot(c, list) {
+  if (c._cv) return c._cv;
+  let s = null;
+  for (const q of CARD_CVS) if (!q.owner || !list.includes(q.owner)) { s = q; break; }
+  if (!s) { s = { cv: mkCanvas(1, 1), owner: null }; CARD_CVS.push(s); }
+  if (s.owner && s.owner !== c) { s.owner._cv = null; s.owner._cvKey = null; }
+  s.owner = c;
+  c._cv = s.cv; c._cvKey = null;
+  return s.cv;
+}
+function cardCanvas(c, w, h, k, T, list) {
   const d = companionDef(c.id);
   const port = !!portraitCrop(c.id);
   const key = `${w}|${h}|${k}|${T ? 1 : 0}|${port ? 1 : 0}|${fontEpoch}`;
   if (c._cv && c._cvKey === key) return c._cv;
   const pw = Math.max(1, Math.ceil(w * k)), ph = Math.max(1, Math.ceil(h * k));
-  const cv = c._cv && c._cv.width === pw && c._cv.height === ph ? c._cv : mkCanvas(pw, ph);
+  const cv = cardSlot(c, list);
+  if (cv.width !== pw || cv.height !== ph) { cv.width = pw; cv.height = ph; }
   const g = cv.getContext('2d');
   g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, pw, ph);
   g.setTransform(k, 0, 0, k, 0, 0);
@@ -422,7 +460,7 @@ function drawCallouts(ctx, world, list, lane, T) {
   }
   const W = lane.w, H = Math.min(lane.h, 60);
   const k = Math.max(1, Math.min(4, pxK(ctx)));
-  const cv = cardCanvas(head, W, H, Math.round(k * 4) / 4, T);
+  const cv = cardCanvas(head, W, H, Math.round(k * 4) / 4, T, list);
   // 들어옴 / 머묾 / 나감
   const rm = !!world?.game?.settings?.reduceMotion;
   let a = 1, dx = 0;

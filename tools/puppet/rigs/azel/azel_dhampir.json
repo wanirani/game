@@ -3,6 +3,8 @@
  "charId": "azel",
  "classId": "azel_dhampir",
  "src": "azel/azel_dhampir_side",
+ "_bodyTop": "배율 기준 정수리(원화 px) = 담피르 머리카락 맨 위 (heroes3rev). 전 직업 상속 → 혈왕 금관(맨 위 y 141)이 배율에 들어가 몸이 4.9% 작게 그려지던 문제 해결. keep-pose 편집이라 7직업 발바닥 y 가 같다(2562)",
+ "bodyTop": 260,
  "joints": {
   "pelvis": [
    830,

@@ -208,15 +208,32 @@ def build(rig_path, dbg=False, out=None, quiet=False):
     # ── 포니테일 ──
     pony_on = has('pony') and rig.get('pony') is not False
     torso_full = R('torso') & ~R('head')
+    # opt-in ponyCut (heroes3rev): 다각형 목록 = 포니테일 영역에 겹친 견갑 조각(원화에서 머리카락 앞). 포니테일에서 빼 몸통·어깨 덮개에 두고,
+    # 그 뒤로 가려졌던 머리카락은 닫힘(ponyCutClose px)으로 메워 인페인트 → 머리가 흔들려도 견갑 조각이 따라가지 않고 머리에 구멍도 없다
+    pcut = None
+    if regs.get('ponyCut'):
+        pcut = np.zeros((H, W), bool)
+        for d in regs['ponyCut']:
+            pcut |= poly_mask(d['pts'] if isinstance(d, dict) else d, W, H, smooth=(d.get('smooth', 0) if isinstance(d, dict) else 0))
+        pcut &= ~R('head')
+        torso_full |= pcut & fig_body
+    pony_r = (R('pony') & ~pcut) if pcut is not None else R('pony')
     if pony_on:
-        torso_full &= ~R('pony')
+        torso_full &= ~pony_r
         hairish = lum < P.get('hairLum', 125)
-        pony_m = R('pony') & figE & ~torso_full & (hairish | (YY < P.get('ponyTopY', 470)))
-        add('pony', base, pony_m, J['ponyRoot'], J['ponyTip'])
+        pony_m = pony_r & figE & ~torso_full & (hairish | (YY < P.get('ponyTopY', 470)))
+        img_p = base
+        if pcut is not None:
+            k = int(P.get('ponyCutClose', 31)) | 1
+            fill = cv2.morphologyEx(pony_m.astype(np.uint8), cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))) > 0
+            fill &= pcut & R('pony') & figE & ~pony_m
+            img_p = inpaint(base, pony_m, pony_m | fill, 9)
+            pony_m = pony_m | fill
+        add('pony', img_p, pony_m, J['ponyRoot'], J['ponyTip'])
     # ── 몸통: 가까운 팔·먼 팔·똬리 아래를 메움 ──
     occl = R('uarm') | R('farm') | R('coil') | R('farArm') | R('head') | R('farArmHole')
     if pony_on:
-        occl |= R('pony')
+        occl |= pony_r
     torso_vis = torso_full & figEB & ~occl
     tsrc = (lum < P['torsoSrcMaxLum']) if P.get('torsoSrcMaxLum') else None
     img_t = inpaint(base, torso_vis, torso_full, 11, tone=P.get('torsoTone', 0.5), srcm=tsrc)

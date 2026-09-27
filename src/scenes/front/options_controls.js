@@ -40,6 +40,10 @@ export function josaWa(word) {
   if (c >= 48 && c <= 57) return '013678'.includes(s[s.length - 1]) ? '과' : '와';
   return '와';
 }
+/** 받침에 따라 '은' / '는' ('필살기' → 는, '수호신 스킬' → 은, '스킬 1' → 은) */
+export function josaEun(word) {
+  return josaWa(word) === '과' ? '은' : '는';
+}
 /** 설정 저장 (실패해도 게임은 계속) */
 export function saveSettings(game) {
   try { if (game.settings) saves.saveSettings(game.settings); } catch (e) { console.error('[options] save', e); }
@@ -541,7 +545,10 @@ export class RemapPage {
     if (r.swapped) {
       const nm = ACTION_NAMES[r.swapped] ?? r.swapped;
       this.flash[r.swapped] = 1;
-      this.game.toast(`‘${nm}’${josaWa(nm)} 바꿨습니다`, '#ffe0a0', 2.2);
+      // 지정하던 행동에 버튼이 없었으면(패드의 각성기, 클래식의 빠른 메뉴) 맞바꿀 것이 없어 상대 행동이 비게 된다: 그렇게 알린다
+      const left = input.bindings?.[this.dev]?.[r.swapped] ?? [];
+      if (left.length) this.game.toast(`‘${nm}’${josaWa(nm)} 바꿨습니다`, '#ffe0a0', 2.2);
+      else this.game.toast(`‘${nm}’의 버튼을 가져왔습니다 · ‘${nm}’${josaEun(nm)} 비어 있습니다`, '#ffd890', 2.8);
     }
     this.endCapture('done');
   }

@@ -1,0 +1,216 @@
+{
+ "id": "chain_warden",
+ "tier": "T2",
+ "srcTD": 4,
+ "note": "body = Step-4 edit of the sheet-1 side figure with the near forearm removed (src/cw_body.webp, manifest: cw_edit; faces left in the source -> flipX), the upper-arm stump stays as the near upper arm; fore = sheet 1 front figure's forearm with the spiked chain wrapped round the wrist + fist (cut at the elbow, the hanging chain excluded); chain = one tiling period (4 links) of the sheet-2 chain, the blue background in the link holes keyed out (derived src/cw_chain_fix.webp); hook = sheet-2 rusted crescent hook with its ring.",
+ "sources": {
+  "b": {
+   "raw": "cw_body.webp",
+   "file": "cw_body.png",
+   "mode": "",
+   "k": 0.041
+  },
+  "s1": {
+   "raw": "chain_warden_sheet1.webp",
+   "file": "chain_warden_sheet1.png",
+   "mode": "",
+   "k": 0.055
+  },
+  "s2": {
+   "raw": "chain_warden_sheet2.webp",
+   "file": "chain_warden_sheet2.png",
+   "mode": "",
+   "k": 0.027
+  },
+  "c": {
+   "raw": "cw_chain_fix.webp",
+   "file": "cw_chain_fix.png",
+   "mode": "",
+   "k": 0.05
+  }
+ },
+ "parts": {
+  "body": {
+   "src": "b",
+   "box": [
+    540,
+    10,
+    1150,
+    2295
+   ],
+   "keep": "largest",
+   "flipX": true,
+   "piv": {
+    "a": [
+     800,
+     2270
+    ],
+    "top": [
+     800,
+     22
+    ],
+    "elbow": [
+     1036,
+     1000
+    ],
+    "eye": [
+     736,
+     450
+    ],
+    "w1": [
+     950,
+     650
+    ],
+    "w2": [
+     979,
+     793
+    ],
+    "w3": [
+     857,
+     1600
+    ],
+    "chest": [
+     850,
+     800
+    ]
+   },
+   "_bbox": [
+    550,
+    21,
+    1139,
+    2284
+   ]
+  },
+  "fore": {
+   "src": "s1",
+   "box": [
+    650,
+    730,
+    850,
+    1140
+   ],
+   "keep": "largest",
+   "poly": [
+    [
+     680,
+     760
+    ],
+    [
+     790,
+     740
+    ],
+    [
+     812,
+     880
+    ],
+    [
+     846,
+     900
+    ],
+    [
+     846,
+     1012
+    ],
+    [
+     800,
+     1022
+    ],
+    [
+     796,
+     1138
+    ],
+    [
+     676,
+     1138
+    ],
+    [
+     688,
+     1012
+    ],
+    [
+     656,
+     1000
+    ],
+    [
+     656,
+     890
+    ],
+    [
+     688,
+     868
+    ]
+   ],
+   "piv": {
+    "a": [
+     728,
+     775
+    ],
+    "b": [
+     742,
+     1070
+    ]
+   },
+   "_bbox": [
+    680,
+    740,
+    847,
+    1139
+   ]
+  },
+  "chain": {
+   "src": "c",
+   "box": [
+    145,
+    70,
+    486,
+    172
+   ],
+   "piv": {
+    "a": [
+     145,
+     120
+    ],
+    "b": [
+     485,
+     120
+    ]
+   },
+   "_bbox": [
+    145,
+    79,
+    486,
+    162
+   ]
+  },
+  "hook": {
+   "src": "s2",
+   "box": [
+    1590,
+    1000,
+    2240,
+    1655
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1800,
+     1045
+    ],
+    "b": [
+     1918,
+     1363
+    ],
+    "tip": [
+     2207,
+     1274
+    ]
+   },
+   "_bbox": [
+    1603,
+    1015,
+    2224,
+    1643
+   ]
+  }
+ }
+}

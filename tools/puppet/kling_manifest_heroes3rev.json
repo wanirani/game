@@ -1,0 +1,187 @@
+{
+ "_doc": "heroes3 리뷰(heroes3rev) 에이전트의 클링 생성 기록 — azel·NPC 검수 중 새로 만든 원화만. 생산 기록은 kling_manifest_heroes3.json (건드리지 않음). images = 과금 이미지 수(후보 포함).",
+ "model": "kling-image-v3_0_omni",
+ "budget": {
+  "azel": 45,
+  "azel_production_used": 32
+ },
+ "uploads": {
+  "azel_dhampir_side.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qUgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo4YWdlbnRfdXBsb2FkLzE3OTA0ODEwNjEvNnY5NU5pdWU4Ui9hemVsX2RoYW1waXJfc2lkZS5qcGc.origin?x-kcdn-pid=112372",
+  "azel_vampire_side.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qUgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo4YWdlbnRfdXBsb2FkLzE3OTA0ODE4NzEvSm1ZTVJYOENuWC9hemVsX3ZhbXBpcmVfc2lkZS5qcGc.origin?x-kcdn-pid=112372",
+  "azel_nosferatu_side.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qVAoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo6YWdlbnRfdXBsb2FkLzE3OTA0ODE4NzQva0I5ZlBTd3dxRy9hemVsX25vc2ZlcmF0dV9zaWRlLmpwZw.origin?x-kcdn-pid=112372",
+  "azel_bloodking_side.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qVAoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo6YWdlbnRfdXBsb2FkLzE3OTA0ODE4NzkvTDlDV1o2OTBFaS9hemVsX2Jsb29ka2luZ19zaWRlLmpwZw.origin?x-kcdn-pid=112372",
+  "azel_holyblade_side.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qVAoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo6YWdlbnRfdXBsb2FkLzE3OTA0ODE4OTIvNlBReUlJcU5PaC9hemVsX2hvbHlibGFkZV9zaWRlLmpwZw.origin?x-kcdn-pid=112372",
+  "azel_dawnbringer_side.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qVgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo8YWdlbnRfdXBsb2FkLzE3OTA0ODE4OTgvZGNZN0hPekRKZC9hemVsX2Rhd25icmluZ2VyX3NpZGUuanBn.origin?x-kcdn-pid=112372",
+  "azel_seraph_side.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qUQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo3YWdlbnRfdXBsb2FkLzE3OTA0ODE5MDIvS01CUTg4RnNlbi9hemVsX3NlcmFwaF9zaWRlLmpwZw.origin?x-kcdn-pid=112372",
+  "azel_dhampir_back.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qUgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo4YWdlbnRfdXBsb2FkLzE3OTA1MzIyODgvMng3bkwzSHJzMS9hemVsX2RoYW1waXJfYmFjay5qcGc.origin?x-kcdn-pid=112372",
+  "azel_vampire_back.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qUgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo4YWdlbnRfdXBsb2FkLzE3OTA1MzIyOTAvZmtoMXU5T2d1bS9hemVsX3ZhbXBpcmVfYmFjay5qcGc.origin?x-kcdn-pid=112372",
+  "azel_nosferatu_back.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qVAoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo6YWdlbnRfdXBsb2FkLzE3OTA1MzIyOTMvcUNTWDUyYm1SMS9hemVsX25vc2ZlcmF0dV9iYWNrLmpwZw.origin?x-kcdn-pid=112372",
+  "azel_bloodking_back.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qVAoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo6YWdlbnRfdXBsb2FkLzE3OTA1MzIyOTYvS0ZzRzl2RnN3by9hemVsX2Jsb29ka2luZ19iYWNrLmpwZw.origin?x-kcdn-pid=112372",
+  "azel_holyblade_back.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qVAoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo6YWdlbnRfdXBsb2FkLzE3OTA1MzIyOTkvVU9zTTAyV2w0WS9hemVsX2hvbHlibGFkZV9iYWNrLmpwZw.origin?x-kcdn-pid=112372",
+  "azel_dawnbringer_back.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qVgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo8YWdlbnRfdXBsb2FkLzE3OTA1MzIzMDEvM0F1YzJ1QUNNTC9hemVsX2Rhd25icmluZ2VyX2JhY2suanBn.origin?x-kcdn-pid=112372",
+  "azel_seraph_back.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qUQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo3YWdlbnRfdXBsb2FkLzE3OTA1MzIzMDQveGF4VmZtdzM2Sy9hemVsX3NlcmFwaF9iYWNrLmpwZw.origin?x-kcdn-pid=112372"
+ },
+ "entries": [
+  {
+   "id": "azel_dhampir_q3b",
+   "tool": "image_to_image",
+   "model": "kling-image-v3_0_omni",
+   "images": 1,
+   "generationId": "AcRRsBMz5AzgmiSqfSwoNhVQcfIXKzTssq7LXnUv3h7tFEE_CpsSHwQEk0nx6NOPrqesGwE5",
+   "inputs": [
+    "azel_dhampir_side.jpg (identity/outfit, production upload)",
+    "azel_dhampir_back.jpg (ym90 crop of turn5, back design)"
+   ],
+   "aspect_ratio": "3:4",
+   "img_resolution": "2k",
+   "prompt": "One single full-body THREE-QUARTER BACK view of the young man in 图片1, wearing exactly the outfit of 图片1 (图片2 shows the same man and outfit seen straight from behind): long flowing silver-white hair down his back, a black leather long frock coat with thin gold trim edges and a dark crimson lining, a high black collar, black leather gloves with gold-buttoned cuffs, black trousers and black knee boots. Camera angle: halfway between a back view and a left side view. His whole body is turned about 45 degrees away from the viewer toward the LEFT edge of the picture: we see his back at an angle and a little of his left side, NOT a symmetric back view. His head faces the left edge of the picture, so we see the back of his head and only a sliver of his pale cheek and the tip of his nose in lost profile on the left side; we cannot see his eyes. His toes point toward the upper left. He stands in a relaxed neutral pose with both arms hanging down at his sides, alone and centered, the same size as in 图片1. Plain light-grey studio background, the same painterly dark-fantasy game-art style as 图片1, soft even lighting, complete from the top of the head to the boots with margin, nothing cropped, no cape, no wings, nothing held in the hands, no text, no watermark.",
+   "src": "src/azel/azel_dhampir_q3b.webp",
+   "adopted": "a",
+   "note": "리뷰: 기존 qback 두 인물이 모두 정면 뒷모습(좌우 대칭)이라 턴테이블 −45/−90/−135 가 같은 그림 → a = 왼쪽으로 돌아선 3/4 뒤(옆뺨·코끝만 보임) → ym135 채택, ym45 는 거울상. 옛 qback 두 인물은 라벨 \"-\""
+  },
+  {
+   "id": "azel_vampire_q3b",
+   "tool": "image_to_image",
+   "model": "kling-image-v3_0_omni",
+   "images": 1,
+   "generationId": "ATsD1iYS7kPJ2oajd59cNM3PdiveWq8wE0VrjtWgN05JXDmW-m7i2YQANamyveDQNKvXs9Wz",
+   "inputs": [
+    "azel_vampire_side.jpg (identity/outfit, production upload)",
+    "azel_vampire_back.jpg (ym90 crop of turn5, back design)"
+   ],
+   "aspect_ratio": "3:4",
+   "img_resolution": "2k",
+   "prompt": "One single full-body THREE-QUARTER BACK view of the young man in 图片1, wearing exactly the outfit of 图片1 (图片2 shows the same man and outfit seen straight from behind): long flowing silver-white hair down his back, a black velvet frock coat with ornate gold filigree embroidery along the hem and edges and a crimson lining, white lace cuffs, black gloves, black trousers and black buckled knee boots. Camera angle: halfway between a back view and a left side view. His whole body is turned about 45 degrees away from the viewer toward the LEFT edge of the picture: we see his back at an angle and a little of his left side, NOT a symmetric back view. His head faces the left edge of the picture, so we see the back of his head and only a sliver of his pale cheek and the tip of his nose in lost profile on the left side; we cannot see his eyes. His toes point toward the upper left. He stands in a relaxed neutral pose with both arms hanging down at his sides, alone and centered, the same size as in 图片1. Plain light-grey studio background, the same painterly dark-fantasy game-art style as 图片1, soft even lighting, complete from the top of the head to the boots with margin, nothing cropped, no cape, no wings, nothing held in the hands, no text, no watermark.",
+   "src": "src/azel/azel_vampire_q3b.webp",
+   "adopted": "a",
+   "note": "리뷰: 기존 qback 두 인물이 모두 정면 뒷모습(좌우 대칭)이라 턴테이블 −45/−90/−135 가 같은 그림 → a = 왼쪽으로 돌아선 3/4 뒤(옆뺨·코끝만 보임) → ym135 채택, ym45 는 거울상. 옛 qback 두 인물은 라벨 \"-\""
+  },
+  {
+   "id": "azel_nosferatu_q3b",
+   "tool": "image_to_image",
+   "model": "kling-image-v3_0_omni",
+   "images": 1,
+   "generationId": "AWkxgvl8fRxz2ZTYDLhrNUpripKWDvD43DkZMOjkFjqUT1bPcyIQB0t2Q1XPQYw4mk5mBNos",
+   "inputs": [
+    "azel_nosferatu_side.jpg (identity/outfit, production upload)",
+    "azel_nosferatu_back.jpg (ym90 crop of turn5, back design)"
+   ],
+   "aspect_ratio": "3:4",
+   "img_resolution": "2k",
+   "prompt": "One single full-body THREE-QUARTER BACK view of the young man in 图片1, wearing exactly the outfit of 图片1 (图片2 shows the same man and outfit seen straight from behind): long flowing silver-white hair down his back, a black lacquered armored long coat with spiky gold-trimmed bat-wing shoulder pauldrons, gold filigree on the coat hem, a crimson lining, black clawed gauntlets, black armored greaves and black boots. Camera angle: halfway between a back view and a left side view. His whole body is turned about 45 degrees away from the viewer toward the LEFT edge of the picture: we see his back at an angle and a little of his left side, NOT a symmetric back view. His head faces the left edge of the picture, so we see the back of his head and only a sliver of his pale cheek and the tip of his nose in lost profile on the left side; we cannot see his eyes. His toes point toward the upper left. He stands in a relaxed neutral pose with both arms hanging down at his sides, alone and centered, the same size as in 图片1. Plain light-grey studio background, the same painterly dark-fantasy game-art style as 图片1, soft even lighting, complete from the top of the head to the boots with margin, nothing cropped, no cape, no wings, nothing held in the hands, no text, no watermark.",
+   "src": "src/azel/azel_nosferatu_q3b.webp",
+   "adopted": "a",
+   "note": "리뷰: 기존 qback 두 인물이 모두 정면 뒷모습(좌우 대칭)이라 턴테이블 −45/−90/−135 가 같은 그림 → a = 왼쪽으로 돌아선 3/4 뒤(옆뺨·코끝만 보임) → ym135 채택, ym45 는 거울상. 옛 qback 두 인물은 라벨 \"-\""
+  },
+  {
+   "id": "azel_bloodking_q3b",
+   "tool": "image_to_image",
+   "model": "kling-image-v3_0_omni",
+   "images": 1,
+   "generationId": "Ae1zrnDkfTkzrHsU9nbYox267iXsnkRZgvUNAvKtmJ3zo58rWo0IyV5Vy-Px4xWeLlRnnNbi",
+   "inputs": [
+    "azel_bloodking_side.jpg (identity/outfit, production upload)",
+    "azel_bloodking_back.jpg (ym90 crop of turn5, back design)"
+   ],
+   "aspect_ratio": "3:4",
+   "img_resolution": "2k",
+   "prompt": "One single full-body THREE-QUARTER BACK view of the young man in 图片1, wearing exactly the outfit of 图片1 (图片2 shows the same man and outfit seen straight from behind): long flowing silver-white hair down his back, a tall gold crown set with rubies, a deep crimson long coat with heavy gold baroque embroidery on the hem and edges, ornate gold-and-ruby shoulder pauldrons, black gloves, crimson trousers and black boots with gold toes. Camera angle: halfway between a back view and a left side view. His whole body is turned about 45 degrees away from the viewer toward the LEFT edge of the picture: we see his back at an angle and a little of his left side, NOT a symmetric back view. His head faces the left edge of the picture, so we see the back of his head and only a sliver of his pale cheek and the tip of his nose in lost profile on the left side; we cannot see his eyes. His toes point toward the upper left. He stands in a relaxed neutral pose with both arms hanging down at his sides, alone and centered, the same size as in 图片1. Plain light-grey studio background, the same painterly dark-fantasy game-art style as 图片1, soft even lighting, complete from the top of the crown to the boots with margin, nothing cropped, no cape, no wings, nothing held in the hands, no text, no watermark.",
+   "src": "src/azel/azel_bloodking_q3b.webp",
+   "adopted": "a",
+   "note": "리뷰: 기존 qback 두 인물이 모두 정면 뒷모습(좌우 대칭)이라 턴테이블 −45/−90/−135 가 같은 그림 → a = 왼쪽으로 돌아선 3/4 뒤(옆뺨·코끝만 보임) → ym135 채택, ym45 는 거울상. 옛 qback 두 인물은 라벨 \"-\""
+  },
+  {
+   "id": "azel_holyblade_q3b",
+   "tool": "image_to_image",
+   "model": "kling-image-v3_0_omni",
+   "images": 1,
+   "generationId": "AVmXm32Dgyb2JMHY7LnYvO4O7L1ILc1yfRH5vi0oMxAnmpcKR3aFgr6kgD9rjfTRRxmSbnb2",
+   "inputs": [
+    "azel_holyblade_side.jpg (identity/outfit, production upload)",
+    "azel_holyblade_back.jpg (ym90 crop of turn5, back design)"
+   ],
+   "aspect_ratio": "3:4",
+   "img_resolution": "2k",
+   "prompt": "One single full-body THREE-QUARTER BACK view of the young man in 图片1, wearing exactly the outfit of 图片1 (图片2 shows the same man and outfit seen straight from behind): long flowing silver-white hair down his back, a white long coat with gold trim edges and a blue lining, polished silver plate shoulder pauldrons, purple sleeves with gold cuffs, white gloves, white trousers and silver armored boots. Camera angle: halfway between a back view and a left side view. His whole body is turned about 45 degrees away from the viewer toward the LEFT edge of the picture: we see his back at an angle and a little of his left side, NOT a symmetric back view. His head faces the left edge of the picture, so we see the back of his head and only a sliver of his pale cheek and the tip of his nose in lost profile on the left side; we cannot see his eyes. His toes point toward the upper left. He stands in a relaxed neutral pose with both arms hanging down at his sides, alone and centered, the same size as in 图片1. Plain light-grey studio background, the same painterly dark-fantasy game-art style as 图片1, soft even lighting, complete from the top of the head to the boots with margin, nothing cropped, no cape, no wings, nothing held in the hands, no text, no watermark.",
+   "src": null,
+   "adopted": null,
+   "note": "리뷰: 기존 qback 두 인물이 모두 정면 뒷모습(좌우 대칭)이라 턴테이블 −45/−90/−135 가 같은 그림 → a = 왼쪽을 보는 옆모습에 가까움(가슴판·코트 앞자락이 보임) → 버림, 재시도"
+  },
+  {
+   "id": "azel_dawnbringer_q3b",
+   "tool": "image_to_image",
+   "model": "kling-image-v3_0_omni",
+   "images": 1,
+   "generationId": "AZF2k08zTXCg3m-DFiMoLViGDwnHz0OVYn4BhKXwdeunGDlS-Hw6888cIMofs6Urr-iVr_pC",
+   "inputs": [
+    "azel_dawnbringer_side.jpg (identity/outfit, production upload)",
+    "azel_dawnbringer_back.jpg (ym90 crop of turn5, back design)"
+   ],
+   "aspect_ratio": "3:4",
+   "img_resolution": "2k",
+   "prompt": "One single full-body THREE-QUARTER BACK view of the young man in 图片1, wearing exactly the outfit of 图片1 (图片2 shows the same man and outfit seen straight from behind): long flowing silver-white hair down his back, a thin gold circlet, ivory-and-gold plate armor with large golden sunburst spiked shoulder pauldrons set with red gems, black sleeves, an ivory long coat with gold embroidery on the hem and a glowing orange lining, black gloves, ivory plate greaves and ivory boots. Camera angle: halfway between a back view and a left side view. His whole body is turned about 45 degrees away from the viewer toward the LEFT edge of the picture: we see his back at an angle and a little of his left side, NOT a symmetric back view. His head faces the left edge of the picture, so we see the back of his head and only a sliver of his pale cheek and the tip of his nose in lost profile on the left side; we cannot see his eyes. His toes point toward the upper left. He stands in a relaxed neutral pose with both arms hanging down at his sides, alone and centered, the same size as in 图片1. Plain light-grey studio background, the same painterly dark-fantasy game-art style as 图片1, soft even lighting, complete from the top of the head to the boots with margin, nothing cropped, no cape, no wings, nothing held in the hands, no text, no watermark.",
+   "src": null,
+   "adopted": null,
+   "note": "리뷰: 기존 qback 두 인물이 모두 정면 뒷모습(좌우 대칭)이라 턴테이블 −45/−90/−135 가 같은 그림 → a = 거의 좌우 대칭 뒷모습(견갑 두 개가 대칭) → 버림, 재시도"
+  },
+  {
+   "id": "azel_seraph_q3b",
+   "tool": "image_to_image",
+   "model": "kling-image-v3_0_omni",
+   "images": 1,
+   "generationId": "AVQ9sxlmvEhrK5g5AKE95J6GUGx7W8zK4P3RopFeFHmfQ9R8VMlgqZR8byxAL9eF-ZQHRl1e",
+   "inputs": [
+    "azel_seraph_side.jpg (identity/outfit, production upload)",
+    "azel_seraph_back.jpg (ym90 crop of turn5, back design)"
+   ],
+   "aspect_ratio": "3:4",
+   "img_resolution": "2k",
+   "prompt": "One single full-body THREE-QUARTER BACK view of the young man in 图片1, wearing exactly the outfit of 图片1 (图片2 shows the same man and outfit seen straight from behind): long flowing silver-white hair down his back, a dark navy long coat with glowing violet runes on the hem and a violet lining, a white vest, white feathered shoulder pauldrons, violet crystal bracers, black gloves, dark navy trousers and black-and-silver boots. Camera angle: halfway between a back view and a left side view. His whole body is turned about 45 degrees away from the viewer toward the LEFT edge of the picture: we see his back at an angle and a little of his left side, NOT a symmetric back view. His head faces the left edge of the picture, so we see the back of his head and only a sliver of his pale cheek and the tip of his nose in lost profile on the left side; we cannot see his eyes. His toes point toward the upper left. He stands in a relaxed neutral pose with both arms hanging down at his sides, alone and centered, the same size as in 图片1. Plain light-grey studio background, the same painterly dark-fantasy game-art style as 图片1, soft even lighting, complete from the top of the head to the boots with margin, nothing cropped, no cape, no wings, nothing held in the hands, no text, no watermark.",
+   "src": "src/azel/azel_seraph_q3b.webp",
+   "adopted": "a",
+   "note": "리뷰: 기존 qback 두 인물이 모두 정면 뒷모습(좌우 대칭)이라 턴테이블 −45/−90/−135 가 같은 그림 → a = 왼쪽으로 돌아선 3/4 뒤(옆뺨·코끝만 보임) → ym135 채택, ym45 는 거울상. 옛 qback 두 인물은 라벨 \"-\""
+  },
+  {
+   "id": "azel_holyblade_q3b_retry",
+   "tool": "image_to_image",
+   "model": "kling-image-v3_0_omni",
+   "images": 2,
+   "generationId": "AfmvyxG9E6Ie_O2xeIMXUuRPk2Kje3I5V2WmZFVIYbyzbOjAlwFSgKZzbFv3ADpULduz39fi",
+   "inputs": [
+    "azel_holyblade_side.jpg",
+    "azel_holyblade_back.jpg"
+   ],
+   "aspect_ratio": "3:4",
+   "img_resolution": "2k",
+   "prompt": "(q3b template) + 'We mainly see his BACK: the back of the white coat with its centre vent, his long hair covering his back and the backs of both silver pauldrons, plus a little of his left side; we do NOT see his chest, his breastplate or the front edges of the coat.'",
+   "src": null,
+   "adopted": null,
+   "note": ""
+  },
+  {
+   "id": "azel_dawnbringer_q3b_retry",
+   "tool": "image_to_image",
+   "model": "kling-image-v3_0_omni",
+   "images": 2,
+   "generationId": "AZiaoZzl-EBSIbH3TrH1ebdlwvMGbg_4EVCWgurrBw-m_xzmrJgu5d6sz1LZigGNkxmYXm-N",
+   "inputs": [
+    "azel_dawnbringer_side.jpg",
+    "azel_dawnbringer_back.jpg"
+   ],
+   "aspect_ratio": "3:4",
+   "img_resolution": "2k",
+   "prompt": "(q3b template) + 'NOT a symmetric back view. His whole body is clearly rotated about 45 degrees ... his left shoulder (on the left of the picture) is closer to the camera ... his right shoulder and its sunburst pauldron are farther away and partly hidden behind his back, so the two pauldrons look clearly different in size and position.'",
+   "src": null,
+   "adopted": null,
+   "note": ""
+  }
+ ],
+ "images_used": {
+  "azel": 11,
+  "npc": 0
+ },
+ "totals_with_production": {
+  "azel": 43,
+  "npc": 20
+ }
+}

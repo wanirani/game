@@ -1519,14 +1519,17 @@ export class Mara extends BossC {
     this.drawHair(ctx, true);
     for (const L of this.legs) if (!L.near) this.drawLeg(ctx, L, true);
     this.drawArm(ctx, 3, true); this.drawArm(ctx, 1, true);
-    this.drawBeastCore(ctx);
-    for (const L of this.legs) if (L.near) this.drawLeg(ctx, L, false);
+    this.drawBeastCore(ctx, false);
+    for (const L of this.legs) if (L.near) this.drawLeg(ctx, L, false, false);
+    // 노파(상체 · 얼굴 · 비명 때 입속 눈 = 판정 부위)는 가까운 다리 앞에: 솟은 무릎이 얼굴을 가리지 않게. 아기 인형 머리(약점)는 그 위에
+    this.drawHagFront(ctx);
+    for (const L of this.legs) if (L.near) { const h = this.heads.find((q) => q.leg === L.i); if (h) this.drawBabyHead(ctx, h, L.kl[0], L.kl[1], this.t); }
     this.drawArm(ctx, 2, false); this.drawArm(ctx, 0, false);
     this.drawHair(ctx, false);
     if (lk < 1 && !R.fl) glowE(ctx, -20, -90, 200 * (1 - lk), 90 * (1 - lk), DREAM, 0.5 * (1 - lk));
   }
-  /** 요람 배(살덩이가 창살 사이로 부푼다) + 노파 상체 + 머리 */
-  drawBeastCore(ctx) {
+  /** 요람 배(살덩이가 창살 사이로 부푼다) + 노파 상체 + 머리 (hag = false 면 요람 배만 — drawForm2 가 노파를 다리 앞에 따로 그린다) */
+  drawBeastCore(ctx, hag = true) {
     const J = this.jt, fl = R.fl, t = this.t, dm = this.dmg;
     ctx.save();
     ctx.translate(J.body[0], J.body[1]); ctx.rotate(J.bodyA);
@@ -1556,9 +1559,13 @@ export class Mara extends BossC {
       }
     }
     ctx.restore();
-    // 노파 상체 (요람 앞쪽에 녹아 붙었다)
+    if (hag) this.drawHagFront(ctx);
+  }
+  /** P2+ 노파 상체 (요람 앞쪽에 녹아 붙었다) + 허리 힘줄 + 머리 */
+  drawHagFront(ctx) {
+    const J = this.jt;
     this.drawHagBody(ctx, 2);
-    if (!fl) {
+    if (!R.fl) {
       // 허리가 요람 살에 녹아든 뿌리 같은 힘줄
       ctx.strokeStyle = FLESH; ctx.lineWidth = 4;
       ctx.beginPath();
@@ -1568,7 +1575,7 @@ export class Mara extends BossC {
     this.drawHead(ctx);
   }
   /** 도자기 인형 다리 (구체 관절 · 이음매 · 때 묻은 도자기) — 가까운 쪽 셋의 무릎엔 아기 인형 머리 */
-  drawLeg(ctx, L, far) {
+  drawLeg(ctx, L, far, heads = true) {
     const fl = R.fl, t = this.t;
     const col = fl ? '#fff' : (far ? '#4a4252' : '#d4cac6');
     const r = L.rl, k = L.kl, f = L.fl;
@@ -1598,7 +1605,7 @@ export class Mara extends BossC {
       const dir = Math.sign(f[0] - k[0]) || 1;
       ctx.beginPath(); ctx.moveTo(f[0] - dir * 4, f[1] - 5); ctx.lineTo(f[0] + dir * 10, f[1]); ctx.lineTo(f[0] - dir * 2, f[1] - 1); ctx.lineTo(f[0] + dir * 5, f[1] + 1); ctx.lineTo(f[0] - dir * 6, f[1] - 1); ctx.closePath(); ctx.fill(); ctx.stroke();
     }
-    if (!far) {
+    if (!far && heads) {
       const h = this.heads.find((q) => q.leg === L.i);
       if (h) this.drawBabyHead(ctx, h, k[0], k[1], t);
     }

@@ -29,10 +29,15 @@ const bodyOff = (u) => {
   _o[1] = BD * u * BH;
   return _o;
 };
-/** logical offset of the body warp at pivot pn (the strips shift the shoulders with the mud) */
+/** warp parameter u (0 at the base … 1 at the top) of body pivot pn */
+function warpU(pn) {
+  const p = K.part('body'), q = p?.piv.a, r = p?.piv[pn];
+  if (!r) return 0;
+  return Math.abs(r[1] - q[1]) / (Math.max(q[1], p.h - q[1]) || 1);
+}
+/** logical offset of the body warp at pivot pn (the strips shift the shoulders and the neck with the mud) */
 function warpAt(pn, out) {
-  const p = K.part('body'), q = p.piv.a, r = p.piv[pn];
-  const span = Math.max(q[1], p.h - q[1]) || 1, o = bodyOff(Math.abs(r[1] - q[1]) / span);
+  const o = bodyOff(warpU(pn));
   out[0] = o[0] / TD; out[1] = o[1] / TD;
   return out;
 }
@@ -72,25 +77,26 @@ function pose(e) {
   q.wob = walking ? 1.8 : 1.1; q.wobF = walking ? 5.5 : 3.1;
   q.aF = 0.35 + sw * 0.3; q.aB = 0.2 - sw * 0.3;
   q.sF = 1; q.thin = 1; q.curlF = 0.25; q.curlB = 0.3;
-  q.tele = 0; q.ball = 0; q.spat = 0;
+  q.tele = 0; q.glint = 0; q.ball = 0; q.spat = 0; q.lunge = 0; q.nod = Math.sin(t * 2.2) * 0.03 + (walking ? Math.sin(ph) * 0.04 : 0);
   if (e.anim === 'punch') {
     const ap = atkPhase(at, P.punchWind ?? 0.5, 0.08), kw = ease.outCubic(ap.w);
     if (ap.s <= 0) { q.aF = lerp(0.35, -1.2, kw); q.lean = lerp(0.12, -0.1, ap.w); q.curlF = lerp(0.25, 0.6, kw); q.aB = lerp(q.aB, 0.6, kw); }
     else {
       const ks = ease.outBack(ap.s), hold = clamp(1 - ap.after / 0.3, 0, 1);
-      q.aF = lerp(-1.2, 1.62, ks); q.lean = 0.3; q.curlF = lerp(0.6, -0.05, ks);
+      q.aF = lerp(-1.2, 1.5, ks); q.lean = 0.3; q.curlF = lerp(0.6, -0.05, ks); q.lunge = 2.5 * hold; q.nod = 0.12 * hold;
       q.sF = 1 + 0.62 * ease.outCubic(ap.s) * hold; q.thin = 1 / Math.sqrt(q.sF);
       q.spat = ap.after < 0.12 ? 1 : 0; q.aB = -0.3;
     }
-    q.tele = ap.s <= 0 ? ap.w : 0;
+    q.tele = q.glint = ap.s <= 0 ? ap.w : 0;
+    if (ap.s <= 0) q.nod = -0.12 * kw;
     q.wob = 1.1 + q.tele * 1.4; q.wobF = 3.1 + q.tele * 9;
   } else if (e.anim === 'throw') {
     const ap = atkPhase(at, P.throwWind ?? 0.55, 0.1), kw = ease.outCubic(ap.w);
     if (ap.s <= 0) { q.aF = lerp(0.35, -2.5, kw); q.lean = -0.15 * ap.w; q.curlF = lerp(0.25, 0.5, kw); q.ball = clamp(ap.w * 1.4, 0, 1); }
-    else { q.aF = lerp(-2.5, -4.6, ease.outCubic(ap.s)); q.lean = 0.25; q.curlF = -0.2; }
+    else { q.aF = lerp(-2.5, -4.75, ease.outCubic(ap.s)); q.lean = 0.25; q.curlF = -0.2; q.nod = 0.1; }
     q.tele = ap.s <= 0 ? ap.w : 0;
   }
-  if (hurt) { q.aF += 0.7; q.aB += 0.5; q.wob = 3.2; q.wobF = 14; }
+  if (hurt) { q.aF += 0.7; q.aB += 0.5; q.wob = 3.2; q.wobF = 14; q.nod = -0.2; q.lunge = -1.5; }
   return q;
 }
 
@@ -129,26 +135,31 @@ export function draw(ctx, e, world, o, rig) {
   // far arm (behind the body)
   K.pivotPos('body', 'a', 'sh2', 0, by, 0, bsx, 1, _q); warpAt('sh2', _f);
   arm(_q[0] + _f[0], _q[1] + _f[1], q.aB, 0.95, 1, q.curlB, 1.7, 'deep');
-  K.strips('body', 'a', 0, by, 0, bsx, 1, K.nStrips(12), 'y', bodyOff, 1);
-  // near arm (+ the mud ball forming in its fist)
+  bodyStrips(ctx, rig, fl, 0, by, bsx, 1);
+  // near arm (+ the mud ball forming in its fist) — it swings between the body and the head
   K.pivotPos('body', 'a', 'sh', 0, by, 0, bsx, 1, _q); warpAt('sh', _f);
   const sx = _q[0] + _f[0], sy = _q[1] + _f[1];
   arm(sx, sy, q.aF, q.sF, q.thin, q.curlF, 0, 'base');
   AC = q.curlF; AP = 0;
   armAt(sx, sy, dirOf(q.aF), q.sF, fistFrac(), _f);
   const fx = _f[0], fy = _f[1];
-  if (q.ball > 0) K.put('ball', 'a', fx + 1, fy - 2, t * 2, 0.4 + 0.6 * q.ball, 0.4 + 0.6 * q.ball);
-  if (!o.flash) {
-    K.pivotPos('body', 'a', 'eye', 0, by, 0, bsx, 1, _q); warpAt('eye', _o);
-    const ex = _q[0] + _o[0], ey = _q[1] + _o[1];
-    const ea = 0.45 + 0.15 * Math.sin(t * 4) + q.tele * 0.4;
-    K.glow(ex, ey, 3 + q.tele * 3, '#ff8a2a', ea);
-    K.pivotPos('body', 'a', 'eye2', 0, by, 0, bsx, 1, _q); warpAt('eye2', _o);
-    K.glow(_q[0] + _o[0], _q[1] + _o[1], 2.2 + q.tele * 2, '#ff8a2a', ea * 0.8);
-    if (q.tele > 0.45) glint(ctx, fx, fy, 3 + 4 * q.tele, '#ffd8a0', 0.85 * (q.tele - 0.45) / 0.55);
+  // head: rides the warped neck, tilted with the local lean of the mud column, nods and lunges
+  K.pivotPos('body', 'a', 'neck', 0, by, 0, bsx, 1, _q); const un = warpU('neck'); warpAt('neck', _o);
+  const hx = _q[0] + _o[0] + q.lunge, hy = _q[1] + _o[1];
+  const hr = Math.atan((2 * BL * un + BW * (Math.sin(BT * BF - un * 3.6) - 3.6 * un * Math.cos(BT * BF - un * 3.6))) / ((body?.h ?? 100) / TD)) * 0.8 + q.nod;
+  K.put('head', 'a', hx, hy, hr, 1, 1);
+  if (q.ball > 0) {
+    if (!o.flash) K.glow(fx + 1, fy - 2, 8 * q.ball, '#c09060', 0.35 * q.ball);
+    K.put('ball', 'a', fx + 1, fy - 2, t * 2, 0.4 + 0.6 * q.ball, 0.4 + 0.6 * q.ball);
   }
-  K.pivotPos('body', 'a', 'mouth', 0, by, 0, bsx, 1, _q); warpAt('mouth', _o);
-  const mx = _q[0] + _o[0], my = _q[1] + _o[1];
+  if (!o.flash) {
+    const ea = 0.45 + 0.15 * Math.sin(t * 4) + q.tele * 0.4;
+    K.pivotPos('head', 'a', 'eye', hx, hy, hr, 1, 1, _q); K.glow(_q[0], _q[1], 3 + q.tele * 3, '#ff8a2a', ea);
+    K.pivotPos('head', 'a', 'eye2', hx, hy, hr, 1, 1, _q); K.glow(_q[0], _q[1], 2.2 + q.tele * 2, '#ff8a2a', ea * 0.8);
+    if (q.glint > 0.45) glint(ctx, fx, fy, 3 + 4 * q.glint, '#ffd8a0', 0.85 * (q.glint - 0.45) / 0.55);
+  }
+  K.pivotPos('head', 'a', 'mouth', hx, hy, hr, 1, 1, _q);
+  const mx = _q[0], my = _q[1];
   K.end();
   if (rising) ctx.restore();
   K.begin(ctx, rig, fl);
@@ -169,6 +180,17 @@ export function draw(ctx, e, world, o, rig) {
     }
     ctx.save(); ctx.setTransform(o.cam); pool.draw(ctx); ctx.restore();
   }
+}
+
+/** the body as sheared strips; its hit flash is laid over as ONE seam-free warp (per-strip flash blits overlap by a
+ *  texel and showed as bright bands) */
+function bodyStrips(ctx, rig, fl, x, y, sx, a) {
+  const n = K.nStrips(12);
+  if (!(fl > 0)) { K.strips('body', 'a', x, y, 0, sx, 1, n, 'y', bodyOff, a); return; }
+  K.end(); K.begin(ctx, rig, 0);
+  K.strips('body', 'a', x, y, 0, sx, 1, n, 'y', bodyOff, a);
+  K.warpY('body', 'a', x, y, 0, sx, 1, n * 2, bodyOff, a * fl, 'flash');
+  K.end(); K.begin(ctx, rig, fl);
 }
 
 /** mud bubbles swelling and popping on the puddle (render clock) */
@@ -203,8 +225,10 @@ function drawMelt(k, t) {
   BT = t; BL = 7 * (1 - k); BW = 1 + k * 5; BF = 6; BD = Math.pow(k, 1.2) * 0.92;
   const body = K.part('body');
   BH = body?.h ?? 100;
-  const a = k < 0.65 ? 1 : 1 - (k - 0.65) / 0.35;
-  K.strips('body', 'a', 0, 0, 0, 1 + 0.45 * k, 1, K.nStrips(12), 'y', bodyOff, 1 - k * k * k);
+  const a = k < 0.65 ? 1 : 1 - (k - 0.65) / 0.35, ba = 1 - k * k * k, sx = 1 + 0.45 * k;
+  K.strips('body', 'a', 0, 0, 0, sx, 1, K.nStrips(12), 'y', bodyOff, ba);
+  K.pivotPos('body', 'a', 'neck', 0, 0, 0, sx, 1, _q); warpAt('neck', _o);
+  K.put('head', 'a', _q[0] + _o[0], _q[1] + _o[1], 0.5 * k, 1, 1 - 0.3 * k, ba);
   K.put('puddle', 'a', 0, 0.5, 0, 1 + 0.4 * k, 0.85 + 0.15 * k, a);
 }
 function spawnMelt(world, e, rig) {

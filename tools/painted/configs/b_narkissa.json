@@ -1,0 +1,27 @@
+{
+ "id": "b_narkissa",
+ "kind": "boss",
+ "out": "assets/painted/bosses/b_narkissa",
+ "raw": "tools/painted/raw/b_narkissa",
+ "td": 2.0,
+ "matte": {
+  "default": {
+   "key": 9,
+   "soft": 22,
+   "hard": 6
+  },
+  "head_a": {
+   "rembg": null,
+   "hard": 5,
+   "key": 7
+  },
+  "head2_a": {
+   "rembg": null,
+   "hard": 5,
+   "key": 7
+  }
+ },
+ "parts": [],
+ "debris": [],
+ "kling": {}
+}

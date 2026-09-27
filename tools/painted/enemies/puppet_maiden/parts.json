@@ -1,0 +1,151 @@
+{
+ "id": "puppet_maiden",
+ "tier": "T2",
+ "srcTD": 4,
+ "note": "Cut from the Kling strict side view (doll_side take 2): porcelain head with golden ringlets and the crimson bow, gothic dress body (bodice, apron, frilled skirt, big back bow; the near arm cut out and the dress behind it filled with the skirt, make_src.py), the porcelain arm (used twice, the far one darkened) and both legs with the mary-janes as one piece. Marionette strings are procedural.",
+ "sources": {
+  "d": {
+   "raw": "doll_side.webp",
+   "file": "a2_doll.png",
+   "k": 0.028
+  },
+  "b": {
+   "raw": "doll_body.webp",
+   "file": "a2_doll_body.png",
+   "k": 0.028
+  }
+ },
+ "parts": {
+  "head": {
+   "src": "d",
+   "box": [
+    360,
+    55,
+    1370,
+    888
+   ],
+   "piv": {
+    "a": [
+     917,
+     880
+    ],
+    "eye": [
+     1090,
+     700
+    ],
+    "top": [
+     900,
+     90
+    ]
+   }
+  },
+  "body": {
+   "src": "b",
+   "box": [
+    290,
+    860,
+    1440,
+    1792
+   ],
+   "piv": {
+    "a": [
+     930,
+     1780
+    ],
+    "neck": [
+     917,
+     885
+    ],
+    "shoulder": [
+     831,
+     1195
+    ],
+    "chest": [
+     1050,
+     1100
+    ]
+   }
+  },
+  "arm": {
+   "src": "d",
+   "box": [
+    745,
+    1165,
+    960,
+    1600
+   ],
+   "poly": [
+    [
+     754,
+     1183
+    ],
+    [
+     909,
+     1174
+    ],
+    [
+     943,
+     1303
+    ],
+    [
+     938,
+     1509
+    ],
+    [
+     951,
+     1551
+    ],
+    [
+     917,
+     1594
+    ],
+    [
+     814,
+     1594
+    ],
+    [
+     780,
+     1474
+    ],
+    [
+     759,
+     1303
+    ]
+   ],
+   "piv": {
+    "a": [
+     831,
+     1195
+    ],
+    "b": [
+     866,
+     1560
+    ],
+    "hand": [
+     866,
+     1565
+    ]
+   }
+  },
+  "legs": {
+   "src": "d",
+   "box": [
+    735,
+    1765,
+    1185,
+    2296
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     930,
+     1790
+    ],
+    "feet": [
+     930,
+     2290
+    ]
+   }
+  }
+ }
+}

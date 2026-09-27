@@ -18,6 +18,7 @@ import * as wolf from '../enemies/wolf.js';
 import * as zombie from '../enemies/zombie.js';
 import * as possessed from '../enemies/possessed.js';
 import * as mud_man from '../enemies/mud_man.js';
+import * as gargoyle from '../enemies/gargoyle.js';
 
 export const bosses = {};
 export const enemies = [
@@ -33,6 +34,7 @@ export const enemies = [
   { mod: zombie },
   { mod: possessed },
   { mod: mud_man },
+  { mod: gargoyle },
 ];
 export const companions = {};
 export const npcs = {};

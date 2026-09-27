@@ -1,0 +1,135 @@
+{
+ "id": "plague_moth",
+ "tier": "T1",
+ "srcTD": 4,
+ "note": "T1 moth from parts sheet 2. Body = the wingless side-view body (top of the sheet, faces LEFT -> flipX): feathered antennae, big black eye, furry thorax, banded abdomen with the tail hook, dangling legs; k 0.035 -> ~40 px long. Wing = the raised forewing + hindwing pair of the bottom-left moth (faces right, already correct), cut away from its body and antennae; pivot a = the wing root on the thorax. Flapping = vertical scale flip about the root (up 1 -> down -0.7), far wing darkened.",
+ "sources": {
+  "s2": {
+   "raw": "plague_moth_sheet2.webp",
+   "file": "plague_moth_sheet2.png",
+   "k": 0.035
+  }
+ },
+ "parts": {
+  "body": {
+   "src": "s2",
+   "box": [
+    540,
+    20,
+    1850,
+    800
+   ],
+   "keep": "largest",
+   "flipX": true,
+   "piv": {
+    "a": [
+     1250,
+     470
+    ],
+    "root": [
+     1060,
+     275
+    ],
+    "eye": [
+     830,
+     420
+    ],
+    "mouth": [
+     748,
+     530
+    ],
+    "tail": [
+     1815,
+     690
+    ],
+    "belly": [
+     1350,
+     560
+    ]
+   }
+  },
+  "wing": {
+   "src": "s2",
+   "box": [
+    15,
+    495,
+    900,
+    1345
+   ],
+   "keep": "largest",
+   "k": 0.062,
+   "poly": [
+    [
+     15,
+     495
+    ],
+    [
+     380,
+     495
+    ],
+    [
+     870,
+     1190
+    ],
+    [
+     880,
+     1262
+    ],
+    [
+     820,
+     1290
+    ],
+    [
+     640,
+     1320
+    ],
+    [
+     430,
+     1335
+    ],
+    [
+     380,
+     1322
+    ],
+    [
+     280,
+     1250
+    ],
+    [
+     240,
+     1150
+    ],
+    [
+     15,
+     930
+    ]
+   ],
+   "piv": {
+    "a": [
+     830,
+     1255
+    ],
+    "b": [
+     60,
+     540
+    ],
+    "eye1": [
+     460,
+     945
+    ],
+    "eye2": [
+     548,
+     1090
+    ],
+    "eye3": [
+     440,
+     1152
+    ],
+    "tip": [
+     60,
+     540
+    ]
+   }
+  }
+ }
+}

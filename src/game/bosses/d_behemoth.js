@@ -9,7 +9,8 @@
 //     등장 자리가 둔덕과 겹치면(0.72 지점 = 56–59열) 가까운 평평한 자리로 옮긴다 (MAPS-P2-C 요청: 가운데 67열 이상).
 //     대기 중에는 플레이어 쪽으로 60px/s 이하로 걸어오고, 뒤로 돌 때는 몸을 종이처럼 뒤집는다(그림만).
 // 판정 부위: 여왕 50×90 (P1 1.2 잠듦 → P2 부터 0.55) · 옆구리 주머니 ×3 50×50 (0.8, 각 최대 체력 2.5%) · 두개골 70×70 (1.0) · 몸통 (1.6).
-//   접촉: 몸통 340×230 + 머리 (위쪽 '=' 발판(바닥−240)에 선 플레이어는 닿지 않는다). 돌진 중에는 몸을 따라가는 지대(mv 1.8)가 맡는다.
+//   접촉: 몸통 340×230 + 머리 (위쪽 '=' 발판(10행 = 바닥−288)에 선 플레이어는 닿지 않는다: 포효 · 앞발 치켜들기로 머리가 솟아도
+//   머리 접촉 윗면은 바닥−HEAD_TOP 에서 자른다). 돌진 중에는 몸을 따라가는 지대(mv 1.8)가 맡는다.
 // 그림: 벡터 (2부 기준). 가죽 몸통(이끼·균열·선반버섯·찢긴 옆구리 갈비뼈) · 두개골 반쪽 머리 · 아래턱 · 죽은 나무 셋 · 버섯 둘은
 //   보스 등장 때 한 번 굽고(모듈 캐시, 흰 판 = 피격 섬광), 다리 · 꼬리 · 포자 주머니 · 여왕 · 뿌리 · 이끼 늘어짐 · 상처는 매 프레임 그린다.
 //   피해 단계: 체력이 줄수록 몸통에 깊은 상처가 벌어지고, P2 에는 가운데 나무가 부러지고 여왕이 눈을 뜨며, P3 에는 뒤쪽 나무도
@@ -44,6 +45,7 @@ const LEGS = [
 const GLOW_WARM = [GLOW, SPORE, '#e8ff90', '#ffffff', '#c8ff6a', '#6a8a2a', '#3a5a10', MOSS, '#b8d060', '#e8ffb0', '#c8e060', '#8ab82e', '#e0c080', '#e8ffd0', '#fff0f8'];
 const LIGHT_WARM = [GLOW, SPORE, '#e8ffd0', '#fff0f8', '#c8ff6a'];
 const LU = 94, LL = 88;                 // 다리 뼈 길이 (위 · 아래)
+const HEAD_TOP = 280;                   // 머리 접촉 윗면 한계 (바닥 위 px): s19 '=' 발판 윗면 바닥−288 보다 아래
 const SACS = [[-104, -208], [-36, -196], [32, -214]];
 const GASHES = [
   [0.2, [[-200, -250], [-178, -238], [-160, -244], [-138, -230]]],
@@ -510,7 +512,9 @@ export class Behemoth extends BossC {
     const pb = this.pBody, top = this.by - 320 + this.drop;
     pb.x = this.bx - 220; pb.w = 440; pb.y = top; pb.h = this.by - top;
     const cb = this.cBody; cb.x = this.bx - 170; cb.y = this.by - 230 + this.drop * 0.8; cb.w = 340; cb.h = 230 - this.drop * 0.8;
-    const ch = this.cHead; ch.x = this.headP.x - 65 + f * 10; ch.y = this.headP.y - 55; ch.w = 130; ch.h = 120;
+    const ch = this.cHead, hTop = this.headP.y - 55, hBot = hTop + 120;
+    ch.x = this.headP.x - 65 + f * 10; ch.w = 130;
+    ch.y = Math.max(hTop, this.by - HEAD_TOP); ch.h = Math.max(0, hBot - ch.y);   // 발판 위 플레이어 보호 (머리 판정 부위 pSkull 은 그대로)
   }
   footsteps(dt, world) {
     if (this.moving < 0.2 || this.dying > 0) return;
@@ -540,7 +544,8 @@ export class Behemoth extends BossC {
     const L = this._cp;
     L.length = 0;
     if (this.dying > 0 || this.kneeling || this.stunned || this.rushing) return L;
-    L.push(this.cBody, this.cHead);
+    L.push(this.cBody);
+    if (this.cHead.h > 4) L.push(this.cHead);
     return L;
   }
   hitSac(sc, dmg) {

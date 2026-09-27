@@ -34,7 +34,7 @@
 //   azel_bloodking  피의 왕관: 머리 위 피의 왕관 (치명타 피해 +50% 는 awaken.js 가 v.atk 스탯에 반영)
 //   azel_dawnbringer 여명: 신성 속성, 금빛 날개·금빛 초승달, 마무리에서 일식이 황금빛 해돋이로 바뀐다
 //   azel_seraph     빛과 어둠의 날개: 흰 날개와 검은 날개, 흰·검은 초승달이 번갈아 교차
-//  AWAKEN_DIR_B_DEBUG   시험용 기록 {casts, bakes, poseBakes, canvases, castCanvases, errors, prepared, last, sprite(name) → 구운 캔버스}
+//  AWAKEN_DIR_B_DEBUG   시험용 기록 {casts, bakes, poseBakes, canvases, castCanvases, errors, prepared, last, lt(진행 중 감독 시각), sprite(name) → 구운 캔버스}
 //  prepareAwakenB(world?, p?)   캐시 스프라이트 미리 굽기 (스테이지 진입·방 이동·직업 변경 뒤 한가할 때 자동; 시험용으로도 공개)
 //
 // 성능 (feel §8, MASTER_PLAN §5.2)
@@ -245,9 +245,9 @@ function bakeCrow(g, w, h) {
   for (const q of body) g.fill(q);   // 몸통 위의 결은 지운다
   // 붉은 역광을 실루엣 뒤에 함께 굽는다 (화면을 덮는 가산 빛 두 장을 따로 그리지 않게: 까마귀 한 장 = 채우기 한 번)
   g.globalCompositeOperation = 'destination-over';
-  g.save(); g.translate(cx, 138); g.scale(1, 122 / 250);
-  g.fillStyle = rad(g, 0, -20, 0, 0, 0, 250, [[0, 'rgba(255,48,72,0.95)'], [0.2, 'rgba(236,28,56,0.8)'], [0.45, 'rgba(176,16,42,0.55)'], [0.75, 'rgba(120,8,28,0.22)'], [1, 'rgba(90,0,20,0)']]);
-  g.beginPath(); g.arc(0, 0, 250, 0, TAU); g.fill();
+  g.save(); g.translate(cx, 128); g.scale(1, 127 / 255);
+  g.fillStyle = rad(g, 0, -30, 0, 0, 0, 255, [[0, 'rgba(255,64,84,1)'], [0.22, 'rgba(244,36,62,0.95)'], [0.5, 'rgba(196,20,48,0.8)'], [0.78, 'rgba(140,10,32,0.45)'], [1, 'rgba(90,0,20,0)']]);
+  g.beginPath(); g.arc(0, 0, 255, 0, TAU); g.fill();
   g.restore();
   g.globalCompositeOperation = 'source-over';
 }
@@ -833,7 +833,7 @@ function run(S, o) {
     life: S.DUR, z: 12,
     follow: (e) => cover(e, S),
     tick(e, ww, dt) {
-      S.lt = e.lt;
+      S.lt = e.lt; AWAKEN_DIR_B_DEBUG.lt = e.lt;
       if (S.over) { e.dead = true; return; }
       // 연출 도중 영웅이 쓰러졌으면 (즉사 함정·대본 등) 바로 끝낸다: 시체를 움직이거나 부활 뒤까지 연출 상태를 붙잡지 않게
       if (S.p.dead || ww.player !== S.p) { e.dead = true; finish(S, o); return; }

@@ -1,0 +1,131 @@
+{
+ "id": "gargoyle",
+ "tier": "T2",
+ "srcTD": 4,
+ "note": "T2 winged statue. The body is the wingless Step-4 edit of the reference (src/gargoyle_body.webp: the whole crouching leap pose with head, near arm and leg, the dimmer far limbs and the tail; moss on the back, glowing lava cracks). The bat wing is the separate wing of parts sheet 1, rooted at its clawed wrist (right end: the hook claw pokes forward over the shoulder, the membrane trails back): drawn as a bending chain, near wing in front of the body and far wing behind it (darkened). The statue pose uses 'stone', the same cut from a desaturated copy with the cracks put out (prep.py), crossfading to the live colours on waking. k: body 52 px tall over the 56x52 logic rect, wing 34 px long.",
+ "sources": {
+  "g": {
+   "raw": "gargoyle_body.webp",
+   "file": "e1_gargoyle_body.png",
+   "k": 0.04
+  },
+  "s1": {
+   "raw": "gargoyle_sheet1.webp",
+   "file": "e1_gargoyle_sheet1.png",
+   "k": 0.024
+  },
+  "st": {
+   "raw": "gargoyle_body.webp",
+   "file": "e1_gargoyle_stone.png",
+   "k": 0.04
+  }
+ },
+ "parts": {
+  "body": {
+   "src": "g",
+   "box": [
+    600,
+    420,
+    1890,
+    1745
+   ],
+   "piv": {
+    "a": [
+     1244,
+     1082
+    ],
+    "eye": [
+     1747,
+     827
+    ],
+    "mouth": [
+     1737,
+     937
+    ],
+    "jaw": [
+     1825,
+     925
+    ],
+    "w1": [
+     1330,
+     640
+    ],
+    "w2": [
+     1250,
+     612
+    ],
+    "chest": [
+     1450,
+     1000
+    ],
+    "claw": [
+     1340,
+     1450
+    ]
+   }
+  },
+  "wing": {
+   "src": "s1",
+   "box": [
+    620,
+    730,
+    2260,
+    1395
+   ],
+   "piv": {
+    "a": [
+     2060,
+     850
+    ],
+    "b": [
+     700,
+     900
+    ]
+   }
+  },
+  "stone": {
+   "src": "st",
+   "box": [
+    600,
+    420,
+    1890,
+    1745
+   ],
+   "piv": {
+    "a": [
+     1244,
+     1082
+    ],
+    "eye": [
+     1747,
+     827
+    ],
+    "mouth": [
+     1737,
+     937
+    ],
+    "jaw": [
+     1825,
+     925
+    ],
+    "w1": [
+     1330,
+     640
+    ],
+    "w2": [
+     1250,
+     612
+    ],
+    "chest": [
+     1450,
+     1000
+    ],
+    "claw": [
+     1340,
+     1450
+    ]
+   }
+  }
+ },
+ "prep": "python3 tools/painted/enemies/gargoyle/prep.py (after matte.py gargoyle_body.webp -> e1_gargoyle_body.png): writes the cold-stone statue copy e1_gargoyle_stone.png"
+}

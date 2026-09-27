@@ -17,6 +17,8 @@ import * as flea_man from '../enemies/flea_man.js';
 import * as book_fiend from '../enemies/book_fiend.js';
 import * as scholar_ghost from '../enemies/scholar_ghost.js';
 import * as bone_pillar from '../enemies/bone_pillar.js';
+import * as mummy from '../enemies/mummy.js';
+import * as puppet_maiden from '../enemies/puppet_maiden.js';
 
 export const bosses = {};
 export const enemies = [
@@ -32,6 +34,8 @@ export const enemies = [
   { mod: book_fiend },
   { mod: scholar_ghost },
   { mod: bone_pillar },
+  { mod: mummy },
+  { mod: puppet_maiden },
 ];
 export const companions = {};
 export const npcs = {};

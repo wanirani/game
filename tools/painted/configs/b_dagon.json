@@ -1,0 +1,17 @@
+{
+ "id": "b_dagon",
+ "kind": "boss",
+ "out": "assets/painted/bosses/b_dagon",
+ "raw": "tools/painted/raw/b_dagon",
+ "td": 2.0,
+ "matte": {
+  "default": {
+   "key": 9,
+   "soft": 22,
+   "hard": 6
+  }
+ },
+ "parts": [],
+ "debris": [],
+ "kling": {}
+}

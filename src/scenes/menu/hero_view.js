@@ -136,6 +136,31 @@ export class PixLayer {
   free() { if (this.cv) { this.cv.width = this.cv.height = 1; } this.cv = null; this.key = null; }
 }
 
+/**
+ * PixLayer 묶음: id(목록 줄·칸·글자 덩어리)마다 레이어 하나. 탭의 정적인 글자(외곽선 한글 strokeText 가 소프트웨어 래스터에서
+ * 가장 비싼 연산 — fhd2x high 장비 탭 한 프레임 ≈ 30 ms)를 한 번 굽고 매 프레임 1:1 로 붙인다.
+ * 매 프레임 바뀌는 것(선택 막대의 맥동·괄호·반짝임·아이콘의 강화 오라)은 굽지 않고 그 위아래에 그대로 그린다.
+ * 쓰는 쪽: render 에서 draw(…) 로 그리고, render 끝에 sweep() — 몇 프레임 안 쓴 레이어는 풀어 메모리를 돌려준다.
+ */
+export class PixCache {
+  constructor(keep = 24) { this.m = new Map(); this.keep = keep; this.frame = 0; }
+  draw(ctx, id, key, x, y, w, h, fn) {
+    let e = this.m.get(id);
+    if (!e) { e = { L: new PixLayer(), f: 0 }; this.m.set(id, e); }
+    e.f = this.frame;
+    e.L.draw(ctx, key, x, y, w, h, fn);
+  }
+  /** 프레임 끝: 이번 프레임에 안 쓴 레이어 중 오래된 것부터 풀어 keep 개 이하로 (2 초 넘게 안 쓴 것은 항상) */
+  sweep() {
+    const f = this.frame++;
+    if (this.m.size <= this.keep && f % 120 !== 0) return;
+    for (const [id, e] of this.m) {
+      if ((this.m.size > this.keep && e.f < f) || f - e.f > 120) { e.L.free(); this.m.delete(id); }
+    }
+  }
+  free() { for (const e of this.m.values()) e.L.free(); this.m.clear(); }
+}
+
 /** 공통 안내 줄(menu/common.hintRow)이 액션 이름을 글리프로 그리는가 (PLAT-MENU 의 P-01 Scroller.follow 와 함께 들어온다) */
 function glyphHints() {
   try { return typeof MENU.Scroller?.prototype?.follow === 'function' || typeof MENU.shouldFollow === 'function'; } catch { return false; }

@@ -81,7 +81,8 @@ export class CompanionsTab extends Tab {
     this.inited = false;
   }
   get owned() { return CS.ownedIds(this.state); }
-  get wantsFocus() { return true; }
+  /** 동료가 하나도 없으면 본문에 들어갈 것이 없다 (탭 막대의 ↓·결정으로 빈 본문에 갇히지 않게) */
+  get wantsFocus() { return this.owned.length > 0; }
   ids(kind = this.kind) { return kind === 'mount' ? MOUNT_IDS : GUARDIAN_IDS; }
   get curId() { const L = this.ids(); return L[clamp(this.sel[this.kind], 0, L.length - 1)] ?? null; }
   isOwned(id) { return CS.isOwned(this.state, id); }
@@ -227,7 +228,8 @@ export class CompanionsTab extends Tab {
     // 포인터 (포커스와 무관)
     if (this.touchInput(ges)) return;
     if (!focused) return;
-    if (!this.owned.length) { if (nav.cancel) this.m.close(); return; }
+    // 빈 상태: 고를 것이 없다 — 초점을 탭 막대로 돌려 둔다 (←→ 탭 이동 · X 닫기가 바로 먹게; '동료' 탭으로 바로 연 경우)
+    if (!this.owned.length) { if (nav.cancel) this.m.close(); else this.m.focus = 'tabs'; return; }
     if (nav.alt) { this.cycleAuto(); return; }
     if (nav.alt2) { this.nextAnim(); return; }
     const L = this.ids(), n = L.length;

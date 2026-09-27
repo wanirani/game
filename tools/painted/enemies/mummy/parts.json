@@ -1,0 +1,250 @@
+{
+ "id": "mummy",
+ "tier": "T2",
+ "srcTD": 4,
+ "note": "Cut from the clean side-view figure of the Kling parts sheet (mummy_sheet take 1): bandaged body (head, blue/gold shoulder cloth, scarab, hanging flap) with the near arm cut out as its own stiff arm (the body behind it is filled with the front figure's bandaged torso, make_src.py), the near leg used for both legs (the far one darkened), and the long bandage strip of the sheet as the whip, bent along a chain and thinned at runtime.",
+ "sources": {
+  "s": {
+   "raw": "mummy_sheet.webp",
+   "file": "a2_mummy_sheet.png",
+   "k": 0.0529
+  },
+  "b": {
+   "raw": "mummy_body.webp",
+   "file": "a2_mummy_body.png",
+   "k": 0.0529
+  }
+ },
+ "parts": {
+  "body": {
+   "src": "b",
+   "box": [
+    950,
+    88,
+    1345,
+    1172
+   ],
+   "minus": [
+    [
+     [
+      1100,
+      1160
+     ],
+     [
+      1345,
+      1150
+     ],
+     [
+      1345,
+      1172
+     ],
+     [
+      1100,
+      1172
+     ]
+    ]
+   ],
+   "piv": {
+    "a": [
+     1175,
+     1160
+    ],
+    "hip": [
+     1175,
+     1160
+    ],
+    "shoulder": [
+     1110,
+     500
+    ],
+    "eye": [
+     1223,
+     236
+    ],
+    "neck": [
+     1140,
+     402
+    ],
+    "chest": [
+     1250,
+     520
+    ]
+   }
+  },
+  "arm": {
+   "src": "s",
+   "box": [
+    1030,
+    460,
+    1250,
+    1170
+   ],
+   "poly": [
+    [
+     1037,
+     471
+    ],
+    [
+     1155,
+     466
+    ],
+    [
+     1174,
+     569
+    ],
+    [
+     1165,
+     706
+    ],
+    [
+     1174,
+     764
+    ],
+    [
+     1223,
+     891
+    ],
+    [
+     1243,
+     1018
+    ],
+    [
+     1243,
+     1126
+    ],
+    [
+     1223,
+     1165
+    ],
+    [
+     1135,
+     1165
+    ],
+    [
+     1121,
+     1057
+    ],
+    [
+     1101,
+     921
+    ],
+    [
+     1047,
+     823
+    ],
+    [
+     1037,
+     715
+    ],
+    [
+     1042,
+     588
+    ]
+   ],
+   "piv": {
+    "a": [
+     1110,
+     500
+    ],
+    "b": [
+     1180,
+     1100
+    ],
+    "hand": [
+     1185,
+     1110
+    ]
+   }
+  },
+  "leg": {
+   "src": "s",
+   "box": [
+    1110,
+    1150,
+    1335,
+    1695
+   ],
+   "poly": [
+    [
+     1125,
+     1165
+    ],
+    [
+     1223,
+     1155
+    ],
+    [
+     1233,
+     1302
+    ],
+    [
+     1213,
+     1449
+    ],
+    [
+     1209,
+     1566
+    ],
+    [
+     1223,
+     1605
+    ],
+    [
+     1331,
+     1644
+    ],
+    [
+     1331,
+     1690
+    ],
+    [
+     1135,
+     1692
+    ],
+    [
+     1125,
+     1566
+    ],
+    [
+     1116,
+     1351
+    ]
+   ],
+   "piv": {
+    "a": [
+     1175,
+     1170
+    ],
+    "b": [
+     1180,
+     1600
+    ],
+    "toe": [
+     1331,
+     1680
+    ]
+   }
+  },
+  "strip": {
+   "src": "s",
+   "box": [
+    1430,
+    150,
+    2235,
+    300
+   ],
+   "keep": "largest",
+   "k": 0.12,
+   "piv": {
+    "a": [
+     1445,
+     222
+    ],
+    "b": [
+     2222,
+     222
+    ]
+   }
+  }
+ }
+}

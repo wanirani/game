@@ -11,6 +11,7 @@ import * as siren from '../enemies/siren.js';
 import * as forge_imp from '../enemies/forge_imp.js';
 import * as abyss_angler from '../enemies/abyss_angler.js';
 import * as sunken_priest from '../enemies/sunken_priest.js';
+import * as chain_warden from '../enemies/chain_warden.js';
 
 export const bosses = {};
 export const enemies = [
@@ -21,6 +22,7 @@ export const enemies = [
   { mod: forge_imp },
   { mod: abyss_angler },
   { mod: sunken_priest },
+  { mod: chain_warden },
 ];
 export const companions = {};
 export const npcs = {};

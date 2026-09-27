@@ -8,7 +8,7 @@
 // out stretched along the 150 px sweep) · spores (e.sporeAt: the sacs swell and burst a yellow cloud) · hurt · death
 // (the trunk topples, limbs break off, spore puff).
 import * as K from '../enemy_kit.js';
-import { dirOf, swingTrail, glint, claimDebris } from './_biped.js';
+import { HP, dirOf, ik2, swingTrail, glint, claimDebris } from './_biped.js';
 import { clamp, lerp, ease } from '../../../core/math.js';
 
 export const spec = {
@@ -24,7 +24,7 @@ const _q = [0, 0];
 const VAR = ['base', 'dmg1', 'dmg2'];
 const SACS = ['sac1', 'sac2', 'sac3'];
 
-const Q = { hipN: 0, hipF: 0, knN: 0, knF: 0, lean: 0, bob: 0, uaN: 0, faN: 0, uaF: 0, faF: 0, str: 1, trail: null, tele: 0, dig: 0, spore: 0 };
+const Q = { hipN: 0, hipF: 0, knN: 0, knF: 0, lean: 0, bob: 0, uaN: 0, faN: 0, uaF: 0, faF: 0, str: 1, strF: 1, trail: null, tele: 0, dig: 0, plant: 0, spore: 0 };
 function pose(e) {
   const t = e.t ?? 0, an = e.anim, q = Q, k = clamp(e.aimK ?? 0, 0, 1), st = e.stateT ?? 0;
   const walk = an === 'walk', ph = t * 3.2, sw = walk ? Math.sin(ph) : 0, cw = walk ? Math.cos(ph) : 0;
@@ -34,15 +34,16 @@ function pose(e) {
   q.lean = (walk ? 0.08 : 0.02) + br * 0.02; q.bob = walk ? -Math.abs(cw) * 2.2 : br * 0.8;
   q.uaN = 0.12 - sw * 0.22 + br * 0.03; q.faN = 0.28 - sw * 0.12;
   q.uaF = 0.3 + sw * 0.22 - br * 0.03; q.faF = 0.42 + sw * 0.12;
-  q.str = 1; q.trail = null; q.tele = 0; q.dig = 0;
+  q.str = 1; q.strF = 1; q.trail = null; q.tele = 0; q.dig = 0; q.plant = 0;
   if (an === 'plant') {
     if (k < 0.75) { const w = ease.outCubic(k / 0.75); q.uaN = lerp(q.uaN, 2.75, w); q.faN = lerp(q.faN, 3.0, w); q.uaF = lerp(q.uaF, 2.55, w); q.faF = lerp(q.faF, 2.85, w); q.lean = lerp(q.lean, -0.12, w); q.tele = k / 0.75; }
     else {
+      // slam: the arm angles are solved in draw() (2-bone IK + forearm stretch) so the claws end buried in the floor
       const s = ease.outCubic((k - 0.75) / 0.25);
-      q.uaN = lerp(2.75, 0.95, s); q.faN = lerp(3.0, 0.62, s); q.uaF = lerp(2.55, 1.05, s); q.faF = lerp(2.85, 0.72, s); q.lean = lerp(-0.12, 0.3, s);
+      q.uaN = 2.75; q.faN = 3.0; q.uaF = 2.55; q.faF = 2.85; q.plant = s; q.lean = lerp(-0.12, 0.34, s);
       q.hipN = lerp(q.hipN, 0.35, s); q.knN = lerp(q.knN, -0.55, s);
     }
-    if (k >= 1) { q.dig = 1; const tr = Math.sin(t * 40) * 0.015; q.uaN += tr; q.uaF -= tr; q.bob -= 3; }
+    if (k >= 1) q.dig = 1;
   } else if (an === 'swing') {
     if (k < 0.85) { const w = ease.outCubic(k / 0.85); q.uaN = lerp(q.uaN, 2.7, w); q.faN = lerp(q.faN, 3.1, w); q.uaF = lerp(q.uaF, 2.2, w); q.faF = lerp(q.faF, 2.5, w); q.lean = lerp(q.lean, -0.15, w); q.tele = k / 0.85; }
     else {
@@ -60,14 +61,13 @@ function pose(e) {
 }
 
 // ── layout: legs first (the lower foot sets the hip height), then the trunk and its shoulder / hip pivots ──
-const L = { hy: 0, rot: 0, shN: [0, 0], shF: [0, 0], hN: [0, 0], hF: [0, 0], handN: [0, 0], handF: [0, 0] };
+const L = { hy: 0, rot: 0, shN: [0, 0], shF: [0, 0], hN: [0, 0], hF: [0, 0], handN: [0, 0], handF: [0, 0], sacs: [0, 0, 0, 0, 0, 0] };
 function legDrop(hip, kn) {
   const th = K.part('thigh'), sh = K.part('shin');
   const d1 = dirOf(hip), d2 = dirOf(hip + kn);
-  const sole = sh.piv.sole, b = sh.piv.b, td = K.part('thigh') ? 1 : 1;
-  // ankle → sole in the shin's own frame (rotated with the bone)
-  const rot = d2 - sh.ang, lx = (sole[0] - b[0]) / RIGTD, ly = (sole[1] - b[1]) / RIGTD;
-  return Math.sin(d1) * th.len + Math.sin(d2) * sh.len + (Math.sin(rot) * lx + Math.cos(rot) * ly) * td;
+  // ankle → sole in the shin's own frame (rotated with the bone, texels → logical)
+  const sole = sh.piv.sole, b = sh.piv.b, rot = d2 - sh.ang, lx = (sole[0] - b[0]) / RIGTD, ly = (sole[1] - b[1]) / RIGTD;
+  return Math.sin(d1) * th.len + Math.sin(d2) * sh.len + Math.sin(rot) * lx + Math.cos(rot) * ly;
 }
 let RIGTD = 3;
 function layout(q) {
@@ -78,7 +78,17 @@ function layout(q) {
   K.pivotPos('body', 'a', 'shF', hx, L.hy, L.rot, 1, 1, L.shF);
   K.pivotPos('body', 'a', 'hipN', hx, L.hy, L.rot, 1, 1, L.hN); L.hN[1] = L.hy;
   K.pivotPos('body', 'a', 'hipF', hx, L.hy, L.rot, 1, 1, L.hF); L.hF[1] = L.hy;
+  for (let i = 0; i < 3; i++) { K.pivotPos('body', 'a', SACS[i], hx, L.hy, L.rot, 1, 1, _q); L.sacs[i * 2] = _q[0]; L.sacs[i * 2 + 1] = _q[1]; }
   return L;
+}
+/** blend the overhead arm (ua, fa limb angles) into a 2-bone IK reach for the floor point (tx, ty); returns stretch */
+const _r = [0, 0, 1];
+function reach(sx, sy, tx, ty, ua, fa, s) {
+  const L1 = K.part('uarm').len, L2 = K.part('farm').len, d = Math.hypot(tx - sx, ty - sy);
+  const str = clamp((d - L1 * 0.98) / L2, 1, 1.6);
+  const ik = ik2(sx, sy, tx, ty, L1, L2 * str, 1);
+  _r[0] = lerp(ua, HP - ik[0], s); _r[1] = lerp(fa, HP - ik[1], s); _r[2] = lerp(1, str, s);
+  return _r;
 }
 function leg(hx, hy, hip, kn, vn) {
   const p = K.bone('thigh', hx, hy, dirOf(hip), 1, vn);
@@ -122,7 +132,12 @@ export function draw(ctx, e, world, o, rig) {
   K.shadow(30, 0.4);
   // far limbs (darkened), trunk, near leg, near arm
   leg(L.hF[0], L.hF[1], q.hipF, q.knF, 'deep');
-  arm(L.shF[0], L.shF[1], q.uaF, q.faF, 1, vnD, L.handF);
+  if (q.plant > 0) {
+    let r = reach(L.shN[0], L.shN[1], L.shN[0] + 34, 4, q.uaN, q.faN, q.plant); q.uaN = r[0]; q.faN = r[1]; q.str = r[2];
+    r = reach(L.shF[0], L.shF[1], L.shF[0] + 30, 4, q.uaF, q.faF, q.plant); q.uaF = r[0]; q.faF = r[1]; q.strF = r[2];
+    if (q.dig) { const tr = Math.sin(t * 40) * 0.015; q.uaN += tr; q.uaF -= tr; }
+  }
+  arm(L.shF[0], L.shF[1], q.uaF, q.faF, q.strF, vnD, L.handF);
   K.put('body', 'a', 0, L.hy, L.rot, 1, 1, 1, vn);
   leg(L.hN[0], L.hN[1], q.hipN, q.knN, 'base');
   arm(L.shN[0], L.shN[1], q.uaN, q.faN, q.str, vn, L.handN);
@@ -130,12 +145,12 @@ export function draw(ctx, e, world, o, rig) {
     // skull eyes + spore sacs (swell and flare when the spores burst)
     for (const pn of ['eyeL', 'eyeR']) { K.pivotPos('body', 'a', pn, 0, L.hy, L.rot, 1, 1, _q); K.glow(_q[0], _q[1], 2.5 + 2 * q.tele, '#d8ff7a', 0.8); }
     for (let i = 0; i < 3; i++) {
-      K.pivotPos('body', 'a', SACS[i], 0, L.hy, L.rot, 1, 1, _q);
+      _q[0] = L.sacs[i * 2]; _q[1] = L.sacs[i * 2 + 1];
       const pul = 0.5 + 0.5 * Math.sin(t * 2.2 + i * 2.1);
-      K.glow(_q[0], _q[1], 7 + 3 * pul + 16 * q.spore, '#c8ff6a', 0.25 + 0.15 * pul + 0.6 * q.spore);
+      K.glow(_q[0], _q[1], 7 + 3 * pul + 9 * q.spore, '#c8ff6a', 0.25 + 0.15 * pul + 0.4 * q.spore);
     }
     if (q.tele > 0.4) glint(ctx, L.handN[0], L.handN[1], 4 + 5 * q.tele, '#e8ffb8', (q.tele - 0.4) / 0.6);
-    if (q.trail) swingTrail(ctx, L.shN[0], L.shN[1], q.trail[0], q.trail[1], 66, 22, '#d8f0a0', 0.75 * q.trail[2]);
+    if (q.trail) swingTrail(ctx, L.shN[0], L.shN[1], q.trail[0], q.trail[1], 64, 14, '#c8f080', 0.45 * q.trail[2]);
     if (q.dig) { K.glow(L.handN[0], -2, 16, '#9ac83a', 0.35); K.glow(L.handF[0], -2, 12, '#9ac83a', 0.25); }
   }
   K.end();
@@ -146,8 +161,7 @@ export function draw(ctx, e, world, o, rig) {
     const f = e.facing < 0 ? -1 : 1, sc = e.scale || 1;
     const burst = q.spore > 0.75 && !(e._spored === e.sporeAt);
     for (let i = 0; i < 3; i++) {
-      K.begin(ctx, rig, 0); K.pivotPos('body', 'a', SACS[i], 0, L.hy, L.rot, 1, 1, _q); K.end();
-      const wx = e.cx + f * sc * _q[0], wy = e.bottom + sc * _q[1];
+      const wx = e.cx + f * sc * L.sacs[i * 2], wy = e.bottom + sc * L.sacs[i * 2 + 1];
       for (let n = pool.rate(i, K.lod() === 0 ? 0.6 : 1.4, dt); n > 0; n--) pool.add(0, wx + K.frand(-3, 3), wy, K.frand(-12, 12), K.frand(-26, -8), K.frand(0.8, 1.5), K.frand(1.2, 2.2), '#c8ff6a');
       if (burst) for (let n = 0; n < (K.lod() === 0 ? 4 : 8); n++) pool.add(2, wx, wy, K.frand(-120, 120), K.frand(-110, 30), K.frand(0.6, 1.1), K.frand(5, 10), '#8aa83a');
     }

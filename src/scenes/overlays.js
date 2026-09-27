@@ -7,7 +7,7 @@
 //              game.push('ultCutin', { charId, world, classId? }) — classId 가 없으면 world.player.hero.classId.
 //              각성 컷인(awakenCutin)이 스택에 있으면 곧바로 닫힌다 (컷인은 한 번에 하나).
 //  document  : 비전서/기록 열람. uiScale (platform §6.2), 안내 글리프, 기술 커맨드는 방향 화살표 + 지금 기기의 버튼 글리프.
-//  gameover  : GAME OVER(피 글씨) → CONTINUE?(금박 글씨) 카운트다운. uiScale, 버튼 ≥ 44 CSS px (ui.taps), 안내 글리프.
+//  gameover  : GAME OVER(피 글씨) → CONTINUE?(금박 글씨) 카운트다운. uiScale, 버튼 ≥ 44 CSS px (ui.taps), 안내 글리프, 토스트는 미룬다.
 //              포기·크레딧 소진 → 마을 {from: 스테이지 id} (마을은 동쪽 성문 앞에서 시작; pause '마을로 귀환' 과 같은 규칙)
 // 모든 장면은 스택에 혼자 남아도(?scene=ultCutin&char=lia 같은 디버그 주소) 오류 없이 그리고, 닫히면 타이틀로 간다 (game.pop).
 import { Scene } from '../core/game.js';
@@ -21,7 +21,7 @@ import { BOSSES } from '../data/bosses.js';
 import { CHARACTERS } from '../data/characters.js';
 import { CLASSES } from '../data/classes.js';
 import { DOCS, LORE } from '../data/lore.js';
-import { clamp, ease, rgba } from '../core/math.js';
+import { clamp, ease, rgba, hexToRgb } from '../core/math.js';
 import { saves } from '../core/save.js';
 import { STAT_INFO } from '../game/stats.js';
 import { hudSafe } from '../render/hud_layout.js';
@@ -153,7 +153,7 @@ export class BossIntroScene extends Scene {
     ctx.save();
     ctx.globalAlpha = out;
     ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(0, 0, vw, vh);
-    const img = assets.get(this.def.portrait);
+    const img = this.def.portrait ? assets.get(this.def.portrait) : null;
     const dx = vw * 0.35; // 대각 구분선: 위 dx+80 → 아래 dx
     if (img) {
       // 대각 영역을 빈틈없이 채운다: 어두운 바탕 + 화면 오른쪽·위에 붙인 초상화(아래쪽은 잘림) + 왼쪽 가장자리 페더
@@ -289,6 +289,18 @@ export class UltCutinScene extends Scene {
       this.bake();
     }
   }
+  /** 색 띠 채움: 위는 캐릭터 색, 아래로 갈수록 조금 어둡게 (한 번 만든 그라데이션을 다시 쓴다) */
+  stripeGrad(ctx, hs) {
+    const key = `${Math.round(hs)}|${this.col}`;
+    if (this.sgKey !== key) {
+      const [r, g, b] = hexToRgb(this.col);
+      const dk = (k) => `rgb(${Math.round(r * k)},${Math.round(g * k)},${Math.round(b * k)})`;
+      const gr = ctx.createLinearGradient(0, -hs, 0, hs);
+      gr.addColorStop(0, this.col); gr.addColorStop(0.55, dk(0.9)); gr.addColorStop(1, dk(0.68));
+      this.sg = gr; this.sgKey = key;
+    }
+    return this.sg;
+  }
   /** 기술명 비트맵을 (다시) 굽는다 — 화면 배율에 맞춘 해상도 */
   bake() {
     if (!hasDom()) return;
@@ -322,7 +334,7 @@ export class UltCutinScene extends Scene {
     const k1 = ease.outExpo(clamp((t - UC.stripe) / UC.stripeIn, 0, 1));
     ctx.save();
     ctx.translate(cx - (1 - k1) * vw * 1.25, cy + 6); ctx.rotate(ANG_STRIPE); ctx.scale(1, squash);
-    ctx.fillStyle = this.col; ctx.fillRect(-L, -hs, 2 * L, 2 * hs);
+    ctx.fillStyle = this.stripeGrad(ctx, hs); ctx.fillRect(-L, -hs, 2 * L, 2 * hs);
     if (spr) {
       if (!spr.pattern) { try { spr.pattern = ctx.createPattern(spr.dot, 'repeat'); } catch { spr.pattern = null; } }
       if (spr.pattern) { ctx.globalAlpha = fadeOut * 0.2; ctx.fillStyle = spr.pattern; ctx.fillRect(-L, -hs, 2 * L, 2 * hs); ctx.globalAlpha = fadeOut; }
@@ -576,7 +588,7 @@ const CONT_OPTS = { size: 30, style: 'gold' };
 
 /** 게임오버 → 아케이드식 CONTINUE 카운트다운 (uiScale, 44 CSS px 버튼, 안내 글리프) */
 export class GameOverScene extends Scene {
-  constructor(g) { super(g); this.opaque = false; this.uiScale = true; this.hidePad = true; }
+  constructor(g) { super(g); this.opaque = false; this.uiScale = true; this.hidePad = true; this.deferToasts = true; }
   enter({ world } = {}) {
     this.world = world ?? null;
     this.count = 9.99;

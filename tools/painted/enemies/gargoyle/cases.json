@@ -1,0 +1,5 @@
+[["statue", {"anim": "statue", "state": "statue"}], ["wake .35", {"anim": "wake", "state": "wake", "animT": 0.25}], ["wake .75", {"anim": "wake", "state": "wake", "animT": 0.52}],
+ ["fly a", {"anim": "fly", "state": "fly"}], ["fly b", {"anim": "fly", "state": "fly", "tOff": 0.17}], ["fly c", {"anim": "fly", "state": "fly", "tOff": 0.35}],
+ ["breath .5", {"anim": "breath", "state": "breath", "animT": 0.3}], ["breath .95", {"anim": "breath", "state": "breath", "animT": 0.57}], ["fire", {"anim": "breath", "state": "breath", "animT": 0.7}],
+ ["swoop", {"anim": "swoop", "state": "swoop", "animT": 0.3}], ["dive", {"anim": "dive", "state": "swoop", "animT": 0.1, "vx": 360, "vy": 300}],
+ ["hurt", {"anim": "fly", "state": "fly", "flashT": 0.11, "stun": 0.2}], ["dying", {"anim": "fly", "dying": 0.15}]]

@@ -25,6 +25,7 @@ import {
 
 const SLIDER_STOPS = [[0, '#8a1020'], [1, '#ffcf6a']];
 const FOOT_STOPS = [[0, 'rgba(0,0,0,0)'], [1, 'rgba(0,0,0,0.72)']];
+const BACK_STOPS = [[0, '#1a0610'], [1, '#050207']];
 
 const PAGES = [
   { id: 'sound', name: '소리' },
@@ -413,18 +414,22 @@ export class OptionsScene extends Scene {
     const g = this.game, W = g.uiW || g.viewW, H = g.uiH || g.viewH;
     const th = tapH(this);
     const m = W < 820 ? 10 : 18;
-    const titleRow = H >= 500;
-    const hy = titleRow ? 58 : 8;
-    const backR = { x: m, y: hy, w: Math.max(100, Math.round(th * 1.9)), h: th };
-    const footH = 26, noteH = 42;
+    // safeArea 'full' (platform §6.1): 캔버스가 노치·홈 표시줄 밑까지 깔리므로 단추·줄·안내는 안전 영역 안에 둔다 (UI px)
+    const S = g.settings?.safeArea === 'full' ? g.safe : null, k = g.uiK || 1;
+    const sl = (S?.l || 0) / k, sr = (S?.r || 0) / k, st = (S?.t || 0) / k, sb = (S?.b || 0) / k;
+    const mL = m + sl, mR = m + sr;
+    const titleRow = H - st - sb >= 500;
+    const hy = (titleRow ? 58 : 8) + st;
+    const backR = { x: mL, y: hy, w: Math.max(100, Math.round(th * 1.9)), h: th };
+    const footH = 26 + sb, noteH = 42;
     const cy = hy + th + 8;
     const sub = !!this.sub;
-    const content = { x: m, y: cy, w: W - 2 * m, h: H - cy - footH - (sub ? 4 : noteH + 6) };
-    const note = { x: m + 8, y: content.y + content.h + 4, w: W - 2 * m - 16, h: noteH };
+    const content = { x: mL, y: cy, w: W - mL - mR, h: H - cy - footH - (sub ? 4 : noteH + 6) };
+    const note = { x: mL + 8, y: content.y + content.h + 4, w: content.w - 16, h: noteH };
     const lw = Math.min(900, content.w - 16);
     const statusH = this.sub instanceof RemapPage ? 34 : 0;
-    const list = { x: Math.round((W - lw) / 2), y: content.y + 6 + statusH, w: lw, h: content.h - 12 - statusH };
-    return { W, H, th, m, titleRow, backR, hy, content, note, list, footY: H - 9 };
+    const list = { x: Math.round(mL + (content.w - lw) / 2), y: content.y + 6 + statusH, w: lw, h: content.h - 12 - statusH };
+    return { W, H, th, m, mR, st, sb, titleRow, backR, hy, content, note, list, footY: H - 9 - sb };
   }
 
   // ── 갱신 ──
@@ -503,7 +508,7 @@ export class OptionsScene extends Scene {
     const owner = this.modal ? null : this;
     ctx.save();
     ctx.globalAlpha = k; ctx.translate(sx, (1 - k) * 16);
-    if (L.titleRow) heading(ctx, W / 2, 36, 'OPTIONS', null, { size: 30 });
+    if (L.titleRow) heading(ctx, W / 2, 36 + L.st, 'OPTIONS', null, { size: 30 });
     frame(ctx, L.content.x, L.content.y, L.content.w, L.content.h, { glow: 0.35 });
     ctx.save();
     ctx.globalAlpha *= 0.4 + 0.6 * ease.outCubic(this.pageAnim);
@@ -519,20 +524,16 @@ export class OptionsScene extends Scene {
   backdrop(ctx, W, H) {
     const img = assets.get?.('bg/title');
     if (img) drawCover(ctx, img, W, H, { oy: 0.4 });
-    else {
-      const gr = ctx.createLinearGradient(0, 0, 0, H);
-      gr.addColorStop(0, '#1a0610'); gr.addColorStop(1, '#050207');
-      ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
-    }
+    else { ctx.fillStyle = cachedGrad(ctx, 'backdrop', H, 'v', BACK_STOPS); ctx.fillRect(0, 0, W, H); } // 배경 그림이 없을 때 (캐시한 그라데이션)
     ctx.fillStyle = 'rgba(4,0,8,0.78)'; ctx.fillRect(0, 0, W, H);
   }
   drawHeader(ctx, L, owner) {
-    const { backR, th, W, m } = L;
+    const { backR, th, W, mR } = L;
     gbutton(ctx, backR, this.sub ? '설정' : '닫기', { size: 15, icon: '◀' });
     if (owner && !this.sub?.modal) taps.add('back', backR, { owner, kind: 'primary', src: 'options.back' });
     const tabs = this.sub ? this.sub.tabs : PAGES.map((p) => p.name);
     const cur = this.sub ? this.sub.tab : this.page;
-    const x0 = backR.x + backR.w + 12, avail = W - m - x0;
+    const x0 = backR.x + backR.w + 12, avail = W - mR - x0;
     if (!tabs) {
       text(ctx, this.sub.title, x0 + 10, backR.y + th / 2 + 7, { size: 19, weight: 800, family: FONT.title, color: GOLD, ow: 3 });
       return;
@@ -665,9 +666,9 @@ export class OptionsScene extends Scene {
     else if (this.sub) items = this.sub.hints();
     else if (input.mode === 'touch') items = [[null, '', '◀ ▶ 를 눌러 값을 바꿉니다 · 위아래로 밀면 더 보입니다']];
     else items = [['dpadV', '항목'], ['dpadH', '값 바꾸기'], ['confirm', '결정'], [['prevTab', 'nextTab'], '페이지'], ['cancel', '닫기']];
-    const { W, H } = L;
-    ctx.save(); ctx.translate(0, H - 30);
-    ctx.fillStyle = cachedGrad(ctx, 'foot', 30, 'v', FOOT_STOPS); ctx.fillRect(0, 0, W, 30);
+    const { W, H, sb } = L;
+    ctx.save(); ctx.translate(0, H - 30 - sb);
+    ctx.fillStyle = cachedGrad(ctx, 'foot', 30, 'v', FOOT_STOPS); ctx.fillRect(0, 0, W, 30 + sb);
     ctx.restore();
     drawHints(ctx, items, W / 2, L.footY, { align: 'center', size: 13, color: '#b8aa98' });
   }

@@ -7,7 +7,7 @@ import { clamp } from '../../core/math.js';
 import { input } from '../../core/input.js';
 import { drawSlot } from '../../render/icons.js';
 import { Tab } from './base.js';
-import { HeroView, HeroStage, pedestal, accentOf, turntableHints, pxScale } from './hero_view.js';
+import { HeroView, HeroStage, PixCache, pedestal, accentOf, turntableHints, pxScale } from './hero_view.js';
 import {
   PAL, RARITY_COL, frame, heading, divider, selBar, brackets, glow, gbutton, Scroller, scrollbar, clipBegin, clipEnd, ellipsize, pill, inRect, measure, Popup,
 } from './common.js';
@@ -30,6 +30,7 @@ export class EquipTab extends Tab {
     super(m);
     this.view = new HeroView({ turntable: true, game: m.game });
     this.stage = new HeroStage();
+    this.txt = new PixCache(28);    // 줄·덩어리별 글자 캐시 (외곽선 글자는 매 프레임 그리기에 너무 비싸다 — P-11)
     this.heroRect = null;
     this.si = 0; this.sub = 'slots'; this.li = 0;
     this.sc = new Scroller();
@@ -40,7 +41,7 @@ export class EquipTab extends Tab {
   get slots() { return D.EQUIP_SLOTS(); }
   get slot() { return this.slots[this.si]; }
   onShow() { this.rebuild(); this.view.wake(); }
-  free() { this.stage.free(); }
+  free() { this.stage.free(); this.txt.free(); }
   /** 메뉴의 가로 밀기(탭 넘기기)를 무시할 곳: 회전 무대 (platform §5.6) */
   noSwipe(x, y) { return this.view.swipeBlock(x, y); }
   swipeBlock(x, y) { return this.view.swipeBlock(x, y); }
@@ -239,12 +240,15 @@ export class EquipTab extends Tab {
       const tx = x + 22 + s;
       // 낮은 칸(작은 화면)은 능력치 줄을 빼고 두 줄로
       const tall = r.h >= 54;
-      text(ctx, D.SLOT_NAMES()[slot], tx, y + (tall ? 16 : Math.round(r.h * 0.36)), { size: 11, weight: 700, color: sel ? PAL.gold : PAL.dim, ow: 2 });
-      if (inst) {
-        const ns = tall ? 15 : 14;
-        text(ctx, ellipsize(ctx, D.nameOf(inst), w - (tx - x) - 8, ns, 800), tx, y + (tall ? 35 : Math.round(r.h * 0.8)), { size: ns, weight: 800, color: RARITY_COL[inst.rarity ?? 0], ow: 3 });
-        if (tall) text(ctx, ellipsize(ctx, statLine(inst), w - (tx - x) - 8, 11, 600), tx, y + 51, { size: 11, weight: 600, color: PAL.text, ow: 2 });
-      } else text(ctx, '— 비어 있음 —', tx, y + (tall ? 36 : Math.round(r.h * 0.8)), { size: 13, weight: 600, color: PAL.faint, ow: 2 });
+      // 글자는 캐시 (아이콘·선택 막대·괄호는 위에서 매 프레임)
+      this.txt.draw(ctx, 'slot' + i, `${this.m.rev}|${hero.charId}|${slot}|${inst?.uid ?? '-'}|${inst?.level ?? 0}|${sel ? 1 : 0}`, tx - 4, y, x + w - tx + 4, r.h, (c) => {
+        text(c, D.SLOT_NAMES()[slot], tx, y + (tall ? 16 : Math.round(r.h * 0.36)), { size: 11, weight: 700, color: sel ? PAL.gold : PAL.dim, ow: 2 });
+        if (inst) {
+          const ns = tall ? 15 : 14;
+          text(c, ellipsize(c, D.nameOf(inst), w - (tx - x) - 8, ns, 800), tx, y + (tall ? 35 : Math.round(r.h * 0.8)), { size: ns, weight: 800, color: RARITY_COL[inst.rarity ?? 0], ow: 3 });
+          if (tall) text(c, ellipsize(c, statLine(inst), w - (tx - x) - 8, 11, 600), tx, y + 51, { size: 11, weight: 600, color: PAL.text, ow: 2 });
+        } else text(c, '— 비어 있음 —', tx, y + (tall ? 36 : Math.round(r.h * 0.8)), { size: 13, weight: 600, color: PAL.faint, ow: 2 });
+      });
     });
 
     // ── 가운데: 영웅 미리보기 + 요약 ──
@@ -263,25 +267,30 @@ export class EquipTab extends Tab {
     this.view.drawDeck(ctx, t, { label: !pv }); // 후보 미리보기 중에는 위쪽에 '미리보기' 표시가 대신 들어간다
     ctx.strokeStyle = 'rgba(200,160,90,0.35)'; ctx.lineWidth = 1; ctx.strokeRect(MX + 8.5, A.y + 8.5, MW - 17, sh - 1);
     if (pv) pill(ctx, '미리보기', MX + MW / 2, A.y + 14, { align: 'center', color: PAL.goldHi, bg: 'rgba(110,14,34,0.92)', size: 11, h: 18 });
-    let y = A.y + sh + 32;
-    heading(ctx, '주요 능력치', MX + 14, y, MW - 28, { size: 14 });
-    y += 8;
     const ns = pv?.stats || cur.stats;
-    // 낮은 화면: 2열 (증감은 색으로만)
-    const room = A.y + A.h - 8 - y, two = room / SUMMARY.length < 15;
-    const perCol = two ? Math.ceil(SUMMARY.length / 2) : SUMMARY.length;
-    const rowS = Math.min(20, room / perCol);
-    const colW = two ? (MW - 28) / 2 : MW - 28;
-    SUMMARY.forEach((k, i) => {
-      const a = cur.stats[k] ?? 0, b = ns[k] ?? 0, d = b - a;
-      const cx0 = MX + 14 + (two ? Math.floor(i / perCol) * colW : 0), ry = y + (two ? i % perCol : i) * rowS;
-      const by = ry + Math.min(15, rowS * 0.5 + 5);
-      const col = Math.abs(d) < 0.05 ? PAL.bone : d > 0 ? PAL.good : PAL.bad;
-      const val = fmtStatVal(k, b);
-      const vw = measure(ctx, val, 13, 800, FONT.num);
-      text(ctx, ellipsize(ctx, D.STAT_INFO[k]?.name ?? k, colW - vw - 14, 12, 600), cx0 + 4, by, { size: 12, weight: 600, color: PAL.text, ow: 2 });
-      text(ctx, val, cx0 + colW - 4, by, { size: 13, align: 'right', weight: 800, family: FONT.num, color: col, ow: 3 });
-      if (!two && Math.abs(d) >= 0.05) text(ctx, `${d > 0 ? '▲' : '▼'} ${d > 0 ? '+' : '-'}${fmtStatVal(k, Math.abs(d))}`, cx0 + colW - 4 - 48, by - 1, { size: 10, align: 'right', weight: 700, color: col, ow: 2 });
+    // 주요 능력치 (글자 캐시: 값이 바뀔 때만 다시 굽는다)
+    const sumKey = SUMMARY.map((k) => `${cur.stats[k] ?? 0}:${ns[k] ?? 0}`).join(',');
+    const sy0 = A.y + sh + 10;
+    this.txt.draw(ctx, 'sum', sumKey, MX + 4, sy0, MW - 8, A.y + A.h - 4 - sy0, (c) => {
+      let y = A.y + sh + 32;
+      heading(c, '주요 능력치', MX + 14, y, MW - 28, { size: 14 });
+      y += 8;
+      // 낮은 화면: 2열 (증감은 색으로만)
+      const room = A.y + A.h - 8 - y, two = room / SUMMARY.length < 15;
+      const perCol = two ? Math.ceil(SUMMARY.length / 2) : SUMMARY.length;
+      const rowS = Math.min(20, room / perCol);
+      const colW = two ? (MW - 28) / 2 : MW - 28;
+      SUMMARY.forEach((k, i) => {
+        const a = cur.stats[k] ?? 0, b = ns[k] ?? 0, d = b - a;
+        const cx0 = MX + 14 + (two ? Math.floor(i / perCol) * colW : 0), ry = y + (two ? i % perCol : i) * rowS;
+        const by = ry + Math.min(15, rowS * 0.5 + 5);
+        const col = Math.abs(d) < 0.05 ? PAL.bone : d > 0 ? PAL.good : PAL.bad;
+        const val = fmtStatVal(k, b);
+        const vw = measure(c, val, 13, 800, FONT.num);
+        text(c, ellipsize(c, D.STAT_INFO[k]?.name ?? k, colW - vw - 14, 12, 600), cx0 + 4, by, { size: 12, weight: 600, color: PAL.text, ow: 2 });
+        text(c, val, cx0 + colW - 4, by, { size: 13, align: 'right', weight: 800, family: FONT.num, color: col, ow: 3 });
+        if (!two && Math.abs(d) >= 0.05) text(c, `${d > 0 ? '▲' : '▼'} ${d > 0 ? '+' : '-'}${fmtStatVal(k, Math.abs(d))}`, cx0 + colW - 4 - 48, by - 1, { size: 10, align: 'right', weight: 700, color: col, ow: 2 });
+      });
     });
 
     // ── 오른쪽: 후보 목록 + 비교 ──
@@ -307,47 +316,61 @@ export class EquipTab extends Tab {
       const sel = this.sub === 'list' && i === this.li;
       if (sel) selBar(ctx, r.x, r.y, r.w, r.h, t, { dim: !focused });
       else if (i % 2 === 0) { ctx.fillStyle = 'rgba(255,230,200,0.025)'; ctx.fillRect(r.x, r.y, r.w, r.h); }
+      // 줄 글자는 캐시 (id = 목록 위치, key = 그 줄의 아이템·선택 상태) — 아이콘(강화 오라)·선택 막대·괄호는 매 프레임
+      const rkey = `${this.m.rev}|${hero.charId}|${this.slot}|${row.unequip ? 'U' : row.inst.uid}|${sel ? 1 : 0}`;
       if (row.unequip) {
-        text(ctx, '장착 해제', r.x + 58, r.y + r.h / 2 + 5, { size: 15, weight: 800, color: sel ? PAL.goldHi : PAL.bone });
-        ctx.strokeStyle = PAL.goldDim; ctx.lineWidth = 1.5; ctx.strokeRect(r.x + 10.5, r.y + 4.5, r.h - 9, r.h - 9);
-        text(ctx, '✕', r.x + 10 + (r.h - 8) / 2, r.y + r.h / 2 + 5, { size: 14, align: 'center', color: PAL.dim, ow: 0 });
+        this.txt.draw(ctx, 'row' + i, rkey, r.x, Math.round(r.y), r.w, r.h, (c) => {
+          const y0 = Math.round(r.y);
+          text(c, '장착 해제', r.x + 58, y0 + r.h / 2 + 5, { size: 15, weight: 800, color: sel ? PAL.goldHi : PAL.bone });
+          c.strokeStyle = PAL.goldDim; c.lineWidth = 1.5; c.strokeRect(r.x + 10.5, y0 + 4.5, r.h - 9, r.h - 9);
+          text(c, '✕', r.x + 10 + (r.h - 8) / 2, y0 + r.h / 2 + 5, { size: 14, align: 'center', color: PAL.dim, ow: 0 });
+        });
         return;
       }
       const s = r.h - 8;
       drawSlot(ctx, r.x + 10, r.y + 4, s, row.inst, { selected: sel });
       if (sel && focused) brackets(ctx, r.x + 10, r.y + 4, s, s, t);
       const tx = r.x + 20 + s;
-      const nm = ellipsize(ctx, D.nameOf(row.inst), r.w - (tx - r.x) - 70, 14, 800);
-      text(ctx, nm, tx, r.y + 19, { size: 14, weight: 800, color: row.ok ? RARITY_COL[row.inst.rarity ?? 0] : '#8a6a6a', ow: 3 });
-      text(ctx, ellipsize(ctx, row.ok ? statLine(row.inst) : row.reason, r.w - (tx - r.x) - 12, 11, 600), tx, r.y + 36, { size: 11, weight: 600, color: row.ok ? PAL.text : PAL.bad, ow: 2 });
-      if (row.here) pill(ctx, '장착 중', r.x + r.w - 8, r.y + 7, { align: 'right', color: PAL.goldHi, bg: 'rgba(110,14,34,0.92)', size: 10, h: 16 });
-      else if (row.mine) pill(ctx, '다른 칸', r.x + r.w - 8, r.y + 7, { align: 'right', color: PAL.dim, size: 10, h: 16 });
-      else if (row.by) pill(ctx, `${D.CHARACTERS()[row.by]?.name?.split(' ')[0] ?? row.by} 장착`, r.x + r.w - 8, r.y + 7, { align: 'right', color: PAL.dim, size: 10, h: 16 });
+      // 굽는 영역은 줄의 정수 y 에 맞춘다 (스크롤 중 y 가 소수여도 같은 캐시를 쓰고, 복사는 어차피 장치 픽셀에 맞춰진다)
+      this.txt.draw(ctx, 'row' + i, rkey, tx - 4, Math.round(r.y), r.x + r.w - tx + 4, r.h, (c) => {
+        const y0 = Math.round(r.y);
+        const nm = ellipsize(c, D.nameOf(row.inst), r.w - (tx - r.x) - 70, 14, 800);
+        text(c, nm, tx, y0 + 19, { size: 14, weight: 800, color: row.ok ? RARITY_COL[row.inst.rarity ?? 0] : '#8a6a6a', ow: 3 });
+        text(c, ellipsize(c, row.ok ? statLine(row.inst) : row.reason, r.w - (tx - r.x) - 12, 11, 600), tx, y0 + 36, { size: 11, weight: 600, color: row.ok ? PAL.text : PAL.bad, ow: 2 });
+        if (row.here) pill(c, '장착 중', r.x + r.w - 8, y0 + 7, { align: 'right', color: PAL.goldHi, bg: 'rgba(110,14,34,0.92)', size: 10, h: 16 });
+        else if (row.mine) pill(c, '다른 칸', r.x + r.w - 8, y0 + 7, { align: 'right', color: PAL.dim, size: 10, h: 16 });
+        else if (row.by) pill(c, `${D.CHARACTERS()[row.by]?.name?.split(' ')[0] ?? row.by} 장착`, r.x + r.w - 8, y0 + 7, { align: 'right', color: PAL.dim, size: 10, h: 16 });
+      });
     });
     clipEnd(ctx, LR, this.sc);
     scrollbar(ctx, LR.x + LR.w - 5, LR.y + 2, LR.h - 4, this.sc, LR.h);
-    // 비교
+    // 비교 (글자는 캐시: 고른 줄이 바뀔 때만 다시 굽는다)
     const cy = A.y + A.h - cmpH;
-    divider(ctx, RX + 16, cy, RW - 32);
     this.btnRect = null;
-    if (!hr) {
-      text(ctx, this.list.length ? '장비를 고르면 능력치 변화를 비교합니다' : '상점이나 보물상자에서 장비를 구해 보세요', RX + RW / 2, cy + 44, { size: 13, align: 'center', color: PAL.dim });
-      return;
-    }
-    const diffs = [];
-    for (const k in D.STAT_INFO) {
-      const a = cur.stats[k] ?? 0, b = pv.stats?.[k] ?? 0;
-      if (Math.abs(b - a) >= 0.05) diffs.push([k, b - a]);
-    }
-    text(ctx, '능력치 변화', RX + 18, cy + 22, { size: 13, weight: 800, color: PAL.gold, family: FONT.title });
-    if (!diffs.length) text(ctx, hr.here ? '현재 장착 중인 장비입니다' : '변화 없음', RX + 18, cy + 46, { size: 13, color: PAL.dim });
-    const cw = (RW - 36) / 2;
-    diffs.slice(0, canDoN(hr) ? 6 : 8).forEach(([k, d], i) => {
-      const x = RX + 18 + (i % 2) * cw, yy = cy + 44 + Math.floor(i / 2) * 19;
-      const col = d > 0 ? PAL.good : PAL.bad;
-      text(ctx, D.STAT_INFO[k]?.name ?? k, x, yy, { size: 12, weight: 600, color: PAL.text, ow: 2 });
-      text(ctx, `${d > 0 ? '+' : '-'}${fmtStatVal(k, Math.abs(d))}`, x + cw - 14, yy, { size: 13, align: 'right', weight: 800, family: FONT.num, color: col, ow: 3 });
+    const ckey = `${this.m.rev}|${hero.charId}|${this.slot}|${hr ? (hr.unequip ? 'U' : hr.inst.uid) : '-'}|${this.list.length ? 1 : 0}`;
+    this.txt.draw(ctx, 'cmp', ckey, RX + 4, cy - 6, RW - 8, cmpH + 2, (c) => {
+      divider(c, RX + 16, cy, RW - 32);
+      if (!hr) {
+        text(c, this.list.length ? '장비를 고르면 능력치 변화를 비교합니다' : '상점이나 보물상자에서 장비를 구해 보세요', RX + RW / 2, cy + 44, { size: 13, align: 'center', color: PAL.dim });
+        return;
+      }
+      const diffs = [];
+      for (const k in D.STAT_INFO) {
+        const a = cur.stats[k] ?? 0, b = pv?.stats?.[k] ?? 0;
+        if (Math.abs(b - a) >= 0.05) diffs.push([k, b - a]);
+      }
+      text(c, '능력치 변화', RX + 18, cy + 22, { size: 13, weight: 800, color: PAL.gold, family: FONT.title });
+      if (!diffs.length) text(c, hr.here ? '현재 장착 중인 장비입니다' : '변화 없음', RX + 18, cy + 46, { size: 13, color: PAL.dim });
+      const cw = (RW - 36) / 2;
+      diffs.slice(0, canDoN(hr) ? 6 : 8).forEach(([k, d], i) => {
+        const x = RX + 18 + (i % 2) * cw, yy = cy + 44 + Math.floor(i / 2) * 19;
+        const col = d > 0 ? PAL.good : PAL.bad;
+        text(c, D.STAT_INFO[k]?.name ?? k, x, yy, { size: 12, weight: 600, color: PAL.text, ow: 2 });
+        text(c, `${d > 0 ? '+' : '-'}${fmtStatVal(k, Math.abs(d))}`, x + cw - 14, yy, { size: 13, align: 'right', weight: 800, family: FONT.num, color: col, ow: 3 });
+      });
     });
+    this.txt.sweep();
+    if (!hr) return;
     const canDo = hr.unequip || (hr.ok && !hr.here);
     if (canDo) {
       const bw = 124, bh = 30;
