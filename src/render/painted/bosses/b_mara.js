@@ -166,7 +166,10 @@ function drawBoss(ctx, b, world, rig, st) {
   const X = b.bx + (b.flashT > 0 ? (rr.next() - 0.5) * 3 : 0), Y = b.by + (f2 ? 0 : b.bob);
   const shake = (b.morph > 0 ? Math.sin(t * 60) * 3 * b.morph : 0) + (dying && dT < 0.5 ? (rr.next() - 0.5) * 5 : 0);
   D.begin(ctx);
+  const wm = st.wm ??= [1, 0, 0, 1, 0, 0];
+  for (let i = 0; i < 6; i++) wm[i] = D.m[i];
   const enter = () => {
+    ctx.setTransform(wm[0], wm[1], wm[2], wm[3], wm[4], wm[5]);   // 부품이 직접 건 변환이 남아 있어도 월드 기준에서 시작
     D.save();
     ctx.beginPath(); ctx.rect(X - 3000, floor - 4000, 6000, 4002); ctx.clip();   // 바닥 아래로는 아무것도 (인형 팔 · 사슬 · 무너진 조각)
     ctx.translate(X + shake * b.facing, Y); ctx.scale(b.facing || 1, 1);

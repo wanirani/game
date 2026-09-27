@@ -27,7 +27,7 @@
 //   introK · glitch · tear (P3 찢김 0~1) · mawK (아가리 열림 0~1) · sunK (P4 0~1) · implode (final 빨려듦 0~1) · tilt · look ·
 //   echoKey/echoA · faceIdx/faceA · hands[{x, y, rot, s, curl, spread, point, eye(0~1), side, mode}] · dieT
 import { BossC, telegraph, warnText, strikeRect, strikeLine, strikeCircle, strikeColumn, strikeFloor, pullField, wallsClose, wallsOpen, wallsX, killTransients, darken, screenTint } from './c_common.js';
-import { PI, R, LG, RG, glow, glowE, glowSprite, warnRect, warnLine, warnFloor, warnCircle, impact, boltPath } from './b_common.js';
+import { PI, R, LG, RG, glow, glowE, glowSprite, warnRect, warnLine, warnCircle, impact, boltPath } from './b_common.js';
 import { Entity } from '../entity.js';
 import { T } from '../../core/physics.js';
 import { audio } from '../../core/audio.js';
@@ -941,7 +941,7 @@ export class Nihil extends BossC {
   // ── 메아리 (P2+) ──
   setEcho(key) { this.echo = key; this.echoKey = key; }
   clearEcho() { this.echo = null; }
-  /** echoDracula: 지옥불 기둥 셋(warnFloor) + 화염구 셋, 드라큘라 색 */
+  /** echoDracula: 지옥불 기둥 셋(바닥 분출 예고) + 화염구 셋, 드라큘라 색 */
   s_echoDracula(dt, world, t) {
     if (this.at(0.001)) {
       this.setEcho('dracula'); this.spd = 50; this.facePlayer();
@@ -1929,9 +1929,35 @@ function paintErase(ctx, z, w) {
   ctx.fillStyle = rgba(WHITE, 0.7 * f);
   for (let i = 0; i < 46; i++) { const u = h01(b * 1.7 + i * 3.1), v = h01(b * 2.3 + i * 5.7); ctx.fillRect(z.x + u * z.w, z.y + v * z.h, 2 + h01(i + b) * 14, 1.5); }
 }
+/**
+ * 바닥 분출 예고 = b_common warnFloor 와 같은 그림이지만, 솟는 빛 기둥의 세로 그라디언트를 색마다 한 번만 만들어 둔다
+ * (warnFloor 는 부를 때마다 새 그라디언트 — 기둥 셋 + 번개 다섯이면 프레임당 8개, MASTER_PLAN §5.2 는 low 6개)
+ */
+function floorWarn(ctx, x, floor, w, k, color) {
+  if (R.fl) return;
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  glowE(ctx, x, floor, w * 0.75, 10 + 24 * k, color, 0.35 + 0.5 * k);
+  ctx.strokeStyle = rgba(color, 0.5 + 0.5 * k);
+  ctx.lineWidth = 1.5 + 2 * k;
+  ctx.beginPath();
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 4 - 0.5) * 2, s = Math.sin(i * 12.9898 + x * 0.01) * 0.5;
+    ctx.moveTo(x + a * w * 0.1, floor);
+    ctx.lineTo(x + a * w * 0.28 + s * 8, floor - 3);
+    ctx.lineTo(x + a * w * 0.5 * (0.6 + 0.4 * k), floor - 1 + s * 2);
+  }
+  ctx.stroke();
+  const hh = 14 + 60 * k;
+  ctx.globalAlpha *= 0.35 * k + 0.1;
+  ctx.translate(x, floor); ctx.scale(1, hh);
+  ctx.fillStyle = LG(ctx, 'nFloorWarn' + color, 0, 0, 0, -1, [0, rgba(color, 1), 1, rgba(color, 0)]);
+  ctx.fillRect(-w * 0.45, -1, w * 0.9, 1);
+  ctx.restore();
+}
 /** 드라큘라의 지옥불 기둥 */
 function paintHell(ctx, z, w, x, F, W, H) {
-  if (!z.started) { warnFloor(ctx, x, F, W, z.k, DRAC, w.time); return; }
+  if (!z.started) { floorWarn(ctx, x, F, W, z.k, DRAC); return; }
   const k = z.a < 0.18 ? z.a / 0.18 : 1, f = 1 - Math.max(0, (z.a - 0.55) / 0.45), hh = H * k, t = w.time;
   glowE(ctx, x, F - hh / 2, W * 0.9, hh / 2 + 14, DRAC, 0.85 * f);
   ctx.globalCompositeOperation = 'lighter';
@@ -1990,7 +2016,7 @@ function paintShard(ctx, z, w, x, W, top, F, st) {
 /** 지즈의 번개 기둥 */
 function paintBolt(ctx, z, w, x, top, bot, seed) {
   const t0 = Math.max(top, (w.camera?.y ?? top) - 40);
-  if (!z.started) { warnRect(ctx, x - 12, t0, 24, bot - t0, z.k * 0.8, BOLT, w.time); warnFloor(ctx, x, bot, 84, z.k, BOLT, w.time); return; }
+  if (!z.started) { warnRect(ctx, x - 12, t0, 24, bot - t0, z.k * 0.8, BOLT, w.time); floorWarn(ctx, x, bot, 84, z.k, BOLT); return; }
   const f = 1 - z.a;
   glowE(ctx, x, (t0 + bot) / 2, 60, (bot - t0) / 2, BOLT, 0.7 * f);
   ctx.globalCompositeOperation = 'lighter'; ctx.lineJoin = 'round';

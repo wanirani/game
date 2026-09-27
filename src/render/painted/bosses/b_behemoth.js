@@ -121,7 +121,7 @@ function glowOver(ctx, D, st, p, pivot, x, y, rot, sx, sy, a, t) {
 const V = (st, p, deep = false) => pickVariant(p, deep ? Math.min(st.lvl, 1) : st.lvl, deep, null);
 /** 그린 등 윤곽: 몸 지역 x → 몸 지역 y (몸 변환 전) */
 function backY(T, x) {
-  const B = T.back, k = T.k, o = T.o;
+  const B = T.back, k = T.k, o = T.org;
   if (!B?.length) return -300;
   const tx = o[0] + x / k;
   let i = 0;
@@ -159,13 +159,16 @@ function drawBoss(ctx, b, world, rig, st) {
   st.sx = sx;
   const X = b.bx + (b.flashT > 0 ? (rr.next() - 0.5) * 3 : 0) + (b.stunned ? Math.sin(t * 40) * 1.5 : 0), Y = b.by;
   D.begin(ctx);
+  const wm = st.wm ??= [1, 0, 0, 1, 0, 0];
+  for (let i = 0; i < 6; i++) wm[i] = D.m[i];
   const frame = () => {
+    ctx.setTransform(wm[0], wm[1], wm[2], wm[3], wm[4], wm[5]);   // 다리 등이 직접 건 변환이 남아 있어도 월드 기준에서 시작
     D.save();
     ctx.beginPath(); ctx.rect(X - 3000, floor - 4000, 6000, 4002); ctx.clip();   // 바닥 아래로는 아무것도 (발굽 · 쓰러진 나무 · 무릎)
     ctx.translate(X, Y); ctx.scale(sx, 1);
     D.begin(ctx);
   };
-  const bodyXf = () => { ctx.translate(0, b.drop); ctx.translate(PIVOT[0], PIVOT[1]); ctx.rotate(b.bodyA); ctx.translate(-PIVOT[0], -PIVOT[1]); D.begin(ctx); };
+  const bodyXf = () => { D.end(); ctx.translate(0, b.drop); ctx.translate(PIVOT[0], PIVOT[1]); ctx.rotate(b.bodyA); ctx.translate(-PIVOT[0], -PIVOT[1]); D.begin(ctx); };
   frame();
   const rec = b.flashT > 0 && !dying;
   const fa = clamp(b.flashT / 0.1, 0, 1) * 0.55;
@@ -180,9 +183,9 @@ function drawBoss(ctx, b, world, rig, st) {
   drawForest(ctx, D, st, R, b, t, dying, dT);
   const T = R.torso;
   D.rec = rec;
-  D.part(T, V(st, T), 'o', 0, 0, st.jolt ? (rr.next() - 0.5) * 0.01 * st.jolt : 0, T.k, T.k * (1 + Math.sin(t * 1.6) * 0.006));
+  D.part(T, V(st, T), 'org', 0, 0, st.jolt ? (rr.next() - 0.5) * 0.01 * st.jolt : 0, T.k, T.k * (1 + Math.sin(t * 1.6) * 0.006));
   D.rec = false;
-  glowOver(ctx, D, st, T, 'o', 0, 0, 0, T.k, T.k, 0.5, t);
+  glowOver(ctx, D, st, T, 'org', 0, 0, 0, T.k, T.k, 0.5, t);
   drawGashes(ctx, D, b, t);
   drawSacs(ctx, D, st, R, b, t, rec);
   flash();
