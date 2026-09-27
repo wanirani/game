@@ -9,7 +9,11 @@ import * as QuestD from '../../data/quests.js';
 import * as QuestG from '../../game/quests.js';
 import * as LoreM from '../../data/lore.js';
 import * as EnemyM from '../../data/enemies.js';
+import * as EnemyC from '../../data/enemies_c.js';
+import * as EnemyDd from '../../data/enemies_d.js';
 import * as BossM from '../../data/bosses.js';
+import * as BossC from '../../data/bosses_c.js';
+import * as BossDd from '../../data/bosses_d.js';
 import * as StageM from '../../data/stages.js';
 import * as ClassM from '../../data/classes.js';
 import * as CharM from '../../data/characters.js';
@@ -218,6 +222,47 @@ export const ENEMIES = () => EnemyM.ENEMIES || {};
 export const BOSSES = () => BossM.BOSSES || {};
 export const STAGES = () => StageM.STAGES || {};
 export const STAGE_ORDER = () => StageM.STAGE_ORDER || [];
+/** 1부 스테이지 순서 (s01~s13) */
+export const STAGE_ORDER_P1 = () => StageM.STAGE_ORDER_P1 || (StageM.STAGE_ORDER || []).filter((sid) => !isP2Stage(sid));
+/** 2부 스테이지 순서 (STAGES 에 있는 것만) */
+export const STAGE_ORDER_P2 = () => StageM.STAGE_ORDER_P2 || (StageM.STAGE_ORDER || []).filter((sid) => isP2Stage(sid));
+/** 2부 스테이지 자리 (맵이 아직 없어도; world2 §4.2) */
+export const P2_STAGE_IDS = ['s14', 's15', 's16', 's17', 's18', 's19', 's20'];
+
+// ───────────────────────── 2부 (MASTER_PLAN §1.14: 전체를 보되 2부는 따로 묶는다) ─────────────────────────
+const stageNo = (sid) => { const m = /^s(\d+)$/.exec(String(sid ?? '')); return m ? Number(m[1]) : 0; };
+/** 2부 스테이지인가 (STAGES 에 part:2 이거나, 맵이 없어도 s14 이후) */
+export function isP2Stage(sid) {
+  const s = StageM.STAGES?.[sid];
+  if (s) return (s.part ?? 1) >= 2;
+  return stageNo(sid) >= 14;
+}
+let P2E = null, P2B = null;
+/** 2부 적 id 집합 (enemies_c · enemies_d) */
+export function p2EnemyIds() { return P2E ??= new Set([...Object.keys(EnemyC.ENEMIES_C || {}), ...Object.keys(EnemyDd.ENEMIES_D || {})]); }
+/** 2부 보스 id 집합 (bosses_c · bosses_d) */
+export function p2BossIds() { return P2B ??= new Set([...Object.keys(BossC.BOSSES_C || {}), ...Object.keys(BossDd.BOSSES_D || {})]); }
+export function isP2Enemy(id) { return p2EnemyIds().has(id); }
+export function isP2Boss(id) { return p2BossIds().has(id) || isP2Stage(BossM.BOSSES?.[id]?.stageId); }
+/**
+ * 플레이어가 2부를 알고 있나: 2부 시작 깃발 · s14 해금 · 14장 이상 · 2부 비전서/기록/보스/적을 이미 만났다.
+ * 모르면 도감·비전서·기록 화면은 2부 항목을 숨기고 총수도 1부만 센다 (스포일러 방지).
+ */
+export function p2Known(state) {
+  const P = state?.progress;
+  if (!P) return false;
+  const F = P.flags || {};
+  if (F.p2_started || F.p2_done || F.rook_revealed) return true;
+  if ((P.unlocked || []).some((sid) => isP2Stage(sid))) return true;
+  if ((P.chapter ?? 0) >= 14) return true;
+  if ((P.shards?.length ?? 0) > 0 || (P.hearts?.length ?? 0) > 0) return true;
+  if ((P.docs || []).some((id) => isP2Stage(LoreM.DOCS?.[id]?.stage))) return true;
+  if ((P.lore || []).some((id) => isP2Stage(LoreM.LORE?.[id]?.stage))) return true;
+  if ((P.bosses || []).some((id) => isP2Boss(id))) return true;
+  const B = state.bestiary || {};
+  for (const id in B) if (isP2Enemy(id) && B[id]) return true;
+  return false;
+}
 export const CLASSES = () => ClassM.CLASSES || {};
 export const classChain = (id) => safe(() => ClassM.classChain(id), []);
 export const CHARACTERS = () => CharM.CHARACTERS || {};
@@ -229,12 +274,23 @@ export const EQUIP_SLOTS = () => StatsM.EQUIP_SLOTS;
 export const SLOT_NAMES = () => StatsM.SLOT_NAMES;
 export const MAX_LEVEL = () => StatsM.MAX_LEVEL ?? 99;
 
-/** 스테이지 표시 이름 "1장 불타는 마을" */
+/**
+ * 스테이지 표시 이름 "1장 불타는 마을". 2부는 "제2부 · 14장 거울의 성" 처럼 앞에 붙이지 않고 장 번호로 충분하다.
+ * 아직 맵이 없는 2부 스테이지(STAGES 에 없음)는 "20장 · 이계" — 날것의 id("s20")는 보여 주지 않는다.
+ */
 export function stageLabel(sid) {
   const s = STAGES()[sid];
-  if (!s) return sid ?? '';
+  if (!s) {
+    const n = stageNo(sid);
+    if (n >= 14) return `${n}장 · 이계`;
+    return n ? `${n}장` : '';
+  }
   return s.chapter ? `${s.chapter}장 ${s.name}` : s.name;
 }
+/** 스테이지 장 번호 (맵이 없어도 id 에서) */
+export function stageChapter(sid) { return STAGES()[sid]?.chapter ?? (stageNo(sid) || null); }
+/** 스테이지 적 레벨 (맵이 없으면 null) */
+export function stageLevel(sid) { return STAGES()[sid]?.level ?? null; }
 /** 드롭 ID → 표시 이름 */
 export function dropName(id) {
   const SPECIAL = { heart: '하트', food: '고기', mp: '마력 결정', gold: '금화', powerup: '파워업' };

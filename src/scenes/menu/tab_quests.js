@@ -1,4 +1,5 @@
 // 퀘스트 탭: 진행 중 / 수락 가능 / 완료 목록 · 진행도 · 의뢰인 · 보상 · 안내
+// 목록: 끌기·휠·오른쪽 스틱 스크롤, 방향키·패드로 고를 때만 선택을 따라간다 (P-01). 탭 영역은 ui.taps 등록부 (§6.3)
 import { text, FONT } from '../../core/ui.js';
 import { audio } from '../../core/audio.js';
 import { clamp } from '../../core/math.js';
@@ -40,7 +41,7 @@ export class QuestsTab extends Tab {
     if (!this.sc.dragging) {
       for (let k = 0; k < this.rowRects.length; k++) {
         const r = this.rowRects[k];
-        if (!r) continue;
+        if (!r || r.thid) continue;
         if (ges.hoverIn(r)) this.i = k;
         if (ges.tap(r)) { this.m.focus = 'content'; this.sub = 'list'; if (this.i !== k) audio.sfx('menu_move'); this.i = k; return; }
       }
@@ -61,7 +62,7 @@ export class QuestsTab extends Tab {
     if (nav.down && this.i < n - 1) { this.i++; audio.sfx('menu_move'); }
     if (nav.cancel) this.m.close();
   }
-  hints() { return [['←→', '분류'], ['↑↓', '퀘스트', '퀘스트를 터치하면 자세히 볼 수 있습니다']]; }
+  hints() { return [['←→', '분류'], ['↑↓', '퀘스트', '퀘스트를 터치하면 자세히 볼 수 있습니다 · 목록은 끌어서 넘기세요']]; }
 
   render(ctx, A) {
     if (!this.lists) this.build();
@@ -70,7 +71,8 @@ export class QuestsTab extends Tab {
     frame(ctx, A.x, A.y, LW, A.h);
     // 분류
     this.sectRects.length = 0;
-    const sw = (LW - 24 - 12) / 3, sh = input.touchMode ? 36 : 32;
+    const touch = input.touchMode;
+    const sw = (LW - 24 - 12) / 3, sh = touch ? 38 : 32, sgap = touch ? 16 : 10;
     SECTS.forEach((s, k) => {
       const r = { x: A.x + 12 + k * (sw + 6), y: A.y + 12, w: sw, h: sh };
       this.sectRects.push(r);
@@ -86,19 +88,19 @@ export class QuestsTab extends Tab {
       if (on && this.sub === 'sect' && focused) brackets(ctx, r.x, r.y, r.w, r.h, t);
     });
     // 목록
-    const LR = { x: A.x + 8, y: A.y + 12 + sh + 10, w: LW - 16, h: A.h - sh - 32 };
+    const LR = { x: A.x + 8, y: A.y + 12 + sh + sgap, w: LW - 16, h: A.h - sh - 22 - sgap };
     this.listRect = LR;
     const ids = this.ids, RH = 62;
     this.i = clamp(this.i, 0, Math.max(0, ids.length - 1));
     this.sc.setMax(ids.length * RH - LR.h);
-    if (ids.length) this.sc.ensure(this.i * RH, this.i * RH + RH, LR.h);
+    if (ids.length && this.sc.shouldFollow(this.si + '|' + this.i)) this.sc.ensure(this.i * RH, this.i * RH + RH, LR.h);
     clipBegin(ctx, LR);
     this.rowRects.length = 0;
     const Q = D.QUESTS();
     ids.forEach((id, k) => {
       const q = Q[id];
       const y = LR.y + k * RH - this.sc.y;
-      const r = { x: LR.x, y, w: LR.w - 8, h: RH - 4 };
+      const r = this.m.ges.zone({ x: LR.x, y, w: LR.w - 8, h: RH - 4 }, 'list', { clip: LR, src: 'quests.row' });
       this.rowRects[k] = r;
       if (y > LR.y + LR.h || y + RH < LR.y) return;
       const sel = k === this.i;
@@ -131,6 +133,7 @@ export class QuestsTab extends Tab {
     }
     clipEnd(ctx, LR, this.sc);
     scrollbar(ctx, LR.x + LR.w - 4, LR.y, LR.h, this.sc, LR.h);
+    for (const r of this.sectRects) this.m.ges.zone(r, 'primary', { src: 'quests.sect' }); // 목록 줄보다 위 (가려진 줄이 가로채지 않게)
     // 상세
     this.drawDetail(ctx, A.x + LW + 12, A.y, A.w - LW - 12, A.h, ids[this.i]);
   }

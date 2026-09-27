@@ -76,9 +76,10 @@ export function heroPerfSample(ms) {
  * 캔버스 백킹은 품질 등급의 픽셀 예산으로 이미 잘려 있으므로 그 이상은 예산 초과 (platform §6.4, P-11). want = 호출측 희망 배율
  */
 export function pxScale(ctx, want = Infinity) {
-  let s = 1;
-  try { const m = ctx.getTransform(); s = Math.hypot(m.a, m.b) || 1; } catch { s = 1; }
-  s = Math.min(s, want > 0 ? want : s);
+  let s = NaN;
+  if (ctx) { try { const m = ctx.getTransform(); s = Math.hypot(m.a, m.b); } catch { s = NaN; } }
+  if (!(s > 0)) s = Number.isFinite(want) && want > 0 ? want : 1;   // ctx 없음: 희망값
+  else if (want > 0) s = Math.min(s, want);
   return Math.floor(clamp(s, 0.5, 3) * 64) / 64;
 }
 
@@ -570,23 +571,20 @@ function roundBtn(ctx, x, y, r, hot) {
   ctx.fillStyle = g; ctx.fill();
   ctx.strokeStyle = hot ? PAL.goldHi : PAL.goldDim; ctx.lineWidth = 1.4; ctx.stroke();
 }
-/** 회전 화살표: 받침대 궤도처럼 앞쪽을 도는 타원 호 + 화살촉. dir +1 = 오른쪽으로 돈다(⟳), −1 = 왼쪽(⟲) */
+/** 회전 화살표 (원 화살표): dir +1 = 시계 방향 ⟳ (오른쪽으로 돌리기), −1 = 반시계 ⟲ (왼쪽으로 돌리기) */
 function orbitArrow(ctx, x, y, s, dir, color) {
   ctx.save();
   ctx.translate(x, y); ctx.scale(dir, 1);
-  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 1.8; ctx.lineCap = 'round';
-  const rx = s, ry = s * 0.62, a1 = (20 * PI) / 180;
-  ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, (160 * PI) / 180, a1, true); ctx.stroke();
-  const ex = Math.cos(a1) * rx, ey = Math.sin(a1) * ry;
-  const tx = Math.sin(a1) * rx, ty = -Math.cos(a1) * ry, tl = Math.hypot(tx, ty) || 1; // 반시계로 도는 접선 (화면에선 오른쪽 위)
-  const ux = tx / tl, uy = ty / tl, h = s * 0.62;
+  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 1.9; ctx.lineCap = 'round';
+  const r = s * 0.9, a0 = -PI / 2 + 0.7, a1 = -PI / 2 - 0.28 + TAU; // 위쪽이 트인 원호 (시계 방향으로 돈다)
+  ctx.beginPath(); ctx.arc(0, 0, r, a0, a1, false); ctx.stroke();
+  const ex = Math.cos(a1) * r, ey = Math.sin(a1) * r;
+  const ux = -Math.sin(a1), uy = Math.cos(a1), h = s * 0.62;       // 시계 방향 접선 (위쪽 끝에서는 오른쪽)
   ctx.beginPath();
-  ctx.moveTo(ex + ux * h * 0.55, ey + uy * h * 0.55);
-  ctx.lineTo(ex - ux * h * 0.5 - uy * h * 0.55, ey - uy * h * 0.5 + ux * h * 0.55);
-  ctx.lineTo(ex - ux * h * 0.5 + uy * h * 0.55, ey - uy * h * 0.5 - ux * h * 0.55);
+  ctx.moveTo(ex + ux * h * 0.75, ey + uy * h * 0.75);
+  ctx.lineTo(ex - ux * h * 0.35 - uy * h * 0.55, ey - uy * h * 0.35 + ux * h * 0.55);
+  ctx.lineTo(ex - ux * h * 0.35 + uy * h * 0.55, ey - uy * h * 0.35 - ux * h * 0.55);
   ctx.closePath(); ctx.fill();
-  // 가운데 축 (영웅 자리)
-  ctx.globalAlpha *= 0.55; ctx.beginPath(); ctx.moveTo(0, -s * 0.95); ctx.lineTo(0, s * 0.2); ctx.stroke();
   ctx.restore();
 }
 

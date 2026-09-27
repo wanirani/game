@@ -1,12 +1,13 @@
 // 직업 탭: 캐릭터의 직업 계보(기본 → 1차 2갈래 → 2차 4갈래) · 현재 경로 강조 · 요구 조건 · 특성/보정치 · 직업 외형 미리보기
 // 전직 자체는 마을 성당(알베르토 신부)에서 한다 → 안내만 표시
+// 미리보기는 턴테이블 (hero_view.js): 직업을 바꿔 골라도 돌려 둔 각도가 유지되어 같은 방향에서 직업 외형을 비교할 수 있다.
 import { text, FONT } from '../../core/ui.js';
 import { audio } from '../../core/audio.js';
 import { clamp, rgba } from '../../core/math.js';
-import { drawHero } from '../../render/hero.js';
+import * as HERO from '../../render/hero.js';
 import * as ProgM from '../../game/progression.js';
 import { Tab } from './base.js';
-import { HeroView, HeroStage, pedestal, accentOf } from './hero_view.js';
+import { HeroView, HeroStage, pedestal, accentOf, turntableHints, pxScale } from './hero_view.js';
 import { PAL, frame, heading, divider, brackets, glow, glowOval, pill, para, rr, glyph, ellipsize, measure } from './common.js';
 import { fmtStatVal } from './tab_status.js';
 import * as D from './access.js';
@@ -16,10 +17,14 @@ const TIER_NAME = ['기본 직업', '1차 전직', '2차 전직'];
 export class ClassTab extends Tab {
   constructor(m) {
     super(m);
-    this.view = new HeroView();
+    this.view = new HeroView({ turntable: true, game: m.game });
     this.stage = new HeroStage();
+    this.heroRect = null;
     this.sel = null; this.rects = []; this.thumbs = new Map(); this.looks = new Map(); this.rev = -1;
   }
+  /** 메뉴의 가로 밀기(탭 넘기기)를 무시할 곳: 회전 무대 (platform §5.6) */
+  noSwipe(x, y) { return this.view.swipeBlock(x, y); }
+  swipeBlock(x, y) { return this.view.swipeBlock(x, y); }
   free() { this.stage.free(); for (const c of this.thumbs.values()) { c.width = c.height = 1; } this.thumbs.clear(); }
   get chain() { return D.classChain(this.hero.classId).map((c) => c.id); }
   tiers() {
@@ -29,7 +34,7 @@ export class ClassTab extends Tab {
     const t2 = t1.flatMap((c) => (c.next || []).map((id) => D.CLASSES()[id]).filter(Boolean));
     return [t0, t1, t2];
   }
-  onShow() { if (!this.sel) this.sel = this.hero.classId; }
+  onShow() { if (!this.sel) this.sel = this.hero.classId; this.view.wake(); }
   lookFor(cid) {
     if (this.rev !== this.m.rev) { this.rev = this.m.rev; this.looks.clear(); for (const c of this.thumbs.values()) { c.width = c.height = 1; } this.thumbs.clear(); }
     let L = this.looks.get(cid);
@@ -41,9 +46,9 @@ export class ClassTab extends Tab {
     }
     return L;
   }
-  /** 직업 썸네일 (정지 화면, 작은 캔버스에 한 번만 그림) */
-  thumb(cid, w, h) {
-    const sc = this.game.scale;
+  /** 직업 썸네일 (정지 화면, 작은 캔버스에 한 번만 그림). 배율 = 그리는 ctx 의 실제 픽셀 배율 (픽셀 예산 안, P-11) */
+  thumb(cid, w, h, ctx = null) {
+    const sc = ctx ? pxScale(ctx) : pxScale(null, this.game.scale);
     const key = cid + '|' + w + '|' + h + '|' + sc;
     let c = this.thumbs.get(key);
     if (!c) {
@@ -53,7 +58,7 @@ export class ClassTab extends Tab {
       g.setTransform(sc, 0, 0, sc, 0, 0);
       const look = this.lookFor(cid);
       const p = { cx: w / 2, bottom: h - 4, facing: 1, anim: 'idle', animT: 0.4, look, ch: D.CHARACTERS()[this.hero.charId], vx: 0, vy: 0, onGround: true, rig: null, t: 2.2, stats: { reach: 0 } };
-      try { drawHero(g, p, null, { scale: (h - 10) / 96 }); } catch (e) { /* 무시 */ }
+      try { HERO.drawHero(g, p, null, { scale: (h - 10) / 96 }); } catch (e) { /* 무시 */ }
       this.thumbs.set(key, c);
     }
     return c;
@@ -79,12 +84,12 @@ export class ClassTab extends Tab {
 
   update(dt, nav, ges, focused) {
     if (!this.sel) this.sel = this.hero.classId;
+    this.view.control(dt, ges);     // 턴테이블 (포커스와 무관: 끌기·휠·, . /·오른쪽 스틱·R3·무대 탭 = 시연)
     this.view.update(dt);
     for (const r of this.rects) {
       if (ges.hoverIn(r) && this.sel !== r.id) { this.sel = r.id; }
       if (ges.tap(r)) { this.m.focus = 'content'; if (this.sel !== r.id) audio.sfx('menu_move'); else this.view.showcase(); this.sel = r.id; return; }
     }
-    if (ges.tap(this.heroRect)) this.view.showcase();
     if (!focused) return;
     const T = this.tiers();
     const cur = D.CLASSES()[this.sel];
@@ -103,7 +108,7 @@ export class ClassTab extends Tab {
     if (nav.confirm) this.view.showcase();
     if (nav.cancel) this.m.close();
   }
-  hints() { return [['↑↓←→', '직업 선택', '직업 카드를 터치해 자세히 보기'], ['Z', '동작 보기']]; }
+  hints() { return [['↑↓←→', '직업 선택', '직업 카드를 터치해 자세히 보기'], ['Z', '동작 보기'], ...turntableHints()]; }
 
   render(ctx, A) {
     if (!this.sel) this.sel = this.hero.classId;
@@ -116,15 +121,16 @@ export class ClassTab extends Tab {
     const T = this.tiers();
     const chain = this.chain;
     // 카드 배치
-    const cardW = Math.min(188, (TW - 40 - 2 * 26) / 3), cardH = 76;
+    // 카드 높이: 2차 전직 4장이 겹치지 않게 (낮은 화면에서는 줄인다)
+    const cardW = Math.min(188, (TW - 40 - 2 * 26) / 3), cardH = Math.round(clamp((A.h - 64 - 3 * 6) / 4, 50, 76));
     const colX = [A.x + 16, A.x + 16 + cardW + 26, A.x + 16 + 2 * (cardW + 26)];
-    const top = A.y + 44, H = A.h - 54;
+    const top = A.y + 44, ctop = top + 10, H = A.h - 64;
     const pos = new Map();
     T.forEach((list, ti) => {
       const n = list.length;
       const gap = n > 1 ? Math.min(18, (H - n * cardH) / (n - 1)) : 0;
       const total = n * cardH + (n - 1) * gap;
-      list.forEach((c, k) => pos.set(c.id, { x: colX[ti], y: top + (H - total) / 2 + k * (cardH + gap) }));
+      list.forEach((c, k) => pos.set(c.id, { x: colX[ti], y: ctop + (H - total) / 2 + k * (cardH + gap) }));
     });
     // 티어 제목
     TIER_NAME.forEach((nm, ti) => text(ctx, nm, colX[ti] + cardW / 2, top + 4, { size: 11, align: 'center', weight: 700, color: PAL.faint, ow: 2 }));
@@ -175,16 +181,16 @@ export class ClassTab extends Tab {
     const bg = ctx.createLinearGradient(0, r.y, 0, r.y + r.h);
     bg.addColorStop(0, rgba(acc, 0.22)); bg.addColorStop(1, 'rgba(0,0,0,0.3)');
     ctx.fillStyle = bg; ctx.fillRect(r.x + 4, r.y + 4, tw, th);
-    const img = this.thumb(c.id, tw, th + 8);
+    const img = this.thumb(c.id, tw, th + 8, ctx);
     ctx.globalAlpha *= st.key === 'closed' ? 0.35 : st.key === 'locked' ? 0.7 : 1;
     ctx.drawImage(img, 0, 0, img.width, img.height, r.x + 4, r.y, tw, th + 8);
     ctx.restore();
     const tx = r.x + tw + 12, w = r.w - tw - 18;
     const iconW = st.key === 'locked' || st.key === 'closed' || st.key === 'cur' ? 16 : 0;
     const nsz = measure(ctx, c.name, 14, 800) <= w - iconW ? 14 : 12.5;
-    text(ctx, ellipsize(ctx, c.name, w - iconW, nsz, 800), tx, r.y + 24, { size: nsz, weight: 800, color: st.key === 'closed' ? PAL.faint : sel ? PAL.goldHi : PAL.bone, ow: 3 });
-    text(ctx, c.eng ?? '', tx, r.y + 40, { size: 10, weight: 700, family: FONT.num, color: PAL.dim, ow: 2, maxWidth: w });
-    text(ctx, st.text, tx, r.y + r.h - 12, { size: 11, weight: 800, color: st.color, ow: 2 });
+    text(ctx, ellipsize(ctx, c.name, w - iconW, nsz, 800), tx, r.y + Math.round(r.h * 0.32), { size: nsz, weight: 800, color: st.key === 'closed' ? PAL.faint : sel ? PAL.goldHi : PAL.bone, ow: 3 });
+    text(ctx, c.eng ?? '', tx, r.y + Math.round(r.h * 0.53), { size: 10, weight: 700, family: FONT.num, color: PAL.dim, ow: 2, maxWidth: w });
+    text(ctx, st.text, tx, r.y + r.h - (r.h >= 70 ? 12 : 9), { size: 11, weight: 800, color: st.color, ow: 2 });
     if (st.key === 'locked' || st.key === 'closed') glyph(ctx, 'lock', r.x + r.w - 14, r.y + 14, 10, PAL.faint, 1.3);
     if (st.key === 'cur') glyph(ctx, 'star', r.x + r.w - 14, r.y + 14, 11, PAL.goldHi, 1);
     if (sel) brackets(ctx, r.x, r.y, r.w, r.h, t, focused ? PAL.goldHi : PAL.goldMid);
@@ -197,13 +203,16 @@ export class ClassTab extends Tab {
     const t = this.t;
     const look = this.lookFor(c.id);
     this.view.set(look, D.CHARACTERS()[this.hero.charId]);
-    const sh = 168;
+    const sh = Math.round(clamp(h * 0.39, 118, 168));
     const acc = accentOf(look);
-    this.stage.draw(ctx, x + 8, y + 8, w - 16, sh, t, this.game.scale, acc);
-    pedestal(ctx, x + w / 2, y + 8 + sh - 16, 0.95, t, acc);
-    this.view.draw(ctx, x + w / 2, y + 8 + sh - 16, 1.45);
-    ctx.strokeStyle = 'rgba(200,160,90,0.35)'; ctx.lineWidth = 1; ctx.strokeRect(x + 8.5, y + 8.5, w - 17, sh - 1);
+    this.stage.draw(ctx, x + 8, y + 8, w - 16, sh, t, pxScale(ctx), acc);
+    const scale = clamp((sh - 16 - 26) / 88, 0.95, 1.45);
     this.heroRect = { x: x + 8, y: y + 8, w: w - 16, h: sh };
+    this.view.stage(this.heroRect);
+    pedestal(ctx, x + w / 2, y + 8 + sh - 16, 0.95 * scale / 1.45, t, acc, this.view.yaw);
+    this.view.draw(ctx, x + w / 2, y + 8 + sh - 16, scale);
+    this.view.drawDeck(ctx, t);
+    ctx.strokeStyle = 'rgba(200,160,90,0.35)'; ctx.lineWidth = 1; ctx.strokeRect(x + 8.5, y + 8.5, w - 17, sh - 1);
     const st = this.status(c);
     pill(ctx, TIER_NAME[c.tier] ?? '', x + 16, y + 16, { color: PAL.gold, size: 10, h: 17 });
     pill(ctx, st.text, x + w - 16, y + 16, { align: 'right', color: st.color, size: 10, h: 17, bg: st.key === 'ready' ? 'rgba(20,70,40,0.9)' : 'rgba(40,20,30,0.9)' });

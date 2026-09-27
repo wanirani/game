@@ -1,7 +1,7 @@
 // 장비 탭: 6칸(무기/머리/몸/망토/장신구×2) → 칸 선택 시 장착 가능한 아이템 목록 + 능력치 비교(증감) + 영웅 외형 실시간 미리보기
 // 가운데 미리보기는 턴테이블 (hero_view.js): 끌어서·휠·, . 키·오른쪽 스틱으로 돌려 앞·옆·뒷모습의 장비 색·망토·무기를 본다.
 // 갑옷·머리·망토·장신구를 끼우면 한 바퀴 돌며 보여 준다 (움직임 줄이기면 시전 동작). 무기를 끼우면 공격 시연.
-import { text, FONT, taps } from '../../core/ui.js';
+import { text, FONT } from '../../core/ui.js';
 import { audio } from '../../core/audio.js';
 import { clamp } from '../../core/math.js';
 import { input } from '../../core/input.js';
@@ -9,7 +9,7 @@ import { drawSlot } from '../../render/icons.js';
 import { Tab } from './base.js';
 import { HeroView, HeroStage, pedestal, accentOf, turntableHints, pxScale } from './hero_view.js';
 import {
-  PAL, RARITY_COL, frame, heading, divider, selBar, brackets, glow, gbutton, Scroller, scrollbar, clipBegin, clipEnd, ellipsize, pill, inRect,
+  PAL, RARITY_COL, frame, heading, divider, selBar, brackets, glow, gbutton, Scroller, scrollbar, clipBegin, clipEnd, ellipsize, pill, inRect, measure,
 } from './common.js';
 import { fmtStatVal } from './tab_status.js';
 import * as D from './access.js';
@@ -189,12 +189,15 @@ export class EquipTab extends Tab {
 
     // ── 왼쪽: 장비 칸 ──
     frame(ctx, A.x, A.y, LW, A.h);
-    heading(ctx, '장착 장비', A.x + 16, A.y + 26, LW - 32, { sub: D.CHARACTERS()[hero.charId]?.name?.split(' ')[0] });
+    // 터치: 칸 사이 틈을 줄여 한 칸을 36 CSS px 이상으로 (platform §6.3 목록 줄)
+    const touch = !!input.touchMode;
+    const top = touch ? 36 : 42, gapS = touch ? 2 : 4;
+    heading(ctx, '장착 장비', A.x + 16, A.y + (touch ? 24 : 26), LW - 32, { sub: D.CHARACTERS()[hero.charId]?.name?.split(' ')[0] });
     this.slotRects.length = 0;
-    const rowH = Math.min(62, (A.h - 50) / 6);
+    const rowH = Math.min(62, (A.h - top - 8) / 6);
     this.slots.forEach((slot, i) => {
-      const y = A.y + 42 + i * rowH, x = A.x + 10, w = LW - 20;
-      const r = { x, y, w, h: rowH - 4 };
+      const y = A.y + top + i * rowH, x = A.x + 10, w = LW - 20;
+      const r = { x, y, w, h: rowH - gapS };
       this.slotRects.push(r);
       const sel = i === this.si;
       if (sel) selBar(ctx, x, y, w, r.h, t, { dim: !focused || this.sub === 'list' });
@@ -204,37 +207,52 @@ export class EquipTab extends Tab {
       if (this.flashT > 0 && this.flashSlot === slot) glow(ctx, x + 12 + s / 2, y + 4 + s / 2, s * 1.2, '#ffe0a0', this.flashT);
       if (sel && focused && this.sub === 'slots') brackets(ctx, x + 12, y + 4, s, s, t);
       const tx = x + 22 + s;
-      text(ctx, D.SLOT_NAMES()[slot], tx, y + 16, { size: 11, weight: 700, color: sel ? PAL.gold : PAL.dim, ow: 2 });
+      // 낮은 칸(작은 화면)은 능력치 줄을 빼고 두 줄로
+      const tall = r.h >= 54;
+      text(ctx, D.SLOT_NAMES()[slot], tx, y + (tall ? 16 : Math.round(r.h * 0.36)), { size: 11, weight: 700, color: sel ? PAL.gold : PAL.dim, ow: 2 });
       if (inst) {
-        text(ctx, ellipsize(ctx, D.nameOf(inst), w - (tx - x) - 8, 15, 800), tx, y + 35, { size: 15, weight: 800, color: RARITY_COL[inst.rarity ?? 0], ow: 3 });
-        text(ctx, ellipsize(ctx, statLine(inst), w - (tx - x) - 8, 11, 600), tx, y + 51, { size: 11, weight: 600, color: PAL.text, ow: 2 });
-      } else text(ctx, '— 비어 있음 —', tx, y + 36, { size: 13, weight: 600, color: PAL.faint, ow: 2 });
+        const ns = tall ? 15 : 14;
+        text(ctx, ellipsize(ctx, D.nameOf(inst), w - (tx - x) - 8, ns, 800), tx, y + (tall ? 35 : Math.round(r.h * 0.8)), { size: ns, weight: 800, color: RARITY_COL[inst.rarity ?? 0], ow: 3 });
+        if (tall) text(ctx, ellipsize(ctx, statLine(inst), w - (tx - x) - 8, 11, 600), tx, y + 51, { size: 11, weight: 600, color: PAL.text, ow: 2 });
+      } else text(ctx, '— 비어 있음 —', tx, y + (tall ? 36 : Math.round(r.h * 0.8)), { size: 13, weight: 600, color: PAL.faint, ow: 2 });
     });
 
     // ── 가운데: 영웅 미리보기 + 요약 ──
+    // 턴테이블 무대: 끌어서·휠·, . 키·오른쪽 스틱으로 돌려 장비의 앞·옆·뒷모습을 본다 (hero_view.js)
     const MX = A.x + LW + 12;
     frame(ctx, MX, A.y, MW, A.h);
-    const sh = Math.round(A.h * 0.52);
+    const sh = Math.round(clamp(A.h * 0.52, 128, 260));
     const accent = accentOf(look);
-    this.stage.draw(ctx, MX + 8, A.y + 8, MW - 16, sh, t, this.game.scale, accent);
-    const scale = clamp((sh - 46) / 92, 1.5, 2.1);
-    pedestal(ctx, MX + MW / 2, A.y + 8 + sh - 22, scale * 0.58, t, accent);
-    this.view.draw(ctx, MX + MW / 2, A.y + 8 + sh - 22, scale);
+    this.stage.draw(ctx, MX + 8, A.y + 8, MW - 16, sh, t, pxScale(ctx), accent);
+    const foot = Math.round(clamp(sh * 0.1, 14, 22));
+    const scale = clamp((sh - foot - 24) / 96, 0.95, 2.1);
+    this.heroRect = { x: MX + 8, y: A.y + 8, w: MW - 16, h: sh };
+    this.view.stage(this.heroRect);
+    pedestal(ctx, MX + MW / 2, A.y + 8 + sh - foot, scale * 0.58, t, accent, this.view.yaw);
+    this.view.draw(ctx, MX + MW / 2, A.y + 8 + sh - foot, scale);
+    this.view.drawDeck(ctx, t, { label: !pv }); // 후보 미리보기 중에는 위쪽에 '미리보기' 표시가 대신 들어간다
     ctx.strokeStyle = 'rgba(200,160,90,0.35)'; ctx.lineWidth = 1; ctx.strokeRect(MX + 8.5, A.y + 8.5, MW - 17, sh - 1);
-    if (pv) pill(ctx, '미리보기', MX + MW / 2, A.y + 16, { align: 'center', color: PAL.goldHi, bg: 'rgba(110,14,34,0.92)', size: 11, h: 18 });
+    if (pv) pill(ctx, '미리보기', MX + MW / 2, A.y + 14, { align: 'center', color: PAL.goldHi, bg: 'rgba(110,14,34,0.92)', size: 11, h: 18 });
     let y = A.y + sh + 32;
     heading(ctx, '주요 능력치', MX + 14, y, MW - 28, { size: 14 });
     y += 8;
-    const rowS = Math.min(20, (A.y + A.h - 10 - y) / SUMMARY.length);
     const ns = pv?.stats || cur.stats;
-    for (const k of SUMMARY) {
+    // 낮은 화면: 2열 (증감은 색으로만)
+    const room = A.y + A.h - 8 - y, two = room / SUMMARY.length < 15;
+    const perCol = two ? Math.ceil(SUMMARY.length / 2) : SUMMARY.length;
+    const rowS = Math.min(20, room / perCol);
+    const colW = two ? (MW - 28) / 2 : MW - 28;
+    SUMMARY.forEach((k, i) => {
       const a = cur.stats[k] ?? 0, b = ns[k] ?? 0, d = b - a;
-      text(ctx, D.STAT_INFO[k]?.name ?? k, MX + 18, y + 15, { size: 12, weight: 600, color: PAL.text, ow: 2 });
+      const cx0 = MX + 14 + (two ? Math.floor(i / perCol) * colW : 0), ry = y + (two ? i % perCol : i) * rowS;
+      const by = ry + Math.min(15, rowS * 0.5 + 5);
       const col = Math.abs(d) < 0.05 ? PAL.bone : d > 0 ? PAL.good : PAL.bad;
-      text(ctx, fmtStatVal(k, b), MX + MW - 18, y + 15, { size: 13, align: 'right', weight: 800, family: FONT.num, color: col, ow: 3 });
-      if (Math.abs(d) >= 0.05) text(ctx, `${d > 0 ? '▲' : '▼'} ${d > 0 ? '+' : '-'}${fmtStatVal(k, Math.abs(d))}`, MX + MW - 18 - 48, y + 14, { size: 10, align: 'right', weight: 700, color: col, ow: 2 });
-      y += rowS;
-    }
+      const val = fmtStatVal(k, b);
+      const vw = measure(ctx, val, 13, 800, FONT.num);
+      text(ctx, ellipsize(ctx, D.STAT_INFO[k]?.name ?? k, colW - vw - 14, 12, 600), cx0 + 4, by, { size: 12, weight: 600, color: PAL.text, ow: 2 });
+      text(ctx, val, cx0 + colW - 4, by, { size: 13, align: 'right', weight: 800, family: FONT.num, color: col, ow: 3 });
+      if (!two && Math.abs(d) >= 0.05) text(ctx, `${d > 0 ? '▲' : '▼'} ${d > 0 ? '+' : '-'}${fmtStatVal(k, Math.abs(d))}`, cx0 + colW - 4 - 48, by - 1, { size: 10, align: 'right', weight: 700, color: col, ow: 2 });
+    });
 
     // ── 오른쪽: 후보 목록 + 비교 ──
     frame(ctx, RX, A.y, RW, A.h);
@@ -301,8 +319,10 @@ export class EquipTab extends Tab {
     const canDo = hr.unequip || (hr.ok && !hr.here);
     if (canDo) {
       const bw = 124, bh = 30;
-      this.btnRect = { x: RX + RW - bw - 14, y: cy + cmpH - bh - 12, w: bw, h: bh };
-      gbutton(ctx, this.btnRect, hr.unequip ? '해제하기' : '장착하기', { hot: true, t, size: 13 });
+      const br = { x: RX + RW - bw - 14, y: cy + cmpH - bh - 12, w: bw, h: bh };
+      // 주 버튼: 공용 탭 등록부에 'primary' 로 (터치 여유 영역이 44 CSS px 까지 넓힌다 — §6.3)
+      this.btnRect = typeof this.m.ges?.zone === 'function' ? this.m.ges.zone(br, 'primary', { src: 'equip.do' }) : br;
+      gbutton(ctx, br, hr.unequip ? '해제하기' : '장착하기', { hot: true, t, size: 13 });
     }
   }
 }

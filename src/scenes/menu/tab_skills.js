@@ -1,13 +1,17 @@
 // 스킬 탭: 캐릭터별 스킬 트리(3계열 × 6단, 전직 계열은 5·6단에서 두 갈래) · 상세(현재/다음 레벨) · 습득/강화(SP) · 스킬 슬롯(1·2페이지 S/D) 등록
+// 낮은 화면(휴대폰 UI 배율)에서는 트리가 세로로 스크롤된다 (줄 높이 터치 46 · 그 밖 36 이상). 스킬을 길게 누르면 행동 메뉴.
+// 습득·강화 뒤에는 m.changed() → player.refreshStats() 로 패시브가 바로 능력치에 반영된다.
 import { text, FONT } from '../../core/ui.js';
 import { audio } from '../../core/audio.js';
 import { clamp, rgba, TAU } from '../../core/math.js';
 import { input } from '../../core/input.js';
+import { drawGlyph } from '../../core/prompts.js';
 import { drawSkillGlyph } from '../../render/hud.js';
 import * as SkillD from '../../data/skills.js';
 import { Tab } from './base.js';
 import {
   PAL, frame, heading, divider, brackets, glow, glowOval, gbutton, pill, para, diamond, glyph, Popup, ellipsize, keycap, rr,
+  Scroller, scrollbar, clipBegin, clipEnd,
 } from './common.js';
 import * as D from './access.js';
 
@@ -19,6 +23,7 @@ export class SkillsTab extends Tab {
     this.col = 0; this.row = 0; this.sub = 'tree'; this.slotI = 0;
     this.nodeRects = []; this.slotRects = []; this.btnRects = [];
     this.pop = new Map(); // 습득 연출 {id: t}
+    this.sc = new Scroller(); this.treeRect = null;
   }
   get tree() { return D.TREE(this.hero.charId); }
   get branches() { return this.tree?.branches ?? []; }
@@ -79,8 +84,14 @@ export class SkillsTab extends Tab {
   update(dt, nav, ges, focused) {
     for (const [k, v] of this.pop) { const nv = v - dt * 1.6; if (nv <= 0) this.pop.delete(k); else this.pop.set(k, nv); }
     if (!this.tree) { if (focused && nav.up) this.m.focusTabs(); else if (focused && nav.cancel) this.m.close(); return; }
+    this.sc.update(dt, this.treeRect, ges);
+    // 길게 누르기 → 그 스킬의 행동 메뉴 (§5.6)
+    if (ges.longPress) {
+      for (const n of this.nodeRects) if (ges.held(n)) { this.m.focus = 'content'; this.sub = 'tree'; this.col = n.c; this.row = n.r; this.nodeMenu(n.id); return; }
+    }
     // 포인터
     for (const n of this.nodeRects) {
+      if (n.thid || this.sc.dragging) continue;
       if (ges.hoverIn(n) && (this.sub !== 'tree' || this.col !== n.c || this.row !== n.r)) { this.sub = 'tree'; this.col = n.c; this.row = n.r; }
       if (ges.tap(n)) {
         this.m.focus = 'content';
@@ -115,7 +126,7 @@ export class SkillsTab extends Tab {
   }
   hints() {
     if (this.sub === 'slots') return [['←→', '슬롯'], ['Z', '스킬 넣기', '슬롯을 터치해 스킬을 넣으세요'], ['X', '트리로']];
-    return [['↑↓←→', '스킬'], ['Z', '배우기·강화', '스킬을 한 번 더 터치하면 배우기'], ['A', '슬롯 등록']];
+    return [['↑↓←→', '스킬'], ['Z', '배우기·강화', '스킬을 길게 누르거나 한 번 더 터치하면 배우기·등록'], ['A', '슬롯 등록']];
   }
 
   render(ctx, A) {
@@ -130,10 +141,18 @@ export class SkillsTab extends Tab {
       frame(ctx, A.x + TW + 12, A.y, DW, A.h);
       return;
     }
-    // 계열 기둥
-    const slotH = 70;
+    // 계열 기둥 (줄이 최소 높이보다 작아지면 트리를 세로로 스크롤)
+    const touch = input.touchMode;
+    const slotH = touch ? 64 : 70;
     const top = A.y + 58, bot = A.y + A.h - slotH - 8;
     const cw = (TW - 20) / B.length;
+    const maxN = Math.max(1, ...B.map((br) => br.skills?.length ?? 0));
+    const rowH = Math.max(touch ? 46 : 36, Math.min(64, (bot - top) / maxN));
+    const TR = { x: A.x + 6, y: top - 2, w: TW - 12, h: bot - top + 2 };
+    this.treeRect = TR;
+    this.sc.setMax(maxN * rowH - (bot - top));
+    if (this.sub === 'tree' && this.sc.shouldFollow(this.col + '|' + this.row)) this.sc.ensure(this.row * rowH, this.row * rowH + rowH, bot - top, 2);
+    const sy = this.sc.y;
     B.forEach((br, c) => {
       const x0 = A.x + 10 + c * cw;
       const bc = br.color && br.color.startsWith('#') ? br.color : PAL.gold;
@@ -147,9 +166,9 @@ export class SkillsTab extends Tab {
       text(ctx, ellipsize(ctx, gateName, cw - 24, 11, 700), x0 + 14, top - 14, { size: 11, weight: 700, color: PAL.dim, ow: 2 });
       const ids = br.skills || [];
       const fork = br.kind === 'class' && ids.length === 6;
-      const rowH = (bot - top) / ids.length;
       const R = clamp(rowH * 0.36, 14, 20);
-      const pos = ids.map((id, r) => ({ x: x0 + 14 + R + (fork && r >= 4 ? 16 : 0), y: top + rowH * r + rowH / 2 }));
+      const pos = ids.map((id, r) => ({ x: x0 + 14 + R + (fork && r >= 4 ? 16 : 0), y: top + rowH * r + rowH / 2 - sy }));
+      clipBegin(ctx, TR);
       // 연결선
       ids.forEach((id, r) => {
         const sk = D.SKILLS()[id];
@@ -175,7 +194,7 @@ export class SkillsTab extends Tab {
         const lv = this.lv(id), max = sk.maxLv ?? 5;
         const chk = lv < max ? this.check(id) : { ok: false };
         const sel = this.sub === 'tree' && this.col === c && this.row === r;
-        const rect = { x: x - R - 4, y: y - R - 4, w: cw - 20, h: R * 2 + 8, id, c, r };
+        const rect = this.m.ges.zone({ x: x0 + 4, y: top + rowH * r - sy + 1, w: cw - 8, h: rowH - 2, id, c, r }, 'list', { clip: TR, src: 'skills.node' });
         this.nodeRects.push(rect);
         this.drawNode(ctx, sk, x, y, R, lv, chk.ok, sel, focused, t, bc);
         // 이름 + 레벨
@@ -186,7 +205,9 @@ export class SkillsTab extends Tab {
         if (D.isActive(sk)) text(ctx, '액티브', nx + max * 10 + 6, y + 15, { size: 10, weight: 700, color: lv ? '#ffb070' : PAL.faint, ow: 2 });
         if (hero.slots?.includes(id)) pill(ctx, SLOT_LABEL[hero.slots.indexOf(id)], x0 + cw - 10, y - 14, { align: 'right', size: 9, h: 14, color: PAL.goldHi, bg: 'rgba(90,10,30,0.9)' });
       });
+      clipEnd(ctx, TR, null);
     });
+    if (this.sc.max > 0) { ctx.save(); clipEnd(ctx, TR, this.sc); scrollbar(ctx, TR.x + TR.w - 3, TR.y, TR.h, this.sc, TR.h); } // 위아래 페이드 + 스크롤 막대
     // 스킬 슬롯 막대
     this.drawSlots(ctx, A.x + 10, A.y + A.h - slotH - 4, TW - 20, slotH, t, focused);
     // 상세
@@ -222,20 +243,21 @@ export class SkillsTab extends Tab {
     text(ctx, String(sp), x + 132, y + 26, { size: 24, align: 'right', weight: 900, family: FONT.num, color: sp ? PAL.goldHi : PAL.faint, ow: 4 });
     const ult = D.CHARACTERS()[hero.charId]?.ult;
     if (ult) text(ctx, ellipsize(ctx, `필살기 · ${ult.name}`, 132, 11, 700), x + 10, y + 50, { size: 11, weight: 700, color: ult.color ?? PAL.goldHi });
-    text(ctx, input.touchMode ? '전투 중 ⇄ 버튼: 페이지 전환' : '전투 중 Q·E: 페이지 전환', x + 10, y + 64, { size: 10, weight: 600, color: PAL.faint, ow: 2 });
+    if (h >= 66) text(ctx, input.touchMode ? '전투 중 ⇄ 버튼: 페이지 전환' : input.mode === 'pad' ? '전투 중 스킬 페이지 버튼: 전환' : '전투 중 Q·E: 페이지 전환', x + 10, y + 64, { size: 10, weight: 600, color: PAL.faint, ow: 2 });
     const sx0 = x + 158, sw = (w - 166) / 4;
     for (let k = 0; k < 4; k++) {
       const id = hero.slots?.[k] ?? null, sk = id ? D.SKILLS()[id] : null;
       const cx = sx0 + k * sw + 26, cy = y + h / 2 + 2;
       const r = { x: sx0 + k * sw, y: y + 6, w: sw - 6, h: h - 10, k };
-      this.slotRects.push(r);
+      this.slotRects.push(this.m.ges.zone(r, 'primary', { src: 'skills.slot' }));
       const sel = this.sub === 'slots' && this.slotI === k;
       if (k === 2) { ctx.fillStyle = 'rgba(200,160,90,0.25)'; ctx.fillRect(r.x - 4, y + 10, 1, h - 20); }
       rr(ctx, cx - 21, cy - 21, 42, 42, 6);
       ctx.fillStyle = '#0c070e'; ctx.fill();
       ctx.strokeStyle = sel ? PAL.goldHi : sk ? PAL.goldMid : '#3a2e2a'; ctx.lineWidth = sel ? 2 : 1.5; ctx.stroke();
       if (sk) { ctx.save(); rr(ctx, cx - 19, cy - 19, 38, 38, 5); ctx.clip(); try { drawSkillGlyph(ctx, sk, cx, cy, 40); } catch (e) { /* 무시 */ } ctx.restore(); }
-      keycap(ctx, input.touchMode ? (k % 2 ? 'S2' : 'S1') : k % 2 ? 'D' : 'S', cx - 27, cy + 8, { h: 16 });
+      // 슬롯 버튼: 지금 기기의 글리프 (키보드 S/D · 패드 LB/RB · 터치 S1/S2)
+      if (!drawGlyph(ctx, k % 2 ? 'skill2' : 'skill1', cx - 27, cy + 8, 16)) keycap(ctx, k % 2 ? 'S2' : 'S1', cx - 27, cy + 8, { h: 16 });
       text(ctx, k < 2 ? 'Ⅰ' : 'Ⅱ', cx + 18, cy - 12, { size: 11, weight: 900, family: FONT.num, color: PAL.gold });
       text(ctx, sk ? ellipsize(ctx, sk.name, sw - 58, 12, 700) : '비어 있음', cx + 26, cy + 4, { size: 12, weight: 700, color: sk ? PAL.bone : PAL.faint, ow: 2 });
       if (sk) text(ctx, `Lv ${this.lv(id)}`, cx + 26, cy + 19, { size: 10, weight: 700, family: FONT.num, color: PAL.dim });
@@ -267,7 +289,7 @@ export class SkillsTab extends Tab {
     divider(ctx, x + 14, cy + 4, w - 28);
     cy += 26;
     // 현재 / 다음
-    const btnH = 38, foot = y + h - btnH - 18;
+    const btnH = input.touchMode ? 44 : 38, foot = y + h - btnH - 18;
     const reqs = D.reqsOf(this.hero, sk);
     const needLv = (sk.reqLevel ?? 1) + lv * 2;
     const reqList = [{ text: `캐릭터 레벨 ${needLv}`, ok: this.hero.level >= needLv }, ...reqs.filter((r) => !r.text.startsWith('캐릭터 레벨')), { text: `스킬 포인트 ${sk.spCost ?? 1}`, ok: (this.hero.sp ?? 0) >= (sk.spCost ?? 1) }];
@@ -300,7 +322,7 @@ export class SkillsTab extends Tab {
     const bw = (w - 28 - (acts.length - 1) * 8) / Math.max(1, acts.length);
     acts.forEach((a, k) => {
       const r = { x: x + 14 + k * (bw + 8), y: y + h - btnH - 12, w: bw, h: btnH, run: a.run };
-      if (!a.disabled) this.btnRects.push(r);
+      if (!a.disabled) this.btnRects.push(this.m.ges.zone(r, 'primary', { src: 'skills.act' }));
       gbutton(ctx, r, a.label, { hot: k === 0 && !a.disabled, disabled: a.disabled, size: 14, t, sub: k === 0 && lv < max ? `SP ${sk.spCost ?? 1}` : null });
     });
   }

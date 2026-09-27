@@ -3,6 +3,7 @@ import { text, FONT } from '../../core/ui.js';
 import { audio } from '../../core/audio.js';
 import { clamp } from '../../core/math.js';
 import { input } from '../../core/input.js';
+import { drawGlyph } from '../../core/prompts.js';
 import { cmdToText } from '../overlays.js';
 import * as LoreM from '../../data/lore.js';
 import { Tab } from './base.js';
@@ -22,9 +23,20 @@ export class DocsTab extends Tab {
     this.i = 0; this.li = 0; this.sub = 'grid';
     this.sc = new Scroller();
     this.cardRects = []; this.rowRects = []; this.modeRects = []; this.readRect = null;
+    this.gridRows = null; // 비전서 격자의 줄 (보이는 순서의 비전서 번호 배열들) — 방향키 이동용
   }
-  get docIds() { return LoreM.DOC_ORDER?.length ? LoreM.DOC_ORDER : Object.keys(D.DOCS()); }
-  get loreIds() { const o = LoreM.LORE_ORDER?.length ? LoreM.LORE_ORDER : Object.keys(D.LORE()); return o.filter((id) => D.LORE()[id]); }
+  /** 2부를 아는가 (모르면 2부 비전서·기록은 숨기고 총수도 1부만 — MASTER_PLAN §1.14) */
+  get p2() { return D.p2Known(this.state); }
+  get docIds() {
+    const all = LoreM.DOC_ORDER?.length ? LoreM.DOC_ORDER : Object.keys(D.DOCS());
+    const p2 = this.p2;
+    return all.filter((id) => D.DOCS()[id] && (p2 || !D.isP2Stage(D.DOCS()[id].stage)));
+  }
+  get loreIds() {
+    const o = LoreM.LORE_ORDER?.length ? LoreM.LORE_ORDER : Object.keys(D.LORE());
+    const p2 = this.p2;
+    return o.filter((id) => D.LORE()[id] && (p2 || !D.isP2Stage(D.LORE()[id].stage)));
+  }
   hasDoc(id) { return (this.state.progress?.docs || []).includes(id); }
   hasLore(id) { return (this.state.progress?.lore || []).includes(id); }
   setMode(k) { if (k === this.mode) return; this.mode = k; this.sub = 'grid'; this.sc.reset(); audio.sfx('menu_move'); }
@@ -41,23 +53,36 @@ export class DocsTab extends Tab {
       audio.sfx('menu_ok'); this.game.push('document', { loreId: id });
     }
   }
+  /** 격자에서 줄을 옮긴다 (1부/2부 사이의 표제를 건너 같은 열 근처로) → 성공하면 true */
+  gridStep(d) {
+    const rows = this.gridRows;
+    if (!rows?.length) return false;
+    const r = rows.findIndex((row) => row.includes(this.i));
+    if (r < 0) return false;
+    const nr = r + d;
+    if (nr < 0 || nr >= rows.length) return false;
+    const c = rows[r].indexOf(this.i);
+    this.i = rows[nr][Math.min(c, rows[nr].length - 1)];
+    return true;
+  }
 
   update(dt, nav, ges, focused) {
+    this.sc.update(dt, this.mode === 0 ? this.gridRect : this.listRect, ges);
     for (let k = 0; k < this.modeRects.length; k++) if (ges.tap(this.modeRects[k])) { this.m.focus = 'content'; this.setMode(k); return; }
     if (ges.tap(this.readRect)) { this.m.focus = 'content'; this.read(); return; }
-    if (this.mode === 0) {
-      for (let k = 0; k < this.cardRects.length; k++) {
-        const r = this.cardRects[k];
-        if (ges.hoverIn(r)) { this.i = k; this.sub = 'grid'; }
-        if (ges.tap(r)) { this.m.focus = 'content'; this.sub = 'grid'; if (this.i === k) this.read(); else { this.i = k; audio.sfx('menu_move'); } return; }
-      }
-    } else {
-      this.sc.update(dt, this.listRect, ges);
-      if (!this.sc.dragging) for (let k = 0; k < this.rowRects.length; k++) {
-        const r = this.rowRects[k];
-        if (!r) continue;
-        if (ges.hoverIn(r)) { this.li = k; this.sub = 'grid'; }
-        if (ges.tap(r)) { this.m.focus = 'content'; this.sub = 'grid'; if (this.li === k) this.read(); else { this.li = k; audio.sfx('menu_move'); } return; }
+    const items = this.mode === 0 ? this.cardRects : this.rowRects;
+    if (!this.sc.dragging) {
+      for (let k = 0; k < items.length; k++) {
+        const r = items[k];
+        if (!r || r.thid) continue;
+        const cur = this.mode === 0 ? this.i : this.li;
+        if (ges.hoverIn(r) && cur !== k) { if (this.mode === 0) this.i = k; else this.li = k; this.sub = 'grid'; }
+        if (ges.tap(r)) {
+          this.m.focus = 'content'; this.sub = 'grid';
+          if (cur === k) this.read();
+          else { if (this.mode === 0) this.i = k; else this.li = k; audio.sfx('menu_move'); }
+          return;
+        }
       }
     }
     if (!focused) return;
@@ -69,12 +94,12 @@ export class DocsTab extends Tab {
       return;
     }
     if (this.mode === 0) {
-      const n = this.docIds.length, C = this.cols || 5;
+      const n = this.docIds.length;
       let mv = false;
       if (nav.left && this.i > 0) { this.i--; mv = true; }
       if (nav.right && this.i < n - 1) { this.i++; mv = true; }
-      if (nav.up) { if (this.i - C >= 0) { this.i -= C; mv = true; } else { this.sub = 'mode'; audio.sfx('menu_move'); } }
-      if (nav.down && this.i + C < n) { this.i += C; mv = true; }
+      if (nav.up) { if (this.gridStep(-1)) mv = true; else { this.sub = 'mode'; audio.sfx('menu_move'); } }
+      if (nav.down && this.gridStep(1)) mv = true;
       if (mv) audio.sfx('menu_move');
     } else {
       const n = this.loreIds.length;
@@ -85,11 +110,12 @@ export class DocsTab extends Tab {
     if (nav.confirm) this.read();
     if (nav.cancel) this.m.close();
   }
-  hints() { return [['↑↓←→', '고르기'], ['Z', '읽기', '한 번 더 터치하면 읽을 수 있습니다']]; }
+  hints() { return [['↑↓←→', '고르기'], ['Z', '읽기', '한 번 더 터치하면 읽을 수 있습니다 · 목록은 끌어서 넘기세요']]; }
 
   render(ctx, A) {
     const t = this.t, focused = this.m.focus === 'content';
-    const DW = Math.round(clamp(A.w * 0.36, 300, 400));
+    const touch = input.touchMode;
+    const DW = Math.round(clamp(A.w * 0.36, 280, 400));
     const GW = A.w - DW - 12;
     frame(ctx, A.x, A.y, GW, A.h);
     // 분류
@@ -98,9 +124,9 @@ export class DocsTab extends Tab {
     const nDoc = docs.filter((id) => this.hasDoc(id)).length, nLore = lores.filter((id) => this.hasLore(id)).length;
     const labels = [`비전서 ${nDoc} / ${docs.length}`, `기록물 ${nLore} / ${lores.length}`];
     let mx = A.x + 12;
-    const mh = input.touchMode ? 34 : 30;
+    const mh = touch ? 38 : 30, mgap = touch ? 16 : 12;
     labels.forEach((lb, k) => {
-      const w = measure(ctx, lb, 13, 800) + 34;
+      const w = Math.max(touch ? 110 : 0, measure(ctx, lb, 13, 800) + 34);
       const r = { x: mx, y: A.y + 12, w, h: mh };
       this.modeRects.push(r);
       const on = k === this.mode;
@@ -111,32 +137,66 @@ export class DocsTab extends Tab {
       glyph(ctx, k ? 'scroll' : 'book', r.x + 16, r.y + r.h / 2, 13, on ? PAL.goldHi : PAL.dim, 1.4);
       text(ctx, lb, r.x + 28, r.y + r.h / 2 + 5, { size: 13, weight: 800, color: on ? PAL.goldHi : PAL.text, ow: 2 });
       if (on && this.sub === 'mode' && focused) brackets(ctx, r.x, r.y, r.w, r.h, t);
-      mx += w + 8;
+      mx += w + 10;
     });
-    const top = A.y + 12 + mh + 12;
-    if (this.mode === 0) this.drawGrid(ctx, A.x, top, GW, A.y + A.h - top, t, focused);
-    else this.drawLoreList(ctx, A.x, top, GW, A.y + A.h - top, t, focused);
+    const top = A.y + 12 + mh + mgap;
+    if (this.mode === 0) { this.listRect = null; this.drawGrid(ctx, A.x, top, GW, A.y + A.h - top, t, focused); }
+    else { this.gridRect = null; this.cardRects.length = 0; this.drawLoreList(ctx, A.x, top, GW, A.y + A.h - top, t, focused); }
+    for (const r of this.modeRects) this.m.ges.zone(r, 'primary', { src: 'docs.mode' }); // 스크롤 항목보다 위
     this.drawDetail(ctx, A.x + GW + 12, A.y, DW, A.h);
   }
 
+  /** 비전서 격자: 스크롤 · 1부 / (2부를 알면) 2부 표제로 묶음 · 아래에 누적 효과 */
   drawGrid(ctx, x, y, w, h, t, focused) {
-    const ids = this.docIds, C = 5;
+    const ids = this.docIds, touch = input.touchMode;
+    const sumH = 40, gap = 8;
+    const GR = { x: x + 8, y, w: w - 16, h: h - sumH - 6 };
+    this.gridRect = GR;
+    const C = GR.w >= 520 ? 5 : GR.w >= 380 ? 4 : 3;
     this.cols = C;
-    const sumH = 44;
-    const rows = Math.ceil(ids.length / C) || 1;
-    const gap = 8, cw = (w - 24 - (C - 1) * gap) / C, ch = Math.min(96, (h - sumH - 12 - (rows - 1) * gap) / rows);
-    this.cardRects.length = 0;
+    const cw = (GR.w - 12 - (C - 1) * gap) / C;
+    // 줄 나누기: 1부 · 2부 (2부 앞에 표제)
     const DOCS = D.DOCS();
-    ids.forEach((id, k) => {
-      const c = k % C, r = Math.floor(k / C);
-      const cx = x + 12 + c * (cw + gap), cy = y + r * (ch + gap);
-      const rect = { x: cx, y: cy, w: cw, h: ch };
-      this.cardRects.push(rect);
-      const d = DOCS[id], have = this.hasDoc(id);
-      const sel = k === this.i && this.sub === 'grid';
-      this.drawTome(ctx, rect, d, have, sel, t);
-      if (sel) brackets(ctx, cx, cy, cw, ch, t, focused ? PAL.goldHi : PAL.goldMid);
+    const p1 = [], p2 = [];
+    ids.forEach((id, k) => (D.isP2Stage(DOCS[id]?.stage) ? p2 : p1).push(k));
+    const rows = [];
+    for (let k = 0; k < p1.length; k += C) rows.push(p1.slice(k, k + C));
+    const p2Row = rows.length;
+    for (let k = 0; k < p2.length; k += C) rows.push(p2.slice(k, k + C));
+    this.gridRows = rows;
+    const HB = 30; // 2부 표제 높이
+    // 카드 높이: 전부 들어가면 그대로(최대 96), 아니면 터치 60 · 그 밖 56 으로 두고 스크롤
+    const fitH = (GR.h - (rows.length - 1) * gap - (p2.length ? HB : 0)) / Math.max(1, rows.length);
+    const ch = Math.min(96, Math.max(touch ? 60 : 56, fitH));
+    const rowY = rows.map((_, r) => r * (ch + gap) + (p2.length && r >= p2Row ? HB : 0));
+    const totalH = rows.length ? rowY[rows.length - 1] + ch : 0;
+    this.sc.setMax(totalH - GR.h + 4);
+    const sr = rows.findIndex((row) => row.includes(this.i));
+    if (sr >= 0 && this.sc.shouldFollow(this.i)) this.sc.ensure(rowY[sr], rowY[sr] + ch, GR.h, 4);
+    clipBegin(ctx, GR);
+    this.cardRects.length = 0;
+    if (p2.length) {
+      const hy = GR.y + rowY[p2Row] - HB - this.sc.y + 2;
+      if (hy > GR.y - HB && hy < GR.y + GR.h) {
+        glowOval(ctx, GR.x + GR.w / 2, hy + 14, GR.w * 0.35, 12, '#8a2aff', 0.2);
+        text(ctx, '제2부 · 이계의 비전서', GR.x + GR.w / 2, hy + 19, { size: 13, align: 'center', weight: 800, family: FONT.title, color: '#d8b0ff', ow: 3 });
+      }
+    }
+    rows.forEach((row, r) => {
+      row.forEach((k, c) => {
+        const id = ids[k];
+        const cx = GR.x + 6 + c * (cw + gap), cy = GR.y + rowY[r] - this.sc.y;
+        const rect = this.m.ges.zone({ x: cx, y: cy, w: cw, h: ch }, 'primary', { clip: GR, src: 'docs.card' });
+        this.cardRects[k] = rect;
+        if (cy > GR.y + GR.h || cy + ch < GR.y) return;
+        const d = DOCS[id], have = this.hasDoc(id);
+        const sel = k === this.i && this.sub === 'grid';
+        this.drawTome(ctx, rect, d, have, sel, t);
+        if (sel) brackets(ctx, cx, cy, cw, ch, t, focused ? PAL.goldHi : PAL.goldMid);
+      });
     });
+    clipEnd(ctx, GR, this.sc);
+    scrollbar(ctx, GR.x + GR.w - 4, GR.y, GR.h, this.sc, GR.h);
     // 합계
     const sy = y + h - sumH;
     divider(ctx, x + 12, sy, w - 24, { center: false, a: 0.5 });
@@ -179,31 +239,42 @@ export class DocsTab extends Tab {
       text(ctx, '?', cx, cy + 9, { size: 26, align: 'center', weight: 900, family: FONT.num, color: '#3e3238', ow: 0 });
       text(ctx, '???', cx, r.y + r.h - 12, { size: 12, align: 'center', weight: 800, color: '#5a4a50', ow: 2 });
     }
-    const st = D.STAGES()[d?.stage];
-    if (st?.chapter) text(ctx, `${st.chapter}장`, r.x + 16, r.y + 15, { size: 10, weight: 800, color: have ? PAL.dim : PAL.faint, ow: 2 });
+    const ch = D.stageChapter(d?.stage);
+    if (ch) text(ctx, `${ch}장`, r.x + 16, r.y + 15, { size: 10, weight: 800, color: have ? PAL.dim : PAL.faint, ow: 2 });
   }
 
+  /** 기록물 목록: 1부 / (2부를 알면) 2부 표제 · 끌기 스크롤 · 터치 줄 48 */
   drawLoreList(ctx, x, y, w, h, t, focused) {
-    const ids = this.loreIds, RH = 44;
+    const ids = this.loreIds, RH = input.touchMode ? 48 : 44, HB = 30;
     const LR = { x: x + 8, y, w: w - 16, h: h - 10 };
     this.listRect = LR;
-    this.sc.setMax(ids.length * RH - LR.h);
-    if (ids.length) this.sc.ensure(this.li * RH, this.li * RH + RH, LR.h);
+    const L = D.LORE(), cats = LoreM.LORE_CATS || {};
+    const firstP2 = ids.findIndex((id) => D.isP2Stage(L[id]?.stage));
+    const rowY = (k) => k * RH + (firstP2 >= 0 && k >= firstP2 ? HB : 0);
+    this.sc.setMax((ids.length ? rowY(ids.length - 1) + RH : 0) - LR.h);
+    if (ids.length && this.sc.shouldFollow(this.li)) this.sc.ensure(rowY(this.li), rowY(this.li) + RH, LR.h);
     clipBegin(ctx, LR);
     this.rowRects.length = 0;
-    const L = D.LORE(), cats = LoreM.LORE_CATS || {};
+    if (firstP2 >= 0) {
+      const hy = LR.y + rowY(firstP2) - HB - this.sc.y;
+      if (hy > LR.y - HB && hy < LR.y + LR.h) {
+        glowOval(ctx, LR.x + LR.w / 2, hy + 15, LR.w * 0.35, 12, '#8a2aff', 0.2);
+        text(ctx, '제2부 · 이계의 기록', LR.x + LR.w / 2, hy + 20, { size: 13, align: 'center', weight: 800, family: FONT.title, color: '#d8b0ff', ow: 3 });
+      }
+    }
     ids.forEach((id, k) => {
-      const ry = LR.y + k * RH - this.sc.y;
-      const r = { x: LR.x, y: ry, w: LR.w - 8, h: RH - 3 };
+      const ry = LR.y + rowY(k) - this.sc.y;
+      const r = this.m.ges.zone({ x: LR.x, y: ry, w: LR.w - 8, h: RH - 3 }, 'list', { clip: LR, src: 'docs.lore' });
       this.rowRects[k] = r;
       if (ry > LR.y + LR.h || ry + RH < LR.y) return;
       const e = L[id], have = this.hasLore(id), sel = k === this.li && this.sub === 'grid';
       if (sel) selBar(ctx, r.x, r.y, r.w, r.h, t, { dim: !focused });
       else if (k % 2 === 0) { ctx.fillStyle = 'rgba(255,230,200,0.025)'; ctx.fillRect(r.x, r.y, r.w, r.h); }
       glyph(ctx, CAT_GLYPH[e.cat] ?? 'scroll', r.x + 22, r.y + r.h / 2, 16, have ? PAL.goldMid : '#3e3238', 1.5);
+      const sl = D.stageLabel(e.stage);
       text(ctx, have ? ellipsize(ctx, e.name, r.w - 190, 14, 800) : '???', r.x + 42, r.y + r.h / 2 + 5, { size: 14, weight: 800, color: have ? (sel ? PAL.goldHi : PAL.bone) : PAL.faint, ow: 3 });
-      text(ctx, D.stageLabel(e.stage), r.x + r.w - 10, r.y + r.h / 2 + 4, { size: 11, align: 'right', weight: 600, color: PAL.dim, ow: 2 });
-      if (have && cats[e.cat]) pill(ctx, cats[e.cat], r.x + r.w - 10 - measure(ctx, D.stageLabel(e.stage), 11, 600) - 8, r.y + r.h / 2 - 8, { align: 'right', size: 10, h: 16, color: PAL.gold });
+      text(ctx, sl, r.x + r.w - 10, r.y + r.h / 2 + 4, { size: 11, align: 'right', weight: 600, color: PAL.dim, ow: 2 });
+      if (have && cats[e.cat]) pill(ctx, cats[e.cat], r.x + r.w - 10 - measure(ctx, sl, 11, 600) - 8, r.y + r.h / 2 - 8, { align: 'right', size: 10, h: 16, color: PAL.gold });
     });
     if (!ids.length) text(ctx, '기록물 정보가 없습니다', LR.x + LR.w / 2, LR.y + 50, { size: 14, align: 'center', color: PAL.faint });
     clipEnd(ctx, LR, this.sc);
@@ -241,13 +312,15 @@ export class DocsTab extends Tab {
       cy += 12;
       text(ctx, `커맨드 기술 · ${tech.name}`, x + 20, cy + 8, { size: 14, weight: 800, color: '#ffb070' });
       cy += 22;
-      const keys = cmdToText(tech.cmd).split(' ').filter(Boolean);
+      // 방향은 화살표 키캡, 버튼(공격 등)은 지금 기기의 글리프 (키보드 X · 패드 □/X · 터치 버튼)
+      const cmd = Array.isArray(tech.cmd) ? tech.cmd : [];
       let kx = x + 20;
-      keys.forEach((kk, i) => {
-        const big = kk.length === 1;
-        const kw = keycap(ctx, kk, kx, cy, { h: 26, color: big ? PAL.goldHi : '#ffd0a0' });
-        kx += kw + (i < keys.length - 1 ? 16 : 0);
-        if (i < keys.length - 1) text(ctx, '+', kx - 9, cy + 18, { size: 12, align: 'center', color: PAL.dim, ow: 0 });
+      cmd.forEach((c, i) => {
+        let kw = 0;
+        if (typeof c === 'string' && c.startsWith('btn:')) kw = drawGlyph(ctx, c.slice(4), kx, cy, 26);
+        if (!kw) { const kk = cmdToText([c]); kw = keycap(ctx, kk, kx, cy, { h: 26, color: kk.length === 1 ? PAL.goldHi : '#ffd0a0' }); }
+        kx += kw + (i < cmd.length - 1 ? 16 : 0);
+        if (i < cmd.length - 1) text(ctx, '+', kx - 9, cy + 18, { size: 12, align: 'center', color: PAL.dim, ow: 0 });
       });
       cy += 44;
       cy += para(ctx, tech.desc ?? '', x + 20, cy, w - 40, { size: 13, color: PAL.bone, weight: 600, max: 2 });
@@ -268,11 +341,11 @@ export class DocsTab extends Tab {
       cy += 8;
     }
     // 본문
-    const btnH = 34;
+    const btnH = input.touchMode ? 44 : 34;
     divider(ctx, x + 14, cy + 8, w - 28, { center: false, a: 0.35 });
-    const maxL = Math.max(1, Math.floor((y + h - btnH - 24 - (cy + 30)) / 19));
-    para(ctx, d.text ?? '', x + 20, cy + 30, w - 40, { size: 12, color: '#c8b898', max: maxL, family: FONT.title, weight: 700 });
-    this.readRect = { x: x + w / 2 - 70, y: y + h - btnH - 12, w: 140, h: btnH };
+    const maxL = Math.floor((y + h - btnH - 24 - (cy + 30)) / 18) + 1;
+    if (maxL > 0) para(ctx, d.text ?? '', x + 20, cy + 30, w - 40, { size: 12, color: '#c8b898', max: maxL, family: FONT.title, weight: 700 });
+    this.readRect = this.m.ges.zone({ x: x + w / 2 - 75, y: y + h - btnH - 12, w: 150, h: btnH }, 'primary', { src: 'docs.read' });
     gbutton(ctx, this.readRect, '전문 읽기', { icon: 'book', size: 13, t, hot: this.m.ges.over(this.readRect) });
   }
 
@@ -282,7 +355,7 @@ export class DocsTab extends Tab {
     const have = this.hasLore(id), t = this.t;
     const cats = LoreM.LORE_CATS || {};
     // 양피지
-    const px = x + 14, py = y + 14, pw = w - 28, ph = h - 70;
+    const px = x + 14, py = y + 14, pw = w - 28, ph = h - (input.touchMode ? 44 : 34) - 36;
     const g = ctx.createLinearGradient(0, py, 0, py + ph);
     g.addColorStop(0, have ? '#e2d4ae' : '#3a3036'); g.addColorStop(1, have ? '#c0ac80' : '#221c20');
     rr(ctx, px, py, pw, ph, 3); ctx.fillStyle = g; ctx.fill();
@@ -301,7 +374,8 @@ export class DocsTab extends Tab {
     ctx.fillStyle = '#8a2a1a'; ctx.fillRect(x + w / 2 - 60, py + 72, 120, 2);
     const lines = Math.max(1, Math.floor((ph - 110) / 21));
     para(ctx, e.text ?? '', px + 20, py + 100, pw - 40, { size: 13, lh: 1.6, color: '#2a1a0a', family: FONT.title, weight: 700, ow: 0, max: lines });
-    this.readRect = { x: x + w / 2 - 70, y: y + h - 46, w: 140, h: 34 };
+    const bh = input.touchMode ? 44 : 34;
+    this.readRect = this.m.ges.zone({ x: x + w / 2 - 75, y: y + h - bh - 12, w: 150, h: bh }, 'primary', { src: 'docs.read' });
     gbutton(ctx, this.readRect, '크게 읽기', { icon: 'book', size: 13, t, hot: this.m.ges.over(this.readRect) });
   }
 }

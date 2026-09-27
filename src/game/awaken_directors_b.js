@@ -409,10 +409,14 @@ function hook() {
     bus.on('classChanged', () => { PREP_KEY = null; schedulePrep(400); });
     bus.on('roomEntered', () => { if (!liveCast()) schedulePrep(900); });
     // 각성 시전 (컷인 시작): 장비를 바꾼 뒤라 잔상이 낡았으면 컷인이 도는 동안(월드 정지) 한 장씩 굽는다
+    // (스테이지에 들어오자마자 각성했거나 미리 굽기가 아직 돌지 않았으면 스프라이트도 여기서: 월드가 멈춘 컷인 동안, 프레임 사이 작업으로)
     bus.on('awakenCast', (e) => {
       const w = game?.world, p = w?.player;
       if (!p || !AWAKEN_DIRECTOR_B[e?.charId ?? p.hero?.charId]) return;
-      setTimeout(() => { try { prepPoses(w, p, 8); } catch (err) { console.warn('[awakenB] pose', err); } }, 0);
+      setTimeout(() => {
+        try { ensurePool(); prepareAwakenB(w, p); } catch (err) { console.warn('[awakenB] prepare', err); }
+        setTimeout(() => { try { prepPoses(w, p, 8); } catch (err) { console.warn('[awakenB] pose', err); } }, 0);
+      }, 0);
     });
   } catch (e) { console.warn('[awakenB] bus', e); }
 }
@@ -430,8 +434,10 @@ function liveCast() {
   return false;
 }
 // 부팅 뒤 한가할 때 풀을 만든다 (모듈 최상위에서는 가져온 값에 접근하지 않는다: 순환 import 규칙)
+// 이벤트 연결은 모듈 그래프 평가가 끝난 바로 뒤 (첫 각성보다 한참 먼저), 캔버스 풀·미리 굽기는 부팅이 끝나고 한가할 때
 if (typeof window !== 'undefined' && typeof setTimeout === 'function') {
-  setTimeout(() => { hook(); idle(() => { try { ensurePool(); prepareAwakenB(); } catch (e) { console.warn('[awakenB] pool', e); } }, 2500); }, 1600);
+  setTimeout(() => { try { hook(); } catch (e) { console.warn('[awakenB] hook', e); } }, 0);
+  setTimeout(() => idle(() => { try { ensurePool(); prepareAwakenB(); } catch (e) { console.warn('[awakenB] pool', e); } }, 2500), 1600);
 }
 
 // ═══════════════════════════ 영웅 잔상 비트맵 (drawHero 1회) ═══════════════════════════

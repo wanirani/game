@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<base href="../">
+<title>영웅 턴테이블 갤러리</title>
+<style>
+  html, body { margin: 0; background: #07040a; color: #d8ccb8; font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif; }
+  #bar { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; gap: 14px; align-items: center; padding: 8px 12px; background: #140a12ee; border-bottom: 1px solid #5a4020; font-size: 14px; }
+  #bar b { color: #e8c872; }
+  #bar input[type=range] { width: 260px; }
+  #bar label { display: inline-flex; gap: 6px; align-items: center; }
+  #top { display: flex; gap: 16px; padding: 10px 12px 0; align-items: flex-start; flex-wrap: wrap; }
+  #live { border: 1px solid #5a4020; border-radius: 4px; }
+  #note { max-width: 760px; font-size: 13px; line-height: 1.6; color: #a89880; }
+  #note code { color: #e8c872; }
+  #status { color: #9fe8ff; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<div id="bar">
+  <b>영웅 턴테이블</b>
+  <label>각도 보정 <input id="off" type="range" min="-180" max="180" step="1" value="0"> <span id="offv">0°</span></label>
+  <label>동작 <select id="pose"><option value="idle">대기</option><option value="cast">시전</option><option value="charge">모으기</option><option value="hurt">피격</option></select></label>
+  <label><input id="auto" type="checkbox" checked> 미리보기 자동 회전</label>
+  <label><input id="legacy" type="checkbox"> 채색 퍼펫 끄기 (벡터·옆모습 대체)</label>
+  <span id="status">불러오는 중…</span>
+</div>
+<div id="top">
+  <canvas id="live" width="320" height="300"></canvas>
+  <div id="note">
+    영웅 6명 × {기본 직업, 2차 전직, 풀 장비} × 8방향 (0° 오른쪽 옆모습 · 45° 3/4 앞 · 90° 앞모습 · 135° 3/4 앞(왼쪽) · 180° 왼쪽 옆모습 · −135° 3/4 뒤 · −90° 뒷모습 · −45° 3/4 뒤).
+    각도 보정 슬라이더는 모든 칸에 더해진다 (칸 사이 각의 교차 압축 확인용).
+    왼쪽 미리보기는 메뉴와 같은 <code>HeroView</code> + <code>HeroStage</code> + 받침대(8방향 점·회전하는 룬 고리)로 그린다 — 슬라이더가 각도, 자동 회전은 6초 대기 뒤 0.6 rad/s.
+    풀 장비: 최고 등급 무기(+13, 전설) · 투구 · 판금 갑옷 · 망토(왕실) · 기운 장신구.
+    <br>QA: <code>window.__tt</code> (heroes, looks, render(hi, li, deg, w, h) → canvas), <code>window.__ready</code>.
+  </div>
+</div>
+<canvas id="cv"></canvas>
+<script type="module">
+// 턴테이블 갤러리 (platform.md §7.3 테스트 페이지, WP-5): 6 영웅 × 3 외형 × 8 방향 + 각도 슬라이더.
+// 렌더러 계약: drawHero(ctx, p, null, { yaw }) — hero.js 의 HERO_VIEW 는 네임스페이스로 읽는다 (MASTER_PLAN R6).
+import * as HERO from './src/render/hero.js';
+import * as PUP from './src/render/hero_puppet.js';
+import { HeroView, HeroStage, pedestal, accentOf } from './src/scenes/menu/hero_view.js';
+import { CHARACTERS, CHAR_ORDER } from './src/data/characters.js';
+import { CLASSES } from './src/data/classes.js';
+import { ITEMS, makeItem } from './src/data/items.js';
+import { composeLook } from './src/game/stats.js';
+
+const Q = new URLSearchParams(location.search);
+const YAWS = [0, 45, 90, 135, 180, -135, -90, -45];
+const LOOK_NAMES = ['기본 직업', '2차 전직', '풀 장비'];
+const LABEL_W = 150, CW = 136, RH = 176, TOP = 34;
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const DPR = Math.min(2, window.devicePixelRatio || 1);
+const W = LABEL_W + CW * YAWS.length + 10;
+
+// ── 외형 만들기 (메뉴와 같은 composeLook: 직업 계보 + 장비 칸) ──
+const heroes = (CHAR_ORDER || Object.keys(CHARACTERS)).filter((id) => CHARACTERS[id]).slice(0, 6);
+function classesOf(cid) { return Object.values(CLASSES).filter((c) => c.charId === cid); }
+function bestOf(filter) {
+  let best = null;
+  for (const [id, b] of Object.entries(ITEMS)) {
+    if (!filter(b, id)) continue;
+    const k = (b.tier ?? 0) * 10 + (b.visual?.style ?? 0);
+    if (!best || k > best.k) best = { id, k };
+  }
+  return best?.id ?? null;
+}
+function lookFor(cid, which) {
+  const ch = CHARACTERS[cid];
+  const cls = classesOf(cid);
+  const base = cls.find((c) => c.tier === 0) || cls[0];
+  const t2 = cls.filter((c) => c.tier === 2);
+  const promo = t2[(heroes.indexOf(cid) * 3) % Math.max(1, t2.length)] || base;
+  const classId = which === 0 ? base.id : promo.id;
+  const state = { inventory: [], heroes: {} };
+  const hero = { charId: cid, classId, level: 60, equip: {} };
+  if (which === 2) {
+    const pick = {
+      weapon: bestOf((b) => b.slot === 'weapon' && b.wtype === ch.weaponType && b.visual),
+      head: bestOf((b) => b.slot === 'head' && b.visual?.headgear === 'helm'),
+      body: bestOf((b) => b.slot === 'body' && b.visual?.armor === 'plate'),
+      cloak: bestOf((b) => b.slot === 'cloak' && b.visual?.cape === 'royal'),
+      acc1: bestOf((b) => b.slot === 'acc' && b.visual?.aura),
+    };
+    for (const [slot, id] of Object.entries(pick)) {
+      if (!id) continue;
+      const it = makeItem(id, { rarity: 5, level: slot === 'weapon' || slot === 'body' ? 13 : 0 });
+      if (!it) continue;
+      state.inventory.push(it); hero.equip[slot] = it.uid;
+    }
+  }
+  const look = composeLook(state, hero);
+  look.classId = classId;
+  return { look, classId, className: CLASSES[classId]?.name ?? classId };
+}
+const rows = [];
+for (const cid of heroes) for (let li = 0; li < 3; li++) rows.push({ cid, li, ...lookFor(cid, li), rig: YAWS.map(() => ({})) });
+
+function ent(row, pose, rig) {
+  return { cx: 0, bottom: 0, facing: 1, anim: pose, animT: pose === 'hurt' ? 0.05 : pose === 'cast' ? 0.15 : 0.5, move: null, moveT: 0, atkSpeedMul: 1, charging: pose === 'charge' ? 0.5 : 0, muzzleT: 0,
+    look: row.look, ch: CHARACTERS[row.cid], vx: 0, vy: 0, onGround: true, rig, t: 3, stats: { reach: 0 } };
+}
+/** 한 칸 (QA 도 쓴다): 투명 배경 캔버스 w×h, 발 = 아래 가운데 */
+function renderCell(hi, li, deg, w = 160, h = 190, pose = 'idle') {
+  const row = rows[hi * 3 + li];
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d');
+  const p = ent(row, pose, {});
+  p.cx = w / 2; p.bottom = h - 12;
+  HERO.drawHero(g, p, null, { yaw: (deg * Math.PI) / 180, scale: (h - 30) / 96, noFx: true });
+  return c;
+}
+
+let pose = 'idle', off = 0;
+let loadUpTo = 0;   // 이 번호(영웅)까지만 그린다: 그리기가 퍼펫 로딩을 부르므로 영웅 하나씩 차례로 읽는다 (한꺼번에 수백 개를 요청하면 브라우저가 거절)
+function drawGrid(t = 3) {
+  const H = TOP + rows.length * RH + 10;
+  if (cv.width !== Math.round(W * DPR)) { cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR); cv.style.width = W + 'px'; cv.style.height = H + 'px'; }
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.fillStyle = '#07040a'; ctx.fillRect(0, 0, W, H);
+  ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#e8c872';
+  YAWS.forEach((d, i) => ctx.fillText(`${d}°${off ? ` (${d + off > 180 ? d + off - 360 : d + off < -180 ? d + off + 360 : d + off}°)` : ''}`, LABEL_W + CW * i + CW / 2, 22));
+  rows.forEach((row, r) => {
+    const y = TOP + r * RH;
+    ctx.fillStyle = r % 6 < 3 ? '#0e0812' : '#120a10'; ctx.fillRect(0, y, W, RH);
+    if (Math.floor(r / 3) > loadUpTo) { ctx.textAlign = 'left'; ctx.fillStyle = '#6a5a50'; ctx.font = '13px sans-serif'; ctx.fillText(`${CHARACTERS[row.cid].name.split(' ')[0]} · 불러오는 중…`, 10, y + 28); return; }
+    ctx.textAlign = 'left'; ctx.fillStyle = '#e8dcc8'; ctx.font = 'bold 15px sans-serif';
+    ctx.fillText(CHARACTERS[row.cid].name.split(' ')[0], 10, y + 28);
+    ctx.fillStyle = '#a89880'; ctx.font = '12px sans-serif';
+    ctx.fillText(LOOK_NAMES[row.li], 10, y + 48);
+    ctx.fillText(row.className, 10, y + 66);
+    const S = HERO.heroViewInfo?.({ look: row.look, ch: CHARACTERS[row.cid] });
+    ctx.fillStyle = S?.painted ? '#6ad08a' : '#d0a060';
+    ctx.fillText(S?.painted ? '채색 8방향' : '옆모습 대체', 10, y + 86);
+    YAWS.forEach((d, i) => {
+      const x = LABEL_W + CW * i;
+      ctx.strokeStyle = '#2a1a22'; ctx.strokeRect(x + 0.5, y + 0.5, CW - 1, RH - 1);
+      // 받침대 타원 (방향 점 포함)
+      pedestal(ctx, x + CW / 2, y + RH - 16, 0.62, t, accentOf(row.look), ((d + off) * Math.PI) / 180);
+      const p = ent(row, pose, row.rig[i]);
+      p.cx = x + CW / 2; p.bottom = y + RH - 16; p.t = t;
+      try { HERO.drawHero(ctx, p, null, { yaw: ((d + off) * Math.PI) / 180, scale: 1.45, noFx: false }); } catch (e) { console.error(e); }
+    });
+  });
+}
+
+// ── 왼쪽 위: 메뉴와 같은 HeroView 턴테이블 (슬라이더 = 각도) ──
+const live = document.getElementById('live');
+const lctx = live.getContext('2d');
+live.width = 320 * DPR; live.height = 300 * DPR; live.style.width = '320px'; live.style.height = '300px';
+const view = new HeroView({ turntable: true, game: null });
+const stage = new HeroStage();
+let liveRow = rows[2];
+view.set(liveRow.look, CHARACTERS[liveRow.cid]);
+let lastT = performance.now(), liveT = 0, legacy = false;
+function liveFrame() {
+  const now = performance.now(), dt = Math.min(0.05, (now - lastT) / 1000); lastT = now; liveT += dt;
+  view.autoSpin = document.getElementById('auto').checked;
+  view.update(dt);
+  lctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  lctx.clearRect(0, 0, 320, 300);
+  stage.draw(lctx, 0, 0, 320, 300, liveT, DPR, accentOf(liveRow.look));
+  const r = { x: 0, y: 0, w: 320, h: 300 };
+  view.stage(r);
+  pedestal(lctx, 160, 272, 1.25, liveT, accentOf(liveRow.look), view.yaw);
+  view.draw(lctx, 160, 272, 2.3);
+  lctx.fillStyle = '#e8c872'; lctx.font = 'bold 12px sans-serif'; lctx.textAlign = 'center';
+  lctx.fillText(`${view.viewLabel()}${view.spinning ? ' · 자동 회전' : ''}  (yaw ${Math.round((Math.atan2(Math.sin(view.yaw), Math.cos(view.yaw)) * 180) / Math.PI)}°)`, 160, 18);
+  requestAnimationFrame(liveFrame);
+}
+
+document.getElementById('off').addEventListener('input', (e) => {
+  off = Number(e.target.value) || 0;
+  document.getElementById('offv').textContent = `${off}°`;
+  view.yaw = view.yawGoal = view.userYaw = (off * Math.PI) / 180; view.mode = 'idle'; view.idleT = 0; view.spinning = false;
+  drawGrid();
+});
+document.getElementById('pose').addEventListener('change', (e) => { pose = e.target.value; drawGrid(); });
+document.getElementById('legacy').addEventListener('change', (e) => {
+  legacy = e.target.checked;
+  // 채색 퍼펫을 끄면 렌더러가 옆모습 카드 뒤집기로 대체한다 (HeroView 는 '옆모습' 이름·자동 회전 끔·옆모습에서만 멈춤)
+  PUP.setPuppetEnabled(!legacy);
+  drawGrid();
+});
+
+// ── 로딩: 칸을 한 번 그리면 필요한 퍼펫·턴테이블 시트를 요청한다 → 모두 준비되거나 20초가 지나면 __ready ──
+function readyCount() {
+  let n = 0;
+  for (const row of rows) { const S = HERO.heroViewInfo?.({ look: row.look, ch: CHARACTERS[row.cid] }); if (S?.painted) n++; }
+  return n;
+}
+window.__tt = {
+  heroes, looks: LOOK_NAMES, yaws: YAWS, rows: rows.map((r) => ({ cid: r.cid, li: r.li, classId: r.classId, cape: !!r.look.cape, painted: !!HERO.heroViewInfo?.({ look: r.look, ch: CHARACTERS[r.cid] })?.painted })),
+  heroView: HERO.HERO_VIEW ?? null,
+  render: renderCell,
+  /** 같은 외형에서 망토만 뺀 칸 (QA: 뒷모습에서 망토가 등을 덮는지) */
+  renderNoCape(hi, li, deg, w = 160, h = 190) {
+    const row = rows[hi * 3 + li];
+    const look = { ...row.look, cape: null };
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const p = ent({ ...row, look }, 'idle', {}); p.cx = w / 2; p.bottom = h - 12;
+    HERO.drawHero(c.getContext('2d'), p, null, { yaw: (deg * Math.PI) / 180, scale: (h - 30) / 96, noFx: true });
+    return c;
+  },
+  readyCount,
+};
+const heroReady = (hi) => rows.slice(hi * 3, hi * 3 + 3).every((row) => HERO.heroViewInfo?.({ look: row.look, ch: CHARACTERS[row.cid] })?.painted);
+(async () => {
+  requestAnimationFrame(liveFrame);
+  const per = Number(Q.get('wait')) || 8000;   // 영웅 하나당 최대 대기 (ms)
+  for (let hi = 0; hi < heroes.length; hi++) {
+    loadUpTo = hi;
+    drawGrid();
+    const t0 = performance.now();
+    while (!heroReady(hi) && performance.now() - t0 < per) {
+      await new Promise((r) => setTimeout(r, 120));
+      drawGrid();
+      document.getElementById('status').textContent = `불러오는 중… 채색 뷰 ${readyCount()}/${rows.length}`;
+    }
+  }
+  loadUpTo = heroes.length;
+  for (const [i, r] of window.__tt.rows.entries()) r.painted = !!HERO.heroViewInfo?.({ look: rows[i].look, ch: CHARACTERS[r.cid] })?.painted;
+  await new Promise((r) => setTimeout(r, 300));
+  drawGrid();
+  document.getElementById('status').textContent = `채색 뷰 ${readyCount()}/${rows.length} · HERO_VIEW ${HERO.HERO_VIEW ? `steps ${HERO.HERO_VIEW.steps}` : '없음 (임시 대체)'}`;
+  window.__ready = true;
+})();
+</script>
+</body>
+</html>

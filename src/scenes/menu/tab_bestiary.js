@@ -1,6 +1,9 @@
 // 도감 탭: 적(ENEMIES)·보스(BOSSES) 목록(장별 묶음) · 처치 수 · 실시간 렌더 미리보기(스테이지 배경 위) · 약점/내성/드롭/설명
 // 처치한 적만 정보 공개, 미발견은 실루엣
+// 2부(이계)는 1부 뒤에 따로 묶는다 (MASTER_PLAN §1.14). 플레이어가 2부를 모르는 동안(access.p2Known)은 2부 항목을 숨기고 총수도 1부만 센다.
+// 목록: 끌기·휠·오른쪽 스틱 스크롤, 방향키·패드로 고를 때만 선택을 따라간다 (P-01). 터치 줄 높이 46 (§6.3)
 import { text, FONT } from '../../core/ui.js';
+import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
 import { clamp, rgba } from '../../core/math.js';
 import { assets } from '../../core/assets.js';
@@ -26,21 +29,34 @@ export class BestiaryTab extends Tab {
   free() { if (this.sil) { this.sil.width = this.sil.height = 1; this.sil = null; } }
   build() {
     const E = D.ENEMIES(), B = D.BOSSES(), S = D.STAGES();
+    const p2 = D.p2Known(this.state);
+    this.p2 = p2;
     const rows = [], seen = new Set();
     const skip = (d) => !d || d.hidden || d.noBestiary || d.render === 'none' || /spawner/.test(d.id);
     const push = (id, boss = false) => { if (seen.has(id)) return; const d = boss ? B[id] : E[id]; if (skip(d)) return; seen.add(id); rows.push({ id, boss, def: d, no: 0 }); };
-    const common = Object.values(E).filter((d) => !Object.values(S).some((s) => (s.enemies || []).includes(d.id))).map((d) => d.id);
-    if (common.length) { rows.push({ header: '공용 · 어디서나' }); common.forEach((id) => push(id)); }
-    for (const sid of D.STAGE_ORDER()) {
-      const st = S[sid];
-      const ids = (st?.enemies || []).filter((id) => E[id] && !seen.has(id) && !skip(E[id]));
-      if (!ids.length) continue;
-      rows.push({ header: D.stageLabel(sid), sid });
-      ids.forEach((id) => push(id));
+    const group = (header, ids, boss = false, extra = {}) => {
+      const list = ids.filter((id) => !seen.has(id) && !skip(boss ? B[id] : E[id]));
+      if (!list.length) return;
+      rows.push({ header, ...extra });
+      list.forEach((id) => push(id, boss));
+    };
+    const inStage = new Set(Object.values(S).flatMap((s) => s.enemies || []));
+    // ── 제1부 ──
+    group('공용 · 어디서나', Object.keys(E).filter((id) => !inStage.has(id) && !D.isP2Enemy(id)));
+    for (const sid of D.STAGE_ORDER_P1()) group(D.stageLabel(sid), (S[sid]?.enemies || []).filter((id) => E[id] && !D.isP2Enemy(id)), false, { sid });
+    const bosses1 = D.STAGE_ORDER_P1().map((sid) => S[sid]?.boss).filter((id) => id && B[id]);
+    for (const id of Object.keys(B)) if (!bosses1.includes(id) && !D.isP2Boss(id)) bosses1.push(id);
+    group('보스', bosses1, true);
+    // ── 제2부 · 이계 (아는 경우에만) ──
+    if (p2) {
+      const start = rows.length;
+      for (const sid of D.P2_STAGE_IDS) group(D.stageLabel(sid), (S[sid]?.enemies || []).filter((id) => E[id]), false, { sid });
+      group('이계 · 떠도는 마물', Object.keys(E).filter((id) => D.isP2Enemy(id)));
+      const bosses2 = D.P2_STAGE_IDS.map((sid) => S[sid]?.boss).filter((id) => id && B[id]);
+      for (const id of Object.keys(B)) if (!bosses2.includes(id) && D.isP2Boss(id)) bosses2.push(id);
+      group('이계의 군주', bosses2, true);
+      if (rows.length > start) rows.splice(start, 0, { header: '제2부 · 이계', part: 2 });
     }
-    const bossIds = D.STAGE_ORDER().map((sid) => S[sid]?.boss).filter((id) => id && B[id]);
-    for (const id of Object.keys(B)) if (!bossIds.includes(id)) bossIds.push(id);
-    if (bossIds.length) { rows.push({ header: '보스' }); bossIds.forEach((id) => push(id, true)); }
     let n = 0;
     for (const r of rows) if (!r.header) r.no = ++n;
     this.rows = rows;
@@ -56,7 +72,7 @@ export class BestiaryTab extends Tab {
     if (r.boss) return r.def.stageId ?? Object.values(D.STAGES()).find((s) => s.boss === r.id)?.id;
     return Object.values(D.STAGES()).find((s) => (s.enemies || []).includes(r.id))?.id;
   }
-  onShow() { if (!this.rows) this.build(); }
+  onShow() { if (!this.rows || this.p2 !== D.p2Known(this.state)) this.build(); }
 
   update(dt, nav, ges, focused) {
     if (!this.rows) this.build();
@@ -66,7 +82,7 @@ export class BestiaryTab extends Tab {
     this.sc.update(dt, this.listRect, ges);
     if (!this.sc.dragging) {
       for (const r of this.rowRects) {
-        if (!r) continue;
+        if (!r || r.thid) continue;
         if (ges.hoverIn(r) && this.i !== r.k) this.i = r.k;
         if (ges.tap(r)) { this.m.focus = 'content'; if (this.i !== r.k) audio.sfx('menu_move'); this.i = r.k; return; }
       }
@@ -79,7 +95,7 @@ export class BestiaryTab extends Tab {
     if (nav.right) { this.i = Math.min(n - 1, this.i + 8); audio.sfx('menu_move'); }
     if (nav.cancel) this.m.close();
   }
-  hints() { return [['↑↓', '고르기'], ['←→', '8칸씩'], ['', '', '끌어서 목록을 넘기세요']].filter((h) => h[0]); }
+  hints() { return [['↑↓', '고르기', '마물을 터치해 고르세요 · 목록은 끌어서 넘기세요'], ['←→', '8칸씩']]; }
 
   render(ctx, A) {
     if (!this.rows) this.build();
@@ -91,19 +107,27 @@ export class BestiaryTab extends Tab {
     gauge(ctx, A.x + LW - 110, A.y + 17, 90, 5, this.entries.length ? found / this.entries.length : 0, '#e8c872', { glowEnd: false });
     const LR = { x: A.x + 8, y: A.y + 40, w: LW - 16, h: A.h - 48 };
     this.listRect = LR;
-    // 행 위치 계산 (머리줄 26, 항목 34)
-    const HH = 28, RH = 34;
+    // 행 위치 계산 (머리줄 28 · 부 표제 40, 항목 34 / 터치 46)
+    const HH = 28, PH = 40, RH = input.touchMode ? 46 : 34;
     let yy = 0, selTop = 0;
-    const pos = this.rows.map((r) => { const y = yy; yy += r.header ? HH : RH; return y; });
+    const pos = this.rows.map((r) => { const y = yy; yy += r.part ? PH : r.header ? HH : RH; return y; });
     let k = 0;
     this.rows.forEach((r, j) => { if (!r.header) { if (k === this.i) selTop = pos[j]; k++; } });
     this.sc.setMax(yy - LR.h);
-    this.sc.ensure(selTop, selTop + RH, LR.h, 30);
+    if (this.sc.shouldFollow(this.i)) this.sc.ensure(selTop, selTop + RH, LR.h, 30);
     clipBegin(ctx, LR);
     this.rowRects.length = 0;
     k = 0;
     this.rows.forEach((r, j) => {
       const y = LR.y + pos[j] - this.sc.y;
+      if (r.part) {   // 제2부 표제
+        if (y > LR.y - PH && y < LR.y + LR.h) {
+          glowOval(ctx, LR.x + LR.w / 2, y + 22, LR.w * 0.42, 14, '#8a2aff', 0.22);
+          text(ctx, r.header, LR.x + LR.w / 2, y + 27, { size: 15, align: 'center', weight: 800, family: FONT.title, color: '#d8b0ff', ow: 3 });
+          ctx.fillStyle = 'rgba(190,140,255,0.35)'; ctx.fillRect(LR.x + 10, y + 36, LR.w - 28, 1);
+        }
+        return;
+      }
       if (r.header) {
         if (y > LR.y - HH && y < LR.y + LR.h) {
           text(ctx, r.header, LR.x + 10, y + 19, { size: 12, weight: 800, family: FONT.title, color: PAL.gold, ow: 2 });
@@ -113,15 +137,16 @@ export class BestiaryTab extends Tab {
         return;
       }
       const kk = k++;
-      const rect = { x: LR.x, y, w: LR.w - 8, h: RH - 3, k: kk };
+      const rect = this.m.ges.zone({ x: LR.x, y, w: LR.w - 8, h: RH - 3, k: kk }, 'list', { clip: LR, src: 'bestiary.row' });
       this.rowRects.push(rect);
       if (y > LR.y + LR.h || y + RH < LR.y) return;
       const sel = kk === this.i, n = this.kills(r);
       if (sel) selBar(ctx, rect.x, rect.y, rect.w, rect.h, t, { dim: !focused });
-      text(ctx, `No.${String(r.no).padStart(3, '0')}`, rect.x + 14, rect.y + 21, { size: 11, weight: 700, family: FONT.num, color: n ? PAL.dim : PAL.faint, ow: 2 });
-      text(ctx, n ? ellipsize(ctx, r.def.name, rect.w - 150, 14, 800) : '???', rect.x + 74, rect.y + 21, { size: 14, weight: 800, color: n ? (sel ? PAL.goldHi : r.boss ? '#ffb070' : PAL.bone) : PAL.faint, ow: 3 });
-      if (r.boss) { if (n) glyph(ctx, 'crown', rect.x + rect.w - 18, rect.y + 16, 14, '#ffd070', 1.4); }
-      else if (n) text(ctx, `${n.toLocaleString('ko-KR')}`, rect.x + rect.w - 12, rect.y + 21, { size: 12, align: 'right', weight: 800, family: FONT.num, color: PAL.text, ow: 2 });
+      const ty = rect.y + rect.h / 2 + 5;
+      text(ctx, `No.${String(r.no).padStart(3, '0')}`, rect.x + 14, ty, { size: 11, weight: 700, family: FONT.num, color: n ? PAL.dim : PAL.faint, ow: 2 });
+      text(ctx, n ? ellipsize(ctx, r.def.name, rect.w - 150, 14, 800) : '???', rect.x + 74, ty, { size: 14, weight: 800, color: n ? (sel ? PAL.goldHi : r.boss ? '#ffb070' : PAL.bone) : PAL.faint, ow: 3 });
+      if (r.boss) { if (n) glyph(ctx, 'crown', rect.x + rect.w - 18, ty - 5, 14, '#ffd070', 1.4); }
+      else if (n) text(ctx, `${n.toLocaleString('ko-KR')}`, rect.x + rect.w - 12, ty, { size: 12, align: 'right', weight: 800, family: FONT.num, color: PAL.text, ow: 2 });
     });
     clipEnd(ctx, LR, this.sc);
     scrollbar(ctx, LR.x + LR.w - 4, LR.y, LR.h, this.sc, LR.h);
@@ -235,7 +260,7 @@ export class BestiaryTab extends Tab {
     frame(ctx, x, y, w, h);
     if (!r) { text(ctx, '도감 정보가 없습니다', x + w / 2, y + h / 2, { size: 14, align: 'center', color: PAL.faint }); return; }
     const n = this.kills(r), seen = n > 0, d = r.def;
-    const ph = Math.round(h * 0.47);
+    const ph = Math.round(h * (h < 360 ? 0.4 : 0.47)); // 낮은 화면(휴대폰 UI 배율)에서는 미리보기를 줄여 설명 자리를 남긴다
     this.drawPreview(ctx, r, x + 10, y + 10, w - 20, ph, seen);
     // 번호 / 처치 수 배지
     pill(ctx, `No.${String(r.no).padStart(3, '0')}`, x + 18, y + 18, { size: 11, h: 18, color: PAL.gold });
@@ -255,7 +280,7 @@ export class BestiaryTab extends Tab {
     divider(ctx, x + 14, cy + 10, w - 28);
     cy += 32;
     // 능력치 한 줄
-    const stats = [['Lv', d.lv ?? D.STAGES()[sid]?.level ?? 1], ['HP', d.hp], ['공격', d.atk], ['방어', d.def ?? 0], ['EXP', d.exp]];
+    const stats = [['Lv', d.lv ?? D.stageLevel(sid) ?? undefined], ['HP', d.hp], ['공격', d.atk], ['방어', d.def ?? 0], ['EXP', d.exp]];
     let sx = x + 20;
     for (const [k, v] of stats) {
       if (v === undefined) continue;
@@ -289,7 +314,8 @@ export class BestiaryTab extends Tab {
       cy += 20;
     }
     divider(ctx, x + 14, cy, w - 28, { center: false, a: 0.35 });
-    const maxL = Math.max(1, Math.floor((y + h - 12 - (cy + 20)) / 19));
-    para(ctx, d.desc ?? d.intro ?? '', x + 20, cy + 22, w - 40, { size: 13, color: '#d8ccb8', lh: 1.5, max: maxL });
+    // 설명: 틀 아래 가장자리(장식선)에 닿지 않게 들어가는 줄만
+    const maxL = Math.floor((y + h - 16 - (cy + 22)) / 19.5) + 1;
+    if (maxL > 0) para(ctx, d.desc ?? d.intro ?? '', x + 20, cy + 22, w - 40, { size: 13, color: '#d8ccb8', lh: 1.5, max: maxL });
   }
 }

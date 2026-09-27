@@ -1,0 +1,108 @@
+{
+ "package": "ART-ENEMY-1",
+ "model": "kling-image-v3_0_omni (img_resolution 2k)",
+ "prompts": "tools/painted/prompts/art-enemy-1.mjs (ENEMIES ref/sheet templates, EXTRAS for rig-reuse variants)",
+ "creditsPerImage": 2,
+ "budgetCredits": 900,
+ "note": "Result URLs expire after 24 h; every kept image is stored as q93 webp under tools/painted/enemies/<id>/src/ (the chosen Step-1 reference as <id>_ref.webp).",
+ "generations": [
+  {
+   "enemy": "zombie",
+   "step": "ref",
+   "generationId": "AXXA3ZsGgYBdPgNFwZvu7icFG63DEnkQPgRuWPjSvqNJFGd7VJuPaELr2io8mxoAWUlLdf20",
+   "tool": "text_to_image",
+   "aspect": "3:4",
+   "imageCount": 2
+  },
+  {
+   "enemy": "possessed",
+   "step": "ref",
+   "generationId": "Af_ynPdkHgv9zkVBvkW_fm2pJsXjqBCYLvxn_GfnYg862gaW-XEu29IWjeMDIn_w8g-6Kok_",
+   "tool": "text_to_image",
+   "aspect": "3:4",
+   "imageCount": 2
+  },
+  {
+   "enemy": "wolf",
+   "step": "ref",
+   "generationId": "AYPin41EfmgG7KM9VssuNNV4u82QdNR-OuJIBUBuNYaD9rowimDc8cVfd5MLPeppPEkiSC5Q",
+   "tool": "text_to_image",
+   "aspect": "4:3",
+   "imageCount": 2
+  },
+  {
+   "enemy": "crow",
+   "step": "ref",
+   "generationId": "AQxnnDLsco-bqwMW-KSwxmFlH7Bc5xtuVWcNgoIbBxm2pOOdS2j23vIWclyaZ40fLHUtHlfH",
+   "tool": "text_to_image",
+   "aspect": "4:3",
+   "imageCount": 2
+  },
+  {
+   "enemy": "gargoyle",
+   "step": "ref",
+   "generationId": "AaSUlR8iu77Etxo6Ff46R1XxJmLnGnoxxhEFmIxDZ4qv6869AmQQK-yDZVj7aUDSdm0Vx4V5",
+   "tool": "text_to_image",
+   "aspect": "4:3",
+   "imageCount": 2
+  },
+  {
+   "enemy": "medusa_head",
+   "step": "ref",
+   "generationId": "ASwhypuMfH_2_4gf08do1FnNRZTwKQzUxXAskgcBMEd0Exc-82duiPcuWiSjirTRX-SEzumf",
+   "tool": "text_to_image",
+   "aspect": "1:1",
+   "imageCount": 2
+  },
+  {
+   "enemy": "wisp",
+   "step": "ref",
+   "generationId": "Ad7vso-qv-N4KR6Wk7RDKvNbpAZNMenDvVpKpiugesTDVeVtPoaNiRrMeiXXs338x5Mv5ocp",
+   "tool": "text_to_image",
+   "aspect": "1:1",
+   "imageCount": 2
+  },
+  {
+   "enemy": "mimic",
+   "step": "ref",
+   "generationId": "AaM37PXrG4IauWa4lXQjO36Y24PsBgcuv_PTq99G3VyEnEGVKo33fuUVYXofeuys545MC3-_",
+   "tool": "text_to_image",
+   "aspect": "4:3",
+   "imageCount": 2
+  },
+  {
+   "enemy": "mud_man",
+   "step": "ref",
+   "generationId": "AaYkQnhDokvwQOTCHKDdSxFG9cbuKNxOGQTwl2TCHe7pWE3mu6opuv0PXclMs3uP6z5w9XHr",
+   "tool": "text_to_image",
+   "aspect": "3:4",
+   "imageCount": 2
+  },
+  {
+   "enemy": "bone_thrower",
+   "step": "extras",
+   "generationId": "AZJmxUzIXUGRM04B7_Bli_Fs3gz0puU17IBnIjjmpKpcIdhhixXKKqzdKQXFIGdPWoINW3vo",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2
+  },
+  {
+   "enemy": "skeleton_archer",
+   "step": "extras",
+   "generationId": "AT8NsqXFoxAoBGjwwA_Z3qIb3BxZx2Aluknayc_U3ufPXu7fXt_PIpdMGJdjmV2CXb6PIhRX",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2
+  },
+  {
+   "enemy": "axe_armor",
+   "step": "extras",
+   "generationId": "AVo0Iv7cHLguT78Kr4uYUkgyVV9Pr-LW3KgBVRA2G7deS3j3Zf6y3QNACfMIo-6BRB3TI3OI",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2
+  }
+ ],
+ "imagesSpent": 24,
+ "creditsSpent": 48
+}
