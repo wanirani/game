@@ -18,7 +18,7 @@ import { currentHero } from '../../game/state.js';
 import {
   PAL, glow, glowOval, diamond, glyph, hintRow, Layer, Nav, Gesture, Embers, brackets, inRect, ellipsize,
 } from './common.js';
-import { heroPerfSample, HERO_Q } from './hero_view.js';
+import { heroPerfSample } from './hero_view.js';
 import { StatusTab } from './tab_status.js';
 import { EquipTab } from './tab_equip.js';
 import { InventoryTab } from './tab_inventory.js';
@@ -71,9 +71,8 @@ export class MenuScene extends Scene {
     // 휠은 메뉴가 맨 위일 때만 모은다 (위에 옵션 등이 열려 있는 동안 굴린 휠이 닫힌 뒤 목록을 튀게 하지 않게)
     this._onWheel = (e) => { if (this.game.top === this && !this.closing) this.ges.addWheel(e.deltaY * (e.deltaMode === 1 ? 32 : e.deltaMode === 2 ? 400 : 1) * 0.9); };
     window.addEventListener('wheel', this._onWheel, { passive: true });
-    // 영웅 미리보기의 역광(림) 패스: 실제 품질 등급이 낮음이면 끈다 (설정 'auto' 는 game.quality 가 정한 등급)
-    const tier = this.game.quality ?? this.game.tier ?? this.game.settings?.quality;
-    if (tier === 'low') HERO_Q.rim = false;
+    // 영웅 미리보기의 역광(림) 패스: 품질 등급 '낮음'이면 HeroView.lowTier() 가 그릴 때마다 끈다 (game.tier, 설정 'auto' 포함).
+    // 여기서 HERO_Q.rim 을 끄면 등급이 다시 올라가도 세션 내내 꺼진 채로 남으므로 건드리지 않는다
     audio.sfx('menu_ok');
     if (!this.state) return;
     // 지금 영웅의 채색 인형을 미리 읽어 둔다 (상태·장비·직업 탭의 미리보기)
