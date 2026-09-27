@@ -617,9 +617,18 @@
   ],
   "qback": "azel/azel_bloodking_qback",
   "viewsQ": [
-   "ym135",
-   "ym45"
-  ]
+   "-",
+   "-"
+  ],
+  "extra": [
+   {
+    "sheet": "azel/azel_bloodking_q3b",
+    "views": [
+     "ym135"
+    ]
+   }
+  ],
+  "_q3b": "heroes3rev: 옛 qback 두 인물이 모두 정면 뒷모습(좌우 대칭)이라 −45/−90/−135 가 같은 그림이었다 → 한 장짜리 3/4 뒤(q3b, 왼쪽으로 돌아섬) = ym135, ym45 는 거울상, qback 라벨은 \"-\""
  },
  "_torsoUncarved": {
   "pts": [

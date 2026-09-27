@@ -15,6 +15,7 @@ import * as faceless from '../enemies/faceless.js';
 import * as dream_eater from '../enemies/dream_eater.js';
 import * as rot_treant from '../enemies/rot_treant.js';
 import * as plague_moth from '../enemies/plague_moth.js';
+import * as fungal_husk from '../enemies/fungal_husk.js';
 
 export const bosses = {};
 export const enemies = [
@@ -24,7 +25,7 @@ export const enemies = [
   { mod: thunder_roc },
   { mod: gale_knight },
   { mod: puppeteer },
-  { mod: faceless }, { mod: dream_eater }, { mod: rot_treant }, { mod: plague_moth },
+  { mod: faceless }, { mod: dream_eater }, { mod: rot_treant }, { mod: plague_moth }, { mod: fungal_husk },
 ];
 export const companions = {};
 export const npcs = {};

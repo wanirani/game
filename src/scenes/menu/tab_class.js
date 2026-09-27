@@ -8,7 +8,7 @@ import * as HERO from '../../render/hero.js';
 import * as PUP from '../../render/hero_puppet.js';
 import * as ProgM from '../../game/progression.js';
 import { Tab } from './base.js';
-import { HeroView, HeroStage, pedestal, accentOf, turntableHints, pxScale } from './hero_view.js';
+import { HeroView, HeroStage, PixLayer, PixCache, pedestal, accentOf, turntableHints, pxScale } from './hero_view.js';
 import { PAL, frame, heading, divider, brackets, glow, glowOval, pill, para, rr, glyph, ellipsize, measure } from './common.js';
 import { fmtStatVal } from './tab_status.js';
 import * as D from './access.js';
@@ -20,13 +20,15 @@ export class ClassTab extends Tab {
     super(m);
     this.view = new HeroView({ turntable: true, game: m.game });
     this.stage = new HeroStage();
+    this.txt = new PixCache(24);    // 카드·상세 글자 캐시 (외곽선 글자는 매 프레임 그리기에 너무 비싸다 — P-11)
+    this.bg = new PixLayer();       // 두 판의 틀 (그라디언트) — 한 장으로 구워 1:1 복사
     this.heroRect = null;
     this.sel = null; this.rects = []; this.thumbs = new Map(); this.looks = new Map(); this.rev = -1;
   }
   /** 메뉴의 가로 밀기(탭 넘기기)를 무시할 곳: 회전 무대 (platform §5.6) */
   noSwipe(x, y) { return this.view.swipeBlock(x, y); }
   swipeBlock(x, y) { return this.view.swipeBlock(x, y); }
-  free() { this.stage.free(); this.dropThumbs(); }
+  free() { this.stage.free(); this.txt.free(); this.bg.free(); this.dropThumbs(); }
   dropThumbs() { for (const T of this.thumbs.values()) { T.cv.width = T.cv.height = 1; } this.thumbs.clear(); }
   get chain() { return D.classChain(this.hero.classId).map((c) => c.id); }
   tiers() {
@@ -125,9 +127,12 @@ export class ClassTab extends Tab {
     const t = this.t, focused = this.m.focus === 'content';
     const DW = Math.round(clamp(A.w * 0.35, 300, 380));
     const TW = A.w - DW - 12;
-    frame(ctx, A.x, A.y, TW, A.h);
+    // 두 판의 틀 (정적)
+    this.bg.draw(ctx, `${TW}`, A.x - 3, A.y - 3, A.w + 6, A.h + 6, (c) => {
+      frame(c, A.x, A.y, TW, A.h);
+      frame(c, A.x + TW + 12, A.y, DW, A.h);
+    });
     const ch = D.CHARACTERS()[this.hero.charId];
-    heading(ctx, '직업 계보', A.x + 16, A.y + 26, TW - 32, { sub: ch?.name?.split(' ')[0] });
     const T = this.tiers();
     const chain = this.chain;
     // 카드 배치
@@ -142,8 +147,11 @@ export class ClassTab extends Tab {
       const total = n * cardH + (n - 1) * gap;
       list.forEach((c, k) => pos.set(c.id, { x: colX[ti], y: ctop + (H - total) / 2 + k * (cardH + gap) }));
     });
-    // 티어 제목
-    TIER_NAME.forEach((nm, ti) => text(ctx, nm, colX[ti] + cardW / 2, top + 4, { size: 11, align: 'center', weight: 700, color: PAL.faint, ow: 2 }));
+    // 제목 + 티어 제목 (글자 캐시)
+    this.txt.draw(ctx, 'head', `${this.hero.charId}|${cardW}`, A.x + 4, A.y + 4, TW - 8, top + 12 - A.y, (c) => {
+      heading(c, '직업 계보', A.x + 16, A.y + 26, TW - 32, { sub: ch?.name?.split(' ')[0] });
+      TIER_NAME.forEach((nm, ti) => text(c, nm, colX[ti] + cardW / 2, top + 4, { size: 11, align: 'center', weight: 700, color: PAL.faint, ow: 2 }));
+    });
     // 연결선
     for (const list of T) for (const c of list) {
       if (!c.parent || !pos.has(c.parent)) continue;
@@ -170,6 +178,7 @@ export class ClassTab extends Tab {
     }
     // 상세
     this.drawDetail(ctx, A.x + TW + 12, A.y, DW, A.h);
+    this.txt.sweep();
   }
 
   drawCard(ctx, c, r, t, focused) {
@@ -198,18 +207,20 @@ export class ClassTab extends Tab {
     ctx.drawImage(img, 0, 0, img.width, img.height, r.x + 4, r.y, tw, th + 8);
     ctx.restore();
     const tx = r.x + tw + 12, w = r.w - tw - 18;
-    const iconW = st.key === 'locked' || st.key === 'closed' || st.key === 'cur' ? 16 : 0;
-    const nsz = measure(ctx, c.name, 14, 800) <= w - iconW ? 14 : 12.5;
-    text(ctx, ellipsize(ctx, c.name, w - iconW, nsz, 800), tx, r.y + Math.round(r.h * 0.32), { size: nsz, weight: 800, color: st.key === 'closed' ? PAL.faint : sel ? PAL.goldHi : PAL.bone, ow: 3 });
-    text(ctx, c.eng ?? '', tx, r.y + Math.round(r.h * 0.53), { size: 10, weight: 700, family: FONT.num, color: PAL.dim, ow: 2, maxWidth: w });
-    text(ctx, st.text, tx, r.y + r.h - (r.h >= 70 ? 12 : 9), { size: 11, weight: 800, color: st.color, ow: 2 });
-    if (st.key === 'locked' || st.key === 'closed') glyph(ctx, 'lock', r.x + r.w - 14, r.y + 14, 10, PAL.faint, 1.3);
-    if (st.key === 'cur') glyph(ctx, 'star', r.x + r.w - 14, r.y + 14, 11, PAL.goldHi, 1);
+    // 카드 글자·표식은 캐시 (선택·상태가 바뀔 때만 다시 굽는다)
+    this.txt.draw(ctx, 'card:' + c.id, `${sel ? 1 : 0}|${st.key}|${st.text}|${this.m.rev}`, tx - 4, r.y + 1, r.x + r.w - tx + 3, r.h - 2, (g) => {
+      const iconW = st.key === 'locked' || st.key === 'closed' || st.key === 'cur' ? 16 : 0;
+      const nsz = measure(g, c.name, 14, 800) <= w - iconW ? 14 : 12.5;
+      text(g, ellipsize(g, c.name, w - iconW, nsz, 800), tx, r.y + Math.round(r.h * 0.32), { size: nsz, weight: 800, color: st.key === 'closed' ? PAL.faint : sel ? PAL.goldHi : PAL.bone, ow: 3 });
+      text(g, c.eng ?? '', tx, r.y + Math.round(r.h * 0.53), { size: 10, weight: 700, family: FONT.num, color: PAL.dim, ow: 2, maxWidth: w });
+      text(g, st.text, tx, r.y + r.h - (r.h >= 70 ? 12 : 9), { size: 11, weight: 800, color: st.color, ow: 2 });
+      if (st.key === 'locked' || st.key === 'closed') glyph(g, 'lock', r.x + r.w - 14, r.y + 14, 10, PAL.faint, 1.3);
+      if (st.key === 'cur') glyph(g, 'star', r.x + r.w - 14, r.y + 14, 11, PAL.goldHi, 1);
+    });
     if (sel) brackets(ctx, r.x, r.y, r.w, r.h, t, focused ? PAL.goldHi : PAL.goldMid);
   }
 
   drawDetail(ctx, x, y, w, h) {
-    frame(ctx, x, y, w, h);
     const c = D.CLASSES()[this.sel];
     if (!c) return;
     const t = this.t;
@@ -228,50 +239,53 @@ export class ClassTab extends Tab {
     const st = this.status(c);
     pill(ctx, TIER_NAME[c.tier] ?? '', x + 16, y + 16, { color: PAL.gold, size: 10, h: 17 });
     pill(ctx, st.text, x + w - 16, y + 16, { align: 'right', color: st.color, size: 10, h: 17, bg: st.key === 'ready' ? 'rgba(20,70,40,0.9)' : 'rgba(40,20,30,0.9)' });
-    let cy = y + sh + 36;
-    text(ctx, c.name, x + 18, cy, { size: 20, weight: 800, family: FONT.title, color: PAL.bone, ow: 3 });
-    text(ctx, c.eng ?? '', x + w - 18, cy, { size: 11, align: 'right', weight: 700, family: FONT.num, color: PAL.dim });
-    cy += 10;
-    divider(ctx, x + 14, cy, w - 28);
-    cy += 22;
-    cy += para(ctx, c.desc ?? '', x + 18, cy, w - 36, { size: 13, color: PAL.text, max: 2 }) + 2;
-    if (c.perk) {
-      text(ctx, '직업 특성', x + 18, cy + 4, { size: 12, weight: 800, color: PAL.gold });
-      cy += 22;
-      cy += para(ctx, c.perk, x + 18, cy, w - 36, { size: 13, color: '#ffe0a8', weight: 700, max: 2 }) + 2;
-    }
-    // 해금되는 스킬 계열
-    const unlocks = [];
-    for (const br of D.TREE(this.hero.charId)?.branches || []) {
-      const gi = (br.gate || []).indexOf(c.id);
-      if (gi >= 0) unlocks.push(`「${br.name}」 ${['3·4단', '5단', '6단'][gi] ?? ''}`);
-    }
-    if (unlocks.length) {
-      text(ctx, '스킬 해금', x + 18, cy + 6, { size: 12, weight: 800, color: '#9ac8ff' });
-      text(ctx, ellipsize(ctx, unlocks.join(' · '), w - 110, 12, 700), x + 84, cy + 6, { size: 12, weight: 700, color: PAL.bone });
-      cy += 20;
-    }
-    // 보정치
-    const mods = [];
-    for (const k in c.mult || {}) mods.push({ text: `${D.STAT_INFO[k]?.name ?? k} ×${c.mult[k]}`, good: c.mult[k] >= 1 });
-    for (const k in c.flat || {}) mods.push({ text: `${D.STAT_INFO[k]?.name ?? k} +${fmtStatVal(k, c.flat[k])}`, good: c.flat[k] >= 0 });
-    if (mods.length) {
-      text(ctx, '능력치 보정', x + 18, cy + 4, { size: 12, weight: 800, color: PAL.gold });
+    // 이름·설명·특성·보정치·안내 글자는 캐시 (고른 직업·상태·레벨이 바뀔 때만 다시 굽는다)
+    this.txt.draw(ctx, 'detail', `${c.id}|${st.key}|${this.hero.level}|${this.m.rev}`, x + 4, y + sh + 10, w - 8, h - sh - 14, (g) => {
+      let cy = y + sh + 36;
+      text(g, c.name, x + 18, cy, { size: 20, weight: 800, family: FONT.title, color: PAL.bone, ow: 3 });
+      text(g, c.eng ?? '', x + w - 18, cy, { size: 11, align: 'right', weight: 700, family: FONT.num, color: PAL.dim });
       cy += 10;
-      const cw = (w - 36) / 2;
-      mods.slice(0, 8).forEach((md, i) => {
-        const mx = x + 18 + (i % 2) * cw, my = cy + 18 + Math.floor(i / 2) * 18;
-        if (my > y + h - 52) return;
-        text(ctx, ellipsize(ctx, md.text, cw - 6, 12, 700), mx, my, { size: 12, weight: 700, color: md.good ? PAL.good : PAL.bad, ow: 2 });
-      });
-      cy += 18 + Math.ceil(Math.min(8, mods.length) / 2) * 18;
-    }
-    // 안내
-    const parent = D.CLASSES()[c.parent];
-    const req = c.tier === 0 ? '처음부터 익힌 직업' : `Lv ${c.reqLevel} · ${parent?.name ?? ''}에서 전직`;
-    const by = y + h - 40;
-    divider(ctx, x + 14, by - 8, w - 28, { center: false, a: 0.4 });
-    text(ctx, req, x + 18, by + 8, { size: 12, weight: 700, color: this.hero.level >= (c.reqLevel ?? 1) ? PAL.text : PAL.bad });
-    text(ctx, st.key === 'ready' ? '마을 성당의 알베르토 신부를 찾아가 전직하세요' : '전직은 마을 성당(알베르토 신부)에서 할 수 있습니다', x + 18, by + 26, { size: 11, weight: 600, color: st.key === 'ready' ? PAL.good : PAL.dim, maxWidth: w - 36 });
+      divider(g, x + 14, cy, w - 28);
+      cy += 22;
+      cy += para(g, c.desc ?? '', x + 18, cy, w - 36, { size: 13, color: PAL.text, max: 2 }) + 2;
+      if (c.perk) {
+        text(g, '직업 특성', x + 18, cy + 4, { size: 12, weight: 800, color: PAL.gold });
+        cy += 22;
+        cy += para(g, c.perk, x + 18, cy, w - 36, { size: 13, color: '#ffe0a8', weight: 700, max: 2 }) + 2;
+      }
+      // 해금되는 스킬 계열
+      const unlocks = [];
+      for (const br of D.TREE(this.hero.charId)?.branches || []) {
+        const gi = (br.gate || []).indexOf(c.id);
+        if (gi >= 0) unlocks.push(`「${br.name}」 ${['3·4단', '5단', '6단'][gi] ?? ''}`);
+      }
+      if (unlocks.length) {
+        text(g, '스킬 해금', x + 18, cy + 6, { size: 12, weight: 800, color: '#9ac8ff' });
+        text(g, ellipsize(g, unlocks.join(' · '), w - 110, 12, 700), x + 84, cy + 6, { size: 12, weight: 700, color: PAL.bone });
+        cy += 20;
+      }
+      // 보정치
+      const mods = [];
+      for (const k in c.mult || {}) mods.push({ text: `${D.STAT_INFO[k]?.name ?? k} ×${c.mult[k]}`, good: c.mult[k] >= 1 });
+      for (const k in c.flat || {}) mods.push({ text: `${D.STAT_INFO[k]?.name ?? k} +${fmtStatVal(k, c.flat[k])}`, good: c.flat[k] >= 0 });
+      if (mods.length) {
+        text(g, '능력치 보정', x + 18, cy + 4, { size: 12, weight: 800, color: PAL.gold });
+        cy += 10;
+        const cw = (w - 36) / 2;
+        mods.slice(0, 8).forEach((md, i) => {
+          const mx = x + 18 + (i % 2) * cw, my = cy + 18 + Math.floor(i / 2) * 18;
+          if (my > y + h - 52) return;
+          text(g, ellipsize(g, md.text, cw - 6, 12, 700), mx, my, { size: 12, weight: 700, color: md.good ? PAL.good : PAL.bad, ow: 2 });
+        });
+        cy += 18 + Math.ceil(Math.min(8, mods.length) / 2) * 18;
+      }
+      // 안내
+      const parent = D.CLASSES()[c.parent];
+      const req = c.tier === 0 ? '처음부터 익힌 직업' : `Lv ${c.reqLevel} · ${parent?.name ?? ''}에서 전직`;
+      const by = y + h - 40;
+      divider(g, x + 14, by - 8, w - 28, { center: false, a: 0.4 });
+      text(g, req, x + 18, by + 8, { size: 12, weight: 700, color: this.hero.level >= (c.reqLevel ?? 1) ? PAL.text : PAL.bad });
+      text(g, st.key === 'ready' ? '마을 성당의 알베르토 신부를 찾아가 전직하세요' : '전직은 마을 성당(알베르토 신부)에서 할 수 있습니다', x + 18, by + 26, { size: 11, weight: 600, color: st.key === 'ready' ? PAL.good : PAL.dim, maxWidth: w - 36 });
+    });
   }
 }

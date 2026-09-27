@@ -709,8 +709,17 @@
   "qback": "azel/azel_nosferatu_qback",
   "viewsQ": [
    "y135",
-   "ym135"
-  ]
+   "-"
+  ],
+  "extra": [
+   {
+    "sheet": "azel/azel_nosferatu_q3b",
+    "views": [
+     "ym135"
+    ]
+   }
+  ],
+  "_q3b": "heroes3rev: 옛 qback 두 인물이 모두 정면 뒷모습(좌우 대칭)이라 −45/−90/−135 가 같은 그림이었다 → 한 장짜리 3/4 뒤(q3b, 왼쪽으로 돌아섬) = ym135, ym45 는 거울상, qback 라벨은 \"-\" (노스페라투 qback 왼쪽 인물 = 3/4 앞은 y135 로 계속 씀)"
  },
  "hands": {
   "sheet": "azel/azel_nosferatu_hands",

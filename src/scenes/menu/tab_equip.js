@@ -7,7 +7,7 @@ import { clamp } from '../../core/math.js';
 import { input } from '../../core/input.js';
 import { drawSlot } from '../../render/icons.js';
 import { Tab } from './base.js';
-import { HeroView, HeroStage, PixCache, pedestal, accentOf, turntableHints, pxScale } from './hero_view.js';
+import { HeroView, HeroStage, PixLayer, PixCache, pedestal, accentOf, turntableHints, pxScale } from './hero_view.js';
 import {
   PAL, RARITY_COL, frame, heading, divider, selBar, brackets, glow, gbutton, Scroller, scrollbar, clipBegin, clipEnd, ellipsize, pill, inRect, measure, Popup,
 } from './common.js';
@@ -31,6 +31,7 @@ export class EquipTab extends Tab {
     this.view = new HeroView({ turntable: true, game: m.game });
     this.stage = new HeroStage();
     this.txt = new PixCache(28);    // 줄·덩어리별 글자 캐시 (외곽선 글자는 매 프레임 그리기에 너무 비싸다 — P-11)
+    this.bg = new PixLayer();       // 세 판의 틀(그라디언트)·제목 — 한 장으로 구워 매 프레임 1:1 복사
     this.heroRect = null;
     this.si = 0; this.sub = 'slots'; this.li = 0;
     this.sc = new Scroller();
@@ -41,7 +42,7 @@ export class EquipTab extends Tab {
   get slots() { return D.EQUIP_SLOTS(); }
   get slot() { return this.slots[this.si]; }
   onShow() { this.rebuild(); this.view.wake(); }
-  free() { this.stage.free(); this.txt.free(); }
+  free() { this.stage.free(); this.txt.free(); this.bg.free(); }
   /** 메뉴의 가로 밀기(탭 넘기기)를 무시할 곳: 회전 무대 (platform §5.6) */
   noSwipe(x, y) { return this.view.swipeBlock(x, y); }
   swipeBlock(x, y) { return this.view.swipeBlock(x, y); }
@@ -217,12 +218,21 @@ export class EquipTab extends Tab {
     const look = pv?.look || cur.look;
     this.view.set(look, D.CHARACTERS()[hero.charId]);
 
-    // ── 왼쪽: 장비 칸 ──
-    frame(ctx, A.x, A.y, LW, A.h);
     // 터치: 칸 사이 틈을 줄여 한 칸을 36 CSS px 이상으로 (platform §6.3 목록 줄)
     const touch = !!input.touchMode;
     const top = touch ? 36 : 42, gapS = touch ? 2 : 4;
-    heading(ctx, '장착 장비', A.x + 16, A.y + (touch ? 24 : 26), LW - 32, { sub: D.CHARACTERS()[hero.charId]?.name?.split(' ')[0] });
+    const MX = A.x + LW + 12;
+    // ── 세 판의 틀 + 제목 (정적: 영웅·장비 칸·후보 수가 바뀔 때만 다시 굽는다) ──
+    const slotName = D.SLOT_NAMES()[this.slot];
+    const nCand = this.list.filter((r) => !r.unequip).length;
+    this.bg.draw(ctx, `${hero.charId}|${this.slot}|${nCand}|${touch ? 1 : 0}|${LW}|${MW}`, A.x - 3, A.y - 3, A.w + 6, A.h + 6, (c) => {
+      frame(c, A.x, A.y, LW, A.h);
+      heading(c, '장착 장비', A.x + 16, A.y + (touch ? 24 : 26), LW - 32, { sub: D.CHARACTERS()[hero.charId]?.name?.split(' ')[0] });
+      frame(c, MX, A.y, MW, A.h);
+      frame(c, RX, A.y, RW, A.h);
+      heading(c, `${slotName} 교체`, RX + 16, A.y + 26, RW - 32, { sub: `${nCand}개` });
+    });
+    // ── 왼쪽: 장비 칸 ──
     this.slotRects.length = 0;
     const rowH = Math.min(62, (A.h - top - 8) / 6);
     this.slots.forEach((slot, i) => {
@@ -253,8 +263,6 @@ export class EquipTab extends Tab {
 
     // ── 가운데: 영웅 미리보기 + 요약 ──
     // 턴테이블 무대: 끌어서·휠·, . 키·오른쪽 스틱으로 돌려 장비의 앞·옆·뒷모습을 본다 (hero_view.js)
-    const MX = A.x + LW + 12;
-    frame(ctx, MX, A.y, MW, A.h);
     const sh = Math.round(clamp(A.h * 0.52, 128, 260));
     const accent = accentOf(look);
     this.stage.draw(ctx, MX + 8, A.y + 8, MW - 16, sh, t, pxScale(ctx), accent);
@@ -294,9 +302,6 @@ export class EquipTab extends Tab {
     });
 
     // ── 오른쪽: 후보 목록 + 비교 ──
-    frame(ctx, RX, A.y, RW, A.h);
-    const slotName = D.SLOT_NAMES()[this.slot];
-    heading(ctx, `${slotName} 교체`, RX + 16, A.y + 26, RW - 32, { sub: `${this.list.filter((r) => !r.unequip).length}개` });
     const cmpH = 150;
     const LR = { x: RX + 8, y: A.y + 40, w: RW - 16, h: A.h - 40 - cmpH - 8 };
     this.listRect = LR;

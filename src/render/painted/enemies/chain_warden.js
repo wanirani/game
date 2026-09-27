@@ -93,7 +93,7 @@ export function draw(ctx, e, world, o, rig) {
   K.put('body', 'a', ax, ay, rot, sx, sy);
   // the hook in hand (not while the thrown one is out: ZONE_C.hook draws that one)
   const out = e.hook && !e.hook.dead && world;
-  let hx = 0, hy = 0, hd = H, cxo = 0, cyo = 0, show = !out && !reel;
+  let hx = 0, hy = 0, hd = H, cxo = 0, cyo = 0, show = !out;
   if (thrown && !out) { hx = fx + 44; hy = fy; hd = 0; }                                              // gallery: frozen throw
   else if (aim) { const a = t * 18; const r = 12 + 6 * aim; hx = fx + Math.cos(a) * r; hy = fy + Math.sin(a) * r * 0.55; hd = a; }
   else if (smash) {
@@ -117,8 +117,10 @@ export function draw(ctx, e, world, o, rig) {
     if (smash && ss > 0 && ss < 1 && !o.flash) {                                                     // uppercut streak
       K.local();
       ctx.globalCompositeOperation = 'lighter';
-      ctx.strokeStyle = `rgba(255,120,60,${0.45 * (1 - ss * 0.6)})`; ctx.lineWidth = 5;
-      ctx.beginPath(); ctx.arc(fx, fy, 24, lerp(2.7, -1.2, ease(ss)) + 0.9, lerp(2.7, -1.2, ease(ss)), true); ctx.stroke();
+      const a1 = lerp(2.7, -1.2, ease(ss));
+      ctx.strokeStyle = `rgba(255,150,90,${0.3 * (1 - ss * 0.6)})`; ctx.lineWidth = 2.2;
+      ctx.beginPath(); ctx.arc(fx, fy, 31, a1 + 1.1, a1, true); ctx.stroke();
+      ctx.beginPath(); ctx.arc(fx, fy, 27, a1 + 0.7, a1, true); ctx.stroke();
       ctx.globalCompositeOperation = 'source-over';
     }
     chainPath(fx, fy, hx, hy, cxo, cyo);

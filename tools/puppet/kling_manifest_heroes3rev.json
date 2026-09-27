@@ -154,9 +154,9 @@
    "aspect_ratio": "3:4",
    "img_resolution": "2k",
    "prompt": "(q3b template) + 'We mainly see his BACK: the back of the white coat with its centre vent, his long hair covering his back and the backs of both silver pauldrons, plus a little of his left side; we do NOT see his chest, his breastplate or the front edges of the coat.'",
-   "src": null,
-   "adopted": null,
-   "note": ""
+   "src": "src/azel/azel_holyblade_q3b.webp",
+   "adopted": "a",
+   "note": "a = 왼쪽으로 돌아선 3/4 뒤(등·두 견갑 뒷면, 옆뺨만) → ym135 채택. b 도 쓸 만함(옆에 조금 더 가까움, 버림)"
   },
   {
    "id": "azel_dawnbringer_q3b_retry",
@@ -171,9 +171,9 @@
    "aspect_ratio": "3:4",
    "img_resolution": "2k",
    "prompt": "(q3b template) + 'NOT a symmetric back view. His whole body is clearly rotated about 45 degrees ... his left shoulder (on the left of the picture) is closer to the camera ... his right shoulder and its sunburst pauldron are farther away and partly hidden behind his back, so the two pauldrons look clearly different in size and position.'",
-   "src": null,
-   "adopted": null,
-   "note": ""
+   "src": "src/azel/azel_dawnbringer_q3b.webp",
+   "adopted": "a",
+   "note": "a = 왼쪽으로 돌아선 3/4 뒤(견갑 두 개가 크기·자리 다름, 코트 뒤 트임) → ym135 채택. b 도 쓸 만함(버림)"
   }
  ],
  "images_used": {

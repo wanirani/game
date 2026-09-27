@@ -202,6 +202,8 @@ const ARCH = [['fire', '#ff7a2a', '#ffd0a0'], ['ice', '#9fe8ff', '#e8fcff'], ['t
 /** 빅터 은빛 십자(표식 폭발) · 탄도 */
 const victorSil = (vr) => (vr === 'phantom' ? '#9ab0ff' : vr === 'executioner' ? '#ff2030' : vr === 'hellfire' ? '#ff7a2a' : '#e8ecff');
 const victorTrace = (vr) => (vr === 'phantom' ? '#c8d4ff' : vr === 'hellfire' ? '#ffb060' : '#fff0b0');
+/** 데미지 숫자 색 (dmgColor): 대심문관 지속 피해 · 빅터 표식 폭발 · 처형 */
+const DOT_DMG = '#ff9a3a', DET_DMG = '#e8ecff', EXE_DMG = '#ff2030';
 /** 2차 전직 변형 이름 (1차 전직이면 null — 감독의 D.T2c 와 같은 규칙) */
 const variantOf = (ch, classId) => (classId && T2[classId] && classId.startsWith(ch + '_') ? classId.slice(ch.length + 1) : null);
 /** 판정 문구 (hitfx 문구 스프라이트를 미리 굽는다: 처음 띄울 때 캔버스를 만들지 않게) */
@@ -219,20 +221,25 @@ function spriteSet(ch, classId) {
   const col = T2[classId]?.color ?? AWAKEN[ch]?.color ?? '#ffffff';
   const G = new Set(['#ffffff']), BV = new Map([['#ffffff|#ffffff', ['#ffffff', '#ffffff']]]), BH = new Map(BV);
   const beat = [];   // ULTFX.beat 에 넘기는 색 (ULTFX 빛 캐시: 각성 색과 거리가 먼 색이면 시전 도중 새로 구우므로 미리)
+  // 다른 모듈이 색마다 처음 쓸 때 캔버스를 굽는 것들: 조명 색광(lighting.js) · 연기 모양 입자(hitfx soft) · 데미지 숫자 색(hitfx 아틀라스 'ult')
+  const light = new Set(), soft = new Set(), dmg = new Set();
   const bv = (c, core = '#ffffff') => BV.set(c + '|' + core, [c, core]), bh = (c, core = '#ffffff') => BH.set(c + '|' + core, [c, core]);
   if (ch === 'kael') {
     const L = kaelLash(vr);
     for (const c of [...L, KAEL_GOLD]) G.add(c);
     bv(KAEL_GOLD); bh(KAEL_GOLD);
     beat.push(L[0]);
+    light.add(L[0]).add(KAEL_GOLD); soft.add(L[0]);   // 채찍·감옥·십자가 빛 · 손끝 불꽃('fire' 입자 색)
     if (vr === 'templar') { G.add('#fff2b0'); G.add('#e8c872'); }   // 방패 인장
-    if (vr === 'inquisitor') G.add('#ff8a2a');   // 불타는 감옥
+    if (vr === 'inquisitor') { G.add('#ff8a2a'); light.add('#ff8a2a'); dmg.add(DOT_DMG); }   // 불타는 감옥 (빛 · 지속 피해 숫자)
   } else if (ch === 'sera') {
     const PC = seraPcol(vr);
     for (const c of ['#fff2b0', '#fff8d0', col, ...PC]) G.add(c);
     bv('#fff2b0'); bv(PC[0]); bh(PC[0]);
     for (const c of vr === 'archmage' ? ARCH.flatMap((a) => [a[1], a[2]]) : PC) { G.add(c); bv(c); }
     beat.push(...(vr === 'archmage' ? ARCH.map((a) => a[1]) : [PC[0]]));
+    light.add('#fff8d0').add('#fff2b0');
+    for (const c of vr === 'archmage' ? ARCH.map((a) => a[1]) : [PC[0]]) light.add(c);   // 기둥 빛
     if (vr === 'saint') G.add('#ffe7a0');   // 후광
     if (vr === 'oracle') G.add('#8ac8ff');   // 시간 둔화
   } else if (ch === 'victor') {
@@ -240,8 +247,24 @@ function spriteSet(ch, classId) {
     G.add('#ffd070');
     bv(SIL); bh(SIL);
     beat.push(SIL);
+    light.add('#ffd070').add(victorTrace(vr)).add(SIL);
+    dmg.add(DET_DMG);
+    if (vr === 'executioner') dmg.add(EXE_DMG);
   }
-  return { vr, col, glow: [...G], bv: [...BV.values()], bh: [...BH.values()], beat };
+  return { vr, col, glow: [...G], bv: [...BV.values()], bh: [...BH.values()], beat, light: [...light], soft: [...soft], dmg: [...dmg] };
+}
+/**
+ * 조명 색광 스프라이트 (lighting.js 는 색마다 처음 그릴 때 캔버스를 굽는다 — 모듈 안 캐시라 직접 부를 수 없다):
+ * 이 감독이 켜는 빛 색을 알파 0 으로 한 번 그려 캐시에 올린다. 어둠 0 · 4×4 임시 캔버스라 월드 조명 버퍼는 건드리지 않는다.
+ */
+function warmLights(w, cols, sc) {
+  const L = w?.lighting;
+  if (!L || typeof L.render !== 'function' || !cols.length || !sc) return;
+  const fake = Object.assign(Object.create(Object.getPrototypeOf(L)), {
+    enabled: true, darkness: 0, lightning: 0, res: 1, color: '#000000', canvas: sc.canvas, lctx: sc,
+    lights: cols.map((c) => ({ x: 1, y: 1, r: 1, color: c, i: 0, glow: true })),
+  });
+  L.render.call(fake, sc, { x: 0, y: 0, shakeX: 0, shakeY: 0, zoom: 1 }, sc.canvas.width, sc.canvas.height);
 }
 function mkCanvas(w, h) {
   if (typeof document === 'undefined' || !document.createElement) return null;
@@ -319,6 +342,11 @@ function prewarm(w, p, force = false) {
     for (const k of ['crack', 'scorch', 'blood', 'frost', 'goo']) for (let i = 0; i < 3; i++) HFX.decalSprite?.(k, i);
     // ULTFX.begin/final/beat 이 쓰는 빛 (ULTFX 자체 캐시)
     for (const c of ['#ffffff', S.col, T2[p.hero.classId]?.accent ?? AWAKEN[ch]?.accent, ...S.beat]) if (c) ULTFX.glow?.(c);
+    // 다른 모듈의 색별 캐시 (처음 쓰는 색이면 감독 도중 캔버스를 만든다): 연기 모양 입자 · 데미지 숫자 색 · 조명 색광
+    for (const c of S.soft) HFX.soft?.(c);
+    for (const c of S.dmg) HFX.digitAtlas?.('ult', c);
+    sc.setTransform(1, 0, 0, 1, 0, 0);
+    try { warmLights(w, S.light, sc); } catch (e) { console.warn('[awaken-dir-a] 조명 미리 굽기', e); }
     sc.setTransform(1, 0, 0, 1, 0, 0); sc.globalAlpha = 1; sc.globalCompositeOperation = 'source-over'; sc.clearRect(0, 0, 4, 4);
     PREP.key = key;
     AWAKEN_DIR_A_DEBUG.prewarm = key;
@@ -467,7 +495,7 @@ function burnFoes(D, list, dot) {
         const sp0 = ww.run?.sp ?? 0, aw0 = ww.run?.aw ?? 0, after = !ww.cutscene;
         for (const f of tg) {
           if (!alive(f)) continue;
-          strike(D, inflate(hbOf(f), 2), 0, { mv: dot?.mv ?? 0.15, element: dot?.element ?? 'fire', hitstop: 0, shake: 0, kb: [0, -30], fx: 'fire', hitId: nid(), dmgColor: '#ff9a3a' });
+          strike(D, inflate(hbOf(f), 2), 0, { mv: dot?.mv ?? 0.15, element: dot?.element ?? 'fire', hitstop: 0, shake: 0, kb: [0, -30], fx: 'fire', hitId: nid(), dmgColor: DOT_DMG });
           burst(D, 'fire', f.cx, f.cy, 5, { speed: 160 });
         }
         if (after && ww.run) { ww.run.sp = sp0; ww.run.aw = aw0; }   // 각성 타격은 게이지를 다시 채우지 않는다 (끝난 뒤의 지속 피해 포함)
@@ -1189,7 +1217,7 @@ function victorDirector(p, w, v) {
     for (const m of marked) {
       if (!alive(m.e)) continue;
       targets.push(m.e);
-      strikeFinal(D, inflate(hbOf(m.e), 4), w8, { hitId: nid(), kb: [240 * Math.sign(m.e.cx - p.cx || 1), -560], fx: 'bullet', dmgColor: '#e8ecff' });
+      strikeFinal(D, inflate(hbOf(m.e), 4), w8, { hitId: nid(), kb: [240 * Math.sign(m.e.cx - p.cx || 1), -560], fx: 'bullet', dmgColor: DET_DMG });
     }
     if (!targets.length) D.wUsed += w8;
     // 처형인: 표식이 새겨진 일반 적 중 체력 25% 미만 즉시 처형
@@ -1199,7 +1227,7 @@ function victorDirector(p, w, v) {
         const f = m.e;
         if (!alive(f) || isBoss(f, ww) || !(f.hp > 0) || f.hp / maxHpOf(f) >= exe) continue;
         try {
-          const atk = D.v.atk(0, { flat: Math.ceil(f.hp) + 1, hitId: nid(), kb: [200 * Math.sign(f.cx - p.cx || 1), -420], hitstop: 0.05, shake: 6, crit: 0, dmgColor: '#ff2030', fx: 'bullet' });
+          const atk = D.v.atk(0, { flat: Math.ceil(f.hp) + 1, hitId: nid(), kb: [200 * Math.sign(f.cx - p.cx || 1), -420], hitstop: 0.05, shake: 6, crit: 0, dmgColor: EXE_DMG, fx: 'bullet' });
           if (hitTarget(ww, atk, f, f.cx, f.cy)) { D.info.executed++; ww.fx.callout?.(f.cx, f.y - 20, ...CALLOUT.execute); burst(D, 'blood', f.cx, f.cy, 16, { speed: 380 }); }
         } catch (err) { fail(D, err); }
       }

@@ -1,0 +1,398 @@
+{
+ "id": "mirror_knight",
+ "tier": "T2",
+ "srcTD": 4,
+ "note": "all but the sword from the Step-4 edit of the side figure with the shard cape removed (src/mk_body.webp, manifest: mk_edit2; the near arm could not be removed by Kling, so it is cut out here: the arm under the pauldron is painted over with the dark ribbed under-armour cloth on the body (derived src/mk_body_fix.webp) and trimmed where it stood in front of the torso). body = torso + helm + shard collar + thigh stubs; arm = near upper arm, vambrace and gauntlet fist (swings the sword); pauldron = the near pauldron re-drawn over the arm root; legB / legN = back / near leg from mid-thigh down; sword = sheet-1 glass greatsword (point up).",
+ "sources": {
+  "b": {
+   "raw": "mk_body.webp",
+   "file": "mk_body.png",
+   "mode": "",
+   "k": 0.042
+  },
+  "s1": {
+   "raw": "mirror_knight_sheet1.webp",
+   "file": "mirror_knight_sheet1.png",
+   "mode": "",
+   "k": 0.034
+  },
+  "bf": {
+   "raw": "mk_body_fix.webp",
+   "file": "mk_body_fix.png",
+   "mode": "",
+   "k": 0.042
+  }
+ },
+ "parts": {
+  "body": {
+   "src": "bf",
+   "box": [
+    380,
+    40,
+    1380,
+    2336
+   ],
+   "keep": "largest",
+   "minus": [
+    [
+     [
+      1196,
+      700
+     ],
+     [
+      1340,
+      700
+     ],
+     [
+      1340,
+      1400
+     ],
+     [
+      1150,
+      1400
+     ],
+     [
+      1150,
+      1236
+     ],
+     [
+      1196,
+      1210
+     ]
+    ],
+    [
+     [
+      680,
+      1470
+     ],
+     [
+      1300,
+      1470
+     ],
+     [
+      1300,
+      2336
+     ],
+     [
+      680,
+      2336
+     ]
+    ]
+   ],
+   "piv": {
+    "a": [
+     950,
+     2290
+    ],
+    "top": [
+     950,
+     60
+    ],
+    "sh": [
+     1080,
+     700
+    ],
+    "hipB": [
+     830,
+     1420
+    ],
+    "hipN": [
+     1105,
+     1410
+    ],
+    "eye": [
+     1150,
+     330
+    ],
+    "chest": [
+     1080,
+     850
+    ]
+   },
+   "_bbox": [
+    418,
+    56,
+    1249,
+    2225
+   ]
+  },
+  "arm": {
+   "src": "b",
+   "box": [
+    920,
+    630,
+    1330,
+    1400
+   ],
+   "keep": "largest",
+   "poly": [
+    [
+     960,
+     677
+    ],
+    [
+     1200,
+     650
+    ],
+    [
+     1233,
+     850
+    ],
+    [
+     1200,
+     963
+    ],
+    [
+     1280,
+     1143
+    ],
+    [
+     1269,
+     1237
+    ],
+    [
+     1313,
+     1277
+    ],
+    [
+     1307,
+     1370
+    ],
+    [
+     1260,
+     1390
+    ],
+    [
+     1153,
+     1383
+    ],
+    [
+     1133,
+     1250
+    ],
+    [
+     1053,
+     1023
+    ],
+    [
+     933,
+     997
+    ],
+    [
+     933,
+     823
+    ]
+   ],
+   "piv": {
+    "a": [
+     1080,
+     700
+    ],
+    "b": [
+     1232,
+     1310
+    ],
+    "elbow": [
+     1060,
+     910
+    ]
+   },
+   "_bbox": [
+    933,
+    650,
+    1307,
+    1390
+   ]
+  },
+  "pauldron": {
+   "src": "b",
+   "box": [
+    920,
+    430,
+    1250,
+    700
+   ],
+   "keep": "largest",
+   "poly": [
+    [
+     950,
+     475
+    ],
+    [
+     1019,
+     448
+    ],
+    [
+     1125,
+     446
+    ],
+    [
+     1181,
+     479
+    ],
+    [
+     1233,
+     588
+    ],
+    [
+     1233,
+     640
+    ],
+    [
+     1181,
+     652
+    ],
+    [
+     1125,
+     671
+    ],
+    [
+     1050,
+     677
+    ],
+    [
+     988,
+     690
+    ],
+    [
+     950,
+     640
+    ],
+    [
+     935,
+     550
+    ]
+   ],
+   "piv": {
+    "a": [
+     1080,
+     520
+    ]
+   },
+   "_bbox": [
+    935,
+    447,
+    1232,
+    691
+   ]
+  },
+  "legB": {
+   "src": "b",
+   "box": [
+    690,
+    1390,
+    960,
+    2300
+   ],
+   "keep": "largest",
+   "poly": [
+    [
+     695,
+     1395
+    ],
+    [
+     950,
+     1395
+    ],
+    [
+     958,
+     2300
+    ],
+    [
+     690,
+     2300
+    ]
+   ],
+   "piv": {
+    "a": [
+     830,
+     1420
+    ],
+    "b": [
+     800,
+     2230
+    ]
+   },
+   "_bbox": [
+    697,
+    1395,
+    952,
+    2235
+   ]
+  },
+  "legN": {
+   "src": "b",
+   "box": [
+    960,
+    1390,
+    1275,
+    2310
+   ],
+   "keep": "largest",
+   "poly": [
+    [
+     965,
+     1395
+    ],
+    [
+     1272,
+     1395
+    ],
+    [
+     1272,
+     2310
+    ],
+    [
+     965,
+     2310
+    ]
+   ],
+   "piv": {
+    "a": [
+     1105,
+     1410
+    ],
+    "b": [
+     1100,
+     2285
+    ]
+   },
+   "_bbox": [
+    965,
+    1395,
+    1262,
+    2293
+   ]
+  },
+  "sword": {
+   "src": "s1",
+   "box": [
+    1850,
+    60,
+    2305,
+    1630
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     2090,
+     1330
+    ],
+    "b": [
+     2090,
+     80
+    ],
+    "guard": [
+     2090,
+     1235
+    ]
+   },
+   "_bbox": [
+    1850,
+    78,
+    2293,
+    1619
+   ]
+  }
+ }
+}

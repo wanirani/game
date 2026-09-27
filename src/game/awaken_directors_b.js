@@ -594,7 +594,7 @@ function img(ctx, c, x, y, sx, sy, rot, a, add = false, ax = 0.5, ay = 0.5) {
 /** 세로 빛기둥 (흰 심 + 색 번짐) */
 function pillar(ctx, S, x, y0, y1, wd, col, a, halo = true) {
   if (!(a > 0.01) || !(wd > 0.5)) return;
-  if (halo) glowE(ctx, col, x, (y0 + y1) / 2, wd * 2.2, Math.abs(y1 - y0) * 0.62, 0.8 * a);
+  if (halo) glowE(ctx, col, x, (y0 + y1) / 2, wd * 1.8, Math.abs(y1 - y0) * 0.5, 0.85 * a);
   const b = spr('beam');
   if (b) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = a > 1 ? 1 : a; ctx.drawImage(b, x - wd, Math.min(y0, y1), wd * 2, Math.abs(y1 - y0)); }
 }
@@ -1264,7 +1264,7 @@ function lia(p, w, v) {
   layer(S, 2.5, (ctx, S) => {
     const k = dimK(S) * (S.det >= 0 ? 1 - u01(S.lt, S.det, 0.3) : 1);
     if (k <= 0.01) return;
-    for (const e of S.vis) glow(ctx, RED, e.cx, e.cy, Math.max(e.w, e.h) * 0.85 + 16, 0.5 * k);
+    for (const e of S.vis) glow(ctx, RED, e.cx, e.cy, Math.max(e.w, e.h) * 0.64 + 12, 0.6 * k);
   });
   layer(S, 4.6, (ctx, S) => {
     const k = dimK(S) * (S.det >= 0 ? 1 - u01(S.lt, S.det, 0.2) : 1), b = spr('blob');
@@ -1433,7 +1433,7 @@ function lia(p, w, v) {
     }
     if (S.blinks.length > 30) S.blinks.splice(0, S.blinks.length - 30);
     if (dancer) S.orbits.push({ x: hx, y: hy, a: rand(0, TAU), t: S.lt });
-    if (kuno) for (let k = 0; k < (S.q === 'high' ? 6 : S.q === 'medium' ? 4 : 3); k++) S.petals.push({ x: hx, y: hy, vx: rand(-420, 420), vy: rand(-380, 120), fi: k % 3, s: rand(0.7, 1.3), r: rand(0, TAU), vr: rand(-12, 12), life: 0.9 });
+    if (kuno) for (let k = 0, n = Math.min(S.q === 'high' ? 6 : S.q === 'medium' ? 4 : 3, PETALS[S.q] + 16 - S.petals.length); k < n; k++) S.petals.push({ x: hx, y: hy, vx: rand(-420, 420), vy: rand(-380, 120), fi: k % 3, s: rand(0.7, 1.3), r: rand(0, TAU), vr: rand(-12, 12), life: 0.9 });
     if (S.orbits.length > 16) S.orbits.shift();
     const rect = { x: hx - 80, y: hy - 95, w: 160, h: 190 };
     for (let k = 0; k < 3; k++) {

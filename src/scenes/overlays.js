@@ -3,7 +3,7 @@
 //  ultCutin  : 필살기 컷인 0.9초 (각성 컷인보다 한 단계 가벼운 연출). 캐릭터 색 띠와 검은 띠 두 줄이 엇갈려 들어오고,
 //              검은 띠 안으로 초상화가 미끄러져 들어와 1.0→1.06 으로 천천히 확대된다 (속도선 유지).
 //              기술명은 붓글씨(FONT.brush, 받기 전에는 FONT.title) 50px + 붉은 먹 밑줄이 쓸려 나가고, 그 위에 작게 직업명.
-//              2차 전직(tier 2)은 금테. t=0 에 cutin_whoosh. hidePad · deferToasts (MASTER_PLAN §1.13).
+//              2차 전직(tier 2)은 금테. t=0 에 cutin_whoosh. hidePad · deferToasts (MASTER_PLAN §1.13). 설정 reduceMotion 이면 속도선·확대를 줄인다.
 //              game.push('ultCutin', { charId, world, classId? }) — classId 가 없으면 world.player.hero.classId.
 //              각성 컷인(awakenCutin)이 스택에 있으면 곧바로 닫힌다 (컷인은 한 번에 하나).
 //  document  : 비전서/기록 열람. uiScale (platform §6.2), 안내 글리프, 기술 커맨드는 방향 화살표 + 지금 기기의 버튼 글리프.
@@ -101,11 +101,11 @@ export class BossIntroScene extends Scene {
   constructor(g) { super(g); this.opaque = false; }
   enter({ bossId, onDone } = {}) {
     this.def = BOSSES[bossId] || { name: bossId ?? '???' };
-    this.name = String(this.def.name ?? '???');
+    this.bossName = String(this.def.name ?? '???');
     this.onDone = onDone; this.dur = 3.6; this.done = false;
     this._nk = null; this._ns = NAME_MAX;
     audio.sfx('warning');
-    prewarm(this.game, 1, [['WARNING', WARN_OPTS], [this.name, { ...NAME_OPTS, size: NAME_MAX }]]);
+    prewarm(this.game, 1, [['WARNING', WARN_OPTS], [this.bossName, { ...NAME_OPTS, size: NAME_MAX }]]);
   }
   finish() {
     if (this.done) return;
@@ -123,7 +123,7 @@ export class BossIntroScene extends Scene {
     const key = Math.round(avail);
     if (this._nk !== key) {
       this._nk = key;
-      const adv = prewarmText(ctx, this.name, { ...NAME_OPTS, size: NAME_MAX });
+      const adv = prewarmText(ctx, this.bossName, { ...NAME_OPTS, size: NAME_MAX });
       this._ns = adv > avail ? Math.max(NAME_MIN, Math.floor(NAME_MAX * avail / adv)) : NAME_MAX;
     }
     return this._ns;
@@ -180,7 +180,7 @@ export class BossIntroScene extends Scene {
     text(ctx, this.def.title ?? '', x, vh * 0.42, { size: 18, weight: 700, family: FONT.title, color: '#e8c8a8', maxWidth: avail });
     // 금색 밑줄을 먼저 그려 핏방울이 그 위로 흘러내리게
     ctx.fillStyle = GOLD; ctx.fillRect(x, ny + 16, Math.min(320, avail) * k, 3);
-    bloodText(ctx, this.name, x, ny, { ...NAME_OPTS, size: ns, t: t - 1.4, maxWidth: avail });
+    bloodText(ctx, this.bossName, x, ny, { ...NAME_OPTS, size: ns, t: t - 1.4, maxWidth: avail });
     ctx.restore();
     // 건너뛰기 안내 (1.5초부터)
     if (t > 1.5 && out > 0) {
@@ -283,6 +283,7 @@ export class UltCutinScene extends Scene {
     this.nameSpr = null; this.grad = null; this.gradKey = '';
     this.ink = null; this.inkLen = -1;
     this.popped = false;
+    this.calm = !!this.game.settings?.reduceMotion;   // 움직임 줄이기: 속도선 약하게, 확대·흐름 없음
     try { UI.loadBrush?.(); } catch { /* 글꼴 없음: title 로 그린다 */ }
     if (this.dur > 0) {
       audio.sfx('cutin_whoosh');
@@ -365,10 +366,10 @@ export class UltCutinScene extends Scene {
     ctx.translate(bx, cy); ctx.rotate(ANG_BAND); ctx.scale(1, squash);
     // 속도선 (왼쪽으로 1800 px/s)
     ctx.globalCompositeOperation = 'lighter';
-    ctx.fillStyle = 'rgba(255,255,255,0.13)';
-    const span = 2 * L + 240;
+    ctx.fillStyle = this.calm ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.13)';
+    const span = 2 * L + 240, speed = this.calm ? 500 : 1800;
     for (let i = 0; i < 20; i++) {
-      const x = L + 120 - ((i * 137 + t * 1800) % span);
+      const x = L + 120 - ((i * 137 + t * speed) % span);
       const y = -hb + ((i * 53) % Math.max(1, Math.floor(2 * hb - 4))) + 2;
       ctx.fillRect(x, y, 150 + (i % 4) * 30, i % 3 === 0 ? 3 : 2);
     }
@@ -454,7 +455,7 @@ export class UltCutinScene extends Scene {
     const img = assets.get(this.ch.portrait);
     const cy = vh * 0.5;
     const kI = ease.outExpo(clamp((t - UC.img) / UC.imgIn, 0, 1));
-    const off = (1 - kI) * 0.18 * vw - 0.03 * vw * (t / UC.dur) + slide * 0.35;
+    const off = (1 - kI) * 0.18 * vw - (this.calm ? 0 : 0.03 * vw * (t / UC.dur)) + slide * 0.35;
     if (!img || !img.width) {
       ctx.save();
       ctx.globalAlpha *= 0.16 * kI;
@@ -468,7 +469,7 @@ export class UltCutinScene extends Scene {
     // 얼굴 x: 초상화 오른쪽 끝이 흐름(-3% vw)을 빼도 화면 끝을 넘도록
     const X = vw + 60 - (1 - fx) * pw;
     const faceY = cy - (X - vw / 2) * Math.tan(-ANG_BAND) - vh * 0.02;
-    const z = 1 + 0.06 * clamp(t / UC.dur, 0, 1);
+    const z = this.calm ? 1 : 1 + 0.06 * clamp(t / UC.dur, 0, 1);
     const dw = pw * z, dh = ph * z;
     const ix = X + off - fx * dw, iy = faceY - fy * dh;
     ctx.drawImage(img, ix, iy, dw, dh);

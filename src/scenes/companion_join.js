@@ -18,7 +18,7 @@ import { Scene } from '../core/game.js';
 import { input } from '../core/input.js';
 import { audio } from '../core/audio.js';
 import { assets } from '../core/assets.js';
-import { text, font, wrap, FONT } from '../core/ui.js';
+import { text, font, wrap, FONT, fontEpoch } from '../core/ui.js';
 import { drawGlyph, glyphWidth, promptMode } from '../core/prompts.js';
 import { TAU, clamp, ease, rgba, shade, lerp } from '../core/math.js';
 import { companionDef } from '../data/companions.js';
@@ -375,7 +375,10 @@ export class CompanionJoinScene extends Scene {
     a = fade(0.8);
     const line = String(d.join ?? '');
     const size = H < 460 ? 15 : 16;
-    const lines = this.cache.lines ??= wrap(ctx, d.joinNarr ? line : `“${line}”`, colW - 36, size, 500, FONT.body).slice(0, 4);
+    // 줄바꿈은 글꼴 세대·칸 너비가 바뀔 때만 다시 (웹 글꼴이 늦게 와도 대체 글꼴 폭으로 자른 줄이 상자를 넘지 않게)
+    const lk = `${fontEpoch}|${Math.round(colW)}|${size}`;
+    if (this.cache.linesKey !== lk) { this.cache.linesKey = lk; this.cache.lines = wrap(ctx, d.joinNarr ? line : `“${line}”`, colW - 36, size, 500, FONT.body).slice(0, 4); }
+    const lines = this.cache.lines;
     const boxH = 22 + lines.length * size * 1.55 + (d.joinNarr ? 0 : 6);
     if (a > 0) {
       ctx.save(); ctx.globalAlpha *= a;

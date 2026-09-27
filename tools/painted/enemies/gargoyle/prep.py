@@ -21,6 +21,6 @@ stone = np.stack([lum * 0.92, lum * 0.95, lum * 1.06], -1)                      
 stone = stone * (1 - 0.72 * hot[..., None])                                       # put the cracks out
 tint = np.stack([lum * 0.9, lum * 1.0, lum * 0.88], -1)                          # moss: faint grey-green
 stone = stone * (1 - 0.35 * moss[..., None]) + tint * 0.35 * moss[..., None]
-out = a.copy(); out[..., :3] = np.clip(stone * 255.0 * 0.92, 0, 255)
+out = a.copy(); out[..., :3] = np.clip(stone * 255.0 * 0.7, 0, 255)
 Image.fromarray(out.astype(np.uint8), 'RGBA').save(os.path.join(W, 'matte', 'e1_gargoyle_stone.png'))
 print('e1_gargoyle_stone.png')

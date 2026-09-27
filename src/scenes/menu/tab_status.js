@@ -6,7 +6,7 @@ import { text, font, FONT } from '../../core/ui.js';
 import { clamp } from '../../core/math.js';
 import { input } from '../../core/input.js';
 import { Tab } from './base.js';
-import { HeroView, HeroStage, PixLayer, pedestal, accentOf, turntableHints, pxScale } from './hero_view.js';
+import { HeroView, HeroStage, PixLayer, PixCache, pedestal, accentOf, turntableHints, pxScale } from './hero_view.js';
 import { PAL, EL, EL_ORDER, frame, heading, divider, diamond, gauge, pill, selBar, glow, num, para, measure, ellipsize, inRect } from './common.js';
 import * as D from './access.js';
 import { SUBWEAPONS } from '../../data/subweapons.js';
@@ -73,6 +73,8 @@ export class StatusTab extends Tab {
     this.view = new HeroView({ turntable: true, game: m.game });
     this.stage = new HeroStage();
     this.layer = new PixLayer();   // 능력치 판 (화소 정렬 1:1 복사 — P-11)
+    this.txt = new PixCache(8);    // 왼쪽 정보·아래 설명 글자
+    this.bg = new PixLayer();      // 두 판의 틀 (그라디언트) — 한 장으로 구워 1:1 복사
     this.rev = -1;
     this.col = 0; this.row = 0; // 커서 (col = 열 수 → 속성표)
     this.cells = [];            // 능력치 칸 위치 [{col,row,key,x,y,w,h}]
@@ -88,7 +90,7 @@ export class StatusTab extends Tab {
     this.view.set(this.look, D.CHARACTERS()[this.hero.charId]);
   }
   onShow() { this.refresh(); this.view.intro(0.8); this.view.wake(); }
-  free() { this.layer.free(); this.stage.free(); }
+  free() { this.layer.free(); this.stage.free(); this.txt.free(); this.bg.free(); }
   /** 메뉴의 가로 밀기(탭 넘기기)를 무시할 곳: 회전 무대 (platform §5.6) */
   noSwipe(x, y) { return this.view.swipeBlock(x, y); }
   swipeBlock(x, y) { return this.view.swipeBlock(x, y); }
@@ -146,8 +148,12 @@ export class StatusTab extends Tab {
     this.refresh();
     const t = this.t, hero = this.hero, ch = D.CHARACTERS()[hero.charId] || {};
     const LW = Math.min(330, Math.round(A.w * 0.34));
+    // 두 판의 틀 (정적)
+    this.bg.draw(ctx, `${LW}`, A.x - 3, A.y - 3, A.w + 6, A.h + 6, (c) => {
+      frame(c, A.x, A.y, LW, A.h);
+      frame(c, A.x + LW + 12, A.y, A.w - LW - 12, A.h);
+    });
     // ── 왼쪽: 영웅 카드 (무대 높이는 아래 정보 칸(≈170 px)을 뺀 만큼) ──
-    frame(ctx, A.x, A.y, LW, A.h);
     const sh = Math.round(clamp(A.h - 178, 108, 226));
     const sx = A.x + 8, sy = A.y + 8, sw = LW - 16;
     const accent = accentOf(this.look);
@@ -160,49 +166,55 @@ export class StatusTab extends Tab {
     this.view.draw(ctx, sx + sw / 2, sy + sh - foot, scale);
     this.view.drawDeck(ctx, t);
     ctx.strokeStyle = 'rgba(200,160,90,0.35)'; ctx.lineWidth = 1; ctx.strokeRect(sx + 0.5, sy + 0.5, sw - 1, sh - 1);
-    // 이름 · 칭호
-    let y = sy + sh + 30;
-    text(ctx, ch.name ?? hero.charId, A.x + LW / 2, y, { size: 22, align: 'center', weight: 800, family: FONT.title, color: PAL.bone, ow: 4, maxWidth: LW - 24 });
-    y += 18;
-    text(ctx, `${ch.eng ?? ''}  ·  ${ch.title ?? ''}`, A.x + LW / 2, y, { size: 11, align: 'center', weight: 700, family: FONT.num, color: PAL.dim, ow: 2, maxWidth: LW - 20 });
-    // 직업 계보
-    y += 12;
-    const chain = D.classChain(hero.classId);
-    ctx.font = font(12, 800, FONT.body);
-    const widths = chain.map((c) => ctx.measureText(c.name).width + 14);
-    const total = widths.reduce((a, b) => a + b, 0) + (chain.length - 1) * 14;
-    const shrink = total > LW - 16 ? (LW - 16) / total : 1;
-    let cx = A.x + LW / 2 - (total * shrink) / 2;
-    chain.forEach((c, i) => {
-      const last = i === chain.length - 1;
-      const nm = shrink < 1 ? ellipsize(ctx, c.name, widths[i] * shrink - 14, 12, 800) : c.name;
-      pill(ctx, nm, cx, y, { color: last ? PAL.goldHi : PAL.dim, bg: last ? 'rgba(110,14,34,0.9)' : 'rgba(30,18,28,0.9)', size: 12, h: 20 });
-      cx += widths[i] * shrink;
-      if (!last) { text(ctx, '›', cx + 7, y + 15, { size: 15, align: 'center', color: PAL.goldDim, weight: 800, ow: 0 }); cx += 14 * shrink; }
+    // 이름·칭호·직업 계보·레벨·경험치·HP/MP 는 글자 캐시 (값이 바뀔 때만 다시 굽는다 — 외곽선 글자는 매 프레임 그리기에 비싸다, P-11)
+    const pl = this.world?.player;
+    const hpNow = Math.ceil(pl ? pl.hp : this.stats.hp), mpNow = Math.floor(pl ? pl.mp : this.stats.mp);
+    const iy0 = sy + sh + 4;
+    this.txt.draw(ctx, 'info', `${this.rev}|${hero.charId}|${hero.classId}|${hero.level}|${hero.exp}|${hpNow}|${mpNow}|${this.stats.hp}|${this.stats.mp}`, A.x + 2, iy0, LW - 4, A.y + A.h - 2 - iy0, (g) => {
+      // 이름 · 칭호
+      let y = sy + sh + 30;
+      text(g, ch.name ?? hero.charId, A.x + LW / 2, y, { size: 22, align: 'center', weight: 800, family: FONT.title, color: PAL.bone, ow: 4, maxWidth: LW - 24 });
+      y += 18;
+      text(g, `${ch.eng ?? ''}  ·  ${ch.title ?? ''}`, A.x + LW / 2, y, { size: 11, align: 'center', weight: 700, family: FONT.num, color: PAL.dim, ow: 2, maxWidth: LW - 20 });
+      // 직업 계보
+      y += 12;
+      const chain = D.classChain(hero.classId);
+      g.font = font(12, 800, FONT.body);
+      const widths = chain.map((c) => g.measureText(c.name).width + 14);
+      const total = widths.reduce((a, b) => a + b, 0) + (chain.length - 1) * 14;
+      const shrink = total > LW - 16 ? (LW - 16) / total : 1;
+      let cx = A.x + LW / 2 - (total * shrink) / 2;
+      chain.forEach((c, i) => {
+        const last = i === chain.length - 1;
+        const nm = shrink < 1 ? ellipsize(g, c.name, widths[i] * shrink - 14, 12, 800) : c.name;
+        pill(g, nm, cx, y, { color: last ? PAL.goldHi : PAL.dim, bg: last ? 'rgba(110,14,34,0.9)' : 'rgba(30,18,28,0.9)', size: 12, h: 20 });
+        cx += widths[i] * shrink;
+        if (!last) { text(g, '›', cx + 7, y + 15, { size: 15, align: 'center', color: PAL.goldDim, weight: 800, ow: 0 }); cx += 14 * shrink; }
+      });
+      // 레벨 · 경험치
+      y += 34;
+      const lx = A.x + 18;
+      text(g, 'Lv', lx, y + 22, { size: 14, weight: 800, family: FONT.num, color: PAL.goldMid });
+      text(g, String(hero.level), lx + 22, y + 24, { size: 32, weight: 900, family: FONT.num, color: PAL.goldHi, ow: 4 });
+      const need = D.expToNext(hero.level), maxed = hero.level >= D.MAX_LEVEL();
+      const ex = lx + 86, ew = LW - (ex - A.x) - 18;
+      text(g, 'EXP', ex, y + 6, { size: 11, weight: 800, family: FONT.num, color: PAL.dim });
+      text(g, maxed ? 'MAX' : `${num(hero.exp)} / ${num(need)}`, ex + ew, y + 6, { size: 11, align: 'right', weight: 700, family: FONT.num, color: PAL.bone });
+      gauge(g, ex, y + 11, ew, 9, maxed ? 1 : hero.exp / need, '#e8c872');
+      text(g, maxed ? '최고 레벨에 도달했습니다' : `다음 레벨까지 ${num(Math.max(0, need - hero.exp))}`, ex, y + 36, { size: 11, weight: 600, color: PAL.dim, maxWidth: ew });
+      // HP/MP (스테이지 안이면 현재치)
+      y += 50;
+      const p = this.world?.player;
+      const hp = p ? p.hp : this.stats.hp, mp = p ? p.mp : this.stats.mp;
+      const bw = (LW - 36 - 10) / 2;
+      text(g, 'HP', lx, y + 4, { size: 11, weight: 800, family: FONT.num, color: '#ff8a9a' });
+      text(g, `${Math.ceil(hp)} / ${this.stats.hp}`, lx + bw, y + 4, { size: 11, align: 'right', weight: 700, family: FONT.num, color: PAL.bone });
+      gauge(g, lx, y + 9, bw, 7, hp / this.stats.hp, '#e8283c', { glowEnd: false });
+      const mx = lx + bw + 10;
+      text(g, 'MP', mx, y + 4, { size: 11, weight: 800, family: FONT.num, color: '#8ac8ff' });
+      text(g, `${Math.floor(mp)} / ${this.stats.mp}`, mx + bw, y + 4, { size: 11, align: 'right', weight: 700, family: FONT.num, color: PAL.bone });
+      gauge(g, mx, y + 9, bw, 7, mp / this.stats.mp, '#3a7aff', { glowEnd: false });
     });
-    // 레벨 · 경험치
-    y += 34;
-    const lx = A.x + 18;
-    text(ctx, 'Lv', lx, y + 22, { size: 14, weight: 800, family: FONT.num, color: PAL.goldMid });
-    text(ctx, String(hero.level), lx + 22, y + 24, { size: 32, weight: 900, family: FONT.num, color: PAL.goldHi, ow: 4 });
-    const need = D.expToNext(hero.level), maxed = hero.level >= D.MAX_LEVEL();
-    const ex = lx + 86, ew = LW - (ex - A.x) - 18;
-    text(ctx, 'EXP', ex, y + 6, { size: 11, weight: 800, family: FONT.num, color: PAL.dim });
-    text(ctx, maxed ? 'MAX' : `${num(hero.exp)} / ${num(need)}`, ex + ew, y + 6, { size: 11, align: 'right', weight: 700, family: FONT.num, color: PAL.bone });
-    gauge(ctx, ex, y + 11, ew, 9, maxed ? 1 : hero.exp / need, '#e8c872');
-    text(ctx, maxed ? '최고 레벨에 도달했습니다' : `다음 레벨까지 ${num(Math.max(0, need - hero.exp))}`, ex, y + 36, { size: 11, weight: 600, color: PAL.dim, maxWidth: ew });
-    // HP/MP (스테이지 안이면 현재치)
-    y += 50;
-    const p = this.world?.player;
-    const hp = p ? p.hp : this.stats.hp, mp = p ? p.mp : this.stats.mp;
-    const bw = (LW - 36 - 10) / 2;
-    text(ctx, 'HP', lx, y + 4, { size: 11, weight: 800, family: FONT.num, color: '#ff8a9a' });
-    text(ctx, `${Math.ceil(hp)} / ${this.stats.hp}`, lx + bw, y + 4, { size: 11, align: 'right', weight: 700, family: FONT.num, color: PAL.bone });
-    gauge(ctx, lx, y + 9, bw, 7, hp / this.stats.hp, '#e8283c', { glowEnd: false });
-    const mx = lx + bw + 10;
-    text(ctx, 'MP', mx, y + 4, { size: 11, weight: 800, family: FONT.num, color: '#8ac8ff' });
-    text(ctx, `${Math.floor(mp)} / ${this.stats.mp}`, mx + bw, y + 4, { size: 11, align: 'right', weight: 700, family: FONT.num, color: PAL.bone });
-    gauge(ctx, mx, y + 9, bw, 7, mp / this.stats.mp, '#3a7aff', { glowEnd: false });
     // 스킬 포인트
     if ((hero.sp ?? 0) > 0) {
       const pulse = 0.5 + 0.5 * Math.sin(t * 4);
@@ -213,7 +225,6 @@ export class StatusTab extends Tab {
     // ── 오른쪽: 능력치 ──
     const R = { x: A.x + LW + 12, y: A.y, w: A.w - LW - 12, h: A.h };
     this.lay = statLayout(R);
-    frame(ctx, R.x, R.y, R.w, R.h);
     this.layer.draw(ctx, 'st' + this.rev + '|' + hero.charId + '|' + this.lay.cols.length + '|' + this.lay.row, R.x, R.y, R.w, R.h, (c) => this.drawStats(c, R));
     this.statRect = { x: R.x + 4, y: R.y + 4, w: R.w - 8, h: R.h - DESC_H - 8 };
     // 커서 + 설명
@@ -232,15 +243,19 @@ export class StatusTab extends Tab {
       }
     }
     const dy = R.y + R.h - DESC_H;
-    divider(ctx, R.x + 16, dy, R.w - 32, { center: false, a: 0.5 });
-    let desc = '능력치를 고르면 설명이 표시됩니다.', title = '';
-    if (cell) {
-      if (cell.col === E) { const e = EL[cell.key]; title = `${e.name} 속성`; desc = `${e.name} 피해: ${e.name} 속성 공격의 위력 증가  ·  ${e.name} 저항: ${e.name} 속성으로 받는 피해 감소`; }
-      else { title = D.STAT_INFO[cell.key]?.name ?? cell.key; desc = STAT_DESC[cell.key] ?? ''; }
-    }
-    if (title) text(ctx, title, R.x + 18, dy + 26, { size: 14, weight: 800, color: PAL.gold, family: FONT.title });
-    const tw = title ? measure(ctx, title, 14, 800, FONT.title) + 30 : 18;
-    para(ctx, desc, R.x + tw, dy + 26, R.w - tw - 16, { size: 13, color: PAL.text, max: 1 });
+    // 설명 줄 (글자 캐시: 고른 칸이 바뀔 때만 다시 굽는다)
+    this.txt.draw(ctx, 'desc', `${cell ? cell.col === E ? 'el:' + cell.key : cell.key : '-'}`, R.x + 4, dy - 4, R.w - 8, DESC_H, (g) => {
+      divider(g, R.x + 16, dy, R.w - 32, { center: false, a: 0.5 });
+      let desc = '능력치를 고르면 설명이 표시됩니다.', title = '';
+      if (cell) {
+        if (cell.col === E) { const e = EL[cell.key]; title = `${e.name} 속성`; desc = `${e.name} 피해: ${e.name} 속성 공격의 위력 증가  ·  ${e.name} 저항: ${e.name} 속성으로 받는 피해 감소`; }
+        else { title = D.STAT_INFO[cell.key]?.name ?? cell.key; desc = STAT_DESC[cell.key] ?? ''; }
+      }
+      if (title) text(g, title, R.x + 18, dy + 26, { size: 14, weight: 800, color: PAL.gold, family: FONT.title });
+      const tw = title ? measure(g, title, 14, 800, FONT.title) + 30 : 18;
+      para(g, desc, R.x + tw, dy + 26, R.w - tw - 16, { size: 13, color: PAL.text, max: 1 });
+    });
+    this.txt.sweep();
   }
 
   drawRow(ctx, k, x, y, w, hot = false) {

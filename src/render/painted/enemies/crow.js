@@ -18,6 +18,7 @@ export const spec = {
 const _q = [0, 0];
 const PI = Math.PI;
 const CY = -17;                         // body pivot (flying): a little above the centre of the 38x30 logic rect (like the vector crow)
+const CX = 8;                           // body shifted forward: the head reaches the front of the logic rect, the tail overhangs behind
 const FEATHER = '#1a1a2c';
 
 /** wing stroke for the flying states: dir = world angle of the wing axis (shoulder -> tip) */
@@ -50,14 +51,15 @@ export function draw(ctx, e, world, o, rig) {
       K.pivotPos('fly', 'a', 'wr', 0, CY, 0, 1, 1, _q); const wx = _q[0], wy = _q[1];
       K.end();
       K.spawnDissolve(world, e, rig, [
-        { name: 'wing', pv: 'a', x: wx - 3, y: wy + 1, rot: -2.4, sx: 0.9, sy: -1, vn: 'deep' },
-        { name: perched ? 'perch' : 'fly', pv: 'a', x: 0, y: perched ? 0 : CY },
-        { name: 'wing', pv: 'a', x: wx, y: wy, rot: -2.2, sx: 1, sy: -1 },
+        { name: 'wing', pv: 'a', x: CX + wx - 3, y: wy + 1, rot: -2.4, sx: 0.9, sy: -1, vn: 'deep' },
+        { name: perched ? 'perch' : 'fly', pv: 'a', x: CX, y: perched ? 0 : CY },
+        { name: 'wing', pv: 'a', x: CX + wx, y: wy, rot: -2.2, sx: 1, sy: -1 },
       ], { life: 0.75, strips: 10, drift: 46, rise: 10, col: FEATHER, kind: 4, n: 16, spread: 170, cy: CY });
     }
     return;
   }
 
+  ctx.translate(CX, 0);
   K.begin(ctx, rig, K.flashK(e, o));
   // ── perched (and the first two thirds of a perched alert) ──
   const open = perched ? ease.inQuad(clamp((alertK - 0.62) / 0.38, 0, 1)) : 1;   // wings snap open at the end

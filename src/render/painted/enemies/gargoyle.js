@@ -20,6 +20,7 @@ export const spec = {
 const _q = [0, 0], _r = [0, 0];
 const PI = Math.PI;
 const FOLD = PI - 1.15;                     // folded wing: drapes down along the back
+const WS = 1.12;                            // wing scale (spread span ≈ the vector wings)
 
 let WN = 6, WB = 0;
 const wingBend = (u) => WB * (0.5 + u) / WN;
@@ -31,14 +32,14 @@ function pose(e) {
   q.statue = an === 'statue' || an === 'idle'; q.wake = an === 'wake' ? clamp(at / 0.7, 0, 1) : q.statue ? 0 : 1;
   q.cy = -26; q.rot = 0; q.shake = 0; q.eye = 1; q.fire = 0; q.burst = 0; q.tele = 0; q.clawG = 0;
   const ph = t * 9, flap = Math.sin(ph);
-  q.dir = PI + 0.15 + 0.85 * flap; q.bend = -0.3 * Math.cos(ph); q.ws = 1; q.lag = 0.35;
+  q.dir = PI + 0.1 + 0.65 * flap; q.bend = -0.3 * Math.cos(ph); q.ws = WS; q.lag = 0.35;
   q.cy = -28 + flap * 2; q.embers = 1;
   if (q.statue) {
-    q.cy = -26; q.dir = FOLD; q.bend = 0.25; q.ws = 0.86; q.eye = 0; q.embers = 0; q.lag = 0.1;
+    q.cy = -26; q.dir = FOLD; q.bend = 0.25; q.ws = 0.9; q.eye = 0; q.embers = 0; q.lag = 0.1;
   } else if (an === 'wake') {
     const k = q.wake, ke = ease.inOutQuad(k);
     q.cy = -26 - ease.inCubic(k) * 5; q.shake = Math.sin(t * 55) * 1.6 * (1 - k);
-    q.dir = lerp(FOLD, PI + 0.75, ease.outBack(clamp((k - 0.35) / 0.65, 0, 1))); q.bend = lerp(0.25, -0.2, ke); q.ws = lerp(0.86, 1, ke);
+    q.dir = lerp(FOLD, PI + 0.75, ease.outBack(clamp((k - 0.35) / 0.65, 0, 1))); q.bend = lerp(0.25, -0.2, ke); q.ws = lerp(0.9, WS, ke);
     q.eye = ke; q.embers = 0;
   } else if (an === 'breath') {
     const wu = e.params?.breathWind ?? 0.6, k = clamp(at / wu, 0, 1), after = Math.max(0, at - wu);
@@ -48,11 +49,11 @@ function pose(e) {
     else { q.burst = clamp(1 - after / 0.35, 0, 1); q.rot = lerp(0.12, 0, clamp(after / 0.4, 0, 1)); q.fire = q.burst * 0.6; }
   } else if (an === 'swoop') {
     const k = clamp(at / 0.35, 0, 1);
-    q.dir = PI + 1.05 + Math.sin(t * 40) * 0.05 * k; q.bend = 0.25; q.rot = -0.2 * ease.outCubic(k); q.tele = k; q.cy = -28;
+    q.dir = PI + 0.95 + Math.sin(t * 40) * 0.05 * k; q.bend = 0.25; q.rot = -0.2 * ease.outCubic(k); q.tele = k; q.cy = -28;
   } else if (an === 'dive') {
     const f = e.facing < 0 ? -1 : 1, vx = (e.vx ?? 0) * f, vy = e.vy ?? 0;
     q.rot = clamp(Math.atan2(vy, Math.max(60, vx)) * 0.8, -0.3, 0.9);
-    q.dir = PI - 0.4 + q.rot * 0.5 + Math.sin(t * 30) * 0.05; q.bend = 0.3; q.ws = 0.92; q.cy = -26;
+    q.dir = PI - 0.4 + q.rot * 0.5 + Math.sin(t * 30) * 0.05; q.bend = 0.3; q.ws = WS * 0.92; q.cy = -26;
     q.clawG = clamp(1 - at / 0.3, 0, 1);
   }
   if (hurt && !q.statue) { q.rot -= 0.22; q.dir += 0.4; q.shake = 0; }
@@ -108,8 +109,8 @@ export function draw(ctx, e, world, o, rig) {
     if (!q.statue) { K.pivotPos('body', 'a', 'chest', Lq.x, Lq.y, Lq.rot, 1, 1, _r); K.glow(_r[0], _r[1], 14, '#ff8a2a', (0.12 + 0.06 * Math.sin(t * 4)) * q.wake + (q.wake < 1 ? 0.3 * Math.sin(q.wake * PI) : 0)); }
     if (q.fire > 0.02) {
       K.pivotPos('body', 'a', 'jaw', Lq.x, Lq.y, Lq.rot, 1, 1, _q);
-      K.glow(_q[0] - 1, _q[1] + 1, 5 + q.fire * 12, '#ff8a2a', q.fire);
-      K.glow(_q[0] - 1, _q[1] + 1, 3 + q.fire * 5, '#fff0a0', q.fire * 0.85);
+      K.glow(_q[0] - 1, _q[1] + 1, 4 + q.fire * 8, '#ff8a2a', q.fire * 0.9);
+      K.glow(_q[0] - 1, _q[1] + 1, 2.5 + q.fire * 3.5, '#fff0a0', q.fire * 0.8);
       if (q.tele > 0.5) glint(ctx, _q[0] + 3, _q[1], 4 + 6 * q.tele, '#ffb060', (q.tele - 0.5) * 2);
     }
     if (q.tele > 0.4 && e.anim === 'swoop') { K.pivotPos('body', 'a', 'eye', Lq.x, Lq.y, Lq.rot, 1, 1, _q); glint(ctx, _q[0], _q[1], 5, '#ffd0a0', (q.tele - 0.4) / 0.6); }

@@ -69,7 +69,7 @@ function layout(e, q) {
   const flen = K.part('fleg')?.len ?? 22, hlen = K.part('hleg')?.len ?? 22;
   // joint height: the lower of the two leg pairs touches the ground (rigid legs: a splayed pair is shorter)
   const reach = Math.max(flen * Math.cos(Math.max(Math.abs(q.fN), Math.abs(q.fF)) * 0.6), hlen * Math.cos(Math.max(Math.abs(q.hN), Math.abs(q.hF)) * 0.6));
-  const ay = -(reach + 6.2) + q.bob, ax = q.shake;
+  const ay = -(reach + 6.2) + q.bob, ax = 7 + q.shake;     // +7: the snout reaches the front of the logic rect (the tail overhangs behind)
   const sx = q.sx;
   K.pivotPos('body', 'a', 'shoulder', ax, ay, q.lean, sx, 1, _j); const sX = _j[0], sY = _j[1];
   K.pivotPos('body', 'a', 'shoulder2', ax, ay, q.lean, sx, 1, _j); const s2X = _j[0], s2Y = _j[1];
