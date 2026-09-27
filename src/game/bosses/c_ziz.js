@@ -17,7 +17,7 @@ import { PI, R, C, LG, ink, glow, glowE, glowSprite, warnRect, warnFloor, impact
 import { Entity } from '../entity.js';
 import { audio } from '../../core/audio.js';
 import { TAU, clamp, lerp, rand, approach, rgba } from '../../core/math.js';
-import { registerPainted, hasPainted } from '../../render/painted/registry.js';   // [hook:art-boss-7] 채색 퍼핏 등록 (그리기 전용)
+import { registerPainted, hasPainted, paintedRig, paintedEnabled } from '../../render/painted/registry.js';   // [hook:art-boss-7] 채색 퍼핏 등록 (그리기 전용)
 import { bosses as ART7 } from '../../render/painted/reg/art-boss-7.js';
 
 const STORM = '#2c3448', STORM_D = '#0a0e17', STORM_L = '#6f7f9c', RUFF = '#3c465e';
@@ -949,6 +949,18 @@ function taperZ(ctx, P, n, r0, r1) {
 function featherRender(ctx, p) {
   ctx.rotate(Math.atan2(p.vy, p.vx));
   glowE(ctx, -6, 0, 34, 12, '#9fd0ff', 0.55);
+  // [hook:art-boss-7] 채색 리그가 준비됐으면 그린 깃털 (깃대 → 끝이 날아가는 방향). 판정·속도는 그대로
+  const F = paintedEnabled?.() ? paintedRig?.('b_ziz')?.parts?.fth2 : null, im = F?.v?.base;
+  if (im && F.quill && F.tip) {
+    const dx = F.tip[0] - F.quill[0], dy = F.tip[1] - F.quill[1], k = 46 / (Math.hypot(dx, dy) || 1);
+    ctx.save(); ctx.rotate(-Math.atan2(dy, dx)); ctx.scale(k, k);
+    ctx.drawImage(im, -(F.quill[0] + F.tip[0]) / 2, -(F.quill[1] + F.tip[1]) / 2);
+    ctx.restore();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.strokeStyle = rgba(BOLT, 0.8); ctx.lineWidth = 1.2;
+    ctx.beginPath(); boltPath(ctx, -20, 0, 16, 0, 4, 4, Math.floor(p.t * 20)); ctx.stroke();
+    return;
+  }
   ctx.beginPath(); ctx.moveTo(18, 0); ctx.quadraticCurveTo(0, -7, -20, -3); ctx.lineTo(-24, 0); ctx.lineTo(-20, 3); ctx.quadraticCurveTo(0, 7, 18, 0); ctx.closePath();
   ctx.fillStyle = '#3a4460'; ctx.fill();
   ctx.strokeStyle = BOLT; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(-22, 0); ctx.lineTo(17, 0); ctx.stroke();
