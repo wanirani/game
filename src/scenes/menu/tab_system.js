@@ -111,19 +111,20 @@ export class SystemTab extends Tab {
       ...(p2 ? [['세계의 심장', `${P.hearts?.length ?? 0} / 6`], ['별의 조각', `${P.shards?.length ?? 0} / 6`]] : []),
     ];
     // 배치: 폭이 되면 3열. 높이가 모자라면 줄 높이·제목 간격을 줄인다 (휴대폰 UI 배율 · 최소 720×400)
-    const cols = LW >= 520 ? 3 : 2;
-    const nRows = Math.ceil(rows.length / cols);
+    let cols = LW >= 520 ? 3 : 2, fs = 13;
+    let nRows = Math.ceil(rows.length / cols);
     let rh = 21, hg = 30, boxH = 44;
     const need = () => nRows * rh + hg + 12 + boxH + hg + 12 + 40;
     if (need() > A.h - 56) { rh = 20; hg = 26; boxH = 38; }
     if (need() > A.h - 56) { rh = 18; hg = 24; boxH = 34; }
+    if (need() > A.h - 56 && cols === 2) { cols = 3; fs = 12; nRows = Math.ceil(rows.length / cols); } // 좁고 낮은 화면: 3열 · 작은 글자
     const cw = (LW - 32 - (cols - 1) * 12) / cols;
     rows.forEach(([k, v], i) => {
       const cx = A.x + 16 + (i % cols) * (cw + 12), cy = A.y + 42 + Math.floor(i / cols) * rh;
       if (Math.floor(i / cols) % 2 === 0) { ctx.fillStyle = 'rgba(255,230,200,0.03)'; ctx.fillRect(cx, cy, cw, rh); }
-      const vw = measure(ctx, v, 14, 800, FONT.num);
-      text(ctx, ellipsize(ctx, k, cw - vw - 22, 13, 600), cx + 8, cy + rh - 6, { size: 13, weight: 600, color: PAL.text, ow: 2 });
-      text(ctx, v, cx + cw - 8, cy + rh - 6, { size: 14, align: 'right', weight: 800, family: FONT.num, color: PAL.bone, ow: 3 });
+      const vw = measure(ctx, v, fs + 1, 800, FONT.num);
+      text(ctx, ellipsize(ctx, k, cw - vw - 20, fs, 600), cx + 6, cy + rh - 6, { size: fs, weight: 600, color: PAL.text, ow: 2 });
+      text(ctx, v, cx + cw - 6, cy + rh - 6, { size: fs + 1, align: 'right', weight: 800, family: FONT.num, color: PAL.bone, ow: 3 });
     });
     // 스테이지 기록: 1부 13칸 · (2부를 알면) 이어서 2부 7칸
     let y = A.y + 42 + nRows * rh + hg;

@@ -316,7 +316,7 @@ function needs(charId, classId) {
     case 'bran': return ['blade', 'beam', 'banner:' + (BANNER[classId] ? classId : 'base')];
     case 'lia': return ['crow', 'blob', 'beam'];
     case 'azel': {
-      const n = ['moon', 'corona:red'];
+      const n = ['moon', classId === 'azel_dawnbringer' ? 'corona:gold' : 'corona:red'];   // 여명: 금빛 코로나 → 해돋이
       if (classId === 'azel_dawnbringer') n.push('sun', 'wing:gold', 'cres:gold');
       else if (classId === 'azel_seraph') n.push('cres:white', 'cres:dark');
       else n.push(classId === 'azel_nosferatu' ? 'wing:bat' : 'wing:blood', 'cres:red');
@@ -330,7 +330,7 @@ function glowCols(charId, classId) {
   switch (charId) {
     case 'bran': return ['#cfe0ff', BRAN_TINT[classId] ?? '#9ab0ff', '#ffe8b0'];
     case 'lia': return ['#ff2040', '#b0102a', classId === 'lia_reaper' ? '#6affb0' : classId === 'lia_bladedancer' ? '#ffd84a' : '#ff4a6a'];
-    case 'azel': return classId === 'azel_dawnbringer' ? ['#ffd070', '#fff0b0', '#ff2a4a'] : ['#ff1a2a', '#ff2a4a', classId === 'azel_seraph' ? '#b060ff' : '#b0103a'];
+    case 'azel': return classId === 'azel_dawnbringer' ? ['#ffd070', '#fff0b0', '#ff2a4a', '#ff8a3a'] : ['#ff1a2a', '#ff2a4a', classId === 'azel_seraph' ? '#b060ff' : '#b0103a'];
     default: return [];
   }
 }
@@ -1407,14 +1407,14 @@ function azel(p, w, v) {
     const ecl = u01(lt, 0.15, 0.3) * (S.back >= 0 ? 1 - u01(lt, S.back, 0.3) : 1);
     const sunK = dawn && S.burst >= 0 ? ease.outCubic(u01(lt, S.burst, 0.45)) : 0;
     const pulse = S.back >= 0 ? 1 + 0.5 * (1 - u01(lt, S.back + 0.1, 0.4)) * u01(lt, S.back, 0.1) : 1;
-    glow(ctx, sunK > 0.5 ? '#ffd070' : '#ff1a2a', mx, my, R * (3.4 + sunK * 2.4), (0.5 - 0.3 * ecl + sunK * 0.4) * fade * rise * pulse);
+    glow(ctx, sunK > 0.5 ? '#ffd070' : dawn ? '#ff8a3a' : '#ff1a2a', mx, my, R * (3.4 + sunK * 2.4), (0.5 - 0.3 * ecl + sunK * 0.4) * fade * rise * pulse);
     img(ctx, spr('moon'), mx, my, R / 104, R / 104, 0, fade * (1 - sunK), false);
     if (ecl > 0.001 && sunK < 1) {
       const ox = (1 - ease.inOutCubic(ecl)) * R * 2.3;
       ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = fade * (1 - sunK); ctx.fillStyle = '#050104';
       ctx.beginPath(); ctx.arc(mx + ox, my, R * 1.02, 0, TAU); ctx.fill();
       const cs = (R * 1.04) / 54 * (1 + 0.04 * Math.sin(lt * 9));
-      img(ctx, spr('corona:red'), mx, my, cs, cs, lt * 0.2, ecl * fade * (1 - sunK) * (0.85 + 0.15 * Math.sin(lt * 13)), true);
+      img(ctx, spr(dawn ? 'corona:gold' : 'corona:red'), mx, my, cs, cs, lt * 0.2, ecl * fade * (1 - sunK) * (0.85 + 0.15 * Math.sin(lt * 13)), true);
     }
     if (sunK > 0) {
       const ss = (R * 1.3) / 60 * (1 + 0.25 * sunK);

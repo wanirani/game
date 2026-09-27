@@ -178,7 +178,7 @@ export class InventoryTab extends Tab {
   render(ctx, A) {
     if (this.rev !== this.m.rev) this.rebuild();
     const t = this.t, focused = this.m.focus === 'content';
-    const DW = Math.round(clamp(A.w * 0.34, 290, 360));
+    const DW = Math.round(clamp(A.w * 0.34, A.w < 760 ? 250 : 290, 360)); // 좁은 UI(720)에서는 상세 칸을 줄여 격자·분류 자리를 남긴다
     const GW = A.w - DW - 12;
     frame(ctx, A.x, A.y, GW, A.h);
     // ── 분류 필터 ──
@@ -195,7 +195,7 @@ export class InventoryTab extends Tab {
     let minW = touch ? 48 : 0, pad = clamp(Math.floor((avail - measure(ctx, cnt, 12, 700) - 18 - fgap * FILTERS.length - nameW.reduce((a, b) => a + b, 0)) / FILTERS.length), 14, 22);
     if (fit(minW, pad) > avail) { // 좁은 화면 (UI 배율을 크게 한 16:9 등): 줄임 이름 · 작은 글자
       names = FILTERS.map((f) => f.short ?? f.name); fsize = 12; nameW = names.map((n) => measure(ctx, n, fsize, 800)); pad = 12;
-      if (fit(minW, pad) > avail) minW = Math.max(0, Math.floor((avail - fgap * (FILTERS.length - 1)) / FILTERS.length));
+      if (fit(minW, pad) > avail) { minW = 0; pad = Math.max(4, Math.floor((avail - fgap * (FILTERS.length - 1) - nameW.reduce((a, b) => a + b, 0)) / FILTERS.length)); }
     }
     FILTERS.forEach((f, k) => {
       const w = Math.max(minW, nameW[k] + pad);

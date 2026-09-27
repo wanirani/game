@@ -30,6 +30,10 @@ export const SHOTS = {
     tool: 'image_to_image', aspect: '3:4', n: 2, inputs: ['skeleton_edit'], for: ['skeleton_knight'],
     prompt: S(`Edit 图片1: armour this skeleton as a fallen skeleton knight captain. Add a blackened dark iron breastplate with tarnished gold trim and a spiked gorget strapped over the ribcage (the spine still visible below it), a dark iron shoulder guard, a skirt of overlapping dark iron tasset plates over the hips instead of the red loincloth, a dark iron knee cop and greave on the leg, and an open-faced black iron helmet with two curved horns sweeping back, the grinning skull face with glowing red eye sockets still visible under the brim. ${KEEP}`),
   },
+  sk_knight_legs: {
+    tool: 'image_to_image', aspect: '3:4', n: 2, inputs: ['sk_knight_1'], for: ['skeleton_knight'],
+    prompt: S(`Edit 图片1: remove the skirt of overlapping tasset plates at the hips completely, so that the bony pelvis and the whole armoured thigh are visible: a black iron cuisse plate with gold trim covering the thigh from the hip joint down to the knee cop. Keep everything else exactly identical: the same helmet, skull, breastplate, spine, knee cop, greave and sabaton, the same pose, position and size in the frame, the same strict side view facing right, the same painting style and lighting, the same flat plain medium grey background. No arms.`),
+  },
   sk_scim: {
     tool: 'image_to_image', aspect: '3:4', n: 2, inputs: ['skeleton_edit'], for: ['bone_scimitar'],
     prompt: S(`Edit 图片1: turn this skeleton into the remains of a desert mercenary. Wrap the skull in a crimson and cream desert turban with a long tail of cloth hanging down behind the head, add a gold hoop earring, replace the loincloth with a wide crimson silk sash knotted at the hip with two long hanging ends over short ragged cream trousers, make the bones sun-bleached and slightly yellow, the eye sockets glowing amber. ${KEEP}`),

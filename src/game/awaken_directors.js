@@ -186,17 +186,53 @@ function pathBz(ctx, L, u = 1) {
 // ═══════════════════════════ 미리 굽기 (스테이지 진입 때, 한가할 때) ═══════════════════════════
 // 시전 도중 캔버스·그라디언트를 만들지 않도록 (feel §8) 이 감독들이 쓰는 색의 빛·기둥 스프라이트와 전용 스프라이트를 미리 만든다.
 const PREP = { key: null, scratch: null, dawn: null, cyl: null };
-const COLS = {
-  kael: ['#fff2b0', '#ffd870', '#fff8e0', '#ffffff', '#8a1426', '#ff8a2a', '#ffe0a0', '#ff2040', '#ffb0b8', '#8a8aff', '#e8e8ff', '#ffb060', '#ff5a6a', '#c8c8ff'],
-  sera: ['#fff8d0', '#fff2b0', '#ffe7a0', '#ffffff', '#c8a24a', '#d8f0ff', '#8ac8ff', '#ff7a2a', '#9fe8ff', '#fff2a0', '#bfe0ff', '#e0f0ff', '#ffd0a0'],
-  victor: ['#ffd070', '#fff0b0', '#ffe0a0', '#ffffff', '#e8ecff', '#c8d4ff', '#9ab0ff', '#ff2030', '#ff8a90', '#ff7a2a', '#ffb060', '#ffd84a', '#fff0a0'],
+// ── 변형별 색 (감독과 미리 굽기가 같은 표를 쓴다: 미리 구운 색과 실제로 그리는 색이 어긋나면 시전 도중 스프라이트를 새로 굽는다) ──
+const KAEL_GOLD = '#ffd870';
+/** 카엘 채찍 [띠, 심지] */
+const kaelLash = (vr) => (vr === 'bloodhunter' ? ['#ff2040', '#ffd0d8'] : vr === 'nightraven' ? ['#8a8aff', '#f0f0ff'] : vr === 'inquisitor' ? ['#ff8a2a', '#ffe8b0'] : [KAEL_GOLD, '#fff8e0']);
+/** 세라 심판의 기둥 [기둥, 심지] (대마법사는 ARCH 로 번갈아) */
+const seraPcol = (vr) => (vr === 'stormcaller' ? ['#bfe0ff', '#ffffff'] : vr === 'oracle' ? ['#d8f0ff', '#ffffff'] : ['#fff2b0', '#ffffff']);
+const ARCH = [['fire', '#ff7a2a', '#ffd0a0'], ['ice', '#9fe8ff', '#e8fcff'], ['thunder', '#fff2a0', '#ffffff']];
+/** 빅터 은빛 십자(표식 폭발) · 탄도 */
+const victorSil = (vr) => (vr === 'phantom' ? '#9ab0ff' : vr === 'executioner' ? '#ff2030' : vr === 'hellfire' ? '#ff7a2a' : '#e8ecff');
+const victorTrace = (vr) => (vr === 'phantom' ? '#c8d4ff' : vr === 'hellfire' ? '#ffb060' : '#fff0b0');
+/** 2차 전직 변형 이름 (1차 전직이면 null — 감독의 D.T2c 와 같은 규칙) */
+const variantOf = (ch, classId) => (classId && T2[classId] && classId.startsWith(ch + '_') ? classId.slice(ch.length + 1) : null);
+/** 판정 문구 (hitfx 문구 스프라이트를 미리 굽는다: 처음 띄울 때 캔버스를 만들지 않게) */
+const CALLOUT = {
+  clack: ['찰칵', { color: '#e8e8f0', size: 16 }],
+  slow: ['시간 둔화', { color: '#8ac8ff', size: 16 }],
+  execute: ['처형', { color: '#ff3040', size: 18 }],
 };
-/** 가로 빛기둥(beamH) 색: 카엘 십자가 금빛 · 세라 십자광 PCOL[0] · 빅터 은빛 십자 SIL (변형별) */
-const BEAMH = {
-  kael: ['#ffd870'],
-  sera: ['#fff2b0', '#d8f0ff', '#bfe0ff'],
-  victor: ['#e8ecff', '#9ab0ff', '#ff2030', '#ff7a2a'],
-};
+/**
+ * 이 영웅·직업의 감독이 skills.js 캐시 스프라이트(glow·beamV·beamH)로 그리는 색 전부 — 그 이상은 굽지 않는다
+ * (그 캐시는 72칸 선입선출이라 쓰지 않는 색을 구우면 다른 연출의 스프라이트를 밀어낸다). beam 항목은 [색, 심지].
+ */
+function spriteSet(ch, classId) {
+  const vr = variantOf(ch, classId);
+  const col = T2[classId]?.color ?? AWAKEN[ch]?.color ?? '#ffffff';
+  const G = new Set(['#ffffff']), BV = new Map([['#ffffff|#ffffff', ['#ffffff', '#ffffff']]]), BH = new Map(BV);
+  const bv = (c, core = '#ffffff') => BV.set(c + '|' + core, [c, core]), bh = (c, core = '#ffffff') => BH.set(c + '|' + core, [c, core]);
+  if (ch === 'kael') {
+    const L = kaelLash(vr);
+    for (const c of [...L, KAEL_GOLD]) G.add(c);
+    bv(KAEL_GOLD); bh(KAEL_GOLD);
+    if (vr === 'templar') { G.add('#fff2b0'); G.add('#e8c872'); }   // 방패 인장
+    if (vr === 'inquisitor') G.add('#ff8a2a');   // 불타는 감옥
+  } else if (ch === 'sera') {
+    const PC = seraPcol(vr);
+    for (const c of ['#fff2b0', '#fff8d0', col, ...PC]) G.add(c);
+    bv('#fff2b0'); bv(PC[0]); bh(PC[0]);
+    for (const c of vr === 'archmage' ? ARCH.flatMap((a) => [a[1], a[2]]) : PC) { G.add(c); bv(c); }
+    if (vr === 'saint') G.add('#ffe7a0');   // 후광
+    if (vr === 'oracle') G.add('#8ac8ff');   // 시간 둔화
+  } else if (ch === 'victor') {
+    const SIL = victorSil(vr);
+    G.add('#ffd070');
+    bv(SIL); bh(SIL);
+  }
+  return { vr, col, glow: [...G], bv: [...BV.values()], bh: [...BH.values()] };
+}
 function mkCanvas(w, h) {
   if (typeof document === 'undefined' || !document.createElement) return null;
   const c = document.createElement('canvas'); c.width = w; c.height = h;
@@ -240,30 +276,37 @@ function bakeCylinder() {
   g.strokeStyle = '#2a2a34'; g.lineWidth = 2; g.stroke();
   return c;
 }
-function prewarm(w, p) {
+/**
+ * force: 이미 구운 조합이어도 다시 훑는다 (각성 시전 순간 — 컷인이 월드를 멈춘 사이). skills.js 스프라이트 캐시는 선입선출이라
+ * 스테이지 진입 때 구운 스프라이트가 그 뒤 다른 기술들에 밀려났을 수 있다 (남아 있는 것은 Map 조회뿐이라 비용 없음).
+ */
+function prewarm(w, p, force = false) {
   try {
     const ch = p?.hero?.charId;
-    if (!ch || !COLS[ch] || !w) return false;
+    if (!ch || !AWAKEN_DIRECTOR[ch] || !w) return false;
     const K = FXKIT;
     if (!K?.glow || !K.beamV) return false;
     const key = `${ch}|${p.hero.classId}`;
-    if (PREP.key === key) return true;
+    if (PREP.key === key && !force) return true;
     if (!PREP.scratch) PREP.scratch = mkCanvas(4, 4);
     const sc = PREP.scratch?.getContext('2d');
     if (!sc) return false;
-    // 빛·세로 빛기둥은 쓰는 색 전부, 가로 빛기둥은 실제로 쓰는 색만 (skills.js 스프라이트 캐시 72칸을 밀어내지 않게)
-    for (const c of COLS[ch]) { K.glow(sc, 1, 1, 2, c, 1); K.beamV(sc, 1, 0, 2, 1, c, 1); }
-    for (const c of BEAMH[ch]) K.beamH(sc, 0, 2, 1, 1, c, 1);
-    K.beamV(sc, 1, 0, 2, 1, '#ffffff', 1, '#ffffff'); K.beamH(sc, 0, 2, 1, 1, '#ffffff', 1, '#ffffff');
-    if (ch === 'kael') { if (!PREP.dawn) PREP.dawn = bakeDawn(); ULTFX.sprite?.('crow'); }
-    if (ch === 'sera') { K.glassRose?.(sc, 1, 1, 1, 0, 1, 1); ULTFX.sprite?.('wing'); ULTFX.sprite?.('clock'); }
+    const S = spriteSet(ch, p.hero.classId);
+    for (const c of S.glow) K.glow(sc, 1, 1, 2, c, 1);
+    for (const [c, core] of S.bv) K.beamV(sc, 1, 0, 2, 1, c, 1, core);
+    for (const [c, core] of S.bh) K.beamH(sc, 0, 2, 1, 1, c, 1, core);
+    if (ch === 'kael') { if (!PREP.dawn) PREP.dawn = bakeDawn(); if (S.vr === 'nightraven') ULTFX.sprite?.('crow'); }
+    if (ch === 'sera') { K.glassRose?.(sc, 1, 1, 1, 0, 1, 1); ULTFX.sprite?.('wing'); if (S.vr === 'oracle') { ULTFX.sprite?.('clock'); HFX.textSprite?.(...CALLOUT.slow); } }
     if (ch === 'victor') {
       if (!PREP.cyl) PREP.cyl = bakeCylinder();
-      ULTFX.sprite?.('muzzle'); ULTFX.sprite?.('skullx');
-      for (const c of ['#fff0b0', '#c8d4ff', '#ffb060']) starOf(c);
-      for (const [r, s] of [['A', '♠'], ['8', '♣'], ['A', '♣'], ['8', '♠']]) { sc.save(); K.cardShape?.(sc, 38, 54, r, s, 1); sc.restore(); }
+      ULTFX.sprite?.('muzzle');
+      starOf(victorTrace(S.vr));
+      for (const [r, s] of CARDS) { sc.save(); K.cardShape?.(sc, 38, 54, r, s, 1); sc.restore(); }
+      HFX.textSprite?.(...CALLOUT.clack);
+      if (S.vr === 'executioner') HFX.textSprite?.(...CALLOUT.execute);
     }
-    for (const c of ['#ffffff', ...COLS[ch].slice(0, 4)]) ULTFX.glow?.(c);
+    // ULTFX.begin/final 이 쓰는 빛 (ULTFX 자체 캐시)
+    for (const c of ['#ffffff', S.col, T2[p.hero.classId]?.accent ?? AWAKEN[ch]?.accent]) if (c) ULTFX.glow?.(c);
     sc.setTransform(1, 0, 0, 1, 0, 0); sc.globalAlpha = 1; sc.globalCompositeOperation = 'source-over'; sc.clearRect(0, 0, 4, 4);
     PREP.key = key;
     AWAKEN_DIR_A_DEBUG.prewarm = key;

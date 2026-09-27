@@ -1,0 +1,3 @@
+[["fly a", {"anim": "fly", "state": "flee"}], ["fly b", {"anim": "fly", "state": "flee", "tOff": 0.04}], ["fly c", {"anim": "fly", "state": "flee", "tOff": 0.08}],
+ ["blink", {"anim": "fly", "state": "flee", "life": 1.2, "tOff": 0.01}], ["escape", {"anim": "fly", "state": "escape", "vy": -360}],
+ ["hurt", {"anim": "fly", "state": "flee", "flashT": 0.11, "stun": 0.2}], ["dying", {"anim": "fly", "dying": 0.15}]]

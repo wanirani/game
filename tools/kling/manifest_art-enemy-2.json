@@ -537,6 +537,17 @@
    ],
    "generationId": "AWhr3YVRMnl0NZf3tXH1A4FgyPu5vC95aNuV9dxYxwdesFUdIqmJeV47uj0oT0SI_o1boCse",
    "images": []
+  },
+  {
+   "shot": "sk_knight_legs",
+   "tool": "image_to_image",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "inputs": [
+    "sk_knight_1"
+   ],
+   "generationId": "AVhBtHgSEEn-qE6jJiq27yTohSwWxCc0lJ_OuhZmoLZlb4ygI38_rMVX_8FtdT0dNeoPJ113",
+   "images": []
   }
  ]
 }
