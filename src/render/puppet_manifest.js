@@ -280,6 +280,42 @@ export const PUPPETS = {
     "ui"
    ]
   },
+  "npc_elise": {
+   "h": "bc2be5691d96",
+   "turn": false,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "npc_greta": {
+   "h": "ad3dcbbd9b08",
+   "turn": false,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "npc_hadwin": {
+   "h": "e040892711f4",
+   "turn": false,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "npc_marta": {
+   "h": "ea0653098f21",
+   "turn": false,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
   "npc_rook2": {
    "h": "ecac50f6c298",
    "turn": false,
@@ -393,7 +429,7 @@ export const PUPPETS = {
    ]
   },
   "victor_gunslinger": {
-   "h": "f11c8f0ae74e",
+   "h": "08fdc1de9332",
    "turn": true,
    "lv": [
     "hi",
@@ -402,7 +438,7 @@ export const PUPPETS = {
    ]
   },
   "victor_hellfire": {
-   "h": "1e3dbd966fe1",
+   "h": "4674dd6af73a",
    "turn": true,
    "lv": [
     "hi",
@@ -411,7 +447,7 @@ export const PUPPETS = {
    ]
   },
   "victor_phantom": {
-   "h": "34d98a062985",
+   "h": "4f44506c1b38",
    "turn": true,
    "lv": [
     "hi",
