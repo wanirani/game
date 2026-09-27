@@ -269,6 +269,12 @@ class Game {
   /** 스택을 비우고 새 장면으로 (페이드 포함) */
   go(name, params = {}, { fade = true, fadeTime = 0.35, color = '#000' } = {}) {
     const doIt = () => {
+      // 없는 장면 이름이면 스택을 비우기 전에 멈춘다 (빈 스택 = 검은 화면, P-26). 스택이 이미 비었으면 타이틀로
+      if (!this.registry[name]) {
+        console.error('Unknown scene: ' + name);
+        if (this.scenes.length || !this.registry.title) return;
+        name = 'title'; params = {};
+      }
       while (this.scenes.length) this.scenes.pop().exit();
       const sc = this.make(name);
       sc.name = name;
@@ -323,7 +329,7 @@ class Game {
     if (log.length >= 2) a = Math.min(a, FLASH_SOFT);
     if (a > FLASH_SOFT) log.push(now);
     const f = this.flashFx;
-    if (a >= f.a) { f.color = color; f.decay = decay; f.a = a; }
+    if (a >= f.a) { f.color = color; f.decay = fadeRate(decay, 4); f.a = a; }
   }
   /** 화면 가장자리 비네트 (전체 화면 채우기 대신; 플레이어 피격 '#ff0020', 0.45, 3 등). 세기 × settings.flashFx (번쩍임과 같은 설정) */
   vignette(color = '#ff0020', a = 0.45, decay = 3) {
@@ -331,7 +337,7 @@ class Game {
     const k = Number(this.settings?.flashFx ?? 1);
     const s = clamp((Number(a) || 0) * (Number.isFinite(k) ? clamp(k, 0, 1) : 1), 0, 0.85);
     if (!(s > 0)) return;
-    if (s >= v.a) { v.color = typeof color === 'string' && color[0] === '#' ? color : '#ff0020'; v.decay = decay; v.a = s; }
+    if (s >= v.a) { v.color = typeof color === 'string' && color[0] === '#' ? color : '#ff0020'; v.decay = fadeRate(decay, 3); v.a = s; }
   }
   toast(text, color = '#f3e2b8', time = 2.4) {
     this.toasts.push({ text: String(text ?? ''), color, t: time, max: time, shown: undefined });
@@ -663,6 +669,12 @@ class Game {
     t._ww = Math.max(...lines.map((s) => ctx.measureText(s).width));
     return lines;
   }
+}
+
+/** 번쩍임·비네트가 초당 줄어드는 양: 0·음수·NaN·null(대본 데이터 등)이면 화면이 덮인 채 남으므로 기본값, 너무 느리면 0.25/초까지 */
+function fadeRate(d, dflt) {
+  const n = Number(d);
+  return d != null && Number.isFinite(n) && n > 0 ? Math.max(0.25, n) : dflt;
 }
 
 /** str 이 maxW 를 넘으면 뒤를 잘라 … 를 붙인다 (지금 ctx.font 로 잰다) */

@@ -193,6 +193,7 @@ export class Colossus extends BossB {
     if (this.pI !== i) { this.pI = i; arm.fly = false; arm.planted = false; audio.sfx('charge_ready', { vol: 0.5, pitch: 0.5 }); }
     const edge = side > 0 ? A.x1 - 50 : A.x0 + 50;
     if (lt < 0.72) {
+      this.telegraphFor(0.72 - lt);   // [hook:feel] 주먹을 당기는 동안 예고 창 (카운터, feel §4.6)
       // 당기기 + 조준 (레인 경고)
       arm.tx = sh.x - side * 30 + (arm.side !== side ? side * 120 : 0); arm.ty = ly - 30; arm.k = 8;
       arm.glow = Math.min(1, lt / 0.6);
@@ -238,6 +239,7 @@ export class Colossus extends BossB {
     const arm = this.armOf(this.slamArm ?? side0);
     const reach = 470;
     if (lt < 0.85) {
+      this.telegraphFor(0.85 - lt);   // [hook:feel] 주먹을 치켜든 동안 예고 창
       if (lt < 0.55 && p) this.slamX = clamp(p.cx, this.bx - reach, this.bx + reach);
       this.slamX = clamp(this.slamX ?? this.bx, A.x0 + 60, A.x1 - 60);
       arm.tx = this.slamX; arm.ty = F - 380; arm.k = 7; arm.planted = false;
@@ -360,6 +362,7 @@ export class Colossus extends BossB {
     this.armsRest(5);
     for (const a of this.arms) a.ty -= 30;
     if (this.at(0.05)) audio.sfx('clock_tick', { vol: 0.7, pitch: 1.5 });
+    if (t < 0.65) this.telegraphFor(0.65 - t);   // [hook:feel] 어깨 톱니가 도는 동안 예고 창
     for (let i = 0; i < n; i++) {
       if (this.at(0.65 + i * 0.32)) {
         const s = i % 2 ? -1 : 1;
@@ -411,8 +414,9 @@ export class Colossus extends BossB {
     const pvx = this.bx, pvy = this.wy(-262);
     const len = F - 30 - pvy;
     if (t < T0) {
+      this.telegraphFor(T0 - t);   // [hook:feel] 시계추가 내려오는 동안 예고 창
       const k = t / T0;
-      this.pend = { a: -amp * ease.outCubic(k), len: len * ease.outCubic(k), k, warn: true };
+      this.pend ={ a: -amp * ease.outCubic(k), len: len * ease.outCubic(k), k, warn: true };
       if (this.at(0.05)) { audio.sfx('bell', { vol: 0.9, pitch: 0.7 }); }
     } else {
       const u = (t - T0) / period;

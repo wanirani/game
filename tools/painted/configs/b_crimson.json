@@ -492,5 +492,120 @@
     ]
    ]
   }
- ]
+ ],
+ "kling": {
+  "model": "kling-image-v3_0_omni (image_to_image, img_resolution 2k)",
+  "refs": {
+   "image_1": "assets/portraits/b_crimson.webp (converted to PNG, uploaded with file_upload)"
+  },
+  "prompts": "tools/painted/prompts/art-boss-2.mjs (CRIMSON.*) — exact text sent",
+  "cost": "11 calls, 15 images (5 rejected: helm_a2, torso_a2, leg_a, waist_a, leg_b1)",
+  "images": {
+   "helm_a1": {
+    "generationId": "AXWu1FTR74c8RKRtdzPdQV07MtGSu4bERjXDcOwmubM0m_dqNHj-yLWgh88iL5EytY9TcWgx",
+    "prompt": "CRIMSON.helm_a",
+    "aspect": "4:3",
+    "imageCount": 2,
+    "result": "#1 kept: horned helm in profile, visor slit with ember eyes, the empty neck hole full of blood-soaked sinew (the grotesque read we want); faces left like the torso"
+   },
+   "helm_a2": {
+    "generationId": "AXWu1FTR74c8RKRtdzPdQV07MtGSu4bERjXDcOwmubM0m_dqNHj-yLWgh88iL5EytY9TcWgx",
+    "prompt": "CRIMSON.helm_a",
+    "aspect": "4:3",
+    "imageCount": 2,
+    "result": "rejected: flatter three-quarter view, horns splayed out of profile, much less gore under the helm"
+   },
+   "torso_a1": {
+    "generationId": "AQbRp-s_fkG1EI0UYbZX3UAyje_ABjMeRvjBLmVEs_d8TBcTW0WU_WyeSXsoBvP_9fiQvVWB",
+    "prompt": "CRIMSON.torso_a",
+    "aspect": "3:4",
+    "imageCount": 2,
+    "result": "#1 kept: bulging breastplate with an open shoulder socket full of raw muscle and blood dripping from the waist opening; pivots hip/neck/shoulders/core"
+   },
+   "torso_a2": {
+    "generationId": "AQbRp-s_fkG1EI0UYbZX3UAyje_ABjMeRvjBLmVEs_d8TBcTW0WU_WyeSXsoBvP_9fiQvVWB",
+    "prompt": "CRIMSON.torso_a",
+    "aspect": "3:4",
+    "imageCount": 2,
+    "result": "rejected: seen from the back three-quarter, the flesh is only inside the shoulder socket, and the silhouette leans away"
+   },
+   "pauldron_a": {
+    "generationId": "AbUk2mk23r4LPS6VRW-0ZvhHfKYKLOohSHCkuDh6GwaT8Qa8PJ8Y94KKp3lDDoHJ7GnIqYxw",
+    "prompt": "CRIMSON.pauldron_a",
+    "aspect": "1:1",
+    "imageCount": 1,
+    "result": "kept (partly): the model drew a whole upper body instead of one pauldron; the right spiked pauldron is cut out with a polygon mask ('paul')"
+   },
+   "arm_a1": {
+    "generationId": "AcIGSneD-3kU1e9qeSvtxK1FE5dMZJEye7jx02Qaocub6PusB5QisxQpQPTr2utQCZVOJk0d",
+    "prompt": "CRIMSON.arm_a",
+    "aspect": "16:9",
+    "imageCount": 2,
+    "result": "kept for the split form: the bladed-spike gauntlet (gblade) and the clawed gauntlet with an eye in the palm (gclaw) = the two flying rocket fists"
+   },
+   "arm_a2": {
+    "generationId": "AcIGSneD-3kU1e9qeSvtxK1FE5dMZJEye7jx02Qaocub6PusB5QisxQpQPTr2utQCZVOJk0d",
+    "prompt": "CRIMSON.arm_a",
+    "aspect": "16:9",
+    "imageCount": 2,
+    "result": "kept for the assembled form: upper arm plate (upper), the spiked vambrace as the thigh plate (thigh, better proportion than leg_b), clenched fist + vambrace (fist)"
+   },
+   "leg_a": {
+    "generationId": "AbOpmk4AxMHQeCV6WSv5chezeeyxznMkj6DUU8G_BoeVX3EWS8F5AWMzcPWQwux-Iulwh1ri",
+    "prompt": "CRIMSON.leg_a",
+    "aspect": "16:9",
+    "imageCount": 1,
+    "result": "rejected: white sticker border around every piece (cannot be matted cleanly) and three near-identical legs instead of separate pieces"
+   },
+   "waist_a": {
+    "generationId": "AcDWkfB0TPfktcRxvsII4zZ0JgZlWmDZz2htBCyd9E75Ir6xTEe_GD8hUp7DOt09y2eU1Kxb",
+    "prompt": "CRIMSON.waist_a",
+    "aspect": "4:3",
+    "imageCount": 1,
+    "result": "rejected: white sticker border; content fine, regenerated as waist_b"
+   },
+   "halberd_a": {
+    "generationId": "ARu8sqe80CqMLQKsnTVdEJ2bppgQ1lV1F9oe37GnXN-5h2_MJACmlxZDhCTb-wakK6yAxUmj",
+    "prompt": "CRIMSON.halberd_a",
+    "aspect": "21:9",
+    "imageCount": 1,
+    "result": "kept: straight horizontal halberd, molten crescent blade with blood; grip pivot g on the leather wrap, blade pivot for the smear/glow"
+   },
+   "core_a": {
+    "generationId": "Af6d0KkcVOIxLFh9AFeuHjfBUPgU4hnqbsdEsNrL6X6BUtwlWklvugEUy4zVbOZVoUm6wEvc",
+    "prompt": "CRIMSON.core_a",
+    "aspect": "1:1",
+    "imageCount": 1,
+    "result": "kept: the living heart (lava veins, dripping blood) that hangs under the floating breastplate in the split form and bursts at death"
+   },
+   "debris_a": {
+    "generationId": "AVS3E16EfDPuB2x4Jd5EojBcVtGV7aMNWp6WuFBnzYNAp6jWoNuJPSeXbwTmLMnbGmzr6v1B",
+    "prompt": "CRIMSON.debris_a",
+    "aspect": "16:9",
+    "imageCount": 1,
+    "result": "kept: 9 fragments (plate shards, spikes, horn tip, spiked cop, a crescent blade shard) for world debris, split burst and death"
+   },
+   "leg_b1": {
+    "generationId": "AUPKiSOfMUcZRPNkf0tUD2f4l927R-lHLVXEZeqHy1amdKOHSedKz3KkN8OqNiZ6XIwedTg2",
+    "prompt": "CRIMSON.leg_b",
+    "aspect": "16:9",
+    "imageCount": 2,
+    "result": "rejected: still sticker-outlined (white rim) and four loose pieces of mismatched scale"
+   },
+   "leg_b2": {
+    "generationId": "AUPKiSOfMUcZRPNkf0tUD2f4l927R-lHLVXEZeqHy1amdKOHSedKz3KkN8OqNiZ6XIwedTg2",
+    "prompt": "CRIMSON.leg_b",
+    "aspect": "16:9",
+    "imageCount": 2,
+    "result": "#2 kept: two shin+sabaton greaves without outline, facing left, blood dripping from the sole; near = shin, far = shin2 (deep only)"
+   },
+   "waist_b": {
+    "generationId": "AbfA4gx5JgmpWCwznkky-7hA7Rgu10cw_rQph0teTFHlzyFBEBYw5sBbbdbedkCGQtYMMl7q",
+    "prompt": "CRIMSON.waist_b",
+    "aspect": "4:3",
+    "imageCount": 1,
+    "result": "kept: skull-buckle belt, silver-rimmed faulds and black tatters without the sticker border"
+   }
+  }
+ }
 }

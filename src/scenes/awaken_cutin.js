@@ -347,14 +347,16 @@ export class AwakenCutinScene extends Scene {
   }
   resize() { if (this.vw !== this.game.viewW || this.vh !== this.game.viewH) this.bake(); }
 
-  /** 컷인 그림 (없으면 초상) */
+  /** 컷인 그림 (없으면 초상: 가장자리를 부드럽게 녹인 사본을 한 번 굽는다) */
   pickImage() {
     const a = this.a;
     const ok = (im) => im && (im.naturalWidth || im.width) > 8;
     const img = assets.get(a.cutin);
-    if (ok(img)) { this.img = img; this.fallback = false; this.face = a.face; this.eye = a.eye; return; }
+    if (ok(img)) { this.img = img; this.fallback = false; this.fb = null; this.face = a.face; this.eye = a.eye; return; }
     const por = assets.get(a.portrait);
-    this.img = ok(por) ? por : null;
+    const next = ok(por) ? por : null;
+    if (next !== this.img || !this.fb) this.fb = next ? featherPortrait(next) : null;
+    this.img = next;
     this.fallback = true;
     this.face = a.portraitFace ?? [0.5, 0.3];
     this.eye = [this.face[0] + 0.02, this.face[1] - 0.03];
@@ -395,7 +397,8 @@ export class AwakenCutinScene extends Scene {
     const T = this.T, t = this.t;
     if (this.cam) { try { this.cam.tick?.(dt); } catch (e) { console.error(e); } }
     if (this.fontArrived && this.text && !this.text.brush) { this.fontArrived = false; PREP.key = ''; this.bake(); }
-    if (!this.img && t < 1) this.pickImage();
+    // 그림이 아직 안 왔으면(또는 초상으로 대신하는 중이면) 일러스트가 들어오기 직전까지 다시 본다
+    if ((!this.img && t < 1) || (this.fallback && t < T.img + 0.03)) this.pickImage();
     if (this.shakeT > 0) this.shakeT -= dt;
     // 시전 자세를 들어 올린 상태까지만 진행 (월드는 멈춰 있다)
     const p = this.p;

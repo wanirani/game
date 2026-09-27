@@ -1,8 +1,7 @@
 // 7장 보스: 키메라 호문쿨루스 — 연금술이 낳은 세 머리 괴수 (사자 몸 + 산양 머리 + 뱀 꼬리, 등에 영약 유리관)
 // 패턴: 사자 도약(착지 충격) / 산양 주문(산성 플라스크·유도 녹염·낙뢰) / 뱀 꼬리 휩쓸기·독침 / 산성 분사(바닥 웅덩이) / 돌진 / 발톱 연격
 // 페이즈: 1 = 뱀 머리 각성(독자적으로 독 발사) · 2 = 광폭화(유리관 파열, 녹색 불길, 모든 머리 동시 행동)
-import { ABoss, beginDraw, endDraw, C, rg, lg, glow, ink, rim, sheen, taper, eye, shadow, hash, opt, flames, bolt, PI, OUT, RIM, WARM, groundWave, erupt } from './a_common.js';
-import { Hitbox } from '../projectiles.js';
+import { ABoss, beginDraw, endDraw, C, rg, lg, glow, ink, rim, sheen, taper, eye, shadow, hash, opt, flames, bolt, PI, OUT, RIM, WARM, groundWave, erupt, bossHitbox } from './a_common.js';
 import { rand, clamp, lerp, TAU, angleTo, rgba, ease } from '../../core/math.js';
 import { audio } from '../../core/audio.js';
 import { paintedDebris } from '../../render/painted/registry.js';   // 채색 파편 (ART-BOSS-3)
@@ -69,7 +68,7 @@ export class Chimera extends ABoss {
   }
   acidPool(x, life = 4) {
     const w = 110;
-    this.world.add(new Hitbox({
+    this.world.add(bossHitbox({   // [hook:feel] 적 정지(각성) 중엔 장판 수명·피해도 멈춘다 (FEEL-BOSSHOOKS 요청)
       x: x - w / 2, y: this.floorY - 22, w, h: 22, team: 'enemy', owner: this, life, delay: 0, z: 1,
       attack: { owner: this, stats: this.stats, mv: 0.35, type: 'mag', kb: [120, -420], rehit: 0.6, dir: 1, tags: ['projectile'] },
       light: { r: 90, color: ACID, i: 0.6 },

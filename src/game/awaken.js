@@ -66,7 +66,6 @@ function directorOf(charId) {
 
 // ───────────────────────── 규칙 ─────────────────────────
 const tierOf = (p) => CLASSES[p?.hero?.classId]?.tier ?? 0;
-const awState = (world) => (world.awakenState ??= { ready: false, holdK: 0 });
 
 /** 각성을 막는 상황 (feel §6.1 blocked when, MASTER_PLAN §1.13) → 이유 문자열 | '' */
 function blockedWhy(p, world) {
@@ -93,27 +92,51 @@ export function canAwaken(p, world) {
 }
 
 // ───────────────────────── 필살 버튼 ─────────────────────────
-const holdOf = (p) => (p._awHold ??= { on: false, t0: 0, lastT: 0, flushN: 0, beat2: false, ring: null, veil: null });
+const holdOf = (p) => (p._awHold ??= { on: false, t0: 0, lastT: 0, flushN: 0, beat2: false, ring: null, veil: null, obsS: 0, obsW: 0 });
 const bufWin = (world) => BUF + Math.min(0.3, world.frozenRecent ?? 0);
 const flushN = () => input.flushN ?? 0;
+
+/**
+ * HUD·터치 버튼이 읽는 world.awakenState.ready 를 '지금 게이지 상태' 로 계산되는 속성으로 바꾼다.
+ * (handleUltInput 은 피격·연출·사망 중에는 불리지 않으므로 값을 적어 두면 낡는다: 필살기를 쓴 뒤에도 '각성' 이 남는 등)
+ * 표시용이라 경직(hurtT)·장면 순서처럼 깜빡이는 조건은 넣지 않는다 — 실제 시전 판정은 canAwaken.
+ */
+const LIVE = new WeakSet();
+function awState(world) {
+  const st = (world.awakenState ??= { ready: false, holdK: 0 });
+  if (!LIVE.has(st)) {
+    LIVE.add(st);
+    try {
+      Object.defineProperty(st, 'ready', { get: () => displayReady(world), set() { /* 계산 값 */ }, enumerable: true, configurable: true });
+    } catch { /* 고정된 객체 → 적어 두는 방식 그대로 */ }
+  }
+  return st;
+}
+function displayReady(world) {
+  const p = world.player;
+  if (!p || p.dead || world.cutscene || world.cleared || world.mode === 'town') return false;
+  if (!AWAKEN[p.hero?.charId] || tierOf(p) < R.minTier) return false;
+  const run = world.run;
+  return (run?.sp ?? 0) >= R.spNeed - 1e-6 && (run?.aw ?? 0) >= R.gaugeMax - 1e-6;
+}
 
 /** 필살기·각성기 입력. true = 입력 소비 (나머지 공격 입력을 건너뛴다) */
 export function handleUltInput(p, world) {
   prepareAwakening(p, world);
-  const wallNow = nowMs(), wallPrev = p._awWall ?? -1e9;
-  p._awWall = wallNow;
   const st = awState(world);
   const H = holdOf(p);
   // 길게 누르는 중 한 프레임 이상 건너뛰었거나(피격 경직·연출·입력 잠금·사망) 장면이 쌓였으면 취소 (R16)
   if (H.on && (p.t - H.lastT > MISS_GAP || H.flushN !== flushN())) endHold(p, world, 'interrupt');
   const ready = canAwaken(p, world);
-  st.ready = ready;
+  if (!LIVE.has(st)) st.ready = ready;
   const run = world.run, win = bufWin(world);
 
   // ── 'awaken' 액션 (V · 지정한 패드 버튼) ──
   if (input.buffered('awaken', win)) {
     input.consume('awaken');
-    const sameButton = input.down('ult') && input.pressTime?.ult === input.pressTime?.awaken;   // 한 버튼에 둘 다 묶인 기기: 필살 버튼 규칙으로
+    // 한 버튼에 둘 다 묶인 경우(같은 스텝에 함께 눌림): 필살 버튼 규칙으로 (톡 = 필살기, 길게 = 각성).
+    // 누른 채인지(down)는 보지 않는다 — 히트스톱 동안 눌렀다 뗀 톡이 즉시 각성으로 바뀌지 않게 (R16)
+    const sameButton = input.pressTime?.ult === input.pressTime?.awaken && input.buffered('ult', win);
     if (!sameButton) {
       if (H.on) endHold(p, world, 'silent');
       if (ready) return castAwakening(p, world) || true;
@@ -125,14 +148,14 @@ export function handleUltInput(p, world) {
   if (!H.on) {
     st.holdK = 0; p.awakenHoldK = 0;
     if (!input.buffered('ult', win)) return false;
+    input.consume('ult');
     if (!ready) {
-      // 각성 불가: 누르는 즉시 필살기 (지연 없음). SP 가 모자라면 아무 일도 없다
-      if ((run.sp ?? 0) >= 100) { input.consume('ult'); castUltimate(p, world); return true; }
+      // 각성 불가: 누르는 즉시 필살기 (지연 없음). SP 가 모자라면 아무 일도 없다 (늦게 발동하지 않게 누름은 소비)
+      if ((run.sp ?? 0) >= 100) { castUltimate(p, world); return true; }
       return false;
     }
-    input.consume('ult');
-    startHold(p, world, H, wallNow, wallPrev);
-    if (!input.down('ult')) return resolveRelease(p, world, H);   // 히트스톱 동안 눌렀다 뗀 톡
+    startHold(p, world, H);
+    if (!input.down('ult')) return resolveRelease(p, world, H);   // 히트스톱·피격 동안 눌렀다 뗀 톡
     return true;
   }
 
@@ -140,7 +163,6 @@ export function handleUltInput(p, world) {
   H.lastT = p.t;
   if (!ready) { endHold(p, world, 'cancel'); return true; }
   if (input.down('ult')) {
-    H.downWall = wallNow;
     const held = heldFor(H);
     const k = clamp(held / R.holdFull, 0, 1);
     st.holdK = k; p.awakenHoldK = k;
@@ -152,27 +174,29 @@ export function handleUltInput(p, world) {
 }
 
 /**
- * 누르고 있던 시간 (초). 스텝 시각(input.time, 히트스톱에도 흐른다)과 실제 시각 중 긴 쪽:
- * 기기가 느려 한 프레임에 스텝이 모자라면(게임 시간이 실제보다 느리게 흐름) 실제로 0.45초 누른 것으로도 각성이 된다.
+ * 스텝 시각 → 실제 시각 배율 (1..3). input.time 은 히트스톱 중에도 스텝마다 흐르므로 보통 1 이다.
+ * 기기가 느려 게임 루프가 스텝을 버리면(한 프레임 최대 5스텝) 게임 시간이 실제보다 느리게 흐른다 →
+ * 길게 누르기가 끝나기까지 시작 뒤 지난 실제 시간 / 스텝 시간 비율만큼 늘려 센다 (실제로 0.45초 누르면 각성).
  */
-function heldFor(H) { return Math.max(input.time - H.t0, (nowMs() - H.w0) / 1000); }
-// 뗀 순간의 실제 시각은 '마지막으로 눌린 것을 본 때' 와 '지금' 사이 → 가운데로 어림한다 (누른 순간도 같은 방식, startHold)
+function stepScale(H) {
+  const dS = input.time - H.obsS, dW = (nowMs() - H.obsW) / 1000;
+  if (!(dS >= 0.05) || !(dW > 0)) return 1;
+  return clamp(dW / dS, 1, 3);
+}
+/** 누르고 있던 시간 (초, 실제 시간 기준 어림) */
+function heldFor(H) { return Math.max(0, input.time - H.t0) * stepScale(H); }
 
 /** 손을 뗐다: 톡(< 0.20초) → 일반 필살기, 0.20–0.45초 → 취소, 그 이상(얼어 있는 사이 완성) → 각성 */
 function resolveRelease(p, world, H) {
   const rel = input.releasedAt ? input.releasedAt('ult') : (input.releaseTime?.ult ?? input.time);
-  const dur = Math.max(0, (rel >= H.t0 ? rel : input.time) - H.t0);   // 스텝 기준 (톡 판정은 이쪽이 정확하다)
-  const now = nowMs(), lastDown = Math.min(now, H.downWall ?? H.w0);
-  const wall = Math.max(0, ((lastDown + now) / 2 - H.w0) / 1000);
-  AWAKEN_DEBUG.holds.push({ dur: +dur.toFixed(3), wall: +wall.toFixed(3), t: +input.time.toFixed(3) });
+  const k = stepScale(H);
+  const dur = Math.max(0, (rel >= H.t0 ? rel : input.time) - H.t0) * k;   // 스텝 시각 기준 (히트스톱에도 정확)
+  AWAKEN_DEBUG.holds.push({ dur: +dur.toFixed(3), k: +k.toFixed(2), t: +input.time.toFixed(3) });
   if (AWAKEN_DEBUG.holds.length > 16) AWAKEN_DEBUG.holds.shift();
-  // 느린 기기(한 프레임에 스텝이 모자람)에서는 스텝 시간이 실제보다 짧다: 각성은 둘 중 긴 쪽,
-  // 톡/취소는 스텝 시간 (실제 시간이 뚜렷이 더 길 때만 실제 시간 어림값)
-  const est = wall > dur + 0.05 ? wall : dur;
-  if (Math.max(dur, wall) >= R.holdFull) {
+  if (dur >= R.holdFull) {
     endHold(p, world, 'silent');
     castAwakening(p, world);
-  } else if (est < R.tapMax) {
+  } else if (dur < R.tapMax) {
     endHold(p, world, 'silent');
     AWAKEN_DEBUG.taps++;
     castUltimate(p, world);
@@ -182,11 +206,10 @@ function resolveRelease(p, world, H) {
   return true;
 }
 
-function startHold(p, world, H, wallNow = nowMs(), wallPrev = -1e9) {
+function startHold(p, world, H) {
   H.on = true; H.t0 = input.pressTime?.ult ?? input.time; H.lastT = p.t; H.flushN = flushN(); H.beat2 = false;
-  const gap = wallNow - wallPrev;   // 직전 갱신과의 실제 간격: 누른 순간은 그 사이 어딘가 → 가운데로 어림
-  H.w0 = wallNow - (gap > 0 && gap < 300 ? gap / 2 : 0) - Math.max(0, input.time - H.t0 - 1 / 60) * 1000;
-  H.downWall = wallNow;
+  if (!(H.t0 <= input.time) || input.time - H.t0 > 2) H.t0 = input.time;   // 기록이 이상하면 지금부터
+  H.obsS = input.time; H.obsW = nowMs();
   p.superArmor = 1;   // 길게 누르는 동안: 피해는 받되 경직·넉백 없음 (player.takeHit, MASTER_PLAN §1.7 #21)
   sfx('heartbeat');
   sfx('awaken_hold');
@@ -244,6 +267,7 @@ export function castAwakening(p, world, { force = false } = {}) {
   AWAKEN_DEBUG.casts++; AWAKEN_DEBUG.last = { charId, classId, tier, short, director: null, done: false };
   bus.emit('awakenCast', { charId, tier, classId });
   try { input.rumble?.(0.35, 0.5, 160); } catch { /* 진동 없음 */ }
+  try { audio.duck?.(0.6, (short ? R.cutin.short : R.cutin.full) + 0.15); } catch { /* 음악 없음 */ }   // 컷인 동안 음악을 낮춘다 (MASTER_PLAN §1.9)
   let pushed = false;
   try {
     if (world.game.registry?.awakenCutin) {

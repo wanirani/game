@@ -302,6 +302,7 @@ export class Leviathan extends BossB {
     const T0 = 0.8, dur = this.phase >= 1 ? 1.5 : 1.15;
     this.fk = 5;
     if (t < T0) {
+      this.telegraphFor(T0 - t);   // [hook:feel] 수압포 충전 = 예고 창 (카운터, feel §4.6)
       this.tx = this.px0 - this.facing * 34; this.ty = this.py0 - 46;
       this.ta = this.aimAngle(0.75);
       this.jawT = 0.95; this.mouthGlow = Math.max(this.mouthGlow, t / T0);
@@ -395,6 +396,7 @@ export class Leviathan extends BossB {
     this.ty = this.py0 + 20 + (local < 0.3 ? 12 : 0);
     this.ta = this.aimAngle(0.6);
     this.jawT = t > 0.25 && k < n ? (local < 0.35 ? 0.85 : 0.3) : 0.1;
+    if (t < 0.35) this.telegraphFor(0.35 - t);   // [hook:feel] 첫 투척 전 예고 창
     if (this.every(per, 0.35, 0.35 + per * (n - 0.5))) this.throwBlobs(world);
     if (t > 0.35 + per * n + 0.5) this.setState('idle');
   }
@@ -485,6 +487,7 @@ export class Leviathan extends BossB {
     this.ta = this.facing > 0 ? -0.75 : PI + 0.75;
     this.jawT = t > 0.3 && t < 1.4 ? 1 : 0.1;
     if (this.at(0.05)) audio.sfx('warning', { vol: 0.6 });
+    if (t < 0.9) this.telegraphFor(0.9 - t);   // [hook:feel] 해일을 일으키기 전 예고 창
     if (this.at(0.35)) { audio.sfx('boss_roar', { vol: 0.8, pitch: 0.8 }); impact(world, { shake: 8, time: 0.8 }); }
     if (this.every(0.08, 0.2, 0.9)) { world.fx.burst('water', this.ax + rand(-60, 60), F - 4, 4, { speed: 340, angle: -PI / 2, spread: 0.5 }); this.ripple(this.ax, 0.9); }
     const tall = this.phase >= 2;
@@ -676,6 +679,7 @@ export class Leviathan extends BossB {
     const x = this.tailX ?? A.cx;
     const up = 0.95;
     if (t < up) {
+      this.telegraphFor(up - t);   // [hook:feel] 꼬리를 치켜든 동안 예고 창
       const e = ease.outCubic(clamp(t / 0.6, 0, 1));
       this.tail = { x: x - this.facing * 60, y: F + 60 - e * 330, a: -PI / 2 + Math.sin(t * 6) * 0.25, k: t / up, warn: true };
       if (this.every(0.1, 0, 0.3)) this.splash(world, x - this.facing * 60, 6, 0.6);

@@ -82,6 +82,9 @@ function drawColossus(ctx, b, world, rig, st) {
   if (hit) st.jolt = 1;
   st.jolt = Math.max(0, st.jolt - dt * 6);
   const flashOn = b.flashT > 0 && !dying;
+  // 피격 섬광은 맞은 판정 부위에만: 정강이 = 그쪽 다리, 주먹 = 그쪽 팔, 시계판 = 흉갑 + 시계판, 코어 = 코어 (부위를 모르면 전체)
+  const hp = flashOn ? b.hitPart : null, BP = b.parts ?? {};
+  const fl = (key) => flashOn && (!hp || hp === BP[key]), flAll = flashOn && !hp;
   const V = (part, deep = false) => pickVariant(part, lvl, deep, null);
   const pw = clamp(b.power ?? 1, 0, 1), heat = clamp(b.heat ?? 0, 0, 1), door = clamp(b.door ?? 0, 0, 1);
   const cr = b.crouch ?? 0, gA = b.gearA ?? 0;
@@ -108,7 +111,6 @@ function drawColossus(ctx, b, world, rig, st) {
   const py = b.wy(-170);
   const pp = (pv, out) => D.pt(Pv.c[0], Pv.c[1], pv[0], pv[1], bx, py, 0, Pv.k, Pv.k, out);
   const bodyOn = !st.gone.body;
-  D.rec = flashOn;
   // ── 다리 (허벅지 → 정강이 → 무릎 톱니), 골반 뒤 ──
   const legs = st._legs ??= [{ s: -1, i: 0 }, { s: 1, i: 1 }];
   for (const L of legs) {
@@ -121,6 +123,7 @@ function drawColossus(ctx, b, world, rig, st) {
     const l1 = 86, l2 = 92;
     const k = ik2(hx, hy, fx, fy, l1, l2, s, st.ik);
     const kx = k.ex, ky = k.ey;
+    D.rec = fl(s < 0 ? 'shinL' : 'shinR');
     limb(D, Th, V(Th, true), hx, hy, kx, ky, Th.k);
     limb(D, Sh, V(Sh), kx, ky, fx, fy, Sh.k);
     const kg = R.kgear;
@@ -131,6 +134,7 @@ function drawColossus(ctx, b, world, rig, st) {
     L.fx = fx; L.fy = fy; L.kx = kx; L.ky = ky;
   }
   // ── 골반 ──
+  D.rec = flAll;
   if (bodyOn) D.part(Pv, V(Pv, true), 'c', bx, py, 0, Pv.k, Pv.k, 1);
   // ── 팔: 어깨 → 팔꿈치 (위팔은 흉갑 견갑 뒤) ──
   const armGeo = st.arm;
@@ -140,9 +144,11 @@ function drawColossus(ctx, b, world, rig, st) {
     G.gone = gone || !bodyOn;
     if (G.gone) continue;
     armIK(b, a, G, R.fist);
+    D.rec = fl(s < 0 ? 'fistL' : 'fistR');
     limb(D, R.uarm, V(R.uarm, true), G.sx, G.sy, G.ex, G.ey, R.uarm.k);
   }
   // ── 흉갑 ──
+  D.rec = fl('clock');
   if (bodyOn) {
     D.part(T, V(T), 'clock', bx, ty, 0, tk, tk * breath, 1);
     glowOver(ctx, D, T, lvl, 'clock', bx, ty, 0, tk, tk * breath, 0.5 + heat * 0.5, st, t);
@@ -171,7 +177,7 @@ function drawColossus(ctx, b, world, rig, st) {
   if (door > 0.05 && R.core && bodyOn) {
     const Co = R.core, pu = 1 + Math.sin(t * 14) * 0.04 + (dying ? Math.sin(t * 40) * 0.03 : 0);
     if (q.halos) halo(ctx, ccx, ccy, 110 * pu, FURN, 0.8 * door, true);
-    D.rec = flashOn;
+    D.rec = fl('core');
     D.part(Co, Co.v.base, 'c', ccx, ccy, Math.sin(t * 2) * 0.03, Co.k * pu, Co.k * pu, door);
     D.rec = false;
     D.end();
@@ -185,7 +191,7 @@ function drawColossus(ctx, b, world, rig, st) {
   if (Ck && door < 0.98 && bodyOn) {
     const cs = Math.cos(door * PI * 0.62), k = Ck.k;
     const hx = ccx - (Ck.c[0] - Ck.hinge[0]) * k;
-    D.rec = flashOn;
+    D.rec = fl('clock');
     D.part(Ck, V(Ck), 'hinge', hx, ccy, 0, k * cs, k, 1);
     D.rec = false;
     glowOver(ctx, D, Ck, lvl, 'hinge', hx, ccy, 0, k * cs, k, 0.4 + heat * 0.4, st, t + 1);
@@ -203,10 +209,10 @@ function drawColossus(ctx, b, world, rig, st) {
     if (heat > 0.3 && q.halos) halo(ctx, cx, ccy, 60, '#ff5a14', heat * 0.35);
   }
   // ── 아래팔 · 팔꿈치 톱니 · 갈퀴 주먹 · 사슬 (앞) ──
-  D.rec = flashOn;
   for (const a of b.arms ?? []) {
     const s = a.side, G = armGeo[s < 0 ? 0 : 1];
     if (G.gone) continue;
+    D.rec = fl(s < 0 ? 'fistL' : 'fistR');
     // 사슬 (발사 중: 손목 → 주먹)
     if (G.chain) {
       D.end();
@@ -234,7 +240,7 @@ function drawColossus(ctx, b, world, rig, st) {
   if (!st.gone.head && bodyOn) {
     const Hd = R.head, hx = bx + (b.look ?? 0) * 10, hy = b.wy(-362) - 22 + Math.sin(t * 2.1) * 1.5;
     const hr = (b.look ?? 0) * 0.04 + (dying ? Math.sin(t * 30) * 0.05 : 0);
-    D.rec = flashOn;
+    D.rec = flAll;
     D.part(Hd, V(Hd), 'eyes', hx, hy, hr, Hd.k, Hd.k, 1);
     D.rec = false;
     glowOver(ctx, D, Hd, lvl, 'eyes', hx, hy, hr, Hd.k, Hd.k, 0.5 + heat * 0.3, st, t + 2);
@@ -335,7 +341,7 @@ function drawPendulum(ctx, D, b, rig, st, q) {
     const bxp = pvx + dx * L, byp = pvy + dy * L;
     const edgeA = Math.atan2(Bl.edge[1] - Bl.hub[1], Bl.edge[0] - Bl.hub[0]);
     const rot = Math.atan2(dy, dx) - edgeA;
-    D.rec = b.flashT > 0;
+    D.rec = b.flashT > 0 && !(b.dying > 0) && !b.hitPart;
     D.part(Bl, Bl.v.base, 'hub', bxp - dx * 18, byp - dy * 18, rot, Bl.k, Bl.k, 1);
     D.rec = false;
     D.end();
