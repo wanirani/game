@@ -4,25 +4,208 @@
  "srcTD": 4,
  "note": "T2 floating string-puller from parts sheet 2: the top-hatted grinning skull head (3/4 facing left -> flipX), the headless tailcoat body (front view, dangling legs, ragged violet-lined tails; its own hanging arms are cut away with polygons) swayed with a strip warp, and the very long black sleeve with the silver-thimbled claw hand split at the elbow into upper arm + forearm/hand (used for both arms, far arm darkened). Strings are procedural (fingertips -> e.puppets). k 0.045: body 70 px, head+hat 30 px, arm 45 px (logic 44x90).",
  "sources": {
-  "s2": { "raw": "puppeteer_sheet2.webp", "file": "puppeteer_sheet2.png", "k": 0.045 }
+  "s2": {
+   "raw": "puppeteer_sheet2.webp",
+   "file": "puppeteer_sheet2.png",
+   "k": 0.045
+  }
  },
  "parts": {
   "head": {
-   "src": "s2", "box": [80, 80, 670, 745], "keep": "largest", "flipX": true, "k": 0.046,
-   "piv": { "a": [372, 690], "eyeL": [262, 512], "eyeR": [372, 512], "hat": [300, 120], "mouth": [330, 640] }
+   "src": "s2",
+   "box": [
+    80,
+    80,
+    670,
+    745
+   ],
+   "keep": "largest",
+   "flipX": true,
+   "k": 0.046,
+   "piv": {
+    "a": [
+     372,
+     690
+    ],
+    "eyeL": [
+     262,
+     512
+    ],
+    "eyeR": [
+     372,
+     512
+    ],
+    "hat": [
+     300,
+     120
+    ],
+    "mouth": [
+     330,
+     640
+    ]
+   }
   },
   "body": {
-   "src": "s2", "box": [630, 145, 1740, 1730], "keep": "largest",
-   "minus": [[[780, 235], [905, 250], [915, 640], [880, 700], [780, 700]], [[1458, 238], [1600, 238], [1600, 690], [1470, 690]]],
-   "piv": { "a": [1180, 150], "neck": [1180, 150], "shL": [870, 270], "shR": [1480, 270], "hip": [1180, 700], "chest": [1180, 330] }
+   "src": "s2",
+   "box": [
+    630,
+    145,
+    1740,
+    1730
+   ],
+   "keep": "largest",
+   "minus": [
+    [
+     [
+      885,
+      282
+     ],
+     [
+      955,
+      262
+     ],
+     [
+      985,
+      300
+     ],
+     [
+      978,
+      470
+     ],
+     [
+      968,
+      600
+     ],
+     [
+      962,
+      765
+     ],
+     [
+      872,
+      765
+     ],
+     [
+      868,
+      600
+     ]
+    ],
+    [
+     [
+      1232,
+      262
+     ],
+     [
+      1305,
+      282
+     ],
+     [
+      1322,
+      600
+     ],
+     [
+      1310,
+      765
+     ],
+     [
+      1228,
+      765
+     ],
+     [
+      1222,
+      600
+     ],
+     [
+      1226,
+      300
+     ]
+    ]
+   ],
+   "piv": {
+    "a": [
+     1100,
+     225
+    ],
+    "neck": [
+     1100,
+     225
+    ],
+    "shL": [
+     930,
+     295
+    ],
+    "shR": [
+     1270,
+     295
+    ],
+    "hip": [
+     1100,
+     700
+    ],
+    "chest": [
+     1100,
+     380
+    ]
+   }
   },
   "uarm": {
-   "src": "s2", "box": [1855, 112, 2088, 588], "keep": "largest",
-   "piv": { "a": [1908, 140], "b": [1900, 570] }
+   "src": "s2",
+   "box": [
+    1855,
+    112,
+    2088,
+    588
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1908,
+     140
+    ],
+    "b": [
+     1900,
+     570
+    ]
+   }
   },
   "farm": {
-   "src": "s2", "box": [1780, 545, 2105, 1150], "keep": "largest",
-   "piv": { "a": [1900, 570], "b": [1880, 880], "tips": [1880, 1110], "t1": [1805, 1060], "t2": [1850, 1130], "t3": [1905, 1135], "t4": [2060, 1080] }
+   "src": "s2",
+   "box": [
+    1780,
+    545,
+    2105,
+    1150
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1900,
+     570
+    ],
+    "b": [
+     1880,
+     880
+    ],
+    "tips": [
+     1880,
+     1110
+    ],
+    "t1": [
+     1805,
+     1060
+    ],
+    "t2": [
+     1850,
+     1130
+    ],
+    "t3": [
+     1905,
+     1135
+    ],
+    "t4": [
+     2060,
+     1080
+    ]
+   }
   }
  }
 }

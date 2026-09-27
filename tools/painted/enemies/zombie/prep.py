@@ -16,8 +16,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WORK = os.environ.get('ENEMY_WORK') or os.path.abspath(os.path.join(HERE, '..', '..', '.work', 'enemies'))
 a = np.asarray(Image.open(os.path.join(WORK, 'matte', 'e1_zombie_edit.png')).convert('RGBA')).astype(np.float32)
 # source-pixel polygons (image faces left): near arm over the shirt / trousers, clawed hand + claws over the thigh
-ARM = [(905, 1075), (1085, 1060), (1110, 1200), (1095, 1400), (1080, 1620), (1060, 1700), (930, 1700), (905, 1400), (885, 1200)]
-HAND = [(720, 1650), (975, 1630), (985, 1860), (970, 2040), (840, 2060), (730, 1960)]
+ARM = [(893, 1105), (1098, 1105), (1098, 1590), (1020, 1745), (985, 1945), (955, 2040), (690, 2040), (690, 1745), (800, 1590), (868, 1300)]
+HAND = [(690, 1740), (1000, 1740), (985, 1945), (955, 2040), (690, 2040)]
 m = np.zeros(a.shape[:2], np.uint8)
 for p in (ARM, HAND):
     cv2.fillPoly(m, [np.array(p, np.int32)], 255)

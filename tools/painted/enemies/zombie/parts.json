@@ -2,7 +2,7 @@
  "id": "zombie",
  "tier": "T2",
  "srcTD": 4,
- "note": "T2 humanoid. Head, torso, thigh and shin+foot come from the Step-4 edit of the sheet-2 side figure (src/zombie_edit.webp, facing left -> flipX): Kling kept both arms, so prep.py paints the near arm out of the shirt and the hand out of the thigh (background bled first, then cv2 Telea). The arm (upper arm with the torn sleeve end + forearm and clawed hand) is the outstretched arm of sheet 1 (pointing left -> flipX). k anchored to the 78 px logic height.",
+ "note": "T2 humanoid. Head, torso and shin+foot come from the Step-4 edit of the sheet-2 side figure (src/zombie_edit.webp, facing left -> flipX): Kling kept both arms, so prep.py paints the near arm and hand out of the shirt and trousers (background bled first, then cv2 Telea). The arm (upper arm with the torn sleeve end + forearm and clawed hand) is the outstretched arm of sheet 1 (pointing left -> flipX). k anchored to the 78 px logic height. The thigh is the clean side-view trouser leg of src/zombie_parts2.webp (a second parts sheet; Kling again kept the arms on its torso pieces), drawn over the knee of the shin so its torn hem hangs over it.",
  "sources": {
   "e": {
    "raw": "zombie_edit.webp",
@@ -13,6 +13,11 @@
    "raw": "zombie_sheet1.webp",
    "file": "e1_zombie_sheet1.png",
    "k": 0.046
+  },
+  "p": {
+   "raw": "zombie_parts2.webp",
+   "file": "e1_zombie_parts2.png",
+   "k": 0.037
   }
  },
  "parts": {
@@ -205,52 +210,23 @@
    }
   },
   "thigh": {
-   "src": "e",
+   "src": "p",
    "box": [
-    680,
-    1560,
-    1030,
-    2160
+    1390,
+    810,
+    1640,
+    1475
    ],
+   "keep": "largest",
    "flipX": true,
-   "poly": [
-    [
-     680,
-     1580
-    ],
-    [
-     1000,
-     1580
-    ],
-    [
-     1020,
-     1800
-    ],
-    [
-     1010,
-     2120
-    ],
-    [
-     840,
-     2150
-    ],
-    [
-     740,
-     2120
-    ],
-    [
-     710,
-     1900
-    ]
-   ],
    "piv": {
     "a": [
-     870,
-     1600
+     1510,
+     860
     ],
     "b": [
-     880,
-     2120
+     1505,
+     1270
     ]
    }
   },
