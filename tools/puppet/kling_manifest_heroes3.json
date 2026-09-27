@@ -19,7 +19,13 @@
   "npc_greta_portrait.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qUwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo5YWdlbnRfdXBsb2FkLzE3OTA0ODA4NjYvdXNKU01IUmN1Sy9ucGNfZ3JldGFfcG9ydHJhaXQuanBn.origin?x-kcdn-pid=112372",
   "npc_rook2_portrait.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qUwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo5YWdlbnRfdXBsb2FkLzE3OTA0ODA4NzIvajB4ZHhGblphei9ucGNfcm9vazJfcG9ydHJhaXQuanBn.origin?x-kcdn-pid=112372",
   "azel_dhampir_side.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qUgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo4YWdlbnRfdXBsb2FkLzE3OTA0ODEwNjEvNnY5NU5pdWU4Ui9hemVsX2RoYW1waXJfc2lkZS5qcGc.origin?x-kcdn-pid=112372",
-  "npc_rook2_side.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qTwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo1YWdlbnRfdXBsb2FkLzE3OTA0ODE2OTAvZUxyMEtwR0dLYy9ucGNfcm9vazJfc2lkZS5qcGc.origin?x-kcdn-pid=112372"
+  "npc_rook2_side.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qTwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo1YWdlbnRfdXBsb2FkLzE3OTA0ODE2OTAvZUxyMEtwR0dLYy9ucGNfcm9vazJfc2lkZS5qcGc.origin?x-kcdn-pid=112372",
+  "azel_vampire_side.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qUgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo4YWdlbnRfdXBsb2FkLzE3OTA0ODE4NzEvSm1ZTVJYOENuWC9hemVsX3ZhbXBpcmVfc2lkZS5qcGc.origin?x-kcdn-pid=112372",
+  "azel_nosferatu_side.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qVAoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo6YWdlbnRfdXBsb2FkLzE3OTA0ODE4NzQva0I5ZlBTd3dxRy9hemVsX25vc2ZlcmF0dV9zaWRlLmpwZw.origin?x-kcdn-pid=112372",
+  "azel_bloodking_side.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qVAoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo6YWdlbnRfdXBsb2FkLzE3OTA0ODE4NzkvTDlDV1o2OTBFaS9hemVsX2Jsb29ka2luZ19zaWRlLmpwZw.origin?x-kcdn-pid=112372",
+  "azel_holyblade_side.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qVAoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo6YWdlbnRfdXBsb2FkLzE3OTA0ODE4OTIvNlBReUlJcU5PaC9hemVsX2hvbHlibGFkZV9zaWRlLmpwZw.origin?x-kcdn-pid=112372",
+  "azel_dawnbringer_side.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qVgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo8YWdlbnRfdXBsb2FkLzE3OTA0ODE4OTgvZGNZN0hPekRKZC9hemVsX2Rhd25icmluZ2VyX3NpZGUuanBn.origin?x-kcdn-pid=112372",
+  "azel_seraph_side.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qUQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo3YWdlbnRfdXBsb2FkLzE3OTA0ODE5MDIvS01CUTg4RnNlbi9hemVsX3NlcmFwaF9zaWRlLmpwZw.origin?x-kcdn-pid=112372"
  },
  "entries": [
   {
@@ -132,8 +138,9 @@
    ],
    "aspect_ratio": "auto",
    "img_resolution": "2k",
-   "picked": null,
-   "prompt": "Edit 图片1. Keep the exact same walking side pose facing RIGHT in strict profile, the same arm and leg positions (the near arm hanging slightly behind the hip, the far arm swinging forward, legs in mid-stride), the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and soft lighting. Replace the man with the innkeeper woman from 图片2: her cheerful round rosy-cheeked face in profile, her green eyes, her copper-orange hair gathered in a thick braid that hangs down her back, her plump, broad, stout middle-aged female build (much rounder than the man in 图片1, her figure filling the canvas from head to feet like 图片1); a small black cat with green eyes lies draped across the back of her shoulders behind her neck. Dress her in a cream-white blouse with short puffed sleeves gathered above the elbow (bare forearms), a dark charcoal-grey laced bodice dress with an ankle-length dark grey skirt, a long cream linen apron tied at the waist, dark flat shoes; the skirt swings with her stride so her feet show just below the hem. Remove the coiled whip. Nothing held in the hands, no weapon, no lantern, no cup, no book, no cape, no cloak, full body visible from the top of the head to the feet, nothing cropped, no text, no watermark."
+   "picked": "b",
+   "prompt": "Edit 图片1. Keep the exact same walking side pose facing RIGHT in strict profile, the same arm and leg positions (the near arm hanging slightly behind the hip, the far arm swinging forward, legs in mid-stride), the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and soft lighting. Replace the man with the innkeeper woman from 图片2: her cheerful round rosy-cheeked face in profile, her green eyes, her copper-orange hair gathered in a thick braid that hangs down her back, her plump, broad, stout middle-aged female build (much rounder than the man in 图片1, her figure filling the canvas from head to feet like 图片1); a small black cat with green eyes lies draped across the back of her shoulders behind her neck. Dress her in a cream-white blouse with short puffed sleeves gathered above the elbow (bare forearms), a dark charcoal-grey laced bodice dress with an ankle-length dark grey skirt, a long cream linen apron tied at the waist, dark flat shoes; the skirt swings with her stride so her feet show just below the hem. Remove the coiled whip. Nothing held in the hands, no weapon, no lantern, no cup, no book, no cape, no cloak, full body visible from the top of the head to the feet, nothing cropped, no text, no watermark.",
+   "note": "a·b 모두 초상화 구도를 따라 3/4 (몸은 오른쪽으로 걷고 얼굴이 관객 쪽). b 가 걸음·팔 배치가 카엘에 가깝고 고양이가 어깨 위 → b (NPC 는 idle/walk/talk/gesture 만이라 3/4 도 쓸 만함)"
   },
   {
    "id": "npc_rook_side_v1",
@@ -146,8 +153,9 @@
    ],
    "aspect_ratio": "auto",
    "img_resolution": "2k",
-   "picked": null,
-   "prompt": "Edit 图片1. Keep the exact same walking side pose facing RIGHT in strict profile, the same arm and leg positions (the near arm hanging slightly behind the hip, the far arm swinging forward, legs in mid-stride), the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and soft lighting. Replace the man with the mysterious wandering merchant from 图片2: a deep black hood pulled up over his head, a black crow-beak mask covering his face with a long curved beak pointing forward, faintly glowing amber eyes in the dark of the hood, a slim build. Dress him in a long black travelling coat reaching below the knees with a ragged dark fur collar around the shoulders (only on the shoulders, not down the arm), several leather straps across the chest hung with small tied coin pouches and a round brass medallion, a wide brown leather belt with brass buckle and more small pouches at the hip, black leather gloves, dark trousers and worn black boots. Remove the coiled whip. Nothing held in the hands, no weapon, no lantern, no cup, no book, no cape, no cloak, full body visible from the top of the head to the feet, nothing cropped, no text, no watermark."
+   "picked": "-",
+   "prompt": "Edit 图片1. Keep the exact same walking side pose facing RIGHT in strict profile, the same arm and leg positions (the near arm hanging slightly behind the hip, the far arm swinging forward, legs in mid-stride), the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and soft lighting. Replace the man with the mysterious wandering merchant from 图片2: a deep black hood pulled up over his head, a black crow-beak mask covering his face with a long curved beak pointing forward, faintly glowing amber eyes in the dark of the hood, a slim build. Dress him in a long black travelling coat reaching below the knees with a ragged dark fur collar around the shoulders (only on the shoulders, not down the arm), several leather straps across the chest hung with small tied coin pouches and a round brass medallion, a wide brown leather belt with brass buckle and more small pouches at the hip, black leather gloves, dark trousers and worn black boots. Remove the coiled whip. Nothing held in the hands, no weapon, no lantern, no cup, no book, no cape, no cloak, full body visible from the top of the head to the feet, nothing cropped, no text, no watermark.",
+   "note": "FAILED: 두 후보 모두 정면으로 걸어옴(초상화의 정면성이 카엘 측면 image_1 을 이김) → 같은 인물의 맨얼굴 측면(rook2 b)을 image_1 로 가면·두건만 바꾸는 편집으로 재시도"
   },
   {
    "id": "npc_hadwin_side_v1",
@@ -160,8 +168,9 @@
    ],
    "aspect_ratio": "auto",
    "img_resolution": "2k",
-   "picked": null,
-   "prompt": "Edit 图片1. Keep the exact same walking side pose facing RIGHT in strict profile, the same arm and leg positions (the near arm hanging slightly behind the hip, the far arm swinging forward, legs in mid-stride), the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and soft lighting. Replace the man with the blacksmith from 图片2: his bald head, his rugged weathered middle-aged face in profile with a thick grey-brown beard braided into a long braid down his chest, his massive, broad-shouldered, heavily muscled build (clearly bigger and bulkier than the man in 图片1). Dress him in a dark brown sleeveless tunic, a long heavy brown leather smith's apron from chest to below the knees, one dented steel pauldron strapped on the near shoulder, bare muscular arms with leather bracers on the forearms, thick leather work gloves, dark trousers and heavy brown boots. Remove the coiled whip. Nothing held in the hands, no weapon, no lantern, no cup, no book, no cape, no cloak, full body visible from the top of the head to the feet, nothing cropped, no text, no watermark."
+   "picked": "a",
+   "prompt": "Edit 图片1. Keep the exact same walking side pose facing RIGHT in strict profile, the same arm and leg positions (the near arm hanging slightly behind the hip, the far arm swinging forward, legs in mid-stride), the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and soft lighting. Replace the man with the blacksmith from 图片2: his bald head, his rugged weathered middle-aged face in profile with a thick grey-brown beard braided into a long braid down his chest, his massive, broad-shouldered, heavily muscled build (clearly bigger and bulkier than the man in 图片1). Dress him in a dark brown sleeveless tunic, a long heavy brown leather smith's apron from chest to below the knees, one dented steel pauldron strapped on the near shoulder, bare muscular arms with leather bracers on the forearms, thick leather work gloves, dark trousers and heavy brown boots. Remove the coiled whip. Nothing held in the hands, no weapon, no lantern, no cup, no book, no cape, no cloak, full body visible from the top of the head to the feet, nothing cropped, no text, no watermark.",
+   "note": "a: 옆모습에 가까운 3/4, 망치를 먼 손(앞으로 흔드는 팔)에 쥠(\"nothing held\" 무시) — 먼 팔은 리그가 버리므로 망치도 사라짐. b 는 거의 정면"
   },
   {
    "id": "npc_alberto_side_v1",
@@ -174,8 +183,9 @@
    ],
    "aspect_ratio": "auto",
    "img_resolution": "2k",
-   "picked": null,
-   "prompt": "Edit 图片1. Keep the exact same walking side pose facing RIGHT in strict profile, the same arm and leg positions (the near arm hanging slightly behind the hip, the far arm swinging forward, legs in mid-stride), the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and soft lighting. Replace the man with the old priest from 图片2: his kind wrinkled old face in profile, his round wire-rimmed spectacles, his white hair and full white beard, a black zucchetto skullcap on his head, a slightly stooped slim old build. Dress him in a long black cassock buttoned down the front, reaching to the ankles, with a white clerical collar, a black sash at the waist, a small gold cross pendant on a chain, bare old hands, black shoes; the cassock swings with his stride so his shoes show just below the hem. Remove the coiled whip. Nothing held in the hands, no weapon, no lantern, no cup, no book, no cape, no cloak, full body visible from the top of the head to the feet, nothing cropped, no text, no watermark."
+   "picked": "a",
+   "prompt": "Edit 图片1. Keep the exact same walking side pose facing RIGHT in strict profile, the same arm and leg positions (the near arm hanging slightly behind the hip, the far arm swinging forward, legs in mid-stride), the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and soft lighting. Replace the man with the old priest from 图片2: his kind wrinkled old face in profile, his round wire-rimmed spectacles, his white hair and full white beard, a black zucchetto skullcap on his head, a slightly stooped slim old build. Dress him in a long black cassock buttoned down the front, reaching to the ankles, with a white clerical collar, a black sash at the waist, a small gold cross pendant on a chain, bare old hands, black shoes; the cassock swings with his stride so his shoes show just below the hem. Remove the coiled whip. Nothing held in the hands, no weapon, no lantern, no cup, no book, no cape, no cloak, full body visible from the top of the head to the feet, nothing cropped, no text, no watermark.",
+   "note": "a: 엄격한 옆모습·수단·금 십자가. b 는 어깨 망토(모제타)"
   },
   {
    "id": "npc_elise_side_v1",
@@ -188,8 +198,9 @@
    ],
    "aspect_ratio": "auto",
    "img_resolution": "2k",
-   "picked": null,
-   "prompt": "Edit 图片1. Keep the exact same walking side pose facing RIGHT in strict profile, the same arm and leg positions (the near arm hanging slightly behind the hip, the far arm swinging forward, legs in mid-stride), the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and soft lighting. Replace the man with the young village girl from 图片2: a girl of about twelve, her round innocent face in profile, big amber-brown eyes, her golden-blonde hair in two long braids hanging down her back, a slim childlike build with childlike proportions (a larger head relative to the body), her figure filling the canvas from head to feet like 图片1. Dress her in a simple loose cream linen dress with long sleeves and a small red ribbon at the collar, the skirt reaching to mid-calf, pale stockings and small brown leather shoes. Remove the coiled whip. Nothing held in the hands, no weapon, no lantern, no cup, no book, no cape, no cloak, full body visible from the top of the head to the feet, nothing cropped, no text, no watermark."
+   "picked": "a",
+   "prompt": "Edit 图片1. Keep the exact same walking side pose facing RIGHT in strict profile, the same arm and leg positions (the near arm hanging slightly behind the hip, the far arm swinging forward, legs in mid-stride), the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and soft lighting. Replace the man with the young village girl from 图片2: a girl of about twelve, her round innocent face in profile, big amber-brown eyes, her golden-blonde hair in two long braids hanging down her back, a slim childlike build with childlike proportions (a larger head relative to the body), her figure filling the canvas from head to feet like 图片1. Dress her in a simple loose cream linen dress with long sleeves and a small red ribbon at the collar, the skirt reaching to mid-calf, pale stockings and small brown leather shoes. Remove the coiled whip. Nothing held in the hands, no weapon, no lantern, no cup, no book, no cape, no cloak, full body visible from the top of the head to the feet, nothing cropped, no text, no watermark.",
+   "note": "a: 엄격한 옆모습, 두 갈래 땋은 머리·붉은 리본. b 는 정면 + 어두운 배경"
   },
   {
    "id": "npc_carmilla_side_v1",
@@ -202,8 +213,9 @@
    ],
    "aspect_ratio": "auto",
    "img_resolution": "2k",
-   "picked": null,
-   "prompt": "Edit 图片1. Keep the exact same walking side pose facing RIGHT in strict profile, the same arm and leg positions (the near arm hanging slightly behind the hip, the far arm swinging forward, legs in mid-stride), the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and soft lighting. Replace the man with the vampire noblewoman from 图片2: her pale beautiful face in profile, glowing red eyes, dark red lips, her very long straight glossy black hair hanging down her back to the waist, a slim tall elegant female build. Dress her in a black and deep-crimson gothic gown: an off-the-shoulder black lace bodice over a crimson corset with a black lace choker and a small red gem, long fitted black lace sleeves, black gloves, a floor-length black silk skirt with crimson panels and lace trim that swings with her stride so the pointed black shoes show just below the hem. Remove the coiled whip. Nothing held in the hands, no weapon, no lantern, no cup, no book, no cape, no cloak, full body visible from the top of the head to the feet, nothing cropped, no text, no watermark."
+   "picked": "-",
+   "prompt": "Edit 图片1. Keep the exact same walking side pose facing RIGHT in strict profile, the same arm and leg positions (the near arm hanging slightly behind the hip, the far arm swinging forward, legs in mid-stride), the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and soft lighting. Replace the man with the vampire noblewoman from 图片2: her pale beautiful face in profile, glowing red eyes, dark red lips, her very long straight glossy black hair hanging down her back to the waist, a slim tall elegant female build. Dress her in a black and deep-crimson gothic gown: an off-the-shoulder black lace bodice over a crimson corset with a black lace choker and a small red gem, long fitted black lace sleeves, black gloves, a floor-length black silk skirt with crimson panels and lace trim that swings with her stride so the pointed black shoes show just below the hem. Remove the coiled whip. Nothing held in the hands, no weapon, no lantern, no cup, no book, no cape, no cloak, full body visible from the top of the head to the feet, nothing cropped, no text, no watermark.",
+   "note": "FAILED: 두 후보 모두 정면 → 아젤 측면(엄격한 옆모습)을 image_1 로, \"STRICT SIDE PROFILE … NOT her front\" 로 재시도"
   },
   {
    "id": "npc_greta_side_v1",
@@ -216,8 +228,9 @@
    ],
    "aspect_ratio": "auto",
    "img_resolution": "2k",
-   "picked": null,
-   "prompt": "Edit 图片1. Keep the exact same walking side pose facing RIGHT in strict profile, the same arm and leg positions (the near arm hanging slightly behind the hip, the far arm swinging forward, legs in mid-stride), the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and soft lighting. Replace the man with the old stable keeper woman from 图片2: her weathered, kind, sun-tanned elderly face in profile, blue eyes, her long grey-blonde hair in a thick braid hanging down her back, a wide-brimmed battered tan leather hat, a lean wiry build. Dress her in a rust-red neckerchief, a faded cream linen shirt, a short brown fur-trimmed wool shawl around the shoulders only, a worn brown leather vest with several belts and a large iron buckle, brown leather gloves, a knee-length brown riding skirt over dark trousers, and tall worn brown riding boots. Remove the coiled whip. Nothing held in the hands, no weapon, no lantern, no cup, no book, no cape, no cloak, full body visible from the top of the head to the feet, nothing cropped, no text, no watermark."
+   "picked": "b",
+   "prompt": "Edit 图片1. Keep the exact same walking side pose facing RIGHT in strict profile, the same arm and leg positions (the near arm hanging slightly behind the hip, the far arm swinging forward, legs in mid-stride), the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and soft lighting. Replace the man with the old stable keeper woman from 图片2: her weathered, kind, sun-tanned elderly face in profile, blue eyes, her long grey-blonde hair in a thick braid hanging down her back, a wide-brimmed battered tan leather hat, a lean wiry build. Dress her in a rust-red neckerchief, a faded cream linen shirt, a short brown fur-trimmed wool shawl around the shoulders only, a worn brown leather vest with several belts and a large iron buckle, brown leather gloves, a knee-length brown riding skirt over dark trousers, and tall worn brown riding boots. Remove the coiled whip. Nothing held in the hands, no weapon, no lantern, no cup, no book, no cape, no cloak, full body visible from the top of the head to the feet, nothing cropped, no text, no watermark.",
+   "note": "b: 3/4 로 오른쪽으로 걸음, 모피 숄이 등 뒤로 길게(망토에 가까움 — 몸통 부품에 포함). a 는 거의 정면"
   },
   {
    "id": "npc_rook2_side_v1",
@@ -230,12 +243,41 @@
    ],
    "aspect_ratio": "auto",
    "img_resolution": "2k",
+   "picked": "b",
+   "prompt": "Edit 图片1. Keep the exact same walking side pose facing RIGHT in strict profile, the same arm and leg positions (the near arm hanging slightly behind the hip, the far arm swinging forward, legs in mid-stride), the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and soft lighting. Replace the man with the grinning middle-aged rogue from 图片2 (the merchant unmasked): his weathered tanned face in profile with a sly smile, short grey stubble beard, his black-and-grey hair swept back into several small braids with a few black crow feathers tied in, a slim wiry build. Dress him in a short black feathered collar-mantle around the neck and shoulders only (not covering the arm), a dark charcoal long coat reaching below the knees, a black scarf, a brown leather strap across the chest with a round silver medallion and small tied coin pouches, a brown leather belt with pouches, black gloves, dark trousers and worn black boots. Remove the coiled whip. Nothing held in the hands, no weapon, no lantern, no cup, no book, no cape, no cloak, full body visible from the top of the head to the feet, nothing cropped, no text, no watermark.",
+   "note": "b: 3/4 로 걷는 옆모습, 허리에 카엘 채찍 똬리가 새어 들어옴(밧줄로 보여 몸통에 남김). a 는 정면"
+  },
+  {
+   "id": "npc_rook_side_v2",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "ATHDj9I3z8ZZNtdHqtR3etTiajajt2NNy5VzPQIXnewnTMaTbW88av94k9zDjsSeVp3cDKqh",
+   "inputs": [
+    "npc_rook2_side.jpg (edit target: same man unmasked, pose)",
+    "npc_rook_portrait.jpg (mask/hood reference)"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
    "picked": null,
-   "prompt": "Edit 图片1. Keep the exact same walking side pose facing RIGHT in strict profile, the same arm and leg positions (the near arm hanging slightly behind the hip, the far arm swinging forward, legs in mid-stride), the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and soft lighting. Replace the man with the grinning middle-aged rogue from 图片2 (the merchant unmasked): his weathered tanned face in profile with a sly smile, short grey stubble beard, his black-and-grey hair swept back into several small braids with a few black crow feathers tied in, a slim wiry build. Dress him in a short black feathered collar-mantle around the neck and shoulders only (not covering the arm), a dark charcoal long coat reaching below the knees, a black scarf, a brown leather strap across the chest with a round silver medallion and small tied coin pouches, a brown leather belt with pouches, black gloves, dark trousers and worn black boots. Remove the coiled whip. Nothing held in the hands, no weapon, no lantern, no cup, no book, no cape, no cloak, full body visible from the top of the head to the feet, nothing cropped, no text, no watermark."
+   "prompt": "Edit 图片1. Keep the SAME man with the same slim wiry body, the exact same walking pose and body angle facing RIGHT, the same arm and leg positions, the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same painterly dark-fantasy game-art style and lighting. 图片2 is ONLY a reference for his masked disguise, not for the camera angle. Change ONLY his disguise: a deep black hood pulled up over his head hiding all of his hair and feathers, and a black crow-beak mask covering his whole face, the long curved black beak pointing forward to the right, faintly glowing amber eyes in the dark of the hood, exactly like the mask in 图片2. Replace the feathered collar with a ragged dark fur collar around the shoulders only. Remove the coiled rope from his hip. Keep his long dark coat, the leather straps with small tied coin pouches and the medallion, the belt, the black gloves, the trousers and boots. Nothing held in the hands, no lantern, no weapon, no cape, full body visible from head to boots, nothing cropped, no text, no watermark."
+  },
+  {
+   "id": "npc_carmilla_side_v2",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AW-rN_q77nerFmPqyYEh-T2TtMDRUaioLTBUbe17ZEcBjcIDuT0FXnsv5D7B1FTDpjk2vg_7",
+   "inputs": [
+    "azel_dhampir_side.jpg (edit target: strict profile pose)",
+    "npc_carmilla_portrait.jpg (identity)"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": null,
+   "prompt": "Edit 图片1. Keep the exact same walking pose seen from exactly the same STRICT SIDE PROFILE facing RIGHT (we see her left side, NOT her front; her face in profile looking to the right edge), the same arm and leg positions (the near arm hanging slightly behind the hip, the far arm swinging forward, legs in mid-stride), the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same painterly dark-fantasy game-art style and soft lighting. 图片2 is ONLY a reference for her face, hair and gown, not for the camera angle. Replace the young man with the vampire noblewoman from 图片2: her pale beautiful face in profile, glowing red eyes, dark red lips, her very long straight glossy black hair hanging down her back to the waist, a slim tall elegant female build. Dress her in a black and deep-crimson gothic gown: an off-the-shoulder black lace bodice over a crimson corset, a black lace choker with a small red gem, long fitted black lace sleeves, black gloves, a long black silk skirt with crimson inner panels and lace trim that flares back behind her legs with her stride, pointed black shoes just visible below the hem. Nothing held in the hands, no wine glass, no cape, no cloak, full body visible from head to feet, nothing cropped, no text, no watermark."
   }
  ],
  "images_used": {
   "azel": 14,
-  "npc": 16
+  "npc": 20
  }
 }

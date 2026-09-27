@@ -5,6 +5,7 @@
 // npcs:       { '<npcId>': () => import('../npcs/<id>.js') }
 export const bosses = {
   b_dracula: () => import('../bosses/b_dracula.js'),   // 드라큘라 백작 (s12) — 1형태 귀족 · 변신 · 2형태 날개 달린 마왕, 채색 박쥐·낙석 그림 포함
+  b_chaos: () => import('../bosses/b_chaos.js'),       // 혼돈의 군주 (s13) — 떠다니는 눈(판정 부위)·그림자 보스 5종·바닥 촉수 그림 포함
 };
 export const enemies = [];
 export const companions = {};

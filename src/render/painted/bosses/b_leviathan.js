@@ -175,9 +175,8 @@ function drawLeviathan(ctx, b, world, rig, st) {
  * 곧은 몸통 그림을 점 목록(0 = 머리 쪽)을 따라 띠로 구부려 그린다. 가로 배율은 그림 그대로(늘이지 않음) —
  * 사슬이 그림보다 길면 무늬가 반복된다(주기 = root→tip). 두께는 마디 반지름 R 에 비례. bs = 배 쪽 부호(좌우 반전).
  * 띠마다 setTransform + drawImage 한 번. 꼬리 → 머리 순서로 그려 머리 쪽이 위에 겹친다.
- * overlap = false: 띠를 겹치지 않고 맞붙인다 (가산 섬광용)
  */
-function drawChain(ctx, D, img, part, X, Y, Rr, n, bs, sOff = 0, alpha = 1, overlap = true) {
+function drawChain(ctx, D, img, part, X, Y, Rr, n, bs, sOff = 0, alpha = 1) {
   if (!img || n < 2 || alpha <= 0.01) return;
   const k = part.k, root = part.root[0], tip = part.tip[0], cy = part.root[1], Pt = root - tip, h = img.height;
   _arc[0] = sOff;
@@ -189,7 +188,7 @@ function drawChain(ctx, D, img, part, X, Y, Rr, n, bs, sOff = 0, alpha = 1, over
     const rot = Math.atan2(Y[i] - Y[i + 1], X[i] - X[i + 1]);
     const ky = k * ((Rr[i] + Rr[i + 1]) * 0.5) / RMAX * bs;
     const bend = i > 0 ? Math.abs(angDiff(Math.atan2(Y[i - 1] - Y[i], X[i - 1] - X[i]), rot)) : 0;
-    const e = overlap ? 3 + bend * h * 0.3 : 0;
+    const e = 3 + bend * h * 0.3;
     // 텍셀 u = root − (arc/k mod 주기). 한 마디 안에서 주기가 넘어가면 둘로 나눈다
     let sA = _arc[i], sB = _arc[i + 1];
     while (sB - sA > 0.01) {
@@ -201,7 +200,7 @@ function drawChain(ctx, D, img, part, X, Y, Rr, n, bs, sOff = 0, alpha = 1, over
       const f = (sE - _arc[i]) / len;
       const px = X[i + 1] + (X[i] - X[i + 1]) * (1 - f), py = Y[i + 1] + (Y[i] - Y[i + 1]) * (1 - f);
       D.set(uE, cy, px, py, rot, k, ky);
-      const s0 = Math.max(0, uE - e), s1 = Math.min(img.width, uA + e + (overlap ? 1 : 0));
+      const s0 = Math.max(0, uE - e), s1 = Math.min(img.width, uA + e + 1);
       if (s1 > s0) ctx.drawImage(img, s0, 0, s1 - s0, h, s0, 0, s1 - s0, h);
       sA = sE;
     }

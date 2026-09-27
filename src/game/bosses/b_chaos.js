@@ -4,6 +4,11 @@
 import { BossB, PI, OUT, R, C, LG, RG, ink, glow, glowE, eye, warnRect, warnFloor, warnLine, warnCircle, warnBang, lineStrike, circleStrike, impact, hash, glowSprite } from './b_common.js';
 import { audio } from '../../core/audio.js';
 import { TAU, clamp, lerp, rand, ease, rgba, mix, wrapAngle } from '../../core/math.js';
+import { paintedRig, paintedEnabled } from '../../render/painted/registry.js';
+/** 채색 리그의 그리기 도우미 (바닥 촉수) — 리그가 준비됐고 채색이 켜져 있을 때만 */
+const pArt = () => (paintedEnabled() ? paintedRig('b_chaos')?.art : null) ?? null;
+/** 채색 대리 개체가 이 보스를 그리는 중 (소용돌이·그림자 보스는 채색 렌더러가 그린다) */
+const pLive = (b) => !!(b._painted?.proxy && !b._painted.proxy.dead);
 
 const VOID = '#07030e', VOID_M = '#1c0a34', VIOLET = '#b060ff', VIOLET_L = '#e2c4ff', MAGENTA = '#ff3ad8', WHITE = '#ffffff';
 const SHADOW_EYES = { lev: '#5fe8ff', col: '#ff9a3a', fq: '#bff4ff', death: '#7dffb0', drac: '#ff2a3a' };
@@ -229,7 +234,7 @@ export class ChaosLord extends BossB {
       paint: (ctx, z) => {
         if (!z.on) { warnFloor(ctx, x, F, 70, z.k, MAGENTA, this.t); return; }
         const g = z.a < 0.2 ? ease.outBack(z.a / 0.2) : z.a > 0.75 ? 1 - (z.a - 0.75) / 0.25 : 1;
-        paintTentacle(ctx, x, F, H * g, 22, this.t, seed);
+        if (!pArt()?.tendril(ctx, x, F, H * g, 22, this.t, seed)) paintTentacle(ctx, x, F, H * g, 22, this.t, seed);   // 채색 촉수
       },
       light: (L, z) => { if (z.on) L.add(x, F - 100, 110, VIOLET, 0.5); },
     });
@@ -481,8 +486,9 @@ export class ChaosLord extends BossB {
       ctx.fillStyle = `rgba(255,255,255,${Math.min(1, this.invert * 1.3)})`; ctx.fillRect(cam.x - 20, cam.y - 20, cam.vw + 40, cam.vh + 40);
       ctx.restore();
     }
-    // 우주 소용돌이 (몸 뒤)
+    // 우주 소용돌이 (몸 뒤) — 채색 렌더러가 붙어 있으면 그쪽이 그린다
     const x = this.cx, y = this.cy;
+    if (!pLive(this)) {
     ctx.save();
     ctx.translate(x, y);
     const r = 230 + Math.sin(t * 1.3) * 8;
@@ -500,6 +506,7 @@ export class ChaosLord extends BossB {
     ctx.fillStyle = '#ffffff';
     for (let i = 0; i < 30; i++) { const a = hash(i) * TAU + t * 0.1 * (hash(i + 5) - 0.5), rr = 40 + hash(i + 3) * 190; ctx.globalAlpha = 0.3 + 0.7 * Math.abs(Math.sin(t * 2 + i)); ctx.fillRect(Math.cos(a) * rr, Math.sin(a) * rr * 0.8, 1.6, 1.6); }
     ctx.restore();
+    }
     // 레이저 예고선
     for (const e of this.eyes) if (e.laser && !e.dead) {
       const L = 1800; warnLine(ctx, e.x, e.y, e.x + Math.cos(e.laser.a) * L, e.y + Math.sin(e.laser.a) * L, e.laser.k, MAGENTA, 1.2);
@@ -513,7 +520,7 @@ export class ChaosLord extends BossB {
       warnBang(ctx, w.x, w.y - 70, 18, 0.5 + 0.5 * Math.sin(t * 20));
     }
     // 그림자 보스들
-    for (const s of this.shadows) this.paintShadow(ctx, s);
+    if (!pLive(this)) for (const s of this.shadows) this.paintShadow(ctx, s);   // 채색이면 렌더러가 그림자 보스를 그린다
   }
   paintBody(ctx) {
     const t = this.t, fl = R.fl;

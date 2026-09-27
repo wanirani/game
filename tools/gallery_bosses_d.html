@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
 <title>보스 갤러리 D — 2부 18~20장</title>
 <style>
   :root { --bg: #07040b; --panel: #120b16; --line: #3a2434; --txt: #eadcc4; --dim: #9a8a86; --acc: #ff5a6a; --ok: #7de0a0; --warn: #ffc860; }
@@ -186,6 +187,7 @@ function makeWorld(id) {
     breakTilesIn() {}, onPlayerHit() {}, onPlayerHurt() {}, onEnemyKilled() {}, addScore() {}, gainExp() {}, addAw() {},
     playScript(sid) { fakePush(W, 'dialogue', { script: sid, world: W }); },
   };
+  W.room = room;
   W.lighting.darkness = Math.min(0.6, (st.darkness ?? 0.4) * 0.62);
   W.lighting.res = 0.5;
   const x0 = room.x0 * TILE, x1 = map.pxW, camX0 = Math.max(0, x0 - TILE);
@@ -193,6 +195,7 @@ function makeWorld(id) {
   W.arenaX = x0;
   W.camera.setBounds(camX0, 0, x1 - camX0, map.pxH);
   W.camera.zoomTarget = Math.max(0.74, Math.min(1, VH / (map.pxH - TILE)));
+  W.camera.zoom = W.camera.zoomTarget;
   W.camera.floorY = (P.floorRow ?? map.h - 2) * TILE;
   return W;
 }
@@ -213,12 +216,22 @@ function closeDialog(W) {
 // ───────────── 보스 만들기 ─────────────
 const S = { W: null, boss: null, status: {}, forceCutscene: false, msg: '' };
 function statusOf(id) { return S.status[id] ?? (CLASSES[id] ? 'ok' : 'stub'); }
+/** 시작할 때 각 클래스를 한 번씩 만들어 본다 (생성자 오류를 목록 배지로 바로 보이게) */
+function probeClasses() {
+  for (const id of IDS) {
+    const C = CLASSES[id];
+    if (!C) { S.status[id] = 'stub'; continue; }
+    try { const W = makeWorld(id); W.player = W.add(new FakePlayer(W.arena.x0 + 200, W.map.pxH)); new C(W, DEFS[id], W.arena.x0 + (W.arena.x1 - W.arena.x0) * 0.72, (W.map.h - 2) * TILE); S.status[id] = 'ok'; }
+    catch (e) { S.status[id] = 'err'; errOnce(`${id} 생성`, e); }
+  }
+}
 function build(id = O.id, { phase = 0, act = null } = {}) {
   O.id = id;
   const W = makeWorld(id), def = DEFS[id], C = CLASSES[id];
   const a = W.arena, m = W.map;
   const px = a.x0 + (a.x1 - a.x0) * O.player;
-  const py = m.groundBelow(Math.floor(px / TILE), 0) ?? (m.h - 2) * TILE;
+  const fr = patternsOf(id, C).floorRow ?? m.h - 2;
+  const py = m.groundBelow(Math.floor(px / TILE), fr - 1) ?? fr * TILE;
   W.player = W.add(new FakePlayer(px, py));
   const bx = a.x0 + (a.x1 - a.x0) * 0.72, by = (m.h - 2) * TILE;
   let boss = null;
@@ -336,6 +349,12 @@ function drawPanel(W, px, py, pw, ph, label) {
   ctx.save();
   cam.apply(ctx);
   drawTiles(ctx, W, cam);
+  if (W.room?.water != null && !W.boss?._cStandIns?.deep) {   // 설계 방의 기본 물 (다곤 제단) — 대역 물이 없을 때만 참고용으로
+    ctx.fillStyle = 'rgba(8,38,66,0.55)';
+    const wy = W.room.water * TILE, fy = (patternsOf(W.boss.def.id, CLASSES[W.boss.def.id]).floorRow ?? W.map.h - 2) * TILE;
+    ctx.fillRect(W.arena.x0, wy, W.arena.x1 - W.arena.x0, fy - wy);
+    ctx.fillStyle = 'rgba(111,232,255,0.5)'; ctx.fillRect(W.arena.x0, wy, W.arena.x1 - W.arena.x0, 2);
+  }
   W.fx.draw(ctx, 'back');
   const list = W.entities.slice().sort((a, b) => a.z - b.z);
   for (const e of list) { ctx.save(); try { e.draw(ctx, W); } catch (err) { errOnce(`${e.kind}:${e.def?.id ?? e.constructor?.name} draw`, err); } ctx.restore(); }
@@ -494,12 +513,13 @@ function gridMode() {
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, cv.width, cv.height);
     panels.forEach((P, i) => drawPanel(P.W, (i % cols) * pw, Math.floor(i / cols) * phh, pw, phh, statusOf(P.id) === 'ok' ? '' : '[스텁]'));
   };
-  for (const im of Object.values(bgImgs)) im.addEventListener('load', render);
+  for (const P of panels) bgOf(P.W.stage.id).addEventListener('load', render);
   render();
   window.__gal = { panels, done: true };
 }
 
 // ───────────── 시작 ─────────────
+probeClasses();
 if (q.get('grid') === '1') gridMode();
 else {
   build(O.id, { phase: Number(q.get('ph') || 0), act: q.get('act') });

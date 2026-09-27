@@ -42,7 +42,7 @@ import { drawHero } from './hero.js';
 const DEG = Math.PI / 180;
 const OUT = 0.25;                    // 화면 층 퇴장 (초)
 const Q = {
-  high:   { peak: 600, awPeak: 700, ghosts: 8, sil: 0.6, layer: true, diff: true, rs: 1.25, decals: true },
+  high:   { peak: 600, awPeak: 700, ghosts: 8, sil: 0.5, layer: true, diff: true, rs: 1.25, decals: true },
   medium: { peak: 400, awPeak: 450, ghosts: 5, sil: 0.5, layer: true, diff: true, rs: 1, decals: true },
   low:    { peak: 220, awPeak: 250, ghosts: 3, sil: 0, layer: false, diff: false, rs: 0.75, decals: false },
 };
@@ -1123,7 +1123,7 @@ function endImpact(im) {
   if (im.defer && F && im.defer.a > F.a) { F.color = im.defer.color; F.a = im.defer.a; F.decay = im.defer.decay; }
   if (im.flash) w.game?.flash?.(im.flash.color, im.flash.a, im.flash.decay);
 }
-/** 실루엣으로 다시 그릴 개체: 플레이어 + 마무리 지점에 가까운 적·보스 (최대 10; 다시 그리는 비용 상한) */
+/** 실루엣으로 다시 그릴 개체: 플레이어 + 마무리 지점에 가까운 적·보스 (최대 8; 다시 그리는 비용 상한) */
 function silList(w, cx, cy) {
   const cam = w.camera, out = [];
   for (const e of w.entities ?? []) {
@@ -1134,7 +1134,7 @@ function silList(w, cx, cy) {
     out.push(e);
   }
   const d = (e) => (e.kind === 'player' ? -1 : e.kind === 'boss' ? 0 : Math.hypot(e.cx - cx, e.cy - cy));
-  if (out.length > 10) { out.sort((a, b) => d(a) - d(b)); out.length = 10; }
+  if (out.length > 8) { out.sort((a, b) => d(a) - d(b)); out.length = 8; }
   out.sort((a, b) => a.z - b.z);
   return out;
 }

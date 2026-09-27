@@ -306,9 +306,8 @@ function drawSnake(ctx, D, b, rig, st, dt, airY, bob, lvl, flashOn) {
  * 곧게 그린 부품(뿌리 root → 끝 tip, 가로)을 점 목록을 따라 세로 띠로 잘라 구부려 그린다.
  * 띠마다 setTransform 한 번 + drawImage 한 번. 굽힘 바깥쪽 틈은 띠를 겹쳐 가린다.
  * thick = 두께 배율(월드px/텍셀), flip = −1 이면 위아래 뒤집기 (좌우 반전 시 배 쪽이 곡선 안쪽을 보게)
- * overlap = false: 띠를 겹치지 않고 텍셀 경계에서 정확히 맞붙인다 (가산 섬광용 — 겹친 곳이 두 번 더해지지 않게)
  */
-export function drawBent(ctx, D, img, part, pts, n, thick, flip, alpha = 1, taper = null, overlap = true) {
+export function drawBent(ctx, D, img, part, pts, n, thick, flip, alpha = 1, taper = null) {
   if (!img || n < 2 || alpha <= 0.01) return;
   let L = 0;
   const arc = drawBent._arc ??= new Float32Array(128);
@@ -325,8 +324,8 @@ export function drawBent(ctx, D, img, part, pts, n, thick, flip, alpha = 1, tape
     const rot = Math.atan2(c.y - a.y, c.x - a.x);
     const sx = seg / (u1 - u0);
     const th = taper ? thick * taper(i / (n - 2)) : thick;
-    const e = overlap ? 3 + (i < n - 2 ? Math.abs(angle(pts, i)) * part.h * 0.35 : 0) : 0;
-    const s0 = Math.max(0, u0 - e), s1 = Math.min(img.width, u1 + e + (overlap ? 1 : 0));
+    const e = 3 + (i < n - 2 ? Math.abs(angle(pts, i)) * part.h * 0.35 : 0);
+    const s0 = Math.max(0, u0 - e), s1 = Math.min(img.width, u1 + e + 1);
     D.set(u0, cy, a.x, a.y, rot, sx, th * flip);
     ctx.drawImage(img, s0, 0, s1 - s0, img.height, s0, 0, s1 - s0, img.height);
   }
