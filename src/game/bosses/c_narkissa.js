@@ -22,7 +22,7 @@ const h01 = (n) => { const s = Math.sin(n * 12.9898 + 78.233) * 43758.5453; retu
 const OFF = { x: -99999, y: -99999, w: 1, h: 1, off: true };
 
 // ───────────────────────── 몸 치수 (앵커 = 몸통 판정 아래 가운데, 위 = −y) ─────────────────────────
-const WAIST = -150, NECK = -214, HEAD_S = 1.15, MASK_C = NECK - 33 * HEAD_S, HOVER = 20;
+const WAIST = -150, NECK = -214, HEAD_S = 1.15, HEAD_S2 = 1.4, MASK_C = NECK - 33 * HEAD_S, FACE2_C = NECK - 50 * HEAD_S2, HOVER = 20;
 const EYES1 = [[-8, -39, 3.4], [-11.5, -28, 2.2], [-5, -48, 1.6], [7.5, -36, 2.6]];
 const EYES2 = [[-12, -62, 3], [-4, -71, 2.2], [5, -66, 3.4], [13, -57, 2.4], [-15, -49, 2.6], [-5, -54, 3.8], [8, -50, 2.4], [16, -44, 1.8], [-1, -80, 1.6], [-19, -38, 1.8], [11, -74, 1.6]];
 /** 드레스 거울 조각: [x, y, 크기, 층, 떨어져 나가는 피해율(없으면 끝까지)] */
@@ -422,13 +422,14 @@ function drawOrbitShard(g) {
   g.strokeStyle = '#0a0c18'; g.lineWidth = 1.1; g.stroke();
 }
 function drawKaleido(g) {
-  for (let i = 0; i < 6; i++) {
-    const a0 = (i / 6) * TAU, a1 = a0 + TAU / 6;
-    g.beginPath(); g.moveTo(0, 0); g.lineTo(Math.cos(a0) * 32, Math.sin(a0) * 32); g.lineTo(Math.cos(a1) * 32, Math.sin(a1) * 32); g.closePath();
-    g.fillStyle = ['rgba(160,230,255,0.9)', 'rgba(255,170,230,0.8)', 'rgba(255,255,255,0.7)'][i % 3]; g.fill();
+  for (let i = 0; i < 6; i += 2) {
+    const a0 = (i / 6) * TAU + 0.1, a1 = a0 + TAU / 6 - 0.2;
+    g.beginPath(); g.moveTo(Math.cos(a0) * 9, Math.sin(a0) * 9); g.lineTo(Math.cos(a0) * 31, Math.sin(a0) * 31); g.lineTo(Math.cos(a1) * 31, Math.sin(a1) * 31); g.lineTo(Math.cos(a1) * 9, Math.sin(a1) * 9); g.closePath();
+    g.fillStyle = ['rgba(150,225,255,0.42)', 'rgba(255,160,225,0.36)', 'rgba(210,255,235,0.32)'][i / 2]; g.fill();
+    g.strokeStyle = 'rgba(255,255,255,0.55)'; g.lineWidth = 0.8; g.stroke();
   }
-  g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = 1.5;
-  for (const r of [10, 20, 29]) { g.beginPath(); g.arc(0, 0, r, 0, TAU); g.stroke(); }
+  g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = 0.8;
+  for (const r of [20, 29]) { g.beginPath(); g.arc(0, 0, r, 0, TAU); g.stroke(); }
 }
 /** 균열 경로 (머리 좌표 · 몸 좌표). th = 드러나는 피해율 */
 function genCracks() {
@@ -679,7 +680,7 @@ function drawNark(ctx, x, y, f, P, o) {
   ctx.save();
   ctx.translate(0, NECK);
   ctx.rotate(P.tilt + Math.sin(t * 0.9) * 0.03);
-  ctx.scale(HEAD_S, HEAD_S);
+  if (form >= 2) ctx.scale(HEAD_S2, HEAD_S2); else ctx.scale(HEAD_S, HEAD_S);
   const shake = (o.maskCrack ?? 0) > 0 && form < 2 ? Math.sin(t * 60) * 1.2 * o.maskCrack : 0;
   if (shake) ctx.translate(shake, 0);
   if (form >= 2) {
@@ -910,6 +911,11 @@ class NarkTwin extends Entity {
     ctx.save();
     ctx.globalAlpha *= a;
     drawNark(ctx, this.cx, this.bottom, this.facing, this.pose, o);
+    // 유리 분신의 옅은 빛 (흰 실루엣을 얇게 더해 유령처럼)
+    R.fl = true;
+    ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = a * 0.2;
+    try { drawNark(ctx, this.cx, this.bottom, this.facing, this.pose, { ...o, legs: null }); } finally { R.fl = false; }
+    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = a;
     if (this.flashT > 0) {
       R.fl = true;
       ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = a * 0.7;
@@ -947,7 +953,7 @@ export class Narkissa extends BossC {
     if (this.dashing) return [{ x: cx - 125, y: this.cy - 45, w: 250, h: 90, defMul: 1.2 }];
     const f2 = this.formPhase >= 2;
     return [
-      { x: cx - 20, y: b + MASK_C - 25, w: 40, h: 50, defMul: this.stunned ? 0.5 : f2 ? 0.6 : 1.0, face: true },
+      { x: cx - 20, y: b + (f2 ? FACE2_C : MASK_C) - 25, w: 40, h: 50, defMul: this.stunned ? 0.5 : f2 ? 0.6 : 1.0, face: true },
       { x: cx - 40, y: b - 170, w: 80, h: 180, defMul: 1.4 },
       { x: cx - 78, y: b - 206, w: 40, h: 120, defMul: 1.2 },
       { x: cx + 38, y: b - 206, w: 40, h: 120, defMul: 1.2 },
@@ -959,7 +965,7 @@ export class Narkissa extends BossC {
     return [{ x: this.cx - 34, y: b - 210, w: 68, h: 200 }];
   }
   /** 얼굴(눈) 월드 좌표 */
-  facePos() { return { x: this.cx + this.facing * 2, y: this.bottom + this.pose.bob + MASK_C + (this.formPhase >= 2 ? -20 : 0) }; }
+  facePos() { return { x: this.cx + this.facing * 2, y: this.bottom + this.pose.bob + (this.formPhase >= 2 ? FACE2_C : MASK_C) }; }
   /** 앞쪽 손 (손거울) 월드 좌표 */
   handPos() {
     const P = this.pose, a = P.fa1a, e = P.fa1e, b = a + e;
@@ -1232,12 +1238,16 @@ export class Narkissa extends BossC {
       paint: (ctx, z, wd) => {
         if (!z.started) {
           warnRect(ctx, x - w / 2, top, w, F - top, z.k * 0.8, GL, wd.time);
-          for (let i = -1; i <= 1; i++) shardShape(ctx, x + i * w * 0.25 + Math.sin(wd.time * 30 + i) * 1.5 * z.k, top + 8, 10, 30, 0.7);
+          for (let i = -1; i <= 1; i++) shardShape(ctx, x + i * w * 0.25 + Math.sin(wd.time * 30 + i) * 2 * z.k, top + 26, 16, 52, 0.55 + 0.45 * z.k);
           return;
         }
         if (st.landed) return;
-        if (!R.fl) glowE(ctx, x, st.y - 60, w * 0.4, 70, GL_C, 0.35);
-        for (let i = -1; i <= 1; i++) shardShape(ctx, x + i * w * 0.25, st.y - 50 - Math.abs(i) * 16, 11, 36, 1);
+        if (!R.fl) {
+          glowE(ctx, x, st.y - 90, w * 0.45, 120, GL_C, 0.45);
+          ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = 'rgba(220,245,255,0.45)'; ctx.lineWidth = 2;
+          ctx.beginPath(); for (let i = -1; i <= 1; i++) { const sx = x + i * w * 0.25; ctx.moveTo(sx, st.y - 60 - Math.abs(i) * 18); ctx.lineTo(sx, st.y - 190 - Math.abs(i) * 18); } ctx.stroke(); ctx.restore();
+        }
+        for (let i = -1; i <= 1; i++) shardShape(ctx, x + i * w * 0.25, st.y - 32 - Math.abs(i) * 18, 18, 64, 1);
       },
     });
   }
@@ -1398,7 +1408,8 @@ export class Narkissa extends BossC {
       const fp = this.facePos(), p = this.P;
       const list = this.formPhase >= 2 ? EYES2 : EYES1;
       const e = list[i % list.length];
-      const ox = fp.x + this.facing * e[0], oy = fp.y + e[1] + 40;
+      const sc = this.formPhase >= 2 ? HEAD_S2 : HEAD_S, cy0 = this.formPhase >= 2 ? -50 : -33;
+      const ox = fp.x + this.facing * e[0] * sc, oy = fp.y + (e[1] - cy0) * sc;
       const tx = p?.cx ?? this.A.cx, ty = p?.cy ?? this.A.floor - 40;
       const end = clipRay(ox, oy, tx - ox, ty - oy, this.A);
       strikeLine(this, ox, oy, end.x, end.y, { th: 14, warn: 0.5, life: 0.22, mv: 1.0, color: EYE_C, kb: [240, -260], sfx: i % 2 ? null : 'magic', pitch: 1.4 });

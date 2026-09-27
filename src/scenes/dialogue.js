@@ -295,6 +295,7 @@ export class DialogueScene extends Scene {
         button(ctx, r, '건너뛰기 ▶▶', { size: 15 });
         taps.add('skip', r, { owner: this, kind: 'primary', src: 'dialogue.skip' });
       } else {
+        this.hintBand(ctx, bx + bw, by);
         drawHints(ctx, [['confirm', '다음'], ['menu', '건너뛰기']], bx + bw - 10, by - 12, { align: 'right', size: 13, color: '#c8b8a0' });
       }
     }
@@ -302,12 +303,26 @@ export class DialogueScene extends Scene {
       const ch = this.cur.choice;
       const w = Math.min(440, W - 120), h = Lo.choiceH;
       ch.forEach((c, k) => {
-        const r = { x: W / 2 - w / 2, y: by - 30 - (ch.length - k) * (h + 8), w, h };
+        const r = { x: W / 2 - w / 2, y: by - (input.touchMode ? 16 : 38) - (ch.length - k) * (h + 8), w, h }; // 키보드·패드: 아래 안내 줄 자리를 비운다
         this.menu.hit(k, r);
         taps.add('c' + k, r, { owner: this, kind: 'primary', src: 'dialogue.choice' });
         button(ctx, r, this.resolveText(c.text), { selected: this.menu.index === k, size: 16 });
       });
-      if (!input.touchMode) drawHints(ctx, [['dpadV', '선택'], ['confirm', '결정']], bx + bw - 10, by - 12, { align: 'right', size: 13, color: '#c8b8a0' });
+      if (!input.touchMode) {
+        this.hintBand(ctx, bx + bw, by);
+        drawHints(ctx, [['dpadV', '선택'], ['confirm', '결정']], bx + bw - 10, by - 12, { align: 'right', size: 13, color: '#c8b8a0' });
+      }
     }
+  }
+  /** 안내 글리프 뒤의 옅은 어둠 띠 (초상화 위에서도 읽히게). 그라데이션은 위치별로 한 번만 만든다 */
+  hintBand(ctx, right, by) {
+    const x0 = right - 340, key = `${x0}|${by}`;
+    if (this._bandKey !== key) {
+      const g = ctx.createLinearGradient(x0, 0, right, 0);
+      g.addColorStop(0, 'rgba(6,2,8,0)'); g.addColorStop(0.35, 'rgba(6,2,8,0.5)'); g.addColorStop(1, 'rgba(6,2,8,0.62)');
+      this._band = g; this._bandKey = key;
+    }
+    ctx.fillStyle = this._band;
+    ctx.fillRect(x0, by - 34, 340, 30);
   }
 }
