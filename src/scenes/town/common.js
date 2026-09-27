@@ -576,6 +576,7 @@ export class ServiceScene extends Scene {
     this.fx.update(dt, null);
     const s = this.say;
     s.t += dt; if (s.shown < s.text.length) s.shown = Math.min(s.text.length, s.shown + dt * 38);
+    if (this.portraitShake) this.portraitShake = Math.abs(this.portraitShake) < 0.6 ? 0 : -this.portraitShake * Math.pow(0.02, Math.min(dt, 0.1));
     this.tapId = null;
     this.wheel = this.blocked ? 0 : (this._wheel || 0); this._wheel = 0;
     if (this.popup) { if (this.popup.update(dt)) { const cb = this.popup.onClose; this.popup = null; cb?.(); } return; }
