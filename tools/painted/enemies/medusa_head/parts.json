@@ -1,0 +1,18 @@
+{
+ "id": "medusa_head",
+ "tier": "T1",
+ "srcTD": 4,
+ "note": "T1: bald severed head (sheet 2, torn neck stump, the long blood drips faded) + one straight snake (sheet 2 upper snake: root = the cut end on the right, tip = the snake head on the left; drawn as bending chains 5x from the scalp, 2 behind the skull darkened). k: face ~20 px so head + stump fill the 32x32 logic rect; snakes ~16 px.",
+ "sources": {
+  "s2": { "raw": "medusa_sheet2.webp", "file": "e1_medusa_sheet2.png", "k": 0.028 }
+ },
+ "parts": {
+  "head": { "src": "s2", "box": [4, 163, 807, 1305], "keep": "largest",
+            "fade": [[4, 1060, 807, 1305, "down", 1.4]],
+            "piv": { "a": [430, 600], "eye": [582, 452], "eye2": [760, 470], "mouth": [690, 690],
+                     "s1": [330, 230], "s2": [450, 190], "s3": [560, 230], "s4": [250, 320], "s5": [200, 460] } },
+  "snake": { "src": "s2", "box": [730, 895, 1980, 1143], "keep": "largest", "k": 0.012,
+             "fade": [[1880, 895, 1980, 1143, "right", 1.0]],
+             "piv": { "a": [1960, 1020], "b": [745, 1012], "eye": [925, 1000] } }
+ }
+}

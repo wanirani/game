@@ -174,7 +174,23 @@ export const ENEMIES = {
 };
 
 /** single-part / edit prompts (Step 3/4) added while cutting: key → { enemy, prompt } */
-export const EXTRAS = {};
+export const EXTRAS = {
+  // thunder_roc: neither sheet painted a loose wing or a wingless body (both came back as full figures) → Step 3 singles.
+  // 图片1 = the chosen reference, 图片2 = sheet 1 (side-view figure with the closed skull, loose leg).
+  roc_body: {
+    enemy: 'thunder_roc', aspect: '16:9', inputs: ['ref', 'sheet1'],
+    prompt: `Only one object in the whole image: the body of the same thunder roc as in 图片1 and 图片2 (identical design, proportions, colours, ragged soot-black and slate-grey feathers, materials and painting style) painted alone as a separate cut-out game sprite piece: the hunched powerful feathered body in flight with the feathered neck stump and the long ragged tail feathers trailing to the left, WITHOUT the skull head (the neck ends in a clean feathered stump at the right), WITHOUT any wings (smooth feathered back where the wings join) and WITHOUT legs. Strict side view in profile facing right, exactly like the side-view roc in 图片2, centred with a wide empty margin around it. ${BG} No other objects. ${STYLE}`,
+  },
+  roc_wing: {
+    enemy: 'thunder_roc', aspect: '16:9', inputs: ['ref', 'sheet1'],
+    prompt: `Only one object in the whole image: one enormous wing of the same thunder roc as in 图片1 and 图片2 (identical design, colours, soot-black feathers split by glowing blue-white lightning veins, materials and painting style) painted alone as a separate cut-out game sprite piece: the wing fully spread open flat and seen from the side, the shoulder joint at the far left end of the piece, the long ragged flight feathers fanning out to the right, WITHOUT the body, WITHOUT the head, WITHOUT the other wing. Centred with a wide empty margin around it. ${BG} No other objects. ${STYLE}`,
+  },
+  // rot_treant: the sheets painted full figures and loose limbs but no limbless trunk → Step 3 (图片1 ref, 图片2 sheet 2).
+  treant_body: {
+    enemy: 'rot_treant', aspect: '3:4', inputs: ['ref', 'sheet2'],
+    prompt: `Only one object in the whole image: the trunk body of the same rotten treant as in 图片1 and 图片2 (identical design, proportions, colours, peeling blackened bark, materials and painting style) painted alone as a separate cut-out game sprite piece: the hunched split trunk with the skull-like knot face glowing sickly yellow-green in the eye pits, the pale shelf fungi, the swollen glowing yellow-green spore sacs, the grey hanging moss and the crown of broken dead branches, WITHOUT any arms (the shoulders end in short broken bark stumps) and WITHOUT legs (the trunk ends at the hips in a ragged split root base). Three-quarter view facing right exactly like the treant in 图片2, centred with a wide empty margin around it. ${BG} No other objects. ${STYLE}`,
+  },
+};
 
 export const ref = (id) => clean(refPrompt(ENEMIES[id]));
 export const sheet = (id) => clean(sheetPrompt(ENEMIES[id]));

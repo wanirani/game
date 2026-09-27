@@ -462,10 +462,16 @@ function installPtr() {
   window.addEventListener('pointermove', (e) => {
     const d = PTR.down;
     if (!d || PTR.up || e.pointerId !== PTR.id) return;
-    const m = Math.hypot(e.clientX - d.cx, e.clientY - d.cy);
-    if (m > d.max) d.max = m;
-    PTR.moves.push({ cx: e.clientX, cy: e.clientY, t: evT(e) });
-    if (PTR.moves.length > 16) PTR.moves.shift();
+    // 한 프레임에 합쳐진 이동(coalesced)도 하나씩 표본으로 — 빠른 밀기의 속도를 실제 손가락대로 잰다
+    let list = null;
+    try { list = e.getCoalescedEvents?.(); } catch { list = null; }
+    if (!list || !list.length) list = [e];
+    for (const c of list) {
+      const m = Math.hypot(c.clientX - d.cx, c.clientY - d.cy);
+      if (m > d.max) d.max = m;
+      PTR.moves.push({ cx: c.clientX, cy: c.clientY, t: c.timeStamp > 0 ? c.timeStamp / 1000 : evT(e) });
+    }
+    while (PTR.moves.length > 24) PTR.moves.shift();
   }, opt);
   const end = (e, cancel) => {
     if (!PTR.down || PTR.up || e.pointerId !== PTR.id) return;
@@ -540,7 +546,8 @@ export function zone(r, kind = 'list', owner = null, { clip = null, minVis = 0.5
  *  - update() 를 매 틱 한 번 (장면의 update 첫머리).
  *  - zone(r, kind, opts) : render 에서 탭 영역 등록 (주인 = 이 Gesture). tap(r) 은 등록부 판정 (터치 여유 포함)
  *  - tap(r)              : 이번 틱의 탭이 r 에 떨어졌나. 등록하지 않은 사각형은 안쪽만 (다음 그리기에서 'list' 로 올려 여유를 받는다)
- *  - longPress {x, y}    : 이번 틱에 길게 누르기(450 ms, 터치)가 걸렸다 — held(r) 로 확인. 그 뒤의 뗌은 탭이 아니다
+ *  - longPress {x, y}    : 이번 틱에 길게 누르기(450 ms, 터치)가 걸렸다 — held(r) 로 확인해 받아 주면 그 뒤의 뗌은 탭이 아니다
+ *                          (아무도 받지 않은 길게 누르기는 뗄 때 보통 탭으로 친다)
  *  - swipe {dir, x, y}   : 이번 틱에 가로 밀기가 끝났다 (dir +1 = 왼쪽으로 밀기 = 다음 탭)
  *  - claim()             : 지금 누르고 있는 손가락은 다른 조작(회전대 끌기 등)이 가져간다 → 탭·밀기·길게 누르기 없음
  *  - releaseVel()        : 뗄 때 속도 {vx, vy} (UI px/초)
@@ -561,19 +568,23 @@ export class Gesture {
       const d = PTR.down && PTR.seq !== this._seq && !PTR.down.used ? PTR.down : null;
       const q = d ? cssToUi(d.cx, d.cy) : null;
       if (d) { d.used = true; this._seq = PTR.seq; }
-      this.g = { x: q ? q.x : p.x, y: q ? q.y : p.y, t: d ? d.t : now, moved: false, lp: false, claimed: false, done: false, touch: d ? d.type !== 'mouse' : !!input.touchMode, ptr: d };
+      // t = 손가락이 닿은 시각(이벤트), tp = 이 장면이 누름을 처음 본 시각(처리). 메인 스레드가 밀려 이벤트가 늦게 오면
+      // 이벤트 시각으로는 이미 오래 누른 것처럼 보이므로, 누르는 동안의 길게 누르기는 처리 시각으로 잰다
+      this.g = { x: q ? q.x : p.x, y: q ? q.y : p.y, t: d ? d.t : now, tp: now, moved: false, lp: false, lpUsed: false, claimed: false, done: false, touch: d ? d.type !== 'mouse' : !!input.touchMode, ptr: d };
     }
     const g = this.g;
     if (g && !g.done) {
       const f = g.ptr ? cssToUi(0, 0)?.f || 1 : 1;
       if (!g.moved && ((g.ptr && g.ptr.max / f > MOVE_PX) || ((p.down || p.tapped) && Math.hypot(p.x - g.x, p.y - g.y) > MOVE_PX))) g.moved = true;
-      if (p.down && g.touch && !g.moved && !g.lp && !g.claimed && now - g.t >= LONG_PRESS) { g.lp = true; this.longPress = { x: g.x, y: g.y }; buzz(10); }
+      if (p.down && g.touch && !g.moved && !g.lp && !g.claimed && now - g.tp >= LONG_PRESS) { g.lp = true; this.longPress = { x: g.x, y: g.y }; buzz(10); }
       if (p.tapped) {
         g.done = true; this.released = true;
         const up = g.ptr && PTR.down === g.ptr && PTR.up ? PTR.up : null;
         const dur = Math.max(1 / 120, (up ? up.t : now) - g.t);
-        // 스텝이 밀려 누르는 동안 길게 누르기를 못 봤으면 뗄 때 판정 (0.45초 넘게 제자리)
-        if (g.touch && !g.moved && !g.lp && !g.claimed && dur >= LONG_PRESS && !up?.cancel) { g.lp = true; this.longPress = { x: g.x, y: g.y }; buzz(10); }
+        // 스텝이 밀려 누르는 동안 길게 누르기를 못 봤으면 뗄 때 판정 (0.45초 넘게 제자리).
+        // 손가락 시간(이벤트)과 처리 시간 중 짧은 쪽: 멈춘 화면 뒤에 한꺼번에 온 짧은 탭을 길게 누르기로 보지 않는다
+        const held = Math.min(dur, now - g.tp);
+        if (g.touch && !g.moved && !g.lp && !g.claimed && held >= LONG_PRESS && !up?.cancel) { g.lp = true; this.longPress = { x: g.x, y: g.y }; buzz(10); }
         if (g.touch && g.moved && !g.lp && !g.claimed && !up?.cancel) {
           const e = up ? cssToUi(up.cx, up.cy) : { x: p.x, y: p.y };
           const dx = e.x - g.x, dy = e.y - g.y, ax = Math.abs(dx);
@@ -582,7 +593,8 @@ export class Gesture {
         }
       }
     }
-    this.tapOK = !!p.tapped && !(g && (g.moved || g.lp || g.claimed));
+    // 길게 누르기를 받아 준 곳(held)이 없었으면 뗄 때 보통 탭으로 (탭 막대·닫기 단추를 천천히 눌러도 된다)
+    this.tapOK = !!p.tapped && !(g && (g.moved || (g.lp && g.lpUsed) || g.claimed));
     this.hover = !input.touchMode && !p.down && p.active && (p.x !== this.lx || p.y !== this.ly);
     this.lx = p.x; this.ly = p.y;
     this.wheel = this._wheel; this._wheel = 0;
@@ -624,7 +636,12 @@ export class Gesture {
     this._legacy.clear();
   }
   /** 이번 틱에 길게 누르기가 r 안에서 걸렸나 */
-  held(r) { const l = this.longPress; return !!l && !!r && !r.thid && inRect(l.x, l.y, r); }
+  held(r) {
+    const l = this.longPress;
+    const hit = !!l && !!r && !r.thid && inRect(l.x, l.y, r);
+    if (hit && this.g) { this.g.lpUsed = true; this.tapOK = false; } // 받아 준 길게 누르기 → 그 손가락을 뗄 때는 탭이 아니다
+    return hit;
+  }
   /** 뗄 때 속도 {vx, vy} (UI px/초). 뗄 무렵 0.1초 동안 움직임이 없었으면 0 */
   releaseVel() {
     const g = this.g, d = g?.ptr, up = PTR.up;
@@ -683,16 +700,20 @@ export class Scroller {
     this._rt = now;
     const edt = Math.max(dt, rdt);
     const g = ges?.g;
-    if (ges?.justDown && g && rect && inRect(g.x, g.y, rect)) { this.drag = { y0: g.y, s0: this.y }; this.vel = 0; }
+    // 이 목록이 못 본 사이에 끝난 손가락(가로 밀기로 탭을 떠났다 돌아옴 등)의 끌기는 버린다 → 돌아와도 목록이 튀지 않는다
+    if (this.drag && (!g || this.drag.g !== g || (g.done && !ges.released))) this.drag = null;
+    if (ges?.justDown && g && rect && inRect(g.x, g.y, rect)) { this.drag = { y0: g.y, s0: this.y, g, axis: null }; this.vel = 0; }
     if (this.drag) {
-      if (ges?.moved && !ges.claimed) {
+      // 처음 움직인 방향으로 축을 정한다: 가로로 먼저 움직이면(탭 넘기기 밀기 등) 목록은 세로로 끌지 않는다
+      if (!this.drag.axis && ges?.moved) this.drag.axis = Math.abs(p.x - g.x) > Math.abs(p.y - g.y) * 1.2 ? 'x' : 'y';
+      if (ges?.moved && !ges.claimed && this.drag.axis === 'y') {
         let ny = this.drag.s0 - (p.y - this.drag.y0);
         if (ny < 0) ny *= 0.4; else if (ny > this.max) ny = this.max + (ny - this.max) * 0.4;
         this.y = this.target = ny;
         this.userScrolled = true;
       }
       if (p.down) return;
-      if (ges?.moved && !ges.claimed) this.vel = clamp(-(ges.releaseVel?.().vy ?? 0), -2600, 2600);
+      if (ges?.moved && !ges.claimed && this.drag.axis === 'y') this.vel = clamp(-(ges.releaseVel?.().vy ?? 0), -2600, 2600);
       this.drag = null;
     }
     if (ges?.wheel && rect && inRect(p.x, p.y, rect)) { this.target = clamp(this.target + ges.wheel, 0, this.max); this.vel = 0; this.userScrolled = true; }

@@ -1,0 +1,4 @@
+[["perch", {"anim": "perch", "state": "perch", "ground": true}], ["alert .3", {"anim": "alert", "state": "alert", "stateT": 0.12, "_perched": true, "ground": true}],
+ ["alert .8", {"anim": "alert", "state": "alert", "stateT": 0.36, "_perched": true, "ground": true}], ["alert air", {"anim": "alert", "state": "alert", "stateT": 0.2}],
+ ["dive", {"anim": "dive", "state": "dive", "vx": 300, "vy": 380}], ["fly a", {"anim": "fly", "state": "fly"}], ["fly b", {"anim": "fly", "state": "fly", "tOff": 0.08}],
+ ["hover", {"anim": "fly", "state": "hover", "tOff": 0.05}], ["hurt", {"anim": "fly", "state": "fly", "flashT": 0.11, "stun": 0.2}], ["dying", {"anim": "fly", "dying": 0.15}]]

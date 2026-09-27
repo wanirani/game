@@ -123,7 +123,7 @@
    "input": "image_1 = chosen ref (Kling result URL)",
    "aspect": "4:3",
    "imageCount": 2,
-   "decision": "pending"
+   "decision": "s2 KEPT -> storm_harpy_sheet2.webp (standing body with head+tail, loose spread wing, loose leg); s1 head/legs/body+wing (not needed)"
   },
   {
    "enemy": "gale_knight",
@@ -133,7 +133,7 @@
    "input": "image_1 = chosen ref (Kling result URL)",
    "aspect": "4:3",
    "imageCount": 2,
-   "decision": "pending"
+   "decision": "s1 KEPT -> gale_knight_sheet1.webp (breastplate torso with pauldrons, vambrace, gauntlet, capes); s2 KEPT -> gale_knight_sheet2.webp (side helm, wing, lance, armoured leg, gauntlet, cape)"
   },
   {
    "enemy": "thunder_roc",
@@ -143,7 +143,7 @@
    "input": "image_1 = chosen ref (Kling result URL)",
    "aspect": "4:3",
    "imageCount": 2,
-   "decision": "pending"
+   "decision": "s1 KEPT -> thunder_roc_sheet1.webp (closed skull, loose leg); s2 KEPT -> thunder_roc_sheet2.webp (open-beak skull, legs); no loose wing or wingless body in either -> Step 3 roc_body/roc_wing"
   },
   {
    "enemy": "puppeteer",
@@ -153,7 +153,7 @@
    "input": "image_1 = chosen ref (Kling result URL)",
    "aspect": "4:3",
    "imageCount": 2,
-   "decision": "pending"
+   "decision": "s1 KEPT -> puppeteer_sheet1.webp (hat head, side coat, sleeve, thimble hand); s2 KEPT -> puppeteer_sheet2.webp (hat head, front coat, clawed sleeves)"
   },
   {
    "enemy": "faceless",
@@ -163,7 +163,7 @@
    "input": "image_1 = chosen ref (Kling result URL)",
    "aspect": "4:3",
    "imageCount": 2,
-   "decision": "pending"
+   "decision": "s2 KEPT -> faceless_sheet2.webp (side figure, front figure arm, loose trouser leg with shoe); s1 turnaround only (not kept)"
   },
   {
    "enemy": "dream_eater",
@@ -173,7 +173,7 @@
    "input": "image_1 = chosen ref (Kling result URL)",
    "aspect": "4:3",
    "imageCount": 2,
-   "decision": "pending"
+   "decision": "s2 KEPT -> dream_eater_sheet2.webp (headless body with neck hole, head, straight trunk, hoof leg); s1 full figures + hollow tube (not kept)"
   },
   {
    "enemy": "rot_treant",
@@ -183,7 +183,7 @@
    "input": "image_1 = chosen ref (Kling result URL)",
    "aspect": "4:3",
    "imageCount": 2,
-   "decision": "pending"
+   "decision": "s1 KEPT -> rot_treant_sheet1.webp (arm, legs pair); s2 KEPT -> rot_treant_sheet2.webp (loose arm, loose leg); no limbless trunk -> Step 3 treant_body"
   },
   {
    "enemy": "plague_moth",
@@ -193,7 +193,7 @@
    "input": "image_1 = chosen ref (Kling result URL)",
    "aspect": "4:3",
    "imageCount": 2,
-   "decision": "pending"
+   "decision": "s1 KEPT -> plague_moth_sheet1.webp (top-view moths: clean wing pair halves); s2 KEPT -> plague_moth_sheet2.webp (wingless side-view body)"
   },
   {
    "enemy": "fungal_husk",
@@ -203,7 +203,7 @@
    "input": "image_1 = chosen ref (Kling result URL)",
    "aspect": "4:3",
    "imageCount": 2,
-   "decision": "pending"
+   "decision": "s2 KEPT -> fungal_husk_sheet2.webp (turnaround: capped front/back, capless side views); body cut from the reference (3/4 shamble with cap)"
   },
   {
    "enemy": "void_herald",
@@ -212,6 +212,42 @@
    "tool": "image_to_image",
    "input": "image_1 = chosen ref (Kling result URL)",
    "aspect": "4:3",
+   "imageCount": 2,
+   "decision": "s1 KEPT -> void_herald_sheet1.webp (robed figure with halo, loose horizontal sleeve with the light hand); s2 front/back (not kept)"
+  },
+  {
+   "enemy": "thunder_roc",
+   "step": "single",
+   "part": "roc_body",
+   "prompt": "EXTRAS.roc_body",
+   "generationId": "Afw5ET0dXhEgQA_7lM6rBwDWxPzzzd81503ELkm10FGWyRnpNfEIwZHKCfUTtpt2Q3VYYsXn",
+   "tool": "image_to_image",
+   "input": "image_1 = thunder_roc_ref (file_upload), image_2 = thunder_roc sheet 1 (file_upload)",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "decision": "pending"
+  },
+  {
+   "enemy": "thunder_roc",
+   "step": "single",
+   "part": "roc_wing",
+   "prompt": "EXTRAS.roc_wing",
+   "generationId": "AVqNsL1y4qtOG2BRJtIRtzuP-opmm7_nJ5nWqfKyCyyiRy4i0MHJaPAZIRtCthBJ-K9BSRyN",
+   "tool": "image_to_image",
+   "input": "image_1 = thunder_roc_ref, image_2 = thunder_roc sheet 1",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "decision": "pending"
+  },
+  {
+   "enemy": "rot_treant",
+   "step": "single",
+   "part": "treant_body",
+   "prompt": "EXTRAS.treant_body",
+   "generationId": "AahC8FMjZ825cTno2F6YafdEFnqVI3cKhuA9Aih4hq6Sa4zExi64EMYCfrlex_SSYW4gAduM",
+   "tool": "image_to_image",
+   "input": "image_1 = rot_treant_ref, image_2 = rot_treant sheet 2",
+   "aspect": "3:4",
    "imageCount": 2,
    "decision": "pending"
   }

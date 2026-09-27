@@ -1,0 +1,38 @@
+{
+ "id": "skeleton_knight",
+ "tier": "T2",
+ "srcTD": 4,
+ "note": "Skeleton-rig variant (ART-ENEMY-2). Horned helm+skull, breastplate (+spine), spiked pauldron, tasset skirt and the greave/sabaton are cut from the Kling Step-4 edit of the armless skeleton side view (sk_knight take 1); the bare femur from its no-tasset edit (sk_knight_legs take 1, same frame); bone arms from skeleton_sheet1, longsword + cape from the armor_knight sheets, kite shield from the ART-ENEMY-2 props sheet. make_src.py rebuilds the crops.",
+ "sources": {
+  "k": { "raw": "skeleton_knight_ref.webp", "file": "a2_skk_ref.png", "k": 0.0355, "mode": "rembg" },
+  "l": { "raw": "sk_knight_legs.webp", "file": "a2_skk_legs.png", "k": 0.0355 },
+  "s1": { "raw": "skel_arms.webp", "file": "a2_skk_arms.png", "k": 0.0485 },
+  "w": { "raw": "longsword.webp", "file": "a2_skk_sword.png", "k": 0.046, "mode": "rembg" },
+  "sh": { "raw": "kite_shield.webp", "file": "a2_skk_shield.png", "k": 0.042, "mode": "rembg" },
+  "c": { "raw": "cape.webp", "file": "a2_skk_cape.png", "k": 0.065 }
+ },
+ "parts": {
+  "head": { "src": "k", "box": [520, 0, 1280, 440],
+   "poly": [[520,0],[1280,0],[1280,330],[1110,330],[1100,380],[1085,420],[1040,428],[995,408],[900,372],[800,338],[788,300],[795,218],[770,208],[620,162],[520,128]],
+   "piv": { "a": [940, 385], "eye": [1039, 266], "top": [883, 63] } },
+  "torso": { "src": "k", "box": [560, 300, 1115, 988],
+   "minus": [[[520,0],[1280,0],[1280,330],[1110,330],[1100,380],[1085,420],[1040,428],[995,408],[900,372],[800,338],[788,300],[795,218],[770,208],[620,162],[520,128]]],
+   "piv": { "a": [858, 978], "b": [940, 385], "neck": [940, 385], "shoulder": [800, 560], "chest": [960, 640] } },
+  "pauldron": { "src": "k", "box": [590, 310, 1000, 680],
+   "poly": [[620,470],[655,322],[800,318],[930,390],[978,450],[972,560],[930,640],[820,662],[670,668],[632,612]],
+   "piv": { "a": [800, 480] } },
+  "pelvis": { "src": "k", "box": [600, 955, 1120, 1470],
+   "piv": { "a": [858, 985], "hip": [915, 1172], "front": [1080, 1200], "back": [640, 1200] } },
+  "thigh": { "src": "l", "box": [870, 1125, 975, 1560],
+   "poly": [[880,1150],[900,1133],[945,1133],[964,1160],[958,1200],[955,1260],[958,1552],[898,1552],[898,1260],[882,1200]],
+   "piv": { "a": [920, 1170], "b": [928, 1640] } },
+  "shin": { "src": "k", "box": [740, 1525, 1135, 2310],
+   "poly": [[805,1540],[1045,1532],[1048,1650],[992,1722],[952,1800],[936,2000],[926,2100],[906,2168],[962,2188],[1128,2268],[1128,2308],[780,2308],[752,2232],[768,2130],[774,1900],[788,1760],[798,1650],[798,1545]],
+   "piv": { "a": [905, 1640], "b": [866, 2176], "toe": [1121, 2285], "heel": [763, 2226] } },
+  "uarm": { "src": "s1", "box": [10, 10, 220, 320], "piv": { "a": [168, 62], "b": [65, 285] } },
+  "farm": { "src": "s1", "box": [10, 270, 150, 695], "piv": { "a": [65, 295], "b": [60, 548], "grip": [78, 620] } },
+  "sword": { "src": "w", "box": [0, 0, 315, 1158], "keep": "largest", "piv": { "a": [157, 1048], "b": [150, 18], "guard": [155, 988] } },
+  "shield": { "src": "sh", "box": [0, 0, 390, 990], "keep": "largest", "piv": { "a": [195, 430], "grip": [195, 470] } },
+  "cape": { "src": "c", "box": [0, 0, 345, 634], "piv": { "a": [170, 14] } }
+ }
+}

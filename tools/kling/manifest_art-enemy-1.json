@@ -230,8 +230,44 @@
    "aspect": "4:3",
    "imageCount": 1,
    "decision": "KEPT -> mimic/src/mimic_closed.webp (disguise frame: closed, legless)"
+  },
+  {
+   "enemy": "zombie",
+   "step": "edit_noarms",
+   "generationId": "Aeko16E22Wk5Ji8Ru9DdFIVopEhaV5BCMiyXvk5_00eueBjhaT8uV0dt6X26-2mZQ_dpmyVp",
+   "tool": "image_to_image",
+   "aspect": "auto",
+   "imageCount": 2,
+   "decision": "e1 KEPT -> zombie/src/zombie_edit.webp (blue halo gone, higher res), but Kling kept BOTH arms in both results (playbook: it will not drop a baked-in arm) -> near arm + far hand inpainted at cut time (parts.json inpaint); the reaching arms come from sheet 1"
+  },
+  {
+   "enemy": "wolf",
+   "step": "edit_nolegs",
+   "generationId": "AWgaWPfzh9wuz9IuG5vfVeR_Tt_zsGoyIBYl-iSS0pV2eal2CyJzwwimFLdxkxpk4rCnWDLI",
+   "tool": "image_to_image",
+   "aspect": "auto",
+   "imageCount": 2,
+   "decision": "e1 KEPT -> wolf/src/wolf_body.webp (legless, tailless body with the snarling head, rounded rump); e2 rejected (fur blob)"
+  },
+  {
+   "enemy": "mud_man",
+   "step": "edit_noarms",
+   "generationId": "Ae64qiz4OFaceJTGFb4S4Z3hO_iR-vzif9_9wIQsye1gJ9MGIPVSMYTA_4OVjekczkqDd8tL",
+   "tool": "image_to_image",
+   "aspect": "auto",
+   "imageCount": 2,
+   "decision": "e1 KEPT -> mud_man/src/mud_body.webp (armless, clean shoulders); e2 left a shoulder stump"
+  },
+  {
+   "enemy": "gargoyle",
+   "step": "edit_nowings",
+   "generationId": "AVsrcYJwvEuBtWxOubqDlRWOjmTvB8AU4MajT47mHFYcyGdJOLHS8VfCLqjIDARAQzJE9tc2",
+   "tool": "image_to_image",
+   "aspect": "auto",
+   "imageCount": 2,
+   "decision": "e1 KEPT -> gargoyle/src/gargoyle_body.webp (wingless, spine spikes repainted); e2 grew a second tail over the back"
   }
  ],
- "imagesSpent": 45,
- "creditsSpent": 90
+ "imagesSpent": 53,
+ "creditsSpent": 106
 }

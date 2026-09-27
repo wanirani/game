@@ -21,7 +21,8 @@
 //       L.transient 칸 가운데. hud.js 는 world.banner 가 없을 때만 부른다 → 배너(스테이지 제목·STAGE CLEAR·LEVEL UP …)가 이긴다.
 //       world.style.ann.cur 를 그린다 (대기열 2·0.8초 간격·0.7초 유지 + 0.25초 사라짐은 style.js 가 관리, 효과음도 style.js).
 //       붓 띠가 쓸고 지나가며 단어가 2.2→1 로 박히고(되튐) 0.15초 동안 색수차 (빨강 −2 px · 청록 +2 px), 아래에 한국어 부제 16 px.
-//       칸보다 길면 40 % 까지 줄인다. SSS 는 금빛과 핏빛이 번갈아 빛난다.
+//       칸보다 길면 40 % 까지 줄인다 (40 % 로도 칸을 넘는 아주 좁은 칸에서만 25 % 까지 줄이고 칸 ± 8 px 로 자른다).
+//       SSS 는 금빛과 핏빛이 번갈아 빛난다.
 //  시간: 튀기기·박힘 연출은 world.rt (실제 시간 — 히트스톱 중에도 흐른다), 알림의 유지·사라짐은 style 의 age (게임 시간).
 //  동작 줄이기(settings.reduceMotion): 튀기기·기울기·박힘·색수차·붓 쓸기 없이 나타났다 사라진다. 저품질(low): 광택 흐름·핏방울 생략.
 //
@@ -747,8 +748,13 @@ export function drawAnnouncer(ctx, world, vw, vh) {
   const cx = r.x + r.w / 2, by = r.y + 38, maxW = r.w - 16;
   let ww = meta?.w;
   if (!(ww > 0)) { ctx.font = font(WRD.size, 900, FONT.dmg); ww = ctx.measureText(word).width || 100; }
-  const fit = clamp(maxW / (ww + 24), 0.4, 1);
+  let fit = clamp(maxW / (ww + 24), 0.4, 1);
+  // 아주 좁은 칸 (큰 패드 touchScale 1.3 + 안전 영역 인셋: 70 px 안팎)에서는 40 % 로도 옆 상시 영역(옮겨 간 콤보 열)까지 넘친다
+  // → 그때만 칸에 맞게 더 줄이고(최소 25 %) 칸 ± 8 px 밖은 자른다. 보통 칸에서는 박힘 연출이 잠깐 칸을 넘어도 그대로 둔다
+  const narrow = ww * fit > r.w + 8;
+  if (narrow) fit = Math.max(0.25, (r.w + 8) / ww);
   ctx.save();
+  if (narrow) { ctx.beginPath(); ctx.rect(r.x - 8, r.y - 60, r.w + 16, r.h + 120); ctx.clip(); }
   ctx.globalAlpha *= clamp(alpha, 0, 1);
   // 붓 띠: 왼쪽에서 오른쪽으로 쓸며 그려진다 (0.1초)
   const band = SPR.band;

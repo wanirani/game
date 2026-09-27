@@ -1,0 +1,16 @@
+{
+ "id": "wisp",
+ "tier": "T1",
+ "srcTD": 4,
+ "note": "T1: two painted frames of the same soul flame (reference = jaw half open, frame2 = the Step-3 'same flame, jaw open wider' image) crossfaded while charging; the flame tongues flicker through a sheared strip warp around the skull (pivot a = between the eye sockets). k 0.02: skull ~9 px, flame ~29x36 px over the 24x24 logic rect (the tongues rise above it like the vector flame).",
+ "sources": {
+  "r": { "raw": "wisp_ref.webp", "file": "e1_wisp_ref.png", "k": 0.02 },
+  "f": { "raw": "wisp_frame2.webp", "file": "e1_wisp_frame2.png", "k": 0.02 }
+ },
+ "parts": {
+  "body": { "src": "r", "box": [290, 20, 1760, 1800],
+            "piv": { "a": [1076, 1380], "eyeL": [956, 1380], "eyeR": [1196, 1380], "mouth": [1070, 1575], "top": [1060, 60], "core": [1070, 1250] } },
+  "open": { "src": "f", "box": [290, 20, 1760, 1830],
+            "piv": { "a": [1078, 1336], "eyeL": [958, 1336], "eyeR": [1200, 1336], "mouth": [1070, 1640], "top": [1060, 60], "core": [1070, 1230] } }
+ }
+}

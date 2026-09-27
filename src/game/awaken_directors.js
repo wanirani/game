@@ -213,11 +213,13 @@ function spriteSet(ch, classId) {
   const vr = variantOf(ch, classId);
   const col = T2[classId]?.color ?? AWAKEN[ch]?.color ?? '#ffffff';
   const G = new Set(['#ffffff']), BV = new Map([['#ffffff|#ffffff', ['#ffffff', '#ffffff']]]), BH = new Map(BV);
+  const beat = [];   // ULTFX.beat 에 넘기는 색 (ULTFX 빛 캐시: 각성 색과 거리가 먼 색이면 시전 도중 새로 구우므로 미리)
   const bv = (c, core = '#ffffff') => BV.set(c + '|' + core, [c, core]), bh = (c, core = '#ffffff') => BH.set(c + '|' + core, [c, core]);
   if (ch === 'kael') {
     const L = kaelLash(vr);
     for (const c of [...L, KAEL_GOLD]) G.add(c);
     bv(KAEL_GOLD); bh(KAEL_GOLD);
+    beat.push(L[0]);
     if (vr === 'templar') { G.add('#fff2b0'); G.add('#e8c872'); }   // 방패 인장
     if (vr === 'inquisitor') G.add('#ff8a2a');   // 불타는 감옥
   } else if (ch === 'sera') {
@@ -225,14 +227,16 @@ function spriteSet(ch, classId) {
     for (const c of ['#fff2b0', '#fff8d0', col, ...PC]) G.add(c);
     bv('#fff2b0'); bv(PC[0]); bh(PC[0]);
     for (const c of vr === 'archmage' ? ARCH.flatMap((a) => [a[1], a[2]]) : PC) { G.add(c); bv(c); }
+    beat.push(...(vr === 'archmage' ? ARCH.map((a) => a[1]) : [PC[0]]));
     if (vr === 'saint') G.add('#ffe7a0');   // 후광
     if (vr === 'oracle') G.add('#8ac8ff');   // 시간 둔화
   } else if (ch === 'victor') {
     const SIL = victorSil(vr);
     G.add('#ffd070');
     bv(SIL); bh(SIL);
+    beat.push(SIL);
   }
-  return { vr, col, glow: [...G], bv: [...BV.values()], bh: [...BH.values()] };
+  return { vr, col, glow: [...G], bv: [...BV.values()], bh: [...BH.values()], beat };
 }
 function mkCanvas(w, h) {
   if (typeof document === 'undefined' || !document.createElement) return null;
@@ -306,8 +310,10 @@ function prewarm(w, p, force = false) {
       HFX.textSprite?.(...CALLOUT.clack);
       if (S.vr === 'executioner') HFX.textSprite?.(...CALLOUT.execute);
     }
-    // ULTFX.begin/final 이 쓰는 빛 (ULTFX 자체 캐시)
-    for (const c of ['#ffffff', S.col, T2[p.hero.classId]?.accent ?? AWAKEN[ch]?.accent]) if (c) ULTFX.glow?.(c);
+    // 마무리 일격이 찍는 자국 (hitfx 가 부팅 뒤 한가할 때 굽지만, 그 전에 각성해도 감독 도중 캔버스를 만들지 않게: 있으면 Map 조회뿐)
+    for (const k of ['crack', 'scorch', 'blood', 'frost', 'goo']) for (let i = 0; i < 3; i++) HFX.decalSprite?.(k, i);
+    // ULTFX.begin/final/beat 이 쓰는 빛 (ULTFX 자체 캐시)
+    for (const c of ['#ffffff', S.col, T2[p.hero.classId]?.accent ?? AWAKEN[ch]?.accent, ...S.beat]) if (c) ULTFX.glow?.(c);
     sc.setTransform(1, 0, 0, 1, 0, 0); sc.globalAlpha = 1; sc.globalCompositeOperation = 'source-over'; sc.clearRect(0, 0, 4, 4);
     PREP.key = key;
     AWAKEN_DIR_A_DEBUG.prewarm = key;

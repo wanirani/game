@@ -1,0 +1,3 @@
+[["fly a", {"anim": "fly"}], ["fly b", {"anim": "fly", "tOff": 0.13}], ["drift", {"anim": "fly", "vx": 120, "vy": -30}],
+ ["charge 0.3", {"anim": "charge", "animT": 0.18}], ["charge 0.8", {"anim": "charge", "animT": 0.44}], ["release", {"anim": "charge", "animT": 0.54}],
+ ["hurt", {"anim": "fly", "flashT": 0.11, "stun": 0.2}], ["dying", {"anim": "fly", "dying": 0.15}]]

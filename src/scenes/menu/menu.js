@@ -68,7 +68,8 @@ export class MenuScene extends Scene {
     this.tabRects = []; this.closeRect = null; this.qeRects = [];
     this.contentRect = null;
     this.msg = null;            // 하단 알림 {text, color, t}
-    this._onWheel = (e) => { this.ges.addWheel(e.deltaY * (e.deltaMode === 1 ? 32 : e.deltaMode === 2 ? 400 : 1) * 0.9); };
+    // 휠은 메뉴가 맨 위일 때만 모은다 (위에 옵션 등이 열려 있는 동안 굴린 휠이 닫힌 뒤 목록을 튀게 하지 않게)
+    this._onWheel = (e) => { if (this.game.top === this && !this.closing) this.ges.addWheel(e.deltaY * (e.deltaMode === 1 ? 32 : e.deltaMode === 2 ? 400 : 1) * 0.9); };
     window.addEventListener('wheel', this._onWheel, { passive: true });
     // 영웅 미리보기의 역광(림) 패스: 실제 품질 등급이 낮음이면 끈다 (설정 'auto' 는 game.quality 가 정한 등급)
     const tier = this.game.quality ?? this.game.tier ?? this.game.settings?.quality;

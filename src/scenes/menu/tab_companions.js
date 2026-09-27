@@ -35,7 +35,7 @@ import { drawCompanionIcon } from '../../render/companion_hud.js';
 import { playCry } from '../../core/audio_companions.js';
 import { CompanionFigure } from '../companion_join.js';
 
-const STRIP_H = 54, SEG_H = 40, ROW_H = 52, BTN_H = 44, GAP = 10;
+const STRIP_H = 54, SEG_H = 40, SEG_H_TOUCH = 46, ROW_H = 52, BTN_H = 44, GAP = 10;
 const MOUNT_CYCLE = [['idle', 2], ['walk', 2], ['run', 2], ['special', 1]];
 const GUARD_CYCLE = [['idle', 2.4], ['attack', 0.9], ['idle', 2.2], ['skill', 1.3]];
 const SEEN_DELAY = 0.8;
@@ -397,7 +397,7 @@ export class CompanionsTab extends Tab {
     ];
     for (let i = 0; i < 3; i++) {
       const it = items[i];
-      const r = { x: S.x + 8 + i * cellW, y: S.y + 4, w: cellW - 6, h: S.h - 8 };
+      const r = { x: S.x + 8 + i * cellW, y: S.y + 4, w: cellW - GAP, h: S.h - 8 };   // 칸 사이 10 px (터치 판정 여유, platform §6.3)
       this.loRects.push(ges.zone(r, 'primary', { src: 'companions.slot' }));
       const hot = focused && this.area === 'loadout' && this.loI === i;
       const cur = !!it.id && it.id === this.curId;
@@ -439,12 +439,13 @@ export class CompanionsTab extends Tab {
   /** 왼쪽 목록 */
   drawList(ctx, R, t, focused, ges) {
     frame(ctx, R.x, R.y, R.w, R.h);
-    // 나눔 단추
+    // 나눔 단추 (터치면 46 px — 손가락 판정 44 px 이상)
     const sx = R.x + 8, sw = (R.w - 16) / 2, sy = R.y + 8;
+    const segH = input.touchMode ? SEG_H_TOUCH : SEG_H;
     const segHot = focused && this.area === 'seg';
     for (let i = 0; i < 2; i++) {
       const kind = i === 0 ? 'mount' : 'guardian';
-      const r = { x: sx + i * sw, y: sy, w: sw, h: SEG_H };
+      const r = { x: sx + i * sw, y: sy, w: sw, h: segH };
       this.segRects.push(ges.zone(r, 'primary', { src: 'companions.seg' }));
       const on = this.kind === kind;
       const g = ctx.createLinearGradient(0, r.y, 0, r.y + r.h);
@@ -459,9 +460,9 @@ export class CompanionsTab extends Tab {
       const label = `${kind === 'mount' ? '탈것' : '수호신'} ${nOwn}/${this.ids(kind).length}`;
       text(ctx, label, r.x + r.w / 2, r.y + r.h / 2 + 5, { size: 14, align: 'center', weight: 800, color: on ? PAL.goldHi : PAL.dim, ow: 3 });
     }
-    if (segHot) brackets(ctx, sx + (this.kind === 'mount' ? 0 : sw) + 2, sy + 2, sw - 4, SEG_H - 4, t, PAL.goldHi);
+    if (segHot) brackets(ctx, sx + (this.kind === 'mount' ? 0 : sw) + 2, sy + 2, sw - 4, segH - 4, t, PAL.goldHi);
     // 줄
-    const LR = { x: R.x + 4, y: sy + SEG_H + 6, w: R.w - 8, h: R.h - SEG_H - 20 };
+    const LR = { x: R.x + 4, y: sy + segH + GAP, w: R.w - 8, h: R.h - segH - 24 };
     this.listRect = LR;
     const ids = this.ids(), n = ids.length, sel = clamp(this.sel[this.kind], 0, n - 1);
     this.sc.setMax(n * ROW_H - LR.h);
@@ -699,9 +700,9 @@ export class CompanionsTab extends Tab {
     scrollbar(ctx, R.x + R.w - 6, CR.y, CR.h, this.dsc, CR.h);
     // 단추
     if (nb) {
-      const bw = (R.w - 20 - (nb - 1) * 8) / nb;
+      const bw = (R.w - 20 - (nb - 1) * GAP) / nb;
       for (let i = 0; i < nb; i++) {
-        const r = { x: R.x + 10 + i * (bw + 8), y: btnY, w: bw, h: BTN_H };
+        const r = { x: R.x + 10 + i * (bw + GAP), y: btnY, w: bw, h: BTN_H };
         this.btnRects.push(ges.zone(r, 'primary', { src: 'companions.btn' }));
         const hot = (focused && this.area === 'btns' && this.btnI === i) || ges.over(r);
         const label = this.btns[i].label;

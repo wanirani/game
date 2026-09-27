@@ -22,7 +22,7 @@ import { PI, R, C, LG, ink, glow, glowE, glowSprite, warnRect, warnFloor, impact
 import { Entity } from '../entity.js';
 import { T } from '../../core/physics.js';
 import { audio } from '../../core/audio.js';
-import { TAU, clamp, lerp, rand, approach, rgba } from '../../core/math.js';
+import { TAU, clamp, lerp, rand, approach, rgba, mix } from '../../core/math.js';
 
 // ───────────────────────── 색 · 치수 ─────────────────────────
 const TS = 48;
@@ -1051,27 +1051,67 @@ export class Behemoth extends BossC {
     for (const L of this.legs) if (L.near) this.drawLeg(ctx, L, false);
     this.drawMossDrapes(ctx);
   }
+  /**
+   * 다리 하나 (몸 지역, 오른쪽 = 앞): 몸통에 녹아드는 살진 허벅지 · 코끼리처럼 주름진 정강이 · 하마 같은 뭉툭한 발 (말라붙은 진흙, 금 간 발톱 넷).
+   * 가까운 다리에는 이끼 · 선반버섯 · 사마귀. 피해 단계: P2 부터 가까운 앞다리, P3 에는 가까운 뒷다리의 무릎 가죽이 찢겨 뼈가 드러나고 피가 흐른다.
+   */
   drawLeg(ctx, L, far) {
-    const fl = R.fl, h = L.hipL, k = L.kneeL, f = L.footL;
-    const col = fl ? '#fff' : (far ? '#1e2012' : HIDE);
-    tube(ctx, h[0], h[1], k[0], k[1], far ? 30 : 34, far ? 24 : 27, col, far ? 'bh_luf' : 'bh_lu', 3);
-    tube(ctx, k[0], k[1], f[0], f[1] - 10, far ? 23 : 26, far ? 20 : 22, col, far ? 'bh_llf' : 'bh_ll', 3);
+    const fl = R.fl, h = L.hipL, k = L.kneeL, f = L.footL, front = L.side > 0, t = this.t;
+    const col = far ? '#25271a' : HIDE;
+    const ax = f[0] + (front ? 5 : -5), ay = f[1] - 34;   // 발목
+    // 허벅지: 뿌리(몸통 안) 쪽 윤곽선은 그리지 않아 엉덩이 살덩이처럼 몸에 붙는다.
+    // 뒷다리 엉덩이는 조금 뒤로 물려 그린다 (옆구리 상처의 포자 주머니 = 약점을 가리지 않게)
+    const hx = h[0] + (front ? 0 : -12), hy = h[1] + (front ? 0 : 4);
+    fleshLimb(ctx, hx, hy, k[0], k[1], far ? 40 : (front ? 50 : 44), far ? 22 : 27, far ? 6 : 11, col, far ? 'bh_thf' : 'bh_th', { open: front ? 0.34 : 0.42, folds: far ? 0 : 3, moss: !far });
+    // 정강이 (무릎 아래 주름 · 발목 위 주름)
+    fleshLimb(ctx, k[0], k[1], ax, ay, far ? 22 : 27, far ? 17 : 21, far ? 2 : 4, col, far ? 'bh_shf' : 'bh_sh', { folds: far ? 2 : 4, rootFolds: far ? 0 : 3 });
+    // 발 (발 지역: 원점 = 발 밑 가운데)
+    const fw = far ? 30 : 37, adx = ax - f[0];
+    ctx.save(); ctx.translate(f[0], f[1]);
+    ctx.beginPath();
+    ctx.moveTo(adx - 18, -38);
+    ctx.bezierCurveTo(adx - 24, -20, -fw, -18, -fw, -3);
+    ctx.lineTo(fw + 3, -3);
+    ctx.bezierCurveTo(fw + 1, -20, adx + 26, -24, adx + 19, -38);
+    ctx.closePath();
+    ink(ctx, fl ? '#fff' : LG(ctx, far ? 'bh_footf' : 'bh_foot', 0, -40, 0, 0, far ? [0, '#25271a', 0.6, '#1a1a10', 1, '#0e0c08'] : [0, HIDE, 0.45, '#3a3a24', 0.75, '#2e2618', 1, '#1a140c']), 2.4);
     if (!fl) {
-      // 무릎 혹 · 이끼 · 선반버섯
-      ctx.fillStyle = far ? '#262814' : '#56583a'; ctx.strokeStyle = '#0a0a04'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.ellipse(k[0], k[1], far ? 20 : 23, far ? 18 : 21, 0, 0, TAU); ctx.fill(); ctx.stroke();
-      if (!far) {
-        glowE(ctx, k[0] - 6, k[1] - 8, 16, 12, MOSS, 0.5);
-        ctx.fillStyle = '#d8c8a0'; ctx.strokeStyle = '#2a2010'; ctx.lineWidth = 1;
-        for (let q = 0; q < 2; q++) { const x = lerp(k[0], f[0], 0.4) + 14, y = lerp(k[1], f[1], 0.4) + q * 8; ctx.beginPath(); ctx.ellipse(x, y, 10 - q * 3, 4, 0, PI, TAU); ctx.fill(); ctx.stroke(); }
-        ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1.2;
-        ctx.beginPath(); for (let q = 0; q < 5; q++) { const u = 0.15 + q * 0.16, x = lerp(k[0], f[0], u), y = lerp(k[1], f[1], u); ctx.moveTo(x - 16, y); ctx.lineTo(x - 6, y + 2); } ctx.stroke();
+      // 발 주름 · 말라붙은 진흙
+      ctx.strokeStyle = 'rgba(0,0,0,0.45)'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); for (let q = 0; q < 3; q++) { const y = -26 + q * 7; ctx.moveTo(adx - 16 - q * 4, y); ctx.quadraticCurveTo(adx + 2, y + 4, adx + 18 + q * 5, y); } ctx.stroke();
+      ctx.fillStyle = far ? 'rgba(40,32,20,0.6)' : 'rgba(70,56,34,0.75)';
+      for (let q = 0; q < 4; q++) { ctx.beginPath(); ctx.ellipse(-fw * 0.7 + q * fw * 0.5 + h01(q + L.ph) * 6, -6 - h01(q * 3 + L.ph) * 5, 6 + h01(q) * 4, 3, 0, 0, TAU); ctx.fill(); }
+      // 발톱 (앞쪽이 크다): 누렇게 금 가고 흙이 끼었다
+      const nails = far ? 3 : 4;
+      for (let q = 0; q < nails; q++) {
+        const u = nails === 1 ? 0.5 : q / (nails - 1), x = lerp(-fw * 0.5, fw * 0.92, u), nw = 5 + u * 3.5, nh = 11 + u * 5;
+        ctx.beginPath(); ctx.moveTo(x - nw, -1); ctx.quadraticCurveTo(x - nw - 1, -nh, x, -nh - 2); ctx.quadraticCurveTo(x + nw + 1, -nh, x + nw + 2, -1); ctx.closePath();
+        ink(ctx, far ? '#6e6650' : LG(ctx, 'bh_nail', 0, -16, 0, 0, [0, '#e8dcb8', 0.5, '#b8a880', 1, '#4a3e28']), 1.6);
+        if (!far) { ctx.strokeStyle = 'rgba(40,30,16,0.8)'; ctx.lineWidth = 0.9; ctx.beginPath(); ctx.moveTo(x - 1, -nh + 2); ctx.lineTo(x + 1, -nh * 0.5); ctx.lineTo(x - 1, -3); ctx.stroke(); }
       }
     }
-    // 갈라진 발굽
-    ctx.fillStyle = fl ? '#fff' : (far ? '#0e0c08' : HOOF); ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(f[0] - 26, f[1] - 14); ctx.lineTo(f[0] + 26, f[1] - 14); ctx.lineTo(f[0] + 30, f[1]); ctx.lineTo(f[0] - 30, f[1]); ctx.closePath(); ctx.fill(); ctx.stroke();
-    if (!fl) { ctx.strokeStyle = far ? '#2a241a' : '#5a4a36'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(f[0] + 2, f[1] - 13); ctx.lineTo(f[0] + 4, f[1] - 1); ctx.stroke(); }
+    ctx.restore();
+    if (fl || far) return;
+    // 정강이 뒤쪽의 선반버섯 둘
+    const mx = lerp(k[0], ax, 0.45) - (front ? 20 : 22), my = lerp(k[1], ay, 0.45);
+    for (let q = 0; q < 2; q++) {
+      ctx.beginPath(); ctx.ellipse(mx - q * 3, my + q * 11, 12 - q * 3, 5, -0.15, PI * 0.95, TAU + 0.05);
+      ink(ctx, q ? '#c8b890' : '#e2d6b0', 1.2, '#2a2010');
+      ctx.strokeStyle = 'rgba(90,70,40,0.6)'; ctx.lineWidth = 0.8; ctx.beginPath(); for (let r = 0; r < 4; r++) { ctx.moveTo(mx - q * 3 - 8 + r * 5, my + q * 11 - 1); ctx.lineTo(mx - q * 3 - 7 + r * 5, my + q * 11 - 4); } ctx.stroke();
+    }
+    // 피해 단계: 무릎 가죽이 찢겨 뼈(무릎뼈)가 드러난다
+    const wound = (front && this.dmgStage >= 1) || (!front && this.dmgStage >= 2);
+    if (wound) {
+      const wx = k[0] + (front ? 6 : -4), wy = k[1] - 2;
+      ctx.beginPath(); ctx.ellipse(wx, wy, 17, 13, 0.3, 0, TAU); ink(ctx, '#3a0c0a', 2, '#120402');
+      ctx.strokeStyle = '#7a2a1c'; ctx.lineWidth = 2.2; ctx.beginPath();
+      for (let q = 0; q < 7; q++) { const a = (q / 7) * TAU; ctx.moveTo(wx + Math.cos(a) * 14, wy + Math.sin(a) * 10); ctx.lineTo(wx + Math.cos(a + 0.2) * 19, wy + Math.sin(a + 0.2) * 15); }
+      ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(wx + 1, wy - 1, 9, 8, 0.2, 0, TAU); ink(ctx, LG(ctx, 'bh_patella', 0, -9, 0, 9, [0, '#f2ead0', 0.6, BONE, 1, BONE_D]), 1.4);
+      ctx.strokeStyle = '#3a3020'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(wx - 3, wy - 7); ctx.lineTo(wx + 1, wy - 1); ctx.lineTo(wx - 2, wy + 5); ctx.stroke();
+      const dy = (t * 34 + L.ph * 7) % 40;
+      ctx.fillStyle = '#6a1210'; ctx.beginPath(); ctx.moveTo(wx - 4, wy + 10); ctx.quadraticCurveTo(wx - 6, wy + 10 + dy * 0.6, wx - 4, wy + 12 + dy); ctx.quadraticCurveTo(wx - 2, wy + 10 + dy * 0.6, wx - 4, wy + 10); ctx.fill();
+    }
   }
   drawTail(ctx) {
     const fl = R.fl, t = this.t, sw = Math.sin(t * 2) * 10;
@@ -1313,6 +1353,62 @@ export class Behemoth extends BossC {
     for (let i = 0; i < 10; i++) { const x = -170 + i * 34, y = -124 + dr + Math.abs(x) * 0.03, L = 14 + h01(i) * 22, sw = Math.sin(t * 2 + i) * 4; ctx.moveTo(x, y); ctx.quadraticCurveTo(x + sw, y + L * 0.5, x - 2 + sw * 1.5, y + L); }
     ctx.stroke();
   }
+}
+
+// ───────────────────────── 다리 살덩이 ─────────────────────────
+/** 가늘어지는 살덩이 팔다리 경로 (팔다리 지역: 원점 = 뿌리, +x = 끝 쪽). 위쪽 윤곽이 근육처럼 부푼다 */
+function limbPath(ctx, len, r0, r1, bulge) {
+  const rm = (r0 + r1) * 0.5;
+  ctx.beginPath();
+  ctx.moveTo(0, -r0);
+  ctx.quadraticCurveTo(len * 0.42, -rm - bulge, len, -r1);
+  ctx.arc(len, 0, r1, -PI / 2, PI / 2);
+  ctx.quadraticCurveTo(len * 0.55, rm + bulge * 0.45, 0, r0);
+  ctx.arc(0, 0, r0, PI / 2, PI * 1.5);
+  ctx.closePath();
+}
+/**
+ * 살진 팔다리 한 마디: (x0,y0) 굵기 r0 → (x1,y1) 굵기 r1. 그라디언트는 팔다리 지역 좌표로 캐시(LG)한다.
+ * o.open (0~1): 뿌리 쪽 이 비율까지는 윤곽선을 그리지 않는다 (몸통에 녹아든다) · o.folds / o.rootFolds: 끝 · 뿌리 쪽 가죽 주름 수 · o.moss: 이끼 얼룩
+ */
+function fleshLimb(ctx, x0, y0, x1, y1, r0, r1, bulge, col, key, o = {}) {
+  const len = Math.max(1, Math.hypot(x1 - x0, y1 - y0)), fl = R.fl, rm = (r0 + r1) * 0.5;
+  const rr = Math.round(Math.max(r0, r1) + bulge);
+  ctx.save();
+  ctx.translate(x0, y0); ctx.rotate(Math.atan2(y1 - y0, x1 - x0));
+  limbPath(ctx, len, r0, r1, bulge);
+  ctx.fillStyle = fl ? '#ffffff' : LG(ctx, `${key}${col}${rr}`, 0, -rr, 0, rr, [0, mix(col, '#e8e0b0', 0.3), 0.24, col, 0.68, mix(col, '#000000', 0.5), 0.88, mix(col, '#8aa060', 0.22), 1, mix(col, '#000000', 0.72)]);
+  ctx.fill();
+  if (fl) { ctx.restore(); return; }
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  if (o.open) {
+    ctx.save();
+    ctx.beginPath(); ctx.rect(len * o.open, -rr - 30, len + r1 + 60, rr * 2 + 60); ctx.clip();
+    limbPath(ctx, len, r0, r1, bulge);
+    ctx.strokeStyle = '#080904'; ctx.lineWidth = 2.6; ctx.stroke();
+    ctx.restore();
+  } else { ctx.strokeStyle = '#080904'; ctx.lineWidth = 2.6; ctx.stroke(); }
+  // 가죽 주름 (관절 쪽으로 몰린다): 어두운 골 + 밝은 턱
+  const fold = (x, w) => { ctx.moveTo(x, -w * 0.86); ctx.quadraticCurveTo(x - 7, 0, x + 1, w * 0.86); };
+  if (o.folds || o.rootFolds) {
+    ctx.strokeStyle = 'rgba(0,0,0,0.45)'; ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (let i = 0; i < (o.folds ?? 0); i++) fold(len - r1 * 0.2 - i * 8, lerp(r1, rm, i * 0.18));
+    for (let i = 0; i < (o.rootFolds ?? 0); i++) fold(r0 * 0.6 + i * 8, lerp(r0, rm, i * 0.18));
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(210,220,160,0.16)'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = 0; i < (o.folds ?? 0); i++) fold(len - r1 * 0.2 - i * 8 + 2.5, lerp(r1, rm, i * 0.18) * 0.8);
+    for (let i = 0; i < (o.rootFolds ?? 0); i++) fold(r0 * 0.6 + i * 8 + 2.5, lerp(r0, rm, i * 0.18) * 0.8);
+    ctx.stroke();
+  }
+  if (o.moss) {
+    // 이끼 얼룩 · 사마귀 (윗면)
+    glowE(ctx, len * 0.38, -rm * 0.55, rm * 0.7, rm * 0.35, MOSS, 0.55);
+    ctx.fillStyle = '#4a4a2c'; ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 0.8;
+    for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc(len * (0.3 + i * 0.13), -rm * (0.25 + (i % 2) * 0.3), 2.2 + (i % 3), 0, TAU); ctx.fill(); ctx.stroke(); }
+  }
+  ctx.restore();
 }
 
 // ───────────────────────── 지대 · 탄 그림 ─────────────────────────

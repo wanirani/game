@@ -93,6 +93,8 @@ const RED = '#ff8a8a', GOOD = '#9fe8b0', INFO = '#9fd8ff', WARN = '#ffb070';
 const P29_CODE = '컨트롤러로는 코드를 입력할 수 없습니다. 키보드나 터치를 사용하세요';
 const P29_TEXT = '컨트롤러로는 아이디와 비밀번호를 입력할 수 없습니다. 키보드나 터치를 사용하세요';
 const EXPIRED_MSG = '로그인이 만료되었습니다. 다시 로그인해 주세요.';
+/** cloud.js 오류 중 연결 문제 (상태 안내와 겹치는 것) */
+const NET_ERR = new Set(['offline', 'network', 'timeout', 'bad_response', 'server_error']);
 
 // 오른쪽 안내 문구 (h: 소제목, b: 글머리, t: 문장, c: 색) — 칸이 모자라면 뒤쪽 항목부터 생략한다
 const RULES_ID = { b: '아이디: 영문 소문자로 시작하는 4~16자. 영문 소문자, 숫자, 밑줄(_)만 쓸 수 있습니다. 대문자로 적으면 소문자로 바뀝니다.' };
@@ -159,6 +161,18 @@ function watchExpiry() {
 if (typeof setTimeout === 'function') setTimeout(watchExpiry, 0);
 
 /**
+ * 비밀번호 관리자에 저장을 제안한다 (Credential Management API). 캔버스 게임은 페이지를 옮기지 않아서
+ * 브라우저가 로그인 성공을 알아채지 못할 수 있다. 지원하지 않는 환경(앱 웹뷰·사파리 등)에서는 조용히 넘어간다
+ */
+function offerSaveCredential(id, password) {
+  try {
+    const PC = typeof window !== 'undefined' ? window.PasswordCredential : null;
+    if (!PC || !id || !password || !window.isSecureContext || !navigator.credentials?.store) return;
+    navigator.credentials.store(new PC({ id, password, name: id })).catch(() => { /* 사용자가 거절·지원 안 함 */ });
+  } catch { /* 지원 안 함 */ }
+}
+
+/**
  * 화면 키보드가 가리지 않는 세로 띠 (CSS px, 레이아웃 뷰포트 기준) 또는 null (키보드 없음으로 본다)
  *  1) 앱 브리지 window.__BN_IME = {bottom} (IME 가 가린 높이, CSS px) — 있으면 그대로
  *  2) visualViewport 가 창보다 눈에 띄게 작으면 그 범위 (웹: 크롬 안드로이드·iOS 사파리)
@@ -168,8 +182,10 @@ function keyboardBand(touchTyping) {
   if (typeof window === 'undefined') return null;
   const ih = window.innerHeight || 0;
   if (!(ih > 0)) return null;
-  const ime = Number(window.__BN_IME?.bottom ?? window.__BN_IME);
-  if (Number.isFinite(ime) && ime > 40) return { top: 0, bottom: ih - ime };
+  // 앱이 IME 높이를 알려 주면 (0 = 키보드 닫힘 포함) 그 값만 믿는다
+  const raw = window.__BN_IME;
+  const ime = raw == null ? NaN : Number(typeof raw === 'object' ? raw.bottom : raw);
+  if (Number.isFinite(ime)) return ime > 40 ? { top: 0, bottom: ih - ime } : null;
   const vv = window.visualViewport;
   if (vv && vv.height > 0 && vv.height < ih * 0.9) return { top: vv.offsetTop || 0, bottom: (vv.offsetTop || 0) + vv.height };
   if (touchTyping && isAndroidApp()) return { top: 0, bottom: ih * 0.5 };
@@ -678,6 +694,7 @@ export class AccountScene extends Scene {
       return;
     }
     audio.sfx('save');
+    offerSaveCredential(r.id ?? cloud.id, pw);
     if (s === 'login') this.afterLogin(r.id);
     else if (s === 'signup') {
       this.values.id = r.id;
@@ -719,7 +736,7 @@ export class AccountScene extends Scene {
     else this.msg = { text: r.message ?? '올리지 못했습니다.', color: RED };
   }
   syncMsg(out) {
-    if (!out?.ok) return { text: out?.message ?? '동기화하지 못했습니다.', color: RED };
+    if (!out?.ok) return { text: out?.message ?? '동기화하지 못했습니다.', color: RED, net: NET_ERR.has(out?.error) };
     const parts = [];
     if (out.downloaded.length) parts.push(`받음: 슬롯 ${out.downloaded.join(', ')}`);
     if (out.uploaded.length) parts.push(`올림: 슬롯 ${out.uploaded.join(', ')}`);
@@ -874,8 +891,8 @@ export class AccountScene extends Scene {
   statusNote() {
     if (!cloud.loggedIn) return null;
     const s = cloud.state;
-    if (s === 'offline') return { text: '오프라인입니다. 이 기기에는 그대로 저장되고, 인터넷에 다시 연결되면 자동으로 동기화합니다.', color: WARN };
-    if (s === 'unavailable') return { text: '계정 서버에 연결할 수 없습니다. 이 기기에는 그대로 저장됩니다. 잠시 후 「지금 동기화」로 다시 시도해 주세요.', color: WARN };
+    if (s === 'offline') return { text: '오프라인입니다. 이 기기에는 그대로 저장되고, 인터넷에 다시 연결되면 자동으로 동기화합니다.', color: WARN, net: true };
+    if (s === 'unavailable') return { text: '계정 서버에 연결할 수 없습니다. 이 기기에는 그대로 저장됩니다. 잠시 후 「지금 동기화」로 다시 시도해 주세요.', color: WARN, net: true };
     if (!cloud.verified && (s === 'checking' || s === 'unknown')) return { text: '로그인 상태를 확인하는 중…', color: DIM, spin: true };
     const n = this.slotRows.filter((r) => r.status === 'conflict').length;
     if (n) return { text: `충돌 ${n}개 — 이 기기와 클라우드 기록이 다릅니다. 세이브 슬롯 화면에서 남길 기록을 고르세요.`, color: '#ff9a9a' };
@@ -1073,7 +1090,9 @@ export class AccountScene extends Scene {
       if (!this.busy) taps.add(it.id, r, { owner: this, kind: 'list', src: 'account.row' });
     });
     const x = G.R.x + 8, w = G.R.w - 4;
-    let y = this.drawNotes(ctx, [this.msg, this.statusNote()], x, G.y0 + 16, w, t);
+    // 연결 실패 알림과 연결 상태 안내가 같은 내용이면 (오프라인·서버 연결 안 됨) 더 자세한 상태 안내 하나만
+    const sn = this.statusNote();
+    let y = this.drawNotes(ctx, this.msg?.net && sn?.net ? [sn] : [this.msg, sn], x, G.y0 + 16, w, t);
     if (this.screen === 'home') this.drawInfo(ctx, G, INFO_TEXT.home, y + 2);
     else this.drawProfile(ctx, G, t, y);
   }
@@ -1139,7 +1158,7 @@ export class AccountScene extends Scene {
   drawCode(ctx, G, t) {
     const cx = G.x0 + G.PW / 2, C = this.codeLayout(G);
     const y0 = G.y0;
-    if (this.codeNote) text(ctx, this.codeNote, G.x0 + 22, y0 + 24, { size: 12, weight: 800, color: GOOD, ow: 2, maxWidth: G.PW / 2 - 40 });
+    if (this.codeNote) text(ctx, this.codeNote, G.x0 + 22, y0 + 24, { size: 13, weight: 800, color: GOOD, ow: 2, maxWidth: G.PW / 2 - 40 });
     text(ctx, '복구 코드', cx, y0 + (C.compact ? 34 : 42), { size: 22, align: 'center', weight: 800, family: FONT.title, color: '#ffe7a0', ow: 3 });
     ornament(ctx, cx, y0 + (C.compact ? 46 : 58), 300);
     text(ctx, '이 코드는 지금 한 번만 보여 드립니다', cx, y0 + (C.compact ? 70 : 90), { size: 16, align: 'center', weight: 800, color: '#ff9a9a', ow: 3, maxWidth: G.PW - 40 });
@@ -1197,7 +1216,7 @@ export class AccountScene extends Scene {
       ctx.fillStyle = 'rgba(126,224,126,0.08)'; ctx.fillRect(box.x, box.y, box.w, box.h);
       ctx.strokeStyle = 'rgba(126,224,126,0.45)'; ctx.lineWidth = 1; ctx.strokeRect(box.x + 0.5, box.y + 0.5, box.w - 1, box.h - 1);
       text(ctx, '이 기기의 저장은 그대로 쓸 수 있습니다', cx, box.y + 22, { size: 14, align: 'center', weight: 800, color: '#a8f0b0', ow: 2, maxWidth: box.w - 20 });
-      text(ctx, '세이브 슬롯 1~3, 해금, 명예의 전당 기록은 평소처럼 이 기기에 저장됩니다.', cx, box.y + 42, { size: 12, align: 'center', color: BONE, ow: 2, maxWidth: box.w - 20 });
+      text(ctx, '세이브 슬롯 1~3, 해금, 명예의 전당 기록은 평소처럼 이 기기에 저장됩니다.', cx, box.y + 42, { size: 13, align: 'center', color: BONE, ow: 2, maxWidth: box.w - 20 });
     } else if (room >= 18) {
       text(ctx, '이 기기의 저장(세이브 슬롯·해금·기록)은 그대로 쓸 수 있습니다.', cx, y + 14, { size: 13, align: 'center', weight: 800, color: '#a8f0b0', ow: 2, maxWidth: G.PW - 60 });
     }

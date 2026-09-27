@@ -10,6 +10,8 @@ import * as golden_bat from '../enemies/golden_bat.js';
 import * as bone_thrower from '../enemies/bone_thrower.js';
 import * as skeleton_archer from '../enemies/skeleton_archer.js';
 import * as axe_armor from '../enemies/axe_armor.js';
+import * as wisp from '../enemies/wisp.js';
+import * as crow from '../enemies/crow.js';
 
 export const bosses = {};
 export const enemies = [
@@ -17,6 +19,8 @@ export const enemies = [
   { mod: bone_thrower },
   { mod: skeleton_archer },
   { mod: axe_armor },
+  { mod: wisp },
+  { mod: crow },
 ];
 export const companions = {};
 export const npcs = {};
