@@ -231,6 +231,7 @@ export class Guardian extends Entity {
     this.ai = aiFor(id);
     try { this.ai?.init?.(this); } catch (e) { console.warn('[guardian] init', id, e); }
     this.refresh();
+    prewarmGlow(def);   // 자리 표시 그림의 빛 스프라이트를 미리 (전투 중 새 캔버스를 만들지 않게 — MASTER_PLAN §5.2)
   }
   get player() { return this.system?.world?.player ?? null; }
   get state() { return this.system?.world?.state ?? null; }
@@ -391,7 +392,7 @@ export class Guardian extends Entity {
       if (this.retargetT <= 0) { this.retargetT = GUARD_RULES.retarget; this.target = this.pickTarget(world, p); }
       if (this.target && Math.hypot(this.target.cx - p.cx, this.target.cy - p.cy) > GUARD_RULES.leash) this.target = null;
     }
-    if (this.target) this.perched = false;
+    if (this.target) { this.perched = false; if (this.act?.name === 'emote') this.act = null; }   // 싸움이 시작되면 장난을 곧바로 멈춘다
     // 고유 능력
     try { this.ai?.passive?.(this, world, dt); } catch (e) { console.warn('[guardian] passive', this.id, e); }
     // AI 가 전부 맡는 프레임
@@ -723,12 +724,13 @@ const FAIRY = {
     p.heal(p.stats.hp * (sk.heal ?? 0.25) * mul, true);
     const dur = (sk.shield ?? 2) * Math.min(1, mul);
     S.shieldT = Math.max(S.shieldT, dur);
-    world.add(new GFx({
+    const keep = (e) => (S.keepFx ? S.keepFx(e) : e);   // 방을 옮겨도 결계가 보이게 (shieldT 는 남는다)
+    keep(world.add(new GFx({
       x: p.x, y: p.y, w: p.w, h: p.h, life: dur, z: 12, owner: g, data: { color: g.def.color },
       follow(e) { if (p.dead) { e.dead = true; return; } e.x = p.x; e.y = p.y; e.w = p.w; e.h = p.h; },
       render: (ctx, e, w) => { if (!drew(GR.fxFairyDome, ctx, e, w)) drawDome(ctx, e, w); },
       light: { r: 140, color: '#fff2b0', i: 0.6 },
-    }));
+    })));
     world.fx?.burst('holy', p.cx, p.cy, nq(world, 24), { speed: 220 });
     world.fx?.ring(p.cx, p.cy, { color: '#ffe070', r0: 10, r1: 90, life: 0.4, width: 6 });
   },
@@ -834,7 +836,8 @@ const KNIGHT = {
     const dur = clamp((sk.dur ?? 4) * mul, 2, 6);
     S.wallT = Math.max(S.wallT, dur); S.wallMul = sk.dmgMul ?? 0.7;
     const ahead = sk.ahead ?? 96, H = 120, W = 22;
-    world.add(new GFx({
+    const keep = (e) => (S.keepFx ? S.keepFx(e) : e);   // 방을 옮겨도 방패벽이 남아 탄을 막게 (wallT 는 남는다)
+    keep(world.add(new GFx({
       x: p.cx, y: p.bottom - H, w: W, h: H, life: dur, z: 12, owner: g, data: { color: g.def.color },
       follow(e) { if (p.dead) { e.dead = true; return; } const f = p.facing || 1; e.x = p.cx + f * ahead - W / 2; e.y = p.bottom - H; e.data.f = f; },
       tick(e, w) {
@@ -846,7 +849,7 @@ const KNIGHT = {
       },
       render: (ctx, e, w) => { if (!drew(GR.fxShieldWall, ctx, e, w)) drawWall(ctx, e, w); },
       light: { r: 110, color: '#8ac8ff', i: 0.5 },
-    }));
+    })));
     world.fx?.ring(p.cx + (p.facing || 1) * ahead, p.bottom - 60, { color: '#8ac8ff', r0: 10, r1: 80, life: 0.3, width: 5 });
     audio.sfx('knight_guard', { vol: 0.8 });
   },
@@ -888,7 +891,8 @@ const WHELP = {
     if (name !== 'idle') return;
     const p = world.player;
     if (!p) return;
-    g.begin('emote', 1.2, { goal: { x: p.cx - (p.facing || 1) * 4, y: p.y + 18 } });
+    const ear = () => ({ x: p.cx - (p.facing || 1) * 4, y: p.y + 18 });   // 귀 (플레이어가 움직여도 따라간다)
+    g.begin('emote', 1.2, { goal: ear(), step(gg, w, dt, a) { a.goal = ear(); } });
   },
 };
 /** 미네르바: 700px 성광 · 비밀의 눈 (부서지는 벽·가짜 벽 윤곽) */
@@ -990,6 +994,12 @@ function glowSprite(color) {
   x.fillStyle = gr; x.fillRect(0, 0, 64, 64);
   GLOW.set(color, c);
   return c;
+}
+/** 이 수호신의 자리 표시 그림이 쓰는 빛 스프라이트를 미리 만든다 (몸 색 · palette[3] · 눈 흰색 · 아리아 손끝) */
+function prewarmGlow(def) {
+  if (!def) return;
+  try { for (const c of new Set([def.color, def.palette?.[3], '#ffffff', def.id === 'gd_fairy' ? '#fff2b0' : null])) if (typeof c === 'string') glowSprite(c); }
+  catch { /* 문서가 없는 환경 */ }
 }
 let GLOW_HI = true;   // 이번 그림이 높음 품질인가 (중간·낮음이면 번짐 스프라이트 생략: 수호신 빛은 lights() 가 이미 더한다 — R12)
 function glowAt(ctx, x, y, r, color, a = 0.6, force = false) {

@@ -88,6 +88,8 @@ function drawLeviathan(ctx, b, world, rig, st) {
   const flashOn = b.flashT > 0 && !dying;
   // 피격 섬광은 맞은 부위에만: 머리 판정 → 머리·턱, 몸통 마디 판정 → 몸통 띠 (부위를 모르면 전체)
   const hp = flashOn ? b.hitPart : null, headHit = flashOn && (!hp || hp === b.headR), bodyHit = flashOn && (!hp || hp !== b.headR);
+  // 섬광 세기. 부품은 그린 직후 바로 덧그린다 (끝에 한꺼번에 덧그리면 머리에 가려지는 턱 윗부분이 머리 위로 비친다)
+  st.fa = flashOn ? clamp(b.flashT / 0.1, 0, 1) * 0.5 : 0;
   const bs = b.facing >= 0 ? 1 : -1;
   const V = (part, deep = false) => pickVariant(part, lvl, deep, tint);
   if (up > 0) { P.burst('blood', b.hx, b.hy, 10 + up * 4, { speed: 260, angle: -PI / 2, spread: 1.3 }); P.burst('chip', b.hx, b.hy, 8, { speed: 240, color: '#3d7a78' }); }
@@ -117,7 +119,8 @@ function drawLeviathan(ctx, b, world, rig, st) {
     // 몸통 띠 (꼬리 → 머리)
     D.rec = false;
     drawChain(ctx, D, V(Bd), Bd, _X, _Y, _R, n, bs, 0, 1);
-    if (bodyHit && Bd.v.flash) { const op = ctx.globalCompositeOperation; ctx.globalCompositeOperation = 'lighter'; drawChain(ctx, D, Bd.v.flash, Bd, _X, _Y, _R, n, bs, 0, clamp(b.flashT / 0.1, 0, 1) * 0.45); ctx.globalCompositeOperation = op; }
+    // 섬광 띠는 겹치지 않게 맞붙여 그린다 (가산 합성에서 겹친 띠가 두 번 더해져 줄무늬가 생기던 것)
+    if (bodyHit && Bd.v.flash) { const op = ctx.globalCompositeOperation; ctx.globalCompositeOperation = 'lighter'; drawChain(ctx, D, Bd.v.flash, Bd, _X, _Y, _R, n, bs, 0, clamp(b.flashT / 0.1, 0, 1) * 0.45, false); ctx.globalCompositeOperation = op; }
     // 도약 중 꼬리 끝 지느러미
     if (b.mode === 'arc' && R.fluke && _Y[n - 1] < F + 20) {
       const i = n - 1, a = Math.atan2(_Y[i] - _Y[i - 1], _X[i] - _X[i - 1]);
@@ -171,8 +174,9 @@ function drawLeviathan(ctx, b, world, rig, st) {
  * 곧은 몸통 그림을 점 목록(0 = 머리 쪽)을 따라 띠로 구부려 그린다. 가로 배율은 그림 그대로(늘이지 않음) —
  * 사슬이 그림보다 길면 무늬가 반복된다(주기 = root→tip). 두께는 마디 반지름 R 에 비례. bs = 배 쪽 부호(좌우 반전).
  * 띠마다 setTransform + drawImage 한 번. 꼬리 → 머리 순서로 그려 머리 쪽이 위에 겹친다.
+ * overlap = false: 띠를 겹치지 않고 맞붙인다 (가산 섬광용)
  */
-function drawChain(ctx, D, img, part, X, Y, Rr, n, bs, sOff = 0, alpha = 1) {
+function drawChain(ctx, D, img, part, X, Y, Rr, n, bs, sOff = 0, alpha = 1, overlap = true) {
   if (!img || n < 2 || alpha <= 0.01) return;
   const k = part.k, root = part.root[0], tip = part.tip[0], cy = part.root[1], Pt = root - tip, h = img.height;
   _arc[0] = sOff;
@@ -184,7 +188,7 @@ function drawChain(ctx, D, img, part, X, Y, Rr, n, bs, sOff = 0, alpha = 1) {
     const rot = Math.atan2(Y[i] - Y[i + 1], X[i] - X[i + 1]);
     const ky = k * ((Rr[i] + Rr[i + 1]) * 0.5) / RMAX * bs;
     const bend = i > 0 ? Math.abs(angDiff(Math.atan2(Y[i - 1] - Y[i], X[i - 1] - X[i]), rot)) : 0;
-    const e = 3 + bend * h * 0.3;
+    const e = overlap ? 3 + bend * h * 0.3 : 0;
     // 텍셀 u = root − (arc/k mod 주기). 한 마디 안에서 주기가 넘어가면 둘로 나눈다
     let sA = _arc[i], sB = _arc[i + 1];
     while (sB - sA > 0.01) {

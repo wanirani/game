@@ -151,6 +151,9 @@ function drawChimera(ctx, b, world, rig, st) {
   // 광폭화 오라 (뒤, 가산)
   if (b.enraged && q.halos && !st.gone.body) halo(ctx, b.cx, floor + bodyY - 100, 170, ACID, 0.18 + 0.07 * Math.sin(t * 8));
   const flashOn = b.flashT > 0 && !dying;
+  // 피격 섬광은 부품마다 그린 직후 바로 덧그린다(st.fa) — 끝에 한꺼번에 덧그리면 몸통에 가려진 부분(머리를 잘라 낸 몸통 앞쪽,
+  // 다리 윗부분)의 흰 실루엣이 사자 갈기·몸통 위로 드러나고 겹친 곳은 두 번 더해진다
+  st.fa = flashOn ? clamp(b.flashT / 0.1, 0, 1) * 0.55 : 0;
   // ── 뱀 꼬리 + 뱀 머리 (가장 뒤) ──
   if (!st.gone.snake) drawSnake(ctx, D, b, rig, st, dt, airY, bob, lvl, flashOn);
   // 돌진 잔상 (발광 실루엣, 몸 뒤)
@@ -188,12 +191,14 @@ function drawChimera(ctx, b, world, rig, st) {
     const lvx = (Lg.hip[0] - Lg.foot[0]) * Lg.k * fs, lvy = (Lg.hip[1] - Lg.foot[1]) * Lg.k;
     const rot = Math.atan2(H[1] - fyW, H[0] - fxW) - Math.atan2(lvy, lvx);
     D.part(Lg, V(Lg, L.far), 'foot', fxW, fyW, rot, Lg.k * fs, Lg.k, 1);
+    if (flashOn) { D.flash(st.fa); D.rec = true; }
     if (!L.far) glowOver(ctx, D, Lg, lvl, 'foot', fxW, fyW, rot, Lg.k * fs, Lg.k, 0.4, st, t + (L.front ? 1 : 0));
     L.fx = fxW; L.fy = fyW; L.rot = rot;
   }
   // ── 몸통 ──
   if (!st.gone.body) {
     D.part(T, V(T, true), 'c', tx, ty, trot, tsx, tsy, 1);
+    if (flashOn) D.flash(st.fa);
     glowOver(ctx, D, T, lvl, 'c', tx, ty, trot, tsx, tsy, 0.55, st, t, transform);
     // 광폭화: 영약이 온몸을 태운다 (녹색 발광 실루엣 맥동)
     if (b.enraged && q.halos && T.v.glow) {
@@ -214,8 +219,8 @@ function drawChimera(ctx, b, world, rig, st) {
   if (!st.gone.goat) drawGoat(ctx, D, b, rig, st, dt, tp, lvl, flashOn);
   // ── 사자 머리 ──
   if (!st.gone.lion) drawLion(ctx, D, b, rig, st, dt, bodyY, cr, lvl, flashOn, hit);
-  // 피격 섬광 (기록된 부품 전체: 판정이 몸+머리 한 덩어리)
-  if (flashOn) D.flash(clamp(b.flashT / 0.1, 0, 1) * 0.55);
+  // 피격 섬광: 판정이 몸+머리 한 덩어리라 전체가 번쩍이지만, 부품마다 그린 직후에 이미 덧그렸다 (가림 순서 유지). 남은 기록만 정리
+  if (flashOn) D.flash(st.fa);
   else { D.rec = false; D.log.length = 0; }
   // ── 사망 붕괴 ──
   if (dying) deathFx(ctx, D, b, rig, st, dt, dT, tp, trot, tsx, tsy, tx, ty);
@@ -260,7 +265,8 @@ function drawSnake(ctx, D, b, rig, st, dt, airY, bob, lvl, flashOn) {
   const n = k;
   const img = pickVariant(Sn, lvl, false, null);
   drawBent(ctx, D, img, Sn, pts, n, Sn.k * 1.0, F.fsn, 1);
-  if (flashOn && Sn.v.flash) { const op = ctx.globalCompositeOperation; ctx.globalCompositeOperation = 'lighter'; drawBent(ctx, D, Sn.v.flash, Sn, pts, n, Sn.k, F.fsn, clamp(b.flashT / 0.1, 0, 1) * 0.5); ctx.globalCompositeOperation = op; }
+  // 섬광은 띠를 겹치지 않고 맞붙여 그린다 (가산 합성에서 겹친 띠가 두 번 더해져 얼룩말 줄무늬가 생기던 것)
+  if (flashOn && Sn.v.flash) { const op = ctx.globalCompositeOperation; ctx.globalCompositeOperation = 'lighter'; drawBent(ctx, D, Sn.v.flash, Sn, pts, n, Sn.k, F.fsn, st.fa, null, false); ctx.globalCompositeOperation = op; }
   // 뱀 머리: 꼬리 끝 방향, 위아래 뒤집기 히스테리시스
   if (!H) return;
   const p1 = pts[n - 2], p2 = pts[n - 1];
@@ -273,6 +279,7 @@ function drawSnake(ctx, D, b, rig, st, dt, airY, bob, lvl, flashOn) {
   const rot = A - a0 + (op > 0.3 ? -st.sflip * op * 0.12 : 0);
   D.rec = flashOn;
   D.part(H, pickVariant(H, lvl, false, null), 'neck', p2.x, p2.y, rot, hk, sy, 1);
+  if (flashOn) D.flash(st.fa);
   D.rec = false;
   const m = D.pt(H.neck[0], H.neck[1], H.mouth[0], H.mouth[1], p2.x, p2.y, rot, hk, sy, _e);
   const e = D.pt(H.neck[0], H.neck[1], H.eye[0], H.eye[1], p2.x, p2.y, rot, hk, sy, _d);
@@ -292,8 +299,9 @@ function drawSnake(ctx, D, b, rig, st, dt, airY, bob, lvl, flashOn) {
  * 곧게 그린 부품(뿌리 root → 끝 tip, 가로)을 점 목록을 따라 세로 띠로 잘라 구부려 그린다.
  * 띠마다 setTransform 한 번 + drawImage 한 번. 굽힘 바깥쪽 틈은 띠를 겹쳐 가린다.
  * thick = 두께 배율(월드px/텍셀), flip = −1 이면 위아래 뒤집기 (좌우 반전 시 배 쪽이 곡선 안쪽을 보게)
+ * overlap = false: 띠를 겹치지 않고 텍셀 경계에서 정확히 맞붙인다 (가산 섬광용 — 겹친 곳이 두 번 더해지지 않게)
  */
-export function drawBent(ctx, D, img, part, pts, n, thick, flip, alpha = 1, taper = null) {
+export function drawBent(ctx, D, img, part, pts, n, thick, flip, alpha = 1, taper = null, overlap = true) {
   if (!img || n < 2 || alpha <= 0.01) return;
   let L = 0;
   const arc = drawBent._arc ??= new Float32Array(128);
@@ -310,8 +318,8 @@ export function drawBent(ctx, D, img, part, pts, n, thick, flip, alpha = 1, tape
     const rot = Math.atan2(c.y - a.y, c.x - a.x);
     const sx = seg / (u1 - u0);
     const th = taper ? thick * taper(i / (n - 2)) : thick;
-    const e = 3 + (i < n - 2 ? Math.abs(angle(pts, i)) * part.h * 0.35 : 0);
-    const s0 = Math.max(0, u0 - e), s1 = Math.min(img.width, u1 + e + 1);
+    const e = overlap ? 3 + (i < n - 2 ? Math.abs(angle(pts, i)) * part.h * 0.35 : 0) : 0;
+    const s0 = Math.max(0, u0 - e), s1 = Math.min(img.width, u1 + e + (overlap ? 1 : 0));
     D.set(u0, cy, a.x, a.y, rot, sx, th * flip);
     ctx.drawImage(img, s0, 0, s1 - s0, img.height, s0, 0, s1 - s0, img.height);
   }
@@ -413,6 +421,7 @@ function drawGoat(ctx, D, b, rig, st, dt, tp, lvl, flashOn) {
   const k = G.k;
   D.rec = flashOn;
   D.part(G, pickVariant(G, lvl, false, null), 'neck', nx, ny, rot, k * F.fs, k, 1);
+  if (flashOn) D.flash(st.fa);
   D.rec = false;
   glowOver(ctx, D, G, lvl, 'neck', nx, ny, rot, k * F.fs, k, 0.5, st, t + 2);
   const e = D.pt(G.neck[0], G.neck[1], G.eye[0], G.eye[1], nx, ny, rot, k * F.fs, k, _c);
@@ -461,8 +470,10 @@ function drawLion(ctx, D, b, rig, st, dt, bodyY, cr, lvl, flashOn, hit) {
   if (q.halos && roar > 0.15) { const c = D.pt(Hd.o[0], Hd.o[1], (TH[2][0] + TH[6][0]) / 2, (TH[2][1] + TH[6][1]) / 2, hx, hy, rot, sx, sy, _c); halo(ctx, c[0], c[1], 16 + roar * 10, ACID, 0.3 * roar); }
   D.rec = flashOn;
   D.part(J, pickVariant(J, lvl, false, null), 'hinge', hinge[0], hinge[1], rot + F.fsn * ja, sx, sy, 1);
+  if (flashOn) D.flash(st.fa);   // 턱 섬광은 머리를 그리기 전에 (머리에 가려지는 턱 윗부분이 머리 위로 비치지 않게)
   D.rec = flashOn;
   D.part(Hd, pickVariant(Hd, lvl, false, null), 'o', hx, hy, rot, sx, sy, 1);
+  if (flashOn) D.flash(st.fa);
   D.rec = false;
   glowOver(ctx, D, Hd, lvl, 'o', hx, hy, rot, sx, sy, 0.55, st, t + 3, b.state === 'transform');
   const e = D.pt(Hd.o[0], Hd.o[1], Hd.eye[0], Hd.eye[1], hx, hy, rot, sx, sy, _c);

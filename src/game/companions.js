@@ -18,6 +18,8 @@
 //    mountBlocked                   noMount 보스전 중 (탈것은 소환을 거절한다)
 //    tryGuardianSkill(auto, g?)     → bool   첫 번째 준비된 수호신의 스킬 (없으면 '쿨타임')
 //    castSkill(g, {auto, resonance}) 스킬 시전 (공명이면 60% 위력, 재사용 대기 소모 없음)
+//    keepFx(e)                      방을 옮겨도 다시 넣는 연출 개체 (아리아 결계·가웨인 방패벽: shieldT·wallT 와 함께 이어진다)
+//    ('mount' 입력은 탈것 런타임이 읽는다. 탈것을 장착하지 않아 p.mount 가 없을 때만 여기서 '장착한 탈것이 없다' 안내)
 //    hudInfo() → { mount:{id,name,color,state,hp,maxHp,cd,cdMax,riding,stamina,staminaMax}|null,
 //                  guards:[{id,slot,name,color,cd,cdMax,ready,auto}] (마을에서는 []), auto, town } | null   (HUD 위젯 · 터치 패드 탑승/수호 버튼 표시)
 //    hudRects                       companion_hud 가 그린 탭 영역: [{x,y,w,h, act:'mount'|'guard', slot?}] (객체 {mount:rect, guard0:rect} 도 받음)
@@ -240,12 +242,21 @@ export class CompanionSystem {
     for (const c of this.callouts) c.t = (c.t ?? 0) + dt;
     if (this.callouts.length && this.callouts[0].t > 4) this.callouts.shift();
     // 입력 ('guard' 는 buffered 로 읽는다: 히트스톱 동안 엣지를 놓치지 않게 — MASTER_PLAN R16)
+    const bufWin = 0.25 + Math.min(0.3, w.frozenRecent ?? 0);   // 히트스톱으로 멈춘 시간만큼 창을 늘린다 (player.js 와 같은 규칙)
     if (w.mode !== 'town') {
-      if (input.buffered('guard', 0.25 + Math.min(0.3, w.frozenRecent ?? 0))) {   // 히트스톱으로 멈춘 시간만큼 창을 늘린다 (player.js 와 같은 규칙)
+      if (input.buffered('guard', bufWin)) {
         input.consume('guard');
         if (!p.dead && !w.cutscene && !w.inputLock) this.tryGuardianSkill(false);
       }
       this.handleTaps(p);
+    }
+    // 탈것을 장착하지 않았을 때의 'mount' (R · L3): 탈것 런타임(p.mount)이 없으니 여기서 안내한다 (§7.5 '장착한 탈것이 없다 — 메뉴 › 동료')
+    if (!p.mount && input.buffered('mount', bufWin)) {
+      input.consume('mount');
+      if (!p.dead && !w.cutscene && !w.inputLock) {
+        audio.sfx('menu_cancel', { vol: 0.3 });
+        if (ownedIds(w.state, 'mount').length) w.game?.toast?.(CMP_TEXT.noMount, '#c8b8a8', 2);
+      }
     }
     // 자동 스킬
     if (this.guards.length && !p.dead && !this.calm() && this.autoOn()) {
@@ -282,7 +293,11 @@ export class CompanionSystem {
     for (const r of list) {
       if (!r || !(ptr.x >= r.x && ptr.x <= r.x + r.w && ptr.y >= r.y && ptr.y <= r.y + r.h)) continue;
       const act = String(r.act ?? r.kind ?? r.id ?? '');
-      if (act === 'mount') { input.touch?.tap?.('mount'); ptr.tapped = false; return; }
+      if (act === 'mount') {
+        // 터치 대체 경로 (§6). 마우스 클릭은 넘긴다: input.touch.tap 은 기기를 터치로 바꿔 데스크톱에 가상 패드를 띄운다 (키보드는 R)
+        if (ptr.type === 'mouse' && !input.touchMode) continue;
+        input.touch?.tap?.('mount'); ptr.tapped = false; return;
+      }
       if (act.startsWith('guard')) {
         const slot = Number.isFinite(r.slot) ? r.slot : (/\d$/.test(act) ? Number(act.slice(-1)) : null);
         const g = slot != null ? this.guards.find((x) => x.slot === slot) : null;
@@ -408,18 +423,16 @@ export class CompanionSystem {
     const chg = p.moveSet?.charge;   // 모아치기 (탈것 adaptMove 가 사본을 만들어도 id 로 알아본다)
     const trig = !!(p.move?.finisher || attack.finisher || (p.move && chg && (p.move === chg || (p.move.id && p.move.id === chg.id))) || tags.includes('mount') || info?.crit);
     if (!trig || info?.killed || target.dead || target.dying > 0) return;
-    let shown = false;
+    // 콤보 줄기 식별: run.hits 와 combo.n 은 한 줄기 안에서 함께 1씩 오르므로 차이가 그 줄기의 번호다 (줄기가 끊기면 combo.n 만 0 으로)
+    const chain = (w.run?.hits ?? 0) - (w.combo?.n ?? 0);
     for (const g of this.guards) {
       if (g.assistCd > 0 || g.dead || g.flinchT > 0) continue;
       if (g.act?.name === 'skill' || g.act?.name === 'assist') continue;
       if (Math.hypot(g.cx - target.cx, g.cy - target.cy) > GUARD_RULES.leash) continue;
       if (!g.startAssist(w, target)) continue;
       // 협공 문구는 콤보 한 줄기마다 처음 한 번
-      const n = w.combo?.n ?? 0;
-      if (!shown && (this.chainN < 0 || n <= this.chainN)) { shown = true; w.fx?.text(target.cx, target.y - 30, CMP_TEXT.assist, { color: g.def.color, size: 18 }); }
-      this.chainN = n;
+      if (this.chainN !== chain) { this.chainN = chain; w.fx?.text(target.cx, target.y - 30, CMP_TEXT.assist, { color: g.def.color, size: 18 }); }
     }
-    if (this.guards.length) this.chainN = Math.max(this.chainN, w.combo?.n ?? 0);
   }
   onKill(enemy, exp) {
     if (!this.active) return;
