@@ -557,7 +557,7 @@
  ],
  "debris": [
   {
-   "prefix": "sh",
+   "prefix": "gs",
    "src": "shards_a",
    "lps": 0.1,
    "boxes": [

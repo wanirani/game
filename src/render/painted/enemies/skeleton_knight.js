@@ -6,8 +6,8 @@
 // (flash + squash + recoil, shield jolts) · airborne · death (armour, bones, helm, sword and shield tumble and clatter).
 import * as K from '../enemy_kit.js';
 import { atkPhase } from '../enemy_kit.js';
-import { bipedPose, dirOf, swingTrail, glint, claimDebris, HP } from './_biped.js';
-import { Placer } from './blood_skeleton.js';
+import { bipedPose, dirOf, swingTrail, glint, HP } from './_biped.js';
+import { Placer, claimDeathDebris } from './blood_skeleton.js';
 
 export const spec = {
   id: 'skeleton_knight', tier: 'T2', src: 'skeleton_knight',
@@ -74,7 +74,7 @@ function layout(e, q) {
 
 function die(e, world, rig) {
   e._pcorpse = true;
-  claimDebris(world, e);
+  claimDeathDebris(world, e);
   const kb = Math.sign(e.vx || 0) * (e.facing < 0 ? -1 : 1);
   P.corpse(world, e, rig, (p) => {
     const heavy = p.name === 'torso' || p.name === 'shield' || p.name === 'pelvis';

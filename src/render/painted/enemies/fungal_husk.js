@@ -85,7 +85,7 @@ export function draw(ctx, e, world, o, rig) {
     if (!e._pcorpse) {
       K.begin(ctx, rig, 0); layout(q); K.end();
       e._pcorpse = true; claimDebris(world, e);
-      const arm = K.part('arm'), leg = K.part('leg');
+      const arm = rig.parts.arm, leg = rig.parts.leg;   // (K.part is only valid between begin/end)
       const pc = (name, pv, x, y, rot, vx, vy, vr, vn = 'base') => ({ name, pv, x, y, rot, vn, vx, vy, vr });
       K.spawnCorpse(world, e, rig, [
         pc('arm', 'a', L.sF[0], L.sF[1], dirOf(q.armF) - arm.ang, K.frand(-60, 60), -K.frand(60, 160), K.frand(-6, 6), 'deep'),

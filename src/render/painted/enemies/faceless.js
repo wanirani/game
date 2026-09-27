@@ -74,7 +74,7 @@ export function draw(ctx, e, world, o, rig) {
     if (!e._pcorpse) {
       K.begin(ctx, rig, 0); place(e, q); K.end();
       e._pcorpse = true; claimDebris(world, e);
-      const legA = K.part('leg').ang, armA = K.part('arm').ang;
+      const legA = rig.parts.leg.ang, armA = rig.parts.arm.ang;   // (K.part needs begin(); the rig is at hand)
       K.spawnDissolve(world, e, rig, [
         { name: 'leg', pv: 'a', x: L.hx - 2, y: L.hy, rot: dirOf(q.hipB) - legA, vn: 'deep' },
         { name: 'body', pv: 'a', x: L.hx, y: L.hy, rot: L.rot },

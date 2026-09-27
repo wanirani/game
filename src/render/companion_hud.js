@@ -306,31 +306,39 @@ export function drawCompanionHUD(ctx, world, o = {}) {
   // 돌려주는 판정 사각형은 등록부와 같은 여유(손가락 44 CSS px)만큼 넓힌 것 — 패드가 캔버스로 넘기는 영역(위젯 + 여유)과
   // CompanionSystem.handleTaps 가 보는 영역(돌려주는 배열)이 같아야 위젯 옆을 누른 탭이 스틱도 동료도 아닌 채로 사라지지 않는다
   if (T && RECTS.length) {
+    const m = touchSlop(RECTS, world);
     try {
       const owner = sceneOf(world);
-      for (const r of RECTS) taps.add(r.act === 'mount' ? 'cmp.mount' : 'cmp.guard' + (r.slot ?? 0), r, { owner, kind: 'icon', slop: TOUCH_SLOP, src: 'companion_hud' });
+      for (const r of RECTS) taps.add(r.act === 'mount' ? 'cmp.mount' : 'cmp.guard' + (r.slot ?? 0), r, { owner, kind: 'icon', slop: m, src: 'companion_hud' });
     } catch (e) { warnOnce('taps', e); }
-    touchRects(RECTS, world);   // 등록부는 값을 복사해 두므로 등록한 뒤에 넓힌다
+    touchRects(RECTS, m);   // 등록부는 값을 복사해 두므로 등록한 뒤에 넓힌다
   }
   return RECTS.length ? RECTS : null;
 }
 const TOUCH_MIN_CSS = 44, TOUCH_SLOP = 4, TOUCH_SLOP_MAX = 28;   // core/ui.js 탭 등록부(tapSlop)와 같은 규칙 (icon 44 CSS px, 여유 상한 28)
 /**
- * 터치 판정 사각형: 위젯마다 등록부와 같은 여유(max(4, 짧은 변이 44 CSS px 에 모자란 만큼의 절반), 상한 28)로 사방을 넓히되,
- * 이웃 위젯과 맞닿는 쪽은 사이 간격의 가운데에서 멈춘다 (등록부의 '가장 가까운 영역' 판정과 같은 몫 → 겹치지 않아
- * handleTaps 의 '첫 사각형' 판정과 같은 위젯이 눌린다). list 는 x 순서 (탈것 → 수호신 1 → 2)
+ * 터치 여유 (논리 px): 등록부 규칙(max(4, 짧은 변이 44 CSS px 에 모자란 만큼의 절반), 상한 28)을 위젯마다 계산해 가장 큰 값 하나.
+ * 모든 위젯에 같은 여유를 주면 등록부의 '여유 안에서 가장 가까운 영역' 판정이 사이 간격의 가운데에서 갈린다 → 아래 사각형과 똑같다
  */
-function touchRects(list, world) {
+function touchSlop(list, world) {
   const css = world?.game?.cssScale > 0 ? world.game.cssScale : 1;
   const need = TOUCH_MIN_CSS / css;
+  let m = TOUCH_SLOP;
+  for (const r of list) m = Math.max(m, (need - Math.min(r.w, r.h)) / 2);
+  return clamp(m, 0, TOUCH_SLOP_MAX);
+}
+/**
+ * 터치 판정 사각형: 위젯마다 여유 m 만큼 사방을 넓히되, 이웃 위젯과 맞닿는 쪽은 사이 간격의 가운데에서 멈춘다
+ * (겹치지 않아 handleTaps 의 '첫 사각형' 판정과 등록부 판정이 같은 위젯을 고른다). list 는 x 순서 (탈것 → 수호신 1 → 2)
+ */
+function touchRects(list, m) {
   const n = list.length;
   let prevRight = -Infinity;
   for (let i = 0; i < n; i++) {
     const r = list[i], nx = i + 1 < n ? list[i + 1].x : Infinity;
-    const m = clamp(Math.max(TOUCH_SLOP, (need - Math.min(r.w, r.h)) / 2), 0, TOUCH_SLOP_MAX);
     const x0 = r.x, x1 = r.x + r.w;
     const L = Math.max(x0 - m, prevRight === -Infinity ? -Infinity : (prevRight + x0) / 2);
-    const R = Math.min(x1 + m, nx === Infinity ? Infinity : (x1 + nx) / 2);
+    const R = Math.min(x1 + m, nx === Infinity ? Infinity : (x1 + nx) / 2 - 0.01);   // 정확히 가운데는 오른쪽 위젯 (등록부도 나중에 올린 영역이 이긴다)
     prevRight = x1;
     r.x = L; r.w = R - L; r.y -= m; r.h += m * 2;
   }

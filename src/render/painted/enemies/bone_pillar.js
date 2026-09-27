@@ -8,8 +8,8 @@
 // column topple as tumbling corpse pieces, bone dust).
 import * as K from '../enemy_kit.js';
 import { clamp } from '../../../core/math.js';
-import { glint, claimDebris } from './_biped.js';
-import { Placer } from './blood_skeleton.js';
+import { glint } from './_biped.js';
+import { Placer, claimDeathDebris } from './blood_skeleton.js';
 
 export const spec = {
   id: 'bone_pillar', tier: 'T1', src: 'bone_pillar',
@@ -42,7 +42,7 @@ export function draw(ctx, e, world, o, rig) {
   if (e.dying > 0 && world) {
     if (!e._pcorpse) {
       e._pcorpse = true;
-      claimDebris(world, e);
+      claimDeathDebris(world, e);
       K.begin(ctx, rig, 0); layout(e, 0, [0, 0]); K.end();
       const kb = Math.sign(e.vx || 0) * (e.facing < 0 ? -1 : 1);
       P.corpse(world, e, rig, (p) => p.name === 'column' ? [kb * 20, -60, K.frand(-2, 2)] : [kb * 40 + K.frand(-120, 120), -K.frand(160, 360), K.frand(-7, 7)],

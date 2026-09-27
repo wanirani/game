@@ -76,7 +76,7 @@ export function draw(ctx, e, world, o, rig) {
       e._pcorpse = true; claimDebris(world, e);
       K.spawnDissolve(world, e, rig, [
         { name: 'body', pv: 'a', x: L.bx, y: L.by, rot: q.rot },
-        { name: 'arm', pv: 'a', x: L.sx, y: L.sy, rot: L.dir - K.part('arm').ang },
+        { name: 'arm', pv: 'a', x: L.sx, y: L.sy, rot: L.dir - rig.parts.arm.ang },
       ], { life: 1.2, strips: 16, drift: 30, rise: 40, col: '#ffffff', kind: 3, n: 30, spread: 120, glow: '#c8b8ff', cy: -50 });
     }
     return;

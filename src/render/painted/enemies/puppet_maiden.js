@@ -8,8 +8,8 @@
 // porcelain shards).
 import * as K from '../enemy_kit.js';
 import { clamp, ease } from '../../../core/math.js';
-import { dirOf, glint, claimDebris } from './_biped.js';
-import { Placer } from './blood_skeleton.js';
+import { dirOf, glint } from './_biped.js';
+import { Placer, claimDeathDebris } from './blood_skeleton.js';
 
 export const spec = {
   id: 'puppet_maiden', tier: 'T2', src: 'puppet_maiden',
@@ -79,7 +79,7 @@ function strings(ctx, e, L) {
 
 function die(e, world, rig) {
   e._pcorpse = true;
-  claimDebris(world, e);
+  claimDeathDebris(world, e);
   const kb = Math.sign(e.vx || 0) * (e.facing < 0 ? -1 : 1);
   P.corpse(world, e, rig, (p) => [kb * 50 + K.frand(-120, 120), -K.frand(120, 340) * (p.name === 'head' ? 1.3 : 1), K.frand(-8, 8)],
     { life: 1.5, fade: 0.5, bounce: 0.35, dust: { n: 10, w: 12, h: 30, col: '#f4efe6', k: 4 } });

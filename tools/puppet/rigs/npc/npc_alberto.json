@@ -874,32 +874,15 @@
     1310
    ]
   ],
-  "thighExclude": null,
-  "thighCap": {
-   "pts": [
-    [
-     840,
-     1310
-    ],
-    [
-     860,
-     1200
-    ],
-    [
-     940,
-     1180
-    ],
-    [
-     1040,
-     1200
-    ],
-    [
-     1060,
-     1310
-    ]
-   ],
-   "smooth": 3
+  "thighExclude": {
+   "rect": [
+    0,
+    0,
+    4000,
+    1980
+   ]
   },
+  "thighCap": null,
   "skirt": {
    "pts": [
     [
@@ -1003,7 +986,7 @@
  "legs": {
   "pantsWarmMax": null,
   "coatEdge": null,
-  "thighWidth": 110,
+  "thighWidth": 0,
   "thighUp": 100,
   "thighTone": 0.2,
   "footLine": [
@@ -1023,5 +1006,6 @@
   "cape": false,
   "farArm": false,
   "skirtRest": 0.1
- }
+ },
+ "_noThigh": "heroes3rev: 긴 치마·수단 NPC 는 넓적다리가 치마 속이라 보이지 않는데, 넓적다리 부품(인페인트 사각형)이 먼 다리(어두운 사본) 자리에서 치마 뒤로 삐져나와 걷기·말하기·손짓에서 회색/갈색 직사각형으로 보였다 → 넓적다리 부품을 만들지 않는다(thighWidth 0 + thighExclude 무릎 위 전부, thighCap null). 정강이·발은 그대로"
 }

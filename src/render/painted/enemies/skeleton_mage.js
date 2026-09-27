@@ -8,8 +8,8 @@
 // flail) · death (the robe crumbles into violet ash — strip dissolve — and the staff clatters to the floor).
 import * as K from '../enemy_kit.js';
 import { clamp, lerp, ease } from '../../../core/math.js';
-import { dirOf, glint, claimDebris, HP } from './_biped.js';
-import { runeCircle } from './blood_skeleton.js';
+import { dirOf, glint, HP } from './_biped.js';
+import { runeCircle, claimDeathDebris } from './blood_skeleton.js';
 
 export const spec = {
   id: 'skeleton_mage', tier: 'T2', src: 'skeleton_mage',
@@ -77,7 +77,7 @@ function drawAll(L, alpha = 1) {
 
 function die(e, world, rig, L) {
   e._pcorpse = true;
-  claimDebris(world, e);
+  claimDeathDebris(world, e);
   const pl = [];
   for (let i = 0; i < L.n; i++) { const p = PL[i]; if (p.name !== 'staff') pl.push({ name: p.name, pv: p.pv, x: p.x, y: p.y, rot: p.rot, sx: 1, sy: 1, vn: p.vn }); }
   K.spawnDissolve(world, e, rig, pl, { life: 1.0, strips: 16, drift: 40, rise: 18, col: '#b070ff', kind: 3, n: 26, spread: 130, glow: '#9a50ff', cy: -42, layer: 'back' });

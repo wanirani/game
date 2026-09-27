@@ -81,7 +81,7 @@ export function draw(ctx, e, world, o, rig) {
     if (!e._pcorpse) {
       K.begin(ctx, rig, 0); layout(e, q); K.end();
       e._pcorpse = true; claimDebris(world, e);
-      const legA = K.part('leg')?.ang ?? PI / 2;
+      const legA = rig.parts.leg?.ang ?? PI / 2;
       K.spawnCorpse(world, e, rig, [
         { name: 'wing', pv: 'a', x: L.fx, y: L.fy, rot: L.dF, sx: 0.92, sy: -0.92, vn: V[1], vx: K.frand(-90, -20), vy: -K.frand(80, 220), vr: K.frand(-4, 4) },
         { name: 'leg', pv: 'a', x: L.hBx, y: L.hBy, rot: PI / 2 - legA, vn: V[1], vx: K.frand(-60, 60), vy: -K.frand(100, 260), vr: K.frand(-8, 8) },
@@ -99,7 +99,7 @@ export function draw(ctx, e, world, o, rig) {
   K.begin(ctx, rig, K.flashK(e, o));
   layout(e, q);
   const sx = 1 + L.sq * 0.08, sy = 1 - L.sq * 0.08, n = K.nStrips(7);
-  const legA = K.part('leg')?.ang ?? PI / 2;
+  const legA = rig.parts.leg?.ang ?? PI / 2;
   BEND = q.charge > 0.5 ? 0.02 : 0.1 * Math.cos(t * q.freq) - 0.015;
   // far wing, far leg, body, near leg, near wing
   K.chain('wing', L.fx, L.fy, L.dF, 0.92 * q.fold, n, bendF, 1, V[1], true);

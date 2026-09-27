@@ -17,7 +17,9 @@ export const INSTALL = `(() => {
   p.hp = 1e9; p.stats.maxHp = 1e9; p.iframes = 1e9;
   const b = w.boss, A = b.A;
   const X = Math.min(A.x1 - 240, A.x0 + Math.max(560, A.w * 0.62));
-  const step = (n) => { for (let i = 0; i < n; i++) { g.__tick(1 / 60); g.__render(); p.iframes = 1e9; p.hurtT = 0; if (b.state === 'idle') b.idleWait = 99; } };
+  // 대사 오버레이(가면 깨짐 내레이션 등)가 뜨면 바로 넘긴다 — 떠 있는 동안 월드가 멈춘다
+  const nodlg = () => { for (let k = 0; k < 4 && g.top?.name === 'dialogue'; k++) g.top.finish?.(); };
+  const step = (n) => { for (let i = 0; i < n; i++) { nodlg(); g.__tick(1 / 60); g.__render(); p.iframes = 1e9; p.hurtT = 0; if (b.state === 'idle') b.idleWait = 99; } };
   const px = () => { p.x = X - 360; p.vx = 0; p.facing = 1; };
   const clear = () => {
     for (const e of w.entities) {
@@ -71,6 +73,7 @@ export const INSTALL = `(() => {
       case 'death_20': untilDeath(2.0); break;
       case 'death_26': untilDeath(2.6); break;
     }
+    nodlg();
     p.iframes = 0; p.hurtT = 0;
     g.__render();
     p.iframes = 1e9;
@@ -90,8 +93,9 @@ export const BENCH = `(i, b, p, A) => {
   p.x = X - 360; p.iframes = 1e9;
 }`;
 
-/** rng.mjs 대본: 0프레임에 남은 공격·분신을 지우고, 705·1095 프레임에 체력을 깎아 페이즈 1(비명) → 2(가면 깨짐)를 넘긴다 */
+/** rng.mjs 대본: 대사 오버레이는 바로 넘기고, 0프레임에 남은 공격·분신을 지우고, 705·1095 프레임에 체력을 깎아 페이즈 1(비명) → 2(가면 깨짐)를 넘긴다 */
 export const RNG_SCRIPT = `(i, b, p, w) => {
+  if (w.game?.top?.name === 'dialogue') w.game.top.finish?.();   // 가면 깨짐 내레이션 넘기기 (양쪽 같은 프레임)
   if (i === 0) {
     for (const e of w.entities) if (e !== b && e !== p && e.kind !== 'painted' && e.def?.id !== 'nark_mirror' && (e.kind === 'projectile' || e.kind === 'hazard' || e.owner === b || e.boss === b)) e.dead = true;
     if (w.fx?.list) w.fx.list.length = 0;

@@ -7,6 +7,7 @@
 import * as K from '../enemy_kit.js';
 import { clamp } from '../../../core/math.js';
 import { glint } from './_biped.js';
+import { claimDeathDebris } from './blood_skeleton.js';
 
 export const spec = {
   id: 'phantom_sword', tier: 'T1', src: 'phantom_sword',
@@ -25,6 +26,7 @@ export function draw(ctx, e, world, o, rig) {
   if (e.dying > 0 && world) {
     if (!e._pcorpse) {
       e._pcorpse = true;
+      claimDeathDebris(world, e);            // material 'metal': the dissolve replaces the vector grey scrap
       K.spawnDissolve(world, e, rig, [{ name: 'sword', pv: 'c', x: cx, y: cy, rot: la }],
         { life: 0.8, strips: 12, drift: 50, rise: 16, col: '#c890ff', kind: 3, n: 20, spread: 140, glow: '#9a50ff', cy: -30 });
     }

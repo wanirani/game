@@ -5,8 +5,8 @@
 // jump) · hurt · death collapse (bones + cloth + both blades tumble).
 import * as K from '../enemy_kit.js';
 import { clamp, lerp, ease } from '../../../core/math.js';
-import { bipedPose, dirOf, swingTrail, glint, claimDebris, HP } from './_biped.js';
-import { Placer } from './blood_skeleton.js';
+import { bipedPose, dirOf, swingTrail, glint, HP } from './_biped.js';
+import { Placer, claimDeathDebris } from './blood_skeleton.js';
 
 export const spec = {
   id: 'bone_scimitar', tier: 'T2', src: 'bone_scimitar',
@@ -101,7 +101,7 @@ function layout(e, q) {
 
 function die(e, world, rig) {
   e._pcorpse = true;
-  claimDebris(world, e);
+  claimDeathDebris(world, e);
   const kb = Math.sign(e.vx || 0) * (e.facing < 0 ? -1 : 1);
   P.corpse(world, e, rig, (p) => {
     const up = p.name === 'skull' ? 1.4 : p.name === 'scim' ? 0.7 : 1;

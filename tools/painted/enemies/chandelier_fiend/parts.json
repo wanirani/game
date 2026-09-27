@@ -1,0 +1,133 @@
+{
+ "id": "chandelier_fiend",
+ "tier": "T2",
+ "srcTD": 4,
+ "note": "core = sheet-2 chandelier body (brass ceiling cup, the fleshy sack with the grinning skull, the hooked brass rod, two dripping candle arms, the crystal curtain; the blue background left between the crystal strands keyed out in the derived src/ch_core_fix.webp); leg = sheet-2 black bone leg with the fanged demon head at its root (six of them, bent by the chain warp: arched round the body while hanging, spread to the floor while crawling); chain = one tiling period of the sheet-2 black chain (hangs from the ceiling anchor).",
+ "sources": {
+  "c": {
+   "raw": "ch_core_fix.webp",
+   "file": "ch_core_fix.png",
+   "mode": "",
+   "k": 0.033
+  },
+  "s2": {
+   "raw": "chandelier_sheet2.webp",
+   "file": "chandelier_sheet2.png",
+   "mode": "",
+   "k": 0.028
+  }
+ },
+ "parts": {
+  "core": {
+   "src": "c",
+   "box": [
+    60,
+    50,
+    900,
+    1650
+   ],
+   "keep": "all",
+   "piv": {
+    "top": [
+     444,
+     70
+    ],
+    "a": [
+     444,
+     900
+    ],
+    "hipL": [
+     311,
+     733
+    ],
+    "hipR": [
+     600,
+     733
+    ],
+    "eye": [
+     356,
+     756
+    ],
+    "eye2": [
+     500,
+     756
+    ],
+    "mouth": [
+     422,
+     878
+    ],
+    "candL": [
+     151,
+     840
+    ],
+    "candR": [
+     804,
+     852
+    ],
+    "drop": [
+     444,
+     1600
+    ]
+   },
+   "_bbox": [
+    76,
+    70,
+    875,
+    1626
+   ]
+  },
+  "leg": {
+   "src": "s2",
+   "box": [
+    975,
+    760,
+    2340,
+    1085
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1185,
+     920
+    ],
+    "b": [
+     2330,
+     790
+    ]
+   },
+   "_bbox": [
+    989,
+    784,
+    2336,
+    1085
+   ]
+  },
+  "chain": {
+   "src": "s2",
+   "k": 0.03,
+   "box": [
+    1100,
+    1515,
+    1390,
+    1665
+   ],
+   "keep": "all",
+   "piv": {
+    "a": [
+     1100,
+     1590
+    ],
+    "b": [
+     1389,
+     1590
+    ]
+   },
+   "_bbox": [
+    1100,
+    1515,
+    1390,
+    1653
+   ]
+  }
+ }
+}

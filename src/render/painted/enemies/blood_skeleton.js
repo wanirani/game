@@ -7,10 +7,10 @@
 //   death (the corpse scatters from wherever the bones are — standing or heaped).
 // Blood drips (render-only FxPool, per second of game time) run off the ribs and the club.
 //
-// This module also exports the small puppet helpers shared by the other ART-ENEMY-2 renderers (Placer, seedOf, runeCircle).
+// This module also exports the small puppet helpers shared by the other ART-ENEMY-2 renderers (Placer, seedOf, runeCircle, claimDeathDebris).
 import * as K from '../enemy_kit.js';
 import { clamp, lerp, ease } from '../../../core/math.js';
-import { bipedPose, dirOf, swingTrail, glint, claimDebris, HP } from './_biped.js';
+import { bipedPose, dirOf, swingTrail, glint, HP } from './_biped.js';
 
 export const spec = {
   id: 'blood_skeleton', tier: 'T2', src: 'blood_skeleton',
@@ -64,6 +64,21 @@ export class Placer {
       pieces.push({ name: p.name, pv: p.pv, x: p.x, y: p.y, rot: p.rot, sx: p.sx, sy: p.sy, vn: p.vn === 'glow' ? 'base' : p.vn, alpha: p.alpha, vx: v[0], vy: v[1], vr: v[2] });
     }
     K.spawnCorpse(world, e, rig, pieces, o);
+  }
+}
+/** Claims the vector death debris (world.spawnBones / spawnDebris, pushed by Enemy.die for bone/metal/stone) for a
+ *  painted death. Same test as _biped.claimDebris, but the age window follows the time since the death (e.dying counts
+ *  down from def.dieTime) instead of a fixed 0.06 s: on a slow frame several fixed update steps run before the first
+ *  render of the dying enemy, the debris is already older than 0.06 s and would otherwise stay on screen next to the
+ *  painted corpse. The body may slide after the kill, so the position window grows with the age. */
+export function claimDeathDebris(world, e) {
+  const L = world?.debrisList;
+  if (!L) return;
+  const t0 = e.def?.dieTime ?? 0.35;
+  const win = clamp(t0 - (e.dying ?? t0), 0, t0) + 0.07;
+  for (const d of L) {
+    const age = d.maxLife - d.life;
+    if (age < win && Math.abs(d.x - e.cx) < 14 + 600 * age + d.w && Math.abs(d.y - e.cy) < 24 + 700 * age + 450 * age * age + d.h) d.life = 0;
   }
 }
 /** procedural rune circle (additive, local space; flat = seen from the side as an ellipse on the floor) */
@@ -186,7 +201,7 @@ function storeStand(e, rig) {
 
 function die(e, world, rig, heaped) {
   e._pcorpse = true;
-  claimDebris(world, e);
+  claimDeathDebris(world, e);
   const kb = Math.sign(e.vx || 0) * (e.facing < 0 ? -1 : 1);
   if (heaped) {
     // shattered heap: re-pivot every bone on its centre at its heap pose, small scatter

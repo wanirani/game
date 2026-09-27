@@ -14,6 +14,8 @@ import * as sunken_priest from '../enemies/sunken_priest.js';
 import * as chain_warden from '../enemies/chain_warden.js';
 import * as mirror_knight from '../enemies/mirror_knight.js';
 import * as slag_golem from '../enemies/slag_golem.js';
+import * as coral_crab from '../enemies/coral_crab.js';
+import * as chandelier_fiend from '../enemies/chandelier_fiend.js';
 
 export const bosses = {};
 export const enemies = [
@@ -27,6 +29,8 @@ export const enemies = [
   { mod: chain_warden },
   { mod: mirror_knight },
   { mod: slag_golem },
+  { mod: coral_crab },
+  { mod: chandelier_fiend },
 ];
 export const companions = {};
 export const npcs = {};

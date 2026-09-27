@@ -112,14 +112,14 @@ export function draw(ctx, e, world, o, rig) {
     if (!e._pcorpse) {
       K.begin(ctx, rig, 0); layout(q); K.end();
       e._pcorpse = true; claimDebris(world, e);
-      const u = K.part('uarm'), th = K.part('thigh');
+      const u = rig.parts.uarm, th = rig.parts.thigh, fa = rig.parts.farm;   // (K.part is only valid between begin/end)
       const pc = (name, pv, x, y, rot, vx, vy, vr, v = 'base') => ({ name, pv, x, y, rot, vn: v, vx, vy, vr });
       K.spawnCorpse(world, e, rig, [
         pc('thigh', 'a', L.hF[0], L.hy, dirOf(q.hipF) - th.ang, K.frand(-40, 20), -K.frand(40, 120), K.frand(-3, 3), 'deep'),
         pc('uarm', 'a', L.shF[0], L.shF[1], dirOf(q.uaF) - u.ang, K.frand(-60, 60), -K.frand(80, 200), K.frand(-5, 5), 'deep'),
         pc('body', 'a', 0, L.hy, L.rot, K.frand(20, 60), -K.frand(60, 120), K.frand(1.5, 2.6), vn),
         pc('thigh', 'a', L.hN[0], L.hy, dirOf(q.hipN) - th.ang, K.frand(-30, 30), -K.frand(40, 120), K.frand(-3, 3)),
-        pc('farm', 'a', L.shN[0], L.shN[1] + 18, dirOf(q.faN) - K.part('farm').ang, K.frand(-90, 90), -K.frand(120, 260), K.frand(-6, 6)),
+        pc('farm', 'a', L.shN[0], L.shN[1] + 18, dirOf(q.faN) - fa.ang, K.frand(-90, 90), -K.frand(120, 260), K.frand(-6, 6)),
         pc('uarm', 'a', L.shN[0], L.shN[1], dirOf(q.uaN) - u.ang, K.frand(-90, 90), -K.frand(100, 220), K.frand(-6, 6)),
       ], { life: 1.8, fade: 0.6, bounce: 0.2, dust: { n: 14, w: 36, h: 30, col: '#8a9a3a', k: 0 } });
     }

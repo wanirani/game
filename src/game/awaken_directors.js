@@ -246,7 +246,8 @@ function spriteSet(ch, classId) {
   const G = new Set(['#ffffff']), BV = new Map([['#ffffff|#ffffff', ['#ffffff', '#ffffff']]]), BH = new Map(BV);
   const beat = [];   // ULTFX.beat 에 넘기는 색 (ULTFX 빛 캐시: 각성 색과 거리가 먼 색이면 시전 도중 새로 구우므로 미리)
   // 다른 모듈이 색마다 처음 쓸 때 캔버스를 굽는 것들: 조명 색광(lighting.js) · 연기 모양 입자(hitfx soft) · 데미지 숫자 색(hitfx 아틀라스 'ult')
-  const light = new Set(), soft = new Set(), dmg = new Set();
+  // soft 기본: 'fire'·'smoke' 프리셋 색 (hitfx 도 한가할 때 굽지만, 부팅 직후 첫 각성이 그보다 빠를 수 있다)
+  const light = new Set(), soft = new Set(['#ff7a1a', '#ffd070', '#3a3440', '#ffffff']), dmg = new Set();
   const bv = (c, core = '#ffffff') => BV.set(c + '|' + core, [c, core]), bh = (c, core = '#ffffff') => BH.set(c + '|' + core, [c, core]);
   if (ch === 'kael') {
     const L = kaelLash(vr);
@@ -920,18 +921,34 @@ function seraDirector(p, w, v) {
     const x0 = SP.x + step * i + step * 0.15, x1 = x0 + step * 0.9;
     const el = vr === 'archmage' ? ARCH[i % 3] : null;
     const col = el ? [el[1], el[2]] : PCOL;
-    const gy = D.K.groundAt(ww, x0 + step * 0.45, V.y + V.h * 0.35, 16 * TILE) ?? V.y + V.h - 30;
-    const P = { i, t0: e.lt, x0, x1, x: x0, px: x0, gy, col, el: el?.[0] ?? (vr === 'stormcaller' ? 'thunder' : 'holy'), n: 0 };
+    const G = pillarGround(ww, x0, x1, V);
+    const P = { i, t0: e.lt, x0, x1, x: x0, px: x0, gy: G.gy, low: G.low, col, el: el?.[0] ?? (vr === 'stormcaller' ? 'thunder' : 'holy'), n: 0 };
+    const gy = G.gy;
     S.pillars.push(P);
     D.info.pillars++;
     sfx(el ? el[0] : vr === 'stormcaller' ? 'thunder' : 'holy', { vol: 0.6, pitch: 0.95 + i * 0.05 });
     try { ULTFX.beat(ww, x0 + 45, gy - 10, { power: 0.45, color: col[0], accent: D.acc, ground: true }); } catch (err) { fail(D, err); }
   }
+  /**
+   * 기둥이 내리꽂히는 바닥: 이 기둥 띠 안에서 가장 낮은 적(없으면 세라 발)부터 아래로 찾은 지면.
+   * 화면 높이의 일정 비율에서 찾으면 그 높이에 다리·발판·천장 구조물이 있는 방(s08 리바이어던)에서 기둥이 문 바로 아래에서
+   * 끊겨 보이지도 맞지도 않는다. low = 띠 안 적 판정 상자의 가장 낮은 끝 (판정 띠가 적 몸통을 끝까지 덮도록)
+   */
+  function pillarGround(ww, x0, x1, V) {
+    let ys = p.bottom - 24, low = -Infinity;
+    for (const f of foesIn(ww, { x: x0 - 45, y: V.y - 40, w: x1 - x0 + 90, h: V.h + 80 })) {
+      const hb = hbOf(f);
+      ys = Math.max(ys, hb.y + hb.h * 0.5); low = Math.max(low, hb.y + hb.h);
+    }
+    ys = clamp(ys, V.y + 80, V.y + V.h - 20);
+    const gy = D.K.groundAt(ww, (x0 + x1) / 2, ys, 16 * TILE) ?? V.y + V.h - 30;
+    return { gy, low: Math.min(low, V.y + V.h + 40) };
+  }
   function pillarHit(P, ww, last) {
     const top = (S.gate?.y ?? viewOf(D).y) - 20;
     // 기둥 하나의 판정 = 쓸고 지나가는 띠 전체 (3연타 모두 같은 띠: 띠 안의 적은 기둥마다 3번 맞는다)
     const xa = P.x0 - 45, xb = P.x1 + 45;
-    const rect = { x: xa, y: top, w: xb - xa, h: P.gy - top + 12 };
+    const rect = { x: xa, y: top, w: xb - xa, h: Math.max(P.gy + 12, P.low) - top };
     const n = strike(D, rect, W[P.i] / 3, { element: P.el, hitstop: P.n === 0 ? 0.03 : 0, shake: 2, kb: [40, -200], fx: 'magic' });
     P.n++; D.info.pillarHits += n;
     if (n) burst(D, P.el === 'fire' ? 'fire' : P.el === 'ice' ? 'ice' : P.el === 'thunder' ? 'thunder' : 'holy', P.x, P.gy - 20, 6, { angle: -Math.PI / 2, spread: 1, speed: 260 });

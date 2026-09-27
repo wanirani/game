@@ -1,0 +1,175 @@
+{
+ "id": "coral_crab",
+ "tier": "T2",
+ "srcTD": 4,
+ "note": "body = Step-4 edit of the side crab with both claws removed (src/cc_body.webp, manifest: cc_edit; Kling kept the legs, the far legs stay faded as painted); shrine = the drowned shrine with its coral garden and rocks cut from the sheet-2 side crab's back (sits on the shell, its window glows); claw = sheet-2 loose giant claw (arm segment at the bottom, open pincer at the top), near + darkened far.",
+ "sources": {
+  "b": {
+   "raw": "cc_body.webp",
+   "file": "cc_body.png",
+   "mode": "",
+   "k": 0.0426
+  },
+  "s2": {
+   "raw": "coral_crab_sheet2.webp",
+   "file": "coral_crab_sheet2.png",
+   "mode": "",
+   "k": 0.08
+  }
+ },
+ "parts": {
+  "body": {
+   "src": "b",
+   "box": [
+    90,
+    60,
+    1970,
+    1590
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1000,
+     1560
+    ],
+    "top": [
+     1000,
+     75
+    ],
+    "seat": [
+     1100,
+     470
+    ],
+    "clN": [
+     1540,
+     1010
+    ],
+    "clF": [
+     1640,
+     960
+    ],
+    "eye": [
+     1457,
+     732
+    ],
+    "mouth": [
+     1600,
+     900
+    ]
+   },
+   "_bbox": [
+    98,
+    74,
+    1959,
+    1578
+   ]
+  },
+  "shrine": {
+   "src": "s2",
+   "k": 0.075,
+   "box": [
+    1070,
+    570,
+    1450,
+    822
+   ],
+   "keep": "all",
+   "poly": [
+    [
+     1075,
+     700
+    ],
+    [
+     1140,
+     640
+    ],
+    [
+     1170,
+     606
+    ],
+    [
+     1250,
+     596
+    ],
+    [
+     1290,
+     578
+    ],
+    [
+     1446,
+     596
+    ],
+    [
+     1450,
+     760
+    ],
+    [
+     1420,
+     800
+    ],
+    [
+     1330,
+     820
+    ],
+    [
+     1200,
+     820
+    ],
+    [
+     1110,
+     800
+    ],
+    [
+     1075,
+     760
+    ]
+   ],
+   "piv": {
+    "a": [
+     1260,
+     800
+    ],
+    "lamp": [
+     1222,
+     705
+    ]
+   },
+   "_bbox": [
+    1075,
+    597,
+    1413,
+    821
+   ]
+  },
+  "claw": {
+   "src": "s2",
+   "box": [
+    1895,
+    515,
+    2245,
+    1042
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     2097,
+     1025
+    ],
+    "b": [
+     1985,
+     531
+    ],
+    "hinge": [
+     2022,
+     762
+    ]
+   },
+   "_bbox": [
+    1906,
+    528,
+    2241,
+    1042
+   ]
+  }
+ }
+}

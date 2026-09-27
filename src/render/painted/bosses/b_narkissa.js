@@ -43,7 +43,7 @@ const DEF = {
     upper2: { deep: 0.55, deepOnly: true, cracks: 1, holes: 0, crackMinLum: 45 }, fore2: { deep: 0.55, deepOnly: true, cracks: 1, holes: 0, crackMinLum: 45 },
     crown: { cracks: 2, holes: 1 }, blade: { noDmg: true }, blade2: { noDmg: true }, hmirror: { noDmg: true }, halo2: { noDmg: true }, frame: { noDmg: true },
   },
-  prefix: { sh: { flash: true, cracks: 1, holes: 0 }, deb: { noDmg: true, outline: 1.2 } },
+  prefix: { gs: { flash: true, cracks: 1, holes: 0 }, deb: { noDmg: true, outline: 1.2 } },
 };
 
 // ───────────────────────── 모듈 계약 ─────────────────────────
@@ -52,8 +52,8 @@ export default {
   async load(env) {
     const rig = await loadRig(DIR, DEF, env);
     const names = Object.keys(rig.parts);
-    rig.debs = names.filter((n) => n.startsWith('deb')).map((n) => rig.parts[n]);
-    rig.sh = names.filter((n) => n.startsWith('sh')).sort().map((n) => rig.parts[n]);
+    rig.debs = names.filter((n) => /^deb\d+$/.test(n)).map((n) => rig.parts[n]);
+    rig.sh = names.filter((n) => /^gs\d+$/.test(n)).sort().map((n) => rig.parts[n]);   // 드레스 거울 조각 gs0..gs4
     rig.art = makeArt(rig);
     return rig;
   },

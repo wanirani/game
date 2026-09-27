@@ -1,9 +1,21 @@
 // 프런트엔드(타이틀·메뉴 흐름) 공용 도우미: 켄번스 배경, 분위기 입자(불씨·안개·박쥐·번개),
 // 고딕 장식 패널/구분선/버튼, 터치 패드 표시 제어, 캐릭터 미리보기 인형, 명예의 전당 기록, 아케이드 임시 세이브
+// 플랫폼 UI 규칙 (platform §4.5 · §5.1 · §6.2 · §6.3, MASTER_PLAN §1.16) — owner: PLAT-FRONT-A
+//  - footer(ctx, vw, vh, keys, touch): 예전 키 글자 문자열('↑↓ 선택   Z 결정   X 뒤로')이나 항목 배열을 prompts.legacyKey 로
+//    액션으로 바꿔 지금 기기의 글리프(키캡 · ✕○□△/A·B·X·Y · 터치 문구)로 그린다
+//  - gbutton/backButton: { owner } 를 주면 ui.taps 에 등록 (터치 여유 영역으로 44 CSS px 보장) → update 에서 taps.hit(owner).
+//    예전 TapZones 도 내부적으로 ui.taps 에 등록한다 (owner = 그 TapZones) → 여유 영역·?debug=taps 오버레이·QA 감사를 함께 쓴다
+//  - setPad(show): 옛 이름. 가상 패드는 game.syncPad() 가 장면 플래그(hidePad/showPad)로 정한다 → 맨 위 장면의 플래그만 바꾼다
+//  - applySettings: 볼륨만 (가상 패드 투명도는 캔버스 패드가 settings.touchOpacity 를 직접 읽는다)
+//  - gbutton/frame/ornament/menuItem/shade 의 그라데이션은 크기·색별로 한 번만 만든다 (MASTER_PLAN R12, feel §8: 저사양 프레임당 ≤ 6)
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
 import { saves } from '../../core/save.js';
-import { text, FONT, COLORS, hovered } from '../../core/ui.js';
+import { game } from '../../core/game.js';
+import { text, FONT, COLORS, hovered, taps } from '../../core/ui.js';
+import { drawHints, legacyKey, promptMode } from '../../core/prompts.js';
+import { ACTIONS } from '../../data/controls.js';
+import { hudSafe } from '../../render/hud_layout.js';
 import { clamp, lerp, rand, TAU, rgba, ease } from '../../core/math.js';
 import { CHARACTERS, CHAR_ORDER } from '../../data/characters.js';
 import { CLASSES, classChain } from '../../data/classes.js';
@@ -12,20 +24,24 @@ export const GOLD = '#e8c872', BONE = '#efe4cf', CRIMSON = '#b3122e', INK = '#07
 export const EL = { holy: '#fff2b0', fire: '#ff7a2a', ice: '#9fe8ff', dark: '#b060ff', thunder: '#bfe0ff' };
 
 // ───────────────────────── 기기/설정 ─────────────────────────
-/** 메뉴 화면에서는 가상 패드를 숨긴다 (탭 영역 가림 방지). 게임플레이 장면은 show */
-export function setPad(show) {
-  const el = typeof document !== 'undefined' ? document.getElementById('touch') : null;
-  if (!el) return;
-  el.style.display = show ? '' : 'none';
+/**
+ * 옛 이름 (platform P-18 §5.1): 가상 패드 표시의 주인은 game.syncPad() 하나다 (입력 모드 'touch' + 장면 플래그).
+ * setPad(false) → 장면(없으면 맨 위 장면)에 hidePad = true, setPad(true) → setPad(false) 가 켠 hidePad 만 되돌린다
+ * (showPad 를 강제로 켜지 않는다: 게임플레이 장면은 PAD_SCENES 라서 저절로 보이고, 메뉴 장면은 저절로 숨는다).
+ * DOM 을 건드리지 않는다. exit() 에서 부르면 아래 장면이 맨 위라서 그 장면의 setPad 표시만 되돌린다.
+ */
+const PAD_OWN = Symbol('setPad');
+export function setPad(show, scene = null) {
+  const sc = scene ?? game.top;
+  if (!sc || typeof sc !== 'object') return;
+  if (!show) { if (!sc.hidePad) { sc.hidePad = true; sc[PAD_OWN] = true; } return; }
+  if (sc[PAD_OWN]) { sc.hidePad = false; sc[PAD_OWN] = false; }
 }
-/** 설정값을 실제 시스템에 반영 (볼륨, 터치 패드 투명도) */
+/** 설정값을 실제 시스템에 반영 (볼륨). 가상 패드 투명도는 캔버스 패드(touchpad.js)가 settings.touchOpacity 를 직접 읽는다 */
 export function applySettings(game) {
   const s = game.settings;
   if (!s) return;
   audio.setVolumes(s.musicVol, s.sfxVol);
-  const el = typeof document !== 'undefined' ? document.getElementById('touch') : null;
-  if (el) el.style.setProperty('--touch-op', String(s.touchOpacity ?? 0.55));
-  try { document.documentElement.style.setProperty('--touch-op', String(s.touchOpacity ?? 0.55)); } catch { /* 무시 */ }
 }
 /** 다음 장면 이름이 등록되어 있지 않으면 대체 경로로 */
 export function goSafe(game, name, params = {}, opts) {
@@ -58,6 +74,38 @@ export function fmtClock(sec = 0) {
   const m = Math.floor(sec / 60), s = Math.floor(sec % 60), cs = Math.floor((sec * 100) % 100);
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${String(cs).padStart(2, '0')}`;
 }
+
+// ───────────────────────── 그라데이션 캐시 (MASTER_PLAN R12) ─────────────────────────
+// 프런트 장면은 매 프레임 같은 패널·버튼을 그린다 → 그라데이션을 (모양·색·크기) 키로 한 번만 만들고 다시 쓴다.
+// 좌표가 움직이는 것은 원점 기준으로 만들어 ctx.translate(x, y) 한 뒤 채운다. 알파가 움직이는 것은 globalAlpha 로 곱한다.
+const GRADS = new Map();
+const GRADS_MAX = 320;
+let gradMade = 0;
+function keepGrad(key, g) {
+  if (GRADS.size >= GRADS_MAX) GRADS.delete(GRADS.keys().next().value);
+  GRADS.set(key, g);
+  gradMade++;
+  return g;
+}
+/** 캐시된 선형 그라데이션 (x0,y0)→(x1,y1), stops = [[위치, 색], …]. 같은 key 면 다시 만들지 않는다 */
+export function linGrad(ctx, key, x0, y0, x1, y1, stops) {
+  const g = GRADS.get(key);
+  if (g) return g;
+  const n = ctx.createLinearGradient(x0, y0, x1, y1);
+  for (const [o, c] of stops) n.addColorStop(o, c);
+  return keepGrad(key, n);
+}
+/** 캐시된 원형 그라데이션 (x,y 중심, r0→r1) */
+export function radGrad(ctx, key, x, y, r0, r1, stops) {
+  const g = GRADS.get(key);
+  if (g) return g;
+  const n = ctx.createRadialGradient(x, y, r0, x, y, r1);
+  for (const [o, c] of stops) n.addColorStop(o, c);
+  return keepGrad(key, n);
+}
+/** 지금까지 만든 그라데이션 수 (QA: 프레임마다 늘지 않아야 한다) */
+export function gradStats() { return { made: gradMade, cached: GRADS.size }; }
+const R1 = (v) => Math.max(1, Math.round(v));
 
 // ───────────────────────── 스프라이트 캐시 ─────────────────────────
 const SPR = {};
@@ -106,25 +154,24 @@ export function kenBurns(ctx, img, vw, vh, t, { z0 = 1.04, z1 = 1.12, period = 4
     const sy = Math.cos((t + phase) * TAU / (period * 1.61)) * panY * vh;
     ctx.drawImage(img, (vw - dw) * ox + sx + px, (vh - dh) * oy + sy + py, dw, dh);
   } else {
-    const g = ctx.createLinearGradient(0, 0, 0, vh);
-    g.addColorStop(0, '#2a0610'); g.addColorStop(0.55, '#12040c'); g.addColorStop(1, '#040106');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, vw, vh);
+    const H = R1(vh);
+    ctx.fillStyle = linGrad(ctx, `kb|${H}`, 0, 0, 0, H, [[0, '#2a0610'], [0.55, '#12040c'], [1, '#040106']]);
+    ctx.fillRect(0, 0, vw, vh);
     const mx = vw * 0.5 + px * 0.5, my = vh * 0.3;
-    const mg = ctx.createRadialGradient(mx, my, 10, mx, my, 150);
-    mg.addColorStop(0, 'rgba(255,90,80,0.95)'); mg.addColorStop(0.55, 'rgba(180,20,30,0.7)'); mg.addColorStop(1, 'rgba(120,0,20,0)');
-    ctx.fillStyle = mg; ctx.beginPath(); ctx.arc(mx, my, 150, 0, TAU); ctx.fill();
+    ctx.translate(mx, my);
+    ctx.fillStyle = radGrad(ctx, 'kbMoon', 0, 0, 10, 150, [[0, 'rgba(255,90,80,0.95)'], [0.55, 'rgba(180,20,30,0.7)'], [1, 'rgba(120,0,20,0)']]);
+    ctx.beginPath(); ctx.arc(0, 0, 150, 0, TAU); ctx.fill();
   }
   ctx.restore();
 }
 /** 위·아래 어둡게 + 비네팅 */
 export function shade(ctx, vw, vh, { top = 0.55, bottom = 0.75, vig = 0.7, tint = null } = {}) {
-  let g = ctx.createLinearGradient(0, 0, 0, vh);
-  g.addColorStop(0, `rgba(4,1,6,${top})`); g.addColorStop(0.35, 'rgba(4,1,6,0)'); g.addColorStop(0.62, 'rgba(4,1,6,0)'); g.addColorStop(1, `rgba(4,1,6,${bottom})`);
-  ctx.fillStyle = g; ctx.fillRect(0, 0, vw, vh);
+  const W = R1(vw), H = R1(vh);
+  ctx.fillStyle = linGrad(ctx, `sd|${H}|${top}|${bottom}`, 0, 0, 0, H, [[0, `rgba(4,1,6,${top})`], [0.35, 'rgba(4,1,6,0)'], [0.62, 'rgba(4,1,6,0)'], [1, `rgba(4,1,6,${bottom})`]]);
+  ctx.fillRect(0, 0, vw, vh);
   if (vig > 0) {
-    g = ctx.createRadialGradient(vw / 2, vh / 2, vh * 0.3, vw / 2, vh / 2, vw * 0.72);
-    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, `rgba(0,0,0,${vig})`);
-    ctx.fillStyle = g; ctx.fillRect(0, 0, vw, vh);
+    ctx.fillStyle = radGrad(ctx, `vg|${W}|${H}|${vig}`, W / 2, H / 2, H * 0.3, W * 0.72, [[0, 'rgba(0,0,0,0)'], [1, `rgba(0,0,0,${vig})`]]);
+    ctx.fillRect(0, 0, vw, vh);
   }
   if (tint) { ctx.fillStyle = tint; ctx.fillRect(0, 0, vw, vh); }
 }
@@ -273,14 +320,19 @@ export function drawBat(ctx, x, y, s, ph, dir = 1, alpha = 1) {
 // ───────────────────────── 장식 ─────────────────────────
 /** 고딕 구분선 (가운데 마름모 + 양끝 페이드) */
 export function ornament(ctx, cx, y, w, { color = GOLD, alpha = 1, gem = CRIMSON } = {}) {
+  if (!(w > 0)) w = 0;
   ctx.save();
   ctx.globalAlpha *= alpha;
-  const g = ctx.createLinearGradient(cx - w / 2, 0, cx + w / 2, 0);
-  g.addColorStop(0, rgba(color, 0)); g.addColorStop(0.3, rgba(color, 0.9)); g.addColorStop(0.5, color); g.addColorStop(0.7, rgba(color, 0.9)); g.addColorStop(1, rgba(color, 0));
-  ctx.fillStyle = g;
-  ctx.fillRect(cx - w / 2, y - 0.75, w, 1.5);
-  ctx.fillRect(cx - w * 0.3, y + 3, w * 0.6, 0.8);
+  // 가운데 원점, 폭 100 짜리 그라데이션을 가로로만 늘려 쓴다 → 색마다 하나 (폭이 움직이는 등장 연출도 새로 만들지 않는다)
   ctx.translate(cx, y);
+  if (w > 0.5) {
+    ctx.save();
+    ctx.scale(w / 100, 1);
+    ctx.fillStyle = linGrad(ctx, `or|${color}`, -50, 0, 50, 0, [[0, rgba(color, 0)], [0.3, rgba(color, 0.9)], [0.5, color], [0.7, rgba(color, 0.9)], [1, rgba(color, 0)]]);
+    ctx.fillRect(-50, -0.75, 100, 1.5);
+    ctx.fillRect(-30, 3, 60, 0.8);
+    ctx.restore();
+  }
   ctx.rotate(Math.PI / 4);
   ctx.fillStyle = '#1a0608'; ctx.fillRect(-6, -6, 12, 12);
   ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.strokeRect(-6, -6, 12, 12);
@@ -301,13 +353,15 @@ export function frame(ctx, x, y, w, h, { accent = GOLD, fill0 = 'rgba(22,10,24,0
     ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x + 2, y + 2, w - 4, h - 4);
     ctx.restore();
   }
-  const g = ctx.createLinearGradient(x, y, x, y + h);
-  g.addColorStop(0, fill0); g.addColorStop(1, fill1);
-  ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
-  // 윗면 광택
-  const sh = ctx.createLinearGradient(x, y, x, y + Math.min(40, h * 0.4));
-  sh.addColorStop(0, rgba(accent, 0.12)); sh.addColorStop(1, rgba(accent, 0));
-  ctx.fillStyle = sh; ctx.fillRect(x, y, w, Math.min(40, h * 0.4));
+  // 몸통·윗면 광택: 높이별 캐시 그라데이션 (패널 왼쪽 위를 원점으로)
+  const H = R1(h), SH = R1(Math.min(40, h * 0.4));
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.fillStyle = linGrad(ctx, `fr|${fill0}|${fill1}|${H}`, 0, 0, 0, H, [[0, fill0], [1, fill1]]);
+  ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = linGrad(ctx, `fs|${accent}|${SH}`, 0, 0, 0, SH, [[0, rgba(accent, 0.12)], [1, rgba(accent, 0)]]);
+  ctx.fillRect(0, 0, w, Math.min(40, h * 0.4));
+  ctx.restore();
   ctx.strokeStyle = rgba(accent, edge); ctx.lineWidth = 1.5;
   ctx.strokeRect(x + 0.75, y + 0.75, w - 1.5, h - 1.5);
   ctx.strokeStyle = rgba(accent, 0.2); ctx.lineWidth = 1;
@@ -377,9 +431,13 @@ export function menuItem(ctx, r, label, { selected = false, disabled = false, su
   if (disabled) { k *= 0.45; accent = '#4a3a44'; }
   ctx.save();
   if (hot) {
-    const g = ctx.createLinearGradient(r.x, 0, r.x + r.w, 0);
-    g.addColorStop(0, rgba(accent, 0.85 * k)); g.addColorStop(0.7, rgba(accent, 0.25 * k)); g.addColorStop(1, rgba(accent, 0));
-    ctx.fillStyle = g; ctx.fillRect(r.x, r.y + 3, r.w, r.h - 6);
+    const W = R1(r.w);
+    ctx.save();
+    ctx.globalAlpha *= clamp(k, 0, 1);
+    ctx.translate(r.x, 0);
+    ctx.fillStyle = linGrad(ctx, `mi|${accent}|${W}`, 0, 0, W, 0, [[0, rgba(accent, 0.85)], [0.7, rgba(accent, 0.25)], [1, rgba(accent, 0)]]);
+    ctx.fillRect(0, r.y + 3, r.w, r.h - 6);
+    ctx.restore();
     ctx.fillStyle = rgba(GOLD, 0.8 * k); ctx.fillRect(r.x, r.y + 3, r.w * 0.7 * k, 1); ctx.fillRect(r.x, r.y + r.h - 4, r.w * 0.5 * k, 1);
     // 화살표
     ctx.fillStyle = GOLD;
@@ -404,11 +462,23 @@ export function menuItem(ctx, r, label, { selected = false, disabled = false, su
 export class TapZones {
   constructor() { this.list = []; }
   clear() { this.list.length = 0; }
-  add(id, r) { if (r) this.list.push({ id, x: r.x, y: r.y, w: r.w, h: r.h }); return r; }
-  /** 이번 틱에 탭된 영역의 id (나중에 그린 = 위에 있는 영역 우선). 없으면 null */
+  /**
+   * 영역 등록 (render 에서). ui.taps 공용 등록부에도 owner = 이 TapZones 로 올린다 (platform §6.3, P-19):
+   * 터치 모드에서는 kind 최소 크기(primary 44 CSS px)에 모자란 만큼 여유 영역이 붙고, ?debug=taps·QA 감사가 이 영역을 본다
+   */
+  add(id, r, kind = 'primary') {
+    if (!r) return r;
+    this.list.push({ id, x: r.x, y: r.y, w: r.w, h: r.h });
+    taps.add(id, r, { owner: this, kind, src: 'TapZones' });
+    return r;
+  }
+  /** 이번 틱에 탭된 영역의 id (나중에 그린 = 위에 있는 영역 우선; 터치는 여유 영역 안의 가장 가까운 것). 없으면 null */
   hit() {
     const p = input.pointer;
     if (!p.tapped) return null;
+    const id = taps.hit(this);
+    if (id !== null && id !== undefined) return id;
+    // 등록부의 마지막 묶음이 오래됐으면(render 없이 update 만 돈 경우) 기억해 둔 영역으로 판정
     for (let i = this.list.length - 1; i >= 0; i--) {
       const z = this.list[i];
       if (p.x >= z.x && p.x <= z.x + z.w && p.y >= z.y && p.y <= z.y + z.h) return z.id;
@@ -417,14 +487,23 @@ export class TapZones {
   }
 }
 
-/** 둥근 느낌의 고딕 버튼 (터치 44px 이상 권장). 탭 판정은 zones(TapZones)에 id 로 등록 → update 에서 zones.hit() */
-export function gbutton(ctx, r, label, { selected = false, disabled = false, size = 16, accent = GOLD, sub = null, icon = null, zones = null, id = label } = {}) {
+const GB_HOT = [[0, 'rgba(140,22,40,0.96)'], [1, 'rgba(60,6,16,0.96)']];
+const GB_IDLE = [[0, 'rgba(34,16,32,0.92)'], [1, 'rgba(10,4,12,0.94)']];
+/**
+ * 둥근 느낌의 고딕 버튼. 탭 판정 (둘 중 하나):
+ *  - { owner: 장면, id } → ui.taps 에 등록 (터치 여유 영역으로 44 CSS px 보장) → update 에서 taps.hit(장면) === id
+ *  - { zones: TapZones, id } (예전 방식) → update 에서 zones.hit() === id
+ * kind: 'primary'(기본) | 'list' | 'icon' | 'dense' (ui.taps 최소 크기 종류)
+ */
+export function gbutton(ctx, r, label, { selected = false, disabled = false, size = 16, accent = GOLD, sub = null, icon = null, zones = null, id = label, owner = null, kind = 'primary', src = 'gbutton' } = {}) {
   const hot = (selected || hovered(r)) && !disabled;
   ctx.save();
-  const g = ctx.createLinearGradient(r.x, r.y, r.x, r.y + r.h);
-  g.addColorStop(0, hot ? 'rgba(140,22,40,0.96)' : 'rgba(34,16,32,0.92)');
-  g.addColorStop(1, hot ? 'rgba(60,6,16,0.96)' : 'rgba(10,4,12,0.94)');
-  ctx.fillStyle = g; ctx.fillRect(r.x, r.y, r.w, r.h);
+  ctx.save();
+  ctx.translate(r.x, r.y);
+  const H = R1(r.h);
+  ctx.fillStyle = linGrad(ctx, `gb${hot ? 1 : 0}|${H}`, 0, 0, 0, H, hot ? GB_HOT : GB_IDLE);
+  ctx.fillRect(0, 0, r.w, r.h);
+  ctx.restore();
   ctx.fillStyle = hot ? 'rgba(255,220,160,0.18)' : 'rgba(255,255,255,0.05)'; ctx.fillRect(r.x + 2, r.y + 2, r.w - 4, r.h * 0.4);
   ctx.strokeStyle = disabled ? '#3a2a2a' : hot ? accent : rgba(accent, 0.45); ctx.lineWidth = hot ? 2 : 1.4;
   ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
@@ -433,23 +512,73 @@ export function gbutton(ctx, r, label, { selected = false, disabled = false, siz
   text(ctx, (icon ? icon + ' ' : '') + label, r.x + r.w / 2, cy + (sub ? -2 : size * 0.36), { size, align: 'center', weight: 800, color: disabled ? '#6a5e5e' : hot ? '#fff4d8' : BONE, ow: 2 });
   if (sub) text(ctx, sub, r.x + r.w / 2, cy + 14, { size: 10, align: 'center', weight: 700, color: DIM, ow: 2 });
   ctx.restore();
-  if (zones && !disabled) zones.add(id, r);
+  if (!disabled) {
+    if (zones) zones.add(id, r, kind);
+    else if (owner) taps.add(id, r, { owner, kind, src });
+  }
 }
-/** 좌상단 뒤로가기 버튼 (터치용, 키보드 사용자에게도 표시). zones 에 id 'back' 으로 등록 */
-export function backButton(ctx, x = 14, y = 12, label = '뒤로', zones = null) {
-  const r = { x, y, w: 92, h: 44 };
-  gbutton(ctx, r, label, { size: 15, icon: '◀', zones, id: 'back' });
+/**
+ * 좌상단 뒤로가기 버튼 (터치용, 키보드·패드 사용자에게도 표시). id 'back' 으로 등록.
+ * zones: TapZones(예전 방식) 또는 장면(owner → ui.taps, update 에서 taps.hit(장면) === 'back'). 반환: 버튼 사각형
+ */
+export function backButton(ctx, x = 14, y = 12, label = '뒤로', zones = null, { w = 92, h = 44 } = {}) {
+  const r = { x, y, w, h };
+  const own = zones && !(zones instanceof TapZones) ? zones : null;
+  gbutton(ctx, r, label, { size: 15, icon: '◀', zones: own ? null : zones, owner: own, id: 'back', src: 'backButton' });
+  return r;
 }
-/** 하단 조작 안내 (키보드/터치 자동 전환) */
+
+// ───────────────────────── 조작 안내 (platform §4.5) ─────────────────────────
+const ACTION_SET = new Set(ACTIONS);
+const VIRTUAL_KEYS = new Set(['dpad', 'dpadH', 'dpadV', 'stickR', 'stickL']);
+/** 안내 문자열의 키 글자인가 ('Z', '↑↓', 'Enter', 'confirm' …) */
+const isKeyTok = (t) => ACTION_SET.has(t) || VIRTUAL_KEYS.has(t) || legacyKey(t) !== t;
+const HINT_CACHE = new Map();
+/**
+ * 예전 안내 문자열 → prompts.drawHints 항목. 항목은 공백 2칸 이상으로 나뉘고, 항목의 첫 낱말이 키('Z', 'Z/Enter', '↑↓')다.
+ * '↑↓ 슬롯 선택   Z 결정   X 타이틀로' → [['↑↓','슬롯 선택'], ['Z','결정'], ['X','타이틀로']] (첫 낱말이 키가 아니면 글자만)
+ */
+export function parseHints(str) {
+  if (Array.isArray(str)) return str;
+  const key = String(str ?? '');
+  let items = HINT_CACHE.get(key);
+  if (items) return items;
+  items = [];
+  for (const seg of key.split(/\s{2,}/)) {
+    const s = seg.trim();
+    if (!s) continue;
+    const sp = s.indexOf(' ');
+    const head = sp > 0 ? s.slice(0, sp) : s, rest = sp > 0 ? s.slice(sp + 1).trim() : '';
+    const keys = head.split('/').filter(Boolean);
+    if (rest && keys.length && keys.every(isKeyTok)) items.push([keys.length > 1 ? keys : keys[0], rest]);
+    else items.push([null, s]);
+  }
+  if (HINT_CACHE.size > 96) HINT_CACHE.clear();
+  HINT_CACHE.set(key, items);
+  return items;
+}
+let hintErr = false;
+/**
+ * 하단 조작 안내: 지금 기기의 글리프 (키보드 키캡 · 패드 ✕○□△/A·B·X·Y · 터치 문구).
+ *  keys: 예전 문자열('↑↓ 선택   Z 결정   X 뒤로', legacyKey 로 액션이 된다) 또는 drawHints 항목 배열 [[액션|키, '라벨'], …]
+ *  touch: 터치 모드 문구 (없으면 키 항목의 라벨)
+ * vw, vh 는 그리는 장면의 좌표 (uiScale 장면이면 game.uiW × game.uiH). safeArea 'full' 이면 아래 인셋만큼 올린다
+ */
 export function footer(ctx, vw, vh, keys, touch) {
-  const s = input.touchMode ? (touch ?? keys) : keys;
-  if (!s) return;
+  const m = promptMode();
+  if (m === 'touch' ? !(touch ?? keys) : !keys) return;
+  const k = taps.space > 0 ? taps.space : 1;
+  const sb = (hudSafe(game).b || 0) / k;
+  const y = vh - sb;
   ctx.save();
-  const g = ctx.createLinearGradient(0, vh - 34, 0, vh);
-  g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0.7)');
-  ctx.fillStyle = g; ctx.fillRect(0, vh - 34, vw, 34);
-  text(ctx, s, vw / 2, vh - 11, { size: 13, align: 'center', color: '#b8aa98', ow: 2 });
+  ctx.translate(0, y - 34);
+  ctx.fillStyle = linGrad(ctx, 'foot', 0, 0, 0, 34, [[0, 'rgba(0,0,0,0)'], [1, 'rgba(0,0,0,0.7)']]);
+  ctx.fillRect(0, 0, vw, 34 + sb);
   ctx.restore();
+  if (m === 'touch' && typeof touch === 'string') { text(ctx, touch, vw / 2, y - 11, { size: 13, align: 'center', color: '#b8aa98', ow: 2 }); return; }
+  const items = parseHints(keys);
+  try { drawHints(ctx, items, vw / 2, y - 11, { align: 'center', size: 13, color: '#b8aa98' }); return; } catch (e) { if (!hintErr) { hintErr = true; console.error('[front] hints', e); } }
+  if (typeof keys === 'string') text(ctx, keys, vw / 2, y - 11, { size: 13, align: 'center', color: '#b8aa98', ow: 2 });
 }
 /** 선택 확정 연출용 링 */
 export function pulseRing(ctx, x, y, r, color, k) {
@@ -520,17 +649,21 @@ export function featherPortrait(img, key, { side = 0.2, bottom = 0.42, top = 0.0
 }
 
 // ───────────────────────── 캐릭터 미리보기 ─────────────────────────
-/** 캐릭터(+직업) 외형 */
+/** 캐릭터(+직업) 외형. classId 를 주면 look.classId 로도 남겨 채색 퍼펫(hero_puppet.classOf)이 그 직업의 원화를 바로 고른다 */
 export function lookOf(charId, classId = null, w = {}) {
   const ch = CHARACTERS[charId];
   const look = structuredClone(ch.look);
-  if (classId && CLASSES[classId]) for (const c of classChain(classId)) Object.assign(look, structuredClone(c.look || {}));
+  if (classId && Object.hasOwn(CLASSES, classId)) {
+    for (const c of classChain(classId)) Object.assign(look, structuredClone(c.look || {}));
+    look.classId = classId;
+  }
   look.weapon = { type: w.type ?? ch.weaponType, style: w.style ?? 1, level: w.level ?? 0, rarity: w.rarity ?? 0, element: w.element ?? null, color: w.color };
   return look;
 }
-/** drawHero 에 넘길 가짜 엔티티 */
+/** drawHero 에 넘길 가짜 엔티티 (직업을 안 주면 그 영웅의 첫 직업 = 캐릭터 선택·새 게임의 모습) */
 export function puppet(charId, classId = null, w = {}) {
   const ch = CHARACTERS[charId];
+  classId ??= ch?.rootClass ?? null;
   return { look: lookOf(charId, classId, w), ch, facing: 1, anim: 'idle', animT: 0, move: null, moveT: 0, vx: 0, vy: 0, onGround: true, rig: {}, t: 0, stats: { reach: 0 }, charging: 0, muzzleT: 0, cx: 0, bottom: 0, x: 0, y: 0, w: ch.size.w, h: ch.size.h, buffs: {} };
 }
 

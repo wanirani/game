@@ -9,8 +9,8 @@
 import * as K from '../enemy_kit.js';
 import { atkPhase } from '../enemy_kit.js';
 import { clamp, lerp, ease } from '../../../core/math.js';
-import { bipedPose, dirOf, glint, claimDebris, ik2 } from './_biped.js';
-import { Placer } from './blood_skeleton.js';
+import { bipedPose, dirOf, glint, ik2 } from './_biped.js';
+import { Placer, claimDeathDebris } from './blood_skeleton.js';
 
 export const spec = {
   id: 'spear_guard', tier: 'T2', src: 'spear_guard',
@@ -91,7 +91,7 @@ function layout(e, q) {
 
 function die(e, world, rig) {
   e._pcorpse = true;
-  claimDebris(world, e);
+  claimDeathDebris(world, e);
   const kb = Math.sign(e.vx || 0) * (e.facing < 0 ? -1 : 1);
   P.corpse(world, e, rig, (p) => {
     const heavy = p.name === 'torso';
