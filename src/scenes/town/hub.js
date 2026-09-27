@@ -80,6 +80,7 @@ export class HubScene extends Scene {
     const g = this.game;
     const w = new World(g, TOWN_STAGE, { mode: 'town' });
     this.world = w; g.world = w;
+    this.hint = null; // 헌터 교체로 다시 만들면 옛 월드의 문·NPC 를 가리키지 않게 (다음 update 에서 다시 고른다)
     w.banner = null;
     w.run.lives = g.state.lives ?? w.run.lives;
     // 원경 위에 하늘 균열 (2부), 중경 레이어에 건물 파사드
@@ -373,6 +374,8 @@ export class HubScene extends Scene {
 
   /** HUD·마을 메뉴 배율: 휴대폰(작은 CSS 화면)에서 game.uiK 배 (데스크톱 1) */
   uiK() { return Math.max(1, this.game.uiK || 1); }
+  /** css CSS px 가 되는 HUD·메뉴 좌표(UI px) 크기 — 터치 주 버튼·메뉴 줄은 보이는 높이도 44 CSS px 이상 (platform §6.3, 일시정지 메뉴와 같게) */
+  tapUi(css = 46) { return Math.ceil(css / Math.max(0.2, (this.game.cssScale || 1) * this.uiK())); }
   /** UI 좌표 사각형을 논리 px 로 바꿔 탭 영역으로 등록 (허브는 uiScale 장면이 아니므로 포인터도 논리 px) */
   zone(id, r, k, off, src = 'hub.hud') {
     const L = { x: r.x * k, y: r.y * k, w: r.w * k, h: r.h * k };
@@ -426,14 +429,14 @@ export class HubScene extends Scene {
       if (has) drawIcon(ctx, ITEMS[ids[i]]?.icon ?? (p2 ? 'wheart_' : 'relic_') + (i + 1), rx, ry, 22);
       else text(ctx, '?', rx, ry + 5, { size: 12, weight: 800, color: '#4a3a30', align: 'center', ow: 0 });
     }
-    const bwd = 88, bh = 40, by = gy + 80;
+    const touch = !!input.touchMode;
+    const bwd = 88, bh = touch ? Math.max(40, this.tapUi(46)) : 40, by = gy + 80;
     const rParty = { x: W - 14 - bwd * 2 - 8, y: by, w: bwd, h: bh }, rMenu = { x: W - 14 - bwd, y: by, w: bwd, h: bh };
     if (g.registry.party) { uiButton(ctx, rParty, '헌터 교체', { size: 14 }); rects.party = this.zone('party', rParty, k, off); }
     uiButton(ctx, rMenu, '메뉴', { size: 15 }); rects.menu = this.zone('menu', rMenu, k, off);
 
     // ── 하단: 상호작용 안내 ──
     const h = this.hint;
-    const touch = !!input.touchMode;
     if (h && !this.world.cutscene && !this.menuOpen) {
       // 발밑 흙길 띠(바닥 아래 48px)에 한 줄로: 캐릭터 다리를 가리지 않고, 제목·설명이 서로 닿지 않게.
       // 키보드·패드는 ▲ 대신 지금 기기의 '위' 글리프, 터치는 이 띠를 누른다
@@ -495,11 +498,18 @@ export class HubScene extends Scene {
     ctx.fillStyle = 'rgba(4,2,8,0.72)'; ctx.fillRect(0, 0, vw, vh);
     vignette(ctx, vw, vh, 0.6);
     if (k !== 1) ctx.scale(k, k);
-    const n = this.menuItems.length, bw = Math.min(360, W - 60), bh = low ? 46 : 50, gap = low ? 8 : 10;
-    const tot = n * bh + (n - 1) * gap;
-    const y0 = Math.max(low ? 84 : 96, H / 2 - tot / 2 + (low ? 12 : 24));
-    text(ctx, '에슈빌', W / 2, y0 - (low ? 40 : 44), { size: low ? 30 : 34, weight: 800, family: FONT.title, color: '#f3d690', align: 'center', ow: 4 });
-    text(ctx, 'VILLAGE MENU', W / 2, y0 - (low ? 18 : 20), { size: 12, weight: 800, family: FONT.num, color: '#9d8f80', align: 'center' });
+    const touch = !!input.touchMode, n = this.menuItems.length, bw = Math.min(360, W - 60);
+    let bh = low ? 46 : 50, gap = low ? 8 : 10;
+    // 터치: 줄의 보이는 높이도 44 CSS px 이상 (일시정지 메뉴와 같게). 아래는 키 안내 줄(터치에서는 없음) 자리
+    if (touch) { bh = Math.max(bh, this.tapUi(46)); gap = 6; }
+    const bottom = H - (touch ? 6 : 34);
+    let tot = n * bh + (n - 1) * gap;
+    let y0 = Math.max(low ? 84 : 96, H / 2 - tot / 2 + (low ? 12 : 24));
+    if (y0 + tot > bottom) y0 = Math.max(56, bottom - tot);
+    if (y0 + tot > bottom) { bh = Math.max(40, Math.floor((bottom - y0 - (n - 1) * gap) / n)); tot = n * bh + (n - 1) * gap; }
+    const tight = y0 < 80; // 낮은 화면: 제목만 작게 (영문 부제 생략)
+    text(ctx, '에슈빌', W / 2, y0 - (tight ? 14 : low ? 40 : 44), { size: tight ? 24 : low ? 30 : 34, weight: 800, family: FONT.title, color: '#f3d690', align: 'center', ow: 4 });
+    if (!tight) text(ctx, 'VILLAGE MENU', W / 2, y0 - (low ? 18 : 20), { size: 12, weight: 800, family: FONT.num, color: '#9d8f80', align: 'center' });
     this.menuItems.forEach(([label, sub], i) => {
       const r = { x: W / 2 - bw / 2, y: y0 + i * (bh + gap), w: bw, h: bh };
       this.zone('m:' + i, r, k, this.game.top !== this, 'hub.menu');

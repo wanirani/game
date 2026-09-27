@@ -782,9 +782,20 @@ function seraDirector(p, w, v) {
   const wing = ULTFX.sprite?.('wing');
   D.info.pillars = 0; D.info.pillarHits = 0; D.info.chains = 0;
 
+  /** 기둥이 쓸고 지나갈 가로 범위: 화면 안 적들의 좌우 끝 (최소 380px, 적이 없으면 화면 전체) — 보스 하나에도 기둥 대부분이 닿는다 */
+  function sweepSpan(ww) {
+    const V = viewOf(D), list = foesIn(ww, viewOf(D, 10));
+    if (!list.length) return { x: V.x, w: V.w };
+    let a = Infinity, b = -Infinity;
+    for (const f of list) { const hb = hbOf(f); a = Math.min(a, hb.x); b = Math.max(b, hb.x + hb.w); }
+    a -= 70; b += 70;
+    if (b - a < 380) { const m = (a + b) / 2; a = m - 190; b = m + 190; }
+    a = Math.max(a, V.x); b = Math.min(b, V.x + V.w);
+    return b - a < 200 ? { x: V.x, w: V.w } : { x: a, w: b - a };
+  }
   function pillar(i, ww, e) {
-    const V = viewOf(D), step = V.w / nP;
-    const x0 = V.x + step * i + step * 0.15, x1 = x0 + step * 0.9;
+    const V = viewOf(D), SP = (S.span ??= sweepSpan(ww)), step = SP.w / nP;
+    const x0 = SP.x + step * i + step * 0.15, x1 = x0 + step * 0.9;
     const el = vr === 'archmage' ? ARCH[i % 3] : null;
     const col = el ? [el[1], el[2]] : PCOL;
     const gy = D.K.groundAt(ww, x0 + step * 0.45, V.y + V.h * 0.35, 16 * TILE) ?? V.y + V.h - 30;

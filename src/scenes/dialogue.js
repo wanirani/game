@@ -97,6 +97,18 @@ export class DialogueScene extends Scene {
   }
   exit() { if (this.world) this.world.cutscene = false; }
   get state() { return this.game.state; }
+  // 토스트(획득·합류·컨트롤러 알림)는 대화창 요소(선택지 · 건너뛰기 버튼/안내 줄 · 이름패) 바로 위에서 위로 쌓는다 (UI 좌표).
+  // uiScale 장면은 game.js 의 기본 자리(가운데 y 92)를 쓰는데, 낮은 화면에서는 그 자리가 첫 선택지를 가린다
+  get toastX() { return this.layout().W / 2; }
+  get toastUp() { return true; }
+  get toastY() {
+    const Lo = this.layout();
+    let top = Lo.by - 22; // 이름패 위
+    if (this.menu && this.cur?.choice && this.shown >= this.full.length) {
+      top = Math.min(top, Lo.by - (input.touchMode ? 16 : 38) - this.cur.choice.length * (Lo.choiceH + 8));
+    } else if (!this.menu) top = Math.min(top, input.touchMode ? Lo.by - 10 - Lo.btnH : Lo.by - 34);
+    return Math.max(30, top - 14); // 토스트 상자는 기준선 -20 … +8
+  }
   /** 대사에 나오는 초상화·CG 를 미리 받아 둔다 (첫 등장 때 비어 보이지 않게) */
   preloadArt() {
     const keys = new Set();
@@ -173,7 +185,7 @@ export class DialogueScene extends Scene {
       case 'music': audio.music(l.id); break;
       case 'sfx': audio.sfx(l.id); break;
       case 'goto': this.i = (this.labels[l.label] ?? this.lines.length) - 1; break;
-      case 'relic': if (st && !st.progress.relics.includes(l.id)) st.progress.relics.push(l.id); break;
+      case 'relic': if (st?.progress && l.id) { const r = Array.isArray(st.progress.relics) ? st.progress.relics : (st.progress.relics = []); if (!r.includes(l.id)) r.push(l.id); } break;
       case 'cg': this.cg = l.id ? 'cg/' + String(l.id).replace(/^cg\//, '') : null; this.cgT = 0; break;
       // 'bg' · 'wait' · 'title' 은 스토리 장면(front/story.js) 전용 연출 — 대화 오버레이에서는 무시
     }

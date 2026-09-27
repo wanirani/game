@@ -128,6 +128,7 @@ function drawBoss(ctx, b, world, rig, st) {
   if (st.q.name !== tierOf(world.game)) st.q = qualityOf(world.game);
   if (st.rig !== rig) st.rig = rig;
   const q = st.q, P = st.P;
+  if (rig.art) rig.art.q = q;            // 로직 파일의 낙석(art.rock)도 같은 품질 플래그를 따르게
   const now = world.time ?? b.t;
   const dt = st.lt == null ? 1 / 60 : clamp(now - st.lt, 0, 0.05); st.lt = now; st._dt = dt;
   const A = b.A, F = A.floor, form = b.form ?? 1;
@@ -570,6 +571,8 @@ function makeArt(rig) {
     rock(ctx, i) {
       const p = R[Math.abs(i | 0) % Math.max(1, R.length)]; if (!p) return false;
       const im = p.v.base, k = ROCK_PX / Math.max(1, Math.max(p.w, p.h) - 2 * p.pad);
+      // 어두운 성벽 앞에서도 떨어지는 위험물로 보이게 지옥불 테 (저품질은 가산 발광 없음)
+      if (this.q?.halos !== false) halo(ctx, 0, 0, 30, HELL, 0.7);
       ctx.drawImage(im, -p.c[0] * k, -p.c[1] * k, im.width * k, im.height * k);
       return true;
     },

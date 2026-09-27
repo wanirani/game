@@ -74,9 +74,11 @@ export class ResultsScene extends Scene {
     // 진행 반영
     st.gold += this.goldReward;
     st.score = this.finalScore;
-    const prev = st.progress.cleared[stage.id];
-    const better = !prev || 'SABCD'.indexOf(this.rank.r) < 'SABCD'.indexOf(prev.rank);
-    st.progress.cleared[stage.id] = { rank: better ? this.rank.r : prev.rank, time: Math.min(prev?.time ?? 1e9, run.time), score: Math.max(prev?.score ?? 0, this.finalScore) };
+    // 옛 세이브의 기록이 객체가 아니거나(true 등) 랭크가 없으면 새 기록을 그대로 쓴다 (rank: undefined 로 덮지 않게)
+    const prev = st.progress.cleared[stage.id] && typeof st.progress.cleared[stage.id] === 'object' ? st.progress.cleared[stage.id] : null;
+    const prevRank = typeof prev?.rank === 'string' && 'SABCD'.includes(prev.rank) && prev.rank.length === 1 ? prev.rank : null;
+    const better = !prevRank || 'SABCD'.indexOf(this.rank.r) < 'SABCD'.indexOf(prevRank);
+    st.progress.cleared[stage.id] = { rank: better ? this.rank.r : prevRank, time: Math.min(Number.isFinite(prev?.time) ? prev.time : 1e9, run.time), score: Math.max(Number.isFinite(prev?.score) ? prev.score : 0, this.finalScore) };
     if (stage.next && !st.progress.unlocked.includes(stage.next)) st.progress.unlocked.push(stage.next);
     for (const u of stage.unlocks || []) if (!st.progress.unlocked.includes(u)) st.progress.unlocked.push(u);
     st.progress.chapter = Math.max(st.progress.chapter ?? 0, stage.chapter ?? 0);

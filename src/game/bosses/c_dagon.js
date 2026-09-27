@@ -236,10 +236,14 @@ export class Dagon extends BossC {
     }
     return L;
   }
+  /**
+   * 접촉 피해는 떠올라 있을 때 몸통만. 돌진(dash) 중에는 몸 접촉이 없다: 그 피해는 돌진 지대(mv 1.7, 몸통보다 10px 넓다)가 맡는다
+   * (검수: 접촉(0.8)이 같은 프레임에 먼저 처리되면 무적 시간 때문에 돌진 1.7 이 약 3번에 1번꼴로 빠졌다 — 지즈 talon 과 같은 규칙)
+   */
   contactParts() {
     const L = this._cp;
     L.length = 0;
-    if (this.sink < 0.5 && !(this.dying > 0)) L.push(this.cBody);
+    if (this.sink < 0.5 && !this.dash && !(this.dying > 0)) L.push(this.cBody);
     return L;
   }
   hitBulb(b, dmg) {

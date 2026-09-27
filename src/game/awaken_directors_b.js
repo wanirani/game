@@ -350,7 +350,7 @@ export function prepareAwakenB(world = game?.world, p = world?.player) {
   const cid = p?.hero?.charId, cls = p?.hero?.classId;
   if (!cid || !AWAKEN_DIRECTOR_B[cid] || typeof document === 'undefined') return false;
   if ((CLASSES[cls]?.tier ?? 0) < 1 || world?.mode === 'town') return false;   // 각성할 수 없는 곳·직업은 굽지 않는다
-  if (LIVE && !LIVE.over) return false;
+  if (liveCast()) return false;
   const list = needs(cid, cls), key = cid + '|' + cls;
   if (PREP_KEY === key && list.every((n) => POOL.some((s) => s.key === n))) { idle(() => prepPoses(world, p), 600); return true; }
   if (!ensurePool()) return false;
@@ -370,7 +370,7 @@ let PREP_KEEP = null;
  * 시전 때 look(장비)·직업·해상도가 같으면 그대로 쓰고, 다르면 감독이 틱마다 한 장씩 굽는다 (bakeStep).
  */
 function prepPoses(world, p, tries = 0) {
-  if (LIVE && !LIVE.over) return;
+  if (liveCast()) return;
   if (!p || p.dead || !world || world.player !== p || game?.world !== world || world.mode === 'town') return;
   const cid = p.hero?.charId, cls = p.hero?.classId;
   if ((CLASSES[cls]?.tier ?? 0) < 1) return;
@@ -407,7 +407,7 @@ function hook() {
   try {
     bus.on('stageEntered', () => schedulePrep(900));
     bus.on('classChanged', () => { PREP_KEY = null; schedulePrep(400); });
-    bus.on('roomEntered', () => { if (!LIVE || LIVE.over) schedulePrep(900); });
+    bus.on('roomEntered', () => { if (!liveCast()) schedulePrep(900); });
     // 각성 시전 (컷인 시작): 장비를 바꾼 뒤라 잔상이 낡았으면 컷인이 도는 동안(월드 정지) 한 장씩 굽는다
     bus.on('awakenCast', (e) => {
       const w = game?.world, p = w?.player;
@@ -415,6 +415,19 @@ function hook() {
       setTimeout(() => { try { prepPoses(w, p, 8); } catch (err) { console.warn('[awakenB] pose', err); } }, 0);
     });
   } catch (e) { console.warn('[awakenB] bus', e); }
+}
+/**
+ * 진행 중인 시전이 있는가. 방 이동·스테이지 이탈로 감독 개체가 end() 없이 버려졌으면 여기서 정리한다
+ * (그대로 두면 미리 굽기가 계속 막히고 캐시 슬롯도 붙잡힌다)
+ */
+function liveCast() {
+  const L = LIVE;
+  if (!L || L.over) return false;
+  const w = L.w;
+  if (L.main && game?.world === w && w?.entities?.includes(L.main)) return true;
+  if (!L.main && game?.world === w) return true;   // 시작 중 (run 전)
+  try { finish(L, L.o ?? {}); } catch (err) { report(err, 'stale'); }
+  return false;
 }
 // 부팅 뒤 한가할 때 풀을 만든다 (모듈 최상위에서는 가져온 값에 접근하지 않는다: 순환 import 규칙)
 if (typeof window !== 'undefined' && typeof setTimeout === 'function') {
@@ -589,12 +602,32 @@ function lit(L, x, y, r, col, i) { if (i > 0.01 && Number.isFinite(x) && Number.
 let SEQ = 0;
 const BRAN_TINT = { bran_guardian: '#a8c0ff', bran_crusader: '#fff0c0', bran_warlord: '#ffb070', bran_bloodrage: '#ff7a7a' };
 
-/** 입자 여유 (각성 최대치 700/450/250 의 75% 안에서, 품질 배율 적용 — 나머지는 한꺼번에 맞는 타격 불꽃·처치 파편·키트 몫) */
+/** 입자 여유 (각성 최대치 700/450/250 의 SHARE 안에서, 품질 배율 적용 — 나머지는 한꺼번에 맞는 타격 불꽃·처치 파편·키트 몫) */
+const SHARE = { high: 0.75, medium: 0.7, low: 0.55 };   // 이 파일 입자의 몫 (나머지는 적 전원을 한꺼번에 때릴 때의 타격 불꽃·처치 파편)
 function room(S, n) {
   const fx = S.w.fx;
   if (!fx?.list) return 0;
-  const cap = Math.min(QCAP[S.q] * 0.75, fx.max ?? 1400);
+  const cap = Math.min(QCAP[S.q] * SHARE[S.q], fx.max ?? 1400);
   return Math.max(0, Math.min(Math.round(n * S.fq), Math.floor(cap - fx.list.length)));
+}
+/**
+ * 마무리 직전: 앞 박자들이 남긴 오래된 연기·먼지·불꽃을 먼저 걷어 낸다 (각성 최대치의 k 까지).
+ * 마무리 일격은 적 전원의 타격 불꽃·처치 파편(이 파일이 세지 않는 입자)을 한꺼번에 만들므로 여유를 남겨 둔다.
+ * 번쩍임·임팩트 프레임이 덮는 순간이라 사라지는 것이 보이지 않는다. 데미지 숫자·글자·고리·스프라이트는 건드리지 않는다.
+ */
+const DROP = new Set(['smoke', 'flake', 'square', 'circle', 'spark', 'star', 'streak', 'soft', 'line']);
+function trimFx(S, k = 0.5) {
+  const list = S.w.fx?.list;
+  if (!Array.isArray(list)) return;
+  let over = list.length - Math.floor(QCAP[S.q] * k);
+  if (over <= 0) return;
+  let j = 0;
+  for (let i = 0; i < list.length; i++) {
+    const q = list[i];
+    if (over > 0 && DROP.has(q?.shape)) { over--; continue; }
+    list[j++] = q;
+  }
+  list.length = j;
 }
 function emitN(S, type, x, y, n, opts) {
   const k = room(S, n);
@@ -753,6 +786,7 @@ function run(S, o) {
     light(L) { if (S.lt == null) return; try { o.light?.(L, S); } catch { /* 조명 실패 무시 */ } },
     end() { finish(S, o); },
   });
+  S.o = o;
   S.main = S.w.add(ent);
   return S.main;
 }
@@ -939,6 +973,7 @@ function bran(p, w, v) {
     if (!fl) return;
     fl.hit = S.lt; S.pillarT = S.lt;
     const V = view(S), targets = foes(S, 30);
+    trimFx(S, 0.5);
     strike(S, view(S, 40), wFinal, { kb: [f * 300, -700] }, true);
     try { ULTFX.final?.(w, fl.x, fl.gy - 20, { color: S.col, accent: S.acc, tier: 2, classId: cls, charId: S.charId, ground: true, flourish: S.tier >= 2, targets }); } catch (err) { report(err, 'ultfx.final'); }
     sfx('awaken_boom'); sfx('land_heavy', { pitch: 0.6 });
@@ -1205,6 +1240,7 @@ function lia(p, w, v) {
     const list = foes(S, 30);
     let cx = p.cx, cy = p.cy - 20;
     if (list.length) { cx = 0; cy = 0; for (const e of list) { cx += e.cx; cy += e.cy; } cx /= list.length; cy /= list.length; }
+    trimFx(S, 0.5);
     strike(S, view(S, 40), wFinal, { crit: 100, element: 'dark', kb: [f * 200, -520] }, true);
     for (const e of list) { emitN(S, 'blood', e.cx, e.cy, 12, { speed: 380 }); emitN(S, 'bloodmist', e.cx, e.cy, 2, { speed: 40 }); }
     try { ULTFX.final?.(w, cx, cy, { color: RED, accent: S.acc, tier: 2, classId: cls, charId: S.charId, flourish: S.tier >= 2, targets: list, impactFg: RED, impactBg: '#000000', flashColor: RED }); } catch (err) { report(err, 'ultfx.final'); }
@@ -1424,6 +1460,7 @@ function azel(p, w, v) {
   at(S, 1.75, (S) => {   // 모든 초승달이 피의 비로 터진다 + 피의 흐름 (체력 20%)
     S.burst = S.lt;
     const list = foes(S, 30);
+    trimFx(S, 0.5);
     strike(S, view(S, 40), wFinal, { element: EL, kb: [f * 260, -640] }, true);
     const heal = (S.v.data?.heal ?? 0.2) + (S.t2?.heal ?? 0);
     if (heal > 0) S.v.heal?.(heal);

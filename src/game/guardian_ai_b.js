@@ -778,7 +778,7 @@ function drawMorsel(ctx, e) {
   ctx.fillStyle = '#2a1040'; ctx.strokeStyle = '#d080ff'; ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.arc(e.cx, e.cy, r, 0, TAU); ctx.fill(); ctx.stroke();
 }
-/** 적 탄 하나를 삼킨다: 탄은 조용히 사라지고 (onExpire 없음) 꿈 조각이 모모의 입으로 빨려 든다 */
+/** 적 탄 하나를 삼킨다: 탄은 조용히 사라지고 (onExpire 는 quietExpire 로 장부만 풀린다 — 터지지 않음) 꿈 조각이 모모의 입으로 빨려 든다 */
 function swallow(g, world, q, o = {}) {
   q.dead = true;
   quietExpire(world, q);

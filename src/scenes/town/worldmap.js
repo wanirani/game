@@ -534,13 +534,16 @@ export class WorldMapScene extends Scene {
     const lab = this.labels(L, page);
     // 말이 설 자리 (좁은 화면에서 빈 곳이 없으면 그 밑에 깔린 다른 이름표는 반쯤 가려 읽을 수 없으므로 그리지 않는다)
     const tsn = live && !this.reveal ? pg.nodes[sel] : null, ts = tsn ? this.tokenSpot(tsn, L, page) : null;
+    // 노드 탭 영역: 52 px, 휴대폰에서는 CSS 46 px 이상 (이웃 노드와 겹치면 여유가 붙지 않으므로 영역 자체가 §6.3 최소를 넘어야 한다;
+    //   겹친 곳을 누르면 nearestNode 가 가장 가까운 노드를 고른다)
+    const nh = live ? Math.max(26, Math.ceil(46 / Math.max(0.2, (this.game.cssScale || 1) * (this.game.uiK || 1)) / 2)) : 26;
     for (let i = 0; i < pg.nodes.length; i++) {
       const n = pg.nodes[i], box = lab.map.get(n.id);
       const under = ts && i !== sel && box && boxDist(box, ts.x, ts.y - 42) < 14;
       this.node(ctx, L, page, n, i === sel, under ? null : box);
       if (live) {
         const p = this.pos(n.stage.mapPos, L);
-        taps.add('node:' + i, { x: p.x - 26, y: p.y - 26, w: 52, h: 52 }, { kind: 'icon', owner: this, src: 'worldmap' });
+        taps.add('node:' + i, { x: p.x - nh, y: p.y - nh, w: nh * 2, h: nh * 2 }, { kind: 'icon', owner: this, src: 'worldmap' });
       }
     }
     // 고른 노드의 이름표는 맨 위에 (좁은 화면에서 평소엔 숨기는 이름표도 이때는 보인다)

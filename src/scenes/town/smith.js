@@ -24,6 +24,16 @@ const ENH_M = {
   compact: { s: 48, pad: 12, hdrGap: 14, lvH: 26, lvB: 11, lvS: [24, 26], rowH: 16, gap: 6, rateS: 22, rateH: 40, barY: 18, barH: 8, partsH: 16, costH: 28, costGap: 4 },
 };
 
+/** 강화 미리보기 '전 → 후'. 반올림하면 같아 보이는 작은 오름(예: 18% → 18% ▲0.3%)은 소수 한 자리로 보여 준다 */
+function statPair(k, a, b) {
+  let x = fmtStat(k, a).replace('+', ''), y = fmtStat(k, b).replace('+', '');
+  if (x === y && Math.abs((b ?? 0) - (a ?? 0)) > 0.05) {
+    const u = x.endsWith('%') ? '%' : '';
+    x = (Math.round((a ?? 0) * 10) / 10).toFixed(1) + u; y = (Math.round((b ?? 0) * 10) / 10).toFixed(1) + u;
+  }
+  return `${x} → ${y}`;
+}
+
 export class SmithScene extends ServiceScene {
   setup() {
     this.bgKey = 'bg/smith'; this.title = '하드윈의 대장간'; this.eng = 'HADWIN FORGE'; this.npcId = 'npc_hadwin';
@@ -260,7 +270,7 @@ export class SmithScene extends ServiceScene {
     y += M.lvH;
     for (const p of prev.slice(0, nStats)) {
       text(ctx, statName(p.stat), r.x + 22, y + 4, { size: 13, color: '#d8ccb8', maxWidth: r.w * 0.36 });
-      text(ctx, `${fmtStat(p.stat, p.from).replace('+', '')} → ${fmtStat(p.stat, p.to).replace('+', '')}`, r.x + r.w - 80, y + 4, { size: 13, weight: 800, family: FONT.num, color: '#fff', align: 'right' });
+      text(ctx, statPair(p.stat, p.from, p.to), r.x + r.w - 80, y + 4, { size: 13, weight: 800, family: FONT.num, color: '#fff', align: 'right' });
       text(ctx, `▲${fmtStat(p.stat, p.diff).replace('+', '')}`, r.x + r.w - 20, y + 4, { size: 12, weight: 800, color: COLORS.good, align: 'right' });
       y += M.rowH;
     }

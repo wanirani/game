@@ -152,10 +152,11 @@ function drawEgg(ctx, id, x, y, s, t, { ready = false, crack = 0, wob = 0 } = {}
   ctx.restore();
 }
 
-// 마구간 안쪽 배경 (크기·열림 여부가 바뀔 때만 다시 굽는다)
+// 마구간 안쪽 배경 (크기·열림 여부·칸 격자가 바뀔 때만 다시 굽는다).
+// 칸(반쪽 문) 격자: x0 에서 시작해 stall 간격 — 열린 마구간은 목록 칸 안에 칸 두 개가 들어오게 맞춘다 (보유 탈것의 머리 자리)
 const BG = { key: '', cv: null };
-function bakeInterior(vw, vh, closed) {
-  const key = `${Math.round(vw)}x${Math.round(vh)}:${closed ? 1 : 0}`;
+function bakeInterior(vw, vh, closed, x0 = 0, stall = Math.max(90, vw / 7)) {
+  const key = `${Math.round(vw)}x${Math.round(vh)}:${closed ? 1 : 0}:${Math.round(x0)}:${Math.round(stall)}`;
   if (BG.key === key && BG.cv) return BG.cv;
   const cv = BG.cv ?? document.createElement('canvas');
   cv.width = Math.max(1, Math.ceil(vw)); cv.height = Math.max(1, Math.ceil(vh));
@@ -181,8 +182,8 @@ function bakeInterior(vw, vh, closed) {
     c.beginPath(); c.moveTo(x + 8, vh * 0.2 + 16); c.lineTo(x + 50, vh * 0.2 - 30); c.stroke();
   }
   // 칸 (반쪽 문) — 아래쪽 띠
-  const sy = vh * 0.56 + 12, stall = Math.max(90, vw / 7);
-  for (let x = 0; x < vw; x += stall) {
+  const sy = vh * 0.56 + 12;
+  for (let x = x0 - Math.ceil(x0 / stall) * stall; x < vw; x += stall) {
     c.fillStyle = '#070304'; c.fillRect(x + 12, sy, stall - 24, vh * 0.14);
     const g = c.createLinearGradient(0, sy + vh * 0.14, 0, vh); g.addColorStop(0, '#4a2a1a'); g.addColorStop(1, '#1a0c06');
     c.fillStyle = g; c.fillRect(x + 8, sy + vh * 0.14, stall - 16, vh);
@@ -299,6 +300,8 @@ export class StableScene extends ServiceScene {
   // ── 갱신 ──
   update(dt) {
     const g = this.game;
+    // 금화가 모자랄 때의 초상화 흔들림(poor)은 좌우로 튀며 0.5초쯤에 멎는다 (공용 틀은 값을 되돌리지 않는다)
+    if (this.portraitShake) this.portraitShake = Math.abs(this.portraitShake) < 0.6 ? 0 : -this.portraitShake * Math.pow(0.02, Math.min(dt, 0.1));
     if (g.top === this && !this.closing) {
       if (this.closedFlow) {
         this.closedFlow = false;
@@ -361,7 +364,7 @@ export class StableScene extends ServiceScene {
     if (r.bond > 0) audio.sfx('bond_up', { vol: 0.6 });
     this.talk('tribute');
     const gain = [r.exp ? `경험치 +${fmt(r.exp)}` : '', r.bond ? `유대 +${r.bond}` : ''].filter(Boolean).join(' · ');
-    this.game.toast(`${josa(d.name, '이/가')} 공물을 ${r.bond ? '반겼다!' : '받았다'}${gain ? ` ${gain}` : ''}`, d?.color ?? '#ffd070');
+    this.game.toast(`${josa(d.name, '이/가')} 공물을 ${r.bond ? '반겼다!' : '받았다.'}${gain ? ` ${gain}` : ''}`, d?.color ?? '#ffd070');
     if (r.levels > 0) {
       const lv = CS.ownedEntry?.(st, id)?.lv;
       this.game.toast(`「${d.name}」 Lv ${lv}! 한층 더 강해졌다`, '#ffe070');
@@ -477,7 +480,8 @@ export class StableScene extends ServiceScene {
   // ── 그리기 ──
   renderAmbient(ctx, L) {
     const { vw, vh } = L;
-    const bg = bakeInterior(vw, vh, this.closed);
+    const grid = this.stallGrid(L);
+    const bg = bakeInterior(vw, vh, this.closed, grid.x0, grid.stall);
     ctx.drawImage(bg, 0, 0, vw, vh);
     const t = this.t;
     if (this.closed) return;
@@ -488,8 +492,6 @@ export class StableScene extends ServiceScene {
       glow(ctx, x, y, 170, '#ffb45a', 0.28 * k);
       glow(ctx, x, y, 34, '#ffe6a8', 0.6 * k);
     }
-    // 제단 쪽 푸른 빛 (오른쪽 끝)
-    glow(ctx, vw - 60, vh * 0.42, 160, '#9fd8ff', 0.18 + Math.sin(t * 1.3) * 0.04);
     ctx.restore();
     for (let i = 0; i < 3; i++) {
       const x = vw * (0.36 + i * 0.26), y = vh * 0.2 + 34;
@@ -497,21 +499,46 @@ export class StableScene extends ServiceScene {
       ctx.fillStyle = '#141014'; ctx.fillRect(x - 8, y - 13, 16, 4); ctx.fillRect(x - 7, y + 10, 14, 4);
       ctx.fillStyle = 'rgba(255,200,120,0.9)'; ctx.fillRect(x - 6, y - 9, 12, 19);
     }
-    // 칸마다 보유한 탈것 (반쪽 문 위로 머리) · 제단의 수호신 영혼
-    const st = this.state, sy = vh * 0.56 + 12 + vh * 0.14, stall = Math.max(90, vw / 7);
+    // 칸마다 보유한 탈것 (반쪽 문 위로 머리) · 그 앞을 떠다니는 수호신 영혼.
+    // 오른쪽은 상세 패널이 가리므로 목록 칸의 줄이 끝난 아래(구운 칸막이와 같은 자리)에 그린다
+    const { lr, rowsEnd } = this.listCol(L);
+    const st = this.state, sy = vh * 0.56 + 12 + vh * 0.14, { x0, stall } = grid, bottom = lr.y + lr.h;
+    if (rowsEnd > sy - 8) return;                                    // 목록이 칸을 덮는다
     let mounts = [], guards = [];
     try { mounts = CS.ownedIds?.(st, 'mount') ?? []; guards = CS.ownedIds?.(st, 'guardian') ?? []; } catch { /* 무시 */ }
     const s = clamp(vh / 300, 1.3, 1.9);
-    for (let i = 0; i < mounts.length; i++) {
-      const x = vw - stall * (i + 0.5) - 8;
-      if (x < L.pw) break;
-      drawStallHead(ctx, mounts[i], x - 8 * s, sy, s, t, i);
-      ctx.fillStyle = '#2a160c'; ctx.fillRect(x - stall / 2 + 8, sy - 2, stall - 16, 6);
+    ctx.save();
+    // 위쪽만 자른다 (줄 뒤로 비치지 않게). 왼쪽은 나중에 그리는 초상화가 페이드로 덮고, 오른쪽은 상세 패널이 덮는다
+    ctx.beginPath(); ctx.rect(0, rowsEnd + 4, lr.x + lr.w + 2, bottom - rowsEnd); ctx.clip();
+    if (rowsEnd + 4 < sy - 54 * s) {                                  // 머리가 통째로 보일 때만 (윗부분이 잘린 머리는 그리지 않는다)
+      for (let k = 0; k < Math.min(2, mounts.length); k++) {
+        const x = x0 + stall * (k + 0.5) - 8;                        // 구운 칸(가운데)과 맞춘다
+        if (x > lr.x + lr.w - 10) break;
+        drawStallHead(ctx, mounts[k], x - 8 * s, sy, s, t, k);
+        ctx.fillStyle = '#2a160c'; ctx.fillRect(x - stall / 2 + 8, sy - 2, stall - 16, 6);
+      }
     }
-    for (let i = 0; i < Math.min(5, guards.length); i++) {
-      const a = t * 0.4 + (i * TAU) / Math.min(5, guards.length);
-      drawSpiritWisp(ctx, guards[i], vw - 70 + Math.cos(a) * 44, vh * 0.42 + Math.sin(a) * 16, 1.2, t + i, 0.5 + 0.25 * Math.sin(a));
+    const n = Math.min(5, guards.length), wy = sy + Math.max(18, (bottom - sy) * 0.42);
+    for (let i = 0; i < n; i++) {
+      const a = t * 0.5 + i * 2.1;
+      const x = lr.x + lr.w * (i + 0.5) / n + Math.sin(a) * Math.min(26, lr.w / n / 3);
+      drawSpiritWisp(ctx, guards[i], x, wy + Math.sin(a * 1.7) * 7, 1.2, t + i, 0.55 + 0.2 * Math.sin(a * 1.3));
     }
+    ctx.restore();
+  }
+  /** 구운 칸 격자: 닫힌 마구간은 화면 기본 격자, 열리면 목록 칸 안에 칸 두 개 */
+  stallGrid(L) {
+    if (this.closed) return { x0: 0, stall: Math.max(90, L.vw / 7) };
+    const { lr } = this.listCol(L);
+    return { x0: Math.round(lr.x - 5), stall: Math.round(Math.max(90, (lr.w + 10) / 2)) };
+  }
+  /** 목록 칸 (UI px): 폭 lw · 줄 영역 lr · 줄이 끝나는 y (그 아래로는 마구간 안쪽이 보인다) */
+  listCol(L) {
+    const body = L.body, lw = Math.round(body.w * (L.compact ? 0.44 : 0.46));
+    const lr = { x: body.x + 10, y: body.y, w: lw - 10, h: body.h };
+    const rowH = this.list?.rowH ?? 62, n = this.entries?.length ?? 0;
+    const rowsEnd = clamp(lr.y + (n ? n * rowH - (this.list?.scroll ?? 0) : 84), lr.y, lr.y + lr.h);   // 빈 목록은 안내 문구 자리
+    return { lw, lr, rowsEnd };
   }
   renderPortrait(ctx, L) {
     if (this.closed) return;                                   // 닫힌 마구간: 그레타가 아직 없다
@@ -521,9 +548,9 @@ export class StableScene extends ServiceScene {
   renderBody(ctx, body, L) {
     if (this.closed || !this.list) return;
     const compact = !!L.compact;
-    const lw = Math.round(body.w * (compact ? 0.44 : 0.46));
-    const lr = { x: body.x + 10, y: body.y, w: lw - 10, h: body.h };
-    ctx.fillStyle = 'rgba(6,3,8,0.55)'; ctx.fillRect(body.x, body.y - 4, lw + 2, body.h + 8);
+    const { lw, lr, rowsEnd } = this.listCol(L);
+    // 목록 뒤만 어둡게 — 줄이 끝난 아래로는 마구간 칸(보유 탈것의 머리)과 수호신 영혼이 보인다 (renderAmbient)
+    ctx.fillStyle = 'rgba(6,3,8,0.55)'; ctx.fillRect(body.x, body.y - 4, lw + 2, rowsEnd - body.y + 8);
     this.list.draw(ctx, lr, (c, i, r, sel) => this.drawRow(c, r, sel, this.entries[i]), this.emptyText());
     const bh = compact ? 46 : 50;
     const dr = { x: body.x + lw + 10, y: body.y, w: body.w - lw - 10, h: body.h - bh - 8 };
