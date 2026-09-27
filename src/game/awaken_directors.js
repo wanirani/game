@@ -204,6 +204,8 @@ const victorSil = (vr) => (vr === 'phantom' ? '#9ab0ff' : vr === 'executioner' ?
 const victorTrace = (vr) => (vr === 'phantom' ? '#c8d4ff' : vr === 'hellfire' ? '#ffb060' : '#fff0b0');
 /** 데미지 숫자 색 (dmgColor): 대심문관 지속 피해 · 빅터 표식 폭발 · 처형 */
 const DOT_DMG = '#ff9a3a', DET_DMG = '#e8ecff', EXE_DMG = '#ff2030';
+/** 빅터 총구 섬광 색 (K.muzzle → fx.flash) */
+const MUZZLE = '#fff0b0';
 /** 2차 전직 변형 이름 (1차 전직이면 null — 감독의 D.T2c 와 같은 규칙) */
 const variantOf = (ch, classId) => (classId && T2[classId] && classId.startsWith(ch + '_') ? classId.slice(ch.length + 1) : null);
 /** 판정 문구 (hitfx 문구 스프라이트를 미리 굽는다: 처음 띄울 때 캔버스를 만들지 않게) */
@@ -248,6 +250,7 @@ function spriteSet(ch, classId) {
     bv(SIL); bh(SIL);
     beat.push(SIL);
     light.add('#ffd070').add(victorTrace(vr)).add(SIL);
+    soft.add(MUZZLE);   // K.muzzle 의 섬광 입자 색
     dmg.add(DET_DMG);
     if (vr === 'executioner') dmg.add(EXE_DMG);
   }
@@ -1137,7 +1140,7 @@ function victorDirector(p, w, v) {
     if (B.tg && alive(B.tg)) { B.x = B.tg.cx; B.y = B.tg.cy; }
     const ang = Math.atan2(B.y - g.y, B.x - g.x);
     stance(p, ww, cols === 2 ? (B.k % 4 < 2 ? 'shoot_double' : alt ? 'shoot_alt' : 'shoot') : alt ? 'shoot_alt' : 'shoot', 0.2, 0.01, 0.04);
-    K.muzzle(ww, p, g.x, g.y, ang, '#fff0b0', 1.5);
+    K.muzzle(ww, p, g.x, g.y, ang, MUZZLE, 1.5);
     const mz = ULTFX.sprite?.('muzzle');
     if (mz) ww.fx.sprite(mz, g.x + Math.cos(ang) * 50, g.y + Math.sin(ang) * 50, { size: 150, angle: ang, life: 0.1, s0: 0.6, s1: 1.1 });
     sfx('gun', { pitch: rand(0.78, 0.88), vol: 0.95 }); if (B.k % 2 === 0) sfx('shotgun', { vol: 0.35, pitch: 1.6 });
