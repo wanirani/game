@@ -291,16 +291,15 @@
   ],
   "extra": [
    {
-    "sheet": "victor/victor_phantom_qback",
-    "views": [
-     "-",
-     "ym135"
-    ]
-   },
-   {
     "sheet": "victor/victor_phantom_q3f",
     "views": [
      "y135"
+    ]
+   },
+   {
+    "sheet": "victor/victor_phantom_q3b",
+    "views": [
+     "ym135"
     ]
    }
   ],

@@ -47,6 +47,9 @@ export function castSkill(p, world, id, lv) {
 export function castUltimate(p, world) {
   if ((p.run.sp ?? 0) < 100 || world.cutscene) return false;
   if (p.dead || world.cleared || world.transitioning || world.inputLock || p.hurtT > 0) return false;
+  // 보스 등장 연출(보스의 'intro' 상태: 등장 장면이 닫힌 뒤에도 잠시 무적·화면 밖)이 끝나기 전에는 쓰지 않는다.
+  // 연출 중에는 보스가 멈추므로(cutscene) 그대로 쓰면 필살기 내내 무적인 보스에 SP 만 날린다 (레비아탄 1.2초 등)
+  if (world.boss && !world.boss.dead && world.boss.state === 'intro') return false;
   p.run.sp = 0;
   p.endMove?.();
   p.mount?.beforeCast?.(world, p, 'ult');   // [hook:cmp] 필살기는 탈것에서 내린 뒤 시전 (MASTER_PLAN §1.14)

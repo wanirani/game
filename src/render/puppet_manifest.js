@@ -3,7 +3,7 @@
 export const PUPPETS = {
  "azel": {
   "azel_bloodking": {
-   "h": "2396bc506534",
+   "h": "efd35ddf6719",
    "turn": true,
    "lv": [
     "hi",
@@ -12,7 +12,7 @@ export const PUPPETS = {
    ]
   },
   "azel_dawnbringer": {
-   "h": "435d9801c6c7",
+   "h": "6b37897e5df6",
    "turn": true,
    "lv": [
     "hi",
@@ -21,7 +21,7 @@ export const PUPPETS = {
    ]
   },
   "azel_dhampir": {
-   "h": "2c091d5dd05a",
+   "h": "750b1a729b34",
    "turn": true,
    "lv": [
     "hi",
@@ -30,7 +30,7 @@ export const PUPPETS = {
    ]
   },
   "azel_holyblade": {
-   "h": "d873e8599766",
+   "h": "5d924b61ca43",
    "turn": true,
    "lv": [
     "hi",
@@ -39,7 +39,7 @@ export const PUPPETS = {
    ]
   },
   "azel_nosferatu": {
-   "h": "8b5f7981447e",
+   "h": "94b90f1fc84b",
    "turn": true,
    "lv": [
     "hi",
@@ -48,7 +48,7 @@ export const PUPPETS = {
    ]
   },
   "azel_seraph": {
-   "h": "0dd08096f31a",
+   "h": "6288c1e1ba36",
    "turn": true,
    "lv": [
     "hi",
@@ -57,7 +57,7 @@ export const PUPPETS = {
    ]
   },
   "azel_vampire": {
-   "h": "24f2c92aab26",
+   "h": "31a32a0695a4",
    "turn": true,
    "lv": [
     "hi",

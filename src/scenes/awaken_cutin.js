@@ -66,24 +66,40 @@ function bakeScale(ctx) {
   return clamp(s, 1, 2);
 }
 
-// ── 한 번 굽는 공용 그림: 집중선·눈빛 섬광·왼쪽 어둠 ──
+// ── 집중선: 영웅에서 뻗는 64개의 가는 쐐기 (벡터; 모양은 한 번 정하고 매 프레임 회전만) ──
+// 예전에는 512² 스프라이트를 화면의 2.5배로 키워 회전해 그렸다 → 매 프레임 화면 전체를 회전 샘플링으로 다시 칠함
+// (소프트웨어 래스터에서 컷인 비용의 절반). 쐐기를 직접 칠하면 칠하는 넓이가 화면의 약 1/4 이고 샘플링이 없다.
+// 알파 4단계로 묶어 채우기는 프레임당 4번. 끝이 뾰족해 중심 쪽은 자연히 가늘어진다 (예전 '가운데 구멍' 대신)
+const RAYS = (() => {
+  const B = [[], [], [], []];
+  for (let i = 0; i < 64; i++) {
+    const al = rand(0.25, 0.9);
+    B[Math.min(3, Math.floor((al - 0.25) / 0.1625))].push({ a: (i / 64) * TAU + rand(-0.03, 0.03), w: rand(0.006, 0.02), r0: rand(0.3, 0.55) });
+  }
+  return B.map((list, k) => ({ list, al: 0.33 + k * 0.1625 }));
+})();
+function drawRays(ctx, R, alpha) {
+  if (!(alpha > 0.004)) return;
+  for (const b of RAYS) {
+    if (!b.list.length) continue;
+    ctx.beginPath();
+    for (const s of b.list) {
+      const r0 = s.r0 * R;
+      ctx.moveTo(Math.cos(s.a) * r0, Math.sin(s.a) * r0);
+      ctx.lineTo(Math.cos(s.a - s.w) * R, Math.sin(s.a - s.w) * R);
+      ctx.lineTo(Math.cos(s.a + s.w) * R, Math.sin(s.a + s.w) * R);
+      ctx.closePath();
+    }
+    ctx.fillStyle = `rgba(255,255,255,${(alpha * b.al).toFixed(3)})`;
+    ctx.fill();
+  }
+}
+
+// ── 한 번 굽는 공용 그림: 눈빛 섬광·왼쪽 어둠 ──
 let SPRITES = null;
 function sprites() {
   if (SPRITES || typeof document === 'undefined') return SPRITES;
   const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
-  // 집중선: 중심이 빈 64개의 가는 쐐기
-  const radial = mk(512, 512), rg = radial.getContext('2d');
-  rg.translate(256, 256);
-  for (let i = 0; i < 64; i++) {
-    const a = (i / 64) * TAU + rand(-0.03, 0.03), w = rand(0.006, 0.02), r0 = rand(70, 130);
-    rg.fillStyle = `rgba(255,255,255,${rand(0.25, 0.9).toFixed(2)})`;
-    rg.beginPath(); rg.moveTo(Math.cos(a) * r0, Math.sin(a) * r0);
-    rg.lineTo(Math.cos(a - w) * 256, Math.sin(a - w) * 256); rg.lineTo(Math.cos(a + w) * 256, Math.sin(a + w) * 256); rg.closePath(); rg.fill();
-  }
-  rg.globalCompositeOperation = 'destination-out';
-  const hole = rg.createRadialGradient(0, 0, 40, 0, 0, 170);
-  hole.addColorStop(0, 'rgba(0,0,0,1)'); hole.addColorStop(1, 'rgba(0,0,0,0)');
-  rg.fillStyle = hole; rg.fillRect(-256, -256, 512, 512);
   // 눈빛 섬광: 네 갈래 빛 + 둥근 광채
   const flare = mk(160, 160), fg = flare.getContext('2d');
   const glow = fg.createRadialGradient(80, 80, 0, 80, 80, 44);
@@ -102,7 +118,7 @@ function sprites() {
   const lg = dg.createLinearGradient(0, 0, 256, 0);
   lg.addColorStop(0, 'rgba(0,0,0,0.75)'); lg.addColorStop(0.55, 'rgba(0,0,0,0.42)'); lg.addColorStop(1, 'rgba(0,0,0,0)');
   dg.fillStyle = lg; dg.fillRect(0, 0, 256, 2);
-  SPRITES = { radial, flare, fade };
+  SPRITES = { flare, fade };
   return SPRITES;
 }
 
@@ -570,13 +586,12 @@ export class AwakenCutinScene extends Scene {
     if (dk > 0.003) { ctx.fillStyle = this.dimFill(dk); ctx.fillRect(0, 0, vw, vh); }
     // 2. 영웅 주변 집중선 — 화면을 거의 덮는 큰 합성이므로 low 에서는 그리지 않는다 (feel §8: low 전면 패스 1장 = 암전뿐;
     //    ULTFX 도 low 에서는 화면 층이 없다). 움직임은 띠 속 속도선이 맡는다
-    if (sp && this.q !== 'low' && t >= T.lines && t < T.exit + T.exitDur) {
+    if (this.q !== 'low' && t >= T.lines && t < T.exit + T.exitDur) {
       const hs = this.heroScreen();
       const k = clamp((t - T.lines) / 0.18, 0, 1) * (t > T.exit ? 1 - clamp((t - T.exit) / T.exitDur, 0, 1) : 1);
       const R = Math.max(vw, vh) * 1.25;
       ctx.save(); ctx.translate(hs.x, hs.y); ctx.rotate(t * (this.reduce ? 0.05 : 0.35));
-      ctx.globalAlpha = 0.6 * k;
-      ctx.drawImage(sp.radial, -R, -R, R * 2, R * 2);
+      drawRays(ctx, R, 0.55 * k);
       ctx.restore();
     }
     // 3. 영웅을 암전 위로 다시 그림 (+ 흰 테 번쩍임). 불투명한 띠가 영웅을 통째로 가리는 동안에는 건너뛴다 (퍼펫 다시 그리기가 컷인 비용의 대부분)
@@ -664,8 +679,8 @@ export class AwakenCutinScene extends Scene {
     ctx.save();
     ctx.translate(ox, oy);
     ctx.rotate(ANG);
-    // 띠 그림자
-    ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(-L / 2 + 10, -H / 2 + 12, L, H);
+    // 띠 그림자 (+10, +12 어긋난 사각형 중 불투명한 띠 밖으로 보이는 건 아래 12px 줄뿐 → 그 줄만 칠한다; 오른쪽 끝은 화면 밖)
+    ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(-L / 2 + 10, H / 2, L, 12);
     // ── 띠 안쪽 (잘라내기) ──
     ctx.save();
     ctx.beginPath(); ctx.rect(-L / 2, -H / 2, L, H); ctx.clip();

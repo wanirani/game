@@ -1111,13 +1111,19 @@
   "qback": "sera/sera_exorcist_qback",
   "viewsQ": [
    "-",
-   "ym45"
+   "-"
   ],
   "extra": [
    {
     "sheet": "sera/sera_exorcist_q3f",
     "views": [
      "y135"
+    ]
+   },
+   {
+    "sheet": "sera/sera_exorcist_q3b",
+    "views": [
+     "ym135"
     ]
    }
   ]

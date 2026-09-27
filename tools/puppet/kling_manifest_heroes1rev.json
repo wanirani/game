@@ -9,9 +9,65 @@
   "victor_phantom_side.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qVAoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo6YWdlbnRfdXBsb2FkLzE3OTA0OTc1MTcvcnBoZlJFd3htai92aWN0b3JfcGhhbnRvbV9zaWRlLmpwZw.origin?x-kcdn-pid=112372",
   "victor_phantom_back.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qVAoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo6YWdlbnRfdXBsb2FkLzE3OTA0OTc1MTkvSEc3U2R1WGZjVy92aWN0b3JfcGhhbnRvbV9iYWNrLmpwZw.origin?x-kcdn-pid=112372"
  },
- "entries": [],
+ "entries": [
+  {
+   "id": "sera_exorcist_q3b",
+   "tool": "image_to_image",
+   "model": "kling-image-v3_0_omni",
+   "images": 2,
+   "generationId": "AbstLuw1phmAeaGEbpKIwIKtCy00nA-cDYs83am0DizKTg9PUt9BZjimd_WMO1ntCMRlqHd0",
+   "inputs": [
+    "sera_exorcist_side.jpg (identity/outfit)",
+    "sera_exorcist_back.jpg (ym90 crop of turn5, back design)"
+   ],
+   "aspect_ratio": "3:4",
+   "img_resolution": "2k",
+   "prompt": "One single full-body THREE-QUARTER BACK view of the young woman in 图片1, wearing exactly the outfit of 图片1 (图片2 shows the same woman and outfit seen straight from behind): the white nun's veil with the gold headband falling down her back, long silver-white hair, an ivory-white robe-coat with gold trim edges and dark red lining, a white shoulder capelet, white sleeves with white-and-silver bracers, white gloves, dark navy leggings and dark brown knee boots. Camera angle: halfway between a back view and a left side view. Her whole body is turned about 45 degrees away from the viewer toward the LEFT edge of the picture: we see her back at an angle and a little of her left side, NOT a symmetric back view. Her head faces the left edge of the picture, so we see the back of her head and only a sliver of her cheek and the tip of her nose in lost profile on the left side; we cannot see her eyes. Her toes point toward the upper left. She stands in a relaxed neutral pose with arms hanging down at her sides, alone and centered, the same size as in 图片1. Plain light-grey studio background, the same anime painting style as 图片1, soft even lighting, complete from the top of the veil to the boots with margin, nothing cropped, no cape, nothing held in the hands, no text, no watermark.",
+   "src": "src/sera/sera_exorcist_q3b.webp",
+   "adopted": "a",
+   "note": "리뷰: 기존 3/4 뒤(qback 오른쪽)가 정면 뒷모습이라 −45/−90/−135 가 같은 그림이었다. a = 왼쪽으로 돌아선 뒤 3/4(눈 옆선이 살짝 보임, 걷는 보폭) → ym135 채택. b = 옆모습에 가까움(버림)."
+  },
+  {
+   "id": "sera_saint_q3b",
+   "tool": "image_to_image",
+   "model": "kling-image-v3_0_omni",
+   "images": 2,
+   "generationId": "Ae9lSWj_0hybBqLFtrHvTDSxVmG6FmzTP3saNXO4rcuSPbXWPx8TYhg-sDDYCEn2Mtlo9niN",
+   "inputs": [
+    "sera_saint_side.jpg",
+    "sera_saint_back.jpg (ym90 crop of turn5)"
+   ],
+   "aspect_ratio": "3:4",
+   "img_resolution": "2k",
+   "prompt": "(same template as sera_exorcist_q3b) … the long white veil with a tall ornate gold crown topped with a cross, long silver-white hair, layered white silk vestments with pale-gold embroidery and a softly glowing golden hem, a white shoulder capelet, gold filigree plates on the bodice, white gloves, white leggings and ornate white-and-gold boots … the crown is seen from behind at an angle … no cape, no wings …",
+   "src": "src/sera/sera_saint_q3b.webp",
+   "adopted": "b",
+   "note": "a = 왼쪽을 보는 옆모습(걷는 자세, 버림). b = 옆-뒤 사이(≈−150°, 베일이 등을 덮고 옆얼굴) → ym135 채택. 기존 qback(정면 뒷모습)은 버림."
+  },
+  {
+   "id": "victor_phantom_q3b",
+   "tool": "image_to_image",
+   "model": "kling-image-v3_0_omni",
+   "images": 2,
+   "generationId": "AU9PEyvTcNF49dB9WKbRms6peqlbDvYB17c6ZUS2Pvh2e346ItlRzVkr6_0XtnzNpW16hqWO",
+   "inputs": [
+    "victor_phantom_side.jpg",
+    "victor_phantom_back.jpg (ym90 crop of turn5)"
+   ],
+   "aspect_ratio": "3:4",
+   "img_resolution": "2k",
+   "prompt": "(same template, male) One single full-body THREE-QUARTER BACK view of the man in 图片1 … a black hood pulled up over his head, a dark slate-blue scarf, a sleek pitch-black long leather coat with glowing pale ghost-blue edges and glowing runes on the hem, a belt, black gloves, dark trousers and black boots … His head faces the left edge of the picture, so we see the back of the hood and only a sliver of his cheek …",
+   "src": "src/victor/victor_phantom_q3b.webp",
+   "adopted": "a",
+   "note": "a = 두건 뒤 3/4(왼쪽 옆뺨만) → ym135 채택. b = 앞 3/4(얼굴 정면, 버림)."
+  }
+ ],
  "images_used": {
-  "sera": 0,
-  "victor": 0
+  "sera": 4,
+  "victor": 2
+ },
+ "totals_with_production": {
+  "sera": 47,
+  "victor": 47
  }
 }

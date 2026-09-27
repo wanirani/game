@@ -9,7 +9,7 @@
 //   boss { cx, cy, t, st, state, phase, hp/stats.maxHp, flashT, hitPart, core, eyes[{x,y,open,look,dead,hp,laser,part}], shards[{a,r,s,z,rot}],
 //          shadows[{kind,x,y,t,life,warn,d,st,f}], mouth, third, glitch, exposed, dying, _implode, A{floor,x0,x1} }
 // 판정은 바꾸지 않는다: 핵 110×110 (얼굴에 맞춤) · 눈 40×40 (그림 지름 ≈ 40) · 접촉 100×110. 팔·촉수·왕관은 그림만.
-import { Drawer, Particles, Shards, halo, puff, rr, hash1, loadRig, pickVariant, quality, QUALITY, ledgesOver } from '../kit.js';
+import { Drawer, Particles, Shards, halo, puff, rr, hash1, loadRig, pickVariant, quality, QUALITY, ledgesOver, makeCanvas } from '../kit.js';
 
 const DIR = 'painted/bosses/b_chaos';
 const VIOLET = '#b060ff', VIOLET_L = '#e2c4ff', MAGENTA = '#ff3ad8', VOID = '#07030e';
@@ -130,24 +130,46 @@ function drawBoss(ctx, b, world, rig, st) {
 }
 
 // ───────────────────────── 공허 소용돌이 ─────────────────────────
+// 어두운 원판 + 보라 발광 + 나선 팔(퍼프 30개)을 한 번만 미리 합성한 스프라이트 → 프레임마다 회전·납작 변환 drawImage 한 번.
+// (예전: 큰 퍼프 2 + 큰 가산 발광 1 + 작은 가산 발광 30 = 데스크톱 CPU 래스터에서 벡터의 2배 이상 → 면적 약 58% 감소)
+// 원판은 원형이라 회전해도 같고, 발광은 원판 위에 미리 더해 둔다(원판 밖으로 번지는 부분만 가산 대신 반투명 보라로 보임).
+const VX_S = 512, VX_R0 = 240;
+const _vx = { full: null, dark: null };
+function vortexSprite(full) {
+  const key = full ? 'full' : 'dark';
+  if (_vx[key]) return _vx[key];
+  const cv = makeCanvas(VX_S, VX_S), c = cv.getContext('2d'), o = VX_S / 2, R = VX_R0;
+  c.globalAlpha = 0.9; c.drawImage(puff(VOID), o - R, o - R, R * 2, R * 2);
+  c.globalAlpha = 0.8; c.drawImage(puff('#12052a'), o - R * 0.7, o - R * 0.7, R * 1.4, R * 1.4);
+  if (full) {
+    c.globalCompositeOperation = 'lighter';
+    c.globalAlpha = 0.22; c.drawImage(puff(VIOLET), o - R * 1.05, o - R * 1.05, R * 2.1, R * 2.1);
+    for (let i = 0; i < 5; i++) for (let k = 0; k < 6; k++) {
+      const u = (k + 1) / 6, ang = i / 5 * TAU + u * 3, rr2 = 40 + u * 180, s = 16 + u * 10;
+      c.globalAlpha = 0.16 * (1 - u * 0.4);
+      c.drawImage(puff(i % 2 ? MAGENTA : VIOLET), o + Math.cos(ang) * rr2 - s, o + Math.sin(ang) * rr2 - s, s * 2, s * 2);
+    }
+  }
+  _vx[key] = cv;
+  // GPU 캔버스에서 매 프레임 다시 올리지 않도록 ImageBitmap 으로 굳힘 (준비될 때까지는 캔버스 그대로)
+  try { if (typeof createImageBitmap === 'function') createImageBitmap(cv).then((bm) => { _vx[key] = bm; }, () => {}); } catch { /* 캔버스 그대로 */ }
+  return cv;
+}
 function drawVortex(ctx, b, st, t, a) {
   if (a <= 0.01) return;
   const x = b.cx, y = b.cy, q = st.q, r = 240 + Math.sin(t * 1.3) * 8;
-  // 어두운 원판 (몸 뒤의 공허) — 퍼프 스프라이트 두 겹, 일반 합성
-  const ga = ctx.globalAlpha;
-  ctx.globalAlpha = ga * 0.9 * a; ctx.drawImage(puff(VOID), x - r, y - r * 0.9, r * 2, r * 1.8);
-  ctx.globalAlpha = ga * 0.8 * a; ctx.drawImage(puff('#12052a'), x - r * 0.7, y - r * 0.62, r * 1.4, r * 1.24);
-  ctx.globalAlpha = ga;
+  const ga = ctx.globalAlpha, sc = r / VX_R0;
+  // 원판 + 발광 + 나선 팔 (나선은 t·0.6 으로 돎, 세로 0.85 납작)
+  ctx.save();
+  ctx.translate(x, y); ctx.scale(sc, sc * 0.85); ctx.rotate(t * 0.6);
+  ctx.globalAlpha = ga * a;
+  ctx.drawImage(vortexSprite(q.halos), -VX_S / 2, -VX_S / 2);
+  ctx.restore();
   if (!q.halos) return;
-  halo(ctx, x, y, r * 1.05, VIOLET, 0.22 * a);
-  // 나선 팔 (가산 퍼프가 회전하며 흐름) + 반짝이는 별
-  const arms = q.name === 'high' ? 5 : 3, per = q.name === 'high' ? 6 : 4;
-  for (let i = 0; i < arms; i++) for (let k = 0; k < per; k++) {
-    const u = (k + 1) / per, ang = t * 0.6 + i / arms * TAU + u * 3, rr2 = 40 + u * 180;
-    halo(ctx, x + Math.cos(ang) * rr2, y + Math.sin(ang) * rr2 * 0.8, 16 + u * 10, i % 2 ? MAGENTA : VIOLET, 0.16 * a * (1 - u * 0.4));
-  }
+  // 반짝이는 별
   const op = ctx.globalCompositeOperation; ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = '#ffffff';
-  for (let i = 0; i < 24; i++) {
+  const nStar = q.name === 'high' ? 24 : 14;
+  for (let i = 0; i < nStar; i++) {
     const ang = hash1(i) * TAU + t * 0.1 * (hash1(i + 5) - 0.5), rr2 = 40 + hash1(i + 3) * 200;
     ctx.globalAlpha = ga * a * (0.3 + 0.7 * Math.abs(Math.sin(t * 2 + i)));
     ctx.fillRect(x + Math.cos(ang) * rr2, y + Math.sin(ang) * rr2 * 0.8, 1.8, 1.8);
@@ -353,7 +375,7 @@ function drawShadows(ctx, D, b, rig, st, t, F) {
       y = F - below; sx = p.k * (s.f || 1);
     }
     if (clip) { D.end(); D.save(); ctx.beginPath(); ctx.rect(x - 400, F - 800, 800, 800); ctx.clip(); }
-    if (q.halos) halo(ctx, x, y, hh * 0.7, VIOLET, 0.35 * a);
+    if (q.halos) halo(ctx, x, y, hh * 0.42, VIOLET, 0.4 * a);   // (0.7h 였음: 그림자 하나에 지름 ~360px 가산 → 면적 36% 로)
     D.part(p, p.v.base, 'c', x, y, rot, sx, sy, a * 0.88);
     D.end();
     if (clip) D.restore();
