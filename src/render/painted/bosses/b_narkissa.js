@@ -12,7 +12,7 @@
 //          hp/stats.maxHp, flashT, hitPart, A{floor,x0,x1} }
 //   분신(NarkTwin)은 drawPaintedDirect 로 같은 리그를 쓴다 (def.id 'nark_twin', pose·legs·facing·bottom·inT·fadeT·flashT).
 // 판정은 바꾸지 않는다 (얼굴 40×50 · 드레스 80×180 · 팔 40×120 ×2 · 돌진 250×90). 그림은 그보다 크다 (다리·후광·칼날 팔).
-import { Drawer, Particles, Shards, halo, rr, loadRig, pickVariant, quality, QUALITY } from '../kit.js';
+import { Drawer, Particles, Shards, halo, rr, loadRig, pickVariant, quality, QUALITY, makeCanvas } from '../kit.js';
 
 const DIR = 'painted/bosses/b_narkissa';
 const GL = '#dff4ff', GL_C = '#9fe8ff', GL_V = '#c8b0ff', GOLD = '#ffd86a', RED = '#ff3050', GEM = '#40ffb0', EYE_C = '#bff6ff';
@@ -40,7 +40,8 @@ const DEF = {
     upper: { flash: true, deep: 0.5, cracks: 1, holes: 0, crackMinLum: 45 }, fore: { flash: true, deep: 0.5, cracks: 1, holes: 0, crackMinLum: 45 },
     hand: { flash: true, deep: 0.5, cracks: 1, holes: 0, crackMinLum: 45 },
     thigh: { deep: 0.45, cracks: 1, holes: 0, crackMinLum: 45 }, shin: { deep: 0.45, cracks: 1, holes: 0, crackMinLum: 45 },
-    crown: { cracks: 2, holes: 1 }, blade: { noDmg: true }, hmirror: { noDmg: true }, halo2: { noDmg: true }, frame: { noDmg: true },
+    upper2: { deep: 0.55, deepOnly: true, cracks: 1, holes: 0, crackMinLum: 45 }, fore2: { deep: 0.55, deepOnly: true, cracks: 1, holes: 0, crackMinLum: 45 },
+    crown: { cracks: 2, holes: 1 }, blade: { noDmg: true }, blade2: { noDmg: true }, hmirror: { noDmg: true }, halo2: { noDmg: true }, frame: { noDmg: true },
   },
   prefix: { sh: { flash: true, cracks: 1, holes: 0 }, deb: { noDmg: true, outline: 1.2 } },
 };
@@ -528,28 +529,61 @@ function levelBurst(st, b, rig, lvl) {
 }
 
 // ───────────────────────── 로직이 쓰는 채색 소품 (rig.art) ─────────────────────────
+// 로직(c_narkissa.js)이 pArt(world)?.frame(...) 처럼 부르고, false 면 벡터로 그린다.
+/** 벽거울: 유리(절차적 어두운 청회색 + 사선 윤슬)를 틀 밑에 한 번 구워 둔다 */
+function bakeMirror(f) {
+  const im = f.v.base, c = makeCanvas(im.width, im.height), g = c.getContext('2d');
+  const [cx, cy] = f.gc, rx = f.gr[0] - cx, ry = f.gb[1] - cy;
+  g.save();
+  g.beginPath(); g.ellipse(cx, cy, rx + 3, ry + 3, 0, 0, TAU); g.clip();
+  const lg = g.createLinearGradient(cx - rx, cy - ry, cx + rx, cy + ry);
+  lg.addColorStop(0, '#46557a'); lg.addColorStop(0.45, '#161c30'); lg.addColorStop(0.7, '#10131f'); lg.addColorStop(1, '#2c3656');
+  g.fillStyle = lg; g.fillRect(cx - rx - 4, cy - ry - 4, rx * 2 + 8, ry * 2 + 8);
+  g.globalCompositeOperation = 'lighter';
+  g.fillStyle = 'rgba(200,230,255,0.10)';
+  g.beginPath(); g.moveTo(cx - rx, cy - ry * 0.1); g.lineTo(cx + rx * 0.3, cy - ry); g.lineTo(cx + rx * 0.7, cy - ry); g.lineTo(cx - rx, cy + ry * 0.45); g.closePath(); g.fill();
+  g.fillStyle = 'rgba(200,230,255,0.06)';
+  g.beginPath(); g.moveTo(cx - rx * 0.4, cy + ry); g.lineTo(cx + rx, cy - ry * 0.2); g.lineTo(cx + rx, cy + ry * 0.05); g.lineTo(cx - rx * 0.1, cy + ry); g.closePath(); g.fill();
+  g.restore();
+  g.drawImage(im, 0, 0);
+  return { c, cx, cy, rx, ry };
+}
 function makeArt(rig) {
   const R = rig.parts;
-  const frameK = (() => { const f = R.frame; if (!f?.glassR) return 1; return 25 / (f.glassR * f.k); })();   // 유리 반폭 25px 에 맞춤
+  let M = null;
   const GD = new Drawer();
+  const glass = ['deb2', 'deb4', 'deb9', 'deb10', 'deb5', 'deb7'].map((n) => R[n]).filter(Boolean);
+  const drawPart = (ctx, p, x, y, rot, kx, ky, alpha) => {
+    const im = p.v.base, px = p.c[0], py = p.c[1];
+    const ga = ctx.globalAlpha; if (alpha !== 1) ctx.globalAlpha = ga * alpha;
+    ctx.save(); ctx.translate(x, y); if (rot) ctx.rotate(rot); ctx.scale(kx, ky);
+    ctx.drawImage(im, -px, -py);
+    ctx.restore(); ctx.globalAlpha = ga;
+  };
   return {
-    /** 벽거울 틀 (x,y = 유리 가운데). 로직이 그 위에 금빛/섬광/균열을 덧그린다 */
+    /** 벽거울 틀 + 유리 (x,y = 유리 가운데, 유리 반지름 25×48 에 맞춤). 로직이 그 위에 윤슬/금빛/섬광/균열을 덧그린다 */
     frame(ctx, x, y, rot = 0, s = 1) {
-      const f = R.frame; if (!f) return false;
-      const im = f.v.base, k = f.k * frameK * s;
-      ctx.save(); ctx.translate(x, y); if (rot) ctx.rotate(rot);
-      ctx.drawImage(im, -f.c[0] * k, -f.c[1] * k, im.width * k, im.height * k);
+      const f = R.frame; if (!f?.gc || !f.gr || !f.gb) return false;
+      M ??= bakeMirror(f);
+      const kx = (25 / M.rx) * s, ky = (48 / M.ry) * s;
+      ctx.save(); ctx.translate(x, y); if (rot) ctx.rotate(rot); ctx.scale(kx, ky);
+      ctx.drawImage(M.c, -M.cx, -M.cy);
       ctx.restore();
       return true;
     },
-    /** 거울 조각 탄 (만화경 · 파편 비): i = 모양, len = 긴 변 (월드 px) */
+    /** 만화경 공전 파편 (벡터 orbit 34×14 자리): 유리 파편 부품을 len 길이로 */
     shard(ctx, x, y, rot, len, i = 0, alpha = 1) {
-      const L = rig.sh.length ? rig.sh : rig.debs; if (!L.length) return false;
-      const p = L[Math.abs(i | 0) % L.length], im = p.v.base, k = len / Math.max(1, Math.max(p.w, p.h) - p.pad * 2);
-      const ga = ctx.globalAlpha; ctx.globalAlpha = ga * alpha;
-      ctx.save(); ctx.translate(x, y); if (rot) ctx.rotate(rot);
-      ctx.drawImage(im, -p.c[0] * k, -p.c[1] * k, im.width * k, im.height * k);
-      ctx.restore(); ctx.globalAlpha = ga;
+      if (!glass.length) return false;
+      const p = glass[Math.abs(i | 0) % glass.length], k = len / Math.max(8, Math.max(p.w, p.h) - p.pad * 2);
+      drawPart(ctx, p, x, y, rot, k, k, alpha);
+      return true;
+    },
+    /** 떨어지는 거울 조각 (파편 비, 벡터 shardShape w×h 자리): 비명 얼굴이 비친 거울 패널, 뾰족한 끝이 아래 */
+    fallShard(ctx, x, y, w, h, alpha = 1, i = 0) {
+      const L = rig.sh; if (!L.length) return false;
+      const p = L[Math.abs(i | 0) % L.length], ih = Math.max(8, p.h - p.pad * 2), iw = Math.max(4, p.w - p.pad * 2);
+      const kx = Math.min(w / iw, h / ih) * 1.25, ky = h / ih * 1.1;
+      drawPart(ctx, p, x, y, 0, kx, ky, alpha);
       return true;
     },
     /** 돌진 잔상: 드레스·몸통·머리의 청백 발광 실루엣 (fx.ghost 콜백에서) */
