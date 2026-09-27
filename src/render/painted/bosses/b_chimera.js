@@ -8,7 +8,7 @@
 // 절차적 층: 영약 발광·기포 · 깨진 관의 녹색 불길 · 산성 침(ichor 방울→바닥 튐) · 산양 주문 룬 · 광폭화 녹색 화상(발광 실루엣) ·
 //   돌진 잔상 · 손상 단계 균열 발광(산성 녹색) · 사망 붕괴(관 파열 → 꼬리 절단 → 산양·사자 머리가 떨어져 나감 → 몸통 붕괴)
 // 규칙: 그리기 코드는 Math.random / world.fx.emit 을 쓰지 않는다 (kit.rr + 자체 Particles). 클립은 D.save/D.restore.
-import { Drawer, Particles, DamageState, Shards, halo, puff, rr, hash1, loadRig, pickVariant, quality, ledgesOver } from '../kit.js';
+import { Drawer, Particles, DamageState, Shards, halo, puff, rr, hash1, loadRig, pickVariant, quality, QUALITY, ledgesOver } from '../kit.js';
 
 const DIR = 'painted/bosses/b_chimera';
 const ACID = '#7cff5a', ACID_D = '#1f5a0c', ACID_HI = '#d8ffb0';
@@ -17,6 +17,9 @@ const S = 1.04;   // 로직 그림 배율 (a_chimera.js 의 S) — 로직 지역
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const lerp = (a, b, t) => a + (b - a) * t;
 const approach = (v, t, s) => (v < t ? Math.min(v + s, t) : Math.max(v - s, t));
+/** 실제 품질 등급: 설정 기본값 'auto' 면 품질 조절기가 정한 game.quality (settings.quality 만 보면 폰에서도 늘 'high'). 등급이 없으면 kit.quality */
+const tierOf = (game) => { const t = game?.quality ?? game?.tier ?? game?.settings?.quality; return QUALITY[t] ? t : quality(game).name; };
+const qualityOf = (game) => QUALITY[tierOf(game)];
 
 /** 굽기 옵션 (kit.loadRig def) */
 const DEF = {
@@ -40,7 +43,7 @@ export default {
   id: 'b_chimera', kind: 'boss', ownsDeathFade: true,
   async load(env) { return loadRig(DIR, DEF, env); },
   init(b, rig) {
-    const q = quality(b.world?.game);
+    const q = qualityOf(b.world?.game);
     return {
       D: new Drawer(), P: new Particles(q.particles), shards: new Shards(40), q,
       dmg: new DamageState(b.def?.phases ?? [0.6, 0.3]), lt: null, pf: 0, jolt: 0, fs: null, trail: [],
@@ -86,8 +89,7 @@ const _a = [0, 0], _b = [0, 0], _c = [0, 0], _d = [0, 0], _e = [0, 0];
 function drawChimera(ctx, b, world, rig, st) {
   const D = st.D, R = rig.parts;
   if (st.rig !== rig) st.rig = rig;
-  const qn = world.game?.settings?.quality ?? 'high';
-  if (st.q.name !== qn) st.q = quality(world.game);
+  if (st.q.name !== tierOf(world.game)) st.q = qualityOf(world.game);
   const q = st.q, P = st.P;
   const now = world.time ?? b.t;
   const dt = st.lt == null ? 1 / 60 : clamp(now - st.lt, 0, 0.05); st.lt = now;

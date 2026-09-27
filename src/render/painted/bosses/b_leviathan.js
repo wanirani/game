@@ -6,7 +6,7 @@
 //   sx/sy/sa/sr (마디), hx/hy/ha, jaw, mouthGlow, bio, enrage, phase, mode('neck'|'arc'), sub, tail{x,y,a,k,warn}, tailX,
 //   facing, state, flashT, dying, A.floor, ripples(paintBack), paintFoam/paintWarnEdge (수면 거품·가장자리 경고는 로직의 그리기 함수를 그대로 부른다)
 // 절차적 층: 생물발광 반점(bio 맥동, 3페이즈 분홍) · 수면 클립 · 물방울/침 · 입 속 수압포 충전 빛 · 분노 틴트(dmg2) · 사망(피·비늘 파편, 가라앉음)
-import { Drawer, Particles, DamageState, Shards, halo, puff, rr, loadRig, pickVariant, quality } from '../kit.js';
+import { Drawer, Particles, DamageState, Shards, halo, puff, rr, loadRig, pickVariant, quality, QUALITY } from '../kit.js';
 import { warnRect } from '../../../game/bosses/b_common.js';
 
 const DIR = 'painted/bosses/b_leviathan';
@@ -14,6 +14,9 @@ const BIO = '#5fe8ff', BIO2 = '#ff4f9a', WATER = '#6fd8ff';
 const PI = Math.PI, TAU = PI * 2;
 const RMAX = 45;   // 로직 마디 반지름 최대 (segR) ↔ 몸통 그림 띠의 반 높이
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+/** 실제 품질 등급: 설정 기본값 'auto' 면 품질 조절기가 정한 game.quality (settings.quality 만 보면 폰에서도 늘 'high'). 등급이 없으면 kit.quality */
+const tierOf = (game) => { const t = game?.quality ?? game?.tier ?? game?.settings?.quality; return QUALITY[t] ? t : quality(game).name; };
+const qualityOf = (game) => QUALITY[tierOf(game)];
 
 // 3페이즈 분노: 청록 발광(지느러미 막·반점) → 선홍/분홍, 나머지는 살짝 어둡게
 const RAGE = [
@@ -38,7 +41,7 @@ export default {
   id: 'b_leviathan', kind: 'boss', ownsDeathFade: true,
   async load(env) { return loadRig(DIR, DEF, env); },
   init(b, rig) {
-    const q = quality(b.world?.game);
+    const q = qualityOf(b.world?.game);
     return {
       D: new Drawer(), P: new Particles(q.particles), shards: new Shards(32), q,
       dmg: new DamageState(b.def?.phases ?? [0.6, 0.3]), lt: null, pf: 0, jolt: 0, hflip: null,
@@ -68,8 +71,7 @@ const _X = new Float32Array(40), _Y = new Float32Array(40), _R = new Float32Arra
 
 function drawLeviathan(ctx, b, world, rig, st) {
   const D = st.D, R = rig.parts;
-  const qn = world.game?.settings?.quality ?? 'high';
-  if (st.q.name !== qn) st.q = quality(world.game);
+  if (st.q.name !== tierOf(world.game)) st.q = qualityOf(world.game);
   const q = st.q, P = st.P, t = b.t;
   const now = world.time ?? b.t;
   const dt = st.lt == null ? 1 / 60 : clamp(now - st.lt, 0, 0.05); st.lt = now;

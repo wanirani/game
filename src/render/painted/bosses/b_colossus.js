@@ -5,13 +5,16 @@
 // 로직(src/game/bosses/b_colossus.js)의 값을 읽기만 한다: bx, F(A.floor), wy(), crouch, bob, stepLift[], arms[{side,fx,fy,fly,planted,glow,vx}],
 //   gearA, gearSpd, clockH/M, door, heat, power, look, pend{a,len,k,warn}, phase, state, flashT, dying, paintBack(경고 표시)
 // 모든 층은 바닥선에서 자른다 (무릎 꿇기·사망 때 가라앉음). 팔다리 원통은 좌우 반전하지 않는다 (왼쪽 위 조명 유지).
-import { Drawer, Particles, DamageState, Shards, halo, puff, rr, loadRig, pickVariant, quality, ik2, ledgesOver } from '../kit.js';
+import { Drawer, Particles, DamageState, Shards, halo, puff, rr, loadRig, pickVariant, quality, QUALITY, ik2, ledgesOver } from '../kit.js';
 
 const DIR = 'painted/bosses/b_colossus';
 const FURN = '#ff7a1a', FURN_L = '#ffd27a', EYE = '#ff3a2a';
 const PI = Math.PI, TAU = PI * 2;
 const L1 = 118, L2 = 124;           // 로직 팔 길이 (상완/전완)
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+/** 실제 품질 등급: 설정 기본값 'auto' 면 품질 조절기가 정한 game.quality (settings.quality 만 보면 폰에서도 늘 'high'). 등급이 없으면 kit.quality */
+const tierOf = (game) => { const t = game?.quality ?? game?.tier ?? game?.settings?.quality; return QUALITY[t] ? t : quality(game).name; };
+const qualityOf = (game) => QUALITY[tierOf(game)];
 
 const DEF = {
   glow: '#ff7a2a',
@@ -37,7 +40,7 @@ export default {
   id: 'b_colossus', kind: 'boss', ownsDeathFade: true,
   async load(env) { return loadRig(DIR, DEF, env); },
   init(b, rig) {
-    const q = quality(b.world?.game);
+    const q = qualityOf(b.world?.game);
     return {
       D: new Drawer(), P: new Particles(q.particles), shards: new Shards(48), q,
       dmg: new DamageState(b.def?.phases ?? [0.65, 0.3]), lt: null, pf: 0, jolt: 0,
@@ -66,8 +69,7 @@ const _a = [0, 0], _b = [0, 0], _c = [0, 0], _d = [0, 0], _e = [0, 0];
 
 function drawColossus(ctx, b, world, rig, st) {
   const D = st.D, R = rig.parts;
-  const qn = world.game?.settings?.quality ?? 'high';
-  if (st.q.name !== qn) st.q = quality(world.game);
+  if (st.q.name !== tierOf(world.game)) st.q = qualityOf(world.game);
   const q = st.q, P = st.P, t = b.t;
   const now = world.time ?? b.t;
   const dt = st.lt == null ? 1 / 60 : clamp(now - st.lt, 0, 0.05); st.lt = now;

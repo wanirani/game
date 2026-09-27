@@ -93,6 +93,9 @@ function limb(D, part, img, pA, pB, ax, ay, bx, by, m, kb, sLo = 0.85, sHi = 1.2
   D.part(part, img, pA, ax, ay, rot, m * s, s, a);
   return rot;
 }
+/** 피격 섬광은 방금 그린 부품에만 바로 덧그린다: 끝에서 한꺼번에 되풀이하면 뒤 부품(먼 다리·팔·견갑)의 흰 실루엣이
+ *  앞 부품(몸통·허리) 위에 가산으로 겹쳐 쌓여 몸통이 들쭉날쭉한 새하얀 판처럼 보인다 (요청 #128 과 같은 종류) */
+function fl(D, st) { if (D.log.length) D.flash(st.fa); }
 /** 심장 박동 (쿵-쿵 … 쉼) 0..1 */
 function beat(t, rate) { const u = (t * rate) % 1; return Math.max(0, Math.sin(u * TAU * 2) * (u < 0.5 ? 1 : 0)) ** 2; }
 /** 불꽃 혀 (가산 퍼프를 방향으로 늘여 겹침) */
@@ -160,6 +163,7 @@ function drawBoss(ctx, b, world, rig, st) {
   const up = st.dmg.update(ratio, dt);
   const lvl = dying ? 2 : Math.max(0, st.dmg.level);
   const hit = b.flashT > 0.06 && !(st.pf > 0.06); st.pf = b.flashT;
+  st.fa = b.flashT > 0 && !dying ? clamp(b.flashT / 0.1, 0, 1) * 0.6 : 0;   // 부품별 피격 섬광 세기 (fl)
   if (hit) st.jolt = 1;
   st.jolt = Math.max(0, st.jolt - dt * 7);
   const fx = b.facing >= 0 ? 1 : -1;
@@ -239,11 +243,13 @@ function drawAssembled(ctx, D, b, rig, st, dt, lvl, fx, hit, dying, dT) {
     const far = L.far, Sh = L.Sh, ks = k(Sh), Th = R.thigh;
     D.rec = rec;
     limb(D, Th, V(Th, far), Th.top, Th.bot, L.hx, L.hy, L.kx, L.ky, m, k(Th), 0.75, 1.25);
+    fl(D, st);
     // 정강이+사바톤: 무릎에서 발목 방향으로 (크기 고정, 발끝은 앞)
     const vx = (Sh.ankle[0] - Sh.knee[0]) * m, vy = Sh.ankle[1] - Sh.knee[1];
     const rot = Math.atan2(L.ay - L.ky, L.ax - L.kx) - Math.atan2(vy, vx);
     D.rec = rec;
     D.part(Sh, V(Sh, far), 'knee', L.kx, L.ky, rot, m * ks, ks, 1);
+    fl(D, st);
   };
   // ── 팔 ──
   const drawArm = (sh, hand, far) => {
@@ -252,8 +258,10 @@ function drawAssembled(ctx, D, b, rig, st, dt, lvl, fx, hit, dying, dT) {
     ik2(sh[0], sh[1], hand[0], hand[1], l1 * 1.12, l2 * 1.12, -fx, _e);   // 팔꿈치는 아래·뒤로
     D.rec = rec;
     limb(D, U, V(U, far), U.top, U.bot, sh[0], sh[1], _e.ex, _e.ey, m, ku, 0.8, 1.35);
+    fl(D, st);
     D.rec = rec;
     limb(D, Fi, V(Fi, far), Fi.wrist, Fi.hand, _e.ex, _e.ey, hand[0], hand[1], m, kf, 0.8, 1.35);
+    fl(D, st);
   };
   // ── 할버드 (로직 G · hA) + 휘두름 잔상 ──
   const Hb = R.halberd, kh = k(Hb);
@@ -273,16 +281,19 @@ function drawAssembled(ctx, D, b, rig, st, dt, lvl, fx, hit, dying, dT) {
   const Pd = R.pauldron, kp = k(Pd);
   D.rec = rec;
   D.part(Pd, V(Pd, true), 'sh', shF[0], shF[1] + 2, trot + fx * 0.15, m * kp * 0.92, kp * 0.92, 1);
+  fl(D, st);
   drawArm(shF, bh, true);
   // 앞 다리 · 허리 뒤 늘어진 힘줄 · 몸통 · 허리
   drawLeg(LF);
   D.rec = rec;
   D.part(T, V(T), 'hip', hipX, hipY, trot, m * kT, kT, 1);
+  fl(D, st);
   glowOver(ctx, D, T, lvl, 'hip', hipX, hipY, trot, m * kT, kT, 0.6 + heat * 0.4, st, t);
   guts(ctx, D, b, st, dt, hipX, hipY, fx, q, dying);
   const Wa = R.waist, kw = k(Wa);
   D.rec = rec;
   D.part(Wa, V(Wa), 'belt', hipX + fx * 3, hipY - 6, trot * 0.5 + Math.sin(t * 2) * 0.01, m * kw, kw * (1 + Math.sin(g0 * 2) * 0.01 * walk), 1);
+  fl(D, st);
   glowOver(ctx, D, Wa, lvl, 'belt', hipX + fx * 3, hipY - 6, trot * 0.5, m * kw, kw, 0.5 + heat * 0.4, st, t + 1);
   // 투구 (목 소켓 위, 약간 앞으로 숙임)
   const Hm = R.helm, khm = k(Hm) * 0.98;
@@ -291,6 +302,7 @@ function drawAssembled(ctx, D, b, rig, st, dt, lvl, fx, hit, dying, dT) {
   if (!d.helmGone) {
     D.rec = rec;
     D.part(Hm, V(Hm), 'neck', neck[0] + fx * 2, neck[1] + 10 + hbob, hrotL, m * khm, khm, 1);
+    fl(D, st);
     glowOver(ctx, D, Hm, lvl, 'neck', neck[0] + fx * 2, neck[1] + 10 + hbob, hrotL, m * khm, khm, 0.6 + heat * 0.4, st, t + 2);
   }
   const eye = D.pt(Hm.neck[0], Hm.neck[1], Hm.eye[0], Hm.eye[1], neck[0] + fx * 2, neck[1] + 10 + hbob, hrotL, m * khm, khm, st.pts.eye ??= [0, 0]);
@@ -309,11 +321,13 @@ function drawAssembled(ctx, D, b, rig, st, dt, lvl, fx, hit, dying, dT) {
   }
   D.rec = rec;
   D.part(Hb, V(Hb), 'g', g[0], g[1], hrot, fx * kh, kh, 1);
+  fl(D, st);
   glowOver(ctx, D, Hb, lvl, 'g', g[0], g[1], hrot, fx * kh, kh, 0.5 + heat * 0.5, st, t + 3);
   // 앞 팔 · 앞 견갑
   drawArm(shN, fh, false);
   D.rec = rec;
   D.part(Pd, V(Pd), 'sh', shN[0] + fx * 2, shN[1] + 4, trot - fx * 0.05 + Math.sin(t * 2.1) * 0.02, m * kp, kp, 1);
+  fl(D, st);
   glowOver(ctx, D, Pd, lvl, 'sh', shN[0] + fx * 2, shN[1] + 4, trot - fx * 0.05, m * kp, kp, 0.6 + heat * 0.4, st, t + 4);
   // 피격 섬광
   if (b.flashT > 0 && !dying) D.flash(clamp(b.flashT / 0.1, 0, 1) * 0.6);
@@ -420,6 +434,7 @@ function drawSplit(ctx, D, b, rig, st, dt, lvl, fx, hit, dying, dT) {
   if (q.halos) halo(ctx, c.hal.x, c.hal.y, 50, DFIRE, (0.3 + heat * 0.2) * pa);
   D.rec = rec;
   D.part(Hb, V(Hb), 'g', c.hal.x, c.hal.y, fx * c.hal.a, fx * kh, kh, pa);
+  fl(D, st);
   // 뒤 건틀릿 (발톱)
   gauntlet(ctx, D, b, st, Gc, V(Gc, true), c.gB, gRot(c.gB), fx, kg, rec, pa, dt, t, q);
   // 핵: 먼 견갑 → 심장(흉갑 밑으로 늘어져 뛴다) → 흉갑 → 가까운 견갑
@@ -427,15 +442,19 @@ function drawSplit(ctx, D, b, rig, st, dt, lvl, fx, hit, dying, dT) {
     const Pd = R.pauldron, kp = k(Pd);
     D.rec = rec;
     D.part(Pd, V(Pd, true), 'sh', shF[0], shF[1] + 2, trot + fx * 0.3, m * kp * 0.92, kp * 0.92, 1);
+    fl(D, st);
     const Ht = R.heart, kht = k(Ht) * (1.38 + bt * 0.1), hsq = 1 - bt * 0.05;
     D.rec = rec;
     D.part(Ht, V(Ht), 'top', hip[0] - fx * 4, hip[1] - 34, trot * 0.6 + Math.sin(t * 1.3) * 0.05, m * kht, kht * hsq, 1);
+    fl(D, st);
     glowOver(ctx, D, Ht, lvl, 'top', hip[0] - fx * 4, hip[1] - 34, trot * 0.6, m * kht, kht * hsq, 0.7, st, t + 5);
     D.rec = rec;
     D.part(T, V(T), 'core', cx, cy, trot, m * kT, kT, 1);
+    fl(D, st);
     glowOver(ctx, D, T, lvl, 'core', cx, cy, trot, m * kT, kT, 0.8 + heat * 0.3, st, t);
     D.rec = rec;
     D.part(Pd, V(Pd), 'sh', shN[0] + fx * 2, shN[1] + 4, trot - fx * 0.2, m * kp, kp, 1);
+    fl(D, st);
     D.end();
     D.pt(Ht.top[0], Ht.top[1], Ht.c[0], Ht.c[1], hip[0] - fx * 4, hip[1] - 34, trot * 0.6, m * kht, kht * hsq, _c);
     if (q.halos) halo(ctx, _c[0], _c[1] + 6, 30 + bt * 26, DFIRE, 0.3 + bt * 0.45, true);
@@ -449,6 +468,7 @@ function drawSplit(ctx, D, b, rig, st, dt, lvl, fx, hit, dying, dT) {
   if (q.halos) halo(ctx, c.helm.x, c.helm.y, 44, DFIRE, (0.25 + heat * 0.2) * pa);
   D.rec = rec;
   D.part(Hm, V(Hm), 'c', c.helm.x, c.helm.y, hRot, m * khm, khm, pa);
+  fl(D, st);
   glowOver(ctx, D, Hm, lvl, 'c', c.helm.x, c.helm.y, hRot, m * khm, khm, (0.6 + heat * 0.4) * pa, st, t + 2);
   const eye = D.pt(Hm.c[0], Hm.c[1], Hm.eye[0], Hm.eye[1], c.helm.x, c.helm.y, hRot, m * khm, khm, st.pts.eye ??= [0, 0]);
   // 앞 건틀릿 (칼날) — 로켓 주먹
@@ -485,6 +505,7 @@ function gauntlet(ctx, D, b, st, part, img, pc, rot, fx, kg, rec, a, dt, t, q) {
   }
   D.rec = rec;
   D.part(part, img, 'hand', pc.x, pc.y, rot, fx * kg, kg, a);
+  fl(D, st);
 }
 function splitBurst(st, rig, b) {
   const P = st.P, R = rig.parts, x = b.cx, y = b.cy;

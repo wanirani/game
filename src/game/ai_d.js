@@ -687,7 +687,7 @@ AI_D.treant = {
 /**
  * 역병 나방: 플레이어 머리 위 P.hover 에서 사인파로 날갯짓한다 (속도 120, 진폭 60, 3 rad/s).
  * P.dust 초마다 'dust' — 플레이어 쪽으로 살짝 내려앉으며 날개를 떨고(0.45초 경고) 몸 60 아래에 포자 구름 100×80 (3초).
- *   (구름이 머리 위에만 쌓이지 않도록 뿌리는 순간에는 플레이어 머리 높이까지 내려온다 — 구름 자리 = 뿌리는 순간 나방 자리 + 60)
+ *   (구름이 머리 위 허공에만 쌓이지 않도록 경고 0.45초 동안 플레이어 머리 위 80 까지 급강하한다 — 구름 가운데 = 뿌리는 순간 나방 자리 + 60)
  */
 AI_D.moth = {
   init(e) { e.ph = rand(0, TAU); e.dustT = (e.params.dust ?? 3) * rand(0.6, 1.0); e.aimK = 0; e.setState('fly'); },
@@ -698,8 +698,12 @@ AI_D.moth = {
     e.ph += dt * 3;
     if (e.state === 'dust') {
       e.setAnim('dust'); e.aimK = clamp(e.stateT / 0.45, 0, 1);
-      if (!e.fired) hover(e, e.dx0, e.dy0, 10, dt, e.speed * 3);
-      else { e.vx *= Math.pow(0.2, dt); e.vy += (-120 - e.vy) * Math.min(1, 3 * dt); }
+      if (!e.fired) {
+        // 뿌릴 자리로 빠르게 내려앉는다 (0.45초 안에 도착: 이 급강하가 곧 예비동작)
+        const k = Math.min(1, 12 * dt);
+        e.vx += (clamp((e.dx0 - e.cx) * 8, -420, 420) - e.vx) * k;
+        e.vy += (clamp((e.dy0 - e.cy) * 8, -420, 420) - e.vy) * k;
+      } else { e.vx *= Math.pow(0.2, dt); e.vy += (-120 - e.vy) * Math.min(1, 3 * dt); }
       if (Math.random() < 0.5 * qual(world)) world.fx?.emit('magic', e.cx + rand(-22, 22), e.cy + rand(0, 16), { color: '#c8ff6a', speed: 30 });
       if (e.stateT >= 0.45 && !e.fired) {
         e.fired = true;
@@ -714,9 +718,9 @@ AI_D.moth = {
     e.vy += Math.cos(e.ph) * 60 * dt * 3;
     if (Math.abs(e.vx) > 10) e.facing = Math.sign(e.vx);
     if (e.dustT <= 0 && Math.abs(p.cx - e.cx) < 90 && e.distToPlayer() < 360) {   // 머리 위에 왔을 때만 뿌린다
-      // 뿌릴 자리: 플레이어 머리 위 (구름 가운데가 플레이어 가슴께에 오도록)
-      e.dx0 = p.cx; e.dy0 = Math.min(e.cy + 60, p.cy - 90);
-      if (solidAt(world, e.dx0, e.dy0)) { e.dx0 = e.cx; e.dy0 = e.cy; }
+      // 뿌릴 자리: 플레이어 머리 위 80 (구름 가운데 = 나방 + 60 = 플레이어 가슴께). 가는 길이 막혀 있으면 제자리에서 뿌린다
+      e.dx0 = p.cx; e.dy0 = p.cy - 80;
+      if (solidAt(world, e.dx0, e.dy0) || solidAt(world, (e.cx + e.dx0) / 2, (e.cy + e.dy0) / 2)) { e.dx0 = e.cx; e.dy0 = e.cy; }
       e.setState('dust'); e.fired = false; e.aimK = 0; e.dustT = P.dust ?? 3;   // 뿌리기 시작부터 다음 뿌리기까지 P.dust 초
       audio.sfx('bat', { vol: 0.25, pitch: 1.8 });
     }

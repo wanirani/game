@@ -1141,7 +1141,7 @@ export class BossC extends BossB {
     this.floorRow = P.floorRow ?? null;
     this.standIns = true;
     this.arenaReset = null;
-    this.formPhase = 0; this.scriptedPhase = 0;
+    this.formPhase = 0; this.scriptedPhase = 0; this.afterPhase = 0;
     this._tr = null; this.forced = [];
     this.idleWait = 1.2;
     this._pDead = false; this._deathDone = false;
@@ -1181,6 +1181,10 @@ export class BossC extends BossB {
   // ── 기믹 ──
   gim(kind, opts) { return bossGimmick(this, kind, opts); }
 
+  // ── 그리기 ──
+  /** hidden (거울 속으로 사라짐 등) 이면 그리지 않는다: 채색 대리 개체(registry)와 같은 규칙을 벡터 대체 그림에도 */
+  draw(ctx, world) { if (this.hidden) return; super.draw(ctx, world); }
+
   // ── 갱신 ──
   update(dt, world) {
     this.watchRespawn(world);
@@ -1207,7 +1211,7 @@ export class BossC extends BossB {
   }
   /** 싸움을 처음 상태로: 페이즈 0, 형태·경기장·대사 대기열 되돌리기, onReset, idle */
   resetFight(world = this.world) {
-    this.phase = 0; this.formPhase = 0; this.scriptedPhase = 0; this._tr = null;
+    this.phase = 0; this.formPhase = 0; this.scriptedPhase = 0; this.afterPhase = 0; this._tr = null;
     this.clearJobs(); this.invuln = false; this.harmless = false; this.telegraph = false; this.alpha = 1; this.hidden = false;
     this.forced.length = 0; this.lastAtk = null;
     if (this.def0) this.def = this.def0;
@@ -1219,7 +1223,7 @@ export class BossC extends BossB {
   /** 쓰러질 때 한 번: 대사 대기열·소환수·어둠/색조 정리 (대역 기믹은 스스로 원위치 뒤 사라진다) */
   cleanupOnDeath(world) {
     cancelPhaseScripts(this);
-    this._tr = null; this.forced.length = 0;
+    this._tr = null; this.forced.length = 0; this.hidden = false;   // 숨은 채 쓰러져도 사망 연출은 보이게
     clearMinions(this, { fx: true });
     clearMood(world, this, { soft: true });
   }
@@ -1256,11 +1260,7 @@ export class BossC extends BossB {
     if (tr) {
       // 전환 도중에 끊으면 skipTransition 과 같은 규칙: 형태는 바로, 대사는 대기열로, 그 페이즈의 강제 패턴·afterTransition 도 잃지 않게
       this.applyPhasesTo(this.phase, this.world); this.requestScriptsTo(this.phase); this._tr = null;
-      if (tr.n === this.phase) {
-        const f = this.transitionOf(this.phase).force;
-        if (f) this.forceNext(f);
-        safe('afterTransition', () => this.afterTransition?.(this.phase, this.world));
-      }
+      this.afterPhasesTo(this.phase, this.world);
     }
     this.clearJobs();
     this.telegraph = false; this.invuln = false; this.harmless = false; this.alpha = 1; this.hidden = false;
@@ -1306,29 +1306,34 @@ export class BossC extends BossB {
     for (let k = this.scriptedPhase + 1; k <= n; k++) { const s = this.transitionOf(k).script; if (s) phaseScript(this, s); }
     this.scriptedPhase = Math.max(this.scriptedPhase, n);
   }
+  /**
+   * 페이즈 1..n 의 전환 뒤처리를 아직 안 한 것만 (페이즈마다 싸움당 한 번 — resetFight 가 되돌린다):
+   * afterTransition(k) 훅, 그리고 지금 페이즈의 강제 패턴(falseDawn · collapse). 한 방에 페이즈를 둘 넘겨도 중간 페이즈의
+   * afterTransition 을 잃지 않고, 지난 전환을 다시 보여 줄 때(debugAct) 나 debugAct(전환) 로 들어갈 때 두 번 불리지 않는다
+   */
+  afterPhasesTo(n, world = this.world) {
+    for (let k = this.afterPhase + 1; k <= n; k++) {
+      this.afterPhase = k;
+      const f = k === this.phase ? this.transitionOf(k).force : null;
+      if (f) this.forceNext(f);
+      safe('afterTransition', () => this.afterTransition?.(k, world));
+    }
+  }
   endTransition(world = this.world) {
-    const n = this._tr?.n ?? this.phase;
     this._tr = null;
     this.applyPhasesTo(this.phase, world);
     this.invuln = false; this.harmless = false;
-    const f = n === this.phase ? this.transitionOf(n).force : null;   // 지난 전환을 다시 보여 줄 때(debugAct)는 강제하지 않는다
-    if (f) this.forceNext(f);
-    safe('afterTransition', () => this.afterTransition?.(n, world));
+    this.afterPhasesTo(this.phase, world);
     this.done(0.5);
   }
   /** BossB.debugPhase 가 부른다: 전환 연출 없이 형태를 적용하고, 대사는 대기열로 */
   skipTransition() {
-    const tr = this._tr, fresh = !!tr && tr.n === this.phase;   // 이번 debugPhase 로 들어온 전환 (onPhase → enterTransition)
     // 페이즈가 그대로면(이미 그 페이즈) enterTransition 이 불리지 않았다: 진행 중 패턴의 몸 상태를 여기서 되돌린다
-    if (!tr) { this.clearJobs(); this.alpha = 1; this.hidden = false; this.onCancel?.(this.world); }
+    if (!this._tr) { this.clearJobs(); this.alpha = 1; this.hidden = false; this.onCancel?.(this.world); }
     this.applyPhasesTo(this.phase, this.world);
     this.requestScriptsTo(this.phase);
     this._tr = null; this.invuln = false; this.harmless = false; this.telegraph = false;
-    if (fresh) {   // 같은 페이즈로 다시 debugPhase 해도 강제 패턴(falseDawn·collapse)·afterTransition 은 한 번뿐
-      const f = this.transitionOf(this.phase).force;
-      if (f) this.forceNext(f);
-      safe('afterTransition', () => this.afterTransition?.(this.phase, this.world));
-    }
+    this.afterPhasesTo(this.phase, this.world);   // 같은 페이즈로 다시 debugPhase 해도 강제 패턴(falseDawn·collapse)·afterTransition 은 한 번뿐
     this.done(0.4);
   }
 

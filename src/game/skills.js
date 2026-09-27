@@ -146,6 +146,7 @@ function ghostOf(p, cx, bottom, over = {}) {
   return Object.assign(s, over);
 }
 function afterimage(w, p, tint, life = 0.24) {
+  if (p.mount?.riding && typeof p.mount.ghost === 'function') { p.mount.ghost(w, p, tint); return; }   // 탑승 중: 탈것+기수 잔상 (CMP-MOUNT; 저품질 생략은 mount.ghost 가 한다)
   const s = p.snapshot();
   w.fx.ghost((ctx, a) => drawHero(ctx, s, w, { alpha: a, tint }), life);
 }

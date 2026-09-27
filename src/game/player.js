@@ -747,11 +747,13 @@ export class Player extends Entity {
     world.fx.ghost((ctx, a) => drawHero(ctx, snap, world, { alpha: a, tint: color }), 0.22);
   }
   snapshot() {
+    const rv = this.mount?.riding ? this.mount.riderView?.(this)?.ride : null;   // [hook:cmp] 탑승 중 스킬 잔상은 안장에 앉은 기수로
     return {
       x: this.x, y: this.y, w: this.w, h: this.h, cx: this.cx, bottom: this.bottom, facing: this.facing,
       anim: this.anim, animT: this.animT, move: this.move, moveT: this.moveT, look: this.look, ch: this.ch,
       vx: this.vx, vy: this.vy, onGround: this.onGround, rig: null, t: this.t, stats: this.stats, snapshot: true,
       gaitPh: this.gaitPh, gait: this.gait, feel: this.feel ? { sq: this.feel.sq } : null,   // [hook:feel] 걸음 위상·찌그러짐
+      ride: rv ? { ...rv } : null,   // [hook:cmp]
     };
   }
 
