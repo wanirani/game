@@ -240,6 +240,26 @@ function bakeTitle(caption, str, vw, S, a) {
   return { c, S, w: W, h: Hh, base };
 }
 
+/** 초상 대체용: 초상(2:3)을 한 번 그려 네 가장자리를 투명하게 녹인다 (띠 안에서 네모 테두리가 보이지 않게) */
+function featherPortrait(img) {
+  const iw = img?.naturalWidth || img?.width || 0, ih = img?.naturalHeight || img?.height || 0;
+  if (!(iw > 8 && ih > 8)) return null;
+  const h = 420, w = Math.max(8, Math.round(h * iw / ih));
+  const c = pooled('fallback', w, h);
+  if (!c) return null;
+  const g = c.getContext('2d');
+  try { g.drawImage(img, 0, 0, w, h); } catch { return null; }
+  g.globalCompositeOperation = 'destination-in';
+  const gx = g.createLinearGradient(0, 0, w, 0);
+  gx.addColorStop(0, 'rgba(0,0,0,0)'); gx.addColorStop(0.3, 'rgba(0,0,0,1)'); gx.addColorStop(0.78, 'rgba(0,0,0,1)'); gx.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = gx; g.fillRect(0, 0, w, h);
+  const gy = g.createLinearGradient(0, 0, 0, h);
+  gy.addColorStop(0, 'rgba(0,0,0,0)'); gy.addColorStop(0.12, 'rgba(0,0,0,1)'); gy.addColorStop(0.62, 'rgba(0,0,0,1)'); gy.addColorStop(0.9, 'rgba(0,0,0,0)');
+  g.fillStyle = gy; g.fillRect(0, 0, w, h);
+  g.globalCompositeOperation = 'source-over';
+  return { c, w, h };
+}
+
 /** 한 영웅의 글자 굽기 묶음 (띠 폭에 맞춘 크기) */
 function bakeText(a, vw, S, tier, charId, classId) {
   const zoneW = vw * 0.47;
@@ -614,24 +634,33 @@ export class AwakenCutinScene extends Scene {
     let eyeX = null, eyeY = null;
     if (t >= T.img) {
       ctx.globalAlpha = clamp((t - T.img) / 0.06, 0, 1);
-      if (img) {
+      if (img && !this.fallback) {
         const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
-        let dw, dh;
-        if (!this.fallback) { dw = vw * 1.15 * (1 + 0.03 * imgK); dh = dw * ih / iw; } else { dh = H * 1.45; dw = dh * iw / ih; }
+        const dw = vw * 1.15 * (1 + 0.03 * imgK), dh = dw * ih / iw;
         const fx = this.face[0], fy = this.face[1];
-        const left = vw * 0.66 - fx * dw + ix - vw / 2, top = (this.fallback ? -H * 0.06 : 0) - fy * dh;
+        const left = vw * 0.66 - fx * dw + ix - vw / 2, top = -fy * dh;
         ctx.drawImage(img, left, top, dw, dh);
-        if (this.fallback && sprites()) {   // 초상은 좁으니 오른쪽 끝도 어둡게 녹인다
-          ctx.save(); ctx.translate(left + dw, 0); ctx.scale(-1, 1);
-          ctx.drawImage(sprites().fade, 0, -vh, dw * 0.3, vh * 2);
-          ctx.restore();
-        }
         // 왼쪽 45% 어둠 (글자 자리)
         const sp = sprites();
         if (sp) {
           ctx.drawImage(sp.fade, left, -vh, dw * 0.45, vh * 2);
           if (left > -L / 2) { ctx.fillStyle = 'rgba(0,0,0,0.75)'; ctx.fillRect(-L / 2 - 50, -vh, left + L / 2 + 51, vh * 2); }
         }
+        eyeX = left + this.eye[0] * dw; eyeY = top + this.eye[1] * dh;
+      } else if (img && this.fb) {
+        // 초상 대체 (feel §6.6): 가장자리를 녹인 초상을 띠 높이 0.9·H 이상으로, 얼굴을 같은 자리(0.66·vw)에.
+        // 뒤에는 같은 그림을 크게 키운 영웅 색 잔상 → 좁은 초상도 띠를 가득 채운 연출로 보인다
+        const fb = this.fb, dh = H * 1.32 * (1 + 0.03 * imgK), dw = dh * fb.w / fb.h;
+        const fx = this.face[0], fy = this.face[1];
+        const left = vw * 0.66 - fx * dw + ix - vw / 2, top = -H * 0.04 - fy * dh;
+        const al = ctx.globalAlpha;
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = al * 0.2;
+        const ew = dw * 1.9, eh = dh * 1.9;
+        ctx.drawImage(fb.c, left + dw * 0.5 - ew * 0.62 - vw * 0.03 * imgK, -eh * 0.36, ew, eh);
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = al;
+        ctx.drawImage(fb.c, left, top, dw, dh);
         eyeX = left + this.eye[0] * dw; eyeY = top + this.eye[1] * dh;
       } else {
         // 그림이 전혀 없을 때: 영웅 색 실루엣 광채 (예외 없이)

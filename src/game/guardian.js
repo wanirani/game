@@ -299,8 +299,9 @@ export class Guardian extends Entity {
     // 앉기 (올빼미 어깨·요정 머리 위): 플레이어가 3초 가만히 서 있고 싸움이 없을 때
     if (this.perched) {
       const riding = !!p.mount?.riding;
-      if (this.def.perch === 'head') { x = p.cx - (p.facing || 1) * 2; y = p.y + 4; }
-      else { x = p.cx - (p.facing || 1) * 6; y = riding ? p.y + 10 : p.bottom - p.h * 0.78; }
+      // 영웅은 판정보다 약 1.14배 크게 그려진다 (render/hero.js HERO_DRAW_SCALE): 요정은 그려진 머리 위, 올빼미는 뒤쪽 어깨 (얼굴을 가리지 않게)
+      if (this.def.perch === 'head') { x = p.cx - (p.facing || 1) * 2; y = riding ? p.y + 2 : p.bottom - p.h * 1.12; }
+      else { x = p.cx - (p.facing || 1) * 16; y = riding ? p.y + 10 : p.bottom - p.h * 0.78; }
     }
     return { x, y };
   }
@@ -1079,20 +1080,49 @@ export function drawPlaceholder(ctx, g, world) {
     for (let i = -2; i <= 2; i++) { ctx.beginPath(); ctx.moveTo(i * 3, cy + h * 0.1); ctx.quadraticCurveTo(i * 5 + Math.sin(t * 5 + i) * 5, cy + h * 0.35, i * 4, cy + h * 0.55); ctx.stroke(); }
     ctx.globalAlpha /= 0.8;
   }
-  // 몸통
-  const gr = ctx.createRadialGradient(-w * 0.1, cy - h * 0.15, 1, 0, cy, Math.max(w, h) * 0.55);
-  gr.addColorStop(0, pal[4] ?? '#fff'); gr.addColorStop(0.45, pal[0]); gr.addColorStop(1, pal[1]);
+  // 몸 뒤쪽 윤곽 (꼬리 · 거울 조각)
+  if (id === 'gd_imp' || id === 'gd_whelp') {
+    ctx.strokeStyle = pal[1]; ctx.lineWidth = id === 'gd_imp' ? 1.6 : 3;
+    const sw = Math.sin(t * 4 + g.seed) * 3;
+    ctx.beginPath(); ctx.moveTo(-w * 0.2, cy + h * 0.2); ctx.quadraticCurveTo(-w * 0.55, cy + h * 0.45 + sw, -w * 0.62, cy + h * 0.1 + sw); ctx.stroke();
+    if (id === 'gd_imp') { ctx.fillStyle = pal[2]; ctx.beginPath(); ctx.moveTo(-w * 0.62, cy + h * 0.02 + sw); ctx.lineTo(-w * 0.72, cy + h * 0.16 + sw); ctx.lineTo(-w * 0.52, cy + h * 0.14 + sw); ctx.fill(); }
+  }
+  // 몸통 (하이라이트는 작게: 안구처럼 보이지 않게)
+  const gr = ctx.createRadialGradient(-w * 0.12, cy - h * 0.2, 0.5, 0, cy, Math.max(w, h) * 0.55);
+  gr.addColorStop(0, pal[4] ?? '#fff'); gr.addColorStop(0.2, pal[0]); gr.addColorStop(1, pal[1]);
   ctx.fillStyle = gr;
   ctx.beginPath();
   if (id === 'gd_momo') ctx.ellipse(0, cy + h * 0.05, w * 0.48, h * 0.4, 0, 0, TAU);
   else if (id === 'gd_reaper') { ctx.moveTo(0, cy - h * 0.5); ctx.quadraticCurveTo(w * 0.5, cy - h * 0.3, w * 0.35, cy + h * 0.45); ctx.lineTo(-w * 0.4, cy + h * 0.45); ctx.quadraticCurveTo(-w * 0.5, cy - h * 0.3, 0, cy - h * 0.5); }
   else ctx.ellipse(0, cy, w * 0.34, h * 0.4, 0, 0, TAU);
   ctx.fill();
-  ctx.strokeStyle = 'rgba(10,6,8,0.7)'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.strokeStyle = id === 'gd_reaper' ? pal[3] : 'rgba(10,6,8,0.75)'; ctx.lineWidth = 1.4; ctx.stroke();
   // 특징
   if (id === 'gd_imp') { ctx.fillStyle = pal[2]; ctx.beginPath(); ctx.moveTo(-w * 0.2, cy - h * 0.34); ctx.lineTo(-w * 0.26, cy - h * 0.6); ctx.lineTo(-w * 0.06, cy - h * 0.38); ctx.moveTo(w * 0.12, cy - h * 0.36); ctx.lineTo(w * 0.16, cy - h * 0.62); ctx.lineTo(w * 0.28, cy - h * 0.3); ctx.fill(); }
-  if (id === 'gd_owl') { ctx.strokeStyle = pal[3]; ctx.lineWidth = 1.5; ctx.globalAlpha *= 0.8; ctx.beginPath(); ctx.ellipse(-w * 0.08, cy - h * 0.2, w * 0.42, h * 0.16, 0, 0, TAU); ctx.stroke(); ctx.globalAlpha /= 0.8; }
-  if (id === 'gd_whelp') { ctx.fillStyle = pal[3]; glowAt(ctx, 0, cy + h * 0.05, h * 0.35, pal[3], 0.7); }
+  if (id === 'gd_owl') {
+    ctx.fillStyle = pal[1];   // 귀깃 · 부리
+    ctx.beginPath(); ctx.moveTo(-w * 0.26, cy - h * 0.3); ctx.lineTo(-w * 0.32, cy - h * 0.62); ctx.lineTo(-w * 0.08, cy - h * 0.36); ctx.moveTo(w * 0.1, cy - h * 0.36); ctx.lineTo(w * 0.3, cy - h * 0.62); ctx.lineTo(w * 0.28, cy - h * 0.3); ctx.fill();
+    ctx.fillStyle = pal[2]; ctx.beginPath(); ctx.moveTo(w * 0.02, cy - h * 0.06); ctx.lineTo(w * 0.1, cy + h * 0.1); ctx.lineTo(w * 0.18, cy - h * 0.06); ctx.fill();
+    for (const ex of [-w * 0.1, w * 0.26]) { ctx.fillStyle = pal[3]; ctx.beginPath(); ctx.arc(ex, cy - h * 0.14, w * 0.13, 0, TAU); ctx.fill(); ctx.fillStyle = '#1a1008'; ctx.beginPath(); ctx.arc(ex + w * 0.02, cy - h * 0.14, w * 0.06, 0, TAU); ctx.fill(); }
+    glowAt(ctx, w * 0.08, cy - h * 0.14, h * 0.5, pal[3], 0.3);
+    return;
+  }
+  if (id === 'gd_whelp') {
+    ctx.fillStyle = pal[0]; ctx.strokeStyle = pal[2]; ctx.lineWidth = 1.2;   // 해골 주둥이 · 뿔
+    ctx.beginPath(); ctx.ellipse(w * 0.38, cy - h * 0.16, w * 0.2, h * 0.16, -0.15, 0, TAU); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = pal[1]; ctx.beginPath(); ctx.moveTo(w * 0.24, cy - h * 0.3); ctx.lineTo(w * 0.1, cy - h * 0.62); ctx.lineTo(w * 0.34, cy - h * 0.34); ctx.fill();
+    glowAt(ctx, 0, cy + h * 0.05, h * 0.35, pal[3], 0.7);
+    eyes(ctx, w * 0.44, cy - h * 0.2, w * 0.12, Math.max(1.2, h * 0.05), pal[3]);
+    return;
+  }
+  if (id === 'gd_mirra') {   // 둘레를 도는 거울 조각 셋
+    ctx.fillStyle = pal[3]; ctx.strokeStyle = pal[2]; ctx.lineWidth = 0.8;
+    for (let i = 0; i < 3; i++) {
+      const a = t * 2.4 + i * TAU / 3, sx = Math.cos(a) * w * 0.8, sy = cy + Math.sin(a) * h * 0.35;
+      ctx.beginPath(); ctx.moveTo(sx, sy - 5); ctx.lineTo(sx + 3, sy); ctx.lineTo(sx, sy + 5); ctx.lineTo(sx - 3, sy); ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+  }
+  if (id === 'gd_momo') { ctx.fillStyle = pal[1]; ctx.beginPath(); ctx.ellipse(-w * 0.12, cy - h * 0.34, w * 0.1, h * 0.14, -0.4, 0, TAU); ctx.fill(); }
   if (id === 'gd_momo') { ctx.strokeStyle = pal[1]; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(w * 0.4, cy); ctx.quadraticCurveTo(w * 0.7, cy + (atk ? -6 : 6), w * (atk ? 0.95 : 0.6), cy + (atk ? -2 : h * 0.4)); ctx.stroke(); }
   if (id === 'gd_reaper') {
     ctx.strokeStyle = pal[2]; ctx.lineWidth = 2;

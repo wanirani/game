@@ -179,8 +179,8 @@ class Input {
       this.game?.audio?.unlock();
     });
     window.addEventListener('keyup', (e) => {
-      const had = this.keysDown.delete(e.code);
-      if (this.keyActs[e.code]) e.preventDefault();
+      const had = this.keysDown.delete(e.code);   // 입력 칸에 포커스가 옮겨 간 뒤에 뗀 키도 풀어 준다
+      if (this.keyActs[e.code] && !isTyping(e.target)) e.preventDefault();
       if (had) this._rebuildKeySources();
     });
     window.addEventListener('blur', () => {

@@ -108,3 +108,18 @@ export const BENCH = `(i, b, p, A) => {
   if (b.state === 'idle') b.cool = 99;
   p.x = b.cx - 260; p.iframes = 1e9;
 }`;
+
+/** 게임플레이 결정성 A/B 대본 (tools/painted/rng.mjs): 0 프레임에 굽기 대기 동안 실제 루프가 남긴 상태(속도·탄·예고·연출)를 지우고,
+ *  같은 방식으로 두 페이즈(60 % 변신 · 30 % 분리)를 넘긴다 — 채색 / 벡터 두 실행이 같은 출발점에서 시작하도록 */
+export const RNG_SCRIPT = `(i, b, p, w) => {
+  if (i === 0) {
+    for (const e of w.entities) if (e !== b && e !== p && e.kind !== 'painted' && (e.owner === b || e.owner?.owner === b || e.summoner === b)) e.dead = true;
+    if (w.fx?.list) w.fx.list.length = 0;
+    b.vx = 0; b.vy = 0; b.y = b.floorY - b.h; b.facing = -1; b.flashT = 0; b.stateT = 0; b._pst = -1; b.last = null; b.last2 = null; b.phaseFx = 0; b.invuln = false;
+    b.low = false; b.leapLanded = false; b.tx = undefined; b.aimA = undefined;
+    p.y = b.floorY - p.h; p.onGround = true;
+    w.hitstop = 0; w.slowmo = 0;
+  }
+  if (i === 700) { b.hp = b.stats.maxHp * 0.61; b.takeHit(Math.ceil(b.stats.maxHp * 0.02), { stats: p.stats }, w, {}); }
+  if (i === 1100) { b.hp = b.stats.maxHp * 0.31; b.takeHit(Math.ceil(b.stats.maxHp * 0.02), { stats: p.stats }, w, {}); }
+}`;

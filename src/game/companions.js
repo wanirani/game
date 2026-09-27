@@ -364,7 +364,7 @@ export class CompanionSystem {
     const w = this.world, p = w.player, def = MOUNTS[mid], st = w.state;
     if (typeof p.mount?.resonance === 'function' && p.mount.id === mid) { try { p.mount.resonance(w, p); return; } catch (e) { console.warn('[companions] mount resonance', e); } }
     const cam = w.camera, f = p.facing || 1;
-    const vw = cam?.vw ?? w.game?.viewW ?? 960, x0 = cam?.x ?? (p.cx - vw / 2);
+    const vw = (cam?.w ?? w.game?.viewW ?? 960) / (cam?.zoom > 0 ? cam.zoom : 1), x0 = cam?.x ?? (p.cx - vw / 2);   // 카메라 뷰 폭 (줌 반영)
     const W = 150, H = 130, dur = 0.75;
     const sx = f > 0 ? x0 - W : x0 + vw + W, ex = f > 0 ? x0 + vw + W : x0 - W;
     const md = mountDerived(st, mid, p.stats);
@@ -394,7 +394,8 @@ export class CompanionSystem {
     if (attack?.owner !== p || this.calm() || p.dead) return;
     const tags = attack.tags ?? [];
     if (tags.includes('guardian') || tags.includes('resonance')) return;
-    const trig = !!(p.move?.finisher || attack.finisher || (p.move && p.move === p.moveSet?.charge) || tags.includes('mount') || info?.crit);
+    const chg = p.moveSet?.charge;   // 모아치기 (탈것 adaptMove 가 사본을 만들어도 id 로 알아본다)
+    const trig = !!(p.move?.finisher || attack.finisher || (p.move && chg && (p.move === chg || (p.move.id && p.move.id === chg.id))) || tags.includes('mount') || info?.crit);
     if (!trig || info?.killed || target.dead || target.dying > 0) return;
     let shown = false;
     for (const g of this.guards) {

@@ -34,6 +34,7 @@ import * as PF from './platform.js';
 import * as SAVE from './save.js';
 import { FONT, onFontEpoch } from './ui.js';
 import { input as INPUT } from './input.js';
+import * as HAP from './haptics.js';
 
 // ───────────────────────── 배치 ─────────────────────────
 /** 동작 버튼 (편집기에서 옮길 수 있는 것) */
@@ -65,7 +66,7 @@ const SPRINT_K = 1.15, REANCHOR_K = 1.4;
 const STICK_FADE = 0.3;    // 뗀 뒤 사라지는 시간 (s)
 const SWAP_LONG = 350;     // ms
 const SWAP_HOLD_MS = 100, SWAP_HOLD_STEPS = 3;
-const DRAW_MS = 30;        // 다시 그리기 간격 하한 (≤ 30 Hz; rAF 두 번에 한 번)
+const DRAW_MS = 32;        // 다시 그리기 간격 하한 (≤ 30 Hz; 60/120 Hz 화면에서 33.3ms 마다)
 const OVERLAY_MP = 1.2e6;  // 오버레이 백킹 픽셀 상한
 
 /** 버튼 → 입력 액션 (예전 DOM 패드와 같다: 점프는 결정, Ⅱ 는 취소도) */
@@ -95,6 +96,7 @@ const S = {
   shown: {}, cmp: null,                        // 상태에 따른 표시 (탈것·수호) + 마지막 hudInfo
   ptrs: new Map(),                             // pointerId → {kind:'btn'|'stick'|'sys', ids:[], id, t0, x, y, swapT, radial}
   counts: Object.create(null),                 // 액션 → 누르고 있는 손가락 수
+  pressIt: Object.create(null), late: new Map(), // 액션 → 누를 때 input.time · 미룬 뗌 (actOff)
   stick: { active: false, id: -1, ax: 0, ay: 0, fx: 0, fy: 0, sprint: false, relT: -1e9, ex: 0, ey: 0 },
   swapHold: null,                              // {t, it} 손을 뗀 뒤 ⇄ 를 잠깐 누르고 있는 중
   radialFn: null,
@@ -300,14 +302,35 @@ function legacyVisible(on) {
 }
 
 // ───────────────────────── 입력 보내기 ─────────────────────────
+/** 눌렀다가 게임 스텝이 한 번도 돌기 전에 뗀 액션: 뗌을 다음 스텝 뒤로 미룬다 (한 프레임보다 짧은 탭·느린 기기에서 입력이 사라지지 않게).
+ *  a → {it: 누를 때 input.time, t: 뗀 시각} */
+const LATE_MAX_MS = 250;
 function actOn(a) {
+  if (S.late.has(a)) { S.late.delete(a); S.counts[a] = 1; return; } // 아직 input 에는 눌린 채다
   const n = (S.counts[a] = (S.counts[a] || 0) + 1);
-  if (n === 1) { try { inputRef()?.touch?.set?.(a, true); } catch (e) { console.error('[touchpad]', e); } }
+  if (n === 1) {
+    const i = inputRef();
+    S.pressIt[a] = typeof i?.time === 'number' ? i.time : NaN;
+    try { i?.touch?.set?.(a, true); } catch (e) { console.error('[touchpad]', e); }
+  }
 }
 function actOff(a) {
   const n = (S.counts[a] || 0) - 1;
   S.counts[a] = Math.max(0, n);
-  if (n === 0) { try { inputRef()?.touch?.set?.(a, false); } catch (e) { console.error('[touchpad]', e); } }
+  if (n !== 0) return;
+  const i = inputRef();
+  if (typeof i?.time === 'number' && i.time === S.pressIt[a]) { S.late.set(a, { it: i.time, t: now() }); startLoop(); return; }
+  try { i?.touch?.set?.(a, false); } catch (e) { console.error('[touchpad]', e); }
+}
+/** 미룬 뗌: 스텝이 한 번이라도 돌았으면 (또는 너무 오래 기다렸으면) 이제 뗀다. rAF 마다 */
+function tickLate() {
+  if (!S.late.size) return;
+  const i = inputRef(), t = now();
+  for (const [a, v] of S.late) {
+    if ((i?.time ?? v.it) === v.it && t - v.t < LATE_MAX_MS) continue;
+    S.late.delete(a);
+    try { i?.touch?.set?.(a, false); } catch (e) { console.error('[touchpad]', e); }
+  }
 }
 function pressBtn(p, id) {
   if (id === 'swap') { p.swapT = now(); p.radial = false; p.swapOn = true; return; } // ⇄ 는 손을 뗄 때
@@ -340,6 +363,8 @@ function buzz() {
   if (st.vibration === false) return;
   try {
     if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return;
+    const a = HAP.haptics?.active; // 게임 진동(피격·각성 등)이 울리는 중이면 짧은 누름 진동으로 끊지 않는다 (MASTER_PLAN §1.11)
+    if (a && now() < a.until) return;
     if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
     navigator.vibrate(8);
   } catch { /* 무시 */ }
@@ -401,6 +426,7 @@ function releaseAll() {
   if (s.active) { s.active = false; s.relT = now(); s.ex = s.ax; s.ey = s.ay; }
   s.sprint = false;
   for (const a in S.counts) S.counts[a] = 0;
+  S.late.clear();
   S.swapHold = null;
   clearDirs();
   try { inputRef()?.touch?.clear?.(); } catch (e) { console.error('[touchpad]', e); }
@@ -408,22 +434,28 @@ function releaseAll() {
 }
 
 // ───────────────────────── 판정 ─────────────────────────
-/** (x, y) 에 걸리는 동작 버튼 id 목록 (가장 가까운 것 하나, 공격·점프가 둘 다 걸리면 둘 다) */
+/** (x, y) 에 걸리는 동작 버튼 id 목록 (테두리가 가장 가까운 것 하나, 공격·점프 사이 띠에서는 둘 다) */
 function hitBtns(L, x, y) {
   let best = null, bestE = Infinity;
-  const cand = [];
   for (const id of PAD_IDS) {
     if (!shownBtn(id)) continue;
     const b = btnPos(L, id);
-    const dist = Math.hypot(x - b.cx, y - b.cy), r = b.d / 2;
-    if (dist > r + SLOP) continue;
-    cand.push(id);
-    const e = dist - r;
+    const e = Math.hypot(x - b.cx, y - b.cy) - b.d / 2;
+    if (e > SLOP) continue;
     if (e < bestE) { bestE = e; best = id; }
   }
-  if (!best) return null;
-  if ((best === 'attack' || best === 'jump') && cand.includes('attack') && cand.includes('jump')) return ['attack', 'jump'];
-  return [best];
+  if ((!best || best === 'attack' || best === 'jump') && inPlinkBand(L, x, y)) return ['attack', 'jump'];
+  return best ? [best] : null;
+}
+/** 공격·점프 사이의 띠 (platform §5.2 '겹침 띠', 점프 공격용 동시 누름): 두 테두리 모두에서 (간격/2 + 6) px 안.
+ *  기본 배치(간격 ≈ 24 px)에서는 가운데 약 12 px 폭. 둘이 36 px 넘게 떨어져 있으면 띠가 없다 */
+function inPlinkBand(L, x, y) {
+  if (!shownBtn('attack') || !shownBtn('jump')) return false;
+  const a = btnPos(L, 'attack'), j = btnPos(L, 'jump');
+  const gap = Math.hypot(a.cx - j.cx, a.cy - j.cy) - a.d / 2 - j.d / 2;
+  if (gap > 36) return false;
+  const band = Math.max(SLOP, gap / 2 + 6);
+  return Math.hypot(x - a.cx, y - a.cy) - a.d / 2 <= band && Math.hypot(x - j.cx, y - j.cy) - j.d / 2 <= band;
 }
 function hitSys(L, x, y) {
   let best = null, bestD = Infinity;
@@ -563,6 +595,7 @@ function tick(t) {
   const L = layout();
   if (!L) return;
   tickSwap();
+  tickLate();
   const w = readState();
   // ⇄ 길게 누르기 → 기술 원형 메뉴
   if (S.radialFn) {
@@ -574,7 +607,7 @@ function tick(t) {
     }
   }
   const fading = !S.stick.active && now() - S.stick.relT < STICK_FADE * 1000 + 40;
-  const live = S.visible || S.editor || fading || S.swapHold;
+  const live = S.visible || S.editor || fading || S.swapHold || S.late.size;
   if (live) {
     const changed = stateChanged(L, w);
     if ((changed || S.pending || S.anim || fading) && t - S.lastDraw >= DRAW_MS) {

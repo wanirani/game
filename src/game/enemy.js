@@ -213,12 +213,14 @@ export class Enemy extends Entity {
     if (this.staggerT > 0) this.endStagger();
   }
   endStagger() { this.staggerT = 0; this.staggerImm = tables().W.stagger.immune ?? 2; }
-  tickReact(dt) {
+  tickReact(dt, world) {
     const R = this.react, T = tables();
     if (R.sq > 0) R.sq -= dt;
     if (R.lean > 0) R.lean -= dt;
     if (R.armor > 0) R.armor -= dt;
-    if (this.hsShake > 0) this.hsShake -= dt;
+    // 떨림은 자기가 맞은 그 히트스톱 동안만: 월드가 다시 움직이면(엔티티 갱신 = 정지 끝) 끈다 → 곧이어 다른 적을 친 정지에 같이 떨지 않게.
+    // (같은 프레임에 막 맞아 아직 정지가 시작되기 전이면 world.hitstop > 0 이므로 남긴다)
+    if (this.hsShake > 0 && !((world?.hitstop ?? 0) > 0)) this.hsShake = 0;
     // 누운 정도: 쓰러질 때 0.1초 만에, 일어날 때 기상 무적 시간 동안 천천히
     const lieT = this.down > 0 ? 1 : this.wakeInv > 0 ? clamp(this.wakeInv / (T.D.wakeInv || 0.3), 0, 1) : 0;
     R.lie += clamp(lieT - R.lie, -dt / 0.12, dt / 0.1);
@@ -256,7 +258,7 @@ export class Enemy extends Entity {
     }
     if (world.timeStop > 0 && !this.def.ignoreTimeStop) { return; }
     const T = tables();
-    this.tickReact(dt);
+    this.tickReact(dt, world);
     if (this.wbArmed > 0) this.wbArmed -= dt;
     // 비틀 게이지 (HEAVY)
     if (this.stagger > 0) this.stagger = Math.max(0, this.stagger - (T.W.stagger.decay ?? 4) * dt);
@@ -418,11 +420,16 @@ export class Enemy extends Entity {
     this.styleEvent(world, 'groundBounce');
   }
 
-  /** 스타일 사건 (벽·바닥 바운드는 Style 이 각성 게이지 +3 도 더한다; Style 이 없으면 world.addAw) */
+  /**
+   * 스타일 사건 (벽·바닥 바운드는 Style 이 각성 게이지 +3 도 더한다; Style 이 없으면 world.addAw).
+   * 궁극기·각성·동료 타격이 낳은 사건은 게이지 없음, 동료 타격이면 스타일 점수 ×0.5 (MASTER_PLAN §1.14)
+   */
   styleEvent(world, name) {
     const noAw = !!this._lastNoAw;
-    if (world.style?.onEvent) world.style.onEvent(name, { target: this, companion: noAw });
-    else if (!noAw && (name === 'wallBounce' || name === 'groundBounce')) world.addAw?.('bounce');
+    if (world.style?.onEvent) {
+      const base = this._lastCmp ? FH.STYLE?.events?.[name] : null;
+      world.style.onEvent(name, base > 0 ? { target: this, companion: noAw, pts: base * 0.5 } : { target: this, companion: noAw });
+    } else if (!noAw && (name === 'wallBounce' || name === 'groundBounce')) world.addAw?.('bounce');
   }
 
   startStagger(world) {
@@ -434,7 +441,7 @@ export class Enemy extends Entity {
     world.fx?.burst('spark', this.cx, this.cy, 8, { color: '#ffb050', speed: 260 });
     sfxIf('impact_crack', { vol: 0.5, pitch: 1.2 });
     callout(world, this.cx, this.y - 14, S.callout ?? '비틀!', HFX.REACT_CALLOUT?.stagger ?? '#ffb050');
-    world.style?.onEvent?.('stagger', { target: this });
+    this.styleEvent(world, 'stagger');
   }
 
   /** 피격 반응: 무게 등급별 넉백·띄우기·경직, 공중 콤보, 다운 추가타, 바운드 준비, 비틀 게이지, 그림 반응 */
@@ -445,7 +452,8 @@ export class Enemy extends Entity {
     const cls0 = info.cls && info.cls !== 'hurt' ? info.cls : (IM.strengthClass?.(attack) ?? 'M');
     const cls = cls0 === 'U' ? 'L' : cls0 === 'S' || cls0 === 'A' ? 'F' : (cls0 in (W.LIGHT.stun ?? {}) ? cls0 : 'M');
     const dir = attack.dir > 0 ? 1 : attack.dir < 0 ? -1 : (this.cx >= (attack.owner?.cx ?? this.cx) ? 1 : -1);
-    this._lastNoAw = tags.includes('ult') || tags.includes('awaken') || tags.includes('companion');
+    this._lastCmp = tags.includes('companion');
+    this._lastNoAw = this._lastCmp || tags.includes('ult') || tags.includes('awaken');
     R.dir = dir;
     const kbRes = this.def.kbResist ?? 0;
     // 고정형: 떨림만 (hsShake)
@@ -545,9 +553,11 @@ export class Enemy extends Entity {
 
   takeHit(dmg, attack, world, info) {
     if (this.dying > 0) return false;
-    if (this.wakeInv > 0) return false;   // 기상 무적 (combat.hitTarget 이 먼저 거른다)
+    // 기상 무적: 공격(편이 있는 타격)은 막는다 (combat.hitTarget 이 먼저 거른다). 편 없는 연출 피해(로자리오 전멸 등)는 통과
+    if (this.wakeInv > 0 && attack?.team) return false;
     info = info || {};
     attack = attack || {};
+    this.awake = true;   // 멀리서(총·마법·동료) 맞은 잠든 적: 깨우지 않으면 update 가 멈춰 띄운 채로 공중에 굳는다
     this.hp -= dmg;
     this.flashT = 0.12;
     const g0 = this.guardT ?? 0;

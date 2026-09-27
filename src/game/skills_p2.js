@@ -14,6 +14,7 @@ import { Entity } from './entity.js';
 import { playerStrike } from './combat.js';
 import { CHARACTERS } from '../data/characters.js';
 import { drawHero } from '../render/hero.js';
+import * as HFX from '../render/hitfx.js';   // 색별 캐시 스프라이트 (soft) — 매 프레임 그라디언트를 만들지 않는다 (MASTER_PLAN R12)
 
 export const TECH_NAMES_P2 = { tech_mirror: '경영참', tech_whirl: '와류참', tech_purge: '정화의 불꽃' };
 
@@ -64,8 +65,18 @@ function groundAt(w, x, y, maxDrop = 7 * TILE) {
   if (gy === null || gy === undefined || gy - y > maxDrop) return null;
   return gy;
 }
-function glow(ctx, x, y, r, col, a = 1) {
+/** 부드러운 원형 빛: 캐시 스프라이트(hitfx soft)를 늘여 그린다. rx/ry 를 따로 주면 타원 */
+function glow(ctx, x, y, r, col, a = 1, ry = r) {
   if (r <= 1 || a <= 0.01) return;
+  const spr = HFX.soft?.(col);
+  if (spr) {
+    const ga = ctx.globalAlpha;
+    ctx.globalAlpha = ga * Math.min(1, a * 0.8);
+    ctx.drawImage(spr, x - r, y - ry, r * 2, ry * 2);
+    ctx.globalAlpha = ga;
+    return;
+  }
+  if (ry !== r) return;   // 스프라이트를 못 구운 프레임(굽기 상한)에는 타원 빛을 생략한다
   const g = ctx.createRadialGradient(x, y, 0, x, y, r);
   g.addColorStop(0, rgba(col, a)); g.addColorStop(0.35, rgba(col, a * 0.45)); g.addColorStop(1, rgba(col, 0));
   ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2);
@@ -197,9 +208,13 @@ function techMirror(p, w) {
       // 거울면 (분신과 영웅 사이의 얇은 은빛 판)
       const mx = p.cx - f * 16, top = p.bottom - p.h - 18;
       ctx.globalCompositeOperation = ADD;
-      const g = ctx.createLinearGradient(mx - 6, 0, mx + 6, 0);
-      g.addColorStop(0, rgba(MIRROR2, 0)); g.addColorStop(0.5, rgba('#ffffff', 0.55 * a)); g.addColorStop(1, rgba(MIRROR2, 0));
-      ctx.fillStyle = g; ctx.fillRect(mx - 6, top, 12, p.h + 22);
+      if (!e.d.pg) {   // 원점 기준 그라디언트를 한 번만 만들고 translate 로 옮겨 그린다
+        e.d.pg = ctx.createLinearGradient(-6, 0, 6, 0);
+        e.d.pg.addColorStop(0, rgba(MIRROR2, 0)); e.d.pg.addColorStop(0.5, rgba('#ffffff', 0.55)); e.d.pg.addColorStop(1, rgba(MIRROR2, 0));
+      }
+      ctx.save(); ctx.translate(mx, 0); ctx.globalAlpha *= clamp(a, 0, 1);
+      ctx.fillStyle = e.d.pg; ctx.fillRect(-6, top, 12, p.h + 22);
+      ctx.restore();
       if (e.lt >= HIT - 0.03) {
         const u = (e.lt - (HIT - 0.03)) / 0.14, fa = a * clamp(2 - u, 0, 1);
         if (u < 1.2) {   // 베는 순간의 은빛 섬광 (앞뒤)
@@ -295,24 +310,26 @@ function techWhirl(p, w) {
 
 // ═══════════════════════════ 정화의 불꽃 (tech_purge) ═══════════════════════════
 const DAWN = '#ffd070', DAWN2 = '#fff2b0';
-/** 새벽빛 불기둥 (아래에서 위로 흘러 올라가는 불꽃 혀) */
-function holyPillar(ctx, x, base, wd, h, t, a) {
+/** 새벽빛 불기둥 (아래에서 위로 흘러 올라가는 불꽃 혀). d: 효과별 캐시 (가운데 기둥 그라디언트를 한 번만 만든다) */
+function holyPillar(ctx, x, base, wd, h, t, a, d = {}) {
   if (a <= 0.01 || h < 4) return;
   ctx.globalCompositeOperation = ADD;
-  const bg = ctx.createRadialGradient(x, base, 0, x, base, wd * 2.2);
-  bg.addColorStop(0, rgba(DAWN2, 0.6 * a)); bg.addColorStop(1, rgba(DAWN, 0));
-  ctx.fillStyle = bg; ctx.beginPath(); ctx.ellipse(x, base, wd * 2.2, wd * 0.55, 0, 0, TAU); ctx.fill();
-  const cg = ctx.createLinearGradient(x - wd, 0, x + wd, 0);
-  cg.addColorStop(0, rgba(DAWN, 0)); cg.addColorStop(0.3, rgba(DAWN, 0.35 * a)); cg.addColorStop(0.5, rgba('#ffffff', 0.85 * a));
-  cg.addColorStop(0.7, rgba(DAWN, 0.35 * a)); cg.addColorStop(1, rgba(DAWN, 0));
-  ctx.fillStyle = cg; ctx.fillRect(x - wd, base - h, wd * 2, h);
+  glow(ctx, x, base, wd * 2.2, DAWN2, 0.6 * a, wd * 0.55);   // 발밑의 납작한 빛
+  if (!d.cg || d.cgW !== wd) {
+    const cg = ctx.createLinearGradient(-wd, 0, wd, 0);
+    cg.addColorStop(0, rgba(DAWN, 0)); cg.addColorStop(0.3, rgba(DAWN, 0.35)); cg.addColorStop(0.5, rgba('#ffffff', 0.85));
+    cg.addColorStop(0.7, rgba(DAWN, 0.35)); cg.addColorStop(1, rgba(DAWN, 0));
+    d.cg = cg; d.cgW = wd;
+  }
+  ctx.save(); ctx.translate(x, 0); ctx.globalAlpha *= clamp(a, 0, 1);
+  ctx.fillStyle = d.cg; ctx.fillRect(-wd, base - h, wd * 2, h);
+  ctx.restore();
   for (let i = 0; i < 8; i++) {
     const ph = (t * 2.2 + i / 8) % 1;
     const y = base - ph * h, sz = wd * (0.95 - ph * 0.55), al = a * (ph < 0.1 ? ph / 0.1 : 1 - (ph - 0.1) / 0.9);
     const xo = x + Math.sin(t * 8 + i * 2.3) * wd * 0.3 * ph;
-    const g = ctx.createRadialGradient(xo, y + sz * 0.4, 0, xo, y, sz * 1.4);
-    g.addColorStop(0, rgba(DAWN2, 0.8 * al)); g.addColorStop(0.5, rgba('#ff9a3a', 0.35 * al)); g.addColorStop(1, rgba('#ff9a3a', 0));
-    ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(xo, y, sz * 0.75, sz * 1.4, 0, 0, TAU); ctx.fill();
+    glow(ctx, xo, y, sz * 0.95, '#ff9a3a', 0.55 * al, sz * 1.5);          // 주황 겉불
+    glow(ctx, xo, y + sz * 0.25, sz * 0.5, DAWN2, al, sz * 0.85);          // 흰 속불
   }
   // 꼭대기 성광 (십자 반짝임)
   const ty = base - h;
@@ -356,7 +373,7 @@ function techPurge(p, w) {
     },
     draw(ctx, e) {
       const up = ease.outCubic(clamp(e.lt / 0.12, 0, 1)), a = clamp((e.life - e.lt) / 0.25, 0, 1);
-      holyPillar(ctx, x, base, PW * 0.5, PH * up, e.lt, a);
+      holyPillar(ctx, x, base, PW * 0.5, PH * up, e.lt, a, e.d);
       ctx.globalCompositeOperation = ADD;
       ctx.strokeStyle = rgba(c, 0.5 * a); ctx.lineWidth = 2;
       ctx.beginPath(); ctx.ellipse(x, base, PW * 0.7 * up, PW * 0.18 * up, 0, 0, TAU); ctx.stroke();
