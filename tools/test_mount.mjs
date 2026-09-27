@@ -83,7 +83,15 @@ function installHelpers() {
     findTile(fn) { const m = this.w.map; for (let ty = 1; ty < m.h - 1; ty++) for (let tx = 1; tx < m.w - 1; tx++) if (fn(tx, ty, m)) return { tx, ty }; return null; },
     /** 발을 (tx 칸 가운데, ty 칸 위쪽 경계) 에 */
     place(tx, ty) { const p = this.p; p.cx = tx * 48 + 24; p.bottom = ty * 48; p.vx = 0; p.vy = 0; p.onGround = false; },
+    /** 실시간 사례용: 적 · 이야기 트리거 치우기, 열린 대사 닫기 */
+    quiet() { const w = this.w; for (const e of w.entities) if (e.kind === 'enemy' || e.constructor?.name === 'StoryTrigger') e.dead = true; while (g.top?.name === 'dialogue') g.pop(); },
     fitsNow() { const p = this.p; return this.M.fits(this.w, p.x, p.bottom, p.w, p.h); },
+    /** 스테이지를 새로 연다 (훅을 건 뒤 처음부터 재기 위해) */
+    restart(stageId, roomId = null) { g.go('stage', { stageId, roomId }, { fade: false }); this.step(1 / 60); this.hook(); return this.w; },
+    /** 기준 위치 (발) 로 되돌리기 */
+    home: null,
+    setHome() { const p = this.p; this.home = { x: p.cx, b: p.bottom }; },
+    goHome() { const p = this.p, h = this.home; p.cx = h.x; p.bottom = h.b; p.vx = 0; p.vy = 0; this.step(0.3); },
     hook() {
       const w = this.w;
       if (!w || w.__mhook) return;
@@ -155,9 +163,11 @@ if (want('static', ['static'])) {
 
 // ═════════════ 그림메인: 소환·질주·돌진·특수기·피해·낙마·재소환 (companions §14 C2) ═════════════
 await run('core', ['mt_warhorse'], STAGE('s01', '&cmp=all&cmplv=10&mount=mt_warhorse&ride=1'), (page) => page.evaluate(() => {
-  const T = window.__T, w = T.w, p = T.p, checks = [], info = {};
+  const T = window.__T, checks = [], info = {};
+  T.toasts.length = 0; T.events.length = 0;
+  const w = T.restart('s01'), p = T.p;
   const ch = p.ch.size;
-  // 1) ?ride=1 → 0.6초 안에 탑승
+  // 1) ?ride=1 → 0.6초 안에 탑승 (새 월드의 시간 0 부터)
   let tRide = null;
   T.step(1.2, () => { if (p.mount?.riding && tRide === null) tRide = w.time; return false; });
   const m = p.mount;
@@ -166,7 +176,7 @@ await run('core', ['mt_warhorse'], STAGE('s01', '&cmp=all&cmplv=10&mount=mt_warh
   checks.push(['탑승 몸 60×90', p.w === 60 && p.h === 90, [p.w, p.h]]);
   checks.push(['mounted 이벤트', T.events.some((e) => e.ev === 'mounted' && e.id === 'mt_warhorse')]);
   checks.push(['첫 탑승 안내', T.toasts.some((s) => s.includes('그림메인에 올라탔다'))]);
-  T.clearFoes();
+  T.clearFoes(); T.step(0.3); T.setHome();
   // 2) 오른쪽 1.5초 → |vx| ≥ 390, 질주
   T.reset(m);
   T.key('ArrowRight', true);
@@ -275,8 +285,8 @@ await run('core', ['mt_warhorse'], STAGE('s01', '&cmp=all&cmplv=10&mount=mt_warh
   checks.push(['adaptMove: 돌진·체공·반동 제거, canMove', am !== mv && am.canMove === true && !('lunge' in am) && !('vy' in am) && !('vx' in am) && !('pogo' in am) && !('airStall' in am) && !('recoil' in am) && !('recoilY' in am) && !('groundPound' in am) && am.anim === 'slash']);
   checks.push(['adaptMove 캐시', m.adaptMove(mv) === am]);
   // 14) 탑승 공격: 탈것이 멈추지 않는다 (70% 속도)
-  T.clearFoes();
-  T.key('ArrowRight', true); T.step(0.8);
+  T.clearFoes(); T.goHome();
+  T.key('ArrowRight', true); T.step(0.6);
   T.press('KeyX', 0.05);
   const vxAtk = p.vx, moving = !!p.move;
   T.step(0.4); T.key('ArrowRight', false); T.step(0.5);
@@ -410,9 +420,10 @@ await run('flyers', ['mt_wyvern', 'mt_giantbat'], STAGE('s01', '&cmp=all&cmplv=1
   T.step(1.2, () => p.onGround);
   // 공중 돌진 = 급강하 → 착지 충격파
   T.reset(m); T.step(0.2);
-  T.key('KeyZ', true); T.step(0.2); T.key('KeyZ', false);
-  const dz = T.spawn('zombie', 150);
+  const dz = T.spawn('zombie', 120);   // 땅에서 먼저 일어서게 둔다
+  T.step(1.2);
   const dh = dz.hp;
+  T.key('KeyZ', true); T.step(0.2); T.key('KeyZ', false);
   T.press('KeyC', 0.05);
   const kind = m.chargeKind;
   T.step(1.0, () => p.onGround);
@@ -454,7 +465,7 @@ await run('flyers', ['mt_wyvern', 'mt_giantbat'], STAGE('s01', '&cmp=all&cmplv=1
   T.step(1.0);
   checks.push(['땅에서 기력 회복', m.stamina > 0.5, m.stamina]);
   // ↓+점프 = 급강하
-  T.key('KeyZ', true); T.step(0.5); T.key('KeyZ', false);
+  T.key('KeyZ', true); T.step(0.5); T.key('KeyZ', false); T.step(0.1);
   T.key('ArrowDown', true); T.press('KeyZ', 0.05);
   const dive = m.diving, vyD = p.vy;
   T.key('ArrowDown', false);
@@ -482,7 +493,8 @@ await run('ground', ['mt_boar', 'mt_skelsteed', 'mt_direwolf'], STAGE('s01', '&c
   const home = { x: p.cx, b: p.bottom };
   const goHome = () => { p.cx = home.x; p.bottom = home.b; p.vx = 0; p.vy = 0; T.step(0.3); };
   // 가시 칸 (위가 비어 있는 ^)
-  const spike = T.findTile((tx, ty, m) => m.typeAt(tx, ty) === T.PH.T.SPIKE && m.typeAt(tx, ty - 1) === T.PH.T.EMPTY && m.typeAt(tx, ty - 2) === T.PH.T.EMPTY && m.typeAt(tx + 1, ty - 1) === T.PH.T.EMPTY && m.typeAt(tx - 1, ty - 1) === T.PH.T.EMPTY);
+  // 탈것 몸이 넓어 한 칸짜리 가시 구덩이는 건너 딛는다 → 세 칸 이상 이어진 가시 줄을 고른다
+  const spike = T.findTile((tx, ty, m) => [-1, 0, 1].every((d) => m.typeAt(tx + d, ty) === T.PH.T.SPIKE && T.PH.isSolidType(m.typeAt(tx + d, ty + 1))) && m.typeAt(tx, ty - 1) === T.PH.T.EMPTY && m.typeAt(tx, ty - 2) === T.PH.T.EMPTY && m.typeAt(tx + 1, ty - 1) === T.PH.T.EMPTY && m.typeAt(tx - 1, ty - 1) === T.PH.T.EMPTY);
   info.spike = spike;
   const onSpike = (m) => {
     T.reset(m); p.iframes = 0;
@@ -510,7 +522,7 @@ await run('ground', ['mt_boar', 'mt_skelsteed', 'mt_direwolf'], STAGE('s01', '&c
     goHome();
     const r = onSpike(m);
     info.boarSpike = r;
-    checks.push(['바르그 가시: 탈것만 (15% × 0.5)', r.rider === 0 && Math.abs(r.mount - Math.round(r.max * 0.075)) <= 1.01, r]);
+    checks.push(['바르그 가시: 탈것만 (15% × 0.5)', r.rider <= 0 && Math.abs(r.mount - Math.round(r.max * 0.075)) <= 1.01, r]);
   }
   goHome();
   m.dismount(w, p, 'unequip'); T.step(0.4);
@@ -537,7 +549,7 @@ await run('ground', ['mt_boar', 'mt_skelsteed', 'mt_direwolf'], STAGE('s01', '&c
     goHome();
     const r = onSpike(m);
     info.skelSpike = r;
-    checks.push(['코슈타 가시 면역', r.mount === 0 && r.rider === 0, r]);
+    checks.push(['코슈타 가시 면역', r.mount === 0 && r.rider <= 0, r]);
   }
   goHome();
   m.dismount(w, p, 'unequip'); T.step(0.4);
@@ -561,6 +573,7 @@ await run('ground', ['mt_boar', 'mt_skelsteed', 'mt_direwolf'], STAGE('s01', '&c
     p.x = wall.tx * 48 - p.w - 2; p.bottom = (wall.ty + 1) * 48 - 4; p.vx = 0; p.vy = 0; p.onGround = false;
     T.key('ArrowRight', true); T.step(3 / 60);
     const hit = p.hitWallDir;
+    p.coyote = 0;   // 막 공중에 놓았으니 코요테 시간은 없다
     T.key('KeyZ', true); T.step(1 / 60); T.key('KeyZ', false);
     const kick = { vx: p.vx, vy: p.vy, facing: p.facing, hit };
     T.key('ArrowRight', false);
@@ -625,11 +638,11 @@ for (const [stage, liq] of [['s07', 'poison'], ['s13', 'lava']]) {
       return r;
     };
     const horse = dip('mt_warhorse');
-    checks.push(['그림메인: 탈것이 12% 받고 기수는 무사', horse.rider === 0 && Math.abs(horse.mount - Math.round(horse.max * 0.12)) <= 1.01, horse]);
+    checks.push(['그림메인: 탈것이 12% 받고 기수는 무사', horse.rider <= 0 && Math.abs(horse.mount - Math.round(horse.max * 0.12)) <= 1.01, horse]);
     const skel = dip('mt_skelsteed');
-    if (liq === 'poison') checks.push(['코슈타 독 면역', skel.mount === 0 && skel.rider === 0, skel]);
-    else checks.push(['코슈타 용암 절반', skel.rider === 0 && Math.abs(skel.mount - Math.round(skel.max * 0.06)) <= 1.01, skel]);
-    if (liq === 'lava') { const wy = dip('mt_wyvern'); checks.push(['스칼렛 용암 면역', wy.mount === 0 && wy.rider === 0, wy]); }
+    if (liq === 'poison') checks.push(['코슈타 독 면역', skel.mount === 0 && skel.rider <= 0, skel]);
+    else checks.push(['코슈타 용암 절반', skel.rider <= 0 && Math.abs(skel.mount - Math.round(skel.max * 0.06)) <= 1.01, skel]);
+    if (liq === 'lava') { const wy = dip('mt_wyvern'); checks.push(['스칼렛 용암 면역', wy.mount === 0 && wy.rider <= 0, wy]); }
     return { checks, info };
   }, liq));
 }
@@ -653,6 +666,16 @@ await run('gimmicks', ['mt_warhorse'], STAGE('s01', '&cmp=all&cmplv=10&mount=mt_
   // 바람·부패 배율 필드 (기믹이 def 에서 읽는다)
   const M = T.p.mount;
   checks.push(['def.windMul · def.blightMul 이 있다', typeof M.def.windMul === 'number' && typeof M.def.blightMul === 'number']);
+  // 유대 5단계 「영혼 결속」: 스테이지마다 한 번 쓰러질 위기를 버틴다 (HP 1, 3초 무적)
+  T.CS.ownedEntry(w.state, 'mt_warhorse').bond = 200; p.refreshStats();
+  M.cd = 0; M.state = 'stowed'; M.summon(w, p, { force: true, instant: true }); T.step(0.6);
+  M.hp = 3; M.invulnT = 0; p.iframes = 0;
+  const hz = w.spawnEnemy('zombie', p.cx + 300, p.bottom, {});
+  p.takeHit(40, { team: 'enemy', owner: hz, dir: 1, kb: [100, -100] }, w, {});
+  checks.push(['영혼 결속: 한 번 버틴다 (HP 1, 무적 3초)', M.riding && M.hp === 1 && M.invulnT > 2.9 && T.texts.includes('버텨라, 그림메인!'), [M.hp, M.invulnT]]);
+  T.step(3.2); p.iframes = 0; M.invulnT = 0;
+  p.takeHit(40, { team: 'enemy', owner: hz, dir: 1, kb: [100, -100] }, w, {});
+  checks.push(['두 번째는 낙마', !M.riding && M.state === 'recall', M.state]);
   return { checks };
 }));
 
@@ -719,7 +742,7 @@ await run('touch', ['mt_warhorse', 'touch'], STAGE('s01', '&cmp=all&cmplv=10&mou
   const checks = [];
   const cdp = await ctx.newCDPSession(page);
   const t = new Touch(cdp, page);
-  await page.evaluate(() => { const T = window.__T; for (const e of T.w.enemies()) e.dead = true; T.p.iframes = 0; });
+  await page.evaluate(() => { const T = window.__T; T.quiet(); T.p.iframes = 0; });
   const mode = await ensureTouchMode(t, page);
   checks.push(['터치 모드', mode === 'touch', mode]);
   await page.waitForTimeout(600);
@@ -747,7 +770,7 @@ await run('touch', ['mt_warhorse', 'touch'], STAGE('s01', '&cmp=all&cmplv=10&mou
 // ═════════════ 게임패드: L3 = 탈것 ═════════════
 await run('pad', ['mt_warhorse', 'pad'], STAGE('s01', '&cmp=all&cmplv=10&mount=mt_warhorse'), async (page) => {
   const checks = [];
-  await page.evaluate(() => { const T = window.__T; for (const e of T.w.enemies()) e.dead = true; T.p.iframes = 0; });
+  await page.evaluate(() => { const T = window.__T; T.quiet(); T.p.iframes = 0; });
   await connect(page);
   await page.waitForTimeout(400);
   const press = async (i) => { await setButton(page, i, 1); await page.waitForTimeout(150); await setButton(page, i, 0); await page.waitForTimeout(150); };

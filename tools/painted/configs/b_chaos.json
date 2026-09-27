@@ -6,34 +6,495 @@
  "td": 2.0,
  "_doc": "혼돈의 군주 채색 퍼핏 (정면 보스: 가시 왕관 흑요석 머리 + 경첩 턱, 촉수 몸통, 발톱 팔, 떠다니는 눈알(흰자/홍채/파열), 결정 파편·심장 핵, 옛 보스의 그림자 5종). 좌표 = 원본 Kling 픽셀. 렌더러: src/render/painted/bosses/b_chaos.js",
  "matte": {
-  "default": {"key": 9, "soft": 22, "hard": 6},
-  "echoes_a": {"key": 14, "soft": 26, "hard": 9}
+  "default": {
+   "key": 9,
+   "soft": 22,
+   "hard": 6
+  },
+  "echoes_a": {
+   "key": 14,
+   "soft": 26,
+   "hard": 9
+  }
  },
  "cuts": {
   "head_a": {
    "masks": {
-    "jaw": [{"op": "poly", "feather": 1.5, "pts": [[800, 1420], [880, 1450], [960, 1490], [1030, 1500], [1100, 1485], [1170, 1450], [1240, 1410], [1270, 1520], [1200, 1720], [1090, 1950], [1045, 2035], [985, 2035], [920, 1880], [830, 1680], [770, 1510]]}]
+    "jaw": [
+     {
+      "op": "poly",
+      "feather": 1.5,
+      "pts": [
+       [
+        800,
+        1420
+       ],
+       [
+        880,
+        1450
+       ],
+       [
+        960,
+        1490
+       ],
+       [
+        1030,
+        1500
+       ],
+       [
+        1100,
+        1485
+       ],
+       [
+        1170,
+        1450
+       ],
+       [
+        1240,
+        1410
+       ],
+       [
+        1270,
+        1520
+       ],
+       [
+        1200,
+        1720
+       ],
+       [
+        1090,
+        1950
+       ],
+       [
+        1045,
+        2035
+       ],
+       [
+        985,
+        2035
+       ],
+       [
+        920,
+        1880
+       ],
+       [
+        830,
+        1680
+       ],
+       [
+        770,
+        1510
+       ]
+      ]
+     }
+    ]
    }
   }
  },
  "parts": [
-  {"name": "head", "src": "head_a", "lps": 0.137, "box": [330, 20, 1720, 1540], "mask": "!jaw", "pivots": {"c": [1020, 1200], "eyeL": [875, 1110], "eyeR": [1180, 1115], "third": [1020, 930], "mouth": [1030, 1420], "hinge": [1030, 1440]}},
-  {"name": "jaw", "src": "head_a", "lps": 0.137, "box": [760, 1380, 1290, 2040], "mask": "jaw", "pivots": {"hinge": [1030, 1440], "chin": [1015, 2020]}},
-  {"name": "body", "src": "body_a", "lps": 0.15, "box": [90, 40, 1680, 2290], "pivots": {"neck": [860, 230], "shL": [330, 520], "shR": [1400, 520], "core": [860, 900], "belly": [860, 1500], "tL": [640, 1650], "tR": [1080, 1650]}},
-  {"name": "arm", "src": "arm_a", "lps": 0.1, "box": [70, 170, 2170, 1560], "pivots": {"sh": [300, 860], "hand": [1720, 1030], "tip": [2080, 1350]}},
-  {"name": "eye", "src": "eyes_a", "lps": 0.058, "box": [90, 455, 745, 1095], "pivots": {"c": [418, 775]}},
-  {"name": "iris", "src": "eyes_a", "lps": 0.058, "box": [850, 525, 1375, 1055], "pivots": {"c": [1110, 790]}},
-  {"name": "lid", "src": "eyes_a", "lps": 0.058, "box": [1490, 495, 1965, 1055], "pivots": {"c": [1640, 775]}},
-  {"name": "eyeBurst", "src": "eyes_a", "lps": 0.058, "box": [2085, 505, 2645, 1385], "pivots": {"c": [2340, 780]}}
+  {
+   "name": "head",
+   "src": "head_a",
+   "lps": 0.137,
+   "box": [
+    330,
+    20,
+    1720,
+    1540
+   ],
+   "mask": "!jaw",
+   "pivots": {
+    "c": [
+     1020,
+     1200
+    ],
+    "eyeL": [
+     875,
+     1110
+    ],
+    "eyeR": [
+     1180,
+     1115
+    ],
+    "third": [
+     1020,
+     930
+    ],
+    "mouth": [
+     1030,
+     1420
+    ],
+    "hinge": [
+     1030,
+     1440
+    ]
+   }
+  },
+  {
+   "name": "jaw",
+   "src": "head_a",
+   "lps": 0.137,
+   "box": [
+    760,
+    1380,
+    1290,
+    2040
+   ],
+   "mask": "jaw",
+   "pivots": {
+    "hinge": [
+     1030,
+     1440
+    ],
+    "chin": [
+     1015,
+     2020
+    ]
+   }
+  },
+  {
+   "name": "body",
+   "src": "body_a",
+   "lps": 0.15,
+   "box": [
+    90,
+    40,
+    1680,
+    2290
+   ],
+   "pivots": {
+    "neck": [
+     860,
+     230
+    ],
+    "shL": [
+     330,
+     520
+    ],
+    "shR": [
+     1400,
+     520
+    ],
+    "core": [
+     860,
+     900
+    ],
+    "belly": [
+     860,
+     1500
+    ],
+    "tL": [
+     640,
+     1650
+    ],
+    "tR": [
+     1080,
+     1650
+    ]
+   }
+  },
+  {
+   "name": "arm",
+   "src": "arm_a",
+   "lps": 0.1,
+   "box": [
+    70,
+    170,
+    2170,
+    1560
+   ],
+   "pivots": {
+    "sh": [
+     300,
+     860
+    ],
+    "hand": [
+     1720,
+     1030
+    ],
+    "tip": [
+     2080,
+     1350
+    ]
+   }
+  },
+  {
+   "name": "eye",
+   "src": "eyes_a",
+   "lps": 0.058,
+   "box": [
+    90,
+    455,
+    745,
+    1095
+   ],
+   "pivots": {
+    "c": [
+     418,
+     775
+    ]
+   }
+  },
+  {
+   "name": "iris",
+   "src": "eyes_a",
+   "lps": 0.058,
+   "box": [
+    850,
+    525,
+    1375,
+    1055
+   ],
+   "pivots": {
+    "c": [
+     1110,
+     790
+    ]
+   }
+  },
+  {
+   "name": "lid",
+   "src": "eyes_a",
+   "lps": 0.058,
+   "box": [
+    1490,
+    495,
+    1965,
+    1055
+   ],
+   "pivots": {
+    "c": [
+     1640,
+     775
+    ]
+   }
+  },
+  {
+   "name": "eyeBurst",
+   "src": "eyes_a",
+   "lps": 0.058,
+   "box": [
+    2085,
+    505,
+    2645,
+    1385
+   ],
+   "pivots": {
+    "c": [
+     2340,
+     780
+    ]
+   }
+  }
  ],
  "chains": [
-  {"prefix": "tn", "src": "tent_a", "lps": 0.075, "joints": [70, 560, 1040, 1520, 2000, 2480], "top": 30, "bot": 1200, "axis": 700, "tiles": [0, 1, 2, 3, 4], "cap": 5, "capLen": 580, "splitSpines": false}
+  {
+   "prefix": "tn",
+   "src": "tent_a",
+   "lps": 0.075,
+   "joints": [
+    70,
+    560,
+    1040,
+    1520,
+    2000,
+    2480
+   ],
+   "top": 30,
+   "bot": 1200,
+   "axis": 700,
+   "tiles": [
+    0,
+    1,
+    2,
+    3,
+    4
+   ],
+   "cap": 5,
+   "capLen": 580,
+   "splitSpines": false
+  }
  ],
  "debris": [
-  {"prefix": "sh", "src": "shards_a", "lps": 0.05, "boxes": [[860, 110, 1000, 430], [1150, 50, 1450, 550], [1580, 140, 1770, 560], [60, 800, 620, 1400], [730, 800, 910, 1100], [820, 1180, 1040, 1420], [1790, 900, 2000, 1250], [2110, 810, 2540, 1410], [1720, 700, 1810, 880], [1480, 1200, 1620, 1380]]},
-  {"prefix": "crown", "src": "shards_a", "lps": 0.07, "boxes": [[30, 80, 770, 800], [1930, 50, 2630, 820]]},
-  {"prefix": "heart", "src": "shards_a", "lps": 0.1, "boxes": [[1090, 670, 1610, 1200]]},
-  {"prefix": "echo", "src": "echoes_a", "lps": 0.21, "keepFrac": 0.05, "boxes": [[70, 190, 670, 1380], [630, 390, 1110, 1100], [1050, 150, 1670, 1390], [1630, 220, 2200, 1280], [2170, 140, 2630, 1390]]}
+  {
+   "prefix": "sh",
+   "src": "shards_a",
+   "lps": 0.05,
+   "boxes": [
+    [
+     860,
+     110,
+     1000,
+     430
+    ],
+    [
+     1150,
+     50,
+     1450,
+     550
+    ],
+    [
+     1580,
+     140,
+     1770,
+     560
+    ],
+    [
+     60,
+     800,
+     620,
+     1400
+    ],
+    [
+     730,
+     800,
+     910,
+     1100
+    ],
+    [
+     820,
+     1180,
+     1040,
+     1420
+    ],
+    [
+     1790,
+     900,
+     2000,
+     1250
+    ],
+    [
+     2110,
+     810,
+     2540,
+     1410
+    ],
+    [
+     1720,
+     700,
+     1810,
+     880
+    ],
+    [
+     1480,
+     1200,
+     1620,
+     1380
+    ]
+   ]
+  },
+  {
+   "prefix": "crown",
+   "src": "shards_a",
+   "lps": 0.07,
+   "boxes": [
+    [
+     30,
+     80,
+     770,
+     800
+    ],
+    [
+     1930,
+     50,
+     2630,
+     820
+    ]
+   ]
+  },
+  {
+   "prefix": "heart",
+   "src": "shards_a",
+   "lps": 0.1,
+   "boxes": [
+    [
+     1090,
+     670,
+     1610,
+     1200
+    ]
+   ]
+  },
+  {
+   "prefix": "echo",
+   "src": "echoes_a",
+   "lps": 0.21,
+   "keepFrac": 0.05,
+   "boxes": [
+    [
+     70,
+     190,
+     670,
+     1380
+    ],
+    [
+     630,
+     390,
+     1110,
+     1100
+    ],
+    [
+     1050,
+     150,
+     1670,
+     1390
+    ],
+    [
+     1630,
+     220,
+     2200,
+     1280
+    ],
+    [
+     2170,
+     140,
+     2630,
+     1390
+    ]
+   ]
+  }
  ],
- "kling": {}
+ "kling": {
+  "model": "kling-image-v3_0_omni (image_to_image, 2k)",
+  "prompts": "tools/painted/prompts/art-boss-5.mjs",
+  "manifest": "tools/kling/manifest_art-boss-5.json",
+  "images": {
+   "ch_head": {
+    "generationId": "AZ_sMPnEtF76i7zIyKq04crlQdIA28chTJjlOALMHxNAq5Tsa149u7YggMDZYoZ5GBIwUi_7",
+    "imageCount": 2,
+    "decision": "#1 kept → raw/head_a (front view obsidian skull with spike crown, 4 forehead eyes, glowing fanged mouth; lower jaw cut with a polygon mask). #2 unused (near duplicate)."
+   },
+   "ch_body": {
+    "generationId": "AXzJNOSPM-ys58sEWSUCUs8kWw3OKyezFNsyDFC1mbLU9wYrmOAyv4sF2_C1pBSr5IwUyb8C",
+    "imageCount": 2,
+    "decision": "#1 kept → raw/body_a (spiked shoulders, star-eyes, tentacle skirt). #2 unused (glowing chest; kept the procedural core instead to save memory)."
+   },
+   "ch_arm": {
+    "generationId": "AZiFum5yMRW3nNooeOVzMYyBskIA1FNN4-8IvEMctZciZgRzFDmJGg5ZIsa4KOB_kh3Dadbw",
+    "imageCount": 1,
+    "decision": "kept → raw/arm_a (spiked eye-studded claw arm; right arm, left = mirror)."
+   },
+   "ch_tentacle": {
+    "generationId": "AVUDbcRiNvlGmku2wGvbdmUOKZxWfNuNsnnBqzBfLRVQaGlwe_V-R3uenyFjBbYd2TT2EUwX",
+    "imageCount": 2,
+    "decision": "#2 kept → raw/tent_a (straight spiked tentacle with glowing suckers → 5 tiles + cap). #1 rejected (tip curled)."
+   },
+   "ch_eyes": {
+    "generationId": "AdVbt3vtbTXOkDivqcw2Iwh3tqpAf8TXFMr7psp9HFB_QBuNIfSPhO4kn8lJMMoYkAMwGWtw",
+    "imageCount": 2,
+    "decision": "#2 kept → raw/eyes_a (glossy eyeball, slit iris, obsidian lid, burst eye). #1 rejected (sticker style, white outlines)."
+   },
+   "ch_shards": {
+    "generationId": "AeVljjTk-XMb7I2Y0vIBJxKPvTNzuy3P-FjrJjfI1jnacvq_a62D2S8nOjO3dtOzy50RU5k8",
+    "imageCount": 1,
+    "decision": "kept → raw/shards_a (10 obsidian shards, 2 broken crown pieces, crystal heart core)."
+   },
+   "ch_echoes": {
+    "generationId": "ARFIPXCgyfgCVIPrF6Ct3x6jSxiVGds_7cP92TNA7w-dfDvGAxdnVc5YyGHPMfcZDCpjsLmX",
+    "imageCount": 2,
+    "decision": "#1 kept → raw/echoes_a (serpent, gear fist, ice queen, reaper with scythe, vampire lord — shadow-summon apparitions). #2 unused (reaper without a horizontal scythe)."
+   }
+  },
+  "imagesSpent": 12
+ }
 }

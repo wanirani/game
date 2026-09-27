@@ -371,7 +371,8 @@ function chains(ctx, D, b, rig, st, o, W, alpha) {
     }
     D.end();
     if (st.q.halos) halo(ctx, px, py, 16 + glowK * 8, TEAL, (0.25 + 0.35 * glowK + 0.1 * Math.sin(b.t * 7 + i)) * alpha * (1 - st.diss));
-    o[s < 0 ? 'chainEndL' : 'chainEndR'] = [px, py];
+    const ce = s < 0 ? (o.chainEndL ??= [0, 0]) : (o.chainEndR ??= [0, 0]);   // 프레임마다 배열을 새로 만들지 않는다
+    ce[0] = px; ce[1] = py;
   }
 }
 

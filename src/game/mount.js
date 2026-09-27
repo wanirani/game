@@ -1190,7 +1190,7 @@ const SPECIALS = {
       const g = groundAt(w, x, b0);
       rr.hit(w, {
         x: x - hw / 2, y: g - hh, w: hw, h: hh, life: sp.life ?? 0.5, z: 7,
-        attack: rr.atk({ mv: rr.power(sp.mv ?? 0.8), type: 'mag', element: sp.element ?? 'dark', stun: sp.stun ?? 1.2, kb: [80, -380], launch: true, hitstop: 0.05, shake: 3, tags: ['mount', 'special'] }, w.player),
+        attack: rr.atk({ mv: rr.power(sp.mv ?? 0.8), type: 'mag', element: sp.element ?? 'dark', stun: sp.stun ?? 1.2, kb: [80, -380], launch: true, hitstop: 0.06, shake: 3, tags: ['mount', 'special'] }, w.player),
         light: { r: 110, color: '#6ad0ff', i: 0.7 },
         render: drawChainPillar,
       });
@@ -1200,19 +1200,19 @@ const SPECIALS = {
     };
     const st = sp.stagger ?? 0.08;
     r.startAct({ name: 'chains', dur: st * 2 + 0.2, anim: 'special', riderAnim: 'ride_rear', moveMul: 0.4, at: [[0, fire(0)], [st, fire(1)], [st * 2, fire(2)]] });
-    world.camera?.shake?.(4, 0.2);
+    world.camera?.shake?.(R().special.shake ?? 6, 0.22);
     r.cry(world, { vol: 0.8 });
   },
   /** 스콜 「서리 포효」: 주위를 얼리고 5초 동안 공격 속도 +15% */
   roar(r, world, p, sp) {
     const rad = sp.r ?? 260;
-    r.strike(world, { x: p.cx - rad, y: p.cy - rad, w: rad * 2, h: rad * 2 }, r.atk({ mv: r.power(sp.mv ?? 0.8), type: 'mag', element: sp.element ?? 'ice', stun: sp.stun ?? 1.0, kb: [240, -200], hitstop: 0.06, shake: 5, tags: ['mount', 'special'] }, p));
+    r.strike(world, { x: p.cx - rad, y: p.cy - rad, w: rad * 2, h: rad * 2 }, r.atk({ mv: r.power(sp.mv ?? 0.8), type: 'mag', element: sp.element ?? 'ice', stun: sp.stun ?? 1.0, kb: [240, -200], hitstop: R().special.hitstop ?? 0.08, shake: 6, tags: ['mount', 'special'] }, p));
     const fx = world.fx;
     fx?.ring(p.cx, p.cy, { color: '#bff4ff', r0: 30, r1: rad, life: 0.45, width: 10 });
     fx?.ring(p.cx, p.cy, { color: '#ffffff', r0: 10, r1: rad * 0.7, life: 0.3, width: 4 });
     fx?.burst('ice', p.cx, p.cy, nq(world, 26), { speed: 380 });
     fx?.flash(p.cx, p.cy, { color: '#bff4ff', size: rad, life: 0.14 });
-    world.camera?.shake?.(5, 0.25);
+    world.camera?.shake?.(R().special.shake ?? 6, 0.25);
     audio.sfx('wolf_howl', { vol: 1 }); audio.sfx('ice', { vol: 0.6 });
     const b = sp.buff;
     if (b?.dur) { r.roarT = b.dur; p.refreshStats?.(); fx?.text(p.cx, p.y - 58, `공격 속도 +${b.atkSpd}%`, { color: '#8ae8ff', size: 15, life: 1.2, vy: -40 }); }
@@ -1247,10 +1247,10 @@ const SPECIALS = {
   /** 녹티스 「초음파」: 앞쪽을 오래 경직시키고 4초 동안 5칸 안의 비밀을 드러낸다 */
   sonar(r, world, p, sp) {
     const bw = sp.box?.w ?? 360, bh = sp.box?.h ?? 160, f = p.facing || 1;
-    r.strike(world, p.relRect(10, -p.h * 0.5 - bh / 2, bw, bh), r.atk({ mv: r.power(sp.mv ?? 0.6), type: sp.type ?? 'mag', element: sp.element ?? 'dark', stun: sp.stun ?? 1.2, kb: [200, -120], hitstop: 0.05, shake: 3, tags: ['mount', 'special'] }, p));
+    r.strike(world, p.relRect(10, -p.h * 0.5 - bh / 2, bw, bh), r.atk({ mv: r.power(sp.mv ?? 0.6), type: sp.type ?? 'mag', element: sp.element ?? 'dark', stun: sp.stun ?? 1.2, kb: [200, -120], hitstop: R().special.hitstop ?? 0.08, shake: 4, tags: ['mount', 'special'] }, p));
     for (let i = 0; i < 3; i++) world.fx?.ering?.(p.cx + f * (40 + i * 70), p.cy - 10, { color: '#ff6a7a', r0: 10 + i * 10, r1: 90 + i * 30, ry: 1.4, life: 0.35 + i * 0.08, width: 3 });
     audio.sfx('screech', { vol: 1 });
-    world.camera?.shake?.(3, 0.2);
+    world.camera?.shake?.(R().special.shake ?? 6, 0.2);
     const rv = sp.reveal;
     if (rv) world.add(new SecretSight(p, rv.tiles ?? 5, rv.dur ?? 4));
     r.startAct({ name: 'screech', dur: 0.4, anim: 'screech', riderAnim: 'ride', moveMul: 0.6 });

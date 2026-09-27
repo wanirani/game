@@ -270,7 +270,7 @@ function drawGlitched(ctx, D, b, world, rig, st, lvl, t, g, dying, dT) {
   // 색 분리: 머리·몸 발광 실루엣 두 벌 (자홍 / 흰) 을 좌우로
   const R = rig.parts, op = ctx.globalCompositeOperation;
   ctx.globalCompositeOperation = 'lighter';
-  for (const [dx, key, a] of [[8 * g, 'glow', 0.3 * g], [-8 * g, 'flash', 0.18 * g]]) {
+  for (const [dx, key, a] of [[8 * g, 'glow', 0.13 * g], [-8 * g, 'flash', 0.08 * g]]) {
     const Bd = R.body, H = R.head;
     D.part(Bd, Bd.v[key] ?? Bd.v.base, 'neck', x + dx, y + NECK_Y, 0, Bd.k, Bd.k, a);
     D.part(H, H.v[key] ?? H.v.base, 'c', x + dx, y + HEAD_Y, 0, H.k, H.k, a);
@@ -300,7 +300,7 @@ function drawEyes(ctx, D, b, rig, st, t, dt) {
     const e = b.eyes[i]; if (e.dead) continue;
     const open = clamp(e.open ?? 1, 0, 1), r = 20;                           // 판정 40×40 ↔ 그림 지름 ≈ 40
     const pu = 0.85 + 0.15 * Math.sin(t * 5 + i);
-    if (q.halos) halo(ctx, e.x, e.y, (r * 2.3 + (e.laser ? e.laser.k * 26 : 0)) * pu, e.laser ? MAGENTA : VIOLET, (0.45 + (e.laser ? e.laser.k * 0.5 : 0)), true);
+    if (q.halos) halo(ctx, e.x, e.y, (r * 2.3 + (e.laser ? e.laser.k * 26 : 0)) * pu, e.laser ? MAGENTA : VIOLET, (0.6 + (e.laser ? e.laser.k * 0.4 : 0)), true);
     // 눈 줄기 (아래로 늘어진 촉수 끝)
     if (cap) {
       const sw = Math.sin(t * 3 + i * 1.7) * 0.4, tl = (cap.jr[0] - cap.jl[0]) * cap.k;
@@ -316,6 +316,7 @@ function drawEyes(ctx, D, b, rig, st, t, dt) {
       const lx = Math.cos(e.look ?? 0) * 6, ly = Math.sin(e.look ?? 0) * 6 * open;
       const ki = k * 0.62;
       D.part(I, I.v.base, 'c', e.x + lx, e.y + ly, 0, ki, ki * Math.max(0.1, open), 1);
+      if (q.halos) { D.end(); halo(ctx, e.x + lx, e.y + ly, 10 * pu, MAGENTA, 0.6 * open, true); }   // 빛나는 동공 — 판정 부위가 잘 보이게
     }
     if (struck) D.flash(clamp(b.flashT / 0.1, 0, 1) * 0.8); else { D.rec = false; D.log.length = 0; }
     D.end();

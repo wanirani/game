@@ -17,7 +17,11 @@
 //   · 디버그 규칙 (갤러리·테스트): debugAct(name) — 공격 패턴은 어느 페이즈에서든 강제 시작, 없는 상태는 경고 후 false,
 //     전환 상태 이름이면 debugPhase 규칙으로 안전하게 들어간다 (형태 교체·대사는 한 번뿐). debugPhase(n) — BossB 그대로
 //     (체력을 경계 아래로 → onPhase → skipTransition: 형태 즉시 적용, 대사는 대기열로). attackNames() · transitionNames().
+//   · this.A (경기장)는 fixArena 로 보정된다: 가운데 열이 받침대인 방(몰록 제단)에서도 x0 < x1 (setup() 보다 먼저).
 //  이 클래스를 쓰지 않고 BossB 를 직접 상속해도 아래 함수들은 모두 쓸 수 있다 (첫 인자 = 보스).
+//
+// ── 패턴 계약 ──  P2_PATTERNS[bossId] {attacks, helpers, transitions, weights, gimmicks, floorRow, room} · patternsOf(id, Cls)
+//  · attackNamesOf(id, Cls) · transitionsOf(id, Cls). 클래스의 static PATTERNS 가 있으면 그 키가 이긴다 (얕은 병합).
 //
 // ── 페이즈 대사 (world2 §1.4 · §6.1, MASTER_PLAN §1.13) ────────────────────────────────────────
 //  phaseScript(boss, id, {onEnd}) — 스토리 모드 · 처음 · SCRIPTS 에 있을 때만 대기열에 넣는다 (아니면 onEnd 를 바로 부르고 false).
@@ -1187,7 +1191,7 @@ export class BossC extends BossB {
   /** 싸움을 처음 상태로: 페이즈 0, 형태·경기장·대사 대기열 되돌리기, onReset, idle */
   resetFight(world = this.world) {
     this.phase = 0; this.formPhase = 0; this.scriptedPhase = 0; this._tr = null;
-    this.clearJobs(); this.invuln = false; this.harmless = false; this.telegraph = false; this.alpha = 1;
+    this.clearJobs(); this.invuln = false; this.harmless = false; this.telegraph = false; this.alpha = 1; this.hidden = false;
     this.forced.length = 0; this.lastAtk = null;
     if (this.def0) this.def = this.def0;
     resetArena(world, this, this.arenaReset ?? {});
@@ -1233,7 +1237,7 @@ export class BossC extends BossB {
   cancelPattern() {
     if (this._tr) { this.applyPhasesTo(this.phase, this.world); this._tr = null; }
     this.clearJobs();
-    this.telegraph = false; this.invuln = false; this.harmless = false; this.alpha = 1;
+    this.telegraph = false; this.invuln = false; this.harmless = false; this.alpha = 1; this.hidden = false;
     this.onCancel?.(this.world);
   }
 

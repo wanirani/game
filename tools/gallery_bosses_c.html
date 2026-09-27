@@ -214,7 +214,7 @@ function closeDialog(W) {
 }
 
 // ───────────── 보스 만들기 ─────────────
-const S = { W: null, boss: null, status: {}, forceCutscene: false, msg: '' };
+const S = { W: null, boss: null, status: {}, forceCutscene: false, msg: '', sync: [] };
 function statusOf(id) { return S.status[id] ?? (CLASSES[id] ? 'ok' : 'stub'); }
 /** 시작할 때 각 클래스를 한 번씩 만들어 본다 (생성자 오류를 목록 배지로 바로 보이게) */
 function probeClasses() {
@@ -226,7 +226,7 @@ function probeClasses() {
   }
 }
 function build(id = O.id, { phase = 0, act = null } = {}) {
-  O.id = id;
+  O.id = id; S.msg = '';
   const W = makeWorld(id), def = DEFS[id], C = CLASSES[id];
   const a = W.arena, m = W.map;
   const px = a.x0 + (a.x1 - a.x0) * O.player;
@@ -415,15 +415,23 @@ function drawHud(W, label) {
 }
 
 // ───────────── UI ─────────────
+/** on/disabled 가 함수면 syncUI 가 제자리에서 갱신한다 (버튼을 다시 만들지 않아 누르는 도중 클릭이 사라지지 않게) */
 function btn(parent, label, fn, { on = false, disabled = false, title = '' } = {}) {
   const b = document.createElement('button');
-  b.textContent = label; if (on) b.classList.add('on'); if (disabled) b.disabled = true; if (title) b.title = title;
+  b.textContent = label; if (title) b.title = title;
   b.onclick = () => { fn(); refreshUI(); };
   parent.appendChild(b);
+  S.sync.push([b, on, disabled]);
   return b;
+}
+function syncUI() {
+  for (const [b, on, dis] of S.sync) {
+    try { b.classList.toggle('on', !!(typeof on === 'function' ? on() : on)); b.disabled = !!(typeof dis === 'function' ? dis() : dis); } catch { /* 보스를 새로 만드는 중 */ }
+  }
 }
 function refreshUI() {
   const b = S.boss, id = O.id, P = patternsOf(id, CLASSES[id]);
+  S.sync = [];
   $('gtitle').textContent = GROUP.title; $('gsub').textContent = GROUP.sub;
   const L = $('bosses'); L.textContent = '';
   for (const bid of IDS) {
@@ -440,39 +448,40 @@ function refreshUI() {
   }
   const ph = $('phases'); ph.textContent = '';
   const nph = (DEFS[id].phases ?? []).length;
-  for (let n = 0; n <= nph; n++) btn(ph, `P${n + 1}`, () => build(id, { phase: n }), { on: b.phase === n });
+  for (let n = 0; n <= nph; n++) btn(ph, `P${n + 1}`, () => build(id, { phase: n }), { on: () => S.boss.phase === n });
   const acts = $('acts'); acts.textContent = '';
   const stub = !(b.debugAct && CLASSES[id]);
   const attackList = b.attackNames?.() ?? P.attacks ?? [];
-  if (stub) for (const s of GEN_STATES) btn(acts, s + ' (Generic)', () => doAct(s), { on: b.state === s });
+  if (stub) for (const s of GEN_STATES) btn(acts, s + ' (Generic)', () => doAct(s), { on: () => S.boss.state === s });
   for (const s of attackList) {
     const has = typeof b['s_' + s] === 'function';
-    btn(acts, s, () => doAct(s), { on: b.state === s, disabled: !has, title: has ? '' : '아직 구현되지 않음 (P2_PATTERNS 계약)' });
+    btn(acts, s, () => doAct(s), { on: () => S.boss.state === s, disabled: !has, title: has ? '' : '아직 구현되지 않음 (P2_PATTERNS 계약)' });
   }
   const tr = $('trans'); tr.textContent = '';
   const trans = b.transitionNames?.() ?? Object.values(P.transitions ?? {}).map((t) => t.state);
-  for (const s of trans) btn(tr, '⇢ ' + s, () => doAct(s), { on: b.state === s, disabled: stub, title: '전환 상태: 그 페이즈로 들어가 연출을 다시 보여 준다' });
+  for (const s of trans) btn(tr, '⇢ ' + s, () => doAct(s), { on: () => S.boss.state === s, disabled: stub, title: '전환 상태: 그 페이즈로 들어가 연출을 다시 보여 준다' });
   for (const s of b.helperNames?.() ?? P.helpers ?? []) {
     const has = typeof b['s_' + s] === 'function';
-    btn(tr, s, () => doAct(s), { on: b.state === s, disabled: !has, title: has ? '' : '아직 구현되지 않음' });
+    btn(tr, s, () => doAct(s), { on: () => S.boss.state === s, disabled: !has, title: has ? '' : '아직 구현되지 않음' });
   }
-  btn(tr, 'idle', () => doAct('idle'), { on: b.state === 'idle' });
+  btn(tr, 'idle', () => doAct('idle'), { on: () => S.boss.state === 'idle' });
   const T = $('tools'); T.textContent = '';
-  btn(T, O.paused ? '▶ 재생' : '⏸ 일시정지', () => { O.paused = !O.paused; }, { on: O.paused });
+  btn(T, '⏸ 일시정지', () => { O.paused = !O.paused; }, { on: () => O.paused });
   btn(T, '⏭ 0.1초', () => { sim(S.W, 0.1); draw(); });
-  btn(T, '느리게 ×0.25', () => { O.slow = !O.slow; }, { on: O.slow });
+  btn(T, '느리게 ×0.25', () => { O.slow = !O.slow; }, { on: () => O.slow });
   btn(T, '사망→부활 (onReset)', () => deathReset());
   btn(T, '처치', () => kill());
-  btn(T, '판정 표시', () => { O.debug = !O.debug; S.W.game.debug = O.debug; }, { on: O.debug });
-  btn(T, '적 정지', () => { S.W.freezeEnemies = !S.W.freezeEnemies; }, { on: S.W.freezeEnemies });
-  btn(T, '컷신 유지', () => { S.forceCutscene = !S.forceCutscene; if (!S.W.dialog) S.W.cutscene = S.forceCutscene; }, { on: S.forceCutscene, title: '필살기·각성 컷인 흉내: 페이즈 대사가 미뤄지는지 본다' });
-  btn(T, '스토리 모드', () => { O.story = !O.story; S.W.mode = O.story ? 'story' : 'arcade'; }, { on: O.story, title: '페이즈 대사(처음 1회)를 띄운다' });
+  btn(T, '판정 표시', () => { O.debug = !O.debug; S.W.game.debug = O.debug; }, { on: () => O.debug });
+  btn(T, '적 정지', () => { S.W.freezeEnemies = !S.W.freezeEnemies; }, { on: () => S.W.freezeEnemies });
+  btn(T, '컷신 유지', () => { S.forceCutscene = !S.forceCutscene; if (!S.W.dialog) S.W.cutscene = S.forceCutscene; }, { on: () => S.forceCutscene, title: '필살기·각성 컷인 흉내: 페이즈 대사가 미뤄지는지 본다' });
+  btn(T, '스토리 모드', () => { O.story = !O.story; S.W.mode = O.story ? 'story' : 'arcade'; }, { on: () => O.story, title: '페이즈 대사(처음 1회)를 띄운다' });
   btn(T, '대역 기믹', () => { O.standIns = !O.standIns; build(id); }, { on: O.standIns, title: '방 기믹이 없을 때 c_common 대역 기믹 사용' });
-  btn(T, '자동 회피', () => { O.auto = !O.auto; }, { on: O.auto });
+  btn(T, '자동 회피', () => { O.auto = !O.auto; }, { on: () => O.auto });
   btn(T, '인페르노', () => { O.diff = O.diff === 'inferno' ? 'normal' : 'inferno'; build(id); }, { on: O.diff === 'inferno' });
   btn(T, '새로 만들기', () => build(id));
   btn(T, '전체 보기', () => { location.search = '?grid=1'; });
-  if (S.W.dialog) btn(T, '대사 넘기기', () => closeDialog(S.W), { on: true });
+  btn(T, '대사 넘기기', () => closeDialog(S.W), { on: () => !!S.W.dialog, disabled: () => !S.W.dialog });
+  syncUI();
 }
 function infoText() {
   const W = S.W, b = S.boss, id = O.id;
@@ -489,7 +498,7 @@ function infoText() {
   }).join('  ') || '-';
   return [
     `상태 ${b.state}   페이즈 ${b.phase + 1}/${(b.def.phases?.length ?? 0) + 1}   체력 ${Math.round(b.hp / b.stats.maxHp * 100)}%   예고 ${b.telegraph ? '켜짐' : '-'}   무적 ${b.invuln ? '예' : '-'}   무해 ${b.harmless ? '예' : '-'}`,
-    `이름 ${b.def.name} · ${b.def.title}   클래스 ${CLASSES[id]?.name ?? 'GenericBoss (스텁)'}   모드 ${W.mode}   난이도 ${O.diff}`,
+    `이름 ${b.def.name} · ${b.def.title}   클래스 ${statusOf(id) === 'err' ? CLASSES[id].name + ' (생성 오류 → GenericBoss)' : CLASSES[id]?.name ?? 'GenericBoss (스텁)'}   모드 ${W.mode}   난이도 ${O.diff}`,
     `가중치(이번 페이즈) ${wts || '-'}   강제 ${b.forced?.length ? b.forced.join(',') : '-'}`,
     `페이즈 대사 대기 ${sc?.q?.length ?? 0} / 표시 ${sc?.on?.id ?? '-'} / 바쁨 ${phaseScriptBusy(b) ? '예' : '-'}   본 대사 ${W.state.progress.seenScripts.join(', ') || '-'}`,
     `대역 기믹 ${si}   소환수 ${(b._cMinions ?? []).filter((e) => !e.dead).length}   어둠 ${W.lighting.darkness.toFixed(2)}   오버레이 ${W.overlays.length}`,
@@ -525,7 +534,7 @@ else {
   build(O.id, { phase: Number(q.get('ph') || 0), act: q.get('act') });
   if (q.has('t')) sim(S.W, Number(q.get('t')));
   addEventListener('keydown', (e) => {
-    if (e.code === 'Space') { O.paused = !O.paused; e.preventDefault(); refreshUI(); }
+    if (e.code === 'Space') { O.paused = !O.paused; e.preventDefault(); syncUI(); }
     else if (e.key === '.') { sim(S.W, 0.1); }
     else if (e.key === 'r' || e.key === 'R') { deathReset(); }
     else if (e.key === 'Enter') { closeDialog(S.W); refreshUI(); }
@@ -541,7 +550,7 @@ else {
     }
     draw();
     uiT += dt;
-    if (uiT > 0.4) { uiT = 0; refreshUI(); }
+    if (uiT > 0.25) { uiT = 0; syncUI(); }
     requestAnimationFrame(loop);
   };
   requestAnimationFrame(loop);

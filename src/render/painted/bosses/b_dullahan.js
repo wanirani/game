@@ -92,7 +92,8 @@ export default {
   },
   /** 돌격·연속 찌르기 잔상 (로직 afterimage → fx.ghost): 스냅숏 자세를 푸른 발광 실루엣으로 */
   ghost(ctx, b, s, a, rig, st) {
-    if (!rig || !st?.dv || b.dying > 0) return false;
+    // 사망 중에도 채색으로 그린다: 벡터로 돌려보내면 돌격 중 쓰러질 때 남은 잔상(≤0.25 s)이 벡터 그림으로 튄다
+    if (!rig || !st?.dv) return false;
     const D = st.ghostD ??= new Drawer();
     const o = st.go;
     pose(o, b, s, b.t ?? 0, true);

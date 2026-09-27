@@ -16,7 +16,7 @@
 //      단계별 동시 상한 0/3/5, 품질 상한 8/5/3, 0.045초 간격 제한. 영웅은 잔상을 만들 때 한 번만 그리고, 그 뒤로는 비트맵만 그린다.
 //  ULTFX.end(w, p?, {quick}) → 줌·기울기·레터박스 복구, 화면 층 0.25초 페이드 후 제거
 //  (추가) ULTFX.prepare(w, p?) 미리 굽기 · ULTFX.flourish(w, classId, x, y, o) 직업 장식만 · ULTFX.active(w) · ULTFX.tierOf(p) ·
-//         ULTFX.accentOf(classId) · ULTFX.glow(color) 256px 빛 스프라이트 · ULTFX.sprite(name) 장식 스프라이트
+//         ULTFX.accentOf(classId) · ULTFX.glow(color) 빛 스프라이트(품질별 256/192/128px) · ULTFX.sprite(name) 장식 스프라이트
 //  ULT_TIERS[0|1|2] (= ULT_TIERS.T0/T1/T2) 단계 표 · ULT_FLOURISH[classId] {name, colors, sprites} · ULTFX_STATS (시험용 계수)
 //
 // 성능 (feel §8, MASTER_PLAN §5.2)
@@ -42,9 +42,9 @@ import { drawHero } from './hero.js';
 const DEG = Math.PI / 180;
 const OUT = 0.25;                    // 화면 층 퇴장 (초)
 const Q = {
-  high:   { peak: 600, awPeak: 700, ghosts: 8, sil: 0.5, layer: true, diff: true, rs: 1.25, decals: true },
-  medium: { peak: 400, awPeak: 450, ghosts: 5, sil: 0.5, layer: true, diff: true, rs: 1, decals: true },
-  low:    { peak: 220, awPeak: 250, ghosts: 3, sil: 0, layer: false, diff: false, rs: 0.75, decals: false },
+  high:   { peak: 600, awPeak: 700, ghosts: 8, sil: 0.5, layer: true, diff: true, rs: 1.25, decals: true, glow: 256 },
+  medium: { peak: 400, awPeak: 450, ghosts: 5, sil: 0.5, layer: true, diff: true, rs: 1, decals: true, glow: 192 },
+  low:    { peak: 220, awPeak: 250, ghosts: 3, sil: 0, layer: false, diff: false, rs: 0.75, decals: false, glow: 128 },
 };
 
 // ═══════════════════════════ 단계 표 (feel §5.2) ═══════════════════════════
@@ -284,14 +284,14 @@ function drawBolt(ctx, P, col, wd, a) {
 }
 
 // ═══════════════════════════ 캔버스 풀 · 캐시 스프라이트 ═══════════════════════════
-const GLOW = 256, GLOW_CAP = 24, LAYER = 512, SPR_CAP = 8;
+const GLOW_CAP = 24, LAYER = 512, SPR_CAP = 8;   // 빛 스프라이트 크기는 품질별 (Q.glow: 256 / 192 / 128)
 const GH = { bw: 150, bt: 180, bb: 30 };   // 잔상 비트맵 상자 (발 중앙 기준 좌우 bw, 위 bt, 아래 bb; 월드 px)
 const POOL = { glow: new Map(), glowSpare: [], layers: [], sprites: new Map(), spriteSpare: [], ghosts: [], sil: null, scratch: null };
 /** 풀을 미리 만든다 (부팅 뒤 한가할 때 · 스테이지 진입 뒤 한가할 때). 이미 있으면 모자란 만큼만 */
 function ensurePools(q = 'high') {
   if (typeof document === 'undefined') return false;
   const B = Q[q] ?? Q.high;
-  while (POOL.glowSpare.length + POOL.glow.size < 6) { const c = mkCanvas(GLOW, GLOW); if (!c) return false; POOL.glowSpare.push(c); }
+  while (POOL.glowSpare.length + POOL.glow.size < 6) { const c = mkCanvas(B.glow, B.glow); if (!c) return false; POOL.glowSpare.push(c); }
   if (B.layer) while (POOL.layers.length < 2) POOL.layers.push({ key: null, c: mkCanvas(LAYER, LAYER), used: 0 });
   while (POOL.spriteSpare.length + POOL.sprites.size < 4) POOL.spriteSpare.push(mkCanvas(256, 256));
   const W = Math.ceil(2 * GH.bw * B.rs), H = Math.ceil((GH.bt + GH.bb) * B.rs);
@@ -325,7 +325,7 @@ export function glowSprite(color) {
   const now = perfNow();
   if (now - GLOW_WIN > 200) { GLOW_WIN = now; GLOW_N = 0; }
   if (++GLOW_N > 6) return HFX.glow?.(key) ?? null;
-  c = POOL.glowSpare.pop() ?? (M.size < GLOW_CAP ? mkCanvas(GLOW, GLOW) : null);
+  c = POOL.glowSpare.pop() ?? (M.size < GLOW_CAP ? mkCanvas(Q[qk(game?.world)].glow, Q[qk(game?.world)].glow) : null);
   if (!c) { const k0 = M.keys().next().value; c = M.get(k0); M.delete(k0); }
   if (!c) return null;
   try { bakeGlow(resetCtx(c), key, c.width); } catch (e) { console.warn('[ultfx] glow', e); }

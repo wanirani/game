@@ -1047,5 +1047,87 @@
    ]
   }
  ],
- "kling": {}
+ "kling": {
+  "model": "kling-image-v3_0_omni (image_to_image, 2k)",
+  "prompts": "tools/painted/prompts/art-boss-5.mjs",
+  "manifest": "tools/kling/manifest_art-boss-5.json",
+  "images": {
+   "dr_head_a": {
+    "generationId": "AR9mKVOdcYlAVDaWNJ_TqLOHffMNCyihoukKORd3XCoZNNlF-dKtVTRt_MNPbNtIbdav2UBQ",
+    "imageCount": 2,
+    "decision": "#2 kept → raw/head_a (profile, long hair, pointed ear, red eyes, fang smile). #1 unused (short hair, less menacing)."
+   },
+   "dr_torso": {
+    "generationId": "AUjW_5bEEYwUA2fhnLMxPTY27og-guWvECg1H1CPy7OwxW5DeU40axG97Bo753ftvThWAbWz",
+    "imageCount": 2,
+    "decision": "#2 kept → raw/torso_a (mirrored: generated facing left; sleeveless tailcoat with high red collar, brocade vest; the grey shoulder disc is covered by the upper arm). #1 rejected (sleeves painted on)."
+   },
+   "dr_limbs": {
+    "generationId": "AWYtupwf_1dqLOoBPDNKmy2dpSujoUkPIgyUFMugFZMVoJX0OUQhvZpR_97hGKHjQD2Vx7HD",
+    "imageCount": 2,
+    "decision": "#1 kept → raw/limbs_a (open claw hand with lace cuff, sleeve + grasping claw, trouser leg with boot; the mini full-body figure is unused). #2 rejected (sticker style with thick white outlines)."
+   },
+   "dr_cape": {
+    "generationId": "AQZ_Wz0yra7tTM7rT4T71Mwjup6WZahJbySyMuvsDSDlfwKoYE9K78zF5XnNzp8yiXcq2KE5",
+    "imageCount": 2,
+    "decision": "#2 kept → raw/cape_a (half cape, black velvet + red lining, bat-wing hem). #1 rejected (turned into a bony demon wing, not a cape)."
+   },
+   "dr_cloak": {
+    "generationId": "AUmZggWbdR3ItKJ0S-5wgt-vNYR5Xm31Q2OZJFgshGC_wCJI9FGzqUZgkdgihWrMEe3OX43V",
+    "imageCount": 1,
+    "decision": "kept → raw/cloak_a (mirrored; closed cloak with high collar — the wrap/teleport state)."
+   },
+   "dr_bats": {
+    "generationId": "Ac9h3L9ZrUz9ojimNrhvwcjj3dOwkrJWSlsoAKVlGrhCTKaOS7SPpEFXZ-NpeYWd0WQn_Nkd",
+    "imageCount": 1,
+    "decision": "kept → raw/bats_a (3 front-view bats in different wing phases → bat0..2; the loose wing piece is unused)."
+   },
+   "dr_morph": {
+    "generationId": "ARMVkPbI6X_QFIr5SsFuYsXdSSuR3j_WU-8GGGK_D1BNDLkhK2MPpfNd8eSGXNBa1ZAcmp1T",
+    "imageCount": 2,
+    "decision": "#2 kept → raw/morph_a (mirrored; half-transformed count: horns, torn coat, exposed red ribs, claws — transformation frame; floor shadow cut by matte hard 14). #1 unused (crouched grey demon, count not recognisable)."
+   },
+   "dm_head": {
+    "generationId": "ASZsnmHz_MZ5rKgf2seBBcioi1hzBDdUvWqzojdlYvVUbIQGhtZhFxxPIr8Xj_SvTuSYgSvt",
+    "imageCount": 2,
+    "decision": "#1 kept → raw/dhead_a (horned dragon-demon head, roaring; jaw cut with a polygon mask, throat punched). #2 unused (similar, fewer spikes)."
+   },
+   "dm_torso": {
+    "generationId": "AayUzFCzYPmwND3yfEnGAlvY_uz_zqo0zJcvC8vBcNDMEl6UL-3mJXpE7JbgsAEbiHYDcz_V",
+    "imageCount": 2,
+    "decision": "#1 kept → raw/dtorso_a (mirrored; scaled torso with hellfire rune, spine spikes, loincloth). #2 rejected (painted arm-stump tube)."
+   },
+   "dm_arm": {
+    "generationId": "ATUcML60nKlTzsOGeFK3ve6ytlSzMO6rg-MnfWsH8AN6PQDvB_E64WG7wHUyBV1HP57siTqi",
+    "imageCount": 1,
+    "decision": "kept → raw/darm_a (3 whole arms: upper arm cut from #1, open-claw forearm from #2, clenched forearm from #3)."
+   },
+   "dm_leg": {
+    "generationId": "AX3CjOfgNkGx_UWuAef3uU0D0E1_Xakod6ExSJzTlWbJWyPUEjmbyiZw14ipKEE-LtyreEs6",
+    "imageCount": 1,
+    "decision": "kept → raw/dleg_a (thigh = middle piece, shin + foot cut from the top piece)."
+   },
+   "dm_wing": {
+    "generationId": "ASHHEe3qaYgIKHjUxRu01NIhoDHd1QuLUdKh0cpIFHRahWJBRc3ZGdidSf2SYFky4kS_6Ygt",
+    "imageCount": 2,
+    "decision": "#1 kept → raw/dwing_a (root runs off the bottom edge = hidden behind the back). #2 unused (extra claw cluster at the root)."
+   },
+   "dm_tail": {
+    "generationId": "AXafARvc-b-zPUsTBhcYdFR3hQRWAXK8LzsXjJHOppfXUM6dBhmKLLTu8mq1AE3-m7AqYibS",
+    "imageCount": 1,
+    "decision": "kept → raw/dtail_a (straight tail → 5 chain tiles + spade cap)."
+   },
+   "dm_debris": {
+    "generationId": "Afcjlf8KUz4Gv3zerLB4lA6eCLIdLjMQlO8RaKK9BhzCMS-ZwDbuDL4iEmdoVUv_6LnC8QCv",
+    "imageCount": 1,
+    "decision": "kept → raw/ddebris_a (10 pieces: wing shreds, claw, bones, scale chunks, lava hide)."
+   },
+   "dr_head_b": {
+    "generationId": "AZG1QNkkjQs4J1wjR2J18LV6TyVWAnVHJBA7Hsv57C6zNBPcxY01zbpzc5Zt1VxuhJB7Gelf",
+    "imageCount": 1,
+    "decision": "kept → raw/head_b (same head snarling, fangs bared) — attack/transform frames."
+   }
+  },
+  "imagesSpent": 23
+ }
 }
