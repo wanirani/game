@@ -206,12 +206,14 @@ export class Enemy extends Entity {
   effClass() { return this.staggerT > 0 && this.wclass === 'HEAVY' ? 'MEDIUM' : this.wclass; }
   /** 쓰러질 수 있는가 (feel §4.4 안전 규칙: FIXED·보스·비행·noKnockdown·작은 적 제외) */
   canKnockdown() {
-    if (this.noGravity || this.def.noKnockdown || this.def.fixed || SCRIPTED_STATES.has(this.state)) return false;
+    if (this.noGravity || this.def.noKnockdown || this.def.fixed || this.scripted()) return false;
     const T = tables();
     if (this.h < (T.W.knockdownMinH ?? 50)) return false;
     const kd = T.W[this.effClass()]?.knockdown;
     return kd === true || (kd === 'stagger' && this.staggerT > 0);
   }
+  /** AI 가 몸을 직접 연출하는 상태인가 (그 상태를 모는 원래 AI 가 돌 때만; 테스트용 수동 더미는 해당 없음) */
+  scripted() { return SCRIPTED_STATES.has(this.state) && this.ai === (AI[this.def.ai] || AI.walker); }
   /** 공중에 떠서 반응 중인가 (공중 콤보) */
   get juggling() { return this.jugg && !this.onGround && !this.noGravity; }
   /** 콤보 반응 끝 (회복·기상): 공중 콤보·바운드 기록 초기화 */
@@ -537,7 +539,7 @@ export class Enemy extends Entity {
     }
     // AI 가 몸을 직접 연출하는 상태(땅에서 솟기·석상·변장·뼈 무더기 등)는 띄우기·공중 콤보·다운 없이 밀리기만 한다
     // (누운 자세·기상 무적이 무더기 그림과 겹치거나 '무더기 부수기'를 막지 않게)
-    const launchMul = SCRIPTED_STATES.has(this.state) ? 0 : (Wc.launchMul ?? 1);
+    const launchMul = this.scripted() ? 0 : (Wc.launchMul ?? 1);
     const air = !this.onGround;
     if (attack.launch && !info.cont) {
       // 띄우기
@@ -545,7 +547,7 @@ export class Enemy extends Entity {
         this.vy = -Math.min(J.launchMax ?? 1000, Math.abs(kb[1]) * (J.launchK ?? 1.25)) * launchMul;
         this.jugg = true; this.juggT = 0;
         if (air) this.jn++;
-      } else if (wc === 'HEAVY' && !SCRIPTED_STATES.has(this.state) && (Wc.hopCls ?? ['H', 'F']).includes(cls)) this.vy = Math.min(this.vy, Wc.hopVy ?? -380);
+      } else if (wc === 'HEAVY' && !this.scripted() && (Wc.hopCls ?? ['H', 'F']).includes(cls)) this.vy = Math.min(this.vy, Wc.hopVy ?? -380);
       this.vx = dir * kb[0] * kbMul;
       this.stun = Math.max(this.stun, stunTab, explicit) + stunAdd;
     } else if (air && launchMul > 0) {

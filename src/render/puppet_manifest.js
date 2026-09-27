@@ -198,8 +198,8 @@ export const PUPPETS = {
  },
  "sera": {
   "sera_archmage": {
-   "h": "e85228091e78",
-   "turn": false,
+   "h": "8529bfd811e6",
+   "turn": true,
    "lv": [
     "hi",
     "lo",
@@ -207,8 +207,8 @@ export const PUPPETS = {
    ]
   },
   "sera_elementalist": {
-   "h": "d9578b388b57",
-   "turn": false,
+   "h": "879c48774e02",
+   "turn": true,
    "lv": [
     "hi",
     "lo",
@@ -216,7 +216,7 @@ export const PUPPETS = {
    ]
   },
   "sera_exorcist": {
-   "h": "b3884ed45e50",
+   "h": "58ee016547b1",
    "turn": true,
    "lv": [
     "hi",
@@ -225,8 +225,8 @@ export const PUPPETS = {
    ]
   },
   "sera_oracle": {
-   "h": "de13ce74d39e",
-   "turn": false,
+   "h": "32e0cb97b2d7",
+   "turn": true,
    "lv": [
     "hi",
     "lo",
@@ -234,7 +234,7 @@ export const PUPPETS = {
    ]
   },
   "sera_priestess": {
-   "h": "021ae9c26837",
+   "h": "f3990cef213f",
    "turn": true,
    "lv": [
     "hi",
@@ -243,7 +243,7 @@ export const PUPPETS = {
    ]
   },
   "sera_saint": {
-   "h": "d1745f1fd741",
+   "h": "3c56de8b93d5",
    "turn": true,
    "lv": [
     "hi",
@@ -252,8 +252,8 @@ export const PUPPETS = {
    ]
   },
   "sera_stormcaller": {
-   "h": "fad9fa374f14",
-   "turn": false,
+   "h": "6337eb55277a",
+   "turn": true,
    "lv": [
     "hi",
     "lo",
@@ -263,8 +263,8 @@ export const PUPPETS = {
  },
  "victor": {
   "victor_deadeye": {
-   "h": "011e51c8bb17",
-   "turn": false,
+   "h": "cdb6d0590761",
+   "turn": true,
    "lv": [
     "hi",
     "lo",
@@ -281,8 +281,8 @@ export const PUPPETS = {
    ]
   },
   "victor_executioner": {
-   "h": "b20ab9fff97b",
-   "turn": false,
+   "h": "10ec70fdd402",
+   "turn": true,
    "lv": [
     "hi",
     "lo",
@@ -290,8 +290,8 @@ export const PUPPETS = {
    ]
   },
   "victor_gunlord": {
-   "h": "e536d74b1136",
-   "turn": false,
+   "h": "603e4be4aea5",
+   "turn": true,
    "lv": [
     "hi",
     "lo",
@@ -299,7 +299,7 @@ export const PUPPETS = {
    ]
   },
   "victor_gunslinger": {
-   "h": "5f2f4727a979",
+   "h": "772ceb489600",
    "turn": true,
    "lv": [
     "hi",
@@ -308,8 +308,8 @@ export const PUPPETS = {
    ]
   },
   "victor_hellfire": {
-   "h": "a34c0d570897",
-   "turn": false,
+   "h": "06be3b7dec6b",
+   "turn": true,
    "lv": [
     "hi",
     "lo",
@@ -317,7 +317,7 @@ export const PUPPETS = {
    ]
   },
   "victor_phantom": {
-   "h": "87893266c054",
+   "h": "ce6d6dc22e82",
    "turn": true,
    "lv": [
     "hi",

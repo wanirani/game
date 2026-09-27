@@ -18,6 +18,9 @@ export class Grimoire extends ABoss {
     this.elemI = 0; this.elem = 'fire'; this.runeK = 0; this.chainsBroken = false;
     this.flutter = 0;
   }
+  // [판정 메모 · ART-BOSS-2, 게임플레이 변경 없음] 채색 그림(src/render/painted/bosses/b_grimoire.js)은 책 몸통(표지 가죽 ≈ 121×189 px)을
+  //  논리 사각형 150×178 에 맞춰 그린다(배율 G = 1.08): 판정과 책이 일치한다. 책 밑으로 늘어진 촉수(책 바닥 아래 ≈ 160 px까지)와
+  //  궤도를 도는 낱장은 장식이라 판정이 없다 (Bone Dragon 의 목과 같은 규칙) — 예고는 로직의 경고선이 맡는다.
   hurtboxes() { return [{ x: this.x + 8, y: this.y + 6, w: this.w - 16, h: this.h - 12 }]; }
   onIntro() { audio.sfx('magic', { pitch: 0.5 }); this.eyeOpen = 1; this.open = 0.6; }
   moves() {

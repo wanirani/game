@@ -340,7 +340,10 @@ class Game {
     if (s >= v.a) { v.color = typeof color === 'string' && color[0] === '#' ? color : '#ff0020'; v.decay = fadeRate(decay, 3); v.a = s; }
   }
   toast(text, color = '#f3e2b8', time = 2.4) {
-    this.toasts.push({ text: String(text ?? ''), color, t: time, max: time, shown: undefined });
+    const s = String(text ?? '');
+    if (!s.trim()) return; // 빈 알림은 빈 상자만 남기고 줄을 차지하므로 버린다
+    const tm = Number(time) > 0 ? Number(time) : 2.4;
+    this.toasts.push({ text: s, color, t: tm, max: tm, shown: undefined });
     if (this.toasts.length > 5) this.toasts.shift();
   }
   /**

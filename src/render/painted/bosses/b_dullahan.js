@@ -24,6 +24,8 @@ const PI = Math.PI, TAU = PI * 2;
 const BU = 1.3;              // 굽기 기준 배율 (기승 S): 부품 텍셀 → 지역 단위 = k / BU
 const TIP_OVER = 24;          // 판정 끝 너머로 보이는 창날 길이 (지역 단위, 벡터는 34)
 const LANCE_THICK = 1.3;      // 창 자루 굵기 (세로 배율)
+const HEAD_K = 0.86;          // 말머리 배율 (그림 원본이 몸에 비해 크다)
+const RIDER_K = 1.08;         // 기승 중 기사 배율 (말 위에서 작아 보이지 않게, 목 위치는 로직 neck() 그대로)
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const lerp = (a, b, t) => a + (b - a) * t;
 const approach = (v, t, s) => (v < t ? Math.min(v + s, t) : Math.max(v - s, t));
@@ -183,7 +185,7 @@ function derive(st, rig) {
   dv.tu = U(R.torso);
   dv.neckHip = [(R.torso.hip[0] - R.torso.neck[0]) * dv.tu, (R.torso.hip[1] - R.torso.neck[1]) * dv.tu];
   dv.lk = U(R.lance); dv.lanceLen = (R.lance.tip[0] - R.lance.butt[0]) * dv.lk; dv.headLen = (R.lance.tip[0] - R.lance.head[0]) * dv.lk;
-  dv.sk = U(R.skull); dv.cu = U(R.cape); dv.hk = U(R.hneck); dv.tk = U(R.tail);
+  dv.sk = U(R.skull); dv.cu = U(R.cape); dv.hk = U(R.hneck) * HEAD_K; dv.tk = U(R.tail);
   st.dv = dv;
   return dv;
 }
@@ -205,7 +207,8 @@ function pose(o, b, s, t, ghost = false) {
   const st8 = b.state, sT = b.stateT ?? 0;
   // 말 목·턱
   let nr = -o.rear * 0.2 + Math.sin(o.g * 2) * 0.04 * o.run + Math.sin(t * 1.3) * 0.025;
-  if (st8 === 'charge' && Math.abs(vx) > 500) nr += 0.14;
+  // 창이 수평이면 말머리를 치켜든다: 돌격·찌르기 창(판정 높이 −128)이 해골 얼굴이 아니라 목 앞을 지나가게
+  if (mounted) nr -= 0.34 * clamp(1 - Math.abs(o.lanceA) / 0.45, 0, 1) * (1 - clamp(o.rear * 2, 0, 1));
   o.nr = nr;
   let jaw = 0.06 + Math.sin(t * 2.1) * 0.03 + o.rear * 0.34;
   if (st8 === 'transform' || st8 === 'dismount') jaw += 0.18 + Math.sin(t * 30) * 0.05;
@@ -436,17 +439,18 @@ function mouthInside(ctx, D, H, x, y, rot, hk, jaw, t) {
 
 // ───────────────────────── 기사 ─────────────────────────
 function drawRider(D, ctx, b, rig, st, o, mode, alpha) {
-  const R = rig.parts, dv = st.dv, T = R.torso, tu = dv.tu, dead = mode === 'main' ? st.dead : NONE;
+  const R = rig.parts, dv = st.dv, T = R.torso, dead = mode === 'main' ? st.dead : NONE;
   if (dead.body) return;
-  const mounted = o.mounted, t = o.t;
+  const mounted = o.mounted, t = o.t, rk = mounted ? RIDER_K : 1, tu = dv.tu * rk;
+  o.rk = rk;
   const breath = Math.sin(t * 2.4) * 0.6;
   const nx = mounted ? 8 : 2, ny = (mounted ? -170 : -128) + o.bob * 0.5 + breath;
   const lr = o.lean * (mounted ? 0.5 : 0.4) + (mode === 'main' && b.dying > 0 ? Math.sin(t * 31) * 0.03 : 0);
-  const hpx = nx + dv.neckHip[0], hpy = ny + dv.neckHip[1];
+  const hpx = nx + dv.neckHip[0] * rk, hpy = ny + dv.neckHip[1] * rk;
   o.neckL ??= [0, 0]; D.pt(T.hip[0], T.hip[1], T.neck[0], T.neck[1], hpx, hpy, lr, tu, tu, o.neckL);
   // 1) 망토 (몸 뒤, 말 위)
   if (!dead.cape) {
-    const C = R.cape, cu = dv.cu;
+    const C = R.cape, cu = dv.cu * rk;
     D.pt(T.hip[0], T.hip[1], T.cape[0], T.cape[1], hpx, hpy, lr, tu, tu, _c);
     const speed = clamp(Math.abs(b.vx ?? 0) / 500, 0, 1.2);
     const crot = lr + (mounted ? 0.34 : 0.14) + speed * 0.75 + (o.air ? 0.55 : 0) + Math.sin(o.capeT * 3) * 0.05;
@@ -457,13 +461,14 @@ function drawRider(D, ctx, b, rig, st, o, mode, alpha) {
   if (!mounted && !dead.legs) footLeg(D, st, R, dv, o, hpx - 3, hpy, -1, mode, alpha);
   // 3) 머리 받치는 팔 (몸 뒤) + 불타는 해골
   if (!dead.armF) {
-    const Af = R.armF, au = dv.au;
-    const htx = mounted ? -14 : -12, hty = (mounted ? -176 - o.su * 20 : -110 - o.su * 34) + o.bob * 0.5 + breath;
+    const Af = R.armF, au = dv.au * rk, Lfa = dv.Lfa * rk;
+    // 로직 skullHand() 보다 조금 뒤·위 (목 불꽃과 겹쳐 하얗게 뭉개지지 않게, 투사체 출발점과는 몇 단위 차이)
+    const htx = (mounted ? -14 : -12) - 7, hty = (mounted ? -176 - o.su * 20 : -110 - o.su * 34) - 4 + o.bob * 0.5 + breath;
     D.pt(T.hip[0], T.hip[1], T.farElbow[0], T.farElbow[1], hpx, hpy, lr, tu, tu, _a);
     let dx = htx - _a[0], dy = hty - _a[1];
-    const d = Math.hypot(dx, dy) || 1, s = clamp(d / dv.Lfa, 0.8, 1.25);
+    const d = Math.hypot(dx, dy) || 1, s = clamp(d / Lfa, 0.8, 1.25);
     dx /= d; dy /= d;
-    const ex = htx - dx * dv.Lfa * s, ey = hty - dy * dv.Lfa * s;
+    const ex = htx - dx * Lfa * s, ey = hty - dy * Lfa * s;
     const rot = Math.atan2(dy, dx) - dv.angF;
     put(D, st, Af, 'elbow', ex, ey, rot, au, au * s, alpha, true, mode);
     o.hand ??= [0, 0]; o.hand[0] = htx; o.hand[1] = hty;
@@ -481,9 +486,9 @@ function drawRider(D, ctx, b, rig, st, o, mode, alpha) {
   // 4) 가까운 다리
   if (!dead.legs) {
     if (mounted) {
-      const lu = dv.lu, Lu = R.legU, Ll = R.legL;
+      const lu = dv.lu * rk, Lu = R.legU, Ll = R.legL;
       const tx = o.stirrup ? o.stirrup[0] - 2 : hpx + 12, ty = o.stirrup ? o.stirrup[1] - 5 : hpy + 30;
-      ik2(hpx, hpy, tx, ty, dv.l1, dv.l2, 1, _ik);
+      ik2(hpx, hpy, tx, ty, dv.l1 * rk, dv.l2 * rk, 1, _ik);
       put(D, st, Ll, 'knee', _ik.ex, _ik.ey, _ik.a2 - dv.angL, lu, lu, alpha, false, mode);
       put(D, st, Lu, 'hip', hpx, hpy, _ik.a1 - dv.angU, lu, lu, alpha, false, mode);
     } else footLeg(D, st, R, dv, o, hpx + 3, hpy, 1, mode, alpha);
@@ -498,7 +503,7 @@ function drawRider(D, ctx, b, rig, st, o, mode, alpha) {
     const bx = mounted ? 34 : 24, by = mounted ? -128 : -88;
     const ca = Math.cos(o.lanceA), sa = Math.sin(o.lanceA);
     const tipD = 170 + o.lanceX + TIP_OVER;
-    const wx = bx - Ex, wy = by - Ey, wd = wx * ca + wy * sa, disc = wd * wd - (wx * wx + wy * wy) + dv.Lf * dv.Lf;
+    const Lf = dv.Lf * rk, wx = bx - Ex, wy = by - Ey, wd = wx * ca + wy * sa, disc = wd * wd - (wx * wx + wy * wy) + Lf * Lf;
     let u = disc > 0 ? -wd + Math.sqrt(disc) : -wd;
     u = clamp(u, tipD - (dv.lanceLen - 8), tipD - (dv.headLen + 10));
     const Hx = bx + u * ca, Hy = by + u * sa, Tx = bx + tipD * ca, Ty = by + tipD * sa;
@@ -517,8 +522,8 @@ function drawRider(D, ctx, b, rig, st, o, mode, alpha) {
       const lt = o.lanceT ??= {}; lt.x = Tx; lt.y = Ty; lt.rot = o.lanceA;
     }
     if (!dead.armN) {
-      const An = R.armN, au = dv.au;
-      const fa = Math.atan2(Hy - Ey, Hx - Ex), fl = Math.hypot(Hx - Ex, Hy - Ey), s = clamp(fl / dv.Lf, 0.7, 1.35);
+      const An = R.armN, au = dv.au * rk;
+      const fa = Math.atan2(Hy - Ey, Hx - Ex), fl = Math.hypot(Hx - Ex, Hy - Ey), s = clamp(fl / Lf, 0.7, 1.35);
       put(D, st, An, 'elbow', Ex, Ey, fa - dv.angN, -au * s, au, alpha, false, mode);
       const at = o.armNT ??= {}; at.x = Ex; at.y = Ey; at.rot = fa - dv.angN; at.sx = -au * s;
     }
@@ -619,15 +624,15 @@ function riderFire(ctx, D, b, rig, st, o, dT) {
   if (o.neckL && dk > 0.02) {
     const [nx, ny] = o.neckL;
     const back = up - (o.run * 0.5 + clamp(Math.abs(b.vx ?? 0) / 900, 0, 0.5)) * 0.8;
-    if (q.halos) halo(ctx, nx, ny - 8, (24 + fury * 10) * dk, BFIRE, 0.55);
-    flames(ctx, nx, ny, back, (26 + fury * 12) * dk, 6.5, 4, t, 0.7, BFIRE, BCORE, 0.62, q.flames);
-    flames(ctx, nx, ny, back, (14 + fury * 6) * dk, 4, 2, t * 1.3, 9.1, BCORE, '#ffffff', 0.45, Math.max(1, q.flames - 2));
+    if (q.halos) halo(ctx, nx, ny - 8, (24 + fury * 10) * dk, BFIRE, 0.4);
+    flames(ctx, nx, ny, back, (26 + fury * 12) * dk, 6.5, 4, t, 0.7, BFIRE, BCORE, 0.55, q.flames);
+    flames(ctx, nx, ny, back, (14 + fury * 6) * dk, 4, 2, t * 1.3, 9.1, BCORE, '#ffffff', 0.3, Math.max(1, q.flames - 2));
   }
   if (o.skullOn && o.skull) {
     const s = o.skull, big = b.state === 'skull' && (b.stateT ?? 0) < 0.7 ? 1.6 : 1;
     const fl = 0.8 + Math.sin(t * 19) * 0.2;
-    if (q.halos) halo(ctx, s.c[0], s.c[1] - 4, 20 * big, OFIRE, 0.45);
-    flames(ctx, s.c[0], s.c[1] - 8, up, 16 * big, 5, 3, t, 2.9, OFIRE, OCORE, 0.7, Math.max(1, q.flames - 1));
+    if (q.halos) halo(ctx, s.c[0], s.c[1] - 4, 20 * big, OFIRE, 0.3);
+    flames(ctx, s.c[0], s.c[1] - 10, up, 16 * big, 5, 3, t, 2.9, OFIRE, OCORE, 0.55, Math.max(1, q.flames - 1));
     halo(ctx, s.e1[0], s.e1[1], 5.5 * fl, OFIRE, 0.9, true);
     halo(ctx, s.e2[0], s.e2[1], 4 * fl, OFIRE, 0.7, true);
   }
@@ -740,6 +745,7 @@ function ambient(P, b, st, o, dt, q, hit) {
 function deathFx(ctx, D, b, rig, st, o, dt, dT) {
   const R = rig.parts, P = st.P, dead = st.dead, dv = st.dv;
   const fade = 2.35 - dT, f = Math.sign(st.fsx) || 1, S = st.S;
+  const rk = o.rk ?? 1, au = dv.au * rk, tu = dv.tu * rk, lu = dv.lu * rk, l1 = dv.l1 * rk;
   // 지역(F1) 배치 → 월드 파편
   const shard = (p, img, pivot, lx, ly, lrot, sx, sy, vx, vy, vr, r, bounce = 0.3) => {
     const w = W(st, lx, ly, [0, 0]);
@@ -771,19 +777,19 @@ function deathFx(ctx, D, b, rig, st, o, dt, dT) {
   }
   if (!dead.armN && dT > 0.75) {
     dead.armN = dead.armF = dead.cape = true;
-    if (o.armNT) { const a = o.armNT; shard(R.armN, V(R.armN), 'elbow', a.x, a.y, a.rot, a.sx, dv.au, f * rr.range(60, 180), rr.range(-280, -140), f * rr.range(-6, 6), 10); }
-    if (o.hand) shard(R.armF, V(R.armF, true), 'palm', o.hand[0], o.hand[1], -0.3, dv.au, dv.au, -f * rr.range(60, 160), rr.range(-300, -160), f * rr.range(-6, 6), 10);
+    if (o.armNT) { const a = o.armNT; shard(R.armN, V(R.armN), 'elbow', a.x, a.y, a.rot, a.sx, au, f * rr.range(60, 180), rr.range(-280, -140), f * rr.range(-6, 6), 10); }
+    if (o.hand) shard(R.armF, V(R.armF, true), 'palm', o.hand[0], o.hand[1], -0.3, au, au, -f * rr.range(60, 160), rr.range(-300, -160), f * rr.range(-6, 6), 10);
     if (o.cape) { const c = o.cape; shard(R.cape, V(R.cape), 'top', c.x, c.y, c.rot, c.sx, c.sy, -f * rr.range(40, 100), -160, -f * rr.range(0.5, 1.5), 24, 0.1); }
     const c = o.chestW; if (c) P.burst('spark', c[0], c[1], 12, { speed: 300, color: BCORE });
   }
   if (!dead.body && dT > 1.0) {
     dead.body = dead.legs = true;
     const T = R.torso;
-    if (o.hip) shard(T, V(T), 'hip', o.hip[0], o.hip[1], o.lr ?? 0, dv.tu, dv.tu, -f * rr.range(40, 120), -220, -f * rr.range(2, 4), 22, 0.25);
+    if (o.hip) shard(T, V(T), 'hip', o.hip[0], o.hip[1], o.lr ?? 0, tu, tu, -f * rr.range(40, 120), -220, -f * rr.range(2, 4), 22, 0.25);
     const hx = o.hip?.[0] ?? 0, hy = o.hip?.[1] ?? -100;
-    shard(R.legU, V(R.legU), 'hip', hx + 3, hy, 0.2, dv.lu, dv.lu, f * rr.range(60, 160), rr.range(-260, -120), f * rr.range(-5, 5), 12);
-    shard(R.legL, V(R.legL), 'knee', hx + 6, hy + dv.l1, -0.1, dv.lu, dv.lu, f * rr.range(-60, 120), rr.range(-200, -80), f * rr.range(-5, 5), 12);
-    if (!o.mounted) shard(R.legL, V(R.legL, true), 'knee', hx - 4, hy + dv.l1, 0.1, dv.lu, dv.lu, -f * rr.range(40, 120), rr.range(-200, -80), f * rr.range(-5, 5), 12);
+    shard(R.legU, V(R.legU), 'hip', hx + 3, hy, 0.2, lu, lu, f * rr.range(60, 160), rr.range(-260, -120), f * rr.range(-5, 5), 12);
+    shard(R.legL, V(R.legL), 'knee', hx + 6, hy + l1, -0.1, lu, lu, f * rr.range(-60, 120), rr.range(-200, -80), f * rr.range(-5, 5), 12);
+    if (!o.mounted) shard(R.legL, V(R.legL, true), 'knee', hx - 4, hy + l1, 0.1, lu, lu, -f * rr.range(40, 120), rr.range(-200, -80), f * rr.range(-5, 5), 12);
     const c = o.chestW ?? W(st, hx, hy - 30, [0, 0]);
     for (let i = 0; i < 6; i++) {
       const p = R[st.debris[(i * 2 + 1) % st.debris.length]]; if (!p) continue;

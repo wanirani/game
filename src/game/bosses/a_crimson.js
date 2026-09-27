@@ -16,6 +16,11 @@ export class CrimsonArmor extends ABoss {
     this.crouch = 0; this.hA = -1.0; this.hR = 0; this.twist = 0; this.gait = 0; this.heat = 0; this.visor = 0;
     this.pc = { helm: { x: 0, y: 0, a: 0, vx: 0, vy: 0, busy: false }, gF: { x: 0, y: 0, a: 0, vx: 0, vy: 0, busy: false }, gB: { x: 0, y: 0, a: 0, vx: 0, vy: 0, busy: false }, hal: { x: 0, y: 0, a: 0, vx: 0, vy: 0, busy: false, spin: 0 } };
   }
+  // [판정 메모 · ART-BOSS-2, 게임플레이 변경 없음] 채색 그림(src/render/painted/bosses/b_crimson.js) 대비 (발 기준 논리 px, 2026-09-27 측정):
+  //  조립 몸통 판정 −54…+54 × −206…0 은 흉갑·허리·다리를 덮는다. 투구는 판정 위 약 −310…−206 (뿔 끝 ≈ −340)에 있어 머리를 노린 공격은
+  //  빗나간다 — 벡터 투구도 판정 위(≈ −270…−206)였으므로 퇴행은 아니고 채색 투구가 ≈ 50 px 더 높다.
+  //  분리 형태: 흉갑 판정·투구 판정은 채색 흉갑·투구와 맞는다. 흉갑 밑에 매달린 심장(≈ 0…+65)은 벡터의 분사 불꽃 자리라 판정이 없다.
+  //  제안(게임플레이 담당 승인 필요): 조립 형태에 맞기만 하는 투구 부위 {x: 목 ± 34, y: −300…−200} 를 hitParts() 로 추가 (접촉 피해는 그대로).
   hurtboxes() {
     if (!this.split) return [{ x: this.x + 12, y: this.y + 20, w: this.w - 24, h: this.h - 20 }];
     const h = this.pc.helm;
