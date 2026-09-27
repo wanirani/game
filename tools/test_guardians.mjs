@@ -305,6 +305,73 @@ await run('A', 'fairy_knight_skills', STAGE('s05', '&guards=gd_fairy,gd_knight&c
   };
 }));
 
+await run('A', 'room_fx_bond_keys', STAGE('s05', '&guards=gd_fairy,gd_knight&cmp=mt_warhorse&cmplv=10&ch=8'), (page) => page.evaluate(async () => {
+  const T = window.__T, w = T.w, p = T.p, cs = w.companions, st = w.state, g = T.g;
+  const S = await import('/src/game/companion_state.js');
+  const D = await import('/src/data/companions.js');
+  T.clearFoes();
+  // 1) 결계·방패벽을 켠 채 방 이동: 남은 시간 동안 연출 개체가 새 방에도 있고 방패벽이 탄을 막는다
+  cs.debug.skill(0); cs.debug.skill(1);
+  T.step(0.3);
+  const rooms = Object.keys(w.stage.rooms), other = rooms.find((r) => r !== w.roomId && !w.stage.rooms[r].boss) ?? rooms[0];
+  w.loadRoom(other);
+  T.step(0.1);
+  const fxN = w.entities.filter((e) => e.kind === 'effect' && e.owner?.kind === 'companion').length;
+  const f = p.facing || 1;
+  const pr = w.spawnProjectile({ x: p.cx + f * 180, y: p.bottom - 60, vx: -f * 300, vy: 0, team: 'enemy', w: 12, h: 12, life: 2, attack: { mv: 0, tags: ['projectile'] } });
+  T.step(0.5);
+  const blocked = pr.dead === true;
+  T.step(4.5);
+  const fxEnd = w.entities.filter((e) => e.kind === 'effect' && e.owner?.kind === 'companion').length;
+  // 2) 보스 격파 유대로 공명 단계(3)에 오르면 바로 공명 가능
+  const knight = cs.guards.find((x) => x.id === 'gd_knight');
+  st.companions.owned.gd_knight.bond = 75;
+  p.refreshStats();
+  const res0 = !!knight.d?.resonance;
+  cs.onBossDefeated({ stats: { exp: 10 }, def: { id: 'b_test' } });
+  T.step(0.1);
+  const res1 = !!knight.d?.resonance, rank1 = S.bondRankOf(st, 'gd_knight');
+  // 3) 탈것을 장착하지 않고 R → '장착한 탈것이 없다' 안내 (탈것은 보유)
+  const toasts = [];
+  const t0 = g.toast.bind(g);
+  g.toast = (s, ...a) => { toasts.push(String(s)); return t0(s, ...a); };
+  S.equipMount(st, null, null); cs.sync();
+  T.step(0.1);
+  T.press('KeyR');
+  g.toast = t0;
+  // 4) '협공!' 은 콤보 줄기마다 한 번 (같은 줄기에서 다시 협공해도 문구 없음, 새 줄기에서는 다시)
+  const z = T.spawn('zombie', 70); z.stats.maxHp = z.hp = 1e6;
+  T.step(0.2);
+  const txt = () => T.texts.filter((s) => s === D.CMP_TEXT.assist).length;
+  const a0 = txt();
+  const crit = { owner: p, tags: ['melee'] };
+  for (const gd of cs.guards) { gd.assistCd = 0; gd.act = null; gd.flinchT = 0; gd.cx = z.cx - 40; gd.bottom = z.bottom; }
+  w.combo.n = 1; w.run.hits += 1;
+  cs.onHit(z, { crit: true }, crit);
+  const a1 = txt();
+  T.step(0.3);
+  for (const gd of cs.guards) { gd.assistCd = 0; gd.act = null; gd.flinchT = 0; }
+  w.combo.n += 1; w.run.hits += 1;
+  cs.onHit(z, { crit: true }, crit);
+  const a2 = txt();
+  T.step(0.3);
+  for (const gd of cs.guards) { gd.assistCd = 0; gd.act = null; gd.flinchT = 0; }
+  w.combo.n = 1; w.run.hits += 1;   // 줄기가 끊긴 뒤 새 줄기
+  cs.onHit(z, { crit: true }, crit);
+  const a3 = txt();
+  return {
+    info: { fxN, blocked, fxEnd, res0, res1, rank1, toasts, a: [a0, a1, a2, a3] },
+    checks: [
+      ['방 이동 뒤에도 결계·방패벽 연출 2개', fxN === 2, fxN],
+      ['새 방에서도 방패벽이 적 탄을 부숨', blocked],
+      ['시간이 다하면 연출 없음', fxEnd === 0, fxEnd],
+      ['유대 +10 으로 3단계 → 곧바로 공명 가능', !res0 && res1 && rank1 === 3, { res0, res1, rank1 }],
+      ['탈것 미장착 R → 안내 토스트', toasts.includes(D.CMP_TEXT.noMount), toasts],
+      ["'협공!' 은 줄기마다 한 번", a1 - a0 === 1 && a2 === a1 && a3 - a2 === 1, [a0, a1, a2, a3]],
+    ],
+  };
+}));
+
 await run('A', 'wolf_imp_whelp_owl_skills', STAGE('s05', '&guards=gd_spiritwolf,gd_imp&cmplv=15'), (page) => page.evaluate(async () => {
   const T = window.__T, w = T.w, p = T.p, cs = w.companions;
   T.clearFoes();

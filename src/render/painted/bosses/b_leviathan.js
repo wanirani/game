@@ -200,7 +200,7 @@ function drawChain(ctx, D, img, part, X, Y, Rr, n, bs, sOff = 0, alpha = 1, over
       const f = (sE - _arc[i]) / len;
       const px = X[i + 1] + (X[i] - X[i + 1]) * (1 - f), py = Y[i + 1] + (Y[i] - Y[i + 1]) * (1 - f);
       D.set(uE, cy, px, py, rot, k, ky);
-      const s0 = Math.max(0, uE - e), s1 = Math.min(img.width, uA + e + 1);
+      const s0 = Math.max(0, uE - e), s1 = Math.min(img.width, uA + e + (overlap ? 1 : 0));
       if (s1 > s0) ctx.drawImage(img, s0, 0, s1 - s0, h, s0, 0, s1 - s0, h);
       sA = sE;
     }
@@ -258,11 +258,19 @@ function drawHead(ctx, D, b, rig, st, dt, bs, t, lvl, tint, bioC, bio, flashOn, 
   const rot = b.ha - a0 + (jo ? (rr.next() - 0.5) * 0.06 * jo : 0);
   const jaw = clamp(b.jaw ?? 0, 0, 1.1);
   const ja = (Math.min(1, jaw) - 1) * 0.55;
-  // 목구멍 (뚫린 입 속): 어두운 살 + 수압포 충전 빛
+  // 목구멍 (뚫린 입 속): 어두운 살 + 수압포 충전 빛.
+  // 다각형은 크게 벌린 입 기준이라, 경첩→입 선 아래(아래턱 쪽) 꼭짓점은 턱과 같이 경첩을 축으로 회전시킨다
+  // (텍셀 공간에서 턱 회전 = ja). 그대로 두면 턱을 다물 때 아래턱 밑으로 검은 삼각형이 삐져나왔다.
   D.set(H.o[0], H.o[1], hx, hy, rot, sx, sy);
-  const TH = H.throat;
-  ctx.beginPath(); ctx.moveTo(TH[0][0], TH[0][1]);
-  for (let i = 1; i < TH.length; i++) ctx.lineTo(TH[i][0], TH[i][1]);
+  const TH = H.throat, gx = H.hinge[0], gy = H.hinge[1], ux = H.mouth[0] - gx, uy = H.mouth[1] - gy;
+  const cj = Math.cos(ja), sj = Math.sin(ja);
+  ctx.beginPath();
+  for (let i = 0; i < TH.length; i++) {
+    let x = TH[i][0], y = TH[i][1];
+    const dx = x - gx, dy = y - gy;
+    if (ux * dy - uy * dx > 0) { x = gx + dx * cj - dy * sj; y = gy + dx * sj + dy * cj; }
+    if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+  }
   ctx.closePath();
   ctx.fillStyle = '#0b0206'; ctx.fill();
   D.end();
@@ -272,8 +280,10 @@ function drawHead(ctx, D, b, rig, st, dt, bs, t, lvl, tint, bioC, bio, flashOn, 
   const hinge = D.pt(H.o[0], H.o[1], H.hinge[0], H.hinge[1], hx, hy, rot, sx, sy, _b);
   D.rec = flashOn;
   D.part(J, V(J), 'hinge', hinge[0], hinge[1], rot + fl * ja, sx, sy, 1);
+  if (flashOn) D.flash(st.fa);   // 턱 섬광은 머리 앞에 비치지 않게 머리를 그리기 전에
   D.rec = flashOn;
   D.part(H, V(H), 'o', hx, hy, rot, sx, sy, 1);
+  if (flashOn) D.flash(st.fa);
   D.rec = false;
   glowOver(ctx, D, H, lvl, 'o', hx, hy, rot, sx, sy, 0.55, st, t, tint);
   const e = D.pt(H.o[0], H.o[1], H.eye[0], H.eye[1], hx, hy, rot, sx, sy, _c);
@@ -308,11 +318,12 @@ function drawTailSlam(ctx, D, b, rig, st, bs, t, F, V, flashOn) {
   }
   const tbs = -bs;
   drawChain(ctx, D, V(Bd), Bd, st.tx, st.ty, st.tr, TN, tbs, 250, 1);
-  if (flashOn && Bd.v.flash) { const op = ctx.globalCompositeOperation; ctx.globalCompositeOperation = 'lighter'; drawChain(ctx, D, Bd.v.flash, Bd, st.tx, st.ty, st.tr, TN, tbs, 250, clamp(b.flashT / 0.1, 0, 1) * 0.45); ctx.globalCompositeOperation = op; }
+  if (flashOn && Bd.v.flash) { const op = ctx.globalCompositeOperation; ctx.globalCompositeOperation = 'lighter'; drawChain(ctx, D, Bd.v.flash, Bd, st.tx, st.ty, st.tr, TN, tbs, 250, clamp(b.flashT / 0.1, 0, 1) * 0.45, false); ctx.globalCompositeOperation = op; }
   const Fl = R.fluke; if (!Fl) return;
   const a = Math.atan2(st.ty[0] - st.ty[1], st.tx[0] - st.tx[1]);
   D.rec = flashOn;
   D.part(Fl, V(Fl), 'base', st.tx[0], st.ty[0], a + PI / 2, Fl.k * 0.85 * fc, Fl.k * 0.85, 1);
+  if (flashOn) D.flash(st.fa);
   D.rec = false;
   D.end();
   if (st.q.halos) halo(ctx, st.tx[0] + Math.cos(a) * 40, st.ty[0] + Math.sin(a) * 40, 70, b.phase >= 2 ? BIO2 : BIO, 0.25);
