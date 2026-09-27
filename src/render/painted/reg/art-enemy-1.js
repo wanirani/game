@@ -12,6 +12,8 @@ import * as skeleton_archer from '../enemies/skeleton_archer.js';
 import * as axe_armor from '../enemies/axe_armor.js';
 import * as wisp from '../enemies/wisp.js';
 import * as crow from '../enemies/crow.js';
+import * as medusa_head from '../enemies/medusa_head.js';
+import * as mimic from '../enemies/mimic.js';
 
 export const bosses = {};
 export const enemies = [
@@ -21,6 +23,8 @@ export const enemies = [
   { mod: axe_armor },
   { mod: wisp },
   { mod: crow },
+  { mod: medusa_head },
+  { mod: mimic },
 ];
 export const companions = {};
 export const npcs = {};

@@ -23,12 +23,14 @@
 // HERO_VIEW 가 없으면 임시 대체 (platform §7.3): facing = sign(cos yaw), 가로 배율 max(0.12, |cos|) 카드 뒤집기 · 이름은 '옆모습' · 자동 회전 끔.
 // 채색 8방향 뷰가 없는 영웅(벡터 대체·로딩 중)도 같은 규칙: 기본 각 0, 옆모습에서만 멈춘다.
 // 오프스크린(무대 레이어) 배율은 ctx 의 실제 픽셀 배율 이하로 자른다 — 캔버스 백킹이 이미 품질 예산에 묶여 있다 (P-11, platform §6.4).
+// 정적 레이어는 PixLayer 로 장치 픽셀에 맞춰 1:1 로 붙인다 (어긋난 배율의 'high' 필터 복사가 소프트웨어 래스터에서 가장 비싼 연산이었다).
 import * as HERO from '../../render/hero.js';
 import { MOVESETS } from '../../data/movesets.js';
 import { TAU, clamp, ease, rgba } from '../../core/math.js';
 import { input } from '../../core/input.js';
 import { text, taps } from '../../core/ui.js';
-import { glow, glowOval, Layer, PAL, inRect } from './common.js';
+import * as UI from '../../core/ui.js';
+import { glow, glowOval, PAL, inRect } from './common.js';
 import * as MENU from './common.js';
 
 const PI = Math.PI;
@@ -81,6 +83,57 @@ export function pxScale(ctx, want = Infinity) {
   if (!(s > 0)) s = Number.isFinite(want) && want > 0 ? want : 1;   // ctx 없음: 희망값
   else if (want > 0) s = Math.min(s, want);
   return Math.floor(clamp(s, 0.5, 3) * 64) / 64;
+}
+
+/**
+ * 화소 정렬 캐시 레이어: 정적인 그림을 "지금 ctx 의 장치 픽셀" 크기 캔버스에 한 번 굽고, 단위 변환으로 정수 픽셀 위치에 1:1 로 붙인다.
+ * 소프트웨어 래스터에서 배율이 조금이라도 어긋난 drawImage 는 imageSmoothingQuality 'high' 에서 고품질 필터 경로를 타
+ * 같은 넓이의 채우기보다 10 배 넘게 비싸다 (fhd2x high 전체 화면 45 ms vs 1:1 4.6 ms — P-11). 1:1 이면 가장 싸고 가장 선명하다.
+ * 캔버스 크기 = 그리는 사각형의 장치 픽셀 (백킹 스토어 = 품질 등급의 픽셀 예산 안). 회전·기울임 변환이거나 want(희망 배율)가
+ * 장치 배율보다 낮거나 예산을 넘으면 배율 경로로 굽고 'medium' 필터로 붙인다.
+ * key 에 ui.fontEpoch 를 넣어 늦게 도착한 웹 글꼴로 다시 굽는다 (글자가 든 레이어).
+ */
+export class PixLayer {
+  constructor() { this.cv = null; this.key = null; }
+  draw(ctx, key, x, y, w, h, fn, want = Infinity) {
+    if (!(w > 0 && h > 0)) return;
+    let m = null;
+    try { m = ctx.getTransform(); } catch { m = null; }
+    const cv0 = ctx.canvas;
+    const maxPx = Math.max(2.5e5, (cv0?.width || 0) * (cv0?.height || 0));
+    const axis = !!m && Math.abs(m.b) < 1e-9 && Math.abs(m.c) < 1e-9 && m.a > 0 && Math.abs(m.a - m.d) < 1e-6;
+    let exact = axis && !(want > 0 && want < m.a * 0.98) && Math.ceil(w * m.a) * Math.ceil(h * m.a) <= maxPx;
+    let s;
+    if (exact) s = m.a;
+    else {
+      s = pxScale(ctx, want);
+      if (w * h * s * s > maxPx) s = Math.max(0.25, Math.floor(Math.sqrt(maxPx / (w * h)) * 64) / 64);
+    }
+    const k = `${key}|${w}|${h}|${s}|${exact ? 1 : 0}|${UI.fontEpoch ?? 0}`;
+    if (this.key !== k || !this.cv) {
+      const pw = Math.max(1, Math.ceil(w * s)), ph = Math.max(1, Math.ceil(h * s));
+      if (!this.cv) this.cv = document.createElement('canvas');
+      if (this.cv.width !== pw || this.cv.height !== ph) { this.cv.width = pw; this.cv.height = ph; }
+      const c = this.cv.getContext('2d');
+      c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, pw, ph);
+      c.setTransform(s, 0, 0, s, -x * s, -y * s);
+      c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
+      try { fn(c); } catch (e) { console.error(e); }
+      this.key = k;
+    }
+    ctx.save();
+    if (exact) {
+      // 단위 변환 + 정수 위치 = 필터 없는 복사 (반올림으로 최대 0.5 장치 px 비킨다)
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.drawImage(this.cv, Math.round(m.a * x + m.e), Math.round(m.d * y + m.f));
+    } else {
+      ctx.imageSmoothingQuality = 'medium';
+      ctx.drawImage(this.cv, 0, 0, this.cv.width, this.cv.height, x, y, this.cv.width / s, this.cv.height / s);
+    }
+    ctx.restore();
+  }
+  invalidate() { this.key = null; }
+  free() { if (this.cv) { this.cv.width = this.cv.height = 1; } this.cv = null; this.key = null; }
 }
 
 /** 공통 안내 줄(menu/common.hintRow)이 액션 이름을 글리프로 그리는가 (PLAT-MENU 의 P-01 Scroller.follow 와 함께 들어온다) */
@@ -604,6 +657,7 @@ function orbitArrow(ctx, x, y, s, dir, color) {
  */
 export function pedestal(ctx, x, y, s, t, color = PAL.gold, yaw = null) {
   ctx.save();
+  ctx.imageSmoothingQuality = 'low';   // 발광 스프라이트 확대 (P-11)
   // 바닥 그림자
   ctx.fillStyle = 'rgba(0,0,0,0.6)';
   ctx.beginPath(); ctx.ellipse(x, y + 1, 40 * s, 7 * s, 0, 0, TAU); ctx.fill();
@@ -640,13 +694,14 @@ export function pedestal(ctx, x, y, s, t, color = PAL.gold, yaw = null) {
 }
 
 /**
- * 고딕 무대 배경 (정적 부분은 레이어 캐시)
- * accent: 영웅 기운 색. scale: 레이어 픽셀 배율 희망값 — ctx 의 실제 배율(= 픽셀 예산 안)을 넘지 않게 자른다
+ * 고딕 무대 배경 (정적 부분은 화소 정렬 레이어 PixLayer 에 캐시 → 매 프레임 1:1 복사 한 번)
+ * accent: 영웅 기운 색. scale: 레이어 픽셀 배율 희망값 — ctx 의 실제 배율(= 픽셀 예산 안)을 넘지 않게 자른다.
+ * 호출 형식은 예전 그대로 (CMP-UI 동료 탭·갤러리도 쓴다)
  */
 export class HeroStage {
-  constructor() { this.layer = new Layer(); }
+  constructor() { this.layer = new PixLayer(); }
   draw(ctx, x, y, w, h, t, scale, accent = '#e8c872') {
-    this.layer.draw(ctx, 'stage', x, y, w, h, pxScale(ctx, scale), (c) => {
+    this.layer.draw(ctx, 'stage', x, y, w, h, (c) => {
       const g = c.createLinearGradient(0, y, 0, y + h);
       g.addColorStop(0, '#171028'); g.addColorStop(0.6, '#0d0816'); g.addColorStop(1, '#050308');
       c.fillStyle = g; c.fillRect(x, y, w, h);
@@ -697,9 +752,11 @@ export class HeroStage {
       const vg = c.createRadialGradient(ax, y + h * 0.55, h * 0.2, ax, y + h * 0.55, Math.max(w, h) * 0.75);
       vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.7)');
       c.fillStyle = vg; c.fillRect(x, y, w, h);
-    });
-    // 동적: 영웅 뒤 기운 + 떠다니는 먼지
+    }, scale);
+    // 동적: 영웅 뒤 기운 + 떠다니는 먼지 (부드러운 발광 스프라이트 확대는 'low' 필터로 충분하고 훨씬 싸다 — P-11)
     const cx = x + w / 2;
+    ctx.save();
+    ctx.imageSmoothingQuality = 'low';
     glow(ctx, cx, y + h * 0.5, h * 0.42, accent, 0.16 + 0.04 * Math.sin(t * 1.7));
     for (let i = 0; i < 7; i++) {
       const k = (t * 0.05 + i * 0.137) % 1;
@@ -707,6 +764,7 @@ export class HeroStage {
       const my = y + h * (0.85 - k * 0.8);
       glow(ctx, mx, my, 5, i % 2 ? '#ffd9a0' : '#a8b8ff', 0.35 * Math.sin(k * Math.PI));
     }
+    ctx.restore();
   }
   free() { this.layer.free(); }
 }

@@ -1,0 +1,3 @@
+[["fly a", {"anim": "fly", "phase": 0}], ["fly b", {"anim": "fly", "phase": 1.6, "tOff": 0.3}], ["fly c", {"anim": "fly", "phase": 3.1, "tOff": 0.6}],
+ ["hiss", {"anim": "fly", "phase": 4.7, "t": 0.83}], ["left", {"anim": "fly", "phase": 0.8, "facing": -1}],
+ ["hurt", {"anim": "fly", "flashT": 0.11, "stun": 0.2}], ["dying", {"anim": "fly", "dying": 0.1}]]

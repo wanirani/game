@@ -1,0 +1,5 @@
+[["closed", {"anim": "closed", "state": "disguise", "onGround": true}], ["hint", {"anim": "closed", "state": "disguise", "tOff": 1.0}],
+ ["wake .3", {"anim": "open", "state": "wake", "animT": 0.1}], ["wake .7", {"anim": "open", "state": "wake", "animT": 0.25}],
+ ["chomp a", {"anim": "idle", "state": "hunt", "onGround": true}], ["chomp b", {"anim": "idle", "state": "hunt", "onGround": true, "tOff": 0.1}],
+ ["jump up", {"anim": "jump", "state": "hunt", "onGround": false, "vy": -600}], ["jump down", {"anim": "jump", "state": "hunt", "onGround": false, "vy": 500}],
+ ["hurt", {"anim": "idle", "state": "hunt", "flashT": 0.11, "stun": 0.2}], ["dying", {"anim": "idle", "dying": 0.15}]]

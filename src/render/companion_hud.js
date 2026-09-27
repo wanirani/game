@@ -18,7 +18,7 @@
 //
 // 성능 (MASTER_PLAN §5.2, R12): 초상화 크롭·빛 번짐·카드는 모두 캐시 비트맵. 매 프레임은 drawImage 몇 번 + 호(arc) 몇 개 + 초 글자.
 // 주의 (순환 import): 모듈 최상위에서 import 값에 접근하지 않는다. 탈것·수호신 런타임(mount.js 등)은 여기서 import 하지 않는다.
-import { text, FONT, font, fontEpoch } from '../core/ui.js';
+import { text, FONT, font, fontEpoch, taps } from '../core/ui.js';
 import { assets } from '../core/assets.js';
 import { TAU, clamp, rgba, shade } from '../core/math.js';
 import { drawGlyph, glyphWidth, promptMode } from '../core/prompts.js';
@@ -300,7 +300,22 @@ export function drawCompanionHUD(ctx, world, o = {}) {
     }
   } catch (e) { warnOnce('widget', e); }
   ctx.restore();
+  // 터치: 공용 탭 등록부에도 올린다 — 가상 패드가 위젯 위(왼쪽 45 % 떠다니는 스틱 자리)에서 스틱을 만들지 않고
+  // 탭을 캔버스로 넘기도록 (touchpad onCanvasUi). 주인 = 이 월드의 장면 (위에 다른 장면이 쌓이면 그 장면 것만 판정된다)
+  if (T && RECTS.length) {
+    try {
+      const owner = sceneOf(world);
+      for (const r of RECTS) taps.add(r.act === 'mount' ? 'cmp.mount' : 'cmp.guard' + (r.slot ?? 0), r, { owner, kind: 'icon', slop: 4, src: 'companion_hud' });
+    } catch (e) { warnOnce('taps', e); }
+  }
   return RECTS.length ? RECTS : null;
+}
+/** 이 월드를 가진 장면 (스테이지). 없으면 null */
+function sceneOf(world) {
+  const S = world?.game?.scenes;
+  if (!Array.isArray(S)) return null;
+  for (let i = S.length - 1; i >= 0; i--) if (S[i]?.world === world) return S[i];
+  return null;
 }
 
 // ───────────────────────── 스킬 카드 줄 ─────────────────────────

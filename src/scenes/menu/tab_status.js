@@ -6,8 +6,8 @@ import { text, font, FONT } from '../../core/ui.js';
 import { clamp } from '../../core/math.js';
 import { input } from '../../core/input.js';
 import { Tab } from './base.js';
-import { HeroView, HeroStage, pedestal, accentOf, turntableHints, pxScale } from './hero_view.js';
-import { PAL, EL, EL_ORDER, frame, heading, divider, diamond, gauge, pill, selBar, Layer, glow, num, para, measure, ellipsize, inRect } from './common.js';
+import { HeroView, HeroStage, PixLayer, pedestal, accentOf, turntableHints, pxScale } from './hero_view.js';
+import { PAL, EL, EL_ORDER, frame, heading, divider, diamond, gauge, pill, selBar, glow, num, para, measure, ellipsize, inRect } from './common.js';
 import * as D from './access.js';
 import { SUBWEAPONS } from '../../data/subweapons.js';
 
@@ -72,7 +72,7 @@ export class StatusTab extends Tab {
     super(m);
     this.view = new HeroView({ turntable: true, game: m.game });
     this.stage = new HeroStage();
-    this.layer = new Layer();
+    this.layer = new PixLayer();   // 능력치 판 (화소 정렬 1:1 복사 — P-11)
     this.rev = -1;
     this.col = 0; this.row = 0; // 커서 (col = 열 수 → 속성표)
     this.cells = [];            // 능력치 칸 위치 [{col,row,key,x,y,w,h}]
@@ -214,7 +214,7 @@ export class StatusTab extends Tab {
     const R = { x: A.x + LW + 12, y: A.y, w: A.w - LW - 12, h: A.h };
     this.lay = statLayout(R);
     frame(ctx, R.x, R.y, R.w, R.h);
-    this.layer.draw(ctx, 'st' + this.rev + '|' + hero.charId + '|' + this.lay.cols.length + '|' + this.lay.row, R.x, R.y, R.w, R.h, pxScale(ctx), (c) => this.drawStats(c, R));
+    this.layer.draw(ctx, 'st' + this.rev + '|' + hero.charId + '|' + this.lay.cols.length + '|' + this.lay.row, R.x, R.y, R.w, R.h, (c) => this.drawStats(c, R));
     this.statRect = { x: R.x + 4, y: R.y + 4, w: R.w - 8, h: R.h - DESC_H - 8 };
     // 커서 + 설명
     const E = this.elCol;

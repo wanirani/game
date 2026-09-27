@@ -3,7 +3,12 @@
 // enemies:    [{ mod: <import * as x from '../enemies/<id>.js'>, ids?: ['<render id>', ...] }]  (적 렌더러 모듈, 에셋은 지연 로딩)
 // companions: { '<companionId>': () => import('../companions/<id>.js') }
 // npcs:       { '<npcId>': () => import('../npcs/<id>.js') }
+// 2부 적 s14–s16 (world2 §5): 채색 퍼핏이 등록된 적은 리그(아틀라스)가 로드되면 채색, 아니면 render/enemies_c.js 벡터 대체 그림.
+import * as bellows from '../enemies/bellows.js';
+
 export const bosses = {};
-export const enemies = [];
+export const enemies = [
+  { mod: bellows },
+];
 export const companions = {};
 export const npcs = {};

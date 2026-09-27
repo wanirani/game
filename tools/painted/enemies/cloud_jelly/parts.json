@@ -1,0 +1,21 @@
+{
+ "id": "cloud_jelly",
+ "tier": "T1",
+ "srcTD": 4,
+ "note": "T1 from the chosen Step-1 reference (1:1, front/side view): the puffy storm-cloud bell with the glowing eyes and jagged mouth, and the whole hanging tendril mass (dark tentacles + pale frills + a baked lightning streak) as one part, swayed with a seam-free warpY. No parts sheet was needed (manifest: cut directly). k 0.028 -> bell 48 px wide, tip-to-top 57 px (logic 44x56).",
+ "sources": {
+  "r": { "raw": "cloud_jelly_ref.webp", "file": "cloud_jelly_ref.png", "k": 0.028 }
+ },
+ "parts": {
+  "bell": {
+   "src": "r", "box": [150, 20, 1885, 1080], "keep": "largest",
+   "fade": [[150, 1035, 1885, 1080, "down", 1.2]],
+   "piv": { "a": [1010, 1030], "top": [1010, 40], "eyeL": [855, 905], "eyeR": [1215, 905], "mouth": [1010, 975], "rimL": [180, 780], "rimR": [1860, 780] }
+  },
+  "tendrils": {
+   "src": "r", "box": [340, 985, 1730, 2045], "keep": "all",
+   "fade": [[340, 985, 1730, 1030, "up", 1.0]],
+   "piv": { "a": [1010, 1000], "tip": [1060, 2020] }
+  }
+ }
+}

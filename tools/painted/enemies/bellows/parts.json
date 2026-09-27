@@ -1,0 +1,245 @@
+{
+ "id": "bellows",
+ "tier": "T1",
+ "srcTD": 4,
+ "note": "All parts from one Kling parts sheet (src/bellows_sheet1.webp, image_to_image of bellows_ref, manifest_enemy-p2-c-art). The nozzle pipe is cut off the board wall (bellows_board_fix.webp = the sheet with the wood above the pipe copied over it, so the board has no pipe) so it can be raised toward the AI's mouth point (bellows.mouth = feet + (w/2, -50)); the brass idol head sits on the nozzle bell. One iron claw leg reused x3 (far ones darkened).",
+ "sources": {
+  "s": {
+   "raw": "bellows_sheet1.webp",
+   "file": "bellows_sheet1.png",
+   "mode": "",
+   "k": 0.045
+  },
+  "f": {
+   "raw": "bellows_board_fix.webp",
+   "file": "bellows_board_fix.png",
+   "mode": "",
+   "k": 0.045
+  }
+ },
+ "parts": {
+  "bag": {
+   "src": "s",
+   "box": [
+    40,
+    236,
+    820,
+    1352
+   ],
+   "keep": "largest",
+   "fade": [
+    [
+     40,
+     1318,
+     820,
+     1352,
+     "down",
+     1.0
+    ]
+   ],
+   "piv": {
+    "a": [
+     430,
+     820
+    ],
+    "front": [
+     758,
+     853
+    ],
+    "h1": [
+     110,
+     576
+    ],
+    "seam": [
+     430,
+     798
+    ]
+   },
+   "_bbox": [
+    49,
+    243,
+    811,
+    1352
+   ]
+  },
+  "board": {
+   "src": "f",
+   "box": [
+    890,
+    205,
+    1500,
+    1422
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1190,
+     1418
+    ],
+    "sock": [
+     1190,
+     962
+    ],
+    "top": [
+     1190,
+     230
+    ]
+   },
+   "_bbox": [
+    895,
+    214,
+    1500,
+    1415
+   ]
+  },
+  "nozzle": {
+   "src": "s",
+   "box": [
+    1225,
+    840,
+    1712,
+    1130
+   ],
+   "poly": [
+    [
+     1236,
+     906
+    ],
+    [
+     1480,
+     902
+    ],
+    [
+     1492,
+     848
+    ],
+    [
+     1710,
+     848
+    ],
+    [
+     1710,
+     1124
+    ],
+    [
+     1492,
+     1124
+    ],
+    [
+     1480,
+     1012
+    ],
+    [
+     1236,
+     1014
+    ]
+   ],
+   "piv": {
+    "a": [
+     1238,
+     960
+    ],
+    "b": [
+     1690,
+     985
+    ]
+   },
+   "_bbox": [
+    1236,
+    854,
+    1705,
+    1111
+   ]
+  },
+  "head": {
+   "src": "s",
+   "box": [
+    1820,
+    260,
+    2290,
+    885
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1857,
+     579
+    ],
+    "mouth": [
+     2150,
+     764
+    ],
+    "eye": [
+     2114,
+     529
+    ],
+    "fire": [
+     1936,
+     550
+    ]
+   },
+   "_bbox": [
+    1830,
+    271,
+    2280,
+    874
+   ]
+  },
+  "leg": {
+   "src": "s",
+   "box": [
+    466,
+    1346,
+    614,
+    1648
+   ],
+   "keep": "largest",
+   "poly": [
+    [
+     468,
+     1440
+    ],
+    [
+     546,
+     1348
+    ],
+    [
+     606,
+     1348
+    ],
+    [
+     600,
+     1452
+    ],
+    [
+     613,
+     1500
+    ],
+    [
+     613,
+     1648
+    ],
+    [
+     466,
+     1648
+    ]
+   ],
+   "piv": {
+    "a": [
+     557,
+     1348
+    ],
+    "b": [
+     533,
+     1642
+    ]
+   },
+   "_bbox": [
+    470,
+    1348,
+    610,
+    1642
+   ]
+  }
+ }
+}

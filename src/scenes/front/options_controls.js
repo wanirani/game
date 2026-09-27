@@ -406,12 +406,27 @@ export function padConnected() {
 }
 
 // ───────────────────────── 공용 그리기 ─────────────────────────
+const GRADS = new Map();
+/** 0 → len 의 가로('h')·세로('v') 그라데이션 캐시 (매 프레임 새로 만들지 않는다; 그릴 때 translate 로 옮긴다) */
+export function cachedGrad(ctx, key, len, dir, stops) {
+  const k = `${key}|${dir}|${Math.round(len)}`;
+  let g = GRADS.get(k);
+  if (!g) {
+    const n = Math.max(1, Math.round(len));
+    g = dir === 'v' ? ctx.createLinearGradient(0, 0, 0, n) : ctx.createLinearGradient(0, 0, n, 0);
+    for (const [o, c] of stops) g.addColorStop(o, c);
+    if (GRADS.size >= 64) GRADS.clear();
+    GRADS.set(k, g);
+  }
+  return g;
+}
+const BAND_STOPS = [[0, 'rgba(179,18,46,0.72)'], [1, 'rgba(179,18,46,0.06)']];
 /** 선택 줄 띠 (진홍 그라데이션 + 금색 화살표) */
 export function rowBand(ctx, x, y, w, h, sel, hover, i) {
   if (sel) {
-    const lg = ctx.createLinearGradient(x, 0, x + w, 0);
-    lg.addColorStop(0, 'rgba(179,18,46,0.72)'); lg.addColorStop(1, 'rgba(179,18,46,0.06)');
-    ctx.fillStyle = lg; ctx.fillRect(x, y + 3, w, h - 6);
+    ctx.save(); ctx.translate(x, 0);
+    ctx.fillStyle = cachedGrad(ctx, 'band', w, 'h', BAND_STOPS); ctx.fillRect(0, y + 3, w, h - 6);
+    ctx.restore();
     ctx.fillStyle = rgba(GOLD, 0.7); ctx.fillRect(x, y + 3, w * 0.6, 1);
     ctx.fillStyle = GOLD; ctx.beginPath(); ctx.moveTo(x + 5, y + h / 2 - 6); ctx.lineTo(x + 12, y + h / 2); ctx.lineTo(x + 5, y + h / 2 + 6); ctx.fill();
   } else if (hover) { ctx.fillStyle = 'rgba(255,220,160,0.07)'; ctx.fillRect(x, y + 3, w, h - 6); } else if (i % 2) { ctx.fillStyle = 'rgba(255,255,255,0.025)'; ctx.fillRect(x, y + 3, w, h - 6); }
@@ -669,12 +684,14 @@ export class RemapPage {
     }
     ctx.restore();
     scrollBar(ctx, view, this.scroll, contentH);
-    if (this.cap) this.renderCapture(ctx, L);
+    if (this.cap) this.renderCapture(ctx, L, owner);
   }
-  renderCapture(ctx, L) {
+  renderCapture(ctx, L, owner) {
     const c = this.cap, W = L.W, H = L.H;
     const nm = ACTION_NAMES[c.action] ?? c.action;
-    const w = Math.min(520, W - 40), h = 170, x = (W - w) / 2, y = Math.max(L.content.y, (H - h) / 2);
+    // 터치: 눈에 보이는 취소 단추 (≥ 44 CSS px). 화면 어디를 눌러도 취소되는 것은 그대로
+    const touch = input.mode === 'touch';
+    const w = Math.min(520, W - 40), h = touch ? 124 + L.th + 14 : 170, x = (W - w) / 2, y = Math.max(L.content.y, (H - h) / 2);
     ctx.save();
     ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(0, 0, W, H);
     frame(ctx, x, y, w, h, { glow: 0.6, accent: GOLD });
@@ -687,6 +704,14 @@ export class RemapPage {
     ctx.fillStyle = k > 0.3 ? GOLD : '#ff7a6a'; ctx.fillRect(x + 40, y + 76, bw * k, 6);
     text(ctx, `${Math.ceil(c.limit - c.t)}초`, x + w - 36, y + 83, { size: 12, align: 'left', weight: 800, family: FONT.num, color: DIM, ow: 2 });
     if (this.msg) text(ctx, this.msg, W / 2, y + 108, { size: 13, align: 'center', weight: 700, color: '#ff9a8a', ow: 2, maxWidth: w - 30 });
+    if (touch) {
+      if (!this.msg && c.wizard) text(ctx, '기다리면 이 행동은 건너뜁니다', W / 2, y + 108, { size: 13, align: 'center', weight: 700, color: DIM, ow: 2, maxWidth: w - 30 });
+      const cw = Math.min(200, w - 60), r = { x: W / 2 - cw / 2, y: y + h - L.th - 14, w: cw, h: L.th };
+      gbutton(ctx, r, '취소', { size: 16 });
+      if (owner) taps.add('cap:cancel', r, { owner, kind: 'primary', src: 'options.capture' });
+      ctx.restore();
+      return;
+    }
     // 취소 안내: 패드 START / 키보드 Esc (글리프)
     const gh = 22, cy = y + h - 40;
     const cancelSpec = this.dev === 'pad' ? bindSpec(9, 'pad') : bindSpec('Escape', 'key');

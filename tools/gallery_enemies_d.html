@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
+<base href="../">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>적 갤러리 D</title>
 <link rel="icon" href="data:,">
@@ -18,11 +19,11 @@
 //   ids: 표시할 적 (기본: 전체) · zoom: 확대 · t: 고정 시간 (없으면 실시간) · vec=1: 벡터 대체 그림만 (채색 끔)
 //   proj=0: 투사체/장판 견본 숨김 · bg: 배경 그림 (assets/<bg>.webp; 기본은 적의 스테이지 배경) · td: 채색 리그 텍셀 밀도 · flip=1: 왼쪽 보기
 // 채색 퍼핏이 등록돼 있으면(src/render/painted/reg/enemy-p2-d-art.js) render/enemies.js 의 drawEnemy 로 채색 그림이, 없으면 벡터 대체 그림이 보인다.
-import { ENEMIES_D } from '../src/data/enemies_d.js';
-import { PROJ_D, ZONE_D } from '../src/render/enemies_d.js';
-import { drawEnemy } from '../src/render/enemies.js';
-import { rigStats } from '../src/render/painted/enemy_kit.js';
-import { game } from '../src/core/game.js';
+import { ENEMIES_D } from './src/data/enemies_d.js';
+import { PROJ_D, ZONE_D } from './src/render/enemies_d.js';
+import { drawEnemy } from './src/render/enemies.js';
+import { rigStats } from './src/render/painted/enemy_kit.js';
+import { game } from './src/core/game.js';
 
 const q = new URLSearchParams(location.search);
 const ids = (q.get('ids') || Object.keys(ENEMIES_D).join(',')).split(',').filter((id) => ENEMIES_D[id]);
@@ -63,7 +64,7 @@ const CASES = {
 const STAGE_BG = { s17: 'bg/s17_sky', s18: 'bg/s18_nightmare', s19: 'bg/s19_blight', s20: 'bg/s20_void' };
 const stageOf = (id) => ({ storm_harpy: 's17', gale_knight: 's17', thunder_roc: 's17', cloud_jelly: 's17', puppeteer: 's18', faceless: 's18', dream_eater: 's18', rot_treant: 's19', plague_moth: 's19', fungal_husk: 's19', void_herald: 's20', nihil_spawn: 's20' })[id] ?? 's17';
 const bgs = {};
-for (const s of Object.keys(STAGE_BG)) { const im = new Image(); im.onload = () => { if (fixedT != null) requestAnimationFrame(frame); }; im.src = `../assets/${q.get('bg') ?? STAGE_BG[s]}.webp`; bgs[s] = im; }
+for (const s of Object.keys(STAGE_BG)) { const im = new Image(); im.onload = () => { if (fixedT != null) requestAnimationFrame(frame); }; im.src = `assets/${q.get('bg') ?? STAGE_BG[s]}.webp`; bgs[s] = im; }
 
 const LABEL = 118, CW = 118 * zoom, CH = 150 * zoom;
 const cols = Math.max(...ids.map((id) => (CASES[id] ?? []).length));

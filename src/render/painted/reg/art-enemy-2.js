@@ -7,11 +7,13 @@
 // ART-ENEMY-2 (s04–s06, 15종). 벡터 렌더러(enemies_a.js)는 그대로 남아 에셋이 없거나 로딩 중일 때 대신 그린다.
 import * as blood_skeleton from '../enemies/blood_skeleton.js';
 import * as bone_scimitar from '../enemies/bone_scimitar.js';
+import * as skeleton_knight from '../enemies/skeleton_knight.js';
 
 export const bosses = {};
 export const enemies = [
   { mod: blood_skeleton },
   { mod: bone_scimitar },
+  { mod: skeleton_knight },
 ];
 export const companions = {};
 export const npcs = {};

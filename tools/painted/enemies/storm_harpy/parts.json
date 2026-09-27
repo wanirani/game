@@ -1,0 +1,25 @@
+{
+ "id": "storm_harpy",
+ "tier": "T2",
+ "srcTD": 4,
+ "note": "T2 winged flyer from parts sheet 1 (sheet 2's wing is a doubled arch, unusable). Head = the loose head box (already facing right). Body = the body+wing figure (painted facing LEFT -> flipX) minus the spread wing (the wing-root feathers stay on the shoulder; the near wing covers them), keeps the leg with talons and the long storm-grey tail. Wing = the spread wing cut off that figure, NOT flipped (root at the left, tip at the right): drawn with K.chain, flipY for the back-raised pose. k 0.038 -> figure ~58 px tall (logic 50x54), wing root->tip 46 px.",
+ "sources": {
+  "s1": { "raw": "storm_harpy_sheet1.webp", "file": "storm_harpy_sheet1.png", "k": 0.038 }
+ },
+ "parts": {
+  "head": {
+   "src": "s1", "box": [105, 105, 650, 748], "keep": "largest",
+   "piv": { "a": [440, 690], "eye": [479, 299], "beak": [631, 409], "crest": [190, 165] }
+  },
+  "body": {
+   "src": "s1", "box": [760, 135, 2325, 1695], "keep": "largest", "flipX": true,
+   "minus": [[[1180, 288], [1226, 224], [1416, 193], [1638, 161], [2330, 100], [2336, 300], [2273, 415], [2146, 526], [1955, 621], [1702, 700], [1495, 756], [1300, 772], [1210, 740], [1180, 600]]],
+   "piv": { "a": [1000, 700], "neck": [905, 245], "wing": [1110, 390], "wingF": [1060, 350], "tail": [1250, 1150], "talon": [870, 1330] }
+  },
+  "wing": {
+   "src": "s1", "box": [1030, 95, 2336, 790], "keep": "largest",
+   "poly": [[1043, 288], [1226, 224], [1416, 193], [1638, 161], [2320, 100], [2336, 288], [2273, 415], [2146, 526], [1955, 621], [1702, 700], [1495, 756], [1273, 772], [1147, 748], [1067, 684], [1043, 526]],
+   "piv": { "a": [1100, 400], "b": [2296, 145], "tip": [2296, 145] }
+  }
+ }
+}

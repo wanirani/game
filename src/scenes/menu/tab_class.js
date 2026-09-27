@@ -5,6 +5,7 @@ import { text, FONT } from '../../core/ui.js';
 import { audio } from '../../core/audio.js';
 import { clamp, rgba } from '../../core/math.js';
 import * as HERO from '../../render/hero.js';
+import * as PUP from '../../render/hero_puppet.js';
 import * as ProgM from '../../game/progression.js';
 import { Tab } from './base.js';
 import { HeroView, HeroStage, pedestal, accentOf, turntableHints, pxScale } from './hero_view.js';
@@ -25,7 +26,8 @@ export class ClassTab extends Tab {
   /** 메뉴의 가로 밀기(탭 넘기기)를 무시할 곳: 회전 무대 (platform §5.6) */
   noSwipe(x, y) { return this.view.swipeBlock(x, y); }
   swipeBlock(x, y) { return this.view.swipeBlock(x, y); }
-  free() { this.stage.free(); for (const c of this.thumbs.values()) { c.width = c.height = 1; } this.thumbs.clear(); }
+  free() { this.stage.free(); this.dropThumbs(); }
+  dropThumbs() { for (const T of this.thumbs.values()) { T.cv.width = T.cv.height = 1; } this.thumbs.clear(); }
   get chain() { return D.classChain(this.hero.classId).map((c) => c.id); }
   tiers() {
     const all = Object.values(D.CLASSES()).filter((c) => c.charId === this.hero.charId);
@@ -36,7 +38,7 @@ export class ClassTab extends Tab {
   }
   onShow() { if (!this.sel) this.sel = this.hero.classId; this.view.wake(); }
   lookFor(cid) {
-    if (this.rev !== this.m.rev) { this.rev = this.m.rev; this.looks.clear(); for (const c of this.thumbs.values()) { c.width = c.height = 1; } this.thumbs.clear(); }
+    if (this.rev !== this.m.rev) { this.rev = this.m.rev; this.looks.clear(); this.dropThumbs(); }
     let L = this.looks.get(cid);
     if (!L) {
       const hero = this.hero, keep = hero.classId;
@@ -46,22 +48,30 @@ export class ClassTab extends Tab {
     }
     return L;
   }
-  /** 직업 썸네일 (정지 화면, 작은 캔버스에 한 번만 그림). 배율 = 그리는 ctx 의 실제 픽셀 배율 (픽셀 예산 안, P-11) */
+  /**
+   * 직업 썸네일 (정지 화면, 직업마다 작은 캔버스 하나). 배율 = 그리는 ctx 의 실제 픽셀 배율 (픽셀 예산 안, P-11).
+   * 키에 puppetRev() 를 넣는다: 채색 인형이 늦게 준비되면 벡터로 찍힌 썸네일을 다시 그린다 (PUPPET_PIPELINE §6)
+   */
   thumb(cid, w, h, ctx = null) {
     const sc = ctx ? pxScale(ctx) : pxScale(null, this.game.scale);
-    const key = cid + '|' + w + '|' + h + '|' + sc;
-    let c = this.thumbs.get(key);
-    if (!c) {
-      c = document.createElement('canvas');
-      c.width = Math.ceil(w * sc); c.height = Math.ceil(h * sc);
+    let rev = 0;
+    try { rev = PUP.puppetRev?.() ?? 0; } catch { rev = 0; }
+    const key = w + '|' + h + '|' + sc + '|' + rev;
+    let T = this.thumbs.get(cid);
+    if (!T) { T = { cv: document.createElement('canvas'), key: null }; this.thumbs.set(cid, T); }
+    if (T.key !== key) {
+      const c = T.cv;
+      const pw = Math.ceil(w * sc), ph = Math.ceil(h * sc);
+      if (c.width !== pw || c.height !== ph) { c.width = pw; c.height = ph; }
       const g = c.getContext('2d');
+      g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, pw, ph);
       g.setTransform(sc, 0, 0, sc, 0, 0);
       const look = this.lookFor(cid);
       const p = { cx: w / 2, bottom: h - 4, facing: 1, anim: 'idle', animT: 0.4, look, ch: D.CHARACTERS()[this.hero.charId], vx: 0, vy: 0, onGround: true, rig: null, t: 2.2, stats: { reach: 0 } };
       try { HERO.drawHero(g, p, null, { scale: (h - 10) / 96 }); } catch (e) { /* 무시 */ }
-      this.thumbs.set(key, c);
+      T.key = key;
     }
-    return c;
+    return T.cv;
   }
   status(c) {
     const chain = this.chain, hero = this.hero;
@@ -155,6 +165,7 @@ export class ClassTab extends Tab {
       const p = pos.get(c.id);
       const r = { x: p.x, y: p.y, w: cardW, h: cardH, id: c.id };
       this.rects.push(r);
+      this.m.ges?.zone?.(r, 'list', { src: 'class.card' });
       this.drawCard(ctx, c, r, t, focused);
     }
     // 상세
@@ -183,6 +194,7 @@ export class ClassTab extends Tab {
     ctx.fillStyle = bg; ctx.fillRect(r.x + 4, r.y + 4, tw, th);
     const img = this.thumb(c.id, tw, th + 8, ctx);
     ctx.globalAlpha *= st.key === 'closed' ? 0.35 : st.key === 'locked' ? 0.7 : 1;
+    ctx.imageSmoothingQuality = 'medium';   // 거의 1:1 복사 — 'high' 필터는 비싸기만 하다 (P-11)
     ctx.drawImage(img, 0, 0, img.width, img.height, r.x + 4, r.y, tw, th + 8);
     ctx.restore();
     const tx = r.x + tw + 12, w = r.w - tw - 18;

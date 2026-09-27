@@ -274,8 +274,9 @@ export class AccountScene extends Scene {
     this.makeFields();
     const first = this.items.findIndex((it) => it.kind === 'field');
     this.focus = focus ?? (first >= 0 ? first : 0);
-    if (this.items[this.focus]?.kind === 'field' && !input.touchMode) {
-      // 데스크톱: 첫 칸에 바로 입력할 수 있게 (모바일은 키보드가 갑자기 뜨지 않도록 사용자가 누를 때까지 기다림)
+    if (this.items[this.focus]?.kind === 'field' && input.mode === 'kb') {
+      // 키보드: 첫 칸에 바로 입력할 수 있게. 터치는 화면 키보드가 갑자기 뜨지 않도록, 패드는 글자를 칠 수 없으니(P-29)
+      // 사용자가 칸을 고를 때까지 기다린다
       const it = this.items[this.focus];
       setTimeout(() => { if (this.alive && this.screen === name && this.game.top === this) this.focusInput(it.fi); }, 60);
     }
@@ -369,7 +370,7 @@ export class AccountScene extends Scene {
     const el = this.inputs.find((e) => e.dataset.key === key);
     if (!el) return;
     el.classList.add('bad');
-    if (!input.touchMode || this.domFocus() >= 0) this.focusInput(this.inputs.indexOf(el));
+    if (input.mode === 'kb' || this.domFocus() >= 0) this.focusInput(this.inputs.indexOf(el));
     const k = this.items.findIndex((it) => it.kind === 'field' && it.id === key);
     if (k >= 0) this.focus = k;
   }

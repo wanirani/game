@@ -19,5 +19,11 @@ if raw('sk_knight_1.png'): save(raw('sk_knight_1.png'), 'skeleton_knight_ref.web
 if raw('sk_knight_legs_1.png'): save(raw('sk_knight_legs_1.png'), 'sk_knight_legs.webp')
 if raw('props_1.png'): save(raw('props_1.png').crop((1390, 150, 1780, 1140)), 'kite_shield.webp')
 save(Image.open(os.path.join(EN, 'skeleton', 'src', 'skeleton_sheet1.webp')).crop((100, 320, 330, 1030)), 'skel_arms.webp')
-save(Image.open(os.path.join(EN, 'armor_knight', 'src', 'knight_sheet2.webp')).crop((1470, 52, 1785, 1210)), 'longsword.webp')
+# longsword: the neighbouring props at the crop edges are painted over with the sheet grey and the blade is padded onto
+# a wider grey canvas (rembg keeps the gilded guard + grip only when it sees the whole object with room around it)
+sw = Image.open(os.path.join(EN, 'armor_knight', 'src', 'knight_sheet2.webp')).convert('RGB').crop((1470, 52, 1785, 1210))
+from PIL import ImageDraw
+g = sw.getpixel((60, 40)); d = ImageDraw.Draw(sw)
+d.rectangle((0, 1030, 22, 1158), fill=g); d.rectangle((300, 0, 315, 1158), fill=g); d.rectangle((290, 150, 315, 400), fill=g); d.rectangle((285, 1060, 315, 1158), fill=g)
+pad = Image.new('RGB', (715, 1400), g); pad.paste(sw, (200, 120)); save(pad, 'longsword.webp')
 save(Image.open(os.path.join(EN, 'armor_knight', 'src', 'knight_sheet1.webp')).crop((1485, 1008, 1830, 1642)), 'cape.webp')

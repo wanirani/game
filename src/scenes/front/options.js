@@ -20,8 +20,11 @@ import { touchpad } from '../../core/touchpad.js';
 import { clamp, ease, rgba, TAU } from '../../core/math.js';
 import { frame, heading, gbutton, applySettings, GOLD, BONE, DIM } from './common.js';
 import {
-  Nav, Scroll, RemapPage, GuidePage, cssPer, tapH, saveSettings, rowBand, scrollBar, presetSummary, PRESET_NAMES,
+  Nav, Scroll, RemapPage, GuidePage, cssPer, tapH, saveSettings, rowBand, scrollBar, presetSummary, PRESET_NAMES, cachedGrad,
 } from './options_controls.js';
+
+const SLIDER_STOPS = [[0, '#8a1020'], [1, '#ffcf6a']];
+const FOOT_STOPS = [[0, 'rgba(0,0,0,0)'], [1, 'rgba(0,0,0,0.72)']];
 
 const PAGES = [
   { id: 'sound', name: '소리' },
@@ -151,7 +154,8 @@ function buildRows(sc) {
       { id: 'turntableAuto', label: '영웅 자동 회전', type: 'bool', note: '장비·상태 화면에서 영웅이 천천히 돌아갑니다.' },
       {
         id: 'fullscreenAuto', label: '첫 터치에 전체 화면', type: 'bool',
-        vis: () => !!platform.fullscreenAvailable?.() && (isTouchDevice() || !!platform.isAndroid?.()),
+        // platform.js 가 실제로 쓰는 곳에서만 (안드로이드 웹 브라우저; APK·설치 앱·아이폰은 해당 없음)
+        vis: () => !!platform.isAndroid?.() && !!platform.fullscreenAvailable?.(),
         note: '타이틀 화면을 처음 누를 때 전체 화면으로 바꿉니다.',
       },
       { id: 'reset', label: '기본값 복원', type: 'action', value: () => '복원', run: () => sc.confirmReset(), note: '모든 설정을 처음 상태로 되돌립니다. 키·버튼 지정과 버튼 배치도 초기화됩니다.' },
@@ -490,9 +494,11 @@ export class OptionsScene extends Scene {
     const { W, H } = L;
     const k = ease.outCubic(clamp(this.t / 0.25, 0, 1));
     const alone = g.scenes[0] === this;
+    const editing = this.editing || touchpad.editorOpen;
+    // 편집기 (platform §5.3): 뒤에 지금 스테이지가 어둡게 보이도록 이 장면의 어둠막은 깔지 않는다 (편집기가 스스로 어둡게 덮는다)
     if (alone) this.backdrop(ctx, W, H);
-    else { ctx.fillStyle = `rgba(4,0,8,${0.84 * k})`; ctx.fillRect(0, 0, W, H); }
-    if (this.editing || touchpad.editorOpen) return; // 편집기가 위를 덮는다 (가상 패드 버튼이 잘 보이게 비워 둔다)
+    else if (!editing) { ctx.fillStyle = `rgba(4,0,8,${0.84 * k})`; ctx.fillRect(0, 0, W, H); }
+    if (editing) return; // 편집기가 위를 덮는다 (가상 패드 버튼이 잘 보이게 비워 둔다)
     const sx = this.shakeDemo > 0 ? Math.sin(g.time * 90) * 10 * this.shakeDemo : 0;
     const owner = this.modal ? null : this;
     ctx.save();
@@ -603,9 +609,9 @@ export class OptionsScene extends Scene {
         const bw = valW - 24, bx = vx - bw / 2, by = y + th / 2 + 7;
         this.geo[i] = { bx, bw };
         ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(bx, by, bw, 6);
-        const gr = ctx.createLinearGradient(bx, 0, bx + bw, 0);
-        gr.addColorStop(0, '#8a1020'); gr.addColorStop(1, '#ffcf6a');
-        ctx.fillStyle = gr; ctx.fillRect(bx, by, bw * ratio, 6);
+        ctx.save(); ctx.translate(bx, 0);
+        ctx.fillStyle = cachedGrad(ctx, 'slider', bw, 'h', SLIDER_STOPS); ctx.fillRect(0, by, bw * ratio, 6);
+        ctx.restore();
         ctx.strokeStyle = 'rgba(232,200,114,0.5)'; ctx.lineWidth = 1; ctx.strokeRect(bx - 0.5, by - 0.5, bw + 1, 7);
         ctx.fillStyle = '#fff4dc'; ctx.beginPath(); ctx.arc(bx + bw * ratio, by + 3, 5 + fl * 2, 0, TAU); ctx.fill();
         text(ctx, this.valueText(r), vx, y + th / 2 - 1, { size: 15, align: 'center', weight: 900, family: FONT.num, color: sel ? GOLD : '#e8dcc8', ow: 2 });
@@ -660,9 +666,9 @@ export class OptionsScene extends Scene {
     else if (input.mode === 'touch') items = [[null, '', '◀ ▶ 를 눌러 값을 바꿉니다 · 위아래로 밀면 더 보입니다']];
     else items = [['dpadV', '항목'], ['dpadH', '값 바꾸기'], ['confirm', '결정'], [['prevTab', 'nextTab'], '페이지'], ['cancel', '닫기']];
     const { W, H } = L;
-    const gr = ctx.createLinearGradient(0, H - 30, 0, H);
-    gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,0.72)');
-    ctx.fillStyle = gr; ctx.fillRect(0, H - 30, W, 30);
+    ctx.save(); ctx.translate(0, H - 30);
+    ctx.fillStyle = cachedGrad(ctx, 'foot', 30, 'v', FOOT_STOPS); ctx.fillRect(0, 0, W, 30);
+    ctx.restore();
     drawHints(ctx, items, W / 2, L.footY, { align: 'center', size: 13, color: '#b8aa98' });
   }
 }

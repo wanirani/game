@@ -18,7 +18,7 @@
 //        → 권총 돌려 집어넣기 '찰칵' → 표식 동시 폭발(은빛 십자 충격파) → 연기를 불고 스페이드 에이스가 뒤집힌다.
 //        팬텀: 모든 것을 꿰뚫는 유령탄 · 처형인: 25% 미만 일반 적 처형 · 헬파이어: 착탄마다 화염 폭발 · 건로드: 쌍권총 12발
 //
-// 성능 (feel §8): 각성 입자 상한 700/450/250 (다른 입자 포함, 8% 여유) · 프레임마다 그라디언트 0 (FXKIT·ULTFX 캐시 스프라이트와
+// 성능 (feel §8): 각성 입자 상한 700/450/250 (다른 입자 포함, 품질별 8–16% 여유) · 프레임마다 그라디언트 0 (FXKIT·ULTFX 캐시 스프라이트와
 //  이 파일이 스테이지 진입 때 한 번 굽는 스프라이트만) · 화면 전체 층: 암전(배경 뒤) 1 + 키트 층 1 + (high 에서만) 색조 1.
 //  카엘의 여명은 암전 층 자체를 바꿔 그려 층 수를 늘리지 않는다.
 import { audio } from '../core/audio.js';
@@ -37,6 +37,11 @@ export const AWAKEN_DIR_A_DEBUG = { runs: 0, errors: 0, last: null, prewarm: nul
 
 // ═══════════════════════════ 공용 도구 ═══════════════════════════
 const AW_CAP = { high: 700, medium: 450, low: 250 };   // feel §8 각성 최대 입자 (다른 연출 입자 포함)
+/**
+ * 이 감독이 채울 수 있는 몫: 나머지는 같은 프레임에 뒤따르는 남의 입자 몫 — 마무리 일격으로 여럿이 한꺼번에 쓰러질 때의
+ * 소멸 연출(적 1마리 20–40개)·레벨 업 등. 낮은 품질일수록 상한이 작아 비율로 더 남긴다.
+ */
+const AW_SHARE = { high: 0.92, medium: 0.9, low: 0.84 };
 let SEQ = 0;
 const nid = () => 'awA' + (++SEQ);
 const hbOf = (e) => (e.hurtbox ? e.hurtbox() : e);
@@ -60,7 +65,7 @@ function flashK() { const k = Number(game?.settings?.flashFx ?? 1); return Numbe
 function room(D, n) {
   const fx = D.w.fx;
   if (!fx?.list) return 0;
-  const cap = Math.min(AW_CAP[D.q] * 0.92, fx.max ?? 1400);
+  const cap = Math.min(AW_CAP[D.q] * AW_SHARE[D.q], fx.max ?? 1400);
   return Math.max(0, Math.min(Math.round(n * D.fq), Math.floor(cap - fx.list.length)));
 }
 function burst(D, type, x, y, n, o) { const k = room(D, n); for (let i = 0; i < k; i++) D.w.fx.emit(type, x, y, o); return k; }
@@ -1206,7 +1211,7 @@ function victorDirector(p, w, v) {
     sfx('awaken_boom'); for (let i = 0; i < Math.min(3, pts.length); i++) sfx('explode', { vol: 0.6, pitch: rand(0.8, 1.05) });
     cam.punchZoom?.(1.12, 0.3); cam.addTrauma?.(0.65);
     for (const q of pts) {
-      ww.fx.ring(q.x, q.y, { color: SIL, r0: 10, r1: 150, life: 0.4, width: 9 });
+      if (room(D, 1)) ww.fx.ring(q.x, q.y, { color: SIL, r0: 10, r1: 150, life: 0.4, width: 9 });
       if (vr === 'hellfire') burst(D, 'fire', q.x, q.y, 10, { speed: 420 });
       else burst(D, 'spark', q.x, q.y, 10, { speed: 480, color: '#ffffff' });
     }

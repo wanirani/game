@@ -225,7 +225,7 @@
    "input": "image_1 = thunder_roc_ref (file_upload), image_2 = thunder_roc sheet 1 (file_upload)",
    "aspect": "16:9",
    "imageCount": 2,
-   "decision": "pending"
+   "decision": "r1 KEPT -> thunder_roc_body.webp (wingless side view facing right, skull head + legs attached: head/legs cut off as parts); r2 headless neck hole"
   },
   {
    "enemy": "thunder_roc",
@@ -237,7 +237,7 @@
    "input": "image_1 = thunder_roc_ref, image_2 = thunder_roc sheet 1",
    "aspect": "16:9",
    "imageCount": 2,
-   "decision": "pending"
+   "decision": "r1 KEPT -> thunder_roc_wing.webp (painted as a top-view wing pair; the right half is cut as the spread wing, root at the body line); r2 slimmer, smoky glow"
   },
   {
    "enemy": "rot_treant",
@@ -249,7 +249,7 @@
    "input": "image_1 = rot_treant_ref, image_2 = rot_treant sheet 2",
    "aspect": "3:4",
    "imageCount": 2,
-   "decision": "pending"
+   "decision": "FAILED brief: both came back as full figures with arms and legs (Kling ignored WITHOUT). r1 kept as rot_treant_body.webp (clean full figure): trunk cut out with polygons + inpaint instead"
   }
  ]
 }

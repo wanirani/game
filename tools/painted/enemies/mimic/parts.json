@@ -1,0 +1,300 @@
+{
+ "id": "mimic",
+ "tier": "T1",
+ "srcTD": 4,
+ "note": "T1: the Step-1 reference (open chest, eye, tongue, spider legs) split into the box (+legs, lower teeth, maw, eye, tongue) and the lid (+upper teeth) hinged at its back-left corner so the jaw can chomp; the leg cast shadows are cut first (prep.py -> e1_mimic_ref_clean.png). Disguise frame = the closed legless chest (Step-3 image mimic_closed.webp). k: chest body ~42 px wide (48x44 logic rect; lid and legs overhang like the vector mimic).",
+ "prep": "python3 tools/painted/enemies/mimic/prep.py (after matte.py mimic_ref.webp -> e1_mimic_ref.png)",
+ "sources": {
+  "r": {
+   "raw": "mimic_ref.webp",
+   "file": "e1_mimic_ref_clean.png",
+   "k": 0.036
+  },
+  "c": {
+   "raw": "mimic_closed.webp",
+   "file": "e1_mimic_closed.png",
+   "k": 0.033
+  }
+ },
+ "parts": {
+  "box": {
+   "src": "r",
+   "box": [
+    270,
+    173,
+    2027,
+    1663
+   ],
+   "keep": "largest",
+   "minus": [
+    [
+     [
+      450,
+      855
+     ],
+     [
+      435,
+      600
+     ],
+     [
+      495,
+      390
+     ],
+     [
+      630,
+      270
+     ],
+     [
+      840,
+      210
+     ],
+     [
+      1140,
+      186
+     ],
+     [
+      1410,
+      165
+     ],
+     [
+      1650,
+      270
+     ],
+     [
+      1665,
+      390
+     ],
+     [
+      1644,
+      555
+     ],
+     [
+      1560,
+      570
+     ],
+     [
+      1485,
+      600
+     ],
+     [
+      1410,
+      525
+     ],
+     [
+      1290,
+      540
+     ],
+     [
+      1185,
+      480
+     ],
+     [
+      1050,
+      510
+     ],
+     [
+      960,
+      570
+     ],
+     [
+      870,
+      645
+     ],
+     [
+      795,
+      720
+     ],
+     [
+      720,
+      810
+     ],
+     [
+      660,
+      870
+     ],
+     [
+      585,
+      900
+     ]
+    ],
+    [
+     [
+      1745,
+      540
+     ],
+     [
+      1990,
+      540
+     ],
+     [
+      1990,
+      930
+     ],
+     [
+      1760,
+      930
+     ]
+    ]
+   ],
+   "piv": {
+    "a": [
+     1180,
+     1625
+    ],
+    "hinge": [
+     555,
+     850
+    ],
+    "eye": [
+     1050,
+     690
+    ],
+    "maw": [
+     1150,
+     760
+    ],
+    "tongue": [
+     1410,
+     960
+    ],
+    "lock": [
+     1470,
+     1110
+    ]
+   }
+  },
+  "lid": {
+   "src": "r",
+   "box": [
+    270,
+    150,
+    1700,
+    920
+   ],
+   "poly": [
+    [
+     450,
+     855
+    ],
+    [
+     435,
+     600
+    ],
+    [
+     495,
+     390
+    ],
+    [
+     630,
+     270
+    ],
+    [
+     840,
+     210
+    ],
+    [
+     1140,
+     186
+    ],
+    [
+     1410,
+     165
+    ],
+    [
+     1650,
+     270
+    ],
+    [
+     1665,
+     390
+    ],
+    [
+     1644,
+     555
+    ],
+    [
+     1560,
+     570
+    ],
+    [
+     1485,
+     600
+    ],
+    [
+     1410,
+     525
+    ],
+    [
+     1290,
+     540
+    ],
+    [
+     1185,
+     480
+    ],
+    [
+     1050,
+     510
+    ],
+    [
+     960,
+     570
+    ],
+    [
+     870,
+     645
+    ],
+    [
+     795,
+     720
+    ],
+    [
+     720,
+     810
+    ],
+    [
+     660,
+     870
+    ],
+    [
+     585,
+     900
+    ]
+   ],
+   "piv": {
+    "a": [
+     555,
+     850
+    ],
+    "tip": [
+     1600,
+     540
+    ]
+   }
+  },
+  "closed": {
+   "src": "c",
+   "box": [
+    477,
+    300,
+    1881,
+    1561
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1180,
+     1545
+    ],
+    "lock": [
+     1420,
+     960
+    ],
+    "seam": [
+     1180,
+     800
+    ]
+   }
+  }
+ }
+}

@@ -1,0 +1,18 @@
+{
+ "id": "nihil_spawn",
+ "tier": "T1",
+ "srcTD": 4,
+ "note": "T1 from the chosen Step-1 reference (1:1): the obsidian crystal cluster with the white-hot core (largest component) and three of the loose shards floating around it (orbit at runtime). No parts sheet (manifest: cut directly). k 0.026 -> cluster 47x52 px (logic 48x48).",
+ "sources": {
+  "r": { "raw": "nihil_spawn_ref.webp", "file": "nihil_spawn_ref.png", "k": 0.026 }
+ },
+ "parts": {
+  "core": {
+   "src": "r", "box": [130, 10, 1930, 2025], "keep": "largest",
+   "piv": { "a": [1000, 990], "top": [1000, 20], "bot": [1000, 2010] }
+  },
+  "shardA": { "src": "r", "box": [604, 163, 720, 386], "keep": "largest", "piv": { "a": [662, 275] } },
+  "shardB": { "src": "r", "box": [1313, 1637, 1417, 1846], "keep": "largest", "piv": { "a": [1365, 1741] } },
+  "shardC": { "src": "r", "box": [1516, 1228, 1718, 1339], "keep": "largest", "piv": { "a": [1617, 1283] } }
+ }
+}

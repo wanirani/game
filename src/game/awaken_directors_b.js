@@ -780,6 +780,8 @@ function run(S, o) {
     tick(e, ww, dt) {
       S.lt = e.lt;
       if (S.over) { e.dead = true; return; }
+      // 연출 도중 영웅이 쓰러졌으면 (즉사 함정·대본 등) 바로 끝낸다: 시체를 움직이거나 부활 뒤까지 연출 상태를 붙잡지 않게
+      if (S.p.dead || ww.player !== S.p) { e.dead = true; finish(S, o); return; }
       keepIn(S);
       bakeStep(S);
       while (S.si < S.steps.length && S.steps[S.si][0] <= e.lt) { const fn = S.steps[S.si++][1]; try { fn(S); } catch (err) { report(err, 'step'); } }

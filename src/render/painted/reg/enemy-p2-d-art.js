@@ -3,7 +3,17 @@
 // enemies:    [{ mod: <import * as x from '../enemies/<id>.js'>, ids?: ['<render id>', ...] }]  (적 렌더러 모듈, 에셋은 지연 로딩)
 // companions: { '<companionId>': () => import('../companions/<id>.js') }
 // npcs:       { '<npcId>': () => import('../npcs/<id>.js') }
+//
+// ENEMY-P2-D-ART (2부 s17–s20): 채색 퍼핏이 준비된 적만 여기 등록한다. 등록되지 않은 적은 render/enemies_d.js 의 벡터 대체 그림.
+import * as cloud_jelly from '../enemies/cloud_jelly.js';
+import * as nihil_spawn from '../enemies/nihil_spawn.js';
+import * as storm_harpy from '../enemies/storm_harpy.js';
+
 export const bosses = {};
-export const enemies = [];
+export const enemies = [
+  { mod: cloud_jelly },
+  { mod: nihil_spawn },
+  { mod: storm_harpy },
+];
 export const companions = {};
 export const npcs = {};
