@@ -168,10 +168,14 @@ function drawBoss(ctx, b, world, rig, st) {
   const bodyXf = () => { ctx.translate(0, b.drop); ctx.translate(PIVOT[0], PIVOT[1]); ctx.rotate(b.bodyA); ctx.translate(-PIVOT[0], -PIVOT[1]); D.begin(ctx); };
   frame();
   const rec = b.flashT > 0 && !dying;
+  const fa = clamp(b.flashT / 0.1, 0, 1) * 0.55;
+  /** 피격 섬광 덧그리기는 부품을 그린 좌표계(몸 변환 안/밖) 안에서 블록마다 */
+  const flash = () => { if (rec) D.flash(fa); else { D.rec = false; D.log.length = 0; } };
+  const leave = () => { D.end(); D.restore(); D.begin(ctx); };
   D.rec = false; D.log.length = 0;
   // 먼 다리 (어두운 변형)
   for (const L of b.legs) if (!L.near) drawLeg(D, st, R, b, L, true);
-  // 몸 변환 안: 꼬리 쪽 숲 · 몸통 · 상처 · 주머니 · 머리
+  // 몸 변환 안: 등의 숲 · 몸통 · 상처 · 주머니
   D.save(); bodyXf();
   drawForest(ctx, D, st, R, b, t, dying, dT);
   const T = R.torso;
@@ -181,7 +185,8 @@ function drawBoss(ctx, b, world, rig, st) {
   glowOver(ctx, D, st, T, 'o', 0, 0, 0, T.k, T.k, 0.5, t);
   drawGashes(ctx, D, b, t);
   drawSacs(ctx, D, st, R, b, t, rec);
-  D.end(); D.restore();
+  flash();
+  leave();
   // 발판 덧그리기 (등의 숲이 '=' 발판을 덮어도 딛을 곳이 보이게) → 머리 · 여왕 · 가까운 다리는 그 위
   if (q.ledges !== false) {
     D.end(); D.restore();
@@ -191,12 +196,13 @@ function drawBoss(ctx, b, world, rig, st) {
   }
   D.save(); bodyXf();
   drawHead(ctx, D, st, R, b, t, rec);
+  flash();
   drawBlooms(D, st, R, b);
-  D.end(); D.restore();
+  leave();
   if (!b.qFall) drawQueen(ctx, D, st, R, b, t, rec);
+  flash();
   for (const L of b.legs) if (L.near) drawLeg(D, st, R, b, L, false);
   drawMoss(ctx, D, b, t);
-  if (rec) D.flash(clamp(b.flashT / 0.1, 0, 1) * 0.55); else { D.rec = false; D.log.length = 0; }
   D.end();
   D.restore();
   // ── 월드: 떨어진 여왕 · 파편 · 입자 · 사망 ──
@@ -248,7 +254,6 @@ function drawForest(ctx, D, st, R, b, t, dying, dT) {
       c.fillStyle = '#c8b890';
       c.beginPath(); c.moveTo(cx - w, cut + 6); c.lineTo(cx - w * 0.5, cut - 10); c.lineTo(cx, cut + 2); c.lineTo(cx + w * 0.4, cut - 16); c.lineTo(cx + w, cut + 6); c.closePath(); c.fill();
       D.restore();
-      D.begin(D.ctx);
     } else {
       D.part(p, V(st, p), 'base', x, y, sway(i), k, k);
       glowOver(ctx, D, st, p, 'base', x, y, sway(i), k, k, 0.4, t + i);
