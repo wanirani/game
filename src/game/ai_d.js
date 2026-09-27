@@ -741,7 +741,7 @@ AI_D.moth = {
  * onDie — 쓰러지면 부풀어 오르고(0.3초 경고) 포자 구름 140×110 (4초).
  */
 AI_D.husk = {
-  init(e) { AI.zombie.init(e); },
+  init(e) { AI.zombie.init(e); e.cool = rand(0.5, 1.5); },   // zombie.init 은 cool 을 두지 않는다 → NaN 이면 attack 이 영영 안 나옴
   update(e, world, dt) { AI.zombie.update(e, world, dt); },
   onDie(e, world) {
     const x = e.cx, by = e.bottom;
