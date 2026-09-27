@@ -542,18 +542,19 @@ export class AwakenCutinScene extends Scene {
     const dk = clamp(t / T.dim, 0, 1) * (t > T.exit ? lerp(1, 0.55, clamp((t - T.exit) / (T.end - T.exit), 0, 1)) : 1);
     if (this.preview) { ctx.fillStyle = '#07030a'; ctx.fillRect(0, 0, vw, vh); }
     if (dk > 0.003) { ctx.fillStyle = this.dimFill(dk); ctx.fillRect(0, 0, vw, vh); }
-    // 2. 영웅 주변 집중선 (low: 가운데만 덮는 작은 크기)
-    const hs = this.heroScreen();
-    if (sp && t >= T.lines && t < T.exit + T.exitDur) {
+    // 2. 영웅 주변 집중선 — 화면을 거의 덮는 큰 합성이므로 low 에서는 그리지 않는다 (feel §8: low 전면 패스 1장 = 암전뿐;
+    //    ULTFX 도 low 에서는 화면 층이 없다). 움직임은 띠 속 속도선이 맡는다
+    if (sp && this.q !== 'low' && t >= T.lines && t < T.exit + T.exitDur) {
+      const hs = this.heroScreen();
       const k = clamp((t - T.lines) / 0.18, 0, 1) * (t > T.exit ? 1 - clamp((t - T.exit) / T.exitDur, 0, 1) : 1);
-      const R = Math.max(vw, vh) * (this.q === 'low' ? 0.8 : 1.25);
+      const R = Math.max(vw, vh) * 1.25;
       ctx.save(); ctx.translate(hs.x, hs.y); ctx.rotate(t * (this.reduce ? 0.05 : 0.35));
-      ctx.globalAlpha = 0.6 * k * (this.q === 'low' ? 0.7 : 1);
+      ctx.globalAlpha = 0.6 * k;
       ctx.drawImage(sp.radial, -R, -R, R * 2, R * 2);
       ctx.restore();
     }
-    // 3. 영웅을 암전 위로 다시 그림 (+ 흰 테 번쩍임)
-    if (!this.preview && this.p) this.drawHeroOver(ctx, t);
+    // 3. 영웅을 암전 위로 다시 그림 (+ 흰 테 번쩍임). 불투명한 띠가 영웅을 통째로 가리는 동안에는 건너뛴다 (퍼펫 다시 그리기가 컷인 비용의 대부분)
+    if (!this.preview && this.p && !this.heroHidden(vw, vh, t)) this.drawHeroOver(ctx, t);
     // 4. 영화 띠 (위아래 검은 막)
     const lb = 34 * ease.outCubic(clamp(t / 0.15, 0, 1)) * (t > T.exit ? 1 - clamp((t - T.exit) / (T.end - T.exit), 0, 1) : 1);
     if (lb > 0.5) { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, vw, lb); ctx.fillRect(0, vh - lb, vw, lb); }
@@ -581,6 +582,26 @@ export class AwakenCutinScene extends Scene {
     if (!p || !cam) return { x: this.game.viewW * 0.5, y: this.game.viewH * 0.55 };
     const z = cam._zoom ?? cam.zoom ?? 1;
     return { x: (p.cx - cam.x) * z, y: (p.cy - cam.y) * z };
+  }
+
+  /**
+   * 띠가 자리를 잡은 동안(들어온 뒤 ~ 퇴장 전, 흰 번쩍임이 끝난 뒤) 영웅의 화면 사각형이 불투명한 띠 안쪽에 통째로 들어가는가.
+   * 여유: 옆 64 · 위 52 · 아래 20 (월드 px; 시전 자세의 무기 끝 ≈ 28 · 발밑 마법진 반지름 ≈ 58 · 아래 14 를 재어 두 배 가까이 둔다)
+   */
+  heroHidden(vw, vh, t) {
+    const T = this.T, p = this.p, cam = this.cam;
+    if (!p || !cam || t < Math.max(T.band + T.bandIn, 0.36) || t >= T.exit) return false;
+    const z = cam._zoom ?? cam.zoom ?? 1;
+    if (!(z > 0)) return false;
+    const sx = cam.x + (cam.shakeX ?? 0), sy = cam.y + (cam.shakeY ?? 0);
+    const x0 = (p.x - 64 - sx) * z, x1 = (p.x + p.w + 64 - sx) * z;
+    const y0 = (p.y - 52 - sy) * z, y1 = (p.y + p.h + 20 - sy) * z;
+    const lim = bandSize(vw, vh).H / 2 - 6 - (this.shakeT > 0 ? this.shakeA : 0);
+    const ox = vw / 2, oy = vh * 0.47;
+    for (const [x, y] of [[x0, y0], [x1, y0], [x0, y1], [x1, y1]]) {
+      if (Math.abs(-(x - ox) * SIN + (y - oy) * COS) > lim) return false;   // 띠 좌표의 세로 (−7° 회전을 되돌림)
+    }
+    return true;
   }
 
   drawHeroOver(ctx, t) {

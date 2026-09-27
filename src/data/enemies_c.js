@@ -3,7 +3,8 @@
 // hp/atk/def/res 는 레벨 1 기준값 — enemyStats() 가 스테이지 레벨(s14 lv46 · s15 lv50 · s16 lv53)로 스케일한다.
 // 등급: S 소형(hp 40~70) / M 중형(75~150) / L 대형(150~230). gold S·M [10,24] / L [16,40], score S 1400 / M 2000~2500 / L 3000~3200.
 // AI 종류: game/ai_c.js (AI_C: chandelier forgeimp slag chainhook bellows swimmer tidecaller siren) + 1부 재사용(swordsman wraith shadow knight).
-//   AI_C 가 들어오기 전에는 enemy.js 가 AI.walker 로 대체한다. 렌더 ID = 적 id (render/enemies_c.js RENDER_C; 없으면 palette.body 타원 대체).
+//   aiParams 는 world2 §5.3 값 그대로 (빠진 키는 ai_c.js 의 기본값). 애니메이션 이름·추가 필드·PROJ_C/ZONE_C 키 = ai_c.js 머리 주석 (렌더 계약).
+//   렌더 ID = 적 id (render/enemies_c.js RENDER_C; 없으면 palette.body 타원 대체).
 // noArena: 천장·깊은 물 등 방 기믹이 있어야 제대로 움직이는 적 → 아케이드 서바이벌(arcade_run)이 소환하지 않는다 (MASTER_PLAN §1.14).
 // elite:false → 정예로 등장하지 않는다 (world.spawnEnemy).
 

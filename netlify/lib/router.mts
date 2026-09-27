@@ -47,7 +47,39 @@ export function redact(msg: string): string {
     .slice(0, 200);
 }
 
+/**
+ * 안드로이드 앱(WebView 가상 출처)만 다른 출처 요청을 허용한다.
+ *  - 앱은 게임 파일을 https://appassets.androidplatform.net 에서 열고 계정 API 는 이 사이트로 보낸다 → 브라우저 규칙상 cross-site.
+ *  - 이 출처는 안드로이드 WebView 만 쓸 수 있고 일반 웹페이지는 흉내 낼 수 없다. 앱이 아닌 프로그램은 어차피 CORS 없이 직접 요청할 수 있으므로
+ *    허용해도 새 공격 경로가 생기지 않는다(토큰은 쿠키가 아니라 Authorization 헤더 — 자동으로 붙지 않는다).
+ *  - 그 밖의 다른 사이트(cross-site) 요청은 전처럼 403 으로 거절한다.
+ */
+export const APP_ORIGINS = new Set(['https://appassets.androidplatform.net']);
+const CORS_HEADERS: Record<string, string> = {
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Authorization, Content-Type, Accept',
+  'Access-Control-Expose-Headers': 'Retry-After',
+  'Access-Control-Max-Age': '600',
+  'Cross-Origin-Resource-Policy': 'cross-origin',
+};
+
 export async function handle(req: Request, context?: Context): Promise<Response> {
+  const origin = (req.headers.get('origin') ?? '').trim();
+  const app = APP_ORIGINS.has(origin) ? origin : null;
+  // 사전 요청(preflight): 앱 출처에만 응답한다 (다른 출처는 아래 라우터가 405 로 거절)
+  if (app && req.method.toUpperCase() === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: { ...CORS_HEADERS, 'Access-Control-Allow-Origin': app, Vary: 'Origin', 'Cache-Control': 'no-store' } });
+  }
+  const res = await route(req, context, !!app);
+  if (app) {
+    for (const [k, v] of Object.entries(CORS_HEADERS)) res.headers.set(k, v);
+    res.headers.set('Access-Control-Allow-Origin', app);
+    res.headers.set('Vary', 'Origin');
+  }
+  return res;
+}
+
+async function route(req: Request, context: Context | undefined, fromApp: boolean): Promise<Response> {
   let routeName = '-';
   try {
     let path: string;
@@ -67,8 +99,8 @@ export async function handle(req: Request, context?: Context): Promise<Response>
       return errorResponse(new ApiError('method_not_allowed', 405, undefined, { Allow: allow }));
     }
     // 브라우저는 다른 사이트가 보낸 요청에 Sec-Fetch-Site: cross-site 를 붙인다. 이 API 는 같은 출처에서만 쓰므로 거절한다
-    // (응답은 어차피 못 읽지만, 방문자 브라우저를 빌린 가입·로그인 시도·잠금 공격을 막는다. 안드로이드 앱의 대리 요청은 헤더가 없거나 same-origin)
-    if ((req.headers.get('sec-fetch-site') ?? '').trim().toLowerCase() === 'cross-site') return errorResponse(new ApiError('forbidden', 403));
+    // (응답은 어차피 못 읽지만, 방문자 브라우저를 빌린 가입·로그인 시도·잠금 공격을 막는다. 안드로이드 앱 출처만 예외 — 위 APP_ORIGINS)
+    if (!fromApp && (req.headers.get('sec-fetch-site') ?? '').trim().toLowerCase() === 'cross-site') return errorResponse(new ApiError('forbidden', 403));
     return await h(new Ctx(req, context), param);
   } catch (e) {
     if (e instanceof ApiError) return errorResponse(e);

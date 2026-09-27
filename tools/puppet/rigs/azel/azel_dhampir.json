@@ -1139,7 +1139,48 @@
   "footMinX": 960,
   "shinBootY": 2030
  },
- "hands": null,
+ "hands": {
+  "sheet": "azel/azel_dhampir_hands",
+  "grip": {
+   "box": [
+    380,
+    330,
+    1192,
+    1030
+   ],
+   "center": [
+    781,
+    650
+   ],
+   "axis": [
+    -0.101,
+    0.995
+   ],
+   "rodHalf": 56,
+   "wrist": [
+    730,
+    1010
+   ],
+   "scale": 0.17
+  },
+  "open": {
+   "box": [
+    1500,
+    80,
+    2370,
+    1105
+   ],
+   "wrist": [
+    2000,
+    1100
+   ],
+   "tip": [
+    2014,
+    100
+   ],
+   "scale": 0.17
+  }
+ },
  "materials": {
   "_replace": true,
   "armor": {

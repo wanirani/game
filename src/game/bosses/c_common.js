@@ -385,6 +385,16 @@ class StandIn extends Entity {
     if (!(mv > 0) || h.dying > 0 || h.dead) return false;
     return enemyStrike(world, rect, { owner: h, stats: h.stats, mv, kb: [260, -420], hitId: this.hitId, rehit: 0.7, tags: ['boss', 'standin'], dir: Math.sign((world.player?.cx ?? 0) - h.cx) || 1, ...extra });
   }
+  /**
+   * 진짜 기믹과 같은 지형 피해: 최대 체력의 frac 만큼 고정 피해 (방어 무시, 무적 시간 동안 한 번).
+   * 보스 공격력으로 치면 보스 러시·서바이벌 경기장(대역만 쓰는 곳)에서 스토리보다 훨씬 아파진다 (용암 10% · 공허의 벽 15%)
+   */
+  hazard(world, frac, kb, element) {
+    const p = world.player;
+    if (!p || p.dead || p.invuln || world.cleared || this.hostGone) return false;
+    p.takeHit(Math.ceil((p.stats?.hp ?? 100) * frac), { team: 'enemy', dir: Math.sign(kb[0]) || -p.facing, kb, flat: 1, element }, world, {});
+    return true;
+  }
 }
 let _sid = 0;
 
@@ -409,7 +419,11 @@ class StandInMagma extends StandIn {
     // 불씨 (품질 배율)
     this.emitAcc += dt * 14 * (world.fx?.quality ?? 1);
     while (this.emitAcc >= 1) { this.emitAcc -= 1; world.fx?.emit?.('ember', rand(A.x0, A.x1), this.level - 2, { speed: 60, angle: -Math.PI / 2, spread: 0.6 }); }
-    if (!paused) this.strike(world, { x: A.x0 - 200, y: this.level + 10, w: A.w + 400, h: A.floor + tile() * 2 - this.level }, 0.8, { element: 'fire', kb: [0, -760] });
+    // 진짜 용암(gimmicks.js magma.postPhysics)과 같은 규칙: 발이 수면 6px 아래로 잠기면 최대 체력 10% · 위로 튕김 (용암을 견디는 탈것은 무사)
+    const p = world.player;
+    if (!paused && p && !p.dead && p.bottom > this.level + 6 && p.cx > A.x0 - 200 && p.cx < A.x1 + 200 && !(p.mount?.riding && p.mount.hazard?.('lava', p, world))) {
+      if (this.hazard(world, 0.10, [0, -760], 'fire')) world.fx?.burst?.('fire', p.cx, this.level, 10, { angle: -Math.PI / 2, spread: 0.8, speed: 160 });
+    }
   }
   draw(ctx, world) {
     const A = this.A, y = this.level;
@@ -570,7 +584,7 @@ class StandInWalls extends StandIn {
     const inL = hb.x < this.wallX, inR = hb.x + hb.w > this.wallR;
     if (!inL && !inR) return;
     const dir = inL ? 1 : -1;
-    this.strike(world, hb, 0.6, { element: 'dark', kb: [dir * 420, -300], rehit: 0.8 });
+    this.hazard(world, 0.15, [dir * 520, -380], 'dark');   // 진짜 공허의 벽(gimmicks_b voidwall.hurt)과 같은 15% 고정 피해
     nudgePlayer(world, dir * Math.min(24, Math.abs(inL ? this.wallX - hb.x : hb.x + hb.w - this.wallR) + 2), 0);
   }
   draw(ctx, world) {
@@ -685,7 +699,7 @@ class StandInBeat extends StandIn {
     this.sinceBeat += dt;
     if (paused || this.hostGone) return;
     this.timer += dt;
-    if (this.timer >= this.beat) { this.timer -= this.beat; this.beatIndex++; this.sinceBeat = 0; audio.sfx('heartbeat', { vol: 0.35 }); }
+    if (this.timer >= this.beat) { this.timer -= this.beat; this.beatIndex++; this.sinceBeat = 0; audio.sfx('hit_heavy', { pitch: 0.45, vol: 0.35 }); }   // 진짜 heartbeat 기믹과 같은 쿵 ('heartbeat' 효과음은 없다)
   }
   pulse() { return Math.max(0, 1 - this.sinceBeat / 0.3); }
 }
@@ -1238,7 +1252,16 @@ export class BossC extends BossB {
   }
   /** 진행 중 패턴 중단 (강제 패턴·전환 전): 지연 작업·예고·무적 해제 + onCancel 훅 */
   cancelPattern() {
-    if (this._tr) { this.applyPhasesTo(this.phase, this.world); this._tr = null; }
+    const tr = this._tr;
+    if (tr) {
+      // 전환 도중에 끊으면 skipTransition 과 같은 규칙: 형태는 바로, 대사는 대기열로, 그 페이즈의 강제 패턴·afterTransition 도 잃지 않게
+      this.applyPhasesTo(this.phase, this.world); this.requestScriptsTo(this.phase); this._tr = null;
+      if (tr.n === this.phase) {
+        const f = this.transitionOf(this.phase).force;
+        if (f) this.forceNext(f);
+        safe('afterTransition', () => this.afterTransition?.(this.phase, this.world));
+      }
+    }
     this.clearJobs();
     this.telegraph = false; this.invuln = false; this.harmless = false; this.alpha = 1; this.hidden = false;
     this.onCancel?.(this.world);
@@ -1247,7 +1270,7 @@ export class BossC extends BossB {
   // ── 페이즈 전환 ──
   onPhase(n, world) { this.enterTransition(n, world); }
   enterTransition(n, world = this.world) {
-    this.clearJobs(); this.telegraph = false; this.alpha = 1;
+    this.clearJobs(); this.telegraph = false; this.alpha = 1; this.hidden = false;
     this.onCancel?.(world);
     const info = this.transitionOf(n);
     this._tr = { n, ...info, started: false, applied: false, scripted: false };
@@ -1295,12 +1318,17 @@ export class BossC extends BossB {
   }
   /** BossB.debugPhase 가 부른다: 전환 연출 없이 형태를 적용하고, 대사는 대기열로 */
   skipTransition() {
+    const tr = this._tr, fresh = !!tr && tr.n === this.phase;   // 이번 debugPhase 로 들어온 전환 (onPhase → enterTransition)
+    // 페이즈가 그대로면(이미 그 페이즈) enterTransition 이 불리지 않았다: 진행 중 패턴의 몸 상태를 여기서 되돌린다
+    if (!tr) { this.clearJobs(); this.alpha = 1; this.hidden = false; this.onCancel?.(this.world); }
     this.applyPhasesTo(this.phase, this.world);
     this.requestScriptsTo(this.phase);
     this._tr = null; this.invuln = false; this.harmless = false; this.telegraph = false;
-    const f = this.transitionOf(this.phase).force;
-    if (f) this.forceNext(f);
-    safe('afterTransition', () => this.afterTransition?.(this.phase, this.world));
+    if (fresh) {   // 같은 페이즈로 다시 debugPhase 해도 강제 패턴(falseDawn·collapse)·afterTransition 은 한 번뿐
+      const f = this.transitionOf(this.phase).force;
+      if (f) this.forceNext(f);
+      safe('afterTransition', () => this.afterTransition?.(this.phase, this.world));
+    }
     this.done(0.4);
   }
 

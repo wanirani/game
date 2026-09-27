@@ -409,7 +409,7 @@ export class CreditsScene extends Scene {
     ornament(ctx, vw / 2, y + 78, 300);
     // 두 칸 표: 행이 늘어도 (2부 엔딩은 11칸) 아래 보석 줄과 겹치지 않도록 줄 간격을 맞춘다
     const lines = Math.ceil(S.rows.length / 2);
-    const rowH = lines > 1 ? Math.min(36, (h - 240) / (lines - 1)) : 36;
+    const rowH = lines > 1 ? Math.min(36, (h - 250) / (lines - 1)) : 36;
     S.rows.forEach(([a, b], i) => {
       const kk = clamp(this.phaseT * 4 - i * 0.35, 0, 1);
       const col = i % 2, row = Math.floor(i / 2);
@@ -420,7 +420,7 @@ export class CreditsScene extends Scene {
       ctx.restore();
     });
     // 보석 줄: 드라큘라의 유물 5개 (+ 2부 엔딩이면 별의 조각 6개)
-    const gy = y + h - 96;
+    const gy = y + h - 92;
     if (S.stars != null) {
       this.drawGems(ctx, vw / 2 - w / 4, gy, 5, S.relics, '드라큘라의 유물', 'relic');
       this.drawGems(ctx, vw / 2 + w / 4, gy, 6, S.stars, '별의 조각', 'star');

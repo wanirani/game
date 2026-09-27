@@ -4,8 +4,9 @@
 //
 // 걸음 위상 p.gaitPh (라디안): 한 걸음 = π. 발이 땅에 닿는 순간 = GAIT.contactPh + kπ.
 //   render/hero.js 의 poseRun(달리기 자세)은 가까운 발이 ph ≈ π/2 − 0.45 에서 땅에 닿는다.
-//   걷기·질주 자세(hero_gait.js)도 같은 위상 규약을 쓰고, 발소리 이벤트는 그 접지 순간에 울린다
-//   (feel M5 판정: (gaitPh − GAIT.contactPh) mod π < 0.2).
+//   걷기·질주 자세(hero_gait.js)도 같은 위상 규약을 쓰고, 발소리 이벤트는 그 접지 순간에 가장 가까운 스텝에서 울린다
+//   (feel M5 판정: x = (gaitPh − GAIT.contactPh) mod π 일 때 min(x, π − x) < 0.2 — 60Hz 한 스텝의 위상이 달리기 0.22 rad 라
+//    '접지 직후' 로만 재면 0.2 를 넘는 스텝이 생긴다; 가장 가까운 스텝이면 오차 ≤ 0.14 rad).
 
 /** 걸음새 (feel §3.1, §3.3.2). mul = 기본 속도 B 배율, A = 보폭, lift = 발 들림, bob = 엉덩이 상하(2배 주기), arm = 팔 흔들기(rad), reach = 팔 뻗음 */
 export const GAIT = {
@@ -24,14 +25,15 @@ export const CADENCE = { r: [0, 0.5, 1.0, 1.32], steps: [1.6, 2.4, 4.2, 5.0] };
 
 /**
  * 영웅별 걸음 성격 (feel §3.3.2 표). cad 박자 · A 보폭 · bob 상하 · lean 기울기 · vol 발소리 · dust 먼지 · arm 팔 흔들기
- * sprintK 질주 배율 (feel §3.1) · skidDecel 미끄러짐 감속 · ninja 닌자 질주 자세 · sprintKick 질주 발걸음 화면 반동 ·
+ * sprintK 질주 배율 (feel §3.1) · skidDecel 미끄러짐 감속 (feel §3.2 은 1800, 브란 1500, 리아 2200 — 느린 세라·브란은
+ *   60Hz 적분에서 미끄러짐이 M4 범위(달리기 17–26px, 질주 30–44px) 아래로 떨어져 1600·1300 으로 낮췄다) · ninja 닌자 질주 자세 · sprintKick 질주 발걸음 화면 반동 ·
  * sprintGravel 질주 발걸음 자갈 · sprintMist 질주 두 걸음마다 붉은 안개 · airFx 공중 점프 장식 · dashCol 대시 잔상 첫 색(없으면 필살기 색)
  */
 export const PERSONALITY = {
   kael:   { cad: 1.0,  A: 1.0,  bob: 1.0, lean: 1.0, vol: 1.0, dust: 1.0, arm: 1.0, sprintK: 1.32, skidDecel: 1800, airFx: 'holy' },
-  sera:   { cad: 1.08, A: 0.85, bob: 0.9, lean: 0.8, vol: 0.8, dust: 0.8, arm: 1.0, sprintK: 1.32, skidDecel: 1800, airFx: 'feather_w' },
+  sera:   { cad: 1.08, A: 0.85, bob: 0.9, lean: 0.8, vol: 0.8, dust: 0.8, arm: 1.0, sprintK: 1.32, skidDecel: 1600, airFx: 'feather_w' },
   victor: { cad: 1.0,  A: 1.0,  bob: 1.0, lean: 0.9, vol: 1.0, dust: 1.0, arm: 0.8, sprintK: 1.32, skidDecel: 1800, airFx: 'smoke' },
-  bran:   { cad: 0.9,  A: 1.1,  bob: 1.3, lean: 1.0, vol: 1.4, dust: 1.5, arm: 1.0, sprintK: 1.25, skidDecel: 1500, airFx: null, sprintKick: 0.8, sprintGravel: 1 },
+  bran:   { cad: 0.9,  A: 1.1,  bob: 1.3, lean: 1.0, vol: 1.4, dust: 1.5, arm: 1.0, sprintK: 1.25, skidDecel: 1300, airFx: null, sprintKick: 0.8, sprintGravel: 1 },
   lia:    { cad: 1.1,  A: 1.0,  bob: 0.8, lean: 1.1, vol: 0.7, dust: 0.7, arm: 1.0, sprintK: 1.38, skidDecel: 2200, airFx: 'feather', ninja: true },
   azel:   { cad: 1.0,  A: 1.0,  bob: 0.6, lean: 1.0, vol: 0.8, dust: 0.5, arm: 1.0, sprintK: 1.32, skidDecel: 1800, airFx: 'bats', ninja: true, sprintMist: true },
   _default: { cad: 1.0, A: 1.0, bob: 1.0, lean: 1.0, vol: 1.0, dust: 1.0, arm: 1.0, sprintK: 1.32, skidDecel: 1800, airFx: null },
@@ -77,7 +79,8 @@ export const SPRINT = {
   decayT: 0.35,          // 질주가 끝난 속도가 B 로 줄어드는 시간 (공중에서 놓았다가 다시 누르고 착지)
   arenaMinTiles: 16,     // 이보다 좁은 보스 경기장에서는 질주 없음
   cmdWindow: 0.25,       // →→ 뒤 이 시간 안의 공격만 수룡참(→→+공격) 후보, 그 뒤는 늘 질주 공격 (MASTER_PLAN §1.4)
-  airLean: 0.08,         // 공중 질주 기울기 덧셈
+  lean: 0.1,             // 질주 중 기울기 덧셈 (applyFeelOverlay; 자세표의 0.36 위에 — 달리기와 확실히 달라 보이게)
+  airLean: 0.06,         // 공중 질주는 조금 더
   // 카메라 (feel §3.7): 질주 룩어헤드 추가, 0.4초 뒤 줌 0.96, 끝나면 1.0 으로
   lookBoost: 50, zoom: 0.96, zoomAfter: 0.4,
   // 화면 가장자리 속도선 (feel §3.5): 0.4초 이상 질주 → 0.1초마다 2줄, 알파 0.22, low 품질에선 끔

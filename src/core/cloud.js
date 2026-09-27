@@ -1,5 +1,6 @@
 // 계정 · 클라우드 저장 클라이언트 (서버 계약: docs/ACCOUNTS.md)
-//  - API 는 같은 출처의 절대 경로 '/api/...' 만 부른다 (안드로이드 앱은 WebView 가 /api/* 를 사이트로 대신 전달 → 항상 같은 출처, CORS 없음)
+//  - 웹: 같은 출처의 절대 경로 '/api/...' 만 부른다. 안드로이드 앱(https://appassets.androidplatform.net)은 게임 파일이 앱 안에 있으므로
+//    공식 사이트의 API(APP_API_BASE)를 부른다 — 서버는 이 앱 출처만 CORS 로 허용한다(netlify/lib/router.mts APP_ORIGINS)
 //  - 쓸 수 있는 환경: https, 또는 localhost 의 http. claude.ai 임베드(CSP 가 막음)·file:// 등에서는 요청을 아예 보내지 않는다
 //  - 게스트(로그인 안 함)는 네트워크 요청 0건. 계정 화면을 열 때만 GET /api/health 로 서버가 있는지 확인한다
 //  - 로그인 중: 슬롯 저장(saves.onWrite) 2초 뒤 그 슬롯을 올린다(rev 로 충돌 검사). 메타(해금·엔딩·기록)는 덮어쓰지 않고 합친다
@@ -13,6 +14,11 @@ import { bus } from './events.js';
 import { saves, isValidSave } from './save.js';
 
 export const API_BASE = '/api';
+/** 안드로이드 앱이 부르는 계정 서버 (공식 사이트). 사이트 주소를 바꾸면 여기와 netlify.toml·문서를 함께 바꾼다 */
+export const APP_API_BASE = 'https://blood-nocturne.netlify.app/api';
+const APP_HOST = /^appassets\.androidplatform\.net$/i;
+/** 안드로이드 앱 WebView 안에서 실행 중인가 */
+export const isAndroidApp = (loc = typeof location !== 'undefined' ? location : null) => loc?.protocol === 'https:' && APP_HOST.test(String(loc?.hostname ?? ''));
 const K_AUTH = 'bn_auth', K_BASE = 'bn_api_base', K_SYNC = 'bn_cloud_sync', K_REMEMBER = 'bn_remember';
 const TOKEN_RE = /^[A-Za-z0-9_-]{43}$/;
 export const SLOTS = [1, 2, 3];
@@ -389,7 +395,7 @@ class Cloud {
     if (!this.eligible()) this.setState('blocked');
     else if (this.auth) this.resume();
   }
-  get base() { return safeBase(lsGet(K_BASE)) ?? API_BASE; }
+  get base() { return safeBase(lsGet(K_BASE)) ?? (isAndroidApp() ? APP_API_BASE : API_BASE); }
   /** 이 환경에서 서버 요청을 보내도 되는가 */
   eligible() {
     if (safeBase(lsGet(K_BASE))) return true;

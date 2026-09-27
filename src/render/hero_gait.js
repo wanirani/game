@@ -4,7 +4,7 @@
 //   a1/a2 팔 각도(0 앞, π/2 아래, 커지면 뒤로) · r1/r2 팔 뻗음 · sq 세로 배율 · px 몸 가로 흔들림
 //  gaitPose(P, K, anim, p, at)   'walk' | 'sprint' | 'run_start' | 'skid' | 'pivot' | 'land_heavy' 자세를 P 에 쓴다
 //                                (at = 애니메이션 경과 초, p.gaitPh 가 숫자면 그 걸음 위상, 아니면 시간으로 돈다)
-//  applyFeelOverlay(P, p)        블렌드 뒤·골격 풀이 전: P.sq *= p.feel.sq, P.lean += 가속 기울기 + 벽차기 반동 + 공중 질주 기울기
+//  applyFeelOverlay(P, p)        블렌드 뒤·골격 풀이 전: P.sq *= p.feel.sq, P.lean += 가속 기울기 + 벽차기 반동 + 질주 기울기(공중은 더)
 //                                (p.feel 이 없거나 p.ride 면 아무것도 하지 않는다; 반환값 없음 = 색 섬광 없음)
 //  GAIT_ANIMS {anim: holdFor 모드}  hero.js 가 gaitPose 뒤에 holdFor(P, K, 모드) 로 무기 쥐는 법을 입힌다
 // 위상 규약: hero.js poseRun 과 같다 — 가까운 발은 ph = GAIT.contactPh (π/2 − 0.45) + 2kπ, 먼 발은 그 + π 에 땅에 닿는다.
@@ -61,6 +61,7 @@ function sprintPose(P, p, pe, ph) {
     P.a1 = HP - 0.35 + arm * s; P.a2 = HP - 0.35 - arm * s;
   }
   P.hd = g.hd - 0.02 * Math.sin(2 * ph);
+  P.py += 1.5;   // 무게 중심을 낮춘다
 }
 /** 달리기 시작 (처음 0.08초): 몸을 낮추고 확 숙였다가 달리기 자세로 */
 function runStartPose(P, p, pe, ph, at, dur = SKID.runStartT) {
@@ -120,6 +121,6 @@ export function applyFeelOverlay(P, p) {
   const f = p?.feel;
   if (!P || !f || p.ride) return;
   if (typeof f.sq === 'number' && f.sq !== 1 && f.sq > 0) P.sq *= f.sq;
-  const lean = (f.accLean || 0) + (f.leanKick || 0) + (p.sprinting && !p.onGround ? SPRINT.airLean : 0);
+  const lean = (f.accLean || 0) + (f.leanKick || 0) + (p.sprinting ? SPRINT.lean + (p.onGround ? 0 : SPRINT.airLean) : 0);
   if (lean) P.lean += lean;
 }

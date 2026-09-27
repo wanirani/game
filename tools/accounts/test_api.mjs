@@ -993,6 +993,48 @@ test('공격: 분산 추측 — 여러 네트워크 합계 20번 실패하면 30
   expectOk(await login(u.id, PW, { ip: freshIp() }));
 });
 
+test('안드로이드 앱 출처만 다른 출처 허용: preflight 204·CORS 헤더, 앱의 cross-site 요청 허용, 그 밖의 출처는 그대로 403', async () => {
+  const APP = 'https://appassets.androidplatform.net';
+  const raw = async (method, p, headers = {}, body) => {
+    const h = new Headers(headers);
+    const init = { method, headers: h };
+    if (body !== undefined) { h.set('content-type', 'application/json'); init.body = JSON.stringify(body); init.duplex = 'half'; }
+    return api(new Request('https://game.test' + p, init), { requestId: 'test', ip: freshIp(), deploy: { context: DEPLOY, id: '0123456789abcdef01234567', published: DEPLOY === 'production' } });
+  };
+  const xs = { origin: APP, 'sec-fetch-site': 'cross-site' };
+  let r = await raw('OPTIONS', '/api/auth/signup', { ...xs, 'access-control-request-method': 'POST', 'access-control-request-headers': 'content-type' });
+  assert.equal(r.status, 204);
+  assert.equal(r.headers.get('access-control-allow-origin'), APP);
+  assert.match(r.headers.get('access-control-allow-headers') ?? '', /authorization/i);
+  assert.match(r.headers.get('access-control-allow-methods') ?? '', /PUT/);
+  assert.equal(r.headers.get('vary'), 'Origin');
+  r = await raw('OPTIONS', '/api/auth/signup', { origin: 'https://evil.example', 'sec-fetch-site': 'cross-site' });
+  assert.ok(r.status >= 400, String(r.status));
+  assert.equal(r.headers.get('access-control-allow-origin'), null);
+  const id = newId('app');
+  r = await raw('POST', '/api/auth/signup', xs, { id, password: PW });
+  const b = await r.json();
+  assert.equal(r.status, 201, JSON.stringify(b));
+  SECRETS.add(b.token); SECRETS.add(b.recoveryCode);
+  assert.equal(r.headers.get('access-control-allow-origin'), APP);
+  assert.equal(r.headers.get('cache-control'), 'no-store');
+  r = await raw('GET', '/api/saves', { ...xs, authorization: 'Bearer ' + b.token });
+  assert.equal(r.status, 200);
+  assert.equal(r.headers.get('access-control-allow-origin'), APP);
+  r = await raw('PUT', '/api/saves/1', { ...xs, authorization: 'Bearer ' + b.token }, { data: validSave(), baseRev: 0 });
+  assert.equal(r.status, 200);
+  // 오류 응답도 앱이 읽을 수 있어야 한국어 안내를 보여 줄 수 있다
+  r = await raw('POST', '/api/auth/login', xs, { id, password: 'wrong-pass-123' });
+  assert.equal(r.status, 401);
+  assert.equal(r.headers.get('access-control-allow-origin'), APP);
+  // 다른 사이트·비슷하게 꾸민 출처는 전처럼 막는다
+  for (const o of ['https://evil.example', 'http://appassets.androidplatform.net', 'https://appassets.androidplatform.net.evil.com', 'https://x.appassets.androidplatform.net', 'null', '']) {
+    r = await raw('GET', '/api/saves', { origin: o, 'sec-fetch-site': 'cross-site', authorization: 'Bearer ' + b.token });
+    assert.equal(r.status, 403, o);
+    assert.equal(r.headers.get('access-control-allow-origin'), null, o);
+  }
+});
+
 test('공격: 다른 사이트에서 보낸 요청(CSRF·no-cors) 차단 — JSON 이 아닌 Content-Type 415, Sec-Fetch-Site: cross-site 403', async () => {
   const id = newId('csrf');
   const raw = JSON.stringify({ id, password: PW });
@@ -1293,6 +1335,11 @@ test('클라이언트: 시험용 API 주소(bn_api_base)는 같은 출처 경로
   assert.ok(client.isValidId('hunter_01') && !client.isValidId('<b>x</b>') && !client.isValidId('Hunter'));
   assert.equal(client.defaultRemember({ hostname: 'appassets.androidplatform.net' }), true);
   assert.equal(client.defaultRemember({ hostname: 'bloodnocturne.netlify.app' }), false); // Node: 터치 판정 없음 → 데스크톱으로 봄
+  assert.equal(client.isAndroidApp({ protocol: 'https:', hostname: 'appassets.androidplatform.net' }), true);
+  for (const loc of [{ protocol: 'http:', hostname: 'appassets.androidplatform.net' }, { protocol: 'https:', hostname: 'appassets.androidplatform.net.evil.com' }, { protocol: 'https:', hostname: 'blood-nocturne.netlify.app' }, null]) {
+    assert.equal(client.isAndroidApp(loc), false, JSON.stringify(loc));
+  }
+  assert.match(client.APP_API_BASE, /^https:\/\/[a-z0-9-]+\.netlify\.app\/api$/);
 });
 
 // ═════════ 실행 ═════════

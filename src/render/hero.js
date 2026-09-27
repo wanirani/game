@@ -165,6 +165,50 @@ function poseIdle(P, K, t, npc) {
     P.py += 0.9; P.f1x += 1.6; P.f2x -= 1.4; P.lean += 0.03; P.hd -= 0.03;
   }
 }
+// ── NPC 동작: talk(말하기)·gesture(손짓) — 마을·스토리 NPC (벡터·채색 퍼펫 공용). 대기 자세 위에 가중치 k 로 얹는다 ──
+const NPC_GEST = 1.6;                             // 손짓 한 번의 길이(초)
+const smooth01k = (a, b, x) => { const u = clamp((x - a) / (b - a), 0, 1); return u * u * (3 - 2 * u); };
+function poseTalk(P, t, k) {
+  if (k <= 0) return;
+  const b = Math.sin(t * 7.3), b2 = Math.sin(t * 2.9 + 1);
+  P.hd += (0.045 * b + 0.03 * b2) * k; P.lean += 0.015 * b2 * k;          // 고개 끄덕임
+  P.a1 = lerp(P.a1, 0.9 + 0.14 * Math.sin(t * 4.6), k);                    // 가까운 손이 가슴 앞에서 박자를 맞춤
+  P.r1 = lerp(P.r1, 0.6 + 0.05 * Math.sin(t * 4.6 + 1), k);
+}
+/** at: 손짓 시작 후 시간(초, 0~NPC_GEST). 반환: 가중치(0~1, 편 손 전환 판단용) */
+function poseGesture(P, at, k) {
+  const env = smooth01k(0, 0.3, at) * (1 - smooth01k(NPC_GEST - 0.4, NPC_GEST, at)) * k;
+  if (env <= 0) return 0;
+  const wave = Math.sin((at - 0.3) * 9) * 0.12 * smooth01k(0.3, 0.5, at);
+  P.a1 = lerp(P.a1, -0.45 + wave, env); P.r1 = lerp(P.r1, 0.88, env);    // 가까운 손을 앞으로 들어 흔듦
+  P.hd -= 0.06 * env; P.lean -= 0.03 * env;
+  return env;
+}
+function npcHash(id) { let h = 0; for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0; return h; }
+/** NPC 대기 생기: 대사 창의 현재 화자(game.top.cur.who)가 이 NPC 면 말하기, 플레이어가 다가오면 인사 손짓, 그 밖엔 NPC 마다 다른 주기로 가끔 손짓 */
+function npcLife(P, p, world, tt, rig, dt) {
+  const id = PUP.npcIdOf(p, p.look);
+  if (!id) return;                                // 데이터에 없는 NPC(결투 상대 등)는 그대로
+  const top = world?.game?.top;
+  const talking = !!(top && top.cur && top.cur.who === id);
+  const S = rig ? (rig.npcLife ||= { talkK: 0, gest: -99, near: false }) : null;
+  let tk = talking ? 1 : 0;
+  if (S) { S.talkK += clamp(tk - S.talkK, -dt * 4, dt * 4); tk = S.talkK; }
+  if (tk > 0.001) poseTalk(P, tt, tk);
+  let gat = -1;
+  if (S) {
+    const pl = world?.player;
+    const near = !!(pl && Math.abs(pl.cx - p.cx) < 70 && Math.abs((pl.bottom ?? 0) - (p.bottom ?? 0)) < 60);
+    if (near && !S.near && tt - S.gest > 4) S.gest = tt;
+    S.near = near;
+    gat = tt - S.gest;
+  }
+  if (!(gat >= 0 && gat < NPC_GEST) && !talking) {
+    const h = npcHash(id), per = 9 + (h % 5), ph = (tt + (h % 97) * 0.13) % per;
+    if (ph < NPC_GEST) gat = ph;
+  }
+  if (gat >= 0 && gat < NPC_GEST && tk < 0.5 && poseGesture(P, gat, 1 - tk) > 0.35) ST.throwK = 1;
+}
 function poseStance(P, K) {
   P.py = -39.5; P.lean = 0.12; P.hd = -0.06; P.f1x = 8; P.f1y = -2.8; P.f2x = -9.5; P.f2y = -2.8;
   P.a1 = HP - 0.42; P.r1 = 0.8; P.a2 = HP + 0.08; P.r2 = 0.84;
@@ -2008,11 +2052,15 @@ export function drawHero(ctx, p, world, opts = {}) {
       case 'cast': poseIdle(P, K, tt, false); holdFor(P, K, 'idle'); poseCast(P, K, at, tt); ST.circle = clamp(at / 0.08, 0, 1) * (at < 0.3 ? 1 : clamp(1 - (at - 0.3) / 0.2, 0, 1)); ST.cast = 3; break;
       case 'charge': { ST.charge = clamp((p.charging ?? 0.3) / 0.55, 0, 1); poseCharge(P, K, ST.charge, tt); if (W.type === 'staff') ST.circle = ST.charge; break; }
       case 'ride': case 'ride_duck': case 'ride_charge': case 'ride_rear': case 'ride_hurt': rideAnim(P, K, anim, at, tt); break; // C6
+      case 'talk': poseIdle(P, K, tt, true); holdFor(P, K, 'idle'); poseTalk(P, tt, 1); break;                                  // NPC 말하기
+      case 'gesture': poseIdle(P, K, tt, true); holdFor(P, K, 'idle'); if (poseGesture(P, at % NPC_GEST, 1) > 0.35) ST.throwK = 1; break; // NPC 손짓 (편 손)
       default: {
         // WP1 (feel.md 3.3.3): walk/sprint/run_start/skid/pivot/land_heavy → hero_gait.js (heroHooks 로 덮어쓸 수 있음)
         const gm = heroHooks.gaitAnims?.[anim] ?? GAIT.GAIT_ANIMS?.[anim];
         if (gm) { (heroHooks.gait || GAIT.gaitPose)(P, K, anim, p, at); holdFor(P, K, typeof gm === 'string' ? gm : gm.hold || 'run'); break; }
-        poseIdle(P, K, tt, !!p.npc); holdFor(P, K, 'idle'); break;
+        poseIdle(P, K, tt, !!p.npc); holdFor(P, K, 'idle');
+        if (p.npc) npcLife(P, p, world, tt, rig, dt);   // 마을·스토리 NPC 대기: 자기 대사 중이면 말하기, 플레이어가 다가오면·가끔 손짓
+        break;
       }
     }
   }

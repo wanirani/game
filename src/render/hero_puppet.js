@@ -9,6 +9,8 @@
 import { assets } from '../core/assets.js';
 import { CLASSES, classChain } from '../data/classes.js';
 import { CHARACTERS } from '../data/characters.js';
+import { NPCS } from '../data/npcs.js';
+import { TOWN_NPCS } from '../data/town.js';
 import { PUPPETS } from './puppet_manifest.js';
 import { G, sh, ra, grad, ribbonPath, WS, drawWeapon, drawWing, glow, drawHalo } from './hero_parts.js';
 
@@ -116,6 +118,7 @@ export function preloadPuppet(charId, classId) { const E = entry(charId, classId
 // 교회 전직 카드·파티·직업 탭이 처음 그릴 때 벡터로 찍혀 스냅샷에 남는 일을 막는다
 const SIB = new Set();
 function preloadSiblings(cid) {
+  if (cid === NPC_CID) return;   // NPC 묶음은 형제 미리 받기 없음 (스테이지에 NPC 한 명만 있어도 나머지 7명을 받게 된다)
   if (SIB.has(cid) || typeof window === 'undefined') return;
   SIB.add(cid);
   const ids = Object.keys(PUPPETS[cid] || {});
@@ -232,7 +235,8 @@ const INST = new WeakMap();
  * 호출할 때마다 필요한 로드를 건드리므로 매 프레임 불러도 된다 (캐시).
  */
 export function puppetFor(p, look) {
-  if (!ENABLED || !look || look.puppet === false || p?.npc) return null;
+  if (!ENABLED || !look || look.puppet === false) return null;
+  if (p?.npc) return npcPuppet(p, look);
   let I = INST.get(look);
   if (I === undefined) {
     const cid = p?.ch?.id, cls = cid ? classOf(p, look) : null;
@@ -248,6 +252,40 @@ export function puppetFor(p, look) {
   I.key = E.key + (I.vk ? '#' + I.vk : '');
   return I;
 }
+// ───────────────────────── NPC 퍼펫 ─────────────────────────
+// NPC(p.npc)는 매니페스트의 'npc' 묶음(assets/puppets/npc/<npcId>/)에 원화가 있으면 채색 퍼펫, 없으면 벡터(기존 그대로).
+// NPC id: p.npcId → look.npcId → look 객체가 data/npcs.js NPCS·data/town.js TOWN_NPCS 의 어느 항목 것인지(마을 hub.js·
+// 스테이지 world.js 는 NPCS[id].look / TOWN_NPCS[id].look 객체를 그대로 넘긴다). 다른 NPC(결투 상대 등)는 null → 벡터.
+export const NPC_CID = 'npc';
+const NPCK = new WeakMap();
+/** 이 엔티티/look 이 어느 NPC 인가 (없으면 null) */
+export function npcIdOf(p, look) {
+  if (p?.npcId) return p.npcId;
+  if (!look) return null;
+  if (look.npcId) return look.npcId;
+  let id = NPCK.get(look);
+  if (id === undefined) {
+    id = null;
+    for (const T of [NPCS, TOWN_NPCS]) for (const k in T) if (T[k]?.look === look) id = k;
+    NPCK.set(look, id);
+  }
+  return id;
+}
+const INST_NPC = new WeakMap();
+function npcPuppet(p, look) {
+  let I = INST_NPC.get(look);
+  if (I === undefined) {
+    const id = npcIdOf(p, look);
+    const E = id && PUPPETS[NPC_CID]?.[id] ? entry(NPC_CID, id) : NONE;
+    I = E === NONE ? null : { E, look, vk: '', V: null, key: E.key, lv: null, npc: id };
+    INST_NPC.set(look, I);
+  }
+  if (!I || !ready(I.E)) return null;
+  return I;
+}
+/** 이 NPC 에 채색 퍼펫 에셋이 있는가 (로드 여부와 무관) */
+export function hasNpcPuppet(npcId) { return !!PUPPETS[NPC_CID]?.[npcId]; }
+
 /** 플레이어블 캐릭터 id 인가 (그리기 배율 적용 대상 판별) */
 export function isPlayable(id) { return !!(id && CHARACTERS[id]); }
 export function charDef(id) { return id ? CHARACTERS[id] || null : null; }

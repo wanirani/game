@@ -824,6 +824,11 @@ function spawn(w, o) {
   e.world = w; e.cover(w);
   return w.add(e);
 }
+/** 화면 층을 레터박스 띠 사이로 자른다 (world.drawOverlays 와 같은 띠 높이; 호출부가 save/restore 로 감싼다) */
+function clipBars(ctx, w, vw, vh) {
+  const lb = Math.min(vh * 0.2, w?.letterbox || 0);
+  if (lb > 0.5) { ctx.beginPath(); ctx.rect(0, lb, vw, vh - lb * 2); ctx.clip(); }
+}
 function addOv(w, o) {
   if (typeof w?.addOverlay === 'function') return w.addOverlay(o);
   if (Array.isArray(w?.overlays)) { o.t = 0; w.overlays.push(o); return o; }
@@ -1036,6 +1041,7 @@ class Session {
     const rush = 1 + 0.35 * (1 - ease.outCubic(clamp(this.t / 0.35, 0, 1)));   // 시작할 때 선이 안쪽으로 몰려든다
     const S = D * rush;
     ctx.save();
+    clipBars(ctx, this.w, vw, vh);
     ctx.globalAlpha = a; ctx.globalCompositeOperation = 'source-over';
     ctx.translate(cx, cy); if (spin) ctx.rotate(spin);
     ctx.drawImage(this.tex, -S, -S, S * 2, S * 2);
@@ -1179,11 +1185,12 @@ function bakeSilhouettes(w, vw, vh, im) {
 function drawImpact(im, ctx, vw, vh) {
   if (im.dead) return;
   deferGameFlash(im.w, im);   // 같은 프레임에 들어온 번쩍임도 뒤로 미룬다
+  clipBars(ctx, im.w, vw, vh);   // 레터박스 띠는 검정 그대로 (반전 프레임에 흰 띠가 되지 않게)
   const phaseA = im.nA === 0 || (!im.drawnB && im.t < 1.4 / 60 && im.nA < 3);
   if (phaseA) {
     im.nA++;
     if (im.q === 'low' || !POOL.sil) {
-      ctx.globalAlpha = 0.75 * im.fk; ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, vw, vh);
+      ctx.globalAlpha = 0.7 * im.fk; ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, vw, vh);   // 번쩍임 상한 0.7 (game.flash 정책과 같게)
       ULTFX_STATS.whiteFrames++;
       return;
     }
@@ -1216,6 +1223,7 @@ function rollKickAlone(w, a) {
     update(dt) {
       t += dt;
       if (Math.abs((cam.roll || 0) - set) > 1e-4) { this.dead = true; return; }
+      if (calm() || qk(w) === 'low') { cam.roll = 0; set = 0; this.dead = true; return; }   // 도중에 '동작 줄이기'·low 로 바뀌어도 바로 멈춘다
       set = t >= 0.7 ? 0 : a * Math.exp(-t * 5.5) * Math.cos(t * 16);
       cam.roll = set;
     },
@@ -2123,7 +2131,12 @@ function idle(fn, timeout = 600) {
 function schedulePrepare() {
   setTimeout(() => idle(() => { try { const w = game?.world; if (w?.player) prepareFor(w, w.player); } catch (e) { console.warn('[ultfx] prepare', e); } }), 250);
 }
-let HOOKED = false;
+/** 미리 구운 상태가 지금 (직업, 품질)과 다른가: 품질 조절기('auto')가 스테이지 도중 등급을 바꾸면 달라진다 */
+function prepStale() {
+  const w = game?.world, p = w?.player;
+  return !!(p?.hero && !live(w) && `${p.hero.classId}|${qk(w)}` !== PREP.key);
+}
+let HOOKED = false, PREP_POLL = 0;
 function hookBus() {
   if (HOOKED) return;
   HOOKED = true;
@@ -2137,8 +2150,13 @@ function hookBus() {
       if (s && !s.dead && s.ov && !w.overlays?.includes(s.ov)) s.kill();   // 방이 바뀌며 오버레이가 비워졌다 → 레터박스·기울기 복구
       const im = w.__ultImpact;
       if (im && !im.dead && !w.overlays?.includes(im.ov)) endImpact(im);
+      if (prepStale()) schedulePrepare();
     });
   } catch (e) { console.warn('[ultfx] bus', e); }
+  // 품질 등급이 바뀌면 다음 시전 전에 한가할 때 다시 굽는다 (시전 첫 프레임에 풀 캔버스·그라디언트를 만들지 않게). 초당 한 번 문자열 비교뿐
+  if (typeof window !== 'undefined' && typeof setInterval === 'function' && !PREP_POLL) {
+    PREP_POLL = setInterval(() => { try { if (prepStale()) schedulePrepare(); } catch { /* 다음 번에 */ } }, 1000);
+  }
 }
 // 부팅 뒤 한가할 때 풀을 만든다 (모듈 최상위에서는 가져온 값에 접근하지 않는다: 순환 import 규칙)
 if (typeof window !== 'undefined' && typeof setTimeout === 'function') {
