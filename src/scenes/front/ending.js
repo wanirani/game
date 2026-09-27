@@ -79,7 +79,7 @@ export class EndingScene extends Scene {
     this.E = ENDINGS[this.kind];
     const m = g.meta;
     if (m) {
-      m.endingsSeen ??= [];
+      if (!Array.isArray(m.endingsSeen)) m.endingsSeen = []; // 망가진·옛 메타 (배열이 아니면 .includes 에서 멈춘다)
       if (!m.endingsSeen.includes(this.kind)) m.endingsSeen.push(this.kind);
       m.clears = (m.clears ?? 0) + 1;
       saves.saveMeta(m);

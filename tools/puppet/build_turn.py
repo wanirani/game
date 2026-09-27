@@ -30,7 +30,25 @@ def mirror_of(deg):
     return 180 if m == -180 else m
 
 
-def cut_views(sheet_key, labels, dbg_name):
+def bg_pockets(rgb, a0, a, P):
+    """리그 turn.pockets (opt-in): 구멍 메우기(fill_holes)가 되살린 '갇힌 배경' — 팔과 코트 사이·다리 사이의 배경 주머니.
+    rembg 가 이미 투명으로 본 구멍 중 화소의 frac 이상이 그 줄의 배경색(좌우 끝 중앙값)과 T 이내인 덩어리만 고른다.
+    흰 옷은 그늘진 천이 배경 회색과 같아 천까지 지워지므로 켜지 말 것 (어두운 옷 전용). P = {T, frac, min}"""
+    f = rgb.astype(np.float32)
+    bgrow = np.median(np.concatenate([f[:, :24], f[:, -24:]], 1), axis=1)
+    near = np.abs(f - bgrow[:, None, :]).max(2) < P.get('T', 18)
+    hole = a & ~a0
+    lab, n = ndi.label(hole)
+    if not n:
+        return np.zeros_like(a)
+    idx = np.arange(1, n + 1)
+    fr, sz = ndi.mean(near, lab, idx), ndi.sum(hole, lab, idx)
+    keep = np.zeros(n + 1, bool)
+    keep[1:] = (fr >= P.get('frac', 0.55)) & (sz >= P.get('min', 30))
+    return keep[lab]
+
+
+def cut_views(sheet_key, labels, dbg_name, pockets=None):
     p = os.path.join(SRC, sheet_key + '.webp')
     if not os.path.exists(p):
         die(f'턴어라운드 시트 없음: {p}')
@@ -38,12 +56,18 @@ def cut_views(sheet_key, labels, dbg_name):
     H, W = rgb.shape[:2]
     a = alpha_for(p, os.path.join(SRC, sheet_key + '_alpha.png')) > 127
     a[int(H * 0.93):, int(W * 0.8):] = False               # 워터마크 자리
+    a0 = a.copy()
     a = ndi.binary_fill_holes(a)
+    pk = bg_pockets(rgb, a0, a, pockets) if pockets else None
+    if pk is not None:
+        a &= ~pk
     f = rgb.astype(np.float32)
     sat = (f.max(2) - f.min(2)) / np.maximum(f.max(2), 1)
     a &= ~((f.mean(2) > 150) & (sat < 0.08) & (ndi.binary_erosion(a, iterations=6) == 0))  # 가장자리의 밝은 무채색(발밑 그림자·배경)
     a = ndi.binary_opening(a, iterations=1)
     a = ndi.binary_fill_holes(a)
+    if pk is not None:
+        a &= ~pk
     lab, n = ndi.label(a)
     sizes = ndi.sum(a, lab, range(1, n + 1))
     k = len(labels)
@@ -187,12 +211,13 @@ def build_turn(rig_path, quiet=False):
         return None
     cid, clsid = rig['charId'], rig['classId']
     views = {}
+    pk = T.get('pockets')           # opt-in: 갇힌 배경 주머니 비우기 (bg_pockets). 없으면 예전과 똑같다
     if T.get('sheet5'):
-        views.update(cut_views(T['sheet5'], T['views5'], 'turn5'))
+        views.update(cut_views(T['sheet5'], T['views5'], 'turn5', pk))
     if T.get('qback'):
-        views.update(cut_views(T['qback'], T['viewsQ'], 'qback'))
-    for ex in T.get('extra', []):   # 추가 시트 (재생성한 한 장짜리 뒷모습 등): {sheet, views:[...]}
-        views.update(cut_views(ex['sheet'], ex['views'], 'extra'))
+        views.update(cut_views(T['qback'], T['viewsQ'], 'qback', pk))
+    for ex in T.get('extra', []):   # 추가 시트 (재생성한 한 장짜리 뒷모습 등): {sheet, views:[...], pockets?}
+        views.update(cut_views(ex['sheet'], ex['views'], 'extra', ex.get('pockets', pk)))
     for fx in T.get('fixups', []):
         if fx['view'] in views:
             views[fx['view']] = apply_fixups(views[fx['view']], [fx])

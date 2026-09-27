@@ -4,6 +4,7 @@
  "out": "assets/painted/bosses/b_nightwing",
  "raw": "tools/painted/raw/b_nightwing",
  "td": 2.0,
+ "hurtboxNotes": "BOSS_PIPELINE §8.8 (documented, gameplay NOT changed): logic hurtbox = one box (x+10, y+4, w-20, h-10) of the 96x112 body. The painted figure is drawn at G=1.1 around the feet centre; the torso and the lower head sit inside the box, the ears/skull top reach ~20-30 px above it, and the wings (about ±300 px) and dangling legs have no hurtbox, exactly as with the vector wings. The painted talon drop / swoop silhouettes stay inside the logic strike rects (strikeRect uses hurtboxes()).",
  "matte": {
   "default": {
    "key": 9,

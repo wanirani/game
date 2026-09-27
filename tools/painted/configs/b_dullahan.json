@@ -4,6 +4,7 @@
  "out": "assets/painted/bosses/b_dullahan",
  "raw": "tools/painted/raw/b_dullahan",
  "td": 2.0,
+ "hurtboxNotes": "BOSS_PIPELINE §8.8 (documented, gameplay NOT changed; verified on the --debug pose sheet): mounted = knight box + horse-barrel box; the knight box covers the painted torso, the horse box the painted barrel, the painted chest and rump reach ~25 px past the horse box (vector ~15 px); head, neck, legs and tail have no hurtbox (as in the vector). On foot the single box fits the knight closely; cape and held skull stick out behind. The painted lance is drawn on the logic lance line b + dir*(170+lanceX) from the logic lance base, so charge/thrust/lunge hitboxes and the drawn lance always coincide; the painted blade reaches 24 units past lanceTip() (the vector drew 34).",
  "matte": {
   "default": {
    "key": 9,

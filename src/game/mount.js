@@ -399,7 +399,7 @@ export class MountRider {
     bus.emit('mounted', { id: this.id });
     return true;
   }
-  /** 몸을 기수 크기로 되돌린다 (발 중앙 유지). 기수 몸은 늘 탈것 몸보다 작아 박히지 않는다 */
+  /** 몸을 기수 크기로 되돌린다 (발 중앙 유지). 기수가 탈것보다 키가 크면 (브란 88 > 늑대 78) 머리 높이를 맞춰 박히지 않게 한다 */
   unseat(world, p) {
     if (!this.seated) return;
     const cx = p.cx, b = p.bottom, top = p.y;

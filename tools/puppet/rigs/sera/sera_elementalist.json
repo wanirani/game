@@ -292,7 +292,12 @@
   "qback": "sera/sera_elementalist_qback",
   "viewsQ": [
    "ym135"
-  ]
+  ],
+  "pockets": {
+   "T": 18,
+   "frac": 0.55,
+   "min": 30
+  }
  },
  "legs": {
   "pantsWarmMax": null

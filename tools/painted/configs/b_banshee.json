@@ -4,6 +4,7 @@
  "out": "assets/painted/bosses/b_banshee",
  "raw": "tools/painted/raw/b_banshee",
  "td": 2.0,
+ "hurtboxNotes": "BOSS_PIPELINE §8.8 (documented, gameplay NOT changed): logic hurtbox = one box (x+12, y+6, w-24, h-30) covering the chained shroud and chest. The painted figure uses the vector draw scale SC=1.22 and the logic wrist points, so the hood/face reach ~40 px above the box and the raised arms and veil strands reach past its sides, the same overhang as the vector banshee. The painted chains follow the logic verlet points (chainsV) link by link, so the chain hitlines and the drawn chains coincide.",
  "matte": {
   "default": {
    "key": 9,

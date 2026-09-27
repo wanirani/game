@@ -482,6 +482,7 @@ export function prepareAwakening(p, world) {
   const a = AWAKEN[charId];
   if (!a || tierOf(p) < R.minTier || world.mode === 'town') return;   // 각성할 수 없는 곳에서는 받지 않는다 (디코딩 메모리 약 4 MB)
   s.ok = true;
+  try { edgeCanvas(); } catch { /* 캔버스 없음 */ }   // 길게 누르기 가장자리 어둠도 미리 굽는다 (스테이지 중 캔버스 생성 0개, feel §8)
   const decode = (img) => { try { img?.decode?.().catch(() => {}); } catch { /* 디코드 미지원 */ } };
   try { assets.load(a.cutin)?.then?.(decode); assets.load(a.portrait)?.then?.(decode); } catch (e) { console.error(e); }
   try { CUTIN.prepareCutin?.(charId, tierOf(p)); } catch (e) { console.error('[awaken] 컷인 준비', e); }

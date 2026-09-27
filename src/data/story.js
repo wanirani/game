@@ -1661,9 +1661,10 @@ const SECRET_CREDITS = ['13장 — 혼돈의 군주'];
  *  1부 엔딩은 2부 엔딩을 본 적이 없으면 2부 줄을 보여 주지 않는다. */
 export function creditsFor(kind, state, meta) {
   const p = state?.progress;
+  const seen = Array.isArray(meta?.endingsSeen) ? meta.endingsSeen : []; // 옛·망가진 메타는 빈 목록으로
   const p2Kind = kind === 'p2' || kind === 'p2true';
-  const p2Known = p2Kind || !!meta?.endingsSeen?.some?.((k) => typeof k === 'string' && k.startsWith('p2'));
-  const known = p2Known || kind === 'true' || p?.unlocked?.includes('s13') || p?.flags?.abyss_open || meta?.endingsSeen?.includes('true');
+  const p2Known = p2Kind || seen.some((k) => typeof k === 'string' && k.startsWith('p2'));
+  const known = p2Known || kind === 'true' || (Array.isArray(p?.unlocked) && p.unlocked.includes('s13')) || p?.flags?.abyss_open || seen.includes('true');
   let list = known ? CREDITS.slice() : CREDITS.filter((s) => !SECRET_CREDITS.includes(s));
   if (!p2Known || !CREDITS_P2?.length) return list;   // [hook:p2]
   const at = list.indexOf('— 제작 —');

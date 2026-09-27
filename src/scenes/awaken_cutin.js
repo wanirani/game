@@ -11,7 +11,7 @@
 //  prepareCutin(charId, tier) — awaken.js 가 스테이지 시작 무렵 불러 글꼴·캔버스·글자를 미리 준비한다 (첫 컷인이 끊기지 않게).
 // 스택에 혼자 남는 경우(?scene=awakenCutin 디버그 주소)에는 검은 바탕 위에 미리보기로 그린 뒤 타이틀로 간다.
 import { Scene } from '../core/game.js';
-import { input } from '../core/input.js';
+import { input, ACTIONS } from '../core/input.js';
 import { audio } from '../core/audio.js';
 import { assets } from '../core/assets.js';
 import { FONT, loadBrush, faceReady } from '../core/ui.js';
@@ -26,6 +26,14 @@ const ANG = -7 * DEG;                      // 띠 기울기 (오른쪽이 올라
 const COS = Math.cos(ANG), SIN = Math.sin(ANG);
 const GOLD = '#e8c872', SEAL_RED = '#b0102a', INK = '#1a0006', INK_SHADOW = '#5a0010';
 const GLYPH_T = 0.09;                      // 한 글자가 1.8 → 1 배로 찍히는 시간
+/** 건너뛰기로 치는 입력: 버튼·키만 (방향·스틱 회전은 제외 — 떠 있는 터치 스틱에 엄지를 다시 얹거나 패드 스틱이 살짝 흔들려도 넘어가지 않게) */
+const SKIP_ACTIONS = (Array.isArray(ACTIONS) ? ACTIONS : []).filter((a) => !['left', 'right', 'up', 'down', 'viewL', 'viewR'].includes(a));
+function skipPressed() {
+  if (input.pointer?.tapped) return true;   // 화면 탭 (터치 버튼은 숨겨져 있다)
+  if (!SKIP_ACTIONS.length) return !!input.anyPressed?.();
+  for (const a of SKIP_ACTIONS) if (input.pressed(a)) return true;
+  return false;
+}
 
 /** 시간표 (초) */
 const FULL = { dim: 0.12, lines: 0.08, cine: 0.3, band: 0.22, bandIn: 0.16, img: 0.26, imgIn: 0.2, glint: 0.5, text0: 0.42, text1: 1.0, stinger: 1.05, exit: 1.3, exitDur: 0.14, end: AWAKEN_RULES.cutin.full, short: false };
@@ -351,6 +359,10 @@ export class AwakenCutinScene extends Scene {
     this.pickImage();
     this.heroSnap = null;
     try { this.heroSnap = this.p?.snapshot?.() ?? null; } catch { this.heroSnap = null; }
+    // 영웅은 이 장면이 암전 위에 다시 그린다(띠가 덮으면 건너뜀) → 멈춘 월드 쪽 영웅 그리기는 빼서 퍼펫을 두 번 그리지 않는다.
+    // 끝날 때(finish·exit) 감독이 시작되기 전에 되돌린다
+    this.hidPlayer = false;
+    if (!this.preview && this.p && !this.p.hidden) { this.p.hidden = true; this.hidPlayer = true; }
     this.ink = [];
     this.fired = new Set();
     this.shakeT = 0; this.shakeA = 0;
@@ -457,8 +469,8 @@ export class AwakenCutinScene extends Scene {
     // 먹물 방울
     for (const k of this.ink) { k.t += dt; k.x += k.vx * dt; k.y += k.vy * dt; k.vy += 420 * dt; k.vx *= 0.94; }
     if (this.ink.length) this.ink = this.ink.filter((k) => k.t < k.life);
-    // 건너뛰기: 0.5초 뒤 아무 버튼 → 퇴장
-    if (t > AWAKEN_RULES.cutin.skipAfter && t < T.exit && (input.anyPressed?.() || input.pointer?.tapped)) this.skip();
+    // 건너뛰기: 0.5초 뒤 아무 버튼(방향 입력 제외)·화면 탭 → 퇴장
+    if (t > AWAKEN_RULES.cutin.skipAfter && t < T.exit && skipPressed()) this.skip();
     if (this.t >= T.end) this.finish(false);
   }
 
@@ -495,6 +507,7 @@ export class AwakenCutinScene extends Scene {
   finish(aborted) {
     if (this.done) return;
     this.done = true;
+    this.showPlayer();
     const g = this.game;
     try { this.cam?.cineEnd?.(0.3); } catch (e) { console.error(e); }
     if (!aborted && this.w && this.text?.title) this.titleOverlay();
@@ -503,7 +516,13 @@ export class AwakenCutinScene extends Scene {
     } else if (g.top === this) g.pop();
     try { this.params.onDone?.(!!aborted); } catch (e) { console.error('[awakenCutin] onDone', e); }
   }
+  /** enter 에서 숨긴 월드 쪽 영웅을 되돌린다 (한 번만) */
+  showPlayer() {
+    if (this.hidPlayer && this.p) this.p.hidden = false;
+    this.hidPlayer = false;
+  }
   exit() {
+    this.showPlayer();
     // 장면이 통째로 닫힌 경우 (go 등): 감독 없이 연출 상태만 되돌리게 한다
     if (!this.done) {
       this.done = true;

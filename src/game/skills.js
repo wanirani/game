@@ -508,8 +508,26 @@ function featherShape(ctx, s, col, col2) {
   ctx.beginPath(); ctx.moveTo(s, 0); ctx.quadraticCurveTo(0, -s * 0.34, -s, -s * 0.08); ctx.lineTo(-s * 0.8, 0); ctx.lineTo(-s, s * 0.08); ctx.quadraticCurveTo(0, s * 0.34, s, 0); ctx.fill();
   ctx.strokeStyle = rgba('#ffffff', 0.8); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-s * 1.1, 0); ctx.lineTo(s, 0); ctx.stroke();
 }
-/** 트럼프 카드 */
+/** 트럼프 카드 앞면 캐시 (무늬·크기마다 한 번 굽는다: 매 프레임 그라디언트 1개 + 글꼴 바꾸기 2번을 없앤다, feel §8).
+ *  카드 글꼴(Cinzel)이 아직 없으면 굽지 않는다 (대체 글꼴이 캐시에 굳지 않게) */
+const CARD_S = 3;
+function cardSprite(wd, ht, rank, suit) {
+  const key = `card${rank}${suit}${wd}x${ht}`;
+  if (!SPR.has(key)) {
+    try { if (typeof document === 'undefined' || !document.fonts?.check?.(`900 ${Math.round(ht * 0.2)}px "Cinzel"`)) return null; } catch { return null; }
+  }
+  return spr(key, Math.ceil((wd + 4) * CARD_S), Math.ceil((ht + 4) * CARD_S), (x) => {
+    x.scale(CARD_S, CARD_S); x.translate(wd / 2, ht / 2);
+    cardDraw(x, wd, ht, rank, suit, 1);
+  });
+}
+/** 트럼프 카드 (캐시가 있으면 구운 앞면을 그린다) */
 function cardShape(ctx, wd, ht, rank, suit, a = 1) {
+  const img = cardSprite(wd, ht, rank, suit);
+  if (img) { ctx.globalAlpha = a; ctx.drawImage(img, -wd / 2, -ht / 2, wd + 4, ht + 4); ctx.globalAlpha = 1; return; }
+  cardDraw(ctx, wd, ht, rank, suit, a);
+}
+function cardDraw(ctx, wd, ht, rank, suit, a = 1) {
   ctx.globalAlpha = a;
   ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(-wd / 2 + 3, -ht / 2 + 3, wd, ht);
   const g = ctx.createLinearGradient(0, -ht / 2, 0, ht / 2);
@@ -2291,9 +2309,10 @@ function ultCtx(p, w) {
 const qn = (v, n, lo = 1) => Math.max(lo, Math.round(n * (v?.q ?? 1)));
 /** 화면 번쩍임 설정 (settings.flashFx 0 / 0.5 / 1): 밝은 색조·임팩트 프레임에 곱한다 (광과민 대책, feel §7) */
 function flashK(w) { const k = Number(w?.game?.settings?.flashFx ?? 1); return Number.isFinite(k) ? clamp(k, 0, 1) : 1; }
-/** 필살기 최대 입자 수 (feel §8: 600 / 400 / 220) 안에서 더 뿌릴 수 있는 개수 */
+/** 필살기 최대 입자 수 (feel §8: 600 / 400 / 220) 안에서 더 뿌릴 수 있는 개수.
+ *  8% 는 이 함수를 거치지 않는 입자(타격 불꽃·키트·공용 도구의 폭발)의 몫으로 남긴다 (측정: 남기지 않으면 저품질 229/220) */
 function ultRoom(w, v, n) {
-  const cap = v.q >= 0.95 ? 600 : v.q >= 0.7 ? 400 : 220;
+  const cap = (v.q >= 0.95 ? 600 : v.q >= 0.7 ? 400 : 220) * 0.92;
   return Math.max(0, Math.min(n, cap - (w.fx?.list?.length ?? 0)));
 }
 
@@ -2323,6 +2342,7 @@ function prewarmUlt(v) {
     for (const c of [...(ULT_COLS[v.charId] ?? []), v.color, v.accent]) { glowSprite(c); beamSprite(c, '#ffffff', false); beamSprite(c, '#ffffff', true); }
     for (const [c, core, vert] of ULT_BEAMS[v.charId] ?? []) beamSprite(c, core, vert);
     if (v.charId === 'sera') glassSprite();
+    if (v.charId === 'victor') for (const [r, s] of [['A', '♠'], ['A', '♣'], ['8', '♣'], ['8', '♠']]) cardSprite(38, 54, r, s);
     HFX.star?.(v.color); HFX.star?.(v.accent);
   } catch (e) { console.warn('[skills] prewarm', e); }
 }

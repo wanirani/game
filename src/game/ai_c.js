@@ -14,7 +14,7 @@
 //
 // 렌더 계약 (ENEMY-P2-C-ART: render/enemies_c.js RENDER_C · PROJ_C · ZONE_C). 원점·flash 규칙은 render/enemies.js.
 //  공통: e.anim / e.animT (아래 이름), e.state, e.alpha.
-//  chandelier  'hang' 'shake' 'fall' 'shatter' 'crawl' 'spit' · e.anchorY(천장 y, 매달려 있을 때만) · e.sway(rad) · e.broken(촛대 다리 모드)
+//  chandelier  'hang' 'shake' 'fall' 'shatter' 'crawl' 'spit' · e.anchorY(천장 y, 매달려 있을 때만 — 첫 갱신 전에는 'hang' 이어도 null) · e.sway(rad) · e.broken(촛대 다리 모드)
 //  forgeimp    'fly' 'cast'(대갈못) 'aim' 'dive' · e.aimX/e.aimY(급강하 목표)
 //  slag        'idle' 'walk' 'windup' 'slam' 'spit' · e.glow(0..1 팔을 든 채 달아오름)
 //  chainhook   'idle' 'walk' 'aim' 'throw' 'reel' 'smash'(상태 'slam') 'sweep' · e.hook(갈고리 장판, 사슬은 ZONE_C.hook 이 그린다)
@@ -455,15 +455,16 @@ AI_C.chandelier = {
     }
   },
   onHit(e, world) {
-    if (e.state === 'hang' || e.state === 'shake') {
-      // 매달린 채로는 밀리거나 경직되지 않는다 (enemy.takeHit: onHit 에서 guardT 가 바뀌면 반응 없음) — 대신 곧 떨어진다
+    if (e.state === 'hang' || e.state === 'shake' || e.state === 'fall') {
+      // 매달린 채로는 밀리거나 경직되지 않는다 (enemy.takeHit: onHit 에서 guardT 가 바뀌면 반응 없음) — 대신 곧 떨어진다.
+      // 떨어지는 중에도 같다: 띄워서 다운시키면 누웠다 일어난 뒤에야 산산조각(예고 없는 늦은 광역)이 나므로 착지 순간에 깨지게 둔다
       e.guardT = (e.guardT || 0) + 1;
       if (e.state === 'hang') { e.setState('shake'); e.setAnim('shake'); audio.sfx('bell', { pitch: 1.8, vol: 0.3 }); }
     }
   },
   onDie(e, world) {
-    if (e.state === 'hang' || e.state === 'shake') {
-      // 매달린 채 쓰러짐 → 떨어져 깨진다 (광역 피해 없음)
+    if (e.state === 'hang' || e.state === 'shake' || e.state === 'fall') {
+      // 매달린 채(또는 떨어지던 중) 쓰러짐 → 떨어져 깨진다 (광역 피해 없음; 긴 낙하에서 공중에 사라지지 않게 쓰러짐 시간을 늘린다)
       e.noGravity = false; e.vy = Math.max(e.vy, 80); e.anchorY = null; e.setAnim('fall');
       e.dying = Math.max(e.dying, 0.55);
       puff(world, 'shard', e.cx, e.cy, 12, { color: '#e8f4ff', speed: 220 });
