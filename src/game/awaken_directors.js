@@ -906,7 +906,7 @@ function seraDirector(p, w, v) {
       const lt = e.lt, k = clamp((lt - G.t0) / 0.35, 0, 1) * clamp((e.life - lt) / 0.45, 0, 1), R = 150 * ease.outBack(clamp((lt - G.t0) / 0.35, 0, 1));
       if (k <= 0.01) return;
       ctx.globalCompositeOperation = 'lighter';
-      K.glow(ctx, G.x, G.y, R * 2.4, '#fff2b0', 0.55 * k);
+      K.glow(ctx, G.x, G.y, R * 2, '#fff2b0', 0.42 * k);   // 문 가운데가 하얗게 타 버리지 않게 (장미창 색이 보이도록)
       rays(ctx, G.x, G.y, 18, R * 0.6, R * 2.6, lt * 0.25, '#fff2b0', 0.28 * k, 0.04);
       K.beamV(ctx, G.x, G.y, G.y + (e.h * 0.9), R * 0.9, '#fff2b0', 0.16 * k);
       K.glassRose(ctx, G.x, G.y, R, lt * 0.35, 0.8 * k, 0.94);
@@ -924,8 +924,8 @@ function seraDirector(p, w, v) {
         for (const side of [-1, 1]) for (let k = 2; k >= 0; k--) {
           const rot = lerp(1.25, BASE[k], open) + Math.sin(lt * 6 + k) * 0.06 * open;
           ctx.save(); ctx.translate(rx + side * 5, ry - k * 4); ctx.scale(side, 1);
-          blitAt(ctx, wing, 0, 0, SC[k], rot, 0.78 * fade, false, 22 / 256, 178 / 200);
-          blitAt(ctx, wing, 0, 0, SC[k], rot, 0.32 * fade, true, 22 / 256, 178 / 200);
+          blitAt(ctx, wing, 0, 0, SC[k], rot, 0.66 * fade, false, 22 / 256, 178 / 200);
+          blitAt(ctx, wing, 0, 0, SC[k], rot, 0.2 * fade, true, 22 / 256, 178 / 200);
           ctx.restore();
         }
       }
@@ -967,14 +967,16 @@ function seraDirector(p, w, v) {
         K.beamV(ctx, x, G.y, lerp(G.y, V.y + V.h, ease.inCubic(u)), 10 + 16 * u, '#fff2b0', 0.7);
       }
       if (S.fin && G) {
-        const F = S.fin, age = lt - F.t0, g = ease.outExpo(clamp(age / 0.1, 0, 1)), fade = clamp((e.life - lt) / 0.6, 0, 1), pul = 1 + 0.07 * Math.sin(age * 36);
+        // 번쩍임은 짧게 (feel §6.4: 백색 0.3초) — 0.25초 버틴 뒤 십자광이 가늘어지며 사라지고, 퍼지는 빛은 빠르게 식는다
+        const F = S.fin, age = lt - F.t0, g = ease.outExpo(clamp(age / 0.1, 0, 1)), decay = 1 - ease.inCubic(clamp((age - 0.25) / 0.6, 0, 1));
+        const fade = clamp((e.life - lt) / 0.6, 0, 1) * decay, pul = 1 + 0.07 * Math.sin(age * 36);
         const barY = lerp(G.y, F.gy, 0.38);
         ctx.globalCompositeOperation = 'lighter';
         K.beamV(ctx, F.x, G.y - 20, F.gy + 10, 65 * g * pul, PCOL[0], 0.85 * fade);
         K.beamV(ctx, F.x, G.y - 20, F.gy + 10, 22 * g, '#ffffff', fade, '#ffffff');
         K.beamH(ctx, F.x - 190 * g, F.x + 190 * g, barY, 30 * g * pul, PCOL[0], 0.85 * fade);
         K.beamH(ctx, F.x - 180 * g, F.x + 180 * g, barY, 10 * g, '#ffffff', fade, '#ffffff');
-        K.glow(ctx, F.x, F.gy - 20, 280 * (1 + age), PCOL[0], 0.85 * fade);
+        K.glow(ctx, F.x, F.gy - 20, 280 * (1 + age * 0.5), PCOL[0], 0.85 * fade * Math.exp(-age * 2.4));
         K.flare(ctx, F.x, barY, 220 * g, '#ffffff', fade, age * 0.5);
         K.runeCircle(ctx, F.x, F.gy - 2, 240 * g, PCOL[0], age * 2, fade, 0.22, 8);
         if (vr === 'archmage') for (let k = 0; k < 3; k++) K.runeCircle(ctx, F.x, F.gy - 2, (150 + k * 70) * g, ARCH[k][1], age * (k % 2 ? -2.4 : 2.4), 0.8 * fade, 0.22, 3 + k * 2);

@@ -193,6 +193,9 @@ export class ScrollList {
     const r = this.rect, p = input.pointer;
     if (r) {
       const inside = p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
+      // 마우스 휠 (데스크톱): 목록 위에서 굴리면 스크롤만 (선택은 그대로). owner(장면)가 이번 틱의 휠 양을 넘겨준다
+      const wh = this.owner?.wheel ?? 0;
+      if (wh && inside && !this.drag) this.target = clamp(this.target + wh, 0, this.maxScroll());
       if (p.justDown && inside) this.drag = { y: p.y, s: this.target, moved: false };
       if (this.drag && p.down) {
         const dy = p.y - this.drag.y;
@@ -523,8 +526,15 @@ export class ServiceScene extends Scene {
     for (let i = 0; i < 26; i++) this.embers.push({ x: rand(0, 1), y: rand(0, 1), v: rand(0.3, 1), p: rand(0, TAU), s: rand(0.6, 1.6) });
     if (this.music) audio.music(this.music);
     audio.sfx('door');
+    // 마우스 휠 → 스크롤 목록 (맨 위일 때만 모은다; update 에서 this.wheel 로 한 틱에 넘긴다)
+    this._wheel = 0; this.wheel = 0;
+    this._onWheel ??= (e) => { if (this.game.top === this) this._wheel += e.deltaY * (e.deltaMode === 1 ? 32 : e.deltaMode === 2 ? 400 : 1); };
+    try { window.addEventListener('wheel', this._onWheel, { passive: true }); } catch { /* 창 없음 */ }
   }
-  exit() { if (this.music) audio.music('hub'); }
+  exit() {
+    try { window.removeEventListener('wheel', this._onWheel); } catch { /* 창 없음 */ }
+    if (this.music) audio.music('hub');
+  }
   /** 배치 폭·높이 (UI px: uiScale 이면 game.uiW × game.uiH) */
   get vw() { const g = this.game; return this.uiScale ? (g.uiW || g.viewW) : g.viewW; }
   get vh() { const g = this.game; return this.uiScale ? (g.uiH || g.viewH) : g.viewH; }
@@ -567,6 +577,7 @@ export class ServiceScene extends Scene {
     const s = this.say;
     s.t += dt; if (s.shown < s.text.length) s.shown = Math.min(s.text.length, s.shown + dt * 38);
     this.tapId = null;
+    this.wheel = this.blocked ? 0 : (this._wheel || 0); this._wheel = 0;
     if (this.popup) { if (this.popup.update(dt)) { const cb = this.popup.onClose; this.popup = null; cb?.(); } return; }
     if (this.modal) {
       const r = this.modal.update(dt);
