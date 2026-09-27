@@ -2502,7 +2502,8 @@ ULTS.kael = (p, w, v = ultCtx(p, w)) => {
   }]));
   steps.push([1.25, (ww) => {
     ultFinal(ww, p, 5, '#fff8e0', { element: 'holy' }, { v, x: cx, y: cy });
-    ww.fx.burst('holy', cx, cy, 60, { speed: 520 });
+    const nb = ultRoom(ww, v, 60);
+    if (nb) ww.fx.burst('holy', cx, cy, nb, { speed: 520 });
     ww.fx.ring(cx, cy, { color: GOLD, r0: 30, r1: V0.w * 0.6, life: 0.6, width: 16 });
     ww.fx.ring(cx, cy, { color: v.accent, r0: 60, r1: V0.w * 0.8, life: 0.8, width: 6 });
     emberRain(ww, v, 1.2, '#ffd870', 70, '#fff8e0');   // 황금 불씨 비 1.2초

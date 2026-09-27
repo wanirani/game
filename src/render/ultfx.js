@@ -34,6 +34,7 @@ import { isSolidType } from '../core/physics.js';
 import { Entity } from '../game/entity.js';
 import { CLASSES } from '../data/classes.js';
 import { CHARACTERS } from '../data/characters.js';
+import * as AWD from '../data/awaken.js';   // 각성 색 (미리 굽기용; 이름공간 import — 내보내기가 바뀌어도 연결 오류 없음)
 import * as HFX from './hitfx.js';
 import * as UI from '../core/ui.js';
 import { drawHero } from './hero.js';
@@ -89,9 +90,9 @@ export const ULT_FLOURISH = {
   victor_gunlord:     { name: '황금 탄피 비', colors: ['#ffd84a', '#fff0b0', '#c8a040'], sprites: ['muzzle'] },
   bran_guardian:      { name: '성역의 방벽', colors: ['#fff2b0', '#ffd84a', '#1a3a7a'], sprites: ['dome'] },
   bran_crusader:      { name: '십자군 충격파', colors: ['#fff2b0', '#c01020', '#ffd84a'], sprites: ['crossR'] },
-  bran_warlord:       { name: '전쟁 깃발과 검은 불꽃', colors: ['#ff5020', '#5a0a0a', '#ffd0a0'], sprites: ['banner'] },
+  bran_warlord:       { name: '전쟁 깃발과 검은 불꽃', colors: ['#ff5020', '#5a0a0a', '#ffd0a0'], sprites: ['banner'], soft: ['#2a0a14', '#ff3010'] },
   bran_bloodrage:     { name: '피의 간헐천', colors: ['#ff1a2a', '#5a0010', '#ffb0b8'], sprites: ['geyser'] },
-  lia_shadowmaster:   { name: '그림자 분신', colors: ['#b060ff', '#4a2a8a', '#e0c8ff'], sprites: [] },
+  lia_shadowmaster:   { name: '그림자 분신', colors: ['#b060ff', '#4a2a8a', '#e0c8ff'], sprites: [], soft: ['#4a2a8a'] },
   lia_kunoichi:       { name: '진홍 꽃보라', colors: ['#ff4a6a', '#ffb0c0', '#8a0a20'], sprites: ['petals'] },
   lia_bladedancer:    { name: '황금 칼날 회오리', colors: ['#ffd84a', '#fff8e0', '#5a0a2a'], sprites: ['blade'] },
   lia_reaper:         { name: '망령의 낫', colors: ['#6affb0', '#e8fff4', '#0a0a0a'], sprites: ['scythe'] },
@@ -168,6 +169,11 @@ function ultColor(charId) { return CHARACTERS[charId]?.ult?.color ?? '#fff2b0'; 
 export function accentOf(classId, fallback) {
   const L = CLASSES[classId]?.look;
   return L?.aura?.color ?? L?.secondary ?? fallback ?? '#fff2b0';
+}
+/** 화면에서 보이는 강조색: 거의 검은 색(가산 합성에서 사라짐, 예: victor_deadeye #1a1a20)은 필살기 색으로 바꾼다 */
+function visAccent(classId, col) {
+  const a = accentOf(classId, col), v = rgbOf(a);
+  return (0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]) / 255 < 0.22 ? col : a;
 }
 const AURA_DEF = { kael: 'holy', sera: 'holy', victor: 'fire', bran: 'fire', lia: 'dark', azel: 'blood' };
 function auraOf(classId, charId, accent) {
@@ -756,7 +762,7 @@ const SPR = {
   brand: { w: 104, h: 140, bake: bakeBrand },
   crescentR: { w: 256, h: 256, bake: (g, w, h) => bakeCrescent(g, w, h, '#ff2040', '#ffd0d8', '#c0142a') },
   crescentW: { w: 256, h: 256, bake: (g, w, h) => bakeCrescent(g, w, h, '#f4f0ff', '#ffffff', '#fff2b0') },
-  crescentD: { w: 256, h: 256, bake: (g, w, h) => bakeCrescent(g, w, h, '#6a2ab0', '#e0c8ff', '#b060ff') },
+  crescentD: { w: 256, h: 256, bake: (g, w, h) => bakeCrescent(g, w, h, '#240c3a', '#c090ff', '#b060ff') },
   crow: { w: 144, h: 60, bake: bakeCrow },
   wing: { w: 256, h: 200, bake: (g, w, h) => bakeWing(g, w, h, false) },
   wingD: { w: 256, h: 200, bake: (g, w, h) => bakeWing(g, w, h, true) },
@@ -889,7 +895,7 @@ function afterimageImpl(w, p, tint, o = {}) {
   const slot = ghostSlot(w);
   if (!slot) { ULTFX_STATS.ghostSkips++; return false; }
   if (s) s.ghostAt = now; else st.at = now;
-  const col = tint ?? (tier >= 2 ? (s?.accent ?? accentOf(p.hero?.classId, ultColor(p.hero?.charId))) : (s?.color ?? ultColor(p.hero?.charId)));
+  const col = tint ?? (tier >= 2 ? (s?.accent ?? visAccent(p.hero?.classId, ultColor(p.hero?.charId))) : (s?.color ?? ultColor(p.hero?.charId)));
   const snap = typeof p.snapshot === 'function' ? p.snapshot() : p;
   const b = captureGhost(w, snap, col, slot, B.rs);
   const life = o.life ?? 0.26;
@@ -909,7 +915,7 @@ class Session {
     this.tier = clampTier(o.tier ?? tierOfClass(this.classId));
     this.T = ULT_TIERS[this.tier];
     this.color = o.color ?? ultColor(this.charId);
-    this.accent = o.accent ?? accentOf(this.classId, this.color);
+    this.accent = o.accent ?? visAccent(this.classId, this.color);
     this.awaken = o.awaken ?? !!w.hudHidden;
     this.q = qk(w);
     this.dir = (this.p?.facing ?? 1) < 0 ? -1 : 1;
@@ -1358,7 +1364,7 @@ const FL = {
     final(F) {
       const { w } = F, img = spriteOf('crow'), cam = w.camera, dir = F.dir;
       const n = Math.max(10, Math.round(26 * F.qf)), birds = [];
-      for (let i = 0; i < n; i++) birds.push({ x0: -rand(40, 460), y: rand(0.08, 0.82), sp: rand(950, 1400), s: rand(0.75, 1.3), ph: rand(0, TAU), bob: rand(10, 30), fr: rand(12, 18) });
+      for (let i = 0; i < n; i++) birds.push({ x0: -rand(20, 380), y: rand(0.08, 0.82), sp: rand(1050, 1500), s: rand(1.0, 1.8), ph: rand(0, TAU), bob: rand(10, 30), fr: rand(12, 18) });
       sfx('crow_caw', { vol: 0.9 }); sfx('bat', { pitch: 0.7, vol: 0.5 });
       let caw2 = false;
       const posOf = (b, t) => {
@@ -1633,11 +1639,11 @@ const FL = {
             }
             i++;
           }
-          cas += dt * 50;
+          cas += dt * 64;
           while (cas >= 1) {
             cas--;
             if (e.lt > 0.8 || !emitOK(ww, F.aw)) continue;
-            ww.fx.emit(Math.random() < 0.25 ? 'gold' : 'shard', cam.x + rand(0, cam.vw), cam.y - 10, { color: F.c[0], size: rand(3, 5), speed: 0, vx: rand(-40, 40), vy: rand(100, 360), life: rand(0.9, 1.4) });
+            ww.fx.emit(Math.random() < 0.25 ? 'gold' : 'shard', cam.x + rand(0, cam.vw), cam.y - 10, { color: Math.random() < 0.5 ? F.c[0] : F.c[1], size: rand(4.5, 7), speed: 0, vx: rand(-40, 40), vy: rand(100, 360), life: rand(0.9, 1.4) });
           }
           if (tink < 2 && e.lt > 0.5 + tink * 0.25) { tink++; sfx('coin', { pitch: 1.6, vol: 0.4 }); }
         },
@@ -1890,7 +1896,7 @@ const FL = {
   },
   lia_reaper: {
     final(F) {
-      const { w, x, y } = F, img = spriteOf('scythe'), dir = F.dir, a0 = -2.1, a1 = 1.3, SW = 0.36, SC = 1.5;
+      const { w, x, y } = F, img = spriteOf('scythe'), dir = F.dir, a0 = -2.1, a1 = 1.3, SW = 0.36, SC = 1.65;
       let souls = false;
       sfx('slash_heavy', { pitch: 0.55 });
       spawn(w, {
@@ -1911,14 +1917,19 @@ const FL = {
           ctx.save(); ctx.translate(x, y); ctx.scale(dir, 1);
           ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
           const trailA = clamp(1 - (t - SW) / 0.45, 0, 1) * fade;
-          for (const [wd, al, rr, c] of [[26, 0.18, 290, F.c[0]], [12, 0.4, 300, F.c[0]], [4, 0.9, 305, F.c[1]]]) {
+          for (const [wd, al, rr, c] of [[40, 0.22, 300, F.c[0]], [18, 0.5, 312, F.c[0]], [5, 0.95, 318, F.c[1]]]) {
             if (ang <= a0) break;
             ctx.globalAlpha = al * trailA; ctx.strokeStyle = c; ctx.lineWidth = wd;
             ctx.beginPath(); ctx.arc(0, 0, rr, a0, ang); ctx.stroke();
           }
           const al = fade * (t > SW + 0.5 ? clamp(1 - (t - SW - 0.5) / 0.3, 0, 1) : 1);
-          ctx.rotate(ang); ctx.globalAlpha = al;
-          ctx.drawImage(img, -20 * SC, -70 * SC, img.width * SC, img.height * SC);
+          ctx.rotate(ang);
+          if (img) {
+            ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = al * 0.95;
+            ctx.drawImage(img, -20 * SC, -70 * SC, img.width * SC, img.height * SC);
+            ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = al * 0.55;
+            ctx.drawImage(img, -20 * SC, -70 * SC, img.width * SC, img.height * SC);
+          }
           ctx.restore();
         },
       });
@@ -2031,11 +2042,12 @@ const FL = {
         life: 1.0, z: 13,
         draw(ctx, e) {
           const t = e.lt;
-          for (const [img, a0, a1, fl, t0] of [[cW, -2.4, 0.4, 1, 0], [cD, 2.6, -0.2, -1, 0.1]]) {
+          for (const [img, a0, a1, add, t0] of [[cW, -2.4, 0.3, true, 0], [cD, 0.8, 3.5, false, 0.1]]) {
             const u0 = t - t0;
             if (u0 < 0) continue;
             const u = ease.outCubic(clamp(u0 / 0.24, 0, 1)), fade = clamp(1 - (u0 - 0.24) / 0.5, 0, 1);
-            for (let k = 3; k >= 0; k--) blit(ctx, img, x, y, 1.35, lerp(a0, a1, Math.max(0, u - k * 0.1)), fade * (k ? 0.45 / (k + 0.5) : 1), true, 0.5, 0.5, 1.35 * fl);
+            for (let k = 3; k >= 0; k--) blit(ctx, img, x, y, 1.35, lerp(a0, a1, Math.max(0, u - k * 0.1)), fade * (k ? 0.45 / (k + 0.5) : 1), k ? true : add);
+            if (!add) blit(ctx, img, x, y, 1.35, lerp(a0, a1, u), fade * 0.5, true);
           }
         },
       });
@@ -2058,12 +2070,30 @@ function prepareFor(w, p) {
   const q = qk(w), cls = p.hero.classId, ch = p.hero.charId, key = `${cls}|${q}`;
   ensurePools(q);
   if (PREP.key === key) return true;
-  const tier = tierOfClass(cls), col = ultColor(ch), acc = accentOf(cls, col);
-  glowSprite('#ffffff'); glowSprite(col); glowSprite(acc); glowSprite(mixC(col, '#ffffff', 0.35));
-  const au = auraOf(cls, ch, acc); glowSprite(au.color);
-  if (Q[q].layer) layerFor(tier, col, acc);
+  const tier = tierOfClass(cls), col = ultColor(ch), acc = visAccent(cls, col);
+  // 필살기 색 + 각성 색 (awaken.js 가 v.color = T2.color ?? AWAKEN.color 로 부른다)
+  const A = AWD.AWAKEN?.[ch], A2 = AWD.T2?.[cls];
+  const awCol = A2?.color ?? A?.color, awAcc = A2?.accent ?? A?.accent;
+  const pairs = [[col, acc]];
+  if (awCol && tier >= 1) pairs.push([awCol, awAcc ?? awCol]);
+  const au = auraOf(cls, ch, acc);
+  glowSprite('#ffffff'); glowSprite(au.color);
+  for (const [c, a] of pairs) {
+    glowSprite(c); glowSprite(a); glowSprite(mixC(c, '#ffffff', 0.35));
+    try { HFX.star?.(a); HFX.streak?.(a); HFX.ring?.(a); } catch { /* hitfx 캐시 */ }
+    if (Q[q].layer) layerFor(tier, c, a);
+  }
+  // 연기 모양 입자(fire·dark·bloodmist·smoke)는 색별 부드러운 원을 쓴다 → 스테이지 진입 때 미리
+  const soft = [];
+  if (au.type === 'fire' || au.type === 'dark' || au.type === 'blood') soft.push(au.color);
   const def = ULT_FLOURISH[cls];
-  if (tier >= 2 && def) { for (const n of def.sprites) spriteOf(n); for (const c of def.colors.slice(0, 2)) glowSprite(c); }
+  if (tier >= 2 && def) {
+    for (const n of def.sprites) spriteOf(n);
+    for (const c of def.colors) glowSprite(c);
+    try { HFX.ring?.(def.colors[0]); HFX.cut?.(def.colors[0]); HFX.star?.(def.colors[0]); HFX.star?.('#ffffff'); } catch { /* hitfx 캐시 */ }
+    soft.push(...(def.soft ?? []));
+  }
+  try { for (const c of soft) HFX.soft?.(c); } catch { /* hitfx 캐시 */ }
   // 기술 이름 (피 글씨 비트맵): 실제 화면 배율로 미리 굽는다
   try {
     const T = ULT_TIERS[tier], base = CHARACTERS[ch]?.ult?.name, c = POOL.scratch;
@@ -2165,7 +2195,7 @@ function finalImpl(w, x, y, o = {}) {
   const classId = o.classId ?? s?.classId ?? p?.hero?.classId;
   const tier = clampTier(o.tier ?? s?.tier ?? tierOfClass(classId));
   const T = ULT_TIERS[tier];
-  const col = o.color ?? s?.color ?? ultColor(p?.hero?.charId), acc = o.accent ?? s?.accent ?? accentOf(classId, col);
+  const col = o.color ?? s?.color ?? ultColor(p?.hero?.charId), acc = o.accent ?? s?.accent ?? visAccent(classId, col);
   const aw = s?.awaken ?? !!w.hudHidden, q = qk(w), cam = w.camera, fx = w.fx, vw = cam?.vw ?? 960;
   ULTFX_STATS.finals++;
   if (s) { s.finalAt = s.t; s.finals++; }

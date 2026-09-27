@@ -514,7 +514,14 @@ function onCanvasUi(L, x, y) {
   const g = game(), top = g?.top;
   const k = top?.uiScale && g?.uiK > 0 ? g.uiK : 1; // uiScale 장면은 UI 좌표로 등록한다
   const lx = ((x - cr.x) * L.vw) / cr.w / k, ly = ((y - cr.y) * L.vh) / cr.h / k;
-  try { if (UI.taps?.at?.(lx, ly)) return true; } catch { /* 등록부 없음 */ }
+  try {
+    // 방금 그린 묶음만 본다: 등록부는 장면이 바뀌어도 비우지 않으므로 앞 장면(타이틀 등)의 영역이 잠깐 스틱을 막지 않게
+    const T = UI.taps;
+    if (T && now() - (T.sealedAt || 0) < 500) {
+      const z = T.at?.(lx, ly);
+      if (z && (z.owner == null || g?.scenes?.includes?.(z.owner))) return true;
+    }
+  } catch { /* 등록부 없음 */ }
   const R = top?.hudRects;
   if (!R || typeof R !== 'object') return false;
   for (const r of Array.isArray(R) ? R : Object.values(R)) {

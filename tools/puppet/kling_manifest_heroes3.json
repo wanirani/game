@@ -1,0 +1,33 @@
+{
+ "_doc": "퍼펫 원화 클링 생성 기록 — heroes3 (azel + NPC 8명). images = 과금 이미지 수(후보 포함). 채택본은 src/<charId>/ 에 워터마크 제거 후 저장. 형식은 kling_manifest.json 과 같다. 공용 kling_manifest.json 은 건드리지 않는다.",
+ "model": "kling-image-v3_0_omni",
+ "budget": {
+  "azel": 45,
+  "npc": 30
+ },
+ "uploads": {
+  "kael_hunter_side.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qUQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo3YWdlbnRfdXBsb2FkLzE3OTA0NDIwNzkvNzQ5Qkw1bTl2YS9rYWVsX2h1bnRlcl9zaWRlLmpwZw.origin?x-kcdn-pid=112372",
+  "kael_hunter_turn5.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qUgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo4YWdlbnRfdXBsb2FkLzE3OTA0NDM3NzgveGNhNUxaeHBlUC9rYWVsX2h1bnRlcl90dXJuNS5qcGc.origin?x-kcdn-pid=112372",
+  "kael_hunter_qback.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qUgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo4YWdlbnRfdXBsb2FkLzE3OTA0NDM3ODIvQXhPTm5NQmpHMi9rYWVsX2h1bnRlcl9xYmFjay5qcGc.origin?x-kcdn-pid=112372",
+  "azel_portrait.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qTgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo0YWdlbnRfdXBsb2FkLzE3OTA0ODA2NzIvamtZTGpzell0bS9hemVsX3BvcnRyYWl0LmpwZw.origin?x-kcdn-pid=112372"
+ },
+ "entries": [
+  {
+   "id": "azel_dhampir_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AZfMsCchs1Y5NcBeVkvwFydGARswdNTbNgeMeCBipOpOFV-0uOPREXBgONLZ3MaFBVQlx-h0",
+   "inputs": [
+    "kael_hunter_side.jpg (edit target: pose/framing)",
+    "azel_portrait.jpg (identity)"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": null,
+   "prompt": "Edit 图片1. Keep the exact same walking side pose facing RIGHT in strict profile, the same arm and leg positions (the near arm hanging slightly behind the hip, the far arm swinging forward, legs in mid-stride), the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and soft lighting. Replace the man with the young dhampir nobleman from 图片2: his pale, beautiful, sharp-featured young face seen in profile, his glowing golden eyes, and his very long straight silver-white hair that hangs loosely down his back to the middle of his back, behind the shoulders and not over the arm (no ponytail, no bandana). Slim, tall, elegant build. Dress him in a black aristocratic long frock coat reaching just below the knees, with a tall stiff standing collar, a black double-breasted waistcoat with small silver buttons, a black silk cravat, a black leather belt with a square silver buckle, wide turned-back black cuffs with black lace ruffles, a dark crimson coat lining that shows at the flaring back hem, thin dull-gold trim along the coat edges, fitted black trousers and tall polished black riding boots, black leather gloves. Remove the coiled whip. No weapon, no sword, no scabbard, nothing held in the hands, no cape, no cloak, no helmet, full body visible from the head to the boots, nothing cropped, no text, no watermark."
+  }
+ ],
+ "images_used": {
+  "azel": 2
+ }
+}
