@@ -98,7 +98,7 @@ export function initFeel(p) {
     tapAt: -99, tapDir: 0,
     sprintDir: 0, sprintAt: -9, sprintT: 0, runHeldT: 0, chainSeen: -9,
     fxDur: 0, fxPhys: true, puffT: 0, pivotDir: 0,
-    chaseT: 0, chaseNext: false, chaseUsed: -99, momT: 0,
+    chaseT: 0, chaseNext: false, chaseUsed: -99, momT: 0, airMom: false,
     dash: null, ghostEnd: [],
     lookOwn: 0, zoomOwn: false, edgeOv: null,
     stepN: 0, prevVx: 0, liqMap: null, liqHas: false,
@@ -113,7 +113,7 @@ export function resetMoveFeel(p, world) {
   if (!fm) return;
   p.sprinting = false; fm.sprintT = 0; fm.runHeldT = 0;
   if (p.moveFx && p.moveFx !== 'land_heavy') endFx(p);
-  fm.chaseT = 0; fm.chaseNext = false;
+  fm.chaseT = 0; fm.chaseNext = false; fm.airMom = false;
   releaseCamera(world ?? p.world, fm);
 }
 function setLook(cam, fm, v) {
@@ -207,6 +207,7 @@ export function updateGait(p, world, dt, inp) {
   if (p.moveFx && GROUND_FX.has(p.moveFx) && (!onGround || busy || dashing)) endFx(p);
   if (p.moveFx === 'skid' && ax !== 0) endFx(p);                       // 다시 누르면 미끄러짐 취소 (반대쪽이면 아래에서 방향 전환)
   if (p.moveFx === 'run_start' && ax === 0) endFx(p);
+  if (p.moveFx === 'land_heavy' && ax !== 0 && avx > LAND.heavyInPlace * B) endFx(p);   // 착지 직후 달려 나가면 버티는 자세로 미끄러지지 않게
   if (onGround && !busy && !dashing && !p.crouch) {
     if (ax === 0 && fm.prevAx !== 0 && vdir === fm.prevAx && fm.prevGait !== 'walk' && !p.moveFx
       && (wasSprint || (avx >= SKID.runMin * B && fm.prevHold >= SKID.minHold))) {
@@ -238,8 +239,10 @@ export function updateGait(p, world, dt, inp) {
   if (ax === 0 && prevGait === 'walk') o.decel = GAIT.walk.decel;
   if (p.moveFx === 'skid' && fm.fxPhys) o.decel = pers.skidDecel ?? SKID.decel;
   if (p.moveFx === 'pivot') { o.accel = SKID.pivotAccel; o.holdFace = p.moveFxT < fm.fxDur * 0.5; }
-  // 공중: 질주 속도는 k·B 까지 유지 (앞으로 누르고 있으면 B 로 깎이지 않는다)
-  if (!onGround && ax !== 0 && vdir === ax && avx > B * o.mul) o.mul = Math.min(k, avx / B);
+  // 공중: 질주(또는 추격 점프)로 얻은 속도는 k·B 까지 유지 (앞으로 누르고 있으면 B 로 깎이지 않는다).
+  // 질주가 아닌 빠른 공중 속도(벽차기 420, 공중 대시 끝, 넉백)는 예전처럼 B 로 줄어든다 (feel M1: 발판 거리 그대로)
+  if (onGround) fm.airMom = false; else if (p.sprinting || fm.chaseT > 0) fm.airMom = true;
+  if (!onGround && fm.airMom && ax !== 0 && vdir === ax && avx > B * o.mul) o.mul = Math.min(k, avx / B);
   // 공중에서 질주를 놓았다가 다시 누른 채 착지: 0.35초에 걸쳐 B 로
   if (onGround && fm.momT > 0 && ax !== 0 && vdir === ax && avx > B * o.mul + 1 && !p.sprinting) o.accel = (k - 1) * B / SPRINT.decayT;
   // 추격 점프 상승 중: 방향을 놓아도 조준한 가로 속도 유지
@@ -433,7 +436,7 @@ export function onLand(p, world, vyBefore, fallPx) {
   const f = p.feel, fm = p.fm, fx = world?.fx;
   fm.chaseT = 0; fm.chaseNext = false;
   const B = baseSpeed(p, world);
-  if (!p.sprinting && Math.abs(p.vx) > B * 1.02) fm.momT = LAND.momentum;
+  if (!p.sprinting && fm.airMom && Math.abs(p.vx) > B * 1.02) fm.momT = LAND.momentum;   // 질주 점프의 남은 속도만 천천히 줄인다
   const heavy = !p.landSlam && ((vyBefore ?? 0) >= LAND.heavyVy || (fallPx ?? 0) > LAND.heavyFall);
   if (!heavy) { setSq(f, SQUASH.land); return; }
   setSq(f, SQUASH.heavy);

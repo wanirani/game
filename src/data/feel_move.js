@@ -53,7 +53,7 @@ export const SURFACE = {
   s15: 'metal',   // 대장간 지옥
   s16: { liquid: 'water', dry: 'stone' },
   s17: 'stone', s18: 'flesh', s19: 'dirt', s20: 'stone',
-  hub: 'dirt',
+  hub: 'dirt', town: 'dirt',   // 마을 허브 (HubScene 의 TOWN_STAGE.id 는 'town')
   _default: 'stone',
 };
 export const SURFACES = ['stone', 'dirt', 'wood', 'metal', 'snow', 'water', 'bone', 'flesh'];

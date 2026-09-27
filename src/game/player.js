@@ -157,7 +157,7 @@ export class Player extends Entity {
     if (this.hurtT > 0) {
       this.hurtT -= dt;
       this.physics(dt, world);
-      this.setAnim('hurt');
+      this.setAnim(this.mount?.riding ? 'ride_hurt' : 'hurt');   // [hook:cmp] 탑승 중 강타: 안장에 앉은 채 움찔 (companions §11.4)
       this.noteFacing?.();   // [hook:plat]
       return;
     }
@@ -433,7 +433,7 @@ export class Player extends Entity {
       return;
     }
     input.consume('attack');
-    if ((this.dashT > 0 || this.sprinting) && ms.dash && !this.mount?.riding) { this.dashT = 0; this.startMove(world, ms.dash, 'dash'); return; }   // [hook:feel] [hook:cmp] 질주 공격 = 대시 공격
+    if ((this.dashT > 0 || (this.sprinting && this.onGround)) && ms.dash && !this.mount?.riding) { this.dashT = 0; this.startMove(world, ms.dash, 'dash'); return; }   // [hook:feel] [hook:cmp] 질주 공격 = 대시 공격 (땅 위에서만: 질주 점프 중엔 공중 공격·내려찍기)
     if (!this.onGround) {
       if (down && ms.down && !this.mount?.riding) { this.startMove(world, ms.down, 'down'); return; }   // [hook:cmp]
       if (up && ms.up && !this.usedAirUp) { this.usedAirUp = true; this.startMove(world, ms.up, 'up'); return; }
