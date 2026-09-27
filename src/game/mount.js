@@ -134,7 +134,7 @@ export class MountRider {
     this.anim = 'idle'; this.animT = 0; this.t = 0; this.gait = 'idle';
     this.cx = 0; this.bottom = 0; this.facing = 1; this.vx = 0; this.vy = 0; this.onGround = true; this.speedK = 0;
     this.pitch = 0; this.rearK = 0; this.bob = 0; this.lean = 0; this.wingK = 0; this.alpha = 1;
-    this.pose = null; this.fallback = true; this.seat = { x: 0, y: 0, lean: 0 };
+    this.pose = null; this.fallback = true; this.seatPt = { x: 0, y: 0, lean: 0 };
     this.remountT = 0; this.remountWait = 0; this.pendingT = 0; this.roarT = 0; this.knockFix = null;
     this.ownMaxFall = false; this.summonGhost = null; this.rank = 0; this.lv = 1; this.awakened = false;
     this.rideO = { sx: 0, sy: 0, lean: 0, duck: 0, footY: d.footY ?? 20, legs: d.legs ?? 'straddle', reins: true, gait: 'idle', phase: 0 };
@@ -474,8 +474,7 @@ export class MountRider {
     this.state = 'recall';
     this.cd = Math.max(1, this.d?.recall ?? this.def?.recall ?? 20); this.cdMax = this.cd;
     this.remountT = 0; this.pendingT = 0;
-    this.hp = Math.max(0, Math.min(this.hp, reason === 'fall' ? this.hp : 0));
-    if (reason === 'fall') this.hp = 0;
+    this.hp = 0;   // 쓰러진 탈것은 재소환 대기 동안 초당 3% 씩 회복한다
     this.store();
     try { if (typeof ACMP.playKnockOff === 'function') ACMP.playKnockOff(this.def, { vol: 1 }); else audio.sfx('knock_off'); } catch { /* 무시 */ }
     if (reason !== 'fall') {
@@ -617,14 +616,14 @@ export class MountRider {
         this.flying = true;
         if (this.diving && !down) this.diving = false;
         if (this.diving) { if (p.vy < (fl.dive ?? 700)) p.vy = fl.dive ?? 700; }
-        else if (holdJ && this.stamina > 0 && p.jumpCut !== false) {
+        else if (holdJ && this.stamina > 0) {
           p.vy = approach(p.vy, fl.ascend ?? -380, 2400 * dt) - GRAVITY * dt;
           this.stamina = Math.max(0, this.stamina - dt);
           if (this.flapT <= 0) { this.flapT = 0.28; audio.sfx('wing_flap', { vol: 0.35, pitch: 1.15 }); }
         } else maxFall = fl.hoverFall ?? 110;
       }
     }
-    if (this.act?.vyMax !== undefined && !onG && p.vy > this.act.vyMax) { p.vy = this.act.vyMax - GRAVITY * dt * 0.5; }
+    if (Number.isFinite(this.act?.vyMax) && !onG) maxFall = Math.min(maxFall ?? Infinity, this.act.vyMax);   // 화염 숨결: 공중에서 천천히 내려온다
     if (maxFall != null) { p.maxFall = maxFall; this.ownMaxFall = true; } else this.releaseMaxFall(p);
   }
 
@@ -704,9 +703,9 @@ export class MountRider {
     const atk = this.chargeAtk;
     atk.dir = dir.x > 0 ? 1 : dir.x < 0 ? -1 : (p.facing || 1);
     const n = this.strike(world, rect, atk);
-    if (n > 0 && c.heal) {
+    if (n > 0 && c.heal) {   // 흡혈 급습: 준 피해의 heal 배만큼 탈것 회복
       const got = this.sumDamage(world, atk.hitId);
-      if (got > this.chargeHitSum) { this.healFrac(((got - this.chargeHitSum) * c.heal) / this.maxHp); this.chargeHitSum = got; }
+      if (got > 0) { this.chargeHitSum += got; this.healFrac((got * c.heal) / this.maxHp); }
     }
     if (world.game?.debug) world.debugRects?.push(rect);
     // 불씨·망령불 자국 (코슈타 · 이그니스)
@@ -804,11 +803,12 @@ export class MountRider {
   strike(world, rect, atk) { try { return playerStrike(world, rect, atk); } catch (e) { warnOnce('strike', '[mount] strike', e); return 0; } }
   hit(world, o) { return world.add(new Hitbox(o)); }
   rect(p, rx, ry, rw, rh) { return p.relRect(rx, ry, rw, rh); }
-  /** hitId 로 이번 공격이 준 피해 합 (녹티스 흡혈) */
+  /** 이번 프레임에 hitId 공격이 준 피해 합 (녹티스 흡혈). 방금 쓰러진 적도 센다 */
   sumDamage(world, hitId) {
     let s = 0;
-    for (const e of world.hittables?.() ?? []) { if (e._hits?.get?.(hitId) !== undefined && e.lastImpact?.t === world.time) s += e.lastImpact.dmg ?? 0; }
-    return s + (this._sumPrev ?? 0);
+    const now = world.time;
+    for (const e of world.entities ?? []) { if (e._hits?.get?.(hitId) === now && e.lastImpact?.t === now) s += e.lastImpact.dmg ?? 0; }
+    return s;
   }
 
   // ───────────── 물리 뒤 (착지 충격 · 끼임 · 천장 · 걸음새 · 포즈) ─────────────
@@ -845,7 +845,6 @@ export class MountRider {
     const map = world.map;
     if (!map) return false;
     const ty = Math.floor((p.y - d) / TILE);
-    if (ty === Math.floor((p.y - 0.5) / TILE) && !isSolidType(map.typeAt(Math.floor(p.cx / TILE), ty))) { /* 같은 칸 */ }
     const l = Math.floor((p.x + 2) / TILE), r = Math.floor((p.x + p.w - 2) / TILE);
     for (let tx = l; tx <= r; tx++) if (isSolidType(map.typeAt(tx, ty))) return true;
     return false;
@@ -962,14 +961,14 @@ export class MountRider {
     this.computeSeat(p);
     this.lean = this.riderLean(p, a);
     const ro = this.rideO;
-    ro.sx = this.seat.x; ro.sy = this.seat.y; ro.lean = this.lean + (this.seat.lean ?? 0); ro.duck = this.duck;
+    ro.sx = this.seatPt.x; ro.sy = this.seatPt.y; ro.lean = this.lean + (this.seatPt.lean ?? 0); ro.duck = this.duck;
     ro.footY = this.def?.footY ?? 20; ro.legs = this.def?.legs ?? 'straddle';
     ro.reins = !(p.move || p.throwT > 0 || p.castT > 0); ro.gait = this.gait; ro.phase = this.phase;
     this.alpha = this.state === 'summoning' ? clamp(this.stT / 0.3, 0.2, 1) : 1;
   }
   /** 안장점 (월드): 리그 포즈가 있으면 그 값, 없으면 데이터 안장 + 들썩임 + 앞들기 회전 */
   computeSeat(p) {
-    const s = this.seat;
+    const s = this.seatPt;
     if (this.pose) {
       try { RIG.seatOf(this.pose, s); if (Number.isFinite(s.x) && Number.isFinite(s.y) && (s.x !== 0 || s.y !== 0)) return s; } catch { /* 대체 */ }
     }
@@ -1013,15 +1012,15 @@ export class MountRider {
   riderLift() {
     const L = this._lift, p = this.world?.player;
     if (!p || !this.seated) return ZERO;
-    L.dx = (this.seat.x - p.cx) * (p.facing || 1);
-    L.dy = this.seat.y - p.bottom + (R().riderLiftY ?? 41);
+    L.dx = (this.seatPt.x - p.cx) * (p.facing || 1);
+    L.dy = this.seatPt.y - p.bottom + (R().riderLiftY ?? 41);
     return L;
   }
   /** 탑승 중 피격 판정 = 탈것 몸 ∪ 기수 몸통 (§3.3) */
   hurtbox(p) {
     const H = this._hb, bh = p.h, duck = this.duck;
     const bx = p.x + 4, by = p.bottom - bh + 6, bw = p.w - 8, bhh = bh - 6;
-    const rx = this.seat.x - 12, ry = this.seat.y - 48 + 20 * duck, rw = 24, rh = 48 - 20 * duck;
+    const rx = this.seatPt.x - 12, ry = this.seatPt.y - 48 + 20 * duck, rw = 24, rh = 48 - 20 * duck;
     const x0 = Math.min(bx, rx), y0 = Math.min(by, ry), x1 = Math.max(bx + bw, rx + rw), y1 = Math.max(by + bhh, ry + rh);
     H.x = x0; H.y = y0; H.w = x1 - x0; H.h = y1 - y0;
     return H;
@@ -1223,15 +1222,20 @@ const SPECIALS = {
   breath(r, world, p, sp) {
     const bw = sp.box?.w ?? 220, bh = sp.box?.h ?? 80, dur = sp.dur ?? 1.0;
     const atk = r.atk({ mv: r.power(sp.mv ?? 0.35), type: sp.type ?? 'mag', element: sp.element ?? 'fire', rehit: sp.rehit ?? 0.12, kb: [120, -60], hitstop: 0.02, shake: 1, stun: 0.12, tags: ['mount', 'special'] }, p);
+    let act = null;
     const hb = r.hit(world, {
       x: p.cx, y: p.bottom - 90, w: bw, h: bh, life: dur, z: 12, attack: atk,
-      follow(h) { const pp = world.player, f = pp?.facing || 1; if (!pp || !r.seated) { h.life = 0; return; } const mx = pp.cx + f * 40, my = pp.bottom - 78; h.x = f > 0 ? mx : mx - bw; h.y = my - bh / 2; h.data = f; },
+      follow(h) {   // 입을 따라간다. 숨결이 끊기면 (하차·강타·방 이동) 곧바로 꺼진다
+        const pp = world.player, f = pp?.facing || 1;
+        if (!pp || !r.seated || (act && r.act !== act)) { h.life = 0; return; }
+        const mx = pp.cx + f * 40, my = pp.bottom - 78; h.x = f > 0 ? mx : mx - bw; h.y = my - bh / 2; h.data = f;
+      },
       light: { r: 150, color: '#ff8a3a', i: 0.8 },
       render: drawBreath,
     });
     hb.t0 = world.time;
     let sfxT = 0;
-    r.startAct({ name: 'breath', dur, anim: 'breath', riderAnim: 'ride', moveMul: 0.5, vyMax: sp.vyMax ?? 60, noGlide: true, noFly: true,
+    act = r.startAct({ name: 'breath', dur, anim: 'breath', riderAnim: 'ride', moveMul: 0.5, vyMax: sp.vyMax ?? 60, noGlide: true, noFly: true,
       tick(rr, w, pp, a, dt) {
         sfxT -= dt;
         if (sfxT <= 0) { sfxT = 0.2; audio.sfx('fire_breath', { vol: 0.7 }); }
@@ -1334,8 +1338,6 @@ export class MountGhost extends Entity {
     this.pose = null; this.fallback = true; this.onGround = true; this.vx = 0; this.vy = 0;
     this.feetY = y; this.fell = false;
   }
-  get bottom() { return this.y + this.h; }
-  set bottom(v) { this.y = v - this.h; }
   update(dt, world) {
     this.t += dt; this.animT += dt;
     const m = this.mode;
@@ -1661,7 +1663,7 @@ function drawWing(ctx, m, S, C0, col, P, near) {
   const len = (S.kind === 'bat' ? 70 : S.kind === 'biped' ? 64 : 50) * spread + 18;
   const wx = sh.x - Math.cos(up) * len * 0.35, wy = sh.y + Math.sin(up) * len;
   const tipA = { x: wx - len * 0.7, y: wy + len * 0.25 }, tipB = { x: wx - len * 0.45, y: wy + len * 0.55 }, tipC = { x: sh.x - len * 0.55, y: sh.y + 14 };
-  ctx.fillStyle = col(near ? (C0.wing ?? C0.coat) : shade(C0.wing ?? C0.coat, -0.25));
+  ctx.fillStyle = col(near ? (C0.wing ?? C0.coat) : darker(C0.wing ?? C0.coat));
   ctx.strokeStyle = OUT; ctx.lineWidth = 1.6;
   ctx.globalAlpha *= near ? 1 : 0.9;
   ctx.beginPath(); ctx.moveTo(sh.x, sh.y); ctx.lineTo(wx, wy); ctx.lineTo(tipA.x, tipA.y); ctx.quadraticCurveTo(wx - len * 0.45, wy + len * 0.35, tipB.x, tipB.y);
@@ -1747,8 +1749,7 @@ function drawBat(ctx, m, S, C0, col, P, o) {
 }
 /** front 층: 가까운 날개 · 등자 끈 · 고삐 (기수의 가까운 다리 위로 겹친다) */
 function drawFront(ctx, m, S, C0, col, P) {
-  if (S.wings && S.kind !== 'quad') drawWing(ctx, m, S, C0, col, P, true);
-  else if (S.wings) drawWing(ctx, m, S, C0, col, P, true);
+  if (S.wings) drawWing(ctx, m, S, C0, col, P, true);
   const b = P.rot(S.bodyX, S.bodyY);
   const sy = b.y - (S.ry ?? 12);
   ctx.strokeStyle = col('#2a1a12'); ctx.lineWidth = 2.5;
@@ -1759,6 +1760,9 @@ function drawFront(ctx, m, S, C0, col, P) {
     ctx.beginPath(); ctx.moveTo(hd.x + 8, hd.y + 4); ctx.quadraticCurveTo(hd.x - 8, hd.y + 16, 8, sy - 18); ctx.stroke();
   }
 }
+const DARK = new Map();
+/** 먼 쪽 날개 색 (한 번 계산해 둔다) */
+function darker(c) { let v = DARK.get(c); if (!v) { v = shade(c, -0.25); DARK.set(c, v); } return v; }
 /** 빛 방울 (가산 합성, 작은 원 두 겹 — 그라디언트를 만들지 않는다) */
 function glowDot(ctx, x, y, r, color, a) {
   const g = ctx.globalAlpha;

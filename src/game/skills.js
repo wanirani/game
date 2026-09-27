@@ -2595,7 +2595,10 @@ ULTS.sera = (p, w, v = ultCtx(p, w)) => {
         e.d.fe += dt * 14 * v.q;
         const nf = Math.floor(e.d.fe);
         e.d.fe -= nf;
-        for (let i = ultRoom(ww, v, nf); i > 0; i--) { ww.fx.emit('feather', V0.x + rand(0, V0.w), V0.y - 10, { color: Math.random() < 0.5 ? '#fff8e0' : '#ffe7a0', angle: Math.PI / 2, spread: 0.4, speed: rand(40, 90), grav: 40, life: rand(1.6, 2.4), alpha: 0.85 }); }
+        for (let i = ultRoom(ww, v, nf); i > 0; i--) {   // 뒤쪽 층(싸우는 이들 뒤) 60% · 앞쪽 층 40%
+          const back = Math.random() < 0.6;
+          ww.fx.emit('feather', V0.x + rand(0, V0.w), V0.y - 10, { color: Math.random() < 0.5 ? '#fff8e0' : '#ffe7a0', angle: Math.PI / 2, spread: 0.4, speed: rand(40, 90), grav: 40, life: rand(1.6, 2.4), alpha: back ? 1 : 0.8, size: back ? rand(6, 9) : rand(4, 6), layer: back ? 'back' : 'front' });
+        }
       }
     },
     draw(ctx, e) {

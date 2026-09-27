@@ -42,7 +42,7 @@ import { drawHero } from './hero.js';
 const DEG = Math.PI / 180;
 const OUT = 0.25;                    // 화면 층 퇴장 (초)
 const Q = {
-  high:   { peak: 600, awPeak: 700, ghosts: 8, sil: 0.75, layer: true, diff: true, rs: 1.25, decals: true },
+  high:   { peak: 600, awPeak: 700, ghosts: 8, sil: 0.6, layer: true, diff: true, rs: 1.25, decals: true },
   medium: { peak: 400, awPeak: 450, ghosts: 5, sil: 0.5, layer: true, diff: true, rs: 1, decals: true },
   low:    { peak: 220, awPeak: 250, ghosts: 3, sil: 0, layer: false, diff: false, rs: 0.75, decals: false },
 };
@@ -1123,16 +1123,18 @@ function endImpact(im) {
   if (im.defer && F && im.defer.a > F.a) { F.color = im.defer.color; F.a = im.defer.a; F.decay = im.defer.decay; }
   if (im.flash) w.game?.flash?.(im.flash.color, im.flash.a, im.flash.decay);
 }
-function silList(w) {
+/** 실루엣으로 다시 그릴 개체: 플레이어 + 마무리 지점에 가까운 적·보스 (최대 10; 다시 그리는 비용 상한) */
+function silList(w, cx, cy) {
   const cam = w.camera, out = [];
   for (const e of w.entities ?? []) {
     if (!e || e.dead || e.hidden) continue;
     if (e.kind !== 'player' && e.kind !== 'enemy' && e.kind !== 'boss') continue;
-    if (cam && !cam.visible(e.x, e.y, e.w, e.h, 80)) continue;
+    if (cam && !cam.visible(e.x, e.y, e.w, e.h, 40)) continue;
     if (w.inUnrevealedFake?.(e)) continue;
     out.push(e);
-    if (out.length >= 16) break;
   }
+  const d = (e) => (e.kind === 'player' ? -1 : e.kind === 'boss' ? 0 : Math.hypot(e.cx - cx, e.cy - cy));
+  if (out.length > 10) { out.sort((a, b) => d(a) - d(b)); out.length = 10; }
   out.sort((a, b) => a.z - b.z);
   return out;
 }
@@ -1146,7 +1148,7 @@ function bakeSilhouettes(w, vw, vh, im) {
   const cam = w.camera;
   g.save(); g.scale(k, k);
   try { cam?.apply?.(g); } catch { /* 카메라 없음 */ }
-  for (const e of silList(w)) { try { e.draw(g, w); ULTFX_STATS.silDraws++; } catch { /* 한 개체 실패는 무시 */ } }
+  for (const e of silList(w, im.cx, im.cy)) { try { e.draw(g, w); ULTFX_STATS.silDraws++; } catch { /* 한 개체 실패는 무시 */ } }
   g.restore();
   g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.shadowBlur = 0;
   g.globalCompositeOperation = 'source-in'; g.fillStyle = im.fg; g.fillRect(0, 0, W, H);
