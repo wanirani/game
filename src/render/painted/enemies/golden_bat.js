@@ -15,8 +15,6 @@ export const spec = {
 };
 
 const OPT = { eye: '#ffffff', eyeA: 0.9, death: '#ffd84a', hang: false };
-const TAU = Math.PI * 2;
-
 export function draw(ctx, e, world, o, rig) {
   const t = e.t ?? 0;
   if (e.dying > 0) { drawBat(ctx, e, world, o, rig, OPT); return; }
@@ -36,7 +34,6 @@ export function draw(ctx, e, world, o, rig) {
       const p = (t * 1.3 + i * 0.25) % 1, a = i * 1.7 + t;
       glint(ctx, Math.cos(a) * (12 + p * 10), -12 + Math.sin(a * 1.3) * (8 + p * 6), 3 + 3 * Math.sin(p * Math.PI), '#fff6c0', Math.sin(p * Math.PI));
     }
-    void TAU;
     K.end();
   }
   ctx.globalAlpha = ga;

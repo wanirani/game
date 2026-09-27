@@ -3,7 +3,14 @@
 // enemies:    [{ mod: <import * as x from '../enemies/<id>.js'>, ids?: ['<render id>', ...] }]  (적 렌더러 모듈, 에셋은 지연 로딩)
 // companions: { '<companionId>': () => import('../companions/<id>.js') }
 // npcs:       { '<npcId>': () => import('../npcs/<id>.js') }
+//
+// ART-ENEMY-1 (공용 + s01–s03): 기존 5종(bat·ghost·skeleton·armor_knight·gravedigger)은 enemies/index.js 에 이미 등록돼 있다.
+// medusa_spawner 는 보이지 않는 생성기(render 'none')라 그림이 없다.
+import * as golden_bat from '../enemies/golden_bat.js';
+
 export const bosses = {};
-export const enemies = [];
+export const enemies = [
+  { mod: golden_bat },
+];
 export const companions = {};
 export const npcs = {};
