@@ -52,14 +52,22 @@ export function cadenceOf(r) {
   }
   return S[S.length - 1];
 }
-/** input.history 에서 시각 t 이전의 마지막 방향 입력 중 그 쪽(l|r)을 포함한 것의 시각 (없으면 -99) */
+const isDir = (h) => typeof h?.dir === 'string' && !h.dir.startsWith('btn:');
+/**
+ * input.history 에서 시각 t 이전에 그 쪽(l|r)을 '새로 누른' 마지막 시각 (없으면 -99).
+ * 이력은 방향 코드가 바뀔 때만 쌓이고 중립('n')은 남지 않는다: 바로 앞 방향 기록이 그 쪽을 포함하지 않았거나
+ * 같은 코드(사이에 중립을 거침)일 때만 새 누름이다. 'r' → 'ur' → 'r' 처럼 달리며 위·아래를 잠깐 누른 것은 누름이 아니다
+ * (그걸 누름으로 치면 오래 달리다 방향을 잠깐 놓았다 다시 누를 때 질주가 잘못 걸린다).
+ */
 function prevPressFromHistory(ch, t) {
   const H = input.history;
   if (!Array.isArray(H)) return -99;
   for (let i = H.length - 1; i >= 0; i--) {
     const h = H[i];
-    if (!(h.t < t - 1e-6)) continue;
-    if (typeof h.dir === 'string' && !h.dir.startsWith('btn:') && h.dir.includes(ch)) return h.t;
+    if (!(h.t < t - 1e-6) || !isDir(h) || !h.dir.includes(ch)) continue;
+    let j = i - 1;
+    while (j >= 0 && !isDir(H[j])) j--;
+    if (j < 0 || !H[j].dir.includes(ch) || H[j].dir === h.dir) return h.t;
   }
   return -99;
 }

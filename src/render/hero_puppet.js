@@ -623,7 +623,7 @@ export function drawLayers(c, E, K, P, W, tt) {
   const I = K.pup;
   if (!useLevel(I, c)) return false;
   const s = H.SK, ST = H.ST, J = R.J;
-  drawCapePup(c, E, K, s);
+  if (R.opts.cape !== false) drawCapePup(c, E, K, s);   // NPC 원화에 이미 자락·숄이 그려진 경우 runtime.cape=false (카밀라: look.cape 데이터와 겹침)
   if (K.scarf?.long && H.drawScarfTail) H.drawScarfTail(s, K, E);
   drawBandPup(c, E, K, s);
   drawPonyPup(c, E, K, s);
@@ -634,11 +634,14 @@ export function drawLayers(c, E, K, P, W, tt) {
   const offW = K.off && W.type !== 'none';
   const casting = ST.cast === 3 || (ST.cast && ST.atk?.cast && P.r2 > 0.8) || ST.throwK === 2; // 먼 손 편 손: 시전·(채찍 외) 투척
   const throwing = ST.throwK === 1;                                                               // 가까운 손 편 손: 채찍 영웅 투척
-  if (offW) drawWeapon(W, s.h2x, s.h2y, P.w2, { fire: ST.fire2 });
-  const farMode = offW ? 'grip' : two ? 'none' : casting ? 'open' : 'hand';
-  armPup(c, s.s2x, s.s2y, s.e2x, s.e2y, s.h2x, s.h2y, true, farMode === 'hand');
-  if (farMode === 'grip') gripPup(c, K, s.e2x, s.e2y, s.h2x, s.h2y, P.w2, W.type, true);
-  else if (farMode === 'open' && !openPup(c, K, s.e2x, s.e2y, s.h2x, s.h2y, true)) { c.save(); boneXf(c, J.elbow, J.hand, s.e2x, s.e2y, s.h2x, s.h2y); blit(c, 'hand', true); c.restore(); }
+  // NPC 리그(runtime.farArm=false): 3/4 원화의 먼 팔(망치 든 손 등)을 몸통 부품에 그대로 두므로 절차적 먼 팔을 그리지 않는다
+  if (R.opts.farArm !== false) {
+    if (offW) drawWeapon(W, s.h2x, s.h2y, P.w2, { fire: ST.fire2 });
+    const farMode = offW ? 'grip' : two ? 'none' : casting ? 'open' : 'hand';
+    armPup(c, s.s2x, s.s2y, s.e2x, s.e2y, s.h2x, s.h2y, true, farMode === 'hand');
+    if (farMode === 'grip') gripPup(c, K, s.e2x, s.e2y, s.h2x, s.h2y, P.w2, W.type, true);
+    else if (farMode === 'open' && !openPup(c, K, s.e2x, s.e2y, s.h2x, s.h2y, true)) { c.save(); boneXf(c, J.elbow, J.hand, s.e2x, s.e2y, s.h2x, s.h2y); blit(c, 'hand', true); c.restore(); }
+  }
   // ── 머리 (몸통 옷깃 뒤) + 후광 ──
   if (K.halo && G.fx) { headPt(s, K, J.headPivot[0], R.rig.figTop + 10); drawHalo(Q[0] - 0.5, Q[1] - 3 + Math.sin(G.t * 2) * 0.6, 6.8, K.aura?.color || '#ffe9a0'); }
   c.save(); headXf(c, s, K); blit(c, 'head'); c.restore();

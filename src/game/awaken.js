@@ -94,6 +94,18 @@ export function canAwaken(p, world) {
 }
 
 // ───────────────────────── 필살 버튼 ─────────────────────────
+/**
+ * 'ult' 와 'awaken' 이 지금 기기(input.mode)에서 같은 입력에 묶였는가 (data/controls.js TOUCH_BINDINGS: awaken ['ult'],
+ * 또는 키·패드를 같은 버튼으로 다시 배치한 경우). 배치 정보가 없으면 예전처럼 같은 버튼으로 본다.
+ */
+function sharedUltButton() {
+  const b = input.bindings;
+  if (!b || typeof b !== 'object') return true;
+  const share = (m) => { const u = m?.ult, a = m?.awaken; return Array.isArray(u) && Array.isArray(a) && a.some((x) => u.includes(x)); };
+  const dev = input.mode === 'kb' ? 'key' : input.mode;
+  if (dev && b[dev]) return share(b[dev]);
+  return share(b.key) || share(b.pad) || share(b.touch);
+}
 const holdOf = (p) => (p._awHold ??= { on: false, t0: 0, lastT: 0, flushN: 0, beat2: false, ring: null, veil: null, obsS: 0, obsW: 0 });
 const bufWin = (world) => BUF + Math.min(0.3, world.frozenRecent ?? 0);
 const flushN = () => input.flushN ?? 0;
@@ -136,9 +148,10 @@ export function handleUltInput(p, world) {
   // ── 'awaken' 액션 (V · 지정한 패드 버튼) ──
   if (input.buffered('awaken', win)) {
     input.consume('awaken');
-    // 한 버튼에 둘 다 묶인 경우(같은 스텝에 함께 눌림): 필살 버튼 규칙으로 (톡 = 필살기, 길게 = 각성).
+    // 한 버튼에 둘 다 묶인 경우(같은 스텝에 함께 눌림 + 지금 기기의 배치가 실제로 겹침 — 터치 필살 버튼은 기본이 둘 다):
+    // 필살 버튼 규칙으로 (톡 = 필살기, 길게 = 각성). 서로 다른 두 키(F·V)를 한 스텝에 함께 누른 것은 각성 키가 이긴다.
     // 누른 채인지(down)는 보지 않는다 — 히트스톱 동안 눌렀다 뗀 톡이 즉시 각성으로 바뀌지 않게 (R16)
-    const sameButton = input.pressTime?.ult === input.pressTime?.awaken && input.buffered('ult', win);
+    const sameButton = input.pressTime?.ult === input.pressTime?.awaken && input.buffered('ult', win) && sharedUltButton();
     if (!sameButton) {
       if (H.on) endHold(p, world, 'silent');
       if (ready) return castAwakening(p, world) || true;
