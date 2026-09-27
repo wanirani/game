@@ -447,9 +447,11 @@ export class InnScene extends Scene {
     ctx.fillStyle = 'rgba(0,0,0,0.4)'; rr(ctx, bx, by, pw, bh, 8); ctx.fill();
     ctx.strokeStyle = 'rgba(232,200,114,0.35)'; ctx.lineWidth = 1; ctx.stroke();
     text(ctx, '배당', bx + 12, by + 20, { size: 12, weight: 800, color: GOLD, ow: 2 });
-    const payH = Math.min(19, (bh - 56) / G.pays.length);
+    // 배당 줄 간격 ≥ 15 (좁으면 기록 줄을 빼고 배당만)
+    const showRec = (bh - 56) / G.pays.length >= 15;
+    const payH = Math.min(19, (bh - (showRec ? 56 : 36)) / G.pays.length);
     G.pays.forEach((p, i) => text(ctx, p, bx + 12, by + 40 + i * payH, { size: 12, weight: 700, color: '#f0e4c8', ow: 2, maxWidth: pw - 20 }));
-    text(ctx, recordText(id, st), bx + 12, by + bh - 9, { size: 11.5, weight: 700, color: '#9ad0ff', ow: 2, maxWidth: pw - 20 });
+    if (showRec) text(ctx, recordText(id, st), bx + 12, by + bh - 9, { size: 11.5, weight: 700, color: '#9ad0ff', ow: 2, maxWidth: pw - 20 });
     if (hintRow) keyHints(ctx, [['dpadH', '게임 선택'], ['dpadV', '판돈'], ['confirm', '시작'], ['cancel', '나가기']], lx, y + h - 11, { size: 11, color: '#a8988a' });
   }
 
@@ -458,7 +460,7 @@ export class InnScene extends Scene {
     const opts = this.betOptions();
     const tm = this.tapMin, big = input.touchMode || tm > 44;
     // 오른쪽 아래 고양이 영역은 비워 둔다 (칩·버튼이 손가락 크기를 못 지킬 만큼 좁아지면 고양이를 덮는다)
-    const need = opts.length * (big ? tm : 44) + 10 + 112 + 16;
+    const need = opts.length * Math.max(big ? tm : 44, 48) + 10 + 112 + 16;
     const cr = this.catRect();
     let right = cr ? Math.min(x + w, cr.x - 8) : x + w;
     if (right - x < need) right = x + w;

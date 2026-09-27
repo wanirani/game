@@ -1,11 +1,12 @@
 // 영혼의 카드 — 16장(8쌍) 짝 맞추기. 시작 때 잠깐 모든 카드를 보여 준 뒤 뒤집는다.
 // 제한 75초. 빨리 끝낼수록 배당↑ (25초 ×4 · 35초 ×3 · 50초 ×2 · 75초 ×1.2). 완벽(25초 이내 또는 10수 이내) → 주문서 확률.
+// 배치: UI px. 카드 크기는 화면 높이에 맞춘다 (this.cs 배율, 76×100 기준). 조작: 방향 = 카드 고르기 · 결정 = 뒤집기 · 탭.
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
 import { text, FONT } from '../../core/ui.js';
 import { clamp, lerp, rand, ease, TAU } from '../../core/math.js';
 import { drawIcon } from '../../render/icons.js';
-import { MiniGame, innBackdrop, feltTable, drawBtn, gPanel, goldText, record, candle, GOLD } from './common.js';
+import { MiniGame, innBackdrop, feltTable, drawBtn, gPanel, goldText, record, candle, GOLD, keyHints } from './common.js';
 import { drawCard, glow, rr } from './art.js';
 
 const SOULS = [
@@ -31,9 +32,13 @@ export class MemoryScene extends MiniGame {
     this.msg = null; this.msgT = 9;
   }
   onAgain() { this.startRound(); }
-  get gx() { return this.vw / 2 - (CW * 4 + GAP * 3) / 2; }
-  get gy() { return 92; }
-  cardXY(i) { const c = i % 4, r = Math.floor(i / 4); return { x: this.gx + c * (CW + GAP) + CW / 2, y: this.gy + r * (CH + GAP) + CH / 2 }; }
+  /** 카드 배율 (UI 높이에 맞춤: 데스크톱 1, 휴대폰 ≈ 0.8) · 카드 크기 */
+  get cs() { return clamp((this.vh - 84 - GAP * 3) / (CH * 4), 0.6, 1); }
+  get cw() { return CW * this.cs; }
+  get ch() { return CH * this.cs; }
+  get gx() { return this.vw / 2 - (this.cw * 4 + GAP * 3) / 2; }
+  get gy() { return clamp(this.vh - 12 - (this.ch * 4 + GAP * 3), 64, 92); }
+  cardXY(i) { const c = i % 4, r = Math.floor(i / 4); return { x: this.gx + c * (this.cw + GAP) + this.cw / 2, y: this.gy + r * (this.ch + GAP) + this.ch / 2 }; }
 
   deal(shuffle = true) {
     const ids = [];
@@ -135,7 +140,7 @@ export class MemoryScene extends MiniGame {
       if (input.pressed('right')) mv(1);
       if (input.pressed('up')) mv(-4);
       if (input.pressed('down')) mv(4);
-      if (input.pressed('confirm') || input.pressed('attack')) { this.keyUsed = true; this.flipCard(this.cursor); }
+      if (input.pressed('confirm')) { this.keyUsed = true; this.flipCard(this.cursor); }
       const left = LIMIT - this.time;
       if (left < 10 && Math.floor(left) !== Math.floor(left + dt)) audio.sfx('clock_tick', { vol: 0.6 });
     }
@@ -145,6 +150,7 @@ export class MemoryScene extends MiniGame {
   draw(ctx) {
     const vw = this.vw, vh = this.vh, t = this.clock;
     innBackdrop(ctx, vw, vh, t, 0.7);
+    const cs = this.cs, CW = this.cw, CH = this.ch;
     const gw = CW * 4 + GAP * 3, gh = CH * 4 + GAP * 3;
     feltTable(ctx, this.gx - 14, this.gy - 12, gw + 28, gh + 24, { felt: '#1a2440', felt2: '#070a16', r: 18 });
     candle(ctx, this.gx - 44, this.gy + gh + 4, 34, t, 1);
@@ -163,9 +169,9 @@ export class MemoryScene extends MiniGame {
       this.hits.add('card:' + i, hit, this.phase !== 'play');
       const hov = this.phase === 'play' && this.hits.over(hit) && !c.up && !c.done;
       ctx.save();
-      ctx.translate(x, y - (hov ? 4 : 0)); ctx.scale(Math.max(0.04, sx) * sc, sc);
+      ctx.translate(x, y - (hov ? 4 : 0)); ctx.scale(Math.max(0.04, sx) * sc * cs, sc * cs);
       if (face) this.drawFace(ctx, c, t);
-      else drawCard(ctx, null, 0, 0, CW, CH, { back: true, style: 'soul', t: t + i * 0.3, glow: '#ffe7a0', hl: cur ? 0.9 : hov ? 0.5 : 0 });
+      else drawCard(ctx, null, 0, 0, CW / cs, CH / cs, { back: true, style: 'soul', t: t + i * 0.3, glow: '#ffe7a0', hl: cur ? 0.9 : hov ? 0.5 : 0 });
       ctx.restore();
       if (cur) { ctx.strokeStyle = '#ffe7a0'; ctx.lineWidth = 2.5; rr(ctx, P.x - CW / 2 - 4, P.y - CH / 2 - 4, CW + 8, CH + 8, 10); ctx.stroke(); }
     });
@@ -178,6 +184,7 @@ export class MemoryScene extends MiniGame {
       ctx.restore();
     }
     if (this.phase === 'ready') this.drawReadyUI(ctx);
+    else if (this.phase === 'play') keyHints(ctx, [['dpad', '카드 고르기'], ['confirm', '뒤집기']], 16, vh - 12, { size: 12 });
   }
   drawFace(ctx, c, t) {
     const soul = SOULS[c.s], w = CW, h = CH;
@@ -201,7 +208,7 @@ export class MemoryScene extends MiniGame {
     if (c.done) { ctx.globalAlpha = 0.25 * Math.max(0, 1 - c.doneT); ctx.fillStyle = '#fff'; rr(ctx, -w / 2, -h / 2, w, h, 8); ctx.fill(); ctx.globalAlpha = 1; }
   }
   drawLeft(ctx) {
-    const pw = clamp(this.gx - 70, 150, 230), x = this.gx - 40 - pw, y = 100, h = 300;
+    const pw = clamp(this.gx - 70, 150, 230), x = this.gx - 40 - pw, y = 96, h = Math.min(300, this.vh - 128);
     if (x < 8) return;
     gPanel(ctx, x, y, pw, h, { a: 0.84 });
     const cx = x + pw / 2, t = this.clock;
@@ -224,8 +231,8 @@ export class MemoryScene extends MiniGame {
     });
   }
   drawRight(ctx) {
-    const gw = CW * 4 + GAP * 3;
-    const x = this.gx + gw + 40, pw = clamp(this.vw - x - 16, 150, 230), y = 100, h = 300;
+    const gw = this.cw * 4 + GAP * 3;
+    const x = this.gx + gw + 40, pw = clamp(this.vw - x - 16, 150, 230), y = 96, h = Math.min(300, this.vh - 128);
     if (x + pw > this.vw - 4) return;
     gPanel(ctx, x, y, pw, h, { a: 0.84 });
     text(ctx, '보상 등급', x + pw / 2, y + 28, { size: 15, align: 'center', weight: 800, family: FONT.title, color: GOLD, ow: 3 });
@@ -243,14 +250,15 @@ export class MemoryScene extends MiniGame {
     text(ctx, b.memTime ? `최단 ${b.memTime}초 · 최소 ${b.memMoves}수` : '완벽(S 또는 10수 이내) 시 주문서 확률', x + pw / 2, y + h - 18, { size: 11, align: 'center', weight: 700, color: '#9ad0ff', ow: 2, maxWidth: pw - 16 });
   }
   drawReadyUI(ctx) {
-    const vw = this.vw, gh = CH * 4 + GAP * 3;
-    const w = 440, h = 150, x = vw / 2 - w / 2, y = this.gy + gh / 2 - h / 2 + 20;
+    const vw = this.vw, gh = this.ch * 4 + GAP * 3;
+    const bh = this.bh(44);
+    const w = Math.min(460, vw - 40), h = 108 + bh, x = vw / 2 - w / 2, y = this.gy + gh / 2 - h / 2 + 10;
     gPanel(ctx, x, y, w, h, { a: 0.92, glowCol: 'rgba(90,120,255,0.4)' });
-    text(ctx, '짝을 모두 찾으면 승리! 시작할 때 잠깐 카드를 보여 줘요.', vw / 2, y + 26, { size: 12.5, align: 'center', weight: 700, color: '#c8d0ff', ow: 2 });
-    this.drawBetBar(ctx, vw / 2, y + 72, { r: 21, label: false });
-    const r = this.hits.rect('start', vw / 2 - 100, y + h - 50, 200, 42);
+    text(ctx, '짝을 모두 찾으면 승리! 시작할 때 잠깐 카드를 보여 줘요.', vw / 2, y + 26, { size: 13, align: 'center', weight: 700, color: '#c8d0ff', ow: 2, maxWidth: w - 24 });
+    this.drawBetBar(ctx, vw / 2, y + 66, { r: 21, label: false, maxW: w - 24 });
+    const r = this.hits.rect('start', vw / 2 - 100, y + h - bh - 8, 200, bh);
     const can = this.free || this.st.gold >= this.bet;
     this.hits.add('start', r, !can);
-    drawBtn(ctx, r, '영혼 불러내기!', { tone: 'purple', size: 17, key: 'Z', disabled: !can, hot: this.hits.over(r), pressed: this.hits.pressed(r), pulse: can, t: this.clock });
+    drawBtn(ctx, r, '영혼 불러내기!', { tone: 'purple', size: 17, key: 'confirm', disabled: !can, hot: this.hits.over(r), pressed: this.hits.pressed(r), pulse: can, t: this.clock });
   }
 }

@@ -717,7 +717,7 @@ export function drawChip(c, x, y, r, value, { selected = false, disabled = false
   c.setLineDash([r * 0.12, r * 0.09]); c.strokeStyle = '#e8c872'; c.lineWidth = 1.4;
   c.beginPath(); c.arc(0, 0, r * 0.58, 0, TAU); c.stroke(); c.setLineDash([]);
   const lb = label ?? (value === 0 ? '무료' : String(value));
-  c.font = `900 ${Math.round(r * (lb.length > 3 ? 0.42 : 0.56))}px ${FONT.num}`;
+  c.font = `900 ${Math.round(r * (lb.length > 3 ? 0.47 : 0.56))}px ${FONT.num}`;
   c.textAlign = 'center'; c.textBaseline = 'middle';
   c.lineWidth = 3; c.strokeStyle = 'rgba(0,0,0,0.8)'; c.strokeText(lb, 0, 1);
   c.fillStyle = value === 50 ? '#fff' : '#fff4d8'; c.fillText(lb, 0, 1);

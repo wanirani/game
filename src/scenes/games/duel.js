@@ -1,6 +1,8 @@
 // 황혼의 결투 — 해 질 녘 마을 어귀에서 총잡이와 3판 2선승 속사 대결.
 // '준비…' 뒤 '발사!' 신호에 반응(공격 버튼/화면 탭). 신호 전 발사 = 반칙패. 상위 결투자는 가짜 신호(발톱! 발자국!)로 유혹.
 // 총성 순간 슬로 모션 + 탄도 + 섬광. 결투자 5인(격파 시 다음 상대 해금), 캐릭터는 공용 렌더러(drawHero)로 그림.
+// 배치: UI px. 땅(GY) = 화면 아래 − 96, 결투자 배율은 화면 높이에 맞춘다 (this.sc). 상대 고르기는 위쪽 정보 패널 안.
+// 발사: 결정·공격·점프·보조(Z·X·A 키, 패드 A·X·Y) 또는 화면 누름. 패드 B·Esc 는 '그만두기' 확인 창 (X 키는 결투 중엔 발사).
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
 import { assets } from '../../core/assets.js';
@@ -8,7 +10,7 @@ import { text, FONT } from '../../core/ui.js';
 import { clamp, lerp, rand, ease, fmt, TAU, pick } from '../../core/math.js';
 import { CHARACTERS } from '../../data/characters.js';
 import { drawHero } from '../../render/hero.js';
-import { MiniGame, drawBtn, gPanel, goldText, record, vignetteSoft, GOLD } from './common.js';
+import { MiniGame, drawBtn, gPanel, goldText, record, vignetteSoft, GOLD, keyHints } from './common.js';
 import { glow, rr } from './art.js';
 
 const GUN = (style, element = null) => ({ type: 'gun', style, level: 0, rarity: 0, element });
@@ -141,7 +143,7 @@ export class DuelScene extends MiniGame {
     this.shake(8, 0.25);
   }
   fireBullet(from, to, final) {
-    const hs = SC * (from.look.height ?? 1), ht = SC * (to.look.height ?? 1);
+    const hs = this.sc * (from.look.height ?? 1), ht = this.sc * (to.look.height ?? 1);
     const mx = from.cx + from.facing * 38 * hs, my = from.bottom - 77 * hs;
     const tx = to.cx - to.facing * 4, ty = to.bottom - 58 * ht;
     this.bullet = { x0: mx, y0: my, x1: tx, y1: ty, t: 0, dur: 0.09, target: to, final, hit: false };
@@ -176,13 +178,21 @@ export class DuelScene extends MiniGame {
       const notional = this.roundFree ? this.bet : this.roundBet;
       // 첫 결투자(잭)는 사람 손이면 거의 늘 2:0 완승이라, 대승리 등급·주문서 보너스는 두 번째 결투자부터 준다
       const bonus = perfect && this.foeIdx > 0;
-      this.settle({ win, payout: win ? notional * f.mult : 0, tier: win ? (bonus || f.mult >= 3 ? 'big' : 'win') : 'lose', perfect: bonus, title: win ? (perfect ? '완벽한 승리!' : '결투 승리!') : '결투 패배…', sub, cy: 300, delay: 1.0 });
+      this.settle({ win, payout: win ? notional * f.mult : 0, tier: win ? (bonus || f.mult >= 3 ? 'big' : 'win') : 'lose', perfect: bonus, title: win ? (perfect ? '완벽한 승리!' : '결투 승리!') : '결투 패배…', sub, cy: this.GY - 144, delay: 1.0 });
       return;
     }
     this.nextRound();
   }
 
   /** 발사 입력: 공격/점프/확인 키 또는 화면 누름(손을 뗄 때가 아니라 누르는 순간) */
+  /** 결투 중에는 X 키(공격 = 취소)도 발사다 → '그만두기' 창을 열지 않는다 (패드 B·Esc 는 연다) */
+  backBlocked() {
+    const fight = this.phase === 'intro' || this.phase === 'standoff' || this.phase === 'draw' || this.phase === 'shot';
+    return fight && (input.pressed('attack') || input.pressed('jump') || input.pressed('confirm') || input.pressed('sub'));
+  }
+  /** 결투자 배율 (화면 높이에 맞춤) · 땅 높이 */
+  get sc() { return SC * clamp((this.vh - 100) / 440, 0.7, 1); }
+  get GY() { return this.vh - 96; }
   pressedFire() {
     const p = input.pointer;
     if (p.justDown && !(p.x < 130 && p.y < 60)) return true;
@@ -266,10 +276,10 @@ export class DuelScene extends MiniGame {
   // ── 그리기 ──
   draw(ctx) {
     const vw = this.vw, vh = this.vh, t = this.clock;
-    const GY = 444;
+    const GY = this.GY, sc = this.sc;
     this.drawSky(ctx, vw, vh, t, GY);
     // 결투자
-    const gap = Math.min(vw * 0.27, 300);
+    const gap = clamp(vw * 0.3, 200, 300);
     this.me.cx = vw / 2 - gap + this.me.kx; this.me.bottom = GY;
     this.foe.cx = vw / 2 + gap + this.foe.kx; this.foe.bottom = GY;
     for (const p of [this.me, this.foe]) {
@@ -283,7 +293,7 @@ export class DuelScene extends MiniGame {
     for (const p of [this.me, this.foe]) {
       // 역광 테두리 느낌: 뒤에 따뜻한 광원
       glow(ctx, p.cx, p.bottom - 90, 120, '#ff7a2a', 0.18);
-      try { drawHero(ctx, p, null, { scale: SC }); } catch (e) { if (!this._heroErr) { this._heroErr = true; console.warn('[duel] drawHero', e); } }
+      try { drawHero(ctx, p, null, { scale: sc }); } catch (e) { if (!this._heroErr) { this._heroErr = true; console.warn('[duel] drawHero', e); } }
     }
     // 총구 섬광
     for (const f of this.flashes) {
@@ -321,11 +331,12 @@ export class DuelScene extends MiniGame {
     this.drawScore(ctx, vw);
     this.drawSignal(ctx, vw, vh);
     this.drawBanner(ctx, vw);
-    this.drawTalk(ctx);
     if (this.phase === 'ready') this.drawReadyUI(ctx);
     else if (this.phase === 'standoff' || this.phase === 'draw') {
-      text(ctx, input.touchMode ? "'발사!'가 뜨면 화면을 터치!" : "'발사!'가 뜨면 X / Z / 화면 클릭!", vw / 2, vh - 20, { size: 13, align: 'center', weight: 700, color: '#c8b490', ow: 3 });
+      if (input.touchMode) text(ctx, "'발사!'가 뜨면 화면을 터치!", vw / 2, vh - 20, { size: 13, align: 'center', weight: 700, color: '#c8b490', ow: 3 });
+      else keyHints(ctx, [[['confirm', 'attack'], "'발사!'가 뜨면 발사 (화면 클릭도 돼요)"]], vw / 2, vh - 20, { align: 'center', size: 13 });
     }
+    this.drawTalk(ctx);
   }
   drawSky(ctx, vw, vh, t, GY) {
     const img = assets.get('bg/hub');
@@ -423,7 +434,7 @@ export class DuelScene extends MiniGame {
   drawBanner(ctx, vw) {
     if (this.phase !== 'intro') return;
     const k = ease.outCubic(clamp(this.bannerT / 0.35, 0, 1)) * clamp((2.0 - this.bannerT) / 0.3, 0, 1);
-    const y = 170;
+    const y = Math.round(this.vh * 0.315);
     ctx.save(); ctx.globalAlpha = k;
     const g = ctx.createLinearGradient(0, 0, vw, 0);
     g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.3, 'rgba(10,2,6,0.85)'); g.addColorStop(0.7, 'rgba(10,2,6,0.85)'); g.addColorStop(1, 'rgba(0,0,0,0)');
@@ -440,7 +451,7 @@ export class DuelScene extends MiniGame {
     ctx.save(); ctx.globalAlpha = a;
     ctx.font = `700 14px ${FONT.body}`;
     const w = Math.min(340, ctx.measureText(this.talk).width + 28);
-    const x = Math.min(this.vw - w - 12, p.cx - w / 2), y = p.bottom - 82 * SC - 44;
+    const x = Math.min(this.vw - w - 12, p.cx - w / 2), y = Math.max(64, p.bottom - 82 * this.sc - 44);
     ctx.fillStyle = 'rgba(0,0,0,0.4)'; rr(ctx, x + 2, y + 3, w, 32, 10); ctx.fill();
     ctx.fillStyle = '#f4e8d0'; rr(ctx, x, y, w, 32, 10); ctx.fill();
     ctx.beginPath(); ctx.moveTo(p.cx - 8, y + 31); ctx.lineTo(p.cx, y + 42); ctx.lineTo(p.cx + 8, y + 31); ctx.fill();
@@ -450,22 +461,21 @@ export class DuelScene extends MiniGame {
   }
   drawReadyUI(ctx) {
     const vw = this.vw, vh = this.vh, f = this.F, t = this.clock;
-    // 상대 정보
-    const iw = 330, ix = vw / 2 - iw / 2, iy = 92;
-    gPanel(ctx, ix, iy, iw, 92, { a: 0.8 });
-    text(ctx, f.title, ix + iw / 2, iy + 24, { size: 12, align: 'center', weight: 800, color: '#ff9a6a', ow: 2 });
-    goldText(ctx, f.name, ix + iw / 2, iy + 52, 22, { glowCol: '#ff5a2a' });
-    const stars = Math.round((0.5 - f.react) / 0.055) + 1;
-    text(ctx, `속사 ${'★'.repeat(clamp(stars, 1, 5))}${'☆'.repeat(5 - clamp(stars, 1, 5))}   배당 ×${f.mult}${f.feint ? '   가짜 신호 주의' : ''}`, ix + iw / 2, iy + 76, { size: 12, align: 'center', weight: 700, color: '#e8d8b0', ow: 2 });
-    // 하단: 상대 선택 + 판돈 + 결투
-    const py = vh - 88, pw = Math.min(vw - 24, 920), px = vw / 2 - pw / 2;
-    gPanel(ctx, px, py, pw, 84, { a: 0.85, r: 14 });
-    // 터치: 칸 사이를 넓히고 탭 영역을 패널 높이만큼 키운다 (그림은 그대로, 약 44 CSS px 이상)
-    const n = FOES.length, fs = 50, fg = input.touchMode ? 14 : 8;
+    const big = input.touchMode || this.tapMin > 44;
+    // 위: 상대 정보 + 결투자 고르기 (5칸)
+    const n = FOES.length, fs = 50, fg = big ? 14 : 8, rowW = n * (fs + fg) - fg;
+    const iw = Math.max(330, rowW + 40), ix = vw / 2 - iw / 2, iy = 62, ih = 158;
+    gPanel(ctx, ix, iy, iw, ih, { a: 0.82 });
+    text(ctx, f.title, vw / 2, iy + 22, { size: 12, align: 'center', weight: 800, color: '#ff9a6a', ow: 2 });
+    goldText(ctx, f.name, vw / 2, iy + 48, 22, { glowCol: '#ff5a2a', maxWidth: iw - 24 });
+    const stars = clamp(Math.round((0.5 - f.react) / 0.055) + 1, 1, 5);
+    text(ctx, `속사 ${'★'.repeat(stars)}${'☆'.repeat(5 - stars)}   배당 ×${f.mult}${f.feint ? '   가짜 신호 주의' : ''}`, vw / 2, iy + 68, { size: 12, align: 'center', weight: 700, color: '#e8d8b0', ow: 2, maxWidth: iw - 20 });
+    const rx0 = vw / 2 - rowW / 2, ry = iy + 80;
     for (let i = 0; i < n; i++) {
-      const fx = px + 16 + i * (fs + fg), fy = py + 9;
-      const r = input.touchMode ? this.hits.rect('foe:' + i, fx - fg / 2, py + 2, fs + fg, 80) : this.hits.rect('foe:' + i, fx, fy, fs, fs + 18);
-      this.hits.add('foe:' + i, r);
+      const fx = rx0 + i * (fs + fg), fy = ry;
+      // 탭 영역: 칸 사이를 넓혀 손가락 크기(약 44 CSS px) 이상 (그림은 그대로)
+      const r = big ? this.hits.rect('foe:' + i, fx - fg / 2, fy - 4, fs + fg, fs + 24) : this.hits.rect('foe:' + i, fx, fy, fs, fs + 18);
+      this.hits.add('foe:' + i, r, false, 'icon');
       const sel = i === this.foeIdx, un = this.unlocked(i);
       ctx.save();
       rr(ctx, fx, fy, fs, fs, 8);
@@ -482,14 +492,16 @@ export class DuelScene extends MiniGame {
       ctx.restore();
       text(ctx, un ? `×${FOES[i].mult}` : '잠김', fx + fs / 2, fy + fs + 14, { size: 11, align: 'center', weight: 800, color: un ? (sel ? '#ffe7a0' : '#c8b490') : '#6a5a4a', ow: 2 });
     }
-    const selW = 16 + n * (fs + fg);
-    const btnW = 150;
-    const chipsW = pw - selW - btnW - 30;
-    this.drawBetBar(ctx, px + selW + chipsW / 2, py + 50, { r: 21, label: true });
-    const br = this.hits.rect('duel', px + pw - btnW - 14, py + 13, btnW, 58);
+    // 아래: 판돈 + 결투 신청
+    const btnW = 150, bh = this.bh(58);
+    const chipsW = Math.min(this.betBarW(21), vw - 64 - btnW - 24);
+    const pw = chipsW + btnW + 48, ph = 88, px = vw / 2 - pw / 2, py = vh - 8 - ph;
+    gPanel(ctx, px, py, pw, ph, { a: 0.85, r: 14 });
+    this.drawBetBar(ctx, px + 16 + chipsW / 2, py + 52, { r: 21, label: true, maxW: chipsW });
+    const br = this.hits.rect('duel', px + pw - btnW - 16, py + (ph - bh) / 2, btnW, bh);
     const can = this.free || this.st.gold >= this.bet;
     this.hits.add('duel', br, !can);
-    drawBtn(ctx, br, '결투 신청!', { tone: 'crimson', size: 19, sub: this.free ? '무료 한 판' : `${fmt(this.bet)} G`, key: 'Z', disabled: !can, hot: this.hits.over(br), pressed: this.hits.pressed(br), pulse: can, t });
-    if (!input.touchMode) text(ctx, '↑ ↓ 상대 선택 · ← → 판돈', px + pw - 14, py - 8, { size: 11, align: 'right', weight: 700, color: '#c8b490', ow: 3 });
+    drawBtn(ctx, br, '결투 신청!', { tone: 'crimson', size: 19, sub: this.free ? '무료 한 판' : `${fmt(this.bet)} G`, key: 'confirm', disabled: !can, hot: this.hits.over(br), pressed: this.hits.pressed(br), pulse: can, t });
+    keyHints(ctx, [['dpadV', '상대 선택']], px + pw - 14, py - 9, { align: 'right', size: 12 });
   }
 }

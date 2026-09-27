@@ -310,9 +310,8 @@ export class DiceScene extends MiniGame {
   /** 판돈 칩 + '굴리기' 버튼 한 줄 (아래 조작 줄) */
   drawReadyUI(ctx) {
     const vw = this.vw, L = this.L;
-    const bw = 200, n = this.betOptions().length;
-    const chipGap = Math.max(46 + (input.touchMode || this.tapMin > 44 ? 20 : 12), this.tapMin > 44 ? this.tapMin : 0);
-    const chipsW = Math.min(n * chipGap, vw - 64 - bw - 24);
+    const bw = 200;
+    const chipsW = Math.min(this.betBarW(23), vw - 64 - bw - 24);
     const pw = chipsW + bw + 48, px = vw / 2 - pw / 2, py = L.ctrlTop, ph = L.ctrlH;
     gPanel(ctx, px, py, pw, ph, { a: 0.8, r: 14 });
     const cy = py + ph / 2 + 8;

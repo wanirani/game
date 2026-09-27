@@ -224,7 +224,8 @@ export class BlackjackScene extends MiniGame {
       ctx.restore();
     }
     ctx.restore();
-    // 합계 배지·대사 (배율 없이 — 좁은 화면에서도 글자가 작아지지 않게)
+    // 테이블 인쇄 글자·합계 배지·대사 (배율 없이 — 좁은 화면에서도 글자가 작아지지 않게)
+    this.drawTablePrint(ctx);
     this.drawTotals(ctx);
     if (this.talk && this.talkT < 3.2) {
       const a = clamp(this.talkT / 0.15, 0, 1) * clamp((3.2 - this.talkT) / 0.3, 0, 1);
@@ -256,9 +257,7 @@ export class BlackjackScene extends MiniGame {
     ctx.strokeStyle = 'rgba(232,200,114,0.5)'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.ellipse(cx, 150, 330, 190, 0, 0.35, Math.PI - 0.35); ctx.stroke();
     ctx.beginPath(); ctx.ellipse(cx, 150, 346, 206, 0, 0.35, Math.PI - 0.35); ctx.stroke();
-    text(ctx, '블랙잭 3 : 2 지급', cx + 290, 404, { size: 15, align: 'center', weight: 800, family: FONT.title, color: '#e8c872', ow: 0 });
-    text(ctx, '딜러는 17에서 멈춘다', cx + 290, 426, { size: 13, align: 'center', weight: 700, family: FONT.title, color: '#e8c872', ow: 0 });
-    ctx.restore();
+    ctx.restore(); // 인쇄 글자는 drawTablePrint (배율 없이)
     ctx.save(); ctx.globalAlpha = 0.1; catHead(ctx, cx, 480, 90, '#e8c872'); ctx.restore();
     // 딜러 쪽 난간(패딩)
     const rg = ctx.createLinearGradient(0, top - 14, 0, top + 12);
@@ -282,12 +281,21 @@ export class BlackjackScene extends MiniGame {
     const bx = cx - 250, by = 420;
     ctx.strokeStyle = 'rgba(232,200,114,0.6)'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.ellipse(bx, by, 52, 34, 0, 0, TAU); ctx.stroke();
-    text(ctx, '판돈', bx, by + 52, { size: 13, align: 'center', weight: 700, color: 'rgba(232,200,114,0.7)', ow: 0 });
     if (this.phase !== 'ready' || this.result) {
       const amt = this.roundFree ? 0 : this.roundBet;
       const stacks = this.doubled ? 2 : 1;
       for (let kk = 0; kk < stacks; kk++) for (let i = 0; i < 4; i++) drawChip(ctx, bx - 16 + kk * 34, by + 6 - i * 5, 17, amt === 0 ? 0 : this.bet, { t });
     }
+  }
+  /** 펠트에 인쇄된 글자 (설계 좌표 → 화면, 글자 크기는 그대로) */
+  drawTablePrint(ctx) {
+    const cx = this.vw / 2;
+    const A = this.P(cx + 290, 404), B = this.P(cx + 290, 426), C = this.P(cx - 250, 472);
+    ctx.save(); ctx.globalAlpha = 0.55;
+    text(ctx, '블랙잭 3 : 2 지급', A.x, A.y, { size: 15, align: 'center', weight: 800, family: FONT.title, color: '#e8c872', ow: 0 });
+    text(ctx, '딜러는 17에서 멈춘다', B.x, Math.max(B.y, A.y + 16), { size: 13, align: 'center', weight: 700, family: FONT.title, color: '#e8c872', ow: 0 });
+    ctx.restore();
+    text(ctx, '판돈', C.x, C.y, { size: 13, align: 'center', weight: 700, color: 'rgba(232,200,114,0.7)', ow: 0 });
   }
   drawTotals(ctx) {
     const vw = this.vw;
@@ -317,10 +325,8 @@ export class BlackjackScene extends MiniGame {
   drawReadyUI(ctx) {
     const vw = this.vw, L = this.L;
     // 테이블의 '판돈' 원(왼쪽)과 인쇄 문구(오른쪽)를 가리지 않도록 칩·버튼이 들어갈 폭만 쓴다
-    const n = this.betOptions().length, big = input.touchMode || this.tapMin > 44;
-    const chipGap = Math.max(46 + (big ? 20 : 12), big ? this.tapMin : 0);
     const bh = this.bh(52);
-    const pw = Math.max(356, n * chipGap + 28), ph = Math.max(136, 83 + bh + 6);
+    const pw = Math.max(320, this.betBarW(23) + 28), ph = Math.max(136, 83 + bh + 6);
     const px = vw / 2 - pw / 2, py = L.H - 8 - ph;
     gPanel(ctx, px, py, pw, ph, { a: 0.82, r: 14 });
     this.drawBetBar(ctx, vw / 2, py + 42, { r: 23, maxW: pw - 20 });

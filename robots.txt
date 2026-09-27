@@ -1,0 +1,6 @@
+# 블러드 녹턴 — owner: DELIVERY-WEB
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /downloads/
+Disallow: /build.json

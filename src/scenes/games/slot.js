@@ -195,7 +195,7 @@ export class SlotScene extends MiniGame {
     const k = clamp((py - 8 - 16) / 384, 0.55, 1);
     const cw = this.cab.w * k;
     const cabL = W / 2 - cw / 2, cabR = W / 2 + cw / 2 + 58 * k; // 오른쪽은 레버까지
-    const sideY = 64, sideH = Math.min(300, py - 8 - sideY);
+    const sideY = 78, sideH = Math.min(300, py - 8 - sideY); // 오른쪽 위 HUD 판돈 글자(y 68) 아래
     const payW = Math.min(250, cabL - 30 - 16), sideX = cabR + 14, sideW = Math.min(250, W - 16 - sideX);
     return { W, H, ph, py, k, oy: 16, sideY, sideH, payW, sideX, sideW };
   }
@@ -350,58 +350,77 @@ export class SlotScene extends MiniGame {
     gl.addColorStop(0, 'rgba(255,255,255,0.14)'); gl.addColorStop(0.35, 'rgba(255,255,255,0.02)'); gl.addColorStop(1, 'rgba(255,255,255,0)');
     ctx.fillStyle = gl; ctx.fillRect(gx, ry, gw, rh);
     ctx.restore();
-    // 페이라인 표시 (옆 보석 번호 + 당첨 줄 빛)
+    // 페이라인 (당첨 줄 빛; 줄 번호 보석은 drawReelUI 가 배율 없이 그린다)
     const rowY = (row) => ry + rh / 2 + (row - 1) * ROW_H;
     const lx = c.x + 18, rx = c.x + c.w - 18;
-    const GEM = [[rowY(1), rowY(1)], [rowY(0), rowY(0)], [rowY(2), rowY(2)], [ry + 12, ry + rh - 12], [ry + rh - 12, ry + 12]];
     for (let li = 0; li < 5; li++) {
       const L = LINES[li];
+      if (!this.wins.some((w) => w.li === li) || this.phase === 'spin') continue;
+      const [gl, gr] = this.gemY(li);
+      const a = 0.55 + 0.45 * Math.sin(this.showT * 9);
+      ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = a;
+      ctx.strokeStyle = LINE_COL[li]; ctx.lineWidth = 5; ctx.lineJoin = 'round'; ctx.shadowColor = LINE_COL[li]; ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.moveTo(lx + 8, gl);
+      for (let i = 0; i < 3; i++) ctx.lineTo(this.reelX(i) + rw / 2, rowY(L[i]));
+      ctx.lineTo(rx - 8, gr);
+      ctx.stroke(); ctx.restore();
+    }
+    // 당첨 표시기 바탕 (글자는 drawReelUI)
+    const my = ry + rh + 42, mw = c.w - 90;
+    ctx.fillStyle = '#050102'; rr(ctx, c.x + 45, my, mw, 28, 8); ctx.fill();
+    ctx.strokeStyle = '#6a4a24'; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+  /** 줄 li 의 왼쪽·오른쪽 보석 y (설계 좌표) */
+  gemY(li) {
+    const ry = this.cab.y + 84, rh = ROW_H * 3;
+    const rowY = (row) => ry + rh / 2 + (row - 1) * ROW_H;
+    return [[rowY(1), rowY(1)], [rowY(0), rowY(0)], [rowY(2), rowY(2)], [ry + 12, ry + rh - 12], [ry + rh - 12, ry + 12]][li];
+  }
+  /** 배율 없이 그리는 기계 UI: 줄 번호 보석 · 릴 정지 버튼(탭 영역 = 릴 + 버튼) · 당첨 표시 글자 */
+  drawReelUI(ctx, c, t) {
+    const L = this.L, k = L.k, rw = this.reelW, ry = c.y + 84, rh = ROW_H * 3;
+    // 줄 번호 보석
+    const lx = c.x + 18, rx = c.x + c.w - 18, gr = clamp(8 * k + 1, 7, 9);
+    for (let li = 0; li < 5; li++) {
       const won = this.wins.some((w) => w.li === li);
-      const [gl, gr] = GEM[li];
-      for (const [px, py] of [[lx, gl], [rx, gr]]) {
-        if (won) glow(ctx, px, py, 18, LINE_COL[li], 0.6);
+      const [yl, yr] = this.gemY(li);
+      for (const [dx, dy] of [[lx, yl], [rx, yr]]) {
+        const G = this.P(dx, dy);
+        if (won) glow(ctx, G.x, G.y, 18, LINE_COL[li], 0.6);
         ctx.fillStyle = won ? LINE_COL[li] : '#3a1a14';
-        ctx.beginPath(); ctx.arc(px, py, 8, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.arc(G.x, G.y, gr, 0, TAU); ctx.fill();
         ctx.strokeStyle = GOLD; ctx.lineWidth = 1.2; ctx.stroke();
-        text(ctx, String(li + 1), px, py + 4, { size: 10, align: 'center', weight: 900, family: FONT.num, color: won ? '#1a0a06' : '#c8a060', ow: 0 });
-      }
-      if (won && this.phase !== 'spin') {
-        const a = 0.55 + 0.45 * Math.sin(this.showT * 9);
-        ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = a;
-        ctx.strokeStyle = LINE_COL[li]; ctx.lineWidth = 5; ctx.lineJoin = 'round'; ctx.shadowColor = LINE_COL[li]; ctx.shadowBlur = 12;
-        ctx.beginPath();
-        ctx.moveTo(lx + 8, gl);
-        for (let i = 0; i < 3; i++) ctx.lineTo(this.reelX(i) + rw / 2, rowY(L[i]));
-        ctx.lineTo(rx - 8, gr);
-        ctx.stroke(); ctx.restore();
+        text(ctx, String(li + 1), G.x, G.y + 4, { size: 11, align: 'center', weight: 900, family: FONT.num, color: won ? '#1a0a06' : '#c8a060', ow: 0 });
       }
     }
     // 릴 정지 버튼
-    const by = ry + rh + 10;
+    const byD = ry + rh + 10;
+    const bw = Math.min(64, rw * k - 8), bh = 26;
     for (let i = 0; i < 3; i++) {
-      const r = this.reels[i], x = this.reelX(i) + rw / 2;
-      const active = r.state === 'spin';
+      const r = this.reels[i], active = r.state === 'spin';
+      const A = this.P(this.reelX(i) + 2, ry), B = this.P(this.reelX(i) + rw - 2, byD + 30);
+      const C = this.P(this.reelX(i) + rw / 2, byD + 13);
       // 탭 영역은 버튼과 그 위의 릴 전체 (버튼 그림은 작아도 손가락으로 쉽게 멈출 수 있게)
-      const br = this.hits.rect('stop' + i, this.reelX(i) + 2, ry, rw - 4, by + 30 - ry);
+      const br = this.hits.rect('stop' + i, A.x, A.y, B.x - A.x, Math.max(B.y, C.y + bh / 2 + 2) - A.y);
       this.hits.add('stop' + i, br, !active);
-      ctx.save();
       const pr = this.hits.pressed(br) && active;
-      ctx.fillStyle = 'rgba(0,0,0,0.5)'; rr(ctx, x - 32, by + 3, 64, 26, 13); ctx.fill();
-      const bgc = ctx.createLinearGradient(0, by, 0, by + 26);
+      const x = C.x, by = C.y - bh / 2;
+      ctx.save();
+      ctx.fillStyle = 'rgba(0,0,0,0.5)'; rr(ctx, x - bw / 2, by + 3, bw, bh, 13); ctx.fill();
+      const bgc = ctx.createLinearGradient(0, by, 0, by + bh);
       bgc.addColorStop(0, active ? '#ff4a5a' : '#4a2a2a'); bgc.addColorStop(1, active ? '#8a0a1a' : '#2a1414');
-      ctx.fillStyle = bgc; rr(ctx, x - 32, by + (pr ? 2 : 0), 64, 26, 13); ctx.fill();
+      ctx.fillStyle = bgc; rr(ctx, x - bw / 2, by + (pr ? 2 : 0), bw, bh, 13); ctx.fill();
       ctx.strokeStyle = active ? '#ffe7a0' : '#6a5030'; ctx.lineWidth = 1.5; ctx.stroke();
       if (active) glow(ctx, x, by + 13, 30, '#ff4050', 0.35 + 0.2 * Math.sin(t * 10 + i));
       text(ctx, '정지', x, by + 18 + (pr ? 2 : 0), { size: 13, align: 'center', weight: 900, color: active ? '#fff' : '#8a7060', ow: 2 });
       ctx.restore();
     }
-    // 당첨 표시기
-    const my = by + 32, mw = c.w - 90;
-    ctx.fillStyle = '#050102'; rr(ctx, c.x + 45, my, mw, 28, 8); ctx.fill();
-    ctx.strokeStyle = '#6a4a24'; ctx.lineWidth = 1.5; ctx.stroke();
+    // 당첨 표시 글자
+    const M = this.P(c.x + c.w / 2, ry + rh + 42 + 14), mw = (c.w - 100) * k;
     if (this.winAmt > 0 && this.phase !== 'spin') {
-      text(ctx, `WIN  ${fmt(this.meter)} G`, c.x + c.w / 2, my + 21, { size: 18, align: 'center', weight: 900, family: FONT.num, color: '#ffe070', ow: 3 });
-    } else text(ctx, this.msg, c.x + c.w / 2, my + 19, { size: 13.5, align: 'center', weight: 800, color: this.msgCol, ow: 2 });
+      text(ctx, `WIN  ${fmt(this.meter)} G`, M.x, M.y + 6, { size: 17, align: 'center', weight: 900, family: FONT.num, color: '#ffe070', ow: 3, maxWidth: mw });
+    } else text(ctx, this.msg, M.x, M.y + 5, { size: 13, align: 'center', weight: 800, color: this.msgCol, ow: 2, maxWidth: mw });
   }
   isWinCell(reel, k, frac) {
     if (!this.wins.length || this.phase === 'spin' || frac > 0.01) return false;
@@ -415,7 +434,9 @@ export class SlotScene extends MiniGame {
     ctx.strokeStyle = GOLD; ctx.lineWidth = 1.5; ctx.stroke();
     const len = 96, ang = lerp(-1.35, 0.45, a);
     const ex = x + 8 + Math.cos(ang) * len * 0.25, ey = y + 16 + Math.sin(ang) * len;
-    const hr = this.hits.rect('lever', x - 10, y - 110, 50, 170);
+    // 탭 영역은 화면 좌표로 (이 함수는 배율 공간에서 그린다)
+    const A = this.P(x - 10, y - 110), k = this.L.k, lw = Math.max(50 * k, this.tapMin + 2);
+    const hr = this.hits.rect('lever', A.x + 25 * k - lw / 2, A.y, lw, 170 * k);
     this.hits.add('lever', hr, this.phase !== 'ready' && this.phase !== 'spin');
     ctx.strokeStyle = '#c8ccd8'; ctx.lineWidth = 6; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(x + 5, y + 16); ctx.lineTo(ex, ey); ctx.stroke();
@@ -431,27 +452,29 @@ export class SlotScene extends MiniGame {
   drawPayTable(ctx, x, y, w, h) {
     if (w < 150) return;
     gPanel(ctx, x, y, w, h, { a: 0.84 });
-    text(ctx, '배당표', x + w / 2, y + 26, { size: 15, align: 'center', weight: 800, family: FONT.title, color: GOLD, ow: 3 });
-    text(ctx, '한 줄에 같은 문양 셋', x + w / 2, y + 43, { size: 10.5, align: 'center', weight: 600, color: '#9d8f80', ow: 2 });
+    const c = h < 260; // 좁은 화면: 부제를 빼고 줄 간격을 줄인다
+    text(ctx, '배당표', x + w / 2, y + (c ? 22 : 26), { size: 15, align: 'center', weight: 800, family: FONT.title, color: GOLD, ow: 3 });
+    if (!c) text(ctx, '한 줄에 같은 문양 셋', x + w / 2, y + 43, { size: 11, align: 'center', weight: 600, color: '#9d8f80', ow: 2 });
     const order = ['seven', 'grail', 'moon', 'cross', 'heart', 'bat', 'skull'];
-    const rowH = (h - 64) / order.length;
+    const top = c ? 32 : 56, rowH = (h - top - 8) / order.length, ss = Math.min(26, rowH + 2);
     order.forEach((s, i) => {
-      const yy = y + 56 + i * rowH;
+      const yy = y + top + i * rowH;
       const spr = slotSprite(s);
       const hit = this.wins.some((wn) => wn.sym === s) && this.showT < 3;
       if (hit) { ctx.fillStyle = 'rgba(255,208,96,0.16)'; rr(ctx, x + 8, yy, w - 16, rowH - 2, 6); ctx.fill(); }
-      for (let k = 0; k < 3; k++) ctx.drawImage(spr, x + 12 + k * 21, yy + rowH / 2 - 13, 26, 26);
-      const m = s === 'seven' ? `×${PAY[s]}` : `×${PAY[s]}`;
-      text(ctx, m, x + w - 14, yy + rowH / 2 + 6, { size: 16, align: 'right', weight: 900, family: FONT.num, color: s === 'seven' ? '#ff6a7a' : '#ffe7a0', ow: 3 });
-      if (s === 'seven') text(ctx, `가운데 ×${JACKPOT}`, x + w - 14, yy + rowH / 2 + 18, { size: 9.5, align: 'right', weight: 800, color: '#ffe070', ow: 2 });
+      for (let k = 0; k < 3; k++) ctx.drawImage(spr, x + 12 + k * (ss * 0.8), yy + rowH / 2 - ss / 2, ss, ss);
+      const seven = s === 'seven', two = seven && rowH >= 30;
+      text(ctx, `×${PAY[s]}`, x + w - 14, yy + rowH / 2 + (two ? 1 : 6), { size: rowH < 24 ? 14 : 16, align: 'right', weight: 900, family: FONT.num, color: seven ? '#ff6a7a' : '#ffe7a0', ow: 3 });
+      if (seven) text(ctx, `가운데 ×${JACKPOT}`, two ? x + w - 14 : x + w - 58, yy + rowH / 2 + (two ? 14 : 5), { size: 11, align: 'right', weight: 800, color: '#ffe070', ow: 2 });
     });
   }
   drawSide(ctx, x, y, w, h) {
     if (w < 140) return;
     gPanel(ctx, x, y, w, h, { a: 0.84 });
     text(ctx, '최근 당첨', x + w / 2, y + 26, { size: 15, align: 'center', weight: 800, family: FONT.title, color: GOLD, ow: 3 });
-    if (!this.recent.length) text(ctx, '아직 없음', x + w / 2, y + 80, { size: 13, align: 'center', weight: 600, color: '#7a6a5a', ow: 2 });
-    this.recent.forEach((r, i) => {
+    if (!this.recent.length) text(ctx, '아직 없음', x + w / 2, y + Math.min(80, h / 2), { size: 13, align: 'center', weight: 600, color: '#7a6a5a', ow: 2 });
+    const nRows = clamp(Math.floor((h - 44 - 44) / 34), 1, 5);
+    this.recent.slice(0, nRows).forEach((r, i) => {
       const yy = y + 44 + i * 34;
       ctx.fillStyle = i === 0 ? 'rgba(232,200,114,0.14)' : 'rgba(0,0,0,0.25)'; rr(ctx, x + 10, yy, w - 20, 30, 6); ctx.fill();
       ctx.drawImage(slotSprite(r.sym), x + 14, yy + 2, 26, 26);
@@ -463,20 +486,20 @@ export class SlotScene extends MiniGame {
     text(ctx, `잭팟 ${b.slotJackpots ?? 0}회 · 스핀 ${this.spins}`, x + w / 2, y + h - 14, { size: 11.5, align: 'center', weight: 700, color: '#9d8f80', ow: 2 });
   }
   drawBottom(ctx) {
-    const vw = this.vw, spinning = this.phase === 'spin';
-    const y = 420;
-    const bw = 190;
+    const vw = this.vw, spinning = this.phase === 'spin', L = this.L;
+    const y = L.py, ph = L.ph;
+    const bw = 190, bh = Math.max(62, this.bh(56));
     const pw = Math.min(vw - 32, 700), px = vw / 2 - pw / 2;
-    gPanel(ctx, px, y, pw, 110, { a: 0.82, r: 14 });
+    gPanel(ctx, px, y, pw, ph, { a: 0.82, r: 14 });
     const chipsW = pw - bw - 40;
     ctx.save();
     if (spinning) ctx.globalAlpha = 0.45;
-    this.drawBetBar(ctx, px + 20 + chipsW / 2, y + 62, { r: 23 });
+    this.drawBetBar(ctx, px + 20 + chipsW / 2, y + ph / 2 + 7, { r: 23, maxW: chipsW });
     ctx.restore();
-    const r = this.hits.rect('spin', px + pw - bw - 16, y + 24, bw, 62);
+    const r = this.hits.rect('spin', px + pw - bw - 16, y + (ph - bh) / 2, bw, bh);
     const can = spinning || this.free || this.st.gold >= this.bet;
     this.hits.add('spin', r, !can);
     const allStopping = spinning && this.reels.every((rl) => rl.state !== 'spin');
-    drawBtn(ctx, r, spinning ? '정지!' : '스핀!', { tone: spinning ? 'gold' : 'crimson', size: 24, sub: spinning ? '릴을 하나씩 멈춰요' : this.free ? '무료 한 판' : `${fmt(this.bet)} G`, key: 'Z', disabled: !can || allStopping, hot: this.hits.over(r), pressed: this.hits.pressed(r), pulse: !spinning && can, t: this.clock });
+    drawBtn(ctx, r, spinning ? '정지!' : '스핀!', { tone: spinning ? 'gold' : 'crimson', size: 24, sub: spinning ? '릴을 하나씩 멈춰요' : this.free ? '무료 한 판' : `${fmt(this.bet)} G`, key: 'confirm', disabled: !can || allStopping, hot: this.hits.over(r), pressed: this.hits.pressed(r), pulse: !spinning && can, t: this.clock });
   }
 }

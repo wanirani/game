@@ -1,10 +1,18 @@
-# 블러드 녹턴 Netlify 배포 설정
-# - 저장소 루트가 그대로 정적 사이트다 (빌드 단계 없음, ES 모듈을 그대로 배포)
-# - 계정·클라우드 저장 API: netlify/functions/api.mts → /api/* (자세한 내용은 docs/ACCOUNTS.md)
-# - 비밀 값은 Netlify 환경 변수로만 설정한다 (선택: AUTH_PEPPER)
+# 블러드 녹턴 Netlify 배포 설정 — owner: DELIVERY-WEB (platform §9.2, MASTER_PLAN §1.20)
+#
+# 게시하는 것은 허용 목록으로 만든 dist/web 뿐이다 (서명 키·개발 도구·문서가 절대 올라가지 않게, P-08).
+#   · Git 연동 빌드 / netlify deploy --build : 아래 [build] 명령이 dist/web 을 만든다.
+#   · 이미 만든 결과를 올릴 때(Netlify MCP 등): node tools/deploy/build_web.mjs 가 만든 dist/deploy/ 를 올린다
+#     (그 안의 netlify.toml 은 publish = "web" 이고 빌드 명령이 없다). 자세한 절차: tools/deploy/README.md
+#   · 절대 저장소 루트(--dir .)를 올리지 않는다.
+# 계정·클라우드 저장 API: netlify/functions/api.mts → /api/* (함수의 config.path, docs/ACCOUNTS.md).
+#   CORS(안드로이드 앱 출처 https://appassets.androidplatform.net)·API 보안 헤더는 함수(netlify/lib/router.mts, http.mts)가 붙인다.
+# 비밀 값: 환경 변수 AUTH_PEPPER (선택, 범위 Functions) — 배포 담당이 Netlify 사이트 설정에서 넣는다. 한 번 넣은 뒤 바꾸거나 지우면
+#   그 뒤로 해시된 계정은 로그인할 수 없다 (docs/ACCOUNTS.md §6). 이 파일·저장소에는 절대 적지 않는다.
 
 [build]
-  publish = "."
+  command = "node tools/deploy/build_web.mjs --no-apk --no-deploy-bundle"
+  publish = "dist/web"
 
 [build.environment]
   # @netlify/blobs 11 은 Node.js 22.12 이상이 필요하다 (함수 런타임도 이 버전을 따른다)
@@ -12,90 +20,27 @@
 
 [functions]
   directory = "netlify/functions"
+  node_bundler = "esbuild"
 
-# ── 공개하지 않을 개발용 파일 (정적 사이트에 필요 없음) ──
-# force = true 라 파일이 있어도 404 를 돌려준다. 서명 키 같은 로컬 파일이 실수로 올라가도 노출되지 않게 한다.
-[[redirects]]
-  from = "/node_modules/*"
-  to = "/404.html"
-  status = 404
-  force = true
-
-[[redirects]]
-  from = "/netlify/*"
-  to = "/404.html"
-  status = 404
-  force = true
-
-[[redirects]]
-  from = "/tools/*"
-  to = "/404.html"
-  status = 404
-  force = true
-
-[[redirects]]
-  from = "/android/*"
-  to = "/404.html"
-  status = 404
-  force = true
-
-[[redirects]]
-  from = "/docs/*"
-  to = "/404.html"
-  status = 404
-  force = true
-
-[[redirects]]
-  from = "/dist/*"
-  to = "/404.html"
-  status = 404
-  force = true
-
-[[redirects]]
-  from = "/package.json"
-  to = "/404.html"
-  status = 404
-  force = true
-
-[[redirects]]
-  from = "/package-lock.json"
-  to = "/404.html"
-  status = 404
-  force = true
-
-[[redirects]]
-  from = "/netlify.toml"
-  to = "/404.html"
-  status = 404
-  force = true
-
-# 점(.)으로 시작하는 파일은 Netlify 가 배포하지 않지만, 로컬에서 올릴 때를 대비해 저장소 기록도 막아 둔다 (/.well-known 은 건드리지 않음)
-[[redirects]]
-  from = "/.git/*"
-  to = "/404.html"
-  status = 404
-  force = true
-
-# ── 보안 헤더 (모든 정적 파일) ──
-# 스크립트: index.html 의 인라인 스크립트(전체화면 버튼·서비스 워커 등록) 때문에 'unsafe-inline' 이 필요하다.
-# 글꼴: 게임은 assets/fonts 의 자체 글꼴을 쓰지만 Google Fonts 도 허용해 둔다.
-# API 는 같은 출처(/api/*)만 호출하므로 connect-src 'self' 로 충분하다 (CORS 헤더를 두지 않는다).
+# ── 보안 헤더 (모든 정적 파일; 함수 응답에는 적용되지 않는다) ──
+# 스크립트: 인라인 스크립트가 없다 (부팅 관문 src/boot-gate.js, 빌드 정보 build-info.js, 나머지는 모듈) → script-src 'self'.
+# 스타일: account.js 가 <style> 을 넣고 캔버스 코드가 element.style 을 바꾸므로 style-src 에 'unsafe-inline' 이 필요하다.
+# 글꼴은 모두 assets/fonts (자체 파일). 그림은 팩·캔버스용 data:/blob:. API 는 같은 출처(/api/*)만 부른다.
 # 로그인 토큰이 localStorage/sessionStorage 에 있으므로 XSS 는 곧 토큰 탈취다 — CSP 를 느슨하게 만들지 말 것.
-# (API 응답 자체의 보안 헤더는 netlify/lib/http.mts 가 붙인다: 이 [[headers]] 는 정적 파일에만 적용된다)
-# HSTS 는 includeSubDomains 없이 (사용자 도메인의 다른 하위 도메인에 영향을 주지 않게)
+# HSTS 는 includeSubDomains 없이 (사용자 도메인의 다른 하위 도메인에 영향을 주지 않게). COOP 는 계정 창 분리용.
 [[headers]]
   for = "/*"
   [headers.values]
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+    Permissions-Policy = "gamepad=(self), fullscreen=(self), screen-wake-lock=(self), autoplay=(self), camera=(), microphone=(), geolocation=(), payment=(), usb=()"
     Cross-Origin-Opener-Policy = "same-origin"
     Strict-Transport-Security = "max-age=31536000"
     X-Frame-Options = "SAMEORIGIN"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; media-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
 
 # ── 캐시 ──
-# 코드·문서: 매번 재검증 (ETag 로 바뀐 것만 받는다)
+# 문서·빌드 정보·워커: 매번 재검증
 [[headers]]
   for = "/"
   [headers.values]
@@ -107,68 +52,70 @@
     Cache-Control = "no-cache"
 
 [[headers]]
-  for = "/src/*"
-  [headers.values]
-    Cache-Control = "no-cache"
-
-[[headers]]
-  for = "/css/*"
-  [headers.values]
-    Cache-Control = "no-cache"
-
-[[headers]]
   for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+    Service-Worker-Allowed = "/"
+
+[[headers]]
+  for = "/build.json"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/build-info.js"
   [headers.values]
     Cache-Control = "no-cache"
 
 [[headers]]
   for = "/manifest.webmanifest"
   [headers.values]
+    Content-Type = "application/manifest+json"
+    Cache-Control = "public, max-age=3600"
+
+# 같은 경로에 규칙 두 개가 맞으면 Netlify 는 같은 이름의 헤더 값을 이어 붙인다 → Cache-Control 규칙은 서로 겹치지 않게 둔다.
+# 코드: index.html 이 ?v=<내용 해시> 를 붙여 부르지만 경로는 그대로라 재검증 (ETag). 재방문은 서비스 워커가 바로 준다.
+# (--no-bundle 빌드의 src/ 모듈은 규칙이 없어 Netlify 기본값 = 재검증)
+[[headers]]
+  for = "/src/boot-gate.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/css/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# 번들 조각: 폴더 이름이 내용 해시라 같은 주소의 내용은 절대 바뀌지 않는다 → 1년
+[[headers]]
+  for = "/src/bundle/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# 그림·글꼴: 파일 이름에 해시가 없고(assets.js 는 ?v=2 만 붙인다) 새 배포에서 같은 이름으로 바뀔 수 있으므로 재검증.
+# (한 주 캐시하면 아틀라스 그림과 리그 JSON 이 서로 다른 배포 것으로 섞일 수 있다.) 재방문 속도는 서비스 워커(bn-assets-v1)가 맡는다.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# 안드로이드 앱 내려받기 (/apk, /download → _redirects 가 최신 APK 로 보낸다)
+[[headers]]
+  for = "/downloads/*.apk"
+  [headers.values]
+    Content-Type = "application/vnd.android.package-archive"
+    Content-Disposition = "attachment"
+    Cache-Control = "public, max-age=300"
+    X-Robots-Tag = "noindex"
+
+[[headers]]
+  for = "/downloads/latest.json"
+  [headers.values]
+    Content-Type = "application/json; charset=utf-8"
     Cache-Control = "no-cache"
 
-# 이미지: src/core/assets.js 가 항상 ?v=<버전> 을 붙여 요청하므로 1년 캐시 (그림을 바꾸면 assets.js 의 version 을 올린다)
+# 계정 API: 함수가 no-store 등을 직접 붙인다 (정적 헤더는 함수 응답에 적용되지 않지만 규칙을 문서로 남긴다)
 [[headers]]
-  for = "/assets/bg/*"
+  for = "/api/*"
   [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-
-[[headers]]
-  for = "/assets/portraits/*"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-
-[[headers]]
-  for = "/assets/tex/*"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-
-[[headers]]
-  for = "/assets/cg/*"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-
-[[headers]]
-  for = "/assets/icons/*"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-
-[[headers]]
-  for = "/assets/props/*"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-
-# ?v= 없이 요청되는 파일(글꼴: css/style.css·index.html, 앱 아이콘: manifest)은 짧게
-[[headers]]
-  for = "/assets/fonts/*"
-  [headers.values]
-    Cache-Control = "public, max-age=604800, stale-while-revalidate=86400"
-
-[[headers]]
-  for = "/assets/ui/*"
-  [headers.values]
-    Cache-Control = "public, max-age=86400"
-
-[[headers]]
-  for = "/assets/audio/*"
-  [headers.values]
-    Cache-Control = "public, max-age=86400"
+    Cache-Control = "no-store"

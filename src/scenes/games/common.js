@@ -853,12 +853,19 @@ export class MiniGame extends Scene {
     text(ctx, inRound && this.roundFree ? '무료 판 진행 중' : bt, vw - 20, 68, { size: 13, align: 'right', weight: 700, color: this.free || this.roundFree ? '#7affd8' : '#e8d8b0', ow: 3 });
     if (session.games > 0) text(ctx, `오늘 ${session.net >= 0 ? '+' : ''}${fmt(session.net)} G`, vw - 20, 86, { size: 12, align: 'right', weight: 700, color: session.net >= 0 ? '#9af09a' : '#ff9a9a', ow: 3 });
   }
+  /** 판돈 칩 하나의 칸 폭 (= 탭 영역 폭; 터치·휴대폰은 44 CSS px 이상) */
+  chipGap(r = 23) {
+    const big = input.touchMode || this.tapMin > 44;
+    return Math.max(r * 2 + (big ? 10 : 12), big ? this.tapMin : 0);
+  }
+  /** 판돈 칩 줄 전체 폭 */
+  betBarW(r = 23) { return this.betOptions().length * this.chipGap(r); }
   /** 판돈 칩 줄 (ready 단계용). cx 중심, y 칩 중심. 반환: 칩 줄이 차지한 폭 */
   drawBetBar(ctx, cx, y, { r = 24, label = true, maxW = Infinity } = {}) {
     const opts = this.betOptions();
     // 칩 사이 = 탭 영역 폭. 손가락 크기(44 CSS px) 이상이 되게 넓히되, 주어진 폭(maxW)은 넘지 않는다
     const big = input.touchMode || this.tapMin > 44;
-    let gap = Math.max(r * 2 + (big ? 20 : 12), big ? this.tapMin : 0);
+    let gap = this.chipGap(r);
     if (opts.length * gap > maxW) gap = Math.max(r * 2 + 6, maxW / opts.length);
     const x0 = cx - ((opts.length - 1) * gap) / 2;
     if (label) {
