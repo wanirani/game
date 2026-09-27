@@ -51,38 +51,59 @@ export function drawHUD(ctx, world, vw, vh) {
   if (world.companions) { if (!cr) NO_RECTS.length = 0; try { world.companions.hudRects = cr || NO_RECTS; } catch { /* 읽기 전용이면 동료 쪽이 직접 관리 */ } } // [hook:cmp]
   drawScore(ctx, L.score, world, hero, p, run, T);
   // 콤보·스타일 열 (L.combo). 튀기기·박힘 첫 프레임은 칸 위·왼쪽으로 잠깐 넘치므로 다른 영역(점수·동료 카드 줄 등) 위에는 그리지 않게 자른다
-  const cc = comboClip(L);
+  const cc = avoidClip(L, 'combo');
   if (cc) { ctx.save(); ctx.clip(cc, 'evenodd'); }
   drawComboHUD(ctx, world, vw, vh, T); // [hook:feel]
   if (cc) ctx.restore();
   if (L.bossShown) drawBossBar(ctx, L.bossBar, world.boss);
   // 알림 칸 하나: 배너(스테이지 제목·STAGE CLEAR·LEVEL UP …)가 이긴다. 배너가 없을 때만 알림을 그린다
+  // (알림 단어가 2.2배로 박히는 첫 프레임은 칸 위로 16 px 까지 넘친다 → 토스트 줄·다른 영역은 빼고 자른다)
   if (world.banner) drawBanner(ctx, L.transient, world, world.banner);
-  else drawAnnouncer(ctx, world, vw, vh); // [hook:feel]
+  else if (world.style?.ann?.cur) { // [hook:feel]
+    const ac = avoidClip(L, 'transient');
+    if (ac) { ctx.save(); ctx.clip(ac, 'evenodd'); }
+    drawAnnouncer(ctx, world, vw, vh); // [hook:feel]
+    if (ac) ctx.restore();
+  }
   ctx.restore();
 }
 
 /**
- * 콤보 열 클립: 화면 전체에서 다른 영역(상시 영역·게이지 줄·토스트 줄·보스 바·알림 칸)을 뺀 경로 (evenodd; 영역끼리는 겹치지 않는다 —
- * tools/test_hud_layout.mjs). 콤보 열 자신은 빼지 않으므로 평소 그림은 그대로이고, 연출이 넘친 부분만 잘린다. 배치 L 마다 한 번 만든다
+ * 연출이 칸 밖으로 잠깐 넘치는 위젯(콤보 열·알림)의 클립: 넘칠 수 있는 범위(REACH)에 걸리는 다른 영역(상시 영역·게이지 줄·토스트 줄·
+ * 보스 바·알림 칸)만 화면 전체에서 뺀 경로 (evenodd; 영역끼리는 겹치지 않는다 — tools/test_hud_layout.mjs). 걸리는 영역이 없으면 null
+ * (클립 없음). self 칸은 빼지 않으므로 평소 그림은 그대로이고, 넘친 부분 중 다른 영역에 닿는 곳만 잘린다.
+ * (배치 L, self)마다 한 번 만든다 — 매 프레임 할당 없음
+ *  combo: feel_hud 는 튀기기·랭크 글자·이정표 박힘을 칸 위·왼쪽으로 넘치게 둔다 (재 보니 ≤ 12 px) → 위·왼쪽 32 px, 오른쪽 6 px
+ *  transient: 알림 단어 2.2배 박힘 — feel_hud 클립 (가로 ± 6, 위 16, 아래 6 px)
  */
-const COMBO_AVOID = ['portrait', 'vitals', 'hearts', 'skills', 'ult', 'awGauge', 'ready', 'companions', 'callouts', 'score', 'transient'];
-let ccL = null, ccPath = null;
-function comboClip(L) {
-  if (L === ccL) return ccPath;
-  ccL = L; ccPath = null;
-  if (typeof Path2D !== 'function') return null;
-  try {
-    const p = new Path2D();
-    p.rect(0, 0, L.vw, L.vh);
-    const add = (r) => { if (r && r.w > 0 && r.h > 0) p.rect(r.x, r.y, r.w, r.h); };
-    for (const k of COMBO_AVOID) add(L[k]);
+const AVOID = ['portrait', 'vitals', 'hearts', 'skills', 'ult', 'awGauge', 'ready', 'companions', 'callouts', 'score', 'combo', 'transient'];
+const REACH = { combo: { l: 32, t: 32, r: 6, b: 0 }, transient: { l: 6, t: 16, r: 6, b: 6 } };
+let acL = null;
+const acPath = new Map();
+function avoidClip(L, self) {
+  if (L !== acL) { acL = L; acPath.clear(); }
+  let p = acPath.get(self);
+  if (p !== undefined) return p;
+  p = null;
+  const me = L[self], e = REACH[self];
+  if (me && e && typeof Path2D === 'function') {
+    const bx = me.x - e.l, by = me.y - e.t, bw = me.w + e.l + e.r, bh = me.h + e.t + e.b;
+    const near = [];
+    const add = (r) => { if (r && r.w > 0 && r.h > 0 && r.x < bx + bw && bx < r.x + r.w && r.y < by + bh && by < r.y + r.h) near.push(r); };
+    for (const k of AVOID) if (k !== self) add(L[k]);
     for (let i = 0; i < (L.meterRows ?? 3); i++) add(L.meter(i));
     if (L.toastRows > 0) add(L.toastArea);
     if (L.bossShown) add(L.bossBar);
-    ccPath = p;
-  } catch { ccPath = null; }
-  return ccPath;
+    if (near.length) {
+      try {
+        p = new Path2D();
+        p.rect(0, 0, L.vw, L.vh);
+        for (const r of near) p.rect(r.x, r.y, r.w, r.h);
+      } catch { p = null; }
+    }
+  }
+  acPath.set(self, p);
+  return p;
 }
 
 /** companion_hud 에 넘기는 칸 (배치 L 이 바뀔 때만 새로 만든다 — 매 프레임 할당 없음) */
@@ -117,9 +138,13 @@ export function drawHUDPart(ctx, world, vw, vh, part) {
     case 'awGauge': r = drawAwGauge(ctx, world, L.awGauge.x, L.awGauge.y, L.awGauge.w, T); break;
     case 'companions': r = drawCompanionHUD(ctx, world, cmpOpts(L, T)); break;
     case 'score': drawScore(ctx, L.score, world, hero, p, run, T); break;
-    case 'combo': { const cc = comboClip(L); if (cc) ctx.clip(cc, 'evenodd'); r = drawComboHUD(ctx, world, vw, vh, T); break; }
+    case 'combo': { const cc = avoidClip(L, 'combo'); if (cc) ctx.clip(cc, 'evenodd'); r = drawComboHUD(ctx, world, vw, vh, T); break; }
     case 'boss': if (L.bossShown) drawBossBar(ctx, L.bossBar, world.boss); break;
-    case 'transient': r = world.banner ? (drawBanner(ctx, L.transient, world, world.banner), 'banner') : drawAnnouncer(ctx, world, vw, vh); break;
+    case 'transient': {
+      if (world.banner) { drawBanner(ctx, L.transient, world, world.banner); r = 'banner'; break; }
+      const ac = avoidClip(L, 'transient'); if (ac) ctx.clip(ac, 'evenodd');
+      r = drawAnnouncer(ctx, world, vw, vh); break;
+    }
     default: break;
   }
   ctx.restore();
