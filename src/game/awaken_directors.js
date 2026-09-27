@@ -276,7 +276,10 @@ if (typeof window !== 'undefined' && typeof setTimeout === 'function') {
   setTimeout(() => {
     try {
       bus.on('stageEntered', schedulePrewarm);
-      bus.on('roomEntered', () => { const p = game?.world?.player; if (p?.hero && PREP.key !== `${p.hero.charId}|${p.hero.classId}`) schedulePrewarm(); });
+      bus.on('roomEntered', () => {
+        for (const L of [...LIVE]) L.check();   // 방이 바뀌어 감독 엔티티가 end 없이 버려졌으면 뒷정리
+        const p = game?.world?.player; if (p?.hero && PREP.key !== `${p.hero.charId}|${p.hero.classId}`) schedulePrewarm();
+      });
       bus.on('classChanged', () => { PREP.key = null; schedulePrewarm(); });
     } catch (e) { console.warn('[awaken-dir-a] bus', e); }
     schedulePrewarm();
@@ -284,6 +287,8 @@ if (typeof window !== 'undefined' && typeof setTimeout === 'function') {
 }
 
 // ═══════════════════════════ 감독 문맥 · 타격 · 틀 ═══════════════════════════
+/** 진행 중인 감독 (방 이동으로 엔티티가 버려졌을 때 roomEntered 에서 뒷정리하려고) */
+const LIVE = new Set();
 function mkCtx(p, w, v, name) {
   const K = FXKIT;
   const W0 = Array.isArray(v?.data?.mvWeights) ? v.data.mvWeights : [];
@@ -349,9 +354,11 @@ function director(D, o) {
   });
   const rear = o.rear ? K.fx(w, { life: o.dur, z: 9.6, follow: bound, draw(ctx, e) { try { o.rear(ctx, e); } catch (err) { fail(D, err); } } }) : null;
   let ended = false;
+  const live = { check() { if (!w.entities.includes(ent) || game?.world !== w) finish(ent, w); } };
   const finish = (e, ww) => {
     if (ended) return;
     ended = true;
+    LIVE.delete(live);
     back.dead = true; if (rear) rear.dead = true;
     try { o.end?.(e, ww); } catch (err) { fail(D, err); }
     if (D.cine) { try { cam.cineEnd?.(0.4); } catch { /* 카메라 없음 */ } D.cine = false; }
@@ -372,7 +379,8 @@ function director(D, o) {
     light(L, e) { try { o.light?.(L, e); } catch { /* 조명 실패는 무시 */ } },
     end(e, ww) { finish(e, ww); },
   });
-  // 방이 바뀌며 엔티티가 end 없이 버려지거나 awaken.js 가 먼저 끝내도 뒷정리는 한 번 (월드 층은 loadRoom 이 비운다)
+  // 방이 바뀌며 엔티티가 end 없이 버려지거나 awaken.js 가 먼저 끝내도 뒷정리는 한 번 (월드 층은 loadRoom 이 비운다 → roomEntered 에서 LIVE 로)
+  LIVE.add(live);
   const watch = w.addOverlay?.({ draw() {}, update() { if (ended) { this.dead = true; return; } if (!w.entities.includes(ent)) { this.dead = true; finish(ent, w); } } });
   void watch;
   if (o.screen) K.holdOverlay(w, ent, function (ctx, vw, vh) { try { o.screen(ctx, vw, vh, ent); } catch (err) { fail(D, err); } });

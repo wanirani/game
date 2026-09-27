@@ -125,7 +125,7 @@ export class PartyScene extends Scene {
       const w = findItem(st, hero.equip?.weapon);
       if (w) text(ctx, nameOf(w), wx, dy + 70, { size: 12, color: COLORS.rarity[w.rarity ?? 0], maxWidth: vw - m - wx - 16 });
       bar(ctx, wx, dy + 80, Math.min(160, vw - m - wx - 20), 5, hero.exp / expToNext(hero.level), { color: '#e8c872', shine: false });
-    } else if (e.open) text(ctx, '새 동료 — 선택하면 합류한다', sx + 150, dy + 40, { size: 13, weight: 700, color: '#8ae0a0' });
+    } else if (e.open) text(ctx, '새 헌터 — 선택하면 합류한다', sx + 150, dy + 40, { size: 13, weight: 700, color: '#8ae0a0' });
     // 버튼
     // 버튼·키 안내는 화면 아래 끝에 잘리지 않도록 (안내 기준선 vh-8, 허브와 같음)
     this.actRect = tz('act', { x: vw / 2 - 170, y: vh - 76, w: 340, h: 46 });
