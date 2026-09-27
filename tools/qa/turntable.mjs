@@ -32,7 +32,7 @@ const suite = new Suite('turntable');
 const env = await openEnv();
 const TABS = ['status', 'equip', 'class'];
 const PI = Math.PI, DEG = PI / 180;
-const G = { id: 'PLAT-TURNTABLE', gate: 'PLAT-TURNTABLE' };
+const G = { pkg: 'PLAT-TURNTABLE', gate: 'PLAT-TURNTABLE' };
 const SHOT_DIR = path.join(REPORT_DIR, 'shots', 'turntable');
 
 /** Menu on `tab` (stage s02, rich seed). Waits until the hero's painted views are ready (or 12 s). */
@@ -56,6 +56,7 @@ async function freeze(s) {
   await s.eval(() => {
     if (window.__ttc) return;
     const realNow = performance.now.bind(performance);
+    window.__realRaf = window.requestAnimationFrame.bind(window);
     const C = { vt: realNow(), q: [] };
     performance.now = () => C.vt;
     window.requestAnimationFrame = (cb) => { C.q.push(cb); return C.q.length; };
@@ -66,6 +67,9 @@ async function freeze(s) {
   await step(s, 3);
 }
 const step = (s, n = 1) => s.eval((n) => window.__ttc.step(n), n);
+/** Chrome delivers mouse moves and wheel events aligned to its own (native) frames: wait for one before stepping. */
+const flush = (s) => s.eval(() => new Promise((r) => window.__realRaf(() => setTimeout(r, 0))));
+const mmove = async (s, x, y) => { await s.page.mouse.move(x, y); await flush(s); };
 /** HeroView state of the current tab (+ stage rect in client CSS px). */
 function view(s) {
   return s.eval(() => {
@@ -114,19 +118,22 @@ try {
     await suite.group('drag', async () => {
       await rest(s); await step(s, 2);
       const a = await view(s);
-      const cx = a.rect.x + a.rect.w * 0.3, cy = a.rect.y + a.rect.h * 0.55, dx = 1.1 * a.rect.w;
-      await s.page.mouse.move(cx, cy); await step(s, 1);
-      await s.page.mouse.down(); await step(s, 2);
-      for (let i = 1; i <= 24; i++) { await s.page.mouse.move(cx + (dx * i) / 24, cy); await step(s, 1); }
+      // drag toward the open side of the screen (the game reads pointer moves over the canvas only)
+      const vw = await s.eval(() => innerWidth);
+      const dir = a.rect.x + a.rect.w / 2 + 1.1 * a.rect.w < vw - 8 ? 1 : -1;
+      const cx = a.rect.x + a.rect.w * (dir > 0 ? 0.3 : 0.7), cy = a.rect.y + a.rect.h * 0.55, dx = 1.1 * a.rect.w * dir;
+      await mmove(s, cx, cy); await step(s, 1);
+      await s.page.mouse.down(); await flush(s); await step(s, 2);
+      for (let i = 1; i <= 24; i++) { await mmove(s, cx + (dx * i) / 24, cy); await step(s, 1); }
       await step(s, 10);                                         // hold still ≥ 80 ms → no fling
       const mid = await view(s);
-      await s.page.mouse.up(); await step(s, 2);
+      await s.page.mouse.up(); await flush(s); await step(s, 2);
       await settle(s);
       const b = await view(s);
       const turned = b.yaw - a.yaw;
       await suite.check({ id: `drag.${tab}`, group: 'drag', ...G, title: `${tab}: mouse drag of 1.1 × stage width rotates 180° ± 10°`, session: s }, async () => ({
-        pass: a.full ? Math.abs(Math.abs(turned) - PI) <= 10 * DEG && turned < 0 : Math.abs(Math.abs(turned) - PI) <= 10 * DEG,
-        detail: `stage ${a.rect.uw.toFixed(0)} UI px, drag ${dx.toFixed(0)} CSS px → while held ${d(mid.yaw - a.yaw)}, settled ${d(turned)} (mode ${b.mode}, view '${b.label}')`,
+        pass: Math.abs(Math.abs(turned) - PI) <= 10 * DEG && Math.sign(turned) === -dir,
+        detail: `stage ${a.rect.uw.toFixed(0)} UI px, drag ${dx.toFixed(0)} CSS px (${dir > 0 ? 'right' : 'left'}) → while held ${d(mid.yaw - a.yaw)}, settled ${d(turned)} (mode ${b.mode}, view '${b.label}')`,
       }));
     }, { closeSessions: async () => {} });
 
@@ -134,10 +141,10 @@ try {
       await rest(s); await step(s, 2);
       const a = await view(s);
       const cx = a.rect.x + a.rect.w * 0.25, cy = a.rect.y + a.rect.h * 0.55;
-      await s.page.mouse.move(cx, cy); await step(s, 1);
-      await s.page.mouse.down(); await step(s, 1);
-      for (let i = 1; i <= 5; i++) { await s.page.mouse.move(cx + i * 36, cy); await step(s, 1); }
-      await s.page.mouse.up(); await step(s, 1);
+      await mmove(s, cx, cy); await step(s, 1);
+      await s.page.mouse.down(); await flush(s); await step(s, 1);
+      for (let i = 1; i <= 5; i++) { await mmove(s, cx + i * 36, cy); await step(s, 1); }
+      await s.page.mouse.up(); await flush(s); await step(s, 1);
       const rel = await view(s);
       let frames = 1, b = rel;
       while (frames < 150) { await step(s, 3); frames += 3; b = await view(s); if (b.mode === 'idle' && onStep(b.yaw, b.step)) break; }
@@ -181,15 +188,15 @@ try {
     await suite.group('wheel', async () => {
       await rest(s); await step(s, 2);
       const a = await view(s);
-      await s.page.mouse.move(a.rect.x + a.rect.w / 2, a.rect.y + a.rect.h / 2); await step(s, 2);
-      await s.page.mouse.wheel(0, 100); await step(s, 12);
+      await mmove(s, a.rect.x + a.rect.w / 2, a.rect.y + a.rect.h / 2); await step(s, 2);
+      await s.page.mouse.wheel(0, 100); await flush(s); await flush(s); await step(s, 12);
       const b = await view(s);
       await step(s, 40); await settle(s);
       const c = await view(s);
       // wheel over the other panels (right side of the menu) must not rotate
-      await s.page.mouse.move(a.rect.x + a.rect.w + 260, a.rect.y + a.rect.h * 0.8); await step(s, 2);
+      await mmove(s, a.rect.x + a.rect.w + 260, a.rect.y + a.rect.h * 0.8); await step(s, 2);
       const e0 = await view(s);
-      await s.page.mouse.wheel(0, 300); await step(s, 20);
+      await s.page.mouse.wheel(0, 300); await flush(s); await flush(s); await step(s, 20);
       const e1 = await view(s);
       await suite.check({ id: `wheel.${tab}`, group: 'wheel', ...G, title: `${tab}: one wheel notch over the stage = 22.5°, then the next step; wheel elsewhere does not rotate` }, async () => ({
         pass: Math.abs((b.yaw - a.yaw) + 22.5 * DEG) <= 3 * DEG && onStep(c.yaw, c.step) && Math.abs(c.yaw - a.yaw) > 20 * DEG && Math.abs(e1.yaw - e0.yaw) < 1e-6,
@@ -199,7 +206,7 @@ try {
 
     await suite.group('auto', async () => {
       await rest(s, { autoSpin: true }); await step(s, 2);
-      await s.page.mouse.move(2, 2); await step(s, 2);            // park the mouse (moving it resets the idle timer)
+      await mmove(s, 2, 2); await step(s, 2);            // park the mouse (moving it resets the idle timer)
       await rest(s, { autoSpin: true }); await step(s, 2);
       await step(s, 5.4 * 60);
       const early = await view(s);
@@ -225,8 +232,8 @@ try {
       await rest(s); await step(s, 2);
       const a = await view(s);
       const cx = a.rect.x + a.rect.w / 2, cy = a.rect.y + a.rect.h * 0.5;
-      await s.page.mouse.move(cx, cy); await step(s, 1);
-      await s.page.mouse.down(); await step(s, 2); await s.page.mouse.up(); await step(s, 2);
+      await mmove(s, cx, cy); await step(s, 1);
+      await s.page.mouse.down(); await flush(s); await step(s, 2); await s.page.mouse.up(); await flush(s); await step(s, 2);
       const t0 = await view(s);
       await step(s, 14);
       const prof = await view(s);
@@ -241,7 +248,7 @@ try {
       // double tap resets
       await s.page.keyboard.down('Comma'); await step(s, 25); await s.page.keyboard.up('Comma'); await step(s, 2); await settle(s);
       const rot = await view(s);
-      for (let i = 0; i < 2; i++) { await s.page.mouse.down(); await step(s, 2); await s.page.mouse.up(); await step(s, 5); }
+      for (let i = 0; i < 2; i++) { await s.page.mouse.down(); await flush(s); await step(s, 2); await s.page.mouse.up(); await flush(s); await step(s, 5); }
       await settle(s, 240);
       const r = await view(s);
       await suite.check({ id: `doubletap.${tab}`, group: 'showcase', ...G, title: `${tab}: a double tap on the hero resets the view` }, async () => ({
@@ -352,9 +359,9 @@ try {
     await settle(s, 240);
     const a = await view(s);
     const cx = a.rect.x + a.rect.w * 0.3, cy = a.rect.y + a.rect.h * 0.55;
-    await s.page.mouse.move(cx, cy); await step(s, 1); await s.page.mouse.down(); await step(s, 2);
-    for (let i = 1; i <= 10; i++) { await s.page.mouse.move(cx + (a.rect.w * 0.35 * i) / 10, cy); await step(s, 1); }
-    await step(s, 10); await s.page.mouse.up(); await step(s, 2); await settle(s);
+    await mmove(s, cx, cy); await step(s, 1); await s.page.mouse.down(); await flush(s); await step(s, 2);
+    for (let i = 1; i <= 10; i++) { await mmove(s, cx + (a.rect.w * 0.35 * i) / 10, cy); await step(s, 1); }
+    await step(s, 10); await s.page.mouse.up(); await flush(s); await step(s, 2); await settle(s);
     const b = await view(s);
     await s.eval(() => { window.__game.top.cur.view.idleT = 0; window.__game.top.cur.view.autoSpin = true; });
     await step(s, 7 * 60);
@@ -440,8 +447,9 @@ try {
     await s.wait(1500);
     const r = await s.eval(() => {
       const g = window.__game, times = [];
-      for (let i = 0; i < 6; i++) g.render();                  // warm-up (layer caches, glyphs)
-      for (let i = 0; i < 40; i++) { const t0 = performance.now(); g.render(); times.push(performance.now() - t0); }
+      for (let i = 0; i < 6; i++) { g.render(); (g.ctx || g.canvas.getContext('2d')).getImageData(0, 0, 1, 1); }                  // warm-up (layer caches, glyphs)
+      const probe = g.ctx || g.canvas.getContext('2d');
+      for (let i = 0; i < 40; i++) { const t0 = performance.now(); g.render(); probe.getImageData(0, 0, 1, 1); times.push(performance.now() - t0); } // 1-px read-back forces the raster (deferred canvas)
       times.sort((a, b) => a - b);
       const cv = g.canvas;
       return { med: times[20], p90: times[36], avg: times.reduce((a, b) => a + b, 0) / times.length, backing: `${cv.width}×${cv.height}`, scale: g.scale, uiK: g.uiK, tier: g.tier ?? g.quality };

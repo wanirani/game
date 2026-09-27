@@ -10,7 +10,7 @@ import { glint } from './_biped.js';
 
 export const spec = {
   id: 'golden_bat', tier: 'T1', src: 'golden_bat',
-  scale: 0.93,        // 30×24 logic rect vs the bat's 34×26: the same painted body, a little smaller
+  scale: 1,           // same painted body as the bat (30×24 logic rect vs 34×26): a bonus target should read at a glance
   bake: { outline: 0.4, deep: { wing: 0.78 }, deepTint: 'rgb(200,160,90)' },
 };
 

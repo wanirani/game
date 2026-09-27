@@ -388,16 +388,19 @@ function drawCallouts(ctx, world, list, lane, T) {
   }
   if (!head) return;
   const tNow = Number.isFinite(head.t) ? head.t : 0;
-  if (head._t0 === undefined) head._t0 = tNow;
+  // 시작 시각 (카드의 t 기준): 막 생긴 카드는 생긴 때부터, 늦게 처음 그려진 카드(HUD 가 숨어 있던 동안 생김)는 지금부터
+  if (head._t0 === undefined) head._t0 = tNow < 0.5 ? 0 : tNow;
   let local = tNow - head._t0;
   let outAt = CARD_IN + CARD_HOLD;
-  if (next) { if (head._cut === undefined) head._cut = Math.max(local, CARD_IN + CARD_CUT); outAt = Math.min(outAt, head._cut); }
+  if (next) { if (head._cut === undefined) head._cut = Math.max(Math.min(local, CARD_IN + CARD_HOLD), CARD_IN + CARD_CUT); outAt = Math.min(outAt, head._cut); }
   if (local >= outAt + CARD_OUT) {
     head._done = true;
     if (!next) return;
+    // 다음 카드는 앞 카드가 끝난 순간부터 (그리기 간격과 무관하게 같은 시간표)
+    const over = local - (outAt + CARD_OUT);
     head = next;
     const t2 = Number.isFinite(head.t) ? head.t : 0;
-    if (head._t0 === undefined) head._t0 = t2;
+    if (head._t0 === undefined) head._t0 = Math.max(0, t2 - over);
     local = t2 - head._t0; outAt = CARD_IN + CARD_HOLD;
   }
   const W = lane.w, H = Math.min(lane.h, 60);

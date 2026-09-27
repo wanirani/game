@@ -30,6 +30,7 @@ import { FXKIT } from './skills.js';
 import { hitTarget } from './combat.js';
 import { ULTFX } from '../render/ultfx.js';
 import * as HFX from '../render/hitfx.js';
+import { AWAKEN, T2 } from '../data/awaken.js';
 
 /** 시험·계측용 기록 (tools 에서 읽는다) */
 export const AWAKEN_DIR_A_DEBUG = { runs: 0, errors: 0, last: null, prewarm: null, history: [] };
@@ -328,6 +329,8 @@ if (typeof window !== 'undefined' && typeof setTimeout === 'function') {
         const p = game?.world?.player; if (p?.hero && PREP.key !== `${p.hero.charId}|${p.hero.classId}`) schedulePrewarm();
       });
       bus.on('classChanged', () => { PREP.key = null; schedulePrewarm(); });
+      // 시전 순간(컷인 전) 한 번 더: 스테이지 진입 뒤 다른 기술에 밀려난 스프라이트만 다시 굽는다 (감독 도중 굽기 0)
+      bus.on('awakenCast', (d) => { const w = game?.world, p = w?.player; if (d?.charId && p?.hero?.charId === d.charId && AWAKEN_DIRECTOR[d.charId]) prewarm(w, p, true); });
     } catch (e) { console.warn('[awaken-dir-a] bus', e); }
     schedulePrewarm();
   }, 1300);
@@ -508,7 +511,7 @@ function slowFoes(D, list, slow) {
         S.on = true; apply();
         if (S.wraps.length) {
           sfx('clock_tick', { pitch: 0.7 }); sfx('stopwatch', { vol: 0.5, pitch: 0.8 });
-          ww.fx.callout?.(p.cx, p.y - 36, '시간 둔화', { color: '#8ac8ff', size: 16 });
+          ww.fx.callout?.(p.cx, p.y - 36, ...CALLOUT.slow);
         }
       }
       S.left -= dt;
@@ -534,8 +537,8 @@ function kaelDirector(p, w, v) {
   const D = mkCtx(p, w, v, 'kael');
   const { K, cam } = D;
   const vr = D.T2c?.slice(5) ?? null;   // templar | inquisitor | bloodhunter | nightraven
-  const LASH = vr === 'bloodhunter' ? ['#ff2040', '#ffd0d8'] : vr === 'nightraven' ? ['#8a8aff', '#f0f0ff'] : vr === 'inquisitor' ? ['#ff8a2a', '#ffe8b0'] : ['#ffd870', '#fff8e0'];
-  const GOLD = '#ffd870';
+  const LASH = kaelLash(vr);
+  const GOLD = KAEL_GOLD;
   const W = D.W.length >= 2 ? D.W : [0.55, 0.55, 0.55, 0.55, 0.55, 0.55, 0.55, 0.55, 6.0];
   const nL = W.length - 1, T_L0 = 0.2, T_L1 = 1.1, T_CAGE = 1.1, T_TIGHT = 1.4, T_DAWN = 1.5, T_FIN = 1.7, DUR = 2.75;
   const lashes = [];
@@ -825,14 +828,13 @@ function kaelDirector(p, w, v) {
 }
 
 // ═══════════════════════════ 세라 — 천상의 문 — 세라핌 레퀴엠 ═══════════════════════════
-const ARCH = [['fire', '#ff7a2a', '#ffd0a0'], ['ice', '#9fe8ff', '#e8fcff'], ['thunder', '#fff2a0', '#ffffff']];
 function seraDirector(p, w, v) {
   const D = mkCtx(p, w, v, 'sera');
   const { K, cam } = D;
   const vr = D.T2c?.slice(5) ?? null;   // saint | oracle | archmage | stormcaller
   const W = D.W.length >= 2 ? D.W : [0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 5.5];
   const nP = W.length - 1, T_GATE = 0.3, T_P0 = 0.6, GAP = 0.15, PLIFE = 0.34, T_FIN = 1.9, DUR = 2.95;
-  const PCOL = vr === 'stormcaller' ? ['#bfe0ff', '#ffffff'] : vr === 'oracle' ? ['#d8f0ff', '#ffffff'] : ['#fff2b0', '#ffffff'];
+  const PCOL = seraPcol(vr);
   const S = { y0: p.y, gate: null, pillars: [], arcs: [], fin: null, feather: 0, halo: vr === 'saint' || !!D.t2?.halo };
   const wing = ULTFX.sprite?.('wing');
   D.info.pillars = 0; D.info.pillarHits = 0; D.info.chains = 0;
@@ -884,7 +886,8 @@ function seraDirector(p, w, v) {
     const list = foesIn(ww, viewOf(D, 20));
     const V = viewOf(D);
     const f = focusOf(ww, list);
-    const fx0 = clamp(f ? f.x : V.x + V.w / 2, V.x + 120, V.x + V.w - 120);
+    // 십자광은 천상의 문 바로 아래로 내리꽂힌다 (문은 열릴 때 적이 몰린 곳 위에 자리 잡는다; 판정은 화면 전체)
+    const fx0 = S.gate ? S.gate.x : clamp(f ? f.x : V.x + V.w / 2, V.x + 120, V.x + V.w - 120);
     const gy = D.K.groundAt(ww, fx0, (f ? f.y : V.y + V.h * 0.5) - 20, 16 * TILE) ?? V.y + V.h - 30;
     S.fin = { x: fx0, gy, t0: e.lt };
     stance(p, ww, 'cast', 0.8, 0.04, 0.12);
@@ -916,7 +919,8 @@ function seraDirector(p, w, v) {
     }],
     [T_GATE, (ww, e) => {
       const V = viewOf(D);
-      S.gate = { x: V.x + V.w / 2, y: V.y + 86, t0: e.lt };
+      const fo = focusOf(ww, foesIn(ww, viewOf(D, 20)));   // 문은 적이 몰린 곳 위에 (화면 가장자리에 붙지 않게)
+      S.gate = { x: fo ? clamp(fo.x, V.x + Math.min(220, V.w / 2), V.x + V.w - Math.min(220, V.w / 2)) : V.x + V.w / 2, y: V.y + 86, t0: e.lt };
       sfx('bell', { pitch: 0.8 }); sfx('choir_gate', { vol: 0.5, pitch: 1.25 });
       D.cine = true;
       try { cam.cine?.(V.x + V.w / 2, V.y + V.h / 2 - 40, cam.baseZoom || 1, 0.4); } catch { D.cine = false; }
@@ -1017,7 +1021,7 @@ function seraDirector(p, w, v) {
       // 심판의 십자광: 떨어지는 예고선 → 내리꽂힘
       const G = S.gate;
       if (G && lt > T_FIN - 0.14 && !S.fin) {
-        const u = clamp((lt - (T_FIN - 0.14)) / 0.14, 0, 1), x = V.x + V.w / 2;
+        const u = clamp((lt - (T_FIN - 0.14)) / 0.14, 0, 1), x = G.x;
         ctx.globalCompositeOperation = 'lighter';
         K.beamV(ctx, x, G.y, lerp(G.y, V.y + V.h, ease.inCubic(u)), 10 + 16 * u, '#fff2b0', 0.7);
       }
@@ -1066,8 +1070,8 @@ function victorDirector(p, w, v) {
   const shots = clamp(Math.round(D.t2?.shots ?? nW), 1, 24);
   const T_S0 = 0.3, T_S1 = 1.5, gap = shots > 1 ? (T_S1 - T_S0) / (shots - 1) : 0, T_HOL = 1.6, T_DET = 1.75, T_ACE = 2.0, DUR = 2.85;
   const hop = (k) => W[k % nW] / 3 * (nW / shots);   // 한 발 = 도탄 3회 (쌍권총 12발이면 한 발 가중치 절반: 합은 그대로)
-  const SIL = vr === 'phantom' ? '#9ab0ff' : vr === 'executioner' ? '#ff2030' : vr === 'hellfire' ? '#ff7a2a' : '#e8ecff';
-  const TRACE = vr === 'phantom' ? '#c8d4ff' : vr === 'hellfire' ? '#ffb060' : '#fff0b0';
+  const SIL = victorSil(vr);
+  const TRACE = victorTrace(vr);
   const S = { marks: new Map(), pos: [], bullets: [], locks: [], cards: [], lit: [], order: [], oi: 0, cylA: 0, det: null, ace: -1, trails: [] };
   const cols = vr === 'gunlord' ? 2 : 1;
   D.info.shots = 0; D.info.hopHits = 0; D.info.marks = 0; D.info.executed = 0;
@@ -1184,7 +1188,7 @@ function victorDirector(p, w, v) {
         if (!alive(f) || isBoss(f, ww) || !(f.hp > 0) || f.hp / maxHpOf(f) >= exe) continue;
         try {
           const atk = D.v.atk(0, { flat: Math.ceil(f.hp) + 1, hitId: nid(), kb: [200 * Math.sign(f.cx - p.cx || 1), -420], hitstop: 0.05, shake: 6, crit: 0, dmgColor: '#ff2030', fx: 'bullet' });
-          if (hitTarget(ww, atk, f, f.cx, f.cy)) { D.info.executed++; ww.fx.callout?.(f.cx, f.y - 20, '처형', { color: '#ff3040', size: 18 }); burst(D, 'blood', f.cx, f.cy, 16, { speed: 380 }); }
+          if (hitTarget(ww, atk, f, f.cx, f.cy)) { D.info.executed++; ww.fx.callout?.(f.cx, f.y - 20, ...CALLOUT.execute); burst(D, 'blood', f.cx, f.cy, 16, { speed: 380 }); }
         } catch (err) { fail(D, err); }
       }
       if (D.info.executed) { sfx('crit', { pitch: 0.55 }); ww.game?.flash?.('#ff1020', 0.35, 4); }
@@ -1211,7 +1215,7 @@ function victorDirector(p, w, v) {
     [T_HOL, (ww) => {
       stance(p, ww, 'spin_blade', 0.32, 0.02, 0.26);
       sfx('sheath', { pitch: 1.35, vol: 0.95 }); sfx('cylinder_spin', { pitch: 1.4, vol: 0.45 });
-      ww.fx.callout?.(p.cx, p.y - 28, '찰칵', { color: '#e8e8f0', size: 16 });
+      ww.fx.callout?.(p.cx, p.y - 28, ...CALLOUT.clack);
       try { ULTFX.afterimage(ww, p, '#ffd070', { life: 0.3 }); } catch { /* 잔상 생략 */ }
     }],
     [T_DET, (ww, e) => detonate(ww, e)],

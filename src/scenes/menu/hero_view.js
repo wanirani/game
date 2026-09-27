@@ -43,7 +43,7 @@ export const TT = Object.freeze({
   VEL_MAX: 12,           // rad/s
   DAMP: 0.02,            // 관성 감쇠 v *= DAMP^dt
   SNAP_V: 0.6,           // 이보다 느려지면 칸에 맞춘다 (rad/s)
-  SNAP_W: 20,            // 임계 감쇠 스냅 고유 진동수 (≈ 0.25 초에 자리 잡음)
+  SNAP_W: 28,            // 임계 감쇠 스냅 고유 진동수 (반 칸 22.5° 도 ≈ 0.25 초 안에 자리 잡음)
   WHEEL_STEP: PI / 8,    // 휠 한 칸 22.5°
   WHEEL_UNIT: 80,        // 휠 deltaY 누적 이만큼 = 한 칸 (메뉴 Gesture 는 마우스 한 칸 ≈ 90)
   WHEEL_REST: 0.35,      // 휠이 멈추고 이만큼 뒤 칸 사이에 있으면 굴린 쪽 칸으로
@@ -503,7 +503,7 @@ export class HeroView {
         const g = this.yawGoal, w0 = TT.SNAP_W;
         const a = -2 * w0 * this.yawVel - w0 * w0 * (this.yaw - g);
         this.yawVel += a * dt; this.yaw += this.yawVel * dt;
-        if (Math.abs(this.yaw - g) < 0.002 && Math.abs(this.yawVel) < 0.03 && this.wheelT <= 0) {
+        if (Math.abs(this.yaw - g) < 0.004 && Math.abs(this.yawVel) < 0.05 && this.wheelT <= 0) {
           this.yaw = g; this.yawVel = 0; this.mode = 'idle'; this.userYaw = g;
         }
         break;
@@ -535,12 +535,16 @@ export class HeroView {
     const want = touch || hover || !!this.hold;
     this.btnA = want ? Math.min(1, this.btnA + 0.2) : Math.max(0, this.btnA - 0.12);
     if (this.btnA <= 0.01) return;
-    const R = clamp(Math.min(r.w, r.h) * 0.075, 12, 16);
-    const cy = r.y + r.h * 0.46;
+    // 터치: 보이는 지름 32 CSS px 이상 (누르는 영역은 등록부 여유로 44 CSS px — platform §6.3). 마우스: 작게
+    const g = this.game;
+    const cssPerUi = (g?.cssScale || 1) * (g?.top?.uiScale ? (g.uiK || 1) : 1);
+    const R = touch ? clamp(16 / cssPerUi, 14, 26) : clamp(Math.min(r.w, r.h) * 0.075, 12, 16);
+    // 터치: 화살표는 위쪽 1/3 (아래 모서리의 ▶ 버튼과 틈을 두어 둘 다 44 CSS px 영역을 갖게), 마우스: 가운데
+    const cy = touch ? r.y + Math.max(R + 22, r.h * 0.34) : r.y + r.h * 0.46;
     const L = { id: 'tt:L', x: r.x + 6 + R, y: cy, r: R }, RR = { id: 'tt:R', x: r.x + r.w - 6 - R, y: cy, r: R };
     const list = [L, RR];
     const canAuto = this.spinAllowed() && S.full;
-    const Ra = Math.round(R * 0.72);
+    const Ra = Math.round(R * (touch ? 0.82 : 0.72));
     if (canAuto) list.push({ id: 'tt:auto', x: r.x + r.w - 7 - Ra, y: r.y + r.h - 7 - Ra, r: Ra });
     ctx.save();
     ctx.globalAlpha *= this.btnA;

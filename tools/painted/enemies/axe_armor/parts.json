@@ -1,0 +1,200 @@
+{
+ "id": "axe_armor",
+ "tier": "T2",
+ "srcTD": 4,
+ "note": "rig reuse of the armour knight: cuirass, rerebrace/cuisse, vambrace, greave from ../armor_knight/src; horned great helm and the glowing double-bitted great axe from one Kling extras image (src/axe_parts.webp, neural-only matte: grey steel). No shield, no cape (like the vector axe armour).",
+ "sources": {
+  "t": {
+   "file": "knight_torso_r.png",
+   "k": 0.0288,
+   "raw": "../../armor_knight/src/knight_torso.webp",
+   "mode": "rembg"
+  },
+  "s1": {
+   "file": "knight_sheet1_r.png",
+   "k": 0.0525,
+   "raw": "../../armor_knight/src/knight_sheet1.webp",
+   "mode": "rembg"
+  },
+  "s2": {
+   "file": "knight_sheet2_r.png",
+   "k": 0.0546,
+   "raw": "../../armor_knight/src/knight_sheet2.webp",
+   "mode": "rembg"
+  },
+  "x": {
+   "raw": "axe_parts.webp",
+   "file": "e1_axe_parts.png",
+   "k": 0.025,
+   "mode": "rembg"
+  }
+ },
+ "parts": {
+  "torso": {
+   "src": "t",
+   "box": [
+    400,
+    150,
+    1420,
+    2320
+   ],
+   "keep": "largest",
+   "flipX": true,
+   "piv": {
+    "a": [
+     880,
+     1250
+    ],
+    "neck": [
+     765,
+     290
+    ],
+    "shN": [
+     1120,
+     420
+    ],
+    "shF": [
+     560,
+     400
+    ],
+    "hipN": [
+     960,
+     1250
+    ],
+    "hipF": [
+     800,
+     1250
+    ]
+   }
+  },
+  "shin": {
+   "src": "s1",
+   "box": [
+    1895,
+    1150,
+    2120,
+    1630
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1975,
+     1215
+    ],
+    "b": [
+     1962,
+     1560
+    ],
+    "toe": [
+     2105,
+     1612
+    ],
+    "heel": [
+     1915,
+     1592
+    ]
+   }
+  },
+  "uarm": {
+   "src": "s1",
+   "box": [
+    1620,
+    585,
+    1775,
+    865
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1688,
+     612
+    ],
+    "b": [
+     1690,
+     850
+    ]
+   }
+  },
+  "farm": {
+   "src": "s1",
+   "box": [
+    1880,
+    660,
+    2065,
+    1095
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1960,
+     715
+    ],
+    "b": [
+     1955,
+     965
+    ],
+    "grip": [
+     1960,
+     1025
+    ]
+   }
+  },
+  "helm": {
+   "src": "x",
+   "box": [
+    50,
+    180,
+    825,
+    1310
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     420,
+     1250
+    ],
+    "eye": [
+     640,
+     960
+    ],
+    "top": [
+     420,
+     600
+    ]
+   }
+  },
+  "axe": {
+   "src": "x",
+   "box": [
+    860,
+    295,
+    1512,
+    1600
+   ],
+   "keep": "largest",
+   "k": 0.035,
+   "piv": {
+    "a": [
+     1190,
+     1470
+    ],
+    "b": [
+     1190,
+     560
+    ],
+    "grip": [
+     1190,
+     1470
+    ],
+    "tip": [
+     1190,
+     320
+    ],
+    "edge": [
+     1480,
+     700
+    ]
+   }
+  }
+ }
+}

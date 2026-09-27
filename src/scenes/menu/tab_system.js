@@ -96,7 +96,7 @@ export class SystemTab extends Tab {
     const rows = [
       ['플레이 시간', fmtTime(S.playTime ?? 0)],
       ['난이도', getDiff(st.difficulty)?.name ?? st.difficulty ?? '-'],
-      ['진행', chap ? `${chap >= 14 ? '제2부 · ' : ''}${chap}장까지 돌파` : '1장 진행 중'],
+      ['진행', chap ? (chap >= 14 ? `2부 · ${chap}장 돌파` : `${chap}장까지 돌파`) : '1장 진행 중'],
       ['점수', (run?.score ?? st.score ?? 0).toLocaleString('ko-KR')],
       ['남은 목숨', String(run?.lives ?? st.lives ?? 0)],
       ['쓰러뜨린 적', (S.kills ?? 0).toLocaleString('ko-KR')],

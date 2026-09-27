@@ -34,14 +34,17 @@
 //   azel_bloodking  피의 왕관: 머리 위 피의 왕관 (치명타 피해 +50% 는 awaken.js 가 v.atk 스탯에 반영)
 //   azel_dawnbringer 여명: 신성 속성, 금빛 날개·금빛 초승달, 마무리에서 일식이 황금빛 해돋이로 바뀐다
 //   azel_seraph     빛과 어둠의 날개: 흰 날개와 검은 날개, 흰·검은 초승달이 번갈아 교차
-//  AWAKEN_DIR_B_DEBUG   시험용 기록 {casts, bakes, poseBakes, canvases, castCanvases, errors, prepared, last}
+//  AWAKEN_DIR_B_DEBUG   시험용 기록 {casts, bakes, poseBakes, canvases, castCanvases, errors, prepared, last, sprite(name) → 구운 캔버스}
 //  prepareAwakenB(world?, p?)   캐시 스프라이트 미리 굽기 (스테이지 진입·방 이동·직업 변경 뒤 한가할 때 자동; 시험용으로도 공개)
 //
 // 성능 (feel §8, MASTER_PLAN §5.2)
 //  · 망령 기사·리아 분신은 drawHero 로 한 번씩만 그린 잔상 비트맵. 스테이지 진입·직업 변경 뒤 한가할 때 한 장씩 미리 굽고(퍼펫 그림이 준비된 뒤),
 //    장비를 바꿔 낡았으면 컷인이 도는 동안, 그래도 없으면 감독이 틱마다 한 장씩 굽는다 (drawHero ≤ 플레이어 + 1 / 프레임, feel §8 10/6/3).
 //  · 그리기 코드에서 그라디언트를 만들지 않는다: 달·코로나·날개·초승달·검·까마귀·깃발은 캔버스 풀(부팅 뒤 한가할 때 8장)에 굽고, 빛은 ULTFX.glow.
-//  · 입자는 각성 최대치(700/450/250) 안에서만 뿌린다 (다른 연출이 이미 뿌린 입자 수도 센다).
+//  · 입자는 각성 최대치(700/450/250)의 몫(75/70/55%) 안에서만 뿌린다 (다른 연출이 이미 뿌린 입자 수도 센다). 마무리 직전에는 앞 박자의
+//    오래된 연기·먼지를 최대치 절반까지 걷어 내 적 전원의 타격 불꽃·처치 파편이 들어올 자리를 남긴다 (번쩍임·임팩트 프레임이 덮는 순간).
+//  · 망령 기사 돌격의 잔향 그림은 품질별 2/1/0 장. 리아는 키트의 색보정·집중선 층을 끈다 (거의 검은 화면 + 화면 전체 층 절약).
+//  · 스테이지에 들어오자마자 각성했으면 컷인이 도는 동안(월드 정지) 프레임 사이 작업으로 풀·스프라이트·잔상을 굽는다.
 //  · 화면 전체 층: 배경 어둠 1장 (+ 키트 층·번쩍임). low 에서는 번쩍임이 켜진 동안 어둠을 건너뛴다 (전체 층 ≤ 1).
 //  · settings.flashFx·reduceMotion·screenShake 를 따른다 (카메라 연출 폭은 동작 줄이기에서 40%).
 import { audio } from '../core/audio.js';
@@ -58,7 +61,7 @@ import * as HFX from '../render/hitfx.js';
 const PI = Math.PI, HP = PI / 2;
 const QCAP = { high: 700, medium: 450, low: 250 };      // 각성 최대 입자 (feel §8)
 const RS = { high: 1.25, medium: 1, low: 0.75 };          // 영웅 잔상 비트맵 해상도 배율
-const GB = { bw: 160, bt: 240, bb: 34 };                  // 영웅 잔상 비트맵 상자 (발 중앙 기준 좌우 bw, 위 bt, 아래 bb; 월드 px)
+const GB = { bl: 84, bf: 160, bt: 240, bb: 34 };          // 영웅 잔상 비트맵 상자 (발 중앙 기준 뒤 bl, 앞 bf, 위 bt, 아래 bb; 월드 px — 앞으로 뻗는 무기 쪽만 넓게)
 const POOL_N = 8;
 
 export const AWAKEN_DIR_B_DEBUG = { casts: 0, bakes: 0, poseBakes: 0, canvases: 0, castCanvases: 0, errors: 0, prepared: null, last: null };
@@ -487,10 +490,10 @@ function bakeStep(S) {
 function bakePose(C, j) {
   const p = C.p;
   if (typeof p?.snapshot !== 'function') return null;
-  const rs = C.rs, W = Math.ceil(2 * GB.bw * rs), H = Math.ceil((GB.bt + GB.bb) * rs), key = poseKey(C.charId, j.name);
+  const rs = C.rs, W = Math.ceil((GB.bl + GB.bf) * rs), H = Math.ceil((GB.bt + GB.bb) * rs), key = poseKey(C.charId, j.name);
   const c = cached(key, W, H, (g) => {
     const s = p.snapshot();
-    Object.assign(s, { facing: 1, cx: GB.bw, bottom: GB.bt, x: GB.bw - p.w / 2, y: GB.bt - p.h, vx: 0, vy: 0, onGround: !j.o.air, ride: null, rig: null });
+    Object.assign(s, { facing: 1, cx: GB.bl, bottom: GB.bt, x: GB.bl - p.w / 2, y: GB.bt - p.h, vx: 0, vy: 0, onGround: !j.o.air, ride: null, rig: null });
     if (j.o.move) { s.move = { id: 'awb_' + j.anim, anim: j.anim, dur: 0.5, hit: [0.1, 0.2], box: null, skill: true }; s.moveT = j.o.t ?? 0.2; s.anim = j.anim; }
     else { s.move = null; s.moveT = 0; s.anim = j.anim; s.animT = j.o.at ?? 0.06; }
     g.setTransform(rs, 0, 0, rs, 0, 0);
@@ -512,9 +515,9 @@ function drawPose(ctx, b, x, bottom, face, a, add = false, sc = 1) {
   if (!b || !(a > 0.004)) return;
   ctx.globalAlpha = a > 1 ? 1 : a;
   ctx.globalCompositeOperation = add ? 'lighter' : 'source-over';
-  const dw = 2 * GB.bw * sc, dh = (GB.bt + GB.bb) * sc;
-  if (face < 0) { ctx.save(); ctx.translate(x, 0); ctx.scale(-1, 1); ctx.drawImage(b.c, 0, 0, b.W, b.H, -GB.bw * sc, bottom - GB.bt * sc, dw, dh); ctx.restore(); }
-  else ctx.drawImage(b.c, 0, 0, b.W, b.H, x - GB.bw * sc, bottom - GB.bt * sc, dw, dh);
+  const dw = (GB.bl + GB.bf) * sc, dh = (GB.bt + GB.bb) * sc;
+  if (face < 0) { ctx.save(); ctx.translate(x, 0); ctx.scale(-1, 1); ctx.drawImage(b.c, 0, 0, b.W, b.H, -GB.bl * sc, bottom - GB.bt * sc, dw, dh); ctx.restore(); }
+  else ctx.drawImage(b.c, 0, 0, b.W, b.H, x - GB.bl * sc, bottom - GB.bt * sc, dw, dh);
 }
 
 // ═══════════════════════════ 그리기 도구 (그라디언트 없음) ═══════════════════════════
@@ -545,9 +548,9 @@ function img(ctx, c, x, y, sx, sy, rot, a, add = false, ax = 0.5, ay = 0.5) {
   ctx.restore();
 }
 /** 세로 빛기둥 (흰 심 + 색 번짐) */
-function pillar(ctx, S, x, y0, y1, wd, col, a) {
+function pillar(ctx, S, x, y0, y1, wd, col, a, halo = true) {
   if (!(a > 0.01) || !(wd > 0.5)) return;
-  glowE(ctx, col, x, (y0 + y1) / 2, wd * 2.2, Math.abs(y1 - y0) * 0.62, 0.8 * a);
+  if (halo) glowE(ctx, col, x, (y0 + y1) / 2, wd * 2.2, Math.abs(y1 - y0) * 0.62, 0.8 * a);
   const b = spr('beam');
   if (b) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = a > 1 ? 1 : a; ctx.drawImage(b, x - wd, Math.min(y0, y1), wd * 2, Math.abs(y1 - y0)); }
 }
@@ -1052,7 +1055,7 @@ function bran(p, w, v) {
       const age = lt - C.t, a = 1 - u01(age, 0.08, 0.5), wd = 110 * (0.6 + 0.4 * ease.outCubic(u01(age, 0, 0.06)));   // 히트스톱(시간 정지) 동안에도 기둥이 보이게
       if (a > 0.01) {
         pillar(ctx, S, C.x, C.top, C.bot, wd, KT, 0.9 * a);
-        pillar(ctx, S, C.x, C.top, C.bot, wd * 0.35, '#ffffff', a);
+        pillar(ctx, S, C.x, C.top, C.bot, wd * 0.35, '#ffffff', a, false);   // 흰 심 (번짐은 바깥 기둥이 이미 그렸다)
       }
       const k = ease.outCubic(u01(age, 0, 0.3)), ca = (1 - u01(lt, 2.55, 0.4)) * (0.55 + 0.45 * (1 - u01(age, 0.2, 0.8)));
       if (ca > 0.01) {
@@ -1084,8 +1087,9 @@ function bran(p, w, v) {
         if (k.done) continue;
         const bob = Math.abs(Math.sin(lt * 18 + k.ph)) * -6;
         glow(ctx, KT, k.x, k.gy - 70 * k.sc, 86 * k.sc, 0.35);
-        drawPose(ctx, b, k.x - f * 84, k.gy + bob, f, 0.12, true, k.sc);   // 잔향 둘
-        drawPose(ctx, b, k.x - f * 42, k.gy + bob, f, 0.24, true, k.sc);
+        // 잔향 (high 둘 · medium 하나 · low 없음 — 큰 가산 그리기라 품질에 따라 줄인다)
+        if (S.q === 'high') drawPose(ctx, b, k.x - f * 84, k.gy + bob, f, 0.12, true, k.sc);
+        if (!S.low) drawPose(ctx, b, k.x - f * 42, k.gy + bob, f, S.q === 'high' ? 0.24 : 0.3, true, k.sc);
         drawPose(ctx, b, k.x, k.gy + bob, f, 0.62, true, k.sc);
         if (k.banner) drawBanner(ctx, S, k.x - f * 20 * k.sc, k.gy - 70 * k.sc + bob, k.sc, 0.85, k.ph + lt * 3, warlord);
       }

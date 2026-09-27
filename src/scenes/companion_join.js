@@ -299,16 +299,16 @@ export class CompanionJoinScene extends Scene {
       const kb = this.rm ? 1 : lerp(1.1, 1.0, ease.outCubic(clamp(t / this.dur, 0, 1)));
       const s = Math.max(w / img.width, h / img.height) * kb;
       const iw = img.width * s, ih = img.height * s;
-      const fa = clamp((t - this.imgAt) / 0.25, 0, 1);
-      ctx.globalAlpha *= fa;
+      const fa = clamp((t - this.imgAt) / 0.25, 0, 1), ga = ctx.globalAlpha;
+      ctx.globalAlpha = ga * fa;
       ctx.drawImage(img, x + (w - iw) / 2, y + (h - ih) * (this.rm ? 0.5 : lerp(0.62, 0.45, clamp(t / this.dur, 0, 1))), iw, ih);
-      ctx.globalAlpha /= fa || 1;
+      ctx.globalAlpha = ga;
     }
     if (!ok || t - this.imgAt < 0.25) {
       // 초상화가 아직 없다: 게임 속 그림을 빛 원판 위에 (최대 3배)
       if (!this.fig) this.fig = new CompanionFigure(this.id);
-      const fk = ok ? 1 - clamp((t - this.imgAt) / 0.25, 0, 1) : 1;
-      ctx.globalAlpha *= fk;
+      const fk = ok ? 1 - clamp((t - this.imgAt) / 0.25, 0, 1) : 1, ga = ctx.globalAlpha;
+      ctx.globalAlpha = ga * fk;
       const disc = Math.min(w, h) * 0.42;
       glowRect(ctx, x + w / 2, y + h * 0.55, disc * 1.2, disc * 1.2, this.col, 0.6, this.cache);
       ctx.fillStyle = rgba(shade(this.col, -0.7), 0.85);
@@ -317,7 +317,7 @@ export class CompanionJoinScene extends Scene {
       const sc = Math.min(3, (disc * 1.5) / Math.max(40, this.fig.height));
       const bottom = y + h * 0.55 + this.fig.height * sc * 0.5;
       this.fig.draw(ctx, x + w / 2, bottom, sc, { facing: -1 });
-      ctx.globalAlpha /= fk || 1;
+      ctx.globalAlpha = ga;
     }
     // 아래쪽 어둡게 + 테두리
     const fg = ctx.createLinearGradient(0, y + h * 0.6, 0, y + h);

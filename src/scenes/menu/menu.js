@@ -128,9 +128,10 @@ export class MenuScene extends Scene {
   }
   /** 가로 밀기로 탭을 넘겨도 되나: 내용 영역에서 시작했고, 회전대·가로 조작 위가 아니다 (§5.6) */
   swipeOK(sw) {
-    if (!this.contentRect || !inRect(sw.x, sw.y, this.contentRect)) return false;
+    if (this.swipeBlocked || !this.contentRect || !inRect(sw.x, sw.y, this.contentRect)) return false;
     const c = this.cur;
     try {
+      if (typeof c.swipeBlock === 'function' && c.swipeBlock(sw.x, sw.y)) return false;
       if (typeof c.noSwipe === 'function') { if (c.noSwipe(sw.x, sw.y)) return false; }
       else if (Array.isArray(c.noSwipe) && c.noSwipe.some((r) => inRect(sw.x, sw.y, r))) return false;
     } catch (e) { console.warn(e); }
@@ -146,6 +147,10 @@ export class MenuScene extends Scene {
     }
     const nav = this.nav.poll(dt), ges = this.ges;
     ges.update();
+    // 회전대 위에서 시작한 손가락은 탭 넘기기 밀기로 보지 않는다 (§5.6, 누른 순간에 판정)
+    if (ges.justDown && ges.g) {
+      try { this.swipeBlocked = !!this.cur?.swipeBlock?.(ges.g.x, ges.g.y); } catch (e) { this.swipeBlocked = false; console.warn(e); }
+    }
     this.embers.update(dt);
     if (this.tabSlide > 0) this.tabSlide = Math.max(0, this.tabSlide - dt * 6);
     if (this.msg) { this.msg.t -= dt; if (this.msg.t <= 0) this.msg = null; }

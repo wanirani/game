@@ -1,18 +1,23 @@
 // 클라우드 저장 화면 도우미: 구름 상태 아이콘·문구, 세이브 요약 카드, 충돌 선택 대화 상자(cloudConflict)
 //  push('cloudConflict', { slot, mode:'conflict'|'download'|'upload', onDone(ok) })
 //  mode: conflict = 양쪽이 따로 바뀜 (받기/올리기 중 선택) · download = 클라우드 것으로 이 기기 덮어쓰기 · upload = 이 기기 것으로 클라우드 덮어쓰기
+// 플랫폼 UI 규칙 (platform §6.2/§6.3/§4.5) — owner: PLAT-ACCOUNT-UI
+//  - cloudConflict 는 uiScale 장면 (game.uiW × game.uiH, 최소 720×400). 버튼 ≥ 44 CSS px, 탭 영역은 ui.taps (owner = 장면)
+//  - 안내 줄은 지금 기기의 글리프 (prompts.drawHints), 터치에서는 숨김
+//  - 실패: 연결 끊김·서버 오류는 버튼을 그대로 두어 다시 시도, 로그인 만료는 '닫기'만, 그 사이 클라우드가 비면 올리기만 남긴다
 import { Scene } from '../../core/game.js';
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
 import { assets } from '../../core/assets.js';
 import { saves } from '../../core/save.js';
 import { cloud, summarize } from '../../core/cloud.js';
-import { text, wrap, FONT, ListMenu } from '../../core/ui.js';
+import { text, wrap, FONT, ListMenu, taps } from '../../core/ui.js';
+import { drawHints, promptMode } from '../../core/prompts.js';
 import { clamp, ease, rgba, TAU } from '../../core/math.js';
 import { CHARACTERS } from '../../data/characters.js';
 import { CLASSES } from '../../data/classes.js';
 import { getDiff } from '../../data/difficulty.js';
-import { frame, ornament, gbutton, portraitIn, fmtDate, fmtPlay, TapZones, GOLD, BONE, DIM } from './common.js';
+import { frame, ornament, gbutton, portraitIn, fmtDate, fmtPlay, GOLD, BONE, DIM } from './common.js';
 
 export const CLOUD_COLOR = {
   synced: '#86e0a0', cloud: '#7cc4ff', local: '#ffc861', conflict: '#ff5a6a', pending: '#c9b8ff',

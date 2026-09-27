@@ -122,6 +122,15 @@ function paintBrush(g, B) {
   const top = B.top, bot = B.bot, th = bot - top;
   const x0 = 3, len = B.w - 6 - B.slant;           // 맨 아래 가닥의 가로 범위 [x0, x0 + len]; 위로 갈수록 slant 만큼 오른쪽으로
   const N = Math.max(12, Math.round(th / 2));
+  // 바탕 몸통 (가운데가 비지 않게): 가장자리가 들쭉날쭉한 평행사변형
+  const at = (u, v) => [x0 + (1 - v) * B.slant + u * len, top + v * th];
+  g.fillStyle = INK[2];
+  g.beginPath();
+  for (let u = 0.1; u <= 0.965; u += 0.035) { const [px, py] = at(u, 0.1); g.lineTo(px, py + R.range(-1.2, 1.2)); }
+  for (let v = 0.1; v <= 0.9; v += 0.2) { const [px, py] = at(0.97 + R.range(-0.012, 0.012), v); g.lineTo(px, py); }
+  for (let u = 0.965; u >= 0.1; u -= 0.035) { const [px, py] = at(u, 0.9); g.lineTo(px, py + R.range(-1.2, 1.2)); }
+  for (let v = 0.9; v >= 0.1; v -= 0.2) { const [px, py] = at(0.1 + (1 - Math.abs(v * 2 - 1)) * -0.05 + R.range(0, 0.03), v); g.lineTo(px, py); }
+  g.closePath(); g.fill();
   g.lineCap = 'round';
   for (let i = 0; i < N; i++) {
     const v = (i + 0.5) / N, y = top + v * th, off = (1 - v) * B.slant;
@@ -465,12 +474,13 @@ function drawGauge(ctx, world, s, x, y, w, f, full, ready, holdK, tier, now, T) 
   // 두 게이지가 가득(또는 길게 누르는 중): SP 막대(hud.js: L.ult 안 (x, y − 14, w, 10))와 각성 막대가 함께 빛난다
   const glowOn = (ready || holdK > 0) && SPR.glow;
   if (glowOn) {
-    const a = clamp(0.5 + 0.3 * Math.sin(now * 7) + holdK * 0.4, 0, 1);
+    const a = clamp(0.7 + 0.3 * Math.sin(now * 7) + holdK * 0.4, 0, 1);
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     ctx.globalAlpha = a;
     glowAround(ctx, x, y - 14, w, 10);
     glowAround(ctx, x, by, w, bh);
+    if (holdK > 0) glowAround(ctx, x, by, w, bh);
     ctx.restore();
   }
   ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x, by, w, bh);
@@ -572,14 +582,15 @@ export function drawComboHUD(ctx, world, vw, vh, touch) {
   ctx.translate(r.x + r.w, r.y);
   if (k !== 1) ctx.scale(k, k);
   if (rank > 0) drawRankLetter(ctx, style, s, rank, now, calm);
-  if (n >= 2) drawComboBlock(ctx, world, c, s, rank, now, small, calm);
+  const T = !!touch;   // 휴대폰: 캔버스가 0.7배쯤으로 줄어 보이므로 작은 글자('HITS'·'총 피해')를 키운다
+  if (n >= 2) drawComboBlock(ctx, world, c, s, rank, now, small, calm, T);
   else if (ending) {
     const t = (now - s.endRt) / END_T;
     ctx.save();
     ctx.globalAlpha *= (1 - t) * (1 - t);
     ctx.translate(0, -10 * t);
     drawNumber(ctx, s.endStr, s.endSize, s.endW, calm ? 0 : s.endRot, 1, 0, rank, now);
-    text(ctx, 'HITS', NUM_R - 2, 76, { size: 14, align: 'right', weight: 800, family: FONT.dmg, color: '#ffd0a0', ow: 3 });
+    text(ctx, 'HITS', NUM_R - 2, 76, { size: T ? 16 : 14, align: 'right', weight: 800, family: FONT.dmg, color: '#ffd0a0', ow: 3 });
     ctx.restore();
   }
   if (mile) drawMilestone(ctx, s, now, small, calm);
@@ -594,9 +605,11 @@ function drawNumber(ctx, str, size, w, rot, pop, flash, rank, now) {
   if (!(w > 0)) w = ctx.measureText(str).width;
   const by = size * 0.36;
   ctx.save();
-  ctx.translate(NUM_R - w / 2, NUM_BASE - by);
-  if (rot) ctx.rotate(rot);
+  // 튀기기는 오른쪽 끝을 기준으로 (칸 오른쪽 밖으로 커지지 않게), 기울기는 숫자 가운데를 중심으로
+  ctx.translate(NUM_R, NUM_BASE - by);
   if (pop !== 1) ctx.scale(pop, pop);
+  ctx.translate(-w / 2, 0);
+  if (rot) ctx.rotate(rot);
   ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.lineJoin = 'round';
   ctx.lineWidth = 7; ctx.strokeStyle = '#140004'; ctx.strokeText(str, 0, by);
   ctx.fillStyle = numGrad(ctx, rank, size, now); ctx.fillText(str, 0, by);
@@ -605,18 +618,18 @@ function drawNumber(ctx, str, size, w, rot, pop, flash, rank, now) {
   return w;
 }
 
-function drawComboBlock(ctx, world, c, s, rank, now, small, calm) {
+function drawComboBlock(ctx, world, c, s, rank, now, small, calm, T) {
   const info = rankInfo(rank);
   const popK = calm ? 0 : clamp(1 - (now - s.hitRt) / POP_T, 0, 1);
   const pop = 1 + 0.35 * popK;
   // 붓 띠 (숫자와 함께 조금 튄다) + 랭크 색 밑줄
   const B = SPR.banner;
   if (B) {
-    const bs = 1 + 0.35 * popK * 0.4;
+    const bs = 1 + 0.35 * popK * 0.4;   // 오른쪽 끝을 기준으로 튄다 (칸 오른쪽 밖으로 나가지 않게)
     ctx.save();
-    ctx.translate(-98, 38);
+    ctx.translate(-4, 38);
     if (bs !== 1) ctx.scale(bs, bs);
-    ctx.drawImage(B, -BANNER.w / 2, -BANNER.h / 2 + 2, BANNER.w, BANNER.h);
+    ctx.drawImage(B, -BANNER.w, -BANNER.h / 2 + 2, BANNER.w, BANNER.h);
     ctx.restore();
   }
   ctx.fillStyle = info?.c ?? '#e8c872';
@@ -627,7 +640,7 @@ function drawComboBlock(ctx, world, c, s, rank, now, small, calm) {
   ctx.font = font(s.nSize, 900, FONT.dmg);
   if (s.nW < 0) s.nW = ctx.measureText(s.nStr).width;
   drawNumber(ctx, s.nStr, s.nSize, s.nW, calm ? 0 : s.rot, pop, popK > 0.3 ? (popK - 0.3) / 0.7 * 0.7 : 0, rank, now);
-  text(ctx, 'HITS', NUM_R - 2, 76, { size: 14, align: 'right', weight: 800, family: FONT.dmg, color: '#ffd0a0', ow: 3 });
+  text(ctx, 'HITS', NUM_R - 2, 76, { size: T ? 16 : 14, align: 'right', weight: 800, family: FONT.dmg, color: '#ffd0a0', ow: 3 });
   // 콤보 시간 (90×4 핏빛 막대, 오른쪽으로 줄어든다 + 줄어드는 끝에 맺힌 핏방울)
   const bw = 90, bx = NUM_R - 2 - bw, by = 81;
   const f = clamp((Number(c.t) || 0) / (Number(c.window) || 2.6), 0, 1), fw = bw * f, fx = bx + bw - fw;
@@ -648,7 +661,7 @@ function drawComboBlock(ctx, world, c, s, rank, now, small, calm) {
     if (d > 0) {
       const v = Math.round(d);
       if (v !== s.dmgShown) { s.dmgShown = v; s.dmgStr = `총 피해 ${fmt(v)}`; }
-      text(ctx, s.dmgStr, NUM_R - 2, 101, { size: 12, align: 'right', weight: 700, family: FONT.num, color: '#e8d6c0', ow: 3 });
+      text(ctx, s.dmgStr, NUM_R - 2, 102, { size: T ? 14 : 12, align: 'right', weight: 700, family: FONT.num, color: '#e8d6c0', ow: 3 });
     }
   }
 }
@@ -667,7 +680,8 @@ function drawRankLetter(ctx, style, s, rank, now, calm) {
     ctx.beginPath(); ctx.arc(cx, cy, RING_R, -Math.PI / 2, -Math.PI / 2 + TAU * prog); ctx.stroke();
   }
   const t = clamp((now - s.rankRt) / RANKUP_T, 0, 1);
-  const sc = calm ? 1 : 1.6 - 0.6 * ease.outBack(t);
+  const big = info.r.length > 1 ? 0.35 : 0.6;   // SS·SSS 는 옆 붓 띠를 덜 덮게 덜 튄다
+  const sc = calm ? 1 : 1 + big - big * ease.outBack(t);
   const i = rank - 1, A = SPR.letters;
   ctx.save();
   ctx.translate(cx, cy);

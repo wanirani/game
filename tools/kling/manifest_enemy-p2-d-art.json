@@ -1,0 +1,23 @@
+{
+ "package": "ENEMY-P2-D-ART",
+ "model": "kling-image-v3_0_omni (img_resolution 2k)",
+ "prompts": "tools/painted/prompts/enemy-p2-d-art.mjs (ENEMIES ref/sheet templates, EXTRAS for single parts)",
+ "creditsPerImage": 2,
+ "budgetCredits": 900,
+ "creditsBefore": 6397,
+ "note": "Result URLs expire after 24 h; every kept image is stored as q93 webp under tools/painted/enemies/<id>/src/ (the chosen Step-1 reference as <id>_ref.webp).",
+ "generations": [
+  {"enemy": "storm_harpy", "step": "ref", "generationId": "AbD5L4Ni6o5-srFJB7gjBvW5HdHgkPUS8IRjBiJxzXWKWSTihNiQksQWS4bKwSAom6Zo5hWF", "tool": "text_to_image", "aspect": "4:3", "imageCount": 2, "decision": "pending"},
+  {"enemy": "gale_knight", "step": "ref", "generationId": "AUBYa007AA_w_Xnqw6k21ZDACnd3V115jlKVIPBs9LlPk3jE2WA2x6LzfNJmctBwcOZV_N-C", "tool": "text_to_image", "aspect": "3:4", "imageCount": 2, "decision": "pending"},
+  {"enemy": "thunder_roc", "step": "ref", "generationId": "AVJA_a8eCALtR78T8mBzTv9nqy4e2ZYiTaKkxmZdCmQ-w9eQImvv-28jxy43Sokz5vytrEwT", "tool": "text_to_image", "aspect": "4:3", "imageCount": 2, "decision": "pending"},
+  {"enemy": "cloud_jelly", "step": "ref", "generationId": "AR6_bo8_6zYQfdBqyIMBeqQW7btGelk6lFuaI1yJKomBv5P_bGbrTnczJYotPmXMnPNbz2Pq", "tool": "text_to_image", "aspect": "1:1", "imageCount": 2, "decision": "pending"},
+  {"enemy": "puppeteer", "step": "ref", "generationId": "AXJbb-SUpStWQsWxr-SrfJmD19sLH-PI3PE_rgNJALQ1k60bDJAiqw-amymPYlUVhFmUAivc", "tool": "text_to_image", "aspect": "3:4", "imageCount": 2, "decision": "pending"},
+  {"enemy": "faceless", "step": "ref", "generationId": "AXGtv83eC9F-DRY98VnsvzIXlGABmfHRlBo8dAEuoeqCCgeYZsXMYXtU9PodShSnzQPh3j6V", "tool": "text_to_image", "aspect": "2:3", "imageCount": 2, "decision": "pending"},
+  {"enemy": "dream_eater", "step": "ref", "generationId": "AXIYTRI5XTPNtJDUsXuuj1wJJ42IQV1IkPctwSVmEj2oSXeyOuEMMM5YSUHlm3fO6ONG8z98", "tool": "text_to_image", "aspect": "4:3", "imageCount": 2, "decision": "pending"},
+  {"enemy": "rot_treant", "step": "ref", "generationId": "AV9Z5CuqoFe5Uts_VjfTovYC8COKRs-k4poXOf3I4pVorHteAzV17ieMWTYhp1H95_hOdkrS", "tool": "text_to_image", "aspect": "3:4", "imageCount": 2, "decision": "pending"},
+  {"enemy": "plague_moth", "step": "ref", "generationId": "AdknBjuBChalp0nYxKQo_sHPs9AP6yBWyCRaTW3RY5RoxxRrqJ0OQnAWJJmMFaXoAou375W0", "tool": "text_to_image", "aspect": "4:3", "imageCount": 2, "decision": "pending"},
+  {"enemy": "fungal_husk", "step": "ref", "generationId": "AXBRGNdScaGxuB4XMXfBlHLxjs-FI5yTBK1jL29aQeswEXsU_CDnjF89sfjTTiqHz5YqbFTx", "tool": "text_to_image", "aspect": "3:4", "imageCount": 2, "decision": "pending"},
+  {"enemy": "void_herald", "step": "ref", "generationId": "AcEVTvSgAJMDsHNuOC0jmyVyH3d7iVDKJNAeR71PExuyrli1pLb6_itFgLIRaKU4pvI5qZtA", "tool": "text_to_image", "aspect": "2:3", "imageCount": 2, "decision": "pending"},
+  {"enemy": "nihil_spawn", "step": "ref", "generationId": "AaBRg-Pvk8jfSkjEZF53K1gDVcIrqm2Yrppdm4_8rYHHdUJf8Xb5U77uH6AvTmDbbAkp0Kuu", "tool": "text_to_image", "aspect": "1:1", "imageCount": 2, "decision": "pending"}
+ ]
+}

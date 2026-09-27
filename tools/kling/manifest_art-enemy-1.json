@@ -93,7 +93,8 @@
    "generationId": "AZJmxUzIXUGRM04B7_Bli_Fs3gz0puU17IBnIjjmpKpcIdhhixXKKqzdKQXFIGdPWoINW3vo",
    "tool": "image_to_image",
    "aspect": "4:3",
-   "imageCount": 2
+   "imageCount": 2,
+   "decision": "x2 KEPT -> bone_thrower/src/bt_parts.webp (sack + femur used; the green loincloth pelvis is a front view -> the loincloth is recoloured green from the skeleton edit instead); x1 has cyan halos"
   },
   {
    "enemy": "skeleton_archer",
@@ -101,7 +102,8 @@
    "generationId": "AT8NsqXFoxAoBGjwwA_Z3qIb3BxZx2Aluknayc_U3ufPXu7fXt_PIpdMGJdjmV2CXb6PIhRX",
    "tool": "image_to_image",
    "aspect": "4:3",
-   "imageCount": 2
+   "imageCount": 2,
+   "decision": "x2 KEPT -> skeleton_archer/src/sa_parts.webp (clean strung bow + upright quiver); x1 bow has a cyan halo"
   },
   {
    "enemy": "axe_armor",
@@ -109,7 +111,8 @@
    "generationId": "AVo0Iv7cHLguT78Kr4uYUkgyVV9Pr-LW3KgBVRA2G7deS3j3Zf6y3QNACfMIo-6BRB3TI3OI",
    "tool": "image_to_image",
    "aspect": "4:3",
-   "imageCount": 2
+   "imageCount": 2,
+   "decision": "x2 KEPT -> axe_armor/src/axe_parts.webp (horned helm facing right + glowing great axe); x1 helm faces left"
   },
   {
    "enemy": "zombie",
@@ -190,8 +193,32 @@
    "tool": "image_to_image",
    "aspect": "1:1",
    "imageCount": 1
+  },
+  {
+   "enemy": "crow",
+   "step": "fly_body",
+   "generationId": "AQejGKHR7hIMOkhM0bQ9CKiYmIPLHt4o7bTdN-MfeuMiSbwbvZdLBfH7wGVHfsdw8M81mGx9",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 1
+  },
+  {
+   "enemy": "crow",
+   "step": "wing",
+   "generationId": "AT7f7DKqkJJWpOOCR3DMpGM5AX27xvHBD_4VyGgrh2Y4WQctuDMvted8cqQsUvxjcIKFdRz0",
+   "tool": "image_to_image",
+   "aspect": "16:9",
+   "imageCount": 1
+  },
+  {
+   "enemy": "mimic",
+   "step": "closed_chest",
+   "generationId": "ATuW1GGlRZmPzWtWAvXOACEA_tFDkDZp-MboW-2-HeBra8fdOi0RucXQx1cA2bhRXQIyx1P1",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 1
   }
  ],
- "imagesSpent": 42,
- "creditsSpent": 84
+ "imagesSpent": 45,
+ "creditsSpent": 90
 }
