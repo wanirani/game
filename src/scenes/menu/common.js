@@ -380,12 +380,19 @@ export function budgetScale(ctx, w, h, scale) {
  * 정적인 그림을 픽셀 배율에 맞춘 캔버스에 한 번 그려 두고 재사용.
  * scale 을 주지 않으면(null) ctx 의 지금 변환에서 잰다 (uiScale 장면이면 uiK 까지 포함).
  * 키에 ui.fontEpoch 가 들어 있어 웹 글꼴이 늦게 도착하면 다시 굽는다 (P-28). 배율은 픽셀 예산으로 자른다 (P-11).
+ * 변환이 축 정렬(회전·기울임 없음)이고 장치 배율 그대로 예산 안이면, 장치 배율로 구워 단위 변환 · 정수 장치 위치로
+ * 복사한다 (필터 없는 1:1 복사 — fhd2x 에서 확대 복사보다 몇 배 싸다). 아니면 예산 배율로 구워 'medium' 으로 복사.
  */
 export class Layer {
   constructor() { this.cv = null; this.key = null; }
   draw(ctx, key, x, y, w, h, scale, fn) {
-    scale = budgetScale(ctx, w, h, scale);
-    const k = key + '|' + w + '|' + h + '|' + scale + '|' + fontEpoch;
+    let m = null;
+    if (!(scale > 0)) { try { m = ctx.getTransform(); } catch { m = null; } }
+    const cv0 = ctx?.canvas, maxPx = Math.max(2.5e5, (cv0?.width || 0) * (cv0?.height || 0));
+    const exact = !!m && Math.abs(m.b) < 1e-9 && Math.abs(m.c) < 1e-9 && m.a > 0 && m.a <= 4 && Math.abs(m.a - m.d) < 1e-6
+      && Math.round(w * m.a) * Math.round(h * m.a) <= maxPx * 1.02; // 화면 크기 레이어 = 백킹 크기 (소수 오차로 1 px 넘는 것 허용)
+    scale = exact ? m.a : budgetScale(ctx, w, h, scale);
+    const k = key + '|' + w + '|' + h + '|' + scale + '|' + (exact ? 1 : 0) + '|' + fontEpoch;
     if (this.key !== k || !this.cv) {
       const pw = Math.max(1, Math.ceil(w * scale)), ph = Math.max(1, Math.ceil(h * scale));
       if (!this.cv) this.cv = document.createElement('canvas');
@@ -396,6 +403,13 @@ export class Layer {
       c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
       try { fn(c); } catch (e) { console.error(e); }
       this.key = k;
+    }
+    if (exact) {
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0); // 자르기 영역·globalAlpha 는 그대로 (반올림으로 최대 0.5 장치 px 비킨다)
+      ctx.drawImage(this.cv, Math.round(m.a * x + m.e), Math.round(m.d * y + m.f));
+      ctx.restore();
+      return;
     }
     // 거의 1:1 복사(배율을 1/64 로 내림)라 'medium' 이면 충분하다. 'high' 는 1:1 이 아닌 전체 화면 복사가 10배 느리다 (P-11)
     const sq = ctx.imageSmoothingQuality;

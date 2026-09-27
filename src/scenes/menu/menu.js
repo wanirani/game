@@ -224,15 +224,22 @@ export class MenuScene extends Scene {
     const kIn = ease.outCubic(clamp(this.t / 0.22, 0, 1));
     const kOut = this.closing ? 1 - clamp(this.closing / 0.14, 0, 1) : 1;
     const k = kIn * kOut;
-    // 배경: 흐린 스냅샷 + 어둠 + 질감 + 비네팅
-    // 1/4 해상도 흐린 스냅샷을 4배 확대: 흐림에는 쌍선형('low')이면 충분하고 'high' 는 매 프레임 수십 ms (P-11)
-    const sq = ctx.imageSmoothingQuality;
-    ctx.imageSmoothingQuality = 'low';
-    ctx.drawImage(this.snap, 0, 0, W, H);
-    ctx.imageSmoothingQuality = sq;
+    // 배경: 흐린 스냅샷 + 어둠 + 질감 + 비네팅 — 스냅샷은 열 때 한 번 찍고 바뀌지 않으므로 배경 레이어에 함께 구워
+    // 전체 화면 복사를 매 프레임 한 번만 한다 (P-11: fhd2x 에서 전체 화면 복사 한 장이 수십 ms).
+    // 열고 닫는 동안(k < 1)은 그 위에 스냅샷을 (1 − k) 로 덮는다 = 스냅샷 위에 배경을 k 로 그린 것과 같은 결과.
+    // 1/4 해상도 흐린 스냅샷의 4배 확대는 쌍선형('low')이면 충분하다 ('high' 는 매 프레임 수십 ms)
     ctx.save();
+    this.bgLayer.draw(ctx, 'bgs' + (assets.has('tex/tex_blood_marble') ? 1 : 0), 0, 0, W, H, null, (c) => {
+      c.imageSmoothingQuality = 'low'; c.drawImage(this.snap, 0, 0, W, H); c.imageSmoothingQuality = 'high';
+      this.drawBackdrop(c, W, H);
+    });
+    if (k < 1) {
+      const sq = ctx.imageSmoothingQuality;
+      ctx.globalAlpha = 1 - k; ctx.imageSmoothingQuality = 'low';
+      ctx.drawImage(this.snap, 0, 0, W, H);
+      ctx.imageSmoothingQuality = sq;
+    }
     ctx.globalAlpha = k;
-    this.bgLayer.draw(ctx, 'bg' + (assets.has('tex/tex_blood_marble') ? 1 : 0), 0, 0, W, H, null, (c) => this.drawBackdrop(c, W, H));
     this.embers.render(ctx, W, H, 0.9);
     if (!this.state) {
       text(ctx, '진행 중인 게임이 없습니다', W / 2, H / 2, { size: 22, align: 'center', family: FONT.title, weight: 800, color: PAL.gold });

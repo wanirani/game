@@ -1,0 +1,5 @@
+[["under", {"anim": "under", "state": "under", "vx": 170}], ["rise .35", {"anim": "rise", "state": "rise", "stateT": 0.32}], ["rise .7", {"anim": "rise", "state": "rise", "stateT": 0.63}],
+ ["idle", {"anim": "idle", "state": "walk"}], ["walk a", {"anim": "walk", "state": "walk"}], ["walk b", {"anim": "walk", "state": "walk", "tOff": 0.29}],
+ ["punch .6", {"anim": "punch", "state": "punch", "animT": 0.3}], ["punch .95", {"anim": "punch", "state": "punch", "animT": 0.47}], ["strike", {"anim": "punch", "state": "punch", "animT": 0.56}],
+ ["throw .9", {"anim": "throw", "state": "throw", "animT": 0.5}], ["release", {"anim": "throw", "state": "throw", "animT": 0.64}],
+ ["sink .5", {"anim": "sink", "state": "sink", "stateT": 0.3}], ["hurt", {"anim": "walk", "state": "walk", "flashT": 0.11, "stun": 0.2}], ["dying", {"anim": "idle", "dying": 0.15}]]

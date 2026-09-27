@@ -3,6 +3,8 @@
  "charId": "lia",
  "classId": "lia_assassin",
  "src": "lia/lia_assassin_side",
+ "_bodyTop": "리뷰(heroes2rev): 배율 기준 정수리(원화 px) = 암살자 머리 맨 위. 사신 두건(256)만 높아 사신 몸이 1.6% 작았다. 전 직업 상속",
+ "bodyTop": 293,
  "joints": {
   "pelvis": [
    815,
@@ -722,10 +724,11 @@
   "footLine": [
    2390,
    1000,
-   0.06
+   -0.05
   ],
   "footMinX": 960,
-  "shinBootY": 1980
+  "shinBootY": 1980,
+  "_whyFootLine": "리뷰(heroes2rev): 예전 기울기 +0.06 은 발끝 쪽에서 선이 내려가 정강이 부품(선+40px 까지)이 발끝 윗면을 물었다 → 발목을 꺾으면 발끝 옆에 가는 조각이 떴다. −0.05 로 발끝 전체가 foot (heroes1rev 세라·빅터와 같은 해법)"
  },
  "hands": {
   "sheet": "lia/lia_dancer_hands",
@@ -768,7 +771,16 @@
     75
    ],
    "scale": 0.18
-  }
+  },
+  "rodKey": {
+   "hue": [
+    60,
+    185
+   ],
+   "sat": 0.1,
+   "val": 0.08
+  },
+  "_whyRodKey": "리뷰(heroes2rev): 기본 키(sat>0.35, val>0.3)는 막대의 어두운 그늘·옅은 하이라이트를 못 잡아 주먹에 막대 줄·고리가 남았다(광전사 대각선 초록 줄, 기사 주먹 위 고리, 성기사 왼쪽 방울, 암살자·무희 주먹 위 회색 토막). 기본 직업에 두어 전 직업 상속"
  },
  "materials": {
   "_replace": true,
@@ -824,6 +836,12 @@
   "viewsQ": [
    "-",
    "ym135"
-  ]
+  ],
+  "pockets": {
+   "T": 18,
+   "frac": 0.55,
+   "min": 30
+  },
+  "_whyPockets": "리뷰(heroes2rev): build_turn 의 구멍 메우기가 팔-몸·다리 사이 배경 주머니(회색)를 되살렸다 → turn.pockets (heroes1rev 옵션) 켬, 전 직업 상속. 흰 판금(수호성기사)은 rembg 가 판금 속을 뚫어 놓은 곳을 _alpha.png 에서 먼저 메움"
  }
 }

@@ -43,7 +43,10 @@
 //  · 그리기 코드에서 그라디언트를 만들지 않는다: 달·코로나·날개·초승달·검·까마귀·깃발은 캔버스 풀(부팅 뒤 한가할 때 8장)에 굽고, 빛은 ULTFX.glow.
 //  · 입자는 각성 최대치(700/450/250)의 몫(75/70/55%) 안에서만 뿌린다 (다른 연출이 이미 뿌린 입자 수도 센다). 마무리 직전에는 앞 박자의
 //    오래된 연기·먼지를 최대치 절반까지 걷어 내 적 전원의 타격 불꽃·처치 파편이 들어올 자리를 남긴다 (번쩍임·임팩트 프레임이 덮는 순간).
-//  · 망령 기사 돌격의 잔향 그림은 품질별 2/1/0 장. 리아는 키트의 색보정·집중선 층을 끈다 (거의 검은 화면 + 화면 전체 층 절약).
+//  · 망령 기사 돌격의 잔향 그림은 기사마다 품질별 1/0/0 장 (잔상 예산 8/5/3). 리아는 키트의 색보정·집중선 층을 끈다 (거의 검은 화면 + 화면 전체 층 절약).
+//  · 채우는 넓이를 줄인다: 아젤의 초승달은 휘두르는 0.1초만 스프라이트, 흉터·일제 폭발은 색마다 한 경로의 초승달 벡터.
+//    리아의 거대 까마귀는 붉은 역광을 스프라이트에 함께 구워 한 장으로, 남은 베기 자국·깃털 소용돌이는 한 경로로 묶어 채운다.
+//    (headless 소프트웨어 래스터로 층별 비용을 재어 보니 큰 회전·확대 가산 그림이 가장 큰 몫이었다)
 //  · 스테이지에 들어오자마자 각성했으면 컷인이 도는 동안(월드 정지) 프레임 사이 작업으로 풀·스프라이트·잔상을 굽는다.
 //  · 화면 전체 층: 배경 어둠 1장 (+ 키트 층·번쩍임). low 에서는 번쩍임이 켜진 동안 어둠을 건너뛴다 (전체 층 ≤ 1).
 //  · settings.flashFx·reduceMotion·screenShake 를 따른다 (카메라 연출 폭은 동작 줄이기에서 40%).
@@ -96,7 +99,38 @@ function ensurePool() {
     if (!c) return false;
     POOL.push({ c, key: null, used: 0 });
   }
+  if (!SCAN) {   // 잔상 비트맵의 불투명 영역을 재는 작은 캔버스 (자주 읽으므로 willReadFrequently)
+    const c = newCanvas();
+    if (c) { c.width = 96; c.height = 96; SCAN = { c, g: c.getContext('2d', { willReadFrequently: true }) }; }
+  }
   return true;
+}
+let SCAN = null;
+/**
+ * 구운 잔상 비트맵에서 실제로 그려진 영역 (1/4 로 줄여 알파를 훑고 한 칸씩 여유). 잔상 상자는 무기가 닿는 곳까지 넉넉해서
+ * 대부분 비어 있다 — 그릴 때 이 영역만 옮기면 가산 합성으로 채우는 넓이가 크게 줄어든다. 실패하면 전체.
+ */
+function trimBox(c) {
+  const full = { x: 0, y: 0, w: c.width, h: c.height }, S = SCAN, k = 4;
+  const w = Math.ceil(c.width / k), h = Math.ceil(c.height / k);
+  if (!S?.g || w > S.c.width || h > S.c.height) return full;
+  try {
+    const g = S.g;
+    g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+    g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+    g.clearRect(0, 0, S.c.width, S.c.height);
+    g.drawImage(c, 0, 0, c.width, c.height, 0, 0, w, h);
+    const d = g.getImageData(0, 0, w, h).data;
+    let x0 = w, y0 = h, x1 = -1, y1 = -1;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        if (d[(y * w + x) * 4 + 3] > 2) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+      }
+    }
+    if (x1 < 0) return full;
+    const X0 = Math.max(0, (x0 - 1) * k), Y0 = Math.max(0, (y0 - 1) * k), X1 = Math.min(c.width, (x1 + 2) * k), Y1 = Math.min(c.height, (y1 + 2) * k);
+    return { x: X0, y: Y0, w: X1 - X0, h: Y1 - Y0 };
+  } catch { return full; }
 }
 function resetG(c) {
   const g = c.getContext('2d');
@@ -209,6 +243,13 @@ function bakeCrow(g, w, h) {
   g.strokeStyle = 'rgba(110,12,30,0.8)'; g.lineWidth = 1.2;   // 깃 사이 결
   for (const q of feathers) g.stroke(q);
   for (const q of body) g.fill(q);   // 몸통 위의 결은 지운다
+  // 붉은 역광을 실루엣 뒤에 함께 굽는다 (화면을 덮는 가산 빛 두 장을 따로 그리지 않게: 까마귀 한 장 = 채우기 한 번)
+  g.globalCompositeOperation = 'destination-over';
+  g.save(); g.translate(cx, 138); g.scale(1, 122 / 250);
+  g.fillStyle = rad(g, 0, -20, 0, 0, 0, 250, [[0, 'rgba(255,48,72,0.95)'], [0.2, 'rgba(236,28,56,0.8)'], [0.45, 'rgba(176,16,42,0.55)'], [0.75, 'rgba(120,8,28,0.22)'], [1, 'rgba(90,0,20,0)']]);
+  g.beginPath(); g.arc(0, 0, 250, 0, TAU); g.fill();
+  g.restore();
+  g.globalCompositeOperation = 'source-over';
 }
 /** 실루엣용 검은 얼룩 (가운데 진함) */
 function bakeBlob(g, w, h) {
@@ -476,7 +517,7 @@ function poseFresh(key, p, rs) {
 function usePoses(S) {
   for (const j of poseJobs(S.charId, S.cls)) {
     const key = poseKey(S.charId, j.name), e = poseFresh(key, S.p, S.rs) ? POOL.find((s) => s.key === key) : null;
-    if (e) { e.used = ++USE; S.keep.add(key); S.bmp[j.name] = { c: e.c, W: e.c.width, H: e.c.height }; }
+    if (e) { e.used = ++USE; S.keep.add(key); S.bmp[j.name] = { c: e.c, W: e.c.width, H: e.c.height, bb: POSE_META.get(key)?.bb ?? null }; }
     else S.queue.push(j);
   }
 }
@@ -506,18 +547,21 @@ function bakePose(C, j) {
     }
   }, C.keep, true);
   AWAKEN_DIR_B_DEBUG.poseBakes++;
-  if (c) POSE_META.set(key, { look: p.look, sig: lookSig(p), cls: p.hero?.classId, rs });
+  const bb = c ? trimBox(c) : null;
+  if (c) POSE_META.set(key, { look: p.look, sig: lookSig(p), cls: p.hero?.classId, rs, bb });
   else POSE_META.delete(key);
-  return c ? { c, W, H } : null;
+  return c ? { c, W, H, bb } : null;
 }
 /** 잔상 비트맵을 발 중앙 (x, bottom) 에 그린다. face < 0 이면 좌우 반전, sc 배율 */
 function drawPose(ctx, b, x, bottom, face, a, add = false, sc = 1) {
   if (!b || !(a > 0.004)) return;
   ctx.globalAlpha = a > 1 ? 1 : a;
   ctx.globalCompositeOperation = add ? 'lighter' : 'source-over';
-  const dw = (GB.bl + GB.bf) * sc, dh = (GB.bt + GB.bb) * sc;
-  if (face < 0) { ctx.save(); ctx.translate(x, 0); ctx.scale(-1, 1); ctx.drawImage(b.c, 0, 0, b.W, b.H, -GB.bl * sc, bottom - GB.bt * sc, dw, dh); ctx.restore(); }
-  else ctx.drawImage(b.c, 0, 0, b.W, b.H, x - GB.bl * sc, bottom - GB.bt * sc, dw, dh);
+  const kx = (GB.bl + GB.bf) * sc / b.W, ky = (GB.bt + GB.bb) * sc / b.H, bb = b.bb;   // 월드 px / 비트맵 px
+  const sx = bb ? bb.x : 0, sy = bb ? bb.y : 0, sw = bb ? bb.w : b.W, sh = bb ? bb.h : b.H;
+  const ox = -GB.bl * sc + sx * kx, oy = bottom - GB.bt * sc + sy * ky, dw = sw * kx, dh = sh * ky;
+  if (face < 0) { ctx.save(); ctx.translate(x, 0); ctx.scale(-1, 1); ctx.drawImage(b.c, sx, sy, sw, sh, ox, oy, dw, dh); ctx.restore(); }
+  else ctx.drawImage(b.c, sx, sy, sw, sh, x + ox, oy, dw, dh);
 }
 
 // ═══════════════════════════ 그리기 도구 (그라디언트 없음) ═══════════════════════════
@@ -586,6 +630,17 @@ function cut(ctx, x0, y0, x1, y1, wd, col, a) {
   ctx.globalAlpha = Math.min(1, a); ctx.fillStyle = '#ffffff';
   ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(mx + nx * wd * 0.55, my + ny * wd * 0.55); ctx.lineTo(x1, y1); ctx.lineTo(mx - nx * wd * 0.55, my - ny * wd * 0.55); ctx.closePath(); ctx.fill();
 }
+/** 리아의 X자 베기 자국 여러 개를 한 경로로 (칼선마다 가운데 반폭 w 인 마름모 둘; cut() 과 같은 모양) */
+function xPath(ctx, list, w) {
+  ctx.beginPath();
+  for (const s of list) {
+    for (let d = -1; d <= 1; d += 2) {
+      const t = s.r + d * 0.78, dx = Math.cos(t) * s.L, dy = Math.sin(t) * s.L, nx = -Math.sin(t) * w, ny = Math.cos(t) * w;
+      ctx.moveTo(s.x - dx, s.y - dy); ctx.lineTo(s.x + nx, s.y + ny); ctx.lineTo(s.x + dx, s.y + dy); ctx.lineTo(s.x - nx, s.y - ny); ctx.closePath();
+    }
+  }
+}
+const PETALS = { high: 44, medium: 30, low: 16 };   // 진홍 꽃보라: 화면에 떠 있는 꽃잎 수 (품질별)
 /** 화면(카메라 뷰)을 덮는 어둠막 (low 는 번쩍임이 켜진 동안 건너뛴다: 화면 전체 층 ≤ 1) */
 function dimFill(ctx, S, col, a) {
   if (!(a > 0.01)) return;
@@ -884,7 +939,7 @@ function bran(p, w, v) {
       const rise = S.reform >= 0 ? 1 : ease.outCubic(u01(lt, k.t0, 0.3));
       if (rise <= 0 || vis <= 0.01) continue;
       const bob = Math.sin(lt * 3 + k.ph) * 2, a = k.a * vis * endK * (0.85 + 0.15 * Math.sin(lt * 7 + k.ph));
-      glow(ctx, KT, k.x, k.gy - 70 * k.s, 78 * k.s, 0.32 * a);
+      glow(ctx, KT, k.x, k.gy - 70 * k.s, 62 * k.s, 0.36 * a);
       if (rise < 1) {   // 땅에서 솟아오른다 (아래부터 드러남)
         ctx.save(); ctx.beginPath(); ctx.rect(k.x - 200, k.gy - (GB.bt * k.s) * rise - 4, 400, GB.bt * k.s * rise + GB.bb + 8); ctx.clip();
         drawPose(ctx, b, k.x, k.gy + (1 - rise) * 24 + bob, f, a, true, k.s);
@@ -1088,10 +1143,9 @@ function bran(p, w, v) {
       for (const k of S.charge) {
         if (k.done) continue;
         const bob = Math.abs(Math.sin(lt * 18 + k.ph)) * -6;
-        glow(ctx, KT, k.x, k.gy - 70 * k.sc, 86 * k.sc, 0.35);
-        // 잔향 (high 둘 · medium 하나 · low 없음 — 큰 가산 그리기라 품질에 따라 줄인다)
-        if (S.q === 'high') drawPose(ctx, b, k.x - f * 84, k.gy + bob, f, 0.12, true, k.sc);
-        if (!S.low) drawPose(ctx, b, k.x - f * 42, k.gy + bob, f, S.q === 'high' ? 0.24 : 0.3, true, k.sc);
+        glow(ctx, KT, k.x, k.gy - 70 * k.sc, 64 * k.sc, 0.4);
+        // 잔향은 high 에서만 기사마다 하나 (잔상 예산 8/5/3 — 큰 가산 그리기라 medium·low 는 본체만)
+        if (S.q === 'high') drawPose(ctx, b, k.x - f * 48, k.gy + bob, f, 0.28, true, k.sc);
         drawPose(ctx, b, k.x, k.gy + bob, f, 0.62, true, k.sc);
         if (k.banner) drawBanner(ctx, S, k.x - f * 20 * k.sc, k.gy - 70 * k.sc + bob, k.sc, 0.85, k.ph + lt * 3, warlord);
       }
@@ -1186,7 +1240,7 @@ function lia(p, w, v) {
   const shadow = cls === 'lia_shadowmaster', kuno = cls === 'lia_kunoichi', dancer = cls === 'lia_bladedancer', reaper = cls === 'lia_reaper';
   const NB = 12, wBlink = (i) => W[i] ?? 0.36, wFinal = W[W.length - 1] ?? 4.5;
   const RED = '#ff2040';
-  S.slashes = []; S.blinks = []; S.petals = []; S.orbits = []; S.vis = []; S.crow = -1; S.back = -1; S.det = -1; S.souls = null;
+  S.slashes = []; S.linger = []; S.blinks = []; S.petals = []; S.orbits = []; S.vis = []; S.crow = -1; S.back = -1; S.det = -1; S.souls = null;
   S.feathers = [];
   for (let i = 0, n = S.low ? 12 : 26; i < n; i++) S.feathers.push({ a: rand(0, TAU), r: rand(0.25, 0.62), sp: rand(1.2, 2.4) * (i % 2 ? 1 : -1), s: rand(6, 11), y: rand(-0.3, 0.3), ph: rand(0, TAU) });
   const dimK = (S) => u01(S.lt, 0, 0.18) * (1 - u01(S.lt, 2.25, 0.45));
@@ -1201,9 +1255,7 @@ function lia(p, w, v) {
     const V = view(S), cx = V.x + V.w / 2, cy = V.y + V.h * 0.44, c = spr('crow');
     const open = ease.outBack(u01(u, 0, 0.28)), a = u01(u, 0, 0.06) * (1 - u01(u, 0.52, 0.28)) * 0.92;
     const sw = (V.w * 1.08) / 512, sx = sw * Math.max(0.05, open), sy = sw * (0.9 + 0.1 * Math.min(1, open)) * (1 + 0.03 * Math.sin(u * 18));
-    // 붉은 하늘 역광 (검은 실루엣이 읽히게): 넓은 번짐 + 까마귀 뒤의 달처럼 뜨거운 핵
-    glowE(ctx, '#b0102a', cx, cy, V.w * 0.62, V.h * 0.6, 0.95 * a);
-    glow(ctx, '#ff2040', cx, cy - 30 * sy, V.h * 0.42 * Math.min(1, 0.4 + open), 0.9 * a);
+    // 붉은 하늘 역광은 스프라이트에 함께 구워져 있다 (검은 실루엣이 읽히게; 날개가 펴지는 만큼 빛도 퍼진다)
     img(ctx, c, cx, cy, sx, sy, 0, Math.min(1, a * 1.08), false, 0.5, 150 / 256);
     const ex = cx + 10 * sx, ey = cy - 108 * sy;
     glow(ctx, RED, ex, ey, 46, a); flare(ctx, ex, ey, 30, '#ff6070', a, u * 2);
@@ -1265,7 +1317,7 @@ function lia(p, w, v) {
     S.vis = visFoes(S);
     if (kuno) {   // 진홍 꽃보라: 화면을 가로지르는 꽃잎 + 순간이동마다 터지는 꽃잎
       const V = view(S);
-      if (S.lt > 0.2 && S.lt < 2.3 && S.petals.length < (S.low ? 24 : 60) && Math.random() < 0.9) S.petals.push({ x: f > 0 ? V.x - 20 : V.x + V.w + 20, y: V.y + rand(0, V.h), vx: f * rand(500, 900), vy: rand(40, 140), fi: (Math.random() * 3) | 0, s: rand(0.7, 1.3), r: rand(0, TAU), vr: rand(-10, 10), life: 1.4 });
+      if (S.lt > 0.2 && S.lt < 2.3 && S.petals.length < PETALS[S.q] && Math.random() < 0.9) S.petals.push({ x: f > 0 ? V.x - 20 : V.x + V.w + 20, y: V.y + rand(0, V.h), vx: f * rand(500, 900), vy: rand(40, 140), fi: (Math.random() * 3) | 0, s: rand(0.7, 1.3), r: rand(0, TAU), vr: rand(-10, 10), life: 1.4 });
       for (let i = S.petals.length - 1; i >= 0; i--) { const q = S.petals[i]; q.x += q.vx * dt; q.y += q.vy * dt; q.r += q.vr * dt; q.vx *= 0.995; q.life -= dt; if (q.life <= 0) S.petals.splice(i, 1); }
     }
   };
@@ -1279,32 +1331,46 @@ function lia(p, w, v) {
     // 깃털 소용돌이
     if (lt > 0.2 && lt < 2.25) {
       const cx = V.x + V.w / 2, cy = V.y + V.h / 2, fa = u01(lt, 0.2, 0.2) * (1 - u01(lt, 1.95, 0.3));
-      ctx.globalCompositeOperation = 'source-over';
-      for (const q of S.feathers) {
-        const an = q.a + lt * q.sp, x = cx + Math.cos(an) * q.r * V.w * 0.52, y = cy + Math.sin(an) * q.r * V.h * 0.42 + q.y * 60;
-        ctx.save(); ctx.translate(x, y); ctx.rotate(an + HP * Math.sign(q.sp) + Math.sin(lt * 6 + q.ph) * 0.4);
-        ctx.globalAlpha = 0.85 * fa; ctx.fillStyle = '#0c0a12';
-        ctx.beginPath(); ctx.moveTo(q.s, 0); ctx.quadraticCurveTo(0, -q.s * 0.36, -q.s, 0); ctx.quadraticCurveTo(0, q.s * 0.36, q.s, 0); ctx.fill();
+      if (fa > 0.01) {   // 깃털 전부를 한 경로로 (채움 1 + 붉은 테 1)
+        ctx.beginPath();
+        for (const q of S.feathers) {
+          const an = q.a + lt * q.sp, x = cx + Math.cos(an) * q.r * V.w * 0.52, y = cy + Math.sin(an) * q.r * V.h * 0.42 + q.y * 60;
+          const r = an + HP * Math.sign(q.sp) + Math.sin(lt * 6 + q.ph) * 0.4, c = Math.cos(r), sn = Math.sin(r), f0 = q.s, k = q.s * 0.36;
+          ctx.moveTo(x + f0 * c, y + f0 * sn);
+          ctx.quadraticCurveTo(x + k * sn, y - k * c, x - f0 * c, y - f0 * sn);
+          ctx.quadraticCurveTo(x - k * sn, y + k * c, x + f0 * c, y + f0 * sn);
+          ctx.closePath();
+        }
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = 0.85 * fa; ctx.fillStyle = '#0c0a12'; ctx.fill();
         ctx.globalAlpha = 0.5 * fa; ctx.strokeStyle = '#b0102a'; ctx.lineWidth = 1; ctx.stroke();
-        ctx.restore();
       }
     }
-    // 쌓인 베기 자국 (붉은 X, 청록 색수차)
+    // 쌓인 베기 자국 (붉은 X): 막 벤 자국만 하나씩 (청록 색수차 포함), 남은 자국과 일제 번쩍임은 한 경로로 묶어 두 번 채운다
     const flashAll = S.det >= 0 ? 1 - u01(lt, S.det, 0.5) : 0, gone = S.det >= 0 ? u01(lt, S.det + 0.25, 0.3) : 0;
+    const linger = S.linger;
+    linger.length = 0;
     for (const s of S.slashes) {
-      const age = lt - s.t, grow = ease.outCubic(u01(age, 0, 0.06)), L = s.L * grow;
-      const live = 1 - u01(age, 0.1, 0.12);
-      let a = Math.max(live, 0.24 + 0.06 * Math.sin(lt * 20 + s.r * 9));
-      if (flashAll > 0) a = Math.min(1, 0.4 + flashAll);
-      a *= 1 - gone;
-      if (a <= 0.01) continue;
-      const wd = flashAll > 0 ? 5 : live > 0.2 ? 3.4 : 2;
-      for (const d of [-1, 1]) {
+      const age = lt - s.t;
+      if (age < 0) continue;
+      const live = flashAll > 0 ? 0 : 1 - u01(age, 0.1, 0.12);
+      if (live <= 0.05) { linger.push(s); continue; }
+      const L = s.L * ease.outCubic(u01(age, 0, 0.06)), a = Math.max(live, 0.3) * (1 - gone), wd = live > 0.2 ? 3.4 : 2;
+      for (let d = -1; d <= 1; d += 2) {
         const t = s.r + d * 0.78, cx = Math.cos(t) * L, sy = Math.sin(t) * L;
-        if (!S.low && live > 0.05) cut(ctx, s.x - cx + 2.5, s.y - sy + 1.5, s.x + cx + 2.5, s.y + sy + 1.5, wd * 0.8, '#30e0ff', 0.45 * a * live);
-        cut(ctx, s.x - cx, s.y - sy, s.x + cx, s.y + sy, wd, flashAll > 0 ? RED : '#ff2a4a', a);
+        if (!S.low) cut(ctx, s.x - cx + 2.5, s.y - sy + 1.5, s.x + cx + 2.5, s.y + sy + 1.5, wd * 0.8, '#30e0ff', 0.45 * a * live);
+        cut(ctx, s.x - cx, s.y - sy, s.x + cx, s.y + sy, wd, '#ff2a4a', a);
       }
-      if (flashAll > 0) glow(ctx, RED, s.x, s.y, s.L * 1.2, 0.5 * flashAll);
+    }
+    if (linger.length && gone < 1) {
+      const a = (flashAll > 0 ? Math.min(1, 0.4 + flashAll) : 0.26 + 0.06 * Math.sin(lt * 20)) * (1 - gone), wd = flashAll > 0 ? 5 : 2;
+      ctx.globalCompositeOperation = 'lighter';
+      xPath(ctx, linger, wd * 2.4); ctx.globalAlpha = Math.min(1, 0.5 * a); ctx.fillStyle = flashAll > 0 ? RED : '#ff2a4a'; ctx.fill();
+      xPath(ctx, linger, wd * 0.55); ctx.globalAlpha = Math.min(1, a); ctx.fillStyle = '#ffffff'; ctx.fill();
+      if (flashAll > 0) {   // 번쩍임 빛은 자국 12개(low 6개)까지만
+        const st = Math.max(1, Math.ceil(linger.length / (S.low ? 6 : 12)));
+        for (let i = 0; i < linger.length; i += st) glow(ctx, RED, linger[i].x, linger[i].y, linger[i].L * 1.15, 0.55 * flashAll);
+      }
     }
     // 순간이동한 리아 (적 등 뒤) + 붉은 잔상
     for (const B of S.blinks) {
@@ -1367,7 +1433,7 @@ function lia(p, w, v) {
     }
     if (S.blinks.length > 30) S.blinks.splice(0, S.blinks.length - 30);
     if (dancer) S.orbits.push({ x: hx, y: hy, a: rand(0, TAU), t: S.lt });
-    if (kuno) for (let k = 0; k < (S.low ? 4 : 8); k++) S.petals.push({ x: hx, y: hy, vx: rand(-420, 420), vy: rand(-380, 120), fi: k % 3, s: rand(0.7, 1.3), r: rand(0, TAU), vr: rand(-12, 12), life: 0.9 });
+    if (kuno) for (let k = 0; k < (S.q === 'high' ? 6 : S.q === 'medium' ? 4 : 3); k++) S.petals.push({ x: hx, y: hy, vx: rand(-420, 420), vy: rand(-380, 120), fi: k % 3, s: rand(0.7, 1.3), r: rand(0, TAU), vr: rand(-12, 12), life: 0.9 });
     if (S.orbits.length > 16) S.orbits.shift();
     const rect = { x: hx - 80, y: hy - 95, w: 160, h: 190 };
     for (let k = 0; k < 3; k++) {
@@ -1413,14 +1479,14 @@ function azel(p, w, v) {
     const ecl = u01(lt, 0.15, 0.3) * (S.back >= 0 ? 1 - u01(lt, S.back, 0.3) : 1);
     const sunK = dawn && S.burst >= 0 ? ease.outCubic(u01(lt, S.burst, 0.45)) : 0;
     const pulse = S.back >= 0 ? 1 + 0.5 * (1 - u01(lt, S.back + 0.1, 0.4)) * u01(lt, S.back, 0.1) : 1;
-    glow(ctx, sunK > 0.5 ? '#ffd070' : dawn ? '#ff8a3a' : '#ff1a2a', mx, my, R * (3.4 + sunK * 2.4), (0.5 - 0.3 * ecl + sunK * 0.4) * fade * rise * pulse);
+    glow(ctx, sunK > 0.5 ? '#ffd070' : dawn ? '#ff8a3a' : '#ff1a2a', mx, my, R * (2.6 + sunK * 2.0), (0.55 - 0.3 * ecl + sunK * 0.4) * fade * rise * pulse);
     img(ctx, spr('moon'), mx, my, R / 104, R / 104, 0, fade * (1 - sunK), false);
     if (ecl > 0.001 && sunK < 1) {
       const ox = (1 - ease.inOutCubic(ecl)) * R * 2.3;
       ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = fade * (1 - sunK); ctx.fillStyle = '#050104';
       ctx.beginPath(); ctx.arc(mx + ox, my, R * 1.02, 0, TAU); ctx.fill();
       const cs = (R * 1.04) / 54 * (1 + 0.04 * Math.sin(lt * 9));
-      img(ctx, spr(dawn ? 'corona:gold' : 'corona:red'), mx, my, cs, cs, lt * 0.2, ecl * fade * (1 - sunK) * (0.85 + 0.15 * Math.sin(lt * 13)), true);
+      img(ctx, spr(dawn ? 'corona:gold' : 'corona:red'), mx, my, cs, cs, 0, ecl * fade * (1 - sunK) * (0.85 + 0.15 * Math.sin(lt * 13)), true);
     }
     if (sunK > 0) {
       const ss = (R * 1.3) / 60 * (1 + 0.25 * sunK);
@@ -1564,6 +1630,50 @@ function azel(p, w, v) {
     if (i % 3 === 0) sfx('slash', { pitch: 0.6, vol: 0.6 });
     S.cam.kick?.(Math.cos(c.a0) * 5, Math.sin(c.a0) * 4);
     if (i === 4) beat(S, c.x, c.y, 0.5, false);
+  }
+}
+
+/**
+ * 초승달 모양 경로 하나를 이어 붙인다 (bakeCres 와 같은 모양: 중심 (x, y), 바깥 반지름 R, 안쪽 원을 d 만큼 비켜 깎는다, 두꺼운 쪽이 rot 방향).
+ * 여러 개를 한 경로에 모아 한 번에 채운다.
+ */
+function cresPath(ctx, x, y, R, d, rot) {
+  const half = 1.2, tx = R * Math.cos(half), ty = R * Math.sin(half), r2 = Math.hypot(tx + d, ty), a2 = Math.atan2(ty, tx + d);
+  ctx.moveTo(x + Math.cos(rot - half) * R, y + Math.sin(rot - half) * R);
+  ctx.arc(x, y, R, rot - half, rot + half, false);
+  ctx.arc(x - Math.cos(rot) * d, y - Math.sin(rot) * d, r2, rot + a2, rot - a2, true);
+  ctx.closePath();
+}
+/** 흉터·폭발 색 [채움, 가장자리, 번짐, 가산 합성] (초승달 스프라이트 이름별) */
+const SCAR = {
+  'cres:red': ['#ff1a3a', '#ffe0e4', '#c0142a', true], 'cres:gold': ['#ffc040', '#fffbe8', '#ffd070', true],
+  'cres:white': ['#f4f0ff', '#ffffff', '#fff2b0', true], 'cres:dark': ['#3a1060', '#c090ff', '#b060ff', false],
+};
+/**
+ * 아젤: 휘두른 뒤 허공에 남은 초승달 흉터 (가늘게 맥동) → 손가락 튕기기 뒤 일제 폭발 (0.3초 동안 1→1.45배로 부풀며 사라진다).
+ * 색마다 경로 하나: 채움 1 + 가장자리 선 1 (+ 폭발 때 넓은 번짐 선 1). 크기가 커도 채우는 넓이는 초승달 모양뿐이다.
+ */
+function drawScars(ctx, S, lt) {
+  const burst = S.burst >= 0 && lt >= S.burst, bu = burst ? u01(lt, S.burst, 0.3) : 0;
+  if (bu >= 1) return;
+  const pul = 0.3 + 0.1 * Math.sin(lt * 17);
+  for (const key in SCAR) {
+    let n = 0;
+    ctx.beginPath();
+    for (const c of S.cres) {
+      if (c.key !== key || lt < c.t || (!burst && lt - c.t < 0.1)) continue;
+      const R = 108 * c.sc * (1 + 0.45 * ease.outCubic(bu));
+      cresPath(ctx, c.x, c.y, R, R * (burst ? lerp(0.5, 0.12, bu) : 0.16), c.a0 + c.sweep);
+      n++;
+    }
+    if (!n) continue;
+    const [fill, edge, halo, add] = SCAR[key];
+    const a = burst ? 1 - bu : pul;
+    ctx.globalCompositeOperation = add ? 'lighter' : 'source-over';
+    if (burst && !S.low) { ctx.globalAlpha = 0.35 * a; ctx.strokeStyle = halo; ctx.lineWidth = 16; ctx.lineJoin = 'round'; ctx.stroke(); }
+    ctx.globalAlpha = Math.min(1, (burst ? 1 : 1.6) * a); ctx.fillStyle = fill; ctx.fill();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = Math.min(1, (burst ? 0.9 : 1.2) * a); ctx.strokeStyle = edge; ctx.lineWidth = burst ? 2.5 : 1.2; ctx.stroke();
   }
 }
 

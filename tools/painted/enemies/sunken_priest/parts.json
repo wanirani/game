@@ -1,0 +1,227 @@
+{
+ "id": "sunken_priest",
+ "tier": "T2",
+ "srcTD": 4,
+ "note": "body = Step-4 edit of the sheet-1 side figure with both arms and the staff removed (src/sp_body.webp, manifest: sp_edit), the robe hem sways by strips; sleeve = sheet 1 loose alb sleeve (upper arm, near + darkened far); staff = sheet 2 near forearm + fist gripping the white coral crozier with the pearl (cut from the headless-robe figure at the cuff); fore = sheet 2 loose bare forearm with the open clawed hand (far arm, conjures the bubble).",
+ "sources": {
+  "b": {
+   "raw": "sp_body.webp",
+   "file": "sp_body.png",
+   "mode": "",
+   "k": 0.039
+  },
+  "s1": {
+   "raw": "sunken_priest_sheet1.webp",
+   "file": "sunken_priest_sheet1.png",
+   "mode": "",
+   "k": 0.042
+  },
+  "s2": {
+   "raw": "sunken_priest_sheet2.webp",
+   "file": "sunken_priest_sheet2.png",
+   "mode": "",
+   "k": 0.046
+  }
+ },
+ "parts": {
+  "body": {
+   "src": "b",
+   "box": [
+    220,
+    30,
+    1240,
+    2320
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     740,
+     2290
+    ],
+    "top": [
+     740,
+     53
+    ],
+    "sh": [
+     1115,
+     1000
+    ],
+    "shF": [
+     905,
+     1030
+    ],
+    "eye": [
+     961,
+     597
+    ],
+    "eye2": [
+     1079,
+     631
+    ],
+    "mouth": [
+     1040,
+     714
+    ],
+    "mfront": [
+     1090,
+     712
+    ],
+    "weed": [
+     690,
+     960
+    ],
+    "chest": [
+     1000,
+     1200
+    ]
+   },
+   "_bbox": [
+    242,
+    52,
+    1217,
+    2303
+   ]
+  },
+  "sleeve": {
+   "src": "s1",
+   "box": [
+    2030,
+    110,
+    2270,
+    620
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     2147,
+     165
+    ],
+    "b": [
+     2150,
+     540
+    ]
+   },
+   "_bbox": [
+    2055,
+    143,
+    2240,
+    593
+   ]
+  },
+  "staff": {
+   "src": "s2",
+   "box": [
+    1440,
+    60,
+    1880,
+    1660
+   ],
+   "keep": "largest",
+   "poly": [
+    [
+     1560,
+     70
+    ],
+    [
+     1875,
+     70
+    ],
+    [
+     1875,
+     480
+    ],
+    [
+     1700,
+     480
+    ],
+    [
+     1700,
+     900
+    ],
+    [
+     1650,
+     1000
+    ],
+    [
+     1600,
+     1650
+    ],
+    [
+     1495,
+     1650
+    ],
+    [
+     1495,
+     1100
+    ],
+    [
+     1545,
+     900
+    ],
+    [
+     1462,
+     900
+    ],
+    [
+     1462,
+     690
+    ],
+    [
+     1560,
+     690
+    ]
+   ],
+   "piv": {
+    "a": [
+     1478,
+     830
+    ],
+    "g": [
+     1612,
+     790
+    ],
+    "pearl": [
+     1700,
+     246
+    ],
+    "tip": [
+     1532,
+     1602
+    ]
+   },
+   "_bbox": [
+    1462,
+    109,
+    1836,
+    1602
+   ]
+  },
+  "fore": {
+   "src": "s2",
+   "k": 0.036,
+   "box": [
+    1750,
+    590,
+    2000,
+    1360
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1898,
+     631
+    ],
+    "b": [
+     1862,
+     1159
+    ]
+   },
+   "_bbox": [
+    1768,
+    609,
+    1978,
+    1333
+   ]
+  }
+ }
+}

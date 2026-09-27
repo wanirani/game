@@ -1,0 +1,12 @@
+{
+ "id": "scholar_ghost",
+ "tier": "T1",
+ "srcTD": 4,
+ "note": "T1 ghost pipeline (like ghost.js): the Kling scholar body (scholar take 1, soft matte: translucent spectral glow) is re-rastered with a seam-free warpY so the misty hem streams and ripples; the floating book is its own part.",
+ "sources": { "g": { "raw": "scholar_ghost_ref.webp", "file": "a2_scholar.png", "k": 0.0414, "mode": "soft" } },
+ "parts": {
+  "body": { "src": "g", "box": [80, 0, 1460, 1712], "keep": "largest",
+   "piv": { "a": [650, 700], "top": [640, 20], "eye": [710, 323], "eye2": [818, 323], "hand": [1380, 600], "hand2": [430, 1130] } },
+  "book": { "src": "g", "box": [1520, 180, 2250, 670], "keep": "largest", "piv": { "a": [1890, 420] } }
+ }
+}

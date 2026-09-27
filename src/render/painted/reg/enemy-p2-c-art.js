@@ -10,6 +10,7 @@ import * as reflection from '../enemies/reflection.js';
 import * as siren from '../enemies/siren.js';
 import * as forge_imp from '../enemies/forge_imp.js';
 import * as abyss_angler from '../enemies/abyss_angler.js';
+import * as sunken_priest from '../enemies/sunken_priest.js';
 
 export const bosses = {};
 export const enemies = [
@@ -19,6 +20,7 @@ export const enemies = [
   { mod: siren },
   { mod: forge_imp },
   { mod: abyss_angler },
+  { mod: sunken_priest },
 ];
 export const companions = {};
 export const npcs = {};

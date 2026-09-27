@@ -446,6 +446,8 @@ const ACT_DESC = {
   awaken: '비워 두면 필살기를 길게 눌러 발동', map: '인벤토리를 바로 엽니다', mount: '탈것을 부르거나 내립니다', guard: '수호신이 스킬을 씁니다',
 };
 const CAP_TIME = 3, WIZ_TIME = 5;
+/** 키 지정 캡처가 잡지 않고 브라우저·OS 에 그대로 넘기는 키 */
+const BROWSER_KEYS = new Set(['F5', 'F11', 'F12', 'MetaLeft', 'MetaRight', 'OSLeft', 'OSRight', 'ContextMenu']);
 
 export class RemapPage {
   constructor(scene, dev) {
@@ -461,6 +463,8 @@ export class RemapPage {
     this._kd = (e) => this.onKeyDown(e);
     this._ku = (e) => this.onKeyUp(e);
     this.follow = true;
+    /** 패드 캡처가 끝날 때 눌려 있던 버튼: 뗄 때까지 메뉴 입력을 막는다 ({btns:Set, t}) */
+    this.hold = null;
   }
   get modal() { return !!this.cap; }
   buttons() {
@@ -469,7 +473,7 @@ export class RemapPage {
       : [['reset', '기본값 복원']];
   }
   get count() { return REMAPPABLE.length + 1; }
-  exit() { this.cap = null; this.wiz = null; this.listen(false); this.swallowCodes.clear(); }
+  exit() { this.cap = null; this.wiz = null; this.hold = null; this.listen(false); this.swallowCodes.clear(); }
   listen(on) {
     if (on === this.listening || typeof window === 'undefined') return;
     this.listening = on;
@@ -478,6 +482,7 @@ export class RemapPage {
   /** 캡처 중인 키는 게임 입력으로 가지 않게 (창 캡처 단계에서 멈춘다). 잡은 키는 뗄 때까지 계속 막는다 (반복 입력이 취소·결정으로 새지 않게) */
   onKeyDown(e) {
     if (this.cap && this.dev === 'key') {
+      if (BROWSER_KEYS.has(e.code)) return; // 새로 고침·전체 화면·개발자 도구·OS 키는 브라우저 몫 (platform §6.6: F11 은 브라우저에 맡긴다)
       e.preventDefault(); e.stopImmediatePropagation();
       if (!e.repeat && !this.cap.key && e.code) { this.cap.key = e.code; this.swallowCodes.add(e.code); }
       return;
@@ -500,6 +505,14 @@ export class RemapPage {
     this.cap = null; this.msg = null;
     input.flush();
     if (this.dev === 'key' && !this.swallowCodes.size) this.listen(false);
+    // 캡처는 navigator.getGamepads() 를 틱에서 직접 읽는다. input 은 rAF 첫머리에 읽으므로, 그 사이에 눌린 버튼은
+    // input 이 다음 프레임에야 '눌림'으로 본다 (flush 뒤라서 엣지가 산다): ○ 를 지정했더니 이 화면이 닫히거나(취소),
+    // START 로 취소했더니 옵션이 닫히는 일이 없도록 그 버튼을 뗄 때까지 메뉴 입력을 막는다
+    if (this.dev === 'pad') {
+      const btns = new Set();
+      for (const s of padSnapshot().values()) for (const i of s) btns.add(i);
+      this.hold = btns.size ? { btns, t: 0 } : null;
+    }
     if (!c) return;
     if (c.wizard && this.wiz) {
       if (kind === 'cancel') { this.wiz = null; this.game.toast('차례대로 지정을 멈췄습니다', '#e8dcc8', 2); return; }
@@ -593,6 +606,14 @@ export class RemapPage {
         this.runButton(id);
         return null;
       }
+    }
+    if (this.hold) {
+      // 캡처를 끝낸 버튼을 아직 누르고 있으면 그 버튼의 메뉴 뜻(취소·결정·닫기)은 무시 (endCapture 참고, 최대 2초)
+      this.hold.t += dt;
+      let down = false;
+      for (const s of padSnapshot().values()) for (const i of this.hold.btns) if (s.has(i)) down = true;
+      if (down && this.hold.t < 2) return null;
+      this.hold = null;
     }
     if (nav.cancel || nav.menu) return 'back';
     if (nav.up) { this.sel = (this.sel + n) % (n + 1); this.follow = true; audio.sfx('menu_move'); }

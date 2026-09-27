@@ -1,0 +1,14 @@
+{
+ "id": "bone_pillar",
+ "tier": "T1",
+ "srcTD": 4,
+ "note": "T1: a column of stacked vertebrae on a heap of bones (Kling pillar take 1, blood pool faded) crowned by three skulls: the horned dragon skull on top, the fanged skull below it (both breathe fire, placed by their mouth pivots on the AI's muzzle points) and a smaller darkened copy of the fanged skull lower down.",
+ "sources": { "p": { "raw": "bone_pillar_ref.webp", "file": "a2_pillar.png", "k": 0.055 } },
+ "parts": {
+  "column": { "src": "p", "box": [1450, 80, 2240, 1660], "keep": "largest",
+   "fade": [[1450, 1560, 2240, 1660, "down", 1.2], [1450, 1300, 1560, 1660, "left", 1.0]],
+   "piv": { "a": [1860, 1600], "top": [1720, 200] } },
+  "skull1": { "src": "p", "box": [220, 60, 1000, 970], "keep": "largest", "k": 0.034, "piv": { "a": [560, 520], "mouth": [850, 800], "eye": [650, 560] } },
+  "skull2": { "src": "p", "box": [330, 1160, 1025, 1700], "keep": "largest", "k": 0.032, "piv": { "a": [660, 1420], "mouth": [840, 1560], "eye": [620, 1360] } }
+ }
+}

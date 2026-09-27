@@ -1,0 +1,24 @@
+{
+ "id": "dream_eater",
+ "tier": "T3",
+ "srcTD": 3,
+ "note": "T3 floating nightmare tapir from parts sheet 2: the bloated nebula body with the lashed eyes along the flank and the stubby legs (painted headless with an open neck), the tusked tapir head (facing right, neck at the left), and the long star-filled trunk with the toothed sucking maw (horizontal, maw at the right) swung with K.chain from the snout (it lashes out for the voider claw). Eye pivots on the flank carry the procedural eye-glow. srcTD 3; k body/head 0.065 (body 59x51 px), trunk 0.05 (59 px).",
+ "sources": {
+  "s2": { "raw": "dream_eater_sheet2.webp", "file": "dream_eater_sheet2.png", "k": 0.065 }
+ },
+ "parts": {
+  "body": {
+   "src": "s2", "box": [36, 28, 955, 830], "keep": "largest",
+   "piv": { "a": [520, 470], "neck": [880, 390], "rear": [120, 470], "back": [470, 120],
+            "e1": [357, 350], "e2": [549, 322], "e3": [453, 376], "e4": [556, 415], "e5": [306, 462], "e6": [392, 485], "e7": [481, 509], "e8": [315, 556], "e9": [429, 560] }
+  },
+  "head": {
+   "src": "s2", "box": [1470, 160, 2066, 572], "keep": "largest",
+   "piv": { "a": [1520, 380], "snout": [2020, 345], "eye": [1700, 300], "ear": [1570, 200], "jaw": [1880, 470] }
+  },
+  "trunk": {
+   "src": "s2", "box": [1055, 728, 2245, 980], "keep": "largest", "k": 0.05,
+   "piv": { "a": [1078, 855], "b": [2232, 850], "maw": [2180, 855] }
+  }
+ }
+}

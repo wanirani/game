@@ -12,6 +12,11 @@ import * as skeleton_mage from '../enemies/skeleton_mage.js';
 import * as spear_guard from '../enemies/spear_guard.js';
 import * as phantom_sword from '../enemies/phantom_sword.js';
 import * as corpse_worm from '../enemies/corpse_worm.js';
+import * as ectoplasm from '../enemies/ectoplasm.js';
+import * as flea_man from '../enemies/flea_man.js';
+import * as book_fiend from '../enemies/book_fiend.js';
+import * as scholar_ghost from '../enemies/scholar_ghost.js';
+import * as bone_pillar from '../enemies/bone_pillar.js';
 
 export const bosses = {};
 export const enemies = [
@@ -22,6 +27,11 @@ export const enemies = [
   { mod: spear_guard },
   { mod: phantom_sword },
   { mod: corpse_worm },
+  { mod: ectoplasm },
+  { mod: flea_man },
+  { mod: book_fiend },
+  { mod: scholar_ghost },
+  { mod: bone_pillar },
 ];
 export const companions = {};
 export const npcs = {};

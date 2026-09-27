@@ -68,7 +68,7 @@ export const PUPPETS = {
  },
  "bran": {
   "bran_berserker": {
-   "h": "9d6928801293",
+   "h": "7c7e251b7317",
    "turn": true,
    "lv": [
     "hi",
@@ -77,7 +77,7 @@ export const PUPPETS = {
    ]
   },
   "bran_bloodrage": {
-   "h": "327729e6e6f9",
+   "h": "14e4dc81e8fa",
    "turn": true,
    "lv": [
     "hi",
@@ -86,7 +86,7 @@ export const PUPPETS = {
    ]
   },
   "bran_crusader": {
-   "h": "30d60820c1e8",
+   "h": "cd6c05a13479",
    "turn": true,
    "lv": [
     "hi",
@@ -95,7 +95,7 @@ export const PUPPETS = {
    ]
   },
   "bran_guardian": {
-   "h": "b6d117afadcd",
+   "h": "40e555939eca",
    "turn": true,
    "lv": [
     "hi",
@@ -104,7 +104,7 @@ export const PUPPETS = {
    ]
   },
   "bran_knight": {
-   "h": "b9d13d1d9317",
+   "h": "200a32d93702",
    "turn": true,
    "lv": [
     "hi",
@@ -113,7 +113,7 @@ export const PUPPETS = {
    ]
   },
   "bran_paladin": {
-   "h": "a7e3f1390e79",
+   "h": "9070a428d824",
    "turn": true,
    "lv": [
     "hi",
@@ -122,7 +122,7 @@ export const PUPPETS = {
    ]
   },
   "bran_warlord": {
-   "h": "912bcd33fcd9",
+   "h": "cd1988f4a10d",
    "turn": true,
    "lv": [
     "hi",
