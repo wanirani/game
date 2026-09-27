@@ -113,9 +113,122 @@
    "img_resolution": "2k",
    "picked": null,
    "prompt": "Edit 图片1. Keep the SAME young man with the exact same pale face, the same very long straight silver-white hair flowing down his back, the same slim tall body proportions, the exact same walking side pose facing right, the same arm and leg positions, the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and lighting. The long coat skirt keeps flaring back behind his legs in the same place. Change ONLY his outfit into the attire of a fallen seraph, the grandest tier: a midnight-navy and black long coat reaching just below the knees, black outside with a white silk lining and a violet-embroidered hem, a breastplate split in two halves, white-and-silver plate engraved with a feather pattern on one side and black plate on the other, glowing violet rune lines along the seams, a white plate pauldron engraved with feathers and rimmed in violet and gold on the near shoulder, black gauntlets set with violet-glowing gems, black-and-silver armoured boots; his eyes glow gold; bare head, face fully visible. No cape, no cloak, no wings, no halo, no weapon, no sword, no scabbard, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark."
+  },
+  {
+   "id": "npc_marta_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "Acc4YtQVOOWXRw16P3YDXFHhfAo5e45qZX3DsfbwOhMwzh-onZag5knv16BkV0SyNfaL9zQ2",
+   "inputs": [
+    "kael_hunter_side.jpg (edit target: pose/framing)",
+    "npc_marta_portrait.jpg (identity)"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": null,
+   "prompt": "Edit 图片1. Keep the exact same walking side pose facing RIGHT in strict profile, the same arm and leg positions (the near arm hanging slightly behind the hip, the far arm swinging forward, legs in mid-stride), the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and soft lighting. Replace the man with the innkeeper woman from 图片2: her cheerful round rosy-cheeked face in profile, her green eyes, her copper-orange hair gathered in a thick braid that hangs down her back, her plump, broad, stout middle-aged female build (much rounder than the man in 图片1, her figure filling the canvas from head to feet like 图片1); a small black cat with green eyes lies draped across the back of her shoulders behind her neck. Dress her in a cream-white blouse with short puffed sleeves gathered above the elbow (bare forearms), a dark charcoal-grey laced bodice dress with an ankle-length dark grey skirt, a long cream linen apron tied at the waist, dark flat shoes; the skirt swings with her stride so her feet show just below the hem. Remove the coiled whip. Nothing held in the hands, no weapon, no lantern, no cup, no book, no cape, no cloak, full body visible from the top of the head to the feet, nothing cropped, no text, no watermark."
+  },
+  {
+   "id": "npc_rook_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AbLv2w-_cNK4IE4YGK4LQ-XEybb6xfg3SM0d8LAiBPMlh9LIytdDYwyCMFEhJEnTkHL0ddWO",
+   "inputs": [
+    "kael_hunter_side.jpg (edit target: pose/framing)",
+    "npc_rook_portrait.jpg (identity)"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": null,
+   "prompt": "Edit 图片1. Keep the exact same walking side pose facing RIGHT in strict profile, the same arm and leg positions (the near arm hanging slightly behind the hip, the far arm swinging forward, legs in mid-stride), the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and soft lighting. Replace the man with the mysterious wandering merchant from 图片2: a deep black hood pulled up over his head, a black crow-beak mask covering his face with a long curved beak pointing forward, faintly glowing amber eyes in the dark of the hood, a slim build. Dress him in a long black travelling coat reaching below the knees with a ragged dark fur collar around the shoulders (only on the shoulders, not down the arm), several leather straps across the chest hung with small tied coin pouches and a round brass medallion, a wide brown leather belt with brass buckle and more small pouches at the hip, black leather gloves, dark trousers and worn black boots. Remove the coiled whip. Nothing held in the hands, no weapon, no lantern, no cup, no book, no cape, no cloak, full body visible from the top of the head to the feet, nothing cropped, no text, no watermark."
+  },
+  {
+   "id": "npc_hadwin_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AW8quzWPCj5qJfyyDYA0rLAi4gflhovKGwTiePK2pET-PfU39VMITv3Bx40794xnsVtD_2pi",
+   "inputs": [
+    "kael_hunter_side.jpg (edit target: pose/framing)",
+    "npc_hadwin_portrait.jpg (identity)"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": null,
+   "prompt": "Edit 图片1. Keep the exact same walking side pose facing RIGHT in strict profile, the same arm and leg positions (the near arm hanging slightly behind the hip, the far arm swinging forward, legs in mid-stride), the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and soft lighting. Replace the man with the blacksmith from 图片2: his bald head, his rugged weathered middle-aged face in profile with a thick grey-brown beard braided into a long braid down his chest, his massive, broad-shouldered, heavily muscled build (clearly bigger and bulkier than the man in 图片1). Dress him in a dark brown sleeveless tunic, a long heavy brown leather smith's apron from chest to below the knees, one dented steel pauldron strapped on the near shoulder, bare muscular arms with leather bracers on the forearms, thick leather work gloves, dark trousers and heavy brown boots. Remove the coiled whip. Nothing held in the hands, no weapon, no lantern, no cup, no book, no cape, no cloak, full body visible from the top of the head to the feet, nothing cropped, no text, no watermark."
+  },
+  {
+   "id": "npc_alberto_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AdKNuPMEFAScUGl55m_0qIE20b7o4TXqt3Eu4I1De144gwH30VMOKNF_KTL6vGS9WtqH7Hn2",
+   "inputs": [
+    "kael_hunter_side.jpg (edit target: pose/framing)",
+    "npc_alberto_portrait.jpg (identity)"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": null,
+   "prompt": "Edit 图片1. Keep the exact same walking side pose facing RIGHT in strict profile, the same arm and leg positions (the near arm hanging slightly behind the hip, the far arm swinging forward, legs in mid-stride), the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and soft lighting. Replace the man with the old priest from 图片2: his kind wrinkled old face in profile, his round wire-rimmed spectacles, his white hair and full white beard, a black zucchetto skullcap on his head, a slightly stooped slim old build. Dress him in a long black cassock buttoned down the front, reaching to the ankles, with a white clerical collar, a black sash at the waist, a small gold cross pendant on a chain, bare old hands, black shoes; the cassock swings with his stride so his shoes show just below the hem. Remove the coiled whip. Nothing held in the hands, no weapon, no lantern, no cup, no book, no cape, no cloak, full body visible from the top of the head to the feet, nothing cropped, no text, no watermark."
+  },
+  {
+   "id": "npc_elise_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AVO5TWPZEi6fSXnrAkQFsswyso_91gRJIvtFgyGgMMMiGHsapZUJ8YkTfX9ZlB7nusIfS4ss",
+   "inputs": [
+    "kael_hunter_side.jpg (edit target: pose/framing)",
+    "npc_elise_portrait.jpg (identity)"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": null,
+   "prompt": "Edit 图片1. Keep the exact same walking side pose facing RIGHT in strict profile, the same arm and leg positions (the near arm hanging slightly behind the hip, the far arm swinging forward, legs in mid-stride), the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and soft lighting. Replace the man with the young village girl from 图片2: a girl of about twelve, her round innocent face in profile, big amber-brown eyes, her golden-blonde hair in two long braids hanging down her back, a slim childlike build with childlike proportions (a larger head relative to the body), her figure filling the canvas from head to feet like 图片1. Dress her in a simple loose cream linen dress with long sleeves and a small red ribbon at the collar, the skirt reaching to mid-calf, pale stockings and small brown leather shoes. Remove the coiled whip. Nothing held in the hands, no weapon, no lantern, no cup, no book, no cape, no cloak, full body visible from the top of the head to the feet, nothing cropped, no text, no watermark."
+  },
+  {
+   "id": "npc_carmilla_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AQwt9BNIA1_Yo7xZu065M0K1dfQeOlU7sQYmxnePaIQK8yyYOE0NDoEuMQWEADrHu4TzI-kO",
+   "inputs": [
+    "kael_hunter_side.jpg (edit target: pose/framing)",
+    "npc_carmilla_portrait.jpg (identity)"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": null,
+   "prompt": "Edit 图片1. Keep the exact same walking side pose facing RIGHT in strict profile, the same arm and leg positions (the near arm hanging slightly behind the hip, the far arm swinging forward, legs in mid-stride), the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and soft lighting. Replace the man with the vampire noblewoman from 图片2: her pale beautiful face in profile, glowing red eyes, dark red lips, her very long straight glossy black hair hanging down her back to the waist, a slim tall elegant female build. Dress her in a black and deep-crimson gothic gown: an off-the-shoulder black lace bodice over a crimson corset with a black lace choker and a small red gem, long fitted black lace sleeves, black gloves, a floor-length black silk skirt with crimson panels and lace trim that swings with her stride so the pointed black shoes show just below the hem. Remove the coiled whip. Nothing held in the hands, no weapon, no lantern, no cup, no book, no cape, no cloak, full body visible from the top of the head to the feet, nothing cropped, no text, no watermark."
+  },
+  {
+   "id": "npc_greta_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AZAIwNS2PijbJX07TxJknSDx-X4WCA2BtAnL2S58Tk9mHCwgALmOl3nj_vY_1Mgs-sf_nKYw",
+   "inputs": [
+    "kael_hunter_side.jpg (edit target: pose/framing)",
+    "npc_greta_portrait.jpg (identity)"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": null,
+   "prompt": "Edit 图片1. Keep the exact same walking side pose facing RIGHT in strict profile, the same arm and leg positions (the near arm hanging slightly behind the hip, the far arm swinging forward, legs in mid-stride), the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and soft lighting. Replace the man with the old stable keeper woman from 图片2: her weathered, kind, sun-tanned elderly face in profile, blue eyes, her long grey-blonde hair in a thick braid hanging down her back, a wide-brimmed battered tan leather hat, a lean wiry build. Dress her in a rust-red neckerchief, a faded cream linen shirt, a short brown fur-trimmed wool shawl around the shoulders only, a worn brown leather vest with several belts and a large iron buckle, brown leather gloves, a knee-length brown riding skirt over dark trousers, and tall worn brown riding boots. Remove the coiled whip. Nothing held in the hands, no weapon, no lantern, no cup, no book, no cape, no cloak, full body visible from the top of the head to the feet, nothing cropped, no text, no watermark."
+  },
+  {
+   "id": "npc_rook2_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AZiZt6BXmmeov_DS3tbuKf6HO16fMwVNN9n2WBlphORzoFkKzfqaDC9veSycbeaz1C7YoZsr",
+   "inputs": [
+    "kael_hunter_side.jpg (edit target: pose/framing)",
+    "npc_rook2_portrait.jpg (identity)"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": null,
+   "prompt": "Edit 图片1. Keep the exact same walking side pose facing RIGHT in strict profile, the same arm and leg positions (the near arm hanging slightly behind the hip, the far arm swinging forward, legs in mid-stride), the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and soft lighting. Replace the man with the grinning middle-aged rogue from 图片2 (the merchant unmasked): his weathered tanned face in profile with a sly smile, short grey stubble beard, his black-and-grey hair swept back into several small braids with a few black crow feathers tied in, a slim wiry build. Dress him in a short black feathered collar-mantle around the neck and shoulders only (not covering the arm), a dark charcoal long coat reaching below the knees, a black scarf, a brown leather strap across the chest with a round silver medallion and small tied coin pouches, a brown leather belt with pouches, black gloves, dark trousers and worn black boots. Remove the coiled whip. Nothing held in the hands, no weapon, no lantern, no cup, no book, no cape, no cloak, full body visible from the top of the head to the feet, nothing cropped, no text, no watermark."
   }
  ],
  "images_used": {
-  "azel": 14
+  "azel": 14,
+  "npc": 16
  }
 }

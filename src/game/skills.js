@@ -2316,9 +2316,11 @@ const ULT_COLS = {
   victor: ['#ffd070', '#ffe0a0', '#fff0b0'], bran: ['#ffb060', '#ff9a3a', '#ff7a2a', '#ffd8a0'],
   lia: ['#ff2040', '#ff2a4a', '#30e0ff'], azel: ['#ff1a2a', '#ff2040', '#ff1030', '#ff6070'],
 };
+const ULT_BEAMS = { bran: [['#ff7a2a', '#fff0c0', true]], azel: [['#ff1a2a', '#ff9aa8', false]] };
 function prewarmUlt(v) {
   try {
     for (const c of [...(ULT_COLS[v.charId] ?? []), v.color, v.accent]) { glowSprite(c); beamSprite(c, '#ffffff', false); beamSprite(c, '#ffffff', true); }
+    for (const [c, core, vert] of ULT_BEAMS[v.charId] ?? []) beamSprite(c, core, vert);
     if (v.charId === 'sera') glassSprite();
     HFX.star?.(v.color); HFX.star?.(v.accent);
   } catch (e) { console.warn('[skills] prewarm', e); }

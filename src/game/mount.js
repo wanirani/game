@@ -277,7 +277,7 @@ export class MountRider {
     if (inp && !world.inputLock && !world.cutscene && !p.dead) {
       const win = bufWin(world, 0.25);
       if (input.buffered('mount', win)) { input.consume('mount'); this.toggle(world, p); }
-      else if (this.pendingT > 0 && !this.seated && this.state === 'stowed') this.trySummon(world, p, { quietRetry: true });
+      else if (this.pendingT > 0 && !this.seated && this.state === 'stowed') this.trySummon(world, p, { quietRetry: true, last: this.pendingT <= dt + 1e-6 });
       if (this.seated && input.buffered('dash', bufWin(world, 0.13)) && this._chgPress !== input.pressTime?.dash) {
         if (this.charge(world, p, input.axisX, input.axisY)) { this._chgPress = input.pressTime?.dash; input.consume('dash'); }
       }
@@ -307,7 +307,7 @@ export class MountRider {
     else world?.game?.toast?.(text, '#c8b8a8', 2);
   }
   /** 'mount' 입력·자동 재탑승·디버그: 탈 수 있으면 소환을 시작한다 */
-  trySummon(world, p, { force = false, instant = false, auto = false, quietRetry = false } = {}) {
+  trySummon(world, p, { force = false, instant = false, auto = false, quietRetry = false, last = false } = {}) {
     this.world = world;
     if (!p || p.dead || this.seated) return false;
     if (!force && (world.cutscene || world.inputLock)) return false;
@@ -326,8 +326,9 @@ export class MountRider {
     const flyer = !!this.def?.flight;
     const busy = p.hurtT > 0 || (typeof p.moveLocked === 'function' && p.moveLocked()) || (!flyer && !p.onGround && !force);
     if (busy && !force) {
+      // 공중·공격 동작·경직 중에 누른 소환은 0.4초 동안 기억했다가 되는 순간 부른다 (끝까지 안 되면 알려 준다)
       if (!quietRetry) this.pendingT = PENDING_T;
-      else if (this.pendingT <= 0) { if (!flyer && !p.onGround) this.refuse(world, '땅을 딛고 있어야 탈것을 부를 수 있다'); }
+      else if (last) { this.pendingT = 0; this.refuse(world, !flyer && !p.onGround ? '땅을 딛고 있어야 탈것을 부를 수 있다' : null); }
       return false;
     }
     const spot = findMountSpot(world, p, this.def);
