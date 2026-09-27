@@ -136,6 +136,8 @@ export class Dagon extends BossC {
     const bob = Math.sin(this.t * 1.1) * 4 * (1 - this.sink);
     this.ox = this.bx;
     this.oy = this.dash ? this.dash.y + 70 : this.wy + this.sink * SINK + bob;
+    // 화면이 낮은 방(보스 러시 경기장)이나 홍수 때 왕관이 화면 위로 잘리지 않게: 몸 원점은 카메라 윗변 + 330 아래
+    if (!this.dash && this.camLim != null) this.oy = Math.max(this.oy, this.camLim);
     this.x = this.bx - this.w / 2;
     this.y = this.dash ? this.dash.y - this.h / 2 : this.oy - 190;
     this.vx = 0; this.vy = 0;
@@ -184,6 +186,8 @@ export class Dagon extends BossC {
   }
   /** 매 논리 프레임: 수면 · 잠김 · 걸음 · 자세 · 판정 부위 */
   motion(dt, world) {
+    const cam = world?.camera;
+    if (cam && Number.isFinite(cam.y)) { const lim = cam.y + 330; this.camLim = this.camLim == null || dt <= 0 ? lim : approach(this.camLim, lim, 260 * dt); }
     const W = this.surfaceY();
     this.wy = Math.abs(W - this.wy) > 260 ? W : approach(this.wy, W, 150 * dt);
     this.sink = approach(this.sink, this.tsink, this.sinkRate * dt);
@@ -706,10 +710,11 @@ export class Dagon extends BossC {
     }
     ctx.restore();
   }
-  paintBody(ctx, world) {
+  paintBody(ctx, world, flash) {
     const A = this.A, fl = R.fl;
     this.rig();
     ctx.save();
+    if (flash) ctx.globalAlpha *= 0.7;   // 피격 섬광을 조금 약하게 (몸이 화면 절반을 덮는다)
     ctx.beginPath(); ctx.rect(A.x0 - 1200, -4000, A.w + 2400, A.floor + 4002); ctx.clip();   // 바닥 아래(심연)는 보이지 않는다
     let tx = 0;
     if (this.twitch > 0) tx = Math.sin(this.t * 60) * 5 * this.twitch;
@@ -909,16 +914,21 @@ export class Dagon extends BossC {
       for (const b of BARNS) barnacle(ctx, b.x, b.y + s.slump * 12, b.r);
       // 상처 (페이즈)
       if (dmg >= 1) {
-        wound(ctx, 14, -130, 44, 0.5, this.t);
-        wound(ctx, -40, -70, 34, -0.3, this.t + 1);
+        wound(ctx, 18, -128, 62, 0.5, this.t);
+        wound(ctx, -34, -70, 50, -0.35, this.t + 1);
+        wound(ctx, 44, -24, 40, 0.2, this.t + 2);
       }
       if (dmg >= 2) {
         // 찢어진 옆구리 사이로 드러난 뼈
         ctx.fillStyle = '#2a060c';
-        ctx.beginPath(); ctx.moveTo(-86, -96); ctx.quadraticCurveTo(-60, -110, -40, -92); ctx.quadraticCurveTo(-46, -50, -80, -40); ctx.quadraticCurveTo(-94, -70, -86, -96); ctx.fill();
-        ctx.strokeStyle = '#e6dcc2'; ctx.lineWidth = 4; ctx.lineCap = 'round';
-        ctx.beginPath(); for (let i = 0; i < 3; i++) { const y = -94 + i * 17; ctx.moveTo(-84 + i * 2, y); ctx.quadraticCurveTo(-64, y - 8, -46, y + 4); } ctx.stroke();
-        glowE(ctx, -64, -70, 30, 30, ICHOR, 0.3);
+        ctx.beginPath(); ctx.moveTo(-92, -112); ctx.quadraticCurveTo(-56, -128, -26, -104); ctx.quadraticCurveTo(-30, -46, -76, -30); ctx.quadraticCurveTo(-100, -70, -92, -112); ctx.fill();
+        ctx.fillStyle = '#6a1422'; ctx.beginPath(); ctx.ellipse(-58, -72, 22, 30, 0.2, 0, TAU); ctx.fill();   // 드러난 내장
+        ctx.strokeStyle = '#e6dcc2'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+        ctx.beginPath(); for (let i = 0; i < 4; i++) { const y = -106 + i * 19; ctx.moveTo(-90 + i * 3, y); ctx.quadraticCurveTo(-60, y - 10, -32, y + 6); } ctx.stroke();
+        ctx.strokeStyle = 'rgba(40,20,16,0.7)'; ctx.lineWidth = 1.5; ctx.stroke();
+        glowE(ctx, -60, -72, 44, 44, ICHOR, 0.35);
+        const dy = (this.t * 45) % 40;
+        ctx.fillStyle = rgba(ICHOR, 0.6); ctx.beginPath(); ctx.arc(-70, -36 + dy, 2.5, 0, TAU); ctx.arc(-44, -44 + dy * 0.8, 2, 0, TAU); ctx.fill();
       }
     }
     ctx.restore();

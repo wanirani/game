@@ -140,7 +140,8 @@ function drawBoss(ctx, b, world, rig, st) {
   if (st.lvlSeen === form && lvl > st.lvl && !dying) levelBurst(st, b, rig, lvl, form);
   st.lvl = lvl; st.lvlSeen = form;
   // 형태 전환: 변신 연출 중 1 → 2 가 되는 순간 백작의 몸이 터져 흩어진다
-  if (form !== st.form) { if (form === 2 && b.state === 'transform' && !dying) transformBurst(st, b, rig); st.form = form; }
+  // (1형태에서 한 방에 쓰러진 경우도 사망 시작에 백작의 몸이 터져 흩어진다 — 로직이 즉시 마왕으로 바꿔 사망시킴)
+  if (form !== st.form) { if (form === 2 && (b.state === 'transform' || dying) && st.form === 1) transformBurst(st, b, rig); st.form = form; }
   const hit = b.flashT > 0.06 && !(st.pf > 0.06); st.pf = b.flashT;
   if (hit) { st.jolt = 1; hitBurst(st, b, form); }
   st.jolt = Math.max(0, st.jolt - dt * 6);
@@ -265,7 +266,9 @@ function drawDemon(ctx, D, b, world, rig, st, lvl, dt, dying, dT) {
   const R = rig.parts, L = st.L, q = st.q, P = st.P, t = b.t, f = b.facing || 1, d = b.d2;
   const s = d.scale ?? 1;
   if (s <= 0.01) return;
-  const tf = b.state === 'transform', tt = tf ? (b.st ?? 0) : 9;
+  // 사망 중에는 변신 연출이 아니다: 1형태에서 한 방에 쓰러지면 state 가 'transform' 인 채로 사망(onDeath → becomeDemon(true))해
+  // st 가 멈춘 채 반투명 몸 + 지옥불 실루엣으로 3.6초 내내 남았다 → 사망은 늘 완성된 마왕 몸에서 시작
+  const tf = b.state === 'transform' && !dying, tt = tf ? (b.st ?? 0) : 9;
   const G = st.gone;
   if (G.body) { if (dying) deathTick(st, b, rig, dT); return; }
   const V = (p, deep = false) => pickVariant(p, lvl, deep, null);

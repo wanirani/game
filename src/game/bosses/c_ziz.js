@@ -83,7 +83,9 @@ export class Ziz extends BossC {
   }
 
   // ═════════════════════════════ 위치 · 자세 ═════════════════════════════
-  hoverY() { const A = this.A; return Math.max((A.top ?? 0) + 190, A.floor - 380); }
+  /** 카메라 윗변 (없으면 -무한). 낮은 방(보스 러시 경기장)에서 머리가 화면 위로 잘리지 않게 */
+  camTop() { const c = this.world?.camera; return c && Number.isFinite(c.y) ? c.y : -1e9; }
+  hoverY() { const A = this.A; return Math.min(A.floor - 250, Math.max((A.top ?? 0) + 190, A.floor - 380, this.camTop() + 240)); }
   setPose(o) { Object.assign(this.pt, o); }
   relax() { for (const k in this.pt) this.pt[k] = 0; }
   faceP() { const p = this.P; if (p && !this.sw?.on) { const d = p.cx - this.zx; if (Math.abs(d) > 40) this.facing = Math.sign(d); } }
@@ -413,7 +415,7 @@ export class Ziz extends BossC {
       const sd = px < A.cx ? -1 : 1, w = Math.min(400, A.w * 0.4);
       const x = sd < 0 ? A.x0 : A.x1 - w;
       this.cr = { x, w, cx: x + w / 2, sd };
-      this.tzx = x + w / 2; this.tzy = Math.max((A.top ?? 0) + 140, A.floor - 560); this.spd = 1100; this.spdY = 700;
+      this.tzx = x + w / 2; this.tzy = Math.min(A.floor - 260, Math.max((A.top ?? 0) + 140, A.floor - 560, this.camTop() + 120)); this.spd = 1100; this.spdY = 700;
       strikeRect(this, { x, y: A.floor - 300, w, h: 300 }, { warn: 1.2, life: 0.3, mv: 2.0, color: CORE, sfx: null, kb: [0, -700] });
       this.setPose({ raise: 1, spread: 1, mouth: 1, talon: 1, neck: 0.6 });
       audio.sfx('bat', { pitch: 0.3, vol: 1 });
@@ -530,14 +532,19 @@ export class Ziz extends BossC {
       ctx.restore();
     }
   }
-  paintBody(ctx, world) {
+  paintBody(ctx, world, flash) {
     const A = this.A, fl = R.fl;
     this.rig();
     ctx.save();
     ctx.beginPath(); ctx.rect(this.zx - 2000, -6000, 4000, A.floor + 6004); ctx.clip();   // 바닥 아래로 늘어진 깃털은 자른다
     ctx.translate(this.zx, this.zy);
     if (this.tilt) ctx.rotate(this.tilt);
-    this.drawZiz(ctx, fl);
+    if (flash) {
+      // 피격 섬광: 화면을 덮는 날개까지 하얗게 칠하면 눈이 아프다 → 몸통·머리·날개 뼈만, 약하게
+      ctx.globalAlpha *= 0.6;
+      for (const side of [-1, 1]) this.drawWingArm(ctx, side, fl);
+      this.drawTorso(ctx, fl); this.drawHead(ctx, fl);
+    } else this.drawZiz(ctx, fl);
     ctx.restore();
   }
   paintFront(ctx) {

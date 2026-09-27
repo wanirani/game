@@ -223,7 +223,10 @@ function drawClockFace(ctx, e, world) {
   ctx.beginPath(); ctx.moveTo(x - Math.cos(D.hs) * R * 0.12, y - Math.sin(D.hs) * R * 0.12); ctx.lineTo(x + Math.cos(D.hs) * R * 0.82, y + Math.sin(D.hs) * R * 0.82); ctx.stroke();
   glowAt(ctx, x, y, R * 0.12, '#ffe6a8', a);
 }
+/** 이 수호신 연출이 쓰는 캐시 스프라이트를 미리 만든다 (Guardian 생성 = 방 불러오기 때; 전투 중 새 캔버스를 만들지 않게 — MASTER_PLAN §5.2) */
+function prewarm(...fns) { try { for (const f of fns) f(); } catch (e) { warnOnce('prewarm', e); } }
 const CLOCK = {
+  init(g) { prewarm(gearSprite, dialSprite, () => glow('#ffe6a8')); },
   attack(g, world, tgt) {
     const A = g.def.attack;
     audio.sfx('clock_tick', { vol: 0.22, pitch: 1.7 });
@@ -517,7 +520,7 @@ function pickTargets(world, p, n) {
   return a.slice(0, n);
 }
 const MIRRA = {
-  init(g) { g.mem.reflCd = 1.0; g.mem.scanT = 0; },
+  init(g) { g.mem.reflCd = 1.0; g.mem.scanT = 0; prewarm(() => glow('#dff4ff')); },
   skill(g, world, mul, o) {
     const p = world.player, sk = g.def.skill, col = g.def.color;
     const n = sk.count ?? 8, orbitT = sk.orbit ?? 1.0, spd = 980;
@@ -641,6 +644,7 @@ function drawStunSparks(ctx, e, world) {
   }
 }
 const LUMEN = {
+  init(g) { prewarm(() => glow('#6fe8ff'), () => glow('#ffffff')); },
   skill(g, world, mul, o) {
     const p = world.player, sk = g.def.skill, col = g.def.color;
     pose(g, 0.6, { x: g.cx, y: g.bottom - 12 });
@@ -755,7 +759,7 @@ function swallowAll(g, world, V) {
 /** 움직일 수 없는 적 (고정형·밀리지 않는 적) */
 const immovable = (e) => !!e.def?.fixed || e.wclass === 'FIXED' || (e.def?.kbResist ?? 0) >= 1;
 const MOMO = {
-  init(g) { g.mem.eatCd = 1.0; g.mem.scanT = 0; },
+  init(g) { g.mem.eatCd = 1.0; g.mem.scanT = 0; prewarm(() => glow('#c060ff')); },
   onEvent(g, world, name, d) {
     // 제 코로 문 적에게서 꿈 조각이 빨려 든다 (연출만)
     if (name !== 'hit' || d?.attack?.owner !== g || !d.target || qOf(world) < 0.6) return;

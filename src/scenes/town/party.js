@@ -3,7 +3,7 @@ import { Scene } from '../../core/game.js';
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
 import { assets } from '../../core/assets.js';
-import { text, wrap, panel, button, bar, drawCover, vignette, FONT, COLORS, font } from '../../core/ui.js';
+import { text, wrap, panel, button, bar, drawCover, vignette, FONT, COLORS, font, taps } from '../../core/ui.js';
 import { TAU, clamp, ease, rgba, rand, fmt } from '../../core/math.js';
 import { Particles } from '../../core/particles.js';
 import { drawHero } from '../../render/hero.js';
@@ -19,6 +19,10 @@ import { glow } from './facades.js';
 const STAR_KEYS = ['공격', '방어', '속도', '마법', '사거리'];
 
 export class PartyScene extends Scene {
+  // uiScale (platform §6.2): UI px 로 배치 (휴대폰 888×432 이상). 가상 패드는 숨긴다
+  constructor(g) { super(g); this.opaque = true; this.uiScale = true; this.hidePad = true; }
+  get vw() { return this.game.uiW || this.game.viewW; }
+  get vh() { return this.game.uiH || this.game.viewH; }
   enter(params = {}) {
     this.world = params.world ?? null;
     const st = ensureState(this.game);
@@ -29,9 +33,7 @@ export class PartyScene extends Scene {
     this.fx = new Particles(300);
     this.leaving = null;
     audio.sfx('menu_ok');
-    padHidden(true);
   }
-  exit() { padHidden(false); }
   get state() { return this.game.state; }
 
   update(dt) {
@@ -40,10 +42,12 @@ export class PartyScene extends Scene {
     const n = this.list.length;
     if (input.pressed('left')) { this.index = (this.index + n - 1) % n; audio.sfx('menu_move'); }
     if (input.pressed('right')) { this.index = (this.index + 1) % n; audio.sfx('menu_move'); }
-    if (input.pointer.tapped) {
-      if (this.closeRect && hitRect(this.closeRect)) { audio.sfx('menu_cancel'); this.game.pop(); return; }
-      if (this.actRect && hitRect(this.actRect)) { this.choose(); return; }
-      for (let i = 0; i < (this.cardRects?.length ?? 0); i++) if (hitRect(this.cardRects[i])) { if (i === this.index) this.choose(); else { this.index = i; audio.sfx('menu_move'); } return; }
+    const id = input.pointer.tapped ? taps.hit(this) : null;
+    if (id === 'close') { audio.sfx('menu_cancel'); this.game.pop(); return; }
+    if (id === 'act') { this.choose(); return; }
+    if (typeof id === 'string' && id.startsWith('card:')) {
+      const i = Number(id.slice(5));
+      if (i >= 0 && i < this.list.length) { if (i === this.index) this.choose(); else { this.index = i; audio.sfx('menu_move'); } return; }
     }
     if (input.pressed('confirm')) { this.choose(); return; }
     if (input.pressed('cancel') || (input.pressed('menu') && !input.pressed('confirm'))) { audio.sfx('menu_cancel'); this.game.pop(); }
@@ -66,39 +70,47 @@ export class PartyScene extends Scene {
   }
 
   render(ctx) {
-    const vw = this.game.viewW, vh = this.game.viewH, st = this.state;
+    const vw = this.vw, vh = this.vh, st = this.state;
+    const off = !!this.leaving || this.game.top !== this;
+    const tz = (id, r, kind = 'primary') => taps.add(id, r, { owner: this, kind, disabled: off, src: 'town.party' });
     drawCover(ctx, assets.get('bg/title') ?? assets.get('bg/hub'), vw, vh, { fallback: ['#140814', '#05020a'] });
     ctx.fillStyle = 'rgba(4,2,8,0.72)'; ctx.fillRect(0, 0, vw, vh);
     vignette(ctx, vw, vh, 0.75);
     // 헤더
     text(ctx, '동료', 24, 40, { size: 28, weight: 800, family: FONT.title, color: '#f3d690', ow: 4 });
     text(ctx, 'PARTY  ·  함께 싸울 헌터를 고르세요', 92, 38, { size: 12, weight: 800, family: FONT.num, color: '#8a7a64' });
-    this.closeRect = { x: vw - 64, y: 10, w: 52, h: 40 };
+    this.closeRect = tz('close', { x: vw - 64, y: 10, w: 52, h: 40 }, 'icon');
     uiButton(ctx, this.closeRect, '✕', { size: 20 });
     ctx.fillStyle = 'rgba(232,200,114,0.45)'; ctx.fillRect(0, 58, vw, 1.5);
-    // 카드
+    // 카드 · 상세 높이: 화면 높이에 맞춘다 (UI 높이 540 → 카드 237, 432 → 166)
     const n = this.list.length, gap = 10, m = 18;
-    const cw = (vw - m * 2 - gap * (n - 1)) / n, ch = 254, cy = 72;
+    const avail = vh - 72 - 90;
+    const dh = clamp(Math.round(avail * 0.34), 84, 150);
+    const cw = (vw - m * 2 - gap * (n - 1)) / n, ch = Math.min(254, avail - dh - 12), cy = 72;
     this.cardRects = [];
     this.list.forEach((e, i) => {
-      const r = { x: m + i * (cw + gap), y: cy, w: cw, h: ch };
+      const r = tz('card:' + i, { x: m + i * (cw + gap), y: cy, w: cw, h: ch });
       this.cardRects.push(r);
       this.drawCard(ctx, r, e, i === this.index);
     });
     // 상세
     const e = this.list[this.index];
-    const dy = cy + ch + 12, dh = vh - dy - 84;
+    const dy = cy + ch + 12, low = dh < 110;
     uiPanel(ctx, m, dy, vw - m * 2, dh, { corner: false });
     const c = e.ch;
-    text(ctx, e.open ? c.name : '???', m + 20, dy + 32, { size: 20, weight: 800, family: FONT.title, color: e.open ? '#f3d690' : '#6a5a50' });
-    text(ctx, `${c.eng} · ${c.title}`, m + 20, dy + 52, { size: 11, weight: 800, family: FONT.num, color: '#8a7a64' });
+    text(ctx, e.open ? c.name : '???', m + 20, dy + (low ? 28 : 32), { size: 20, weight: 800, family: FONT.title, color: e.open ? '#f3d690' : '#6a5a50' });
+    ctx.font = font(20, 800, FONT.title);
+    const nmw = ctx.measureText(e.open ? c.name : '???').width;
+    if (low) text(ctx, `${c.eng} · ${c.title}`, m + 32 + nmw, dy + 27, { size: 11, weight: 800, family: FONT.num, color: '#8a7a64' });
+    else text(ctx, `${c.eng} · ${c.title}`, m + 20, dy + 52, { size: 11, weight: 800, family: FONT.num, color: '#8a7a64' });
     ctx.font = font(13, 500);
     const dw = (vw - m * 2) * 0.58;
-    wrap(ctx, e.open ? c.desc : (c.unlock?.text ?? '아직 합류하지 않았다.'), dw - 30, 13).slice(0, 3).forEach((l, k) => text(ctx, l, m + 20, dy + 76 + k * 19, { size: 13, color: '#c8b8a0' }));
+    const d0 = dy + (low ? 52 : 76), dl = clamp(Math.floor((dy + dh - d0 + 6) / 19), 1, 3);
+    wrap(ctx, e.open ? c.desc : (c.unlock?.text ?? '아직 합류하지 않았다.'), dw - 30, 13).slice(0, dl).forEach((l, k) => text(ctx, l, m + 20, d0 + k * 19, { size: 13, color: '#c8b8a0' }));
     // 능력 별점
-    const sx = m + dw + 10;
+    const sx = m + dw + 10, sp = low ? 15 : 17;
     STAR_KEYS.forEach((k, j) => {
-      const y = dy + 26 + j * 17;
+      const y = dy + (low ? 22 : 26) + j * sp;
       text(ctx, k, sx, y, { size: 12, color: '#9d8f80' });
       const v = c.stars?.[k] ?? 0;
       for (let s = 0; s < 5; s++) text(ctx, '★', sx + 52 + s * 15, y + 1, { size: 13, color: s < v ? '#ffd84a' : 'rgba(120,100,80,0.4)', ow: 2 });
@@ -114,10 +126,10 @@ export class PartyScene extends Scene {
     } else if (e.open) text(ctx, '새 동료 — 선택하면 합류한다', sx + 150, dy + 40, { size: 13, weight: 700, color: '#8ae0a0' });
     // 버튼
     // 버튼·키 안내는 화면 아래 끝에 잘리지 않도록 (안내 기준선 vh-8, 허브와 같음)
-    this.actRect = { x: vw / 2 - 170, y: vh - 76, w: 340, h: 46 };
+    this.actRect = tz('act', { x: vw / 2 - 170, y: vh - 76, w: 340, h: 46 });
     const label = !e.open ? '잠겨 있음' : e.id === st.charId ? '현재 동행 중' : `${josa(c.name.split(' ')[0], '과', '와')} 함께 간다`;
     uiButton(ctx, this.actRect, label, { selected: e.open && e.id !== st.charId, disabled: !e.open, size: 17 });
-    uiHints(ctx, [[['←', '→'], '선택'], ['Z', '결정'], ['X', '닫기']], vw / 2, vh - 8);
+    uiHints(ctx, [['dpadH', '선택'], ['confirm', '결정'], ['cancel', '닫기']], vw / 2, vh - 8);
     this.fx.draw(ctx, 'front');
     if (this.leaving) { ctx.fillStyle = `rgba(255,240,200,${Math.max(0, 0.5 - this.leaving.t)})`; ctx.fillRect(0, 0, vw, vh); }
   }
@@ -148,7 +160,7 @@ export class PartyScene extends Scene {
     const hero = st.heroes[e.id];
     const look = hero ? composeLook(st, hero) : structuredClone(c.look);
     if (!hero) look.weapon = { type: c.weaponType, style: 1 };
-    const scale = clamp(r.w / 70, 1.35, 1.9);
+    const scale = clamp(Math.min(r.w / 70, (r.h - 60) / 95), 1.05, 1.9);
     const bottom = r.y + r.h - 60;
     if (e.open) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; glow(ctx, r.x + r.w / 2, bottom - 60, 80, look.aura?.color ?? (sel ? '#e8c872' : '#6a5a8a'), sel ? 0.35 : 0.12); ctx.restore(); }
     ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.beginPath(); ctx.ellipse(r.x + r.w / 2, bottom, 28, 6, 0, 0, TAU); ctx.fill();

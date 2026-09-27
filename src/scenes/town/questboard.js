@@ -6,6 +6,7 @@ import { fmt, rand, clamp, TAU, RNG, hashStr } from '../../core/math.js';
 import * as Q from '../../game/quests.js';
 import { QUESTS } from '../../data/quests.js';
 import { ITEMS } from '../../data/items.js';
+import { SCRIPTS } from '../../data/story.js';
 import { drawIcon } from '../../render/icons.js';
 import { ServiceScene, ScrollList, Modal, RewardPopup, makeInst, hitRect, npcInfo, uiButton } from './common.js';
 import { glow } from './facades.js';
@@ -27,7 +28,7 @@ export class QuestBoardScene extends ServiceScene {
     this.bgKey = 'bg/hub'; this.title = '의뢰 게시판'; this.eng = 'NOTICE BOARD'; this.npcId = null;
     this.music = null; this.emberColor = '#c8ff90';
     this.tabs = [{ id: 'avail', label: '새 의뢰' }, { id: 'active', label: '진행 중' }, { id: 'done', label: '완료' }];
-    this.list = new ScrollList(64);
+    this.list = this.addList(64);
     this.refresh();
     this.talk(this.readyCount() ? `보상을 받을 수 있는 의뢰가 ${this.readyCount()}건 있다!` : this.avail.length ? `새로 붙은 의뢰서가 ${this.avail.length}장 있다.` : '오늘은 새 의뢰가 없는 모양이다.');
     if (this.readyCount() && !this.avail.length) { this.tab = 1; this.refresh(); }
@@ -53,7 +54,7 @@ export class QuestBoardScene extends ServiceScene {
   updateBody(dt) {
     const r = this.list.update(dt);
     if (this.list.moved) audio.sfx('menu_move', { vol: 0.5 });
-    if (input.pointer.tapped && this.actRect && hitRect(this.actRect) && this.cur) { this.act(); return 'handled'; }
+    if (this.tapId === 'act' && this.cur) { this.act(); return 'handled'; }
     if (r === 'confirm' && this.cur) this.act();
     return r;
   }
@@ -71,6 +72,7 @@ export class QuestBoardScene extends ServiceScene {
             audio.sfx('item'); this.talk(`「${q.name}」 의뢰서를 품에 넣었다.`);
             this.paperFx();
             this.refresh();
+            this.playQuestScript(q.id, 'start');
           } else { audio.sfx('menu_cancel'); this.game.toast('지금은 받을 수 없는 의뢰다.', '#ff8a7a'); }
         },
       });
@@ -81,8 +83,25 @@ export class QuestBoardScene extends ServiceScene {
       audio.sfx('win'); audio.sfx('coin');
       const items = (out.items || []).map((i) => { const m = makeInst(i.id); if (m) m.qty = i.qty ?? 1; return m; }).filter(Boolean);
       this.popup = new RewardPopup({ title: '의뢰 완료!', sub: `「${q.name}」${out.levelUps ? `  ·  레벨 업 +${out.levelUps}` : ''}`, gold: out.gold, exp: out.exp, items, color: '#ffd84a' });
-      this.popup.onClose = () => { this.refresh(); this.talk(this.readyCount() ? '아직 보상을 받을 의뢰가 남아 있다.' : '의뢰서에 완료 도장을 찍었다.'); };
+      this.popup.onClose = () => {
+        this.refresh();
+        const after = () => this.talk(this.readyCount() ? '아직 보상을 받을 의뢰가 남아 있다.' : '의뢰서에 완료 도장을 찍었다.');
+        if (!this.playQuestScript(q.id, 'done', after)) after();
+      };
     }
+  }
+  /**
+   * 의뢰 대사 (STORY-P2-B #85): 받을 때 q_<id>_start, 보상을 받은 뒤 q_<id>_done 이 SCRIPTS 에 있으면 대화창으로 보여 준다.
+   * 대사가 없으면 아무것도 하지 않고 false. onEnd 는 대화가 끝난 뒤 (게시판으로 돌아왔을 때)
+   */
+  playQuestScript(id, kind, onEnd) {
+    const sid = `q_${id}_${kind}`;
+    const g = this.game;
+    if (!SCRIPTS[sid] || !g.registry?.dialogue) return false;
+    const P = this.state?.progress;
+    if (P && Array.isArray(P.seenScripts) && !P.seenScripts.includes(sid)) P.seenScripts.push(sid);
+    g.push('dialogue', { script: sid, world: this.world ?? g.world ?? null, onEnd });
+    return true;
   }
   paperFx() {
     const d = this.detailRect;
@@ -92,11 +111,8 @@ export class QuestBoardScene extends ServiceScene {
   }
 
   // ── 그리기 ──
-  layout() {
-    const vw = this.game.viewW, vh = this.game.viewH;
-    const pw = Math.round(clamp(vw * 0.22, 210, 280));
-    return { vw, vh, pw, cx: pw + 6, cy: 64, cw: vw - pw - 22, ch: vh - 64 - 26 }; // 아래는 키 안내 줄 자리
-  }
+  /** 왼쪽 칸(게시판 삽화 + 안내문)은 다른 가게보다 좁다 */
+  portraitW(vw, compact) { return Math.round(compact ? clamp(vw * 0.22, 196, 250) : clamp(vw * 0.22, 210, 280)); }
   renderPortrait(ctx, L) {
     // 왼쪽: 등불 아래 게시판 삽화 + 안내문
     const x = 14, y = 70, w = L.pw - 20, h = L.vh - 70 - 130;
@@ -151,7 +167,7 @@ export class QuestBoardScene extends ServiceScene {
     this.detailRect = dr;
     const q = this.cur;
     this.drawParchment(ctx, dr, q);
-    this.actRect = { x: dr.x, y: dr.y + dr.h + 10, w: dr.w, h: 50 };
+    this.actRect = this.tz('act', { x: dr.x, y: dr.y + dr.h + 10, w: dr.w, h: 50 });
     if (!q) { uiButton(ctx, this.actRect, '—', { disabled: true }); return; }
     if (this.tab === 0) uiButton(ctx, this.actRect, '의뢰 받기', { selected: true, size: 18 });
     else if (this.tab === 1) {
@@ -217,7 +233,9 @@ export class QuestBoardScene extends ServiceScene {
     if (gv) { text(ctx, `의뢰인: ${gv}`, r.x + r.w / 2, y + 4, { size: 12, align: 'center', color: INK2, outline: null, ow: 0 }); y += 12; }
     ctx.fillStyle = 'rgba(90,60,30,0.4)'; ctx.fillRect(x, y + 8, w, 1.5); y += 28;
     ctx.font = font(14, 500);
-    for (const l of wrap(ctx, q.desc ?? '', w, 14).slice(0, 5)) { text(ctx, l, x, y, { size: 14, color: INK, outline: null, ow: 0 }); y += 21; }
+    // 낮은 양피지(휴대폰)에서는 설명 줄을 줄여 목표·보상이 잘리지 않게
+    const maxDesc = clamp(Math.floor((r.h - 200) / 21), 2, 5);
+    for (const l of wrap(ctx, q.desc ?? '', w, 14).slice(0, maxDesc)) { text(ctx, l, x, y, { size: 14, color: INK, outline: null, ow: 0 }); y += 21; }
     y += 6;
     // 목표 / 진행
     const status = this.tab;

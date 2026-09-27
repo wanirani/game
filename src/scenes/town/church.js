@@ -10,12 +10,13 @@ import { CHARACTERS } from '../../data/characters.js';
 import { CLASSES, classChain } from '../../data/classes.js';
 import * as SkillData from '../../data/skills.js';
 import { STAGES, STAGE_ORDER } from '../../data/stages.js';
+import { DOCS } from '../../data/lore.js';
 import { ITEMS } from '../../data/items.js';
 import { availableClasses, canChangeClass, changeClass } from '../../game/progression.js';
 import { composeLook, STAT_INFO } from '../../game/stats.js';
 import { addByBase } from '../../game/inventory.js';
 import { SHOP_LINES } from '../../data/town.js';
-import { ServiceScene, Modal, RewardPopup, makeInst, hitRect, rowBg, Snap, uiPanel, uiButton, josa } from './common.js';
+import { ServiceScene, Modal, RewardPopup, makeInst, hitRect, rowBg, Snap, uiPanel, uiButton, uiHints, josa } from './common.js';
 import { glow } from './facades.js';
 
 const TIER_NAME = ['기본 직업', '상급 직업', '최상급 직업'];
@@ -60,21 +61,25 @@ export class ChurchScene extends ServiceScene {
       if (input.pressed(a[0])) { this.sel = (this.sel + n - 1) % n; audio.sfx('menu_move'); }
       if (input.pressed(a[1])) { this.sel = (this.sel + 1) % n; audio.sfx('menu_move'); }
     };
+    const id = this.tapId;
+    const pick = (pre) => (typeof id === 'string' && id.startsWith(pre) ? Number(id.slice(pre.length)) : -1);
     if (tab === 'class') {
       const opts = this.options;
       nav(opts.length, true);
-      if (input.pointer.tapped && this.cardRects) for (let i = 0; i < this.cardRects.length; i++) if (hitRect(this.cardRects[i])) { if (this.sel === i) this.tryClass(opts[i]); else { this.sel = i; audio.sfx('menu_move'); } return 'handled'; }
-      if (input.pointer.tapped && this.actRect && hitRect(this.actRect) && opts[this.sel]) { this.tryClass(opts[this.sel]); return 'handled'; }
+      const i = pick('card:');
+      if (i >= 0 && opts[i]) { if (this.sel === i) this.tryClass(opts[i]); else { this.sel = i; audio.sfx('menu_move'); } return 'handled'; }
+      if (id === 'act' && opts[this.sel]) { this.tryClass(opts[this.sel]); return 'handled'; }
       if (input.pressed('confirm') && opts[this.sel]) { this.tryClass(opts[this.sel]); return 'handled'; }
     } else if (tab === 'bless') {
       const o = this.blessOptions();
       nav(o.length, false);
-      if (input.pointer.tapped && this.optRects) for (let i = 0; i < this.optRects.length; i++) if (hitRect(this.optRects[i])) { if (this.sel === i) this.doBless(o[i]); else { this.sel = i; audio.sfx('menu_move'); } return 'handled'; }
+      const i = pick('opt:');
+      if (i >= 0 && o[i]) { if (this.sel === i) this.doBless(o[i]); else { this.sel = i; audio.sfx('menu_move'); } return 'handled'; }
       if (input.pressed('confirm')) { this.doBless(o[this.sel]); return 'handled'; }
     } else if (tab === 'reset') {
-      if ((input.pointer.tapped && this.actRect && hitRect(this.actRect)) || input.pressed('confirm')) { this.tryReset(); return 'handled'; }
+      if (id === 'act' || input.pressed('confirm')) { this.tryReset(); return 'handled'; }
     } else if (tab === 'save') {
-      if ((input.pointer.tapped && this.actRect && hitRect(this.actRect)) || input.pressed('confirm')) { this.doSave(); return 'handled'; }
+      if (id === 'act' || input.pressed('confirm')) { this.doSave(); return 'handled'; }
     }
     if (input.pressed('cancel')) return 'cancel';
     return null;
@@ -103,7 +108,7 @@ export class ChurchScene extends ServiceScene {
     this.lockTabs = true;
   }
   updateCeremony(dt) {
-    const C = this.cere, vw = this.game.viewW, vh = this.game.viewH;
+    const C = this.cere, vw = this.vw, vh = this.vh;
     C.t += dt;
     const cx = vw / 2, cy = vh * 0.76;
     if (C.t < 1.6 && Math.random() < 0.6) this.fx.emit('holy', cx + rand(-60, 60), cy + rand(-10, 20), { speed: 120, angle: -Math.PI / 2, spread: 0.6 });
@@ -150,19 +155,34 @@ export class ChurchScene extends ServiceScene {
       },
     });
   }
+  /**
+   * 기도 힌트. 스테이지는 1부(s01~s13)와 2부(s14~)를 나눠 모으고 (MASTER_PLAN §1.14: 전체를 보되 2부는 따로 묶는다),
+   * 2부가 시작됐으면 2부 힌트를 먼저 준다. 1부는 유물·비전서, 2부는 별의 조각·세계의 심장·비전서.
+   */
   hint() {
-    const st = this.state, P = st.progress;
-    const out = [];
+    const st = this.state, P = st.progress ?? {}, F = P.flags ?? {};
+    const has = (arr, id) => Array.isArray(arr) && arr.includes(id);
+    const p1 = [], p2 = [];
     for (const id of STAGE_ORDER) {
-      if (!P.unlocked.includes(id)) continue;
       const s = STAGES[id];
-      if (s.relic && !P.relics.includes(s.relic)) out.push(`「${s.name}」 깊은 곳에 백작의 유물이 잠들어 있다네. 금이 간 벽과 닿지 않는 길을 살피게.`);
-      const miss = (s.docs || []).filter((d) => !P.docs.includes(d)).length;
+      if (!s || !has(P.unlocked, id)) continue;
+      const out = (s.part ?? 1) >= 2 ? p2 : p1;
+      if (s.relic && !has(P.relics, s.relic)) out.push(`「${s.name}」 깊은 곳에 백작의 유물이 잠들어 있다네. 금이 간 벽과 닿지 않는 길을 살피게.`);
+      if (s.shard && !has(P.shards, s.shard)) out.push(`「${s.name}」 어딘가에 별의 조각이 숨어 있다네. 그 세계가 감춰 둔 길을 끝까지 따라가 보게.`);
+      const miss = (s.docs || []).filter((d) => !has(P.docs, d)).length;
       if (miss) out.push(`「${s.name}」에는 아직 찾지 못한 비전서가 ${miss}권 남아 있네. 수상한 벽은 무기로 두드려 보게.`);
     }
-    if ((P.relics?.length ?? 0) >= 5 && !P.cleared?.s12) out.push('유물 다섯이 모두 그대 손에 있군… 이제 왕좌의 방으로 가게. 그 너머에 진실이 기다린다네.');
+    if ((P.relics?.length ?? 0) >= 5 && !P.cleared?.s12) p1.push('유물 다섯이 모두 그대 손에 있군… 이제 왕좌의 방으로 가게. 그 너머에 진실이 기다린다네.');
+    if (F.p2_started && !F.p2_done) {
+      const n = P.hearts?.length ?? 0;
+      p2.push(n >= 6 ? '여섯 세계의 심장이 모두 모였군… 등불을 들고 공허로 가게. 이 늙은이는 여기서 기도하겠네.'
+        : `되찾은 세계의 심장은 ${n}개일세. 여섯을 모두 되찾아야 공허로 가는 길이 열린다네.`);
+    }
+    if (F.p2_done && !F.stars_all && (P.shards?.length ?? 0) < 6) p2.push('여섯 세계에 숨겨진 별의 조각을 모두 모으면, 공허를 빛으로 채울 수 있을지도 모르네.');
     const gen = ['콤보가 길게 이어질수록 점수가 불어난다네. 쉬지 말고 몰아치게.', '가끔은 금빛 박쥐가 나타난다지. 놓치지 말게, 금화를 잔뜩 떨군다네.', '무기를 강화하려거든 하드윈을 찾게. 그 친구의 망치는 틀린 적이 없어.', '물러설 줄 아는 것도 용기라네. 성수는 넉넉히 챙기게.'];
-    return (out.length && Math.random() < 0.8 ? out : gen)[Math.floor(Math.random() * (out.length && Math.random() < 0.8 ? out.length : gen.length))] ?? gen[0];
+    const pool = F.p2_started && p2.length ? p2 : p1.length ? p1 : p2;
+    const list = pool.length && Math.random() < 0.8 ? pool : gen;
+    return list[Math.floor(Math.random() * list.length)] ?? gen[0];
   }
 
   // ── 스킬 초기화 ──
@@ -186,7 +206,7 @@ export class ChurchScene extends ServiceScene {
         audio.sfx('holy'); audio.sfx('mist', { vol: 0.6 });
         this.talk('reset');
         this.game.flash('#e0e8ff', 0.4, 3);
-        this.fx.burst('magic', this.game.viewW * 0.66, this.game.viewH * 0.45, 40, { color: '#b8c8ff', speed: 240 });
+        this.fx.burst('magic', this.vw * 0.66, this.vh * 0.45, 40, { color: '#b8c8ff', speed: 240 });
         this.game.toast(`스킬 포인트 ${refund} 환급 (보유 SP ${hero.sp ?? 0})`, '#8ae0ff');
       },
     });
@@ -253,7 +273,7 @@ export class ChurchScene extends ServiceScene {
     this.cardRects = [];
     const n = opts.length, gap = 12, cw = (body.w - gap * (n - 1)) / n;
     opts.forEach((c, i) => {
-      const r = { x: body.x + i * (cw + gap), y: y0, w: cw, h };
+      const r = this.tz('card:' + i, { x: body.x + i * (cw + gap), y: y0, w: cw, h });
       this.cardRects.push(r);
       const sel = i === this.sel;
       const chk = canChangeClass(hero, c.id);
@@ -293,7 +313,7 @@ export class ChurchScene extends ServiceScene {
       }
     });
     const c = opts[this.sel];
-    this.actRect = { x: body.x + body.w / 2 - 170, y: body.y + body.h - 50, w: 340, h: 48 };
+    this.actRect = this.tz('act', { x: body.x + body.w / 2 - 170, y: body.y + body.h - 50, w: 340, h: 48 });
     const ok = c && canChangeClass(hero, c.id).ok;
     uiButton(ctx, this.actRect, c ? (ok ? `${josa(`「${c.name}」`, '으로', '로')} 전직` : `레벨 ${c.reqLevel} 필요`) : '—', { selected: ok, size: 17 });
   }
@@ -303,7 +323,7 @@ export class ChurchScene extends ServiceScene {
     this.optRects = [];
     const lw = Math.min(body.w, 470);
     o.forEach((b, i) => {
-      const r = { x: body.x, y: body.y + i * 84, w: lw, h: 76 };
+      const r = this.tz('opt:' + i, { x: body.x, y: body.y + i * 84, w: lw, h: 76 });
       this.optRects.push(r);
       const sel = i === this.sel;
       rowBg(ctx, r, sel);
@@ -355,7 +375,7 @@ export class ChurchScene extends ServiceScene {
       text(ctx, sk?.name ?? id, x + 10, yy, { size: 13, color: '#efe4cf', maxWidth: colW - 70 });
       text(ctx, `Lv.${lv}`, x + colW - 20, yy, { size: 13, weight: 800, family: FONT.num, color: '#ffe7a0', align: 'right' });
     });
-    this.actRect = { x: body.x + body.w / 2 - 170, y: body.y + body.h - 50, w: 340, h: 48 };
+    this.actRect = this.tz('act', { x: body.x + body.w / 2 - 170, y: body.y + body.h - 50, w: 340, h: 48 });
     const ok = refund > 0 && this.state.gold >= cost;
     uiButton(ctx, this.actRect, refund > 0 ? `초기화  ·  ${fmt(cost)} G` : '초기화할 기술 없음', { selected: !!ok, size: 17 });
   }
@@ -369,20 +389,26 @@ export class ChurchScene extends ServiceScene {
     const tx = body.x + 220;
     text(ctx, `슬롯 ${st.slot ?? 1}`, tx, body.y + 40, { size: 13, weight: 800, family: FONT.num, color: '#9d8f80' });
     text(ctx, ch.name, tx, body.y + 72, { size: 24, weight: 800, family: FONT.title, color: '#f3d690' });
+    // 진행 기록: 1부(유물)와 2부(세계의 심장 · 별의 조각)를 나눠 보여 준다. 비전서는 전체 수
+    const P = st.progress ?? {}, F = P.flags ?? {}, chap = P.chapter ?? 0;
+    const p2 = !!F.p2_started || chap >= 14;
+    const p1Docs = STAGE_ORDER.reduce((n, id) => n + ((STAGES[id]?.part ?? 1) < 2 ? (STAGES[id]?.docs?.length ?? 0) : 0), 0) || 20;
     const rows = [
       ['직업', `${CLASSES[hero.classId]?.name ?? ''}  ·  Lv.${hero.level}`],
-      ['진행', (st.progress?.chapter ?? 0) > 0 ? `제${st.progress.chapter}장까지 클리어` : '아직 클리어한 장 없음'],
-      ['드라큘라의 유물', `${st.progress?.relics?.length ?? 0} / 5`],
-      ['비전서', `${st.progress?.docs?.length ?? 0} / 20`],
+      ['진행', chap > 0 ? `${chap >= 14 ? '제2부 · ' : ''}제${chap}장까지 클리어` : '아직 클리어한 장 없음'],
+      ['드라큘라의 유물', `${P.relics?.length ?? 0} / 5`],
+      ...(p2 ? [['세계의 심장', `${P.hearts?.length ?? 0} / 6`], ['별의 조각', `${P.shards?.length ?? 0} / 6`]] : []),
+      ['비전서', `${P.docs?.length ?? 0} / ${p2 ? Object.keys(DOCS).length : p1Docs}`],
       ['플레이 시간', fmtTime(st.stats?.playTime ?? 0)],
       ['마지막 기록', st.savedAt ? new Date(st.savedAt).toLocaleString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '없음'],
     ];
+    const sp = Math.min(30, Math.floor((body.h - 60 - 118) / Math.max(1, rows.length - 1)));
     rows.forEach(([k, v], i) => {
-      const y = body.y + 108 + i * 30;
+      const y = body.y + 108 + i * sp;
       text(ctx, k, tx, y, { size: 13, color: '#9d8f80' });
       text(ctx, v, body.x + body.w - 24, y, { size: 14, weight: 700, color: '#efe4cf', align: 'right' });
     });
-    this.actRect = { x: body.x + body.w / 2 - 170, y: body.y + body.h - 50, w: 340, h: 48 };
+    this.actRect = this.tz('act', { x: body.x + body.w / 2 - 170, y: body.y + body.h - 50, w: 340, h: 48 });
     uiButton(ctx, this.actRect, '여정을 기록한다', { selected: true, size: 17 });
   }
 
@@ -413,7 +439,7 @@ export class ChurchScene extends ServiceScene {
     const look = composeLook(this.state, hero);
     const oldLook = composeLook(this.state, { ...hero, classId: C.cls.parent ?? hero.classId });
     const useNew = t > 1.5;
-    this.preview(ctx, useNew ? 'cere_new' : 'cere_old', useNew ? look : oldLook, cx, by, 2.2, useNew ? look.aura?.color : null);
+    this.preview(ctx, useNew ? 'cere_new' : 'cere_old', useNew ? look : oldLook, cx, by, vh < 500 ? 1.8 : 2.2, useNew ? look.aura?.color : null);
     if (!useNew) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; glow(ctx, cx, by - 90, 110, '#fff8e0', k * 0.8); ctx.restore(); }
     if (useNew) {
       const e = ease.outBack(Math.min(1, (t - 1.5) * 3));
@@ -424,7 +450,10 @@ export class ChurchScene extends ServiceScene {
       ctx.restore();
       if (C.cls.perk) text(ctx, `특성 · ${C.cls.perk}`, cx, vh - 64, { size: 15, weight: 700, color: '#ffe7a0', align: 'center', ow: 3 });
       text(ctx, '스킬 포인트 +3', cx, vh - 36, { size: 13, weight: 800, color: '#8ae0ff', align: 'center', ow: 3 });
-      if (t > 2.4 && Math.floor(t * 2.5) % 2 === 0) text(ctx, input.touchMode ? '화면을 눌러 계속' : 'Z · 계속', cx, vh - 12, { size: 12, align: 'center', color: '#c8b8a0' });
+      if (t > 2.4 && Math.floor(t * 2.5) % 2 === 0) {
+        if (input.touchMode) text(ctx, '화면을 눌러 계속', cx, vh - 12, { size: 12, align: 'center', color: '#c8b8a0' });
+        else uiHints(ctx, [['confirm', '계속']], cx, vh - 12);
+      }
     } else text(ctx, '빛이 그대를 감싼다…', cx, vh * 0.2, { size: 20, weight: 700, family: FONT.title, color: `rgba(255,240,200,${k})`, align: 'center', ow: 3 });
     ctx.restore();
   }

@@ -106,7 +106,7 @@ export class WorldMapScene extends Scene {
     this.fx.quality = g.tier === 'low' ? 0.5 : g.tier === 'medium' ? 0.75 : 1;
     this.reveal = null; this.reveals = []; this.depart = null; this.xfade = null;
     this.closing = false; this.redirect = false;
-    this.tok = null; this.tokTarget = null;
+    this.tok = null;
     this._L = null; this._lab = [null, null]; this._tk = [null, null]; this._snap = null;
     const P = st.progress;
     if (!P.flags || typeof P.flags !== 'object') P.flags = {};
@@ -238,7 +238,7 @@ export class WorldMapScene extends Scene {
     if (!quiet) this.xfade = { from: this.page, fromIndex: this.index, t: 0, snap: null };
     this.page = p;
     this.index = this.defaultIndex(p);
-    this.tok = null; this.tokTarget = null;
+    this.tok = null;
     if (quiet) return;
     audio.sfx('card');
     if (!this.reveal) audio.music(PAGES[p].music, { fade: 0.6 });

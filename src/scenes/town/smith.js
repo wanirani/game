@@ -10,10 +10,19 @@ import { countItem } from '../../game/inventory.js';
 import { drawIcon, drawSlot } from '../../render/icons.js';
 import { CHARACTERS } from '../../data/characters.js';
 import { SHOP_LINES } from '../../data/town.js';
-import { ServiceScene, ScrollList, Modal, itemRow, drawItemDetail, baseOf, nameOf, makeInst, statsOf, statName, fmtStat, isEquippedAny, SLOT_LABEL, WTYPE_LABEL, EQUIP_KINDS, hitRect, openBuy, mergeLines, rarityColor, uiPanel, uiButton, josa } from './common.js';
+import { ServiceScene, ScrollList, Modal, itemRow, drawItemDetail, baseOf, nameOf, makeInst, statsOf, statName, fmtStat, isEquippedAny, SLOT_LABEL, WTYPE_LABEL, EQUIP_KINDS, hitRect, openBuy, mergeLines, rarityColor, uiPanel, uiButton, uiHints, josa } from './common.js';
 import { glow } from './facades.js';
 
 const FAIL_TEXT = { keep: ['실패 시 단계 유지', '#b8b0a0'], down: ['실패 시 1단계 하락', '#ffa640'], destroy: ['실패 시 하락 · 파괴 위험', '#ff5a5a'] };
+/**
+ * 강화 패널 치수 (UI px). y0 = 머리글 아래 시작, chipY = 패널 아래 50 (주문서 칩 38),
+ * 비용 칸 = chipY − costGap − costH, 글자 덩어리의 마지막 기준선 ≤ 비용 칸 − 8.
+ * lvB: 단계 글자 기준선 (y0 기준), rateH: 확률 줄 시작 → 다음 글자 기준선, barY/barH: 확률 막대
+ */
+const ENH_M = {
+  normal: { s: 60, pad: 14, hdrGap: 18, lvH: 34, lvB: 14, lvS: [30, 34], rowH: 18, gap: 8, rateS: 26, rateH: 46, barY: 22, barH: 9, partsH: 20, costH: 38, costGap: 8 },
+  compact: { s: 48, pad: 12, hdrGap: 14, lvH: 26, lvB: 11, lvS: [24, 26], rowH: 16, gap: 6, rateS: 22, rateH: 40, barY: 18, barH: 8, partsH: 16, costH: 28, costGap: 4 },
+};
 
 export class SmithScene extends ServiceScene {
   setup() {
@@ -21,13 +30,13 @@ export class SmithScene extends ServiceScene {
     this.lines = mergeLines(SHOP_LINES.hadwin, Shop.SHOPKEEPERS?.npc_hadwin, { enhanceOk: 'ok', enhanceFail: 'fail', enhanceBreak: 'destroy', enhanceMax: 'max' });
     this.music = 'smith'; this.portraitGlow = '#ff7a2a'; this.emberColor = '#ff8a3a';
     this.tabs = [{ id: 'enh', label: '강화' }, { id: 'buy', label: '무기·방어구' }];
-    this.list = new ScrollList(58);
+    this.list = this.addList(58);
     this.opt = { protect: false, bless: false };
     this.refresh();
     this.talk('hello');
   }
   onTab() { this.list.index = 0; this.list.scroll = this.list.target = 0; this.refresh(); }
-  extraHints() { return this.tab === 0 ? [['A', '보호'], ['C', '축복']] : []; }
+  extraHints() { return this.tab === 0 ? [['alt', '보호'], ['alt2', '축복']] : []; }
 
   refresh(keepUid = null) {
     const st = this.state;
@@ -56,15 +65,15 @@ export class SmithScene extends ServiceScene {
   updateBody(dt) {
     const r = this.list.update(dt);
     if (this.list.moved) audio.sfx('menu_move', { vol: 0.6 });
+    const id = this.tapId;
     if (this.tab === 0) {
-      if (input.pressed('sub')) this.toggle('protect');
-      if (input.pressed('dash')) this.toggle('bless');
-      if (input.pointer.tapped) {
-        if (this.chipRects?.protect && hitRect(this.chipRects.protect)) { this.toggle('protect'); return 'handled'; }
-        if (this.chipRects?.bless && hitRect(this.chipRects.bless)) { this.toggle('bless'); return 'handled'; }
-      }
+      // 메뉴 의미 입력: 보조(A · 패드 Y) = 보호, 보조 2(C · 패드 LT) = 축복 — 패드 B(대시·취소)와 겹치지 않게
+      if (input.pressed('alt')) this.toggle('protect');
+      if (input.pressed('alt2')) this.toggle('bless');
+      if (id === 'chip:protect') { this.toggle('protect'); return 'handled'; }
+      if (id === 'chip:bless') { this.toggle('bless'); return 'handled'; }
     }
-    if (input.pointer.tapped && this.actRect && hitRect(this.actRect) && this.cur) { this.act(); return 'handled'; }
+    if (id === 'act' && this.cur) { this.act(); return 'handled'; }
     if (r === 'confirm' && this.cur) this.act();
     return r;
   }
@@ -108,7 +117,7 @@ export class SmithScene extends ServiceScene {
     audio.sfx('charge_ready', { vol: 0.5 });
   }
   updateBusy(dt) {
-    const B = this.busy, vw = this.game.viewW, vh = this.game.viewH;
+    const B = this.busy, vw = this.vw, vh = this.vh;
     B.t += dt;
     B.shake = Math.max(0, B.shake - dt * 30); B.flash = Math.max(0, B.flash - dt * 3);
     const cx = vw / 2, ay = vh * 0.6;
@@ -135,7 +144,7 @@ export class SmithScene extends ServiceScene {
     }
   }
   reveal() {
-    const B = this.busy, r = B.res, vw = this.game.viewW, vh = this.game.viewH;
+    const B = this.busy, r = B.res, vw = this.vw, vh = this.vh;
     B.revealed = true; B.revealT = B.t;
     const cx = vw / 2, cy = vh * 0.6 - 80;
     if (r.success) {
@@ -183,7 +192,7 @@ export class SmithScene extends ServiceScene {
     const dr = { x: body.x + lw + 10, y: body.y, w: body.w - lw - 10, h: body.h - 60 };
     this.detailRect = dr;
     const e = this.cur;
-    this.actRect = { x: dr.x, y: dr.y + dr.h + 10, w: dr.w, h: 50 };
+    this.actRect = this.tz('act', { x: dr.x, y: dr.y + dr.h + 10, w: dr.w, h: 50 });
     if (this.tab === 1) {
       drawItemDetail(ctx, dr, e?.inst ?? null, { state: st, price: e ? e.price : null, priceLabel: '구매 가격', priceOk: e && st.gold >= e.price, note: e?.note, tag: e?.tag });
       const can = e && st.gold >= e.price;
@@ -193,83 +202,116 @@ export class SmithScene extends ServiceScene {
     this.drawEnhanceDetail(ctx, dr, e?.inst ?? null);
   }
 
+  /**
+   * 강화 상세 패널. 위(머리글·단계·능력치 미리보기·확률·실패 규칙)와 아래(비용·주문서) 두 덩어리로 나누고,
+   * 위 덩어리의 마지막 줄이 비용 칸 위에서 끝나도록 맞춘다 (ITEMS-P2 검수 #116: +11~+14 의 3능력치 장비에서 겹침):
+   * 보통 크기로 능력치 줄(최대 3)이 다 들어가면 보통 크기, 아니면 촘촘한 크기, 그래도 모자라면 능력치 줄을 줄인다.
+   * 기본 확률 내역 줄은 자리가 남을 때만.
+   */
   drawEnhanceDetail(ctx, r, inst) {
     uiPanel(ctx, r.x, r.y, r.w, r.h, { corner: false });
     this.chipRects = {};
     if (!inst) { text(ctx, '강화할 장비를 고르세요', r.x + r.w / 2, r.y + r.h / 2, { size: 15, align: 'center', color: COLORS.dim }); uiButton(ctx, this.actRect, '—', { disabled: true }); return; }
     const st = this.state, inf = this.info(inst);
     const rc = rarityColor(inst.rarity);
-    const s = 60;
-    drawSlot(ctx, r.x + 16, r.y + 16, s, inst);
-    text(ctx, nameOf(inst), r.x + s + 30, r.y + 40, { size: 18, weight: 800, family: FONT.title, color: rc, maxWidth: r.w - s - 50 });
-    const b = baseOf(inst);
-    text(ctx, [SLOT_LABEL[b.slot], b.wtype ? WTYPE_LABEL[b.wtype] : ''].filter(Boolean).join(' · '), r.x + s + 30, r.y + 62, { size: 12, color: '#a89880' });
-    let y = r.y + 100;
-    // 단계 변화
     const L = inst.level ?? 0;
+    // 능력치 미리보기
+    let prev = [];
+    if (!inf.maxed) {
+      try {
+        if (Enh.enhancePreview) prev = Enh.enhancePreview(inst, Items.itemStats) || [];
+        else { const a = statsOf(inst), n = statsOf({ ...inst, level: L + 1 }); prev = Object.keys(n).map((k) => ({ stat: k, name: statName(k), from: a[k] ?? 0, to: n[k], diff: (n[k] ?? 0) - (a[k] ?? 0) })).filter((p) => Math.abs(p.diff) > 0.05); }
+      } catch { prev = []; }
+    }
+    // 크기 고르기
+    const want = Math.min(3, prev.length);
+    const fit = (M, n, parts) => M.y0 + M.lvH + n * M.rowH + M.gap + M.rateH + (parts ? M.partsH : 0) <= M.limit;
+    let M = null, nStats = want;
+    for (const m of [ENH_M.normal, ENH_M.compact]) {
+      const q = { ...m, y0: r.y + m.pad + m.s + m.hdrGap, chipY: r.y + r.h - 50 };
+      q.cy = q.chipY - m.costGap - m.costH; q.limit = q.cy - 8;
+      if (!M) M = q;
+      if (fit(q, want, false)) { M = q; break; }
+      M = q; // 촘촘한 크기로도 안 되면 아래에서 줄 수를 줄인다
+    }
+    while (nStats > 0 && !fit(M, nStats, false)) nStats--;
+    const showParts = fit(M, nStats, true);
+    // 머리글: 아이콘 · 이름 · 종류 (+ 오른쪽 끝에 +10/+15 보너스 표시)
+    const s = M.s;
+    drawSlot(ctx, r.x + 16, r.y + M.pad, s, inst);
+    text(ctx, nameOf(inst), r.x + s + 30, r.y + M.pad + (s < 56 ? 20 : 24), { size: s < 56 ? 17 : 18, weight: 800, family: FONT.title, color: rc, maxWidth: r.w - s - 50 });
+    const b = baseOf(inst);
+    const ky = r.y + M.pad + (s < 56 ? 40 : 46);
+    text(ctx, [SLOT_LABEL[b.slot], b.wtype ? WTYPE_LABEL[b.wtype] : ''].filter(Boolean).join(' · '), r.x + s + 30, ky, { size: 12, color: '#a89880' });
+    let y = M.y0;
     if (inf.maxed) {
       text(ctx, inf.invalid ? '강화 불가' : '★ 최고 단계 +15 ★', r.x + r.w / 2, y + 12, { size: 22, weight: 900, family: FONT.num, color: '#ffb040', align: 'center' });
-      text(ctx, inf.reason ?? '', r.x + r.w / 2, y + 40, { size: 13, align: 'center', color: '#b8a890' });
+      text(ctx, inf.reason ?? '', r.x + r.w / 2, y + 40, { size: 13, align: 'center', color: '#b8a890', maxWidth: r.w - 30 });
       uiButton(ctx, this.actRect, '강화 불가', { disabled: true, size: 18 });
       return;
     }
-    const mid = r.x + r.w / 2;
-    text(ctx, `+${L}`, mid - 54, y + 14, { size: 30, weight: 900, family: FONT.num, color: L >= 10 ? '#ffb040' : '#efe4cf', align: 'center' });
+    if (inf.next === 10 || inf.next === 15) text(ctx, inf.next === 15 ? '★ 극한 강화 보너스' : '★ +10 달성 보너스', r.x + r.w - 16, ky, { size: 11, weight: 800, color: '#ffb040', align: 'right' });
+    // 단계 변화
+    const mid = r.x + r.w / 2, lb = y + M.lvB;
+    text(ctx, `+${L}`, mid - 54, lb, { size: M.lvS[0], weight: 900, family: FONT.num, color: L >= 10 ? '#ffb040' : '#efe4cf', align: 'center' });
     const ax = Math.sin(this.t * 4) * 3;
-    text(ctx, '▶', mid + ax, y + 10, { size: 18, color: COLORS.gold, align: 'center' });
-    text(ctx, `+${inf.next}`, mid + 58, y + 14, { size: 34, weight: 900, family: FONT.num, color: inf.next >= 10 ? '#ffd070' : '#fff4d8', align: 'center' });
-    y += 34;
-    // 능력치 미리보기
-    let prev = [];
-    try {
-      if (Enh.enhancePreview) prev = Enh.enhancePreview(inst, Items.itemStats);
-      else { const a = statsOf(inst), n = statsOf({ ...inst, level: L + 1 }); prev = Object.keys(n).map((k) => ({ stat: k, name: statName(k), from: a[k] ?? 0, to: n[k], diff: (n[k] ?? 0) - (a[k] ?? 0) })).filter((p) => Math.abs(p.diff) > 0.05); }
-    } catch { prev = []; }
-    for (const p of prev.slice(0, 3)) {
-      text(ctx, statName(p.stat), r.x + 22, y + 4, { size: 13, color: '#d8ccb8' });
+    text(ctx, '▶', mid + ax, lb - 4, { size: 18, color: COLORS.gold, align: 'center' });
+    text(ctx, `+${inf.next}`, mid + 58, lb, { size: M.lvS[1], weight: 900, family: FONT.num, color: inf.next >= 10 ? '#ffd070' : '#fff4d8', align: 'center' });
+    y += M.lvH;
+    for (const p of prev.slice(0, nStats)) {
+      text(ctx, statName(p.stat), r.x + 22, y + 4, { size: 13, color: '#d8ccb8', maxWidth: r.w * 0.36 });
       text(ctx, `${fmtStat(p.stat, p.from).replace('+', '')} → ${fmtStat(p.stat, p.to).replace('+', '')}`, r.x + r.w - 80, y + 4, { size: 13, weight: 800, family: FONT.num, color: '#fff', align: 'right' });
       text(ctx, `▲${fmtStat(p.stat, p.diff).replace('+', '')}`, r.x + r.w - 20, y + 4, { size: 12, weight: 800, color: COLORS.good, align: 'right' });
-      y += 19;
+      y += M.rowH;
     }
-    if (inf.next === 10 || inf.next === 15) { text(ctx, inf.next === 15 ? '★ 극한 강화 보너스' : '★ +10 달성 보너스', r.x + 22, y + 4, { size: 12, weight: 800, color: '#ffb040' }); y += 18; }
-    y += 8;
+    y += M.gap;
     // 성공 확률
     const rate = Math.round(inf.rate ?? 0);
     const rcol = rate >= 70 ? '#7ee07e' : rate >= 40 ? '#ffe070' : rate >= 20 ? '#ffa640' : '#ff5a5a';
     text(ctx, '성공 확률', r.x + 22, y + 10, { size: 14, weight: 700, color: '#c8b8a0' });
-    text(ctx, `${rate}%`, r.x + r.w - 20, y + 14, { size: 26, weight: 900, family: FONT.num, color: rcol, align: 'right' });
-    y += 22;
-    bar(ctx, r.x + 22, y, r.w - 44, 9, rate / 100, { color: rcol });
-    y += 24;
-    const parts = [`기본 ${inf.baseRate ?? rate}%`];
-    if (inf.diffBonus) parts.push(`난이도 ${inf.diffBonus > 0 ? '+' : ''}${inf.diffBonus}%`);
-    if (inf.pity) parts.push(`실패 보정 +${inf.pity}%`);
-    if (inf.bless) parts.push(`축복 +${inf.bless}%`);
-    text(ctx, parts.join(' · '), r.x + 22, y, { size: 11, color: '#9d8f80' });
-    y += 20;
+    text(ctx, `${rate}%`, r.x + r.w - 20, y + 14, { size: M.rateS, weight: 900, family: FONT.num, color: rcol, align: 'right' });
+    bar(ctx, r.x + 22, y + M.barY, r.w - 44, M.barH, rate / 100, { color: rcol });
+    y += M.rateH;
+    if (showParts) {
+      const parts = [`기본 ${inf.baseRate ?? rate}%`];
+      if (inf.diffBonus) parts.push(`난이도 ${inf.diffBonus > 0 ? '+' : ''}${inf.diffBonus}%`);
+      if (inf.pity) parts.push(`실패 보정 +${inf.pity}%`);
+      if (inf.bless) parts.push(`축복 +${inf.bless}%`);
+      text(ctx, parts.join(' · '), r.x + 22, y, { size: 11, color: '#9d8f80', maxWidth: r.w - 44 });
+      y += M.partsH;
+    }
     const [ft, fc] = FAIL_TEXT[inf.onFail] ?? FAIL_TEXT.keep;
-    text(ctx, inf.protect ? '보호 주문서: 하락·파괴 방지' : inf.onFail === 'destroy' ? `${ft} (${inf.destroyChance}%)` : ft, r.x + 22, y, { size: 13, weight: 700, color: inf.protect ? '#8ac8ff' : fc });
-    y += 14;
-    // 비용
-    const cy = r.y + r.h - 96;
-    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(r.x + 12, cy, r.w - 24, 38);
-    drawIcon(ctx, 'coin', r.x + 32, cy + 19, 20);
+    text(ctx, inf.protect ? '보호 주문서: 하락·파괴 방지' : inf.onFail === 'destroy' ? `${ft} (${inf.destroyChance}%)` : ft, r.x + 22, y, { size: 13, weight: 700, color: inf.protect ? '#8ac8ff' : fc, maxWidth: r.w - 44 });
+    // 비용 (한 줄 칸: 금화 · 강화석 보유/필요)
+    const cy = M.cy, ch = M.costH;
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(r.x + 12, cy, r.w - 24, ch);
+    drawIcon(ctx, 'coin', r.x + 32, cy + ch / 2, ch < 34 ? 18 : 20);
     const gOk = (st.gold ?? 0) >= (inf.gold ?? 0);
-    text(ctx, fmt(inf.gold ?? 0), r.x + 48, cy + 25, { size: 16, weight: 900, family: FONT.num, color: gOk ? '#ffd84a' : COLORS.bad });
+    text(ctx, fmt(inf.gold ?? 0), r.x + 48, cy + ch / 2 + 6, { size: ch < 34 ? 15 : 16, weight: 900, family: FONT.num, color: gOk ? '#ffd84a' : COLORS.bad });
     if (inf.stones) {
       const sb = Items.ITEMS[inf.stones.baseId];
       const sx = r.x + r.w * 0.48;
-      drawIcon(ctx, sb?.icon ?? 'stone_1', sx, cy + 19, 26);
-      const sOk = (inf.stones.have ?? countItem(st, inf.stones.baseId)) >= inf.stones.qty;
-      text(ctx, `${inf.stones.name ?? sb?.name ?? '강화석'}`, sx + 18, cy + 17, { size: 11, color: '#c8b8a0', maxWidth: r.x + r.w - sx - 30 });
-      text(ctx, `${inf.stones.have ?? countItem(st, inf.stones.baseId)} / ${inf.stones.qty}`, sx + 18, cy + 32, { size: 13, weight: 900, family: FONT.num, color: sOk ? '#efe4cf' : COLORS.bad });
+      const have = inf.stones.have ?? countItem(st, inf.stones.baseId);
+      const sOk = have >= inf.stones.qty;
+      const nm = `${inf.stones.name ?? sb?.name ?? '강화석'}`;
+      drawIcon(ctx, sb?.icon ?? 'stone_1', sx, cy + ch / 2, ch < 34 ? 22 : 26);
+      if (ch < 34) {
+        const cnt = `${have} / ${inf.stones.qty}`;
+        ctx.font = font(13, 900, FONT.num);
+        const cw = ctx.measureText(cnt).width;
+        text(ctx, cnt, r.x + r.w - 20, cy + ch / 2 + 5, { size: 13, weight: 900, family: FONT.num, color: sOk ? '#efe4cf' : COLORS.bad, align: 'right' });
+        text(ctx, nm, sx + 16, cy + ch / 2 + 5, { size: 11, color: '#c8b8a0', maxWidth: Math.max(10, r.x + r.w - 26 - cw - sx - 16) });
+      } else {
+        text(ctx, nm, sx + 18, cy + 17, { size: 11, color: '#c8b8a0', maxWidth: r.x + r.w - sx - 30 });
+        text(ctx, `${have} / ${inf.stones.qty}`, sx + 18, cy + 32, { size: 13, weight: 900, family: FONT.num, color: sOk ? '#efe4cf' : COLORS.bad });
+      }
     }
     // 주문서 토글
-    const chipY = r.y + r.h - 50, cw = (r.w - 34) / 2;
+    const chipY = M.chipY, cw = (r.w - 34) / 2;
     const chip = (key, x, id, label, applicable) => {
       const have = countItem(st, id);
       const on = this.opt[key] && have > 0;
-      const rr = { x, y: chipY, w: cw, h: 38 };
+      const rr = this.tz('chip:' + key, { x, y: chipY, w: cw, h: 38 });
       const g = ctx.createLinearGradient(0, rr.y, 0, rr.y + rr.h);
       g.addColorStop(0, on ? (key === 'protect' ? 'rgba(40,80,150,0.95)' : 'rgba(150,110,20,0.95)') : 'rgba(24,14,22,0.9)'); g.addColorStop(1, 'rgba(8,4,10,0.95)');
       ctx.fillStyle = g; ctx.fillRect(rr.x, rr.y, rr.w, rr.h);
@@ -277,7 +319,7 @@ export class SmithScene extends ServiceScene {
       drawIcon(ctx, key === 'protect' ? 'scroll_protect' : 'scroll_bless', rr.x + 18, rr.y + 19, 24);
       ctx.globalAlpha = have ? 1 : 0.45;
       text(ctx, label, rr.x + 34, rr.y + 17, { size: 12, weight: 800, color: on ? '#fff' : '#d8ccb8', maxWidth: rr.w - 40 });
-      text(ctx, `${on ? '사용' : '미사용'} · ${have}장${!applicable ? ' (불필요)' : ''}`, rr.x + 34, rr.y + 32, { size: 10, color: on ? '#ffe7a0' : '#9d8f80', maxWidth: rr.w - 40 });
+      text(ctx, `${on ? '사용' : '미사용'} · ${have}장${!applicable ? ' (불필요)' : ''}`, rr.x + 34, rr.y + 32, { size: 11, color: on ? '#ffe7a0' : '#9d8f80', maxWidth: rr.w - 40 });
       ctx.globalAlpha = 1;
       this.chipRects[key] = rr;
     };
@@ -364,7 +406,7 @@ export class SmithScene extends ServiceScene {
       ctx.globalAlpha = fl;
       text(ctx, `성공 확률 ${Math.round(B.rate)}%`, cx, vh * 0.14 + 62, { size: 15, weight: 800, color: '#ffc070', align: 'center', ow: 3 });
       ctx.globalAlpha = 1;
-      if (B.strikes >= 1 && !input.touchMode) text(ctx, 'Z 빨리 감기', cx, vh - 14, { size: 11, align: 'center', color: COLORS.dim });
+      if (B.strikes >= 1) uiHints(ctx, [['confirm', '빨리 감기']], cx, vh - 12);
     } else {
       const k = ease.outBack(Math.min(1, (t - B.revealT) * 3.5));
       ctx.save(); ctx.translate(cx, vh * 0.2); ctx.scale(k, k);
@@ -380,7 +422,10 @@ export class SmithScene extends ServiceScene {
         text(ctx, dn ? `+${r.before} → +${r.after}  단계 하락` : r.protected ? '보호 주문서가 장비를 지켰다' : '단계는 유지되었다', 0, 46, { size: 18, weight: 800, color: dn ? '#ff8a6a' : '#8ac8ff', align: 'center', ow: 4 });
       }
       ctx.restore();
-      if (t - B.revealT > 0.9 && Math.floor(t * 2.5) % 2 === 0) text(ctx, input.touchMode ? '화면을 눌러 계속' : 'Z · 계속', cx, vh - 18, { size: 13, align: 'center', color: '#c8b8a0' });
+      if (t - B.revealT > 0.9 && Math.floor(t * 2.5) % 2 === 0) {
+        if (input.touchMode) text(ctx, '화면을 눌러 계속', cx, vh - 18, { size: 13, align: 'center', color: '#c8b8a0' });
+        else uiHints(ctx, [['confirm', '계속']], cx, vh - 18);
+      }
     }
     if (B.flash > 0) { ctx.fillStyle = `rgba(255,230,180,${B.flash})`; ctx.fillRect(-20, -20, vw + 40, vh + 40); }
     ctx.restore();
