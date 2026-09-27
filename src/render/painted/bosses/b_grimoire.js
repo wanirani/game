@@ -12,9 +12,11 @@
 //   death(표지가 찢겨 날아가고 눈알이 빠져 떨어짐 → 입이 발악 → 턱·책장·등이 흩어져 바닥에 떨어짐, 촉수는 먹물로 녹음)
 // 절차적 그로테스크 층: 촉수(체인 타일) · 입 속 목구멍(어둠 + 보랏빛) · 끈적한 침 줄 · 먹물/피 방울 → 바닥 튐 · 눈꺼풀 · 룬 원(구운 스프라이트) ·
 //   궤도를 도는 채색 낱장 · 보랏빛 불꽃
-import { Drawer, Chain, Strand, Particles, DamageState, Shards, halo, puff, rr, hash1, loadRig, pickVariant, quality, makeCanvas } from '../kit.js';
+import { Drawer, Chain, Strand, Particles, DamageState, Shards, halo, puff, rr, hash1, loadRig, pickVariant, quality, QUALITY, makeCanvas, ledgesOver } from '../kit.js';
 
 const DIR = 'painted/bosses/b_grimoire';
+// 실제 품질 등급: 설정 기본값은 'auto' 라서 settings.quality 만 보면 폰에서도 늘 'high' 가 된다 → 조절기 결과(game.quality)를 먼저 본다
+const tierOf = (game) => { const t = game?.quality ?? game?.tier ?? game?.settings?.quality; return QUALITY[t] ? t : quality(game).name; };
 const ARC = '#b060ff', ARC2 = '#e0b0ff', RED = '#ff4a7a', MAG = '#ff5ad0';
 const ELEMC = { fire: '#ff7a2a', ice: '#9fe8ff', thunder: '#bfe0ff' };
 const PI = Math.PI, TAU = PI * 2;
@@ -67,8 +69,9 @@ export default {
     const tents = [];
     for (let i = 0; i < 4; i++) tents.push({ ch: new Chain(8), P: Array.from({ length: 8 }, () => ({ x: 0, y: 0 })), seed: 1.7 + i * 2.3 });
     return {
-      D: new Drawer(), P: new Particles(quality(boss.world?.game).particles), shards: new Shards(48),
-      dmg: new DamageState(boss.def?.phases ?? [0.6, 0.3]), q: quality(boss.world?.game), lt: null, pf: 0, jolt: 0,
+      // 입자 풀은 최고 등급 크기로 한 번 만들고, 등급에 따라 P.max 로 상한만 바꾼다 (전투 중 등급이 바뀌어도 새 배열 없음)
+      D: new Drawer(), P: new Particles(QUALITY.high.particles), shards: new Shards(48),
+      dmg: new DamageState(boss.def?.phases ?? [0.6, 0.3]), q: null, lt: null, pf: 0, jolt: 0,
       tents, trail: [], chainsSeen: !!boss.chainsBroken, stubs: [new Strand(4, 19, { g: 900, damp: 0.92 }), new Strand(4, 19, { g: 900, damp: 0.92 })],
       d: {}, slamSeen: false, lastPhase: boss.phase ?? 0, mawK: 0, C: [0, 0],
     };
@@ -144,8 +147,8 @@ function runeSprite(color, inner) {
 function drawBoss(ctx, b, world, rig, st) {
   const D = st.D, R = rig.parts, P = st.P;
   if (st.rig !== rig) { st.rig = rig; }
-  const qn = world.game?.settings?.quality ?? 'high';
-  if (st.q.name !== qn) st.q = quality(world.game);
+  const qn = tierOf(world.game);
+  if (st.q?.name !== qn) { st.q = QUALITY[qn]; P.max = Math.min(P.x.length, st.q.particles); }
   const q = st.q;
   const now = world.time ?? b.t;
   const dt = st.lt == null ? 1 / 60 : clamp(now - st.lt, 0, 0.05); st.lt = now;
@@ -196,6 +199,14 @@ function drawBoss(ctx, b, world, rig, st) {
     runeRing(ctx, D, b, t, cx, cy);
     drawTentacles(ctx, D, b, rig, st, dt, t, lvl, floor, dying, dT);
     orbitPages(D, b, rig, t, 0, tint);
+    // 발판 덧그리기 (BOSS_PIPELINE §8.11): 책 밑으로 늘어진 촉수·뒤 낱장은 경기장 발판 뒤, 책(판정)은 발판 앞
+    if (q.ledges !== false) {
+      const cam = world.camera;
+      let x0 = cx - 240, y0 = cy - 140, x1 = cx + 240, y1 = cy + 270;
+      if (cam) { x0 = Math.max(x0, cam.x); y0 = Math.max(y0, cam.y); x1 = Math.min(x1, cam.x + cam.vw); y1 = Math.min(y1, cam.y + cam.vh); }
+      D.end();
+      if (x1 > x0 && y1 > y0) ledgesOver(ctx, world, x0, y0, x1, y1);
+    }
   }
 
   // ── 책 ──

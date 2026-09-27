@@ -111,13 +111,12 @@ export const ULTFX_STATS = {
 
 // ═══════════════════════════ 작은 도구 ═══════════════════════════
 const perfNow = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
-let CASTING = 0;   // 살아 있는 세션 수 (시전 중 캔버스 생성 계수용)
 function mkCanvas(w, h) {
   if (typeof document === 'undefined' || !document.createElement) return null;
   const c = document.createElement('canvas');
   c.width = Math.max(1, Math.ceil(w)); c.height = Math.max(1, Math.ceil(h));
   ULTFX_STATS.canvases++;
-  if (CASTING > 0) ULTFX_STATS.castCanvases++;
+  if (live(game?.world)) ULTFX_STATS.castCanvases++;   // 시전 중에 만든 캔버스 (0 이어야 한다)
   return c;
 }
 function radial(g, x0, y0, r0, x1, y1, r1, stops) {
@@ -931,7 +930,6 @@ class Session {
     this.tex = Q[this.q].layer && o.lines !== false ? layerFor(this.tier, this.color, this.accent) : null;
     this.name = this.makeName();
     this.ov = addOv(w, { draw: (ctx, vw, vh) => this.draw(ctx, vw, vh), update: (dt) => this.update(dt) });
-    CASTING++;
     ULTFX_STATS.sessions++;
   }
   makeName() {
@@ -1066,7 +1064,6 @@ class Session {
   kill() {
     if (this.dead) return;
     this.dead = true;
-    CASTING = Math.max(0, CASTING - 1);
     if (this.ov) this.ov.dead = true;
     const w = this.w, cam = w.camera;
     if (this.lbSet > 0 && Math.abs((w.letterbox || 0) - this.lbSet) < 0.6) w.letterbox = 0;

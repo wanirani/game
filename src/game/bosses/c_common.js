@@ -46,7 +46,7 @@
 //
 // 적 정지 규칙 (FEEL-BOSSHOOKS 요청): 이 파일이 만드는 개체는 update 첫 줄에서 heldByFreeze(world, 보스) 면 멈춘다.
 // 순환 import 주의: 모듈 최상위에서는 import 값을 쓰지 않는다 (클래스 extends 는 b_*.js 와 같은 조건).
-import { BossB, Zone, EL, glow, glowE, warnRect, warnLine, warnFloor, warnCircle, warnBang, trySpawn } from './b_common.js';
+import { BossB, EL, glow, glowE, warnRect, warnLine, warnFloor, warnCircle, warnBang, trySpawn } from './b_common.js';
 import { heldByFreeze } from './boss.js';
 import { Entity } from '../entity.js';
 import { enemyStrike } from '../combat.js';
@@ -853,7 +853,7 @@ export function warnText(boss, text, color = '#ffb070') {
 /** (x, y) 에 느낌표 경고 표시 sec 초 (판정 없음) */
 export function warnMark(boss, x, y, sec = 0.8, color = '#ff3a40') {
   return boss.zone({ x: x - 20, y: y - 20, w: 40, h: 40, warn: 0, life: sec, harmless: true, z: 9,
-    paint: (ctx, z) => warnBang(ctx, x, y - 6 * Math.sin(z.t * 10), 18, clamp((sec - z.t) / 0.2, 0, 1)) });
+    paint: (ctx, z) => warnBang(ctx, x, y - 6 * Math.sin(z.t * 10), 18, clamp((sec - z.t) / 0.2, 0, 1), color) });
 }
 const bb = (x0, y0, x1, y1, pad) => ({ x: Math.min(x0, x1) - pad, y: Math.min(y0, y1) - pad, w: Math.abs(x1 - x0) + pad * 2, h: Math.abs(y1 - y0) + pad * 2 });
 function zoneBase(o, extra) {
@@ -1183,7 +1183,7 @@ export class BossC extends BossB {
   /** 기본 대기: idleMove 훅, 휴식이 끝나면 다음 패턴 */
   s_idle(dt, world, t) {
     if (this.idleMove) this.idleMove(dt, world, t);
-    else { this.vx *= Math.pow(0.02, dt); if (!this.noGravity) this.vx = Math.abs(this.vx) < 4 ? 0 : this.vx; this.facePlayer(); }
+    else { this.vx *= Math.pow(0.02, dt); if (this.noGravity) this.vy *= Math.pow(0.02, dt); this.facePlayer(); }
     if (t >= this.idleWait) this.nextPattern();
   }
   /** 강제 대기열 → 가중치 선택. 고를 것이 없으면 1초 뒤 다시 */

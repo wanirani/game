@@ -12,9 +12,11 @@
 //   death(조립: 투구가 튕겨 나가고 무너짐 / 분리: 심장이 터지고 부품이 떨어짐)
 // 절차적 그로테스크 층: 심장 박동 발광 · 관절·목 틈의 검붉은 불꽃 · 피 방울 → 바닥 튐 · 허리 밑으로 늘어진 힘줄(verlet) ·
 //   면갑 눈빛 · 불씨·연기 · 균열 발광(열기에 따라)
-import { Drawer, Strand, Particles, DamageState, Shards, halo, puff, rr, hash1, loadRig, pickVariant, quality, drawStrand, ik2 } from '../kit.js';
+import { Drawer, Strand, Particles, DamageState, Shards, halo, puff, rr, hash1, loadRig, pickVariant, quality, QUALITY, drawStrand, ik2, ledgesOver } from '../kit.js';
 
 const DIR = 'painted/bosses/b_crimson';
+// 실제 품질 등급: 설정 기본값은 'auto' 라서 settings.quality 만 보면 폰에서도 늘 'high' 가 된다 → 조절기 결과(game.quality)를 먼저 본다
+const tierOf = (game) => { const t = game?.quality ?? game?.tier ?? game?.settings?.quality; return QUALITY[t] ? t : quality(game).name; };
 const LAVA = '#ff7a2a', DFIRE = '#ff3a1a', EMBER = '#ffb060';
 const BLOOD = '#3a0206', BLOODHI = '#ff5a4a';
 const PI = Math.PI, TAU = PI * 2;
@@ -52,8 +54,9 @@ export default {
     const guts = [];
     for (let i = 0; i < 3; i++) guts.push(new Strand(6, 7, { g: 900, damp: 0.92 }));
     return {
-      D: new Drawer(), P: new Particles(quality(boss.world?.game).particles), shards: new Shards(48),
-      dmg: new DamageState(boss.def?.phases ?? [0.6, 0.3]), q: quality(boss.world?.game), lt: null, pf: 0, jolt: 0,
+      // 입자 풀은 최고 등급 크기로 한 번 만들고, 등급에 따라 P.max 로 상한만 바꾼다 (전투 중 등급이 바뀌어도 새 배열 없음)
+      D: new Drawer(), P: new Particles(QUALITY.high.particles), shards: new Shards(48),
+      dmg: new DamageState(boss.def?.phases ?? [0.6, 0.3]), q: null, lt: null, pf: 0, jolt: 0,
       guts, trail: [], d: {}, wasSplit: !!boss.split, pts: {}, lastHA: boss.hA ?? -1, spinA: [],
     };
   },
@@ -145,8 +148,8 @@ function tendril(ctx, ax, ay, bx, by, w, sag, t, seed, a = 1) {
 function drawBoss(ctx, b, world, rig, st) {
   const D = st.D, P = st.P;
   if (st.rig !== rig) st.rig = rig;
-  const qn = world.game?.settings?.quality ?? 'high';
-  if (st.q.name !== qn) st.q = quality(world.game);
+  const qn = tierOf(world.game);
+  if (st.q?.name !== qn) { st.q = QUALITY[qn]; P.max = Math.min(P.x.length, st.q.particles); }
   const now = world.time ?? b.t;
   const dt = st.lt == null ? 1 / 60 : clamp(now - st.lt, 0, 0.05); st.lt = now;
   const floor = b.A.floor;
@@ -287,6 +290,9 @@ function drawAssembled(ctx, D, b, rig, st, dt, lvl, fx, hit, dying, dT) {
     glowOver(ctx, D, Hm, lvl, 'neck', neck[0] + fx * 2, neck[1] + 10 + hbob, hrotL, m * khm, khm, 0.6 + heat * 0.4, st, t + 2);
   }
   const eye = D.pt(Hm.neck[0], Hm.neck[1], Hm.eye[0], Hm.eye[1], neck[0] + fx * 2, neck[1] + 10 + hbob, hrotL, m * khm, khm, st.pts.eye ??= [0, 0]);
+  // 발판 덧그리기 (BOSS_PIPELINE §8.11): 채색 몸통은 벡터보다 훨씬 커서 경기장 발판을 가린다 → 뒤층(다리·몸통·투구) 위에 발판을 다시 그리고
+  //  공격 부위(할버드)와 앞 팔·앞 견갑은 발판 앞에 그린다
+  if (q.ledges !== false) ledges(ctx, D, b.world, b.cx - 180, b.bottom - 400, b.cx + 180, b.bottom - 20);
   // 할버드 휘두름 잔상 (가산 발광 실루엣)
   if (q.smear && av > 5 && !dying) {
     const gi = Hb.v.glow, op = ctx.globalCompositeOperation;
@@ -344,6 +350,13 @@ function drawAssembled(ctx, D, b, rig, st, dt, lvl, fx, hit, dying, dT) {
     if (b.state !== 'leap') st.landSeen = false;
   }
   st.asm = { hipX, hipY, trot, m, kT, shN, shF, neck, core, eye, g, hrot, LB, LF, hrotL, khm };
+}
+/** 월드 사각형 안의 한 방향 발판을 화면에 보이는 부분만 다시 그린다 */
+function ledges(ctx, D, world, x0, y0, x1, y1) {
+  const cam = world?.camera;
+  D.end();
+  if (cam) { x0 = Math.max(x0, cam.x); y0 = Math.max(y0, cam.y); x1 = Math.min(x1, cam.x + cam.vw); y1 = Math.min(y1, cam.y + cam.vh); }
+  if (x1 > x0 && y1 > y0) ledgesOver(ctx, world, x0, y0, x1, y1);
 }
 const _bl = [0, 0];
 function L_blade(ctx, D, Hb, g, hrot, fx, kh, out) { return D.pt(Hb.g[0], Hb.g[1], Hb.blade[0], Hb.blade[1] - 30, g[0], g[1], hrot, fx * kh, kh, out); }
@@ -422,6 +435,8 @@ function drawSplit(ctx, D, b, rig, st, dt, lvl, fx, hit, dying, dT) {
     D.end();
     D.pt(Ht.top[0], Ht.top[1], Ht.c[0], Ht.c[1], hip[0] - fx * 4, hip[1] - 34, trot * 0.6, m * kht, kht * hsq, _c);
     if (q.halos) halo(ctx, _c[0], _c[1] + 6, 30 + bt * 26, DFIRE, 0.3 + bt * 0.45, true);
+    // 발판 덧그리기 (§8.11): 떠 있는 핵(흉갑·심장)은 발판 뒤, 투구·앞 건틀릿(공격 부위)은 발판 앞
+    if (q.ledges !== false) ledges(ctx, D, b.world, cx - 170, cy - 130, cx + 170, cy + 150);
     // 앞 건틀릿으로 가는 힘줄은 흉갑 앞에
     if (!(dying && dT > 0.9)) { const dd = Math.hypot(wF[0] - shN[0], wF[1] - shN[1]); tendril(ctx, shN[0], shN[1], wF[0], wF[1], 8, clamp(60 - dd * 0.12, 8, 50), t, 3.3, clamp((380 - dd) / 120, 0, 1)); }
   }
