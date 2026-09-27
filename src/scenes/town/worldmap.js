@@ -522,9 +522,12 @@ export class WorldMapScene extends Scene {
     }
     if (page === 0) this.village(ctx, sp.x, sp.y); else this.gate(ctx, sp.x, sp.y, t);
     const lab = this.labels(L, page);
+    // 말이 설 자리 (좁은 화면에서 빈 곳이 없으면 그 밑에 깔린 다른 이름표는 반쯤 가려 읽을 수 없으므로 그리지 않는다)
+    const tsn = live && !this.reveal ? pg.nodes[sel] : null, ts = tsn ? this.tokenSpot(tsn, L, page) : null;
     for (let i = 0; i < pg.nodes.length; i++) {
-      const n = pg.nodes[i];
-      this.node(ctx, L, page, n, i === sel, lab.map.get(n.id));
+      const n = pg.nodes[i], box = lab.map.get(n.id);
+      const under = ts && i !== sel && box && boxDist(box, ts.x, ts.y - 42) < 14;
+      this.node(ctx, L, page, n, i === sel, under ? null : box);
       if (live) {
         const p = this.pos(n.stage.mapPos, L);
         taps.add('node:' + i, { x: p.x - 26, y: p.y - 26, w: 52, h: 52 }, { kind: 'icon', owner: this, src: 'worldmap' });

@@ -86,7 +86,7 @@ export const PUPPETS = {
    ]
   },
   "bran_crusader": {
-   "h": "fd6ff841872c",
+   "h": "30d60820c1e8",
    "turn": true,
    "lv": [
     "hi",
@@ -95,7 +95,7 @@ export const PUPPETS = {
    ]
   },
   "bran_guardian": {
-   "h": "f37207c58762",
+   "h": "b6d117afadcd",
    "turn": true,
    "lv": [
     "hi",
@@ -113,7 +113,7 @@ export const PUPPETS = {
    ]
   },
   "bran_paladin": {
-   "h": "4635320c66b9",
+   "h": "a7e3f1390e79",
    "turn": true,
    "lv": [
     "hi",
@@ -207,7 +207,7 @@ export const PUPPETS = {
    ]
   },
   "lia_bladedancer": {
-   "h": "dc7bcbd9d92e",
+   "h": "930a866154b0",
    "turn": true,
    "lv": [
     "hi",
@@ -216,7 +216,7 @@ export const PUPPETS = {
    ]
   },
   "lia_dancer": {
-   "h": "5a7107802560",
+   "h": "89bf7ca36b9c",
    "turn": true,
    "lv": [
     "hi",
@@ -225,7 +225,7 @@ export const PUPPETS = {
    ]
   },
   "lia_kunoichi": {
-   "h": "bee7fed192aa",
+   "h": "7f82c80eb170",
    "turn": true,
    "lv": [
     "hi",
@@ -234,7 +234,7 @@ export const PUPPETS = {
    ]
   },
   "lia_ninja": {
-   "h": "7ab21f8edfec",
+   "h": "1117bddda8a2",
    "turn": true,
    "lv": [
     "hi",
@@ -252,7 +252,7 @@ export const PUPPETS = {
    ]
   },
   "lia_shadowmaster": {
-   "h": "9eef7402dd44",
+   "h": "80805f30ceb8",
    "turn": true,
    "lv": [
     "hi",
@@ -263,7 +263,7 @@ export const PUPPETS = {
  },
  "npc": {
   "npc_alberto": {
-   "h": "8c454d3a17dd",
+   "h": "8d9f85737bdc",
    "turn": false,
    "lv": [
     "hi",
@@ -308,7 +308,7 @@ export const PUPPETS = {
    ]
   },
   "npc_marta": {
-   "h": "f26a7fcb7a45",
+   "h": "dd81358d763e",
    "turn": false,
    "lv": [
     "hi",

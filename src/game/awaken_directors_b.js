@@ -331,6 +331,15 @@ function glowCols(charId, classId) {
   }
 }
 
+/** 이 영웅이 뿌리는 연기 모양 입자 색 (preset 기본색 포함) */
+function softCols(charId, classId) {
+  switch (charId) {
+    case 'bran': return ['#6a9aff', '#e8f0ff', '#5a6a90', '#8a8074', ...(classId === 'bran_warlord' ? ['#ff5020'] : [])];
+    case 'lia': return ['#5a0610'];
+    case 'azel': return ['#5a0610'];
+    default: return [];
+  }
+}
 // ─── 미리 굽기 (스테이지 진입·방 이동·직업 변경 뒤 한가할 때) ───
 let PREP_KEY = null, HOOKED = false;
 export function prepareAwakenB(world = game?.world, p = world?.player) {
@@ -344,6 +353,8 @@ export function prepareAwakenB(world = game?.world, p = world?.player) {
   const keep = new Set();
   for (const n of list) spr(n, keep);
   for (const c of glowCols(cid, cls)) { try { ULTFX.glow?.(c); } catch { /* 빛 스프라이트 실패는 연출만 줄어든다 */ } }
+  // 연기 모양 입자(fire·smoke·dust·bloodmist)의 색별 부드러운 원 · 별 (hitfx 캐시; 시전 중에 굽지 않게)
+  try { for (const c of softCols(cid, cls)) HFX.soft?.(c); if (cls === 'bran_crusader') HFX.star?.('#fff2b0'); } catch { /* hitfx 캐시 */ }
   PREP_KEY = key; AWAKEN_DIR_B_DEBUG.prepared = key;
   return true;
 }
@@ -494,16 +505,18 @@ function frame(ctx, c, fi, nf, x, y, sx, sy, rot, a, add = false) {
   ctx.restore();
 }
 function kitSprite(name) { try { return ULTFX.sprite?.(name) ?? null; } catch { return null; } }
+/** 조명: 어둠만 뚫는다 (색광 스프라이트는 색마다 캔버스를 새로 굽으므로 쓰지 않는다 — 빛 번짐은 이 파일의 가산 스프라이트가 그린다) */
+function lit(L, x, y, r, col, i) { if (i > 0.01 && Number.isFinite(x) && Number.isFinite(y)) L.add(x, y, r, col, i, false); }
 
 // ═══════════════════════════ 감독 공통 ═══════════════════════════
 let SEQ = 0;
 const BRAN_TINT = { bran_guardian: '#a8c0ff', bran_crusader: '#fff0c0', bran_warlord: '#ffb070', bran_bloodrage: '#ff7a7a' };
 
-/** 입자 여유 (각성 최대치 700/450/250 의 90% 안에서, 품질 배율 적용) */
+/** 입자 여유 (각성 최대치 700/450/250 의 75% 안에서, 품질 배율 적용 — 나머지는 한꺼번에 맞는 타격 불꽃·처치 파편·키트 몫) */
 function room(S, n) {
   const fx = S.w.fx;
   if (!fx?.list) return 0;
-  const cap = Math.min(QCAP[S.q] * 0.9, fx.max ?? 1400);
+  const cap = Math.min(QCAP[S.q] * 0.75, fx.max ?? 1400);
   return Math.max(0, Math.min(Math.round(n * S.fq), Math.floor(cap - fx.list.length)));
 }
 function emitN(S, type, x, y, n, opts) {
@@ -875,8 +888,9 @@ function bran(p, w, v) {
         const inView = k.x > V.x - 90 && k.x < V.x + V.w + 90;
         if (inView) {
           strike(S, { x: k.x - 70, y: V.y - 40, w: 140, h: V.h + 80 }, wKnight(k.i), { hitId: k.hit, hitstop: 0, kb: [f * 90, -120], shake: 0 });
-          if (Math.random() < 0.7) emitN(S, 'smoke', k.x - f * 30, k.gy - rand(4, 30), 1, { color: '#5a6a90', speed: 40, angle: -HP - f * 0.6, spread: 0.4, size: rand(14, 26), life: rand(0.4, 0.7), alpha: 0.45, grav: -30 });
-          emitN(S, 'dust', k.x - f * 16, k.gy - 4, 1, { speed: 140, angle: f > 0 ? PI + 0.3 : -0.3, spread: 0.3 });
+          k.tk = (k.tk ?? 0) + 1;
+          if (k.tk % 2 === 0) emitN(S, 'smoke', k.x - f * 30, k.gy - rand(4, 30), 1, { color: '#5a6a90', speed: 40, angle: -HP - f * 0.6, spread: 0.4, size: rand(16, 28), life: rand(0.4, 0.65), alpha: 0.45, grav: -30 });
+          else emitN(S, 'dust', k.x - f * 16, k.gy - 4, 1, { speed: 140, angle: f > 0 ? PI + 0.3 : -0.3, spread: 0.3 });
           if (blood) emitN(S, 'blood', k.x + f * 30, k.gy - 70, 1, { speed: 160 });
           if (warlord && Math.random() < 0.8) emitN(S, 'fire', k.x - f * 26, k.gy - 150 * k.sc, 1, { color: '#ff5020', speed: 80, angle: -HP, spread: 0.6 });
           if (!k.beat && (k.x - (V.x + V.w / 2)) * f > 0) {
@@ -984,11 +998,11 @@ function bran(p, w, v) {
   };
   const light = (L, S) => {
     const lt = S.lt;
-    if (S.blade && (S.blade.planted < 0 || lt - S.blade.planted < 0.4)) { const bg = bladeGeo(S); L.add(bg.hx + Math.cos(bg.ang) * bg.len * 0.5, bg.hy + Math.sin(bg.ang) * bg.len * 0.5, 260, KT, 1.1); }
-    if (S.kn.length && (S.chargeT < 0 || S.reform >= 0)) { const k = S.kn[2] ?? S.kn[0]; L.add(k.x, k.gy - 80, 300, KT, 0.9); }
-    if (S.cut && lt - S.cut.t < 0.8) L.add(S.cut.x, S.cut.gy - 120, 520, KT, 1.3);
-    if (S.chargeT >= 0) for (const k of S.charge) if (!k.done && k.i % 2 === 0) L.add(k.x, k.gy - 70, 240, KT, 0.9);
-    if (S.fall && lt >= S.fall.t0) L.add(S.fall.x, S.fall.gy - 160, 620, '#fff2c0', S.fall.hit >= 0 ? 1.6 * (1 - u01(lt, S.fall.hit + 0.3, 0.6)) : 1);
+    if (S.blade && (S.blade.planted < 0 || lt - S.blade.planted < 0.4)) { const bg = bladeGeo(S); lit(L, bg.hx + Math.cos(bg.ang) * bg.len * 0.5, bg.hy + Math.sin(bg.ang) * bg.len * 0.5, 260, KT, 1.1); }
+    if (S.kn.length && (S.chargeT < 0 || S.reform >= 0)) { const k = S.kn[2] ?? S.kn[0]; lit(L, k.x, k.gy - 80, 300, KT, 0.9); }
+    if (S.cut && lt - S.cut.t < 0.8) lit(L, S.cut.x, S.cut.gy - 120, 520, KT, 1.3);
+    if (S.chargeT >= 0) for (const k of S.charge) if (!k.done && k.i % 2 === 0) lit(L, k.x, k.gy - 70, 240, KT, 0.9);
+    if (S.fall && lt >= S.fall.t0) lit(L, S.fall.x, S.fall.gy - 160, 620, '#fff2c0', S.fall.hit >= 0 ? 1.6 * (1 - u01(lt, S.fall.hit + 0.3, 0.6)) : 1);
   };
   const end = (S) => {
     if (guardian && !S.p.dead) domeAfter(S, S.t2?.invuln ?? 3);   // 수호의 방벽: 끝난 뒤 무적 동안 결계를 보여 준다
@@ -1031,7 +1045,7 @@ function domeAfter(S, dur) {
       if (dome) img(ctx, dome, p.cx, p.bottom + 4, 1.25, 1.25, 0, 0.55 * a * pul, true, 0.5, 1);
       else { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.5 * a; ctx.strokeStyle = '#a8c0ff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(p.cx, p.bottom, 110, 130, 0, PI, TAU); ctx.stroke(); }
     },
-    light: (L) => L.add(p.cx, p.bottom - 70, 220, '#a8c0ff', 0.7),
+    light: (L) => lit(L, p.cx, p.bottom - 70, 220, '#a8c0ff', 0.7),
   }));
 }
 
@@ -1191,10 +1205,10 @@ function lia(p, w, v) {
   };
   const light = (L, S) => {
     const lt = S.lt;
-    for (const B of S.blinks) if (lt - B.t < 0.25) L.add(B.x, B.b - 50, 180, '#ff4060', 1);
-    if (S.crow >= 0 && lt - S.crow < 0.8) { const V = view(S); L.add(V.x + V.w / 2, V.y + V.h * 0.3, 360, '#ff2040', 0.8); }
-    if (S.det >= 0 && lt - S.det < 0.6) { const V = view(S); L.add(V.x + V.w / 2, V.y + V.h / 2, V.w * 0.6, '#ff2040', 1.2); }
-    if (!p.hidden) L.add(p.cx, p.cy, 140, '#ff4060', 0.6);
+    for (const B of S.blinks) if (lt - B.t < 0.25) lit(L, B.x, B.b - 50, 180, '#ff4060', 1);
+    if (S.crow >= 0 && lt - S.crow < 0.8) { const V = view(S); lit(L, V.x + V.w / 2, V.y + V.h * 0.3, 360, '#ff2040', 0.8); }
+    if (S.det >= 0 && lt - S.det < 0.6) { const V = view(S); lit(L, V.x + V.w / 2, V.y + V.h / 2, V.w * 0.6, '#ff2040', 1.2); }
+    if (!p.hidden) lit(L, p.cx, p.cy, 140, '#ff4060', 0.6);
   };
   return run(S, { tick, draw, light });
 
@@ -1406,8 +1420,8 @@ function azel(p, w, v) {
   };
   const light = (L, S) => {
     const c = S.cam, fade = 1 - u01(S.lt, 2.45, 0.45);
-    L.add(c.x + c.vw * 0.5, c.y + c.vh * 0.22, c.vw * 0.5, dawn && S.burst >= 0 ? '#ffd070' : '#ff2040', 1.1 * fade);
-    L.add(p.cx, p.cy, 200, RED, 0.9 * fade);
+    lit(L, c.x + c.vw * 0.5, c.y + c.vh * 0.22, c.vw * 0.5, dawn && S.burst >= 0 ? '#ffd070' : '#ff2040', 1.1 * fade);
+    lit(L, p.cx, p.cy, 200, RED, 0.9 * fade);
   };
   return run(S, { tick, draw, light });
 

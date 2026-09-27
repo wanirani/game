@@ -82,7 +82,7 @@
   "torsoSrcMaxLum": 90,
   "uarmTone": 0.25,
   "skirtTone": 0.4,
-  "skirtSrcMaxLum": null,
+  "skirtSrcMaxLum": 90,
   "wristOverlap": 22,
   "handBack": 6
  },
@@ -179,11 +179,11 @@
     ],
     [
      680,
-     810
+     795
     ],
     [
      770,
-     820
+     805
     ],
     [
      790,
@@ -278,15 +278,15 @@
      900
     ],
     [
-     440,
+     405,
      800
     ],
     [
-     420,
+     395,
      760
     ],
     [
-     380,
+     370,
      650
     ]
    ],

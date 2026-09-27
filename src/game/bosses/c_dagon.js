@@ -699,13 +699,16 @@ export class Dagon extends BossC {
     for (const l of this.lures) world.fx.burst('soul', l.x, l.y, 6, { color: BIO, speed: 90 });
     this.lures.length = 0;
     this.floodT = 0; this.recede();
-    this.tsink = 1; this.sinkRate = 0.26;
+    // 잠긴 채(휘몰이·돌진 뒤) 쓰러져도 사망 연출이 보이게: 먼저 떠올랐다가 (dyingTick 0.7초 뒤) 천천히 가라앉는다
+    this.moveSp = 80; this.tbx = this.bx;
+    this.tsink = 0; this.sinkRate = 2.2;
     this.setPose({ slump: 1, mouth: 1, arms: 0.4, gill: 1, crown: 0.5, wail: 1, crook: 0 });
     audio.sfx('boss_roar', { pitch: 0.4 });
     world.fx.ring(this.bx, this.wy - 120, { color: BIO, r0: 20, r1: 320, life: 0.9, width: 10 });
   }
   dyingTick(dt, world) {
     this.dieT += dt;
+    if (this.dieT > 0.7 && this.tsink < 1) { this.tsink = 1; this.sinkRate = 0.26; }
     this.motion(dt, world);
     if (Math.random() < 0.6 * (world.fx.quality ?? 1)) world.fx.emit('soul', this.bx + rand(-110, 110), this.wy + rand(-10, 60), { color: '#bff4ff', speed: 70, angle: -PI / 2, spread: 0.5, size: rand(2, 5) });
     for (const b of this.bulbs) if (!b.out && this.dieT > 0.5 + b.i * 0.55) { b.out = true; world.fx.burst('soul', b.x, b.y, 8, { color: BIO, speed: 90 }); audio.sfx('candle', { pitch: 0.6, vol: 0.4 }); }
