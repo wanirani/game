@@ -1103,7 +1103,7 @@
   "sheet5": "sera/sera_exorcist_turn5",
   "views5": [
    "y90",
-   "y135",
+   "-",
    "y180",
    "ym90",
    "-"
@@ -1112,6 +1112,14 @@
   "viewsQ": [
    "-",
    "ym45"
+  ],
+  "extra": [
+   {
+    "sheet": "sera/sera_exorcist_q3f",
+    "views": [
+     "y135"
+    ]
+   }
   ]
  }
 }

@@ -27,7 +27,8 @@
 // 버튼 id: attack jump dash sub skill1 skill2 ult swap mount guard · 시스템 pause bag fullscreen
 // 입력: input.touch.set(action, on) (버튼), input.touch.axis(x, y, {sprint}) (스틱; 반지름 단위, 방향 구역은 input 이 정한다), clear()
 // 규칙 (MASTER_PLAN §1.4): 누르는 반경 = 보이는 반지름 + 10 px, 겹치면 가장 가까운 버튼. 손가락을 밀면 버튼이 바뀐다 (touchSlide).
-//   공격·점프 두 판정이 겹치는 곳은 둘 다. ⇄ 는 손을 뗄 때(350ms 미만) 누른다 (길게 누르기 = 기술 원형 메뉴 자리).
+//   공격·점프 사이 띠(가운데 약 12 px)는 둘 다. ⇄ 는 손을 뗄 때(350ms 미만) 누른다 (길게 누르기 = 기술 원형 메뉴 자리),
+//   빠른 연타는 줄 세워 모두 넘긴다. 게임 스텝이 돌기 전에 뗀 눌림은 한 스텝 뒤에 뗀다 (짧은 탭이 사라지지 않게).
 //   떠 있는 스틱: 화면 왼쪽 45 %·위 64px 아래 아무 곳. 10px 데드존, 1.15R 질주, 1.4R 넘으면 받침이 따라온다. 뗀 뒤 0.3초에 사라진다.
 // 주의 (순환 import): game.js · world.js · hud_layout.js 가 이 파일을 import 한다 → 모듈 최상위에서 import 값에 접근하지 않는다.
 import * as PF from './platform.js';

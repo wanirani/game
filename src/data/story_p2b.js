@@ -11,7 +11,7 @@
 //   의뢰  q_<questId>_start / q_<questId>_done — 2부 부가 의뢰 13개 (world2 §9.2)
 // 재생 방식: _intro/_outro 는 컷신(scenes/front/story.js: bg·flash·title 지원), 나머지는 대화 오버레이(scenes/dialogue.js)
 // 플래그  읽기: carmilla_trust2, stars_all, dawnflower_given, ending_p2true, recruit_<동료 id>
-//         쓰기: p2_star (s20_t2 별의 길), recruit_<id> (recruit 명령과 같은 값 — recruit 를 모르는 러너에서도 합류가 남도록),
+//         쓰기: p2_star (s20_t2·s20_outro 별의 길), recruit_<id> (recruit 명령과 같은 값 — recruit 를 모르는 러너에서도 합류가 남도록),
 //               offered_<questId> (마을 NPC 가 의뢰를 한 번만 건네고, 다음부터는 다른 대사를 하도록.
 //               q_<id>_start/_done 도 같은 플래그를 켠다 → 게시판에서 먼저 받거나 끝낸 의뢰를 NPC 가 다시 부탁하지 않는다)
 // 주의: 결과 화면은 outro 의 조건부 분기 뒤에 아직 켜지지 않은 flag 명령이 있으면 outro 를 다시 튼다 (results.js hasNewBranch)

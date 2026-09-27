@@ -30,7 +30,9 @@
   "victor_hellfire_side.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qVQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo7YWdlbnRfdXBsb2FkLzE3OTA0NDQ2MjcvZXhBN1hnVFV4Uy92aWN0b3JfaGVsbGZpcmVfc2lkZS5qcGc.origin?x-kcdn-pid=112372",
   "victor_gunlord_side.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qVAoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo6YWdlbnRfdXBsb2FkLzE3OTA0NDQ2MzIvc2hLWVpTSWJQUC92aWN0b3JfZ3VubG9yZF9zaWRlLmpwZw.origin?x-kcdn-pid=112372",
   "sera_exorcist_front.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qVAoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo6YWdlbnRfdXBsb2FkLzE3OTA0NzgwNjQvbzRjRzUxWGZhMy9zZXJhX2V4b3JjaXN0X2Zyb250LmpwZw.origin?x-kcdn-pid=112372",
-  "victor_gunslinger_front.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qWAoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo-YWdlbnRfdXBsb2FkLzE3OTA0NzgwODYvdEVQRXlMa0ZYWS92aWN0b3JfZ3Vuc2xpbmdlcl9mcm9udC5qcGc.origin?x-kcdn-pid=112372"
+  "victor_gunslinger_front.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qWAoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo-YWdlbnRfdXBsb2FkLzE3OTA0NzgwODYvdEVQRXlMa0ZYWS92aWN0b3JfZ3Vuc2xpbmdlcl9mcm9udC5qcGc.origin?x-kcdn-pid=112372",
+  "sera_stormcaller_front.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qVwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo9YWdlbnRfdXBsb2FkLzE3OTA0Nzg1MTUvZ0RQOUtvSVFHZC9zZXJhX3N0b3JtY2FsbGVyX2Zyb250LmpwZw.origin?x-kcdn-pid=112372",
+  "victor_phantom_front.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qVQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo7YWdlbnRfdXBsb2FkLzE3OTA0Nzg1MTgvZFpUc0YyWW1CMC92aWN0b3JfcGhhbnRvbV9mcm9udC5qcGc.origin?x-kcdn-pid=112372"
  },
  "entries": [
   {
@@ -920,10 +922,40 @@
    "img_resolution": "2k",
    "prompt": "One single full-body THREE-QUARTER FRONT view of the man in 图片1, wearing exactly the outfit of 图片1 (图片2 shows the same man and outfit seen from the front): a black wide-brimmed hat, shoulder-length loose black hair, a dark red scarf, a long glossy brown leather duster coat with dark red lining open at the front, a brass-and-silver bullet bandolier worn diagonally across his chest, a heavy belt with a pouch and an empty holster, dark grey trousers, brown leather knee boots and brown leather gloves. Camera angle: his whole body and face are turned about 45 degrees toward the viewer's LEFT, halfway between a front view and a side view: we clearly see his face and the front of his coat at an angle, his nose and his toes point toward the left edge of the picture. He stands in a relaxed neutral pose, arms hanging down at his sides, feet slightly apart, alone and centered. Plain light-grey studio background, the same realistic painterly style as 图片1, soft even lighting, complete from the top of the hat to the boots with margin, nothing cropped, no cape, nothing held in the hands, no text, no watermark.",
    "note": "재시작 후 추가: turn5 의 2번째 뷰가 정면 중복 → 한 장짜리 3/4 앞(y135)"
+  },
+  {
+   "id": "sera_stormcaller_q3f",
+   "tool": "image_to_image",
+   "model": "kling-image-v3_0_omni",
+   "images": 1,
+   "generationId": "AaPT2Jl9GHf5uQrRMfKDRo7oirbjnkKTZbBvAsG-vWBYYnLai5jJwkyEH6xFljtKQBE5Jlwy",
+   "inputs": [
+    "sera_stormcaller_side.jpg",
+    "sera_stormcaller_front.jpg (front crop of turn5)"
+   ],
+   "aspect_ratio": "3:4",
+   "img_resolution": "2k",
+   "prompt": "One single full-body THREE-QUARTER FRONT view of the young woman in 图片1, wearing exactly the outfit of 图片1 (图片2 shows the same woman and outfit seen from the front): a silver circlet with a glowing pale blue gem, long loose silver-white hair, a dark navy robe-coat with glowing pale lightning-blue trim and silver embroidery open at the front, silver corset plates and silver shoulder plates, white gloves, navy leggings and brown boots. Camera angle: her whole body and face are turned about 45 degrees toward the viewer's LEFT, halfway between a front view and a side view: we clearly see her face and the front of her outfit at an angle, her nose and her toes point toward the left edge of the picture. She stands in a relaxed neutral pose, arms hanging down at her sides, feet slightly apart, alone and centered. Plain light-grey studio background, the same anime painting style as 图片1, soft even lighting, complete from the top of the head to the boots with margin, nothing cropped, no cape, no lightning effects, nothing held in the hands, no text, no watermark.",
+   "note": "재시작 후 추가: turn5 2번째 뷰가 거의 정면 → 한 장짜리 3/4 앞"
+  },
+  {
+   "id": "victor_phantom_q3f",
+   "tool": "image_to_image",
+   "model": "kling-image-v3_0_omni",
+   "images": 1,
+   "generationId": "ATPLml2CYYzyxVATGlw06yvnplhjs-nqBGsixDmPZWR14LrxrXxSRfN21Ti2NC07tu-zhims",
+   "inputs": [
+    "victor_phantom_side.jpg",
+    "victor_phantom_front.jpg (front crop of turn5)"
+   ],
+   "aspect_ratio": "3:4",
+   "img_resolution": "2k",
+   "prompt": "One single full-body THREE-QUARTER FRONT view of the man in 图片1, wearing exactly the outfit of 图片1 (图片2 shows the same man and outfit seen from the front): a black hood pulled up over his head with his face visible, a dark slate-blue scarf, a sleek pitch-black long coat with glowing pale ghost-blue edges and runes on the hem, a belt with an empty holster, black gloves, dark trousers and black boots. Camera angle: his body is turned only about 35 degrees toward the viewer's LEFT, closer to a front view than to a side view: we see his whole face and most of the front of his coat, both of his arms and both legs are visible, his nose and toes point slightly toward the left edge of the picture. He stands in a relaxed neutral pose, arms hanging down at his sides, feet slightly apart, alone and centered. Plain light-grey studio background, the same realistic painterly style as 图片1, soft even lighting, complete from the top of the hood to the boots with margin, nothing cropped, no cape, nothing held in the hands, no text, no watermark.",
+   "note": "재시작 후 추가: 3/4 앞이 없어 옆모습을 y135 로 쓰던 것 대체. 건슬링어 45° 요구가 옆모습에 가깝게 나와 35° 로 요구"
   }
  ],
  "images_used": {
-  "sera": 42,
-  "victor": 44
+  "sera": 43,
+  "victor": 45
  }
 }

@@ -946,7 +946,7 @@
   "sheet5": "victor/victor_gunslinger_turn5",
   "views5": [
    "y90",
-   "y135",
+   "-",
    "y180",
    "ym90",
    "-"
@@ -955,6 +955,14 @@
   "viewsQ": [
    "ym135",
    "ym45"
+  ],
+  "extra": [
+   {
+    "sheet": "victor/victor_gunslinger_q3f",
+    "views": [
+     "y135"
+    ]
+   }
   ]
  }
 }

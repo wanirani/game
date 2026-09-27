@@ -185,18 +185,28 @@ function stepScale(H) {
 }
 /** 누르고 있던 시간 (초, 실제 시간 기준 어림) */
 function heldFor(H) { return Math.max(0, input.time - H.t0) * stepScale(H); }
+/**
+ * 누름·뗌은 각각 최대 한 프레임 늦게 보인다(키·터치 이벤트는 다음 rAF 의 스텝에서야 읽힌다) →
+ * 뗀 순간의 판정은 프레임 간격(game.fps 기준)의 절반만큼 양쪽 문턱을 너그럽게 한다.
+ * 60fps 에서는 약 8ms 로 차이가 없고, 아주 느린 기기(5fps 등)에서 0.6초 누른 것이 0.42초로 재져 취소되는 일을 막는다.
+ * 히트스톱과는 무관하다 (스텝은 히트스톱 중에도 흐르고 fps 도 그대로).
+ */
+function frameSlack(world) {
+  const fps = Number(world?.game?.fps);
+  return fps > 0 && Number.isFinite(fps) ? clamp(1 / fps, 0, 0.25) * 0.5 : 0;
+}
 
 /** 손을 뗐다: 톡(< 0.20초) → 일반 필살기, 0.20–0.45초 → 취소, 그 이상(얼어 있는 사이 완성) → 각성 */
 function resolveRelease(p, world, H) {
   const rel = input.releasedAt ? input.releasedAt('ult') : (input.releaseTime?.ult ?? input.time);
-  const k = stepScale(H);
+  const k = stepScale(H), slack = frameSlack(world);
   const dur = Math.max(0, (rel >= H.t0 ? rel : input.time) - H.t0) * k;   // 스텝 시각 기준 (히트스톱에도 정확)
-  AWAKEN_DEBUG.holds.push({ dur: +dur.toFixed(3), k: +k.toFixed(2), t: +input.time.toFixed(3) });
+  AWAKEN_DEBUG.holds.push({ dur: +dur.toFixed(3), k: +k.toFixed(2), slack: +slack.toFixed(3), t: +input.time.toFixed(3) });
   if (AWAKEN_DEBUG.holds.length > 16) AWAKEN_DEBUG.holds.shift();
-  if (dur >= R.holdFull) {
+  if (dur + slack >= R.holdFull) {
     endHold(p, world, 'silent');
     castAwakening(p, world);
-  } else if (dur < R.tapMax) {
+  } else if (dur - slack < R.tapMax) {
     endHold(p, world, 'silent');
     AWAKEN_DEBUG.taps++;
     castUltimate(p, world);
