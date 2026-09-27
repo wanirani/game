@@ -9,6 +9,7 @@ import * as blood_skeleton from '../enemies/blood_skeleton.js';
 import * as bone_scimitar from '../enemies/bone_scimitar.js';
 import * as skeleton_knight from '../enemies/skeleton_knight.js';
 import * as skeleton_mage from '../enemies/skeleton_mage.js';
+import * as spear_guard from '../enemies/spear_guard.js';
 
 export const bosses = {};
 export const enemies = [
@@ -16,6 +17,7 @@ export const enemies = [
   { mod: bone_scimitar },
   { mod: skeleton_knight },
   { mod: skeleton_mage },
+  { mod: spear_guard },
 ];
 export const companions = {};
 export const npcs = {};

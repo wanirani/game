@@ -1,0 +1,11 @@
+{
+ "id": "phantom_sword",
+ "tier": "T1",
+ "srcTD": 4,
+ "note": "T1: one painted sword (Kling phantom take 1), rotated/tilted by the AI's swordA; aura, orbiting souls, dash afterimages (baked violet silhouette) and the strip dissolve are procedural.",
+ "sources": { "s": { "raw": "phantom_sword_ref.webp", "file": "a2_phs.png", "k": 0.0228 } },
+ "parts": {
+  "sword": { "src": "s", "box": [110, 250, 3020, 1110], "keep": "largest",
+   "piv": { "a": [900, 684], "b": [2965, 684], "c": [1120, 684], "pommel": [157, 684], "eye": [300, 684] } }
+ }
+}

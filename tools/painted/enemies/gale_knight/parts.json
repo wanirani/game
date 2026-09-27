@@ -1,0 +1,46 @@
+{
+ "id": "gale_knight",
+ "tier": "T2",
+ "srcTD": 4,
+ "note": "T2 winged lancer from both parts sheets (grey steel on grey -> matte --rembg). Sheet 1: the breastplate torso (3/4 front, both pauldrons; the near arm is cut off into its own upper-arm part). Sheet 2: side helm with the glowing T-visor, one white/gold wing (root lower-left -> K.chain, far copy darkened), the long gold lance (shaft + both side blades, keep all), one armoured leg (painted toe-left -> flipX, used for both legs), vambrace+gauntlet (closed fist = lance grip), the pale blue cape with shoulder guards (drawn behind the torso, strip-warped). k per part so the figure stands ~84 px (logic 46x86): torso 0.055, helm 0.054, leg 0.054, forearm 0.05, lance 0.063 (94 px), wing 0.051, cape 0.07.",
+ "sources": {
+  "s1": { "raw": "gale_knight_sheet1.webp", "file": "gale_knight_sheet1.png", "mode": "rembg", "k": 0.055 },
+  "s2": { "raw": "gale_knight_sheet2.webp", "file": "gale_knight_sheet2.png", "mode": "rembg", "k": 0.054 }
+ },
+ "parts": {
+  "torso": {
+   "src": "s1", "box": [715, 195, 1200, 765], "keep": "largest",
+   "poly": [[715, 195], [1195, 195], [1195, 405], [1125, 425], [1085, 480], [1095, 560], [1112, 640], [1105, 765], [715, 765]],
+   "piv": { "a": [920, 480], "neck": [930, 245], "shN": [1085, 335], "shF": [790, 330], "hipN": [990, 690], "hipF": [850, 690], "wing": [860, 300], "cape": [930, 262], "chest": [930, 400] }
+  },
+  "uarm": {
+   "src": "s1", "box": [1060, 370, 1275, 580], "keep": "largest",
+   "poly": [[1068, 392], [1192, 378], [1262, 468], [1235, 565], [1150, 575], [1080, 482]],
+   "piv": { "a": [1112, 418], "b": [1192, 540] }
+  },
+  "farm": {
+   "src": "s2", "box": [1620, 1008, 1772, 1372], "keep": "largest", "k": 0.05,
+   "piv": { "a": [1692, 1032], "b": [1686, 1300], "grip": [1688, 1318] }
+  },
+  "helm": {
+   "src": "s2", "box": [772, 128, 1060, 512], "keep": "largest",
+   "piv": { "a": [948, 468], "visor": [1012, 382], "crest": [840, 170] }
+  },
+  "wing": {
+   "src": "s2", "box": [1185, 15, 2272, 740], "keep": "largest", "k": 0.051,
+   "piv": { "a": [1262, 528], "b": [2250, 62], "tip": [2250, 62] }
+  },
+  "lance": {
+   "src": "s2", "box": [795, 725, 2310, 922], "keep": "all", "k": 0.063,
+   "piv": { "a": [806, 815], "b": [2300, 815], "grip": [1250, 815], "tip": [2300, 815] }
+  },
+  "leg": {
+   "src": "s2", "box": [1284, 930, 1536, 1688], "keep": "largest", "flipX": true,
+   "piv": { "a": [1418, 962], "b": [1428, 1585], "knee": [1420, 1250] }
+  },
+  "cape": {
+   "src": "s2", "box": [1836, 950, 2288, 1642], "keep": "largest", "k": 0.07,
+   "piv": { "a": [2060, 1000], "bot": [2060, 1625] }
+  }
+ }
+}

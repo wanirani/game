@@ -275,8 +275,17 @@
    "aspect": "16:9",
    "imageCount": 2,
    "decision": "l1 KEPT -> wolf/src/wolf_legs.webp (side-view front leg alone + hindquarters with the hind leg and the bushy tail: hind leg and tail are cut from it); l2 rejected (front-view leg + a whole new wolf)"
+  },
+  {
+   "enemy": "zombie",
+   "step": "parts_noarms",
+   "generationId": "AREgc7G1BEy7WpoYkaREkdiCzVgSHL70V9o2C4gNiqJ5brfuAy65i4ZgErBFbgtvRmV5KVXC",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "decision": "Kling kept the arms again on the torso pieces (both results); zp1 KEPT -> zombie/src/zombie_parts2.webp for its clean side-view trouser leg (used as the thigh); zp2 rejected (3/4 views)"
   }
  ],
- "imagesSpent": 55,
- "creditsSpent": 110
+ "imagesSpent": 57,
+ "creditsSpent": 114
 }

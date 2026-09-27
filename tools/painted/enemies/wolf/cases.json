@@ -1,0 +1,4 @@
+[["idle", {"anim": "idle"}], ["walk a", {"anim": "walk"}], ["walk b", {"anim": "walk", "tOff": 0.17}],
+ ["wind .4", {"anim": "wind", "animT": 0.2}], ["wind 1", {"anim": "wind", "animT": 0.48}],
+ ["charge a", {"anim": "charge", "vx": 320}], ["charge b", {"anim": "charge", "vx": 320, "tOff": 0.1}],
+ ["air", {"anim": "idle", "onGround": false}], ["hurt", {"anim": "walk", "flashT": 0.11, "stun": 0.2}], ["dying", {"anim": "idle", "dying": 0.15}]]

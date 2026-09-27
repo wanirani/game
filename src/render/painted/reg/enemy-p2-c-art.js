@@ -7,12 +7,14 @@
 import * as bellows from '../enemies/bellows.js';
 import * as glass_wraith from '../enemies/glass_wraith.js';
 import * as reflection from '../enemies/reflection.js';
+import * as siren from '../enemies/siren.js';
 
 export const bosses = {};
 export const enemies = [
   { mod: bellows },
   { mod: glass_wraith },
   { mod: reflection },
+  { mod: siren },
 ];
 export const companions = {};
 export const npcs = {};

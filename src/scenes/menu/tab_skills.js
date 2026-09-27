@@ -5,7 +5,7 @@ import { text, FONT } from '../../core/ui.js';
 import { audio } from '../../core/audio.js';
 import { clamp, rgba, TAU } from '../../core/math.js';
 import { input } from '../../core/input.js';
-import { drawGlyph } from '../../core/prompts.js';
+import { drawGlyph, labelOf, bindingOf, promptMode } from '../../core/prompts.js';
 import { drawSkillGlyph } from '../../render/hud.js';
 import * as SkillD from '../../data/skills.js';
 import { Tab } from './base.js';
@@ -15,7 +15,24 @@ import {
 } from './common.js';
 import * as D from './access.js';
 
-const SLOT_LABEL = ['Ⅰ · S', 'Ⅰ · D', 'Ⅱ · S', 'Ⅱ · D'];
+/** 슬롯 이름 "Ⅰ · S": 페이지 + 지금 기기의 스킬 버튼 (키보드 S/D · 패드 LB/RB · 터치 S1/S2, 바꾼 키도 따른다) */
+function slotLabel(k) {
+  let b = '';
+  try { b = labelOf(k % 2 ? 'skill2' : 'skill1'); } catch { b = ''; }
+  return `${k < 2 ? 'Ⅰ' : 'Ⅱ'} · ${b || (k % 2 ? 'S2' : 'S1')}`;
+}
+/** 전투 중 스킬 페이지 전환 안내 (지금 기기의 swap 버튼) */
+function swapTip() {
+  if (input.touchMode) return '전투 중 ⇄ 버튼: 페이지 전환';
+  let keys = '';
+  try {
+    if (promptMode() === 'kb') {
+      const ks = bindingOf('swap', 'kb').map((b) => (/^(Key[A-Z]|Digit\d)$/.test(b.code) ? b.code.slice(-1) : null)).filter(Boolean);
+      keys = ks.length ? ks.join('·') : labelOf('swap', 'kb');
+    } else keys = labelOf('swap');
+  } catch { keys = ''; }
+  return keys ? `전투 중 ${keys}: 페이지 전환` : '전투 중 스킬 페이지 버튼: 전환';
+}
 
 export class SkillsTab extends Tab {
   constructor(m) {
@@ -49,7 +66,7 @@ export class SkillsTab extends Tab {
     let ok = false;
     if (typeof f === 'function') ok = f(this.hero, slot, id);
     else { this.hero.slots ??= [null, null, null, null]; const j = id ? this.hero.slots.indexOf(id) : -1; if (j >= 0) this.hero.slots[j] = this.hero.slots[slot]; this.hero.slots[slot] = id; ok = true; }
-    if (ok) { audio.sfx(id ? 'item' : 'menu_cancel'); if (id) this.m.notify(`${SLOT_LABEL[slot]} 슬롯에 「${D.SKILLS()[id]?.name}」 등록`, PAL.goldHi); this.m.changed(); }
+    if (ok) { audio.sfx(id ? 'item' : 'menu_cancel'); if (id) this.m.notify(`${slotLabel(slot)} 슬롯에 「${D.SKILLS()[id]?.name}」 등록`, PAL.goldHi); this.m.changed(); }
     else audio.sfx('menu_cancel');
   }
   /** 노드에서 확인 → 행동 팝업 */
@@ -60,7 +77,7 @@ export class SkillsTab extends Tab {
     const items = [];
     const cost = sk.spCost ?? 1;
     if (lv < (sk.maxLv ?? 5)) items.push({ label: lv ? '레벨 올리기' : '배우기', sub: `SP ${cost}`, disabled: !chk.ok, reason: chk.reason, run: () => this.learn(id) });
-    if (D.isActive(sk) && lv > 0) items.push({ label: '슬롯에 등록', sub: this.hero.slots?.includes(id) ? SLOT_LABEL[this.hero.slots.indexOf(id)] : '', run: () => this.slotMenu(id) });
+    if (D.isActive(sk) && lv > 0) items.push({ label: '슬롯에 등록', sub: this.hero.slots?.includes(id) ? slotLabel(this.hero.slots.indexOf(id)) : '', run: () => this.slotMenu(id) });
     if (!items.length) { audio.sfx('menu_cancel'); this.m.notify('최고 레벨입니다', PAL.dim); return; }
     const r = this.nodeRects.find((n) => n.id === id);
     this.m.openModal(new Popup({ title: sk.name, items, x: r ? r.x + r.w + 6 : null, y: r ? r.y - 10 : null, w: 210 }));
@@ -68,7 +85,7 @@ export class SkillsTab extends Tab {
   slotMenu(id) {
     const items = [0, 1, 2, 3].map((k) => {
       const cur = this.hero.slots?.[k];
-      return { label: SLOT_LABEL[k], sub: cur ? D.SKILLS()[cur]?.name ?? '' : '비어 있음', run: () => this.assign(k, id) };
+      return { label: slotLabel(k), sub: cur ? D.SKILLS()[cur]?.name ?? '' : '비어 있음', run: () => this.assign(k, id) };
     });
     this.m.openModal(new Popup({ title: '등록할 슬롯', items, w: 250 }));
   }
@@ -78,7 +95,7 @@ export class SkillsTab extends Tab {
     const items = acts.map((id) => ({ label: D.SKILLS()[id].name, sub: `Lv ${this.lv(id)}`, run: () => this.assign(k, id) }));
     if (this.hero.slots?.[k]) items.push({ label: '비우기', color: PAL.dim, run: () => this.assign(k, null) });
     if (!items.length) { audio.sfx('menu_cancel'); this.m.notify('배운 액티브 스킬이 없습니다', PAL.dim); return; }
-    this.m.openModal(new Popup({ title: `${SLOT_LABEL[k]} 슬롯`, items, w: 250 }));
+    this.m.openModal(new Popup({ title: `${slotLabel(k)} 슬롯`, items, w: 250 }));
   }
 
   update(dt, nav, ges, focused) {
@@ -203,7 +220,7 @@ export class SkillsTab extends Tab {
         // 레벨 눈금
         for (let k = 0; k < max; k++) diamond(ctx, nx + 4 + k * 10, y + 11, 3.4, k < lv ? bc : 'rgba(90,70,60,0.8)');
         if (D.isActive(sk)) text(ctx, '액티브', nx + max * 10 + 6, y + 15, { size: 10, weight: 700, color: lv ? '#ffb070' : PAL.faint, ow: 2 });
-        if (hero.slots?.includes(id)) pill(ctx, SLOT_LABEL[hero.slots.indexOf(id)], x0 + cw - 10, y - 14, { align: 'right', size: 9, h: 14, color: PAL.goldHi, bg: 'rgba(90,10,30,0.9)' });
+        if (hero.slots?.includes(id)) pill(ctx, slotLabel(hero.slots.indexOf(id)), x0 + cw - 10, y - 14, { align: 'right', size: 9, h: 14, color: PAL.goldHi, bg: 'rgba(90,10,30,0.9)' });
       });
       clipEnd(ctx, TR, null);
     });
@@ -243,8 +260,9 @@ export class SkillsTab extends Tab {
     text(ctx, String(sp), x + 132, y + 26, { size: 24, align: 'right', weight: 900, family: FONT.num, color: sp ? PAL.goldHi : PAL.faint, ow: 4 });
     const ult = D.CHARACTERS()[hero.charId]?.ult;
     if (ult) text(ctx, ellipsize(ctx, `필살기 · ${ult.name}`, 132, 11, 700), x + 10, y + 50, { size: 11, weight: 700, color: ult.color ?? PAL.goldHi });
-    if (h >= 66) text(ctx, input.touchMode ? '전투 중 ⇄ 버튼: 페이지 전환' : input.mode === 'pad' ? '전투 중 스킬 페이지 버튼: 전환' : '전투 중 Q·E: 페이지 전환', x + 10, y + 64, { size: 10, weight: 600, color: PAL.faint, ow: 2 });
+    if (h >= 66) text(ctx, ellipsize(ctx, swapTip(), 140, 11, 600), x + 10, y + 64, { size: 10, weight: 600, color: PAL.faint, ow: 2 });
     const sx0 = x + 158, sw = (w - 166) / 4;
+    const nameW = sw - 58; // 아이콘 오른쪽 이름 칸. 좁은 UI(720)에서는 이름·레벨을 빼고 아이콘만 (옆 칸을 덮지 않게 — 이름은 오른쪽 상세에)
     for (let k = 0; k < 4; k++) {
       const id = hero.slots?.[k] ?? null, sk = id ? D.SKILLS()[id] : null;
       const cx = sx0 + k * sw + 26, cy = y + h / 2 + 2;
@@ -259,8 +277,10 @@ export class SkillsTab extends Tab {
       // 슬롯 버튼: 지금 기기의 글리프 (키보드 S/D · 패드 LB/RB · 터치 S1/S2)
       if (!drawGlyph(ctx, k % 2 ? 'skill2' : 'skill1', cx - 27, cy + 8, 16)) keycap(ctx, k % 2 ? 'S2' : 'S1', cx - 27, cy + 8, { h: 16 });
       text(ctx, k < 2 ? 'Ⅰ' : 'Ⅱ', cx + 18, cy - 12, { size: 11, weight: 900, family: FONT.num, color: PAL.gold });
-      text(ctx, sk ? ellipsize(ctx, sk.name, sw - 58, 12, 700) : '비어 있음', cx + 26, cy + 4, { size: 12, weight: 700, color: sk ? PAL.bone : PAL.faint, ow: 2 });
-      if (sk) text(ctx, `Lv ${this.lv(id)}`, cx + 26, cy + 19, { size: 10, weight: 700, family: FONT.num, color: PAL.dim });
+      if (nameW >= 30) {
+        text(ctx, ellipsize(ctx, sk ? sk.name : '비어 있음', nameW, 12, 700), cx + 26, cy + 4, { size: 12, weight: 700, color: sk ? PAL.bone : PAL.faint, ow: 2 });
+        if (sk) text(ctx, `Lv ${this.lv(id)}`, cx + 26, cy + 19, { size: 10, weight: 700, family: FONT.num, color: PAL.dim });
+      }
       if (sel) brackets(ctx, cx - 22, cy - 22, 44, 44, t, focused ? PAL.goldHi : PAL.goldMid);
     }
   }
