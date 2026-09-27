@@ -34,6 +34,7 @@ import {
   Ambience, kenBurns, shade, frame, heading, portraitIn, gbutton,
   follow, fmtClock, bossRushBests, GOLD, BONE,
 } from './common.js';
+import * as FRONT from './common.js'; // scoreList (PLAT-FRONT-A 의 새 내보내기: 없어도 멈추지 않게 이름공간으로 부른다, R6)
 
 export const ARCADE_MODES = {
   bossrush: { id: 'bossrush', name: '보스 러시', eng: 'BOSS RUSH', color: '#ff4a5a', art: 'portraits/b_dracula', tag: '군주들과의 연속 결투', desc: '악마성의 군주들과 쉬지 않고 연속으로 맞붙는다. 라운드 사이에 체력이 조금 회복된다. 가장 빠른 격파 시간에 도전하라!' },
@@ -142,7 +143,7 @@ export function arenaBosses(p2) {
 }
 /** 아케이드 설정 정리: 모르는 모드·난이도, 숨긴(또는 없는) 헌터 등급·코스는 기본값/0번으로 */
 export function sanitizeCfg(cfg, p2, stages = null) {
-  const c = { kind: 'bossrush', diff: 'normal', preset: 1, course: 0, stageId: 's01', ...(cfg ?? {}) };
+  const c = { kind: 'bossrush', diff: 'normal', preset: 1, course: 0, stageId: 's01', ...(cfg && typeof cfg === 'object' && !Array.isArray(cfg) ? cfg : {}) };
   if (!MODE_ORDER.includes(c.kind)) c.kind = 'bossrush';
   if (!DIFFICULTIES.some((d) => d.id === c.diff)) c.diff = 'normal';
   c.preset = Number(c.preset); c.course = Number(c.course);
@@ -234,7 +235,8 @@ export class ArcadeScene extends Scene {
     const unlocks = slotUnlocks();
     this.p2 = p2Known(this.game, unlocks);
     this.stages = practiceStages(this.game, unlocks);
-    this.cfg = sanitizeCfg({ ...(m.arcadeCfg ?? {}), ...(cfg ?? {}) }, this.p2, this.stages);
+    const saved = m.arcadeCfg && typeof m.arcadeCfg === 'object' && !Array.isArray(m.arcadeCfg) ? m.arcadeCfg : {}; // 망가진 옛 설정은 버린다
+    this.cfg = sanitizeCfg({ ...saved, ...(cfg ?? {}) }, this.p2, this.stages);
     this.modeIndex = Math.max(0, MODE_ORDER.indexOf(this.cfg.kind));
     this.row = 0; // 0: 모드 카드, 1..: 옵션 줄
     this.amb = new Ambience({ embers: 50, motes: 20, bats: 6, lightning: true });
@@ -432,7 +434,9 @@ export class ArcadeScene extends Scene {
   }
   bestText() {
     const m = this.game.meta ?? {};
-    const hs = (m.highScores ?? []).filter((h) => h.mode === this.kind);
+    // 망가진 기록(배열이 아니거나 null 항목)도 매 프레임 멈추지 않게: front/common scoreList 로 고쳐 읽는다 (없으면 걸러 읽기)
+    const list = FRONT.scoreList?.(m) ?? (Array.isArray(m.highScores) ? m.highScores : []);
+    const hs = list.filter((h) => h && typeof h === 'object' && h.mode === this.kind);
     const top = hs[0];
     if (this.kind === 'bossrush') {
       const ci = this.cfg.course ?? 0, b = bossRushBests(m)[ci];

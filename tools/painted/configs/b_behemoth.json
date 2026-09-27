@@ -1,0 +1,205 @@
+{
+ "id": "b_behemoth",
+ "kind": "boss",
+ "out": "assets/painted/bosses/b_behemoth",
+ "raw": "tools/painted/raw/b_behemoth",
+ "td": 2.0,
+ "matte": {
+  "default": {
+   "key": 9,
+   "soft": 22,
+   "hard": 6
+  }
+ },
+ "cuts": {},
+ "parts": [
+  {
+   "name": "p_head_a",
+   "src": "head_a",
+   "lps": 0.05,
+   "box": [
+    0,
+    0,
+    100,
+    100
+   ],
+   "pivots": {
+    "c": [
+     50,
+     50
+    ]
+   }
+  },
+  {
+   "name": "p_head_b",
+   "src": "head_b",
+   "lps": 0.05,
+   "box": [
+    0,
+    0,
+    100,
+    100
+   ],
+   "pivots": {
+    "c": [
+     50,
+     50
+    ]
+   }
+  },
+  {
+   "name": "p_torso_a",
+   "src": "torso_a",
+   "lps": 0.05,
+   "box": [
+    0,
+    0,
+    100,
+    100
+   ],
+   "pivots": {
+    "c": [
+     50,
+     50
+    ]
+   }
+  },
+  {
+   "name": "p_leg_a",
+   "src": "leg_a",
+   "lps": 0.05,
+   "box": [
+    0,
+    0,
+    100,
+    100
+   ],
+   "pivots": {
+    "c": [
+     50,
+     50
+    ]
+   }
+  },
+  {
+   "name": "p_trees_a",
+   "src": "trees_a",
+   "lps": 0.05,
+   "box": [
+    0,
+    0,
+    100,
+    100
+   ],
+   "pivots": {
+    "c": [
+     50,
+     50
+    ]
+   }
+  },
+  {
+   "name": "p_mush_a",
+   "src": "mush_a",
+   "lps": 0.05,
+   "box": [
+    0,
+    0,
+    100,
+    100
+   ],
+   "pivots": {
+    "c": [
+     50,
+     50
+    ]
+   }
+  },
+  {
+   "name": "p_queen_a",
+   "src": "queen_a",
+   "lps": 0.05,
+   "box": [
+    0,
+    0,
+    100,
+    100
+   ],
+   "pivots": {
+    "c": [
+     50,
+     50
+    ]
+   }
+  },
+  {
+   "name": "p_queen_b",
+   "src": "queen_b",
+   "lps": 0.05,
+   "box": [
+    0,
+    0,
+    100,
+    100
+   ],
+   "pivots": {
+    "c": [
+     50,
+     50
+    ]
+   }
+  },
+  {
+   "name": "p_sacs_a",
+   "src": "sacs_a",
+   "lps": 0.05,
+   "box": [
+    0,
+    0,
+    100,
+    100
+   ],
+   "pivots": {
+    "c": [
+     50,
+     50
+    ]
+   }
+  },
+  {
+   "name": "p_sacs_b",
+   "src": "sacs_b",
+   "lps": 0.05,
+   "box": [
+    0,
+    0,
+    100,
+    100
+   ],
+   "pivots": {
+    "c": [
+     50,
+     50
+    ]
+   }
+  },
+  {
+   "name": "p_debris_a",
+   "src": "debris_a",
+   "lps": 0.05,
+   "box": [
+    0,
+    0,
+    100,
+    100
+   ],
+   "pivots": {
+    "c": [
+     50,
+     50
+    ]
+   }
+  }
+ ],
+ "debris": []
+}

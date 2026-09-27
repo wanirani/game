@@ -39,8 +39,8 @@ export class ClassTab extends Tab {
     return [t0, t1, t2];
   }
   onShow() { if (!this.sel) this.sel = this.hero.classId; this.view.wake(); }
-  /** 탭을 떠날 때: 끌기·누름·회전을 끝낸다 (돌아왔을 때 옛 끌기가 관성으로 튀지 않게) */
-  onHide() { this.view.sleep(); }
+  /** 탭을 떠날 때: 끌기·누름·회전을 끝내고 캐시 레이어·썸네일의 픽셀을 돌려준다 (돌아오면 다시 굽는다 — 폰 캔버스 예산 §5.2) */
+  onHide() { this.view.sleep(); this.stage.release(); this.txt.release(); this.bg.release(); this.dropThumbs(); }
   lookFor(cid) {
     if (this.rev !== this.m.rev) { this.rev = this.m.rev; this.looks.clear(); this.dropThumbs(); }
     let L = this.looks.get(cid);

@@ -90,8 +90,11 @@ export class StatusTab extends Tab {
     this.view.set(this.look, D.CHARACTERS()[this.hero.charId]);
   }
   onShow() { this.refresh(); this.view.intro(0.8); this.view.wake(); }
-  /** 탭을 떠날 때: 끌기·누름·회전을 끝낸다 (돌아왔을 때 옛 끌기가 관성으로 튀지 않게) */
-  onHide() { this.view.sleep(); }
+  /**
+   * 탭을 떠날 때: 끌기·누름·회전을 끝내고(돌아왔을 때 옛 끌기가 관성으로 튀지 않게) 캐시 레이어의 픽셀을 돌려준다
+   * (메뉴는 들른 탭을 모두 살려 두므로 안 그러면 세 탭의 화면 크기 레이어가 쌓인다 — 폰 캔버스 예산 §5.2). 돌아오면 다시 굽는다
+   */
+  onHide() { this.view.sleep(); this.layer.release(); this.stage.release(); this.txt.release(); this.bg.release(); }
   free() { this.layer.free(); this.stage.free(); this.txt.free(); this.bg.free(); }
   /** 메뉴의 가로 밀기(탭 넘기기)를 무시할 곳: 회전 무대 (platform §5.6) */
   noSwipe(x, y) { return this.view.swipeBlock(x, y); }

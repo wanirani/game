@@ -133,6 +133,8 @@ export class PixLayer {
     ctx.restore();
   }
   invalidate() { this.key = null; }
+  /** 픽셀 메모리만 돌려준다 (캔버스는 1×1 로 남겨 다음 draw 에서 다시 키워 쓴다) — 탭을 떠날 때 */
+  release() { if (this.cv) { this.cv.width = this.cv.height = 1; } this.key = null; }
   free() { if (this.cv) { this.cv.width = this.cv.height = 1; } this.cv = null; this.key = null; }
 }
 
@@ -159,6 +161,8 @@ export class PixCache {
     }
   }
   free() { for (const e of this.m.values()) e.L.free(); this.m.clear(); }
+  /** 픽셀 메모리만 돌려준다 (탭을 떠날 때 — 돌아오면 다시 굽는다) */
+  release() { this.free(); }
 }
 
 /** 공통 안내 줄(menu/common.hintRow)이 액션 이름을 글리프로 그리는가 (PLAT-MENU 의 P-01 Scroller.follow 와 함께 들어온다) */
@@ -883,6 +887,8 @@ export class HeroStage {
     ctx.restore();
   }
   free() { this.layer.free(); }
+  /** 픽셀 메모리만 돌려준다 (탭을 떠날 때) */
+  release() { this.layer.release(); }
 }
 
 /** 영웅의 대표 기운 색 (직업 aura → 무기 속성 → 트림) */

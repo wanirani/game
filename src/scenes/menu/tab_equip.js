@@ -43,8 +43,8 @@ export class EquipTab extends Tab {
   get slots() { return D.EQUIP_SLOTS(); }
   get slot() { return this.slots[this.si]; }
   onShow() { this.rebuild(); this.view.wake(); }
-  /** 탭을 떠날 때: 끌기·누름·회전을 끝낸다 (돌아왔을 때 옛 끌기가 관성으로 튀지 않게) */
-  onHide() { this.view.sleep(); }
+  /** 탭을 떠날 때: 끌기·누름·회전을 끝내고 캐시 레이어의 픽셀을 돌려준다 (돌아오면 다시 굽는다 — 폰 캔버스 예산 §5.2) */
+  onHide() { this.view.sleep(); this.stage.release(); this.txt.release(); this.bg.release(); }
   free() { this.stage.free(); this.txt.free(); this.bg.free(); }
   /** 메뉴의 가로 밀기(탭 넘기기)를 무시할 곳: 회전 무대 (platform §5.6) */
   noSwipe(x, y) { return this.view.swipeBlock(x, y); }

@@ -87,7 +87,8 @@ class ArcadeRunScene extends Scene {
     const g = this.game;
     let q = null;
     try { q = new URLSearchParams(location.search); } catch { q = null; }
-    const want = { ...(g.meta?.arcadeCfg ?? {}), ...(cfg ?? {}), kind: this.modeId };
+    const saved = g.meta?.arcadeCfg, ok = saved && typeof saved === 'object' && !Array.isArray(saved);
+    const want = { ...(ok ? saved : {}), ...(cfg ?? {}), kind: this.modeId };
     const num = (k) => { const v = q?.get(k); return v != null && v !== '' && Number.isFinite(+v) ? +v : undefined; };
     if (num('preset') !== undefined) want.preset = num('preset');
     if (num('course') !== undefined) want.course = num('course');
