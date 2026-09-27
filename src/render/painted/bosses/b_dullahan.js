@@ -222,7 +222,7 @@ function pose(o, b, s, t, ghost = false) {
 function drawBoss(ctx, b, world, rig, st) {
   const D = st.D, P = st.P;
   const dv = derive(st, rig);
-  st.q = qOf(world.game);
+  if (!st.qLock) st.q = qOf(world.game);   // (벤치마크가 기능별 비용을 잴 때 qLock 으로 고정)
   const q = st.q;
   const now = world.time ?? b.t;
   const dt = st.lt == null ? 1 / 60 : clamp(now - st.lt, 0, 0.05); st.lt = now;
@@ -255,9 +255,9 @@ function drawBoss(ctx, b, world, rig, st) {
   D.end();
   if (q.halos && !st.dead.body) {
     const c = W(st, o.mounted ? 0 : 0, o.mounted ? -115 : -80, _c);
-    halo(ctx, c[0], c[1], (o.mounted ? 230 : 150), '#0a1438', 0.5);
+    halo(ctx, c[0], c[1], (o.mounted ? 185 : 125), '#0a1438', 0.55);
     const fury = (b.fury ?? 0) + (b.state === 'transform' ? 0.8 : 0) + (b.inferno ? 0.3 : 0);
-    if (fury > 0.02) halo(ctx, c[0], c[1], (o.mounted ? 250 : 170), BDEEP, (0.1 + 0.05 * Math.sin(t * 5)) * fury);
+    if (fury > 0.3) halo(ctx, c[0], c[1], (o.mounted ? 200 : 140), BDEEP, (0.1 + 0.05 * Math.sin(t * 5)) * fury);
   }
   // 사라지는 유령마 (하마 연출 · 기승 중 사망)
   if (!b.mounted && b.horseFade > 0 && b.fadeX != null) fadeHorse(ctx, st, b, rig, b.fadeX, b.fadeB - (1.2 - b.horseFade) * 60, b.fadeF || 1, clamp(b.horseFade / 1.2, 0, 1), 0.8, b.t, dt);
@@ -594,7 +594,7 @@ function maneFire(ctx, D, rig, st, o, boost, dT) {
   const k = boost * (1 + ph * 0.35) * (dT > 0 ? clamp(1 - dT, 0, 1) : 1);
   if (k <= 0.01) return;
   const back = up - 0.85 - o.run * 0.45;
-  const nf = q.flames;
+  const nf = q.flames - 1;
   flames(ctx, hd.crest[0], hd.crest[1], back + 0.3, 16 * k, 5, 2, t, 1.1, BFIRE, BCORE, 0.55, Math.max(1, nf - 2));
   flames(ctx, hd.m0[0], hd.m0[1], back, 18 * k, 5.5, 2, t, 2.3, BFIRE, BCORE, 0.55, Math.max(1, nf - 2));
   flames(ctx, hd.m1[0], hd.m1[1], back - 0.2, 16 * k, 5, 2, t, 3.7, BFIRE, BCORE, 0.5, Math.max(1, nf - 2));
@@ -604,7 +604,7 @@ function maneFire(ctx, D, rig, st, o, boost, dT) {
   for (let i = 0; i < 4; i++) {
     const h = o.hoofs?.[i]; if (!h) continue;
     flames(ctx, h[0], h[1] + 2, up, (8 + ph * 6) * hf * 1.3, 4, i < 2 || ph >= 1 ? 2 : 1, t, 5.3 + i, BFIRE, BCORE, 0.5 * (i % 2 ? 0.7 : 1), Math.max(1, nf - 3));
-    if (q.halos) halo(ctx, h[0], h[1] + 2, 14 + ph * 6, BFIRE, 0.3 * hf * (i % 2 ? 0.6 : 1));
+    if (q.halos && (ph >= 1 || boost > 1.2 || q.name === 'high') && i < 2) halo(ctx, h[0], h[1] + 2, 14 + ph * 6, BFIRE, 0.3 * hf);
   }
   if (ph >= 1 && o.tailP) flames(ctx, o.tailP[0], o.tailP[1], up - 0.5, 14 * k, 4.5, 2, t, 7.7, BFIRE, BCORE, 0.45, Math.max(1, nf - 3));
   // 눈 · 갈비 혼불
@@ -625,8 +625,8 @@ function riderFire(ctx, D, b, rig, st, o, dT) {
     const [nx, ny] = o.neckL;
     const back = up - (o.run * 0.5 + clamp(Math.abs(b.vx ?? 0) / 900, 0, 0.5)) * 0.8;
     if (q.halos) halo(ctx, nx, ny - 8, (24 + fury * 10) * dk, BFIRE, 0.4);
-    flames(ctx, nx, ny, back, (26 + fury * 12) * dk, 6.5, 4, t, 0.7, BFIRE, BCORE, 0.55, q.flames);
-    flames(ctx, nx, ny, back, (14 + fury * 6) * dk, 4, 2, t * 1.3, 9.1, BCORE, '#ffffff', 0.3, Math.max(1, q.flames - 2));
+    flames(ctx, nx, ny, back, (26 + fury * 12) * dk, 6.5, 3, t, 0.7, BFIRE, BCORE, 0.6, q.flames);
+    flames(ctx, nx, ny, back, (14 + fury * 6) * dk, 4, 1, t * 1.3, 9.1, BCORE, '#ffffff', 0.3, Math.max(1, q.flames - 2));
   }
   if (o.skullOn && o.skull) {
     const s = o.skull, big = b.state === 'skull' && (b.stateT ?? 0) < 0.7 ? 1.6 : 1;

@@ -789,6 +789,7 @@ class UltEnt extends Entity {
   }
   // 가짜 벽 판정(world.inUnrevealedFake)은 개체 중심을 본다 → 플레이어 위치(가짜 벽 안에 있으면 벽이 이미 드러난 상태)
   get cx() { return this.world?.player?.cx ?? this.x + this.w / 2; }
+  set cx(v) { this.x = v - this.w / 2; }
   get cy() { return this.world?.player?.cy ?? this.y + this.h / 2; }
   cover(w) { const c = w.camera; if (c) { this.x = c.x - 200; this.y = c.y - 200; this.w = c.vw + 400; this.h = c.vh + 400; } }
   update(dt, w) {
@@ -819,7 +820,7 @@ function addOv(w, o) {
 // ═══════════════════════════ 잔상 (캐시 비트맵) ═══════════════════════════
 function ghostSlot(w, holdMs = 0) {
   const now = perfNow();
-  for (const s of POOL.ghosts) if (!s.part || s.part.done || now > s.until) { s.part = null; s.until = now + holdMs; return s; }
+  for (const s of POOL.ghosts) if (now >= s.until || s.part?.done) { s.part = null; s.until = now + holdMs; return s; }
   const B = Q[qk(w)];
   if (POOL.ghosts.length < B.ghosts + 1) {
     const c = mkCanvas(Math.ceil(2 * GH.bw * B.rs), Math.ceil((GH.bt + GH.bb) * B.rs));
@@ -1493,7 +1494,7 @@ const FL = {
     final(F) {
       const { w, x, y } = F, cam = w.camera;
       const tg = F.foes.length ? F.foes.map((e) => [e.cx, e.cy]) : [];
-      while (tg.length < 6) tg.push([cam.x + cam.vw * rand(0.1, 0.9), (groundBelow(w, cam.x + cam.vw * 0.5, y, 10 * TILE) ?? y)]);
+      while (tg.length < 6) { const px = cam.x + cam.vw * rand(0.1, 0.9); tg.push([px, groundBelow(w, px, y, 10 * TILE) ?? y]); }
       sfx('thunderclap', { vol: 1 }); sfx('thunder', { pitch: 0.7 });
       let i = 0, arcAt = 0, arcs = [];
       spawn(w, {

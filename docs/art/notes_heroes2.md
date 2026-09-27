@@ -75,6 +75,9 @@ PUPPET_PIPELINE.md 를 그대로 따라 두 영웅 × 7직업을 만들면서 �
 | 턴테이블 8방향 + 20°/−20°/−160° × (기본, 판금 #a8b0bc) × 14직업 | 대검은 등에(뒷모습에서 망토 위), 단검은 늘어뜨린 두 손. 뷰별 옷 평균색 비교로 블레이드 댄서 ym135 만 어긋남 → 수정 |
 | 인게임 어두운 스테이지 s05·s11·s13 × 14직업 (오른쪽 대기·달리기·공격 판정·왼쪽 달리기·왼쪽 공격·점프) | 페이지 오류 0, 역광 테두리로 윤곽 읽힘, 스테이지에서 `atlas_ui`·`turn` 요청 0 |
 | 모바일 844×390 (s01 브란·리아, s13 리아) | 오류 0, 나쁜 요청 0 |
+| 갤러리 `?char=bran|lia` 의 `pup`·`pupatk`·`pupw`(6무기)·`pupeq`·`turn` | 페이지 오류 0 (10페이지). `drawHeroTurntable` 줄의 브란이 이제 '채색' |
+| 메뉴(상태·장비·인벤토리·스킬) 리아 블레이드 댄서·브란 십자군 | 오류 0, 스테이지 동안 ui/turn 요청 0 |
+| `node tools/integration.mjs --only title,hub,s01,s04,menu` | 5/5 통과. 첫 실행의 title 은 다른 작업자가 쓰는 중이던 `src/render/ultfx.js` 의 일시적 문법 오류(`missing ) after argument list`)였고, `node --check` 통과 뒤 다시 돌려 통과 |
 
 - **인게임 QA 는 실시간 대신 수동 스텝으로**: 부하가 크면 fps 4~8 이라 `keyboard.down` 후 0.5초 기다리는 방식은 방향 전환·공격 판정
   프레임을 못 잡는다. `game._pageHidden = true` 로 rAF 루프를 세우고 `game.tick(1/60)` 을 N 번 + `game.render()` 로 찍으면

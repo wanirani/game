@@ -2288,6 +2288,11 @@ function ultCtx(p, w) {
 }
 /** 품질 배율을 곱한 개수 (최소 lo) */
 const qn = (v, n, lo = 1) => Math.max(lo, Math.round(n * (v?.q ?? 1)));
+/** 필살기 최대 입자 수 (feel §8: 600 / 400 / 220) 안에서 더 뿌릴 수 있는 개수 */
+function ultRoom(w, v, n) {
+  const cap = v.q >= 0.95 ? 600 : v.q >= 0.7 ? 400 : 220;
+  return Math.max(0, Math.min(n, cap - (w.fx?.list?.length ?? 0)));
+}
 
 /** 필살기 판정·배치용 화면 사각형: 연출 줌(펄스·펀치·구도)과 무관한 기본 줌 기준 (줌인 중에도 화면 끝 적까지 맞는다) */
 function ultView(w, pad = 0) {
@@ -2358,9 +2363,9 @@ function emberRain(w, v, dur, col, rate = 60, col2 = '#ffffff') {
     life: dur, z: 12, d: { acc: 0 }, follow: (e, ww) => viewBound(e, ww, 40),
     tick(e, ww, dt) {
       e.d.acc += dt * rate * v.q * (0.35 + 0.65 * (1 - e.k));
-      const V = ultView(ww);
-      while (e.d.acc >= 1) {
-        e.d.acc--;
+      const V = ultView(ww), n0 = Math.floor(e.d.acc);
+      e.d.acc -= n0;
+      for (let i = ultRoom(ww, v, n0); i > 0; i--) {
         ww.fx.emit('ember', V.x + rand(0, V.w), V.y - 8, { angle: Math.PI / 2, spread: 0.35, speed: rand(60, 170), grav: rand(90, 220), drag: 0.99, life: rand(0.9, 1.6), color: Math.random() < 0.3 ? col2 : col, size: rand(1.5, 3.2) });
       }
     },
@@ -2433,7 +2438,7 @@ function ultDirector(w, p, o) {
     start(e, ww) {
       ww.cutscene = true; p.vx = 0;
       e.d.kit = kitLive();
-      kitCall('begin', ww, p, { color: v.color, accent: v.accent, tier: v.tier, classId: v.classId, charId: v.charId, dimCol: o.dimCol ?? '#05020a', kind: 'ult' });
+      kitCall('begin', ww, p, { color: v.color, accent: v.accent, tier: v.tier, classId: v.classId, charId: v.charId, dimCol: o.dimCol ?? '#05020a', kind: 'ult', dur: o.dur, maxDur: o.dur + 4, ...(o.kit || {}) });
       if (!e.d.kit) beginLocal(ww, p, v);
       o.start?.(e, ww);
     },
@@ -2460,11 +2465,15 @@ function ultFinal(w, p, mv, col, o = {}, at = null) {
   const v = at?.v ?? ultCtx(p, w), x = at?.x ?? p.cx, y = at?.y ?? p.cy;
   const targets = enemiesIn(w, ultView(w, 30));
   uHit(w, p, mv, { hitstop: 0.3, shake: 18, kb: [420, -620], launch: true, final: true, ...o });
-  w.game.flash(col, 0.6, 3);
   shake(w, 18, 0.6); w.camera.punchZoom(1.14, 0.3);
   audio.sfx('explode'); audio.sfx('crit', { pitch: 0.7 });
-  kitCall('final', w, x, y, { color: col, accent: v.accent, tier: v.tier, classId: v.classId, charId: v.charId, ground: !!at?.ground, targets });
-  if (!kitLive()) finalLocal(w, v, x, y, col);
+  if (kitLive()) {
+    // 번쩍임 0.6 은 키트가 game.flash 정책으로 한 번 켠다 (2차 전직 임팩트 프레임 두 장 뒤로 미룬다)
+    kitCall('final', w, x, y, { color: col, accent: v.accent, tier: v.tier, classId: v.classId, charId: v.charId, ground: !!at?.ground, targets, flashColor: col, ...(at?.kit || {}) });
+  } else {
+    w.game.flash(col, 0.6, 3);
+    finalLocal(w, v, x, y, col);
+  }
 }
 
 // 카엘 — 그랜드 크로스: 나선으로 모이는 성광 → 화면을 가르는 십자와 성스러운 문양 → 여섯 성광 기둥 → 대폭발과 황금 불씨 비
@@ -2502,7 +2511,7 @@ ULTS.kael = (p, w, v = ultCtx(p, w)) => {
     v, dur: 2.0, dim: 0.62, steps,
     tick(e, ww) {
       if (v.tier >= 1 && e.lt < 1.2) ultAfter(ww, p, v, GOLD);   // 채찍 잔상 (1차 전직 이상)
-      if (e.lt > 0.35 && e.lt < 1.3 && Math.random() < 0.7 * v.q) {   // 십자 팔을 타고 흐르는 성광 입자
+      if (e.lt > 0.35 && e.lt < 1.3 && Math.random() < 0.7 * v.q && ultRoom(ww, v, 1)) {   // 십자 팔을 타고 흐르는 성광 입자
         const t = rand(-1, 1), horiz = Math.random() < 0.55;
         ww.fx.emit('holy', horiz ? cx + t * V0.w * 0.5 : cx + rand(-12, 12), horiz ? cy + rand(-12, 12) : cy + t * V0.h * 0.5, { speed: 70, grav: -40, life: 0.6 });
       }
@@ -2577,7 +2586,9 @@ ULTS.sera = (p, w, v = ultCtx(p, w)) => {
       // 흩날리는 깃털
       if (e.lt < 1.95) {
         e.d.fe += dt * 14 * v.q;
-        while (e.d.fe >= 1) { e.d.fe--; ww.fx.emit('feather', V0.x + rand(0, V0.w), V0.y - 10, { color: Math.random() < 0.5 ? '#fff8e0' : '#ffe7a0', angle: Math.PI / 2, spread: 0.4, speed: rand(40, 90), grav: 40, life: rand(1.6, 2.4), alpha: 0.85 }); }
+        const nf = Math.floor(e.d.fe);
+        e.d.fe -= nf;
+        for (let i = ultRoom(ww, v, nf); i > 0; i--) { ww.fx.emit('feather', V0.x + rand(0, V0.w), V0.y - 10, { color: Math.random() < 0.5 ? '#fff8e0' : '#ffe7a0', angle: Math.PI / 2, spread: 0.4, speed: rand(40, 90), grav: 40, life: rand(1.6, 2.4), alpha: 0.85 }); }
       }
     },
     draw(ctx, e) {
@@ -2743,15 +2754,16 @@ ULTS.bran = (p, w, v = ultCtx(p, w)) => {
   };
   ultDirector(w, p, {
     v, dur: 2.5, dim: 0.5, dimCol: '#0a0402', d: { dive: false, slam: 0, fin: false, sx: 0, sy: 0, dust: -1 },
-    start(e, ww) { ww.camera.zoomPulse(0.9, 0.25, 0.35, 0.4); },   // 도약을 따라 화면이 물러난다
+    kit: { zoom: 0.9, zoomHold: 0.15 },   // 도약을 따라 화면이 물러난다 (키트의 시작 줌 대신)
+    start(e, ww) { if (!e.d.kit) ww.camera.zoomPulse(0.9, 0.25, 0.35, 0.4); },
     tick(e, ww, dt) {
       if (!e.d.slam) {
-        if (!e.d.dive) for (let i = 0; i < qn(v, 2); i++) ww.fx.speedLine(p.cx + rand(-120, 120), p.cy + rand(-90, 50), Math.PI / 2, { len: rand(70, 150), width: 2.5, color: '#ffe0b0', life: 0.2, speed: 900 });
+        if (!e.d.dive) for (let i = ultRoom(ww, v, qn(v, 2)); i > 0; i--) ww.fx.speedLine(p.cx + rand(-120, 120), p.cy + rand(-90, 50), Math.PI / 2, { len: rand(70, 150), width: 2.5, color: '#ffe0b0', life: 0.2, speed: 900 });
         if (!e.d.dive && (p.vy > -150 || e.lt > 0.55)) { e.d.dive = true; pose(p, ww, 'plunge', 1.2, { h0: 0.02, hw: 1.1, sfx: 'dash' }); p.vy = 1500; audio.sfx('dash_burst', { pitch: 0.7 }); }
         if (e.d.dive) {
           p.vy = Math.max(p.vy, 1500);
           ultAfter(ww, p, v, ORANGE, 0.18);
-          for (let i = 0; i < qn(v, 2); i++) ww.fx.speedLine(p.cx + rand(-60, 60), p.y + rand(-50, 10), -Math.PI / 2, { len: rand(80, 160), width: 3, color: ORANGE, life: 0.18, speed: 1000 });
+          for (let i = ultRoom(ww, v, qn(v, 2)); i > 0; i--) ww.fx.speedLine(p.cx + rand(-60, 60), p.y + rand(-50, 10), -Math.PI / 2, { len: rand(80, 160), width: 3, color: ORANGE, life: 0.18, speed: 1000 });
           if (Math.random() < 0.8 * v.q) ww.fx.emit('fire', p.cx + rand(-14, 14), p.y + rand(0, 30), { speed: 40, color: '#ff7a2a' });
         }
         if ((e.d.dive && p.onGround) || e.lt > 1.1) slam(ww, e);
@@ -2766,8 +2778,8 @@ ULTS.bran = (p, w, v = ultCtx(p, w)) => {
         e.d.dust += dt;
         for (const d of [-1, 1]) {
           const fxX = e.d.sx + d * (40 + e.d.dust * 950);
-          for (let i = 0; i < qn(v, 2); i++) ww.fx.emit('smoke', fxX + rand(-24, 24), e.d.sy - rand(6, 40), { color: '#8a7460', speed: 50, angle: -Math.PI / 2 - d * 0.5, spread: 0.4, size: rand(18, 32), life: rand(0.5, 0.9), alpha: 0.55, grav: -30 });
-          if (Math.random() < 0.6 * v.q) ww.fx.emit('dust', fxX, e.d.sy - 4, { speed: 120, angle: d > 0 ? -0.3 : Math.PI + 0.3, spread: 0.3 });
+          for (let i = ultRoom(ww, v, qn(v, 2)); i > 0; i--) ww.fx.emit('smoke', fxX + rand(-24, 24), e.d.sy - rand(6, 40), { color: '#8a7460', speed: 50, angle: -Math.PI / 2 - d * 0.5, spread: 0.4, size: rand(18, 32), life: rand(0.5, 0.9), alpha: 0.55, grav: -30 });
+          if (Math.random() < 0.6 * v.q && ultRoom(ww, v, 1)) ww.fx.emit('dust', fxX, e.d.sy - 4, { speed: 120, angle: d > 0 ? -0.3 : Math.PI + 0.3, spread: 0.3 });
         }
       }
     },
@@ -2846,8 +2858,9 @@ ULTS.lia = (p, w, v = ultCtx(p, w)) => {
         const foes = enemiesIn(ww, ultView(ww, 30));
         ultFinal(ww, p, 4.2, '#ff2040', { element: 'dark' }, { v, x: px, y: pb - 50 });
         if (!v.low && (v.tier < 2 || !kitLive())) liaImpactFrame(ww, e.d.net);   // 2차 전직은 키트의 임팩트 프레임
-        for (const n of e.d.net) ww.fx.burst('spark', (n.x0 + n.x1) / 2, (n.y0 + n.y1) / 2, 1, { color: '#ff4a6a', speed: 200 });
-        for (const en of foes) { ww.fx.burst('blood', en.cx, en.cy, 16, { speed: 380 }); ww.fx.burst('bloodmist', en.cx, en.cy, 3, { speed: 40 }); }
+        const net = e.d.net, ns = ultRoom(ww, v, Math.ceil(net.length / 2));
+        for (let i = 0; i < ns; i++) { const n = net[i * 2]; if (n) ww.fx.emit('spark', (n.x0 + n.x1) / 2, (n.y0 + n.y1) / 2, { color: '#ff4a6a', speed: 200 }); }
+        for (const en of foes) { const nb = ultRoom(ww, v, 12); if (nb) ww.fx.burst('blood', en.cx, en.cy, nb, { speed: 380 }); if (ultRoom(ww, v, 3)) ww.fx.burst('bloodmist', en.cx, en.cy, 2, { speed: 40 }); }
         xSlash(ww, px, pb - 60, 190, '#ff2a4a', 0.42, 0.2);
         setTimeoutFx(ww, 0.35, () => audio.sfx('sheath'));   // 납도
       }
@@ -2942,7 +2955,7 @@ ULTS.azel = (p, w, v = ultCtx(p, w)) => {
       for (const [t0, dur, a0, a1, dy] of SW) {
         if (e.lt < t0 || e.lt > t0 + dur) continue;
         const u = ease.outCubic(clamp((e.lt - t0) / dur, 0, 1)), ang = lerp(a0, a1, u), dirA = Math.sign(a1 - a0);
-        for (let j = 0; j < qn(v, 3); j++) {
+        for (let j = ultRoom(ww, v, qn(v, 3)); j > 0; j--) {
           const aa = ang + rand(-0.35, 0.1) * dirA, rr = R * rand(0.86, 1.0);
           const x = cx + p.facing * Math.cos(aa) * rr, y = cy + dy * Math.sin(aa) * rr;
           const tx = -Math.sin(aa) * p.facing * dirA, ty = Math.cos(aa) * dy * dirA;

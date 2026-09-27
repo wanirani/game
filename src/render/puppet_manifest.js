@@ -216,7 +216,7 @@ export const PUPPETS = {
    ]
   },
   "sera_exorcist": {
-   "h": "947402c537a1",
+   "h": "2dde584309a5",
    "turn": true,
    "lv": [
     "hi",
@@ -252,7 +252,7 @@ export const PUPPETS = {
    ]
   },
   "sera_stormcaller": {
-   "h": "3f4a28496551",
+   "h": "d06663b7506f",
    "turn": true,
    "lv": [
     "hi",
@@ -299,7 +299,7 @@ export const PUPPETS = {
    ]
   },
   "victor_gunslinger": {
-   "h": "1a1ac8e8dba2",
+   "h": "c670e9d2a6c9",
    "turn": true,
    "lv": [
     "hi",
@@ -317,7 +317,7 @@ export const PUPPETS = {
    ]
   },
   "victor_phantom": {
-   "h": "fd0c18462718",
+   "h": "34d98a062985",
    "turn": true,
    "lv": [
     "hi",
