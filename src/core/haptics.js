@@ -83,6 +83,8 @@ class Haptics {
     if (!fx) return false;
     const dev = this.target();
     if (!dev) return false;
+    // 울리지 않을 효과는 60ms 제한·우선순위 칸을 차지하지 않는다 (예: 휴대폰에서 진동 없는 타격이 레벨업 진동을 막지 않게)
+    if (dev === 'pad' ? !this.padOn() : !this.phoneOn(fx.phone)) return false;
     if (!this.gate(name, Math.max(...fx.pad.map((p) => Math.max(p[0], p[1]))), fx.pad.reduce((a, p) => Math.max(a, p[2] + p[3]), 0))) return false;
     if (dev === 'pad') {
       this.clearTimers();
@@ -103,18 +105,26 @@ class Haptics {
     if (d <= 0 || (s <= 0 && w <= 0)) return false;
     const dev = this.target();
     if (!dev) return false;
+    let v;
+    if (dev === 'phone') {
+      v = o.vibrate;
+      if (v === undefined) {
+        if (d >= 350 && w >= 0.8 && s < 0.95) v = EFFECTS.awaken.phone;   // 각성 스팅어 (0.6/0.9/400)
+        else if (s >= 0.95) v = 60;                                        // 강도 S · A
+        else if (s >= 0.35 && w >= 0.6) v = 15;                            // 강도 H · F
+        else v = false;
+      }
+      if (!this.phoneOn(v)) return false;   // 휴대폰에서 울리지 않는 강도(L·M 등)는 제한·우선순위 칸을 차지하지 않는다
+    } else if (!this.padOn()) return false;
     const name = o.name ?? `raw:${s}/${w}/${d}`;
     if (!this.gate(name, Math.max(s, w), d)) return false;
     if (dev === 'pad') { this.clearTimers(); return this.padEffect(s, w, d); }
-    let v = o.vibrate;
-    if (v === undefined) {
-      if (d >= 350 && s < 0.95) v = EFFECTS.awaken.phone;       // 각성 스팅어
-      else if (s >= 0.95) v = 60;                               // 강도 S · A
-      else if (s >= 0.35 && w >= 0.6) v = 15;                   // 강도 H · F
-      else v = false;
-    }
     return this.phone(v);
   }
+  /** 패드 진동이 켜져 있나 (ctrlRumble > 0) */
+  padOn() { return clamp01(this.settings.ctrlRumble ?? 0.8) > 0; }
+  /** 휴대폰 진동 값 v 가 실제로 울리나 (값이 있고 settings.vibration 이 켜짐) */
+  phoneOn(v) { return v !== false && v != null && v !== 0 && this.settings.vibration !== false; }
 
   /** 60ms 제한 + 더 센 효과 우선. 통과하면 재생 중 효과를 갱신 */
   gate(name, strength, dur) {

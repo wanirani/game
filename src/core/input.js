@@ -11,7 +11,9 @@
 //   input.buffered(a, s) · consume(a)             최근 s초 안에 눌렸고 아직 소비되지 않음
 //   input.pressTime[a] · input.releasedAt(a) · input.heldFor(a)   스텝 시각(input.time) 기록 — 히트스톱에도 안전 (R16)
 //   input.axisX / axisY                           디지털 -1·0·1 (스틱은 8방향 구역)
-//   input.analogX / analogMag                     아날로그 -1..1 / 0..1 (패드 스틱: 원형 데드존 후 재조정, 터치 스틱: 반지름 단위, 키보드 ±1)
+//   input.analogX / analogMag                     아날로그 -1..1 / 0..1 (패드 스틱: 원형 데드존 후 재조정, 터치 스틱: 반지름 단위, 키보드·D-pad ±1)
+//                                                 디지털 방향이 걸린 축에서만 값이 있다: axisX 가 0 이면 analogX 도 0, 부호는 늘 axisX 와 같다
+//                                                 (걷기 = 0 < |analogX| < 0.55; 스틱은 원래 기울기 0.40 에서 걸리고 0.35 아래에서 풀린다)
 //   input.sprintHint                              터치 스틱을 바깥 고리(1.15R) 너머로 밀었음
 //   input.stickL / stickR {x, y, mag}             데드존 적용 후 패드 스틱 (stickR: 메뉴 회전·스크롤)
 //   input.command(seq, facingAt, within) → {ok:true, facing} | false
@@ -59,8 +61,10 @@ const MODES = new Set(['kb', 'pad', 'touch']);
 const ACTION_SET = new Set(ACTIONS);
 const SS_MODE = 'bn.inputMode', SS_GLYPHS = 'bn.padGlyphs';
 
-// 스틱 (platform §4.3). 방향이 걸리고 풀리는 문턱은 원래 기울기(데드존 전) 기준: 0.55 → 달리기, 0.30 → 멈춤 (WP-1 수용 조건)
-const STICK_ENGAGE = 0.5, STICK_RELEASE = 0.35;
+// 스틱 (platform §4.3). 방향이 걸리고 풀리는 문턱은 원래 기울기(데드존 전) 기준. 수용 조건을 모두 만족하도록:
+//   0.15 → 안 움직임, 0.40 → 걷기 (feel A8), 0.55 → 이동, 다시 0.30 → 멈춤 (platform WP-1)
+// 패드 모드 전환은 0.5 넘게 기울였을 때 (§3)
+const STICK_ENGAGE = 0.4, STICK_RELEASE = 0.35, STICK_HOT = 0.5;
 const TOUCH_ENGAGE = 0.45, TOUCH_RELEASE = 0.35, TOUCH_DZ = 0.12, TOUCH_SPRINT = 1.15;
 const TRIG_ON = 0.5, TRIG_OFF = 0.35;
 const SECTOR = Math.PI / 4, SECTOR_KEEP = (22.5 + 7.5) * Math.PI / 180;   // 45° 구역 + ±7.5° 히스테리시스
@@ -136,12 +140,15 @@ class Input {
     this.bindings = { key: {}, pad: {}, touch: {}, preset: 'arcade', confirm: 'south' };
     this.keyActs = {}; this.padActs = [];
     this.keysDown = new Set();
+    this._keyFresh = new Set(); // 눌린 뒤 아직 스텝이 돌지 않은 키
+    this._keyLate = new Set();  // 스텝 전에 뗀 키 (다음 스텝까지 눌린 채)
+    this._stickEng = { x: 0, y: 0 }; // 왼쪽 스틱이 직접 건 디지털 방향 (D-pad·키와 구분: 아날로그를 스틱에서 읽을지)
     this.pads = new Map();     // gamepad.index → 상태
     this.pad = null;           // 캔버스 가상 패드 (touchpad.js initTouchPad 결과)
     this.awakenAsUlt = true;
     this.flushT = -99; this.flushN = 0;
     this._modeFns = new Set();
-    this._ptrXf = null;
+    this._ptrXf = null; this._ptrId = null;
     this._lastFramePoll = -1e9; this._pollN = 0; this._bindSig = ''; this._bindSettings = null;
     this._padVis = null; this._domPadKey = '';
     this._touchVec = { x: 0, y: 0, mag: 0, raw: 0 }; this._touchSt = { eng: false, sec: -1 }; this._touchSprint = false;
@@ -171,6 +178,7 @@ class Input {
       const acts = this.keyActs[e.code];
       if (acts) {
         e.preventDefault();
+        if (!this.keysDown.has(e.code)) this._keyFresh.add(e.code);   // 아직 스텝이 보지 못한 새 눌림
         this.keysDown.add(e.code);
         this._rebuildKeySources();
         if (!e.repeat) this.setMode('kb');
@@ -181,10 +189,12 @@ class Input {
     window.addEventListener('keyup', (e) => {
       const had = this.keysDown.delete(e.code);   // 입력 칸에 포커스가 옮겨 간 뒤에 뗀 키도 풀어 준다
       if (this.keyActs[e.code] && !isTyping(e.target)) e.preventDefault();
+      // 스텝이 한 번도 돌기 전에 뗀 짧은 톡 (긴 프레임·느린 기기): 다음 스텝 한 번은 눌린 것으로 보여 준다
+      if (had && this._keyFresh.has(e.code)) this._keyLate.add(e.code);
       if (had) this._rebuildKeySources();
     });
     window.addEventListener('blur', () => {
-      this.keysDown.clear(); this.sources.key = {};
+      this.keysDown.clear(); this._keyFresh.clear(); this._keyLate.clear(); this.sources.key = {};
       this.touch.clear();
     });
 
@@ -204,6 +214,7 @@ class Input {
     window.addEventListener('wheel', () => this.setMode('kb'), { passive: true });
     cv.addEventListener('pointerdown', (e) => {
       setPtr(toLogical(e));
+      this._ptrId = e.pointerId;
       Object.assign(this.pointer, { down: true, active: true });
       this._downQueued = true;
       this.game?.audio?.unlock();
@@ -220,6 +231,8 @@ class Input {
       }
       this.pointer.down = false;
     });
+    // 브라우저가 가져간 터치 (가장자리 스와이프·시스템 제스처): 탭 없이 뗀 것으로 (눌린 채 남아 끌기가 멈추지 않게)
+    window.addEventListener('pointercancel', (e) => { if (e.pointerId === this._ptrId) this.pointer.down = false; });
 
     window.addEventListener('gamepadconnected', (e) => { try { if (e.gamepad) this._padConnected(e.gamepad); } catch (err) { console.error(err); } });
     window.addEventListener('gamepaddisconnected', (e) => { try { this._padDisconnected(e.gamepad?.index, e.gamepad?.id); } catch (err) { console.error(err); } });
@@ -475,9 +488,10 @@ class Input {
     const pad = {};
     for (const [a, v] of Object.entries(PAD_PRESETS[presetName])) pad[a] = v.slice();
     if (st.ctrlPreset === 'custom' && isObj(st.ctrlMap)) {
+      // 저장된 지정에서도 START·D-pad 같은 고정 버튼은 버린다 (손상된 세이브가 일시정지 버튼을 점프로 만들지 않게)
       for (const a of REMAPPABLE) {
         const l = st.ctrlMap[a];
-        if (Array.isArray(l)) pad[a] = l.filter((b) => (Number.isInteger(b) && b >= 0 && b <= 63) || typeof b === 'string').slice(0, 8);
+        if (Array.isArray(l)) pad[a] = l.filter((b) => (Number.isInteger(b) && b >= 0 && b <= 63 && !PAD_FIXED.has(b)) || typeof b === 'string').slice(0, 8);
       }
     }
     for (const [a, v] of Object.entries(PAD_MENU)) pad[a] = v.slice();
@@ -488,7 +502,7 @@ class Input {
     if (isObj(st.keyMap)) {
       for (const a of REMAPPABLE) {
         const l = st.keyMap[a];
-        if (Array.isArray(l)) key[a] = l.filter(isKeyCode).slice(0, 8);
+        if (Array.isArray(l)) key[a] = l.filter((c) => isKeyCode(c) && !KEY_FIXED.has(c)).slice(0, 8);
       }
     }
     const touch = {};
@@ -502,21 +516,38 @@ class Input {
     this.padActs = padActs;
     this._bindSig = this._bindingSig();
     this._bindSettings = this.game?.settings ?? null;
+    this._bindQuick = this._quickSig();
     this._rebuildKeySources();
     if (this.game) this.game.dirty = true;
     return this.bindings;
   }
+  /** 매 프레임 비교용 가벼운 서명: 프리셋 · 결정 위치 · 지정 객체 (옵션 화면이 바꾸면 다음 프레임에 반영) */
+  _quickSig() {
+    const st = this.game?.settings;
+    if (!st) return null;
+    const q = this._quickArr ??= [];
+    q[0] = st.ctrlPreset; q[1] = this.confirmPos(); q[2] = st.ctrlMap; q[3] = st.keyMap;
+    return q;
+  }
   _checkBindings() {
     const st = this.game?.settings ?? null;
-    if (st !== this._bindSettings || ++this._pollN % 30 === 0) {
-      if (st !== this._bindSettings || this._bindingSig() !== this._bindSig) this.refreshBindings();
+    let changed = st !== this._bindSettings;
+    if (!changed && st) {
+      const b = this._bindQuick;
+      changed = !b || b[0] !== st.ctrlPreset || b[1] !== this.confirmPos() || b[2] !== st.ctrlMap || b[3] !== st.keyMap;
+    }
+    // 지정 객체를 제자리에서 고친 경우는 30프레임마다 전체 비교로 잡는다
+    if (changed || ++this._pollN % 30 === 0) {
+      if (changed || this._bindingSig() !== this._bindSig) this.refreshBindings();
     }
   }
   _rebuildKeySources() {
     const k = {};
-    for (const code of this.keysDown) {
-      const acts = this.keyActs[code];
-      if (acts) for (const a of acts) k[a] = true;
+    for (const set of [this.keysDown, this._keyLate]) {
+      for (const code of set) {
+        const acts = this.keyActs[code];
+        if (acts) for (const a of acts) k[a] = true;
+      }
     }
     this.sources.key = k;
   }
@@ -674,6 +705,8 @@ class Input {
     const dz = Math.max(0.1, Math.min(0.4, Number(this.game?.settings?.ctrlDeadzone) || 0.2));
     const engOn = Math.max(STICK_ENGAGE, dz + 0.1), engOff = Math.min(engOn - 0.05, Math.max(STICK_RELEASE, dz + 0.05));
     let bestL = 0, bestR = 0, active = null;
+    const E = this._stickEng;
+    E.x = 0; E.y = 0;
     const seen = new Set();
     for (const gp of list || []) {
       if (!gp || gp.connected === false) continue;
@@ -707,15 +740,19 @@ class Input {
       // 왼쪽 스틱: 원형 데드존 + 8방향 구역
       const secL = stickDigital(info.stL, lx, ly, rawL, engOn, engOff);
       if (secL >= 0) for (const d of SECT_DIRS[secL]) src[d] = true;
-      if (rawL >= bestL) { bestL = rawL; radial(this.stickL, lx, ly, dz); }
-      let hot = rawL > STICK_ENGAGE;
+      if (rawL >= bestL) {
+        bestL = rawL; radial(this.stickL, lx, ly, dz);
+        E.x = 0; E.y = 0;
+        if (secL >= 0) for (const d of SECT_DIRS[secL]) { if (d === 'left') E.x = -1; else if (d === 'right') E.x = 1; else if (d === 'up') E.y = -1; else E.y = 1; }
+      }
+      let hot = rawL > STICK_HOT;
       // 오른쪽 스틱 (표준 배치만: 비표준 패드의 축 2–5 는 트리거일 수 있다)
       if (info.standard && A.length >= 4) {
         const rx = A[2] || 0, ry = A[3] || 0, rawR = Math.hypot(rx, ry);
         const secR = stickDigital(info.stR, rx, ry, rawR, engOn, engOff);
         if (secR === 0) src.viewR = true; else if (secR === 4) src.viewL = true;
         if (rawR >= bestR) { bestR = rawR; radial(this.stickR, rx, ry, dz); }
-        hot ||= rawR > STICK_ENGAGE;
+        hot ||= rawR > STICK_HOT;
       }
       // 비표준 배치: 햇 스위치(축 9) 또는 축 6/7 D-pad
       if (!info.standard) {
@@ -737,10 +774,14 @@ class Input {
     if (!list || !list.length) { this.stickL.x = this.stickL.y = this.stickL.mag = 0; this.stickR.x = this.stickR.y = this.stickR.mag = 0; }
     if (bestL === 0) { this.stickL.x = this.stickL.y = this.stickL.mag = 0; }
     if (bestR === 0) { this.stickR.x = this.stickR.y = this.stickR.mag = 0; }
-    // 이벤트 없이 사라진 패드 (1초 이상 안 보이면 끊긴 것으로)
+    // 이벤트 없이 사라진 패드 (1초 이상 안 보이면 끊긴 것으로). 창이 포커스를 잃었거나 숨은 동안에는 세지 않는다
+    // (일부 브라우저는 포커스 없는 창에 패드를 보여 주지 않는다 → 거짓 '연결 끊김'·일시정지 방지)
+    let away = false;
+    try { away = document.hidden || document.hasFocus?.() === false; } catch { away = false; }
     for (const [idx, info] of this.pads) {
       if (seen.has(idx)) continue;
       if (info.ignored) { this.pads.delete(idx); continue; }
+      if (away) { info.missT = 0; continue; }
       if (!info.missT) info.missT = t; else if (t - info.missT > 1000) this._padDisconnected(idx, info.id);
     }
     if (active) {
@@ -770,14 +811,21 @@ class Input {
       this.state[a] = v;
       if (v && !was) { this.pressTime[a] = this.time; this.consumed[a] = false; } else if (!v && was) this.releaseTime[a] = this.time;
     }
+    // 스텝 전에 뗀 키는 이번 스텝에 한 번 눌린 것으로 보였으니 이제 뗀다
+    if (this._keyFresh.size) this._keyFresh.clear();
+    if (this._keyLate.size) { this._keyLate.clear(); this._rebuildKeySources(); }
     this.axisX = (this.state.right ? 1 : 0) - (this.state.left ? 1 : 0);
     this.axisY = (this.state.down ? 1 : 0) - (this.state.up ? 1 : 0);
-    // 아날로그: 패드 스틱 → 터치 스틱 → 디지털
-    const L = this.stickL, T = this._touchVec;
-    if (L.mag > 0 && this.mode === 'pad') { this.analogX = L.x; this.analogY = L.y; this.analogMag = L.mag; } else if (T.mag > 0 && this.mode === 'touch') { this.analogX = T.x; this.analogY = T.y; this.analogMag = T.mag; } else {
+    // 아날로그: 패드 스틱(스틱이 직접 방향을 걸었을 때) → 터치 스틱 → 디지털
+    const L = this.stickL, T = this._touchVec, E = this._stickEng;
+    if (L.mag > 0 && this.mode === 'pad' && (E.x || E.y)) { this.analogX = L.x; this.analogY = L.y; this.analogMag = L.mag; } else if (T.mag > 0 && this.mode === 'touch') { this.analogX = T.x; this.analogY = T.y; this.analogMag = T.mag; } else {
       this.analogX = this.axisX; this.analogY = this.axisY; this.analogMag = this.axisX || this.axisY ? 1 : 0;
     }
-    if (this.axisX && Math.sign(this.analogX) !== this.axisX) { this.analogX = this.axisX; this.analogMag = Math.max(this.analogMag, 1); } // 키·D-pad 가 스틱보다 우선
+    // 아날로그는 디지털 방향이 걸린 축에서만 (데드존 밖·방향 문턱 안으로 살짝 기울인 스틱으로는 움직이지 않는다: 0.30 으로 돌리면 멈춤).
+    // 부호는 늘 디지털과 같다 (키·D-pad 가 스틱보다 우선)
+    if (!this.axisX) this.analogX = 0; else if (Math.sign(this.analogX) !== this.axisX) { this.analogX = this.axisX; this.analogMag = Math.max(this.analogMag, 1); }
+    if (!this.axisY) this.analogY = 0; else if (Math.sign(this.analogY) !== this.axisY) this.analogY = this.axisY;
+    if (!this.axisX && !this.axisY) this.analogMag = 0;
     this.sprintHint = this.mode === 'touch' && this._touchSprint && T.raw > 0;
     // 방향 이력 (커맨드 입력). 절대 방향으로 기록 → 판정 시 facing 반영. 스틱은 8방향 구역 코드 그대로
     const d = this.dirCode();

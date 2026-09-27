@@ -10,17 +10,20 @@ import { FONT } from '../core/ui.js';
 const RARITY_GLOW = ['rgba(0,0,0,0)', '#6fe07a', '#5aa8ff', '#c07cff', '#ffa640', '#ff4a5a'];
 
 export function drawIcon(ctx, id, cx, cy, size = 40, item = null, { glow = true } = {}) {
-  const img = assets.get('icons/' + id);
+  const img = id ? assets.get('icons/' + id) : null;   // 아이콘 id 가 없으면 'icons/undefined' 를 요청하지 않는다 (404 콘솔 오류)
   ctx.save();
   if (item && glow) {
     const lv = item.level ?? 0;
     if (lv >= 7) {
       ctx.globalCompositeOperation = 'lighter';
-      const col = lv >= 13 ? `hsl(${(performance.now() / 8) % 360},90%,60%)` : lv >= 10 ? '#ff7a2a' : '#8ac8ff';
-      const g = ctx.createRadialGradient(cx, cy, size * 0.1, cx, cy, size * 0.75);
-      g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.globalAlpha = 0.35 + 0.15 * Math.sin(performance.now() / 180);
-      ctx.fillStyle = g; ctx.fillRect(cx - size, cy - size, size * 2, size * 2);
+      const now = performance.now(), a = 0.35 + 0.15 * Math.sin(now / 180);
+      if (!enhanceAura(ctx, lv, now, cx, cy, size, a)) {   // 캐시 스프라이트를 못 만든 환경에서만 그라디언트
+        const col = lv >= 13 ? `hsl(${(now / 8) % 360},90%,60%)` : lv >= 10 ? '#ff7a2a' : '#8ac8ff';
+        const g = ctx.createRadialGradient(cx, cy, size * 0.1, cx, cy, size * 0.75);
+        g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.globalAlpha = a;
+        ctx.fillStyle = g; ctx.fillRect(cx - size, cy - size, size * 2, size * 2);
+      }
       ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
     }
   }
@@ -42,7 +45,7 @@ export function drawSlot(ctx, x, y, s, item = null, { selected = false, empty = 
   ctx.lineWidth = selected ? 2.5 : 1.5;
   ctx.strokeRect(x + 0.5, y + 0.5, s - 1, s - 1);
   if (item) {
-    if (r > 0) {
+    if (r > 0 && !rarityGlow(ctx, r, x, y, s)) {   // 캐시 스프라이트를 못 만든 환경에서만 그라디언트
       const g = ctx.createRadialGradient(x + s / 2, y + s / 2, 2, x + s / 2, y + s / 2, s * 0.7);
       g.addColorStop(0, RARITY_GLOW[r] + '55'); g.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = g; ctx.fillRect(x, y, s, s);
@@ -69,8 +72,68 @@ export function drawSlot(ctx, x, y, s, item = null, { selected = false, empty = 
   ctx.restore();
 }
 
+// ── 광채 스프라이트 아틀라스 (MASTER_PLAN R12 · §5.2: 가방·장비 칸마다 매 프레임 그라디언트를 두 개씩 만들지 않는다) ──
+//  한 장의 캔버스에 칸(64px)을 세로로 굽는다: 희귀도 1~5 광채 · 강화 +7(푸른빛)/+10(주황빛) 오라 · +13 무지갯빛 오라 24색.
+//  처음 광채가 필요할 때 한 번만 굽고, 캔버스를 만들 수 없는 환경에서는 null → 호출부가 예전 그라디언트로 그린다.
+const G_CELL = 64, G_PITCH = 66, G_HUES = 24;
+const G_ROW = { r1: 0, r2: 1, r3: 2, r4: 3, r5: 4, blue: 5, orange: 6 };   // 무지갯빛 h 번째 = 7 + h
+let G_ATLAS;   // undefined = 아직 안 구움 · null = 못 굽는 환경
+function glowAtlas() {
+  if (G_ATLAS !== undefined) return G_ATLAS;
+  G_ATLAS = null;
+  try {
+    if (typeof document === 'undefined') return null;
+    const rows = 7 + G_HUES, cv = document.createElement('canvas');
+    cv.width = G_CELL; cv.height = rows * G_PITCH;
+    const c = cv.getContext('2d');
+    if (!c) return null;
+    const R = G_CELL / 2;
+    const cell = (row, col, r0, alphaHex = '') => {
+      const y = row * G_PITCH + R;
+      const g = c.createRadialGradient(R, y, r0, R, y, R);
+      g.addColorStop(0, col + alphaHex); g.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = g; c.fillRect(0, row * G_PITCH, G_CELL, G_CELL);
+    };
+    // 희귀도 광채: 칸 중심 반지름 2 → 칸 크기×0.7 (drawSlot 의 예전 그라디언트와 같은 비율)
+    for (let r = 1; r <= 5; r++) cell(G_ROW['r' + r], RARITY_GLOW[r], R * (2 / 45), '55');
+    // 강화 오라: 아이콘 크기×0.1 → ×0.75 (예전 drawIcon 그라디언트와 같은 비율)
+    const r0 = R * (0.1 / 0.75);
+    cell(G_ROW.blue, '#8ac8ff', r0); cell(G_ROW.orange, '#ff7a2a', r0);
+    for (let h = 0; h < G_HUES; h++) {
+      c.fillStyle = `hsl(${(h * 360) / G_HUES},90%,60%)`;   // hsl → 캔버스가 계산한 rgb 문자열로 바꿔 쓴다
+      cell(7 + h, c.fillStyle, r0);
+    }
+    G_ATLAS = cv;
+  } catch { G_ATLAS = null; }
+  return G_ATLAS;
+}
+/** 희귀도 광채 (칸 크기 s 의 정사각형 안). 아틀라스가 없으면 false */
+function rarityGlow(ctx, r, x, y, s) {
+  const A = glowAtlas();
+  if (!A) return false;
+  const half = (G_CELL / 2) * (0.5 / 0.7);   // 칸의 반 변 = 광채 반지름(0.7s)의 0.5/0.7
+  ctx.drawImage(A, G_CELL / 2 - half, G_ROW['r' + r] * G_PITCH + G_CELL / 2 - half, half * 2, half * 2, x, y, s, s);
+  return true;
+}
+/** 강화 오라 (+7 푸른빛 · +10 주황빛 · +13 무지갯빛 — 이웃한 두 색을 섞어 매끄럽게 돈다). 아틀라스가 없으면 false */
+function enhanceAura(ctx, lv, now, cx, cy, size, a) {
+  const A = glowAtlas();
+  if (!A) return false;
+  const d = size * 0.75, cellAt = (row, al) => {
+    if (al <= 0.004) return;
+    ctx.globalAlpha = al;
+    ctx.drawImage(A, 0, row * G_PITCH, G_CELL, G_CELL, cx - d, cy - d, d * 2, d * 2);
+  };
+  if (lv >= 13) {
+    const u = (((now / 8) % 360) / 360) * G_HUES, h0 = Math.floor(u) % G_HUES, w = u - Math.floor(u);
+    cellAt(7 + h0, a * (1 - w)); cellAt(7 + ((h0 + 1) % G_HUES), a * w);
+  } else cellAt(lv >= 10 ? G_ROW.orange : G_ROW.blue, a);
+  return true;
+}
+
 // ── 절차적 대체 아이콘 ──
 function fallbackIcon(ctx, id, cx, cy, s) {
+  id = typeof id === 'string' ? id : String(id ?? '');   // 옛 세이브의 아이콘 없는 아이템도 회색 칸으로 그린다
   const k = s / 40;
   ctx.translate(cx, cy);
   ctx.scale(k, k);

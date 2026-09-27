@@ -436,9 +436,9 @@ export function drawGlyph(ctx, action, x, y, h = 18, mode) {
   h = Math.max(8, Math.round(h));
   const bm = bitmapOf(spec, h, scaleOf(ctx));
   if (bm) { ctx.drawImage(bm.cv, x, y, bm.w, h); return bm.w; }
-  // 캔버스를 만들 수 없는 환경: 바로 그린다
-  const ws = spec.parts.map((p) => partWidth(ctx, p, h));
+  // 캔버스를 만들 수 없는 환경: 바로 그린다 (너비를 재며 바꾼 글꼴도 되돌린다)
   ctx.save();
+  const ws = spec.parts.map((p) => partWidth(ctx, p, h));
   let cx = x;
   spec.parts.forEach((p, k) => { drawPart(ctx, p, cx, y, ws[k], h); cx += ws[k] + 2; });
   ctx.restore();
