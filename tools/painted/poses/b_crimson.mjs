@@ -23,7 +23,7 @@ export const INSTALL = `(async () => {
   const step = (n) => { for (let i = 0; i < n; i++) { g.__tick(1 / 60); g.__render(); p.iframes = 1e9; p.hurtT = 0; const b = B(); if (b && b.state === 'idle') b.cool = 99; } };   // 매 프레임 그려야 렌더러 시뮬레이션(입자·줄·파편)이 진행된다
   let pd = 260;   // 플레이어와 보스 거리 (보스 왼쪽)
   const px = () => { const b = B(); p.x = Math.max(b.A.x0 + 40, b.cx - pd) - p.w / 2; p.vx = 0; };
-  const hold = (st, t, f) => { const b = B(); b.setState(st); b.cool = 99; for (let i = 0; i < Math.round(t * 60); i++) { px(); f?.(b, i); step(1); } };
+  const hold = (st, t, f) => { const b = B(); b.setState(st); b.cool = 99; for (let i = 0; i < Math.round(t * 60); i++) { px(); if (f?.(b, i) === false) break; step(1); } };   // f 가 false 를 돌려주면 그 프레임에서 멈춘다
   const settle = (dist = 150) => {
     const b = B();
     if (b.dying > 0) return;
@@ -57,7 +57,7 @@ export const INSTALL = `(async () => {
       case 'over_a': settle(); hold('overhead', 0.95); break;
       case 'leap_crouch': settle(); hold('leap', 0.5); break;
       case 'leap_air': settle(); pd = 360; hold('leap', 0.95); break;
-      case 'leap_land': settle(); pd = 360; hold('leap', 1.0, (bb) => { if (bb.leapLanded && bb.stateT - bb.landT > 0.12) bb.setState('idle'); }); break;
+      case 'leap_land': settle(); pd = 360; hold('leap', 2.4, (bb) => !(bb.leapLanded && bb.stateT - bb.landT > 0.08)); break;   // 착지 직후 (웅크림 · 불씨 · 먼지)
       case 'thrust_w': settle(); hold('thrust', 0.5); break;
       case 'thrust_a': settle(); hold('thrust', 0.72); break;
       case 'pillars': settle(); hold('pillars', 0.9); break;

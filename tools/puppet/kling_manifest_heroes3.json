@@ -35,9 +35,87 @@
    "picked": "b",
    "prompt": "Edit 图片1. Keep the exact same walking side pose facing RIGHT in strict profile, the same arm and leg positions (the near arm hanging slightly behind the hip, the far arm swinging forward, legs in mid-stride), the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and soft lighting. Replace the man with the young dhampir nobleman from 图片2: his pale, beautiful, sharp-featured young face seen in profile, his glowing golden eyes, and his very long straight silver-white hair that hangs loosely down his back to the middle of his back, behind the shoulders and not over the arm (no ponytail, no bandana). Slim, tall, elegant build. Dress him in a black aristocratic long frock coat reaching just below the knees, with a tall stiff standing collar, a black double-breasted waistcoat with small silver buttons, a black silk cravat, a black leather belt with a square silver buckle, wide turned-back black cuffs with black lace ruffles, a dark crimson coat lining that shows at the flaring back hem, thin dull-gold trim along the coat edges, fitted black trousers and tall polished black riding boots, black leather gloves. Remove the coiled whip. No weapon, no sword, no scabbard, nothing held in the hands, no cape, no cloak, no helmet, full body visible from the head to the boots, nothing cropped, no text, no watermark.",
    "note": "OK — a: 장갑 무시(맨손), 금테 없음. b: 금테·검은 장갑·크림슨 안감, 카엘과 같은 자세·구도. 긴 은발이 등 뒤로 흩날림 → pony 띠"
+  },
+  {
+   "id": "azel_vampire_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "ATYCM2m_BZighDQfXBiVgbPKU9oNWUzU-b5YtuEG5O5mm9uXtnKM-L5zqZYpf4nFYXE6fvug",
+   "inputs": [
+    "azel_dhampir_side.jpg (keep-pose edit)"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": null,
+   "prompt": "Edit 图片1. Keep the SAME young man with the exact same pale face, the same very long straight silver-white hair flowing down his back, the same slim tall body proportions, the exact same walking side pose facing right, the same arm and leg positions, the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and lighting. The long coat skirt keeps flaring back behind his legs in the same place. Change ONLY his outfit into the attire of a true-blood vampire aristocrat, one tier grander: a black velvet long frock coat reaching just below the knees with intricate dull-gold filigree embroidery along the lapels, cuffs and hem and a blood-red silk lining, a tall stiff standing collar lined in blood red, a deep blood-red brocade waistcoat with gold buttons, a white lace jabot cravat pinned with a ruby brooch, a thin gold chain across the chest, black gloves with gold-trimmed cuffs, fitted black trousers and tall black riding boots with gold buckles; his eyes glow blood-red. No cape, no cloak, no wings, no halo, no weapon, no sword, no scabbard, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark."
+  },
+  {
+   "id": "azel_nosferatu_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AV7elPpQG8xpSY1vGCIw3CF3UzushktF08ByM8npHP230opSs12aWpA4YasXjq4CSId0x9q8",
+   "inputs": [
+    "azel_dhampir_side.jpg (keep-pose edit)"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": null,
+   "prompt": "Edit 图片1. Keep the SAME young man with the exact same pale face, the same very long straight silver-white hair flowing down his back, the same slim tall body proportions, the exact same walking side pose facing right, the same arm and leg positions, the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and lighting. The long coat skirt keeps flaring back behind his legs in the same place. Change ONLY his outfit into the regalia of an ancient Nosferatu lord of the night, the grandest tier: a jet-black long coat of lacquered leather and velvet reaching just below the knees with a dark-crimson lining and a gold-embroidered hem, sculpted black-steel shoulder armour on the near shoulder shaped like a folded bat wing with gold edges, a high pointed black collar lined with dark crimson, a black-steel breastplate engraved with gold bat-and-moon motifs over a dark crimson waistcoat, clawed black-steel gauntlets with gold rims, black armoured boots with gold trim; his eyes glow blood-red; bare head, face fully visible. No cape, no cloak, no wings, no halo, no weapon, no sword, no scabbard, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark."
+  },
+  {
+   "id": "azel_bloodking_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AYKkkjXtBzOKPfMIzwXGfUi5ZZmheQnFimDLlZMVRUOZBGBFsb-YQER4NaCovQBmdiPmitFk",
+   "inputs": [
+    "azel_dhampir_side.jpg (keep-pose edit)"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": null,
+   "prompt": "Edit 图片1. Keep the SAME young man with the exact same pale face, the same very long straight silver-white hair flowing down his back, the same slim tall body proportions, the exact same walking side pose facing right, the same arm and leg positions, the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and lighting. The long coat skirt keeps flaring back behind his legs in the same place. Change ONLY his outfit into the regalia of a new Blood King, the grandest tier: a spiked gold crown set with rubies on his bare head (face fully visible, the long silver hair still flowing down his back), a deep blood-crimson royal long coat reaching just below the knees with black velvet panels and heavy gold embroidery, an ornate gold pauldron on the near shoulder set with a ruby, a black-and-gold breastplate over a crimson waistcoat, black gauntlets with gold trim, black boots with gold greaves; his eyes glow blood-red. No cape, no cloak, no wings, no halo, no weapon, no sword, no scabbard, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark."
+  },
+  {
+   "id": "azel_holyblade_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AZdtzwf6BwhesJ0aV-b0qFT7gANWmz5KahFaKeD8CIr5z0z2WpK-YUQw817oFiwRnl-s4L98",
+   "inputs": [
+    "azel_dhampir_side.jpg (keep-pose edit)"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": null,
+   "prompt": "Edit 图片1. Keep the SAME young man with the exact same pale face, the same very long straight silver-white hair flowing down his back, the same slim tall body proportions, the exact same walking side pose facing right, the same arm and leg positions, the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and lighting. The long coat skirt keeps flaring back behind his legs in the same place. Change ONLY his outfit into the attire of a holy blade knight, one tier grander: a pale white-lavender long frock coat reaching just below the knees with a royal-blue lining and gold trim, a tall white standing collar lined in royal blue, a polished silver breastplate with a small gold cross over a white waistcoat, a silver pauldron on the near shoulder with a gold rim, white gloves with silver cuffs, pale grey-white trousers and tall white-and-silver boots; his eyes are pale ice-blue. No cape, no cloak, no wings, no halo, no weapon, no sword, no scabbard, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark."
+  },
+  {
+   "id": "azel_dawnbringer_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AcX7SzNJaT7XYmuEsqJVOCuOyWGLerGCwRMorv9i4NbKx073TN1F4QAtQs3Y83O3yKOF8YiG",
+   "inputs": [
+    "azel_dhampir_side.jpg (keep-pose edit)"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": null,
+   "prompt": "Edit 图片1. Keep the SAME young man with the exact same pale face, the same very long straight silver-white hair flowing down his back, the same slim tall body proportions, the exact same walking side pose facing right, the same arm and leg positions, the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and lighting. The long coat skirt keeps flaring back behind his legs in the same place. Change ONLY his outfit into the radiant armour of the Dawnbringer, the grandest tier: ivory-white and gold plate armour with a sunburst engraved on the breastplate, an ornate gold pauldron on the near shoulder with sun-ray engravings, gold-rimmed ivory gauntlets, an ivory long coat skirt reaching just below the knees lined with warm amber-orange silk and a gold-embroidered hem, ivory armoured boots with gold greaves, a slim gold circlet with a small sun jewel on his bare head (face fully visible); a faint warm golden glow on the gold engravings. No cape, no cloak, no wings, no halo, no weapon, no sword, no scabbard, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark."
+  },
+  {
+   "id": "azel_seraph_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AQ7R0P9X2xJThSJvUAO-gqao8FqvLJaJxALVjtX8bsDPfTCR0V2jW0OfvY4tiE6r45y2WBkb",
+   "inputs": [
+    "azel_dhampir_side.jpg (keep-pose edit)"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": null,
+   "prompt": "Edit 图片1. Keep the SAME young man with the exact same pale face, the same very long straight silver-white hair flowing down his back, the same slim tall body proportions, the exact same walking side pose facing right, the same arm and leg positions, the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and lighting. The long coat skirt keeps flaring back behind his legs in the same place. Change ONLY his outfit into the attire of a fallen seraph, the grandest tier: a midnight-navy and black long coat reaching just below the knees, black outside with a white silk lining and a violet-embroidered hem, a breastplate split in two halves, white-and-silver plate engraved with a feather pattern on one side and black plate on the other, glowing violet rune lines along the seams, a white plate pauldron engraved with feathers and rimmed in violet and gold on the near shoulder, black gauntlets set with violet-glowing gems, black-and-silver armoured boots; his eyes glow gold; bare head, face fully visible. No cape, no cloak, no wings, no halo, no weapon, no sword, no scabbard, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark."
   }
  ],
  "images_used": {
-  "azel": 2
+  "azel": 14
  }
 }

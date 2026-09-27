@@ -277,7 +277,7 @@ function drawDemon(ctx, D, b, world, rig, st, lvl, dt, dying, dT) {
   const T = R.dtorso;
   const tx = 0, ty = -118 + cr + breathe * 0.4, trot = -0.02 * (d.crouch ?? 0);
   const tp = (pv, out) => localPt(T, 'hip', T[pv], tx, ty, trot, 1, out);
-  const neckP = tp('neck', st._dn ??= [0, 0]), shN = tp('shN', st._dsn ??= [0, 0]), shF = tp('shF', st._dsf ??= [0, 0]), wingR = tp('wing', st._dw ??= [0, 0]), tailR = tp('tail', st._dt ??= [0, 0]), hip = tp('hip', st._dh ??= [0, 0]);
+  const neckP = tp('neck', st._dn ??= [0, 0]), shN = tp('shN', st._dsn ??= [0, 0]), shF = tp('shF', st._dsf ??= [0, 0]), wingR = tp('wing', st._dw ??= [0, 0]), tailR = tp('tail', st._dtr ??= [0, 0]), hip = tp('hip', st._dh ??= [0, 0]);
   // 자라나는 동안(변신)·사망 붕괴 전 투명도
   const grow = tf ? smooth(1.75, 2.6, tt) : 1;
   const a0 = clamp(0.25 + grow * 0.75, 0, 1);

@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
 <title>보스 갤러리 C — 2부 14~17장</title>
 <style>
   :root { --bg: #07040b; --panel: #120b16; --line: #3a2434; --txt: #eadcc4; --dim: #9a8a86; --acc: #ff5a6a; --ok: #7de0a0; --warn: #ffc860; }
@@ -193,6 +194,7 @@ function makeWorld(id) {
   W.arenaX = x0;
   W.camera.setBounds(camX0, 0, x1 - camX0, map.pxH);
   W.camera.zoomTarget = Math.max(0.74, Math.min(1, VH / (map.pxH - TILE)));
+  W.camera.zoom = W.camera.zoomTarget;
   W.camera.floorY = (P.floorRow ?? map.h - 2) * TILE;
   return W;
 }
@@ -218,7 +220,8 @@ function build(id = O.id, { phase = 0, act = null } = {}) {
   const W = makeWorld(id), def = DEFS[id], C = CLASSES[id];
   const a = W.arena, m = W.map;
   const px = a.x0 + (a.x1 - a.x0) * O.player;
-  const py = m.groundBelow(Math.floor(px / TILE), 0) ?? (m.h - 2) * TILE;
+  const fr = patternsOf(id, C).floorRow ?? m.h - 2;
+  const py = m.groundBelow(Math.floor(px / TILE), fr - 1) ?? fr * TILE;
   W.player = W.add(new FakePlayer(px, py));
   const bx = a.x0 + (a.x1 - a.x0) * 0.72, by = (m.h - 2) * TILE;
   let boss = null;
