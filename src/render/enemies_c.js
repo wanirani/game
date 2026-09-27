@@ -196,7 +196,7 @@ RENDER_C.chandelier_fiend = (ctx, e, world, o) => {
   const hung = an === 'hang' || an === 'shake' || an === 'fall';
   const crawl = !hung && an !== 'shatter', H = 52;
   // 천장 사슬 (매달린 동안만 anchorY 가 있다)
-  if (e.anchorY != null && world && !FL) {
+  if (e.anchorY != null && !FL) {
     const top = (e.anchorY - e.bottom) / sc;
     ctx.strokeStyle = '#2a2420'; ctx.lineWidth = 3; ctx.setLineDash([5, 3]); ctx.beginPath(); ctx.moveTo(0, top); ctx.lineTo(0, -H + 4); ctx.stroke(); ctx.setLineDash([]);
   }

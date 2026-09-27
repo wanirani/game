@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<base href="../">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>적 갤러리 C — 2부 14~16장</title>
+<style>
+  html, body { margin: 0; background: #07030a; color: #e8dcc0; font: 12px "Noto Sans KR", system-ui, sans-serif; }
+  #bar { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 6px 10px; background: #120b16; border-bottom: 1px solid #3a2434; }
+  #bar b { color: #ffd0c0; }
+  #bar label { display: flex; gap: 4px; align-items: center; }
+  #info { font: 11px ui-monospace, Menlo, monospace; color: #9a8a9a; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<div id="bar">
+  <b>적 갤러리 C (s14 거울의 성 · s15 영겁의 용광로 · s16 가라앉은 성소)</b>
+  <label><input type="checkbox" id="vec"> 벡터 대체 그림 (A/B)</label>
+  <label><input type="checkbox" id="anim" checked> 애니메이션</label>
+  <label><input type="checkbox" id="flip"> 왼쪽 보기</label>
+  <label>확대 <input type="range" id="zoom" min="0.75" max="3" step="0.25" value="1.25"></label>
+  <span id="info"></span>
+</div>
+<canvas id="c"></canvas>
+<script type="module">
+// 2부 적 C 갤러리 — 12종의 모든 애니메이션 상태 (채색 퍼핏, 리그가 없으면 벡터 대체 그림) + PROJ_C / ZONE_C 견본.
+//   tools/gallery_enemies_c.html?ids=slag_golem,bellows&vec=1&zoom=2&t=1.3 (t = 시간 고정)&bg=bg/s15_forge&proj=0
+// 그리기는 게임과 같은 render/enemies.js drawEnemy (발 원점 · 좌우 반전 · 정예 배율 · 채색/벡터 크로스페이드).
+import { ENEMIES_C } from '../src/data/enemies_c.js';
+import { drawEnemy } from '../src/render/enemies.js';
+import { PROJ_C, ZONE_C } from '../src/render/enemies_c.js';
+import { rigStats } from '../src/render/painted/enemy_kit.js';
+import { game } from '../src/core/game.js';
+
+const Q = new URLSearchParams(location.search);
+const ids = (Q.get('ids') || Object.keys(ENEMIES_C).join(',')).split(',').filter((id) => ENEMIES_C[id]);
+const vecBox = document.getElementById('vec'), animBox = document.getElementById('anim'), flipBox = document.getElementById('flip'), zoomR = document.getElementById('zoom');
+if (Q.get('vec') === '1') vecBox.checked = true;
+if (Q.has('t')) animBox.checked = false;
+if (Q.get('flip') === '1') flipBox.checked = true;
+if (Q.get('zoom')) zoomR.value = Q.get('zoom');
+const fixedT = Q.has('t') ? Number(Q.get('t')) : 1.37;
+const showProj = Q.get('proj') !== '0';
+game.scale = Number(Q.get('td') ?? 2);          // 리그를 굽는 텍셀 밀도 (게임 화면 배율 흉내)
+
+const HIT = { flashT: 0.1, stun: 0.2 };
+const DIE = { dying: 0.12 };
+const W = (id, k = 'windup', d = 0.5) => ENEMIES_C[id].aiParams?.[k] ?? d;
+/** 적별 상태 칸: [라벨, 필드] (anim/animT/state/stateT 등 AI 가 쓰는 필드 그대로) */
+function cases(id) {
+  const F = {
+    mirror_knight: [['idle', { anim: 'idle' }], ['walk a', { anim: 'walk' }], ['walk b', { anim: 'walk', tOff: 0.2 }],
+      ['1타 예비', { anim: 'slash', state: 'slash', animT: W(id) * 0.8, comboI: 0 }], ['1타', { anim: 'slash', state: 'slash', animT: W(id) + 0.05, comboI: 0 }],
+      ['3타 예비', { anim: 'slash', state: 'slash', animT: 0.22, comboI: 2 }], ['3타 파동', { anim: 'slash', state: 'slash', animT: 0.36, comboI: 2 }],
+      ['guard', { anim: 'guard' }], ['air', { anim: 'idle', onGround: false }], ['hurt', { anim: 'walk', ...HIT }], ['dying', { anim: 'idle', ...DIE }]],
+    glass_wraith: [['float a', { anim: 'float' }], ['float b', { anim: 'float', tOff: 0.7 }], ['move', { anim: 'float', vx: 90, vy: -20 }],
+      ['cast 예비', { anim: 'cast', animT: 0.35 }], ['cast', { anim: 'cast', animT: 0.68 }], ['vanish', { anim: 'vanish', animT: 0.15, alpha: 0.6 }],
+      ['appear', { anim: 'float', state: 'appear', stateT: 0.15, alpha: 0.5 }], ['hurt', { anim: 'float', ...HIT }], ['dying', { anim: 'float', ...DIE }]],
+    reflection: [['idle', { anim: 'idle', heroAnim: 'idle' }], ['run', { anim: 'run', heroAnim: 'run', vx: 220 }], ['jump', { anim: 'act', heroAnim: 'jump', vy: -300, onGround: false }],
+      ['fall', { anim: 'act', heroAnim: 'fall', vy: 300, onGround: false }], ['dash', { anim: 'act', heroAnim: 'dash', heroAnimT: 0.05, dashT: 0.1 }], ['hurt', { anim: 'idle', heroAnim: 'idle', ...HIT }], ['dying', { anim: 'idle', heroAnim: 'idle', ...DIE }]],
+    chandelier_fiend: [['hang', { anim: 'hang', state: 'hang', anchor: 70, sway: 0.04 }], ['shake', { anim: 'shake', state: 'shake', anchor: 70, animT: 0.3, sway: 0.14 }],
+      ['fall', { anim: 'fall', state: 'fall', vy: 400, onGround: false }], ['shatter', { anim: 'shatter', state: 'shatter', animT: 0.08, broken: true }], ['shatter 2', { anim: 'shatter', state: 'shatter', animT: 0.35, broken: true }],
+      ['crawl a', { anim: 'crawl', broken: true, vx: 70 }], ['crawl b', { anim: 'crawl', broken: true, vx: 70, tOff: 0.13 }], ['spit 예비', { anim: 'spit', state: 'spit', animT: 0.3, broken: true }],
+      ['spit', { anim: 'spit', state: 'spit', animT: 0.48, broken: true }], ['hurt', { anim: 'crawl', broken: true, ...HIT }], ['dying', { anim: 'crawl', broken: true, ...DIE }]],
+    forge_imp: [['fly a', { anim: 'fly' }], ['fly b', { anim: 'fly', tOff: 0.09 }], ['cast 예비', { anim: 'cast', animT: 0.3 }], ['cast', { anim: 'cast', animT: 0.6 }],
+      ['aim', { anim: 'aim', animT: 0.2 }], ['dive', { anim: 'dive', vx: 330, vy: 320 }], ['hurt', { anim: 'fly', ...HIT }], ['dying', { anim: 'fly', ...DIE }]],
+    slag_golem: [['idle', { anim: 'idle' }], ['walk a', { anim: 'walk' }], ['walk b', { anim: 'walk', tOff: 0.4 }],
+      ['windup', { anim: 'windup', animT: W(id) * 0.5, glow: 0.5 }], ['windup 끝', { anim: 'windup', animT: W(id) * 0.97, glow: 1 }], ['slam', { anim: 'slam', animT: 0.06, glow: 0.9 }], ['slam 뒤', { anim: 'slam', animT: 0.4, glow: 0.5 }],
+      ['spit 예비', { anim: 'spit', animT: 0.35, glow: 0.35 }], ['spit', { anim: 'spit', animT: 0.66, glow: 0.6 }], ['hurt', { anim: 'idle', ...HIT }], ['HP 50%', { anim: 'idle', hpK: 0.5 }], ['HP 20%', { anim: 'idle', hpK: 0.2 }], ['dying', { anim: 'idle', ...DIE }]],
+    chain_warden: [['idle', { anim: 'idle' }], ['walk a', { anim: 'walk' }], ['walk b', { anim: 'walk', tOff: 0.22 }], ['aim', { anim: 'aim', state: 'aim', animT: 0.3 }],
+      ['throw', { anim: 'throw', state: 'throw', animT: 0.1 }], ['reel', { anim: 'reel', state: 'reel', animT: 0.2 }], ['smash 예비', { anim: 'smash', state: 'slam', animT: 0.12, smashWu: 0.2 }],
+      ['smash', { anim: 'smash', state: 'slam', animT: 0.26, smashWu: 0.2 }], ['sweep 예비', { anim: 'sweep', state: 'sweep', animT: 0.4 }], ['sweep', { anim: 'sweep', state: 'sweep', animT: 0.68 }],
+      ['hurt', { anim: 'idle', ...HIT }], ['dying', { anim: 'idle', ...DIE }]],
+    bellows: [['idle', { anim: 'idle', inflate: 0.3 }], ['inhale', { anim: 'inhale', state: 'gather', animT: 0.3, inflate: 0.55 }], ['inhale 끝', { anim: 'inhale', state: 'gather', animT: 0.85, inflate: 1 }],
+      ['blow', { anim: 'blow', state: 'blow', animT: 0.1, inflate: 0.9 }], ['blow 끝', { anim: 'blow', state: 'blow', animT: 1.0, inflate: 0.1 }], ['hurt', { anim: 'idle', inflate: 0.3, ...HIT }], ['dying', { anim: 'idle', inflate: 0.3, ...DIE }]],
+    abyss_angler: [['swim a', { anim: 'swim', inWater: true, vx: 40 }], ['swim b', { anim: 'swim', inWater: true, vx: 40, tOff: 0.3 }], ['bite 예비', { anim: 'bite', state: 'bite', inWater: true, lure: 1, animT: 0.3 }],
+      ['lunge', { anim: 'bite', state: 'lunge', inWater: true, vx: 520, animT: 0.55 }], ['leap ↑', { anim: 'leap', state: 'leap', vx: 120, vy: -600 }], ['leap ↓', { anim: 'leap', state: 'leap', vx: 120, vy: 500 }],
+      ['flop', { anim: 'flop', state: 'flop' }], ['hurt', { anim: 'swim', inWater: true, ...HIT }], ['dying', { anim: 'swim', inWater: true, ...DIE }]],
+    sunken_priest: [['idle', { anim: 'idle' }], ['walk a', { anim: 'walk' }], ['walk b', { anim: 'walk', tOff: 0.25 }], ['cast 예비', { anim: 'cast', state: 'cast', animT: 0.35 }],
+      ['cast', { anim: 'cast', state: 'cast', animT: 0.75 }], ['bubble', { anim: 'cast', state: 'throw', animT: 0.62 }], ['bless', { anim: 'bless', state: 'gather', animT: 0.45 }], ['hurt', { anim: 'idle', ...HIT }], ['dying', { anim: 'idle', ...DIE }]],
+    coral_crab: [['idle', { anim: 'idle' }], ['walk a', { anim: 'walk', vx: 70 }], ['walk b', { anim: 'walk', vx: 70, tOff: 0.13 }], ['집게 예비', { anim: 'attack', state: 'attack', animT: 0.3 }],
+      ['집게 최고점', { anim: 'attack', state: 'attack', animT: W(id) - 0.02 }], ['내리찍기', { anim: 'attack', state: 'attack', animT: W(id) + 0.05 }], ['회수', { anim: 'attack', state: 'attack', animT: 0.85 }],
+      ['hurt', { anim: 'idle', ...HIT }], ['dying', { anim: 'idle', ...DIE }]],
+    siren: [['float a', { anim: 'float' }], ['float b', { anim: 'float', tOff: 1.1 }], ['sing 예비', { anim: 'sing', state: 'cast', animT: 0.4 }], ['sing', { anim: 'sing', state: 'cast', animT: 0.82 }],
+      ['dive 겨냥', { anim: 'dive', state: 'aim', animT: 0.2 }], ['dive', { anim: 'dive', state: 'dive', vx: 380, vy: 300 }], ['vanish', { anim: 'vanish', state: 'vanish', animT: 0.15, alpha: 0.5 }],
+      ['appear', { anim: 'appear', state: 'appear', animT: 0.15, alpha: 0.5 }], ['hurt', { anim: 'float', ...HIT }], ['dying', { anim: 'float', ...DIE }]],
+  };
+  return F[id] ?? [['idle', { anim: 'idle' }]];
+}
+
+function mkEnt(d, f) {
+  const e = {
+    def: d, id: d.id, t: 0, anim: 'idle', animT: 0, state: f.anim ?? 'idle', stateT: 0, flashT: 0, stun: 0, dying: 0, params: { ...(d.aiParams || {}) },
+    facing: 1, scale: 1, elite: false, vx: 0, vy: 0, alpha: 1, onGround: !d.flying, hp: 1, stats: { maxHp: 1 }, rig: {},
+    w: d.size.w, h: d.size.h, cx: 0, bottom: 0, x: 0, y: 0, aggro: 1, ...f,
+  };
+  if (f.hpK) e.hp = f.hpK;
+  return e;
+}
+const rows = ids.map((id) => ({ id, d: ENEMIES_C[id], cases: cases(id).map(([label, f]) => ({ label, f, e: mkEnt(ENEMIES_C[id], f) })) }));
+const bg = new Image();
+if (Q.get('bg')) bg.src = `assets/${Q.get('bg')}.webp`;
+
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const T0 = performance.now();
+let frames = 0;
+
+// ── 투사체 · 장판 견본 (PROJ_C: 원점 = 투사체 중심, ZONE_C: 월드 좌표) ──
+function fakeZone(x, y, w, h, t, delay, life, data) {
+  return { x, y, w, h, t, delay, life, maxLife: life, data, cx: x + w / 2, cy: y + h / 2, bottom: y + h,
+    get active() { return this.t >= this.delay; }, get warnK() { return this.delay > 0 ? Math.min(1, this.t / this.delay) : 1; },
+    get liveK() { return this.t < this.delay ? 0 : Math.min(1, (this.t - this.delay) / this.maxLife); } };
+}
+function drawSamples(y0, W_, T) {
+  ctx.fillStyle = '#e8c872'; ctx.font = '12px sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText('투사체 · 장판 (PROJ_C / ZONE_C)', 10, y0 + 14);
+  let x = 50;
+  for (const k of ['rivet', 'flamebit', 'candle', 'glob', 'bubble']) {
+    const p = { t: T, vx: 300, vy: 0, w: k === 'bubble' ? 44 : k === 'glob' ? 18 : 14, h: 14, rot: T * 5, life: 1, cx: 0, cy: 0 };
+    ctx.save(); ctx.translate(x, y0 + 60); try { PROJ_C[k]?.(ctx, p, null); } catch (err) { console.error(k, err); } ctx.restore();
+    ctx.fillStyle = '#ccc'; ctx.textAlign = 'center'; ctx.fillText(k, x, y0 + 100); x += 80;
+  }
+  const gy = y0 + 230, tt = T % 2;
+  const Z = [
+    ['warnline', 160, (x) => fakeZone(x, gy - 60, 160, 4, tt % 0.5, 0, 0.5, { x0: x, y0: gy - 58, x1: x + 160, y1: gy - 58, color: '#ff8a3a' })],
+    ['floorwarn', 150, (x) => fakeZone(x, gy - 26, 150, 26, tt % 0.8, 0, 0.8, { color: '#ff5a1a' })],
+    ['magma', 60, (x) => fakeZone(x, gy - 16, 60, 16, tt, 0, 3, { seed: 1 })],
+    ['burn', 40, (x) => fakeZone(x, gy - 12, 40, 12, tt, 0, 1.2, {})],
+    ['geyser', 70, (x) => fakeZone(x, gy - 200, 70, 200, tt, 0.7, 0.5, {})],
+  ];
+  for (const [k, w, mk] of Z) {
+    const z = mk(x);
+    try { ZONE_C[k]?.(ctx, z, null); } catch (err) { console.error(k, err); }
+    ctx.fillStyle = '#ccc'; ctx.textAlign = 'center'; ctx.fillText(k, x + w / 2, gy + 16);
+    x += w + 50;
+  }
+  // 갈고리 사슬 · 불길 · 노래 파문
+  const hx = 60, hy = gy + 70;
+  const hk = fakeZone(hx + 180 + Math.sin(T * 3) * 60 - 12, hy - 9, 24, 18, tt, 0, 3, { dir: 1, dist: 180, max: 380, hx, hy, hooked: (T % 2) > 1 });
+  try { ZONE_C.hook?.(ctx, hk, null); } catch (err) { console.error('hook', err); }
+  ctx.fillStyle = '#ccc'; ctx.textAlign = 'center'; ctx.fillText('hook', hx + 120, hy + 30);
+  const L = Math.min(280, 280 * ((T % 1.4) / 0.2));
+  const fc = fakeZone(420, hy - 45, L, 90, T % 1.4, 0, 1.2, { dir: 1, len: L, L: 280, H: 90, mx: 420, my: hy });
+  try { ZONE_C.flamecone?.(ctx, fc, null); } catch (err) { console.error('flamecone', err); }
+  ctx.fillStyle = '#ccc'; ctx.fillText('flamecone', 560, hy + 60);
+  const r = 20 + ((T * 120) % 110);
+  const sr = fakeZone(840 - r, hy - r, r * 2, r * 2, T, 0, 1, { cx: 840, cy: hy, r, gapA: 0.6, gap: 50 * Math.PI / 180, th: 16 });
+  try { ZONE_C.songring?.(ctx, sr, null); } catch (err) { console.error('songring', err); }
+  ctx.fillStyle = '#ccc'; ctx.fillText('songring', 840, hy + 150);
+  void W_;
+}
+
+function frame() {
+  const z = Number(zoomR.value), cellW = 120, cellH = 150, label = 150;
+  const cols = Math.max(...rows.map((r) => r.cases.length));
+  const dpr = window.devicePixelRatio || 1;
+  const sampH = showProj ? 470 : 0;
+  const W_ = Math.ceil(label + cols * cellW * z + 20), H_ = Math.ceil(rows.length * cellH * z + 20 + sampH);
+  if (cv.width !== Math.round(W_ * dpr) || cv.height !== Math.round(H_ * dpr)) { cv.width = Math.round(W_ * dpr); cv.height = Math.round(H_ * dpr); cv.style.width = W_ + 'px'; cv.style.height = H_ + 'px'; }
+  globalThis.__paintedEnemies = !vecBox.checked;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const g = ctx.createLinearGradient(0, 0, 0, H_); g.addColorStop(0, '#120a1c'); g.addColorStop(1, '#06040a');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W_, H_);
+  if (bg.complete && bg.naturalWidth) { ctx.globalAlpha = 0.8; ctx.drawImage(bg, 0, 0, W_, W_ * bg.naturalHeight / bg.naturalWidth); ctx.globalAlpha = 1; }
+  const T = animBox.checked ? (performance.now() - T0) / 1000 + 1 : fixedT;
+  rows.forEach((r, ri) => {
+    const y0 = 10 + ri * cellH * z;
+    ctx.fillStyle = '#e8c872'; ctx.font = '13px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText(r.id, 8, y0 + 18); ctx.fillText(r.d.name, 8, y0 + 36);
+    ctx.fillStyle = '#9a8a9a'; ctx.font = '11px sans-serif';
+    ctx.fillText(`${r.d.size.w}×${r.d.size.h} · ${r.d.ai}`, 8, y0 + 52);
+    r.cases.forEach((c, ci) => {
+      const e = c.e, f = c.f;
+      e.t = T + (f.tOff ?? 0);
+      if (f.animT === undefined && animBox.checked) e.animT = e.t % 2;
+      e.facing = flipBox.checked ? -1 : 1;
+      const x0 = label + ci * cellW * z, cy0 = y0;
+      ctx.save();
+      ctx.translate(x0, cy0); ctx.scale(z, z);
+      ctx.fillStyle = 'rgba(255,255,255,0.03)'; ctx.fillRect(2, 2, cellW - 4, cellH - 4);
+      ctx.fillStyle = 'rgba(60,40,30,0.55)'; ctx.fillRect(2, cellH - 18, cellW - 4, 16);
+      e.cx = cellW / 2;
+      e.bottom = r.d.flying ? cellH * 0.62 + r.d.size.h / 2 : cellH - 18;
+      if (r.id === 'abyss_angler' && f.inWater) e.bottom = cellH * 0.62 + r.d.size.h / 2;
+      if (r.id === 'chandelier_fiend' && f.anchor) { e.bottom = 20 + f.anchor; e.anchorY = 20; } else if (r.id === 'chandelier_fiend') e.anchorY = null;
+      e.y = e.bottom - r.d.size.h; e.x = e.cx - r.d.size.w / 2;
+      try { drawEnemy(ctx, e, null); } catch (err) { console.error(r.id, c.label, err); ctx.fillStyle = '#f00'; ctx.fillRect(e.cx - 10, e.bottom - 30, 20, 30); }
+      ctx.fillStyle = '#ffd98a'; ctx.font = '9px sans-serif'; ctx.textAlign = 'left'; ctx.fillText(c.label, 5, 11);
+      ctx.restore();
+    });
+  });
+  if (showProj) drawSamples(20 + rows.length * cellH * z, W_, T);
+  const st = rigStats();
+  document.getElementById('info').textContent = Object.entries(st).map(([k, s]) => `${k}:${s.ready ? 'ok' : s.failed ? '없음' : '…'}`).join(' ');
+  window.__galleryReady = frames++ > 3 && Object.values(st).every((s) => s.ready || s.failed);
+  window.__ready = true;
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

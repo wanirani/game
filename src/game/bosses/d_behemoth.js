@@ -396,12 +396,19 @@ export class Behemoth extends BossC {
   }
 
   // ═════════════════════════════ 위치 ═════════════════════════════
-  /** 발밑 폭(±190) 안에 바닥 위로 솟은 지형(둔덕)이 없는 가까운 자리 — 오른쪽을 먼저 찾는다 */
+  /**
+   * 그림 전체(바라보는 쪽 머리 끝 330 · 반대쪽 꼬리 250) 아래에 바닥 위로 솟은 지형(둔덕)이 없는 가까운 자리 — 오른쪽을 먼저 찾는다.
+   * s19: 기본 자리(0.72 → 64열)는 머리가 56–59열 둔덕에 걸린다 → 67열 (MAPS-P2-C 요청)
+   */
   clearX(x) {
     const A = this.A, m = this.world?.map;
     if (!m?.typeAt) return x;
-    const fy = Math.round(A.floor / TS);
-    const blocked = (cx) => { for (let tx = Math.floor((cx - 190) / TS); tx <= Math.floor((cx + 190) / TS); tx++) if (solidT(m.typeAt(tx, fy - 1))) return true; return false; };
+    const fy = Math.round(A.floor / TS), f = this.facing || -1;
+    const blocked = (cx) => {
+      const x0 = f < 0 ? cx - 330 : cx - 250, x1 = f < 0 ? cx + 250 : cx + 330;
+      for (let tx = Math.floor(x0 / TS); tx <= Math.floor(x1 / TS); tx++) if (solidT(m.typeAt(tx, fy - 1))) return true;
+      return false;
+    };
     if (!blocked(x)) return x;
     for (let d = 24; d < A.w; d += 24) {
       for (const s of [1, -1]) { const nx = x + s * d; if (nx >= A.x0 + 180 && nx <= A.x1 - 180 && !blocked(nx)) return nx; }

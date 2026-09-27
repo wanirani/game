@@ -9,7 +9,7 @@ import { drawSlot } from '../../render/icons.js';
 import { Tab } from './base.js';
 import { HeroView, HeroStage, pedestal, accentOf, turntableHints, pxScale } from './hero_view.js';
 import {
-  PAL, RARITY_COL, frame, heading, divider, selBar, brackets, glow, gbutton, Scroller, scrollbar, clipBegin, clipEnd, ellipsize, pill, inRect, measure,
+  PAL, RARITY_COL, frame, heading, divider, selBar, brackets, glow, gbutton, Scroller, scrollbar, clipBegin, clipEnd, ellipsize, pill, inRect, measure, Popup,
 } from './common.js';
 import { fmtStatVal } from './tab_status.js';
 import * as D from './access.js';
@@ -116,6 +116,25 @@ export class EquipTab extends Tab {
     this.li = 0; this.sc.target = 0;
     if (!input.touchMode) this.sub = 'slots';
   }
+  /** 길게 누르기(터치 450 ms, platform §5.6) → 그 장비의 행동 메뉴: 장착·해제·잠금 */
+  openActions(row, r) {
+    if (!row) return;
+    const acts = [];
+    if (row.unequip) acts.push({ id: 'unequip', label: '장착 해제', run: () => this.doRow(row) });
+    else {
+      if (row.here) acts.push({ id: 'unequip', label: '해제하기', disabled: this.slot === 'weapon', reason: '무기는 해제할 수 없습니다', run: () => this.unequipCurrent() });
+      else acts.push({ id: 'equip', label: '장착하기', disabled: !row.ok, reason: row.reason, run: () => this.doRow(row) });
+      acts.push({
+        id: 'lock', label: row.inst.locked ? '잠금 풀기' : '잠그기', run: () => {
+          const on = D.toggleLockOf(this.state, row.inst);
+          audio.sfx(on ? 'clang' : 'menu_move');
+          this.m.notify(on ? '아이템을 잠갔습니다 — 판매·분해되지 않습니다' : '잠금을 풀었습니다', PAL.gold);
+        },
+      });
+    }
+    const x = r ? Math.max(8, r.x - 232) : null;
+    this.m.openModal(new Popup({ title: row.unequip ? D.SLOT_NAMES()[this.slot] : D.nameOf(row.inst), items: acts, x, y: r ? r.y : null, w: 220 }));
+  }
   unequipCurrent() {
     const slot = this.slot;
     if (slot === 'weapon') { audio.sfx('menu_cancel'); this.m.notify('무기는 해제할 수 없습니다', PAL.bad); return; }
@@ -129,6 +148,16 @@ export class EquipTab extends Tab {
     this.view.update(dt);
     if (this.flashT > 0) this.flashT = Math.max(0, this.flashT - dt * 2.5);
     this.sc.update(dt, this.listRect, ges);
+    // 길게 누르기 → 장비 행동 메뉴 (§5.6)
+    if (ges.longPress && ges.held) {
+      for (let i = 0; i < this.rowRects.length; i++) {
+        const r = this.rowRects[i];
+        if (!r || !inRect(r.x, r.y + r.h / 2, this.listRect) || !ges.held(r)) continue;
+        this.m.focus = 'content'; this.sub = 'list'; this.li = i;
+        this.openActions(this.list[i], r);
+        return;
+      }
+    }
     // 포인터
     for (let i = 0; i < this.slotRects.length; i++) {
       const r = this.slotRects[i];
@@ -199,6 +228,7 @@ export class EquipTab extends Tab {
       const y = A.y + top + i * rowH, x = A.x + 10, w = LW - 20;
       const r = { x, y, w, h: rowH - gapS };
       this.slotRects.push(r);
+      this.m.ges?.zone?.(r, 'list', { src: 'equip.slot' });
       const sel = i === this.si;
       if (sel) selBar(ctx, x, y, w, r.h, t, { dim: !focused || this.sub === 'list' });
       const inst = D.findItem(st, hero.equip?.[slot]);
@@ -263,7 +293,8 @@ export class EquipTab extends Tab {
     this.listRect = LR;
     const RH = input_rowH();
     this.sc.setMax(this.list.length * RH - LR.h);
-    if (this.sub === 'list') this.sc.ensure(this.li * RH, this.li * RH + RH, LR.h);
+    // P-01: 키·패드로 고른 줄만 따라간다 (끌거나 휠로 스크롤한 위치는 유지)
+    if (this.sub === 'list' && (typeof this.sc.shouldFollow !== 'function' || this.sc.shouldFollow(this.li))) this.sc.ensure(this.li * RH, this.li * RH + RH, LR.h);
     clipBegin(ctx, LR);
     this.rowRects.length = 0;
     if (!this.list.length) text(ctx, '이 칸에 맞는 장비를 가지고 있지 않습니다', LR.x + LR.w / 2, LR.y + 40, { size: 13, align: 'center', color: PAL.faint });
@@ -271,6 +302,7 @@ export class EquipTab extends Tab {
       const ry = LR.y + i * RH - this.sc.y;
       const r = { x: LR.x, y: ry, w: LR.w - 8, h: RH - 3 };
       this.rowRects[i] = r;
+      this.m.ges?.zone?.(r, 'list', { clip: LR, src: 'equip.row' });
       if (ry > LR.y + LR.h || ry + RH < LR.y) return;
       const sel = this.sub === 'list' && i === this.li;
       if (sel) selBar(ctx, r.x, r.y, r.w, r.h, t, { dim: !focused });

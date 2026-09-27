@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>적 갤러리 D</title>
+<link rel="icon" href="data:,">
+<style>
+  html, body { margin: 0; background: #07030a; color: #e8dcc0; font: 12px "Noto Sans KR", sans-serif; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script type="module">
+// 적 D 갤러리 (s17–s20, ENEMY-P2-D-ART): 모든 적 × 모든 자세 (AI_D / 재사용 AI 의 e.anim 계약) + 투사체·장판 견본.
+//   tools/gallery_enemies_d.html?ids=gale_knight,rot_treant&zoom=2&t=1.3&vec=1&proj=0&bg=bg/s17_sky&td=2
+//   ids: 표시할 적 (기본: 전체) · zoom: 확대 · t: 고정 시간 (없으면 실시간) · vec=1: 벡터 대체 그림만 (채색 끔)
+//   proj=0: 투사체/장판 견본 숨김 · bg: 배경 그림 (assets/<bg>.webp; 기본은 적의 스테이지 배경) · td: 채색 리그 텍셀 밀도 · flip=1: 왼쪽 보기
+// 채색 퍼핏이 등록돼 있으면(src/render/painted/reg/enemy-p2-d-art.js) render/enemies.js 의 drawEnemy 로 채색 그림이, 없으면 벡터 대체 그림이 보인다.
+import { ENEMIES_D } from '../src/data/enemies_d.js';
+import { PROJ_D, ZONE_D } from '../src/render/enemies_d.js';
+import { drawEnemy } from '../src/render/enemies.js';
+import { rigStats } from '../src/render/painted/enemy_kit.js';
+import { game } from '../src/core/game.js';
+
+const q = new URLSearchParams(location.search);
+const ids = (q.get('ids') || Object.keys(ENEMIES_D).join(',')).split(',').filter((id) => ENEMIES_D[id]);
+const zoom = Number(q.get('zoom') || 1);
+const fixedT = q.has('t') ? Number(q.get('t')) : null;
+const showProj = q.get('proj') !== '0';
+const flip = q.get('flip') === '1';
+if (q.get('vec') === '1') globalThis.__paintedEnemies = false;
+game.scale = Number(q.get('td') ?? 2);                   // 채색 리그 텍셀 밀도 (게임 캔버스 배율 대신)
+
+const HIT = { flashT: 0.11, stun: 0.2 };
+const DIE = { dying: 0.18 };
+// 적별 자세 견본: [라벨, 필드]. aimK = 윈드업 진행 (ai_d.js), animT = 자세 시작 뒤 시간 (재사용 AI)
+const CASES = {
+  storm_harpy: [['fly', { anim: 'fly' }], ['fly b', { anim: 'fly', tOff: 0.13 }], ['spread', { anim: 'spread', state: 'spread', animT: 0.3 }], ['spread!', { anim: 'spread', state: 'spread', animT: 0.48 }],
+    ['shoot', { anim: 'shoot', state: 'shoot', animT: 0.1 }], ['aim', { anim: 'aim', state: 'aim', animT: 0.3 }], ['dive', { anim: 'dive', state: 'dive', vx: 380, vy: 420 }], ['hurt', { anim: 'fly', ...HIT }], ['dying', { anim: 'fly', ...DIE }]],
+  gale_knight: [['fly', { anim: 'fly' }], ['fly b', { anim: 'fly', tOff: 0.8 }], ['aim .5', { anim: 'aim', state: 'aim', aimK: 0.5 }], ['aim 1', { anim: 'aim', state: 'aim', aimK: 0.97 }], ['dash', { anim: 'dash', state: 'dash', vx: 820 }],
+    ['slash↑', { anim: 'slash', state: 'slash', aimK: 0.6 }], ['slash', { anim: 'slash', state: 'slash', aimK: 1, stateT: 0.56 }], ['hurt', { anim: 'fly', ...HIT }], ['dying', { anim: 'fly', ...DIE }]],
+  thunder_roc: [['fly', { anim: 'fly' }], ['fly b', { anim: 'fly', tOff: 0.7 }], ['call .5', { anim: 'call', state: 'cast', aimK: 0.5 }], ['call 1', { anim: 'call', state: 'cast', aimK: 0.97 }], ['screech', { anim: 'screech', state: 'windup', aimK: 0.6 }],
+    ['swoop', { anim: 'swoop', state: 'dive', vx: 600, vy: 300 }], ['hurt', { anim: 'fly', ...HIT }], ['dying', { anim: 'fly', ...DIE }]],
+  cloud_jelly: [['drift', { anim: 'drift' }], ['drift b', { anim: 'drift', tOff: 0.9, vx: 40 }], ['charge .4', { anim: 'charge', state: 'charge', aimK: 0.4 }], ['charge .9', { anim: 'charge', state: 'charge', aimK: 0.9 }],
+    ['shock', { anim: 'shock', state: 'shock', stateT: 0.1 }], ['hurt', { anim: 'drift', ...HIT }], ['dying', { anim: 'drift', ...DIE }]],
+  puppeteer: [['float', { anim: 'float', puppets: 2 }], ['float b', { anim: 'float', tOff: 1.1 }], ['summon .5', { anim: 'summon', state: 'cast', aimK: 0.5 }], ['summon 1', { anim: 'summon', state: 'cast', aimK: 0.97, puppets: 1 }],
+    ['throw .5', { anim: 'throw', state: 'throw', aimK: 0.5 }], ['throw', { anim: 'throw', state: 'throw', aimK: 1, stateT: 0.55 }], ['hurt', { anim: 'float', ...HIT }], ['dying', { anim: 'float', ...DIE }]],
+  faceless: [['idle', { anim: 'idle' }], ['creep a', { anim: 'creep', state: 'creep', vx: 170 }], ['creep b', { anim: 'creep', state: 'creep', vx: 170, tOff: 0.28 }], ['freeze', { anim: 'freeze', state: 'freeze', watched: true }],
+    ['grab .5', { anim: 'grab', state: 'windup', aimK: 0.5 }], ['grab', { anim: 'grab', state: 'windup', aimK: 1, stateT: 0.4 }], ['appear', { anim: 'appear', state: 'appear', alpha: 0.5, stateT: 0.2 }], ['hurt', { anim: 'idle', ...HIT }], ['dying', { anim: 'idle', ...DIE }]],
+  dream_eater: [['float', { anim: 'float' }], ['float b', { anim: 'float', tOff: 1.3 }], ['cast', { anim: 'cast', state: 'cast', animT: 0.5 }], ['rift', { anim: 'rift', state: 'rift', animT: 0.45 }], ['claw↑', { anim: 'claw', state: 'claw', animT: 0.3 }],
+    ['claw', { anim: 'claw', state: 'claw', animT: 0.46 }], ['blink', { anim: 'blink', state: 'blink', animT: 0.15, alpha: 0.5 }], ['hurt', { anim: 'float', ...HIT }], ['dying', { anim: 'float', ...DIE }]],
+  rot_treant: [['idle', { anim: 'idle' }], ['walk a', { anim: 'walk', vx: 32 }], ['walk b', { anim: 'walk', vx: 32, tOff: 0.5 }], ['plant .6', { anim: 'plant', state: 'cast', aimK: 0.6 }], ['plant 1', { anim: 'plant', state: 'cast', aimK: 1, stateT: 0.9 }],
+    ['swing .7', { anim: 'swing', state: 'swing', aimK: 0.7 }], ['swing', { anim: 'swing', state: 'swing', aimK: 1, stateT: 0.66 }], ['spores', { anim: 'idle', sporeAt: -0.15 }], ['dmg 50%', { anim: 'idle', hpK: 0.5 }], ['dmg 20%', { anim: 'idle', hpK: 0.2 }], ['hurt', { anim: 'walk', ...HIT }], ['dying', { anim: 'idle', ...DIE }]],
+  plague_moth: [['fly', { anim: 'fly' }], ['fly b', { anim: 'fly', tOff: 0.04 }], ['fly c', { anim: 'fly', tOff: 0.09, vx: 120 }], ['dust .5', { anim: 'dust', state: 'cast', aimK: 0.5 }], ['dust 1', { anim: 'dust', state: 'cast', aimK: 1, stateT: 0.6 }], ['hurt', { anim: 'fly', ...HIT }], ['dying', { anim: 'fly', ...DIE }]],
+  fungal_husk: [['rise .3', { anim: 'rise', state: 'rise', animT: 0.27, stateT: 0.27 }], ['rise .7', { anim: 'rise', state: 'rise', animT: 0.63, stateT: 0.63 }], ['idle', { anim: 'idle', state: 'walk' }], ['walk a', { anim: 'walk', state: 'walk', vx: 50 }], ['walk b', { anim: 'walk', state: 'walk', vx: 50, tOff: 0.26 }],
+    ['wind-up', { anim: 'attack', state: 'attack', animT: 0.25 }], ['strike', { anim: 'attack', state: 'attack', animT: 0.4 }], ['hurt', { anim: 'walk', state: 'walk', ...HIT }], ['dying', { anim: 'walk', state: 'walk', ...DIE }]],
+  void_herald: [['float', { anim: 'float' }], ['float b', { anim: 'float', tOff: 1.4 }], ['aim .4', { anim: 'aim', state: 'aim', aimK: 0.4, aimA: 0.35 }], ['aim lock', { anim: 'aim', state: 'aim', aimK: 0.9, aimA: -0.3, lock: true }], ['fire', { anim: 'fire', state: 'fire', aimA: 0.1, stateT: 0.1 }],
+    ['raise .5', { anim: 'raise', state: 'cast', aimK: 0.5 }], ['raise 1', { anim: 'raise', state: 'cast', aimK: 1 }], ['blink', { anim: 'blink', state: 'blink', alpha: 0.4, stateT: 0.1 }], ['hurt', { anim: 'float', ...HIT }], ['dying', { anim: 'float', ...DIE }]],
+  nihil_spawn: [['idle', { anim: 'idle' }], ['walk', { anim: 'walk', vx: 80 }], ['swell .3', { anim: 'swell', state: 'swell', animT: 0.3 }], ['swell .55', { anim: 'swell', state: 'swell', animT: 0.56 }], ['leap', { anim: 'leap', state: 'leap', vy: -500, onGround: false }], ['hurt', { anim: 'idle', ...HIT }], ['dying', { anim: 'idle', ...DIE }]],
+};
+const STAGE_BG = { s17: 'bg/s17_sky', s18: 'bg/s18_nightmare', s19: 'bg/s19_blight', s20: 'bg/s20_void' };
+const stageOf = (id) => ({ storm_harpy: 's17', gale_knight: 's17', thunder_roc: 's17', cloud_jelly: 's17', puppeteer: 's18', faceless: 's18', dream_eater: 's18', rot_treant: 's19', plague_moth: 's19', fungal_husk: 's19', void_herald: 's20', nihil_spawn: 's20' })[id] ?? 's17';
+const bgs = {};
+for (const s of Object.keys(STAGE_BG)) { const im = new Image(); im.onload = () => { if (fixedT != null) requestAnimationFrame(frame); }; im.src = `../assets/${q.get('bg') ?? STAGE_BG[s]}.webp`; bgs[s] = im; }
+
+const LABEL = 118, CW = 118 * zoom, CH = 150 * zoom;
+const cols = Math.max(...ids.map((id) => (CASES[id] ?? []).length));
+const PROJ_H = showProj ? 390 * zoom : 0;
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+cv.width = LABEL + cols * CW + 10; cv.height = ids.length * CH + PROJ_H + 10;
+
+function mkEnt(id, f) {
+  const d = ENEMIES_D[id];
+  return {
+    def: d, id, t: 0, anim: 'idle', animT: 0.2, state: f.state ?? f.anim ?? 'idle', stateT: 0.2, flashT: 0, stun: 0, dying: 0, params: { ...(d.aiParams || {}) },
+    facing: flip ? -1 : 1, scale: 1, elite: false, vx: 0, vy: 0, alpha: 1, onGround: !d.flying, hp: 1, stats: { maxHp: 1 }, aggro: 1,
+    w: d.size.w, h: d.size.h, cx: 0, bottom: 0, x: 0, y: 0, ...f, puppets: [], nPup: f.puppets ?? 0,
+  };
+}
+const rows = ids.map((id) => ({ id, cases: (CASES[id] ?? [['idle', { anim: 'idle' }]]).map(([label, f]) => ({ label, f, e: mkEnt(id, f) })) }));
+const T0 = performance.now();
+
+function frame() {
+  const T = fixedT ?? (performance.now() - T0) / 1000;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = '#07030a'; ctx.fillRect(0, 0, cv.width, cv.height);
+  rows.forEach((r, ri) => {
+    const y0 = 5 + ri * CH, s = stageOf(r.id), bg = bgs[s], d = ENEMIES_D[r.id];
+    if (bg.complete && bg.naturalWidth) { ctx.save(); ctx.beginPath(); ctx.rect(0, y0, cv.width, CH - 2); ctx.clip(); ctx.globalAlpha = 0.75; const hh = cv.width * bg.naturalHeight / bg.naturalWidth; ctx.drawImage(bg, 0, y0 + CH / 2 - hh * 0.55, cv.width, hh); ctx.restore(); }
+    ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(0, y0, LABEL - 4, CH - 2);
+    ctx.fillStyle = '#e8c872'; ctx.font = '12px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText(r.id, 6, y0 + 16); ctx.fillText(d.name, 6, y0 + 32);
+    ctx.fillStyle = '#9a8a9a'; ctx.fillText(`${d.size.w}×${d.size.h} · ${s}`, 6, y0 + 48); ctx.fillText(`ai ${d.ai}`, 6, y0 + 64);
+    r.cases.forEach((c, ci) => {
+      const e = c.e, f = c.f, x = LABEL + ci * CW + CW / 2;
+      const fit = Math.min(1, (CW * 0.92) / (d.size.w * 1.5) / zoom, (CH * 0.72) / (d.size.h * 1.25) / zoom) * zoom;
+      const gy = y0 + CH - 18 * zoom;
+      e.t = T + (f.tOff ?? 0);
+      if (f.animT === undefined && fixedT == null) e.animT = e.t % 1.5;
+      if (f.hpK) { e.hp = f.hpK; e.stats.maxHp = 1; }
+      if (f.sporeAt != null) e.sporeAt = e.t + f.sporeAt;
+      ctx.fillStyle = '#b8a8b8'; ctx.textAlign = 'center'; ctx.font = '11px sans-serif'; ctx.fillText(c.label, x, y0 + 13);
+      ctx.strokeStyle = 'rgba(200,160,120,0.3)'; ctx.beginPath(); ctx.moveTo(x - CW * 0.45, gy); ctx.lineTo(x + CW * 0.45, gy); ctx.stroke();
+      ctx.save();
+      ctx.translate(x, d.flying ? gy - 12 * zoom : gy); ctx.scale(fit, fit);
+      e.cx = 0; e.bottom = 0; e.x = -e.w / 2; e.y = -e.h;
+      e.puppets.length = 0;
+      for (let k = 0; k < e.nPup; k++) e.puppets.push({ cx: (k ? 46 : -40) * (flip ? -1 : 1), y: 150 - 62, dead: false });
+      ctx.globalAlpha = e.alpha ?? 1;
+      try { drawEnemy(ctx, e, null); } catch (err) { console.error(r.id, c.label, err); ctx.fillStyle = '#f00'; ctx.fillRect(-10, -30, 20, 30); }
+      ctx.restore();
+    });
+  });
+  if (showProj) drawSamples(T, 5 + rows.length * CH);
+  const rs = rigStats();
+  window.__galleryReady = true;
+  window.__rigs = rs;
+  if (fixedT == null) requestAnimationFrame(frame);
+  else if (Object.values(rs).some((x) => !x.ready && !x.failed)) setTimeout(frame, 150);
+}
+
+function drawSamples(T, y0) {
+  ctx.fillStyle = '#e8c872'; ctx.textAlign = 'left'; ctx.font = '12px sans-serif'; ctx.fillText('PROJ_D / ZONE_D (위: 경고 · 아래: 발동)', 6, y0 + 16);
+  let x = 60;
+  for (const k of Object.keys(PROJ_D)) {
+    const p = { t: T, vx: k === 'void_star' ? 0 : 520, vy: k === 'void_star' ? 520 : 0, w: k === 'gale_crescent' ? 60 : 14, h: k === 'gale_crescent' ? 90 : 6, life: 1, maxLife: 1.4, cx: 0, cy: 0 };
+    ctx.save(); ctx.translate(x, y0 + 80 * zoom); ctx.scale(zoom, zoom); try { PROJ_D[k](ctx, p, null); } catch (err) { console.error(k, err); } ctx.restore();
+    ctx.fillStyle = '#ccc'; ctx.textAlign = 'center'; ctx.fillText(k, x, y0 + 140 * zoom); x += 120 * zoom;
+  }
+  // 장판: 월드 좌표 렌더러 → 가짜 존. 각 장판을 경고(윗줄)·발동(아랫줄) 두 상태로 그린다 (고정 시간에서도 보이게)
+  const mkZ = (w, h, data, t, delay, life, gy) => {
+    const z = { x: 0, y: gy - h, w, h, t, delay, maxLife: life, life: Math.max(0.01, delay + life - t), data,
+      get active() { return this.t >= this.delay; }, get warnK() { return Math.min(1, this.t / this.delay); }, get liveK() { return this.t < this.delay ? 0 : Math.min(1, (this.t - this.delay) / this.maxLife); } };
+    z.cx = w / 2; z.cy = gy - h / 2; z.bottom = gy;
+    return z;
+  };
+  const spec = {   // key: [w, h, data(gy, live), delay, life]
+    lance_warn: [160, 40, (gy) => ({ x0: -80, y: gy - 40, len: 160, dir: 1, k: 0.85 }), 1e9, 1],
+    roc_bolt: [50, 190, (gy, live) => ({ x: 0, top: gy - 190, bottom: gy, seed: 3, live, k: 0.8 }), 0.9, 0.35],
+    jelly_shock: [120, 120, (gy, live) => ({ x: 0, y: gy - 62, r: 60, warn: !live, k: 0.8 }), 0.6, 0.22],
+    root_spike: [70, 110, (gy) => ({ x: 0, top: gy, seed: 5 }), 0.5, 0.45],
+    spore_cloud: [130, 90, () => ({ seed: 7 }), 0.2, 3],
+    spore_swell: [80, 60, (gy) => ({ x: 0, y: gy }), 0.3, 0.05],
+    prism_beam: [170, 60, (gy, live) => ({ x0: -85, y0: gy - 70, x1: 85, y1: gy - 20, a: Math.atan2(50, 170), fire: live, k: 0.85, lock: true }), 0.9, 0.4],
+    star_mark: [44, 14, (gy) => ({ x: 0, y: gy }), 0.6, 0.1],
+    summon_mark: [80, 90, (gy) => ({ x: 0, y: gy, k: 0.8, fx: -50, fy: gy - 110 }), 0.8, 0.2],
+  };
+  let px = 40;
+  for (const [k, [w, h, mk, delay, life]] of Object.entries(spec)) {
+    const cw = Math.max(w, 70) + 30, cx = px + cw / 2;
+    for (const row of [0, 1]) {
+      const gy = y0 + 200 * zoom + row * 150 * zoom, live = row === 1;
+      const t = live ? (delay >= 1e9 ? 0.5 : delay + life * 0.3) : Math.min(delay * 0.7, 0.7);
+      const z = mkZ(w, h, mk(gy, live), t, delay, life, gy);
+      if (k === 'spore_cloud') { z.x = -w / 2; }
+      ctx.save(); ctx.translate(cx, 0);
+      try { ZONE_D[k](ctx, z, null); } catch (err) { console.error(k, err); }
+      ctx.restore();
+    }
+    ctx.fillStyle = '#ccc'; ctx.textAlign = 'center'; ctx.fillText(k, cx, y0 + 370 * zoom);
+    px += cw + 10;
+  }
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

@@ -333,7 +333,7 @@ export class HeroView {
       const z = taps.at?.(x, y, this);
       if (z && typeof z.id === 'string' && z.id.startsWith('tt:')) return z.id;
     } catch { /* 등록부 없음 */ }
-    for (const b of this.btns) if (Math.hypot(x - b.x, y - b.y) <= b.r + 2) return b.id;
+    for (const b of this.btns) { const h = (b.hs ?? b.r) + 2; if (Math.abs(x - b.x) <= h && Math.abs(y - b.y) <= h) return b.id; }
     return null;
   }
 
@@ -458,7 +458,11 @@ export class HeroView {
       const first = this._full === null;
       this._full = S.full;
       if (first) { this.yaw = this.yawGoal = this.userYaw = this.defaultYaw; }
-      else if (!this.touched && !this.seq && !this.pending) { this.userYaw = this.defaultYaw; if (this.mode !== 'drag') this.tweenTo(this.userYaw, 0.4, { user: true }); }
+      else if (!this.touched) {
+        // 시연 중이면 끝난 뒤 돌아갈 각만 바꾼다 (시연이 끝나면 userYaw 로 돈다)
+        this.userYaw = this.defaultYaw;
+        if (!this.seq && !this.pending && this.mode !== 'drag') this.tweenTo(this.userYaw, 0.4, { user: true });
+      }
       else if (!S.full && this.mode === 'idle') this.settleTo(this.snapOf(this.yaw));
     }
     this.idleT += dt;
@@ -556,8 +560,10 @@ export class HeroView {
         if (this.autoSpin) { const w = b.r * 0.22, h = b.r * 0.9; ctx.fillRect(b.x - w * 1.9, b.y - h / 2, w * 1.4, h); ctx.fillRect(b.x + w * 0.5, b.y - h / 2, w * 1.4, h); }
         else { const s = b.r * 0.5; ctx.beginPath(); ctx.moveTo(b.x - s * 0.7, b.y - s); ctx.lineTo(b.x + s, b.y); ctx.lineTo(b.x - s * 0.7, b.y + s); ctx.closePath(); ctx.fill(); }
       } else orbitArrow(ctx, b.x, b.y + 1, b.r * 0.62, b.id === 'tt:L' ? -1 : 1, hot ? PAL.goldHi : PAL.bone);
-      const rect = { x: b.x - b.r, y: b.y - b.r, w: b.r * 2, h: b.r * 2 };
-      if (this.btnA > 0.5) { try { taps.add?.(b.id, rect, { kind: 'icon', owner: this, src: 'turntable' }); } catch { /* 등록부 없음 */ } }
+      // 누르는 영역: 터치에선 44 CSS px 정사각형 (보이는 원은 작아도 된다 — §6.3 icon), 마우스는 원 크기
+      b.hs = Math.max(b.r, touch ? 22 / cssPerUi : 0);
+      const rect = { x: b.x - b.hs, y: b.y - b.hs, w: b.hs * 2, h: b.hs * 2 };
+      if (this.btnA > 0.5) { try { taps.add?.(b.id, rect, { kind: 'icon', owner: this, src: 'turntable', slop: 0 }); } catch { /* 등록부 없음 */ } }
       this.btns.push(b);
     }
     ctx.restore();

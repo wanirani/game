@@ -16,6 +16,7 @@
 import { text, font, FONT } from '../../core/ui.js';
 import { audio } from '../../core/audio.js';
 import { input } from '../../core/input.js';
+import { assets } from '../../core/assets.js';
 import { TAU, clamp } from '../../core/math.js';
 import * as HERO from '../../render/hero.js';
 import { Tab } from './base.js';
@@ -31,6 +32,7 @@ import {
 } from '../../data/companions.js';
 import * as CS from '../../game/companion_state.js';
 import { drawCompanionIcon } from '../../render/companion_hud.js';
+import { playCry } from '../../core/audio_companions.js';
 import { CompanionFigure } from '../companion_join.js';
 
 const STRIP_H = 54, SEG_H = 40, ROW_H = 52, BTN_H = 44, GAP = 10;
@@ -92,8 +94,15 @@ export class CompanionsTab extends Tab {
       if (first) this.select(first, false);
     }
     this.sc.follow(this.kind + this.sel[this.kind]);
+    // 보유한 동료의 초상화를 미리 받는다 (목록 아이콘·편성 칸; 한 장 ≈ 70 KB, 이미 받은 것은 캐시)
+    try { assets.preload?.(this.owned.map((id) => companionDef(id)?.portrait).filter(Boolean)); } catch { /* 아이콘은 get() 이 다시 받는다 */ }
   }
-  free() { this.stage?.free?.(); this.fig = null; if (this.silo?.cv) { this.silo.cv.width = this.silo.cv.height = 1; } this.silo = null; }
+  free() {
+    this.stage?.free?.(); this.fig = null;
+    if (this.silo?.cv) { this.silo.cv.width = this.silo.cv.height = 1; }
+    this.silo = null;
+    if (this.silIcons) { for (const c of this.silIcons.values()) c.width = c.height = 1; this.silIcons.clear(); }
+  }
   /** 메뉴 가로 밀기(탭 넘기기)를 막을 곳: 없음 (미리보기는 탭만 받는다) */
   noSwipe() { return false; }
 
@@ -165,7 +174,8 @@ export class CompanionsTab extends Tab {
       else r = slot === null ? CS.equipGuardian(st, hero, from, null) : CS.equipGuardian(st, hero, slot, id);
     } catch (e) { console.warn('[companions tab] equip', e); r = null; }
     if (!r?.ok) { audio.sfx('menu_cancel'); if (r?.msg) this.m.notify(r.msg, PAL.bad); return false; }
-    audio.sfx(slot === null ? 'menu_cancel' : 'equip');
+    if (slot === null) audio.sfx('menu_cancel');
+    else { audio.sfx('menu_ok'); try { playCry(def, { vol: 0.55, delay: 0.08 }); } catch { /* 울음소리 없음 */ } }
     this.m.changed();
     try { this.world?.companions?.sync?.(); } catch (e) { console.warn('[companions tab] sync', e); }
     if (r.msg) this.m.notify(r.msg, slot === null ? PAL.bone : PAL.goldHi);
@@ -179,7 +189,7 @@ export class CompanionsTab extends Tab {
     c.autoSkill = c.autoSkill === null || c.autoSkill === undefined ? true : c.autoSkill === true ? false : null;
     audio.sfx('menu_move');
     const v = c.autoSkill;
-    this.m.notify(v === true ? '자동 스킬: 켬' : v === false ? '자동 스킬: 끔' : `자동 스킬: 기기 기본 (${input.touchMode ? '터치라서 켬' : '끔'})`, PAL.goldHi);
+    this.m.notify(v === true ? '자동 스킬: 켬' : v === false ? '자동 스킬: 끔' : '자동 스킬: 기기 기본 (터치 화면에서만 켬)', PAL.goldHi);
     this.m.changed();
   }
   autoLabel() {
@@ -471,7 +481,8 @@ export class CompanionsTab extends Tab {
       if (isSel) selBar(ctx, r.x, r.y, r.w, r.h, t, { dim: !(focused && this.area === 'list') });
       else if (ges.over(r) && !r.thid) { ctx.fillStyle = 'rgba(255,220,160,0.05)'; ctx.fillRect(r.x, r.y, r.w, r.h); }
       const ix = r.x + 30, iy = r.y + r.h / 2;
-      drawCompanionIcon(ctx, id, ix, iy, 20, { locked: !own, ring: own ? (d.color) : undefined });
+      if (own) drawCompanionIcon(ctx, id, ix, iy, 20, { ring: d.color });
+      else this.drawLockedIcon(ctx, id, ix, iy, 20);
       const tx = r.x + 58, right = r.x + r.w - 8;
       if (own) {
         const e = CS.ownedEntry(this.state, id);
@@ -592,6 +603,38 @@ export class CompanionsTab extends Tab {
       text(ctx, NAMES[an] ?? an, x + 10, y + h - 8, { size: 12, weight: 700, color: PAL.dim, ow: 2, maxWidth: w - 20 });
     }
     ctx.strokeStyle = 'rgba(200,160,90,0.35)'; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  }
+  /** 잠긴 동료 아이콘: 흐린 보랏빛 원판 위의 검은 실루엣 (크기별로 한 번만 굽는다) */
+  drawLockedIcon(ctx, id, x, y, r) {
+    const k = Math.max(1, Math.min(3, HV.pxScale ? HV.pxScale(ctx) : 1));
+    const px = Math.max(8, Math.ceil(r * 2 * k));
+    const key = id + '|' + px;
+    this.silIcons ??= new Map();
+    let c = this.silIcons.get(key);
+    if (!c) {
+      c = document.createElement('canvas'); c.width = c.height = px;
+      const g = c.getContext('2d');
+      const bg = g.createRadialGradient(px / 2, px * 0.4, 1, px / 2, px / 2, px / 2);
+      bg.addColorStop(0, '#5a4668'); bg.addColorStop(1, '#1a1020');
+      g.fillStyle = bg; g.beginPath(); g.arc(px / 2, px / 2, px / 2, 0, TAU); g.fill();
+      // 실루엣: 게임 속 그림을 따로 그려 'source-in' 으로 검게 칠한 뒤 원판 위에
+      const s = document.createElement('canvas'); s.width = s.height = px;
+      const sg = s.getContext('2d');
+      const fig = new CompanionFigure(id);
+      fig.update(0.3, 'idle');
+      const mount = fig.kind === 'mount';
+      const fw = mount ? 150 : Math.max(fig.def?.size?.w ?? 24, fig.height) * 1.5, fh = mount ? fig.height + 10 : fig.height * 1.3;
+      const sc = Math.min((px * 0.78) / fh, (px * 0.86) / fw);
+      fig.draw(sg, px / 2, mount ? px * 0.86 : px / 2 + (fig.height * sc) / 2, sc, { facing: 1 });
+      sg.globalCompositeOperation = 'source-in'; sg.fillStyle = '#07040a'; sg.fillRect(0, 0, px, px);
+      g.save(); g.beginPath(); g.arc(px / 2, px / 2, px / 2 - 1, 0, TAU); g.clip(); g.drawImage(s, 0, 0); g.restore();
+      s.width = s.height = 1;
+      if (this.silIcons.size > 40) { for (const v of this.silIcons.values()) v.width = v.height = 1; this.silIcons.clear(); }
+      this.silIcons.set(key, c);
+    }
+    ctx.drawImage(c, 0, 0, c.width, c.height, x - r, y - r, r * 2, r * 2);
+    ctx.strokeStyle = 'rgba(110,85,48,0.75)'; ctx.lineWidth = Math.max(1, r * 0.09);
+    ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.stroke();
   }
   /** 잠긴 동료의 검은 실루엣 (게임 속 그림을 오프스크린에 한 번 그려 'source-in' 으로 칠한다 — ctx.filter 없이 모든 브라우저) */
   drawSilhouette(ctx, d, x, y, w, h, fx, fy, s) {

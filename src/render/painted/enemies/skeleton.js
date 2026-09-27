@@ -74,7 +74,7 @@ export function layoutSkel(e, q, opt = SWORD) {
     bow = place('bow', bgx, bgy, opt.bowRot - bp.ang, 'base', opt.bowSx ?? 1, 1, 'grip');
   }
   place('torso', lx, ly, trot);
-  if (opt.sack && K.part('sack')) place('sack', lx - 9, ly + 4 + Math.sin((e.t ?? 0) * 9) * (q.walking ? 0.8 : 0.2), 0.15 + q.lean * 0.2 + (q.walking ? Math.sin((e.t ?? 0) * 9) * 0.08 : 0), 'base');
+  if (opt.sack && K.part('sack')) place('sack', lx - 8, ly - 3 + Math.sin((e.t ?? 0) * 9) * (q.walking ? 0.8 : 0.2), 0.15 + q.lean * 0.2 + (q.walking ? Math.sin((e.t ?? 0) * 9) * 0.08 : 0), 'base');
   // front leg
   b = bone('thigh', sx0 + 1.5, hipY, dirOf(q.hipF));
   bone('shin', b[0], b[1], dirOf(q.hipF + q.knF));

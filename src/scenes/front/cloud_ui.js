@@ -113,7 +113,7 @@ export function drawSummaryCard(ctx, r, sum, { title, sub = null, newer = false,
     return;
   }
   const ch = CHARACTERS[sum.charId];
-  const pr = { x: r.x + 14, y: r.y + 40, w: 78, h: r.h - 56 };
+  const pr = { x: r.x + 14, y: r.y + 40, w: r.w < 300 ? 64 : 78, h: r.h - 56 };
   portraitIn(ctx, assets.get(ch?.portrait), pr, { zoom: 1.5, fy: 0.12 });
   ctx.strokeStyle = rgba(accent, 0.7); ctx.lineWidth = 1.2; ctx.strokeRect(pr.x + 0.5, pr.y + 0.5, pr.w - 1, pr.h - 1);
   const tx = pr.x + pr.w + 12, maxW = r.x + r.w - 14 - tx;
@@ -124,14 +124,18 @@ export function drawSummaryCard(ctx, r, sum, { title, sub = null, newer = false,
   if (cls) text(ctx, cls, tx + 56, r.y + 80, { size: 12, weight: 700, color: '#d8c8b8', ow: 2, maxWidth: maxW - 56 });
   const rows = [
     ['진행', chapterText(sum.chapter)],
-    ['플레이 시간', fmtPlay(sum.playTime ?? 0)],
     ['저장 시각', fmtDate(sum.savedAt ?? sum.clientSavedAt)],
+    ['플레이 시간', fmtPlay(sum.playTime ?? 0)],
   ];
   if (diff) rows.push(['난이도', diff.name]);
+  // 카드가 낮으면 (휴대폰 UI 배율) 줄 간격을 줄이고, 그래도 모자라면 뒤쪽 줄(난이도·플레이 시간)부터 뺀다
+  const y0 = r.y + 102, room = r.h - 102 - 8;
+  while (rows.length > 1 && room / rows.length < 15) rows.pop();
+  const pitch = Math.min(20, room / rows.length);
   rows.forEach(([k, v], i) => {
-    const yy = r.y + 104 + i * 20;
+    const yy = y0 + i * pitch;
     text(ctx, k, tx, yy, { size: 12, weight: 600, color: DIM, ow: 2 });
-    text(ctx, v, r.x + r.w - 14, yy, { size: 12, align: 'right', weight: 800, color: k === '난이도' ? diff.color : BONE, ow: 2 });
+    text(ctx, v, r.x + r.w - 14, yy, { size: 12, align: 'right', weight: 800, color: k === '난이도' ? diff.color : BONE, ow: 2, maxWidth: Math.max(40, r.x + r.w - 14 - tx - 72) });
   });
 }
 
@@ -147,21 +151,31 @@ export function spinner(ctx, x, y, r, t, color = GOLD) {
 }
 
 // ───────────────────────── 충돌 선택 ─────────────────────────
+const RELOGIN = '로그인이 만료되었습니다. 계정 화면에서 다시 로그인해 주세요.';
 export class CloudConflictScene extends Scene {
-  constructor(g) { super(g); this.opaque = false; this.hideToasts = true; }
+  constructor(g) { super(g); this.opaque = false; this.hideToasts = true; this.uiScale = true; this.hidePad = true; }
   enter({ slot = 1, mode = 'conflict', onDone } = {}) {
     Object.assign(this, { slot, mode, onDone });
     const raw = saves.read(slot);
     this.local = raw ? { ...summarize(raw), savedAt: raw.savedAt } : null;
     const c = cloud.view[slot]?.cloud;
     this.remote = c && !c.empty && c.summary ? { ...c.summary, savedAt: c.summary.clientSavedAt ?? c.savedAt, serverAt: c.savedAt } : null;
-    this.btns = mode === 'download' ? [['down', '클라우드 기록 받기'], ['cancel', '취소']]
+    this.busy = false; this.msg = null; this.done = false;
+    let btns = mode === 'download' ? [['down', '클라우드 기록 받기'], ['cancel', '취소']]
       : mode === 'upload' ? [['up', '이 기기 기록 올리기'], ['cancel', '취소']]
         : [['down', '클라우드 기록 받기'], ['up', '이 기기 기록 올리기'], ['cancel', '취소']];
-    this.menu = new ListMenu(this.btns.length, { cols: this.btns.length, index: 0 });
-    this.taps = new TapZones();
-    this.busy = false; this.msg = null;
+    if (!cloud.loggedIn) { btns = [['cancel', '닫기']]; this.msg = RELOGIN; }
+    else if (cloud.activeSlot?.() === slot && btns.some((b) => b[0] === 'down')) {
+      // 지금 플레이 중인 슬롯에 받으면 다음 저장이 곧바로 덮어쓴다 (cloud.js 자동 동기화와 같은 규칙)
+      btns = btns.filter((b) => b[0] !== 'down');
+      this.msg = '지금 플레이 중인 슬롯이라 클라우드 기록을 받을 수 없습니다. 타이틀 화면에서 받아 주세요.';
+    }
+    this.setButtons(btns);
     audio.sfx('warning', { vol: 0.45 });
+  }
+  setButtons(btns) {
+    this.btns = btns;
+    this.menu = new ListMenu(btns.length, { cols: btns.length, index: 0 });
   }
   get message() {
     if (this.mode === 'download') return '클라우드 기록을 받으면 이 기기에 있던 이 슬롯의 기록은 사라집니다.';
@@ -169,7 +183,7 @@ export class CloudConflictScene extends Scene {
     return '이 슬롯은 이 기기와 클라우드에서 서로 다르게 진행되었습니다. 남길 기록을 고르세요. 고르지 않은 쪽의 기록은 사라집니다.';
   }
   async run(id) {
-    if (this.busy) return;
+    if (this.busy || this.done) return;
     if (id === 'cancel') { this.close(false); return; }
     this.busy = true; this.msg = null;
     audio.sfx('menu_ok');
@@ -177,8 +191,19 @@ export class CloudConflictScene extends Scene {
     if (this.done) return;
     this.busy = false;
     if (!r.ok) {
-      this.msg = r.message ?? '처리하지 못했습니다.';
       audio.sfx('menu_cancel');
+      if (r.error === 'unauthorized' || r.error === 'logged_out' || !cloud.loggedIn) {
+        // 로그인이 만료됨: 다시 시도해도 소용없으니 닫기만 남긴다
+        this.msg = RELOGIN;
+        this.setButtons([['cancel', '닫기']]);
+      } else if (r.error === 'slot_empty') {
+        // 그 사이 다른 기기에서 클라우드 슬롯을 지웠다 → 받을 것이 없다. 이 기기 기록이 있으면 올리기만 남긴다
+        this.remote = null;
+        this.msg = '그 사이 클라우드의 이 슬롯이 비었습니다. 이 기기 기록을 올리거나 닫아 주세요.';
+        this.setButtons(this.local ? [['up', '이 기기 기록 올리기'], ['cancel', '닫기']] : [['cancel', '닫기']]);
+      } else if (r.error === 'offline' || r.error === 'network' || r.error === 'timeout') {
+        this.msg = `${r.message} 연결되면 다시 눌러 주세요.`;
+      } else this.msg = r.message ?? '처리하지 못했습니다. 잠시 후 다시 시도해 주세요.';
       return;
     }
     audio.sfx('save');
@@ -194,46 +219,66 @@ export class CloudConflictScene extends Scene {
   }
   update(dt) {
     if (this.busy) return;
-    const tap = this.taps.hit();
+    const tap = taps.hit(this);
     if (tap) { this.menu.index = Math.max(0, this.btns.findIndex((b) => b[0] === tap)); this.run(tap); return; }
     const r = this.menu.update(dt);
     if (this.menu.moved) audio.sfx('menu_move');
     if (r === 'confirm') this.run(this.btns[this.menu.index][0]);
     else if (r === 'cancel' || input.pressed('menu')) this.close(false);
   }
+  /** 배치 (UI 좌표): 버튼 ≥ 44 CSS px, 카드는 남는 높이에 맞춘다 */
+  layout() {
+    const g = this.game, W = g.uiW || g.viewW, H = g.uiH || g.viewH;
+    const per = Math.max(0.2, (g.cssScale || 1) * (g.uiK || 1));
+    const bh = clamp(Math.ceil(44 / per), 44, 54);
+    const w = Math.min(780, W - 40), h = Math.min(424, H - 12);
+    const x = Math.round(W / 2 - w / 2), y = Math.round(Math.max(6, H / 2 - h / 2 - 2));
+    const compact = h < 404;
+    const by = y + h - 16 - bh;
+    const cy = y + (compact ? 102 : 116);
+    const ch = clamp(by - 34 - cy, 150, 204);
+    return { W, H, w, h, x, y, bh, by, cy, ch, compact };
+  }
   render(ctx) {
-    const vw = this.game.viewW, vh = this.game.viewH, t = this.game.time;
+    const t = this.game.time, L = this.layout(), { W, H, w, h, x, y } = L;
     const k = ease.outBack(clamp(this.t / 0.22, 0, 1));
-    ctx.fillStyle = `rgba(2,0,4,${0.78 * clamp(this.t / 0.15, 0, 1)})`; ctx.fillRect(0, 0, vw, vh);
-    const w = Math.min(780, vw - 60), h = 420, x = vw / 2 - w / 2, y = vh / 2 - h / 2 - 4;
+    ctx.fillStyle = `rgba(2,0,4,${0.78 * clamp(this.t / 0.15, 0, 1)})`; ctx.fillRect(0, 0, W, H);
     ctx.save();
-    ctx.translate(vw / 2, vh / 2); ctx.scale(0.92 + 0.08 * k, 0.92 + 0.08 * k); ctx.translate(-vw / 2, -vh / 2);
+    // 등장 연출은 그림만 키운다 (탭 영역은 최종 위치로 등록)
+    ctx.translate(W / 2, H / 2); ctx.scale(0.92 + 0.08 * k, 0.92 + 0.08 * k); ctx.translate(-W / 2, -H / 2);
     ctx.globalAlpha = clamp(this.t / 0.15, 0, 1);
     const acc = this.mode === 'conflict' ? '#ff5a6a' : GOLD;
     frame(ctx, x, y, w, h, { accent: acc, glow: 0.8 });
     const title = this.mode === 'conflict' ? '클라우드 기록 충돌' : this.mode === 'download' ? '클라우드 기록 받기' : '클라우드에 올리기';
-    drawCloudIcon(ctx, vw / 2 - 118, y + 33, 30, this.mode === 'conflict' ? 'conflict' : this.mode === 'download' ? 'cloud' : 'local', t);
-    text(ctx, title, vw / 2 + 12, y + 40, { size: 22, align: 'center', weight: 800, family: FONT.title, color: this.mode === 'conflict' ? '#ff9a9a' : '#ffe7a0', ow: 3 });
-    text(ctx, `슬롯 ${this.slot}`, x + 22, y + 28, { size: 12, weight: 800, family: FONT.num, color: GOLD, ow: 2 });
-    ornament(ctx, vw / 2, y + 56, 300, { color: acc });
+    const ty = y + (L.compact ? 34 : 40);
+    drawCloudIcon(ctx, W / 2 - 118, ty - 7, 30, this.mode === 'conflict' ? 'conflict' : this.mode === 'download' ? 'cloud' : 'local', t);
+    text(ctx, title, W / 2 + 12, ty, { size: 22, align: 'center', weight: 800, family: FONT.title, color: this.mode === 'conflict' ? '#ff9a9a' : '#ffe7a0', ow: 3 });
+    text(ctx, `슬롯 ${this.slot}`, x + 22, y + 28, { size: 13, weight: 800, family: FONT.num, color: GOLD, ow: 2 });
+    ornament(ctx, W / 2, ty + 16, 300, { color: acc });
     const lines = wrap(ctx, this.message, w - 60, 14, 500);
-    lines.slice(0, 2).forEach((l, i) => text(ctx, l, vw / 2, y + 82 + i * 20, { size: 14, align: 'center', color: BONE, ow: 2 }));
+    lines.slice(0, 2).forEach((l, i) => text(ctx, l, W / 2, ty + 42 + i * 20, { size: 14, align: 'center', color: BONE, ow: 2 }));
     // 두 카드
-    const cw = (w - 60) / 2, ch = 196, cy = y + 116;
+    const cw = (w - 60) / 2;
     const lt = this.local?.savedAt ?? 0, rt = this.remote?.savedAt ?? 0;
-    drawSummaryCard(ctx, { x: x + 20, y: cy, w: cw, h: ch }, this.local, { title: '이 기기', sub: 'THIS DEVICE', newer: !!this.local && lt > rt, t });
-    drawSummaryCard(ctx, { x: x + 40 + cw, y: cy, w: cw, h: ch }, this.remote, { title: '클라우드', sub: 'CLOUD', newer: !!this.remote && rt > lt, t, accent: '#9fd8ff', empty: '클라우드 기록 없음' });
-    // 버튼
-    const n = this.btns.length, gap = 14, bw = Math.min(210, (w - 40 - (n - 1) * gap) / n), bh = 48;
-    const bx = vw / 2 - (n * bw + (n - 1) * gap) / 2, by = y + h - 72;
-    this.menu.clearHits(); this.taps.clear();
+    drawSummaryCard(ctx, { x: x + 20, y: L.cy, w: cw, h: L.ch }, this.local, { title: '이 기기', sub: 'THIS DEVICE', newer: !!this.local && lt > rt, t });
+    drawSummaryCard(ctx, { x: x + 40 + cw, y: L.cy, w: cw, h: L.ch }, this.remote, { title: '클라우드', sub: 'CLOUD', newer: !!this.remote && rt > lt, t, accent: '#9fd8ff', empty: '클라우드 기록 없음' });
+    ctx.restore();
+    // 버튼 (확대 연출 밖에서 최종 위치로 그리고 등록)
+    const n = this.btns.length, gap = 14, bw = Math.min(220, (w - 40 - (n - 1) * gap) / n);
+    const bx = W / 2 - (n * bw + (n - 1) * gap) / 2;
+    ctx.save();
+    ctx.globalAlpha = clamp(this.t / 0.15, 0, 1);
     this.btns.forEach(([id, label], i) => {
-      const r = { x: bx + i * (bw + gap), y: by, w: bw, h: bh };
-      gbutton(ctx, r, label, { selected: this.menu.index === i && !this.busy, disabled: this.busy, size: 15, accent: id === 'cancel' ? GOLD : acc, zones: this.taps, id });
+      const r = { x: Math.round(bx + i * (bw + gap)), y: L.by, w: Math.round(bw), h: L.bh };
+      gbutton(ctx, r, label, { selected: this.menu.index === i && !this.busy, disabled: this.busy, size: 15, accent: id === 'cancel' ? GOLD : acc });
+      if (!this.busy) taps.add(id, r, { owner: this, kind: 'primary', src: 'cloudConflict' });
     });
-    if (this.busy) { spinner(ctx, vw / 2 - 64, by - 14, 8, t); text(ctx, '처리하는 중…', vw / 2 - 48, by - 9, { size: 13, weight: 700, color: DIM, ow: 2 }); }
-    else if (this.msg) text(ctx, this.msg, vw / 2, by - 10, { size: 13, align: 'center', weight: 700, color: '#ff8a8a', ow: 2, maxWidth: w - 40 });
-    else if (!input.touchMode) text(ctx, '←→ 선택   Z 결정   X 취소', vw / 2, by - 10, { size: 11, align: 'center', color: DIM, ow: 2 });
+    const ly = L.by - 12;
+    if (this.busy) { spinner(ctx, W / 2 - 64, ly - 4, 8, t); text(ctx, '처리하는 중…', W / 2 - 48, ly + 1, { size: 13, weight: 700, color: DIM, ow: 2 }); }
+    else if (this.msg) {
+      const ml = wrap(ctx, this.msg, w - 40, 13, 700).slice(0, 2);
+      ml.forEach((l, i) => text(ctx, l, W / 2, ly - (ml.length - 1 - i) * 17, { size: 13, align: 'center', weight: 700, color: '#ff8a8a', ow: 2 }));
+    } else if (promptMode() !== 'touch') drawHints(ctx, [['dpadH', '선택'], ['confirm', '결정'], ['cancel', '취소']], W / 2, ly, { align: 'center', size: 12, color: DIM });
     ctx.restore();
   }
 }

@@ -112,8 +112,12 @@ try {
   // ── desktop checks on each tab (one session per tab, frozen clock) ────────────────────────────
   for (const tab of TABS) {
     if (!['drag', 'fling', 'keys', 'wheel', 'auto', 'showcase', 'reveal'].some((g) => suite.wants(g))) break;
-    const s = await menuPage('desk', tab);
-    await freeze(s);
+    let s;
+    try { s = await menuPage('desk', tab); await freeze(s); } catch (e) {
+      await suite.check({ id: `desk.${tab}.open`, group: 'errors', title: `${tab}: the menu tab opens` }, async () => { throw e; });
+      await env.closeSessions();
+      continue;
+    }
 
     await suite.group('drag', async () => {
       await rest(s); await step(s, 2);

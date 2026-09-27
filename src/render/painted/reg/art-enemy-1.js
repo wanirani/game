@@ -7,10 +7,16 @@
 // ART-ENEMY-1 (공용 + s01–s03): 기존 5종(bat·ghost·skeleton·armor_knight·gravedigger)은 enemies/index.js 에 이미 등록돼 있다.
 // medusa_spawner 는 보이지 않는 생성기(render 'none')라 그림이 없다.
 import * as golden_bat from '../enemies/golden_bat.js';
+import * as bone_thrower from '../enemies/bone_thrower.js';
+import * as skeleton_archer from '../enemies/skeleton_archer.js';
+import * as axe_armor from '../enemies/axe_armor.js';
 
 export const bosses = {};
 export const enemies = [
   { mod: golden_bat },
+  { mod: bone_thrower },
+  { mod: skeleton_archer },
+  { mod: axe_armor },
 ];
 export const companions = {};
 export const npcs = {};

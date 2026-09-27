@@ -63,13 +63,15 @@ export const SHOTS = {
   },
   chandelier_sheet: {
     tool: 'image_to_image', aspect: '4:3', n: 2, inputs: ['chandelier_ref'], for: ['chandelier_fiend'],
-    prompt: SHEET('crystal chandelier demon', 5, [
-      'the brass hub body with the grotesque fanged face and the crystal drops hanging below it, WITHOUT any candle arms',
-      'one curved brass candle arm alone lying horizontally, the joint to the hub at the left end, the lit dripping candle standing up at the right end',
+    // chosen ref (chandelier_ref_1): a fleshy sac hub with a skull face, black spider legs AND brass candle arms
+    prompt: SHEET('spider chandelier demon', 6, [
+      'the fleshy sac hub body with the skull face, the brass cap on top and the crystal drops hanging below it, WITHOUT any legs and WITHOUT any candle arms',
+      'one long jointed black spider leg alone lying horizontally, the joint to the body at the left end, the sharp claw tip at the right end',
+      'one curved brass candle arm alone lying horizontally, the joint to the body at the left end, the lit dripping red candle standing up at the right end',
       'one long string of cut crystal drops hanging straight down',
       'one large cut crystal prism',
       'a short piece of heavy iron chain hanging straight down',
-    ], 'same side view'),
+    ], 'side view'),
   },
   // ── s15 영겁의 용광로 ────────────────────────────────────────────────────────────────────────────────────────────
   forge_imp_ref: {
@@ -123,12 +125,13 @@ export const SHOTS = {
   },
   bellows_sheet: {
     tool: 'image_to_image', aspect: '4:3', n: 2, inputs: ['bellows_ref'], for: ['bellows'],
+    // chosen ref (bellows_ref_1): stitched leather bag with wooden handles at the back, a board wall at the front, nozzle + idol face
     prompt: SHEET('living bellows', 5, [
-      'the upper oak board with its iron bands and its handle, alone',
-      'the lower oak board with its iron bands, its handle and the four stubby clawed legs, alone',
-      'the bulging leather bag alone, fully inflated',
-      'the iron nozzle with the brass idol face alone',
-      'one stubby clawed iron leg alone',
+      'the bulging stitched leather bag alone with its iron bands, fully inflated, WITHOUT the wooden boards, WITHOUT the nozzle and WITHOUT the legs',
+      'the front wall of scorched wooden boards with the iron bands and the round iron socket, alone',
+      'the iron nozzle pipe with the brass idol face at its end, lying horizontally, alone',
+      'the pair of wooden handles at the back, alone',
+      'one clawed iron leg alone',
     ]),
   },
   // ── s16 가라앉은 성소 ────────────────────────────────────────────────────────────────────────────────────────────

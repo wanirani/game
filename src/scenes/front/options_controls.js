@@ -830,8 +830,9 @@ export class GuidePage {
       const g = gl.get(i) ?? [], m = ml.get(i) ?? [];
       return { g: g.join(' · ') || (m.length ? '' : '—'), m: m.length ? `메뉴 ${m.join('·')}` : '' };
     };
-    const left = [[6, 6], [4, 4], ['dpad', 'dpad'], ['ls', 'ls'], [10, 'ls'], [8, 8]];
-    const right = [[7, 7], [5, 5], [3, 3], [1, 1], [2, 2], [0, 0], [9, 9], [11, 'rs']];
+    // 옆 칸: 어깨·방향·스틱 / 얼굴 버튼(위→오른쪽→아래→왼쪽 순, 설명선이 덜 엇갈리게). SELECT·START 는 몸체 위 가운데
+    const left = [[6, 6], [4, 4], ['dpad', 'dpad'], ['ls', 'ls'], [10, 'ls']];
+    const right = [[7, 7], [5, 5], [3, 3], [1, 1], [0, 0], [2, 2], [11, 'rs']];
     const gh = Math.round(clamp(20 * Math.max(s, 0.85), 16, 22));
     const rowsN = Math.max(left.length, right.length);
     const top = r.y + 10, span = r.h - 70 - 6, step = clamp(span / rowsN, 22, 38);
@@ -863,6 +864,17 @@ export class GuidePage {
       });
     };
     drawSide(left, -1); drawSide(right, 1);
+    const topY = Math.max(r.y + 6, cy - 116 * s);
+    for (const [i, side] of [[8, -1], [9, 1]]) {
+      const spec = bindSpec(i, 'pad', set), w = bindWidth(spec, gh);
+      const L1 = lab(i).g;
+      const [bx, bY] = at(i);
+      const gx = side < 0 ? cx - 14 - w : cx + 14;
+      ctx.strokeStyle = 'rgba(232,200,114,0.3)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(gx + w / 2, topY + gh); ctx.lineTo(bx, bY - gOn / 2); ctx.stroke();
+      drawBind(ctx, spec, gx, topY, gh);
+      text(ctx, L1, side < 0 ? gx - 6 : gx + w + 6, topY + gh / 2 + 5, { size: 13, align: side < 0 ? 'right' : 'left', weight: 800, color: L1 === '—' ? '#6a5e5e' : BONE, ow: 2 });
+    }
     // 아래 두 줄: 배치 · 글리프 세트 / 오른쪽 스틱 · 기타 버튼
     const by = r.y + r.h - 44;
     const preset = PRESET_NAMES[this.game.settings?.ctrlPreset] ?? PRESET_NAMES.arcade;
@@ -912,7 +924,7 @@ export class GuidePage {
       if (sys) ctx.rect(x - rad, y - rad, rad * 2, rad * 2); else ctx.arc(x, y, rad, 0, TAU);
       ctx.fillStyle = b.id === 'ult' ? '#6a4a10' : cmp ? '#233a2a' : sys ? '#2a2230' : '#4a1020'; ctx.fill();
       ctx.strokeStyle = cmp ? '#9fe0a0' : 'rgba(232,200,114,0.7)'; ctx.lineWidth = 1; ctx.stroke();
-      const lb = TOUCH_LABELS[b.id] ?? (b.id === 'fullscreen' ? '⛶' : b.id);
+      const lb = TOUCH_LABELS[b.id] ?? (b.id === 'fullscreen' ? '전체' : b.id);
       text(ctx, lb, x, y + 4, { size: clamp(rad * 0.62, 9, 13), align: 'center', weight: 800, color: '#f3e2b8', ow: 0 });
     }
     notes.forEach((n, i) => text(ctx, n, r.x + r.w / 2, sy + sh + 24 + i * lh, { size: 13, align: 'center', weight: i < 3 ? 700 : 600, color: i === 2 ? '#bfe8c0' : i < 2 ? BONE : DIM, ow: 2, maxWidth: r.w - 24 }));

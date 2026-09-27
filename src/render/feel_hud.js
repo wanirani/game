@@ -477,7 +477,7 @@ function drawGauge(ctx, world, s, x, y, w, f, full, ready, holdK, tier, now, T) 
     const a = clamp(0.7 + 0.3 * Math.sin(now * 7) + holdK * 0.4, 0, 1);
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = a;
+    ctx.globalAlpha *= a;
     glowAround(ctx, x, y - 14, w, 10);
     glowAround(ctx, x, by, w, bh);
     if (holdK > 0) glowAround(ctx, x, by, w, bh);
@@ -500,6 +500,7 @@ function drawGauge(ctx, world, s, x, y, w, f, full, ready, holdK, tier, now, T) 
       }
       // 핏방울: 막대 아래에 맺혔다가 떨어진다 (채운 곳에서만)
       ctx.fillStyle = '#9a0c20';
+      const ga = ctx.globalAlpha;
       for (let i = 0; i < 3; i++) {
         const dx = w * (0.22 + i * 0.29);
         if (dx > fw - 2) break;
@@ -510,9 +511,9 @@ function drawGauge(ctx, world, s, x, y, w, f, full, ready, holdK, tier, now, T) 
           ctx.beginPath(); ctx.arc(x + dx, by + bh + len, 1.1 + ph * 0.5, 0, TAU); ctx.fill();
         } else {
           const t = (ph - 0.72) / 0.28, dy = by + bh + 4.2 + t * t * 9;
-          ctx.globalAlpha = 1 - t;
+          ctx.globalAlpha = ga * (1 - t);
           ctx.beginPath(); ctx.arc(x + dx, dy, 1.3, 0, TAU); ctx.fill();
-          ctx.globalAlpha = 1;
+          ctx.globalAlpha = ga;
         }
       }
     }
@@ -581,7 +582,12 @@ export function drawComboHUD(ctx, world, vw, vh, touch) {
   ctx.save();
   ctx.translate(r.x + r.w, r.y);
   if (k !== 1) ctx.scale(k, k);
-  if (rank > 0) drawRankLetter(ctx, style, s, rank, now, calm);
+  // 칸 아래·오른쪽으로는 절대 그리지 않는다 (튀기기·박힘 연출 중에도; 터치 y 297 한계·패드 보호). 위·왼쪽은 잠깐 넘쳐도 된다
+  ctx.beginPath(); ctx.rect(-COL_W - 200, -200, COL_W + 200 + 6, 200 + r.h / k); ctx.clip();
+  if (rank > 0) {   // 콤보가 끊긴 뒤 식어 가는 랭크는 조금 흐리게
+    if (n < 2) { ctx.save(); ctx.globalAlpha *= 0.7; drawRankLetter(ctx, style, s, rank, now, calm); ctx.restore(); }
+    else drawRankLetter(ctx, style, s, rank, now, calm);
+  }
   const T = !!touch;   // 휴대폰: 캔버스가 0.7배쯤으로 줄어 보이므로 작은 글자('HITS'·'총 피해')를 키운다
   if (n >= 2) drawComboBlock(ctx, world, c, s, rank, now, small, calm, T);
   else if (ending) {
@@ -632,10 +638,11 @@ function drawComboBlock(ctx, world, c, s, rank, now, small, calm, T) {
     ctx.drawImage(B, -BANNER.w, -BANNER.h / 2 + 2, BANNER.w, BANNER.h);
     ctx.restore();
   }
+  const ga = ctx.globalAlpha;
   ctx.fillStyle = info?.c ?? '#e8c872';
-  ctx.globalAlpha = 0.9;
+  ctx.globalAlpha = ga * 0.9;
   ctx.beginPath(); ctx.moveTo(-168, 62.5); ctx.lineTo(-10, 62.5); ctx.lineTo(-12, 65); ctx.lineTo(-170, 65); ctx.closePath(); ctx.fill();
-  ctx.globalAlpha = 1;
+  ctx.globalAlpha = ga;
   // 숫자
   ctx.font = font(s.nSize, 900, FONT.dmg);
   if (s.nW < 0) s.nW = ctx.measureText(s.nStr).width;
@@ -708,13 +715,13 @@ function drawMilestone(ctx, s, now, small, calm) {
   if (a <= 0) return;
   const sc = calm ? 1 : t < 0.12 ? 2 - ease.outCubic(t / 0.12) : 1;
   const col = s.mile >= 100 ? '#ffe070' : s.mile >= 50 ? '#ffa640' : '#ffffff';
-  const size = small ? 14 : 19, y = small ? 84 : 100;
+  const size = small ? 14 : 19, y = small ? 82 : 100;   // 기준선을 중심으로 박힌다 (아래로 커지지 않게)
   ctx.save();
   ctx.globalAlpha *= a;
-  ctx.translate(LETTER_X, y - size * 0.36);
+  ctx.translate(LETTER_X, y);
   if (sc !== 1) ctx.scale(sc, sc);
   ctx.transform(1, 0, -0.2, 1, 0, 0);
-  text(ctx, s.mileStr, 0, size * 0.36, { size, align: 'center', weight: 900, family: FONT.dmg, color: col, outline: '#1a0006', ow: 4 });
+  text(ctx, s.mileStr, 0, 0, { size, align: 'center', weight: 900, family: FONT.dmg, color: col, outline: '#1a0006', ow: 4 });
   ctx.restore();
 }
 

@@ -7,17 +7,213 @@
  "creditsBefore": 6397,
  "note": "Result URLs expire after 24 h; every kept image is stored as q93 webp under tools/painted/enemies/<id>/src/ (the chosen Step-1 reference as <id>_ref.webp).",
  "generations": [
-  {"enemy": "storm_harpy", "step": "ref", "generationId": "AbD5L4Ni6o5-srFJB7gjBvW5HdHgkPUS8IRjBiJxzXWKWSTihNiQksQWS4bKwSAom6Zo5hWF", "tool": "text_to_image", "aspect": "4:3", "imageCount": 2, "decision": "pending"},
-  {"enemy": "gale_knight", "step": "ref", "generationId": "AUBYa007AA_w_Xnqw6k21ZDACnd3V115jlKVIPBs9LlPk3jE2WA2x6LzfNJmctBwcOZV_N-C", "tool": "text_to_image", "aspect": "3:4", "imageCount": 2, "decision": "pending"},
-  {"enemy": "thunder_roc", "step": "ref", "generationId": "AVJA_a8eCALtR78T8mBzTv9nqy4e2ZYiTaKkxmZdCmQ-w9eQImvv-28jxy43Sokz5vytrEwT", "tool": "text_to_image", "aspect": "4:3", "imageCount": 2, "decision": "pending"},
-  {"enemy": "cloud_jelly", "step": "ref", "generationId": "AR6_bo8_6zYQfdBqyIMBeqQW7btGelk6lFuaI1yJKomBv5P_bGbrTnczJYotPmXMnPNbz2Pq", "tool": "text_to_image", "aspect": "1:1", "imageCount": 2, "decision": "pending"},
-  {"enemy": "puppeteer", "step": "ref", "generationId": "AXJbb-SUpStWQsWxr-SrfJmD19sLH-PI3PE_rgNJALQ1k60bDJAiqw-amymPYlUVhFmUAivc", "tool": "text_to_image", "aspect": "3:4", "imageCount": 2, "decision": "pending"},
-  {"enemy": "faceless", "step": "ref", "generationId": "AXGtv83eC9F-DRY98VnsvzIXlGABmfHRlBo8dAEuoeqCCgeYZsXMYXtU9PodShSnzQPh3j6V", "tool": "text_to_image", "aspect": "2:3", "imageCount": 2, "decision": "pending"},
-  {"enemy": "dream_eater", "step": "ref", "generationId": "AXIYTRI5XTPNtJDUsXuuj1wJJ42IQV1IkPctwSVmEj2oSXeyOuEMMM5YSUHlm3fO6ONG8z98", "tool": "text_to_image", "aspect": "4:3", "imageCount": 2, "decision": "pending"},
-  {"enemy": "rot_treant", "step": "ref", "generationId": "AV9Z5CuqoFe5Uts_VjfTovYC8COKRs-k4poXOf3I4pVorHteAzV17ieMWTYhp1H95_hOdkrS", "tool": "text_to_image", "aspect": "3:4", "imageCount": 2, "decision": "pending"},
-  {"enemy": "plague_moth", "step": "ref", "generationId": "AdknBjuBChalp0nYxKQo_sHPs9AP6yBWyCRaTW3RY5RoxxRrqJ0OQnAWJJmMFaXoAou375W0", "tool": "text_to_image", "aspect": "4:3", "imageCount": 2, "decision": "pending"},
-  {"enemy": "fungal_husk", "step": "ref", "generationId": "AXBRGNdScaGxuB4XMXfBlHLxjs-FI5yTBK1jL29aQeswEXsU_CDnjF89sfjTTiqHz5YqbFTx", "tool": "text_to_image", "aspect": "3:4", "imageCount": 2, "decision": "pending"},
-  {"enemy": "void_herald", "step": "ref", "generationId": "AcEVTvSgAJMDsHNuOC0jmyVyH3d7iVDKJNAeR71PExuyrli1pLb6_itFgLIRaKU4pvI5qZtA", "tool": "text_to_image", "aspect": "2:3", "imageCount": 2, "decision": "pending"},
-  {"enemy": "nihil_spawn", "step": "ref", "generationId": "AaBRg-Pvk8jfSkjEZF53K1gDVcIrqm2Yrppdm4_8rYHHdUJf8Xb5U77uH6AvTmDbbAkp0Kuu", "tool": "text_to_image", "aspect": "1:1", "imageCount": 2, "decision": "pending"}
+  {
+   "enemy": "storm_harpy",
+   "step": "ref",
+   "generationId": "AbD5L4Ni6o5-srFJB7gjBvW5HdHgkPUS8IRjBiJxzXWKWSTihNiQksQWS4bKwSAom6Zo5hWF",
+   "tool": "text_to_image",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "decision": "r1 KEPT -> storm_harpy_ref.webp (strict side view facing right, crackling wing tips; drawn as a raptor-headed storm bird); r2 faces left, 3/4 front"
+  },
+  {
+   "enemy": "gale_knight",
+   "step": "ref",
+   "generationId": "AUBYa007AA_w_Xnqw6k21ZDACnd3V115jlKVIPBs9LlPk3jE2WA2x6LzfNJmctBwcOZV_N-C",
+   "tool": "text_to_image",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "decision": "r1 KEPT -> gale_knight_ref.webp (clean grey, lance + wings + cape readable); r2 dark smudge on the background"
+  },
+  {
+   "enemy": "thunder_roc",
+   "step": "ref",
+   "generationId": "AVJA_a8eCALtR78T8mBzTv9nqy4e2ZYiTaKkxmZdCmQ-w9eQImvv-28jxy43Sokz5vytrEwT",
+   "tool": "text_to_image",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "decision": "r2 KEPT -> thunder_roc_ref.webp (clean, bright lightning veins); r1 grey cloud wisps would not matte on grey"
+  },
+  {
+   "enemy": "cloud_jelly",
+   "step": "ref",
+   "generationId": "AR6_bo8_6zYQfdBqyIMBeqQW7btGelk6lFuaI1yJKomBv5P_bGbrTnczJYotPmXMnPNbz2Pq",
+   "tool": "text_to_image",
+   "aspect": "1:1",
+   "imageCount": 2,
+   "decision": "r1 KEPT -> cloud_jelly_ref.webp (bold dark tendrils with lightning; cut directly, no sheet); r2 thin pale tendrils"
+  },
+  {
+   "enemy": "puppeteer",
+   "step": "ref",
+   "generationId": "AXJbb-SUpStWQsWxr-SrfJmD19sLH-PI3PE_rgNJALQ1k60bDJAiqw-amymPYlUVhFmUAivc",
+   "tool": "text_to_image",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "decision": "r1 KEPT -> puppeteer_ref.webp (3/4 view, glowing strings from the fingers, ragged coat tails); r2 similar, weaker silhouette"
+  },
+  {
+   "enemy": "faceless",
+   "step": "ref",
+   "generationId": "AXGtv83eC9F-DRY98VnsvzIXlGABmfHRlBo8dAEuoeqCCgeYZsXMYXtU9PodShSnzQPh3j6V",
+   "tool": "text_to_image",
+   "aspect": "2:3",
+   "imageCount": 2,
+   "decision": "r1 KEPT -> faceless_ref.webp (legs and suit readable; pale skull-like blank head); r2 long dress-like coat"
+  },
+  {
+   "enemy": "dream_eater",
+   "step": "ref",
+   "generationId": "AXIYTRI5XTPNtJDUsXuuj1wJJ42IQV1IkPctwSVmEj2oSXeyOuEMMM5YSUHlm3fO6ONG8z98",
+   "tool": "text_to_image",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "decision": "r1 KEPT -> dream_eater_ref.webp (eyes along the flank, trunk curled, cast shadow cropped); r2 tongue out"
+  },
+  {
+   "enemy": "rot_treant",
+   "step": "ref",
+   "generationId": "AV9Z5CuqoFe5Uts_VjfTovYC8COKRs-k4poXOf3I4pVorHteAzV17ieMWTYhp1H95_hOdkrS",
+   "tool": "text_to_image",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "decision": "r2 KEPT -> rot_treant_ref.webp (profile facing right, skull face, glowing sacs); r1 front view"
+  },
+  {
+   "enemy": "plague_moth",
+   "step": "ref",
+   "generationId": "AdknBjuBChalp0nYxKQo_sHPs9AP6yBWyCRaTW3RY5RoxxRrqJ0OQnAWJJmMFaXoAou375W0",
+   "tool": "text_to_image",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "decision": "r1 KEPT -> plague_moth_ref.webp (dripping spore dust, no cast shadow); r2 cast shadow"
+  },
+  {
+   "enemy": "fungal_husk",
+   "step": "ref",
+   "generationId": "AXBRGNdScaGxuB4XMXfBlHLxjs-FI5yTBK1jL29aQeswEXsU_CDnjF89sfjTTiqHz5YqbFTx",
+   "tool": "text_to_image",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "decision": "r1 KEPT -> fungal_husk_ref.webp (glowing gills, legs apart); r2 cast shadow"
+  },
+  {
+   "enemy": "void_herald",
+   "step": "ref",
+   "generationId": "AcEVTvSgAJMDsHNuOC0jmyVyH3d7iVDKJNAeR71PExuyrli1pLb6_itFgLIRaKU4pvI5qZtA",
+   "tool": "text_to_image",
+   "aspect": "2:3",
+   "imageCount": 2,
+   "decision": "r1 KEPT -> void_herald_ref.webp (clean starfield robe, star halo); r2 smoke on the background"
+  },
+  {
+   "enemy": "nihil_spawn",
+   "step": "ref",
+   "generationId": "AaBRg-Pvk8jfSkjEZF53K1gDVcIrqm2Yrppdm4_8rYHHdUJf8Xb5U77uH6AvTmDbbAkp0Kuu",
+   "tool": "text_to_image",
+   "aspect": "1:1",
+   "imageCount": 2,
+   "decision": "r1 KEPT -> nihil_spawn_ref.webp (bright white core, loose shards; cut directly, no sheet); r2 eye core, darker"
+  },
+  {
+   "enemy": "storm_harpy",
+   "step": "sheet",
+   "generationId": "AU2HxFnwgAGRK9YMlKdLsDsW54nzhq4XaBBLylxX_pUKbNjiMUki8ZuToixqHVdBT14XhZRq",
+   "tool": "image_to_image",
+   "input": "image_1 = chosen ref (Kling result URL)",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "decision": "pending"
+  },
+  {
+   "enemy": "gale_knight",
+   "step": "sheet",
+   "generationId": "AVOZADmahwcJUZqVFl9KDgTbdJsx-EyH07-GwlRZfq39JvRyZCupftW2ChejUEShThm472yG",
+   "tool": "image_to_image",
+   "input": "image_1 = chosen ref (Kling result URL)",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "decision": "pending"
+  },
+  {
+   "enemy": "thunder_roc",
+   "step": "sheet",
+   "generationId": "AUqhENIfG2-qPa4vY4qES5-hYrcGJA83g3Mr6BeuUpTB3GeEFItpK2RuszukOfcsms99zgce",
+   "tool": "image_to_image",
+   "input": "image_1 = chosen ref (Kling result URL)",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "decision": "pending"
+  },
+  {
+   "enemy": "puppeteer",
+   "step": "sheet",
+   "generationId": "AczHm-Z3ppuwxeHL_M6tdIgv0rOYx91m2Gnd1QOINnfBgrZwMRbTJrukQnNfCK_3MPhvylB-",
+   "tool": "image_to_image",
+   "input": "image_1 = chosen ref (Kling result URL)",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "decision": "pending"
+  },
+  {
+   "enemy": "faceless",
+   "step": "sheet",
+   "generationId": "AemS6lIriJcwzESsxxXMlBcgQqMh62pAltjbtwIJiXx_5ifW36SKNeqE_iQlz6Gx19yoZ5iS",
+   "tool": "image_to_image",
+   "input": "image_1 = chosen ref (Kling result URL)",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "decision": "pending"
+  },
+  {
+   "enemy": "dream_eater",
+   "step": "sheet",
+   "generationId": "AUfNq_cQVTB_w6IoV9QCNNLqXCr2waj86OVJVFcnFHL1AykMckwFDWQTwPunvy1SK0o0Yi1e",
+   "tool": "image_to_image",
+   "input": "image_1 = chosen ref (Kling result URL)",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "decision": "pending"
+  },
+  {
+   "enemy": "rot_treant",
+   "step": "sheet",
+   "generationId": "AVyLXgGAb45CmRUV2WVuXKzPJEStAJwa2oGVCpF5eBs5GSupQBmhQODhvY48a_eOz_SjJGTX",
+   "tool": "image_to_image",
+   "input": "image_1 = chosen ref (Kling result URL)",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "decision": "pending"
+  },
+  {
+   "enemy": "plague_moth",
+   "step": "sheet",
+   "generationId": "AQJOLSAI0TX-vROXVf56T3aHIxdRd5u536Tk34mhDiUkHZacZVJmUfKEXMV3sZmieHA2JKoY",
+   "tool": "image_to_image",
+   "input": "image_1 = chosen ref (Kling result URL)",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "decision": "pending"
+  },
+  {
+   "enemy": "fungal_husk",
+   "step": "sheet",
+   "generationId": "AYdl7Zmo4z_R_ZNCxWsQ4b7xURsWLWN6ESjRQdqib49-gghHg3tKHKTUEtPEc0hqqy9Zit0A",
+   "tool": "image_to_image",
+   "input": "image_1 = chosen ref (Kling result URL)",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "decision": "pending"
+  },
+  {
+   "enemy": "void_herald",
+   "step": "sheet",
+   "generationId": "AfQpopuamRaUDWl5fIpSRAJ5_Zqorh1SlYN5xJLIeVtW9o9FiUyNjQjCTbTLdiT6f1PTg2x8",
+   "tool": "image_to_image",
+   "input": "image_1 = chosen ref (Kling result URL)",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "decision": "pending"
+  }
  ]
 }

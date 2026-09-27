@@ -23,7 +23,6 @@ export const ENEMIES = {
       'the harpy\'s body in flight with the head, the feather crest, the feathered torso and the tail feathers, WITHOUT any wings and WITHOUT legs',
       'one feathered wing alone fully spread open flat with the long flight feathers fanning out, the shoulder joint at the left end of the piece',
       'one scaly bird leg alone from the feathered thigh to the open hooked talons, hanging straight down',
-      'the same head alone screaming with the mouth stretched wide open, cut off at the neck',
     ],
   },
   gale_knight: {
@@ -76,7 +75,7 @@ export const ENEMIES = {
     pose: 'Floating upright in the air, both long-fingered hands held forward at chest height with the fingers spread like a puppet master working strings.',
     parts: [
       'the head with the porcelain half-mask and the tall top hat, cut off at the neck',
-      'the torso in the black-violet tailcoat from the neck down to the long ragged coat tails (no arms, no head)',
+      'the torso in the black-violet tailcoat from the neck down to the long ragged coat tails, with the thin legs inside the coat (no arms, no head)',
       'one arm in a tight black sleeve from the shoulder to the wrist, held straight',
       'one pale grey hand alone with the impossibly long spread jointed fingers and silver thimbles',
     ],
@@ -103,7 +102,7 @@ export const ENEMIES = {
     pose: 'Floating in the air, the trunk hanging and curling down, the tiny legs dangling.',
     parts: [
       'the bloated nebula body with the closed eyes along the flank and the smoke wisps, WITHOUT the head and WITHOUT any legs',
-      'the tapir head with the ears and closed eyes, WITHOUT the trunk, cut off at the neck',
+      'the tapir head with the ears, the closed eyes and the tusks, WITHOUT the trunk, cut off at the neck',
       'the long prehensile trunk alone stretched out perfectly straight horizontally, the round toothed sucking mouth at the right end',
       'one tiny stubby hoofed leg alone hanging straight down',
       'the same bloated body with all the eyes along the flank wide open, glowing violet, WITHOUT head and WITHOUT legs',
@@ -119,7 +118,8 @@ export const ENEMIES = {
       'the hunched trunk body with the skull-like knot face, the shelf fungi, the glowing spore sacs and the crown of dead branches, WITHOUT arms and WITHOUT legs',
       'one gnarled branch upper arm from the shoulder to the elbow',
       'one gnarled branch forearm alone with the clawed twig fingers, held straight',
-      'one thick twisted root leg alone from the hip to the spreading root foot',
+      'one thick twisted root thigh alone from the hip to the knee',
+      'one twisted lower root leg alone from the knee to the spreading root foot',
     ],
   },
   plague_moth: {
@@ -142,7 +142,8 @@ export const ENEMIES = {
     parts: [
       'the head with the huge mushroom cap bursting from the skull (no neck below the chin)',
       'the torso in the torn tunic with the small mushrooms, from the neck down to the hips (no arms, no legs, no head)',
-      'one arm in a torn sleeve from the shoulder to the grey bony hand, held straight',
+      'one upper arm in a torn sleeve from the shoulder to the elbow',
+      'one forearm with the grey bony clawed hand, held straight',
       'one thigh in the torn trousers',
       'one lower leg with the bare rotting foot',
     ],
@@ -154,7 +155,7 @@ export const ENEMIES = {
     subject: 'A void herald, a tall floating robed priest of the primordial void: a long hooded robe of matte black cloth with thin silver embroidery whose open front and inner lining show a deep starfield of tiny white stars and violet nebula, the hood hiding a face of pure darkness with two small white star-like eyes, a thin prismatic rainbow halo ring floating behind the head, long wide sleeves ending in hands made of pure white light, the robe hem dissolving into black smoke and drifting stars instead of feet.',
     pose: 'Floating upright in the air, arms held slightly forward and away from the body.',
     parts: [
-      'the hooded robe body with the starfield interior and the smoke hem, including the hooded head, WITHOUT any arms or sleeves',
+      'the hooded robe body with the starfield interior, the smoke hem and the halo behind the hood, including the hooded head, WITHOUT any arms or sleeves',
       'one long wide robe sleeve alone from the shoulder to the cuff, held straight, the glowing white hand coming out of the cuff',
     ],
   },

@@ -120,7 +120,8 @@
    "generationId": "AfJChPcpL-2rdxS0nhrYi8DPYiDDqx-5nnWPYjV11diSo6x86Hxr8IKOsXhLx7rqxOWqBwwS",
    "tool": "image_to_image",
    "aspect": "4:3",
-   "imageCount": 2
+   "imageCount": 2,
+   "decision": "s1+s2 KEPT -> zombie/src/zombie_sheet1/2.webp (s1: outstretched arm; s2: side-view figure facing left, lower leg)"
   },
   {
    "enemy": "possessed",
@@ -128,7 +129,8 @@
    "generationId": "AVQFfR1ns0IDkH5zj8na_X9BXDsoBCRp_PhtOXCZ2iDTw56MZ7bpMhii8hgDHb_m-Gqry5V5",
    "tool": "image_to_image",
    "aspect": "4:3",
-   "imageCount": 2
+   "imageCount": 2,
+   "decision": "s1+s2 KEPT -> possessed_sheet1/2 (s1: head, sleeve forearm, leg; s2: horizontal pitchfork)"
   },
   {
    "enemy": "wolf",
@@ -136,7 +138,8 @@
    "generationId": "ATMfXwe7FS2F33t5vk7CVKnmkshOnqrapIwLOt9BxTRONnKGR1GU86Kw0YIq3kOMgT5zigeR",
    "tool": "image_to_image",
    "aspect": "4:3",
-   "imageCount": 2
+   "imageCount": 2,
+   "decision": "s1 KEPT -> wolf_sheet1 (closed + snarling heads, tail/body); s2 rejected (turned into a werewolf)"
   },
   {
    "enemy": "crow",
@@ -144,7 +147,8 @@
    "generationId": "ARoat6EzlZO2DmEXqn3KifudZZ0LLE3Qa4yAWIM1kA16MiM4DwJzqfg18uknyM5f1N1gJr7W",
    "tool": "image_to_image",
    "aspect": "4:3",
-   "imageCount": 2
+   "imageCount": 2,
+   "decision": "s1 KEPT -> crow_sheet1 (perched crow); s2 kept as crow_sheet2 (alt perched pose)"
   },
   {
    "enemy": "gargoyle",
@@ -152,7 +156,8 @@
    "generationId": "ATMJ34yPI4Dv_i1ZmjRt80uJJFgmY6vaFknY5TjBOiaQUubPJDIyirZCV2_RPd6nsi5crdEj",
    "tool": "image_to_image",
    "aspect": "4:3",
-   "imageCount": 2
+   "imageCount": 2,
+   "decision": "s1+s2 KEPT -> gargoyle_sheet1/2 (s1: wing, tail, arm, heads; s2: side body)"
   },
   {
    "enemy": "medusa_head",
@@ -160,7 +165,8 @@
    "generationId": "AV1uO6qMHJwZ5YIBA1Agr0pZPA4hLZa0T3vMU1NkQ3EK44NKEsBYeeeYYMClN9qaoj9XvzuV",
    "tool": "image_to_image",
    "aspect": "4:3",
-   "imageCount": 2
+   "imageCount": 2,
+   "decision": "s1+s2 KEPT (s2: bald head + straight snake segments used)"
   },
   {
    "enemy": "mimic",
@@ -168,7 +174,8 @@
    "generationId": "ASXiLNBKkXRb4XLrjD08xc-Do2kL2Sz2gCbkFGfp5th-qK-mRmd7yf0-zcxp2ddZ9zKzSXrA",
    "tool": "image_to_image",
    "aspect": "4:3",
-   "imageCount": 2
+   "imageCount": 2,
+   "decision": "s1+s2 KEPT (s1: straight tongue, s2: tapered tongue)"
   },
   {
    "enemy": "mud_man",
@@ -176,7 +183,8 @@
    "generationId": "AW-UDORX9ZesdMbVt9UtXn4AoHD0ByD9T1V7Rzsj4qRtvG-BYOPyF0KN8Jwmv9WxtJHM786P",
    "tool": "image_to_image",
    "aspect": "4:3",
-   "imageCount": 2
+   "imageCount": 2,
+   "decision": "s2 KEPT -> mud_man/src/mud_sheet2.webp (body, separate arm, mud ball); s1 has a lava-lit puddle"
   },
   {
    "enemy": "skeleton_archer",
@@ -184,7 +192,8 @@
    "generationId": "AUPVYywbTiNOh6oH6QZyefbjr20zD3UcmpkoYnkotZOZ6NImw_Nuo1jSGJYfarlbdtUJWjQk",
    "tool": "image_to_image",
    "aspect": "1:1",
-   "imageCount": 1
+   "imageCount": 1,
+   "decision": "KEPT -> skeleton_archer/src/sa_hood.webp (three-quarter view, reads as side view at game size)"
   },
   {
    "enemy": "wisp",
@@ -192,7 +201,8 @@
    "generationId": "ASYFYpk820Q-pfeII4mdwevBMH7bC-rEnVrnafEmoQmBbsP869mdmeMYEzbv8Euurh_3DcoG",
    "tool": "image_to_image",
    "aspect": "1:1",
-   "imageCount": 1
+   "imageCount": 1,
+   "decision": "KEPT -> wisp/src/wisp_frame2.webp (same flame, jaw open wider: crossfaded with the reference)"
   },
   {
    "enemy": "crow",
@@ -200,7 +210,8 @@
    "generationId": "AQejGKHR7hIMOkhM0bQ9CKiYmIPLHt4o7bTdN-MfeuMiSbwbvZdLBfH7wGVHfsdw8M81mGx9",
    "tool": "image_to_image",
    "aspect": "4:3",
-   "imageCount": 1
+   "imageCount": 1,
+   "decision": "KEPT -> crow/src/crow_fly.webp; Kling kept the wings despite 'WITHOUT ANY WINGS' -> the body is cut below the wing roots (the painted wing chain covers the cut)"
   },
   {
    "enemy": "crow",
@@ -208,7 +219,8 @@
    "generationId": "AT7f7DKqkJJWpOOCR3DMpGM5AX27xvHBD_4VyGgrh2Y4WQctuDMvted8cqQsUvxjcIKFdRz0",
    "tool": "image_to_image",
    "aspect": "16:9",
-   "imageCount": 1
+   "imageCount": 1,
+   "decision": "KEPT -> crow/src/crow_wing.webp (spread flat, shoulder at the left end: ideal for the bending chain)"
   },
   {
    "enemy": "mimic",
@@ -216,7 +228,8 @@
    "generationId": "ATuW1GGlRZmPzWtWAvXOACEA_tFDkDZp-MboW-2-HeBra8fdOi0RucXQx1cA2bhRXQIyx1P1",
    "tool": "image_to_image",
    "aspect": "4:3",
-   "imageCount": 1
+   "imageCount": 1,
+   "decision": "KEPT -> mimic/src/mimic_closed.webp (disguise frame: closed, legless)"
   }
  ],
  "imagesSpent": 45,

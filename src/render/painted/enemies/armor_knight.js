@@ -37,7 +37,13 @@ function bone(name, x, y, dir, vn) {
 }
 
 let CAPE = null;
-function layout(e, q) {
+const SWORD = { weapon: 'sword', shield: true, cape: true };
+/**
+ * Pose the knight rig (shared with axe_armor.js: same cuirass/limbs, its own helm + great axe in its own atlas).
+ * opt: { weapon: 'sword'|'axe'|null (null = empty hand, e.g. the axe is in flight), shield, cape }
+ */
+export function layoutKnight(e, q, opt = SWORD) { return layout(e, q, opt); }
+function layout(e, q, opt = SWORD) {
   NP = 0;
   const hipY = -36 + q.bob, sx0 = q.stepX;
   const tr = q.lean;                       // torso rotation about the hip
@@ -47,16 +53,16 @@ function layout(e, q) {
   K.pivotPos('torso', 'a', 'shN', sx0, hipY, tr, 1, 1, _q); const snx = _q[0], sny = _q[1];
   K.pivotPos('torso', 'a', 'shF', sx0, hipY, tr, 1, 1, _q); const sfx = _q[0], sfy = _q[1];
   // cape hangs from behind the neck (drawn first, strip-warped in draw())
-  CAPE = place('cape', nx - 5, ny + 3, tr * 0.5, 'deep', 0.62, 1);
-  CAPE.cape = true;
+  CAPE = null;
+  if (opt.cape && K.part('cape')) { CAPE = place('cape', nx - 5, ny + 3, tr * 0.5, 'deep', 0.62, 1); CAPE.cape = true; }
   // back arm (sword arm, behind the body)
   let b = bone('uarm', sfx - 1, sfy + 1, dirOf(q.shB), 'deep');
   const bex = b[0], bey = b[1];
   const fp = K.part('farm'), bfr = dirOf(q.shB + q.elB) - fp.ang;
   K.pivotPos('farm', 'a', 'grip', bex, bey, bfr, 1, 1, _q);
   const gx = _q[0], gy = _q[1];
-  const swp = K.part('sword');
-  const hold = place('sword', gx, gy, dirOf(q.wA) - swp.ang, 'base');     // blade keeps its gleam even on the far arm
+  const wpn = opt.weapon ? K.part(opt.weapon) : null;
+  const hold = wpn ? place(opt.weapon, gx, gy, dirOf(q.wA) - wpn.ang, 'base', 1, 1, wpn.piv.grip ? 'grip' : 'a') : null;   // weapon keeps its gleam even on the far arm
   place('farm', bex, bey, bfr, 'deep');
   // back leg
   b = limb('uarm', sx0 - 2, hipY, dirOf(q.hipB), 15, 'deep', 1.15, 1.2);
@@ -73,14 +79,18 @@ function layout(e, q) {
   b = bone('uarm', snx, sny, dirOf(q.shF));
   const fex = b[0], fey = b[1];
   place('farm', fex, fey, dirOf(q.shF + q.elF) - fp.ang);
-  let shx = 13 + sx0 * 0.4, shy = -48 + q.bob, srot = 0;
-  const P = e.params || {};
-  if (e.anim === 'attack') { const ap = atkPhase(e.animT ?? 0, P.windup ?? 0.62, 0.1); shx -= 4 * ap.w - 6 * ap.s; srot = -0.12 * ap.w + 0.1 * ap.s; }
-  if (q.hurt) { shx -= 3; srot -= 0.15; }
-  place('shield', shx, shy, srot, 'base', 0.8, 1);
-  return { sfx, sfy, gx, gy, tipx: gx + Math.cos(dirOf(q.wA)) * swp.len, tipy: gy + Math.sin(dirOf(q.wA)) * swp.len, nx, ny, hr, hold };
+  if (opt.shield) {
+    let shx = 13 + sx0 * 0.4, shy = -48 + q.bob, srot = 0;
+    const P = e.params || {};
+    if (e.anim === 'attack') { const ap = atkPhase(e.animT ?? 0, P.windup ?? 0.62, 0.1); shx -= 4 * ap.w - 6 * ap.s; srot = -0.12 * ap.w + 0.1 * ap.s; }
+    if (q.hurt) { shx -= 3; srot -= 0.15; }
+    place('shield', shx, shy, srot, 'base', 0.8, 1);
+  }
+  const wl = wpn ? wpn.len : 0;
+  return { sfx, sfy, gx, gy, tipx: gx + Math.cos(dirOf(q.wA)) * wl, tipy: gy + Math.sin(dirOf(q.wA)) * wl, nx, ny, hr, hold };
 }
 
+export function drawKnight(e) { drawAll(e); }
 function drawAll(e) {
   const t = e.t ?? 0, walk = e.anim === 'walk';
   for (let i = 0; i < NP; i++) {
@@ -95,6 +105,7 @@ function drawAll(e) {
   }
 }
 
+export function dieKnight(e, world, rig) { die(e, world, rig); }
 function die(e, world, rig) {
   e._pcorpse = true;
   claimDebris(world, e);
