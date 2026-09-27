@@ -319,6 +319,9 @@ export class TitleScene extends Scene {
     this.collectNotes(ctx, W);
     const L = this.layout();
     const H = L.H;
+    // 토스트 줄: 로고를 가리지 않는 곳 (메뉴가 열리면 메뉴 오른쪽, 아니면 큰 로고 아래) — game.drawToasts 가 UI 좌표로 읽는다
+    if (this.menuK > 0.5) { this.toastX = L.x + L.w + (W - L.sr - L.x - L.w) / 2; this.toastY = L.logo.side ? L.st + 136 : L.st + 150; }
+    else { this.toastX = W / 2; this.toastY = L.big.cy + (LOGO_H * L.big.sc) / 2 + 26; }
     const T = this.mode === 'intro' ? this.modeT : 99;
     const img = assets.get('bg/title');
     // 배경 켄번스 (초점: 달·성 중앙 상단)

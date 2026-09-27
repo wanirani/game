@@ -128,6 +128,8 @@ class ArcadeRunScene extends Scene {
   }
   onDeath() {
     const w = this.world, st = this.game.state;
+    // 연습: 보스를 쓰러뜨린 뒤 쓰러졌으면 목숨을 쓰지 않고 일으켜 세운다 (클리어 연출 → finishStage 로 이어진다)
+    if (w.cleared && typeof w.reviveAfterClear === 'function') { w.reviveAfterClear(); return; }
     w.run.lives--;
     st.stats.deaths = (st.stats.deaths ?? 0) + 1;
     if (w.run.lives > 0) this.game.fadeOut(() => this.respawnHere(), 0.4);
@@ -210,9 +212,12 @@ class ArcadeRunScene extends Scene {
     ctx.save();
     ctx.globalAlpha = a;
     const y = vh * 0.4;
-    const g = ctx.createLinearGradient(0, 0, vw, 0);
-    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.5, 'rgba(0,0,0,0.65)'); g.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = g; ctx.fillRect(0, y - 58, vw, 100);
+    if (this._callW !== vw) {
+      const g = ctx.createLinearGradient(0, 0, vw, 0);
+      g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.5, 'rgba(0,0,0,0.65)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+      this._callG = g; this._callW = vw;
+    }
+    ctx.fillStyle = this._callG; ctx.fillRect(0, y - 58, vw, 100);
     ctx.fillStyle = rgba(color, 0.8); ctx.fillRect(vw * 0.2, y - 58, vw * 0.6, 1.5); ctx.fillRect(vw * 0.2, y + 41, vw * 0.6, 1.5);
     ctx.translate(vw / 2, y); ctx.scale(s, s);
     ctx.shadowColor = color; ctx.shadowBlur = 20;
@@ -327,14 +332,14 @@ export class BossRushScene extends ArcadeRunScene {
     const top = this.tagTop(vw, vh);
     this.modeTag(ctx, vw, top, `ROUND ${Math.min(this.round + 1, this.queue.length)} / ${this.queue.length}`, fmtClock(this.clock), '#ff6a7a');
     if (this.call && !this.paused) this.bigCall(ctx, vw, vh, this.call.main, this.call.sub, this.call.color, this.call.t);
-    // 다음 보스 미리보기 (대기 중). 터치에서는 오른쪽 패드 묶음의 왼쪽에
+    // 다음 보스 미리보기 (대기 중). 데스크톱은 오른쪽 가운데, 터치는 오른쪽이 패드 묶음이라 왼쪽 HUD 아래(y 176~300)에 작게
     if (this.phase === 'ready' && this.round < this.queue.length && !this.paused) {
       const id = this.queue[this.round], img = assets.get(BOSSES[id]?.portrait ?? `portraits/${id}`);
       const k = ease.outCubic(clamp(this.phaseT / 0.5, 0, 1)) * clamp((2.3 - this.phaseT) / 0.3, 0, 1);
       if (img && k > 0) {
-        let right = vw - 20;
-        try { const L = hudLayout(this.world, vw, vh); if (L?.touch && Number.isFinite(L.padLeft)) right = Math.min(right, L.padLeft - 10); } catch { /* 무시 */ }
-        const r = { x: right - 150 * k, y: vh * 0.5 - 110, w: 150, h: 200 };
+        let touch = false;
+        try { touch = !!hudLayout(this.world, vw, vh)?.touch; } catch { /* 무시 */ }
+        const r = touch ? { x: 14 - 110 * (1 - k), y: 176, w: 93, h: 124 } : { x: vw - 170 * k, y: vh * 0.5 - 110, w: 150, h: 200 };
         ctx.save(); ctx.globalAlpha = k;
         portraitIn(ctx, img, r, { fy: 0.15, fadeBottom: 0.4 });
         ctx.strokeStyle = '#ff4a5a'; ctx.lineWidth = 2; ctx.strokeRect(r.x + 1, r.y + 1, r.w - 2, r.h - 2);
@@ -545,6 +550,15 @@ export class PracticeScene extends ArcadeRunScene {
     this.phase = 'play';
   }
   tick(dt) { if (this.call) { this.call.t += dt / 2.4; if (this.call.t >= 1) this.call = null; } }
+  /** 스테이지 연습의 부활은 월드 규칙대로 (체크포인트 · 보스 초기화 · 기믹 onRespawn) — 투기장처럼 제자리에서 일으키면
+   *  2부 스테이지의 용암·깊은 물·공허 벽 위에서 되살아날 수 있다 */
+  respawnHere() {
+    const w = this.world, p = w.player;
+    if (typeof w.respawn !== 'function' || !w.run?.checkpoint) { super.respawnHere(); return; }
+    if (!w.entities.includes(p)) w.add(p);
+    p.deathT = 0;
+    w.respawn();
+  }
   results(cleared) {
     const w = this.world, run = w.run, stage = w.stage;
     let bonus = 0, rank = 'D';

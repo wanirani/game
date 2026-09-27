@@ -17,6 +17,14 @@ import { PI, OUT, R, LG, glow, glowE, glowSprite, warnRect, warnFloor, warnCircl
 import { audio } from '../../core/audio.js';
 import { T } from '../../core/physics.js';
 import { TAU, clamp, lerp, rand, rgba, approach } from '../../core/math.js';
+import { registerPainted, hasPainted, paintedRig, paintedEnabled } from '../../render/painted/registry.js';
+import { bosses as ART6 } from '../../render/painted/reg/art-boss-6.js';
+
+// ───────────────────────── 채색 퍼핏 (ART-BOSS-6) ─────────────────────────
+// 모음(reg/index.js)에 art-boss-6 줄이 아직 없으면 여기서 한 번 등록한다 (이미 있으면 아무것도 안 함).
+if (!hasPainted('b_moloch') && ART6.b_moloch) registerPainted('b_moloch', { kind: 'boss', importer: ART6.b_moloch });
+/** 채색 소품 도우미 (영혼 탄·사슬 기둥). 없으면 null → 벡터 */
+const pArt = (world) => (paintedEnabled(world?.game) ? paintedRig('b_moloch')?.art ?? null : null);
 
 // ───────────────────────── 색 ─────────────────────────
 const FIRE = '#ff7a2a', HOT = '#ffd070', LAVA = '#ff5a1a', SOUL = '#ffe8a0', DARKF = '#b060ff';
@@ -577,6 +585,8 @@ export class Moloch extends BossC {
       if (Math.random() < 0.5) world.fx.emit('ember', x, y + 6, { speed: 110, angle: -PI / 2, spread: 0.7 });
     }
     if (this.formPhase >= 2 && Math.random() < 0.25 * q) world.fx.emit('fire', this.cx + rand(-50, 50), this.bottom - rand(170, 240), { speed: 30, angle: PI / 2, spread: 0.3, size: 5, grav: 500 });
+    // 부러진 뿔 그루터기에서 떨어지는 쇳물 방울 (예전에는 paintBody 안 — 채색/벡터 어느 쪽으로 그려도 같은 난수를 쓰도록 여기로 옮김)
+    if (this.formPhase >= 2) for (const s of [-1, 1]) if (Math.random() < 0.15) world.fx.emit('fire', this.cx + this.turnK * s * 58 * HEAD_S, this.bottom + HEAD_Y - 80 * HEAD_S, { speed: 30, angle: PI / 2, spread: 0.3, size: 4, grav: 600 });
     if (Math.random() < 0.2 * q) world.fx.emit('ember', this.cx + rand(-140, 140), this.bottom - 6, { speed: 70, angle: -PI / 2, spread: 0.5 });
     // 용암 조수: 유지 시간이 끝나면 내리고, P2/P3 에서는 약 14초마다 다시
     if (this.tideHold > 0) { this.tideHold -= dt; if (this.tideHold <= 0) { this.tideHold = 0; setMagma(this, 17, 120); } }
@@ -927,7 +937,7 @@ export class Moloch extends BossC {
           w: 56, h: 280, warn: 0.7, life: 1.2, mv: 1.1, kb: [dir * 280, -200], color: FIRE, sfx: 'whip_crack',
           paint: (ctx, z, wd) => {
             if (!z.started) { warnFloor(ctx, x, F, 70, z.k, FIRE, wd.time); return; }
-            chainColumn(ctx, x, F, 280, z.t - z.warn, cx, this.bottom - 120);
+            if (R.fl || !pArt(wd)?.chainColumn(ctx, x, F, 280, z.t - z.warn, cx, this.bottom - 120)) chainColumn(ctx, x, F, 280, z.t - z.warn, cx, this.bottom - 120);
           },
         });
       }
@@ -970,7 +980,7 @@ export class Moloch extends BossC {
         world.fx.burst('shard', hx, hy, 14, { color: '#d8b890', speed: 300 });
         world.fx.burst('fire', hx, hy, 12, { speed: 200 });
         const fx = hx, fy = hy, dir = this.turnK * s;
-        world.fx.ghost((ctx, a) => {   // 부러진 뿔이 튕겨 나가 떨어진다 (a: 0.5 → 0)
+        if (!pArt(world)) world.fx.ghost((ctx, a) => {   // (채색일 때는 퍼핏이 부러진 뿔 파편을 직접 날린다)   // 부러진 뿔이 튕겨 나가 떨어진다 (a: 0.5 → 0)
           if (!ART?.horn) return;
           const u = 1 - a * 2, x = fx + dir * u * 180, y = fy + u * 120 + u * u * 500;
           ctx.save(); ctx.globalAlpha = Math.min(1, a * 4);
@@ -1122,7 +1132,7 @@ export class Moloch extends BossC {
       else put(ctx, A.horn, s * 30, -74, 0, s, 1);
     }
     if (!fl) {
-      if (f2) for (const s of [-1, 1]) { glow(ctx, s * 58, -80, 14, HOT, 0.8); if (Math.random() < 0.15) this.world.fx.emit('fire', this.cx + this.turnK * s * 58 * HEAD_S, this.bottom + HEAD_Y - 80 * HEAD_S, { speed: 30, angle: PI / 2, spread: 0.3, size: 4, grav: 600 }); }
+      if (f2) for (const s of [-1, 1]) glow(ctx, s * 58, -80, 14, HOT, 0.8);   // (그루터기 쇳물 방울은 tickB 에서 — 그리기에서 게임 난수를 쓰지 않는다)
     }
     put(ctx, A.head, 0, 0);
     if (!fl) {
@@ -1343,12 +1353,13 @@ function cracksPath(ctx, list, k, col, oy = 0) {
   ctx.restore();
 }
 /** 유도 영혼 탄 (원점 = 탄 중심) */
-function soulRender(ctx, p) {
+function soulRender(ctx, p, world) {
   const a = Math.atan2(p.vy, p.vx), t = p.t;
   glowE(ctx, -Math.cos(a) * 16, -Math.sin(a) * 16, 26, 14, SOUL, 0.35);
   glow(ctx, 0, 0, 26, '#ffb050', 0.6);
   const S = ART?.souls?.[Math.floor(p.t * 3) % 3];
-  if (S) put(ctx, S, 0, 0, Math.sin(t * 6) * 0.2, 0.6);
+  if (!R.fl && pArt(world ?? p.world)?.soul(ctx, 0, 0, Math.floor(p.t * 3), Math.sin(t * 6) * 0.2, 0.6)) { /* 채색 영혼 해골 */ }
+  else if (S) put(ctx, S, 0, 0, Math.sin(t * 6) * 0.2, 0.6);
   else { ctx.fillStyle = SOUL; ctx.beginPath(); ctx.arc(0, 0, 9, 0, TAU); ctx.fill(); }
   glow(ctx, -3, -2, 4, '#ff4020', 0.9); glow(ctx, 3, -2, 4, '#ff4020', 0.9);
 }

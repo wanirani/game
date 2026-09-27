@@ -461,7 +461,7 @@ export class ArcadeScene extends Scene {
     ctx.fillStyle = rgba(M.color, 0.55); ctx.fillRect(r.w * 0.15, ah + 5, r.w * 0.7, 2);
     text(ctx, M.eng, r.w / 2, ah + 2, { size: 13, align: 'center', weight: 900, family: FONT.logo, color: M.color, ow: 4 });
     text(ctx, M.name, r.w / 2, ah + (L.small ? 32 : 38), { size: L.small ? 20 : 22, align: 'center', weight: 800, family: FONT.title, color: '#fff4e0', ow: 4 });
-    text(ctx, M.tag, r.w / 2, ah + (L.small ? 50 : 60), { size: L.small ? 11 : 13, align: 'center', weight: 600, color: '#d0c4b4', ow: 2 });
+    text(ctx, M.tag, r.w / 2, ah + (L.small ? 50 : 60), { size: L.small ? 12 : 13, align: 'center', weight: 600, color: '#d0c4b4', ow: 2 });
     ctx.restore();
   }
 }

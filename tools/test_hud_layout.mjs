@@ -163,7 +163,7 @@ async function pageChecks({ view, INSETS }) {
  * settings: 휴대폰 변형 { safeArea, touchLeftHanded, touchScale } (바꾸면 화면 배치를 다시 잰다)
  */
 async function stageScene({ scen, settings }) {
-  const g = window.__game, w = g.world, sc = g.top;
+  const g = window.__game, w = g.world, sc = g.scenes.find((x) => x.name === 'stage') ?? g.top;
   const CL = await import('/src/data/classes.js');
   const CD = await import('/src/data/companions.js');
   const FH = await import('/src/data/feel_hit.js');
@@ -414,9 +414,13 @@ for (const view of VIEWS) {
       const cdp = await ctx.newCDPSession(page);
       await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { left: view.notch.l, right: view.notch.r, top: view.notch.t, bottom: view.notch.b } });
     }
-    await page.goto(`http://localhost:${port}/index.html?scene=stage&stage=s04&nosw`, { timeout: 30000 });
-    await page.waitForFunction(() => window.__game?.world?.player && window.__game.top?.name === 'stage', null, { timeout: 30000 });
+    // 부하가 큰 기계에서도 (load 40–60) 부팅을 기다린다
+    await page.goto(`http://localhost:${port}/index.html?scene=stage&stage=s04&nosw`, { timeout: 60000 });
+    await page.waitForFunction(() => window.__game?.world?.player && window.__game.scenes?.some((sc) => sc.name === 'stage'), null, { timeout: 75000 });
     await page.waitForTimeout(1200);
+    // 스테이지 도입 대화 등 위에 쌓인 장면은 닫는다 (HUD 가 맨 위 장면의 것이어야 한다)
+    await page.evaluate(() => { const g = window.__game; let n = 0; while (g.top && g.top.name !== 'stage' && g.scenes.length > 1 && n++ < 5) g.pop(); });
+    await page.waitForTimeout(300);
     res = await page.evaluate(pageChecks, { view, INSETS });
     if (WIDGETS) {
       // 변형: [이름, 설정, relaxFixed]

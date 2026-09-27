@@ -11,8 +11,9 @@
 // squash, jiggle, arms fling) · death (melts into a spreading puddle that soaks away).
 import * as K from '../enemy_kit.js';
 import { clamp, lerp, ease } from '../../../core/math.js';
-import { HP, glint, claimDebris } from './_biped.js';
+import { HP, glint } from './_biped.js';
 import { atkPhase } from '../enemy_kit.js';
+import { claimDeathDebris } from './skeleton.js';
 
 export const spec = {
   id: 'mud_man', tier: 'T2', src: 'mud_man',
@@ -105,7 +106,7 @@ export function draw(ctx, e, world, o, rig) {
   TD = rig.td; BT = t;
   if (e.dying > 0) {
     if (world) {
-      if (!e._pcorpse) { e._pcorpse = true; claimDebris(world, e); spawnMelt(world, e, rig); }
+      if (!e._pcorpse) { e._pcorpse = true; claimDeathDebris(world, e); spawnMelt(world, e, rig); }
       return;
     }
     K.begin(ctx, rig, 0); drawMelt(K.deathK(e), t); K.end();   // bestiary / gallery: a frozen frame of the melt

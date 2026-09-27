@@ -26,7 +26,7 @@
 //   introK · glitch · tear (P3 찢김 0~1) · mawK (아가리 열림 0~1) · sunK (P4 0~1) · implode (final 빨려듦 0~1) · tilt · look ·
 //   echoKey/echoA · faceIdx/faceA · hands[{x, y, rot, s, curl, spread, point, eye(0~1), side, mode}] · dieT
 import { BossC, telegraph, warnText, strikeRect, strikeLine, strikeCircle, strikeColumn, strikeFloor, pullField, wallsClose, wallsOpen, wallsX, killTransients, darken, screenTint } from './c_common.js';
-import { PI, R, LG, RG, glow, glowE, glowSprite, warnRect, warnLine, warnFloor, warnCircle, impact, tube, smoothClosed, boltPath } from './b_common.js';
+import { PI, R, LG, RG, glow, glowE, glowSprite, warnRect, warnLine, warnFloor, warnCircle, impact, boltPath } from './b_common.js';
 import { Entity } from '../entity.js';
 import { T } from '../../core/physics.js';
 import { audio } from '../../core/audio.js';
@@ -52,17 +52,24 @@ const ECHO_KEYS = ['dracula', 'chaos', 'narkissa', 'ziz'];
 const FACE_T = 4.2;                // 가면이 다음 얼굴로 번지는 주기 (초)
 /** 손가락 (정규 좌표: 손바닥 가운데 원점, 손가락 = −y, 엄지 = +x). b 뿌리 · a 부채꼴 각 · L 마디 길이 · r 굵기 */
 const FINGERS = [
-  { i: 0, b: [-33, -38], a: -0.3, L: [36, 27, 21], r: 7 },
-  { i: 1, b: [-13, -47], a: -0.11, L: [46, 34, 25], r: 8 },
-  { i: 2, b: [8, -50], a: 0.03, L: [52, 38, 28], r: 8.5 },
-  { i: 3, b: [28, -45], a: 0.17, L: [46, 34, 25], r: 8 },
-  { i: 4, b: [42, 4], a: 0.95, L: [38, 30], r: 9, thumb: true },
+  { i: 0, b: [-28, -38], a: -0.3, L: [42, 31, 24], r: 7 },
+  { i: 1, b: [-11, -46], a: -0.11, L: [53, 39, 29], r: 8 },
+  { i: 2, b: [7, -49], a: 0.03, L: [60, 44, 32], r: 8.5 },
+  { i: 3, b: [25, -44], a: 0.17, L: [53, 39, 29], r: 8 },
+  { i: 4, b: [37, 4], a: 0.95, L: [42, 32], r: 9, thumb: true },
 ];
 const CURL = [0.75, 1.75, 2.7];    // 마디별 접힘 (curl 1 에서 rad)
-/** 두건 · 옷자락 윤곽 (가면 가운데 원점, 오른쪽을 본다) [x, y, 흔들림] — 앞자락 끝과 뒷자락 끝 사이는 해진 밑단 */
-const ROBE_A = [[-40, -214, 0.25], [4, -204, 0.1], [52, -182, 0.1], [88, -140, 0.12], [108, -82, 0.18], [118, -20, 0.3], [160, 44, 0.5], [198, 112, 0.7], [226, 176, 0.9]];
-const ROBE_B = [[-244, 176, 0.9], [-210, 104, 0.7], [-172, 36, 0.5], [-134, -28, 0.32], [-112, -98, 0.24], [-92, -158, 0.22], [-70, -196, 0.24]];
-const HEM_N = 11;
+/** 손가락 칠하기 [색, 굵기 배율, 옆으로 비킴(빛 쪽 −)] — 외곽 · 그늘 · 살 · 빛 */
+const FPASS_HI = [['#120a1c', 1.12, 0], ['#8e84a4', 1, 0], ['#e4ddee', 0.72, 0.2], ['#fdfbff', 0.28, 0.45]];
+const FPASS_LO = [['#120a1c', 1.12, 0], ['#d2cadf', 1, 0]];
+const FPASS_FL = [['#ffffff', 1, 0]];
+/** 두건 · 옷자락 윤곽 (가면 가운데 원점, 오른쪽을 본다) [x, y, 흔들림]. 첫 점 = 뒤로 늘어진 두건 끝(뾰족),
+ *  앞 두건 테두리가 얼굴 앞으로 튀어나왔다가 목에서 들어가고, 어깨 · 늘어진 소매 자락 · 해진 밑단(뾰족) · 뒷자락 */
+const ROBE_A = [[-62, -232, 0.25], [2, -214, 0.1], [62, -182, 0.1], [102, -128, 0.14], [122, -70, 0.2], [106, -24, 0.25], [150, 4, 0.35], [200, 52, 0.5], [236, 120, 0.7], [250, 178, 0.9]];
+const ROBE_B = [[-262, 178, 0.9], [-230, 96, 0.7], [-190, 30, 0.5], [-150, -24, 0.35], [-128, -98, 0.25], [-108, -166, 0.22], [-86, -208, 0.22]];
+const HEM_N = 13;
+/** 별밤 막 안쪽에서 밀려 나오는 얼굴들 [x, y, 배율, 얼굴 번호] */
+const PRESSED = [[-120, 58, 0.52, 0], [96, 110, 0.48, 4], [-36, 150, 0.4, 1]];
 const STAR_N = { n: 10, warn: 0.7, gap: 0.1, rest: 1.0 };      // starfall
 const STAR_SLOW = { n: 5, warn: 1.2, gap: 0.25, rest: 1.1 };  // lastLight
 const PRISM_HI = [[PM, -2.5, 0.55, 3], [PC, 2.5, 0.55, 3], [WHITE, 0, 0.75, 1.5]];
@@ -513,8 +520,8 @@ export class Nihil extends BossC {
     this.pCore = { x: 0, y: 0, w: 80, h: 100, defMul: 1, core: true };
     this.pShroud = { x: 0, y: 0, w: 220, h: 140, defMul: 1.35, shroud: true };
     this.cCore = { x: 0, y: 0, w: 64, h: 80 };
-    this._hp = []; this._cp = []; this._pts = new Float32Array(2 * (ROBE_A.length + ROBE_B.length + HEM_N + 2));
-    this._n = 0; this._builtT = -1; this._ml = new Float32Array(34); this._mr = new Float32Array(34); this._lk = { x: 0, y: 0 };
+    this._hp = []; this._cp = []; this._pts = new Float32Array(2 * (ROBE_A.length + ROBE_B.length + HEM_N * 2 + 2)); this._nf = ROBE_A.length; this._nh = 0;
+    this._n = 0; this._builtT = -1; this._fp = new Float32Array(8); this._ml = new Float32Array(34); this._mr = new Float32Array(34); this._lk = { x: 0, y: 0 };
     this._B = { x0: A.x0, x1: A.x1, w: A.w, cx: A.cx };
     // 캐시 스프라이트는 등장 연출 동안 만든다 (싸움 중 새 캔버스 0 — MASTER_PLAN §5.2)
     for (const c of GLOW_COLS) { glowSprite(c, false); glowSprite(c, true); }
@@ -1062,7 +1069,7 @@ export class Nihil extends BossC {
     }
     if (t < tb + warnB + 0.3) {
       const m = this.mawXY();
-      for (const h of this.hands) { h.mode = 'hold'; h.tx = m.x + h.side * (120 + 50 * this.mawK); h.ty = m.y - 10; h.trot = -h.side * 1.9; h.tcurl = 0.7; h.k = 6; }
+      for (const h of this.hands) { h.mode = 'hold'; h.tx = m.x + h.side * (190 + 70 * this.mawK); h.ty = m.y - 20; h.trot = -h.side * 1.62; h.tcurl = 0.78; h.k = 6; }
     }
     if (this.at(tIn)) {
       this.spd = 30;
@@ -1246,7 +1253,12 @@ export class Nihil extends BossC {
   lightsB(L) {
     if (this._lw > 0) { this._lw--; const cam = this.world?.camera; if (cam) for (const c of LIGHT_COLS) L.add(cam.x + 40, cam.y + 40, 4, c, 0); }
     const cy = this.by + this.bob, dk = this.dying > 0 ? (this.dieT < 2.7 ? 1 : 0) : this.introK;
-    if (this.sunK > 0.2) { L.add(this.bx, cy, 380, WHITE, 0.9 * this.sunK * dk); L.add(this.bx, cy, 220, DAWN, 0.6 * this.sunK * dk); }
+    if (this.sunK > 0.2) {
+      // 검은 태양은 검게: 가운데는 어둠만 걷고(가산 색광 없음) 흰 불꽃 테두리에만 색광을 둘러친다
+      const k = this.sunK * dk;
+      L.add(this.bx, cy, 420, WHITE, 0.9 * k, false);
+      for (let i = 0; i < 4; i++) { const a = (i / 4) * TAU + 0.4; L.add(this.bx + Math.cos(a) * 150, cy + Math.sin(a) * 150, 170, i % 2 ? DAWN : WHITE, 0.5 * k); }
+    }
     if (this.sunK < 0.9) {
       const k = (1 - this.sunK) * dk;
       L.add(this.bx, cy, 210, VIO, 0.55 * k);
@@ -1277,13 +1289,32 @@ export class Nihil extends BossC {
       P[n * 2] = x + sw + gl; P[n * 2 + 1] = Math.min(y, room); n++;
     };
     for (const [x, y, w] of ROBE_A) push(x, y, w);
+    const nh0 = n;
     for (let i = 0; i < HEM_N; i++) {
-      const u = (i + 0.5) / HEM_N, x = lerp(214, -232, u);
-      const long = i % 2 === 0, len = long ? 46 + h01(i * 3.3) * 38 + Math.sin(t * 1.7 + i) * 8 : 4;
-      push(x, 186 + len, 1.1);
+      const u = (i + 0.5) / HEM_N, x = lerp(236, -248, u) + (h01(i * 1.9) - 0.5) * 26;
+      if (i % 2 === 0) {
+        // 찢어진 긴 자락: 끝이 비스듬히 잘린 가는 띠
+        const extra = i === 4 || i === 8 ? 46 : 0, len = 26 + h01(i * 3.3) * 70 + extra + Math.sin(t * 1.7 + i) * 9;
+        const hw = 5 + h01(i * 4.1) * 7, cut = (h01(i * 6.7) - 0.5) * 16;
+        push(x + hw, 182 + len + cut, 1.15); push(x - hw, 182 + len - cut, 1.15);
+      } else push(x, 182 - h01(i * 2.1) * 26, 1.0);   // 자락 사이 찢어져 올라간 틈
     }
+    this._nh = n - nh0;
     for (const [x, y, w] of ROBE_B) push(x, y, w);
     this._n = n;
+  }
+  /** 윤곽 경로: 두건 끝 · 밑단 톱니는 뾰족하게, 나머지는 부드럽게 */
+  traceRobe(ctx) {
+    const P = this._pts, n = this._n, nf = this._nf, b0 = nf + this._nh;
+    ctx.beginPath();
+    ctx.moveTo(P[0], P[1]);
+    for (let i = 1; i < nf - 1; i++) ctx.quadraticCurveTo(P[i * 2], P[i * 2 + 1], (P[i * 2] + P[i * 2 + 2]) / 2, (P[i * 2 + 1] + P[i * 2 + 3]) / 2);
+    ctx.lineTo(P[(nf - 1) * 2], P[(nf - 1) * 2 + 1]);
+    for (let i = nf; i < b0; i++) ctx.lineTo(P[i * 2], P[i * 2 + 1]);
+    ctx.lineTo(P[b0 * 2], P[b0 * 2 + 1]);
+    for (let i = b0 + 1; i < n - 1; i++) ctx.quadraticCurveTo(P[i * 2], P[i * 2 + 1], (P[i * 2] + P[i * 2 + 2]) / 2, (P[i * 2 + 1] + P[i * 2 + 3]) / 2);
+    ctx.lineTo(P[(n - 1) * 2], P[(n - 1) * 2 + 1]);
+    ctx.closePath();
   }
   paintBack(ctx, world) {
     this.buildRobe();
@@ -1312,7 +1343,7 @@ export class Nihil extends BossC {
       if (lh === 'h0' || lh === 'h1') { this.drawHand(ctx, this.hands[lh === 'h0' ? 0 : 1]); return; }
       ctx.save(); ctx.translate(this.bx, cy); ctx.scale(sx, 1);
       if (this.sunK > 0.5) this.drawSun(ctx, q);
-      else if (lh === 'shroud' && robeA > 0.3) { ctx.globalAlpha *= 0.3; ctx.beginPath(); smoothClosed(ctx, this._pts, this._n); ctx.fillStyle = '#ffffff'; ctx.fill(); }
+      else if (lh === 'shroud' && robeA > 0.3) { ctx.globalAlpha *= 0.3; this.traceRobe(ctx); ctx.fillStyle = '#ffffff'; ctx.fill(); }
       else if (this.mawK > 0.55) glow(ctx, 0, MAW_Y, 40, WHITE, 1);
       else this.drawMask(ctx);
       ctx.restore();
@@ -1341,8 +1372,8 @@ export class Nihil extends BossC {
 
   // ── 몸 ──
   drawRobe(ctx, q) {
-    const P = this._pts, n = this._n, t = this.t;
-    ctx.beginPath(); smoothClosed(ctx, P, n);
+    const t = this.t;
+    this.traceRobe(ctx);
     ctx.fillStyle = VOID; ctx.fill();
     ctx.save(); ctx.clip();
     const st = ART?.stars;
@@ -1354,6 +1385,7 @@ export class Nihil extends BossC {
     glowE(ctx, 0, 90, 200, 190, NEB, 0.22);
     glowE(ctx, -60, -40, 120, 140, PM, 0.08);
     glowE(ctx, 70, 120, 110, 120, PC, 0.07);
+    this.drawPressed(ctx);
     if (q >= 0.5) this.drawRibs(ctx);
     this.drawSpotEyes(ctx, q);
     ctx.restore();
@@ -1364,11 +1396,27 @@ export class Nihil extends BossC {
     for (const [c, dx, a, lw] of q >= 0.7 ? PRISM_HI : PRISM_LO) {
       ctx.globalAlpha = ga * a * fl;
       ctx.translate(dx, 0);
-      ctx.beginPath(); smoothClosed(ctx, P, n);
+      this.traceRobe(ctx);
       ctx.strokeStyle = c; ctx.lineWidth = lw; ctx.stroke();
       ctx.translate(-dx, 0);
     }
     ctx.restore();
+  }
+  /** 별밤 막 안쪽에서 밀려 나오는 흐릿한 얼굴들 (쓰러뜨린 자들) — 숨 쉬듯 떠올랐다 가라앉는다 */
+  drawPressed(ctx) {
+    const S = ART?.mask;
+    if (!S) return;
+    const t = this.t, room = this.roomBelow(), ga = ctx.globalAlpha, k = this.formPhase >= 1 ? 1.5 : 1;
+    for (let i = 0; i < PRESSED.length; i++) {
+      const [x, y, sc, fi] = PRESSED[i];
+      if (y + 60 * sc > room) continue;
+      const a = (0.09 + 0.07 * Math.sin(t * 0.9 + i * 2.1)) * k, sw = Math.sin(t * 0.6 + i) * 0.12;
+      ctx.globalAlpha = ga * a;
+      put(ctx, S, x, y, sw, sc * (1 + 0.05 * Math.sin(t * 1.3 + i)), sc);
+      const F = ART.faces?.[fi];
+      if (F) { ctx.globalAlpha = ga * a * 1.2; put(ctx, F, x, y, sw, sc, sc); }
+    }
+    ctx.globalAlpha = ga;
   }
   drawRibs(ctx) {
     ctx.save();
@@ -1412,6 +1460,14 @@ export class Nihil extends BossC {
     ctx.beginPath(); ctx.arc(0, 0, 88, 0, TAU); ctx.fill();
     ctx.restore();
     glowE(ctx, 0, -8, 80, 98, VIO, 0.18);
+    // 두건 테두리 주름 (얼굴을 감싸는 겹)
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = 'rgba(220,200,255,0.2)'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.ellipse(6, -14, 98, 124, 0.05, -2.75, 0.75); ctx.stroke();
+    ctx.strokeStyle = 'rgba(160,120,255,0.12)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.ellipse(10, -8, 108, 134, 0.05, -2.5, 0.4); ctx.stroke();
+    ctx.restore();
   }
   /** 이 빠진 별빛 후광 (P3 에는 흩어진다) */
   drawHalo(ctx) {
@@ -1466,7 +1522,7 @@ export class Nihil extends BossC {
     const Lp = this._ml, Rp = this._mr, N = 16;
     for (let i = 0; i <= N; i++) {
       const u = i / N, y = lerp(y0, y1, u);
-      const w = Math.pow(Math.sin(PI * u), 0.75) * (34 + 118 * open);
+      const w = Math.pow(Math.sin(PI * u), 0.8) * (22 + 86 * open) * (1 + 0.25 * Math.sin(PI * Math.min(1, u * 1.6)));
       const j = (h01(i * 7.7) - 0.5) * 10 * open + Math.sin(t * 3 + i) * 2 * open;
       Lp[i * 2] = -w + j; Lp[i * 2 + 1] = y; Rp[i * 2] = w + j * 0.8; Rp[i * 2 + 1] = y;
     }
@@ -1492,9 +1548,12 @@ export class Nihil extends BossC {
     ctx.lineJoin = 'round';
     for (const [E, s] of [[Lp, 1], [Rp, -1]]) {
       for (let i = 1; i < N; i++) {
-        const x = E[i * 2], y = E[i * 2 + 1], len = (10 + h01(i * 3 + (s > 0 ? 1 : 2)) * 16) * (0.4 + 0.6 * open);
-        ctx.beginPath(); ctx.moveTo(x, y - 6); ctx.lineTo(x + s * len, y + 2); ctx.lineTo(x, y + 7); ctx.closePath();
-        ctx.fillStyle = '#e6deff'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.stroke();
+        // 별 조각 이빨: 가장자리에서 안쪽(아래로 휜)으로, 길이 제각각 · 가끔 겹니
+        const x = E[i * 2], y = E[i * 2 + 1], hv = h01(i * 3 + (s > 0 ? 1 : 2)), len = (12 + hv * 24) * (0.4 + 0.6 * open);
+        const bw = 6 + hv * 3;
+        ctx.beginPath(); ctx.moveTo(x - s * 2, y - bw); ctx.quadraticCurveTo(x + s * len * 0.6, y - 2, x + s * len, y + 4 + hv * 6); ctx.lineTo(x - s * 2, y + bw); ctx.closePath();
+        ctx.fillStyle = hv > 0.7 ? '#fff6e0' : '#e6deff'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 1.2; ctx.stroke();
+        if (hv > 0.55 && i % 2) { ctx.beginPath(); ctx.moveTo(x - s * 4, y - 3); ctx.lineTo(x + s * len * 0.55, y + 8); ctx.lineTo(x - s * 4, y + 9); ctx.closePath(); ctx.fill(); ctx.stroke(); }
       }
     }
     if (q >= 0.7) {
@@ -1513,6 +1572,7 @@ export class Nihil extends BossC {
     const open = this.formPhase >= 2 || this.mawK > 0.05 ? Math.max(this.tear, this.mawK) : 0;
     ctx.save();
     ctx.rotate(this.tilt);
+    ctx.scale(1.18, 1.18);
     if (!S) {
       ctx.fillStyle = R.fl ? '#ffffff' : PORC; ctx.beginPath(); ctx.ellipse(0, 0, 46, 66, 0, 0, TAU); ctx.fill();
       ctx.restore();
@@ -1520,7 +1580,7 @@ export class Nihil extends BossC {
     }
     const img = R.fl ? S.f : S.c, K = img.width / S.w;
     if (open > 0.02) {
-      const d = 6 + 30 * open;
+      const d = 6 + 44 * open;
       ctx.save(); ctx.translate(-d, 2); ctx.rotate(-0.1 * open);
       ctx.drawImage(img, 0, 0, S.ox * K, S.h * K, -S.ox, -S.oy, S.ox, S.h); ctx.restore();
       ctx.save(); ctx.translate(d, -2); ctx.rotate(0.1 * open);
@@ -1552,7 +1612,7 @@ export class Nihil extends BossC {
     if (!R.fl) {
       const lx = this.look * Math.sign(this.sxOf()), k = this.introK;
       for (const s of [-1, 1]) {
-        const x = s * 18 + (open > 0.02 ? s * (6 + 30 * open) : 0) + lx * 4, y = -8 + this.lookY * 3;
+        const x = s * 18 + (open > 0.02 ? s * (6 + 44 * open) : 0) + lx * 4, y = -8 + this.lookY * 3;
         glow(ctx, x, y, 16, VIO_L, 0.7 * k); glow(ctx, x, y, 6, WHITE, 0.9 * k, true);
       }
     }
@@ -1589,8 +1649,30 @@ export class Nihil extends BossC {
       }
       ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(0, 0, r * 0.82, -0.6 + t * 0.3, 0.3 + t * 0.3); ctx.stroke();
+      // 마지막 눈: 검은 원반 가운데 세로로 찢어진 흰 눈이 플레이어를 본다
+      const lx = this.look * Math.sign(this.sxOf()), ly = this.lookY, ew = r * 0.22, eh = r * 0.62 * (0.85 + 0.15 * Math.sin(t * 2.3));
+      ctx.save();
+      ctx.beginPath(); ctx.moveTo(0, -eh); ctx.quadraticCurveTo(ew * 2, 0, 0, eh); ctx.quadraticCurveTo(-ew * 2, 0, 0, -eh); ctx.closePath();
+      ctx.fillStyle = '#fff8e8'; ctx.fill();
+      ctx.clip();
+      glow(ctx, lx * ew * 0.5, ly * eh * 0.25, ew * 2.2, IRIS, 0.9);
+      ctx.fillStyle = '#000000'; ctx.beginPath(); ctx.ellipse(lx * ew * 0.5, ly * eh * 0.25, ew * 0.35, eh * 0.55, 0, 0, TAU); ctx.fill();
+      ctx.restore();
+      glow(ctx, 0, 0, eh * 1.4, DAWN, 0.25);
     }
     ctx.restore();
+    // 홍염: 테두리에서 솟았다 떨어지는 흰 불꽃 고리
+    if (!R.fl && k > 0.3) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
+      for (let i = 0; i < (q >= 0.7 ? 4 : 2); i++) {
+        const a = i * 1.7 + t * 0.21, life = (t * 0.35 + i * 0.27) % 1, hgt = r * (0.35 + 0.9 * Math.sin(PI * life));
+        const c = Math.cos(a), sn = Math.sin(a), c2 = Math.cos(a + 0.5), s2 = Math.sin(a + 0.5), am = a + 0.25;
+        ctx.strokeStyle = rgba(i % 2 ? DAWN : WHITE, 0.55 * k * Math.sin(PI * life)); ctx.lineWidth = 3 + 3 * (1 - life);
+        ctx.beginPath(); ctx.moveTo(c * r, sn * r); ctx.quadraticCurveTo(Math.cos(am) * (r + hgt * 1.6), Math.sin(am) * (r + hgt * 1.6), c2 * r, s2 * r); ctx.stroke();
+      }
+      ctx.restore();
+    }
   }
   /** P2 메아리: 쓰러뜨린 보스의 그림자가 몸 뒤에 겹친다 (form2 전환 중에는 넷이 번갈아) */
   drawEcho(ctx) {
@@ -1602,7 +1684,7 @@ export class Nihil extends BossC {
     const cy = this.by + this.bob, jit = this.glitch > 0.3 ? (h01(Math.floor(this.t * 18)) - 0.5) * 10 : 0;
     const sc = 1.25 + 0.03 * Math.sin(this.t * 2);
     ctx.save();
-    ctx.globalAlpha *= a * 0.75;
+    ctx.globalAlpha *= a * 0.62;
     put(ctx, S, this.bx + jit, cy - 30, 0, sc * (this.face >= 0 ? 1 : -1), sc);
     ctx.restore();
     glowE(ctx, this.bx, cy - 20, 300, 260, ECHO[key].col, 0.22 * a);
@@ -1611,8 +1693,9 @@ export class Nihil extends BossC {
   // ── 손 ──
   drawHand(ctx, h) {
     if (h.a <= 0.01) return;
-    const fl = R.fl;
+    const fl = R.fl, F = this.A.floor;
     ctx.save();
+    if (h.y + 260 > F) { ctx.beginPath(); ctx.rect(h.x - 400, h.y - 400, 800, Math.max(0, F + 3 - (h.y - 400))); ctx.clip(); }   // 땅에 박힌 손끝은 바닥 아래로 사라진다
     ctx.translate(h.x, h.y); ctx.rotate(h.rot); ctx.scale(-h.side * h.s, h.s);
     if (h.a < 1) ctx.globalAlpha *= h.a;
     if (!fl) this.drawWrist(ctx, h);
@@ -1666,28 +1749,45 @@ export class Nihil extends BossC {
     ctx.strokeStyle = rgba(WHITE, 0.85 * pulse); ctx.lineWidth = 0.9; ctx.stroke();
     ctx.restore();
   }
+  /** 손가락: 마디마다 둥근 끝 선을 겹쳐 그려 이어진 살덩이처럼 (외곽 → 그늘 → 살 → 빛) · 마디 주름 · 흑요석 손톱 */
   drawFinger(ctx, h, f) {
     const curl = f.thumb ? h.curl * 0.6 : h.point > 0.5 ? (f.i === 3 ? 0.04 : 0.95) : h.curl;
     const a = f.a * (0.55 + 0.45 * h.spread), da = Math.sin(a), dc = -Math.cos(a), nx = -dc, ny = da;
-    const tw0 = h.mode === 'float' ? 1 : 0.25;
+    const tw0 = h.mode === 'float' ? 1 : 0.25, n = f.L.length, P = this._fp;
     let x = f.b[0], y = f.b[1], lastL = 1;
-    const n = f.L.length;
+    P[0] = x; P[1] = y;
     for (let k = 0; k < n; k++) {
       const th = CURL[k] * curl * (f.thumb ? 0.8 : 1);
       const L = f.L[k] * Math.cos(th), side = f.L[k] * Math.sin(th) * 0.18 * (f.thumb ? -1 : 1);
       const tw = Math.sin(this.t * 7 + f.i * 1.3 + k) * 0.6 * tw0;
-      const x1 = x + da * L + nx * (side + tw), y1 = y + dc * L + ny * (side + tw);
-      const r0 = f.r * (1 - k * 0.16), r1 = f.r * (1 - (k + 1) * 0.16);
-      tube(ctx, x, y, x1, y1, r0, r1, PORC, 'nf' + f.i + k, 2);
-      if (!R.fl && k > 0) { ctx.strokeStyle = 'rgba(60,40,80,0.55)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - nx * r0 * 0.8, y - ny * r0 * 0.8); ctx.lineTo(x + nx * r0 * 0.8, y + ny * r0 * 0.8); ctx.stroke(); }
-      x = x1; y = y1; lastL = L;
-      if (k === n - 1) {
-        const sg = lastL < 0 ? -1 : 1, dx = da * sg, dy = dc * sg, nl = f.thumb ? 16 : 20, w = r1 * 0.9;
-        ctx.beginPath(); ctx.moveTo(x - dy * w, y + dx * w); ctx.lineTo(x + dx * nl, y + dy * nl); ctx.lineTo(x + dy * w, y - dx * w); ctx.closePath();
-        ctx.fillStyle = R.fl ? '#ffffff' : NAIL; ctx.fill();
-        if (!R.fl) { ctx.strokeStyle = 'rgba(180,140,255,0.5)'; ctx.lineWidth = 1; ctx.stroke(); }
+      x += da * L + nx * (side + tw); y += dc * L + ny * (side + tw);
+      P[(k + 1) * 2] = x; P[(k + 1) * 2 + 1] = y; lastL = L;
+    }
+    const fl = R.fl, q = this.world?.fx?.quality ?? 1;
+    const passes = fl ? FPASS_FL : q >= 0.7 ? FPASS_HI : FPASS_LO;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    for (const [col, wk, off] of passes) {
+      ctx.strokeStyle = col;
+      for (let k = 0; k < n; k++) {
+        const r = f.r * (1 - (k + 0.5) * 0.16), o = off * r;
+        ctx.lineWidth = Math.max(1, r * 2 * wk + (wk > 1 ? 2.5 : 0));
+        ctx.beginPath(); ctx.moveTo(P[k * 2] - nx * o, P[k * 2 + 1] - ny * o); ctx.lineTo(P[k * 2 + 2] - nx * o, P[k * 2 + 3] - ny * o); ctx.stroke();
       }
     }
+    if (!fl) {
+      ctx.strokeStyle = 'rgba(70,46,92,0.7)'; ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      for (let k = 1; k < n; k++) {
+        const r = f.r * (1 - k * 0.16), jx = P[k * 2], jy = P[k * 2 + 1];
+        for (const d of [-2.5, 1.5]) { ctx.moveTo(jx - nx * r * 0.75 + da * d, jy - ny * r * 0.75 + dc * d); ctx.quadraticCurveTo(jx + da * (d + 2), jy + dc * (d + 2), jx + nx * r * 0.75 + da * d, jy + ny * r * 0.75 + dc * d); }
+      }
+      ctx.stroke();
+    }
+    const r1 = f.r * (1 - n * 0.16), sg = lastL < 0 ? -1 : 1, dx = da * sg, dy = dc * sg, nl = f.thumb ? 16 : 21, w = r1 * 0.95;
+    x = P[n * 2]; y = P[n * 2 + 1];
+    ctx.beginPath(); ctx.moveTo(x - dy * w, y + dx * w); ctx.quadraticCurveTo(x + dx * nl * 0.6 - dy * w * 0.5, y + dy * nl * 0.6 + dx * w * 0.5, x + dx * nl, y + dy * nl); ctx.lineTo(x + dy * w, y - dx * w); ctx.closePath();
+    ctx.fillStyle = fl ? '#ffffff' : NAIL; ctx.fill();
+    if (!fl) { ctx.strokeStyle = 'rgba(180,140,255,0.55)'; ctx.lineWidth = 1; ctx.stroke(); }
   }
   drawPalmEye(ctx, h) {
     const o = h.eye, cx = 0, cy = 4, hw = 27, fl = R.fl;
@@ -1750,13 +1850,13 @@ export class Nihil extends BossC {
 // ───────────────────────── 손바닥 · 공격 그림 ─────────────────────────
 function palmPath(ctx) {
   ctx.beginPath();
-  ctx.moveTo(-40, -44);
-  ctx.quadraticCurveTo(-8, -58, 38, -50);
-  ctx.quadraticCurveTo(50, -30, 46, 0);
-  ctx.quadraticCurveTo(52, 30, 30, 54);
-  ctx.quadraticCurveTo(0, 66, -28, 58);
-  ctx.quadraticCurveTo(-50, 26, -46, -8);
-  ctx.quadraticCurveTo(-46, -30, -40, -44);
+  ctx.moveTo(-34, -44);
+  ctx.quadraticCurveTo(-4, -56, 34, -48);
+  ctx.quadraticCurveTo(44, -26, 40, 0);
+  ctx.quadraticCurveTo(46, 28, 26, 52);
+  ctx.quadraticCurveTo(0, 64, -24, 56);
+  ctx.quadraticCurveTo(-42, 24, -40, -8);
+  ctx.quadraticCurveTo(-40, -30, -34, -44);
   ctx.closePath();
 }
 function sparkle(ctx, x, y, s, rot) {

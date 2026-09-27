@@ -205,6 +205,8 @@ export class EquipTab extends Tab {
       if (nav.left || nav.cancel) { this.sub = 'slots'; audio.sfx('menu_cancel'); }
     }
   }
+  /** 포커스와 무관하게 늘 되는 조작 (탭 막대에 포커스가 있을 때 메뉴 하단 막대가 덧붙인다 — 턴테이블) */
+  idleHints() { return turntableHints(this.view); }
   hints(focused) {
     if (this.sub === 'list') return [['↑↓', '고르기'], ['Z', '장착', '한 번 더 터치하면 장착'], [['←', 'X'], '장비 칸'], ...turntableHints(this.view)];
     return [['↑↓', '장비 칸'], ['Z', '교체', '장비 칸을 터치해 교체할 장비를 고르세요'], ['A', '해제'], ...turntableHints(this.view)];

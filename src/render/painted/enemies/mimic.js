@@ -9,6 +9,7 @@
 import * as K from '../enemy_kit.js';
 import { clamp, lerp, ease } from '../../../core/math.js';
 import { glint } from './_biped.js';
+import { claimDeathDebris } from './skeleton.js';
 
 export const spec = {
   id: 'mimic', tier: 'T1', src: 'mimic',
@@ -28,6 +29,7 @@ export function draw(ctx, e, world, o, rig) {
   if (e.dying > 0 && world) {
     if (!e._pcorpse) {
       e._pcorpse = true;
+      claimDeathDebris(world, e);                   // the gold dissolve replaces the generic metal chips (material 'metal')
       K.begin(ctx, rig, 0);
       K.pivotPos('box', 'a', 'hinge', 0, 0, 0, 1, 1, _q);
       K.end();

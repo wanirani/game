@@ -20,7 +20,7 @@ export const BOSSES_D = {
     desc: '숲을 등에 지고 다니던 온순한 대지의 짐승. 공허의 굶주림이 포자가 되어 내려앉자, 균사의 여왕이 그 척수를 붙들고 춤추게 했다.',
   },
   b_nihil: {
-    id: 'b_nihil', name: '니힐', title: '태초의 공허', hp: 3200, hpMul: 1.6, atk: 44, def: 22, res: 22, exp: 15000, score: 600000,
+    id: 'b_nihil', name: '니힐', title: '태초의 공허', hp: 3200, hpMul: 1.32, atk: 44, def: 22, res: 22, exp: 15000, score: 600000,
     size: { w: 220, h: 280 }, flying: true, contact: 0.8, material: 'ghost', weak: ['holy'], resist: ['dark', 'ice', 'fire', 'thunder'], phases: [0.75, 0.45, 0.15],
     music: 'nihil', portrait: 'portraits/b_nihil', stageId: 's20', drops: ['u_nihil', 'u_nihil2'], light: { r: 340, color: '#ffffff', i: 0.6 },
     form2: { name: '니힐', title: '만유(萬有)를 흉내 내는 무', portrait: 'portraits/b_nihil2' },

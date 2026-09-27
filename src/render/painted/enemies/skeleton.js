@@ -5,13 +5,34 @@
 // death (collapse: every posed bone becomes a tumbling corpse piece, skull bounces, bone dust).
 // The layout is shared by the skeleton-rig variants (bone_thrower.js, skeleton_archer.js: same bones + their own
 // parts in their own atlas) through layoutSkel(e, q, opt) / dieSkel().
+// This module also exports claimDeathDebris() for the ART-ENEMY-1 renderers whose material spawns vector debris.
 import * as K from '../enemy_kit.js';
-import { bipedPose, dirOf, swingTrail, glint, claimDebris, HP } from './_biped.js';
+import { clamp } from '../../../core/math.js';
+import { bipedPose, dirOf, swingTrail, glint, HP } from './_biped.js';
 
 export const spec = {
   id: 'skeleton', tier: 'T2', src: 'skeleton',
   bake: { outline: 0.42, deep: { '*': 0.66 }, deepTint: 'rgb(150,150,176)' },
 };
+
+/**
+ * Retire the generic vector debris (bone / metal / stone chips) that Enemy.die() spawned for this body, so the painted
+ * corpse or dissolve is the only one (bone, metal and stone renderers of ART-ENEMY-1 call it on their death frame).
+ * Unlike _biped.claimDebris (fixed 0.06 s window) it also holds on slow frames: up to 5 fixed steps run between
+ * Enemy.die and the next render (≈ 12 fps and below every chip stayed next to the painted corpse), so the age window
+ * follows the time since the death (e.dying counts down from dieTime; hitstop freezes the body and the chips alike) and
+ * the position window grows with that age (chips fly at ≤ 560 px/s, the body keeps sliding with the kill knockback).
+ */
+export function claimDeathDebris(world, e) {
+  const L = world?.debrisList;
+  if (!L) return;
+  const t0 = e.def?.dieTime ?? 0.35;
+  const win = clamp(t0 - (e.dying ?? t0), 0, t0) + 0.07;
+  for (const d of L) {
+    const age = d.maxLife - d.life;
+    if (age < win && Math.abs(d.x - e.cx) < 14 + 600 * age + d.w && Math.abs(d.y - e.cy) < 24 + 700 * age + 450 * age * age + d.h) d.life = 0;
+  }
+}
 
 const PL = [];          // placements (reused): {name, x, y, rot, sx, sy, vn}
 let NP = 0;
@@ -114,7 +135,7 @@ export function drawSkel(alpha = 1) {
 /** death collapse: every posed bone becomes a tumbling corpse piece (call after layoutSkel) */
 export function dieSkel(e, world, rig, dust = '#c8b898') {
   e._pcorpse = true;
-  claimDebris(world, e);
+  claimDeathDebris(world, e);
   const kb = Math.sign(e.vx || 0) * (e.facing < 0 ? -1 : 1);
   const pieces = [];
   for (let i = 0; i < NP; i++) {

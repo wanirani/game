@@ -56,6 +56,7 @@ function pose(e) {
 }
 
 const L0 = {};
+const EYES = [['eye', 2.4], ['eye2', 1.8]];   // [pivot, glow radius] (hoisted: no per-frame allocation)
 const TS = 1.3;          // the painted vest piece is the front half of the torso (its arm was cut away): widened a little
 function layout(e, q) {
   NP = 0;
@@ -130,7 +131,7 @@ export function draw(ctx, e, world, o, rig) {
       ctx.globalAlpha = ga; ctx.globalCompositeOperation = gco;
     }
     if (q.tele > 0.45) glint(ctx, L.tipx - 2, L.tipy, 3 + 4 * q.tele, '#e8c8ff', 0.85 * (q.tele - 0.45) / 0.55);
-    for (const [pn, r] of [['eye', 2.4], ['eye2', 1.8]]) {
+    for (const [pn, r] of EYES) {
       K.pivotPos('head', 'a', pn, L.nx, L.ny, L.hr, 1, 1, _q);
       K.glow(_q[0], _q[1], r + q.tele * 2, '#c060ff', 0.7 + 0.2 * Math.sin(t * 5) + q.tele * 0.3);
     }

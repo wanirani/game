@@ -10,7 +10,8 @@
 // death (the gargoyle crumbles: strip dissolve falling apart, stone chips and a last flare of the cracks).
 import * as K from '../enemy_kit.js';
 import { clamp, lerp, ease } from '../../../core/math.js';
-import { glint, claimDebris } from './_biped.js';
+import { glint } from './_biped.js';
+import { claimDeathDebris } from './skeleton.js';
 
 export const spec = {
   id: 'gargoyle', tier: 'T2', src: 'gargoyle',
@@ -80,7 +81,7 @@ export function draw(ctx, e, world, o, rig) {
   if (e.dying > 0 && world) {
     if (!e._pcorpse) {
       e._pcorpse = true;
-      claimDebris(world, e);                        // the painted crumble replaces the generic stone chips
+      claimDeathDebris(world, e);                   // the painted crumble replaces the generic stone chips
       K.begin(ctx, rig, 0); layout(q); K.end();
       K.spawnDissolve(world, e, rig, [
         { name: 'wing', pv: 'a', x: L.w2x, y: L.w2y, rot: q.dir - q.lag * 0.3 - PI, sx: q.ws * 0.94, sy: q.ws * 0.94, vn: 'deep' },
@@ -124,15 +125,15 @@ export function draw(ctx, e, world, o, rig) {
     const pool = e._fx ?? (e._fx = new K.FxPool(20));
     const dt = pool.step(K.clockOf(e, world));
     const f = e.facing < 0 ? -1 : 1, sc = (e.scale || 1) * (rig.scale ?? 1), lo = K.lod() === 0;
-    const wx = (lx) => e.cx + f * sc * lx, wy = (ly) => e.bottom + sc * ly;
+    const fs = f * sc, ex = e.cx, eb = e.bottom;     // local → world: x = ex + fs·lx, y = eb + sc·ly (no per-frame closures)
     if (q.embers) {
       K.begin(ctx, rig, 0); K.pivotPos('body', 'a', 'chest', Lq.x, Lq.y, Lq.rot, 1, 1, _r); K.end();
-      for (let k = pool.rate(0, lo ? 1.5 : 3, dt); k > 0; k--) pool.add(0, wx(_r[0] + K.frand(-12, 8)), wy(_r[1] + K.frand(-6, 10)), K.frand(-10, 10), K.frand(-40, -15), K.frand(0.5, 0.9), K.frand(1.5, 2.5), '#ff8a2a');
+      for (let k = pool.rate(0, lo ? 1.5 : 3, dt); k > 0; k--) pool.add(0, ex + fs * (_r[0] + K.frand(-12, 8)), eb + sc * (_r[1] + K.frand(-6, 10)), K.frand(-10, 10), K.frand(-40, -15), K.frand(0.5, 0.9), K.frand(1.5, 2.5), '#ff8a2a');
     }
-    if (e.anim === 'wake') for (let k = pool.rate(1, lo ? 12 : 24, dt); k > 0; k--) pool.add(4, wx(K.frand(-22, 22)), wy(-26 + K.frand(-20, 18)), K.frand(-80, 80), K.frand(-140, -20), K.frand(0.4, 0.7), K.frand(1.4, 2.6), '#8a8480');
+    if (e.anim === 'wake') for (let k = pool.rate(1, lo ? 12 : 24, dt); k > 0; k--) pool.add(4, ex + fs * K.frand(-22, 22), eb + sc * (-26 + K.frand(-20, 18)), K.frand(-80, 80), K.frand(-140, -20), K.frand(0.4, 0.7), K.frand(1.4, 2.6), '#8a8480');
     if (q.fire > 0.3) {
       K.begin(ctx, rig, 0); K.pivotPos('body', 'a', 'jaw', Lq.x, Lq.y, Lq.rot, 1, 1, _q); K.end();
-      for (let k = pool.rate(2, lo ? 10 : 22, dt); k > 0; k--) pool.add(3, wx(_q[0]), wy(_q[1]), f * K.frand(20, 90), K.frand(-60, 30), K.frand(0.2, 0.4), K.frand(1, 2), '#ffb040');
+      for (let k = pool.rate(2, lo ? 10 : 22, dt); k > 0; k--) pool.add(3, ex + fs * _q[0], eb + sc * _q[1], f * K.frand(20, 90), K.frand(-60, 30), K.frand(0.2, 0.4), K.frand(1, 2), '#ffb040');
     }
     ctx.save(); ctx.setTransform(o.cam); pool.draw(ctx); ctx.restore();
   }

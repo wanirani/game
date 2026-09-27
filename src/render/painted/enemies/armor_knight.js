@@ -5,8 +5,9 @@
 // shield braced in front (jolts when hit — AI.knight's front block sparks come from the AI), hurt recoil + white flash,
 // death collapse (armour pieces tumble and clatter, the helm rolls, cape drops).
 import * as K from '../enemy_kit.js';
-import { bipedPose, dirOf, swingTrail, glint, claimDebris, HP } from './_biped.js';
+import { bipedPose, dirOf, swingTrail, glint, HP } from './_biped.js';
 import { atkPhase } from '../enemy_kit.js';
+import { claimDeathDebris } from './skeleton.js';
 
 export const spec = {
   id: 'armor_knight', tier: 'T2', src: 'armor_knight',
@@ -108,7 +109,7 @@ function drawAll(e) {
 export function dieKnight(e, world, rig) { die(e, world, rig); }
 function die(e, world, rig) {
   e._pcorpse = true;
-  claimDebris(world, e);
+  claimDeathDebris(world, e);
   const kb = Math.sign(e.vx || 0) * (e.facing < 0 ? -1 : 1);
   const pieces = [];
   for (let i = 0; i < NP; i++) {

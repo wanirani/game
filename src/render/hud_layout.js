@@ -8,7 +8,8 @@
 //   transient  알림(announcer)·배너 한 칸 (배너가 이긴다)
 //   meter(i)   기믹 게이지 i번째 줄 {x,y,w,h} (≤ 3줄, 가운데 위)
 //   toast(i)   토스트 i번째 줄 {x: 가운데, y: 15px 글자 기준선, l, r, w, top, h: 26, hidden}. 2줄 토스트는 두 줄 칸을 쓴다
-//   toastRows  이번 배치에서 쓸 수 있는 토스트 줄 수 (보통 3, 위쪽 보스 바가 보이면 1)
+//   toastRows  이번 배치에서 쓸 수 있는 토스트 줄 수 (보통 3, 위쪽 보스 바가 보이면 1) · toastArea 토스트 줄 전체 사각형
+//   meterRows  토스트·위쪽 보스 칸이 비켜 준 기믹 게이지 줄 수 (0–3)
 //   gap {l, r} 가운데 빈 칸 (토스트·위쪽 보스 칸의 가로 범위)
 //   touch, safe {l,r,t,b} (HUD 여백: safeArea 'full' 일 때만 game.safe), pad [패드 사각형 복사본; 숫자가 아니거나 크기 0 인 것은 뺀다],
 //   padLeft/padTop (오른쪽 패드 묶음 | null). 패드 쪽이 사각형을 제자리에서 고쳐도 다음 호출에서 알아채고 다시 계산한다
@@ -33,6 +34,8 @@ export const TOUCH_FLOOR = 296;  // 터치: 상시 영역의 아래 끝 한계 (
  * → 왼쪽·위로 8, 수호신 바탕 원 r+3 → 오른쪽으로 4. hudLayout 은 이만큼 안쪽 사각형(companionsDraw)을 주어 잉크가 L.companions 안에 머물게 한다
  */
 export const CMP_INK = Object.freeze({ l: 8, t: 8, r: 4 });
+/** 알림 단어가 2.2배로 박히는 첫 프레임은 알림 칸 위로 이만큼 넘친다 (feel_hud.drawAnnouncer 의 클립 여유) → 토스트 줄은 그 위에서 멈춘다 */
+export const TRANSIENT_OVER = 16;
 const CMP_W = 128, CMP_H = 68;   // companion_hud 의 BASE_W × BASE_H (이 크기를 기준으로 줄여 그린다)
 
 const R = (x, y, w, h) => ({ x, y, w, h });
@@ -262,6 +265,7 @@ function build(vw, vh, T, S, pad, bossOn, nM) {
   // 보스 체력바: 아래 칸 (데스크톱·태블릿 띠) / 위쪽 가운데 칸 (패드가 아래를 덮는 휴대폰).
   // 위쪽 칸은 y 148 에서 시작하되, 큰 시스템 버튼 때문에 게이지 줄이 내려왔으면 그 아래로 비킨다
   const n = clamp(Math.round(nM), 0, 3);
+  L.meterRows = n;   // 토스트·위쪽 보스 칸이 비켜 준 게이지 줄 수
   const bty = Math.max(148 + t, n ? meters[n - 1].y + METER_H + 4 : 0);
   const tsl = clipSpan(gapL, gapR, bty, 36, pad, sides);
   L.bossTop = R(tsl.l, bty, tsl.r - tsl.l, 36);
@@ -279,11 +283,11 @@ function build(vw, vh, T, S, pad, bossOn, nM) {
   L.bossBar = L.bossSlot === 'top' ? L.bossTop : L.bossBottom;
   L.bossShown = !!bossOn;
 
-  // 토스트: 게이지 아래 26 px 줄 ≤ 3 (위쪽 보스 바가 보이면 그 아래 1줄), 알림 칸 위에서 멈춘다
+  // 토스트: 게이지 아래 26 px 줄 ≤ 3 (위쪽 보스 바가 보이면 그 아래 1줄), 알림 칸 위 TRANSIENT_OVER(16 px)에서 멈춘다
   let top0 = n ? meters[n - 1].y + METER_H + 4 : mTop;
   const bossTopOn = L.bossShown && L.bossSlot === 'top';
   if (bossTopOn) top0 = Math.max(top0, L.bossTop.y + L.bossTop.h + 4);
-  const rows = Math.max(0, Math.min(bossTopOn ? 1 : 3, Math.floor((L.transient.y - 4 - top0) / TOAST_ROW)));
+  const rows = Math.max(0, Math.min(bossTopOn ? 1 : 3, Math.floor((L.transient.y - TRANSIENT_OVER - top0) / TOAST_ROW)));
   const rowAt = (i) => {
     const top = top0 + i * TOAST_ROW;
     const s = clipSpan(gapL, gapR, top, TOAST_ROW, pad, sides);

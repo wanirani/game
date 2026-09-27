@@ -70,10 +70,13 @@ export class Placer {
  *  painted death. Same test as _biped.claimDebris, but the age window follows the time since the death (e.dying counts
  *  down from def.dieTime) instead of a fixed 0.06 s: on a slow frame several fixed update steps run before the first
  *  render of the dying enemy, the debris is already older than 0.06 s and would otherwise stay on screen next to the
- *  painted corpse. The body may slide after the kill, so the position window grows with the age. */
+ *  painted corpse. The body may slide after the kill, so the position window grows with the age.
+ *  Only materials that spawn such debris claim any: a paper/flesh/ghost body would otherwise take the bones of a
+ *  vector-drawn (or culled) neighbour that died next to it. */
+const DEBRIS_MAT = new Set(['bone', 'metal', 'stone']);
 export function claimDeathDebris(world, e) {
   const L = world?.debrisList;
-  if (!L) return;
+  if (!L || !DEBRIS_MAT.has(e.def?.material)) return;
   const t0 = e.def?.dieTime ?? 0.35;
   const win = clamp(t0 - (e.dying ?? t0), 0, t0) + 0.07;
   for (const d of L) {
@@ -167,9 +170,21 @@ function heapOf(i, rig, seed, out) {
   return out;
 }
 
-const _s = new Float32Array(3 * 20), _h = [0, 0, 0];
-/** draw the placements as a heap blend: k=0 standing (stored or current) … 1 heaped; mode 'fall' | 'rise' */
-function drawHeap(e, rig, k, mode, shake) {
+const _h = [0, 0, 0];
+/** heap blend of the current AI state: k 0 standing … 1 heaped, mode 'fall' (collapse / pile) | 'rise' (reform) */
+const HK = { k: 1, mode: 'fall', shake: 0 };
+function heapK(e) {
+  const st = e.state, T = e.params?.revive ?? 3.2, tS = e.stateT ?? 0;
+  HK.k = 1; HK.mode = 'fall'; HK.shake = 0;
+  if (st === 'collapse') HK.k = clamp(tS / 0.35, 0, 1);
+  else if (st === 'reform') { HK.k = clamp(tS / 0.7, 0, 1); HK.mode = 'rise'; HK.shake = (1 - HK.k) * 1.2; }
+  else if (tS > T - 0.8) HK.shake = 1.5;
+  return HK;
+}
+/** draw the placements as a heap blend: k=0 standing (stored or current) … 1 heaped; mode 'fall' | 'rise'.
+ *  dry = only record each bone's current pose (p._hx/_hy/_hr) without drawing (a death in mid-collapse / mid-reform
+ *  scatters the bones from where they are, not from the finished heap) */
+function drawHeap(e, rig, k, mode, shake, dry = false) {
   const seed = seedOf(e), st = e._bsStand;
   for (let i = 0; i < P.n; i++) {
     const p = P.L[i], part = rig.parts[p.name];
@@ -188,7 +203,7 @@ function drawHeap(e, rig, k, mode, shake) {
     if (mode === 'fall' && u > 0.82) y -= Math.sin((u - 0.82) / 0.18 * Math.PI) * 2.5;            // clatter bounce
     if (mode === 'rise' && u < 1 && u > 0) y -= Math.sin(u * Math.PI) * 6;                          // bones leap up
     const rot = lerp(sr, _h[2], mode === 'fall' ? ease.outCubic(u) : fall);
-    K.put(p.name, [part.w / 2, part.h / 2], x, y, rot, p.sx, p.sy, 1, p.vn);
+    if (!dry) K.put(p.name, [part.w / 2, part.h / 2], x, y, rot, p.sx, p.sy, 1, p.vn);
     p._hx = x; p._hy = y; p._hr = rot;          // current heap pose (death from the heap)
   }
 }
@@ -217,25 +232,27 @@ const EYE = '#ffd040';
 export function draw(ctx, e, world, o, rig) {
   const st = e.state, T = e.params?.revive ?? 3.2;
   const heapState = st === 'collapse' || st === 'pile' || st === 'reform';
-  const q = bipedPose(e, { stride: 9, pose: 'overhead', windup: e.params?.windup, stepAmp: 4, restWA: 2.75 });
   if (e.dying > 0 && world) {
     if (!e._pcorpse) {
-      K.begin(ctx, rig, 0); layout(e, q);
-      if (heapState) drawHeapSilent(e, rig);
+      K.begin(ctx, rig, 0);
+      if (heapState) {
+        // same layout + heap blend as the last drawn heap frame (the bones scatter from where they are)
+        layout(e, bipedPose(IDLE, { stride: 9 }));
+        const h = heapK(e);
+        drawHeap(e, rig, h.k, h.mode, 0, true);
+      } else layout(e, bipedPose(e, { stride: 9, pose: 'overhead', windup: e.params?.windup, stepAmp: 4, restWA: 2.75 }));
       K.end();
       die(e, world, rig, heapState);
     }
     return;
   }
+  const q = bipedPose(e, { stride: 9, pose: 'overhead', windup: e.params?.windup, stepAmp: 4, restWA: 2.75 });
   const sq = K.squashK(e);
   if (sq > 0 && !heapState) ctx.scale(1 + 0.07 * sq, 1 - 0.07 * sq);
   K.begin(ctx, rig, K.flashK(e, o));
   if (heapState) {
-    let k = 1, mode = 'fall', shake = 0;
+    const { k, mode, shake } = heapK(e);
     const tS = e.stateT ?? 0;
-    if (st === 'collapse') k = clamp(tS / 0.35, 0, 1);
-    else if (st === 'reform') { k = clamp(tS / 0.7, 0, 1); mode = 'rise'; shake = (1 - k) * 1.2; }
-    else if (tS > T - 0.8) shake = 1.5;
     // blood pool under the heap (grows while it lies there)
     const pool = st === 'pile' ? clamp(0.5 + tS / T, 0, 1) : st === 'collapse' ? k * 0.5 : 1 - k;
     K.shadow(20 * (0.6 + 0.5 * pool), 0.35 + 0.3 * pool);
@@ -266,11 +283,6 @@ export function draw(ctx, e, world, o, rig) {
   drips(ctx, e, world, o, rig, false);
 }
 const IDLE = { t: 0, animT: 0, anim: 'idle', params: {}, flashT: 0, stun: 0, dying: 0, onGround: true, def: {} };
-function drawHeapSilent(e, rig) {
-  // compute the heap pose of the current state without drawing (for a death that happens in the heap)
-  const seed = seedOf(e);
-  for (let i = 0; i < P.n; i++) { heapOf(i, rig, seed, _h); const p = P.L[i]; p._hx = _h[0]; p._hy = _h[1]; p._hr = _h[2]; }
-}
 
 /** blood drips: shed from the ribs / club while standing, seep from the heap while lying (world space, per second) */
 function drips(ctx, e, world, o, rig, heaped) {

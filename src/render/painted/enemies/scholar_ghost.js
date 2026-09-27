@@ -44,6 +44,9 @@ export function draw(ctx, e, world, o, rig) {
   if (e.dying > 0 && world) {
     if (!e._pcorpse) {
       e._pcorpse = true;
+      // killed while (almost) invisible — mid appear / vanish: the dissolve starts fully opaque, so a figure that was
+      // not on screen would pop in to die. Enemy.die's soul burst is the whole death then (the vector path does the same)
+      if (a < 0.35) return;
       K.spawnDissolve(world, e, rig, [{ name: 'body', pv: 'a', x: 0, y: by, rot: lean, sx, sy }],
         { life: 0.9, strips: 14, drift: 46, rise: 24, col: MIST, kind: 0, n: 22, spread: 120, glow: '#6a8aff', cy: -40 });
     }

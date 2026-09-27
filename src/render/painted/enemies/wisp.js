@@ -16,6 +16,7 @@ export const spec = {
 };
 
 const _q = [0, 0];
+const EYES = ['eyeL', 'eyeR'];
 const TEAL = '#40ffc0', PALE = '#b8fff0';
 const CY = -9;              // eye line (local): the skull sits in the 24x24 logic rect, the tongues rise above it
 const S0 = 0.92;
@@ -69,7 +70,7 @@ export function draw(ctx, e, world, o, rig) {
     }
     K.pivotPos('body', 'a', 'core', x, y, lean, sx, sy, _q);
     K.glow(_q[0], _q[1], 6 + ck * 6, PALE, 0.28 + ck * 0.28, 0.2);
-    for (const pn of ['eyeL', 'eyeR']) {
+    for (const pn of EYES) {
       K.pivotPos(open > 0.5 ? 'open' : 'body', 'a', pn, x, y, lean, sx, sy, _q);
       K.glow(_q[0], _q[1], 2.2 + ck * 1.6, '#e8fff8', 0.8);
     }

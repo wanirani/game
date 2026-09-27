@@ -27,7 +27,8 @@ export function draw(ctx, e, world, o, rig) {
   const t = e.t ?? 0;
   const hurt = K.hurtOf(e), sq = K.squashK(e);
   const ph = e.phase ?? t * 3.2;
-  const tilt = clamp(-Math.cos(ph) * 0.28, -0.3, 0.3) - (hurt ? 0.3 : 0);   // AI.wave: y = base + sin(phase)·amp
+  // AI.wave: y = base + sin(phase)·amp → rising while cos(phase) < 0; a negative (counter-clockwise) turn lifts the nose
+  const tilt = clamp(Math.cos(ph) * 0.28, -0.3, 0.3) - (hurt ? 0.3 : 0);
   const hiss = Math.pow(Math.max(0, Math.sin(t * 1.9 + (e.id?.length ?? 0))), 10);
   const sx = 1 + sq * 0.14 + hiss * 0.04, sy = 1 - sq * 0.12;
   const x = hurt ? -2 : hiss * 2, y = CY;

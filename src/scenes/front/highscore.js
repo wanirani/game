@@ -166,7 +166,7 @@ export class HighscoreScene extends Scene {
     // 부가 기록
     const m = g.meta ?? {};
     const extra = [];
-    const brb = bossRushBests(m), brc = COURSES.map((c, i) => (brb[i] ? `${c.name} ${fmtClock(brb[i].time ?? 0)}` : null)).filter(Boolean);
+    const brb = bossRushBests(m), brc = COURSES.map((c, i) => (brb[i] ? `${c.short ?? c.name} ${fmtClock(brb[i].time ?? 0)}` : null)).filter(Boolean);
     if (brc.length) extra.push(`보스 러시 최단  ${brc.join(' · ')}`);
     if (m.survivalBest) extra.push(`서바이벌 최고 WAVE ${m.survivalBest}`);
     const ec = endingCount(m.endingsSeen);

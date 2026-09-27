@@ -122,6 +122,8 @@ export class ClassTab extends Tab {
     if (nav.confirm) this.view.showcase();
     if (nav.cancel) this.m.close();
   }
+  /** 포커스와 무관하게 늘 되는 조작 (탭 막대에 포커스가 있을 때 메뉴 하단 막대가 덧붙인다 — 턴테이블) */
+  idleHints() { return turntableHints(this.view); }
   hints() { return [['↑↓←→', '직업 선택', '직업 카드를 터치해 자세히 보기'], ['Z', '동작 보기'], ...turntableHints(this.view)]; }
 
   render(ctx, A) {

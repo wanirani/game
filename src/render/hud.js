@@ -50,12 +50,39 @@ export function drawHUD(ctx, world, vw, vh) {
   const cr = drawCompanionHUD(ctx, world, cmpOpts(L, T)); // [hook:cmp]
   if (world.companions) { if (!cr) NO_RECTS.length = 0; try { world.companions.hudRects = cr || NO_RECTS; } catch { /* 읽기 전용이면 동료 쪽이 직접 관리 */ } } // [hook:cmp]
   drawScore(ctx, L.score, world, hero, p, run, T);
-  drawComboHUD(ctx, world, vw, vh, T); // [hook:feel] 콤보·스타일 열 (L.combo)
+  // 콤보·스타일 열 (L.combo). 튀기기·박힘 첫 프레임은 칸 위·왼쪽으로 잠깐 넘치므로 다른 영역(점수·동료 카드 줄 등) 위에는 그리지 않게 자른다
+  const cc = comboClip(L);
+  if (cc) { ctx.save(); ctx.clip(cc, 'evenodd'); }
+  drawComboHUD(ctx, world, vw, vh, T); // [hook:feel]
+  if (cc) ctx.restore();
   if (L.bossShown) drawBossBar(ctx, L.bossBar, world.boss);
   // 알림 칸 하나: 배너(스테이지 제목·STAGE CLEAR·LEVEL UP …)가 이긴다. 배너가 없을 때만 알림을 그린다
   if (world.banner) drawBanner(ctx, L.transient, world, world.banner);
   else drawAnnouncer(ctx, world, vw, vh); // [hook:feel]
   ctx.restore();
+}
+
+/**
+ * 콤보 열 클립: 화면 전체에서 다른 영역(상시 영역·게이지 줄·토스트 줄·보스 바·알림 칸)을 뺀 경로 (evenodd; 영역끼리는 겹치지 않는다 —
+ * tools/test_hud_layout.mjs). 콤보 열 자신은 빼지 않으므로 평소 그림은 그대로이고, 연출이 넘친 부분만 잘린다. 배치 L 마다 한 번 만든다
+ */
+const COMBO_AVOID = ['portrait', 'vitals', 'hearts', 'skills', 'ult', 'awGauge', 'ready', 'companions', 'callouts', 'score', 'transient'];
+let ccL = null, ccPath = null;
+function comboClip(L) {
+  if (L === ccL) return ccPath;
+  ccL = L; ccPath = null;
+  if (typeof Path2D !== 'function') return null;
+  try {
+    const p = new Path2D();
+    p.rect(0, 0, L.vw, L.vh);
+    const add = (r) => { if (r && r.w > 0 && r.h > 0) p.rect(r.x, r.y, r.w, r.h); };
+    for (const k of COMBO_AVOID) add(L[k]);
+    for (let i = 0; i < (L.meterRows ?? 3); i++) add(L.meter(i));
+    if (L.toastRows > 0) add(L.toastArea);
+    if (L.bossShown) add(L.bossBar);
+    ccPath = p;
+  } catch { ccPath = null; }
+  return ccPath;
 }
 
 /** companion_hud 에 넘기는 칸 (배치 L 이 바뀔 때만 새로 만든다 — 매 프레임 할당 없음) */
@@ -90,7 +117,7 @@ export function drawHUDPart(ctx, world, vw, vh, part) {
     case 'awGauge': r = drawAwGauge(ctx, world, L.awGauge.x, L.awGauge.y, L.awGauge.w, T); break;
     case 'companions': r = drawCompanionHUD(ctx, world, cmpOpts(L, T)); break;
     case 'score': drawScore(ctx, L.score, world, hero, p, run, T); break;
-    case 'combo': r = drawComboHUD(ctx, world, vw, vh, T); break;
+    case 'combo': { const cc = comboClip(L); if (cc) ctx.clip(cc, 'evenodd'); r = drawComboHUD(ctx, world, vw, vh, T); break; }
     case 'boss': if (L.bossShown) drawBossBar(ctx, L.bossBar, world.boss); break;
     case 'transient': r = world.banner ? (drawBanner(ctx, L.transient, world, world.banner), 'banner') : drawAnnouncer(ctx, world, vw, vh); break;
     default: break;

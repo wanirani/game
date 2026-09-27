@@ -15,6 +15,7 @@ export const spec = {
 };
 
 const _q = [0, 0];
+const EYES = ['eyeL', 'eyeR'];
 const PI = Math.PI;
 
 function wingDirs(e, t) {
@@ -88,7 +89,7 @@ export function drawBat(ctx, e, world, o, rig, opt = DEF) {
   K.chain('wing', wrx - 1, wry, dirR + tilt, s, K.nStrips(6), bend, alpha);
   K.put(BODY, 'a', 0, cy + bob, tilt, sx, sy, alpha);
   if (!o.flash) {
-    for (const pn of ['eyeL', 'eyeR']) { K.pivotPos(BODY, 'a', pn, 0, cy + bob, tilt, sx, sy, _q); K.glow(_q[0], _q[1], 2.4, opt.eye, opt.eyeA * alpha); }
+    for (const pn of EYES) { K.pivotPos(BODY, 'a', pn, 0, cy + bob, tilt, sx, sy, _q); K.glow(_q[0], _q[1], 2.4, opt.eye, opt.eyeA * alpha); }
   }
   K.end();
 }
