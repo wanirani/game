@@ -8,7 +8,8 @@
 // (모듈 캐시, 흰 실루엣 판은 피격 섬광용), 거미 다리·유리 팔·후광·눈·균열은 매 프레임 그린다. 피해 단계: 체력에 따라 균열이 번지고
 // 드레스 조각이 떨어져 나가며, P2 에는 후광 바늘이 부러지고, P3 에는 가면이 사라져 눈이 가득한 얼굴과 거울 이빨 아가리·공전 파편이 드러난다.
 // 채색 아트(ART-BOSS-6)가 읽을 상태: this.pose(자세) · inMirror(거울 속: 몸을 그리지 않는다) · dashing(가로 돌진, pose.rot) · stunned ·
-//   formPhase(2 = 가면 없음) · twin(분신 개체) · legs(거미 다리 발 위치) · maskCrack(0~1).
+//   formPhase(2 = 가면 없음) · twin(분신 개체) · legs(거미 다리 발 위치) · maskCrack(0~1). 거울 속에서는 this.hidden = true (kit 규칙).
+//   거울 속 실루엣은 NarkMirror 가 그린다.
 import { BossC, telegraph, strikeRect, strikeLine, spawnMinion } from './c_common.js';
 import { PI, OUT, R, LG, glow, glowE, glowSprite, warnRect, impact } from './b_common.js';
 import { heldByFreeze } from './boss.js';
@@ -1099,6 +1100,7 @@ export class Narkissa extends BossC {
     if (this.at(0.5)) {
       this.place(en.mx, en.my + 125);
       this.inMirror = en; this.exitMirror = null; this.harmless = true;
+      this.hidden = true;   // 거울 속: 그리지도(벡터·채색) 겨냥하지도 않는다 — 진짜 거울(소품)은 따로 맞는다
       en.gold = 2.5; en.flashT = 0.4;
       this.pose.fade = this.poseT.fade = 0;
       world.fx.burst('shard', en.mx, en.my, 14, { color: GL, speed: 200 });
@@ -1140,7 +1142,7 @@ export class Narkissa extends BossC {
       return;
     }
     if (this.at(1.8)) {
-      this.inMirror = null; this.exitMirror = null; this.dashing = true; this.harmless = true;
+      this.inMirror = null; this.exitMirror = null; this.dashing = true; this.harmless = true; this.hidden = false;
       this.facing = dir;
       this.pose.fade = this.poseT.fade = 1; this.pose.scale = this.poseT.scale = 1; this.pose.rot = dir * 1.3;
       this.vx = dir * 900; this.vy = 0;

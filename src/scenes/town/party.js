@@ -1,4 +1,4 @@
-// 동료 교체: 합류한 헌터 중 한 명을 골라 함께 싸운다 (영웅 상태는 캐릭터별로 따로 성장)
+// 헌터 교체: 합류한 헌터 중 한 명을 골라 함께 싸운다 (영웅 상태는 캐릭터별로 따로 성장) — owner: PLAT-TOWN
 import { Scene } from '../../core/game.js';
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
@@ -54,7 +54,7 @@ export class PartyScene extends Scene {
   }
   choose() {
     const e = this.list[this.index], st = this.state;
-    if (!e.open) { audio.sfx('menu_cancel'); this.game.toast(e.ch.unlock?.text ?? '아직 합류하지 않은 동료다.', '#ff8a7a'); return; }
+    if (!e.open) { audio.sfx('menu_cancel'); this.game.toast(e.ch.unlock?.text ?? '아직 합류하지 않은 헌터다.', '#ff8a7a'); return; }
     if (e.id === st.charId) { audio.sfx('menu_cancel'); this.game.pop(); return; }
     const fresh = !st.heroes[e.id];
     ensureHero(st, e.id);
@@ -77,8 +77,10 @@ export class PartyScene extends Scene {
     ctx.fillStyle = 'rgba(4,2,8,0.72)'; ctx.fillRect(0, 0, vw, vh);
     vignette(ctx, vw, vh, 0.75);
     // 헤더
-    text(ctx, '동료', 24, 40, { size: 28, weight: 800, family: FONT.title, color: '#f3d690', ow: 4 });
-    text(ctx, 'PARTY  ·  함께 싸울 헌터를 고르세요', 92, 38, { size: 12, weight: 800, family: FONT.num, color: '#8a7a64' });
+    // '동료' 는 탈것·수호신(메뉴 › 동료)을 가리키므로 이 화면은 '헌터 교체' 라고 부른다
+    text(ctx, '헌터 교체', 24, 40, { size: 28, weight: 800, family: FONT.title, color: '#f3d690', ow: 4 });
+    ctx.font = font(28, 800, FONT.title);
+    text(ctx, 'PARTY  ·  함께 싸울 헌터를 고르세요', 24 + ctx.measureText('헌터 교체').width + 14, 38, { size: 12, weight: 800, family: FONT.num, color: '#8a7a64' });
     this.closeRect = tz('close', { x: vw - 64, y: 10, w: 52, h: 40 }, 'icon');
     uiButton(ctx, this.closeRect, '✕', { size: 20 });
     ctx.fillStyle = 'rgba(232,200,114,0.45)'; ctx.fillRect(0, 58, vw, 1.5);

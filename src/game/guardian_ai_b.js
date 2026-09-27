@@ -4,7 +4,9 @@
 //  없는 함수는 guardian.js 의 기본 동작 (데이터 def.attack / def.assist 의 kind → runKind).
 //
 //  gd_clock  틱톡   공격 「톱니 연사」 톱니 탄 3발 (runKind burst, 톱니 그림) · 협공 「톱니 드릴」 관통 톱니
-//                   스킬 「정지된 초침」 world.timeStop = min(2.6, 2.0 + 0.02·(Lv−1)) (공명이면 ×0.6) + 유령 시계판 (keepFx: 방을 옮겨도 남는다)
+//                   스킬 「정지된 초침」 world.timeStop = min(2.6, 2.0 + 0.02·(Lv−1)) (공명이면 ×0.6) + 유령 시계판 (keepFx: 방을 옮겨도 남는다);
+//                   시간이 다시 흐르는 순간 화면 안 적 전부에 초침의 일격 (mv 0.8 × 스킬 배율 — 명세의 '위력 ×1.25/×1.5' 가 실리는 곳.
+//                   멈춘 동안 솟아오르던 적(harmless)은 표적이 되지 않아 자동 공격이 못 닿는 것도 이 일격이 메운다)
 //  gd_reaper 모르스 공격 「사신의 낫」 = 데이터 blink (체력이 낮은 적 우선: def.bias 'lowhp') · 협공 「영혼 베기」 벤 뒤 20% 이하 일반 적 처형
 //                   스킬 「영혼 수확」 화면을 가로지르는 거대한 낫 (화면 안 모든 적, mv 2.5 암흑), 벤 적 하나마다 최대 HP 2% 회복 (최대 20%)
 //                   고유 「처형」 사거리 안의 일반 적 체력 < 12% → 즉시 거둔다 (flat: hp + 1, 영혼 폭발, '처형'), 3초 재사용 대기
@@ -246,7 +248,10 @@ const CLOCK = {
     const V = viewRect(world), R = clamp(Math.min(V.w, V.h) * 0.42, 110, 260);
     keep(g, world.add(new GFx({
       x: V.x + V.w / 2 - R, y: V.y + V.h / 2 - R, w: R * 2, h: R * 2, life: dur, z: -4, owner: g,
-      data: { R, hm: -Math.PI / 2, hh: -Math.PI / 2 + 1.1, hs: -Math.PI / 2, ga: 0, dur },
+      data: {
+        R, hm: -Math.PI / 2, hh: -Math.PI / 2 + 1.1, hs: -Math.PI / 2, ga: 0, dur,
+        atk: g.atk({ mv: sk.mv ?? 0.8, type: sk.type ?? 'phys', element: sk.element ?? null, kb: [220, -200], stun: 0.3 }, { skill: true, mul, hitstop: 0.04, shake: 4 }),
+      },
       follow(e, w) {
         const v = viewRect(w);
         e.x = v.x + v.w / 2 - e.w / 2; e.y = v.y + v.h / 2 - e.h / 2;
@@ -261,6 +266,18 @@ const CLOCK = {
       onExpire(e, w) {
         audio.sfx('clock_tick', { vol: 0.7, pitch: 1.35 });
         w.fx?.ring(e.cx, e.cy, { color: '#ffd070', r0: e.data.R * 0.85, r1: e.data.R * 1.15, life: 0.3, width: 5 });
+        // 시간이 다시 흐르는 순간 멈춰 있던 적들에게 초침의 일격 (화면 안 적 전부 한 번; 유대 위력 배율이 여기에 실린다)
+        if (!(w.player && !w.player.dead) || g.system?.world !== w) return;
+        const V = viewRect(w, 20), atk = e.data.atk;
+        gStrike(w, V, atk);
+        let n = 0;
+        for (const t of w.entities) {
+          if (n >= 8 || (t.kind !== 'enemy' && t.kind !== 'boss') || !t._hits?.has?.(atk.hitId)) continue;
+          n++;
+          w.fx?.burst('gold', t.cx, t.cy, 5, { speed: 180 });
+          w.fx?.slash(t.cx, t.cy, rand(-1, 1), { len: 70, width: 8, color: '#ffe6a8', life: 0.16 });
+        }
+        if (n) audio.sfx('clang', { vol: 0.35, pitch: 1.5 });
       },
       render: (ctx, e, w) => { if (!drew(GR.fxClockFace, ctx, e, w)) drawClockFace(ctx, e, w); },
     })));
