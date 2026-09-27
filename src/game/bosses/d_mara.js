@@ -488,37 +488,41 @@ export class Mara extends BossC {
     ik2(rx, ry, hx, hy, UA, FA, bend, a.e);
     a.a = Math.atan2(hy - a.e[1], hx - a.e[0]);
   }
+  /**
+   * P1 골격: 요람(1.15배) 위 난간에 두 발로 쪼그려 앉은 노파 — 무릎이 어깨 높이까지 솟은 거미 자세, 긴 목을 앞으로 뺀다.
+   * 원점 = 요람 흔들 다리 밑 가운데, 오른쪽 = 바라보는 쪽. 위 난간 y −108.
+   */
   rig1() {
     const s = this.pose, t = this.t, J = this.jt, sl = s.slump;
-    const br = Math.sin(t * 2.2) * 2.2 * (1 - sl);
-    J.footN[0] = 34; J.footN[1] = -94; J.footF[0] = -22; J.footF[1] = -94;
-    J.kneeN[0] = 50 - sl * 10; J.kneeN[1] = -160 + sl * 26;
-    J.kneeF[0] = -30 + sl * 8; J.kneeF[1] = -166 + sl * 26;
-    J.hip[0] = 4 + sl * 6; J.hip[1] = -122 + sl * 10;
-    const lean = s.lean * 16 + s.cut * 4 - s.sing * 8 + s.reach * 8;
-    J.chest[0] = J.hip[0] + 10 + lean * 0.6; J.chest[1] = -164 + sl * 34 + br;
-    J.sho[0] = J.hip[0] + 16 + lean; J.sho[1] = -186 + sl * 50 - s.raise * 4 + br;
-    J.head[0] = J.sho[0] + 8 + lean * 0.6 + sl * 12; J.head[1] = J.sho[1] - 32 + sl * 24 - s.sing * 4;
-    J.headA = -0.08 - s.sing * 0.45 + sl * 0.75 + s.lean * 0.15 + s.grin * (0.42 + Math.sin(t * 7) * 0.05);
+    const br = Math.sin(t * 2.2) * 2.4 * (1 - sl);
+    J.footN[0] = 46; J.footN[1] = -108; J.footF[0] = -26; J.footF[1] = -110;
+    J.kneeN[0] = 80 - sl * 6; J.kneeN[1] = -216 + sl * 30;
+    J.kneeF[0] = -36 + sl * 6; J.kneeF[1] = -226 + sl * 30;
+    J.hip[0] = 6 + sl * 4; J.hip[1] = -134 + sl * 8;
+    const lean = s.lean * 16 + s.cut * 6 - s.sing * 10 + s.reach * 8;
+    J.chest[0] = 38 + lean * 0.7 - sl * 8; J.chest[1] = -198 + sl * 40 + br - s.raise * 4;
+    J.sho[0] = 50 + lean - sl * 10; J.sho[1] = -226 + sl * 56 + br - s.raise * 8;
+    J.head[0] = J.sho[0] + 30 + lean * 0.8 - s.sing * 12 + sl * 18; J.head[1] = J.sho[1] - 42 + sl * 36 - s.sing * 8;
+    J.headA = 0.1 - s.sing * 0.5 + sl * 0.8 + s.lean * 0.2 + s.grin * (0.42 + Math.sin(t * 7) * 0.05);
     this.faceTail();
     const sw = (i) => Math.sin(t * 1.3 + i * 1.7) * 4;
-    const blend = (b, tg) => {   // [기본, raise, sing, cut, reach, slump] 목표를 자세 가중치로 섞는다
+    const blend = (b, tg) => {   // 기본 → raise · sing · cut · reach · slump 목표를 자세 가중치로 섞는다
       let x = b[0], y = b[1];
       const mixIn = (p, k) => { if (p && k > 0) { x = lerp(x, p[0], k); y = lerp(y, p[1], k); } };
       mixIn(tg.raise, s.raise); mixIn(tg.sing, s.sing); mixIn(tg.cut, Math.max(0, s.cut)); mixIn(tg.reach, s.reach); mixIn(tg.slump, sl);
       return [x, y];
     };
     const so = J.sho, ch = J.chest;
-    let h0 = blend([88, -100], { raise: [64, -300], sing: [74, -244], cut: [132, -196], reach: [150, -170], slump: [44, -128] });
-    if (s.throw > 0) h0 = [lerp(h0[0], -44, s.throw), lerp(h0[1], -258, s.throw)];
-    else if (s.throw < 0) h0 = [lerp(h0[0], 138, -s.throw / 0.6), lerp(h0[1], -214, -s.throw / 0.6)];
-    this.arm(0, so[0] + 4, so[1] + 2, h0[0] + sw(0), h0[1] + sw(1), -1);
-    const h1 = blend([-52, -142], { raise: [-46, -302], sing: [-34, -250], cut: [118, -150], reach: [104, -214], slump: [10, -120] });
-    this.arm(1, so[0] - 6, so[1] + 4, h1[0] + sw(2), h1[1] + sw(3), -1);
-    const h2 = blend([58, -152], { raise: [104, -232], sing: [96, -206], cut: [104, -118], reach: [134, -132], slump: [52, -118] });
-    this.arm(2, ch[0] + 2, ch[1] + 10, h2[0] + sw(4), h2[1] + sw(5), -1);
-    const h3 = blend([-18, -150], { raise: [-84, -222], sing: [-64, -212], cut: [72, -112], reach: [112, -122], slump: [2, -118] });
-    this.arm(3, ch[0] - 4, ch[1] + 10, h3[0] + sw(6), h3[1] + sw(7), -1);
+    let h0 = blend([134, -116], { raise: [96, -380], sing: [110, -312], cut: [176, -262], reach: [190, -214], slump: [92, -150] });
+    if (s.throw > 0) h0 = [lerp(h0[0], -56, s.throw), lerp(h0[1], -330, s.throw)];
+    else if (s.throw < 0) h0 = [lerp(h0[0], 184, -s.throw / 0.6), lerp(h0[1], -270, -s.throw / 0.6)];
+    this.arm(0, so[0] + 4, so[1] + 4, h0[0] + sw(0), h0[1] + sw(1), 1);
+    const h1 = blend([-84, -170], { raise: [-70, -380], sing: [-50, -320], cut: [168, -206], reach: [150, -270], slump: [0, -150] });
+    this.arm(1, so[0] - 8, so[1] + 4, h1[0] + sw(2), h1[1] + sw(3), 1);
+    const h2 = blend([98, -232], { raise: [150, -300], sing: [136, -270], cut: [146, -168], reach: [176, -176], slump: [70, -150] });
+    this.arm(2, ch[0] + 4, ch[1] + 10, h2[0] + sw(4), h2[1] + sw(5), -1);
+    const h3 = blend([-24, -244], { raise: [-110, -286], sing: [-90, -276], cut: [104, -156], reach: [150, -164], slump: [14, -150] });
+    this.arm(3, ch[0] - 6, ch[1] + 10, h3[0] + sw(6), h3[1] + sw(7), -1);
   }
   /** 머리 기울기로 정수리 · 입 위치 */
   faceTail() {
@@ -864,14 +868,13 @@ export class Mara extends BossC {
       this.rush = { dir, phase: 'run', t1: 0, t2: 0 };
       this.setPose({ crouch: 0, lean: 1 });
       if (this.form === 2) this.mvx = dir * 760;
-      const rz = this.zone({
+      this.zone({
         x: this.cBody.x, y: this.cBody.y, w: this.cBody.w, h: this.cBody.h, warn: 0, life: 5, mv: 1.7, kb: [620, -460], rehit: 0.6, z: 6,
         tick: (z) => {
           if (!this.rush || this.state !== 'cradleRush') { z.dead = true; return; }
           const b = this.cBody; z.x = b.x; z.y = b.y; z.w = b.w; z.h = b.h;
         },
       });
-      rz.paint = null;
       audio.sfx('dash', { pitch: 0.6 }); audio.sfx('boss_roar', { pitch: 1.6, vol: 0.5 });
     }
     const r = this.rush;
@@ -1043,7 +1046,7 @@ export class Mara extends BossC {
       impact(world, { shake: 8, time: 0.8 });
       world.fx.ring(this.faceP.x, this.faceP.y, { color: DREAM, r0: 20, r1: 320, life: 0.8, width: 8 });
     }
-    this.morph = this.form === 1 ? clamp(t / 1.0, 0, 1) : Math.max(0, 1 - (t - 1.0) / 0.6);
+    this.morph = this.form === 1 ? clamp(t / 1.0, 0, 1) : 0;
     if (this.every(0.1, 0, 1.6)) { const P = this.toWorld(rand(-100, 100), rand(-140, -20)); world.fx.emit('dark', P.x, P.y, { speed: 90 }); }
     if (this.at(1.6)) this.setPose({ raise: 0, grin: 0 });
     this.transitionTick(dt, world, t);
@@ -1116,10 +1119,10 @@ export class Mara extends BossC {
   /** 사망: 요람이 멈추고 웅크린 채 서서히 사라진다 — 보랏빛 심장만 남는다 */
   render(ctx, world) {
     if (this.dying > 0) {
-      const a0 = ctx.globalAlpha;
-      ctx.globalAlpha = a0 * (1 - clamp((this.dieT - 1.4) / 1.6, 0, 1));
+      // Boss.draw 의 기본 페이드(dying/2.4) 대신 직접: 1.4초까지 선명 → 1.6초에 걸쳐 사라진다 (Boss.draw 가 save/restore 한다)
+      ctx.globalAlpha = 1 - clamp((this.dieT - 1.4) / 1.6, 0, 1);
       if (ctx.globalAlpha > 0.01) super.render(ctx, world);
-      ctx.globalAlpha = a0;
+      ctx.globalAlpha = 1;
       this.drawHeart(ctx);
       return;
     }
@@ -1352,8 +1355,7 @@ export class Mara extends BossC {
         const p = this.P, e = this.mouthP;
         let lx = 0, ly = 0;
         if (p) { const dx = (p.cx - e.x) * this.facing, dy = p.cy - e.y, d = Math.hypot(dx, dy) || 1; lx = dx / d * hw * 0.35; ly = dy / d * hh * 0.25; }
-        ctx.fillStyle = radG2(ctx, mx + lx, my + ly, hw);
-        ctx.beginPath(); ctx.arc(mx + lx, my + ly, hw * 0.62, 0, TAU); ctx.fill();
+        drawIris(ctx, mx + lx, my + ly, hw);
         ctx.fillStyle = '#050206'; ctx.beginPath(); ctx.ellipse(mx + lx, my + ly, hw * 0.14, hw * 0.52, 0, 0, TAU); ctx.fill();
         ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(mx + lx - hw * 0.2, my + ly - hw * 0.25, 1.4, 0, TAU); ctx.fill();
         ctx.restore();
@@ -1517,15 +1519,14 @@ const CRACKS = [
   [0, -6, 4, 2, 0, 8, 6, 10],
 ];
 const _rg = new Map();
-/** 입속 눈의 홍채 그라디언트 (반지름 버킷별 캐시) */
-function radG2(ctx, x, y, r) {
-  const k = Math.round(r);
+/** 입속 눈의 홍채 (반지름 버킷별 그라디언트 캐시 — 원점 기준으로 만들어 옮겨 그린다) */
+function drawIris(ctx, x, y, r) {
+  const k = Math.max(2, Math.round(r));
   let g = _rg.get(k);
   if (!g) { g = ctx.createRadialGradient(0, 0, 0, 0, 0, k * 0.62); g.addColorStop(0, '#ffe0ff'); g.addColorStop(0.35, '#c070ff'); g.addColorStop(0.8, '#5a108a'); g.addColorStop(1, '#1a0428'); _rg.set(k, g); }
-  ctx.translate(x, y);
-  ctx.beginPath(); ctx.arc(0, 0, r * 0.62, 0, TAU); ctx.fillStyle = g; ctx.fill();
-  ctx.translate(-x, -y);
-  return 'rgba(0,0,0,0)';
+  ctx.save(); ctx.translate(x, y);
+  ctx.beginPath(); ctx.arc(0, 0, k * 0.62, 0, TAU); ctx.fillStyle = g; ctx.fill();
+  ctx.restore();
 }
 
 // ───────────────────────── 지대 · 탄 그림 ─────────────────────────

@@ -198,7 +198,7 @@ export class SkillsTab extends Tab {
         this.nodeRects.push(rect);
         this.drawNode(ctx, sk, x, y, R, lv, chk.ok, sel, focused, t, bc);
         // 이름 + 레벨
-        const nx = x + R + 9, nw = x0 + cw - nx - 6;
+        const nx = x + R + 9, nw = x0 + cw - nx - 6 - (hero.slots?.includes(id) ? 50 : 0); // 슬롯 배지 자리를 비운다
         text(ctx, ellipsize(ctx, sk.name, nw, 13, 800), nx, y - 1, { size: 13, weight: 800, color: sel ? PAL.goldHi : lv ? PAL.bone : chk.ok ? PAL.text : PAL.faint, ow: 3 });
         // 레벨 눈금
         for (let k = 0; k < max; k++) diamond(ctx, nx + 4 + k * 10, y + 11, 3.4, k < lv ? bc : 'rgba(90,70,60,0.8)');
