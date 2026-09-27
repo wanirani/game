@@ -24,6 +24,9 @@ let BEND = 0, CURL = 0, TT = 0, TN = 8;
 const trunkBend = (u, i) => (CURL * (0.2 + u * 1.4) + Math.sin(TT * 2.2 - i * 0.7) * 0.06) * BEND;
 const VAR = ['base', 'dmg1', 'dmg2'];
 
+/** swing trail [from, to, alpha] in one reused array (no per-frame allocation) */
+const TR = [0, 0, 0];
+const trail = (a0, a1, k) => { TR[0] = a0; TR[1] = a1; TR[2] = k; return TR; };
 const Q = { bob: 0, rot: 0, sx: 1, sy: 1, head: 0, tDir: 0, curl: 0, eyes: 0, maw: 0, trail: null, tele: 0, lash: 0 };
 function pose(e) {
   const t = e.t ?? 0, an = e.anim, at = e.animT ?? 0, q = Q;
@@ -42,7 +45,7 @@ function pose(e) {
   } else if (an === 'claw') {
     const WU = 0.42;
     if (at < WU) { const k = ease.outCubic(at / WU); q.tDir = lerp(q.tDir, -1.9, k); q.curl = lerp(q.curl, -0.6, k); q.head = lerp(q.head, -0.25, k); q.tele = at / WU; q.eyes = 0.5 + 0.4 * k; }
-    else { const s = clamp((at - WU) / 0.08, 0, 1), ks = ease.outCubic(s); q.tDir = lerp(-1.9, 0.12, ks); q.curl = lerp(-0.6, 0, ks); q.head = lerp(-0.25, 0.15, ks); q.lash = 1 - clamp((at - WU) / 0.35, 0, 1); q.trail = [-1.9, q.tDir, q.lash]; }
+    else { const s = clamp((at - WU) / 0.08, 0, 1), ks = ease.outCubic(s); q.tDir = lerp(-1.9, 0.12, ks); q.curl = lerp(-0.6, 0, ks); q.head = lerp(-0.25, 0.15, ks); q.lash = 1 - clamp((at - WU) / 0.35, 0, 1); q.trail = trail(-1.9, q.tDir, q.lash); }
   }
   if (K.hurtOf(e)) { q.rot -= 0.15; q.head -= 0.3; q.eyes = 0.05; q.curl -= 0.5; }
   return q;

@@ -49,6 +49,12 @@ function wing(ctx, x, y, ang, L, n, col, tip, spread = 0.9) {
     fillOut(ctx, i % 2 ? col : tip, 1.1);
   }
 }
+// 매 프레임 새 배열을 만들지 않도록 고정 색·대시·굵기 표를 모듈에 둔다
+const HALO4 = ['#ff4a8a', '#ffd84a', '#4affa0', '#6a8aff'];
+const PRISM5 = ['#ff5a8a', '#ffe05a', '#5affb0', '#5a9aff', '#c86aff'];
+const STAR3 = ['rgba(255,90,140,0.5)', 'rgba(90,255,170,0.5)', 'rgba(120,150,255,0.5)'];
+const BEAM4 = ['rgba(255,58,106,0.55)', 'rgba(255,210,70,0.45)', 'rgba(58,255,154,0.55)', 'rgba(106,138,255,0.55)'];
+const NODASH = [], DASH_LANCE = [16, 10], DASH_BOLT = [6, 8], DASH_SHOCK = [10, 8], BOLT_W = [14, 6, 2.6], SPIKE_H = [0.5, 0.78, 1, 0.72, 0.46];
 const flap = (e, f = 12) => Math.sin((e.t ?? 0) * f);
 const aimK = (e) => clamp(e.aimK ?? 0, 0, 1);
 
@@ -342,7 +348,7 @@ RENDER_D.void_herald = (ctx, e, world, o) => {
   const t = e.t ?? 0, an = e.anim, K = aimK(e), bob = Math.sin(t * 1.3) * 2;
   ctx.save(); ctx.translate(0, bob);
   // 무지갯빛 후광
-  if (!FL) { const cols = ['#ff4a8a', '#ffd84a', '#4affa0', '#6a8aff'], ga = ctx.globalAlpha; ctx.lineWidth = 1.6; ctx.globalAlpha = ga * 0.7; for (let i = 0; i < 4; i++) { ctx.strokeStyle = cols[i]; ctx.beginPath(); ctx.ellipse(-4, -88, 13 + i * 1.6, 15 + i * 1.6, 0.2, t + i, t + i + PI * 1.3); ctx.stroke(); } ctx.globalAlpha = ga; }
+  if (!FL) { const cols = HALO4, ga = ctx.globalAlpha; ctx.lineWidth = 1.6; ctx.globalAlpha = ga * 0.7; for (let i = 0; i < 4; i++) { ctx.strokeStyle = cols[i]; ctx.beginPath(); ctx.ellipse(-4, -88, 13 + i * 1.6, 15 + i * 1.6, 0.2, t + i, t + i + PI * 1.3); ctx.stroke(); } ctx.globalAlpha = ga; }
   // 로브 (자락은 연기로 흩어짐)
   ctx.beginPath(); ctx.moveTo(-6, -92); ctx.quadraticCurveTo(14, -90, 12, -60);
   for (let i = 0; i <= 6; i++) ctx.lineTo(14 - i * 5, -8 + Math.sin(t * 2.4 + i * 1.3) * 4 + (i % 2) * 5);
@@ -373,7 +379,7 @@ RENDER_D.nihil_spawn = (ctx, e, world, o) => {
   const hov = -24 - Math.sin(t * 2.2) * 3 - (an === 'walk' ? Math.abs(Math.sin(t * 5)) * 4 : 0);
   ctx.save(); ctx.translate(0, hov); ctx.scale(leap ? 0.85 : pulse, leap ? 1.2 : pulse); ctx.rotate(leap ? 0.3 : Math.sin(t * 0.8) * 0.08);
   if (!FL) glowAt(ctx, '#e8e0ff', 0, 0, 40 + 50 * sw, 0.25 + 0.5 * sw);
-  const cols = ['#ff5a8a', '#ffe05a', '#5affb0', '#5a9aff', '#c86aff'];
+  const cols = PRISM5;
   for (let i = 0; i < 9; i++) {
     const a = i * TAU / 9 + 0.3, L = 13 + h1(i) * 11, w = 4 + h1(i + 3) * 3;
     const cx = Math.cos(a), sy = Math.sin(a), nx = -sy, ny = cx;
@@ -416,7 +422,7 @@ PROJ_D.puppet_needle = (ctx, p) => {
 PROJ_D.void_star = (ctx, p) => {
   const t = p.t ?? 0;
   ctx.globalCompositeOperation = 'lighter';
-  const cols = ['rgba(255,90,140,0.5)', 'rgba(90,255,170,0.5)', 'rgba(120,150,255,0.5)'];
+  const cols = STAR3;
   ctx.lineWidth = 3;
   for (let i = 0; i < 3; i++) { ctx.strokeStyle = cols[i]; ctx.beginPath(); ctx.moveTo((i - 1) * 3, -4); ctx.lineTo((i - 1) * 5 + Math.sin(t * 20 + i) * 1.5, -52); ctx.stroke(); }
   glowAt(ctx, '#d8c8ff', 0, 0, 60, 0.9);
@@ -434,8 +440,8 @@ ZONE_D.lance_warn = (ctx, z) => {
   ctx.fillStyle = `rgba(150,215,255,${0.05 + 0.12 * k})`; ctx.fillRect(Math.min(d.x0, x1), d.y - 16, d.len, 32);
   const blink = k > 0.7 && ((z.t * 18) | 0) % 2 === 0;
   ctx.strokeStyle = blink ? 'rgba(255,255,255,0.95)' : `rgba(200,240,255,${0.3 + 0.5 * k})`; ctx.lineWidth = 2 + 2.5 * k;
-  ctx.setLineDash([16, 10]); ctx.lineDashOffset = -z.t * 160 * d.dir;
-  ctx.beginPath(); ctx.moveTo(d.x0, d.y); ctx.lineTo(x1, d.y); ctx.stroke(); ctx.setLineDash([]);
+  ctx.setLineDash(DASH_LANCE); ctx.lineDashOffset = -z.t * 160 * d.dir;
+  ctx.beginPath(); ctx.moveTo(d.x0, d.y); ctx.lineTo(x1, d.y); ctx.stroke(); ctx.setLineDash(NODASH);
   for (let i = 0; i < 3; i++) { const u = ((z.t * 1.6 + i / 3) % 1), x = d.x0 + d.dir * d.len * u; ctx.beginPath(); ctx.moveTo(x, d.y); ctx.lineTo(x - d.dir * 10, d.y - 7); ctx.moveTo(x, d.y); ctx.lineTo(x - d.dir * 10, d.y + 7); ctx.stroke(); }
   ctx.beginPath(); ctx.moveTo(x1, d.y); ctx.lineTo(x1 - d.dir * 14, d.y - 9); ctx.moveTo(x1, d.y); ctx.lineTo(x1 - d.dir * 14, d.y + 9); ctx.stroke();
   ctx.restore();
@@ -449,8 +455,8 @@ ZONE_D.roc_bolt = (ctx, z) => {
     ctx.fillStyle = `rgba(170,210,255,${0.05 + 0.15 * k})`; ctx.fillRect(x - 25, top, 50, bot - top);
     glowAt(ctx, '#bfe0ff', x, bot - 4, 60 + 40 * k, 0.25 + 0.5 * k);
     ctx.strokeStyle = `rgba(210,235,255,${0.3 + 0.6 * k})`; ctx.lineWidth = 1.5 + k;
-    ctx.setLineDash([6, 8]); ctx.lineDashOffset = z.t * 60;
-    ctx.beginPath(); ctx.moveTo(x - 25, top); ctx.lineTo(x - 25, bot); ctx.moveTo(x + 25, top); ctx.lineTo(x + 25, bot); ctx.stroke(); ctx.setLineDash([]);
+    ctx.setLineDash(DASH_BOLT); ctx.lineDashOffset = z.t * 60;
+    ctx.beginPath(); ctx.moveTo(x - 25, top); ctx.lineTo(x - 25, bot); ctx.moveTo(x + 25, top); ctx.lineTo(x + 25, bot); ctx.stroke(); ctx.setLineDash(NODASH);
     ctx.beginPath(); ctx.ellipse(x, bot - 2, 26 - 10 * k, 6 - 2 * k, 0, 0, TAU); ctx.stroke();
     if (k > 0.6) { ctx.strokeStyle = `rgba(255,255,255,${(k - 0.6) * 2})`; ctx.lineWidth = 1; ctx.beginPath(); let px = x; ctx.moveTo(px, top); for (let y = top + 20; y < Math.min(bot, top + 140); y += 20) { px = x + (h1(y + Math.floor(z.t * 20)) - 0.5) * 16; ctx.lineTo(px, y); } ctx.stroke(); }
     ctx.restore(); return;
@@ -459,7 +465,7 @@ ZONE_D.roc_bolt = (ctx, z) => {
   ctx.fillStyle = 'rgba(190,225,255,0.28)'; ctx.fillRect(x - 25, top, 50, bot - top);
   const f = Math.floor(z.t * 30), seg = 24, n = Math.max(2, Math.ceil((bot - top) / seg));
   for (let pass = 0; pass < 3; pass++) {
-    ctx.strokeStyle = pass === 2 ? '#ffffff' : pass ? 'rgba(170,215,255,0.9)' : 'rgba(110,160,255,0.55)'; ctx.lineWidth = [14, 6, 2.6][pass];
+    ctx.strokeStyle = pass === 2 ? '#ffffff' : pass ? 'rgba(170,215,255,0.9)' : 'rgba(110,160,255,0.55)'; ctx.lineWidth = BOLT_W[pass];
     ctx.beginPath(); ctx.moveTo(x, top);
     for (let i = 1; i <= n; i++) ctx.lineTo(x + (i === n ? 0 : (h1(i * 3.1 + f * 7 + d.seed) - 0.5) * 30), Math.min(bot, top + i * seg));
     ctx.stroke();
@@ -477,7 +483,7 @@ ZONE_D.jelly_shock = (ctx, z) => {
     const k = d.warn ? (d.k ?? 0) : z.warnK;
     ctx.fillStyle = `rgba(160,200,255,${0.03 + 0.08 * k})`; ctx.beginPath(); ctx.arc(d.x, d.y, r, 0, TAU); ctx.fill();
     ctx.strokeStyle = `rgba(210,235,255,${0.2 + 0.6 * k})`; ctx.lineWidth = 1.5 + 1.5 * k;
-    ctx.setLineDash([10, 8]); ctx.lineDashOffset = z.t * 40; ctx.beginPath(); ctx.arc(d.x, d.y, r, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+    ctx.setLineDash(DASH_SHOCK); ctx.lineDashOffset = z.t * 40; ctx.beginPath(); ctx.arc(d.x, d.y, r, 0, TAU); ctx.stroke(); ctx.setLineDash(NODASH);
     ctx.strokeStyle = `rgba(230,245,255,${0.2 + 0.5 * k})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(d.x, d.y, r * (1 - k) + 6, 0, TAU); ctx.stroke();
     ctx.restore(); return;
   }
@@ -510,7 +516,7 @@ ZONE_D.root_spike = (ctx, z) => {
   }
   const u = z.liveK, rise = u < 0.25 ? 1 - Math.pow(1 - u / 0.25, 3) : u > 0.7 ? 1 - (u - 0.7) / 0.3 : 1, H = z.h * rise;
   for (let i = -2; i <= 2; i++) {
-    const bx = x + i * 12, hh = H * [0.5, 0.78, 1, 0.72, 0.46][i + 2], lean = i * 0.22 + (h1(i + d.seed) - 0.5) * 0.2, tx = bx + lean * hh * 0.5;
+    const bx = x + i * 12, hh = H * SPIKE_H[i + 2], lean = i * 0.22 + (h1(i + d.seed) - 0.5) * 0.2, tx = bx + lean * hh * 0.5;
     ctx.beginPath(); ctx.moveTo(bx - 8, by);
     ctx.quadraticCurveTo(bx - 4 + lean * hh * 0.3, by - hh * 0.6, tx, by - hh);
     ctx.quadraticCurveTo(bx + 4 + lean * hh * 0.3, by - hh * 0.5, bx + 8, by); ctx.closePath();
@@ -559,13 +565,13 @@ ZONE_D.prism_beam = (ctx, z) => {
     if (d.lock) { ctx.lineWidth = 8; ctx.strokeStyle = 'rgba(190,150,255,0.2)'; ctx.beginPath(); ctx.moveTo(d.x0, d.y0); ctx.lineTo(d.x1, d.y1); ctx.stroke(); }
     ctx.strokeStyle = blink ? 'rgba(255,255,255,0.95)' : `rgba(230,220,255,${0.3 + 0.5 * k})`; ctx.lineWidth = d.lock ? 3 : 2;
     ctx.setLineDash(d.lock ? [] : [12, 8]); ctx.lineDashOffset = -z.t * 90;
-    ctx.beginPath(); ctx.moveTo(d.x0, d.y0); ctx.lineTo(d.x1, d.y1); ctx.stroke(); ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(d.x0, d.y0); ctx.lineTo(d.x1, d.y1); ctx.stroke(); ctx.setLineDash(NODASH);
     glowAt(ctx, '#ffffff', d.x0, d.y0, 20 + 30 * k, 0.4 + 0.5 * k);
     ctx.restore(); return;
   }
   ctx.globalAlpha *= clamp(z.life / 0.15, 0, 1);
   const nx = -Math.sin(d.a), ny = Math.cos(d.a);
-  const cols = ['rgba(255,58,106,0.55)', 'rgba(255,210,70,0.45)', 'rgba(58,255,154,0.55)', 'rgba(106,138,255,0.55)'];
+  const cols = BEAM4;
   ctx.lineWidth = 6;
   for (let i = 0; i < 4; i++) { const w = (i - 1.5) * 4 + Math.sin(z.t * 40 + i) * 1.5; ctx.strokeStyle = cols[i]; ctx.beginPath(); ctx.moveTo(d.x0 + nx * w, d.y0 + ny * w); ctx.lineTo(d.x1 + nx * w, d.y1 + ny * w); ctx.stroke(); }
   ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(d.x0, d.y0); ctx.lineTo(d.x1, d.y1); ctx.stroke();

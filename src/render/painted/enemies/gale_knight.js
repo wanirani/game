@@ -30,6 +30,9 @@ const bendN = (u) => BEND * (0.4 + u);
 const bendF = (u) => -BEND * (0.4 + u);
 const capeOff = (u) => { _w[0] = (-u * u * CS - Math.sin(CT * 5 - u * 4) * u * 1.6) * TD; _w[1] = 0; return _w; };
 
+/** swing trail [from, to, alpha] in one reused array (no per-frame allocation) */
+const TR = [0, 0, 0];
+const trail = (a0, a1, k) => { TR[0] = a0; TR[1] = a1; TR[2] = k; return TR; };
 const Q = { lean: 0, bob: 0, el: 0, elF: 0, lanceA: 0, pull: 0, hipF: 0, hipB: 0, tele: 0, swing: 0, trail: null, head: 0, dash: 0, fold: 1, speed: 0 };
 function pose(e) {
   const t = e.t ?? 0, an = e.anim, q = Q;
@@ -52,7 +55,7 @@ function pose(e) {
     } else {                                      // cut (after 0.5 s)
       const s = clamp(((e.stateT ?? 0.5) - 0.5) / 0.12, 0, 1), ks = ease.outCubic(s);
       q.lanceA = lerp(-1.9, 0.7, ks); q.lean = lerp(-0.12, 0.3, ks); q.swing = s; q.el = lerp(1.5, 0.6, ks);
-      q.trail = [-1.9, q.lanceA, clamp(1 - ((e.stateT ?? 0.5) - 0.5) / 0.3, 0, 1)];
+      q.trail = trail(-1.9, q.lanceA, clamp(1 - ((e.stateT ?? 0.5) - 0.5) / 0.3, 0, 1));
     }
   }
   if (K.hurtOf(e)) { q.lean -= 0.3; q.head -= 0.25; q.el += 0.4; q.lanceA -= 0.25; }

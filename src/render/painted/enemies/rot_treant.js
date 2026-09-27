@@ -24,6 +24,9 @@ const _q = [0, 0];
 const VAR = ['base', 'dmg1', 'dmg2'];
 const SACS = ['sac1', 'sac2', 'sac3'];
 
+/** swing trail [from, to, alpha] in one reused array (no per-frame allocation) */
+const TR = [0, 0, 0];
+const trail = (a0, a1, k) => { TR[0] = a0; TR[1] = a1; TR[2] = k; return TR; };
 const Q = { hipN: 0, hipF: 0, knN: 0, knF: 0, lean: 0, bob: 0, uaN: 0, faN: 0, uaF: 0, faF: 0, str: 1, strF: 1, trail: null, tele: 0, dig: 0, plant: 0, spore: 0 };
 function pose(e) {
   const t = e.t ?? 0, an = e.anim, q = Q, k = clamp(e.aimK ?? 0, 0, 1), st = e.stateT ?? 0;
@@ -51,7 +54,7 @@ function pose(e) {
       q.uaN = lerp(lerp(2.7, 1.25, s), 0.2, rs); q.faN = lerp(lerp(3.1, 1.3, s), 0.3, rs); q.str = lerp(lerp(1, 1.3, s), 1, rs);
       q.uaF = lerp(lerp(2.2, 1.0, s), 0.3, rs); q.faF = lerp(lerp(2.5, 1.1, s), 0.42, rs);
       q.lean = lerp(lerp(-0.15, 0.26, s), 0.04, rs); q.hipN = lerp(q.hipN, 0.3, s * (1 - rs)); q.knN = lerp(q.knN, -0.45, s * (1 - rs));
-      q.trail = [3.0, q.faN, clamp(1 - (st - 0.6) / 0.3, 0, 1)];
+      q.trail = trail(3.0, q.faN, clamp(1 - (st - 0.6) / 0.3, 0, 1));
     }
   }
   q.spore = e.sporeAt != null ? clamp(1 - (t - e.sporeAt) / 0.8, 0, 1) : 0;
