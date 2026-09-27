@@ -28,7 +28,8 @@ const WAIST = -150, NECK = -214, HEAD_S = 1.15, HEAD_S2 = 1.4, MASK_C = NECK - 3
 const BLADE_ARMS = [[-1, -20, -204, 2.55, -1.55], [1, 20, -204, 2.55, -1.55], [-1, -16, -180, 2.1, -1.95], [1, 16, -180, 2.1, -1.95]];
 const LEG_L = [[118, 150], [148, 190], [172, 226]];
 /** 드레스 앞에 매달린 거울 조각: [x, 매단 y, 배율, 떨어져 나가는 피해율] */
-const HANG = [[-54, -104, 0.9, 0.3], [-20, -82, 1.0, 0.5], [22, -98, 0.95, 0.66], [56, -86, 0.88, 0.8], [0, -128, 0.8, 0.9]];
+const HANG_K = 0.52;
+const HANG = [[-70, -112, 0.82, 0.3], [-38, -96, 0.9, 0.5], [40, -100, 0.9, 0.66], [72, -116, 0.8, 0.8], [2, -124, 0.72, 0.9]];
 
 const DEF = {
   glow: '#bff6ff',
@@ -117,10 +118,10 @@ function localPt(p, pv, q, lx, ly, lrot, sc, out, sxm = 1) {
   out[0] = lx + c * dx - s * dy; out[1] = ly + s * dx + c * dy; return out;
 }
 /** 두 점 사이에 뼈 부품 (pa → pb 축을 맞춘다, 길이에 맞춰 균일 배율) */
-function seg(D, L, part, img, pa, pb, x0, y0, x1, y1, alpha = 1) {
+function seg(D, L, part, img, pa, pb, x0, y0, x1, y1, alpha = 1, wMul = 1) {
   if (!part) return;
   const ax = axis(part, pa, pb), len = Math.hypot(x1 - x0, y1 - y0) || 1;
-  put(D, L, part, img, pa, x0, y0, Math.atan2(y1 - y0, x1 - x0) - ax.a, len / (ax.len || 1), 1, 1, alpha);
+  put(D, L, part, img, pa, x0, y0, Math.atan2(y1 - y0, x1 - x0) - ax.a, len / (ax.len || 1), wMul, 1, alpha);
 }
 /** 월드 좌표 뼈 (다리): 축 방향으로 길이를 맞추고, 굵기는 wMul (가로로 누운 부품 전용) */
 function segW(D, part, img, pa, pb, x0, y0, x1, y1, wMul, alpha) {
@@ -146,6 +147,7 @@ function tick(b, world, st) {
   if (st.q.name !== tierOf(world.game)) st.q = qualityOf(world.game);
   const F = b.A?.floor ?? b.boss?.A?.floor ?? b.bottom + HOVER;
   st.P.update(dt, F); st.shards.update(dt, F);
+  st.dt = dt;
   return dt;
 }
 function drawBoss(ctx, b, world, rig, st) {
@@ -243,21 +245,25 @@ function drawNark(ctx, D, rig, st, o) {
   drawLegs(ctx, D, rig, st, o, fade);
   D.rec = false;
   const HY = MASK_C;
-  // ── 2형태: 깨진 거울 후광 + 뒤쪽 공전 파편 ──
-  if (form >= 2 && R.halo2) {
-    put(D, L, R.halo2, R.halo2.v.base, 'c', 0, FACE2_C - 4, Math.sin(t * 0.4) * 0.08, 1 + Math.sin(t * 2) * 0.02);
-    orbit(D, L, rig, t, P, false);
-  }
-  // ── 유리 바늘 왕관 (1형태: 머리 뒤, 2형태: 부러진 바늘 = 손상 변형) ──
+  // ── 유리 바늘 왕관 (1형태: 머리 뒤, 2형태: 부러진 바늘 = 손상 변형, 깨진 거울 후광 뒤로 삐져나온다) ──
   if (R.crown) {
-    const cs = 1 + Math.sin(t * 2) * 0.03 + (P.scream ?? 0) * 0.12;
-    const cy = form >= 2 ? FACE2_C + 18 : HY + 14;
+    const cs = (form >= 2 ? 1.1 : 1) + Math.sin(t * 2) * 0.03 + (P.scream ?? 0) * 0.12;
+    const cy = form >= 2 ? FACE2_C + 30 : HY + 14;
     put(D, L, R.crown, V(R.crown, false, form >= 2 ? 2 : form >= 1 ? 1 : 0), 'c', 0, cy, (P.tilt ?? 0) * 0.5, cs, 1 + (P.spread ?? 0) * 0.15, 1);
-    if (halos && !o.twin) {
+    if (rec) pushRec(rec, D, L, R.crown, V(R.crown, false, 2), 'c', 0, cy, 0, cs, 1, 1);
+    if (halos && !o.twin && form < 2) {
       const i = Math.floor(t * 1.3) % 7, a = -PI / 2 + (i - 3) * 0.32;
       W(L, Math.cos(a) * 80 * cs, cy + Math.sin(a) * 80 * cs, st.W);
       halo(ctx, st.W[0], st.W[1], 12, '#ffffff', (0.4 + 0.4 * Math.sin(t * 7 + i)) * fade, true);
     }
+  }
+  // ── 2형태: 깨진 거울 후광 (왕관 앞, 머리 뒤) + 뒤쪽 공전 파편 ──
+  if (form >= 2 && R.halo2) {
+    const hs = 1.12 + Math.sin(t * 2) * 0.02 + (P.scream ?? 0) * 0.08;
+    put(D, L, R.halo2, R.halo2.v.base, 'c', 0, FACE2_C - 6, Math.sin(t * 0.4) * 0.08, hs);
+    if (rec) pushRec(rec, D, L, R.halo2, R.halo2.v.base, 'c', 0, FACE2_C - 6, 0, hs, 1, 1);
+    if (halos && !o.twin) { W(L, 0, FACE2_C - 6, st.W); halo(ctx, st.W[0], st.W[1], 90, GL_C, 0.22 * fade); }
+    orbit(D, L, rig, t, P, false);
   }
   // ── 등 칼날 팔 4개 ──
   for (let k = 0; k < 4; k++) {
@@ -272,11 +278,13 @@ function drawNark(ctx, D, rig, st, o) {
     const ex = sx + s * Math.sin(a) * L1, ey = sy + Math.cos(a) * L1, bb = a + e;
     const wx = ex + s * Math.sin(bb) * L2, wy = ey + Math.cos(bb) * L2;
     const U = R.upper2 ?? R.upper, Fo = R.fore2 ?? R.fore, Bl = (upper ? R.blade : R.blade2) ?? R.blade;
-    seg(D, L, U, V(U, true), 'a', 'b', sx, sy, ex, ey);
-    seg(D, L, Fo, V(Fo, true), 'a', 'b', ex, ey, wx, wy);
+    seg(D, L, U, V(U, true), 'a', 'b', sx, sy, ex, ey, 1, 1.1);
+    seg(D, L, Fo, V(Fo, true), 'a', 'b', ex, ey, wx, wy, 1, 1.1);
+    if (rec) { recSeg(rec, D, L, U, V(U, true), 'a', 'b', sx, sy, ex, ey, 1.1); recSeg(rec, D, L, Fo, V(Fo, true), 'a', 'b', ex, ey, wx, wy, 1.1); }
     if (Bl) {
       const dir = Math.atan2(Math.cos(bb), s * Math.sin(bb)), ax = axis(Bl, 'base', 'tip');
       put(D, L, Bl, Bl.v.base, 'base', wx, wy, dir - ax.a, 1.0, 1, s);
+      if (rec) pushRec(rec, D, L, Bl, Bl.v.base, 'base', wx, wy, dir - ax.a, 1, 1, s);
     }
   }
   // ── 드레스 (거울 조각 종) ──
@@ -300,8 +308,8 @@ function drawNark(ctx, D, rig, st, o) {
     if (gone) continue;
     const sw = Math.sin(t * 1.35 + i * 1.7) * 0.06 + (P.swing ?? 0) * 0.25 + (P.spread ?? 0) * hx * 0.004;
     const w = 1 + (P.spread ?? 0) * 0.25;
-    put(D, L, part, V(part, false, Math.min(1, lvl)), topPivot(part), hx * w, hy, sw, hs * 0.62);
-    if (rec) pushRec(rec, D, L, part, V(part), topPivot(part), hx * w, hy, sw, hs * 0.62, 1, 1);
+    put(D, L, part, V(part, false, Math.min(1, lvl)), topPivot(part), hx * w, hy, sw, hs * HANG_K);
+    if (rec) pushRec(rec, D, L, part, V(part), topPivot(part), hx * w, hy, sw, hs * HANG_K, 1, 1);
   }
   if (halos && dmg > 0.2 && !o.twin) { W(L, 0, -60, st.W); halo(ctx, st.W[0], st.W[1], 70, GL_V, (0.12 + dmg * 0.18) * fade); }
   // ── 뒤쪽 앞팔 (어둡게) ──
@@ -340,7 +348,7 @@ function drawNark(ctx, D, rig, st, o) {
   }
   // 반짝임 입자 (유리)
   if (!o.twin && !o.dying && q.particles > 150) {
-    st.glint += 1 / 60;
+    st.glint += st.dt ?? 1 / 60;
     if (st.glint > 0.12) {
       st.glint = 0;
       W(L, rr.range(-80, 80), rr.range(-280, -20), st.W);
@@ -514,7 +522,7 @@ function spawnDeb(st, rig, x, y, n, speed, sc = 1, fade = 1.4, up = 1) {
   }
 }
 function dropShard(st, L, part, hx, hy, hs, o) {
-  const pv = topPivot(part), w = W(L, hx, hy, _w), k = part.k * hs * 0.62 * L.sc;
+  const pv = topPivot(part), w = W(L, hx, hy, _w), k = part.k * hs * HANG_K * L.sc;
   st.shards.spawn(part.v.base, pv[0], pv[1], w[0], w[1], L.f * L.rot, k * L.f, k, rr.range(-60, 60), rr.range(-80, 20), rr.range(-3, 3), { r: 14, fade: 2.2, bounce: 0.3 });
   st.P.burst('spore', w[0], w[1] + 20, 10, { speed: 160, color: GL, life: 0.7, size: 1.6 });
 }

@@ -149,7 +149,7 @@ export function sanitizeCfg(cfg, p2, stages = null) {
   if (!Number.isInteger(c.preset) || !presetAvailable(c.preset, p2)) c.preset = 0;
   if (!Number.isInteger(c.course) || !courseAvailable(c.course, p2)) c.course = 0;
   if (stages && !stages.includes(c.stageId)) c.stageId = stages[0] ?? 's01';
-  if (!STAGES[c.stageId]) c.stageId = 's01';
+  if (!STAGES[c.stageId] || !STAGE_ORDER.includes(c.stageId)) c.stageId = 's01';
   return c;
 }
 /** 모든 슬롯에서 해금된 스테이지 합집합 (연습 모드용) */
