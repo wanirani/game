@@ -933,8 +933,9 @@ class Session {
     this.dir = (this.p?.facing ?? 1) < 0 ? -1 : 1;
     this.t = 0; this.env = 0; this.started = false; this.ending = false; this.endT = 0; this.dead = false;
     this.lbSet = 0; this.rollSet = 0; this.kick = null;
-    this.maxDur = o.maxDur ?? (this.awaken ? 9 : 5);
-    this.emitDur = o.dur ?? (this.awaken ? 2.0 : 1.3);
+    // 숫자가 아닌 값(예: undefined + 4 = NaN)이 오면 기본값 — NaN 이면 최대 시간 정리가 영영 안 걸린다
+    this.maxDur = Number.isFinite(o.maxDur) && o.maxDur > 0 ? o.maxDur : (this.awaken ? 9 : 5);
+    this.emitDur = Number.isFinite(o.dur) && o.dur > 0 ? o.dur : (this.awaken ? 2.0 : 1.3);
     this.sawCut = false; this.noCut = 0; this.finalAt = null; this.finals = 0; this.ghostAt = -9; this.bt = -9; this.bn = 0;
     const E = this.T.element, fq = w.fx?.quality ?? 1;
     this.aura = auraOf(this.classId, this.charId, this.accent);
@@ -958,7 +959,7 @@ class Session {
     this.started = true;
     const cam = this.w.camera, T = this.T, o = this.o;
     if (o.zoom !== false && typeof cam?.zoomPulse === 'function') {
-      const z = typeof o.zoom === 'number' ? o.zoom : T.zoom;
+      const z = Number.isFinite(o.zoom) && o.zoom > 0.5 && o.zoom < 2 ? o.zoom : T.zoom;
       cam.zoomPulse(z, T.zin, T.zhold + (o.zoomHold ?? 0), T.zout);
     }
   }

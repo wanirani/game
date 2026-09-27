@@ -758,7 +758,7 @@ function deathFx(ctx, D, b, rig, st, o, dt, dT) {
   const shard = (p, img, pivot, lx, ly, lrot, sx, sy, vx, vy, vr, r, bounce = 0.3) => {
     const w = W(st, lx, ly, [0, 0]);
     const pv = typeof pivot === 'string' ? p[pivot] : pivot;
-    st.shards.spawn(img, pv[0], pv[1], w[0], w[1], f * (lrot + st.R), sx * S * f, sy * S, vx, vy, vr, { r, bounce, fade });
+    return st.shards.spawn(img, pv[0], pv[1], w[0], w[1], f * (lrot + st.R), sx * S * f, sy * S, vx, vy, vr, { r, bounce, fade });
   };
   const V = (p, deep = false) => pickVariant(p, 2, deep, null);
   if (!st.dBurst && dT > 0.3) {
@@ -781,8 +781,11 @@ function deathFx(ctx, D, b, rig, st, o, dt, dT) {
   if (!dead.lance && dT > 0.55 && o.lanceT) {
     dead.lance = true;
     const Ln = R.lance, L = o.lanceT;
-    shard(Ln, Ln.v.base, 'tip', L.x, L.y, L.rot, dv.lk, dv.lk * LANCE_THICK, f * rr.range(-80, 80), -140, f * rr.range(-2.5, 2.5), 8, 0.2);
+    st.lanceS = shard(Ln, Ln.v.base, 'tip', L.x, L.y, L.rot, dv.lk, dv.lk * LANCE_THICK, f * rr.range(-80, 80), -140, f * rr.range(-2.5, 2.5), 8, 0.2);
   }
+  // 창은 창끝(회전 중심)으로 바닥에 닿으므로 그대로 두면 자루가 허공에 비스듬히 떠 있다 → 멈추면 가까운 수평으로 쓰러뜨린다
+  const ls = st.lanceS;
+  if (ls && ls.rest > 0) { const tgt = Math.round(ls.rot / PI) * PI; ls.vr = 0; ls.rot += (tgt - ls.rot) * Math.min(1, dt * 7); }
   if (!dead.armN && dT > 0.75) {
     dead.armN = dead.armF = dead.cape = true;
     if (o.armNT) { const a = o.armNT; shard(R.armN, V(R.armN), 'elbow', a.x, a.y, a.rot, a.sx, au, f * rr.range(60, 180), rr.range(-280, -140), f * rr.range(-6, 6), 10); }
