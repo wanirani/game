@@ -349,7 +349,6 @@ export class AwakenCutinScene extends Scene {
     try { loadBrush()?.then?.((ok) => { if (ok) this.fontArrived = true; }); } catch { /* 글꼴 없음 */ }
     this.bake();
     this.pickImage();
-    this.snap = null; this.snapFail = false; this.snapWait = false;   // 월드 스냅샷 (render 첫 프레임)
     this.heroSnap = null;
     try { this.heroSnap = this.p?.snapshot?.() ?? null; } catch { this.heroSnap = null; }
     this.ink = [];
@@ -366,7 +365,7 @@ export class AwakenCutinScene extends Scene {
     this.vw = this.game.viewW; this.vh = this.game.viewH;
     this.layoutText();
   }
-  resize() { if (this.vw !== this.game.viewW || this.vh !== this.game.viewH) { this.bake(); this.dropSnap(false); } }
+  resize() { if (this.vw !== this.game.viewW || this.vh !== this.game.viewH) this.bake(); }
 
   /** 컷인 그림 (없으면 초상: 가장자리를 부드럽게 녹인 사본을 한 번 굽는다) */
   pickImage() {
@@ -530,73 +529,19 @@ export class AwakenCutinScene extends Scene {
     });
   }
 
-  // ─────────────────────────── 월드 스냅샷 ───────────────────────────
-  /**
-   * 첫 렌더에서 (방금 아래에 그려진) 멈춘 월드를 풀 캔버스 두 장에 찍는다: 원본과 색보정본(검정 0.6 + 영웅 색 물들임).
-   * 이후 장면은 opaque → 월드를 다시 그리지 않고 이 두 장만 카메라 연출(줌·이동)에 맞춰 늘려 그린다.
-   * 백킹 픽셀은 최대 1.0 MP (medium 0.6·low 0.5 배율) — 어둡게 깔리는 배경이라 약간 흐려져도 괜찮다.
-   */
-  takeSnap(ctx) {
-    const cv = ctx.canvas, g = this.game, cam = this.cam;
-    const W = cv?.width | 0, H = cv?.height | 0;
-    if (!W || !H || !(g.scale > 0)) return false;
-    let sc = this.q === 'high' ? 1 : this.q === 'medium' ? 0.6 : 0.5;
-    sc = Math.min(sc, Math.sqrt(1.0e6 / (W * H)));
-    const w = Math.max(1, Math.round(W * sc)), h = Math.max(1, Math.round(H * sc));
-    const clean = pooled('snapClean', w, h), grade = pooled('snapGrade', w, h);
-    if (!clean || !grade) return false;
-    clean.getContext('2d').drawImage(cv, 0, 0, W, H, 0, 0, w, h);
-    const gg = grade.getContext('2d');
-    gg.drawImage(clean, 0, 0);
-    gg.fillStyle = 'rgba(0,0,0,0.6)'; gg.fillRect(0, 0, w, h);
-    if (this.q === 'high') { gg.globalCompositeOperation = 'color'; gg.fillStyle = rgba(this.a.color, 0.25); gg.fillRect(0, 0, w, h); gg.globalCompositeOperation = 'source-over'; }
-    else if (this.q === 'medium') { gg.fillStyle = rgba(this.a.dark, 0.22); gg.fillRect(0, 0, w, h); }
-    this.snap = {
-      clean, grade, lw: W / g.scale, lh: H / g.scale,
-      x0: cam ? cam.x + (cam.shakeX || 0) : 0, y0: cam ? cam.y + (cam.shakeY || 0) : 0, z0: cam ? (cam._zoom || 1) : 1,
-    };
-    this.opaque = true;
-    return true;
-  }
-  /** 스냅샷을 지금 카메라에 맞춰 그린다 (없으면 이번 렌더에서 찍는다). false = 예전 방식(반투명 암전)으로 */
-  drawSnap(ctx, vw, vh, dk) {
-    if (this.snapFail) return false;
-    if (!this.snap) {
-      if (this.snapWait) { this.snapWait = false; return false; }   // 이번 프레임엔 아래 월드가 안 그려졌다 (크기 변경 직후) → 다음 프레임에 찍는다
-      try { if (!this.takeSnap(ctx)) { this.snapFail = true; return false; } } catch (e) { this.snapFail = true; console.error('[awakenCutin] 스냅샷', e); return false; }
-    }
-    const s = this.snap, cam = this.cam;
-    const z = cam ? (cam._zoom || 1) : 1, x = cam ? cam.x + (cam.shakeX || 0) : 0, y = cam ? cam.y + (cam.shakeY || 0) : 0;
-    const k = z / s.z0, dx = (s.x0 - x) * z, dy = (s.y0 - y) * z, dw = s.lw * k, dh = s.lh * k;
-    if (dx > 0.5 || dy > 0.5 || dx + dw < vw - 0.5 || dy + dh < vh - 0.5) { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, vw, vh); }
-    ctx.drawImage(s.grade, dx, dy, dw, dh);
-    if (dk < 0.999) { ctx.globalAlpha = 1 - dk; ctx.drawImage(s.clean, dx, dy, dw, dh); ctx.globalAlpha = 1; }
-    return true;
-  }
-  /** 화면 크기가 바뀌면 스냅샷을 버리고 월드를 다시 그리게 한다 (inRender: 이번 프레임은 월드가 없으니 한 프레임 건너뛴다) */
-  dropSnap(inRender = false) {
-    if (this.preview || (!this.snap && !this.opaque)) return;
-    this.snap = null;
-    this.snapWait = inRender && this.opaque;
-    this.opaque = false;
-  }
-
   // ─────────────────────────── 그리기 ───────────────────────────
   render(ctx) {
     if (!this.a) return;
     const vw = this.game.viewW, vh = this.game.viewH, t = this.t, T = this.T;
-    if (vw !== this.vw || vh !== this.vh) { this.bake(); this.dropSnap(true); }
+    if (vw !== this.vw || vh !== this.vh) this.bake();
     const a = this.a;
     const sp = sprites();
     ctx.save();
-    // 1. 암전 (+ 영웅 색 물들임). 월드는 멈춰 있으므로 첫 프레임에 한 번 찍어 색보정까지 구워 두고
-    //    (특수 합성은 시전당 1번, feel §8) 장면을 opaque 로 바꿔 아래 월드를 다시 그리지 않는다 (모바일 비용 절감)
+    // 1. 암전 + 영웅 어두운 색 물들임: 한 번의 전면 채우기 (특수 합성 없음 — feel §8 전면 패스·합성 예산).
+    //    검정 0.6 위에 dark 0.22 를 얹은 결과와 같은 색을 미리 섞어 둔다 (low 는 검정만)
     const dk = clamp(t / T.dim, 0, 1) * (t > T.exit ? lerp(1, 0.55, clamp((t - T.exit) / (T.end - T.exit), 0, 1)) : 1);
     if (this.preview) { ctx.fillStyle = '#07030a'; ctx.fillRect(0, 0, vw, vh); }
-    if (this.preview || !this.drawSnap(ctx, vw, vh, dk)) {
-      ctx.fillStyle = `rgba(0,0,0,${(0.6 * dk).toFixed(3)})`; ctx.fillRect(0, 0, vw, vh);
-      if (this.q === 'medium' || this.q === 'high') { ctx.fillStyle = rgba(a.dark, 0.22 * dk); ctx.fillRect(0, 0, vw, vh); }
-    }
+    if (dk > 0.003) { ctx.fillStyle = this.dimFill(dk); ctx.fillRect(0, 0, vw, vh); }
     // 2. 영웅 주변 집중선 (low: 가운데만 덮는 작은 크기)
     const hs = this.heroScreen();
     if (sp && t >= T.lines && t < T.exit + T.exitDur) {
@@ -617,6 +562,18 @@ export class AwakenCutinScene extends Scene {
     // 6. 퇴장 제목
     if (t >= T.exit) this.drawTitle(ctx, vw, vh, t);
     ctx.restore();
+  }
+
+  /** 암전 색: 검정(0.6) 위에 영웅 dark(0.22, low 는 없음)를 겹친 결과를 한 색으로 (dk 배율). 문자열은 dk 단계별로 캐시 */
+  dimFill(dk) {
+    const q = Math.round(dk * 40);
+    if (this._dimQ === q && this._dimS) return this._dimS;
+    const k = q / 40, a1 = 0.6 * k, a2 = this.q === 'low' ? 0 : 0.22 * k;
+    const h = String(this.a.dark ?? '#000').replace('#', ''), n = parseInt(h.length === 3 ? h.split('').map((c) => c + c).join('') : h, 16) || 0;
+    const A = a1 + a2 * (1 - a1);   // 두 겹의 합성 알파
+    const mix = (c) => Math.round(A > 0 ? (c * a2) / A : 0);
+    this._dimQ = q; this._dimS = `rgba(${mix((n >> 16) & 255)},${mix((n >> 8) & 255)},${mix(n & 255)},${A.toFixed(3)})`;
+    return this._dimS;
   }
 
   heroScreen() {
