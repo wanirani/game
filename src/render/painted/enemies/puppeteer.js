@@ -78,10 +78,11 @@ function layout(e, q) {
   return L;
 }
 
-function drawAll() {
+function drawAll(flash) {
   for (let i = 0; i < NP; i++) {
     const p = PL[i];
-    if (p.kind === 1) K.strips('body', 'a', p.x, p.y, p.rot, 1, 1, K.nStrips(7), 'y', coatOff, 1, p.vn);
+    // the white hit flash is drawn unwarped (one blit: no strip seams across the silhouette)
+    if (p.kind === 1 && !flash) K.strips('body', 'a', p.x, p.y, p.rot, 1, 1, K.nStrips(7), 'y', coatOff, 1, p.vn);
     else K.put(p.name, p.pv, p.x, p.y, p.rot, p.sx, p.sy, 1, p.vn);
   }
 }
@@ -128,7 +129,7 @@ export function draw(ctx, e, world, o, rig) {
   K.begin(ctx, rig, K.flashK(e, o));
   if (!o.flash) K.glow(0, -60 + q.bob, 34, '#5a2a8a', 0.22);
   const L0 = layout(e, q);
-  drawAll();
+  drawAll(!!o.flash);
   if (!o.flash) {
     for (const pn of ['eyeL', 'eyeR']) { K.pivotPos('head', 'a', pn, 1, L0.ny + 3, L0.hr, 1, 1, _q); K.glow(_q[0], _q[1], 3 + 2.5 * q.glow, '#c870ff', 0.9); }
     threads(ctx, e, q, t);

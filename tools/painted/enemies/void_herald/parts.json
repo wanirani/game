@@ -1,0 +1,14 @@
+{
+  "id": "void_herald", "tier": "T2", "srcTD": 4,
+  "note": "T2 floating caster from parts sheet 1. Body = the hooded robed figure seen from the front (iridescent halo behind the hood, two white eye-lights, the robe opening on a starfield, the hem tearing into black smoke), its right sleeve + glowing hand cut away on a diagonal below the shoulder (the left, far arm with its light hand stays painted). Arm = the loose horizontal bell sleeve with the white light hand (sheet right half), pivot a = the shoulder opening; it aims the prism beam and rises for the starfall. k 0.066 -> 100 px (logic 44x100); the arm k 0.035 -> 40 px.",
+  "sources": {
+    "s1": { "raw": "void_herald_sheet1.webp", "file": "void_herald_sheet1.png", "k": 0.066 }
+  },
+  "parts": {
+    "body": { "src": "s1", "box": [0, 0, 1010, 1760], "keep": "largest",
+      "minus": [[[745,540],[800,590],[850,660],[880,730],[975,745],[985,935],[850,935],[820,800],[770,740],[745,680]]],
+      "piv": { "a": [590,1000], "shoulder": [730,545], "eyeL": [576,337], "eyeR": [619,337], "halo": [584,282], "handF": [320,860], "chest": [600,700], "hem": [600,1650], "core": [640,1250] } },
+    "arm": { "src": "s1", "box": [1130, 700, 2336, 1112], "keep": "largest", "k": 0.035,
+      "piv": { "a": [1160,800], "b": [2300,840], "palm": [2140,812] } }
+  }
+}

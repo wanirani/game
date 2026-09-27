@@ -162,13 +162,18 @@ export class BossIntroScene extends Scene {
       ctx.save();
       ctx.beginPath(); ctx.moveTo(dx + 80, 0); ctx.lineTo(vw, 0); ctx.lineTo(vw, vh); ctx.lineTo(dx, vh); ctx.clip();
       ctx.fillStyle = '#12040a'; ctx.fillRect(dx, 0, vw - dx, vh);
-      const rg = ctx.createRadialGradient(vw - w * 0.5, vh * 0.45, 20, vw - w * 0.5, vh * 0.45, vw * 0.5);
-      rg.addColorStop(0, 'rgba(150,10,30,0.45)'); rg.addColorStop(1, 'rgba(150,10,30,0)');
-      ctx.fillStyle = rg; ctx.fillRect(dx, 0, vw - dx, vh);
+      const gk = `${vw}|${vh}|${Math.round(w)}`;
+      if (this._gk !== gk) { // 그라데이션은 화면·초상화 크기가 바뀔 때만 새로 만든다
+        this._gk = gk;
+        const rg = ctx.createRadialGradient(vw - w * 0.5, vh * 0.45, 20, vw - w * 0.5, vh * 0.45, vw * 0.5);
+        rg.addColorStop(0, 'rgba(150,10,30,0.45)'); rg.addColorStop(1, 'rgba(150,10,30,0)');
+        const bg = ctx.createLinearGradient(0, vh * 0.7, 0, vh);
+        bg.addColorStop(0, 'rgba(18,4,10,0)'); bg.addColorStop(1, 'rgba(18,4,10,0.85)');
+        this._rg = rg; this._bg = bg;
+      }
+      ctx.fillStyle = this._rg; ctx.fillRect(dx, 0, vw - dx, vh);
       ctx.drawImage(featherLeft(img), px, 0, w, h);
-      const bg = ctx.createLinearGradient(0, vh * 0.7, 0, vh);
-      bg.addColorStop(0, 'rgba(18,4,10,0)'); bg.addColorStop(1, 'rgba(18,4,10,0.85)');
-      ctx.fillStyle = bg; ctx.fillRect(dx, vh * 0.7, vw - dx, vh * 0.3);
+      ctx.fillStyle = this._bg; ctx.fillRect(dx, vh * 0.7, vw - dx, vh * 0.3);
       ctx.restore();
       ctx.strokeStyle = GOLD; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(dx + 80, 0); ctx.lineTo(dx, vh); ctx.stroke();
     }
@@ -187,7 +192,7 @@ export class BossIntroScene extends Scene {
       const S = safeOf(this);
       ctx.save();
       ctx.globalAlpha = clamp((t - 1.5) / 0.3, 0, 1) * out * 0.9;
-      hintLine(ctx, [['confirm', '건너뛰기']], '화면을 터치하면 건너뜁니다', vw - 22 - S.r, vh - 16 - S.b, { align: 'right', size: 13, color: '#d8c8b8' });
+      hintLine(ctx, [['confirm', '건너뛰기']], '화면을 터치하면 넘어갑니다', vw - 22 - S.r, vh - 16 - S.b, { align: 'right', size: 13, color: '#d8c8b8' });
       ctx.restore();
     }
   }
@@ -375,7 +380,7 @@ export class UltCutinScene extends Scene {
     }
     ctx.globalCompositeOperation = 'source-over';
     ctx.restore(); // 자르기 끝
-    // 띠 가장자리: 캐릭터 색 선, 2차 전직은 금테(바깥 굵은 선 + 안쪽 가는 선) + 반짝임
+    // 띠 가장자리: 캐릭터 색 선, 2차 전직은 금테(외곽 굵은 선 + 안쪽 가는 선) + 반짝임
     ctx.fillStyle = this.col;
     ctx.fillRect(-L, -hb, 2 * L, 3); ctx.fillRect(-L, hb - 3, 2 * L, 3);
     if (this.tier >= 2) {
@@ -515,9 +520,13 @@ export class DocumentScene extends Scene {
     const h = clamp(H - 72 - S.t - S.b, 300, 400);
     const x = (W - w) / 2;
     const y = S.t + Math.max(10, (H - S.t - S.b - 34 - h) / 2);
-    const g = ctx.createLinearGradient(x, y, x, y + h);
-    g.addColorStop(0, '#e8dcb8'); g.addColorStop(1, '#c8b890');
-    ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
+    const pk = `${y}|${h}`;
+    if (this.pgKey !== pk) { // 양피지 그라데이션: 배치가 바뀔 때만
+      const g = ctx.createLinearGradient(0, y, 0, y + h);
+      g.addColorStop(0, '#e8dcb8'); g.addColorStop(1, '#c8b890');
+      this.pg = g; this.pgKey = pk;
+    }
+    ctx.fillStyle = this.pg; ctx.fillRect(x, y, w, h);
     ctx.strokeStyle = '#6a4a2a'; ctx.lineWidth = 3; ctx.strokeRect(x + 8, y + 8, w - 16, h - 16);
     this.vignetteRect(ctx, x, y, w, h);
     const d = this.doc || { name: '???', text: '글씨가 번져 읽을 수 없다.' };
@@ -553,7 +562,7 @@ export class DocumentScene extends Scene {
       const hy = Math.min(H - 12 - S.b, y + h + 26);
       ctx.save();
       ctx.globalAlpha = clamp((this.t - 0.6) / 0.25, 0, 1);
-      hintLine(ctx, [[['confirm', 'cancel'], '닫기']], '화면을 터치하면 닫힙니다', W / 2, hy, { size: 13, color: '#c8b8a8' });
+      hintLine(ctx, [[['confirm', 'cancel'], '닫기']], '화면을 터치하면 돌아갑니다', W / 2, hy, { size: 13, color: '#c8b8a8' });
       ctx.restore();
     }
   }

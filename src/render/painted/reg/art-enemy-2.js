@@ -19,6 +19,7 @@ import * as scholar_ghost from '../enemies/scholar_ghost.js';
 import * as bone_pillar from '../enemies/bone_pillar.js';
 import * as mummy from '../enemies/mummy.js';
 import * as puppet_maiden from '../enemies/puppet_maiden.js';
+import * as lesser_demon from '../enemies/lesser_demon.js';
 
 export const bosses = {};
 export const enemies = [
@@ -36,6 +37,7 @@ export const enemies = [
   { mod: bone_pillar },
   { mod: mummy },
   { mod: puppet_maiden },
+  { mod: lesser_demon },
 ];
 export const companions = {};
 export const npcs = {};

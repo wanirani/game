@@ -13,6 +13,7 @@ import * as abyss_angler from '../enemies/abyss_angler.js';
 import * as sunken_priest from '../enemies/sunken_priest.js';
 import * as chain_warden from '../enemies/chain_warden.js';
 import * as mirror_knight from '../enemies/mirror_knight.js';
+import * as slag_golem from '../enemies/slag_golem.js';
 
 export const bosses = {};
 export const enemies = [
@@ -25,6 +26,7 @@ export const enemies = [
   { mod: sunken_priest },
   { mod: chain_warden },
   { mod: mirror_knight },
+  { mod: slag_golem },
 ];
 export const companions = {};
 export const npcs = {};

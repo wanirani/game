@@ -1,0 +1,179 @@
+{
+ "id": "slag_golem",
+ "tier": "T3",
+ "srcTD": 3,
+ "note": "body = Step-4 edit of the sheet figure with the arms and the legs removed (src/sg_body.webp, manifest: sg_edit): spiked riveted pauldrons, the skull head sunk in the collar, the molten core with the drips, the chains; arm = sheet-2 near arm (bicep under the pauldron \u2192 cracked forearm \u2192 glowing fist), used twice (near + darkened far); legs = sheet-2 hips-and-legs piece standing in molten puddles (one piece, rocks while walking).",
+ "sources": {
+  "b": {
+   "raw": "sg_body.webp",
+   "file": "sg_body.png",
+   "mode": "",
+   "k": 0.048
+  },
+  "s2": {
+   "raw": "slag_golem_sheet2.webp",
+   "file": "slag_golem_sheet2.png",
+   "mode": "",
+   "k": 0.06
+  }
+ },
+ "parts": {
+  "body": {
+   "src": "b",
+   "box": [
+    250,
+    20,
+    1520,
+    1550
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1000,
+     1120
+    ],
+    "top": [
+     1000,
+     29
+    ],
+    "shN": [
+     483,
+     717
+    ],
+    "shF": [
+     1367,
+     700
+    ],
+    "eye": [
+     1242,
+     575
+    ],
+    "eye2": [
+     1325,
+     583
+    ],
+    "mouth": [
+     1267,
+     667
+    ],
+    "core": [
+     1092,
+     858
+    ]
+   },
+   "_bbox": [
+    273,
+    35,
+    1504,
+    1536
+   ]
+  },
+  "arm": {
+   "src": "s2",
+   "box": [
+    15,
+    540,
+    720,
+    1605
+   ],
+   "keep": "largest",
+   "poly": [
+    [
+     158,
+     558
+    ],
+    [
+     475,
+     575
+    ],
+    [
+     500,
+     783
+    ],
+    [
+     550,
+     933
+    ],
+    [
+     633,
+     1200
+    ],
+    [
+     700,
+     1333
+    ],
+    [
+     690,
+     1520
+    ],
+    [
+     550,
+     1600
+    ],
+    [
+     333,
+     1590
+    ],
+    [
+     240,
+     1417
+    ],
+    [
+     20,
+     933
+    ],
+    [
+     20,
+     700
+    ],
+    [
+     150,
+     630
+    ]
+   ],
+   "piv": {
+    "a": [
+     317,
+     590
+    ],
+    "b": [
+     483,
+     1433
+    ]
+   },
+   "_bbox": [
+    24,
+    558,
+    700,
+    1596
+   ]
+  },
+  "legs": {
+   "src": "s2",
+   "k": 0.08,
+   "box": [
+    1590,
+    940,
+    2295,
+    1620
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1992,
+     1000
+    ],
+    "b": [
+     1992,
+     1600
+    ]
+   },
+   "_bbox": [
+    1603,
+    950,
+    2280,
+    1610
+   ]
+  }
+ }
+}

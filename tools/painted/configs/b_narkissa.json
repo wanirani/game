@@ -4,6 +4,8 @@
  "out": "assets/painted/bosses/b_narkissa",
  "raw": "tools/painted/raw/b_narkissa",
  "td": 2.0,
+ "_doc": "나르키사 (s14) 채색 퍼핏. 정면 퍼핏(바라보는 쪽으로 좌우 반전). 부품 치수는 로직 drawNark 기준: 목 −214, 허리 −150, 가면 중심 −252, 2형태 얼굴 −284, 앞팔 어깨 (±36,−198) L 66/70, 칼날 팔 L 64/70, 다리 LEG_L.",
+ "_hurtbox": "얼굴 40×50 (가면 중심/2형태 얼굴 중심) · 드레스 80×180 · 팔 40×120 ×2 · 돌진 250×90 — 그림은 판정보다 크다 (다리·후광·칼날 팔).",
  "matte": {
   "default": {
    "key": 9,
@@ -21,7 +23,721 @@
    "key": 7
   }
  },
- "parts": [],
- "debris": [],
- "kling": {}
+ "cuts": {
+  "head2_a": {
+   "masks": {
+    "jaw": [
+     {
+      "op": "poly",
+      "pts": [
+       [
+        640,
+        1390
+       ],
+       [
+        1470,
+        1390
+       ],
+       [
+        1480,
+        1700
+       ],
+       [
+        1350,
+        1960
+       ],
+       [
+        1000,
+        1995
+       ],
+       [
+        700,
+        1960
+       ],
+       [
+        610,
+        1700
+       ]
+      ],
+      "feather": 1.2
+     }
+    ]
+   }
+  }
+ },
+ "parts": [
+  {
+   "name": "head",
+   "src": "head_a",
+   "lps": 0.06,
+   "box": [
+    540,
+    100,
+    1480,
+    1625
+   ],
+   "pivots": {
+    "neck": [
+     1030,
+     1560
+    ],
+    "face": [
+     1030,
+     900
+    ],
+    "eyeL": [
+     811,
+     811
+    ],
+    "eyeR": [
+     1255,
+     818
+    ]
+   },
+   "points": {
+    "eyes": [
+     [
+      811,
+      811
+     ],
+     [
+      1255,
+      818
+     ],
+     [
+      755,
+      455
+     ],
+     [
+      911,
+      478
+     ],
+     [
+      744,
+      600
+     ],
+     [
+      633,
+      667
+     ],
+     [
+      922,
+      733
+     ],
+     [
+      722,
+      1000
+     ],
+     [
+      855,
+      1022
+     ],
+     [
+      922,
+      955
+     ],
+     [
+      822,
+      1178
+     ]
+    ]
+   }
+  },
+  {
+   "name": "head2",
+   "src": "head2_a",
+   "lps": 0.075,
+   "box": [
+    400,
+    100,
+    1560,
+    1420
+   ],
+   "mask": "!jaw",
+   "pivots": {
+    "face": [
+     1030,
+     1000
+    ],
+    "hinge": [
+     1030,
+     1390
+    ]
+   },
+   "points": {
+    "eyes": [
+     [
+      811,
+      511
+     ],
+     [
+      1278,
+      778
+     ],
+     [
+      667,
+      1011
+     ],
+     [
+      533,
+      600
+     ],
+     [
+      600,
+      733
+     ],
+     [
+      633,
+      878
+     ],
+     [
+      778,
+      433
+     ],
+     [
+      889,
+      367
+     ],
+     [
+      789,
+      782
+     ],
+     [
+      544,
+      944
+     ],
+     [
+      900,
+      878
+     ]
+    ]
+   }
+  },
+  {
+   "name": "jaw2",
+   "src": "head2_a",
+   "lps": 0.075,
+   "box": [
+    590,
+    1375,
+    1500,
+    1950
+   ],
+   "mask": "jaw",
+   "pivots": {
+    "hinge": [
+     1030,
+     1390
+    ]
+   }
+  },
+  {
+   "name": "crown",
+   "src": "crown_a",
+   "lps": 0.13,
+   "box": [
+    390,
+    140,
+    2330,
+    1260
+   ],
+   "pivots": {
+    "c": [
+     1354,
+     1150
+    ]
+   }
+  },
+  {
+   "name": "halo2",
+   "src": "halo2_a",
+   "lps": 0.095,
+   "box": [
+    130,
+    0,
+    1920,
+    2048
+   ],
+   "pivots": {
+    "c": [
+     1030,
+     992
+    ]
+   }
+  },
+  {
+   "name": "torso",
+   "src": "torso_a",
+   "lps": 0.07,
+   "box": [
+    110,
+    310,
+    1665,
+    1985
+   ],
+   "pivots": {
+    "waist": [
+     883,
+     1420
+    ],
+    "neck": [
+     878,
+     467
+    ],
+    "gem": [
+     884,
+     877
+    ],
+    "shL": [
+     455,
+     777
+    ],
+    "shR": [
+     1311,
+     777
+    ]
+   }
+  },
+  {
+   "name": "gown",
+   "src": "gown_a",
+   "lps": 0.0914,
+   "box": [
+    20,
+    230,
+    1745,
+    2275
+   ],
+   "pivots": {
+    "waist": [
+     884,
+     330
+    ],
+    "hem": [
+     884,
+     2264
+    ]
+   }
+  },
+  {
+   "name": "upper",
+   "src": "limbs_a",
+   "lps": 0.065,
+   "box": [
+    185,
+    134,
+    497,
+    1423
+   ],
+   "pivots": {
+    "a": [
+     393,
+     257
+    ],
+    "b": [
+     350,
+     1273
+    ]
+   }
+  },
+  {
+   "name": "fore",
+   "src": "limbs_a",
+   "lps": 0.0686,
+   "box": [
+    688,
+    254,
+    961,
+    1344
+   ],
+   "pivots": {
+    "a": [
+     815,
+     300
+    ],
+    "b": [
+     830,
+     1320
+    ]
+   }
+  },
+  {
+   "name": "hand",
+   "src": "limbs_a",
+   "lps": 0.05,
+   "box": [
+    1074,
+    230,
+    1559,
+    1391
+   ],
+   "pivots": {
+    "wr": [
+     1330,
+     1320
+    ],
+    "tip": [
+     1330,
+     300
+    ]
+   }
+  },
+  {
+   "name": "blade2",
+   "src": "limbs_a",
+   "lps": 0.072,
+   "box": [
+    1687,
+    108,
+    2098,
+    1434
+   ],
+   "pivots": {
+    "base": [
+     1760,
+     1380
+    ],
+    "tip": [
+     1740,
+     140
+    ]
+   }
+  },
+  {
+   "name": "hmirror",
+   "src": "limbs_a",
+   "lps": 0.075,
+   "box": [
+    2114,
+    347,
+    2617,
+    1292
+   ],
+   "pivots": {
+    "grip": [
+     2365,
+     1260
+    ],
+    "c": [
+     2365,
+     590
+    ]
+   }
+  },
+  {
+   "name": "upper2",
+   "src": "limbs_b",
+   "lps": 0.065,
+   "box": [
+    144,
+    201,
+    574,
+    1340
+   ],
+   "pivots": {
+    "a": [
+     303,
+     303
+    ],
+    "b": [
+     440,
+     1288
+    ]
+   }
+  },
+  {
+   "name": "fore2",
+   "src": "limbs_b",
+   "lps": 0.09,
+   "box": [
+    754,
+    288,
+    1070,
+    1233
+   ],
+   "pivots": {
+    "a": [
+     873,
+     388
+    ],
+    "b": [
+     909,
+     1115
+    ]
+   }
+  },
+  {
+   "name": "blade",
+   "src": "limbs_b",
+   "lps": 0.09,
+   "box": [
+    1203,
+    326,
+    1492,
+    1310
+   ],
+   "pivots": {
+    "base": [
+     1230,
+     1290
+    ],
+    "tip": [
+     1476,
+     342
+    ]
+   }
+  },
+  {
+   "name": "thigh",
+   "src": "legs_a",
+   "lps": 0.1,
+   "box": [
+    216,
+    250,
+    2160,
+    665
+   ],
+   "pivots": {
+    "a": [
+     380,
+     440
+    ],
+    "b": [
+     2010,
+     430
+    ]
+   }
+  },
+  {
+   "name": "shin",
+   "src": "legs_a",
+   "lps": 0.09,
+   "box": [
+    220,
+    693,
+    2958,
+    1066
+   ],
+   "pivots": {
+    "a": [
+     380,
+     880
+    ],
+    "tip": [
+     2930,
+     880
+    ]
+   }
+  },
+  {
+   "name": "frame",
+   "src": "mirror_a",
+   "lps": 0.07,
+   "box": [
+    0,
+    60,
+    1760,
+    2260
+   ],
+   "pivots": {
+    "gc": [
+     878,
+     1175
+    ],
+    "gr": [
+     1361,
+     1175
+    ],
+    "gb": [
+     878,
+     1875
+    ]
+   }
+  }
+ ],
+ "debris": [
+  {
+   "prefix": "sh",
+   "src": "shards_a",
+   "lps": 0.1,
+   "boxes": [
+    [
+     236,
+     107,
+     626,
+     1416
+    ],
+    [
+     673,
+     109,
+     1106,
+     1326
+    ],
+    [
+     1151,
+     156,
+     1598,
+     1440
+    ],
+    [
+     1607,
+     108,
+     2009,
+     1421
+    ],
+    [
+     2088,
+     105,
+     2474,
+     1377
+    ]
+   ]
+  },
+  {
+   "prefix": "deb",
+   "src": "debris_a",
+   "lps": 0.07,
+   "boxes": [
+    [
+     224,
+     155,
+     665,
+     759
+    ],
+    [
+     271,
+     871,
+     679,
+     1410
+    ],
+    [
+     902,
+     743,
+     1204,
+     1412
+    ],
+    [
+     1109,
+     151,
+     1538,
+     704
+    ],
+    [
+     1220,
+     823,
+     1786,
+     900
+    ],
+    [
+     1397,
+     1090,
+     1587,
+     1360
+    ],
+    [
+     1744,
+     304,
+     2013,
+     542
+    ],
+    [
+     1828,
+     1086,
+     1990,
+     1345
+    ],
+    [
+     1912,
+     719,
+     2208,
+     895
+    ],
+    [
+     2202,
+     944,
+     2446,
+     1385
+    ],
+    [
+     2215,
+     145,
+     2578,
+     725
+    ]
+   ]
+  }
+ ],
+ "kling": {
+  "model": "kling-image-v3_0_omni (text_to_image, 2k, 2 images/request)",
+  "prompts": "tools/painted/prompts/art-boss-6.mjs",
+  "manifest": "tools/kling/manifest_art-boss-6.json",
+  "images": {
+   "nk_head": {
+    "generationId": "AQ49SCNdlsQhOlXVxjTIN_sOjgI2ZFKZbQPrMCw4pOTZWE2KyINNYs8jU2VGMBg_ZA0hVdFW",
+    "imageCount": 2,
+    "raw": "raw/head_a",
+    "decision": "#1 kept → raw/head_a (half black glass with bubble eyes, half cracked porcelain face). #2 unused (less contrast)."
+   },
+   "nk_head2": {
+    "generationId": "Aeova-fNhgfLS-OZLqL_WScskNYO6lFvrre8Jv9tLhX77xwQnaBWpQt98z8yRUmaX-s54_NU",
+    "imageCount": 2,
+    "raw": "raw/head2_a",
+    "decision": "#2 kept → raw/head2_a (eye-studded glass half + porcelain half, mirror-tooth maw; jaw cut as jaw2). #1 unused (face all black, eyes unreadable)."
+   },
+   "nk_crown": {
+    "generationId": "AWL6fPrxzq9tJ5lRFdGG_ects6AHq9aUxdZpXhK_FHpbeS9TcOw-448wceJoesGa03TVH3mB",
+    "imageCount": 2,
+    "raw": "raw/crown_a",
+    "decision": "#1 kept → raw/crown_a (fan of glass needles). #2 unused (crown with solid base, reads as a hat)."
+   },
+   "nk_halo2": {
+    "generationId": "ATvAdzpOK6_MNnRvi6S-CERgzPkdwbLs0kCNDEcVftV1md_HAiux2K0-wwSKXWDbwYjbNyn5",
+    "imageCount": 2,
+    "raw": "raw/halo2_a",
+    "decision": "#1 kept → raw/halo2_a (cracked mirror disc halo for form 2)."
+   },
+   "nk_torso": {
+    "generationId": "AaK3S-PnuCYN25ozcaTa28k5a9XA9BKh0CcfOXij1UyYvSyw6M5jXB5DfE1HMJ5xy1562Y9x",
+    "imageCount": 2,
+    "raw": "raw/torso_a",
+    "decision": "#1 kept → raw/torso_a (obsidian cuirass, glass spikes, green gem). #2 unused (stray ring on the chest)."
+   },
+   "nk_gown": {
+    "generationId": "Ac2hQyro1nfgGHDSu4hZVrdYoLDUakvDMQxjr4vD1tUU32MBt8DgckaokvOM6drUr8j7Zg5R",
+    "imageCount": 2,
+    "raw": "raw/gown_a",
+    "decision": "#2 kept → raw/gown_a (bell gown of mirror shards reflecting screaming faces). #1 unused (fewer faces)."
+   },
+   "nk_shards": {
+    "generationId": "AZ17wMRnNr3rprRMLK5bFsADLCg1fPxbuWkDG-ECn3_WC6qbnGZ10pYl6A0aiga1h5AwU6un",
+    "imageCount": 2,
+    "raw": "raw/shards_a",
+    "decision": "#1 kept → raw/shards_a (5 mirror panels with screaming faces → sh0..sh4: hanging gown shards, kaleido/shard-rain projectiles)."
+   },
+   "nk_limbs": {
+    "generationId": "AYYCQJ1YlL1BYyrqyfVBjYmHZhNINi8ZCZCxjPRYOiyaTvGHv9Yncm8__-EcCX33xLrc2YUZ",
+    "imageCount": 2,
+    "raw": "raw/limbs_a + raw/limbs_b",
+    "decision": "#2 kept → raw/limbs_a (upper arm, shattered forearm, open claw hand, crescent blade, hand mirror). #1 kept → raw/limbs_b (upper2/fore2 back blade arms, iridescent crescent blade; claw hand + second mirror unused)."
+   },
+   "nk_legs": {
+    "generationId": "AZWh6O-4gqPuNS3V1VrqrmIoQtgtHEy88EdxDdtTVaHwwbnt5Rh72j3ZHn_WXeS2QW4PwIJx",
+    "imageCount": 2,
+    "raw": "raw/legs_a + raw/legs_b",
+    "decision": "#2 kept → raw/legs_a (spider thigh + blade shin). #1 → raw/legs_b (not built: memory; kept as source for a later variant)."
+   },
+   "nk_mirror": {
+    "generationId": "AWQuYNAFj61fVSHzZ5FK5VrIY2vZ2pBy84qRGvDkOabYR7wfYYemx2rQMjYXq2cKv-7KQ5-x",
+    "imageCount": 2,
+    "raw": "raw/mirror_a",
+    "decision": "#1 kept → raw/mirror_a (spiked wall-mirror frame; glass keyed out, drawn procedurally)."
+   },
+   "nk_debris": {
+    "generationId": "ARPgyhtvRM8GkA83T2FaoH0oKgzI4OHXtK5ar2DRWP_giEuRH2a9997ro5GyS0Dgc2VMREUw",
+    "imageCount": 2,
+    "raw": "raw/debris_a",
+    "decision": "#1 kept → raw/debris_a (11 glass/mask fragments → deb0..deb10)."
+   }
+  }
+ }
 }

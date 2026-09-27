@@ -10,7 +10,7 @@
 // death (the gargoyle crumbles: strip dissolve falling apart, stone chips and a last flare of the cracks).
 import * as K from '../enemy_kit.js';
 import { clamp, lerp, ease } from '../../../core/math.js';
-import { glint } from './_biped.js';
+import { glint, claimDebris } from './_biped.js';
 
 export const spec = {
   id: 'gargoyle', tier: 'T2', src: 'gargoyle',
@@ -79,6 +79,7 @@ export function draw(ctx, e, world, o, rig) {
   if (e.dying > 0 && world) {
     if (!e._pcorpse) {
       e._pcorpse = true;
+      claimDebris(world, e);                        // the painted crumble replaces the generic stone chips
       K.begin(ctx, rig, 0); layout(q); K.end();
       K.spawnDissolve(world, e, rig, [
         { name: 'wing', pv: 'a', x: L.w2x, y: L.w2y, rot: q.dir - q.lag * 0.3 - PI, sx: q.ws * 0.94, sy: q.ws * 0.94, vn: 'deep' },

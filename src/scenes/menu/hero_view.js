@@ -726,7 +726,7 @@ export function pedestal(ctx, x, y, s, t, color = PAL.gold, yaw = null) {
 export class HeroStage {
   constructor() { this.layer = new PixLayer(); }
   draw(ctx, x, y, w, h, t, scale, accent = '#e8c872') {
-    this.layer.draw(ctx, 'stage', x, y, w, h, (c) => {
+    this.layer.draw(ctx, 'stage|' + accent, x, y, w, h, (c) => {
       const g = c.createLinearGradient(0, y, 0, y + h);
       g.addColorStop(0, '#171028'); g.addColorStop(0.6, '#0d0816'); g.addColorStop(1, '#050308');
       c.fillStyle = g; c.fillRect(x, y, w, h);
@@ -777,12 +777,13 @@ export class HeroStage {
       const vg = c.createRadialGradient(ax, y + h * 0.55, h * 0.2, ax, y + h * 0.55, Math.max(w, h) * 0.75);
       vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.7)');
       c.fillStyle = vg; c.fillRect(x, y, w, h);
+      // 영웅 뒤 기운 (영웅 색): 무대 넓이만 한 가산 합성이라 매 프레임 그리면 비싸다 → 함께 굽는다 (P-11)
+      c.imageSmoothingQuality = 'low';
+      glow(c, x + w / 2, y + h * 0.5, h * 0.42, accent, 0.17);
     }, scale);
-    // 동적: 영웅 뒤 기운 + 떠다니는 먼지 (부드러운 발광 스프라이트 확대는 'low' 필터로 충분하고 훨씬 싸다 — P-11)
-    const cx = x + w / 2;
+    // 동적: 떠다니는 먼지 (부드러운 발광 스프라이트 확대는 'low' 필터로 충분하고 훨씬 싸다 — P-11)
     ctx.save();
     ctx.imageSmoothingQuality = 'low';
-    glow(ctx, cx, y + h * 0.5, h * 0.42, accent, 0.16 + 0.04 * Math.sin(t * 1.7));
     for (let i = 0; i < 7; i++) {
       const k = (t * 0.05 + i * 0.137) % 1;
       const mx = x + w * (0.15 + ((i * 0.31) % 0.7)) + Math.sin(t * 0.8 + i) * 6;

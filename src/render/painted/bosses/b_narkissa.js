@@ -382,9 +382,9 @@ function drawArm(D, L, rig, st, s, a, e, P, front, V, rec) {
     put(D, L, R.hmirror, R.hmirror.v.base, 'grip', wx, wy, dir - 0.3 - ax.a, clamp(P.mirror, 0, 1));
   }
   if (R.hand) {
-    const ax = axis(R.hand, 'w', 'tip');
-    put(D, L, R.hand, V(R.hand, deep), 'w', wx, wy, dir - ax.a, 1, 1, s);
-    if (rec) pushRec(rec, D, L, R.hand, V(R.hand, deep), 'w', wx, wy, dir - ax.a, 1, 1, s);
+    const ax = axis(R.hand, 'wr', 'tip');
+    put(D, L, R.hand, V(R.hand, deep), 'wr', wx, wy, dir - ax.a, 1, 1, s);
+    if (rec) pushRec(rec, D, L, R.hand, V(R.hand, deep), 'wr', wx, wy, dir - ax.a, 1, 1, s);
   }
   if (rec) { recSeg(rec, D, L, R.upper, V(R.upper, deep), 'a', 'b', sx, sy, ex, ey); recSeg(rec, D, L, R.fore, V(R.fore, deep), 'a', 'b', ex, ey, wx, wy); }
 }

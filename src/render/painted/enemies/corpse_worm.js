@@ -31,9 +31,12 @@ export function draw(ctx, e, world, o, rig) {
   LUNGE = ap && ap.s > 0 ? ease.outBack(ap.s) * clamp(1 - ap.after / 0.35, 0, 1) : 0;
   N = K.nStrips(7);
   const sq = K.squashK(e);
-  const x0 = -28 + LUNGE * 8 - REAR * 2 + (WALK ? Math.sin(T * 8) * 0.8 : 0);
-  const sy2 = 1 + (WALK ? Math.sin(T * 8) * 0.05 : Math.sin(T * 2) * 0.02) - sq * 0.14;
-  const s = 1 + sq * 0.08;
+  // the lunge throws the whole worm forward and stretches it (length only: sy2 keeps the girth) so the maw reaches
+  // the far end of the AI's strike rect (hit x 6..58)
+  const x0 = -28 + LUNGE * 13 - REAR * 2 + (WALK ? Math.sin(T * 8) * 0.8 : 0);
+  const st = 1 + LUNGE * 0.2;
+  const sy2 = (1 + (WALK ? Math.sin(T * 8) * 0.05 : Math.sin(T * 2) * 0.02) - sq * 0.14) / st;
+  const s = (1 + sq * 0.08) * st;
   if (e.dying > 0 && world) {
     if (!e._pcorpse) {
       e._pcorpse = true;

@@ -74,7 +74,7 @@ export class StatusTab extends Tab {
     this.stage = new HeroStage();
     this.layer = new PixLayer();   // 능력치 판 (화소 정렬 1:1 복사 — P-11)
     this.txt = new PixCache(8);    // 왼쪽 정보·아래 설명 글자
-    this.bg = new PixLayer();      // 두 판의 틀 (그라디언트) — 한 장으로 구워 1:1 복사
+    this.bg = new PixLayer();      // 왼쪽 판의 틀 (그라디언트) — 구워서 1:1 복사 (오른쪽 틀은 능력치 판 레이어에)
     this.rev = -1;
     this.col = 0; this.row = 0; // 커서 (col = 열 수 → 속성표)
     this.cells = [];            // 능력치 칸 위치 [{col,row,key,x,y,w,h}]
@@ -148,11 +148,8 @@ export class StatusTab extends Tab {
     this.refresh();
     const t = this.t, hero = this.hero, ch = D.CHARACTERS()[hero.charId] || {};
     const LW = Math.min(330, Math.round(A.w * 0.34));
-    // 두 판의 틀 (정적)
-    this.bg.draw(ctx, `${LW}`, A.x - 3, A.y - 3, A.w + 6, A.h + 6, (c) => {
-      frame(c, A.x, A.y, LW, A.h);
-      frame(c, A.x + LW + 12, A.y, A.w - LW - 12, A.h);
-    });
+    // 왼쪽 판의 틀 (정적)
+    this.bg.draw(ctx, `${LW}`, A.x - 3, A.y - 3, LW + 6, A.h + 6, (c) => frame(c, A.x, A.y, LW, A.h));
     // ── 왼쪽: 영웅 카드 (무대 높이는 아래 정보 칸(≈170 px)을 뺀 만큼) ──
     const sh = Math.round(clamp(A.h - 178, 108, 226));
     const sx = A.x + 8, sy = A.y + 8, sw = LW - 16;
@@ -225,7 +222,8 @@ export class StatusTab extends Tab {
     // ── 오른쪽: 능력치 ──
     const R = { x: A.x + LW + 12, y: A.y, w: A.w - LW - 12, h: A.h };
     this.lay = statLayout(R);
-    this.layer.draw(ctx, 'st' + this.rev + '|' + hero.charId + '|' + this.lay.cols.length + '|' + this.lay.row, R.x, R.y, R.w, R.h, (c) => this.drawStats(c, R));
+    // 능력치 판: 틀까지 한 장으로 (복사 한 번)
+    this.layer.draw(ctx, 'st' + this.rev + '|' + hero.charId + '|' + this.lay.cols.length + '|' + this.lay.row, R.x - 3, R.y - 3, R.w + 6, R.h + 6, (c) => { frame(c, R.x, R.y, R.w, R.h); this.drawStats(c, R); });
     this.statRect = { x: R.x + 4, y: R.y + 4, w: R.w - 8, h: R.h - DESC_H - 8 };
     // 커서 + 설명
     const E = this.elCol;
