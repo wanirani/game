@@ -1,10 +1,11 @@
-// 인게임 HUD: 초상화/HP/MP/EXP, 하트+보조무기, 스킬 슬롯, 필살 게이지, 점수/목숨/골드/시간, 콤보·스타일 랭크, 보스 체력바, 버프, 배너
+// 인게임 HUD: 초상화/HP/MP/EXP, 하트+보조무기, 스킬 슬롯, 필살 게이지, 점수/목숨/골드/시간, 보스 체력바, 버프, 배너 — owner: HUD-FINAL (W3)
 // 모든 위치는 hud_layout.js 의 hudLayout() (MASTER_PLAN §1.8) 에서 받는다 — 여기서 좌표를 새로 정하지 말 것.
-// 다른 패키지의 위젯은 정해진 칸에 그린다:
-//  feel_hud.drawComboHUD / drawAnnouncer / drawAwGauge (FEEL-HUD) — false 를 돌려주는 동안 이 파일의 기존 콤보·준비 문구를 그린다
-//  companion_hud.drawCompanionHUD (CMP-UI) — 동료 위젯 칸 + 스킬 카드 줄
-//  prompts.drawGlyph (PLAT-INPUT) — 스킬 슬롯·페이지·필살 준비 문구의 버튼 글리프 (기기별 키캡/패드/터치 아이콘)
-// 각성 컷인·연출 중(world.hudHidden)에는 HUD 전체를 그리지 않는다.
+// 그리는 순서 (FEEL-HUD 계약, 요청 191): 초상화·체력·하트·스킬 → 1 필살(SP) 게이지 → 2 feel_hud.drawAwGauge (각성 게이지 + 준비 문구 칸
+//  L.ready 전부; SP 막대 위에 빛을 겹치므로 반드시 SP 게이지 다음) → 3 companion_hud.drawCompanionHUD (동료 위젯 칸 + 스킬 카드 줄)
+//  → 4 점수 → 5 feel_hud.drawComboHUD (콤보·스타일 열) → 6 보스 체력바 → 7 알림 칸: world.banner 가 있으면 배너, 없으면 feel_hud.drawAnnouncer.
+//  기믹 게이지(gimmicks.drawScreen → hudLayout().meter(i))와 토스트(game.js → hudLayout().toast(i))는 각자 그린다.
+// prompts.drawGlyph (PLAT-INPUT) — 스킬 슬롯·페이지 안내의 버튼 글리프 (기기별 키캡/패드/터치 아이콘; platform §4.5)
+// 각성 컷인·연출 중(world.hudHidden)에는 HUD 전체를 그리지 않는다 (동료 위젯의 탭 판정 사각형도 비운다).
 import { text, bar, bloodText, prewarmText, font, FONT, COLORS } from '../core/ui.js';
 import { assets } from '../core/assets.js';
 import { fmt, fmtTime, TAU, clamp, rgba } from '../core/math.js';
@@ -16,18 +17,21 @@ import { POWERUPS } from '../data/powerups.js';
 import { CHARACTERS } from '../data/characters.js';
 import { CLASSES } from '../data/classes.js';
 import { expToNext } from '../game/stats.js';
-import { styleRank } from '../game/world.js';
 import { hudLayout, hudTouch } from './hud_layout.js';
 import { drawComboHUD, drawAnnouncer, drawAwGauge } from './feel_hud.js'; // [hook:feel]
 import { drawCompanionHUD } from './companion_hud.js'; // [hook:cmp]
-import { drawGlyph, bindingOf } from '../core/prompts.js'; // [hook:plat]
+import { drawGlyph, bindingOf, promptMode } from '../core/prompts.js'; // [hook:plat]
+import { input } from '../core/input.js';
 
 // 버프 칸 글자 (이름 첫 글자는 '무적의 물약'·'무기 강화'처럼 겹치므로 버프마다 고유하게)
 const BUFF_GLYPH = { rage: '광', haste: '신', invincible: '무', magnet: '자', gunmode: '총', holyaura: '성', whipup: '강', double: 'Ⅱ', triple: 'Ⅲ' };
 const NO_RECTS = [];
 
 export function drawHUD(ctx, world, vw, vh) {
-  if (world.hudHidden) return; // [hook:awaken] 각성 컷인·연출 중: 동료 위젯·기믹 게이지까지 통째로 숨긴다
+  if (world.hudHidden) { // [hook:awaken] 각성 컷인·연출 중: 동료 위젯·기믹 게이지까지 통째로 숨긴다
+    if (world.companions) { NO_RECTS.length = 0; try { world.companions.hudRects = NO_RECTS; } catch { /* 읽기 전용이면 동료 쪽이 직접 관리 */ } } // [hook:cmp] 보이지 않는 위젯 자리를 누른 탭이 탈것·수호신을 부르지 않게
+    return;
+  }
   const p = world.player;
   if (!p) return;
   const hero = world.hero, run = world.run, st = p.stats;
@@ -39,18 +43,48 @@ export function drawHUD(ctx, world, vw, vh) {
   drawHeartsRow(ctx, L.hearts, world, run, p);
   drawSkills(ctx, L.skills, hero, p, T);
   drawUltGauge(ctx, L.ult, world, run, T);
-  // 각성 게이지 + 준비 문구 (FEEL-HUD). true = 준비 문구 칸까지 맡았다 → 기존 '필살기 준비!' 는 그리지 않는다
-  if (!drawAwGauge(ctx, world, L.awGauge.x, L.awGauge.y, L.awGauge.w, T)) drawReadyText(ctx, L.ready, world, run, T); // [hook:feel]
+  // 각성 게이지 + 준비 문구 칸 L.ready ('필살기 준비!' · '각성 가능!' 모두 FEEL-HUD). SP 막대 위에 빛을 겹치므로 필살 게이지 다음에
+  drawAwGauge(ctx, world, L.awGauge.x, L.awGauge.y, L.awGauge.w, T); // [hook:feel]
   // 동료 위젯 (companions §7.1): 탭 판정용 사각형은 world.companions.hudRects 에 둔다
   const cr = drawCompanionHUD(ctx, world, { x: L.companions.x, y: L.companions.y, touch: T, rect: L.companions, lane: L.callouts, layout: L }); // [hook:cmp]
   if (world.companions) { if (!cr) NO_RECTS.length = 0; try { world.companions.hudRects = cr || NO_RECTS; } catch { /* 읽기 전용이면 동료 쪽이 직접 관리 */ } } // [hook:cmp]
   drawScore(ctx, L.score, world, hero, p, run, T);
-  if (!drawComboHUD(ctx, world, vw, vh, T)) drawLegacyCombo(ctx, L.combo, world.combo); // [hook:feel]
+  drawComboHUD(ctx, world, vw, vh, T); // [hook:feel] 콤보·스타일 열 (L.combo)
   if (L.bossShown) drawBossBar(ctx, L.bossBar, world.boss);
   // 알림 칸 하나: 배너(스테이지 제목·STAGE CLEAR·LEVEL UP …)가 이긴다. 배너가 없을 때만 알림을 그린다
   if (world.banner) drawBanner(ctx, L.transient, world, world.banner);
   else drawAnnouncer(ctx, world, vw, vh); // [hook:feel]
   ctx.restore();
+}
+
+/**
+ * 시험·도구용 (tools/test_hud_layout.mjs): drawHUD 의 한 부분만 같은 인자로 그린다 → 부분마다 실제로 칠한 픽셀이 제 칸 안에 있는지 잰다.
+ * part: HUD_PARTS 중 하나. 'companions' 는 위젯과 스킬 카드 줄을 함께 그린다 (시험이 카드·위젯 중 하나만 켜서 잰다).
+ */
+export const HUD_PARTS = ['portrait', 'vitals', 'hearts', 'skills', 'ult', 'awGauge', 'companions', 'score', 'combo', 'boss', 'transient'];
+export function drawHUDPart(ctx, world, vw, vh, part) {
+  const p = world?.player;
+  if (!p || world.hudHidden) return null;
+  const hero = world.hero, run = world.run, st = p.stats, T = hudTouch();
+  const L = hudLayout(world, vw, vh);
+  ctx.save();
+  let r = null;
+  switch (part) {
+    case 'portrait': drawPortrait(ctx, L.portrait, hero, p); break;
+    case 'vitals': drawVitals(ctx, L.vitals, hero, p, st, T); break;
+    case 'hearts': drawHeartsRow(ctx, L.hearts, world, run, p); break;
+    case 'skills': drawSkills(ctx, L.skills, hero, p, T); break;
+    case 'ult': drawUltGauge(ctx, L.ult, world, run, T); break;
+    case 'awGauge': r = drawAwGauge(ctx, world, L.awGauge.x, L.awGauge.y, L.awGauge.w, T); break;
+    case 'companions': r = drawCompanionHUD(ctx, world, { x: L.companions.x, y: L.companions.y, touch: T, rect: L.companions, lane: L.callouts, layout: L }); break;
+    case 'score': drawScore(ctx, L.score, world, hero, p, run, T); break;
+    case 'combo': r = drawComboHUD(ctx, world, vw, vh, T); break;
+    case 'boss': if (L.bossShown) drawBossBar(ctx, L.bossBar, world.boss); break;
+    case 'transient': r = world.banner ? (drawBanner(ctx, L.transient, world, world.banner), 'banner') : drawAnnouncer(ctx, world, vw, vh); break;
+    default: break;
+  }
+  ctx.restore();
+  return r;
 }
 
 // ── 왼쪽 위: 초상화 + 레벨 배지 (66×66) ──
@@ -134,10 +168,23 @@ function drawHudHeart(ctx, x, y, t) {
   } else { ctx.save(); ctx.translate(x, y); drawHeart(ctx, 7, t); ctx.restore(); }
 }
 
-/** 이 기기에서 글리프를 쓸 수 있나: 터치 모드는 prompts 가 터치 아이콘을 줄 때만 (없으면 기존 한글·기호 표시) */
+/**
+ * 이 기기에서 글리프를 쓸 수 있나: 터치 모드는 prompts 가 터치 아이콘을 줄 때만 (없으면 기존 한글·기호 표시).
+ * bindingOf 는 부를 때마다 배열을 만들므로 (안내 기기, 바인딩 객체)가 같은 동안 답을 기억한다 (매 프레임 3번 부른다)
+ */
+const GLYPH_OK = new Map();
+let glyphB = null, glyphM = '';
 function useGlyph(action, T) {
   if (!T) return true;
-  try { return !!bindingOf(action)?.some?.((b) => b?.type === 'touch'); } catch { return false; }
+  let b = null, m = '';
+  try { b = input.bindings; m = promptMode(); } catch { /* 기본값 */ }
+  if (b !== glyphB || m !== glyphM) { GLYPH_OK.clear(); glyphB = b; glyphM = m; }
+  let ok = GLYPH_OK.get(action);
+  if (ok === undefined) {
+    try { ok = !!bindingOf(action)?.some?.((x) => x?.type === 'touch'); } catch { ok = false; }
+    GLYPH_OK.set(action, ok);
+  }
+  return ok;
 }
 
 // ── 스킬 슬롯 2칸 + 페이지 안내 (88×62) ──
@@ -199,14 +246,6 @@ function drawUltGauge(ctx, r, world, run, T) {
   ctx.strokeStyle = full ? '#fff' : COLORS.goldDark; ctx.lineWidth = 1.5; ctx.strokeRect(ux - 0.5, uy - 0.5, uw + 1, 11);
 }
 
-/** 기존 준비 문구 (feel_hud.drawAwGauge 가 아직 없을 때): '필살기 준비!' + 필살 버튼 글리프 (터치는 문구만) */
-function drawReadyText(ctx, r, world, run, T) {
-  if (run.sp < 100 || Math.floor(world.time * 4) % 2 !== 0) return;
-  const y = r.y + 16, msg = '필살기 준비!';
-  text(ctx, msg, r.x, y, { size: T ? 14 : 11, weight: 800, color: '#ffe070' });
-  if (useGlyph('ult', T)) drawGlyph(ctx, 'ult', r.x + ctx.measureText(msg).width + 5, y - 12, 15); // [hook:plat]
-}
-
 // ── 오른쪽 위: 점수/목숨/골드/시간 (150×62, 터치 150×70) ──
 function drawScore(ctx, r, world, hero, p, run, T) {
   const rx = r.x + r.w, lx = r.x, y0 = r.y - 10, s1 = T ? 13 : 11, s2 = T ? 14 : 12, ly = T ? 3 : 0;
@@ -224,29 +263,6 @@ function drawScore(ctx, r, world, hero, p, run, T) {
   text(ctx, time, lx, y0 + 64 + ly * 2, { size: s2, weight: 700, family: FONT.num, color: '#c8c0b0' });
   const tw = ctx.measureText(time).width;
   text(ctx, `${fmt(world.state.gold)} G`, rx, y0 + 64 + ly * 2, { size: s2, align: 'right', weight: 700, color: '#ffd84a', maxWidth: r.w - tw - 8 });
-}
-
-// ── 기존 콤보 표시 (feel_hud.drawComboHUD 가 아직 없을 때; 콤보 열 칸 안, 칸이 낮으면 통째로 줄인다) ──
-function drawLegacyCombo(ctx, r, c) {
-  if (!c || c.n < 2 || r.h < 24) return;
-  const rank = styleRank(c.n);
-  const k = clamp(c.t / 2.6, 0, 1);
-  const sc = clamp(r.h / 80, 0.5, 1);
-  ctx.save();
-  ctx.translate(r.x + r.w - 10, r.y); ctx.scale(sc, sc);
-  const pop = 1 + Math.max(0, (c.t - 2.3)) * 1.2;
-  ctx.save(); ctx.translate(0, 46); ctx.scale(pop, pop);
-  text(ctx, `${c.n}`, 0, 0, { size: 44, align: 'right', weight: 900, family: FONT.num, color: '#fff', ow: 5 });
-  text(ctx, 'HITS', 0, 18, { size: 13, align: 'right', weight: 800, family: FONT.num, color: '#ffd0a0' });
-  ctx.restore();
-  ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(-90, 72, 90, 4);
-  ctx.fillStyle = rank.c; ctx.fillRect(-90 * k, 72, 90 * k, 4);
-  if (rank.r) {
-    ctx.save(); ctx.translate(-150, 54); ctx.rotate(-0.12);
-    text(ctx, rank.r, 0, 0, { size: 48, align: 'center', weight: 900, family: FONT.logo, color: rank.c, ow: 6 });
-    ctx.restore();
-  }
-  ctx.restore();
 }
 
 // ── 보스 체력바 (아래 칸 48 px / 위쪽 칸 36 px): 이름 왼쪽, 칭호 오른쪽 (칸이 360 px 보다 좁으면 칭호 숨김) ──

@@ -28,7 +28,7 @@ const WAIST = -150, NECK = -214, HEAD_S = 1.15, HEAD_S2 = 1.4, MASK_C = NECK - 3
 const BLADE_ARMS = [[-1, -20, -204, 2.55, -1.55], [1, 20, -204, 2.55, -1.55], [-1, -16, -180, 2.1, -1.95], [1, 16, -180, 2.1, -1.95]];
 const LEG_L = [[118, 150], [148, 190], [172, 226]];
 /** 드레스 앞에 매달린 거울 조각: [x, 매단 y, 배율, 떨어져 나가는 피해율] */
-const HANG_K = 0.52;
+const HANG_K = 0.52, ARM_W = 1.4, HAND_K = 1.3, GOWN_X = 1.32;   // 드레스는 가로로 넓혀 벡터의 종 모양 폭(±110)에 맞춘다
 const HANG = [[-70, -112, 0.82, 0.3], [-38, -96, 0.9, 0.5], [40, -100, 0.9, 0.66], [72, -116, 0.8, 0.8], [2, -124, 0.72, 0.9]];
 
 const DEF = {
@@ -169,13 +169,15 @@ function drawBoss(ctx, b, world, rig, st) {
   b.paintBack?.(ctx, world);
   P.draw(ctx, 0);
   if (!b.shattered) {
-    const dying = b.dying > 0, el = dying ? 2.8 - b.dying : 0;
+    const dying = b.dying > 0, el = dying ? 2.8 - b.dying : 0, dk = dying ? clamp(el / 1.55, 0, 1) : 0;
     const shake = dying ? Math.sin((b.t ?? 0) * 70) * 2.2 * clamp(el / 1.5, 0, 1) : (st.jolt > 0 ? (rr.next() - 0.5) * 3 * st.jolt : 0);
+    st.gb = 1 + dk * 2.4;               // 사망: 균열 발광이 점점 세진다
     drawNark(ctx, D, rig, st, {
       b, x: b.cx + shake, y: b.bottom, f: b.facing, P: b.pose, t: b.t ?? 0, form, lvl, ratio, legs: b.legs, floor: b.A.floor,
       tear: !!(b.twin && !b.twin.dead), eyeGlow: b.eyeGlow ?? 0, maskCrack: b.maskCrack ?? 0, look: lookOf(b, world),
       flash: b.flashT > 0 ? clamp(b.flashT / 0.12, 0, 1) : 0, sel: st.flashSel, twin: false, dying, el, rec: dying,
     });
+    if (dying) dieBuild(ctx, st, rig, b, dk, dt);
   }
   D.end();
   st.shards.draw(D);
@@ -292,9 +294,9 @@ function drawNark(ctx, D, rig, st, o) {
   D.rec = recOn('body');
   if (R.gown) {
     const sp = P.spread ?? 0, swing = P.swing ?? 0;
-    put(D, L, R.gown, V(R.gown), 'waist', 0, WAIST - 10, swing * 0.06 + Math.sin(t * 1.3) * 0.012, 1, 1.18 + sp * 0.18, 1);
-    if (rec) pushRec(rec, D, L, R.gown, V(R.gown), 'waist', 0, WAIST - 10, 0, 1, 1.18, 1);
-    glowOver(ctx, D, L, R.gown, lvl, 'waist', 0, WAIST - 10, 0, 1, 1.18 + sp * 0.18, 1, fade * 0.8, t, st, q);
+    put(D, L, R.gown, V(R.gown), 'waist', 0, WAIST - 10, swing * 0.06 + Math.sin(t * 1.3) * 0.012, 1, GOWN_X + sp * 0.18, 1);
+    if (rec) pushRec(rec, D, L, R.gown, V(R.gown), 'waist', 0, WAIST - 10, 0, 1, GOWN_X, 1);
+    glowOver(ctx, D, L, R.gown, lvl, 'waist', 0, WAIST - 10, 0, 1, GOWN_X + sp * 0.18, 1, fade * 0.8, t, st, q);
   }
   // 드레스 앞에 매달린 조각들 (피해가 쌓이면 하나씩 떨어져 나간다)
   for (let i = 0; i < HANG.length; i++) {
@@ -341,7 +343,7 @@ function drawNark(ctx, D, rig, st, o) {
   if (o.twin && o.glowA > 0) {
     // 분신: 몸통 부품의 청백 발광 실루엣을 옅게 더해 유리 유령처럼
     D.startFlash();
-    if (R.gown) put(D, L, R.gown, R.gown.v.base, 'waist', 0, WAIST - 10, 0, 1, 1.18 + (P.spread ?? 0) * 0.18, 1);
+    if (R.gown) put(D, L, R.gown, R.gown.v.base, 'waist', 0, WAIST - 10, 0, 1, GOWN_X + (P.spread ?? 0) * 0.18, 1);
     if (R.torso) put(D, L, R.torso, R.torso.v.base, 'waist', 0, WAIST + 6, 0, 1);
     D.end();
     D.flash(o.glowA, 'glow');
@@ -370,8 +372,10 @@ function drawLegs(ctx, D, rig, st, o, fade) {
       ik2(qd.hx, qd.hy, qd.x, qd.y, L1, L2, qd.s, J);
       const deep = i === 2;
       const wm = 0.62 - i * 0.04;
-      segW(D, R.thigh, pickVariant(R.thigh, Math.min(1, o.lvl), deep, null), 'a', 'b', qd.hx, qd.hy, J.kx, J.ky, wm, fade);
-      segW(D, R.shin, pickVariant(R.shin, Math.min(1, o.lvl), deep, null), 'a', 'tip', J.kx, J.ky, J.fx, J.fy, wm * 0.95, fade);
+      const it = pickVariant(R.thigh, Math.min(1, o.lvl), deep, null), is = pickVariant(R.shin, Math.min(1, o.lvl), deep, null);
+      segW(D, R.thigh, it, 'a', 'b', qd.hx, qd.hy, J.kx, J.ky, wm, fade);
+      segW(D, R.shin, is, 'a', 'tip', J.kx, J.ky, J.fx, J.fy, wm * 0.95, fade);
+      if (o.rec) { recW(st.rec, R.thigh, it, 'a', 'b', qd.hx, qd.hy, J.kx, J.ky, wm); recW(st.rec, R.shin, is, 'a', 'tip', J.kx, J.ky, J.fx, J.fy, wm * 0.95); }
     }
   }
   D.end();
@@ -384,8 +388,8 @@ function drawArm(D, L, rig, st, s, a, e, P, front, V, rec) {
   const ex = sx + s * Math.sin(a) * L1, ey = sy + Math.cos(a) * L1, bb = a + e;
   const wx = ex + s * Math.sin(bb) * L2, wy = ey + Math.cos(bb) * L2;
   const deep = !front;
-  seg(D, L, R.upper, V(R.upper, deep), 'a', 'b', sx, sy, ex, ey);
-  seg(D, L, R.fore, V(R.fore, deep), 'a', 'b', ex, ey, wx, wy);
+  seg(D, L, R.upper, V(R.upper, deep), 'a', 'b', sx, sy, ex, ey, 1, ARM_W);
+  seg(D, L, R.fore, V(R.fore, deep), 'a', 'b', ex, ey, wx, wy, 1, ARM_W);
   const dir = Math.atan2(Math.cos(bb), s * Math.sin(bb));
   if (front && (P.mirror ?? 0) > 0.3 && R.hmirror) {
     const ax = axis(R.hmirror, 'grip', 'c');
@@ -393,10 +397,10 @@ function drawArm(D, L, rig, st, s, a, e, P, front, V, rec) {
   }
   if (R.hand) {
     const ax = axis(R.hand, 'wr', 'tip');
-    put(D, L, R.hand, V(R.hand, deep), 'wr', wx, wy, dir - ax.a, 1, 1, s);
-    if (rec) pushRec(rec, D, L, R.hand, V(R.hand, deep), 'wr', wx, wy, dir - ax.a, 1, 1, s);
+    put(D, L, R.hand, V(R.hand, deep), 'wr', wx, wy, dir - ax.a, HAND_K, 1, s);
+    if (rec) pushRec(rec, D, L, R.hand, V(R.hand, deep), 'wr', wx, wy, dir - ax.a, HAND_K, 1, s);
   }
-  if (rec) { recSeg(rec, D, L, R.upper, V(R.upper, deep), 'a', 'b', sx, sy, ex, ey); recSeg(rec, D, L, R.fore, V(R.fore, deep), 'a', 'b', ex, ey, wx, wy); }
+  if (rec) { recSeg(rec, D, L, R.upper, V(R.upper, deep), 'a', 'b', sx, sy, ex, ey, ARM_W); recSeg(rec, D, L, R.fore, V(R.fore, deep), 'a', 'b', ex, ey, wx, wy, ARM_W); }
 }
 /** 머리: 1형태 가면 / 2형태 눈 가득한 얼굴 + 경첩 턱 (아가리 속은 절차적) */
 function drawHead(ctx, D, rig, st, o, V, rec) {
@@ -415,9 +419,12 @@ function drawHead(ctx, D, rig, st, o, V, rec) {
     // 아가리 속 (검붉은 목구멍 + 붉은 빛)
     W(L, (hp[0] + hx) / 2, (hp[1] + hy) / 2 - 4, st.W);
     D.end();
-    ctx.fillStyle = '#050106';
-    ctx.beginPath(); ctx.ellipse(st.W[0], st.W[1], 24 * L.sc, (10 + jo * 0.6) * L.sc, L.f * (tilt + L.rot), 0, TAU); ctx.fill();
-    if (q.halos) halo(ctx, st.W[0], st.W[1] + 4, 20 + jo * 0.5, RED, (0.3 + (P.jaw ?? 0) * 0.4) * fade);
+    const ga = ctx.globalAlpha; ctx.globalAlpha = ga * fade;
+    ctx.fillStyle = '#040105';
+    ctx.beginPath(); ctx.ellipse(st.W[0], st.W[1], 30 * L.sc, (10 + jo * 0.6) * L.sc, L.f * (tilt + L.rot), 0, TAU); ctx.fill();
+    ctx.globalAlpha = ga;
+    // 목구멍 깊은 곳의 희미한 핏빛 (띠처럼 보이지 않게 작고 어둡게)
+    if (q.halos) halo(ctx, st.W[0], st.W[1] + 2, 9 + jo * 0.35, RED, (0.12 + (P.jaw ?? 0) * 0.18) * fade);
     if (R.jaw2) {
       put(D, L, R.jaw2, V(R.jaw2, false, lv), 'hinge', hx, hy, tilt, 1);
       if (rec) pushRec(rec, D, L, R.jaw2, V(R.jaw2, false, lv), 'hinge', hx, hy, tilt, 1, 1, 1);
@@ -483,7 +490,7 @@ function glowOver(ctx, D, L, part, lvl, pivot, lx, ly, lrot, sc, sxm, sym, a, t,
   const g = drawn === 2 ? part.gl.dmg2 : part.gl.dmg1;
   if (!g) return;
   const pv = part[pivot], w = W(L, lx, ly, st.W), k = part.k * sc * L.sc;
-  const pa = a * (0.55 + 0.45 * Math.sin(t * 4.2 + part.w * 0.01)) * (lvl > 1 ? 1.15 : 0.8);
+  const pa = a * (0.55 + 0.45 * Math.sin(t * 4.2 + part.w * 0.01)) * (lvl > 1 ? 1.15 : 0.8) * (st.gb ?? 1);
   const op = ctx.globalCompositeOperation;
   ctx.globalCompositeOperation = 'lighter';
   D.img(g, (pv[0] - part.pad) * 0.5, (pv[1] - part.pad) * 0.5, w[0], w[1], L.f * (lrot + L.rot), k * 2 * sxm * L.f, k * 2 * sym, Math.min(1, pa));
@@ -494,14 +501,20 @@ function glowOver(ctx, D, L, part, lvl, pivot, lx, ly, lrot, sc, sxm, sym, a, t,
 // ───────────────────────── 파편 · 사망 ─────────────────────────
 /** 사망 산산조각용 배치 기록 (그린 그대로 강체 파편이 된다) */
 function pushRec(rec, D, L, part, img, pivot, lx, ly, lrot, sc, sxm, sym) {
-  if (!part || !img || rec.length > 40) return;
+  if (!part || !img || rec.length > 60) return;
   const w = W(L, lx, ly, _w), k = part.k * sc * L.sc, pv = typeof pivot === 'string' ? part[pivot] : pivot;
   rec.push({ img, px: pv[0], py: pv[1], x: w[0], y: w[1], rot: L.f * (lrot + L.rot), sx: k * sxm * L.f, sy: k * sym, r: Math.max(part.w, part.h) * part.k * sc * 0.25 });
 }
-function recSeg(rec, D, L, part, img, pa, pb, x0, y0, x1, y1) {
+function recSeg(rec, D, L, part, img, pa, pb, x0, y0, x1, y1, wMul = 1) {
   if (!part) return;
   const ax = axis(part, pa, pb), len = Math.hypot(x1 - x0, y1 - y0) || 1;
-  pushRec(rec, D, L, part, img, pa, x0, y0, Math.atan2(y1 - y0, x1 - x0) - ax.a, len / (ax.len || 1), 1, 1);
+  pushRec(rec, D, L, part, img, pa, x0, y0, Math.atan2(y1 - y0, x1 - x0) - ax.a, len / (ax.len || 1), wMul, 1);
+}
+/** 월드 좌표로 그린 뼈(다리) 기록 */
+function recW(rec, part, img, pa, pb, x0, y0, x1, y1, wMul) {
+  if (!rec || !part || !img || rec.length > 60) return;
+  const ax = axis(part, pa, pb), len = Math.hypot(x1 - x0, y1 - y0) || 1, s = len / (ax.len || 1), pv = part[pa];
+  rec.push({ img, px: pv[0], py: pv[1], x: x0, y: y0, rot: Math.atan2(y1 - y0, x1 - x0) - ax.a, sx: part.k * s, sy: part.k * s * wMul, r: 8 });
 }
 function shatterBurst(st, b, rig) {
   const cx = b.cx, cy = b.bottom - 150;
@@ -525,6 +538,24 @@ function dropShard(st, L, part, hx, hy, hs, o) {
   const pv = topPivot(part), w = W(L, hx, hy, _w), k = part.k * hs * HANG_K * L.sc;
   st.shards.spawn(part.v.base, pv[0], pv[1], w[0], w[1], L.f * L.rot, k * L.f, k, rr.range(-60, 60), rr.range(-80, 20), rr.range(-3, 3), { r: 14, fade: 2.2, bounce: 0.3 });
   st.P.burst('spore', w[0], w[1] + 20, 10, { speed: 160, color: GL, life: 0.7, size: 1.6 });
+}
+/** 사망 0–1.55초: 속에서 새어 나오는 흰빛이 커지고, 유리 부스러기가 점점 더 자주 튄다 (1.55초에 로직이 shattered) */
+function dieBuild(ctx, st, rig, b, dk, dt) {
+  const L = st.L;
+  if (st.q.halos) {
+    W(L, 0, -170, st.W);
+    halo(ctx, st.W[0], st.W[1], 90 + 130 * dk, '#ffffff', 0.12 + 0.45 * dk * dk);
+    W(L, 0, (b.formPhase ?? 0) >= 2 ? FACE2_C : MASK_C, st.W);
+    halo(ctx, st.W[0], st.W[1], 40 + 50 * dk, GL_C, 0.25 + 0.4 * dk, true);
+  }
+  st.dieAcc = (st.dieAcc ?? 0) + dt * (3 + 22 * dk);
+  let n = 0;
+  while (st.dieAcc > 1 && n++ < 4) {
+    st.dieAcc -= 1;
+    W(L, rr.range(-70, 70), rr.range(-300, -40), st.W);
+    spawnDeb(st, rig, st.W[0], st.W[1], 1, 160 + 200 * dk, 0.45, 1.0);
+    st.P.emit('spore', st.W[0], st.W[1], rr.range(-60, 60), rr.range(-90, 10), { color: rr.chance(0.5) ? '#ffffff' : GL_C, life: rr.range(0.3, 0.7), size: rr.range(1.2, 2.4) });
+  }
 }
 function hitBurst(st, b) {
   const hp = b.hitPart, x = hp ? hp.x + hp.w / 2 : b.cx, y = hp ? hp.y + hp.h / 2 : b.bottom - 150;
@@ -560,9 +591,9 @@ function makeArt(rig) {
   const R = rig.parts;
   let M = null;
   const GD = new Drawer();
-  const glass = ['deb2', 'deb4', 'deb9', 'deb10', 'deb5', 'deb7'].map((n) => R[n]).filter(Boolean);
+  const glass = ['deb2', 'blade2', 'deb4', 'blade'].map((n) => R[n]).filter(Boolean);   // 밝은 유리 조각만 (검은 파편은 어두운 배경에서 얼룩처럼 보인다)
   const drawPart = (ctx, p, x, y, rot, kx, ky, alpha) => {
-    const im = p.v.base, px = p.c[0], py = p.c[1];
+    const im = p.v.base, px = p.c?.[0] ?? p.w / 2, py = p.c?.[1] ?? p.h / 2;
     const ga = ctx.globalAlpha; if (alpha !== 1) ctx.globalAlpha = ga * alpha;
     ctx.save(); ctx.translate(x, y); if (rot) ctx.rotate(rot); ctx.scale(kx, ky);
     ctx.drawImage(im, -px, -py);
@@ -602,7 +633,7 @@ function makeArt(rig) {
       GD.begin(ctx);
       const op = ctx.globalCompositeOperation; ctx.globalCompositeOperation = 'lighter';
       const g = (p) => p.v.glow ?? p.v.flash ?? p.v.base;
-      put(GD, L, R.gown, g(R.gown), 'waist', 0, WAIST - 10, 0, 1, 1.18, 1);
+      put(GD, L, R.gown, g(R.gown), 'waist', 0, WAIST - 10, 0, 1, GOWN_X, 1);
       put(GD, L, R.torso, g(R.torso), 'waist', 0, WAIST + 6, 0, 1);
       const H = form >= 2 ? R.head2 : R.head;
       if (H) put(GD, L, H, g(H), form >= 2 ? 'face' : 'neck', 0, form >= 2 ? FACE2_C : NECK + 2, P.tilt ?? 0, 1);

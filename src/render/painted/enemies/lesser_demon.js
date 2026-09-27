@@ -27,7 +27,7 @@ function pose(e) {
   const q = Q, ph = t * 10, fl = Math.sin(ph);
   q.cy = -27 + fl * 2; q.rot = Math.sin(t * 1.7) * 0.04;
   q.ang = 0.35 + 0.6 * fl; q.bend = -0.28 * Math.cos(ph); q.lag = 0.5;
-  q.arm = Math.sin(t * 3 + 1) * 0.08; q.tail = Math.sin(t * 3) * 0.12; q.cast = 0; q.tele = 0; q.clawG = 0; q.dive = false;
+  q.arm = Math.sin(t * 3 + 1) * 0.08; q.tail = Math.sin(t * 3) * 0.12; q.cast = 0; q.tele = 0; q.clawG = 0;
   if (an === 'cast') {
     const wu = e.params?.castWind ?? 0.65, k = clamp(at / wu, 0, 1), after = Math.max(0, at - wu);
     const sf = Math.sin(t * 7);
@@ -42,7 +42,6 @@ function pose(e) {
     q.arm = lerp(q.arm, 0.5, ke); q.tail = -0.1; q.tele = k; q.clawG = k;
   } else if (an === 'dive') {
     const f = e.facing < 0 ? -1 : 1, vx = (e.vx ?? 0) * f, vy = e.vy ?? 0;
-    q.dive = true;
     q.rot = clamp(Math.atan2(vy, Math.max(60, vx)) * 0.75, -0.3, 0.8);
     q.ang = -0.3 + Math.sin(t * 30) * 0.05; q.bend = 0.12; q.cy = -27;
     q.arm = -0.8; q.tail = -0.35; q.clawG = clamp(1 - at / 0.3, 0, 1);
@@ -80,6 +79,7 @@ function die(ctx, e, world, rig, q) {
     { name: 'arm', pv: 'a', x: L.sx, y: L.sy, rot: L.arot },
   ], { life: 0.85, strips: 12, drift: 44, rise: 18, col: '#b060ff', kind: 3, n: 22, spread: 160, glow: '#ff5020', cy: -30 });
 }
+
 export function draw(ctx, e, world, o, rig) {
   const t = e.t ?? 0;
   const q = pose(e);

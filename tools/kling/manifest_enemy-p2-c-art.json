@@ -5,7 +5,7 @@
  "creditsPerImage": 2,
  "budgetCredits": 900,
  "creditsBefore": "not recorded by the first (interrupted) run; 6213 remained when the resumed run started",
- "note": "Result URLs expire after 24 h; kept images are stored as q93 webp under tools/painted/enemies/<id>/src/ (the chosen Step-1 reference as <id>_ref.webp). reflection reuses the hero puppet (0 own images).",
+ "note": "Result URLs expire after 24 h; kept images are stored as q93 webp under tools/painted/enemies/<id>/src/ (the chosen Step-1 reference as <id>_ref.webp). reflection reuses the hero puppet (0 own images). | Final: 31 generations, 62 images = 124 credits for this package (≤ 900). creditsAfter 5929 was read on the shared account (other packages generate concurrently, so before−after is not this package alone). reflection uses 0 own images (hero puppet reuse + the shared glass sheet).",
  "generations": [
   {
    "enemy": "mirror_knight",
@@ -213,6 +213,80 @@
    "tool": "image_to_image",
    "imageCount": 2,
    "decision": "2 images; sheet choice recorded when the parts are cut (see below)"
+  },
+  {
+   "enemy": "mirror_knight",
+   "step": "edit",
+   "shot": "mk_edit",
+   "generationId": "AWomzVjXj_G8_Cv4hYEg2lQg_hNDgo9p8v95-49p_9KnXGv7DHwbB_ZAX-b0VJwxOvKELX0e",
+   "tool": "image_to_image",
+   "imageCount": 2,
+   "decision": "rejected both: the near arm and the sword were kept (Kling will not drop a baked arm)"
+  },
+  {
+   "enemy": "mirror_knight",
+   "step": "edit",
+   "shot": "mk_edit2",
+   "generationId": "AURgl2oGYHsjXB4ZMrdBEkzuT6q_3xLWZF0cHg7jOlUDIMxP148f7FWDSvHW5hQW5KMsFjjL",
+   "tool": "image_to_image",
+   "imageCount": 2,
+   "decision": "kept #1 → src/mk_body.webp: cape removed, near arm still baked → cut out as the 'arm' part, the body behind it repainted as under-armour cloth (derived src/mk_body_fix.webp)"
+  },
+  {
+   "enemy": "chain_warden",
+   "step": "edit",
+   "shot": "cw_edit",
+   "generationId": "AR924H34YdYiznL94wQhqLq1ThuEhiT-bsqRxRCCl_Ek8a6kGGyXF8ZPZj7X4uD2fhVeq2iv",
+   "tool": "image_to_image",
+   "imageCount": 2,
+   "decision": "kept #1 → src/cw_body.webp: forearm, chain and hook removed, upper-arm stump kept (used as the upper arm)"
+  },
+  {
+   "enemy": "slag_golem",
+   "step": "edit",
+   "shot": "sg_edit",
+   "generationId": "Afl0k_rPlniGw36ayjirIV7C4BoxFxUtWbAfTrOhv4Ag-t6uST-ehKiEd4XNnjNN83yAQcct",
+   "tool": "image_to_image",
+   "imageCount": 2,
+   "decision": "kept #1 → src/sg_body.webp: arms and legs removed (torso + skull + core)"
+  },
+  {
+   "enemy": "sunken_priest",
+   "step": "edit",
+   "shot": "sp_edit",
+   "generationId": "ATlC5xe5S0fePUmbIS3THlfB068cq6YEtbvFQDZb-FOc64xYIcKqDYa52IRnxNor1IkWJ7Ck",
+   "tool": "image_to_image",
+   "imageCount": 2,
+   "decision": "kept #1 → src/sp_body.webp: both arms and the staff removed"
+  },
+  {
+   "enemy": "forge_imp",
+   "step": "edit",
+   "shot": "fi_edit",
+   "generationId": "AegkhWJ_WekaonqAFJ8Nf1Ujm9GROR8yl1YDGPemhRyQUoqhduoAFKYWk4ysoIsZ38kBc8I3",
+   "tool": "image_to_image",
+   "imageCount": 2,
+   "decision": "kept #1 → src/fi_body.webp: arms removed but wings and tail kept → body cut by polygon, wings/tail from the sheet"
+  },
+  {
+   "enemy": "siren",
+   "step": "edit",
+   "shot": "sr_edit",
+   "generationId": "AbPSaCCJBmvgmjsWVCjomymeAZFoetFlC3LUTP-lcFz7pq0QeoTYSXHaNtXmw0xgou90DgKA",
+   "tool": "image_to_image",
+   "imageCount": 2,
+   "decision": "kept #1 → src/sr_body.webp: both arms removed"
+  },
+  {
+   "enemy": "coral_crab",
+   "step": "edit",
+   "shot": "cc_edit",
+   "generationId": "AZPXiWDlDJJolfyXtTOhHyJREyVx-2lI378m3WYjVOe0ZH8fzGcNsKS0YJE8samOUzifIGZI",
+   "tool": "image_to_image",
+   "imageCount": 2,
+   "decision": "kept #1 → src/cc_body.webp: claws removed, legs kept (baked into the body; the far legs stay faded as painted)"
   }
- ]
+ ],
+ "creditsAfter": 5929,
+ "creditsSpent": 124
 }

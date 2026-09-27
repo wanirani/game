@@ -22,6 +22,9 @@ const S = (s) => s.replace(/\s+/g, ' ').trim();
 const SIDE = 'Strict side view in profile facing right, full body from head to feet.';
 const SHEET = (who, n, pieces, view = 'strict side view facing right') => S(`The same ${who} as in 图片1 (keep the identical design, proportions, colours, materials and painting style), redrawn as a cut-out puppet parts sheet for 2D skeletal animation: each piece painted separately and laid out apart in a loose grid with wide empty grey gaps between them, no piece touching or overlapping another. The ${n} pieces are: ${pieces.join('; ')}. Every piece is complete and whole, including the portions normally hidden behind other parts, all in the same ${view}, same scale as each other. ${BG} ${STYLE}`);
 
+/** Step-4 edit template (ENEMY_PIPELINE §3): what to remove, what to repaint; everything else kept identical */
+const EDIT = (what, repaint) => S(`Edit 图片1: ${what}, and repaint ${repaint}. Keep everything else exactly identical: the same creature, the same strict side view facing right, the same size and position, the same painting style and lighting, the same flat plain medium grey background. ${STYLE}`);
+
 export const SHOTS = {
   // ── s14 거울의 성 ────────────────────────────────────────────────────────────────────────────────────────────────
   mirror_knight_ref: {
@@ -192,6 +195,42 @@ export const SHOTS = {
       'the long fish tail from the hips to the torn fin, lying horizontally with the hips at the left end',
       'one long translucent fin of hair alone',
     ]),
+  },
+
+  // ── Step-4 occluder-removal edits (docs/art/ENEMY_PIPELINE.md §3 Step 4): image_to_image on an uploaded crop of the
+  //    chosen side-view figure of a parts sheet (tools/painted/enemies/<id>/src/<id>_sheet*.webp, padded to ≤ 1:2),
+  //    stored as src/<short>_body.webp. Kling often keeps a baked limb anyway → the cut plan in parts.json handles it.
+  mk_edit: {
+    tool: 'image_to_image', aspect: 'auto', n: 2, inputs: ['mirror_knight_sheet (side figure crop)'], for: ['mirror_knight'],
+    prompt: EDIT('remove the near arm with the glass sword and the long cape of hanging mirror shards completely', 'the breastplate, the hip plates and the legs that were hidden behind them'),
+  },
+  mk_edit2: {
+    tool: 'image_to_image', aspect: 'auto', n: 2, inputs: ['mirror_knight_sheet (side figure crop)'], for: ['mirror_knight'],
+    prompt: EDIT('remove the long cape of hanging mirror shards and the near arm completely, keep the shard collar on the shoulders', 'the back, the breastplate and the legs that were hidden behind the cape and the arm'),
+  },
+  cw_edit: {
+    tool: 'image_to_image', aspect: 'auto', n: 2, inputs: ['chain_warden_sheet1 (side figure crop)'], for: ['chain_warden'],
+    prompt: EDIT('remove the near forearm with the wrapped chain, the hanging chain and the hook completely, keep the upper arm', 'the leather apron and the legs that were hidden behind them'),
+  },
+  sg_edit: {
+    tool: 'image_to_image', aspect: 'auto', n: 2, inputs: ['slag_golem_sheet (side figure crop)'], for: ['slag_golem'],
+    prompt: EDIT('remove BOTH huge arms and BOTH legs completely, keep the spiked pauldrons, the skull head, the molten core, the chains and the waist', 'the torso sides that were hidden behind the arms'),
+  },
+  sp_edit: {
+    tool: 'image_to_image', aspect: 'auto', n: 2, inputs: ['sunken_priest_sheet1 (side figure crop)'], for: ['sunken_priest'],
+    prompt: EDIT('remove BOTH arms with the sleeves and the crozier staff completely', 'the cope and the alb that were hidden behind the arms'),
+  },
+  fi_edit: {
+    tool: 'image_to_image', aspect: 'auto', n: 2, inputs: ['forge_imp_sheet1 (side figure crop)'], for: ['forge_imp'],
+    prompt: EDIT('remove BOTH bat wings, the tail and BOTH arms completely', 'the back and the body that were hidden behind them'),
+  },
+  sr_edit: {
+    tool: 'image_to_image', aspect: 'auto', n: 2, inputs: ['siren_sheet2 (side figure crop)'], for: ['siren'],
+    prompt: EDIT('remove BOTH arms completely', 'the ribbed torso that was hidden behind the arms'),
+  },
+  cc_edit: {
+    tool: 'image_to_image', aspect: 'auto', n: 2, inputs: ['coral_crab_sheet (side figure crop)'], for: ['coral_crab'],
+    prompt: EDIT('remove BOTH enormous claws with their arms completely', 'the carapace front and the face that were hidden behind the claws'),
   },
 };
 

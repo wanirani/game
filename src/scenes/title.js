@@ -1,4 +1,13 @@
-// 타이틀: 클링 키 아트 켄번스 + 번개·박쥐·안개·불씨, 고딕 로고, PRESS START → 메인 메뉴, 어트랙트 화면, 코나미 커맨드
+// 타이틀: 클링 키 아트 켄번스 + 번개·박쥐·안개·불씨, 피 글씨 로고, PRESS START → 메인 메뉴, 어트랙트 화면, 코나미 커맨드
+// 플랫폼 (platform §6.2 · §6.3 · §6.6 · §9.4.6, P-21 · P-23, MASTER_PLAN §1.16) — owner: PLAT-FRONT-A
+//  - uiScale 장면: game.uiW × game.uiH 로 배치 (휴대폰에서 글자·버튼이 커진다). 메뉴 줄 ≥ 36 CSS px, 버튼·계정 표시는 ui.taps (≥ 44 CSS px)
+//    좁은 화면(휴대폰)에서는 메뉴가 열리면 로고가 오른쪽으로 비켜 선다 (메뉴 줄이 화면 높이를 거의 다 쓴다)
+//  - 로고: ui.bloodText — 피 글씨 'BLOOD NOCTURNE' + 금박 한글 부제 (글꼴이 늦게 와도 ui 가 다시 굽는다)
+//  - 오른쪽 아래 알림 (위에서부터): 새 버전 [업데이트] (platform.onUpdateReady; 키보드·패드는 sub 버튼),
+//    아이폰 사파리 '홈 화면에 추가' 카드 (닫으면 meta.tips.a2hs), 안드로이드 웹 '안드로이드 앱(APK) 받기' (downloads/BloodNocturne.apk),
+//    컨트롤러만 쓰는데 소리가 잠겨 있으면 소리 안내 (P-23)
+//  - 오른쪽 위: 최고 점수 + 계정(로그인 아이디 또는 게스트) → 누르면 계정 화면. 메뉴에도 '계정' 항목
+//  - 안내 줄은 지금 기기의 글리프 (prompts.drawHints), 가상 패드는 숨김 (hidePad)
 import { Scene } from '../core/game.js';
 import { input } from '../core/input.js';
 import { audio } from '../core/audio.js';
@@ -6,13 +15,16 @@ import { assets } from '../core/assets.js';
 import { saves } from '../core/save.js';
 import { bus } from '../core/events.js';
 import { cloud, SLOTS } from '../core/cloud.js';
-import { text, FONT, ListMenu } from '../core/ui.js';
-import { clamp, ease, lerp, TAU, fmt, rand } from '../core/math.js';
+import * as platform from '../core/platform.js';
+import { text, wrap, FONT, ListMenu, taps, bloodText } from '../core/ui.js';
+import { drawHints, drawGlyph, glyphWidth, promptMode } from '../core/prompts.js';
+import { clamp, ease, lerp, fmt, rand } from '../core/math.js';
+import { hudSafe } from '../render/hud_layout.js';
 import { CHARACTERS, CHAR_ORDER } from '../data/characters.js';
 import { endArcade } from './front/arcade.js';
 import {
-  Ambience, kenBurns, shade, menuItem, ornament, setPad, applySettings, installRecordScore,
-  GOLD, BONE, DIM, CRIMSON, follow, MODE_NAME, TapZones,
+  Ambience, kenBurns, shade, menuItem, ornament, applySettings, installRecordScore, gbutton, frame, linGrad, radGrad, glowSprite,
+  GOLD, BONE, DIM, follow, MODE_NAME,
 } from './front/common.js';
 import { drawCloudBadge, accountBadge } from './front/cloud_ui.js';
 
@@ -34,91 +46,56 @@ const TIPS = [
   '보조무기는 하트를 소모한다. 촛불을 부숴 하트를 모으자.',
 ];
 
-// 로고 캐시 (한 번만 그림)
-let LOGO = null, LOGO_FONT_OK = false;
-function buildLogo() {
-  const S = 2, W = 980, H = 250;
-  const c = document.createElement('canvas');
-  c.width = W * S; c.height = H * S;
-  const x = c.getContext('2d');
-  x.scale(S, S);
-  x.textAlign = 'center'; x.textBaseline = 'alphabetic';
-  const cx = W / 2, by = 128;
-  const draw = (str, y, size, family, weight, grad, stroke, ls) => {
-    x.font = `${weight} ${size}px ${family}`;
-    try { x.letterSpacing = ls; } catch { /* 미지원 */ }
-    // 외곽 발광
-    x.save(); x.shadowColor = 'rgba(200,16,40,0.95)'; x.shadowBlur = 34; x.lineJoin = 'round';
-    x.lineWidth = stroke + 6; x.strokeStyle = 'rgba(40,0,8,0.9)'; x.strokeText(str, cx, y); x.restore();
-    x.lineJoin = 'round'; x.lineWidth = stroke; x.strokeStyle = '#1a0206'; x.strokeText(str, cx, y);
-    x.lineWidth = stroke * 0.35; x.strokeStyle = '#6a1a10'; x.strokeText(str, cx, y + 1);
-    x.fillStyle = grad; x.fillText(str, cx, y);
-    // 윗면 하이라이트
-    x.save(); x.globalCompositeOperation = 'source-atop';
-    const hl = x.createLinearGradient(0, y - size * 0.8, 0, y - size * 0.35);
-    hl.addColorStop(0, 'rgba(255,255,240,0.55)'); hl.addColorStop(1, 'rgba(255,255,240,0)');
-    x.fillStyle = hl; x.fillRect(0, y - size, W, size * 0.7); x.restore();
-  };
-  const g = x.createLinearGradient(0, by - 82, 0, by + 6);
-  g.addColorStop(0, '#fff6d8'); g.addColorStop(0.28, '#f2d488'); g.addColorStop(0.55, '#c8963a'); g.addColorStop(0.78, '#8a4a18'); g.addColorStop(1, '#c01830');
-  draw('BLOOD NOCTURNE', by, 84, '"Cinzel Decorative", "Cinzel", serif', 900, g, 7, '2px');
-  // 한글 부제
-  const g2 = x.createLinearGradient(0, by + 30, 0, by + 64);
-  g2.addColorStop(0, '#ffffff'); g2.addColorStop(1, '#d8c8b0');
-  x.font = `800 30px "Nanum Myeongjo", "Noto Serif KR", serif`;
-  try { x.letterSpacing = '6px'; } catch { /* 미지원 */ }
-  x.lineJoin = 'round'; x.lineWidth = 6; x.strokeStyle = 'rgba(12,2,6,0.95)';
-  x.strokeText('블러드 녹턴 : 악마성 연대기', cx, by + 62);
-  x.fillStyle = g2; x.fillText('블러드 녹턴 : 악마성 연대기', cx, by + 62);
-  try { x.letterSpacing = '0px'; } catch { /* 미지원 */ }
-  // 장식선
-  const lg = x.createLinearGradient(cx - 330, 0, cx + 330, 0);
-  lg.addColorStop(0, 'rgba(232,200,114,0)'); lg.addColorStop(0.5, '#e8c872'); lg.addColorStop(1, 'rgba(232,200,114,0)');
-  x.fillStyle = lg; x.fillRect(cx - 330, by + 18, 660, 2);
-  x.fillRect(cx - 200, by + 80, 400, 1.5);
-  x.save(); x.translate(cx, by + 19); x.rotate(Math.PI / 4); x.fillStyle = '#1a0206'; x.fillRect(-7, -7, 14, 14);
-  x.strokeStyle = '#e8c872'; x.lineWidth = 2; x.strokeRect(-7, -7, 14, 14); x.fillStyle = '#c0102a'; x.fillRect(-3.5, -3.5, 7, 7); x.restore();
-  // 위쪽 십자 장식
-  x.save(); x.translate(cx, by - 104);
-  x.fillStyle = '#1a0206'; x.fillRect(-4, -18, 8, 36); x.fillRect(-13, -9, 26, 8);
-  x.fillStyle = '#e8c872'; x.fillRect(-2, -16, 4, 32); x.fillRect(-11, -7, 22, 4);
-  x.restore();
-  LOGO = { c, W, H, S };
-  // 마스크 (광택 스윕용)
-  LOGO.shine = document.createElement('canvas');
-  LOGO.shine.width = c.width; LOGO.shine.height = c.height;
-}
-function fontsReady() {
-  try { return document.fonts.check('900 40px "Cinzel Decorative"') && document.fonts.check('800 20px "Nanum Myeongjo"'); } catch { return true; }
-}
+// ── 로고 (로고 좌표: 가운데가 원점, 이 크기를 sc 배로 그린다) ──
+const LOGO_W = 900, LOGO_H = 240, LOGO_CY = -4;          // 묶음 크기와 세로 가운데
+const TITLE = 'BLOOD NOCTURNE', SUBTITLE = '블러드 녹턴 : 악마성 연대기';
+const TITLE_OPTS = { size: 96, style: 'blood', spacing: 2, drips: 0.45 };
+const SUB_OPTS = { size: 30, style: 'gold', family: FONT.title, weight: 800, spacing: 6, glow: false };
+const GLINTS = [[-330, -38], [-150, -52], [40, -40], [210, -50], [350, -34], [-40, 78], [120, 74]];
+
+const APK_DEFAULT = 'downloads/BloodNocturne.apk';
+const MAX_ROW_CSS = 38; // 메뉴 줄 목표 높이 (CSS px, §6.3 목록 줄 36 + 여유)
 
 export class TitleScene extends Scene {
+  constructor(g) { super(g); this.uiScale = true; this.hidePad = true; }
+
   enter(params = {}) {
     const g = this.game;
-    setPad(false);
     endArcade(g);
     applySettings(g);
     installRecordScore(g);
     audio.music('title');
-    this.amb = new Ambience({ embers: 70, motes: 24, bats: 14 });
+    const st = g.settings ?? {};
+    const q = g.tier === 'low' ? 0.5 : g.tier === 'medium' ? 0.75 : 1;
+    // 번개(화면 번쩍임)는 '화면 번쩍임'·'동작 줄이기' 설정을 따른다
+    const bolts = Number(st.flashFx ?? 1) > 0 && !st.reduceMotion;
+    this.amb = new Ambience({ embers: Math.round(70 * q), motes: Math.round(24 * q), bats: Math.round(14 * q), lightning: bolts });
     this.amb.nextBolt = 0.9;
     this.mode = params.menu ? 'menu' : 'intro';
     this.modeT = params.menu ? 1 : 0;
     this.idle = 0;
     this.konami = 0;
     this.px = 0; this.py = 0;
-    this.drips = Array.from({ length: 6 }, (_, i) => ({ x: [-300, -190, -40, 70, 170, 285][i] + rand(-12, 12), t: rand(0, 4), len: rand(10, 22), sp: rand(0.18, 0.32) }));
     this.buildMenu(params.index ?? null);
     this.menuK = params.menu ? 1 : 0;
-    this.selY = 0;
-    this.sweep = -1; this.nextSweep = 2.2;
-    if (!LOGO || !LOGO_FONT_OK) { LOGO_FONT_OK = fontsReady(); buildLogo(); }
-    this.taps = new TapZones();
+    this.glint = -1; this.glintI = 0; this.nextGlint = 2.2;
+    this.logoT = params.menu ? 9 : 0; // 피 방울 연출 시계 (메뉴로 돌아온 경우는 이미 흘러내린 상태)
+    this.alive = true;
     // 클라우드에서 기록을 받거나 로그인 상태가 바뀌면 '이어하기' 활성 여부를 다시 계산
     const rebuild = () => { if (this.game.top === this) this.buildMenu(this.menu.index); };
     this.offs = [bus.on('cloud:sync', (e) => { if (e?.phase === 'done') rebuild(); }), bus.on('cloud:login', rebuild), bus.on('cloud:logout', rebuild)];
+    // 새 버전 준비 알림 (구독하는 동안 platform.js 는 타이틀에서 자기 안내 토스트를 띄우지 않는다)
+    this.upd = null;
+    try {
+      const off = platform.onUpdateReady?.((e) => { if (!this.alive) return; this.upd = typeof e?.apply === 'function' ? e.apply : () => platform.applyUpdate?.(); g.dirty = true; });
+      if (typeof off === 'function') this.offs.push(off);
+    } catch (e) { console.error(e); }
+    // 안드로이드 웹: 'APK 받기' (latest.json 이 있으면 버전·크기 표시)
+    this.apk = safe(() => platform.isAndroidWeb?.()) ? { info: null } : null;
+    if (this.apk) this.fetchApk();
+    this.notes = [];
   }
-  exit() { setPad(true); for (const off of this.offs ?? []) off(); }
+  exit() { this.alive = false; for (const off of this.offs ?? []) { try { off(); } catch { /* 무시 */ } } this.offs = []; }
   buildMenu(index) {
     this.saveCount = saves.list().filter((s) => !s.empty).length;
     const cloudSave = cloud.loggedIn && SLOTS.some((s) => cloud.view[s].cloud && !cloud.view[s].cloud.empty);
@@ -138,7 +115,56 @@ export class TitleScene extends Scene {
     const i = this.items.findIndex((it) => it.id === 'account');
     this.game.go('account', { backIndex: i >= 0 ? i : 0 });
   }
-  onResume() { setPad(false); applySettings(this.game); this.buildMenu(this.menu.index); }
+  onResume() { applySettings(this.game); this.buildMenu(this.menu.index); }
+
+  // ── 안드로이드 앱(APK) ──
+  fetchApk() {
+    if (typeof fetch !== 'function') return;
+    fetch('downloads/latest.json', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => { if (this.alive && this.apk && j && typeof j === 'object') { this.apk.info = j; this.game.dirty = true; } })
+      .catch(() => { /* 아직 배포 전: 기본 경로로 받는다 */ });
+  }
+  /** 받을 주소: latest.json 의 url 이 같은 사이트의 .apk 일 때만 그것, 아니면 기본 경로 */
+  apkUrl() {
+    const u = this.apk?.info?.url;
+    if (typeof u === 'string' && u) {
+      try {
+        const x = new URL(u, location.href);
+        if (x.origin === location.origin && /\.apk$/i.test(x.pathname)) return x.href;
+      } catch { /* 잘못된 주소 */ }
+    }
+    return APK_DEFAULT;
+  }
+  downloadApk() {
+    const g = this.game, url = this.apkUrl();
+    if (this.apkBusy) return;
+    this.apkBusy = true;
+    const go = () => {
+      try {
+        const a = document.createElement('a');
+        a.href = url; a.download = 'BloodNocturne.apk'; a.rel = 'noopener';
+        document.body.appendChild(a); a.click(); a.remove();
+        g.toast('안드로이드 앱(APK)을 내려받습니다. 받은 파일을 열어 설치하세요', '#9fe8ff', 3.6);
+      } catch { g.toast('내려받지 못했습니다. 잠시 뒤 다시 시도해 주세요', '#ff9a9a'); }
+    };
+    // 파일이 있는지 먼저 확인한다 (없는 주소로 이동하면 게임 화면을 떠난다)
+    Promise.resolve(typeof fetch === 'function' ? fetch(url, { method: 'HEAD', cache: 'no-store' }).then((r) => r.ok).catch(() => false) : true)
+      .then((ok) => {
+        this.apkBusy = false;
+        if (!this.alive) return;
+        if (ok) go();
+        else g.toast('지금은 앱(APK)을 받을 수 없습니다. 잠시 뒤 다시 시도해 주세요', '#ffb070', 3);
+      });
+  }
+  applyUpdate() {
+    if (!this.upd) return;
+    audio.sfx('menu_ok');
+    this.game.toast('새 버전으로 다시 시작합니다…', '#9fe8ff', 3);
+    const fn = this.upd;
+    this.upd = null;
+    try { fn(); } catch (e) { console.error(e); }
+  }
 
   // ── 입력 ──
   checkKonami() {
@@ -162,31 +188,38 @@ export class TitleScene extends Scene {
     saves.saveMeta(m);
     audio.sfx('secret'); audio.sfx('extra_life');
     g.flash('#ffe8a0', 0.8, 2.5);
-    this.amb.strike(g.viewW, g.viewH, g.viewW / 2);
+    this.amb.strike(g.uiW || g.viewW, g.uiH || g.viewH, (g.uiW || g.viewW) / 2);
     g.toast(already ? '비밀 코드는 이미 발동되어 있습니다' : '★ 비밀 코드 발동! 모든 헌터가 해금되었습니다 ★', '#ffe070', 3.2);
     this.konamiT = 2.5;
   }
 
   update(dt) {
-    const g = this.game, vw = g.viewW, vh = g.viewH;
-    this.amb.update(dt, vw, vh);
+    const g = this.game, W = g.uiW || g.viewW, H = g.uiH || g.viewH;
+    this.amb.update(dt, W, H);
     this.modeT += dt;
+    this.logoT += dt;
     if (this.konamiT > 0) this.konamiT -= dt;
     // 마우스 시차
     const p = input.pointer;
-    const tx = p.active && !input.touchMode ? (p.x / vw - 0.5) * -18 : 0, ty = p.active && !input.touchMode ? (p.y / vh - 0.5) * -10 : 0;
+    const mouse = p.active && !input.touchMode;
+    const tx = mouse ? (p.x / W - 0.5) * -18 : 0, ty = mouse ? (p.y / H - 0.5) * -10 : 0;
     this.px = follow(this.px, tx, dt, 2.5); this.py = follow(this.py, ty, dt, 2.5);
-    // 로고 광택
-    this.nextSweep -= dt;
-    if (this.nextSweep <= 0) { this.sweep = 0; this.nextSweep = rand(5, 8); }
-    if (this.sweep >= 0) { this.sweep += dt / 1.1; if (this.sweep > 1) this.sweep = -1; }
-    for (const d of this.drips) { d.t += dt * d.sp; if (d.t > 1.6) { d.t = 0; d.len = rand(10, 22); d.sp = rand(0.18, 0.32); } }
+    // 로고 반짝임
+    this.nextGlint -= dt;
+    if (this.nextGlint <= 0) { this.glint = 0; this.glintI = (this.glintI + 1 + Math.floor(rand(0, GLINTS.length - 1))) % GLINTS.length; this.nextGlint = rand(3.5, 6.5); }
+    if (this.glint >= 0) { this.glint += dt / 0.7; if (this.glint > 1) this.glint = -1; }
     this.menuK = follow(this.menuK, this.mode === 'menu' ? 1 : 0, dt, 7);
     if (this.checkKonami()) { this.unlockAll(); return; }
 
     if (input.anyPressed() || input.pointer.justDown) this.idle = 0; else this.idle += dt;
-    // 오른쪽 위 계정 표시를 누르면 계정 화면
-    if (this.mode !== 'intro' && this.taps.hit() === 'account') { audio.sfx('menu_ok'); this.openAccount(); return; }
+    // 버튼 (알림 카드·계정 표시): 그 뒤의 '아무 곳이나 누르기'보다 먼저
+    const tap = taps.hit(this);
+    if (tap === 'update') { this.applyUpdate(); return; }
+    if (tap === 'a2hs') { audio.sfx('menu_cancel'); safe(() => platform.dismissA2hs?.()); return; }
+    if (tap === 'apk') { audio.sfx('menu_ok'); this.downloadApk(); return; }
+    if (tap === 'account' && this.mode !== 'intro') { audio.sfx('menu_ok'); this.openAccount(); return; }
+    // 키보드·패드로 업데이트 (sub = 키보드 A · 패드 Y/△)
+    if (this.upd && this.mode !== 'intro' && input.pressed('sub')) { this.applyUpdate(); return; }
 
     if (this.mode === 'intro') {
       if (this.modeT > 2.2 || (this.modeT > 0.3 && (input.pressed('confirm') || input.pressed('menu') || input.pointer.tapped))) { this.mode = 'press'; this.modeT = 0; }
@@ -223,156 +256,221 @@ export class TitleScene extends Scene {
     }
   }
 
+  // ── 배치 (UI 좌표) ──
+  /**
+   * 메뉴·로고·알림 배치. 메뉴 줄 높이 = 38 CSS px 이상(44~52 UI px). 메뉴 위에 로고를 둘 자리가 넉넉하지 않으면(휴대폰)
+   * 메뉴가 열렸을 때 로고가 오른쪽 빈 곳으로 간다
+   */
+  layout() {
+    const g = this.game, W = g.uiW || g.viewW, H = g.uiH || g.viewH, k = g.uiK || 1;
+    const per = Math.max(0.2, (g.cssScale || 1) * k);
+    const S = hudSafe(g);
+    const sl = (S.l || 0) / k, sr = (S.r || 0) / k, st = (S.t || 0) / k, sb = (S.b || 0) / k;
+    const n = this.items.length;
+    const rowH = clamp(Math.ceil(MAX_ROW_CSS / per), 44, 52);
+    const bottom = H - 30 - sb;
+    let gap = 3, menuH = n * rowH + (n - 1) * gap;
+    if (bottom - menuH < 150) { gap = 1; menuH = n * rowH + (n - 1) * gap; }
+    const x = 36 + sl, w = Math.min(330, W * 0.36);
+    const y0 = Math.max(st + 10, bottom - menuH);
+    // 알림 카드 (오른쪽 아래, 아래에서 위로 쌓는다)
+    const nw = Math.min(380, W * 0.44), nx = W - 14 - sr - nw;
+    let ny = H - (this.game.meta?.konami ? 44 : 30) - sb;
+    const cards = [];
+    for (const c of this.notes) { ny -= c.h; cards.push({ ...c, x: nx, y: ny, w: nw }); ny -= 8; }
+    const stackTop = ny + 8;
+    // 메뉴가 열렸을 때의 로고: 메뉴 위 (넉넉하면) 또는 오른쪽 빈 곳
+    const room = y0 - 14 - st;
+    let logo;
+    if (room >= 110) {
+      const sc = clamp(Math.min(room / LOGO_H, (w + 90) / LOGO_W), 0.2, 0.5);
+      logo = { cx: Math.max(Math.min(250, W * 0.27), sl + 10 + (LOGO_W * sc) / 2), cy: st + 8 + (LOGO_H * sc) / 2, sc, side: false };
+    } else {
+      const rx0 = x + w + 28, rx1 = W - 16 - sr, ry0 = st + 112, ry1 = Math.max(ry0 + 80, stackTop - 10);
+      const sc = clamp(Math.min((rx1 - rx0) / LOGO_W, (ry1 - ry0) / LOGO_H, 0.62), 0.2, 0.62);
+      logo = { cx: (rx0 + rx1) / 2, cy: (ry0 + ry1) / 2, sc, side: true };
+    }
+    // 인트로·PRESS START 의 큰 로고
+    const bsc = Math.min(1, (W - 40) / LOGO_W, (H * 0.46) / LOGO_H);
+    const big = { cx: W / 2, cy: Math.max(H * 0.3, st + 10 + (LOGO_H * bsc) / 2), sc: bsc };
+    const pressY = Math.max(big.cy + (LOGO_H * bsc) / 2 + 40, Math.min(H * 0.8, stackTop - 40));
+    return { W, H, per, sl, sr, st, sb, n, rowH, gap, x, w, y0, bottom, logo, big, cards, stackTop, pressY };
+  }
+  /** 알림 카드 목록 (높이 포함). 내용은 platform 상태를 따른다 */
+  collectNotes(ctx, W) {
+    const out = this.notes;
+    out.length = 0;
+    const nw = Math.min(380, W * 0.44);
+    if (this.upd) out.push({ id: 'update', h: 60 });
+    if (safe(() => platform.a2hsHint?.())) {
+      const lines = wrap(ctx, platform.A2HS_TEXT ?? '', nw - 76, 13, 600);
+      out.push({ id: 'a2hs', h: Math.max(60, 20 + lines.length * 19), lines });
+    }
+    if (this.apk) out.push({ id: 'apk', h: 48 });
+    if (safe(() => platform.audioHint?.())) out.push({ id: 'audio', h: 26 });
+    // 아래에서부터 쌓으므로 뒤집는다 (소리 안내가 맨 아래)
+    out.reverse();
+  }
+
   // ── 그리기 ──
   render(ctx) {
-    const g = this.game, vw = g.viewW, vh = g.viewH, t = g.time;
+    const g = this.game, t = g.time;
+    const W = g.uiW || g.viewW;
+    this.collectNotes(ctx, W);
+    const L = this.layout();
+    const H = L.H;
     const T = this.mode === 'intro' ? this.modeT : 99;
     const img = assets.get('bg/title');
     // 배경 켄번스 (초점: 달·성 중앙 상단)
-    kenBurns(ctx, img, vw, vh, t, { z0: 1.03, z1: 1.1, period: 50, panX: 0.012, panY: 0.01, px: this.px, py: this.py, oy: 0.4 });
-    this.amb.draw(ctx, vw, vh, 'back', t, this.px * 2);
-    // 달빛 맥동
+    kenBurns(ctx, img, W, H, t, { z0: 1.03, z1: 1.1, period: 50, panX: 0.012, panY: 0.01, px: this.px, py: this.py, oy: 0.4 });
+    this.amb.draw(ctx, W, H, 'back', t, this.px * 2);
+    // 달빛 맥동 (원점 그라데이션 + 알파)
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    const mg = ctx.createRadialGradient(vw * 0.5 + this.px, vh * 0.26, 20, vw * 0.5 + this.px, vh * 0.26, vh * 0.5);
-    mg.addColorStop(0, `rgba(255,60,50,${0.1 + 0.05 * Math.sin(t * 0.9)})`); mg.addColorStop(1, 'rgba(255,0,0,0)');
-    ctx.fillStyle = mg; ctx.fillRect(0, 0, vw, vh);
+    ctx.globalAlpha = 0.1 + 0.05 * Math.sin(t * 0.9);
+    const mcx = W * 0.5 + this.px, mcy = H * 0.26, mr = H * 0.5;
+    ctx.translate(mcx, mcy); ctx.scale(mr / 100, mr / 100);
+    ctx.fillStyle = radGrad(ctx, 'tMoon', 0, 0, 4, 100, [[0, 'rgba(255,60,50,1)'], [1, 'rgba(255,0,0,0)']]);
+    ctx.fillRect(-100, -100, 200, 200);
     ctx.restore();
-    shade(ctx, vw, vh, { top: 0.35, bottom: 0.8, vig: 0.75 });
-    this.amb.draw(ctx, vw, vh, 'front', t, this.px * 3);
+    shade(ctx, W, H, { top: 0.35, bottom: 0.8, vig: 0.75 });
+    this.amb.draw(ctx, W, H, 'front', t, this.px * 3);
     // 메뉴 쪽 어둡게
     const mk = this.menuK;
     if (mk > 0.01) {
-      const lg = ctx.createLinearGradient(0, 0, vw * 0.55, 0);
-      lg.addColorStop(0, `rgba(4,1,6,${0.86 * mk})`); lg.addColorStop(0.6, `rgba(4,1,6,${0.45 * mk})`); lg.addColorStop(1, 'rgba(4,1,6,0)');
-      ctx.fillStyle = lg; ctx.fillRect(0, 0, vw * 0.55, vh);
+      ctx.save();
+      ctx.globalAlpha = mk;
+      const lw = Math.max(1, Math.round(W * 0.55));
+      ctx.fillStyle = linGrad(ctx, `tSide|${lw}`, 0, 0, lw, 0, [[0, 'rgba(4,1,6,0.86)'], [0.6, 'rgba(4,1,6,0.45)'], [1, 'rgba(4,1,6,0)']]);
+      ctx.fillRect(0, 0, lw, H);
+      ctx.restore();
     }
     // 인트로 암전
-    if (T < 1.2) { ctx.fillStyle = `rgba(0,0,0,${1 - ease.inOutQuad(clamp(T / 1.2, 0, 1))})`; ctx.fillRect(0, 0, vw, vh); }
+    if (T < 1.2) { ctx.fillStyle = `rgba(0,0,0,${1 - ease.inOutQuad(clamp(T / 1.2, 0, 1))})`; ctx.fillRect(0, 0, W, H); }
 
-    this.drawLogo(ctx, vw, vh, t, T, mk);
-    if (this.mode === 'press' || this.mode === 'intro') this.drawPress(ctx, vw, vh, t, T);
-    if (mk > 0.02) this.drawMenu(ctx, vw, vh, t, mk);
-    // 상단 우측: 최고 점수 (아케이드 감성)
-    const hi = this.game.meta?.highScores?.[0];
+    this.drawLogo(ctx, L, t, T, mk);
+    if (this.mode === 'press' || this.mode === 'intro') this.drawPress(ctx, L, t, T);
+    if (mk > 0.02) this.drawMenu(ctx, L, t, mk);
+    // 상단 우측: 최고 점수 (아케이드 감성) + 계정, 하단 우측: 알림 카드 · 저작권
     const a = clamp((T - 1.5) / 0.6, 0, 1);
     if (a > 0) {
       ctx.save(); ctx.globalAlpha = a;
-      text(ctx, 'HI-SCORE', vw - 16, 24, { size: 11, align: 'right', weight: 800, family: FONT.num, color: '#ff5a6a', ow: 3 });
-      text(ctx, fmt(hi?.score ?? 0).padStart(9, ' '), vw - 16, 46, { size: 20, align: 'right', weight: 900, family: FONT.num, color: '#fff', ow: 4 });
-      if (hi) text(ctx, `${hi.name || CHARACTERS[hi.charId]?.name?.split(' ')[0] || '???'} · ${MODE_NAME[hi.mode || 'story'] ?? ''}`, vw - 16, 62, { size: 11, align: 'right', weight: 700, color: DIM, ow: 2 });
+      const hi = this.game.meta?.highScores?.[0];
+      const xr = W - 16 - L.sr, yt = L.st;
+      text(ctx, 'HI-SCORE', xr, yt + 24, { size: 11, align: 'right', weight: 800, family: FONT.num, color: '#ff5a6a', ow: 3 });
+      text(ctx, fmt(hi?.score ?? 0).padStart(9, ' '), xr, yt + 46, { size: 20, align: 'right', weight: 900, family: FONT.num, color: '#fff', ow: 4 });
+      if (hi) text(ctx, `${hi.name || CHARACTERS[hi.charId]?.name?.split(' ')[0] || '???'} · ${MODE_NAME[hi.mode || 'story'] ?? ''}`, xr, yt + 62, { size: 11, align: 'right', weight: 700, color: DIM, ow: 2 });
       // 계정 (로그인한 아이디 또는 게스트) — 누르면 계정 화면
       const ab = accountBadge();
-      const bw = drawCloudBadge(ctx, vw - 16, 90, ab.status, t, { size: 13, label: ab.label });
-      this.taps.clear();
-      if (this.mode !== 'intro') this.taps.add('account', { x: vw - 16 - bw - 10, y: 72, w: bw + 20, h: 36 });
-      text(ctx, '© 2026 BLOOD NOCTURNE PROJECT', vw - 14, vh - 12, { size: 10, align: 'right', weight: 700, family: FONT.num, color: 'rgba(200,180,160,0.55)', ow: 2 });
-      // 좌하단은 메뉴 조작 안내 자리 → 저작권 표기 위(우하단)에 표시
-      if (this.game.meta?.konami) text(ctx, '✦ 비밀 코드 적용됨', vw - 14, vh - 28, { size: 10, align: 'right', weight: 700, color: 'rgba(255,224,112,0.7)', ow: 2 });
+      const bw = drawCloudBadge(ctx, xr, yt + 90, ab.status, t, { size: 13, label: ab.label });
+      if (this.mode !== 'intro') taps.add('account', { x: xr - bw - 10, y: yt + 72, w: bw + 20, h: 36 }, { owner: this, kind: 'primary', src: 'title.account' });
+      text(ctx, '© 2026 BLOOD NOCTURNE PROJECT', W - 14 - L.sr, H - 12 - L.sb, { size: 10, align: 'right', weight: 700, family: FONT.num, color: 'rgba(200,180,160,0.55)', ow: 2 });
+      if (this.game.meta?.konami) text(ctx, '✦ 비밀 코드 적용됨', W - 14 - L.sr, H - 28 - L.sb, { size: 10, align: 'right', weight: 700, color: 'rgba(255,224,112,0.7)', ow: 2 });
+      this.drawNotes(ctx, L, t);
       ctx.restore();
     }
     if (this.konamiT > 0) {
       ctx.save(); ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = clamp(this.konamiT / 2.5, 0, 1) * 0.35;
-      const kg = ctx.createRadialGradient(vw / 2, vh / 2, 10, vw / 2, vh / 2, vw * 0.6);
-      kg.addColorStop(0, '#ffe8a0'); kg.addColorStop(1, 'rgba(255,200,100,0)');
-      ctx.fillStyle = kg; ctx.fillRect(0, 0, vw, vh); ctx.restore();
+      const kr = W * 0.6;
+      ctx.translate(W / 2, H / 2); ctx.scale(kr / 100, kr / 100);
+      ctx.fillStyle = radGrad(ctx, 'tKonami', 0, 0, 2, 100, [[0, '#ffe8a0'], [1, 'rgba(255,200,100,0)']]);
+      ctx.fillRect(-100, -100, 200, 200); ctx.restore();
     }
   }
 
-  drawLogo(ctx, vw, vh, t, T, mk) {
-    if (!LOGO) return;
-    if (!LOGO_FONT_OK && fontsReady()) { LOGO_FONT_OK = true; buildLogo(); }
+  drawLogo(ctx, L, t, T, mk) {
     const reveal = ease.outCubic(clamp((T - 0.5) / 1.1, 0, 1));
     if (reveal <= 0) return;
-    // 위치: 기본은 중앙 상단, 메뉴가 열리면 좌상단으로 이동·축소
-    const bx = vw / 2, by = vh * 0.3;
-    const mx = Math.min(250, vw * 0.27), my = 92;
-    const cx = lerp(bx, mx, mk), cy = lerp(by, my, mk);
-    const sc = lerp(Math.min(1, (vw - 40) / LOGO.W), 0.5, mk) * lerp(1.12, 1, reveal);
-    const w = LOGO.W * sc, h = LOGO.H * sc;
-    const x0 = cx - w / 2, y0 = cy - h * 0.52 + Math.sin(t * 0.8) * 2 * (1 - mk);
+    const B = L.big, M = L.logo;
+    const cx = lerp(B.cx, M.cx, mk), cy = lerp(B.cy, M.cy, mk) + Math.sin(t * 0.8) * 2 * (1 - mk);
+    const sc = lerp(B.sc, M.sc, mk) * lerp(1.12, 1, reveal);
     ctx.save();
-    // 뒤쪽 어둠 (가독성)
+    // 뒤쪽 어둠 (가독성): 로고 폭만 한 타원
+    ctx.save();
     ctx.globalAlpha = reveal * 0.75;
-    const dg = ctx.createRadialGradient(cx, cy, 10, cx, cy, w * 0.55);
-    dg.addColorStop(0, 'rgba(0,0,0,0.55)'); dg.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = dg; ctx.fillRect(cx - w * 0.6, cy - h * 0.8, w * 1.2, h * 1.6);
+    const rx = LOGO_W * sc * 0.58, ry = LOGO_H * sc * 0.75;
+    ctx.translate(cx, cy); ctx.scale(rx / 100, ry / 100);
+    ctx.fillStyle = radGrad(ctx, 'tLogoDark', 0, 0, 6, 100, [[0, 'rgba(0,0,0,0.55)'], [1, 'rgba(0,0,0,0)']]);
+    ctx.fillRect(-100, -100, 200, 200);
+    ctx.restore();
     ctx.globalAlpha = reveal;
-    ctx.drawImage(LOGO.c, x0, y0, w, h);
-    // 광택 스윕
-    if (this.sweep >= 0) {
-      const s = LOGO.shine, sx = s.getContext('2d');
-      sx.setTransform(1, 0, 0, 1, 0, 0);
-      sx.globalCompositeOperation = 'source-over';
-      sx.clearRect(0, 0, s.width, s.height);
-      sx.drawImage(LOGO.c, 0, 0);
-      sx.globalCompositeOperation = 'source-in';
-      const p = lerp(-0.2, 1.2, ease.inOutQuad(this.sweep)) * s.width;
-      const sg = sx.createLinearGradient(p - 160, 0, p + 160, s.height * 0.3);
-      sg.addColorStop(0, 'rgba(255,255,255,0)'); sg.addColorStop(0.5, 'rgba(255,250,230,0.85)'); sg.addColorStop(1, 'rgba(255,255,255,0)');
-      sx.fillStyle = sg; sx.fillRect(0, 0, s.width, s.height);
+    ctx.translate(cx, cy - LOGO_CY * sc);
+    ctx.scale(sc, sc);
+    // 위쪽 십자 장식
+    ctx.fillStyle = '#1a0206'; ctx.fillRect(-5, -134, 10, 40); ctx.fillRect(-15, -124, 30, 10);
+    ctx.fillStyle = GOLD; ctx.fillRect(-2.5, -131, 5, 34); ctx.fillRect(-12.5, -121.5, 25, 5);
+    // 제목: 피 글씨 (방울이 흘러내린다)
+    bloodText(ctx, TITLE, 0, 18, { ...TITLE_OPTS, t: this.logoT - 0.4 });
+    // 장식선 + 가운데 마름모
+    ctx.fillStyle = linGrad(ctx, 'tLine', -330, 0, 330, 0, [[0, 'rgba(232,200,114,0)'], [0.5, '#e8c872'], [1, 'rgba(232,200,114,0)']]);
+    ctx.fillRect(-330, 38, 660, 2);
+    ctx.fillRect(-200, 108, 400, 1.5);
+    ctx.save(); ctx.translate(0, 39); ctx.rotate(Math.PI / 4);
+    ctx.fillStyle = '#1a0206'; ctx.fillRect(-7, -7, 14, 14);
+    ctx.strokeStyle = GOLD; ctx.lineWidth = 2; ctx.strokeRect(-7, -7, 14, 14);
+    ctx.fillStyle = '#c0102a'; ctx.fillRect(-3.5, -3.5, 7, 7);
+    ctx.restore();
+    // 한글 부제 (금박)
+    bloodText(ctx, SUBTITLE, 0, 92, SUB_OPTS);
+    // 반짝임: 글자 윗면을 스치는 빛 한 점
+    if (this.glint >= 0) {
+      const [gx, gy] = GLINTS[this.glintI];
+      const k = Math.sin(this.glint * Math.PI);
       ctx.globalCompositeOperation = 'lighter';
-      ctx.drawImage(s, x0, y0, w, h);
+      ctx.globalAlpha = reveal * k;
+      const s = 34 + 24 * k;
+      ctx.drawImage(glowSprite('#fff0c8'), gx - s / 2, gy - s / 2, s, s);
+      ctx.fillStyle = '#fffbe8';
+      ctx.fillRect(gx - s * 0.7, gy - 0.8, s * 1.4, 1.6);
+      ctx.fillRect(gx - 0.8, gy - s * 0.45, 1.6, s * 0.9);
       ctx.globalCompositeOperation = 'source-over';
-    }
-    // 핏방울 (로고 아래로 흘러내림)
-    if (mk < 0.95) {
-      const k = sc;
-      ctx.fillStyle = '#9a0a1e';
-      for (const d of this.drips) {
-        const u = clamp(d.t, 0, 1.6);
-        const baseX = cx + d.x * k, baseY = y0 + 132 * sc;
-        const grow = clamp(u / 0.8, 0, 1), fall = clamp((u - 0.8) / 0.8, 0, 1);
-        const L = d.len * grow * sc;
-        ctx.globalAlpha = reveal * (1 - mk) * (1 - fall);
-        ctx.beginPath();
-        ctx.moveTo(baseX - 3 * sc, baseY); ctx.quadraticCurveTo(baseX, baseY + L * 1.4, baseX + 3 * sc, baseY); ctx.fill();
-        if (fall > 0) { ctx.beginPath(); ctx.ellipse(baseX, baseY + L + fall * 90 * sc, 2.4 * sc, 3.6 * sc, 0, 0, TAU); ctx.fill(); }
-      }
     }
     ctx.restore();
   }
 
-  drawPress(ctx, vw, vh, t, T) {
+  drawPress(ctx, L, t, T) {
     const A = this.mode === 'press' ? clamp(this.modeT / 0.5, 0, 1) : clamp((T - 1.7) / 0.5, 0, 1);
     if (A <= 0) return;
+    const W = L.W, y = L.pressY;
     const blink = 0.55 + 0.45 * Math.sin(t * 4.2);
     ctx.save();
     ctx.globalAlpha = A * blink;
     ctx.shadowColor = '#ff2a40'; ctx.shadowBlur = 16;
-    text(ctx, 'PRESS START', vw / 2, vh * 0.8, { size: 30, align: 'center', weight: 900, family: FONT.logo, color: '#fff4dc', ow: 5, outline: 'rgba(30,0,6,0.95)' });
+    text(ctx, 'PRESS START', W / 2, y, { size: 30, align: 'center', weight: 900, family: FONT.logo, color: '#fff4dc', ow: 5, outline: 'rgba(30,0,6,0.95)' });
     ctx.shadowBlur = 0;
     ctx.globalAlpha = A * 0.85;
-    text(ctx, input.touchMode ? '— 화면을 터치하세요 —' : '— Enter 또는 Z 키를 누르세요 —', vw / 2, vh * 0.8 + 26, { size: 14, align: 'center', weight: 700, color: '#d8c8b0', ow: 3 });
+    const m = promptMode();
+    if (m === 'touch') text(ctx, '— 화면을 터치하세요 —', W / 2, y + 28, { size: 15, align: 'center', weight: 700, color: '#d8c8b0', ow: 3 });
+    else drawHints(ctx, [[['confirm', 'menu'], m === 'pad' ? '버튼을 누르세요' : '키를 누르세요']], W / 2, y + 28, { align: 'center', size: 15, color: '#d8c8b0' });
     ctx.restore();
     // 어트랙트 (방치 시)
-    if (this.mode === 'press' && this.idle > 10) this.drawAttract(ctx, vw, vh, t, this.idle - 10);
+    if (this.mode === 'press' && this.idle > 10) this.drawAttract(ctx, L, t, this.idle - 10);
   }
 
-  drawAttract(ctx, vw, vh, t, it) {
+  drawAttract(ctx, L, t, it) {
+    const W = L.W, H = L.H;
     const cyc = 9, n = 3, idx = Math.floor(it / cyc) % n, u = (it % cyc) / cyc;
     const a = clamp(Math.min(u * 6, (1 - u) * 6), 0, 1);
-    const y = vh * 0.52, w = Math.min(560, vw - 80), x = vw / 2 - w / 2;
+    const y = H * 0.52, w = Math.min(560, W - 80), x = W / 2 - w / 2;
     ctx.save();
     ctx.globalAlpha = a;
     // 부드러운 타원형 어둠 (가장자리 없이)
     ctx.save();
-    ctx.translate(vw / 2, y + 45); ctx.scale((w + 120) / 180, 1);
-    const bg = ctx.createRadialGradient(0, 0, 10, 0, 0, 90);
-    bg.addColorStop(0, 'rgba(6,2,8,0.8)'); bg.addColorStop(0.6, 'rgba(6,2,8,0.6)'); bg.addColorStop(1, 'rgba(6,2,8,0)');
-    ctx.fillStyle = bg; ctx.fillRect(-90, -90, 180, 180);
+    ctx.translate(W / 2, y + 45); ctx.scale((w + 120) / 180, 1);
+    ctx.fillStyle = radGrad(ctx, 'tAttract', 0, 0, 10, 90, [[0, 'rgba(6,2,8,0.8)'], [0.6, 'rgba(6,2,8,0.6)'], [1, 'rgba(6,2,8,0)']]);
+    ctx.fillRect(-90, -90, 180, 180);
     ctx.restore();
     if (idx === 0) {
       ATTRACT_STORY.forEach((s, i) => {
         const k = clamp(u * 5 - i * 0.7, 0, 1);
         ctx.globalAlpha = a * k;
-        text(ctx, s, vw / 2, y + i * 30, { size: i === 3 ? 20 : 17, align: 'center', weight: 800, family: FONT.title, color: i === 3 ? '#ffd890' : '#e8dccb', ow: 3 });
+        text(ctx, s, W / 2, y + i * 30, { size: i === 3 ? 20 : 17, align: 'center', weight: 800, family: FONT.title, color: i === 3 ? '#ffd890' : '#e8dccb', ow: 3 });
       });
     } else if (idx === 1) {
-      text(ctx, 'HALL OF FAME', vw / 2, y - 6, { size: 18, align: 'center', weight: 900, family: FONT.logo, color: GOLD, ow: 4 });
+      text(ctx, 'HALL OF FAME', W / 2, y - 6, { size: 18, align: 'center', weight: 900, family: FONT.logo, color: GOLD, ow: 4 });
       const hs = (this.game.meta?.highScores ?? []).slice(0, 4);
-      if (!hs.length) text(ctx, '아직 기록이 없습니다. 첫 번째 전설이 되어라!', vw / 2, y + 40, { size: 15, align: 'center', color: BONE });
+      if (!hs.length) text(ctx, '아직 기록이 없습니다. 첫 번째 전설이 되어라!', W / 2, y + 40, { size: 15, align: 'center', color: BONE });
       hs.forEach((h, i) => {
         const yy = y + 26 + i * 24;
         text(ctx, `${i + 1}${['ST', 'ND', 'RD', 'TH'][Math.min(i, 3)]}`, x + 70, yy, { size: 14, weight: 900, family: FONT.num, color: i === 0 ? '#ffe070' : BONE });
@@ -382,16 +480,15 @@ export class TitleScene extends Scene {
       });
     } else {
       const tip = TIPS[Math.floor(it / (cyc * n)) % TIPS.length];
-      text(ctx, 'HUNTER\'S TIP', vw / 2, y, { size: 16, align: 'center', weight: 900, family: FONT.logo, color: GOLD, ow: 4 });
-      ornament(ctx, vw / 2, y + 14, 260, { alpha: a });
-      text(ctx, tip, vw / 2, y + 52, { size: 17, align: 'center', weight: 700, color: '#f0e4d0', ow: 3 });
+      text(ctx, 'HUNTER\'S TIP', W / 2, y, { size: 16, align: 'center', weight: 900, family: FONT.logo, color: GOLD, ow: 4 });
+      ornament(ctx, W / 2, y + 14, 260, { alpha: a });
+      text(ctx, tip, W / 2, y + 52, { size: 17, align: 'center', weight: 700, color: '#f0e4d0', ow: 3, maxWidth: W - 60 });
     }
     ctx.restore();
   }
 
-  drawMenu(ctx, vw, vh, t, mk) {
-    const many = this.items.length > 6;
-    const x = 36, w = Math.min(330, vw * 0.36), h = many ? 44 : 50, gap = many ? 3 : 4, y0 = many ? 176 : 186;
+  drawMenu(ctx, L, t, mk) {
+    const { x, w, rowH: h, gap, y0 } = L;
     this.menu.clearHits();
     this.items.forEach((it, i) => {
       const k = ease.outCubic(clamp(mk * 1.6 - i * 0.1, 0, 1));
@@ -399,13 +496,69 @@ export class TitleScene extends Scene {
       const r = { x: x - (1 - k) * 60, y: y0 + i * (h + gap), w, h };
       this.menu.hit(i, r);
       ctx.save(); ctx.globalAlpha = k;
-      menuItem(ctx, r, it.label, { selected: this.menu.index === i && this.mode === 'menu', disabled: it.disabled, sub: it.sub, k });
+      menuItem(ctx, r, it.label, { selected: this.menu.index === i && this.mode === 'menu', disabled: it.disabled, sub: it.sub, k, size: h >= 48 ? 22 : 21 });
       ctx.restore();
     });
     ctx.save(); ctx.globalAlpha = mk;
-    const ver = this.saveCount;
-    text(ctx, input.touchMode ? '항목을 터치하세요' : '↑↓ 선택   Z/Enter 결정   X 뒤로', x + 8, vh - 16, { size: 12, weight: 700, color: '#a89888', ow: 2 });
-    if (ver) text(ctx, `저장된 기록 ${ver}개`, x + 8, y0 - 14, { size: 11, weight: 700, color: DIM, ow: 2 });
+    const hy = L.H - 12 - L.sb;
+    if (promptMode() === 'touch') text(ctx, '항목을 터치하세요', x + 8, hy, { size: 12, weight: 700, color: '#a89888', ow: 2 });
+    else drawHints(ctx, [['dpadV', '선택'], ['confirm', '결정'], ['cancel', '뒤로']], x + 8, hy, { size: 12, color: '#a89888' });
+    // 저장된 기록 수: 로고가 메뉴 위에 있을 때 그 사이에
+    if (this.saveCount && !L.logo.side && y0 - (L.logo.cy + (LOGO_H * L.logo.sc) / 2) > 18) text(ctx, `저장된 기록 ${this.saveCount}개`, x + 8, y0 - 6, { size: 11, weight: 700, color: DIM, ow: 2 });
     ctx.restore();
   }
+
+  /** 오른쪽 아래 알림 카드 (새 버전 · 홈 화면에 추가 · APK · 소리 안내) */
+  drawNotes(ctx, L, t) {
+    const m = promptMode();
+    for (const c of L.cards) {
+      if (c.id === 'audio') {
+        const txt = platform.AUDIO_HINT_TEXT ?? '';
+        const xr = c.x + c.w;
+        ctx.save();
+        ctx.globalAlpha *= 0.65 + 0.35 * Math.sin(t * 3);
+        ctx.font = `700 13px ${FONT.body}`;
+        const tw = Math.min(c.w - 26, ctx.measureText(txt).width);
+        speaker(ctx, xr - tw - 14, c.y + c.h / 2, 10);
+        text(ctx, txt, xr, c.y + c.h / 2 + 5, { size: 13, align: 'right', weight: 700, color: '#ffd890', ow: 2, maxWidth: c.w - 26 });
+        ctx.restore();
+        continue;
+      }
+      if (c.id === 'apk') {
+        const info = this.apk?.info;
+        const mb = Number(info?.bytes) > 0 ? ` · ${(Number(info.bytes) / 1048576).toFixed(1)}MB` : '';
+        const sub = info?.versionName ? `v${String(info.versionName).slice(0, 16)}${mb}` : null;
+        const bw = Math.min(c.w, 300), r = { x: c.x + c.w - bw, y: c.y, w: bw, h: c.h };
+        gbutton(ctx, r, '안드로이드 앱(APK) 받기', { size: 15, sub, accent: '#86e0a0', owner: this, id: 'apk', src: 'title.apk', disabled: !!this.apkBusy });
+        continue;
+      }
+      frame(ctx, c.x, c.y, c.w, c.h, { accent: c.id === 'update' ? '#86e0a0' : GOLD, fill0: 'rgba(24,10,22,0.94)', edge: 0.8, corners: false });
+      if (c.id === 'update') {
+        const bw = 118, r = { x: c.x + c.w - bw - 8, y: c.y + 8, w: bw, h: 44 };
+        text(ctx, platform.UPDATE_READY_TEXT ?? '새 버전이 준비되었습니다', c.x + 14, c.y + 27, { size: 14, weight: 800, color: '#dff8e6', ow: 2, maxWidth: c.w - bw - 34 });
+        text(ctx, '업데이트하면 게임이 다시 시작됩니다', c.x + 14, c.y + 45, { size: 11, weight: 600, color: DIM, ow: 2, maxWidth: c.w - bw - 34 });
+        gbutton(ctx, r, '업데이트', { size: 15, selected: true, accent: '#86e0a0', owner: this, id: 'update', src: 'title.update' });
+        if (m !== 'touch') { const gw = glyphWidth('sub', 18); if (gw > 0) drawGlyph(ctx, 'sub', r.x - gw - 6, r.y + 13, 18); }
+      } else if (c.id === 'a2hs') {
+        (c.lines ?? []).forEach((ln, i) => text(ctx, ln, c.x + 14, c.y + 24 + i * 19, { size: 13, weight: 600, color: BONE, ow: 2 }));
+        const r = { x: c.x + c.w - 52, y: c.y + (c.h - 44) / 2, w: 44, h: 44 };
+        gbutton(ctx, r, '✕', { size: 16, owner: this, id: 'a2hs', kind: 'icon', src: 'title.a2hs' });
+      }
+    }
+  }
 }
+
+/** 스피커 아이콘 (소리 안내) */
+function speaker(ctx, x, y, s) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.fillStyle = '#ffd890';
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.9, -s * 0.35); ctx.lineTo(-s * 0.45, -s * 0.35); ctx.lineTo(0, -s * 0.8); ctx.lineTo(0, s * 0.8); ctx.lineTo(-s * 0.45, s * 0.35); ctx.lineTo(-s * 0.9, s * 0.35);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = '#ffd890'; ctx.lineWidth = 1.4;
+  ctx.beginPath(); ctx.arc(s * 0.1, 0, s * 0.45, -0.9, 0.9); ctx.stroke();
+  ctx.beginPath(); ctx.arc(s * 0.1, 0, s * 0.8, -0.9, 0.9); ctx.stroke();
+  ctx.restore();
+}
+function safe(fn) { try { return fn(); } catch { return undefined; } }

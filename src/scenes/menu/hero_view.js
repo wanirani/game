@@ -169,10 +169,12 @@ function glyphHints() {
  * 턴테이블 조작 안내 (탭의 hints() 에 덧붙인다): [키/액션, 설명, 터치 문구]
  * 글리프 안내 줄이면 액션 이름(stickR = 오른쪽 스틱 X · , . 키, viewReset = R3 · /), 아니면 지금 기기의 글자 키캡
  */
-export function turntableHints() {
-  if (glyphHints()) return [['stickR', '회전', '영웅을 끌어서 돌려 보기'], ['viewReset', '자동 회전']];
-  if (input.mode === 'pad') return [['RS', '회전'], ['R3', '자동 회전']];
-  return [[', .', '회전', '영웅을 끌어서 돌려 보기'], ['/', '자동 회전']];
+export function turntableHints(view = null) {
+  // 자동 회전을 못 쓰는 동안(채색 뷰 없음·움직임 줄이기)은 '자동 회전' 안내를 뺀다
+  const auto = !view || view.spinAllowed();
+  if (glyphHints()) return [['stickR', '회전', '영웅을 끌어서 돌려 보기'], ...(auto ? [['viewReset', '자동 회전']] : [])];
+  if (input.mode === 'pad') return [['RS', '회전'], ...(auto ? [['R3', '자동 회전']] : [])];
+  return [[', .', '회전', '영웅을 끌어서 돌려 보기'], ...(auto ? [['/', '자동 회전']] : [])];
 }
 
 /** 렌더러가 보고하는 뷰 지원: null = 계약 없음(임시 대체) */
@@ -204,6 +206,9 @@ export class HeroView {
     this.tt = !!turntable;
     this.yaw = 0; this.yawVel = 0; this.yawGoal = 0; this.userYaw = 0;
     this.autoSpin = game?.settings?.turntableAuto !== false;
+    this._autoSet = this.autoSpin;   // 마지막으로 본 설정값 (메뉴 위에서 설정을 바꾸면 따라간다)
+    this._keepYaw = null;            // 채색 뷰가 잠시 사라진 동안 기억해 둔 사용자 각
+    this.rateFrom = null;            // , . 키·스틱 회전을 시작한 칸
     this.spinning = false; this.spinNow = false; this.spinGuard = false; this.spinDir = 1;
     this.idleT = 0;
     this.mode = 'idle';          // idle | drag | free | settle | rate | tween | auto
@@ -297,10 +302,13 @@ export class HeroView {
     if (!g) return false;
     return (g.tier ?? g.quality ?? g.settings?.quality) === 'low';
   }
-  /** 지금 look 의 뷰 지원 (look 이 바뀌거나, 채색 뷰가 아직 없으면 0.5 초마다 다시 묻는다: 로딩이 끝나면 켜짐) */
+  /**
+   * 지금 look 의 뷰 지원. look 이 바뀌면 바로, 아니면 0.5 초마다 다시 묻는다: 로딩이 끝나면 켜지고,
+   * 채색 인형이 꺼지거나(갤러리·설정) 사라지면 꺼진다 (켜진 채로 남으면 렌더러의 대체 그림이 정면에서 실처럼 가늘어진다)
+   */
   support() {
     const look = this.p.look;
-    if (!this._sup || this._supLook !== look || (!this._sup.full && this.clock - this._supT > 0.5)) {
+    if (!this._sup || this._supLook !== look || this.clock - this._supT > 0.5) {
       this._sup = viewSupport(this.p) ?? LEGACY_SUP;
       this._supLook = look; this._supT = this.clock;
     }
@@ -316,6 +324,14 @@ export class HeroView {
   profileOf(a) { const prof = Math.cos(a) >= 0 ? 0 : PI; return a + wrapA(prof - a); }
   /** 지금 멈춰 있을(멈출) 각 */
   restYaw() { return this.mode === 'settle' ? this.yawGoal : this.mode === 'tween' && this.tw?.user ? this.tw.to : this.snapOf(this.yaw); }
+  /** 채색 뷰 칸(HERO_VIEW.steps)으로 본 사용자 각 — 지원이 방금 대체로 바뀐 순간에도 채색 칸 기준으로 (snapOf 는 이미 180° 칸) */
+  paintedRest() {
+    if (this.mode === 'settle') return this.yawGoal;
+    if (this.mode === 'tween') return this.tw?.user ? this.tw.to : this.userYaw;
+    if (this.mode === 'idle') return this.seq || this.pending ? this.userYaw : this.yaw;
+    const st = TAU / Math.max(1, Math.round(Number(HERO.HERO_VIEW?.steps) || 8));
+    return Math.round(this.yaw / st) * st;
+  }
 
   stage(rect) { this.rect = rect; }
   swipeBlock(x, y) { return this.tt && (!!this.drag || this.mode === 'drag' || (!!this.rect && inRect(x, y, this.rect))); }
@@ -352,6 +368,7 @@ export class HeroView {
   /** 사용자가 돌리기 시작: 시연·자동 회전·트윈 취소 */
   beginUser() {
     this.touched = true; this.idleT = 0; this.introT = 0;
+    this._keepYaw = null;   // 사용자가 새로 돌렸다: 기억해 둔 각보다 지금 고른 각
     if (this.seq || this.pending) this.endSeq();
     this.spinning = false; this.spinNow = false; this.spinGuard = false;
     this.tw = null;
@@ -386,8 +403,28 @@ export class HeroView {
     this.tw = { from, to: from + wrapA(rest - from) - TAU, t: 0, dur: TT.REVEAL_T, fn: ease.outCubic, user: true, done: null };
     this.mode = 'tween'; this.yawVel = 0;
   }
-  /** 탭을 다시 열었을 때: 대기 시간을 새로 센다 */
-  wake() { this.idleT = 0; }
+  /** 탭을 다시 열었을 때: 대기 시간을 새로 센다 (떠날 때 끝내지 못한 끌기·누름도 정리) */
+  wake() { this.sleep(); this.idleT = 0; }
+  /**
+   * 탭을 떠날 때(탭 넘기기): 끌기·⟲⟳ 누름·키/스틱 회전·관성을 끝내고 가까운 칸에 멈춘다.
+   * 안 그러면 돌아왔을 때 떠나기 전의 끌기가 '방금 뗀 것' 으로 처리되어 옛 속도로 휙 돈다
+   */
+  sleep() {
+    if (!this.tt) return;
+    const busy = !!this.drag?.moved || this.mode === 'drag' || this.mode === 'free' || this.mode === 'rate';
+    this.drag = null; this.hold = null; this.rate = 0; this.rateSrc = null; this.rateFrom = null;
+    this.spinGuard = false;
+    if (busy) { this.yawVel = 0; this.settleTo(this.snapOf(this.yaw)); }
+  }
+  /** , . 키·스틱 회전을 놓을 때 멈출 칸: 반 칸도 못 갔으면(톡 누름·살짝 튕김) 그 방향으로 한 칸, 아니면 조금 앞(0.08 초)의 가까운 칸 */
+  rateGoal() {
+    const dir = Math.sign(this.rate);
+    if (dir && this.rateFrom != null && !this.continuous()) {
+      const s = this.stepSize();
+      if ((this.yaw - this.rateFrom) * dir < s * 0.5) return this.rateFrom + dir * s;
+    }
+    return this.snapOf(this.yaw + this.rate * 0.08);
+  }
 
   /** 한 칸 돌리기 (⟲ ⟳ 탭) */
   stepBy(dir) {
@@ -433,12 +470,14 @@ export class HeroView {
     // ── 누름 시작: 버튼 / 무대 끌기 ──
     if (p.justDown) {
       const id = this.btnAt(p.x, p.y);
-      if (id === 'tt:auto') { this.idleT = 0; this.toggleAuto(); tapped = true; }
+      // 버튼이 손가락을 가져간다 (메뉴의 길게 누르기 진동·탭·밀기 없음 — 누르고 있기가 곧 연속 회전이다)
+      if (id === 'tt:auto') { this.idleT = 0; this.toggleAuto(); tapped = true; ges?.claim?.(); }
       else if (id) {
         const dir = id === 'tt:L' ? 1 : -1;
         this.beginUser();
         this.hold = { id, dir, t: 0 };
         this.stepBy(dir);
+        ges?.claim?.();
       } else if (r && inRect(p.x, p.y, r)) {
         this.drag = { x0: p.x, y0: p.y, yaw0: this.yaw, moved: false, s: [] };
       }
@@ -503,14 +542,15 @@ export class HeroView {
     this.wIdle += dt; if (this.wIdle > 0.25) this.wAcc = 0;
     // ── , . 키 · 오른쪽 스틱 X ──
     if (!this.drag?.moved && !(this.mode === 'rate' && this.rateSrc === 'btn')) {
-      const sx = input.stickR?.x || 0;
+      const sx = input.stickR?.x || 0, sy = input.stickR?.y || 0;
       let rate = 0;
-      if ((input.stickR?.mag ?? 0) > 0 && Math.abs(sx) > 0.02) rate = -sx * TT.STICK_RATE;
-      else { const L = input.down('viewL'), R = input.down('viewR'); if (L !== R) rate = (L ? 1 : -1) * TT.KEY_RATE; }
+      // 오른쪽 스틱은 목록 세로 스크롤(Scroller)도 맡는다: 가로가 우세할 때만 돌린다 (위아래로 밀어 스크롤하면 영웅은 그대로)
+      if ((input.stickR?.mag ?? 0) > 0 && Math.abs(sx) > 0.02 && Math.abs(sx) >= 0.5 * Math.abs(sy)) rate = -sx * TT.STICK_RATE;
+      else if (!((input.stickR?.mag ?? 0) > 0)) { const L = input.down('viewL'), R = input.down('viewR'); if (L !== R) rate = (L ? 1 : -1) * TT.KEY_RATE; }
       if (rate) {
-        if (!(this.mode === 'rate' && this.rateSrc === 'key')) this.beginUser();
+        if (!(this.mode === 'rate' && this.rateSrc === 'key')) { this.rateFrom = this.mode === 'settle' ? this.yawGoal : this.snapOf(this.yaw); this.beginUser(); }
         this.mode = 'rate'; this.rate = rate; this.rateSrc = 'key';
-      } else if (this.mode === 'rate' && this.rateSrc === 'key') this.settleTo(this.snapOf(this.yaw + this.rate * 0.08));
+      } else if (this.mode === 'rate' && this.rateSrc === 'key') { this.settleTo(this.rateGoal()); this.rateFrom = null; }
     }
     // ── / · R3 : 자동 회전 켜고 끄기 (키보드는 두 번 누르면 초기화, 패드 R3 는 한 번에 초기화까지) ──
     if (input.pressed('viewReset')) {

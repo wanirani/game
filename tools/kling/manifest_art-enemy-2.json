@@ -6,7 +6,10 @@
  "credits": {
   "before": 6573.0,
   "per_image": 2,
-  "budget": 900
+  "budget": 900,
+  "after": 5929.0,
+  "spent_by_package": 92,
+  "note": "23 calls / 46 images at 2 credits each = 92 credits, all generated in the first session; the resumed session made no Kling calls. before/after are the shared account pool (other packages spend from it in parallel), so after - before is not this package's spend."
  },
  "uploads": {
   "skeleton_ref": {
@@ -41,8 +44,8 @@
       2336,
       1760
      ],
-     "kept": null,
-     "decision": null
+     "kept": true,
+     "decision": "kept: blood_skeleton club, skeleton_knight longsword + kite shield, spear_guard plume helm + spear (crops in their make_src.py)"
     },
     {
      "name": "props_2",
@@ -51,8 +54,8 @@
       2336,
       1760
      ],
-     "kept": null,
-     "decision": null
+     "kept": true,
+     "decision": "kept: bone_scimitar scimitars"
     }
    ]
   },
@@ -73,8 +76,8 @@
       1760,
       2336
      ],
-     "kept": null,
-     "decision": null
+     "kept": true,
+     "decision": "kept: skeleton_knight body/torso/pauldron/pelvis (src/skeleton_knight_ref.webp); input of sk_knight_legs"
     },
     {
      "name": "sk_knight_2",
@@ -83,8 +86,8 @@
       1760,
       2336
      ],
-     "kept": null,
-     "decision": null
+     "kept": false,
+     "decision": "rejected: the other take of this shot was used"
     }
    ]
   },
@@ -105,8 +108,8 @@
       1760,
       2336
      ],
-     "kept": null,
-     "decision": null
+     "kept": false,
+     "decision": "rejected: the other take of this shot was used"
     },
     {
      "name": "sk_scim_2",
@@ -115,8 +118,8 @@
       1760,
       2336
      ],
-     "kept": null,
-     "decision": null
+     "kept": true,
+     "decision": "kept: bone_scimitar body parts"
     }
    ]
   },
@@ -137,8 +140,8 @@
       1760,
       2336
      ],
-     "kept": null,
-     "decision": null
+     "kept": false,
+     "decision": "rejected: the other take of this shot was used"
     },
     {
      "name": "sk_mage_2",
@@ -147,8 +150,8 @@
       1760,
       2336
      ],
-     "kept": null,
-     "decision": null
+     "kept": true,
+     "decision": "kept: skeleton_mage robed body + sleeve"
     }
    ]
   },
@@ -167,8 +170,8 @@
       2048,
       2048
      ],
-     "kept": null,
-     "decision": null
+     "kept": true,
+     "decision": "kept: chosen lesser_demon design (src/demon_ref.webp); input of demon_sheet/demon_side"
     },
     {
      "name": "demon_ref_2",
@@ -177,8 +180,8 @@
       2048,
       2048
      ],
-     "kept": null,
-     "decision": null
+     "kept": false,
+     "decision": "rejected: the other take of this shot was used"
     }
    ]
   },
@@ -197,8 +200,8 @@
       1760,
       2368
      ],
-     "kept": null,
-     "decision": null
+     "kept": true,
+     "decision": "kept: chosen puppet_maiden design (src/puppet_maiden_ref.webp); input of doll_sheet/doll_side"
     },
     {
      "name": "doll_ref_2",
@@ -207,8 +210,8 @@
       1760,
       2368
      ],
-     "kept": null,
-     "decision": null
+     "kept": false,
+     "decision": "rejected: the other take of this shot was used"
     }
    ]
   },
@@ -227,8 +230,8 @@
       1760,
       2368
      ],
-     "kept": null,
-     "decision": null
+     "kept": true,
+     "decision": "kept: chosen mummy design (src/mummy_ref.webp); input of mummy_sheet/mummy_side"
     },
     {
      "name": "mummy_ref_2",
@@ -237,8 +240,8 @@
       1760,
       2368
      ],
-     "kept": null,
-     "decision": null
+     "kept": false,
+     "decision": "rejected: the other take of this shot was used"
     }
    ]
   },
@@ -257,8 +260,8 @@
       3136,
       1344
      ],
-     "kept": null,
-     "decision": null
+     "kept": true,
+     "decision": "kept: phantom_sword blade"
     },
     {
      "name": "phantom_2",
@@ -267,8 +270,8 @@
       3136,
       1344
      ],
-     "kept": null,
-     "decision": null
+     "kept": false,
+     "decision": "rejected: the other take of this shot was used"
     }
    ]
   },
@@ -287,8 +290,8 @@
       2368,
       1760
      ],
-     "kept": null,
-     "decision": null
+     "kept": true,
+     "decision": "kept: bone_pillar column + skulls"
     },
     {
      "name": "pillar_2",
@@ -297,8 +300,8 @@
       2368,
       1760
      ],
-     "kept": null,
-     "decision": null
+     "kept": false,
+     "decision": "rejected: the other take of this shot was used"
     }
    ]
   },
@@ -317,8 +320,8 @@
       2720,
       1536
      ],
-     "kept": null,
-     "decision": null
+     "kept": false,
+     "decision": "rejected: the other take of this shot was used"
     },
     {
      "name": "worm_2",
@@ -327,8 +330,8 @@
       2720,
       1536
      ],
-     "kept": null,
-     "decision": null
+     "kept": true,
+     "decision": "kept: corpse_worm body"
     }
    ]
   },
@@ -347,8 +350,8 @@
       2368,
       1760
      ],
-     "kept": null,
-     "decision": null
+     "kept": false,
+     "decision": "rejected: the other take of this shot was used"
     },
     {
      "name": "book_2",
@@ -357,8 +360,8 @@
       2368,
       1760
      ],
-     "kept": null,
-     "decision": null
+     "kept": false,
+     "decision": "reference only: input of book_front (not cut)"
     }
    ]
   },
@@ -377,8 +380,8 @@
       2720,
       1536
      ],
-     "kept": null,
-     "decision": null
+     "kept": true,
+     "decision": "kept: flea_man crouch/idle/leap frames"
     },
     {
      "name": "flea_2",
@@ -387,8 +390,8 @@
       2720,
       1536
      ],
-     "kept": null,
-     "decision": null
+     "kept": false,
+     "decision": "rejected: the other take of this shot was used"
     }
    ]
   },
@@ -407,8 +410,8 @@
       2368,
       1760
      ],
-     "kept": null,
-     "decision": null
+     "kept": true,
+     "decision": "kept: scholar_ghost body + book"
     },
     {
      "name": "scholar_2",
@@ -417,8 +420,8 @@
       2368,
       1760
      ],
-     "kept": null,
-     "decision": null
+     "kept": false,
+     "decision": "rejected: the other take of this shot was used"
     }
    ]
   },
@@ -437,8 +440,8 @@
       2048,
       2048
      ],
-     "kept": null,
-     "decision": null
+     "kept": true,
+     "decision": "kept: ectoplasm body"
     },
     {
      "name": "ecto_2",
@@ -447,8 +450,8 @@
       2048,
       2048
      ],
-     "kept": null,
-     "decision": null
+     "kept": false,
+     "decision": "rejected: the other take of this shot was used"
     }
    ]
   },
@@ -469,8 +472,8 @@
       2336,
       1760
      ],
-     "kept": null,
-     "decision": null
+     "kept": false,
+     "decision": "rejected: parts sheet not needed — the side view gives the wing in the matching perspective and lighting"
     },
     {
      "name": "demon_sheet_2",
@@ -479,8 +482,8 @@
       2336,
       1760
      ],
-     "kept": null,
-     "decision": null
+     "kept": false,
+     "decision": "rejected: parts sheet not needed — the side view gives the wing in the matching perspective and lighting"
     }
    ]
   },
@@ -501,8 +504,8 @@
       2048,
       2048
      ],
-     "kept": null,
-     "decision": null
+     "kept": true,
+     "decision": "kept: lesser_demon body, wing, forward arm, tail (src/demon_side.webp)"
     },
     {
      "name": "demon_side_2",
@@ -511,8 +514,8 @@
       2048,
       2048
      ],
-     "kept": null,
-     "decision": null
+     "kept": false,
+     "decision": "rejected: the other take of this shot was used"
     }
    ]
   },
@@ -533,8 +536,8 @@
       2336,
       1760
      ],
-     "kept": null,
-     "decision": null
+     "kept": false,
+     "decision": "rejected: parts sheet not needed — every part cut from the strict side view"
     },
     {
      "name": "doll_sheet_2",
@@ -543,8 +546,8 @@
       2336,
       1760
      ],
-     "kept": null,
-     "decision": null
+     "kept": false,
+     "decision": "rejected: parts sheet not needed — every part cut from the strict side view"
     }
    ]
   },
@@ -565,8 +568,8 @@
       1760,
       2336
      ],
-     "kept": null,
-     "decision": null
+     "kept": false,
+     "decision": "rejected: the other take of this shot was used"
     },
     {
      "name": "doll_side_2",
@@ -575,8 +578,8 @@
       1760,
       2336
      ],
-     "kept": null,
-     "decision": null
+     "kept": true,
+     "decision": "kept: puppet_maiden head/body/arm/legs (src/doll_side.webp, doll_body.webp)"
     }
    ]
   },
@@ -597,8 +600,8 @@
       2336,
       1760
      ],
-     "kept": null,
-     "decision": null
+     "kept": true,
+     "decision": "kept: mummy body/arm/leg/bandage strip (src/mummy_sheet.webp, mummy_body.webp)"
     },
     {
      "name": "mummy_sheet_2",
@@ -607,8 +610,8 @@
       2336,
       1760
      ],
-     "kept": null,
-     "decision": null
+     "kept": false,
+     "decision": "rejected: the other take of this shot was used"
     }
    ]
   },
@@ -629,8 +632,8 @@
       1760,
       2336
      ],
-     "kept": null,
-     "decision": null
+     "kept": false,
+     "decision": "rejected: the parts sheet side figure was cleaner (whole silhouette, loose arm/strip)"
     },
     {
      "name": "mummy_side_2",
@@ -639,8 +642,8 @@
       1760,
       2336
      ],
-     "kept": null,
-     "decision": null
+     "kept": false,
+     "decision": "rejected: the parts sheet side figure was cleaner (whole silhouette, loose arm/strip)"
     }
    ]
   },
@@ -659,8 +662,8 @@
       1536,
       2720
      ],
-     "kept": null,
-     "decision": null
+     "kept": true,
+     "decision": "kept: skeleton_mage staff"
     },
     {
      "name": "staff_2",
@@ -669,8 +672,8 @@
       1536,
       2720
      ],
-     "kept": null,
-     "decision": null
+     "kept": false,
+     "decision": "rejected: the other take of this shot was used"
     }
    ]
   },
@@ -691,8 +694,8 @@
       2336,
       1760
      ],
-     "kept": null,
-     "decision": null
+     "kept": false,
+     "decision": "rejected: the other take of this shot was used"
     },
     {
      "name": "book_front_2",
@@ -701,8 +704,8 @@
       2336,
       1760
      ],
-     "kept": null,
-     "decision": null
+     "kept": true,
+     "decision": "kept: book_fiend halves, maw, ribbon"
     }
    ]
   },
@@ -723,8 +726,8 @@
       1760,
       2336
      ],
-     "kept": null,
-     "decision": null
+     "kept": true,
+     "decision": "kept: skeleton_knight thigh + shin"
     },
     {
      "name": "sk_knight_legs_2",
@@ -733,8 +736,8 @@
       1760,
       2336
      ],
-     "kept": null,
-     "decision": null
+     "kept": false,
+     "decision": "rejected: the other take of this shot was used"
     }
    ]
   }

@@ -12,7 +12,7 @@ export const PUPPETS = {
    ]
   },
   "azel_dawnbringer": {
-   "h": "d088ab13b5f0",
+   "h": "c4469f475c9a",
    "turn": true,
    "lv": [
     "hi",
@@ -39,7 +39,7 @@ export const PUPPETS = {
    ]
   },
   "azel_nosferatu": {
-   "h": "d86d6727c978",
+   "h": "5d78a71f423c",
    "turn": true,
    "lv": [
     "hi",
@@ -263,7 +263,7 @@ export const PUPPETS = {
  },
  "npc": {
   "npc_alberto": {
-   "h": "8d9f85737bdc",
+   "h": "39420f321afd",
    "turn": false,
    "lv": [
     "hi",
@@ -272,7 +272,7 @@ export const PUPPETS = {
    ]
   },
   "npc_carmilla": {
-   "h": "889781b21aab",
+   "h": "ba2a2897684e",
    "turn": false,
    "lv": [
     "hi",
@@ -281,7 +281,7 @@ export const PUPPETS = {
    ]
   },
   "npc_elise": {
-   "h": "47785bc4d748",
+   "h": "331dd42c918f",
    "turn": false,
    "lv": [
     "hi",
@@ -308,7 +308,7 @@ export const PUPPETS = {
    ]
   },
   "npc_marta": {
-   "h": "9a407efc2d21",
+   "h": "83021bc048db",
    "turn": false,
    "lv": [
     "hi",

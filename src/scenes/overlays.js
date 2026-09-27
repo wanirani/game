@@ -230,14 +230,21 @@ function ultSprites() {
   return SPR;
 }
 
+// 기술명 비트맵 캐시 (기술명·색·해상도·붓글씨 여부별): 스테이지 중 필살기를 다시 써도 캔버스를 새로 만들지 않는다 (feel §8)
+const NAME_CACHE = new Map();
+const NAME_CACHE_MAX = 8;
+let MEASURE = null;
 /**
  * 기술명 비트맵: 먹 그림자(3,3) + 6px 먹 테두리 + 흰색→캐릭터 색 채움. 붓글씨가 아직 없으면 FONT.title 900 으로 굽고,
  * 도착하면 장면이 다시 굽는다. 반환 {c, w, h, ox, oy, adv, brush} (w·h·ox·oy·adv 는 논리 px)
  */
 function bakeName(str, color, S) {
   const brush = !!UI.faceReady?.('BN Brush');
+  const key = `${str}|${color}|${S}`;
+  const hit = NAME_CACHE.get(key + (brush ? '|b' : '|t'));
+  if (hit) return hit;
   const fontStr = brush ? `400 ${NAME_PX}px ${FONT.brush}` : `900 ${NAME_PX}px ${FONT.title}`;
-  const m = mkCanvas(1, 1).getContext('2d');
+  const m = (MEASURE ||= mkCanvas(1, 1).getContext('2d'));
   m.font = fontStr;
   const adv = Math.max(1, m.measureText(str).width);
   const pad = 14;
@@ -252,7 +259,11 @@ function bakeName(str, color, S) {
   const gr = g.createLinearGradient(0, oy - NAME_PX * 0.85, 0, oy + NAME_PX * 0.08);
   gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.42, '#fffaf0'); gr.addColorStop(1, color);
   g.fillStyle = gr; g.fillText(str, ox, oy);
-  return { c, w, h, ox, oy, adv, brush };
+  const spr = { c, w, h, ox, oy, adv, brush };
+  if (brush) NAME_CACHE.delete(key + '|t'); // 붓글씨가 도착했으면 대체 글꼴 비트맵은 버린다
+  NAME_CACHE.set(key + (brush ? '|b' : '|t'), spr);
+  while (NAME_CACHE.size > NAME_CACHE_MAX) NAME_CACHE.delete(NAME_CACHE.keys().next().value);
+  return spr;
 }
 /** 붉은 먹 밑줄 (가운데가 굵고 양끝이 가는 붓 획, 끝에서 살짝 튕긴다) */
 function inkStroke(len) {
@@ -536,13 +547,18 @@ export class DocumentScene extends Scene {
     // 본문: 아래 칸(기술·능력치)을 뺀 높이에 들어가도록 글자 크기를 16 → 14 로 줄인다
     const reserve = d.tech ? 92 : d.stats ? 72 : 28;
     const top = y + 128, room = y + h - reserve - top;
-    let size = 16, lineH = 1.6;
-    for (const s of [16, 15, 14]) {
-      size = s; lineH = s >= 16 ? 1.6 : 1.5;
-      const n = wrap(ctx, d.text ?? '', w - 80, s, 700, FONT.title).length;
-      if ((n - 1) * s * lineH <= room) break;
+    const fk = `${w}|${room}|${UI.fontEpoch}`;
+    if (this.fitKey !== fk) { // 배치나 글꼴이 바뀔 때만 다시 잰다 (매 프레임 줄바꿈 측정 없음)
+      let size = 16, lineH = 1.6;
+      for (const s of [16, 15, 14]) {
+        size = s; lineH = s >= 16 ? 1.6 : 1.5;
+        const n = wrap(ctx, d.text ?? '', w - 80, s, 700, FONT.title).length;
+        if ((n - 1) * s * lineH <= room) break;
+      }
+      this.fit = { size, lineH, maxLines: Math.max(1, Math.floor(room / (size * lineH)) + 1) };
+      this.fitKey = fk;
     }
-    const maxLines = Math.max(1, Math.floor(room / (size * lineH)) + 1);
+    const { size, lineH, maxLines } = this.fit;
     paragraph(ctx, d.text ?? '', x + 40, top, w - 80, { size, color: '#2a1a0a', family: FONT.title, weight: 700, lineH, maxLines, outline: null });
     if (d.tech) {
       panel(ctx, x + 40, y + h - 84, w - 80, 56, { fill: 'rgba(60,10,10,0.85)' });
@@ -595,6 +611,7 @@ export function cmdToText(cmd = []) {
 // ═══════════════════════════ 게임오버 ═══════════════════════════
 const GO_OPTS = { size: 60, t: 0 };
 const CONT_OPTS = { size: 30, style: 'gold' };
+const GO_ARM = 0.6; // 이어하기·포기 입력을 받기 시작하는 시각 (초)
 
 /** 게임오버 → 아케이드식 CONTINUE 카운트다운 (uiScale, 44 CSS px 버튼, 안내 글리프) */
 export class GameOverScene extends Scene {
@@ -616,11 +633,14 @@ export class GameOverScene extends Scene {
       if ((this.t > 2 && input.anyPressed()) || this.t > 8) this.giveUp();
       return;
     }
+    // 막 뜬 화면(GO_ARM 초)은 입력을 받지 않는다: 쓰러지는 동안 연타하던 점프(=결정 Z)·공격이 곧바로 이어하기·포기로 번지지 않게
+    const armed = this.t >= GO_ARM;
     // 공격 연타로 카운트를 빨리 넘긴다 (아케이드)
-    this.count -= input.pressed('attack') ? 1 : dt;
+    this.count -= armed && input.pressed('attack') ? 1 : dt;
     const sec = Math.max(0, Math.ceil(this.count) - 1);
     if (sec !== this.sec) { if (this.sec != null) audio.sfx('clock_tick'); this.sec = sec; this.secT = 0; }
     this.secT += dt;
+    if (!armed) return;
     // 마우스: 포인터가 움직였을 때만 가리킨 버튼을 고른다 (가만히 둔 커서가 키보드 선택을 되돌리지 않게)
     const p = input.pointer;
     if (p.active && (p.x !== this.px || p.y !== this.py)) {
@@ -708,11 +728,14 @@ export class GameOverScene extends Scene {
     const y4 = y3 + g3;
     text(ctx, `남은 크레딧: ${this.world?.run?.continues ?? 0}   (컨티뉴 시 점수 초기화)`, W / 2, y4, { size: 14, align: 'center', color: COLORS.dim });
     const bw = Math.min(220, (W - 80) / 2), by = y4 + g4;
+    ctx.save();
+    ctx.globalAlpha = clamp(t / GO_ARM, 0.3, 1); // 입력을 받기 전(GO_ARM)에는 버튼이 흐리게 떠오른다
     ['이어하기', '포기 (마을로)'].forEach((l, k) => {
       const r = { x: W / 2 - bw - 10 + k * (bw + 20), y: by, w: bw, h: bh };
       button(ctx, r, l, { selected: this.menu.index === k });
       taps.add(k === 0 ? 'go_cont' : 'go_quit', r, { owner: this, kind: 'primary', src: 'gameover' });
     });
     hintLine(ctx, [['dpadH', '선택'], ['confirm', '결정']], '버튼을 눌러 고르세요', W / 2, Math.max(by + bh + 24, hintY), { size: 13, color: COLORS.dim });
+    ctx.restore();
   }
 }
