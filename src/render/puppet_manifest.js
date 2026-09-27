@@ -316,8 +316,17 @@ export const PUPPETS = {
     "ui"
    ]
   },
+  "npc_rook": {
+   "h": "81d093e983ca",
+   "turn": false,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
   "npc_rook2": {
-   "h": "ecac50f6c298",
+   "h": "ac55544b2675",
    "turn": false,
    "lv": [
     "hi",

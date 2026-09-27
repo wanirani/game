@@ -99,8 +99,8 @@
  "params": {
   "hairLum": 125,
   "ponyTopY": 3000,
-  "torsoTone": 0.45,
-  "torsoSrcMaxLum": 110,
+  "torsoTone": 0.15,
+  "torsoSrcMaxLum": 60,
   "uarmTone": 0.25,
   "skirtTone": 0.5,
   "skirtSrcMaxLum": 110,
@@ -261,20 +261,20 @@
     830
    ],
    [
-    490,
+    482,
     890
    ],
    [
-    478,
+    462,
     955
    ],
    [
-    452,
-    1012
+    436,
+    1005
    ],
    [
-    420,
-    1040
+    405,
+    1035
    ],
    [
     330,
