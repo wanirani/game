@@ -54,7 +54,7 @@ export function draw(ctx, e, world, o, rig) {
   if (hurt) wd += 0.4;
   const bend = (u) => (dive ? 0.02 : -0.12 * Math.cos(t * 15)) * (0.3 + u);
   // far wing + far (casting) arm behind the body
-  K.chain('wing', fx0, fy0, wd + tilt - 0.15, 0.82, K.nStrips(6), bend, 1, 'deep', true);
+  K.chain('wing', fx0 - 2, fy0 + 1, wd + tilt - 0.45, 0.85, K.nStrips(6), bend, 1, 'deep', true);
   if (cast) {
     K.pivotPos('body', 'a', 'armF', ax, ay, tilt, sx, sy, _q);
     const shx = _q[0], shy = _q[1];
