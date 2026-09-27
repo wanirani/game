@@ -1,0 +1,24 @@
+{
+ "id": "b_mara",
+ "kind": "boss",
+ "out": "assets/painted/bosses/b_mara",
+ "raw": "tools/painted/raw/b_mara",
+ "td": 2.0,
+ "matte": {"default": {"key": 9, "soft": 22, "hard": 6}},
+ "cuts": {},
+ "parts": [
+  {"name": "p_head", "src": "head_a", "lps": 0.05, "box": [0, 0, 2048, 2048], "pivots": {"c": [1024, 1024]}},
+  {"name": "p_headb", "src": "headb_a", "lps": 0.05, "box": [0, 0, 2048, 2048], "pivots": {"c": [1024, 1024]}},
+  {"name": "p_torso", "src": "torso_a", "lps": 0.05, "box": [0, 0, 1760, 2336], "pivots": {"c": [880, 1100]}},
+  {"name": "p_arms", "src": "arms_a", "lps": 0.05, "box": [0, 0, 2720, 1536], "pivots": {"c": [1000, 700]}},
+  {"name": "p_legs", "src": "legs_a", "lps": 0.05, "box": [0, 0, 2720, 1536], "pivots": {"c": [1000, 700]}},
+  {"name": "p_cradle", "src": "cradle_a", "lps": 0.05, "box": [0, 0, 2720, 1536], "pivots": {"c": [1000, 700]}},
+  {"name": "p_flesh", "src": "flesh_a", "lps": 0.05, "box": [0, 0, 2720, 1536], "pivots": {"c": [1000, 700]}},
+  {"name": "p_faces", "src": "faces_a", "lps": 0.05, "box": [0, 0, 2720, 1536], "pivots": {"c": [1000, 700]}},
+  {"name": "p_doll", "src": "doll_a", "lps": 0.05, "box": [0, 0, 2720, 1536], "pivots": {"c": [1000, 700]}},
+  {"name": "p_dollb", "src": "doll_b", "lps": 0.05, "box": [0, 0, 2720, 1536], "pivots": {"c": [1000, 700]}},
+  {"name": "p_hair", "src": "hair_a", "lps": 0.05, "box": [0, 0, 3104, 1312], "pivots": {"c": [1000, 700]}},
+  {"name": "p_deb", "src": "debris_a", "lps": 0.05, "box": [0, 0, 2720, 1536], "pivots": {"c": [1000, 700]}}
+ ],
+ "debris": []
+}

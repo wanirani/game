@@ -7,6 +7,7 @@
 //         final (15%, 2.2초: 실루엣이 핵으로 빨려 들어가 흰 불꽃을 두른 검은 태양이 된다 · 대사 b_nihil_final)
 //         final 뒤 (afterTransition): run.sp = 100, 1차 전직 이상이면 run.aw = 100 (피날레 = 각성의 순간),
 //         플레이어 buffs.holyaura 20초 + refreshStats, 핵 상시 노출(0.4), 공허의 벽 open(), 새벽빛 화면 색조.
+//         피날레 보호 (takeHit): 15% 위에서 한 방에 쓰러뜨릴 피해(각성 등)는 경계 바로 아래에서 멈춰 final 을 건너뛸 수 없다.
 // 판정 부위 (hitParts, 플레이어와 가장 가까운 것): 가면/핵 80×100 (1.0 · 아가리가 열리면 그 속 핵 0.5 · P4 검은 태양 150×150 0.4)
 //   · 손바닥 눈 ×2 50×50 (뜬 동안 0.6 — 그때 손 판정은 빠진다) · 손 ×2 (1.3, 눈이 감긴 동안) · 수의(가면 아래 공허의 몸, 1.35, P1–P3)
 //   접촉 피해는 가면/핵만 (공허의 옷자락은 몸을 통과한다). 손은 공격 지대(slam · grasp)로만 때린다.
@@ -709,6 +710,17 @@ export class Nihil extends BossC {
     if (this.dying > 0 || this.introK < 0.5) return L;
     L.push(this.cCore);
     return L;
+  }
+  /**
+   * 피날레는 건너뛸 수 없다: 마지막 경계(15%) 위에서 한 방에 쓰러뜨릴 피해(각성 · 필살 · 대미지 폭주)는 경계 바로 아래까지만
+   * 들어가 final 전환(검은 태양 · b_nihil_final · 필살/각성 게이지 가득)이 먼저 온다. 이미 경계 아래면(마지막 페이즈 · 디버그 처치) 그대로
+   */
+  takeHit(dmg, attack, world, info) {
+    const ph = this.def?.phases ?? [], last = ph[ph.length - 1], max = this.stats?.maxHp ?? 0;
+    if (last > 0 && max > 0 && !(this.dying > 0) && !this.invuln && this.phase < ph.length && this.hp > max * last && dmg >= this.hp) {
+      dmg = Math.max(1, this.hp - Math.floor(max * last * 0.95));
+    }
+    return super.takeHit(dmg, attack, world, info);
   }
   onHurt(dmg, attack, world, info, part) {
     const x = info?.hx ?? this.cx, y = info?.hy ?? this.cy;

@@ -10,6 +10,7 @@
 // squash, recoil) · death (the warden topples, the forearm and the hook clatter away).
 import * as K from '../enemy_kit.js';
 import { clamp, lerp } from '../../../core/math.js';
+import { game as GAME } from '../../../core/game.js';
 
 export const spec = {
   id: 'chain_warden', tier: 'T2', src: 'chain_warden',
@@ -161,9 +162,11 @@ export function draw(ctx, e, world, o, rig) {
 /**
  * ZONE_C.hook (world space): the thrown chain + hook, painted. Starts at the warden's painted fist (e._pfist, last
  * frame) and runs to the hook zone; the hook flies ring-first-behind, flares red when it has caught the player.
- * Returns false while the rig is not ready (render/enemies_c.js then draws the vector chain).
+ * Returns false while the rig is not ready or painted enemies are switched off (render/enemies_c.js then draws the
+ * vector chain). The switches are checked first, so the painted-off modes never fetch the rig from here.
  */
 export function drawHookZone(ctx, z, world) {
+  if (!paintedOn(world)) return false;
   const rig = K.rigReady(spec);
   const d = z.data;
   if (!rig || !d) return false;
@@ -186,4 +189,15 @@ export function drawHookZone(ctx, z, world) {
   K.end();
   ctx.restore();
   return true;
+}
+
+/** = render/enemies.js paintedEnemiesOn (window.__paintedEnemies=false · registry.paintedEnabled: ?painted=0,
+ *  window.__paintedOff, settings.painted=false). Copied, not imported: both modules sit on import cycles with this one
+ *  (enemies.js → enemies_c.js → here; registry.js → reg/index.js → reg/enemy-p2-c-art.js → here) and registry.js reads
+ *  every reg package at its top level. */
+function paintedOn(world) {
+  const g = globalThis;
+  if (g.__paintedEnemies === false || g.__paintedOff) return false;
+  try { if (/[?&]painted=0\b/.test(g.location?.search ?? '')) return false; } catch { /* 무시 */ }
+  return (world?.game ?? GAME)?.settings?.painted !== false;
 }
