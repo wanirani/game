@@ -375,11 +375,17 @@ export class Dagon extends BossC {
   }
   idleMove(dt, world, t) {
     this.faceP();
-    if (this.tsink > 0) this.tsink = 0;
     const p = this.P;
-    if (!p || Math.abs(this.tbx - this.bx) > 4) return;
-    const d = Math.abs(p.cx - this.bx);
-    if (d < 230 || d > 760 || this.offscreen()) { this.tbx = this.pickSpot(); this.moveSp = d > 760 || this.offscreen() ? 150 : 70; }
+    if (Math.abs(this.tbx - this.bx) > 6) { if (this.moveSp > 300) this.tsink = Math.max(this.tsink, 0.8); return; }   // 헤엄쳐 이동 중
+    this.tsink = 0; this.moveSp = 80;
+    if (!p) return;
+    const d = Math.abs(p.cx - this.bx), off = this.offscreen();
+    if (d < 230 || d > 760 || off) {
+      this.tbx = this.pickSpot();
+      // 멀면(화면 밖 포함) 잠수해서 빠르게 헤엄쳐 간다 (좁은 폰 화면에서도 패턴을 화면 안에서 시작하게)
+      if (Math.abs(this.tbx - this.bx) > 240 || off) { this.moveSp = 650; this.tsink = 0.8; this.sinkRate = 2.6; }
+      else this.moveSp = 70;
+    }
   }
 
   // ── organ: 들숨(아가미 = 약점) → 틈이 있는 고리 2개 (인페르노 3) ──
