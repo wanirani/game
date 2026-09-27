@@ -2224,7 +2224,9 @@ export const ULTFX = {
     if (prev) prev.finish(true);
     const pl = p || w.player;
     if (pl?.hero) { try { prepareFor(w, pl); } catch { /* 굽기 실패는 연출만 줄어든다 */ } }
-    return new Session(w, pl, o || {});
+    const s = new Session(w, pl, o || {});
+    w.__ultfx = s;
+    return s;
   }),
   /** 박자 한 번: 충격파 고리 + 섬광 + 불꽃 + 카메라 반동 */
   beat: safe('beat', (w, x, y, o) => beatImpl(w, x, y, o || {})),
