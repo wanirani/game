@@ -9,7 +9,7 @@
 //          hamGlow, chainSw, vx, exploded, dying, hp/stats.maxHp, flashT, hitPart{grate?}, A{floor} }
 // 좌표: 벡터 paintBody 와 같은 몸 좌표계 — translate(cx, bottom+sink) · scale(turnK,1) · rotate(lean). Drawer 의 기준 행렬을 그 몸 좌표계로 잡아
 //   모든 부품을 지역 좌표로 바로 그린다 (돌아설 때의 가로 찌그러짐까지 벡터와 같다). 판정은 바꾸지 않는다.
-import { Drawer, Particles, Shards, halo, rr, loadRig, pickVariant, quality, QUALITY, makeCanvas } from '../kit.js';
+import { Drawer, Particles, Shards, halo, rr, loadRig, pickVariant, quality, QUALITY, makeCanvas, ledgesOver } from '../kit.js';
 
 const DIR = 'painted/bosses/b_moloch';
 const FIRE = '#ff7a2a', HOT = '#ffd070', LAVA = '#ff5a1a', SOUL = '#ffe8a0', RED = '#ff4020';
@@ -25,6 +25,9 @@ const FURN = [0, -142, 46, 54];
 const HEAD_Y = -244;
 const TORSO_Y = -142;                 // 흉갑 화로 구멍 가운데
 const GRATE_R = 51;                   // 창살 바깥 테 반지름 (월드 px)
+// 굴뚝: 채색 머리(뿔 포함 ±95px)가 벡터 머리보다 넓어 벡터 자리(±64)에 두면 머리 뒤에 완전히 가려진다 →
+// 견갑 뒤에서 바깥으로 기울어 솟게 한다 (꼭대기 ≈ ±131, −346: 머리 옆·뿔 아래로 불꽃이 보인다). 로직의 굴뚝 불꽃 터짐 자리도 이 값을 쓴다 (art.chimneyTop)
+const CH_X = 118, CH_Y = -214, CH_ROT = 0.1;
 
 const DEF = {
   glow: '#ffb070',
@@ -61,6 +64,9 @@ export default {
     let x0 = b.cx - 300, x1 = b.cx + 300, y0 = b.bottom - 470, y1 = b.bottom + 40;
     if (b.tongs) { x0 = Math.min(x0, b.tongs.x - 140); x1 = Math.max(x1, b.tongs.x + 140); y0 = Math.min(y0, b.tongs.y - 80); y1 = Math.max(y1, b.tongs.y + 80); }
     if ((b.dying > 0 || st?.shards?.list.length) && b.A) { x0 = Math.min(x0, b.A.x0); x1 = Math.max(x1, b.A.x1); y0 = Math.min(y0, b.bottom - 700); }
+    // 남아 있는 입자 (불똥·연기·파편 불씨 — BOSS_PIPELINE §8.15)
+    const P = st?.P;
+    if (P?.n) for (let i = 0; i < P.n; i++) { const px = P.x[i], py = P.y[i]; if (px - 30 < x0) x0 = px - 30; if (px + 30 > x1) x1 = px + 30; if (py - 30 < y0) y0 = py - 30; if (py + 30 > y1) y1 = py + 30; }
     out.x = x0; out.y = y0; out.w = x1 - x0; out.h = y1 - y0;
     return out;
   },
@@ -190,6 +196,7 @@ function drawBoss(ctx, b, world, rig, st) {
   D.save();
   ctx.beginPath(); ctx.rect(X - 2000, F + 6 - 4000, 4000, 4000); ctx.clip();
   const shake = st.jolt > 0 ? (rr.next() - 0.5) * 3 * st.jolt : 0;
+  const WM = ctx.getTransform();       // 월드 변환 (발판 덧그리기용)
   ctx.translate(X + shake, Y); ctx.scale(tk, 1); ctx.rotate(lean);
   D.begin(ctx);
   if (flash > 0) D.startFlash(); else D.rec = false;
@@ -198,7 +205,7 @@ function drawBoss(ctx, b, world, rig, st) {
   // ── 굴뚝 (등 뒤) ──
   if (!exploded && R.chimney) {
     for (const s of [-1, 1]) {
-      const cx = s * 64, cy = -222 + breath, cracked = f1 && s < 0, rot = s * 0.06;
+      const cx = s * CH_X, cy = CH_Y + breath, cracked = f1 && s < 0, rot = s * CH_ROT;
       put(D, R.chimney, V(R.chimney, false, cracked ? 2 : Math.min(lvl, 1)), 'base', cx, cy, rot);
       if (cracked) glowOver(ctx, D, R.chimney, 2, 'base', cx, cy, rot, 1, 1, 1, 0.9, t, st);
       const top = ptOf(R.chimney, 'base', R.chimney.top, cx, cy, rot, 1, st.lp);
@@ -254,6 +261,16 @@ function drawBoss(ctx, b, world, rig, st) {
   if (R.apron) {
     const sk = Math.sin(t * 1.1) * 0.03 - (b.vx ?? 0) * 0.001 * tk;
     put(D, R.apron, V(R.apron), 'belt', 0, -60 + breath, sk);
+  }
+  // ── 발판 덧그리기 (BOSS_PIPELINE §8.11): 우상이 경기장 한쪽 발판(머리 높이)을 덮어도 딛을 곳이 보이게.
+  //    굴뚝·흉갑·창살·앞치마 위, 머리·뿔·망치 팔 아래. 발판은 타일 층과 같은 그림이라 몸의 투명도(a0)와 무관하게 불투명하게 덧그린다
+  if (q.ledges !== false && !exploded) {
+    const cam = world.camera, cx0 = cam?.x ?? -1e9, cy0 = cam?.y ?? -1e9, cx1 = cx0 + (cam?.vw ?? 2e9), cy1 = cy0 + (cam?.vh ?? 2e9);
+    ctx.setTransform(WM);
+    const ga2 = ctx.globalAlpha; ctx.globalAlpha = ga;
+    ledgesOver(ctx, world, Math.max(X - 320, cx0), Math.max(Y - 480, cy0), Math.min(X + 320, cx1), Math.min(F - 8, cy1));
+    ctx.globalAlpha = ga2;
+    D.end();
   }
   // ── 머리 + 뿔 ──
   D.rec = recOn('head');
@@ -319,6 +336,8 @@ function drawBoss(ctx, b, world, rig, st) {
 /** 굴뚝 불꽃: 가산 퍼프 기둥 (금 간 쪽은 작고 검붉다) + 불똥 */
 function chimneyFlame(ctx, st, x, y, P, t, s, cracked, dt, Wd) {
   if (!st.q.halos) return;
+  st.D.end();   // 굴뚝 부품 변환이 남아 있으면 불꽃이 엉뚱한 곳(부품 텍셀 공간)에 그려진다 → 몸 좌표 기준으로
+
   const k = 0.5 + (P.chim ?? 0) * 0.5, fk = 0.7 + Math.sin(t * 13 + s) * 0.15;
   const h = (60 + 70 * (P.chim ?? 0)) * fk * (cracked ? 0.6 : 1), w = 20 * fk * (cracked ? 0.6 : 1);
   halo(ctx, x, y + 4, 26, cracked ? RED : FIRE, 0.7 * k);
@@ -432,8 +451,8 @@ function explodeBurst(st, rig, b, tk, Wd) {
   const R = rig.parts, G = Wd(0, TORSO_Y);
   if (R.grate) st.shards.spawn(R.grate.v.base, R.grate.c[0], R.grate.c[1], G[0], G[1], 0, R.grate.k * tk, R.grate.k, rr.range(-120, 120), -rr.range(420, 560), rr.range(-6, 6), { r: 30, fade: 2.2, bounce: 0.3 });
   if (R.chimney) for (const s of [-1, 1]) {
-    const w = Wd(s * 64, -290);
-    st.shards.spawn(R.chimney.v.dmg2 ?? R.chimney.v.base, R.chimney.base[0], R.chimney.base[1] * 0.55, w[0], w[1], s * 0.06, R.chimney.k * tk, R.chimney.k, s * Math.sign(tk) * rr.range(160, 260), -rr.range(300, 420), s * rr.range(2, 5), { r: 20, fade: 2.2, bounce: 0.3 });
+    const w = Wd(s * (CH_X + 8), CH_Y - 70);
+    st.shards.spawn(R.chimney.v.dmg2 ?? R.chimney.v.base, R.chimney.base[0], R.chimney.base[1] * 0.55, w[0], w[1], s * CH_ROT, R.chimney.k * tk, R.chimney.k, s * Math.sign(tk) * rr.range(160, 260), -rr.range(300, 420), s * rr.range(2, 5), { r: 20, fade: 2.2, bounce: 0.3 });
   }
   spawnDeb(st, rig, G[0], G[1], 16, 520, 1, 1.9);
   st.P.burst('ember', G[0], G[1], 60, { speed: 480 });

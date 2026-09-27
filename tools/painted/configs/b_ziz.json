@@ -4,7 +4,7 @@
  "out": "assets/painted/bosses/b_ziz",
  "raw": "tools/painted/raw/b_ziz",
  "td": 2.0,
- "hurtboxNotes": "BOSS_PIPELINE \u00a78.8 (documented, gameplay NOT changed): logic hit parts = 12 wing eyes (30x30, P2+, open>0.6), head 60x60 at head.{x,y}, core 90x90 at body (0,8), wings = S..E box +110 below. The painted wing eyes are drawn exactly at eye.{x,y} (logic), the skull eye socket sits on head.{x,y}, the chest wound + core glow at (0,8). The painted inner wing piece follows S->E, the forearm piece follows E->Wr from the logic elbow; the primaries piece hangs from the painted wrist (~60 px inside the logic wrist, no hit part there). Talons/skirt/tail have no hurtbox, as in the vector art.",
+ "hurtboxNotes": "BOSS_PIPELINE §8.8 (documented, gameplay NOT changed): logic hit parts = 12 wing eyes (30x30, P2+, open>0.6), head 60x60 at head.{x,y}, core 90x90 at body (0,8), wings = S..E box +110 below. The painted wing eyes are drawn exactly at eye.{x,y} (logic), the skull eye socket sits on head.{x,y}, the chest wound + core glow at (0,8). The painted inner wing piece follows S->E, the forearm piece follows E->Wr from the logic elbow; the primaries piece hangs from the painted wrist (~60 px inside the logic wrist, no hit part there). Talons/skirt/tail have no hurtbox, as in the vector art.",
  "matte": {
   "default": {
    "key": 9,
@@ -810,5 +810,78 @@
     ]
    ]
   }
- ]
+ ],
+ "kling": {
+  "model": "kling-image-v3_0_omni (image_to_image, 2k, 图片1 = portrait)",
+  "prompts": "tools/painted/prompts/art-boss-7.mjs",
+  "manifest": "tools/kling/manifest_art-boss-7.json",
+  "images": {
+   "zz_head": {
+    "generationId": "AQ66wG5kxVi_yT95aaCY5m2C-pEpo4T2GZccDftecbPzcEB0ip1nN-l8rfmrgUID3w4rFRKX",
+    "imageCount": 2,
+    "prompt": "tools/painted/prompts/art-boss-7.mjs SHOTS.zz_head",
+    "decision": "#1 kept → raw/b_ziz/head_a (open hooked skull beak, jaw cut at the hinge, storm-feather crest). #2 unused (closed beak, jaw not separable)."
+   },
+   "zz_torso": {
+    "generationId": "AdfdW2XsHCzH1bCSz5PUzwlGVzIa5cWq1p_HZW0sAzmCG5OYnoxjXHrVX1uoKT4xPAJNZTgA",
+    "imageCount": 2,
+    "prompt": "tools/painted/prompts/art-boss-7.mjs SHOTS.zz_torso",
+    "decision": "#1 kept → raw/b_ziz/torso_a (frontal feather barrel with the torn chest wound; ribs are a separate part). #2 unused (wound painted with ribs inside → could not open as doors)."
+   },
+   "zz_ribs": {
+    "generationId": "AbOFvb6VVUd2eQLBCVcJIZWWSDBMtX7iZrPxvD7Ydz7--mfBNzJnalSiYK7LjK2BmLp3fYRH",
+    "imageCount": 1,
+    "prompt": "tools/painted/prompts/art-boss-7.mjs SHOTS.zz_ribs",
+    "decision": "#1 kept → raw/b_ziz/ribs_a (left half ribcage, mirrored for the right half; breastbone unused)."
+   },
+   "zz_wingarm": {
+    "generationId": "AfEgr0xg6av1V272ltY6kMwfhlnk3F82cAhNEkLBHApp1ty0k5HOsuw4HEyOIAhAl2VsT5mq",
+    "imageCount": 2,
+    "prompt": "tools/painted/prompts/art-boss-7.mjs SHOTS.zz_wingarm",
+    "decision": "#1 kept → raw/b_ziz/wing_a (straight bony wing arm cut into 3 pieces: upper arm, forearm, primaries). #2 unused (curved, cut lines unclear)."
+   },
+   "zz_feathers": {
+    "generationId": "AbiwLCPsKGeHQkHXw8b7b3ucdT93jwawxQOVu7YbpUwtgsH24-s_lifKMkbFwx5OHAFyUXyD",
+    "imageCount": 2,
+    "prompt": "tools/painted/prompts/art-boss-7.mjs SHOTS.zz_feathers",
+    "decision": "#2 kept → raw/b_ziz/feath_a (tail feathers fth1/fth2). #1 unused (rim-light halo along the vanes)."
+   },
+   "zz_eyes": {
+    "generationId": "AeKyY7O3z5AtwF6ZhNArbTTESf95PJNuNLRNkDamohVvrOM39ATg4PevWvXFcAEDgjo6eS_t",
+    "imageCount": 1,
+    "prompt": "tools/painted/prompts/art-boss-7.mjs SHOTS.zz_eyes",
+    "decision": "#1 rejected: round eyeballs instead of eyelid patches (the \"open/closed/burst\" states did not share a silhouette)."
+   },
+   "zz_leg": {
+    "generationId": "AQEWOs1EoCjKA32AV7VnaxondTJ9iHS0jXxok-BWhl8OF6GbnWMBeRoWzXuVYt4IZl1XuqR6",
+    "imageCount": 2,
+    "prompt": "tools/painted/prompts/art-boss-7.mjs SHOTS.zz_leg",
+    "decision": "#2 kept → raw/b_ziz/leg_a (feathered thigh + scaly shin with talons). #1 unused (gold bands too bright)."
+   },
+   "zz_debris": {
+    "generationId": "AY7EohrxzU9gylWGT75m1bz0WHUXdlw1fki4fc7OnjN37fkb9Au-WC4TeWDq38zDbOaZnn9Z",
+    "imageCount": 1,
+    "prompt": "tools/painted/prompts/art-boss-7.mjs SHOTS.zz_debris",
+    "decision": "#1 rejected: cyan rim-light halo around every piece (matte left a glowing rim) → re-run as zz_debris2."
+   },
+   "zz_eyes2": {
+    "generationId": "AbZoR7Xg6JcgjmA56IPY3fu9yB7IAws4ylWMKM4c-hv1Qyvh0d33MjneWZsTjGB3a0X-EVLj",
+    "imageCount": 2,
+    "prompt": "tools/painted/prompts/art-boss-7.mjs SHOTS.zz_eyes2",
+    "decision": "#2 kept → raw/b_ziz/eyes_a (slit-pupil eye in storm feathers; closed/burst states are drawn procedurally: lids + stitches, bloody socket). #1 unused (sphere-shaped variants)."
+   },
+   "zz_debris2": {
+    "generationId": "AbpnEAKAzXc28I_Esma-e2RFEUFGxUM-Gmmn3jEiYq2vKSwpu5YbJSnBEQrI6StFiKjt4YSj",
+    "imageCount": 1,
+    "prompt": "tools/painted/prompts/art-boss-7.mjs SHOTS.zz_debris2",
+    "decision": "#1 kept → raw/b_ziz/debris_a (12 debris pieces: feather clumps, bone shards, beak tip, talon)."
+   },
+   "zz_eyes3": {
+    "generationId": "AauY0HiB9FeQPtWUGvGsDR2c91aatJPQUXfzobEuK5Wty5c41y_Bh9pDbMoJu1iEXaNGmab3",
+    "imageCount": 2,
+    "prompt": "tools/painted/prompts/art-boss-7.mjs SHOTS.zz_eyes3",
+    "decision": "both rejected: the closed and burst copies came back as round stitched/bloody balls again (not the feathered patch of 图片2); eyes_a (zz_eyes2 #2) + procedural lids kept."
+   }
+  }
+ }
 }

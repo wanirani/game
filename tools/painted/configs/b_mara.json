@@ -4,7 +4,7 @@
  "out": "assets/painted/bosses/b_mara",
  "raw": "tools/painted/raw/b_mara",
  "td": 2.0,
- "hurtboxNotes": "",
+ "hurtboxNotes": "BOSS_PIPELINE §8.8 (documented, gameplay NOT changed): logic hit parts = face 72x132 (P1) / 72x110 (P2) from faceP-(36,38), mouth eye 36x44 at mouthP (scream only), cradle 272x124 (P1) / 300x178 (P2), P2 baby heads 34x34 at the near knees. The painted doll mask is centred on jt.head (mask ≈50x92 px, its spine neck hangs to the shoulder inside the face box), the scream eye is drawn at the mask's mouth pivot (= logic mouth offset, 22 px below the face centre), the P1 cradle is stretched 1.3x in x to the 272 px cradle box with the rail at y-108, the P2 cradle sits at body+58 (x1.08) under the flesh mound that bulges above the rail, and each baby head is centred 20 px above its knee (logic box 17 px above). Hair, sleepers on threads, the four arms and the eight doll legs have no hurtbox (same as the vector art).",
  "matte": {
   "default": {
    "key": 9,
@@ -675,5 +675,90 @@
     ]
    ]
   }
- ]
+ ],
+ "kling": {
+  "model": "kling-image-v3_0_omni (image_to_image, 2k, 图片1 = portrait)",
+  "prompts": "tools/painted/prompts/art-boss-7.mjs",
+  "manifest": "tools/kling/manifest_art-boss-7.json",
+  "images": {
+   "mr_head": {
+    "generationId": "AZ477YSJwVfUrsBM7k6dTDpqEvrO_BGZ4VjWo2Pr0-f6sELoGpb4zHCnEY9l2QK9Uis19oVj",
+    "imageCount": 2,
+    "prompt": "tools/painted/prompts/art-boss-7.mjs SHOTS.mr_head",
+    "decision": "#2 kept → raw/b_mara/head_a (cracked porcelain doll mask with stitched smile, spine neck, black thread hair; generated facing left → drawn mirrored). #1 unused (open skull-teeth grin, cartoonish cheeks)."
+   },
+   "mr_torso": {
+    "generationId": "AQcXInD-6vDqNBw1QqxJc9SkC2odAyhRuKlPA3xHmHo9wdapTBnxah9MOKamO_p4eyHBxr0Q",
+    "imageCount": 2,
+    "prompt": "tools/painted/prompts/art-boss-7.mjs SHOTS.mr_torso",
+    "decision": "#1 kept → raw/b_mara/torso_a (emaciated rib torso with stitched belly scar and torn violet nightgown; facing left → mirrored). #2 unused (back view)."
+   },
+   "mr_arms": {
+    "generationId": "AaMfgkpR0RMMxH_aED9WwFlymyBuMzSSei64rdS6sDo8TaDmsYVtvf1bpJdPf1xPd7MsMo5q",
+    "imageCount": 2,
+    "prompt": "tools/painted/prompts/art-boss-7.mjs SHOTS.mr_arms",
+    "decision": "#1 kept → raw/b_mara/arms_a (upper arm, forearm, open claw hand, curled claw hand for the 4 arms; soft floor shadows cut off by the boxes). #2 unused (pale bone-white skin did not match the torso)."
+   },
+   "mr_legs": {
+    "generationId": "AW7ccAE7dJNAU3kWDJeWAb0AHUl_PslvzTg_is5SGD5Ixb-G2qbWu53Bvv0ZG6G8P6B-zJkk",
+    "imageCount": 1,
+    "prompt": "tools/painted/prompts/art-boss-7.mjs SHOTS.mr_legs",
+    "decision": "#1 rejected: cartoon bone + paw with golden claw (off-style) → re-run as mr_legs2 with the torso as 图片2."
+   },
+   "mr_cradle": {
+    "generationId": "ARihWmYEn3gWoep_xMLJIcvvpl26gzUUx7M2WqIUZs5koucWCgnn1J7sCkwEOt883z_jmiii",
+    "imageCount": 2,
+    "prompt": "tools/painted/prompts/art-boss-7.mjs SHOTS.mr_cradle",
+    "decision": "#2 kept → raw/b_mara/cradle_a (strict side view rocking iron cradle with bloody rust). #1 unused (three-quarter view, legs instead of rockers)."
+   },
+   "mr_flesh": {
+    "generationId": "AZkYSCBsBvTQzoFDjU7-xxw0dXc8XVZzyGp8THRcfxREXMs1dsgvcGn_j5Mkdx35T3YKEOyE",
+    "imageCount": 1,
+    "prompt": "tools/painted/prompts/art-boss-7.mjs SHOTS.mr_flesh",
+    "decision": "#1 rejected: flat pink blob with a spotlight beam (not grotesque, lighting baked in) → re-run as mr_flesh2."
+   },
+   "mr_faces": {
+    "generationId": "AQissIRV_NMLHaOpJwme5FihE1mRbaGoIQd23okCHhhqQqGOglPfH2EQXxT0P7ZZ5oj8jfIW",
+    "imageCount": 2,
+    "prompt": "tools/painted/prompts/art-boss-7.mjs SHOTS.mr_faces",
+    "decision": "#1 kept → raw/b_mara/faces_a (2 sleeping doll faces = thread sleepers, crying + grinning awake heads = P2 knee heads). #2 unused (softer, less distinct expressions)."
+   },
+   "mr_doll": {
+    "generationId": "AbVh2r4LeisV9jn1lb74d07oKHue9lwozdQXivBcWflHJyoA4KVab3DDX1GCnDtkDIHOWiKH",
+    "imageCount": 2,
+    "prompt": "tools/painted/prompts/art-boss-7.mjs SHOTS.mr_doll",
+    "decision": "#1 kept → raw/b_mara/doll_a (broken porcelain thigh + spike shin for the 8 spider legs, cracked ball knee joint, hollow-eyed doll mask = third knee head, clawed doll arm = under-cradle arms)."
+   },
+   "mr_hair": {
+    "generationId": "Ac43y4WEYt_-1b8n-PK2lsZ67r9CbqLylSMTKexPeeFbFlFfWTyd9Pw4nEntRmqAMpXwID1r",
+    "imageCount": 1,
+    "prompt": "tools/painted/prompts/art-boss-7.mjs SHOTS.mr_hair",
+    "decision": "#1 kept → raw/b_mara/hair_a (black thread-hair mass flowing from a knot; drawn twice from the crown)."
+   },
+   "mr_debris": {
+    "generationId": "AXiOmGtgCrdya4adcXSWaye-MoAzLStaDvTVqzCvR1HlSJfwkfnvomZE_xIKAQcECR9yaUWR",
+    "imageCount": 1,
+    "prompt": "tools/painted/prompts/art-boss-7.mjs SHOTS.mr_debris",
+    "decision": "#1 kept → raw/b_mara/debris_a (death debris: mask shard, rag, thread knot, glass eye, cradle bars, claw hand)."
+   },
+   "mr_head2b": {
+    "generationId": "AchFONwMilOph-2gU5NzQ8xoW4aAek67eKwxODugjgF7CX1cYB_Cn7zK9AaKkhRduBPZxFxi",
+    "imageCount": 2,
+    "prompt": "tools/painted/prompts/art-boss-7.mjs SHOTS.mr_head2b",
+    "decision": "#2 kept → raw/b_mara/headb_a (same mask broken open: black hollow, violet eye, bleeding stitched mouth → P3 head, aligned with head_a pivots). #1 unused (whiter porcelain than head_a)."
+   },
+   "mr_legs2": {
+    "generationId": "AdS7_Gpa_hY3449B9Ey2gEfHW0skj5vwuYLR8cR_reMZZJfCdC-dj7eaPJbq_JGERqzFyE68",
+    "imageCount": 2,
+    "prompt": "tools/painted/prompts/art-boss-7.mjs SHOTS.mr_legs2",
+    "decision": "#1 kept → raw/b_mara/legs_a (fleshy torn thigh and shin in the torso skin tone + clawed foot for the squatting P1 legs). #2 unused (cartoon bones again)."
+   },
+   "mr_flesh2": {
+    "generationId": "AYAHbPPthNo3DiW5r5AmkiM63xTheWdOlAd2Dzayp5m3YCiYrAyC7Gf780iJ737Uc2w1XeEX",
+    "imageCount": 1,
+    "prompt": "tools/painted/prompts/art-boss-7.mjs SHOTS.mr_flesh2",
+    "decision": "#1 kept → raw/b_mara/flesh_a (bruised violet tumour with a toothed mouth and three baby-doll faces = P2 cradle-beast belly / dreamshift swelling)."
+   }
+  }
+ }
 }

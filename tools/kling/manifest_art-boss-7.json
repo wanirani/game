@@ -1,0 +1,323 @@
+{
+ "package": "ART-BOSS-7",
+ "model": "kling-image-v3_0_omni (image_to_image, img_resolution 2k)",
+ "prompts": "tools/painted/prompts/art-boss-7.mjs (SHOTS)",
+ "refs": {
+  "image_1": "portrait (assets/portraits/b_ziz | b_mara | b_behemoth .webp → PNG, file_upload)",
+  "image_2": "an already generated result URL (v2 shots: mr_head2b ← mr_head_2, mr_legs2 ← mr_torso_1, zz_eyes3 ← zz_eyes2_2, bh_queen2b ← bh_queen_2, bh_sacs2 ← bh_torso_1)"
+ },
+ "generations": [
+  {
+   "boss": "b_ziz",
+   "shot": "zz_head",
+   "generationId": "AQ66wG5kxVi_yT95aaCY5m2C-pEpo4T2GZccDftecbPzcEB0ip1nN-l8rfmrgUID3w4rFRKX",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "refs": "portrait",
+   "decision": "#1 kept → raw/b_ziz/head_a (open hooked skull beak, jaw cut at the hinge, storm-feather crest). #2 unused (closed beak, jaw not separable)."
+  },
+  {
+   "boss": "b_ziz",
+   "shot": "zz_torso",
+   "generationId": "AdfdW2XsHCzH1bCSz5PUzwlGVzIa5cWq1p_HZW0sAzmCG5OYnoxjXHrVX1uoKT4xPAJNZTgA",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "refs": "portrait",
+   "decision": "#1 kept → raw/b_ziz/torso_a (frontal feather barrel with the torn chest wound; ribs are a separate part). #2 unused (wound painted with ribs inside → could not open as doors)."
+  },
+  {
+   "boss": "b_ziz",
+   "shot": "zz_ribs",
+   "generationId": "AbOFvb6VVUd2eQLBCVcJIZWWSDBMtX7iZrPxvD7Ydz7--mfBNzJnalSiYK7LjK2BmLp3fYRH",
+   "aspect": "16:9",
+   "imageCount": 1,
+   "refs": "portrait",
+   "decision": "#1 kept → raw/b_ziz/ribs_a (left half ribcage, mirrored for the right half; breastbone unused)."
+  },
+  {
+   "boss": "b_ziz",
+   "shot": "zz_wingarm",
+   "generationId": "AfEgr0xg6av1V272ltY6kMwfhlnk3F82cAhNEkLBHApp1ty0k5HOsuw4HEyOIAhAl2VsT5mq",
+   "aspect": "21:9",
+   "imageCount": 2,
+   "refs": "portrait",
+   "decision": "#1 kept → raw/b_ziz/wing_a (straight bony wing arm cut into 3 pieces: upper arm, forearm, primaries). #2 unused (curved, cut lines unclear)."
+  },
+  {
+   "boss": "b_ziz",
+   "shot": "zz_feathers",
+   "generationId": "AbiwLCPsKGeHQkHXw8b7b3ucdT93jwawxQOVu7YbpUwtgsH24-s_lifKMkbFwx5OHAFyUXyD",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "refs": "portrait",
+   "decision": "#2 kept → raw/b_ziz/feath_a (tail feathers fth1/fth2). #1 unused (rim-light halo along the vanes)."
+  },
+  {
+   "boss": "b_ziz",
+   "shot": "zz_eyes",
+   "generationId": "AeKyY7O3z5AtwF6ZhNArbTTESf95PJNuNLRNkDamohVvrOM39ATg4PevWvXFcAEDgjo6eS_t",
+   "aspect": "16:9",
+   "imageCount": 1,
+   "refs": "portrait",
+   "decision": "#1 rejected: round eyeballs instead of eyelid patches (the \"open/closed/burst\" states did not share a silhouette)."
+  },
+  {
+   "boss": "b_ziz",
+   "shot": "zz_leg",
+   "generationId": "AQEWOs1EoCjKA32AV7VnaxondTJ9iHS0jXxok-BWhl8OF6GbnWMBeRoWzXuVYt4IZl1XuqR6",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "refs": "portrait",
+   "decision": "#2 kept → raw/b_ziz/leg_a (feathered thigh + scaly shin with talons). #1 unused (gold bands too bright)."
+  },
+  {
+   "boss": "b_ziz",
+   "shot": "zz_debris",
+   "generationId": "AY7EohrxzU9gylWGT75m1bz0WHUXdlw1fki4fc7OnjN37fkb9Au-WC4TeWDq38zDbOaZnn9Z",
+   "aspect": "16:9",
+   "imageCount": 1,
+   "refs": "portrait",
+   "decision": "#1 rejected: cyan rim-light halo around every piece (matte left a glowing rim) → re-run as zz_debris2."
+  },
+  {
+   "boss": "b_mara",
+   "shot": "mr_head",
+   "generationId": "AZ477YSJwVfUrsBM7k6dTDpqEvrO_BGZ4VjWo2Pr0-f6sELoGpb4zHCnEY9l2QK9Uis19oVj",
+   "aspect": "1:1",
+   "imageCount": 2,
+   "refs": "portrait",
+   "decision": "#2 kept → raw/b_mara/head_a (cracked porcelain doll mask with stitched smile, spine neck, black thread hair; generated facing left → drawn mirrored). #1 unused (open skull-teeth grin, cartoonish cheeks)."
+  },
+  {
+   "boss": "b_mara",
+   "shot": "mr_torso",
+   "generationId": "AQcXInD-6vDqNBw1QqxJc9SkC2odAyhRuKlPA3xHmHo9wdapTBnxah9MOKamO_p4eyHBxr0Q",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "refs": "portrait",
+   "decision": "#1 kept → raw/b_mara/torso_a (emaciated rib torso with stitched belly scar and torn violet nightgown; facing left → mirrored). #2 unused (back view)."
+  },
+  {
+   "boss": "b_mara",
+   "shot": "mr_arms",
+   "generationId": "AaMfgkpR0RMMxH_aED9WwFlymyBuMzSSei64rdS6sDo8TaDmsYVtvf1bpJdPf1xPd7MsMo5q",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "refs": "portrait",
+   "decision": "#1 kept → raw/b_mara/arms_a (upper arm, forearm, open claw hand, curled claw hand for the 4 arms; soft floor shadows cut off by the boxes). #2 unused (pale bone-white skin did not match the torso)."
+  },
+  {
+   "boss": "b_mara",
+   "shot": "mr_legs",
+   "generationId": "AW7ccAE7dJNAU3kWDJeWAb0AHUl_PslvzTg_is5SGD5Ixb-G2qbWu53Bvv0ZG6G8P6B-zJkk",
+   "aspect": "16:9",
+   "imageCount": 1,
+   "refs": "portrait",
+   "decision": "#1 rejected: cartoon bone + paw with golden claw (off-style) → re-run as mr_legs2 with the torso as 图片2."
+  },
+  {
+   "boss": "b_mara",
+   "shot": "mr_cradle",
+   "generationId": "ARihWmYEn3gWoep_xMLJIcvvpl26gzUUx7M2WqIUZs5koucWCgnn1J7sCkwEOt883z_jmiii",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "refs": "portrait",
+   "decision": "#2 kept → raw/b_mara/cradle_a (strict side view rocking iron cradle with bloody rust). #1 unused (three-quarter view, legs instead of rockers)."
+  },
+  {
+   "boss": "b_mara",
+   "shot": "mr_flesh",
+   "generationId": "AZkYSCBsBvTQzoFDjU7-xxw0dXc8XVZzyGp8THRcfxREXMs1dsgvcGn_j5Mkdx35T3YKEOyE",
+   "aspect": "16:9",
+   "imageCount": 1,
+   "refs": "portrait",
+   "decision": "#1 rejected: flat pink blob with a spotlight beam (not grotesque, lighting baked in) → re-run as mr_flesh2."
+  },
+  {
+   "boss": "b_mara",
+   "shot": "mr_faces",
+   "generationId": "AQissIRV_NMLHaOpJwme5FihE1mRbaGoIQd23okCHhhqQqGOglPfH2EQXxT0P7ZZ5oj8jfIW",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "refs": "portrait",
+   "decision": "#1 kept → raw/b_mara/faces_a (2 sleeping doll faces = thread sleepers, crying + grinning awake heads = P2 knee heads). #2 unused (softer, less distinct expressions)."
+  },
+  {
+   "boss": "b_mara",
+   "shot": "mr_doll",
+   "generationId": "AbVh2r4LeisV9jn1lb74d07oKHue9lwozdQXivBcWflHJyoA4KVab3DDX1GCnDtkDIHOWiKH",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "refs": "portrait",
+   "decision": "#1 kept → raw/b_mara/doll_a (broken porcelain thigh + spike shin for the 8 spider legs, cracked ball knee joint, hollow-eyed doll mask = third knee head, clawed doll arm = under-cradle arms)."
+  },
+  {
+   "boss": "b_mara",
+   "shot": "mr_hair",
+   "generationId": "Ac43y4WEYt_-1b8n-PK2lsZ67r9CbqLylSMTKexPeeFbFlFfWTyd9Pw4nEntRmqAMpXwID1r",
+   "aspect": "21:9",
+   "imageCount": 1,
+   "refs": "portrait",
+   "decision": "#1 kept → raw/b_mara/hair_a (black thread-hair mass flowing from a knot; drawn twice from the crown)."
+  },
+  {
+   "boss": "b_mara",
+   "shot": "mr_debris",
+   "generationId": "AXiOmGtgCrdya4adcXSWaye-MoAzLStaDvTVqzCvR1HlSJfwkfnvomZE_xIKAQcECR9yaUWR",
+   "aspect": "16:9",
+   "imageCount": 1,
+   "refs": "portrait",
+   "decision": "#1 kept → raw/b_mara/debris_a (death debris: mask shard, rag, thread knot, glass eye, cradle bars, claw hand)."
+  },
+  {
+   "boss": "b_behemoth",
+   "shot": "bh_head",
+   "generationId": "ATa_1Q1IvgD-EYvAq1wG-dwPXwA0um_Y0GnjxqM-4YzZDFebF_n9Z4yhCr_ENukCFs5n_lKx",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "refs": "portrait",
+   "decision": "#1 kept → raw/b_behemoth/head_a (bare boar skull + furry rotting half with glowing mushrooms and bleeding holes, open jaw cut at the hinge; facing left → mirrored). #2 unused (less of the portrait's tusk silhouette; kept only as a candidate, raw not committed)."
+  },
+  {
+   "boss": "b_behemoth",
+   "shot": "bh_torso",
+   "generationId": "AdrfWxYM550M8uTSYEeDlbycr-BNVgvY0XU2h4WfQwMMSLSdKN7vrdBBESyW0OWHZxZlMo4x",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "refs": "portrait",
+   "decision": "#1 kept → raw/b_behemoth/torso_a (holed mossy boar body with the rib wound and glowing holes; legs and the hollow-log neck masked off, IK legs and the head replace them). #2 unused (head painted on, cannot be cut)."
+  },
+  {
+   "boss": "b_behemoth",
+   "shot": "bh_leg",
+   "generationId": "AZST3DDwl3FWSPZmFgbDgmVcu7nkdychA6LCmEseuUh1Lfqi8yfF7UbsHeb5MFCmgwuySYK3",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "refs": "portrait",
+   "decision": "#1 kept → raw/b_behemoth/leg_a (mossy tree-bark leg with glowing mushrooms + second bark leg, each cut into thigh / shin+hoof). #2 unused (golden nails)."
+  },
+  {
+   "boss": "b_behemoth",
+   "shot": "bh_trees",
+   "generationId": "AS1eCsm-Q4futkHxtXxOUe6DxLaNd2JxCK4qrXEeiKDHjGmB-rt2eRp8RbRf3ypI0UKpFhR9",
+   "aspect": "16:9",
+   "imageCount": 1,
+   "refs": "portrait",
+   "decision": "#1 kept → raw/b_behemoth/trees_a (three dead trees for the back forest; wooden base discs cut off)."
+  },
+  {
+   "boss": "b_behemoth",
+   "shot": "bh_mush",
+   "generationId": "AXZqntIiI03omo_H1iiSusTPjC1TY4DfxF6DKk1On2eDEOfnu6xpCkF9WZjltv6TVwTxGPNJ",
+   "aspect": "16:9",
+   "imageCount": 1,
+   "refs": "portrait",
+   "decision": "#1 kept → raw/b_behemoth/mush_a (giant spotted mushrooms, cluster, white flowers = death blooms)."
+  },
+  {
+   "boss": "b_behemoth",
+   "shot": "bh_queen",
+   "generationId": "AeM1gYxh4cjjLwjnVQwhMAvv7XVKY3D12zkJUlsqCpU518JM2t2g76GJ3c3Qh7aYO4CuL0_v",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "refs": "portrait",
+   "decision": "#2 kept → raw/b_behemoth/queen_a (bark-dress fungal queen with root base and mushroom crown; pedestal cut off). #1 unused (plain white dress, no roots)."
+  },
+  {
+   "boss": "b_behemoth",
+   "shot": "bh_sacs",
+   "generationId": "AZRp8xuju6C_iTy3m22qW6ZAiKK8JAzjYN-BE6u1c5yVuANQBdauOTds3rtwrrorWRFSe8vp",
+   "aspect": "16:9",
+   "imageCount": 1,
+   "refs": "portrait",
+   "decision": "#1 rejected: glossy cartoon sac (yellow jelly) and a skull egg → re-run as bh_sacs2 with the torso as 图片2."
+  },
+  {
+   "boss": "b_behemoth",
+   "shot": "bh_debris",
+   "generationId": "Af3b3T3PcAiNdnb8ygt3037ow_WLn2x5lYZqbWiqSeHE-zlsxoX8SbJ7qdAHf_cRrMfrePk5",
+   "aspect": "16:9",
+   "imageCount": 1,
+   "refs": "portrait",
+   "decision": "#1 kept → raw/b_behemoth/debris_a (8 of the pieces: flesh, bones, bark, mushrooms; the mini beast in the corner is unused)."
+  },
+  {
+   "boss": "b_ziz",
+   "shot": "zz_eyes2",
+   "generationId": "AbZoR7Xg6JcgjmA56IPY3fu9yB7IAws4ylWMKM4c-hv1Qyvh0d33MjneWZsTjGB3a0X-EVLj",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "refs": "portrait",
+   "decision": "#2 kept → raw/b_ziz/eyes_a (slit-pupil eye in storm feathers; closed/burst states are drawn procedurally: lids + stitches, bloody socket). #1 unused (sphere-shaped variants)."
+  },
+  {
+   "boss": "b_ziz",
+   "shot": "zz_debris2",
+   "generationId": "AbpnEAKAzXc28I_Esma-e2RFEUFGxUM-Gmmn3jEiYq2vKSwpu5YbJSnBEQrI6StFiKjt4YSj",
+   "aspect": "16:9",
+   "imageCount": 1,
+   "refs": "portrait",
+   "decision": "#1 kept → raw/b_ziz/debris_a (12 debris pieces: feather clumps, bone shards, beak tip, talon)."
+  },
+  {
+   "boss": "b_mara",
+   "shot": "mr_head2b",
+   "generationId": "AchFONwMilOph-2gU5NzQ8xoW4aAek67eKwxODugjgF7CX1cYB_Cn7zK9AaKkhRduBPZxFxi",
+   "aspect": "1:1",
+   "imageCount": 2,
+   "refs": "portrait, mr_head_2",
+   "decision": "#2 kept → raw/b_mara/headb_a (same mask broken open: black hollow, violet eye, bleeding stitched mouth → P3 head, aligned with head_a pivots). #1 unused (whiter porcelain than head_a)."
+  },
+  {
+   "boss": "b_mara",
+   "shot": "mr_legs2",
+   "generationId": "AdS7_Gpa_hY3449B9Ey2gEfHW0skj5vwuYLR8cR_reMZZJfCdC-dj7eaPJbq_JGERqzFyE68",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "refs": "portrait, mr_torso_1",
+   "decision": "#1 kept → raw/b_mara/legs_a (fleshy torn thigh and shin in the torso skin tone + clawed foot for the squatting P1 legs). #2 unused (cartoon bones again)."
+  },
+  {
+   "boss": "b_mara",
+   "shot": "mr_flesh2",
+   "generationId": "AYAHbPPthNo3DiW5r5AmkiM63xTheWdOlAd2Dzayp5m3YCiYrAyC7Gf780iJ737Uc2w1XeEX",
+   "aspect": "16:9",
+   "imageCount": 1,
+   "refs": "portrait",
+   "decision": "#1 kept → raw/b_mara/flesh_a (bruised violet tumour with a toothed mouth and three baby-doll faces = P2 cradle-beast belly / dreamshift swelling)."
+  },
+  {
+   "boss": "b_ziz",
+   "shot": "zz_eyes3",
+   "generationId": "AauY0HiB9FeQPtWUGvGsDR2c91aatJPQUXfzobEuK5Wty5c41y_Bh9pDbMoJu1iEXaNGmab3",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "refs": "portrait, zz_eyes2_2",
+   "decision": "both rejected: the closed and burst copies came back as round stitched/bloody balls again (not the feathered patch of 图片2); eyes_a (zz_eyes2 #2) + procedural lids kept."
+  },
+  {
+   "boss": "b_behemoth",
+   "shot": "bh_queen2b",
+   "generationId": "AezzAWTCDu42aRBJ16IX9mvsudLcaBodSpU0j4316_zUyriM6211VLbC0qWF84Why-uSfcRW",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "refs": "portrait, bh_queen_2",
+   "decision": "#2 kept → raw/b_behemoth/queen_b (same queen shrieking with both arms raised = casting / P2 roar). #1 unused (green glow haze painted around her)."
+  },
+  {
+   "boss": "b_behemoth",
+   "shot": "bh_sacs2",
+   "generationId": "AU7qSVeoG6NOuRwa8LHqfBZ0WEBbQTfHi_yfDBihEtgrX23wp8w9AeH_dTzrkzWABCg_CawB",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "refs": "portrait, bh_torso_1",
+   "decision": "#1 kept → raw/b_behemoth/sacs_a (bumpy yellow spore pod = sac 2, burst empty sac). #2 kept → raw/b_behemoth/sacs_b (torn glowing sacs = sacs 1 and 3, round burst orifice, bone-and-blood hole = knee wound)."
+  }
+ ],
+ "notSubmitted": {
+  "mr_head2": "superseded by mr_head2b (图片2 = a result URL instead of 'kept')",
+  "bh_queen2": "superseded by bh_queen2b"
+ },
+ "imagesSpent": 55,
+ "budget": "55 images × 2 credits = 110 credits (package allowance ~120 images)"
+}

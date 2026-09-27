@@ -4,7 +4,7 @@
  "out": "assets/painted/bosses/b_behemoth",
  "raw": "tools/painted/raw/b_behemoth",
  "td": 2.0,
- "hurtboxNotes": "",
+ "hurtboxNotes": "BOSS_PIPELINE §8.8 (documented, gameplay NOT changed): logic hit parts = skull 70x70 at headP (head-local (95,-10)), queen 50x90 at queenP, sacs 50x50 at each sac, body 440 x (320-drop); contact = body 340x230 + head 130x120 (top clamped at floor-280). The painted skull centre lands at head-local ≈(88,-24) (lps 0.12, neck pivot on the NECK joint), the queen's chest pivot is drawn exactly on queenP (so in kneel/stun her painted figure slides down the flank with the hitbox to floor-150, root strands connect her to QBASE), the sac sprites are centred on the sac boxes, the torso spans x -228..+176 with its back at ≈ -330 (spines -350). The back forest (trees up to ≈ -470) and mushrooms are visual only (above the hitbox), like the vector trees.",
  "matte": {
   "default": {
    "key": 9,
@@ -1002,5 +1002,72 @@
     ]
    ]
   }
- ]
+ ],
+ "kling": {
+  "model": "kling-image-v3_0_omni (image_to_image, 2k, 图片1 = portrait)",
+  "prompts": "tools/painted/prompts/art-boss-7.mjs",
+  "manifest": "tools/kling/manifest_art-boss-7.json",
+  "images": {
+   "bh_head": {
+    "generationId": "ATa_1Q1IvgD-EYvAq1wG-dwPXwA0um_Y0GnjxqM-4YzZDFebF_n9Z4yhCr_ENukCFs5n_lKx",
+    "imageCount": 2,
+    "prompt": "tools/painted/prompts/art-boss-7.mjs SHOTS.bh_head",
+    "decision": "#1 kept → raw/b_behemoth/head_a (bare boar skull + furry rotting half with glowing mushrooms and bleeding holes, open jaw cut at the hinge; facing left → mirrored). #2 unused (less of the portrait's tusk silhouette; kept only as a candidate, raw not committed)."
+   },
+   "bh_torso": {
+    "generationId": "AdrfWxYM550M8uTSYEeDlbycr-BNVgvY0XU2h4WfQwMMSLSdKN7vrdBBESyW0OWHZxZlMo4x",
+    "imageCount": 2,
+    "prompt": "tools/painted/prompts/art-boss-7.mjs SHOTS.bh_torso",
+    "decision": "#1 kept → raw/b_behemoth/torso_a (holed mossy boar body with the rib wound and glowing holes; legs and the hollow-log neck masked off, IK legs and the head replace them). #2 unused (head painted on, cannot be cut)."
+   },
+   "bh_leg": {
+    "generationId": "AZST3DDwl3FWSPZmFgbDgmVcu7nkdychA6LCmEseuUh1Lfqi8yfF7UbsHeb5MFCmgwuySYK3",
+    "imageCount": 2,
+    "prompt": "tools/painted/prompts/art-boss-7.mjs SHOTS.bh_leg",
+    "decision": "#1 kept → raw/b_behemoth/leg_a (mossy tree-bark leg with glowing mushrooms + second bark leg, each cut into thigh / shin+hoof). #2 unused (golden nails)."
+   },
+   "bh_trees": {
+    "generationId": "AS1eCsm-Q4futkHxtXxOUe6DxLaNd2JxCK4qrXEeiKDHjGmB-rt2eRp8RbRf3ypI0UKpFhR9",
+    "imageCount": 1,
+    "prompt": "tools/painted/prompts/art-boss-7.mjs SHOTS.bh_trees",
+    "decision": "#1 kept → raw/b_behemoth/trees_a (three dead trees for the back forest; wooden base discs cut off)."
+   },
+   "bh_mush": {
+    "generationId": "AXZqntIiI03omo_H1iiSusTPjC1TY4DfxF6DKk1On2eDEOfnu6xpCkF9WZjltv6TVwTxGPNJ",
+    "imageCount": 1,
+    "prompt": "tools/painted/prompts/art-boss-7.mjs SHOTS.bh_mush",
+    "decision": "#1 kept → raw/b_behemoth/mush_a (giant spotted mushrooms, cluster, white flowers = death blooms)."
+   },
+   "bh_queen": {
+    "generationId": "AeM1gYxh4cjjLwjnVQwhMAvv7XVKY3D12zkJUlsqCpU518JM2t2g76GJ3c3Qh7aYO4CuL0_v",
+    "imageCount": 2,
+    "prompt": "tools/painted/prompts/art-boss-7.mjs SHOTS.bh_queen",
+    "decision": "#2 kept → raw/b_behemoth/queen_a (bark-dress fungal queen with root base and mushroom crown; pedestal cut off). #1 unused (plain white dress, no roots)."
+   },
+   "bh_sacs": {
+    "generationId": "AZRp8xuju6C_iTy3m22qW6ZAiKK8JAzjYN-BE6u1c5yVuANQBdauOTds3rtwrrorWRFSe8vp",
+    "imageCount": 1,
+    "prompt": "tools/painted/prompts/art-boss-7.mjs SHOTS.bh_sacs",
+    "decision": "#1 rejected: glossy cartoon sac (yellow jelly) and a skull egg → re-run as bh_sacs2 with the torso as 图片2."
+   },
+   "bh_debris": {
+    "generationId": "Af3b3T3PcAiNdnb8ygt3037ow_WLn2x5lYZqbWiqSeHE-zlsxoX8SbJ7qdAHf_cRrMfrePk5",
+    "imageCount": 1,
+    "prompt": "tools/painted/prompts/art-boss-7.mjs SHOTS.bh_debris",
+    "decision": "#1 kept → raw/b_behemoth/debris_a (8 of the pieces: flesh, bones, bark, mushrooms; the mini beast in the corner is unused)."
+   },
+   "bh_queen2b": {
+    "generationId": "AezzAWTCDu42aRBJ16IX9mvsudLcaBodSpU0j4316_zUyriM6211VLbC0qWF84Why-uSfcRW",
+    "imageCount": 2,
+    "prompt": "tools/painted/prompts/art-boss-7.mjs SHOTS.bh_queen2b",
+    "decision": "#2 kept → raw/b_behemoth/queen_b (same queen shrieking with both arms raised = casting / P2 roar). #1 unused (green glow haze painted around her)."
+   },
+   "bh_sacs2": {
+    "generationId": "AU7qSVeoG6NOuRwa8LHqfBZ0WEBbQTfHi_yfDBihEtgrX23wp8w9AeH_dTzrkzWABCg_CawB",
+    "imageCount": 2,
+    "prompt": "tools/painted/prompts/art-boss-7.mjs SHOTS.bh_sacs2",
+    "decision": "#1 kept → raw/b_behemoth/sacs_a (bumpy yellow spore pod = sac 2, burst empty sac). #2 kept → raw/b_behemoth/sacs_b (torn glowing sacs = sacs 1 and 3, round burst orifice, bone-and-blood hole = knee wound)."
+   }
+  }
+ }
 }

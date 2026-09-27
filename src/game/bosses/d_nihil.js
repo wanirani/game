@@ -904,7 +904,8 @@ export class Nihil extends BossC {
     const warn = dur > 1.5 ? 1.0 : 0.8, [L, Rh] = this.hands;
     if (this.at(0.001)) {
       const B = this._B, F = this.A.floor;
-      const G = this.gr = { x0: B.x0 + 66, x1: B.x1 - 66, mid: B.cx, F, on: false };
+      // 손은 벽에 붙어서 출발한다 (판정 = 손 x −15…+105): 벽에 바짝 붙은 플레이어도 쓸린다 — 피하려면 뛰어넘을 것
+      const G = this.gr = { x0: B.x0 + 30, x1: B.x1 - 30, mid: B.cx, F, on: false };
       this.holdHand(L, G.x0, F - 58, PI / 2, 0.25, 0.75, 9);
       this.holdHand(Rh, G.x1, F - 58, -PI / 2, 0.25, 0.75, 9);
       this.zone({ x: B.x0, y: F - 120, w: B.w, h: 120, warn: 0, life: warn, harmless: true, z: 5, paint: (ctx, z, w) => warnRect(ctx, z.x, z.y, z.w, z.h, clamp(z.t / warn, 0, 1), VIO, w.time) });
@@ -1233,6 +1234,7 @@ export class Nihil extends BossC {
     this.echo = null; this.sf = null; this.gr = null; this.mw = null; this.mawT = 0; this.echoFlick = false;
     for (const h of this.hands) { h.eyeT = 0; h.mode = 'limp'; }
     wallsOpen(this, 220); this.wallT = 0;
+    killTransients(world, this);   // 쓰러진 뒤 날아다니던 화염구·파편이 플레이어를 치지 않게 (판정 지대는 BossB.zone 이 스스로 사라진다)
     audio.sfx('ghost', { pitch: 0.25, vol: 1 });
     world.fx.ring(this.bx, this.coreY(), { color: WHITE, r0: 20, r1: 300, life: 0.9, width: 6 });
   }

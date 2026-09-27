@@ -12,7 +12,7 @@
 //          hp/stats.maxHp, flashT, hitPart, A{floor,x0,x1} }
 //   분신(NarkTwin)은 drawPaintedDirect 로 같은 리그를 쓴다 (def.id 'nark_twin', pose·legs·facing·bottom·inT·fadeT·flashT).
 // 판정은 바꾸지 않는다 (얼굴 40×50 · 드레스 80×180 · 팔 40×120 ×2 · 돌진 250×90). 그림은 그보다 크다 (다리·후광·칼날 팔).
-import { Drawer, Particles, Shards, halo, rr, loadRig, pickVariant, quality, QUALITY, makeCanvas } from '../kit.js';
+import { Drawer, Particles, Shards, halo, rr, loadRig, pickVariant, quality, QUALITY, makeCanvas, ledgesOver } from '../kit.js';
 
 const DIR = 'painted/bosses/b_narkissa';
 const GL = '#dff4ff', GL_C = '#9fe8ff', GL_V = '#c8b0ff', GOLD = '#ffd86a', RED = '#ff3050', GEM = '#40ffb0', EYE_C = '#bff6ff';
@@ -88,6 +88,9 @@ function bounds(b, st, out) {
   let x0 = b.cx - 340, x1 = b.cx + 340, y0 = b.bottom - 470, y1 = Math.max(b.A?.floor ?? b.bottom, b.bottom + 40) + 10;
   if (Math.abs(P.rot ?? 0) > 0.3) { x0 -= 60; x1 += 60; }
   if ((b.dying > 0 || st?.shards?.list.length) && b.A) { x0 = Math.min(x0, b.A.x0); x1 = Math.max(x1, b.A.x1); y1 = Math.max(y1, b.A.floor + 10); }
+  // 남아 있는 입자 (유리 반짝임·파편 가루 — 돌진·거울 속 이동 뒤에도 잠깐 남는다, BOSS_PIPELINE §8.15)
+  const Pt = st?.P;
+  if (Pt?.n) for (let i = 0; i < Pt.n; i++) { const px = Pt.x[i], py = Pt.y[i]; if (px - 30 < x0) x0 = px - 30; if (px + 30 > x1) x1 = px + 30; if (py - 30 < y0) y0 = py - 30; if (py + 30 > y1) y1 = py + 30; }
   out.x = x0; out.y = y0; out.w = x1 - x0; out.h = y1 - y0;
   return out;
 }
@@ -175,7 +178,7 @@ function drawBoss(ctx, b, world, rig, st) {
     drawNark(ctx, D, rig, st, {
       b, x: b.cx + shake, y: b.bottom, f: b.facing, P: b.pose, t: b.t ?? 0, form, lvl, ratio, legs: b.legs, floor: b.A.floor,
       tear: !!(b.twin && !b.twin.dead), eyeGlow: b.eyeGlow ?? 0, maskCrack: b.maskCrack ?? 0, look: lookOf(b, world),
-      flash: b.flashT > 0 ? clamp(b.flashT / 0.12, 0, 1) : 0, sel: st.flashSel, twin: false, dying, el, rec: dying,
+      flash: b.flashT > 0 ? clamp(b.flashT / 0.12, 0, 1) : 0, sel: st.flashSel, twin: false, dying, el, rec: dying, world,
     });
     if (dying) dieBuild(ctx, st, rig, b, dk, dt);
   }
@@ -256,6 +259,7 @@ function drawNark(ctx, D, rig, st, o) {
     if (halos && !o.twin && form < 2) {
       const i = Math.floor(t * 1.3) % 7, a = -PI / 2 + (i - 3) * 0.32;
       W(L, Math.cos(a) * 80 * cs, cy + Math.sin(a) * 80 * cs, st.W);
+      D.end();   // 월드 좌표 발광은 기준 변환에서 (부품 변환이 남아 있으면 엉뚱한 곳에 그려진다)
       halo(ctx, st.W[0], st.W[1], 12, '#ffffff', (0.4 + 0.4 * Math.sin(t * 7 + i)) * fade, true);
     }
   }
@@ -264,7 +268,7 @@ function drawNark(ctx, D, rig, st, o) {
     const hs = 1.12 + Math.sin(t * 2) * 0.02 + (P.scream ?? 0) * 0.08;
     put(D, L, R.halo2, R.halo2.v.base, 'c', 0, FACE2_C - 6, Math.sin(t * 0.4) * 0.08, hs);
     if (rec) pushRec(rec, D, L, R.halo2, R.halo2.v.base, 'c', 0, FACE2_C - 6, 0, hs, 1, 1);
-    if (halos && !o.twin) { W(L, 0, FACE2_C - 6, st.W); halo(ctx, st.W[0], st.W[1], 90, GL_C, 0.22 * fade); }
+    if (halos && !o.twin) { W(L, 0, FACE2_C - 6, st.W); D.end(); halo(ctx, st.W[0], st.W[1], 90, GL_C, 0.22 * fade); }
     orbit(D, L, rig, t, P, false);
   }
   // ── 등 칼날 팔 4개 ──
@@ -313,7 +317,14 @@ function drawNark(ctx, D, rig, st, o) {
     put(D, L, part, V(part, false, Math.min(1, lvl)), topPivot(part), hx * w, hy, sw, hs * HANG_K);
     if (rec) pushRec(rec, D, L, part, V(part), topPivot(part), hx * w, hy, sw, hs * HANG_K, 1, 1);
   }
-  if (halos && dmg > 0.2 && !o.twin) { W(L, 0, -60, st.W); halo(ctx, st.W[0], st.W[1], 70, GL_V, (0.12 + dmg * 0.18) * fade); }
+  if (halos && dmg > 0.2 && !o.twin) { W(L, 0, -60, st.W); D.end(); halo(ctx, st.W[0], st.W[1], 70, GL_V, (0.12 + dmg * 0.18) * fade); }
+  // ── 발판 덧그리기 (BOSS_PIPELINE §8.11): 경기장 한쪽 발판이 머리·어깨 높이라 거미 다리·칼날 팔·드레스가 덮는다 →
+  //    그 위에 발판을 다시 그리고, 몸통·머리(판정 부위)·앞팔은 발판 앞에 둔다. 분신(옅은 유령)은 건너뛴다
+  if (!o.twin && o.world && q.ledges !== false) {
+    D.end();
+    const cam = o.world.camera, cx0 = cam?.x ?? -1e9, cy0 = cam?.y ?? -1e9, cx1 = cx0 + (cam?.vw ?? 2e9), cy1 = cy0 + (cam?.vh ?? 2e9);
+    ledgesOver(ctx, o.world, Math.max(o.x - 340, cx0), Math.max(o.y - 480, cy0), Math.min(o.x + 340, cx1), Math.min(o.floor - 8, cy1));
+  }
   // ── 뒤쪽 앞팔 (어둡게) ──
   D.rec = recOn('arms');
   drawArm(D, L, rig, st, -1, P.fa0a ?? 0.4, P.fa0e ?? 0.5, P, false, V, rec);
@@ -326,6 +337,7 @@ function drawNark(ctx, D, rig, st, o) {
     if (halos && R.torso.gem) {
       localPt(R.torso, 'waist', R.torso.gem, 0, WAIST + 6, 0, 1, st.lp);
       W(L, st.lp[0], st.lp[1], st.W);
+      D.end();
       halo(ctx, st.W[0], st.W[1], 16 + Math.sin(t * 3) * 2, GEM, (0.55 + 0.25 * Math.sin(t * 3)) * fade, true);
     }
   }
@@ -542,6 +554,7 @@ function dropShard(st, L, part, hx, hy, hs, o) {
 /** 사망 0–1.55초: 속에서 새어 나오는 흰빛이 커지고, 유리 부스러기가 점점 더 자주 튄다 (1.55초에 로직이 shattered) */
 function dieBuild(ctx, st, rig, b, dk, dt) {
   const L = st.L;
+  st.D.end();   // drawNark 의 섬광 덧그리기가 남긴 부품 변환을 기준(월드)으로 되돌린다
   if (st.q.halos) {
     W(L, 0, -170, st.W);
     halo(ctx, st.W[0], st.W[1], 90 + 130 * dk, '#ffffff', 0.12 + 0.45 * dk * dk);

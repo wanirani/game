@@ -78,8 +78,11 @@ export default {
   bounds(b, rig, st, out) {
     let x0, x1, y0, y1;
     if ((b.rot ?? 0) > 0.3) { x0 = b.ox - 540; x1 = b.ox + 540; y0 = b.oy - 70 - 300; y1 = b.oy - 70 + 300; }
-    else { x0 = b.ox - 380; x1 = b.ox + 380; y0 = b.oy - 520; y1 = b.oy + 260; }
+    else { x0 = b.ox - 380; x1 = b.ox + 380; y0 = b.oy - 540; y1 = Math.max(b.oy + 260, (b.A?.floor ?? 0) + 4); }   // 촉수·목장은 바닥(+2 클립)까지 내려온다
     for (const l of b.lures ?? []) { x0 = Math.min(x0, l.x - 90); x1 = Math.max(x1, l.x + 90); y0 = Math.min(y0, l.y - 90); y1 = Math.max(y1, l.y + 90); }
+    // 남아 있는 입자 (잠수해 다른 자리로 옮긴 뒤에도 이전 자리의 거품·체액이 잠깐 남는다 — BOSS_PIPELINE §8.15)
+    const P = st?.P;
+    if (P?.n) for (let i = 0; i < P.n; i++) { const px = P.x[i], py = P.y[i]; if (px - 30 < x0) x0 = px - 30; if (px + 30 > x1) x1 = px + 30; if (py - 30 < y0) y0 = py - 30; if (py + 30 > y1) y1 = py + 30; }
     if ((b.dying > 0 || st?.shards?.list.length || st?.freed?.length) && b.A) { x0 = Math.min(x0, b.A.x0); x1 = Math.max(x1, b.A.x1); y0 = Math.min(y0, b.oy - 700); y1 = Math.max(y1, b.A.floor + 20); }
     out.x = x0; out.y = y0; out.w = x1 - x0; out.h = y1 - y0;
     return out;
