@@ -318,9 +318,9 @@ await run('A', 'room_fx_bond_keys', STAGE('s05', '&guards=gd_fairy,gd_knight&cmp
   T.step(0.1);
   const fxN = w.entities.filter((e) => e.kind === 'effect' && e.owner?.kind === 'companion').length;
   const f = p.facing || 1;
-  const pr = w.spawnProjectile({ x: p.cx + f * 180, y: p.bottom - 60, vx: -f * 300, vy: 0, team: 'enemy', w: 12, h: 12, life: 2, attack: { mv: 0, tags: ['projectile'] } });
+  const pr = w.spawnProjectile({ x: p.cx + f * 180, y: p.bottom - 60, vx: -f * 300, vy: 0, team: 'enemy', w: 12, h: 12, life: 2, collideWalls: false, attack: { mv: 0, tags: ['projectile'] } });
   T.step(0.5);
-  const blocked = pr.dead === true;
+  const blocked = pr.dead === true && pr.life > 0.5;
   T.step(4.5);
   const fxEnd = w.entities.filter((e) => e.kind === 'effect' && e.owner?.kind === 'companion').length;
   // 2) 보스 격파 유대로 공명 단계(3)에 오르면 바로 공명 가능
@@ -346,17 +346,17 @@ await run('A', 'room_fx_bond_keys', STAGE('s05', '&guards=gd_fairy,gd_knight&cmp
   const a0 = txt();
   const crit = { owner: p, tags: ['melee'] };
   for (const gd of cs.guards) { gd.assistCd = 0; gd.act = null; gd.flinchT = 0; gd.cx = z.cx - 40; gd.bottom = z.bottom; }
-  w.combo.n = 1; w.run.hits += 1;
+  w.combo.n = 1; w.run.hits += 1; w.combo.t = 9;
   cs.onHit(z, { crit: true }, crit);
   const a1 = txt();
   T.step(0.3);
   for (const gd of cs.guards) { gd.assistCd = 0; gd.act = null; gd.flinchT = 0; }
-  w.combo.n += 1; w.run.hits += 1;
+  w.combo.n += 1; w.run.hits += 1; w.combo.t = 9;
   cs.onHit(z, { crit: true }, crit);
   const a2 = txt();
   T.step(0.3);
   for (const gd of cs.guards) { gd.assistCd = 0; gd.act = null; gd.flinchT = 0; }
-  w.combo.n = 1; w.run.hits += 1;   // 줄기가 끊긴 뒤 새 줄기
+  w.endCombo(); w.combo.n = 1; w.run.hits += 1; w.combo.t = 9;   // 줄기가 끊긴 뒤 새 줄기
   cs.onHit(z, { crit: true }, crit);
   const a3 = txt();
   return {

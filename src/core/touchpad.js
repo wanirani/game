@@ -104,8 +104,9 @@ const S = {
   radialFn: null,
   editor: null,
   raf: 0, lastDraw: -1e9, pending: true, drawSig: [], anim: false,
-  sprites: new Map(), spriteKey: '',
-  occ: [], occKey: '', occState: { sig: null, hidden: '', sh: 0, ver: 0 },
+  spr: Object.create(null), spriteKey: '',   // 버튼 id → [보통, 눌림] 캔버스: 한 번만 만들고 다시 구울 때는 같은 캔버스에 그린다
+  lver: 0,                                     // 배치를 다시 계산할 때마다 +1 (occupiedRects 캐시)
+  occ: [], occKey: '', occState: { lver: -1, hidden: '', sh: 0, ver: 0 },
 };
 
 function game() { return S.input?.game ?? INPUT?.game ?? null; }

@@ -3463,3 +3463,20 @@ SKILL_IMPL.__onSwing = (p, w, mv) => {
     }
   }
 };
+
+// ═══════════════════════════ FXKIT (필살기·각성기 연출 도우미) ═══════════════════════════
+// feel §9 WP4: 이 파일에 이미 있는 도구만 모은다 (새 동작 없음). 각성 감독(AWAKEN-DIR-A/B)·awaken.js 가 import 해서 쓴다.
+// FXKIT 이 비어 있지 않으면 awaken.js 는 등록된 영웅 감독을 쓰고, 감독이 없는 영웅은 자체 대체 연출을 그대로 쓴다.
+// const 들이 모두 정의된 뒤 채우도록 파일 끝에 둔다 (위의 자리 표시 export 를 그대로 채운다).
+Object.assign(FXKIT, {
+  // feel §9 WP4 목록
+  fx, seq, glow, beamV, beamH, crescent, cutLine, runeCircle, flare, boomRing, pillarFx, spikeFx, afterimage, ghostOf,
+  uHit, atk, viewRect, enemiesIn, groundAt, pose, holdInvuln, charCol, bestType, ADD, batShape, wing, bloodMoon, cardShape, gunOf, muzzle,
+  // 그 밖의 기존 도구 (연출 엔티티·판정·도형)
+  SkillFx, shoot, shake, circ, nid, frontEnemies, maxHpOf, solidAt, freeSpot, boom, spike, flameCol, fireColumn,
+  boltPts, strokePts, drawBolt, strikeBolt, xSlash, bigSword, ravenShape, featherShape, drawAngel, drawClock,
+  shieldShape, scytheShape, spectralSword, setTimeoutFx, handOf, aimAng, bullet, ROCK, BLOOD,
+  // 필살기 공용 도구 (FX-ULTS): 문맥·기본 줌 화면·키트 박자·불씨 비·색조·잔상·캐시 스프라이트
+  ultCtx, ultView, ultBeat, ultFinal, ultDirector, ultAfter, emberRain, grade, holdOverlay, spiralMotes, glassRose,
+  glowSprite, beamSprite, blit, kitLive, qn,
+});

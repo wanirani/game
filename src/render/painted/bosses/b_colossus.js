@@ -85,6 +85,10 @@ function drawColossus(ctx, b, world, rig, st) {
   // 피격 섬광은 맞은 판정 부위에만: 정강이 = 그쪽 다리, 주먹 = 그쪽 팔, 시계판 = 흉갑 + 시계판, 코어 = 코어 (부위를 모르면 전체)
   const hp = flashOn ? b.hitPart : null, BP = b.parts ?? {};
   const fl = (key) => flashOn && (!hp || hp === BP[key]), flAll = flashOn && !hp;
+  // 섬광은 부품을 그린 직후 바로 덧그린다 (끝에 한꺼번에 덧그리면 흉갑 뒤에 숨은 위팔·골반 뒤 허벅지의 흰 실루엣이
+  // 흉갑·골반 위로 드러나고, 흉갑 섬광이 앞에 있는 머리·아래팔까지 밝혔다)
+  const fa = flashOn ? clamp(b.flashT / 0.1, 0, 1) * 0.5 : 0;
+  const FL = () => { if (D.rec) { D.flash(fa); D.rec = true; } };
   const V = (part, deep = false) => pickVariant(part, lvl, deep, null);
   const pw = clamp(b.power ?? 1, 0, 1), heat = clamp(b.heat ?? 0, 0, 1), door = clamp(b.door ?? 0, 0, 1);
   const cr = b.crouch ?? 0, gA = b.gearA ?? 0;
@@ -124,10 +128,10 @@ function drawColossus(ctx, b, world, rig, st) {
     const k = ik2(hx, hy, fx, fy, l1, l2, s, st.ik);
     const kx = k.ex, ky = k.ey;
     D.rec = fl(s < 0 ? 'shinL' : 'shinR');
-    limb(D, Th, V(Th, true), hx, hy, kx, ky, Th.k);
-    limb(D, Sh, V(Sh), kx, ky, fx, fy, Sh.k);
+    limb(D, Th, V(Th, true), hx, hy, kx, ky, Th.k); FL();
+    limb(D, Sh, V(Sh), kx, ky, fx, fy, Sh.k); FL();
     const kg = R.kgear;
-    if (kg) D.part(kg, kg.v.base, 'c', kx, ky, gA * 2 * s, kg.k, kg.k, 1);
+    if (kg) { D.part(kg, kg.v.base, 'c', kx, ky, gA * 2 * s, kg.k, kg.k, 1); FL(); }
     // 착지 순간 (걸음): 먼지·증기
     if (L.fx != null && st.lastLift[L.i] > 4 && lift <= 0.5) { P.burst('smoke', fx, F - 6, 6, { speed: 90, angle: -PI / 2, spread: 1.4, color: '#8a8074' }); P.burst('spark', fx, F - 4, 6, { speed: 240, angle: -PI / 2, spread: 1.2, color: '#ffc070' }); }
     st.lastLift[L.i] = lift;
@@ -135,7 +139,7 @@ function drawColossus(ctx, b, world, rig, st) {
   }
   // ── 골반 ──
   D.rec = flAll;
-  if (bodyOn) D.part(Pv, V(Pv, true), 'c', bx, py, 0, Pv.k, Pv.k, 1);
+  if (bodyOn) { D.part(Pv, V(Pv, true), 'c', bx, py, 0, Pv.k, Pv.k, 1); FL(); }
   // ── 팔: 어깨 → 팔꿈치 (위팔은 흉갑 견갑 뒤) ──
   const armGeo = st.arm;
   for (const a of b.arms ?? []) {
@@ -145,12 +149,12 @@ function drawColossus(ctx, b, world, rig, st) {
     if (G.gone) continue;
     armIK(b, a, G, R.fist);
     D.rec = fl(s < 0 ? 'fistL' : 'fistR');
-    limb(D, R.uarm, V(R.uarm, true), G.sx, G.sy, G.ex, G.ey, R.uarm.k);
+    limb(D, R.uarm, V(R.uarm, true), G.sx, G.sy, G.ex, G.ey, R.uarm.k); FL();
   }
   // ── 흉갑 ──
   D.rec = fl('clock');
   if (bodyOn) {
-    D.part(T, V(T), 'clock', bx, ty, 0, tk, tk * breath, 1);
+    D.part(T, V(T), 'clock', bx, ty, 0, tk, tk * breath, 1); FL();
     glowOver(ctx, D, T, lvl, 'clock', bx, ty, 0, tk, tk * breath, 0.5 + heat * 0.5, st, t);
   } else if (dT < 3.25 && T.v.glow) {
     // 흉갑이 터진 자리: 발광 실루엣이 번쩍이며 사라짐
@@ -178,7 +182,7 @@ function drawColossus(ctx, b, world, rig, st) {
     const Co = R.core, pu = 1 + Math.sin(t * 14) * 0.04 + (dying ? Math.sin(t * 40) * 0.03 : 0);
     if (q.halos) halo(ctx, ccx, ccy, 110 * pu, FURN, 0.8 * door, true);
     D.rec = fl('core');
-    D.part(Co, Co.v.base, 'c', ccx, ccy, Math.sin(t * 2) * 0.03, Co.k * pu, Co.k * pu, door);
+    D.part(Co, Co.v.base, 'c', ccx, ccy, Math.sin(t * 2) * 0.03, Co.k * pu, Co.k * pu, door); FL();
     D.rec = false;
     D.end();
     const hp = D.pt(Co.c[0], Co.c[1], Co.heart[0], Co.heart[1], ccx, ccy, 0, Co.k * pu, Co.k * pu, _c);
@@ -192,7 +196,7 @@ function drawColossus(ctx, b, world, rig, st) {
     const cs = Math.cos(door * PI * 0.62), k = Ck.k;
     const hx = ccx - (Ck.c[0] - Ck.hinge[0]) * k;
     D.rec = fl('clock');
-    D.part(Ck, V(Ck), 'hinge', hx, ccy, 0, k * cs, k, 1);
+    D.part(Ck, V(Ck), 'hinge', hx, ccy, 0, k * cs, k, 1); FL();
     D.rec = false;
     glowOver(ctx, D, Ck, lvl, 'hinge', hx, ccy, 0, k * cs, k, 0.4 + heat * 0.4, st, t + 1);
     D.end();
@@ -223,11 +227,11 @@ function drawColossus(ctx, b, world, rig, st) {
       ctx.strokeStyle = '#9a98a8'; ctx.lineWidth = 3; ctx.stroke();
       ctx.setLineDash([]); ctx.lineDashOffset = 0;
     }
-    limb(D, R.farm, V(R.farm), G.ex, G.ey, G.wx, G.wy, R.farm.k);
+    limb(D, R.farm, V(R.farm), G.ex, G.ey, G.wx, G.wy, R.farm.k); FL();
     const eg = R.egear;
-    if (eg) D.part(eg, eg.v.base, 'c', G.ex, G.ey, -gA * 3 * s, eg.k, eg.k, 1);
+    if (eg) { D.part(eg, eg.v.base, 'c', G.ex, G.ey, -gA * 3 * s, eg.k, eg.k, 1); FL(); }
     const Fi = R.fist;
-    D.part(Fi, V(Fi), 'wrist', G.hx, G.hy, G.hrot, Fi.k * (s < 0 ? -1 : 1) * 1.0, Fi.k, 1);
+    D.part(Fi, V(Fi), 'wrist', G.hx, G.hy, G.hrot, Fi.k * (s < 0 ? -1 : 1) * 1.0, Fi.k, 1); FL();
     G.fistPose = [G.hx, G.hy, G.hrot, Fi.k * (s < 0 ? -1 : 1), Fi.k];
     if (a.glow > 0.02 && q.halos) { D.end(); const p = D.pt(Fi.wrist[0], Fi.wrist[1], Fi.palm[0], Fi.palm[1], G.hx, G.hy, G.hrot, Fi.k, Fi.k, _c); halo(ctx, p[0], p[1], 50 + a.glow * 40, FURN, a.glow * 0.8); halo(ctx, p[0], p[1], 20, '#ffffff', a.glow * 0.6, true); }
     // 날아가는 주먹: 불꽃
@@ -241,7 +245,7 @@ function drawColossus(ctx, b, world, rig, st) {
     const Hd = R.head, hx = bx + (b.look ?? 0) * 10, hy = b.wy(-362) - 22 + Math.sin(t * 2.1) * 1.5;
     const hr = (b.look ?? 0) * 0.04 + (dying ? Math.sin(t * 30) * 0.05 : 0);
     D.rec = flAll;
-    D.part(Hd, V(Hd), 'eyes', hx, hy, hr, Hd.k, Hd.k, 1);
+    D.part(Hd, V(Hd), 'eyes', hx, hy, hr, Hd.k, Hd.k, 1); FL();
     D.rec = false;
     glowOver(ctx, D, Hd, lvl, 'eyes', hx, hy, hr, Hd.k, Hd.k, 0.5 + heat * 0.3, st, t + 2);
     const eL = D.pt(Hd.eyes[0], Hd.eyes[1], Hd.eyeL[0], Hd.eyeL[1], hx, hy, hr, Hd.k, Hd.k, _c);
@@ -255,7 +259,7 @@ function drawColossus(ctx, b, world, rig, st) {
   }
   // ── 시계추 (몸 앞) ──
   if (b.pend && bodyOn) drawPendulum(ctx, D, b, rig, st, q);
-  if (flashOn) D.flash(clamp(b.flashT / 0.1, 0, 1) * 0.5);
+  if (flashOn) D.flash(fa);   // 남은 기록(시계추 칼날) — 나머지는 부품마다 이미 덧그렸다
   else { D.rec = false; D.log.length = 0; }
   D.end();
   st.shards.draw(D);

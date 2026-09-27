@@ -48,7 +48,10 @@ const isFoe = (e) => (e.kind === 'enemy' || e.kind === 'boss') && !e.dead && !e.
 const alive = (e) => !!e && !e.dead && !(e.dying > 0);
 const qOf = (world) => world?.fx?.quality ?? 1;
 const nq = (world, n) => Math.max(1, Math.round(n * qOf(world)));
-const drew = (fn, ...a) => { try { return typeof fn === 'function' && fn(...a) === true; } catch (e) { console.warn('[guardian] fx', e); return false; } };
+/** 같은 자리의 경고는 한 번만 (매 프레임 부르는 AI·그림 함수가 던져도 콘솔을 60번/초 채우지 않게 — 모바일 비용) */
+const WARNED = new Set();
+function warnOnce(key, ...a) { if (WARNED.has(key)) return; WARNED.add(key); console.warn('[guardian]', key, ...a); }
+const drew = (fn, ...a) => { try { return typeof fn === 'function' && fn(...a) === true; } catch (e) { warnOnce('fx ' + (fn?.name || '?'), e); return false; } };
 
 // ───────────────────────── 공격 객체 · 타격 ─────────────────────────
 /** 수호신 공격 객체 (companions §4.4). o.target 이 있으면 dir 을 그쪽으로 */
@@ -394,10 +397,10 @@ export class Guardian extends Entity {
     }
     if (this.target) { this.perched = false; if (this.act?.name === 'emote') this.act = null; }   // 싸움이 시작되면 장난을 곧바로 멈춘다
     // 고유 능력
-    try { this.ai?.passive?.(this, world, dt); } catch (e) { console.warn('[guardian] passive', this.id, e); }
+    try { this.ai?.passive?.(this, world, dt); } catch (e) { warnOnce('passive ' + this.id, e); }
     // AI 가 전부 맡는 프레임
     let handled = false;
-    try { handled = !!this.ai?.think?.(this, world, dt); } catch (e) { console.warn('[guardian] think', this.id, e); }
+    try { handled = !!this.ai?.think?.(this, world, dt); } catch (e) { warnOnce('think ' + this.id, e); }
     if (!handled) this.defaultThink(world, p, dt, calm);
     // 순간이동 (§4.2): 기준점에서 620px 넘게 또는 세로 420px 넘게 떨어짐
     const A = this.anchor(p);
@@ -411,7 +414,7 @@ export class Guardian extends Entity {
     if (this.act) {
       const a = this.act;
       a.t += dt;
-      try { a.step?.(this, world, dt, a); } catch (e) { console.warn('[guardian] act', this.id, a.name, e); a.done = true; }
+      try { a.step?.(this, world, dt, a); } catch (e) { warnOnce(`act ${this.id} ${a.name}`, e); a.done = true; }
       if (!a.pos) {
         // 동작의 목표점 (없으면 기준점을 계속 따라간다)
         const G = a.goal ?? this.anchor(p);
@@ -419,7 +422,7 @@ export class Guardian extends Entity {
       }
       if (a.done || a.t >= a.dur) {
         this.act = null;
-        try { a.end?.(this, world, a); } catch (e) { console.warn('[guardian] act end', this.id, a.name, e); }
+        try { a.end?.(this, world, a); } catch (e) { warnOnce(`act end ${this.id} ${a.name}`, e); }
       }
       return;
     }
@@ -434,7 +437,7 @@ export class Guardian extends Entity {
         try {
           if (this.ai?.attack) this.ai.attack(this, world, tgt);
           else runKind(this, world, tgt, this.def.attack, {});
-        } catch (e) { console.warn('[guardian] attack', this.id, e); this.act = null; }
+        } catch (e) { warnOnce('attack ' + this.id, e); this.act = null; }
         return;
       }
     }
