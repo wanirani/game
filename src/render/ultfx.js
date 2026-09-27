@@ -1021,13 +1021,12 @@ class Session {
     const D = Math.hypot(Math.max(cx, vw - cx), Math.max(cy, vh - cy)) * 1.02;
     const spin = this.T.lines.spin && !calm() ? this.t * this.T.lines.spin * this.dir : 0;
     const rush = 1 + 0.35 * (1 - ease.outCubic(clamp(this.t / 0.35, 0, 1)));   // 시작할 때 선이 안쪽으로 몰려든다
+    const S = D * rush;
+    ctx.save();
     ctx.globalAlpha = a; ctx.globalCompositeOperation = 'source-over';
     ctx.translate(cx, cy); if (spin) ctx.rotate(spin);
-    const S = D * rush;
     ctx.drawImage(this.tex, -S, -S, S * 2, S * 2);
-    ctx.setTransform(ctx.getTransform().a ? ctx.getTransform() : ctx.getTransform());
-    ctx.rotate(-spin); ctx.translate(-cx, -cy);
-    ctx.globalAlpha = 1;
+    ctx.restore();
     ULTFX_STATS.layerFrames++;
   }
   drawName(ctx, vw, vh) {
