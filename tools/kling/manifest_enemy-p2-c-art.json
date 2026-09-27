@@ -1,0 +1,218 @@
+{
+ "package": "ENEMY-P2-C-ART",
+ "model": "kling-image-v3_0_omni (img_resolution 2k)",
+ "prompts": "tools/painted/prompts/enemy-p2-c-art.mjs (SHOTS; print one with: node tools/painted/prompts/enemy-p2-c-art.mjs <shot>)",
+ "creditsPerImage": 2,
+ "budgetCredits": 900,
+ "creditsBefore": "not recorded by the first (interrupted) run; 6213 remained when the resumed run started",
+ "note": "Result URLs expire after 24 h; kept images are stored as q93 webp under tools/painted/enemies/<id>/src/ (the chosen Step-1 reference as <id>_ref.webp). reflection reuses the hero puppet (0 own images).",
+ "generations": [
+  {
+   "enemy": "mirror_knight",
+   "step": "ref",
+   "shot": "mirror_knight_ref",
+   "generationId": "ASDQzhBE-LXlieZPRgXDCRMGN_vF_owqfHb6AX5vLgEAjlfLCFb8GhWym-N_r3FZHDY2OxyL",
+   "tool": "text_to_image",
+   "imageCount": 2,
+   "decision": "r2 KEPT -> mirror_knight/src/mirror_knight_ref.webp (side view, shard cape, glass sword); r1 3/4 view"
+  },
+  {
+   "enemy": "glass",
+   "step": "shared",
+   "shot": "glass",
+   "generationId": "ATCCWE4eJdU4r-YxswEDFtNw8Bal9xHyAM34_zzcO5zaAeR0H0EVgT-U34Px9IFaRCV9fFRn",
+   "tool": "text_to_image",
+   "imageCount": 2,
+   "decision": "r2 KEPT -> mirror_knight/src/glass.webp (+ copies in glass_wraith/src, reflection/src): 10 loose silvered shards + web-crack pane"
+  },
+  {
+   "enemy": "glass_wraith",
+   "step": "ref",
+   "shot": "glass_wraith_ref",
+   "generationId": "AXwqwfoQ9ULwSiy_5euqz4JDODDaXjNjUrcFgAI3mqBfFWSfNQK1NpgLaA9bYYb7W0G3eo1P",
+   "tool": "text_to_image",
+   "imageCount": 2,
+   "decision": "r2 KEPT -> glass_wraith_ref.webp (skull face, cracked glass torso, shard cloud); r1 less readable"
+  },
+  {
+   "enemy": "chandelier_fiend",
+   "step": "ref",
+   "shot": "chandelier_ref",
+   "generationId": "AZ_cJxsR7AqjG6TbnHeKh6Qj9x1EP0fnNS5eQE1WsShTBdoiRmL51YgB5lSFl9YWFxRJYY8-",
+   "tool": "text_to_image",
+   "imageCount": 2,
+   "decision": "r1 KEPT -> chandelier_fiend_ref.webp (flesh sac hub + skull face, spider legs + brass candle arms, crystal drops)"
+  },
+  {
+   "enemy": "forge_imp",
+   "step": "ref",
+   "shot": "forge_imp_ref",
+   "generationId": "Ac6gq_W4oLEoXf4SarfiBBhWEv4ATCeswytCMktraTtqpaEqD-pVIvN-B4Uvcw3WQE5mnKru",
+   "tool": "text_to_image",
+   "imageCount": 2,
+   "decision": "r1 KEPT -> forge_imp_ref.webp (side view, bat wings, satchel, ember tail)"
+  },
+  {
+   "enemy": "slag_golem",
+   "step": "ref",
+   "shot": "slag_golem_ref",
+   "generationId": "AeB_RIShaqP77gOjbhjyBVgjEkurk2Y4QUGnF8DdN7832polXLdPYSEkFuIUnNfAQH6l3qwI",
+   "tool": "text_to_image",
+   "imageCount": 2,
+   "decision": "r1 KEPT -> slag_golem_ref.webp (hunched, molten core, chained pauldron)"
+  },
+  {
+   "enemy": "chain_warden",
+   "step": "ref",
+   "shot": "chain_warden_ref",
+   "generationId": "AVSj980qoeUogcf_QFp6rSS2CxAMfn1ith5zoDZys2FwUtb2LclwwwKTmaS0dAc5NWl_Qfk5",
+   "tool": "text_to_image",
+   "imageCount": 2,
+   "decision": "r1 KEPT -> chain_warden_ref.webp (cage helm + horns, apron, chain-wrapped forearm, hook)"
+  },
+  {
+   "enemy": "bellows",
+   "step": "ref",
+   "shot": "bellows_ref",
+   "generationId": "AXZLXLH-0rCM-WGI-dmEWUoQC3goWnTUVwJdVxIe2TSYK_G-qf8UExKavvfxmdcCjrDsVSBc",
+   "tool": "text_to_image",
+   "imageCount": 2,
+   "decision": "r1 KEPT -> bellows_ref.webp (stitched bag, board wall, nozzle + brass idol face, claw legs)"
+  },
+  {
+   "enemy": "abyss_angler",
+   "step": "ref",
+   "shot": "abyss_angler_ref",
+   "generationId": "Aa9mTbFuNFLNAaLMLS6rFwRSUF7ukRhLxSZ0pstJq3FznpWXdLM9Au980eXCXzQUalNAUElZ",
+   "tool": "text_to_image",
+   "imageCount": 2,
+   "decision": "r1 KEPT -> abyss_angler_ref.webp (strict side view, lure stalk + cyan bulb)"
+  },
+  {
+   "enemy": "sunken_priest",
+   "step": "ref",
+   "shot": "sunken_priest_ref",
+   "generationId": "AfclgKszgyvF5eQedCf_zhkZQ0m3CDdElE9qqb0L8VdciC0ntMWhK1Va07tWQ2791jxrGHP3",
+   "tool": "text_to_image",
+   "imageCount": 2,
+   "decision": "r2 KEPT -> sunken_priest_ref.webp (hunched, barnacle mitre, coral staff)"
+  },
+  {
+   "enemy": "coral_crab",
+   "step": "ref",
+   "shot": "coral_crab_ref",
+   "generationId": "AZPtgQwbV_6gS-Uc-ONlQVNSCzO4kx44Jyda0lAm_S_jmzLCxAwpKY2rLL5yG76ESxxiv7JB",
+   "tool": "text_to_image",
+   "imageCount": 2,
+   "decision": "r1 KEPT -> coral_crab_ref.webp (shrine on the back, huge near claw)"
+  },
+  {
+   "enemy": "siren",
+   "step": "ref",
+   "shot": "siren_ref",
+   "generationId": "AZkL7uRWaLoZw6xxe68zYA0o1ljA1WGWaB5JQfrxPUMM4lE6yvRiDbCzdIYWvyjYs6fOzuIW",
+   "tool": "text_to_image",
+   "imageCount": 2,
+   "decision": "r1 KEPT -> siren_ref.webp (only r1 downloaded; fin hair, split mouth, long tail)"
+  },
+  {
+   "enemy": "mirror_knight",
+   "step": "sheet",
+   "shot": "mirror_knight_sheet",
+   "generationId": "ATMiNZ8FFNyhUIzYWUfcSfZ-0EBSrDrAEQ17yRyzGsZgJJrhGyR9GFYE-YQHzewmerYlolOw",
+   "tool": "image_to_image",
+   "imageCount": 2,
+   "decision": "2 images; sheet choice recorded when the parts are cut (see below)"
+  },
+  {
+   "enemy": "glass_wraith",
+   "step": "sheet",
+   "shot": "glass_wraith_sheet",
+   "generationId": "AWv9JMEBISXZjVf5t_qNwpk5ciZAx5tO6cAjA48TxDDlfIzcf80-fRYYBqa_8qUXENwziIfM",
+   "tool": "image_to_image",
+   "imageCount": 2,
+   "decision": "2 images; sheet choice recorded when the parts are cut (see below)"
+  },
+  {
+   "enemy": "chandelier_fiend",
+   "step": "sheet",
+   "shot": "chandelier_sheet",
+   "generationId": "Af17i9M7eR0vfBnZo76aJbiFCl1HHXgQu5X03SqNBCWlpYZJbBYzZlGFvu4RvcXAmvwzMOUD",
+   "tool": "image_to_image",
+   "imageCount": 2,
+   "decision": "2 images; sheet choice recorded when the parts are cut (see below)"
+  },
+  {
+   "enemy": "forge_imp",
+   "step": "sheet",
+   "shot": "forge_imp_sheet",
+   "generationId": "AeB71iUDdVbeAHCK1dMRjg7vvi_VkXURA--WPlrjkdKXKzC40HZNdcIlRoEDsYXuUWAGpZdq",
+   "tool": "image_to_image",
+   "imageCount": 2,
+   "decision": "2 images; sheet choice recorded when the parts are cut (see below)"
+  },
+  {
+   "enemy": "slag_golem",
+   "step": "sheet",
+   "shot": "slag_golem_sheet",
+   "generationId": "ASOuuWsI_uK2HkaIsG4tqytT24cxrv1_vp1uSnWCufBrH3-32a2AJoO53E6lZNiut50Trv_9",
+   "tool": "image_to_image",
+   "imageCount": 2,
+   "decision": "2 images; sheet choice recorded when the parts are cut (see below)"
+  },
+  {
+   "enemy": "chain_warden",
+   "step": "sheet",
+   "shot": "chain_warden_sheet",
+   "generationId": "AU9n7d2kgibAaVOyvXIJRNoOri_2_eAyXbVgf0DyUmg-jpru1gbiseJQ0BHF0Fp2rURLNgj-",
+   "tool": "image_to_image",
+   "imageCount": 2,
+   "decision": "2 images; sheet choice recorded when the parts are cut (see below)"
+  },
+  {
+   "enemy": "bellows",
+   "step": "sheet",
+   "shot": "bellows_sheet",
+   "generationId": "AdimTyaxS-0vsgZbhM6WAjw3qNkFUMVzweULogEPO7PdP4Oc0DaPjZBNyWKRzjlOJ_r0iKs2",
+   "tool": "image_to_image",
+   "imageCount": 2,
+   "decision": "2 images; sheet choice recorded when the parts are cut (see below)"
+  },
+  {
+   "enemy": "abyss_angler",
+   "step": "sheet",
+   "shot": "abyss_angler_sheet",
+   "generationId": "AXdw4q_xbR384qs1hUUJx9qr4bjZwTfGKhf5Z9IzgWvqNsntIoL889c11-xQDZHfuSDWWOry",
+   "tool": "image_to_image",
+   "imageCount": 2,
+   "decision": "2 images; sheet choice recorded when the parts are cut (see below)"
+  },
+  {
+   "enemy": "sunken_priest",
+   "step": "sheet",
+   "shot": "sunken_priest_sheet",
+   "generationId": "Aa6Te-OZ2QXi2AMTtjhwih_u3SKevu9AEreqyLzNpk_t8gr3-Y6GsT5an6jpCnxGA3QNJsLM",
+   "tool": "image_to_image",
+   "imageCount": 2,
+   "decision": "2 images; sheet choice recorded when the parts are cut (see below)"
+  },
+  {
+   "enemy": "coral_crab",
+   "step": "sheet",
+   "shot": "coral_crab_sheet",
+   "generationId": "ASZuXuINn1RgnUEwvBle4WI0Ls3wzwouz-o8YeFBcpfDhwSaJL0yan2mJCprHnX2jqk-3xk3",
+   "tool": "image_to_image",
+   "imageCount": 2,
+   "decision": "2 images; sheet choice recorded when the parts are cut (see below)"
+  },
+  {
+   "enemy": "siren",
+   "step": "sheet",
+   "shot": "siren_sheet",
+   "generationId": "AdUXxgkQa6jc6JbzwWkK1Tn7Ieskic2226viPvnFkbjWVJsc-5QCdz8wslvjG65Km-E9UJoi",
+   "tool": "image_to_image",
+   "imageCount": 2,
+   "decision": "2 images; sheet choice recorded when the parts are cut (see below)"
+  }
+ ]
+}

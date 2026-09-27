@@ -354,8 +354,10 @@ function cardCanvas(c, w, h, k, T) {
   if (c.skill) text(g, '· ' + c.skill, tx + nw + 6, 21, { size: T ? 15 : 14, weight: 800, family: FONT.title, color: '#ffe7a0', ow: 3, maxWidth: Math.max(20, tw - nw - 6 - 34) });
   const ln = c.line ? String(c.line) : '';
   if (ln) {
-    const size = T ? 14 : 13;
+    // 넘치면 먼저 글자를 11 px 까지 줄이고, 그래도 넘치면 말줄임
+    let size = T ? 14 : 13;
     g.font = font(size, 600, FONT.body);
+    while (size > 11 && g.measureText(ln).width > tw) { size--; g.font = font(size, 600, FONT.body); }
     let s = ln;
     if (g.measureText(s).width > tw) { while (s.length > 1 && g.measureText(s + '…').width > tw) s = s.slice(0, -1); s += '…'; }
     text(g, s, tx, 42, { size, weight: 600, color: '#efe4cf', ow: 3 });
