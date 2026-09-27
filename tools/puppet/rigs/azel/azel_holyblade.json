@@ -312,6 +312,14 @@
   "viewsQ": [
    "ym135",
    "ym45"
+  ],
+  "extra": [
+   {
+    "sheet": "azel/azel_holyblade_q3f",
+    "views": [
+     "y135"
+    ]
+   }
   ]
  }
 }

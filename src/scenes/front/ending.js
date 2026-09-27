@@ -276,12 +276,17 @@ export class CreditsScene extends Scene {
     else out.push('아케이드 모드: 보스 러시 · 서바이벌 · 스테이지 연습에서 명예의 전당에 도전하세요');
     return out;
   }
-  endRoll() { this.phase = this.stats ? 'stats' : 'end'; this.phaseT = 0; audio.sfx('menu_ok'); }
+  endRoll() {
+    this.phase = this.stats ? 'stats' : 'end'; this.phaseT = 0; audio.sfx('menu_ok');
+    // 통계·THE END 는 엔딩의 마지막 장면(슬라이드 끝)에 머문다 — 롤을 건너뛰어도 불타는 마을 같은 아무 장면이 아니라 그 엔딩의 그림 위에
+    const n = this.slides.length, u = this.t / SLIDE_SEC;
+    if (n) { this.hold = { at: this.t, from: Math.floor(u) % n, t0: (u % 1) * SLIDE_SEC + (Math.floor(u) % n) * 11 }; assets.get(this.slides[n - 1]); }
+  }
   update(dt) {
     const [vw, vh] = dims(this);
     this.amb.update(dt, vw, vh);
     this.phaseT += dt;
-    this.prefetch(Math.floor(this.t / SLIDE_SEC) % Math.max(1, this.slides.length));
+    if (!this.hold) this.prefetch(Math.floor(this.t / SLIDE_SEC) % Math.max(1, this.slides.length));
     if (this.phase === 'roll') {
       if (this.taps.hit() === 'skip') { this.endRoll(); return; }
       const fast = input.down('confirm') || input.down('attack') || input.pointer.down;
@@ -325,14 +330,23 @@ export class CreditsScene extends Scene {
     const g = this.game, [vw, vh] = dims(this), t = g.time;
     this.taps.clear();
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, vw, vh);
-    // 슬라이드쇼 (좌측, 7초 간격 크로스페이드)
+    // 슬라이드쇼 (좌측, 7초 간격 크로스페이드). 롤이 끝나면 지금 장면에서 마지막 장면(엔딩 그림)으로 넘어가 머문다
     const per = SLIDE_SEC, n = this.slides.length, u = this.t / per;
-    const i0 = Math.floor(u) % n, i1 = (i0 + 1) % n, f = clamp((u % 1 - 0.8) / 0.2, 0, 1);
+    let i0 = Math.floor(u) % n, i1 = (i0 + 1) % n, f = clamp((u % 1 - 0.8) / 0.2, 0, 1);
+    let t0 = (u % 1) * per + i0 * 11, t1 = i1 * 11;
+    const H = this.hold;
+    if (H) {
+      const dt = this.t - H.at;
+      i0 = H.from; i1 = n - 1; t0 = H.t0 + dt; t1 = i1 * 11 + dt;
+      // 마지막 장면이 아직 안 받아졌으면 지금 장면에 머물다가, 받아진 뒤에 넘어간다 (검은 화면으로 사라지지 않게)
+      if (H.ready == null && assets.get(this.slides[i1])) H.ready = this.t;
+      f = i0 === i1 ? 0 : H.ready == null ? 0 : clamp((this.t - H.ready) / 1.2, 0, 1);
+    }
     const sw = this.phase === 'roll' ? vw * 0.56 : vw;
     ctx.save();
     ctx.beginPath(); ctx.rect(0, 0, sw, vh); ctx.clip();
-    kenBurns(ctx, assets.get(this.slides[i0]), sw, vh, (u % 1) * per + i0 * 11, { z0: 1.04, z1: 1.14, period: per * 2, alpha: 0.8 });
-    if (f > 0) kenBurns(ctx, assets.get(this.slides[i1]), sw, vh, i1 * 11, { z0: 1.04, z1: 1.14, period: per * 2, alpha: 0.8 * f });
+    if (f < 1) kenBurns(ctx, assets.get(this.slides[i0]), sw, vh, t0, { z0: 1.04, z1: 1.14, period: per * 2, alpha: 0.8 });
+    if (f > 0) kenBurns(ctx, assets.get(this.slides[i1]), sw, vh, t1, { z0: 1.04, z1: 1.14, period: per * 2, alpha: f < 1 ? 0.8 * f : 0.8 });
     if (this.phase === 'roll') {
       const fr = ctx.createLinearGradient(sw * 0.5, 0, sw * 0.98, 0);
       fr.addColorStop(0, 'rgba(0,0,0,0)'); fr.addColorStop(1, 'rgba(0,0,0,1)');

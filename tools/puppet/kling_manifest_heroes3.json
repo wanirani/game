@@ -25,7 +25,8 @@
   "azel_bloodking_side.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qVAoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo6YWdlbnRfdXBsb2FkLzE3OTA0ODE4NzkvTDlDV1o2OTBFaS9hemVsX2Jsb29ka2luZ19zaWRlLmpwZw.origin?x-kcdn-pid=112372",
   "azel_holyblade_side.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qVAoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo6YWdlbnRfdXBsb2FkLzE3OTA0ODE4OTIvNlBReUlJcU5PaC9hemVsX2hvbHlibGFkZV9zaWRlLmpwZw.origin?x-kcdn-pid=112372",
   "azel_dawnbringer_side.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qVgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo8YWdlbnRfdXBsb2FkLzE3OTA0ODE4OTgvZGNZN0hPekRKZC9hemVsX2Rhd25icmluZ2VyX3NpZGUuanBn.origin?x-kcdn-pid=112372",
-  "azel_seraph_side.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qUQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo3YWdlbnRfdXBsb2FkLzE3OTA0ODE5MDIvS01CUTg4RnNlbi9hemVsX3NlcmFwaF9zaWRlLmpwZw.origin?x-kcdn-pid=112372"
+  "azel_seraph_side.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qUQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo3YWdlbnRfdXBsb2FkLzE3OTA0ODE5MDIvS01CUTg4RnNlbi9hemVsX3NlcmFwaF9zaWRlLmpwZw.origin?x-kcdn-pid=112372",
+  "azel_holyblade_front.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qVQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo7YWdlbnRfdXBsb2FkLzE3OTA0OTQxMzAvQjJBZmZ3NzJMVS9hemVsX2hvbHlibGFkZV9mcm9udC5qcGc.origin?x-kcdn-pid=112372"
  },
  "entries": [
   {
@@ -486,10 +487,39 @@
    "picked": null,
    "prompt": "Hand reference sheet for the young man in 图片1. Paint ONLY his gloved hands with exactly the same fitted white leather gloves as in 图片1, with clear darker grey shading and a thin dark outline so the white glove stands out, in the same painterly game-art style and lighting (not a 3D render), large and sharp, on a plain medium-dark slate-grey background. Two hands side by side, well separated, each cut off just after the wrist, no arms, no sleeves, no cuffs, no ruffles, no body, no face, no text. LEFT: his hand clenched into a tight fist seen from the outside, back of the hand and knuckles facing the viewer, thumb wrapped over the fingers, the wrist entering from the lower right, gripping a straight thin cylindrical rod painted flat pure bright green that passes vertically BEHIND the curled fingers (the fingers wrap around it and hide it) and sticks out above and below the fist. RIGHT: the same hand open with the palm facing the viewer, fingers together and slightly curved as if casting a spell, the wrist at the bottom. Only ONE green rod, only in the left fist. No watermark.",
    "note": "흰 장갑(holyblade) 전용 — 흰 장갑이 밝은 배경에서 rembg 로 지워지지 않게 어두운 배경"
+  },
+  {
+   "id": "azel_holyblade_q3f",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AWe7rF9Px7ibPvgkOO7-De0s1P8tZR3rkHu65JN8702n5EjCeTnRY2RhDCoMJroGgDwbP_cw",
+   "inputs": [
+    "azel_holyblade_side.jpg (outfit/design)",
+    "azel_holyblade_front.jpg (turn5 front view crop: outfit front)"
+   ],
+   "prompt": "One single full-body three-quarter FRONT view of the young man in 图片1 (same face, same long flowing silver hair, same pale skin, same blue eyes), wearing exactly the outfit of 图片1 and 图片2: polished silver plate pauldrons and breastplate with a gold cross, purple sleeves with gold-trimmed cuffs and white lace, long white coat with gold trim and blue lining, white trousers, silver knee-high boots, white gloves. The front of the outfit looks exactly like 图片2. He stands upright and relaxed with arms hanging at his sides, body turned about 40 degrees toward the viewer's LEFT: we see his chest and face, his nose and his toes point toward the lower left edge of the image, both arms and both legs visible. Nothing held in the hands, no cape, no cloak, no wings. Plain light-grey studio background, same painterly dark-fantasy game-art style and lighting as 图片1, full body visible from head to boots with margin, nothing cropped, no text, no watermark.",
+   "aspect_ratio": "3:4",
+   "img_resolution": "2k",
+   "picked": "a",
+   "note": "OK (재개 후) — holyblade 5뷰 시트에 3/4 앞이 없어(2번째가 정면 중복) 한 장짜리 3/4 앞 → turn.extra y135. 40° 요구로 알맞은 3/4."
+  },
+  {
+   "id": "azel_nosferatu_hands",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AV9daNQrCI1QLXIFfi2ofli4nu8lVb55gkXMw6bwSzc_buFIOvD0cIRnCmCXEtjoLkN1gHau",
+   "inputs": [
+    "azel_nosferatu_side.jpg"
+   ],
+   "prompt": "Hand reference sheet for the man in 图片1. Paint ONLY his gloved hands with exactly the same black leather gauntlets as in 图片1: matte black leather gloves with gold-trimmed black armored plates on the back of the hand and short sharp black metal claw tips on the fingers, in the same painterly game-art style and lighting (not a 3D render), large and sharp, on a plain light-grey background. Two hands side by side, well separated, each cut off just after the cuff, no arms, no body, no face, no text. LEFT: his hand clenched into a tight fist seen from the outside, back of the hand and knuckles facing the viewer, thumb wrapped over the fingers, the wrist and cuff entering from the lower right, gripping a straight thin cylindrical rod painted flat pure bright green that passes vertically BEHIND the curled fingers (the fingers wrap around it and hide it) and sticks out above and below the fist. Only ONE green rod, only in the left fist. RIGHT: the same hand open with the palm facing the viewer, fingers together and slightly curved as if casting a spell, the wrist and cuff at the bottom. No watermark.",
+   "aspect_ratio": "16:9",
+   "img_resolution": "2k",
+   "picked": "a",
+   "note": "OK (재개 후) — 노스페라투 발톱 건틀릿 전용(나머지 검은 장갑 5직업은 담피르 시트 공용). 막대는 대각선, 편 손은 발톱을 편 손(시전 손으로 충분)."
   }
  ],
  "images_used": {
-  "azel": 30,
+  "azel": 32,
   "npc": 20
  }
 }

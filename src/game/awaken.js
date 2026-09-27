@@ -55,7 +55,9 @@ export const AWAKEN_DEBUG = { casts: 0, last: null, holds: [], fallback: 0, canc
 // 순환 import 대비: 감독 모듈이 이 모듈보다 먼저 평가되며 registerDirector 를 불러도 되도록 함수 선언(호이스팅)에 붙여 둔다.
 function dirStore() { return dirStore.m || (dirStore.m = Object.create(null)); }
 export function registerDirector(charId, fn) {
-  if (charId && typeof fn === 'function') dirStore()[charId] = fn;
+  if (!charId) return;
+  if (typeof fn === 'function') dirStore()[charId] = fn;
+  else if (fn == null) delete dirStore()[charId];   // null → 등록 해제 (표 AWAKEN_DIRECTOR(_B) 또는 대체 연출로 돌아간다)
 }
 /** 감독이 쓰는 FXKIT 이 채워졌는가 (FX-ULTS). 비어 있으면 감독은 준비되지 않은 것으로 본다 */
 function kitReady() { try { return !!FXKIT && Object.keys(FXKIT).length > 0; } catch { return false; } }
@@ -301,13 +303,19 @@ export function castAwakening(p, world, { force = false } = {}) {
 let CAST_SEQ = 0;
 let SESSION = null;
 let BUS_HOOKED = false;
-/** 방이 바뀌면 진행자 엔티티가 사라진다 → 연출 상태가 남지 않게 되돌린다 */
+/**
+ * 방이 바뀌면 진행자 엔티티가 사라진다 → 연출 상태가 남지 않게 되돌린다.
+ * 연출 도중 스테이지를 떠났으면(보스 격파 → 결과 화면 등) 진행자가 다시 돌지 않으므로, 다른 월드가 방을 열 때 옛 세션을 닫아
+ * 옛 월드를 붙잡고 있지 않게 한다 (SESSION 이 유일한 강한 참조).
+ */
 function hookBus() {
   if (BUS_HOOKED) return;
   BUS_HOOKED = true;
   bus.on('roomEntered', () => {
     const s = SESSION;
-    if (s && !s.ended && s.started && s.mgr && !s.world.entities.includes(s.mgr)) finishSession(s, 'room');
+    if (!s || s.ended) return;
+    if (s.world?.game?.world !== s.world) { finishSession(s, 'left'); return; }
+    if (s.started && s.mgr && !s.world.entities.includes(s.mgr)) finishSession(s, 'room');
   });
 }
 
@@ -358,7 +366,7 @@ function finishSession(cast, why) {
     if (world.run) { world.run.sp = 0; world.run.aw = 0; }   // 마지막 프레임의 각성 타격이 채운 SP 도 비운다
     const lb = world.letterbox || 0;
     world.letterbox = 0;
-    if (lb > 0.5 && why !== 'room') world.addOverlay?.({ life: 0.3, draw(ctx, vw, vh) { const h = lb * (1 - ease.outCubic(clamp(this.t / 0.3, 0, 1))); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, vw, h); ctx.fillRect(0, vh - h, vw, h); } });
+    if (lb > 0.5 && why !== 'room' && why !== 'left') world.addOverlay?.({ life: 0.3, draw(ctx, vw, vh) { const h = lb * (1 - ease.outCubic(clamp(this.t / 0.3, 0, 1))); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, vw, h); ctx.fillRect(0, vh - h, vw, h); } });
     try { ULTFX.end?.(world, p, {}); } catch (e) { console.error(e); }
   }
   if (p) {

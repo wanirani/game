@@ -2,8 +2,35 @@
 // 채색 컷아웃 퍼펫이 준비된 캐릭터/직업. h = 파일 묶음 해시(캐시 무효화), turn = 턴테이블 시트 유무.
 export const PUPPETS = {
  "azel": {
+  "azel_bloodking": {
+   "h": "3bd78b9fcb21",
+   "turn": false,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
   "azel_dhampir": {
-   "h": "877d512b2c1b",
+   "h": "f414fe559c04",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "azel_nosferatu": {
+   "h": "064c8944c42f",
+   "turn": false,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "azel_vampire": {
+   "h": "e7024d68d854",
    "turn": false,
    "lv": [
     "hi",

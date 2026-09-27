@@ -46,6 +46,7 @@ export default {
     const q = qualityOf(b.world?.game);
     return {
       D: new Drawer(), P: new Particles(q.particles), shards: new Shards(40), q,
+      ...flashBuf(b),   // 굽은 띠(꼬리/몸통) 가산 섬광 버퍼 — 싸움 도중에 캔버스를 만들지 않게 미리
       dmg: new DamageState(b.def?.phases ?? [0.6, 0.3]), lt: null, pf: 0, jolt: 0, fs: null, trail: [],
       tail: Array.from({ length: 16 }, () => ({ x: 0, y: 0 })), sflip: 1,
       gone: { tubes: false, snake: false, goat: false, lion: false, body: false }, deathBurst: false,
@@ -333,24 +334,40 @@ export function drawBent(ctx, D, img, part, pts, n, thick, flip, alpha = 1, tape
   }
   ctx.globalAlpha = ga;
 }
+/** 섬광 띠 버퍼 (init 에서 한 번): 게임 캔버스의 반 해상도 크기. 문서가 없으면(노드 검사) null → 띠 섬광 생략 */
+function flashBuf(b) {
+  if (typeof document === 'undefined') return { fbuf: null, fctx: null, fD: null };
+  const gc = b.world?.game?.canvas;
+  const c = document.createElement('canvas');
+  c.width = Math.ceil((gc?.width || 1920) * 0.5) + 2; c.height = Math.ceil((gc?.height || 1080) * 0.5) + 2;
+  return { fbuf: c, fctx: c.getContext('2d'), fD: new Drawer() };
+}
 /**
  * 겹쳐 그리는 띠(구부린 꼬리)의 가산 섬광: 반 해상도 버퍼에 흰 실루엣을 보통 합성으로 그려(겹쳐도 한 번) 장치 좌표로 한 번만 가산한다.
  * bb = 월드 사각형 [x0,y0,x1,y1]. draw(o, D2) 는 기준 변환(카메라·DPR, 반 해상도)이 걸린 버퍼에 그린다.
- * 버퍼는 섬광이 처음 필요할 때 만들어 이 인스턴스 상태에 둔다 (≤ 화면 ¼ 크기).
+ * 버퍼는 init 에서 한 번 만든다(flashBuf, 화면 ¼ 크기) — 싸움 도중에는 캔버스를 새로 만들지 않는다 (MASTER_PLAN §5.2).
+ * 화면이 커져 버퍼가 모자라면 해상도(R)를 낮춰 맞춘다.
  */
 function flashLayer(ctx, D, st, bb, alpha, draw) {
-  if (alpha <= 0.01 || typeof document === 'undefined') return;
+  const c = st.fbuf;
+  if (alpha <= 0.01 || !c) return;
   const m = D.m, cw = ctx.canvas?.width ?? 0, ch = ctx.canvas?.height ?? 0;
-  const dx0 = Math.max(0, Math.floor(m[0] * bb[0] + m[4])), dy0 = Math.max(0, Math.floor(m[3] * bb[1] + m[5]));
-  const dx1 = Math.min(cw, Math.ceil(m[0] * bb[2] + m[4])), dy1 = Math.min(ch, Math.ceil(m[3] * bb[3] + m[5]));
+  // 장치 좌표 사각형: 네 모서리를 전체 변환으로 옮겨 감싼다 (카메라 흔들림·기울기 회전이 있으면 대각 성분만으로는 띠 끝이 잘린다)
+  let ax = Infinity, ay = Infinity, bx = -Infinity, by = -Infinity;
+  for (let j = 0; j < 4; j++) {
+    const x = j & 1 ? bb[2] : bb[0], y = j & 2 ? bb[3] : bb[1];
+    const X = m[0] * x + m[2] * y + m[4], Y = m[1] * x + m[3] * y + m[5];
+    if (X < ax) ax = X; if (X > bx) bx = X; if (Y < ay) ay = Y; if (Y > by) by = Y;
+  }
+  const dx0 = Math.max(0, Math.floor(ax)), dy0 = Math.max(0, Math.floor(ay));
+  const dx1 = Math.min(cw, Math.ceil(bx)), dy1 = Math.min(ch, Math.ceil(by));
   if (dx1 - dx0 < 2 || dy1 - dy0 < 2) return;
-  const R = 0.5, w = Math.ceil((dx1 - dx0) * R), h = Math.ceil((dy1 - dy0) * R);
-  let c = st.fbuf;
-  if (!c || c.width < w || c.height < h) { c = st.fbuf = document.createElement('canvas'); c.width = Math.max(w, st.fbufW ?? 0); c.height = Math.max(h, st.fbufH ?? 0); st.fbufW = c.width; st.fbufH = c.height; st.fctx = c.getContext('2d'); }
+  const R = Math.min(0.5, (c.width - 1) / (dx1 - dx0), (c.height - 1) / (dy1 - dy0));
+  const w = Math.ceil((dx1 - dx0) * R), h = Math.ceil((dy1 - dy0) * R);
   const o = st.fctx;
   o.setTransform(1, 0, 0, 1, 0, 0); o.clearRect(0, 0, w + 1, h + 1);
   o.setTransform(m[0] * R, m[1] * R, m[2] * R, m[3] * R, (m[4] - dx0) * R, (m[5] - dy0) * R);
-  const D2 = st.fD ??= new Drawer();
+  const D2 = st.fD;
   D2.begin(o);
   draw(o, D2);
   const ga = ctx.globalAlpha, op = ctx.globalCompositeOperation;

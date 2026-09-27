@@ -12,6 +12,7 @@
 //  ULTFX.final(w, x, y, {color, accent, tier, ground, classId, targets, noFlash, flashColor, shake, impact, impactFg, impactBg, flourish, silent}) →
 //      번쩍임 0.6(game.flash 정책) + 고리 1/2/3 + 불씨 비 40(1차+) + 2차: 임팩트 프레임 2장(검정 + 흰 실루엣 → difference 반전; low 는 흰 번쩍임) ·
 //      바닥 균열 · 직업 장식(24종, ULT_FLOURISH). 임팩트 프레임 동안에는 화면 번쩍임을 두 프레임 미뤘다가 다시 켠다(검정 화면이 씻기지 않게).
+//      임팩트 프레임은 시전당 2번까지, 0.5초 간격 이상이며 화면 층 맨 끝에 그린다. ground: true 면 균열·타원을 가까운 바닥에 붙인다.
 //  ULTFX.afterimage(w, p, tint, {life, gap, min, max, tier, alpha}) → 캐시 잔상 비트맵 1장 → true | false
 //      단계별 동시 상한 0/3/5, 품질 상한 8/5/3, 0.045초 간격 제한. 영웅은 잔상을 만들 때 한 번만 그리고, 그 뒤로는 비트맵만 그린다.
 //  ULTFX.end(w, p?, {quick}) → 줌·기울기·레터박스 복구, 화면 층 0.25초 페이드 후 제거

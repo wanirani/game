@@ -411,6 +411,7 @@ export class MountRider {
       if (sp) { p.cx = sp.cx; p.bottom = sp.bottom; }
     }
     this.seated = false;
+    this.invulnT = 0;   // 탈것 쪽 무적 (돌진·앞들기·영혼 결속 3초) 은 내린 기수에게 남기지 않는다 (낙마 무적은 p.iframes 로 따로 준다)
     this.chargeT = 0; this.chargeAtk = null; this.act = null; this.gliding = false; this.flying = false; this.diving = false;
     this.galloping = false; this.gallopT = 0; this.duck = 0; this.inWater = false;
     this.releaseMaxFall(p);
