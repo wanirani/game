@@ -290,6 +290,9 @@ def build(rig_path, dbg=False, out=None, quiet=False):
     fl_ = L.get('footLine', [2395, 980, 0.06])  # y0, x0, 기울기: 발목 위/아래 경계선
     foot_line = YY - (fl_[0] + (XX - fl_[1]) * fl_[2])
     shin_m = leg_m & (along_k2 > -70) & (foot_line < 40) & (pants | (YY > L.get('shinBootY', 2070)))
+    if L.get('shinToeCut') is not None:   # opt-in (heroes3rev): 발목에서 발끝 쪽으로 이 px 넘는 곳(구두 앞코 윗선)은 정강이에서 뺀다 — 발 부품이 덮는다
+        ft = (np.array(J['toe'], float) - ankle) / np.linalg.norm(np.array(J['toe'], float) - ankle)
+        shin_m &= ((XX - ankle[0]) * ft[0] + (YY - ankle[1]) * ft[1]) < L['shinToeCut']
     sf = feather(shin_m, 1.2) * np.clip((along_k2 + 70) / 45, 0, 1) * np.clip((40 - foot_line) / 20, 0, 1)
     add('shin', base, shin_m, J['knee'], J['ankle'], fe=sf)
     foot_m = leg_m & (foot_line > -30) & (XX > L.get('footMinX', 930))
@@ -299,6 +302,9 @@ def build(rig_path, dbg=False, out=None, quiet=False):
     if has('skirt'):
         sk_vis = skirt_near_full & figE & ~R('farm') & ~R('coil') & ~R('uarm') & ~R('leg')
         sk_vis |= skirt_near_full & figE & R('leg') & ~R('skirtLegCut')
+        if P.get('skirtArmPad'):   # opt-in (heroes3rev): 팔 둘레 px 만큼도 인페인트 — 팔 윤곽 가장자리(피부·소매 주름)가 자락에 남아 팔이 비키면 얼룩이 되는 것 방지
+            k = 2 * int(P['skirtArmPad']) + 1
+            sk_vis &= ~(cv2.dilate((R('farm') | R('uarm')).astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))) > 0)
         ssrc = (lum < P['skirtSrcMaxLum']) if P.get('skirtSrcMaxLum') else None
         img_s = inpaint(base, sk_vis, skirt_near_full, 11, tone=P.get('skirtTone', 0.55), srcm=ssrc)
         add('skirt', img_s, skirt_near_full & fig, J['skirtPivot'], J['skirtHem'])

@@ -863,7 +863,8 @@
    0.05
   ],
   "footMinX": 980,
-  "shinBootY": 1990
+  "shinBootY": 1990,
+  "shinToeCut": 40
  },
  "materials": {},
  "runtime": {
@@ -874,5 +875,6 @@
   "cape": false,
   "farArm": false,
   "skirtRest": 0.1
- }
+ },
+ "_shinToeCut": "heroes3rev: 정강이 부품 아래 띠(footLine+40)가 구두·장화 앞코 윗선까지 잡아서, 대기·걷기로 정강이가 원화보다 세워지면 그 띠가 발 밑으로 내려와 '발 아래 가는 막대'로 보였다 → 발목에서 발끝 방향 40px 넘는 곳은 정강이에서 뺌(발 부품이 덮음)"
 }

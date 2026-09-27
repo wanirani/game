@@ -1,0 +1,962 @@
+{
+ "v": 1,
+ "params": "scale=0.6;q=72;m=6;lanczos",
+ "scale": 0.6,
+ "quality": 72,
+ "keys": [
+  "bg/ending",
+  "bg/hub",
+  "bg/inn",
+  "bg/s01_village",
+  "bg/s02_graveyard",
+  "bg/s03_gate",
+  "bg/s04_hall",
+  "bg/s05_catacombs",
+  "bg/s06_library",
+  "bg/s07_alchemy",
+  "bg/s08_waterway",
+  "bg/s09_clocktower",
+  "bg/s10_spire",
+  "bg/s11_chapel",
+  "bg/s12_throne",
+  "bg/s13_abyss",
+  "bg/s14_mirror",
+  "bg/s15_forge",
+  "bg/s16_sunken",
+  "bg/s17_sky",
+  "bg/s18_nightmare",
+  "bg/s19_blight",
+  "bg/s20_void",
+  "bg/s_arena",
+  "bg/shop",
+  "bg/smith",
+  "bg/title",
+  "bg/worldmap",
+  "bg/worldmap2",
+  "cg/cg_abyss_gate",
+  "cg/cg_alberto_church",
+  "cg/cg_bad_ending",
+  "cg/cg_behemoth_rot",
+  "cg/cg_carmilla_library",
+  "cg/cg_castle_collapse",
+  "cg/cg_castle_gate",
+  "cg/cg_death_appears",
+  "cg/cg_dracula_throne",
+  "cg/cg_dracula_transform",
+  "cg/cg_elise_rescued",
+  "cg/cg_elise_taken",
+  "cg/cg_forge_idol",
+  "cg/cg_mara_cradle",
+  "cg/cg_mirror_empress",
+  "cg/cg_nihil",
+  "cg/cg_p2_ending",
+  "cg/cg_p2_true",
+  "cg/cg_prologue_attack",
+  "cg/cg_prologue_moon",
+  "cg/cg_rift_gate",
+  "cg/cg_rift_sky",
+  "cg/cg_rook_reveal",
+  "cg/cg_sunken_cathedral",
+  "cg/cg_true_ending",
+  "cg/cg_void_descent",
+  "cg/cg_ziz_storm",
+  "cg/cutin_azel",
+  "cg/cutin_bran",
+  "cg/cutin_kael",
+  "cg/cutin_lia",
+  "cg/cutin_sera",
+  "cg/cutin_victor",
+  "portraits/azel",
+  "portraits/b_banshee",
+  "portraits/b_behemoth",
+  "portraits/b_bonedragon",
+  "portraits/b_chaos",
+  "portraits/b_chimera",
+  "portraits/b_colossus",
+  "portraits/b_crimson",
+  "portraits/b_dagon",
+  "portraits/b_death",
+  "portraits/b_dracula",
+  "portraits/b_dracula2",
+  "portraits/b_dullahan",
+  "portraits/b_frostqueen",
+  "portraits/b_grimoire",
+  "portraits/b_leviathan",
+  "portraits/b_mara",
+  "portraits/b_moloch",
+  "portraits/b_narkissa",
+  "portraits/b_narkissa2",
+  "portraits/b_nightwing",
+  "portraits/b_nihil",
+  "portraits/b_nihil2",
+  "portraits/b_ziz",
+  "portraits/bran",
+  "portraits/cmp_g_clock",
+  "portraits/cmp_g_fairy",
+  "portraits/cmp_g_imp",
+  "portraits/cmp_g_knight",
+  "portraits/cmp_g_owl",
+  "portraits/cmp_g_reaper",
+  "portraits/cmp_g_spiritwolf",
+  "portraits/cmp_g_whelp",
+  "portraits/cmp_gd_lumen",
+  "portraits/cmp_gd_mirra",
+  "portraits/cmp_gd_momo",
+  "portraits/cmp_m_boar",
+  "portraits/cmp_m_direwolf",
+  "portraits/cmp_m_giantbat",
+  "portraits/cmp_m_skelsteed",
+  "portraits/cmp_m_warhorse",
+  "portraits/cmp_m_wyvern",
+  "portraits/cmp_mt_gale",
+  "portraits/cmp_mt_ignis",
+  "portraits/cmp_mt_silva",
+  "portraits/kael",
+  "portraits/lia",
+  "portraits/npc_alberto",
+  "portraits/npc_carmilla",
+  "portraits/npc_elise",
+  "portraits/npc_greta",
+  "portraits/npc_hadwin",
+  "portraits/npc_marta",
+  "portraits/npc_rook",
+  "portraits/npc_rook2",
+  "portraits/sera",
+  "portraits/victor"
+ ],
+ "files": {
+  "bg/ending.webp": {
+   "src": "20b632017a35",
+   "w": 1147,
+   "h": 603,
+   "bytes": 37524,
+   "srcBytes": 108018
+  },
+  "bg/hub.webp": {
+   "src": "b2479eadcdf3",
+   "w": 1512,
+   "h": 603,
+   "bytes": 35312,
+   "srcBytes": 106494
+  },
+  "bg/inn.webp": {
+   "src": "e682442e9d4a",
+   "w": 1147,
+   "h": 603,
+   "bytes": 42778,
+   "srcBytes": 147062
+  },
+  "bg/s01_village.webp": {
+   "src": "598ac9efa768",
+   "w": 1512,
+   "h": 564,
+   "bytes": 41682,
+   "srcBytes": 102432
+  },
+  "bg/s02_graveyard.webp": {
+   "src": "99f2b348272f",
+   "w": 1512,
+   "h": 603,
+   "bytes": 64314,
+   "srcBytes": 220814
+  },
+  "bg/s03_gate.webp": {
+   "src": "d6ec3d9ddd83",
+   "w": 1512,
+   "h": 603,
+   "bytes": 57902,
+   "srcBytes": 145550
+  },
+  "bg/s04_hall.webp": {
+   "src": "fa209122fd11",
+   "w": 1512,
+   "h": 567,
+   "bytes": 37220,
+   "srcBytes": 104618
+  },
+  "bg/s05_catacombs.webp": {
+   "src": "bf6472945958",
+   "w": 1512,
+   "h": 603,
+   "bytes": 140596,
+   "srcBytes": 487956
+  },
+  "bg/s06_library.webp": {
+   "src": "ac4070a359ec",
+   "w": 1512,
+   "h": 447,
+   "bytes": 46552,
+   "srcBytes": 151982
+  },
+  "bg/s07_alchemy.webp": {
+   "src": "3c294487788f",
+   "w": 1512,
+   "h": 603,
+   "bytes": 56734,
+   "srcBytes": 183058
+  },
+  "bg/s08_waterway.webp": {
+   "src": "17556a334caa",
+   "w": 1512,
+   "h": 603,
+   "bytes": 45182,
+   "srcBytes": 141322
+  },
+  "bg/s09_clocktower.webp": {
+   "src": "fdf6bdbe3220",
+   "w": 1512,
+   "h": 520,
+   "bytes": 48658,
+   "srcBytes": 150418
+  },
+  "bg/s10_spire.webp": {
+   "src": "12e6ccc91901",
+   "w": 1512,
+   "h": 603,
+   "bytes": 41366,
+   "srcBytes": 103294
+  },
+  "bg/s11_chapel.webp": {
+   "src": "5fafb335cca1",
+   "w": 1512,
+   "h": 603,
+   "bytes": 57062,
+   "srcBytes": 172094
+  },
+  "bg/s12_throne.webp": {
+   "src": "ee1180983b2f",
+   "w": 1512,
+   "h": 563,
+   "bytes": 56704,
+   "srcBytes": 184210
+  },
+  "bg/s13_abyss.webp": {
+   "src": "166e3263b15e",
+   "w": 1512,
+   "h": 580,
+   "bytes": 48706,
+   "srcBytes": 123934
+  },
+  "bg/s14_mirror.webp": {
+   "src": "dea72f874905",
+   "w": 1512,
+   "h": 603,
+   "bytes": 81034,
+   "srcBytes": 177886
+  },
+  "bg/s15_forge.webp": {
+   "src": "6b41f16c93c0",
+   "w": 1512,
+   "h": 603,
+   "bytes": 71568,
+   "srcBytes": 176532
+  },
+  "bg/s16_sunken.webp": {
+   "src": "6bec853a0971",
+   "w": 1512,
+   "h": 603,
+   "bytes": 60000,
+   "srcBytes": 170546
+  },
+  "bg/s17_sky.webp": {
+   "src": "3a0634b900f9",
+   "w": 1512,
+   "h": 603,
+   "bytes": 43874,
+   "srcBytes": 126690
+  },
+  "bg/s18_nightmare.webp": {
+   "src": "062fa5668cd6",
+   "w": 1512,
+   "h": 603,
+   "bytes": 80078,
+   "srcBytes": 177376
+  },
+  "bg/s19_blight.webp": {
+   "src": "c1fa75f7f6c7",
+   "w": 1512,
+   "h": 603,
+   "bytes": 74808,
+   "srcBytes": 178576
+  },
+  "bg/s20_void.webp": {
+   "src": "2aac27feb7a4",
+   "w": 1512,
+   "h": 603,
+   "bytes": 64918,
+   "srcBytes": 177650
+  },
+  "bg/s_arena.webp": {
+   "src": "6bfabef43771",
+   "w": 1512,
+   "h": 603,
+   "bytes": 38566,
+   "srcBytes": 114166
+  },
+  "bg/shop.webp": {
+   "src": "2cb37a121c54",
+   "w": 1147,
+   "h": 603,
+   "bytes": 37960,
+   "srcBytes": 115946
+  },
+  "bg/smith.webp": {
+   "src": "b02d3b88e954",
+   "w": 1147,
+   "h": 603,
+   "bytes": 31024,
+   "srcBytes": 80804
+  },
+  "bg/title.webp": {
+   "src": "8fc56caffcd8",
+   "w": 1147,
+   "h": 603,
+   "bytes": 34194,
+   "srcBytes": 89322
+  },
+  "bg/worldmap.webp": {
+   "src": "7d959cc4198a",
+   "w": 1147,
+   "h": 603,
+   "bytes": 78374,
+   "srcBytes": 226930
+  },
+  "bg/worldmap2.webp": {
+   "src": "bb06a04bf6ae",
+   "w": 1147,
+   "h": 603,
+   "bytes": 86730,
+   "srcBytes": 183292
+  },
+  "cg/cg_abyss_gate.webp": {
+   "src": "2f756d46bc26",
+   "w": 1147,
+   "h": 599,
+   "bytes": 40372,
+   "srcBytes": 137434
+  },
+  "cg/cg_alberto_church.webp": {
+   "src": "cd501e7ba6c4",
+   "w": 1147,
+   "h": 599,
+   "bytes": 49666,
+   "srcBytes": 166820
+  },
+  "cg/cg_bad_ending.webp": {
+   "src": "686b65cbfe3f",
+   "w": 1147,
+   "h": 599,
+   "bytes": 33168,
+   "srcBytes": 119194
+  },
+  "cg/cg_behemoth_rot.webp": {
+   "src": "a8739a92ee03",
+   "w": 1147,
+   "h": 599,
+   "bytes": 75340,
+   "srcBytes": 167480
+  },
+  "cg/cg_carmilla_library.webp": {
+   "src": "731c73d6917b",
+   "w": 1147,
+   "h": 599,
+   "bytes": 51106,
+   "srcBytes": 181996
+  },
+  "cg/cg_castle_collapse.webp": {
+   "src": "787d5ed14ed5",
+   "w": 1147,
+   "h": 599,
+   "bytes": 31468,
+   "srcBytes": 97284
+  },
+  "cg/cg_castle_gate.webp": {
+   "src": "7b1792285a1c",
+   "w": 1147,
+   "h": 599,
+   "bytes": 45136,
+   "srcBytes": 156398
+  },
+  "cg/cg_death_appears.webp": {
+   "src": "221670d254a7",
+   "w": 1147,
+   "h": 599,
+   "bytes": 51058,
+   "srcBytes": 175196
+  },
+  "cg/cg_dracula_throne.webp": {
+   "src": "61337b93d48e",
+   "w": 1147,
+   "h": 599,
+   "bytes": 51118,
+   "srcBytes": 149966
+  },
+  "cg/cg_dracula_transform.webp": {
+   "src": "a715ec94463b",
+   "w": 1147,
+   "h": 599,
+   "bytes": 54886,
+   "srcBytes": 167020
+  },
+  "cg/cg_elise_rescued.webp": {
+   "src": "78f00c89ff54",
+   "w": 1147,
+   "h": 599,
+   "bytes": 49452,
+   "srcBytes": 149638
+  },
+  "cg/cg_elise_taken.webp": {
+   "src": "05ff9effef29",
+   "w": 1147,
+   "h": 599,
+   "bytes": 31244,
+   "srcBytes": 93324
+  },
+  "cg/cg_forge_idol.webp": {
+   "src": "2bbdcc971df0",
+   "w": 1147,
+   "h": 599,
+   "bytes": 49964,
+   "srcBytes": 167646
+  },
+  "cg/cg_mara_cradle.webp": {
+   "src": "21f286336f59",
+   "w": 1147,
+   "h": 599,
+   "bytes": 57042,
+   "srcBytes": 159588
+  },
+  "cg/cg_mirror_empress.webp": {
+   "src": "494f33376b4a",
+   "w": 1147,
+   "h": 599,
+   "bytes": 81482,
+   "srcBytes": 167580
+  },
+  "cg/cg_nihil.webp": {
+   "src": "5ef28e93f6cd",
+   "w": 1147,
+   "h": 599,
+   "bytes": 34466,
+   "srcBytes": 105524
+  },
+  "cg/cg_p2_ending.webp": {
+   "src": "900e58ecdfdd",
+   "w": 1147,
+   "h": 599,
+   "bytes": 44260,
+   "srcBytes": 124238
+  },
+  "cg/cg_p2_true.webp": {
+   "src": "ff3beffe02dc",
+   "w": 1147,
+   "h": 599,
+   "bytes": 74318,
+   "srcBytes": 170280
+  },
+  "cg/cg_prologue_attack.webp": {
+   "src": "ec87f69fadf1",
+   "w": 1147,
+   "h": 599,
+   "bytes": 46760,
+   "srcBytes": 146104
+  },
+  "cg/cg_prologue_moon.webp": {
+   "src": "7bf94a7261c0",
+   "w": 1147,
+   "h": 599,
+   "bytes": 42730,
+   "srcBytes": 136270
+  },
+  "cg/cg_rift_gate.webp": {
+   "src": "98baeb279aab",
+   "w": 1147,
+   "h": 599,
+   "bytes": 51474,
+   "srcBytes": 158654
+  },
+  "cg/cg_rift_sky.webp": {
+   "src": "5a17ea07501e",
+   "w": 1147,
+   "h": 599,
+   "bytes": 49454,
+   "srcBytes": 146666
+  },
+  "cg/cg_rook_reveal.webp": {
+   "src": "7ce733b277a2",
+   "w": 1147,
+   "h": 599,
+   "bytes": 73472,
+   "srcBytes": 170226
+  },
+  "cg/cg_sunken_cathedral.webp": {
+   "src": "763901b67b33",
+   "w": 1147,
+   "h": 599,
+   "bytes": 71610,
+   "srcBytes": 164124
+  },
+  "cg/cg_true_ending.webp": {
+   "src": "5028e7d4db95",
+   "w": 1147,
+   "h": 599,
+   "bytes": 59204,
+   "srcBytes": 188612
+  },
+  "cg/cg_void_descent.webp": {
+   "src": "a0dfaa70db90",
+   "w": 1147,
+   "h": 599,
+   "bytes": 46136,
+   "srcBytes": 137060
+  },
+  "cg/cg_ziz_storm.webp": {
+   "src": "b4b5e8204722",
+   "w": 1147,
+   "h": 599,
+   "bytes": 39380,
+   "srcBytes": 120694
+  },
+  "cg/cutin_azel.webp": {
+   "src": "abe5b5360ae7",
+   "w": 960,
+   "h": 382,
+   "bytes": 33352,
+   "srcBytes": 87892
+  },
+  "cg/cutin_bran.webp": {
+   "src": "e8e23306c581",
+   "w": 960,
+   "h": 382,
+   "bytes": 39530,
+   "srcBytes": 103748
+  },
+  "cg/cutin_kael.webp": {
+   "src": "3e8636f4375b",
+   "w": 960,
+   "h": 382,
+   "bytes": 38074,
+   "srcBytes": 103864
+  },
+  "cg/cutin_lia.webp": {
+   "src": "a996ef823bec",
+   "w": 960,
+   "h": 382,
+   "bytes": 33406,
+   "srcBytes": 90920
+  },
+  "cg/cutin_sera.webp": {
+   "src": "3f59b1c3f643",
+   "w": 960,
+   "h": 382,
+   "bytes": 33660,
+   "srcBytes": 91156
+  },
+  "cg/cutin_victor.webp": {
+   "src": "944b2dc90ccc",
+   "w": 960,
+   "h": 382,
+   "bytes": 30868,
+   "srcBytes": 81298
+  },
+  "portraits/azel.webp": {
+   "src": "bd9f8a17b691",
+   "w": 480,
+   "h": 680,
+   "bytes": 26160,
+   "srcBytes": 72414
+  },
+  "portraits/b_banshee.webp": {
+   "src": "50919cc4b4e0",
+   "w": 457,
+   "h": 581,
+   "bytes": 21494,
+   "srcBytes": 58668
+  },
+  "portraits/b_behemoth.webp": {
+   "src": "beec2482b839",
+   "w": 457,
+   "h": 581,
+   "bytes": 40030,
+   "srcBytes": 89984
+  },
+  "portraits/b_bonedragon.webp": {
+   "src": "1b4a8679337a",
+   "w": 457,
+   "h": 581,
+   "bytes": 31164,
+   "srcBytes": 83880
+  },
+  "portraits/b_chaos.webp": {
+   "src": "3f97d54105fe",
+   "w": 457,
+   "h": 581,
+   "bytes": 24030,
+   "srcBytes": 71474
+  },
+  "portraits/b_chimera.webp": {
+   "src": "2cc951afd245",
+   "w": 457,
+   "h": 581,
+   "bytes": 27552,
+   "srcBytes": 79236
+  },
+  "portraits/b_colossus.webp": {
+   "src": "cbd2ea1da3f3",
+   "w": 457,
+   "h": 581,
+   "bytes": 27788,
+   "srcBytes": 75902
+  },
+  "portraits/b_crimson.webp": {
+   "src": "20447170fcf7",
+   "w": 457,
+   "h": 581,
+   "bytes": 28410,
+   "srcBytes": 77812
+  },
+  "portraits/b_dagon.webp": {
+   "src": "9a2c6760d4d4",
+   "w": 457,
+   "h": 581,
+   "bytes": 29282,
+   "srcBytes": 89750
+  },
+  "portraits/b_death.webp": {
+   "src": "db022becf26c",
+   "w": 457,
+   "h": 581,
+   "bytes": 18064,
+   "srcBytes": 51042
+  },
+  "portraits/b_dracula.webp": {
+   "src": "ff64ccb33d46",
+   "w": 457,
+   "h": 581,
+   "bytes": 17846,
+   "srcBytes": 51422
+  },
+  "portraits/b_dracula2.webp": {
+   "src": "cde51dda587e",
+   "w": 457,
+   "h": 581,
+   "bytes": 27992,
+   "srcBytes": 84356
+  },
+  "portraits/b_dullahan.webp": {
+   "src": "d64456b0ceb4",
+   "w": 457,
+   "h": 581,
+   "bytes": 26618,
+   "srcBytes": 74900
+  },
+  "portraits/b_frostqueen.webp": {
+   "src": "669cb4455cf0",
+   "w": 457,
+   "h": 581,
+   "bytes": 23606,
+   "srcBytes": 71968
+  },
+  "portraits/b_grimoire.webp": {
+   "src": "734f80a5df69",
+   "w": 457,
+   "h": 581,
+   "bytes": 22614,
+   "srcBytes": 66440
+  },
+  "portraits/b_leviathan.webp": {
+   "src": "1bc1888f7616",
+   "w": 457,
+   "h": 581,
+   "bytes": 25766,
+   "srcBytes": 83296
+  },
+  "portraits/b_mara.webp": {
+   "src": "0cf307cab7ee",
+   "w": 457,
+   "h": 581,
+   "bytes": 30878,
+   "srcBytes": 86394
+  },
+  "portraits/b_moloch.webp": {
+   "src": "2b419fef94c3",
+   "w": 457,
+   "h": 581,
+   "bytes": 27284,
+   "srcBytes": 85756
+  },
+  "portraits/b_narkissa.webp": {
+   "src": "6702bd9fb172",
+   "w": 457,
+   "h": 581,
+   "bytes": 30054,
+   "srcBytes": 89682
+  },
+  "portraits/b_narkissa2.webp": {
+   "src": "7d21167f9502",
+   "w": 457,
+   "h": 581,
+   "bytes": 43238,
+   "srcBytes": 88892
+  },
+  "portraits/b_nightwing.webp": {
+   "src": "898beea05fb6",
+   "w": 457,
+   "h": 581,
+   "bytes": 14668,
+   "srcBytes": 42766
+  },
+  "portraits/b_nihil.webp": {
+   "src": "fabb73422ac2",
+   "w": 457,
+   "h": 581,
+   "bytes": 26274,
+   "srcBytes": 78796
+  },
+  "portraits/b_nihil2.webp": {
+   "src": "0624599c291b",
+   "w": 457,
+   "h": 581,
+   "bytes": 39348,
+   "srcBytes": 88444
+  },
+  "portraits/b_ziz.webp": {
+   "src": "9fbf9894de79",
+   "w": 457,
+   "h": 581,
+   "bytes": 19074,
+   "srcBytes": 57340
+  },
+  "portraits/bran.webp": {
+   "src": "ba7c49dc0aea",
+   "w": 480,
+   "h": 680,
+   "bytes": 24642,
+   "srcBytes": 74102
+  },
+  "portraits/cmp_g_clock.webp": {
+   "src": "bc383a9e24de",
+   "w": 457,
+   "h": 581,
+   "bytes": 27124,
+   "srcBytes": 73614
+  },
+  "portraits/cmp_g_fairy.webp": {
+   "src": "73a25c2e9178",
+   "w": 457,
+   "h": 581,
+   "bytes": 29492,
+   "srcBytes": 84224
+  },
+  "portraits/cmp_g_imp.webp": {
+   "src": "ead8333b2ad0",
+   "w": 457,
+   "h": 581,
+   "bytes": 22036,
+   "srcBytes": 62200
+  },
+  "portraits/cmp_g_knight.webp": {
+   "src": "f14544221fbe",
+   "w": 457,
+   "h": 581,
+   "bytes": 23878,
+   "srcBytes": 71768
+  },
+  "portraits/cmp_g_owl.webp": {
+   "src": "3fb67eaaf681",
+   "w": 457,
+   "h": 581,
+   "bytes": 26074,
+   "srcBytes": 79532
+  },
+  "portraits/cmp_g_reaper.webp": {
+   "src": "ed4deafcca34",
+   "w": 457,
+   "h": 581,
+   "bytes": 22652,
+   "srcBytes": 60860
+  },
+  "portraits/cmp_g_spiritwolf.webp": {
+   "src": "47f227261528",
+   "w": 457,
+   "h": 581,
+   "bytes": 20796,
+   "srcBytes": 61792
+  },
+  "portraits/cmp_g_whelp.webp": {
+   "src": "d8581a834895",
+   "w": 457,
+   "h": 581,
+   "bytes": 20800,
+   "srcBytes": 57486
+  },
+  "portraits/cmp_gd_lumen.webp": {
+   "src": "a6bdd26106ee",
+   "w": 457,
+   "h": 581,
+   "bytes": 25860,
+   "srcBytes": 74944
+  },
+  "portraits/cmp_gd_mirra.webp": {
+   "src": "a2222ee7cdd4",
+   "w": 457,
+   "h": 581,
+   "bytes": 23136,
+   "srcBytes": 65472
+  },
+  "portraits/cmp_gd_momo.webp": {
+   "src": "26a45183a930",
+   "w": 457,
+   "h": 581,
+   "bytes": 18424,
+   "srcBytes": 52302
+  },
+  "portraits/cmp_m_boar.webp": {
+   "src": "161982832831",
+   "w": 457,
+   "h": 581,
+   "bytes": 20838,
+   "srcBytes": 65636
+  },
+  "portraits/cmp_m_direwolf.webp": {
+   "src": "81be1873e06c",
+   "w": 457,
+   "h": 581,
+   "bytes": 21492,
+   "srcBytes": 64114
+  },
+  "portraits/cmp_m_giantbat.webp": {
+   "src": "8024059171bb",
+   "w": 457,
+   "h": 581,
+   "bytes": 25506,
+   "srcBytes": 76788
+  },
+  "portraits/cmp_m_skelsteed.webp": {
+   "src": "44a966d918b7",
+   "w": 457,
+   "h": 581,
+   "bytes": 23454,
+   "srcBytes": 68378
+  },
+  "portraits/cmp_m_warhorse.webp": {
+   "src": "3a4c19c5fae1",
+   "w": 457,
+   "h": 581,
+   "bytes": 19744,
+   "srcBytes": 61354
+  },
+  "portraits/cmp_m_wyvern.webp": {
+   "src": "93ff0fb137b6",
+   "w": 457,
+   "h": 581,
+   "bytes": 25870,
+   "srcBytes": 79698
+  },
+  "portraits/cmp_mt_gale.webp": {
+   "src": "2fff96969735",
+   "w": 457,
+   "h": 581,
+   "bytes": 20970,
+   "srcBytes": 60042
+  },
+  "portraits/cmp_mt_ignis.webp": {
+   "src": "f75e7cb32a50",
+   "w": 457,
+   "h": 581,
+   "bytes": 30614,
+   "srcBytes": 88042
+  },
+  "portraits/cmp_mt_silva.webp": {
+   "src": "a3f68ec95c16",
+   "w": 457,
+   "h": 581,
+   "bytes": 20468,
+   "srcBytes": 60722
+  },
+  "portraits/kael.webp": {
+   "src": "81f44125f131",
+   "w": 480,
+   "h": 680,
+   "bytes": 21848,
+   "srcBytes": 64136
+  },
+  "portraits/lia.webp": {
+   "src": "3f83874d9792",
+   "w": 480,
+   "h": 680,
+   "bytes": 23924,
+   "srcBytes": 69372
+  },
+  "portraits/npc_alberto.webp": {
+   "src": "ca5709c55816",
+   "w": 457,
+   "h": 581,
+   "bytes": 18644,
+   "srcBytes": 52884
+  },
+  "portraits/npc_carmilla.webp": {
+   "src": "7cf4e9bf9dde",
+   "w": 457,
+   "h": 581,
+   "bytes": 24254,
+   "srcBytes": 65950
+  },
+  "portraits/npc_elise.webp": {
+   "src": "a6b7499cc436",
+   "w": 457,
+   "h": 581,
+   "bytes": 19572,
+   "srcBytes": 56838
+  },
+  "portraits/npc_greta.webp": {
+   "src": "328e620a09b5",
+   "w": 457,
+   "h": 581,
+   "bytes": 24890,
+   "srcBytes": 73828
+  },
+  "portraits/npc_hadwin.webp": {
+   "src": "6831e782901c",
+   "w": 457,
+   "h": 581,
+   "bytes": 30270,
+   "srcBytes": 86680
+  },
+  "portraits/npc_marta.webp": {
+   "src": "34447ca07679",
+   "w": 457,
+   "h": 581,
+   "bytes": 20252,
+   "srcBytes": 53182
+  },
+  "portraits/npc_rook.webp": {
+   "src": "5cb6c0a2c0dd",
+   "w": 457,
+   "h": 581,
+   "bytes": 24992,
+   "srcBytes": 69812
+  },
+  "portraits/npc_rook2.webp": {
+   "src": "d61324334d6f",
+   "w": 457,
+   "h": 581,
+   "bytes": 30784,
+   "srcBytes": 87866
+  },
+  "portraits/sera.webp": {
+   "src": "3cb359a8416f",
+   "w": 480,
+   "h": 680,
+   "bytes": 29190,
+   "srcBytes": 80106
+  },
+  "portraits/victor.webp": {
+   "src": "0c63e81c8530",
+   "w": 480,
+   "h": 680,
+   "bytes": 24508,
+   "srcBytes": 64686
+  }
+ }
+}

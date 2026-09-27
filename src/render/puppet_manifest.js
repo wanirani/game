@@ -263,7 +263,7 @@ export const PUPPETS = {
  },
  "npc": {
   "npc_alberto": {
-   "h": "39420f321afd",
+   "h": "1f7b26d1dc09",
    "turn": false,
    "lv": [
     "hi",
@@ -272,7 +272,7 @@ export const PUPPETS = {
    ]
   },
   "npc_carmilla": {
-   "h": "ba2a2897684e",
+   "h": "009ede177228",
    "turn": false,
    "lv": [
     "hi",
@@ -281,7 +281,7 @@ export const PUPPETS = {
    ]
   },
   "npc_elise": {
-   "h": "331dd42c918f",
+   "h": "fbc549ccff33",
    "turn": false,
    "lv": [
     "hi",
@@ -290,7 +290,7 @@ export const PUPPETS = {
    ]
   },
   "npc_greta": {
-   "h": "c448d9aa8646",
+   "h": "015b08b6476e",
    "turn": false,
    "lv": [
     "hi",
@@ -299,7 +299,7 @@ export const PUPPETS = {
    ]
   },
   "npc_hadwin": {
-   "h": "189b46084240",
+   "h": "ea6a5d21bb40",
    "turn": false,
    "lv": [
     "hi",
@@ -308,7 +308,7 @@ export const PUPPETS = {
    ]
   },
   "npc_marta": {
-   "h": "6a688b83a7c6",
+   "h": "8d0bdc5e68ae",
    "turn": false,
    "lv": [
     "hi",
@@ -317,7 +317,7 @@ export const PUPPETS = {
    ]
   },
   "npc_rook": {
-   "h": "ad9c2d350643",
+   "h": "f45889b181c3",
    "turn": false,
    "lv": [
     "hi",
@@ -326,7 +326,7 @@ export const PUPPETS = {
    ]
   },
   "npc_rook2": {
-   "h": "a24d91251347",
+   "h": "72e55dcdbd69",
    "turn": false,
    "lv": [
     "hi",
