@@ -416,7 +416,7 @@ export class Colossus extends BossB {
     if (t < T0) {
       this.telegraphFor(T0 - t);   // [hook:feel] 시계추가 내려오는 동안 예고 창
       const k = t / T0;
-      this.pend ={ a: -amp * ease.outCubic(k), len: len * ease.outCubic(k), k, warn: true };
+      this.pend = { a: -amp * ease.outCubic(k), len: len * ease.outCubic(k), k, warn: true };
       if (this.at(0.05)) { audio.sfx('bell', { vol: 0.9, pitch: 0.7 }); }
     } else {
       const u = (t - T0) / period;

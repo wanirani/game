@@ -276,7 +276,7 @@
   "sheet5": "sera/sera_stormcaller_turn5",
   "views5": [
    "y90",
-   "y135",
+   "-",
    "y180",
    "ym90",
    "-"
@@ -284,6 +284,14 @@
   "qback": "sera/sera_stormcaller_qback",
   "viewsQ": [
    "ym135"
+  ],
+  "extra": [
+   {
+    "sheet": "sera/sera_stormcaller_q3f",
+    "views": [
+     "y135"
+    ]
+   }
   ]
  }
 }

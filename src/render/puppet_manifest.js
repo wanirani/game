@@ -263,7 +263,7 @@ export const PUPPETS = {
  },
  "victor": {
   "victor_deadeye": {
-   "h": "cdb6d0590761",
+   "h": "257382a47840",
    "turn": true,
    "lv": [
     "hi",
@@ -272,7 +272,7 @@ export const PUPPETS = {
    ]
   },
   "victor_desperado": {
-   "h": "37c350e0768f",
+   "h": "089492d0a93f",
    "turn": true,
    "lv": [
     "hi",
@@ -281,7 +281,7 @@ export const PUPPETS = {
    ]
   },
   "victor_executioner": {
-   "h": "10ec70fdd402",
+   "h": "8c8321655ffa",
    "turn": true,
    "lv": [
     "hi",
@@ -290,7 +290,7 @@ export const PUPPETS = {
    ]
   },
   "victor_gunlord": {
-   "h": "603e4be4aea5",
+   "h": "6977b84d5d23",
    "turn": true,
    "lv": [
     "hi",
@@ -299,7 +299,7 @@ export const PUPPETS = {
    ]
   },
   "victor_gunslinger": {
-   "h": "772ceb489600",
+   "h": "1a1ac8e8dba2",
    "turn": true,
    "lv": [
     "hi",
@@ -308,7 +308,7 @@ export const PUPPETS = {
    ]
   },
   "victor_hellfire": {
-   "h": "06be3b7dec6b",
+   "h": "1e3dbd966fe1",
    "turn": true,
    "lv": [
     "hi",
@@ -317,7 +317,7 @@ export const PUPPETS = {
    ]
   },
   "victor_phantom": {
-   "h": "ce6d6dc22e82",
+   "h": "a0b473a15adf",
    "turn": true,
    "lv": [
     "hi",

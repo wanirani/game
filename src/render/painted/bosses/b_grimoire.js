@@ -191,10 +191,8 @@ function drawBoss(ctx, b, world, rig, st) {
 
   // ── 뒤층: 오라 · 룬 원 · 촉수 · 뒤 낱장 ──
   if (!d.bookGone) {
-    if (q.halos) {
-      halo(ctx, cx, cy, 200, '#2a0a3a', 0.55);
-      halo(ctx, cx, cy, 170, soul, 0.1 + fury * 0.12 + (b.state === 'transform' ? 0.15 : 0));
-    }
+    // 뒤 오라: 큰 가산 발광 하나 (예전엔 어두운 보라 r200 + 영혼색 r170 두 장 — CPU 래스터에서 채색 추가 비용의 대부분이라 하나로 합침)
+    if (q.halos) halo(ctx, cx, cy, 185, soul, 0.24 + fury * 0.12 + (b.state === 'transform' ? 0.15 : 0));
     runeRing(ctx, D, b, t, cx, cy);
     drawTentacles(ctx, D, b, rig, st, dt, t, lvl, floor, dying, dT);
     orbitPages(D, b, rig, t, 0, tint);
