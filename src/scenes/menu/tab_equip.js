@@ -6,6 +6,7 @@ import { audio } from '../../core/audio.js';
 import { clamp } from '../../core/math.js';
 import { input } from '../../core/input.js';
 import { drawSlot } from '../../render/icons.js';
+import { assets } from '../../core/assets.js';
 import { Tab } from './base.js';
 import { HeroView, HeroStage, PixLayer, PixCache, pedestal, accentOf, turntableHints, pxScale } from './hero_view.js';
 import {
@@ -244,14 +245,15 @@ export class EquipTab extends Tab {
       if (sel) selBar(ctx, x, y, w, r.h, t, { dim: !focused || this.sub === 'list' });
       const inst = D.findItem(st, hero.equip?.[slot]);
       const s = r.h - 8;
-      drawSlot(ctx, x + 12, y + 4, s, inst, { selected: sel, empty: SLOT_ICON_EMPTY[slot] });
-      if (this.flashT > 0 && this.flashSlot === slot) glow(ctx, x + 12 + s / 2, y + 4 + s / 2, s * 1.2, '#ffe0a0', this.flashT);
-      if (sel && focused && this.sub === 'slots') brackets(ctx, x + 12, y + 4, s, s, t);
       const tx = x + 22 + s;
       // 낮은 칸(작은 화면)은 능력치 줄을 빼고 두 줄로
       const tall = r.h >= 54;
-      // 글자는 캐시 (아이콘·선택 막대·괄호는 위에서 매 프레임)
-      this.txt.draw(ctx, 'slot' + i, `${this.m.rev}|${hero.charId}|${slot}|${inst?.uid ?? '-'}|${inst?.level ?? 0}|${sel ? 1 : 0}`, tx - 4, y, x + w - tx + 4, r.h, (c) => {
+      // 아이콘 칸 + 글자는 캐시 (선택 막대는 아래, 반짝임·괄호는 위에서 매 프레임). +7 이상 강화 오라는 움직이므로 아이콘만 매 프레임
+      const live = slotLive(inst);
+      if (live) drawSlot(ctx, x + 12, y + 4, s, inst, { selected: sel, empty: SLOT_ICON_EMPTY[slot] });
+      const x0 = live ? tx - 4 : x + 8;
+      this.txt.draw(ctx, 'slot' + i, `${this.m.rev}|${hero.charId}|${slot}|${inst?.uid ?? '-'}|${inst?.level ?? 0}|${sel ? 1 : 0}|${live ? 1 : 0}|${iconReady(inst)}`, x0, y, x + w - x0, r.h, (c) => {
+        if (!live) drawSlot(c, x + 12, y + 4, s, inst, { selected: sel, empty: SLOT_ICON_EMPTY[slot] });
         text(c, D.SLOT_NAMES()[slot], tx, y + (tall ? 16 : Math.round(r.h * 0.36)), { size: 11, weight: 700, color: sel ? PAL.gold : PAL.dim, ow: 2 });
         if (inst) {
           const ns = tall ? 15 : 14;
@@ -259,6 +261,8 @@ export class EquipTab extends Tab {
           if (tall) text(c, ellipsize(c, statLine(inst), w - (tx - x) - 8, 11, 600), tx, y + 51, { size: 11, weight: 600, color: PAL.text, ow: 2 });
         } else text(c, '— 비어 있음 —', tx, y + (tall ? 36 : Math.round(r.h * 0.8)), { size: 13, weight: 600, color: PAL.faint, ow: 2 });
       });
+      if (this.flashT > 0 && this.flashSlot === slot) glow(ctx, x + 12 + s / 2, y + 4 + s / 2, s * 1.2, '#ffe0a0', this.flashT);
+      if (sel && focused && this.sub === 'slots') brackets(ctx, x + 12, y + 4, s, s, t);
     });
 
     // ── 가운데: 영웅 미리보기 + 요약 ──
@@ -333,12 +337,14 @@ export class EquipTab extends Tab {
         return;
       }
       const s = r.h - 8;
-      drawSlot(ctx, r.x + 10, r.y + 4, s, row.inst, { selected: sel });
-      if (sel && focused) brackets(ctx, r.x + 10, r.y + 4, s, s, t);
       const tx = r.x + 20 + s;
+      const live = slotLive(row.inst);
+      if (live) drawSlot(ctx, r.x + 10, r.y + 4, s, row.inst, { selected: sel });
+      const x0 = live ? tx - 4 : r.x + 6;
       // 굽는 영역은 줄의 정수 y 에 맞춘다 (스크롤 중 y 가 소수여도 같은 캐시를 쓰고, 복사는 어차피 장치 픽셀에 맞춰진다)
-      this.txt.draw(ctx, 'row' + i, rkey, tx - 4, Math.round(r.y), r.x + r.w - tx + 4, r.h, (c) => {
+      this.txt.draw(ctx, 'row' + i, `${rkey}|${live ? 1 : 0}|${iconReady(row.inst)}`, x0, Math.round(r.y), r.x + r.w - x0, r.h, (c) => {
         const y0 = Math.round(r.y);
+        if (!live) drawSlot(c, r.x + 10, y0 + 4, s, row.inst, { selected: sel });
         const nm = ellipsize(c, D.nameOf(row.inst), r.w - (tx - r.x) - 70, 14, 800);
         text(c, nm, tx, y0 + 19, { size: 14, weight: 800, color: row.ok ? RARITY_COL[row.inst.rarity ?? 0] : '#8a6a6a', ow: 3 });
         text(c, ellipsize(c, row.ok ? statLine(row.inst) : row.reason, r.w - (tx - r.x) - 12, 11, 600), tx, y0 + 36, { size: 11, weight: 600, color: row.ok ? PAL.text : PAL.bad, ow: 2 });
@@ -346,6 +352,7 @@ export class EquipTab extends Tab {
         else if (row.mine) pill(c, '다른 칸', r.x + r.w - 8, y0 + 7, { align: 'right', color: PAL.dim, size: 10, h: 16 });
         else if (row.by) pill(c, `${D.CHARACTERS()[row.by]?.name?.split(' ')[0] ?? row.by} 장착`, r.x + r.w - 8, y0 + 7, { align: 'right', color: PAL.dim, size: 10, h: 16 });
       });
+      if (sel && focused) brackets(ctx, r.x + 10, r.y + 4, s, s, t);
     });
     clipEnd(ctx, LR, this.sc);
     scrollbar(ctx, LR.x + LR.w - 5, LR.y + 2, LR.h - 4, this.sc, LR.h);
@@ -387,4 +394,8 @@ export class EquipTab extends Tab {
   }
 }
 const input_rowH = () => 50;
+/** 아이콘 칸을 매 프레임 그려야 하는가: +7 이상 강화 오라는 시간에 따라 움직인다 (render/icons.js drawIcon) */
+const slotLive = (inst) => (inst?.level ?? 0) >= 7;
+/** 아이콘 그림이 준비됐는가 (준비 전에는 대체 아이콘으로 구워지므로 준비되면 다시 굽는다) */
+const iconReady = (inst) => (!inst?.icon || assets.has('icons/' + inst.icon) ? 1 : 0);
 const canDoN = (hr) => hr && (hr.unequip || (hr.ok && !hr.here));

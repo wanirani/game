@@ -42,7 +42,7 @@ export function draw(ctx, e, world, o, rig) {
   const step = walk ? Math.sin(t * 5) : 0;
   // legs rock, the hips sit on top of them
   const lr = walk ? step * 0.05 : 0;
-  const lp = K.part('legs'), LL = lp ? lp.len : 48;
+  const lp = rig.parts.legs, LL = lp?.len ?? 48;
   const hipY = -LL + 3 + (walk ? -Math.abs(step) * 2 : 0) + (slam ? 5 * sk * (1 - rec) : 0) + (wind ? -2 * ww : 0);
   let rot = walk ? step * 0.035 : Math.sin(t * 1.2) * 0.01;
   if (wind) rot -= 0.12 * ease(ww);
@@ -86,12 +86,12 @@ export function draw(ctx, e, world, o, rig) {
   const gco = ctx.globalCompositeOperation;
   // far arm behind everything
   K.bone('arm', fx, fy, dF + rot, 0.95, vF);
-  if (hot) { ctx.globalCompositeOperation = 'lighter'; K.bone('arm', fx, fy, dF + rot, 0.95, 'glow', 0.35 * heat); ctx.globalCompositeOperation = gco; }
+  if (hot) { ctx.globalCompositeOperation = 'lighter'; K.bone('arm', fx, fy, dF + rot, 0.95, 'glow', 0.12 * heat); ctx.globalCompositeOperation = gco; }
   K.put('legs', 'a', 0, -LL, lr, 1, 1, 1, vN);
   K.put('body', 'a', hx, hy, rot, sx, sy, 1, vN);
-  if (hot) { ctx.globalCompositeOperation = 'lighter'; K.put('body', 'a', hx, hy, rot, sx, sy, 0.18 * heat, 'glow'); ctx.globalCompositeOperation = gco; }
+  if (hot) { ctx.globalCompositeOperation = 'lighter'; K.put('body', 'a', hx, hy, rot, sx, sy, 0.07 * heat, 'glow'); ctx.globalCompositeOperation = gco; }
   K.bone('arm', nx, ny, dN + rot, 1, vN);
-  if (hot) { ctx.globalCompositeOperation = 'lighter'; K.bone('arm', nx, ny, dN + rot, 1, 'glow', 0.4 * heat); ctx.globalCompositeOperation = gco; }
+  if (hot) { ctx.globalCompositeOperation = 'lighter'; K.bone('arm', nx, ny, dN + rot, 1, 'glow', 0.15 * heat); ctx.globalCompositeOperation = gco; }
   if (!o.flash) {
     // the core, the eyes, the maw
     K.pivotPos('body', 'a', 'core', hx, hy, rot, sx, sy, _q);

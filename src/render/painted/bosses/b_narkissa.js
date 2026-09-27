@@ -270,11 +270,12 @@ function drawNark(ctx, D, rig, st, o) {
     const L1 = 64, L2 = 70;
     const ex = sx + s * Math.sin(a) * L1, ey = sy + Math.cos(a) * L1, bb = a + e;
     const wx = ex + s * Math.sin(bb) * L2, wy = ey + Math.cos(bb) * L2;
-    seg(D, L, R.upper, V(R.upper, true), 'a', 'b', sx, sy, ex, ey);
-    seg(D, L, R.fore, V(R.fore, true), 'a', 'b', ex, ey, wx, wy);
-    if (R.blade) {
-      const dir = Math.atan2(Math.cos(bb), s * Math.sin(bb)), ax = axis(R.blade, 'base', 'tip');
-      put(D, L, R.blade, R.blade.v.base, 'base', wx, wy, dir - ax.a, 1.0, 1, s);
+    const U = R.upper2 ?? R.upper, Fo = R.fore2 ?? R.fore, Bl = (upper ? R.blade : R.blade2) ?? R.blade;
+    seg(D, L, U, V(U, true), 'a', 'b', sx, sy, ex, ey);
+    seg(D, L, Fo, V(Fo, true), 'a', 'b', ex, ey, wx, wy);
+    if (Bl) {
+      const dir = Math.atan2(Math.cos(bb), s * Math.sin(bb)), ax = axis(Bl, 'base', 'tip');
+      put(D, L, Bl, Bl.v.base, 'base', wx, wy, dir - ax.a, 1.0, 1, s);
     }
   }
   // ── 드레스 (거울 조각 종) ──

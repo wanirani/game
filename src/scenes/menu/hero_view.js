@@ -608,7 +608,12 @@ export class HeroView {
     const S = this.support();
     if (label) {
       const name = this.viewLabel() + (this.spinning ? ' · 자동 회전' : '');
-      text(ctx, name, r.x + r.w / 2, labelY ?? r.y + 17, { size: 11, align: 'center', weight: 800, color: PAL.goldMid, ow: 3 });
+      const ly = labelY ?? r.y + 17;
+      // 방향 이름은 바뀔 때만 굽는다 (외곽선 글자 — P-11)
+      if (!this._lbl) this._lbl = new PixLayer();
+      this._lbl.draw(ctx, name, r.x + 2, Math.round(ly) - 15, r.w - 4, 21, (c) => {
+        text(c, name, r.x + r.w / 2, Math.round(ly), { size: 11, align: 'center', weight: 800, color: PAL.goldMid, ow: 3 });
+      });
     }
     // 버튼: 터치 모드, 또는 마우스가 무대 위에 있을 때 (패드에선 숨김 — 하단 안내 줄의 RS·R3)
     const p = input.pointer;
