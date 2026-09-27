@@ -17,6 +17,8 @@ import { PI, R, C, LG, ink, glow, glowE, glowSprite, warnRect, warnFloor, impact
 import { Entity } from '../entity.js';
 import { audio } from '../../core/audio.js';
 import { TAU, clamp, lerp, rand, approach, rgba } from '../../core/math.js';
+import { registerPainted, hasPainted } from '../../render/painted/registry.js';   // [hook:art-boss-7] 채색 퍼핏 등록 (그리기 전용)
+import { bosses as ART7 } from '../../render/painted/reg/art-boss-7.js';
 
 const STORM = '#2c3448', STORM_D = '#0a0e17', STORM_L = '#6f7f9c', RUFF = '#3c465e';
 const BONE = '#e4dfcc', BONE_D = '#6e6a5b', SPIRE = '#8e909b', SPIRE_D = '#383a43', SPIRE_L = '#c4c6d0';
@@ -51,6 +53,8 @@ function cloudSprite() {
 
 export class Ziz extends BossC {
   setup() {
+    // [hook:art-boss-7] 모음(reg/index.js)에 art-boss-7 줄이 아직 없으면 여기서 한 번 등록 (이미 있으면 아무것도 안 함). BossB.init 의 preloadPainted 보다 먼저 돈다
+    if (!hasPainted?.('b_ziz') && ART7?.b_ziz) registerPainted?.('b_ziz', { kind: 'boss', importer: ART7.b_ziz });
     const A = this.A;
     this.facing = -1;
     this.ps = { ...POSE0 }; this.pt = { ...POSE0 };
