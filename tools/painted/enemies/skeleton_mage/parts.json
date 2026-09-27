@@ -1,0 +1,220 @@
+{
+ "id": "skeleton_mage",
+ "tier": "T2",
+ "srcTD": 4,
+ "note": "Skeleton-rig variant (ART-ENEMY-2): the hooded robe (skull, mantle, rope belt, skull charms, bony feet) is one warped body cut from the Kling Step-4 edit of the armless skeleton side view (sk_mage take 2); its wide sleeve + bony hand is cut out as the arm piece (used for both arms, the far one darkened) and the robe behind it is inpainted. Staff = Kling single prop (staff take 1). make_src.py rebuilds the sources.",
+ "sources": {
+  "m": {
+   "raw": "skeleton_mage_ref.webp",
+   "file": "a2_skm_ref.png",
+   "k": 0.0373
+  },
+  "s": {
+   "raw": "staff.webp",
+   "file": "a2_skm_staff.png",
+   "k": 0.03
+  }
+ },
+ "parts": {
+  "body": {
+   "src": "m",
+   "box": [
+    520,
+    40,
+    1340,
+    2336
+   ],
+   "inpaint": [
+    [
+     [
+      728,
+      822
+     ],
+     [
+      800,
+      826
+     ],
+     [
+      935,
+      838
+     ],
+     [
+      940,
+      960
+     ],
+     [
+      952,
+      1072
+     ],
+     [
+      958,
+      1200
+     ],
+     [
+      956,
+      1330
+     ],
+     [
+      954,
+      1448
+     ],
+     [
+      852,
+      1450
+     ],
+     [
+      846,
+      1345
+     ],
+     [
+      748,
+      1338
+     ],
+     [
+      728,
+      1296
+     ]
+    ]
+   ],
+   "piv": {
+    "a": [
+     930,
+     2300
+    ],
+    "top": [
+     800,
+     60
+    ],
+    "neck": [
+     985,
+     560
+    ],
+    "eye": [
+     1008,
+     298
+    ],
+    "eye2": [
+     1066,
+     302
+    ],
+    "shoulder": [
+     830,
+     700
+    ],
+    "chest": [
+     1000,
+     900
+    ]
+   }
+  },
+  "sleeve": {
+   "src": "m",
+   "box": [
+    680,
+    780,
+    970,
+    1460
+   ],
+   "poly": [
+    [
+     696,
+     800
+    ],
+    [
+     800,
+     818
+    ],
+    [
+     942,
+     832
+    ],
+    [
+     946,
+     960
+    ],
+    [
+     958,
+     1072
+    ],
+    [
+     964,
+     1200
+    ],
+    [
+     962,
+     1330
+    ],
+    [
+     960,
+     1452
+    ],
+    [
+     848,
+     1454
+    ],
+    [
+     842,
+     1342
+    ],
+    [
+     740,
+     1342
+    ],
+    [
+     692,
+     1290
+    ],
+    [
+     692,
+     1100
+    ],
+    [
+     700,
+     900
+    ]
+   ],
+   "piv": {
+    "a": [
+     830,
+     760
+    ],
+    "b": [
+     905,
+     1300
+    ],
+    "grip": [
+     905,
+     1300
+    ]
+   }
+  },
+  "staff": {
+   "src": "s",
+   "box": [
+    540,
+    180,
+    980,
+    2648
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     757,
+     1300
+    ],
+    "b": [
+     746,
+     232
+    ],
+    "gem": [
+     752,
+     520
+    ],
+    "foot": [
+     755,
+     2630
+    ]
+   }
+  }
+ }
+}

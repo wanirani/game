@@ -16,10 +16,12 @@
 //   taps      tap audit of the three tabs at 740×360 and 844×390 (§6.3)                                               — P-04
 //   gallery   tools/gallery_turntable.html: 6 heroes × 3 looks × 8 yaws, zero page errors; with the renderer contract:
 //             front vs back differ > 8 %, front view left-right symmetric, cape covers the back (gated on ART-HERO-B)  — acceptance 5
-//   perf      menu equip tab at fhd2x high renders in ≤ 20 ms per frame (median)                                     — acceptance 6, P-11
+//             + a yaw view costs ≤ 1.5 × the side view per drawHero (CPU time; gated on ART-HERO-B)                      — §7.3
+//   perf      menu equip tab at fhd2x high renders in ≤ 20 ms per frame (main-thread CPU, chrome/tab split)     — acceptance 6, P-11
 // Gameplay-time checks run on a frozen, stepped clock (requestAnimationFrame/performance.now replaced; step(n) advances n
 // frames of 1/60 s) so a loaded machine cannot change the result. Report: /tmp/claude-0/qa/platform/turntable.json
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { Suite, fmt } from './lib/suite.mjs';
 import { openEnv, REPORT_DIR } from './lib/server.mjs';
@@ -436,6 +438,25 @@ try {
       }
       return out;
     });
+    // renderer cost (platform §7.3, MASTER_PLAN §5.2): a yaw view costs ≤ 1.5 × the side view (CPU time, interleaved runs)
+    await s.cdp.send('Performance.enable');
+    const cpu = async () => (await s.cdp.send('Performance.getMetrics')).metrics.find((x) => x.name === 'ThreadTime')?.value ?? NaN;
+    const YAWSET = [45, 90, 135, -45, -90, -135, 20, -160, 0, 180];
+    await s.eval((Y) => { window.__tt.bench(null, 3); window.__tt.bench(Y, 3); }, YAWSET);
+    const cost = { side: [], yaw: [] };
+    for (let rep = 0; rep < 3; rep++) {
+      for (const k of ['side', 'yaw']) {
+        const c0 = await cpu();
+        await s.eval(([Y, k]) => window.__tt.bench(k === 'side' ? null : Y, 12), [YAWSET, k]);
+        cost[k].push(((await cpu()) - c0) * 1000 / (12 * 6));
+      }
+    }
+    const side = Math.min(...cost.side), yawC = Math.min(...cost.yaw);
+    await suite.check({ id: 'gallery.cost', group: 'gallery', issue: null, pkg: 'ART-HERO-B', gate: 'ART-HERO-B', title: 'turntable view (opts.yaw) costs ≤ 1.5 × the side view per drawHero (platform §7.3)' }, async () => ({
+      pass: yawC <= 1.5 * side,
+      detail: `side ${side.toFixed(2)} ms, yaw ${yawC.toFixed(2)} ms per drawHero (×${(yawC / side).toFixed(2)}; CPU, 6 heroes × promoted look, yaws ${YAWSET.join('/')}°)`,
+      metrics: { side, yaw: yawC, runs: cost },
+    }));
     for (const r of m) {
       await suite.check({ id: `gallery.contract.${r.hero}`, group: 'gallery', issue: null, pkg: 'ART-HERO-B', gate: 'ART-HERO-B', title: `${r.hero}: front ≠ back (> 8 %), front symmetric (silhouette IoU ≥ 0.8), cape covers the back (≥ 30 % of the torso)` }, async () => ({
         pass: r.frontBack > 0.08 && r.sym >= 0.8 && (!r.hasCape || r.cape >= 0.3),
@@ -446,20 +467,43 @@ try {
   }, env);
 
   // ── perf: menu equip at fhd2x high (acceptance 6, P-11) ───────────────────────────────────────
+  // Frame cost = main-thread CPU time (CDP Performance.getMetrics ThreadTime) of game.render() + a 1-px read-back that
+  // forces the software raster, on a frozen loop. CPU time, not wall time: this machine often runs at load 40-60, which
+  // multiplies wall time 5-10× but leaves CPU time roughly alone. The menu chrome alone (tab render stubbed) is reported
+  // too, so the owner of the remaining cost is visible (tab content = PLAT-TURNTABLE, chrome = PLAT-MENU).
   await suite.group('perf', async () => {
     const s = await menuPage('fhd2x', 'equip', { settings: { quality: 'high' } });
     await s.wait(1500);
-    const r = await s.eval(() => {
-      const g = window.__game, times = [];
-      for (let i = 0; i < 6; i++) { g.render(); (g.ctx || g.canvas.getContext('2d')).getImageData(0, 0, 1, 1); }                  // warm-up (layer caches, glyphs)
-      const probe = g.ctx || g.canvas.getContext('2d');
-      for (let i = 0; i < 40; i++) { const t0 = performance.now(); g.render(); probe.getImageData(0, 0, 1, 1); times.push(performance.now() - t0); } // 1-px read-back forces the raster (deferred canvas)
-      times.sort((a, b) => a - b);
-      const cv = g.canvas;
-      return { med: times[20], p90: times[36], avg: times.reduce((a, b) => a + b, 0) / times.length, backing: `${cv.width}×${cv.height}`, scale: g.scale, uiK: g.uiK, tier: g.tier ?? g.quality };
-    });
-    await suite.check({ id: 'perf.equip.fhd2x', group: 'perf', issue: 'P-11', ...G, title: 'menu equip tab at fhd2x high renders in ≤ 20 ms per frame (median)', session: s }, async () => ({
-      pass: r.med <= 20, detail: `median ${r.med.toFixed(1)} ms, p90 ${r.p90.toFixed(1)} ms, avg ${r.avg.toFixed(1)} ms (backing ${r.backing}, scale ${r.scale.toFixed(2)}, tier ${r.tier}) — was 172 ms`, metrics: r,
+    await freeze(s);
+    await s.cdp.send('Performance.enable');
+    const cpu = async () => (await s.cdp.send('Performance.getMetrics')).metrics.find((m) => m.name === 'ThreadTime')?.value ?? NaN;
+    const run = (n, chrome) => s.eval(([n, chrome]) => {
+      const g = window.__game, T = g.top.cur, probe = g.ctx || g.canvas.getContext('2d');
+      const own = Object.prototype.hasOwnProperty.call(T, 'render');
+      if (chrome) T.render = () => {};
+      const w0 = Date.now();
+      try { for (let i = 0; i < n; i++) { g.render(); probe.getImageData(0, 0, 1, 1); } } finally { if (chrome && !own) delete T.render; }
+      return Date.now() - w0;
+    }, [n, chrome]);
+    await run(6, false); await run(4, true);                     // warm-up (layer caches, glyphs, JIT)
+    const N = 16, res = { full: [], chrome: [], wall: [] };
+    for (let rep = 0; rep < 2; rep++) {
+      for (const chrome of [false, true]) {
+        const c0 = await cpu();
+        const wall = await run(N, chrome);
+        const c1 = await cpu();
+        res[chrome ? 'chrome' : 'full'].push(((c1 - c0) * 1000) / N);
+        if (!chrome) res.wall.push(wall / N);
+      }
+    }
+    const info = await s.eval(() => { const g = window.__game, cv = g.canvas; return { backing: `${cv.width}×${cv.height}`, scale: g.scale, tier: g.tier ?? g.quality }; });
+    const full = Math.min(...res.full), chrome = Math.min(...res.chrome), wall = Math.min(...res.wall);
+    const load = os.loadavg()[0];
+    const r = { cpuFull: +full.toFixed(1), cpuChrome: +chrome.toFixed(1), cpuTab: +(full - chrome).toFixed(1), wall: +wall.toFixed(1), load: +load.toFixed(1), ...info, runs: res };
+    await suite.check({ id: 'perf.equip.fhd2x', group: 'perf', issue: 'P-11', ...G, title: 'menu equip tab at fhd2x high renders in ≤ 20 ms per frame (main-thread CPU)', session: s }, async () => ({
+      pass: full <= 20,
+      detail: `CPU ${full.toFixed(1)} ms/frame = menu chrome ${chrome.toFixed(1)} (PLAT-MENU: snapshot, backdrop layer, embers, bars) + tab ${(full - chrome).toFixed(1)} (stage, turntable, lists); wall ${wall.toFixed(1)} ms at load ${load.toFixed(0)}; backing ${info.backing}, scale ${info.scale.toFixed(2)}, tier ${info.tier} — was 172 ms`,
+      metrics: r,
     }));
     await suite.errors({ id: 'perf.errors', group: 'perf' }, s);
     await s.close();

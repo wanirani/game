@@ -7,7 +7,7 @@
 //   death (the corpse scatters from wherever the bones are — standing or heaped).
 // Blood drips (render-only FxPool, per second of game time) run off the ribs and the club.
 //
-// This module also exports the small puppet helpers shared by the other ART-ENEMY-2 renderers (Placer, restPose).
+// This module also exports the small puppet helpers shared by the other ART-ENEMY-2 renderers (Placer, seedOf, runeCircle).
 import * as K from '../enemy_kit.js';
 import { clamp, lerp, ease } from '../../../core/math.js';
 import { bipedPose, dirOf, swingTrail, glint, claimDebris, HP } from './_biped.js';
@@ -65,6 +65,26 @@ export class Placer {
     }
     K.spawnCorpse(world, e, rig, pieces, o);
   }
+}
+/** procedural rune circle (additive, local space; flat = seen from the side as an ellipse on the floor) */
+export function runeCircle(ctx, x, y, r, t, color, a, flat = true) {
+  if (r < 2 || a <= 0.02) return;
+  K.local();
+  const ga = ctx.globalAlpha, gco = ctx.globalCompositeOperation;
+  ctx.globalAlpha = ga * a; ctx.globalCompositeOperation = 'lighter';
+  ctx.save(); ctx.translate(x, y); if (flat) ctx.scale(1, 0.32);
+  ctx.strokeStyle = color; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
+  ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.arc(0, 0, r * 0.78, 0, Math.PI * 2); ctx.stroke();
+  ctx.rotate(t * 1.5);
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) { const a0 = (i / 6) * Math.PI * 2, a1 = ((i + 2) / 6) * Math.PI * 2; ctx.moveTo(Math.cos(a0) * r * 0.78, Math.sin(a0) * r * 0.78); ctx.lineTo(Math.cos(a1) * r * 0.78, Math.sin(a1) * r * 0.78); }
+  ctx.stroke();
+  ctx.fillStyle = color;
+  for (let i = 0; i < 8; i++) { const a0 = (i / 8) * Math.PI * 2; ctx.fillRect(Math.cos(a0) * r * 0.89 - 1.5, Math.sin(a0) * r * 0.89 - 1.5, 3, 3); }
+  ctx.restore();
+  ctx.globalAlpha = ga; ctx.globalCompositeOperation = gco;
 }
 /** render-side seed of an entity (stable per instance: spawn position) */
 export const seedOf = (e) => ((e.spawnX ?? 0) * 0.137 + (e.spawnY ?? 0) * 0.071) % 97;

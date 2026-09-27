@@ -1,0 +1,388 @@
+{
+ "id": "thunder_roc",
+ "tier": "T3",
+ "srcTD": 3,
+ "note": "T3 huge flyer. Body = Step-3 single (wingless side view facing right, skull head attached) with the standing legs cut off (fade at the belly). Wing = Step-3 single painted as a top-view wing pair: the right half is cut at the body line (root at the left, tip at the right, lightning veins), flapped with K.chain (far wing darkened). Legs = the loose leg of parts sheet 1 (hang/swoop). Screech head = the open-beak skull of sheet 2, laid over the body's closed skull. srcTD 3 (big creature, keeps the atlas small). k: body 0.049 (tail->beak 119 px, logic 110x70), wing 0.06 (73 px), leg 0.035, open skull 0.14. The closed skull is cut out of the body as its own head part (both skulls pivot on the cranium centre) so the screeching skull replaces it cleanly.",
+ "sources": {
+  "b": {
+   "raw": "thunder_roc_body.webp",
+   "file": "thunder_roc_body.png",
+   "k": 0.049
+  },
+  "w": {
+   "raw": "thunder_roc_wing.webp",
+   "file": "thunder_roc_wing.png",
+   "k": 0.06
+  },
+  "s1": {
+   "raw": "thunder_roc_sheet1.webp",
+   "file": "thunder_roc_sheet1.png",
+   "k": 0.035
+  },
+  "s2": {
+   "raw": "thunder_roc_sheet2.webp",
+   "file": "thunder_roc_sheet2.png",
+   "k": 0.14
+  }
+ },
+ "parts": {
+  "body": {
+   "src": "b",
+   "box": [
+    30,
+    160,
+    2475,
+    1110
+   ],
+   "keep": "largest",
+   "fade": [
+    [
+     1150,
+     1030,
+     2050,
+     1110,
+     "down",
+     1.2
+    ]
+   ],
+   "piv": {
+    "a": [
+     1500,
+     700
+    ],
+    "wing": [
+     1560,
+     470
+    ],
+    "wingF": [
+     1480,
+     420
+    ],
+    "hipF": [
+     1560,
+     1020
+    ],
+    "hipB": [
+     1420,
+     1000
+    ],
+    "eye": [
+     2050,
+     345
+    ],
+    "beak": [
+     2440,
+     470
+    ],
+    "throat": [
+     2180,
+     470
+    ],
+    "neck": [
+     1960,
+     420
+    ],
+    "tail": [
+     150,
+     900
+    ],
+    "skull": [
+     2010,
+     350
+    ]
+   },
+   "minus": [
+    [
+     [
+      1885,
+      300
+     ],
+     [
+      1920,
+      250
+     ],
+     [
+      2000,
+      225
+     ],
+     [
+      2100,
+      230
+     ],
+     [
+      2200,
+      280
+     ],
+     [
+      2320,
+      340
+     ],
+     [
+      2420,
+      410
+     ],
+     [
+      2470,
+      470
+     ],
+     [
+      2455,
+      522
+     ],
+     [
+      2400,
+      482
+     ],
+     [
+      2300,
+      472
+     ],
+     [
+      2200,
+      472
+     ],
+     [
+      2120,
+      492
+     ],
+     [
+      2040,
+      487
+     ],
+     [
+      1960,
+      472
+     ],
+     [
+      1905,
+      432
+     ],
+     [
+      1880,
+      370
+     ]
+    ]
+   ]
+  },
+  "wing": {
+   "src": "w",
+   "box": [
+    1460,
+    30,
+    2690,
+    910
+   ],
+   "keep": "largest",
+   "poly": [
+    [
+     1470,
+     330
+    ],
+    [
+     1600,
+     300
+    ],
+    [
+     1900,
+     200
+    ],
+    [
+     2150,
+     100
+    ],
+    [
+     2420,
+     30
+    ],
+    [
+     2690,
+     170
+    ],
+    [
+     2620,
+     420
+    ],
+    [
+     2400,
+     560
+    ],
+    [
+     2150,
+     700
+    ],
+    [
+     1950,
+     820
+    ],
+    [
+     1700,
+     885
+    ],
+    [
+     1520,
+     905
+    ],
+    [
+     1470,
+     850
+    ]
+   ],
+   "piv": {
+    "a": [
+     1480,
+     620
+    ],
+    "b": [
+     2680,
+     190
+    ],
+    "tip": [
+     2680,
+     190
+    ],
+    "vein": [
+     2100,
+     400
+    ]
+   }
+  },
+  "leg": {
+   "src": "s1",
+   "box": [
+    1990,
+    785,
+    2262,
+    1652
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     2126,
+     805
+    ],
+    "b": [
+     2126,
+     1590
+    ]
+   }
+  },
+  "screech": {
+   "src": "s2",
+   "box": [
+    606,
+    535,
+    835,
+    759
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     699,
+     606
+    ],
+    "throat": [
+     760,
+     690
+    ]
+   }
+  },
+  "head": {
+   "src": "b",
+   "box": [
+    1875,
+    220,
+    2480,
+    530
+   ],
+   "poly": [
+    [
+     1885,
+     300
+    ],
+    [
+     1920,
+     250
+    ],
+    [
+     2000,
+     225
+    ],
+    [
+     2100,
+     230
+    ],
+    [
+     2200,
+     280
+    ],
+    [
+     2320,
+     340
+    ],
+    [
+     2420,
+     410
+    ],
+    [
+     2470,
+     470
+    ],
+    [
+     2455,
+     522
+    ],
+    [
+     2400,
+     482
+    ],
+    [
+     2300,
+     472
+    ],
+    [
+     2200,
+     472
+    ],
+    [
+     2120,
+     492
+    ],
+    [
+     2040,
+     487
+    ],
+    [
+     1960,
+     472
+    ],
+    [
+     1905,
+     432
+    ],
+    [
+     1880,
+     370
+    ]
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     2010,
+     350
+    ],
+    "eye": [
+     2050,
+     345
+    ],
+    "beak": [
+     2440,
+     470
+    ],
+    "throat": [
+     2180,
+     470
+    ]
+   }
+  }
+ }
+}

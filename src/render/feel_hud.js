@@ -14,6 +14,7 @@
 //       길게 누르는 중(world.awakenState.holdK 0..1)에는 각성 막대 위로 흰 채움이 차오르고 빛이 세진다.
 //  2. drawComboHUD(ctx, world, vw, vh, touch) → true = 콤보 열을 맡았다 (hud.js 의 기존 콤보 표시는 그리지 않는다) | false = world.combo 없음
 //       L.combo 칸 안에 오른쪽 정렬. 칸 높이·너비에 맞춰 통째로 줄이고(낮으면 '총 피해' 줄을 뺀 작은 배치) 칸 아래로는 그리지 않는다.
+//       겹치는 순서: 붓 띠 → 랭크 글자 → 숫자·HITS·막대·총 피해 → 이정표.
 //       구운 붓 띠 위 콤보 숫자 (46/52/58/64 px, 타격마다 1.35→1 로 튀고 ±3° 기울기, 랭크 색 그라데이션), 'HITS',
 //       콤보 시간 핏빛 막대 (combo.t / combo.window), '총 피해 n', 왼쪽에 스타일 랭크 글자 (D~SSS, −0.12 rad, 다음 랭크까지 진행 고리),
 //       콤보 이정표 '{n} HIT!' (10/25/50/100/150/200/300, 2→1 로 박힘). 콤보가 끝나면 숫자가 0.4초 동안 떠오르며 사라진다.
@@ -21,7 +22,8 @@
 //       L.transient 칸 가운데. hud.js 는 world.banner 가 없을 때만 부른다 → 배너(스테이지 제목·STAGE CLEAR·LEVEL UP …)가 이긴다.
 //       world.style.ann.cur 를 그린다 (대기열 2·0.8초 간격·0.7초 유지 + 0.25초 사라짐은 style.js 가 관리, 효과음도 style.js).
 //       붓 띠가 쓸고 지나가며 단어가 2.2→1 로 박히고(되튐) 0.15초 동안 색수차 (빨강 −2 px · 청록 +2 px), 아래에 한국어 부제 16 px.
-//       칸보다 길면 40 % 까지 줄인다 (40 % 로도 칸을 넘는 아주 좁은 칸에서만 25 % 까지 줄이고 칸 ± 8 px 로 자른다).
+//       칸보다 길면 40 % 까지 줄인다 (40 % 로도 칸을 넘는 아주 좁은 칸에서만 25 % 까지). 칸 밖(가로 ± 6 px, 위 16 px·아래 6 px)은
+//       늘 잘라 낸다 → 2.2배 박힘의 첫 프레임도 옆 상시 영역·패드·토스트 줄을 덮지 않는다.
 //       SSS 는 금빛과 핏빛이 번갈아 빛난다.
 //  시간: 튀기기·박힘 연출은 world.rt (실제 시간 — 히트스톱 중에도 흐른다), 알림의 유지·사라짐은 style 의 age (게임 시간).
 //  동작 줄이기(settings.reduceMotion): 튀기기·기울기·박힘·색수차·붓 쓸기 없이 나타났다 사라진다. 저품질(low): 광택 흐름·핏방울 생략.
@@ -585,6 +587,9 @@ export function drawComboHUD(ctx, world, vw, vh, touch) {
   if (k !== 1) ctx.scale(k, k);
   // 칸 아래·오른쪽으로는 절대 그리지 않는다 (튀기기·박힘 연출 중에도; 터치 y 297 한계·패드 보호). 위·왼쪽은 잠깐 넘쳐도 된다
   ctx.beginPath(); ctx.rect(-COL_W - 200, -200, COL_W + 200 + 6, 200 + r.h / k); ctx.clip();
+  // 겹치는 순서: 붓 띠 → 랭크 글자 → 숫자·HITS·막대 → 이정표. SS·SSS 글자는 넓어서 붓 띠 왼쪽 끝과 겹치므로
+  // 글자를 띠 위에 그린다 (띠를 나중에 그리면 마지막 S 가 붓 자국에 덮인다)
+  if (n >= 2) drawComboBanner(ctx, s, now, calm);
   if (rank > 0) {   // 콤보가 끊긴 뒤 식어 가는 랭크는 조금 흐리게
     if (n < 2) { ctx.save(); ctx.globalAlpha *= 0.7; drawRankLetter(ctx, style, s, rank, now, calm); ctx.restore(); }
     else drawRankLetter(ctx, style, s, rank, now, calm);
@@ -625,20 +630,24 @@ function drawNumber(ctx, str, size, w, rot, pop, flash, rank, now) {
   return w;
 }
 
+/** 콤보 숫자 뒤 붓 띠 (숫자와 함께 조금 튄다) */
+function drawComboBanner(ctx, s, now, calm) {
+  const B = SPR.banner;
+  if (!B) return;
+  const popK = calm ? 0 : clamp(1 - (now - s.hitRt) / POP_T, 0, 1);
+  const bs = 1 + 0.35 * popK * 0.4;   // 오른쪽 끝을 기준으로 튄다 (칸 오른쪽 밖으로 나가지 않게)
+  ctx.save();
+  ctx.translate(-4, 38);
+  if (bs !== 1) ctx.scale(bs, bs);
+  ctx.drawImage(B, -BANNER.w, -BANNER.h / 2 + 2, BANNER.w, BANNER.h);
+  ctx.restore();
+}
+
 function drawComboBlock(ctx, world, c, s, rank, now, small, calm, T) {
   const info = rankInfo(rank);
   const popK = calm ? 0 : clamp(1 - (now - s.hitRt) / POP_T, 0, 1);
   const pop = 1 + 0.35 * popK;
-  // 붓 띠 (숫자와 함께 조금 튄다) + 랭크 색 밑줄
-  const B = SPR.banner;
-  if (B) {
-    const bs = 1 + 0.35 * popK * 0.4;   // 오른쪽 끝을 기준으로 튄다 (칸 오른쪽 밖으로 나가지 않게)
-    ctx.save();
-    ctx.translate(-4, 38);
-    if (bs !== 1) ctx.scale(bs, bs);
-    ctx.drawImage(B, -BANNER.w, -BANNER.h / 2 + 2, BANNER.w, BANNER.h);
-    ctx.restore();
-  }
+  // 랭크 색 밑줄 (붓 띠는 drawComboBanner 가 랭크 글자보다 먼저 그렸다)
   const ga = ctx.globalAlpha;
   ctx.fillStyle = info?.c ?? '#e8c872';
   ctx.globalAlpha = ga * 0.9;
@@ -746,21 +755,21 @@ export function drawAnnouncer(ctx, world, vw, vh) {
   const meta = SPR.wordMeta[i];
   const word = cur.word ?? meta?.t ?? '';
   const cx = r.x + r.w / 2, by = r.y + 38, maxW = r.w - 16;
+  ctx.save();
   let ww = meta?.w;
   if (!(ww > 0)) { ctx.font = font(WRD.size, 900, FONT.dmg); ww = ctx.measureText(word).width || 100; }
   let fit = clamp(maxW / (ww + 24), 0.4, 1);
-  // 아주 좁은 칸 (큰 패드 touchScale 1.3 + 안전 영역 인셋: 70 px 안팎)에서는 40 % 로도 옆 상시 영역(옮겨 간 콤보 열)까지 넘친다
-  // → 그때만 칸에 맞게 더 줄이고(최소 25 %) 칸 ± 8 px 밖은 자른다. 보통 칸에서는 박힘 연출이 잠깐 칸을 넘어도 그대로 둔다
-  const narrow = ww * fit > r.w + 8;
-  if (narrow) fit = Math.max(0.25, (r.w + 8) / ww);
-  ctx.save();
-  if (narrow) { ctx.beginPath(); ctx.rect(r.x - 8, r.y - 60, r.w + 16, r.h + 120); ctx.clip(); }
+  // 아주 좁은 칸 (큰 패드 touchScale 1.3 + 안전 영역 인셋: 70 px 안팎)에서는 40 % 로도 칸을 넘친다 → 칸에 맞게 더 줄인다 (최소 25 %)
+  if (ww * fit > r.w + 8) fit = Math.max(0.25, (r.w + 8) / ww);
+  // 칸 밖으로는 그리지 않는다 (가로 ± 6 px — 옆 영역과의 간격 8 px 안, 위 16 px·아래 6 px 여유). 2.2배 박힘의 첫 몇 프레임이 옆 상시 영역
+  // (옮겨 간 콤보 열 x 14–314·동료 카드 줄)·패드 버튼·위쪽 토스트 줄을 덮지 않게 — 칸 안에서는 그대로 박힌다
+  ctx.beginPath(); ctx.rect(r.x - 6, r.y - 16, r.w + 12, r.h + 22); ctx.clip();
   ctx.globalAlpha *= clamp(alpha, 0, 1);
   // 붓 띠: 왼쪽에서 오른쪽으로 쓸며 그려진다 (0.1초)
   const band = SPR.band;
   if (band) {
     const sw = calm ? 1 : ease.outCubic(clamp(tA / 0.1, 0, 1));
-    const bw = Math.min(r.w + 16, ww * fit + 110), bh = BAND.h * clamp(fit + 0.15, 0.6, 1);
+    const bw = Math.min(r.w + 12, ww * fit + 110), bh = BAND.h * clamp(fit + 0.15, 0.6, 1);
     if (sw > 0.01) ctx.drawImage(band, 0, 0, band.width * sw, band.height, cx - bw / 2, r.y + 32 - bh * 0.46, bw * sw, bh);
   }
   // 단어: 2.2 → 1 로 박히고 되튄다 + 0.15초 색수차

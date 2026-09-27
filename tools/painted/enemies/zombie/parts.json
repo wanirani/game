@@ -1,0 +1,330 @@
+{
+ "id": "zombie",
+ "tier": "T2",
+ "srcTD": 4,
+ "note": "T2 humanoid. Head, torso, thigh and shin+foot come from the Step-4 edit of the sheet-2 side figure (src/zombie_edit.webp, facing left -> flipX): Kling kept both arms, so prep.py paints the near arm out of the shirt and the hand out of the thigh (background bled first, then cv2 Telea). The arm (upper arm with the torn sleeve end + forearm and clawed hand) is the outstretched arm of sheet 1 (pointing left -> flipX). k anchored to the 78 px logic height.",
+ "sources": {
+  "e": {
+   "raw": "zombie_edit.webp",
+   "file": "e1_zombie_edit_clean.png",
+   "k": 0.0294
+  },
+  "s1": {
+   "raw": "zombie_sheet1.webp",
+   "file": "e1_zombie_sheet1.png",
+   "k": 0.046
+  }
+ },
+ "parts": {
+  "head": {
+   "src": "e",
+   "box": [
+    470,
+    110,
+    1000,
+    700
+   ],
+   "flipX": true,
+   "poly": [
+    [
+     490,
+     260
+    ],
+    [
+     600,
+     140
+    ],
+    [
+     760,
+     120
+    ],
+    [
+     880,
+     180
+    ],
+    [
+     960,
+     320
+    ],
+    [
+     990,
+     520
+    ],
+    [
+     940,
+     580
+    ],
+    [
+     840,
+     620
+    ],
+    [
+     800,
+     690
+    ],
+    [
+     660,
+     690
+    ],
+    [
+     580,
+     670
+    ],
+    [
+     500,
+     600
+    ],
+    [
+     480,
+     440
+    ]
+   ],
+   "piv": {
+    "a": [
+     760,
+     660
+    ],
+    "eye": [
+     584,
+     400
+    ],
+    "mouth": [
+     560,
+     560
+    ]
+   }
+  },
+  "torso": {
+   "src": "e",
+   "box": [
+    620,
+    560,
+    1140,
+    1680
+   ],
+   "flipX": true,
+   "poly": [
+    [
+     660,
+     600
+    ],
+    [
+     780,
+     580
+    ],
+    [
+     860,
+     600
+    ],
+    [
+     930,
+     600
+    ],
+    [
+     1000,
+     660
+    ],
+    [
+     1090,
+     840
+    ],
+    [
+     1100,
+     1040
+    ],
+    [
+     1120,
+     1200
+    ],
+    [
+     1130,
+     1400
+    ],
+    [
+     1120,
+     1600
+    ],
+    [
+     1090,
+     1660
+    ],
+    [
+     860,
+     1660
+    ],
+    [
+     760,
+     1620
+    ],
+    [
+     690,
+     1600
+    ],
+    [
+     660,
+     1520
+    ],
+    [
+     660,
+     1400
+    ],
+    [
+     640,
+     1300
+    ],
+    [
+     640,
+     1040
+    ],
+    [
+     650,
+     800
+    ],
+    [
+     640,
+     680
+    ]
+   ],
+   "piv": {
+    "hip": [
+     870,
+     1590
+    ],
+    "neck": [
+     790,
+     630
+    ],
+    "shoulder": [
+     960,
+     860
+    ],
+    "shoulder2": [
+     900,
+     850
+    ]
+   }
+  },
+  "thigh": {
+   "src": "e",
+   "box": [
+    680,
+    1560,
+    1030,
+    2160
+   ],
+   "flipX": true,
+   "poly": [
+    [
+     680,
+     1580
+    ],
+    [
+     1000,
+     1580
+    ],
+    [
+     1020,
+     1800
+    ],
+    [
+     1010,
+     2120
+    ],
+    [
+     840,
+     2150
+    ],
+    [
+     740,
+     2120
+    ],
+    [
+     710,
+     1900
+    ]
+   ],
+   "piv": {
+    "a": [
+     870,
+     1600
+    ],
+    "b": [
+     880,
+     2120
+    ]
+   }
+  },
+  "shin": {
+   "src": "e",
+   "box": [
+    560,
+    2090,
+    1050,
+    2790
+   ],
+   "flipX": true,
+   "keep": "largest",
+   "piv": {
+    "a": [
+     880,
+     2130
+    ],
+    "b": [
+     910,
+     2760
+    ],
+    "toe": [
+     590,
+     2740
+    ]
+   }
+  },
+  "uarm": {
+   "src": "s1",
+   "box": [
+    1470,
+    330,
+    1740,
+    610
+   ],
+   "keep": "largest",
+   "flipX": true,
+   "piv": {
+    "a": [
+     1712,
+     425
+    ],
+    "b": [
+     1515,
+     428
+    ]
+   }
+  },
+  "farm": {
+   "src": "s1",
+   "box": [
+    1125,
+    330,
+    1535,
+    590
+   ],
+   "keep": "largest",
+   "flipX": true,
+   "piv": {
+    "a": [
+     1522,
+     428
+    ],
+    "b": [
+     1290,
+     408
+    ],
+    "claw": [
+     1150,
+     395
+    ]
+   }
+  }
+ },
+ "prep": "python3 tools/painted/enemies/zombie/prep.py (after matte.py zombie_edit.webp -> e1_zombie_edit.png)"
+}

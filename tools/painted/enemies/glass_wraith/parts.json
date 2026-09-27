@@ -1,0 +1,257 @@
+{
+ "id": "glass_wraith",
+ "tier": "T1",
+ "srcTD": 4,
+ "note": "Ghost pipeline (warpY body). body = armless side figure of sheet 1 (faces left -> flipX), arm = sheet 1 loose arm, scream = sheet 2 head alone (faces left -> flipX); sh1..sh6 = void-glass shards from the shared glass sheet (glass.webp, also used by mirror_knight / reflection). Soft matte for the wraith (translucent glass), neural matte for the shards.",
+ "sources": {
+  "s1": {
+   "raw": "glass_wraith_sheet1.webp",
+   "file": "glass_wraith_sheet1.png",
+   "mode": "soft",
+   "k": 0.0556
+  },
+  "s2": {
+   "raw": "glass_wraith_sheet2.webp",
+   "file": "glass_wraith_sheet2.png",
+   "mode": "soft",
+   "k": 0.043
+  },
+  "g": {
+   "raw": "glass.webp",
+   "file": "glass_r.png",
+   "mode": "rembg",
+   "k": 0.02
+  }
+ },
+ "parts": {
+  "body": {
+   "src": "s1",
+   "box": [
+    876,
+    136,
+    1562,
+    1374
+   ],
+   "keep": "largest",
+   "flipX": true,
+   "piv": {
+    "a": [
+     1268,
+     701
+    ],
+    "top": [
+     1086,
+     147
+    ],
+    "head": [
+     1004,
+     278
+    ],
+    "eye": [
+     982,
+     337
+    ],
+    "mouth": [
+     986,
+     494
+    ],
+    "arm": [
+     1169,
+     552
+    ]
+   },
+   "_bbox": [
+    887,
+    147,
+    1550,
+    1363
+   ]
+  },
+  "arm": {
+   "src": "s1",
+   "box": [
+    1664,
+    168,
+    2194,
+    1652
+   ],
+   "keep": "largest",
+   "k": 0.03,
+   "piv": {
+    "a": [
+     1903,
+     324
+    ],
+    "b": [
+     1928,
+     1597
+    ]
+   },
+   "_bbox": [
+    1674,
+    178,
+    2183,
+    1641
+   ]
+  },
+  "scream": {
+   "src": "s2",
+   "box": [
+    1612,
+    388,
+    2335,
+    1338
+   ],
+   "keep": "largest",
+   "flipX": true,
+   "piv": {
+    "a": [
+     1839,
+     595
+    ],
+    "eye": [
+     1720,
+     642
+    ]
+   },
+   "_bbox": [
+    1621,
+    388,
+    2325,
+    1327
+   ]
+  },
+  "sh1": {
+   "src": "g",
+   "box": [
+    298,
+    304,
+    680,
+    556
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     489,
+     430
+    ]
+   },
+   "_bbox": [
+    306,
+    312,
+    672,
+    547
+   ]
+  },
+  "sh2": {
+   "src": "g",
+   "box": [
+    1380,
+    136,
+    1643,
+    462
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1511,
+     299
+    ]
+   },
+   "_bbox": [
+    1388,
+    144,
+    1634,
+    454
+   ]
+  },
+  "sh3": {
+   "src": "g",
+   "box": [
+    1679,
+    207,
+    1985,
+    786
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1836,
+     500
+    ]
+   },
+   "_bbox": [
+    1688,
+    215,
+    1985,
+    786
+   ]
+  },
+  "sh4": {
+   "src": "g",
+   "box": [
+    991,
+    1141,
+    1317,
+    1600
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1158,
+     1370
+    ]
+   },
+   "_bbox": [
+    1000,
+    1150,
+    1317,
+    1591
+   ]
+  },
+  "sh5": {
+   "src": "g",
+   "box": [
+    1459,
+    1274,
+    1998,
+    1562
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1724,
+     1414
+    ]
+   },
+   "_bbox": [
+    1459,
+    1274,
+    1990,
+    1553
+   ]
+  },
+  "sh6": {
+   "src": "g",
+   "box": [
+    1738,
+    628,
+    2132,
+    1113
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1931,
+     866
+    ]
+   },
+   "_bbox": [
+    1738,
+    628,
+    2124,
+    1105
+   ]
+  }
+ }
+}

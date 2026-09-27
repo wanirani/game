@@ -115,7 +115,7 @@ export function draw(ctx, e, world, o, rig) {
       ctx.strokeStyle = '#e8d8c0'; ctx.lineWidth = 1.2;
       for (let i = 0; i < 5; i++) {
         const u = (t * 2.4 + i / 5) % 1, a = (K.h1(i + Math.floor(t * 2.4 + i / 5) * 7) - 0.5) * 1.1 - 0.35, r = 16 + (1 - u) * 60;
-        const x0 = _m[0] + Math.cos(a) * r, y0 = _m[1] + Math.sin(a) * r;
+        const x0 = _m[0] + Math.cos(a) * r * 0.7, y0 = _m[1] + Math.sin(a) * r * 0.7;
         ctx.globalAlpha = ga * 0.45 * u * inf;
         ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x0 - Math.cos(a) * 10, y0 - Math.sin(a) * 10); ctx.stroke();
       }

@@ -1,0 +1,131 @@
+{
+ "id": "reflection",
+ "tier": "T2",
+ "srcTD": 4,
+ "note": "The reflection reuses the player's hero puppet (drawHero, PUPPET_PIPELINE) and only needs glass: the spider-web crack pane and four void-glass shards from the shared glass sheet (glass.webp, 0 own Kling images).",
+ "sources": {
+  "g": {
+   "raw": "glass.webp",
+   "file": "glass_r.png",
+   "mode": "rembg",
+   "k": 0.02
+  }
+ },
+ "parts": {
+  "web": {
+   "src": "g",
+   "box": [
+    786,
+    225,
+    1507,
+    1091
+   ],
+   "keep": "largest",
+   "k": 0.034,
+   "piv": {
+    "a": [
+     1002,
+     671
+    ],
+    "c": [
+     1002,
+     671
+    ]
+   },
+   "_bbox": [
+    786,
+    225,
+    1507,
+    1083
+   ]
+  },
+  "sh1": {
+   "src": "g",
+   "box": [
+    298,
+    304,
+    680,
+    556
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     489,
+     430
+    ]
+   },
+   "_bbox": [
+    306,
+    312,
+    672,
+    547
+   ]
+  },
+  "sh2": {
+   "src": "g",
+   "box": [
+    1679,
+    207,
+    1985,
+    786
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1836,
+     500
+    ]
+   },
+   "_bbox": [
+    1688,
+    215,
+    1985,
+    786
+   ]
+  },
+  "sh3": {
+   "src": "g",
+   "box": [
+    991,
+    1141,
+    1317,
+    1600
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1158,
+     1370
+    ]
+   },
+   "_bbox": [
+    1000,
+    1150,
+    1317,
+    1591
+   ]
+  },
+  "sh4": {
+   "src": "g",
+   "box": [
+    1738,
+    628,
+    2132,
+    1113
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1931,
+     866
+    ]
+   },
+   "_bbox": [
+    1738,
+    628,
+    2124,
+    1105
+   ]
+  }
+ }
+}

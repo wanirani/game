@@ -8,12 +8,14 @@
 import * as cloud_jelly from '../enemies/cloud_jelly.js';
 import * as nihil_spawn from '../enemies/nihil_spawn.js';
 import * as storm_harpy from '../enemies/storm_harpy.js';
+import * as thunder_roc from '../enemies/thunder_roc.js';
 
 export const bosses = {};
 export const enemies = [
   { mod: cloud_jelly },
   { mod: nihil_spawn },
   { mod: storm_harpy },
+  { mod: thunder_roc },
 ];
 export const companions = {};
 export const npcs = {};

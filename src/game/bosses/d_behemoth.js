@@ -40,6 +40,9 @@ const LEGS = [
   { id: 'FN', hip: [130, -176], fx: 136, ph: 0, near: 1, side: 1 },
   { id: 'BN', hip: [-150, -178], fx: -146, ph: PI, near: 1, side: -1 },
 ];
+/** 싸움 중 새 캔버스 0 (MASTER_PLAN §5.2): 이 보스와 그 공격이 쓰는 발광(b_common glowSprite) · 조명(lighting 색광) 색을 등장 때 모두 굽는다 */
+const GLOW_WARM = [GLOW, SPORE, '#e8ff90', '#ffffff', '#c8ff6a', '#6a8a2a', '#3a5a10', MOSS, '#b8d060', '#e8ffb0', '#c8e060', '#8ab82e', '#e0c080', '#e8ffd0', '#fff0f8'];
+const LIGHT_WARM = [GLOW, SPORE, '#e8ffd0', '#fff0f8', '#c8ff6a'];
 const LU = 94, LL = 88;                 // 다리 뼈 길이 (위 · 아래)
 const SACS = [[-104, -208], [-36, -196], [32, -214]];
 const GASHES = [
@@ -391,7 +394,8 @@ export class Behemoth extends BossC {
     this.cBody = { x: 0, y: 0, w: 340, h: 230 }; this.cHead = { x: 0, y: 0, w: 130, h: 120 };
     this.headP = { x: 0, y: 0 }; this.mouthP = { x: 0, y: 0 }; this.queenP = { x: 0, y: 0 }; this.qHand = { x: 0, y: 0 };
     this._hp = []; this._cp = []; this._pt = { x: 0, y: 0 }; this._k = [0, 0];
-    for (const c of [GLOW, SPORE, '#e8ff90', '#ffffff', '#c8ff6a', '#6a8a2a']) { glowSprite(c, false); glowSprite(c, true); }
+    for (const c of GLOW_WARM) { glowSprite(c, false); glowSprite(c, true); }
+    this._lw = 2;   // 조명 스프라이트(lighting.js 색광 캐시)도 첫 두 프레임에 화면 안 세기 0 광원으로 미리 굽는다
     this.place(); this.rig(); this.syncParts();
   }
 
@@ -988,6 +992,7 @@ export class Behemoth extends BossC {
 
   // ═════════════════════════════ 조명 ═════════════════════════════
   lightsB(L) {
+    if (this._lw > 0) { this._lw--; const cam = this.world?.camera; if (cam) for (const c of LIGHT_WARM) L.add(cam.x + 40, cam.y + 40, 4, c, 0); }
     const dk = this.dying > 0 ? clamp(1 - this.dieT / 3, 0, 1) : 1;
     L.add(this.bx, this.by - 200, 300, GLOW, 0.45 * dk);
     for (const sc of this.sacs) if (sc.alive) L.add(sc.x, sc.y, 80 + 40 * this.pose.pulse, SPORE, (0.35 + 0.4 * this.pose.pulse) * dk);

@@ -210,6 +210,28 @@ window.__tt = {
     return c;
   },
   readyCount,
+  /**
+   * QA 비용 측정: 영웅 6명의 2차 전직 외형을 n 번씩 그린다 (deg = null → 옆모습 경로, 숫자·배열 → opts.yaw, 배열이면 차례로).
+   * 캔버스는 하나를 다시 쓴다 (할당 비용 제외). 시간은 바깥(CDP CPU 시간)에서 잰다 (platform §7.3: yaw ≤ 1.5 × 옆모습)
+   */
+  bench(deg, n = 10, w = 160, h = 190) {
+    const c = (window.__benchCv ||= document.createElement('canvas'));
+    if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+    const g = c.getContext('2d');
+    for (let i = 0; i < n; i++) {
+      for (let hi = 0; hi < heroes.length; hi++) {
+        const row = rows[hi * 3 + 1];
+        g.clearRect(0, 0, w, h);
+        const p = ent(row, 'idle', row.benchRig || (row.benchRig = {}));
+        p.cx = w / 2; p.bottom = h - 12; p.t = 3 + i / 60;
+        const o = { scale: (h - 30) / 96, noFx: true };
+        const dd = Array.isArray(deg) ? deg[(i * heroes.length + hi) % deg.length] : deg;
+        if (dd !== null && dd !== undefined) o.yaw = (dd * Math.PI) / 180;
+        HERO.drawHero(g, p, null, o);
+      }
+    }
+    g.getImageData(0, 0, 1, 1);
+  },
 };
 const heroReady = (hi) => rows.slice(hi * 3, hi * 3 + 3).every((row) => HERO.heroViewInfo?.({ look: row.look, ch: CHARACTERS[row.cid] })?.painted);
 (async () => {

@@ -1,0 +1,130 @@
+{
+ "id": "siren",
+ "tier": "T2",
+ "srcTD": 4,
+ "note": "body = Step-4 edit of the sheet-2 side figure with both arms removed (src/sr_body.webp, manifest: siren_edit), the long curled tail undulates by strips; arm = sheet 2 loose arm (shoulder fins at the left, claws at the right); sing = sheet 2 head-and-shoulders with the mouth split wide (swapped in while singing).",
+ "sources": {
+  "b": {
+   "raw": "sr_body.webp",
+   "file": "sr_body.png",
+   "mode": "",
+   "k": 0.0345
+  },
+  "s2": {
+   "raw": "siren_sheet2.webp",
+   "file": "siren_sheet2.png",
+   "mode": "",
+   "k": 0.0345
+  }
+ },
+ "parts": {
+  "body": {
+   "src": "b",
+   "box": [
+    130,
+    0,
+    1760,
+    2336
+   ],
+   "keep": "largest",
+   "fade": [
+    [
+     1540,
+     1450,
+     1645,
+     2336,
+     "right",
+     1.2
+    ]
+   ],
+   "piv": {
+    "a": [
+     1168,
+     835
+    ],
+    "top": [
+     1100,
+     0
+    ],
+    "arm": [
+     1150,
+     770
+    ],
+    "head": [
+     1335,
+     551
+    ],
+    "mouth": [
+     1402,
+     618
+    ],
+    "eye": [
+     1335,
+     518
+    ],
+    "gill": [
+     1210,
+     700
+    ]
+   },
+   "_bbox": [
+    145,
+    0,
+    1641,
+    2314
+   ]
+  },
+  "arm": {
+   "src": "s2",
+   "box": [
+    1541,
+    799,
+    2256,
+    1135
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1686,
+     901
+    ],
+    "b": [
+     2220,
+     1035
+    ]
+   },
+   "_bbox": [
+    1551,
+    809,
+    2246,
+    1125
+   ]
+  },
+  "sing": {
+   "src": "s2",
+   "box": [
+    1187,
+    8,
+    2164,
+    762
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     2020,
+     451
+    ],
+    "mouth": [
+     2087,
+     551
+    ]
+   },
+   "_bbox": [
+    1197,
+    18,
+    2154,
+    752
+   ]
+  }
+ }
+}

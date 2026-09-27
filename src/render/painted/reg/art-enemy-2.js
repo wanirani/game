@@ -8,12 +8,14 @@
 import * as blood_skeleton from '../enemies/blood_skeleton.js';
 import * as bone_scimitar from '../enemies/bone_scimitar.js';
 import * as skeleton_knight from '../enemies/skeleton_knight.js';
+import * as skeleton_mage from '../enemies/skeleton_mage.js';
 
 export const bosses = {};
 export const enemies = [
   { mod: blood_skeleton },
   { mod: bone_scimitar },
   { mod: skeleton_knight },
+  { mod: skeleton_mage },
 ];
 export const companions = {};
 export const npcs = {};

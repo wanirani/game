@@ -1,0 +1,20 @@
+{
+ "id": "spear_guard",
+ "tier": "T2",
+ "srcTD": 4,
+ "note": "Knight-rig reuse (ART-ENEMY-2): cuirass+tabard, rerebrace (also the cuisse), vambrace+gauntlet and greave+sabaton are the armor_knight cuts (../armor_knight/src, same cached mattes); the plumed helm and the war spear are cut from the ART-ENEMY-2 props sheet (props take 1, neural-only matte: grey steel). make_src.py rebuilds the two prop crops.",
+ "sources": {
+  "t": { "file": "knight_torso_r.png", "k": 0.0288, "raw": "../../armor_knight/src/knight_torso.webp", "mode": "rembg" },
+  "s1": { "file": "knight_sheet1_r.png", "k": 0.0525, "raw": "../../armor_knight/src/knight_sheet1.webp", "mode": "rembg" },
+  "h": { "raw": "plume_helm.webp", "file": "a2_spg_helm.png", "k": 0.031, "mode": "rembg" },
+  "p": { "raw": "spear.webp", "file": "a2_spg_spear.png", "k": 0.052, "mode": "rembg" }
+ },
+ "parts": {
+  "torso": { "src": "t", "box": [400, 150, 1420, 2320], "keep": "largest", "flipX": true, "piv": { "a": [880, 1250], "neck": [765, 290], "shN": [1120, 420], "shF": [560, 400], "hipN": [960, 1250], "hipF": [800, 1250] } },
+  "uarm": { "src": "s1", "box": [1620, 585, 1775, 865], "keep": "largest", "piv": { "a": [1688, 612], "b": [1690, 850] } },
+  "farm": { "src": "s1", "box": [1880, 660, 2065, 1095], "keep": "largest", "piv": { "a": [1960, 715], "b": [1955, 965], "grip": [1960, 1025] } },
+  "shin": { "src": "s1", "box": [1895, 1150, 2120, 1630], "keep": "largest", "piv": { "a": [1975, 1215], "b": [1962, 1560], "toe": [2105, 1612], "heel": [1915, 1592] } },
+  "helm": { "src": "h", "box": [130, 130, 600, 930], "keep": "largest", "flipX": true, "piv": { "a": [400, 830], "eye": [290, 620], "top": [560, 170] } },
+  "spear": { "src": "p", "box": [120, 130, 2410, 500], "keep": "largest", "piv": { "a": [740, 296], "b": [2369, 296], "grip2": [510, 296], "butt": [158, 296], "head": [2100, 296] } }
+ }
+}

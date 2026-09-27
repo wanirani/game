@@ -266,8 +266,17 @@
    "aspect": "auto",
    "imageCount": 2,
    "decision": "e1 KEPT -> gargoyle/src/gargoyle_body.webp (wingless, spine spikes repainted); e2 grew a second tail over the back"
+  },
+  {
+   "enemy": "wolf",
+   "step": "legs_tail",
+   "generationId": "ASoG83p048azPQ8vsbuTfsiv0wfXl9b1rYIux97GLbNlMeY37RI99LV0Qj64AD3IouR3rfQJ",
+   "tool": "image_to_image",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "decision": "l1 KEPT -> wolf/src/wolf_legs.webp (side-view front leg alone + hindquarters with the hind leg and the bushy tail: hind leg and tail are cut from it); l2 rejected (front-view leg + a whole new wolf)"
   }
  ],
- "imagesSpent": 53,
- "creditsSpent": 106
+ "imagesSpent": 55,
+ "creditsSpent": 110
 }

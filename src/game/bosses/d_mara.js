@@ -48,6 +48,9 @@ const LEGS = [
   { near: 0, rx: -50, fx: -120, ph: 1.5 * PI },
   { near: 0, rx: -96, fx: -262, ph: 0.5 * PI },
 ];
+/** 싸움 중 새 캔버스 0 (MASTER_PLAN §5.2): 이 보스와 그 공격이 쓰는 발광(b_common glowSprite) · 조명(lighting 색광) 색을 등장 때 모두 굽는다 */
+const GLOW_WARM = [DREAM, DREAM_L, '#ffffff', '#ff6a9a', '#8a60c0', '#ffd0f0', '#ff60c0', '#e8c8ff', '#ff80c0', '#ffe0ff', '#ff60b0', '#9fd0ff', '#5a1a8a', '#d8a0ff', '#ff9ad0', '#b070ff'];
+const LIGHT_WARM = [DREAM, '#8a60c0', '#ff80c0', '#ffd0f0', '#e8c8ff', '#d8a0ff', '#ff9ad0'];
 const HEAD_LEGS = [0, 1, 3];       // 아기 인형 머리가 달린 다리 (가까운 쪽 — 앞에 그려져 보인다)
 /** 실 머리카락 끝에 매달린 잠든 얼굴 (정수리 기준 오프셋, 몸 지역) */
 const SLEEPERS = [[[-140, -62], [-62, -138], [70, -118]], [[-200, -60], [-100, -150], [20, -160]]];
@@ -395,7 +398,8 @@ export class Mara extends BossC {
     this.faceP = { x: 0, y: 0 }; this.mouthP = { x: 0, y: 0 };
     this._hp = []; this._cp = []; this._pt = { x: 0, y: 0 }; this._k = [0, 0];
     // 캐시 스프라이트는 등장 연출 동안 만든다 (싸움 중 새 캔버스 0 — MASTER_PLAN §5.2)
-    for (const c of [DREAM, DREAM_L, '#ffffff', '#ff6a9a', '#8a60c0', '#ffd0f0']) { glowSprite(c, false); glowSprite(c, true); }
+    for (const c of GLOW_WARM) { glowSprite(c, false); glowSprite(c, true); }
+    this._lw = 2;   // 조명 스프라이트(lighting.js 색광 캐시)도 첫 두 프레임에 화면 안 세기 0 광원으로 미리 굽는다
     this.place(); this.rig(); this.syncParts();
   }
 
@@ -1170,6 +1174,7 @@ export class Mara extends BossC {
 
   // ═════════════════════════════ 조명 ═════════════════════════════
   lightsB(L) {
+    if (this._lw > 0) { this._lw--; const cam = this.world?.camera; if (cam) for (const c of LIGHT_WARM) L.add(cam.x + 40, cam.y + 40, 4, c, 0); }
     const dk = this.dying > 0 ? clamp(1 - (this.dieT - 1.4) / 1.6, 0, 1) : 1;
     L.add(this.faceP.x, this.faceP.y, 170, DREAM, 0.6 * dk);
     L.add(this.bx, this.form === 2 ? this.by - 100 : this.by + this.bob - 60, 230, '#8a60c0', 0.4 * dk);

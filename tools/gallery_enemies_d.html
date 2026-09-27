@@ -110,6 +110,7 @@ function frame() {
       e.puppets.length = 0;
       for (let k = 0; k < e.nPup; k++) e.puppets.push({ cx: (k ? 46 : -40) * (flip ? -1 : 1), y: 150 - 62, dead: false });
       ctx.globalAlpha = e.alpha ?? 1;
+      if (fixedT != null) e._vecSeen = false;          // 고정 시간 캡처: 벡터→채색 크로스페이드 없이 최종 그림
       try { drawEnemy(ctx, e, null); } catch (err) { console.error(r.id, c.label, err); ctx.fillStyle = '#f00'; ctx.fillRect(-10, -30, 20, 30); }
       ctx.restore();
     });
