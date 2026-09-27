@@ -1,0 +1,19 @@
+{
+ "package": "CMP-GUARD-ART-A",
+ "model": "kling-image-v3_0_omni (img_resolution 2k)",
+ "prompts": "tools/painted/prompts/cmp-guard-art-a.mjs (GUARDIANS ref/sheet templates, EXTRAS for single parts)",
+ "creditsPerImage": 2,
+ "budgetCredits": 240,
+ "creditsBefore": 5917,
+ "note": "Result URLs expire after 24 h; every kept image is stored as q93 webp under tools/painted/companions/<id>/src/ (the chosen Step-1 reference as <id>_ref.webp). Watermark (bottom-right Kling logo) is filled by matte.py before cutting; the kept refs are cropped/cleaned.",
+ "generations": [
+  {"guardian": "gd_fairy", "step": "ref", "generationId": "AX4loFmjh_5wtWLbnL0R2knA0DiC1_iSEI-sy6EAlQ7RMeXXoLsvFSh6_bdrPCDY4dX6RXM5", "tool": "text_to_image", "aspect": "1:1", "imageCount": 2, "decision": "pending"},
+  {"guardian": "gd_spiritwolf", "step": "ref", "generationId": "AR-Og29Yrc-CQezp-BjX6RT-tPrjxK2em8HqFDn6mjSQONYggDYmdfvL0a3q-CTQdJWLtjkr", "tool": "text_to_image", "aspect": "4:3", "imageCount": 2, "decision": "pending"},
+  {"guardian": "gd_imp", "step": "ref", "generationId": "ASstDQvxNkP1NFDAkrO6SmsQoX2P-f0bYNkJc4PZcK24P9oTsVm8aV98YPI5G6kvFOwEGA5A", "tool": "text_to_image", "aspect": "1:1", "imageCount": 2, "decision": "pending"},
+  {"guardian": "gd_knight", "step": "ref", "generationId": "AZNcstM3U7gbsTY9CuJC52kEr4UE-c-AIAoR-EhADFlfaey-aTi4UUn7BqYPjbH3ootvCJth", "tool": "text_to_image", "aspect": "3:4", "imageCount": 2, "decision": "pending"},
+  {"guardian": "gd_whelp", "step": "ref", "generationId": "ASQyq5iRBnZMs-Gmi5vmg5ypA_0fM3ebb7_IMAnDImy6uJgp1-pzWeR6KglRIRE9I3f1wq3s", "tool": "text_to_image", "aspect": "4:3", "imageCount": 2, "decision": "pending"},
+  {"guardian": "gd_owl", "step": "ref", "generationId": "AcfeqI2QReva5YlTDdcCN5-QgDLc_KOYNXTT59nGo5dOrIpRQplV6hfgbRRagvHG2IxP_u_e", "tool": "text_to_image", "aspect": "3:4", "imageCount": 2, "decision": "pending"}
+ ],
+ "imagesGenerated": 12,
+ "creditsSpent": 24
+}

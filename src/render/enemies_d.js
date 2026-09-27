@@ -54,7 +54,7 @@ const HALO4 = ['#ff4a8a', '#ffd84a', '#4affa0', '#6a8aff'];
 const PRISM5 = ['#ff5a8a', '#ffe05a', '#5affb0', '#5a9aff', '#c86aff'];
 const STAR3 = ['rgba(255,90,140,0.5)', 'rgba(90,255,170,0.5)', 'rgba(120,150,255,0.5)'];
 const BEAM4 = ['rgba(255,58,106,0.55)', 'rgba(255,210,70,0.45)', 'rgba(58,255,154,0.55)', 'rgba(106,138,255,0.55)'];
-const NODASH = [], DASH_LANCE = [16, 10], DASH_BOLT = [6, 8], DASH_SHOCK = [10, 8], BOLT_W = [14, 6, 2.6], SPIKE_H = [0.5, 0.78, 1, 0.72, 0.46];
+const NODASH = [], DASH_AIM = [12, 8], DASH_LANCE = [16, 10], DASH_BOLT = [6, 8], DASH_SHOCK = [10, 8], BOLT_W = [14, 6, 2.6], SPIKE_H = [0.5, 0.78, 1, 0.72, 0.46];
 const flap = (e, f = 12) => Math.sin((e.t ?? 0) * f);
 const aimK = (e) => clamp(e.aimK ?? 0, 0, 1);
 
@@ -564,7 +564,7 @@ ZONE_D.prism_beam = (ctx, z) => {
     const k = d.k ?? 0, blink = d.lock && ((z.t * 16) | 0) % 2 === 0;
     if (d.lock) { ctx.lineWidth = 8; ctx.strokeStyle = 'rgba(190,150,255,0.2)'; ctx.beginPath(); ctx.moveTo(d.x0, d.y0); ctx.lineTo(d.x1, d.y1); ctx.stroke(); }
     ctx.strokeStyle = blink ? 'rgba(255,255,255,0.95)' : `rgba(230,220,255,${0.3 + 0.5 * k})`; ctx.lineWidth = d.lock ? 3 : 2;
-    ctx.setLineDash(d.lock ? [] : [12, 8]); ctx.lineDashOffset = -z.t * 90;
+    ctx.setLineDash(d.lock ? NODASH : DASH_AIM); ctx.lineDashOffset = -z.t * 90;
     ctx.beginPath(); ctx.moveTo(d.x0, d.y0); ctx.lineTo(d.x1, d.y1); ctx.stroke(); ctx.setLineDash(NODASH);
     glowAt(ctx, '#ffffff', d.x0, d.y0, 20 + 30 * k, 0.4 + 0.5 * k);
     ctx.restore(); return;
