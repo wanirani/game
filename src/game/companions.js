@@ -134,6 +134,13 @@ export class CompanionSystem {
   }
   /** delay 초 뒤 fn (월드 시간 기준; 방이 바뀌면 취소) */
   later(delay, fn) { if (delay <= 0) { try { fn(); } catch (e) { console.warn('[companions] later', e); } return; } this.timers.push({ t: delay, fn }); }
+  /** 안내 토스트: 같은 문구는 1.5초 안에 다시 띄우지 않는다 (R·G 연타로 토스트 줄이 가득 차지 않게) */
+  note(text) {
+    const w = this.world, now = w?.rt ?? w?.time ?? 0;
+    if (this._noteText === text && now - this._noteAt < 1.5) return;
+    this._noteText = text; this._noteAt = now;
+    w?.game?.toast?.(text, '#c8b8a8', 2);
+  }
   /** 방을 옮겨도 이어지는 연출 개체 (아리아 결계·가웨인 방패벽: shieldT·wallT 가 남아 있는 동안 보이고 탄을 막게) */
   keepFx(e) {
     if (!e) return e;
@@ -255,7 +262,7 @@ export class CompanionSystem {
       input.consume('mount');
       if (!p.dead && !w.cutscene && !w.inputLock) {
         audio.sfx('menu_cancel', { vol: 0.3 });
-        if (ownedIds(w.state, 'mount').length) w.game?.toast?.(CMP_TEXT.noMount, '#c8b8a8', 2);
+        if (ownedIds(w.state, 'mount').length) this.note(CMP_TEXT.noMount);
       }
     }
     // 자동 스킬
@@ -331,7 +338,7 @@ export class CompanionSystem {
     if (!this.guards.length) {
       if (!auto) {
         audio.sfx('menu_cancel', { vol: 0.3 });
-        if (ownedIds(w.state, 'guardian').length) w.game?.toast?.(CMP_TEXT.noGuard, '#c8b8a8', 2);
+        if (ownedIds(w.state, 'guardian').length) this.note(CMP_TEXT.noGuard);
       }
       return false;
     }

@@ -6,6 +6,7 @@ import { ABoss, beginDraw, endDraw, C, rg, lg, glow, ink, rim, taper, eye, shado
 import { VerletChain } from '../../core/physics.js';
 import { rand, clamp, lerp, TAU, angleTo, rgba, ease } from '../../core/math.js';
 import { audio } from '../../core/audio.js';
+import { paintedDebris } from '../../render/painted/registry.js';
 
 const TEAL = '#5affd0', PALE = '#dff8f2', VEIL = '#b8e8e0', DEEP = '#1c4a4a';
 const _Q = new Float32Array(32);
@@ -270,7 +271,7 @@ export class Banshee extends ABoss {
   }
   deathStart() { audio.sfx('ghost', { pitch: 0.3, vol: 1 }); }
   deathTick(dt) { this.mouth = 1.4; this.arms = 1; this.armsUp = 1; this.vy = -40; }
-  debrisPiece(i) { return { size: 10, draw: drawWisp }; }
+  debrisPiece(i) { return paintedDebris(this, i) ?? { size: 10, draw: drawWisp }; }   // 채색 준비됐으면 채색 파편 (그리기 전용)
   deathPoint() { return { x: this.cx + rand(-50, 50), y: this.bottom - rand(20, 230) }; }
   extraLights(L) { L.add(this.cx, this.bottom - 200, 100, TEAL, 0.8 * this.alpha); }
 

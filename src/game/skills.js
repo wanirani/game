@@ -2320,7 +2320,8 @@ function prewarmUlt(v) {
 /** 키트가 없을 때의 최소 시작 연출: 전직 단계별 줌인 + 기술명 (feel §5.2 표의 cast zoom · skill name) */
 function beginLocal(w, p, v) {
   w.camera.zoomPulse(TIER_ZOOM[v.tier], 0.2, 0.2, 0.35);
-  if (v.name) w.fx.text(p.cx, p.y - 34, v.tier >= 2 && v.title ? `${v.title} · ${v.name}` : v.name, { color: v.color, size: TIER_NAME[v.tier], life: 1.3, vy: -40, outline: '#1a0610' });
+  const V = ultView(w), tx = clamp(p.cx, V.x + 150, V.x + V.w - 150);
+  if (v.name) w.fx.text(tx, p.y - 34, v.tier >= 2 && v.title ? `${v.title} · ${v.name}` : v.name, { color: v.color, size: TIER_NAME[v.tier], life: 1.3, vy: -40, outline: '#1a0610' });
 }
 /** 박자: 키트의 충격파(고리·지면 타원·불꽃·반동). 키트가 없으면 고리 하나와 작은 반동 */
 function ultBeat(w, v, x, y, power = 0.5, ground = false, col = v.color) {
@@ -2693,13 +2694,13 @@ ULTS.victor = (p, w, v = ultCtx(p, w)) => {
       // 데드맨즈 핸드: A♠ A♣ 8♣ 8♠ 가 빅터 머리 위에 부채꼴로 펼쳐졌다가 산탄과 함께 흩어진다
       if (e.d.handT) {
         const u = ease.outBack(clamp((e.lt - e.d.handT) / 0.12, 0, 1)), out = e.d.shotT ? clamp((e.lt - e.d.shotT) / 0.3, 0, 1) : 0;
-        const hx = p.cx - p.facing * 10, hy = p.y - 64;
-        ctx.globalCompositeOperation = ADD; glow(ctx, hx, hy, 120 * u, '#ffd070', 0.5 * (1 - out));
+        const hx = clamp(p.cx + p.facing * 30, V0.x + 130, V0.x + V0.w - 130), hy = Math.max(V0.y + 90, p.y - 92);
+        ctx.globalCompositeOperation = ADD; glow(ctx, hx, hy, 170 * u, '#ffd070', 0.55 * (1 - out));
         ctx.globalCompositeOperation = 'source-over';
         [['A', '♠'], ['A', '♣'], ['8', '♣'], ['8', '♠']].forEach(([r, s], i) => {
           const ang = (i - 1.5) * 0.3;
-          ctx.save(); ctx.translate(hx + Math.sin(ang) * (30 + out * 260), hy - Math.cos(ang) * (8 + out * 200) + out * out * 160);
-          ctx.rotate(ang + out * (i - 1.5) * 3); ctx.scale(1.45 * u, 1.45 * u); cardShape(ctx, 38, 54, r, s, 1 - out); ctx.restore();
+          ctx.save(); ctx.translate(hx + Math.sin(ang) * (44 + out * 300), hy - Math.cos(ang) * (10 + out * 220) + out * out * 180);
+          ctx.rotate(ang + out * (i - 1.5) * 3); ctx.scale(2.1 * u, 2.1 * u); cardShape(ctx, 38, 54, r, s, 1 - out); ctx.restore();
         });
       }
       if (e.lt > 1.34 && e.lt < 1.6) { ctx.globalCompositeOperation = ADD; const g = gunOf(p); glow(ctx, g.x, g.y, 220, '#ffd070', 1 - (e.lt - 1.34) / 0.26); }
