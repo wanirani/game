@@ -345,7 +345,8 @@ AI_D.roc = {
           if (bottom - top < 40) continue;
           e.cols.push({ x, top, bottom });
         }
-        if (!e.cols.length) { e.pick++; return; }
+      }
+      if (e.pick % 2 === 1 && e.cols.length) {
         e.setState('cast'); e.fired = false; e.aimK = 0;
         audio.sfx('charge_ready', { vol: 0.4, pitch: 0.6 }); audio.sfx('bat', { vol: 0.3, pitch: 0.4 });
         for (const c of e.cols) {
@@ -686,7 +687,7 @@ AI_D.treant = {
 
 /**
  * 역병 나방: 플레이어 머리 위 P.hover 에서 사인파로 날갯짓한다 (속도 120, 진폭 60, 3 rad/s).
- * P.dust 초마다 'dust' — 플레이어 쪽으로 살짝 내려앉으며 날개를 떨고(0.45초 경고) 몸 60 아래에 포자 구름 100×80 (3초).
+ * P.dust 초마다 'dust' (상태 이름은 'cast': 경고 중 타격 = COUNTER) — 플레이어 머리 위로 내려앉으며 날개를 떨고(0.45초 경고) 몸 60 아래에 포자 구름 100×80 (3초).
  *   (구름이 머리 위 허공에만 쌓이지 않도록 경고 0.45초 동안 플레이어 머리 위 80 까지 급강하한다 — 구름 가운데 = 뿌리는 순간 나방 자리 + 60)
  */
 AI_D.moth = {
@@ -696,7 +697,7 @@ AI_D.moth = {
     if (!p) return;
     e.dustT -= dt * e.aggro;
     e.ph += dt * 3;
-    if (e.state === 'dust') {
+    if (e.state === 'cast') {
       e.setAnim('dust'); e.aimK = clamp(e.stateT / 0.45, 0, 1);
       if (!e.fired) {
         // 뿌릴 자리로 빠르게 내려앉는다 (0.45초 안에 도착: 이 급강하가 곧 예비동작)
@@ -721,7 +722,7 @@ AI_D.moth = {
       // 뿌릴 자리: 플레이어 머리 위 80 (구름 가운데 = 나방 + 60 = 플레이어 가슴께). 가는 길이 막혀 있으면 제자리에서 뿌린다
       e.dx0 = p.cx; e.dy0 = p.cy - 80;
       if (solidAt(world, e.dx0, e.dy0) || solidAt(world, (e.cx + e.dx0) / 2, (e.cy + e.dy0) / 2)) { e.dx0 = e.cx; e.dy0 = e.cy; }
-      e.setState('dust'); e.fired = false; e.aimK = 0; e.dustT = P.dust ?? 3;   // 뿌리기 시작부터 다음 뿌리기까지 P.dust 초
+      e.setState('cast'); e.fired = false; e.aimK = 0; e.dustT = P.dust ?? 3;   // 뿌리기 시작부터 다음 뿌리기까지 P.dust 초
       audio.sfx('bat', { vol: 0.25, pitch: 1.8 });
     }
   },

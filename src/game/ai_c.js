@@ -17,7 +17,7 @@
 //  chandelier  'hang' 'shake' 'fall' 'shatter' 'crawl' 'spit' · e.anchorY(천장 y, 매달려 있을 때만) · e.sway(rad) · e.broken(촛대 다리 모드)
 //  forgeimp    'fly' 'cast'(대갈못) 'aim' 'dive' · e.aimX/e.aimY(급강하 목표)
 //  slag        'idle' 'walk' 'windup' 'slam' 'spit' · e.glow(0..1 팔을 든 채 달아오름)
-//  chainhook   'idle' 'walk' 'aim' 'throw' 'reel' 'smash' 'sweep' · e.hook(갈고리 장판, 사슬은 ZONE_C.hook 이 그린다)
+//  chainhook   'idle' 'walk' 'aim' 'throw' 'reel' 'smash'(상태 'slam') 'sweep' · e.hook(갈고리 장판, 사슬은 ZONE_C.hook 이 그린다)
 //  bellows     'idle' 'inhale' 'blow' · e.inflate(0..1 부풂)
 //  swimmer     'swim' 'bite'(예비동작·돌진 모두 턱을 벌림) 'leap' 'flop' · e.inWater · e.lure(0..1 초롱불 번쩍임)
 //  tidecaller  'idle' 'walk' 'cast'(물기둥·물방울) 'bless'(치유)
@@ -728,7 +728,7 @@ AI_C.chainhook = {
         e.vx = 0; e.setAnim('reel');
         if (e.hook?.dead) e.hook = null;
         if (p && !p.dead && Math.abs(p.cx - e.cx) < (P.smashRange ?? 140) && Math.abs(p.cy - e.cy) < 110) {
-          faceP(e); e.setState('smash'); e.setAnim('smash'); e.didHit = false;
+          faceP(e); e.setState('slam'); e.setAnim('smash'); e.didHit = false;   // 상태 'slam' = COUNTER 창 (애니메이션은 'smash')
           // 피격 무적이 거의 끝날 때 내려오도록 예비동작을 늘린다 (0.2초 이상, 1초 이하) — 보고 피할 틈이 있다
           e.smashWu = clamp((p.iframes ?? 0) - 0.08, P.smashWindup ?? 0.2, 1.0);
           audio.sfx('clang', { vol: 0.4, pitch: 0.7 });
@@ -739,7 +739,7 @@ AI_C.chainhook = {
         if (e.stateT > (P.reel ?? 0.6)) { e.setState('walk'); e.hooked = false; e.cool = (P.rate ?? 1.9) * rand(0.6, 0.9); }
         return;
       }
-      case 'smash': {
+      case 'slam': {   // 올려치기 (anim 'smash')
         e.vx = 0; e.setAnim('smash');
         const wu = e.smashWu ?? 0.2;
         if (e.stateT > wu) {
@@ -939,7 +939,7 @@ AI_C.swimmer = {
         audio.sfx('splash', { vol: 0.5 });
         e.noGravity = true; e.vy *= 0.25; e.vx *= 0.4;
         e.setState('stalk'); e.cool = (P.rate ?? 1.6) * rand(0.9, 1.2);
-      } else if (e.onGround && e.stateT > 0.1) { e.setState('flop'); e.flopT = 0.5; e.harmless = true; }
+      } else if (e.onGround && e.stateT > 0.1) { e.setState('flop'); e.flopT = 0.5; e.harmless = true; e.flopId = nid('af'); }
       return;
     }
     // ── 뭍 (좌초): 0.8초마다 물 쪽으로 한 칸 퍼덕 ──

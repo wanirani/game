@@ -2335,8 +2335,7 @@ function beginLocal(w, p, v) {
 }
 /** 박자: 키트의 충격파(고리·지면 타원·불꽃·반동). 키트가 없으면 고리 하나와 작은 반동 */
 function ultBeat(w, v, x, y, power = 0.5, ground = false, col = v.color) {
-  kitCall('beat', w, x, y, { power, color: col, accent: v.accent, ground, tier: v.tier });
-  if (kitLive()) return;
+  if (kitLive()) { kitCall('beat', w, x, y, { power, color: col, accent: v.accent, ground, tier: v.tier }); return; }
   w.fx.ring(x, y, { color: col, r0: 10, r1: 60 + 120 * power, life: 0.3, width: 3 + 5 * power });
   if (ground) w.fx.ering(x, y, { color: col, r0: 12, r1: 90 + 150 * power, ry: 0.22, life: 0.35, width: 4 });
   w.camera.kick?.(0, 2 + 4 * power);
@@ -2428,7 +2427,20 @@ function glassRose(ctx, x, y, R, rot, a, sy = 0.22) {
   ctx.restore();
 }
 
-/** 필살기 공통 감독: 화면 잠금(입력 차단·무적) + 배경 암전 + 시간표 + 키트 begin/end */
+/**
+ * 필살기 도중에는 영웅이 방 가장자리 출구를 넘지 않는다 (브란의 도약이 위쪽 출구로, 공중 시전이 아래쪽 출구로 빠지는 경우).
+ * 방이 바뀌면 loadRoom 이 감독 엔티티를 end 없이 버려 world.cutscene 이 영영 풀리지 않는다 (입력 잠김).
+ * 감독은 플레이어보다 늦게 갱신되고 출구 판정은 개체 갱신 뒤라서, 여기서 막으면 그 프레임의 출구 판정 전에 막힌다.
+ */
+function keepInRoom(w, p) {
+  const m = w.map;
+  if (!m || !(m.pxW > 0) || !(m.pxH > 0)) return;
+  const maxX = m.pxW - p.w, maxY = m.pxH - p.h;
+  if (p.x < 0) { p.x = 0; if (p.vx < 0) p.vx = 0; } else if (p.x > maxX) { p.x = maxX; if (p.vx > 0) p.vx = 0; }
+  if (p.y < 0) { p.y = 0; if (p.vy < 0) p.vy = 0; } else if (p.y > maxY) { p.y = maxY; if (p.vy > 0) p.vy = 0; }
+}
+
+/** 필살기 공통 감독: 화면 잠금(입력 차단·무적) + 배경 암전 + 시간표 + 키트 begin/end (키트가 없으면 최소 대체 연출) */
 function ultDirector(w, p, o) {
   const cam = w.camera, v = o.v ?? ultCtx(p, w), steps = (o.steps || []).sort((a, b) => a[0] - b[0]);
   const bound = (e) => { e.x = cam.x - 80; e.y = cam.y - 80; e.w = cam.vw + 160; e.h = cam.vh + 160; };
@@ -2445,17 +2457,19 @@ function ultDirector(w, p, o) {
     start(e, ww) {
       ww.cutscene = true; p.vx = 0;
       e.d.kit = kitLive();
-      kitCall('begin', ww, p, { color: v.color, accent: v.accent, tier: v.tier, classId: v.classId, charId: v.charId, dimCol: o.dimCol ?? '#05020a', kind: 'ult', dur: o.dur, maxDur: o.dur + 4, ...(o.kit || {}) });
-      if (!e.d.kit) beginLocal(ww, p, v);
+      if (e.d.kit) kitCall('begin', ww, p, { color: v.color, accent: v.accent, tier: v.tier, classId: v.classId, charId: v.charId, dimCol: o.dimCol ?? '#05020a', kind: 'ult', dur: o.dur, maxDur: o.dur + 4, ...(o.kit || {}) });
+      else beginLocal(ww, p, v);
       o.start?.(e, ww);
+      keepInRoom(ww, p);
     },
     tick(e, ww, dt) {
       ww.cutscene = true;
       while (e.d.i < steps.length && steps[e.d.i][0] <= e.lt) steps[e.d.i++][1](ww, e);
       o.tick?.(e, ww, dt);
+      keepInRoom(ww, p);
       ww.run.sp = 0; // 필살기 타격으로는 게이지가 다시 차지 않는다
     },
-    end(e, ww) { ww.cutscene = false; ww.run.sp = 0; p.hidden = false; kitCall('end', ww, p, {}); o.end?.(e, ww); },
+    end(e, ww) { ww.cutscene = false; ww.run.sp = 0; p.hidden = false; if (e.d.kit) kitCall('end', ww, p, {}); o.end?.(e, ww); },
     draw: o.draw, light: o.light,
   });
 }
@@ -2565,8 +2579,9 @@ ULTS.sera = (p, w, v = ultCtx(p, w)) => {
     ultFinal(ww, p, 5, '#ffffff', { element: 'holy' }, { v, x: cx, y: gy0 - 60, ground: true });
     if (!v.low) grade(ww, '#ffe9a8', 0.18, 0.8);   // 흰 금빛 색조 (번쩍임 0.6 위에 겹치므로 옅게; 저품질은 화면 전체 층 1장 예산)
     ww.fx.ering(cx, gy0 - 2, { color: '#fff2b0', r0: 20, r1: V0.w * 0.45, ry: 0.18, life: 0.5, width: 10 });
-    ww.fx.burst('holy', cx, gy0 - 20, 40, { speed: 600 });
-    ww.fx.burst('shard', cx, gy0 - 6, 14, { angle: -Math.PI / 2, spread: 1.2, speed: 420, color: '#d8d0c0' });
+    const nh = ultRoom(ww, v, 40), ns = ultRoom(ww, v, 14);   // 필살기 입자 상한 안에서
+    if (nh) ww.fx.burst('holy', cx, gy0 - 20, nh, { speed: 600 });
+    if (ns) ww.fx.burst('shard', cx, gy0 - 6, ns, { angle: -Math.PI / 2, spread: 1.2, speed: 420, color: '#d8d0c0' });
   }]);
   ultDirector(w, p, {
     v, dur: 2.2, dim: 0.5, dimCol: '#0a0818', steps, d: { rain: [], rt: 0, nb: 0, fe: 0, y0: null },
@@ -2641,7 +2656,8 @@ function bigMuzzle(w, x, y, f, v) {
   if (st) w.fx.sprite(st, x + f * 30, y, { size: 340, life: 0.2, s0: 0.4, s1: 1.25 });
   if (sk) for (let i = 0; i < qn(v, 6, 3); i++) w.fx.sprite(sk, x + f * 60, y + rand(-10, 10), { size: rand(220, 360), angle: (f > 0 ? 0 : Math.PI) + rand(-0.35, 0.35), life: 0.16, s0: 0.5, s1: 1.1 });
   w.fx.flash(x + f * 40, y, { color: '#fff0b0', size: 200, life: 0.14 });
-  w.fx.burst('fire', x + f * 50, y, 14, { angle: f > 0 ? 0 : Math.PI, spread: 0.45, speed: 620, color: '#ff9a3a', color2: '#ffe0a0' });
+  const nf = ultRoom(w, v, 14);
+  if (nf) w.fx.burst('fire', x + f * 50, y, nf, { angle: f > 0 ? 0 : Math.PI, spread: 0.45, speed: 620, color: '#ff9a3a', color2: '#ffe0a0' });
 }
 ULTS.victor = (p, w, v = ultCtx(p, w)) => {
   const V0 = ultView(w);
@@ -2667,7 +2683,7 @@ ULTS.victor = (p, w, v = ultCtx(p, w)) => {
       if (k % 3 === 0) pose(p, ww, alt ? 'shoot_alt' : 'shoot', 0.1, { h0: 0.01, sfx: 'gun' });
       e.d.tr.push({ x0: g.x, y0: g.y, x1: x, y1: y, t: 0 });
       muzzle(ww, p, g.x, g.y, Math.atan2(y - g.y, x - g.x), '#ffd070', 0.8);
-      ww.fx.burst('spark', x, y, 3, { color: '#ffe0a0', speed: 260 });
+      if (ultRoom(ww, v, 3)) ww.fx.burst('spark', x, y, 3, { color: '#ffe0a0', speed: 260 });
       if (tg) {
         // 연타는 멈추지 않는다 (hitstop 0 명시 → 경직 없음). 맞은 곳에 작은 별 + 2px 반동
         playerStrike(ww, circ(x, y, 18), atk(p, { mv: 0.3, type: bestType(p), tags: ['ult'], breakWalls: false, kb: [40, -60], hitstop: 0, shake: 1 }));
@@ -2749,7 +2765,8 @@ ULTS.bran = (p, w, v = ultCtx(p, w)) => {
     audio.sfx('explode', { pitch: 0.6 }); audio.sfx('break_wall'); audio.sfx('impact_crack');
     // 바닥 균열 자국 + 파편 30 + 지면 충격파 + 큰 섬광
     for (const dx of [0, -110, 110]) HFX.stampDecal?.(ww, x + dx, y - 6, dx < 0 ? -1 : 1, 'crack', { floor: true, scale: dx ? 1.4 : 2.2 });
-    ww.fx.burst('gravel', x, y - 8, 30, { angle: -Math.PI / 2, spread: 1.4, speed: 640 });
+    const ng = ultRoom(ww, v, 30);
+    if (ng) ww.fx.burst('gravel', x, y - 8, ng, { angle: -Math.PI / 2, spread: 1.4, speed: 640 });
     ww.fx.ering(x, y - 2, { color: '#ffd8a0', r0: 30, r1: V0.w * 0.55, ry: 0.14, life: 0.5, width: 14 });
     const st = HFX.star?.(ORANGE);
     if (st) ww.fx.sprite(st, x, y - 30, { size: 320, life: 0.25, s0: 0.3, s1: 1.3 });
@@ -2945,7 +2962,7 @@ ULTS.azel = (p, w, v = ultCtx(p, w)) => {
       const foes = enemiesIn(ww, ultView(ww, 30));
       ultFinal(ww, p, 4.6, '#ff1030', { element: 'dark' }, { v, x: p.cx, y: p.cy - 10 });
       p.heal(p.stats.hp * 0.15);
-      for (const en of foes) ww.fx.burst('blood', en.cx, en.cy, 14, { speed: 320 });
+      for (const en of foes) { const nb = ultRoom(ww, v, 14); if (nb) ww.fx.burst('blood', en.cx, en.cy, nb, { speed: 320 }); }   // 적 수만큼 늘어나므로 상한 안에서
       if (!v.low) grade(ww, '#7a0010', 0.3, 0.8);   // 붉은 색조 (저품질 생략)
       bloodStreams(ww, p, v);                            // 피의 흐름이 아젤에게로
       audio.sfx('heartbeat', { pitch: 0.8 });

@@ -69,6 +69,13 @@ export default {
       for (const k in b.pc) { const p = b.pc[k], r = k === 'hal' ? 200 : 110; x0 = Math.min(x0, p.x - r); x1 = Math.max(x1, p.x + r); y0 = Math.min(y0, p.y - r); y1 = Math.max(y1, p.y + r); }
     }
     if (b.dying > 0 || st?.shards?.list.length) { x0 = Math.min(x0, b.A.x0 - 40); x1 = Math.max(x1, b.A.x1 + 40); y1 = Math.max(y1, b.A.floor + 30); }
+    // 남아 있는 입자(불씨·피 방울·바닥 튐)까지 덮는다 (BOSS_PIPELINE §8.15): 도약·로켓으로 몸이 멀리 가도 뒤에 남은 입자가 컬링으로 한꺼번에 사라지지 않게
+    const P = st?.P;
+    if (P?.n) {
+      let a = x0 + 24, c = x1 - 24, e = y0 + 24, f = y1 - 24;
+      for (let i = 0; i < P.n; i++) { const px = P.x[i], py = P.y[i]; if (px < a) a = px; if (px > c) c = px; if (py < e) e = py; if (py > f) f = py; }
+      x0 = a - 24; x1 = c + 24; y0 = e - 24; y1 = f + 24;
+    }
     out.x = x0; out.y = y0; out.w = x1 - x0; out.h = y1 - y0;
     return out;
   },

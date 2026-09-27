@@ -127,7 +127,8 @@ export const SQUASH = {
  * ghostEvery 잔상 간격, ghosts 'trail' | 'ends'(시작·끝 두 장) | 0, lineEvery 속도선 간격, lines 한 번에 몇 줄
  */
 export const DASH_FX = {
-  ghostEvery: 0.035, ghostLife: 0.2, ghostCap: { high: 6, medium: 5, low: 3 },
+  // 잔상 상한: feel §3.5 최대 6 · §8 drawHero 예산(영웅 포함 high 10 / medium 6 / low 3) 안에 들도록 low 2
+  ghostEvery: 0.035, ghostLife: 0.2, ghostCap: { high: 6, medium: 5, low: 2 },
   lineLen: [60, 140], lineLife: 0.12, lineSpeed: 260, lineY: 40, lineW: 2, lineAlpha: 0.5,
   // dust = startDash 의 먼지 8개에 더할 수 (dash 합계 10, roll 합계 12)
   dash:  { ring: { r0: 10, r1: 60, ry: 0.35, life: 0.18, color: 'rgba(255,255,255,0.8)' }, dust: 2, ghosts: 'trail', lineEvery: 0.03, lines: 2, lineColor: '#ffffff', lookBoost: 60, kick: 3, endDust: 4 },

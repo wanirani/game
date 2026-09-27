@@ -509,7 +509,7 @@ function spawnGhost(p, world, tint) {
   for (let i = G.length - 1; i >= 0; i--) if (G[i] <= now) G.splice(i, 1);
   if (G.length >= ghostCap(world)) return false;
   G.push(now + DASH_FX.ghostLife);
-  p.ghostTrail?.(world, tint);
+  p.ghostTrail?.(world, tint, DASH_FX.ghostLife);
   return true;
 }
 

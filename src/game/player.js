@@ -741,10 +741,10 @@ export class Player extends Entity {
     this.setAnim(this.landT > 0 ? 'land' : 'idle');
   }
 
-  ghostTrail(world, color = '#8ac8ff') {
+  ghostTrail(world, color = '#8ac8ff', life = 0.22) {
     if (this.mount?.riding) return this.mount.ghost(world, this, color);   // [hook:cmp] 기수+탈것 잔상
     const snap = this.snapshot();
-    world.fx.ghost((ctx, a) => drawHero(ctx, snap, world, { alpha: a, tint: color }), 0.22);
+    world.fx.ghost((ctx, a) => drawHero(ctx, snap, world, { alpha: a, tint: color }), life);   // [hook:feel] 대시 잔상 수명 (feel_move DASH_FX.ghostLife)
   }
   snapshot() {
     const rv = this.mount?.riding ? this.mount.riderView?.(this)?.ride : null;   // [hook:cmp] 탑승 중 스킬 잔상은 안장에 앉은 기수로

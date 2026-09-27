@@ -936,7 +936,7 @@ class Session {
     // 숫자가 아닌 값(예: undefined + 4 = NaN)이 오면 기본값 — NaN 이면 최대 시간 정리가 영영 안 걸린다
     this.maxDur = Number.isFinite(o.maxDur) && o.maxDur > 0 ? o.maxDur : (this.awaken ? 9 : 5);
     this.emitDur = Number.isFinite(o.dur) && o.dur > 0 ? o.dur : (this.awaken ? 2.0 : 1.3);
-    this.sawCut = false; this.noCut = 0; this.finalAt = null; this.finals = 0; this.ghostAt = -9; this.bt = -9; this.bn = 0;
+    this.sawCut = false; this.noCut = 0; this.finalAt = null; this.finals = 0; this.impacts = 0; this.ghostAt = -9; this.bt = -9; this.bn = 0;
     const E = this.T.element, fq = w.fx?.quality ?? 1;
     this.aura = auraOf(this.classId, this.charId, this.accent);
     this.elemN = Math.round(E.n * fq); this.backN = Math.round(E.back * fq); this.elemDone = 0; this.backDone = 0;
@@ -1119,7 +1119,12 @@ function startImpact(w, o, cx, cy) {
   if (prev && !prev.dead) return false;
   const im = { w, t: 0, q: qk(w), fk, fg: o.impactFg ?? '#ffffff', bg: o.impactBg ?? '#000000', cx, cy, sil: null, nA: 0, drawnB: false, defer: null, flash: o.flash ?? null, dead: false, ov: null };
   im.ov = addOv(w, {
-    update(dt) { im.t += dt; if (im.drawnB || im.t > 0.3) endImpact(im); },
+    update(dt) {
+      if (im.skip) { im.skip = false; return; }   // 맨 뒤로 옮긴 직후 같은 tickOverlays 루프에서 한 번 더 불린다
+      im.t += dt;
+      if (im.drawnB || im.t > 0.3) endImpact(im);
+      else impactLast(im);
+    },
     draw(ctx, vw, vh) { drawImpact(im, ctx, vw, vh); },
   });
   if (!im.ov) return false;
@@ -1127,6 +1132,17 @@ function startImpact(w, o, cx, cy) {
   ULTFX_STATS.impactFrames++;
   deferGameFlash(w, im);
   return true;
+}
+/**
+ * 임팩트 프레임은 화면 층 중 맨 마지막에 그린다 (MASTER_PLAN §1.7 #13: 레터박스 → 색보정 → 집중선 → 임팩트 프레임).
+ * 마무리 직후 같은 틱에 skills.js 가 색조 층(세라 금빛, 아젤 붉은색)을 더 올리면 그 층이 검정·흰 프레임을 덮으므로,
+ * world.tickOverlays 안에서 자기 자신을 배열 끝으로 옮긴다 (첫 그리기 전에 한 번 불린다)
+ */
+function impactLast(im) {
+  const L = im.w?.overlays;
+  if (im.dead || !Array.isArray(L)) return;
+  const i = L.indexOf(im.ov);
+  if (i >= 0 && i < L.length - 1) { L.splice(i, 1); L.push(im.ov); im.skip = true; }
 }
 function endImpact(im) {
   if (im.dead) return;
@@ -2198,7 +2214,7 @@ function beatImpl(w, x, y, o = {}) {
     for (let i = 0; i < nl; i++) fx.speedLine(x, y, rand(0, TAU), { len: 50 + 70 * pw, width: 3, color: col, life: 0.16, speed: 900 });
   }
   if (T.beat.ground || o.ground) {
-    const gy = o.groundY ?? (o.ground ? y : groundBelow(w, x, y, 3 * TILE));
+    const gy = o.groundY ?? (o.ground ? (groundBelow(w, x, y - 12, 2 * TILE) ?? y) : groundBelow(w, x, y, 3 * TILE));   // ground: 가까운 바닥에 붙인다
     if (gy != null) {
       if (T.beat.ground) fx.ering(x, gy, { color: acc, r0: 10, r1: r1 * 1.3, ry: 0.2, life: 0.38, width: 6 });
       const nd = room(w, T.beat.dust || (o.ground ? 2 : 0), aw);
@@ -2251,12 +2267,18 @@ function finalImpl(w, x, y, o = {}) {
   if (T.final.roll) { const a = T.final.roll * (s?.dir ?? ((p?.facing ?? 1) < 0 ? -1 : 1)); if (s) s.kick = { a, t: 0 }; else rollKickAlone(w, a); }
   // 번쩍임 / 임팩트 프레임
   const flash = o.noFlash ? null : { color: o.flashColor ?? mixC(col, '#ffffff', 0.55), a: T.final.flash, decay: 3 };
+  // 임팩트 프레임은 시전당 2번까지, 0.5초 간격 이상 (feel §8: difference ≤ 2프레임/시전; 번쩍임 정책처럼 연달아 번쩍이지 않게)
   let imp = false;
-  if (T.final.impact && o.impact !== false) imp = startImpact(w, { ...o, flash }, x, y);
+  const nowRt = w.rt ?? 0, lastImp = w.__ultImpAt ?? -9;
+  if (T.final.impact && o.impact !== false && !((s?.impacts ?? 0) >= 2) && !(nowRt >= lastImp && nowRt - lastImp < 0.5)) {
+    imp = startImpact(w, { ...o, flash }, x, y);
+    if (imp) { w.__ultImpAt = nowRt; if (s) s.impacts = (s.impacts ?? 0) + 1; }
+  }
   if (!imp && flash) w.game?.flash?.(flash.color, flash.a, flash.decay);
   // 바닥 균열 (2차)
   if (T.final.crack && Q[q].decals) {
-    let gy = o.ground ? y : groundBelow(w, x, y - 20, 6 * TILE);
+    // ground: true 는 '바닥 근처 일격' — 호출부가 바닥보다 조금 위(예: 브란 y - 20)를 넘기므로 가까운 바닥에 붙인다 (균열이 공중에 뜨지 않게)
+    let gy = o.ground ? (groundBelow(w, x, y - 20, 2 * TILE) ?? y) : groundBelow(w, x, y - 20, 6 * TILE);
     if (gy == null && p) gy = groundBelow(w, x, p.bottom - 20, 3 * TILE);
     if (gy != null) {
       HFX.stampDecal?.(w, x - 30, gy - 8, 1, 'crack', { floor: true, scale: 2.3, life: 14 });

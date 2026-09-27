@@ -81,6 +81,13 @@ export default {
     const cx = b.cx, cy = b.cy;
     let x0 = cx - 270, x1 = cx + 270, y0 = cy - 250, y1 = cy + 260;
     if (b.dying > 0 || st?.shards?.list.length) { x0 = Math.min(x0, b.A.x0 - 40); x1 = Math.max(x1, b.A.x1 + 40); y1 = Math.max(y1, b.A.floor + 20); }
+    // 남아 있는 입자(먹물 방울·바닥 튐·종이 조각)까지 덮는다 (BOSS_PIPELINE §8.15): 물어뜯기 돌진으로 책이 멀리 가도 남은 입자가 한꺼번에 사라지지 않게
+    const P = st?.P;
+    if (P?.n) {
+      let a = x0 + 24, c = x1 - 24, e = y0 + 24, f = y1 - 24;
+      for (let i = 0; i < P.n; i++) { const px = P.x[i], py = P.y[i]; if (px < a) a = px; if (px > c) c = px; if (py < e) e = py; if (py > f) f = py; }
+      x0 = a - 24; x1 = c + 24; y0 = e - 24; y1 = f + 24;
+    }
     out.x = x0; out.y = y0; out.w = x1 - x0; out.h = y1 - y0;
     return out;
   },
@@ -103,6 +110,9 @@ function L(lx, ly, out) { const x = F.fx * lx; out[0] = F.cx + F.c * x - F.s * l
 const _w = [0, 0], _w2 = [0, 0], _w3 = [0, 0];
 /** 타일(사슬·촉수) 가운데 이음매 피벗 — 부품 객체에 한 번만 만들어 둔다 (매 프레임 배열을 만들지 않게. 다시 구우면 부품 객체도 새로 생김) */
 const mid = (tile) => (tile._mid ??= [(tile.jl[0] + tile.jr[0]) / 2, tile.jl[1]]);
+/** 피격 섬광은 방금 그린 부품에만 바로 덧그린다: 끝에서 한꺼번에 되풀이하면 뒷판·책배·등의 흰 실루엣이 앞표지 가장자리 위에
+ *  가산으로 겹쳐 쌓여 들쭉날쭉한 새하얀 띠가 보인다 (요청 #128 과 같은 종류) */
+function fl(D, st) { if (D.log.length) D.flash(st.fa); }
 /** 지역 배치로 부품 그리기: 지역 (lx,ly), 지역 회전 lr, 배율 (월드px/텍셀) sx, sy */
 function put(D, part, img, pivot, lx, ly, lr, sx, sy, a = 1) {
   L(lx, ly, _w);
@@ -163,6 +173,7 @@ function drawBoss(ctx, b, world, rig, st) {
   const tint = ph >= 1 ? 'red' : null, itint = ph >= 2 ? 'forb' : null;
   const soul = ph >= 2 ? MAG : ph >= 1 ? RED : ARC;
   const hit = b.flashT > 0.06 && !(st.pf > 0.06); st.pf = b.flashT;
+  st.fa = b.flashT > 0 && !dying ? clamp(b.flashT / 0.1, 0, 1) * 0.6 : 0;   // 부품별 피격 섬광 세기 (fl)
   if (hit) st.jolt = 1;
   st.jolt = Math.max(0, st.jolt - dt * 7);
   const q0 = ctx.imageSmoothingQuality;
@@ -261,11 +272,16 @@ function drawBook(ctx, D, b, rig, st, dt, t, lvl, tint, itint, hit, open, cw, hw
   // 1) 뒷판 (안표지의 어두운 변형) — 두께감: 살짝 뒤·아래로
   D.rec = rec;
   put(D, R.inside, V(R.inside, true, null), 'hinge', -hw + 3, 4, 0, k * 1.02, k * breath * 1.02);
+  fl(D, st);
   // 2) 책배 (이빨·발톱이 난 종이 뭉치) — 표지 오른쪽 가장자리에 좁게
   const esy = 2 * hh / (R.edge.bot[1] - R.edge.top[1]) * breath, exs = 0.36 + open * 0.12;
+  D.rec = rec;
   put(D, R.edge, V(R.edge), 'l', hw - 12 + flut * open * 2, 0, 0, esy * exs, esy);
+  fl(D, st);
   // 3) 등
+  D.rec = rec;
   put(D, R.spine, V(R.spine, false, null), 'hinge', -hw + 1, 0, 0, k, k * breath);
+  fl(D, st);
   // 4) 첫 장 (찢어진 입) — 표지가 열렸을 때만
   const gap = clamp((open - 0.18) / 0.95, 0, 1.3) * 34 * G + (dying ? 6 + Math.sin(t * 22) * 5 : 0);
   if (cw < 0.97 || dying) {
@@ -273,6 +289,7 @@ function drawBook(ctx, D, b, rig, st, dt, t, lvl, tint, itint, hit, open, cw, hw
     // 종이 테두리 → 목구멍 (턱 사이: 어둠 + 보랏빛) → 턱 (입 모양으로 잘라 둔 위/아래 잇몸·이빨. 벌어지면 찢어진 종이 밖으로 살이 부풀어 나온다)
     D.rec = rec;
     put(D, R.maw, V(R.maw), 'c', mx, my, 0, mk, mk * breath);
+    fl(D, st);
     if (gap > 1.5) {
       L(mx, my, _w);
       D.img(puff('#000000'), 32, 32, _w[0], _w[1], F.rot, 30 * G / 32 * 1.6, (gap * 0.75 + 6) / 32 * 1.4, 0.95);
@@ -282,8 +299,10 @@ function drawBook(ctx, D, b, rig, st, dt, t, lvl, tint, itint, hit, open, cw, hw
     const jk = mk * (1 + gap * 0.002);
     D.rec = rec;
     put(D, R.jawB, V(R.jawB, false, null), 'c', mx, my + gap * 0.55, 0, jk, jk);
+    fl(D, st);
     D.rec = rec;
     put(D, R.jawT, V(R.jawT, false, null), 'c', mx, my - gap * 0.45, 0, jk, jk);
+    fl(D, st);
     // 끈적한 침 줄 (위아래 송곳니 사이, 많이 벌어지면 끊어짐)
     const sa = clamp((gap - 6) / 6, 0, 1) * clamp((34 - gap) / 8, 0, 1);
     if (sa > 0.02 && !(dying && dT > 1.1)) {
@@ -333,12 +352,14 @@ function drawBook(ctx, D, b, rig, st, dt, t, lvl, tint, itint, hit, open, cw, hw
     D.rec = rec;
     if (cw >= 0) {
       D.part(C, V(C, false, null), 'hinge', _w[0], _w[1], F.rot, F.fx * k * Math.max(0.02, cw), ssy, 1);
+      fl(D, st);
       glowOver(ctx, D, C, lvl, 'hinge', _w[0], _w[1], F.rot, F.fx * k * Math.max(0.02, cw), ssy, 0.55, st, t, b.state === 'transform', null);
       // 사슬 (2페이즈 전까지 책을 묶고 있음)
       if (!b.chainsBroken && cw > 0.3) chains(ctx, D, rig, st, C, _w[0], _w[1], F.fx * k * cw, ssy, t);
     } else {
       const I2 = R.inside;
       D.part(I2, V(I2, false, null), 'hinge', _w[0], _w[1], F.rot, F.fx * k * Math.min(-0.02, cw), ssy, 1);
+      fl(D, st);
       glowOver(ctx, D, I2, lvl, 'hinge', _w[0], _w[1], F.rot, F.fx * k * Math.min(-0.02, cw), ssy, 0.5, st, t, false, null);
     }
   }
