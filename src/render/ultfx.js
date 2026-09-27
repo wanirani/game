@@ -341,6 +341,16 @@ export function glowSprite(color, force = false) {
   M.set(key, c);
   return c;
 }
+/**
+ * 시전 도중의 빛: color 가 캐시에 없고 비슷한 대체색 alt(미리 구운 필살기 색)가 있으면 그것을 쓴다.
+ * skills.js 의 마무리·박자 색(카엘 #fff8e0, 세라 #ffffff …)은 필살기 색과 거의 같아서, 첫 시전 때 새로 굽지 않게 한다.
+ */
+function glowNear(color, alt) {
+  if (POOL.glow.has(color) || !alt || alt === color || !POOL.glow.has(alt)) return glowSprite(color);
+  const a = rgbOf(color), b = rgbOf(alt);
+  const d = Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]);
+  return glowSprite(d < 96 ? alt : color);   // 눈에 띄게 다른 색이면 그대로 굽는다
+}
 
 // ── 화면 층: 방사 집중선 64줄 + 색보정 + 비네트 (512², 한 장) ──
 function bakeLayer(c, L) {
@@ -2205,7 +2215,7 @@ function beatImpl(w, x, y, o = {}) {
   fx.ring(x, y, { color: col, r0: 8, r1, life: 0.26 + 0.12 * pw, width: 5 + 7 * pw });
   if (T.beat.rings >= 2) fx.ring(x, y, { color: acc, r0: 4, r1: r1 * 1.45, life: 0.36 + 0.14 * pw, width: 3 + 4 * pw });
   if (!lite) {
-    const g = glowSprite(col);
+    const g = glowNear(col, s?.color);
     if (g) fx.sprite(g, x, y, { size: 110 + 150 * pw, life: 0.18, s0: 0.5, s1: 1.15, alpha: 0.85 });
     if (pw >= 0.55) { const st2 = HFX.star?.(acc); if (st2) fx.sprite(st2, x, y, { size: 90 + 120 * pw, angle: rand(0, TAU), life: 0.16, s0: 0.3, s1: 1.2 }); }
     const n = room(w, 4 + 8 * pw, aw), sc = mixC(col, '#ffffff', 0.5);
@@ -2245,7 +2255,7 @@ function finalImpl(w, x, y, o = {}) {
   const RING = [[col, 0.42, 0.5, 20], [acc, 0.62, 0.62, 13], ['#ffffff', 0.85, 0.74, 7]];
   for (let i = 0; i < T.final.rings; i++) { const [c, r, life, wd] = RING[i]; fx.ring(x, y, { color: c, r0: 16 + 14 * i, r1: vw * r, life, width: wd }); }
   // 섬광 핵 · 별 · 가로 렌즈 줄
-  const g = glowSprite(mixC(col, '#ffffff', 0.35));
+  const g = glowNear(mixC(col, '#ffffff', 0.35), s ? mixC(s.color, '#ffffff', 0.35) : null);
   if (g) fx.sprite(g, x, y, { size: 380 + 80 * tier, life: 0.34, s0: 0.3, s1: 1.25, alpha: 0.95 });
   if (T.final.star) {
     const st = HFX.star?.(acc);

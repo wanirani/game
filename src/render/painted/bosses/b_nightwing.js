@@ -68,6 +68,9 @@ export default {
     const X = b.cx, B = b.bottom;
     let x0 = X - 380, x1 = X + 380, y0 = B - 370, y1 = Math.max(B + 30, (b.A?.floor ?? B) + 10);
     if (b.dying > 0 || st?.shards?.list.length) { const A = b.A; x0 = Math.min(x0, A.x0 - 40); x1 = Math.max(x1, A.x1 + 40); y1 = Math.max(y1, A.floor + 20); }
+    // 남아 있는 입자(핏방울·털·재)까지 덮는다: 급강하로 몸이 멀리 가도 뒤에 남은 입자가 컬링으로 한꺼번에 사라지지 않게 (BOSS_PIPELINE §8.15)
+    const P = st?.P;
+    if (P?.n) for (let i = 0; i < P.n; i++) { const px = P.x[i], py = P.y[i]; if (px - 40 < x0) x0 = px - 40; if (px + 40 > x1) x1 = px + 40; if (py - 40 < y0) y0 = py - 40; if (py + 40 > y1) y1 = py + 40; }
     out.x = x0; out.y = y0; out.w = x1 - x0; out.h = y1 - y0;
     return out;
   },

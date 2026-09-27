@@ -67,6 +67,9 @@ export default {
     // 손목 사슬 (월드 점)
     for (const ch of b.chainsV ?? []) for (const p of ch.pts) { if (p.x - 20 < x0) x0 = p.x - 20; if (p.x + 20 > x1) x1 = p.x + 20; if (p.y + 20 > y1) y1 = p.y + 20; }
     if (b.dying > 0 || st?.shards?.list.length || st?.wr?.length) { const A = b.A; x0 = Math.min(x0, A.x0 - 40); x1 = Math.max(x1, A.x1 + 40); y0 = Math.min(y0, B - 520); y1 = Math.max(y1, A.floor + 20); }
+    // 남아 있는 입자(영기·반딧불)까지 덮는다: 순간이동(phase) 뒤 옛 자리에 남은 영기가 컬링으로 한꺼번에 사라지지 않게 (BOSS_PIPELINE §8.15)
+    const P = st?.P;
+    if (P?.n) for (let i = 0; i < P.n; i++) { const px = P.x[i], py = P.y[i]; if (px - 40 < x0) x0 = px - 40; if (px + 40 > x1) x1 = px + 40; if (py - 40 < y0) y0 = py - 40; if (py + 40 > y1) y1 = py + 40; }
     out.x = x0; out.y = y0; out.w = x1 - x0; out.h = y1 - y0;
     return out;
   },

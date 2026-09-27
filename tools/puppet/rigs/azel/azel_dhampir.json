@@ -1,5 +1,5 @@
 {
- "_doc": "\uc544\uc824/\ub2f4\ud53c\ub974 \ub9ac\uadf8 \ud14c\uc774\ube14 (\uae30\ubcf8 \uc9c1\uc5c5). \uc6d0\ud654\ub294 \uce74\uc5d8 \ud5cc\ud130 \uce21\uba74\uc744 \ud3b8\uc9d1 \ub300\uc0c1\uc73c\ub85c \ub9cc\ub4e0 \uac83\uc774\ub77c \uad00\uc808 \ubc30\uce58\uac00 \uce74\uc5d8\uacfc \ube44\uc2b7\ud558\ub2e4. \uae34 \uc740\ubc1c\uc740 \ucf54\ud2b8 \uc2e4\ub8e8\uc5e3 \ubc16\uc758 \ud769\ub0a0\ub9ac\ub294 \ubd80\ubd84\ub9cc pony \ub760(ponyTopY 3000 = \ubc1d\uc740 \uba38\ub9ac\uce74\ub77d\ub3c4 \uc804\ubd80), \ucf54\ud2b8 \uc704\uc5d0 \uc5b9\ud78c \uba38\ub9ac\uce74\ub77d\uc740 \ubab8\ud1b5\uc5d0 \ub0a8\uae34\ub2e4. \uc88c\ud45c = \uc6d0\ud654 px. \ud615\uc2dd\uc740 docs/art/PUPPET_PIPELINE.md",
+ "_doc": "아젤/담피르 리그 테이블 (기본 직업). 원화는 카엘 헌터 측면을 편집 대상으로 만든 것이라 관절 배치가 카엘과 비슷하다. 긴 은발은 코트 실루엣 밖의 흩날리는 부분만 pony 띠(ponyTopY 3000 = 밝은 머리카락도 전부), 코트 위에 얹힌 머리카락은 몸통에 남긴다. 좌표 = 원화 px. 형식은 docs/art/PUPPET_PIPELINE.md",
  "charId": "azel",
  "classId": "azel_dhampir",
  "src": "azel/azel_dhampir_side",
@@ -1239,5 +1239,19 @@
   "headK": 1.1,
   "armorBase": "#16121a"
  },
- "turn": null
+ "turn": {
+  "sheet5": "azel/azel_dhampir_turn5",
+  "views5": [
+   "y90",
+   "y180",
+   "y135",
+   "ym90",
+   "-"
+  ],
+  "qback": "azel/azel_dhampir_qback",
+  "viewsQ": [
+   "ym135",
+   "ym45"
+  ]
+ }
 }

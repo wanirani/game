@@ -1133,7 +1133,8 @@ export function fixArena(world, base) {
  * 2부 보스 기반 (BossB 상속). 클래스 필드는 쓰지 않는다: Boss 생성자가 init() 을 부른 뒤에 초기화되어 덮어쓴다.
  * 보스 파일 훅 (모두 선택): setup() · idleMove(dt, world, t) · applyPhase(n, world) (형태 바꾸기, 페이즈마다 한 번) ·
  *   afterTransition(n, world) (전환 끝, 페이즈마다 한 번) · onCancel(world) (패턴 강제 중단 때 몸 상태 되돌리기) ·
- *   onReset(world) · idleAnim(dt, world). applyPhase · afterTransition · 페이즈 대사는 resetFight 뒤에 다시 한 번씩 돈다
+ *   onReset(world) · idleAnim(dt, world). applyPhase · afterTransition 은 resetFight 뒤에 다시 한 번씩 돈다
+ *   (페이즈 대사는 seenScripts 로 저장마다 한 번뿐)
  * 필드: p2 (패턴 계약) · floorRow · standIns (false = 대역 기믹 끔) · arenaReset (resetArena 옵션) · idleWait · forced ·
  *   hidden (true = 그리지 않음, 벡터·채색 공통) · alpha
  */

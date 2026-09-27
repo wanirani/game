@@ -101,6 +101,7 @@ export default {
   ghost(ctx, b, s, a, rig, st) {
     // 사망 중에도 채색으로 그린다: 벡터로 돌려보내면 돌격 중 쓰러질 때 남은 잔상(≤0.25 s)이 벡터 그림으로 튄다
     if (!rig || !st?.dv) return false;
+    derive(st, rig);   // 배경 재굽기로 리그가 바뀐 직후에도 새 리그 치수로 (st.dv 는 본체 draw 에서만 갱신된다)
     const D = st.ghostD ??= new Drawer();
     const o = st.go;
     pose(o, b, s, b.t ?? 0, true);
@@ -118,6 +119,7 @@ export default {
   /** 유령마 환영 돌격 투사체 (원점 = 투사체 중심) */
   phantom(ctx, b, pr, rig, st) {
     if (!rig || !st?.dv) return false;
+    derive(st, rig);
     const D = st.phD ??= new Drawer();
     const o = st.po, t = pr.t ?? 0, dir = Math.sign(pr.vx) || 1;
     o.mounted = true; o.S = 1.2; o.g = t * 16; o.run = 1; o.walk = 1; o.rear = 0; o.R = 0; o.bob = Math.sin(o.g * 2) * 4; o.t = t;

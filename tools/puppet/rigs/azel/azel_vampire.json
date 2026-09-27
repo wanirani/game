@@ -1,0 +1,67 @@
+{
+ "_doc": "진조의 후예: 담피르 원화를 keep-pose 편집한 것이라 영역이 거의 같다. 레이스 자보·붉은 조끼는 몸통 부품. 검은 장갑 손 시트는 담피르 것을 공용.",
+ "extends": "azel_dhampir",
+ "classId": "azel_vampire",
+ "src": "azel/azel_vampire_side",
+ "materials": {
+  "_replace": true,
+  "armor": {
+   "parts": [
+    "torso",
+    "skirt",
+    "skirtFar",
+    "uarm",
+    "farm",
+    "pad"
+   ],
+   "sat": [
+    0,
+    0.42
+   ],
+   "val": [
+    0,
+    0.5
+   ],
+   "softTop": 0.1
+  },
+  "trim": {
+   "parts": [
+    "torso",
+    "uarm",
+    "farm",
+    "pad",
+    "skirt"
+   ],
+   "hue": [
+    30,
+    62
+   ],
+   "sat": [
+    0.35,
+    1.01
+   ],
+   "val": [
+    0.4,
+    1.01
+   ]
+  }
+ },
+ "runtime": {
+  "armorBase": "#0e0a12"
+ },
+ "turn": {
+  "sheet5": "azel/azel_vampire_turn5",
+  "views5": [
+   "y90",
+   "y135",
+   "-",
+   "ym90",
+   "-"
+  ],
+  "qback": "azel/azel_vampire_qback",
+  "viewsQ": [
+   "-",
+   "ym135"
+  ]
+ }
+}

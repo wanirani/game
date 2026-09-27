@@ -2440,6 +2440,22 @@ function keepInRoom(w, p) {
   if (p.y < 0) { p.y = 0; if (p.vy < 0) p.vy = 0; } else if (p.y > maxY) { p.y = maxY; if (p.vy > 0) p.vy = 0; }
 }
 
+/** 안전망 (awaken.js 와 같은 방식): 다른 경로로 방이 바뀌어 감독 엔티티가 end 없이 버려지면 그 end 를 대신 부른다 */
+let ULT_LIVE = null, _ultBus = false;
+function trackUlt(e, w) {
+  ULT_LIVE = { e, w };
+  if (_ultBus) return;
+  _ultBus = true;
+  bus.on('roomEntered', () => {
+    const s = ULT_LIVE;
+    if (!s) return;
+    if (s.e.dead || s.w !== game.world) { ULT_LIVE = null; return; }   // 이미 끝났거나 스테이지를 떠났다
+    if (s.w.entities?.includes(s.e)) return;
+    ULT_LIVE = null; s.e.dead = true;
+    try { s.e.o.end?.(s.e, s.w); } catch (err) { console.error('[skills] 필살기 방 이동 정리', err); }
+  });
+}
+
 /** 필살기 공통 감독: 화면 잠금(입력 차단·무적) + 배경 암전 + 시간표 + 키트 begin/end (키트가 없으면 최소 대체 연출) */
 function ultDirector(w, p, o) {
   const cam = w.camera, v = o.v ?? ultCtx(p, w), steps = (o.steps || []).sort((a, b) => a[0] - b[0]);
@@ -2459,6 +2475,7 @@ function ultDirector(w, p, o) {
       e.d.kit = kitLive();
       if (e.d.kit) kitCall('begin', ww, p, { color: v.color, accent: v.accent, tier: v.tier, classId: v.classId, charId: v.charId, dimCol: o.dimCol ?? '#05020a', kind: 'ult', dur: o.dur, maxDur: o.dur + 4, ...(o.kit || {}) });
       else beginLocal(ww, p, v);
+      trackUlt(e, ww);
       o.start?.(e, ww);
       keepInRoom(ww, p);
     },
@@ -2469,7 +2486,12 @@ function ultDirector(w, p, o) {
       keepInRoom(ww, p);
       ww.run.sp = 0; // 필살기 타격으로는 게이지가 다시 차지 않는다
     },
-    end(e, ww) { ww.cutscene = false; ww.run.sp = 0; p.hidden = false; if (e.d.kit) kitCall('end', ww, p, {}); o.end?.(e, ww); },
+    end(e, ww) {
+      if (ULT_LIVE?.e === e) ULT_LIVE = null;
+      ww.cutscene = false; ww.run.sp = 0; p.hidden = false;
+      if (e.d.kit) kitCall('end', ww, p, {});
+      o.end?.(e, ww);
+    },
     draw: o.draw, light: o.light,
   });
 }

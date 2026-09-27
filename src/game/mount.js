@@ -214,7 +214,8 @@ export class MountRider {
   onRoomLoaded(world, p, roomId) {
     this.world = world;
     this.summonGhost = null; this.act = null; this.chargeT = 0; this.chargeAtk = null;
-    if (this.state === 'summoning' && !this.seated) { this.state = 'stowed'; this.stT = 0; }
+    // 앉기 전에 방이 바뀌면 소환을 새 방에서 이어서 부른다 (누른 입력이 사라지지 않게)
+    if (this.state === 'summoning' && !this.seated) { this.state = 'stowed'; this.stT = 0; this.pendingT = PENDING_T; }
     if (this.seated) {
       const spot = findMountSpot(world, p, this.def);
       if (spot) { p.cx = spot.cx; p.bottom = spot.bottom; }
@@ -294,7 +295,9 @@ export class MountRider {
   // ───────────── 소환 · 하차 ─────────────
   toggle(world, p) {
     if (this.seated) { this.dismount(world, p, 'toggle'); return; }
-    if (this.state === 'summoning') { this.cancelSummon(world, p); return; }
+    // 안장에 앉기 전(소환 0.25초)의 두 번째 누름은 무시한다. 취소→재소환을 되풀이하면 소환 무적(0.45초)이 끝없이 이어지고,
+    // 빠른 두 번 누름(터치 두 번 탭)에 소환이 취소되어 버린다
+    if (this.state === 'summoning') return;
     this.trySummon(world, p);
   }
   refuse(world, text, sfx = true) {
@@ -399,12 +402,13 @@ export class MountRider {
   /** 몸을 기수 크기로 되돌린다 (발 중앙 유지). 기수 몸은 늘 탈것 몸보다 작아 박히지 않는다 */
   unseat(world, p) {
     if (!this.seated) return;
-    const cx = p.cx, b = p.bottom;
+    const cx = p.cx, b = p.bottom, top = p.y;
     const cw = p.ch?.size?.w ?? 30, chh = p.ch?.size?.h ?? 82;
     p.w = cw; p.h = chh; p.cx = cx; p.bottom = b;
     if (!fits(world, p.x, p.bottom, p.w, p.h)) {
-      const sp = findMountSpot(world, p, { w: cw, h: chh });
-      if (sp) p.cx = sp.cx;
+      // 기수(최대 88)가 늑대·멧돼지(78·80)보다 크다: 천장 밑 공중에서 내리면 머리가 천장에 박힐 수 있으니 머리 높이를 맞춰 본다
+      const sp = findMountSpot(world, p, { w: cw, h: chh }) ?? (chh > b - top ? findMountSpot(world, p, { w: cw, h: chh }, { bottom: top + chh }) : null);
+      if (sp) { p.cx = sp.cx; p.bottom = sp.bottom; }
     }
     this.seated = false;
     this.chargeT = 0; this.chargeAtk = null; this.act = null; this.gliding = false; this.flying = false; this.diving = false;
@@ -464,8 +468,8 @@ export class MountRider {
       }
     }
   }
-  /** 낙마 (탈것 HP 0 · 구덩이 · 디버그): 재소환 대기 + 달아나는 MountGhost */
-  knockOff(world, p, reason = 'hp') {
+  /** 낙마 (탈것 HP 0 · 구덩이 · 디버그): 재소환 대기 + 달아나는 MountGhost. dir = 기수가 날아갈 쪽 (±1, 공격이 미는 쪽; 없으면 뒤로) */
+  knockOff(world, p, reason = 'hp', dir = 0) {
     world = world ?? this.world;
     this.world = world;
     if (!p || !this.seated) return false;
@@ -479,9 +483,9 @@ export class MountRider {
     this.store();
     try { if (typeof ACMP.playKnockOff === 'function') ACMP.playKnockOff(this.def, { vol: 1 }); else audio.sfx('knock_off'); } catch { /* 무시 */ }
     if (reason !== 'fall') {
-      const away = -f;
+      const away = Math.sign(dir) || -f;
       this.knockFix = { vx: away * R().knock.vx, vy: R().knock.vy, iframes: R().knock.iframes };
-      p.vx = this.knockFix.vx; p.vy = this.knockFix.vy; p.onGround = false; p.iframes = Math.max(p.iframes ?? 0, R().knock.iframes);
+      p.vx = this.knockFix.vx; p.vy = this.knockFix.vy; p.onGround = false; p.jumpCut = true; p.iframes = Math.max(p.iframes ?? 0, R().knock.iframes);
       try { world.add?.(new MountGhost(gx, gb, 120, 110, { mode: 'knocked', id: this.id, def: this.def, facing: f, dir: f })); } catch (e) { warnOnce('ghost2', '[mount] ghost', e); }
       world.camera?.shake?.(5, 0.22);
       world.fx?.burst('dust', gx, gb, nq(world, 16), { speed: 180 });
@@ -650,8 +654,8 @@ export class MountRider {
     const f = ax > 0 ? 1 : ax < 0 ? -1 : (p.facing || 1);
     if (c0.dir8) {   // 8방향 (녹티스·게일): 입력 방향, 없으면 앞
       let dx = ax, dy = ay;
+      if (p.onGround && dy > 0) dy = 0;   // 땅 위에서 ↓ 는 뺀다 — 그 뒤에 방향이 없으면 앞으로 (↓+돌진이 제자리 돌진이 되지 않게)
       if (!dx && !dy) dx = p.facing || 1;
-      if (p.onGround && dy > 0) dy = 0;
       const n = Math.hypot(dx, dy) || 1;
       dir.x = dx / n; dir.y = dy / n; kind = 'dir8';
     } else if (c0.air && !p.onGround) {   // 와이번 공중: 급강하 (50° 아래)
@@ -1054,7 +1058,9 @@ export class MountRider {
         return { dmg: toRider, mounted: true, noStagger: true, cancel: false };
       }
       this.hp = 0;
-      this.knockOff(world, p, 'hp');
+      // 기수는 공격이 미는 쪽으로 날아간다 (Player.takeHit 의 넉백 방향과 같은 규칙: 뒤에서 맞으면 앞으로)
+      const away = attack?.dir || Math.sign(p.cx - (attack?.owner?.cx ?? p.cx)) || -(p.facing || 1);
+      this.knockOff(world, p, 'hp', away);
       return { dmg: toRider, mounted: false, noStagger: false, cancel: false };
     }
     if (heavy && !armored) { this.hurtT = 0.25; if (this.chargeT > 0) this.endCharge(world, p, 'hit'); this.act = this.act?.cancelable === false ? this.act : null; }
@@ -1072,7 +1078,7 @@ export class MountRider {
       if (mul <= 0) return true;
       if (this.hazardT > 0) return true;
       this.hazardT = H.iframes ?? 0.8;
-      p.vy = H.spikeVy ?? -560; p.onGround = false;
+      p.vy = H.spikeVy ?? -560; p.onGround = false; p.jumpCut = true;   // 튕김은 점프 키를 놓아도 반으로 잘리지 않는다
       this.hurtMount(world, p, this.maxHp * (H.spike ?? 0.15) * mul, 'spike');
       return true;
     }
@@ -1082,7 +1088,7 @@ export class MountRider {
       if (mul <= 0) return true;
       if (this.hazardT > 0) return true;
       this.hazardT = H.iframes ?? 0.8;
-      if (kind === 'lava') { p.vy = -620; p.onGround = false; }
+      if (kind === 'lava') { p.vy = -620; p.onGround = false; p.jumpCut = true; }
       this.hurtMount(world, p, this.maxHp * (H.liquid ?? 0.12) * mul, kind);
       return true;
     }
@@ -1095,7 +1101,7 @@ export class MountRider {
     const n = Math.max(1, Math.round(amount));
     this.hp -= n; this.flashT = 0.14;
     world?.fx?.text(p.cx, p.bottom - 20, String(n), { color: '#e8a040', size: 14, life: 0.6, vy: -50 });
-    world?.fx?.burst(why === 'lava' ? 'fire' : why === 'spike' ? 'blood' : 'goo', p.cx, p.bottom - 8, nq(world, 8), { speed: 140, angle: -Math.PI / 2, spread: 1.4 });
+    world?.fx?.burst(why === 'lava' ? 'fire' : why === 'spike' || why === 'blood' ? 'blood' : 'goo', p.cx, p.bottom - 8, nq(world, 8), { speed: 140, angle: -Math.PI / 2, spread: 1.4 });
     this.cry(world, { vol: 0.45, pitch: 1.25 });
     if (this.hp <= 0) {
       const s = this.runStore;

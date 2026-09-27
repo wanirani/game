@@ -80,3 +80,17 @@ export const BENCH = `(i, b, p, A) => {
   if (b.state === 'idle') b.rest = 99;
   p.x = X - 330; p.iframes = 1e9;
 }`;
+
+/** rng.mjs 대본: 0프레임에 굽기 대기 중 실제 루프가 남긴 것(탄·장판·그림자·입자)을 지워 채색/벡터 출발 상태를 같게 한 뒤,
+ *  705·1095 프레임에 체력을 깎아 페이즈를 넘긴다 (기본 대본과 같은 시점). */
+export const RNG_SCRIPT = `(i, b, p, w) => {
+  if (i === 0) {
+    for (const e of w.entities) if (e !== b && e !== p && e.kind !== 'painted' && (e.kind === 'projectile' || e.kind === 'hazard' || e.owner === b || e.owner?.owner === b || e.summoner === b)) e.dead = true;
+    if (w.fx?.list) w.fx.list.length = 0;
+    b.clearJobs?.(); b.shadows.length = 0; b.warpPreview = null; for (const e of b.eyes) { e.laser = null; e.fireAt = undefined; }
+    b.glitch = 0; b.invert = 0; b.flashT = 0; b.invuln = false; b.rest = undefined;
+    w.cutscene = false; w.hitstop = 0; w.slowmo = 0;
+  }
+  if (i === 705) b.takeHit(b.stats.maxHp * 0.45, { stats: p.stats }, w, {});
+  if (i === 1095) b.takeHit(b.stats.maxHp * 0.3, { stats: p.stats }, w, {});
+}`;

@@ -737,6 +737,85 @@ await run('stages', ['mt_warhorse', 'mt_boar', 'mt_skelsteed', 'mt_direwolf', 'm
   return { checks, info };
 }, ONLY?.some((x) => P2.includes(x)) ? ONLY.filter((x) => P2.includes(x)) : P1));
 
+// ═════════════ 경계 사례 (검수에서 찾은 결함의 회귀 검사) ═════════════
+await run('edge', ['mt_warhorse', 'mt_giantbat', 'mt_direwolf'], STAGE('s01', '&cmp=all&cmplv=10&mount=mt_warhorse'), (page) => page.evaluate(() => {
+  const T = window.__T, w = T.w, p = T.p, checks = [], info = {};
+  T.step(0.5); T.clearFoes();
+  const m = T.m;
+  // 1) R 연타: 소환 무적(0.45초)이 끝없이 이어지면 안 된다 · 빠른 두 번 누름에도 소환이 취소되지 않는다
+  let inv = 0, n = 0;
+  for (let i = 0; i < 60; i++) { T.key('KeyR', true); T.step(1 / 60); T.key('KeyR', false); for (let k = 0; k < 5; k++) { T.step(1 / 60); n++; if (p.invuln) inv++; } }
+  info.rspam = +(inv / n).toFixed(2);
+  checks.push(['R 연타로 무적이 이어지지 않는다 (< 50%)', inv / n < 0.5, info.rspam]);
+  if (m.riding) { m.dismount(w, p, 'debug'); }
+  T.step(2.6); m.cd = 0; p.iframes = 0; T.step(0.1);
+  T.press('KeyR', 1 / 60); T.step(3 / 60); T.press('KeyR', 1 / 60); T.step(0.6);
+  checks.push(['R 두 번 빠르게 → 그대로 탄다', m.riding, m.state]);
+  // 2) 낙마 방향: 뒤에서 맞으면 앞으로, 앞에서 맞으면 뒤로 (공격이 미는 쪽)
+  const knock = {};
+  for (const side of [-1, 1]) {
+    if (!m.riding) { m.cd = 0; m.state = 'stowed'; m.summon(w, p, { force: true, instant: true }); T.step(0.2); }
+    T.reset(m); p.facing = 1; m.hp = 1;
+    const z = T.spawn('zombie', side * 200);
+    p.takeHit(20, { team: 'enemy', owner: z, dir: -side, kb: [200, -200] }, w, {});
+    T.step(2 / 60);
+    knock[side < 0 ? 'behind' : 'front'] = { state: m.state, vx: Math.round(p.vx) };
+    z.dead = true; T.step(1.4); m.cd = 0; m.state = 'stowed'; m.hp = m.maxHp;
+    p.x = w.run.checkpoint.x; p.y = w.run.checkpoint.y; p.vx = 0; p.vy = 0; T.step(0.4);
+  }
+  info.knock = knock;
+  checks.push(['낙마: 뒤에서 맞으면 앞으로 날아간다', knock.behind.state === 'recall' && knock.behind.vx > 0, knock.behind]);
+  checks.push(['낙마: 앞에서 맞으면 뒤로 날아간다', knock.front.state === 'recall' && knock.front.vx < 0, knock.front]);
+  // 3) 가시·용암 튕김은 점프 키를 놓아도 반으로 잘리지 않는다
+  m.cd = 0; m.state = 'stowed'; m.summon(w, p, { force: true, instant: true }); T.step(0.3); T.reset(m);
+  p.jumpCut = false; m.hazard('spike', p, w); T.step(1 / 60);
+  const vyS = p.vy;
+  T.step(1.5, () => p.onGround); T.reset(m);
+  p.jumpCut = false; m.hazard('lava', p, w); T.step(1 / 60);
+  const vyL = p.vy;
+  info.bounce = [Math.round(vyS), Math.round(vyL)];
+  checks.push(['가시·용암 튕김 유지 (반으로 잘리지 않음)', vyS < -500 && vyL < -560, info.bounce]);
+  T.step(1.5, () => p.onGround);
+  // 4) 방 이동 직전에 누른 소환은 새 방에서 이어진다
+  m.dismount(w, p, 'unequip'); T.step(0.3); m.cd = 0; p.iframes = 0;
+  T.press('KeyR', 1 / 60); T.step(2 / 60);
+  const st0 = m.state;
+  w.gotoRoom(Object.keys(w.stage.rooms)[1]); T.step(1.0);
+  checks.push(['소환 중 방 이동 → 새 방에서 탄다', st0 === 'summoning' && m.riding && T.fitsNow(), [st0, m.state]]);
+  // 5) 녹티스: 땅에서 ↓+돌진은 제자리 돌진이 아니라 앞으로
+  const b = T.ride('mt_giantbat'); T.reset(b);
+  T.step(1.0, () => p.onGround);
+  const x0 = p.cx; b.chargeCd = 0;
+  const okB = b.charge(w, p, 0, 1); const d8 = { ...b.chargeDir };
+  T.step(0.3);
+  info.batDown = { ok: okB, d8, moved: Math.round(p.cx - x0) };
+  checks.push(['녹티스 땅 위 ↓+돌진 → 앞으로', okB && Math.abs(d8.x) > 0.9 && Math.abs(p.cx - x0) > 100, info.batDown]);
+  return { checks, info };
+}));
+
+// ═════════════ 큰 기수 (브란 36×88) 가 늑대 (78) 에서 천장 밑 공중에 내린다 → 천장에 박히지 않는다 ═════════════
+await run('ceiling', ['mt_direwolf'], STAGE('s05', '&char=bran&cmp=all&cmplv=10'), (page) => page.evaluate(() => {
+  const T = window.__T, w = T.w, p = T.p, checks = [], info = {};
+  T.step(0.5); T.clearFoes();
+  const S = (x, y) => T.PH.isSolidType(w.map.typeAt(x, y));
+  const spot = T.findTile((tx, ty) => [-1, 0, 1, 2].every((d) => S(tx + d, ty)) && [1, 2].every((k) => [-1, 0, 1, 2].every((d) => !S(tx + d, ty + k))));
+  info.spot = spot; info.rider = p.ch.size;
+  checks.push(['(준비) 천장 자리 · 기수가 탈것보다 크다', !!spot && p.ch.size.h > 78, info]);
+  if (!spot) return { checks, info };
+  const res = {};
+  for (const reason of ['ult', 'knock', 'toggle']) {
+    const m = T.ride('mt_direwolf'); T.reset(m);
+    p.cx = spot.tx * 48 + 24; p.y = (spot.ty + 1) * 48 + 0.5; p.vx = 0; p.vy = 0; p.onGround = false;
+    if (reason === 'knock') m.knockOff(w, p, 'debug'); else m.dismount(w, p, reason);
+    res[reason] = { fits: T.fitsNow(), top: Math.round(p.y), h: p.h };
+    m.cd = 0; m.state = 'stowed'; m.remountT = 0;
+    p.x = w.run.checkpoint.x; p.y = w.run.checkpoint.y; p.vx = 0; p.vy = 0; T.step(1.0);
+  }
+  info.res = res;
+  checks.push(['천장 밑에서 내려도 기수가 박히지 않는다 (필살기·낙마·하차)', Object.values(res).every((r) => r.fits && r.h === p.ch.size.h), res]);
+  return { checks, info };
+}));
+
 // ═════════════ 터치 (844×390): 탑승/하차 버튼 ═════════════
 await run('touch', ['mt_warhorse', 'touch'], STAGE('s01', '&cmp=all&cmplv=10&mount=mt_warhorse'), async (page, ctx) => {
   const checks = [];
