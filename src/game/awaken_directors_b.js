@@ -38,7 +38,8 @@
 //  prepareAwakenB(world?, p?)   캐시 스프라이트 미리 굽기 (스테이지 진입·방 이동·직업 변경 뒤 한가할 때 자동; 시험용으로도 공개)
 //
 // 성능 (feel §8, MASTER_PLAN §5.2)
-//  · 망령 기사·리아 분신은 drawHero 로 한 번씩만 그린 잔상 비트맵 (틱마다 품질별 예산 안에서 굽는다: drawHero ≤ 10/6/3 / 프레임, 플레이어 포함).
+//  · 망령 기사·리아 분신은 drawHero 로 한 번씩만 그린 잔상 비트맵. 스테이지 진입·직업 변경 뒤 한가할 때 한 장씩 미리 굽고(퍼펫 그림이 준비된 뒤),
+//    장비를 바꿔 낡았으면 컷인이 도는 동안, 그래도 없으면 감독이 틱마다 한 장씩 굽는다 (drawHero ≤ 플레이어 + 1 / 프레임, feel §8 10/6/3).
 //  · 그리기 코드에서 그라디언트를 만들지 않는다: 달·코로나·날개·초승달·검·까마귀·깃발은 캔버스 풀(부팅 뒤 한가할 때 8장)에 굽고, 빛은 ULTFX.glow.
 //  · 입자는 각성 최대치(700/450/250) 안에서만 뿌린다 (다른 연출이 이미 뿌린 입자 수도 센다).
 //  · 화면 전체 층: 배경 어둠 1장 (+ 키트 층·번쩍임). low 에서는 번쩍임이 켜진 동안 어둠을 건너뛴다 (전체 층 ≤ 1).
@@ -51,12 +52,12 @@ import { CLASSES } from '../data/classes.js';
 import { FXKIT, SkillFx } from './skills.js';
 import { ULTFX } from '../render/ultfx.js';
 import { drawHero } from '../render/hero.js';
+import * as PUP from '../render/hero_puppet.js';
 import * as HFX from '../render/hitfx.js';
 
 const PI = Math.PI, HP = PI / 2;
 const QCAP = { high: 700, medium: 450, low: 250 };      // 각성 최대 입자 (feel §8)
 const RS = { high: 1.25, medium: 1, low: 0.75 };          // 영웅 잔상 비트맵 해상도 배율
-const DRAWS = { high: 10, medium: 6, low: 3 };            // drawHero 전체 다시 그리기 / 프레임 (플레이어 포함, feel §8)
 const GB = { bw: 160, bt: 240, bb: 34 };                  // 영웅 잔상 비트맵 상자 (발 중앙 기준 좌우 bw, 위 bt, 아래 bb; 월드 px)
 const POOL_N = 8;
 
@@ -348,7 +349,7 @@ export function prepareAwakenB(world = game?.world, p = world?.player) {
   if ((CLASSES[cls]?.tier ?? 0) < 1 || world?.mode === 'town') return false;   // 각성할 수 없는 곳·직업은 굽지 않는다
   if (LIVE && !LIVE.over) return false;
   const list = needs(cid, cls), key = cid + '|' + cls;
-  if (PREP_KEY === key && list.every((n) => POOL.some((s) => s.key === n))) return true;
+  if (PREP_KEY === key && list.every((n) => POOL.some((s) => s.key === n))) { idle(() => prepPoses(world, p), 600); return true; }
   if (!ensurePool()) return false;
   const keep = new Set();
   for (const n of list) spr(n, keep);
@@ -356,7 +357,38 @@ export function prepareAwakenB(world = game?.world, p = world?.player) {
   // 연기 모양 입자(fire·smoke·dust·bloodmist)의 색별 부드러운 원 · 별 (hitfx 캐시; 시전 중에 굽지 않게)
   try { for (const c of softCols(cid, cls)) HFX.soft?.(c); if (cls === 'bran_crusader') HFX.star?.('#fff2b0'); } catch { /* hitfx 캐시 */ }
   PREP_KEY = key; AWAKEN_DIR_B_DEBUG.prepared = key;
+  PREP_KEEP = keep;
+  idle(() => prepPoses(world, p), 600);   // 망령 기사·분신 잔상도 시전 전에 (한가할 때 한 장씩)
   return true;
+}
+let PREP_KEEP = null;
+/**
+ * 잔상 비트맵을 시전 전에 굽는다 (한가할 때 한 장씩, drawHero 1회). 퍼펫 그림이 아직 안 받아졌으면 조금 뒤 다시.
+ * 시전 때 look(장비)·직업·해상도가 같으면 그대로 쓰고, 다르면 감독이 틱마다 한 장씩 굽는다 (bakeStep).
+ */
+function prepPoses(world, p, tries = 0) {
+  if (LIVE && !LIVE.over) return;
+  if (!p || p.dead || !world || world.player !== p || game?.world !== world || world.mode === 'town') return;
+  const cid = p.hero?.charId, cls = p.hero?.classId;
+  if ((CLASSES[cls]?.tier ?? 0) < 1) return;
+  const rs = RS[qOf(world)];
+  const jobs = poseJobs(cid, cls).filter((j) => !poseFresh(poseKey(cid, j.name), p, rs));
+  if (!jobs.length) return;
+  if (!pupReady(p)) { if (tries < 8) setTimeout(() => idle(() => prepPoses(world, p, tries + 1)), 1200); return; }
+  try { bakePose({ p, w: world, rs, charId: cid, keep: PREP_KEEP }, jobs[0]); } catch (err) { console.warn('[awakenB] pose', err); return; }
+  if (jobs.length > 1) {
+    if (tries >= 8) setTimeout(() => prepPoses(world, p, tries), 20);   // 컷인 중: 다음 작업 틈에 바로
+    else setTimeout(() => idle(() => prepPoses(world, p, tries), 400), 0);
+  }
+}
+/** 퍼펫 그림이 준비됐는가 (퍼펫이 꺼졌거나 없는 직업은 벡터 그림 → 언제나 준비됨) */
+function pupReady(p) {
+  try {
+    if (!PUP.puppetEnabled?.()) return true;
+    if (PUP.puppetFor?.(p, p.look)) return true;
+    const cid = p.ch?.id ?? p.hero?.charId, cls = PUP.classOf?.(p, p.look);
+    return !(cid && cls && PUP.hasPuppet?.(cid, cls));
+  } catch { return true; }
 }
 function idle(fn, timeout = 900) {
   if (typeof requestIdleCallback === 'function') requestIdleCallback(() => fn(), { timeout });
@@ -373,6 +405,12 @@ function hook() {
     bus.on('stageEntered', () => schedulePrep(900));
     bus.on('classChanged', () => { PREP_KEY = null; schedulePrep(400); });
     bus.on('roomEntered', () => { if (!LIVE || LIVE.over) schedulePrep(900); });
+    // 각성 시전 (컷인 시작): 장비를 바꾼 뒤라 잔상이 낡았으면 컷인이 도는 동안(월드 정지) 한 장씩 굽는다
+    bus.on('awakenCast', (e) => {
+      const w = game?.world, p = w?.player;
+      if (!p || !AWAKEN_DIRECTOR_B[e?.charId ?? p.hero?.charId]) return;
+      setTimeout(() => { try { prepPoses(w, p, 8); } catch (err) { console.warn('[awakenB] pose', err); } }, 0);
+    });
   } catch (e) { console.warn('[awakenB] bus', e); }
 }
 // 부팅 뒤 한가할 때 풀을 만든다 (모듈 최상위에서는 가져온 값에 접근하지 않는다: 순환 import 규칙)
@@ -381,34 +419,70 @@ if (typeof window !== 'undefined' && typeof setTimeout === 'function') {
 }
 
 // ═══════════════════════════ 영웅 잔상 비트맵 (drawHero 1회) ═══════════════════════════
-/** 굽기 예약: 틱마다 품질별 drawHero 예산 안에서 굽는다 */
-function queuePose(S, name, anim, o = {}) { S.queue.push({ name, anim, o }); }
-function bakeStep(S) {
-  let n = Math.max(1, DRAWS[S.q] - 2);   // 플레이어 1장 + 잔상·기타 여유 1장
-  while (n-- > 0 && S.queue.length) {
-    const j = S.queue.shift();
-    try { S.bmp[j.name] = bakePose(S, j); } catch (err) { report(err, 'pose'); }
+/** 영웅·직업별 잔상 비트맵 목록 (브란: 망령 기사 경례·돌격 / 리아: 순간이동 베기 둘 + 그림자 분신) */
+function poseJobs(charId, classId) {
+  switch (charId) {
+    case 'bran': {
+      const KT = BRAN_TINT[classId] ?? '#9ab0ff';
+      return [{ name: 'salute', anim: 'heavy_up', o: { move: true, tint: KT, tintA: 0.72 } }, { name: 'charge', anim: 'heavy_low', o: { move: true, tint: KT, tintA: 0.72 } }];
+    }
+    case 'lia': {
+      const out = [{ name: 'a', anim: 'stab', o: { move: true } }, { name: 'b', anim: 'stab_alt', o: { move: true } }];
+      if (classId === 'lia_shadowmaster') out.push({ name: 'c', anim: 'stab_alt', o: { move: true, tint: '#8a4aff', tintA: 0.82 } });
+      return out;
+    }
+    default: return [];
   }
 }
-function bakePose(S, j) {
-  const p = S.p;
+const poseKey = (charId, name) => 'pose:' + charId + ':' + name;
+const POSE_META = new Map();   // 캐시 키 → { look, sig, cls, rs } (구울 때의 모습)
+function lookSig(p) { try { return JSON.stringify(p.look ?? null); } catch { return '?' + Math.random(); } }
+/** 캐시의 잔상이 지금 영웅 모습(직업·장비·해상도)과 같은가 */
+function poseFresh(key, p, rs) {
+  const m = POSE_META.get(key);
+  if (!m || !POOL.some((s) => s.key === key)) return false;
+  if (m.cls !== p.hero?.classId || m.rs !== rs) return false;
+  if (m.look === p.look) return true;
+  if (lookSig(p) !== m.sig) return false;
+  m.look = p.look;   // 같은 모습의 새 look 객체 (능력치 갱신 등)
+  return true;
+}
+/** 시전 시작: 미리 구운 잔상은 그대로 쓰고, 없거나 낡은 것만 굽기 예약 */
+function usePoses(S) {
+  for (const j of poseJobs(S.charId, S.cls)) {
+    const key = poseKey(S.charId, j.name), e = poseFresh(key, S.p, S.rs) ? POOL.find((s) => s.key === key) : null;
+    if (e) { e.used = ++USE; S.keep.add(key); S.bmp[j.name] = { c: e.c, W: e.c.width, H: e.c.height }; }
+    else S.queue.push(j);
+  }
+}
+/** 굽기 예약분: 틱마다 한 장 (drawHero 한 번 ≈ 그라디언트 9개 — 프레임 예산 안에서) */
+function bakeStep(S) {
+  if (!S.queue.length) return;
+  const j = S.queue.shift();
+  try { S.bmp[j.name] = bakePose(S, j); } catch (err) { report(err, 'pose'); }
+}
+/** C = { p, w, rs, charId, keep } (감독 문맥 S 또는 미리 굽기) */
+function bakePose(C, j) {
+  const p = C.p;
   if (typeof p?.snapshot !== 'function') return null;
-  const rs = S.rs, W = Math.ceil(2 * GB.bw * rs), H = Math.ceil((GB.bt + GB.bb) * rs);
-  const c = cached('pose:' + S.charId + ':' + j.name, W, H, (g) => {
+  const rs = C.rs, W = Math.ceil(2 * GB.bw * rs), H = Math.ceil((GB.bt + GB.bb) * rs), key = poseKey(C.charId, j.name);
+  const c = cached(key, W, H, (g) => {
     const s = p.snapshot();
     Object.assign(s, { facing: 1, cx: GB.bw, bottom: GB.bt, x: GB.bw - p.w / 2, y: GB.bt - p.h, vx: 0, vy: 0, onGround: !j.o.air, ride: null, rig: null });
     if (j.o.move) { s.move = { id: 'awb_' + j.anim, anim: j.anim, dur: 0.5, hit: [0.1, 0.2], box: null, skill: true }; s.moveT = j.o.t ?? 0.2; s.anim = j.anim; }
     else { s.move = null; s.moveT = 0; s.anim = j.anim; s.animT = j.o.at ?? 0.06; }
     g.setTransform(rs, 0, 0, rs, 0, 0);
-    drawHero(g, s, S.w, { noFx: true });
+    drawHero(g, s, C.w, { noFx: true });
     g.setTransform(1, 0, 0, 1, 0, 0);
     if (j.o.tint) {
       g.globalCompositeOperation = 'source-atop'; g.globalAlpha = j.o.tintA ?? 0.78;
       g.fillStyle = j.o.tint; g.fillRect(0, 0, W, H);
       g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
     }
-  }, S.keep, true);
+  }, C.keep, true);
   AWAKEN_DIR_B_DEBUG.poseBakes++;
+  if (c) POSE_META.set(key, { look: p.look, sig: lookSig(p), cls: p.hero?.classId, rs });
+  else POSE_META.delete(key);
   return c ? { c, W, H } : null;
 }
 /** 잔상 비트맵을 발 중앙 (x, bottom) 에 그린다. face < 0 이면 좌우 반전, sc 배율 */
@@ -646,6 +720,7 @@ function begin(p, w, v, dur) {
     S.mod = (o) => ({ mult: (p.dmgMul ?? 1) * (1 + Math.min(0.5, Math.floor((w.combo?.n ?? 0) / 10) * k)), ...o });
   }
   for (const n of needs(S.charId, S.cls)) spr(n, S.keep);   // 미리 구워 두었으면 그대로 (없으면 지금 굽는다)
+  usePoses(S);   // 망령 기사·분신 잔상: 미리 구운 것은 그대로, 없거나 낡은 것만 틱마다 한 장씩
   try {
     ULTFX.begin?.(w, p, { color: S.col, accent: S.acc, tier: S.tier, classId: S.cls, charId: S.charId, dimCol: S.dark, awaken: true, dur: Math.min(2.4, dur), maxDur: dur + 3 });
   } catch (err) { report(err, 'ultfx.begin'); }
@@ -727,8 +802,6 @@ function bran(p, w, v) {
   const warlord = cls === 'bran_warlord', crusader = cls === 'bran_crusader', blood = cls === 'bran_bloodrage', guardian = cls === 'bran_guardian';
   const wCleave = W[0] ?? 4, wKnight = (i) => W[1 + i] ?? 0.5, wFinal = W[W.length - 1] ?? 4;
   const bannerKey = 'banner:' + (BANNER[cls] ? cls : 'base');
-  queuePose(S, 'salute', 'heavy_up', { move: true, tint: KT, tintA: 0.72 });
-  queuePose(S, 'charge', 'heavy_low', { move: true, tint: KT, tintA: 0.72 });
   const gy0 = ground(S, p.cx, p.bottom - 8, 3 * TILE) ?? p.bottom;
   S.gy0 = gy0; S.kt = KT;
   /** 망령 기사 대열 (브란 뒤) */
@@ -1056,9 +1129,6 @@ function lia(p, w, v) {
   const shadow = cls === 'lia_shadowmaster', kuno = cls === 'lia_kunoichi', dancer = cls === 'lia_bladedancer', reaper = cls === 'lia_reaper';
   const NB = 12, wBlink = (i) => W[i] ?? 0.36, wFinal = W[W.length - 1] ?? 4.5;
   const RED = '#ff2040';
-  queuePose(S, 'a', 'stab', { move: true });
-  queuePose(S, 'b', 'stab_alt', { move: true });
-  if (shadow) queuePose(S, 'c', 'stab_alt', { move: true, tint: '#8a4aff', tintA: 0.82 });
   S.slashes = []; S.blinks = []; S.petals = []; S.orbits = []; S.vis = []; S.crow = -1; S.back = -1; S.det = -1; S.souls = null;
   S.feathers = [];
   for (let i = 0, n = S.low ? 12 : 26; i < n; i++) S.feathers.push({ a: rand(0, TAU), r: rand(0.25, 0.62), sp: rand(1.2, 2.4) * (i % 2 ? 1 : -1), s: rand(6, 11), y: rand(-0.3, 0.3), ph: rand(0, TAU) });

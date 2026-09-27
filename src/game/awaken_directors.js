@@ -626,8 +626,33 @@ function kaelDirector(p, w, v) {
   ];
   for (let i = 0; i < nL; i++) steps.push([T_L0 + (nL > 1 ? i * (T_L1 - T_L0) / (nL - 1) : 0), (ww, e) => lash(i, ww, e)]);
 
+  /** 성전 기사: 카엘 뒤 방패 인장 (연출 내내 맥동 → 마무리에서 번쩍이며 커지고 체력이 찬다) */
+  function sigilRear(ctx, e) {
+    const lt = e.lt, inK = ease.outBack(clamp(lt / 0.3, 0, 1)), endF = clamp((e.life - lt) / 0.4, 0, 1);
+    const fin = S.fin ? lt - S.fin.t0 : -1, burstK = fin >= 0 ? clamp(1 - fin / 0.18, 0, 1) : 0;
+    const grow = fin >= 0 ? 1 + 0.9 * ease.outCubic(clamp(fin / 0.6, 0, 1)) : 1;
+    const a = (fin >= 0 ? clamp(1 - (fin - 0.25) / 0.6, 0, 1) : 1) * endF;
+    if (a <= 0.01 || inK <= 0.01) return;
+    const x = p.cx, y = p.y + p.h * 0.42, s = 62 * inK * grow * (1 + 0.04 * Math.sin(lt * 9)), pk = 0.72 + 0.28 * Math.sin(lt * 7);
+    ctx.globalCompositeOperation = 'lighter';
+    K.glow(ctx, x, y, s * 1.9, '#fff2b0', (0.3 + 0.5 * burstK) * a);
+    K.runeCircle(ctx, x, p.bottom - 2, s * 1.35, '#e8c872', lt * 1.6, a * 0.9, 0.24, 8);
+    ctx.save(); ctx.translate(x, y);
+    const shield = () => {
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.62, -s * 0.74); ctx.lineTo(s * 0.62, -s * 0.74); ctx.lineTo(s * 0.62, -s * 0.1);
+      ctx.quadraticCurveTo(s * 0.56, s * 0.56, 0, s * 0.96); ctx.quadraticCurveTo(-s * 0.56, s * 0.56, -s * 0.62, -s * 0.1); ctx.closePath();
+    };
+    shield(); ctx.globalAlpha = Math.min(1, (0.1 + 0.25 * burstK) * a); ctx.fillStyle = '#e8c872'; ctx.fill();
+    lineGlow(ctx, a * pk, '#e8c872', '#fff8e0', 5 + 6 * burstK);
+    ctx.beginPath(); ctx.moveTo(0, -s * 0.56); ctx.lineTo(0, s * 0.66); ctx.moveTo(-s * 0.4, -s * 0.16); ctx.lineTo(s * 0.4, -s * 0.16);
+    lineGlow(ctx, a * pk, '#fff2b0', '#ffffff', 4 + 5 * burstK);
+    ctx.restore();
+  }
+
   return director(D, {
     dur: DUR, steps,
+    rear: vr === 'templar' || D.t2?.sigil ? sigilRear : undefined,
     tick(e, ww, dt) {
       const lt = e.lt;
       if (S.dawn >= 0) S.dawn += dt;
@@ -1025,6 +1050,7 @@ function victorDirector(p, w, v) {
       const ang = Math.atan2(y - from.y, x - from.x), V = viewOf(D, 40), L = Math.hypot(V.w, V.h);
       const ex = from.x + Math.cos(ang) * L, ey = from.y + Math.sin(ang) * L;
       for (const f of foesIn(ww, V)) {
+        if (B.hit.has(f) && f !== tg) continue;   // 한 발이 꿰뚫는 적은 한 번씩 (겨눈 적만 도탄마다) — 총량이 일반 탄과 같은 규모로
         const hb = inflate(hbOf(f), 14);
         for (let s = 0; s <= 40; s++) { const u = s / 40, px = lerp(from.x, ex, u), py = lerp(from.y, ey, u); if (px >= hb.x && px <= hb.x + hb.w && py >= hb.y && py <= hb.y + hb.h) { hitList.push(f); break; } }
       }

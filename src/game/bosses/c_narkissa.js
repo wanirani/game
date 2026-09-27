@@ -803,7 +803,8 @@ class NarkMirror extends Entity {
   }
   reset() { this.gold = 0; this.warnT = 0; this.flashT = 0; this.hitT = 0; this.crack = 0; this.dark = 0; this._hitIds = null; }
   get invuln() { return !(this.gold > 0) || !!this.boss.dead || this.boss.dying > 0; }
-  hurtbox() { return this.gold > 0 ? this.rect() : OFF; }
+  /** 금빛일 때만. 판정은 틀보다 넉넉하게 — 아래 거울(바닥−120)도 땅에 선 채 첫 채찍질(발−66…−40)로 닿는다 */
+  hurtbox() { return this.gold > 0 ? { x: this.x - 14, y: this.y - 14, w: this.w + 28, h: this.h + 48 } : OFF; }
   takeHit(dmg, attack, world) {
     if (!(this.gold > 0) || attack?.tags?.includes('companion')) return false;
     let id = attack?.hitId;
@@ -1128,8 +1129,11 @@ export class Narkissa extends BossC {
         x: Math.min(x0, endX), y: my - 35, w: Math.abs(endX - x0), h: 70, warn: 0.7, life: 3.2, mv: 1.6, element: 'ice', kb: [dir * 520, -320], z: 7,
         line: { x0, y0: my, x1: x0 + dir * 10, y1: my, th: 70 },
         tick: (z) => {
-          if (z.t < z.warn) return;
-          if (!this.dashing || this.dying > 0) { z.dead = true; return; }
+          // 이 잠수의 돌진 판정만 산다 (패턴이 끊기면 onCancel 이 dashZ 를 비운다). 끝난 판정은 이번 프레임에도 치지 않게 harmless
+          if (this.dashZ !== z || this.dying > 0 || this.state !== 'mirrorDive') { z.dead = true; z.harmless = true; return; }
+          // 돌진 전: 보스 시계와 지대 시계가 한 프레임 어긋나거나(생성 프레임), 컷신·대사로 보스만 멈춰도 예고를 유지한다
+          if (!this.dashing) { if (z.t >= z.warn) z.t = z.warn - 1e-4; return; }
+          if (z.t < z.warn) z.t = z.warn;
           const L = z.line; L.x0 = this.cx - dir * 130; L.x1 = this.cx + dir * 115; L.y0 = L.y1 = this.cy;
           z.x = Math.min(L.x0, L.x1) - 35; z.y = this.cy - 35; z.w = Math.abs(L.x1 - L.x0) + 70; z.h = 70;
         },

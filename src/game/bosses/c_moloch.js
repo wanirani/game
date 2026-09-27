@@ -15,6 +15,7 @@
 import { BossC, telegraph, warnText, strikeRect, strikeCircle, strikeFloor, groundWave, pullField, setMagma } from './c_common.js';
 import { PI, OUT, R, LG, glow, glowE, glowSprite, warnRect, warnFloor, warnCircle, warnLine, warnBang, impact } from './b_common.js';
 import { audio } from '../../core/audio.js';
+import { T } from '../../core/physics.js';
 import { TAU, clamp, lerp, rand, rgba, approach } from '../../core/math.js';
 
 // ───────────────────────── 색 ─────────────────────────
@@ -522,6 +523,26 @@ export class Moloch extends BossC {
   contactParts() { const b = this.bottom; return [{ x: this.cx - 70, y: b - 250, w: 140, h: 240 }, { x: this.cx - 30, y: b + HEAD_C - 30, w: 60, h: 56 }]; }
   /** 창살 가운데 (월드) */
   grateP() { return { x: this.cx + this.turnK * 4, y: this.bottom + GRATE_C }; }
+  /**
+   * 위에서 떨어진 것(유성·리벳)이 x 에서 처음 닿는 면의 y: 받침대·사슬 발판 윗면, 차오른 용암 수면, 아니면 바닥.
+   * (조수 때 받침대 위로 피한 플레이어도 굴뚝 유성에 맞는다 — world2 §6.3 tide 동안 chimney)
+   */
+  landY(x) {
+    const A = this.A, F = A.floor, m = this.world?.map;
+    let y = F;
+    if (m?.typeAt && m.groundBelow) {
+      const TS = 48, tx = Math.floor(x / TS);
+      let ty = Math.max(0, Math.floor(((A.top ?? 0) + 4) / TS));
+      for (let n = 0; n < 40 && ty < m.h; n++) { const k = m.typeAt(tx, ty); if (k !== T.SOLID && k !== T.BREAK) break; ty++; }   // 천장 건너뛰기
+      const g = m.groundBelow(tx, ty);
+      if (Number.isFinite(g) && g < F && g > (A.top ?? 0)) y = g;
+    }
+    // 용암: 지금 수면과 차오르는 목표 중 높은 쪽 (떨어지는 동안 차오르는 조수)
+    const g = this.gim('magma', { create: false });
+    let mg = Number.isFinite(g?.level) ? g.level : Infinity;
+    if (Number.isFinite(g?.target)) mg = Math.min(mg, g.target);
+    return mg < y ? Math.max(mg, (A.top ?? 0) + 60) : y;
+  }
   /** 손목 (월드): s = +1 망치 팔(바라보는 쪽) / −1 집게 팔 */
   wrist(s) {
     const P = this.pose;
@@ -587,6 +608,9 @@ export class Moloch extends BossC {
     }
   }
   onCancel() {
+    // 몸에 붙은 판정(사슬 집게·화로 광선)은 패턴과 함께 끝난다 — 전환·강제 패턴·부활 뒤에 남아 치거나 그려지지 않게
+    for (const z of [this.tongZ, this.beamZ]) if (z) { z.dead = true; z.harmless = true; }
+    this.tongZ = null; this.beamZ = null;
     this.tongs = null; this.beam = null; this.pourK = 0;
     if (!(this.tideHold > 0)) this.grateT = 0;
     this.aim({});
@@ -665,16 +689,16 @@ export class Moloch extends BossC {
     const A = this.A, F = A.floor, cam = world.camera;
     const x0 = Math.max(A.x0 + 40, (cam?.x ?? A.x0) + 40), x1 = Math.min(A.x1 - 40, (cam ? cam.x + cam.vw : A.x1) - 40);
     const x = rand(x0, Math.max(x0 + 1, x1));
-    const top = (A.top ?? 0) + 10, st = { y: top, done: false };
+    const top = (A.top ?? 0) + 10, st = { y: top, done: false }, gy = this.landY(x);   // 받침대·용암 수면에서 멈춘다
     this.zone({
       x: x - 14, y: top, w: 28, h: 28, warn: 0.6 + k * 0.15, life: 2, mv: 0.8, kb: [160, -300], z: 6,
       tick: (z, wd, dt) => {
         if (z.t < z.warn || st.done) return;
         st.y += 900 * dt; z.y = st.y - 28;
-        if (st.y >= F) { st.done = true; z.dur = z.t - z.warn; wd.fx.burst('spark', x, F - 4, 10, { color: '#ffe0a0', speed: 260 }); audio.sfx('clang', { pitch: 0.7, vol: 0.5 }); }
+        if (st.y >= gy) { st.done = true; z.dur = z.t - z.warn; wd.fx.burst('spark', x, gy - 4, 10, { color: '#ffe0a0', speed: 260 }); audio.sfx('clang', { pitch: 0.7, vol: 0.5 }); }
       },
       paint: (ctx, z, wd) => {
-        if (!z.started) { warnBang(ctx, x, top + 40, 14, 0.6 + 0.4 * Math.sin(wd.time * 20), FIRE); warnFloor(ctx, x, F, 40, z.k, FIRE, wd.time); return; }
+        if (!z.started) { warnBang(ctx, x, top + 40, 14, 0.6 + 0.4 * Math.sin(wd.time * 20), FIRE); warnFloor(ctx, x, gy, 40, z.k, FIRE, wd.time); return; }
         if (st.done || R.fl) return;
         glowE(ctx, x, st.y - 40, 10, 40, FIRE, 0.5);
         ctx.fillStyle = '#6a5a50'; ctx.strokeStyle = '#140a04'; ctx.lineWidth = 2;
@@ -704,9 +728,10 @@ export class Moloch extends BossC {
     if (this.at(0.6)) {
       audio.sfx('whip_crack', { pitch: 0.5 }); audio.sfx('slash_heavy', { pitch: 0.6 });
       const H = 70, W = 110;
-      this.zone({
+      this.tongZ = this.zone({
         x: x0 - W / 2, y: F - H, w: W, h: H, warn: 0, life: 1.0, mv: 1.5, element: 'fire', kb: [f * 440, -380], z: 6,
         tick: (z, wd) => {
+          if (this.tongZ !== z || this.state !== 'tongs') { z.dead = true; z.harmless = true; return; }   // 패턴이 끊기면 집게도 멈춘다
           const u = clamp(z.t / 1.0, 0, 1), e = 1 - (1 - u) * (1 - u);
           const x = lerp(x0, x1, e);
           z.x = x - W / 2;
@@ -784,13 +809,13 @@ export class Moloch extends BossC {
     if (t > 2.3) this.done(1.0);
   }
   meteor(x, warn, i) {
-    const A = this.A, F = A.floor, top = (A.top ?? 0) - 60, y = F - 24;
+    const A = this.A, gy = this.landY(x), top = (A.top ?? 0) - 60, y = gy - 24;   // 받침대 윗면 · 용암 수면 · 바닥 중 처음 닿는 면
     strikeCircle(this, x, y, 60, {
       warn, life: 0.25, mv: 1.2, element: 'fire', color: FIRE, kb: [260, -460], shake: 5, sfx: i % 2 ? 'hit_heavy' : 'explode',
       paint: (ctx, z, w) => {
         if (!z.started) {
           const k = z.k;
-          ctx.save(); ctx.translate(x, F - 4); ctx.scale(1, 0.3);
+          ctx.save(); ctx.translate(x, gy - 4); ctx.scale(1, 0.3);
           warnCircle(ctx, 0, 0, 60, k, FIRE, w.time);
           ctx.restore();
           if (R.fl) return;
@@ -848,16 +873,17 @@ export class Moloch extends BossC {
     if (this.at(0.6)) {
       audio.sfx('fire', { pitch: 0.6 }); audio.sfx('explode', { pitch: 0.9, vol: 0.5 });
       const line = { x0: G.x, y0: G.y, x1: ex, y1: endY(0), th: 40 };
-      this.zone({
+      this.beamZ = this.zone({
         x: Math.min(G.x, ex), y: F - 280, w: Math.abs(ex - G.x), h: 280, warn: 0, life: 2.0, mv: 0.7, rehit: 0.25, element: 'fire', kb: [f * 300, -260], z: 7,
         line,
         tick: (z) => {
+          if (this.beamZ !== z || this.state !== 'furnaceBeam') { z.dead = true; z.harmless = true; if (this.beamZ === z) { this.beamZ = null; this.beam = null; } return; }   // 창살이 닫히면(패턴이 끊기면) 불줄기도 끊긴다
           const P2 = this.grateP();
           line.x0 = P2.x + f * 10; line.y0 = P2.y; line.x1 = ex; line.y1 = endY(z.t / 2.0);
           this.beam = { ...line, warn: 1 };
         },
-        onEnd: () => { this.beam = null; },
-        paint: (ctx) => { if (!R.fl) flameBeam(ctx, line, this.t); },
+        onEnd: (z) => { this.beam = null; if (this.beamZ === z) this.beamZ = null; },
+        paint: (ctx, z) => { if (!R.fl && !z.dead) flameBeam(ctx, line, this.t); },
         light: (L) => { L.add((line.x0 + line.x1) / 2, (line.y0 + line.y1) / 2, 320, FIRE, 0.7); },
       });
     }
