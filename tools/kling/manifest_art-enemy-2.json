@@ -451,6 +451,92 @@
      "decision": null
     }
    ]
+  },
+  {
+   "shot": "demon_sheet",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "inputs": [
+    "demon_ref_1"
+   ],
+   "generationId": "ARBsl516xqvwuQoDhuMk52BBJ5mY_xj1ql9YQvQ7oz3snpShCKQcmmtakAEToH0QtZE-spP3",
+   "images": []
+  },
+  {
+   "shot": "demon_side",
+   "tool": "image_to_image",
+   "aspect": "1:1",
+   "imageCount": 2,
+   "inputs": [
+    "demon_ref_1"
+   ],
+   "generationId": "ARvsPMQy7aVt0G-tVFMrb34LzaEQ79l1pQrWUGHj99PNRhpKH66GouKwcenpEqnribK-uJqm",
+   "images": []
+  },
+  {
+   "shot": "doll_sheet",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "inputs": [
+    "doll_ref_1"
+   ],
+   "generationId": "AYgGJ-Tjy-2-HmuS9iaeG6yM5HCWjGRhKMNlK25n5JiyF2Ftj4_qTFxbM_TzJcQ57Vf3dUQT",
+   "images": []
+  },
+  {
+   "shot": "doll_side",
+   "tool": "image_to_image",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "inputs": [
+    "doll_ref_1"
+   ],
+   "generationId": "AQL3oRJhmW1IKobVqCFQVRuGQxk5rysF_UclQ2j01QMKhXtrrj6G9y2qJsCQusAROr0U3iyB",
+   "images": []
+  },
+  {
+   "shot": "mummy_sheet",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "inputs": [
+    "mummy_ref_1"
+   ],
+   "generationId": "ARRuZR_ANMP8UMtElpgz-BIg5SPUuDdm76sLAn6PJGWIpov6jAhV79Qgj-dFirE9IBYyCco5",
+   "images": []
+  },
+  {
+   "shot": "mummy_side",
+   "tool": "image_to_image",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "inputs": [
+    "mummy_ref_1"
+   ],
+   "generationId": "AUCh9xJKHe1VMcUVSi47v4jVNTBjvgBC2W0wqTofurAX_sp3YnB11othINQ6zx9_Ij7lPHyJ",
+   "images": []
+  },
+  {
+   "shot": "staff",
+   "tool": "text_to_image",
+   "aspect": "9:16",
+   "imageCount": 2,
+   "inputs": [],
+   "generationId": "AUnCt1N97JkG_d-c9bB9QoCFiOl2fWue4OFqo3VMmr1kwZ7F7nvYwuBOIq6yXf-Z0ya84f9k",
+   "images": []
+  },
+  {
+   "shot": "book_front",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "inputs": [
+    "book_2"
+   ],
+   "generationId": "AWhr3YVRMnl0NZf3tXH1A4FgyPu5vC95aNuV9dxYxwdesFUdIqmJeV47uj0oT0SI_o1boCse",
+   "images": []
   }
  ]
 }

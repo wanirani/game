@@ -31,9 +31,13 @@ function wingDirs(e, t) {
 /** flying body part ('body' = name used by atlases built before the dedicated flight pose existed) */
 const bodyOf = (rig) => (rig.parts.fly ? 'fly' : 'body');
 
-export function draw(ctx, e, world, o, rig) {
+export function draw(ctx, e, world, o, rig) { drawBat(ctx, e, world, o, rig, DEF); }
+const DEF = { eye: '#ff2a3a', eyeA: 0.7, death: '#ff5a3a', hang: true };
+
+/** shared by golden_bat.js (gold-recoloured atlas): opt = { eye, eyeA, death, hang } */
+export function drawBat(ctx, e, world, o, rig, opt = DEF) {
   const t = e.t ?? 0, s = 1, BODY = bodyOf(rig);
-  const hanging = e.anim === 'hang' || e.state === 'hang';
+  const hanging = opt.hang && (e.anim === 'hang' || e.state === 'hang');
   const W = wingDirs(e, t);
   if (e.dying > 0 && world) {
     if (!e._pcorpse) {
@@ -47,13 +51,13 @@ export function draw(ctx, e, world, o, rig) {
         { name: 'wing', pv: 'a', x: lx, y: ly, rot: PI + 0.3, sx: 1, sy: -1, vn: 'deep' },
         { name: 'wing', pv: 'a', x: rx, y: ry, rot: -0.3 },
         { name: BODY, pv: 'a', x: 0, y: cy },
-      ], { life: 0.7, strips: 9, drift: 40, col: '#ff5a3a', n: 18, spread: 170, cy });
+      ], { life: 0.7, strips: 9, drift: 40, col: opt.death, n: 18, spread: 170, cy });
     }
     return;
   }
   const hurt = K.hurtOf(e), sq = K.squashK(e);
   K.begin(ctx, rig, K.flashK(e, o));
-  if (hanging || (e.state === 'drop' && W.open < 1)) {
+  if (opt.hang && (hanging || (e.state === 'drop' && W.open < 1))) {
     // cocoon hanging from the ceiling: grip at the entity's top, slow sway + breathing
     const top = -(e.def?.size?.h ?? 26);
     const k = hanging ? 1 : 1 - W.open;
@@ -84,7 +88,7 @@ export function draw(ctx, e, world, o, rig) {
   K.chain('wing', wrx - 1, wry, dirR + tilt, s, K.nStrips(6), bend, alpha);
   K.put(BODY, 'a', 0, cy + bob, tilt, sx, sy, alpha);
   if (!o.flash) {
-    for (const pn of ['eyeL', 'eyeR']) { K.pivotPos(BODY, 'a', pn, 0, cy + bob, tilt, sx, sy, _q); K.glow(_q[0], _q[1], 2.4, '#ff2a3a', 0.7 * alpha); }
+    for (const pn of ['eyeL', 'eyeR']) { K.pivotPos(BODY, 'a', pn, 0, cy + bob, tilt, sx, sy, _q); K.glow(_q[0], _q[1], 2.4, opt.eye, opt.eyeA * alpha); }
   }
   K.end();
 }

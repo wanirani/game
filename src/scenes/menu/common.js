@@ -445,6 +445,8 @@ export class Nav {
 // 누른 곳·뗀 곳·시각과 최근 이동 표본. 스텝이 밀려 한 스텝에 누름과 뗌이 함께 보여도
 // 밀기(swipe)·길게 누르기·튕기기 속도를 실제 손가락 움직임대로 잰다.
 const PTR = { id: null, down: null, up: null, moves: [], seq: 0, installed: false };
+/** 이벤트가 만들어진 시각 (초, performance.now 와 같은 시계) — 처리가 밀려도 손가락 시각 그대로 */
+const evT = (e) => (e.timeStamp > 0 ? e.timeStamp / 1000 : nowS());
 function installPtr() {
   if (PTR.installed || typeof window === 'undefined') return;
   PTR.installed = true;
@@ -454,7 +456,7 @@ function installPtr() {
     if (!cv || e.target !== cv) return;
     if (PTR.down && !PTR.up && PTR.id !== e.pointerId) return; // 두 번째 손가락은 무시
     PTR.id = e.pointerId; PTR.seq++;
-    PTR.down = { cx: e.clientX, cy: e.clientY, t: nowS(), max: 0, type: e.pointerType || 'mouse' };
+    PTR.down = { cx: e.clientX, cy: e.clientY, t: evT(e), max: 0, type: e.pointerType || 'mouse' };
     PTR.up = null; PTR.moves.length = 0;
   }, opt);
   window.addEventListener('pointermove', (e) => {
@@ -462,12 +464,12 @@ function installPtr() {
     if (!d || PTR.up || e.pointerId !== PTR.id) return;
     const m = Math.hypot(e.clientX - d.cx, e.clientY - d.cy);
     if (m > d.max) d.max = m;
-    PTR.moves.push({ cx: e.clientX, cy: e.clientY, t: nowS() });
+    PTR.moves.push({ cx: e.clientX, cy: e.clientY, t: evT(e) });
     if (PTR.moves.length > 16) PTR.moves.shift();
   }, opt);
   const end = (e, cancel) => {
     if (!PTR.down || PTR.up || e.pointerId !== PTR.id) return;
-    PTR.up = { cx: e.clientX, cy: e.clientY, t: nowS(), cancel };
+    PTR.up = { cx: e.clientX, cy: e.clientY, t: evT(e), cancel };
   };
   window.addEventListener('pointerup', (e) => end(e, false), opt);
   window.addEventListener('pointercancel', (e) => end(e, true), opt);
@@ -480,6 +482,23 @@ function cssToUi(cx, cy) {
   const k = g.top?.uiScale ? g.uiK || 1 : 1;
   const lw = (r.width || 1) / (g.viewW || 960), lh = (r.height || 1) / (g.viewH || 540);
   return { x: (cx - r.left) / lw / k, y: (cy - r.top) / lh / k, f: lh * k };
+}
+/**
+ * 가로 최고 속도 (UI px/초): 0.04초 이상 떨어진 두 표본 사이의 가장 빠른 구간.
+ * 느린 기기·밀린 이벤트에서도 "재빨리 민" 구간을 잡는다 (전체 평균만 쓰면 시작 전 머뭇거림이 속도를 깎는다).
+ */
+function peakVx(d, up, f) {
+  const pts = [d, ...PTR.moves, up];
+  let best = 0;
+  for (let i = 0; i < pts.length; i++) {
+    for (let j = i + 1; j < pts.length; j++) {
+      const dt = pts[j].t - pts[i].t;
+      if (dt < 0.04) continue;
+      const v = Math.abs(pts[j].cx - pts[i].cx) / dt / f;
+      if (v > best) best = v;
+    }
+  }
+  return best;
 }
 /** 휴대폰 진동 (설정 '진동' 이 켜져 있을 때만) */
 export function buzz(ms = 10) {
@@ -558,7 +577,8 @@ export class Gesture {
         if (g.touch && g.moved && !g.lp && !g.claimed && !up?.cancel) {
           const e = up ? cssToUi(up.cx, up.cy) : { x: p.x, y: p.y };
           const dx = e.x - g.x, dy = e.y - g.y, ax = Math.abs(dx);
-          if (ax >= SWIPE_DIST && Math.abs(dy) <= ax * SWIPE_TAN && ax / dur >= SWIPE_SPEED) this.swipe = { dir: dx < 0 ? 1 : -1, x: g.x, y: g.y, dx, dy };
+          const speed = Math.max(ax / dur, up && g.ptr ? peakVx(g.ptr, up, cssToUi(0, 0)?.f || 1) : 0);
+          if (ax >= SWIPE_DIST && Math.abs(dy) <= ax * SWIPE_TAN && speed >= SWIPE_SPEED) this.swipe = { dir: dx < 0 ? 1 : -1, x: g.x, y: g.y, dx, dy };
         }
       }
     }

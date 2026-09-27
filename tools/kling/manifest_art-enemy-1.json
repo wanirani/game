@@ -12,7 +12,8 @@
    "generationId": "AXXA3ZsGgYBdPgNFwZvu7icFG63DEnkQPgRuWPjSvqNJFGd7VJuPaELr2io8mxoAWUlLdf20",
    "tool": "text_to_image",
    "aspect": "3:4",
-   "imageCount": 2
+   "imageCount": 2,
+   "decision": "r1: 3/4 view facing left with a cast shadow; r2 KEPT -> zombie/src/zombie_ref.webp (cleaner, no shadow)"
   },
   {
    "enemy": "possessed",
@@ -20,7 +21,8 @@
    "generationId": "Af_ynPdkHgv9zkVBvkW_fm2pJsXjqBCYLvxn_GfnYg862gaW-XEu29IWjeMDIn_w8g-6Kok_",
    "tool": "text_to_image",
    "aspect": "3:4",
-   "imageCount": 2
+   "imageCount": 2,
+   "decision": "r2 KEPT -> possessed_ref.webp (cleaner, pitchfork diagonal); r1 similar"
   },
   {
    "enemy": "wolf",
@@ -28,7 +30,8 @@
    "generationId": "AYPin41EfmgG7KM9VssuNNV4u82QdNR-OuJIBUBuNYaD9rowimDc8cVfd5MLPeppPEkiSC5Q",
    "tool": "text_to_image",
    "aspect": "4:3",
-   "imageCount": 2
+   "imageCount": 2,
+   "decision": "r2 KEPT -> wolf_ref.webp (no blood pool); r1 blood pool on the floor"
   },
   {
    "enemy": "crow",
@@ -36,7 +39,8 @@
    "generationId": "AQxnnDLsco-bqwMW-KSwxmFlH7Bc5xtuVWcNgoIbBxm2pOOdS2j23vIWclyaZ40fLHUtHlfH",
    "tool": "text_to_image",
    "aspect": "4:3",
-   "imageCount": 2
+   "imageCount": 2,
+   "decision": "r2 KEPT -> crow_ref.webp (strict side facing right)"
   },
   {
    "enemy": "gargoyle",
@@ -44,7 +48,8 @@
    "generationId": "AaSUlR8iu77Etxo6Ff46R1XxJmLnGnoxxhEFmIxDZ4qv6869AmQQK-yDZVj7aUDSdm0Vx4V5",
    "tool": "text_to_image",
    "aspect": "4:3",
-   "imageCount": 2
+   "imageCount": 2,
+   "decision": "r1 KEPT -> gargoyle_ref.webp (glowing cracks, moss); r2 bolder cracks"
   },
   {
    "enemy": "medusa_head",
@@ -52,7 +57,8 @@
    "generationId": "ASwhypuMfH_2_4gf08do1FnNRZTwKQzUxXAskgcBMEd0Exc-82duiPcuWiSjirTRX-SEzumf",
    "tool": "text_to_image",
    "aspect": "1:1",
-   "imageCount": 2
+   "imageCount": 2,
+   "decision": "r1 KEPT -> medusa_head_ref.webp (readable eye, grotesque reptile face)"
   },
   {
    "enemy": "wisp",
@@ -60,7 +66,8 @@
    "generationId": "Ad7vso-qv-N4KR6Wk7RDKvNbpAZNMenDvVpKpiugesTDVeVtPoaNiRrMeiXXs338x5Mv5ocp",
    "tool": "text_to_image",
    "aspect": "1:1",
-   "imageCount": 2
+   "imageCount": 2,
+   "decision": "r1 KEPT -> wisp_ref.webp (dark teal flame on clean grey = clean matte); r2 glow haze on the background"
   },
   {
    "enemy": "mimic",
@@ -68,7 +75,8 @@
    "generationId": "AaM37PXrG4IauWa4lXQjO36Y24PsBgcuv_PTq99G3VyEnEGVKo33fuUVYXofeuys545MC3-_",
    "tool": "text_to_image",
    "aspect": "4:3",
-   "imageCount": 2
+   "imageCount": 2,
+   "decision": "r1 KEPT -> mimic_ref.webp"
   },
   {
    "enemy": "mud_man",
@@ -76,7 +84,8 @@
    "generationId": "AaYkQnhDokvwQOTCHKDdSxFG9cbuKNxOGQTwl2TCHe7pWE3mu6opuv0PXclMs3uP6z5w9XHr",
    "tool": "text_to_image",
    "aspect": "3:4",
-   "imageCount": 2
+   "imageCount": 2,
+   "decision": "r2 KEPT -> mud_man_ref.webp (teeth, roots, facing right)"
   },
   {
    "enemy": "bone_thrower",
@@ -101,8 +110,88 @@
    "tool": "image_to_image",
    "aspect": "4:3",
    "imageCount": 2
+  },
+  {
+   "enemy": "zombie",
+   "step": "sheet",
+   "generationId": "AfJChPcpL-2rdxS0nhrYi8DPYiDDqx-5nnWPYjV11diSo6x86Hxr8IKOsXhLx7rqxOWqBwwS",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2
+  },
+  {
+   "enemy": "possessed",
+   "step": "sheet",
+   "generationId": "AVQFfR1ns0IDkH5zj8na_X9BXDsoBCRp_PhtOXCZ2iDTw56MZ7bpMhii8hgDHb_m-Gqry5V5",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2
+  },
+  {
+   "enemy": "wolf",
+   "step": "sheet",
+   "generationId": "ATMfXwe7FS2F33t5vk7CVKnmkshOnqrapIwLOt9BxTRONnKGR1GU86Kw0YIq3kOMgT5zigeR",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2
+  },
+  {
+   "enemy": "crow",
+   "step": "sheet",
+   "generationId": "ARoat6EzlZO2DmEXqn3KifudZZ0LLE3Qa4yAWIM1kA16MiM4DwJzqfg18uknyM5f1N1gJr7W",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2
+  },
+  {
+   "enemy": "gargoyle",
+   "step": "sheet",
+   "generationId": "ATMJ34yPI4Dv_i1ZmjRt80uJJFgmY6vaFknY5TjBOiaQUubPJDIyirZCV2_RPd6nsi5crdEj",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2
+  },
+  {
+   "enemy": "medusa_head",
+   "step": "sheet",
+   "generationId": "AV1uO6qMHJwZ5YIBA1Agr0pZPA4hLZa0T3vMU1NkQ3EK44NKEsBYeeeYYMClN9qaoj9XvzuV",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2
+  },
+  {
+   "enemy": "mimic",
+   "step": "sheet",
+   "generationId": "ASXiLNBKkXRb4XLrjD08xc-Do2kL2Sz2gCbkFGfp5th-qK-mRmd7yf0-zcxp2ddZ9zKzSXrA",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2
+  },
+  {
+   "enemy": "mud_man",
+   "step": "sheet",
+   "generationId": "AW-UDORX9ZesdMbVt9UtXn4AoHD0ByD9T1V7Rzsj4qRtvG-BYOPyF0KN8Jwmv9WxtJHM786P",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2
+  },
+  {
+   "enemy": "skeleton_archer",
+   "step": "hood_single",
+   "generationId": "AUPVYywbTiNOh6oH6QZyefbjr20zD3UcmpkoYnkotZOZ6NImw_Nuo1jSGJYfarlbdtUJWjQk",
+   "tool": "image_to_image",
+   "aspect": "1:1",
+   "imageCount": 1
+  },
+  {
+   "enemy": "wisp",
+   "step": "frame2",
+   "generationId": "ASYFYpk820Q-pfeII4mdwevBMH7bC-rEnVrnafEmoQmBbsP869mdmeMYEzbv8Euurh_3DcoG",
+   "tool": "image_to_image",
+   "aspect": "1:1",
+   "imageCount": 1
   }
  ],
- "imagesSpent": 24,
- "creditsSpent": 48
+ "imagesSpent": 42,
+ "creditsSpent": 84
 }

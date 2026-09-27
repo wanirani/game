@@ -47,6 +47,10 @@ export const SHOTS = {
     tool: 'image_to_image', aspect: '4:3', n: 2, inputs: ['demon_ref'], for: ['lesser_demon'],
     prompt: S(`The same lesser demon imp as in 图片1 (keep the identical design, proportions, colours, materials and painting style), redrawn as a cut-out puppet parts sheet for 2D skeletal animation: each piece painted separately and laid out apart in a loose grid with wide empty grey gaps between them, no piece touching or overlapping another. The 8 pieces are: the horned head with ears and fanged grin; the torso with chest, belly and hips (no head, no arms, no legs, no wings, no tail); one bat wing alone fully spread flat with the finger bones fanning out, the shoulder joint at the left end of the piece; one upper arm; one forearm with a clawed hand; one goat thigh; one goat lower leg with the black hoof; the whip tail with the arrowhead spike. Every piece is complete and whole, including the portions normally hidden behind other parts, all in the same strict side view facing right, same scale as each other. ${BG} ${STYLE}`),
   },
+  demon_side: {
+    tool: 'image_to_image', aspect: '1:1', n: 2, inputs: ['demon_ref'], for: ['lesser_demon'],
+    prompt: S(`The same lesser demon imp as in 图片1 (keep the identical design, proportions, colours, materials and painting style), redrawn in strict side view in profile facing right, full body, hovering upright: both bat wings raised and spread wide behind the back, the near arm hanging down slightly away from the body with the clawed hand open, the goat legs dangling with the hooves pointing down, the whip tail curling down behind. ${BG} ${STYLE}`),
+  },
   // ── cursed porcelain doll (T2) ────────────────────────────────────────────────────────────────────────────────
   doll_ref: {
     tool: 'text_to_image', aspect: '3:4', n: 2, for: ['puppet_maiden'],
@@ -56,6 +60,10 @@ export const SHOTS = {
     tool: 'image_to_image', aspect: '4:3', n: 2, inputs: ['doll_ref'], for: ['puppet_maiden'],
     prompt: S(`The same cursed porcelain doll as in 图片1 (keep the identical design, proportions, colours, materials and painting style), redrawn as a cut-out puppet parts sheet for 2D skeletal animation: each piece painted separately and laid out apart in a loose grid with wide empty grey gaps between them, no piece touching or overlapping another. The 6 pieces are: the porcelain head with the golden ringlet hair and the crimson bow; the torso with the corset bodice and the full black and crimson lace skirt (no head, no arms, no legs); one porcelain upper arm with ball joints at both ends; one porcelain forearm with an open hand; one porcelain thigh with the ball-jointed knee; one porcelain lower leg with a black mary-jane shoe. Every piece is complete and whole, including the portions normally hidden behind other parts, all in the same strict side view facing right, same scale as each other. ${BG} ${STYLE}`),
   },
+  doll_side: {
+    tool: 'image_to_image', aspect: '3:4', n: 2, inputs: ['doll_ref'], for: ['puppet_maiden'],
+    prompt: S(`The same cursed porcelain doll as in 图片1 (keep the identical design, proportions, colours, materials and painting style), redrawn in strict side view in profile facing right, full body from head to feet, standing stiffly upright like a marionette, the near arm hanging straight down slightly away from the body, the legs straight and slightly apart. No strings. ${BG} ${STYLE}`),
+  },
   // ── mummy (T2) ────────────────────────────────────────────────────────────────────────────────────────────────
   mummy_ref: {
     tool: 'text_to_image', aspect: '3:4', n: 2, for: ['mummy'],
@@ -64,6 +72,18 @@ export const SHOTS = {
   mummy_sheet: {
     tool: 'image_to_image', aspect: '4:3', n: 2, inputs: ['mummy_ref'], for: ['mummy'],
     prompt: S(`The same mummy as in 图片1 (keep the identical design, proportions, colours, materials and painting style), redrawn as a cut-out puppet parts sheet for 2D skeletal animation: each piece painted separately and laid out apart in a loose grid with wide empty grey gaps between them, no piece touching or overlapping another. The 7 pieces are: the bandaged head with the glowing green eye; the torso with the scarab amulet and the shoulder cloth (no head, no arms, no legs); one bandaged upper arm; one bandaged forearm with a withered clawed hand; one bandaged thigh; one bandaged lower leg with a wrapped foot; one long loose strip of bandage cloth lying straight and horizontal. Every piece is complete and whole, including the portions normally hidden behind other parts, all in the same strict side view facing right, same scale as each other. ${BG} ${STYLE}`),
+  },
+  mummy_side: {
+    tool: 'image_to_image', aspect: '3:4', n: 2, inputs: ['mummy_ref'], for: ['mummy'],
+    prompt: S(`The same mummy as in 图片1 (keep the identical design, proportions, colours, materials and painting style), redrawn in strict side view in profile facing right, full body from head to feet, standing hunched forward, the near arm hanging down slightly away from the body, the legs slightly apart. ${BG} ${STYLE}`),
+  },
+  staff: {
+    tool: 'text_to_image', aspect: '9:16', n: 2, for: ['skeleton_mage'],
+    prompt: S(`A single sorcerer's staff standing perfectly straight and vertical in the centre, the whole staff inside the frame with an empty margin: a long gnarled black wooden shaft wrapped with a strip of purple cloth and small bone charms, the top ends in a bony claw gripping a glowing violet crystal, an iron-shod foot at the bottom. Nothing else. ${BG} ${STYLE}`),
+  },
+  book_front: {
+    tool: 'image_to_image', aspect: '4:3', n: 2, inputs: ['book'], for: ['book_fiend'],
+    prompt: S(`Edit 图片1: show the same demonic grimoire seen perfectly straight from the front and perfectly symmetrical: the spine vertical in the exact centre, both halves flung open equally to the left and to the right like spread wings, the covers tilted slightly back, the pages fanning out on both sides, the huge fanged eye in the centre gutter, the torn red ribbon bookmark hanging straight down from the bottom of the spine. Keep the identical design, colours, materials and painting style. ${BG} ${STYLE}`),
   },
   // ── T1 creatures (one image each, imageCount 2 to pick from) ─────────────────────────────────────────────────
   phantom: {
