@@ -1,0 +1,16 @@
+{
+ "id": "b_dracula",
+ "kind": "boss",
+ "out": "assets/painted/bosses/b_dracula",
+ "raw": "tools/painted/raw/b_dracula",
+ "td": 2.0,
+ "matte": {
+  "default": {"key": 9, "soft": 22, "hard": 6},
+  "torso_a": {"watermark": [0, 0.86, 0.32, 1]},
+  "cloak_a": {"watermark": [0, 0.86, 0.32, 1]},
+  "morph_a": {"watermark": [0, 0.86, 0.32, 1]},
+  "dtorso_a": {"watermark": [0, 0.86, 0.32, 1]}
+ },
+ "cuts": {},
+ "parts": []
+}

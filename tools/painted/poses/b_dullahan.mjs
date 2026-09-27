@@ -75,3 +75,14 @@ export const BENCH = `(i, b, p, A) => {
   if (b.state === 'idle') b.cool = 99;
   p.x = A.mid - 300; p.iframes = 1e9;
 }`;
+
+/** 결정성 A/B (tools/painted/rng.mjs): 굽기 대기 동안 실제 루프가 돈 흔적(속도·투사체·입자)을 지우고 같은 조건에서 시작 */
+export const RNG_SCRIPT = `(i, b, p, w) => {
+  if (i === 0) {
+    for (const e of w.entities) if (e !== b && e !== p && e.kind !== 'painted' && (e.owner === b || e.owner?.owner === b || e.boss === b || e.summoner === b)) e.dead = true;
+    if (w.fx?.list) w.fx.list.length = 0;
+    b.vx = 0; b.vy = 0; b.y = b.floorY - b.h; b.facing = -1; b.flashT = 0; b.stateT = 0; b._pst = -1; b.last = null; b.last2 = null; b.phaseFx = 0; b.invuln = false; b.skullOut = 0;
+  }
+  if (i === 705) b.takeHit(b.stats.maxHp * 0.45, { stats: p.stats }, w, {});
+  if (i === 1095) b.takeHit(b.stats.maxHp * 0.3, { stats: p.stats }, w, {});
+}`;

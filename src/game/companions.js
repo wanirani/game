@@ -62,6 +62,8 @@ function bindBus(game) {
   if (BOUND) return;
   BOUND = true;
   for (const evt of ['ultimateCast', 'awakenCast']) bus.on(evt, (d) => { try { GAME?.world?.companions?.onCast?.(evt, d); } catch (e) { console.warn('[companions]', evt, e); } });
+  // 유대 단계·레벨이 어디서 올랐든 (보스·50킬·스테이지 클리어·공물·디버그) 지금 월드의 수호신 파생 수치(공명·오라 ×1.5·스킬 위력)와 오라를 다시 계산한다
+  for (const evt of ['bondUp', 'companionLevelUp']) bus.on(evt, () => { const cs = GAME?.world?.companions; if (cs?.active) { cs.needRefresh = true; cs._hud = null; } });
 }
 
 /** 보이지 않는 감독: 엔티티 루프 안에서 CompanionSystem.update 를 부른다 (World.update 를 고치지 않고) */
@@ -90,7 +92,7 @@ export class CompanionSystem {
     this.hudRects = [];
     this.callouts = [];
     this.guards = []; this.key = null; this.director = null; this.cdStore = {};
-    this.timers = []; this.reso = null;
+    this.timers = []; this.reso = null; this.keep = [];
     this.kills = 0; this.killBond = 0; this.tileExp = 0; this.tileAcc = 0; this.lastX = null;
     this.groundY = null; this.idleT = 0; this.lastGround = true;
     this.autoT = 0; this.autoCd = 0; this.syncT = 0; this.chainN = -1; this.needRefresh = false; this.rideDone = false;
@@ -130,6 +132,13 @@ export class CompanionSystem {
   }
   /** delay 초 뒤 fn (월드 시간 기준; 방이 바뀌면 취소) */
   later(delay, fn) { if (delay <= 0) { try { fn(); } catch (e) { console.warn('[companions] later', e); } return; } this.timers.push({ t: delay, fn }); }
+  /** 방을 옮겨도 이어지는 연출 개체 (아리아 결계·가웨인 방패벽: shieldT·wallT 가 남아 있는 동안 보이고 탄을 막게) */
+  keepFx(e) {
+    if (!e) return e;
+    this.keep = this.keep.filter((x) => !x.dead && x.life > 0);
+    this.keep.push(e);
+    return e;
+  }
   runTimers(dt) {
     if (!this.timers.length) return;
     const due = [];
@@ -149,6 +158,8 @@ export class CompanionSystem {
     this.tileExp = 0; this.tileAcc = 0; this.lastX = p.cx; this.groundY = p.bottom; this.idleT = 0;
     this.sync(true);
     for (const g of this.guards) { g.dead = false; if (!w.entities.includes(g)) w.add(g); g.place(w, p); }
+    this.keep = this.keep.filter((e) => !e.dead && e.life > 0);
+    for (const e of this.keep) if (!w.entities.includes(e)) w.add(e);
     try { p.mount?.onRoomLoaded?.(w, p, roomId); } catch (e) { console.warn('[companions] mount room', e); }
     if (!this.rideDone) {
       this.rideDone = true;
@@ -455,6 +466,8 @@ export class CompanionSystem {
     if (!this.active) return;
     const w = this.world, p = w.player;
     this.shieldT = 0; this.wallT = 0; this.reso = null; this.timers.length = 0; this.idleT = 0;
+    for (const e of this.keep) e.dead = true;
+    this.keep.length = 0;
     if (!p) return;
     for (const g of this.guards) {
       g.act = null; g.target = null; g.flinchT = 0; g.perched = false;

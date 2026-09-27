@@ -3,9 +3,15 @@
 //  SKILL_IMPL[skillId] = (player, world, level) => boolean(시전 성공, false 면 MP/쿨타임 소모 안 함)
 //  castSkill(player, world, skillId, level), castUltimate(player, world), castTechnique(player, world, tech)
 //  SKILL_IMPL.__onSwing(player, world, move) : 일반 공격 판정 시작 시 직업 특성 연출/효과
+//  FXKIT : 필살기·각성기 연출 도우미 모음 (이 파일에 이미 있는 도구들; 각성 감독 AWAKEN-DIR-A/B 가 쓴다. 목록은 파일 끝)
+// 필살기 (feel.md §5.2·§5.3, FX-ULTS): castUltimate 가 전직 단계·강조색을 읽어 ULTS[charId](p, w, v) 에 넘긴다.
+//  v = { charId, classId, tier(0~2), color(필살기 색), accent(직업 강조색), q(품질 배율), low, name, title }
+//  화면 레이어(줌·레터박스·집중선·색보정·충격파·임팩트 프레임·직업 문양)는 ULTFX(render/ultfx.js) 가,
+//  영웅별 연출(월드 레이어)은 이 파일이 그린다. 피해량은 전직 단계와 무관하다 (연출만 달라진다).
 // 원칙: 레벨이 오를수록 위력뿐 아니라 크기·개수·지속 시간이 눈에 띄게 커진다("스킬 확대").
+// 그리기 도구 glow/beamV/beamH 는 색마다 한 번 구운 캐시 캔버스를 늘여 그린다 (매 프레임 그라디언트를 만들지 않는다, feel §8).
 import { audio } from '../core/audio.js';
-import { TAU, rand, clamp, lerp, ease, rgba, overlap } from '../core/math.js';
+import { TAU, rand, clamp, lerp, ease, rgba, overlap, hexToRgb } from '../core/math.js';
 import { T, isSolidType } from '../core/physics.js';
 import { TILE, game } from '../core/game.js';
 import { bus } from '../core/events.js';
@@ -15,6 +21,8 @@ import { SKILLS, skillVal } from '../data/skills.js';
 import { CHARACTERS } from '../data/characters.js';
 import { CLASSES } from '../data/classes.js';   // [hook:feel] ultimateCast 의 tier
 import { drawHero } from '../render/hero.js';
+import * as UFX from '../render/ultfx.js';   // [hook:feel] 필살기 화면 레이어 키트 ULTFX (FX-ULTKIT; 모듈 이름공간으로만 읽는다)
+import * as HFX from '../render/hitfx.js';   // 타격 캐시 스프라이트 (별·자국)
 import { SKILL_IMPL_P2, TECH_NAMES_P2 } from './skills_p2.js';   // [hook:p2] 2부 비전서 기술 (skills_p2.js 는 이 파일을 import 하지 않는다)
 
 export const SKILL_IMPL = {};
@@ -31,18 +39,25 @@ export function castSkill(p, world, id, lv) {
   return fn(p, world, Math.max(1, lv || 1)) !== false;
 }
 
-/** 필살기: run.sp ≥ 100 일 때 player 가 호출 */
+/**
+ * 필살기: run.sp ≥ 100 일 때 player(awaken.handleUltInput) 가 호출.
+ * 연출·경직 중이거나 스테이지가 끝나 가는 중이면 거절한다 (MASTER_PLAN §1.13; SP 는 그대로 남는다).
+ * 전직 단계·강조색·직업 id 를 읽어 영웅별 필살기에 넘긴다 (feel §5.2). 번쩍임은 game.flash 정책(설정 배율·상한·1초 제한)을 거친다.
+ */
 export function castUltimate(p, world) {
   if ((p.run.sp ?? 0) < 100 || world.cutscene) return false;
+  if (p.dead || world.cleared || world.transitioning || world.inputLock || p.hurtT > 0) return false;
   p.run.sp = 0;
   p.endMove?.();
   p.mount?.beforeCast?.(world, p, 'ult');   // [hook:cmp] 필살기는 탈것에서 내린 뒤 시전 (MASTER_PLAN §1.14)
+  const v = ultCtx(p, world);
   bus.emit('ultimateCast', { charId: p.hero.charId, tier: CLASSES[p.hero.classId]?.tier ?? 0, classId: p.hero.classId });   // [hook:feel] [hook:cmp]
   world.startUltimate?.(p);
   audio.sfx('ult');
-  world.game.flash('#ffffff', 0.7, 3);
+  world.game.flash('#ffffff', 0.5, 3);
+  prewarmUlt(v);   // 컷인이 월드를 멈춘 동안 캐시 스프라이트를 굽는다 (연출 도중 캔버스 생성 없음)
   const fn = ULTS[p.hero.charId] || ULTS.kael;
-  fn(p, world);
+  fn(p, world, v);
   return true;
 }
 
@@ -204,15 +219,60 @@ function shoot(w, p, o) {
 
 // ═══════════════════════════ 그리기 도구 ═══════════════════════════
 const ADD = 'lighter';
+// ── 캐시 스프라이트: 색마다 한 번 구운 작은 캔버스 (LRU 상한). 알파는 선형이라 globalAlpha 로 곱해도 예전 그라디언트와 같은 모양 ──
+const SPR = new Map();
+const SPR_MAX = 72;
+function spr(key, w, h, bake) {
+  let c = SPR.get(key);
+  if (c) return c;
+  if (typeof document === 'undefined' || !document.createElement) return null;
+  if (SPR.size >= SPR_MAX) { const k0 = SPR.keys().next().value; c = SPR.get(k0); SPR.delete(k0); }
+  else c = document.createElement('canvas');
+  if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+  const x = c.getContext('2d');
+  if (!x) return null;
+  x.setTransform(1, 0, 0, 1, 0, 0); x.globalAlpha = 1; x.globalCompositeOperation = 'source-over'; x.clearRect(0, 0, w, h);
+  try { bake(x, w, h); } catch (e) { console.warn('[skills] sprite', key, e); }
+  SPR.set(key, c);
+  return c;
+}
+/** 둥근 빛 (예전 glow 와 같은 3단 그라디언트) */
+function glowSprite(col) {
+  return spr('g' + col, 96, 96, (x, w) => {
+    const R = w / 2, g = x.createRadialGradient(R, R, 0, R, R, R);
+    g.addColorStop(0, rgba(col, 1)); g.addColorStop(0.35, rgba(col, 0.45)); g.addColorStop(1, rgba(col, 0));
+    x.fillStyle = g; x.fillRect(0, 0, w, w);
+  });
+}
+/** 빛기둥 단면 (가로 단면 vert=false 는 beamV, 세로 단면 vert=true 는 beamH 용) */
+function beamSprite(col, core, vert) {
+  return spr((vert ? 'bh' : 'bv') + col + core, vert ? 2 : 64, vert ? 64 : 2, (x, w, h) => {
+    const g = vert ? x.createLinearGradient(0, 0, 0, h) : x.createLinearGradient(0, 0, w, 0);
+    g.addColorStop(0, rgba(col, 0)); g.addColorStop(0.22, rgba(col, 0.22)); g.addColorStop(0.4, rgba(col, 0.75));
+    g.addColorStop(0.5, rgba(core, 1)); g.addColorStop(0.6, rgba(col, 0.75)); g.addColorStop(0.78, rgba(col, 0.22)); g.addColorStop(1, rgba(col, 0));
+    x.fillStyle = g; x.fillRect(0, 0, w, h);
+  });
+}
+/** 캐시 캔버스를 알파 a 로 그린다 (지금 globalAlpha 에 곱함) */
+function blit(ctx, img, x, y, w, h, a) {
+  const ga = ctx.globalAlpha;
+  ctx.globalAlpha = ga * Math.min(1, a);
+  ctx.drawImage(img, x, y, w, h);
+  ctx.globalAlpha = ga;
+}
 function glow(ctx, x, y, r, col, a = 1) {
   if (r <= 1 || a <= 0.01) return;
+  const s = glowSprite(col);
+  if (s) { blit(ctx, s, x - r, y - r, r * 2, r * 2, a); return; }
   const g = ctx.createRadialGradient(x, y, 0, x, y, r);
   g.addColorStop(0, rgba(col, a)); g.addColorStop(0.35, rgba(col, a * 0.45)); g.addColorStop(1, rgba(col, 0));
   ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2);
 }
 /** 세로 빛기둥 */
 function beamV(ctx, x, y0, y1, w, col, a = 1, core = '#ffffff') {
-  if (a <= 0.01 || w <= 0.5) return;
+  if (a <= 0.01 || w <= 0.5 || y1 === y0) return;
+  const s = beamSprite(col, core, false);
+  if (s) { blit(ctx, s, x - w, Math.min(y0, y1), w * 2, Math.abs(y1 - y0), a); return; }
   const g = ctx.createLinearGradient(x - w, 0, x + w, 0);
   g.addColorStop(0, rgba(col, 0)); g.addColorStop(0.22, rgba(col, 0.22 * a)); g.addColorStop(0.4, rgba(col, 0.75 * a));
   g.addColorStop(0.5, rgba(core, a)); g.addColorStop(0.6, rgba(col, 0.75 * a)); g.addColorStop(0.78, rgba(col, 0.22 * a)); g.addColorStop(1, rgba(col, 0));
@@ -220,7 +280,9 @@ function beamV(ctx, x, y0, y1, w, col, a = 1, core = '#ffffff') {
 }
 /** 가로 빛줄기 */
 function beamH(ctx, x0, x1, y, h, col, a = 1, core = '#ffffff') {
-  if (a <= 0.01 || h <= 0.5) return;
+  if (a <= 0.01 || h <= 0.5 || x1 === x0) return;
+  const s = beamSprite(col, core, true);
+  if (s) { blit(ctx, s, Math.min(x0, x1), y - h, Math.abs(x1 - x0), h * 2, a); return; }
   const g = ctx.createLinearGradient(0, y - h, 0, y + h);
   g.addColorStop(0, rgba(col, 0)); g.addColorStop(0.22, rgba(col, 0.22 * a)); g.addColorStop(0.4, rgba(col, 0.75 * a));
   g.addColorStop(0.5, rgba(core, a)); g.addColorStop(0.6, rgba(col, 0.75 * a)); g.addColorStop(0.78, rgba(col, 0.22 * a)); g.addColorStop(1, rgba(col, 0));

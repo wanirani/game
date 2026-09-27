@@ -314,7 +314,7 @@ export class Nightwing extends ABoss {
     const alt = clamp((this.floorY - B) / 360, 0, 1);
     shadow(ctx, X, this.floorY - 2, 130 * (1 - alt * 0.45), 16 * (1 - alt * 0.45), 0.55 * (1 - alt * 0.55));
     ctx.save();
-    const jx = this.flashT > 0 ? rand(-2.5, 2.5) : 0;
+    const jx = this.flashT > 0 ? Math.sin(this.t * 173) * 2.5 : 0;   // 그리기에서는 게임플레이 난수(Math.random)를 쓰지 않는다 — 채색/벡터 경로가 같은 난수열을 쓰도록
     ctx.translate(X + jx, B - 60); ctx.rotate(this.lean); ctx.scale(this.facing, 1); ctx.translate(0, 60);
     this.drawFigure(ctx, false);
     ctx.restore();

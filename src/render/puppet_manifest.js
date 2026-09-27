@@ -142,7 +142,7 @@ export const PUPPETS = {
    ]
   },
   "lia_bladedancer": {
-   "h": "9dce95cc5104",
+   "h": "dc7bcbd9d92e",
    "turn": true,
    "lv": [
     "hi",

@@ -357,7 +357,7 @@ export class Dullahan extends ABoss {
       ctx.restore();
     }
     ctx.save();
-    const jx = this.flashT > 0 ? rand(-2, 2) : 0;
+    const jx = this.flashT > 0 ? Math.sin(this.t * 173) * 2 : 0;   // 그리기에서는 게임플레이 난수(Math.random)를 쓰지 않는다 — 채색/벡터 경로가 같은 난수열을 쓰도록
     ctx.translate(X + jx, B); ctx.scale(this.facing * this.S, this.S);
     this.drawFigure(ctx, false);
     ctx.restore();
