@@ -107,17 +107,17 @@ function drawBoss(ctx, b, world, rig, st) {
   D.begin(ctx); D.end();
   b.paintBack?.(ctx, world);             // 어둠·반전·레이저 예고·왜곡 예고 (소용돌이·그림자는 채색이 그린다)
   drawShadows(ctx, D, b, rig, st, t, F);
-  if (!globalThis.__chx?.pa) P.draw(ctx, 0);
+  P.draw(ctx, 0);
   const g = st.gone;
   if (!g.body) {
-    if (!globalThis.__chx?.vx) drawVortex(ctx, b, st, t, dying ? 1 - smooth(1.8, 2.6, dT) : 1);
-    if (!globalThis.__chx?.sh) orbitShards(D, b, rig, st, false);
+    drawVortex(ctx, b, st, t, dying ? 1 - smooth(1.8, 2.6, dT) : 1);
+    orbitShards(D, b, rig, st, false);
     const glitch = clamp(b.glitch ?? 0, 0, 1);
     if (glitch > 0.05 && q.name !== 'low') drawGlitched(ctx, D, b, world, rig, st, lvl, t, glitch, dying, dT);
     else drawLord(ctx, D, b, world, rig, st, lvl, t, 0, 1, dying, dT, true);
-    if (!globalThis.__chx?.sh) orbitShards(D, b, rig, st, true);
+    orbitShards(D, b, rig, st, true);
   }
-  if (!globalThis.__chx?.ey) drawEyes(ctx, D, b, rig, st, t, dt);
+  drawEyes(ctx, D, b, rig, st, t, dt);
   if (dying) deathTick(st, b, rig, dT);
   D.end();
   st.shards.draw(D);
@@ -134,7 +134,8 @@ function drawBoss(ctx, b, world, rig, st) {
 // 어두운 원판 + 보라 발광 + 나선 팔(퍼프 30개)을 한 번만 미리 합성한 스프라이트 → 프레임마다 회전·납작 변환 drawImage 한 번.
 // (예전: 큰 퍼프 2 + 큰 가산 발광 1 + 작은 가산 발광 30 = 데스크톱 CPU 래스터에서 벡터의 2배 이상 → 면적 약 58% 감소)
 // 원판은 원형이라 회전해도 같고, 발광은 원판 위에 미리 더해 둔다(원판 밖으로 번지는 부분만 가산 대신 반투명 보라로 보임).
-const VX_S = 512, VX_R0 = 240;
+// 320px (예전 512): 부드러운 퍼프뿐이라 확대해도 같아 보이고, 캐시 메모리 1 MB → 0.4 MB (데스크톱 14.4 MB 굽기 + 캐시가 15 MB 예산 안에)
+const VX_S = 320, VX_R0 = 150, VX_K = VX_R0 / 240;
 const _vx = { full: null, dark: null };
 function vortexSprite(full) {
   const key = full ? 'full' : 'dark';
@@ -146,7 +147,7 @@ function vortexSprite(full) {
     c.globalCompositeOperation = 'lighter';
     c.globalAlpha = 0.22; c.drawImage(puff(VIOLET), o - R * 1.05, o - R * 1.05, R * 2.1, R * 2.1);
     for (let i = 0; i < 5; i++) for (let k = 0; k < 6; k++) {
-      const u = (k + 1) / 6, ang = i / 5 * TAU + u * 3, rr2 = 40 + u * 180, s = 16 + u * 10;
+      const u = (k + 1) / 6, ang = i / 5 * TAU + u * 3, rr2 = (40 + u * 180) * VX_K, s = (16 + u * 10) * VX_K;
       c.globalAlpha = 0.16 * (1 - u * 0.4);
       c.drawImage(puff(i % 2 ? MAGENTA : VIOLET), o + Math.cos(ang) * rr2 - s, o + Math.sin(ang) * rr2 - s, s * 2, s * 2);
     }
@@ -162,7 +163,8 @@ function drawVortex(ctx, b, st, t, a) {
   const ga = ctx.globalAlpha, sc = r / VX_R0;
   // 원판 + 발광 + 나선 팔 (나선은 t·0.6 으로 돎, 세로 0.85 납작)
   ctx.save();
-  ctx.translate(x, y); ctx.scale(sc, sc * 0.85); ctx.rotate(t * 0.6);
+  ctx.translate(x, y); ctx.scale(sc, sc * 0.85);
+  if (q.halos) ctx.rotate(t * 0.6);   // 저품질 원판은 동심원(나선 팔 없음)이라 돌려도 같다 → 회전 없는 확대 복사가 CPU 래스터에서 더 싸다
   ctx.globalAlpha = ga * a;
   ctx.drawImage(vortexSprite(q.halos), -VX_S / 2, -VX_S / 2);
   ctx.restore();
@@ -191,7 +193,7 @@ function drawLord(ctx, D, b, world, rig, st, lvl, t, ox, alpha, dying, dT, full,
   // 1) 몸 아래 촉수 (몸 뒤) — 바닥선 아래는 잘라 그린다
   if (full) {
     D.end(); D.save(); ctx.beginPath(); ctx.rect(x - 600, y - 800, 1200, F + 2 - (y - 800)); ctx.clip();
-    if (!globalThis.__chx?.tn) tentacles(D, b, rig, st, x, y, t, alpha, lvl, dying, dT);
+    tentacles(D, b, rig, st, x, y, t, alpha, lvl, dying, dT);
     D.end(); D.restore();
   }
   D.startFlash(); if (!flashAll) D.rec = false;
@@ -209,7 +211,7 @@ function drawLord(ctx, D, b, world, rig, st, lvl, t, ox, alpha, dying, dT, full,
   const Bd = R.body, bs = 1 + breathe;
   D.part(Bd, V(Bd), 'neck', x, y + NECK_Y, 0, Bd.k * bs, Bd.k * bs, bodyA);
   D.end();
-  if (full && q.ledges && !globalThis.__chx?.lg) ledgesOver(ctx, world, x - 260, y - 200, x + 260, Math.min(F, y + 260));
+  if (full && q.ledges) ledgesOver(ctx, world, x - 260, y - 200, x + 260, Math.min(F, y + 260));
   const H = R.head, J = R.jaw, m = clamp(b.mouth ?? 0.1, 0, 1);
   const hy = y + HEAD_Y + Math.sin(t * 1.3) * 2, hrot = Math.sin(t * 0.9) * 0.025 + (dying ? Math.sin(t * 40) * 0.04 : 0);
   // 아가리 속 (턱이 벌어진 틈): 자홍 발광

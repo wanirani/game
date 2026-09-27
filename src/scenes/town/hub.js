@@ -117,7 +117,7 @@ export class HubScene extends Scene {
     const b = BUILDINGS.find((k) => k.door !== undefined && d.x === k.door * TILE);
     d.building = b;
     const cx = d.cx;
-    const wid = b?.kind === 'gate' ? 150 : b?.kind === 'church' ? 80 : b?.kind === 'board' ? 180 : b?.kind === 'stable' ? 90 : 56;
+    const wid = b?.kind === 'gate' ? 150 : b?.kind === 'church' ? 80 : b?.kind === 'board' ? 180 : b?.kind === 'stable' ? 84 : 56; // 마구간 겹문 84 px (CMP-TOWN)
     d.x = cx - wid / 2; d.w = wid;
     d.z = 20;
     d.draw = (ctx, world) => {
@@ -127,7 +127,7 @@ export class HubScene extends Scene {
       ctx.globalCompositeOperation = 'lighter';
       glow(ctx, d.cx, FLOOR - 40, 70, '#ffb45a', 0.35 + Math.sin(t * 5) * 0.08);
       ctx.globalCompositeOperation = 'source-over';
-      const ly = FLOOR - (b?.kind === 'board' ? 214 : b?.kind === 'church' ? 150 : b?.kind === 'gate' ? 160 : b?.kind === 'stable' ? 140 : 116) - Math.abs(Math.sin(t * 4)) * 6;
+      const ly = FLOOR - (b?.kind === 'board' ? 214 : b?.kind === 'church' ? 150 : b?.kind === 'gate' ? 160 : b?.kind === 'stable' ? 124 : 116) - Math.abs(Math.sin(t * 4)) * 6;
       text(ctx, '▲', d.cx, ly, { size: 20, weight: 900, color: '#ffe7a0', align: 'center', ow: 4 });
       ctx.restore();
     };
@@ -428,7 +428,7 @@ export class HubScene extends Scene {
     }
     const bwd = 88, bh = 40, by = gy + 80;
     const rParty = { x: W - 14 - bwd * 2 - 8, y: by, w: bwd, h: bh }, rMenu = { x: W - 14 - bwd, y: by, w: bwd, h: bh };
-    if (g.registry.party) { uiButton(ctx, rParty, '헌터', { size: 15 }); rects.party = this.zone('party', rParty, k, off); }
+    if (g.registry.party) { uiButton(ctx, rParty, '헌터 교체', { size: 14 }); rects.party = this.zone('party', rParty, k, off); }
     uiButton(ctx, rMenu, '메뉴', { size: 15 }); rects.menu = this.zone('menu', rMenu, k, off);
 
     // ── 하단: 상호작용 안내 ──
@@ -535,7 +535,7 @@ export class HubScene extends Scene {
     ctx.restore();
   }
   crackSprite(vw) {
-    const s = clamp(this.game.scale || 1, 1, 2);
+    const s = clamp(this.game.scale || 1, 1, 1.5); // 흐릿한 빛줄기라 1.5배면 충분 (fhd2x 에서도 약 0.6 MP)
     const w = Math.ceil(vw + 140), h = 190;
     if (this.crack && this.crack.w === w && this.crack.s === s) return this.crack;
     let cv;

@@ -16,7 +16,7 @@ import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
 import { assets } from '../../core/assets.js';
 import { saves } from '../../core/save.js';
-import { text, drawCover, FONT, font, taps } from '../../core/ui.js';
+import { text, drawCover, FONT, font, taps, fontEpoch } from '../../core/ui.js';
 import { drawHints } from '../../core/prompts.js';
 import { TAU, clamp, lerp, ease, fmt, fmtTime, rgba, rand, shade, mix } from '../../core/math.js';
 import { Particles } from '../../core/particles.js';
@@ -268,25 +268,27 @@ export class WorldMapScene extends Scene {
 
   /**
    * 이름표 자리 (아래 · 위 · 오른쪽 · 왼쪽): 노드·랭크 인장·출발 표식·앞서 놓인 이름표·상단 바·정보 패널·화면 끝과 가장 덜 겹치는 곳.
-   * 열린 노드부터 놓는다. 화면 크기·열린 노드·랭크가 바뀔 때만 다시 계산한다.
+   * 열린 노드부터 놓는다. 화면 크기·열린 노드·랭크·글꼴 세대가 바뀔 때만 다시 계산한다.
+   * 어느 자리에 놓아도 다른 노드·이름표·지도 가장자리에 걸리는 이름표(좁은 UI 배율 화면)는 hidden — 그 노드를 골랐을 때만 맨 위에 그린다.
    */
   labels(L, page) {
     const pg = this.pages[page], P = this.state.progress;
-    let key = `${L.W}|${L.H}|${L.my}|${L.mh}|`;
+    let key = `${L.W}|${L.H}|${L.my}|${L.mh}|${L.panelY}|${fontEpoch}|`;
     for (const n of pg.nodes) key += (this.isOpen(n) ? 'o' : '-') + (P.cleared?.[n.id]?.rank ? 'r' : '');
     const c = this._lab[page];
     if (c && c.key === key) return c;
     const m = measureCtx();
     if (m) m.font = font(14, 800, FONT.title);
     const wOf = (s) => (m ? Math.ceil(m.measureText(s).width) : s.length * 14) + 8;
+    // [x, y, 점수 반지름, 겹침 한계(이보다 가까우면 그린 원 위에 글자가 얹힌다), 노드]
     const circles = [], xy = [];
     for (const n of pg.nodes) {
       const q = this.pos(n.stage.mapPos, L);
-      xy.push(q); circles.push([q.x, q.y, 23]);
-      if (P.cleared?.[n.id]?.rank) circles.push([q.x + 17, q.y - 17, 11]);
+      xy.push(q); circles.push([q.x, q.y, 23, 19, n]);
+      if (P.cleared?.[n.id]?.rank) circles.push([q.x + 17, q.y - 17, 11, 10, null]);
     }
     const sp = this.pos(PAGES[page].start, L);
-    circles.push([sp.x, sp.y - 6, 26]);
+    circles.push([sp.x, sp.y - 6, 26, 18, null]);
     const sw = wOf(PAGES[page].startName);
     const boxes = [{ x: sp.x - sw / 2, y: sp.y + 10, w: sw, h: 17 }];
     const map = new Map();
@@ -318,9 +320,13 @@ export class WorldMapScene extends Scene {
         if (b.x < 4 || b.x + w > L.W - 4) s += 5;
         if (s < bs) { bs = s; best = cd; }
       }
-      const box = { x: best.x, y: best.y, w, h, side: best.side };
+      const box = { x: best.x, y: best.y, w, h, side: best.side, hidden: false };
+      let clean = !(box.y < L.TB + 2 || box.y + h > L.panelY - 2 || box.x < 2 || box.x + w > L.W - 2);
+      for (const [cx, cy, , hard, cn] of circles) if (clean && cn !== n && boxDist(box, cx, cy) < hard) clean = false;
+      for (const o of boxes) if (clean && boxOverlap(box, o) > 4) clean = false;
+      box.hidden = !clean;
       map.set(n.id, box);
-      if (open) boxes.push(box);
+      if (open && clean) boxes.push(box);
     }
     return (this._lab[page] = { key, map, boxes });
   }
@@ -381,7 +387,7 @@ export class WorldMapScene extends Scene {
       if (hit === 'go') { this.start(); return; }
       if (hit === 'tab0' || hit === 'tab1') { this.setPage(hit === 'tab1' ? 1 : 0); return; }
       if (typeof hit === 'string' && hit.startsWith('node:')) {
-        const i = Number(hit.slice(5));
+        const i = this.nearestNode(Number(hit.slice(5)), L);
         if (i === this.index) this.start();
         else if (nodes[i]) { this.index = i; audio.sfx('menu_move'); }
         return;
@@ -397,6 +403,13 @@ export class WorldMapScene extends Scene {
       const k = 1 - Math.pow(0.0005, dt);
       this.tok.x = lerp(this.tok.x, tp.x, k); this.tok.y = lerp(this.tok.y, tp.y, k);
     }
+  }
+  /** 이웃 노드의 탭 영역이 겹칠 때(좁은 UI 배율 화면): 맨 위에 등록된 영역 대신 포인터에 가장 가까운 노드 */
+  nearestNode(i, L) {
+    const p = input.pointer;
+    let best = i, bd = Infinity;
+    this.nodes.forEach((n, j) => { const q = this.pos(n.stage.mapPos, L), d = Math.hypot(q.x - p.x, q.y - p.y); if (d < bd) { bd = d; best = j; } });
+    return bd <= 40 ? best : i;
   }
   updateReveal(dt, L) {
     const R = this.reveal; R.t += dt;
@@ -512,6 +525,9 @@ export class WorldMapScene extends Scene {
         taps.add('node:' + i, { x: p.x - 26, y: p.y - 26, w: 52, h: 52 }, { kind: 'icon', owner: this, src: 'worldmap' });
       }
     }
+    // 고른 노드의 이름표는 맨 위에 (좁은 화면에서 평소엔 숨기는 이름표도 이때는 보인다)
+    const sn = pg.nodes[sel], sb = sn && lab.map.get(sn.id);
+    if (sb) this.nodeLabel(ctx, PG, this.isOpen(sn) ? sn.stage.name ?? '' : '???', sb, true);
     if (live && this.tok && !this.reveal) this.token(ctx, this.tok.x, this.tok.y - 42 - Math.abs(Math.sin(t * 3)) * 5);
   }
   /** 지도 전환: 이전 지도를 한 번 오프스크린에 그려 두고 0.35초 동안 흐려지게 겹친다 */
@@ -669,16 +685,16 @@ export class WorldMapScene extends Scene {
         ctx.beginPath(); ctx.arc(p.x + R * 0.85, p.y + R * 0.6, 3.6, 0, TAU); ctx.fill(); ctx.stroke();
       }
     }
-    // 이름
-    if ((open || sel) && box) {
-      const label = open ? n.stage.name : '???';
-      const o = { size: sel ? 14 : 12, weight: 800, family: FONT.title, color: sel ? PG.labelSel : PG.label, outline: PG.outline, ow: 4 };
-      const by = box.y + 13;
-      if (box.side === 'right') text(ctx, label, box.x + 4, by, { ...o, align: 'left' });
-      else if (box.side === 'left') text(ctx, label, box.x + box.w - 4, by, { ...o, align: 'right' });
-      else text(ctx, label, box.x + box.w / 2, by, { ...o, align: 'center' });
-    }
+    // 이름 (고른 노드는 drawMap 이 모든 노드 뒤에 그린다)
+    if (open && !sel && box && !box.hidden) this.nodeLabel(ctx, PG, n.stage.name ?? '', box, false);
     ctx.restore();
+  }
+  nodeLabel(ctx, PG, label, box, sel) {
+    const o = { size: sel ? 14 : 12, weight: 800, family: FONT.title, color: sel ? PG.labelSel : PG.label, outline: PG.outline, ow: 4 };
+    const by = box.y + 13;
+    if (box.side === 'right') text(ctx, label, box.x + 4, by, { ...o, align: 'left' });
+    else if (box.side === 'left') text(ctx, label, box.x + box.w - 4, by, { ...o, align: 'right' });
+    else text(ctx, label, box.x + box.w / 2, by, { ...o, align: 'center' });
   }
   star(ctx, x, y, r, color) {
     ctx.beginPath();
@@ -738,13 +754,16 @@ export class WorldMapScene extends Scene {
   /** 탭 x: 넓으면 명세 자리(250), 좁으면 제목 바로 옆 */
   tabX(L) {
     if (L.W >= 900) return 250;
+    if (this._tabX?.e === fontEpoch) return this._tabX.x;   // 글자 폭은 글꼴이 도착할 때만 다시 잰다
     const m = measureCtx();
     let tw = 110;
     if (m) {
       m.font = font(24, 800, FONT.title); tw = Math.max(m.measureText(PAGES[0].title).width, m.measureText(PAGES[1].title).width);
       m.font = font(11, 800, FONT.num); tw = Math.max(tw, m.measureText(PAGES[0].sub).width, m.measureText(PAGES[1].sub).width);
     }
-    return Math.round(Math.max(150, 22 + tw + 16));
+    const x = Math.round(Math.max(150, 22 + tw + 16));
+    this._tabX = { e: fontEpoch, x };
+    return x;
   }
   /** 드라큘라의 유물 5칸 (오른쪽 끝 = x1 에 맞춘다; 자리가 모자라면 간격을 줄이고 이름을 뺀다) */
   relicBar(ctx, x0, x1) {

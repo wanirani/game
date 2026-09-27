@@ -73,10 +73,9 @@ function put(ctx, S, x, y, rot = 0, sx = 1, sy = sx) {
   if (!S || !sx || !sy) return;
   const img = R.fl ? S.f : S.c;
   if (!rot && sx === 1 && sy === 1) { ctx.drawImage(img, x - S.ox, y - S.oy, S.w, S.h); return; }
-  // save/restore 대신 역변환 (스프라이트마다 save/restore 는 모바일에서 비싸다)
-  ctx.translate(x, y); if (rot) ctx.rotate(rot); if (sx !== 1 || sy !== 1) ctx.scale(sx, sy);
+  ctx.save(); ctx.translate(x, y); if (rot) ctx.rotate(rot); if (sx !== 1 || sy !== 1) ctx.scale(sx, sy);
   ctx.drawImage(img, -S.ox, -S.oy, S.w, S.h);
-  if (sx !== 1 || sy !== 1) ctx.scale(1 / sx, 1 / sy); if (rot) ctx.rotate(-rot); ctx.translate(-x, -y);
+  ctx.restore();
 }
 function bakeScale(world) {
   const s = world?.game?.scale, z = world?.camera?.zoomTarget ?? 0.8;
@@ -488,7 +487,7 @@ function gtube(ctx, x0, y0, x1, y1, r0, r1, dark = false) {
   const L = Math.hypot(x1 - x0, y1 - y0);
   if (L < 0.5) return;
   const ang = Math.atan2(y1 - y0, x1 - x0);
-  ctx.translate(x0, y0); ctx.rotate(ang);
+  ctx.save(); ctx.translate(x0, y0); ctx.rotate(ang);
   ctx.beginPath();
   ctx.moveTo(0, -r0); ctx.lineTo(L, -r1); ctx.arc(L, 0, r1, -PI / 2, PI / 2); ctx.lineTo(0, r0); ctx.arc(0, 0, r0, PI / 2, -PI / 2);
   ctx.closePath();
@@ -502,7 +501,7 @@ function gtube(ctx, x0, y0, x1, y1, r0, r1, dark = false) {
     ctx.strokeStyle = 'rgba(232,242,255,0.55)'; ctx.lineWidth = 1.1;
     ctx.beginPath(); ctx.moveTo(r0 * 0.4, -r0 * 0.55); ctx.lineTo(L - r1 * 0.4, -r1 * 0.55); ctx.stroke();
   }
-  ctx.rotate(-ang); ctx.translate(-x0, -y0);
+  ctx.restore();
 }
 /** 관절 원반 (초상화의 둥근 관절 뚜껑) */
 function joint(ctx, x, y, r, dark = false) {

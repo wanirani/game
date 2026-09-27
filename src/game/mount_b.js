@@ -400,6 +400,8 @@ const GALE = {
   /** 뇌명 급강하: 땅에서는 높이 도약한 뒤, 공중에서는 곧바로 번개를 두르고 내리꽂힌다 */
   special: {
     start(r, world, p) {
+      // 헤엄치는 중에는 쓰지 않는다: 급강하가 물에 닿자마자 끝나 충격파 없이 재사용 대기만 날린다 (false → ↓+공격은 일반 공격)
+      if (r.inWater || r._wet) return false;
       const sp = r.def?.special ?? {}, air = !p.onGround;
       r.startAct({
         name: 'thunderdive', dur: 2.2, anim: air ? 'dive' : 'jump', riderAnim: air ? 'ride_charge' : 'ride_rear', moveMul: 0.55,

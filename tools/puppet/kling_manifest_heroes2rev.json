@@ -1,0 +1,88 @@
+{
+ "_doc": "heroes2 리뷰(heroes2rev) 에이전트의 클링 생성 기록 — bran·lia 검수 중 새로 만든 원화만. 생산 기록은 kling_manifest_heroes2.json (건드리지 않음). images = 과금 이미지 수(후보 포함). 업로드 JPG 는 src/<char>/*.webp(워터마크 제거본)에서 만들었고, 뒷모습(back)은 turn5 의 4번째 인물(ym90)을 잘라 좌우를 배경색으로 넓힌 것.",
+ "model": "kling-image-v3_0_omni",
+ "uploads": {
+  "lia_shadowmaster_side.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qVgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo8YWdlbnRfdXBsb2FkLzE3OTA1MDE0ODYvMkN5NW1oUFdyMC9saWFfc2hhZG93bWFzdGVyX3NpZGUuanBn.origin?x-kcdn-pid=112372",
+  "lia_shadowmaster_back.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qVgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo8YWdlbnRfdXBsb2FkLzE3OTA1MDE0ODgveVF6WlFEN2E4eC9saWFfc2hhZG93bWFzdGVyX2JhY2suanBn.origin?x-kcdn-pid=112372",
+  "lia_kunoichi_side.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qUgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo4YWdlbnRfdXBsb2FkLzE3OTA1MDE0OTEvd3lyU1FnNTZXOS9saWFfa3Vub2ljaGlfc2lkZS5qcGc.origin?x-kcdn-pid=112372",
+  "lia_kunoichi_back.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qUgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo4YWdlbnRfdXBsb2FkLzE3OTA1MDE0OTQvQk9rVzVBUzRYZy9saWFfa3Vub2ljaGlfYmFjay5qcGc.origin?x-kcdn-pid=112372",
+  "bran_guardian_side.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qUwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo5YWdlbnRfdXBsb2FkLzE3OTA1MDE0OTYvVGJjaFVvRjNGOC9icmFuX2d1YXJkaWFuX3NpZGUuanBn.origin?x-kcdn-pid=112372",
+  "bran_guardian_back.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qUwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo5YWdlbnRfdXBsb2FkLzE3OTA1MDE0OTkvMml6bUFvclEzMy9icmFuX2d1YXJkaWFuX2JhY2suanBn.origin?x-kcdn-pid=112372",
+  "lia_dancer_side.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qUAoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo2YWdlbnRfdXBsb2FkLzE3OTA1MDE1MDIvOVNqV3ZuZUVndC9saWFfZGFuY2VyX3NpZGUuanBn.origin?x-kcdn-pid=112372",
+  "lia_kunoichi_turn5.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qUwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo5YWdlbnRfdXBsb2FkLzE3OTA1MDE1MDUvdTRZSTRGd1lMTS9saWFfa3Vub2ljaGlfdHVybjUuanBn.origin?x-kcdn-pid=112372"
+ },
+ "entries": [
+  {
+   "id": "lia_shadowmaster_q3b",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "ASDZTrckQ__sKB5Oib7sWtTTOAp3QYcCRcHBkXyCaPpSRBzI29JvHnwyxI3rndFpxMVMtvMx",
+   "inputs": [
+    "lia_shadowmaster_side.jpg (identity/outfit)",
+    "lia_shadowmaster_back.jpg (ym90 crop of turn5, back design)"
+   ],
+   "aspect_ratio": "3:4",
+   "img_resolution": "2k",
+   "prompt": "(heroes1rev q3b 템플릿) One single full-body THREE-QUARTER BACK view of the young woman in 图片1 … turned about 45 degrees away from the viewer toward the LEFT edge … sliver of her cheek and the edge of her black mask in lost profile on the left side …",
+   "src": "(pending)",
+   "picked": "(pending)",
+   "note": "리뷰: qback 의 ym135(오른쪽 인물)가 좌우 대칭 정면 뒷모습 → −45/−90/−135 가 같은 그림"
+  },
+  {
+   "id": "lia_kunoichi_q3b",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AcBoinHLnWlp-G69v6RM5ezyQAFFajKYT95GPIVl4QVdSbOZVLzoIqtle6cP2o1k3q4GJjes",
+   "inputs": [
+    "lia_kunoichi_side.jpg",
+    "lia_kunoichi_back.jpg (ym90 crop)"
+   ],
+   "aspect_ratio": "3:4",
+   "img_resolution": "2k",
+   "prompt": "(같은 템플릿, 카게로우 의상 + 'no ponytail')",
+   "src": "(pending)",
+   "picked": "(pending)",
+   "note": "리뷰: qback 오른쪽 인물이 대칭 뒷모습(왼쪽은 앞모습)"
+  },
+  {
+   "id": "bran_guardian_q3b",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "AZ7rR0gNhGYW_s3OZ5LPzRWjkuaiBARA74g7eT5rZ4corUnSqF17UriF9mC6RJNll7vDUDqs",
+   "inputs": [
+    "bran_guardian_side.jpg",
+    "bran_guardian_back.jpg (ym90 crop)"
+   ],
+   "aspect_ratio": "3:4",
+   "img_resolution": "2k",
+   "prompt": "(같은 템플릿, 수호성기사 판금 + 월계관, 'no cape, no halo')",
+   "src": "(pending)",
+   "picked": "(pending)",
+   "note": "리뷰: qback 두 인물 모두 대칭 뒷모습"
+  },
+  {
+   "id": "lia_dancer_turn5_v2",
+   "tool": "image_to_image",
+   "images": 1,
+   "generationId": "ATQaKyHK_vDM1DaY7mvRSiNkKO3VNtYOFPIBDfwWeQz2hK5m4CrQmULGgnHcSbDPjXyTGrGi",
+   "inputs": [
+    "lia_dancer_side.jpg",
+    "lia_kunoichi_turn5.jpg (layout only, padded to 1.9:1)"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
+   "prompt": "(생산 v1 프롬프트 + 'In EVERY view she wears the same plain black cloth face mask … exactly like in 图片1', '3/4 front turned clearly about 45 degrees', 레이아웃을 카게로우 5뷰로)",
+   "src": "(pending)",
+   "picked": "(pending)",
+   "note": "리뷰: 생산 turn5 는 앞·3/4 앞·옆에서 가면이 사라짐(측면 원화·게임 퍼펫은 가면) → 턴테이블 0°↔45° 에서 가면이 생겼다 사라짐"
+  }
+ ],
+ "images_used": {
+  "bran": 1,
+  "lia": 3
+ },
+ "totals_with_production": {
+  "bran": 41,
+  "lia": 48
+ }
+}

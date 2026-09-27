@@ -249,7 +249,7 @@ export class StableScene extends ServiceScene {
     this.tab = eggReady ? 2 : claim ? 3 : (CS.ownedIds?.(st) ?? []).length ? 0 : 1;
     this.refresh();
     if (eggReady) this.talk(scriptLine('cmp_egg_ready') ?? STABLE_LINES.egg[0]);
-    else if (claim) this.talk(scriptLine('npc_greta_default') ?? pickLine(STABLE_LINES.hello));
+    else if (claim) this.talk('의뢰는 끝냈어? 표정을 보니 좋은 소식이구나.');
     else this.talk('hello');
     this.flowSoon = true;   // 첫 update 에서 마구간 개장 대사 · 남은 합류 연출 (companionHubEnter)
   }
@@ -378,7 +378,7 @@ export class StableScene extends ServiceScene {
   buy(e) {
     const st = this.state, row = e.row, d = companionDef(e.id);
     if (CS.isOwned?.(st, e.id)) { audio.sfx('menu_cancel'); this.game.toast(CMP_TEXT.owned, '#c8b8a0'); return; }
-    if ((st.progress?.chapter ?? 0) < row.chapter) { audio.sfx('menu_cancel'); this.talk(`아직은 안 돼. ${row.lockNote}에 다시 와.`); return; }
+    if ((st.progress?.chapter ?? 0) < row.chapter) { audio.sfx('menu_cancel'); this.talk(`아직 들여오지 못했어. ${row.chapter}장을 마치고 다시 와.`); return; }
     if (!((st.gold ?? 0) >= row.price)) { this.poor(); return; }
     audio.sfx('menu_ok');
     const who = row.label !== d.name ? `${row.label} — ${d.title} ${d.name}` : `${d.title} ${d.name}`;

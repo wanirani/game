@@ -29,10 +29,16 @@ const BOX_H = 150, BOX_LINES = 4, LINE_H = 29;
 
 // 초상화 가장자리를 부드럽게 (배경/CG·대화창 위에서 사각 경계가 보이지 않도록) — 이미지별 캐시
 //  좌우 12% · 위 7% · 아래 28% 를 투명으로 지운다 (아래쪽은 대화창 뒤로 스며들게)
-const _soft = new WeakMap();
+//  초상화 한 장 ≈ 3 MB 캔버스라 최근 SOFT_MAX 장만 남긴다 (한 판 내내 쌓이면 휴대폰 캔버스 예산 20 MB 를 넘는다)
+const SOFT_MAX = 4;
+const _soft = new Map();
 function softPortrait(img) {
   let c = _soft.get(img);
-  if (c) return c;
+  if (c) { _soft.delete(img); _soft.set(img, c); return c; } // 최근 사용 순서 유지 (LRU)
+  while (_soft.size >= SOFT_MAX) {
+    const [k, old] = _soft.entries().next().value;
+    _soft.delete(k); old.width = old.height = 0; // 캔버스 메모리를 바로 돌려준다
+  }
   c = document.createElement('canvas');
   c.width = img.width; c.height = img.height;
   const g = c.getContext('2d');
@@ -82,7 +88,7 @@ export class DialogueScene extends Scene {
     this.lines = Array.isArray(L) ? L : [];
     this.i = -1; this.shown = 0; this.menu = null; this.cur = null; this.full = '';
     this.cg = null; this.cgT = 0;
-    this.sp = null; this.pKey = null; this.pT = 0; this.lay = null;
+    this.sp = null; this.pKey = null; this.pT = 0; this.lay = null; this._pReady = null;
     this.labels = {};
     // { label } 만 있는 줄이 이동 목표. { if, cmd:'goto', label } (ifFlag/ifChar) 은 조건부 이동 명령이다
     this.lines.forEach((l, k) => { if (l && l.label && !l.cmd) this.labels[l.label] = k; });
@@ -259,6 +265,8 @@ export class DialogueScene extends Scene {
     // 초상화 (이벤트 CG 가 떠 있으면 CG 속 인물과 겹치지 않도록 생략). 화자가 바뀌면 옆에서 스며든다
     const img = sp.portrait && !cgImg ? assets.get(sp.portrait) : null;
     if (img && img.width > 0) {
+      // 초상화가 늦게 도착했으면(느린 망) 그때부터 스며들게 — 이미 다 들어온 모습으로 갑자기 튀어나오지 않도록
+      if (this._pReady !== this.pKey) { this._pReady = this.pKey; if (this.pT > 0.1) this.pT = 0; }
       const side = sp.side ?? (sp.hero ? 'left' : 'right');
       const h = H * 0.78, w = h * (img.width / img.height);
       const a = ease.outCubic(clamp(this.pT / 0.22, 0, 1));

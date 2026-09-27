@@ -31,6 +31,8 @@ export class ChurchScene extends ServiceScene {
     this.talk('hello');
   }
   get useLeftRight() { return this.tab === 0 || this.tab === 1; }
+  /** 안내 줄의 선택 방향: 전직 카드는 ←→, 축복 목록은 ↑↓, 초기화·기록 탭은 고를 것이 없다 */
+  selectHint() { const id = this.tabs[this.tab]?.id; return id === 'class' ? 'dpadH' : id === 'bless' ? 'dpadV' : null; }
   onTab() { this.sel = 0; }
 
   get options() {

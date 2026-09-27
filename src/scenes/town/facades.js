@@ -1077,6 +1077,15 @@ function drawBats(ctx, cam, t) {
 // 칸 밖으로 내민 탈것 머리. 원점 = 반쪽 문 윗변의 목 아래 가운데, 오른쪽을 본다, 위가 -y. 대략 x -18…+30, y -52…0.
 // p = def.palette [몸, 중간, 강조(갈기·비늘), 장식, 눈/빛]
 const MOON = 'rgba(169,194,255,0.4)';
+// 매 프레임 그리는 머리·판자는 그라디언트를 새로 만들지 않고 (컨텍스트, 키)별로 한 번만 만든다 (좌표는 지역 좌표라 재사용 가능)
+const GCACHE = new WeakMap();
+function cgrad(c, key, y0, y1, a, b) {
+  let m = GCACHE.get(c);
+  if (!m) GCACHE.set(c, (m = new Map()));
+  let g = m.get(key);
+  if (!g) { g = vgrad(c, y0, y1, a, b); m.set(key, g); }
+  return g;
+}
 function eyeDot(c, x, y, col, r = 1.8, glowA = 0) {
   if (glowA > 0) { c.globalCompositeOperation = 'lighter'; glow(c, x, y, r * 5, col, glowA); c.globalCompositeOperation = 'source-over'; }
   c.fillStyle = col; c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill();
@@ -1100,7 +1109,7 @@ const HEADS = {
       }
     }
     // 목 · 머리
-    c.fillStyle = skel ? vgrad(c, -44, 0, p[0], p[1]) : vgrad(c, -44, 0, shade(p[1], 0.1), p[0]);
+    c.fillStyle = skel ? cgrad(c, id + ':b', -44, 0, p[0], p[1]) : cgrad(c, id + ':b', -44, 0, shade(p[1], 0.1), p[0]);
     c.beginPath();
     c.moveTo(-12, 0); c.quadraticCurveTo(-13, -24, -3, -36); c.lineTo(2, -40);
     c.quadraticCurveTo(15, -36, 25, -20); c.quadraticCurveTo(29, -14, 25, -11);
@@ -1135,7 +1144,7 @@ const HEADS = {
     c.beginPath(); c.moveTo(2, -35); c.lineTo(9, -16); c.moveTo(6, -24); c.lineTo(22, -19); c.stroke();
     if (id === 'mt_warhorse') {
       // 쇠 면갑 (초상화의 흑철 마갑)
-      c.fillStyle = vgrad(c, -38, -16, '#9a9eaa', '#4a4c58');
+      c.fillStyle = cgrad(c, id + ':plate', -38, -16, '#9a9eaa', '#4a4c58');
       c.beginPath(); c.moveTo(4, -37); c.quadraticCurveTo(14, -34, 22, -21); c.lineTo(19, -19); c.quadraticCurveTo(12, -28, 5, -31); c.closePath(); c.fill();
       c.strokeStyle = P.ol; c.lineWidth = 1; c.stroke();
       c.fillStyle = '#c8ccd8'; c.beginPath(); c.arc(9, -33, 1.2, 0, TAU); c.fill();
@@ -1152,7 +1161,7 @@ const HEADS = {
       c.beginPath(); c.moveTo(bx - 3, -48); c.lineTo(bx + 5 + d * 2, -56); c.moveTo(bx - 7, -56); c.lineTo(bx - 2 + d * 3, -64); c.moveTo(bx - 9, -60); c.lineTo(bx - 18, -64); c.stroke();
       c.lineWidth = 2.4;
     }
-    c.fillStyle = vgrad(c, -40, 0, p[0], p[1]);
+    c.fillStyle = cgrad(c, id + ':b', -40, 0, p[0], p[1]);
     c.beginPath(); c.moveTo(-10, 0); c.quadraticCurveTo(-12, -22, -2, -32); c.lineTo(4, -35);
     c.quadraticCurveTo(14, -32, 22, -22); c.quadraticCurveTo(25, -18, 22, -15); c.quadraticCurveTo(14, -14, 9, -18); c.quadraticCurveTo(6, -8, 8, 0); c.closePath(); c.fill();
     c.strokeStyle = P.ol; c.lineWidth = 1.2; c.stroke();
@@ -1165,7 +1174,7 @@ const HEADS = {
     c.fillStyle = '#1a1410'; c.beginPath(); c.arc(22, -17.5, 1.6, 0, TAU); c.fill();
   },
   boar(c, p, id, v, t, k) {
-    c.fillStyle = vgrad(c, -40, 0, p[1], p[0]);
+    c.fillStyle = cgrad(c, id + ':b', -40, 0, p[1], p[0]);
     c.beginPath(); c.moveTo(-15, 0); c.quadraticCurveTo(-17, -26, -4, -34); c.quadraticCurveTo(8, -36, 14, -28);
     c.lineTo(24, -19); c.lineTo(26, -9); c.quadraticCurveTo(16, -4, 8, -6); c.lineTo(5, 0); c.closePath(); c.fill();
     c.strokeStyle = P.ol; c.lineWidth = 1.2; c.stroke();
@@ -1173,7 +1182,7 @@ const HEADS = {
     c.strokeStyle = shade(p[0], -0.35); c.lineWidth = 1.6;
     for (let i = 0; i < 8; i++) { const a = i / 7, x0 = -15 + a * 16, y0 = -6 - a * 28; c.beginPath(); c.moveTo(x0, y0); c.lineTo(x0 - 6, y0 - 4); c.stroke(); }
     // 철 이마 가리개
-    c.fillStyle = vgrad(c, -34, -20, p[3], p[2]); c.beginPath(); c.moveTo(-2, -33); c.lineTo(11, -30); c.lineTo(18, -22); c.lineTo(6, -23); c.closePath(); c.fill();
+    c.fillStyle = cgrad(c, id + ':plate', -34, -20, p[3], p[2]); c.beginPath(); c.moveTo(-2, -33); c.lineTo(11, -30); c.lineTo(18, -22); c.lineTo(6, -23); c.closePath(); c.fill();
     c.strokeStyle = P.ol; c.lineWidth = 1; c.stroke();
     // 코 · 엄니 · 귀 · 눈
     c.fillStyle = shade(p[1], 0.3); c.beginPath(); c.ellipse(25, -14, 3, 5.5, 0.2, 0, TAU); c.fill();
@@ -1183,7 +1192,7 @@ const HEADS = {
     eyeDot(c, 11, -24, p[4], 1.5, 0.4);
   },
   wolf(c, p, id, v, t, k) {
-    c.fillStyle = vgrad(c, -44, 0, p[0], p[1]);
+    c.fillStyle = cgrad(c, id + ':b', -44, 0, p[0], p[1]);
     c.beginPath(); c.moveTo(-14, 0); c.quadraticCurveTo(-16, -22, -6, -32); c.lineTo(2, -36); c.quadraticCurveTo(10, -34, 14, -28);
     c.lineTo(26, -23); c.lineTo(27, -19); c.lineTo(14, -15); c.quadraticCurveTo(10, -8, 10, 0); c.closePath(); c.fill();
     c.strokeStyle = P.ol; c.lineWidth = 1.2; c.stroke();
@@ -1206,7 +1215,7 @@ const HEADS = {
     if (br < 0.35) { c.fillStyle = `rgba(220,240,255,${(0.35 - br) * 0.8})`; c.beginPath(); c.arc(30 + br * 30, -18 - br * 6, 3 + br * 14, 0, TAU); c.fill(); }
   },
   wyvern(c, p, id, v, t, k) {
-    c.fillStyle = vgrad(c, -46, 0, p[0], p[1]);
+    c.fillStyle = cgrad(c, id + ':b', -46, 0, p[0], p[1]);
     c.beginPath(); c.moveTo(-10, 0); c.quadraticCurveTo(-15, -20, -4, -34); c.quadraticCurveTo(4, -41, 12, -37);
     c.lineTo(28, -31); c.lineTo(29, -27); c.lineTo(17, -24); c.lineTo(27, -21); c.lineTo(12, -19); c.quadraticCurveTo(4, -12, 6, 0); c.closePath(); c.fill();
     c.strokeStyle = P.ol; c.lineWidth = 1.2; c.stroke();
@@ -1229,7 +1238,7 @@ const HEADS = {
     c.fillStyle = p[1];
     c.beginPath(); c.moveTo(-20, 0); c.lineTo(-18 - flap, -20); c.lineTo(-7, -10); c.lineTo(-5, 0); c.closePath(); c.fill();
     c.beginPath(); c.moveTo(24, 0); c.lineTo(22 + flap, -20); c.lineTo(11, -10); c.lineTo(9, 0); c.closePath(); c.fill();
-    c.fillStyle = vgrad(c, -36, -8, p[1], p[0]);
+    c.fillStyle = cgrad(c, id + ':b', -36, -8, p[1], p[0]);
     c.beginPath(); c.ellipse(2, -20, 13, 12, 0, 0, TAU); c.fill(); c.strokeStyle = P.ol; c.lineWidth = 1.2; c.stroke();
     c.fillStyle = p[0];
     c.beginPath(); c.moveTo(-9, -25); c.lineTo(-15, -50); c.lineTo(0, -31); c.closePath(); c.fill(); c.stroke();
@@ -1243,7 +1252,7 @@ const HEADS = {
     eyeDot(c, -2, -22, p[3], 1.6, 0.5); eyeDot(c, 6, -23, p[3], 1.6, 0.5);
   },
   griffin(c, p, id, v, t, k) {
-    c.fillStyle = vgrad(c, -44, 0, p[0], p[1]);
+    c.fillStyle = cgrad(c, id + ':b', -44, 0, p[0], p[1]);
     c.beginPath(); c.moveTo(-14, 0); c.quadraticCurveTo(-16, -22, -4, -32); c.quadraticCurveTo(6, -38, 14, -32);
     c.lineTo(16, -24); c.lineTo(10, -18); c.quadraticCurveTo(8, -8, 10, 0); c.closePath(); c.fill();
     c.strokeStyle = P.ol; c.lineWidth = 1.2; c.stroke();
@@ -1325,7 +1334,7 @@ function stableView() {
 function boardedDoor(ctx, cx, by) {
   for (const [a, y] of [[0.22, by - 70], [-0.18, by - 44]]) {
     ctx.save(); ctx.translate(cx, y); ctx.rotate(a);
-    ctx.fillStyle = vgrad(ctx, -6, 6, '#5a4430', '#2a1a10'); ctx.fillRect(-52, -6, 104, 12);
+    ctx.fillStyle = cgrad(ctx, 'board', -6, 6, '#5a4430', '#2a1a10'); ctx.fillRect(-52, -6, 104, 12);
     ctx.strokeStyle = P.ol; ctx.lineWidth = 1.5; ctx.strokeRect(-52, -6, 104, 12);
     ctx.fillStyle = '#8a8490'; for (const nx of [-44, 44]) { ctx.beginPath(); ctx.arc(nx, 0, 1.6, 0, TAU); ctx.fill(); }
     ctx.restore();
@@ -1403,18 +1412,18 @@ const LIVE = {
       const id = v.mounts[i], s = b._stalls[i];
       if (!id) continue;
       drawStallHead(ctx, id, s.x - 6, s.y + 1, 0.9, t, i);
-      ctx.fillStyle = vgrad(ctx, s.y - 2, s.y + 4, P.timberHi, P.timberLo); ctx.fillRect(s.x - s.w / 2 - 3, s.y - 1, s.w + 6, 5);
+      ctx.fillStyle = cgrad(ctx, 'rail' + i, s.y - 2, s.y + 4, P.timberHi, P.timberLo); ctx.fillRect(s.x - s.w / 2 - 3, s.y - 1, s.w + 6, 5);
     }
     // 제단: 룬 · 촛불 · 떠 있는 영혼 등불 · 수호신 영혼
-    const pulse = 0.5 + 0.5 * Math.sin(t * 1.7);
+    const pulse = 0.5 + 0.5 * Math.sin(t * 1.7), low = game?.quality === 'low';
     ctx.globalCompositeOperation = 'lighter';
-    for (let i = 0; i < b._runes.length; i++) {
+    for (let i = 0; i < (low ? 0 : b._runes.length); i++) {
       const r = b._runes[i], a = 0.18 + 0.2 * (0.5 + 0.5 * Math.sin(t * 1.3 + i * 1.9));
       glow(ctx, r.x, r.y, 14, '#9fd8ff', a);
       ctx.strokeStyle = `rgba(170,230,255,${a + 0.2})`; ctx.lineWidth = 1.3; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(r.x - 3, r.y - 7); ctx.lineTo(r.x, r.y + 7); ctx.lineTo(r.x + 3, r.y - 7); ctx.moveTo(r.x - 4, r.y); ctx.lineTo(r.x + 4, r.y); ctx.stroke();
     }
-    for (let i = 0; i < b._candles.length; i++) { const cd = b._candles[i]; glow(ctx, cd.x, cd.y - 3, 16, '#ffc070', 0.5 * flicker(t, i + 40)); }
+    if (!low) for (let i = 0; i < b._candles.length; i++) { const cd = b._candles[i]; glow(ctx, cd.x, cd.y - 3, 16, '#ffc070', 0.5 * flicker(t, i + 40)); }
     ctx.globalCompositeOperation = 'source-over';
     for (let i = 0; i < b._candles.length; i++) { const cd = b._candles[i]; drawFlame(ctx, cd.x, cd.y + 2, 0.32, t, i * 2 + 5); }
     const L = b._lantern, ly = L.y + Math.sin(t * 1.1) * 4;

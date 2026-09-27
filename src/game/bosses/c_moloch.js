@@ -55,10 +55,9 @@ function put(ctx, S, x, y, rot = 0, sx = 1, sy = sx) {
   if (!S || !sx || !sy) return;
   const img = R.fl ? S.f : S.c;
   if (!rot && sx === 1 && sy === 1) { ctx.drawImage(img, x - S.ox, y - S.oy, S.w, S.h); return; }
-  // save/restore 대신 역변환 (스프라이트마다 save/restore 는 모바일에서 비싸다)
-  ctx.translate(x, y); if (rot) ctx.rotate(rot); if (sx !== 1 || sy !== 1) ctx.scale(sx, sy);
+  ctx.save(); ctx.translate(x, y); if (rot) ctx.rotate(rot); if (sx !== 1 || sy !== 1) ctx.scale(sx, sy);
   ctx.drawImage(img, -S.ox, -S.oy, S.w, S.h);
-  if (sx !== 1 || sy !== 1) ctx.scale(1 / sx, 1 / sy); if (rot) ctx.rotate(-rot); ctx.translate(-x, -y);
+  ctx.restore();
 }
 function bakeScale(world) {
   const s = world?.game?.scale, z = world?.camera?.zoomTarget ?? 0.8;
@@ -439,7 +438,7 @@ function btube(ctx, x0, y0, x1, y1, r0, r1) {
   const L = Math.hypot(x1 - x0, y1 - y0);
   if (L < 0.5) return;
   const ang = Math.atan2(y1 - y0, x1 - x0);
-  ctx.translate(x0, y0); ctx.rotate(ang);
+  ctx.save(); ctx.translate(x0, y0); ctx.rotate(ang);
   ctx.beginPath();
   ctx.moveTo(0, -r0); ctx.lineTo(L, -r1); ctx.arc(L, 0, r1, -PI / 2, PI / 2); ctx.lineTo(0, r0); ctx.arc(0, 0, r0, PI / 2, -PI / 2);
   ctx.closePath();
@@ -451,7 +450,7 @@ function btube(ctx, x0, y0, x1, y1, r0, r1) {
     ctx.strokeStyle = 'rgba(40,20,6,0.45)'; ctx.lineWidth = 1.4;
     ctx.beginPath(); ctx.moveTo(L * 0.3, -r0 * 0.7); ctx.quadraticCurveTo(L * 0.5, 0, L * 0.35, r0 * 0.6); ctx.stroke();
   }
-  ctx.rotate(-ang); ctx.translate(-x0, -y0);
+  ctx.restore();
 }
 /** 사슬: (x0,y0)→(x1,y1) 처진 곡선을 따라 고리 스프라이트 */
 function chain(ctx, A, x0, y0, x1, y1, sag, n, swing = 0) {

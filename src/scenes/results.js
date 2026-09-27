@@ -150,7 +150,7 @@ export class ResultsScene extends Scene {
   render(ctx) {
     const L = this.layout(), { W, H, x, y, w, ph } = L;
     const stage = this.world.stage;
-    drawCover(ctx, assets.get(stage.bg), W, H, { alpha: 1 });
+    drawCover(ctx, stage.bg ? assets.get(stage.bg) : null, W, H, { alpha: 1 }); // 배경 없는 스테이지(시험용 등)는 그라데이션
     ctx.fillStyle = 'rgba(6,2,8,0.72)'; ctx.fillRect(0, 0, W, H);
     vignette(ctx, W, H, 0.7);
     bloodText(ctx, 'STAGE CLEAR', W / 2, L.titleY, { size: L.titleSize, style: 'gold', t: this.t, maxWidth: W - 40 });

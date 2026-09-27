@@ -116,9 +116,10 @@
   ],
   "qback": "bran/bran_crusader_qback",
   "viewsQ": [
-   "ym135",
-   "ym45"
+   "ym45",
+   "ym135"
   ],
-  "fixups": null
+  "fixups": null,
+  "_whyQ": "리뷰(heroes2rev): 왼쪽 인물은 수염·귀가 오른쪽(화면)에 보여 오른쪽으로 돌아선 3/4 뒤(ym45), 오른쪽 인물은 왼쪽으로 돌아섬(ym135). 예전 라벨은 반대라 −45°/−135° 에서 머리가 거꾸로 돌았다"
  }
 }

@@ -634,7 +634,10 @@ export class ServiceScene extends Scene {
     if (!this.modal && !this.popup && !this.busy && !this.lockTabs) {
       const items = [];
       if (this.tabs.length > 1) items.push([['prevTab', 'nextTab'], '탭']);
-      items.push([this.useLeftRight && this.tabs[this.tab]?.id === 'class' ? 'dpadH' : 'dpadV', '선택'], ['confirm', '결정'], ['cancel', '닫기']);
+      // 선택 방향 글리프: 하위 장면이 selectHint() 로 정할 수 있다 (null = 고를 것이 없는 탭)
+      const selA = this.selectHint ? this.selectHint() : (this.useLeftRight && this.tabs[this.tab]?.id === 'class' ? 'dpadH' : 'dpadV');
+      if (selA) items.push([selA, '선택']);
+      items.push(['confirm', '결정'], ['cancel', '닫기']);
       if (this.extraHints) items.push(...this.extraHints());
       uiHints(ctx, items, L.cx + L.cw / 2, vh - 8);
     }

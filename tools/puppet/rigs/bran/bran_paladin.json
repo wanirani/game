@@ -112,9 +112,10 @@
   ],
   "qback": "bran/bran_paladin_qback",
   "viewsQ": [
-   "ym135",
-   "-"
+   "-",
+   "ym135"
   ],
-  "fixups": null
+  "fixups": null,
+  "_whyQ": "리뷰(heroes2rev): 왼쪽 인물은 좌우 대칭 정면 뒷모습(ym90 중복), 오른쪽 인물이 왼쪽으로 돌아선 3/4 뒤(수염이 화면 왼쪽)"
  }
 }
