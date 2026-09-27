@@ -186,6 +186,12 @@ function settle(list, B, pinned = null, iters = 120) {
   return list;
 }
 
+const LSIG = { i: 0, ch: false };
+/** 배치 서명 칸 하나 비교·기록 (NaN 은 NaN 과 같다고 본다) */
+function lput(x) {
+  const v = S.sig, i = LSIG.i++, o = v[i];
+  if (o !== x && !(x !== x && o !== o)) { v[i] = x; LSIG.ch = true; }
+}
 /**
  * 배치 계산 (창·캔버스·안전 영역·설정이 바뀔 때만; 나머지는 캐시).
  * L = { W, H, ins, cr, cs, vw, vh, k, kEff, cls, band, bandH, left, custom, yMin, bounds, btn:{id:{id,cx,cy,d}}, sys:{…}, R, home, zone }
@@ -197,10 +203,12 @@ function layout(force = false) {
   const ins = insetsCss(), cr = canvasBox();
   const vw = g?.viewW || Math.round(clamp((540 * cr.w) / cr.h, 960, 1280)), vh = g?.viewH || 540;
   const safeT = st.safeArea === 'full' ? num(g?.safe?.t, 0) : 0;
-  const sig = S.sig, vals = [W, H, ins.l, ins.r, ins.t, ins.b, cr.x, cr.y, cr.w, cr.h, vw, vh, safeT,
-    st.touchScale, st.touchLeftHanded, st.touchLayout, st.safeArea, st.touchStick, fsShown(), g?.dpr, S.fontEpoch];
-  if (!force && S.L && vals.length === sig.length && vals.every((v, i) => v === sig[i])) return S.L;
-  S.sig = vals;
+  // 바뀌었나: 매 프레임 두 번쯤 불리므로 배열을 새로 만들지 않고 제자리에서 비교·기록한다
+  LSIG.i = 0; LSIG.ch = false;
+  lput(W); lput(H); lput(ins.l); lput(ins.r); lput(ins.t); lput(ins.b); lput(cr.x); lput(cr.y); lput(cr.w); lput(cr.h); lput(vw); lput(vh); lput(safeT);
+  lput(st.touchScale); lput(st.touchLeftHanded); lput(st.touchLayout); lput(st.safeArea); lput(st.touchStick); lput(fsShown()); lput(g?.dpr); lput(S.fontEpoch);
+  if (!force && S.L && !LSIG.ch) return S.L;
+  S.lver++;
 
   const cls = sizeClass(H);
   const ts = clamp(num(Number(st.touchScale), 1) || 1, 0.8, 1.3);
@@ -1344,8 +1352,8 @@ export const touchpad = {
     if (!L) return NO_RECTS;
     if (!S.raf) readState();
     const o = S.occState, ver = S.editor ? S.editor.ver : 0, sh = (S.shown.mount ? 1 : 0) + (S.shown.guard ? 2 : 0);
-    if (S.occKey === 'ok' && o.sig === S.sig && o.hidden === S.hiddenKey && o.sh === sh && o.ver === ver) return S.occ;
-    o.sig = S.sig; o.hidden = S.hiddenKey; o.sh = sh; o.ver = ver;
+    if (S.occKey === 'ok' && o.lver === S.lver && o.hidden === S.hiddenKey && o.sh === sh && o.ver === ver) return S.occ;
+    o.lver = S.lver; o.hidden = S.hiddenKey; o.sh = sh; o.ver = ver;
     const kx = L.vw / L.cr.w, ky = L.vh / L.cr.h;
     const out = [];
     const add = (b) => out.push({ id: b.id, x: (b.cx - b.d / 2 - L.cr.x) * kx, y: (b.cy - b.d / 2 - L.cr.y) * ky, w: b.d * kx, h: b.d * ky });
