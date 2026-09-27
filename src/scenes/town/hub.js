@@ -50,7 +50,7 @@ class TownAmbience extends Entity {
 export class HubScene extends Scene {
   constructor(g) { super(g); this.padHideButtons = PAD_HIDE; this.hidePad = false; }
   /** 도착 배너(에슈빌)가 떠 있는 동안에는 밀린 알림을 잠시 보류한다 */
-  get deferToasts() { return !!this.banner && this.banner.t < 3.6; }
+  get deferToasts() { return (!!this.banner && this.banner.t < 3.6) || !!this.menuOpen; } // 마을 메뉴가 열린 동안에도 (제목을 가리지 않게)
   enter(params = {}) {
     const g = this.game;
     if (!g.state) g.state = newGameState({ slot: 1, difficulty: 'normal', charId: 'kael' });
@@ -434,7 +434,7 @@ export class HubScene extends Scene {
     // ── 하단: 상호작용 안내 ──
     const h = this.hint;
     const touch = !!input.touchMode;
-    if (h && !this.world.cutscene) {
+    if (h && !this.world.cutscene && !this.menuOpen) {
       // 발밑 흙길 띠(바닥 아래 48px)에 한 줄로: 캐릭터 다리를 가리지 않고, 제목·설명이 서로 닿지 않게.
       // 키보드·패드는 ▲ 대신 지금 기기의 '위' 글리프, 터치는 이 띠를 누른다
       const label = (touch ? '▲  ' : '') + (h.kind === 'npc' ? `대화 · ${NpcData.NPCS?.[h.npcId]?.name ?? TOWN_NPCS[h.npcId]?.name ?? ''}` : `들어가기 · ${h.building?.name ?? ''}`);

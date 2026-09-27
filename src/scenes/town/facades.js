@@ -857,7 +857,7 @@ const PAINT = {
       c.strokeStyle = rng.next() < 0.5 ? 'rgba(200,160,80,0.55)' : 'rgba(140,100,40,0.55)'; c.lineWidth = 1;
       c.beginPath(); c.moveTo(sx, F - rng.range(0, 4)); c.lineTo(sx + Math.cos(a) * len, F - rng.range(0, 4) - Math.sin(a) * 3); c.stroke();
     }
-    b._sign = { hx: bx1 + 4, hy: F - 206, w: 164, h: 46, icon: 'horse', phase: 0.9, dir: 1 };
+    b._sign = { hx: bx1 + 12, hy: F - 206, w: 164, h: 46, icon: 'horse', phase: 0.9, dir: 1 };
   },
 };
 

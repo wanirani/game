@@ -537,7 +537,7 @@ function pickTargets(world, p, n) {
   return a.slice(0, n);
 }
 const MIRRA = {
-  init(g) { g.mem.reflCd = 1.0; g.mem.scanT = 0; prewarm(() => glow('#dff4ff')); },
+  init(g) { g.mem.reflCd = 0; g.mem.scanT = 0; prewarm(() => glow('#dff4ff')); },   // 처음 날아드는 탄은 곧바로 (그다음부터 5초마다)
   skill(g, world, mul, o) {
     const p = world.player, sk = g.def.skill, col = g.def.color;
     const n = sk.count ?? 8, orbitT = sk.orbit ?? 1.0, spd = 980;
@@ -762,21 +762,21 @@ function swallow(g, world, q, o = {}) {
     }));
   } else world.fx?.burst('magic', x0, y0, 4, { speed: 90, color: g.def.color });
 }
-/** 사각형 V 안의 적 탄을 모두 삼킨다 (광선·막을 수 없는 탄 제외). 삼킨 수 */
-function swallowAll(g, world, V) {
+/** 사각형 V 안의 적 탄을 모두 삼킨다 (광선·막을 수 없는 탄 제외). 삼킨 수. 날아드는 꿈 조각 그림은 한 번에 8개, 스킬 하나에 모두 16개까지 */
+function swallowAll(g, world, V, shown = 0) {
   let n = 0;
   for (const q of world.entities) {
     if (q.kind !== 'projectile' || q.team !== 'enemy' || q.dead || q.behavior === 'beam' || q.unblockable) continue;
     if (!overlap(q, V)) continue;
-    swallow(g, world, q, { morsel: n < 8 });
+    swallow(g, world, q, { morsel: n < 8 && shown + n < 16 });
     n++;
   }
   return n;
 }
-/** 움직일 수 없는 적 (고정형·밀리지 않는 적) */
-const immovable = (e) => !!e.def?.fixed || e.wclass === 'FIXED' || (e.def?.kbResist ?? 0) >= 1;
+/** 끌어당기지 않는 적 (고정형·밀리지 않는 적·AI 가 몸을 직접 연출하는 상태: 땅에서 솟는 중·변장·뼈 무더기 등) */
+const immovable = (e) => !!e.def?.fixed || e.wclass === 'FIXED' || (e.def?.kbResist ?? 0) >= 1 || !!e.scripted?.();
 const MOMO = {
-  init(g) { g.mem.eatCd = 1.0; g.mem.scanT = 0; prewarm(() => glow('#c060ff')); },
+  init(g) { g.mem.eatCd = 0; g.mem.scanT = 0; prewarm(() => glow('#c060ff')); },   // 처음 날아드는 탄은 곧바로 (그다음부터 6초마다)
   onEvent(g, world, name, d) {
     // 제 코로 문 적에게서 꿈 조각이 빨려 든다 (연출만)
     if (name !== 'hit' || d?.attack?.owner !== g || !d.target || qOf(world) < 0.6) return;
@@ -804,7 +804,7 @@ const MOMO = {
         const pl = w.player;
         if (!pl || pl.dead) { e.dead = true; return; }
         if (w.roomId !== room) budget.clear();   // 방이 바뀌었다: 끌어당길 적이 없다 (회복은 그대로)
-        eaten += swallowAll(g, w, viewRect(w, 30));
+        eaten += swallowAll(g, w, viewRect(w, 30), eaten);
         // 끌어당기기: 주인 앞 간격(70px + 몸 절반)까지만 — 접촉 피해가 나지 않게
         const m = w.map;
         for (const [en, left] of budget) {

@@ -160,8 +160,8 @@ function drawBoss(ctx, b, world, rig, st) {
   D.end();
   b.paintBack?.(ctx, world);
   P.draw(ctx, 0);
-  // 순간이동 예고 (새 자리에 희미한 영혼 실루엣)
-  if (b.state === 'blink' && b.blinkTo && b.vanish > 0.9) {
+  // 순간이동 예고 (새 자리에 희미한 영혼 실루엣). 순간이동 중에 쓰러지면 상태가 'blink' 로 남고 폭발 때 vanish = 1 이 되므로 사망 중엔 그리지 않는다
+  if (b.state === 'blink' && b.blinkTo && b.vanish > 0.9 && !dying) {
     const k = clamp(((b.st ?? 0) % 1.25 - 0.25) / 0.37, 0, 1);
     const p = b.world?.player, f = p && p.cx < b.blinkTo.x ? -1 : 1;
     const o = st.og;

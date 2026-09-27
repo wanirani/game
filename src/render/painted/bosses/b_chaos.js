@@ -82,6 +82,7 @@ function drawBoss(ctx, b, world, rig, st) {
   const D = st.D;
   if (st.q.name !== tierOf(world.game)) st.q = qualityOf(world.game);
   const q = st.q, P = st.P;
+  if (rig.art) rig.art.q = q;            // 로직 파일의 바닥 촉수(tendril)도 같은 품질 플래그를 따르게
   const now = world.time ?? b.t;
   const dt = st.lt == null ? 1 / 60 : clamp(now - st.lt, 0, 0.05); st.lt = now;
   const A = b.A, F = A.floor, t = b.t;
@@ -106,17 +107,17 @@ function drawBoss(ctx, b, world, rig, st) {
   D.begin(ctx); D.end();
   b.paintBack?.(ctx, world);             // 어둠·반전·레이저 예고·왜곡 예고 (소용돌이·그림자는 채색이 그린다)
   drawShadows(ctx, D, b, rig, st, t, F);
-  P.draw(ctx, 0);
+  if (!globalThis.__chx?.pa) P.draw(ctx, 0);
   const g = st.gone;
   if (!g.body) {
-    drawVortex(ctx, b, st, t, dying ? 1 - smooth(1.8, 2.6, dT) : 1);
-    orbitShards(D, b, rig, st, false);
+    if (!globalThis.__chx?.vx) drawVortex(ctx, b, st, t, dying ? 1 - smooth(1.8, 2.6, dT) : 1);
+    if (!globalThis.__chx?.sh) orbitShards(D, b, rig, st, false);
     const glitch = clamp(b.glitch ?? 0, 0, 1);
     if (glitch > 0.05 && q.name !== 'low') drawGlitched(ctx, D, b, world, rig, st, lvl, t, glitch, dying, dT);
     else drawLord(ctx, D, b, world, rig, st, lvl, t, 0, 1, dying, dT, true);
-    orbitShards(D, b, rig, st, true);
+    if (!globalThis.__chx?.sh) orbitShards(D, b, rig, st, true);
   }
-  drawEyes(ctx, D, b, rig, st, t, dt);
+  if (!globalThis.__chx?.ey) drawEyes(ctx, D, b, rig, st, t, dt);
   if (dying) deathTick(st, b, rig, dT);
   D.end();
   st.shards.draw(D);
@@ -190,7 +191,7 @@ function drawLord(ctx, D, b, world, rig, st, lvl, t, ox, alpha, dying, dT, full,
   // 1) 몸 아래 촉수 (몸 뒤) — 바닥선 아래는 잘라 그린다
   if (full) {
     D.end(); D.save(); ctx.beginPath(); ctx.rect(x - 600, y - 800, 1200, F + 2 - (y - 800)); ctx.clip();
-    tentacles(D, b, rig, st, x, y, t, alpha, lvl, dying, dT);
+    if (!globalThis.__chx?.tn) tentacles(D, b, rig, st, x, y, t, alpha, lvl, dying, dT);
     D.end(); D.restore();
   }
   D.startFlash(); if (!flashAll) D.rec = false;
@@ -208,7 +209,7 @@ function drawLord(ctx, D, b, world, rig, st, lvl, t, ox, alpha, dying, dT, full,
   const Bd = R.body, bs = 1 + breathe;
   D.part(Bd, V(Bd), 'neck', x, y + NECK_Y, 0, Bd.k * bs, Bd.k * bs, bodyA);
   D.end();
-  if (full && q.ledges) ledgesOver(ctx, world, x - 260, y - 200, x + 260, Math.min(F, y + 260));
+  if (full && q.ledges && !globalThis.__chx?.lg) ledgesOver(ctx, world, x - 260, y - 200, x + 260, Math.min(F, y + 260));
   const H = R.head, J = R.jaw, m = clamp(b.mouth ?? 0.1, 0, 1);
   const hy = y + HEAD_Y + Math.sin(t * 1.3) * 2, hrot = Math.sin(t * 0.9) * 0.025 + (dying ? Math.sin(t * 40) * 0.04 : 0);
   // 아가리 속 (턱이 벌어진 틈): 자홍 발광
@@ -457,7 +458,9 @@ function makeArt(rig) {
       if (!T?.length || H < 3) return false;
       const n = T.length, seg = H / n, sc = w / 30;
       let px = x, py = F + 6, ang = -PI / 2;
-      halo(ctx, x, F - 6, 44, VIOLET, 0.7);
+      if (this.q?.halos !== false) halo(ctx, x, F - 6, 44, VIOLET, 0.7);   // 저품질: 가산 발광 없음 (QUALITY 규칙)
+      // 뿌리 타일이 바닥 타일 위로 삐져나오지 않게 바닥선(+2)에서 자른다 (BOSS_PIPELINE §8.12)
+      ctx.save(); ctx.beginPath(); ctx.rect(x - 200, F - H - 400, 400, H + 402); ctx.clip();
       for (let i = 0; i < n; i++) {
         const p = T[i], u = i / n, tl = (p.jr[0] - p.jl[0]) * p.k;
         ang = -PI / 2 + Math.sin(t * 6 + u * 5 + seed) * 0.35 * u;
@@ -467,6 +470,7 @@ function makeArt(rig) {
         ctx.restore();
         px += Math.cos(ang) * seg; py += Math.sin(ang) * seg;
       }
+      ctx.restore();
       return true;
     },
   };

@@ -143,7 +143,7 @@ function drawBoss(ctx, b, world, rig, st) {
   // (1형태에서 한 방에 쓰러진 경우도 사망 시작에 백작의 몸이 터져 흩어진다 — 로직이 즉시 마왕으로 바꿔 사망시킴)
   if (form !== st.form) { if (form === 2 && (b.state === 'transform' || dying) && st.form === 1) transformBurst(st, b, rig); st.form = form; }
   const hit = b.flashT > 0.06 && !(st.pf > 0.06); st.pf = b.flashT;
-  if (hit) { st.jolt = 1; hitBurst(st, b, form); }
+  if (hit) { st.jolt = 1; st.flashSel = struckPart(b, form); hitBurst(st, b, form); }
   st.jolt = Math.max(0, st.jolt - dt * 6);
 
   const q0 = ctx.imageSmoothingQuality;
@@ -185,16 +185,20 @@ function drawCount(ctx, D, b, world, rig, st, lvl, dt) {
   const mk = tf ? smooth(0.55, 1.15, tt) : 0;
   const a0 = va * (1 - mk * 0.9);
   D.startFlash(); if (!(b.flashT > 0)) D.rec = false;
+  // 피격 섬광은 판정 부위(상반신 40×70 = 머리·몸통·감싼 망토)에만 — 다리·팔은 기록하지 않는다 (BOSS_PIPELINE §9)
+  const rec0 = D.rec;
   if (a0 > 0.01) {
     // 1) 뒤 망토 (거울, 몸 뒤로 드리움 → 펼치면 박쥐 날개처럼)
     const cw = lerp(0.34, 1.02, cp) * (1 - wr * 0.6), crot = lerp(0.12, -0.34, cp) + Math.sin(t * 2) * 0.03 * (1 - cp);
     put(D, L, R.cape, V(R.cape), 'root', back[0] + 2, back[1] + 2, crot, a0, 1, -cw, lerp(1, 0.92, cp));
     // 2) 먼 다리 · 먼 팔 (어둡게)
     const hip = tp('hip', st._hp ??= [0, 0]);
+    D.rec = false;
     put(D, L, R.leg, V(R.leg, true), 'hip', hip[0] - 5, hip[1] - 2, 0.03, a0, 1, 0.72);
     countArm(D, L, rig, b, st, shF[0], shF[1], -1, b.armL ?? 0, a0 * 0.95, V, true);
     // 3) 가까운 다리 · 몸통
     put(D, L, R.leg, V(R.leg), 'hip', hip[0] + 4, hip[1] - 1, -0.04, a0, 1, 0.72);
+    D.rec = rec0;
     put(D, L, T, V(T), 'hip', tx, ty, trot, a0);
   }
   D.end();
@@ -214,7 +218,7 @@ function drawCount(ctx, D, b, world, rig, st, lvl, dt) {
       put(D, L, R.cape, V(R.cape), 'root', shN[0] + 2, shN[1] - 6, lerp(0.9, 0.25, up) + Math.sin(t * 2.4) * 0.03, a0 * fk, 1, lerp(0.3, 0.55, cp), 0.9);
     }
     // 6) 가까운 팔
-    countArm(D, L, rig, b, st, shN[0], shN[1], 1, b.armR ?? 0, a0, V, false);
+    D.rec = false; countArm(D, L, rig, b, st, shN[0], shN[1], 1, b.armR ?? 0, a0, V, false); D.rec = rec0;
     // 7) 몸을 감싼 망토 (순간이동·박쥐 돌진 준비)
     if (wr > 0.02) put(D, L, R.cloak, V(R.cloak), 'neck', neck[0] - 1, neck[1] - 2, Math.sin(t * 3) * 0.02, a0 * Math.min(1, wr * 1.4));
   }
@@ -291,6 +295,9 @@ function drawDemon(ctx, D, b, world, rig, st, lvl, dt, dying, dT) {
   const grow = tf ? smooth(1.75, 2.6, tt) : 1;
   const a0 = clamp(0.25 + grow * 0.75, 0, 1);
   D.startFlash(); if (!(b.flashT > 0) || tf) D.rec = false;
+  // 피격 섬광은 맞은 판정 부위(머리 / 가슴 / 다리)에만 — 날개·꼬리·팔은 판정이 없으니 번쩍이지 않는다 (BOSS_PIPELINE §9)
+  const rec0 = D.rec, sel = st.flashSel, recOn = (g) => { D.rec = rec0 && (!sel || sel === g); };
+  D.rec = false;
   // 1) 날개 (뒤 = 거울, 앞 = 그대로). 로직 wing 0~1 = 접힘~활짝
   const open = clamp(d.wing ?? 0.5, 0, 1), k = 0.35 + open * 0.65, flap = Math.sin(t * 2.2) * 0.08 + (b.state === 'gust' ? Math.sin(t * 9) * 0.18 : 0);
   const wrot = -(flap + (1 - k) * 0.7) - 0.05, wsx = lerp(0.62, 1, k), wsy = lerp(0.8, 1, k);
@@ -299,11 +306,15 @@ function drawDemon(ctx, D, b, world, rig, st, lvl, dt, dying, dT) {
   drawTail(D, L, rig, st, tailR, t, a0, V, cr);
   if (!G.wingN) put(D, L, R.dwing, V(R.dwing), 'root', wingR[0] + 4, wingR[1] + 2, wrot, a0, 1, wsx, wsy);
   // 3) 먼 다리 · 먼 팔
+  recOn('legs');
   leg(D, L, rig, st, hip[0] - 10, hip[1] - 4, -30 + Math.sin(gu + PI) * 16 * wk * wd, cr, a0 * 0.95, V, true, Math.max(0, Math.cos(gu + PI) * wd) * 12 * wk);
   const armBack = f > 0 ? b.hands.l : b.hands.r, armFront = f > 0 ? b.hands.r : b.hands.l;
+  D.rec = false;
   demonArm(D, L, rig, b, st, shF[0], shF[1], armBack, a0 * 0.95, V, true, dying);
+  recOn('legs');
   // 4) 가까운 다리 · 몸통
   leg(D, L, rig, st, hip[0] + 8, hip[1] - 2, 30 + Math.sin(gu) * 16 * wk * wd, cr, a0, V, false, Math.max(0, Math.cos(gu) * wd) * 12 * wk);
+  recOn('chest');
   put(D, L, T, V(T), 'hip', tx, ty, trot, a0);
   D.end();
   if (q.ledges) { const w0 = W(L, -150, -330, st.W), w1 = W(L, 150, 0, st.W2); ledgesOver(ctx, world, Math.min(w0[0], w1[0]) - 120 * s, w0[1], Math.max(w0[0], w1[0]) + 120 * s, b.bottom); }
@@ -313,12 +324,14 @@ function drawDemon(ctx, D, b, world, rig, st, lvl, dt, dying, dT) {
   const hrot = Math.sin(t * 1.1) * 0.03 + (b.state === 'meteor' || b.state === 'nova' ? -0.12 : 0) + (tf && tt > 2.7 && tt < 3.6 ? -0.18 : 0) + (dying ? Math.sin(t * 34) * 0.06 : 0);
   const jaw = clamp(d.jaw ?? 0.12, 0, 1), jrot = lerp(-0.26, 0.1, jaw);
   mouthFill(ctx, D, L, K, 'neck', hx, hy, hrot, a0, jaw, d.glowC ?? 0, t);
+  recOn('head');
   const hg = localPt(K, 'neck', K.hinge, hx, hy, hrot, 1, _q);
   put(D, L, J, V(J), 'hinge', hg[0], hg[1], hrot + jrot, a0);
   put(D, L, K, V(K), 'neck', hx, hy, hrot, a0);
   const e = localPt(K, 'neck', K.eyeN, hx, hy, hrot, 1, _q2); W(L, e[0], e[1], st.eyeW);
   const m = localPt(K, 'neck', K.mouth, hx, hy, hrot, 1, _q2); W(L, m[0], m[1], st.mouthW);
   // 6) 가까운 팔
+  D.rec = false;
   demonArm(D, L, rig, b, st, shN[0], shN[1], armFront, a0, V, false, dying);
   if (b.flashT > 0 && !tf) D.flash(clamp(b.flashT / 0.1, 0, 1) * 0.55); else { D.rec = false; D.log.length = 0; }
   D.end();
@@ -453,6 +466,13 @@ function spawnDeb(st, rig, x, y, n, speed, sc = 1, fade = 1.6, up = 1) {
     const p = rig.parts[names[(j * 3 + (x | 0)) % names.length]], a = -PI / 2 * up + rr.range(-1.4, 1.4), sp = speed * rr.range(0.4, 1);
     st.shards.spawn(p.v.base, p.c[0], p.c[1], x + rr.range(-12, 12), y + rr.range(-12, 12), rr.next() * TAU, p.k * sc * rr.sign(), p.k * sc, Math.cos(a) * sp, Math.sin(a) * sp, rr.range(-8, 8), { r: (p.r ?? 8) * sc * 0.6, fade, bounce: 0.3 });
   }
+}
+/** 맞은 판정 부위 (로직 hitParts: 2형태 머리 / 가슴 / 다리 상자의 중심 높이로 구분). 1형태·모름 = null (판정 부위 전체) */
+function struckPart(b, form) {
+  const hp = b.hitPart;
+  if (form !== 2 || !hp || !(hp.h > 0)) return null;
+  const s = b.d2?.scale || 1, rel = (hp.y + hp.h / 2) - (b.bottom - (b.d2?.hover ?? 0));
+  return rel < -212 * s ? 'head' : rel < -116 * s ? 'chest' : 'legs';
 }
 function hitBurst(st, b, form) {
   const P = st.P;

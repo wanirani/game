@@ -414,7 +414,7 @@ export class Dagon extends BossC {
   }
   ring(a) {
     const w = this.world, m = this.toWorld(this.K.mx, this.K.my, { x: 0, y: 0 });
-    ringWave(this, m.x, m.y, { r0: 30, r1: 700, speed: 380, th: 18, mv: 1.2, gaps: [a, a + TAU / 3, a + (2 * TAU) / 3], gapW: 55 * DEG, color: WATER, warn: 0, sfx: null });
+    ringWave(this, m.x, m.y, { r0: 20, r1: 700, speed: 380, th: 18, mv: 1.2, gaps: [a, a + TAU / 3, a + (2 * TAU) / 3], gapW: 55 * DEG, color: WATER, warn: 0, sfx: null });
     audio.sfx('bell', { pitch: 0.32, vol: 0.7 }); audio.sfx('boss_roar', { pitch: 0.42, vol: 0.4 });
     w.camera?.shake?.(5, 0.3);
     const P = this._pt;

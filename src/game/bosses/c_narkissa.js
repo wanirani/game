@@ -70,13 +70,13 @@ function mk(K, w, h, ox, oy, fn, flash = true) {
 }
 /** 구운 스프라이트를 (x, y) 기준점에 (피격 섬광 중이면 흰 실루엣) */
 function put(ctx, S, x, y, rot = 0, sx = 1, sy = sx) {
-  if (!S) return;
+  if (!S || !sx || !sy) return;
   const img = R.fl ? S.f : S.c;
   if (!rot && sx === 1 && sy === 1) { ctx.drawImage(img, x - S.ox, y - S.oy, S.w, S.h); return; }
-  ctx.save();
+  // save/restore 대신 역변환 (스프라이트마다 save/restore 는 모바일에서 비싸다)
   ctx.translate(x, y); if (rot) ctx.rotate(rot); if (sx !== 1 || sy !== 1) ctx.scale(sx, sy);
   ctx.drawImage(img, -S.ox, -S.oy, S.w, S.h);
-  ctx.restore();
+  if (sx !== 1 || sy !== 1) ctx.scale(1 / sx, 1 / sy); if (rot) ctx.rotate(-rot); ctx.translate(-x, -y);
 }
 function bakeScale(world) {
   const s = world?.game?.scale, z = world?.camera?.zoomTarget ?? 0.8;
@@ -447,9 +447,24 @@ function genCracks() {
   };
   return { head: make(9, 11, [-14, -54, 14, -14]), body: make(22, 37, [-36, -200, 36, -20]) };
 }
+/** 왕관 바늘 11개 (머리 가운데 기준): 끝점 tx, ty 는 반짝임 자리 */
+const CROWN = [46, 60, 74, 86, 98, 108, 98, 86, 74, 60, 46].map((L, i) => {
+  const a = -PI / 2 + (i - 5) * 0.2, bx = Math.cos(a) * 15, by = Math.sin(a) * 18;
+  return { L, a, bx, by, tx: bx + Math.cos(a) * L, ty: by + Math.sin(a) * L };
+});
+const crownBroken = (form, i) => (form >= 1 && (i === 2 || i === 7)) || (form >= 2 && i % 2 === 1);
+function drawCrown(g, form, blade) {
+  CROWN.forEach((c, i) => {
+    const L = crownBroken(form, i) ? c.L * 0.42 : c.L;
+    g.save(); g.translate(c.bx, c.by); g.rotate(c.a + PI / 2); g.scale(0.52, L / 80);
+    blade(g);
+    g.restore();
+  });
+}
 function bakeArt(K) {
   if (!canvasOf(1, 1)) return null;
   const A = { K };
+  A.crown = [0, 1, 2].map((f) => mk(K, 280, 170, 140, 150, (g) => drawCrown(g, f, drawBlade)));
   A.shards = SHARD_SHAPES.map((sh, v) => mk(K, 56, 112, 28, 4, (g) => drawFaceShard(g, sh, v)));
   A.torso = mk(K, 112, 108, 56, 98, drawTorso);
   A.head1 = mk(K, 60, 76, 30, 70, drawHead1);
@@ -472,8 +487,8 @@ function bakeArt(K) {
 function gtube(ctx, x0, y0, x1, y1, r0, r1, dark = false) {
   const L = Math.hypot(x1 - x0, y1 - y0);
   if (L < 0.5) return;
-  ctx.save();
-  ctx.translate(x0, y0); ctx.rotate(Math.atan2(y1 - y0, x1 - x0));
+  const ang = Math.atan2(y1 - y0, x1 - x0);
+  ctx.translate(x0, y0); ctx.rotate(ang);
   ctx.beginPath();
   ctx.moveTo(0, -r0); ctx.lineTo(L, -r1); ctx.arc(L, 0, r1, -PI / 2, PI / 2); ctx.lineTo(0, r0); ctx.arc(0, 0, r0, PI / 2, -PI / 2);
   ctx.closePath();
@@ -487,7 +502,7 @@ function gtube(ctx, x0, y0, x1, y1, r0, r1, dark = false) {
     ctx.strokeStyle = 'rgba(232,242,255,0.55)'; ctx.lineWidth = 1.1;
     ctx.beginPath(); ctx.moveTo(r0 * 0.4, -r0 * 0.55); ctx.lineTo(L - r1 * 0.4, -r1 * 0.55); ctx.stroke();
   }
-  ctx.restore();
+  ctx.rotate(-ang); ctx.translate(-x0, -y0);
 }
 /** 관절 원반 (초상화의 둥근 관절 뚜껑) */
 function joint(ctx, x, y, r, dark = false) {
@@ -613,15 +628,13 @@ function drawNark(ctx, x, y, f, P, o) {
     put(ctx, A.halo2, HX, HY - 6, Math.sin(t * 0.4) * 0.08, 1 + Math.sin(t * 2) * 0.02);
     orbitShards(ctx, A, t, HY, false, P);
   }
-  const nN = 11;
-  for (let i = 0; i < nN; i++) {
-    const broken = (form >= 1 && (i === 2 || i === 7)) || (form >= 2 && i % 2 === 1);
-    const L0 = [46, 60, 74, 86, 98, 108, 98, 86, 74, 60, 46][i] * (1 + Math.sin(t * 2 + i) * 0.04 + P.scream * 0.12);
-    const L = broken ? L0 * 0.42 : L0;
-    const a = -PI / 2 + (i - 5) * 0.2 * (1 + P.spread * 0.2);
-    const bx = HX + Math.cos(a) * 15, by = HY + Math.sin(a) * 18;
-    put(ctx, A.blade, bx, by, a + PI / 2, 0.52, L / 80);
-    if (!fl && !broken && (i + Math.floor(t * 1.3)) % 4 === 0) glow(ctx, bx + Math.cos(a) * L, by + Math.sin(a) * L, 12, '#ffffff', 0.5 + 0.4 * Math.sin(t * 7 + i), true);
+  // 유리 바늘 왕관: 형태별로 한 장에 구워 둔 것 (숨쉬기·비명은 통째로 늘였다 줄인다)
+  const crown = A.crown[Math.min(2, form)];
+  const cs = 1 + Math.sin(t * 2) * 0.03 + P.scream * 0.12;
+  put(ctx, crown, HX, HY, 0, cs * (1 + P.spread * 0.15), cs);
+  if (!fl) {
+    const i = (Math.floor(t * 1.3) * 3) % CROWN.length, c = CROWN[i];
+    if (!crownBroken(form, i)) glow(ctx, HX + c.tx * cs, HY + c.ty * cs, 12, '#ffffff', 0.5 + 0.4 * Math.sin(t * 7 + i), true);
   }
   // ── 등 칼날 팔 ──
   for (let k = 0; k < 4; k++) {
@@ -824,14 +837,10 @@ class NarkMirror extends Entity {
     ctx.translate(sx, 0);
     if (A?.frame) put(ctx, A.frame, x, y);
     else { ctx.fillStyle = '#2a2e44'; ctx.beginPath(); ctx.ellipse(x, y, 30, 54, 0, 0, TAU); ctx.fill(); }
-    // 유리 속: 흐르는 윤슬 · 여제 그림자
-    ctx.save();
-    ctx.beginPath(); ctx.ellipse(x, y, 24, 47, 0, 0, TAU); ctx.clip();
-    ctx.globalCompositeOperation = 'lighter';
-    const band = ((t * 0.3 + this.i * 0.27) % 1.4) - 0.2;
-    ctx.fillStyle = 'rgba(200,236,255,0.16)';
-    ctx.beginPath(); ctx.moveTo(x - 30, y - 60 + band * 120); ctx.lineTo(x + 30, y - 80 + band * 120); ctx.lineTo(x + 30, y - 66 + band * 120); ctx.lineTo(x - 30, y - 46 + band * 120); ctx.closePath(); ctx.fill();
-    ctx.globalCompositeOperation = 'source-over';
+    // 유리 속: 흐르는 윤슬 · 여제 그림자 (clip 없이: 유리 타원 안쪽에만 들어가는 모양으로)
+    const band = ((t * 0.3 + this.i * 0.27) % 1.2) - 0.1, by = y - 40 + band * 80;
+    const hw = 22 * Math.sqrt(Math.max(0, 1 - ((by - y) / 46) ** 2));
+    if (hw > 3) glowE(ctx, x, by, hw, 6, '#c8ecff', 0.35);
     if (b.inMirror === this || (b.inMirror && b.exitMirror === this)) {
       const k = 0.55 + 0.25 * Math.sin(t * 6);
       ctx.fillStyle = `rgba(10,8,18,${k.toFixed(3)})`;
@@ -842,10 +851,10 @@ class NarkMirror extends Entity {
     const warm = this.gold > 0 ? clamp(this.gold / 0.4, 0, 1) * (0.55 + 0.3 * Math.sin(t * 14)) : 0;
     const warn = this.warnT > 0 ? 0.5 + 0.45 * Math.sin(t * 24) : 0;
     const fk = Math.max(warm, warn);
-    if (fk > 0) { ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = rgba(GOLD, 0.5 * fk); ctx.fillRect(x - 30, y - 60, 60, 120); ctx.globalCompositeOperation = 'source-over'; }
-    if (this.flashT > 0) { ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = rgba('#ffffff', 0.6 * clamp(this.flashT, 0, 1)); ctx.fillRect(x - 30, y - 60, 60, 120); ctx.globalCompositeOperation = 'source-over'; }
-    if (this.dark > 0) { ctx.fillStyle = `rgba(4,4,10,${(0.7 * this.dark).toFixed(3)})`; ctx.fillRect(x - 30, y - 60, 60, 120); }
-    ctx.restore();
+    const glass = (fill, a) => { ctx.globalAlpha = a; ctx.fillStyle = fill; ctx.beginPath(); ctx.ellipse(x, y, 25, 48, 0, 0, TAU); ctx.fill(); ctx.globalAlpha = 1; };
+    if (fk > 0) { ctx.globalCompositeOperation = 'lighter'; glass(GOLD, 0.5 * fk); ctx.globalCompositeOperation = 'source-over'; }
+    if (this.flashT > 0) { ctx.globalCompositeOperation = 'lighter'; glass('#ffffff', 0.6 * clamp(this.flashT, 0, 1)); ctx.globalCompositeOperation = 'source-over'; }
+    if (this.dark > 0) glass('#04040a', 0.7 * this.dark);
     if (this.crack > 0) {
       ctx.strokeStyle = 'rgba(235,245,255,0.8)'; ctx.lineWidth = 1.1;
       ctx.beginPath();

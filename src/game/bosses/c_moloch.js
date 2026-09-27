@@ -52,13 +52,13 @@ function mk(K, w, h, ox, oy, fn, flash = true) {
   return { c, f: flash ? whiteOf(c) : c, w, h, ox, oy };
 }
 function put(ctx, S, x, y, rot = 0, sx = 1, sy = sx) {
-  if (!S) return;
+  if (!S || !sx || !sy) return;
   const img = R.fl ? S.f : S.c;
   if (!rot && sx === 1 && sy === 1) { ctx.drawImage(img, x - S.ox, y - S.oy, S.w, S.h); return; }
-  ctx.save();
+  // save/restore 대신 역변환 (스프라이트마다 save/restore 는 모바일에서 비싸다)
   ctx.translate(x, y); if (rot) ctx.rotate(rot); if (sx !== 1 || sy !== 1) ctx.scale(sx, sy);
   ctx.drawImage(img, -S.ox, -S.oy, S.w, S.h);
-  ctx.restore();
+  if (sx !== 1 || sy !== 1) ctx.scale(1 / sx, 1 / sy); if (rot) ctx.rotate(-rot); ctx.translate(-x, -y);
 }
 function bakeScale(world) {
   const s = world?.game?.scale, z = world?.camera?.zoomTarget ?? 0.8;
@@ -438,8 +438,8 @@ function bakeArt(K) {
 function btube(ctx, x0, y0, x1, y1, r0, r1) {
   const L = Math.hypot(x1 - x0, y1 - y0);
   if (L < 0.5) return;
-  ctx.save();
-  ctx.translate(x0, y0); ctx.rotate(Math.atan2(y1 - y0, x1 - x0));
+  const ang = Math.atan2(y1 - y0, x1 - x0);
+  ctx.translate(x0, y0); ctx.rotate(ang);
   ctx.beginPath();
   ctx.moveTo(0, -r0); ctx.lineTo(L, -r1); ctx.arc(L, 0, r1, -PI / 2, PI / 2); ctx.lineTo(0, r0); ctx.arc(0, 0, r0, PI / 2, -PI / 2);
   ctx.closePath();
@@ -451,7 +451,7 @@ function btube(ctx, x0, y0, x1, y1, r0, r1) {
     ctx.strokeStyle = 'rgba(40,20,6,0.45)'; ctx.lineWidth = 1.4;
     ctx.beginPath(); ctx.moveTo(L * 0.3, -r0 * 0.7); ctx.quadraticCurveTo(L * 0.5, 0, L * 0.35, r0 * 0.6); ctx.stroke();
   }
-  ctx.restore();
+  ctx.rotate(-ang); ctx.translate(-x0, -y0);
 }
 /** 사슬: (x0,y0)→(x1,y1) 처진 곡선을 따라 고리 스프라이트 */
 function chain(ctx, A, x0, y0, x1, y1, sag, n, swing = 0) {
@@ -1049,12 +1049,14 @@ export class Moloch extends BossC {
     // ── 허벅지 (용암 속으로) ──
     for (const s of [-1, 1]) btube(ctx, s * 44, -78, s * 60, 6, 32, 26);
     // ── 화로 속 (구멍 뒤): 불 · 짓눌린 영혼 ──
+    // (잘라내기 없이: 몸통 그림에 화로 구멍이 뚫려 있어 그 뒤에 그린 것은 구멍으로만 보인다 — clip 은 모바일에서 비싸다)
     const [fx, fy, frx, fry] = FURN;
     const heat = this.heat, gk = this.grateK;
     ctx.save();
-    ctx.beginPath(); ctx.ellipse(fx, fy + breath, frx + 2, fry + 2, 0, 0, TAU); ctx.clip();
+    ctx.translate(0, breath);
     ctx.fillStyle = fl ? '#fff' : LG(ctx, 'mo_furn', 0, fy - fry, 0, fy + fry, [0, '#ffe890', 0.35, '#ff9a30', 0.75, '#c03a08', 1, '#4a0a00']);
-    ctx.fillRect(fx - frx - 4, fy - fry - 4 + breath, frx * 2 + 8, fry * 2 + 8);
+    ctx.beginPath(); ctx.ellipse(fx, fy, frx + 4, fry + 4, 0, 0, TAU); ctx.fill();
+    ctx.translate(0, -breath);
     if (!fl) {
       for (let i = 0; i < 3; i++) {
         const sx = fx - 22 + i * 22 + Math.sin(t * 1.7 + i * 2) * 3, sy = fy - 6 + (i === 1 ? 12 : 0) + Math.sin(t * 2.3 + i) * 3 + breath;
@@ -1066,18 +1068,18 @@ export class Moloch extends BossC {
     ctx.restore();
     // ── 몸통 ──
     put(ctx, A.torso, 0, breath);
-    // ── 창살 (열리면 위로 말려 들어간다) ──
-    ctx.save();
-    ctx.beginPath(); ctx.ellipse(fx, fy + breath, frx + 1, fry + 1, 0, 0, TAU); ctx.clip();
-    const top = fy - fry - 2 + breath, len = (fry * 2 + 4) * (1 - gk * 0.92);
+    // ── 창살 (열리면 위로 말려 들어간다). 막대 길이는 타원 식으로 — clip 없이 ──
+    const open = 1 - gk * 0.92;
+    let lowest = fy - fry;
     for (let i = 0; i < 6; i++) {
-      const bx = fx - 35 + i * 14;
+      const dx = -35 + i * 14, hh = fry * Math.sqrt(Math.max(0, 1 - (dx / (frx + 1)) ** 2));
+      const top = fy - hh + breath, len = hh * 2 * open;
+      lowest = Math.max(lowest, top + len);
       ctx.fillStyle = fl ? '#fff' : LG(ctx, 'mo_bar', -4, 0, 4, 0, [0, '#1a1210', 0.4, '#8a7a70', 1, '#0e0806']);
-      ctx.save(); ctx.translate(bx, 0); ctx.fillRect(-3.5, top, 7, len); ctx.restore();
-      if (!fl && heat > 0.4) { ctx.fillStyle = rgba('#ff8a30', (heat - 0.4) * 0.8); ctx.fillRect(bx - 1.5, top, 3, len); }
+      ctx.translate(fx + dx, 0); ctx.fillRect(-3.5, top, 7, len); ctx.translate(-fx - dx, 0);
+      if (!fl && heat > 0.4) { ctx.fillStyle = rgba('#ff8a30', (heat - 0.4) * 0.8); ctx.fillRect(fx + dx - 1.5, top, 3, len); }
     }
-    if (!fl) { ctx.fillStyle = '#140a04'; ctx.fillRect(fx - 44, top + len - 4, 88, 6); }
-    ctx.restore();
+    if (!fl && gk < 0.98) { ctx.fillStyle = '#140a04'; const w = frx * 2 * Math.sqrt(Math.max(0.05, 1 - ((lowest - breath - fy) / (fry + 1)) ** 2)); ctx.fillRect(fx - w / 2, lowest - 4, w, 6); }
     if (!fl && gk > 0.3) glowE(ctx, fx, fy + breath, frx * 1.5, fry * 1.4, HOT, 0.3 * gk + Math.sin(t * 20) * 0.05);
     // ── 가슴의 사슬 (목에 건 굵은 사슬) ──
     chain(ctx, A, -74, -236 + breath, 74, -236 + breath, 64, 14, this.chainSw * 0.3);

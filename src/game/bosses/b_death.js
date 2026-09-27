@@ -519,8 +519,9 @@ export class Death extends BossB {
       const cam = this.world.camera;
       ctx.save(); ctx.fillStyle = `rgba(2,10,6,${this.dim})`; ctx.fillRect(cam.x - 20, cam.y - 20, cam.vw + 40, cam.vh + 40); ctx.restore();
     }
-    if (this.dashWarn && this.state === 'dash') warnRect(ctx, this.dashWarn.x0, F - 58, this.dashWarn.x1 - this.dashWarn.x0, 58, this.dashWarn.k, SOUL, this.t);
-    if (this.reapWarn) {
+    const dead = this.dying > 0;   // 예고 도중 쓰러지면 경고가 사망 연출 내내 남지 않게 (그리기만 막음)
+    if (this.dashWarn && this.state === 'dash' && !dead) warnRect(ctx, this.dashWarn.x0, F - 58, this.dashWarn.x1 - this.dashWarn.x0, 58, this.dashWarn.k, SOUL, this.t);
+    if (this.reapWarn && !dead) {
       const w = this.reapWarn, A = this.A;
       const y0 = w.lane === 'low' ? F - 62 : F - 175, h = w.lane === 'low' ? 62 : 100;
       warnRect(ctx, A.x0, y0, A.w, h, w.k, SOUL, this.t);
@@ -528,7 +529,7 @@ export class Death extends BossB {
       warnBang(ctx, w.d > 0 ? Math.max(A.x0, cam.x) + 50 : Math.min(A.x1, cam.x + cam.vw) - 50, y0 - 40, 22, 0.6 + 0.4 * Math.sin(this.t * 18));
     }
     // 순간이동 예고 잔상
-    if (this.state === 'blink' && this.blinkTo && this.vanish > 0.9 && !R.fl && !pLive(this)) {
+    if (this.state === 'blink' && this.blinkTo && this.vanish > 0.9 && !R.fl && !pLive(this) && !(this.dying > 0)) {   // 순간이동 중 쓰러지면 폭발(vanish=1) 뒤 예고 잔상이 남지 않게
       const k = clamp((this.st % 1.25 - 0.25) / 0.37, 0, 1);
       ctx.save(); ctx.globalAlpha = 0.18 + 0.3 * k;
       this.paintReaper(ctx, this.blinkTo.x, this.blinkTo.y, this.P && this.P.cx < this.blinkTo.x ? -1 : 1, this.t, { a: -1.5, s: 0 }, this.form, this.S, true);
@@ -544,7 +545,7 @@ export class Death extends BossB {
     ctx.restore();
   }
   paintFront(ctx) {
-    if (R.fl) return;
+    if (R.fl || (this.dying > 0 && this._boom)) return;   // 몸이 터진 뒤엔 쏘지 못한 낫 고리도 함께 사라짐 (그리기만)
     this.paintSickleRing(ctx);
   }
   /** 사신 그리기: (x,y) = 망토 밑단/발 아래 중심 */

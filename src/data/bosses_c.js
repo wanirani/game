@@ -2,7 +2,10 @@
 // 스키마: game/bosses/boss.js 상단 주석. hp/atk/def 는 레벨 1 기준값 — enemyStats() 가 스테이지 레벨·난이도 bossHp 로 스케일한다.
 // hpMul: 추가 체력 배율 · phases: 체력 비율 경계 · contact: 접촉 피해 배율 · size = 몸통 판정 크기 (그림은 훨씬 크다).
 // form2: 형태 변화 뒤 HUD/보스 소개 이름·칭호·초상화 · drops: 고유 아이템 + 세계의 심장(k_heart_n, 중복 드롭 없음 — game/loot.js).
-// music: boss3 = 나르키사·다곤·마라, boss4 = 몰록·지즈·베헤모스 (MASTER_PLAN §1.19). 클래스는 game/bosses/c_*.js (BossB 상속).
+// music: boss3 = 나르키사·다곤·마라, boss4 = 몰록·지즈·베헤모스 (MASTER_PLAN §1.19). 클래스는 game/bosses/c_*.js (BossC ← BossB 상속).
+// 조정 (BOSS-P2-1, world2 §15 목표 '보스 타수 110–170 · 받는 피해 12–22%', tools/balance.mjs normal kael):
+//   몰록 hpMul 1.3 → 1.15 — 방어 26 에 몸통 부위 방어 ×1.5 까지 겹쳐 kael 189타(목표 초과)였다 → 167타. 화로 창살이 열릴 때(×0.5)가 공략 창.
+//   나르키사는 131타 · 16.0% 로 목표 안이라 명세 값 그대로.
 export const BOSSES_C = {
   b_narkissa: {
     id: 'b_narkissa', name: '나르키사', title: '만경(萬鏡)의 여제', hp: 2300, hpMul: 1.3, atk: 36, def: 18, res: 20, exp: 6000, score: 250000,
@@ -13,7 +16,7 @@ export const BOSSES_C = {
     desc: '거울 세계의 수호자. 영혼에게 참된 얼굴을 보여 주던 여제는 공허의 속삭임 끝에 아름다운 것만 보려고 제 얼굴을 깨뜨렸다.',
   },
   b_moloch: {
-    id: 'b_moloch', name: '몰록', title: '용광로의 우상', hp: 2500, hpMul: 1.3, atk: 38, def: 26, res: 12, exp: 6600, score: 270000,
+    id: 'b_moloch', name: '몰록', title: '용광로의 우상', hp: 2500, hpMul: 1.15, atk: 38, def: 26, res: 12, exp: 6600, score: 270000,
     size: { w: 200, h: 300 }, flying: false, contact: 0.9, material: 'metal', weak: ['ice', 'thunder'], resist: ['fire', 'dark'], phases: [0.6, 0.3],
     music: 'boss4', portrait: 'portraits/b_moloch', stageId: 's15', drops: ['u_moloch', 'k_heart_2'], light: { r: 320, color: '#ff7a2a', i: 0.9 },
     intro: '더 많은 쇠. 더 많은 불. 더 많은 사슬을!',
