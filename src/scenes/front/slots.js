@@ -87,6 +87,8 @@ export class SlotsScene extends Scene {
       return {
         ...s, charId, broken: !st || !charId, raw: st, stage: own(STAGES, far) ? STAGES[far] : null,
         level: hero?.level ?? s.level ?? 1, difficulty: st?.difficulty ?? s.difficulty,
+        // 플레이 시간·골드도 정리된 기록 기준 (saves.list 요약은 원본 값이라 손상된 기록이면 NaN 으로 보인다)
+        playTime: st?.stats?.playTime ?? s.playTime, gold: st ? st.gold : s.gold,
         relics: len(P.relics), docs: len(P.docs), shards: len(P.shards), hearts: len(P.hearts),
         heroes: Object.keys(st?.heroes ?? {}).filter((id) => own(CHARACTERS, id)),
         cls: own(CLASSES, classId) ? CLASSES[classId].name : '', cloud: c,

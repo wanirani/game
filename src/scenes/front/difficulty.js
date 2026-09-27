@@ -11,7 +11,7 @@ import { drawHints, promptMode } from '../../core/prompts.js';
 import { clamp, ease, rgba, lerp } from '../../core/math.js';
 import { hudSafe } from '../../render/hud_layout.js';
 import { DIFFICULTIES } from '../../data/difficulty.js';
-import { Ambience, kenBurns, shade, frame, heading, gbutton, backButton, footer, skull, ornament, follow, glowSprite, linGrad, radGrad, parseHints, GOLD, BONE, DIM } from './common.js';
+import { Ambience, kenBurns, shade, frame, heading, gbutton, backButton, footer, skull, ornament, follow, glowSprite, linGrad, radGrad, parseHints, clampLines, GOLD, BONE, DIM } from './common.js';
 
 const pct = (v) => `×${Number(v).toFixed(2).replace(/0$/, '')}`;
 
@@ -158,9 +158,9 @@ export class DifficultyScene extends Scene {
     // 보정치 (아래에서부터) → 그 위 남는 자리에 설명
     const rows = diffRows(d);
     const ry = h - rows.length * C.rowH - 8;
-    const lines = wrap(ctx, d.desc, w - 18, 13, 500);
     const maxLines = clamp(Math.floor((ry - 15 - 4 - C.descY + C.descLH * 0.75) / C.descLH), 0, 4);
-    lines.slice(0, maxLines).forEach((l, j) => text(ctx, l, w / 2, C.descY + j * C.descLH, { size: 13, align: 'center', color: '#d8ccbc', ow: 2 }));
+    const lines = clampLines(ctx, wrap(ctx, d.desc, w - 18, 13, 500), maxLines, w - 18); // 잘리면 '…'
+    lines.forEach((l, j) => text(ctx, l, w / 2, C.descY + j * C.descLH, { size: 13, align: 'center', color: '#d8ccbc', ow: 2 }));
     ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(8, ry - 15, w - 16, rows.length * C.rowH + 8);
     rows.forEach(([k2, v, c], j) => {
       text(ctx, k2, 14, ry + j * C.rowH, { size: 12, weight: 600, color: DIM, ow: 2 });

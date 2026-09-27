@@ -108,7 +108,9 @@ export function draw(ctx, e, world, o, rig) {
     const swp = K.part('sword'), SL = swp ? swp.len : 42;
     K.local();
     ctx.globalCompositeOperation = 'lighter';
-    const r = AL * 0.8 + SL;
+    // the heavy last cut hits out to x 110 (AI_B.swordsman last strike rect -10..110, the blade ends ~70): its frost
+    // smear sweeps that radius so the range reads (docs/art/ENEMY_PIPELINE.md §9.2)
+    const r = last ? Math.max(AL * 0.8 + SL, 106 / ((e.scale || 1) * (rig.scale ?? 1)) - shx) : AL * 0.8 + SL;
     const a1 = Math.atan2(hy + Math.sin(sd) * SL - shy, hx + Math.cos(sd) * SL - shx);
     const back = ci === 1 && !last ? 1.05 : -1.05;
     ctx.strokeStyle = `rgba(200,240,255,${0.5 * (1 - s * 0.5)})`; ctx.lineWidth = last ? 7 : 5;
@@ -143,7 +145,7 @@ export function draw(ctx, e, world, o, rig) {
     for (let n = pool.rate(0, walk ? 3 : 1.5, dt); n > 0; n--) pool.add(3, e.cx + f * sc * K.frand(-14, 14), e.bottom - sc * K.frand(20, 85), 0, K.frand(-20, -5), K.frand(0.2, 0.4), K.frand(1, 2), '#e8f8ff');
     if (slash && last && s > 0 && !e._chop) {
       e._chop = true;
-      for (let i = 0; i < 12; i++) pool.add(4, e.cx + f * sc * K.frand(20, 60), e.bottom - 4, f * K.frand(40, 220), K.frand(-260, -80), K.frand(0.4, 0.8), K.frand(2, 3.5), i % 2 ? '#dff4ff' : '#9fc8f0');
+      for (let i = 0; i < 12; i++) pool.add(4, e.cx + f * K.frand(20, 106), e.bottom - 4, f * K.frand(40, 220), K.frand(-260, -80), K.frand(0.4, 0.8), K.frand(2, 3.5), i % 2 ? '#dff4ff' : '#9fc8f0');
     }
     if (!(slash && last && s > 0)) e._chop = false;
     ctx.setTransform(o.cam);

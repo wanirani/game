@@ -152,11 +152,11 @@ export class StatusTab extends Tab {
     this.refresh();
     const t = this.t, hero = this.hero, ch = D.CHARACTERS()[hero.charId] || {};
     const LW = Math.min(330, Math.round(A.w * 0.34));
-    // 왼쪽 판의 틀 (정적)
-    this.bg.draw(ctx, `${LW}`, A.x - 3, A.y - 3, LW + 6, A.h + 6, (c) => frame(c, A.x, A.y, LW, A.h));
     // ── 왼쪽: 영웅 카드 (무대 높이는 아래 정보 칸(≈170 px)을 뺀 만큼) ──
     const sh = Math.round(clamp(A.h - 178, 108, 226));
     const sx = A.x + 8, sy = A.y + 8, sw = LW - 16;
+    // 왼쪽 판의 틀 (정적 · 불투명한 영웅 무대 자리는 건너뛰고 붙인다)
+    this.bg.draw(ctx, `${LW}`, A.x - 3, A.y - 3, LW + 6, A.h + 6, (c) => frame(c, A.x, A.y, LW, A.h), Infinity, { x: sx, y: sy, w: sw, h: sh });
     const accent = accentOf(this.look);
     this.stage.draw(ctx, sx, sy, sw, sh, t, pxScale(ctx), accent);
     const foot = Math.round(clamp(sh * 0.115, 14, 26));

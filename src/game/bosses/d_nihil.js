@@ -1169,6 +1169,9 @@ export class Nihil extends BossC {
   }
   enterSun(world) {
     wallsOpen(this, 200);
+    // P3 의 20초 주기 collapse 가 대기열에 남아 있으면 P4 에서 벽이 다시 조인다 → 버린다 (P4 = lastLight 만, 벽은 열린 채)
+    const fi = this.forced.indexOf('collapse');
+    if (fi >= 0) this.forced.splice(fi, 1);
     this.wallT = 0; this.collapseCD = 0; this.mawT = 0; this.implode = 1;
     this.setSize(SUN);
     this.ty = this.hoverY('sun');

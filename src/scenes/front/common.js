@@ -61,11 +61,12 @@ export const keyHint = (keys, touch) => (input.touchMode ? touch ?? keys : keys)
 export function fmtDate(ts) {
   if (!ts) return '-';
   const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return '-'; // 손상된 기록의 날짜
   const p = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 export function fmtPlay(sec = 0) {
-  sec = Math.max(0, Math.floor(sec));
+  sec = Math.max(0, Math.floor(Number(sec) || 0)); // 숫자가 아닌 값(손상된 기록)은 0
   const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
   return h > 0 ? `${h}시간 ${String(m).padStart(2, '0')}분` : `${m}분 ${String(s).padStart(2, '0')}초`;
 }
@@ -589,6 +590,19 @@ export function pulseRing(ctx, x, y, r, color, k) {
   ctx.beginPath(); ctx.arc(x, y, r * (0.4 + k * 0.9), 0, TAU); ctx.stroke();
   ctx.restore();
 }
+/**
+ * wrap() 결과를 n 줄까지만 남긴다. 잘렸으면 마지막 줄 끝을 '…' 로 (문장이 중간에서 뚝 끊겨 보이지 않게).
+ * 바로 앞의 wrap 이 맞춰 둔 ctx.font 로 잰다 (같은 크기·굵기로 그릴 것)
+ */
+export function clampLines(ctx, lines, n, maxW) {
+  if (lines.length <= n) return lines;
+  const out = lines.slice(0, Math.max(0, n));
+  if (!out.length) return out;
+  let last = out[out.length - 1].replace(/\s+$/, '');
+  while (last && ctx.measureText(last + '…').width > maxW) last = last.slice(0, -1).replace(/\s+$/, '');
+  out[out.length - 1] = last + '…';
+  return out;
+}
 
 // ───────────────────────── 초상화 ─────────────────────────
 /**
@@ -682,12 +696,30 @@ export const MODES = [
   { id: 'practice', name: '스테이지 연습', eng: 'PRACTICE' },
 ];
 export const MODE_NAME = Object.fromEntries(MODES.map((m) => [m.id, m.name]));
+/** 모드 이름 (알 수 없는 모드·손상된 값은 '') */
+export const modeName = (id) => { const k = id || 'story'; return typeof k === 'string' && Object.hasOwn(MODE_NAME, k) ? MODE_NAME[k] : ''; };
 const PER_MODE = 20;
+const isRec = (h) => !!h && typeof h === 'object' && !Array.isArray(h);
+/**
+ * meta.highScores 를 믿고 읽을 수 있는 배열로 돌려준다. 손상된 기록(배열이 아님 · null 항목 · 숫자가 아닌 점수)은
+ * 제자리에서 고친다 (다음 saveMeta 가 고친 것을 저장). 멀쩡하면 같은 배열을 그대로 돌려준다 (매 프레임 불러도 된다)
+ */
+export function scoreList(meta) {
+  if (!isRec(meta)) return [];
+  let a = meta.highScores;
+  if (!Array.isArray(a)) a = meta.highScores = [];
+  for (const h of a) {
+    if (isRec(h) && Number.isFinite(h.score)) continue;
+    a = meta.highScores = a.filter(isRec).map((x) => (Number.isFinite(x.score) ? x : { ...x, score: Math.max(0, Math.floor(Number(x.score) || 0)) }));
+    break;
+  }
+  return a;
+}
 /** 모드별 상위 20개를 유지하며 기록. 반환: 해당 모드 내 순위(0부터) 또는 -1 */
 export function recordHighScore(game, entry) {
   const m = game.meta;
   if (!m) return -1;
-  m.highScores ??= [];
+  scoreList(m);
   const e = { name: '', score: 0, mode: 'story', date: Date.now(), ...entry };
   e.score = Math.max(0, Math.floor(e.score || 0));
   // 스토리 모드는 한 회차(세이브 슬롯+생성 시각)당 한 줄만 남긴다
@@ -709,7 +741,7 @@ export function recordHighScore(game, entry) {
 /** 이 점수가 해당 모드 순위권(20위)에 드는가 */
 export function qualifies(game, mode, score) {
   if (!(score > 0)) return false;
-  const list = (game.meta?.highScores ?? []).filter((h) => (h.mode || 'story') === mode);
+  const list = scoreList(game.meta).filter((h) => (h.mode || 'story') === mode);
   return list.length < PER_MODE || score > list[list.length - 1].score;
 }
 /**

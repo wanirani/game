@@ -230,13 +230,16 @@ export class EquipTab extends Tab {
     // ── 세 판의 틀 + 제목 (정적: 영웅·장비 칸·후보 수가 바뀔 때만 다시 굽는다) ──
     const slotName = D.SLOT_NAMES()[this.slot];
     const nCand = this.list.filter((r) => !r.unequip).length;
+    // 가운데 영웅 무대 (불투명 — 틀 레이어는 그 자리를 건너뛰고 붙인다)
+    const sh = Math.round(clamp(A.h * 0.52, 128, 260));
+    const stageR = { x: MX + 8, y: A.y + 8, w: MW - 16, h: sh };
     this.bg.draw(ctx, `${hero.charId}|${this.slot}|${nCand}|${touch ? 1 : 0}|${LW}|${MW}`, A.x - 3, A.y - 3, A.w + 6, A.h + 6, (c) => {
       frame(c, A.x, A.y, LW, A.h);
       heading(c, '장착 장비', A.x + 16, A.y + (touch ? 24 : 26), LW - 32, { sub: D.CHARACTERS()[hero.charId]?.name?.split(' ')[0] });
       frame(c, MX, A.y, MW, A.h);
       frame(c, RX, A.y, RW, A.h);
       heading(c, `${slotName} 교체`, RX + 16, A.y + 26, RW - 32, { sub: `${nCand}개` });
-    });
+    }, Infinity, stageR);
     // ── 왼쪽: 장비 칸 ──
     this.slotRects.length = 0;
     const rowH = Math.min(62, (A.h - top - 8) / 6);
@@ -254,7 +257,7 @@ export class EquipTab extends Tab {
       const tall = r.h >= 54;
       // 아이콘 칸 + 글자는 캐시 (선택 막대는 아래, 반짝임·괄호는 위에서 매 프레임). +7 이상 강화 오라는 움직이므로 아이콘만 매 프레임
       const live = slotLive(inst);
-      if (live) drawSlot(ctx, x + 12, y + 4, s, inst, { selected: sel, empty: SLOT_ICON_EMPTY[slot] });
+      if (live) drawSlotLive(ctx, x + 12, y + 4, s, inst, { selected: sel, empty: SLOT_ICON_EMPTY[slot] });
       const x0 = live ? tx - 4 : x + 8;
       this.txt.draw(ctx, 'slot' + i, `${this.m.rev}|${hero.charId}|${slot}|${inst?.uid ?? '-'}|${inst?.level ?? 0}|${sel ? 1 : 0}|${live ? 1 : 0}|${iconReady(inst)}`, x0, y, x + w - x0, r.h, (c) => {
         if (!live) drawSlot(c, x + 12, y + 4, s, inst, { selected: sel, empty: SLOT_ICON_EMPTY[slot] });
@@ -271,9 +274,8 @@ export class EquipTab extends Tab {
 
     // ── 가운데: 영웅 미리보기 + 요약 ──
     // 턴테이블 무대: 끌어서·휠·, . 키·오른쪽 스틱으로 돌려 장비의 앞·옆·뒷모습을 본다 (hero_view.js)
-    const sh = Math.round(clamp(A.h * 0.52, 128, 260));
     const accent = accentOf(look);
-    this.stage.draw(ctx, MX + 8, A.y + 8, MW - 16, sh, t, pxScale(ctx), accent);
+    this.stage.draw(ctx, stageR.x, stageR.y, stageR.w, stageR.h, t, pxScale(ctx), accent);
     const foot = Math.round(clamp(sh * 0.1, 14, 22));
     const scale = clamp((sh - foot - 24) / 96, 0.95, 2.1);
     this.heroRect = { x: MX + 8, y: A.y + 8, w: MW - 16, h: sh };
@@ -343,7 +345,7 @@ export class EquipTab extends Tab {
       const s = r.h - 8;
       const tx = r.x + 20 + s;
       const live = slotLive(row.inst);
-      if (live) drawSlot(ctx, r.x + 10, r.y + 4, s, row.inst, { selected: sel });
+      if (live) drawSlotLive(ctx, r.x + 10, r.y + 4, s, row.inst, { selected: sel });
       const x0 = live ? tx - 4 : r.x + 6;
       // 굽는 영역은 줄의 정수 y 에 맞춘다 (스크롤 중 y 가 소수여도 같은 캐시를 쓰고, 복사는 어차피 장치 픽셀에 맞춰진다)
       this.txt.draw(ctx, 'row' + i, `${rkey}|${live ? 1 : 0}|${iconReady(row.inst)}`, x0, Math.round(r.y), r.x + r.w - x0, r.h, (c) => {
@@ -364,7 +366,8 @@ export class EquipTab extends Tab {
     const cy = A.y + A.h - cmpH;
     this.btnRect = null;
     const ckey = `${this.m.rev}|${hero.charId}|${this.slot}|${hr ? (hr.unequip ? 'U' : hr.inst.uid) : '-'}|${this.list.length ? 1 : 0}`;
-    this.txt.draw(ctx, 'cmp', ckey, RX + 4, cy - 6, RW - 8, cmpH + 2, (c) => {
+    // 고른 줄이 없으면 안내 한 줄뿐이라 그 띠만 굽고 붙인다 (1:1 복사 비용은 넓이에 비례 — P-11)
+    this.txt.draw(ctx, 'cmp', ckey, RX + 4, cy - 6, RW - 8, hr ? cmpH + 2 : 64, (c) => {
       divider(c, RX + 16, cy, RW - 32);
       if (!hr) {
         text(c, this.list.length ? '장비를 고르면 능력치 변화를 비교합니다' : '상점이나 보물상자에서 장비를 구해 보세요', RX + RW / 2, cy + 44, { size: 13, align: 'center', color: PAL.dim });
@@ -400,6 +403,16 @@ export class EquipTab extends Tab {
 const input_rowH = () => 50;
 /** 아이콘 칸을 매 프레임 그려야 하는가: +7 이상 강화 오라는 시간에 따라 움직인다 (render/icons.js drawIcon) */
 const slotLive = (inst) => (inst?.level ?? 0) >= 7;
+/**
+ * 매 프레임 그리는 아이콘 칸 (+7 이상): 아이콘(128 px)·희귀도 광채·강화 오라 스프라이트의 확대·축소를 쌍선형('low')으로.
+ * 게임 캔버스의 'high' 필터(쌍삼차)는 소프트웨어 래스터에서 칸 하나에 ≈ 1.5 ms (fhd2x), 'low' 는 ≈ 0.6 ms 이고 부드러운 광채·
+ * 살짝 줄이는 아이콘에서는 차이가 보이지 않는다 (P-11). 정적인 칸은 글자 캐시에 'high' 로 한 번 굽는다
+ */
+function drawSlotLive(ctx, x, y, s, inst, o) {
+  const q = ctx.imageSmoothingQuality;
+  ctx.imageSmoothingQuality = 'low';
+  try { drawSlot(ctx, x, y, s, inst, o); } finally { ctx.imageSmoothingQuality = q; }
+}
 /** 아이콘 그림이 준비됐는가 (준비 전에는 대체 아이콘으로 구워지므로 준비되면 다시 굽는다) */
 const iconReady = (inst) => (!inst?.icon || assets.has('icons/' + inst.icon) ? 1 : 0);
 const canDoN = (hr) => hr && (hr.unequip || (hr.ok && !hr.here));

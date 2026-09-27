@@ -95,6 +95,13 @@ function featherLeft(img) {
 const WARN_OPTS = { size: 64, drips: 0.7 };
 const NAME_OPTS = { align: 'left', drips: 0.5 };
 const NAME_MAX = 52, NAME_MIN = 26;
+/** 이름 카드 세로 위치 (이름 기준선) */
+const nameY = (vh) => vh * 0.42 + 56;
+/** 이름이 쓸 수 있는 폭: 초상화가 있으면 대각 구분선(위 dx+80 → 아래 dx, dx = 35% vw)까지, 없으면 화면 폭 */
+function nameAvail(vw, vh, hasImg) {
+  const dx = vw * 0.35;
+  return Math.max(160, (hasImg ? dx + 80 * (1 - nameY(vh) / vh) : vw) - 60 - 18);
+}
 
 /** 보스 등장: WARNING 경고 → 초상화 + 이름 (피 글씨) */
 export class BossIntroScene extends Scene {
@@ -108,7 +115,15 @@ export class BossIntroScene extends Scene {
     // 초상화는 WARNING 동안(1.4초) 받아 둔다: 보스 초상화는 스테이지가 미리 받지 않으므로 이름 카드가 나올 때 비어 있지 않게
     if (this.def.portrait) { try { assets.get(this.def.portrait); } catch (e) { console.error(e); } }
     audio.sfx('warning');
-    prewarm(this.game, 1, [['WARNING', WARN_OPTS], [this.bossName, { ...NAME_OPTS, size: NAME_MAX }]]);
+    const g = this.game;
+    prewarm(g, 1, [['WARNING', WARN_OPTS], [this.bossName, { ...NAME_OPTS, size: NAME_MAX }]]);
+    // 긴 이름은 줄인 크기로 그리므로 그 크기도 미리 굽는다 (초상화가 있는 배치 기준: 이름 카드 첫 프레임이 끊기지 않게)
+    if (g?.ctx) {
+      try {
+        const ns = this.nameSize(g.ctx, nameAvail(g.viewW, g.viewH, !!this.def.portrait));
+        if (ns !== NAME_MAX) prewarm(g, 1, [[this.bossName, { ...NAME_OPTS, size: ns }]]);
+      } catch { /* 그릴 때 굽는다 */ }
+    }
   }
   finish() {
     if (this.done) return;
@@ -140,8 +155,10 @@ export class BossIntroScene extends Scene {
     const vw = this.game.viewW, vh = this.game.viewH, t = this.t;
     if (alone(this)) { ctx.fillStyle = '#07030a'; ctx.fillRect(0, 0, vw, vh); }
     if (t < 1.4) {
+      // 화면 전체 붉은 깜빡임(초당 3번)은 번쩍임 설정을 따른다 (feel §4.9 광과민 대책 · R12): 약하게 0.5 = 폭 절반, 끔 0 = 깜빡이지 않음
+      const fk = Number(this.game.settings?.flashFx ?? 1), blink = Number.isFinite(fk) ? clamp(fk, 0, 1) : 1;
       const on = Math.floor(t * 6) % 2 === 0;
-      ctx.fillStyle = `rgba(120,0,10,${on ? 0.35 : 0.15})`; ctx.fillRect(0, 0, vw, vh);
+      ctx.fillStyle = `rgba(120,0,10,${(0.25 + (on ? 0.1 : -0.1) * blink).toFixed(3)})`; ctx.fillRect(0, 0, vw, vh);
       for (const y of [vh * 0.38, vh * 0.62]) {
         ctx.fillStyle = 'rgba(180,0,20,0.85)'; ctx.fillRect(0, y - 14, vw, 28);
         ctx.save(); ctx.beginPath(); ctx.rect(0, y - 14, vw, 28); ctx.clip();
@@ -152,8 +169,8 @@ export class BossIntroScene extends Scene {
         ctx.fill();
         ctx.restore();
       }
-      // 피 글씨 WARNING: 깜빡이는 동안에도 핏방울은 처음부터 흘러내린다 (t)
-      if (on) bloodText(ctx, 'WARNING', vw / 2, vh / 2 + 22, { ...WARN_OPTS, t });
+      // 피 글씨 WARNING: 깜빡이는 동안에도 핏방울은 처음부터 흘러내린다 (t). 번쩍임을 끄면 깜빡이지 않고 계속 보인다
+      if (on || blink === 0) bloodText(ctx, 'WARNING', vw / 2, vh / 2 + 22, { ...WARN_OPTS, t });
       return;
     }
     const k = ease.outCubic(clamp((t - 1.4) / 0.5, 0, 1));
@@ -186,9 +203,9 @@ export class BossIntroScene extends Scene {
       ctx.strokeStyle = GOLD; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(dx + 80, 0); ctx.lineTo(dx, vh); ctx.stroke();
     }
     const x = 60 - (1 - k) * 300;
-    const ny = vh * 0.42 + 56;
+    const ny = nameY(vh);
     // 이름이 대각 구분선을 넘지 않도록 글자 크기를 줄인다
-    const avail = Math.max(160, (img ? dx + 80 * (1 - ny / vh) : vw) - 60 - 18);
+    const avail = nameAvail(vw, vh, !!img);
     const ns = this.nameSize(ctx, avail);
     text(ctx, this.def.title ?? '', x, vh * 0.42, { size: 18, weight: 700, family: FONT.title, color: '#e8c8a8', maxWidth: avail });
     // 금색 밑줄을 먼저 그려 핏방울이 그 위로 흘러내리게
@@ -618,6 +635,8 @@ export function cmdToText(cmd = []) {
 
 // ═══════════════════════════ 게임오버 ═══════════════════════════
 const GO_OPTS = { size: 60, t: 0 };
+/** 이어하기 화면의 세로 배율: 화면이 낮으면(최소 400) 간격·숫자를 줄여 한 화면에 들어가게 */
+const goFit = (H) => clamp((H - 40) / 480, 0.74, 1);
 const CONT_OPTS = { size: 30, style: 'gold' };
 const GO_ARM = 0.6; // 이어하기·포기 입력을 받기 시작하는 시각 (초)
 
@@ -632,8 +651,11 @@ export class GameOverScene extends Scene {
     this.sec = null; this.secT = 1; this.done = false;
     this.vg = null; this.vgKey = '';
     audio.music('gameover');
-    prewarm(this.game, this.game.uiK, [['GAME OVER', { size: GO_OPTS.size }], ['CONTINUE?', CONT_OPTS]]);
+    // render 와 같은 크기로 굽는다 (낮은 화면의 이어하기 화면은 52: 모바일에서 첫 프레임에 다시 굽지 않게)
+    prewarm(this.game, this.game.uiK, [['GAME OVER', { size: this.titleSize(viewOf(this)[1]) }], this.canContinue ? ['CONTINUE?', CONT_OPTS] : [null]]);
   }
+  /** GAME OVER 글자 크기 (enter 의 미리 굽기와 render 가 같은 값을 쓴다) */
+  titleSize(H) { return this.canContinue && goFit(H) < 0.9 ? 52 : GO_OPTS.size; }
   update(dt) {
     if (this.done) return;
     if (!this.canContinue) {
@@ -710,14 +732,14 @@ export class GameOverScene extends Scene {
     this.vignette(ctx, W, H);
     const hintY = H - 14 - S.b;
     if (!this.canContinue) {
-      bloodText(ctx, 'GAME OVER', W / 2, H * 0.34, { size: GO_OPTS.size, t });
-      text(ctx, '크레딧이 모두 소진되었다… 마을로 돌아갑니다', W / 2, H * 0.34 + 110, { size: 18, align: 'center', color: '#e8d8c0', maxWidth: W - 60 });
+      bloodText(ctx, 'GAME OVER', W / 2, H * 0.34, { size: this.titleSize(H), t });
+      text(ctx, '크레딧이 모두 소진되었습니다… 마을로 돌아갑니다', W / 2, H * 0.34 + 110, { size: 18, align: 'center', color: '#e8d8c0', maxWidth: W - 60 });
       if (t > 2 && Math.floor(t * 2) % 2 === 0) hintLine(ctx, [['confirm', '마을로 돌아가기']], '화면을 터치하면 마을로 돌아갑니다', W / 2, Math.min(hintY, H * 0.34 + 170), { size: 15, color: COLORS.dim });
       return;
     }
     // 세로 배치: 화면이 낮으면(최소 400) 간격·숫자를 줄여 한 화면에 들어가게
-    const f = clamp((H - 40) / 480, 0.74, 1);
-    const titleSize = f < 0.9 ? 52 : GO_OPTS.size;
+    const f = goFit(H);
+    const titleSize = this.titleSize(H);
     const g1 = 70 * f, g2 = 96 * f, g3 = 32 * f, g4 = 22 * f, bh = tapH(this);
     const numSize = Math.round(90 * f);
     const total = titleSize * 0.75 + g1 + g2 + g3 + g4 + bh;

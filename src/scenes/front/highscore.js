@@ -15,8 +15,8 @@ import { CHARACTERS } from '../../data/characters.js';
 import { STAGES } from '../../data/stages.js';
 import { getDiff } from '../../data/difficulty.js';
 import {
-  Ambience, kenBurns, shade, frame, heading, ornament, gbutton, backButton, footer, MODES, MODE_NAME,
-  recordHighScore, fmtClock, follow, bossRushBests, linGrad, radGrad, GOLD, BONE, DIM,
+  Ambience, kenBurns, shade, frame, heading, ornament, gbutton, backButton, footer, MODES, modeName,
+  recordHighScore, scoreList, fmtClock, follow, bossRushBests, linGrad, radGrad, GOLD, BONE, DIM,
 } from './common.js';
 import { COURSES } from './arcade.js';
 import * as ENDING from './ending.js';
@@ -57,7 +57,7 @@ export class HighscoreScene extends Scene {
   }
   list() {
     const id = MODES[this.tabs.index].id;
-    const all = [...(this.game.meta?.highScores ?? [])].sort((a, b) => b.score - a.score);
+    const all = [...scoreList(this.game.meta)].sort((a, b) => b.score - a.score); // 손상된 기록은 scoreList 가 걸러 낸다
     return (id === 'all' ? all : all.filter((h) => (h.mode || 'story') === id)).slice(0, 20);
   }
   update(dt) {
@@ -87,8 +87,9 @@ export class HighscoreScene extends Scene {
     const tabH = clamp(Math.ceil(38 / per), 44, 48);
     const ty = compact ? headY + headSize * 0.72 + 30 : st + 96;
     const y0 = ty + tabH + (compact ? 10 : 16);
-    const rowH = clamp(Math.floor((H - sb - 58 - y0) / 10), 24, 31);
-    return { W, H, sl, sr, st, sb, compact, headY, headSize, tabH, ty, y0, rowH };
+    // 순위 10줄 + 부가 기록 한 줄(20) + 안내 줄 띠(34)가 화면 높이에 들어가게 (높이 400 UI px 에서도 안내 줄과 겹치지 않는다)
+    const rowH = clamp(Math.floor((H - sb - 34 - 20 - y0) / 10), 20, 31);
+    return { W, H, sl, sr, st, sb, compact, headY, headSize, tabH, ty, y0, rowH, extraY: y0 + 10 * rowH + 12 };
   }
   render(ctx) {
     const g = this.game, t = g.time;
@@ -158,7 +159,7 @@ export class HighscoreScene extends Scene {
         ctx.strokeStyle = 'rgba(232,200,114,0.7)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(px, py, pr + 0.5, 0, TAU); ctx.stroke();
         const name = h.name || ch?.name?.split(' ')[0] || '???';
         text(ctx, name, x + 80, y + tb, { size: h.name ? 15 : 13, weight: 900, family: h.name ? FONT.num : FONT.body, color: hl ? '#fff' : '#f0e4d0', ow: 2, maxWidth: 66 });
-        text(ctx, `${this.tabs.index === 0 ? (MODE_NAME[h.mode || 'story'] ?? '') + ' · ' : ''}${detail(h)}`, x + 150, y + tb - 1, { size: 12, weight: 600, color: DIM, ow: 2, maxWidth: colW - 270 });
+        text(ctx, `${this.tabs.index === 0 ? modeName(h.mode) + ' · ' : ''}${detail(h)}`, x + 150, y + tb - 1, { size: 12, weight: 600, color: DIM, ow: 2, maxWidth: colW - 270 });
         text(ctx, fmt(h.score), x + colW - 10, y + tb, { size: 16, align: 'right', weight: 900, family: FONT.num, color: i === 0 ? '#ffe070' : '#fff', ow: 2 });
       } else text(ctx, '- - -', x + 80, y + tb, { size: 13, weight: 700, family: FONT.num, color: '#4a4040', ow: 0 });
       ctx.restore();
@@ -171,7 +172,7 @@ export class HighscoreScene extends Scene {
     if (m.survivalBest) extra.push(`서바이벌 최고 WAVE ${m.survivalBest}`);
     const ec = endingCount(m.endingsSeen);
     if (ec.n) extra.push(`엔딩 ${ec.n}/${ec.of}`);
-    if (extra.length) text(ctx, extra.join('   ·   '), W / 2, y0 + 10 * rowH + 14, { size: 13, align: 'center', weight: 700, color: '#d8c0a0', ow: 2, maxWidth: W - 40 });
+    if (extra.length) text(ctx, extra.join('   ·   '), W / 2, L.extraY, { size: 13, align: 'center', weight: 700, color: '#d8c0a0', ow: 2, maxWidth: W - 40 });
     backButton(ctx, 14 + L.sl, 12 + L.st, '뒤로', this);
     footer(ctx, W, H, '←→ 부문 전환   X 돌아가기', '부문 탭을 터치하세요');
   }
@@ -193,7 +194,7 @@ export class InitialsScene extends Scene {
     this.typedKey = null;
     input.textCapture = (k) => this.onType(k);
     // 예상 순위
-    const list = (this.game.meta?.highScores ?? []).filter((h) => (h.mode || 'story') === mode);
+    const list = scoreList(this.game.meta).filter((h) => (h.mode || 'story') === mode);
     this.rank = list.filter((h) => h.score >= score).length;
     audio.sfx('extra_life');
     // 피 글씨는 처음 그릴 때 굽는다 → 미리 (지금 화면 배율로)
@@ -300,7 +301,7 @@ export class InitialsScene extends Scene {
     ctx.fillRect(-100, -100, 200, 200);
     ctx.restore();
     bloodText(ctx, NEW_RECORD, W / 2, Y.title, { ...NR_OPTS, t: this.t, maxWidth: W - 60 });
-    text(ctx, `${MODE_NAME[this.mode] ?? ''} 부문 ${this.rank + 1}위 — 명예의 전당에 이름을 새기세요`, W / 2, Y.rank, { size: 16, align: 'center', weight: 800, color: '#f0e0c8', ow: 3, maxWidth: W - 40 });
+    text(ctx, `${modeName(this.mode)} 부문 ${this.rank + 1}위 — 명예의 전당에 이름을 새기세요`, W / 2, Y.rank, { size: 16, align: 'center', weight: 800, color: '#f0e0c8', ow: 3, maxWidth: W - 40 });
     text(ctx, fmt(this.score), W / 2, Y.score, { size: 34, align: 'center', weight: 900, family: FONT.num, color: '#fff', ow: 4 });
     ornament(ctx, W / 2, Y.orn, 360);
     // 글자 칸

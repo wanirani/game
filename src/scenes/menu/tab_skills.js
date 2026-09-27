@@ -214,13 +214,20 @@ export class SkillsTab extends Tab {
         const rect = this.m.ges.zone({ x: x0 + 4, y: top + rowH * r - sy + 1, w: cw - 8, h: rowH - 2, id, c, r }, 'list', { clip: TR, src: 'skills.node' });
         this.nodeRects.push(rect);
         this.drawNode(ctx, sk, x, y, R, lv, chk.ok, sel, focused, t, bc);
-        // 이름 + 레벨
-        const nx = x + R + 9, nw = x0 + cw - nx - 6 - (hero.slots?.includes(id) ? 50 : 0); // 슬롯 배지 자리를 비운다
+        // 이름 + 레벨. 좁은 계열 기둥(최소 UI 폭 720)에서는 슬롯 배지를 아이콘 아래에 달고, '액티브'는 자리가 있을 때만 (옆 기둥을 덮지 않게)
+        const slotted = !!hero.slots?.includes(id), narrow = cw < 170;
+        const nx = x + R + 9, right = x0 + cw - 6;
+        const nw = right - nx - (slotted && !narrow ? 50 : 0); // 슬롯 배지 자리를 비운다
         text(ctx, ellipsize(ctx, sk.name, nw, 13, 800), nx, y - 1, { size: 13, weight: 800, color: sel ? PAL.goldHi : lv ? PAL.bone : chk.ok ? PAL.text : PAL.faint, ow: 3 });
         // 레벨 눈금
-        for (let k = 0; k < max; k++) diamond(ctx, nx + 4 + k * 10, y + 11, 3.4, k < lv ? bc : 'rgba(90,70,60,0.8)');
-        if (D.isActive(sk)) text(ctx, '액티브', nx + max * 10 + 6, y + 15, { size: 10, weight: 700, color: lv ? '#ffb070' : PAL.faint, ow: 2 });
-        if (hero.slots?.includes(id)) pill(ctx, slotLabel(hero.slots.indexOf(id)), x0 + cw - 10, y - 14, { align: 'right', size: 9, h: 14, color: PAL.goldHi, bg: 'rgba(90,10,30,0.9)' });
+        const step = clamp((right - nx - 6) / max, 6, 10);
+        for (let k = 0; k < max; k++) diamond(ctx, nx + 4 + k * step, y + 11, step < 9 ? 3 : 3.4, k < lv ? bc : 'rgba(90,70,60,0.8)');
+        if (D.isActive(sk) && nx + max * step + 34 <= right) text(ctx, '액티브', nx + max * step + 6, y + 15, { size: 10, weight: 700, color: lv ? '#ffb070' : PAL.faint, ow: 2 });
+        if (slotted) {
+          const lb = slotLabel(hero.slots.indexOf(id));
+          if (narrow) pill(ctx, lb, x, y + R - 3, { align: 'center', size: 9, h: 13, color: PAL.goldHi, bg: 'rgba(90,10,30,0.92)' });
+          else pill(ctx, lb, x0 + cw - 10, y - 14, { align: 'right', size: 9, h: 14, color: PAL.goldHi, bg: 'rgba(90,10,30,0.9)' });
+        }
       });
       clipEnd(ctx, TR, null);
     });

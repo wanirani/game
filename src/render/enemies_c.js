@@ -101,7 +101,8 @@ RENDER_C.mirror_knight = (ctx, e, world, o) => {
     const wu = e.counter ? 0.25 : (e.comboI ?? 0) === 0 ? (P.windup ?? 0.5) : 0.3;
     const [w, s] = phase(at, wu, 0.1);
     sa = s > 0 ? lerp(3.4, 1.2, ease.outCubic(s)) : lerp(0.9, 3.4, ease.outCubic(w)); ea = s > 0 ? 0.1 : 0.4;
-    if (w >= 1 && s > 0 && s < 1 && !FL) { ctx.strokeStyle = 'rgba(200,240,255,0.55)'; ctx.lineWidth = 10; ctx.beginPath(); ctx.arc(4, -78 + bob, 44, -PI * 0.55, PI * 0.25); ctx.stroke(); }
+    const last = (e.comboI ?? 0) >= (P.combo ?? 2) - 1;   // 마지막 일격은 x 110 까지 → 서리 궤적도 그 반경
+    if (w >= 1 && s > 0 && s < 1 && !FL) { ctx.strokeStyle = 'rgba(200,240,255,0.55)'; ctx.lineWidth = 10; ctx.beginPath(); ctx.arc(4, -78 + bob, last ? 100 : 44, -PI * 0.55, PI * 0.25); ctx.stroke(); }
   } else if (guard) { sa = 1.9; ea = 1.2; }
   const sx = 6, sy = -78 + bob;
   let p = end(sx, sy, sa, 16); const ex = p[0], ey = p[1];
@@ -431,6 +432,15 @@ RENDER_C.coral_crab = (ctx, e, world, o) => {
   poly(ctx, [20, -4, 40, -8 - open * 8, 36, 0], '#d85a40');
   poly(ctx, [20, 4, 38, 6 + open * 6, 34, 10], '#b8402c');
   ctx.restore();
+  // 딱총새우 물살: 내리찍는 순간 집게 끝 → 판정 끝(reachX + reach)까지 물줄기 (painted/enemies/coral_crab.js 와 같음)
+  const af = an === 'attack' && !FL ? at - (P.windup ?? 0.55) : -1;
+  if (af > 0 && af < 0.3) {
+    const k = k01(af / 0.07), fd = 1 - k01((af - 0.08) / 0.22), x0 = p[0] + 28, y0 = p[1] + 10;
+    const x1 = lerp(x0, ((P.reachX ?? 10) + (P.reach ?? 110)) / (e.scale || 1) - 4, k);
+    ctx.lineCap = 'round'; ctx.strokeStyle = `rgba(210,245,255,${0.75 * fd})`; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, -12); ctx.stroke();
+    glow(ctx, x1, -12, 12 + 8 * k, '#dff6ff', fd * k);
+  }
   FL = false;
 };
 

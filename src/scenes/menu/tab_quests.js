@@ -154,46 +154,58 @@ export class QuestsTab extends Tab {
     px += pill(ctx, main ? '메인 퀘스트' : '서브 퀘스트', px, y + 16, { color: main ? '#ffd070' : PAL.gold, size: 11, h: 19, bg: main ? 'rgba(90,40,10,0.92)' : 'rgba(50,20,30,0.92)' }) + 8;
     const giver = D.npcName(q.giver);
     if (giver) text(ctx, `의뢰인 · ${giver}`, px, y + 30, { size: 12, weight: 700, color: PAL.dim });
-    text(ctx, q.name ?? id, x + 18, y + 64, { size: 21, weight: 800, family: FONT.title, color: PAL.bone, ow: 4, maxWidth: w - 36 });
-    divider(ctx, x + 14, y + 78, w - 28);
-    let cy = y + 104;
-    cy += para(ctx, q.desc ?? '', x + 20, cy, w - 40, { size: 14, color: PAL.text, lh: 1.6, max: 5 }) + 10;
+    // 낮은 화면(휴대폰 UI 배율 · 최소 720×400)에서는 간격을 줄이고, 설명 줄 수를 남는 자리에 맞춘다 → 보상 칩이 아래 안내 줄을 덮지 않는다
+    const tight = h < 340;
+    const hy = y + h - 26;                 // 안내 줄 (기준선)
+    const floor = hy - 22;                 // 보상 칩 아래 끝의 한계 (안내 줄 위 장식선보다 위)
+    const gH = tight ? 27 : 30, gAfter = tight ? 20 : 30;
+    text(ctx, q.name ?? id, x + 18, y + (tight ? 58 : 64), { size: 21, weight: 800, family: FONT.title, color: PAL.bone, ow: 4, maxWidth: w - 36 });
+    divider(ctx, x + 14, y + (tight ? 70 : 78), w - 28);
+    let cy = y + (tight ? 94 : 104);
+    const dsz = tight ? 13 : 14, dlh = tight ? 1.5 : 1.6;
+    const goalH = gH + (sect !== 'avail' ? 18 : 0) + gAfter, rewardH = 14 + 28;
+    const maxDesc = clamp(Math.floor((floor - rewardH - goalH - cy - (tight ? 6 : 10)) / (dsz * dlh)), 1, 5);
+    cy += para(ctx, q.desc ?? '', x + 20, cy, w - 40, { size: dsz, color: PAL.text, lh: dlh, max: maxDesc }) + (tight ? 6 : 10);
     // 목표
     heading(ctx, '목표', x + 18, cy + 6, w - 36, { size: 14 });
-    cy += 30;
+    cy += gH;
     const pr = D.questProg(this.state, id);
     const ptxt = sect === 'done' ? '달성 완료' : D.questText(this.state, id) || '—';
-    text(ctx, ptxt, x + 24, cy, { size: 14, weight: 700, color: pr.done || sect === 'done' ? PAL.good : PAL.bone });
+    text(ctx, ellipsize(ctx, ptxt, w - 48 - (sect !== 'avail' ? 44 : 0), 14, 700), x + 24, cy, { size: 14, weight: 700, color: pr.done || sect === 'done' ? PAL.good : PAL.bone });
     if (sect !== 'avail') {
       const ratio = sect === 'done' ? 1 : pr.need ? pr.cur / pr.need : 0;
       gauge(ctx, x + 24, cy + 10, w - 48, 8, ratio, pr.done || sect === 'done' ? '#60e080' : '#e8c872');
       text(ctx, `${Math.round(ratio * 100)}%`, x + w - 24, cy, { size: 12, align: 'right', weight: 800, family: FONT.num, color: PAL.dim });
       cy += 18;
     }
-    cy += 30;
-    // 보상
+    cy += gAfter;
+    // 보상 (칩이 넘치면 줄을 바꾸고, 더 내려갈 자리가 없으면 '외 n개')
     heading(ctx, '보상', x + 18, cy, w - 36, { size: 14 });
     cy += 14;
     const rw = q.reward || {};
-    let rx = x + 24;
+    let rx = x + 24, more = 0;
     const chip = (icon, label, col = PAL.bone) => {
-      const tw = measure(ctx, label, 13, 700) + 40;
-      if (rx + tw > x + w - 16) { rx = x + 24; cy += 34; }
+      if (more) { more++; return; }
+      const tw = Math.min(w - 48, measure(ctx, label, 13, 700) + 40);
+      if (rx + tw > x + w - 16 && rx > x + 24) {
+        if (cy + 34 + 28 > floor) { more = 1; return; }
+        rx = x + 24; cy += 34;
+      }
       rr(ctx, rx, cy, tw, 28, 5); ctx.fillStyle = 'rgba(20,10,16,0.9)'; ctx.fill(); ctx.strokeStyle = PAL.goldDim; ctx.lineWidth = 1; ctx.stroke();
       if (icon) drawIcon(ctx, icon, rx + 15, cy + 14, 20); else text(ctx, 'EXP', rx + 15, cy + 18, { size: 9, align: 'center', weight: 900, family: FONT.num, color: '#9ae0ff', ow: 2 });
-      text(ctx, label, rx + 30, cy + 19, { size: 13, weight: 700, color: col, ow: 2 });
+      text(ctx, ellipsize(ctx, label, tw - 38, 13, 700), rx + 30, cy + 19, { size: 13, weight: 700, color: col, ow: 2 });
       rx += tw + 6;
     };
     if (rw.gold) chip('coin', `${rw.gold.toLocaleString('ko-KR')} G`, '#ffd870');
     if (rw.exp) chip(null, `${rw.exp.toLocaleString('ko-KR')}`, '#9ae0ff');
     for (const it of rw.items || []) { const b = D.ITEMS()[it.id]; chip(b?.icon ?? 'doc', `${b?.name ?? it.id} ×${it.qty ?? 1}`); }
-    if (!rw.gold && !rw.exp && !(rw.items || []).length) { const rt = D.questReward(id); if (rt) text(ctx, rt, x + 24, cy + 18, { size: 13, color: PAL.bone }); }
+    if (more) text(ctx, `외 ${more}개`, Math.min(rx + 2, x + w - 60), cy + 19, { size: 12, weight: 700, color: PAL.dim, ow: 2 });
+    if (!rw.gold && !rw.exp && !(rw.items || []).length) { const rt = D.questReward(id); if (rt) text(ctx, rt, x + 24, cy + 18, { size: 13, color: PAL.bone, maxWidth: w - 48 }); }
     // 안내
     const hintTxt = sect === 'done' ? '완료한 퀘스트입니다.'
       : sect === 'avail' ? (q.giver === 'board' ? '마을의 의뢰 게시판에서 수락할 수 있습니다.' : `마을에서 ${giver || '의뢰인'}에게 말을 걸어 수락하세요.`)
       : pr.done ? (q.auto || main ? '목표를 달성했습니다! 보상은 자동으로 지급됩니다.' : `목표 달성! ${giver || '의뢰인'}에게 돌아가 보상을 받으세요.`)
       : '목표를 향해 나아가세요.';
-    const hy = y + h - 26;
     divider(ctx, x + 14, hy - 16, w - 28, { center: false, a: 0.4 });
     if (sect === 'active' && pr.done) glowOval(ctx, x + w / 2, hy - 4, w * 0.45, 16, '#40ff80', 0.15 + 0.08 * Math.sin(t * 4));
     text(ctx, hintTxt, x + w / 2, hy, { size: 13, align: 'center', weight: 700, color: sect === 'active' && pr.done ? PAL.good : PAL.dim, maxWidth: w - 30 });

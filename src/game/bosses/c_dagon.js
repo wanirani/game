@@ -20,6 +20,15 @@ import { Entity } from '../entity.js';
 import { T } from '../../core/physics.js';
 import { audio } from '../../core/audio.js';
 import { TAU, clamp, lerp, rand, approach, rgba } from '../../core/math.js';
+import { registerPainted, hasPainted, paintedRig, paintedEnabled } from '../../render/painted/registry.js';
+import { bosses as ART6 } from '../../render/painted/reg/art-boss-6.js';
+
+// ───────────────────────── 채색 퍼핏 (ART-BOSS-6) ─────────────────────────
+// 모음(reg/index.js)에 art-boss-6 줄이 아직 없으면 여기서 한 번 등록한다 (이미 있으면 아무것도 안 함).
+// 채색 준비 전·?painted=0·굽기 실패 때는 아래 벡터 그림이 그대로 쓰인다.
+if (!hasPainted('b_dagon') && ART6.b_dagon) registerPainted('b_dagon', { kind: 'boss', importer: ART6.b_dagon });
+/** 채색 소품 도우미 (떠다니는 미끼 전구 · 수면 촉수). 없으면 null → 벡터 */
+const pArt = (world) => (paintedEnabled(world?.game) ? paintedRig('b_dagon')?.art ?? null : null);
 
 const TS = 48;
 const SINK = 430;            // 완전히 잠겼을 때 몸이 내려가는 거리(px)
@@ -765,13 +774,15 @@ export class Dagon extends BossC {
     if (R.fl) return;
     const t = this.t;
     // 떠다니는 미끼
+    const PA = this.lures.length ? pArt(this.world) : null;
     for (const l of this.lures) {
       const pulse = 0.75 + 0.25 * Math.sin(l.t * 9 + l.seed), warnK = clamp((l.t - (l.life - 1.2)) / 1.2, 0, 1);
       glow(ctx, l.x, l.y, 46 + 16 * pulse, BIO, 0.7);
       if (warnK > 0) glow(ctx, l.x, l.y, 70, '#ffffff', warnK * (0.5 + 0.5 * Math.sin(l.t * 30)));
       ctx.strokeStyle = 'rgba(20,40,40,0.8)'; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.moveTo(l.x, l.y - 10); ctx.quadraticCurveTo(l.x - l.vx * 0.12, l.y - 26, l.x - l.vx * 0.2 + Math.sin(l.t * 4) * 6, l.y - 40); ctx.stroke();
-      bulbShape(ctx, l.x, l.y, 11, pulse, false);
+      if (PA?.bulb(ctx, l.x, l.y, 11 * (0.95 + 0.08 * pulse), Math.sin(l.t * 3 + l.seed) * 0.2)) glow(ctx, l.x, l.y, 16, BIO, 0.7 * pulse, true);   // 채색 전구
+      else bulbShape(ctx, l.x, l.y, 11, pulse, false);
     }
     // 사망: 파란 심장이 떠오른다
     if (this.dying > 0 && this.dieT > 0.8) {
@@ -1229,6 +1240,7 @@ export class Dagon extends BossC {
 
   paintLash(ctx, x0, tip, dir, t, dur, hold, seed) {
     if (R.fl) return;
+    if (pArt(this.world)?.lash(ctx, x0, tip, dir, t, dur, hold, seed, this.wy)) return;   // 채색 뱀장어 촉수 타일
     const y = this.wy, n = 16, len = Math.abs(tip - x0);
     if (len < 4) return;
     const fade = clamp((dur + hold - t) / 0.18, 0, 1);

@@ -92,10 +92,12 @@ export function pxScale(ctx, want = Infinity) {
  * 캔버스 크기 = 그리는 사각형의 장치 픽셀 (백킹 스토어 = 품질 등급의 픽셀 예산 안). 회전·기울임 변환이거나 want(희망 배율)가
  * 장치 배율보다 낮거나 예산을 넘으면 배율 경로로 굽고 'medium' 필터로 붙인다.
  * key 에 ui.fontEpoch 를 넣어 늦게 도착한 웹 글꼴로 다시 굽는다 (글자가 든 레이어).
+ * hole(선택): 붙이지 않을 사각형 (같은 좌표계) — 바로 뒤에 불투명한 그림(영웅 무대)이 덮는 자리. 1:1 복사는 넓이에 비례하므로
+ * (fhd2x 에서 장치 픽셀 1 MP ≈ 1 ms) 덮일 자리는 건너뛴다. 투명도가 1 이 아닐 때(탭 넘김·메뉴 열고 닫기)는 전부 붙인다.
  */
 export class PixLayer {
   constructor() { this.cv = null; this.key = null; }
-  draw(ctx, key, x, y, w, h, fn, want = Infinity) {
+  draw(ctx, key, x, y, w, h, fn, want = Infinity, hole = null) {
     if (!(w > 0 && h > 0)) return;
     let m = null;
     try { m = ctx.getTransform(); } catch { m = null; }
@@ -125,7 +127,22 @@ export class PixLayer {
     if (exact) {
       // 단위 변환 + 정수 위치 = 필터 없는 복사 (반올림으로 최대 0.5 장치 px 비킨다)
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.drawImage(this.cv, Math.round(m.a * x + m.e), Math.round(m.d * y + m.f));
+      const dx = Math.round(m.a * x + m.e), dy = Math.round(m.d * y + m.f), cw = this.cv.width, ch = this.cv.height;
+      // 구멍: 장치 픽셀로 1 px 안쪽으로 줄여(반올림 틈 없게) 위·아래 띠와 좌우 띠만 복사한다
+      const H = hole && ctx.globalAlpha >= 0.999 ? hole : null;
+      const hx0 = H ? clamp(Math.ceil(m.a * H.x + m.e) - dx + 1, 0, cw) : 0;
+      const hx1 = H ? clamp(Math.floor(m.a * (H.x + H.w) + m.e) - dx - 1, 0, cw) : 0;
+      const hy0 = H ? clamp(Math.ceil(m.d * H.y + m.f) - dy + 1, 0, ch) : 0;
+      const hy1 = H ? clamp(Math.floor(m.d * (H.y + H.h) + m.f) - dy - 1, 0, ch) : 0;
+      if (H && hx1 - hx0 > 8 && hy1 - hy0 > 8) {
+        // 잘라 붙이기(원본 사각형 지정)는 필터 경로를 타므로 필터를 끈다 — 정수 위치 1:1 이라 결과는 같다
+        ctx.imageSmoothingEnabled = false;
+        const band = (sx, sy, sw, sh) => { if (sw > 0 && sh > 0) ctx.drawImage(this.cv, sx, sy, sw, sh, dx + sx, dy + sy, sw, sh); };
+        band(0, 0, cw, hy0);
+        band(0, hy1, cw, ch - hy1);
+        band(0, hy0, hx0, hy1 - hy0);
+        band(hx1, hy0, cw - hx1, hy1 - hy0);
+      } else ctx.drawImage(this.cv, dx, dy);
     } else {
       ctx.imageSmoothingQuality = 'medium';
       ctx.drawImage(this.cv, 0, 0, this.cv.width, this.cv.height, x, y, this.cv.width / s, this.cv.height / s);

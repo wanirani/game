@@ -405,8 +405,12 @@ export class MenuScene extends Scene {
       text(ctx, tips.length ? tips.join('  ·  ') : '항목을 터치해 선택하세요  ·  목록은 끌어서, 탭은 옆으로 밀어서 넘기세요', lx + 2, y, { size: 13, weight: 600, color: PAL.dim, ow: 2, maxWidth: rx - lx - 16 });
       return;
     }
-    if (!focused) items = [['←→', '탭 이동'], ...(this.cur.wantsFocus ? [['↓', '선택']] : []), ['X', '닫기']];
-    else if (!items.some((it) => (Array.isArray(it[0]) ? it[0] : [it[0]]).some((k) => k === 'X' || k === 'cancel'))) items = [...items, ['X', '닫기']];
+    if (!focused) {
+      // 탭 막대에 초점이 있어도 늘 먹는 조작 (상태·장비·직업 탭의 영웅 회전: , . / RS 회전 · / R3 자동 회전)
+      let idle = [];
+      try { idle = this.cur.idleHints?.() || []; } catch (e) { idle = []; }
+      items = [['←→', '탭 이동'], ...(this.cur.wantsFocus ? [['↓', '선택']] : []), ...idle, ['X', '닫기']];
+    } else if (!items.some((it) => (Array.isArray(it[0]) ? it[0] : [it[0]]).some((k) => k === 'X' || k === 'cancel'))) items = [...items, ['X', '닫기']];
     ctx.save();
     ctx.beginPath(); ctx.rect(0, H - S.b - BOT_H, rx - 10, BOT_H); ctx.clip();
     hintRow(ctx, items.map((it) => [it[0], it[1]]), lx, y);

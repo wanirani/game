@@ -583,6 +583,7 @@ export class Gesture {
     const p = input.pointer;
     const now = nowS();
     this.longPress = null; this.swipe = null; this.released = false; this._hits.clear();
+    this.tick = (this.tick || 0) + 1; // Scroller 가 "지난 틱에도 불렸나"(다른 탭·모달 뒤에 있었나)를 안다
     this.justDown = !!p.justDown;
     if (p.justDown) {
       const d = PTR.down && PTR.seq !== this._seq && !PTR.down.used ? PTR.down : null;
@@ -710,10 +711,18 @@ export class Scroller {
   }
   update(dt, rect, ges) {
     const p = input.pointer;
+    // 이 목록이 지난 틱에 불리지 않았다 = 다른 탭·모달 뒤에 있었다. 그동안 다른 곳에서 누른 방향 입력은 이 목록의 탐색이 아니다
+    // (패드로 목록을 스크롤한 뒤 다른 탭에서 D-pad 를 쓰고 돌아와도 목록이 선택 자리로 튀지 않게 — P-01)
+    const gt = ges?.tick;
+    const away = gt !== undefined && this._gt !== undefined && gt - this._gt > 1;
+    if (gt !== undefined) this._gt = gt;
     // 탐색 입력이 들어왔다 → 직접 스크롤 상태를 풀고, 선택이 안 바뀌었어도 선택을 다시 보여 준다
     if (NAV.epoch !== this.navSeen) {
-      this.navSeen = NAV.epoch; this.navNew = true;
-      if (this.userScrolled) { this.userScrolled = false; this.fPending = true; }
+      this.navSeen = NAV.epoch;
+      if (!away) {
+        this.navNew = true;
+        if (this.userScrolled) { this.userScrolled = false; this.fPending = true; }
+      }
     }
     const now = nowS();
     const gap = this._rt ? now - this._rt : 0;

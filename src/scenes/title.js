@@ -24,7 +24,7 @@ import { CHARACTERS, CHAR_ORDER } from '../data/characters.js';
 import { endArcade } from './front/arcade.js';
 import {
   Ambience, kenBurns, shade, menuItem, ornament, applySettings, installRecordScore, gbutton, frame, linGrad, radGrad, glowSprite,
-  GOLD, BONE, DIM, follow, MODE_NAME,
+  GOLD, BONE, DIM, follow, modeName, scoreList,
 } from './front/common.js';
 import { drawCloudBadge, accountBadge } from './front/cloud_ui.js';
 
@@ -54,6 +54,8 @@ const SUB_OPTS = { size: 30, style: 'gold', family: FONT.title, weight: 800, spa
 const GLINTS = [[-330, -38], [-150, -52], [40, -40], [210, -50], [350, -34], [-40, 78], [120, 74]];
 
 const APK_DEFAULT = 'downloads/BloodNocturne.apk';
+/** 기록의 이름 (이니셜이 없으면 영웅 이름 앞부분; 알 수 없는 영웅 id 는 '???') */
+const scoreName = (h) => (h.name ? String(h.name) : (typeof h.charId === 'string' && Object.hasOwn(CHARACTERS, h.charId) ? CHARACTERS[h.charId].name.split(' ')[0] : '???'));
 const MAX_ROW_CSS = 38; // 메뉴 줄 목표 높이 (CSS px, §6.3 목록 줄 36 + 여유)
 
 export class TitleScene extends Scene {
@@ -64,6 +66,7 @@ export class TitleScene extends Scene {
     endArcade(g);
     applySettings(g);
     installRecordScore(g);
+    scoreList(g.meta); // 손상된 명예의 전당 기록(배열 아님·null 항목)을 한 번 정리 → 이후 모든 화면이 같은 목록을 읽는다
     audio.music('title');
     const st = g.settings ?? {};
     const q = g.tier === 'low' ? 0.5 : g.tier === 'medium' ? 0.75 : 1;
@@ -358,11 +361,11 @@ export class TitleScene extends Scene {
     const a = clamp((T - 1.5) / 0.6, 0, 1);
     if (a > 0) {
       ctx.save(); ctx.globalAlpha = a;
-      const hi = this.game.meta?.highScores?.[0];
+      const hi = scoreList(this.game.meta)[0];
       const xr = W - 16 - L.sr, yt = L.st;
       text(ctx, 'HI-SCORE', xr, yt + 24, { size: 11, align: 'right', weight: 800, family: FONT.num, color: '#ff5a6a', ow: 3 });
       text(ctx, fmt(hi?.score ?? 0).padStart(9, ' '), xr, yt + 46, { size: 20, align: 'right', weight: 900, family: FONT.num, color: '#fff', ow: 4 });
-      if (hi) text(ctx, `${hi.name || CHARACTERS[hi.charId]?.name?.split(' ')[0] || '???'} · ${MODE_NAME[hi.mode || 'story'] ?? ''}`, xr, yt + 62, { size: 11, align: 'right', weight: 700, color: DIM, ow: 2 });
+      if (hi) text(ctx, `${scoreName(hi)} · ${modeName(hi.mode)}`, xr, yt + 62, { size: 11, align: 'right', weight: 700, color: DIM, ow: 2 });
       // 계정 (로그인한 아이디 또는 게스트) — 누르면 계정 화면
       const ab = accountBadge();
       const bw = drawCloudBadge(ctx, xr, yt + 90, ab.status, t, { size: 13, label: ab.label });
@@ -472,13 +475,13 @@ export class TitleScene extends Scene {
       });
     } else if (idx === 1) {
       text(ctx, 'HALL OF FAME', W / 2, y - 6, { size: 18, align: 'center', weight: 900, family: FONT.logo, color: GOLD, ow: 4 });
-      const hs = (this.game.meta?.highScores ?? []).slice(0, 4);
+      const hs = scoreList(this.game.meta).slice(0, 4);
       if (!hs.length) text(ctx, '아직 기록이 없습니다. 첫 번째 전설이 되어라!', W / 2, y + 40, { size: 15, align: 'center', color: BONE });
       hs.forEach((h, i) => {
         const yy = y + 26 + i * 24;
         text(ctx, `${i + 1}${['ST', 'ND', 'RD', 'TH'][Math.min(i, 3)]}`, x + 70, yy, { size: 14, weight: 900, family: FONT.num, color: i === 0 ? '#ffe070' : BONE });
-        text(ctx, h.name || CHARACTERS[h.charId]?.name?.split(' ')[0] || '???', x + 130, yy, { size: 14, weight: 800, color: '#fff' });
-        text(ctx, MODE_NAME[h.mode || 'story'] ?? '', x + 260, yy, { size: 12, color: DIM });
+        text(ctx, scoreName(h), x + 130, yy, { size: 14, weight: 800, color: '#fff' });
+        text(ctx, modeName(h.mode), x + 260, yy, { size: 12, color: DIM });
         text(ctx, fmt(h.score), x + w - 70, yy, { size: 15, align: 'right', weight: 900, family: FONT.num, color: '#fff' });
       });
     } else {

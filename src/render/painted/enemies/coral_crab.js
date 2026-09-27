@@ -75,6 +75,7 @@ export function draw(ctx, e, world, o, rig) {
       const cp = K.part('claw'), L = cp ? cp.len : 40;
       K.glow(nx + Math.cos(dN + rot) * L, ny + Math.sin(dN + rot) * L, 10, '#ffe0c0', 0.5 * (1 - s));
     }
+    if (atk && ph.after > 0 && ph.after < 0.3) snapJet(ctx, e, P, rig, nx + Math.cos(dN + rot) * clawLen(), ny + Math.sin(dN + rot) * clawLen(), ph.after);
   }
   K.end();
   // silt kicked up on the chop, bubbles
@@ -85,11 +86,39 @@ export function draw(ctx, e, world, o, rig) {
     if (walk) for (let n = pool.rate(0, 6, dt); n > 0; n--) pool.add(2, e.cx + f * sc * K.frand(-30, 30), e.bottom - 2, K.frand(-20, 20), K.frand(-30, -8), K.frand(0.4, 0.7), K.frand(3, 5), '#8a7a6a');
     if (atk && s >= 1 && !e._chop) {
       e._chop = true;
-      for (let i = 0; i < 10; i++) pool.add(2, e.cx + f * sc * K.frand(30, 60), e.bottom - 3, f * K.frand(-40, 120), K.frand(-80, -20), K.frand(0.5, 0.9), K.frand(4, 7), '#9a8a78');
+      const far = (P.reachX ?? 10) + (P.reach ?? 110);                     // silt + bubbles along the whole snap jet
+      for (let i = 0; i < 10; i++) pool.add(2, e.cx + f * K.frand(30, far), e.bottom - 3, f * K.frand(-40, 120), K.frand(-80, -20), K.frand(0.5, 0.9), K.frand(4, 7), '#9a8a78');
+      for (let i = 0; i < 6; i++) pool.add(0, e.cx + f * K.frand(50, far), e.bottom - K.frand(6, 24), f * K.frand(-20, 40), K.frand(-60, -20), K.frand(0.4, 0.7), K.frand(2, 3.5), '#dff6ff');
     }
     if (!(atk && s >= 1)) e._chop = false;
     for (let n = pool.rate(1, 1.2, dt); n > 0; n--) pool.add(0, e.cx + f * sc * K.frand(10, 30), e.bottom - sc * K.frand(25, 40), K.frand(-5, 5), K.frand(-40, -20), K.frand(0.6, 1.0), K.frand(1.5, 2.5), '#bfeaff');
     ctx.setTransform(o.cam);
     pool.draw(ctx);
   }
+}
+
+const clawLen = () => K.part('claw')?.len ?? 40;
+/**
+ * Pistol-shrimp snap: the chop fires a pressure jet along the floor from the pincer to the far edge of the AI strike
+ * rect (AI.walker: x reachX .. reachX + reach = 10..120 px, y -50..0). The claw itself ends ~65 px out, so without it
+ * the player could not read the real range of the hit (docs/art/ENEMY_PIPELINE.md §9.2). after = s since the hit instant.
+ * Local rig space (call between K.begin/K.end); the rect is in logic px, so divide by the elite / rig scale.
+ */
+function snapJet(ctx, e, P, rig, tx, ty, after) {
+  const far = ((P.reachX ?? 10) + (P.reach ?? 110)) / ((e.scale || 1) * (rig.scale ?? 1)) - 10;
+  const k = clamp(after / 0.07, 0, 1), fade = 1 - clamp((after - 0.08) / 0.22, 0, 1);
+  if (fade <= 0.01) return;
+  const x1 = lerp(tx, far, k), y1 = lerp(ty, -12, k);
+  K.local();
+  const gco = ctx.globalCompositeOperation, ga = ctx.globalAlpha;
+  ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
+  ctx.globalAlpha = ga * 0.45 * fade; ctx.strokeStyle = '#8fd8ff'; ctx.lineWidth = 9;
+  ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(x1, y1); ctx.stroke();
+  ctx.globalAlpha = ga * 0.8 * fade; ctx.strokeStyle = '#f0fcff'; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(x1, y1); ctx.stroke();
+  ctx.globalAlpha = ga * 0.7 * fade; ctx.lineWidth = 2;                   // cavitation ring at the front of the jet
+  ctx.beginPath(); ctx.ellipse(x1, y1, 4 + 8 * k, 3 + 7 * k, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.globalAlpha = ga; ctx.globalCompositeOperation = gco;
+  for (let i = 1; i <= 3; i++) K.glow(lerp(tx, x1, i / 4), lerp(ty, y1, i / 4), 9, '#9fe4ff', 0.35 * fade);
+  K.glow(x1, y1, 10 + 8 * k, '#ffffff', 0.75 * fade * k, 0.2);
 }

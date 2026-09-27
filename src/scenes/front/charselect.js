@@ -20,7 +20,7 @@ import { drawHero } from '../../render/hero.js';
 import * as PUPPET from '../../render/hero_puppet.js';
 import {
   Ambience, kenBurns, shade, frame, ornament, portraitIn, gbutton, backButton, stars, puppet,
-  glowSprite, follow, linGrad, radGrad, GOLD, BONE, DIM,
+  glowSprite, follow, linGrad, radGrad, clampLines, GOLD, BONE, DIM,
 } from './common.js';
 import { startArcade, ARCADE_MODES } from './arcade.js';
 
@@ -212,7 +212,7 @@ export class CharSelectScene extends Scene {
     const statRows = Math.ceil(entries.length / 2);
     const below = statRows * T.rowH + 8 + (c.open ? 2 * (T.rowH - 3) : 0) + 10;
     const maxLines = clamp(Math.floor((L.tilesY - 8 - below - T.descY + T.descLH * 0.4) / T.descLH), 1, 4);
-    const lines = wrap(ctx, desc, iw, 14, 500).slice(0, maxLines);
+    const lines = clampLines(ctx, wrap(ctx, desc, iw, 14, 500), maxLines, iw); // 잘리면 '…'
     lines.forEach((l, i) => text(ctx, l, ix, T.descY + i * T.descLH, { size: 14, color: c.open ? '#e8dccb' : '#b89a9a', ow: 2 }));
     // 능력치
     const sy = T.descY + lines.length * T.descLH + 4;

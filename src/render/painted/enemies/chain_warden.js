@@ -21,6 +21,8 @@ const _q = [0, 0], _f = [0, 0];
 const H = Math.PI / 2;
 const EMBER = '#ff4a20';
 const ease = (k) => k * (2 - k);
+/** hook radius round the fist during the smash swing (0..1): 24 → ~80 at mid-swing → 24 */
+const smashR = (ss) => 24 + (ss > 0 && ss < 1 ? 56 * Math.sin(Math.PI * Math.min(1, ss * 1.25)) : 0);
 
 /** chain along a quadratic path (x0,y0)→(x1,y1), control point = midpoint + (cx, cy); tiled 4-link sprite */
 function chainPath(x0, y0, x1, y1, cx, cy, alpha = 1) {
@@ -98,8 +100,11 @@ export function draw(ctx, e, world, o, rig) {
   if (thrown && !out) { hx = fx + 44; hy = fy; hd = 0; }                                              // gallery: frozen throw
   else if (aim) { const a = t * 18; const r = 12 + 6 * aim; hx = fx + Math.cos(a) * r; hy = fy + Math.sin(a) * r * 0.55; hd = a; }
   else if (smash) {
-    const a = ss > 0 ? lerp(2.7, -1.2, ease(ss)) : lerp(H + 0.2, 2.7, ease(sw));                     // behind-low → overhead-front
-    hx = fx + Math.cos(a) * 24; hy = fy + Math.sin(a) * 24; hd = a;
+    // behind-low → overhead-front; mid-swing the chain pays out so the hook whips through the AI strike rect
+    // (x -10..100, y -120..0: AI_C.chainhook 'slam') instead of circling 24 px from the fist
+    const a = ss > 0 ? lerp(2.7, -1.2, ease(ss)) : lerp(H + 0.2, 2.7, ease(sw));
+    const R = smashR(ss);
+    hx = fx + Math.cos(a) * R; hy = fy + Math.sin(a) * R; hd = a;
   } else if (sweep) {
     if (ss > 0) { const k = ease(ss); hx = lerp(fx - 30, fx + 120, k); hy = -7; hd = lerp(Math.PI, 0.1, k); cyo = 6 * (1 - k); }
     else { hx = fx - 10 - 22 * ease(sw); hy = -7; hd = Math.PI - 0.3; cyo = 5; }
@@ -118,10 +123,10 @@ export function draw(ctx, e, world, o, rig) {
     if (smash && ss > 0 && ss < 1 && !o.flash) {                                                     // uppercut streak
       K.local();
       ctx.globalCompositeOperation = 'lighter';
-      const a1 = lerp(2.7, -1.2, ease(ss));
+      const a1 = lerp(2.7, -1.2, ease(ss)), R = smashR(ss);
       ctx.strokeStyle = `rgba(255,150,90,${0.3 * (1 - ss * 0.6)})`; ctx.lineWidth = 2.2;
-      ctx.beginPath(); ctx.arc(fx, fy, 31, a1 + 1.1, a1, true); ctx.stroke();
-      ctx.beginPath(); ctx.arc(fx, fy, 27, a1 + 0.7, a1, true); ctx.stroke();
+      ctx.beginPath(); ctx.arc(fx, fy, R + 7, a1 + 1.1, a1, true); ctx.stroke();
+      ctx.beginPath(); ctx.arc(fx, fy, R + 3, a1 + 0.7, a1, true); ctx.stroke();
       ctx.globalCompositeOperation = 'source-over';
     }
     chainPath(fx, fy, hx, hy, cxo, cyo);
