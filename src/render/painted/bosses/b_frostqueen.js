@@ -97,10 +97,13 @@ function capeTexture(rig) {
 function bounds(b, st, out) {
   let x0 = b.cx - 170, x1 = b.cx + 170, y0 = b.bottom - 250, y1 = b.bottom + 50;
   const F = b.A?.floor;
-  if (F != null && (st?.vicK > 0.01 || b.bottom > F - 170)) y1 = Math.max(y1, F + 8);
+  if (F != null && (st?.vicK > 0.01 || b.bottom > F - 170)) y1 = Math.max(y1, F + 66);   // 서리 웅덩이 빛(반지름 70)이 바닥선 아래로 번짐
   for (const g of st?.ghosts ?? []) { x0 = Math.min(x0, g.x - 170); x1 = Math.max(x1, g.x + 170); y0 = Math.min(y0, g.y - 250); y1 = Math.max(y1, g.y + 50); }
   if (st?.vicX != null && st.vicK > 0.01) { x0 = Math.min(x0, st.vicX - 90); x1 = Math.max(x1, st.vicX + 90); }
   if ((b.dying > 0 || st?.shards?.list.length) && b.A) { x0 = Math.min(x0, b.A.x0); x1 = Math.max(x1, b.A.x1); y1 = Math.max(y1, b.A.floor + 8); }
+  // 살아 있는 입자 (순간이동 전 자리의 서리 안개·반짝이가 여왕과 함께 잘려 사라지지 않게)
+  const P = st?.P;
+  if (P?.n) { const X = P.x, Y = P.y; for (let i = 0; i < P.n; i++) { const x = X[i], y = Y[i]; if (x - 26 < x0) x0 = x - 26; if (x + 26 > x1) x1 = x + 26; if (y - 26 < y0) y0 = y - 26; if (y + 26 > y1) y1 = y + 26; } }
   out.x = x0; out.y = y0; out.w = x1 - x0; out.h = y1 - y0;
   return out;
 }

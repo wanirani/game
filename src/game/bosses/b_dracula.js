@@ -325,6 +325,8 @@ export class Dracula extends BossB {
       impact(world, { shake: 8, time: 1.0 });
       this.vanish = 0; this.wrapT = 0; this.capeT = 1; this.armLT = 1; this.armRT = 1;
     }
+    // 변신 연출 동안 매 프레임 컷신 유지 — 각성/필살기 연출이 끝나며 cutscene 을 풀어도 4초 변신 도중 조작이 돌아오지 않게 (요청: AWAKEN-CORE verify)
+    if (t <= 4.0) world.cutscene = true;
     // 1) 몸부림 + 떠오름
     if (t < 1.6) {
       this.y -= 40 * dt;

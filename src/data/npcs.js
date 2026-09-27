@@ -1,6 +1,6 @@
 // NPC 정의. NPCS[id] = { id, name, title, portrait, role, services, look(render/hero.js look 스키마), desc, appear? }
 //  · 대화 스크립트는 data/story.js 의 resolveNpcScript(npcId, state) 가 챕터/플래그에 따라 고른다 (<npcId>_ch<N> → 팁 순환 → <npcId>_default)
-//  · role: 'inn'(여관·미니게임) 'shop'(상점) 'smith'(강화) 'church'(전직·스토리) 'villager' 'mystery'
+//  · role: 'inn'(여관·미니게임) 'shop'(상점) 'smith'(강화) 'church'(전직·스토리) 'villager' 'mystery' 'stable'(영혼의 마구간)
 //  · appear: 허브(마을)에 모습을 보이는 조건 — npcVisible(npcId, state) 로 판정 (맵 'N' 배치는 조건 없이 등장)
 export const NPCS = {
   npc_marta: {
@@ -42,9 +42,18 @@ export const NPCS = {
     look: { build: 'slim', height: 1.03, skin: '#f4e6ea', hair: '#141018', hairStyle: 'flowing', eyes: '#ff3040', eyeGlow: true, outfit: 'lady',
       primary: '#2a0812', secondary: '#12060c', trim: '#c8a040', pants: '#12060c', boots: '#0a0608', cape: { color: '#1a0610', color2: '#6a0a20', len: 0.9 } },
   },
+  // 영혼의 마구간 (companions §2.2): 1장부터 동쪽 성문 밖 마구간 앞에 선다. role 'stable' = 탈것·수호신·공물·그레타의 의뢰
+  npc_greta: {
+    id: 'npc_greta', name: '그레타', title: '영혼의 마구간지기', portrait: 'portraits/npc_greta', role: 'stable', services: ['stable', 'quest'],
+    desc: '불타 버린 에슈빌 외곽 목장의 주인. 짐승의 말과 죽은 이의 속삭임을 듣는다는 소문이 있다. 무뚝뚝하지만 동물 앞에서는 누구보다 다정하다.',
+    appear: { minChapter: 1 },
+    look: { build: 'broad', height: 1.0, skin: '#d8a888', hair: '#c8b8a0', hairStyle: 'braid', eyes: '#5a9ab0', outfit: 'villager',
+      primary: '#4a3624', secondary: '#2a3a2e', trim: '#b89a60', pants: '#3a2a1a', boots: '#2a1a10', headgear: 'wide_hat', headColor: '#2a2018',
+      scarf: { color: '#7a2a1a' }, fem: true },
+  },
 };
 
-export const NPC_ORDER = ['npc_alberto', 'npc_marta', 'npc_rook', 'npc_hadwin', 'npc_elise', 'npc_carmilla'];
+export const NPC_ORDER = ['npc_alberto', 'npc_marta', 'npc_rook', 'npc_hadwin', 'npc_elise', 'npc_carmilla', 'npc_greta'];
 
 /** 마을(허브)에 이 NPC가 지금 보여야 하는가 (엘리제는 납치~구출 사이 부재, 카밀라는 신뢰한 경우 밤의 여관에 등장) */
 export function npcVisible(npcId, state) {

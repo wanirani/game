@@ -3,11 +3,12 @@
 // BUILDINGS 는 허브 장면이 중경(mid) 레이어에 절차적으로 그리는 건물 파사드 정의 — 문('D') 위치와 정확히 맞물린다.
 // TOWN_NPCS 는 마을 NPC 의 배회 범위와 기본 외형(스토리 담당의 NPCS 데이터가 없을 때 대체용).
 
-// 10행 × 84열. 8행 = 바닥 바로 위(마커 줄), 9행 = 흙길('%' → tex2 흙 텍스처). 방 높이(480)가 화면(540)보다 낮아
+// 10행 × 96열. 8행 = 바닥 바로 위(마커 줄), 9행 = 흙길('%' → tex2 흙 텍스처). 방 높이(480)가 화면(540)보다 낮아
 // 카메라는 바닥에 맞춰 세로 고정 — 위쪽 빈 하늘은 원경(Kling 그림)과 건물 지붕·첨탑이 채운다.
-//  문 순서(왼→오): 여관 · 잡화점 · 의뢰 게시판 · 대장간 · 성당 · 동쪽 성문(월드맵)
-//  NPC 순서(왼→오): 마르타 · 로크 · 하드윈 · 알베르토 신부 · 엘리제
-const W = 84;
+// 동쪽으로 84 → 96열 확장 (companions §2.2): x 4032 서쪽은 그대로, 동쪽 성문 밖에 「영혼의 마구간」(x 4100–4580)과 그레타.
+//  문 순서(왼→오): 여관 · 잡화점 · 의뢰 게시판 · 대장간 · 성당 · 동쪽 성문(월드맵) · 영혼의 마구간
+//  NPC 순서(왼→오): 마르타 · 로크 · 하드윈 · 알베르토 신부 · 엘리제 · 그레타
+const W = 96;
 const row = (marks = {}) => { const a = Array(W).fill(' '); for (const k in marks) a[+k] = marks[k]; return a.join(''); };
 const range = (a, b, ch) => { const o = {}; for (let i = a; i <= b; i++) o[i] = ch; return o; };
 
@@ -18,7 +19,7 @@ const MAP = [
   row(), row(), row(), row(), row(), row(),
   row({ ...range(9, 12, '='), ...range(39, 41, '=') }),   // 6: 여관 발코니 · 대장간 차양
   row(),
-  row({ 7: 'D', 10: 'N', 19: 'D', 22: 'N', 29: 'P', 32: 'D', 41: 'D', 46: 'N', 57: 'D', 61: 'N', 69: 'N', 78: 'D' }),
+  row({ 7: 'D', 10: 'N', 19: 'D', 22: 'N', 29: 'P', 32: 'D', 41: 'D', 46: 'N', 57: 'D', 61: 'N', 69: 'N', 78: 'D', 89: 'D', 93: 'N' }),
   '%'.repeat(W),
 ];
 
@@ -32,8 +33,8 @@ export const TOWN_STAGE = {
     town: {
       map: MAP,
       facing: 1,
-      doors: ['scene:inn', 'scene:shop', 'scene:questboard', 'scene:smith', 'scene:church', 'scene:worldmap'],
-      npcs: ['npc_marta', 'npc_rook', 'npc_hadwin', 'npc_alberto', 'npc_elise'],
+      doors: ['scene:inn', 'scene:shop', 'scene:questboard', 'scene:smith', 'scene:church', 'scene:worldmap', 'scene:stable'],
+      npcs: ['npc_marta', 'npc_rook', 'npc_hadwin', 'npc_alberto', 'npc_elise', 'npc_greta'],
     },
   },
 };
@@ -48,6 +49,8 @@ export const BUILDINGS = [
   { id: 'church', kind: 'church', x0: 2430, x1: 3060, door: 57, scene: 'church', name: '성 루미나 성당', eng: 'ST. LUMINA', desc: '전직 · 스킬 초기화 · 저장' },
   { id: 'house', kind: 'house', x0: 3130, x1: 3500, name: '엘리제의 집' },
   { id: 'gate', kind: 'gate', x0: 3560, x1: 4032, door: 78, scene: 'worldmap', name: '성으로 가는 길', eng: 'TO THE CASTLE', desc: '월드맵 · 스테이지 선택' },
+  // 동쪽 성문 밖 (companions §2.2): 탈것 마구간 + 수호신 제단. 1장 전에는 불에 그을린 빈 마구간 (장면이 '닫힘' 모드)
+  { id: 'stable', kind: 'stable', x0: 4100, x1: 4580, door: 89, scene: 'stable', name: '영혼의 마구간', eng: 'STABLE OF SOULS', desc: '탈것 · 수호신 · 공물' },
 ];
 
 // 마을 소품 (Blender 렌더 props/*). 바닥에 발을 둔 좌표(fx = 중앙 x)
@@ -59,10 +62,20 @@ export const TOWN_PROPS = [
   // 수레는 엘리제 집과 성문 사이 골목에 (엘리제가 서는 집 앞·문 뒤를 가리지 않게)
   { id: 'deco_village_cart', fx: 3508, w: 190, h: 118 },
   { id: 'deco_village_fence', fx: 3250, w: 180, h: 68 },
+  // 영혼의 마구간: 제단 옆 건초 더미 · 마구간 앞 울타리 (companions §2.2)
+  { id: 'deco_village_haybale', fx: 4530, w: 96, h: 72 },
+  { id: 'deco_village_fence', fx: 4180, w: 180, h: 68 },
 ];
 
 // 가로등 (광원 + 그림) x 좌표
-export const TOWN_LAMPS = [720, 1260, 1740, 2380, 3100];
+export const TOWN_LAMPS = [720, 1260, 1740, 2380, 3100, 4066];
+
+// 그레타 (영혼의 마구간지기) 기본 외형 — data/npcs.js 의 npc_greta.look 과 같은 값 (허브는 NPCS 쪽을 우선한다)
+export const GRETA_LOOK = {
+  build: 'broad', height: 1.0, skin: '#d8a888', hair: '#c8b8a0', hairStyle: 'braid', eyes: '#5a9ab0', outfit: 'villager',
+  primary: '#4a3624', secondary: '#2a3a2e', trim: '#b89a60', pants: '#3a2a1a', boots: '#2a1a10', headgear: 'wide_hat', headColor: '#2a2018',
+  scarf: { color: '#7a2a1a' }, fem: true,
+};
 
 // NPC 배회 설정 + 기본 외형 (render/hero.js look 스키마)
 export const TOWN_NPCS = {
@@ -86,6 +99,9 @@ export const TOWN_NPCS = {
     name: '엘리제', title: '마을 소녀', portrait: 'portraits/npc_elise', range: 70, speed: 55, idle: [1.2, 3],
     look: { build: 'slim', skin: '#f8e0d0', hair: '#e8c070', hairStyle: 'braid', outfit: 'girl', primary: '#e8e0d0', secondary: '#8a6a4a', trim: '#c83a4a', pants: '#f0e8e0', boots: '#3a2418', height: 0.8 },
   },
+  npc_greta: {
+    name: '그레타', title: '영혼의 마구간지기', portrait: 'portraits/npc_greta', range: 80, speed: 36, idle: [2.5, 5], look: GRETA_LOOK,
+  },
 };
 
 /** 엘리제가 마을에 나타나는지 (4장 이후 또는 구출 플래그) */
@@ -103,6 +119,7 @@ export const TOWN_TALK = {
   npc_hadwin: [{ who: 'npc_hadwin', text: '흠. 무기는 사냥꾼의 목숨줄이다. 강화석을 가져오면 이 망치로 제대로 두들겨 주마.' }],
   npc_alberto: [{ who: 'npc_alberto', text: '빛이 그대와 함께하기를. 새로운 길을 찾고 있다면 성당으로 오게. 주님의 권능이 그대를 이끌 걸세.' }],
   npc_elise: [{ who: 'npc_elise', text: '구해 줘서 고마워요! 이제 무섭지 않아요… 그래도 성에는 꼭 조심해서 다녀오세요!' }],
+  npc_greta: [{ who: 'npc_greta', text: '말이든 영혼이든, 먼저 믿어 줘야 너를 믿어. 공물은 그 첫걸음이지.' }],
 };
 
 // 상점 주인 대사 (상황별 무작위)

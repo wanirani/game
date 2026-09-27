@@ -79,7 +79,7 @@ function spawnLine(r, world, p, o) {
     let px = x0;
     for (let i = 0; i < o.at.length; i++) {
       const x = x0 + s * o.at[i];
-      if (wallBetween(world, px, x, b0 - 60)) break;
+      if (wallBetween(world, px, x + s * o.w * 0.3, b0 - 60)) break;   // 기둥이 벽에 반쯤 묻히지 않게 (가운데 너머로 30% 여유)
       px = x;
       const g = groundAt(world, x, b0);
       if (g == null) break;
@@ -114,14 +114,18 @@ function hoofPrints(r, world, p, dt, s, make, spacing) {
 function emberPrint(world, x, y, big) {
   const fx = world?.fx, g = glowImg('#ff7a2a');
   if (!fx?.ghost || !g) return;
-  const w = big ? 30 : 22, life = big ? 1.5 : 1.2, ph = x * 0.37;
+  const w = big ? 34 : 28, life = big ? 1.5 : 1.2, ph = x * 0.37;
   fx.ghost((ctx, a) => {
     const k = clamp(a * 2, 0, 1);
     if (k <= 0.01) return;
     ctx.save();
+    ctx.globalAlpha = 0.55 * k; ctx.fillStyle = '#1a0806';   // 그을린 발굽 자국
+    ctx.beginPath(); ctx.ellipse(x, y - 1, w * 0.36, 3.4, 0, 0, TAU); ctx.fill();
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 0.9 * k;
-    ctx.drawImage(g, x - w / 2, y - 6, w, 10);
+    ctx.globalAlpha = 0.95 * k;
+    ctx.drawImage(g, x - w / 2, y - 8, w, 13);
+    ctx.globalAlpha = 0.8 * k; ctx.fillStyle = '#ffd070';   // 달아오른 속
+    ctx.beginPath(); ctx.ellipse(x, y - 1.5, w * 0.2, 1.7, 0, 0, TAU); ctx.fill();
     if (k > 0.5) {
       const u = (k - 0.5) * 2, hh = u * (big ? 16 : 11), sw = Math.sin((world.time ?? 0) * 22 + ph) * 2;
       ctx.globalAlpha = 0.7 * u; ctx.fillStyle = '#ffa040';
@@ -362,6 +366,12 @@ function galeDiveTick(r, world, p, a, dt) {
     r.invulnT = Math.max(r.invulnT ?? 0, 0.1);
     if (a.diveAtk) r.strike(world, { x: p.x - 6, y: p.cy, w: p.w + 12, h: p.h * 0.5 + 16 }, a.diveAtk);
     const qq = q(world);
+    a.auraT = (a.auraT ?? 0) - dt;
+    if (a.auraT <= 0) {   // 몸을 감싸는 번개 기운 (캐시 스프라이트 한 장)
+      a.auraT = qq >= 0.95 ? 0.05 : 0.1;
+      const g = glowImg('#bfe0ff');
+      if (g) world.fx?.sprite?.(g, p.cx, p.cy + 6, { size: 150, life: 0.1, s0: 0.9, s1: 1.05, alpha: 0.45 });
+    }
     if (Math.random() < 0.9 * qq) world.fx?.emit('thunder', p.cx + rand(-24, 24), p.y + rand(0, p.h), { angle: -Math.PI / 2, spread: 0.5, speed: rand(200, 420) });
     if (qq > 0.55 && Math.random() < 0.6) world.fx?.speedLine(p.cx + rand(-26, 26), p.y + rand(0, p.h * 0.6), -Math.PI / 2, { len: rand(60, 110), width: 2.5, color: '#dff0ff', life: 0.14, speed: 500 });
     if (a.phT > 1.2) { a.phase = 'done'; a.dur = a.t; }   // 끝없는 낙하 (구덩이): 급강하만 멈춘다

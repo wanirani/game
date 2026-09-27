@@ -1,10 +1,23 @@
 // 마을 서비스 장면 공용 UI: 배경 · 헤더 · NPC 초상화+대사창 · 탭 · 스크롤 목록 · 모달(확인/수량) · 아이템 상세 · 보상 팝업
-// 모두 키보드/패드 + 터치(큰 버튼, 드래그 스크롤) 겸용.
+// 모두 키보드/패드 + 터치(큰 버튼, 드래그 스크롤) 겸용. — owner: PLAT-TOWN (platform §6.2/§6.3, WP-7)
+//
+// ServiceScene 계약 (상점·대장간·성당·게시판, 그리고 이를 상속하는 장면 — 예: 영혼의 마구간):
+//  - uiScale 장면: game.uiW × game.uiH (UI px) 로 배치한다 (휴대폰 740×360 → 888×432, 844×390 → 1013×468, 최소 720×400).
+//    this.vw / this.vh · this.layout() (L.vw, L.vh, L.compact = UI 높이 < 500, L.body) · renderBody(ctx, body, L) 의 body 만 쓴다.
+//    game.viewW/viewH 를 직접 쓰지 않는다. 포인터도 UI 좌표 (game.syncPointer).
+//  - 가상 패드는 scene 플래그 hidePad 로 숨긴다 (padHidden() 은 이제 아무것도 하지 않는 옛 이름).
+//  - 탭 영역: render 에서 this.tz(id, rect, kind) (ui.taps, owner = 장면; 모달·팝업·연출 중에는 판정 안 함),
+//    update 에서 this.tapId (이번 틱에 탭된 id | null). kind: 'primary' 44 · 'list' 36 · 'icon' 44×44 CSS px (§6.3).
+//    ScrollList 는 owner 를 주면 (this.addList(rowH)) 보이는 줄을 'list' 영역으로 등록한다. 줄 높이는 50 이상.
+//  - 메뉴 의미 입력: 결정 confirm · 취소 cancel · 탭 prevTab/nextTab (Q·S·LB / E·D·RB) · 보조 alt (A·패드 Y) / alt2 (C·패드 LT).
+//    게임 액션(sub·dash·skill1…)은 읽지 않는다 (패드 B 는 게임에선 대시, 메뉴에선 취소).
+//  - 안내 줄: uiHints(ctx, [[액션|액션[]|'dpadV'…, '라벨'], …]) → 지금 기기의 글리프 (터치 모드에선 숨김). 예전 키 글자도 된다.
 import { Scene } from '../../core/game.js';
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
 import { assets } from '../../core/assets.js';
-import { text, wrap, panel, button, drawCover, vignette, FONT, COLORS, RARITY_NAMES, font } from '../../core/ui.js';
+import { text, wrap, panel, button, drawCover, vignette, FONT, COLORS, RARITY_NAMES, font, taps } from '../../core/ui.js';
+import { drawHints } from '../../core/prompts.js';
 import { clamp, TAU, fmt, rand, ease, rgba } from '../../core/math.js';
 import { Particles } from '../../core/particles.js';
 import { drawIcon, drawSlot } from '../../render/icons.js';
@@ -28,8 +41,13 @@ export function uiButton(ctx, r, label, { selected = false, disabled = false, si
   MenuUI.gbutton(ctx, r, label, { hot, disabled, size, sub, color, t: performance.now() / 1000 });
   return !disabled && tappedR(r);
 }
+/**
+ * 키 안내 줄 — 지금 기기의 글리프 (키캡 / 패드 버튼). 터치 모드에서는 그리지 않는다 (화면의 버튼을 직접 누른다).
+ * items = [[액션 | 액션[] | 'dpad'|'dpadH'|'dpadV' | 예전 키 글자('Z','↑'…), '라벨'], …]. y = 라벨 글자 기준선
+ */
 export function uiHints(ctx, items, x, y, align = 'center') {
   if (input.touchMode) return;
+  try { drawHints(ctx, items, x, y, { align, size: 12, color: '#b8a890' }); return; } catch (e) { /* 아래 대체 */ }
   if (MenuUI.hintRow) MenuUI.hintRow(ctx, items, x, y, { align, size: 11 });
   else text(ctx, items.map(([k, d]) => `${Array.isArray(k) ? k.join('/') : k} ${d}`).join('   '), x, y, { size: 11, align, color: COLORS.dim });
 }
@@ -41,8 +59,19 @@ export function ensureState(game) {
   if (!game.state) game.state = newGameState({ slot: 1, difficulty: 'normal', charId: 'kael' });
   return game.state;
 }
-/** 가상 패드 숨김 (메뉴 담당의 참조 카운트 방식 공유) */
-export function padHidden(on) { try { MenuUI.hidePad?.(on); } catch { /* 무시 */ } }
+/**
+ * 예전 가상 패드 숨김 (DOM #touch). 캔버스 패드가 들어온 뒤로는 game.syncPad 가 유일한 주인이고 장면은
+ * this.hidePad / this.padHideButtons 플래그로 알린다 → 이 함수는 아무것도 하지 않는다 (옛 호출부 호환용).
+ */
+export function padHidden(on) { /* no-op: scene.hidePad (platform §5.1) */ }
+
+/** 탭 영역을 사각형 안쪽으로 자른다 (스크롤 목록의 반쯤 가려진 줄). 너무 얇으면 null */
+function clipRect(r, c, minH) {
+  const y0 = Math.max(r.y, c.y), y1 = Math.min(r.y + r.h, c.y + c.h);
+  if (y1 - y0 < Math.min(r.h, minH)) return null;
+  return { x: r.x, y: y0, w: r.w, h: y1 - y0 };
+}
+let LIST_SEQ = 0;
 
 export const SLOT_LABEL = { weapon: '무기', head: '투구', body: '갑옷', cloak: '망토', acc: '장신구', consumable: '소모품', material: '재료', key: '귀중품' };
 export const WTYPE_LABEL = { whip: '채찍', sword: '장검', greatsword: '대검', dagger: '단검', gun: '총', staff: '지팡이' };
@@ -129,8 +158,25 @@ export function josa(word, withJong, withoutJong) {
 }
 
 // ───────────────────────── 스크롤 목록 ─────────────────────────
+/**
+ * 세로 스크롤 목록: 방향키 반복 · 드래그 스크롤 · 탭 선택(선택된 줄을 다시 탭하면 결정).
+ * owner(보통 장면)를 주면 보이는 줄을 ui.taps 'list' 영역으로 등록하고 그 영역으로 판정한다 (터치 여유 · QA 감사).
+ * owner.blocked 가 참이면(모달 등) 줄은 그리기만 하고 판정하지 않는다.
+ */
 export class ScrollList {
-  constructor(rowH = 56) { this.rowH = rowH; this.index = 0; this.count = 0; this.scroll = 0; this.target = 0; this.rect = null; this.drag = null; this.repeat = 0; this.moved = false; }
+  constructor(rowH = 56, owner = null) {
+    this.rowH = rowH; this.index = 0; this.count = 0; this.scroll = 0; this.target = 0; this.rect = null; this.drag = null; this.repeat = 0; this.moved = false;
+    this.owner = owner; this.idp = `list${++LIST_SEQ}:`;
+  }
+  /** 이번 틱에 탭된 줄 번호 (등록부 판정; owner 가 없으면 좌표로) | -1 */
+  tappedRow(inside) {
+    const p = input.pointer;
+    if (this.owner) {
+      const id = taps.hit(this.owner);
+      return typeof id === 'string' && id.startsWith(this.idp) ? Number(id.slice(this.idp.length)) : -1;
+    }
+    return inside && this.rect ? Math.floor((p.y - this.rect.y + this.scroll) / this.rowH) : -1;
+  }
   setCount(n) { this.count = n; this.index = clamp(this.index, 0, Math.max(0, n - 1)); }
   maxScroll() { return Math.max(0, this.count * this.rowH - (this.rect?.h ?? 0)); }
   step(d) { if (!this.count) return; const i = clamp(this.index + d, 0, this.count - 1); if (i !== this.index) { this.index = i; this.moved = true; } }
@@ -155,8 +201,8 @@ export class ScrollList {
       }
       if (p.tapped) {
         const wasDrag = this.drag?.moved; this.drag = null;
-        if (!wasDrag && inside) {
-          const i = Math.floor((p.y - r.y + this.scroll) / this.rowH);
+        if (!wasDrag) {
+          const i = this.tappedRow(inside);
           if (i >= 0 && i < this.count) {
             if (i === this.index) res = 'confirm';
             else { this.index = i; this.moved = true; res = 'select'; }
@@ -181,7 +227,14 @@ export class ScrollList {
     if (!this.count) text(ctx, emptyText, rect.x + rect.w / 2, rect.y + 60, { size: 15, align: 'center', color: COLORS.dim });
     const i0 = Math.max(0, Math.floor(this.scroll / this.rowH)), i1 = Math.min(this.count - 1, Math.ceil((this.scroll + rect.h) / this.rowH));
     const sw = this.maxScroll() > 0 ? 10 : 0;
-    for (let i = i0; i <= i1; i++) rowFn(ctx, i, { x: rect.x, y: rect.y + i * this.rowH - this.scroll, w: rect.w - sw, h: this.rowH - 5 }, i === this.index);
+    const own = this.owner, off = !!own?.blocked;
+    for (let i = i0; i <= i1; i++) {
+      const rr = { x: rect.x, y: rect.y + i * this.rowH - this.scroll, w: rect.w - sw, h: this.rowH - 5 };
+      rowFn(ctx, i, rr, i === this.index);
+      // 보이는 부분만 등록 (목록 밖으로 삐져나온 부분은 누를 수 없다). 44 px 보다 얇게 보이는 줄은 스크롤해서 누른다
+      const cr = own ? clipRect(rr, rect, 44) : null;
+      if (cr) taps.add(this.idp + i, cr, { owner: own, kind: 'list', disabled: off, src: 'town.list' });
+    }
     ctx.restore();
     if (sw) {
       const ms = this.maxScroll(), th = Math.max(30, rect.h * rect.h / (this.count * this.rowH));
@@ -243,14 +296,20 @@ export class Modal {
         if (input.pressed(a)) { ch(d); this.repeat = 0.3; }
         else if (input.down(a)) { this.repeat -= dt / 2; if (this.repeat <= 0) { ch(d); this.repeat = 0.06; } }
       }
-      if (input.pointer.tapped && this.qRects) for (const [r, d] of this.qRects) if (hit(r)) { ch(d === 'max' ? q.max - q.value : d === 'min' ? q.min - q.value : d); return null; }
+      const qid = input.pointer.tapped ? taps.hit(this) : null;
+      if (typeof qid === 'string' && qid.startsWith('q:') && this.qRects) {
+        const d = this.qRects[Number(qid.slice(2))]?.[1];
+        if (d !== undefined) { ch(d === 'max' ? q.max - q.value : d === 'min' ? q.min - q.value : d); return null; }
+      }
     } else {
       if (input.pressed('left')) this.move(-1);
       if (input.pressed('right')) this.move(1);
     }
     if (this.t < 0.12) return null;
     if (input.pointer.tapped) {
-      for (let i = 0; i < this.rects.length; i++) if (this.rects[i] && hit(this.rects[i]) && !this.buttons[i].disabled) { this.sel = i; return this.result(i); }
+      const id = taps.hit(this);
+      const i = typeof id === 'string' && id.startsWith('b:') ? Number(id.slice(2)) : -1;
+      if (i >= 0 && this.buttons[i] && !this.buttons[i].disabled) { this.sel = i; return this.result(i); }
     }
     if (input.pressed('confirm')) {
       const i = q ? this.buttons.findIndex((b) => b.primary) : this.sel;
@@ -270,12 +329,12 @@ export class Modal {
     ctx.save();
     ctx.fillStyle = `rgba(2,0,6,${0.62 * a})`; ctx.fillRect(0, 0, vw, vh);
     ctx.globalAlpha = a;
-    const w = this.width;
+    const w = Math.min(this.width, vw - 40);
     ctx.font = font(16, 500);
     const lines = this.lines.flatMap((l) => wrap(ctx, l, w - 56, 16));
     const qh = this.qty ? 92 : 0;
     const h = 70 + lines.length * 25 + this.bodyH + qh + 76;
-    const x = vw / 2 - w / 2, y = vh / 2 - h / 2 + (1 - a) * 20;
+    const x = vw / 2 - w / 2, y = Math.max(8, vh / 2 - h / 2 - (vh < 500 ? 10 : 0)) + (1 - a) * 20;
     uiPanel(ctx, x, y, w, h, { glow: 'rgba(180,20,40,0.5)' });
     text(ctx, this.title, vw / 2, y + 40, { size: 21, weight: 800, family: FONT.title, color: '#f3d690', align: 'center' });
     let yy = y + 72;
@@ -289,6 +348,7 @@ export class Modal {
       uiButton(ctx, rMin, '최소', { size: 13 }); uiButton(ctx, rM10, '-10', { size: 15 }); uiButton(ctx, rM1, '−', { size: 20 });
       uiButton(ctx, rP1, '+', { size: 20 }); uiButton(ctx, rP10, '+10', { size: 15 }); uiButton(ctx, rMax, '최대', { size: 13 });
       this.qRects = [[rMin, 'min'], [rM10, -10], [rM1, -1], [rP1, 1], [rP10, 10], [rMax, 'max']];
+      this.qRects.forEach(([r], k) => taps.add('q:' + k, r, { owner: this, kind: 'primary', src: 'town.modal' }));
       text(ctx, String(q.value), vw / 2 - 25 + 25, cy + 10, { size: 28, weight: 900, family: FONT.num, color: '#fff', align: 'center' });
       if (q.info) text(ctx, q.info(q.value), vw / 2, cy + 44, { size: 15, weight: 800, align: 'center', color: q.infoColor?.(q.value) ?? '#ffd84a' });
       yy += qh;
@@ -298,9 +358,10 @@ export class Modal {
     this.rects = this.buttons.map((b, i) => {
       const r = { x: bx0 + i * (bw + 14), y: y + h - bh - 22, w: bw, h: bh };
       uiButton(ctx, r, b.label, { selected: i === this.sel && !this.qty ? true : (this.qty && b.primary), disabled: b.disabled, size: 16 });
+      taps.add('b:' + i, r, { owner: this, kind: 'primary', disabled: !!b.disabled, src: 'town.modal' });
       return r;
     });
-    uiHints(ctx, this.qty ? [[['←', '→'], '±1'], [['↑', '↓'], '±10'], ['Z', '확인'], ['X', '취소']] : [[['←', '→'], '선택'], ['Z', '확인'], ['X', '취소']], vw / 2, y + h + 24);
+    uiHints(ctx, this.qty ? [['dpadH', '±1'], ['dpadV', '±10'], ['confirm', '확인'], ['cancel', '취소']] : [['dpadH', '선택'], ['confirm', '확인'], ['cancel', '취소']], vw / 2, Math.min(vh - 8, y + h + 24));
     ctx.restore();
   }
 }
@@ -337,8 +398,10 @@ export class RewardPopup {
     ctx.restore();
     glow(ctx, vw / 2, vh / 2 - 30, 220, this.color, 0.35);
     ctx.globalCompositeOperation = 'source-over';
-    const w = 460, rows = (this.gold ? 1 : 0) + (this.exp ? 1 : 0) + Math.min(4, this.items.length);
-    const h = 130 + rows * 44 + (this.sub ? 24 : 0);
+    const w = Math.min(460, vw - 40), rows = (this.gold ? 1 : 0) + (this.exp ? 1 : 0) + Math.min(4, this.items.length);
+    // 줄 간격: 화면이 낮으면(휴대폰 UI 높이 432) 줄을 좁혀 패널이 화면 안에 들어오게
+    const rh = clamp(Math.floor((vh - 40 - 130 - (this.sub ? 24 : 0)) / Math.max(1, rows)), 34, 44);
+    const h = 130 + rows * rh + (this.sub ? 24 : 0);
     ctx.translate(vw / 2, vh / 2); ctx.scale(k, k); ctx.translate(-vw / 2, -vh / 2);
     const x = vw / 2 - w / 2, y = vh / 2 - h / 2;
     uiPanel(ctx, x, y, w, h, { glow: rgba(this.color, 0.6) });
@@ -346,16 +409,20 @@ export class RewardPopup {
     let yy = y + 70;
     if (this.sub) { text(ctx, this.sub, vw / 2, yy + 4, { size: 14, align: 'center', color: '#d8c8b0' }); yy += 24; }
     const line = (icon, label, val, col, inst) => {
-      ctx.fillStyle = 'rgba(20,10,18,0.8)'; ctx.fillRect(x + 30, yy, w - 60, 38);
-      if (inst) drawSlot(ctx, x + 36, yy + 3, 32, inst); else drawIcon(ctx, icon, x + 52, yy + 19, 28);
-      text(ctx, label, x + 80, yy + 25, { size: 15, weight: 700, color: col });
-      if (val) text(ctx, val, x + w - 44, yy + 25, { size: 17, weight: 900, family: FONT.num, color: '#fff', align: 'right' });
-      yy += 44;
+      const bh = rh - 6, cyy = yy + bh / 2;
+      ctx.fillStyle = 'rgba(20,10,18,0.8)'; ctx.fillRect(x + 30, yy, w - 60, bh);
+      if (inst) drawSlot(ctx, x + 36, cyy - (bh - 6) / 2, bh - 6, inst); else drawIcon(ctx, icon, x + 52, cyy, bh - 10);
+      text(ctx, label, x + 80, cyy + 6, { size: 15, weight: 700, color: col, maxWidth: w - 190 });
+      if (val) text(ctx, val, x + w - 44, cyy + 6, { size: 17, weight: 900, family: FONT.num, color: '#fff', align: 'right' });
+      yy += rh;
     };
     if (this.gold) line('coin', '골드', `+${fmt(this.gold)} G`, '#ffd84a');
     if (this.exp) line('gem_crystal', '경험치', `+${fmt(this.exp)}`, '#8ae0ff');
     for (const it of this.items.slice(0, 4)) line(it.icon, nameOf(it), (it.qty ?? 1) > 1 ? `×${it.qty}` : '', rarityColor(it.rarity), it);
-    if (this.t > 0.45 && Math.floor(this.t * 2.5) % 2 === 0) text(ctx, input.touchMode ? '화면을 눌러 계속' : 'Z · 계속', vw / 2, y + h - 18, { size: 13, align: 'center', color: COLORS.dim });
+    if (this.t > 0.45 && Math.floor(this.t * 2.5) % 2 === 0) {
+      if (input.touchMode) text(ctx, '화면을 눌러 계속', vw / 2, y + h - 18, { size: 13, align: 'center', color: COLORS.dim });
+      else uiHints(ctx, [['confirm', '계속']], vw / 2, y + h - 18);
+    }
     ctx.restore();
     this.fx.draw(ctx, 'front');
   }
@@ -369,32 +436,37 @@ export function drawItemDetail(ctx, r, inst, { state, price = null, priceLabel =
   const b = baseOf(inst) || {};
   const hero = state ? currentHero(state) : null;
   const rc = rarityColor(inst.rarity);
-  // 아이콘 (희귀도 광채)
-  const s = 76, ix = r.x + 18, iy = r.y + 18;
+  // 아이콘 (희귀도 광채) — 낮은 패널(휴대폰)에서는 작게
+  const s = r.h < 300 ? 60 : 76, ix = r.x + 18, iy = r.y + (r.h < 300 ? 14 : 18);
   if ((inst.rarity ?? 0) >= 2) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; glow(ctx, ix + s / 2, iy + s / 2, 70, rc, 0.35 + Math.sin(performance.now() / 300) * 0.08); ctx.restore(); }
   drawSlot(ctx, ix, iy, s, inst);
   const tx = ix + s + 16, tw = r.w - s - 50;
   text(ctx, nameOf(inst), tx, iy + 24, { size: 20, weight: 800, family: FONT.title, color: rc, maxWidth: tw });
   if (tag) { ctx.font = font(11, 800); const w2 = ctx.measureText(tag).width + 14; ctx.fillStyle = '#8a1426'; ctx.fillRect(r.x + r.w - w2 - 12, r.y + 12, w2, 20); text(ctx, tag, r.x + r.w - 12 - w2 / 2, r.y + 26, { size: 11, weight: 800, align: 'center', color: '#ffe7a0', ow: 0 }); }
   const kind = [RARITY_NAMES[inst.rarity ?? 0], SLOT_LABEL[b.slot] ?? '', b.wtype ? WTYPE_LABEL[b.wtype] : ''].filter(Boolean).join(' · ');
-  text(ctx, kind, tx, iy + 46, { size: 13, color: '#c8b8a0', weight: 600 });
+  const sm = s < 70; // 낮은 패널: 머리글 줄 간격을 좁힌다
+  text(ctx, kind, tx, iy + (sm ? 42 : 46), { size: 13, color: '#c8b8a0', weight: 600 });
   const lvReq = b.lvReq ?? 1;
+  const ly = iy + (sm ? 60 : 68);
   if (EQUIP_KINDS.has(b.slot)) {
     const ok = !hero || (hero.level >= lvReq);
-    text(ctx, `요구 레벨 ${lvReq}`, tx, iy + 68, { size: 12, color: ok ? '#9d8f80' : COLORS.bad, weight: 700 });
-    if ((inst.level ?? 0) > 0) text(ctx, `강화 +${inst.level}`, tx + 110, iy + 68, { size: 12, color: '#ffb040', weight: 800 });
-  } else if ((inst.qty ?? 1) > 1) text(ctx, `보유 ${inst.qty}개`, tx, iy + 68, { size: 12, color: '#9d8f80', weight: 700 });
+    text(ctx, `요구 레벨 ${lvReq}`, tx, ly, { size: 12, color: ok ? '#9d8f80' : COLORS.bad, weight: 700 });
+    if ((inst.level ?? 0) > 0) text(ctx, `강화 +${inst.level}`, tx + 110, ly, { size: 12, color: '#ffb040', weight: 800 });
+  } else if ((inst.qty ?? 1) > 1) text(ctx, `보유 ${inst.qty}개`, tx, ly, { size: 12, color: '#9d8f80', weight: 700 });
   let yy = iy + s + 22;
-  // 능력치 + 비교
+  // 능력치 + 비교 (패널에 들어가는 줄 수만: 아래 가격 칸·설명과 겹치지 않게)
   const st = statsOf(inst);
   const eq = compare && state && EQUIP_KINDS.has(b.slot) ? equippedFor(state, hero, inst) : null;
   const est = eq ? statsOf(eq) : {};
   const keys = [...new Set([...Object.keys(st), ...Object.keys(est)])].filter((k) => STAT_INFO[k] && (Math.abs(st[k] ?? 0) > 0.05 || Math.abs(est[k] ?? 0) > 0.05));
+  const floorY = r.y + r.h - (price !== null || footer ? 58 : 16);
+  const maxRows = clamp(Math.floor((floorY - yy - 8 - (eq ? 20 : 0)) / 21), 1, 7);
   if (keys.length) {
-    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(r.x + 14, yy - 16, r.w - 28, Math.min(keys.length, 7) * 21 + 12 + (eq ? 20 : 0));
+    const nRows = Math.min(keys.length, maxRows);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(r.x + 14, yy - 16, r.w - 28, nRows * 21 + 12 + (eq ? 20 : 0));
     // 비교 대상(장착 중) 은 헤더의 '강화 +N' 과 겹치지 않도록 능력치 표 첫 줄에
     if (eq) { text(ctx, `비교 · 장착 중: ${nameOf(eq)}`, r.x + r.w - 24, yy + 1, { size: 11, color: '#9d8f80', align: 'right', maxWidth: r.w - 52 }); yy += 20; }
-    for (const k of keys.slice(0, 7)) {
+    for (const k of keys.slice(0, nRows)) {
       const v = st[k] ?? 0;
       text(ctx, statName(k), r.x + 26, yy + 4, { size: 14, color: '#d8ccb8' });
       text(ctx, fmtStat(k, v), r.x + r.w * 0.62, yy + 4, { size: 14, weight: 800, family: FONT.num, color: '#fff', align: 'right' });
@@ -433,15 +505,16 @@ export function drawItemDetail(ctx, r, inst, { state, price = null, priceLabel =
 /**
  * 상점/대장간/성당/게시판 공통 틀. 하위 클래스는 setup() 에서 아래를 채운다:
  *  this.bgKey, this.title, this.eng, this.npcId, this.lines(SHOP_LINES 항목), this.tabs:[{id,label}], this.accent
- *  updateBody(dt), renderBody(ctx, rect) 구현
+ *  updateBody(dt), renderBody(ctx, body, L) 구현. 배치는 UI px (파일 머리 주석의 계약 참고).
  */
 export class ServiceScene extends Scene {
-  constructor(g) { super(g); this.opaque = true; }
+  constructor(g) { super(g); this.opaque = true; this.uiScale = true; this.hidePad = true; }
   enter(params = {}) {
     ensureState(this.game);
     this.params = params;
     this.world = params.world ?? null;
     this.tab = 0; this.tabs = []; this.modal = null; this.popup = null;
+    this.tapId = null;
     this.say = { text: '', shown: 0, t: 0 };
     this.fx = new Particles(500);
     this.accent = '#e8c872';
@@ -450,13 +523,24 @@ export class ServiceScene extends Scene {
     for (let i = 0; i < 26; i++) this.embers.push({ x: rand(0, 1), y: rand(0, 1), v: rand(0.3, 1), p: rand(0, TAU), s: rand(0.6, 1.6) });
     if (this.music) audio.music(this.music);
     audio.sfx('door');
-    padHidden(true);
   }
-  exit() { padHidden(false); if (this.music) audio.music('hub'); }
+  exit() { if (this.music) audio.music('hub'); }
+  /** 배치 폭·높이 (UI px: uiScale 이면 game.uiW × game.uiH) */
+  get vw() { const g = this.game; return this.uiScale ? (g.uiW || g.viewW) : g.viewW; }
+  get vh() { const g = this.game; return this.uiScale ? (g.uiH || g.viewH) : g.viewH; }
+  /** 모달·팝업·연출 중이거나 위에 다른 장면이 있으면 아래 버튼은 누를 수 없다 */
+  get blocked() { return !!(this.modal || this.popup || this.busy || this.cere || this.closing || this.game.top !== this); }
+  /** 탭 영역 등록 (render 에서; update 에서 this.tapId 로 읽는다). kind: 'primary' | 'list' | 'icon' */
+  tz(id, r, kind = 'primary') {
+    if (r && r.w > 0 && r.h > 0) taps.add(id, r, { owner: this, kind, disabled: this.blocked, src: 'town.' + (this.name ?? 'svc') });
+    return r;
+  }
+  /** 이 장면에 탭 영역을 등록하는 스크롤 목록 */
+  addList(rowH = 58) { return new ScrollList(rowH, this); }
   // 토스트 줄: 화면 위 가운데(기본값)는 탭 줄을 가리므로, 왼쪽 초상화 칸의 대사창 바로 위에서 위로 쌓는다
-  // (상점·대장간·의뢰 게시판·성당 공통 — 초상화 칸은 장식 영역이라 조작 요소를 가리지 않는다)
+  // (상점·대장간·의뢰 게시판·성당 공통 — 초상화 칸은 장식 영역이라 조작 요소를 가리지 않는다). UI 좌표
   get toastX() { return this.layout().pw / 2; }
-  get toastY() { return this.game.viewH - 214; }
+  get toastY() { return this.vh - 214; }
   get toastUp() { return true; }
   get state() { return this.game.state; }
   get hero() { return currentHero(this.game.state); }
@@ -482,6 +566,7 @@ export class ServiceScene extends Scene {
     this.fx.update(dt, null);
     const s = this.say;
     s.t += dt; if (s.shown < s.text.length) s.shown = Math.min(s.text.length, s.shown + dt * 38);
+    this.tapId = null;
     if (this.popup) { if (this.popup.update(dt)) { const cb = this.popup.onClose; this.popup = null; cb?.(); } return; }
     if (this.modal) {
       const r = this.modal.update(dt);
@@ -489,15 +574,19 @@ export class ServiceScene extends Scene {
       return;
     }
     if (this.busy) { this.updateBusy?.(dt); return; }
+    if (this.closing) return;
+    this.tapId = input.pointer.tapped ? taps.hit(this) : null;
+    const id = this.tapId;
     // 닫기 / 탭
-    if (input.pointer.tapped && this.closeRect && hit(this.closeRect)) { this.close(); return; }
-    if (input.pointer.tapped && this.tabRects) for (let i = 0; i < this.tabRects.length; i++) if (hit(this.tabRects[i])) { this.setTab(i); return; }
+    if (id === 'close') { this.close(); return; }
+    if (typeof id === 'string' && id.startsWith('tab:')) { this.setTab(Number(id.slice(4))); return; }
     if (this.tabs.length > 1 && !this.lockTabs) {
-      if (input.pressed('swap') || input.pressed('skill2')) { this.setTab((this.tab + 1) % this.tabs.length); return; }
-      if (input.pressed('skill1')) { this.setTab((this.tab + this.tabs.length - 1) % this.tabs.length); return; }
+      const n = this.tabs.length;
+      if (input.pressed('nextTab')) { this.setTab((this.tab + 1) % n); return; }
+      if (input.pressed('prevTab')) { this.setTab((this.tab + n - 1) % n); return; }
       if (!this.useLeftRight) {
         if (input.pressed('left')) { this.setTab(Math.max(0, this.tab - 1)); return; }
-        if (input.pressed('right')) { this.setTab(Math.min(this.tabs.length - 1, this.tab + 1)); return; }
+        if (input.pressed('right')) { this.setTab(Math.min(n - 1, this.tab + 1)); return; }
       }
     }
     const res = this.updateBody?.(dt);
@@ -505,11 +594,20 @@ export class ServiceScene extends Scene {
   }
 
   // ── 그리기 ──
+  /** 초상화 칸 폭 (UI px). 낮은 화면(휴대폰)은 좁게 */
+  portraitW(vw, compact) { return Math.round(compact ? clamp(vw * 0.27, 230, 290) : clamp(vw * 0.3, 300, 360)); }
+  /**
+   * 배치 (UI px): { vw, vh, compact, pw, cx, cy, cw, ch, hdr, tabsIn, body }
+   * compact(UI 높이 < 500 — 휴대폰): 탭을 머리글 줄에 둔다. 아래 24 px 는 키 안내 줄 자리.
+   */
   layout() {
-    const vw = this.game.viewW, vh = this.game.viewH;
-    const pw = Math.round(clamp(vw * 0.3, 300, 360));
-    // 아래 26px 는 키 안내 줄 자리 (vh-8 기준선, 키캡이 화면 끝에 잘리지 않도록)
-    return { vw, vh, pw, cx: pw + 6, cy: 64, cw: vw - pw - 22, ch: vh - 64 - 26 };
+    const vw = this.vw, vh = this.vh, compact = vh < 500;
+    const pw = this.portraitW(vw, compact);
+    const cx = pw + 6, cw = vw - pw - 22, hdr = 56, hint = 24;
+    const nt = this.tabs?.length ?? 0;
+    const tabsIn = compact && nt > 1;
+    const by = nt > 1 && !tabsIn ? hdr + 8 + 44 + 10 : hdr + 8;
+    return { vw, vh, compact, pw, cx, cy: hdr + 8, cw, ch: vh - hdr - 8 - hint, hdr, tabsIn, body: { x: cx, y: by, w: cw, h: vh - by - hint } };
   }
   render(ctx) {
     const L = this.layout(), { vw, vh } = L;
@@ -529,58 +627,66 @@ export class ServiceScene extends Scene {
     ctx.restore();
     vignette(ctx, vw, vh, 0.7);
     this.renderPortrait(ctx, L);
-    // 헤더
-    const hg = ctx.createLinearGradient(0, 0, 0, 58);
-    hg.addColorStop(0, 'rgba(6,2,8,0.95)'); hg.addColorStop(1, 'rgba(6,2,8,0.55)');
-    ctx.fillStyle = hg; ctx.fillRect(0, 0, vw, 56);
-    if (MenuUI.divider) MenuUI.divider(ctx, 0, 55, vw, { center: false }); else { ctx.fillStyle = 'rgba(232,200,114,0.5)'; ctx.fillRect(0, 55, vw, 1.5); }
-    ctx.save(); ctx.globalCompositeOperation = 'lighter'; glow(ctx, 90, 30, 90, this.accentGlow ?? '#c8601a', 0.18); ctx.restore();
-    text(ctx, this.title, 22, 37, { size: 26, weight: 800, family: FONT.title, color: '#f3d690', ow: 4 });
-    ctx.font = font(26, 800, FONT.title);
-    const tw = ctx.measureText(this.title).width;
-    text(ctx, this.eng ?? '', 22 + tw + 14, 36, { size: 12, weight: 800, family: FONT.num, color: '#8a7a64' });
-    // 골드
-    const gx = vw - 72 - 180;
-    uiPanel(ctx, gx, 9, 170, 38, { corner: false });
-    drawIcon(ctx, 'coin', gx + 22, 28, 22);
-    text(ctx, fmt(this.state.gold ?? 0), gx + 158, 35, { size: 18, weight: 900, family: FONT.num, color: '#ffd84a', align: 'right' });
-    this.closeRect = { x: vw - 64, y: 8, w: 52, h: 40 };
-    uiButton(ctx, this.closeRect, '✕', { size: 20 });
-    // 탭
-    this.tabRects = null;
-    if (this.tabs.length > 1) {
-      this.tabRects = [];
-      const n = this.tabs.length, tw2 = Math.min(150, (L.cw - (n - 1) * 6) / n), th = 38;
-      for (let i = 0; i < n; i++) {
-        const r = { x: L.cx + i * (tw2 + 6), y: L.cy, w: tw2, h: th };
-        this.tabRects.push(r);
-        const sel = i === this.tab;
-        if (MenuUI.gbutton) {
-          MenuUI.gbutton(ctx, r, this.tabs[i].label, { hot: sel, size: 15, t: this.t, color: sel ? '#fff4d8' : '#b8a890' });
-          if (sel) { ctx.fillStyle = COLORS.gold; ctx.fillRect(r.x + 10, r.y + r.h - 3, r.w - 20, 2); }
-        } else {
-          const tg = ctx.createLinearGradient(0, r.y, 0, r.y + r.h);
-          tg.addColorStop(0, sel ? 'rgba(150,24,44,0.95)' : 'rgba(26,14,24,0.9)'); tg.addColorStop(1, sel ? 'rgba(70,8,20,0.95)' : 'rgba(10,5,10,0.9)');
-          ctx.fillStyle = tg; ctx.fillRect(r.x, r.y, r.w, r.h);
-          ctx.strokeStyle = sel ? COLORS.gold : 'rgba(110,85,48,0.7)'; ctx.lineWidth = sel ? 2 : 1; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
-          text(ctx, this.tabs[i].label, r.x + r.w / 2, r.y + 25, { size: 15, weight: 800, align: 'center', color: sel ? '#fff4d8' : '#b8a890' });
-        }
-        if (this.tabs[i].badge) { ctx.fillStyle = '#e02a3a'; ctx.beginPath(); ctx.arc(r.x + r.w - 10, r.y + 9, 8, 0, TAU); ctx.fill(); text(ctx, this.tabs[i].badge, r.x + r.w - 10, r.y + 13, { size: 11, weight: 900, align: 'center', color: '#fff', ow: 0 }); }
-      }
-    }
-    const body = { x: L.cx, y: L.cy + (this.tabs.length > 1 ? 48 : 0), w: L.cw, h: L.ch - (this.tabs.length > 1 ? 48 : 0) };
-    this.renderBody?.(ctx, body, L);
+    this.renderHeader(ctx, L);
+    this.renderBody?.(ctx, L.body, L);
     this.fx.draw(ctx, 'back'); this.fx.draw(ctx, 'front'); this.fx.draw(ctx, 'top');
     this.renderOver?.(ctx, L);
     if (!this.modal && !this.popup && !this.busy && !this.lockTabs) {
       const items = [];
-      if (this.tabs.length > 1) items.push([this.useLeftRight ? ['S', 'D'] : ['←', '→'], '탭']);
-      items.push([this.useLeftRight && this.tabs[this.tab]?.id === 'class' ? ['←', '→'] : ['↑', '↓'], '선택'], ['Z', '결정'], ['X', '닫기']);
+      if (this.tabs.length > 1) items.push([['prevTab', 'nextTab'], '탭']);
+      items.push([this.useLeftRight && this.tabs[this.tab]?.id === 'class' ? 'dpadH' : 'dpadV', '선택'], ['confirm', '결정'], ['cancel', '닫기']);
       if (this.extraHints) items.push(...this.extraHints());
       uiHints(ctx, items, L.cx + L.cw / 2, vh - 8);
     }
     if (this.modal) this.modal.render(ctx, vw, vh);
     if (this.popup) this.popup.render(ctx, vw, vh);
+  }
+  /** 머리글: 제목 · (compact 면 탭) · 골드 · 닫기 */
+  renderHeader(ctx, L) {
+    const { vw } = L;
+    const hg = ctx.createLinearGradient(0, 0, 0, L.hdr + 2);
+    hg.addColorStop(0, 'rgba(6,2,8,0.95)'); hg.addColorStop(1, 'rgba(6,2,8,0.55)');
+    ctx.fillStyle = hg; ctx.fillRect(0, 0, vw, L.hdr);
+    if (MenuUI.divider) MenuUI.divider(ctx, 0, L.hdr - 1, vw, { center: false }); else { ctx.fillStyle = 'rgba(232,200,114,0.5)'; ctx.fillRect(0, L.hdr - 1, vw, 1.5); }
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; glow(ctx, 90, 30, 90, this.accentGlow ?? '#c8601a', 0.18); ctx.restore();
+    const ts = L.tabsIn ? 22 : 26;
+    text(ctx, this.title, 22, 37, { size: ts, weight: 800, family: FONT.title, color: '#f3d690', ow: 4 });
+    ctx.font = font(ts, 800, FONT.title);
+    const tw = ctx.measureText(this.title).width;
+    // 골드 · 닫기
+    const gw = L.compact ? 140 : 170, gx = vw - 72 - gw - 10;
+    if (!L.tabsIn) text(ctx, this.eng ?? '', 22 + tw + 14, 36, { size: 12, weight: 800, family: FONT.num, color: '#8a7a64', maxWidth: Math.max(0, gx - tw - 50) });
+    uiPanel(ctx, gx, 9, gw, 38, { corner: false });
+    drawIcon(ctx, 'coin', gx + 22, 28, 22);
+    text(ctx, fmt(this.state.gold ?? 0), gx + gw - 12, 35, { size: 18, weight: 900, family: FONT.num, color: '#ffd84a', align: 'right' });
+    this.closeRect = this.tz('close', { x: vw - 64, y: 8, w: 52, h: 40 }, 'icon');
+    uiButton(ctx, this.closeRect, '✕', { size: 20 });
+    // 탭 (compact: 머리글 줄의 제목과 골드 사이 / 아니면 머리글 아래 줄)
+    this.tabRects = null;
+    const n = this.tabs.length;
+    if (n <= 1) return;
+    this.tabRects = [];
+    const x0 = L.tabsIn ? Math.max(L.cx, 22 + tw + 16) : L.cx;
+    const x1 = L.tabsIn ? gx - 12 : L.cx + L.cw;
+    const tw2 = Math.min(150, (x1 - x0 - (n - 1) * 6) / n), th = 44;
+    const ty = L.tabsIn ? 6 : L.cy;
+    const lsz = tw2 < 96 ? 13 : 15;
+    for (let i = 0; i < n; i++) {
+      const r = this.tz('tab:' + i, { x: x0 + i * (tw2 + 6), y: ty, w: tw2, h: th });
+      this.tabRects.push(r);
+      const sel = i === this.tab;
+      if (MenuUI.gbutton) {
+        MenuUI.gbutton(ctx, r, this.tabs[i].label, { hot: sel, size: lsz, t: this.t, color: sel ? '#fff4d8' : '#b8a890' });
+        if (sel) { ctx.fillStyle = COLORS.gold; ctx.fillRect(r.x + 10, r.y + r.h - 3, r.w - 20, 2); }
+      } else {
+        const tg = ctx.createLinearGradient(0, r.y, 0, r.y + r.h);
+        tg.addColorStop(0, sel ? 'rgba(150,24,44,0.95)' : 'rgba(26,14,24,0.9)'); tg.addColorStop(1, sel ? 'rgba(70,8,20,0.95)' : 'rgba(10,5,10,0.9)');
+        ctx.fillStyle = tg; ctx.fillRect(r.x, r.y, r.w, r.h);
+        ctx.strokeStyle = sel ? COLORS.gold : 'rgba(110,85,48,0.7)'; ctx.lineWidth = sel ? 2 : 1; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
+        text(ctx, this.tabs[i].label, r.x + r.w / 2, r.y + 28, { size: lsz, weight: 800, align: 'center', color: sel ? '#fff4d8' : '#b8a890' });
+      }
+      if (this.tabs[i].badge) { ctx.fillStyle = '#e02a3a'; ctx.beginPath(); ctx.arc(r.x + r.w - 10, r.y + 9, 8, 0, TAU); ctx.fill(); text(ctx, this.tabs[i].badge, r.x + r.w - 10, r.y + 13, { size: 11, weight: 900, align: 'center', color: '#fff', ow: 0 }); }
+    }
   }
   renderPortrait(ctx, L) {
     const info = npcInfo(this.npcId);
@@ -656,7 +762,7 @@ export function doBuy(scene, e, qty) {
   audio.sfx('coin'); audio.sfx('item', { vol: 0.7 });
   scene.talk('buy');
   const d = scene.detailRect;
-  const x = d ? d.x + 56 : scene.game.viewW / 2, y = d ? d.y + 56 : 200;
+  const x = d ? d.x + 56 : (scene.vw ?? scene.game.viewW) / 2, y = d ? d.y + 56 : 200;
   scene.fx.burst('gold', x, y, 26, { speed: 220 });
   scene.fx.ring(x, y, { color: '#ffd84a', r0: 6, r1: 70, life: 0.45, width: 4 });
   scene.game.toast(`구매: ${nameOf(got)}${qty > 1 ? ' ×' + qty : ''}`, rarityColor(got.rarity));

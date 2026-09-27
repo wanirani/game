@@ -16,7 +16,7 @@ import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
 import { assets } from '../../core/assets.js';
 import { saves } from '../../core/save.js';
-import { text, drawCover, vignette, FONT, font, taps } from '../../core/ui.js';
+import { text, drawCover, FONT, font, taps } from '../../core/ui.js';
 import { drawHints } from '../../core/prompts.js';
 import { TAU, clamp, lerp, ease, fmt, fmtTime, rgba, rand, shade, mix } from '../../core/math.js';
 import { Particles } from '../../core/particles.js';
@@ -82,6 +82,15 @@ function boxDist(b, cx, cy) {
   const dy = cy < b.y ? b.y - cy : cy > b.y + b.h ? cy - (b.y + b.h) : 0;
   return Math.hypot(dx, dy);
 }
+/** 그라데이션 캐시 (컨텍스트마다; 원점 기준으로 만들어 translate 해서 쓴다) — 매 프레임 새로 만들지 않는다 (R12) */
+const GRADS = new WeakMap();
+function cachedGrad(ctx, key, make) {
+  let m = GRADS.get(ctx);
+  if (!m) { m = new Map(); GRADS.set(ctx, m); }
+  let g = m.get(key);
+  if (!g) { if (m.size > 96) m.clear(); g = make(); m.set(key, g); }
+  return g;
+}
 function boxOverlap(a, b) {
   const w = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x), h = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
   return w > 0 && h > 0 ? w * h : 0;
@@ -136,6 +145,9 @@ export class WorldMapScene extends Scene {
     } else audio.music(PAGES[page].music);
   }
   get state() { return this.game.state; }
+  /** 토스트는 정보 패널 바로 위에서 위로 쌓는다 (탭·지도 위쪽 노드를 가리지 않고 '출발/잠김' 버튼 곁에 뜬다) */
+  get toastY() { return this._L ? this._L.panelY - 16 : undefined; }
+  get toastUp() { return !!this._L; }
   get nodes() { return this.pages?.[this.page]?.nodes ?? []; }
   cur() { return this.nodes[this.index] ?? null; }
   isOpen(n) { return n.arena ? true : n.missing ? false : this.state.progress.unlocked.includes(n.id); }
@@ -194,7 +206,7 @@ export class WorldMapScene extends Scene {
     let recent = null;
     for (let i = P.unlocked.length - 1; i >= 0 && !recent; i--) {
       const id = P.unlocked[i];
-      if (STAGES[id] && id !== 'arena' && !P.cleared?.[id]) recent = id;
+      if ((STAGES[id] || P2_IDS.includes(id)) && id !== 'arena' && !P.cleared?.[id]) recent = id;   // 아직 맵이 없는 2부 스테이지도 센다
     }
     return P2_IDS.includes(recent) || P2_IDS.includes(st.lastStage?.stageId);
   }
@@ -278,16 +290,22 @@ export class WorldMapScene extends Scene {
     const sw = wOf(PAGES[page].startName);
     const boxes = [{ x: sp.x - sw / 2, y: sp.y + 10, w: sw, h: 17 }];
     const map = new Map();
-    const order = pg.nodes.map((_, i) => i).sort((a, b) => Number(this.isOpen(pg.nodes[b])) - Number(this.isOpen(pg.nodes[a])));
+    // 열린 노드 먼저, 그중에서도 이웃이 많은(자리가 빡빡한) 노드부터
+    const crowd = xy.map((q) => xy.reduce((a, o) => a + (Math.hypot(o.x - q.x, o.y - q.y) < 90 ? 1 : 0), -1));
+    const order = pg.nodes.map((_, i) => i).sort((a, b) => (Number(this.isOpen(pg.nodes[b])) - Number(this.isOpen(pg.nodes[a]))) || crowd[b] - crowd[a]);
     for (const i of order) {
       const n = pg.nodes[i], q = xy[i], open = this.isOpen(n), R = 21, h = 17;
       const w = wOf(open ? n.stage.name ?? '' : '???');
-      const up = P.cleared?.[n.id]?.rank ? 16 : 9;
+      const up = P.cleared?.[n.id]?.rank ? 16 : 9, yUp = q.y - R - up - h + 4, yDn = q.y + R + 2;
       const cands = [
-        { side: 'down', x: q.x - w / 2, y: q.y + R + 2, pref: 0 },
-        { side: 'up', x: q.x - w / 2, y: q.y - R - up - h + 4, pref: 0.35 },
+        { side: 'down', x: q.x - w / 2, y: yDn, pref: 0 },
+        { side: 'up', x: q.x - w / 2, y: yUp, pref: 0.35 },
+        { side: 'downR', x: q.x - 10, y: yDn, pref: 0.5 },
+        { side: 'downL', x: q.x + 10 - w, y: yDn, pref: 0.55 },
         { side: 'right', x: q.x + R + 8, y: q.y - 9, pref: 0.7 },
+        { side: 'upR', x: q.x - 10, y: yUp, pref: 0.75 },
         { side: 'left', x: q.x - R - 8 - w, y: q.y - 9, pref: 0.8 },
+        { side: 'upL', x: q.x + 10 - w, y: yUp, pref: 0.85 },
       ];
       let best = cands[0], bs = Infinity;
       for (const cd of cands) {
@@ -324,13 +342,16 @@ export class WorldMapScene extends Scene {
         if (P.cleared?.[o.id]?.rank) obst.push([qo.x + 17, qo.y - 17, 11]);
       }
       const sp = this.pos(PAGES[page].start, L); obst.push([sp.x, sp.y - 4, 28]);
-      const cands = [[0, -44, 0], [-50, -8, 0.3], [50, -8, 0.4], [-40, -34, 0.6], [42, -38, 0.7]];
+      const cands = [[0, -44, 0], [-50, -8, 0.3], [50, -8, 0.4], [-40, -34, 0.6], [42, -38, 0.7], [-62, -24, 0.9], [62, -24, 1], [0, -58, 1.1]];
+      const own = lab.map.get(n.id);
       let best = null, bestS = Infinity;
       for (const [dx, dy, pref] of cands) {
         const cx = q.x + dx, cy = q.y + dy;
         let sc = pref;
         for (const [ox, oy, r] of obst) { const d = Math.hypot(cx - ox, cy - oy); if (d < TR + r) sc += 4 * (1 - d / (TR + r)) + 1; }
-        for (const b of lab.boxes) if (cx + TR > b.x && cx - TR < b.x + b.w && cy + TR > b.y && cy - TR < b.y + b.h) sc += 2;
+        // 이름표를 가리지 않게 (자기 이름표는 특히)
+        for (const b of lab.boxes) if (cx + TR > b.x && cx - TR < b.x + b.w && cy + TR > b.y && cy - TR < b.y + b.h) sc += b === own ? 6 : 3;
+        if (own && !lab.boxes.includes(own) && cx + TR > own.x && cx - TR < own.x + own.w && cy + TR > own.y && cy - TR < own.y + own.h) sc += 6;
         if (cy - TR < L.TB + 4 || cx - TR < 4 || cx + TR > L.W - 4 || cy + 26 > L.panelY + 24) sc += 6;
         if (sc < bestS) { bestS = sc; best = { x: cx, y: cy + 42 }; }
       }
@@ -467,8 +488,15 @@ export class WorldMapScene extends Scene {
   drawMap(ctx, L, page, sel, live) {
     const PG = PAGES[page], pg = this.pages[page], t = this.t, { W, H } = L;
     drawCover(ctx, assets.get(PG.bg), W, H, { fallback: PG.fallback });
-    if (page === 0) { ctx.fillStyle = 'rgba(40,20,10,0.18)'; ctx.fillRect(0, 0, W, H); vignette(ctx, W, H, 0.75, '20,8,4'); }
-    else { ctx.fillStyle = 'rgba(10,4,20,0.25)'; ctx.fillRect(0, 0, W, H); vignette(ctx, W, H, 0.8, '46,10,80'); }
+    ctx.fillStyle = page === 0 ? 'rgba(40,20,10,0.18)' : 'rgba(10,4,20,0.25)'; ctx.fillRect(0, 0, W, H);
+    // 가장자리 그을림 (1부) · 보랏빛 비네트 (2부) — core/ui vignette 와 같은 모양, 크기마다 한 번만 만든다
+    const [va, vc] = page === 0 ? [0.75, '20,8,4'] : [0.8, '46,10,80'];
+    ctx.fillStyle = cachedGrad(ctx, `vig|${page}|${W}|${H}`, () => {
+      const g = ctx.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, H * 0.95);
+      g.addColorStop(0, `rgba(${vc},0)`); g.addColorStop(1, `rgba(${vc},${va})`);
+      return g;
+    });
+    ctx.fillRect(0, 0, W, H);
     const sp = this.pos(PG.start, L);
     for (const k of pg.links) {
       const a = k.a ? this.pos(k.a.stage.mapPos, L) : sp, b = this.pos(k.b.stage.mapPos, L);
@@ -551,9 +579,12 @@ export class WorldMapScene extends Scene {
     ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.beginPath(); ctx.ellipse(x, y + 7, 26, 7, 0, 0, TAU); ctx.fill();
     const arch = (r) => { ctx.beginPath(); ctx.moveTo(x - r, y + 6); ctx.lineTo(x - r, y - 12); ctx.arc(x, y - 12, r, Math.PI, 0); ctx.lineTo(x + r, y + 6); ctx.closePath(); };
     arch(17); ctx.fillStyle = '#2a2236'; ctx.fill(); ctx.strokeStyle = '#a898c8'; ctx.lineWidth = 1.5; ctx.stroke();
-    const g = ctx.createLinearGradient(x, y - 26, x, y + 6);
-    g.addColorStop(0, '#f0d8ff'); g.addColorStop(0.5, '#b060ff'); g.addColorStop(1, '#3a0a6a');
-    arch(10); ctx.fillStyle = g; ctx.fill();
+    const g = cachedGrad(ctx, 'gate', () => {
+      const lg = ctx.createLinearGradient(0, -26, 0, 6);
+      lg.addColorStop(0, '#f0d8ff'); lg.addColorStop(0.5, '#b060ff'); lg.addColorStop(1, '#3a0a6a');
+      return lg;
+    });
+    ctx.save(); ctx.fillStyle = g; ctx.translate(x, y); ctx.beginPath(); ctx.moveTo(-10, 6); ctx.lineTo(-10, -12); ctx.arc(0, -12, 10, Math.PI, 0); ctx.lineTo(10, 6); ctx.closePath(); ctx.fill(); ctx.restore();
     ctx.strokeStyle = `rgba(255,245,255,${0.7 + Math.sin(t * 5) * 0.25})`; ctx.lineWidth = 1.6;
     ctx.beginPath(); ctx.moveTo(x + 1, y - 21); ctx.lineTo(x - 3, y - 12); ctx.lineTo(x + 3, y - 6); ctx.lineTo(x - 1, y + 4); ctx.stroke();
     text(ctx, PAGES[1].startName, x, y + 24, { size: 12, weight: 800, family: FONT.title, align: 'center', color: PAGES[1].label, outline: PAGES[1].outline, ow: 3 });
@@ -586,18 +617,24 @@ export class WorldMapScene extends Scene {
     ctx.fillStyle = page === 1 ? 'rgba(0,0,0,0.5)' : 'rgba(40,20,10,0.35)';
     ctx.beginPath(); ctx.ellipse(p.x + 2, p.y + R * 0.7, R * 0.9, R * 0.35, 0, 0, TAU); ctx.fill();
     // 인장 몸체
-    const g = ctx.createRadialGradient(p.x - R * 0.35, p.y - R * 0.4, 2, p.x, p.y, R);
-    if (n.arena) { g.addColorStop(0, '#8a8a9a'); g.addColorStop(1, '#2a2a36'); }
-    else if (!open) {
-      if (page === 1) { g.addColorStop(0, '#6e6880'); g.addColorStop(1, '#221e2c'); }
-      else { g.addColorStop(0, '#8a8278'); g.addColorStop(1, '#3a342e'); }
-    } else if (rec) { g.addColorStop(0, '#ffe7a0'); g.addColorStop(0.6, '#c8a040'); g.addColorStop(1, '#6a4a10'); }
-    else if (page === 1) { g.addColorStop(0, shade(col, 0.55)); g.addColorStop(0.6, shade(col, -0.35)); g.addColorStop(1, shade(col, -0.82)); }
-    else if (n.id === 's13') { g.addColorStop(0, '#e0a0ff'); g.addColorStop(0.6, '#7a20c0'); g.addColorStop(1, '#2a0840'); }
-    else { g.addColorStop(0, '#ff6a7a'); g.addColorStop(0.6, '#a01020'); g.addColorStop(1, '#3a0408'); }
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, R, 0, TAU); ctx.fill();
+    const kind = n.arena ? 'arena' : !open ? `lock${page}` : rec ? 'gold' : page === 1 ? `c${col}` : n.id === 's13' ? 's13' : 'red';
+    const g = cachedGrad(ctx, `seal|${kind}|${R}`, () => {
+      const rg = ctx.createRadialGradient(-R * 0.35, -R * 0.4, 2, 0, 0, R);
+      const stops = kind === 'arena' ? [[0, '#8a8a9a'], [1, '#2a2a36']]
+        : kind === 'lock1' ? [[0, '#6e6880'], [1, '#221e2c']]
+          : kind === 'lock0' ? [[0, '#8a8278'], [1, '#3a342e']]
+            : kind === 'gold' ? [[0, '#ffe7a0'], [0.6, '#c8a040'], [1, '#6a4a10']]
+              : kind === 's13' ? [[0, '#e0a0ff'], [0.6, '#7a20c0'], [1, '#2a0840']]
+                : kind === 'red' ? [[0, '#ff6a7a'], [0.6, '#a01020'], [1, '#3a0408']]
+                  : [[0, shade(col, 0.55)], [0.6, shade(col, -0.35)], [1, shade(col, -0.82)]];
+      for (const [o, c] of stops) rg.addColorStop(o, c);
+      return rg;
+    });
+    ctx.save(); ctx.translate(p.x, p.y);
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.fill();
     ctx.strokeStyle = page === 1 ? (open ? 'rgba(10,4,20,0.95)' : 'rgba(10,4,20,0.6)') : open ? '#1a0a04' : 'rgba(30,20,10,0.6)';
     ctx.lineWidth = 2; ctx.stroke();
+    ctx.restore();
     ctx.strokeStyle = rgba('#ffffff', open ? 0.35 : 0.15); ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(p.x, p.y, R - 3, Math.PI * 1.1, Math.PI * 1.8); ctx.stroke();
     // 문양
     if (n.arena) {
@@ -639,7 +676,7 @@ export class WorldMapScene extends Scene {
       const by = box.y + 13;
       if (box.side === 'right') text(ctx, label, box.x + 4, by, { ...o, align: 'left' });
       else if (box.side === 'left') text(ctx, label, box.x + box.w - 4, by, { ...o, align: 'right' });
-      else text(ctx, label, p.x, by, { ...o, align: 'center' });
+      else text(ctx, label, box.x + box.w / 2, by, { ...o, align: 'center' });
     }
     ctx.restore();
   }
@@ -665,10 +702,13 @@ export class WorldMapScene extends Scene {
   // ───────────────────────── 상단 바 ─────────────────────────
   topBar(ctx, L) {
     const { W } = L, PG = PAGES[this.page], two = !!this.pages[1];
-    const hg = ctx.createLinearGradient(0, 0, 0, 60);
-    if (this.page === 1) { hg.addColorStop(0, 'rgba(8,3,16,0.94)'); hg.addColorStop(1, 'rgba(8,3,16,0.62)'); }
-    else { hg.addColorStop(0, 'rgba(8,3,6,0.92)'); hg.addColorStop(1, 'rgba(8,3,6,0.6)'); }
-    ctx.fillStyle = hg; ctx.fillRect(0, 0, W, 58);
+    ctx.fillStyle = cachedGrad(ctx, `bar|${this.page}`, () => {
+      const hg = ctx.createLinearGradient(0, 0, 0, 60);
+      if (this.page === 1) { hg.addColorStop(0, 'rgba(8,3,16,0.94)'); hg.addColorStop(1, 'rgba(8,3,16,0.62)'); }
+      else { hg.addColorStop(0, 'rgba(8,3,6,0.92)'); hg.addColorStop(1, 'rgba(8,3,6,0.6)'); }
+      return hg;
+    });
+    ctx.fillRect(0, 0, W, 58);
     ctx.fillStyle = this.page === 1 ? 'rgba(190,150,255,0.5)' : 'rgba(232,200,114,0.5)'; ctx.fillRect(0, 57, W, 1.5);
     const tcol = this.page === 1 ? '#e0ccff' : '#f3d690';
     let x0, x1;
@@ -761,7 +801,7 @@ export class WorldMapScene extends Scene {
     const glowC = page === 1 ? rgba(mix(s.color ?? '#b060ff', '#7a30ff', 0.5), 0.45) : n.id === 's13' ? 'rgba(160,60,255,0.5)' : 'rgba(180,20,40,0.35)';
     uiPanel(ctx, x, y, w, h, { glow: glowC });
     const Y = cmp ? [22, 50, 72, 97] : [26, 58, 84, 112];
-    const bw = Math.round(clamp(w * 0.19, 140, 190)), bh = cmp ? 56 : 64;
+    const bw = Math.round(clamp(w * 0.19, 140, 190)), bh = cmp ? 60 : 64;
     const bx = x + w - bw - 16;
     const lw = w * 0.36 - 24;
     // 제목
@@ -797,7 +837,8 @@ export class WorldMapScene extends Scene {
     const can = open && (!n.arena || this.game.registry.arcade);
     ctx.save();
     if (can) { ctx.shadowColor = page === 1 ? `rgba(180,110,255,${0.4 + Math.sin(this.t * 4) * 0.2})` : `rgba(255,80,90,${0.4 + Math.sin(this.t * 4) * 0.2})`; ctx.shadowBlur = 18; }
-    uiButton(ctx, this.goRect, can ? (n.arena ? '입장' : '출발!') : '잠김', { selected: can, disabled: !can, size: 22, sub: can && !n.arena && rec ? '다시 도전' : undefined });
+    const again = can && !n.arena && !!rec;
+    uiButton(ctx, this.goRect, can ? (n.arena ? '입장' : '출발!') : '잠김', { selected: can, disabled: !can, size: cmp && again ? 20 : 22, sub: again ? '다시 도전' : undefined });
     ctx.restore();
     taps.add('go', this.goRect, { kind: 'primary', owner: this, src: 'worldmap' });
   }

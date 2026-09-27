@@ -14,7 +14,7 @@ export class ShopScene extends ServiceScene {
     this.lines = mergeLines(SHOP_LINES.rook, Shop.SHOPKEEPERS?.npc_rook);
     this.music = 'shop'; this.portraitGlow = '#ffb45a'; this.emberColor = '#ffc070';
     this.tabs = [{ id: 'buy', label: '구매' }, { id: 'sell', label: '판매' }];
-    this.list = new ScrollList(58);
+    this.list = this.addList(58);
     this.refresh();
     this.talk('hello');
   }
@@ -42,7 +42,7 @@ export class ShopScene extends ServiceScene {
   updateBody(dt) {
     const r = this.list.update(dt);
     if (this.list.moved) audio.sfx('menu_move', { vol: 0.6 });
-    if (input.pointer.tapped && this.actRect && hitRect(this.actRect) && this.cur) { this.act(); return 'handled'; }
+    if (this.tapId === 'act' && this.cur) { this.act(); return 'handled'; }
     if (r === 'confirm' && this.cur) this.act();
     return r;
   }
@@ -76,7 +76,7 @@ export class ShopScene extends ServiceScene {
     st.gold += gain;
     audio.sfx('coin');
     this.talk('sell');
-    const x = this.game.viewW - 160;
+    const x = this.vw - 160;
     this.fx.burst('gold', x, 28, 24, { speed: 200 });
     this.fx.text(x, 60, `+${fmt(gain)} G`, { color: '#ffd84a', size: 18, life: 0.8 });
     this.game.toast(`판매: ${nameOf(e.inst)}${qty > 1 ? ' ×' + qty : ''}  +${fmt(gain)} G`, '#ffd84a');
@@ -100,7 +100,7 @@ export class ShopScene extends ServiceScene {
     this.detailRect = dr;
     const e = this.cur;
     drawItemDetail(ctx, dr, e?.inst ?? null, { state: st, price: e ? e.price : null, priceLabel: this.tab === 0 ? '구매 가격' : '판매 가격 (개당)', priceOk: this.tab === 1 || (e && st.gold >= e.price), note: e?.note, tag: e?.tag });
-    this.actRect = { x: dr.x, y: dr.y + dr.h + 10, w: dr.w, h: 50 };
+    this.actRect = this.tz('act', { x: dr.x, y: dr.y + dr.h + 10, w: dr.w, h: 50 });
     const can = e && (this.tab === 1 || st.gold >= e.price);
     uiButton(ctx, this.actRect, e ? (this.tab === 0 ? (can ? '구매하기' : '골드 부족') : '판매하기') : '—', { selected: !!can, disabled: !e, size: 18, color: e ? undefined : '#6a6060' });
   }

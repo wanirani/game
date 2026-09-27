@@ -82,11 +82,15 @@ function clothTexture(rig) {
 // ───────────────────────── 경계 ─────────────────────────
 function bounds(b, st, out) {
   const S = b.scale ?? 1, f2 = (b.form ?? 1) === 2;
-  const rx = (f2 ? 240 : 150) * S, top = (f2 ? 280 : 230) * S;
-  let x0 = b.cx - rx, x1 = b.cx + rx, y0 = b.bottom - top, y1 = b.bottom + 40;
+  // 1형태: 앞으로 든 낫날(≈180)·치켜든 낫과 회전 낫 고리(≈270) / 2형태: 골반 아래 영혼불 꼬리(≈95·S)까지
+  const rx = (f2 ? 240 : 190) * S, top = 280 * S;
+  let x0 = b.cx - rx, x1 = b.cx + rx, y0 = b.bottom - top, y1 = b.bottom + (f2 ? 100 * S : 40);
   for (const g of st?.ghosts ?? []) { x0 = Math.min(x0, g.x - rx); x1 = Math.max(x1, g.x + rx); y0 = Math.min(y0, g.y - top); y1 = Math.max(y1, g.y + 40); }
   if (b.blinkTo) { x0 = Math.min(x0, b.blinkTo.x - rx); x1 = Math.max(x1, b.blinkTo.x + rx); y0 = Math.min(y0, b.blinkTo.y - top); }
   if ((b.dying > 0 || st?.shards?.list.length) && b.A) { x0 = Math.min(x0, b.A.x0); x1 = Math.max(x1, b.A.x1); y0 = Math.min(y0, b.bottom - 420); y1 = Math.max(y1, b.A.floor + 8); }
+  // 살아 있는 입자 (순간이동·돌진 전 자리에 남은 연기·불씨가 보스와 함께 잘려 사라지지 않게)
+  const P = st?.P;
+  if (P?.n) { const X = P.x, Y = P.y; for (let i = 0; i < P.n; i++) { const x = X[i], y = Y[i]; if (x - 26 < x0) x0 = x - 26; if (x + 26 > x1) x1 = x + 26; if (y - 26 < y0) y0 = y - 26; if (y + 26 > y1) y1 = y + 26; } }
   out.x = x0; out.y = y0; out.w = x1 - x0; out.h = y1 - y0;
   return out;
 }
@@ -439,7 +443,7 @@ function cloth(ctx, D, b, rig, st, S0, anchor, w0, w1, len, o, dark, alpha, burn
   ctx.beginPath(); ctx.moveTo(E[2], E[3]); for (let i = 1; i < n; i++) ctx.lineTo(E[i * 4 + 2], E[i * 4 + 3]);
   ctx.strokeStyle = burn ? 'rgba(125,255,176,0.55)' : 'rgba(120,110,150,0.35)'; ctx.globalAlpha = ga * o.alpha; ctx.lineWidth = burn ? 1.6 : 1.1; ctx.stroke();
   ctx.globalAlpha = ga;
-  if (burn && st.q.ambient > 0.3 && rr.next() < 0.25) { const j = 1 + Math.floor(rr.next() * (n - 1)); st.P.emit('ember', E[j * 4 + 2], E[j * 4 + 3], rr.range(-20, 20), rr.range(-60, -20), { color: SOUL, layer: 1 }); }
+  if (burn && st.q.ambient > 0.3 && rr.next() < (st._cdt ?? 0) * 15 * st.q.ambient) { const j = 1 + Math.floor(rr.next() * (n - 1)); st.P.emit('ember', E[j * 4 + 2], E[j * 4 + 3], rr.range(-20, 20), rr.range(-60, -20), { color: SOUL, layer: 1 }); }
 }
 
 /** 2형태 꼬리: 골반 아래 영혼불 + 연기 */
@@ -601,7 +605,7 @@ function deathBreak(st, b, rig, dT, S, form) {
     P.burst('boneDust', x, y - 90 * S, 16, { speed: 160, jitter: 40 });
     P.burst('smoke', x, y - 80 * S, 10, { speed: 100, color: '#0a0710', jitter: 40 });
   }
-  if (!G.body && P.n < 200 && rr.next() < 0.5) P.emit('ember', x + rr.range(-40, 40) * S, y - rr.range(20, 160) * S, rr.range(-60, 60), rr.range(-160, -60), { color: SOUL, layer: 1 });
+  if (!G.body && P.n < 200 && rr.next() < (st._cdt ?? 0) * 30) P.emit('ember', x + rr.range(-40, 40) * S, y - rr.range(20, 160) * S, rr.range(-60, 60), rr.range(-160, -60), { color: SOUL, layer: 1 });
 }
 
 // ───────────────────────── 로직 파일용 그리기 도우미 ─────────────────────────
@@ -625,11 +629,11 @@ function makeArt(rig) {
     /** 날아가는 낫 (x,y 중심, 회전 ang, 배율 k) */
     thrown(ctx, x, y, ang, k, d) {
       ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.scale(d, 1);
-      const op = ctx.globalCompositeOperation;
-      ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha *= 0.35;
+      const op = ctx.globalCompositeOperation, ga = ctx.globalAlpha;
+      ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = ga * 0.35;
       ctx.save(); ctx.rotate(-0.35); scythe(ctx, k, true); ctx.restore();
       ctx.save(); ctx.rotate(-0.7); scythe(ctx, k, true); ctx.restore();
-      ctx.globalCompositeOperation = op; ctx.globalAlpha /= 0.35;
+      ctx.globalCompositeOperation = op; ctx.globalAlpha = ga;
       scythe(ctx, k, false);
       ctx.restore();
     },

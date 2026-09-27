@@ -13,7 +13,7 @@
 //   eyes[{side, j, alive, open, fireT, hitT, x, y}] · head {x, y} · dmg (0..2) · stunned · sw (talon 휩쓸기 {x0, x1, by, on}) · dieT
 // 컬링: 날개 폭이 1200px 가 넘으므로 ArtCull 대리 개체가 artBounds() 로 그린다 (화면 가장자리에서 통째로 사라지지 않게).
 import { BossC, telegraph, warnText, strikeRect, strikeColumn, groundWave, windGust } from './c_common.js';
-import { PI, R, C, LG, RG, ink, glow, glowE, glowSprite, warnRect, warnFloor, impact, hash, tube, boltPath } from './b_common.js';
+import { PI, R, C, LG, ink, glow, glowE, glowSprite, warnRect, warnFloor, impact, hash, tube, boltPath } from './b_common.js';
 import { Entity } from '../entity.js';
 import { audio } from '../../core/audio.js';
 import { TAU, clamp, lerp, rand, approach, rgba } from '../../core/math.js';
@@ -54,7 +54,8 @@ export class Ziz extends BossC {
     const A = this.A;
     this.facing = -1;
     this.ps = { ...POSE0 }; this.pt = { ...POSE0 };
-    this.zx = clamp(this.cx, A.x0 + 260, A.x1 - 260); this.zy = this.hoverY();
+    const p0 = this.P;   // 들어오는 플레이어 쪽으로 (등장 연출에서 보이게)
+    this.zx = clamp(p0 ? p0.cx + 620 : this.cx, A.x0 + 260, Math.max(A.x0 + 260, A.x1 - 260)); this.zy = this.hoverY();
     this.tzx = this.zx; this.tzy = this.zy; this.spd = 150; this.spdY = 140;
     this.lvx = 0; this.tilt = 0; this.flapPh = 0; this.flapMul = 1;
     this.dmg = 0; this.stunned = false; this.sw = null; this.cr = null; this.dieT = 0;
@@ -585,11 +586,11 @@ export class Ziz extends BossC {
     ctx.save();
     ctx.translate(x, y); ctx.rotate(ang); ctx.scale(len / 200, 1);
     ctx.beginPath();
-    ctx.moveTo(0, -9);
-    ctx.quadraticCurveTo(100, -17, torn ? 150 : 200, torn ? -6 : -2);
-    if (torn) { ctx.lineTo(140, 0); ctx.lineTo(156, 4); ctx.lineTo(136, 8); }
-    else ctx.lineTo(197, 4);
-    ctx.quadraticCurveTo(100, 15, 0, 9);
+    ctx.moveTo(0, -12);
+    ctx.quadraticCurveTo(100, -24, torn ? 150 : 200, torn ? -8 : -2);
+    if (torn) { ctx.lineTo(138, -1); ctx.lineTo(158, 5); ctx.lineTo(134, 10); }
+    else ctx.lineTo(196, 6);
+    ctx.quadraticCurveTo(100, 20, 0, 12);
     ctx.closePath();
     ink(ctx, fl ? '#fff' : LG(ctx, 'zz_feather', 0, 0, 200, 0, [0, STORM_L, 0.25, STORM, 0.8, '#1a2030', 1, STORM_D]), 2.4);
     if (!fl) {
@@ -609,18 +610,42 @@ export class Ziz extends BossC {
     const W = this.wing[side], s = this.ps, t = this.t, dmg = this.dmg;
     const segs = [[W.S, W.E, W.a1], [W.E, W.Wr, W.a2], [W.Wr, W.Tp, W.a3]];
     const bucket = Math.floor(t * 7);
+    const FT = this._ft ?? (this._ft = FEATHERS.map(() => ({ x: 0, y: 0, a: 0, len: 0, skip: false, torn: false, h: 0 })));
     for (const F of FEATHERS) {
-      const h = hash(F.i * 3.71 + (side > 0 ? 17 : 0));
-      if (dmg >= 1 && h < 0.07) continue;
-      if (dmg >= 2 && h < 0.2) continue;
+      const q = FT[F.i], h = hash(F.i * 3.71 + (side > 0 ? 17 : 0));
       const [P0, P1, a] = segs[F.seg];
-      const x = lerp(P0.x, P1.x, F.k), y = lerp(P0.y, P1.y, F.k);
+      q.x = lerp(P0.x, P1.x, F.k); q.y = lerp(P0.y, P1.y, F.k);
       let an = a + PI / 2 + F.da - (F.fan ?? 0) * s.spread * 0.35 + Math.sin(t * 2.2 + F.i * 0.7) * 0.03;
       an = lerp(an, a + PI / 2 + 0.6, s.fold * 0.6);
-      const wang = side > 0 ? an : PI - an;
-      const torn = dmg >= 1 && h < (dmg >= 2 ? 0.34 : 0.18);
+      q.a = side > 0 ? an : PI - an;
+      q.len = F.len * (1 - s.crash * 0.1);
+      q.skip = (dmg >= 1 && h < 0.07) || (dmg >= 2 && h < 0.2);
+      q.torn = dmg >= 1 && h < (dmg >= 2 ? 0.34 : 0.18);
+      q.h = h;
+    }
+    // 날개 덩어리: 뼈대와 깃털 끝을 잇는 어두운 막 (빠진 깃털 자리는 찢긴 홈)
+    ctx.beginPath();
+    ctx.moveTo(W.S.x - side * 20, W.S.y + 30); ctx.lineTo(W.S.x, W.S.y); ctx.lineTo(W.E.x, W.E.y); ctx.lineTo(W.Wr.x, W.Wr.y); ctx.lineTo(W.Tp.x, W.Tp.y);
+    for (let i = FEATHERS.length - 1; i >= 0; i--) {
+      const q = FT[i], L = q.len * (q.skip ? 0.5 : q.torn ? 0.68 : 0.86);
+      ctx.lineTo(q.x + Math.cos(q.a) * L, q.y + Math.sin(q.a) * L);
+    }
+    ctx.closePath();
+    ink(ctx, fl ? '#fff' : LG(ctx, 'zz_web', 0, -120, 0, 240, [0, '#232a3c', 0.5, '#151a28', 1, '#0a0d16']), 3);
+    if (!fl) {
+      // 폭풍구름 깃 끝
+      const spr = cloudSprite();
+      if (spr) {
+        ctx.save(); ctx.globalAlpha *= 0.45;
+        for (let i = 13; i < FEATHERS.length; i += 2) { const q = FT[i], L = q.len * 0.9, x = q.x + Math.cos(q.a) * L, y = q.y + Math.sin(q.a) * L, sz = 90 + (i % 3) * 30 + Math.sin(t + i) * 8; ctx.drawImage(spr, x - sz / 2, y - sz * 0.35, sz, sz * 0.7); }
+        ctx.restore();
+      }
+    }
+    for (const F of FEATHERS) {
+      const q = FT[F.i];
+      if (q.skip) continue;
       const bolt = !fl && hash(bucket * 1.3 + F.i * 7.1 + side) < 0.1 ? bucket + F.i : 0;
-      this.feather(ctx, x, y, wang, F.len * (1 - s.crash * 0.1), torn, fl, bolt);
+      this.feather(ctx, q.x, q.y, q.a, q.len, q.torn, fl, bolt);
     }
     if (!fl && dmg >= 2) {
       // 찢긴 날개막의 피 구멍
@@ -663,7 +688,7 @@ export class Ziz extends BossC {
     const ang = e.side > 0 ? e.ang : e.ang - PI;
     ctx.save();
     ctx.translate(e.lx, e.ly); ctx.rotate(ang);
-    const w = 17, o = e.open, h = 3 + 10 * o;
+    const w = 21, o = e.open, h = 3 + 12 * o;
     if (!e.alive) {
       if (!fl) {
         ctx.fillStyle = '#1a0206'; ctx.beginPath(); ctx.ellipse(0, 0, w, 8, 0, 0, TAU); ctx.fill();
@@ -687,9 +712,9 @@ export class Ziz extends BossC {
         const p = this.P;
         let lx = 0, ly = 0;
         if (p) { const dx = p.cx - e.x, dy = p.cy - e.y, d = Math.hypot(dx, dy) || 1; const c = Math.cos(-ang), s = Math.sin(-ang); lx = ((dx * c - dy * s) / d) * 6; ly = ((dx * s + dy * c) / d) * 3; }
-        ctx.fillStyle = e.fireT > 0 ? '#ffffff' : EYEC; ctx.beginPath(); ctx.arc(lx, ly, 7.5, 0, TAU); ctx.fill();
-        ctx.fillStyle = '#c89a20'; ctx.beginPath(); ctx.arc(lx, ly, 7.5, 0, TAU); ctx.lineWidth = 1.5; ctx.strokeStyle = '#7a5a10'; ctx.stroke();
-        ctx.fillStyle = '#0a0806'; ctx.beginPath(); ctx.ellipse(lx, ly, 1.6, 6, 0, 0, TAU); ctx.fill();
+        ctx.fillStyle = e.fireT > 0 ? '#ffffff' : EYEC; ctx.beginPath(); ctx.arc(lx, ly, 9, 0, TAU); ctx.fill();
+        ctx.lineWidth = 1.5; ctx.strokeStyle = '#7a5a10'; ctx.stroke();
+        ctx.fillStyle = '#0a0806'; ctx.beginPath(); ctx.ellipse(lx, ly, 2, 7.5, 0, 0, TAU); ctx.fill();
         ctx.restore();
         glow(ctx, 0, 0, 22 + (e.fireT > 0 ? 30 : 0), EYEC, 0.35 * o + (e.fireT > 0 ? 0.5 : 0));
       }
@@ -795,10 +820,14 @@ export class Ziz extends BossC {
         ctx.beginPath();
         ctx.moveTo(side * 5, y - 6);
         ctx.bezierCurveTo(side * 34 * spread, y - 18, side * 60 * spread, y - 2, side * (54 + i * 2) * spread, y + 24);
-        if (!fl) { ctx.strokeStyle = '#1a1612'; ctx.lineWidth = 8; ctx.stroke(); }
-        ctx.strokeStyle = C(BONE); ctx.lineWidth = 5; ctx.stroke();
+        if (!fl) { ctx.strokeStyle = '#1a1612'; ctx.lineWidth = 6.5; ctx.stroke(); }
+        ctx.strokeStyle = C(BONE); ctx.lineWidth = 4; ctx.stroke();
         if (dmg >= 1 && i === 2 && side > 0 && !fl) { ctx.strokeStyle = '#1a1612'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(side * 40, y - 8); ctx.lineTo(side * 44, y); ctx.stroke(); }
       }
+    }
+    if (!fl) {   // 갈비 사이로 새어 나오는 코어 빛
+      glow(ctx, 0, 10, (46 + op * 16) * pulse, CORE, 0.55 + op * 0.35);
+      glow(ctx, 0, 10, 20 + op * 8, '#ffffff', 0.6 * pulse, true);
     }
     // 용골 (가슴뼈)
     ctx.beginPath(); ctx.moveTo(-7, -58); ctx.lineTo(7, -58); ctx.lineTo(5, 72); ctx.lineTo(0, 86); ctx.lineTo(-5, 72); ctx.closePath();

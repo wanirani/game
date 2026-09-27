@@ -58,7 +58,8 @@ export class Dagon extends BossC {
     this.ps = { ...POSE0 }; this.pt = { ...POSE0 };
     this.K = { br: 0, hx: 50, hy: -214, ha: 0, mx: 120, my: -200, gl: { x: -46, y: -104 }, gr: { x: 44, y: -100 }, fx: 90, fy: -226, crookX: 120, crookY: -330 };
     this.wy = this.surfaceY();
-    this.bx = clamp(this.cx, A.x0 + 200, A.x1 - 200); this.tbx = this.bx; this.moveSp = 80;
+    const p0 = this.P;   // 들어오는 플레이어 가까이 (등장 연출에서 보이게)
+    this.bx = clamp(p0 ? p0.cx + 560 : this.cx, A.x0 + 220, Math.max(A.x0 + 220, A.x1 - 220)); this.tbx = this.bx; this.moveSp = 80;
     this.sink = 0; this.tsink = 0; this.sinkRate = 1.8;
     this.rot = 0; this.dash = null; this.dmg = 0; this.u0 = 0; this.twitch = 0;
     this.floodT = 0; this.dieT = 0; this.fxAcc = 0; this.wc = this.bx;
@@ -100,17 +101,27 @@ export class Dagon extends BossC {
   begin(emerge = true) { this.u0 = emerge ? this.emerge() : 0; this.faceP(); }
   u(x) { return this.at(this.u0 + x); }
   faceP() { const p = this.P; if (p && !this.dash) this.facing = Math.sign(p.cx - this.bx) || this.facing; }
-  /** 플레이어와 380~650px 떨어진, 벽에서 먼 수면 지점 */
+  /** 떠오를 수면 지점: 플레이어와 약 420px (최소 260) 떨어지고, 가능하면 지금 화면 안 (좁은 폰 화면에서도 보이게) */
   pickSpot() {
-    const A = this.A, p = this.P, px = p ? p.cx : A.cx;
-    const lo = A.x0 + 170, hi = Math.max(lo, A.x1 - 170);
+    const A = this.A, p = this.P, px = p ? p.cx : A.cx, cam = this.world?.camera;
+    let lo = A.x0 + 170, hi = Math.max(lo, A.x1 - 170);
+    if (cam && Number.isFinite(cam.x) && cam.vw > 400) {
+      const c0 = Math.max(lo, cam.x + 170), c1 = Math.min(hi, cam.x + cam.vw - 170);
+      if (c1 - c0 > 240) { lo = c0; hi = c1; }
+    }
     let best = this.bx, bs = -1e9;
-    for (let i = 0; i <= 8; i++) {
-      const x = lerp(lo, hi, i / 8) + rand(-30, 30), d = Math.abs(x - px);
-      const s = -Math.abs(d - 500) - Math.abs(x - this.bx) * 0.12 + (d < 260 ? -500 : 0);
+    for (let i = 0; i <= 10; i++) {
+      const x = lerp(lo, hi, i / 10) + rand(-24, 24), d = Math.abs(x - px);
+      const s = -Math.abs(d - 420) - Math.abs(x - this.bx) * 0.1 + (d < 260 ? -600 : 0);
       if (s > bs) { bs = s; best = x; }
     }
-    return clamp(best, lo, hi);
+    return clamp(best, A.x0 + 170, Math.max(A.x0 + 170, A.x1 - 170));
+  }
+  /** 지금 화면 밖인가 (카메라 없으면 false) */
+  offscreen() {
+    const cam = this.world?.camera;
+    if (!cam || !Number.isFinite(cam.x) || !(cam.vw > 400)) return false;
+    return this.bx < cam.x + 40 || this.bx > cam.x + cam.vw - 40;
   }
   /** 몸 지역 좌표 → 월드 (facing · 돌진 회전 반영; 회전 중심 = 몸통 가운데 (0, -70)) */
   toWorld(lx, ly, out = this._pt) {
@@ -364,7 +375,7 @@ export class Dagon extends BossC {
     const p = this.P;
     if (!p || Math.abs(this.tbx - this.bx) > 4) return;
     const d = Math.abs(p.cx - this.bx);
-    if (d < 230 || d > 840) { this.tbx = this.pickSpot(); this.moveSp = 70; }
+    if (d < 230 || d > 760 || this.offscreen()) { this.tbx = this.pickSpot(); this.moveSp = d > 760 || this.offscreen() ? 150 : 70; }
   }
 
   // ── organ: 들숨(아가미 = 약점) → 틈이 있는 고리 2개 (인페르노 3) ──

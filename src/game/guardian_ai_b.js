@@ -31,7 +31,7 @@
 //   render/guardians_b.js (CMP-GUARD-ART-B, 선택 export): fxGear (톱니 탄) · fxMirrorShard (거울 파편 탄) · fxKaleido (파편 궤도 고리:
 //     e.data {orbitT}) · fxMirrorPane (되비추기 거울면: e.data {a, gx, gy}) · fxLumenFlash (섬광: e.data {R}) · fxLumenBolts (e.data {segs}) ·
 //     fxStunSparks (기절 표시: e.data {list}) · fxMomoVortex (흡입 소용돌이: e.data {f}) · fxMorsel (삼킨 탄 조각)
-import { GFx, GHit, GProj, gStrike, gHitOne, blockable, runKind } from './guardian.js';
+import { GFx, GProj, gStrike, gHitOne, blockable, runKind } from './guardian.js';
 import * as GR from '../render/guardians.js';
 import * as GB from '../render/guardians_b.js';
 import { audio } from '../core/audio.js';
@@ -498,6 +498,12 @@ function reflect(g, world, q) {
   g.facing = Math.sign(q.cx - g.cx) || g.facing;
   flick(g);
 }
+/** 날아가는 만화경 파편의 판정: 제 표적이 살아 있으면 표적 가까이에서만 (가는 길의 다른 적을 지나쳐 '적 최대 8에게' 한 발씩) */
+function shardRect(s) {
+  const T = s.mTgt;
+  if (T && !T.dead && !(T.dying > 0) && (Math.abs(T.cx - s.cx) - T.w / 2 > 18 || Math.abs(T.cy - s.cy) - T.h / 2 > 18)) return NOHIT;
+  return s.rect();
+}
 /** 화면 안 적을 가까운 순으로 n 까지 (위협이 없는 적(harmless)은 모자랄 때만) */
 function pickTargets(world, p, n) {
   const V = viewRect(world, 60), a = [], b = [];
@@ -540,7 +546,7 @@ const MIRRA = {
             if (s.dead) return;
             const T = tg.length ? tg[i % tg.length] : null;
             const ang = T ? Math.atan2(T.cy - s.cy, T.cx - s.cx) : (s.orbitA ?? 0);
-            s.behavior = 'straight'; s.gRect = null; s.mTgt = T;
+            s.behavior = 'straight'; s.gRect = shardRect; s.mTgt = T;
             s.life = 1.4; s.maxLife = 1.4;
             s.speed = spd; s.vx = Math.cos(ang) * spd; s.vy = Math.sin(ang) * spd;
             s.trail = 'ice'; s.trailRate = 0.05 / Math.max(0.3, qOf(w));
@@ -811,11 +817,10 @@ const MOMO = {
         const pl = w.player;
         if (!pl || pl.dead) return;
         pl.heal(pl.stats.hp * (sk.heal ?? 0.1) * mul, true);
-        w.fx?.text(g.cx, g.y - 10, '꺼억!', { color: col, size: 18, life: 1.0, vy: -60, outline: '#1a0610' });
+        w.fx?.text(g.cx, g.y - 10, '꺼억!', { color: col, size: 18 + Math.min(6, eaten), life: 1.0, vy: -60, outline: '#1a0610' });
         w.fx?.ring(g.cx, g.cy, { color: col, r0: 8, r1: 60, life: 0.35, width: 4 });
         w.fx?.burst('magic', pl.cx, pl.cy, 14, { speed: 140, color: '#f0e0ff' });
         audio.sfx('momo_gulp', { vol: 0.8, pitch: 0.85 });
-        void eaten;
       },
       render: (ctx, e, w) => { if (!drew(GB.fxMomoVortex, ctx, e, w)) drawMomoVortex(ctx, e, w); },
       light: { r: 110, color: col, i: 0.5 },
@@ -841,5 +846,3 @@ const MOMO = {
 
 /** 틱톡 · 모르스 · 미라 · 루멘 · 모모 (guardian.js aiFor 가 GUARDIAN_AI 다음으로 찾는다) */
 export const GUARDIAN_AI_B = { gd_clock: CLOCK, gd_reaper: REAPER, gd_mirra: MIRRA, gd_lumen: LUMEN, gd_momo: MOMO };
-// GHit 는 연출 개체가 타격도 해야 할 때를 위해 남겨 둔다 (지금은 GFx + gStrike 로 충분)
-void GHit;

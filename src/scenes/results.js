@@ -171,10 +171,13 @@ export class ResultsScene extends Scene {
       ctx.save();
       ctx.translate(L.rankX, L.rankY);
       // 랭크 색 후광 (피 글씨 스타일은 금·피·뼈 셋뿐이라 랭크 색은 뒤의 빛으로 보인다)
-      const gl = ctx.createRadialGradient(0, -L.rankSize * 0.3, 4, 0, -L.rankSize * 0.3, L.rankSize * 0.85);
-      gl.addColorStop(0, this.rank.c + '88'); gl.addColorStop(1, this.rank.c + '00');
+      if (this._glowSize !== L.rankSize) { // 원점 기준 그라데이션이라 크기가 같으면 다시 만들 필요가 없다
+        const gl = ctx.createRadialGradient(0, -L.rankSize * 0.3, 4, 0, -L.rankSize * 0.3, L.rankSize * 0.85);
+        gl.addColorStop(0, this.rank.c + '88'); gl.addColorStop(1, this.rank.c + '00');
+        this._glow = gl; this._glowSize = L.rankSize;
+      }
       ctx.globalAlpha = clamp(rt / 0.3, 0, 1);
-      ctx.fillStyle = gl; ctx.fillRect(-L.rankSize, -L.rankSize * 1.2, L.rankSize * 2, L.rankSize * 1.8);
+      ctx.fillStyle = this._glow; ctx.fillRect(-L.rankSize, -L.rankSize * 1.2, L.rankSize * 2, L.rankSize * 1.8);
       ctx.globalAlpha = 1;
       text(ctx, 'RANK', 0, -L.rankSize * 0.72, { size: 18, align: 'center', weight: 800, family: FONT.num, color: '#e8d8c0' });
       ctx.scale(Math.max(0.01, k), Math.max(0.01, k)); ctx.rotate(-0.15);
