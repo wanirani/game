@@ -497,23 +497,22 @@ const regFresh = () => taps.n > 0 && (typeof performance !== 'undefined' ? perfo
 /**
  * 탭 영역 등록 (render 에서; 그린 순서 = 아래 → 위). ui.taps 공용 등록부에 올리고, 사각형에 주인을 적어 둔다.
  *   kind: 'primary' 주 버튼 44 · 'list' 목록 줄 36 · 'icon' 아이콘·화살표 44×44 · 'dense' 촘촘한 정보 줄 28 (CSS px, §6.3)
- *   opts.clip: 이 사각형 안에 보이는 부분만 판정 (스크롤 목록). 안 보이면 등록하지 않고, 탭도 되지 않는다.
+ *   opts.clip: 스크롤 목록의 보이는 영역. 절반(minVis) 넘게 보이는 항목만 (온전한 크기로) 등록하고, 나머지는 가려진 것으로
+ *              표시해 탭되지 않게 한다. 스크롤 항목은 고정 단추보다 먼저 등록할 것 (나중에 등록한 영역이 위 = 우선).
  *   opts.slop, opts.src, opts.disabled: ui.taps.add 로 그대로
  * 반환: r
  */
-export function zone(r, kind = 'list', owner = null, { clip = null, slop, src = 'menu', disabled = false } = {}) {
+export function zone(r, kind = 'list', owner = null, { clip = null, minVis = 0.5, slop, src = 'menu', disabled = false } = {}) {
   if (!r) return r;
   r.tzo = owner; r.thid = false;
-  let v = r;
   if (clip) {
-    const x0 = Math.max(r.x, clip.x), y0 = Math.max(r.y, clip.y);
-    const x1 = Math.min(r.x + r.w, clip.x + clip.w), y1 = Math.min(r.y + r.h, clip.y + clip.h);
-    if (x1 - x0 < 2 || y1 - y0 < 2) { r.thid = true; return r; }
-    if (x0 !== r.x || y0 !== r.y || x1 !== r.x + r.w || y1 !== r.y + r.h) v = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+    const vw = Math.min(r.x + r.w, clip.x + clip.w) - Math.max(r.x, clip.x);
+    const vh = Math.min(r.y + r.h, clip.y + clip.h) - Math.max(r.y, clip.y);
+    if (vw <= 0 || vh <= 0 || (vw * vh) / Math.max(1, r.w * r.h) < minVis) { r.thid = true; return r; }
   }
   const o = { kind, owner, src, disabled };
   if (slop !== undefined) o.slop = slop;
-  taps.add(r, v, o);
+  taps.add(r, r, o);
   return r;
 }
 

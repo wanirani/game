@@ -1,11 +1,13 @@
 // 장비 탭: 6칸(무기/머리/몸/망토/장신구×2) → 칸 선택 시 장착 가능한 아이템 목록 + 능력치 비교(증감) + 영웅 외형 실시간 미리보기
-import { text, FONT } from '../../core/ui.js';
+// 가운데 미리보기는 턴테이블 (hero_view.js): 끌어서·휠·, . 키·오른쪽 스틱으로 돌려 앞·옆·뒷모습의 장비 색·망토·무기를 본다.
+// 갑옷·머리·망토·장신구를 끼우면 한 바퀴 돌며 보여 준다 (움직임 줄이기면 시전 동작). 무기를 끼우면 공격 시연.
+import { text, FONT, taps } from '../../core/ui.js';
 import { audio } from '../../core/audio.js';
 import { clamp } from '../../core/math.js';
 import { input } from '../../core/input.js';
 import { drawSlot } from '../../render/icons.js';
 import { Tab } from './base.js';
-import { HeroView, HeroStage, pedestal, accentOf } from './hero_view.js';
+import { HeroView, HeroStage, pedestal, accentOf, turntableHints, pxScale } from './hero_view.js';
 import {
   PAL, RARITY_COL, frame, heading, divider, selBar, brackets, glow, gbutton, Scroller, scrollbar, clipBegin, clipEnd, ellipsize, pill, inRect,
 } from './common.js';
@@ -26,8 +28,9 @@ export function statLine(inst, max = 2) {
 export class EquipTab extends Tab {
   constructor(m) {
     super(m);
-    this.view = new HeroView();
+    this.view = new HeroView({ turntable: true, game: m.game });
     this.stage = new HeroStage();
+    this.heroRect = null;
     this.si = 0; this.sub = 'slots'; this.li = 0;
     this.sc = new Scroller();
     this.rev = -1; this.list = []; this.pv = null;
@@ -36,8 +39,11 @@ export class EquipTab extends Tab {
   }
   get slots() { return D.EQUIP_SLOTS(); }
   get slot() { return this.slots[this.si]; }
-  onShow() { this.rebuild(); }
+  onShow() { this.rebuild(); this.view.wake(); }
   free() { this.stage.free(); }
+  /** 메뉴의 가로 밀기(탭 넘기기)를 무시할 곳: 회전 무대 (platform §5.6) */
+  noSwipe(x, y) { return this.view.swipeBlock(x, y); }
+  swipeBlock(x, y) { return this.view.swipeBlock(x, y); }
   base() {
     if (this.rev !== this.m.rev || !this.cur) {
       this.rev = this.m.rev;
@@ -101,7 +107,8 @@ export class EquipTab extends Tab {
       audio.sfx('item');
       const other = from && from !== hero.charId ? CHARACTERS[from]?.name : null;
       this.m.notify(`${D.nameOf(row.inst)} 장착!${other ? ` (${other}에게서 가져옴)` : ''}`, RARITY_COL[row.inst.rarity ?? 0]);
-      if (slot === 'weapon') this.view.showcase(); else this.view.pose('cast', 0.55);
+      // 무기 = 공격 시연 · 갑옷·머리·망토·장신구 = 한 바퀴 돌며 보여 주기 (platform §7.2 장비 공개)
+      if (slot === 'weapon') this.view.showcase(); else this.view.reveal();
     }
     this.flashT = 1; this.flashSlot = slot;
     this.m.changed();
@@ -118,6 +125,7 @@ export class EquipTab extends Tab {
 
   update(dt, nav, ges, focused) {
     this.base();
+    this.view.control(dt, ges);     // 턴테이블 (포커스와 무관)
     this.view.update(dt);
     if (this.flashT > 0) this.flashT = Math.max(0, this.flashT - dt * 2.5);
     this.sc.update(dt, this.listRect, ges);
@@ -164,8 +172,8 @@ export class EquipTab extends Tab {
     }
   }
   hints(focused) {
-    if (this.sub === 'list') return [['↑↓', '고르기'], ['Z', '장착', '한 번 더 터치하면 장착'], [['←', 'X'], '장비 칸']];
-    return [['↑↓', '장비 칸'], ['Z', '교체', '장비 칸을 터치해 교체할 장비를 고르세요'], ['A', '해제']];
+    if (this.sub === 'list') return [['↑↓', '고르기'], ['Z', '장착', '한 번 더 터치하면 장착'], [['←', 'X'], '장비 칸'], ...turntableHints()];
+    return [['↑↓', '장비 칸'], ['Z', '교체', '장비 칸을 터치해 교체할 장비를 고르세요'], ['A', '해제'], ...turntableHints()];
   }
 
   render(ctx, A) {

@@ -182,16 +182,23 @@ export class InventoryTab extends Tab {
     const GW = A.w - DW - 12;
     frame(ctx, A.x, A.y, GW, A.h);
     // ── 분류 필터 ──
+    const touch = input.touchMode;
     this.filterRects.length = 0;
     let fx = A.x + 12;
-    const fy = A.y + 10, fh = input.touchMode ? 34 : 30;
-    const sw = 70, cnt = `${this.state.inventory.length} / ${D.INV_LIMIT()}`;
-    // 폭이 모자라면 분류 버튼의 좌우 여백을 줄여 오른쪽 수량 표시 자리를 남긴다
-    const nameW = FILTERS.map((f) => measure(ctx, f.name, 13, 800));
-    const room = (A.x + GW - sw - 12) - measure(ctx, cnt, 12, 700) - 18 - fx - 6 * FILTERS.length;
-    const pad = clamp(Math.floor((room - nameW.reduce((a, b) => a + b, 0)) / FILTERS.length), 14, 22);
+    const fy = A.y + 10, fh = touch ? 36 : 30;
+    const sw = touch ? 72 : 70, cnt = `${this.state.inventory.length} / ${D.INV_LIMIT()}`;
+    // 폭이 모자라면 분류 버튼의 좌우 여백을 줄여 오른쪽 수량 표시 자리를 남긴다. 터치는 버튼마다 48 px 이상 (§6.3 여유 포함 44 CSS px)
+    const fgap = 6, avail = (A.x + GW - sw - 12) - fx - fgap;
+    let fsize = 13, names = FILTERS.map((f) => f.name);
+    let nameW = names.map((n) => measure(ctx, n, fsize, 800));
+    const fit = (minW, pad) => nameW.reduce((a, w) => a + Math.max(minW, w + pad), 0) + fgap * (FILTERS.length - 1);
+    let minW = touch ? 48 : 0, pad = clamp(Math.floor((avail - measure(ctx, cnt, 12, 700) - 18 - fgap * FILTERS.length - nameW.reduce((a, b) => a + b, 0)) / FILTERS.length), 14, 22);
+    if (fit(minW, pad) > avail) { // 좁은 화면 (UI 배율을 크게 한 16:9 등): 줄임 이름 · 작은 글자
+      names = FILTERS.map((f) => f.short ?? f.name); fsize = 12; nameW = names.map((n) => measure(ctx, n, fsize, 800)); pad = 12;
+      if (fit(minW, pad) > avail) minW = Math.max(0, Math.floor((avail - fgap * (FILTERS.length - 1)) / FILTERS.length));
+    }
     FILTERS.forEach((f, k) => {
-      const w = nameW[k] + pad;
+      const w = Math.max(minW, nameW[k] + pad);
       const r = { x: fx, y: fy, w, h: fh };
       this.filterRects.push(r);
       const on = k === this.fi;
@@ -200,9 +207,9 @@ export class InventoryTab extends Tab {
       if (on) { g.addColorStop(0, '#a0182e'); g.addColorStop(1, '#4a0614'); } else { g.addColorStop(0, 'rgba(40,24,36,0.9)'); g.addColorStop(1, 'rgba(14,8,14,0.9)'); }
       ctx.fillStyle = g; ctx.fill();
       ctx.strokeStyle = on ? PAL.gold : this.m.ges.over(r) ? PAL.goldMid : PAL.goldDim; ctx.lineWidth = 1; ctx.stroke();
-      text(ctx, f.name, r.x + r.w / 2, r.y + r.h / 2 + 5, { size: 13, align: 'center', weight: 800, color: on ? PAL.goldHi : PAL.text, ow: 2 });
+      text(ctx, names[k], r.x + r.w / 2, r.y + r.h / 2 + 5, { size: fsize, align: 'center', weight: 800, color: on ? PAL.goldHi : PAL.text, ow: 2 });
       if (on && this.sub === 'filter' && focused) brackets(ctx, r.x, r.y, r.w, r.h, t);
-      fx += w + 6;
+      fx += w + fgap;
     });
     // 정렬 버튼 + 수량
     this.sortRect = { x: A.x + GW - sw - 12, y: fy, w: sw, h: fh };
@@ -213,13 +220,14 @@ export class InventoryTab extends Tab {
     // ── 격자 ──
     const GR = { x: A.x + 12, y: fy + fh + 16, w: GW - 24, h: A.h - (fh + 16) - 20 };
     this.gridRect = GR;
-    const cell = input.touchMode ? 60 : 56, gap = 6;
+    const cell = touch ? 60 : 56, gap = 6;
     const cols = Math.max(4, Math.floor((GR.w - 8 + gap) / (cell + gap)));
     this.cols = cols; this.cell = cell;
     const ox = GR.x + Math.floor((GR.w - 8 - (cols * (cell + gap) - gap)) / 2);
     const rows = Math.ceil(this.items.length / cols);
     this.sc.setMax(rows * (cell + gap) - gap - GR.h + 8);
-    if (this.items.length) { const ry = Math.floor(this.i / cols) * (cell + gap); this.sc.ensure(ry, ry + cell, GR.h, 6); }
+    // 선택 따라가기: 방향키·패드로 선택을 옮긴 프레임에만 (끌기·휠로 옮긴 자리는 그대로 — P-01)
+    if (this.items.length && this.sc.shouldFollow(this.i + '|' + this.fi)) { const ry = Math.floor(this.i / cols) * (cell + gap); this.sc.ensure(ry, ry + cell, GR.h, 6); }
     clipBegin(ctx, GR);
     this.cellRects.length = 0;
     // 빈 칸 격자 (배경)
@@ -237,7 +245,7 @@ export class InventoryTab extends Tab {
     this.items.forEach((e, k) => {
       const c = k % cols, r = Math.floor(k / cols);
       const x = ox + c * (cell + gap), y = GR.y + 4 + r * (cell + gap) - this.sc.y;
-      const rect = { x, y, w: cell, h: cell };
+      const rect = this.m.ges.zone({ x, y, w: cell, h: cell }, 'icon', { clip: GR, src: 'inv.cell' });
       this.cellRects[k] = rect;
       if (y > GR.y + GR.h || y + cell < GR.y) return;
       const sel = k === this.i && this.sub === 'grid';
@@ -249,6 +257,9 @@ export class InventoryTab extends Tab {
     if (!this.items.length) text(ctx, FILTERS[this.fi].id === 'all' ? '가방이 비어 있습니다' : '이 분류의 아이템이 없습니다', GR.x + GR.w / 2, GR.y + 60, { size: 14, align: 'center', color: PAL.faint });
     clipEnd(ctx, GR, this.sc);
     scrollbar(ctx, GR.x + GR.w - 4, GR.y, GR.h, this.sc, GR.h);
+    // 분류·정렬 단추는 격자 칸보다 위에 등록 (스크롤로 반쯤 가려진 칸이 단추를 가로채지 않게)
+    for (const r of this.filterRects) this.m.ges.zone(r, 'primary', { src: 'inv.filter' });
+    this.m.ges.zone(this.sortRect, 'primary', { src: 'inv.sort' });
 
     // ── 상세 ──
     this.drawDetail(ctx, A.x + GW + 12, A.y, DW, A.h);
@@ -293,7 +304,7 @@ export class InventoryTab extends Tab {
     if (equipKind && !e.by) { const chk = D.canEquipOf(this.state, hero, inst); if (!chk.ok) warn.push({ text: chk.reason, color: PAL.bad }); }
     for (const wl of warn) { cy += 18; text(ctx, wl.text, x + 18, cy, { size: 12, weight: 800, color: wl.color }); }
     // 본문
-    const btnH = 36, footer = y + h - btnH - 40;
+    const btnH = input.touchMode ? 44 : 36, footer = y + h - btnH - 40;
     cy += 8;
     const lines = body ?? this.fallbackLines(inst, b);
     let flavorDone = false;
@@ -312,7 +323,7 @@ export class InventoryTab extends Tab {
     const bw = (w - 28 - (acts.length - 1) * 6) / Math.max(1, acts.length);
     acts.forEach((a, k) => {
       const r = { x: x + 14 + k * (bw + 6), y: y + h - btnH - 12, w: bw, h: btnH, act: a };
-      if (!a.disabled) this.btnRects.push(r);
+      if (!a.disabled) this.btnRects.push(this.m.ges.zone(r, 'primary', { src: 'inv.act' }));
       const label = a.id === 'lock' ? (inst.locked ? '잠금 해제' : '잠금') : a.label.replace('하기', '');
       gbutton(ctx, r, label, { hot: k === 0 && !a.disabled && acts.length > 1, disabled: a.disabled, size: 13, t, icon: a.id === 'lock' ? 'lock' : null });
     });
