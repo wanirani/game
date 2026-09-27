@@ -1464,7 +1464,8 @@ function drawFallback(ctx, m, layer, o = {}) {
   const S = FB_SHAPE[m.rig] ?? FB_SHAPE.horse;
   const C0 = FB_COL[m.id] ?? DEF_COL;
   const tint = o.tint ?? null;
-  const col = (c) => tint ?? c;
+  const flash = !tint && (o.flash || (m.flashT > 0));
+  const col = (c) => tint ?? (flash ? lighter(c) : c);   // 피격 번쩍임: 모든 색을 밝게
   const alpha = clamp((o.alpha ?? 1) * (m.alpha ?? 1), 0, 1);
   if (alpha <= 0.01) return;
   ctx.save();
@@ -1475,16 +1476,11 @@ function drawFallback(ctx, m, layer, o = {}) {
   const sc = (o.scale ?? 1) * (m.scale ?? 1);
   ctx.scale(sx * sc, sc);
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-  const flash = o.flash || (m.flashT > 0);
   const P = fbParts(m, S);
   if (layer === 'front') { drawFront(ctx, m, S, C0, col, P); ctx.restore(); return; }
   if (S.kind === 'quad') drawQuad(ctx, m, S, C0, col, P, o);
   else if (S.kind === 'biped') drawWyrm(ctx, m, S, C0, col, P, o);
   else drawBat(ctx, m, S, C0, col, P, o);
-  if (flash && !tint) {   // 피격 번쩍임: 몸 위에 흰 막
-    ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha *= 0.45; ctx.fillStyle = '#ffffff';
-    ctx.beginPath(); ctx.ellipse(S.bodyX, S.bodyY + (m.bob ?? 0), S.rx + 4, S.ry + 5, P.pitch, 0, TAU); ctx.fill();
-  }
   ctx.restore();
 }
 /** 포즈 계산 (대체 그림 전용): 몸 중심 · 기울기 · 네 발 */
@@ -1594,6 +1590,7 @@ function drawQuad(ctx, m, S, C0, col, P, o) {
   // 가까운 다리 두 개
   leg(ctx, m, S, P, 2, col(C0.coat), C0.dark, col(C0.hoof), bones);
   leg(ctx, m, S, P, 3, col(C0.coat), C0.dark, col(C0.hoof), bones);
+  if (S.wings && wingsFolded(m)) drawWing(ctx, m, S, C0, col, P, true);
   // 목 · 머리
   const nb = rot(S.neckX, S.neckY), hd = rot(S.headX, S.headY + (m.anim === 'run' ? Math.sin((m.phase ?? 0) * TAU * 2) * 2 : 0));
   ctx.strokeStyle = OUT; ctx.lineWidth = (S.neckW ?? 17) + 3;
@@ -1659,6 +1656,14 @@ function drawHead(ctx, m, S, C0, col, hd, o) {
   ctx.restore();
 }
 function drawWing(ctx, m, S, C0, col, P, near) {
+  if (wingsFolded(m)) {   // 접은 날개: 어깨에서 엉덩이 쪽으로 몸에 붙인다
+    const sh = P.rot((S.shX ?? 12) - 4, S.bodyY - (S.ry ?? 12) + 4), hp = P.rot(S.bodyX - S.rx * 0.8, S.bodyY - (S.ry ?? 12) * 0.2);
+    ctx.fillStyle = col(near ? (C0.wing ?? C0.coat) : darker(C0.wing ?? C0.coat)); ctx.strokeStyle = OUT; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(sh.x, sh.y); ctx.lineTo(sh.x - 6, sh.y - 12); ctx.quadraticCurveTo(hp.x + 4, sh.y - 14, hp.x - 6, hp.y - 2);
+    ctx.lineTo(hp.x + 4, hp.y + 8); ctx.quadraticCurveTo((sh.x + hp.x) / 2, hp.y + 6, sh.x, sh.y + 8); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = col(C0.dark); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(sh.x - 6, sh.y - 12); ctx.lineTo(hp.x + 2, hp.y + 4); ctx.stroke();
+    return;
+  }
   const k = m.wingK ?? 0, t = m.t ?? 0;
   const flap = m.anim === 'flap' ? Math.sin((m.animT ?? 0) * TAU / 0.4) : m.anim === 'hover' ? Math.sin(t * TAU / 0.28) * 0.6 : 0;
   const sh = P.rot(S.kind === 'bat' ? 2 : (S.shX ?? 16) - 6, S.bodyY - (S.ry ?? 12) + 2);
@@ -1682,11 +1687,11 @@ function drawWyrm(ctx, m, S, C0, col, P, o) {
   // 꼬리
   const tb = rot(S.bodyX - S.rx + 4, S.bodyY + 2);
   const sw = Math.sin(t * 2.5) * 5;
-  ctx.strokeStyle = OUT; ctx.lineWidth = 11;
-  ctx.beginPath(); ctx.moveTo(tb.x, tb.y); ctx.quadraticCurveTo(tb.x - 30, tb.y + 10 + sw, tb.x - 56, tb.y + 20 - sw); ctx.stroke();
-  ctx.strokeStyle = col(C0.coat); ctx.lineWidth = 8;
-  ctx.beginPath(); ctx.moveTo(tb.x, tb.y); ctx.quadraticCurveTo(tb.x - 30, tb.y + 10 + sw, tb.x - 56, tb.y + 20 - sw); ctx.stroke();
-  ctx.fillStyle = col(C0.dark); ctx.beginPath(); ctx.moveTo(tb.x - 54, tb.y + 14 - sw); ctx.lineTo(tb.x - 68, tb.y + 22 - sw); ctx.lineTo(tb.x - 54, tb.y + 27 - sw); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = OUT; ctx.lineWidth = 12;
+  ctx.beginPath(); ctx.moveTo(tb.x, tb.y); ctx.quadraticCurveTo(tb.x - 22, tb.y + 14 + sw, tb.x - 40, tb.y + 26 - sw); ctx.stroke();
+  ctx.strokeStyle = col(C0.coat); ctx.lineWidth = 9;
+  ctx.beginPath(); ctx.moveTo(tb.x, tb.y); ctx.quadraticCurveTo(tb.x - 22, tb.y + 14 + sw, tb.x - 40, tb.y + 26 - sw); ctx.stroke();
+  ctx.fillStyle = col(C0.dark); ctx.beginPath(); ctx.moveTo(tb.x - 38, tb.y + 20 - sw); ctx.lineTo(tb.x - 52, tb.y + 30 - sw); ctx.lineTo(tb.x - 37, tb.y + 33 - sw); ctx.closePath(); ctx.fill();
   // 먼 다리
   legBiped(ctx, m, S, P, 0, col(C0.dark), col(C0.hoof));
   // 몸
@@ -1702,6 +1707,7 @@ function drawWyrm(ctx, m, S, C0, col, P, o) {
   ctx.beginPath(); ctx.ellipse(-2, -S.ry, 11, 5, 0, 0, TAU); ctx.fill(); ctx.stroke();
   ctx.restore();
   legBiped(ctx, m, S, P, 1, col(C0.coat), col(C0.hoof));
+  if (wingsFolded(m)) drawWing(ctx, m, S, C0, col, P, true);
   // 목 · 머리 (숨결 때 입에 불빛)
   const nb = rot(S.neckX, S.neckY), hd = rot(S.headX, S.headY);
   ctx.strokeStyle = OUT; ctx.lineWidth = 13; ctx.beginPath(); ctx.moveTo(nb.x, nb.y); ctx.quadraticCurveTo(nb.x + 16, nb.y - 20, hd.x, hd.y); ctx.stroke();
@@ -1741,6 +1747,7 @@ function drawBat(ctx, m, S, C0, col, P, o) {
   ctx.fillStyle = col(C0.cloth); ctx.strokeStyle = OUT; ctx.lineWidth = 1.5;   // 은 안장
   ctx.beginPath(); ctx.ellipse(b.x - 2, b.y - S.ry + 2, 11, 5, 0, 0, TAU); ctx.fill(); ctx.stroke();
   legBiped(ctx, m, S, P, 1, col(C0.coat), col(C0.hoof));
+  if (wingsFolded(m)) drawWing(ctx, m, S, C0, col, P, true);
   const hd = rot(S.headX, S.headY + Math.sin(t * 3) * 1);
   ctx.fillStyle = col(C0.coat); ctx.strokeStyle = OUT; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.ellipse(hd.x, hd.y, 11, 9, 0, 0, TAU); ctx.fill(); ctx.stroke();
@@ -1753,7 +1760,7 @@ function drawBat(ctx, m, S, C0, col, P, o) {
 }
 /** front 층: 가까운 날개 · 등자 끈 · 고삐 (기수의 가까운 다리 위로 겹친다) */
 function drawFront(ctx, m, S, C0, col, P) {
-  if (S.wings) drawWing(ctx, m, S, C0, col, P, true);
+  if (S.wings && !wingsFolded(m)) drawWing(ctx, m, S, C0, col, P, true);
   const b = P.rot(S.bodyX, S.bodyY);
   const sy = b.y - (S.ry ?? 12);
   ctx.strokeStyle = col('#2a1a12'); ctx.lineWidth = 2.5;
@@ -1764,7 +1771,12 @@ function drawFront(ctx, m, S, C0, col, P) {
     ctx.beginPath(); ctx.moveTo(hd.x + 8, hd.y + 4); ctx.quadraticCurveTo(hd.x - 8, hd.y + 16, 8, sy - 18); ctx.stroke();
   }
 }
-const DARK = new Map();
+const DARK = new Map(), LIGHT = new Map();
+/** 피격 번쩍임 색 (한 번 계산해 둔다) */
+function lighter(c) { if (typeof c !== 'string' || c[0] !== '#') return c; let v = LIGHT.get(c); if (!v) { v = shade(c, 0.6); LIGHT.set(c, v); } return v; }
+const AIR_WING = new Set(['flap', 'glide', 'hover', 'dive', 'takeoff', 'jump', 'fall', 'charge']);
+/** 날개를 접고 있는가 (땅 위 · 날갯짓이 아닐 때) */
+const wingsFolded = (m) => m.onGround !== false && !AIR_WING.has(m.anim);
 /** 먼 쪽 날개 색 (한 번 계산해 둔다) */
 function darker(c) { let v = DARK.get(c); if (!v) { v = shade(c, -0.25); DARK.set(c, v); } return v; }
 /** 빛 방울 (가산 합성, 작은 원 두 겹 — 그라디언트를 만들지 않는다) */

@@ -119,8 +119,9 @@ function drawLeviathan(ctx, b, world, rig, st) {
     // 몸통 띠 (꼬리 → 머리)
     D.rec = false;
     drawChain(ctx, D, V(Bd), Bd, _X, _Y, _R, n, bs, 0, 1);
-    // 섬광 띠는 겹치지 않게 맞붙여 그린다 (가산 합성에서 겹친 띠가 두 번 더해져 줄무늬가 생기던 것)
-    if (bodyHit && Bd.v.flash) { const op = ctx.globalCompositeOperation; ctx.globalCompositeOperation = 'lighter'; drawChain(ctx, D, Bd.v.flash, Bd, _X, _Y, _R, n, bs, 0, clamp(b.flashT / 0.1, 0, 1) * 0.45, false); ctx.globalCompositeOperation = op; }
+    // 섬광: 띠를 반 해상도 버퍼에 불투명하게 그린 뒤 한 번만 가산 (띠를 바로 가산하면 겹친 곳은 두 번, 굽은 바깥 틈은 0번 더해져
+    // 줄무늬·검은 쐐기가 생겼다)
+    if (bodyHit && Bd.v.flash) flashLayer(ctx, D, st, chainBox(_X, _Y, _R, n, Bd), clamp(b.flashT / 0.1, 0, 1) * 0.45, (o, D2) => drawChain(o, D2, Bd.v.flash, Bd, _X, _Y, _R, n, bs, 0, 1));
     // 도약 중 꼬리 끝 지느러미
     if (b.mode === 'arc' && R.fluke && _Y[n - 1] < F + 20) {
       const i = n - 1, a = Math.atan2(_Y[i] - _Y[i - 1], _X[i] - _X[i - 1]);
@@ -206,6 +207,45 @@ function drawChain(ctx, D, img, part, X, Y, Rr, n, bs, sOff = 0, alpha = 1, over
     }
   }
   ctx.globalAlpha = ga;
+}
+/** 사슬 띠가 덮는 월드 사각형 (섬광 버퍼 크기) — 띠 반 높이 = 그림 높이/2 × k × R/RMAX */
+const _cb = [0, 0, 0, 0];
+function chainBox(X, Y, Rr, n, part) {
+  _cb[0] = _cb[1] = 1e9; _cb[2] = _cb[3] = -1e9;
+  const hh = (part.v?.base?.height ?? part.h) * part.k / RMAX;   // 띠 전체 높이 (root 줄이 가운데가 아닐 수 있어 넉넉히)
+  for (let i = 0; i < n; i++) {
+    const r = Rr[i] * hh + 6;
+    if (X[i] - r < _cb[0]) _cb[0] = X[i] - r; if (Y[i] - r < _cb[1]) _cb[1] = Y[i] - r;
+    if (X[i] + r > _cb[2]) _cb[2] = X[i] + r; if (Y[i] + r > _cb[3]) _cb[3] = Y[i] + r;
+  }
+  return _cb;
+}
+/**
+ * 겹쳐 그리는 띠(구부린 몸통)의 가산 섬광: 반 해상도 버퍼에 흰 실루엣을 보통 합성으로 그려(겹쳐도 한 번) 장치 좌표로 한 번만 가산한다.
+ * bb = 월드 사각형 [x0,y0,x1,y1]. draw(o, D2) 는 기준 변환(카메라·DPR, 반 해상도)이 걸린 버퍼에 그린다.
+ * 버퍼는 섬광이 처음 필요할 때 만들어 이 인스턴스 상태에 둔다 (≤ 화면 ¼ 크기).
+ */
+function flashLayer(ctx, D, st, bb, alpha, draw) {
+  if (alpha <= 0.01 || typeof document === 'undefined') return;
+  const m = D.m, cw = ctx.canvas?.width ?? 0, ch = ctx.canvas?.height ?? 0;
+  const dx0 = Math.max(0, Math.floor(m[0] * bb[0] + m[4])), dy0 = Math.max(0, Math.floor(m[3] * bb[1] + m[5]));
+  const dx1 = Math.min(cw, Math.ceil(m[0] * bb[2] + m[4])), dy1 = Math.min(ch, Math.ceil(m[3] * bb[3] + m[5]));
+  if (dx1 - dx0 < 2 || dy1 - dy0 < 2) return;
+  const R = 0.5, w = Math.ceil((dx1 - dx0) * R), h = Math.ceil((dy1 - dy0) * R);
+  let c = st.fbuf;
+  if (!c || c.width < w || c.height < h) { c = st.fbuf = document.createElement('canvas'); c.width = Math.max(w, st.fbufW ?? 0); c.height = Math.max(h, st.fbufH ?? 0); st.fbufW = c.width; st.fbufH = c.height; st.fctx = c.getContext('2d'); }
+  const o = st.fctx;
+  o.setTransform(1, 0, 0, 1, 0, 0); o.clearRect(0, 0, w + 1, h + 1);
+  o.setTransform(m[0] * R, m[1] * R, m[2] * R, m[3] * R, (m[4] - dx0) * R, (m[5] - dy0) * R);
+  const D2 = st.fD ??= new Drawer();
+  D2.begin(o);
+  draw(o, D2);
+  const ga = ctx.globalAlpha, op = ctx.globalCompositeOperation;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = ga * alpha;
+  ctx.drawImage(c, 0, 0, w, h, dx0, dy0, dx1 - dx0, dy1 - dy0);
+  ctx.globalCompositeOperation = op; ctx.globalAlpha = ga;
+  D.end();
 }
 function angDiff(a, b) { const d = a - b; return Math.atan2(Math.sin(d), Math.cos(d)); }
 
@@ -318,7 +358,7 @@ function drawTailSlam(ctx, D, b, rig, st, bs, t, F, V, flashOn) {
   }
   const tbs = -bs;
   drawChain(ctx, D, V(Bd), Bd, st.tx, st.ty, st.tr, TN, tbs, 250, 1);
-  if (flashOn && Bd.v.flash) { const op = ctx.globalCompositeOperation; ctx.globalCompositeOperation = 'lighter'; drawChain(ctx, D, Bd.v.flash, Bd, st.tx, st.ty, st.tr, TN, tbs, 250, clamp(b.flashT / 0.1, 0, 1) * 0.45, false); ctx.globalCompositeOperation = op; }
+  if (flashOn && Bd.v.flash) flashLayer(ctx, D, st, chainBox(st.tx, st.ty, st.tr, TN, Bd), clamp(b.flashT / 0.1, 0, 1) * 0.45, (o, D2) => drawChain(o, D2, Bd.v.flash, Bd, st.tx, st.ty, st.tr, TN, tbs, 250, 1));
   const Fl = R.fluke; if (!Fl) return;
   const a = Math.atan2(st.ty[0] - st.ty[1], st.tx[0] - st.tx[1]);
   D.rec = flashOn;

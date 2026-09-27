@@ -3504,5 +3504,5 @@ Object.assign(FXKIT, {
   shieldShape, scytheShape, spectralSword, setTimeoutFx, handOf, aimAng, bullet, ROCK, BLOOD,
   // 필살기 공용 도구 (FX-ULTS): 문맥·기본 줌 화면·키트 박자·불씨 비·색조·잔상·캐시 스프라이트
   ultCtx, ultView, ultBeat, ultFinal, ultDirector, ultAfter, emberRain, grade, holdOverlay, spiralMotes, glassRose,
-  glowSprite, beamSprite, blit, kitLive, qn,
+  glowSprite, beamSprite, blit, kitLive, qn, ultRoom, flashK,
 });
