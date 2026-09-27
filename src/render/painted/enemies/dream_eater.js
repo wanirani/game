@@ -27,7 +27,7 @@ const Q = { bob: 0, rot: 0, sx: 1, sy: 1, head: 0, tDir: 0, curl: 0, eyes: 0, ma
 function pose(e) {
   const t = e.t ?? 0, an = e.anim, at = e.animT ?? 0, q = Q;
   q.bob = Math.sin(t * 1.5) * 3; q.rot = Math.sin(t * 0.9) * 0.04; q.sx = 1 + Math.sin(t * 2) * 0.02; q.sy = 1 - Math.sin(t * 2) * 0.02;
-  q.head = Math.sin(t * 1.2) * 0.05; q.tDir = PI / 2 - 0.55 + Math.sin(t * 1.6) * 0.15; q.curl = 0.9 + Math.sin(t * 1.3) * 0.3;
+  q.head = Math.sin(t * 1.2) * 0.05; q.tDir = PI / 2 - 0.8 + Math.sin(t * 1.6) * 0.12; q.curl = 1.15 + Math.sin(t * 1.3) * 0.25;
   q.eyes = 0.35 + 0.15 * Math.sin(t * 3); q.maw = 0.2; q.trail = null; q.tele = 0; q.lash = 0;
   if (an === 'cast') {
     const k = ease.outCubic(clamp(at / 0.6, 0, 1)), fire = at > 0.6 ? clamp(1 - (at - 0.6) / 0.3, 0, 1) : 0;
@@ -49,7 +49,7 @@ function pose(e) {
 
 const L = { bx: 0, by: 0, hx: 0, hy: 0, hr: 0, sx: 0, sy: 0, mx: 0, my: 0 };
 function layout(q) {
-  L.bx = -8; L.by = -40 + q.bob;
+  L.bx = -8; L.by = -43 + q.bob;   // floats: the curled trunk tip stays above the hitbox floor
   K.pivotPos('body', 'a', 'neck', L.bx, L.by, q.rot, q.sx, q.sy, _q); L.hx = _q[0]; L.hy = _q[1];
   L.hr = q.rot + q.head;
   K.pivotPos('head', 'a', 'snout', L.hx, L.hy, L.hr, 1, 1, _q); L.sx = _q[0]; L.sy = _q[1];
