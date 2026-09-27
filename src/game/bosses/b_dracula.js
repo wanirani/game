@@ -4,6 +4,9 @@
 import { BossB, PI, OUT, R, C, LG, RG, ink, glow, glowE, eye, warnRect, warnFloor, warnLine, warnCircle, warnBang, lineStrike, impact, hash, tube, trySpawn } from './b_common.js';
 import { audio } from '../../core/audio.js';
 import { TAU, clamp, lerp, rand, ease, rgba, mix } from '../../core/math.js';
+import { paintedRig, paintedEnabled } from '../../render/painted/registry.js';
+/** 채색 리그의 그리기 도우미 (박쥐·낙석) — 리그가 준비됐고 채색이 켜져 있을 때만, 아니면 null → 기존 벡터 그림 */
+const pArt = () => (paintedEnabled() ? paintedRig('b_dracula')?.art : null) ?? null;
 
 const BLOOD = '#ff2a3a', BLOOD_D = '#6a0010', CRIMSON = '#b3122a';
 const CAPE = '#0b070e', CAPE_M = '#221828', LINING = '#8a0c1e', LINING_L = '#e0304a';
@@ -571,6 +574,7 @@ export class Dracula extends BossB {
       paint: (ctx, z) => {
         if (z.t < z.warn) { ctx.fillStyle = `rgba(0,0,0,${0.4 * z.k})`; ctx.beginPath(); ctx.ellipse(x, F - 2, 22 * z.k, 5, 0, 0, TAU); ctx.fill(); return; }
         ctx.translate(x, st.y); ctx.rotate(st.rot);
+        if (pArt()?.rock(ctx, x)) return;   // 채색 살점·뿔 파편
         ctx.beginPath(); ctx.moveTo(-16, -8); ctx.lineTo(-6, -17); ctx.lineTo(12, -12); ctx.lineTo(17, 6); ctx.lineTo(2, 16); ctx.lineTo(-14, 10); ctx.closePath();
         ink(ctx, '#4a3c40', 2); ctx.fillStyle = 'rgba(255,200,160,0.2)'; ctx.fillRect(-8, -10, 10, 6);
       },
@@ -1119,6 +1123,7 @@ function muscle(ctx, x0, y0, x1, y1, r0, r1, bulge, col, key) {
 }
 function drawBat(ctx, x, y, s, ph, a, vx) {
   if (a <= 0.02) return;
+  const art = pArt(); if (art) { art.bat(ctx, x, y, s, ph, a, vx); return; }   // 채색 박쥐
   const fl = Math.sin(ph) * 0.8;
   ctx.save(); ctx.globalAlpha *= a;
   ctx.translate(x, y); ctx.scale(vx < 0 ? -1 : 1, 1);

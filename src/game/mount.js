@@ -994,7 +994,7 @@ export class MountRider {
   }
   updateAnim(dt, world, p) { void dt; void world; void p; }
   riderAnim(p) {
-    if (p.hurtT > 0 || this.hurtT > 0.15) return 'ride_hurt';
+    if (p.hurtT > 0) return 'ride_hurt';
     if (this.chargeT > 0) return 'ride_charge';
     if (this.act?.riderAnim) return this.act.riderAnim;
     if (this.duck > 0.5) return 'ride_duck';
@@ -1420,16 +1420,16 @@ function snapRider(m, p) {
 
 // ── 대체 그림 (CMP-MOUNT-ART 가 오기 전 · 그림이 실패할 때). 원점 = 발 중앙, 오른쪽을 본다. back = 먼 다리·몸·가까운 다리·목·머리, front = 등자 끈·고삐·가까운 날개 ──
 const FB_SHAPE = {
-  horse: { kind: 'quad', bodyX: -2, bodyY: -47, rx: 33, ry: 13, shX: 19, hipX: -24, jointY: -42, l1: 21, l2: 22, neckX: 22, neckY: -54, headX: 38, headY: -80, headA: 0.55, headL: 26, head: 'horse', tail: 'hair', mane: 'hair', stride: [30, 52], lift: [9, 16] },
-  stag: { kind: 'quad', bodyX: -2, bodyY: -46, rx: 31, ry: 12, shX: 18, hipX: -22, jointY: -41, l1: 21, l2: 23, neckX: 21, neckY: -53, headX: 36, headY: -79, headA: 0.5, headL: 22, head: 'stag', tail: 'short', mane: 'fur', stride: [30, 54], lift: [10, 18] },
-  boar: { kind: 'quad', bodyX: -2, bodyY: -36, rx: 34, ry: 15, shX: 18, hipX: -22, jointY: -30, l1: 14, l2: 15, neckX: 26, neckY: -40, headX: 40, headY: -40, headA: 1.25, headL: 24, head: 'boar', tail: 'curl', mane: 'bristle', stride: [22, 38], lift: [6, 11] },
-  wolf: { kind: 'quad', bodyX: 0, bodyY: -35, rx: 30, ry: 10, shX: 18, hipX: -20, jointY: -32, l1: 16, l2: 17, neckX: 21, neckY: -40, headX: 34, headY: -54, headA: 0.9, headL: 22, head: 'wolf', tail: 'bush', mane: 'fur', stride: [28, 58], lift: [8, 16] },
-  griffin: { kind: 'quad', bodyX: -2, bodyY: -40, rx: 30, ry: 11, shX: 18, hipX: -21, jointY: -36, l1: 18, l2: 19, neckX: 20, neckY: -46, headX: 32, headY: -64, headA: 0.8, headL: 18, head: 'eagle', tail: 'tuft', mane: 'feather', wings: true, stride: [28, 54], lift: [8, 16] },
-  wyvern: { kind: 'biped', bodyX: -4, bodyY: -50, rx: 26, ry: 14, hipX: -10, jointY: -42, l1: 20, l2: 22, neckX: 16, neckY: -58, headX: 40, headY: -86, headA: 0.4, headL: 24, head: 'wyrm', tail: 'spade', wings: true, stride: [26, 46], lift: [8, 14] },
-  bat: { kind: 'bat', bodyX: 0, bodyY: -42, rx: 22, ry: 16, hipX: -10, jointY: -30, l1: 12, l2: 14, neckX: 16, neckY: -48, headX: 26, headY: -54, headA: 0.2, headL: 14, head: 'bat', tail: 'none', wings: true, stride: [24, 40], lift: [6, 10] },
+  horse: { kind: 'quad', bodyX: -2, bodyY: -48, rx: 36, ry: 15, shX: 21, hipX: -25, jointY: -44, l1: 21, l2: 23, lw: [13, 8], neckX: 24, neckY: -56, headX: 42, headY: -84, headA: 0.55, headL: 29, neckW: 21, head: 'horse', tail: 'hair', mane: 'hair', stride: [30, 54], lift: [9, 17] },
+  stag: { kind: 'quad', bodyX: -2, bodyY: -48, rx: 33, ry: 13, shX: 19, hipX: -23, jointY: -43, l1: 22, l2: 23, lw: [11, 6], neckX: 22, neckY: -55, headX: 39, headY: -82, headA: 0.5, headL: 24, neckW: 17, head: 'stag', tail: 'short', mane: 'fur', stride: [30, 56], lift: [10, 18] },
+  boar: { kind: 'quad', bodyX: -2, bodyY: -38, rx: 37, ry: 18, shX: 19, hipX: -23, jointY: -30, l1: 15, l2: 16, lw: [15, 10], neckX: 27, neckY: -42, headX: 42, headY: -40, headA: 1.25, headL: 26, neckW: 26, head: 'boar', tail: 'curl', mane: 'bristle', stride: [22, 40], lift: [6, 11] },
+  wolf: { kind: 'quad', bodyX: 0, bodyY: -39, rx: 33, ry: 12, shX: 20, hipX: -22, jointY: -35, l1: 18, l2: 19, lw: [12, 7], neckX: 23, neckY: -44, headX: 37, headY: -60, headA: 0.9, headL: 25, neckW: 19, head: 'wolf', tail: 'bush', mane: 'fur', stride: [28, 60], lift: [8, 17] },
+  griffin: { kind: 'quad', bodyX: -2, bodyY: -42, rx: 32, ry: 13, shX: 19, hipX: -22, jointY: -38, l1: 19, l2: 20, lw: [12, 7], neckX: 22, neckY: -48, headX: 34, headY: -66, headA: 0.8, headL: 20, neckW: 18, head: 'eagle', tail: 'tuft', mane: 'feather', wings: true, stride: [28, 56], lift: [8, 16] },
+  wyvern: { kind: 'biped', bodyX: -4, bodyY: -52, rx: 30, ry: 16, hipX: -12, jointY: -44, l1: 21, l2: 23, lw: [13, 8], neckX: 18, neckY: -60, headX: 42, headY: -88, headA: 0.4, headL: 26, neckW: 14, head: 'wyrm', tail: 'spade', wings: true, stride: [26, 46], lift: [8, 14] },
+  bat: { kind: 'bat', bodyX: 0, bodyY: -44, rx: 28, ry: 20, hipX: -12, jointY: -30, l1: 13, l2: 15, lw: [9, 6], neckX: 18, neckY: -50, headX: 30, headY: -58, headA: 0.2, headL: 16, head: 'bat', tail: 'none', wings: true, stride: [24, 40], lift: [6, 10] },
 };
 const FB_COL = {
-  mt_warhorse: { coat: '#262434', dark: '#121018', hi: '#4d5470', mane: '#b01a30', cloth: '#8a1020', trim: '#c8a040', eye: '#ff6a2a', metal: '#707684', hoof: '#3a3a44' },
+  mt_warhorse: { coat: '#2e2c40', dark: '#15121c', hi: '#5c6488', mane: '#b01a30', cloth: '#8a1020', trim: '#c8a040', eye: '#ff6a2a', metal: '#707684', hoof: '#3a3a44' },
   mt_boar: { coat: '#5a3a24', dark: '#2e1e12', hi: '#80583a', mane: '#241810', cloth: '#5a3020', trim: '#8a8e9a', eye: '#ff4a2a', metal: '#c8ccd8', hoof: '#1a120c' },
   mt_skelsteed: { coat: '#d8d0bc', dark: '#8a8478', hi: '#f4eee0', mane: '#6ad0ff', cloth: '#1a1418', trim: '#6ad0ff', eye: '#8ae8ff', metal: '#4a4a56', hoof: '#6a6458', bones: true, flame: '#6ad0ff' },
   mt_direwolf: { coat: '#c8d8e8', dark: '#6a7a8a', hi: '#f4faff', mane: '#8aa0b4', cloth: '#3a2a20', trim: '#e8e0d0', eye: '#8ae8ff', metal: '#9aa6b0', hoof: '#4a5460' },
@@ -1518,11 +1518,15 @@ function leg(ctx, m, S, P, i, color, dark, hoofCol, bones) {
   const ft = P.feet[i], fore = ft.fore;
   const j = P.rot(fore ? S.shX ?? 18 : S.hipX, S.jointY);
   const kn = ik(j.x, j.y, ft.x, ft.y - 4, S.l1, S.l2, fore ? -1 : 1);
-  ctx.strokeStyle = OUT; ctx.lineWidth = (S.kind === 'bat' ? 6 : S.head === 'boar' ? 11 : 9) + 2;
-  ctx.beginPath(); ctx.moveTo(j.x, j.y); ctx.lineTo(kn.x, kn.y); ctx.lineTo(ft.x, ft.y - 4); ctx.stroke();
-  ctx.strokeStyle = color; ctx.lineWidth -= 2.4;
-  ctx.beginPath(); ctx.moveTo(j.x, j.y); ctx.lineTo(kn.x, kn.y); ctx.lineTo(ft.x, ft.y - 4); ctx.stroke();
-  if (bones) { ctx.strokeStyle = dark; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(j.x, j.y); ctx.lineTo(kn.x, kn.y); ctx.stroke(); }
+  const [w1, w2] = bones ? [7, 5] : S.lw ?? [10, 7];
+  // 허벅지(굵게) → 정강이(가늘게): 윤곽선을 먼저 굵게, 그 위에 색
+  ctx.strokeStyle = OUT;
+  ctx.lineWidth = w1 + 2.5; ctx.beginPath(); ctx.moveTo(j.x, j.y); ctx.lineTo(kn.x, kn.y); ctx.stroke();
+  ctx.lineWidth = w2 + 2.5; ctx.beginPath(); ctx.moveTo(kn.x, kn.y); ctx.lineTo(ft.x, ft.y - 4); ctx.stroke();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = w1; ctx.beginPath(); ctx.moveTo(j.x, j.y); ctx.lineTo(kn.x, kn.y); ctx.stroke();
+  ctx.lineWidth = w2; ctx.beginPath(); ctx.moveTo(kn.x, kn.y); ctx.lineTo(ft.x, ft.y - 4); ctx.stroke();
+  if (bones) { ctx.fillStyle = color; ctx.beginPath(); ctx.arc(kn.x, kn.y, 4.5, 0, TAU); ctx.fill(); }
   // 발굽 · 발
   ctx.fillStyle = hoofCol; ctx.strokeStyle = OUT; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.ellipse(ft.x + 1.5, ft.y - 2.5, S.head === 'wolf' ? 5 : 4.5, 3, 0, 0, TAU); ctx.fill(); ctx.stroke();
@@ -1592,7 +1596,7 @@ function drawQuad(ctx, m, S, C0, col, P, o) {
   leg(ctx, m, S, P, 3, col(C0.coat), C0.dark, col(C0.hoof), bones);
   // 목 · 머리
   const nb = rot(S.neckX, S.neckY), hd = rot(S.headX, S.headY + (m.anim === 'run' ? Math.sin((m.phase ?? 0) * TAU * 2) * 2 : 0));
-  ctx.strokeStyle = OUT; ctx.lineWidth = S.head === 'boar' ? 22 : 17;
+  ctx.strokeStyle = OUT; ctx.lineWidth = (S.neckW ?? 17) + 3;
   ctx.beginPath(); ctx.moveTo(nb.x, nb.y); ctx.lineTo(hd.x, hd.y); ctx.stroke();
   ctx.strokeStyle = col(C0.coat); ctx.lineWidth -= 3;
   ctx.beginPath(); ctx.moveTo(nb.x, nb.y); ctx.lineTo(hd.x, hd.y); ctx.stroke();

@@ -1,5 +1,5 @@
 // 드라큘라 백작 (b_dracula) — 채색 컷아웃 퍼핏 렌더러 (1형태 귀족 · 변신 · 2형태 날개 달린 마왕, 한 아틀라스)
-// 부품 (Kling): 1형태 — 옆얼굴 두 장(차가운 미소 / 송곳니 드러낸 포효) · 높은 붉은 깃 연미복 몸통(+앞깃) · 검은 소매 · 레이스 소맷부리의
+// 부품 (Kling): 1형태 — 옆얼굴 두 장(차가운 미소 / 송곳니 드러낸 포효) · 높은 붉은 깃 연미복 몸통 · 검은 소매 · 레이스 소맷부리의
 //   편 손 / 움켜쥔 손 · 다리 · 박쥐 날개처럼 펼친 망토 반쪽(뒤 = 거울, 앞 = 손에 쥔 자락) · 몸을 감싼 망토 · 박쥐 3종 ·
 //   변신 중간 프레임(찢어지는 연미복 사이로 붉은 비늘과 뿔이 솟는 백작).
 //   2형태 — 뿔 달린 용머리(경첩 턱) · 비늘 몸통(가슴의 지옥불 문양) · 위팔 / 편 발톱 팔 / 움켜쥔 팔 · 역관절 다리(허벅지·정강이·발) ·
@@ -28,7 +28,7 @@ const DEF = {
   defaults: { stain: 'rgb(70,18,22)', char: 1.2 },
   parts: {
     head_a: { flash: true, cracks: 2, holes: 0 }, head_b: { flash: true, cracks: 2, holes: 0 },
-    torso: { flash: true, cracks: 2, holes: 1 }, collarF: { flash: true, cracks: 1, holes: 0 },
+    torso: { flash: true, cracks: 2, holes: 1 },
     sleeve: { flash: true, deep: 0.62, cracks: 1, holes: 0 }, handO: { flash: true, deep: 0.62, cracks: 1, holes: 0 }, handC: { flash: true, deep: 0.62, cracks: 1, holes: 0 },
     leg: { flash: true, deep: 0.6, cracks: 1, holes: 0 },
     cape: { membrane: true, holes: 3, cracks: 0, char: 0.6 }, cloak: { flash: true, membrane: true, holes: 2, cracks: 0, char: 0.6 },
@@ -199,14 +199,13 @@ function drawCount(ctx, D, b, world, rig, st, lvl, dt) {
   D.end();
   if (q.ledges) ledgesOver(ctx, world, b.cx - 170, b.bottom - 170, b.cx + 170, b.bottom);
   if (a0 > 0.01) {
-    // 4) 머리 (평소 = 미소 / 공격·변신 = 포효) + 앞깃
+    // 4) 머리 (평소 = 미소 / 공격·변신 = 포효) — 높은 깃은 몸통 쪽(머리 뒤)에 있다
     const angry = tf || b.state === 'hellfire' || b.state === 'spiral' || b.state === 'summon' || (b.state === 'intro' && (b.st ?? 0) > 0.6) || (b.state === 'inferno' && (b.st ?? 0) < 1.4) || (b.state === 'tele' && (b.st ?? 0) > 0.85 && (b.st ?? 0) < 1.15) || (b.state === 'batdash' && b.reform);
     const H = angry ? R.head_b : R.head_a;
     const hrot = (angry ? -0.1 : 0.02) + Math.sin(t * 1.1) * 0.03 + (tf ? Math.sin(t * 31) * 0.08 * writhe : 0);
     const hx = neck[0] + 1, hy = neck[1] + 6;
     put(D, L, H, V(H), 'neck', hx, hy, hrot, a0);
     const e = localPt(H, 'neck', H.eyeN, hx, hy, hrot, 1, _q); W(L, e[0], e[1], st.eyeW);
-    put(D, L, R.collarF, V(R.collarF), 'neck', neck[0], neck[1], trot, a0);
     // 5) 앞 망토 자락 (앞손이 쥠 — 펼칠 때만)
     const fk = smooth(0.3, 0.7, cp) * (1 - wr);
     if (fk > 0.01) {

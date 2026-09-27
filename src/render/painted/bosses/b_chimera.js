@@ -265,8 +265,15 @@ function drawSnake(ctx, D, b, rig, st, dt, airY, bob, lvl, flashOn) {
   const n = k;
   const img = pickVariant(Sn, lvl, false, null);
   drawBent(ctx, D, img, Sn, pts, n, Sn.k * 1.0, F.fsn, 1);
-  // 섬광은 띠를 겹치지 않고 맞붙여 그린다 (가산 합성에서 겹친 띠가 두 번 더해져 얼룩말 줄무늬가 생기던 것)
-  if (flashOn && Sn.v.flash) { const op = ctx.globalCompositeOperation; ctx.globalCompositeOperation = 'lighter'; drawBent(ctx, D, Sn.v.flash, Sn, pts, n, Sn.k, F.fsn, st.fa, null, false); ctx.globalCompositeOperation = op; }
+  // 섬광: 띠를 반 해상도 버퍼에 불투명하게 그린 뒤 한 번만 가산 (띠를 바로 가산하면 겹친 곳은 두 번, 굽은 바깥 틈은 0번 더해져
+  // 얼룩말 줄무늬·검은 쐐기가 생겼다)
+  if (flashOn && Sn.v.flash) {
+    const bb = st._fbb ??= [0, 0, 0, 0], pad = Sn.h * Sn.k * 0.6 + 4;
+    bb[0] = bb[1] = 1e9; bb[2] = bb[3] = -1e9;
+    for (let i = 0; i < n; i++) { const p = pts[i]; if (p.x < bb[0]) bb[0] = p.x; if (p.y < bb[1]) bb[1] = p.y; if (p.x > bb[2]) bb[2] = p.x; if (p.y > bb[3]) bb[3] = p.y; }
+    bb[0] -= pad; bb[1] -= pad; bb[2] += pad; bb[3] += pad;
+    flashLayer(ctx, D, st, bb, st.fa, (o, D2) => drawBent(o, D2, Sn.v.flash, Sn, pts, n, Sn.k, F.fsn, 1));
+  }
   // 뱀 머리: 꼬리 끝 방향, 위아래 뒤집기 히스테리시스
   if (!H) return;
   const p1 = pts[n - 2], p2 = pts[n - 1];
@@ -324,6 +331,33 @@ export function drawBent(ctx, D, img, part, pts, n, thick, flip, alpha = 1, tape
     ctx.drawImage(img, s0, 0, s1 - s0, img.height, s0, 0, s1 - s0, img.height);
   }
   ctx.globalAlpha = ga;
+}
+/**
+ * 겹쳐 그리는 띠(구부린 꼬리)의 가산 섬광: 반 해상도 버퍼에 흰 실루엣을 보통 합성으로 그려(겹쳐도 한 번) 장치 좌표로 한 번만 가산한다.
+ * bb = 월드 사각형 [x0,y0,x1,y1]. draw(o, D2) 는 기준 변환(카메라·DPR, 반 해상도)이 걸린 버퍼에 그린다.
+ * 버퍼는 섬광이 처음 필요할 때 만들어 이 인스턴스 상태에 둔다 (≤ 화면 ¼ 크기).
+ */
+function flashLayer(ctx, D, st, bb, alpha, draw) {
+  if (alpha <= 0.01 || typeof document === 'undefined') return;
+  const m = D.m, cw = ctx.canvas?.width ?? 0, ch = ctx.canvas?.height ?? 0;
+  const dx0 = Math.max(0, Math.floor(m[0] * bb[0] + m[4])), dy0 = Math.max(0, Math.floor(m[3] * bb[1] + m[5]));
+  const dx1 = Math.min(cw, Math.ceil(m[0] * bb[2] + m[4])), dy1 = Math.min(ch, Math.ceil(m[3] * bb[3] + m[5]));
+  if (dx1 - dx0 < 2 || dy1 - dy0 < 2) return;
+  const R = 0.5, w = Math.ceil((dx1 - dx0) * R), h = Math.ceil((dy1 - dy0) * R);
+  let c = st.fbuf;
+  if (!c || c.width < w || c.height < h) { c = st.fbuf = document.createElement('canvas'); c.width = Math.max(w, st.fbufW ?? 0); c.height = Math.max(h, st.fbufH ?? 0); st.fbufW = c.width; st.fbufH = c.height; st.fctx = c.getContext('2d'); }
+  const o = st.fctx;
+  o.setTransform(1, 0, 0, 1, 0, 0); o.clearRect(0, 0, w + 1, h + 1);
+  o.setTransform(m[0] * R, m[1] * R, m[2] * R, m[3] * R, (m[4] - dx0) * R, (m[5] - dy0) * R);
+  const D2 = st.fD ??= new Drawer();
+  D2.begin(o);
+  draw(o, D2);
+  const ga = ctx.globalAlpha, op = ctx.globalCompositeOperation;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = ga * alpha;
+  ctx.drawImage(c, 0, 0, w, h, dx0, dy0, dx1 - dx0, dy1 - dy0);
+  ctx.globalCompositeOperation = op; ctx.globalAlpha = ga;
+  D.end();
 }
 function angle(pts, i) {
   const a = pts[i], b = pts[i + 1], c = pts[i + 2];
