@@ -34,6 +34,7 @@
 import * as PF from './platform.js';
 import * as SAVE from './save.js';
 import { FONT, onFontEpoch } from './ui.js';
+import * as UI from './ui.js';            // UI.taps (공용 탭 영역 등록부) — 스틱 자리의 캔버스 버튼은 캔버스로 보낸다
 import { input as INPUT } from './input.js';
 import * as HAP from './haptics.js';
 
@@ -87,6 +88,10 @@ const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 const hasDom = () => typeof document !== 'undefined' && typeof window !== 'undefined';
 const num = (v, d) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
+/** 터치 화면이 있는 기기 (지금 입력 모드와 무관) — 초기화 때 버튼 그림을 미리 구울지 */
+function touchScreen() {
+  try { return (navigator.maxTouchPoints ?? 0) > 0 || !!window.matchMedia?.('(pointer: coarse)')?.matches; } catch { return false; }
+}
 
 // ───────────────────────── 상태 ─────────────────────────
 const S = {
@@ -152,7 +157,8 @@ function customLayout(st) {
     if (!b || typeof b !== 'object') continue;
     const r = b.right, bt = b.bottom, d = b.d;
     if (![r, bt, d].every((x) => typeof x === 'number' && Number.isFinite(x)) || d < 20 || d > 400) continue;
-    (out ??= {})[id] = [r, bt, d];
+    // 편집기는 Ø 44–96 CSS px 을 배율(≥ 0.8)로 나눠 저장한다 → 120 을 넘는 값은 고친 저장본: 화면을 덮지 않게 자른다
+    (out ??= {})[id] = [r, bt, Math.min(d, MAX_D_EDIT / 0.8)];
   }
   return out;
 }
@@ -470,12 +476,13 @@ function hitBtns(L, x, y) {
   return best ? [best] : null;
 }
 /** 공격·점프 사이의 띠 (platform §5.2 '겹침 띠', 점프 공격용 동시 누름): 두 테두리 모두에서 (간격/2 + 6) px 안.
- *  기본 배치(간격 ≈ 24 px)에서는 가운데 약 12 px 폭. 둘이 36 px 넘게 떨어져 있으면 띠가 없다 */
+ *  기본 배치(간격 ≈ 24 px × 배율)에서는 가운데 약 12 px 폭. 둘이 36 px × 배율 넘게 떨어져 있으면(사용자 배치) 띠가 없다
+ *  (배율을 곱하지 않으면 크기 등급 L × touchScale 1.3 의 기본 배치(간격 38 px)에서 띠가 사라진다) */
 function inPlinkBand(L, x, y) {
   if (!shownBtn('attack') || !shownBtn('jump')) return false;
   const a = btnPos(L, 'attack'), j = btnPos(L, 'jump');
   const gap = Math.hypot(a.cx - j.cx, a.cy - j.cy) - a.d / 2 - j.d / 2;
-  if (gap > 36) return false;
+  if (gap > 36 * Math.max(1, L.k)) return false;
   const band = Math.max(SLOP, gap / 2 + 6);
   return Math.hypot(x - a.cx, y - a.cy) - a.d / 2 <= band && Math.hypot(x - j.cx, y - j.cy) - j.d / 2 <= band;
 }
@@ -494,6 +501,25 @@ function inStickZone(L, x, y) {
   if (x < z.x0 || x > z.x1 || y < z.y0 || y > z.y1) return false;
   if (settings().touchStick === 'fixed') return Math.hypot(x - L.home.x, y - L.home.y) <= 2 * L.R;
   return true;
+}
+/**
+ * (x, y) 가 캔버스에 그린 UI 버튼 위인가: 그러면 스틱을 만들지 않고 탭을 캔버스로 보낸다.
+ * 예: 마을의 '▲ 대화 · 들어가기' 버튼(아래 가운데, 왼쪽 부분이 스틱 자리 45 % 안), 왼손 모드에서 오른쪽 위 '동료'·'메뉴' 버튼.
+ * 공용 탭 등록부(ui.taps.at — 등록된 영역 + 터치 여유) 와 맨 위 장면의 hudRects({id: rect} | [rect], 논리 px) 를 본다
+ */
+function onCanvasUi(L, x, y) {
+  const cr = L.cr;
+  if (x < cr.x || y < cr.y || x > cr.x + cr.w || y > cr.y + cr.h) return false;
+  const g = game(), top = g?.top;
+  const k = top?.uiScale && g?.uiK > 0 ? g.uiK : 1; // uiScale 장면은 UI 좌표로 등록한다
+  const lx = ((x - cr.x) * L.vw) / cr.w / k, ly = ((y - cr.y) * L.vh) / cr.h / k;
+  try { if (UI.taps?.at?.(lx, ly)) return true; } catch { /* 등록부 없음 */ }
+  const R = top?.hudRects;
+  if (!R || typeof R !== 'object') return false;
+  for (const r of Array.isArray(R) ? R : Object.values(R)) {
+    if (r && r.w > 0 && r.h > 0 && lx >= r.x && lx <= r.x + r.w && ly >= r.y && ly <= r.y + r.h) return true;
+  }
+  return false;
 }
 
 // ───────────────────────── 포인터 (window 캡처) ─────────────────────────
@@ -525,7 +551,7 @@ function onDown(e) {
     buzz(); unlockAudio(); S.pending = true; startLoop();
     return;
   }
-  if (!S.stick.active && inStickZone(L, x, y)) {
+  if (!S.stick.active && inStickZone(L, x, y) && !onCanvasUi(L, x, y)) {
     claim(e);
     const s = S.stick;
     s.active = true; s.id = e.pointerId; s.fx = x; s.fy = y;
@@ -740,34 +766,38 @@ function clearCanvas() {
   S.drawn = false;
 }
 
-/** 버튼 바탕(원판 + 테두리 + 고정 글자) 을 굽는다: 배치·DPR·글꼴이 바뀔 때만 (게임 중 새 캔버스를 만들지 않는다) */
+/**
+ * 버튼 바탕(원판 + 테두리 + 고정 글자) 을 굽는다: 배치·DPR·글꼴이 바뀔 때만.
+ * 캔버스는 버튼 id × (보통, 눌림) 26개를 처음 한 번만 만들고, 다시 구울 때(회전·크기 조절·touchScale·글꼴)는 같은 캔버스에
+ * 크기만 바꿔 그린다 → 스테이지 도중 새 캔버스 0개 (MASTER_PLAN §5.2). 매 그리기마다 부르므로 바뀌었는지는 숫자로만 본다
+ */
+const BAKE = { lver: -1, dpr: 0, epoch: -1, dk: '' };
 function bakeSprites(L) {
-  const key = `${L.W}|${L.H}|${S.dpr}|${S.fontEpoch}|${PAD_IDS.map((id) => btnPos(L, id).d.toFixed(1)).join(',')}|${L.sd}`;
-  if (key === S.spriteKey) return;
-  S.spriteKey = key;
-  const old = S.sprites;
-  S.sprites = new Map();
+  let dk = '';
+  if (S.editor) for (const id of PAD_IDS) dk += S.editor.pos[id].d.toFixed(1) + ','; // 편집기에서 크기를 바꾸는 중
+  const B = BAKE;
+  if (S.spriteKey === 'ok' && B.lver === S.lver && B.dpr === S.dpr && B.epoch === S.fontEpoch && B.dk === dk) return;
+  S.spriteKey = 'ok'; B.lver = S.lver; B.dpr = S.dpr; B.epoch = S.fontEpoch; B.dk = dk;
   const make = (id, d, pressed, sys) => {
-    const k = `${id}|${pressed ? 1 : 0}|${d.toFixed(1)}`;
-    if (S.sprites.has(k)) return;
-    const pad = 6, sz = Math.ceil((d + pad * 2) * S.dpr);
-    let c = old.get(k);
-    if (!c) { c = document.createElement('canvas'); }
-    old.delete(k);
-    c.width = sz; c.height = sz;
+    const pair = (S.spr[id] ??= [null, null]), k = pressed ? 1 : 0;
+    let c = pair[k];
+    if (!c) { c = document.createElement('canvas'); pair[k] = c; }
+    const pad = 6, sz = Math.max(1, Math.ceil((d + pad * 2) * S.dpr));
+    if (c.width !== sz || c.height !== sz) { c.width = sz; c.height = sz; }
     const g = c.getContext('2d');
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, c.width, c.height);
     g.setTransform(S.dpr, 0, 0, S.dpr, 0, 0);
-    g.clearRect(0, 0, d + pad * 2, d + pad * 2);
     if (sys) drawSysBase(g, id, d / 2 + pad, d / 2 + pad, d, pressed);
     else drawDisc(g, id, d / 2 + pad, d / 2 + pad, d / 2, pressed);
-    S.sprites.set(k, c);
+    c._d = d;
   };
   for (const id of PAD_IDS) { const d = btnPos(L, id).d; make(id, d, false); make(id, d, true); }
   for (const id of SYS_IDS) { make(id, L.sd, false, true); make(id, L.sd, true, true); }
 }
 function blit(c, id, cx, cy, d, pressed) {
-  const sp = S.sprites.get(`${id}|${pressed ? 1 : 0}|${d.toFixed(1)}`);
-  if (!sp) return false;
+  const sp = S.spr[id]?.[pressed ? 1 : 0];
+  if (!sp || Math.abs(sp._d - d) > 0.05) return false;
   const pad = 6, s = d + pad * 2;
   c.drawImage(sp, cx - s / 2, cy - s / 2, s, s);
   return true;
@@ -1322,13 +1352,17 @@ export function initTouchPad(input) {
     window.addEventListener('pointerup', onUp, opt);
     window.addEventListener('pointercancel', onUp, opt);
     window.addEventListener('blur', () => { if (!S.editor) releaseAll(); });
+    // 앱 전환·화면 끄기: 손가락을 뗀 이벤트가 오지 않을 수 있다 → 돌아왔을 때 버튼·스틱이 눌린 채 남지 않게
+    document.addEventListener('visibilitychange', () => { if (document.hidden && !S.editor) releaseAll(); });
     window.addEventListener('resize', () => { S.pending = true; startLoop(); });
     try { onFontEpoch?.(() => { S.fontEpoch++; S.pending = true; startLoop(); }); } catch { /* 글꼴 알림 없음 */ }
     try { S.input?.onMode?.((m) => { if (m !== 'touch' && !S.editor) releaseAll(); }); } catch { /* 예전 input */ }
     loadDrawAssets();
     const L = layout(true);
-    // 버튼 그림은 미리 굽는다 (게임 도중 새 캔버스를 만들지 않게; 다시 구울 때는 같은 캔버스를 쓴다). 터치 기기에서만
-    if (L && touchMode()) { try { ensureCanvasSize(L); bakeSprites(L); } catch (e) { console.error('[touchpad] bake', e); } }
+    // 버튼 그림은 미리 굽는다 (게임 도중 새 캔버스를 만들지 않게; 다시 구울 때는 같은 캔버스를 쓴다).
+    // 터치 모드이거나 터치 화면이 있는 기기에서만 (키보드로 시작한 터치 노트북이 스테이지 도중 터치로 바뀌어도 새 캔버스 0개).
+    // 오버레이 백킹은 처음 그릴 때 잡는다 (숨어 있는 동안 전체 화면 크기 메모리를 쓰지 않게)
+    if (L && (touchMode() || touchScreen())) { try { S.dpr = overlayDpr(L); bakeSprites(L); } catch (e) { console.error('[touchpad] bake', e); } }
   }
   return padObject;
 }
