@@ -77,7 +77,7 @@ export class Dagon extends BossC {
     this.cBody = { x: 0, y: 0, w: 140, h: 190 };
     this._hp = []; this._cp = [];
     // 발광 스프라이트는 보스 등장 연출 동안 미리 만든다 (싸움 중 새 캔버스 0 — MASTER_PLAN §5.2)
-    for (const c of [BIO, WATER, ICHOR, GILL, CORAL_L, '#dff4ff', '#3ad0c8', '#ffffff']) { glowSprite(c, false); glowSprite(c, true); }
+    for (const c of [BIO, WATER, ICHOR, GILL, CORAL_L, '#dff4ff', '#3ad0c8', '#ffffff', '#bff4ff', '#ff5a6a', '#ff4a60', '#4aa8ff']) { glowSprite(c, false); glowSprite(c, true); }
     this.motion(0, this.world);
   }
 
@@ -97,8 +97,25 @@ export class Dagon extends BossC {
     return d;
   }
   submerge(rate = 2.2) { this.tsink = 1; this.sinkRate = rate; this.splash(0.7); }
-  /** 패턴 시작: 떠오르기 지연을 u0 에 (패턴 시간표는 u(x) 로) */
-  begin(emerge = true) { this.u0 = emerge ? this.emerge() : 0; this.faceP(); }
+  /**
+   * 패턴 시작: 떠오르기 지연을 u0 에 (패턴 시간표는 u(x) 로). idle 에서 잠수해 헤엄쳐 가던 중이면 잠긴 채 도착한 뒤
+   * 떠오른다 — 떠오른 채 수면을 650px/s 로 미끄러지며 공격하지 않게 (검수: 합창·홍수·오르간이 이동 중에 시작됐다)
+   */
+  begin(emerge = true) {
+    this.faceP();
+    const far = Math.abs(this.tbx - this.bx);
+    if (emerge && far > 6 && this.moveSp > 300) {
+      const wait = far / this.moveSp;
+      this.tsink = Math.max(this.tsink, 0.8);
+      const sinkAt = approach(this.sink, this.tsink, this.sinkRate * wait);
+      this.u0 = wait + sinkAt / 1.9 + 0.05;
+      this.later(wait, () => { this.bx = this.tbx; this.moveSp = 80; this.emerge(1.9); this.faceP(); });
+      return;
+    }
+    this.u0 = emerge ? this.emerge() : 0;
+  }
+  /** 헤엄쳐 가던 곳에 닿았는가 */
+  arrived() { return Math.abs(this.tbx - this.bx) <= 6; }
   u(x) { return this.at(this.u0 + x); }
   faceP() { const p = this.P; if (p && !this.dash) this.facing = Math.sign(p.cx - this.bx) || this.facing; }
   /** 떠오를 수면 지점: 플레이어와 약 420px (최소 260) 떨어지고, 가능하면 지금 화면 안 (좁은 폰 화면에서도 보이게) */
@@ -488,7 +505,7 @@ export class Dagon extends BossC {
   // ── whirl: 잠수 → 플레이어 x 에 소용돌이(물속이면 끌어당김) + 물창 넷 ──
   s_whirl(dt, world, t) {
     const A = this.A;
-    if (this.at(0.001)) { this.submerge(2.4); this.setPose({ mouth: 0.6, arms: 0.6 }); audio.sfx('splash', { pitch: 0.6 }); telegraph(this, 0.6, { sfx: null }); }
+    if (this.at(0.001)) { this.wUp = null; this.wRel = false; this.submerge(2.4); this.setPose({ mouth: 0.6, arms: 0.6 }); audio.sfx('splash', { pitch: 0.6 }); telegraph(this, 0.6, { sfx: null }); }
     if (this.at(0.5)) {
       const p = this.P;
       const cx = clamp(p ? p.cx : A.cx, A.x0 + 120, A.x1 - 120);
@@ -505,9 +522,13 @@ export class Dagon extends BossC {
       this.spear(this.wc, 0.7); this.spear(x2, 0.7);
     }
     if (this.at(3.4)) { this.tbx = this.pickSpot(); this.moveSp = 700; }
-    if (this.at(3.9)) { this.emerge(1.6); this.setPose({ mouth: 0.8, arms: 1 }); audio.sfx('splash', { pitch: 0.7 }); }
-    if (this.at(4.5)) this.relax();
-    if (t >= 4.7) this.done();
+    // 새 자리에 닿은 뒤에 떠오른다 (멀면 조금 늦게 — 떠오른 채 미끄러지지 않게)
+    if (this.wUp == null && (t >= 3.9 && this.arrived() || t >= 6.5)) {
+      this.wUp = t; this.bx = this.tbx; this.moveSp = 80; this.faceP();
+      this.emerge(1.6); this.setPose({ mouth: 0.8, arms: 1 }); audio.sfx('splash', { pitch: 0.7 });
+    }
+    if (this.wUp != null && !this.wRel && t >= this.wUp + 0.6) { this.wRel = true; this.relax(); }
+    if (this.wUp != null && t >= this.wUp + 0.8) this.done();
   }
   /** 물창: 바닥(물 밑)에서 수면 위 200px 까지 치솟는 물기둥 (폭 40) */
   spear(x, warn) {
@@ -560,8 +581,9 @@ export class Dagon extends BossC {
       }
     }
     if (this.cEnd != null && t >= this.cEnd + 0.5 && !this.cMoved) { this.cMoved = true; this.tbx = this.pickSpot(); this.moveSp = 800; }
-    if (this.cEnd != null && t >= this.cEnd + 1.0 && !this.cUp) { this.cUp = true; this.emerge(2); }
-    if (this.cEnd != null && t >= this.cEnd + 1.6) this.done(0.8);
+    // 새 자리에 닿은 뒤 떠오른다 (떠오른 채 미끄러지지 않게)
+    if (this.cEnd != null && t >= this.cEnd + 1.0 && !this.cUp && (this.arrived() || t >= this.cEnd + 3.0)) { this.cUp = t; this.bx = this.tbx; this.moveSp = 80; this.faceP(); this.emerge(2); }
+    if (this.cUp && t >= this.cUp + 0.6) this.done(0.8);
     if (t > 9) { this.endDash(); this.emerge(); this.done(); }   // 안전장치
   }
   endDash() {
@@ -663,7 +685,7 @@ export class Dagon extends BossC {
     if (this.dash) this.endDash();
     this.relax(); this.twitch = 0;
     if (this.tsink > 0.5) { this.tsink = 0; this.sinkRate = 1.9; }
-    this.moveSp = 80;
+    this.moveSp = 80; this.tbx = this.bx;   // 헤엄치던 중이면 그 자리에서 멈춘다 (떠오른 채 미끄러지지 않게)
   }
   onReset() {
     this.dmg = 0; this.floodT = 0; this.lures.length = 0; this.dash = null; this.rot = 0; this.twitch = 0;

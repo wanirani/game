@@ -43,7 +43,16 @@
     60
    ],
    "scale": 0.2
-  }
+  },
+  "rodKey": {
+   "hue": [
+    60,
+    185
+   ],
+   "sat": 0.1,
+   "val": 0.08
+  },
+  "_whyRodKey": "리뷰(heroes2rev): 기본 키(sat>0.35, val>0.3)는 막대의 옅은 하이라이트·어두운 그늘을 못 잡아 주먹에 초록/흰 막대 조각이 남았다(ui 아틀라스에서 보임) → 옅고 어두운 초록까지"
  },
  "materials": {
   "_replace": true,
@@ -105,10 +114,16 @@
    "ym90",
    "-"
   ],
-  "qback": "lia/lia_kunoichi_qback",
-  "viewsQ": [
-   "-",
-   "ym135"
-  ]
+  "qback": null,
+  "viewsQ": null,
+  "extra": [
+   {
+    "sheet": "lia/lia_kunoichi_q3b",
+    "views": [
+     "ym135"
+    ]
+   }
+  ],
+  "_whyQ": "리뷰(heroes2rev): 예전 qback 은 왼쪽=앞모습, 오른쪽=대칭 정면 뒷모습 → 한 장짜리 3/4 뒤 재생성(q3b, 왼쪽으로 돌아섬) → ym135"
  }
 }

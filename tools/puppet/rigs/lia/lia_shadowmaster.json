@@ -105,11 +105,18 @@
    "ym90",
    "-"
   ],
-  "qback": "lia/lia_shadowmaster_qback",
-  "viewsQ": [
-   "-",
-   "ym135"
-  ]
+  "qback": null,
+  "viewsQ": null,
+  "extra": [
+   {
+    "sheet": "lia/lia_shadowmaster_q3b",
+    "views": [
+     "ym135",
+     "-"
+    ]
+   }
+  ],
+  "_whyQ": "리뷰(heroes2rev): 예전 qback 은 왼쪽=앞모습, 오른쪽=좌우 대칭 정면 뒷모습이라 −45/−90/−135 가 같은 그림 → 한 장짜리 3/4 뒤 재생성(q3b). 클링이 두 인물을 그렸고 왼쪽(왼쪽으로 돌아서 가면 옆선이 보임)만 ym135"
  },
  "regions": {
   "skirt": {

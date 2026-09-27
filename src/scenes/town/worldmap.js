@@ -16,7 +16,7 @@ import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
 import { assets } from '../../core/assets.js';
 import { saves } from '../../core/save.js';
-import { text, drawCover, FONT, font, taps, fontEpoch } from '../../core/ui.js';
+import { text, wrap, drawCover, FONT, font, taps, fontEpoch } from '../../core/ui.js';
 import { drawHints } from '../../core/prompts.js';
 import { TAU, clamp, lerp, ease, fmt, fmtTime, rgba, rand, shade, mix } from '../../core/math.js';
 import { Particles } from '../../core/particles.js';
@@ -349,6 +349,11 @@ export class WorldMapScene extends Scene {
       }
       const sp = this.pos(PAGES[page].start, L); obst.push([sp.x, sp.y - 4, 28]);
       const cands = [[0, -44, 0], [-50, -8, 0.3], [50, -8, 0.4], [-40, -34, 0.6], [42, -38, 0.7], [-62, -24, 0.9], [62, -24, 1], [0, -58, 1.1]];
+      // 좁은 화면에서 위 자리가 모두 막히면: 노드 둘레(위쪽 우선)에서 빈 곳을 찾는다
+      for (let k = 0; k < 16; k++) {
+        const a = -Math.PI / 2 + (k * TAU) / 16;
+        for (const r of [46, 62]) cands.push([Math.cos(a) * r, Math.sin(a) * r, 1.2 + 0.8 * ((1 + Math.sin(a)) / 2) + (r > 50 ? 0.3 : 0)]);
+      }
       const own = lab.map.get(n.id);
       let best = null, bestS = Infinity;
       for (const [dx, dy, pref] of cands) {
@@ -358,7 +363,7 @@ export class WorldMapScene extends Scene {
         // 이름표를 가리지 않게 (자기 이름표는 특히)
         for (const b of lab.boxes) if (cx + TR > b.x && cx - TR < b.x + b.w && cy + TR > b.y && cy - TR < b.y + b.h) sc += b === own ? 6 : 3;
         if (own && !lab.boxes.includes(own) && cx + TR > own.x && cx - TR < own.x + own.w && cy + TR > own.y && cy - TR < own.y + own.h) sc += 6;
-        if (cy - TR < L.TB + 4 || cx - TR < 4 || cx + TR > L.W - 4 || cy + 26 > L.panelY + 24) sc += 6;
+        if (cy - TR < L.TB + 4 || cx - TR < 4 || cx + TR > L.W - 4 || cy + TR > L.panelY - 2) sc += 6;
         if (sc < bestS) { bestS = sc; best = { x: cx, y: cy + 42 }; }
       }
       cache.m.set(n.id, best);
@@ -820,23 +825,30 @@ export class WorldMapScene extends Scene {
     const glowC = page === 1 ? rgba(mix(s.color ?? '#b060ff', '#7a30ff', 0.5), 0.45) : n.id === 's13' ? 'rgba(160,60,255,0.5)' : 'rgba(180,20,40,0.35)';
     uiPanel(ctx, x, y, w, h, { glow: glowC });
     const Y = cmp ? [22, 50, 72, 97] : [26, 58, 84, 112];
-    const bw = Math.round(clamp(w * 0.19, 140, 190)), bh = cmp ? 60 : 64;
+    // 좁은 UI(UI 배율 1.3·1.5 의 16:9 화면 등, 패널 폭 < 860): 버튼·기록 칸을 줄이고 그만큼 수집 칸에 준다 (글자가 뭉개지지 않게)
+    const narrow = w < 860;
+    const bw = narrow ? 124 : Math.round(clamp(w * 0.19, 140, 190)), bh = cmp ? 60 : 64;
     const bx = x + w - bw - 16;
-    const lw = w * 0.36 - 24;
+    const lw = narrow ? w * 0.31 - 44 : w * 0.36 - 24;
     // 제목
     const chapTxt = n.arena ? 'ARENA' : `CHAPTER ${ROMAN[s.chapter] ?? s.chapter}`;
     text(ctx, chapTxt, x + 24, y + Y[0], { size: 12, weight: 800, family: FONT.num, color: page === 1 ? '#c8b0ff' : n.id === 's13' ? '#d8a0ff' : '#c8a060' });
     text(ctx, open ? s.name : '??? — 봉인된 땅', x + 24, y + Y[1], { size: cmp ? 23 : 26, weight: 800, family: FONT.title, color: open ? (page === 1 ? '#efe4ff' : '#f3d690') : '#8a7a70', maxWidth: lw });
-    text(ctx, open ? s.sub ?? '' : this.reqText(n), x + 24, y + Y[2], { size: 13, color: '#c8b8a0', maxWidth: lw });
+    const subSize = narrow ? 12 : 13;
+    if (!open && !n.arena) {
+      // 잠긴 노드: 적 레벨 줄이 비므로 해금 조건을 두 줄까지
+      this.wrapLines(ctx, this.reqText(n), lw, subSize).forEach((ln, i) => text(ctx, ln, x + 24, y + Y[2 + i], { size: subSize, color: '#c8b8a0', maxWidth: lw }));
+    } else text(ctx, s.sub ?? '', x + 24, y + Y[2], { size: subSize, color: '#c8b8a0', maxWidth: lw });
     const hero = currentHero(st);
     if (open && !n.arena) {
       const danger = (hero?.level ?? 1) < s.level - 2;
       text(ctx, `적 레벨 ${s.level}`, x + 24, y + Y[3], { size: 13, weight: 800, color: danger ? '#ff6a5a' : '#9d8f80' });
-      if (danger) text(ctx, '⚠ 위험 — 레벨을 더 올리자', x + 110, y + Y[3], { size: 12, weight: 700, color: '#ff8a6a', maxWidth: Math.max(60, lw - 86) });
+      if (danger) text(ctx, lw - 86 >= 150 ? '⚠ 위험 — 레벨을 더 올리자' : '⚠ 레벨을 더 올리자', x + 110, y + Y[3], { size: 12, weight: 700, color: '#ff8a6a', maxWidth: Math.max(60, lw - 86) });
     } else if (n.arena) text(ctx, '끝없이 몰려오는 적과 역대 보스에 도전한다', x + 24, y + Y[3], { size: 12, color: '#9d8f80', maxWidth: lw });
     // 기록 · 수집 (투기장은 없음)
-    const rx = x + w * 0.38, rw = Math.round(clamp(w * 0.17, 118, 160));
+    const rx = x + w * (narrow ? 0.31 : 0.38), rw = narrow ? 146 : Math.round(clamp(w * 0.17, 118, 160));
     const kx = rx + rw + 12, kw = bx - 14 - kx;
+    const rkx = rx + (narrow ? 22 : 26), rtx = rx + (narrow ? 48 : 62);   // 랭크 글자 중심 · 시간/점수 x
     const line = page === 1 ? 'rgba(200,170,255,0.25)' : 'rgba(232,200,114,0.25)';
     ctx.fillStyle = line; ctx.fillRect(rx - 16, y + 16, 1.5, h - 32);
     if (!n.arena) {
@@ -844,12 +856,12 @@ export class WorldMapScene extends Scene {
       text(ctx, '최고 기록', rx, y + Y[0] + 2, { size: 12, weight: 700, color: '#9d8f80' });
       if (rec) {
         const rc = RANK_COL[rec.rank] ?? '#fff';
-        ctx.save(); ctx.globalCompositeOperation = 'lighter'; glow(ctx, rx + 26, y + h * 0.58, 38, rc, 0.3); ctx.restore();
-        text(ctx, rec.rank ?? '-', rx + 26, y + h * 0.72, { size: cmp ? 38 : 44, weight: 900, family: FONT.logo, align: 'center', color: rc, ow: 5, maxWidth: 58 });
-        text(ctx, `시간  ${fmtTime(rec.time ?? 0)}`, rx + 62, y + h * 0.46, { size: 14, weight: 700, family: FONT.num, color: '#efe4cf', maxWidth: rw - 60 });
-        text(ctx, `점수  ${fmt(rec.score ?? 0)}`, rx + 62, y + h * 0.46 + 24, { size: 14, weight: 700, family: FONT.num, color: '#ffd84a', maxWidth: rw - 60 });
+        ctx.save(); ctx.globalCompositeOperation = 'lighter'; glow(ctx, rkx, y + h * 0.58, 38, rc, 0.3); ctx.restore();
+        text(ctx, rec.rank ?? '-', rkx, y + h * 0.72, { size: narrow ? 34 : cmp ? 38 : 44, weight: 900, family: FONT.logo, align: 'center', color: rc, ow: 5, maxWidth: narrow ? 46 : 58 });
+        text(ctx, `시간  ${fmtTime(rec.time ?? 0)}`, rtx, y + h * 0.46, { size: 14, weight: 700, family: FONT.num, color: '#efe4cf', maxWidth: rx + rw - rtx });
+        text(ctx, `점수  ${fmt(rec.score ?? 0)}`, rtx, y + h * 0.46 + 24, { size: 14, weight: 700, family: FONT.num, color: '#ffd84a', maxWidth: rx + rw - rtx });
       } else text(ctx, open ? '아직 클리어하지 않았다' : '—', rx, y + h * 0.5, { size: 13, color: '#8a7a70', maxWidth: rw });
-      this.collect(ctx, n, kx, kw, cmp ? [y + 32, y + 62, y + 92] : [y + 36, y + 70, y + 104]);
+      this.collect(ctx, n, kx, kw, cmp ? [y + 32, y + 62, y + 92] : [y + 36, y + 70, y + 104], narrow);
     }
     // 출발 버튼
     this.goRect = { x: bx, y: y + h / 2 - bh / 2, w: bw, h: bh };
@@ -862,10 +874,10 @@ export class WorldMapScene extends Scene {
     taps.add('go', this.goRect, { kind: 'primary', owner: this, src: 'worldmap' });
   }
   /** 수집 칸: 비전서 + (1부) 유물 / (2부) 별의 조각 · 세계의 심장 — 공허(s20)는 여섯 세계의 합계 */
-  collect(ctx, n, kx, kw, rows) {
+  collect(ctx, n, kx, kw, rows, narrow = false) {
     const P = this.state.progress, s = n.stage, page = this.page;
-    const LW = 74, vx = kx + LW, dim = '#9d8f80';
-    const label = (str, by) => text(ctx, str, kx, by, { size: 12, color: dim, maxWidth: LW - 6 });
+    const LW = narrow ? 62 : 74, vx = kx + LW, dim = '#9d8f80';
+    const label = (str, by) => text(ctx, str, kx, by, { size: narrow ? 11 : 12, color: dim, maxWidth: LW - 6 });
     const value = (str, by, color, x = vx + 16) => text(ctx, str, x, by, { size: 12, weight: 700, color, maxWidth: Math.max(30, kx + kw - x) });
     // 비전서
     const docs = s.docs || [];
@@ -896,7 +908,9 @@ export class WorldMapScene extends Scene {
       const has = P.shards?.includes(s.shard);
       label('별의 조각', rows[1]);
       ctx.globalAlpha = has ? 1 : 0.35; drawIcon(ctx, ITEMS[s.shard]?.icon ?? 'star_shard', vx + 8, rows[1] - 5, 22); ctx.globalAlpha = 1;
-      value(has ? ITEMS[s.shard]?.name ?? '' : '어딘가에 숨어 있다', rows[1], has ? '#ffe070' : '#8a7aa0');
+      // 이름표가 이미 '별의 조각' 이므로 아이템 이름의 '별의 조각: ' 머리는 뺀다 (별의 조각: 거울 → 거울)
+      const nm = String(ITEMS[s.shard]?.name ?? '').replace(/^별의 조각\s*[:：]\s*/, '');
+      value(has ? nm : '어딘가에 숨어 있다', rows[1], has ? '#ffe070' : '#8a7aa0');
     }
     if (s.heart) {
       const has = P.hearts?.includes(s.heart), num = ITEMS[s.heart]?.worldHeart ?? (HEARTS.indexOf(s.heart) + 1);
@@ -904,6 +918,16 @@ export class WorldMapScene extends Scene {
       ctx.globalAlpha = has ? 1 : 0.35; drawIcon(ctx, ITEMS[s.heart]?.icon ?? `wheart_${num}`, vx + 8, rows[2] - 5, 22); ctx.globalAlpha = 1;
       value(has ? '되찾았다' : '보스가 지니고 있다', rows[2], has ? s.color ?? '#ffffff' : '#8a7aa0');
     }
+  }
+
+  /** 두 줄까지 줄바꿈 (넘치면 둘째 줄에 몰아 maxWidth 로 줄인다). 글·폭·글꼴 세대가 같으면 캐시 — 매 프레임 재지 않는다 */
+  wrapLines(ctx, str, maxW, size) {
+    const key = `${str}|${Math.round(maxW)}|${size}|${fontEpoch}`;
+    if (this._wrap?.key === key) return this._wrap.lines;
+    let lines = wrap(ctx, str, maxW, size);
+    if (lines.length > 2) lines = [lines[0], lines.slice(1).join(' ')];
+    this._wrap = { key, lines };
+    return lines;
   }
 
   hints(ctx, L) {

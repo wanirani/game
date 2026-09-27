@@ -363,6 +363,7 @@ function director(D, o) {
   const ent = K.fx(w, {
     life: o.dur, z: 12, d: { i: 0 }, follow: bound,
     tick(e, ww, dt) {
+      D.info.lt = e.lt;
       while (e.d.i < steps.length && steps[e.d.i][0] <= e.lt) { const s = steps[e.d.i++]; try { s[1](ww, e); } catch (err) { fail(D, err); } }
       try { o.tick?.(e, ww, dt); } catch (err) { fail(D, err); }
       keepInRoom(ww, p);
@@ -587,6 +588,7 @@ function kaelDirector(p, w, v) {
     if (Math.abs(C.x - p.cx) > 20) p.facing = C.x > p.cx ? 1 : -1;
     stance(p, ww, 'launch', 0.7, 0.03, 0.12);
     const targets = foesIn(ww, viewOf(D, 40));
+    D.info.hpFin = Math.round(p.hp);
     strikeFinal(D, viewOf(D, 40), W[nL], { element: vr === 'inquisitor' ? 'fire' : 'holy', kb: [380, -640] });
     try { ULTFX.final(ww, C.x, C.y, { color: D.col, accent: D.acc, tier: 2, classId: D.T2c ?? v.classId, targets, flashColor: '#fff8e0' }); } catch (err) { fail(D, err); }
     sfx('awaken_boom'); sfx('holy', { pitch: 0.5 }); sfx('bell', { pitch: 0.7, vol: 0.7 });
@@ -596,7 +598,7 @@ function kaelDirector(p, w, v) {
     ww.fx.ring(C.x, C.y, { color: GOLD, r0: 40, r1: cam.vw * 0.7, life: 0.7, width: 18 });
     // 성전 기사: 체력 10% · 블러드 헌터: 흡혈 합계 (피의 흐름이 카엘에게 모인다)
     const heal = D.t2?.heal ?? 0;
-    if (heal > 0) { D.v.heal(heal); burst(D, 'holy', p.cx, p.cy, 18, { speed: 180, color: '#fff2b0' }); sfx('heal', { vol: 0.6 }); }
+    if (heal > 0) { const h0 = p.hp; D.v.heal(heal); D.info.healGot = Math.round(p.hp - h0); burst(D, 'holy', p.cx, p.cy, 18, { speed: 180, color: '#fff2b0' }); sfx('heal', { vol: 0.6 }); }
     if (D.ls > 0) {
       for (const f of targets) for (let k = room(D, 6); k > 0; k--) {
         const dx = p.cx - f.cx, dy = p.cy - f.cy, L = Math.hypot(dx, dy) || 1, s = rand(520, 760);
@@ -703,17 +705,21 @@ function kaelDirector(p, w, v) {
       }
       // 빛의 십자가 대폭발
       if (S.fin) {
+        // 번쩍 → 0.25초 버틴 뒤 가늘어지며 사라진다 (화면을 오래 덮지 않게)
         const C = S.fin.C, age = lt - S.fin.t0, V = viewOf(D, 80);
-        const g = ease.outExpo(clamp(age / 0.12, 0, 1)), fade = clamp((e.life - lt) / 0.55, 0, 1), pulse = 1 + 0.08 * Math.sin(age * 34);
-        ctx.globalCompositeOperation = 'lighter';
-        K.beamV(ctx, C.x, V.y, V.y + V.h, 70 * g * pulse, GOLD, 0.8 * fade);
-        K.beamV(ctx, C.x, V.y, V.y + V.h, 24 * g, '#ffffff', fade, '#ffffff');
-        K.beamH(ctx, V.x, V.x + V.w, C.y, 46 * g * pulse, GOLD, 0.8 * fade);
-        K.beamH(ctx, V.x, V.x + V.w, C.y, 16 * g, '#ffffff', fade, '#ffffff');
-        K.glow(ctx, C.x, C.y, 260 * (1 + age * 0.8), GOLD, 0.9 * fade);
-        K.flare(ctx, C.x, C.y, 300 * g, '#fff2b0', fade, Math.PI / 4 + age * 0.4);
-        K.runeCircle(ctx, C.x, C.y, 230 * g, GOLD, age * 1.2, 0.8 * fade, 1, 8);
-        if (D.acc) K.flare(ctx, C.x, C.y, 190 * g, D.acc, 0.7 * fade, -age * 0.6);
+        const g = ease.outExpo(clamp(age / 0.12, 0, 1)), decay = 1 - ease.inCubic(clamp((age - 0.22) / 0.7, 0, 1));
+        const fade = clamp((e.life - lt) / 0.4, 0, 1) * decay, pulse = 1 + 0.08 * Math.sin(age * 34), wk = g * (0.35 + 0.65 * decay) * pulse;
+        if (fade > 0.01) {
+          ctx.globalCompositeOperation = 'lighter';
+          K.beamV(ctx, C.x, V.y, V.y + V.h, 70 * wk, GOLD, 0.8 * fade);
+          K.beamV(ctx, C.x, V.y, V.y + V.h, 24 * wk, '#ffffff', fade, '#ffffff');
+          K.beamH(ctx, V.x, V.x + V.w, C.y, 46 * wk, GOLD, 0.8 * fade);
+          K.beamH(ctx, V.x, V.x + V.w, C.y, 16 * wk, '#ffffff', fade, '#ffffff');
+          K.glow(ctx, C.x, C.y, 240 * (1 + age * 0.6), GOLD, 0.85 * fade * Math.exp(-age * 2.2));
+          K.flare(ctx, C.x, C.y, 300 * g, '#fff2b0', fade, Math.PI / 4 + age * 0.4);
+          K.runeCircle(ctx, C.x, C.y, 230 * g * (1 + age * 0.3), GOLD, age * 1.2, 0.8 * fade, 1, 8);
+          if (D.acc) K.flare(ctx, C.x, C.y, 190 * g, D.acc, 0.7 * fade, -age * 0.6);
+        }
       }
       // 불붙은 채찍 끝 (시작)
       if (lt < 0.3) { const h = hand(), k = 1 - lt / 0.3; ctx.globalCompositeOperation = 'lighter'; K.glow(ctx, h.x, h.y - 20, 70 + 40 * Math.sin(lt * 40), LASH[0], k); }
@@ -802,7 +808,7 @@ function seraDirector(p, w, v) {
     // 성녀: 체력 20% + 빛이 세라에게 모인다
     const heal = D.t2?.heal ?? 0;
     if (heal > 0) {
-      D.v.heal(heal); sfx('heal', { vol: 0.7 });
+      const h0 = p.hp; D.v.heal(heal); D.info.healGot = Math.round(p.hp - h0); sfx('heal', { vol: 0.7 });
       for (let k = room(D, 26); k > 0; k--) { const a = rand(0, TAU), r = rand(120, 260); ww.fx.emit('holy', p.cx + Math.cos(a) * r, p.cy + Math.sin(a) * r, { speed: 0, vx: -Math.cos(a) * r * 2, vy: -Math.sin(a) * r * 2, grav: 0, life: 0.5, color: '#fff2b0' }); }
     }
     // 신탁의 무녀: 끝난 뒤 3초 적 0.5배속
@@ -1208,14 +1214,14 @@ function victorDirector(p, w, v) {
       const cyl = PREP.cyl;
       const ca = Math.min(1, lt / 0.2) * clamp(1 - (lt - T_HOL) / 0.25, 0, 1);
       if (cyl && ca > 0.01) {
-        const R = vh * 0.2, spin = lt < 0.3 ? (1 - ease.outCubic(lt / 0.3)) * 9 : 0;
+        const R = vh * 0.16, spin = lt < 0.3 ? (1 - ease.outCubic(lt / 0.3)) * 9 : 0;
         for (let c = 0; c < cols; c++) {
-          const cx = cols === 2 ? (c ? vw * 0.76 : vw * 0.24) : vw * 0.26, cy = vh * 0.52;
+          const cx = cols === 2 ? (c ? vw * 0.8 : vw * 0.2) : vw * 0.24, cy = vh * 0.36;
           // 쏜 약실이 맨 위에서 불이 켜진 뒤 한 칸(60°) 돌아가 다음 약실이 올라온다
           const shotsOf = S.lit.filter((L) => (cols === 2 ? L.k % 2 === c : true)), n = shotsOf.length;
           const snap = n ? ease.outBack(clamp((rt - shotsOf[n - 1].rt) / 0.12, 0, 1)) : 0;
           const r = n ? n - 1 + snap : 0, ang = -r * TAU / 6 + spin;
-          ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 0.5 * ca;
+          ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 0.36 * ca;
           ctx.save(); ctx.translate(cx, cy); ctx.rotate(ang); ctx.drawImage(cyl, -R, -R, R * 2, R * 2); ctx.restore();
           ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'lighter';
           for (let j = 0; j < n && j < 6; j++) {

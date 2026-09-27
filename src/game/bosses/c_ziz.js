@@ -184,12 +184,16 @@ export class Ziz extends BossC {
     if (this.ps.fold < 0.5) L.push(this.pWing[0], this.pWing[1]);
     return L;
   }
+  /**
+   * 접촉 피해는 몸통만. talon · crash 동안은 몸 접촉이 없다: 그 피해는 예고된 지대(휩쓸기 1.7 · 추락 2.0 + 충격파)가 맡는다.
+   * (검수: 발톱 접촉 판정(0.9)이 예고 없이 — 시작 자리로 1600px/s 로 날아가는 도중·추락 상승 중에 — 먼저 맞거나,
+   *  추락 순간 몸 접촉(0.9)이 먼저 맞아 무적 시간 때문에 추락 2.0 이 빠졌다.) cTalon 은 채색 렌더러·디버그용으로 계속 계산한다
+   */
   contactParts() {
     const L = this._cp;
     L.length = 0;
-    if (this.stunned || this.dying > 0) return L;
+    if (this.stunned || this.dying > 0 || this.state === 'talon' || this.state === 'crash') return L;
     L.push(this.cBody);
-    if (this.ps.talon > 0.5 || this.sw?.on) L.push(this.cTalon);
     return L;
   }
   hitEye(e, dmg) {

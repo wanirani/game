@@ -24,9 +24,10 @@
    "aspect_ratio": "3:4",
    "img_resolution": "2k",
    "prompt": "(heroes1rev q3b 템플릿) One single full-body THREE-QUARTER BACK view of the young woman in 图片1 … turned about 45 degrees away from the viewer toward the LEFT edge … sliver of her cheek and the edge of her black mask in lost profile on the left side …",
-   "src": "(pending)",
-   "picked": "(pending)",
-   "note": "리뷰: qback 의 ym135(오른쪽 인물)가 좌우 대칭 정면 뒷모습 → −45/−90/−135 가 같은 그림"
+   "src": "src/lia/lia_shadowmaster_q3b.webp",
+   "picked": "a",
+   "note": "리뷰: qback 의 ym135(오른쪽 인물)가 좌우 대칭 정면 뒷모습 → −45/−90/−135 가 같은 그림 → 결과: 한 장에 두 인물. 왼쪽 = 왼쪽으로 돌아선 3/4 뒤(가면 옆선·눈이 조금 보임, 측면 원화와 같은 징 박힌 태싯) → ym135 채택, 오른쪽 = 대칭 뒷모습(버림 -)",
+   "result_url_expired_after_24h": true
   },
   {
    "id": "lia_kunoichi_q3b",
@@ -40,9 +41,9 @@
    "aspect_ratio": "3:4",
    "img_resolution": "2k",
    "prompt": "(같은 템플릿, 카게로우 의상 + 'no ponytail')",
-   "src": "(pending)",
-   "picked": "(pending)",
-   "note": "리뷰: qback 오른쪽 인물이 대칭 뒷모습(왼쪽은 앞모습)"
+   "src": "src/lia/lia_kunoichi_q3b.webp",
+   "picked": "a",
+   "note": "리뷰: qback 오른쪽 인물이 대칭 뒷모습(왼쪽은 앞모습) → 결과: 한 인물, 왼쪽으로 돌아선 3/4 뒤(어깨 너머로 가면·눈), 포니테일 없음 → ym135 채택"
   },
   {
    "id": "bran_guardian_q3b",
@@ -56,9 +57,9 @@
    "aspect_ratio": "3:4",
    "img_resolution": "2k",
    "prompt": "(같은 템플릿, 수호성기사 판금 + 월계관, 'no cape, no halo')",
-   "src": "(pending)",
-   "picked": "(pending)",
-   "note": "리뷰: qback 두 인물 모두 대칭 뒷모습"
+   "src": "-",
+   "picked": "-",
+   "note": "리뷰: qback 두 인물 모두 대칭 뒷모습 → FAILED: 3/4 앞모습으로 걷는 그림(얼굴 정면)이 나옴 → 버림. 재시도하지 않음(브란은 모든 직업이 절차적 망토+등의 대검으로 뒷모습 몸통이 가려져 효과가 작다). 기존 ym135(대칭 뒷모습) 유지"
   },
   {
    "id": "lia_dancer_turn5_v2",
@@ -72,9 +73,9 @@
    "aspect_ratio": "21:9",
    "img_resolution": "2k",
    "prompt": "(생산 v1 프롬프트 + 'In EVERY view she wears the same plain black cloth face mask … exactly like in 图片1', '3/4 front turned clearly about 45 degrees', 레이아웃을 카게로우 5뷰로)",
-   "src": "(pending)",
-   "picked": "(pending)",
-   "note": "리뷰: 생산 turn5 는 앞·3/4 앞·옆에서 가면이 사라짐(측면 원화·게임 퍼펫은 가면) → 턴테이블 0°↔45° 에서 가면이 생겼다 사라짐"
+   "src": "src/lia/lia_dancer_turn5.webp (덮어씀; 옛 시트는 git 기록)",
+   "picked": "a",
+   "note": "리뷰: 생산 turn5 는 앞·3/4 앞·옆에서 가면이 사라짐(측면 원화·게임 퍼펫은 가면) → 턴테이블 0°↔45° 에서 가면이 생겼다 사라짐 → 결과: 다섯 뷰 모두 가면. 3/4 앞은 여전히 약하게 돈 편(카엘 헌터 y135 와 비슷), 5번째는 뒷모습 중복(-) → views5 그대로 [y90,y135,y180,ym90,-]"
   }
  ],
  "images_used": {
