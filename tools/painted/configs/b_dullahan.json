@@ -1052,5 +1052,261 @@
    ]
   }
  ],
- "kling": {}
+ "kling": {
+  "model": "kling-image-v3_0_omni (image_to_image, img_resolution 2k)",
+  "refs": {
+   "image_1": "assets/portraits/b_dullahan.webp (style, palette, anatomy)"
+  },
+  "prompts": "tools/painted/prompts/art-boss-1.mjs",
+  "manifest": "tools/kling/manifest_art-boss-1.json",
+  "images": {
+   "horse_a": {
+    "from": "dh_horse_1",
+    "shot": "horse",
+    "batch": 1,
+    "generationId": "AVpVrtqFFR7lhjJVev_uoH2BNNqiybs9ASsgGRVC8f2hJJU4sZ5OzLogPnMX5A-dTjRqtuHe"
+   },
+   "head_a": {
+    "from": "dh_head_2",
+    "shot": "head",
+    "batch": 1,
+    "generationId": "ARzQMrprESaTxUQUiNP8bqW--dbt6PyNm196Dhw0Vkr72HJGGSSaVcwUajRwuWjUFaQvptvF"
+   },
+   "legs_a": {
+    "from": "dh_legs_2",
+    "shot": "legs",
+    "batch": 1,
+    "generationId": "AZAkQYMy29g8qOa1cwVmhIlUDfcqs-tOnAhtT4j4wtUMizkeAkQVU7ccX-ynwr5H_-PVARxo"
+   },
+   "torso_a": {
+    "from": "dh_torso_1",
+    "shot": "torso",
+    "batch": 1,
+    "generationId": "AYGhLAg15nXpGthX0SXzo-6AJAni-OXiFJQh3_-fibPlahlkfz6rEIZMD8_zM5i0lzPFSTzo"
+   },
+   "leg_a": {
+    "from": "dh_leg_1",
+    "shot": "leg",
+    "batch": 1,
+    "generationId": "Af5QJ2nN-kHr8PIom-Hv5E4CQAiBPnfqD7P9AAMWNU2pq_ASrszi70QZQn0qqLzB718_HVKA"
+   },
+   "arms_a": {
+    "from": "dh_arms_1",
+    "shot": "arms",
+    "batch": 1,
+    "generationId": "Aalv_eWiDNcKD4ov4FRGtBXZy5JwLhLhblwFSvXldb86AVckyqn-4TIFYj9j-c2HYzVy-rzd"
+   },
+   "lance_a": {
+    "from": "dh_lance_1",
+    "shot": "lance",
+    "batch": 1,
+    "generationId": "AcbYW7lIPzj0RD8YUkjsDys-A5V9h5vD4_cMabbkfqfYU5xUrtrS-iUMZoZQWZVtD_JFDwOu"
+   },
+   "skull_a": {
+    "from": "dh_skull_1",
+    "shot": "skull",
+    "batch": 1,
+    "generationId": "AfLOLkifiBr1fs9xnBLnVowg98avdwGXylnIWIikjtClz-jUHlp5Ox_kPuUXUxZXg2qoFDrs"
+   },
+   "cape_a": {
+    "from": "dh_cape_1",
+    "shot": "cape",
+    "batch": 1,
+    "generationId": "ARyCE7LzbB3284s7_oyPNYUhfVsJxaUN8b5Ja7Cj-0siaudmHHoQwAxQfRDpjrtXOBRNRjqU"
+   },
+   "debris_a": {
+    "from": "dh_debris_1",
+    "shot": "debris",
+    "batch": 1,
+    "generationId": "AWjHvp-9WXIXOyIWUo2slLgFMQZy7c4yB1ygm2Uk4oaHDvTN83HEucwpKQWoNm7rBKjAgMJ0"
+   }
+  },
+  "calls": [
+   {
+    "shot": "horse",
+    "batch": 1,
+    "generationId": "AVpVrtqFFR7lhjJVev_uoH2BNNqiybs9ASsgGRVC8f2hJJU4sZ5OzLogPnMX5A-dTjRqtuHe",
+    "aspect": "16:9",
+    "imageCount": 2,
+    "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, strict side view (profile) facing RIGHT of the body of the pale spectral warhorse from 图片1: only the barrel and haunches with the saddle, NO head, NO neck, NO legs, NO tail. The neck is cut off at its base with a clean edge at the upper right, the legs stop at the tops of the thighs with clean edges. A black leather saddle with a dark red saddle cloth with gold trim, girth and breast strap. The horse skin is ghostly pale blue-white and half rotten: large patches where the skin has sloughed off revealing the ribs and dark sinew underneath, stitched wounds, faint blue soul fire glowing between the ribs. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+    "images": [
+     {
+      "name": "dh_horse_1",
+      "decision": "kept",
+      "kept": "tools/painted/raw/b_dullahan/horse_a.webp"
+     },
+     {
+      "name": "dh_horse_2",
+      "decision": "rejected: body turned toward the viewer and legs painted in (needs strict profile, no legs)",
+      "kept": null
+     }
+    ]
+   },
+   {
+    "shot": "head",
+    "batch": 1,
+    "generationId": "ARzQMrprESaTxUQUiNP8bqW--dbt6PyNm196Dhw0Vkr72HJGGSSaVcwUajRwuWjUFaQvptvF",
+    "aspect": "4:3",
+    "imageCount": 2,
+    "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, strict side view (profile) facing RIGHT of the head and long arched neck of the pale spectral warhorse from 图片1: the base of the neck at the lower left, the head at the upper right pointing right and slightly down, the horse skull half exposed where the skin is torn from the cheek and jaw, bared teeth, a hollow eye socket with a glowing blue eye, a leather bridle with gold studs, a wild flowing mane of white-blue ghost fire along the neck. Clean cut edge at the neck base. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+    "images": [
+     {
+      "name": "dh_head_1",
+      "decision": "rejected: neck covered by a blue caparison; take 2 has pale ghost skin, bare skull face and the ghost-fire mane",
+      "kept": null
+     },
+     {
+      "name": "dh_head_2",
+      "decision": "kept",
+      "kept": "tools/painted/raw/b_dullahan/head_a.webp"
+     }
+    ]
+   },
+   {
+    "shot": "legs",
+    "batch": 1,
+    "generationId": "AZAkQYMy29g8qOa1cwVmhIlUDfcqs-tOnAhtT4j4wtUMizkeAkQVU7ccX-ynwr5H_-PVARxo",
+    "aspect": "16:9",
+    "imageCount": 2,
+    "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, two separate legs of the pale spectral warhorse from 图片1 standing side by side with wide empty space between them, strict side view facing right, each leg perfectly straight and vertical from the top of the thigh down to the hoof: on the left a FORE leg, on the right a HIND leg with its backward-bent hock. Ghostly pale blue-white skin torn at the knees showing bone and sinew, iron-shod black hooves with faint blue flames licking around them. Clean cut edges at the top of each thigh. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+    "images": [
+     {
+      "name": "dh_legs_1",
+      "decision": "rejected: thighs cut unevenly; take 2 has straight legs with clean thigh cuts, flaming hooves and the tail on the hind leg",
+      "kept": null
+     },
+     {
+      "name": "dh_legs_2",
+      "decision": "kept",
+      "kept": "tools/painted/raw/b_dullahan/legs_a.webp"
+     }
+    ]
+   },
+   {
+    "shot": "torso",
+    "batch": 1,
+    "generationId": "AYGhLAg15nXpGthX0SXzo-6AJAni-OXiFJQh3_-fibPlahlkfz6rEIZMD8_zM5i0lzPFSTzo",
+    "aspect": "3:4",
+    "imageCount": 2,
+    "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, strict side view (profile) facing RIGHT of the armoured torso of the headless black knight from 图片1, with NO head, NO helmet, NO arms, NO legs, NO cape: the neck is an empty charred stump inside a jagged spiked iron gorget collar, blackened iron breastplate with gold filigree and dents, a huge spiked pauldron on the near shoulder, a skirt of overlapping fauld plates and tassets at the waist, clean edges where the arms and legs attach. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+    "images": [
+     {
+      "name": "dh_torso_1",
+      "decision": "kept",
+      "kept": "tools/painted/raw/b_dullahan/torso_a.webp"
+     },
+     {
+      "name": "dh_torso_2",
+      "decision": "rejected: front view (the rider is drawn in profile); take 1 is a strict profile with the spiked pauldron",
+      "kept": null
+     }
+    ]
+   },
+   {
+    "shot": "leg",
+    "batch": 1,
+    "generationId": "Af5QJ2nN-kHr8PIom-Hv5E4CQAiBPnfqD7P9AAMWNU2pq_ASrszi70QZQn0qqLzB718_HVKA",
+    "aspect": "3:4",
+    "imageCount": 2,
+    "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, a single armoured leg of the black knight from 图片1, strict side view facing right, perfectly straight and vertical: a plated cuisse thigh at the top, a spiked poleyn knee, a greave, and a pointed black iron sabaton foot pointing to the right with a spur at the heel. Clean cut edge at the top of the thigh, empty margin all around. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+    "images": [
+     {
+      "name": "dh_leg_1",
+      "decision": "kept",
+      "kept": "tools/painted/raw/b_dullahan/leg_a.webp"
+     },
+     {
+      "name": "dh_leg_2",
+      "decision": "rejected: take 1 is straighter (easier knee cut)",
+      "kept": null
+     }
+    ]
+   },
+   {
+    "shot": "arms",
+    "batch": 1,
+    "generationId": "Aalv_eWiDNcKD4ov4FRGtBXZy5JwLhLhblwFSvXldb86AVckyqn-4TIFYj9j-c2HYzVy-rzd",
+    "aspect": "16:9",
+    "imageCount": 2,
+    "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, two separate armoured arms of the black knight from 图片1 lying apart with wide empty space between them, strict side view: on the left an arm reaching forward to the right, straight and level, with a spiked couter at the elbow and the black gauntlet clenched into a fist; on the right an arm reaching up with the gauntlet hand open palm up, clawed fingers curled as if holding a ball. Each arm starts with a clean edge at the shoulder. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+    "images": [
+     {
+      "name": "dh_arms_1",
+      "decision": "kept",
+      "kept": "tools/painted/raw/b_dullahan/arms_a.webp"
+     },
+     {
+      "name": "dh_arms_2",
+      "decision": "rejected: take 1 poses (fist forward / open hand up) match the lance and skull arms",
+      "kept": null
+     }
+    ]
+   },
+   {
+    "shot": "lance",
+    "batch": 1,
+    "generationId": "AcbYW7lIPzj0RD8YUkjsDys-A5V9h5vD4_cMabbkfqfYU5xUrtrS-iUMZoZQWZVtD_JFDwOu",
+    "aspect": "21:9",
+    "imageCount": 1,
+    "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, a single long cruel war lance of the black knight from 图片1, perfectly straight and horizontal across the whole image, pointing RIGHT, with an empty margin at both ends: a long dark iron-banded wooden shaft, a flared conical black iron vamplate hand guard at the left third, and a long serrated spearhead with barbed side hooks at the right end, faint blue runes glowing on the blade. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+    "images": [
+     {
+      "name": "dh_lance_1",
+      "decision": "kept",
+      "kept": "tools/painted/raw/b_dullahan/lance_a.webp"
+     }
+    ]
+   },
+   {
+    "shot": "skull",
+    "batch": 1,
+    "generationId": "AfLOLkifiBr1fs9xnBLnVowg98avdwGXylnIWIikjtClz-jUHlp5Ox_kPuUXUxZXg2qoFDrs",
+    "aspect": "1:1",
+    "imageCount": 1,
+    "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, a single human skull, the severed head of the headless knight from 图片1, seen from the side facing right, cracked and charred black around the edges, some teeth missing, the eye sockets and cracks glowing bright orange from fire inside, no flames outside the skull, no body. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+    "images": [
+     {
+      "name": "dh_skull_1",
+      "decision": "kept",
+      "kept": "tools/painted/raw/b_dullahan/skull_a.webp"
+     }
+    ]
+   },
+   {
+    "shot": "cape",
+    "batch": 1,
+    "generationId": "ARyCE7LzbB3284s7_oyPNYUhfVsJxaUN8b5Ja7Cj-0siaudmHHoQwAxQfRDpjrtXOBRNRjqU",
+    "aspect": "3:4",
+    "imageCount": 1,
+    "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, a single tattered dark crimson knight's cape from 图片1 hanging straight down from a straight horizontal top edge, seen from the side, heavy wool with a black lining visible at the edges, long ragged torn strips and holes at the bottom, burnt edges. Whole cape inside the image. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+    "images": [
+     {
+      "name": "dh_cape_1",
+      "decision": "kept",
+      "kept": "tools/painted/raw/b_dullahan/cape_a.webp"
+     }
+    ]
+   },
+   {
+    "shot": "debris",
+    "batch": 1,
+    "generationId": "AWjHvp-9WXIXOyIWUo2slLgFMQZy7c4yB1ygm2Uk4oaHDvTN83HEucwpKQWoNm7rBKjAgMJ0",
+    "aspect": "16:9",
+    "imageCount": 1,
+    "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, 12 separate small pieces of the headless black knight and his spectral horse from 图片1 lying apart in a loose 4 by 3 grid with wide empty space between them, no piece touches another: three broken blackened armour plate shards, a snapped iron spike, a bent gold-trimmed rivet plate, a charred skull fragment with an eye socket, a jaw bone with teeth, a horse rib, a horseshoe with nails, two chunks of pale ghostly horse flesh with glowing blue veins. Each piece fully in frame. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+    "images": [
+     {
+      "name": "dh_debris_1",
+      "decision": "kept",
+      "kept": "tools/painted/raw/b_dullahan/debris_a.webp"
+     }
+    ]
+   }
+  ],
+  "totals": {
+   "calls": 10,
+   "images": 16,
+   "kept": 10
+  }
+ }
 }

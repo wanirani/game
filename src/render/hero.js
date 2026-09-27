@@ -235,6 +235,8 @@ function poseThrow(P, K, at) {
   const a = lerp(-2.5, -0.15, k), r = lerp(0.85, 1, k);
   if (whip) { P.a1 = a; P.r1 = r; P.a2 = lerp(0.4, 2.2, k); }
   else { P.a2 = a; P.r2 = r; P.a1 = lerp(HP - 0.3, HP + 0.3, k); }
+  // 채색 퍼펫 + 지팡이: 대기 자세의 지팡이 기울기 그대로면 손이 내려가며 지팡이 머리가 얼굴을 가린다(세라 성수 투척) → 앞으로 비스듬히
+  if (K.pup && K.W.type === 'staff') P.w1 = lerp(-0.95, -0.7, k);
 }
 function poseCast(P, K, at, t) {
   const k = ease.outCubic(clamp(at / 0.1, 0, 1));

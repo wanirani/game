@@ -99,6 +99,7 @@ const S = {
   pressIt: Object.create(null), late: new Map(), // 액션 → 누를 때 input.time · 미룬 뗌 (actOff)
   stick: { active: false, id: -1, ax: 0, ay: 0, fx: 0, fy: 0, sprint: false, relT: -1e9, ex: 0, ey: 0 },
   swapHold: null,                              // {t, it} 손을 뗀 뒤 ⇄ 를 잠깐 누르고 있는 중
+  swapGap: null, swapQ: 0,                     // ⇄ 를 뗀 직후 (다음 눌림까지 한 스텝) · 줄 선 ⇄ 탭 수
   radialFn: null,
   editor: null,
   raf: 0, lastDraw: -1e9, pending: true, drawSig: [], anim: false,
@@ -345,18 +346,29 @@ function releaseBtn(p, id, fire) {
   }
   for (const a of ACTS[id]) actOff(a);
 }
-/** ⇄: 손을 뗄 때 짧게(≥ 100ms 그리고 게임 3스텝) 누른다 — 한 스텝짜리 눌림이 프레임 사이에 사라지지 않게 */
+/** ⇄: 손을 뗄 때 짧게(≥ 100ms 그리고 게임 3스텝) 누른다 — 한 스텝짜리 눌림이 프레임 사이에 사라지지 않게.
+ *  누르고 있는 동안(또는 뗀 뒤 스텝이 아직 안 돈 동안) 또 탭하면 버리지 않고 최대 2번까지 줄 세운다 */
 function fireSwap() {
-  if (S.swapHold) return;
+  if (S.swapHold || S.swapGap) { S.swapQ = Math.min(2, S.swapQ + 1); startLoop(); return; }
   actOn('swap');
   S.swapHold = { t: now(), it: inputRef()?.time ?? 0 };
   startLoop();
 }
 function tickSwap() {
-  const h = S.swapHold;
-  if (!h) return;
-  const i = inputRef(), dt = now() - h.t;
-  if ((dt >= SWAP_HOLD_MS && ((i?.time ?? 0) - h.it >= (SWAP_HOLD_STEPS - 0.5) / 60 || dt > 600)) || dt > 1000) { S.swapHold = null; actOff('swap'); }
+  const h = S.swapHold, i = inputRef(), it = i?.time ?? 0;
+  if (h) {
+    const dt = now() - h.t;
+    if ((dt >= SWAP_HOLD_MS && (it - h.it >= (SWAP_HOLD_STEPS - 0.5) / 60 || dt > 600)) || dt > 1000) {
+      S.swapHold = null; actOff('swap');
+      S.swapGap = { it, t: now() }; // 다음 눌림 전에 뗀 상태를 한 스텝 이상 보여 준다 (그래야 새 눌림으로 잡힌다)
+    }
+    return;
+  }
+  const g = S.swapGap;
+  if (g && (it > g.it || now() - g.t > 300)) {
+    S.swapGap = null;
+    if (S.swapQ > 0) { S.swapQ--; fireSwap(); }
+  }
 }
 function buzz() {
   const st = settings();
@@ -427,7 +439,7 @@ function releaseAll() {
   s.sprint = false;
   for (const a in S.counts) S.counts[a] = 0;
   S.late.clear();
-  S.swapHold = null;
+  S.swapHold = null; S.swapGap = null; S.swapQ = 0;
   clearDirs();
   try { inputRef()?.touch?.clear?.(); } catch (e) { console.error('[touchpad]', e); }
   S.pending = true;
@@ -607,7 +619,7 @@ function tick(t) {
     }
   }
   const fading = !S.stick.active && now() - S.stick.relT < STICK_FADE * 1000 + 40;
-  const live = S.visible || S.editor || fading || S.swapHold || S.late.size;
+  const live = S.visible || S.editor || fading || S.swapHold || S.swapGap || S.late.size;
   if (live) {
     const changed = stateChanged(L, w);
     if ((changed || S.pending || S.anim || fading) && t - S.lastDraw >= DRAW_MS) {
@@ -620,57 +632,65 @@ function tick(t) {
 
 /** 다시 그릴 필요가 있나: 그리는 값들을 숫자 배열로 모아 지난번과 비교 (할당 없음) */
 const SIG_N = 40;
+const SIG = { i: 0, ch: false };
+/** 서명 칸 하나 비교·기록 (매 프레임 새 함수를 만들지 않게 모듈 함수) */
+function sput(x) {
+  const v = S.drawSig, i = SIG.i++;
+  if (v[i] !== x && !(Number.isNaN(v[i]) && Number.isNaN(x))) { v[i] = x; SIG.ch = true; }
+}
 function stateChanged(L, w) {
   const v = S.drawSig;
   if (v.length !== SIG_N) { v.length = SIG_N; v.fill(NaN); }
-  let i = 0, ch = false;
-  const put = (x) => { if (v[i] !== x && !(Number.isNaN(v[i]) && Number.isNaN(x))) { v[i] = x; ch = true; } i++; };
+  SIG.i = 0; SIG.ch = false;
   const st = settings(), p = w?.player, run = w?.run;
-  put(S.visible ? 1 : 0); put(S.editor ? 1 : 0); put(num(st.touchOpacity, 0.55));
+  sput(S.visible ? 1 : 0); sput(S.editor ? 1 : 0); sput(num(st.touchOpacity, 0.55));
   let mask = 0, bit = 1;
   for (const id of PAD_IDS) { if (isPressed(id)) mask |= bit; bit <<= 1; if (shownBtn(id)) mask |= bit; bit <<= 1; }
   for (const id of SYS_IDS) { if (isPressed(id)) mask |= bit; bit <<= 1; }
-  put(mask);
+  sput(mask);
   const s = S.stick;
-  put(s.active ? 1 : 0); put(Math.round(s.ax)); put(Math.round(s.ay)); put(Math.round(s.fx)); put(Math.round(s.fy)); put(s.sprint ? 1 : 0);
-  put(s.active ? 0 : Math.round(clamp((now() - s.relT) / (STICK_FADE * 1000), 0, 1) * 10));
+  sput(s.active ? 1 : 0); sput(Math.round(s.ax)); sput(Math.round(s.ay)); sput(Math.round(s.fx)); sput(Math.round(s.fy)); sput(s.sprint ? 1 : 0);
+  sput(s.active ? 0 : Math.round(clamp((now() - s.relT) / (STICK_FADE * 1000), 0, 1) * 10));
   // 스킬 2칸: id(해시), 재사용 대기(0.1초), MP 부족
   for (let k = 0; k < 2; k++) {
     const sid = p?.hero?.slots?.[(p.skillPage ?? 0) * 2 + k] ?? null;
-    put(sid ? hashStr(sid) : 0);
+    sput(sid ? hashStr(sid) : 0);
     const cd = sid ? num(p.skillCd?.[sid], 0) : 0;
-    put(cd > 0 ? Math.ceil(cd * 10) : 0);
+    sput(cd > 0 ? Math.ceil(cd * 10) : 0);
     const sk = sid ? SKILL_DB?.[sid] : null;
-    put(sk && num(p?.mp, 0) < num(sk.cost, 10) ? 1 : 0);
+    sput(sk && num(p?.mp, 0) < num(sk.cost, 10) ? 1 : 0);
   }
-  put(num(p?.skillPage, 0));
-  put(run?.sub ? hashStr(run.sub) : 0);
+  sput(num(p?.skillPage, 0));
+  sput(run?.sub ? hashStr(run.sub) : 0);
   const sw = run?.sub ? SUB_DB?.[run.sub] : null;
-  put(sw && num(run?.hearts, 0) < num(sw.cost, 1) ? 1 : 0);
-  put(Math.floor(num(run?.sp, 0)));
+  sput(sw && num(run?.hearts, 0) < num(sw.cost, 1) ? 1 : 0);
+  sput(Math.floor(num(run?.sp, 0)));
   const aw = w?.awakenState;
-  put(aw?.ready ? 1 : 0); put(Math.round(num(aw?.holdK, 0) * 50));
+  sput(aw?.ready ? 1 : 0); sput(Math.round(num(aw?.holdK, 0) * 50));
   const c = S.cmp, m = c?.mount;
-  put(m ? (m.riding ? 2 : 1) : 0); put(m && num(m.cd, 0) > 0 ? Math.ceil(num(m.cd, 0) * 10) : 0);
+  sput(m ? (m.riding ? 2 : 1) + (m.blocked ? 4 : 0) : 0); sput(m && num(m.cd, 0) > 0 ? Math.ceil(num(m.cd, 0) * 10) : 0);
+  sput(m && num(m.maxHp, 0) > 0 ? Math.round((num(m.hp, 0) / m.maxHp) * 40) : 0); // 탈것 HP 고리
   const gcd = guardCd(c);
-  put(gcd.n); put(Math.ceil(gcd.cd * 10));
-  put(S.swapHold ? 1 : 0);
-  put(S.hiddenKey.length);
-  put(S.editor ? S.editor.ver : 0);
-  put(L.W); put(L.H);
-  put(drawAssetsReady ? 1 : 0);
+  sput(gcd.n); sput(Math.ceil(gcd.cd * 10));
+  sput(S.swapHold ? 1 : 0);
+  sput(S.hiddenKey.length);
+  sput(S.editor ? S.editor.ver : 0);
+  sput(L.W); sput(L.H);
+  sput(drawAssetsReady ? 1 : 0);
   // 반짝임(필살 가득·각성 가능·질주)은 계속 움직인다
   const reduce = st.reduceMotion === true;
   S.anim = !reduce && S.visible && ((num(run?.sp, 0) >= 100 && shownBtn('ult')) || !!aw?.ready || num(aw?.holdK, 0) > 0 || s.sprint);
-  return ch;
+  return SIG.ch;
 }
 function hashStr(s) { let h = 7; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return h; }
+const GCD = { n: 0, cd: 0, max: 1, ready: false }; // 매 프레임 새 객체를 만들지 않는다 (읽고 바로 쓴다)
 function guardCd(c) {
-  const gs = c?.guards;
-  if (!gs || !gs.length) return { n: 0, cd: 0, max: 1, ready: false };
+  const gs = c?.guards, o = GCD;
+  if (!gs || !gs.length) { o.n = 0; o.cd = 0; o.max = 1; o.ready = false; return o; }
   let best = Infinity, max = 1;
   for (const gg of gs) { const cd = num(gg?.cd, 0); if (cd < best) { best = cd; max = num(gg?.cdMax, 1) || 1; } }
-  return { n: gs.length, cd: Math.max(0, best), max, ready: best <= 0 };
+  o.n = gs.length; o.cd = Math.max(0, best); o.max = max; o.ready = best <= 0;
+  return o;
 }
 function isPressed(id) {
   if (S.editor) return S.editor.sel === id;
@@ -1139,6 +1159,7 @@ function buildBar() {
   S.bar?.remove();
   const bar = document.createElement('div');
   bar.className = 'tp-bar';
+  bar.style.fontFamily = FONT.body; // touchpad.css 의 글자는 inherit
   const mk = (tag, cls, txt) => { const el = document.createElement(tag); el.className = cls; el.textContent = txt; bar.appendChild(el); return el; };
   mk('span', 'tp-title', '버튼 배치 편집');
   mk('span', 'tp-hint', '끌어서 옮기고, 모서리의 금색 점을 끌어 크기를 바꿉니다');

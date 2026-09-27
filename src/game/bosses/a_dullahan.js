@@ -5,6 +5,7 @@ import { ABoss, beginDraw, endDraw, C, rg, lg, glow, ink, rim, sheen, taper, eye
 import { explode } from '../projectiles.js';
 import { rand, clamp, lerp, TAU, angleTo, rgba, ease } from '../../core/math.js';
 import { audio } from '../../core/audio.js';
+import { paintedDebris } from '../../render/painted/registry.js';
 
 const STEEL = '#2a2c36', STEEL2 = '#5a5e70', GOLD = '#c8a048', GHOST = '#cfdcff', GHOST2 = '#7a8cc8', BFIRE = '#8ab8ff', OFIRE = '#ff8a2a';
 const _Q = new Float32Array(16);
@@ -113,6 +114,9 @@ export class Dullahan extends ABoss {
   afterimage() {
     const s = { x: this.cx, b: this.bottom, f: this.facing, gait: this.gait, rear: this.rear, lanceA: this.lanceA, lean: this.lean };
     this.fx.ghost((ctx, a) => {
+      // 채색 퍼핏이 그리는 중이면 잔상도 채색 발광 실루엣으로 (그리기 전용)
+      const pp = this._painted?.proxy;
+      if (pp && !pp.dead && pp.entry?.state === 'ready' && pp.entry.mod?.ghost?.(ctx, this, s, a, pp.entry.rig, pp.st)) return;
       const keep = [this.gait, this.rear, this.lanceA, this.lean];
       this.gait = s.gait; this.rear = s.rear; this.lanceA = s.lanceA; this.lean = s.lean;
       ctx.save(); ctx.globalAlpha = a * 0.5; ctx.translate(s.x, s.b); ctx.scale(s.f * this.S, this.S);
@@ -334,7 +338,7 @@ export class Dullahan extends ABoss {
   phaseApply(n) { if (n >= 2 && this.mounted) { this.applyDismount(); this.setState('idle'); this.invuln = false; } }
   deathStart() { audio.sfx('boss_roar', { pitch: 0.5 }); }
   deathTick(dt) { this.vx = 0; this.rear = this.mounted ? 0.5 + Math.sin(this.deathT * 20) * 0.05 : 0; this.lean = Math.sin(this.deathT * 25) * 0.06; }
-  debrisPiece(i) { return { size: 12, draw: i % 4 === 0 ? drawSkullBit : drawArmorShard }; }
+  debrisPiece(i) { return paintedDebris(this, i) ?? { size: 12, draw: i % 4 === 0 ? drawSkullBit : drawArmorShard }; }
   extraLights(L) {
     const n = this.neck(); L.add(n.x, n.y - 10, 80, BFIRE, 0.9);
     if (!this.skullOut) { const h = this.skullHand(); L.add(h.x, h.y, 90, OFIRE, 0.9); }
@@ -608,6 +612,9 @@ export class Dullahan extends ABoss {
     ctx.restore();
   }
   drawPhantomHorse(ctx, pr) {
+    // 채색 퍼핏 준비됐으면 유령마도 채색 말로 (그리기 전용)
+    const pp = this._painted?.proxy;
+    if (pp && !pp.dead && pp.entry?.state === 'ready' && pp.entry.mod?.phantom?.(ctx, this, pr, pp.entry.rig, pp.st)) return;
     const keep = [this.gait, this.vx, this.rear];
     this.gait = pr.t * 16; this.vx = pr.vx; this.rear = 0;
     ctx.save();
@@ -647,6 +654,9 @@ function drawSkullAt(ctx, x, y, t, k) {
   ctx.restore();
 }
 function drawFlameSkull(ctx, p) {
+  // 채색 퍼핏 준비됐으면 불타는 채색 해골로 (그리기 전용, p.owner = 보스)
+  const pp = p.owner?._painted?.proxy;
+  if (pp && !pp.dead && pp.entry?.state === 'ready' && pp.entry.mod?.skullShot?.(ctx, p.owner, p, pp.entry.rig, pp.st)) return;
   const a = Math.atan2(p.vy, p.vx);
   ctx.save(); ctx.rotate(a + PI / 2); ctx.globalCompositeOperation = 'lighter';
   glow(ctx, 0, 10, 40, OFIRE, 0.6);

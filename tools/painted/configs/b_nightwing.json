@@ -657,5 +657,222 @@
    "keepFrac": 0.7
   }
  ],
- "kling": {}
+ "kling": {
+  "model": "kling-image-v3_0_omni (image_to_image, img_resolution 2k)",
+  "refs": {
+   "image_1": "assets/portraits/b_nightwing.webp (style, palette, anatomy)"
+  },
+  "prompts": "tools/painted/prompts/art-boss-1.mjs",
+  "manifest": "tools/kling/manifest_art-boss-1.json",
+  "images": {
+   "head_a": {
+    "from": "nw_head_1",
+    "shot": "head",
+    "batch": 1,
+    "generationId": "ATnEUUEjjFCJmsoKUiyLnE7TGAt8-4Bje2n5Sjzf5SGTtpuj1Xn21xNXraLlq7aEDnOS9NCa"
+   },
+   "torso_a": {
+    "from": "nw2_torso_1",
+    "shot": "torso",
+    "batch": 2,
+    "generationId": null
+   },
+   "wing_a": {
+    "from": "nw_wing_1",
+    "shot": "wing",
+    "batch": 1,
+    "generationId": "AWKt68LfFRMdzQM62vsr83TpUS8nJcyhThrmkS432dRSmge9SDEtZILww03kiCUMrkNhVgST"
+   },
+   "wingf_a": {
+    "from": "nw2_wingf_2",
+    "shot": "wingf",
+    "batch": 2,
+    "generationId": null
+   },
+   "leg_a": {
+    "from": "nw_leg_2",
+    "shot": "leg",
+    "batch": 1,
+    "generationId": "AY9p9oRt13b9ImWWHkZ8MiDW9pXPoLAaT6dW5GGwrLgjyT9DkkJYMhWvGEvDbzY0KAV8qzLz"
+   },
+   "debris_a": {
+    "from": "nw2_debris_1",
+    "shot": "debris",
+    "batch": 2,
+    "generationId": null
+   }
+  },
+  "calls": [
+   {
+    "shot": "head",
+    "batch": 1,
+    "generationId": "ATnEUUEjjFCJmsoKUiyLnE7TGAt8-4Bje2n5Sjzf5SGTtpuj1Xn21xNXraLlq7aEDnOS9NCa",
+    "aspect": "1:1",
+    "imageCount": 2,
+    "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, only the head of the giant vampire bat lord from 图片1, seen from the front turned slightly to the right (three-quarter front view), the mouth gaping extremely wide open in a screech: the upper jaw with two long curved fangs, the separate lower jaw hanging far open below it at the hinge, dark red gums, rows of needle teeth, strings of saliva and blood between the jaws, a black throat. Two huge torn bat ears standing straight up with veined red inner membrane, a crumpled wrinkled leaf-shaped nose, deep-set glowing red eyes, grotesque wrinkled hairless grey skin around the snout, coarse black fur on the skull. Only the head: it ends at the top of the neck with a ragged fur edge, no body, no shoulders. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+    "images": [
+     {
+      "name": "nw_head_1",
+      "decision": "kept",
+      "kept": "tools/painted/raw/b_nightwing/head_a.webp"
+     },
+     {
+      "name": "nw_head_2",
+      "decision": "rejected: cast shadow on the background (matte), kept take 1",
+      "kept": null
+     }
+    ]
+   },
+   {
+    "shot": "torso",
+    "batch": 1,
+    "generationId": "AXS6Da6EUHEnAu7ZOv-zCrYMF6dOI-NqjUX1xlLuF_HlhyqGh90rseL1X-Lte2XYe0YolOUj",
+    "aspect": "3:4",
+    "imageCount": 2,
+    "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, only the torso of the vampire bat lord from 图片1 seen straight from the front, NO head, NO arms, NO wings, NO legs: a hunched emaciated but muscular grotesque chest and belly, ribs pressing through thin grey-brown hairless skin, pulsing dark veins, old claw scars and stitched wounds, a shaggy black fur mane around the neck stump at the top and on the shoulders, bony knobbed wing-root shoulder joints on both sides, a furry pelvis at the bottom. The neck stump at the top centre, clean edges where the wings and legs attach. The torso is symmetrical and upright. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+    "images": [
+     {
+      "name": "nw_torso_1",
+      "decision": "rejected: head and arms painted in (the prompt asked for a headless torso), white sticker outline",
+      "kept": null
+     },
+     {
+      "name": "nw_torso_2",
+      "decision": "rejected: paper-doll look with bone arms and a flat background card",
+      "kept": null
+     }
+    ]
+   },
+   {
+    "shot": "torso",
+    "batch": 2,
+    "generationId": null,
+    "aspect": "3:4",
+    "imageCount": 2,
+    "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, only the torso of the vampire bat lord from 图片1 seen straight from the front, NO head, NO arms, NO wings, NO legs: a hunched emaciated but muscular grotesque chest and belly, ribs pressing through thin grey-brown hairless skin, pulsing dark veins, old claw scars and stitched wounds, a shaggy black fur mane around the neck stump at the top and on the shoulders, bony knobbed wing-root shoulder joints on both sides, a furry pelvis at the bottom. The neck stump at the top centre, clean edges where the wings and legs attach. The torso is symmetrical and upright. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+    "images": [
+     {
+      "name": "nw2_torso_1",
+      "decision": "kept → tools/painted/raw/b_nightwing/torso_a.webp (colour-graded darker/greyer skin to match the head and wings)",
+      "kept": "tools/painted/raw/b_nightwing/torso_a.webp"
+     },
+     {
+      "name": "nw2_torso_2",
+      "decision": "rejected: head painted in again, board behind the torso",
+      "kept": null
+     }
+    ]
+   },
+   {
+    "shot": "wing",
+    "batch": 1,
+    "generationId": "AWKt68LfFRMdzQM62vsr83TpUS8nJcyhThrmkS432dRSmge9SDEtZILww03kiCUMrkNhVgST",
+    "aspect": "4:3",
+    "imageCount": 2,
+    "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, a single left bat wing of the vampire bat lord from 图片1, spread wide open and seen flat from the front: the shoulder joint at the lower RIGHT corner of the image, a thick sinewy forearm bone going up and to the left to the wrist, a big hooked thumb claw at the wrist, four very long bony fingers fanning out from the wrist to the upper left, left and lower left, a dark leathery membrane stretched between the fingers and down to the shoulder, translucent blood-red where the light passes through, many branching dark veins, several ragged tears and round holes, a scalloped torn trailing edge. The whole wing is inside the image with an empty margin. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+    "images": [
+     {
+      "name": "nw_wing_1",
+      "decision": "kept",
+      "kept": "tools/painted/raw/b_nightwing/wing_a.webp"
+     },
+     {
+      "name": "nw_wing_2",
+      "decision": "rejected: claw overlaps the root area, take 1 has a cleaner root",
+      "kept": null
+     }
+    ]
+   },
+   {
+    "shot": "wingf",
+    "batch": 1,
+    "generationId": "Ab1BY8fwyyd5cbUdMTLNBwkVz9GCcZZyQpXL-lGT6nTHWPi0OCqwkjZeEE9t7OFT-FEDocla",
+    "aspect": "3:4",
+    "imageCount": 1,
+    "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, a single left bat wing of the vampire bat lord from 图片1, FOLDED tightly shut like a closed umbrella and hanging down: the shoulder joint at the upper RIGHT, the wrist joint with a big hooked thumb claw at the top left, the long finger bones gathered together pointing straight down, the dark leathery blood-red membrane wrapped in deep folds between them, torn ragged tips at the bottom. The whole folded wing is inside the image with an empty margin. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+    "images": [
+     {
+      "name": "nw_wingf_1",
+      "decision": "rejected: umbrella (took the \"closed umbrella\" simile literally) — re-shot as nw2_wingf",
+      "kept": null
+     }
+    ]
+   },
+   {
+    "shot": "wingf",
+    "batch": 2,
+    "generationId": null,
+    "aspect": "3:4",
+    "imageCount": 2,
+    "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, a single left bat wing of the vampire bat lord from 图片1, FOLDED tightly shut like a closed umbrella and hanging down: the shoulder joint at the upper RIGHT, the wrist joint with a big hooked thumb claw at the top left, the long finger bones gathered together pointing straight down, the dark leathery blood-red membrane wrapped in deep folds between them, torn ragged tips at the bottom. The whole folded wing is inside the image with an empty margin. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+    "images": [
+     {
+      "name": "nw2_wingf_1",
+      "decision": "rejected: grey frame around the image (matte edge)",
+      "kept": null
+     },
+     {
+      "name": "nw2_wingf_2",
+      "decision": "kept",
+      "kept": "tools/painted/raw/b_nightwing/wingf_a.webp"
+     }
+    ]
+   },
+   {
+    "shot": "leg",
+    "batch": 1,
+    "generationId": "AY9p9oRt13b9ImWWHkZ8MiDW9pXPoLAaT6dW5GGwrLgjyT9DkkJYMhWvGEvDbzY0KAV8qzLz",
+    "aspect": "1:1",
+    "imageCount": 2,
+    "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, a single hind leg of the vampire bat lord from 图片1 seen from the side, hanging straight down: a furry muscular thigh at the top, a bony knee with shaggy black fur tufts, a thin sinewy shin, and a big grotesque clawed foot at the bottom with four long hooked black talons spread wide open like a grasping raptor foot. The leg is vertical, thigh top at the top of the image, talons at the bottom, empty margin all around. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+    "images": [
+     {
+      "name": "nw_leg_1",
+      "decision": "rejected: two legs in one image, kept take 2 (single leg, talons spread)",
+      "kept": null
+     },
+     {
+      "name": "nw_leg_2",
+      "decision": "kept",
+      "kept": "tools/painted/raw/b_nightwing/leg_a.webp"
+     }
+    ]
+   },
+   {
+    "shot": "debris",
+    "batch": 1,
+    "generationId": "Adbk6OoOBTcUzGchl7Ks5I74L2HCnoP3LogRnMfI2yDpCGiLCbpm6r4GymdX26ePSxNjCaGr",
+    "aspect": "16:9",
+    "imageCount": 1,
+    "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, 12 separate small pieces of the vampire bat lord from 图片1 lying apart in a loose 4 by 3 grid with wide empty space between them, no piece touches another: three torn scraps of blood-red bat wing membrane with ragged edges, a snapped wing finger bone, two clumps of coarse black fur, two long curved fangs, a torn-off pointed bat ear, a broken hooked black talon, a bloody chunk of flesh with a rib, a small clot of dark blood. Each piece fully in frame. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+    "images": [
+     {
+      "name": "nw_debris_1",
+      "decision": "rejected: mostly whole bats, few loose pieces — re-shot as nw2_debris",
+      "kept": null
+     }
+    ]
+   },
+   {
+    "shot": "debris",
+    "batch": 2,
+    "generationId": null,
+    "aspect": "16:9",
+    "imageCount": 1,
+    "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, 12 separate small pieces of the vampire bat lord from 图片1 lying apart in a loose 4 by 3 grid with wide empty space between them, no piece touches another: three torn scraps of blood-red bat wing membrane with ragged edges, a snapped wing finger bone, two clumps of coarse black fur, two long curved fangs, a torn-off pointed bat ear, a broken hooked black talon, a bloody chunk of flesh with a rib, a small clot of dark blood. Each piece fully in frame. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+    "images": [
+     {
+      "name": "nw2_debris_1",
+      "decision": "kept",
+      "kept": "tools/painted/raw/b_nightwing/debris_a.webp"
+     }
+    ]
+   }
+  ],
+  "totals": {
+   "calls": 9,
+   "images": 15,
+   "kept": 6
+  }
+ }
 }

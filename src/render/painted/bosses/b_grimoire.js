@@ -98,6 +98,8 @@ const F = { cx: 0, cy: 0, rot: 0, c: 1, s: 0, fx: 1 };
 function setFrame(cx, cy, rot, fx) { F.cx = cx; F.cy = cy; F.rot = rot; F.c = Math.cos(rot); F.s = Math.sin(rot); F.fx = fx; }
 function L(lx, ly, out) { const x = F.fx * lx; out[0] = F.cx + F.c * x - F.s * ly; out[1] = F.cy + F.s * x + F.c * ly; return out; }
 const _w = [0, 0], _w2 = [0, 0], _w3 = [0, 0];
+/** 타일(사슬·촉수) 가운데 이음매 피벗 — 부품 객체에 한 번만 만들어 둔다 (매 프레임 배열을 만들지 않게. 다시 구우면 부품 객체도 새로 생김) */
+const mid = (tile) => (tile._mid ??= [(tile.jl[0] + tile.jr[0]) / 2, tile.jl[1]]);
 /** 지역 배치로 부품 그리기: 지역 (lx,ly), 지역 회전 lr, 배율 (월드px/텍셀) sx, sy */
 function put(D, part, img, pivot, lx, ly, lr, sx, sy, a = 1) {
   L(lx, ly, _w);
@@ -391,7 +393,7 @@ function chains(ctx, D, rig, st, C, hx, hy, sx, sy, t) {
     const p0 = _cp[i], p1 = _cp[i + 1], tile = R[CH[i % 4]];
     const a = Math.atan2(p1[1] - p0[1], p1[0] - p0[0]), len = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
     const tl = tile.jr[0] - tile.jl[0], s = len * 1.12 / tl;
-    D.part(tile, tile.v.base, [(tile.jl[0] + tile.jr[0]) / 2, tile.jl[1]], (p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2, a, s, tk * (i % 2 ? 1 : -1) * 0.95, 1);
+    D.part(tile, tile.v.base, mid(tile), (p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2, a, s, tk * (i % 2 ? 1 : -1) * 0.95, 1);
   }
   const lk = R.lock, e = _cp[n];
   D.part(lk, lk.v.base, 'hang', e[0], e[1], F.rot + Math.sin(t * 2.3) * 0.12 * F.fx, F.fx * tk * 1.2, tk * 1.2, 1);
@@ -408,7 +410,7 @@ function chainStubs(ctx, D, rig, st, dt, hw, hh) {
       const x0 = p[i * 2], y0 = p[i * 2 + 1], x1 = p[i * 2 + 2], y1 = p[i * 2 + 3];
       const tile = R[CH[(i + j) % 4]], tl = tile.jr[0] - tile.jl[0];
       const a = Math.atan2(y1 - y0, x1 - x0), s = Math.hypot(x1 - x0, y1 - y0) * 1.15 / tl;
-      D.part(tile, tile.v.base, [(tile.jl[0] + tile.jr[0]) / 2, tile.jl[1]], (x0 + x1) / 2, (y0 + y1) / 2, a, s, k * (i % 2 ? 1 : -1), 1);
+      D.part(tile, tile.v.base, mid(tile), (x0 + x1) / 2, (y0 + y1) / 2, a, s, k * (i % 2 ? 1 : -1), 1);
     }
   }
 }
@@ -456,15 +458,14 @@ function drawTentacles(ctx, D, b, rig, st, dt, t, lvl, floor, dying, dT) {
     const Cn = T.ch.set(Pp, n), Fr = Cn.frames();
     const alpha = dying ? clamp(1 - (dT - 1.05) / 0.35, 0, 1) : 1;
     if (alpha <= 0.01) continue;
-    const V = (p) => pickVariant(p, lvl, false, null);
     for (let s = 0; s < n - 1; s++) {        // 뿌리(n-1) → 끝 쪽
       const fr = Fr[n - 1 - s], tile = R[TENT[Math.min(5, s)]], tl = tile.jr[0] - tile.jl[0];
       const sx = fr.len * 1.28 / tl, sy = sx * (1.05 - s * 0.05) * F.fx;
-      D.part(tile, V(tile), [(tile.jl[0] + tile.jr[0]) / 2, tile.jl[1]], fr.x, fr.y, fr.a, sx, sy, alpha);
+      D.part(tile, pickVariant(tile, lvl, false, null), mid(tile), fr.x, fr.y, fr.a, sx, sy, alpha);
     }
     const tip = R.tenttip, f0 = Fr[0], tl0 = tip.w - tip.jl[0] - 4;
     const ts = f0.len * 1.25 / tl0 * 1.15;
-    D.part(tip, V(tip), 'jl', Pp[1].x, Pp[1].y, f0.a, ts, ts * F.fx * 0.8, alpha);
+    D.part(tip, pickVariant(tip, lvl, false, null), 'jl', Pp[1].x, Pp[1].y, f0.a, ts, ts * F.fx * 0.8, alpha);
     // 끝에서 먹물 방울
     if (!dying && rr.next() < dt * (0.35 + lvl * 0.3) * st.q.ambient) st.P.emit('blood', Pp[0].x, Pp[0].y, 0, 0, { color: '#1e0826', hi: '#b070ff', hang: rr.range(0.1, 0.3), layer: 0 });
   }

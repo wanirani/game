@@ -6,6 +6,7 @@
 export const bosses = {
   b_nightwing: () => import('../bosses/b_nightwing.js'),
   b_banshee: () => import('../bosses/b_banshee.js'),
+  b_dullahan: () => import('../bosses/b_dullahan.js'),
 };
 export const enemies = [];
 export const companions = {};

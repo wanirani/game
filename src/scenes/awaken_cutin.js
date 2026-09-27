@@ -650,7 +650,7 @@ export class AwakenCutinScene extends Scene {
       } else if (img && this.fb) {
         // 초상 대체 (feel §6.6): 가장자리를 녹인 초상을 띠 높이 0.9·H 이상으로, 얼굴을 같은 자리(0.66·vw)에.
         // 뒤에는 같은 그림을 크게 키운 영웅 색 잔상 → 좁은 초상도 띠를 가득 채운 연출로 보인다
-        const fb = this.fb, dh = H * 1.32 * (1 + 0.03 * imgK), dw = dh * fb.w / fb.h;
+        const fb = this.fb, dh = H * 1.6 * (1 + 0.03 * imgK), dw = dh * fb.w / fb.h;
         const fx = this.face[0], fy = this.face[1];
         const left = vw * 0.66 - fx * dw + ix - vw / 2, top = -H * 0.04 - fy * dh;
         const al = ctx.globalAlpha;

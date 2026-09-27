@@ -991,7 +991,9 @@ function glowSprite(color) {
   GLOW.set(color, c);
   return c;
 }
-function glowAt(ctx, x, y, r, color, a = 0.6) {
+let GLOW_HI = true;   // 이번 그림이 높음 품질인가 (중간·낮음이면 번짐 스프라이트 생략: 수호신 빛은 lights() 가 이미 더한다 — R12)
+function glowAt(ctx, x, y, r, color, a = 0.6, force = false) {
+  if (!GLOW_HI && !force) return;
   const s = glowSprite(color);
   if (!s) return;
   const o = ctx.globalCompositeOperation, ga = ctx.globalAlpha;
@@ -1013,7 +1015,8 @@ export function drawPlaceholder(ctx, g, world) {
   if (g.anim === 'hurt') ctx.translate(Math.sin(t * 70) * 1.5, 0);
   const atk = g.anim === 'attack' || g.anim === 'assist' || g.anim === 'pounce' || g.anim === 'blink';
   const cast = g.anim === 'skill' || g.anim === 'howl' || g.anim === 'guard';
-  glowAt(ctx, 0, -h * 0.5, Math.max(w, h) * (cast ? 1.6 : 1.1), d.color, cast ? 0.8 : 0.45);
+  GLOW_HI = qOf(world) >= 0.95;
+  glowAt(ctx, 0, -h * 0.5, Math.max(w, h) * (cast ? 1.4 : 0.85), d.color, cast ? 0.8 : 0.4, cast);   // 스킬 자세의 번짐은 품질과 상관없이 (짧다)
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   const id = g.id;
   if (id === 'gd_spiritwolf') {

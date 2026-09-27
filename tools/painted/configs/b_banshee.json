@@ -532,5 +532,188 @@
    ]
   }
  ],
- "kling": {}
+ "kling": {
+  "model": "kling-image-v3_0_omni (image_to_image, img_resolution 2k)",
+  "refs": {
+   "image_1": "assets/portraits/b_banshee.webp (style, palette, anatomy)"
+  },
+  "prompts": "tools/painted/prompts/art-boss-1.mjs",
+  "manifest": "tools/kling/manifest_art-boss-1.json",
+  "images": {
+   "face_a": {
+    "from": "bs_face_2",
+    "shot": "face",
+    "batch": 1,
+    "generationId": "AeF32-yyhB_KTdmPqB5nuvH7WxTur-iSY3KyawsICE4uHGa3BbSmrbVh2eK_mrwYIrFhixpF"
+   },
+   "skull_a": {
+    "from": "bs_skull_1",
+    "shot": "skull",
+    "batch": 1,
+    "generationId": "AbTwzLgmU8GoG_9NXXBKpftPMUVmXk_eqYPsu6iDXUf76AuFzVxST5YRxhmrAtCq5iI6-Ip1"
+   },
+   "body_a": {
+    "from": "bs_body_2",
+    "shot": "body",
+    "batch": 1,
+    "generationId": "AcnGCKAwSMaNyIxhivL26RuTHhWvsQU0KhQwm3owG4XnZA_VDF2ZXPStmRme2aGIKb2NUYoE"
+   },
+   "arm_a": {
+    "from": "bs_arm_2",
+    "shot": "arm",
+    "batch": 1,
+    "generationId": "AU5fLaYbeksFs0Vu1jEk2vljjlJUfNnW3abZrNevP8nRb8KrK2Z1h6MPVMHPKl1D7CJplZdC"
+   },
+   "veil_a": {
+    "from": "bs_veil_1",
+    "shot": "veil",
+    "batch": 1,
+    "generationId": "Aafc5i-ptTpFfKXyn_W6E05h_zM5JD3qVOFF6rYZwjrAtE7vTrqOBSe3xDopD8F0iEwemWG-"
+   },
+   "chain_a": {
+    "from": "bs_chain_1",
+    "shot": "chain",
+    "batch": 1,
+    "generationId": "Act4kvlug9dOB6VUDJZIKU9gPzG5y4kP0g_NA7ADCQglK3YbffNR6rLvVfDL4TInZekItOAf"
+   },
+   "debris_a": {
+    "from": "bs_debris_1",
+    "shot": "debris",
+    "batch": 1,
+    "generationId": "AVP7Q9BTSToE6yESHsYZifP3IAH1Z09GEnuBIFtK2q38sV8tljQscnPGai4_47YFLDAA4pHi"
+   }
+  },
+  "calls": [
+   {
+    "shot": "face",
+    "batch": 1,
+    "generationId": "AeF32-yyhB_KTdmPqB5nuvH7WxTur-iSY3KyawsICE4uHGa3BbSmrbVh2eK_mrwYIrFhixpF",
+    "aspect": "1:1",
+    "imageCount": 2,
+    "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, only the hooded head of the banshee queen from 图片1 seen from the front, but her face is NOT a skull: a gaunt emaciated ghostly woman's face with grey-white skin stretched tight over the bones, hollow dark eye sockets with small glowing teal pupils, black tears running down the cheeks, the mouth unnaturally wide open in a wailing scream with the lower jaw dislocated and hanging far down, long cracked teeth, a black throat. A tattered white hood and veil frames the face, thin pale hair strands. Only the head and hood, it ends at the neck, no shoulders. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+    "images": [
+     {
+      "name": "bs_face_1",
+      "decision": "rejected: hard cast shadow on the background and stray yellow hair; take 2 has the long dislocated scream framed by the hood",
+      "kept": null
+     },
+     {
+      "name": "bs_face_2",
+      "decision": "kept",
+      "kept": "tools/painted/raw/b_banshee/face_a.webp"
+     }
+    ]
+   },
+   {
+    "shot": "skull",
+    "batch": 1,
+    "generationId": "AbTwzLgmU8GoG_9NXXBKpftPMUVmXk_eqYPsu6iDXUf76AuFzVxST5YRxhmrAtCq5iI6-Ip1",
+    "aspect": "1:1",
+    "imageCount": 2,
+    "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, only the hooded head of the banshee queen from 图片1 seen from the front, exactly like the portrait: the face is a bare grinning skull with glowing teal eyes in the sockets, but the lower jaw of the skull hangs wide open in a scream showing the black throat and long cracked teeth, cracks across the cranium, a tattered white hood and veil framing the skull. Only the head and hood, it ends at the neck, no shoulders. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+    "images": [
+     {
+      "name": "bs_skull_1",
+      "decision": "kept",
+      "kept": "tools/painted/raw/b_banshee/skull_a.webp"
+     },
+     {
+      "name": "bs_skull_2",
+      "decision": "rejected: hood drapes out wide at the bottom (would not sit on the gown); take 1 is compact with a cracked cranium",
+      "kept": null
+     }
+    ]
+   },
+   {
+    "shot": "body",
+    "batch": 1,
+    "generationId": "AcnGCKAwSMaNyIxhivL26RuTHhWvsQU0KhQwm3owG4XnZA_VDF2ZXPStmRme2aGIKb2NUYoE",
+    "aspect": "9:16",
+    "imageCount": 2,
+    "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, the body of the banshee queen from 图片1 seen from the front WITHOUT head and WITHOUT arms: a slender ghostly grey-white torso in a tattered translucent white burial gown, a heavy dark iron chain wrapped around the waist and another across the chest, an iron chain necklace with a pendant, the gown flows down and widens into long ragged torn strips that dissolve into wisps of teal ectoplasm mist at the bottom, no feet visible. The shoulders are at the top with clean edges where the arms and neck attach. Symmetrical, upright, whole figure inside the image. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+    "images": [
+     {
+      "name": "bs_body_1",
+      "decision": "rejected: sticker look (white border, line art); take 2 is painted with the chains crossing the gown",
+      "kept": null
+     },
+     {
+      "name": "bs_body_2",
+      "decision": "kept",
+      "kept": "tools/painted/raw/b_banshee/body_a.webp"
+     }
+    ]
+   },
+   {
+    "shot": "arm",
+    "batch": 1,
+    "generationId": "AU5fLaYbeksFs0Vu1jEk2vljjlJUfNnW3abZrNevP8nRb8KrK2Z1h6MPVMHPKl1D7CJplZdC",
+    "aspect": "4:3",
+    "imageCount": 2,
+    "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, a single arm of the banshee queen from 图片1 stretched out straight horizontally to the right: the shoulder at the left edge, a thin grey-white upper arm, the forearm with a long torn translucent bell-shaped sleeve hanging down below it, a rusted iron manacle with a broken chain link on the wrist, and a skeletal hand with very long clawed bony fingers spread open, palm down, at the right. The arm is straight and level, empty margin all around. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+    "images": [
+     {
+      "name": "bs_arm_1",
+      "decision": "rejected: take 2 has the manacle + chain and bony claws",
+      "kept": null
+     },
+     {
+      "name": "bs_arm_2",
+      "decision": "kept",
+      "kept": "tools/painted/raw/b_banshee/arm_a.webp"
+     }
+    ]
+   },
+   {
+    "shot": "veil",
+    "batch": 1,
+    "generationId": "Aafc5i-ptTpFfKXyn_W6E05h_zM5JD3qVOFF6rYZwjrAtE7vTrqOBSe3xDopD8F0iEwemWG-",
+    "aspect": "3:4",
+    "imageCount": 1,
+    "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, only the long flowing back veil and loose hair of the banshee queen from 图片1 seen from the front, with nothing in front of it (no face, no body): a tall tattered translucent white veil that starts narrow at the top where it covers the back of the head and widens downwards like a cloak, long pale grey-white hair strands spilling over it, torn holes and ragged strips at the bottom, faint teal glow. Whole veil inside the image. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+    "images": [
+     {
+      "name": "bs_veil_1",
+      "decision": "kept",
+      "kept": "tools/painted/raw/b_banshee/veil_a.webp"
+     }
+    ]
+   },
+   {
+    "shot": "chain",
+    "batch": 1,
+    "generationId": "Act4kvlug9dOB6VUDJZIKU9gPzG5y4kP0g_NA7ADCQglK3YbffNR6rLvVfDL4TInZekItOAf",
+    "aspect": "21:9",
+    "imageCount": 1,
+    "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, a single straight horizontal chain of 8 heavy old iron links joined end to end, strict side view, perfectly straight and level, running left to right across the whole image with an empty margin at both ends, alternating link orientation (one link seen flat as an oval ring, the next seen edge-on as a thick bar), rusted dark iron with scratches and faint teal ghost glow in the grooves, like the chains of 图片1. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+    "images": [
+     {
+      "name": "bs_chain_1",
+      "decision": "kept",
+      "kept": "tools/painted/raw/b_banshee/chain_a.webp"
+     }
+    ]
+   },
+   {
+    "shot": "debris",
+    "batch": 1,
+    "generationId": "AVP7Q9BTSToE6yESHsYZifP3IAH1Z09GEnuBIFtK2q38sV8tljQscnPGai4_47YFLDAA4pHi",
+    "aspect": "16:9",
+    "imageCount": 1,
+    "prompt": "Paint in exactly the same painterly dark-fantasy oil-painting style as 图片1: soft visible brush strokes, rich dark colours, dramatic lighting, highly detailed grotesque horror, no black outlines, not cartoon, not cel-shaded, not 3D render. Subject: a game asset for a 2D cut-out puppet, 12 separate small pieces of the banshee queen from 图片1 lying apart in a loose 4 by 3 grid with wide empty space between them, no piece touches another: three torn scraps of white translucent veil cloth, two broken rusted chain links, a broken iron manacle, a cracked piece of skull, two long cracked teeth, a finger bone with a long claw, two blobs of glowing teal ectoplasm. Each piece fully in frame. Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels, no numbers.",
+    "images": [
+     {
+      "name": "bs_debris_1",
+      "decision": "kept",
+      "kept": "tools/painted/raw/b_banshee/debris_a.webp"
+     }
+    ]
+   }
+  ],
+  "totals": {
+   "calls": 7,
+   "images": 11,
+   "kept": 7
+  }
+ }
 }

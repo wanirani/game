@@ -8,7 +8,7 @@
 //   boss { cx, bottom, facing, t, st, state, pose{la,le,ra,re,lean,cast}, vanish, phase, hp/stats.maxHp, flashT, dying, frozenT, _shat,
 //          clones[], beamLine, beamAim, windK, A{floor,x0,x1,top} }   분신 { queen, pose, facing, t, bobPh, cx, bottom }
 // 판정은 바꾸지 않는다 (docs/art/BOSS_PIPELINE.md §8.8): 논리 판정 = 치마 윗부분 + 몸통, 머리·왕관은 벡터 때처럼 판정 위로 솟는다.
-import { Drawer, Strand, Particles, DamageState, Shards, halo, puff, rr, hash1, loadRig, pickVariant, quality, ledgesOver, makeCanvas } from '../kit.js';
+import { Drawer, Strand, Particles, DamageState, Shards, halo, puff, rr, hash1, loadRig, pickVariant, quality, QUALITY, ledgesOver, makeCanvas } from '../kit.js';
 
 const DIR = 'painted/bosses/b_frostqueen';
 const ICE = '#9fe8ff', ICE_L = '#e6fbff', GEM = '#5fd0ff', MIST = '#dff4ff';
@@ -16,6 +16,9 @@ const PI = Math.PI, TAU = PI * 2;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const lerp = (a, b, t) => a + (b - a) * t;
 const approach = (v, t, s) => (v < t ? Math.min(v + s, t) : Math.max(v - s, t));
+/** 실제 품질 등급 (설정 'auto' 면 품질 조절기가 정한 game.quality) → 플래그. 등급이 없으면 kit.quality 로 */
+const tierOf = (game) => { const t = game?.quality ?? game?.tier ?? game?.settings?.quality; return QUALITY[t] ? t : quality(game).name; };
+const qualityOf = (game) => QUALITY[tierOf(game)];
 
 /** 거울 분신 틴트: 은빛 유리 (채도 ↓, 밝기 ↑, 연보라 기운) */
 const MIRROR = [
@@ -55,7 +58,7 @@ export default {
     return rig;
   },
   init(ent, rig) {
-    const q = quality(ent.world?.game ?? ent.queen?.world?.game);
+    const q = qualityOf(ent.world?.game ?? ent.queen?.world?.game);
     const clone = !!ent.queen;
     return {
       D: new Drawer(), P: new Particles(clone ? 60 : q.particles), shards: new Shards(clone ? 10 : 64), q, clone, clp: new Map(),
@@ -134,8 +137,7 @@ function localPt(p, pv, q, lx, ly, lrot, sc, out) {
 function drawBoss(ctx, b, world, rig, st) {
   const D = st.D, R = rig.parts;
   if (st.rig !== rig) { st.rig = rig; st.gCape = null; }
-  const qn = world.game?.settings?.quality ?? 'high';
-  if (st.q.name !== qn) st.q = quality(world.game);
+  if (st.q.name !== tierOf(world.game)) st.q = qualityOf(world.game);
   const q = st.q, P = st.P;
   const now = world.time ?? b.t;
   const dt = st.lt == null ? 1 / 60 : clamp(now - st.lt, 0, 0.05); st.lt = now;
@@ -467,8 +469,7 @@ function drawGhosts(ctx, D, b, rig, st, dt) {
 
 // ───────────────────────── 거울 분신 ─────────────────────────
 function drawClone(ctx, c, world, rig, st) {
-  const qn = world.game?.settings?.quality ?? 'high';
-  if (st.q.name !== qn) st.q = quality(world.game);
+  if (st.q.name !== tierOf(world.game)) st.q = qualityOf(world.game);
   const now = world.time ?? c.t;
   const dt = st.lt == null ? 1 / 60 : clamp(now - st.lt, 0, 0.05); st.lt = now;
   st.P.update(dt, c.queen?.A?.floor ?? 1e9);

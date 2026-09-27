@@ -8,7 +8,7 @@
 //   boss { cx, bottom, facing, t, st, state, form, scale(S), arm{a,s}, hasScythe, vanish, burn, dim, souls[], blinkTo, dashFrom/To,
 //          phase, hp/stats.maxHp, flashT, dying, _boom, jawOpen(), A{floor,x0,x1} }
 // 판정은 바꾸지 않는다: hitParts = 몸통 기둥(52·S × 118·S). 두건/뿔 해골·날개·낫은 벡터 때처럼 판정 밖으로 나온다 (그림만).
-import { Drawer, Strand, Particles, Shards, halo, puff, rr, hash1, loadRig, pickVariant, quality, ik2, makeCanvas } from '../kit.js';
+import { Drawer, Strand, Particles, Shards, halo, puff, rr, hash1, loadRig, pickVariant, quality, QUALITY, ik2, makeCanvas } from '../kit.js';
 
 const DIR = 'painted/bosses/b_death';
 const SOUL = '#7dffb0', SOUL_L = '#d8ffe8', SOUL_D = '#1f8a5a';
@@ -16,6 +16,9 @@ const PI = Math.PI, TAU = PI * 2;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const lerp = (a, b, t) => a + (b - a) * t;
 const approach = (v, t, s) => (v < t ? Math.min(v + s, t) : Math.max(v - s, t));
+/** 실제 품질 등급 (설정 'auto' 면 품질 조절기가 정한 game.quality) → 플래그. 등급이 없으면 kit.quality 로 */
+const tierOf = (game) => { const t = game?.quality ?? game?.tier ?? game?.settings?.quality; return QUALITY[t] ? t : quality(game).name; };
+const qualityOf = (game) => QUALITY[tierOf(game)];
 
 const DEF = {
   glow: SOUL,
@@ -48,7 +51,7 @@ export default {
     return rig;
   },
   init(b, rig) {
-    const q = quality(b.world?.game);
+    const q = qualityOf(b.world?.game);
     return {
       D: new Drawer(), P: new Particles(q.particles), shards: new Shards(56), q, lt: null, pf: 0, jolt: 0, lvl: -1, lvlSeen: -1,
       cape: new Strand(8, 16, { g: 800, damp: 0.93 }), rags: [new Strand(7, 12, { g: 700, damp: 0.92 }), new Strand(7, 13, { g: 700, damp: 0.92 })],
@@ -115,8 +118,8 @@ function localPt(p, pv, q, lx, ly, lrot, sc, out, sxm = 1) {
 
 // ───────────────────────── 메인 ─────────────────────────
 function drawBoss(ctx, b, world, rig, st) {
-  const D = st.D, q0q = world.game?.settings?.quality ?? 'high';
-  if (st.q.name !== q0q) st.q = quality(world.game);
+  const D = st.D;
+  if (st.q.name !== tierOf(world.game)) st.q = qualityOf(world.game);
   if (st.rig !== rig) { st.rig = rig; st.gCape = null; }
   const q = st.q, P = st.P;
   const now = world.time ?? b.t;
