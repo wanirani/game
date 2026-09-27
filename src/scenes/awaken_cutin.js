@@ -20,6 +20,7 @@ import { AWAKEN, AWAKEN_RULES, awakenTitle } from '../data/awaken.js';
 import { CHARACTERS } from '../data/characters.js';
 import { CLASSES } from '../data/classes.js';
 import { drawHero } from '../render/hero.js';
+import { hudSafe } from '../render/hud_layout.js';
 
 const DEG = Math.PI / 180;
 const ANG = -7 * DEG;                      // 띠 기울기 (오른쪽이 올라간다)
@@ -107,6 +108,12 @@ function sprites() {
 
 // ───────────────────────── 굽기 ─────────────────────────
 function bandSize(vw, vh) { return { H: Math.round(vh * 0.4), L: Math.ceil(vw / COS + 200) }; }
+/** 글자 칸 왼쪽 끝 (논리 px): 0.05·vw, 안전 영역 '전체 화면' 모드면 노치 안쪽으로 (feel §6.3 글자 칸 [0.05·vw, 0.52·vw]) */
+function textLeft(vw) {
+  let sl = 0;
+  try { sl = Number(hudSafe(game())?.l) || 0; } catch { sl = 0; }
+  return Math.round(Math.max(vw * 0.05, sl + 16));
+}
 
 /** 띠 바탕: 검정 → 영웅 어두운 색 그라데이션 + 망점 + 위아래 그늘 (띠 좌표, 가운데 기준) */
 function bakeBand(a, vw, vh, S) {
@@ -270,7 +277,7 @@ function featherPortrait(img) {
 
 /** 한 영웅의 글자 굽기 묶음 (띠 폭에 맞춘 크기) */
 function bakeText(a, vw, S, tier, charId, classId) {
-  const zoneW = vw * 0.47;
+  const zoneW = vw * 0.52 - textLeft(vw);
   const n = a.lines.length;
   const probe = pooled('probe', 8, 8);
   if (!probe) return null;
@@ -291,7 +298,7 @@ function bakeText(a, vw, S, tier, charId, classId) {
 
 // 준비 상태 (prepareCutin → 장면 enter 가 이어받는다)
 const PREP = { key: '', band: null, text: null };
-function prepKey(charId, tier, classId, vw, S) { return `${charId}|${tier}|${classId}|${vw}|${S}|${faceReady('BN Brush') ? 1 : 0}`; }
+function prepKey(charId, tier, classId, vw, S) { return `${charId}|${tier}|${classId}|${vw}|${textLeft(vw)}|${S}|${faceReady('BN Brush') ? 1 : 0}`; }
 function ensureBaked(charId, tier, classId, vw, vh, S) {
   const a = AWAKEN[charId];
   if (!a) return null;
@@ -399,7 +406,7 @@ export class AwakenCutinScene extends Scene {
     const tx = this.text;
     if (!tx) { this.lay = null; return; }
     const vw = this.vw, n = tx.lines.length;
-    const x0 = vw * 0.05 - vw / 2;
+    const x0 = textLeft(vw) - vw / 2;
     const P = tx.P, lead = tx.leadSize, H = bandSize(vw, this.vh).H;
     // 줄 묶음을 이름표 아래 ~ 띠 아래 가장자리 사이 가운데에 (띠 좌표 y: 아래가 +)
     const gapPL = P * 0.98, gapLL = lead * 1.16, m = n - 1;
@@ -750,7 +757,7 @@ export class AwakenCutinScene extends Scene {
       ctx.globalAlpha = k;
       ctx.font = `700 15px ${FONT.title}`; ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
       const nm = CHARACTERS[this.charId]?.eng ?? '';
-      const nx = -vw / 2 + vw * 0.05, ny = -H / 2 + 24;
+      const nx = -vw / 2 + textLeft(vw), ny = -H / 2 + 24;
       ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.strokeText(nm, nx, ny);
       ctx.fillStyle = GOLD; ctx.fillText(nm, nx, ny);
       ctx.fillStyle = rgba(a.color, 0.8); ctx.fillRect(nx, ny + 6, Math.min(vw * 0.3, 22 + nm.length * 9) * k, 2);

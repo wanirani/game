@@ -273,8 +273,15 @@ function drawDemon(ctx, D, b, world, rig, st, lvl, dt, dying, dT) {
   const jx = (st.jolt > 0 ? (rr.next() - 0.5) * 5 * st.jolt : 0) + (dying ? Math.sin(t * 60) * 2 * Math.min(1, dT) : 0);
   const lean = (b.state === 'claw' ? 0.08 * (b.st > 0.45 ? 1 : -1) : 0) + (d.crouch ?? 0) * 0.06 + Math.sin(t * 1.2) * 0.01;
   setL(L, b.cx + jx, b.bottom - (d.hover ?? 0), f, lean, s);
+  // 걸음: d_idle 에서 플레이어 쪽으로 천천히 걸을 때(로직 60px/s) 발을 번갈아 들어 딛는다 (벡터는 미끄러지듯 이동)
+  const wvx = st.wpx == null || dt <= 0 ? 0 : (b.cx - st.wpx) / dt; st.wpx = b.cx;
+  const walking = b.state === 'd_idle' && (d.hover ?? 0) < 4 && Math.abs(wvx) > 8 && Math.abs(wvx) < 400;
+  st.walkK = clamp((st.walkK ?? 0) + (walking ? dt * 4 : -dt * 4), 0, 1);
+  if (st.walkK > 0) { st.gait = (st.gait ?? 0) + dt * 5.2; if (walking) st.wdir = Math.sign(wvx * f) || 1; } else st.gait = 0;
+  const wk = st.walkK, gu = st.gait ?? 0, wd = st.wdir ?? 1;
+  const bob = -Math.abs(Math.cos(gu)) * 3 * wk;
   const T = R.dtorso;
-  const tx = 0, ty = -118 + cr + breathe * 0.4, trot = -0.02 * (d.crouch ?? 0);
+  const tx = 0, ty = -118 + cr + breathe * 0.4 + bob, trot = -0.02 * (d.crouch ?? 0);
   const tp = (pv, out) => localPt(T, 'hip', T[pv], tx, ty, trot, 1, out);
   const neckP = tp('neck', st._dn ??= [0, 0]), shN = tp('shN', st._dsn ??= [0, 0]), shF = tp('shF', st._dsf ??= [0, 0]), wingR = tp('wing', st._dw ??= [0, 0]), tailR = tp('tail', st._dtr ??= [0, 0]), hip = tp('hip', st._dh ??= [0, 0]);
   // 자라나는 동안(변신)·사망 붕괴 전 투명도
@@ -289,11 +296,11 @@ function drawDemon(ctx, D, b, world, rig, st, lvl, dt, dying, dT) {
   drawTail(D, L, rig, st, tailR, t, a0, V, cr);
   if (!G.wingN) put(D, L, R.dwing, V(R.dwing), 'root', wingR[0] + 4, wingR[1] + 2, wrot, a0, 1, wsx, wsy);
   // 3) 먼 다리 · 먼 팔
-  leg(D, L, rig, st, hip[0] - 10, hip[1] - 4, -30, cr, a0 * 0.95, V, true);
+  leg(D, L, rig, st, hip[0] - 10, hip[1] - 4, -30 + Math.sin(gu + PI) * 16 * wk * wd, cr, a0 * 0.95, V, true, Math.max(0, Math.cos(gu + PI) * wd) * 12 * wk);
   const armBack = f > 0 ? b.hands.l : b.hands.r, armFront = f > 0 ? b.hands.r : b.hands.l;
   demonArm(D, L, rig, b, st, shF[0], shF[1], armBack, a0 * 0.95, V, true, dying);
   // 4) 가까운 다리 · 몸통
-  leg(D, L, rig, st, hip[0] + 8, hip[1] - 2, 30, cr, a0, V, false);
+  leg(D, L, rig, st, hip[0] + 8, hip[1] - 2, 30 + Math.sin(gu) * 16 * wk * wd, cr, a0, V, false, Math.max(0, Math.cos(gu) * wd) * 12 * wk);
   put(D, L, T, V(T), 'hip', tx, ty, trot, a0);
   D.end();
   if (q.ledges) { const w0 = W(L, -150, -330, st.W), w1 = W(L, 150, 0, st.W2); ledgesOver(ctx, world, Math.min(w0[0], w1[0]) - 120 * s, w0[1], Math.max(w0[0], w1[0]) + 120 * s, b.bottom); }
@@ -359,15 +366,15 @@ function demonArm(D, L, rig, b, st, sx, sy, hand, alpha, V, far, dying) {
   void s; void dying;
 }
 
-/** 역관절 다리: 엉덩이 → 발목(바닥 근처), 무릎은 앞으로. 발은 바닥에 평평하게 */
-function leg(D, L, rig, st, hx, hy, ax, cr, alpha, V, far) {
+/** 역관절 다리: 엉덩이 → 발목(바닥 근처), 무릎은 앞으로. 발은 바닥에 평평하게 (lift = 걸음 중 발을 든 높이, 발끝이 살짝 아래로) */
+function leg(D, L, rig, st, hx, hy, ax, cr, alpha, V, far, lift = 0) {
   const R = rig.parts, Th = R.dthigh, Sh = R.dshin, Ft = R.dfoot;
   const at = axis(Th, 'hip', 'knee'), as = axis(Sh, 'knee', 'ankle'), af = axis(Ft, 'ankle', 'toe');
-  const ankY = -20 + cr * 0.15;
+  const ankY = -20 + cr * 0.15 - lift;
   const r = ik2(hx, hy, ax, ankY, at.len * 1.05, as.len * 1.05, 1, st.ik);   // 무릎은 앞으로
   put(D, L, Th, V(Th, far), 'hip', hx, hy, r.a1 - at.a, alpha, 1.05);
   put(D, L, Sh, V(Sh, far), 'knee', r.ex, r.ey, r.a2 - as.a, alpha, 1.05);
-  put(D, L, Ft, V(Ft, far), 'ankle', r.hx, r.hy, 0.12 - af.a, alpha, 1.1);
+  put(D, L, Ft, V(Ft, far), 'ankle', r.hx, r.hy, 0.12 + lift * 0.02 - af.a, alpha, 1.1);
 }
 
 /** 꼬리: 몸통 꼬리뿌리 → 뒤로 늘어져 흔들리는 곡선 위에 타일 6개 (가시가 위로 오게 거울) */

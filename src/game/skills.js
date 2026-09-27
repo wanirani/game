@@ -2619,7 +2619,7 @@ ULTS.sera = (p, w, v = ultCtx(p, w)) => {
   steps.push([1.3, () => { audio.sfx('slash_heavy', { pitch: 0.5 }); audio.sfx('bell', { pitch: 1.4, vol: 0.6 }); }]);   // 심판의 검이 내려온다
   steps.push([1.55, (ww) => {
     ultFinal(ww, p, 5, '#ffffff', { element: 'holy' }, { v, x: cx, y: gy0 - 60, ground: true });
-    if (!v.low) grade(ww, '#ffe9a8', 0.18, 0.8);   // 흰 금빛 색조 (번쩍임 0.6 위에 겹치므로 옅게; 저품질은 화면 전체 층 1장 예산)
+    if (v.q >= 0.95) grade(ww, '#ffe9a8', 0.18, 0.8);   // 흰 금빛 색조 (번쩍임 0.6 위에 겹치므로 옅게). 화면 전체 층 예산(feel §8: 3/2/1; 암전·집중선이 이미 2장)으로 높음에서만 — 빅터 세피아와 같은 규칙
     ww.fx.ering(cx, gy0 - 2, { color: '#fff2b0', r0: 20, r1: V0.w * 0.45, ry: 0.18, life: 0.5, width: 10 });
     const nh = ultRoom(ww, v, 40), ns = ultRoom(ww, v, 14);   // 필살기 입자 상한 안에서
     if (nh) ww.fx.burst('holy', cx, gy0 - 20, nh, { speed: 600 });
@@ -2899,9 +2899,10 @@ ULTS.lia = (p, w, v = ultCtx(p, w)) => {
   const snapBase = p.snapshot();
   ultDirector(w, p, {
     v, dur: 2.1, dim: 0.85, dimCol: '#08000a', d: { cuts: [], net: [], ct: 0, n: 0, fin: false, vg: 0 },
-    start(e, ww) { if (!v.low) ww.game.vignette?.('#ff0020', 0.5, 1.2); },
+    start(e, ww) { if (v.q >= 0.95) ww.game.vignette?.('#ff0020', 0.5, 1.2); },
     tick(e, ww, dt) {
-      if (!v.low && e.lt < 1.5 && (e.d.vg -= dt) <= 0) { e.d.vg = 0.3; ww.game.vignette?.('#ff0020', 0.42, 1.2); }   // 붉은 비네트 유지 (저품질 생략)
+      // 붉은 비네트 유지: 높음에서만 (화면 전체 층 예산), 마무리 번쩍임(1.5초) 전에 걷히도록 1.12초까지만 새로 켠다 (0.42 → 초당 1.2 감소)
+      if (v.q >= 0.95 && e.lt < 1.12 && (e.d.vg -= dt) <= 0) { e.d.vg = 0.3; ww.game.vignette?.('#ff0020', 0.42, 1.2); }
       const C = e.d.cuts;
       for (let i = C.length - 1; i >= 0; i--) { C[i].t += dt; if (C[i].t > 0.14) { if (e.d.net.length < 110) e.d.net.push(C[i]); C[i] = C[C.length - 1]; C.pop(); } }
       if (e.lt > 0.15 && e.lt < 1.35) {
@@ -3005,7 +3006,7 @@ ULTS.azel = (p, w, v = ultCtx(p, w)) => {
       ultFinal(ww, p, 4.6, '#ff1030', { element: 'dark' }, { v, x: p.cx, y: p.cy - 10 });
       p.heal(p.stats.hp * 0.15);
       for (const en of foes) { const nb = ultRoom(ww, v, 14); if (nb) ww.fx.burst('blood', en.cx, en.cy, nb, { speed: 320 }); }   // 적 수만큼 늘어나므로 상한 안에서
-      if (!v.low) grade(ww, '#7a0010', 0.3, 0.8);   // 붉은 색조 (저품질 생략)
+      if (v.q >= 0.95) grade(ww, '#7a0010', 0.3, 0.8);   // 붉은 색조 (화면 전체 층 예산으로 높음에서만)
       bloodStreams(ww, p, v);                            // 피의 흐름이 아젤에게로
       audio.sfx('heartbeat', { pitch: 0.8 });
     }],

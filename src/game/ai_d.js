@@ -216,10 +216,17 @@ AI_D.galeknight = {
         }
         return;
       }
-      case 'recover':
+      case 'recover': {
         e.setAnim('fly'); e.vx *= Math.pow(0.05, dt); e.vy += (-90 - e.vy) * Math.min(1, 4 * dt);
+        // 돌진이 시간으로 끝나면 0.5초 동안 ~200 px 더 미끄러진다 → 돌진처럼 벽·맵 끝(열린 출구 포함)에서 멈춘다
+        const d = Math.sign(e.vx);
+        if (d) {
+          const ahead = e.cx + d * (e.w / 2 + Math.abs(e.vx) * dt + 6);
+          if (solidAt(world, ahead, e.cy) || ahead < 4 || ahead > world.map.pxW - 4) e.vx = 0;
+        }
         if (e.stateT > 0.5) { e.setState('hover'); e.cool = rate(e, 2.0); }
         return;
+      }
       case 'slash': {
         e.setAnim('slash'); e.vx *= Math.pow(0.1, dt); e.vy *= Math.pow(0.1, dt); faceP(e);
         e.aimK = clamp(e.stateT / 0.5, 0, 1);
@@ -714,7 +721,8 @@ AI_D.moth = {
       return;
     }
     e.setState('fly'); e.setAnim('fly'); e.aimK = 0;
-    const tx = p.cx + Math.sin(e.ph * 0.5) * 60, ty = p.cy - (P.hover ?? 180) + Math.sin(e.ph) * 60 * 0.5;
+    // 좌우 흔들림이 맵 끝(열린 출구)을 넘지 않게 목표 x 를 맵 안으로
+    const tx = clamp(p.cx + Math.sin(e.ph * 0.5) * 60, e.w / 2 + 8, world.map.pxW - e.w / 2 - 8), ty = p.cy - (P.hover ?? 180) + Math.sin(e.ph) * 60 * 0.5;
     hover(e, tx, ty, 2.5, dt, e.speed);
     e.vy += Math.cos(e.ph) * 60 * dt * 3;
     if (Math.abs(e.vx) > 10) e.facing = Math.sign(e.vx);

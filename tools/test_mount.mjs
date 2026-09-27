@@ -790,6 +790,11 @@ await run('edge', ['mt_warhorse', 'mt_giantbat', 'mt_direwolf'], STAGE('s01', '&
   T.step(0.3);
   info.batDown = { ok: okB, d8, moved: Math.round(p.cx - x0) };
   checks.push(['녹티스 땅 위 ↓+돌진 → 앞으로', okB && Math.abs(d8.x) > 0.9 && Math.abs(p.cx - x0) > 100, info.batDown]);
+  // 6) 탈것 쪽 무적 (영혼 결속 3초 등) 은 내린 기수에게 남지 않는다
+  T.step(1.0, () => p.onGround);
+  const h = T.ride('mt_warhorse'); T.reset(h); h.invulnT = 3;
+  h.dismount(w, p, 'debug');
+  checks.push(['내리면 탈것 쪽 무적이 남지 않는다', !p.invuln && h.invulnT === 0, [p.invuln, h.invulnT]]);
   return { checks, info };
 }));
 

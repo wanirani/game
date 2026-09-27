@@ -7,7 +7,7 @@ export const POSES = [
   'intro', 'idle', 'tele_wrap', 'tele_bats', 'tele_appear', 'hellfire_w', 'hellfire_a', 'inferno',
   'batdash_w', 'batdash_swarm', 'batdash_reform', 'spiral', 'summon', 'hit', 'dmg1',
   'tf_writhe', 'tf_split', 'tf_burst', 'tf_grow', 'tf_roar',
-  'idle2', 'meteor', 'beams_w', 'beams_a', 'claw_w', 'claw_a', 'quake_crouch', 'quake_air', 'quake_land',
+  'idle2', 'walk2a', 'walk2b', 'meteor', 'beams_w', 'beams_a', 'claw_w', 'claw_a', 'quake_crouch', 'quake_air', 'quake_land',
   'breath', 'gust', 'nova', 'hit2', 'dmg2',
   'death_05', 'death_12', 'death_20', 'death_27', 'death_34',
 ];
@@ -57,6 +57,8 @@ export const INSTALL = `(() => {
       case 'tf_grow': until(2.3); break;
       case 'tf_roar': until(3.0); break;
       case 'idle2': form2(2, 0.45); settle(); hold('d_idle', 1.2); break;
+      case 'walk2a': form2(2, 0.45); settle(); b.setState('d_idle'); for (let i = 0; i < 34; i++) { p.x = b.cx - 760; p.vx = 0; step(1); } break;   // 멀리 있는 플레이어 쪽으로 걷기
+      case 'walk2b': for (let i = 0; i < 18; i++) { p.x = b.cx - 760; p.vx = 0; step(1); } break;
       case 'meteor': form2(2, 0.45); settle(); hold('meteor', 1.2); break;
       case 'beams_w': form2(2, 0.45); settle(); hold('beams', 0.4); break;
       case 'beams_a': form2(2, 0.45); settle(); hold('beams', 0.62); break;
