@@ -3,6 +3,8 @@
  "charId": "victor",
  "classId": "victor_gunslinger",
  "src": "victor/victor_gunslinger_side",
+ "_bodyTop": "배율 기준 정수리(원화 px) = 건슬링어 모자 맨 위. 전 직업 상속 → 관·높은 모자 직업도 몸 크기가 같고 장식만 위로 나온다 (heroes1rev)",
+ "bodyTop": 223,
  "joints": {
   "pelvis": [
    810,

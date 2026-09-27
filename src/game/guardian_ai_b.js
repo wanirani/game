@@ -23,7 +23,7 @@
 //                   접촉 피해가 나지 않게), 주인 최대 HP 10% 회복 (공명 ×0.6) · keepFx
 //                   고유 「한입에 꿀꺽」 6초마다 모모나 주인 120px 안의 적 탄 하나를 먹는다 ('꺼억')
 //
-//  적 탄을 없앨 때는 dead = true 로 조용히 지운다 (onExpire 의 폭발·분열이 터지지 않게 — 가웨인 방패와 같은 규칙).
+//  적 탄을 없앨 때는 조용히 지운다 (quietExpire: onExpire 는 부르되 그 안의 폭발·분열·연출은 막는다 — 쏜 적의 탄 장부만 풀린다).
 //  모든 수호신 타격은 guardian.js 의 gStrike / gHitOne (소품·거울 스위치·포자 주머니를 치지 않음), 공격 객체는 g.atk (gAttack).
 //  순환 import (guardian.js ↔ 이 파일): guardian.js 의 값은 함수 안에서만 쓴다 (모듈 최상위에서 읽지 않는다).
 //
@@ -92,6 +92,40 @@ const keep = (g, e) => (g.system?.keepFx ? g.system.keepFx(e) : e);
 function flick(g, dur = 0.22) { if (!g.act) g.begin('attack', dur, {}); }
 /** 적 탄 (미라·모모 고유 능력 대상): blockable + 장판·궤도·고정 탄 제외 */
 function shotOK(q) { return blockable(q) && q.behavior !== 'pool' && q.behavior !== 'orbit' && q.behavior !== 'static'; }
+const noop = () => {};
+const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+const MUTED = new WeakMap();
+/** world.fx 대리 객체: 함수 호출(연출)은 모두 무시, 값(quality 등)은 그대로 읽힌다 */
+function mutedFx(fx) {
+  if (!fx || typeof fx !== 'object') return fx;
+  let m = MUTED.get(fx);
+  if (!m) { m = new Proxy(fx, { get: (t, k) => (typeof t[k] === 'function' ? noop : t[k]) }); MUTED.set(fx, m); }
+  return m;
+}
+/**
+ * 적 탄을 거둘 때 (되비추기·먹기): 탄의 onExpire 를 '조용히' 부르고 콜백을 모두 지운다.
+ * 쏜 적이 onExpire 로 제 탄 수를 세는 장부(뒤라한의 불꽃 해골 skullOut 등)는 풀려야 한다 — 안 그러면 그 적은 그 공격을 다시 쓰지 못한다.
+ * 대신 그 안에서 생기는 개체(폭발 판정·분열 탄·소환)는 월드에 넣지 않고, 연출·효과음·화면 흔들림도 막는다 (먹힌 탄이 터지지 않게).
+ */
+function quietExpire(world, q) {
+  const fn = q.onExpire;
+  q.onExpire = null; q.onHit = null; q.onWall = null; q.onLand = null;
+  if (typeof fn !== 'function' || !world) return;
+  const cam = world.camera;
+  const had = { add: own(world, 'add'), shake: !!cam && own(cam, 'shake'), sfx: own(audio, 'sfx') };
+  const prev = { add: world.add, fx: world.fx, shake: cam?.shake, sfx: audio.sfx };
+  world.add = (e) => { if (e && typeof e === 'object') { e.dead = true; e.world = world; } return e; };
+  world.fx = mutedFx(prev.fx);
+  if (cam) cam.shake = noop;
+  audio.sfx = noop;
+  try { fn(q, world, false); } catch (e) { warnOnce('onExpire', e); }
+  finally {
+    if (had.add) world.add = prev.add; else delete world.add;
+    world.fx = prev.fx;
+    if (cam) { if (had.shake) cam.shake = prev.shake; else delete cam.shake; }
+    if (had.sfx) audio.sfx = prev.sfx; else delete audio.sfx;
+  }
+}
 /** 수호신 또는 주인 r 안의 가장 가까운 적 탄 */
 function nearShot(world, g, r) {
   const p = world.player;
@@ -498,8 +532,8 @@ function reflect(g, world, q) {
     render: (ctx, e, w) => { if (!drew(GB.fxMirrorPane, ctx, e, w)) drawMirrorPane(ctx, e, w); },
     light: { r: 70, color: col, i: 0.6 },
   }));
+  quietExpire(world, q);   // 쏜 적의 탄 장부를 풀고 콜백을 지운다 (되돌아간 탄은 이제 수호신의 것)
   q.team = 'guardian'; q.behavior = 'straight'; q.gravity = 0; q.returnTo = null; q.follow = null;
-  q.onHit = null; q.onExpire = null; q.onWall = null; q.onLand = null;
   q.speed = sp; q.vx = Math.cos(ang) * sp; q.vy = Math.sin(ang) * sp;
   q.life = clamp(Math.max(q.life || 0, 1.2), 1.2, 2.2); q.maxLife = q.life; q.fadeOut = false;
   q.pierce = 1; q.hits = 0;
@@ -613,12 +647,13 @@ const MIRRA = {
 };
 
 // ───────────────────────── 루멘 (등불 해파리) ─────────────────────────
-function drawLumenFlash(ctx, e) {
+function drawLumenFlash(ctx, e, world) {
   const D = e.data, t = e.t, k = clamp(t / 0.3, 0, 1), ek = 1 - (1 - k) * (1 - k) * (1 - k);
   const R = lerp(24, D.R, ek), a = clamp(1 - t / e.maxLife, 0, 1), x = e.cx, y = e.cy;
   if (a <= 0.01) return;
   ctx.globalCompositeOperation = 'lighter';
-  glowAt(ctx, x, y, R, '#6fe8ff', 0.7 * a);
+  // 화면을 덮는 큰 빛은 낮은 품질에서 생략 (game.flash 가 이미 전체 화면 섬광 한 번 — MASTER_PLAN §5.2 low: 전체 화면 패스 1)
+  if (qOf(world) >= 0.6 || R < 300) glowAt(ctx, x, y, R, '#6fe8ff', 0.7 * a);
   glowAt(ctx, x, y, R * 0.35, '#ffffff', 0.9 * a * (1 - k * 0.6));
   ctx.globalAlpha = 0.8 * a; ctx.strokeStyle = '#e0fbff'; ctx.lineWidth = 3;
   ctx.beginPath(); ctx.arc(x, y, R * 0.8, 0, TAU); ctx.stroke();
@@ -746,6 +781,7 @@ function drawMorsel(ctx, e) {
 /** 적 탄 하나를 삼킨다: 탄은 조용히 사라지고 (onExpire 없음) 꿈 조각이 모모의 입으로 빨려 든다 */
 function swallow(g, world, q, o = {}) {
   q.dead = true;
+  quietExpire(world, q);
   const x0 = q.cx, y0 = q.cy;
   if (o.morsel !== false) {
     world.add(new GFx({

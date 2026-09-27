@@ -170,39 +170,42 @@ function bakeBanner(g, w, h, arg) {
   g.restore();
   g.strokeStyle = trim; g.lineWidth = 2; g.stroke(P);
 }
-/** 날개를 활짝 편 거대한 까마귀 실루엣 (몸 중심 (256,150), 눈 (266,78)) */
+/** 깃 하나: 뿌리 (x, y) 에서 a 방향으로 길이 L, 폭 wd (끝이 뾰족한 잎 모양) */
+function featherPath(q, x, y, a, L, wd) {
+  const c = Math.cos(a), sn = Math.sin(a), nx = -sn, ny = c;
+  q.moveTo(x + nx * wd * 0.5, y + ny * wd * 0.5);
+  q.quadraticCurveTo(x + c * L * 0.55 + nx * wd * 0.72, y + sn * L * 0.55 + ny * wd * 0.72, x + c * L, y + sn * L);
+  q.quadraticCurveTo(x + c * L * 0.55 - nx * wd * 0.72, y + sn * L * 0.55 - ny * wd * 0.72, x - nx * wd * 0.5, y - ny * wd * 0.5);
+  q.closePath();
+}
+/**
+ * 날개를 활짝 편 거대한 까마귀 실루엣 (문장처럼 정면으로 날개를 펴고 머리는 옆을 본다).
+ * 몸 중심 (256,150), 눈 (266,42). 검은 실루엣 + 바깥 윤곽만 붉게 (뒤에 깐 굵은 붉은 선) + 깃 사이 어두운 붉은 결
+ */
 function bakeCrow(g, w, h) {
-  const cx = 256, cy = 150;
-  const B = new Path2D();
-  B.ellipse(cx, cy, 34, 60, 0, 0, TAU);
-  B.moveTo(cx + 24, cy - 70); B.arc(cx, cy - 70, 24, 0, TAU);
-  B.moveTo(cx - 7, cy - 60); B.lineTo(cx + 2, cy - 22); B.lineTo(cx + 9, cy - 60); B.closePath();
-  B.moveTo(cx - 22, cy + 46); B.lineTo(cx - 44, cy + 104); B.lineTo(cx - 12, cy + 88); B.lineTo(cx, cy + 106); B.lineTo(cx + 12, cy + 88); B.lineTo(cx + 44, cy + 104); B.lineTo(cx + 22, cy + 46); B.closePath();
-  const wings = [];
-  for (const s of [-1, 1]) {
-    const P = new Path2D();
-    P.moveTo(cx + s * 18, cy - 38);
-    P.quadraticCurveTo(cx + s * 120, cy - 134, cx + s * 252, cy - 118);
-    for (let i = 0; i <= 11; i++) {
-      const u = i / 11;
-      const bx = lerp(cx + s * 252, cx + s * 34, u), by = lerp(cy - 118, cy + 24, u) + Math.sin(u * PI) * 46;
-      P.lineTo(bx + s * 6 * (1 - u), by + 38 * (1 - u * 0.55));
-      P.lineTo(bx - s * 9, by + 4);
-    }
-    P.closePath();
-    wings.push(P);
+  const cx = 256, body = [], feathers = [];
+  const part = (list, fn) => { const q = new Path2D(); fn(q); list.push(q); };
+  part(body, (q) => { q.moveTo(cx, 62); q.bezierCurveTo(cx + 40, 84, cx + 34, 160, cx + 14, 194); q.lineTo(cx - 14, 194); q.bezierCurveTo(cx - 34, 160, cx - 40, 84, cx, 62); q.closePath(); });   // 몸통 (목까지)
+  part(body, (q) => { q.arc(cx + 2, 46, 22, 0, TAU); });   // 머리 (날개 선 위로 솟는다)
+  part(body, (q) => { q.moveTo(cx + 14, 32); q.quadraticCurveTo(cx + 44, 30, cx + 66, 40); q.quadraticCurveTo(cx + 44, 52, cx + 16, 58); q.closePath(); });   // 굵은 부리 (오른쪽)
+  part(body, (q) => { q.moveTo(cx - 16, 52); q.lineTo(cx - 34, 74); q.lineTo(cx - 16, 70); q.lineTo(cx - 24, 88); q.lineTo(cx + 2, 72); q.closePath(); });   // 목 깃털 (삐죽)
+  for (let i = 0; i < 5; i++) part(feathers, (q) => featherPath(q, cx + (i - 2) * 5, 182, HP + (i - 2) * 0.22, 70 - Math.abs(i - 2) * 7, 14));   // 꼬리 부채
+  for (const sd of [-1, 1]) {
+    const ang = (a) => (sd > 0 ? a : PI - a);
+    part(body, (q) => { q.moveTo(cx + sd * 14, 98); q.quadraticCurveTo(cx + sd * 70, 40, cx + sd * 150, 32); q.lineTo(cx + sd * 178, 52); q.quadraticCurveTo(cx + sd * 110, 112, cx + sd * 28, 162); q.closePath(); });   // 팔 (어깨 → 손목)
+    for (let i = 0; i < 7; i++) part(feathers, (q) => featherPath(q, cx + sd * (148 + i * 4), 34 + i * 11, ang(-0.34 + i * 0.2), 104 - i * 7, 13));   // 첫째 날개깃: 손가락처럼 펼친 7개
+    for (let i = 0; i < 6; i++) { const u = i / 5; part(feathers, (q) => featherPath(q, cx + sd * lerp(140, 44, u), lerp(62, 150, u), ang(1.08 + u * 0.46), 60 - u * 14, 17)); }   // 둘째 날개깃 (뒷전)
   }
-  g.fillStyle = '#050308';
-  for (const P of wings) g.fill(P);
-  g.fill(B);
-  g.strokeStyle = 'rgba(40,20,48,0.9)'; g.lineWidth = 1.2;   // 깃털 결
-  for (const s of [-1, 1]) for (let i = 0; i < 10; i++) {
-    const u = (i + 0.5) / 10, x = lerp(cx + s * 240, cx + s * 40, u), y = lerp(cy - 112, cy + 20, u) + Math.sin(u * PI) * 40;
-    g.beginPath(); g.moveTo(x - s * 30, y - 40 * (1 - u)); g.lineTo(x, y + 26 * (1 - u * 0.5)); g.stroke();
-  }
-  g.strokeStyle = 'rgba(190,24,52,0.75)'; g.lineWidth = 2.2;   // 붉은 윤곽 빛
-  for (const P of wings) g.stroke(P);
-  g.stroke(B);
+  const all = [...feathers, ...body];
+  g.fillStyle = '#040206';
+  for (const q of all) g.fill(q);
+  g.globalCompositeOperation = 'destination-over';   // 바깥 윤곽만 붉게: 굵은 붉은 선을 실루엣 뒤에 깐다
+  g.strokeStyle = 'rgba(230,30,64,0.95)'; g.lineWidth = 5; g.lineJoin = 'round';
+  for (const q of all) g.stroke(q);
+  g.globalCompositeOperation = 'source-over';
+  g.strokeStyle = 'rgba(110,12,30,0.8)'; g.lineWidth = 1.2;   // 깃 사이 결
+  for (const q of feathers) g.stroke(q);
+  for (const q of body) g.fill(q);   // 몸통 위의 결은 지운다
 }
 /** 실루엣용 검은 얼룩 (가운데 진함) */
 function bakeBlob(g, w, h) {
@@ -700,7 +703,7 @@ function at(S, t, fn) { S.steps.push([t, fn]); }
 function later(S, dt, fn) { S.pend.push([(S.lt ?? 0) + dt, fn]); }
 
 /** 감독 문맥 S + 키트 시작 */
-function begin(p, w, v, dur) {
+function begin(p, w, v, dur, kit = null) {
   hook();
   if (LIVE && !LIVE.over) LIVE.over = true;   // 끝나지 않은 옛 시전 (방 이동으로 버려진 경우)
   const q = qOf(w);
@@ -722,7 +725,7 @@ function begin(p, w, v, dur) {
   for (const n of needs(S.charId, S.cls)) spr(n, S.keep);   // 미리 구워 두었으면 그대로 (없으면 지금 굽는다)
   usePoses(S);   // 망령 기사·분신 잔상: 미리 구운 것은 그대로, 없거나 낡은 것만 틱마다 한 장씩
   try {
-    ULTFX.begin?.(w, p, { color: S.col, accent: S.acc, tier: S.tier, classId: S.cls, charId: S.charId, dimCol: S.dark, awaken: true, dur: Math.min(2.4, dur), maxDur: dur + 3 });
+    ULTFX.begin?.(w, p, { color: S.col, accent: S.acc, tier: S.tier, classId: S.cls, charId: S.charId, dimCol: S.dark, awaken: true, dur: Math.min(2.4, dur), maxDur: dur + 3, ...kit });
   } catch (err) { report(err, 'ultfx.begin'); }
   return S;
 }
@@ -806,14 +809,20 @@ function bran(p, w, v) {
   S.gy0 = gy0; S.kt = KT;
   /** 망령 기사 대열 (브란 뒤) */
   const formation = (cx, gy) => {
-    const out = [];
+    const V = view(S), out = [], lo = V.x + 46, hi = V.x + V.w - 46;
+    const space = f > 0 ? cx - lo : hi - cx;   // 브란 뒤쪽 화면 여유 (방 끝에 서 있으면 좁다)
+    let ahead = 0;
     for (let i = 0; i < 6; i++) {
-      const row = i % 2, k = i >> 1, x = cx - f * (82 + k * 66 + row * 32);
-      const g = ground(S, x, gy - 60, 4 * TILE);
-      out.push({ x, gy: g != null && Math.abs(g - gy) < 90 ? g : gy, s: row ? 0.9 : 1.02, a: row ? 0.46 : 0.6, t0: 0.05 + i * 0.07, ph: rand(0, TAU) });
+      const row = i % 2, k = i >> 1, d = 82 + k * 66 + row * 32;
+      let x = cx - f * d, back = true;
+      if (d > space) { x = cx + f * (104 + ahead * 58); ahead++; back = false; }   // 뒤가 좁으면 앞쪽 뒷줄에 (화면 밖으로 나가지 않게)
+      x = clamp(x, lo, hi);
+      const g = ground(S, x, gy - 60, 4 * TILE), far = row === 1 || !back;
+      out.push({ x, gy: g != null && Math.abs(g - gy) < 90 ? g : gy, s: far ? 0.9 : 1.02, a: far ? 0.46 : 0.6, t0: 0.05 + i * 0.07, ph: rand(0, TAU) });
     }
     return out;
   };
+  const knCenter = () => { let x = p.cx; for (const k of S.kn) x += k.x; return x / (S.kn.length + 1); };
   S.kn = formation(p.cx, gy0);
   S.blade = null; S.cut = null; S.charge = []; S.chargeT = -1; S.reform = -1; S.fall = null; S.pillarT = -1; S.cross = null; S.streams = null; S.plant = null;
 
@@ -851,7 +860,7 @@ function bran(p, w, v) {
     emitN(S, 'gravel', tx, gy0 - 4, 8, { angle: -HP, spread: 0.9, speed: 320 });
     if (!S.low) HFX.stampDecal?.(w, tx, gy0 - 6, f, 'crack', { floor: true, scale: 1.2, life: 10 });
     cam.kick?.(0, 7); cam.addTrauma?.(0.22);
-    cine(S, p.cx - f * 120, p.cy - 60, 1.1, 0.35);   // 기사단이 한 화면에 들어오게
+    cine(S, knCenter(), p.cy - 60, 1.1, 0.35);   // 기사단이 한 화면에 들어오게
   });
   at(S, 0.16, () => { sfx('ghost', { pitch: 0.65, vol: 0.7 }); });
   at(S, 0.3, () => { sfx('holy', { pitch: 0.5, vol: 0.6 }); for (const k of S.kn) emitN(S, 'magic', k.x, k.gy - 60, 3, { color: KT, speed: 90, angle: -HP, spread: 0.8 }); });
@@ -999,7 +1008,7 @@ function bran(p, w, v) {
     // 내려베기 기둥 + 갈라진 대지
     const C = S.cut;
     if (C) {
-      const age = lt - C.t, a = 1 - u01(age, 0.08, 0.5), wd = 110 * ease.outCubic(u01(age, 0, 0.06));
+      const age = lt - C.t, a = 1 - u01(age, 0.08, 0.5), wd = 110 * (0.6 + 0.4 * ease.outCubic(u01(age, 0, 0.06)));   // 히트스톱(시간 정지) 동안에도 기둥이 보이게
       if (a > 0.01) {
         pillar(ctx, S, C.x, C.top, C.bot, wd, KT, 0.9 * a);
         pillar(ctx, S, C.x, C.top, C.bot, wd * 0.35, '#ffffff', a);
@@ -1124,7 +1133,8 @@ function domeAfter(S, dur) {
 
 // ═══════════════════════════ 리아 — 흑우: 까마귀의 장례 ═══════════════════════════
 function lia(p, w, v) {
-  const S = begin(p, w, v, 2.95);
+  // 키트의 색보정·집중선 층은 끈다: 화면이 거의 검게 (0.92) 가라앉아야 붉은 눈·실루엣만 남는다
+  const S = begin(p, w, v, 2.95, { lines: false });
   const f = S.f, cls = S.cls, cam = S.cam, W = S.W;
   const shadow = cls === 'lia_shadowmaster', kuno = cls === 'lia_kunoichi', dancer = cls === 'lia_bladedancer', reaper = cls === 'lia_reaper';
   const NB = 12, wBlink = (i) => W[i] ?? 0.36, wFinal = W[W.length - 1] ?? 4.5;
@@ -1144,9 +1154,11 @@ function lia(p, w, v) {
     const V = view(S), cx = V.x + V.w / 2, cy = V.y + V.h * 0.44, c = spr('crow');
     const open = ease.outBack(u01(u, 0, 0.28)), a = u01(u, 0, 0.06) * (1 - u01(u, 0.52, 0.28)) * 0.92;
     const sw = (V.w * 1.08) / 512, sx = sw * Math.max(0.05, open), sy = sw * (0.9 + 0.1 * Math.min(1, open)) * (1 + 0.03 * Math.sin(u * 18));
-    glowE(ctx, '#b0102a', cx, cy, V.w * 0.5, V.h * 0.5, 0.6 * a);
-    img(ctx, c, cx, cy, sx, sy, 0, a, false, 0.5, 150 / 256);
-    const ex = cx + 10 * sx, ey = cy - 72 * sy;
+    // 붉은 하늘 역광 (검은 실루엣이 읽히게): 넓은 번짐 + 까마귀 뒤의 달처럼 뜨거운 핵
+    glowE(ctx, '#b0102a', cx, cy, V.w * 0.62, V.h * 0.6, 0.95 * a);
+    glow(ctx, '#ff2040', cx, cy - 30 * sy, V.h * 0.42 * Math.min(1, 0.4 + open), 0.9 * a);
+    img(ctx, c, cx, cy, sx, sy, 0, Math.min(1, a * 1.08), false, 0.5, 150 / 256);
+    const ex = cx + 10 * sx, ey = cy - 108 * sy;
     glow(ctx, RED, ex, ey, 46, a); flare(ctx, ex, ey, 30, '#ff6070', a, u * 2);
   });
   // 붉은 윤곽 (적 뒤) · 실루엣 (적 위)
@@ -1513,3 +1525,5 @@ function azel(p, w, v) {
 
 /** 영웅별 각성 감독 (awaken.js directorOf: 등록 → AWAKEN_DIRECTOR → AWAKEN_DIRECTOR_B → 대체 연출) */
 export const AWAKEN_DIRECTOR_B = { bran, lia, azel };
+/** 시험용: 캐시 스프라이트 이름('crow', 'cres:gold' …) → 구운 캔버스 (시각 검수) */
+AWAKEN_DIR_B_DEBUG.sprite = (name) => spr(name);

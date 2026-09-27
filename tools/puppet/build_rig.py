@@ -318,10 +318,18 @@ def build(rig_path, dbg=False, out=None, quiet=False):
     # ── 아틀라스 ──
     out_dir = ensure(out or os.path.join(OUT, cid, clsid))
     fig_top = int(np.where(fig.any(1))[0].min())
+    # opt-in bodyTop (원화 px): 배율 기준 정수리를 고정 — 없으면 알파 맨 위(머리 장식 포함)라서 높은 관·모자 직업일수록 몸이 작아진다.
+    # 기본 직업 리그에 넣으면 전 직업이 상속 → 몸 크기가 직업마다 같고 장식만 위로 나온다. artTop = 실제 맨 위(후광 자리)
+    body_top = rig.get('bodyTop')
+    art_top = fig_top
+    if body_top is not None:
+        fig_top = int(body_top)
     levels = rig.get('levels', LEVELS_DEF)
     meta = dict(v=file_hash(src_png, alpha_png, rig['_path']), charId=cid, classId=clsid, srcW=W, srcH=H, figTop=fig_top,
                 sole=float(J['sole']), joints={k: (list(v) if isinstance(v, tuple) else v) for k, v in J.items()}, parts={}, levels={},
                 hands=hands_meta, opts=rig.get('runtime', {}))
+    if body_top is not None:
+        meta['artTop'] = art_top
     names = [k for k in PART_ORDER if k in C.parts]
     total = 0
     for lv, sc in levels.items():

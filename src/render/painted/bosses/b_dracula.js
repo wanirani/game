@@ -549,6 +549,11 @@ function deathTick(st, b, rig, dT) {
 // b_dracula.js 의 박쥐(몸 주위 입자 박쥐·박쥐 돌진 무리·날갯짓 돌풍 탄)와 낙석이 리그 준비 시 이것으로 그린다.
 function makeArt(rig) {
   const B = rig.batP, debs = rig.debs.map((n) => rig.parts[n]);
+  // 낙석은 굵은 덩어리만 (deb4·deb5 발톱 달린 살점, deb8·deb9 비늘·용암 균열 덩어리). 날개막(deb0~3)·가는 뼈(deb6·7)는
+  // 판정 40×40 보다 한참 작거나 비어 보여(뼈 6×16px) 떨어지는 위험물로 읽히지 않았다
+  const rocks = ['deb4', 'deb5', 'deb8', 'deb9'].map((n) => rig.parts[n]).filter(Boolean);
+  const R = rocks.length ? rocks : debs;
+  const ROCK_PX = 38;   // 조각의 긴 변 (월드 px) — 로직 판정 40×40 · 벡터 돌 34px 와 맞춤
   return {
     /** 박쥐 한 마리: (x,y) 중심, s = 로직 반폭(벡터 9·s), ph = 날갯짓 위상, a = 투명도, vx = 진행 방향 */
     bat(ctx, x, y, s, ph, a, vx) {
@@ -561,10 +566,10 @@ function makeArt(rig) {
       ctx.restore();
       ctx.globalAlpha = ga;
     },
-    /** 낙석: 살점·뿔 파편 (현재 변환의 원점 = 돌 중심, 회전은 호출 측) */
+    /** 낙석: 살점·비늘 덩어리 (현재 변환의 원점 = 돌 중심, 회전은 호출 측). 긴 변을 판정 크기에 맞춘다 */
     rock(ctx, i) {
-      const p = debs[(i | 0) % Math.max(1, debs.length)]; if (!p) return false;
-      const im = p.v.base, k = p.k * 0.55;
+      const p = R[Math.abs(i | 0) % Math.max(1, R.length)]; if (!p) return false;
+      const im = p.v.base, k = ROCK_PX / Math.max(1, Math.max(p.w, p.h) - 2 * p.pad);
       ctx.drawImage(im, -p.c[0] * k, -p.c[1] * k, im.width * k, im.height * k);
       return true;
     },

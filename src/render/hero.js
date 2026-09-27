@@ -167,6 +167,9 @@ function poseIdle(P, K, t, npc) {
 }
 // ── NPC 동작: talk(말하기)·gesture(손짓) — 마을·스토리 NPC (벡터·채색 퍼펫 공용). 대기 자세 위에 가중치 k 로 얹는다 ──
 const NPC_GEST = 1.6;                             // 손짓 한 번의 길이(초)
+/** NPC 손짓 조정값(갤러리·QA 에서 바꿔 볼 수 있게 export): gestA = 어깨→손 방향(0=앞, -HP=위), gestR = 팔 뻗음.
+ *  -0.45(얼굴 높이)는 3/4 채색 NPC(하드윈·로크·로크2)에서 가까운 손이 얼굴을 가려 어깨 높이(-0.1)로 낮췄다 (heroes3 노트 §4) */
+export const NPC_POSE = { gestA: -0.1, gestR: 0.84 };
 const smooth01k = (a, b, x) => { const u = clamp((x - a) / (b - a), 0, 1); return u * u * (3 - 2 * u); };
 function poseTalk(P, t, k) {
   if (k <= 0) return;
@@ -180,7 +183,7 @@ function poseGesture(P, at, k) {
   const env = smooth01k(0, 0.3, at) * (1 - smooth01k(NPC_GEST - 0.4, NPC_GEST, at)) * k;
   if (env <= 0) return 0;
   const wave = Math.sin((at - 0.3) * 9) * 0.12 * smooth01k(0.3, 0.5, at);
-  P.a1 = lerp(P.a1, -0.45 + wave, env); P.r1 = lerp(P.r1, 0.88, env);    // 가까운 손을 앞으로 들어 흔듦
+  P.a1 = lerp(P.a1, NPC_POSE.gestA + wave, env); P.r1 = lerp(P.r1, NPC_POSE.gestR, env);    // 가까운 손을 앞으로 들어 흔듦
   P.hd -= 0.06 * env; P.lean -= 0.03 * env;
   return env;
 }
@@ -1967,7 +1970,7 @@ function drawHeroYaw(ctx, p, world, opts, K, look) {
     PUP.drawTurnWeapon(ctx, I, K.W, yaw, true, tt);
   }
   ctx.globalAlpha = aBase;
-  if (K.halo && G.fx) PUP.drawTurnHalo(ctx, K.aura?.color, tt);
+  if (K.halo && G.fx) PUP.drawTurnHalo(ctx, K.aura?.color, tt, I);
   if (K.aura && G.fx) drawAuraMotes(K.aura.type || 'holy', K.auraC, K.auraK, K.auraK < 1 ? 5 : 8, 84);
   ctx.restore();
 }

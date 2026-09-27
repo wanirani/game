@@ -169,10 +169,11 @@ export class PauseScene extends Scene {
     let rowH = tapH(this, 46);
     let y0 = 146;
     const bottom = H - 16;
-    if (y0 + n * rowH > bottom) y0 = Math.max(80, bottom - n * rowH);
-    if (y0 + n * rowH > bottom) rowH = Math.max(40, Math.floor((bottom - y0) / n));
-    const compact = y0 < 130;
-    const titleY = compact ? y0 - 40 : 88;
+    // 낮은 화면(최소 UI 720×400, 예: 568×320 폰)에서는 머리글을 더 줄여 줄 높이(≥ 44 CSS px)를 지킨다: y0 는 44 까지 올라간다
+    if (y0 + n * rowH > bottom) y0 = bottom - n * rowH;
+    if (y0 < 44) { rowH = Math.max(40, Math.floor((bottom - 44) / n)); y0 = bottom - n * rowH; }
+    const compact = y0 < 130, tight = y0 < 80; // tight: 'PAUSE' 만 작게 (구분선·'일 시 정 지' 생략)
+    const titleY = tight ? y0 - 12 : compact ? y0 - 40 : 88;
     const bx = Math.round(clamp(W * 0.08, 40, 120)), bw = BANNER_W;
     const bh = Math.max(H - 44, y0 + n * rowH + 40); // 줄이 길면 깃발 끝(가운데 홈)은 화면 아래로 내려간다
     // 오른쪽 정보 카드: 아래에 토스트 두 줄 + 안내 줄 자리를 남긴다
@@ -180,9 +181,10 @@ export class PauseScene extends Scene {
     const cx0 = W - cw - clamp(W * 0.07, 30, 110);
     const cy0 = clamp(H - ch - 64 - (hints ? 30 : 8), 16, 88);
     return {
-      W, H, hints, n, rowH, y0, bx, bw, bh, compact,
-      titleY, titleSize: compact ? 36 : 46, dividerY: compact ? titleY + 12 : 104, subY: compact ? titleY + 29 : 126,
-      cw, ch, cx0, cy0, toastX: cx0 + cw / 2, toastY: Math.min(cy0 + ch + 32, H - (hints ? 40 : 14)),
+      W, H, hints, n, rowH, y0, bx, bw, bh, compact, tight,
+      titleY, titleSize: tight ? 30 : compact ? 36 : 46, dividerY: tight ? null : compact ? titleY + 12 : 104, subY: tight ? null : compact ? titleY + 29 : 126,
+      // 토스트 두 줄(기준선 y, y+30 · 상자 y-20…y+8)이 화면 안, 안내 줄 위에 들어오게
+      cw, ch, cx0, cy0, toastX: cx0 + cw / 2, toastY: Math.min(cy0 + ch + 32, H - 38 - (hints ? 30 : 4)),
       btnH: tapH(this, 40),
     };
   }
@@ -262,10 +264,10 @@ export class PauseScene extends Scene {
     ctx.beginPath(); ctx.moveTo(bx + 8, -4); ctx.lineTo(bx + 8, bh - 10); ctx.lineTo(bx + bw / 2, bh - 40); ctx.lineTo(bx + bw - 8, bh - 10); ctx.lineTo(bx + bw - 8, -4); ctx.stroke();
     // 문장 (피 글씨: 금박)
     const cx = bx + bw / 2;
-    glow(ctx, cx, L.titleY - 18, 70, '#ff4050', 0.3);
+    glow(ctx, cx, L.titleY - L.titleSize * 0.4, L.tight ? 50 : 70, '#ff4050', 0.3);
     bloodText(ctx, TITLE, cx, L.titleY, { size: L.titleSize, style: 'gold', t: this.t, maxWidth: bw - 40 });
-    divider(ctx, bx + 40, L.dividerY, bw - 80, { color: PAL.gold });
-    text(ctx, '일 시 정 지', cx, L.subY, { size: 14, align: 'center', weight: 800, family: FONT.title, color: '#f0d8c0', ow: 3 });
+    if (L.dividerY != null) divider(ctx, bx + 40, L.dividerY, bw - 80, { color: PAL.gold });
+    if (L.subY != null) text(ctx, '일 시 정 지', cx, L.subY, { size: 14, align: 'center', weight: 800, family: FONT.title, color: '#f0d8c0', ow: 3 });
     // 항목 (줄 전체가 탭 영역: 줄끼리 맞닿아 있어 ≥ 44 CSS px 그대로 눌린다)
     const rowH = L.rowH;
     this.items.forEach((it, k) => {

@@ -1062,7 +1062,8 @@ function victorDirector(p, w, v) {
     const hid = nid();
     let n = 0;
     for (const f of hitList) {
-      n += strike(D, inflate(hbOf(f), 2), w8, { hitId: hid, hitstop: n ? 0 : 0.02, shake: 2, kb: [60 * Math.sign(f.cx - from.x || 1), -120], fx: 'bullet' });
+      const wk = vr === 'phantom' && tg && f !== tg ? w8 * 0.45 : w8;   // 유령탄이 지나가며 꿰뚫은 적은 45% (겨눈 적은 온전히)
+      n += strike(D, inflate(hbOf(f), 2), wk, { hitId: hid, hitstop: n ? 0 : 0.02, shake: 2, kb: [60 * Math.sign(f.cx - from.x || 1), -120], fx: 'bullet' });
       markFoe(f, ww);
       B.hit.add(f);
     }

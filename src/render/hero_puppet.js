@@ -643,7 +643,8 @@ export function drawLayers(c, E, K, P, W, tt) {
     else if (farMode === 'open' && !openPup(c, K, s.e2x, s.e2y, s.h2x, s.h2y, true)) { c.save(); boneXf(c, J.elbow, J.hand, s.e2x, s.e2y, s.h2x, s.h2y); blit(c, 'hand', true); c.restore(); }
   }
   // ── 머리 (몸통 옷깃 뒤) + 후광 ──
-  if (K.halo && G.fx) { headPt(s, K, J.headPivot[0], R.rig.figTop + 10); drawHalo(Q[0] - 0.5, Q[1] - 3 + Math.sin(G.t * 2) * 0.6, 6.8, K.aura?.color || '#ffe9a0'); }
+  // artTop: bodyTop 리그(배율 기준이 머리 장식 아래)일 때 원화의 실제 맨 위 — 후광은 관·모자 위에
+  if (K.halo && G.fx) { headPt(s, K, J.headPivot[0], (R.rig.artTop ?? R.rig.figTop) + 10); drawHalo(Q[0] - 0.5, Q[1] - 3 + Math.sin(G.t * 2) * 0.6, 6.8, K.aura?.color || '#ffe9a0'); }
   c.save(); headXf(c, s, K); blit(c, 'head'); c.restore();
   // ── 자락 · 다리 ──
   skirtSetup(K, s, P);
@@ -820,7 +821,10 @@ export function drawTurnWings(ctx, I, type, yaw, front, t) {
   }
 }
 /** 후광 (턴테이블) */
-export function drawTurnHalo(ctx, col, t) { drawHalo(0, -PUP_H - 4 + Math.sin(t * 2) * 0.6, 7, col || '#ffe9a0'); }
+export function drawTurnHalo(ctx, col, t, I) {
+  const r = I?.E?.rig, top = r && r.artTop != null ? (PUP_H * (r.sole - r.artTop)) / (r.sole - r.figTop) : PUP_H;   // bodyTop 리그: 관·모자 위
+  drawHalo(0, -top - 4 + Math.sin(t * 2) * 0.6, 7, col || '#ffe9a0');
+}
 
 /** 디버그·갤러리: 로드 상태 */
 export function puppetStatus() {

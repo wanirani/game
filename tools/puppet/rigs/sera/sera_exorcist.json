@@ -3,6 +3,8 @@
  "charId": "sera",
  "classId": "sera_exorcist",
  "src": "sera/sera_exorcist_side",
+ "_bodyTop": "배율 기준 정수리(원화 px) = 퇴마사 베일 맨 위. 전 직업 상속 → 관·높은 모자 직업도 몸 크기가 같고 장식만 위로 나온다 (heroes1rev)",
+ "bodyTop": 225,
  "joints": {
   "pelvis": [
    820,

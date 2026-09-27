@@ -96,10 +96,13 @@ def cut_views(sheet_key, labels, dbg_name, pockets=None):
     return out
 
 
-def measure(img):
+def measure(img, frac=0.0):
+    """frac (opt-in bodyTop): 뷰 높이 중 머리 장식이 차지하는 몫 — topY 를 그만큼 내려 몸 높이로 정규화 (측면 퍼펫 figTop 과 같은 기준)"""
     A = np.asarray(img)[..., 3] > 100
     ys, xs = np.where(A)
     top, bot = ys.min(), ys.max()
+    if frac:
+        top = float(top + frac * (bot - top))
     h = bot - top
     foot = float(xs[ys > bot - 0.08 * h].mean())
     y0b, y1b = top + 0.18 * h, top + 0.5 * h
@@ -228,10 +231,19 @@ def build_turn(rig_path, quiet=False):
     sheet = Image.new('RGBA', (Wt, Ht), (0, 0, 0, 0))
     meta = {}
     x = 0
+    # opt-in bodyTop (build_rig): 측면 원화에서 머리 장식이 차지하는 몫을 뷰에도 적용 → 옆모습 퍼펫과 채색 뷰의 몸 크기가 같다.
+    # 뷰마다 다르면 turn.bodyFrac = {라벨: 몫} 으로 덮어쓴다
+    frac = {}
+    rp0 = os.path.join(OUT, cid, clsid, 'rig.json')
+    if rig.get('bodyTop') is not None and os.path.exists(rp0):
+        r0 = load_json(rp0)
+        if r0.get('artTop') is not None:
+            f0 = (r0['figTop'] - r0['artTop']) / (r0['sole'] - r0['artTop'])
+            frac = {v: T.get('bodyFrac', {}).get(v, f0) for v in order}
     for v in order:
         im = views[v]
         sheet.paste(im, (x, 0))
-        meta[v] = dict(x=x, w=im.width, h=im.height, **measure(im))
+        meta[v] = dict(x=x, w=im.width, h=im.height, **measure(im, frac.get(v, 0.0)))
         x += im.width + 4
     Sa = np.asarray(sheet).copy()
     mm = Sa[..., 3] > 8

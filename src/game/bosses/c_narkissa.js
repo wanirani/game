@@ -1166,7 +1166,8 @@ export class Narkissa extends BossC {
     if (this.dashing) {
       this.aim({ fa0a: 1.7, fa0e: 0.1, fa1a: 1.7, fa1e: 0.1, ba: 1, fold: 1, rot: dir * 1.3 });
       this.vx = dir * 900; this.vy = 0;
-      if (this.every(0.03)) {
+      const q = world.fx?.quality ?? 1;   // 잔상 예산 8/5/3 (MASTER_PLAN §5.2): 수명 0.2초 ÷ 간격 → 약 6.7 / 4.4 / 2.9 개
+      if (this.every(q >= 1 ? 0.03 : q >= 0.75 ? 0.045 : 0.07)) {
         const gx = this.cx, gy = this.bottom, P = { ...this.pose }, tt = this.t, f = this.facing, fm = this.formPhase;
         world.fx.ghost((ctx, a) => { ctx.save(); ctx.globalAlpha = a * 0.3; drawNark(ctx, gx, gy, f, P, { t: tt, form: fm, dmg: 0, twin: true }); ctx.restore(); }, 0.2);
       }

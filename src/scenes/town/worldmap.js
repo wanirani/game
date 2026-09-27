@@ -111,6 +111,7 @@ export class WorldMapScene extends Scene {
     const P = st.progress;
     if (!P.flags || typeof P.flags !== 'object') P.flags = {};
     if (!Array.isArray(P.unlocked)) P.unlocked = ['s01'];
+    if (!Array.isArray(P.seenScripts)) P.seenScripts = [];   // 서막·인트로 기록 (launch · 옛 세이브 프롤로그가 여기에 쓴다)
     const F = P.flags;
     // ① 2부가 생기기 전에 s13 을 깬 세이브 → 2부 프롤로그 → 마을 (world2 §2.2 legacy)
     if (this.legacyPrologue(st)) return;
@@ -450,8 +451,8 @@ export class WorldMapScene extends Scene {
   start() {
     const n = this.cur(), g = this.game;
     if (!n) return;
-    if (!this.isOpen(n)) { audio.sfx('menu_cancel'); g.toast(this.reqText(n), '#ff8a7a'); return; }
-    if (n.arena && !g.registry.arcade) { audio.sfx('menu_cancel'); g.toast('투기장의 문은 아직 굳게 닫혀 있다…', '#c8b8a0'); return; }
+    if (!this.isOpen(n)) { audio.sfx('menu_cancel'); this.toastOnce(this.reqText(n), '#ff8a7a'); return; }
+    if (n.arena && !g.registry.arcade) { audio.sfx('menu_cancel'); this.toastOnce('투기장의 문은 아직 굳게 닫혀 있다…', '#c8b8a0'); return; }
     audio.sfx('go'); audio.sfx('menu_ok');
     const p = this.pos(n.stage.mapPos);
     if (this.page === 1) {
@@ -464,6 +465,15 @@ export class WorldMapScene extends Scene {
     }
     this.depart = { t: 0, id: n.id };
     this.saveNow();
+  }
+  /**
+   * 같은 알림이 아직 떠 있으면 새로 쌓지 않고 그 알림을 다시 온전히 보이게 늘린다
+   * (잠긴 노드에서 결정·더블탭을 연타하면 같은 문장이 다섯 줄로 쌓여 지도를 가렸다)
+   */
+  toastOnce(msg, color) {
+    const g = this.game, t = g.toasts?.find((q) => q.text === msg && q.t > 0.3);
+    if (t) { t.t = Math.max(t.t, t.max - 1 / 6); return; }
+    g.toast(msg, color);
   }
   launch(id) {
     const g = this.game, st = this.state;
