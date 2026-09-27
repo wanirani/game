@@ -54,6 +54,18 @@ export const INSTALL = `(() => {
   };
 })()`;
 
+/** rng.mjs 대본: 여왕에겐 homeX 가 없어 굽기 대기 동안 실제 루프가 옮겨 둔 자리에서 시작하므로(채색만 대기) 0 프레임에 같은 자리로 놓고
+ *  대기 중 남은 여왕의 탄·장판·분신을 치운다. 페이즈 넘기기는 기본 대본과 같은 프레임(1500 × 0.47 / 0.73) */
+export const RNG_SCRIPT = `(i, b, p, w) => {
+  if (i === 0) {
+    const A = b.A, X = Math.min(A.x1 - 180, A.x0 + Math.max(560, A.w * 0.6));
+    for (const e of w.entities) if (e !== b && e !== p && (e.owner === b || e.boss === b || e.queen === b)) e.dead = true;
+    b.clones.length = 0; b.vanish = 0; b.place(X, b.homeY); b.hoverY = b.homeY; b.facing = -1;
+  }
+  if (i === 705) b.takeHit(b.stats.maxHp * 0.45, { stats: p.stats }, w, {});
+  if (i === 1095) b.takeHit(b.stats.maxHp * 0.3, { stats: p.stats }, w, {});
+}`;
+
 /** 벤치마크 대본: i = 프레임 번호. 360 프레임 주기로 여러 상태를 돈다 (분신·3페이즈 포함) */
 export const BENCH = `(i, b, p, A) => {
   const k = i % 360;

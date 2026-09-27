@@ -396,7 +396,7 @@ export class CrimsonArmor extends ABoss {
     if (!this.split) {
       shadow(ctx, X, this.floorY - 2, 90, 14, 0.6);
       ctx.save();
-      const jx = this.flashT > 0 ? rand(-2, 2) : 0;
+      const jx = this.flashT > 0 ? (hash(this.t * 60 | 0) - 0.5) * 4 : 0;   // 그리기 전용 흔들림 (게임플레이 난수를 쓰지 않는다: 그리는 횟수가 로직을 바꾸지 않게)
       ctx.translate(X + jx, B); ctx.scale(this.facing * S, S);
       this.drawAssembled(ctx, t);
       ctx.restore();
@@ -409,7 +409,7 @@ export class CrimsonArmor extends ABoss {
       this.piece(ctx, c.gB, () => drawGauntlet(ctx, t, this.heat, 0.8));
       // 코어
       ctx.save();
-      ctx.translate(X + (this.flashT > 0 ? rand(-2, 2) : 0), this.cy); ctx.scale(f * S, S);
+      ctx.translate(X + (this.flashT > 0 ? (hash(this.t * 60 | 0) - 0.5) * 4 : 0), this.cy); ctx.scale(f * S, S);   // 그리기 전용 흔들림
       glow(ctx, 0, 0, 170, '#5a0a08', 0.6);
       flames(ctx, 0, 30, PI / 2, 7, 90 + Math.sin(t * 4) * 10, t, DFIRE, 18, 3, '#ffb040', 0.5);
       drawPauldron(ctx, -40, -26, -1, t, this.heat);

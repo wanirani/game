@@ -87,7 +87,13 @@ const ZERO = Object.freeze({ l: 0, r: 0, t: 0, b: 0 });
 let probe = null;
 let insets = ZERO, insetsKey = '0,0,0,0', insetsDirty = true, sizeAt = '', insetsNotify = false;
 const insetFns = new Set();
-const clampInset = (v) => { const n = +v; return Number.isFinite(n) && n > 0 ? Math.min(n, 400) : 0; };
+// 한 변의 여백은 그 축 창 크기의 1/4 까지 (실제 기기는 7 % 안팎; 잘못된 브리지 값이 캔버스를 찌그러뜨리지 않게)
+const clampInset = (v, axis) => {
+  const n = +v;
+  if (!(Number.isFinite(n) && n > 0)) return 0;
+  const dim = axis === 'y' ? W?.innerHeight : W?.innerWidth;
+  return Math.min(n, dim > 0 ? dim / 4 : 400);
+};
 const sizeKey = () => (W ? `${W.innerWidth}x${W.innerHeight}:${W.screen?.orientation?.type || ''}` : '');
 
 /** env(safe-area-inset-*) 를 숨은 요소의 padding 으로 잰다 (getComputedStyle 이 px 로 풀어 준다) */
@@ -102,13 +108,13 @@ function envInsets() {
     D.body.appendChild(probe);
   }
   const cs = getComputedStyle(probe);
-  return { l: clampInset(parseFloat(cs.paddingLeft)), r: clampInset(parseFloat(cs.paddingRight)), t: clampInset(parseFloat(cs.paddingTop)), b: clampInset(parseFloat(cs.paddingBottom)) };
+  return { l: clampInset(parseFloat(cs.paddingLeft), 'x'), r: clampInset(parseFloat(cs.paddingRight), 'x'), t: clampInset(parseFloat(cs.paddingTop), 'y'), b: clampInset(parseFloat(cs.paddingBottom), 'y') };
 }
 /** 앱 브리지 값 (APK: WindowInsets → CSS px, platform §9.4) */
 function bridgeInsets() {
   const b = W?.__BN_INSETS;
   if (!b || typeof b !== 'object') return ZERO;
-  return { l: clampInset(b.l), r: clampInset(b.r), t: clampInset(b.t), b: clampInset(b.b) };
+  return { l: clampInset(b.l, 'x'), r: clampInset(b.r, 'x'), t: clampInset(b.t, 'y'), b: clampInset(b.b, 'y') };
 }
 /** 다시 재고, 바뀌었으면 true */
 function measureInsets() {
@@ -342,7 +348,7 @@ export function registerServiceWorker() {
   }, (e) => { console.warn('[sw] 등록 실패:', e?.message || e); });
 }
 function checkSwUpdate() {
-  if (!swReg || now() - lastSwCheck < SW_UPDATE_EVERY) return;
+  if (!swReg || D?.hidden || now() - lastSwCheck < SW_UPDATE_EVERY) return;
   lastSwCheck = now();
   try { swReg.update?.()?.catch?.(() => {}); } catch { /* 오프라인 등 */ }
 }
@@ -390,6 +396,7 @@ function tick() {
   if (topName !== lastTopName) { lastTopName = topName; wakeDenied = false; }
   syncWake();
   setCursorHidden(cursorWanted());
+  checkSwUpdate(); // 탭을 오래 켜 둔 데스크톱도 30분마다 새 버전을 확인한다 (그 전에는 바로 돌아온다)
   flushUpdateToast();
   if (storageTipPending && G.top?.name === 'hub' && !(G.toasts?.length)) {
     storageTipPending = false;

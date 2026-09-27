@@ -49,6 +49,11 @@ html, body {
 #boot.err .bar i { background: #6a2a30; box-shadow: none; }
 #boot.old .bar { display: none; }
 #boot.done { opacity: 0; pointer-events: none; transition: opacity 0.4s ease-out; }
+/* 움직임 줄이기(기기 설정): 깜빡이는 안내 문구와 막대 애니메이션을 끈다 */
+@media (prefers-reduced-motion: reduce) {
+  #boot .s { animation: none; }
+  #boot .bar i { transition: none; }
+}
 
 #rotate { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; text-align: center; background: rgba(5,2,7,0.96); z-index: 30; font-size: 20px; line-height: 1.8; color: var(--gold); }
 body.touch.portrait #rotate { display: flex; }

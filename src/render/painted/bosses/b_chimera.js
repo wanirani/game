@@ -138,6 +138,9 @@ function drawChimera(ctx, b, world, rig, st) {
   // ── 바닥 그림자 ──
   if (!st.gone.body) D.img(puff('#000000'), 32, 32, b.cx, floor - 2, 0, 150 / 32, 16 / 32, 0.6 * (air ? clamp(1 - (floor - b.bottom) / 300, 0.2, 1) : 1));
   P.draw(ctx, 0);
+  // 바닥선 아래는 그리지 않는다 (사망 때 주저앉는 몸통·옆으로 벌어지는 다리가 바닥 타일을 뚫지 않게)
+  D.end(); D.save();
+  ctx.beginPath(); ctx.rect(b.cx - 1600, floor - 3000, 3200, 3002); ctx.clip();
   // ── 몸통 변환 ──
   const T = R.torso, tk = T.k;
   const breath = 1 + Math.sin(t * 1.8) * 0.012 + (b.roar ?? 0) * 0.01;
@@ -173,7 +176,7 @@ function drawChimera(ctx, b, world, rig, st) {
     if (air || (dying && dT > 1.25)) {
       // 공중: 앞다리는 앞으로 뻗고 뒷다리는 뒤로 (사망 붕괴 중엔 옆으로 퍼진다)
       const a = air ? (L.front ? 0.95 : -0.9) + (b.vy < 0 ? -0.15 : 0.2) : (L.front ? 0.9 : -0.9) * clamp((dT - 1.25) / 0.5, 0, 1);
-      fxW = H[0] + F.fs * Math.sin(a) * nat * 0.96; fyW = H[1] + Math.cos(a) * nat * 0.96;
+      fxW = H[0] + F.fs * Math.sin(a) * nat * 0.96; fyW = Math.min(floor, H[1] + Math.cos(a) * nat * 0.96);
     } else {
       if (L.front && !L.far && (b.claw ?? 0) > 0.2) { fx += b.claw * 26; lift += b.claw * 34; }   // 발톱 치켜들기
       if (L.far) fx += L.front ? 6 : 10;
@@ -226,6 +229,7 @@ function drawChimera(ctx, b, world, rig, st) {
   D.end();
   st.shards.draw(D);
   D.end();
+  D.restore();   // 바닥 클립
   P.draw(ctx, 1);
   ctx.globalAlpha = ga0;
   ctx.imageSmoothingQuality = q0;

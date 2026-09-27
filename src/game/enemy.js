@@ -20,6 +20,9 @@
 //  react    그림 반응 상태 { sq, sqT, sx, sy, lean, leanT, leanA, spin, airLean, lie, armor, dir }
 //  camXf    반응 변형을 적용하기 직전의 캔버스 변형 (채색 렌더러의 월드 좌표 파티클용; 반응이 없으면 null)
 // world.freezeEnemies (각성 연출) 동안 AI·접촉 피해를 건너뛴다 (피격 반응 물리는 계속).
+// AI 시계(stateT·animT)는 경직·다운·기상·각성 정지·시간 정지 동안 멈춘다 (풀리자마자 윈드업 없이 치지 않게).
+// 경직을 받은 공격 동작(COUNTER.states, didHit 전)은 끊긴다 (breakAttack: didHit = true, 상태가 바뀌면 원래 값으로).
+// AI 연출 상태(SCRIPTED_STATES: 솟기·석상·변장·뼈 무더기 등)에서는 띄우기·다운 없이 밀리기만 한다.
 import { Entity } from './entity.js';
 import { moveBody, isSolidType } from '../core/physics.js';
 import { enemyStrike } from './combat.js';
@@ -76,6 +79,8 @@ export function weightClassOf(def) {
   return 'LIGHT';
 }
 const damp = (k, dt) => Math.pow(k, dt * 60);
+/** AI 가 몸을 직접 연출하는 상태 (ai*.js): 이때 맞으면 띄우지 않는다 (applyReaction) */
+const SCRIPTED_STATES = new Set(['rise', 'sink', 'under', 'burrow', 'statue', 'disguise', 'collapse', 'pile', 'reform', 'appear', 'hidden', 'vanish']);
 let _vibRT = NaN, _vibN = 0;
 /**
  * 그린 프레임마다 번갈아 바뀌는 0/1 (히트스톱 떨림). game.frame 은 60Hz 틱 수라 30fps 로 그리면(틱 2번에 1번 그림)
@@ -158,7 +163,12 @@ export class Enemy extends Entity {
     if (hb) return this.relRect(hb.x, hb.y, hb.w, hb.h);
     return { x: this.x + 2, y: this.y + 2, w: this.w - 4, h: this.h - 4 };
   }
-  setState(s) { if (this.state !== s) { this.state = s; this.stateT = 0; } }
+  setState(s) {
+    if (this.state === s) return;
+    this.state = s; this.stateT = 0;
+    // 끊긴 공격이 끝남 → didHit 를 원래 값으로 (다음 공격은 다시 카운터 가능)
+    if (this._atkBroken) { this.didHit = this._didHit0; this._atkBroken = null; }
+  }
   setAnim(a) { if (this.anim !== a) { this.anim = a; this.animT = 0; } }
   get player() { return this.world?.player; }
   distToPlayer() { const p = this.player; return p ? Math.hypot(p.cx - this.cx, p.cy - this.cy) : 1e9; }
@@ -196,7 +206,7 @@ export class Enemy extends Entity {
   effClass() { return this.staggerT > 0 && this.wclass === 'HEAVY' ? 'MEDIUM' : this.wclass; }
   /** 쓰러질 수 있는가 (feel §4.4 안전 규칙: FIXED·보스·비행·noKnockdown·작은 적 제외) */
   canKnockdown() {
-    if (this.noGravity || this.def.noKnockdown || this.def.fixed) return false;
+    if (this.noGravity || this.def.noKnockdown || this.def.fixed || SCRIPTED_STATES.has(this.state)) return false;
     const T = tables();
     if (this.h < (T.W.knockdownMinH ?? 50)) return false;
     const kd = T.W[this.effClass()]?.knockdown;
@@ -213,6 +223,19 @@ export class Enemy extends Entity {
     if (this.staggerT > 0) this.endStagger();
   }
   endStagger() { this.staggerT = 0; this.staggerImm = tables().W.stagger.immune ?? 2; }
+  /**
+   * 경직을 받으면 하던 공격(윈드업, COUNTER.states 이고 didHit 전)은 끊긴다.
+   * didHit = true → impact.isCounterState 가 이어지는 타격을 모두 COUNTER 로 잡지 않고(첫 타만), didHit 를 쓰는 AI(ai.js·ai_a.js)는 그 일격을 건너뛴다.
+   * 'cancel' = didHit 를 쓰는 AI (경직 동안 상태 시계를 흘려 공격 상태를 끝냄), 'hold' = 자체 플래그 AI (시계를 멈춰 회복 뒤 남은 윈드업을 이어 감)
+   */
+  breakAttack() {
+    if (this._atkBroken || this.didHit === true || !this.state) return;
+    const S = FH.COUNTER?.states;
+    if (!Array.isArray(S) || !S.includes(this.state)) return;
+    this._didHit0 = this.didHit;
+    this._atkBroken = this.didHit === false ? 'cancel' : 'hold';
+    this.didHit = true;
+  }
   tickReact(dt, world) {
     const R = this.react, T = tables();
     if (R.sq > 0) R.sq -= dt;
@@ -237,7 +260,13 @@ export class Enemy extends Entity {
   }
 
   update(dt, world) {
-    this.t += dt; this.stateT += dt; this.animT += dt;
+    this.t += dt;
+    // AI 시계(stateT·animT)는 AI 가 도는 동안만 흐른다 (feel §4.4 'AI 정지'): 경직·다운·기상 중, 각성 정지·시간 정지 중에는 멈춘다.
+    // → 윈드업 도중 맞아 띄워진(또는 멈춘) 적이 풀리자마자 예고 없이 휘두르지 않고, 남은 윈드업을 이어서 보여 준 뒤 친다.
+    //   예외: didHit 를 쓰는 AI 의 끊긴 공격('cancel', breakAttack)은 경직 동안 상태 시계만 흘려 회복 때 그 공격 상태를 끝낸다 (자세는 멈춤)
+    const stopped = (world.timeStop > 0 && !this.def.ignoreTimeStop) || (!!world.freezeEnemies && !this.def.ignoreFreeze);
+    if (this.dying > 0 || !(stopped || this.stun > 0 || this.down > 0 || this.wakeInv > 0)) { this.stateT += dt; this.animT += dt; }
+    else if (!stopped && this._atkBroken === 'cancel') this.stateT += dt;
     if (this.flashT > 0) this.flashT -= dt;
     if (this.dying > 0) {
       this.dying -= dt;
@@ -304,6 +333,8 @@ export class Enemy extends Entity {
     } else {
       ai = true;
       if (this.gravity !== this.baseGravity) this.gravity = this.baseGravity;
+      // 회복: 자체 플래그로 치는 AI 의 멈춰 있던 윈드업('hold')은 다시 카운터 창이 된다
+      if (this._atkBroken === 'hold') { this._atkBroken = null; this.didHit = this._didHit0; }
       this.ai.update(this, world, dt);
       if (!this.noGravity) moveBody(this, dt, world.map, world.platforms);
       else if (!this.def.phase) {
@@ -479,6 +510,7 @@ export class Enemy extends Entity {
     }
     // AI 가 막았다 (방패 막기: onHit 에서 guardT 를 켬) → 넉백·경직 없음
     if (this._guarded) return;
+    this.breakAttack();   // 이제 경직을 받는다 → 하던 공격은 끊긴다
     if (this.noGravity) {
       this.vx = dir * kb[0] * kbMul;
       this.vy = kb[1] * 0.3 * kbMul;
@@ -503,7 +535,9 @@ export class Enemy extends Entity {
       this.down = Math.max(this.down, 0.3);
       return;
     }
-    const launchMul = Wc.launchMul ?? 1;
+    // AI 가 몸을 직접 연출하는 상태(땅에서 솟기·석상·변장·뼈 무더기 등)는 띄우기·공중 콤보·다운 없이 밀리기만 한다
+    // (누운 자세·기상 무적이 무더기 그림과 겹치거나 '무더기 부수기'를 막지 않게)
+    const launchMul = SCRIPTED_STATES.has(this.state) ? 0 : (Wc.launchMul ?? 1);
     const air = !this.onGround;
     if (attack.launch && !info.cont) {
       // 띄우기
@@ -511,7 +545,7 @@ export class Enemy extends Entity {
         this.vy = -Math.min(J.launchMax ?? 1000, Math.abs(kb[1]) * (J.launchK ?? 1.25)) * launchMul;
         this.jugg = true; this.juggT = 0;
         if (air) this.jn++;
-      } else if (wc === 'HEAVY' && (Wc.hopCls ?? ['H', 'F']).includes(cls)) this.vy = Math.min(this.vy, Wc.hopVy ?? -380);
+      } else if (wc === 'HEAVY' && !SCRIPTED_STATES.has(this.state) && (Wc.hopCls ?? ['H', 'F']).includes(cls)) this.vy = Math.min(this.vy, Wc.hopVy ?? -380);
       this.vx = dir * kb[0] * kbMul;
       this.stun = Math.max(this.stun, stunTab, explicit) + stunAdd;
     } else if (air && launchMul > 0) {

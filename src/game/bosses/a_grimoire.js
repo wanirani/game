@@ -253,7 +253,7 @@ export class Grimoire extends ABoss {
     const alt = clamp((this.floorY - this.bottom) / 300, 0, 1);
     shadow(ctx, X, this.floorY - 2, 80 * (1 - alt * 0.4), 12, 0.5 * (1 - alt * 0.5));
     ctx.save();
-    const jx = this.flashT > 0 ? rand(-2, 2) : 0;
+    const jx = this.flashT > 0 ? (hash(this.t * 60 | 0) - 0.5) * 4 : 0;   // 그리기 전용 흔들림 (게임플레이 난수를 쓰지 않는다: 그리는 횟수가 로직을 바꾸지 않게)
     ctx.translate(X + jx, Y + Math.sin(t * 2.2) * 3); ctx.rotate(this.tilt + Math.sin(t * 1.3) * 0.03); ctx.scale(this.facing * 1.22, 1.22);
     this.drawBook(ctx, t);
     ctx.restore();
@@ -428,8 +428,8 @@ function drawRazorPage(ctx, p) {
 function drawLightning(ctx, b, k) {
   const seed = Math.floor(b.t * 30);
   ctx.globalAlpha *= k;
-  bolt(ctx, b.x0 + rand(-6, 6), b.y0, b.x1, b.y1, '#bfe0ff', 5, seed, 26);
-  bolt(ctx, b.x0 + rand(-20, 20), b.y0, b.x1 + rand(-30, 30), b.y1, '#8ab8ff', 2, seed + 7, 34);
+  bolt(ctx, b.x0 + (hash(seed) - 0.5) * 12, b.y0, b.x1, b.y1, '#bfe0ff', 5, seed, 26);   // 그리기 전용 흔들림 (게임플레이 난수 대신 seed 해시)
+  bolt(ctx, b.x0 + (hash(seed + 3) - 0.5) * 40, b.y0, b.x1 + (hash(seed + 5) - 0.5) * 60, b.y1, '#8ab8ff', 2, seed + 7, 34);
   glow(ctx, b.x1, b.y1 - 10, 90, '#bfe0ff', k);
 }
 function drawPageBit(ctx) { ctx.fillStyle = '#efe2c4'; ctx.fillRect(-6, -8, 12, 16); ctx.strokeStyle = 'rgba(60,40,30,0.5)'; ctx.beginPath(); ctx.moveTo(-4, -3); ctx.lineTo(4, -3); ctx.moveTo(-4, 2); ctx.lineTo(3, 2); ctx.stroke(); }

@@ -343,8 +343,15 @@ class Game {
     this.toasts.push({ text: String(text ?? ''), color, t: time, max: time, shown: undefined });
     if (this.toasts.length > 5) this.toasts.shift();
   }
-  /** 토스트를 숨기고 시간도 멈출 장면인가 (scene.deferToasts 또는 연출 장면 이름) */
-  toastsDeferred(sc) { return !!sc && (!!sc.deferToasts || DEFER_TOAST_SCENES.has(sc.name)); }
+  /**
+   * 토스트를 숨기고 시간도 멈출 때인가: scene.deferToasts · 연출 장면 이름 · 보이는 게임플레이 장면이 HUD 를 숨긴 동안
+   * (world.hudHidden: 각성 연출 — HUD 가 통째로 사라진 화면에 토스트만 뜨지 않게)
+   */
+  toastsDeferred(sc) {
+    if (!sc) return false;
+    if (sc.deferToasts || DEFER_TOAST_SCENES.has(sc.name)) return true;
+    return !!this.hudScene()?.world?.hudHidden;
+  }
   /** 지금 화면에 HUD 가 보이는 게임플레이 장면 (맨 위이거나, 그 위에 반투명 장면만 있을 때) | null */
   hudScene() {
     const S = this.scenes;
@@ -529,7 +536,7 @@ class Game {
       ctx.globalAlpha = 1;
     }
     if (this.debug) {
-      ctx.fillStyle = '#0f0'; ctx.font = '12px monospace'; ctx.textAlign = 'left';
+      ctx.fillStyle = '#0f0'; ctx.font = font(12, 400, FONT.body); ctx.textAlign = 'left';
       ctx.fillText(`FPS ${this.fps.toFixed(0)}  ${this.tier}${this.autoQualityOn() ? '(auto)' : ''} ×${this.dpr.toFixed(2)} ui ${this.uiK}  scenes:${this.scenes.map((s) => s.name).join('>')}`, 6, this.viewH - 6);
     }
     if (taps.debug) taps.drawDebug(ctx); // ?debug=taps

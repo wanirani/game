@@ -414,9 +414,28 @@ function divePose(P, S, p, K, ph) {
   lerpPose(P, PB, PE, k);
   S.plunge = ph.ph === 1 ? 0.8 : 0;
 }
+// 채색 퍼펫 총 조준: 원화 어깨는 벡터보다 높아 수평 조준 총구가 탄 생성점(movesets proj.offX/offY → player.js)보다 ≈19px 위였다.
+// 조준 자세의 손 목표를 "총구 = 생성점"이 되게 푼다 (게임 배율 기준, 팔꿈치는 IK 로 굽음). 벡터 인형은 그대로.
+const AIM_PUP = { shoot: 1, shoot_alt: 1, shoot_double: 1, shoot_up: 1, crouch_shoot: 1, slide_shoot: 1 };
+function aimPup(E, K, p, def, mv) {
+  const pr = mv?.proj;
+  if (!pr || !AIM_PUP[mv.anim]) return;
+  const hs = drawScale * (p.look?.height ?? K.defH), mx = weaponReach(K.W) + 1.3, my = -2.6;   // 총구 = 무기 좌표 (1.3·(L+1), −2.6)
+  const ux = Math.sin(E.lean), uy = -Math.cos(E.lean), nx = E.px * K.ls + ux * K.torso, ny = E.py * K.ls + uy * K.torso;
+  for (const arm of [1, 2]) {
+    if (!(def.gun & arm)) continue;
+    const a = arm === 1 ? K.pS1 : K.pS2, w = arm === 1 ? E.w1 : E.w2;
+    const sx = nx + ux * a[0] - uy * a[1], sy = ny + uy * a[0] + ux * a[1];
+    const tx = (pr.offX ?? 30) / hs - (def.gun === 3 && arm === 2 ? 1.5 : 0), ty = (pr.offY ?? -60) / hs - (def.gun === 3 && arm === 2 ? 3 : 0);
+    const dx = tx - (Math.cos(w) * mx - Math.sin(w) * my) - sx, dy = ty - (Math.sin(w) * mx + Math.cos(w) * my) - sy;
+    const ang = Math.atan2(dy, dx), r = clamp(Math.hypot(dx, dy) / (K.ua + K.fa), 0.5, 1);
+    if (arm === 1) { E.a1 = ang; E.r1 = r; } else { E.a2 = ang; E.r2 = r; }
+  }
+}
 function gunPose(P, S, p, K, ph, def, kind) {
   copyPose(PE, PB); Object.assign(PE, def.E);
   if (kind !== 'stance' && !def.legs) keepLegs(PE, PB);
+  if (K.pup) aimPup(PE, K, p, def, S.mv);
   const t = ph.t, h0 = ph.h0, dur = ph.dur;
   let k = t < h0 ? ease.outCubic(clamp(t / Math.max(0.01, h0), 0, 1)) : 1;
   if (t > h0) { const r = (t - h0) / Math.max(0.02, dur - h0); if (r > 0.62) k = 1 - ease.inOutQuad((r - 0.62) / 0.38) * 0.85; }
