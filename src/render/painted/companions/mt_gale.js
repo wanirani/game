@@ -8,6 +8,7 @@ import { loadRig } from '../kit.js';
 
 const DIR = 'painted/companions/mt_gale';
 const LEG = { flash: true, noDmg: true, deep: 0.6 };
+const TAIL = { flash: true, noDmg: true, outline: 0.6 };   // 꼬리 마디 이음매 선을 얇게
 /** 각성: 금빛 깃 끝 · 장식 → 더 밝은 금, 흰 깃 → 번개빛 도는 청백 (가죽 안장은 그대로) */
 const AW_RULES = [
   { when: (h, s, l) => h > 34 && h < 62 && s > 0.3 && l > 0.3, h: 48, s: 1.2, l: 1.18, l0: 0.04 },
@@ -17,7 +18,7 @@ const DEF = {
   glow: '#8ac8ff',
   outline: { width: 1.4, color: 'rgba(10,10,16,0.9)' },
   defaults: { flash: true, noDmg: true },
-  parts: { foreU: LEG, foreL: LEG, hindU: LEG, hindL: LEG, wing: { flash: true, noDmg: true, deep: 0.52 } },
+  parts: { foreU: LEG, foreL: LEG, hindU: LEG, hindL: LEG, wing: { flash: true, noDmg: true, deep: 0.52 }, tail0: TAIL, tail1: TAIL },
   tints: { aw: { rules: AW_RULES, parts: ['wing', 'head', 'body'], glow: '#fff2a0' } },
 };
 const FX = {

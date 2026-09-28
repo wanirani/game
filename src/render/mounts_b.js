@@ -380,7 +380,7 @@ function batPose(m, dt, P, T) {
     bobT = T.crawlSink + Math.sin(t * 2.1 + S.seed) * 0.6;
     pitchT = 0.08; headT = 0.14 + Math.sin(t * 0.7 + S.seed) * 0.05;
     if (moving) { bobT -= Math.abs(Math.sin(cyc)) * (run ? 7 : 3.5); pitchT += Math.sin(cyc) * 0.05; headT = 0.1 + Math.sin(cyc) * 0.04; }
-    if (a === 'screech') { headT = -0.05; jaw = 1; pitchT = 0; }
+    if (a === 'screech') { headT = -0.05; jaw = 1; pitchT = 0; gw = 0; }                 // 날개를 펼친다 (손목을 떼고)
     if (a === 'hurt') { headT = -0.25; jaw = 0.5; pitchT = -0.04; }
     if (a === 'land') bobT += 3 * Math.max(0, 1 - at / 0.2);
     if (a === 'idle') { const u = (t + S.seed) % 5.3; if (u < 0.5) jaw = Math.sin(u / 0.5 * PI) * 0.45; }   // 쉿 (이빨을 드러낸다)

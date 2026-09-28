@@ -204,7 +204,7 @@ const GROUP_FNS = {
     await s.close();
   },
 
-  /** Heroes: one class per tier in game (idle + attack), then the status-tab turntable at 5 yaws (tier-2 class). */
+  /** Heroes: one class per tier in game (mid-attack), then the status-tab turntable at 8 yaws (tier-2 class). */
   async heroes(env, vp) {
     const s = await stagePage(env, vp, 'index.html?scene=stage&stage=s04&room=r1');
     const shots = [];
@@ -214,6 +214,7 @@ const GROUP_FNS = {
       try {
         await gotoRoom(s, 's04', 'r1', { hero });
         await prepWorld(s);
+        await play(s, 150);   // the chapter title card is gone by then
         for (const cls of tiers) {
           await s.eval((id) => { const p = window.__game.world.player; p.hero.classId = id; p.refreshStats?.(); for (const e of window.__game.world.entities || []) if (e.kind === 'enemy') e.dead = true; }, cls.id);
           await play(s, 20); await s.wait(500); await waitBakes(s, 3000);
@@ -223,7 +224,7 @@ const GROUP_FNS = {
         const t2 = tiers[tiers.length - 1];
         await s.eval(() => { const g = window.__game; g.push('menu', { world: g.world, tab: 'status' }); });
         await play(s, 30); await s.wait(500); await play(s, 10);
-        for (const deg of QUICK ? [0, 90, 180] : [0, 45, 90, 135, 180]) {
+        for (const deg of QUICK ? [0, 90, 180] : [0, 45, 90, 135, 180, 225, 270, 315]) {
           await s.eval((a) => {
             const m = window.__game.top, v = m?.cur?.view;
             if (!v) return false;
@@ -366,7 +367,7 @@ const GROUP_FNS = {
     for (const f of files) {
       let s;
       try {
-        s = await env.page(VPOPT(vp), `tools/${f}`);
+        s = await env.page(VPOPT(vp), `tools/${f}`, { wait: false });   // galleries have no window.__game
         await s.page.waitForLoadState('load');
         await s.wait(QUICK ? 1500 : 3000);
         const buf = await s.page.screenshot({ type: 'jpeg', quality: 70 });

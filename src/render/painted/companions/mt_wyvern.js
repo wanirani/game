@@ -7,6 +7,8 @@ import { loadRig } from '../kit.js';
 
 const DIR = 'painted/companions/mt_wyvern';
 const LEG = { flash: true, noDmg: true, deep: 0.58 };
+/** 꼬리 마디: 외곽선을 얇게 (마디 이음매의 잘린 가장자리 선이 덜 보이게) */
+const TAIL = { flash: true, noDmg: true, outline: 0.6 };
 /** 각성: 진홍 비늘 → 타오르는 주홍, 주황 배 비늘 → 금빛 (검은 뿔 · 가죽 안장은 그대로) */
 const AW_RULES = [
   { when: (h, s, l) => (h < 16 || h > 335) && s > 0.35 && l > 0.08, h: 8, s: 1.1, l: 1.22, l0: 0.04 },
@@ -16,7 +18,7 @@ const DEF = {
   glow: '#8ac8ff',
   outline: { width: 1.4, color: 'rgba(12,4,6,0.9)' },
   defaults: { flash: true, noDmg: true },
-  parts: { foreU: LEG, foreL: LEG, hindU: LEG, hindL: LEG, wing: { flash: true, noDmg: true, deep: 0.5 } },
+  parts: { foreU: LEG, foreL: LEG, hindU: LEG, hindL: LEG, wing: { flash: true, noDmg: true, deep: 0.5 }, tail0: TAIL, tail1: TAIL, tail2: TAIL },
   tints: { aw: { rules: AW_RULES, parts: ['body', 'head', 'wing', 'tail0', 'tail1', 'tail2'], glow: '#ffb060' } },
 };
 const FX = {

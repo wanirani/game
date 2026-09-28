@@ -228,6 +228,9 @@ async function installT({ god }) {
   T.release = (code) => { T.holds.delete(code); T.key(code, false); };
   T.releaseAll = () => { for (const c of [...T.holds.keys()]) T.release(c); for (const r of T.rels) T.key(r.code, false); T.rels.length = 0; };
   T.draw = () => { try { g.syncPointer?.(); input.beginRender(); g.render(); input.endRender(); g.syncPad(); } catch (e) { console.error(e); } };
+  // 탭 영역은 그린 뒤 마이크로태스크에서 봉인되고(ui.js tapSeal), 봉인한 지 1초(taps.maxAge, 실제 시간)가 지나면 판정하지 않는다.
+  // 게임 루프는 매 rAF 마다 다시 봉인하지만 멈춘 루프에서는 그렇지 않으므로, 탭을 판정할 스텝 직전에 그리고 봉인까지 기다린다
+  T.drawSealed = async () => { T.draw(); await null; };
   T.full = () => { const p = T.p(); if (p?.stats && !p.dead) { p.hp = p.stats.hp; p.mp = p.stats.mp; } };
   T.hero60 = (lv = 60) => { const st = g.state, h = st?.heroes?.[st.charId]; if (h) h.level = lv; const p = T.p(); if (p) { p.refreshStats?.(); T.full(); } };
   T.menuKey = () => { if (T.kcd <= 0) { T.tap('Enter'); T.kcd = 6; } };
@@ -674,6 +677,8 @@ async function bossFlow(sid, { patterns = true, death = true, loot = false, clea
         // §17 시각 검토: 두 엔딩 제목 카드 (ENDING n · 영문 제목 · 「이름」 이 모두 보이는 2.4–4.4초 사이에서 멈춰 찍는다)
         left = await P.page.evaluate(() => { const T = window.__T; T.autoEnding = false; T.top().leave(); return true; });
         const card = await P.page.evaluate(() => { const T = window.__T; return T.until(() => T.top()?.name === 'ending' && T.top().t > 3 && T.g.fade.dir === 0, 60) ? T.top().kind : null; });
+        // 배경 CG 는 비동기로 받는다 — 멈춘 루프에서는 시뮬레이션 3초가 실제로는 순식간이므로, 스텝 없이 디코딩을 기다린 뒤 찍는다
+        if (card) await stepUntil(P, async () => { const { assets } = await import('/src/core/assets.js'); const sc = window.__T.top(); return { done: sc?.name !== 'ending' || !!assets.get(sc.E?.bg) }; }, null, 8000);
         if (card) await shot(P, `ending_card_${card}`);
       }
       const c = await P.page.evaluate(({ sid, rid, ending, left }) => {
@@ -758,7 +763,7 @@ async function flowGroup() {
     await shot(P, 'flow_worldmap_p1');
     const pt = await tapPoint(P, 'tab0');
     if (pt) await P.page.mouse.click(pt.x, pt.y);
-    await stepUntil(P, () => { const T = window.__T, wm = T.top(); T.draw(); T.tick(1); return { done: wm.page === 0 }; });
+    await stepUntil(P, async () => { const T = window.__T, wm = T.top(); await T.drawSealed(); T.tick(1); return { done: wm.page === 0 }; });
     const c = await P.page.evaluate(() => {
       const T = window.__T, wm = T.top();
       T.draw(); T.tick(2);
@@ -1086,7 +1091,7 @@ async function mobileGroup() {
     });
     const pt = await tapPoint(P, 'tab1');
     if (pt) await t.tap(pt.x, pt.y, 50);
-    const r = await stepUntil(P, () => { const T = window.__T, wm = T.top(); T.draw(); T.tick(1); return { done: wm.page === 1, top: wm.name, page: wm.page, uiK: T.g.uiK, frames: T.frames }; });
+    const r = await stepUntil(P, async () => { const T = window.__T, wm = T.top(); await T.drawSealed(); T.tick(1); return { done: wm.page === 1, top: wm.name, page: wm.page, uiK: T.g.uiK, frames: T.frames }; });
     await P.page.evaluate(() => window.__T.tick(45));   // 45: 지도 교차 페이드가 끝난 뒤 스크린샷
     await shot(P, 'mobile_worldmap');
     check(G, '지도 (터치): tab1 을 눌러 2부 지도로', !!pt && r.top === 'worldmap' && r.page === 1 && !errsSince(P, e0).length, { ...r, tab1: pt?.z ? [pt.z.x, pt.z.y, pt.z.w, pt.z.h, pt.z.k] : null, errs: errsSince(P, e0) });

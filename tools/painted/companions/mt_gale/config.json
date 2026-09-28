@@ -2,7 +2,7 @@
  "id": "mt_gale",
  "kind": "companion",
  "td": 3.0,
- "note": "All parts are cut from one Kling side-view reference (src/mt_gale_ref.webp, generation ARwl3A6_\u2026 #1; slight three-quarter chest). The near wing root and the scapular feathers over the saddle stay on the body; far legs and the far wing are the near ones darkened at runtime. Tail = two chained segments. frame: local game px = (src - [ox, gy]) * lps; the rider seat lands on the data seat (MOUNTS.mt_gale.seat = -6, -54).",
+ "note": "All parts are cut from one Kling side-view reference (src/mt_gale_ref.webp, generation ARwl3A6_… #1; slight three-quarter chest). The near wing root and the scapular feathers over the saddle stay on the body; far legs and the far wing are the near ones darkened at runtime. Tail = two chained segments. frame: local game px = (src - [ox, gy]) * lps; the rider seat lands on the data seat (MOUNTS.mt_gale.seat = -6, -54). Body top line follows the saddle (pommel kept): the far wing feathers above the back are left out so no flat white patch shows behind the head. The head mask follows the crown and neck ruff (the far wing feathers behind the head are left out).",
  "frame": {
   "ox": 1266,
   "gy": 1705,
@@ -52,27 +52,35 @@
        ],
        [
         1160,
-        900
+        905
        ],
        [
-        1240,
-        860
+        1250,
+        880
        ],
        [
-        1330,
+        1312,
+        850
+       ],
+       [
+        1345,
+        772
+       ],
+       [
+        1372,
+        712
+       ],
+       [
+        1402,
         760
        ],
        [
-        1430,
-        720
-       ],
-       [
-        1480,
-        790
+        1452,
+        862
        ],
        [
         1520,
-        900
+        930
        ],
        [
         1650,
@@ -121,12 +129,24 @@
       "feather": 12,
       "pts": [
        [
-        1440,
-        690
+        1492,
+        850
+       ],
+       [
+        1522,
+        796
+       ],
+       [
+        1572,
+        758
+       ],
+       [
+        1660,
+        742
        ],
        [
         1860,
-        690
+        712
        ],
        [
         1860,
@@ -145,8 +165,8 @@
         1010
        ],
        [
-        1460,
-        870
+        1470,
+        900
        ]
       ]
      }
@@ -157,12 +177,24 @@
       "feather": 12,
       "pts": [
        [
-        1440,
-        690
+        1492,
+        850
+       ],
+       [
+        1522,
+        796
+       ],
+       [
+        1572,
+        758
+       ],
+       [
+        1660,
+        742
        ],
        [
         1860,
-        690
+        712
        ],
        [
         1860,
@@ -181,8 +213,8 @@
         1010
        ],
        [
-        1460,
-        870
+        1470,
+        900
        ]
       ]
      }

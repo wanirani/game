@@ -928,7 +928,7 @@ async function pUlt({ cid, measure, captureFinal }) {
     cast: Q.log.ev.slice(ev0).some((e) => e[1] === 'ultimateCast'), cutins: Q.log.scenes.slice(sc0).filter((s) => s[1] === 'push').map((s) => s[2]),
     classes: [...new Set(Q.log.hits.slice(h0).map((h) => h.cls))], dmg: ds.reduce((n, e, i) => n + (hp0[i] - e.hp), 0),
     zoomMin: +zoomMin.toFixed(3), zoomMax: +zoomMax.toFixed(3), frames: measure ? frames : null, base: measure ? base : null, paused: !!shot,
-    at: { stage: w.stage?.id ?? null, room: w.roomIndex ?? w.room?.id ?? null, px: Math.round(p.x), camX: Math.round(w.camera.x) },
+    at: { stage: w.stage?.id ?? null, room: w.roomId ?? null, px: Math.round(p.x), camX: Math.round(w.camera.x) },
   };
   Q._ultDs = ds;
   return res;
@@ -1099,10 +1099,13 @@ async function pBossEnter() {
   const b = w.boss;
   return { boss: b?.def?.id ?? b?.id ?? null, active: !!w.bossActive, top: Q.top(), state: b?.state ?? null, hp: b?.hp, maxHp: b?.stats?.maxHp, tops: log };
 }
-async function pBossAwaken({ cid }) {
+async function pBossAwaken({ cid, boost = 0 }) {
   const Q = window.__fq, w = Q.w(), p = Q.p(), b = w.boss;
   Q.setClass(cid);
   p.buffs.invincible = 99999;
+  // boost: multiply every hit (instance getter over Player.dmgMul, read per hit) so the uncapped awakening would take far
+  // more than 30 % — the cap itself has to engage
+  if (boost > 0) Object.defineProperty(p, 'dmgMul', { get: () => boost, configurable: true });
   // keep the hero near the boss (the awakening hits what is on screen)
   const hp0 = b.hp, max = b.stats?.maxHp ?? b.maxHp;
   w.run.sp = 100; w.run.aw = 100;
@@ -1115,7 +1118,9 @@ async function pBossAwaken({ cid }) {
   Q.until(() => { if (w.cutscene) seenDir = true; return seenDir && !w.cutscene && Q.top() === 'stage'; }, 900);
   Q.step(20);
   const dealt = hp0 - (b.dead ? 0 : b.hp);
-  return { cid, pushed, hp0, hp1: b.hp, max, dealt, frac: max ? +(dealt / max).toFixed(4) : null, dead: !!b.dead, director: Q.AW.AWAKEN_DEBUG.last?.director ?? null };
+  const cap = Q.AW.AWAKEN_DEBUG.cap ? { ...Q.AW.AWAKEN_DEBUG.cap } : null;
+  if (boost > 0) delete p.dmgMul;
+  return { cid, boost, pushed, hp0, hp1: b.hp, max, dealt, frac: max ? +(dealt / max).toFixed(4) : null, dead: !!b.dead, director: Q.AW.AWAKEN_DEBUG.last?.director ?? null, cap };
 }
 
 // A8: mocked pad — RT held 0.5 s awakens; axes[0] = 0.4 walks
@@ -1196,7 +1201,7 @@ async function pX3({ cid }) {
   p.mount?.dismount?.(w, p, 'debug'); Q.step(30);
   Q.reset();
   const gs = w.companions?.guards ?? w.companions?.guardians ?? [];
-  const d = Q.dummy('skeleton', 200, { facing: -1 });
+  const d = Q.dummy('skeleton', 200, { facing: -1, harmless: false });   // guardians never target harmless foes (guardian.js pickTarget)
   Q.step(2);
   // guardian auto attacks only (the hero idles): hitstop 0, no awakening gain, combo timer not refreshed
   w.run.aw = 10;
@@ -1224,8 +1229,9 @@ async function pX3({ cid }) {
   Q.step(150);
   const hs = Q.log.hits.slice(n1);
   const as = hs.filter((h) => h.tags.includes('assist'));
-  const fin = hs.find((h) => !h.tags.includes('companion'));
-  out.assist = { finisherCls: fin?.cls ?? null, finisherHs: fin?.hs ?? null, assists: as.length, assistHsMax: as.length ? Math.max(...as.map((h) => h.hs ?? 0)) : null, awDelta: +(w.run.aw - aw0).toFixed(3) };
+  const finId = ms.ground?.[3]?.id ?? null;
+  const fin = hs.find((h) => finId && h.moveId === finId) ?? hs.find((h) => !h.tags.includes('companion') && !h.tags.includes('guardian'));   // the hero's own finisher
+  out.assist = { finisherCls: fin?.cls ?? null, finisherHs: fin?.hs ?? null, assists: as.length, assistHsMax: as.length ? Math.max(...as.map((h) => h.hs ?? 0)) : null, awDelta: +(w.run.aw - aw0).toFixed(3), move: finId, hits: hs.slice(0, 12).map((h) => [h.s, h.cls, h.hs, h.moveId, h.tags.join('/')]) };
   d.dead = true; Q.step(2);
   return out;
 }
@@ -1484,6 +1490,12 @@ async function bossSuite(hero, cids) {
       rec('A5', { hero, variant: cid }, ok ? 'pass' : 'fail', `${enter.boss}: one awakening dealt ${r.dealt} of ${r.max} (${round(r.frac * 100, 2)} %, cap 30 %)${r.dead ? ', boss died' : ''}, director ${r.director}`, r);
     });
   }
+  // the same awakening with ×60 attack: the cap itself has to hold (≤ 30 %, capped hits counted, boss alive)
+  const top = cids[cids.length - 1];
+  await run(P, 'A5', { hero, variant: top + ' ×60' }, pBossAwaken, { cid: top, boost: 60 }, (r) => {
+    const ok = r.pushed && r.frac >= 0.2 && r.frac <= 0.30 + 1e-9 && (r.cap?.capped ?? 0) > 0 && !r.dead;
+    rec('A5', { hero, variant: top + ' ×60' }, ok ? 'pass' : 'fail', `${enter.boss} with ×60 attack: one awakening dealt ${r.dealt} of ${r.max} (${round(r.frac * 100, 2)} %, cap 30 %), capped hits ${r.cap?.capped ?? '?'} of ${r.cap?.calls ?? '?'}${r.dead ? ', BOSS DIED' : ''}`, r);
+  });
   await closePage(P);
 }
 
@@ -1605,7 +1617,8 @@ try {
   for (const hero of HEROES) await heroSuite(hero);
   if (want('C2') && !HEROES.includes('lia')) await heroSuite('lia', { onlyC2: true });
   if (want('A5')) {
-    const bossHeroes = args.quick ? ['kael'] : ['kael', 'victor'];
+    const bossHeroes = (args.quick ? ['kael'] : ['kael', 'victor']).filter((h) => HEROES.includes(h));
+    if (!bossHeroes.length) bossHeroes.push(HEROES[0]);
     for (const h of bossHeroes) await bossSuite(h, [CLASS_PICK[h][1], CLASS_PICK[h][2]]);
   }
   if (wantAny('A7', 'R183', 'M3')) await mobileSuite();
