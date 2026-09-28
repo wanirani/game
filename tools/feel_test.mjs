@@ -143,7 +143,7 @@ function saveReport() {
 }
 
 // ───────────────────────── page-side library (runs inside the page) ─────────────────────────
-async function pageLib() {
+async function pageLib(EXP = '') {
   if (window.__fq) return 'ok';
   const g = window.__game;
   const I = (p) => import(p);
@@ -191,6 +191,7 @@ async function pageLib() {
       fx.emit = (type, x, y, o) => { const E = Q.log.emits; if (E) E[type] = (E[type] ?? 0) + 1; return em(type, x, y, o); };
     }
   };
+  if (EXP.includes('nohook')) Q.hook = (w) => { Q._hw = w; };
   Q.hook(g.world);
   if (g.world?.player) g.world.player.buffs.invincible = 99999;
   // ── stepping ──
@@ -207,7 +208,12 @@ async function pageLib() {
   };
   Q.until = (fn, max = 600) => { for (let i = 0; i <= max; i++) { if (fn()) return i; if (i < max) Q.step(1); } return -1; };
   Q.render = () => { const t = realNow(); try { input.beginRender?.(); g.render(); input.endRender?.(); } catch (e) { console.error('[feel_test] render', e); } return realNow() - t; };
-  Q.frame = () => { const t = realNow(); Q.step(1); Q.render(); return realNow() - t; };
+  Q.slow = [];   // frames over 100 ms: [steps, tick ms, render ms, top scene, particles]
+  Q.frame = () => {
+    const t = realNow(); Q.step(1); const t1 = realNow(); Q.render(); const t2 = realNow();
+    if (t2 - t > 100) { Q.slow.push([Q.steps, +(t1 - t).toFixed(1), +(t2 - t1).toFixed(1), g.top?.name, g.world?.fx?.list?.length ?? 0]); if (Q.slow.length > 200) Q.slow.shift(); }
+    return t2 - t;
+  };
   // ── input ──
   Q.key = (a, v = true) => { input.sources.key[a] = !!v; };
   Q.release = () => { const k = input.sources.key; for (const a in k) k[a] = false; };
@@ -1244,14 +1250,14 @@ async function openPage(key, url, { viewport = { width: 1280, height: 720 }, mob
   page.on('pageerror', (e) => errs.push('PAGEERROR ' + e.message + ' @ ' + (e.stack || '').split('\n').slice(1, 3).join(' | ')));
   page.on('console', (m) => { if (m.type() === 'error') { const t = m.text(); if (!IGNORE_CONSOLE.test(t)) errs.push('CONSOLE ' + t.slice(0, 400)); } });
   await page.addInitScript(({ k, s }) => { try { localStorage.setItem(k, JSON.stringify(s)); } catch { /* 무시 */ } }, { k: SETTINGS_KEY, s: { settingsVersion: 2, quality, cutinMode: 'full', flashFx: 1, showDamage: true, autoSprint: false, musicVol: 0, sfxVol: 0.2, ...extraSettings } });
-  if (pad) { const f = fakePadInit({ connected: false }); await page.addInitScript(f.fn, f.arg); }
+  if (pad && !String(process.env.FQ_EXP || '').includes('nopad')) { const f = fakePadInit({ connected: false }); await page.addInitScript(f.fn, f.arg); }
   const full = `${srv.origin}/${url}${url.includes('?') ? '&' : '?'}nosw`;
   const P = { key, page, ctx, errs, url: full, t0: Date.now() };
   try {
     await page.goto(full, { timeout: 90000 });
     await page.waitForFunction(() => { const g = window.__game; return !!g?.world?.player && g.top?.name === 'stage' && !(g.fade?.dir); }, null, { timeout: 120000, polling: 250 });
     await page.waitForTimeout(1500);   // first assets (puppet, cut-in preload) settle
-    const ok = await page.evaluate(pageLib);
+    const ok = await page.evaluate(pageLib, process.env.FQ_EXP || '');
     if (ok !== 'ok') throw new Error('page library failed: ' + ok);
     await page.evaluate(() => window.__fq.pause());
   } catch (e) {
@@ -1388,6 +1394,7 @@ async function heroSuite(hero, { onlyC2 = false } = {}) {
   // ── ultimates ──
   if (wantAny('U1', 'U2', 'V1')) {
     for (const [i, cid] of [c0, c1, c2].entries()) {
+      if (i < 2 && !want('U1')) continue;
       const measure = i === 2 && want('U2');
       const capture = i === 2 && want('V1');
       const r = await run(P, 'U1', { hero, variant: cid }, pUlt, { cid, measure, captureFinal: capture });
@@ -1411,7 +1418,8 @@ async function heroSuite(hero, { onlyC2 = false } = {}) {
       if (measure) {
         const b = stats(r.base), u = stats(r.frames);
         const ok = u.avg <= 1.5 * b.avg && u.p95 <= 2.5 * b.med && u.max <= 250;
-        rec('U2', { hero, variant: cid }, timingStatus(ok), `gameplay avg ${b.avg} ms (med ${b.med}), ultimate avg ${u.avg} ms (≤ ${round(1.5 * b.avg)}), p95 ${u.p95} (≤ ${round(2.5 * b.med)}), max ${u.max} (≤ 250), load ${round(os.loadavg()[0])}`, { base: b, ult: u });
+        const slow = await P.page.evaluate(() => window.__fq.slow.splice(0)).catch(() => []);
+        rec('U2', { hero, variant: cid }, timingStatus(ok), `gameplay avg ${b.avg} ms (med ${b.med}), ultimate avg ${u.avg} ms (≤ ${round(1.5 * b.avg)}), p95 ${u.p95} (≤ ${round(2.5 * b.med)}), max ${u.max} (≤ 250), load ${round(os.loadavg()[0])}`, { base: b, ult: u, slow: slow.slice(0, 40) });
       }
     }
   }

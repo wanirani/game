@@ -25,6 +25,7 @@
 // findings grouped by W4 bucket (by the file of the top call site). Exit 1 on any red check.
 import { openEnv } from './lib/server.mjs';
 import { freeze, step, stepUntil, settle } from './lib/step.mjs';
+import { gotoRoom, waitBakes, enterFight, prepWorld } from './lib/rooms.mjs';
 import { perfProbeInit, measureFrames, stats } from './lib/perfprobe.mjs';
 import { Checks, writeReport, parseFlags, list } from './lib/report.mjs';
 import { ownerOf } from './lib/owners.mjs';
@@ -95,70 +96,6 @@ async function openProfile(env, prof) {
   return s;
 }
 
-/** Go to a stage room inside the same page and wait until it runs; enemies/triggers kept (real rooms). */
-async function gotoRoom(s, stage, room, { hero = null } = {}) {
-  await s.eval(async ({ stage, room, hero }) => {
-    const g = window.__game;
-    if (hero && g.state?.hero?.charId !== hero) {
-      const { newGameState } = await import('/src/game/state.js');
-      g.state = newGameState({ slot: 1, difficulty: 'normal', charId: hero });
-    }
-    window.__perf.armed = false;
-    g.go('stage', { stageId: stage, roomId: room }, { fade: false });
-  }, { stage, room, hero });
-  // let the async stage load (assets, painted bakes) finish: real time passes between these evaluates
-  for (let i = 0; i < 80; i++) {
-    const ok = await s.eval(({ stage }) => { const g = window.__game, w = g.world; return !!(w?.player && (w.stageId ?? w.stage?.id ?? w.def?.id) === stage && g.top?.world === w); }, { stage }).catch(() => false);
-    if (ok) break;
-    await step(s.page, 2, false);
-    await s.wait(100);
-  }
-  await settle(s.page, 20);
-  await waitBakes(s);
-}
-
-/** Waits (real time, ≤ 8 s) until no painted rig / painted boss / enemy rig is still loading or baking. */
-async function waitBakes(s, maxMs = 8000) {
-  const t0 = Date.now();
-  let last = null;
-  while (Date.now() - t0 < maxMs) {
-    last = await s.eval(async () => {
-      let n = 0;
-      try { const E = await import('/src/render/painted/enemy_kit.js'); n += Object.values(E.rigStats()).filter((r) => !r.ready && !r.failed).length; } catch { /* */ }
-      try { const R = await import('/src/render/painted/registry.js'); n += R.paintedIds().filter((id) => R.paintedState(id) === 'loading').length; } catch { /* */ }
-      return n;
-    });
-    if (!last) break;
-    await step(s.page, 1, true);
-    await s.wait(150);
-  }
-  await settle(s.page, 5);
-  return last;
-}
-
-/** Boss room: walk right until the boss exists, close intro/dialogues, wait for the fight. */
-async function enterFight(s) {
-  await s.page.keyboard.down('ArrowRight');
-  const n = await stepUntil(s.page, '!!w.boss', 900);
-  await s.page.keyboard.up('ArrowRight');
-  for (let i = 0; i < 120; i++) {
-    const st = await s.eval(() => { const g = window.__game, w = g.world; return { top: g.top?.name, cut: !!w?.cutscene, active: !!w?.bossActive, boss: !!w?.boss }; });
-    if (st.top === 'stage' && !st.cut && (st.active || i > 60)) return { boss: st.boss, n };
-    if (st.top === 'dialogue') { await s.page.keyboard.down('Enter'); await step(s.page, 2, false); await s.page.keyboard.up('Enter'); }
-    else if (st.top === 'bossIntro') { await s.page.keyboard.down('KeyZ'); await step(s.page, 2, false); await s.page.keyboard.up('KeyZ'); }
-    await step(s.page, 10, false);
-  }
-  return { boss: await s.eval(() => !!window.__game.world?.boss), n };
-}
-
-/** Makes the current world safe to measure: invulnerable hero, story triggers off (enemies stay). */
-const prepWorld = (s) => s.eval(() => {
-  const w = window.__game.world, p = w?.player;
-  if (!p) return;
-  p.buffs.invincible = 9999;
-  for (const e of w.entities || []) if (e.kind === 'trigger' || e.constructor?.name === 'StoryTrigger') e.dead = true;
-});
-
 const envInfo = (s) => s.eval(() => {
   const g = window.__game, c = g.canvas, st = g.assets?.stats?.() ?? null;
   return {
@@ -206,9 +143,17 @@ function judge(prof, sc, m, info, extra = {}) {
   if (parts.max > pMax) findings.push({ id: `perf.parts.${prof}.${sc.id}`, sev: 'S3', kind: 'perf', title: `${parts.max} live particles in ${sc.id} at ${T} (budget ${pMax})`, file: sc.kind === 'room' || sc.kind === 'stress' ? 'src/core/particles.js' : 'src/game/skills.js', ...ownerOf(sc.kind === 'room' || sc.kind === 'stress' ? 'src/core/particles.js' : 'src/game/skills.js') });
   // full-screen passes during ult / awakening
   if (sc.kind === 'ult' || sc.kind === 'awaken') {
-    const ok = passes.p95 <= BUDGET.passes[T];
-    C.add(`${id}.passes`, ok ? 'pass' : 'fail', `full-screen passes + special composites per frame p95 ${passes.p95} max ${passes.max} (budget ${BUDGET.passes[T]})`);
-    if (!ok) findings.push({ id: `perf.passes.${prof}.${sc.id}`, sev: 'S3', kind: 'perf', title: `${passes.p95} full-screen passes per frame (p95) during ${sc.id} at ${T} (budget ${BUDGET.passes[T]})`, file: 'src/render/ultfx.js', ...ownerOf('src/render/ultfx.js') });
+    // passes added by the ultimate / awakening = full-screen draws per frame minus the room's normal frames (sky, parallax…)
+    const base = extra.basePasses ?? 0;
+    const add = stats(fr.map((f) => Math.max(0, f.full - base) + f.special));
+    const specialFrames = fr.filter((f) => f.special > 0).length;
+    const okA = add.p95 <= BUDGET.passes[T];
+    const okS = T === 'low' ? specialFrames === 0 : specialFrames <= 2;
+    row.passesAdded = add; row.specialFrames = specialFrames; row.basePasses = base;
+    C.add(`${id}.passes`, okA ? 'pass' : 'fail', `full-screen passes added per frame p95 ${add.p95} max ${add.max} over the room's ${base} (budget ${BUDGET.passes[T]})`);
+    C.add(`${id}.blend`, okS ? 'pass' : 'fail', `${specialFrames} frame(s) with saturation/difference-type blends (budget ${T === 'low' ? 0 : 2} per cast)`);
+    if (!okA) findings.push({ id: `perf.passes.${prof}.${sc.id}`, sev: 'S3', kind: 'perf', title: `${add.p95} extra full-screen passes per frame (p95) during ${sc.id} at ${T} (budget ${BUDGET.passes[T]})`, file: 'src/render/ultfx.js', ...ownerOf('src/render/ultfx.js'), repro: `node tools/qa/perf_budget.mjs --profiles ${prof} --scenes ${sc.id}` });
+    if (!okS) findings.push({ id: `perf.blend.${prof}.${sc.id}`, sev: 'S3', kind: 'perf', title: `${specialFrames} frames with special blend modes during ${sc.id} at ${T} (budget ${T === 'low' ? 0 : 2})`, file: 'src/render/ultfx.js', ...ownerOf('src/render/ultfx.js') });
   }
   // FX spawned while rendering
   const fxSites = m.sites.fx.map(([k, n]) => `${k} ×${n}`);
@@ -292,6 +237,10 @@ try {
               : `if (i === 0) key('KeyV', true); if (i === 3) key('KeyV', false); if (p) p.buffs.invincible = 9999;`;
           } else script = COMBAT;
         }
+        if (sc.kind === 'ult' || sc.kind === 'awaken') {
+          const b = await measureFrames(s.page, 12, 'if (p) p.buffs.invincible = 9999;');
+          extra.basePasses = stats(b.frames.map((f) => f.full)).p50;
+        }
         // canvases created from here on (after stage start) count against the "0 after stage start" budget
         await s.eval(() => { window.__perf.clearSites(); window.__perf.armed = true; });
         const nFrames = sc.kind === 'ult' || sc.kind === 'awaken' ? Math.max(FR, 150) : sc.kind === 'boss' ? Math.max(FR, 120) : FR;
@@ -355,11 +304,23 @@ try {
     try {
       await s.eval(() => { const g = window.__game; if (g.world && g.top?.name !== 'menu') g.push('menu', { world: g.world, tab: 'equip' }); });
       await settle(s.page, 20); await s.wait(300); await settle(s.page, 5);
-      const live = await s.eval(() => { try { window.gc?.(); } catch { /* */ } return window.__perf.live(); });
-      const lim = prof.startsWith('phone1') ? 20 : null;
-      C.add(`${prof}.livecanvas`, lim && MB(live.bytes) > lim ? 'fail' : 'pass', `${live.n} live canvases, ${MB(live.bytes)} MB with the menu open${lim ? ` (budget ${lim} MB)` : ''}`);
-      if (lim && MB(live.bytes) > lim) findings.push({ id: `perf.livecanvas.${prof}`, sev: 'S3', kind: 'perf', title: `${MB(live.bytes)} MB of live canvases with the menu open on ${prof} (budget ${lim} MB)`, file: 'src/scenes/menu/common.js', ...ownerOf('src/scenes/menu/common.js') });
-      rows.push({ prof, scene: 'livecanvas', kind: 'mem', live });
+      const walk = await s.eval(() => { try { window.gc?.(); } catch { /* */ } return window.__perf.live(); });
+      C.add(`${prof}.livecanvas.walk`, 'pass', `after the whole walk: ${walk.n} live canvases, ${MB(walk.bytes)} MB with the menu open (info)`);
+      // the §5.2 budget (phone1, menu open) on a fresh page: stage s04 → menu equip
+      let fresh = null;
+      if (prof.startsWith('phone1')) {
+        const f = await env.page(P.vp, 'index.html?scene=stage&stage=s04&room=r1', { settings: { quality: P.quality }, initScripts: [perfProbeInit()] });
+        await f.waitGame('!!g.world?.player');
+        await freeze(f.page); await settle(f.page, 60); await waitBakes(f);
+        await f.eval(() => { const g = window.__game; g.push('menu', { world: g.world, tab: 'equip' }); });
+        await settle(f.page, 30); await f.wait(300); await settle(f.page, 5);
+        fresh = await f.eval(() => { try { window.gc?.(); } catch { /* */ } const c = [...document.querySelectorAll('canvas')]; return { ...window.__perf.live(), dom: c.map((x) => `${x.id || 'canvas'} ${x.width}x${x.height}`) }; });
+        await f.close();
+        const lim = 20;
+        C.add(`${prof}.livecanvas`, MB(fresh.bytes) > lim ? 'fail' : 'pass', `fresh page, stage s04 + menu equip: ${fresh.n} live canvases, ${MB(fresh.bytes)} MB (budget ${lim} MB; DOM ${fresh.dom.join(', ')})`);
+        if (MB(fresh.bytes) > lim) findings.push({ id: `perf.livecanvas.${prof}`, sev: 'S3', kind: 'perf', title: `${MB(fresh.bytes)} MB of live canvases with the menu open on ${prof} (budget ${lim} MB)`, file: 'src/scenes/menu/common.js', ...ownerOf('src/scenes/menu/common.js') });
+      }
+      rows.push({ prof, scene: 'livecanvas', kind: 'mem', walk, fresh });
     } catch (e) { C.add(`${prof}.livecanvas.harness`, 'error', String(e?.message || e).split('\n')[0]); }
     const errs = [...new Set(s.errs)];
     C.add(`${prof}.errors`, errs.length ? 'fail' : 'pass', errs.length ? `${errs.length} page/console error(s): ${errs.slice(0, 3).join(' || ')}` : 'no page/console errors');

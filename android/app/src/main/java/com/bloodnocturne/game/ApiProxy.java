@@ -248,6 +248,11 @@ final class ApiProxy {
         final List<String[]> headers = s != null ? s.headers : fromMap(pageHeaders);
         final byte[] body = s != null ? s.body : null;
         if (!path.equals("/api") && !path.startsWith("/api/")) return error(404, "not_found", "없는 API 경로입니다.", null, "not an /api path: " + path);
+        // 인코딩된 점·슬래시(%2e, %2f, %5c)로 /api 밖(사이트의 다른 경로)으로 나가지 못하게 한다 (AssetServer 는 인코딩된 경로를 그대로 넘긴다)
+        String lower = path.toLowerCase(Locale.ROOT);
+        if (lower.contains("%2e") || lower.contains("%2f") || lower.contains("%5c") || path.indexOf('\\') >= 0) {
+            return error(404, "not_found", "없는 API 경로입니다.", null, "encoded dot/slash in api path: " + path);
+        }
         if (origin == null) return error(503, "unavailable", MSG_UNAVAILABLE, "unavailable", "no api origin configured");
         final String target = origin + path + (query != null ? "?" + query : "");
         final boolean stashMissing = id != null && s == null;

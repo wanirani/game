@@ -385,7 +385,9 @@ def main():
     if args.report:
         Path(args.report).write_text(json.dumps(report, ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
     if est > budget:
-        die(f'에셋을 휴대폰 밀도로 줄여도 APK 어림 {est / MB:.2f} MB 가 예산 {budget / MB:.2f} MB 를 넘습니다', 3)
+        if mode == 'lo+td':
+            die(f'에셋을 휴대폰 밀도로 줄여도 APK 어림 {est / MB:.2f} MB 가 예산 {budget / MB:.2f} MB 를 넘습니다', 3)
+        die(f'에셋 단계 {mode} 로는 APK 어림 {est / MB:.2f} MB 가 예산 {budget / MB:.2f} MB 를 넘습니다 (APK_ASSETS=auto 면 더 줄이는 단계를 고릅니다)', 3)
 
 
 if __name__ == '__main__':

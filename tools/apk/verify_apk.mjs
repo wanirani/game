@@ -274,6 +274,7 @@ async function proxyApi(route, req, apiPath, query) {
   const fail = (status, code, pe) => route.fulfill({ status, headers: { 'cache-control': 'no-store', 'x-bn-proxy': '1', ...(pe ? { 'x-bn-proxy-error': pe } : {}) }, contentType: 'application/json; charset=utf-8', body: JSON.stringify({ ok: false, error: code, message: MSG[code] || code }) });
   if (!CFG.api?.origin || !API) return fail(503, 'unavailable', 'unavailable');
   if (id && !env && !['GET', 'HEAD'].includes(method)) return fail(502, 'network', 'network'); // ApiProxy: 맡긴 본문이 없으면 보내지 않는다
+  if (/%2e|%2f|%5c|\\/i.test(apiPath)) return route.fulfill({ status: 404, headers: { 'cache-control': 'no-store', 'x-bn-proxy': '1' }, contentType: 'application/json; charset=utf-8', body: JSON.stringify({ ok: false, error: 'not_found', message: '없는 API 경로입니다.' }) });
   const upstream = apiPath === '/api/__down' ? 'http://127.0.0.1:1' : API.url; // 검증 전용: 서버에 닿지 못하는 경우
   const canBody = !['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(method);
   const needsBody = ['POST', 'PUT', 'PATCH'].includes(method);

@@ -442,13 +442,20 @@ public class MainActivity extends Activity {
         }
         float d = getResources().getDisplayMetrics().density;
         boolean open = ime > 0;
-        // 키보드가 떠 있는 동안 튀어나온 내비게이션 바로 게임 화면이 움직이지 않게 안전 영역은 그대로 둔다
-        if (!open || insetsJson == null) {
+        boolean closing = imeOpen && !open;
+        // 키보드가 떠 있는 동안 튀어나온 내비게이션 바로 게임 화면이 움직이지 않게 안전 영역은 그대로 둔다.
+        // 키보드가 막 닫힌 순간에도 바는 아직 보이므로 그대로 두고, 몰입형으로 되돌린 뒤의 값을 알린다 (캔버스가 줄었다 늘어나지 않게)
+        if ((!open && !closing) || insetsJson == null) {
             publishInsets("{\"l\":" + css(l, d) + ",\"r\":" + css(r, d) + ",\"t\":" + css(t, d) + ",\"b\":" + css(b, d) + "}");
         }
         if (ime >= 0) {
             publishIme("{\"bottom\":" + (open ? css(ime, d) : "0") + "}");
-            if (imeOpen && !open) ui.postDelayed(this::hideSystemUi, 250); // 키보드가 닫히면 몰입형 복귀
+            if (closing) {
+                ui.postDelayed(() -> { // 키보드가 닫히면 몰입형 복귀 → 새 여백을 다시 받는다 (바뀐 것이 없어도 한 번 더)
+                    hideSystemUi();
+                    if (root != null) root.requestApplyInsets();
+                }, 250);
+            }
             imeOpen = open;
         }
     }

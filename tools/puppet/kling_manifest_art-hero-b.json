@@ -1,0 +1,101 @@
+{
+ "_doc": "ART-HERO-B 클링 생성 기록 — 턴테이블 3/4 뷰 보강(3/4 앞 q3f, 3/4 뒤 q3b). images = 과금 이미지 수(후보 포함), credits = 소비 크레딧(이미지당 2). 채택본은 src/<charId>/ 에 워터마크 제거 후 저장. 공용 kling_manifest.json 은 건드리지 않는다.",
+ "model": "kling-image-v3_0_omni",
+ "img_resolution": "2k",
+ "aspect_ratio": "3:4",
+ "budget_credits": 80,
+ "template_q3f": "One single full-body THREE-QUARTER FRONT view of the <person> in 图片1, wearing exactly the outfit of 图片1 (图片2 shows the same <person> and outfit seen from the front): <outfit>. Camera angle: … turned about 45 degrees toward the viewer's LEFT … nose and toes point toward the left edge … right shoulder closer to the viewer. Stands in a relaxed neutral pose, arms hanging down … Plain light-grey studio background, same painterly style, complete from head to boots, no cape, nothing held, no weapons, no text, no watermark.",
+ "template_q3b": "Rotate the <person> of 图片1 (seen straight from behind) by 45 degrees: one single full-body THREE-QUARTER BACK view … turned about 45 degrees AWAY from the viewer toward the LEFT edge … NOT a symmetric back view and NOT a front view … lost profile … (图片1 = turn5 back crop, 图片2 = side painting)",
+ "entries": [
+  {
+   "id": "lia_assassin_q3f",
+   "generationId": "AR0uawSEHhNcqlFoKZaVSUCS3EQlGsewL5T4blpSg17CgM9lacaKIHb0aNuD-4vrJu58iCRI",
+   "images": 1,
+   "credits": 2,
+   "inputs": [
+    "lia_assassin_side.jpg",
+    "lia_assassin_front.jpg (turn5 figure 1 crop)"
+   ],
+   "src": "src/lia/lia_assassin_q3f.webp",
+   "adopted": true,
+   "note": "약 30° — 재시도 2장(b 걷는 자세, c 거의 옆모습)보다 나아서 채택"
+  },
+  {
+   "id": "lia_ninja_q3f",
+   "generationId": "AVyp_MWjLSyC_q1CsM1gjWdqiXFKNVnLuepTwkWpSQFtL3cRXNfmY4_jG2z9H4A0vQQWzxyN",
+   "images": 1,
+   "credits": 2,
+   "inputs": [
+    "lia_ninja_side.jpg",
+    "lia_ninja_front.jpg"
+   ],
+   "src": "src/lia/lia_ninja_q3f.webp",
+   "adopted": true
+  },
+  {
+   "id": "lia_dancer_q3f",
+   "generationId": "ATfd6mtFH5iQVihudgNtIOY4tabOfxgjvoD7lSC6Sw_gtyKpsA84rNSdnmWwPcUt3HvyCwV0",
+   "images": 1,
+   "credits": 2,
+   "inputs": [
+    "lia_dancer_side.jpg",
+    "lia_dancer_front.jpg"
+   ],
+   "src": "src/lia/lia_dancer_q3f.webp",
+   "adopted": true,
+   "note": "약 60° (옆모습 쪽으로 조금 더 돎)"
+  },
+  {
+   "id": "lia_kunoichi_q3f#1",
+   "generationId": "AXOf-XJredB44RaRC1vvRJRpTt9wc3T5MZbopp5cAmnDUrK5vMZ0MY7tGypTCtE3Iw9623Q3",
+   "images": 1,
+   "credits": 2,
+   "inputs": [
+    "lia_kunoichi_side.jpg",
+    "lia_kunoichi_front.jpg"
+   ],
+   "adopted": false,
+   "note": "실패: 걷는 옆모습"
+  },
+  {
+   "id": "bran_guardian_q3b",
+   "generationId": "ASQvKLGqq59EfPLDRCN5aibfGiTDNcyDOE6mFJHZ_fXqX0fe-VNefgQEKrHZJUrpYJ4KR3MN",
+   "images": 2,
+   "credits": 4,
+   "inputs": [
+    "bran_guardian_back.jpg (turn5 figure 4 = ym90 crop, 1번 입력)",
+    "bran_guardian_side.jpg"
+   ],
+   "src": "src/bran/bran_guardian_q3b.webp",
+   "adopted": "b",
+   "note": "heroes2rev 에서 옆모습 1번 입력으로는 앞모습이 나왔음 → 뒷모습 크롭을 1번 입력으로. a·b 모두 성공, 45°에 가까운 b 채택"
+  },
+  {
+   "id": "lia_assassin_q3f#2",
+   "generationId": "ARTL0XUpsAyn5moioroPK5XX08oeNhcCNy6pPJFmlL5wldJNr9iaalDEi32kbGN1Eu6P-GK5",
+   "images": 2,
+   "credits": 4,
+   "inputs": [
+    "lia_assassin_side.jpg",
+    "lia_assassin_front.jpg"
+   ],
+   "adopted": false,
+   "note": "b 걷는 3/4, c 거의 옆모습 → 1차(#1) 채택"
+  },
+  {
+   "id": "lia_kunoichi_q3f#2",
+   "generationId": "Adm6g0o-Apfw9knWvd8zIs4EvaoM7M-CO9tq3FKGqp_lAgTjkZDb5g7cLFkcrCofNXBXj-yR",
+   "images": 2,
+   "credits": 4,
+   "inputs": [
+    "lia_kunoichi_side.jpg",
+    "lia_kunoichi_front.jpg (1번 입력을 정면으로 서술)"
+   ],
+   "src": "src/lia/lia_kunoichi_q3f.webp",
+   "adopted": "b (두 인물 중 오른쪽 = 3/4 앞; 왼쪽은 버림)",
+   "note": "c 는 거의 정면"
+  }
+ ],
+ "credits_used": 20,
+ "images_used": 10
+}

@@ -148,6 +148,9 @@ public final class ApiProxyCheck {
         check("3xx 는 따라가지 않고 network 오류", r.status == 502 && "network".equals(r.header(ApiProxy.ERROR_HEADER)), desc(r));
         r = p.forward("GET", "/index.html", null);
         check("/api 밖 경로 → 404", r.status == 404, desc(r));
+        r = p.forward("GET", "/api/%2E%2E/index.html", null);
+        ApiProxy.Result r2 = p.forward("GET", "/api/x%2f..%2f..%2findex.html", null);
+        check("인코딩된 점·슬래시로 /api 밖으로 → 404 (서버로 보내지 않음)", r.status == 404 && r2.status == 404 && r.detail.contains("encoded") && r2.detail.contains("encoded"), desc(r) + " / " + desc(r2));
         r = p.forward("PATCH", "/api/__echo", null);
         check("PATCH (HttpURLConnection 미지원) → 405 JSON", r.status == 405 && body(r).contains("method_not_allowed"), desc(r));
         r = p.forward("DELETE", "/api/__echo", null);

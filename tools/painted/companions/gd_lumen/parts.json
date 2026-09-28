@@ -1,0 +1,88 @@
+{
+ "id": "gd_lumen",
+ "tier": "T1",
+ "srcTD": 4,
+ "note": "\ub8e8\uba58: sheet1 full lantern jellyfish (side view). bell = dome + brass lantern + frilly rim (bottom faded into the tentacles); tent = oral arms + long thin tentacles below the rim (top faded under the bell, drawn with warpY sway). k: 28 logical px from bell top to tentacle tips.",
+ "sources": {
+  "s": {
+   "raw": "gd_lumen_sheet1.webp",
+   "file": "gd_lumen_sheet1.png",
+   "mode": "",
+   "k": 0.02
+  }
+ },
+ "parts": {
+  "bell": {
+   "src": "s",
+   "box": [
+    90,
+    120,
+    910,
+    660
+   ],
+   "fade": [
+    [
+     90,
+     575,
+     910,
+     660,
+     "down",
+     1.3
+    ]
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     490,
+     560
+    ],
+    "fire": [
+     509,
+     445
+    ],
+    "ring": [
+     455,
+     236
+    ],
+    "top": [
+     490,
+     145
+    ]
+   }
+  },
+  "tent": {
+   "src": "s",
+   "box": [
+    0,
+    520,
+    1045,
+    1695
+   ],
+   "fade": [
+    [
+     0,
+     520,
+     1045,
+     590,
+     "up",
+     1.0
+    ]
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     490,
+     560
+    ],
+    "tip": [
+     560,
+     1660
+    ],
+    "oral": [
+     520,
+     1100
+    ]
+   }
+  }
+ }
+}

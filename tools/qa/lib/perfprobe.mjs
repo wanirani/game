@@ -108,7 +108,7 @@ export function perfProbeInit() {
       }
       // gameplay RNG consumed while rendering
       const mr = Math.random;
-      Math.random = function () { if (P.on) { P.f.rng++; if (P.f.rng <= 40) bump(P.sites.rng, site(2)); } return mr(); };
+      Math.random = function () { if (P.on) { P.f.rng++; if (P.f.rng <= 40) bump(P.sites.rng, site2(2)); } return mr(); };
       P.hookFx = (fx) => {
         if (!fx || fx.__perfHooked) return;
         fx.__perfHooked = true;

@@ -9,5 +9,7 @@ export const enemies = [];
 export const companions = {
   gd_clock: () => import('../companions/gd_clock.js'),
   gd_reaper: () => import('../companions/gd_reaper.js'),
+  gd_mirra: () => import('../companions/gd_mirra.js'),
+  gd_lumen: () => import('../companions/gd_lumen.js'),
 };
 export const npcs = {};
