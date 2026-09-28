@@ -59,7 +59,7 @@ export const INSTALL = `(() => {
       case 'phase2': ph(1, 0.47); settle(); b.debugAct('phase2'); run(1.0); break;
       case 'collapse': ph(2, 0.4); settle(); run(1.2); hold('collapse', 1.6); break;
       case 'maw_open': ph(2, 0.35); settle(); hold('maw', 2.2); break;
-      case 'maw_bite': run(1.6); break;
+      case 'maw_bite': ph(2, 0.34); settle(); b.debugAct('maw'); for (let i = 0; i < 400 && b.state === 'maw' && (b.st ?? 0) < 3.72; i++) { px(); step(1); } break;
       case 'final': ph(2, 0.2); settle(); b.debugAct('final'); run(1.0); break;
       case 'p4_sun': ph(3, 0.12); settle(); run(1.6); break;
       case 'lastLight': ph(3, 0.12); settle(); hold('lastLight', 0.8); break;

@@ -315,7 +315,6 @@ function drawBoss(ctx, b, world, rig, st) {
     const gAmp = Math.max(b.glitch, dying ? 0.4 + dT / 2.7 * 1.4 : 0, (1 - b.introK) * 1.6);
     const G = robeGeom(st, R.robe, room / simp, t, gAmp);
     drawHalo(ctx, st, b, BM, t, q);
-    drawHoodStrings(ctx, b, BM, t, q);
     drawRobe(ctx, st, R, X2, b, BM, G, t, q, hitPart === 'shroud' ? fk : 0);
     drawChest(ctx, st, R, b, BM, G, t, q);
     drawSpotEyes(ctx, st, R, b, BM, G, room / simp, t, q);
@@ -420,12 +419,12 @@ function robePt(G, R, u, v, out) {
   return out;
 }
 /** 조각별 전단 변환으로 이어 그린다 (이음매가 벌어지지 않게 위 · 아래 경계의 밀림을 선형으로 잇는다). f = img 해상도 / 기본 텍셀 */
-function robeSlices(ctx, st, M, img, R, G, f, dx, dy, alpha) {
+function robeSlices(ctx, st, M, img, R, G, f, dx, dy, alpha, n = RN) {
   if (!img || alpha <= 0.004) return;
   const k = R.k, W = R.w, H = R.h, Fx = R.face[0];
   const ga = ctx.globalAlpha;
   if (alpha !== 1) ctx.globalAlpha = ga * alpha;
-  for (let i = 0; i < RN; i++) {
+  for (let i = 0; i < n; i++) {
     const v0 = G.v[i], v1 = G.v[i + 1], h = v1 - v0;
     if (h <= 0.5) continue;
     const o0 = G.o[i] + G.g[i] + dx, o1 = G.o[i + 1] + G.g[i] + dx;
@@ -442,11 +441,12 @@ function drawRobe(ctx, st, R, X2, b, BM, G, t, q, flashK) {
   // 프리즘 윤곽 (현실에서 도려낸 자리): 색 실루엣을 좌우로 밀어 몸 뒤에 가산 → 가장자리에만 색 띠. 일그러짐 때 크게 벌어진다
   if (q.halos) {
     const op = ctx.globalCompositeOperation; ctx.globalCompositeOperation = 'lighter';
-    const fl = 0.75 + 0.25 * Math.sin(t * 5.3) * Math.sin(t * 2.1), sp = 3 + b.glitch * 9;
+    // 평소에는 두건 · 어깨 · 가슴(윗조각)만 — 가는 밑단 올에 색 띠가 끼면 수정 조각처럼 보인다. 일그러질 때는 전체가 벌어진다
+    const fl = 0.75 + 0.25 * Math.sin(t * 5.3) * Math.sin(t * 2.1), sp = 3 + b.glitch * 9, n = b.glitch > 0.3 ? RN : RTOP + 1;
     if (q.name === 'high' && X2.robeM) {
-      robeSlices(ctx, st, BM, X2.robeM, Rb, G, 0.25, -sp, 0, 0.6 * fl);
-      robeSlices(ctx, st, BM, X2.robeC, Rb, G, 0.25, sp, -1, 0.6 * fl);
-    } else if (X2.robeV) robeSlices(ctx, st, BM, X2.robeV, Rb, G, 0.25, 0, -2.5, 0.55 * fl);
+      robeSlices(ctx, st, BM, X2.robeM, Rb, G, 0.25, -sp, 0, 0.6 * fl, n);
+      robeSlices(ctx, st, BM, X2.robeC, Rb, G, 0.25, sp, -1, 0.6 * fl, n);
+    } else if (X2.robeV) robeSlices(ctx, st, BM, X2.robeV, Rb, G, 0.25, 0, -2.5, 0.55 * fl, n);
     ctx.globalCompositeOperation = op;
   }
   robeSlices(ctx, st, BM, Rb.v.base, Rb, G, 1, 0, 0, 1);
@@ -480,18 +480,6 @@ function drawHalo(ctx, st, b, BM, t, q) {
   if (q.halos) for (let i = 1; i < n; i += 5) {
     const a = (i / n) * TAU + t * 0.07, r = r0 + br * (30 + h01(i) * 70);
     glowE(ctx, BM, cx + Math.cos(a) * r, cy + Math.sin(a) * r, 11, 11, STARC, 0.5);
-  }
-}
-/** 두건 뒤로 흩날리는 공허의 끈 (가는 경로) */
-function drawHoodStrings(ctx, b, BM, t, q) {
-  setT(ctx, BM);
-  ctx.lineCap = 'round';
-  for (let i = 0; i < 3; i++) {
-    const x0 = -64 - i * 16, y0 = -104 + i * 30, len = 130 + i * 24;
-    const w1 = Math.sin(t * 1.6 + i) * 18, w2 = Math.sin(t * 2.1 + i * 1.7) * 24;
-    ctx.strokeStyle = VOID; ctx.lineWidth = 8 - i * 2;
-    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.bezierCurveTo(x0 - len * 0.35, y0 + w1, x0 - len * 0.7, y0 + w2, x0 - len, y0 + w1 + 20); ctx.stroke();
-    if (q.name === 'high') { ctx.strokeStyle = 'rgba(90,216,255,0.3)'; ctx.lineWidth = 1; ctx.stroke(); }
   }
 }
 /** 가슴 창 (별밤이 보이는 삼각 틈): 막 안쪽에서 밀려 나오는 얼굴들 · 빛의 갈비뼈 · 맥동하는 별 */
@@ -552,8 +540,8 @@ function drawSpotEyes(ctx, st, R, b, BM, G, room, t, q) {
     if (y > room - 8) continue;
     const bl = clamp(Math.sin(t * 0.9 + e.ph) * 4 + 3, 0, 1);
     if (bl < 0.05) continue;
-    const s = E.k * e.s * 0.85;
-    put(ctx, st, BM, img, E, E.c, e.x + lx * 2 + (b.glitch > 0.3 ? (h01(Math.floor(t * 20) + i) - 0.5) * 8 * b.glitch : 0), y, 0, s, s * bl);
+    const s = E.k * e.s * 0.7;
+    put(ctx, st, BM, img, E, E.c, e.x + lx * 2 + (b.glitch > 0.3 ? (h01(Math.floor(t * 20) + i) - 0.5) * 8 * b.glitch : 0), y, 0, s * 1.1, s * 0.62 * bl, 0.92);
   }
 }
 
@@ -722,10 +710,10 @@ function drawSun(ctx, st, R, b, SM, t, q, flashK, dying, dT) {
   // 흰 불꽃 코로나 2겹 (역회전)
   ctx.globalCompositeOperation = 'lighter';
   const A = R.sunA, B = R.sunB;
-  if (A) { const m = (r * 1.04 / HOLE_A) * (1.02 + 0.05 * Math.sin(t * 3.1)) * grow; put(ctx, st, SM, A.v.base, A, A.c, 0, 0, t * 0.12, A.k * m, A.k * m, k * fl); }
-  if (B && q.name !== 'low') { const m = (r * 1.04 / HOLE_B) * (0.94 + 0.06 * Math.sin(t * 4.3 + 1)) * grow; put(ctx, st, SM, B.v.base, B, B.c, 0, 0, 1 - t * 0.19, B.k * m, B.k * m, k * 0.85 * fl); }
+  if (B && q.name !== 'low') { const m = (r * 1.02 / HOLE_B) * (0.9 + 0.06 * Math.sin(t * 4.3 + 1)) * grow; put(ctx, st, SM, B.v.base, B, B.c, 0, 0, 1 - t * 0.19, B.k * m, B.k * m, k * 0.34 * fl); }
+  if (A) { const m = (r * 1.02 / HOLE_A) * (1.0 + 0.05 * Math.sin(t * 3.1)) * grow; put(ctx, st, SM, A.v.base, A, A.c, 0, 0, t * 0.12, A.k * m, A.k * m, k * 0.62 * fl); }
   ctx.globalCompositeOperation = op;
-  if (q.halos) glowE(ctx, SM, 0, 0, r * 3.2, r * 3.2, DAWN, 0.3 * k);
+  if (q.halos) glowE(ctx, SM, 0, 0, r * 2.6, r * 2.6, DAWN, 0.14 * k);
   // 검은 원반 + 흰 테
   setT(ctx, SM);
   const ga = ctx.globalAlpha;
@@ -798,14 +786,17 @@ function drawHand(ctx, st, R, b, h, wm, t, q) {
   const ga = ctx.globalAlpha;
   if (h.a < 1) ctx.globalAlpha = ga * h.a;
   const wk = 1 / MK;
-  // 손목에서 풀려 흐르는 공허의 끈 (손바닥 뒤)
+  // 손목 천에서 풀려 흔들리는 짧은 공허의 올 (손바닥 뒤, 끝으로 가늘어진다)
   setT(ctx, HM);
-  ctx.lineCap = 'round';
+  ctx.lineCap = 'round'; ctx.strokeStyle = VOID;
   for (let i = 0; i < 4; i++) {
-    const x0 = -26 + i * 17, y0 = 84, sw = Math.sin(t * 2.2 + i * 1.4 + h.i) * 16, len = 64 + (i % 2) * 30;
-    ctx.strokeStyle = VOID; ctx.lineWidth = 11 - i * 1.5;
-    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo(x0 + sw, y0 + len * 0.5, x0 - sw * 0.6, y0 + len); ctx.stroke();
-    if (q.name === 'high') { ctx.strokeStyle = i % 2 ? 'rgba(255,90,208,0.35)' : 'rgba(90,216,255,0.35)'; ctx.lineWidth = 1.2; ctx.stroke(); }
+    const x0 = -24 + i * 16, y0 = 88, sw = Math.sin(t * 2.2 + i * 1.4 + h.i) * 8, len = 24 + (i % 2) * 16;
+    let px = x0, py = y0;
+    for (let k = 1; k <= 3; k++) {
+      const u = k / 3, x = x0 + sw * u * u, y = y0 + len * u;
+      ctx.lineWidth = 6 * (1.15 - u); ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(x, y); ctx.stroke();
+      px = x; py = y;
+    }
   }
   // 손바닥 (감긴 눈이 그려져 있다)
   put(ctx, st, HM, V(st, Pm), Pm, Pm.c, 0, 4, 0, Pm.k * wk, Pm.k * wk);
