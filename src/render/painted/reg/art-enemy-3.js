@@ -11,6 +11,8 @@ import * as cog_wheel from '../enemies/cog_wheel.js';
 import * as acid_turret from '../enemies/acid_turret.js';
 import * as plague_doctor from '../enemies/plague_doctor.js';
 import * as homunculus from '../enemies/homunculus.js';
+import * as flesh_golem from '../enemies/flesh_golem.js';
+import * as merman from '../enemies/merman.js';
 
 export const bosses = {};
 export const enemies = [
@@ -20,6 +22,8 @@ export const enemies = [
   { mod: acid_turret },
   { mod: plague_doctor },
   { mod: homunculus },
+  { mod: flesh_golem },
+  { mod: merman },
 ];
 export const companions = {};
 export const npcs = {};

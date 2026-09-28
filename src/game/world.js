@@ -75,7 +75,7 @@ export class World {
     this.time = 0; this.hitstop = 0; this.slowmo = 0; this.timeStop = 0;
     this.cutscene = false; this.inputLock = false; this.transitioning = false;
     this.boss = null; this.bossActive = false; this.arena = null; this.cleared = false; this.clearT = 0;
-    this.combo = { n: 0, t: 0, max: 0, best: 0 };
+    this.combo = { n: 0, t: 0, max: 0, best: 0, dmg: 0 };   // [hook:feel] dmg = 이번 콤보 총 피해 (feel_hud '총 피해')
     this.banner = null; // {text, sub, t, color}
     this.nextExtraLife = Math.ceil(((this.state.score ?? 0) + 1) / 30000) * 30000;
     this.run = {

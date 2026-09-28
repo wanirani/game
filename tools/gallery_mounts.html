@@ -140,7 +140,7 @@ function drawCell(c, time) {
   ctx.strokeStyle = '#3a2a30'; ctx.beginPath(); ctx.moveTo(4, gy); ctx.lineTo(c.w - 8, gy); ctx.stroke();
   const sc = ZOOM * (c.rider ? 0.78 : 0.95);
   ctx.translate(c.w / 2, gy); ctx.scale(sc, sc);
-  const o = { tint: v._tint, noFx: false };
+  const o = { tint: v._tint, noFx: false, rider: !!c.rider };
   drawMountView(ctx, v, 'back', o);
   if (c.rider) {
     const p = c.rider;

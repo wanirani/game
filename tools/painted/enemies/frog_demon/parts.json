@@ -1,0 +1,241 @@
+{
+ "id": "frog_demon",
+ "tier": "T2",
+ "srcTD": 4,
+ "note": "Cut from the Kling parts sheet (frog_demon_sheet = sheet take 1, input: reference take 2): the sitting side figure (horns, slit-pupil eye, glowing orange warts, pale belly, clawed forelegs) as the body with its folded hind leg cut out as its own part (the rump behind it repainted with cv2 inpaint), and the long pink tongue with the barbed tip (the ball end trimmed), stretched from the mouth at runtime.",
+ "sources": {
+  "s": {
+   "raw": "frog_demon_sheet.webp",
+   "file": "a3_frog_demon_sheet.png",
+   "k": 0.056
+  }
+ },
+ "parts": {
+  "body": {
+   "src": "s",
+   "box": [
+    60,
+    80,
+    1080,
+    960
+   ],
+   "inpaint": [
+    [
+     [
+      140,
+      690
+     ],
+     [
+      320,
+      665
+     ],
+     [
+      425,
+      730
+     ],
+     [
+      445,
+      800
+     ],
+     [
+      425,
+      870
+     ],
+     [
+      300,
+      880
+     ],
+     [
+      200,
+      850
+     ],
+     [
+      140,
+      790
+     ]
+    ]
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     560,
+     930
+    ],
+    "mouth": [
+     1040,
+     388
+    ],
+    "throat": [
+     900,
+     470
+    ],
+    "eye": [
+     880,
+     305
+    ],
+    "hip": [
+     330,
+     720
+    ],
+    "w1": [
+     350,
+     420
+    ],
+    "w2": [
+     500,
+     420
+    ],
+    "w3": [
+     620,
+     340
+    ],
+    "w4": [
+     300,
+     370
+    ],
+    "w5": [
+     690,
+     240
+    ]
+   },
+   "minus": [
+    [
+     [
+      40,
+      770
+     ],
+     [
+      130,
+      810
+     ],
+     [
+      250,
+      880
+     ],
+     [
+      480,
+      920
+     ],
+     [
+      480,
+      970
+     ],
+     [
+      40,
+      970
+     ]
+    ]
+   ],
+   "feather": 3
+  },
+  "hind": {
+   "src": "s",
+   "box": [
+    90,
+    630,
+    470,
+    935
+   ],
+   "poly": [
+    [
+     100,
+     680
+    ],
+    [
+     200,
+     640
+    ],
+    [
+     320,
+     660
+    ],
+    [
+     420,
+     720
+    ],
+    [
+     450,
+     800
+    ],
+    [
+     430,
+     860
+    ],
+    [
+     460,
+     890
+    ],
+    [
+     450,
+     924
+    ],
+    [
+     320,
+     910
+    ],
+    [
+     240,
+     880
+    ],
+    [
+     140,
+     860
+    ],
+    [
+     110,
+     800
+    ]
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     330,
+     720
+    ],
+    "b": [
+     400,
+     900
+    ]
+   }
+  },
+  "tongue": {
+   "src": "s",
+   "box": [
+    1090,
+    1370,
+    2310,
+    1480
+   ],
+   "keep": "largest",
+   "k": 0.075,
+   "poly": [
+    [
+     1098,
+     1370
+    ],
+    [
+     2310,
+     1370
+    ],
+    [
+     2310,
+     1480
+    ],
+    [
+     1098,
+     1480
+    ]
+   ],
+   "piv": {
+    "a": [
+     1100,
+     1432
+    ],
+    "b": [
+     2290,
+     1412
+    ]
+   }
+  }
+ }
+}

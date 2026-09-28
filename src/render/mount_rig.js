@@ -95,8 +95,8 @@ registerTemplate('stag', {
 export const MOUNT_TUNE = {
   // tools/painted/companions/mt_warhorse/mounts_build.py tune <id> 의 출력 (채색 그림 관절에서 잰 값, 게임 px)
   mt_warhorse: { sh: [19.32, -32.91], hp: [-20.75, -31.0], far: [4, -1.5], l1f: 14.32, l2f: 18.84, l1h: 12.84, l2h: 18.77, footF: 2.53, footH: -0.81, sink: 1.2, neck: { x: 23.85, y: -51.99, a: -0.862, len: 24.19 }, head: { a: 1.068, len: 18.79 }, tail: { x: -25.19, y: -49.37, n: 5, len: 9.07, a: 1.806 }, seat: [2.38, -56.05], body: { x: 5.2, y: -44.1, rx: 31.0, ry: 14.1 } },
-  mt_skelsteed: { body: { ry: 12 }, neck: { a: -1.08 }, tail: { a: 1.75 } },
-  mt_ignis: { neck: { a: -1.06 } },
+  mt_skelsteed: { sh: [18.75, -33.85], hp: [-15.0, -31.27], far: [4, -1.5], l1f: 14.77, l2f: 19.45, l1h: 14.82, l2h: 21.15, footF: 4.13, footH: -7.83, sink: 1.2, neck: { x: 21.0, y: -47.44, a: -0.797, len: 29.51 }, head: { a: 1.063, len: 18.78 }, tail: { x: -20.81, y: -50.26, n: 5, len: 7.86, a: 1.947 }, seat: [3.66, -54.01], body: { x: -0.3, y: -43.5, rx: 24.1, ry: 14.3 } },
+  mt_ignis: { sh: [18.6, -31.77], hp: [-17.61, -32.04], far: [4, -1.5], l1f: 12.77, l2f: 19.04, l1h: 12.18, l2h: 20.95, footF: 1.56, footH: -2.6, sink: 1.2, neck: { x: 18.34, y: -49.23, a: -0.711, len: 29.54 }, head: { a: 1.163, len: 16.46 }, tail: { x: -19.69, y: -49.23, n: 5, len: 8.22, a: 2.102 }, seat: [2.71, -56.0], body: { x: 2.2, y: -43.8, rx: 25.0, ry: 13.8 } },
   mt_boar: { sh: [19.39, -20.13], hp: [-20.69, -19.91], far: [4, -1], l1f: 11.0, l2f: 9.22, l1h: 8.66, l2h: 11.39, footF: 0.87, footH: 0.65, sink: 0.8, neck: { x: 33.19, y: -40.6, a: -1.064, len: 8.88 }, head: { a: 0.661, len: 24.57 }, tail: { x: -23.19, y: -36.94, n: 3, len: 7.85, a: 1.91 }, seat: [0.86, -48.01], body: { x: 4.3, y: -31.3, rx: 29.7, ry: 17.1 } },
   mt_silva: {},
 };

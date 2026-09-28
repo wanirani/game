@@ -5,6 +5,7 @@
 //      순서: MOUNT_DRAW_B[id] (CMP-MOUNT-ART-B) → 채색 퍼핏 (등록 + 구워짐 + 켜짐) → 벡터 (이 파일, 대체 그림).
 //      back = 먼 다리·꼬리·몸·가까운 다리·목·머리·마구 / front = 등자 끈·등자·고삐 (기수의 가까운 다리 위에 겹친다).
 //      opts.tint = 단색 유령 (돌진 잔상·필살기 퇴장), opts.flash / m.flashT > 0 = 피격 번쩍임, opts.noFx = 불꽃·빛 생략.
+//      opts.rider === false = 기수 없이 혼자 (고삐는 목 위에 늘어지고 등자는 안장에 매달린다; 메뉴에서 탈것만 보일 때).
 //  drawMountIcon(ctx, id, x, y, r)   초상화가 없을 때의 절차적 머리 아이콘 (원 안). 2부 B 탈것은 MB.MOUNT_ICON_B[id] 가 있으면 그것.
 //  preloadMounts(ids, game)          채색 탈것 미리 굽기 (선택: 동료 탭·마구간·스테이지 입장에서 불러도 된다; drawMount 도 처음 볼 때 시작한다)
 //  MOUNT_PAL                         탈것별 색 (갤러리·아이콘·B 패키지 참고용)
@@ -60,7 +61,7 @@ export function preloadMounts(ids, g = game) {
 }
 
 // ───────────────────────── 디스패처 ─────────────────────────
-const O0 = { alpha: 1, tint: null, scale: 1, noFx: false, flash: false };
+const O0 = { alpha: 1, tint: null, scale: 1, noFx: false, flash: false, rider: true };
 export function drawMount(ctx, m, world, layer = 'back', opts = O0) {
   if (!m) return;
   const fnB = MB.MOUNT_DRAW_B?.[m.id];
@@ -84,7 +85,7 @@ export function drawMount(ctx, m, world, layer = 'back', opts = O0) {
   const q = qTier(world);
   const C = S0;
   C.m = m; C.P = P; C.T = RIG.templateFor(m); C.pal = palOf(m.id); C.tint = tint; C.flash = flash; C.fx = fx; C.q = q;
-  C.t = world?.time ?? m.t ?? 0; C.aw = !!m.awakened; C.world = world; C.f = f;
+  C.t = world?.time ?? m.t ?? 0; C.aw = !!m.awakened; C.world = world; C.f = f; C.ridden = o.rider !== false; C.rig = null;
   try {
     let rig = paintedRig(m.id);
     if (rig && tint && tint !== rig.def?.glow) rig = null;                 // 다른 색 유령은 벡터 실루엣 (구운 발광 실루엣은 한 색)
@@ -94,7 +95,7 @@ export function drawMount(ctx, m, world, layer = 'back', opts = O0) {
   } finally { ctx.restore(); }
 }
 /** 그리기 문맥 (한 번에 하나만 그리므로 재사용) */
-const S0 = { m: null, P: null, T: null, pal: null, tint: null, flash: false, fx: true, q: 2, t: 0, aw: false, world: null, f: 1 };
+const S0 = { m: null, P: null, T: null, pal: null, tint: null, flash: false, fx: true, q: 2, t: 0, aw: false, world: null, f: 1, ridden: true, rig: null };
 
 // ───────────────────────── 벡터 도우미 ─────────────────────────
 /** 번쩍임/유령 색 변환 */
@@ -157,7 +158,7 @@ function vecBack(ctx, C) {
   // 5) 목 · 갈기 · 머리
   drawNeck(ctx, C);
   drawHead(ctx, C);
-  stirrupStrap(ctx, C);
+  tackBack(ctx, C);
   // 6) 효과: 불꽃·콧김·각성
   if (C.fx) drawFxBack(ctx, C);
   void bones;
@@ -534,32 +535,58 @@ function drawFxBack(ctx, C) {
 }
 
 // ───────────────────────── 벡터: front 층 ─────────────────────────
-function vecFront(ctx, C) {
-  const { P, T, pal, m } = C;
-  const sx = P.sl.x, sy = P.sl.y;
-  // 등자 (기수 발바닥 아래: 안장 + (9, footY + 4)). 끈은 back 층(stirrupStrap) — 기수 다리 뒤로 지나간다
-  const fx = sx + 9, fy = sy + (m.def?.footY ?? 22) + 4;
+/** 재갈 위치 (채색이면 머리 부품의 'bit' 점) */
+const _bit = [0, 0];
+function bitPt(C) {
+  const { P, T, rig } = C;
+  const H = rig?.parts?.head;
+  if (H?.bit) return headPt(PD, C, H, 'bit', P.na - T.neck.a, _bit);
+  const hl = T.head.len;
+  _bit[0] = P.hx + Math.cos(P.ha) * hl * 0.8 - Math.sin(P.ha) * 3; _bit[1] = P.hy + Math.sin(P.ha) * hl * 0.8 + Math.cos(P.ha) * 3;
+  return _bit;
+}
+function reinStyle(ctx, C) {
+  const { pal, m } = C, chain = pal.bones || m.id === 'mt_ignis';
+  ctx.strokeStyle = col(C, chain ? '#6a6660' : '#3a2418'); ctx.lineWidth = chain ? 1.4 : 1.1;
+  if (chain) ctx.setLineDash([2, 1.5]);
+  return chain;
+}
+/** 등자 쇠 (발바닥 아래) */
+function stirrupIron(ctx, C, fx, fy) {
+  const { T, pal } = C;
   const iron = pal.bones ? pal.steel : T.name === 'stag' ? pal.trim : pal.steel;
   ctx.strokeStyle = C.tint ? C.tint : OUT; ctx.lineWidth = 2.6;
   ctx.beginPath(); ctx.moveTo(fx - 4.5, fy); ctx.lineTo(fx - 2.5, fy - 3.5); ctx.lineTo(fx + 2.5, fy - 3.5); ctx.lineTo(fx + 4.5, fy); ctx.closePath(); ctx.stroke();
   ctx.strokeStyle = col(C, iron); ctx.lineWidth = 1.2; ctx.stroke();
+}
+function vecFront(ctx, C) {
+  if (!C.ridden) return;                                   // 기수 없음: 마구는 back 층에서 다 그렸다
+  const { P, m } = C;
+  const sx = P.sl.x, sy = P.sl.y;
+  // 등자 (기수 발바닥 아래: 안장 + (9, footY + 4)). 끈은 back 층(tackBack) — 기수 다리 뒤로 지나간다
+  stirrupIron(ctx, C, sx + 9, sy + (m.def?.footY ?? 22) + 4);
   // 고삐: 재갈 → 기수 손 (안장 앞 위)
-  const hl = T.head.len;
-  const bx = P.hx + Math.cos(P.ha) * hl * 0.8 - Math.sin(P.ha) * 3, by = P.hy + Math.sin(P.ha) * hl * 0.8 + Math.cos(P.ha) * 3;
-  const rx = sx + 12, ry = sy - 14;
-  const chain = pal.bones || m.id === 'mt_ignis';
-  ctx.strokeStyle = col(C, chain ? '#6a6660' : '#3a2418'); ctx.lineWidth = chain ? 1.4 : 1.1;
-  if (chain) ctx.setLineDash([2, 1.5]);
+  const [bx, by] = bitPt(C), rx = sx + 12, ry = sy - 14;
+  const chain = reinStyle(ctx, C);
   ctx.beginPath(); ctx.moveTo(bx, by); ctx.quadraticCurveTo((bx + rx) / 2, Math.max(by, ry) + 8, rx, ry); ctx.stroke();
   if (chain) ctx.setLineDash([]);
 }
-/** 등자 끈 (back 층 맨 위: 몸 앞, 기수 다리 뒤) */
-function stirrupStrap(ctx, C) {
+/** back 층 마구 (몸 앞, 기수 뒤): 등자 끈. 기수가 없으면 늘어진 고삐 + 매달린 등자까지 */
+function tackBack(ctx, C) {
   const { P, pal, m } = C;
-  const sx = P.sl.x, sy = P.sl.y, fx = sx + 9, fy = sy + (m.def?.footY ?? 22) + 4;
+  const sx = P.sl.x, sy = P.sl.y;
+  const drop = C.ridden ? (m.def?.footY ?? 22) + 4 : ((m.def?.footY ?? 22) + 4) * 0.62;
+  const fx = sx + (C.ridden ? 9 : 3), fy = sy + drop;
   ctx.strokeStyle = C.tint ? C.tint : OUT; ctx.lineWidth = 2.8;
   ctx.beginPath(); ctx.moveTo(sx + 2, sy + 1); ctx.lineTo(fx, fy - 3.5); ctx.stroke();
   ctx.strokeStyle = col(C, pal.leather); ctx.lineWidth = 1.5; ctx.stroke();
+  if (C.ridden) return;
+  stirrupIron(ctx, C, fx, fy);
+  // 고삐: 재갈 → 안장 앞 (목 위로 늘어짐)
+  const [bx, by] = bitPt(C), rx = sx + 9, ry = sy - 2;
+  const chain = reinStyle(ctx, C);
+  ctx.beginPath(); ctx.moveTo(bx, by); ctx.quadraticCurveTo((bx + rx) / 2, Math.max(by, ry) + 6, rx, ry); ctx.stroke();
+  if (chain) ctx.setLineDash([]);
 }
 
 // ───────────────────────── 채색 퍼핏 (네발) ─────────────────────────
@@ -597,11 +624,12 @@ function pTail(D, ctx, C, Tp, tk) {
   const g = partGeo(Tp), a = Tp.a, b = Tp.b, k = Tp.k;
   const H = img.height, W = img.width;
   const lo = C.q === 0 ? Math.min(n, 2) : n;                // low: 띠 두 개
+  const ov = ctx.globalAlpha < 0.98 ? 0 : 1;                  // 반투명(소환·해산)일 때 띠를 겹치면 줄무늬가 보인다
   let wx = P.tx, wy = P.ty;
   for (let i = 0; i < lo; i++) {
     const u0 = i / lo, u1 = (i + 1) / lo;
     const ax = a[0] + (b[0] - a[0]) * u0, ay = a[1] + (b[1] - a[1]) * u0;
-    const y0 = i === 0 ? 0 : Math.floor(ay) - 1, y1 = i === lo - 1 ? H : Math.ceil(a[1] + (b[1] - a[1]) * u1) + 1;
+    const y0 = i === 0 ? 0 : Math.floor(ay) - ov, y1 = i === lo - 1 ? H : Math.floor(a[1] + (b[1] - a[1]) * u1) + ov;
     const ang = P.ta[Math.min(n - 1, Math.round(i * n / lo))];
     D.set(ax, ay, wx, wy, ang - g.ang, k, k);
     if (y1 > y0) ctx.drawImage(img, 0, y0, W, y1 - y0, 0, y0, W, y1 - y0);
@@ -610,8 +638,9 @@ function pTail(D, ctx, C, Tp, tk) {
   }
 }
 function paintedQuad(ctx, C, layer, rig) {
-  if (layer === 'front') { vecFront(ctx, C); return; }
+  if (layer === 'front') { C.rig = rig; vecFront(ctx, C); return; }
   const { P, T, m } = C, R = rig.parts, D = PD;
+  C.rig = rig;
   const tk = C.aw && rig.mount.tint && rig.tintKeys?.includes(rig.mount.tint) ? rig.mount.tint : null;
   // 발밑 그림자
   if (!C.tint && m.onGround !== false) {
@@ -633,7 +662,7 @@ function paintedQuad(ctx, C, layer, rig) {
   pLeg(D, C, R.foreU, R.foreL, P.legs[3], T.l1f, T.l2f, false, tk);
   if (C.flash) D.flash(0.62);
   D.end();
-  stirrupStrap(ctx, C);
+  tackBack(ctx, C);
   if (!C.tint) paintedFx(ctx, C, rig, D, hr);
 }
 /** 머리 부품의 점 → 지역 좌표 */
@@ -676,8 +705,9 @@ function paintedFx(ctx, C, rig, D, hr) {
   // 눈
   if (headPt(D, C, R.head, 'eye', hr, _e)) {
     const ec = aw && fx.awEye ? fx.awEye : fx.eye ?? pal.eye;
-    glow(ctx, _e[0], _e[1], 3.2 + (P.hurt ?? 0) * 1.5, ec, 0.75 * (1 - P.blink * 0.8));
-    if (C.fx && q > 0) glow(ctx, _e[0], _e[1], 7, ec, 0.3);
+    const er = fx.eyeR ?? 3.2;
+    glow(ctx, _e[0], _e[1], er + (P.hurt ?? 0) * 1.5, ec, 0.75 * (1 - P.blink * 0.8));
+    if (C.fx && q > 0) glow(ctx, _e[0], _e[1], er * 2.2, ec, 0.24);
   }
   if (!C.fx) return;
   // 불갈기 · 영혼불 갈기 (목 위 점들)

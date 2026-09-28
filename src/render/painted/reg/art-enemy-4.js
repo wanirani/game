@@ -10,6 +10,8 @@ import * as snow_wolf from '../enemies/snow_wolf.js';
 import * as frozen_knight from '../enemies/frozen_knight.js';
 import * as death_knight from '../enemies/death_knight.js';
 import * as frost_wraith from '../enemies/frost_wraith.js';
+import * as bone_angel from '../enemies/bone_angel.js';
+import * as succubus from '../enemies/succubus.js';
 
 export const bosses = {};
 export const enemies = [
@@ -18,6 +20,8 @@ export const enemies = [
   { mod: frozen_knight },
   { mod: death_knight },
   { mod: frost_wraith },
+  { mod: bone_angel },
+  { mod: succubus },
 ];
 export const companions = {};
 export const npcs = {};

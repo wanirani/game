@@ -1,0 +1,30 @@
+{
+ "id": "gd_knight",
+ "tier": "T2",
+ "srcTD": 4,
+ "note": "가웨인: body = Step-4 edit (knight without sword/shield, raised far fist, cape, mist legs; faces LEFT in the art so every edit part is flipX). farm = far forearm + fist (elbow pivot) cut out so the sword arm can swing. sword = sheet1 hilt with the stub of its spectral blade (the long blade is drawn at runtime as additive light). shield = sheet1 heater shield (front view, squashed at runtime). k: 70 logical px from helm crest to boot tip.",
+ "sources": {
+  "e": { "raw": "gd_knight_edit.webp", "file": "gd_knight_edit.png", "mode": "soft", "k": 0.0365 },
+  "s": { "raw": "gd_knight_sheet1.webp", "file": "gd_knight_sheet1.png", "mode": "rembg", "k": 0.04 }
+ },
+ "parts": {
+  "body": {
+   "src": "e", "box": [0, 250, 1760, 2336], "flipX": true,
+   "minus": [[[405, 690], [470, 682], [545, 690], [558, 770], [600, 798], [632, 812], [618, 880], [588, 928], [540, 918], [480, 880], [430, 862], [400, 820]]],
+   "piv": { "a": [960, 2200], "elb": [645, 915], "hand2": [1010, 1160], "eye": [845, 432], "chest": [889, 833], "top": [812, 305], "mist": [960, 1950] }
+  },
+  "farm": {
+   "src": "e", "box": [395, 675, 700, 995], "flipX": true,
+   "poly": [[410, 690], [470, 682], [545, 690], [558, 770], [602, 798], [660, 812], [690, 850], [698, 920], [688, 978], [640, 990], [588, 962], [540, 922], [480, 882], [428, 862], [400, 820]],
+   "piv": { "a": [645, 915], "fist": [478, 770] }
+  },
+  "sword": {
+   "src": "s", "box": [1515, 700, 1715, 980],
+   "piv": { "a": [1592, 862], "guard": [1622, 776], "pom": [1562, 955], "tip": [1652, 702] }
+  },
+  "shield": {
+   "src": "s", "box": [1830, 90, 2300, 862], "k": 0.036, "keep": "largest",
+   "piv": { "a": [2065, 450], "top": [2065, 105], "bot": [2065, 845] }
+  }
+ }
+}

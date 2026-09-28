@@ -766,6 +766,41 @@
      "decision": "kept: cursed_nun parts: side figure, sleeve arms"
     }
    ]
+  },
+  {
+   "shot": "succ_sheet",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "inputs": [
+    "succ_ref_b"
+   ],
+   "for": [
+    "succubus"
+   ],
+   "generationId": "AbELXQt0_uj1-6bJi5POuiw5NNckJCqWZe5tn8oqR4G3IxdIbn9D2hUL9FXYPI2btGJ_oxAN",
+   "images": [
+    {
+     "name": "succ_sheet_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0Lzk3MWQ5ZDExLWYwOWQtNGY0ZC04YzU3LTU0ODA1YmM1N2IwNC84NTc4Njg3NDc4NjAzOTIzMzIzL3RlbXBudWN2Mi5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": true,
+     "decision": "kept: succubus spade tail (lying straight)"
+    },
+    {
+     "name": "succ_sheet_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpbc3BlY2lhbC1lZmZlY3Qvb3V0cHV0Lzk2MzU5YjNhLWEzMjItNDU0YS1iZTRhLTZjNjQ5MDg3MjdlZS81Nzc2NDQ1MzE0NzQxMDI4NjIvdGVtcDcxbmEyLnBuZw.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": true,
+     "decision": "kept: succubus wing (left wing of the joined pair)"
+    }
+   ]
   }
  ]
 }

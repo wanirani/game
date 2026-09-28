@@ -1,0 +1,287 @@
+{
+ "id": "succubus",
+ "tier": "T2",
+ "srcTD": 4,
+ "note": "New design (ART-ENEMY-4): side-on flight pose from the covered battle-gown reference (succ_ref_b take 2) cut without its wings and tail (the flowing split skirt is warped at runtime); wings from the parts sheet (succ_sheet take 2, left wing of the joined pair, root at its right end); spade tail from succ_sheet take 1 (lying straight: base at the thin right end, spade at the left).",
+ "sources": {
+  "r": {
+   "file": "a4_succubus_ref.png",
+   "k": 0.04,
+   "raw": "succubus_ref.webp"
+  },
+  "s2": {
+   "file": "a4_succubus_sheet2.png",
+   "k": 0.062,
+   "raw": "succubus_sheet2.webp"
+  },
+  "s1": {
+   "file": "a4_succubus_sheet1.png",
+   "k": 0.046,
+   "raw": "succubus_sheet1.webp"
+  }
+ },
+ "parts": {
+  "body": {
+   "src": "r",
+   "box": [
+    90,
+    330,
+    1665,
+    2300
+   ],
+   "poly": [
+    [
+     1345,
+     345
+    ],
+    [
+     1524,
+     393
+    ],
+    [
+     1560,
+     619
+    ],
+    [
+     1571,
+     786
+    ],
+    [
+     1524,
+     905
+    ],
+    [
+     1643,
+     1333
+    ],
+    [
+     1548,
+     1429
+    ],
+    [
+     1452,
+     1333
+    ],
+    [
+     1429,
+     1810
+    ],
+    [
+     1333,
+     2095
+    ],
+    [
+     1190,
+     2262
+    ],
+    [
+     905,
+     2286
+    ],
+    [
+     595,
+     2143
+    ],
+    [
+     286,
+     2048
+    ],
+    [
+     95,
+     1810
+    ],
+    [
+     119,
+     1524
+    ],
+    [
+     286,
+     1429
+    ],
+    [
+     452,
+     1400
+    ],
+    [
+     714,
+     1390
+    ],
+    [
+     1060,
+     1395
+    ],
+    [
+     952,
+     1333
+    ],
+    [
+     821,
+     1286
+    ],
+    [
+     857,
+     1190
+    ],
+    [
+     1024,
+     1119
+    ],
+    [
+     1119,
+     1000
+    ],
+    [
+     1167,
+     905
+    ],
+    [
+     1214,
+     786
+    ],
+    [
+     1286,
+     619
+    ],
+    [
+     1333,
+     476
+    ]
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1333,
+     1119
+    ],
+    "top": [
+     1333,
+     340
+    ],
+    "wing": [
+     1150,
+     870
+    ],
+    "tail": [
+     1090,
+     1300
+    ],
+    "lips": [
+     1536,
+     767
+    ],
+    "eye": [
+     1495,
+     679
+    ],
+    "hand": [
+     1524,
+     1333
+    ],
+    "claw": [
+     857,
+     1238
+    ],
+    "waist": [
+     1333,
+     1300
+    ]
+   },
+   "inpaint": [
+    [
+     [
+      440,
+      1381
+     ],
+     [
+      714,
+      1376
+     ],
+     [
+      1076,
+      1386
+     ],
+     [
+      1119,
+      1429
+     ],
+     [
+      1076,
+      1490
+     ],
+     [
+      714,
+      1481
+     ],
+     [
+      440,
+      1495
+     ]
+    ]
+   ]
+  },
+  "wing": {
+   "src": "s2",
+   "box": [
+    650,
+    88,
+    1412,
+    645
+   ],
+   "piv": {
+    "a": [
+     1395,
+     430
+    ],
+    "tip": [
+     690,
+     120
+    ]
+   }
+  },
+  "tail": {
+   "src": "s1",
+   "box": [
+    1568,
+    700,
+    2298,
+    915
+   ],
+   "piv": {
+    "a": [
+     2282,
+     795
+    ],
+    "b": [
+     1600,
+     815
+    ]
+   },
+   "poly": [
+    [
+     1568,
+     700
+    ],
+    [
+     2298,
+     700
+    ],
+    [
+     2298,
+     835
+    ],
+    [
+     1880,
+     835
+    ],
+    [
+     1760,
+     915
+    ],
+    [
+     1568,
+     915
+    ]
+   ]
+  }
+ }
+}

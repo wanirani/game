@@ -9,5 +9,7 @@ export const enemies = [];
 export const companions = {
   mt_warhorse: () => import('../companions/mt_warhorse.js'),
   mt_boar: () => import('../companions/mt_boar.js'),
+  mt_skelsteed: () => import('../companions/mt_skelsteed.js'),
+  mt_ignis: () => import('../companions/mt_ignis.js'),
 };
 export const npcs = {};

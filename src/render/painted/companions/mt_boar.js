@@ -13,9 +13,9 @@ const DEF = {
   parts: { foreU: LEG, foreL: LEG, hindU: LEG, hindL: LEG },
 };
 const FX = {
-  eye: '#ff3a2a', snort: '#9a8a70',
+  eye: '#ff3a2a', eyeR: 2.2, snort: '#9a8a70',
   awGlow: '#ff7a2a', awEye: '#ffb040',
-  awHead: [['t0', 5, 0.55], ['t1', 4, 0.45], ['t2', 3, 0.4]],
+  awHead: [['t0', 7, 0.6], ['t1', 6, 0.5], ['t2', 5, 0.45]],
   awBody: [['sc0', 5, 0.45]],
 };
 

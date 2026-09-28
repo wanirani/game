@@ -1,0 +1,177 @@
+{
+ "id": "ice_golem",
+ "tier": "T3",
+ "srcTD": 4,
+ "note": "New design (ART-ENEMY-4): parts sheet (golem_sheet take 1, from the golem_ref take 2 reference): the hulking ice torso with the skull head and the glowing heart cut free of its two arms; the separate spiked arm piece is used for both arms (far one darkened); the separate leg piece (foot frozen into an ice slab) for both legs. Gradient background -> rembg matte.",
+ "sources": {
+  "s": {
+   "file": "a4_ice_golem_sheet1.png",
+   "k": 0.06,
+   "raw": "ice_golem_sheet1.webp",
+   "mode": "rembg"
+  }
+ },
+ "parts": {
+  "torso": {
+   "src": "s",
+   "box": [
+    120,
+    60,
+    970,
+    950
+   ],
+   "poly": [
+    [
+     143,
+     452
+    ],
+    [
+     214,
+     286
+    ],
+    [
+     500,
+     67
+    ],
+    [
+     571,
+     262
+    ],
+    [
+     690,
+     357
+    ],
+    [
+     786,
+     305
+    ],
+    [
+     838,
+     400
+    ],
+    [
+     924,
+     424
+    ],
+    [
+     957,
+     595
+    ],
+    [
+     924,
+     786
+    ],
+    [
+     821,
+     829
+    ],
+    [
+     767,
+     917
+    ],
+    [
+     624,
+     940
+    ],
+    [
+     476,
+     886
+    ],
+    [
+     405,
+     790
+    ],
+    [
+     333,
+     719
+    ],
+    [
+     219,
+     714
+    ],
+    [
+     131,
+     624
+    ]
+   ],
+   "piv": {
+    "a": [
+     643,
+     929
+    ],
+    "hip": [
+     643,
+     929
+    ],
+    "heart": [
+     643,
+     726
+    ],
+    "eyeN": [
+     786,
+     476
+    ],
+    "eyeF": [
+     707,
+     476
+    ],
+    "shN": [
+     869,
+     786
+    ],
+    "shF": [
+     250,
+     714
+    ],
+    "top": [
+     500,
+     70
+    ]
+   }
+  },
+  "arm": {
+   "src": "s",
+   "box": [
+    1745,
+    90,
+    2275,
+    1490
+   ],
+   "k": 0.055,
+   "piv": {
+    "a": [
+     1976,
+     548
+    ],
+    "b": [
+     1917,
+     1333
+    ],
+    "fist": [
+     1905,
+     1400
+    ]
+   }
+  },
+  "leg": {
+   "src": "s",
+   "box": [
+    1120,
+    795,
+    1600,
+    1672
+   ],
+   "k": 0.05,
+   "piv": {
+    "a": [
+     1357,
+     850
+    ],
+    "b": [
+     1330,
+     1560
+    ]
+   }
+  }
+ }
+}
