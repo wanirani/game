@@ -39,14 +39,21 @@ function pose(e) {
   q.liftN = walk ? Math.max(0, -Math.cos(ph)) * 3 : 0; q.liftF = walk ? Math.max(0, Math.cos(ph)) * 3 : 0;
   q.tele = 0; q.hold = false; q.trail = 0; q.hop = hop; q.flare = 0;
   if (thr) {
-    if (at < wu) {
-      const k = ease.outCubic(clamp(at / wu, 0, 1));
+    // draw back, then the underhand whip lands on the release point (hand forward-up by the face) exactly at the AI's
+    // spawn frame (params.windup: the flask leaves from 8 px ahead at −70), then follows through
+    const SW = 0.1, REL = 2.05;
+    if (at < wu - SW) {
+      const k = ease.outCubic(clamp(at / (wu - SW), 0, 1));
       q.armN = lerp(0.28, -2.5, k); q.lean = lerp(0.04, -0.12, k); q.tele = at / wu; q.hold = true;
       q.bootN = lerp(0.05, 0.25, k); q.bootF = lerp(-0.08, -0.25, k);
+    } else if (at < wu) {
+      const k = ease.inQuad(clamp((at - (wu - SW)) / SW, 0, 1));
+      q.armN = lerp(-2.5, REL, k); q.lean = lerp(-0.12, 0.12, k); q.tele = at / wu; q.hold = true; q.trail = k;
+      q.bootN = lerp(0.25, 0.3, k); q.bootF = lerp(-0.25, -0.2, k);
     } else {
-      const k = ease.outCubic(clamp((at - wu) / 0.12, 0, 1));
-      q.armN = lerp(-2.5, 1.7, k); q.lean = lerp(-0.12, 0.18, k);
-      q.trail = clamp(1 - (at - wu) / 0.25, 0, 1);
+      const k = ease.outCubic(clamp((at - wu) / 0.1, 0, 1)), back = ease.inOutCubic(clamp((at - wu - 0.15) / 0.3, 0, 1));
+      q.armN = lerp(lerp(REL, 2.35, k), 1.3, back); q.lean = lerp(0.12, 0.18, k) * (1 - back) + 0.04 * back;
+      q.trail = clamp(1 - (at - wu) / 0.2, 0, 1);
       q.bootN = 0.3; q.bootF = -0.2;
     }
   }
@@ -122,7 +129,7 @@ export function draw(ctx, e, world, o, rig) {
     const pk = 0.5 + 0.5 * Math.sin(q.t * 4);
     K.glow(L.ex, L.ey, 3 + pk + q.tele * 4, '#5dffb0', 0.55 + 0.25 * pk + 0.3 * q.tele, 0.2);
     if (q.hold) K.glow(L.hx, L.hy + 2, 6 + q.tele * 6, '#8aff5a', 0.35 + 0.4 * q.tele);
-    if (q.trail > 0) swingTrail(ctx, L.shx, L.shy, -2.5, 1.7, 24, 9, '#8aff5a', q.trail * 0.8);
+    if (q.trail > 0) swingTrail(ctx, L.shx, L.shy, -2.5, q.armN, 24, 9, '#8aff5a', q.trail * 0.8);   // the arc trails the hand (last 2.3 rad)
   }
   if (q.tele > 0.45) glint(ctx, L.hx, L.hy - 3, 5 + 5 * q.tele, '#e8ffc0', (q.tele - 0.45) / 0.55);
   K.end();

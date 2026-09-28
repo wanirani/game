@@ -1,0 +1,61 @@
+{
+ "package": "CMP-GUARD-ART-B",
+ "model": "kling-image-v3_0_omni (img_resolution 2k)",
+ "prompts": "tools/painted/prompts/cmp-guard-art-b.mjs (GUARDIANS ref/sheet templates, EXTRAS for single parts / edits)",
+ "creditsPerImage": 2,
+ "budgetCredits": 200,
+ "creditsBefore": 5491,
+ "note": "Result URLs expire after 24 h; every kept image is stored as q93 webp under tools/painted/companions/<id>/src/ (the chosen Step-1 reference as <id>_ref.webp). The bottom-right Kling logo is filled by matte.py before cutting.",
+ "generations": [
+  {
+   "guardian": "gd_clock",
+   "step": "ref",
+   "generationId": "AZdRJA9Ql3wVuLe1DsmZ9xlYSfrOxCdlZ1C0B0rD77o5yTLCLsjixPLVCTwV5TNXn4CNJx5A",
+   "tool": "text_to_image",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "prompt": "ref(id) in tools/painted/prompts/cmp-guard-art-b.mjs",
+   "decision": "pending"
+  },
+  {
+   "guardian": "gd_reaper",
+   "step": "ref",
+   "generationId": "Af4eDbG3pINRhVGw032Wgs5YHJQZRnWDeHqQlzLapG4B43q04b39XBXVx_oWLadr3OHRaRvS",
+   "tool": "text_to_image",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "prompt": "ref(id) in tools/painted/prompts/cmp-guard-art-b.mjs",
+   "decision": "pending"
+  },
+  {
+   "guardian": "gd_mirra",
+   "step": "ref",
+   "generationId": "AYvQu_wbLxrI3vn_pig8NF9BPTmSCIi33yrXTjElYDmnQ8KZzdC2bp4sKXuEA-3JnkZdxmwk",
+   "tool": "text_to_image",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "prompt": "ref(id) in tools/painted/prompts/cmp-guard-art-b.mjs",
+   "decision": "pending"
+  },
+  {
+   "guardian": "gd_lumen",
+   "step": "ref",
+   "generationId": "Afm2MaUBV_NYfgC4Bfks3T2Riyh-OFBFHvnBSnVN7oLYxQAAu4tQJVl36RVi-OGQRYurSMAw",
+   "tool": "text_to_image",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "prompt": "ref(id) in tools/painted/prompts/cmp-guard-art-b.mjs",
+   "decision": "pending"
+  },
+  {
+   "guardian": "gd_momo",
+   "step": "ref",
+   "generationId": "AcfC3kFr0hU0o4ECfC2o-Yi-005f8hYAtIORCmegZsWdPEbigwtB9uFCtlWK8IN1uHHifWGO",
+   "tool": "text_to_image",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "prompt": "ref(id) in tools/painted/prompts/cmp-guard-art-b.mjs",
+   "decision": "pending"
+  }
+ ]
+}

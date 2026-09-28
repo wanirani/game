@@ -18,7 +18,7 @@ export const INSTALL = `(() => {
   const b = w.boss, A = b.A;
   const nodlg = () => { for (let k = 0; k < 4 && g.top?.name === 'dialogue'; k++) g.top.finish?.(); };
   const step = (n) => { for (let i = 0; i < n; i++) { nodlg(); g.__tick(1 / 60); g.__render(); p.iframes = 1e9; p.hurtT = 0; if (b.state === 'idle') b.idleWait = 99; } };
-  const px = () => { p.x = Math.max(A.x0 + 40, Math.min(A.x1 - 80, b.bx - 380)); p.vx = 0; p.facing = 1; };
+  const px = () => { const B = b.bounds?.() ?? A; p.x = Math.max(B.x0 + 40, Math.min(B.x1 - 80, b.bx - 380)); p.vx = 0; p.facing = 1; };   // 공허의 벽 안쪽
   const clear = () => {
     for (const e of w.entities) {
       if (e === b || e.kind === 'painted' || e.kind === 'bossart') continue;

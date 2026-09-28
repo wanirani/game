@@ -292,7 +292,8 @@ final class ApiProxy {
             if (canBody && (body != null || needsBody)) {
                 byte[] b = body == null ? new byte[0] : body;
                 c.setDoOutput(true);
-                c.setFixedLengthStreamingMode(b.length);
+                // 고정 길이 스트리밍 모드는 쓰지 않는다: 그 모드에서 401 응답이 오면 HttpURLConnection 이 본문을 버린다
+                // (본문은 최대 4MB 라 버퍼링해도 된다 — Content-Length 는 연결이 채운다)
                 OutputStream os = c.getOutputStream();
                 try {
                     os.write(b);

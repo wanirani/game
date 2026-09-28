@@ -593,17 +593,18 @@ class Game {
     const tw = Number(top?.toastW) >= 80 ? Number(top.toastW) : 0;
     if (tw) {
       const lh = 22, lo = Math.max(minX, x0 - tw / 2), hi = Math.min(maxX, x0 + tw / 2);
+      const bw = Math.max(80, Math.min(tw, hi - lo));   // 화면 가장자리에 잘린 칸이면 그 폭으로 줄바꿈 (글자가 상자 밖으로 나가지 않게)
       let yb = y0, prevH = 0;
       this.toasts.forEach((t, i) => {
         t.shown = true;
-        const lines = this.wrapToast(ctx, t, tw - 36, 17, 2);
+        const lines = this.wrapToast(ctx, t, bw - 36, 17, 2);
         const h = 28 + (lines.length - 1) * lh;
         if (i > 0) yb = dy > 0 ? yb + prevH + 2 : yb - h - 2;
         prevH = h;
         const a = Math.min(1, t.t * 3, (t.max - t.t) * 6);
         if (a <= 0) return;
         ctx.globalAlpha = a;
-        const w = Math.min(hi - lo, tw, t._ww + 36);
+        const w = Math.min(bw, t._ww + 36);
         const x = clamp(x0, lo + w / 2, hi - w / 2);
         ctx.fillStyle = 'rgba(10,4,12,0.78)';
         ctx.fillRect(x - w / 2, yb - 20, w, h);

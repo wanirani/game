@@ -459,8 +459,8 @@
       2336,
       1760
      ],
-     "kept": null,
-     "decision": "pending"
+     "kept": true,
+     "decision": "kept: legs (near/far shin) - raw bg halo stripped by derive.py"
     },
     {
      "name": "dl_sheet_2",
@@ -469,8 +469,8 @@
       2336,
       1760
      ],
-     "kept": null,
-     "decision": "pending"
+     "kept": true,
+     "decision": "kept: head, torso, thigh, upper arm, fist, claw hand - blue halo stripped by derive.py"
     }
    ]
   },
@@ -494,8 +494,8 @@
       2336,
       1760
      ],
-     "kept": null,
-     "decision": "pending"
+     "kept": false,
+     "decision": "rejected: blue halo around every prop, ribcage-like wing; props_2 cleaner"
     },
     {
      "name": "dl_props_2",
@@ -504,8 +504,8 @@
       2336,
       1760
      ],
-     "kept": null,
-     "decision": "pending"
+     "kept": true,
+     "decision": "kept: wing, flaming greatsword, cape, tail"
     }
    ]
   },
