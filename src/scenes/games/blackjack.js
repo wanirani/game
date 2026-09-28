@@ -284,7 +284,8 @@ export class BlackjackScene extends MiniGame {
     if (this.phase !== 'ready' || this.result) {
       const amt = this.roundFree ? 0 : this.roundBet;
       const stacks = this.doubled ? 2 : 1;
-      for (let kk = 0; kk < stacks; kk++) for (let i = 0; i < 4; i++) drawChip(ctx, bx - 16 + kk * 34, by + 6 - i * 5, 17, amt === 0 ? 0 : this.bet, { t });
+      // 쌓인 칩: 맨 위 칩에만 금액 (판돈은 HUD 에도 있다)
+      for (let kk = 0; kk < stacks; kk++) for (let i = 0; i < 4; i++) drawChip(ctx, bx - 16 + kk * 34, by + 6 - i * 5, 17, amt === 0 ? 0 : this.bet, { t, label: i === 3 ? undefined : '' });
     }
   }
   /** 펠트에 인쇄된 글자 (설계 좌표 → 화면, 글자 크기는 그대로) */
