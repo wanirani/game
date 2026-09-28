@@ -6,13 +6,15 @@
 // dist/web 을 serve_dist 로 띄워 헤드리스 Chromium 에서:
 //  1. 첫 방문 → 워커 설치·활성, bn-<buildHash> 에 미리 받기 목록 전부, bn-assets-v1 에 타이틀 배경 (해시 표시 x-bn-h)
 //  2. /api/ 요청은 어떤 캐시에도 들어가지 않는다 (P-10)
-//  3. 오프라인 새로고침: 타이틀이 뜨고, 마을이 돌고, 스테이지 s01 이 돈다 (페이지 오류 0)
-//  4. 새 빌드(같은 파일 + 다른 BUILD 해시, bg/title 해시가 바뀐 build.json)를 같은 주소에서 내보내고 update():
-//     새 워커는 설치된 뒤 대기한다 (SKIP_WAITING 전에는 켜지지 않음, 옛 워커가 계속 제어) → platform.updateReady() true
+//  3. 오프라인 새로고침 (서버를 내려서 워커의 fetch 도 진짜로 실패하게): 타이틀이 뜨고, 마을이 돌고, 스테이지 s01 이 돈다 (페이지 오류 0)
+//  4. 새 빌드(내용이 바뀐 리그 JSON·fonts.json·build-info.js, 새 BUILD 해시)를 같은 주소에서 내보낸다:
+//     페이지 이동은 네트워크 우선이라 페이지는 곧바로 새 빌드로 돈다 → 아직 제어 중인 옛 워커가 그 페이지에 새 리그·fonts.json 을 준다.
+//     update(): 새 워커는 설치된 뒤 대기한다 (SKIP_WAITING 전에는 켜지지 않음, 옛 워커가 계속 제어) → platform.updateReady() true
 //  5. game.platform.applyUpdate() → SKIP_WAITING → 새로고침 → 옛 bn-<hash> 캐시 삭제, 바뀐 그림 캐시 무효화
 // 보고: dist/test_sw.json
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
 import { ROOT, walk, rmrf, mkdirp, parseArgs } from './lib/util.mjs';
@@ -27,6 +29,10 @@ const B = path.join(ROOT, 'dist/.swtest-b');
 const results = [];
 const check = (id, pass, detail) => { results.push({ id, pass: !!pass, detail }); console.log(`${pass ? '✓' : '✗'} ${id}${detail ? ' — ' + detail : ''}`); };
 
+// 새 배포에서 바뀌는 파일: 그림 쪽(assets/, 경로 키 캐시)과 해시 없는 주소로 부르는 글꼴 목록(fonts.json)
+const RIG = 'assets/puppets/kael/kael_hunter/rig.json';
+const FONTS = 'assets/fonts/fonts.json';
+const hash8 = (buf) => crypto.createHash('sha256').update(buf).digest('hex').slice(0, 8);
 function makeNextBuild() {
   rmrf(B);
   for (const rel of walk(A)) {
@@ -34,18 +40,28 @@ function makeNextBuild() {
     mkdirp(path.dirname(dst));
     try { fs.linkSync(path.join(A, rel), dst); } catch { fs.copyFileSync(path.join(A, rel), dst); }
   }
+  const put = (rel, data) => { fs.rmSync(path.join(B, rel), { force: true }); fs.writeFileSync(path.join(B, rel), data); return { hash8: hash8(data), bytes: Buffer.byteLength(data) }; };
   const sw = fs.readFileSync(path.join(A, 'sw.js'), 'utf8');
   const m = /\/\*BN_BUILD\*\/(.*?)\/\*BN_BUILD_END\*\//s.exec(sw);
   const build = JSON.parse(m[1]);
-  const next = { ...build, hash: build.hash.slice(0, -4) + 'b0b0', manifest: `build.json?v=${build.hash.slice(0, -4)}b0b0` };
-  fs.rmSync(path.join(B, 'sw.js'));
-  fs.writeFileSync(path.join(B, 'sw.js'), sw.replace(m[0], `/*BN_BUILD*/${JSON.stringify(next)}/*BN_BUILD_END*/`));
+  const hash = build.hash.slice(0, -4) + 'b0b0';
   const bj = JSON.parse(fs.readFileSync(path.join(A, 'build.json'), 'utf8'));
-  bj.buildHash = next.hash;
-  if (bj.files['assets/bg/title.webp']) bj.files['assets/bg/title.webp'].hash8 = 'deadbeef'; // "새 배포에서 바뀐 그림"
-  fs.rmSync(path.join(B, 'build.json'));
-  fs.writeFileSync(path.join(B, 'build.json'), JSON.stringify(bj));
-  return { old: build, next };
+  bj.buildHash = hash;
+  // 내용이 바뀐 파일 ("새 배포에서 다시 만든 리그", "글꼴 목록")
+  const rigB = Buffer.from(JSON.stringify({ ...JSON.parse(fs.readFileSync(path.join(A, RIG), 'utf8')), __swtest: 'next' }));
+  bj.files[RIG] = put(RIG, rigB);
+  const fontsB = Buffer.from(JSON.stringify([...JSON.parse(fs.readFileSync(path.join(A, FONTS), 'utf8')), { __swtest: 'next' }]));
+  bj.files[FONTS] = put(FONTS, fontsB);
+  // 새 build-info.js (다른 해시) → index.html·미리 받기 목록의 주소도 바뀐다
+  const infoB = fs.readFileSync(path.join(A, 'build-info.js'), 'utf8').replace(`"hash":"${build.hash}"`, `"hash":"${hash}"`);
+  bj.files['build-info.js'] = put('build-info.js', infoB);
+  const infoUrlA = build.precache.find((u) => /^build-info\.js\?v=/.test(u));
+  const infoUrlB = `build-info.js?v=${hash8(infoB)}`;
+  bj.files['index.html'] = put('index.html', fs.readFileSync(path.join(A, 'index.html'), 'utf8').replace(infoUrlA, infoUrlB));
+  const next = { ...build, hash, manifest: `build.json?v=${hash}`, precache: build.precache.map((u) => (u === infoUrlA ? infoUrlB : u)) };
+  bj.files['sw.js'] = put('sw.js', sw.replace(m[0], `/*BN_BUILD*/${JSON.stringify(next)}/*BN_BUILD_END*/`));
+  put('build.json', JSON.stringify(bj));
+  return { old: build, next, rigHash: bj.files[RIG].hash8 };
 }
 
 let srv = await start(0, { dir: A, quiet: true });

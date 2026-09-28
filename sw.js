@@ -11,8 +11,11 @@
 //  · fetch    : GET·같은 출처만. /api/·/downloads/·build.json·sw.js·Range 요청은 건드리지 않는다 (계정 응답은 절대 캐시하지 않는다).
 //               페이지 이동 = 네트워크 우선 3초, 실패·시간 초과면 캐시의 index.html.
 //               /src/·/css/·/assets/fonts/·build-info.js = bn-<buildHash> 에서 캐시 우선 (주소에 내용 해시가 붙어 있어 섞이지 않는다).
-//               /assets/** = bn-assets-v1 에서 캐시 우선. 키는 경로(쿼리 제외)이고 저장할 때 build.json 의 해시를 x-bn-h 로 붙여 둔다 →
-//               해시가 다르면(새 배포에서 그림이 바뀜) 쓰지 않고 새로 받는다. 오래된 것부터 지워 최대 MAX_ASSETS 개.
+//               /assets/** = bn-assets-v1 에서 캐시 우선. 키는 경로(쿼리 제외)이고 저장할 때 받은 내용의 sha256 앞 8자리를 x-bn-h 로
+//               붙여 둔다 → build.json 의 해시와 다르면(새 배포에서 그림이 바뀜) 쓰지 않고 새로 받는다. 오래된 것부터 지워 최대 MAX_ASSETS 개.
+//  · 새 배포 : 페이지 이동이 네트워크 우선이라 배포 뒤에는 페이지가 이미 새 빌드 코드로 도는데, 이 (옛) 워커는 새 워커가 SKIP_WAITING 을
+//               받을 때까지 계속 제어한다. 그 페이지는 build-info.js?v= 가 이 빌드와 달라서 알아본다 → 새 build.json 을 받아(build.next.json
+//               으로 보관) 그 페이지의 그림·해시 없는 파일(JS 글꼴·fonts.json)을 새 해시로 검증한다 (새 코드에 옛 리그·아틀라스를 주지 않게).
 // 오프라인이면 캐시에 있는 것은 무엇이든 (낡았어도) 돌려준다.
 'use strict';
 
@@ -29,6 +32,8 @@ const BASE = SCOPE.pathname.endsWith('/') ? SCOPE.pathname : SCOPE.pathname.repl
 
 const abs = (u) => new URL(u, SCOPE).href;
 const relOf = (url) => (url.pathname.startsWith(BASE) ? url.pathname.slice(BASE.length) : url.pathname.replace(/^\//, ''));
+// 이 빌드의 페이지가 부르는 build-info.js 주소 (?v= = build-info.js 내용 해시 = build.json 의 files['build-info.js'].hash8)
+const OWN_INFO = BUILD ? (BUILD.precache || []).find((u) => /^build-info\.js\?v=/.test(u)) || null : null;
 
 // ───────────────────────── install ─────────────────────────
 self.addEventListener('install', (event) => {
@@ -55,7 +60,7 @@ self.addEventListener('install', (event) => {
       if (hit && want && hit.headers.get('x-bn-h') === want) return;
       try {
         const res = await fetch(new Request(abs(u), { cache: 'no-cache' }));
-        if (res.ok && res.status === 200) await ac.put(abs(u), await stamp(res, want));
+        if (res.ok && res.status === 200) await ac.put(abs(u), await stamp(res));
       } catch (e) { /* 오프라인 등: 나중에 쓸 때 받는다 */ }
     });
   })());
@@ -100,8 +105,9 @@ self.addEventListener('fetch', (event) => {
   if (req.headers.has('range')) return;
   if (req.mode === 'navigate') { event.respondWith(navigate(event)); return; }
   if (!BUILD) { event.respondWith(devFetch(event, req)); return; }
+  if (rel === 'build-info.js') notePage(event, url);
   if (rel.startsWith('assets/') && !rel.startsWith('assets/fonts/')) { event.respondWith(assetFetch(event, req, url, rel)); return; }
-  event.respondWith(codeFetch(event, req, rel));
+  event.respondWith(codeFetch(event, req, url, rel));
 });
 
 // 페이지 이동: 네트워크 우선 (배포 빌드는 3초, 개발용은 기다린다), 안 되면 캐시한 index.html
@@ -124,19 +130,28 @@ async function navigate(event) {
 }
 
 // 코드·CSS·글꼴: 이 빌드의 캐시 우선 (주소 그대로 — ?v= 내용 해시 포함)
-async function codeFetch(event, req, rel) {
+async function codeFetch(event, req, url, rel) {
   const cache = await caches.open(CACHE);
   const hit = await cache.match(req);
-  if (hit) return hit;
+  if (hit && !(await staleForPage(event.clientId, url, rel))) return hit;
   try {
     const res = await fetch(req);
-    if (res.ok && res.status === 200 && /^(src|css|assets\/fonts)\//.test(rel)) event.waitUntil(cache.put(req, res.clone()).catch(() => {}));
+    // 새 배포 페이지 때문에 네트워크로 간 것(hit 있음)은 이 빌드의 캐시에 넣지 않는다
+    if (!hit && res.ok && res.status === 200 && /^(src|css|assets\/fonts)\//.test(rel)) event.waitUntil(cache.put(req, res.clone()).catch(() => {}));
     return res;
   } catch (e) {
-    const any = await caches.match(req, { ignoreSearch: true });
+    const any = hit || await caches.match(req, { ignoreSearch: true });
     if (any) return any;
     throw e;
   }
+}
+// 주소에 내용 해시(?v=)가 없는 파일(JS 가 부르는 글꼴·fonts.json·매니페스트)을 새 배포의 페이지가 부르고, 새 배포에서 내용이 바뀌었으면 true
+async function staleForPage(clientId, url, rel) {
+  if (url.search || pageBuild.get(clientId) === 'own') return false;
+  const next = await nextManifest();
+  if (!next) return false;
+  const own = (await manifest())[rel];
+  return !own || !next[rel] || own.hash8 !== next[rel].hash8;
 }
 
 // 그림: 경로 키 + 빌드 해시 검증
@@ -149,20 +164,67 @@ function manifest() {
 }
 async function assetFetch(event, req, url, rel) {
   const key = abs(rel);
-  const [files, cache] = await Promise.all([manifest(), caches.open(ASSETS)]);
+  const [files, cache] = await Promise.all([filesFor(event.clientId), caches.open(ASSETS)]);
   const want = files[rel] && files[rel].hash8;
   const hit = await cache.match(key);
   if (hit && want && hit.headers.get('x-bn-h') === want) return hit;
   try {
     const res = await fetch(req);
     if (want && res.ok && res.status === 200) {
-      event.waitUntil(stamp(res.clone(), want).then((r) => cache.put(key, r)).then(() => trim(cache, MAX_ASSETS)).catch(() => {}));
+      // 표시는 받은 내용의 해시 (기대 해시가 아니라): 서버가 이미 다른 배포 것을 주었으면 다음 검증에서 걸러진다
+      event.waitUntil(stamp(res.clone()).then((r) => cache.put(key, r)).then(() => trim(cache, MAX_ASSETS)).catch(() => {}));
     }
     return res;
   } catch (e) {
     if (hit) return hit; // 오프라인: 낡았어도 있는 것을
     throw e;
   }
+}
+
+// ── 새 배포를 도는 페이지 (build-info.js?v= 가 이 빌드 것이 아님) ──
+const pageBuild = new Map(); // clientId → 'own' | 'next'  (워커가 다시 시작되면 비고, 그때는 보관한 새 build.json 이 있으면 그것을 쓴다)
+let nextP = null;            // Promise<새 배포 build.json 의 files | null>
+let nextTag = null;
+function notePage(event, url) {
+  const tag = url.searchParams.get('v') || '';
+  const own = OWN_INFO === `build-info.js?v=${tag}`;
+  if (event.clientId) {
+    pageBuild.set(event.clientId, own ? 'own' : 'next');
+    if (pageBuild.size > 32) pageBuild.delete(pageBuild.keys().next().value);
+  }
+  if (!own && tag) event.waitUntil(refreshNext(tag).catch(() => null));
+}
+function refreshNext(tag) {
+  if (nextP && nextTag === tag) return nextP;
+  nextTag = tag;
+  nextP = (async () => {
+    const kept = await loadNext();
+    if (kept && kept.tag === tag) return kept.files;
+    try {
+      const r = await fetch(new Request(abs('build.json'), { cache: 'no-cache' }));
+      if (!r.ok) throw new Error(`build.json ${r.status}`);
+      const j = await r.json();
+      if (!j || !j.files) throw new Error('build.json files');
+      const c = await caches.open(CACHE);
+      await c.put(abs('build.next.json'), new Response(JSON.stringify({ tag, files: j.files }), { headers: { 'content-type': 'application/json' } }));
+      return j.files;
+    } catch (e) {
+      return kept ? kept.files : null; // 오프라인: 보관한 것이라도
+    }
+  })();
+  return nextP;
+}
+function loadNext() {
+  return caches.open(CACHE).then((c) => c.match(abs('build.next.json'))).then((r) => (r ? r.json() : null)).then((j) => (j && j.files ? j : null), () => null);
+}
+function nextManifest() {
+  if (!nextP) nextP = loadNext().then((j) => (j ? j.files : null));
+  return nextP;
+}
+// 요청한 페이지의 빌드에 맞는 파일 해시 목록: 이 빌드 페이지 = 우리 build.json, 새 배포 페이지(또는 모름 + 새 배포를 본 적 있음) = 새 build.json
+async function filesFor(clientId) {
+  if (pageBuild.get(clientId) === 'own') return manifest();
+  return (await nextManifest()) || manifest();
 }
 
 // 개발용: 네트워크 우선, 오프라인이면 캐시
@@ -180,11 +242,15 @@ async function devFetch(event, req) {
 }
 
 // ───────────────────────── 도우미 ─────────────────────────
-async function stamp(res, hash8) {
+// 캐시에 넣을 응답: 몸통의 sha256 앞 8자리(build.json 의 hash8 과 같은 계산)를 x-bn-h 로
+async function stamp(res) {
   const h = new Headers(res.headers);
   h.delete('content-encoding'); h.delete('content-length'); // 몸통은 이미 풀린 바이트
-  if (hash8) h.set('x-bn-h', hash8);
   const body = await res.arrayBuffer();
+  const d = new Uint8Array(await crypto.subtle.digest('SHA-256', body));
+  let hex = '';
+  for (let i = 0; i < 4; i++) hex += d[i].toString(16).padStart(2, '0');
+  h.set('x-bn-h', hex);
   return new Response(body, { status: res.status, statusText: res.statusText, headers: h });
 }
 let trimming = null;
