@@ -126,7 +126,7 @@ export function perfProbeInit() {
 /**
  * Measures n frames in a frozen page (lib/step.mjs freeze first): per frame one game step, then one counted render.
  * script (optional, string of JS run in the page each frame with (g, w, p, i, key)) drives input, e.g. attacks.
- * → { frames: [{grad, canv, draw, mainDraw, full, comp, special, rng, fx, ms, parts, dmg}], sites }
+ * → { frames: [{grad, canv, draw, mainDraw, full, comp, special, rng, fx, ms, parts, dmg, decals}], sites }
  */
 export function measureFrames(page, n, script = '') {
   return page.evaluate(([n, script]) => {
@@ -148,7 +148,10 @@ export function measureFrames(page, n, script = '') {
       const t0 = P.realNow();
       try { g.input?.beginRender?.(); g.__qaRender.call(g); g.input?.endRender?.(); } finally { P.on = false; }
       const f = P.f; f.ms = +(P.realNow() - t0).toFixed(2);
-      f.parts = w?.fx?.list?.length ?? 0; f.dmg = w?.fx?.dmgLive ?? 0; f.top = g.top?.name ?? null;
+      f.parts = w?.fx?.list?.length ?? 0; f.top = g.top?.name ?? null;
+      // live damage numbers counted from the list (fx.dmgLive is a running counter), decals (hitfx.stampDecal) — feel §8
+      let nd = 0; for (const q of w?.fx?.list || []) if (q.shape === 'dmg') nd++;
+      f.dmg = nd; f.decals = w?.fx?.decals?.length ?? 0;
       frames.push({ ...f });
     }
     const top = (m, k = 8) => [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, k);

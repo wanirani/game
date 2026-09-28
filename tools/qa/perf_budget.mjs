@@ -14,6 +14,7 @@
 //   grad        new gradients per rendered frame p95 ≤ 16 / 10 / 6 (max reported)                                  feel §8
 //   canvas      canvases created after stage start = 0 (sites listed; painted bakes belong to load / boss intro)  feel §8
 //   particles   live particles ≤ fx max 1400 / 900 / 500; ult/awakening peak ≤ 600/400/220 and 700/450/250           feel §8
+//   dmgnums     live damage numbers ≤ 24 / 16 / 10 and hit decals ≤ 40 / 24 / 0                                      feel §8
 //   passes      full-screen passes + special composites during ult/awakening ≤ 3 / 2 / 1 per frame                 feel §8
 //   drawfx      no FX spawned while rendering (spawn rate would follow the render rate)                           R12
 //   rng         Math.random consumed while rendering (listed, S4)                                                  #218
@@ -52,6 +53,8 @@ const BUDGET = {
   passes: { high: 3, medium: 2, low: 1 },
   mp: { high: 3.7, medium: 1.6, low: 1.0 },
   dprCap: { high: 2.0, medium: 1.5, low: 1.0 },
+  dmg: { high: 24, medium: 16, low: 10 },      // live damage numbers (feel §8)
+  decals: { high: 40, medium: 24, low: 0 },    // hit decals (feel §8)
 };
 const profiles = list(args.profiles, ['desk', 'phone1low']).filter((p) => PROFILES[p]);
 const STAGES = Array.from({ length: 20 }, (_, i) => `s${String(i + 1).padStart(2, '0')}`);
@@ -141,6 +144,12 @@ function judge(prof, sc, m, info, extra = {}) {
   const pMax = sc.kind === 'ult' ? BUDGET.ultParts[T] : sc.kind === 'awaken' ? BUDGET.awkParts[T] : BUDGET.parts[T];
   C.add(`${id}.particles`, parts.max <= pMax ? 'pass' : 'fail', `live particles max ${parts.max} (budget ${pMax}; fx.max ${info.fxMax}, fx.quality ${info.fxQ})`);
   if (parts.max > pMax) findings.push({ id: `perf.parts.${prof}.${sc.id}`, sev: 'S3', kind: 'perf', title: `${parts.max} live particles in ${sc.id} at ${T} (budget ${pMax})`, file: sc.kind === 'room' || sc.kind === 'stress' ? 'src/core/particles.js' : 'src/game/skills.js', ...ownerOf(sc.kind === 'room' || sc.kind === 'stress' ? 'src/core/particles.js' : 'src/game/skills.js') });
+  // damage numbers and decals alive at once (feel §8 24/16/10 and 40/24/0)
+  const dmg = stats(fr.map((f) => f.dmg ?? 0)), dec = stats(fr.map((f) => f.decals ?? 0));
+  const okDm = dmg.max <= BUDGET.dmg[T], okDc = dec.max <= BUDGET.decals[T];
+  C.add(`${id}.dmgnums`, okDm && okDc ? 'pass' : 'fail', `live damage numbers max ${dmg.max} (budget ${BUDGET.dmg[T]}), decals max ${dec.max} (budget ${BUDGET.decals[T]})`);
+  if (!okDm || !okDc) findings.push({ id: `perf.dmgnums.${prof}.${sc.id}`, sev: 'S3', kind: 'perf', title: `${!okDm ? `${dmg.max} live damage numbers (budget ${BUDGET.dmg[T]})` : ''}${!okDm && !okDc ? ', ' : ''}${!okDc ? `${dec.max} decals (budget ${BUDGET.decals[T]})` : ''} in ${sc.id} at ${T}`, file: 'src/core/particles.js', ...ownerOf('src/core/particles.js'), repro: `node tools/qa/perf_budget.mjs --profiles ${prof} --scenes ${sc.id}` });
+  row.dmg = dmg; row.decals = dec;
   // full-screen passes during ult / awakening
   if (sc.kind === 'ult' || sc.kind === 'awaken') {
     // passes added by the ultimate / awakening = full-screen draws per frame minus the room's normal frames (sky, parallax…)

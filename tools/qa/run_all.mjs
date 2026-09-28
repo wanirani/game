@@ -59,6 +59,8 @@ const STEPS = [
   S('hud_layout', 'unit', node('tools/test_hud_layout.mjs'), 15 * MIN),
   // ── balance
   ...HEROES.map((h) => S(`balance.${h}`, 'balance', node('tools/balance.mjs', 'normal', h, '--check'), 10 * MIN)),
+  // §5.1 "(+ hard/inferno printed for review)": tables only (no --check); red only when the simulator itself crashes
+  S('balance_review', 'balance', ['bash', '-c', `for d in hard inferno; do for c in ${HEROES.join(' ')}; do echo "══ $d $c"; node tools/balance.mjs $d $c || exit 1; done; done`], 10 * MIN, { script: 'tools/balance.mjs' }),
   S('balance_companions', 'balance', node('tools/balance_companions.mjs'), 10 * MIN, { optional: true }),
   S('scan_mount_fit', 'balance', node('tools/scan_mount_fit.mjs'), 10 * MIN, { optional: true }),
   // ── runtime
@@ -177,12 +179,16 @@ function summarize(final = false) {
   return summary;
 }
 
-process.on('SIGINT', () => {
-  console.log('\ninterrupted — writing the summary of the steps that ran');
-  if (current) { try { process.kill(-current.pid, 'SIGKILL'); } catch { /* */ } }
-  summarize(false);
-  process.exit(130);
-});
+// Ctrl-C, and SIGTERM/SIGHUP from a wrapper (a round's own timeout, a closed terminal): kill the running step's whole
+// process group (its Chromium and server too, never left behind for the next round) and keep the summary of what ran
+for (const [sig, code] of [['SIGINT', 130], ['SIGTERM', 143], ['SIGHUP', 129]]) {
+  process.on(sig, () => {
+    console.log(`\n${sig} — writing the summary of the steps that ran`);
+    if (current) { try { process.kill(-current.pid, 'SIGKILL'); } catch { /* */ } }
+    summarize(false);
+    process.exit(code);
+  });
+}
 
 console.log(`run_all: ${plan.length} step(s)${QUICK ? ' (quick)' : ''} — logs in ${LOG_DIR}`);
 for (const step of plan) {
@@ -196,7 +202,10 @@ for (const step of plan) {
   }
   process.stdout.write(`run     ${step.id} … `);
   results.push({ id: step.id, group: step.group, status: 'running', start, ms: 0, cmd: step.cmd.join(' ') });
-  const r = await run(step);
+  let r = await run(step);
+  // other agents run servers on this box too: a tool that picks its port at random (tools/smoke.mjs 8000–8899) can lose
+  // the race for it; that is not a finding, so such a step gets one more try
+  if (r.code !== 0 && !r.timedOut && /EADDRINUSE/.test(r.out)) { process.stdout.write('(port in use, retry) … '); r = await run(step); }
   const ok = step.ok ? step.ok(r.code, r.out) : r.code === 0;
   const status = r.timedOut || r.code === null || r.code < 0 ? 'error' : ok ? 'pass' : 'fail';
   const rep = reportFindings(step);

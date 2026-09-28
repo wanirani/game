@@ -53,8 +53,11 @@ const HEROES = args.heroes && args.heroes !== true ? String(args.heroes).split('
 for (const h of HEROES) if (!ALL_HEROES.includes(h)) { console.error(`unknown hero ${h}`); process.exit(2); }
 const ALL_IDS = ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', ...Array.from({ length: 15 }, (_, i) => 'C' + (i + 1)), 'U1', 'U2', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'V1', 'X1', 'X2', 'X3', 'I1', 'R183'];
 const ONLY = args.only && args.only !== true ? String(args.only).split(',').map((s) => s.trim().toUpperCase()).filter(Boolean) : null;
-if (ONLY) for (const o of ONLY) if (!ALL_IDS.includes(o) && !ALL_IDS.some((id) => id.startsWith(o))) { console.error(`--only: unknown id/group ${o}`); process.exit(2); }
-const WANT = (id) => !ONLY || ONLY.some((o) => o === id || (o.length === 1 && id.startsWith(o)));
+// an entry is an exact id (C2, R183) or a one-letter group (C = C1…C15); anything else (R18, C1X) would match no check and the
+// run would open browsers, test nothing and exit 0 — so validation uses the same rule as WANT
+const onlyMatches = (o, id) => o === id || (o.length === 1 && id.startsWith(o));
+if (ONLY) for (const o of ONLY) if (!ALL_IDS.some((id) => onlyMatches(o, id))) { console.error(`--only: unknown id/group ${o} (ids: ${ALL_IDS.join(' ')}; groups: M C U A V X I R)`); process.exit(2); }
+const WANT = (id) => !ONLY || ONLY.some((o) => onlyMatches(o, id));
 const want = WANT;
 const wantAny = (...ids) => ids.some(want);
 
@@ -1455,10 +1458,12 @@ async function shot(P, name, note) {
 }
 
 // ───────────────────────── hero suite ─────────────────────────
-async function heroSuite(hero, { onlyC2 = false } = {}) {
+/** checks that run on one fixed hero's page whatever --heroes says: C1, C3–C15, A8 and I1 on kael, C2 on lia */
+const KAEL_ONLY = ALL_IDS.filter((id) => (id[0] === 'C' && id !== 'C2') || id === 'A8' || id === 'I1');
+async function heroSuite(hero, { onlyIds = null } = {}) {
   const [c0, c1, c2] = CLASS_PICK[hero];
-  const want = onlyC2 ? (id) => id === 'C2' && WANT(id) : WANT, wantAny = (...ids) => ids.some(want);
-  const needPage = wantAny('M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'U1', 'U2', 'A1', 'A2', 'A3', 'A4', 'A6', 'V1') || (hero === 'kael' && (ALL_IDS.some((id) => id[0] === 'C' && want(id)) || wantAny('A8', 'I1'))) || (hero === 'lia' && want('C2'));
+  const want = onlyIds ? (id) => onlyIds.includes(id) && WANT(id) : WANT, wantAny = (...ids) => ids.some(want);
+  const needPage = wantAny('M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'U1', 'U2', 'A1', 'A2', 'A3', 'A4', 'A6', 'V1') || (hero === 'kael' && (ALL_IDS.some((id) => id[0] === 'C' && id !== 'C2' && want(id)) || wantAny('A8', 'I1'))) || (hero === 'lia' && want('C2'));
   if (!needPage) return;
   const P = await openPage('hero_' + hero, `index.html?scene=stage&stage=s04&char=${hero}${hero === 'kael' ? '&feelstats' : ''}`, { pad: true });
   const ctx = { hero };
@@ -1834,7 +1839,8 @@ async function wideSuite(hero) {
 console.log(`feel_test: heroes ${HEROES.join(',')}${ONLY ? ', only ' + ONLY.join(',') : ''}; out ${OUT}; load ${os.loadavg()[0].toFixed(1)} on ${CORES} cores`);
 try {
   for (const hero of HEROES) await heroSuite(hero);
-  if (want('C2') && !HEROES.includes('lia')) await heroSuite('lia', { onlyC2: true });
+  if (want('C2') && !HEROES.includes('lia')) await heroSuite('lia', { onlyIds: ['C2'] });
+  if (KAEL_ONLY.some(want) && !HEROES.includes('kael')) await heroSuite('kael', { onlyIds: KAEL_ONLY });
   if (want('A5')) {
     const bossHeroes = (args.quick ? ['kael'] : ['kael', 'victor']).filter((h) => HEROES.includes(h));
     if (!bossHeroes.length) bossHeroes.push(HEROES[0]);
@@ -1859,4 +1865,5 @@ const S = report.summary;
 console.log(`\nfeel_test: ${S.pass} pass, ${S.fail} fail, ${S.inconclusive} inconclusive, ${S.review} to review; page errors ${S.pageErrors}; ${elapsed()}`);
 for (const [id, v] of Object.entries(S.ids)) if (v.status !== 'pass') console.log(`  ${id}: ${v.status} (${Object.entries(v).filter(([k, n]) => k !== 'status' && n).map(([k, n]) => k + ' ' + n).join(', ')})`);
 console.log(`report: ${path.join(OUT, 'report.json')}`);
+if (!report.cases.length) { console.log('feel_test: no check ran — nothing was tested (exit 1)'); process.exit(1); }
 process.exit(S.fail || S.pageErrors ? 1 : 0);

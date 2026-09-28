@@ -1,10 +1,13 @@
-// Visual review — contact sheets for human review (MASTER_PLAN §5.1 "visual review"): stages, bosses × phases, heroes ×
-// tiers × yaws, ult/awakening cut-ins, ending cards, menus, the HUD matrix and every tools/gallery_*.html page, at desktop
-// and phone sizes. Each shot is also checked automatically: a flat (blank/black) game frame and every page/console error
-// are reported.
+// Visual review — contact sheets for human review (MASTER_PLAN §5.1 "visual review"): stages, bosses × phases, every enemy
+// (91, in its home stage), the 20 companions (9 mounts ridden, 11 guardians idle + skill), heroes × 3 tiers in game and
+// × 8 turntable yaws, ult/awakening cut-ins, ending cards, menus, the HUD matrix and every tools/gallery_*.html page, at
+// desktop and phone sizes. Each shot is also checked automatically: a flat (blank/black) game frame and every page/console
+// error are reported; an enemy that is gone or off screen at its shot, and a mount that is not ridden / a guardian that is
+// not out, is labelled on its tile and listed.
 //
-//   node tools/qa/visual_review.mjs [--only stages,bosses,heroes,cutins,endings,menus,hud,galleries] [--vp desk,phone1]
-//                                   [--quick] [--stages s01,s14] [--heroes kael,lia]
+//   node tools/qa/visual_review.mjs [--only stages,bosses,enemies,companions,heroes,cutins,endings,menus,hud,galleries]
+//                                   [--vp desk,phone1] [--quick] [--stages s01,s14] [--heroes kael,lia]
+//   --quick: fewer stages/heroes, one boss phase, 2 enemies per stage, 2 mounts + 2 guardians, tier-2 yaws 0/90/180 only
 //
 // Pages run frozen (lib/step.mjs): every shot is "N game steps, then one render", so the machine load does not change
 // what is on screen. Shots are page screenshots (the DOM touch overlay #tpadcv is included on phones).
@@ -21,7 +24,7 @@ import { ownerOf } from './lib/owners.mjs';
 
 const args = parseFlags();
 const QUICK = !!args.quick;
-const ALL = ['stages', 'bosses', 'heroes', 'cutins', 'endings', 'menus', 'hud', 'galleries'];
+const ALL = ['stages', 'bosses', 'enemies', 'companions', 'heroes', 'cutins', 'endings', 'menus', 'hud', 'galleries'];
 const GROUPS = list(args.only, ALL).filter((g) => ALL.includes(g));
 const VPS = list(args.vp, ['desk', 'phone1']);
 const OUT = path.join(QA_DIR, 'visual');
@@ -211,6 +214,111 @@ const GROUP_FNS = {
     await s.close();
   },
 
+  /** Every enemy (§5.1 "91 enemies") in the first room of its home stage (the first stage that lists it, else s01): spawned
+   *  150 px in front of the idle hero, 30 frames of its own AI, one shot. render 'none' (spawner-only ids) is listed, not shot. */
+  async enemies(env, vp) {
+    const s = await stagePage(env, vp);
+    const shots = [];
+    const harness = [];
+    const { ENEMIES } = await import(path.join(ROOT, 'src/data/enemies.js'));
+    const home = {};
+    for (const [sid, def] of Object.entries(STAGES)) {
+      if (!/^s\d\d$/.test(sid)) continue;
+      for (const e of def.enemies || []) { const id = typeof e === 'string' ? e : e?.id; if (id && !home[id]) home[id] = sid; }
+    }
+    const byStage = {};
+    const noDraw = [];
+    for (const [id, d] of Object.entries(ENEMIES)) {
+      if ((d.render ?? id) === 'none') { noDraw.push(id); continue; }
+      (byStage[home[id] || 's01'] ||= []).push(id);
+    }
+    const fileOf = (id) => { const r = ENEMIES[id]?.render ?? id; return fs.existsSync(path.join(ROOT, `src/render/painted/enemies/${r}.js`)) ? `src/render/painted/enemies/${r}.js` : 'src/render/enemies.js'; };
+    const clear = () => s.eval(() => { const w = window.__game.world; for (const e of w.entities || []) if (e.kind === 'enemy' || e.kind === 'projectile' || e.kind === 'hitbox') e.dead = true; w.__vrEnemy = null; });
+    for (const st of Object.keys(byStage).sort().filter((x) => STAGE_IDS.includes(x))) {
+      try {
+        await gotoRoom(s, st, Object.keys(STAGES[st]?.rooms || {})[0] || 'r1');
+        await prepWorld(s);
+        await clear();
+        await play(s, 150, 'if (p) p.buffs.invincible = 9999;');   // the chapter title card is gone by then
+      } catch (e) { harness.push(`${st}: ${String(e?.message || e).split('\n')[0]}`); continue; }
+      for (const id of QUICK ? byStage[st].slice(0, 2) : byStage[st]) {
+        try {
+          await s.eval((id) => {
+            const w = window.__game.world, p = w.player, f = p.facing || 1;
+            w.__vrEnemy = w.spawnEnemy(id, p.cx + f * 150, p.bottom - 2, { elite: false, facing: -f });
+          }, id);
+          await play(s, 1);                 // first draw requests the painted rig
+          await waitBakes(s, 4000);
+          await play(s, 30, 'if (p) { p.buffs.invincible = 9999; p.hp = Math.max(p.hp, 1); }');
+          const where = await s.eval(() => {
+            const w = window.__game.world, e = w.__vrEnemy, c = w.camera;
+            if (!e || e.dead || !w.entities.includes(e)) return 'gone';
+            return e.cx > c.x - 16 && e.cx < c.x + c.w + 16 && e.cy > c.y - 16 && e.cy < c.y + c.h + 16 ? 'ok' : 'off screen';
+          });
+          const r = await shot(s, shots, `${id} (${st})${where === 'ok' ? '' : ` · ${where}`}`, { file: fileOf(id) });
+          if (where !== 'ok') { r.err = where; flagged.push({ label: `${id} (${st}, ${vp})`, why: `enemy ${where} at its shot (review by hand; not counted red)`, file: fileOf(id), top: r.top }); }
+          await clear();
+          await play(s, 2);
+        } catch (e) { harness.push(`${id}: ${String(e?.message || e).split('\n')[0]}`); }
+      }
+    }
+    if (noDraw.length) C.add(`enemies.${vp}.nodraw`, 'pass', `render 'none' (not shot): ${noDraw.join(', ')}`);
+    await sheet(env, `enemies_${vp}`, `Enemies in their home stage (${vp})`, shots, tileOf(vp));
+    closeGroup('enemies', vp, s, shots, harness);
+    await s.close();
+  },
+
+  /** The 20 companions (§5.1): each mount ridden (debug ride=1, a few steps of gait), each guardian idle beside the hero and
+   *  casting its skill (companions.debug.skill) at a spawned skeleton. */
+  async companions(env, vp) {
+    const s = await stagePage(env, vp, 'index.html?scene=stage&stage=s04&room=r1');
+    const shots = [];
+    const harness = [];
+    const CD = await import(path.join(ROOT, 'src/data/companions.js'));
+    const all = CD.COMPANION_ORDER;
+    const ids = QUICK ? [...all.filter((x) => CD.isMountId(x)).slice(0, 2), ...all.filter((x) => !CD.isMountId(x)).slice(0, 2)] : all;
+    const fileOf = (id, mount) => (fs.existsSync(path.join(ROOT, `src/render/painted/companions/${id}.js`)) ? `src/render/painted/companions/${id}.js` : mount ? 'src/render/mounts.js' : 'src/render/guardians.js');
+    const bad = [];
+    for (const id of ids) {
+      const mount = CD.isMountId(id);
+      const file = fileOf(id, mount);
+      try {
+        await s.eval(async ({ id, mount }) => {
+          const g = window.__game;
+          const E = await import('/src/game/companion_events.js');
+          E.applyCompanionDebug(g.state, mount ? `cmp=${id}&mount=${id}&guards=&ride=1` : `cmp=${id}&guards=${id}&mount=none`);
+        }, { id, mount });
+        await gotoRoom(s, 's04', 'r1');
+        await prepWorld(s);
+        await s.eval(() => { const w = window.__game.world; for (const e of w.entities || []) if (e.kind === 'enemy') e.dead = true; });
+        await play(s, 150, 'if (p) p.buffs.invincible = 9999;');   // title card gone, summon done
+        await s.wait(600); await waitBakes(s, 4000); await play(s, 10, 'if (p) p.buffs.invincible = 9999;');   // painted atlas loads in real time
+        if (mount) {
+          await play(s, 24, `if (p) p.buffs.invincible = 9999; key('ArrowRight', i < 20);`);
+          const st = await s.eval(() => window.__game.world.player?.mount?.state ?? 'none');
+          const ok = st === 'riding';
+          const r = await shot(s, shots, `${id} ridden${ok ? '' : ` · mount state ${st}`}`, { file });
+          if (!ok) { r.err = `not ridden (${st})`; bad.push(`${id}: mount state ${st}`); }
+        } else {
+          const out = await s.eval((id) => (window.__game.world.companions?.guards || []).some((g) => g.id === id && !g.dead), id);
+          const r = await shot(s, shots, `${id} idle${out ? '' : ' · not out'}`, { file });
+          if (!out) { r.err = 'not out'; bad.push(`${id}: guardian not out`); continue; }
+          await s.eval(() => { const w = window.__game.world, p = w.player, f = p.facing || 1; w.spawnEnemy('skeleton', p.cx + f * 180, p.bottom - 2, { elite: false, facing: -f }); });
+          await play(s, 6, 'if (p) p.buffs.invincible = 9999;');
+          const cast = await s.eval(() => !!window.__game.world.companions?.debug?.skill?.(0));
+          await play(s, 14, 'if (p) p.buffs.invincible = 9999;');
+          const r2 = await shot(s, shots, `${id} skill${cast ? '' : ' · skill not cast'}`, { file });
+          if (!cast) { r2.err = 'skill not cast'; bad.push(`${id}: skill not cast`); }
+        }
+      } catch (e) { harness.push(`${id}: ${String(e?.message || e).split('\n')[0]}`); }
+    }
+    C.add(`companions.${vp}.state`, bad.length ? 'fail' : 'pass', bad.length ? `companions not shown as asked: ${bad.join('; ')}` : `${ids.length} companions shown (mounts ridden, guardians out and casting)`);
+    if (bad.length) findings.push({ id: `visual.companions.${vp}`, sev: 'S2', kind: 'visual', title: `companions not shown as asked (${vp}): ${bad.join('; ')}`, file: 'src/game/companions.js', ...ownerOf('src/game/companions.js'), repro: `node tools/qa/visual_review.mjs --only companions --vp ${vp}` });
+    await sheet(env, `companions_${vp}`, `Companions: mounts ridden, guardians + skill (${vp})`, shots, tileOf(vp));
+    closeGroup('companions', vp, s, shots, harness);
+    await s.close();
+  },
+
   /** Heroes: one class per tier in game (mid-attack), then the status-tab turntable at 8 yaws (tier-2 class). */
   async heroes(env, vp) {
     const s = await stagePage(env, vp, 'index.html?scene=stage&stage=s04&room=r1');
@@ -228,21 +336,24 @@ const GROUP_FNS = {
           await play(s, 24, `if (p) p.buffs.invincible = 9999; if (i === 10) key('KeyX', true); if (i === 13) key('KeyX', false);`);
           await shot(s, shots, `${hero} T${cls.tier} ${cls.id} attack`, { file: 'src/render/hero.js' });
         }
-        const t2 = tiers[tiers.length - 1];
-        await s.eval(() => { const g = window.__game; g.push('menu', { world: g.world, tab: 'status' }); });
-        await play(s, 30); await s.wait(500); await play(s, 10);
-        for (const deg of QUICK ? [0, 90, 180] : [0, 45, 90, 135, 180, 225, 270, 315]) {
-          await s.eval((a) => {
-            const m = window.__game.top, v = m?.cur?.view;
-            if (!v) return false;
-            v.autoSpin = false; v.stopSpin?.(false); v.tweenTo?.(a, 0.05, { user: true });
-            return true;
-          }, (deg * Math.PI) / 180);
-          await play(s, 16);
-          await shot(s, shots, `${hero} ${t2?.id ?? ''} yaw ${deg}°`, { file: 'src/scenes/menu/hero_view.js' });
+        // status-tab turntable: every tier × 8 yaws (§5.1 "6 heroes × 3 tiers × 8 yaws"); --quick: tier 2 at 0/90/180°
+        for (const cls of QUICK ? tiers.slice(-1) : tiers) {
+          await s.eval((id) => { const p = window.__game.world.player; p.hero.classId = id; p.refreshStats?.(); }, cls.id);
+          await s.eval(() => { const g = window.__game; g.push('menu', { world: g.world, tab: 'status' }); });
+          await play(s, 30); await s.wait(600); await play(s, 10);   // the class turn atlas loads in real time
+          for (const deg of QUICK ? [0, 90, 180] : [0, 45, 90, 135, 180, 225, 270, 315]) {
+            const ok = await s.eval((a) => {
+              const m = window.__game.top, v = m?.cur?.view;
+              if (!v) return false;
+              v.autoSpin = false; v.stopSpin?.(false); v.tweenTo?.(a, 0.05, { user: true });
+              return true;
+            }, (deg * Math.PI) / 180);
+            await play(s, 16);
+            await shot(s, shots, `${hero} T${cls.tier} ${cls.id} yaw ${deg}°${ok ? '' : ' (no turntable view)'}`, { file: 'src/scenes/menu/hero_view.js' });
+          }
+          await s.eval(() => { const g = window.__game; for (let i = 0; i < 3 && g.top?.name === 'menu'; i++) g.pop(); });
+          await play(s, 5);
         }
-        await s.eval(() => { const g = window.__game; for (let i = 0; i < 3 && g.top?.name === 'menu'; i++) g.pop(); });
-        await play(s, 5);
       } catch (e) { harness.push(`${hero}: ${String(e?.message || e).split('\n')[0]}`); }
     }
     await sheet(env, `heroes_${vp}`, `Heroes × tiers × yaws (${vp})`, shots, tileOf(vp));

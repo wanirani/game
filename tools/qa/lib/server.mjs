@@ -163,7 +163,9 @@ export async function setSafeAreaInsets(cdp, { l = 0, r = 0, t = 0, b = 0 } = {}
 export class Session {
   constructor(ctx, page, cdp, errs, origin, sw = false) { this.ctx = ctx; this.page = page; this.cdp = cdp; this.errs = errs; this.origin = origin; this.sw = sw; }
   url(u) { return /^https?:/.test(u) ? u : `${this.origin}/${u.replace(/^\//, '')}`; }
-  async goto(u, { wait = true, timeout = 30000, sw = this.sw } = {}) {
+  // 90 s: the first page of a run on a cold file cache (every ES module read from disk) at load 40–60 can take > 30 s to
+  // reach 'load' (bindings.mjs browser.harness went red on exactly that after a container restart)
+  async goto(u, { wait = true, timeout = 90000, sw = this.sw } = {}) {
     await this.page.goto(sw ? this.url(u) : noSw(this.url(u)), { timeout });
     if (wait) await this.waitGame();
   }
