@@ -22,11 +22,12 @@ export const GUARDIANS = {
     subject: 'A small floating porcelain clockwork doll (a loyal guardian spirit): a round bald glossy white porcelain head with a thin dark crack running over the forehead and down one cheek, big shining amber-brown glass eyes with long lashes, painted rosy cheeks and small red lips, a tiny brass gear screwed to the side of the head, a dark navy-blue Victorian dress with puffed sleeves, gold filigree embroidery and a white lace collar and petticoat, white porcelain arms and legs with visible brass ball joints at the shoulders, elbows and knees, little black strap shoes, a large ornate golden wind-up key sticking out of the middle of its back, holding up a small parasol whose round canopy is a brass cogwheel.',
     view: 'Front three-quarter view turned to the right, the whole doll from the top of the head to the shoes.',
     pose: 'Hovering in the air with the legs dangling, the right arm raised holding the little cogwheel parasol above its head, the left arm at its side, the wind-up key clearly visible behind its back.',
+    // sheet parts follow the kept reference (ref #1: a dark navy umbrella with a brass cog on top instead of a cog canopy)
     parts: [
-      'the doll\'s whole body and head with the navy dress, the lace, the legs and the left arm at its side, WITHOUT the wind-up key and WITHOUT the right arm',
-      'its right porcelain arm alone from the shoulder ball joint to the open hand, with the brass elbow joint, the arm stretched out straight to the right',
+      'the doll\'s whole body and head with the navy dress, the lace, the legs and the free arm with the open hand, WITHOUT the wind-up key, WITHOUT the umbrella and WITHOUT the arm that holds the umbrella',
+      'the arm that holds the umbrella alone, from the shoulder ball joint to the white glove closed as if gripping a handle, with the brass elbow joint, the arm stretched out straight to the right',
+      'the small open dark navy umbrella alone with the brass cogwheel on top and the curved brass hook handle, standing upright',
       'the large ornate golden wind-up key alone, seen from the side, the shaft pointing to the left',
-      'the little parasol alone: a thin brass handle with a round brass cogwheel canopy on top, standing upright',
       'one single brass cogwheel alone, seen flat from the front',
     ],
     sheetView: 'front three-quarter view turned to the right',
@@ -37,12 +38,14 @@ export const GUARDIANS = {
     subject: 'A tiny cute hooded skeleton reaper child (a mischievous guardian spirit): a small round ivory skull face peeking from a deep black hood, glowing bright green pinpoint eyes in the eye sockets, a tattered black robe with ragged sleeves and small bony white hands, the bottom of the robe fraying into black smoky wisps instead of feet, holding with both hands an oversized scythe twice its own height with a long dark wooden shaft and a big curved silver blade, a small old iron lantern glowing with green soul-fire hanging from the scythe just below the blade.',
     view: 'Three-quarter side view facing right, the whole figure from the tip of the scythe blade to the smoky bottom of the robe.',
     pose: 'Floating upright, the scythe held upright in front of the body with both bony hands gripping the shaft at chest height, the blade high above the head curving forward to the right.',
+    // sheet parts follow the kept reference (ref #0: blade curving forward to the right, lantern carried in the free hand)
     parts: [
       'the reaper\'s hooded body with the skull face, the tattered black robe and the smoky bottom, both bony hands held together in front of the chest as if gripping a pole, WITHOUT the scythe and WITHOUT the lantern',
       'the oversized scythe alone: the long dark wooden shaft standing straight upright and the big curved silver blade at the top curving out to the right',
       'the small old iron lantern alone with its hanging ring on top, glowing green soul-fire inside',
       'a small old leather-bound ledger book alone, lying open with yellowed pages',
     ],
+    sheetView: 'three-quarter side view facing right',
   },
   gd_mirra: {
     tier: 'T1', aspect: '3:4', sheetAspect: '4:3',
@@ -50,11 +53,12 @@ export const GUARDIANS = {
     subject: 'A little floating mirror fairy girl (a gentle guardian spirit): very long flowing silver-white hair, pale porcelain skin, small pointed ears, big shining pale ice-blue eyes, a thin crack like broken glass on one cheek, a white and silver dress with puffed sleeves and a glassy pearly sheen, bare small feet, holding a small ornate silver hand mirror, a few sharp shards of mirror glass glinting and floating around her, a faint cold silver glow.',
     view: 'Front three-quarter view turned to the right, the whole girl from the top of the hair to the toes.',
     pose: 'Floating in the air, the feet pointing down, the right hand holding the silver hand mirror out in front of her, the left arm at her side, the long hair flowing behind her.',
+    // sheet parts follow the kept reference (ref #1: faces right, two pointed crystal-shard wings on her back)
     parts: [
-      'the girl\'s whole body and head with the long silver hair, the white dress and the left arm at her side, WITHOUT the right arm and WITHOUT any glass shards',
-      'her right arm alone from the shoulder to the hand, the hand holding the small ornate silver hand mirror, the arm stretched out straight to the right',
+      'the girl\'s whole body and head with the long silver hair, the white dress, the bare legs and the free arm, WITHOUT the arm that holds the mirror, WITHOUT the crystal wings and WITHOUT any loose glass shards',
+      'the arm that holds the ornate silver hand mirror alone, from the shoulder to the hand gripping the mirror handle, the arm stretched out straight to the right',
+      'one pointed crystal-glass fairy wing alone, clear and glinting, fully spread, the wing root at the left end of the piece',
       'one long sharp shard of mirror glass alone, clear silvery glass reflecting light, pointing up',
-      'one small broken triangular shard of mirror glass alone',
     ],
     sheetView: 'front three-quarter view turned to the right',
   },
