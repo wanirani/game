@@ -14,7 +14,7 @@
 import { VerletChain } from '../core/physics.js';
 import { TAU, clamp, lerp, ease } from '../core/math.js';
 import {
-  G, sh, mx, ra, F, capsule, grad, outline, ellipse, glow, ribbonPath, smoothClosed, WS, h01, group, fl,
+  G, sh, mx, ra, F, capsule, grad, fillGrad, outline, ellipse, glow, ribbonPath, smoothClosed, WS, h01, group, fl,
   EL_COL, weaponReach, drawWeapon, drawLash, drawWhipCoil, drawWing, drawAuraMotes, drawMagicCircle, drawHalo, olc,
 } from './hero_parts.js';
 import * as PUP from './hero_puppet.js';
@@ -1363,8 +1363,9 @@ function headPt(s, K, x, y) {
   const hr = K.headR / 6.7, c = Math.cos(s.ha), si = Math.sin(s.ha);
   QX = s.hx + (x * c - y * si) * hr; QY = s.hy + (x * si + y * c) * hr;
 }
-/** 체인 띠(머리카락·스카프·베일)용 원통 음영: 시작→끝 현(chord)에 수직인 그라디언트. 굽은 띠도 끝단이 과하게 밝아지지 않도록 폭을 넉넉히 */
-function ribGrad(P, n, w, base, k = 1) {
+/** 체인 띠(머리카락·스카프·베일)용 원통 음영으로 현재 경로 채우기: 시작→끝 현(chord)에 수직인 그라디언트. 굽은 띠도 끝단이 과하게 밝아지지 않도록 폭을 넉넉히.
+ *  천은 매 프레임 움직이므로 fillGrad(단위 그라디언트 + 채울 때 변환)로 — 새 그라디언트 0 (#341) */
+function ribFill(P, n, w, base, k = 1) {
   const x0 = P[0], y0 = P[1], x1 = P[(n - 1) * 2], y1 = P[(n - 1) * 2 + 1];
   let dx = x1 - x0, dy = y1 - y0;
   const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d;
@@ -1375,7 +1376,7 @@ function ribGrad(P, n, w, base, k = 1) {
   for (let i = 1; i < n - 1; i++) { const e = Math.abs((P[i * 2] - x0) * nx + (P[i * 2 + 1] - y0) * ny); if (e > dev) dev = e; }
   const r = Math.max(w * 1.3, 4) + dev;
   const mxp = (x0 + x1) / 2, myp = (y0 + y1) / 2;
-  return grad(mxp + nx * r, myp + ny * r, mxp - nx * r, myp - ny * r, base, k);
+  fillGrad(mxp + nx * r, myp + ny * r, mxp - nx * r, myp - ny * r, base, k);
 }
 // 체인 설정 (매 프레임 객체 생성을 피하려고 모듈 상수로)
 const CC_HAIR2 = { g: 1200, d: 0.88, push: 240, rest: 0.5, curl: 0.12, flut: 120 };
@@ -1424,7 +1425,7 @@ function drawBandTails(s, K, E) {
     for (let i = 0; i < n; i++) WS[i] = lerp(1.05, 0.75, i / (n - 1));
     ribbonPath(c, pts, n, WS, false);
     const bc = sh(K.band, -0.22 * j);
-    c.fillStyle = ribGrad(pts, n, 1.1, bc, 0.8); c.fill(); outline(bc, 0.45);
+    ribFill(pts, n, 1.1, bc, 0.8); outline(bc, 0.45);
   }
 }
 function drawHairChains(s, K, E) {
@@ -1439,7 +1440,7 @@ function drawHairChains(s, K, E) {
     return;
   }
   ribbonPath(c, pts, cfg.n, WS, true);
-  c.fillStyle = ribGrad(pts, cfg.n, cfg.w0, hc, 0.9); c.fill(); outline(hc, 0.7);
+  ribFill(pts, cfg.n, cfg.w0, hc, 0.9); outline(hc, 0.7);
   if (!G.tint) {
     c.strokeStyle = ra(sh(hc, 0.5), 0.5); c.lineWidth = 0.6; c.beginPath(); c.moveTo(pts[0], pts[1]);
     for (let i = 1; i < cfg.n - 1; i++) c.lineTo(pts[i * 2] - 0.6, pts[i * 2 + 1]);
@@ -1450,7 +1451,7 @@ function drawHairChains(s, K, E) {
     const p2 = chain('hair2', E, TX, TY, 6, 4.4, CC_HAIR2, TX + 1);
     for (let i = 0; i < 6; i++) WS[i] = lerp(3.0, 0.6, i / 5);
     ribbonPath(c, p2, 6, WS, true);
-    c.fillStyle = ribGrad(p2, 6, 3, sh(hc, -0.08), 0.9); c.fill(); outline(hc, 0.6);
+    ribFill(p2, 6, 3, sh(hc, -0.08), 0.9); outline(hc, 0.6);
   }
 }
 function drawVeil(s, K, E) {
@@ -1462,14 +1463,14 @@ function drawVeil(s, K, E) {
   for (let i = 0; i < n; i++) WS[i] = lerp(4.2, 6.4, i / (n - 1));
   const vc = K.hgC || K.se;
   ribbonPath(c, pts, n, WS, false);
-  c.fillStyle = ribGrad(pts, n, 6, vc, 1); c.fill(); outline(vc, 0.7);
+  ribFill(pts, n, 6, vc, 1); outline(vc, 0.7);
   if (!G.tint) { c.strokeStyle = ra(sh(vc, 0.35), 0.6); c.lineWidth = 0.5; c.beginPath(); c.moveTo(pts[0], pts[1]); for (let i = 1; i < n; i++) c.lineTo(pts[i * 2] + 1.2, pts[i * 2 + 1]); c.stroke(); }
   // 은발이 베일 밑으로
   if (K.hs === 'long' || K.hs === 'flowing') {
     headPt(s, K, -3.4, 2.8); tx0(E.P, QX, QY);
     const hp = chain('hair', E, TX, TY, 5, 4.4, CC_VHAIR, TX + 1);
     for (let i = 0; i < 5; i++) WS[i] = lerp(2.6, 1.2, i / 4);
-    ribbonPath(c, hp, 5, WS, true); c.fillStyle = ribGrad(hp, 5, 2.6, K.hair); c.fill(); outline(K.hair, 0.5);
+    ribbonPath(c, hp, 5, WS, true); ribFill(hp, 5, 2.6, K.hair); outline(K.hair, 0.5);
   }
 }
 function drawScarfTail(s, K, E) {
@@ -1480,7 +1481,7 @@ function drawScarfTail(s, K, E) {
   const pts = chain('scarf', E, TX, TY, n, sc.long ? 5.6 : 4.6, sc.long ? CC_SCARF_L : CC_SCARF, TX + 1);
   for (let i = 0; i < n; i++) WS[i] = lerp(2.4, sc.long ? 1.9 : 1.6, i / (n - 1));
   ribbonPath(c, pts, n, WS, false);
-  c.fillStyle = ribGrad(pts, n, 2.4, sc.c, 0.8); c.fill(); outline(sc.c, 0.6);
+  ribFill(pts, n, 2.4, sc.c, 0.8); outline(sc.c, 0.6);
   if (!G.tint) {
     c.strokeStyle = ra(sh(sc.c, -0.45), 0.6); c.lineWidth = 0.5; c.beginPath(); c.moveTo(pts[2], pts[3]); for (let i = 2; i < n; i++) c.lineTo(pts[i * 2], pts[i * 2 + 1] + 0.3); c.stroke();
     // 끝단 술
@@ -1528,7 +1529,8 @@ function drawCape(s, K, E) {
   }
   ribbonPath(c, off, n, WS, false);
   const ex = off[(n - 1) * 2], ey = off[(n - 1) * 2 + 1];
-  c.fillStyle = grad(off[0] - 8, off[1], ex + 8, ey, cp.c, 1); c.fill(); outline(cp.c, 0.8);
+  // 망토 끝이 매 프레임 움직여도 새 그라디언트를 만들지 않게 fillGrad (#341)
+  fillGrad(off[0] - 8, off[1], ex + 8, ey, cp.c, 1); outline(cp.c, 0.8);
   if (!G.tint) {
     // 주름
     c.strokeStyle = ra(sh(cp.c, -0.5), 0.55); c.lineWidth = 0.7;
@@ -1968,6 +1970,8 @@ function drawHeroYaw(ctx, p, world, opts, K, look) {
     drawProfile(ctx, p, world, opts, cs >= 0 ? 1 : -1, Math.max(posed ? 0.35 : 0.12, Math.abs(cs)), 1);
     return;
   }
+  // 단색(tint) 요청: 채색 뷰는 그림이라 G.tint 로 물들지 않는다 → 합성 캔버스에 그린 뒤 실루엣을 통째로 물들인다 (drawComposite 와 같은 방식)
+  if (opts.tint && !opts._yawTint) { drawYawTinted(ctx, p, world, opts, K, look); return; }
   const tt = p.t ?? world?.time ?? performance.now() / 1000;
   const hs = heroScale(p, world, opts, look, K);
   const deg = (yaw * 180) / PI, stepF = deg / 45, i0 = Math.floor(stepF), f = stepF - i0;
@@ -2011,6 +2015,27 @@ function drawHeroYaw(ctx, p, world, opts, K, look) {
   ctx.globalAlpha = aBase;
   if (K.halo && G.fx) PUP.drawTurnHalo(ctx, K.aura?.color, tt, I);
   if (K.aura && G.fx) drawAuraMotes(K.aura.type || 'holy', K.auraC, K.auraK, K.auraK < 1 ? 5 : 8, 84);
+  ctx.restore();
+}
+/** opts.tint + opts.yaw (drawHero 계약: tint·alpha 는 모든 경로에서 동작): 합성 풀 캔버스에 효과 없이 그린 뒤 source-in 으로 단색 실루엣 */
+const YT_O = {};
+function drawYawTinted(ctx, p, world, opts, K, look) {
+  const m = ctx.getTransform();
+  const rs = Math.min(Math.hypot(m.a, m.b) || 1, 1.5);
+  const hs = heroScale(p, world, opts, look, K);
+  const bw = 130 * hs, bt = 150 * hs, bb = 24 * hs;
+  const W = Math.ceil(2 * bw * rs), H = Math.ceil((bt + bb) * rs);
+  const e = poolGet(null, W, H), oc = e.cv.getContext('2d');
+  oc.setTransform(1, 0, 0, 1, 0, 0); oc.clearRect(0, 0, W + 2, H + 2);
+  oc.setTransform(rs, 0, 0, rs, (bw - p.cx) * rs, (bt - p.bottom) * rs);
+  Object.assign(YT_O, opts); YT_O.tint = undefined; YT_O.alpha = undefined; YT_O.noFx = true; YT_O._yawTint = true;
+  drawHeroYaw(oc, p, world, YT_O, K, look);
+  oc.setTransform(1, 0, 0, 1, 0, 0); oc.globalCompositeOperation = 'source-in';
+  oc.fillStyle = opts.tint; oc.fillRect(0, 0, W + 2, H + 2); oc.globalCompositeOperation = 'source-over';
+  e.key = null; e.rs = 0;                               // 내용이 매번 바뀌므로 다음 합성이 재사용하지 않게
+  ctx.save();
+  if (opts.alpha !== undefined) ctx.globalAlpha = clamp(opts.alpha, 0, 1);
+  ctx.drawImage(e.cv, 0, 0, W, H, p.cx - bw, p.bottom - bt, 2 * bw, bt + bb);
   ctx.restore();
 }
 /**

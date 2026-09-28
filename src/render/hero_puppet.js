@@ -12,7 +12,7 @@ import { CHARACTERS } from '../data/characters.js';
 import { NPCS } from '../data/npcs.js';
 import { TOWN_NPCS } from '../data/town.js';
 import { PUPPETS } from './puppet_manifest.js';
-import { G, sh, ra, grad, ribbonPath, WS, drawWeapon, drawWing, glow, drawHalo } from './hero_parts.js';
+import { G, sh, ra, grad, fillGrad, ribbonPath, WS, drawWeapon, drawWing, glow, drawHalo } from './hero_parts.js';
 
 const PI = Math.PI, HP = PI / 2, TAU = PI * 2;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -612,7 +612,8 @@ function drawCapePup(c, E, K, s) {
       c.fillStyle = pat; c.fill();
     } else { c.fillStyle = cp.c; c.fill(); }
     // 부피감: 뒤쪽 가장자리 어둡게 + 윤곽
-    c.save(); c.globalAlpha = 0.35; c.fillStyle = grad(off[0] - 8, off[1], off[e] + 8, off[e + 1], sh(cp.c, -0.2), 1); c.fill(); c.restore();
+    // (fillGrad: 망토 끝·어깨가 매 프레임 움직여도 새 그라디언트를 만들지 않는다 — 달릴 때 프레임마다 1개였다, #341)
+    c.save(); c.globalAlpha = 0.35; fillGrad(off[0] - 8, off[1], off[e] + 8, off[e + 1], sh(cp.c, -0.2), 1); c.restore();
     c.strokeStyle = ra('#0a0306', 0.55); c.lineWidth = 0.5; c.stroke();
     capeFolds(c, off, n, cp.c);                            // (현재 경로 = 망토 겉감 → 그 안으로 잘라 그림)
     if (cp.style === 'royal' || cp.style === 'tattered') {

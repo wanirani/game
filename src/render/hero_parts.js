@@ -63,16 +63,28 @@ export function grad(x0, y0, x1, y1, base, k = 1) {
   if (!isHex(base)) return base;
   x0 = q2(x0); y0 = q2(y0); x1 = q2(x1); y1 = q2(y1);
   if (x0 === x1) x0 = x1 = 0; else if (y0 === y1) y0 = y1 = 0;   // 수직·수평 그라디언트는 다른 축 위치와 무관
-  return gradMemo('g' + base + k + ',' + x0 + ',' + y0 + ',' + x1 + ',' + y1, () => {
-    const g = G.c.createLinearGradient(x0, y0, x1, y1);
-    const L = lum(base);
-    g.addColorStop(0, mx(base, RIM, Math.round((0.3 + (1 - L) * 0.32) * 20) / 20));
-    g.addColorStop(0.17, sh(base, -0.2 * k));
-    g.addColorStop(0.52, base);
-    g.addColorStop(0.8, mx(base, KEY, 0.18));
-    g.addColorStop(1, sh(base, -0.42 * k));
-    return g;
-  });
+  return gradMemo('g' + base + k + ',' + x0 + ',' + y0 + ',' + x1 + ',' + y1, () => gradStops(G.c.createLinearGradient(x0, y0, x1, y1), base, k));
+}
+function gradStops(g, base, k) {
+  const L = lum(base);
+  g.addColorStop(0, mx(base, RIM, Math.round((0.3 + (1 - L) * 0.32) * 20) / 20));
+  g.addColorStop(0.17, sh(base, -0.2 * k));
+  g.addColorStop(0.52, base);
+  g.addColorStop(0.8, mx(base, KEY, 0.18));
+  g.addColorStop(1, sh(base, -0.42 * k));
+  return g;
+}
+/**
+ * 현재 경로를 grad() 와 같은 원통 음영으로 채운다 — 매 프레임 끝점이 움직이는 천(망토·머리카락·스카프 띠)용.
+ * 그라디언트는 (색, k)마다 단위 길이 (0,0)→(1,0) 하나만 만들고, 채우는 순간에만 변환으로 (x0,y0)→(x1,y1) 에 맞춘다
+ * (경로는 만들 때의 변환으로 이미 고정되므로 모양은 그대로). 천이 움직여도 새 그라디언트 0 (#341)
+ */
+export function fillGrad(x0, y0, x1, y1, base, k = 1) {
+  const c = G.c;
+  const dx = x1 - x0, dy = y1 - y0;
+  if (G.tint || !isHex(base) || dx * dx + dy * dy < 1e-4) { c.fillStyle = G.tint || base; c.fill(); return; }
+  c.fillStyle = gradMemo('u' + base + k, () => gradStops(c.createLinearGradient(0, 0, 1, 0), base, k));
+  c.save(); c.transform(dx, dy, -dy, dx, x0, y0); c.fill(); c.restore();
 }
 export function outline(base, w = G.olw) {
   if (G.tint || G.pass === 2) return;
@@ -416,7 +428,7 @@ function paintStaff(W) {
     c.beginPath(); c.moveTo(hx, -1); c.quadraticCurveTo(hx + 4, -5, hx + 7, -4); c.moveTo(hx, 1); c.quadraticCurveTo(hx + 4, 5, hx + 7, 4);
     if (!G.tint) { c.strokeStyle = '#c8ccd4'; c.lineWidth = 1.2; c.stroke(); }
     c.beginPath(); c.moveTo(hx + 3, 0); c.lineTo(hx + 8, -3.8); c.lineTo(hx + 15, 0); c.lineTo(hx + 8, 3.8); c.closePath();
-    c.fillStyle = G.tint || (() => { const g = c.createLinearGradient(hx + 3, -3, hx + 15, 3); g.addColorStop(0, '#e8fbff'); g.addColorStop(0.5, gc); g.addColorStop(1, '#2a5a9a'); return g; })();
+    c.fillStyle = G.tint || gradMemo('cr' + gc + ',' + q2(hx), () => { const g = c.createLinearGradient(q2(hx) + 3, -3, q2(hx) + 15, 3); g.addColorStop(0, '#e8fbff'); g.addColorStop(0.5, gc); g.addColorStop(1, '#2a5a9a'); return g; });
     c.fill(); outline('#4a8ac8', 0.6);
   } else if (s === 4) { // 성광 원반
     c.beginPath();
@@ -428,7 +440,7 @@ function paintStaff(W) {
       c.beginPath(); c.moveTo(hx + 2, 0); c.quadraticCurveTo(hx - 3, sy * 8, hx - 9, sy * 10); c.quadraticCurveTo(hx - 3, sy * 4.5, hx + 1, sy * 3); c.quadraticCurveTo(hx - 2, sy * 5, hx - 6, sy * 6); c.quadraticCurveTo(hx, sy * 2, hx + 2, 0);
       fillOl('#f4f0e8', 0.6);
     }
-    ellipse(hx + 7, 0, 4.2, 4.2); c.fillStyle = G.tint || (() => { const g = c.createRadialGradient(hx + 6, -1.5, 0.5, hx + 7, 0, 4.2); g.addColorStop(0, '#ffffff'); g.addColorStop(0.5, gc); g.addColorStop(1, '#c8a040'); return g; })(); c.fill(); outline('#c8a040', 0.6);
+    ellipse(hx + 7, 0, 4.2, 4.2); c.fillStyle = G.tint || gradMemo('ob' + gc + ',' + q2(hx), () => { const x = q2(hx), g = c.createRadialGradient(x + 6, -1.5, 0.5, x + 7, 0, 4.2); g.addColorStop(0, '#ffffff'); g.addColorStop(0.5, gc); g.addColorStop(1, '#c8a040'); return g; }); c.fill(); outline('#c8a040', 0.6);
   } else { // 6: 초승달 + 별 + 궤도 고리
     c.beginPath(); c.arc(hx + 7, 0, 7, -2.2, 2.2); c.arc(hx + 9.5, 0, 5.5, 1.9, -1.9, true); c.closePath(); fillOl('#e8c872', 0.7);
     c.beginPath(); for (let i = 0; i < 8; i++) { const a = (i / 8) * TAU + t * 1.5, r = i % 2 ? 1.4 : 3.4; c.lineTo(hx + 8 + Math.cos(a) * r, Math.sin(a) * r); } c.closePath();
@@ -665,9 +677,13 @@ export function drawWing(type, spread, flap, far, dark) {
     c.closePath();
     if (G.tint) { c.fillStyle = G.tint; c.fill(); }
     else {
-      const g = c.createLinearGradient(0, -20, 40, 20);
-      g.addColorStop(0, sh(c1, k)); g.addColorStop(0.55, sh(c0, k + 0.05)); g.addColorStop(1, sh(c0, k - 0.2));
-      c.fillStyle = g; c.fill(); outline(c0, 0.8);
+      // 막 음영 그라디언트는 좌표가 고정 → (색, 명암)별 1개 (프레임마다 새로 만들지 않음, #341)
+      c.fillStyle = gradMemo('wm' + c0 + c1 + k, () => {
+        const g = c.createLinearGradient(0, -20, 40, 20);
+        g.addColorStop(0, sh(c1, k)); g.addColorStop(0.55, sh(c0, k + 0.05)); g.addColorStop(1, sh(c0, k - 0.2));
+        return g;
+      });
+      c.fill(); outline(c0, 0.8);
       // 뼈대
       c.strokeStyle = sh(c1, 0.25 + k); c.lineWidth = 1.5; c.lineCap = 'round';
       c.beginPath(); c.moveTo(0, 0); c.lineTo(wx, wy);
@@ -750,10 +766,16 @@ export function drawAuraMotes(type, col, k, n = 8, h = 80) {
       c.beginPath(); c.moveTo(x, y - s * 2); c.lineTo(x + s * 0.45, y); c.lineTo(x, y + s * 2); c.lineTo(x - s * 0.45, y); c.closePath();
       c.moveTo(x - s * 2, y); c.lineTo(x, y + s * 0.45); c.lineTo(x + s * 2, y); c.lineTo(x, y - s * 0.45); c.closePath(); c.fill();
     } else if (type === 'dark') {
-      const r = 3 + 5 * ph;
-      const g = c.createRadialGradient(x, y, 0, x, y, r);
-      g.addColorStop(0, ra(col, 0.42 * fade)); g.addColorStop(1, ra(col, 0));
-      c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2);
+      // 원형 그라디언트는 색마다 단위 반경 1개만 만들고 변환(크기)·globalAlpha(세기)로 그린다
+      // (#341: 입자 8개가 매 프레임 새 그라디언트 8개를 만들어 저사양 예산 6/프레임을 혼자 넘겼다)
+      const r = 3 + 5 * ph, a = Math.min(1, 0.42 * fade);
+      if (a > 0.004) {
+        const ga = c.globalAlpha;
+        c.fillStyle = gradMemo('am' + col, () => { const g = c.createRadialGradient(0, 0, 0, 0, 0, 1); g.addColorStop(0, ra(col, 1)); g.addColorStop(1, ra(col, 0)); return g; });
+        c.translate(x, y); c.scale(r, r); c.globalAlpha = ga * a;
+        c.fillRect(-1, -1, 2, 2);
+        c.globalAlpha = ga; c.scale(1 / r, 1 / r); c.translate(-x, -y);
+      }
     } else if (type === 'ice') {
       const s = 1.5 + h01(seed + 9);
       c.strokeStyle = ra(col, 0.9 * fade); c.lineWidth = 0.6;
@@ -781,9 +803,10 @@ export function drawMagicCircle(x, y, r, col, k, flat = 0.3, spin = 1) {
   const c = G.c, t = G.t;
   c.save(); c.globalCompositeOperation = 'lighter';
   c.translate(x, y); c.scale(1, flat);
-  const g = c.createRadialGradient(0, 0, 0, 0, 0, r * 1.2);
-  g.addColorStop(0, ra(col, 0.3 * k)); g.addColorStop(0.7, ra(col, 0.12 * k)); g.addColorStop(1, ra(col, 0));
-  c.fillStyle = g; c.beginPath(); c.arc(0, 0, r * 1.2, 0, TAU); c.fill();
+  // 바닥 빛: 색마다 단위 반경 그라디언트 1개(세기는 globalAlpha) — 시전 중 매 프레임 새 그라디언트를 만들지 않게 (#341)
+  c.save(); c.scale(r * 1.2, r * 1.2); c.globalAlpha *= Math.min(1, 0.3 * k);
+  c.fillStyle = gradMemo('mc' + col, () => { const g = c.createRadialGradient(0, 0, 0, 0, 0, 1); g.addColorStop(0, ra(col, 1)); g.addColorStop(0.7, ra(col, 0.4)); g.addColorStop(1, ra(col, 0)); return g; });
+  c.beginPath(); c.arc(0, 0, 1, 0, TAU); c.fill(); c.restore();
   c.strokeStyle = ra(col, 0.9 * k); c.lineWidth = 1.4 / Math.max(flat, 0.3);
   c.beginPath(); c.arc(0, 0, r, 0, TAU); c.stroke();
   c.lineWidth = 0.8 / Math.max(flat, 0.3);

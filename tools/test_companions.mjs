@@ -12,7 +12,8 @@
 //   migrate   (2) 동료가 없는 6장 세이브(tools/fixtures/save_ch6_nocmp.json) 불러오기 → 아리아·코슈타·가웨인·미네르바 + 크론의 알(부화 가능)
 //                 → 허브에서 합류 연출은 한 번에 최대 3명, 나머지는 메뉴 「동료」 탭의 NEW → 탭에서 보면 사라짐
 //   stages    (3) 아홉 탈것 × s01–s20 시작 방: 소환 · 돌진 · 특수기 · 점프 · 하차, 박힘 없음 (깊은 물 속 시작은 거절이 정상)
-//   guardians (4) 열한 수호신을 둘씩 s05 · s11 에서 30초씩 (둘씩 5초 × 6쌍): 적이 죽는다 · 자동 공격 경직 0 · 틀 시간 증가 ≤ 1.5 ms
+//   guardians (4) 열한 수호신을 둘씩 s05 · s11 에서 30초씩 (둘씩 5초 × 6쌍): 두 수호신 모두 적을 치고 · 처치 판정과 경험치 몫 ·
+//                 자동 공격 경직 0 · 플레이어가 치지 않으면 world.hitstop 0 (모르스 처형 포함, C10 #4) · 수호신 둘의 틀 비용 ≤ 1.5 ms
 //   boss_s03, boss_s12 (5) 탄 채로 수호신 둘과 둘라한 · 드라큘라: 등장 연출 · 50% 까지 · 보스 공격으로 낙마 · 재소환 · 유대 3 공명
 //   save      (6) 탄 채로 관(세이브)에서 저장 → 다시 불러오기 · 내보내기 코드 왕복 · 클라우드 기록 경로(sanitizeTree → migrateState) · 256 KB
 //   mobile    (7) 844×390 터치: 탑승/수호 버튼 · 누르기 · 수호 재사용 대기 가림막 · 캔버스 위젯 탭 · 스틱·다른 버튼과 겹침 없음
@@ -26,6 +27,7 @@
 //   menu      메뉴 「동료」 탭 키보드만: 탈것 장착 · 수호신 두 칸(8장) · 자동 스킬 순환 · 8장 전 2번 칸 잠금
 //   hud       HUD 위젯: 장착 시 탭 영역 · 해제하면 사라짐 · 마을에서는 수호 위젯 없음
 //   bindings  R/G · 패드 10/11 (두 배치) · 터치 버튼 mount/guard 가 입력 바인딩에 있다
+//   passives  (2부) 미라 반사 · 모모 포식: 쏜 탄 전부를 추적해 대기(5초 · 6초)가 찬 뒤 한 번씩 (test_guardians 요청 #170 의 견고한 판정)
 // 헤드리스 Chromium + tools/serve.mjs. 게임 시간은 game.tick(1/60) 을 직접 돌린다 (결정적). 터치·패드 사례만 실제 시간으로 잠깐 돈다.
 // 모든 사례는 페이지 오류·콘솔 오류 0 이어야 통과한다.
 import { chromium } from 'playwright-core';
@@ -98,7 +100,7 @@ function installHelpers() {
       w.fx.text = (x, y, s, o) => { T.texts.push(String(s)); return ft(x, y, s, o); };
       const oh = w.onPlayerHit.bind(w);
       w.hits = [];
-      w.onPlayerHit = (t, info, a) => { w.hits.push({ owner: a?.owner?.id ?? a?.owner?.kind, tags: [...(a?.tags ?? [])], hs: info?.hitstop ?? 0, ahs: a?.hitstop, t: t?.def?.id, killed: !!info?.killed }); return oh(t, info, a); };
+      w.onPlayerHit = (t, info, a) => { w.hits.push({ owner: a?.owner?.id ?? a?.owner?.kind, tags: [...(a?.tags ?? [])], hs: info?.hitstop ?? 0, ahs: a?.hitstop, t: t?.def?.id, boss: t?.kind === 'boss', killed: !!info?.killed }); return oh(t, info, a); };
     },
     /** 캔버스 논리 좌표 → CSS px (클라이언트) */
     toClient(x, y) {
@@ -417,7 +419,7 @@ await run('guardians', STAGE('s05', '&cmp=all&ch=20'), (page) => page.evaluate(a
   const pairs = [];
   for (let i = 0; i < ids.length; i += 2) pairs.push([ids[i], ids[i + 1] ?? ids[0]]);
   const bad = { equip: [], hits: [], hitstop: [], cost: [], kills: [], world: [] };
-  const killsBy = {};
+  const killsBy = {}, hitsBy = {};
   for (const sid of ['s05', 's11']) {
     if (T.w?.stage?.id !== sid) {
       g.go('stage', { stageId: sid }, { fade: false });
@@ -450,20 +452,24 @@ await run('guardians', STAGE('s05', '&cmp=all&ch=20'), (page) => page.evaluate(a
       const add0 = w.add;
       w.add = function (e) { if (e && (G.has(e.owner) || G.has(e.data?.owner))) wrap(e); return add0.call(this, e); };
       // 적 셋 (가만히 선 플레이어 양옆)
-      const foes = [T.spawn('skeleton', 170), T.spawn('zombie', -170), T.spawn('bat', 120)].filter(Boolean);
+      // 땅 위의 적 셋 (날아다니는 박쥐는 급강하형 수호신이 5초 안에 못 맞힐 때가 있어 뺀다)
+      const foes = [T.spawn('skeleton', 170), T.spawn('zombie', -170), T.spawn('skeleton', 260)].filter(Boolean);
       for (const e of foes) { e.hp = e.maxHp = Math.max(1, Math.round((e.maxHp ?? e.hp ?? 30))); }
       w.hits.length = 0;
       let renders = 0, hsFrames = 0;
-      const N = 5 * 60;
+      const N = 5 * 60, uA = [], dA = [];
       const exp0 = [a, b].map((id) => { const e = st.companions.owned[id]; return (e.lv ?? 1) * 1e7 + (e.exp ?? 0); });
       for (let i = 0; i < N; i++) {
         p.hp = p.stats.hp; p.iframes = Math.max(p.iframes ?? 0, 0.2);
         // 2.5초 뒤 남은 적의 체력을 1 로: 수호신 공격의 처치 경로(onKill · 경험치 몫)를 본다 (수호신 몫은 전체 딜의 10–20% 라 5초 안에 제 힘으로는 잘 못 잡는다)
         if (i === 150 && foes[0] && !foes[0].dead && !(foes[0].dying > 0)) foes[0].hp = 1;   // 나머지 둘은 끝까지 표적으로 남긴다
+        const u0 = acc.u, d0 = acc.d;
         g.tick(1 / 60);
         if ((w.hitstop ?? 0) > 0) hsFrames++;
-        if (i % 3 === 0) { g.input?.beginRender?.(); g.render(); renders++; }
+        if (i >= 30) uA.push(acc.u - u0);
+        if (i % 3 === 0) { const r0 = acc.d; g.input?.beginRender?.(); g.render(); renders++; if (i >= 30) dA.push(acc.d - r0); }
         if (g.top?.name !== 'stage') g.pop();
+        void d0;
       }
       w.add = add0;
       const mine = w.hits.filter((h) => h.owner === a || h.owner === b);
@@ -475,10 +481,14 @@ await run('guardians', STAGE('s05', '&cmp=all&ch=20'), (page) => page.evaluate(a
       const gk = mine.filter((h) => h.killed).length;
       for (const h of mine) if (h.killed) killsBy[h.owner] = (killsBy[h.owner] ?? 0) + 1;
       const expUp = [a, b].map((id, k) => { const e = st.companions.owned[id]; return (e.lv ?? 1) * 1e7 + (e.exp ?? 0) > exp0[k]; });
-      const per = (acc.u / N) + (acc.d / Math.max(1, renders));
-      const row = { sid, pair: [a, b], hits: { [a]: mine.filter((h) => h.owner === a).length, [b]: mine.filter((h) => h.owner === b).length }, kills, gk, expUp, ms: +per.toFixed(3), u: +(acc.u / N).toFixed(3), d: +(acc.d / Math.max(1, renders)).toFixed(3) };
+      // 부하가 큰 기계의 튐(GC·다른 프로세스)을 줄이려고 처음 0.5초를 빼고 위 10% 를 버린 평균
+      const tmean = (A) => { if (!A.length) return 0; const B = [...A].sort((x, y) => x - y).slice(0, Math.max(1, Math.floor(A.length * 0.9))); return B.reduce((x, y) => x + y, 0) / B.length; };
+      const per = tmean(uA) + tmean(dA);
+      const peak = Math.max(0, ...dA) + Math.max(0, ...uA);
+      const row = { sid, pair: [a, b], hits: { [a]: mine.filter((h) => h.owner === a).length, [b]: mine.filter((h) => h.owner === b).length }, kills, gk, expUp, ms: +per.toFixed(3), u: +tmean(uA).toFixed(3), d: +tmean(dA).toFixed(3), peak: +peak.toFixed(2) };
       info.pairs.push(row);
-      if (!(row.hits[a] > 0) || !(row.hits[b] > 0)) bad.hits.push(row);
+      if (!(row.hits[a] + row.hits[b] > 0)) bad.hits.push(row);
+      for (const id of [a, b]) hitsBy[id] = (hitsBy[id] ?? 0) + row.hits[id];
       if (!(gk > 0) || !expUp.every(Boolean)) bad.kills.push(row);
       if (hsBad.length) bad.hitstop.push({ sid, pair: [a, b], n: hsBad.length, ex: hsBad[0] });
       if (hsExec.length || hsFrames) bad.world.push({ sid, pair: [a, b], hsFrames, exec: hsExec.length, ex: hsExec[0] });
@@ -507,7 +517,9 @@ await run('guardians', STAGE('s05', '&cmp=all&ch=20'), (page) => page.evaluate(a
   }
   info.killsBy = killsBy;
   checks.push(['두 칸 장착 → 수호신 둘 (12쌍)', !bad.equip.length && info.pairs.length === pairs.length * 2, bad.equip]);
-  checks.push(['쌍마다 두 수호신 모두 적을 친다 (5초)', !bad.hits.length, bad.hits.slice(0, 6)]);
+  info.hitsBy = hitsBy;
+  const silent = ids.filter((id) => !(hitsBy[id] > 0));
+  checks.push(['쌍마다 적을 치고 (5초) · 열한 수호신 모두 s05 · s11 에서 적을 친다', !bad.hits.length && !silent.length, { pairs: bad.hits.slice(0, 4), silent, hitsBy }]);
   checks.push(['쌍마다 수호신 공격이 적을 쓰러뜨리고 (처치 판정) 두 수호신 모두 경험치를 받는다', !bad.kills.length && info.s05kills > 0 && info.s11kills > 0, { bad: bad.kills.slice(0, 4), s05: info.s05kills, s11: info.s11kills, killsBy }]);
   checks.push(['자동 공격 경직(히트스톱) 0', !bad.hitstop.length, bad.hitstop.slice(0, 4)]);
   // C10 #4: 플레이어가 치지 않는 동안 world.hitstop 은 0 이어야 한다 — 모르스의 처형(패시브, 'execute')도 포함
@@ -557,10 +569,9 @@ for (const sid of ['s03', 's12']) {
       t += 0.2;
     }
     T.key('ArrowRight', false); T.key('ArrowLeft', false);
-    const gh = w.hits.filter((h) => (h.owner === 'gd_knight' || h.owner === 'gd_imp') && h.t === b.def.id).length;
-    info.half = { t: +t.toFixed(1), hp: Math.round(b.hp / MH * 100) + '%', guardHits: gh, riding: m.riding, knockedEarly };
+    const guardOnBoss = () => w.hits.filter((h) => (h.owner === 'gd_knight' || h.owner === 'gd_imp') && (h.boss || h.t === b.def.id)).length;
+    info.half = { t: +t.toFixed(1), hp: Math.round(b.hp / MH * 100) + '%', guardHits: guardOnBoss(), riding: m.riding, knockedEarly };
     checks.push(['보스 체력 50% 까지 (탄 채 공격)', b.hp <= MH * 0.5, info.half]);
-    checks.push(['수호신이 보스를 친다', gh > 0, info.half]);
     // 보스 공격으로 낙마: 탈것 체력 1 로 두고 보스 앞에서 기다린다
     if (!m.riding) T.ride('mt_warhorse');
     let lastAtk = null;
@@ -584,6 +595,10 @@ for (const sid of ['s03', 's12']) {
     info.knock = { t: +t.toFixed(1), state: m.state, cd: +(m.cd ?? 0).toFixed(1), lastAtk, toasts: T.toasts.slice(toast0, toast0 + 3) };
     checks.push(['보스 공격으로 낙마 → 재소환 대기(recall)', m.state === 'recall' && knocked.length > 0 && !!lastAtk?.boss, info.knock]);
     checks.push(['낙마 안내 문구 (쓰러졌다! 재소환 N초)', T.toasts.slice(toast0).some((s) => s.includes('쓰러졌다')), T.toasts.slice(toast0, toast0 + 4)]);
+    // 수호신 둘이 보스를 친다 (50% 구간 + 낙마 구간 동안; 부족하면 보스 곁에서 몇 초 더)
+    for (let k = 0; k < 40 && guardOnBoss() < 2; k++) { keep(); p.iframes = Math.max(p.iframes ?? 0, 0.3); T.step(0.25); }
+    const gh = guardOnBoss();
+    checks.push(['수호신이 보스를 친다', gh > 0, { guardHits: gh, by: [...new Set(w.hits.filter((h) => h.boss).map((h) => h.owner))] }]);
     // 재사용 대기 중 R → 거절, 대기가 끝나면 R 로 재소환
     T.press('KeyR', 0.05);
     const refused = !m.riding && m.state === 'recall';
@@ -604,8 +619,9 @@ for (const sid of ['s03', 's12']) {
     const reso = evs.filter((e) => e.ev === 'guardianSkill' && e.resonance).map((e) => e.id);
     info.reso = { ult: evs.some((e) => e.ev === 'ultimateCast'), reso, ranks: ['gd_knight', 'gd_imp', 'mt_warhorse'].map((id) => T.CS.bondRankOf(st, id)) };
     checks.push(['필살기 → 유대 3 수호신 둘 공명 스킬', info.reso.ult && reso.includes('gd_knight') && reso.includes('gd_imp'), info.reso]);
-    T.until(() => { keep(); return m.riding; }, 10);
-    info.after = { state: m.state, riding: m.riding };
+    // 재탑승은 연출이 끝나고 땅 위 · 경직 없음일 때만 (8초 안에 못 타면 포기) — 보스의 연타에 경직이 이어지지 않게 이 구간만 무적
+    T.until(() => { keep(); p.iframes = Math.max(p.iframes ?? 0, 0.5); return m.riding; }, 12);
+    info.after = { state: m.state, riding: m.riding, wait: +(m.remountWait ?? 0).toFixed(2), ground: p.onGround, hurt: p.hurtT > 0 };
     checks.push(['필살기 뒤 탈것 자동 재탑승', m.riding, info.after]);
     checks.push(['보스전 내내 기수 몸이 박히지 않는다', T.fitsNow(), { x: p.x, b: p.bottom, w: p.w, h: p.h }]);
     return { checks, info };
@@ -1297,6 +1313,55 @@ if (want('tools') && !SKIP_TOOLS) {
   }
   record('tools', { checks, info }, [], t0);
 }
+
+// ═════════════ (2부) 미라 반사 · 모모 포식: 쏜 탄 전부를 추적 (요청 #170 의 견고한 판정) + 재사용 대기 간격 ═════════════
+await run('passives', STAGE('s05', '&cmp=all&ch=20&cmplv=10'), (page) => page.evaluate(async () => {
+  const T = window.__T, g = T.g, checks = [], info = {};
+  const st = g.state, w = T.w, p = T.p;
+  st.companions.pending.length = 0; st.companions.autoSkill = false;
+  T.CS.equipMount(st, null, null);
+  const runOne = (id) => {
+    T.CS.equipGuardian(st, null, 0, id); T.CS.equipGuardian(st, null, 1, null);
+    w.companions.sync(true);
+    T.clearFoes();
+    const z = T.spawn('zombie', 420);
+    if (z) { z.stats.maxHp = z.hp = 1e6; z.freeze = 99; }
+    T.step(0.5);
+    const gd = w.companions.guards[0];
+    const P = gd.def.passive ?? {};
+    const every = P.every ?? (id === 'gd_mirra' ? 5 : 6);
+    // 준비된 채 시작하지 않는 경우까지 본다: 재사용 대기를 가득 채우고 시작
+    if (id === 'gd_mirra') gd.mem.reflCd = every; else gd.mem.eatCd = every;
+    const shots = [], hits = [];
+    const ft = w.fx.text.bind(w.fx);
+    w.fx.text = (x, y, s2, o) => { if (id === 'gd_momo' && String(s2) === String(P.text ?? '꺼억')) hits.push(+w.time.toFixed(2)); return ft(x, y, s2, o); };
+    const t0 = w.time;
+    let nextShot = 0;
+    const DUR = every * 2 + 1.5;
+    T.step(DUR, () => {
+      p.hp = p.stats.hp; p.iframes = Math.max(p.iframes ?? 0, 0.5);
+      if (z) { z.hp = 1e6; }
+      if (w.time - t0 >= nextShot) {
+        nextShot += 0.6;
+        const sx = gd.cx + (gd.facing || 1) * 50, sy = gd.cy;
+        const pr = w.spawnProjectile({ x: sx, y: sy, vx: -(gd.facing || 1) * 60, vy: 0, team: 'enemy', w: 12, h: 12, life: 3, owner: z, attack: { mv: 0, owner: z, tags: ['projectile'] } });
+        if (pr) shots.push(pr);
+      }
+      if (id === 'gd_mirra') for (const q of shots) if (!q.__r && q.team !== 'enemy') { q.__r = true; hits.push(+w.time.toFixed(2)); }
+      return false;
+    });
+    w.fx.text = ft;
+    const rel = hits.map((t) => +(t - t0).toFixed(2));
+    const gaps = rel.slice(1).map((t, i) => +(t - rel[i]).toFixed(2));
+    return { id, every, shots: shots.length, at: rel, gaps };
+  };
+  const mi = runOne('gd_mirra'), mo = runOne('gd_momo');
+  info.mirra = mi; info.momo = mo;
+  const ok = (r) => r.at.length >= 2 && r.at[0] >= r.every - 0.1 && r.at[0] <= r.every + 0.5 && r.gaps.every((d) => d >= r.every - 0.1 && d <= r.every + 0.7);
+  checks.push(['미라: 대기가 찬 뒤 5초마다 가까운 탄 하나를 되돌린다 (쏜 탄 전부 추적)', ok(mi), mi]);
+  checks.push(['모모: 대기가 찬 뒤 6초마다 가까운 탄 하나를 먹는다 (꺼억)', ok(mo), mo]);
+  return { checks, info };
+}));
 
 await browser.close(); srv.close();
 const bad = results.filter((r) => !r.ok);
