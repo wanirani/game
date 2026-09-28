@@ -211,7 +211,9 @@ async function pageLib() {
   Q.until = (fn, max = 600) => { for (let i = 0; i <= max; i++) { if (fn()) return i; if (i < max) Q.step(1); } return -1; };
   Q.render = () => { const t = realNow(); try { input.beginRender?.(); g.render(); input.endRender?.(); } catch (e) { console.error('[feel_test] render', e); } return realNow() - t; };
   Q.slow = [];   // frames over 100 ms: [steps, tick ms, render ms, top scene, particles]
+  Q.fn = 0;      // rendered frames so far (the Node side divides main-thread CPU time by this count)
   Q.frame = () => {
+    Q.fn++;
     const t = realNow(); Q.step(1); const t1 = realNow(); Q.render(); const t2 = realNow();
     if (t2 - t > 100) { Q.slow.push([Q.steps, +(t1 - t).toFixed(1), +(t2 - t1).toFixed(1), g.top?.name, g.world?.fx?.list?.length ?? 0]); if (Q.slow.length > 200) Q.slow.shift(); }
     return t2 - t;
@@ -284,6 +286,14 @@ async function pageLib() {
     return CMB.playerStrike(w, { x: hb.x - 2, y: hb.y - 2, w: hb.w + 4, h: hb.h + 4 }, atk);
   };
   Q.setClass = (cid) => { const p = Q.p(); p.hero.classId = cid; p.refreshStats(); p.hp = p.stats.hp; p.mp = p.stats.mp; return CL.CLASSES[cid]?.tier ?? null; };
+  Q.ultSetup = (cid) => {
+    Q.reset();
+    const tier = Q.setClass(cid);
+    const ds = [-230, -150, -70, 80, 160, 240].map((dx, i) => Q.dummy(i % 2 ? 'zombie' : 'skeleton', dx, {}));
+    Q.step(4);
+    Q._ult = { tier, ds, hp0: ds.map((e) => e.hp) };
+    Q._ultDs = ds;
+  };
   Q.fxCount = (shape) => g.world.fx.list.reduce((n, q) => n + (q.shape === shape ? 1 : 0), 0);
   Q.sceneOf = (name) => g.scenes.find((s) => s.name === name) ?? null;
   Q.rect = (r) => r ? (r.w != null ? { x: r.x ?? r.l, y: r.y ?? r.t ?? r.top, w: r.w, h: r.h } : { x: r.l ?? r.x0, y: r.t ?? r.y0, w: (r.r ?? r.x1) - (r.l ?? r.x0), h: (r.b ?? r.y1) - (r.t ?? r.y0) }) : null;
@@ -902,24 +912,27 @@ async function pC15() {
 }
 
 // ───────────────────────── ultimates (feel §5; U1, U2) ─────────────────────────
-async function pUlt({ cid, measure, captureFinal }) {
-  const Q = window.__fq, w = Q.w(), p = Q.p(), g = Q.g;
-  Q.reset();
-  const tier = Q.setClass(cid);
-  const ds = [-230, -150, -70, 80, 160, 240].map((dx, i) => Q.dummy(i % 2 ? 'zombie' : 'skeleton', dx, {}));
-  Q.step(4);
-  const hp0 = ds.map((e) => e.hp);
+/** the class and six passive dummies around home (U1/U2/V1); pUlt({setup:false}) then casts into them */
+async function pUltSetup({ cid }) {
+  window.__fq.ultSetup(cid);
+  return { tier: window.__fq._ult.tier };
+}
+/** U2 gameplay baseline (feel §8): walk back and forth past the dummies with a few swings, render every frame */
+async function pBaseline({ n = 90 }) {
+  const Q = window.__fq;
   const base = [];
-  if (measure) {
-    // gameplay baseline: walk back and forth past the dummies with a few swings, render every frame
-    for (let i = 0; i < 90; i++) {
-      Q.key('right', i < 40); Q.key('left', i >= 45 && i < 85);
-      Q.key('attack', i % 22 === 0 || i % 22 === 1);
-      base.push(Q.frame());
-    }
-    Q.release(); Q.step(20);
-    Q.reset(Q.home.x, 4);
+  for (let i = 0; i < n; i++) {
+    Q.key('right', i < 40); Q.key('left', i >= 45 && i < 85);
+    Q.key('attack', i % 22 === 0 || i % 22 === 1);
+    base.push(Q.frame());
   }
+  Q.release();
+  return { base };
+}
+async function pUlt({ cid, measure, captureFinal, setup = true }) {
+  const Q = window.__fq, w = Q.w(), p = Q.p(), g = Q.g;
+  if (setup) Q.ultSetup(cid);
+  const { tier, ds, hp0 } = Q._ult;
   w.run.sp = 100; w.run.aw = 0;
   const ev0 = Q.log.ev.length, sc0 = Q.log.scenes.length, h0 = Q.log.hits.length;
   Q.key('ult'); const tw0s = w.time;
@@ -947,11 +960,72 @@ async function pUlt({ cid, measure, captureFinal }) {
     cid, tier, started, tStart, tLast, worldDur: tStart != null && tLast != null ? +(tLast - tStart).toFixed(3) : null, steps, peak, finalAt,
     cast: Q.log.ev.slice(ev0).some((e) => e[1] === 'ultimateCast'), cutins: Q.log.scenes.slice(sc0).filter((s) => s[1] === 'push').map((s) => s[2]),
     classes: [...new Set(Q.log.hits.slice(h0).map((h) => h.cls))], dmg: ds.reduce((n, e, i) => n + (hp0[i] - e.hp), 0),
-    zoomMin: +zoomMin.toFixed(3), zoomMax: +zoomMax.toFixed(3), frames: measure ? frames : null, base: measure ? base : null, paused: !!shot,
+    zoomMin: +zoomMin.toFixed(3), zoomMax: +zoomMax.toFixed(3), frames: measure ? frames : null, paused: !!shot,
     at: { stage: w.stage?.id ?? null, room: w.roomId ?? null, px: Math.round(p.x), camX: Math.round(w.camera.x) },
   };
   Q._ultDs = ds;
   return res;
+}
+/**
+ * feel §8 third headless ratio: 'sprinting with 6 enemies hit at SSS style: average ≤ 1.2× the idle-walk average'.
+ * part 'walk': six idle dummies ahead, the hero stands 30 frames then walks (pad stick 0.52) 60 frames — the baseline.
+ * part 'sprint': same dummies, double-tap sprint with an attack every 12 frames while the style meter is held at SSS.
+ * Every frame is stepped and rendered; the Node side brackets each part with main-thread CPU marks.
+ */
+async function pSprintSSS({ part, n = 90 }) {
+  const Q = window.__fq, w = Q.w(), p = Q.p(), S = w.style, ranks = Q.FH.STYLE.ranks;
+  const frames = [];
+  if (part === 'setup') {
+    Q.clearDummies();
+    Q.reset(Q.fl.x0 + 30);
+    w.transitioning = true;
+    Q._spDs = [0, 1, 2, 3, 4, 5].map((i) => Q.dummy(i % 2 ? 'zombie' : 'skeleton', 110 + i * 50, { facing: -1 }));
+    Q._spHome = p.x;
+    S.reset?.();
+    Q.step(4);
+    return { dummies: Q._spDs.length };
+  }
+  if (part === 'walk') {
+    if (window.__padConnect) { window.__padConnect(); }
+    const gaits = new Set();
+    for (let i = 0; i < n; i++) {
+      if (i === 30) window.__padAxes?.(0.52, 0);
+      frames.push(Q.frame());
+      if (i >= 40) gaits.add(p.gait);
+    }
+    window.__padAxes?.(0, 0);
+    Q.release(); Q.step(4);
+    return { frames, gaits: [...gaits] };
+  }
+  if (part === 'prep') {
+    // back to the start, dummies back in their slots, one double tap queued by the sprint part
+    for (const [i, e] of Q._spDs.entries()) { e.x = Q._spHome + p.w / 2 + 110 + i * 50 - e.w / 2; e.vx = 0; e.vy = 0; }
+    Q.reset(Q._spHome, 6);
+    S.reset?.();
+    return true;
+  }
+  // part 'sprint'
+  const h0 = Q.log.hits.length;
+  let sprintN = 0, rankMin = 99;
+  const top = ranks.length, sss = ranks[top - 1];
+  const holdSSS = () => { S.pts = Math.max(S.pts, Q.FH.STYLE.max ?? sss.min + 400); S.rank = top; S.sinceHit = 0; };
+  Q.key('right'); Q.step(4); Q.key('right', false); Q.step(5); Q.key('right');   // double tap (M3)
+  for (let i = 0; i < n; i++) {
+    holdSSS();
+    Q.key('attack', i % 12 < 2);
+    frames.push(Q.frame());
+    if (p.sprinting) sprintN++;
+    rankMin = Math.min(rankMin, S.rank);
+  }
+  Q.release(); Q.step(4);
+  const hs = Q.log.hits.slice(h0);
+  const targets = new Set(hs.map((h) => h.tid));
+  const ids = new Set(Q._spDs.map((e) => e.__id));
+  const out = { frames, sprintFrames: sprintN, hits: hs.length, targets: [...targets].filter((t) => ids.has(t)).length, rankMin, rankLetter: ranks[rankMin - 1]?.r ?? '-', particlesPeak: w.fx.list.length };
+  for (const e of Q._spDs) e.dead = true;
+  w.transitioning = false; S.reset?.();
+  Q.step(2);
+  return out;
 }
 /** continue an ultimate paused for the V1 screenshot, then check the aftermath */
 async function pUltFinish({ measureFrames }) {
@@ -1276,7 +1350,7 @@ const srv = await startServer();
 const browser = await chromium.launch({ executablePath: CHROME, headless: !args.headed, args: ['--autoplay-policy=no-user-gesture-required'] });
 const SETTINGS_KEY = 'bloodnocturne_settings';
 
-async function openPage(key, url, { viewport = { width: 1280, height: 720 }, mobile = false, quality = 'high', pad = false, extraSettings = {} } = {}) {
+async function openPage(key, url, { viewport = { width: 960, height: 540 }, mobile = false, quality = 'high', pad = false, extraSettings = {} } = {}) {
   const ctx = await browser.newContext(mobile ? { viewport, deviceScaleFactor: 2, hasTouch: true, isMobile: true } : { viewport, deviceScaleFactor: 1 });
   const page = await ctx.newPage();
   const errs = [];
@@ -1293,6 +1367,9 @@ async function openPage(key, url, { viewport = { width: 1280, height: 720 }, mob
     const ok = await page.evaluate(pageLib);
     if (ok !== 'ok') throw new Error('page library failed: ' + ok);
     await page.evaluate(() => window.__fq.pause());
+    // main-thread CPU time (CDP Performance.getMetrics ThreadTime) for the frame-cost ratios: unlike wall time it does not
+    // grow while the renderer waits for a core, so a CPU-time ratio over budget is a real regression even on a loaded machine
+    try { P.cdp = await ctx.newCDPSession(page); await P.cdp.send('Performance.enable', { timeDomain: 'threadTicks' }); } catch { P.cdp = null; }
   } catch (e) {
     P.fatal = String(e?.message || e);
     errs.push('HARNESS ' + P.fatal);
@@ -1318,6 +1395,30 @@ async function run(P, id, ctx, fn, arg, judge) {
     rec(id, ctx, 'error', 'exception: ' + String(e?.message || e).split('\n')[0].slice(0, 300));
     return null;
   }
+}
+/** { cpu: main-thread CPU seconds (null without CDP), fn: rendered frames so far } — CPU per frame between two marks = Δcpu / Δfn */
+async function mark(P) {
+  let cpu = null;
+  try { const m = await P.cdp?.send('Performance.getMetrics'); cpu = m?.metrics?.find((x) => x.name === 'ThreadTime')?.value ?? null; } catch { /* no CDP */ }
+  const fn = await P.page.evaluate(() => window.__fq?.fn ?? 0).catch(() => 0);
+  return { cpu, fn };
+}
+/** CPU ms per rendered frame over one or more [from, to] mark pairs (null when a mark has no CPU value or no frame was rendered) */
+function cpuPerFrame(...spans) {
+  let c = 0, n = 0;
+  for (const [a, b] of spans) { if (a?.cpu == null || b?.cpu == null) return null; c += b.cpu - a.cpu; n += b.fn - a.fn; }
+  return n > 0 ? round((c * 1000) / n, 2) : null;
+}
+/**
+ * feel §8 headless ratio: wall-time avg ≤ k·baseline avg, p95 ≤ p95K·baseline median, max ≤ 250 ms, plus the same avg ratio on
+ * main-thread CPU time. A CPU-time miss is a 'fail' at any machine load; a wall-time-only miss is load-gated (timingStatus).
+ */
+function ratioStatus({ u, b, cu, cb, k = 1.5, p95K = 2.5, maxMs = 250 }) {
+  const wallOk = u.avg <= k * b.avg && (p95K == null || u.p95 <= p95K * b.med) && (maxMs == null || u.max <= maxMs);
+  const cpuRatio = cu != null && cb > 0 ? round(cu / cb, 2) : null;
+  const cpuOk = cpuRatio == null ? null : cpuRatio <= k;
+  const status = wallOk && cpuOk !== false ? 'pass' : cpuOk === false ? 'fail' : timingStatus(false);
+  return { status, wallOk, cpuOk, cpuRatio };
 }
 async function shot(P, name, note) {
   const f = path.join(SHOTS, name + '.png');
@@ -1425,17 +1526,29 @@ async function heroSuite(hero, { onlyC2 = false } = {}) {
   }
   if (hero === 'lia' && want('C2')) await run(P, 'C2', ctx, pC2, {}, (r) => rec('C2', ctx, r.hits > 10 && r.worstWindow <= 0.40 + 1 / 60 + 1e-6 ? 'pass' : 'fail', `lia mashing on 3 dummies 3 s: ${r.hits} hits, frozen ${round(r.frozenTotal, 2)} s total, worst 1 s window ${round(r.worstWindow, 3)} s (≤ 0.40)`, r));
   // ── ultimates ──
+  let gameplay = null;   // U2 gameplay baseline of this page: { b: wall-time stats, cb: CPU ms per frame }
   if (wantAny('U1', 'U2', 'V1')) {
     for (const [i, cid] of [c0, c1, c2].entries()) {
       if (i < 2 && !want('U1')) continue;
       const measure = i === 2 && want('U2');
       const capture = i === 2 && want('V1');
-      const r = await run(P, 'U1', { hero, variant: cid }, pUlt, { cid, measure, captureFinal: capture });
+      let r, m0, m1, m2, m3, m4, m5, base = null;
+      if (measure) {
+        // separate evaluates so the main-thread CPU marks bracket only rendered frames (setup and screenshots stay outside)
+        if (!(await run(P, 'U1', { hero, variant: cid }, pUltSetup, { cid }))) continue;
+        m0 = await mark(P); base = (await run(P, 'U2', { hero, variant: cid }, pBaseline, { n: 90 }))?.base ?? null; m1 = await mark(P);
+        await P.page.evaluate(() => { const Q = window.__fq; Q.release(); Q.step(20); Q.reset(Q.home.x, 4); }).catch(() => {});
+        m2 = await mark(P);
+        r = await run(P, 'U1', { hero, variant: cid }, pUlt, { cid, measure, captureFinal: capture, setup: false });
+        m3 = await mark(P);
+      } else r = await run(P, 'U1', { hero, variant: cid }, pUlt, { cid, measure, captureFinal: capture });
       if (!r) continue;
       let fin = null;
       if (r.paused) {
         await shot(P, `ult_final_${hero}_960`, `${hero} ${cid} ultimate final frame, vw 960`);
+        if (measure) m4 = await mark(P);
         fin = await P.page.evaluate(pUltFinish, { measureFrames: measure }).catch((e) => ({ error: e.message }));
+        if (measure) m5 = await mark(P);
         if (fin?.frames && r.frames) r.frames.push(...fin.frames);
         if (fin) r.peak = Math.max(r.peak, fin.peak ?? 0);
       }
@@ -1446,13 +1559,15 @@ async function heroSuite(hero, { onlyC2 = false } = {}) {
       if (want('U1')) {
         const durOk = dur != null && Math.abs(dur - BASE.ult[hero]) <= BASE.ult[hero] * 0.1;
         const ok = r.cast && r.started && durOk && after.overlays === 0 && after.letterbox === 0 && !after.hudHidden && Math.abs(after.zoom - 1) <= 0.01 && r.peak <= 600;
-        rec('U1', { hero, variant: cid }, ok ? 'pass' : 'fail', `tier ${r.tier}: cutscene ${dur} s world time (today ${BASE.ult[hero]} ±10%), peak particles ${r.peak} (≤ 600), afterwards overlays ${after.overlays}, letterbox ${after.letterbox}, hud hidden ${after.hudHidden}, zoom ${after.zoom}, classes ${r.classes.join('')}, cut-ins ${r.cutins.join('/')}`, { ...r, frames: undefined, base: undefined, dur, after, fin: fin ? { ...fin, frames: undefined } : null });
+        rec('U1', { hero, variant: cid }, ok ? 'pass' : 'fail', `tier ${r.tier}: cutscene ${dur} s world time (today ${BASE.ult[hero]} ±10%), peak particles ${r.peak} (≤ 600), afterwards overlays ${after.overlays}, letterbox ${after.letterbox}, hud hidden ${after.hudHidden}, zoom ${after.zoom}, classes ${r.classes.join('')}, cut-ins ${r.cutins.join('/')}`, { ...r, frames: undefined, dur, after, fin: fin ? { ...fin, frames: undefined } : null });
       }
-      if (measure) {
-        const b = stats(r.base), u = stats(r.frames);
-        const ok = u.avg <= 1.5 * b.avg && u.p95 <= 2.5 * b.med && u.max <= 250;
+      if (measure && base?.length && r.frames?.length) {
+        const b = stats(base), u = stats(r.frames);
+        const cb = cpuPerFrame([m0, m1]), cu = r.paused ? cpuPerFrame([m2, m3], [m4, m5]) : cpuPerFrame([m2, m3]);
+        gameplay = { b, cb };
+        const v = ratioStatus({ u, b, cu, cb });
         const slow = await P.page.evaluate(() => window.__fq.slow.splice(0)).catch(() => []);
-        rec('U2', { hero, variant: cid }, timingStatus(ok), `gameplay avg ${b.avg} ms (med ${b.med}), ultimate avg ${u.avg} ms (≤ ${round(1.5 * b.avg)}), p95 ${u.p95} (≤ ${round(2.5 * b.med)}), max ${u.max} (≤ 250), cast at x ${r.at?.px} (camera x ${r.at?.camX}), load ${round(os.loadavg()[0])}`, { base: b, ult: u, at: r.at, slow: slow.slice(0, 40) });
+        rec('U2', { hero, variant: cid }, v.status, `gameplay avg ${b.avg} ms (med ${b.med}), ultimate avg ${u.avg} ms (≤ ${round(1.5 * b.avg)}), p95 ${u.p95} (≤ ${round(2.5 * b.med)}), max ${u.max} (≤ 250); main-thread CPU ${cu ?? '?'} vs ${cb ?? '?'} ms/frame = ×${v.cpuRatio ?? '?'} (≤ 1.5)${v.cpuOk === false ? ' → over budget at any load' : ''}; cast at x ${r.at?.px} (camera x ${r.at?.camX}), load ${round(os.loadavg()[0])}`, { base: b, ult: u, cpu: { base: cb, ult: cu, ratio: v.cpuRatio }, at: r.at, slow: slow.slice(0, 40) });
       }
     }
   }
@@ -1461,12 +1576,26 @@ async function heroSuite(hero, { onlyC2 = false } = {}) {
     const ok = r.tier === 0 && r.castStep != null && r.castStep <= 2 && !r.pushes.includes('awakenCutin') && !r.awakenCast;
     rec('A1', ctx, ok ? 'pass' : 'fail', `tier ${r.tier} with aw 100 / sp 100: ultimate cast ${r.castStep ?? 'never'} step(s) after the press, held 0.6 s; scenes ${r.pushes.join('/') || 'none'}; awakening ${r.awakenCast}`, r);
   });
-  if (wantAny('A2', 'A3', 'A4', 'A6', 'V1')) {
+  if (wantAny('A2', 'A3', 'A4', 'A6', 'V1', 'U2')) {
     const r2 = await run(P, 'A2', ctx, pA2, { cid: c1 }, null);
-    const st = await run(P, 'A2', ctx, pAwakenStart, { key: 'ult', render: wantAny('A6', 'V1'), holdSteps: 30, until: 0.8 }, null);
+    const awRatio = want('U2') && gameplay != null;   // feel §8: 'ultimate or awakening' average vs the gameplay baseline above
+    const mA0 = await mark(P);
+    const st = await run(P, 'A2', ctx, pAwakenStart, { key: 'ult', render: wantAny('A6', 'V1') || awRatio, holdSteps: 30, until: 0.8 }, null);
+    const mA1 = await mark(P);
     if (st?.info && want('V1')) await shot(P, `cutin_${hero}_960`, `${hero} ${c1} cut-in at t = ${st.sceneT} s, vw 960`);
-    const fin = st ? await run(P, 'A4', ctx, pAwakenFinish, { render: want('A6') }, null) : null;
+    const mA2 = await mark(P);
+    const fin = st ? await run(P, 'A4', ctx, pAwakenFinish, { render: want('A6') || awRatio }, null) : null;
+    const mA3 = await mark(P);
     await P.page.evaluate(pAwakenCleanup).catch(() => {});
+    if (awRatio && fin?.frames?.length && st?.info) {
+      // the hold frames before the push are gameplay frames: drop their CPU at the gameplay rate
+      const nAll = mA1.fn - mA0.fn + mA3.fn - mA2.fn, nDrop = Math.max(0, nAll - fin.frames.length);
+      const cAll = mA0.cpu != null && mA1.cpu != null && mA2.cpu != null && mA3.cpu != null ? (mA1.cpu - mA0.cpu + mA3.cpu - mA2.cpu) * 1000 : null;
+      const cu = cAll != null && gameplay.cb != null ? round((cAll - nDrop * gameplay.cb) / fin.frames.length, 2) : null;
+      const b = gameplay.b, u = stats(fin.frames);
+      const v = ratioStatus({ u, b, cu, cb: gameplay.cb });
+      rec('U2', { hero, variant: 'awakening ' + c1 }, v.status, `first awakening (cut-in + director, ${u.n} frames): avg ${u.avg} ms (≤ ${round(1.5 * b.avg)}), p95 ${u.p95} (≤ ${round(2.5 * b.med)}), max ${u.max} (≤ 250) vs gameplay avg ${b.avg} (med ${b.med}); main-thread CPU ${cu ?? '?'} vs ${gameplay.cb ?? '?'} ms/frame = ×${v.cpuRatio ?? '?'} (≤ 1.5)${v.cpuOk === false ? ' → over budget at any load' : ''}; load ${round(os.loadavg()[0])}`, { base: b, awaken: u, cpu: { base: gameplay.cb, awaken: cu, ratio: v.cpuRatio, holdFrames: nDrop } });
+    }
     if (r2 && st && want('A2')) {
       const okTap = !r2.tap.castBeforeRelease && r2.tap.castAfterRelease != null && r2.tap.castAfterRelease <= 2 && !r2.tap.awakenCast && !r2.tap.pushes.includes('awakenCutin');
       const okCancel = r2.cancel.casts === 0 && r2.cancel.pushes === 0 && r2.cancel.sp === 100 && r2.cancel.aw === 100;
@@ -1503,6 +1632,21 @@ async function heroSuite(hero, { onlyC2 = false } = {}) {
     const ok = r.pushed && r.pushAt <= 34 && r.gaits.length === 1 && r.gaits[0] === 'walk' && Math.abs(r.walkAvg - 0.5 * r.B) <= 3;
     rec('A8', ctx, ok ? 'pass' : 'fail', `mocked pad: RT held → awakenCutin at step ${r.pushAt ?? 'never'} (≈ 27–30); axes[0] 0.4 → analog ${round(r.analogX, 2)}, gait ${r.gaits.join('/')}, |vx| ${round(r.walkAvg)} (0.5·B ${round(0.5 * r.B)} ±3)`, r);
   });
+  // ── feel §8 third headless ratio: sprinting through 6 enemies hit at SSS style vs idle-walk ──
+  if (want('U2')) {
+    const sctx = { hero, variant: 'sprint SSS' };
+    if (await run(P, 'U2', sctx, pSprintSSS, { part: 'setup' })) {
+      const s0 = await mark(P); const wk = await run(P, 'U2', sctx, pSprintSSS, { part: 'walk' }); const s1 = await mark(P);
+      await P.page.evaluate(pSprintSSS, { part: 'prep' }).catch(() => {});
+      const s2 = await mark(P); const sp = await run(P, 'U2', sctx, pSprintSSS, { part: 'sprint' }); const s3 = await mark(P);
+      if (wk?.frames?.length && sp?.frames?.length) {
+        const b = stats(wk.frames), u = stats(sp.frames), cb = cpuPerFrame([s0, s1]), cu = cpuPerFrame([s2, s3]);
+        const v = ratioStatus({ u, b, cu, cb, k: 1.2, p95K: null });
+        const scene = sp.targets >= 6 && sp.sprintFrames >= 20 && sp.rankLetter === 'SSS';
+        rec('U2', sctx, scene ? v.status : 'error', `${scene ? '' : 'scenario not reached — '}sprint ${sp.sprintFrames}/${u.n} frames, ${sp.hits} hits on ${sp.targets}/6 enemies at rank ${sp.rankLetter}: avg ${u.avg} ms vs idle-walk avg ${b.avg} ms (≤ ×1.2 = ${round(1.2 * b.avg)}), max ${u.max} (≤ 250); main-thread CPU ${cu ?? '?'} vs ${cb ?? '?'} ms/frame = ×${v.cpuRatio ?? '?'} (≤ 1.2)${v.cpuOk === false ? ' → over budget at any load' : ''}; load ${round(os.loadavg()[0])}`, { walk: b, walkGaits: wk.gaits, sprint: u, cpu: { walk: cb, sprint: cu, ratio: v.cpuRatio }, scene: { ...sp, frames: undefined } });
+      }
+    }
+  }
   await closePage(P);
 }
 

@@ -13,6 +13,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { openEnv, ROOT } from './lib/server.mjs';
+import { VIEWPORTS } from './lib/viewports.mjs';
 import { freeze, step, settle, stepUntil } from './lib/step.mjs';
 import { gotoRoom, waitBakes, enterFight, prepWorld } from './lib/rooms.mjs';
 import { Checks, writeReport, parseFlags, list, QA_DIR } from './lib/report.mjs';
@@ -76,7 +77,13 @@ const frameStats = (s) => s.eval(() => {
 });
 
 /** One shot of the current page: screenshot + flat-frame check. meta.file = owner file for a finding. */
+let CUR_VP = 'desk';
 async function shot(s, shots, label, meta = {}) {
+  // phones: the scripted keyboard input switched the pad to keyboard mode; show the touch pad as a player would see it
+  if (VIEWPORTS[CUR_VP]?.touch) {
+    await s.eval(() => { const g = window.__game; g.input?.setMode?.('touch'); window.__qaStep(1, true); }).catch(() => {});
+    await s.wait(150);
+  }
   const st = await frameStats(s).catch(() => ({ mean: -1, sd: -1 }));
   const buf = await s.page.screenshot({ type: 'jpeg', quality: 70 });
   const blank = st.sd >= 0 && st.sd < (meta.flatOk ? 0 : 3.5);
@@ -350,8 +357,12 @@ const GROUP_FNS = {
       await s.eval(() => { const w = window.__game.world; w.run.sp = 100; w.run.aw = 100; if (w.combo) { w.combo.n = 42; w.combo.t = 3; } w.player.hp = Math.ceil((w.player.stats?.hp ?? 100) * 0.3); });
       await play(s, 30, 'if (i % 8 === 0) key("KeyX", true); if (i % 8 === 3) key("KeyX", false); if (p) p.buffs.invincible = 9999;');
       await shot(s, shots, 'hud full gauges + combo', { file: 'src/render/feel_hud.js' });
-      await play(s, 75, `if (p) p.buffs.invincible = 9999; if (i === 0) key('KeyR', true); if (i === 3) key('KeyR', false);`);
-      await shot(s, shots, 'hud mounted', { file: 'src/render/companion_hud.js' });
+      // R through the real keyboard (like tools/qa/platform_bind.mjs), 4 frames held
+      await s.page.keyboard.down('KeyR'); await step(s.page, 4, false); await s.page.keyboard.up('KeyR');
+      await play(s, 75, 'if (p) p.buffs.invincible = 9999;');
+      await s.wait(700); await waitBakes(s, 3000); await play(s, 20, 'if (p) p.buffs.invincible = 9999;');   // painted mount atlas loads in real time
+      const rode = await s.eval(() => ['riding', 'summoning'].includes(window.__game.world?.player?.mount?.state));
+      await shot(s, shots, `hud mounted${rode ? '' : ' (mount did not happen)'}`, { file: 'src/render/companion_hud.js' });
     } catch (e) { harness.push(String(e?.message || e).split('\n')[0]); }
     await sheet(env, `hud_${vp}`, `HUD matrix (${vp})`, shots, tileOf(vp));
     closeGroup('hud', vp, s, shots, harness);
@@ -394,6 +405,7 @@ try {
     const vps = group === 'cutins' ? [...new Set([...VPS, ...(QUICK ? [] : ['w960'])])] : group === 'hud' && !args.vp ? ['desk', 'phone1', 'phone2', 'tablet'] : VPS;
     for (const vp of vps) {
       const t = Date.now();
+      CUR_VP = vp;
       try { await GROUP_FNS[group](env, vp); } catch (e) { C.add(`${group}.${vp}.harness`, 'error', String(e?.message || e).split('\n')[0]); }
       console.log(`${group} ${vp}: ${((Date.now() - t) / 1000).toFixed(0)} s`);
       await env.closeSessions();

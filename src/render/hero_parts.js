@@ -29,6 +29,16 @@ function memo(k, f) {
   if (v === undefined) { if (CC.size > 8000) CC.clear(); v = f(); CC.set(k, v); }
   return v;
 }
+// 그라디언트 캐시 (QA-TOOLS #341: 영웅 몸 음영이 프레임마다 새 그라디언트를 만들어 저사양 예산을 넘겼다).
+// CanvasGradient 좌표는 채울 때의 사용자 좌표계로 해석되므로 (지역 좌표, 색) 이 같으면 어느 캔버스·변환에서도 다시 쓸 수 있다.
+// 좌표는 0.5 단위로 맞춘다(논리 px 0.25 이하 차이 — 눈에 안 보임). 가득 차면 통째로 비운다
+const GRC = new Map();
+const q2 = (v) => Math.round(v * 2) / 2;
+function gradMemo(k, f) {
+  let g = GRC.get(k);
+  if (g === undefined) { if (GRC.size > 600) GRC.clear(); g = f(); GRC.set(k, g); }
+  return g;
+}
 export const isHex = (c) => typeof c === 'string' && c.charCodeAt(0) === 35 && (c.length === 7 || c.length === 4);
 /** 밝기 조정 (-1 검정 ~ +1 흰색) */
 export function sh(c, a) { return isHex(c) ? memo('s' + c + a, () => shade(c, a)) : c; }
@@ -51,14 +61,18 @@ export const F = (col) => G.tint || col;
 export function grad(x0, y0, x1, y1, base, k = 1) {
   if (G.tint) return G.tint;
   if (!isHex(base)) return base;
-  const g = G.c.createLinearGradient(x0, y0, x1, y1);
-  const L = lum(base);
-  g.addColorStop(0, mx(base, RIM, Math.round((0.3 + (1 - L) * 0.32) * 20) / 20));
-  g.addColorStop(0.17, sh(base, -0.2 * k));
-  g.addColorStop(0.52, base);
-  g.addColorStop(0.8, mx(base, KEY, 0.18));
-  g.addColorStop(1, sh(base, -0.42 * k));
-  return g;
+  x0 = q2(x0); y0 = q2(y0); x1 = q2(x1); y1 = q2(y1);
+  if (x0 === x1) x0 = x1 = 0; else if (y0 === y1) y0 = y1 = 0;   // 수직·수평 그라디언트는 다른 축 위치와 무관
+  return gradMemo('g' + base + k + ',' + x0 + ',' + y0 + ',' + x1 + ',' + y1, () => {
+    const g = G.c.createLinearGradient(x0, y0, x1, y1);
+    const L = lum(base);
+    g.addColorStop(0, mx(base, RIM, Math.round((0.3 + (1 - L) * 0.32) * 20) / 20));
+    g.addColorStop(0.17, sh(base, -0.2 * k));
+    g.addColorStop(0.52, base);
+    g.addColorStop(0.8, mx(base, KEY, 0.18));
+    g.addColorStop(1, sh(base, -0.42 * k));
+    return g;
+  });
 }
 export function outline(base, w = G.olw) {
   if (G.tint || G.pass === 2) return;
@@ -101,8 +115,12 @@ export function ellipse(x, y, rx, ry, rot = 0) {
 export function glow(x, y, r, col, a = 1) {
   if (G.tint || !G.fx || a <= 0.01) return;
   const c = G.c;
-  const g = c.createRadialGradient(x, y, 0, x, y, r);
-  g.addColorStop(0, ra(col, a)); g.addColorStop(0.4, ra(col, a * 0.35)); g.addColorStop(1, ra(col, 0));
+  x = q2(x); y = q2(y); r = Math.max(0.5, q2(r)); a = Math.round(a * 20) / 20;
+  const g = gradMemo('w' + col + a + ',' + x + ',' + y + ',' + r, () => {
+    const g = c.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, ra(col, a)); g.addColorStop(0.4, ra(col, a * 0.35)); g.addColorStop(1, ra(col, 0));
+    return g;
+  });
   const op = c.globalCompositeOperation;
   c.globalCompositeOperation = 'lighter';
   c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2);
@@ -183,9 +201,12 @@ function roundRectPath(c, x, y, w, h, r) {
 function fillOl(col, k = 1) { const c = G.c; c.fillStyle = F(col); c.fill(); outline(col, G.olw * k); }
 function metalGradY(y0, y1, col) {
   if (G.tint) return G.tint;
-  const g = G.c.createLinearGradient(0, y0, 0, y1);
-  g.addColorStop(0, sh(col, 0.6)); g.addColorStop(0.42, sh(col, 0.12)); g.addColorStop(0.55, sh(col, -0.22)); g.addColorStop(1, sh(col, -0.5));
-  return g;
+  y0 = q2(y0); y1 = q2(y1);
+  return gradMemo('m' + col + ',' + y0 + ',' + y1, () => {
+    const g = G.c.createLinearGradient(0, y0, 0, y1);
+    g.addColorStop(0, sh(col, 0.6)); g.addColorStop(0.42, sh(col, 0.12)); g.addColorStop(0.55, sh(col, -0.22)); g.addColorStop(1, sh(col, -0.5));
+    return g;
+  });
 }
 function gem(x, y, r, col) {
   const c = G.c;
@@ -238,9 +259,13 @@ function blade(W, L, hw, b0, kind) {
   }
   c.closePath();
   if (G.tint) { c.fillStyle = G.tint; c.fill(); return; }
-  const g = c.createLinearGradient(0, -hw, 0, hw);
-  g.addColorStop(0, sh(col, 0.62)); g.addColorStop(0.44, sh(col, 0.18)); g.addColorStop(0.52, sh(col, -0.18)); g.addColorStop(1, sh(col, -0.52));
-  c.fillStyle = g; c.fill(); outline(col, G.olw * 0.9);
+  const hq = q2(hw);
+  c.fillStyle = gradMemo('b' + col + ',' + hq, () => {
+    const g = c.createLinearGradient(0, -hq, 0, hq);
+    g.addColorStop(0, sh(col, 0.62)); g.addColorStop(0.44, sh(col, 0.18)); g.addColorStop(0.52, sh(col, -0.18)); g.addColorStop(1, sh(col, -0.52));
+    return g;
+  });
+  c.fill(); outline(col, G.olw * 0.9);
   // 풀러(홈) / 룬
   if (s === 2 || s === 3 || s === 5 || (kind === 'great' && s !== 4)) {
     c.strokeStyle = ra(sh(col, -0.45), 0.8); c.lineWidth = hw * 0.32;
