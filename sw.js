@@ -104,11 +104,11 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(codeFetch(event, req, rel));
 });
 
-// 페이지 이동: 네트워크 우선 (3초), 안 되면 캐시한 index.html
+// 페이지 이동: 네트워크 우선 (배포 빌드는 3초, 개발용은 기다린다), 안 되면 캐시한 index.html
 async function navigate(event) {
   const req = event.request;
   const net = fetch(req).catch(() => null);
-  const res = await Promise.race([net, sleep(NAV_TIMEOUT_MS).then(() => undefined)]);
+  const res = BUILD ? await Promise.race([net, sleep(NAV_TIMEOUT_MS).then(() => undefined)]) : await net;
   if (res && (res.ok || res.status < 500)) {
     // 개발용 워커: 받은 index.html 을 오프라인 대비로 둔다 (배포 빌드는 미리 받은 이 빌드의 index.html 만 쓴다)
     if (!BUILD && res.ok && res.status === 200 && res.type === 'basic') {

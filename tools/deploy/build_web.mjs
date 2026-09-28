@@ -300,17 +300,22 @@ export async function buildWeb(o = {}) {
     // ── 7. Netlify 업로드 묶음 ──
     if (opts.deployBundle) {
       t = Date.now();
-      report.deploy = makeDeployBundle(SRC, OUT, path.join(path.dirname(OUT), 'deploy'), opts, warn);
+      report.deploy = makeDeployBundle(SRC, OUT, deployDirFor(OUT), opts, warn);
       lap('deploy', t);
     }
   } catch (e) {
     rmrf(OUT); // 실패한 빌드는 남기지 않는다
-    if (opts.deployBundle) rmrf(path.join(path.dirname(OUT), 'deploy'));
+    if (opts.deployBundle) rmrf(deployDirFor(OUT));
     throw e;
   }
   report.ok = true;
   report.timings.total = Date.now() - t0;
   return report;
+}
+
+/** 업로드 묶음 폴더: dist/web → dist/deploy, 그 밖의 --out X → X-deploy */
+function deployDirFor(OUT) {
+  return path.resolve(OUT) === path.join(ROOT, 'dist/web') ? path.join(ROOT, 'dist/deploy') : path.resolve(OUT) + '-deploy';
 }
 
 function denyCheck(OUT, report) {
@@ -541,9 +546,9 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       allowFontGaps: !!a['allow-font-gaps'], validate: !a['skip-validate'],
       apk: a['no-apk'] ? false : a.apk || undefined, deployBundle: !a['no-deploy-bundle'], strict: !!a.strict, quiet: !!a.quiet,
     });
-    const rp = path.join(ROOT, 'dist/build_web_report.json');
+    const rp = path.resolve(rep.out ? path.join(ROOT, rep.out) : path.join(ROOT, 'dist/web')) === path.join(ROOT, 'dist/web') ? path.join(ROOT, 'dist/build_web_report.json') : path.join(ROOT, rep.out + '-report.json');
     fs.writeFileSync(rp, JSON.stringify(rep, null, 1) + '\n');
-    console.log(`빌드 완료: ${rep.out} (${rep.version}, bn-${rep.buildHash}) — 경고 ${rep.warnings.length}개, ${(rep.timings.total / 1000).toFixed(1)}초. 보고: dist/build_web_report.json`);
+    console.log(`빌드 완료: ${rep.out} (${rep.version}, bn-${rep.buildHash}) — 경고 ${rep.warnings.length}개, ${(rep.timings.total / 1000).toFixed(1)}초. 보고: ${path.relative(ROOT, rp)}`);
     process.exit(0);
   } catch (e) {
     console.error(e instanceof BuildError ? `빌드 실패: ${e.message}` : e.stack || e);

@@ -134,8 +134,8 @@ export async function smoke(base, { browser = true, apk = true, api = true, quie
     if (!/javascript/.test(hdr(res, 'content-type'))) miss.push('content-type ' + hdr(res, 'content-type'));
     if (/src\/bundle\//.test(main) && !/immutable/.test(hdr(res, 'cache-control'))) miss.push('Cache-Control ' + hdr(res, 'cache-control'));
     if (!/br|gzip/.test(hdr(res, 'content-encoding'))) miss.push('압축 없음 (' + (hdr(res, 'content-encoding') || '-') + ')');
-    const pre = /<link rel="modulepreload" href="([^"]+)"/.exec(html)?.[1];
-    if (pre !== main) miss.push('modulepreload');
+    const pre = [...html.matchAll(/<link rel="modulepreload" href="([^"]+)"/g)].map((x) => x[1]);
+    if (!pre.includes(main)) miss.push('modulepreload');
     return { pass: !miss.length, detail: miss.length ? miss.join(', ') : `${main} (${hdr(res, 'content-encoding')})` };
   });
   await check('http.assets', '그림·매니페스트·robots', async () => {
