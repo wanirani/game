@@ -848,9 +848,11 @@
     "sheet": "lia/lia_assassin_q3f",
     "views": [
      "y135"
-    ]
+    ],
+    "deshadow": true
    }
   ],
-  "_whyQ3f": "ART-HERO-B: turn5 의 2번째 인물(3/4 앞)이 정면에서 15~20°만 돌아 정면과 거의 같음 → 한 장짜리 3/4 앞(q3f, 클링 img2img) 로 y135 교체. extra 는 직업 파일에서 덮어쓰므로 상속되지 않음(다른 직업은 자기 extra 또는 turn5 의 y135)"
+  "_whyQ3f": "ART-HERO-B: turn5 의 2번째 인물(3/4 앞)이 정면에서 15~20°만 돌아 정면과 거의 같음 → 한 장짜리 3/4 앞(q3f, 클링 img2img) 로 y135 교체. extra 는 직업 파일에서 덮어쓰므로 상속되지 않음(다른 직업은 자기 extra 또는 turn5 의 y135)",
+  "_whyDeshadow": "ART-HERO-B: 한 장짜리 재생성본은 발밑 바닥 그림자까지 rembg 가 인물로 잡는다 → build_turn deshadow(floor_shadow) 로 지움"
  }
 }

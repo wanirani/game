@@ -294,7 +294,8 @@
     "sheet": "victor/victor_phantom_q3f",
     "views": [
      "y135"
-    ]
+    ],
+    "deshadow": true
    },
    {
     "sheet": "victor/victor_phantom_q3b",
@@ -307,6 +308,7 @@
    "T": 18,
    "frac": 0.55,
    "min": 30
-  }
+  },
+  "_whyDeshadow": "ART-HERO-B: 한 장짜리 재생성본은 발밑 바닥 그림자까지 rembg 가 인물로 잡는다 → build_turn deshadow(floor_shadow) 로 지움"
  }
 }

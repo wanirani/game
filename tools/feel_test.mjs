@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Feel acceptance harness (FEEL-QA) — docs/specs/feel.md §10, MASTER_PLAN §5.1 "runtime feel".
 //
-//   node tools/feel_test.mjs                    all checks, 6 heroes (≈ 15–25 min on a loaded machine)
+//   node tools/feel_test.mjs                    all checks, 6 heroes (≈ 4–8 min; stepped, so load mostly stretches the timing checks)
 //   node tools/feel_test.mjs --quick            kael + lia only for the per-hero checks, one boss hero
 //   node tools/feel_test.mjs --only M,C5,A      run only these ids or groups (M1…M6 C1…C15 U1 U2 A1…A8 V1 X1…X3 I1 R183)
 //   node tools/feel_test.mjs --heroes kael,bran --out /tmp/x
@@ -83,7 +83,9 @@ const BUCKET = {
   A7: 'FIX-PLATFORM (src/core/touchpad.js) / FIX-HUD (src/render/hud_layout.js)',
   A8: 'FIX-PLATFORM (src/core/input.js)',
   X: 'FIX-COMPANIONS (src/game/companions.js, src/game/mount.js, src/game/guardian*.js)',
-  I1: 'FIX-ENGINE (src/game/world.js — window.__feelStats, feel §8)',
+  U2: 'FIX-RENDER (src/render/tiles.js chunk blits under an ultimate mid-room; src/render/ultfx.js)',
+  A6: 'FIX-RENDER (first-awakening frame cost: src/scenes/awaken_cutin.js bake, src/render/ultfx.js)',
+  I1: 'FIX-PLATFORM (src/core/game.js publishes window.__feelStats per frame; counters in particles.js, hitfx.js, hero.js, audio.js — feel §8)',
   R183: 'FIX-PLATFORM (src/core/game.js syncPad)',
   V: 'FIX-SCENES-A (src/scenes/awaken_cutin.js) / FIX-ASSETS (assets/cg/cutin_*.webp)',
 };
@@ -344,8 +346,9 @@ async function pM3({ hero }) {
   Q.key('right'); Q.step(10); Q.key('dash'); Q.step(2); Q.key('dash', false);
   Q.until(() => p.dashT <= 0, 40);
   reach = -1; maxV = 0;
-  Q.step(40, (i) => { if (reach < 0 && p.sprinting && Math.abs(Math.abs(p.vx) - kB) <= 3) reach = i + 1; maxV = Math.max(maxV, Math.abs(p.vx)); });
-  out.chain = { reachSteps: reach, reachT: reach > 0 ? +(reach / 60).toFixed(3) : null, sprinting: p.sprinting, maxV };
+  const exitV = Math.abs(p.vx);   // the dash's own exit speed (sera's blink ends faster than k·B) — M3 judges the sprint once reached
+  Q.step(40, (i) => { if (reach < 0 && p.sprinting && Math.abs(Math.abs(p.vx) - kB) <= 3) reach = i + 1; if (reach > 0) maxV = Math.max(maxV, Math.abs(p.vx)); });
+  out.chain = { reachSteps: reach, reachT: reach > 0 ? +(reach / 60).toFixed(3) : null, sprinting: p.sprinting, maxV, exitV };
   Q.key('right', false);
   // (c) a second tap later than 0.24 s does not sprint
   Q.reset(Q.fl.x0 + 30);
@@ -1325,7 +1328,7 @@ async function heroSuite(hero, { onlyC2 = false } = {}) {
     const okTap = r.tap.reachSteps > 0 && r.tap.reachSteps <= 15 && r.tap.maxV <= r.kB + 3;
     const okChain = r.chain.reachSteps > 0 && r.chain.reachSteps <= 15 && r.chain.maxV <= r.kB + 3;
     const okLate = !r.late.sprinted;
-    rec('M3', ctx, okTap && okChain && okLate ? 'pass' : 'fail', `k·B ${round(r.kB)}: double tap ${r.tap.reachT ?? 'never'} s (max ${round(r.tap.maxV)}), dash chain ${r.chain.reachT ?? 'never'} s (max ${round(r.chain.maxV)}), late tap sprinted=${r.late.sprinted}`, r);
+    rec('M3', ctx, okTap && okChain && okLate ? 'pass' : 'fail', `k·B ${round(r.kB)}: double tap ${r.tap.reachT ?? 'never'} s (max ${round(r.tap.maxV)}), dash chain ${r.chain.reachT ?? 'never'} s (dash exit ${round(r.chain.exitV)}, max after ${round(r.chain.maxV)}), late tap sprinted=${r.late.sprinted}`, r);
   });
   if (want('M4')) await run(P, 'M4', ctx, pM4, { hero }, (r) => {
     const okRun = r.run.slide >= 17 && r.run.slide <= 26 && r.run.skidT >= 0.14 && r.run.skidT <= 0.24;
@@ -1593,11 +1596,31 @@ async function companionSuite() {
 }
 
 // ───────────────────────── V1 at vw 1280 ─────────────────────────
+/** V1 on a fresh page: switch to the class, let handleUltInput call prepareAwakening, then wait (real time) for the cut-in CG
+ *  to load and the idle-time bake (brush font + band) — in play this happens long before the gauge fills */
+async function pPrepAwaken({ cid, waitMs = 3500 }) {
+  const Q = window.__fq, p = Q.p();
+  Q.reset();
+  Q.setClass(cid);
+  Q.step(3);
+  const a = Q.AWD.AWAKEN?.[p.hero.charId];
+  const t0 = Q.realNow();
+  let img = null;
+  while (Q.realNow() - t0 < 10000) {
+    img = a ? Q.assets.get(a.cutin) : null;
+    if (img && (img.naturalWidth || img.width)) break;
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  await new Promise((r) => setTimeout(r, waitMs));   // prepareCutin bakes in requestIdleCallback (timeout 2.5 s)
+  return { cid, cutin: a?.cutin ?? null, loaded: !!(img && (img.naturalWidth || img.width)), waitedMs: Math.round(Q.realNow() - t0) };
+}
+
 async function wideSuite(hero) {
   const [, c1, c2] = CLASS_PICK[hero];
   const P = await openPage('wide_' + hero, `index.html?scene=stage&stage=s04&char=${hero}`, { viewport: { width: 1280, height: 540 } });
   if (P.fatal) { rec('V1', { hero, variant: 'vw1280' }, 'error', 'page did not start: ' + P.fatal); await closePage(P); return; }
   await P.page.evaluate(() => window.__fq.setup({ transitioning: false }));
+  const prep = await run(P, 'V1', { hero, variant: 'vw1280' }, pPrepAwaken, { cid: c2 }, null);
   const st = await run(P, 'V1', { hero, variant: 'vw1280' }, pAwakenStart, { cid: c2, key: 'ult', render: true, holdSteps: 30, until: 0.8 }, null);
   if (st?.info) await shot(P, `cutin_${hero}_1280`, `${hero} ${c2} cut-in at t = ${st.sceneT} s, vw 1280`);
   await run(P, 'V1', { hero, variant: 'vw1280' }, pAwakenFinish, { render: false }, null);
@@ -1606,8 +1629,8 @@ async function wideSuite(hero) {
   if (u?.paused) { await shot(P, `ult_final_${hero}_1280`, `${hero} ${c1} ultimate final frame, vw 1280`); await P.page.evaluate(pUltFinish, { measureFrames: false }).catch(() => {}); }
   await P.page.evaluate(pUltAfter).catch(() => {});
   const view = await P.page.evaluate(() => [window.__game.viewW, window.__game.viewH]);
-  const brush = await P.page.evaluate(async () => { const { FONT } = await import('/src/core/ui.js'); const f = FONT.brush; try { return { family: f, ok: document.fonts.check(`40px ${f}`, '각성') }; } catch (e) { return { family: f, ok: false, err: String(e) }; } });
-  report.pages.push({ key: 'wide_view_' + hero, view, brush, cutin: st?.info ?? null });
+  const brush = await P.page.evaluate(async () => { const { FONT } = await import('/src/core/ui.js'); const f = FONT.brush, first = String(f).split(',')[0].trim(); try { return { family: f, first, ok: document.fonts.check(`40px ${first}`, '각성') }; } catch (e) { return { family: f, ok: false, err: String(e) }; } });
+  report.pages.push({ key: 'wide_view_' + hero, view, brush, prep, cutin: st?.info ?? null });
   await closePage(P);
 }
 

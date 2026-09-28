@@ -1120,7 +1120,8 @@
     "sheet": "sera/sera_exorcist_q3f",
     "views": [
      "y135"
-    ]
+    ],
+    "deshadow": true
    },
    {
     "sheet": "sera/sera_exorcist_q3b",
@@ -1128,6 +1129,7 @@
      "ym135"
     ]
    }
-  ]
+  ],
+  "_whyDeshadow": "ART-HERO-B: 한 장짜리 재생성본은 발밑 바닥 그림자까지 rembg 가 인물로 잡는다 → build_turn deshadow(floor_shadow) 로 지움"
  }
 }

@@ -542,7 +542,8 @@
     "sheet": "azel/azel_holyblade_q3f",
     "views": [
      "y135"
-    ]
+    ],
+    "deshadow": true
    },
    {
     "sheet": "azel/azel_holyblade_q3b",
@@ -552,7 +553,8 @@
    }
   ],
   "pockets": null,
-  "_q3b": "heroes3rev: 옛 qback 두 인물이 모두 정면 뒷모습(좌우 대칭)이라 −45/−90/−135 가 같은 그림이었다 → 한 장짜리 3/4 뒤(q3b, 왼쪽으로 돌아섬) = ym135, ym45 는 거울상, qback 라벨은 \"-\""
+  "_q3b": "heroes3rev: 옛 qback 두 인물이 모두 정면 뒷모습(좌우 대칭)이라 −45/−90/−135 가 같은 그림이었다 → 한 장짜리 3/4 뒤(q3b, 왼쪽으로 돌아섬) = ym135, ym45 는 거울상, qback 라벨은 \"-\"",
+  "_whyDeshadow": "ART-HERO-B: 한 장짜리 재생성본은 발밑 바닥 그림자까지 rembg 가 인물로 잡는다 → build_turn deshadow(floor_shadow) 로 지움"
  },
  "_ponyCut": "heroes3rev: 포니테일 영역에 겹친 견갑 조각(원화에서 머리카락 앞) — 없으면 머리가 흔들릴 때 견갑 조각이 머리카락과 함께 움직였다. 자동 = pony 영역 안의 채도>0.28 또는 밝기<70 조각(팽창 9px), 수동 = 판금 가장자리 띠. build_rig 가 포니테일에서 빼고 몸통·어깨 덮개에 두며, 그 뒤 머리카락은 인페인트"
 }

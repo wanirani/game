@@ -284,7 +284,7 @@
   "sheet5": "sera/sera_elementalist_turn5",
   "views5": [
    "y90",
-   "y135",
+   "-",
    "y180",
    "ym90",
    "-"
@@ -297,7 +297,18 @@
    "T": 18,
    "frac": 0.55,
    "min": 30
-  }
+  },
+  "extra": [
+   {
+    "sheet": "sera/sera_elementalist_q3f",
+    "views": [
+     "y135"
+    ],
+    "deshadow": true
+   }
+  ],
+  "_whyQ3f": "ART-HERO-B: turn5 의 3/4 앞 인물이 정면에서 15~25°만 돌아 정면과 거의 같음 → 한 장짜리 3/4 앞(q3f, 클링 img2img) 로 y135 교체",
+  "_whyDeshadow": "ART-HERO-B: 한 장짜리 재생성본은 발밑 바닥 그림자까지 rembg 가 인물로 잡는다 → build_turn deshadow(floor_shadow) 로 지움"
  },
  "legs": {
   "pantsWarmMax": null

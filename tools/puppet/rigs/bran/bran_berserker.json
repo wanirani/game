@@ -94,7 +94,7 @@
   "sheet5": "bran/bran_berserker_turn5",
   "views5": [
    "y90",
-   "y135",
+   "-",
    "y180",
    "ym90",
    "-"
@@ -104,6 +104,17 @@
    "-",
    "ym135"
   ],
-  "fixups": null
+  "fixups": null,
+  "extra": [
+   {
+    "sheet": "bran/bran_berserker_q3f",
+    "views": [
+     "y135"
+    ],
+    "deshadow": true
+   }
+  ],
+  "_whyQ3f": "ART-HERO-B: turn5 의 3/4 앞이 정면과 거의 같고, 첫 재생성은 다시 정면/걷는 자세 → 같은 영웅의 좋은 q3f 를 자세 참조로 준 재생성본을 씀",
+  "_whyDeshadow": "ART-HERO-B: 한 장짜리 재생성본은 발밑 바닥 그림자까지 rembg 가 인물로 잡는다 → build_turn deshadow(floor_shadow) 로 지움"
  }
 }

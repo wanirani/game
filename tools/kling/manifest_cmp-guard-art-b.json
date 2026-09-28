@@ -136,5 +136,21 @@
    "prompt": "EXTRAS.reaper_edit in tools/painted/prompts/cmp-guard-art-b.mjs",
    "decision": "kept #1 as src/gd_reaper_edit.webp (floating smoky robe, empty fists in front; the reaper actually faces LEFT in the ref -> flipX in parts.json); #0 rejected (feet on the ground instead of smoke)"
   }
- ]
+ ],
+ "creditsUsed": 44,
+ "usage": "22 images x 2 credits = 44 of the 200-credit cap: 5 references (2 images each = 20), 5 parts sheets (20), 1 Step-4 edit (reaper_edit, 4). No other Kling calls.",
+ "derived": [
+  {
+   "file": "tools/painted/companions/gd_momo/src/gd_momo_cloud.webp",
+   "from": "gd_momo_sheet0.webp crop (1250,1120)-(2320,1630)",
+   "why": "rembg keeps only the tapir on the full sheet; the cropped cloud alone is soft-matted (no new generation)"
+  }
+ ],
+ "used": {
+  "gd_clock": "sheet0 (body + umbrella arm), sheet1 (key, gear)",
+  "gd_reaper": "edit (body + fists, flipX so the skull faces travel), sheet1 (scythe, lantern, ledger)",
+  "gd_mirra": "sheet0 floating girl (body, mirror forearm, crystal wing, shards)",
+  "gd_lumen": "sheet1 full jellyfish (bell + lantern, tentacles/oral arms)",
+  "gd_momo": "ref (body, trunk, tail), sheet0 cloud crop"
+ }
 }

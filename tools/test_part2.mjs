@@ -1107,7 +1107,10 @@ async function perfGroup() {
     try {
       P = await openPage(`index.html?scene=stage&stage=${sid}&room=${rid}`, { ready: 'stage', god: 'full' });
       const e0 = P.errs.length;
-      for (let attempt = 0; attempt < 2; attempt++) {
+      // 실제 시간 측정이라 다른 프로세스가 CPU 를 잠깐 차지하면 튄다 (부하 20 대 4코어에서 2.8 ms → 29 ms 관찰).
+      // 최대 4번 재어 가장 좋은 값을 쓰고, 예산 안이면 바로 멈춘다 — 진짜 회귀는 네 번 모두 넘는다.
+      const attempts = [];
+      for (let attempt = 0; attempt < 4 && !(best && best.avg <= 10); attempt++) {
         const r = await P.page.evaluate(() => {
           const T = window.__T, g = T.g, w = T.w();
           g.settings.quality = 'medium'; g.resize?.();
@@ -1126,10 +1129,11 @@ async function perfGroup() {
           return { upd: T.pf.u / 300, ren: T.pf.r / 300, tier: g.tier, quality: w.qualityNow?.(), room: w.roomId };
         });
         r.avg = r.upd + r.ren;
+        attempts.push(Math.round(r.avg * 100) / 100);
         if (!best || r.avg < best.avg) best = r;
       }
       const fix = (v) => Math.round(v * 100) / 100;
-      check(G, `${sid} ${rid} (medium): world.update + world.render 평균 ≤ 10 ms`, best.avg <= 10 && !errsSince(P, e0).length, { avg: fix(best.avg), upd: fix(best.upd), ren: fix(best.ren), tier: best.tier, quality: best.quality, errs: errsSince(P, e0) });
+      check(G, `${sid} ${rid} (medium): world.update + world.render 평균 ≤ 10 ms`, best.avg <= 10 && !errsSince(P, e0).length, { avg: fix(best.avg), upd: fix(best.upd), ren: fix(best.ren), attempts, tier: best.tier, quality: best.quality, errs: errsSince(P, e0) });
       console.log(`  · ${sid} ${rid}: update ${fix(best.upd)} ms + render ${fix(best.ren)} ms = ${fix(best.avg)} ms (tier ${best.tier})`);
     } catch (e) { check(G, `${sid} 성능 실행`, false, e.stack); }
     await P?.close();

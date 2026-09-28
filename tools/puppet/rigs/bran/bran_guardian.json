@@ -114,7 +114,7 @@
   "sheet5": "bran/bran_guardian_turn5",
   "views5": [
    "y90",
-   "y135",
+   "-",
    "y180",
    "ym90",
    "-"
@@ -131,9 +131,19 @@
     "views": [
      "ym135"
     ],
-    "pockets": null
+    "pockets": null,
+    "deshadow": true
+   },
+   {
+    "sheet": "bran/bran_guardian_q3f",
+    "views": [
+     "y135"
+    ],
+    "deshadow": true
    }
   ],
-  "_whyQ3b": "ART-HERO-B: qback 두 인물 모두 좌우 대칭 정면 뒷모습 → 한 장짜리 3/4 뒤(q3b, 클링 img2img: 뒷모습 크롭을 1번 입력) 로 ym135 교체. 흰 판금이라 pockets 끔"
+  "_whyQ3b": "ART-HERO-B: qback 두 인물 모두 좌우 대칭 정면 뒷모습 → 한 장짜리 3/4 뒤(q3b, 클링 img2img: 뒷모습 크롭을 1번 입력) 로 ym135 교체. 흰 판금이라 pockets 끔",
+  "_whyQ3f": "ART-HERO-B: turn5 의 3/4 앞 인물이 정면에서 15~25°만 돌아 정면과 거의 같음 → 한 장짜리 3/4 앞(q3f, 클링 img2img) 로 y135 교체",
+  "_whyDeshadow": "ART-HERO-B: 한 장짜리 재생성본은 발밑 바닥 그림자까지 rembg 가 인물로 잡는다 → build_turn deshadow(floor_shadow) 로 지움"
  }
 }

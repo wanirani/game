@@ -118,7 +118,7 @@
   "sheet5": "bran/bran_crusader_turn5",
   "views5": [
    "y90",
-   "y135",
+   "-",
    "y180",
    "ym90",
    "-"
@@ -129,6 +129,17 @@
    "ym135"
   ],
   "fixups": null,
-  "_whyQ": "리뷰(heroes2rev): 왼쪽 인물은 수염·귀가 오른쪽(화면)에 보여 오른쪽으로 돌아선 3/4 뒤(ym45), 오른쪽 인물은 왼쪽으로 돌아섬(ym135). 예전 라벨은 반대라 −45°/−135° 에서 머리가 거꾸로 돌았다"
+  "_whyQ": "리뷰(heroes2rev): 왼쪽 인물은 수염·귀가 오른쪽(화면)에 보여 오른쪽으로 돌아선 3/4 뒤(ym45), 오른쪽 인물은 왼쪽으로 돌아섬(ym135). 예전 라벨은 반대라 −45°/−135° 에서 머리가 거꾸로 돌았다",
+  "extra": [
+   {
+    "sheet": "bran/bran_crusader_q3f",
+    "views": [
+     "y135"
+    ],
+    "deshadow": true
+   }
+  ],
+  "_whyQ3f": "ART-HERO-B: turn5 의 3/4 앞 인물이 정면에서 15~25°만 돌아 정면과 거의 같음 → 한 장짜리 3/4 앞(q3f, 클링 img2img) 로 y135 교체",
+  "_whyDeshadow": "ART-HERO-B: 한 장짜리 재생성본은 발밑 바닥 그림자까지 rembg 가 인물로 잡는다 → build_turn deshadow(floor_shadow) 로 지움"
  }
 }

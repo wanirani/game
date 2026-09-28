@@ -128,10 +128,12 @@
     "views": [
      "-",
      "y135"
-    ]
+    ],
+    "deshadow": true
    }
   ],
   "_whyQ": "리뷰(heroes2rev): 예전 qback 은 왼쪽=앞모습, 오른쪽=대칭 정면 뒷모습 → 한 장짜리 3/4 뒤 재생성(q3b, 왼쪽으로 돌아섬) → ym135",
-  "_whyQ3f": "ART-HERO-B: turn5 의 3/4 앞이 거의 정면 → q3f(클링, 두 인물: 왼쪽 거의 정면 버림, 오른쪽 3/4 앞 채택) 로 y135 교체"
+  "_whyQ3f": "ART-HERO-B: turn5 의 3/4 앞이 거의 정면 → q3f(클링, 두 인물: 왼쪽 거의 정면 버림, 오른쪽 3/4 앞 채택) 로 y135 교체",
+  "_whyDeshadow": "ART-HERO-B: 한 장짜리 재생성본은 발밑 바닥 그림자까지 rembg 가 인물로 잡는다 → build_turn deshadow(floor_shadow) 로 지움"
  }
 }

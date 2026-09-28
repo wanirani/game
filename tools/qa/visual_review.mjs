@@ -370,12 +370,13 @@ const GROUP_FNS = {
         s = await env.page(VPOPT(vp), `tools/${f}`, { wait: false });   // galleries have no window.__game
         await s.page.waitForLoadState('load');
         await s.wait(QUICK ? 1500 : 3000);
-        const buf = await s.page.screenshot({ type: 'jpeg', quality: 70 });
+        // a very tall single-canvas gallery (gallery_items) can make the screenshot slow on this box: no tile then
+        const buf = await s.page.screenshot({ type: 'jpeg', quality: 70, timeout: 90000 }).catch(() => null);
         const drawn = await s.eval(() => [...document.querySelectorAll('canvas')].filter((c) => c.width > 8 && c.height > 8).length);
         const errs = [...new Set(s.errs)];
         for (const e of errs) errsAll.push(`${f}: ${e}`);
-        shots.push({ label: `${f}${errs.length ? ` (${errs.length} error(s))` : ''}`, img: buf.toString('base64'), blank: false, err: errs.length ? 'errors' : '', file: `tools/${f}` });
-        C.add(`galleries.${vp}.${f}`, errs.length ? 'fail' : drawn ? 'pass' : 'warn', errs.length ? `${errs.length} page/console error(s): ${errs.slice(0, 2).join(' || ')}` : `${drawn} canvas(es) drawn`);
+        if (buf) shots.push({ label: `${f}${errs.length ? ` (${errs.length} error(s))` : ''}`, img: buf.toString('base64'), blank: false, err: errs.length ? 'errors' : '', file: `tools/${f}` });
+        C.add(`galleries.${vp}.${f}`, errs.length ? 'fail' : drawn && buf ? 'pass' : 'warn', errs.length ? `${errs.length} page/console error(s): ${errs.slice(0, 2).join(' || ')}` : `${drawn} canvas(es) drawn${buf ? '' : ', screenshot timed out (no tile)'}`);
         if (errs.length) findings.push({ id: `visual.gallery.${f}.${vp}`, sev: 'S3', kind: 'errors', title: `${f} logs page/console errors (${vp})`, detail: errs.slice(0, 4).join(' || '), file: `tools/${f}`, ...ownerOf(`tools/${f}`), repro: `node tools/qa/visual_review.mjs --only galleries --vp ${vp}` });
       } catch (e) { harness.push(`${f}: ${String(e?.message || e).split('\n')[0]}`); }
       finally { if (s) await s.close().catch(() => {}); }

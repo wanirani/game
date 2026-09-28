@@ -17,7 +17,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import { ROOT } from './lib/server.mjs';
+import { ROOT, IGNORE_CONSOLE } from './lib/server.mjs';
 import { QA_DIR, TOOLS_DIR, parseFlags, list, findingsMd } from './lib/report.mjs';
 import { ownerOf, bucketOfPackage, groupFindings } from './lib/owners.mjs';
 
@@ -32,6 +32,14 @@ const MIN = 60000;
 
 /** step: id, group, cmd [argv], timeout ms, script (the file whose owner triages a red exit), report (JSON path of a
  *  tools/qa report with findings/checks), ok(code, out) → pass?, optional: absent when the script does not exist. */
+/** tools/smoke.mjs output: pass when it printed NO ERRORS, or when every error line is known noise (Google Fonts / cert /
+ *  404, the same filter the platform suites use); console warnings do not count. */
+function smokeOk(code, out) {
+  if (code !== 0) return false;
+  if (/NO ERRORS/.test(out)) return true;
+  const errs = out.split('\n').filter((l) => /^\[(error|pageerror)\]/.test(l)).filter((l) => !IGNORE_CONSOLE.test(l));
+  return errs.length === 0;
+}
 const S = (id, group, cmd, timeout, extra = {}) => ({ id, group, cmd, timeout, script: extra.script || cmd.find((x) => /\.(mjs|py|sh)$/.test(x)) || null, ...extra });
 const node = (...a) => ['node', ...a];
 const STEPS = [
@@ -71,7 +79,7 @@ const STEPS = [
   // ── smoke on every gallery page (tools/smoke.mjs prints NO ERRORS)
   ...fs.readdirSync(path.join(ROOT, 'tools')).filter((f) => /^gallery_.*\.html$/.test(f)).sort().map((f) => S(`gallery.${f.replace(/^gallery_|\.html$/g, '')}`, 'galleries',
     node('tools/smoke.mjs', '--url', `tools/${f}`, '--steps', 'wait:1.5,shot', '--out', path.join(LOG_DIR, 'galleries', f.replace('.html', ''))), 5 * MIN,
-    { script: `tools/${f}`, ok: (code, out) => code === 0 && /NO ERRORS/.test(out) })),
+    { script: `tools/${f}`, ok: smokeOk })),
   // ── delivery
   S('build_web', 'delivery', node('tools/deploy/build_web.mjs'), 30 * MIN),
   // §5.1 writes `serve_dist.mjs --check-load --offline`; serve_dist is only a server, so the load budget and the offline
@@ -131,8 +139,10 @@ function reportFindings(step) {
   if (!step.report || !fs.existsSync(step.report)) return { counts: null, list: [] };
   try {
     const j = JSON.parse(fs.readFileSync(step.report, 'utf8'));
-    if (Date.parse(j.when || 0) < Date.parse(results.at(-1)?.start || 0) - 1000) return { counts: j.counts || null, list: [], stale: true };
-    return { counts: j.counts || null, list: (j.findings || []).map((f) => ({ ...f, step: step.id })) };
+    // check counts from the report's checks (some reports use `counts` for their own tallies)
+    const counts = Array.isArray(j.checks) ? j.checks.reduce((a, c) => { a[c.status] = (a[c.status] || 0) + 1; return a; }, {}) : j.counts || null;
+    if (Date.parse(j.when || 0) < Date.parse(results.at(-1)?.start || 0) - 1000) return { counts, list: [], stale: true };
+    return { counts, list: (j.findings || []).map((f) => ({ ...f, step: step.id })) };
   } catch { return { counts: null, list: [] }; }
 }
 /** Red rows of the platform summary → findings (bucket from the owning package the suite names). */
@@ -157,7 +167,7 @@ function summarize(final = false) {
   };
   fs.writeFileSync(path.join(QA_DIR, 'run_all.json'), JSON.stringify(summary, null, 1));
   const icon = { pass: 'ok', fail: 'FAIL', error: 'ERROR', absent: 'absent', skipped: 'skipped' };
-  const md = `# Full regression round (MASTER_PLAN §5.1)\n\n${summary.when} · ${(summary.durationMs / 60000).toFixed(1)} min · ${QUICK ? 'quick' : 'full'} · ` +
+  const md = `# Full regression round (MASTER_PLAN §5.1)\n\n${summary.when} · ${(summary.durationMs / 60000).toFixed(1)} min · ${QUICK ? 'quick' : 'full'}${only ? ` (only ${only.join(', ')})` : ''}${skip.length ? ` (skip ${skip.join(', ')})` : ''} · ` +
     `${counts.pass} pass, ${counts.fail} fail, ${counts.error} error, ${counts.absent} absent${summary.notRun.length ? ` · not run: ${summary.notRun.join(', ')}` : ''}\n\n` +
     `| step | group | status | time | exit | report / log |\n|---|---|---|---|---|---|\n` +
     results.map((r) => `| ${r.id} | ${r.group} | ${icon[r.status]} | ${(r.ms / 60000).toFixed(1)} min | ${r.timedOut ? 'timeout' : r.code ?? r.sig ?? ''} | ${r.report ? `\`${r.report}\`` : ''} \`${r.logFile}\` |`).join('\n') +

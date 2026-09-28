@@ -105,7 +105,7 @@
   "sheet5": "bran/bran_paladin_turn5",
   "views5": [
    "y90",
-   "y135",
+   "-",
    "y180",
    "ym90",
    "-"
@@ -116,6 +116,17 @@
    "ym135"
   ],
   "fixups": null,
-  "_whyQ": "리뷰(heroes2rev): 왼쪽 인물은 좌우 대칭 정면 뒷모습(ym90 중복), 오른쪽 인물이 왼쪽으로 돌아선 3/4 뒤(수염이 화면 왼쪽)"
+  "_whyQ": "리뷰(heroes2rev): 왼쪽 인물은 좌우 대칭 정면 뒷모습(ym90 중복), 오른쪽 인물이 왼쪽으로 돌아선 3/4 뒤(수염이 화면 왼쪽)",
+  "extra": [
+   {
+    "sheet": "bran/bran_paladin_q3f",
+    "views": [
+     "y135"
+    ],
+    "deshadow": true
+   }
+  ],
+  "_whyQ3f": "ART-HERO-B: turn5 의 3/4 앞이 정면과 거의 같고, 첫 재생성은 다시 정면/걷는 자세 → 같은 영웅의 좋은 q3f 를 자세 참조로 준 재생성본을 씀",
+  "_whyDeshadow": "ART-HERO-B: 한 장짜리 재생성본은 발밑 바닥 그림자까지 rembg 가 인물로 잡는다 → build_turn deshadow(floor_shadow) 로 지움"
  }
 }

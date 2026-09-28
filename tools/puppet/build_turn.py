@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """턴어라운드 시트(5뷰 + 3/4 뒷모습 2뷰) → 인벤토리 회전용 8방향 스프라이트 시트
   python3 tools/puppet/build_turn.py tools/puppet/rigs/kael/kael_hunter.json
-리그 테이블 turn = {sheet5, views5:[라벨 5개], qback, viewsQ:[라벨 2개], extra:[{sheet, views}], fixups:[...]}
+리그 테이블 turn = {sheet5, views5:[라벨 5개], qback, viewsQ:[라벨 2개], extra:[{sheet, views, pockets?, deshadow?}], fixups:[...]}
+  deshadow (opt-in, extra 시트만): 한 장짜리 재생성본 발밑의 바닥 그림자 지우기 (floor_shadow)
 라벨 = 그 그림이 보여 주는 yaw (0=오른쪽 옆모습, 90=정면, 180=왼쪽 옆모습, -90=뒷모습):
   y0 y45 y90 y135 y180 ym45 ym90 ym135, '-' = 버림. 시트의 인물은 왼쪽→오른쪽 순서로 라벨과 짝지어진다.
 없는 방향은 좌우 반전으로 채운다 (yaw θ 의 거울상 = 180-θ).
@@ -48,7 +49,42 @@ def bg_pockets(rgb, a0, a, P):
     return keep[lab]
 
 
-def cut_views(sheet_key, labels, dbg_name, pockets=None):
+def floor_shadow(rgb, a, P):
+    """리그 turn.extra[].deshadow (opt-in): 한 장짜리 재생성(q3f 등) 밑의 바닥 그림자 — rembg 가 발밑의 회색 그림자까지 인물로 잡는다.
+    인물 높이 아래쪽 band 몫 안에서 '그림자 같은' 화소(무채색·배경보다 어둡거나 같은 밝기)를 지우되,
+    그림자답지 않은 화소(어두운 밑창·채색 가죽·강철의 윤곽/반사)로 만든 발 덩어리(닫기+구멍 메우기) 안은 남긴다 → 회색 강철 발도 산다.
+    P = True | {band, T, sd, close}"""
+    P = P if isinstance(P, dict) else {}
+    ys = np.where(a.any(1))[0]
+    if not len(ys):
+        return a
+    top, bot = ys[0], ys[-1]
+    y0 = int(bot - P.get('band', 0.12) * (bot - top))
+    f = rgb.astype(np.float32)
+    mx, mn = f.max(2), f.min(2)
+    sat = (mx - mn) / np.maximum(mx, 1)
+    lum = f.mean(2)
+    bgl = np.median(np.concatenate([f[:, :24], f[:, -24:]], 1), axis=1).mean(1)[:, None]    # 줄마다 배경 밝기
+    m = ndi.uniform_filter(lum, 5)
+    sd = np.sqrt(np.maximum(ndi.uniform_filter(lum * lum, 5) - m * m, 0))
+    sl = (sat < P.get('T', 0.12)) & (lum > 0.3 * bgl) & (lum < 1.03 * bgl)
+    core = a & (~sl | (sd > P.get('sd', 9.0)))
+    core[:max(0, y0 - 40)] = a[:max(0, y0 - 40)]
+    core = ndi.binary_opening(core, iterations=1)
+    core = ndi.binary_fill_holes(ndi.binary_closing(core, iterations=P.get('close', 4)))
+    cut = a & sl & ~core
+    cut[:y0] = False
+    out = ndi.binary_opening(a & ~cut, iterations=1)
+    lab, n = ndi.label(out)
+    if n:
+        sz = ndi.sum(out, lab, range(1, n + 1))
+        keep = np.zeros(n + 1, bool)
+        keep[1:] = sz > max(400, 0.002 * sz.max())
+        out = keep[lab]
+    return out
+
+
+def cut_views(sheet_key, labels, dbg_name, pockets=None, deshadow=None):
     p = os.path.join(SRC, sheet_key + '.webp')
     if not os.path.exists(p):
         die(f'턴어라운드 시트 없음: {p}')
@@ -61,6 +97,8 @@ def cut_views(sheet_key, labels, dbg_name, pockets=None):
     pk = bg_pockets(rgb, a0, a, pockets) if pockets else None
     if pk is not None:
         a &= ~pk
+    if deshadow:
+        a = floor_shadow(rgb, a, deshadow)
     f = rgb.astype(np.float32)
     sat = (f.max(2) - f.min(2)) / np.maximum(f.max(2), 1)
     a &= ~((f.mean(2) > 150) & (sat < 0.08) & (ndi.binary_erosion(a, iterations=6) == 0))  # 가장자리의 밝은 무채색(발밑 그림자·배경)
@@ -220,7 +258,7 @@ def build_turn(rig_path, quiet=False):
     if T.get('qback'):
         views.update(cut_views(T['qback'], T['viewsQ'], 'qback', pk))
     for ex in T.get('extra', []):   # 추가 시트 (재생성한 한 장짜리 뒷모습 등): {sheet, views:[...], pockets?}
-        views.update(cut_views(ex['sheet'], ex['views'], 'extra', ex.get('pockets', pk)))
+        views.update(cut_views(ex['sheet'], ex['views'], 'extra', ex.get('pockets', pk), ex.get('deshadow')))
     for fx in T.get('fixups', []):
         if fx['view'] in views:
             views[fx['view']] = apply_fixups(views[fx['view']], [fx])
