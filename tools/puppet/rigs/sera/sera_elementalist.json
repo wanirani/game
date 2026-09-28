@@ -308,7 +308,14 @@
    }
   ],
   "_whyQ3f": "ART-HERO-B: turn5 의 3/4 앞 인물이 정면에서 15~25°만 돌아 정면과 거의 같음 → 한 장짜리 3/4 앞(q3f, 클링 img2img) 로 y135 교체",
-  "_whyDeshadow": "ART-HERO-B: 한 장짜리 재생성본은 발밑 바닥 그림자까지 rembg 가 인물로 잡는다 → build_turn deshadow(floor_shadow) 로 지움"
+  "_whyDeshadow": "ART-HERO-B: 한 장짜리 재생성본은 발밑 바닥 그림자까지 rembg 가 인물로 잡는다 → build_turn deshadow(floor_shadow) 로 지움",
+  "bodyFrac": {
+   "y90": 0.0191,
+   "y135": 0.0092,
+   "ym135": 0.0191,
+   "ym90": 0.0191
+  },
+  "_whyBodyFrac": "ART-HERO-B: 채색 뷰의 몸 크기를 옆모습 퍼펫(게임)과 맞춤 — 눈높이(sc4, 발 472) 옆 176.8 / 정면 166.1 / 3/4 163.0 를 재어 정면·3/4 가 옆모습과 같은 눈높이가 되게 뷰별 bodyFrac. 뒷모습은 정면 값(모자·머리 꼭대기 높이가 같게). 원화 교체 시 다시 잴 것"
  },
  "legs": {
   "pantsWarmMax": null

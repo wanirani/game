@@ -723,8 +723,12 @@ async function pC10() {
     out.counter = { plainDmg: hP?.dmg, counterDmg: hC?.dmg, ratio: hP?.dmg ? +(hC?.dmg / hP.dmg).toFixed(3) : null, flag: !!hC?.counter, plainFlag: !!hP?.counter, callout: Q.log.callouts.slice(c0).some((c) => c[1] === 'COUNTER'), cls: hC?.cls };
     Q.until(() => w.hitstop <= 0, 20);
     const c1 = Q.log.callouts.length, n1 = Q.log.hits.length;
+    // the dummy's own update may have turned it while the steps above ran (idle turn); C10 checks the impact rule, so
+    // face it away from the hero right before the swing and record what it was
+    const facingBefore = back.facing;
+    back.facing = -1;
     Q.hit(back, { moveId: 'whip1', kb: [170, -60], hitstop: 0.05, dir: -1 });
-    out.back = { flag: !!Q.log.hits[n1]?.back, callout: Q.log.callouts.slice(c1).some((c) => c[1] === 'BACK ATTACK') };
+    out.back = { flag: !!Q.log.hits[n1]?.back, callout: Q.log.callouts.slice(c1).some((c) => c[1] === 'BACK ATTACK'), facingBefore };
   } finally { Math.random = R0; }
   Q.step(30); Q.clearDummies();
   return out;

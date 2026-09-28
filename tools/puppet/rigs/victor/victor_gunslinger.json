@@ -972,6 +972,14 @@
    "frac": 0.55,
    "min": 30
   },
-  "_whyDeshadow": "ART-HERO-B: 한 장짜리 재생성본은 발밑 바닥 그림자까지 rembg 가 인물로 잡는다 → build_turn deshadow(floor_shadow) 로 지움"
+  "_whyDeshadow": "ART-HERO-B: 한 장짜리 재생성본은 발밑 바닥 그림자까지 rembg 가 인물로 잡는다 → build_turn deshadow(floor_shadow) 로 지움",
+  "bodyFrac": {
+   "y90": -0.0444,
+   "y135": -0.0488,
+   "ym135": -0.0444,
+   "ym90": -0.0444,
+   "ym45": -0.0444
+  },
+  "_whyBodyFrac": "ART-HERO-B: 채색 뷰의 몸 크기를 옆모습 퍼펫(게임)과 맞춤 — 눈높이(sc4, 발 472) 옆 150.0 / 정면 135.7 / 3/4 134.3 를 재어 정면·3/4 가 옆모습과 같은 눈높이가 되게 뷰별 bodyFrac. 뒷모습은 정면 값(모자·머리 꼭대기 높이가 같게). 원화 교체 시 다시 잴 것"
  }
 }
