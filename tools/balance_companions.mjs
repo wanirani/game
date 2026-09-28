@@ -88,7 +88,11 @@ function stageForLevel(cid, lv) {
     try {
       const out = execFileSync(process.execPath, [path.join(ROOT, 'tools/balance.mjs'), 'normal', cid, '--json'], { encoding: 'utf8', maxBuffer: 1 << 24 });
       PROG[cid] = JSON.parse(out).rows.map((r) => ({ stage: r.stage, plv: r.plv }));
-    } catch { PROG[cid] = STAGE_ORDER.map((s) => ({ stage: s, plv: STAGES[s].level })); }
+    } catch (e) {
+      // 조용히 근사하면 balance.mjs 가 깨져도 결과가 바뀐 줄 모른다: 알리고 근사한다
+      console.error(`경고: tools/balance.mjs normal ${cid} --json 실패 — 스테이지 적 레벨로 영웅 레벨을 근사한다 (${String(e?.message ?? e).split('\n')[0]})`);
+      PROG[cid] = STAGE_ORDER.map((s) => ({ stage: s, plv: STAGES[s].level }));
+    }
   }
   const rows = PROG[cid];
   const i = rows.findIndex((r) => r.plv >= lv);

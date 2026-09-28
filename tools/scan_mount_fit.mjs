@@ -334,6 +334,9 @@ function traverse(stage, roomId, room, startMirror) {
 }
 
 // ── 실행 ──
+if (argv.includes('--json') && (!JSON_OUT || JSON_OUT.startsWith('--'))) { console.error('--json 다음에 저장할 파일 경로가 필요하다'); process.exit(2); }
+const badIds = ONLY.filter((s) => s !== 'town' && !(/^s\d\d$/.test(s) && STAGES[s]));
+if (badIds.length) { console.error(`알 수 없는 스테이지: ${badIds.join(' ')} (s01–s20, town)`); process.exit(2); }   // 오타가 조용히 빠져 '모두 통과' 로 끝나지 않게
 const stageIds = Object.keys(STAGES).filter((s) => /^s\d\d$/.test(s) && (!ONLY.length || ONLY.includes(s)));
 const targets = stageIds.map((id) => STAGES[id]);
 if (WITH_TOWN) targets.push({ ...TOWN_STAGE, id: TOWN_STAGE.id ?? 'town' });

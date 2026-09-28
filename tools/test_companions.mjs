@@ -7,17 +7,22 @@
 //   --stages s01,s16   stages 사례의 스테이지만 줄인다 (기본 s01–s20)
 //
 // 사례 (점검표 번호):
-//   newgame   (1) 새 게임 → 1장 허브 → 그레타 개장 대사 → 그림메인 합류 연출 → 마을에서 탑승 → s01 에서 탑승 → 1번 방을 탄 채 통과
+//   newgame   (1) 새 게임 → 1장 허브 → 그레타 개장 대사 → 그림메인 합류 연출 → 마을에서 탑승 → s01 에서 탑승 → 1번 방을 시작 지점부터
+//                 탄 채 싸우며 통과 (적을 치우지 않고, 달리기 · 공격 · 막히면 점프; 도중 하차 · 박힘 없음)
 //                 → 결과 화면 → 허브 (스테이지 클리어가 알 부화 카운터·유대를 올린다)
 //   migrate   (2) 동료가 없는 6장 세이브(tools/fixtures/save_ch6_nocmp.json) 불러오기 → 아리아·코슈타·가웨인·미네르바 + 크론의 알(부화 가능)
 //                 → 허브에서 합류 연출은 한 번에 최대 3명, 나머지는 메뉴 「동료」 탭의 NEW → 탭에서 보면 사라짐
-//   stages    (3) 아홉 탈것 × s01–s20 시작 방: 소환 · 돌진 · 특수기 · 점프 · 하차, 박힘 없음 (깊은 물 속 시작은 거절이 정상)
+//   stages    (3) 아홉 탈것 × s01–s20 시작 방: 소환 · 돌진 · 특수기 · 점프 · 하차, 박힘 없음, 도중 하차 없음 (깊은 물 속 시작은 거절이 정상)
 //   guardians (4) 열한 수호신을 둘씩 s05 · s11 에서 30초씩 (둘씩 5초 × 6쌍): 두 수호신 모두 적을 치고 · 처치 판정과 경험치 몫 ·
 //                 자동 공격 경직 0 · 플레이어가 치지 않으면 world.hitstop 0 (모르스 처형 포함, C10 #4) · 수호신 둘의 틀 비용 ≤ 1.5 ms
 //   boss_s03, boss_s12 (5) 탄 채로 수호신 둘과 둘라한 · 드라큘라: 등장 연출 · 50% 까지 · 보스 공격으로 낙마 · 재소환 · 유대 3 공명
+//                 (장착한 수호신 둘이 '각각' 보스를 쳐야 한다)
+//   boss_reach (5 보강) 수호신 열하나를 하나씩 s03 · s12 보스 곁에: 모두 10초 안에 보스에게 피해를 준다 (boss_reach_s03 · boss_reach_s12)
 //   save      (6) 탄 채로 관(세이브)에서 저장 → 다시 불러오기 · 내보내기 코드 왕복 · 클라우드 기록 경로(sanitizeTree → migrateState) · 256 KB
 //   mobile    (7) 844×390 터치: 탑승/수호 버튼 · 누르기 · 수호 재사용 대기 가림막 · 캔버스 위젯 탭 · 스틱·다른 버튼과 겹침 없음
+//                 · 장착하지 않은 동작의 버튼은 사라진다
 //   pad       (8) 가짜 게임패드: 버튼 10(L3) 탑승 · 11(R3) 수호신 스킬
+//   spam      R · 점프 · 수호 · 돌진 · 특수기 연타 (그림메인 · 녹티스), 소환 도중 방 바꾸기 · 마을로 가기: 박힘 · 몸 크기 · 오류 없음
 //   tools     (9)(10) node tools/scan_mount_fit.mjs · node tools/balance_companions.mjs 의 합격 여부
 //   recruit   (2부) 이야기 명령 {cmd:'recruit'} 여섯 (s14–s19 아웃트로) · 이야기 장면 · 대화 장면 · 플래그만 있는 세이브의 합류
 //   stable    (2부) 영혼의 마구간: 구입(바르그 · 핌) · 잠금/금화 부족 · 알 부화(스테이지 두 번) · 그레타 의뢰(하티 · 스콜) · 공물
@@ -42,12 +47,18 @@ import { fakePadInit, connect, press as padPress, BTN } from './qa/lib/fakepad.m
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const argv = process.argv.slice(2);
 const opt = (k) => { const i = argv.indexOf('--' + k); return i < 0 ? null : (argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[i + 1] : true); };
-const CASES = opt('case') ? String(opt('case')).split(',') : null;
+const ALL_CASES = ['newgame', 'migrate', 'stages', 'guardians', 'boss_s03', 'boss_s12', 'boss_reach', 'save', 'mobile', 'pad', 'spam', 'recruit', 'stable', 'deep', 'wind_blight', 'awakened', 'menu', 'hud', 'bindings', 'tools', 'passives'];
+// 값 없는 --case · 모르는 사례 이름은 아무것도 돌리지 않고 '0/0 통과' 로 끝나던 거짓 합격이었다: 이름을 확인하고 종료 코드 2
+if (opt('case') === true || opt('stages') === true) { console.error('--case · --stages 에는 값이 필요하다 (쉼표로 구분)'); process.exit(2); }
+const CASES = opt('case') ? String(opt('case')).split(',').map((s) => s.trim()).filter(Boolean) : null;
+const unknownCases = (CASES ?? []).filter((c) => !ALL_CASES.includes(c));
+if (CASES && (!CASES.length || unknownCases.length)) { console.error(`알 수 없는 사례: ${unknownCases.join(', ') || '(비어 있음)'} — 사례: ${ALL_CASES.join(', ')}`); process.exit(2); }
+if (opt('stages') && String(opt('stages')).split(',').map((s) => s.trim()).some((s) => !/^s(0[1-9]|1\d|20)$/.test(s))) { console.error(`--stages 는 s01–s20 중에서 (쉼표로 구분): ${opt('stages')}`); process.exit(2); }
 const VERBOSE = !!opt('verbose'), SHOTS = !!opt('shots'), SKIP_TOOLS = !!opt('skip-tools');
 const SHOT_DIR = '/tmp/claude-0/proto/CMP-QA';
 if (SHOTS) fs.mkdirSync(SHOT_DIR, { recursive: true });
 const results = [];
-const want = (name) => !CASES || CASES.includes(name);
+const want = (name) => !CASES || CASES.includes(name) || CASES.some((c) => name.startsWith(c + '_') && !ALL_CASES.includes(name));   // boss_reach → boss_reach_s03 · boss_reach_s12
 
 // ───────────────────────── 페이지 안 도우미 (window.__T) ─────────────────────────
 function installHelpers() {
@@ -118,15 +129,16 @@ function installHelpers() {
     import('/src/game/companions.js'), import('/src/game/state.js'), import('/src/core/save.js'),
   ]).then(([CS, M, EV, D, C, ST, SV]) => {
     Object.assign(T, { CS, M, D, C, ST, SV });
-    for (const ev of ['mounted', 'dismounted', 'ultimateCast', 'guardianSkill', 'companionUnlocked', 'eggObtained', 'eggHatched', 'bondUp', 'companionLevelUp', 'stageCleared', 'questClaimed', 'awakenCast'])
+    for (const ev of ['mounted', 'dismounted', 'ultimateCast', 'guardianSkill', 'companionUnlocked', 'eggObtained', 'eggHatched', 'bondUp', 'companionLevelUp', 'stageCleared', 'questClaimed', 'awakenCast', 'playerDied'])
       EV.bus.on(ev, (d) => T.events.push({ ev, ...(d || {}), t: g.world?.time }));
     return true;
   });
 }
 
 // ───────────────────────── 브라우저 ─────────────────────────
-const port = 8000 + Math.floor(Math.random() * 900);
-const srv = await start(port);
+// 빈 포트를 운영체제가 고른다 (여러 에이전트가 동시에 서버를 띄우면 무작위 포트가 겹쳐 EADDRINUSE 로 죽을 수 있었다)
+const srv = await start(0);
+const port = srv.address().port;
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--autoplay-policy=no-user-gesture-required'] });
 
 async function withPage(url, fn, { mobile = false, initScripts = [], waitWorld = true } = {}) {
@@ -205,31 +217,40 @@ await run('newgame', STAGE('s01'), (page) => page.evaluate(async () => {
   T.hook();
   const w2 = T.w, p2 = T.p;
   checks.push(['s01 입장 (새 월드, 탈것 붙음)', w2.stage.id === 's01' && !!p2.mount && p2.mount.id === 'mt_warhorse', w2.stage.id]);
-  for (const e of w2.enemies()) e.dead = true;
+  // 적은 그대로 둔다 (C10 #1 'clear s01 room 1 mounted': 탄 채로 싸우며 지나간다)
   p2.iframes = 0; T.step(0.3);
   T.press('KeyR', 0.05);
   let tr = null;
   T.step(1.0, () => { if (p2.mount.riding && tr === null) tr = true; return false; });
   checks.push(['s01 에서 R → 탑승', p2.mount.riding, p2.mount.state]);
-  // 1번 방을 탄 채 통과: 오른쪽 출구 바로 앞으로 옮겨 오른쪽으로 달린다
+  // 1번 방을 시작 지점부터 탄 채 통과: 오른쪽으로 달리고, 가까운 적은 탄 채 공격, 막히면 점프 (출구 앞으로 옮기지 않는다)
   const room0 = w2.roomId, next = w2.room.exitRight;
   info.room = { room0, next };
   if (next) {
-    const mp = w2.map;
-    let spot = null;
-    for (let tx = mp.w - 3; tx > mp.w - 12 && !spot; tx--) for (let ty = 1; ty < mp.h - 1 && !spot; ty++) {
-      const s = T.M.findMountSpot(w2, null, p2.mount.def, { cx: tx * 48 + 24, bottom: (ty + 1) * 48 });
-      const floor = mp.typeAt(tx, ty + 1);
-      if (s && (floor === 1 || floor === 2 || floor === 3)) spot = s;
-    }
-    info.room.spot = spot;
-    if (spot) { p2.cx = spot.cx; p2.bottom = spot.bottom; p2.vx = 0; p2.vy = 0; }
+    const ev0 = T.events.length;
+    const foes0 = w2.enemies().filter((e) => !e.dead).length;
+    let kills = 0, t = 0, lastX = p2.cx, stuck = 0, jumps = 0, embed = 0;
+    const onKill0 = w2.onEnemyKilled;
+    w2.onEnemyKilled = function (e, ...a) { if (p2.mount?.riding) kills++; return onKill0.call(this, e, ...a); };
     T.key('ArrowRight', true);
-    T.until(() => w2.roomId !== room0 && !w2.transitioning, 8, { confirm: false });
+    while (t < 60 && w2.roomId === room0 && !w2.transitioning) {
+      p2.hp = Math.max(p2.hp, p2.stats.hp * 0.5);
+      const near = w2.enemies().some((e) => !e.dead && !(e.dying > 0) && Math.abs(e.cx - p2.cx) < 170 && Math.abs(e.cy - p2.cy) < 140);
+      if (near) { T.key('KeyX', true); T.step(2 / 60); T.key('KeyX', false); T.step(6 / 60); t += 8 / 60; }
+      else { T.step(0.1); t += 0.1; }
+      if (!w2.transitioning && T.w === w2 && !T.fitsNow()) embed++;
+      if (Math.abs(p2.cx - lastX) < 4 && !near) stuck++; else stuck = 0;
+      lastX = p2.cx;
+      if (stuck >= 3 && p2.onGround) { T.key('KeyZ', true); T.step(16 / 60); T.key('KeyZ', false); jumps++; stuck = 0; }
+    }
+    T.until(() => w2.roomId !== room0 && !w2.transitioning, 3, { confirm: false });
     T.key('ArrowRight', false);
+    w2.onEnemyKilled = onKill0;
     T.step(0.5);
-    info.room.after = w2.roomId;
-    checks.push(['1번 방 출구로 탄 채 통과', w2.roomId === next && p2.mount.riding && T.fitsNow(), { room: w2.roomId, riding: p2.mount.riding, state: p2.mount.state }]);
+    const dis = T.events.slice(ev0).filter((e) => e.ev === 'dismounted').map((e) => e.reason);
+    Object.assign(info.room, { after: w2.roomId, t: +t.toFixed(1), jumps, foes0, kills, dismounts: dis, embed, state: p2.mount.state });
+    checks.push(['1번 방을 시작 지점부터 탄 채 통과 (내리지 않고 오른쪽 출구까지)', w2.roomId === next && p2.mount.riding && !dis.length && !embed && T.fitsNow(), info.room]);
+    checks.push(['1번 방: 탄 채로 적을 쓰러뜨린다', !foes0 || kills > 0, { foes0, kills }]);
   } else checks.push(['s01 첫 방에 오른쪽 출구', false, room0]);
   // 결과 화면 → 허브 (보스 대신 finishStage: 결과·이야기·허브 흐름만 본다)
   const clears0 = st.companions.clears, bond0 = st.companions.owned.mt_warhorse.bond;
@@ -300,12 +321,12 @@ await run('migrate', STAGE('s01'), (page) => page.evaluate(async () => {
 }));
 
 // ═════════════ (3) 아홉 탈것 × s01–s20 시작 방: 소환 · 돌진 · 특수기 · 점프 · 하차 · 박힘 없음 ═════════════
-const STAGE_IDS = opt('stages') ? String(opt('stages')).split(',') : Array.from({ length: 20 }, (_, i) => 's' + String(i + 1).padStart(2, '0'));
+const STAGE_IDS = opt('stages') ? String(opt('stages')).split(',').map((s) => s.trim()).filter(Boolean) : Array.from({ length: 20 }, (_, i) => 's' + String(i + 1).padStart(2, '0'));
 await run('stages', STAGE('s01', '&cmp=all&ch=20'), (page) => page.evaluate(async (stageIds) => {
-  const T = window.__T, g = T.g, checks = [], info = { rows: [], water: [], knocked: [], embeds: [] };
+  const T = window.__T, g = T.g, checks = [], info = { rows: [], water: [], knocked: [], embeds: [], deepLost: [] };
   const ids = T.D.MOUNT_IDS, st = g.state;
   st.companions.pending.length = 0;
-  const bad = { summon: [], charge: [], special: [], jump: [], dismount: [], embed: [], rider: [] };
+  const bad = { summon: [], charge: [], special: [], jump: [], dismount: [], embed: [], rider: [], lost: [] };
   const kill = (w) => { for (const e of w.entities) if ((e.kind === 'enemy' || e.kind === 'boss') && !e.dead) { e.dead = true; e.hidden = true; } };
   for (const sid of stageIds) {
     if (T.w?.stage?.id !== sid) {
@@ -349,6 +370,7 @@ await run('stages', STAGE('s01', '&cmp=all&ch=20'), (page) => page.evaluate(asyn
         continue;
       }
       row.summon = true;
+      const evS = T.events.length;   // 이 뒤로 R 하차 전까지의 'dismounted' 는 뜻하지 않은 하차 (아래 '도중 하차 없음')
       // 돌진 (C)
       stepW(1.0, () => p.onGround);
       m.chargeCd = 0;
@@ -380,13 +402,20 @@ await run('stages', STAGE('s01', '&cmp=all&ch=20'), (page) => page.evaluate(asyn
       }
       // 하차 (R)
       stepW(1.5, () => p.onGround || !!m.def?.flight);
+      // 돌진 · 특수기 · 점프 사이에 탈것이 사라졌으면 (강제 하차 · 낙마 · 추락 …) 뒤 단계가 조용히 건너뛰어지므로 따로 잡는다
+      const lost = T.events.slice(evS).filter((e) => e.ev === 'dismounted').map((e) => e.reason);
       if (m.riding) {
         T.key('KeyR', true); stepW(2 / 60); T.key('KeyR', false);
         stepW(0.6);
         row.dismount = !m.riding;
         if (m.riding) bad.dismount.push({ tag, state: m.state });
         if (!T.M.fits(w, p.x, p.bottom, p.w, p.h) || p.w > 40) bad.rider.push({ tag, x: p.x, b: p.bottom, w: p.w, h: p.h });
-      } else if (m.state === 'recall') info.knocked.push(tag);
+      } else {
+        if (m.state === 'recall') info.knocked.push(tag);
+        row.lost = lost;
+        if (lost.length && lost.every((r) => r === 'deep')) info.deepLost.push(tag);   // 깊은 물에 들어가 내린 것은 설계
+        else bad.lost.push({ tag, reasons: lost, state: m.state, room: w.roomId, sp: row.special, jump: row.jump });
+      }
       row.embed = embed;
       if (embed) { bad.embed.push({ tag, embed, firstEmbed }); }
       info.rows.push(row);
@@ -402,6 +431,7 @@ await run('stages', STAGE('s01', '&cmp=all&ch=20'), (page) => page.evaluate(asyn
   checks.push(['특수기 (↓+공격)', !bad.special.length, bad.special.slice(0, 12)]);
   checks.push(['점프 (Z)', !bad.jump.length, bad.jump.slice(0, 12)]);
   checks.push(['하차 (R)', !bad.dismount.length, bad.dismount.slice(0, 12)]);
+  checks.push(['도중 하차 없음 (돌진 · 특수기 · 점프 사이에 탈것이 사라지지 않는다; 깊은 물 제외)', !bad.lost.length, bad.lost.slice(0, 12)]);
   checks.push(['탈것 몸이 벽·천장에 박히지 않는다 (매 틀)', !bad.embed.length, bad.embed.slice(0, 8)]);
   checks.push(['내린 기수 몸이 맞고 박히지 않는다', !bad.rider.length, bad.rider.slice(0, 8)]);
   info.jumps = Object.fromEntries(ids.map((id) => [id, [Math.min(...info.rows.filter((r) => r.id === id).map((r) => r.jump ?? 999)), Math.max(...info.rows.filter((r) => r.id === id).map((r) => r.jump ?? 0))]]));
@@ -595,10 +625,21 @@ for (const sid of ['s03', 's12']) {
     info.knock = { t: +t.toFixed(1), state: m.state, cd: +(m.cd ?? 0).toFixed(1), lastAtk, toasts: T.toasts.slice(toast0, toast0 + 3) };
     checks.push(['보스 공격으로 낙마 → 재소환 대기(recall)', m.state === 'recall' && knocked.length > 0 && !!lastAtk?.boss, info.knock]);
     checks.push(['낙마 안내 문구 (쓰러졌다! 재소환 N초)', T.toasts.slice(toast0).some((s) => s.includes('쓰러졌다')), T.toasts.slice(toast0, toast0 + 4)]);
-    // 수호신 둘이 보스를 친다 (50% 구간 + 낙마 구간 동안; 부족하면 보스 곁에서 몇 초 더)
-    for (let k = 0; k < 40 && guardOnBoss() < 2; k++) { keep(); p.iframes = Math.max(p.iframes ?? 0, 0.3); T.step(0.25); }
-    const gh = guardOnBoss();
-    checks.push(['수호신이 보스를 친다', gh > 0, { guardHits: gh, by: [...new Set(w.hits.filter((h) => h.boss).map((h) => h.owner))] }]);
+    // 장착한 수호신 둘이 '각각' 보스를 친다 (50% 구간 + 낙마 구간; 모자라면 보스 곁에서 최대 10초 더).
+    // 예전에는 둘을 합쳐 1타 이상만 보아, 한쪽(근접 수호신)이 보스를 한 번도 못 치는 결함이 가려졌다.
+    const G2 = ['gd_knight', 'gd_imp'];
+    const byG = () => Object.fromEntries(G2.map((id) => [id, w.hits.filter((h) => h.owner === id && (h.boss || h.t === b.def.id)).length]));
+    for (let k = 0; k < 40 && !G2.every((id) => byG()[id] > 0); k++) {
+      // 체력을 45% 위로 붙잡아 둔다: 30% 아래로 내려가면 둘라한은 말에서 내리는 3페이즈 연출에 들어가 뒤의 필살기 · 공명 검사가 흔들린다
+      keep(); p.iframes = Math.max(p.iframes ?? 0, 0.3); b.hp = Math.max(b.hp, Math.ceil(MH * 0.45));
+      const dir = Math.sign(b.cx - p.cx) || 1;
+      T.key(dir > 0 ? 'ArrowRight' : 'ArrowLeft', Math.abs(b.cx - p.cx) > 160); T.key(dir > 0 ? 'ArrowLeft' : 'ArrowRight', false);
+      T.step(0.25);
+    }
+    T.key('ArrowRight', false); T.key('ArrowLeft', false);
+    const gh = byG();
+    info.guardHits = { total: guardOnBoss(), byGuardian: gh };
+    checks.push(['장착한 수호신 둘 모두 보스를 친다 (가웨인 · 핌)', G2.every((id) => gh[id] > 0), { byGuardian: gh, by: [...new Set(w.hits.filter((h) => h.boss).map((h) => h.owner))], boss: b.def.id, mounted: b.mounted ?? null }]);
     // 재사용 대기 중 R → 거절, 대기가 끝나면 R 로 재소환
     T.press('KeyR', 0.05);
     const refused = !m.riding && m.state === 'recall';
@@ -611,19 +652,70 @@ for (const sid of ['s03', 's12']) {
     // 유대 3 공명: 필살기 → 수호신 무료 스킬 (공명) + 탈것 공명
     for (const x of cs.guards) x.skillCd = 0;
     const ev0 = T.events.length;
-    w.run.sp = 100; p.hp = p.stats.hp;
-    T.press('KeyF', 0.05);
-    T.until(() => { keep(); return T.events.slice(ev0).some((e) => e.ev === 'ultimateCast'); }, 5);
-    T.until(() => { keep(); return T.events.slice(ev0).filter((e) => e.ev === 'guardianSkill' && e.resonance).length >= 2; }, 12);
+    // 이 구간은 무적: 보스 공격에 경직된 틀에 F 가 눌리면 필살기가 나가지 않고, 연출 중 한 방에 쓰러지면 부활 처리로 탈것이 대기로
+    // 돌아가 '공명' · '자동 재탑승' 검사가 보스의 무작위 패턴에 따라 흔들렸다 (검사 대상은 공명과 재탑승이지 피격이 아니다)
+    const safe = () => { keep(); p.iframes = Math.max(p.iframes ?? 0, 0.5); };
+    const ulted = () => T.events.slice(ev0).some((e) => e.ev === 'ultimateCast');
+    let fTries = 0;
+    for (; fTries < 3 && !ulted(); fTries++) {
+      w.run.sp = 100; p.hp = p.stats.hp;
+      T.until(() => { safe(); return !(p.hurtT > 0) && !p.move && !(p.castT > 0) && m.state !== 'summoning'; }, 2, { confirm: false });
+      T.key('KeyF', true); T.step(3 / 60, () => { safe(); return false; }); T.key('KeyF', false);
+      T.until(() => { safe(); return ulted(); }, 2);
+    }
+    T.until(() => { safe(); return T.events.slice(ev0).filter((e) => e.ev === 'guardianSkill' && e.resonance).length >= 2; }, 12);
+    info.fTries = fTries; info.died = T.events.slice(ev0).filter((e) => e.ev === 'playerDied').length;
     const evs = T.events.slice(ev0);
     const reso = evs.filter((e) => e.ev === 'guardianSkill' && e.resonance).map((e) => e.id);
     info.reso = { ult: evs.some((e) => e.ev === 'ultimateCast'), reso, ranks: ['gd_knight', 'gd_imp', 'mt_warhorse'].map((id) => T.CS.bondRankOf(st, id)) };
     checks.push(['필살기 → 유대 3 수호신 둘 공명 스킬', info.reso.ult && reso.includes('gd_knight') && reso.includes('gd_imp'), info.reso]);
     // 재탑승은 연출이 끝나고 땅 위 · 경직 없음일 때만 (8초 안에 못 타면 포기) — 보스의 연타에 경직이 이어지지 않게 이 구간만 무적
     T.until(() => { keep(); p.iframes = Math.max(p.iframes ?? 0, 0.5); return m.riding; }, 12);
-    info.after = { state: m.state, riding: m.riding, wait: +(m.remountWait ?? 0).toFixed(2), ground: p.onGround, hurt: p.hurtT > 0 };
+    info.after = { state: m.state, riding: m.riding, wait: +(m.remountWait ?? 0).toFixed(2), ground: p.onGround, hurt: p.hurtT > 0, died: T.events.slice(ev0).filter((e) => e.ev === 'playerDied').length };
     checks.push(['필살기 뒤 탈것 자동 재탑승', m.riding, info.after]);
     checks.push(['보스전 내내 기수 몸이 박히지 않는다', T.fitsNow(), { x: p.x, b: p.bottom, w: p.w, h: p.h }]);
+    return { checks, info };
+  }));
+}
+
+// ═════════════ (5 보강) 수호신 열하나 × 점검표 보스 둘: 모든 수호신이 보스에게 피해를 준다 ═════════════
+// 근접 수호신은 대상의 발밑(T.bottom)에 40–70px 높이 판정을 내므로, 판정이 바닥에서 떠 있는 보스(말 탄 둘라한 · 드라큘라)를 못 칠 수 있다.
+// 수호신마다 보스 곁에서 최대 10초, 첫 타격이 나오면 바로 다음으로 넘어간다.
+for (const sid of ['s03', 's12']) {
+  await run('boss_reach_' + sid, STAGE(sid, '&room=boss&cmp=all&ch=20&cmplv=20'), (page) => page.evaluate(async () => {
+    const T = window.__T, g = T.g, checks = [], info = {};
+    const st = g.state;
+    st.companions.pending.length = 0; st.companions.autoSkill = false;
+    T.CS.equipMount(st, null, null); T.cs.sync(true);
+    T.until(() => g.top?.name === 'stage' && !T.w.cutscene, 10);
+    const w = T.w, p = w.player;
+    const keep = () => { p.hp = Math.max(p.hp, p.stats.hp * 0.8); if (p.dead) p.dead = false; p.iframes = Math.max(p.iframes ?? 0, 0.3); };
+    T.key('ArrowRight', true);
+    T.until(() => { keep(); return !!w.boss; }, 20);
+    T.key('ArrowRight', false);
+    T.until(() => { keep(); return w.bossActive && !w.cutscene && g.top?.name === 'stage'; }, 40);
+    const b = w.boss;
+    checks.push(['(준비) 보스전 시작', !!b && w.bossActive, b?.def?.id ?? null]);
+    if (!b) return { checks, info };
+    const MH = b.stats?.maxHp ?? b.maxHp;
+    const onBoss = (id) => w.hits.some((h) => h.owner === id && (h.boss || h.t === b.def.id));
+    const by = {};
+    for (const id of T.D.GUARDIAN_IDS) {
+      T.CS.equipGuardian(st, null, 0, id); T.CS.equipGuardian(st, null, 1, null); T.cs.sync(true);
+      w.hits.length = 0;
+      let t = 0;
+      while (t < 10 && !onBoss(id)) {
+        keep(); b.hp = Math.max(b.hp, Math.ceil(MH * 0.6));
+        const dir = Math.sign(b.cx - p.cx) || 1;
+        T.key(dir > 0 ? 'ArrowRight' : 'ArrowLeft', Math.abs(b.cx - p.cx) > 180); T.key(dir > 0 ? 'ArrowLeft' : 'ArrowRight', false);
+        T.step(0.1); t += 0.1;
+      }
+      T.key('ArrowRight', false); T.key('ArrowLeft', false);
+      by[id] = { hit: onBoss(id), t: +t.toFixed(1), other: [...new Set(w.hits.filter((h) => h.owner === id).map((h) => h.t))] };
+    }
+    const miss = Object.keys(by).filter((id) => !by[id].hit);
+    Object.assign(info, { boss: b.def.id, mounted: b.mounted ?? null, by });
+    checks.push([`수호신 열하나 모두 ${b.def.id} 에게 피해를 준다 (각 10초 안에)`, !miss.length, { miss, boss: b.def.id, mounted: b.mounted ?? null }]);
     return { checks, info };
   }));
 }
@@ -813,6 +905,12 @@ await run('mobile', STAGE('s01', '&cmp=all&ch=20&mount=mt_warhorse&guards=gd_kni
   const under = [];
   for (const r of rects) for (const [k, b] of Object.entries(Lb.buttons)) if (Math.hypot(r.cx - b.cx, r.cy - b.cy) < b.d / 2) under.push(`${r.act}@${k}`);
   checks.push(['동료 위젯 중심이 패드 버튼 밑에 있지 않다', !under.length, under]);
+  // 장착하지 않은 동작의 버튼은 없다 (companions §6 has-mount / has-guard → 캔버스 패드): 모두 해제 → 둘 다 없음, 탈것만 → 탑승만
+  const padWhen = async (fn, ok) => { await page.evaluate(fn); let L = null; for (let k = 0; k < 8; k++) { await page.waitForTimeout(300); L = await padLayout(page); if (ok(L.buttons)) break; } return Object.keys(L?.buttons ?? {}); };
+  const none = await padWhen(() => { const T = window.__T, st = T.g.state; T.CS.equipMount(st, null, null); T.CS.equipGuardian(st, null, 0, null); T.CS.equipGuardian(st, null, 1, null); T.cs.sync(true); }, (B) => !B.mount && !B.guard);
+  const mountOnly = await padWhen(() => { const T = window.__T; T.CS.equipMount(T.g.state, null, 'mt_warhorse'); T.cs.sync(true); }, (B) => !!B.mount && !B.guard);
+  info.visibility = { none, mountOnly };
+  checks.push(['장착을 모두 풀면 탑승 · 수호 버튼이 없고, 탈것만 장착하면 탑승 버튼만', !none.includes('mount') && !none.includes('guard') && mountOnly.includes('mount') && !mountOnly.includes('guard'), info.visibility]);
   return { checks, info };
 }, { mobile: true });
 
@@ -839,6 +937,56 @@ await run('pad', STAGE('s01', '&cmp=all&ch=20&mount=mt_warhorse&guards=gd_knight
   info.mode = rode.mode;
   return { checks, info };
 }, { initScripts: [fakePadInit({})] });
+
+// ═════════════ 연타 · 소환 도중 방/장면 바꾸기 (그림메인 · 녹티스): 박힘 · 몸 크기 어긋남 · 오류 없음 ═════════════
+await run('spam', STAGE('s01', '&cmp=all&ch=20&mount=mt_warhorse&guards=gd_knight,gd_imp'), (page) => page.evaluate(async () => {
+  const T = window.__T, g = T.g, checks = [], info = {};
+  g.state.companions.pending.length = 0;
+  const w = T.w, p = w.player;
+  const rows = [];
+  for (const id of ['mt_warhorse', 'mt_giantbat']) {
+    const m = T.equip(id);
+    if (!m) { rows.push({ id, err: 'equip' }); continue; }
+    w.loadRoom(w.stage.start ?? w.roomId);
+    T.step(0.3);
+    let embed = 0, badW = 0, riding = 0;
+    for (let i = 0; i < 240; i++) {   // 4초: R 을 네 틀마다, 점프 · 수호 · 돌진 · 특수기를 엇갈려 연타
+      p.hp = p.stats.hp;
+      if (i % 4 === 0) T.key('KeyR', true); if (i % 4 === 1) T.key('KeyR', false);
+      if (i % 7 === 0) T.key('KeyZ', true); if (i % 7 === 3) T.key('KeyZ', false);
+      if (i % 11 === 0) T.key('KeyG', true); if (i % 11 === 1) T.key('KeyG', false);
+      if (i % 13 === 0) T.key('KeyC', true); if (i % 13 === 2) T.key('KeyC', false);
+      if (i === 120) { T.key('ArrowDown', true); T.key('KeyX', true); } if (i === 124) { T.key('ArrowDown', false); T.key('KeyX', false); }
+      T.step(1 / 60);
+      if (!T.fitsNow()) embed++;
+      if (m.riding) riding++;
+      if (!m.riding && m.state === 'stowed' && p.w > 40) badW++;
+    }
+    for (const c of ['KeyR', 'KeyZ', 'KeyG', 'KeyC', 'ArrowDown', 'KeyX']) T.key(c, false);
+    T.step(2.0);
+    // 소환 도중 다른 방으로
+    m.cd = 0; T.key('KeyR', true); T.step(1 / 60); T.key('KeyR', false); T.step(3 / 60);
+    const mid = m.state;
+    const other = Object.keys(w.stage.rooms).find((r) => r !== w.roomId);
+    w.loadRoom(other); T.step(1.0);
+    rows.push({ id, embed, badW, riding, mid, after: { state: m.state, riding: m.riding, w: p.w, fits: T.fitsNow(), room: w.roomId } });
+    if (m.riding) m.dismount(w, p, 'debug');
+    T.step(0.5);
+  }
+  info.rows = rows;
+  checks.push(['연타 (R · 점프 · 수호 · 돌진 · 특수기): 박힘 없음 · 내린 몸 크기 정상 · 실제로 탔다 내렸다 한다', rows.every((r) => !r.err && !r.embed && !r.badW && r.riding > 0), rows]);
+  checks.push(['소환 도중 방을 옮겨도 새 방 시작 지점에서 탄 채 · 몸이 맞는다', rows.every((r) => r.mid === 'summoning' && r.after.riding && r.after.fits), rows.map((r) => ({ id: r.id, mid: r.mid, ...r.after }))]);
+  // 소환 도중 장면 바꾸기 (마을로)
+  const m = T.equip('mt_warhorse');
+  m.cd = 0; T.key('KeyR', true); T.step(1 / 60); T.key('KeyR', false); T.step(3 / 60);
+  const mid = m.state;
+  g.go('hub', { from: 'load' }, { fade: false });
+  T.until(() => g.top?.name === 'hub' && !!T.w?.player && T.w !== w, 10);
+  T.step(1.0);
+  info.hub = { mid, top: g.top?.name, state: T.p?.mount?.state, w: T.p?.w };
+  checks.push(['소환 도중 마을로 가도 새 월드에서 탈것은 대기 · 기수 몸 정상', mid === 'summoning' && g.top?.name === 'hub' && T.p?.mount?.state === 'stowed' && T.p.w <= 40 && T.fitsNow(), info.hub]);
+  return { checks, info };
+}));
 
 // ═════════════ (2부) 이야기 명령 {cmd:'recruit'}: 대본 · 이야기 장면 · 대화 장면 · 플래그만 있는 세이브 ═════════════
 await run('recruit', STAGE('s01', '&ch=20'), (page) => page.evaluate(async () => {
