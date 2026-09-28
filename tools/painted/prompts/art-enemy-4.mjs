@@ -91,6 +91,11 @@ export const SHOTS = {
     tool: 'text_to_image', aspect: '3:4', n: 2, for: ['succubus'],
     prompt: S(`A succubus demoness of a blood chapel, a slender winged female demon: pale rose-grey skin, long flowing dark plum-purple hair, two curved black horns sweeping back from her forehead, glowing pink eyes, dark crimson lips with small fangs, a fully covering black and crimson gothic leather armoured bodysuit with a laced corset, high black boots with crimson trim and long black gloves with sharp clawed fingertips, large dark crimson bat wings with black bones on her back, a thin black demon tail ending in a small heart-shaped spade tip. Strict side view in profile facing right, full body from head to feet, hovering in the air, the arms held slightly away from the body, the wings spread behind, the near knee slightly raised. ${BG} ${STYLE}`),
   },
+  // the first succ_ref came back far too revealing (and posed from behind): the retake asks for a covered battle gown
+  succ_ref_b: {
+    tool: 'text_to_image', aspect: '3:4', n: 2, for: ['succubus'],
+    prompt: S(`A winged demoness of a blood chapel, tall and slender: pale ashen-rose skin, long flowing dark plum-purple hair, two curved black ram-like horns, glowing pink eyes, a cruel stern face with dark crimson lips. She wears a long high-collared black gothic battle gown with a crimson lining that covers her from the neck down to the ankles, ornate crimson-lacquered armour plates on the shoulders, the bodice and the forearms, the skirt split at the front and flaring behind, high black armoured boots, long black gauntlets ending in sharp claws, huge dark crimson bat wings with black bones, a thin black demon tail with a heart-shaped spade tip. Strict side view in profile facing right, full body from head to feet, hovering in the air, the arms held slightly away from the body, the wings spread behind her, the near knee slightly raised. ${BG} ${STYLE}`),
+  },
   // ── s11: blood priest (new) ────────────────────────────────────────────────────────────────────────────────────
   priest_ref: {
     tool: 'text_to_image', aspect: '3:4', n: 2, for: ['blood_priest'],
@@ -118,7 +123,7 @@ Object.assign(SHOTS, {
     ]),
   },
   succ_sheet: {
-    tool: 'image_to_image', aspect: '4:3', n: 2, inputs: ['succ_ref'], for: ['succubus'],
+    tool: 'image_to_image', aspect: '4:3', n: 2, inputs: ['succ_ref_b'], for: ['succubus'],
     prompt: sheet('winged demoness', [
       'the head with the curved horns, the face and the long flowing hair',
       'the torso in the laced leather corset from the neck to the hips (no head, no arms, no legs, no wings)',

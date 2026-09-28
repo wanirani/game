@@ -293,9 +293,12 @@ export class BlackjackScene extends MiniGame {
   drawTablePrint(ctx) {
     const cx = this.vw / 2;
     const A = this.P(cx + 290, 404), B = this.P(cx + 290, 426), C = this.P(cx - 250, 472);
+    // 좁은 화면(UI 폭 720 근처)에서는 판돈 패널(가운데)이 인쇄 문구를 덮지 않도록 문구를 패널 오른쪽으로 민다 (판 내내 같은 자리)
+    const PH = 66; // 인쇄 문구 절반 폭 (15·13 px 글자 기준)
+    const px = Math.min(Math.max(A.x, cx + this.readyPanelW() / 2 + 8 + PH), this.vw - 8 - PH);
     ctx.save(); ctx.globalAlpha = 0.55;
-    text(ctx, '블랙잭 3 : 2 지급', A.x, A.y, { size: 15, align: 'center', weight: 800, family: FONT.title, color: '#e8c872', ow: 0 });
-    text(ctx, '딜러는 17에서 멈춘다', B.x, Math.max(B.y, A.y + 16), { size: 13, align: 'center', weight: 700, family: FONT.title, color: '#e8c872', ow: 0 });
+    text(ctx, '블랙잭 3 : 2 지급', px, A.y, { size: 15, align: 'center', weight: 800, family: FONT.title, color: '#e8c872', ow: 0 });
+    text(ctx, '딜러는 17에서 멈춘다', px, Math.max(B.y, A.y + 16), { size: 13, align: 'center', weight: 700, family: FONT.title, color: '#e8c872', ow: 0 });
     ctx.restore();
     text(ctx, '판돈', C.x, C.y, { size: 13, align: 'center', weight: 700, color: 'rgba(232,200,114,0.7)', ow: 0 });
   }
@@ -324,11 +327,13 @@ export class BlackjackScene extends MiniGame {
     badge(this.dealer, 280, true);
     badge(this.player, 402, false);
   }
+  /** 판돈 패널 폭 (칩 줄 + 여백) */
+  readyPanelW() { return Math.max(320, this.betBarW(23) + 28); }
   drawReadyUI(ctx) {
     const vw = this.vw, L = this.L;
     // 테이블의 '판돈' 원(왼쪽)과 인쇄 문구(오른쪽)를 가리지 않도록 칩·버튼이 들어갈 폭만 쓴다
     const bh = this.bh(52);
-    const pw = Math.max(320, this.betBarW(23) + 28), ph = Math.max(136, 83 + bh + 6);
+    const pw = this.readyPanelW(), ph = Math.max(136, 83 + bh + 6);
     const px = vw / 2 - pw / 2, py = L.H - 8 - ph;
     gPanel(ctx, px, py, pw, ph, { a: 0.82, r: 14 });
     this.drawBetBar(ctx, vw / 2, py + 42, { r: 23, maxW: pw - 20 });

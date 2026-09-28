@@ -195,7 +195,7 @@ export class SlotScene extends MiniGame {
     const k = clamp((py - 8 - 16) / 384, 0.55, 1);
     const cw = this.cab.w * k;
     const cabL = W / 2 - cw / 2, cabR = W / 2 + cw / 2 + 58 * k; // 오른쪽은 레버까지
-    const sideY = 78, sideH = Math.min(300, py - 8 - sideY); // 오른쪽 위 HUD 판돈 글자(y 68) 아래
+    const sideY = 96, sideH = Math.min(300, py - 8 - sideY); // 오른쪽 위 HUD 글자('판돈' y 68 · '오늘 ±G' y 86) 아래 (주사위·기억 카드 옆 패널과 같은 높이)
     const payW = Math.min(250, cabL - 30 - 16), sideX = cabR + 14, sideW = Math.min(250, W - 16 - sideX);
     return { W, H, ph, py, k, oy: 16, sideY, sideH, payW, sideX, sideW };
   }
@@ -498,7 +498,8 @@ export class SlotScene extends MiniGame {
     const chipsW = pw - bw - 40;
     ctx.save();
     if (spinning) ctx.globalAlpha = 0.45;
-    this.drawBetBar(ctx, px + 20 + chipsW / 2, y + ph / 2 + 7, { r: 23, maxW: chipsW });
+    // 릴이 도는 동안 칩은 흐리게 그리고 탭 영역도 끈다 (판돈은 다음 스핀부터 바뀐다)
+    this.drawBetBar(ctx, px + 20 + chipsW / 2, y + ph / 2 + 7, { r: 23, maxW: chipsW, disabled: spinning });
     ctx.restore();
     const r = this.hits.rect('spin', px + pw - bw - 16, y + (ph - bh) / 2, bw, bh);
     const can = spinning || this.free || this.st.gold >= this.bet;

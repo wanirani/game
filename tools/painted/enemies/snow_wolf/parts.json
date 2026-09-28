@@ -1,0 +1,289 @@
+{
+ "id": "snow_wolf",
+ "tier": "T2",
+ "srcTD": 4,
+ "note": "Wolf-rig reuse (ART-ENEMY-4): the wolf's two sources re-painted as a silver snow wolf by composition-keeping Kling edits (snowwolf_body = edit of wolf_body, snowwolf_legs = edit of wolf_legs), so the wolf's boxes, polygons and pivots still fit. The frost-breath puff in front of the muzzle is cut away (the renderer breathes procedurally); tail icicles kept.",
+ "sources": {
+  "b": {
+   "raw": "snow_wolf_body.webp",
+   "file": "a4_snow_wolf_body.png",
+   "k": 0.031
+  },
+  "l": {
+   "raw": "snow_wolf_legs.webp",
+   "file": "a4_snow_wolf_legs.png",
+   "k": 0.024
+  }
+ },
+ "parts": {
+  "body": {
+   "src": "b",
+   "box": [
+    430,
+    100,
+    2020,
+    1200
+   ],
+   "keep": "largest",
+   "fade": [
+    [
+     1700,
+     1135,
+     2020,
+     1200,
+     "down",
+     1.0
+    ]
+   ],
+   "piv": {
+    "a": [
+     1200,
+     700
+    ],
+    "shoulder": [
+     1440,
+     900
+    ],
+    "shoulder2": [
+     1360,
+     880
+    ],
+    "hip": [
+     700,
+     880
+    ],
+    "hip2": [
+     620,
+     860
+    ],
+    "tail": [
+     470,
+     620
+    ],
+    "eye": [
+     1806,
+     840
+    ],
+    "eye2": [
+     1940,
+     856
+    ],
+    "mouth": [
+     1880,
+     1080
+    ],
+    "nose": [
+     1990,
+     1000
+    ]
+   },
+   "minus": [
+    [
+     [
+      2012,
+      930
+     ],
+     [
+      2350,
+      930
+     ],
+     [
+      2350,
+      1320
+     ],
+     [
+      1955,
+      1320
+     ],
+     [
+      1955,
+      1125
+     ],
+     [
+      2012,
+      1060
+     ]
+    ]
+   ]
+  },
+  "fleg": {
+   "src": "l",
+   "box": [
+    120,
+    250,
+    730,
+    1340
+   ],
+   "keep": "largest",
+   "flipX": true,
+   "piv": {
+    "a": [
+     470,
+     380
+    ],
+    "b": [
+     300,
+     1290
+    ]
+   }
+  },
+  "hleg": {
+   "src": "l",
+   "box": [
+    1290,
+    520,
+    1790,
+    1330
+   ],
+   "flipX": true,
+   "poly": [
+    [
+     1440,
+     580
+    ],
+    [
+     1560,
+     545
+    ],
+    [
+     1700,
+     560
+    ],
+    [
+     1770,
+     660
+    ],
+    [
+     1765,
+     1000
+    ],
+    [
+     1720,
+     1080
+    ],
+    [
+     1640,
+     1150
+    ],
+    [
+     1580,
+     1220
+    ],
+    [
+     1560,
+     1300
+    ],
+    [
+     1340,
+     1310
+    ],
+    [
+     1340,
+     1240
+    ],
+    [
+     1440,
+     1200
+    ],
+    [
+     1520,
+     1120
+    ],
+    [
+     1580,
+     1040
+    ],
+    [
+     1540,
+     900
+    ],
+    [
+     1450,
+     760
+    ]
+   ],
+   "piv": {
+    "a": [
+     1610,
+     650
+    ],
+    "b": [
+     1450,
+     1290
+    ],
+    "hock": [
+     1720,
+     1000
+    ]
+   },
+   "keep": "largest",
+   "fade": [
+    [
+     1290,
+     520,
+     1790,
+     700,
+     "up",
+     1.2
+    ]
+   ],
+   "k": 0.033
+  },
+  "tail": {
+   "src": "l",
+   "box": [
+    1620,
+    420,
+    2660,
+    1070
+   ],
+   "flipX": true,
+   "poly": [
+    [
+     1640,
+     440
+    ],
+    [
+     2660,
+     600
+    ],
+    [
+     2660,
+     1070
+    ],
+    [
+     2100,
+     1070
+    ],
+    [
+     1800,
+     950
+    ],
+    [
+     1660,
+     850
+    ]
+   ],
+   "fade": [
+    [
+     1620,
+     420,
+     1700,
+     1020,
+     "left",
+     1.0
+    ]
+   ],
+   "piv": {
+    "a": [
+     1680,
+     640
+    ],
+    "b": [
+     2630,
+     900
+    ]
+   }
+  }
+ }
+}

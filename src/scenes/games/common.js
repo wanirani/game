@@ -239,6 +239,11 @@ export function cssPer(sc) {
 }
 /** 44 CSS px (+2 여유) 를 이 장면 좌표로 — 주 버튼 최소 높이 (platform §6.3) */
 export function tapMinOf(sc) { return Math.ceil(46 / cssPer(sc)); }
+/** 그래픽 품질 등급 → 파티클·코인 수 배율 (platform §6.4: 낮음 0.5 · 보통 0.75 · 높음 1) */
+export function fxQualityOf(game) {
+  const t = game?.tier ?? game?.quality;
+  return t === 'low' ? 0.5 : t === 'medium' ? 0.75 : 1;
+}
 
 // ───────────────────────── 탭 영역 ─────────────────────────
 /**
@@ -401,14 +406,16 @@ export class Roller {
 
 // ───────────────────────── 코인 분수 ─────────────────────────
 export class Coins {
-  constructor(max = 150) { this.list = []; this.max = max; }
+  constructor(max = 150) { this.list = []; this.max = max; this.quality = 1; }
   clear() { this.list.length = 0; }
   burst(x, y, n, { spread = 1, up = 760, floor = null, delay = 0 } = {}) {
+    n = Math.max(1, Math.round(n * this.quality));
     for (let i = 0; i < n && this.list.length < this.max; i++) {
       this.list.push({ x, y, vx: rand(-280, 280) * spread, vy: -rand(up * 0.55, up), s: rand(0, TAU), vs: rand(9, 18) * (Math.random() < 0.5 ? -1 : 1), r: rand(6.5, 10.5), life: rand(1.5, 2.3), max: 2.3, floor, bounce: 0, wait: delay * Math.random() });
     }
   }
   rain(w, n, floor = null) {
+    n = Math.max(1, Math.round(n * this.quality));
     for (let i = 0; i < n && this.list.length < this.max; i++) {
       this.list.push({ x: rand(0, w), y: rand(-160, -20), vx: rand(-40, 40), vy: rand(100, 300), s: rand(0, TAU), vs: rand(8, 16), r: rand(7, 11), life: rand(2, 2.8), max: 2.8, floor, bounce: 0, wait: rand(0, 0.8) });
     }
@@ -778,6 +785,7 @@ export class MiniGame extends Scene {
   update(dt) {
     this.clock += dt;
     this.goldR.update(dt, this.st.gold);
+    this.fx.quality = this.coins.quality = fxQualityOf(this.game); // R12: 품질 등급에 맞춰 파티클·코인 수
     this.fx.update(dt);
     this.coins.update(dt);
     this.shakeT = Math.max(0, this.shakeT - dt);
@@ -874,8 +882,8 @@ export class MiniGame extends Scene {
   }
   /** 판돈 칩 줄 전체 폭 */
   betBarW(r = 23) { return this.betOptions().length * this.chipGap(r); }
-  /** 판돈 칩 줄 (ready 단계용). cx 중심, y 칩 중심. 반환: 칩 줄이 차지한 폭 */
-  drawBetBar(ctx, cx, y, { r = 24, label = true, maxW = Infinity } = {}) {
+  /** 판돈 칩 줄 (ready 단계용). cx 중심, y 칩 중심. disabled: 탭 영역을 끈다 (그림은 호출 쪽이 흐리게). 반환: 칩 줄이 차지한 폭 */
+  drawBetBar(ctx, cx, y, { r = 24, label = true, maxW = Infinity, disabled = false } = {}) {
     const opts = this.betOptions();
     // 칩 사이 = 탭 영역 폭. 손가락 크기(44 CSS px) 이상이 되게 넓히되, 주어진 폭(maxW)은 넘지 않는다
     const big = input.touchMode || this.tapMin > 44;
@@ -891,7 +899,7 @@ export class MiniGame extends Scene {
       const x = x0 + i * gap;
       const hr = this.hits.rect('bet:' + v, x - gap / 2, y - hh / 2, gap, hh);
       const dis = v > 0 && this.st.gold < v;
-      this.hits.add('bet:' + v, hr, false, 'icon');
+      this.hits.add('bet:' + v, hr, disabled, 'icon');
       drawChip(ctx, x, y, r, v, { selected: this.betValue === v, disabled: dis, t: this.clock });
     });
     return opts.length * gap;

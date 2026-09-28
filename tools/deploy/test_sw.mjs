@@ -4,13 +4,16 @@
 //   node tools/deploy/test_sw.mjs [--dir dist/web]
 //
 // dist/web 을 serve_dist 로 띄워 헤드리스 Chromium 에서:
-//  1. 첫 방문 → 워커 설치·활성, bn-<buildHash> 에 미리 받기 목록 전부, bn-assets-v1 에 타이틀 배경 (해시 표시 x-bn-h)
+//  1. 첫 방문 → 워커 설치·활성, bn-<buildHash> 에 미리 받기 목록 전부, bn-assets-v1 에 타이틀 배경·리그 JSON (해시 표시 x-bn-h)
 //  2. /api/ 요청은 어떤 캐시에도 들어가지 않는다 (P-10)
-//  3. 오프라인 새로고침 (서버를 내려서 워커의 fetch 도 진짜로 실패하게): 타이틀이 뜨고, 마을이 돌고, 스테이지 s01 이 돈다 (페이지 오류 0)
+//  3. 오프라인 새로고침 (서버를 내려서 워커의 fetch 도 진짜로 실패하게 — context.setOffline 은 워커의 fetch 를 막지 않는다):
+//     타이틀이 뜨고, 마을이 돌고, 스테이지 s01 이 돈다 (페이지 오류 0)
 //  4. 새 빌드(내용이 바뀐 리그 JSON·fonts.json·build-info.js, 새 BUILD 해시)를 같은 주소에서 내보낸다:
-//     페이지 이동은 네트워크 우선이라 페이지는 곧바로 새 빌드로 돈다 → 아직 제어 중인 옛 워커가 그 페이지에 새 리그·fonts.json 을 준다.
+//     페이지 이동은 네트워크 우선이라 새로고침한 페이지는 곧바로 새 빌드로 돈다 → 아직 제어 중인 옛 워커가 그 페이지에
+//     옛 캐시의 리그·fonts.json 이 아니라 새 것을 준다 (새 코드 + 옛 그림 섞임 방지).
 //     update(): 새 워커는 설치된 뒤 대기한다 (SKIP_WAITING 전에는 켜지지 않음, 옛 워커가 계속 제어) → platform.updateReady() true
-//  5. game.platform.applyUpdate() → SKIP_WAITING → 새로고침 → 옛 bn-<hash> 캐시 삭제, 바뀐 그림 캐시 무효화
+//  5. game.platform.applyUpdate() → SKIP_WAITING → 새로고침 → 옛 bn-<hash> 캐시 삭제, 바뀐 그림(리그)은 옛 해시로 남지 않고,
+//     바뀌지 않은 그림(타이틀 배경)은 캐시에 그대로 남는다 (다시 받지 않음)
 // 보고: dist/test_sw.json
 import fs from 'node:fs';
 import path from 'node:path';
@@ -91,20 +94,25 @@ try {
   await page.goto(`${origin}/index.html`);
   await waitGame(page);
   // 1. 설치·활성·미리 받기
-  const st1 = await page.evaluate(async (hash) => {
+  const st1 = await page.evaluate(async ([hash, rig]) => {
     const reg = await Promise.race([navigator.serviceWorker.ready, new Promise((r) => setTimeout(() => r(null), 90000))]);
     for (let i = 0; i < 100 && !navigator.serviceWorker.controller; i++) await new Promise((r) => setTimeout(r, 100));
     const names = await caches.keys();
     const code = names.includes(`bn-${hash}`) ? (await (await caches.open(`bn-${hash}`)).keys()).map((r) => new URL(r.url).pathname + new URL(r.url).search) : [];
     const ac = await caches.open('bn-assets-v1');
     const title = await ac.match(new URL('assets/bg/title.webp', location.href).href);
-    return { active: !!reg?.active, controlled: !!navigator.serviceWorker.controller, names, code, titleHash: title?.headers.get('x-bn-h') || null };
-  }, build.hash);
+    // 리그 JSON 을 한 번 받아 둔다 (이 빌드의 해시로 그림 캐시에 들어가야 한다 — 4·5 단계가 이것이 낡은 채 남지 않는지 본다)
+    await (await fetch(rig)).text();
+    let rigHit = null;
+    for (let i = 0; i < 30 && !rigHit; i++) { await new Promise((r) => setTimeout(r, 100)); rigHit = await ac.match(new URL(rig, location.href).href); }
+    return { active: !!reg?.active, controlled: !!navigator.serviceWorker.controller, names, code, titleHash: title?.headers.get('x-bn-h') || null, rigHash: rigHit?.headers.get('x-bn-h') || null };
+  }, [build.hash, RIG]);
   check('install.active', st1.active && st1.controlled, `active=${st1.active}, controlled=${st1.controlled} (clients.claim)`);
   const missing = build.precache.filter((u) => !st1.code.includes('/' + u));
   check('install.precache', !missing.length && st1.code.includes('/build.json'), missing.length ? `빠짐: ${missing.slice(0, 5).join(', ')}` : `bn-${build.hash}: ${st1.code.length}개 (build.json 포함)`);
   const bj = JSON.parse(fs.readFileSync(path.join(A, 'build.json'), 'utf8'));
-  check('install.assets', st1.titleHash && st1.titleHash === bj.files['assets/bg/title.webp']?.hash8, `bg/title x-bn-h=${st1.titleHash}`);
+  check('install.assets', st1.titleHash && st1.titleHash === bj.files['assets/bg/title.webp']?.hash8 && st1.rigHash === bj.files[RIG]?.hash8,
+    `bg/title x-bn-h=${st1.titleHash}, 리그 x-bn-h=${st1.rigHash} (build.json ${bj.files[RIG]?.hash8})`);
   // 2. /api 는 캐시하지 않는다
   const apiHits = await page.evaluate(async () => {
     for (const u of ['/api/qa-probe?x=1', '/api/health', '/api/auth/me']) { try { await fetch(u); await fetch(u); } catch { /* 404 */ } }
@@ -122,7 +130,8 @@ try {
   await waitGame(page);
   check('revisit.cache-first', netCode.length === 0, netCode.length ? `서버로 간 번들 요청 ${netCode.length}개` : '번들은 모두 워커 캐시에서');
   void onReq;
-  // 3. 오프라인
+  // 3. 오프라인: 서버를 내린다 (context.setOffline 만으로는 워커의 fetch 가 여전히 서버에 닿는다)
+  await srv.close();
   await ctx.setOffline(true);
   const e0 = errs.length;
   await page.reload();
@@ -139,12 +148,23 @@ try {
   const stg = await page.evaluate(() => ({ top: window.__game.top?.name, room: window.__game.world?.roomId, x: Math.round(window.__game.world?.player?.x ?? -1) }));
   check('offline.stage', /stage|dialogue/.test(stg.top) && errs.length === e0, `${JSON.stringify(stg)} ${errs.slice(e0).join(' | ')}`);
   await ctx.setOffline(false);
-  // 4. 새 빌드 → 대기
+  srv = await start(port, { dir: A, quiet: true });
+  // 4. 새 빌드 → (옛 워커가 제어하는) 새 빌드 페이지 → 대기
   await page.goto(`${origin}/index.html`);
   await waitGame(page, { top: 'title' });
-  const { next } = makeNextBuild();
+  const { next, rigHash: rigNextHash } = makeNextBuild();
   await srv.close();
   srv = await start(port, { dir: B, quiet: true });
+  await page.reload();
+  await waitGame(page, { top: 'title' });
+  const st4a = await page.evaluate(async ([oldHash, rig, fonts]) => {
+    const rigText = await (await fetch(rig)).text();
+    const fontsText = await (await fetch(new URL(fonts, location.href).href)).text();
+    const names = await caches.keys();
+    return { build: window.__BN_BUILD?.hash, controlled: !!navigator.serviceWorker.controller, oldCache: names.includes(`bn-${oldHash}`), rigNext: rigText.includes('__swtest'), fontsNext: fontsText.includes('__swtest') };
+  }, [build.hash, RIG, FONTS]);
+  check('next.page', st4a.build === next.hash && st4a.controlled && st4a.oldCache && st4a.rigNext && st4a.fontsNext,
+    `페이지 빌드 ${st4a.build} (새 ${next.hash}), 옛 워커 제어=${st4a.controlled}, 새 리그=${st4a.rigNext}, 새 fonts.json=${st4a.fontsNext}`);
   const st4 = await page.evaluate(async () => {
     const reg = await navigator.serviceWorker.getRegistration();
     await reg.update();
@@ -159,15 +179,19 @@ try {
   await page.evaluate(() => window.__game.platform.applyUpdate());
   await nav;
   await waitGame(page);
-  const st5 = await page.evaluate(async () => {
+  const st5 = await page.evaluate(async (rig) => {
     for (let i = 0; i < 50 && !navigator.serviceWorker.controller; i++) await new Promise((r) => setTimeout(r, 100));
     const names = await caches.keys();
     const ac = await caches.open('bn-assets-v1');
     const title = await ac.match(new URL('assets/bg/title.webp', location.href).href);
-    return { names, titleHash: title?.headers.get('x-bn-h') || null };
-  });
-  check('update.old-cache-deleted', !st5.names.includes(`bn-${build.hash}`) && st5.names.includes(`bn-${next.hash}`), `caches=[${st5.names.join(', ')}]`);
-  check('update.asset-invalidated', st5.titleHash === null || st5.titleHash === 'deadbeef', `bg/title x-bn-h=${st5.titleHash} (옛 해시 ${st1.titleHash} 이면 낡은 그림)`);
+    const rigHit = await ac.match(new URL(rig, location.href).href);
+    const rigText = await (await fetch(rig)).text();
+    return { names, build: window.__BN_BUILD?.hash, titleHash: title?.headers.get('x-bn-h') || null, rigHash: rigHit?.headers.get('x-bn-h') || null, rigNext: rigText.includes('__swtest') };
+  }, RIG);
+  check('update.old-cache-deleted', st5.build === next.hash && !st5.names.includes(`bn-${build.hash}`) && st5.names.includes(`bn-${next.hash}`), `build ${st5.build}, caches=[${st5.names.join(', ')}]`);
+  check('update.asset-invalidated', st5.rigNext && (st5.rigHash === null || st5.rigHash === rigNextHash),
+    `바뀐 리그: 캐시 x-bn-h=${st5.rigHash} (새 ${rigNextHash}, 옛 ${st1.rigHash} 이면 낡은 그림), 받은 내용 새 것=${st5.rigNext}`);
+  check('update.asset-kept', st5.titleHash === st1.titleHash, `바뀌지 않은 bg/title: x-bn-h=${st5.titleHash} (그대로 ${st1.titleHash} 이어야 다시 받지 않는다)`);
   check('errors', errs.length === 0, errs.slice(0, 6).join(' | ') || '페이지 오류 0');
   exit = results.every((r) => r.pass) ? 0 : 1;
 } catch (e) {

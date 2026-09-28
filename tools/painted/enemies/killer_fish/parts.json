@@ -1,0 +1,47 @@
+{
+ "id": "killer_fish",
+ "tier": "T1",
+ "srcTD": 4,
+ "note": "Cut from the Kling Step-1 reference (take 1): the whole piranha; the swim wave is a strip warp that grows from the head to the tail.",
+ "sources": {
+  "r": {
+   "raw": "killer_fish_ref.webp",
+   "file": "a3_killer_fish_ref.png",
+   "k": 0.02
+  }
+ },
+ "parts": {
+  "body": {
+   "src": "r",
+   "box": [
+    40,
+    10,
+    2070,
+    1710
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1150,
+     900
+    ],
+    "head": [
+     1700,
+     900
+    ],
+    "eye": [
+     1707,
+     750
+    ],
+    "mouth": [
+     1950,
+     1050
+    ],
+    "tail": [
+     300,
+     830
+    ]
+   }
+  }
+ }
+}

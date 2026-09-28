@@ -13,7 +13,7 @@ import { Particles } from '../../core/particles.js';
 import { drawIcon } from '../../render/icons.js';
 import {
   GAMES, GAME_ORDER, BETS, session, newVisit, ensureState, autosave, line, reactTo, grantItems, itemIcon,
-  Hits, gPanel, drawBtn, goldText, goldPlaque, Roller, bubble, bubbleText, vignetteSoft, affordableBet, GOLD, keyHints, tapMinOf,
+  Hits, gPanel, drawBtn, goldText, goldPlaque, Roller, bubble, bubbleText, vignetteSoft, affordableBet, GOLD, keyHints, tapMinOf, fxQualityOf,
 } from './common.js';
 import { rr, glow, drawChip, drawEmblem, heartPath } from './art.js';
 
@@ -157,6 +157,7 @@ export class InnScene extends Scene {
   update(dt) {
     const st = this.game.state;
     this.goldR.update(dt, st.gold);
+    this.fx.quality = fxQualityOf(this.game); // R12: 품질 등급에 맞춰 파티클 수
     this.fx.update(dt);
     this.sayT += dt; this.moodT += dt; this.emoteT += dt;
     for (const m of this.motes) { m.y -= m.v * dt; m.ph += dt; if (m.y < -0.02) { m.y = 1.02; m.x = Math.random(); } }

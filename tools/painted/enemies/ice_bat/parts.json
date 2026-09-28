@@ -1,0 +1,28 @@
+{
+ "id": "ice_bat",
+ "tier": "T1",
+ "srcTD": 4,
+ "note": "Bat-rig reuse (ART-ENEMY-4): the bat's own sources re-painted by Kling edits that keep the composition (icebat_fly = edit of bat_body_fly, icebat_sheet = edit of bat_sheet1), so the bat's boxes and pivots still fit and the bat renderer (drawBat) animates it unchanged. Frost-breath puff beside the mouth is cut away (minus); the cocoon's icicles are cut at the hem because the cocoon is turned upside down at build (they would point up).",
+ "sources": {
+  "s1": { "file": "a4_ice_bat_sheet1.png", "k": 0.0185, "raw": "ice_bat_sheet1.webp" },
+  "f": { "file": "a4_ice_bat_fly.png", "k": 0.0145, "raw": "ice_bat_fly.webp" }
+ },
+ "parts": {
+  "wing": {
+   "src": "s1", "box": [720, 100, 1570, 1725], "keep": "largest", "rot": 90,
+   "poly": [[1000, 100], [1570, 100], [1570, 1725], [1250, 1725], [960, 1560], [720, 1120], [720, 700]],
+   "piv": { "a": [1420, 250], "b": [1330, 1680], "claw": [1490, 160] }
+  },
+  "hang": {
+   "src": "s1", "box": [1630, 300, 2215, 1275], "keep": "largest", "rot": 180, "flipX": true, "k": 0.03,
+   "fade": [[1630, 1235, 2215, 1275, "down", 1.0]],
+   "piv": { "a": [1920, 1270], "face": [1920, 600] }
+  },
+  "fly": {
+   "src": "f", "box": [220, 80, 1790, 1860], "keep": "largest",
+   "minus": [[[1560, 820], [1860, 820], [1860, 1120], [1600, 1120]]],
+   "fade": [[220, 1810, 1790, 1860, "down", 1.2]],
+   "piv": { "a": [1010, 1250], "wl": [430, 1110], "wr": [1600, 1110], "eyeL": [1012, 830], "eyeR": [1245, 830], "mouth": [1150, 1030], "top": [1010, 110], "chin": [1135, 1250] }
+  }
+ }
+}

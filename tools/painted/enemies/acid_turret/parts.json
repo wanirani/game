@@ -1,0 +1,104 @@
+{
+ "id": "acid_turret",
+ "tier": "T1",
+ "srcTD": 4,
+ "note": "Cut from the Kling Step-1 reference (take 2). rembg dropped the brick furnace, so make_src.py crops it into acid_turret_base.webp (offset 50,1480 into the reference) and it is matted on its own: 'base' = furnace + fire mouth, 'body' = stone slab, copper boiler, gauge, valve, glass flask, glass tube and condenser nozzle.",
+ "sources": {
+  "r": {
+   "raw": "acid_turret_ref.webp",
+   "file": "a3_acid_turret_ref.png",
+   "k": 0.037
+  },
+  "b": {
+   "raw": "acid_turret_base.webp",
+   "file": "a3_acid_turret_base.png",
+   "k": 0.037
+  }
+ },
+ "parts": {
+  "base": {
+   "src": "b",
+   "box": [
+    130,
+    235,
+    1252,
+    778
+   ],
+   "poly": [
+    [
+     130,
+     235
+    ],
+    [
+     1252,
+     235
+    ],
+    [
+     1252,
+     560
+    ],
+    [
+     1150,
+     590
+    ],
+    [
+     1110,
+     700
+    ],
+    [
+     960,
+     778
+    ],
+    [
+     130,
+     778
+    ]
+   ],
+   "piv": {
+    "a": [
+     710,
+     770
+    ],
+    "fire": [
+     570,
+     570
+    ]
+   }
+  },
+  "body": {
+   "src": "r",
+   "box": [
+    150,
+    370,
+    1720,
+    1795
+   ],
+   "piv": {
+    "a": [
+     760,
+     2250
+    ],
+    "flask": [
+     750,
+     975
+    ],
+    "liquid": [
+     750,
+     925
+    ],
+    "nozzle": [
+     1360,
+     1415
+    ],
+    "gauge": [
+     580,
+     1386
+    ],
+    "condenser": [
+     1350,
+     1140
+    ]
+   }
+  }
+ }
+}

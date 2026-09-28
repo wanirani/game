@@ -697,23 +697,47 @@ function star4(c, x, y, r) {
 export { star4 };
 
 // ───────────────────────── 금화 / 칩 ─────────────────────────
-/** 회전하는 금화 (spin: 라디안, 폭 = |cos|) */
-export function drawCoin(c, x, y, r, spin = 0) {
-  const k = Math.cos(spin), w = Math.max(r * 0.12, Math.abs(k) * r);
-  const edge = Math.sin(spin) * r * 0.16;
-  c.fillStyle = '#6a4410';
-  c.beginPath(); c.ellipse(x + edge, y, w, r, 0, 0, TAU); c.fill();
+/**
+ * 금화 앞면 스프라이트 (반지름 COIN_R, 1 px 여백; detail = 테두리 선·십자 무늬). 한 번 구워 두고 가로로 눌러 그린다
+ * — 잭팟·대승리 코인 분수(최대 160개)가 금화마다 그라데이션을 새로 만들지 않게 (MASTER_PLAN §5.2, R12). 못 만들면 null.
+ */
+const COIN_R = 32, COIN_P = (COIN_R + 1) / COIN_R;
+const COIN_SPR = [undefined, undefined];
+function coinSprite(detail) {
+  const i = detail ? 1 : 0;
+  if (COIN_SPR[i] !== undefined) return COIN_SPR[i];
+  let s = null;
+  try {
+    const S = COIN_R * 2 + 2;
+    const cv = typeof OffscreenCanvas === 'function' ? new OffscreenCanvas(S, S) : typeof document !== 'undefined' ? Object.assign(document.createElement('canvas'), { width: S, height: S }) : null;
+    const x = cv?.getContext('2d');
+    if (x) { coinFace(x, COIN_R + 1, COIN_R + 1, COIN_R, COIN_R, detail); s = cv; }
+  } catch { s = null; }
+  COIN_SPR[i] = s;
+  return s;
+}
+function coinFace(c, x, y, w, r, detail) {
   const g = c.createLinearGradient(x - w, y - r, x + w, y + r);
   g.addColorStop(0, '#fff4c0'); g.addColorStop(0.4, '#f0c850'); g.addColorStop(1, '#9a6a18');
   c.fillStyle = g;
   c.beginPath(); c.ellipse(x, y, w, r, 0, 0, TAU); c.fill();
-  if (w > r * 0.35) {
+  if (detail) {
     c.strokeStyle = 'rgba(120,80,20,0.9)'; c.lineWidth = Math.max(0.8, r * 0.1);
     c.beginPath(); c.ellipse(x, y, w * 0.72, r * 0.72, 0, 0, TAU); c.stroke();
     c.fillStyle = 'rgba(120,80,20,0.9)';
     c.fillRect(x - w * 0.09, y - r * 0.42, w * 0.18, r * 0.84);
     c.fillRect(x - w * 0.32, y - r * 0.18, w * 0.64, r * 0.16);
   }
+}
+/** 회전하는 금화 (spin: 라디안, 폭 = |cos|) */
+export function drawCoin(c, x, y, r, spin = 0) {
+  const k = Math.cos(spin), w = Math.max(r * 0.12, Math.abs(k) * r);
+  const edge = Math.sin(spin) * r * 0.16;
+  c.fillStyle = '#6a4410';
+  c.beginPath(); c.ellipse(x + edge, y, w, r, 0, 0, TAU); c.fill();
+  const spr = coinSprite(w > r * 0.35);
+  if (spr) c.drawImage(spr, x - w * COIN_P, y - r * COIN_P, 2 * w * COIN_P, 2 * r * COIN_P);
+  else coinFace(c, x, y, w, r, w > r * 0.35);
 }
 
 const CHIP_COL = { 0: ['#2a8a7a', '#0c3a34'], 50: ['#e8e0cc', '#8a7a60'], 100: ['#c0142e', '#4a0612'], 500: ['#6a2aa0', '#240a3a'], 1000: ['#e0b040', '#6a4a10'] };

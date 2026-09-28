@@ -131,9 +131,10 @@ export const ENEMIES = {
     subject: 'A sorrowful water spirit, the soul of a drowned woman made of living water: a translucent glowing blue body of flowing water, a graceful slender female upper body in a flowing gown of water, a pale luminous face with white glowing eyes, long hair made of streaming ribbons of water flowing behind her, below the waist the gown becomes a swirling whirlpool vortex instead of legs, a small bright white glowing heart of light in the chest.',
     pose: 'Floating upright, the arms held slightly away from the body. No mist and no glow on the background.',
     parts: [
-      'the body with the head, the water hair and the whirlpool gown, WITHOUT any arms',
-      'one slender arm of flowing water from the shoulder to the open hand, held straight',
+      'the body with the head, the water hair and the long gown that narrows into a swirling whirlpool tail tapering to a point at the bottom, WITHOUT any arms, no splashes and no flying droplets around it',
+      'one slender arm of flowing water from the shoulder to the open hand, held straight, no splashes',
     ],
+    sheetView: 'slightly turned front view as the figure in 图片1',
   },
 
   // ───────────────────────── s09 시계탑 ─────────────────────────

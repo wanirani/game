@@ -50,5 +50,584 @@
    "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qTQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBozYWdlbnRfdXBsb2FkLzE3OTA2MDI3MzQvcXFvcFdVWXF4aC9za2VsZXRvbl9yZWYuanBn.origin?x-kcdn-pid=112372"
   }
  },
- "calls": []
+ "calls": [
+  {
+   "shot": "icebat_fly",
+   "tool": "image_to_image",
+   "aspect": "1:1",
+   "imageCount": 2,
+   "inputs": [
+    "bat_body_fly"
+   ],
+   "for": [
+    "ice_bat"
+   ],
+   "generationId": "AWaSmkao1lJhqzv1gWw0JR3G4Zqo4F6fDQ94mmn1aLgGY9A1YxBJdN2fKSBmOk3aseGGiqUj",
+   "images": [
+    {
+     "name": "icebat_fly_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2YzYTI2OTk4LTc0ZDQtNDNhMi1iZTc0LWMwMjcyZmE1MGI2NC82NTg4OTkwODUyMzUzMzI0NDg0L3RlbXB1YmFwdy5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      2048,
+      2048
+     ],
+     "kept": false,
+     "decision": "rejected: the other take (plain blue ears) was used"
+    },
+    {
+     "name": "icebat_fly_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzI0OTZlNzU2LTQwMmMtNDM5MS05YmI0LTU5OTVmMTQzZGQyYy8zMjEyNjI2OTM4MTA5NzM5OTc3L3RlbXBmcGNncC5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      2048,
+      2048
+     ],
+     "kept": true,
+     "decision": "kept: ice_bat flying body (tools/painted/enemies/ice_bat/src/ice_bat_fly.webp): crystal ears, frost breath trimmed at cut time"
+    }
+   ]
+  },
+  {
+   "shot": "icebat_sheet",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "inputs": [
+    "bat_sheet1"
+   ],
+   "for": [
+    "ice_bat"
+   ],
+   "generationId": "AWsReEIF7D1U61zfXiCwz5wSGOKF_SgYc5a03IbZ8V4R8frSDnHJ795_n6ouSUiuJ2uMNZV_",
+   "images": [
+    {
+     "name": "icebat_sheet_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzVjMjAzODA1LTc3YWYtNDYxOS05YTNiLWJjYTMzMzk1NTk4MS8tMjk3OTc3NzY0Nzg1NTc5OTEwMi90ZW1wbjl3ZXgucG5n.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": false,
+     "decision": "rejected: snowflake glyphs on the wing membrane; take 2 used"
+    },
+    {
+     "name": "icebat_sheet_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0Lzg2NjBlZGY4LTJiNTktNDI3NS1iZTM4LTA3NTRmZDFmYjJhOS8yMTE4Nzg1NTE3MDMxODg5MzMyL3RlbXA5eDZhNC5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": true,
+     "decision": "kept: ice_bat wing + hanging cocoon (src/ice_bat_sheet1.webp), same layout as the bat sheet"
+    }
+   ]
+  },
+  {
+   "shot": "snowwolf_body",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "inputs": [
+    "wolf_body"
+   ],
+   "for": [
+    "snow_wolf"
+   ],
+   "generationId": "AQli_zFCjap5rfLGNVu-ZyANIw4Cj9vptjXnVlY6FRF4SfRvTD6Z47jD21b31uUPfhUjkhJP",
+   "images": [
+    {
+     "name": "snowwolf_body_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2IxZDNjNGMyLWQ2NzItNDk4NC05NzdmLTM0N2RmZWU1YmE2ZS8tNjQzMDY0NDY0ODQ1MzkzNjEwMi90ZW1wdThmdWEucG5n.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": true,
+     "decision": "kept: snow_wolf body (src/snow_wolf_body.webp); frost breath puff cut away"
+    },
+    {
+     "name": "snowwolf_body_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzY3ZWNkMTY4LWY2MDktNGZhOS04M2Y3LWQ3YjA2MTlkMWI2OC81OTE5NDUxNTU0MTg2MjgyODYxL3RlbXA5c2lzaS5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": false,
+     "decision": "rejected: smoke around the muzzle would be hard to cut; take 1 used"
+    }
+   ]
+  },
+  {
+   "shot": "snowwolf_legs",
+   "tool": "image_to_image",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "inputs": [
+    "wolf_legs"
+   ],
+   "for": [
+    "snow_wolf"
+   ],
+   "generationId": "Acg3WeIaeS0OW4m98jie0iJZoht5XNvVqCSEtqyOxYlJpNQoU1vSeJ6BgYKuiWh_vl9QLtum",
+   "images": [
+    {
+     "name": "snowwolf_legs_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzkzMGNiYWJjLWJiZTQtNDc2Yy05Yzc1LWFjNzc3NTQwZTdjNi8yMzkzNTQ3OTg2NzAyMjM3NzEwL3RlbXBidTljZi5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      2720,
+      1536
+     ],
+     "kept": true,
+     "decision": "kept: snow_wolf legs + tail (src/snow_wolf_legs.webp)"
+    },
+    {
+     "name": "snowwolf_legs_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2I1NWM0NmQ1LWRmMjMtNDcwZC04NmYxLWI5ZmNmMGIwMzg4OC8tNTMwNzk2MzkxOTM4OTMxNDgyMi90ZW1wOHg3bzMucG5n.origin?x-kcdn-pid=112372",
+     "size": [
+      2720,
+      1536
+     ],
+     "kept": false,
+     "decision": "rejected: take 1 used"
+    }
+   ]
+  },
+  {
+   "shot": "fk_torso",
+   "tool": "image_to_image",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "inputs": [
+    "knight_torso"
+   ],
+   "for": [
+    "frozen_knight"
+   ],
+   "generationId": "AU0b_fn1hUrECEmgWCyAgQR0wIodd0Ta4PqN_6DfgcbSKbmd5Tk_asFIwl6UxCaAz9b-pf32",
+   "images": [
+    {
+     "name": "fk_torso_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2ZkZjdjZmFiLTgwOGMtNGNkNi05NTI3LWYxOWE3YTk5ZGE3Yi8xMzkwNDg0ODY5Mzk0NjcwNTQ2L3RlbXBxaWpzdi5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      1760,
+      2336
+     ],
+     "kept": null,
+     "decision": "pending"
+    },
+    {
+     "name": "fk_torso_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzkzNTQ1MTkwLTk0MzYtNDYzNi1iOTY4LWYwMGJjNmVmZTU5NC8tMzIyMTc3NjgwMDE0NDU2MDM3Mi90ZW1wMjdidG4ucG5n.origin?x-kcdn-pid=112372",
+     "size": [
+      1760,
+      2336
+     ],
+     "kept": null,
+     "decision": "pending"
+    }
+   ]
+  },
+  {
+   "shot": "fk_sheet1",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "inputs": [
+    "knight_sheet1"
+   ],
+   "for": [
+    "frozen_knight"
+   ],
+   "generationId": "AbWrfemWlU58tUBjpA_5CNHgYg3JrKJGwa4OKiSRse55p26bWaHlmDlOZkcTnrmIjVRcyQ4N",
+   "images": [
+    {
+     "name": "fk_sheet1_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2IwOTUyMDA5LWFlMWMtNGRhOC1iNDlkLWIwZGFiYTA3MjY4ZS8zODE1MTU5MTEzNDc4OTYzMDI0L3RlbXA4cGIycy5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": null,
+     "decision": "pending"
+    },
+    {
+     "name": "fk_sheet1_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpbc3BlY2lhbC1lZmZlY3Qvb3V0cHV0Lzc5NjhiN2ZmLTMwODItNGZjMS1iZTAyLTY4M2I1NjgxMDMyNS8zNTAwMzkwNTAwNjkzNzE1MjQvdGVtcGlmMnRhLnBuZw.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": null,
+     "decision": "pending"
+    }
+   ]
+  },
+  {
+   "shot": "fk_sheet2",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "inputs": [
+    "knight_sheet2"
+   ],
+   "for": [
+    "frozen_knight"
+   ],
+   "generationId": "AVJzjl4xtO1UJZhvl-AiwJAoPwVlcn41YXb2zAWmVHPC_f23FJ3gqkoUpo0eRAnQwkRTYD8T",
+   "images": [
+    {
+     "name": "fk_sheet2_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2YwMTQzNGMxLTZlMmYtNDJmMi1hOGQ3LWM3Y2I5N2UwYWFmYy8tODM2MTUxNzc2NzE3OTQwMzgxOC90ZW1weDY4cXcucG5n.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": null,
+     "decision": "pending"
+    },
+    {
+     "name": "fk_sheet2_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzBkYjNkMjU5LTVhMTUtNDA3YS05NmUxLTBkNGIwMTQ1NjM5Ni8tNjQzNDkyMDY2NTYzNzU2NzYxMC90ZW1wbGVuazMucG5n.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": null,
+     "decision": "pending"
+    }
+   ]
+  },
+  {
+   "shot": "dk_torso",
+   "tool": "image_to_image",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "inputs": [
+    "knight_torso"
+   ],
+   "for": [
+    "death_knight"
+   ],
+   "generationId": "AST3AgIJDhbtpfKFPPSqtxUz2ImRMnE8mSltswwysijh5hH8QAU61d25Idy0i5EpBbUJhJ0i",
+   "images": [
+    {
+     "name": "dk_torso_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzdhYmE4ZjU5LTA2YjQtNGE4ZC1hZTZjLWM2MWNlMzkyYTc4ZC85MjAxNDE0OTQyMzcyMTUzNjgyL3RlbXBpZTd4dC5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      1760,
+      2336
+     ],
+     "kept": null,
+     "decision": "pending"
+    },
+    {
+     "name": "dk_torso_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzE3OTcxMTU5LTFiNjItNDQzZi1iZjNkLWE0NDExMzVlOTdiYS8tNTI3MDc3MDY0NzY5OTk5NDcxMy90ZW1wNngxOTcucG5n.origin?x-kcdn-pid=112372",
+     "size": [
+      1760,
+      2336
+     ],
+     "kept": null,
+     "decision": "pending"
+    }
+   ]
+  },
+  {
+   "shot": "dk_sheet1",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "inputs": [
+    "knight_sheet1"
+   ],
+   "for": [
+    "death_knight"
+   ],
+   "generationId": "AYVgy2q_gundMmr_U71jxno5o5YcccZUKDnq0gc_GORGYEIPt045AEWXO-1Mr1JjqVhNYvwB",
+   "images": [
+    {
+     "name": "dk_sheet1_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpbc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2UzYzI1OTQxLThhYmEtNDRmZC05MzljLWVlNDAwYzUzNzE3Yi8yNzg4NjgwNjIzODMzMzE4NzEvdGVtcGFxdHB6LnBuZw.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": null,
+     "decision": "pending"
+    },
+    {
+     "name": "dk_sheet1_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzU5NjY3YWE4LTVmOGQtNDZjMC05YjQxLTMzNzBlN2IwMzdhYi8zMTUyOTg2NjkzMzM4NTM1MTc1L3RlbXAzM3BtdS5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": null,
+     "decision": "pending"
+    }
+   ]
+  },
+  {
+   "shot": "dk_sheet2",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "inputs": [
+    "knight_sheet2"
+   ],
+   "for": [
+    "death_knight"
+   ],
+   "generationId": "AdP_v4Y2irApGjilS2Zu-n6vh6mHIG5Je_iq1zNkV1QNC2vcURbzV6eE718nCfH0eyvR2sw4",
+   "images": [
+    {
+     "name": "dk_sheet2_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzA3YTc2ZTI1LWIyNWEtNGZlZi1hYmQzLTdiYTQxNDJjYTc4MC84NjIzOTU1NDkzODk0NTYyMjgwL3RlbXAxZW9ybS5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": null,
+     "decision": "pending"
+    },
+    {
+     "name": "dk_sheet2_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2Q5Y2E5M2UwLWY5ZDgtNDY1Ny04ZmIzLTExMWQxOTViYjlmNC8tNDI4MDUwOTI0MjAzMDA4MDg5Ny90ZW1wejI3MXQucG5n.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": null,
+     "decision": "pending"
+    }
+   ]
+  },
+  {
+   "shot": "fw_sheet",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "inputs": [
+    "ghost_sheet1"
+   ],
+   "for": [
+    "frost_wraith"
+   ],
+   "generationId": "ATzITVUNw5EbyCejS4bhlGDez-fhWfwYIoSMtB3yd0g7WJ_uM2DiXaalPbkPPBsZra4-0HLQ",
+   "images": [
+    {
+     "name": "fw_sheet_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzEwNjkwNjc4LTI3M2QtNDhhYi1hM2I3LTA5ZmNiODBmZTg4Ni8xOTEyMjE1Mzg0MjYwMzg3Njc2L3RlbXB3eWt3eS5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": null,
+     "decision": "pending"
+    },
+    {
+     "name": "fw_sheet_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzZlNjUzYjM4LTY0ZGYtNDljMC04MTcwLWI3NDA0YTViOGU1Mi8tNTk2MTc1MTMxODI2NDc5NDYwMC90ZW1weWNsOWQucG5n.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": null,
+     "decision": "pending"
+    }
+   ]
+  },
+  {
+   "shot": "angel_body",
+   "tool": "image_to_image",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "inputs": [
+    "skeleton_edit"
+   ],
+   "for": [
+    "bone_angel"
+   ],
+   "generationId": "AV_HDy9yV_b-74qNkhutpgJ__zzs54Q8qg8UT5r3OjNRUAxdOwfj_tBXF156t44BC8xDG9H_",
+   "images": [
+    {
+     "name": "angel_body_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzJkOTBkZGNmLWQ2MzEtNDRiYS1hNmVlLTZlZjI1NjYyMzdjMy8tODMzMzcxNzA4Mjg2NTAwNzAzMy90ZW1wcmxvZmYucG5n.origin?x-kcdn-pid=112372",
+     "size": [
+      1760,
+      2336
+     ],
+     "kept": null,
+     "decision": "pending"
+    },
+    {
+     "name": "angel_body_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2E4ZmI1ZWUwLWIwN2UtNGEwNy04Mzc5LTZmY2VkZTM1NWRlYi8tMTk5MzQ4NTQxNDY4NTA2NTA4NC90ZW1wczA1Y2cucG5n.origin?x-kcdn-pid=112372",
+     "size": [
+      1760,
+      2336
+     ],
+     "kept": null,
+     "decision": "pending"
+    }
+   ]
+  },
+  {
+   "shot": "angel_props",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "inputs": [
+    "skeleton_ref"
+   ],
+   "for": [
+    "bone_angel"
+   ],
+   "generationId": "AR0YBNVEucXyILwHTtpOdgcvj33x8u84IZc55FVr94a9O_85kcEJnD2oyE3Bt4gypY--_uph",
+   "images": [
+    {
+     "name": "angel_props_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2NmNGI0ZDA2LWU3YjUtNGZlOS1hMTk3LTQ2NzI1MzE4MWE1My8tNzY2ODczMzA3NjcwMTYwMDIyMS90ZW1wdzJ5dXUucG5n.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": null,
+     "decision": "pending"
+    },
+    {
+     "name": "angel_props_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzRiNDU1NzUzLTIwOTUtNDM5Mi1hNTVlLTJkM2YxM2E3ZDJhZS8zMDI1MjAwODE3OTYxMDUwMDQxL3RlbXB4dXc0bi5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": null,
+     "decision": "pending"
+    }
+   ]
+  },
+  {
+   "shot": "golem_ref",
+   "tool": "text_to_image",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "inputs": [],
+   "for": [
+    "ice_golem"
+   ],
+   "generationId": "Ab43xVARKCD8oKX4N1mtQ1DSjcFzTl8LYU3aeJMEAeaJcb_1uUPsmVbRCknLBkIfR35jPJed",
+   "images": [
+    {
+     "name": "golem_ref_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzcxODRhZjI5LTJlZTMtNDE1NS1hNWZkLTJmM2UxZTFkMmIwMi84MzgxNDE4ODMxMDkxNDAzMjc1L3RlbXA2OTlvcy5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      1760,
+      2368
+     ],
+     "kept": null,
+     "decision": "pending"
+    },
+    {
+     "name": "golem_ref_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzEwNmY5OGNlLWMyMjYtNDI2MS1iZDBkLWVkNDU2ZjM1YmZhNy83MjY3NDM1MTUyNDMyOTU2MDQ5L3RlbXA0ZGhuMS5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      1760,
+      2368
+     ],
+     "kept": null,
+     "decision": "pending"
+    }
+   ]
+  },
+  {
+   "shot": "succ_ref",
+   "tool": "text_to_image",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "inputs": [],
+   "for": [
+    "succubus"
+   ],
+   "generationId": "AUkQ3wOgV8eYC7KKlWPLuoW8LBH6X4gwJN-VYgUwqtgKg2msY68S7_3x7UoeNOdkgpqYeaH6",
+   "images": [
+    {
+     "name": "succ_ref_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2E3Yjg5Y2FhLTViMzUtNGQ4MC1hYWUxLWI2M2MyNDIxYjY3NC8yOTc5OTM5Njk1Nzg2MjEyMzcwL3RlbXAzMmVlby5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      1760,
+      2368
+     ],
+     "kept": null,
+     "decision": "pending"
+    },
+    {
+     "name": "succ_ref_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0Lzk2MWZkM2MwLTRmMzUtNDMxOS1hZGQyLTExYWQ2ODIwM2JjYy8tMTUzNDQ1MTM3MDk3MDE1NDY2My90ZW1waTFreGsucG5n.origin?x-kcdn-pid=112372",
+     "size": [
+      1760,
+      2368
+     ],
+     "kept": null,
+     "decision": "pending"
+    }
+   ]
+  },
+  {
+   "shot": "priest_ref",
+   "tool": "text_to_image",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "inputs": [],
+   "for": [
+    "blood_priest"
+   ],
+   "generationId": "AdtUSrhiT4N5U9ylbFfpZsOvH1ZtBOWEpBP7o9h-RKOe2A8NsyN9vPZMcl30qtYpkhnLncuD",
+   "images": [
+    {
+     "name": "priest_ref_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpbc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2Y1MmIwZTg5LTQwN2QtNDMwZi1iYTY5LTVhZDhlMjg5MzBiYS85MDg4MjM0NjkwNjI4MDM5MzMvdGVtcDJ3aGRtLnBuZw.origin?x-kcdn-pid=112372",
+     "size": [
+      1760,
+      2368
+     ],
+     "kept": null,
+     "decision": "pending"
+    }
+   ],
+   "note": "one of the two images was blocked by the content filter (SENSITIVE_RESULT, credits refunded)"
+  },
+  {
+   "shot": "nun_ref",
+   "tool": "text_to_image",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "inputs": [],
+   "for": [
+    "cursed_nun"
+   ],
+   "generationId": "AdpVCeYbnHxpA8gnrDybo-SrX2ezUdXo-qs70pEY0av4NgYs7fu62lEw7FZ0wQendr_2hCo2",
+   "images": [
+    {
+     "name": "nun_ref_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzVmMWQ2OTVhLWM3NDQtNDMyYi04YjE2LTk0YTAxNTc0MmE1ZS8yNTk4MzAwMzIyOTk3MzU0OTE4L3RlbXA4MWNwdy5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      1760,
+      2368
+     ],
+     "kept": null,
+     "decision": "pending"
+    },
+    {
+     "name": "nun_ref_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzllYWVkYjYyLTQzMDQtNDA2My1iOGYzLTdkYzg0OTY4ZDEyYy8yMDY2MDUwNDY3NTYyODUyNjkzL3RlbXBmenZhby5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      1760,
+      2368
+     ],
+     "kept": null,
+     "decision": "pending"
+    }
+   ]
+  }
+ ]
 }

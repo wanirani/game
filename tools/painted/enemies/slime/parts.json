@@ -1,0 +1,60 @@
+{
+ "id": "slime",
+ "tier": "T1",
+ "srcTD": 4,
+ "note": "Cut straight from the Kling Step-1 reference (take 1): the translucent green blob with the floating skulls/bones, the slit-pupil core eye and the slime puddle (its outer rims faded so the puddle does not spread far past the logic rect).",
+ "sources": {
+  "r": {
+   "raw": "slime_ref.webp",
+   "file": "a3_slime_ref.png",
+   "k": 0.03
+  }
+ },
+ "parts": {
+  "body": {
+   "src": "r",
+   "box": [
+    0,
+    470,
+    1995,
+    1655
+   ],
+   "fade": [
+    [
+     0,
+     470,
+     330,
+     1655,
+     "left",
+     1.0
+    ],
+    [
+     1650,
+     470,
+     1995,
+     1655,
+     "right",
+     1.0
+    ]
+   ],
+   "piv": {
+    "a": [
+     1120,
+     1600
+    ],
+    "eye": [
+     1400,
+     975
+    ],
+    "top": [
+     1120,
+     560
+    ],
+    "core": [
+     980,
+     1150
+    ]
+   }
+  }
+ }
+}

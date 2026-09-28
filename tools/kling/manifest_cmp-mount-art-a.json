@@ -1,0 +1,184 @@
+{
+ "package": "CMP-MOUNT-ART-A",
+ "model": "kling-image-v3_0_omni (image_to_image, img_resolution 2k)",
+ "prompts": "tools/painted/prompts/cmp-mount-art-a.mjs (SHOTS: <id>_ref / <id>_body / <id>_legs)",
+ "creditsPerImage": 2,
+ "note": "Result URLs expire after 24 h; kept images are stored as q93 webp under tools/painted/companions/<id>/src/. The bottom-right Kling logo is removed by the matte step before cutting.",
+ "refs": {
+  "portrait:mt_warhorse": "https://s15-kling.klingai.com/kimg/EMXN1y8qTwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo1YWdlbnRfdXBsb2FkLzE3OTA2MDI4NjAvQ0ZLS1Z3TWdmdC9jbXBfbV93YXJob3JzZS5qcGc.origin?x-kcdn-pid=112372",
+  "portrait:mt_boar": "https://s15-kling.klingai.com/kimg/EMXN1y8qSwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBoxYWdlbnRfdXBsb2FkLzE3OTA2MDI4NjIvaVV2aXhMMm9hTy9jbXBfbV9ib2FyLmpwZw.origin?x-kcdn-pid=112372",
+  "portrait:mt_skelsteed": "https://s15-kling.klingai.com/kimg/EMXN1y8qUAoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo2YWdlbnRfdXBsb2FkLzE3OTA2MDI4NjQvanJONEs2TUFIcC9jbXBfbV9za2Vsc3RlZWQuanBn.origin?x-kcdn-pid=112372",
+  "portrait:mt_ignis": "https://s15-kling.klingai.com/kimg/EMXN1y8qTQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBozYWdlbnRfdXBsb2FkLzE3OTA2MDI4NjYvdVA0ZWdTbFBqei9jbXBfbXRfaWduaXMuanBn.origin?x-kcdn-pid=112372",
+  "portrait:mt_silva": "https://s15-kling.klingai.com/kimg/EMXN1y8qTQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBozYWdlbnRfdXBsb2FkLzE3OTA2MDI4NjcvZDJyN2xPMElzYy9jbXBfbXRfc2lsdmEuanBn.origin?x-kcdn-pid=112372",
+  "mt_silva_ref(mirrored)": "https://s15-kling.klingai.com/kimg/EMXN1y8qUQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo3YWdlbnRfdXBsb2FkLzE3OTA2MDMxNjAvUVR5dVdUR2ZPZy9zaWx2YV9yZWZfMl9mbGlwLmpwZw.origin?x-kcdn-pid=112372"
+ },
+ "generations": [
+  {
+   "mount": "mt_warhorse",
+   "shot": "mt_warhorse_ref",
+   "generationId": "ARg7rckSkRVW0BsDuwlTLBnFz2TBlEDOLUI0zds8lb20KsFE7nAsPv6hvK3leDA7kui8gNRD",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "inputs": [
+    "portrait:mt_warhorse"
+   ],
+   "decision": "#1 kept → src/mt_warhorse_ref.webp (calm stance, all four legs separated, full steel barding, faces right). #2 unused (near fore leg raised)."
+  },
+  {
+   "mount": "mt_boar",
+   "shot": "mt_boar_ref",
+   "generationId": "Aa29xcbpuJdl0BRmUbSuk_qp7XN_ufoVsiOcAJN_v824QHjDKEfvXK9CoCX4tlGrAeljxYiV",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "inputs": [
+    "portrait:mt_boar"
+   ],
+   "decision": "#2 kept → src/mt_boar_ref.webp (faces right, saddle + harness). #1 unused (faces left)."
+  },
+  {
+   "mount": "mt_skelsteed",
+   "shot": "mt_skelsteed_ref",
+   "generationId": "AQMZNjQW8Vvq-vyE3gDw9MsROT-q4IESjnLHbTeYA6Pn5iV2hJ2vFz69OebZ3dw47fYIfnYI",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "inputs": [
+    "portrait:mt_skelsteed"
+   ],
+   "decision": "#2 kept → src/mt_skelsteed_ref.webp (clean bones, blue ribcage fire). #1 unused (a chain with a spike dangles from the saddle)."
+  },
+  {
+   "mount": "mt_ignis",
+   "shot": "mt_ignis_ref",
+   "generationId": "AQpjuUh5M52GTAzR3BYs81wxrNS0XLGIfrsBVKigzHChCWOJcuEJyVdMQdeRbnW8xcwGKgEm",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "inputs": [
+    "portrait:mt_ignis"
+   ],
+   "decision": "#2 kept → src/mt_ignis_ref.webp (faces right, chain shackles, lava veins). #1 unused (faces left)."
+  },
+  {
+   "mount": "mt_silva",
+   "shot": "mt_silva_ref",
+   "generationId": "ARYEqqMIcDkFUtOr-HApZGt_u9UmGO5nz8PJwb_6pDWVZW1rLRHpjxQIT_LXve_JcBf-8u0W",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "inputs": [
+    "portrait:mt_silva"
+   ],
+   "decision": "#2 kept, mirrored to face right → src/mt_silva_ref.webp (both results faced left; #2 has fewer loose sparkles). Mirrored copy uploaded as the Step-2 input."
+  },
+  {
+   "mount": "mt_warhorse",
+   "shot": "mt_warhorse_body",
+   "generationId": "Ac4i4OaGtR8rK96q6objTk2Pk7K-VzIxh7_0sAKPzVPlc7Bp-EmfZ9TjR72c7yJ7zfp9H4Fs",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "inputs": [
+    "mt_warhorse_ref (chosen result)"
+   ],
+   "decision": "pending"
+  },
+  {
+   "mount": "mt_warhorse",
+   "shot": "mt_warhorse_legs",
+   "generationId": "AUg6eIpE2_JQ5aFBWzcFO1cTKyCglV6S0G2PGddDhjJOMc9h4rRbi0GsrQt3DNbUAluAMmu2",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "inputs": [
+    "mt_warhorse_ref (chosen result)"
+   ],
+   "decision": "pending"
+  },
+  {
+   "mount": "mt_boar",
+   "shot": "mt_boar_body",
+   "generationId": "Ac8qhQg3dmNHi-N4IMfbwdK-5cc5NGPULwC0ksja4JBSbK5HzzHoo-yn0ETVTnwXj9X3FNHg",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "inputs": [
+    "mt_boar_ref (chosen result)"
+   ],
+   "decision": "pending"
+  },
+  {
+   "mount": "mt_boar",
+   "shot": "mt_boar_legs",
+   "generationId": "ASsc2H2M4_Rh1VbySuv7sf9M2g1Sh54rVLWZua4TnjvbplGBFq0lw4BTuV27SFsJC4X6yyQX",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "inputs": [
+    "mt_boar_ref (chosen result)"
+   ],
+   "decision": "pending"
+  },
+  {
+   "mount": "mt_skelsteed",
+   "shot": "mt_skelsteed_body",
+   "generationId": "AR9U5vT_0TvIFoFllWdZM9Pk5Ojcsm7Fi-8kza2MJUCqDat75U7PMzfFc_Vl1ZVDwscRkDm1",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "inputs": [
+    "mt_skelsteed_ref (chosen result)"
+   ],
+   "decision": "pending"
+  },
+  {
+   "mount": "mt_skelsteed",
+   "shot": "mt_skelsteed_legs",
+   "generationId": "Ab8RkQuSWIss8152wgkknhWEoMZL-4ZwkI-HhT4-zpXqnzKElMWfdF7OLlQkLcz0JTo2eoNW",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "inputs": [
+    "mt_skelsteed_ref (chosen result)"
+   ],
+   "decision": "pending"
+  },
+  {
+   "mount": "mt_ignis",
+   "shot": "mt_ignis_body",
+   "generationId": "AY_2c5HQP7TvnVmxEi-dZ9kUqVpR5NY3HtkXO5poYID8SX96JaDLty28YIm1bS7RJD9rtdaE",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "inputs": [
+    "mt_ignis_ref (chosen result)"
+   ],
+   "decision": "pending"
+  },
+  {
+   "mount": "mt_ignis",
+   "shot": "mt_ignis_legs",
+   "generationId": "AZ5cD9_uRiOPBnREPSoK1USErpPpEooPP6UIaF5WS-CwwmoMp-aS1IbbVYAQ1Fd-79aP0OsB",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "inputs": [
+    "mt_ignis_ref (chosen result)"
+   ],
+   "decision": "pending"
+  },
+  {
+   "mount": "mt_silva",
+   "shot": "mt_silva_body",
+   "generationId": "Aftmu1WNmNrb4p4g-iNZE6aTrPfrQJHF4uHu4k_gBj5N3-9tKACIiaYD3UYqEi4wtOb1MknH",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "inputs": [
+    "mt_silva_ref (chosen result)"
+   ],
+   "decision": "pending"
+  },
+  {
+   "mount": "mt_silva",
+   "shot": "mt_silva_legs",
+   "generationId": "AYGLMvvmUgAC6e5yv6ASUCTuGusJ5mRa1D_kEwbLoXsYgEl2cJG7IRW_ad05YFlpylTgLX9M",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "inputs": [
+    "mt_silva_ref (chosen result)"
+   ],
+   "decision": "pending"
+  }
+ ],
+ "imagesGenerated": 30,
+ "creditsSpent": 60
+}

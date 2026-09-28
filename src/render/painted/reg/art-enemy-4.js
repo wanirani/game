@@ -3,7 +3,13 @@
 // enemies:    [{ mod: <import * as x from '../enemies/<id>.js'>, ids?: ['<render id>', ...] }]  (적 렌더러 모듈, 에셋은 지연 로딩)
 // companions: { '<companionId>': () => import('../companions/<id>.js') }
 // npcs:       { '<npcId>': () => import('../npcs/<id>.js') }
+//
+// ART-ENEMY-4 (s10–s11, 10종). 벡터 렌더러(enemies_b.js)는 그대로 남아 에셋이 없거나 로딩 중일 때 대신 그린다.
+import * as ice_bat from '../enemies/ice_bat.js';
+
 export const bosses = {};
-export const enemies = [];
+export const enemies = [
+  { mod: ice_bat },
+];
 export const companions = {};
 export const npcs = {};
