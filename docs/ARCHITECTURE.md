@@ -5,7 +5,7 @@
 
 - 이 문서 = **지금 코드에 있는 계약**의 지도. 결정의 근거는 `docs/specs/MASTER_PLAN.md` §1 (여러 명세가 부딪칠 때 이긴다) → `docs/specs/{feel,platform,world2,companions}.md` → `docs/specs/ART_DECISION.md`. 계정·클라우드 저장은 `docs/ACCOUNTS.md`, 채색 그림 제작은 `docs/art/*_PIPELINE.md`, 배포는 `tools/deploy/README.md`.
 - 각 모듈의 머리말 주석이 가장 자세한 계약이다. 여기서는 파일 위치·공개 API·데이터 흐름·ID 목록만 모은다. 코드와 이 문서가 다르면 **코드가 맞고 이 문서가 낡은 것**이다 (고치는 곳: DOCS-ARCH → W4 FIX-TOOLS).
-- 마지막 전면 갱신: 2026-09-28 (W3 DOCS-ARCH). 「진행 중」 표시는 이 시점에 아직 작업 중이던 패키지(부록 A)의 계약이다.
+- 마지막 전면 갱신: 2026-09-28 (W3 DOCS-ARCH, 같은 날 검수에서 코드와 다시 대조). 「진행 중」 표시는 이 시점에 아직 작업 중이던 패키지(부록 A)의 계약이다.
 
 ## 목차
 0. 실행·디버그·검사 명령 · 1. 좌표/단위 · 2. 파일 지도와 규칙 · 3. 부팅과 프레임 흐름 · 4. 코어 API · 5. 입력·설정·저장 ·
@@ -164,7 +164,7 @@ rAF ─▶ input.pollFrame() (패드 읽기·진동 정리) ─▶ (세로 잠�
 |---|---|
 | 소리 | `musicVol` 0.6 · `sfxVol` 0.8 |
 | 화면 | `quality` 'auto' ('auto'\|'low'\|'medium'\|'high') · `fpsCap` 60 (60\|0) · `uiScale` 'auto' ('auto'\|1\|1.15\|1.3\|1.5) · `safeArea` 'fit' ('fit'\|'full') · `screenShake` 1 · `showDamage` true · `flashFx` 1 (0\|0.5\|1) · `cutinMode` 'full' ('full'\|'short') · `reduceMotion` false |
-| 조작 | `ctrlPrompts` 'auto' · `ctrlPreset` 'arcade' ('arcade'\|'classic'\|'custom') · `ctrlConfirm` 'auto' ('auto'\|'south'\|'east') · `ctrlMap` null · `keyMap` null · `ctrlDeadzone` 0.2 · `ctrlRumble` 0.8 · `autoSprint` false |
+| 조작 | `ctrlPrompts` 'auto' ('auto'\|'keyboard'\|'xbox'\|'ps'\|'nintendo') · `ctrlPreset` 'arcade' ('arcade'\|'classic'\|'custom') · `ctrlConfirm` 'auto' ('auto'\|'south'\|'east') · `ctrlMap` null · `keyMap` null · `ctrlDeadzone` 0.2 (0.1–0.4) · `ctrlRumble` 0.8 · `autoSprint` false |
 | 터치 | `touchOpacity` 0.55 · `touchScale` 1 (0.8–1.3) · `touchStick` 'float' ('float'\|'fixed') · `touchSlide` true · `touchLeftHanded` false · `touchLayout` null · `vibration` true |
 | 기타 | `autoSave` true · `keepAwake` true · `turntableAuto` true · `fullscreenAuto` true · `language` 'ko' · `settingsVersion` 2 |
 
@@ -310,7 +310,7 @@ rAF ─▶ input.pollFrame() (패드 읽기·진동 정리) ─▶ (세로 잠�
 - s18 `puppeteer` 악몽 인형사 · `faceless` 얼굴 없는 자 · `dream_eater` 꿈 삼키는 자
 - s19 `rot_treant` 썩은 나무거인 · `plague_moth` 역병 나방 · `fungal_husk` 균사 망자
 - s20 `void_herald` 공허의 전령 · `nihil_spawn` 무의 파편 (+ 앞 스테이지 적 재등장)
-- 방 숫자 매핑은 world2 §4.3 (예: s14 `1 mirror_knight … 5 phantom_sword 7 mimic`).
+- 맵의 숫자 칸 `1`–`9` 는 방마다 `room.enemies['1'…'9']` 표로 적을 고른다 (배치는 world2 §4.3, 예: s14 `1 mirror_knight … 5 phantom_sword 7 mimic`; `stage.enemies` 는 숫자와 무관한 스테이지 명단 — 채색 적 미리 굽기 `preloadPaintedEnemies`·서바이벌 출현표가 읽는다).
 
 ### 11.4 보스 7체 (BOSS-P2-KIT · BOSS-P2-1…4; 그림 ART-BOSS-6…8)
 | id | 이름 | 스테이지 | 클래스 파일 | 음악 | 페이즈 대사 |
@@ -365,7 +365,7 @@ rAF ─▶ input.pollFrame() (패드 읽기·진동 정리) ─▶ (세로 잠�
 - **웹 빌드** `node tools/deploy/build_web.mjs` → `dist/web`(게시 폴더) + `dist/deploy`(Netlify 업로드 묶음: web/ + netlify/functions·lib + package.json + publish='web' netlify.toml) + `dist/build_web_report.json`. 허용 목록만 복사(`index.html manifest.webmanifest sw.js robots.txt css/ src/boot-gate.js assets/ downloads/`), 공개 금지(`tools docs android netlify node_modules dist .git`, `*.keystore *.jks *.p12 *.properties .env*`)가 섞이면 빌드 실패(`--selftest-deny`). 의존성 없는 번들러 `tools/deploy/lib/{bundle,scope,minify,acorn}.mjs` → `src/bundle/<내용 해시>/app.js` + 동적 import 조각 `lazy-*.js` (`--no-bundle` 로 비교). `build-info.js`(window.__BN_BUILD: 모듈 수·lo 목록·팩), `build.json`(파일별 해시), `_redirects`(`/apk`·`/download` → 최신 APK), 글꼴 검사·맵 검증·크기 예산(사이트 ≤ 90 MB, APK 입력 ≤ 45 MB 경고, 첫 화면 brotli ≤ 1.6 MB). 저사양 그림 `python3 tools/assets/make_variants.py` → `assets/lo/`.
 - **netlify.toml**: `[build] command = "node tools/deploy/build_web.mjs --no-apk --no-deploy-bundle"`, `publish = "dist/web"`, `NODE_VERSION = "22"`, `[functions] directory = "netlify/functions"`; 헤더 CSP `script-src 'self'`(인라인 스크립트 없음), `style-src 'self' 'unsafe-inline'`, `connect-src 'self'`, Permissions-Policy gamepad·fullscreen·screen-wake-lock·autoplay, COOP same-origin, HSTS, 캐시 규칙. 비밀 값 `AUTH_PEPPER` 는 Netlify 환경 변수에만. **저장소 루트를 올리지 않는다** (`--dir .` 금지). 절차 `tools/deploy/README.md`.
 - **서비스 워커** `sw.js` (빌드가 `BUILD {hash, version, precache, assets, manifest}` 주입; 비어 있으면 개발용 네트워크 우선): 캐시 `bn-<buildHash>`(코드·CSS·글꼴·index.html, 캐시 우선) + `bn-assets-v1`(그림, 경로 키 + build.json 해시 검증, 최대 800개). `/api/`·`/downloads/`·`build.json`·`sw.js`·Range·다른 출처·GET 아님은 건드리지 않는다. 페이지 이동은 네트워크 우선 3초. 새 워커는 대기하고 타이틀의 [업데이트](`platform.applyUpdate` → `SKIP_WAITING`)로만 켜진다.
-- **claude.ai 아티팩트** `node tools/deploy/build_artifact.mjs [--check|--smoke]` → `dist/artifact` (조각 ≤ 8, 그림 팩 `assets/packs/<n>.bnpack + index.json` ≤ 40, 한도 ≤ 511 파일·256 MB, 한 번 ≤ 255개·64 MB). 계정 숨김, 서비스 워커 없음.
+- **claude.ai 아티팩트** `node tools/deploy/build_artifact.mjs [--check|--smoke]` → `dist/artifact` (조각 ≤ 8, 그림 팩 `assets/packs/<n>.bin`(파일 바이트를 이어 붙임, 머리말 없음) + `index.json {v:1, packs, files:{경로:[팩, 오프셋, 길이]}, complete}` ≤ 40, 한도 ≤ 511 파일·256 MB, 한 번 ≤ 255개·64 MB). 계정 숨김, 서비스 워커 없음.
 - **안드로이드 APK** `node tools/deploy/build_web.mjs && tools/apk/build_apk.sh [--verify]` → `dist/BloodNocturne.apk` (Gradle 없이 aapt2·javac·d8·zipalign·apksigner; SDK 자동 설치). 웹 파일 = dist/web − sw.js − downloads/ − _redirects (`tools/apk/pack_web.py`). 예산 45 MB, 넘으면 휴대폰 밀도 단계 `lo`(bg/cg/portraits 원본 대신 lo/) → `lo+td`(채색 아틀라스 0.75배), 강제 `APK_ASSETS=full|lo|lo+td`. 서명 키 `tools/android/release.keystore` + `keystore.properties` (git 무시, **백업 필수**, 절대 공개 금지). 검증 `node tools/apk/verify_apk.mjs`.
   - 앱 셸 `android/app/src/main/`: `MainActivity`(WebView, 뒤로 = Escape, `html.bn-android`), `AssetServer`(`https://appassets.androidplatform.net/` 가상 출처로 `assets/www/`, MIME 표, lo/ 대체, index.html 에 `assets/app/head_inject.html` 삽입), `ApiProxy`(앱 안의 `/api/*` → `tools/apk/api_origin.txt` 의 Netlify 출처로, 헤더·본문·상태 그대로, no-store, 15초 제한 JSON 오류), `WebViewCheck`(WebView 주 버전 < 98 이면 게임 대신 업데이트 화면; 버전은 기본 User-Agent 의 `Chrome/NN`, 없을 때만 `WebView.getCurrentWebViewPackage().versionName` — Huawei 등 자체 번호를 쓰는 제공자 대비). 권한 INTERNET · VIBRATE 만.
   - **네이티브 계약**: `window.__BN_APP = {platform:'android', version, assets:'full'|'lo'|'lo+td', apiProxy, apiBase}` · `window.__BN_INSETS {l,r,t,b}` CSS px + window 이벤트 `'bn-insets'`(노치·보이는 시스템 막대) · `window.__BN_IME {bottom}` CSS px + `'bn-ime'`(API 30 이상만, 그 아래는 undefined; account.js 가 입력 칸을 올린다) · 브리지 `window.BNAndroid`: `isApp() version() exitApp() vibrate(json) insets() ime() rumble(strong, weak, ms)`(연결된 컨트롤러: API 31+ VibratorManager, 그 아래 단일 모터, 패드 없으면 무시) `apiStash(id, method, headers, body)`(WebView 는 POST 본문을 가로챌 수 없어 본문을 먼저 맡긴다).
@@ -424,7 +424,7 @@ weapon:{type:'whip'|'sword'|'greatsword'|'dagger'|'gun'|'staff', style:1~6, colo
 
 ### 보스 (ID — 스테이지)
 `b_nightwing`(s01) 나이트윙 · `b_banshee`(s02) 밴시 여왕 · `b_dullahan`(s03) 둘라한 · `b_crimson`(s04) 진홍의 갑주군주 · `b_bonedragon`(s05) 본 드래곤 · `b_grimoire`(s06) 그리모어 · `b_chimera`(s07) 키메라 호문쿨루스 · `b_leviathan`(s08) 레비아탄 · `b_colossus`(s09) 태엽 거신 · `b_frostqueen`(s10) 서리 여왕 이자벨라 · `b_death`(s11) 사신 데스 · `b_dracula`(s12) 드라큘라 백작 (2페이즈 진정한 모습 `portraits/b_dracula2`) · `b_chaos`(s13) 혼돈의 군주 · 2부 `b_narkissa b_moloch b_dagon b_ziz b_mara b_behemoth b_nihil` (§11.4).
-초상화 `portraits/<bossId>` (+ `b_dracula2`, `b_narkissa2`, `b_nihil2`). 클래스: 1부 `bosses/a_*.js`(BossA, `a_common.js`)·`b_*.js`(BossB, `b_common.js`), 2부 `c_*.js`/`d_*.js`(BossC, `c_common.js`). 모든 보스에 채색 렌더러 `render/painted/bosses/<id>.js`.
+초상화 `portraits/<bossId>` (+ `b_dracula2`, `b_narkissa2`, `b_nihil2`). 클래스: 1부 `bosses/a_*.js`(`ABoss`, `a_common.js`)·`b_*.js`(`BossB`, `b_common.js`), 2부 `c_*.js`/`d_*.js`(BossC, `c_common.js`). 모든 보스에 채색 렌더러 `render/painted/bosses/<id>.js`.
 
 ### 숨겨진 비전서(기술 문서) — `data/lore.js` DOCS
 벽 'H' 를 부수면 해당 스테이지 `docs` 목록 순서로 등장. `tech` 는 커맨드 기술(`SKILL_IMPL[tech.id]`), `stats` 는 영구 보너스.
@@ -467,7 +467,7 @@ weapon:{type:'whip'|'sword'|'greatsword'|'dagger'|'gun'|'staff', style:1~6, colo
 
 ### 스토리 스크립트 ID 규칙
 `<stageId>_intro`(스테이지 시작 전), `<stageId>_t1/_t2`(스테이지 안), `<stageId>_outro`(클리어 후), `<bossId>_pre`(보스 등장 전), `<bossId>_post`(스토리 모드에서 보스가 죽은 뒤), 보스 페이즈 대사(`b_dracula_transform`, `b_narkissa_shatter`, `b_mara_dream`, `b_nihil_form2`, `b_nihil_final`), `prologue`, `p2_prologue`, `ending_bad`, `ending_normal`, `ending_true`, `ending_p2`, `ending_p2true`, `<npcId>_default`, `<npcId>_ch<N>`(N장 클리어 뒤 마을 대사, N ≤ 20), `<npcId>_tip<N>`, `<npcId>_<stageId>`, 퀘스트 `q_<id>_start|_done`, 동료 `cmp_*`.
-줄 형식(`data/story.js` 머리말): `{who, text, side?, name?, portrait?}` · `{choice:[…]}` · `{label}`/`{goto}`/`{if}` · 명령 `give gold flag quest unlockChar shake music sfx relic cg recruit` (컷신 전용 `bg wait title flash`).
+줄 형식(`data/story.js` 머리말): `{who, text, side?, name?, portrait?}` · `{choice:[…]}` · `{label}`/`{goto}`/`{if}` · 명령 `give gold flag quest unlockChar shake flash music sfx relic cg recruit goto` (대화 `dialogue.js`·컷신 `front/story.js` 모두) + 컷신 전용 `bg wait title`.
 
 ### 스토리 CG (Kling 생성, `assets/cg/<id>.webp`)
 대사 스크립트에서 `{ cmd:'cg', id:'cg_prologue_moon' }` 로 전체화면 이벤트 CG 표시, `{ cmd:'cg', id:null }` 로 해제.

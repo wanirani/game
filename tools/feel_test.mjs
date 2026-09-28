@@ -538,17 +538,25 @@ async function pC2() {
   const ds = [Q.dummy('skeleton', 40, { facing: -1 }), Q.dummy('zombie', 62, { facing: -1 }), Q.dummy('skeleton', 84, { facing: -1 })];
   Q.step(2);
   w.freezeLog.length = 0;
-  const frozen = [], n0 = Q.log.hits.length;
+  const frozen = [], n0 = Q.log.hits.length, perSec = [0, 0, 0];
+  // the three dummies are held at their spots (knockback would carry them out of reach within ~1 s and the last two
+  // seconds would test nothing); the hero keeps her own movement
+  const home = ds.map((d) => d.x), cx0 = p.cx;
   for (let i = 0; i < 180; i++) {
     frozen.push(w.hitstop > 0 ? 1 : 0);
     Q.key('attack', (i % 4) < 2);   // mash: 2 steps down, 2 up
+    const h = Q.log.hits.length;
     Q.step(1);
+    perSec[Math.floor(i / 60)] += Q.log.hits.length - h;
+    const shift = Math.max(0, p.cx - cx0);   // a lunge that carries her forward takes the pack along, so it stays in front of her
+    for (const [j, d] of ds.entries()) { d.x = home[j] + shift; d.vx = 0; }
   }
   Q.release(); Q.step(30);
   let worst = 0;
   for (let i = 0; i + 60 <= frozen.length; i++) { let s = 0; for (let j = i; j < i + 60; j++) s += frozen[j]; worst = Math.max(worst, s); }
+  const targets = new Set(Q.log.hits.slice(n0).map((h) => h.tid)).size;
   for (const d of ds) d.dead = true; Q.step(2);
-  return { hits: Q.log.hits.length - n0, frozenTotal: frozen.reduce((a, b) => a + b, 0) / 60, worstWindow: worst / 60 };
+  return { hits: Q.log.hits.length - n0, perSec, targets, frozenTotal: frozen.reduce((a, b) => a + b, 0) / 60, worstWindow: worst / 60 };
 }
 
 async function pC4() {
@@ -841,7 +849,11 @@ async function pC13() {
   const first = kill3();
   const t0 = w.rt;
   const second = kill3();
-  return { first, second, gap: +(w.rt - t0).toFixed(2), killSlowT: +(w.killSlowT ?? 0).toFixed(2) };
+  const gap = +(w.rt - t0).toFixed(2), killSlowT = +(w.killSlowT ?? 0).toFixed(2);
+  // positive control: once the 1.5 s gap has run out the same kill triggers the slow-mo again (so 'second' was the rate limit)
+  Q.until(() => !(w.killSlowT > 0) && !(w.slowmo > 0), 240); Q.step(2);
+  const third = kill3();
+  return { first, second, third, gap, killSlowT };
 }
 
 async function pC14() {
@@ -1117,6 +1129,7 @@ async function pAwakenStart({ cid, key, render, holdSteps = 30, until = 0.8 }) {
   const ev0 = Q.log.ev.length, sc0 = Q.log.scenes.length, s0 = Q.steps;
   const frames = [];
   let pushAt = null;
+  const ridingAtStart = !!p.mount?.riding;
   Q.key(key);
   for (let i = 0; i < 60; i++) {
     frames.push(render ? Q.frame() : (Q.step(1), 0));
@@ -1131,7 +1144,7 @@ async function pAwakenStart({ cid, key, render, holdSteps = 30, until = 0.8 }) {
   if (sc) for (let i = 0; i < 200 && Q.top() === 'awakenCutin' && (sc.t ?? 0) < until; i++) frames.push(render ? Q.frame() : (Q.step(1), 0));
   if (!render) Q.render();
   Q._aw = { ev0, sc0, s0, hp0, frames, sc };
-  return { tier, pushAt, spAfterCast: sp, awAfterCast: aw, info, sceneT: sc ? +(sc.t ?? 0).toFixed(3) : null, top: Q.top(), line: Q.AWD.AWAKEN[p.hero.charId]?.line, hudHidden: !!w.hudHidden };
+  return { tier, pushAt, spAfterCast: sp, awAfterCast: aw, info, sceneT: sc ? +(sc.t ?? 0).toFixed(3) : null, top: Q.top(), line: Q.AWD.AWAKEN[p.hero.charId]?.line, hudHidden: !!w.hudHidden, ridingAtStart };
 }
 
 /** continue the awakening until the director ends */
@@ -1517,8 +1530,8 @@ async function heroSuite(hero, { onlyC2 = false } = {}) {
       rec('C12', ctx, ok ? 'pass' : 'fail', `10 hits → ${r.column.numbers} numbers rising by ${r.column.rises.join('/')} px, '합계' ×${r.column.totals}; live max ${r.cap.maxLive} (≤ ${r.cap.cap}); showDamage off → ${r.off.numbers}`, r);
     });
     if (want('C13')) await run(P, 'C13', ctx, pC13, {}, (r) => {
-      const ok = r.first.slow > 0 && r.first.scale === 0.25 && r.second.slow === 0;
-      rec('C13', ctx, ok ? 'pass' : 'fail', `last of 3 killed → slowmo ${r.first.slow} s at ×${r.first.scale}; a second trigger ${r.gap} s later → slowmo ${r.second.slow}`, r);
+      const ok = r.first.killed === 3 && r.first.slow > 0 && r.first.scale === 0.25 && r.second.killed === 3 && r.second.pre.killSlowT > 0 && r.second.slow === 0 && r.third.killed === 3 && r.third.slow > 0;
+      rec('C13', ctx, ok ? 'pass' : 'fail', `last of 3 killed → slowmo ${r.first.slow} s at ×${r.first.scale}; a second trigger ${r.gap} s later (${r.second.killed}/3 killed, gap timer ${r.second.pre.killSlowT} s left) → slowmo ${r.second.slow}; after the gap a third → slowmo ${r.third.slow} (${r.third.killed}/3 killed)`, r);
     });
     if (want('C14')) await run(P, 'C14', ctx, pC14, {}, (r) => {
       const ok = r.varied.maxRank >= 3 && r.varied.words.includes('GREAT!') && r.spam.maxRank <= 2 && r.hurt.after === r.hurt.before - 1;
@@ -1530,7 +1543,7 @@ async function heroSuite(hero, { onlyC2 = false } = {}) {
     });
     if (want('I1')) await run(P, 'I1', ctx, pI1, {}, (r) => rec('I1', ctx, r.present && ['particles', 'dmgNums', 'ghosts', 'gradients', 'heroDraws', 'sfxStarts'].every((k) => r.keys.includes(k)) ? 'pass' : 'fail', r.present ? `window.__feelStats keys: ${r.keys.join(', ')}` : 'window.__feelStats is not defined with ?feelstats (feel §8 instrumentation missing)', r));
   }
-  if (hero === 'lia' && want('C2')) await run(P, 'C2', ctx, pC2, {}, (r) => rec('C2', ctx, r.hits > 10 && r.worstWindow <= 0.40 + 1 / 60 + 1e-6 ? 'pass' : 'fail', `lia mashing on 3 dummies 3 s: ${r.hits} hits, frozen ${round(r.frozenTotal, 2)} s total, worst 1 s window ${round(r.worstWindow, 3)} s (≤ 0.40)`, r));
+  if (hero === 'lia' && want('C2')) await run(P, 'C2', ctx, pC2, {}, (r) => rec('C2', ctx, r.perSec.every((n) => n >= 3) && r.targets === 3 && r.worstWindow <= 0.40 + 1 / 60 + 1e-6 ? 'pass' : 'fail', `lia mashing on 3 dummies 3 s: ${r.hits} hits on ${r.targets}/3 targets (${r.perSec.join('/')} per second, ≥ 3 each), frozen ${round(r.frozenTotal, 2)} s total, worst 1 s window ${round(r.worstWindow, 3)} s (≤ 0.40)`, r));
   // ── ultimates ──
   let gameplay = null;   // U2 gameplay baseline of this page: { b: wall-time stats, cb: CPU ms per frame }
   if (wantAny('U1', 'U2', 'V1')) {
@@ -1760,7 +1773,7 @@ async function companionSuite() {
     const fin = st ? await run(P, 'X2', ctx, pAwakenFinish, { render: false }, null) : null;
     const re = fin ? await P.page.evaluate(() => { const Q = window.__fq, p = Q.p(); let at = -1; Q.step(180, (i) => { if (at < 0 && p.mount?.riding) at = i + 1; }); return { remountAt: at, riding: !!p.mount?.riding }; }).catch((e) => ({ error: e.message })) : null;
     await P.page.evaluate(pAwakenCleanup).catch(() => {});
-    if (st && fin) rec('X2', ctx, st.info && fin.ridingDuringDirector === 0 && fin.done && !fin.cutscene && fin.dmg.some((d) => d > 0) ? 'pass' : 'fail', `awakening while riding: cut-in ${st.info ? 'pushed' : 'NOT pushed'}, riding during the director ${fin.ridingDuringDirector}/${fin.padSamples} steps, director ${fin.director} done ${fin.done}, damage ${fin.dmg.map((d) => Math.round(d)).join('/')}; auto-remount after ${re?.remountAt > 0 ? round(re.remountAt / 60, 2) + ' s' : 'no'}`, { start: st, fin: { ...fin, frames: undefined }, remount: re });
+    if (st && fin) rec('X2', ctx, st.ridingAtStart && st.info && fin.ridingDuringDirector === 0 && fin.done && !fin.cutscene && fin.dmg.some((d) => d > 0) && re?.remountAt > 0 ? 'pass' : 'fail', `awakening while riding (riding at the press: ${st.ridingAtStart}): cut-in ${st.info ? 'pushed' : 'NOT pushed'}, riding during the director ${fin.ridingDuringDirector}/${fin.padSamples} steps, director ${fin.director} done ${fin.done}, damage ${fin.dmg.map((d) => Math.round(d)).join('/')}; auto-remount after ${re?.remountAt > 0 ? round(re.remountAt / 60, 2) + ' s' : 'no'}`, { start: st, fin: { ...fin, frames: undefined }, remount: re });
   }
   if (want('X3')) await run(P, 'X3', ctx, pX3, { cid: 'kael_crusader' }, (r) => {
     const ok = r.autoHits > 0 && r.autoHsMax === 0 && r.maxWorldHs === 0 && r.freezeLogDelta === 0 && Math.abs(r.awDelta - r.rankUps * r.awPerRank) < 1e-6 && r.comboRefreshByGuardian === 0 && r.assist.assists >= 1 && r.assist.assistHsMax <= 0.03 + 1 / 60 + 1e-6 && r.assist.finisherCls === 'F';
