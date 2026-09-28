@@ -115,6 +115,13 @@ function headAdj(P, T, d) {
   P.na += d; P.ha += d;
   P.hx = P.nx + Math.cos(P.na) * T.neck.len; P.hy = P.ny + Math.sin(P.na) * T.neck.len;
 }
+/** 목 상대 각도 제한: 채색 머리 부품(목+머리)을 크게 돌리면 몸 부품의 목덜미가 드러나 '머리가 둘' 로 보인다 */
+function headLimit(P, T) {
+  const lim = T.headLim;
+  if (!lim) return;
+  const rel = P.na - P.pitch - T.neck.a, c = clamp(rel, lim[0], lim[1]);
+  if (c !== rel) headAdj(P, T, c - rel);
+}
 function finishSeat(P, m) {
   const f = (m.facing ?? 1) < 0 ? -1 : 1;
   P.seat.x = fin(m.cx, 0) + f * P.sl.x; P.seat.y = fin(m.bottom, 0) + P.sl.y;
@@ -282,6 +289,7 @@ function wolfPose(m, dt, P, T) {
   }
   shift(P, 0, S.lift);
   headAdj(P, T, S.hd);
+  headLimit(P, T);
   // 꼬리: 질주 = 뒤로 흩날림, 포효 = 치켜듦, 벽 차기 = 균형
   const gait = P.gait;
   let base = T.tailSeg[0].rel + P.pitch;
@@ -332,6 +340,7 @@ function flyQuadPose(m, dt, P, T) {
     if (onG) { let mx = 0; for (const L of P.legs) mx = Math.max(mx, L.fy); if (mx > 0) shift(P, 0, -mx); }
   }
   headAdj(P, T, S.hd);
+  headLimit(P, T);
   // 꼬리: 비행 = 뒤로 곧게 흩날림 (말린 끝이 풀린다)
   const gait = P.gait, flying = !onG && a !== 'swim';
   let base = T.tailSeg[0].rel + P.pitch;
@@ -456,7 +465,7 @@ RIG.registerTemplate('wolf', {
   seat: [-2, -44.08],
   gallop: 'bound', lift: [7, 15], bob: [1.2, 2.6, 4.4], pump: 0.1, stretch: 0.06,
   duty: { walk: 0.62, trot: 0.5, gallop: 0.32 },
-  jawMax: 0.5,
+  jawMax: 0.5, headLim: [-0.6, 0.24],
 });
 RIG.registerTemplate('wyvern', {
   kind: 'quad', pose: flyQuadPose,
@@ -473,7 +482,7 @@ RIG.registerTemplate('wyvern', {
   wing: wingT([-7.55, -65.77], [7.97, -107.44], [-91.7, -128.68], {
     fold: [-0.15, -0.3, -0.47, 0.14], sweep: [-0.42, -0.62, -0.93, 0.06], far: [7, -3], period: 0.4, down: 0.45, glide: [0.5, 0.28], fingers: 3,
   }),
-  jawMax: 0.5, diveA: 0.87,
+  jawMax: 0.5, diveA: 0.87, headLim: [-0.45, 0.3],
 });
 RIG.registerTemplate('griffin', {
   kind: 'quad', pose: flyQuadPose,
@@ -490,7 +499,7 @@ RIG.registerTemplate('griffin', {
   wing: wingT([-0.77, -54.02], [-10.18, -86.08], [-76.39, -116.05], {
     fold: [-0.25, -0.4, -0.62, 0.18], sweep: [-0.45, -0.6, -0.95, 0.04], far: [6, -3], period: 0.42, down: 0.45, glide: [0.55, 0.3], feather: true,
   }),
-  jawMax: 0.4, diveA: 1.2,
+  jawMax: 0.4, diveA: 1.2, headLim: [-0.4, 0.18],
 });
 RIG.registerTemplate('bat', {
   kind: 'bat', pose: batPose,
