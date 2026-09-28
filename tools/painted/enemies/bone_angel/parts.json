@@ -1,0 +1,301 @@
+{
+ "id": "bone_angel",
+ "tier": "T2",
+ "srcTD": 4,
+ "note": "Skeleton-rig composition (angel_body = composition-keeping Kling edit of the skeleton edit: ivory bones with gilded cracks, halo, gold-sashed temple rags) cut into skull(+halo) / ribcage+spine / pelvis+rags+legs; props sheet (angel_props): feathered bone wing (drawn twice, far one darkened), vertebra bone lance with the glowing blade, upper-arm bone, forearm with the open hand. Wing/lance/arm pieces are laid out horizontally on the sheet.",
+ "sources": {
+  "b": {
+   "file": "a4_bone_angel_body.png",
+   "k": 0.032,
+   "raw": "bone_angel_body.webp"
+  },
+  "p": {
+   "file": "a4_bone_angel_props.png",
+   "k": 0.05,
+   "raw": "bone_angel_props.webp"
+  }
+ },
+ "parts": {
+  "skull": {
+   "src": "b",
+   "box": [
+    625,
+    5,
+    1265,
+    425
+   ],
+   "poly": [
+    [
+     625,
+     20
+    ],
+    [
+     1265,
+     20
+    ],
+    [
+     1265,
+     100
+    ],
+    [
+     1110,
+     120
+    ],
+    [
+     1110,
+     300
+    ],
+    [
+     1090,
+     425
+    ],
+    [
+     940,
+     425
+    ],
+    [
+     880,
+     400
+    ],
+    [
+     820,
+     360
+    ],
+    [
+     780,
+     250
+    ],
+    [
+     790,
+     110
+    ],
+    [
+     625,
+     100
+    ]
+   ],
+   "piv": {
+    "a": [
+     890,
+     372
+    ],
+    "eye": [
+     1040,
+     232
+    ],
+    "halo": [
+     945,
+     55
+    ],
+    "top": [
+     945,
+     70
+    ]
+   }
+  },
+  "torso": {
+   "src": "b",
+   "box": [
+    700,
+    375,
+    1078,
+    990
+   ],
+   "poly": [
+    [
+     705,
+     450
+    ],
+    [
+     790,
+     405
+    ],
+    [
+     850,
+     378
+    ],
+    [
+     930,
+     378
+    ],
+    [
+     945,
+     432
+    ],
+    [
+     1060,
+     470
+    ],
+    [
+     1078,
+     700
+    ],
+    [
+     1062,
+     860
+    ],
+    [
+     960,
+     880
+    ],
+    [
+     905,
+     990
+    ],
+    [
+     830,
+     990
+    ],
+    [
+     800,
+     870
+    ],
+    [
+     720,
+     820
+    ],
+    [
+     700,
+     650
+    ]
+   ],
+   "piv": {
+    "a": [
+     860,
+     975
+    ],
+    "neck": [
+     888,
+     385
+    ],
+    "sh": [
+     880,
+     470
+    ],
+    "wing": [
+     760,
+     490
+    ],
+    "hip": [
+     860,
+     975
+    ]
+   }
+  },
+  "lower": {
+   "src": "b",
+   "box": [
+    690,
+    945,
+    1140,
+    2318
+   ],
+   "piv": {
+    "a": [
+     870,
+     985
+    ],
+    "b": [
+     900,
+     2250
+    ],
+    "hem": [
+     880,
+     2050
+    ]
+   }
+  },
+  "wing": {
+   "src": "p",
+   "box": [
+    55,
+    55,
+    1100,
+    790
+   ],
+   "k": 0.048,
+   "piv": {
+    "a": [
+     1010,
+     555
+    ],
+    "tip": [
+     100,
+     165
+    ]
+   }
+  },
+  "lance": {
+   "src": "p",
+   "box": [
+    55,
+    855,
+    2295,
+    1170
+   ],
+   "k": 0.027,
+   "piv": {
+    "a": [
+     1200,
+     1010
+    ],
+    "b": [
+     2270,
+     1010
+    ],
+    "butt": [
+     75,
+     1010
+    ],
+    "blade": [
+     2000,
+     1010
+    ]
+   }
+  },
+  "uarm": {
+   "src": "p",
+   "box": [
+    690,
+    1170,
+    1690,
+    1440
+   ],
+   "k": 0.015,
+   "piv": {
+    "a": [
+     760,
+     1300
+    ],
+    "b": [
+     1630,
+     1250
+    ]
+   }
+  },
+  "farm": {
+   "src": "p",
+   "box": [
+    1040,
+    1395,
+    2075,
+    1680
+   ],
+   "k": 0.0175,
+   "piv": {
+    "a": [
+     2010,
+     1530
+    ],
+    "b": [
+     1330,
+     1560
+    ],
+    "tips": [
+     1070,
+     1640
+    ]
+   }
+  }
+ }
+}

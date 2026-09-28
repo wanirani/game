@@ -8,5 +8,6 @@ export const bosses = {};
 export const enemies = [];
 export const companions = {
   mt_warhorse: () => import('../companions/mt_warhorse.js'),
+  mt_boar: () => import('../companions/mt_boar.js'),
 };
 export const npcs = {};
