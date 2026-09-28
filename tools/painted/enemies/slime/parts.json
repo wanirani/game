@@ -2,7 +2,7 @@
  "id": "slime",
  "tier": "T1",
  "srcTD": 4,
- "note": "Cut straight from the Kling Step-1 reference (take 1): the translucent green blob with the floating skulls/bones, the slit-pupil core eye and the slime puddle (its outer rims faded so the puddle does not spread far past the logic rect).",
+ "note": "Cut from the Kling Step-1 reference (take 1): 'body' = the translucent green dome with the floating skulls/bones and the slit-pupil core eye (its base faded so it reads as a round blob in the air), 'puddle' = the slime puddle it sits in (outer rims faded), drawn only while it is on the ground and spread on landing.",
  "sources": {
   "r": {
    "raw": "slime_ref.webp",
@@ -14,33 +14,59 @@
   "body": {
    "src": "r",
    "box": [
-    0,
+    440,
     470,
-    1995,
-    1655
+    1760,
+    1580
+   ],
+   "poly": [
+    [
+     560,
+     470
+    ],
+    [
+     1700,
+     470
+    ],
+    [
+     1740,
+     1380
+    ],
+    [
+     1700,
+     1560
+    ],
+    [
+     1500,
+     1580
+    ],
+    [
+     700,
+     1580
+    ],
+    [
+     520,
+     1560
+    ],
+    [
+     450,
+     1380
+    ]
    ],
    "fade": [
     [
-     0,
-     470,
-     330,
-     1655,
-     "left",
-     1.0
-    ],
-    [
-     1650,
-     470,
-     1995,
-     1655,
-     "right",
-     1.0
+     440,
+     1470,
+     1760,
+     1580,
+     "down",
+     1.2
     ]
    ],
    "piv": {
     "a": [
      1120,
-     1600
+     1560
     ],
     "eye": [
      1400,
@@ -53,6 +79,47 @@
     "core": [
      980,
      1150
+    ]
+   }
+  },
+  "puddle": {
+   "src": "r",
+   "box": [
+    0,
+    1330,
+    1995,
+    1655
+   ],
+   "fade": [
+    [
+     0,
+     1330,
+     330,
+     1655,
+     "left",
+     1.0
+    ],
+    [
+     1650,
+     1330,
+     1995,
+     1655,
+     "right",
+     1.0
+    ],
+    [
+     0,
+     1330,
+     1995,
+     1420,
+     "up",
+     1.0
+    ]
+   ],
+   "piv": {
+    "a": [
+     1120,
+     1600
     ]
    }
   }

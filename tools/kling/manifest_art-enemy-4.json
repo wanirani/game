@@ -211,8 +211,8 @@
       1760,
       2336
      ],
-     "kept": null,
-     "decision": "pending"
+     "kept": false,
+     "decision": "rejected: take 2 has the stronger frozen silhouette"
     },
     {
      "name": "fk_torso_2",
@@ -221,8 +221,8 @@
       1760,
       2336
      ],
-     "kept": null,
-     "decision": "pending"
+     "kept": true,
+     "decision": "kept: frozen_knight cuirass (src/frozen_knight_torso.webp): big ice spikes on the pauldrons"
     }
    ]
   },
@@ -246,8 +246,8 @@
       2336,
       1760
      ],
-     "kept": null,
-     "decision": "pending"
+     "kept": true,
+     "decision": "kept: frozen_knight rerebrace/vambrace/greave/cape (src/frozen_knight_sheet1.webp)"
     },
     {
      "name": "fk_sheet1_2",
@@ -256,8 +256,8 @@
       2336,
       1760
      ],
-     "kept": null,
-     "decision": "pending"
+     "kept": false,
+     "decision": "rejected: take 1 used"
     }
    ]
   },
@@ -281,8 +281,8 @@
       2336,
       1760
      ],
-     "kept": null,
-     "decision": "pending"
+     "kept": true,
+     "decision": "kept: frozen_knight helm + glowing ice sword (src/frozen_knight_sheet2.webp)"
     },
     {
      "name": "fk_sheet2_2",
@@ -291,8 +291,8 @@
       2336,
       1760
      ],
-     "kept": null,
-     "decision": "pending"
+     "kept": false,
+     "decision": "rejected: layout broke: the side knight lost its ice and the sword became a crossed double blade"
     }
    ]
   },
@@ -316,8 +316,8 @@
       1760,
       2336
      ],
-     "kept": null,
-     "decision": "pending"
+     "kept": true,
+     "decision": "kept: death_knight cuirass (src/death_knight_torso.webp): bone spikes, skull, green gems"
     },
     {
      "name": "dk_torso_2",
@@ -326,8 +326,8 @@
       1760,
       2336
      ],
-     "kept": null,
-     "decision": "pending"
+     "kept": false,
+     "decision": "rejected: two skulls + green glow; take 1 cleaner"
     }
    ]
   },
@@ -351,8 +351,8 @@
       2336,
       1760
      ],
-     "kept": null,
-     "decision": "pending"
+     "kept": true,
+     "decision": "kept: death_knight limbs + cape (src/death_knight_sheet1.webp)"
     },
     {
      "name": "dk_sheet1_2",
@@ -361,8 +361,8 @@
       2336,
       1760
      ],
-     "kept": null,
-     "decision": "pending"
+     "kept": false,
+     "decision": "rejected: take 1 used"
     }
    ]
   },
@@ -386,8 +386,8 @@
       2336,
       1760
      ],
-     "kept": null,
-     "decision": "pending"
+     "kept": true,
+     "decision": "kept: death_knight horned side helm + rune greatsword (src/death_knight_sheet2.webp)"
     },
     {
      "name": "dk_sheet2_2",
@@ -396,8 +396,8 @@
       2336,
       1760
      ],
-     "kept": null,
-     "decision": "pending"
+     "kept": false,
+     "decision": "rejected: layout broke (back view added, sword held by the knight)"
     }
    ]
   },

@@ -101,7 +101,14 @@ export const GUARDIANS = {
 };
 
 /** single-part / edit prompts (Step 3/4) added while cutting: key → { guardian, aspect, inputs, prompt } */
-export const EXTRAS = {};
+export const EXTRAS = {
+  imp_edit: { guardian: 'gd_imp', aspect: '1:1', inputs: ['ref (gd_imp_ref.webp)'],
+    prompt: 'Edit 图片1: remove BOTH bat wings completely, remove the long thin pointed tail completely, and remove the gnarled skull staff together with the right arm and clawed hand that hold it; repaint the dark cloak and the pot belly that were hidden behind them. Keep everything else exactly identical: the same small imp mage, same head, horns, ears, glowing orange eyes and toothy grin, same hood and ragged cloak, same dangling legs, same front three-quarter view, same size and position, same painting style and lighting, on a plain flat uniform medium grey background (#808080) with no cast shadow and no floor.' },
+  knight_edit: { guardian: 'gd_knight', aspect: '3:4', inputs: ['ref (gd_knight_ref.webp)'],
+    prompt: 'Edit 图片1: remove the large kite shield completely and remove the glowing longsword completely (the raised armoured gauntlet stays, closed as an empty fist); repaint the plate armour, the chest and the dark blue cape that were hidden behind the shield. Keep everything else exactly identical: the same translucent pale blue ghost knight, same great helm with the glowing eye slit, same pose with the raised right arm, same misty lower body, same three-quarter side view facing right, same size and position, same painting style and lighting, on a plain flat uniform medium grey background (#808080) with no cast shadow and no floor.' },
+  whelp_edit: { guardian: 'gd_whelp', aspect: '4:3', inputs: ['ref (gd_whelp_ref.webp)'],
+    prompt: 'Edit 图片1: remove BOTH bone wings with their torn purple membranes completely, and repaint the ribcage, the spine and the neck bones that were hidden behind the wings. Keep everything else exactly identical: the same cute baby skeletal dragon, same oversized skull with horns and glowing violet eye socket, same toothy mouth, same ribcage with the purple soulfire inside, same tucked bony legs, same long thin bone tail, same strict side view facing right, same size and position, same painting style and lighting, on a plain flat uniform medium grey background (#808080) with no cast shadow and no floor.' },
+};
 
 export const ref = (id) => clean(withStyle(refPrompt(GUARDIANS[id])));
 export const sheet = (id) => clean(withStyle(sheetPrompt(GUARDIANS[id])));

@@ -76,13 +76,17 @@ node tools/qa/platform_load.mjs --dist                 # 느린 4G·빠른 4G·W
 ## 5. claude.ai 아티팩트 (W6 DELIVER-ARTIFACT)
 
 ```bash
-node tools/deploy/build_artifact.mjs --smoke    # dist/web → dist/artifact, 로컬에서 타이틀·마을·스테이지·보스 확인
+node tools/deploy/build_artifact.mjs --smoke    # dist/web → dist/artifact, 로컬에서 타이틀·마을·스테이지·보스(데스크톱) + 스테이지(휴대폰 844×390 터치) 확인
 node tools/deploy/build_artifact.mjs --check    # 한도 검사 (파일 ≤ 511·256 MB, 한 번 올리기 ≤ 255개·64 MB, 텍스트 16 MB·그 밖 15 MB)
 ```
 
 - `dist/artifact/index.html` 이 페이지(조각 — 문서 뼈대는 올릴 때 씌워진다), 나머지는 `files` 로 올린다. 경로·형식·묶음은
   `dist/artifact_publish.json` 의 `batches` 에 있다 (첫 묶음에 페이지 포함, `contentType` 을 그대로 넘긴다; `.bin` 팩은 `application/octet-stream`).
-- 그림은 `assets/packs/<n>.bin` + `index.json` (assets.js 가 읽는다). 첫 팩 = 타이틀(배경·초상화·기본 직업 퍼펫·아이콘), 둘째 = 마을.
+- 그림은 `assets/packs/<n>.bin` + `index.json` (assets.js 가 읽는다). assets.js 는 파일 하나가 필요해도 그 팩 전체를 받고 팩 조각을 최대 6개
+  메모리에 두므로, 팩은 약 4 MB (`--pack-mb`) 로 작게, 한 화면이 함께 쓰는 그림끼리 묶는다: 0 = 타이틀(배경·UI, 0.6 MB), 1 = 캐릭터 고르기
+  (영웅 초상화·기본 직업 퍼펫·아이콘), 2 = 마을, 그다음 질감·소품 / 배경 / 채색 보스 / 초상화 / 영웅별 퍼펫 / CG, 맨 뒤에 `lo/` (휴대폰만).
+  `--smoke` 가 장면마다 받은 팩 바이트(`packMB`)를 보여 준다 (2026-09-28: 스테이지 약 16 MB, 보스방 18 MB, 휴대폰 스테이지 14 MB —
+  8 MB 팩을 경로 순으로 채우던 때는 32·41·31 MB).
   assets.js 를 거치지 않고 주소로 직접 받는 파일(글꼴, `painted/enemies/**`, `painted/**/manifest.json`)은 파일로 둔다.
 - 서비스 워커는 등록하지 않고(`sw:false`), 계정은 CSP 로 막혀 숨겨지며 저장은 기기에만 남는다.
 

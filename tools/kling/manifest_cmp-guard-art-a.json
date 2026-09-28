@@ -138,8 +138,47 @@
    "imageCount": 2,
    "prompt": "sheet(id) in tools/painted/prompts/cmp-guard-art-a.mjs",
    "decision": "pending"
+  },
+  {
+   "guardian": "gd_imp",
+   "step": "edit",
+   "generationId": "AfOIVe5J7GIl806T8PwTIYcYMUYA3vq9LjZ4a2AeVtdFR2q43b9OfIkTILl5M-ZUQl3vV8RM",
+   "tool": "image_to_image",
+   "inputs": {
+    "image_1": "chosen ref (Kling result URL)"
+   },
+   "aspect": "1:1",
+   "imageCount": 2,
+   "prompt": "EXTRAS.imp_edit in tools/painted/prompts/cmp-guard-art-a.mjs",
+   "decision": "pending"
+  },
+  {
+   "guardian": "gd_knight",
+   "step": "edit",
+   "generationId": "AVGX_D_-ssYrM-0vOdB2ovJD6xpo_RuOuVF5hH5bEEPQXXByVG66XStm_T9Gz2kZgky3C9wL",
+   "tool": "image_to_image",
+   "inputs": {
+    "image_1": "chosen ref (Kling result URL)"
+   },
+   "aspect": "3:4",
+   "imageCount": 2,
+   "prompt": "EXTRAS.knight_edit in tools/painted/prompts/cmp-guard-art-a.mjs",
+   "decision": "pending"
+  },
+  {
+   "guardian": "gd_whelp",
+   "step": "edit",
+   "generationId": "AVfEnLGrfFTfPYAt-HWDF8BecBSed8FwFSrQRgAi_PpxxWM48aM82XDrBvDBGbSAC_xeKb0K",
+   "tool": "image_to_image",
+   "inputs": {
+    "image_1": "chosen ref (Kling result URL)"
+   },
+   "aspect": "4:3",
+   "imageCount": 2,
+   "prompt": "EXTRAS.whelp_edit in tools/painted/prompts/cmp-guard-art-a.mjs",
+   "decision": "pending"
   }
  ],
- "imagesGenerated": 24,
- "creditsSpent": 48
+ "imagesGenerated": 30,
+ "creditsSpent": 60
 }

@@ -471,9 +471,10 @@ export class DuelScene extends MiniGame {
     const stars = clamp(Math.round((0.5 - f.react) / 0.055) + 1, 1, 5);
     text(ctx, `속사 ${'★'.repeat(stars)}${'☆'.repeat(5 - stars)}   배당 ×${f.mult}${f.feint ? '   가짜 신호 주의' : ''}`, vw / 2, iy + 68, { size: 12, align: 'center', weight: 700, color: '#e8d8b0', ow: 2, maxWidth: iw - 20 });
     const rx0 = vw / 2 - rowW / 2, ry = iy + 80;
-    // 초상은 칸마다 작은 캔버스에 구워 두고 한 프레임에 한 칸만 다시 굽는다 (drawHero 는 한 번에 그라데이션 수십 개:
-    // 5칸을 매 프레임 그리면 결투자 둘과 합쳐 drawHero 7번 — MASTER_PLAN §5.2 medium 6 / low 3 초과)
-    this._thumbTurn = ((this._thumbTurn ?? -1) + 1) % n;
+    // 초상은 칸마다 작은 캔버스에 (고정된 서 있는 자세로) 구워 두고, 30 프레임에 한 칸씩만 다시 굽는다 (늦게 도착한 그림 반영용).
+    // drawHero 는 한 번에 그라데이션 수십 개라 5칸을 매 프레임 그리면 결투자 둘과 합쳐 drawHero 7번 — MASTER_PLAN §5.2 medium 6 / low 3 초과
+    this._thumbTick = (this._thumbTick ?? -1) + 1;
+    this._thumbTurn = this._thumbTick % 30 === 0 ? Math.floor(this._thumbTick / 30) % n : -1;
     for (let i = 0; i < n; i++) {
       const fx = rx0 + i * (fs + fg), fy = ry;
       // 탭 영역: 칸 사이를 넓혀 손가락 크기(약 44 CSS px) 이상 (그림은 그대로)
@@ -513,7 +514,7 @@ export class DuelScene extends MiniGame {
   miniDuelist(i) { return (this.mini ??= FOES.map((F) => duelist(F.look, null, 1)))[i]; }
   /**
    * 결투자 i 의 초상 캔버스 (fs × fs UI px, 지금 화면 배율의 기기 픽셀). 처음 한 번 + 차례(_thumbTurn)가 올 때만 drawHero 로 다시 굽는다
-   * → 숨 쉬는 동작은 약 12 fps 로 이어지고, 늦게 도착한 영웅 그림도 곧 반영된다. 캔버스를 못 만들면 null (직접 그린다)
+   * → 자세는 t = 0 으로 고정 (다시 구워도 같은 그림), 늦게 도착한 영웅 그림은 몇 초 안에 반영된다. 캔버스를 못 만들면 null (직접 그린다)
    */
   miniThumb(ctx, i, fs, t) {
     let k = 1;
@@ -533,7 +534,7 @@ export class DuelScene extends MiniGame {
       const x = e.x, s = px / fs;
       x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, px, px);
       x.setTransform(s, 0, 0, s, 0, 0);
-      const p = this.miniDuelist(i); p.cx = fs / 2; p.bottom = fs + 58; p.t = t; p.rig = null;
+      const p = this.miniDuelist(i); p.cx = fs / 2; p.bottom = fs + 58; p.t = 0; p.animT = 0; p.rig = null;
       try { drawHero(x, p, null, { scale: 0.95 }); } catch { /* 무시 */ }
       e.drawn = true;
     }

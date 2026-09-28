@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<link rel="icon" href="data:,">
+<meta charset="utf-8">
+<base href="../">
+<title>탈것 갤러리 (리그 · 채색 퍼핏 · 벡터 대체)</title>
+<style>
+  html, body { margin: 0; background: #07040a; color: #d8ccb8; font-family: 'Noto Sans KR', sans-serif; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<script type="module">
+// 탈것 렌더러 갤러리 (CMP-MOUNT-ART-A; 2부 B 탈것은 CMP-MOUNT-ART-B 가 오기 전까지 mount.js 대체 그림)
+//  ?ids=mt_warhorse,mt_boar   탈것 고르기 (기본: 9마리 전부)
+//  ?sec=states,rider,icons    구역 (기본: 전부)
+//  ?vector=1                  채색 끄기 (벡터 대체 그림만)      ?q=low|medium|high   품질
+//  ?anim=1                    실시간 재생 (기본: 고정 프레임)      ?t=1.3               고정 프레임 시각
+//  ?rider=kael,sera,…         기수 목록 (rider 구역, 기본: 6명)   ?cls=kael_templar     기수 직업
+//  ?zoom=2                    확대 배율 (기본 1.5)                 ?aw=1                각성(유대 4) 모습
+//  ?debug=1                   관절·안장 표시
+import { mountView, updateMountView, drawMountView } from './src/game/mount.js';
+import { MOUNTS } from './src/data/companions.js';
+import { drawHero, HERO_DRAW_SCALE } from './src/render/hero.js';
+import { CHARACTERS, CHAR_ORDER } from './src/data/characters.js';
+import { classChain } from './src/data/classes.js';
+import { drawMountIcon, preloadMounts, MOUNT_PAL } from './src/render/mounts.js';
+import * as RIG from './src/render/mount_rig.js';
+import { paintedState, hasPainted } from './src/render/painted/registry.js';
+import { game } from './src/core/game.js';
+
+const Q = new URLSearchParams(location.search);
+if (Q.has('vector')) window.__paintedOff = true;
+if (Q.get('q')) { try { game.settings.quality = Q.get('q'); game._tier = Q.get('q'); } catch { /* 무시 */ } }
+const LIVE = Q.has('anim');
+const T0 = Number(Q.get('t') ?? 1.3);
+const ZOOM = Number(Q.get('zoom') ?? 1.5);
+const AW = Q.has('aw');
+const DEBUG = Q.has('debug');
+const IDS = (Q.get('ids') || 'mt_warhorse,mt_boar,mt_skelsteed,mt_ignis,mt_silva,mt_direwolf,mt_wyvern,mt_giantbat,mt_gale').split(',').filter((id) => MOUNTS[id]);
+const SEC = (Q.get('sec') || 'states,rider,icons').split(',');
+const RIDERS = (Q.get('rider') || CHAR_ORDER.join(',')).split(',').filter((c) => CHARACTERS[c]);
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const W = 1270;
+
+// ── 상태 목록: [이름, 애니, 설정] ──
+const STATES = [
+  ['대기', 'idle'], ['걷기', 'walk'], ['질주', 'run'], ['돌진', 'charge'], ['점프', 'jump'], ['낙하', 'fall'], ['착지', 'land', { animT: 0.05 }],
+  ['앞들기', 'rear', { rearK: 1 }], ['특수', 'special', { animT: 0.05 }], ['피격', 'hurt', { flashT: 0.1, animT: 0.05 }], ['비틀', 'knocked', { pitch: 0.18, animT: 0.1 }],
+  ['도주', 'flee'], ['소환', 'summon', { alpha: 0.6, scale: 0.95 }], ['해산', 'dismiss', { rearK: 0.7, alpha: 0.6 }], ['헤엄', 'swim', { inWater: true, onGround: false }], ['돌기', 'turn', { animT: 0.08 }],
+  ['땅파기', 'dig', { animT: 0.12 }], ['울음', 'howl', { animT: 0.25 }], ['잔상', 'run', { tint: '#8ac8ff' }],
+];
+const RUNLIKE = new Set(['run', 'charge', 'flee']);
+function makeView(id, st, t) {
+  const [, anim, o = {}] = st;
+  const v = mountView(id, { anim: 'idle' });
+  if (!v) return null;
+  v.awakened = AW;
+  // 몇 프레임 돌려 스프링을 안정시킨다
+  const base = RUNLIKE.has(anim) || anim === 'walk' || anim === 'jump' || anim === 'fall' || anim === 'rear' || anim === 'special' ? anim : 'idle';
+  const n = Math.round(t * 60);
+  for (let i = 0; i < n; i++) updateMountView(v, 1 / 60, base);
+  apply(v, anim, o);
+  return v;
+}
+function apply(v, anim, o) {
+  v.anim = anim;
+  if (o.animT != null) v.animT = o.animT;
+  if (anim === 'flee') { v.vx = 500; v.speedK = 1.2; v.onGround = true; }
+  if (anim === 'swim') { v.inWater = true; v.onGround = false; }
+  if (o.rearK != null) { v.rearK = o.rearK; v.pitch = -0.7 * o.rearK; }
+  if (o.pitch != null) v.pitch = o.pitch;
+  if (o.flashT != null) v.flashT = o.flashT;
+  v.alpha = o.alpha ?? 1; v.scale = o.scale ?? 1;
+  v.pose = RIG.mountPose(v, 1 / 60) ?? v.pose;
+  if (v.pose) { const s = RIG.seatOf(v.pose, {}); v.ride.sx = s.x; v.ride.sy = s.y; v.ride.lean = s.lean; }
+  v._tint = o.tint ?? null;
+}
+function lookOf(charId, classId) {
+  const ch = CHARACTERS[charId];
+  const look = structuredClone(ch.look);
+  if (classId) for (const c of classChain(classId)) Object.assign(look, structuredClone(c.look || {}));
+  look.weapon = { type: ch.weaponType, style: 2, level: 0, rarity: 0, element: null };
+  return look;
+}
+function heroP(charId) {
+  const ch = CHARACTERS[charId];
+  return { facing: 1, anim: 'ride', animT: 0.5, move: null, moveT: 0, vx: 0, vy: 0, onGround: true, rig: {}, t: 3, stats: { reach: 0 }, charging: 0, muzzleT: 0, look: lookOf(charId, Q.get('cls')), ch, cx: 0, bottom: 0, x: -18, y: -88, w: 36, h: 88 };
+}
+
+// ── 셀 배치 ──
+const cells = [];
+let Y = 10;
+function header(text) { cells.push({ kind: 'h', text, y: Y }); Y += 30; }
+function row(items, cw, ch) { let x = 10; for (const it of items) { if (x + cw > W) { x = 10; Y += ch; } cells.push({ kind: 'c', x, y: Y, w: cw, h: ch, ...it }); x += cw; } Y += ch + 8; }
+const CW = Math.round(150 * ZOOM / 1.5), CH = Math.round(150 * ZOOM / 1.5);
+if (SEC.includes('states')) {
+  for (const id of IDS) {
+    header(`${MOUNTS[id].name} (${id}) — ${MOUNTS[id].rig}${AW ? ' · 각성' : ''} · 채색: ${hasPainted(id) ? '등록' : '없음(벡터)'}`);
+    row(STATES.map((st) => ({ id, st, label: st[0], v: makeView(id, st, T0), rider: null })), CW, CH);
+  }
+}
+if (SEC.includes('rider')) {
+  for (const id of IDS.filter((i) => MOUNTS[i].rig === 'horse' || MOUNTS[i].rig === 'boar' || MOUNTS[i].rig === 'stag' || true)) {
+    header(`${MOUNTS[id].name} + 기수 (대기 · 질주 · 앞들기 · 돌진 · 점프)`);
+    const items = [];
+    for (const c of RIDERS) for (const st of [STATES[0], STATES[2], STATES[7], STATES[3], STATES[4]]) items.push({ id, st, label: `${CHARACTERS[c].name} · ${st[0]}`, v: makeView(id, st, T0), rider: heroP(c), ranim: st[1] === 'rear' ? 'ride_rear' : st[1] === 'charge' ? 'ride_charge' : 'ride' });
+    row(items, CW, Math.round(CH * 1.15));
+  }
+}
+if (SEC.includes('icons')) {
+  header('절차적 머리 아이콘 (초상화가 없을 때)');
+  row(IDS.map((id) => ({ id, icon: true, label: MOUNTS[id].name })), 110, 110);
+}
+cv.width = W; cv.height = Y + 10;
+const HS = HERO_DRAW_SCALE ?? 1.14;
+
+function drawCell(c, time) {
+  ctx.save();
+  ctx.translate(c.x, c.y);
+  ctx.fillStyle = '#140c14'; ctx.fillRect(0, 0, c.w - 4, c.h - 4);
+  ctx.fillStyle = '#b8a890'; ctx.font = '11px sans-serif'; ctx.fillText(c.label, 6, 14);
+  if (c.icon) {
+    ctx.fillStyle = '#2a1a22'; ctx.beginPath(); ctx.arc(c.w / 2, c.h / 2 + 6, 38, 0, Math.PI * 2); ctx.fill();
+    drawMountIcon(ctx, c.id, c.w / 2, c.h / 2 + 6, 38);
+    ctx.restore(); return;
+  }
+  const v = c.v;
+  if (!v) { ctx.restore(); return; }
+  if (LIVE) {
+    const [, anim, o = {}] = c.st;
+    updateMountView(v, 1 / 60, RUNLIKE.has(anim) || ['walk', 'jump', 'fall', 'rear', 'special'].includes(anim) ? anim : 'idle');
+    apply(v, anim, { ...o, animT: o.animT != null ? (time * 0.9) % 0.5 : undefined });
+  }
+  // 바닥선
+  const gy = c.h - 22;
+  ctx.strokeStyle = '#3a2a30'; ctx.beginPath(); ctx.moveTo(4, gy); ctx.lineTo(c.w - 8, gy); ctx.stroke();
+  const sc = ZOOM * (c.rider ? 0.78 : 0.95);
+  ctx.translate(c.w / 2, gy); ctx.scale(sc, sc);
+  const o = { tint: v._tint, noFx: false };
+  drawMountView(ctx, v, 'back', o);
+  if (c.rider) {
+    const p = c.rider;
+    p.ride = v.ride; p.cx = 0; p.bottom = 0;
+    if (p.anim !== c.ranim) { p.anim = c.ranim; p.animT = 0; }
+    p.animT += LIVE ? 1 / 60 : 0; p.t = time;
+    drawHero(ctx, p, null, { scale: HS });
+  }
+  drawMountView(ctx, v, 'front', o);
+  if (DEBUG && v.pose) {
+    const P = v.pose;
+    ctx.fillStyle = '#0ff'; for (const L of P.legs) { for (const [x, y] of [[L.rx, L.ry], [L.kx, L.ky], [L.fx, L.fy]]) { ctx.fillRect(x - 1, y - 1, 2, 2); } }
+    ctx.fillStyle = '#ff0'; ctx.fillRect(P.sl.x - 2, P.sl.y - 2, 4, 4);
+    const def = MOUNTS[c.id];
+    ctx.strokeStyle = 'rgba(255,0,255,0.5)'; ctx.strokeRect(-def.body.w / 2, -def.body.h, def.body.w, def.body.h);
+  }
+  ctx.restore();
+}
+function frame(now) {
+  const time = now / 1000;
+  ctx.fillStyle = '#07040a'; ctx.fillRect(0, 0, cv.width, cv.height);
+  for (const c of cells) {
+    if (c.kind === 'h') { ctx.fillStyle = '#e8d8b8'; ctx.font = 'bold 15px sans-serif'; ctx.fillText(c.text, 10, c.y + 20); continue; }
+    drawCell(c, time);
+  }
+  window.__ready = true;
+  window.__paintedStates = Object.fromEntries(IDS.map((id) => [id, paintedState(id)]));
+  if (LIVE) requestAnimationFrame(frame);
+}
+// 고정 프레임: 처음 한 번 + 채색 굽기가 끝나면 다시 (기계 부하를 줄이려고 매 프레임 그리지 않는다)
+preloadMounts(IDS).finally(() => { window.__preloaded = true; if (!LIVE) requestAnimationFrame(frame); });
+requestAnimationFrame(frame);
+window.__redraw = () => frame(performance.now());
+window.__mountGallery = { cells, MOUNT_PAL, RIG };
+</script>
+</body>
+</html>

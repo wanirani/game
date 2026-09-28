@@ -3,7 +3,19 @@
 // enemies:    [{ mod: <import * as x from '../enemies/<id>.js'>, ids?: ['<render id>', ...] }]  (적 렌더러 모듈, 에셋은 지연 로딩)
 // companions: { '<companionId>': () => import('../companions/<id>.js') }
 // npcs:       { '<npcId>': () => import('../npcs/<id>.js') }
+//
+// ART-ENEMY-3 (s07–s09, 14종). 벡터 렌더러(enemies_b.js)는 그대로 남아 에셋이 없거나 로딩 중일 때 대신 그린다.
+import * as slime from '../enemies/slime.js';
+import * as killer_fish from '../enemies/killer_fish.js';
+import * as cog_wheel from '../enemies/cog_wheel.js';
+import * as acid_turret from '../enemies/acid_turret.js';
+
 export const bosses = {};
-export const enemies = [];
+export const enemies = [
+  { mod: slime },
+  { mod: killer_fish },
+  { mod: cog_wheel },
+  { mod: acid_turret },
+];
 export const companions = {};
 export const npcs = {};

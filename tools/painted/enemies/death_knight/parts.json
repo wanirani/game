@@ -1,0 +1,249 @@
+{
+ "id": "death_knight",
+ "tier": "T3",
+ "srcTD": 4,
+ "note": "T3, knight-rig reuse (ART-ENEMY-4): the armor_knight's three sources re-painted by composition-keeping Kling edits (dk_torso = blackened cuirass with bone spikes, skull and green soul gems; dk_sheet1 = limbs + cape; dk_sheet2 = horned side helm with soul-fire visor + rune greatsword), so the knight's boxes and pivots still fit. The rune greatsword is squeezed to 58 % width by make_src.py (src/death_knight_sword.webp). Damage variants (dmg1/dmg2) are baked on the armour at load.",
+ "sources": {
+  "t": {
+   "file": "a4_dk_torso_r.png",
+   "k": 0.0288,
+   "raw": "death_knight_torso.webp",
+   "mode": "rembg"
+  },
+  "s1": {
+   "file": "a4_dk_sheet1_r.png",
+   "k": 0.0525,
+   "raw": "death_knight_sheet1.webp",
+   "mode": "rembg"
+  },
+  "s2": {
+   "file": "a4_dk_sheet2_r.png",
+   "k": 0.0546,
+   "raw": "death_knight_sheet2.webp",
+   "mode": "rembg"
+  },
+  "w": {
+   "file": "a4_dk_sword_r.png",
+   "k": 0.045,
+   "raw": "death_knight_sword.webp",
+   "mode": "rembg"
+  }
+ },
+ "parts": {
+  "torso": {
+   "src": "t",
+   "box": [
+    250,
+    50,
+    1460,
+    2320
+   ],
+   "keep": "largest",
+   "flipX": true,
+   "piv": {
+    "a": [
+     880,
+     1250
+    ],
+    "neck": [
+     765,
+     290
+    ],
+    "shN": [
+     1120,
+     420
+    ],
+    "shF": [
+     560,
+     400
+    ],
+    "hipN": [
+     960,
+     1250
+    ],
+    "hipF": [
+     800,
+     1250
+    ]
+   }
+  },
+  "shin": {
+   "src": "s1",
+   "box": [
+    1895,
+    1150,
+    2120,
+    1630
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1975,
+     1215
+    ],
+    "b": [
+     1962,
+     1560
+    ],
+    "toe": [
+     2105,
+     1612
+    ],
+    "heel": [
+     1915,
+     1592
+    ]
+   }
+  },
+  "uarm": {
+   "src": "s1",
+   "box": [
+    1620,
+    585,
+    1775,
+    865
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1688,
+     612
+    ],
+    "b": [
+     1690,
+     850
+    ]
+   }
+  },
+  "farm": {
+   "src": "s1",
+   "box": [
+    1880,
+    660,
+    2065,
+    1095
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1960,
+     715
+    ],
+    "b": [
+     1955,
+     965
+    ],
+    "grip": [
+     1960,
+     1025
+    ]
+   }
+  },
+  "cape": {
+   "src": "s1",
+   "box": [
+    1485,
+    1008,
+    1830,
+    1642
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1655,
+     1022
+    ]
+   }
+  },
+  "helm": {
+   "src": "s2",
+   "box": [
+    1040,
+    20,
+    1440,
+    430
+   ],
+   "flipX": true,
+   "poly": [
+    [
+     1040,
+     20
+    ],
+    [
+     1440,
+     20
+    ],
+    [
+     1440,
+     235
+    ],
+    [
+     1265,
+     250
+    ],
+    [
+     1250,
+     430
+    ],
+    [
+     1040,
+     430
+    ]
+   ],
+   "piv": {
+    "a": [
+     1150,
+     385
+    ],
+    "eye": [
+     1112,
+     282
+    ],
+    "top": [
+     1235,
+     66
+    ],
+    "horn": [
+     1390,
+     60
+    ]
+   }
+  },
+  "sword": {
+   "src": "w",
+   "box": [
+    160,
+    50,
+    430,
+    1722
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     290,
+     1262
+    ],
+    "b": [
+     290,
+     82
+    ],
+    "guard": [
+     290,
+     1185
+    ],
+    "grip": [
+     290,
+     1262
+    ],
+    "grip2": [
+     290,
+     1420
+    ],
+    "pommel": [
+     290,
+     1700
+    ]
+   }
+  }
+ }
+}

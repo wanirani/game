@@ -1,0 +1,288 @@
+{
+ "id": "frozen_knight",
+ "tier": "T2",
+ "srcTD": 4,
+ "note": "Knight-rig reuse (ART-ENEMY-4): the armor_knight's three sources re-painted by composition-keeping Kling edits (fk_torso = ice-bound cuirass, fk_sheet1 = limbs + cape, fk_sheet2 = spiked helm + glowing ice sword), so the knight's boxes and pivots still fit; the sword is re-pivoted (the ice blade is longer, the grip shorter) and scaled up to a two-handed greatsword.",
+ "sources": {
+  "t": {
+   "file": "a4_fk_torso_r.png",
+   "k": 0.0288,
+   "raw": "frozen_knight_torso.webp",
+   "mode": "rembg"
+  },
+  "s1": {
+   "file": "a4_fk_sheet1_r.png",
+   "k": 0.0525,
+   "raw": "frozen_knight_sheet1.webp",
+   "mode": "rembg"
+  },
+  "s2": {
+   "file": "a4_fk_sheet2_r.png",
+   "k": 0.0546,
+   "raw": "frozen_knight_sheet2.webp",
+   "mode": "rembg"
+  }
+ },
+ "parts": {
+  "torso": {
+   "src": "t",
+   "box": [
+    240,
+    30,
+    1480,
+    2320
+   ],
+   "keep": "largest",
+   "flipX": true,
+   "piv": {
+    "a": [
+     880,
+     1250
+    ],
+    "neck": [
+     765,
+     290
+    ],
+    "shN": [
+     1120,
+     420
+    ],
+    "shF": [
+     560,
+     400
+    ],
+    "hipN": [
+     960,
+     1250
+    ],
+    "hipF": [
+     800,
+     1250
+    ]
+   }
+  },
+  "helm": {
+   "src": "s2",
+   "box": [
+    1040,
+    40,
+    1275,
+    430
+   ],
+   "flipX": true,
+   "poly": [
+    [
+     1235,
+     62
+    ],
+    [
+     1226,
+     110
+    ],
+    [
+     1246,
+     160
+    ],
+    [
+     1256,
+     200
+    ],
+    [
+     1251,
+     245
+    ],
+    [
+     1216,
+     290
+    ],
+    [
+     1176,
+     320
+    ],
+    [
+     1151,
+     345
+    ],
+    [
+     1126,
+     390
+    ],
+    [
+     1101,
+     420
+    ],
+    [
+     1086,
+     400
+    ],
+    [
+     1081,
+     360
+    ],
+    [
+     1071,
+     320
+    ],
+    [
+     1061,
+     290
+    ],
+    [
+     1076,
+     250
+    ],
+    [
+     1101,
+     210
+    ],
+    [
+     1131,
+     165
+    ],
+    [
+     1171,
+     125
+    ],
+    [
+     1210,
+     90
+    ]
+   ],
+   "piv": {
+    "a": [
+     1150,
+     385
+    ],
+    "eye": [
+     1112,
+     282
+    ],
+    "top": [
+     1235,
+     66
+    ]
+   }
+  },
+  "shin": {
+   "src": "s1",
+   "box": [
+    1895,
+    1150,
+    2120,
+    1630
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1975,
+     1215
+    ],
+    "b": [
+     1962,
+     1560
+    ],
+    "toe": [
+     2105,
+     1612
+    ],
+    "heel": [
+     1915,
+     1592
+    ]
+   }
+  },
+  "uarm": {
+   "src": "s1",
+   "box": [
+    1620,
+    585,
+    1775,
+    865
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1688,
+     612
+    ],
+    "b": [
+     1690,
+     850
+    ]
+   }
+  },
+  "farm": {
+   "src": "s1",
+   "box": [
+    1880,
+    660,
+    2065,
+    1095
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1960,
+     715
+    ],
+    "b": [
+     1955,
+     965
+    ],
+    "grip": [
+     1960,
+     1025
+    ]
+   }
+  },
+  "cape": {
+   "src": "s1",
+   "box": [
+    1485,
+    1008,
+    1830,
+    1642
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1655,
+     1022
+    ]
+   }
+  },
+  "sword": {
+   "src": "s2",
+   "box": [
+    1480,
+    30,
+    1790,
+    1200
+   ],
+   "keep": "largest",
+   "k": 0.047,
+   "piv": {
+    "a": [
+     1628,
+     1040
+    ],
+    "b": [
+     1628,
+     62
+    ],
+    "guard": [
+     1628,
+     922
+    ],
+    "grip": [
+     1628,
+     1040
+    ],
+    "pommel": [
+     1628,
+     1175
+    ]
+   }
+  }
+ }
+}

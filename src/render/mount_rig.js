@@ -37,6 +37,7 @@ const h1 = (i) => { const s = Math.sin(i * 127.1 + 311.7) * 43758.5453; return s
 
 // ───────────────────────── 템플릿 ─────────────────────────
 export const TEMPLATES = Object.create(null);
+const MERGED = new Map();   // rig|id → 합쳐진 템플릿
 /** 템플릿 등록 (같은 이름이면 교체). 합쳐 둔 캐시도 비운다 */
 export function registerTemplate(name, tpl) {
   if (!name || !tpl || typeof tpl !== 'object') return null;
@@ -97,7 +98,6 @@ export const MOUNT_TUNE = {
   mt_boar: {},
   mt_silva: {},
 };
-const MERGED = new Map();
 function merge(base, over) {
   if (!over) return base;
   const o = { ...base };

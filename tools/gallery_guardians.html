@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<base href="../">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>수호신 갤러리 — 11종 · 상태 · 연출</title>
+<style>
+  html, body { margin: 0; background: #07030a; color: #e8dcc0; font: 12px "Noto Sans KR", system-ui, sans-serif; }
+  #bar { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 6px 10px; background: #120b16; border-bottom: 1px solid #3a2434; }
+  #bar b { color: #ffd0c0; }
+  #bar label { display: flex; gap: 4px; align-items: center; }
+  #info { font: 11px ui-monospace, Menlo, monospace; color: #9a8a9a; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<div id="bar">
+  <b>수호신 갤러리 (1부 여섯 = CMP-GUARD-ART-A · 나머지 = GUARDIAN_DRAW_B)</b>
+  <label><input type="checkbox" id="vec"> 절차(벡터) 그림만 (A/B)</label>
+  <label><input type="checkbox" id="anim" checked> 애니메이션</label>
+  <label><input type="checkbox" id="flip"> 왼쪽 보기</label>
+  <label><input type="checkbox" id="aw"> 각성(유대 4)</label>
+  <label>확대 <input type="range" id="zoom" min="1" max="4" step="0.25" value="2"></label>
+  <span id="info"></span>
+</div>
+<canvas id="c"></canvas>
+<script type="module">
+// 수호신 갤러리 — 모든 수호신 × 모든 상태 (채색 퍼핏이 준비되면 채색, 아니면 절차 그림) + 연출 도우미 견본 + 원형 아이콘.
+//   tools/gallery_guardians.html?ids=gd_fairy,gd_owl&vec=1&zoom=3&t=1.3 (t = 시간 고정)&aw=1&flip=1&fx=0&icons=0
+// 그리기는 게임과 같은 render/guardians.js drawGuardian (guardian.js 와 같은 규약: 발 중앙 원점 · 메뉴처럼 world = null).
+// QA: window.__gal = { ready(), perf(ids, n), states }  — ready() 는 채색 리그가 모두 끝났을 때 true (실패 포함)
+import { GUARDIANS } from '../src/data/companions.js';
+import * as GR from '../src/render/guardians.js';
+import { drawPlaceholder } from '../src/game/guardian.js';
+import { paintedState, paintedIds } from '../src/render/painted/registry.js';
+import { game } from '../src/core/game.js';
+
+const Q = new URLSearchParams(location.search);
+const ids = (Q.get('ids') || Object.keys(GUARDIANS).join(',')).split(',').filter((id) => GUARDIANS[id]);
+const $ = (id) => document.getElementById(id);
+const vecBox = $('vec'), animBox = $('anim'), flipBox = $('flip'), awBox = $('aw'), zoomR = $('zoom');
+if (Q.get('vec') === '1') vecBox.checked = true;
+if (Q.get('flip') === '1') flipBox.checked = true;
+if (Q.get('aw') === '1') awBox.checked = true;
+if (Q.get('zoom')) zoomR.value = Q.get('zoom');
+const FIXED_T = Q.has('t') ? Number(Q.get('t')) : null;
+if (FIXED_T !== null) animBox.checked = false;
+const SHOW_FX = Q.get('fx') !== '0', SHOW_ICONS = Q.get('icons') !== '0';
+// ?painted=0 은 레지스트리가 읽는다 (vec 체크와 같은 효과)
+
+const BASE = ['idle', 'move', 'attack', 'skill', 'assist', 'hurt', 'appear', 'emote'];
+const EXTRA = { gd_fairy: ['perch'], gd_owl: ['perch'], gd_spiritwolf: ['run', 'pounce', 'howl'], gd_knight: ['guard'], gd_reaper: ['blink'] };
+const DUR = { attack: 0.7, skill: 1.1, assist: 0.5, hurt: 0.4, appear: 0.6, emote: 1.2, pounce: 0.6, howl: 1.2, blink: 0.5 };
+const statesOf = (id) => {
+  const d = GUARDIANS[id];
+  const base = d.move === 'ground' && !d.hover ? BASE.map((s) => (s === 'move' ? 'run' : s)) : BASE;
+  return [...new Set([...base, ...(EXTRA[id] ?? [])])];
+};
+
+function fakeG(id, anim) {
+  const d = GUARDIANS[id];
+  const g = {
+    id, def: d, kind: 'companion', anim, animT: 0, t: 0, facing: 1, alpha: 1, seed: 0.7, cx: 0, bottom: 0, x: 0, y: 0,
+    w: d.size?.w ?? 24, h: d.size?.h ?? 24, vx: 0, vy: 0, perched: anim === 'perch', hopT: 0, fly: d.move !== 'ground', slot: 0,
+    target: null, act: null, d: { awakened: false, rank: 0 }, mem: {}, hopY() { return 0; },
+    get cy() { return this.bottom - this.h / 2; },
+  };
+  return g;
+}
+const cells = [];
+for (const id of ids) for (const st of statesOf(id)) cells.push({ id, st, g: fakeG(id, st) });
+
+const cv = $('c'), ctx = cv.getContext('2d');
+const CW = 120, CH = 118;
+let W = 0, H = 0, cols = 1;
+function layout() {
+  const z = +zoomR.value;
+  const maxStates = Math.max(...ids.map((id) => statesOf(id).length));
+  cols = maxStates;
+  W = Math.max(window.innerWidth, 80 + cols * CW * z / 2);
+  const rows = ids.length;
+  const fxH = SHOW_FX ? 190 : 0, icH = SHOW_ICONS ? 110 : 0;
+  H = 20 + rows * CH * z / 2 + fxH + icH;
+  cv.width = W * devicePixelRatio; cv.height = H * devicePixelRatio;
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+}
+layout();
+window.addEventListener('resize', layout);
+zoomR.addEventListener('input', layout);
+
+// ── 연출 견본용 가짜 개체 ──
+const fxDefs = [
+  { name: 'fxFairyDome', w: 30, h: 76, life: 2, make: (e) => { e.x = -15; e.y = -76; } },
+  { name: 'fxShieldWall', w: 22, h: 120, life: 4, make: (e) => { e.x = -11; e.y = -120; e.data = { f: 1 }; } },
+  { name: 'fxMeteor', proj: true, life: 1.2, make: (e) => { e.vx = 90; e.vy = 380; e.scale = 1.4; } },
+  { name: 'fxPhantomWolf', proj: true, life: 0.6, make: (e) => { e.vx = 1500; e.vy = 0; e.w = 64; e.h = 36; } },
+  { name: 'fxHolyBeam', w: 170, h: 40, life: 0.6, make: (e) => { e.x = -85; e.y = -60; e.delay = 0.08; e.data = { f: 1 }; } },
+  { name: 'fxBoneShard', proj: true, life: 5, make: (e) => { e.vx = 0; e.vy = 0; e.spin = 14; } },
+  { name: 'fxClockFace', w: 150, h: 150, life: 2, make: (e) => { e.x = -75; e.y = -140; e.data = { R: 70, hm: 0, hh: 0, hs: 0, ga: 0 }; } },
+  { name: 'fxScytheSweep', w: 60, h: 160, life: 0.9, make: (e) => { e.x = -30; e.y = -165; e.data = { f: 1, k: 0, wind: 0.18, color: '#7aff9a' }; } },
+  { name: 'fxBreath', w: 160, h: 60, life: 0.5, make: (e) => { e.x = -80; e.y = -60; e.delay = 0.1; e.data = { f: 1, color: '#c080ff' }; } },
+  { name: 'fxSecretOutline', secret: true },
+];
+function fxEnt(d, t) {
+  const life = d.life ?? 1, lt = t % (life + 0.4);
+  const e = { t: lt, life: Math.max(0, life - lt), maxLife: life, x: 0, y: 0, w: d.w ?? 16, h: d.h ?? 16, delay: 0, data: {}, vx: 0, vy: 0, scale: 1, rot: 0, spin: 0 };
+  d.make?.(e);
+  Object.defineProperty(e, 'cx', { get() { return this.x + this.w / 2; } });
+  Object.defineProperty(e, 'cy', { get() { return this.y + this.h / 2; } });
+  if (d.name === 'fxClockFace') { e.data.hm = -lt * 3; e.data.hh = -lt * 0.3; e.data.hs = -lt * 8; e.data.ga = lt * 0.9; }
+  if (d.name === 'fxScytheSweep') e.data.k = clamp01((lt - 0.18) / 0.6);
+  return e;
+}
+const clamp01 = (v) => Math.max(0, Math.min(1, v));
+const fakeWorld = (t) => ({ time: t, fx: { quality: 1 }, game: null });
+
+let t0 = performance.now(), T = 0;
+function frame() {
+  const now = performance.now();
+  if (animBox.checked) T += Math.min(0.05, (now - t0) / 1000);
+  t0 = now;
+  const t = FIXED_T ?? T;
+  const z = +zoomR.value, dpr = devicePixelRatio;
+  window.__paintedOff = vecBox.checked ? true : undefined;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = '#07030a'; ctx.fillRect(0, 0, W, H);
+  const k = z / 2;
+  // 행 이름
+  ctx.font = '11px system-ui'; ctx.textBaseline = 'top';
+  let y0 = 20;
+  for (const id of ids) {
+    const d = GUARDIANS[id];
+    ctx.fillStyle = d.color ?? '#fff';
+    ctx.fillText(`${d.name} ${id}`, 6, y0 + 2);
+    ctx.fillStyle = '#6a5a6a'; ctx.fillText(paintedIds('companion').includes(id) ? '채색:' + paintedState(id) : '절차', 6, y0 + 16);
+    y0 += CH * k;
+  }
+  // 셀
+  let row = -1, col = 0, cur = null;
+  for (const c of cells) {
+    if (c.id !== cur) { cur = c.id; row++; col = 0; }
+    const x = 80 + col * CW * k, y = 20 + row * CH * k;
+    col++;
+    ctx.fillStyle = (row + col) % 2 ? '#130c16' : '#100a12';
+    ctx.fillRect(x, y, CW * k - 2, CH * k - 2);
+    ctx.fillStyle = '#7a6a7a'; ctx.fillText(c.st, x + 3, y + 2);
+    const g = c.g, dur = DUR[c.st] ?? 2;
+    g.t = t + col * 0.37; g.animT = FIXED_T !== null ? FIXED_T % dur : (t % (dur + 0.3));
+    g.facing = flipBox.checked ? -1 : 1;
+    g.vx = (c.st === 'move' || c.st === 'run') ? 320 * g.facing : 0;
+    g.d.awakened = awBox.checked;
+    const d = GUARDIANS[c.id], gy = y + CH * k - 14 * k;
+    const sc = Math.min(1.6, 70 / Math.max(d.size?.h ?? 24, (d.size?.w ?? 24) * 0.8)) * k;
+    ctx.save();
+    ctx.translate(x + CW * k / 2, d.move === 'ground' ? gy : gy - 8 * k);
+    ctx.scale(sc, sc);
+    ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.fillRect(-40, 0, 80, 1 / sc);
+    g.cx = 0; g.bottom = 0;
+    let done = false;
+    try { done = GR.drawGuardian(ctx, g, null, { alpha: 1, hop: 0, awakened: awBox.checked }) === true; } catch (e) { console.error(e); }
+    ctx.restore();
+    if (!done) { ctx.save(); ctx.translate(x + CW * k / 2, gy); ctx.scale(sc, sc); drawPlaceholder(ctx, g, null); ctx.restore(); }
+  }
+  let yy = 20 + ids.length * CH * k;
+  if (SHOW_FX) {
+    const w = fakeWorld(t);
+    let x = 10;
+    for (const d of fxDefs) {
+      ctx.fillStyle = '#100a12'; ctx.fillRect(x, yy + 4, 176, 180);
+      ctx.fillStyle = '#7a6a7a'; ctx.fillText(d.name, x + 3, yy + 6);
+      ctx.save();
+      ctx.beginPath(); ctx.rect(x, yy + 4, 176, 180); ctx.clip();
+      ctx.translate(x + 88, yy + 176);
+      try {
+        if (d.secret) {
+          const g = { t, mem: { secrets: [0, 0, 1, 0, 1, -1] } };
+          ctx.translate(-72, -100); ctx.scale(0.75, 0.75);
+          ctx.fillStyle = '#2a2430'; ctx.fillRect(0, -48, 96, 96);
+          GR.fxSecretOutline(ctx, g, w);
+        } else {
+          const e = fxEnt(d, t);
+          if (d.proj) { ctx.translate(0, -70); if (d.name === 'fxBoneShard') ctx.scale(2, 2); }
+          GR[d.name](ctx, e, w);
+        }
+      } catch (err) { console.error(d.name, err); }
+      ctx.restore();
+      x += 180;
+      if (x + 176 > W) { x = 10; yy += 184; }
+    }
+    yy += 190;
+  }
+  if (SHOW_ICONS) {
+    let x = 20;
+    for (const id of ids) {
+      ctx.fillStyle = '#231823'; ctx.beginPath(); ctx.arc(x + 20, yy + 30, 20, 0, Math.PI * 2); ctx.fill();
+      GR.drawGuardianIcon(ctx, id, x + 20, yy + 30, 20);
+      GR.drawGuardianIcon(ctx, id, x + 20, yy + 80, 12);
+      x += 56;
+    }
+  }
+  const st = ids.map((id) => `${id.slice(3)}:${paintedIds('companion').includes(id) ? paintedState(id) : '-'}`).join(' ');
+  $('info').textContent = `t=${t.toFixed(2)} ${vecBox.checked ? '[절차]' : '[채색 우선]'}  ${st}`;
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+window.__gal = {
+  states: Object.fromEntries(ids.map((id) => [id, statesOf(id)])),
+  /** 채색 등록된 수호신의 리그가 모두 끝났는가 (ready 또는 failed) */
+  ready() { return paintedIds('companion').filter((id) => ids.includes(id)).every((id) => ['ready', 'failed'].includes(paintedState(id))); },
+  painted() { return Object.fromEntries(paintedIds('companion').map((id) => [id, paintedState(id)])); },
+  /** 한 마리 그리기 비용 (ms): painted=true/false, 상태별 평균 */
+  perf(pids = ids, n = 200, painted = true) {
+    const c2 = document.createElement('canvas'); c2.width = 400; c2.height = 300;
+    const x = c2.getContext('2d');
+    window.__paintedOff = painted ? undefined : true;
+    const out = {};
+    for (const id of pids) {
+      const g = fakeG(id, 'idle');
+      g.cx = 200; g.bottom = 220;
+      const tt = performance.now();
+      for (let i = 0; i < n; i++) {
+        g.t = i * 0.016; g.animT = (i * 0.016) % 1; g.anim = statesOf(id)[i % statesOf(id).length];
+        x.save(); GR.drawGuardian(x, g, { time: g.t, fx: { quality: 1 }, game: null }, { alpha: 1, hop: 0 }); x.restore();
+      }
+      out[id] = +((performance.now() - tt) / n).toFixed(4);
+    }
+    window.__paintedOff = vecBox.checked ? true : undefined;
+    return out;
+  },
+};
+void game;
+</script>
+</body>
+</html>
