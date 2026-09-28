@@ -98,6 +98,12 @@ export const RNG_SCRIPT = `(i, b, p, w) => {
     if (w.fx?.list) w.fx.list.length = 0;
     b.clearJobs?.(); b.flashT = 0; b.invuln = false; b.harmless = false;
     w.cutscene = false; w.hitstop = 0; w.slowmo = 0;
+    // 굽기 대기(채색) 동안 실제 루프가 더 돌아 남은 AI 상태가 두 실행에서 다르다 → 같은 출발점으로 맞춘다 (위치 · 휴식 · 직전 패턴 · 일그러짐 타이머)
+    const A = b.A; b.bx = b.tx = A.cx + 200; b.by = b.ty = b.hoverY('mid'); b.place?.(); b.syncParts?.();
+    b.idleWait = 1.2; b.lastAtk = null; b.atkCount = 0; b.forced.length = 0; b.glitchCD = 1; b.fxAcc = 0;
+    // 방 쪽도: 세계 시계 · 카메라(공허의 벽 파티클은 화면에 보이는 벽에서만 나온다) · 기믹 누적기
+    w.time = 10; w.camera?.follow?.(p, 1 / 60, true); if (w.gimmick && 'fxAcc' in w.gimmick) w.gimmick.fxAcc = 0;
+    if (w.bg) { w.bg.shootT = 4; w.bg.shoot = null; w.bg.lightningT = 8; }   // 배경 별똥별 · 번개 타이머 (실제 루프가 돈 시간만큼 어긋나 있다)
   }
   if (i === 705) b.takeHit(b.stats.maxHp * 0.36, { stats: p.stats }, w, {});
   if (i === 1095) b.takeHit(b.stats.maxHp * 0.33, { stats: p.stats }, w, {});

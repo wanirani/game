@@ -1,7 +1,8 @@
 // T1 instanced rig reuse: 박쥐 떼 (bat_swarm). The painted vampire bat (bat atlas: flying body + one wing, mirrored) drawn
 // as a flock of up to 14 small bats sharing ONE bake with the regular bat (spec.src 'bat' → the same runtime atlas; no own
-// Kling images, docs/art/ENEMY_PIPELINE.md §6). Each bat = far wing (darkened) + near wing as 3-strip bending chains
-// (2 on the 'low' quality) + the body, i.e. ≤ 7 blits per bat, one texture for the whole swarm.
+// Kling images, docs/art/ENEMY_PIPELINE.md §6). Each bat = far wing (darkened) + near wing as 2-strip bending chains
+// (rigid on the 'low' quality and for the darkened back row) + the body, i.e. ≤ 5 blits per front bat and 3 per back bat
+// (+ a red eye glint on the front row only), one texture for the whole swarm.
 // The flock thins out with the HP like the vector version ("상처를 입을수록 수가 줄어든다"): a bat that drops out of
 // the flock tumbles down and fades (render-only ghost, outlives nothing gameplay-side).
 // States (AI_B.swarm): fly (bats orbit the centre on their own ellipses, far half darkened and smaller = depth, each bat
@@ -68,7 +69,7 @@ function drawOne(rig, BODY, x, y, s, beat, sweep, dir, alpha, deep, eyes) {
   const sx = dir * s, sy = s;
   K.pivotPos(BODY, 'a', 'wl', x, y + bob, tilt, sx, sy, _q); const lx = _q[0], ly = _q[1];
   K.pivotPos(BODY, 'a', 'wr', x, y + bob, tilt, sx, sy, _q); const rx = _q[0], ry = _q[1];
-  const n = LOWQ ? 2 : 3, ws = s * WING;
+  const n = deep || LOWQ ? 1 : 2, ws = s * WING;          // back-row bats: rigid wings (per-draw budget)
   K.chain('wing', lx, ly, PI - dirR + tilt, 0.9 * ws, n, bendL, alpha, 'deep', true);
   K.chain('wing', rx, ry, dirR + tilt, ws, n, bendR, alpha, deep ? 'deep' : 'base');
   K.put(BODY, 'a', x, y + bob, tilt, sx, sy, alpha, deep ? 'deep' : 'base');
@@ -117,7 +118,7 @@ export function draw(ctx, e, world, o, rig) {
     for (let i = 0; i < n; i++) {
       const q = batPose(e, i, t, cy, gk, charge, hurt);
       if ((q.z < 0) !== (pass === 0)) continue;
-      drawOne(rig, BODY, q.x, q.y, q.s, q.beat, q.sweep, q.dir, 1, pass === 0, low && i % 2 ? 0 : eyeA * (pass === 0 ? 0.6 : 1));
+      drawOne(rig, BODY, q.x, q.y, q.s, q.beat, q.sweep, q.dir, 1, pass === 0, pass === 0 || (low && i % 2) ? 0 : eyeA);
     }
   }
   if (!o.flash) {

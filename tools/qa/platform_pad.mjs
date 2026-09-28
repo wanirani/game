@@ -139,6 +139,9 @@ try {
     await row('ult', 'RT (≥ 0.5) → ultimate', BTN.RT, (fr, p0) => { const sp = Math.min(...fr.map((f) => f.sp)); const cut = fr.some((f) => f.top === 'ultCutin'); return { pass: sp < 100 || cut, detail: `sp 100 → ${sp}${cut ? ', ult cut-in' : ''}` }; }, { pre: () => s.eval(() => { __game.world.run.sp = 100; }), tail: 600 });
     await s.wait(1500);
     for (let i = 0; i < 12 && (await s.top()) !== 'stage'; i++) await s.wait(250);
+    // the ultimate keeps world.cutscene true for several seconds on a loaded machine and the stage then (correctly)
+    // ignores 'map' (canPause() is false): wait for the cut-scene to end (request #88)
+    await s.waitGame('!g.world?.cutscene && g.top?.name === "stage"', 20000).catch(() => {});
     await settle(s);
     await press(s.page, BTN.SELECT, 90, 500);
     await suite.check({ id: 'mapping.map', group: 'mapping', issue: 'P-07', pkg: 'PLAT-INPUT', title: 'SELECT → menu on the inventory tab', session: s }, async () => {
@@ -146,6 +149,7 @@ try {
       return { pass: /menu$/.test(r.scenes) && r.tab === 'inventory', detail: `${r.scenes}${r.tab ? ' tab ' + r.tab : ''}` };
     });
     for (let i = 0; i < 4 && (await s.top()) !== 'stage'; i++) { await press(s.page, BTN.START); await s.wait(300); }
+    await s.waitGame('!g.world?.cutscene && g.top?.name === "stage"', 20000).catch(() => {});
     await settle(s);
     await press(s.page, BTN.START);
     await s.wait(500);
@@ -226,7 +230,8 @@ try {
     const s = await stageWithPad('desk', 's03', { id: PAD_IDS.ps });
     const fr = await during(s, () => disconnect(s.page), 700);
     const paused = fr.some((f) => f.top === 'pause');
-    const toastOff = fr.map((f) => f.toasts).find((t) => /끊어|연결/.test(t)) || '';
+    // the frames AFTER the disconnect must show the '끊어' toast (the pre-disconnect '… 연결됨' toast does not count; request #110)
+    const toastOff = fr.map((f) => f.toasts).reverse().find((t) => /끊어/.test(t)) || '';
     await suite.check({ id: 'hotplug.disconnect', group: 'hotplug', issue: 'P-15', gate: 'PLAT-INPUT', title: 'disconnect in a stage → pause + toast', session: s }, async () => ({ pass: paused && !!toastOff, detail: `pause ${paused}, toast ${fmt(toastOff)}` }));
     const fr2 = await during(s, () => connect(s.page), 500);
     const toastOn = fr2.map((f) => f.toasts).find((t) => /연결됨|연결/.test(t) && !/끊어/.test(t)) || '';

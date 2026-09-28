@@ -121,6 +121,8 @@ public class MainActivity extends Activity {
     private AlertDialog updateDialog;
     private boolean backPending;
     private boolean gateShown;
+    /** 버전이 낮아서 막은 경우만 (돌아왔을 때 다시 확인해 자동 시작). WebView 생성 실패로 띄운 안내는 다시 시도하지 않는다 (재생성 반복 방지) */
+    private boolean gateOld;
     private volatile String insetsJson;
     private volatile String imeJson;
     private boolean imeOpen;
@@ -184,6 +186,7 @@ public class MainActivity extends Activity {
 
     private void startGame() {
         gateShown = false;
+        gateOld = false;
         String ua;
         try {
             ua = WebSettings.getDefaultUserAgent(this) + " BloodNocturneApp/" + versionName();
@@ -314,6 +317,7 @@ public class MainActivity extends Activity {
     /** info == null: WebView 없음. 아니면 버전이 낮음 → 업데이트 안내 + Play 스토어 버튼 (+ 그래도 실행) */
     private void showWebViewProblem(WvInfo info) {
         gateShown = true;
+        gateOld = info != null;
         root.removeAllViews();
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
@@ -790,10 +794,10 @@ public class MainActivity extends Activity {
             web.onResume();
             web.resumeTimers();
             web.requestFocus();
-        } else if (gateShown) {
+        } else if (gateShown && gateOld) {
             // Play 스토어에서 WebView 를 업데이트하고 돌아왔으면 게임을 시작한다
             WvInfo info = webViewInfo();
-            if (info != null && WebViewCheck.ok(info.major)) recreate();
+            if (info != null && info.major >= WebViewCheck.MIN_MAJOR) recreate();
         }
         hideSystemUi();
     }

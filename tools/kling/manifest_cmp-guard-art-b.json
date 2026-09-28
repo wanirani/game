@@ -15,7 +15,7 @@
    "aspect": "3:4",
    "imageCount": 2,
    "prompt": "ref(id) in tools/painted/prompts/cmp-guard-art-b.mjs",
-   "decision": "pending"
+   "decision": "kept #1 as src/gd_clock_ref.webp (grey bg, umbrella with a brass cog on top, key behind the head); #0 rejected (scenery background)"
   },
   {
    "guardian": "gd_reaper",
@@ -25,7 +25,7 @@
    "aspect": "3:4",
    "imageCount": 2,
    "prompt": "ref(id) in tools/painted/prompts/cmp-guard-art-b.mjs",
-   "decision": "pending"
+   "decision": "kept #0 as src/gd_reaper_ref.webp (blade curves forward to the right, green lantern in the free hand); #1 rejected (blade faces left)"
   },
   {
    "guardian": "gd_mirra",
@@ -35,7 +35,7 @@
    "aspect": "3:4",
    "imageCount": 2,
    "prompt": "ref(id) in tools/painted/prompts/cmp-guard-art-b.mjs",
-   "decision": "pending"
+   "decision": "kept #1 as src/gd_mirra_ref.webp (faces right, crystal-shard fairy wings, mirror held forward); #0 rejected (faces left, dark gradient bg)"
   },
   {
    "guardian": "gd_lumen",
@@ -45,7 +45,7 @@
    "aspect": "3:4",
    "imageCount": 2,
    "prompt": "ref(id) in tools/painted/prompts/cmp-guard-art-b.mjs",
-   "decision": "pending"
+   "decision": "kept #1 as src/gd_lumen_ref.webp (lantern clearly inside the bell, cyan/pink like the portrait); #0 rejected (washed-out lantern)"
   },
   {
    "guardian": "gd_momo",
@@ -55,6 +55,71 @@
    "aspect": "4:3",
    "imageCount": 2,
    "prompt": "ref(id) in tools/painted/prompts/cmp-guard-art-b.mjs",
+   "decision": "kept #1 as src/gd_momo_ref.webp (strict side view on the dream cloud, curled trunk, closed happy eyes); #0 rejected (floor shadow, second small tapir)"
+  },
+  {
+   "guardian": "gd_clock",
+   "step": "sheet",
+   "generationId": "AYZuK_sBPDRCuhjMG_rX1A7fhbs6UJSct7_EkVpNLTXQctnli0mAfpvMxdu7LL1kbmkzfq2V",
+   "tool": "image_to_image",
+   "inputs": {
+    "image_1": "kept ref (Kling result URL)"
+   },
+   "aspect": "4:3",
+   "imageCount": 2,
+   "prompt": "sheet(id) in tools/painted/prompts/cmp-guard-art-b.mjs",
+   "decision": "pending"
+  },
+  {
+   "guardian": "gd_reaper",
+   "step": "sheet",
+   "generationId": "Ac-2pfhyLGcum3JFHToAze4a2es_6i9byO8pNszcIhaATrPUZQ1WD0CUtc5Pv96cu1jn1rcq",
+   "tool": "image_to_image",
+   "inputs": {
+    "image_1": "kept ref (Kling result URL)"
+   },
+   "aspect": "4:3",
+   "imageCount": 2,
+   "prompt": "sheet(id) in tools/painted/prompts/cmp-guard-art-b.mjs",
+   "decision": "pending"
+  },
+  {
+   "guardian": "gd_mirra",
+   "step": "sheet",
+   "generationId": "ARNdKtMNGSTQYFoBHOoklLo9iQLnSyTetgFdXuHp-JztRBfKtp4HSBAYNEP70_v6MMnUXnru",
+   "tool": "image_to_image",
+   "inputs": {
+    "image_1": "kept ref (Kling result URL)"
+   },
+   "aspect": "4:3",
+   "imageCount": 2,
+   "prompt": "sheet(id) in tools/painted/prompts/cmp-guard-art-b.mjs",
+   "decision": "pending"
+  },
+  {
+   "guardian": "gd_lumen",
+   "step": "sheet",
+   "generationId": "ATSN50whZonu2H_hwFItTkStGnvPELHog1iUZR74UrFULSXdXsvtYkiVcZ5ctsQRNOW1fAsn",
+   "tool": "image_to_image",
+   "inputs": {
+    "image_1": "kept ref (Kling result URL)"
+   },
+   "aspect": "4:3",
+   "imageCount": 2,
+   "prompt": "sheet(id) in tools/painted/prompts/cmp-guard-art-b.mjs",
+   "decision": "pending"
+  },
+  {
+   "guardian": "gd_momo",
+   "step": "sheet",
+   "generationId": "Abzbbor97fXlfNyOrjo1bHKCx44DJ0_iAoGxjMWdn-DXONouXGbMXFj-liC8KlcUdPE5TIFF",
+   "tool": "image_to_image",
+   "inputs": {
+    "image_1": "kept ref (Kling result URL)"
+   },
+   "aspect": "4:3",
+   "imageCount": 2,
+   "prompt": "sheet(id) in tools/painted/prompts/cmp-guard-art-b.mjs",
    "decision": "pending"
   }
  ]

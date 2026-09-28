@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
+<link rel="icon" href="data:,">
 <base href="../../">
 <title>퍼펫 QA 검사대</title>
 <style>html,body{margin:0;background:#07040a;color:#d8ccb8;font:12px sans-serif}</style>
@@ -11,13 +12,26 @@
 // 퍼펫 QA 검사대 (tools/puppet/review.mjs 가 구동). 셀 하나 = 영웅 한 자세를 투명 캔버스에 그려
 //  ① PNG(dataURL) ② 실루엣 안에 갇힌 투명 구멍(이음매 틈) ③ 반투명 이음선 픽셀 수 ④ 발바닥/머리 위치 를 돌려준다.
 // window.__api.render(spec) — spec: {char, cls, wt, mk('g0'|'a1'|'up'|'down'|'crouch'|'dash'|'charge'), t | frac,
-//   anim, animT, facing, vx, vy, onGround, sc, W, H, fx, fy, bg, rim, noFx, equip{}, warm, tint, alpha, yaw, vector, world, charging, muzzleT}
+//   anim, animT, facing, vx, vy, onGround, sc, W, H, fx, fy, bg, rim, noFx, equip{}, warm, tint, alpha, yaw, vector, world, charging, muzzleT, npc('npc_marta' | true → char 가 NPC id), jointSkip['el2',…]}
+//   NPC 는 먼 팔(el2·ua2·fa2)과 치마·수단 속 다리 관절을 검사하지 않는다(오탐). equip.weapon = null 이면 무기 없이 그린다
 import { drawHero, setPuppetEnabled, puppetStatus, preloadPuppet, HERO_DRAW_SCALE } from './src/render/hero.js';
 import { CHARACTERS } from './src/data/characters.js';
 import { CLASSES, classChain } from './src/data/classes.js';
 import { MOVESETS } from './src/data/movesets.js';
+import { NPCS } from './src/data/npcs.js';
+import { TOWN_NPCS } from './src/data/town.js';
 import { _debugHost } from './src/render/hero_puppet.js';
 
+// NPC: spec.npc = 'npc_marta' 처럼 NPC id (true 면 spec.char 를 id 로). look 은 데이터 객체 그대로 — 런타임이 객체 동일성으로
+// NPC id 를 찾는다(hero_puppet.npcIdOf). 데이터에 없는 NPC(npc_greta·npc_rook2)는 look.npcId 로 지정. equip 은 사본에 덮어씀(npcId 유지)
+const NPC_EXTRA = { npc_greta: { build: 'normal', height: 0.97, fem: true, outfit: 'villager', skin: '#e8c8a8', hair: '#b8b0a8', hairStyle: 'braid', primary: '#6a4a30', secondary: '#3a2a1a', trim: '#b8322a', pants: '#2a2018', boots: '#3a2418' } };
+function npcLook(id, equip) {
+  const base = NPCS[id]?.look || TOWN_NPCS?.[id]?.look || null;
+  if (base && !equip) return base;
+  const look = Object.assign({}, base || (id === 'npc_rook2' ? Object.assign({}, NPCS.npc_rook?.look, { headgear: null }) : NPC_EXTRA[id] || { build: 'normal' }), structuredClone(equip || {}));
+  look.npcId = id;
+  return look;
+}
 function lookOf(charId, classId, w = {}, equip = {}) {
   const ch = CHARACTERS[charId];
   const look = structuredClone(ch.look);
@@ -95,14 +109,15 @@ async function render(s) {
   const W = s.W || 700, H = s.H || 560, sc = s.sc || 4;
   const fx = s.fx ?? W * 0.42, fy = s.fy ?? H - 50;
   cv.width = W; cv.height = H;
-  const charId = s.char || 'kael';
-  const look = lookOf(charId, s.cls, { type: s.wt, style: s.style ?? 3, level: s.level ?? 0, rarity: s.rarity ?? 0, element: s.element ?? null }, s.equip || {});
-  const wt = look.weapon.type;
-  const m = moveOf(wt, s.mk);
+  const npcId = s.npc ? (typeof s.npc === 'string' ? s.npc : s.char) : null;
+  const charId = npcId ? null : s.char || 'kael';
+  const look = npcId ? npcLook(npcId, s.equip) : lookOf(charId, s.cls, { type: s.wt, style: s.style ?? 3, level: s.level ?? 0, rarity: s.rarity ?? 0, element: s.element ?? null }, s.equip || {});
+  const wt = look.weapon?.type ?? null;                       // NPC·equip {weapon:null} 은 무기 없음
+  const m = wt ? moveOf(wt, s.mk) : null;
   const air = s.mk ? (s.mk[0] === 'a' || s.mk === 'down') : false;
   const e = { facing: s.facing ?? 1, anim: s.anim || (m ? m.anim : 'idle'), animT: s.animT ?? 0.5, move: m, moveT: m ? (s.t ?? moveT(m, s.frac ?? 1.5)) : 0,
     vx: s.vx ?? 0, vy: s.vy ?? 0, onGround: s.onGround ?? !air, rig: {}, t: 3, stats: { reach: 0 }, charging: s.charging ?? 0.7, muzzleT: s.muzzleT ?? 0.05,
-    look, ch: CHARACTERS[charId], hero: s.cls ? { classId: s.cls } : undefined, npc: !!s.npc, cx: 0, bottom: 0 };
+    look, ch: npcId ? { move: { speed: 275 } } : CHARACTERS[charId], hero: s.cls && !npcId ? { classId: s.cls } : undefined, npc: !!npcId, cx: 0, bottom: 0 };
   if (s.ride) e.ride = s.ride;
   if (s.feel) e.feel = s.feel;
   if (s.gaitPh !== undefined) e.gaitPh = s.gaitPh;
@@ -111,7 +126,7 @@ async function render(s) {
     sctx.setTransform(1, 0, 0, 1, 0, 0);
     drawHero(sctx, e, null, {});
     const st = puppetStatus();
-    const key = charId + '/' + (s.cls || '');
+    const key = npcId ? 'npc/' + npcId : charId + '/' + (s.cls || '');
     if (s.vector || !st[key] || st[key].state !== 0) break;
     await new Promise((r) => setTimeout(r, 30));
   }
@@ -153,6 +168,15 @@ async function render(s) {
       el1b: [SK.e1x, SK.e1y], ua1: [(SK.s1x + SK.e1x) / 2, (SK.s1y + SK.e1y) / 2], fa1: [(SK.e1x + SK.h1x) / 2, (SK.e1y + SK.h1y) / 2], ua2: [(SK.s2x + SK.e2x) / 2, (SK.s2y + SK.e2y) / 2], fa2: [(SK.e2x + SK.h2x) / 2, (SK.e2y + SK.h2y) / 2],
       th1: [(SK.hp1x + SK.k1x) / 2, (SK.hp1y + SK.k1y) / 2], sn1: [(SK.k1x + SK.a1x) / 2, (SK.k1y + SK.a1y) / 2], th2: [(SK.hp2x + SK.k2x) / 2, (SK.hp2y + SK.k2y) / 2], sn2: [(SK.k2x + SK.a2x) / 2, (SK.k2y + SK.a2y) / 2],
       belly: [(SK.px * 2 + SK.nx) / 3, (SK.py * 2 + SK.ny) / 3], chest: [(SK.px + SK.nx * 2) / 3, (SK.py + SK.ny * 2) / 3] };
+    // NPC 는 먼 팔이 몸에 가려지고(말하기·손짓), 긴 치마·수단·드레스면 무릎·넓적다리가 옷 속이라 관절 둘레 알파가 원래 낮다 →
+    // 그런 점은 검사하지 않는다(heroes3rev §2: 73칸 모두 눈으로 확인한 오탐). 가까운 팔·목·몸통·(바지 차림이면) 다리만 본다.
+    // spec.jointSkip: ['el2', …] 로 직접 뺄 수도 있다
+    const skip = new Set(s.jointSkip || []);
+    if (npcId) {
+      for (const k of ['el2', 'ua2', 'fa2']) skip.add(k);
+      if (['dress', 'robe', 'long'].includes(look.coat) || ['nun', 'priest', 'lady', 'girl', 'innkeeper'].includes(look.outfit)) for (const k of ['hip1', 'hip2', 'kn1', 'kn2', 'th1', 'th2', 'sn1', 'sn2']) skip.add(k);
+    }
+    for (const k of skip) delete pts[k];
     const d = ctx.getImageData(0, 0, W, H).data;
     joints = {};
     const r = Math.max(2, Math.round(1.4 * sc * hs));

@@ -167,9 +167,29 @@ export class Session {
     await this.page.goto(sw ? this.url(u) : noSw(this.url(u)), { timeout });
     if (wait) await this.waitGame();
   }
-  /** window.__game exists and has a scene (or the given predicate holds). */
-  async waitGame(pred = 'g.scenes.length > 0', timeout = 45000) {
-    await this.page.waitForFunction(`(() => { const g = window.__game; return !!g && (${pred}); })()`, null, { timeout, polling: 50 });
+  /**
+   * window.__game exists and has a scene (or the given predicate holds).
+   * pred: a JS expression over `g` (string), or a function (arg) → truthy that runs in the page (reads window.__game).
+   * CSP-safe (request #230): under the production CSP (script-src 'self', no 'unsafe-eval'; dist/web via serve_dist)
+   * page.waitForFunction compiles its predicate with new Function inside the page and throws EvalError, so the
+   * predicate is polled from Node instead: page.evaluate goes through CDP (Runtime.evaluate / callFunctionOn), which the
+   * page CSP does not govern. Poll period 50 ms; a navigation in between counts as "not yet".
+   */
+  async waitGame(pred = 'g.scenes.length > 0', timeout = 45000, arg = null) {
+    const expr = typeof pred === 'function' ? null : `(() => { const g = window.__game; return !!g && !!(${pred}); })()`;
+    const fn = typeof pred === 'function' ? pred : null;
+    const t0 = Date.now();
+    for (;;) {
+      let ok = false;
+      try {
+        ok = !!(expr ? await this.page.evaluate(expr) : await this.page.evaluate(fn, arg));
+      } catch (e) {
+        if (!/Execution context was destroyed|navigation|Cannot find context/i.test(String(e?.message))) throw e;
+      }
+      if (ok) return;
+      if (Date.now() - t0 > timeout) throw new Error(`waitGame timeout ${timeout} ms: ${typeof pred === 'function' ? pred.toString().slice(0, 120) : pred}`);
+      await this.page.waitForTimeout(50);
+    }
   }
   eval(fn, arg) { return this.page.evaluate(fn, arg); }
   wait(ms) { return this.page.waitForTimeout(ms); }

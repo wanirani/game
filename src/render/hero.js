@@ -597,7 +597,15 @@ function chain(key, E, ax, ay, n, seg, cfg, lim) {
     if (ch.fresh || Math.abs(wx - ch.lx) + Math.abs(wy - ch.ly) > 110 * hs) {
       const a = cfg.rest ?? 0.2;
       ch.reset(wx, wy, -fac * Math.sin(a), Math.cos(a)); ch.fresh = 0; ch.lx = wx; ch.ly = wy;
+    } else if (ch.fac !== undefined && ch.fac !== fac) {
+      // 방향 전환: 사슬 모양을 앵커 기준으로 거울 뒤집기 (옛 앵커 → 새 앵커). 뒤집지 않으면 몸 앞쪽에 남은 점들이
+      // 뒤쪽 한계(lim)로 끌려가며 큰 속도를 얻어 망토·머리카락이 3~4프레임 수평·위로 휙 넘어간다 (heroes3rev §5.2).
+      // 월드 속도는 60% 만 남긴다(달리던 관성으로 자연스럽게 뒤로 흐름). 이 프레임은 관성 전달을 건너뛴다.
+      const m = ch.lx + wx;
+      for (const q of ch.pts) { const v = (q.x - q.px) * 0.6; q.x = m - q.x; q.px = q.x - v; }
+      ch.lx = wx; ch.ly = wy;
     }
+    ch.fac = fac;
     // 관성 전달: 앵커 이동량의 일부를 체인 전체에 그대로 옮겨 (속도는 보존) 지나친 끌림을 줄인다.
     // 가로는 적게(달릴 때 뒤로 흩날림), 세로는 많이(낙하 중 천이 수직으로 솟는 현상 방지)
     if (dt > 0 && ch.lx !== undefined) {
@@ -605,12 +613,21 @@ function chain(key, E, ax, ay, n, seg, cfg, lim) {
       for (let i = 1; i < n; i++) { const q = ch.pts[i]; q.x += mx0; q.px += mx0; q.y += my0; q.py += my0; }
     }
     ch.lx = wx; ch.ly = wy;
+    // 발 딛음 반동 (feel.md §3.3.2 'special'): feel_move 가 발이 닿을 때마다 p.feel.steps 를 올린다 → 자락·머리카락 끝에
+    // 작은 위·뒤 방향 튕김 (끝으로 갈수록 크게). 잔상 스냅샷은 rig 가 없어 영향 없음
+    const stp = p.feel?.steps;
+    if (dt > 0 && stp !== undefined && ch.steps !== undefined && stp !== ch.steps) {
+      const A = (cfg.step ?? 0.3) * hs;
+      for (let i = 1; i < n; i++) { const q = ch.pts[i], k = A * (i / (n - 1)); q.py += k; q.px += fac * k * 0.4; }
+    }
+    ch.steps = stp;
     if (dt > 0) {
       const flut = cfg.flut ? Math.sin(G.t * 11 + n) * cfg.flut * (0.18 + Math.min(1, Math.abs(vx) / 260)) : 0;
       ch.update(dt, wx, wy, -fac * (cfg.push ?? 0), flut, p.onGround !== false ? p.bottom - 0.6 * hs : null);
       if (lim !== undefined && !P.rot && P.sx > 0.95) {
         const L = p.cx + fac * hs * lim;
-        for (let i = 1; i < n; i++) { const q = ch.pts[i]; if ((q.x - L) * fac > 0) { q.x = L; } }
+        // 몸을 뚫고 앞으로 나간 점은 한계선으로 — 이전 위치도 선 너머면 선 위로 (한계선에서 되튀는 속도가 생기지 않게)
+        for (let i = 1; i < n; i++) { const q = ch.pts[i]; if ((q.x - L) * fac > 0) { q.x = L; if ((q.px - L) * fac > 0) q.px = L; } }
       }
       if (cfg.flut) {
         const A = cfg.flut * 14 * (0.14 + Math.min(1.2, Math.abs(vx) / 260)) * dt * dt;
@@ -1868,6 +1885,9 @@ function heroScale(p, world, opts, look, K) {
 // ───────────────────────── 잔상 합성 ─────────────────────────
 const POOL = [];
 let poolTick = 0;
+// 합성 풀 10장을 모듈 초기화 때 미리 만든다 (MASTER_PLAN §5.2: 스테이지 시작 뒤 새 캔버스 0 — 첫 잔상·각성 컷인 섬광이
+// 캔버스를 만들지 않게). 크기 0 으로 두고 쓸 때 키운다(메모리는 쓰는 만큼만)
+if (typeof document !== 'undefined') for (let i = 0; i < 10; i++) POOL.push({ cv: document.createElement('canvas'), key: null, tick: 0, rs: 0 });
 function poolGet(key, W, H) {
   poolTick++;
   let best = null;

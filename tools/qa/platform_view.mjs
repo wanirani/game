@@ -104,7 +104,9 @@ try {
 
   // ── 4. frame pacing: fpsCap 60 on a 120 Hz display → ≤ 61 render() per second (P-12) ──────────────
   await suite.group('pacing', async () => {
-    const s = await env.page('desk', 'index.html?scene=stage&stage=s01');
+    // a fixed tier (request #129): with 'auto' the governor may step high → medium on a loaded QA box during the
+    // measurement, and that resize + redraw adds renders that are not frame pacing
+    const s = await env.page('desk', 'index.html?scene=stage&stage=s01', { settings: { quality: 'high' } });
     await s.waitGame('!!g.world?.player');
     await s.wait(1500);
     await s.skipDialogue();

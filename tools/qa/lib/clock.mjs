@@ -11,7 +11,8 @@ export const TIER_EXPR = "(g.tier ?? g.qualityTier ?? g.quality ?? g.settings?.q
 export async function runFrames(page, stepMs, frames, { sampleTier = false } = {}) {
   return page.evaluate(async ({ stepMs, frames, sampleTier, TIER }) => {
     const g = window.__game;
-    const tierOf = new Function('g', `return ${TIER};`);
+    // same expression as TIER_EXPR, written out (no new Function: the page may run under a CSP without 'unsafe-eval')
+    const tierOf = (g) => (g.tier ?? g.qualityTier ?? g.quality ?? g.settings?.quality ?? null);
     const realRaf = window.requestAnimationFrame.bind(window);
     const realNow = performance.now.bind(performance);
     let renders = 0, ticks = 0;
@@ -22,9 +23,16 @@ export async function runFrames(page, stepMs, frames, { sampleTier = false } = {
     const tiers = [];
     let lastTier = sampleTier ? tierOf(g) : null;
     if (sampleTier) tiers.push([0, lastTier]);
+    window.requestAnimationFrame = (cb) => { C.q.push(cb); return C.q.length; };
+    // The loop's pending callback still sits in the REAL rAF queue (handed back by a previous runFrames, or it never left
+    // it): wait until it has run once on the real clock and re-registered into the fake queue, else the storm below can
+    // finish before the next real frame and record 0 renders / 0 ticks (request #82). Bounded: a page without a running
+    // loop starts after ~1.5 s anyway. Counters and the virtual clock start only after that.
+    for (let i = 0; i < 60 && !C.q.length; i++) await new Promise((r) => { realRaf(() => r()); setTimeout(r, 25); });
+    renders = 0; ticks = 0;
+    C.vt = realNow();
     const t0 = C.vt;
     performance.now = () => C.vt;
-    window.requestAnimationFrame = (cb) => { C.q.push(cb); return C.q.length; };
     const ch = new MessageChannel();
     await new Promise((resolve) => {
       ch.port1.onmessage = () => {

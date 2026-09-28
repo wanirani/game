@@ -188,7 +188,7 @@ export function draw(ctx, e, world, o, rig) {
     if (fast && e.onGround !== false) {
       for (let k = pool.rate(1, lo ? 8 : 16, dt); k > 0; k--) pool.add(3, e.cx - f * K.frand(4, 26), e.bottom - K.frand(0, 3), -f * K.frand(40, 140), -K.frand(40, 160), K.frand(0.25, 0.5), K.frand(1.2, 2.2), '#ffb050');
     }
-    ctx.save(); ctx.setTransform(o.cam); pool.draw(ctx); ctx.restore();
+    if (pool.n) { ctx.save(); ctx.setTransform(o.cam); pool.draw(ctx); ctx.restore(); }
   }
 }
 

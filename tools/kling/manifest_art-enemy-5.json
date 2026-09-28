@@ -6,7 +6,12 @@
  "credits": {
   "before": 5621.0,
   "per_image": 2,
-  "budget": 600
+  "budget": 600,
+  "after": 5427.0,
+  "spent_by_package": 68,
+  "images": 34,
+  "calls": 17,
+  "note": "spent_by_package = images x per_image from this manifest; the account balance (5621 -> 5427) is shared with packages generating in parallel"
  },
  "uploads": {
   "knight_torso": {
@@ -425,7 +430,7 @@
       1760
      ],
      "kept": true,
-     "decision": "kept: vampire_bride parts (2 heads, gown, veil, arm, bouquet) \u2192 src/bride_sheet.webp (+ derived bride_scream.webp)"
+     "decision": "kept: vampire_bride parts (2 heads, gown, veil, arm, bouquet) → src/bride_sheet.webp (+ derived bride_scream.webp)"
     },
     {
      "name": "bride_sheet_2",
@@ -530,7 +535,7 @@
       1760
      ],
      "kept": true,
-     "decision": "kept: chaos_spawn body (left figure) \u2192 tools/painted/enemies/chaos_spawn/src/chaos_body.webp"
+     "decision": "kept: chaos_spawn body (left figure) → tools/painted/enemies/chaos_spawn/src/chaos_body.webp"
     },
     {
      "name": "chaos_sheet_2",
@@ -540,7 +545,7 @@
       1760
      ],
      "kept": true,
-     "decision": "kept: chaos_spawn tentacle (bottom, no halo) \u2192 src/chaos_tent.webp"
+     "decision": "kept: chaos_spawn tentacle (bottom, no halo) → src/chaos_tent.webp"
     }
    ]
   },
@@ -565,7 +570,7 @@
       1760
      ],
      "kept": true,
-     "decision": "kept: abyss_eye sac (blank eye) + lid + tentacle bundle \u2192 src/eye_sac.webp"
+     "decision": "kept: abyss_eye sac (blank eye) + lid + tentacle bundle → src/eye_sac.webp"
     },
     {
      "name": "eye_sheet_2",
@@ -575,7 +580,7 @@
       1760
      ],
      "kept": true,
-     "decision": "kept: abyss_eye iris disc \u2192 src/eye_iris.webp"
+     "decision": "kept: abyss_eye iris disc → src/eye_iris.webp"
     }
    ]
   },
@@ -600,7 +605,7 @@
       1760
      ],
      "kept": true,
-     "decision": "kept: void_demon body + near arm (split) + far arm \u2192 src/void_sheet_raw.webp (derive.py strips the lavender glow halo \u2192 void_sheet.webp)"
+     "decision": "kept: void_demon body + near arm (split) + far arm → src/void_sheet_raw.webp (derive.py strips the lavender glow halo → void_sheet.webp)"
     },
     {
      "name": "void_sheet_2",

@@ -201,25 +201,23 @@ final class AssetServer {
     private WebResourceResponse file(WebResourceRequest req, String method, String rel, String asset, Map<String, String> headers) throws IOException {
         String mime = mimeOf(rel);
         String enc = isText(mime) ? "utf-8" : null;
-        {
-            if (rel.equals("index.html")) {
-                byte[] html = injectIndex(readAll(am.open(asset, AssetManager.ACCESS_BUFFER)));
-                headers.put("Content-Length", String.valueOf(html.length));
-                return new WebResourceResponse(mime, enc, 200, "OK", headers,
-                        new ByteArrayInputStream(method.equals("HEAD") ? new byte[0] : html));
-            }
-            if (isMedia(mime)) {
-                WebResourceResponse partial = rangeResponse(asset, mime, header(req, "Range"), headers);
-                if (partial != null) return partial;
-            }
-            long len = isText(mime) ? -1 : assetLength(asset); // 텍스트는 압축 저장이라 길이를 미리 알 수 없다
-            if (len >= 0) headers.put("Content-Length", String.valueOf(len));
-            InputStream in = method.equals("HEAD")
-                    ? new ByteArrayInputStream(new byte[0])
-                    : am.open(asset, AssetManager.ACCESS_STREAMING);
-            if (method.equals("HEAD")) am.open(asset).close(); // 존재 확인
-            return new WebResourceResponse(mime, enc, 200, "OK", headers, in);
+        if (rel.equals("index.html")) {
+            byte[] html = injectIndex(readAll(am.open(asset, AssetManager.ACCESS_BUFFER)));
+            headers.put("Content-Length", String.valueOf(html.length));
+            return new WebResourceResponse(mime, enc, 200, "OK", headers,
+                    new ByteArrayInputStream(method.equals("HEAD") ? new byte[0] : html));
         }
+        if (isMedia(mime)) {
+            WebResourceResponse partial = rangeResponse(asset, mime, header(req, "Range"), headers);
+            if (partial != null) return partial;
+        }
+        long len = isText(mime) ? -1 : assetLength(asset); // 텍스트는 압축 저장이라 길이를 미리 알 수 없다
+        if (len >= 0) headers.put("Content-Length", String.valueOf(len));
+        InputStream in = method.equals("HEAD")
+                ? new ByteArrayInputStream(new byte[0])
+                : am.open(asset, AssetManager.ACCESS_STREAMING);
+        if (method.equals("HEAD")) am.open(asset).close(); // 존재 확인
+        return new WebResourceResponse(mime, enc, 200, "OK", headers, in);
     }
 
     /** /api/* → ApiProxy (응답은 언제나 JSON 또는 서버 응답 그대로; 이 스레드는 WebView 의 요청 처리 스레드라 막아도 된다) */
