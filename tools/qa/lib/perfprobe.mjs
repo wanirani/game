@@ -12,6 +12,7 @@
 //                    spawns while rendering), ms (real render time)
 //   sites            { grad: Map(site → n), canv: Map, rng: Map, fx: Map } call sites (file:line) while counting / armed
 //   live()           live canvases created since load (WeakRef) → { n, bytes }
+// Math.random is replaced by a seeded PRNG for the whole page (reproducible counts; window.__perfSeed(n) reseeds).
 // A context method is counted only while __perf.on or __perf.armed (canvas creation), so gameplay outside the measured
 // frames costs nothing extra.
 export function perfProbeInit() {
@@ -106,9 +107,13 @@ export function perfProbeInit() {
           };
         }
       }
-      // gameplay RNG consumed while rendering
-      const mr = Math.random;
-      Math.random = function () { if (P.on) { P.f.rng++; if (P.f.rng <= 40) bump(P.sites.rng, site2(2)); } return mr(); };
+      // gameplay RNG consumed while rendering. Math.random is also SEEDED (mulberry32, fixed seed) so two runs of the same
+      // scene draw the same spawns/patterns and the counts are reproducible (a p95 at the budget edge must not flip between
+      // runs); window.__perfSeed(n) reseeds.
+      let seed = 0x5eed2026;
+      const rnd = () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+      window.__perfSeed = (n) => { seed = n | 0; };
+      Math.random = function () { if (P.on) { P.f.rng++; if (P.f.rng <= 40) bump(P.sites.rng, site2(2)); } return rnd(); };
       P.hookFx = (fx) => {
         if (!fx || fx.__perfHooked) return;
         fx.__perfHooked = true;

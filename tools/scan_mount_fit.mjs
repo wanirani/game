@@ -164,6 +164,7 @@ function analyzeRoom(stage, roomId, room) {
   if (room.exitDown) { const g = Math.max(0, ...gapRuns(map.h - 1)); res.info.exitDownGap = g; if (g * TILE < WIDEST.w) res.notes.push(`아래 출구 틈 ${g}칸 — 녹티스(${WIDEST.w}px)는 내려서 지나간다`); }
   if (room.exitUp) { const g = Math.max(0, ...gapRuns(0)); res.info.exitUpGap = g; if (g * TILE < WIDEST.w) res.notes.push(`위 출구 틈 ${g}칸 — 날 수 있는 탈것도 내려서 지나간다`); }
   if (res.start.underwater) res.notes.push('시작 지점이 깊은 물 속 — 소환 거절 (정상)');
+  res.deep = liquid === 'deep';
   if (hasPhase) {
     const alt = BODIES.filter((b) => res.startAlt?.mounts[b.id] === null).map((b) => b.id);
     res.info.phaseTiles = map.phaseTiles.length;
@@ -195,6 +196,9 @@ function traverse(stage, roomId, room, startMirror) {
   const mA = new TileMap(room), mB = new TileMap(room);
   applyPhase(mA, startMirror, 'even');
   applyPhase(mB, startMirror === 'A' ? 'B' : 'A', 'odd');
+  // 몸이 지나가는 판정용 사본: 부서지는 벽(B/H/K)은 부수고 지나간다고 본다 (validate_maps 와 같다; 서 있을 발판으로는 원본을 쓴다)
+  const open = (m) => { const c = new TileMap(room); c.tiles.set(m.tiles); for (let i = 0; i < c.tiles.length; i++) if (c.tiles[i] === T.BREAK) c.tiles[i] = T.EMPTY; return c; };
+  const oA = open(mA), oB = open(mB);
   const W = mA.w, H = mA.h;
   const liquid = room.liquid ?? stage.liquid ?? 'water';
   const deep = liquid === 'deep';
@@ -231,68 +235,79 @@ function traverse(stage, roomId, room, startMirror) {
 
   const run = (prof) => {
     const body = prof.body;
-    const cache = new Map();
+    // 격자: x −1…W+1, y −2…H+1 (방 밖 한 칸까지). 판정은 모두 격자 배열에 기억한다
+    const GW = W + 3, GH = H + 4, N = GW * GH;
+    const inG = (x, y) => x >= -1 && x <= W + 1 && y >= -2 && y <= H + 1;
+    const gi = (x, y) => (y + 2) * GW + (x + 1);
     const inLiquid = (x, y) => mA.typeAt(x, y) === T.LIQUID;
+    const bf = new Int8Array(N).fill(-1);
     const bodyFree = (x, y) => {
-      const k = K(x, y);
-      let v = cache.get(k);
-      if (v !== undefined) return v;
+      if (!inG(x, y)) return false;
+      const i = gi(x, y);
+      if (bf[i] >= 0) return bf[i] === 1;
       const cx = x * TILE + TILE / 2, b = (y + 1) * TILE;
-      v = !!(spotFor(mA, body, cx, b) || spotFor(mB, body, cx, b));
+      let v = !!(spotFor(oA, body, cx, b) || spotFor(oB, body, cx, b));
       if (v && prof.mount && deep && (inLiquid(x, y) || inLiquid(x, y - 1))) v = false;   // 탈것은 깊은 물에 들어가면 내린다
-      cache.set(k, v);
+      bf[i] = v ? 1 : 0;
       return v;
     };
     const floorAt = (x, y) => standOn(mA.typeAt(x, y + 1)) || standOn(mB.typeAt(x, y + 1)) || platAt.has(K(x, y));
     const standable = (x, y) => bodyFree(x, y) && floorAt(x, y) && mA.typeAt(x, y) !== T.SPIKE;
-    const swim = (x, y) => bodyFree(x, y) && (deep ? !prof.mount : liquid === 'water' && prof.mount) && (inLiquid(x, y) || inLiquid(x, y + 1));
+    const canSwim = deep ? !prof.mount : liquid === 'water' && prof.mount;
+    const swim = (x, y) => canSwim && bodyFree(x, y) && (inLiquid(x, y) || inLiquid(x, y + 1));
     const updraft = (x, y) => wind && (ch(x, y) === 'U' || ch(x, y - 1) === 'U');
     const hover = (x, y) => prof.fly && bodyFree(x, y);
     const node = (x, y) => standable(x, y) || swim(x, y) || updraft(x, y) || hover(x, y);
     const hit = new Set();
-    const seen = new Set();
-    const q = [];
-    const push = (x, y) => { if (x < -1 || x > W || y < -2) return; const k = K(x, y); if (!seen.has(k)) { seen.add(k); q.push([x, y]); } };
-    const fall = (x, y) => {
-      while (y < H + 1 && !standable(x, y)) {
-        if (!bodyFree(x, y)) return null;
-        if (swim(x, y) || updraft(x, y)) return [x, y];
+    const seen = new Uint8Array(N);
+    const qx = [], qy = [];
+    const push = (x, y) => { if (!inG(x, y)) return; const i = gi(x, y); if (!seen[i]) { seen[i] = 1; qx.push(x); qy.push(y); } };
+    const fm = new Int32Array(N).fill(-9);   // 낙하 결과: -9 모름, -1 없음, 그 밖에는 멈춘 y
+    const fall = (x, y0) => {
+      if (!inG(x, y0)) return null;
+      const i0 = gi(x, y0);
+      if (fm[i0] !== -9) return fm[i0] < 0 ? null : [x, fm[i0]];
+      let y = y0, res = -1;
+      while (true) {
+        if (y >= H) { if (room.exitDown) hit.add('exitDown'); break; }
+        if (standable(x, y)) { res = y; break; }
+        if (!bodyFree(x, y)) break;
+        if (swim(x, y) || updraft(x, y)) { res = y; break; }
         y++;
       }
-      if (y >= H) { if (room.exitDown) hit.add('exitDown'); return null; }
-      return [x, y];
+      fm[i0] = res;
+      return res < 0 ? null : [x, res];
     };
     const land = (x, y) => { if (node(x, y)) push(x, y); else { const f = fall(x, y); if (f) push(f[0], f[1]); } };
-    const clearCol = (x, y0, y1) => { for (let y = Math.min(y0, y1); y <= Math.max(y0, y1); y++) if (!bodyFree(x, y)) return false; return true; };
-    const clearRow = (x0, x1, y) => { for (let x = Math.min(x0, x1); x <= Math.max(x0, x1); x++) if (!bodyFree(x, y)) return false; return true; };
     // 시작: P 에서 아래로
     let sx = P.tx, sy = P.ty;
     while (sy < H && !node(sx, sy)) { if (!bodyFree(sx, sy)) break; sy++; }
     if (sy >= H || !node(sx, sy)) return { hit, ok: false, start: false };
     push(sx, sy);
-    let guard = 0;
-    while (q.length && guard++ < 200000) {
-      const [x, y] = q.shift();
+    for (let h = 0; h < qx.length; h++) {
+      const x = qx[h], y = qy[h];
+      if (y >= H && room.exitDown) hit.add('exitDown');
       if (x >= W - 1 && room.exitRight) hit.add('exitRight');
       if (x <= 0 && room.exitLeft) hit.add('exitLeft');
       if (y < 0 && room.exitUp) hit.add('exitUp');
       for (const dx of [-1, 1]) { if (bodyFree(x + dx, y)) land(x + dx, y); }
       if (hover(x, y) || swim(x, y)) {
-        for (const [nx, ny] of [[x, y - 1], [x, y + 1]]) if (bodyFree(nx, ny)) land(nx, ny);
-        if (hover(x, y) && y <= 0 && room.exitUp && bodyFree(x, -1)) hit.add('exitUp');
+        if (bodyFree(x, y - 1)) push(x, y - 1);
+        if (bodyFree(x, y + 1)) land(x, y + 1);
       }
       if (updraft(x, y) && bodyFree(x, y - 1)) push(x, y - 1);
+      if (prof.fly) continue;   // 나는 탈것은 위 네 방향 이동으로 충분하다
       const grounded = standable(x, y) || swim(x, y);
       const maxUp = grounded ? prof.maxUp : Math.min(2, prof.maxUp);
       for (let up = 1; up <= maxUp; up++) {
         const ay = y - up;
-        if (!clearCol(x, y, ay)) break;
+        if (!bodyFree(x, ay)) break;               // 위로 한 칸씩 (아래 칸들은 앞 반복에서 확인)
         if (ay < 0 && room.exitUp) hit.add('exitUp');
-        const reach = up >= 4 && !prof.fly ? Math.min(4, prof.reach) : prof.reach;
+        const reach = up >= 4 ? Math.min(4, prof.reach) : prof.reach;
         for (const dir of [-1, 1]) {
           for (let d = 1; d <= reach; d++) {
             const nx = x + dir * d;
-            if (!clearRow(x, nx, ay)) break;
+            if (!bodyFree(nx, ay)) break;           // 같은 높이로 옆으로 (앞 칸들은 이미 확인)
             const f = fall(nx, ay);
             if (f && f[1] <= y + 8) push(f[0], f[1]);
             if (standable(nx, ay) || updraft(nx, ay) || swim(nx, ay)) push(nx, ay);
@@ -302,8 +317,9 @@ function traverse(stage, roomId, room, startMirror) {
       const pl = platAt.get(K(x, y));
       if (pl !== undefined) for (const [px, py] of platCells[pl]) if (standable(px, py)) push(px, py);
     }
-    const near = ([tx, ty]) => { for (let yy = ty - 1; yy <= ty + 1; yy++) for (let xx = tx - 1; xx <= tx + 1; xx++) if (seen.has(K(xx, yy))) return true; return false; };
-    const inCol = (c) => { for (let y = -1; y <= H; y++) if (seen.has(K(c, y)) || seen.has(K(c + 1, y))) return true; return false; };
+    const reachedAt = (x, y) => inG(x, y) && seen[gi(x, y)] === 1;
+    const near = ([tx, ty]) => { for (let yy = ty - 1; yy <= ty + 1; yy++) for (let xx = tx - 1; xx <= tx + 1; xx++) if (reachedAt(xx, yy)) return true; return false; };
+    const inCol = (c) => { for (let y = -2; y <= H + 1; y++) if (reachedAt(c, y) || reachedAt(c + 1, y)) return true; return false; };
     for (const t of targets) if (t.near ? near(t.near) : t.col !== undefined ? inCol(t.col) : hit.has(t.k)) hit.add(t.k);
     return { hit, start: true };
   };
@@ -358,7 +374,7 @@ for (const st of targets) {
       // 같은 목표를 못 가는 탈것끼리 묶어서 한 줄에
       const byMiss = new Map();
       for (const [id, m] of trMiss) { const k = m.join(', '); byMiss.set(k, [...(byMiss.get(k) ?? []), MOUNTS[id].name]); }
-      for (const [k, names] of byMiss) console.log(`         · 탄 채로 못 감 (내려서 간다): ${k} ← ${names.join('·')}`);
+      for (const [k, names] of byMiss) console.log(`         · 탄 채로 못 감 (내려서 간다): ${k} ← ${names.join('·')}${r.deep ? ' (깊은 물 방: 물에 들어가면 내린다 — 설계)' : ''}`);
       if (r.trav.modelMiss.length) console.log(`         · (이동 모형이 기수로도 닿지 못한 목표 — 판정 제외: ${r.trav.modelMiss.join(', ')})`);
     }
   }
@@ -385,8 +401,13 @@ if (!NO_TRAVERSE) {
     line.push(`${prof.name} ${ok}/${withT.length}`);
   }
   console.log('    ' + line.join(' · '));
-  const worst = withT.filter((r) => r.trav.mounts.mt_warhorse.length).map((r) => `${r.stage}:${r.room}`);
-  if (worst.length) console.log(`    그림메인(지상 기본형)으로는 내려야 하는 방 ${worst.length}개: ${worst.join(' ')}`);
+  const worst = withT.filter((r) => r.trav.mounts.mt_warhorse.length);
+  if (worst.length) {
+    const dry = worst.filter((r) => !r.deep);
+    console.log(`    그림메인(지상 기본형)으로는 내려야 하는 방 ${worst.length}개 (깊은 물 방 ${worst.length - dry.length}개 포함): ${worst.map((r) => `${r.stage}:${r.room}${r.deep ? '*' : ''}`).join(' ')}   (* 깊은 물 — 설계상 하차)`);
+  }
+  const lows = PROFILES.map((prof) => ({ prof, n: withT.filter((r) => !r.deep && r.trav.mounts[prof.id].length).length })).filter((o) => o.n > withT.length * 0.2);
+  for (const o of lows) console.log(`    ! ${o.prof.name}: 깊은 물이 아닌 방 ${o.n}개에서 내려야 한다 (점프로 오를 수 있는 높이 ${o.prof.maxUp}칸 · 옆으로 ${o.prof.reach}칸 — 모형)`);
   const miss = all.filter((r) => r.trav?.modelMiss?.length).length;
   if (miss) console.log(`    (이동 모형이 기수로도 닿지 못한 목표가 있는 방 ${miss}개 — 그 목표는 판정에서 뺐다. 기수 도달은 validate_maps 가 검사한다)`);
 }

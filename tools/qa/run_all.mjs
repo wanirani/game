@@ -30,8 +30,9 @@ const HEROES = ['kael', 'sera', 'victor', 'bran', 'lia', 'azel'];
 const exists = (rel) => fs.existsSync(path.join(ROOT, rel));
 const MIN = 60000;
 
-/** step: id, group, cmd [argv], timeout ms, script (the file whose owner triages a red exit), report (JSON path of a
- *  tools/qa report with findings/checks), ok(code, out) → pass?, optional: absent when the script does not exist. */
+/** step: id, group, cmd [argv], timeout ms, script (the tool file), blame (the file whose W4 bucket fixes a red exit when
+ *  it is not the tool's: balance → data), report (JSON path of a tools/qa report with findings/checks), ok(code, out) →
+ *  pass?, optional: absent when the script does not exist. */
 /** tools/smoke.mjs output: pass when it printed NO ERRORS, or when every error line is known noise (Google Fonts / cert /
  *  404, the same filter the platform suites use); console warnings do not count. */
 function smokeOk(code, out) {
@@ -44,7 +45,7 @@ const S = (id, group, cmd, timeout, extra = {}) => ({ id, group, cmd, timeout, s
 const node = (...a) => ['node', ...a];
 const STEPS = [
   // ── static
-  S('validate_maps', 'static', node('tools/validate_maps.mjs'), 5 * MIN),
+  S('validate_maps', 'static', node('tools/validate_maps.mjs'), 5 * MIN, { blame: 'src/data/maps/s01.js' }),   // map errors are fixed in src/data/maps (FIX-DATA)
   S('part2_static', 'static', node('tools/test_part2.mjs', '--static'), 10 * MIN),
   S('fonts', 'static', ['python3', 'tools/fonts/build_fonts.py', '--check'], 10 * MIN),
   S('hook_tags', 'static', node('tools/qa/hook_tags.mjs'), 5 * MIN, { report: path.join(TOOLS_DIR, 'hook_tags.json') }),
@@ -58,7 +59,8 @@ const STEPS = [
   S('sfx', 'unit', node('tools/test_sfx.mjs'), 10 * MIN),
   S('hud_layout', 'unit', node('tools/test_hud_layout.mjs'), 15 * MIN),
   // ── balance
-  ...HEROES.map((h) => S(`balance.${h}`, 'balance', node('tools/balance.mjs', 'normal', h, '--check'), 10 * MIN)),
+  // a red --check is a data balance miss (world2 §15 targets): FIX-DATA fixes it, not the simulator's owner
+  ...HEROES.map((h) => S(`balance.${h}`, 'balance', node('tools/balance.mjs', 'normal', h, '--check'), 10 * MIN, { blame: 'src/data/enemies.js', sev: 'S3' })),   // §5.3: balance outside targets = S3
   // §5.1 "(+ hard/inferno printed for review)": tables only (no --check); red only when the simulator itself crashes
   S('balance_review', 'balance', ['bash', '-c', `for d in hard inferno; do for c in ${HEROES.join(' ')}; do echo "══ $d $c"; node tools/balance.mjs $d $c || exit 1; done; done`], 10 * MIN, { script: 'tools/balance.mjs' }),
   S('balance_companions', 'balance', node('tools/balance_companions.mjs'), 10 * MIN, { optional: true }),
@@ -141,20 +143,24 @@ function reportFindings(step) {
   if (!step.report || !fs.existsSync(step.report)) return { counts: null, list: [] };
   try {
     const j = JSON.parse(fs.readFileSync(step.report, 'utf8'));
+    // a report older than this step is a previous run's (the tool died before writing its own): neither its counts nor
+    // its findings belong to this round; the red exit then becomes one suite finding below
+    if (Date.parse(j.when || 0) < Date.parse(results.at(-1)?.start || 0) - 1000) return { counts: null, list: [], stale: true };
     // check counts from the report's checks (some reports use `counts` for their own tallies)
     const counts = Array.isArray(j.checks) ? j.checks.reduce((a, c) => { a[c.status] = (a[c.status] || 0) + 1; return a; }, {}) : j.counts || null;
-    if (Date.parse(j.when || 0) < Date.parse(results.at(-1)?.start || 0) - 1000) return { counts, list: [], stale: true };
     return { counts, list: (j.findings || []).map((f) => ({ ...f, step: step.id })) };
   } catch { return { counts: null, list: [] }; }
 }
-/** Red rows of the platform summary → findings (bucket from the owning package the suite names). */
-function platformFindings() {
+/** Red rows of the platform summary → findings (bucket from the owning package the suite names). null when the summary
+ *  is missing or older than this step (run_platform died before writing it). */
+function platformFindings(start) {
   const f = '/tmp/claude-0/qa/platform/summary.json';
-  if (!fs.existsSync(f)) return [];
+  if (!fs.existsSync(f)) return null;
   try {
     const j = JSON.parse(fs.readFileSync(f, 'utf8'));
+    if (Date.parse(j.when || 0) < Date.parse(start || 0) - 1000) return null;
     return (j.red || []).map((c) => ({ id: `platform.${c.suite}.${c.id}`, sev: 'S2', kind: 'platform', title: `${c.suite} ${c.id}${c.issue ? ` (${c.issue})` : ''}`, detail: c.detail, pkg: c.pkg || null, bucket: bucketOfPackage(c.pkg) || '(platform, owner unknown)', step: 'platform' }));
-  } catch { return []; }
+  } catch { return null; }
 }
 
 function summarize(final = false) {
@@ -185,6 +191,8 @@ for (const [sig, code] of [['SIGINT', 130], ['SIGTERM', 143], ['SIGHUP', 129]]) 
   process.on(sig, () => {
     console.log(`\n${sig} — writing the summary of the steps that ran`);
     if (current) { try { process.kill(-current.pid, 'SIGKILL'); } catch { /* */ } }
+    const last = results.at(-1);
+    if (last?.status === 'running') { last.status = 'error'; last.detail = `interrupted (${sig})`; }
     summarize(false);
     process.exit(code);
   });
@@ -213,11 +221,13 @@ for (const step of plan) {
   const owner = script ? ownerOf(script) : null;
   results[results.length - 1] = { id: step.id, group: step.group, status, start, ms: r.ms, code: r.code, sig: r.sig, timedOut: r.timedOut, cmd: step.cmd.join(' '), logFile: r.logFile, report: step.report || null, counts: rep.counts, tail, owner };
   findings.push(...rep.list);
-  if (step.platform) findings.push(...platformFindings());
-  // a red suite without its own findings: one finding for the suite owner to triage from the log
-  if (status !== 'pass' && !rep.list.length && !step.platform) {
-    const file = script;
-    findings.push({ id: `run_all.${step.id}`, sev: status === 'error' ? 'S1' : 'S2', kind: 'suite', title: `${step.id} ${r.timedOut ? 'timed out' : `exited ${r.code ?? r.sig}`}`, detail: tail.split('\n').slice(-6).join(' | ').slice(0, 600), file, ...(file ? ownerOf(file) : {}), repro: step.cmd.join(' '), step: step.id });
+  const plat = step.platform ? platformFindings(start) : null;
+  if (plat) findings.push(...plat);
+  // a red suite without its own findings (or whose platform summary is missing/stale): one finding for the suite owner
+  // to triage from the log
+  if (status !== 'pass' && !rep.list.length && !plat?.length) {
+    const file = step.blame || script;
+    findings.push({ id: `run_all.${step.id}`, sev: status === 'error' ? 'S1' : step.sev || 'S2', kind: 'suite', title: `${step.id} ${r.timedOut ? 'timed out' : `exited ${r.code ?? r.sig}`}`, detail: tail.split('\n').slice(-6).join(' | ').slice(0, 600), file, ...(file ? ownerOf(file) : {}), repro: step.cmd.join(' '), step: step.id });
   }
   console.log(`${status}${r.timedOut ? ' (timeout)' : ''} in ${(r.ms / 1000).toFixed(0)} s${rep.counts ? ` — ${JSON.stringify(rep.counts)}` : ''}`);
   summarize();

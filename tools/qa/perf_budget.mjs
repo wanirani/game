@@ -26,7 +26,7 @@
 // findings grouped by W4 bucket (by the file of the top call site). Exit 1 on any red check.
 import { openEnv } from './lib/server.mjs';
 import { freeze, step, stepUntil, settle } from './lib/step.mjs';
-import { gotoRoom, waitBakes, enterFight, prepWorld } from './lib/rooms.mjs';
+import { gotoRoom, waitBakes, enterFight, prepWorld, idleFlush } from './lib/rooms.mjs';
 import { perfProbeInit, measureFrames, stats } from './lib/perfprobe.mjs';
 import { Checks, writeReport, parseFlags, list } from './lib/report.mjs';
 import { ownerOf } from './lib/owners.mjs';
@@ -56,7 +56,10 @@ const BUDGET = {
   dmg: { high: 24, medium: 16, low: 10 },      // live damage numbers (feel §8)
   decals: { high: 40, medium: 24, low: 0 },    // hit decals (feel §8)
 };
-const profiles = list(args.profiles, ['desk', 'phone1low']).filter((p) => PROFILES[p]);
+const profiles = list(args.profiles, ['desk', 'phone1low']);
+// an unknown profile or scene id must not turn into a vacuous green run (0 checks → exit 0)
+const badProf = profiles.filter((p) => !PROFILES[p]);
+if (badProf.length || !profiles.length) { console.error(`unknown --profiles ${badProf.join(', ') || '(empty)'} (known: ${Object.keys(PROFILES).join(', ')})`); process.exit(2); }
 const STAGES = Array.from({ length: 20 }, (_, i) => `s${String(i + 1).padStart(2, '0')}`);
 const HEROES = ['kael', 'sera', 'victor', 'bran', 'lia', 'azel'];
 
@@ -76,8 +79,12 @@ function sceneList() {
     out.push({ id: 'hub', kind: 'hub' }, { id: 'menu', kind: 'menu' });
   }
   const only = list(args.scenes, null);
-  return only ? out.filter((s) => only.includes(s.id)) : out;
+  if (!only) return out;
+  const bad = only.filter((x) => !out.some((s) => s.id === x));
+  if (bad.length) { console.error(`unknown --scenes ${bad.join(', ')}${QUICK ? ' (not in the --quick list)' : ''} (known: ${out.map((s) => s.id).join(', ')})`); process.exit(2); }
+  return out.filter((s) => only.includes(s.id));
 }
+sceneList();   // validates --scenes before a browser starts
 
 // per-frame driver scripts (run in the page before each step; key(code, down) dispatches keyboard events)
 const COMBAT = `
@@ -96,6 +103,7 @@ async function openProfile(env, prof) {
   await s.waitGame('!!g.world?.player');
   await freeze(s.page);
   await settle(s.page, 30);
+  await idleFlush(s, 900);   // boot-time idle prewarm (hitfx, ultfx) before the first scene arms the canvas counter
   return s;
 }
 
@@ -207,7 +215,7 @@ try {
             return !!S;
           });
           await stepUntil(s.page, "g.top?.name === 'hub' && !!w?.player", 300);
-          await settle(s.page, 60); await s.wait(400); await settle(s.page, 10);
+          await settle(s.page, 60); await idleFlush(s); await settle(s.page, 10);
           script = `if (i === 0) key('ArrowRight', true); if (i === 30) { key('ArrowRight', false); key('ArrowLeft', true); } if (i === 55) key('ArrowLeft', false);`;
         } else if (sc.kind === 'menu') {
           await s.eval(() => { window.__perf.armed = false; });

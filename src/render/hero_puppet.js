@@ -752,6 +752,19 @@ export function drawTurnWeapon(ctx, I, W, yaw, front, t) {
   G.olw = olw;
 }
 export function turnSteps() { return STEPS; }
+/** 턴테이블 망토 명암 그라디언트 2개 (정규 좌표 — 한 번 만들어 모든 캔버스에서 다시 쓴다) */
+let TCG = null;
+function turnCapeGrads(c) {
+  if (TCG) return TCG;
+  const fold = c.createLinearGradient(-1, 0, 1, 0), F = 5;   // 가로 −1…1: 세로 주름 띠 + 가장자리 어둡게
+  for (let i = 0; i <= F * 2; i++) {
+    const u = i / (F * 2), edge = Math.abs(u - 0.5) * 2;
+    fold.addColorStop(u, ra('#000000', Math.min(0.6, (i % 2 ? 0.02 : 0.2) + edge * edge * 0.4)));
+  }
+  const hi = c.createLinearGradient(0, 0, 0, 1);            // 세로 0(어깨)…1(밑단)
+  hi.addColorStop(0, ra('#ffffff', 0.1)); hi.addColorStop(0.3, ra('#ffffff', 0)); hi.addColorStop(1, ra('#000000', 0.25));
+  return (TCG = { fold, hi });
+}
 /** 턴테이블용 망토: 앞(뒤에 가려짐)·옆(뒤로 흐름)·뒤(몸을 덮음). yaw: 라디안, behind: 몸 뒤 패스인지 */
 export function drawTurnCape(ctx, I, cape, yaw, behind, t) {
   if (!cape) return;
@@ -783,20 +796,17 @@ export function drawTurnCape(ctx, I, cape, yaw, behind, t) {
     c.fillStyle = pat || cape.c;
   } else c.fillStyle = cape.c;
   c.fill();
-  // 주름: 세로 명암 띠 (어깨에서 모여 밑단으로 퍼짐) + 가장자리 어둡게
-  const g = c.createLinearGradient(dx - wBot, 0, dx + wBot, 0);
-  const F = 5;
-  for (let i = 0; i <= F * 2; i++) {
-    const u = i / (F * 2), edge = Math.abs(u - 0.5) * 2;
-    const a = i % 2 ? 0.02 : 0.2;
-    g.addColorStop(u, ra('#000000', Math.min(0.6, a + edge * edge * 0.4)));
-  }
-  c.fillStyle = g; c.fill();
-  const hi = c.createLinearGradient(0, sy, 0, hem);
-  hi.addColorStop(0, ra('#ffffff', 0.1)); hi.addColorStop(0.3, ra('#ffffff', 0)); hi.addColorStop(1, ra('#000000', 0.25));
-  c.fillStyle = hi; c.fill();
+  // 주름: 세로 명암 띠 (어깨에서 모여 밑단으로 퍼짐) + 가장자리 어둡게. 두 그라디언트는 정규 좌표(가로 −1…1, 세로 0…1)로 한 번만
+  // 만들고, 채울 때만 변환을 걸어 망토 폭·길이에 맞춘다 (경로는 만들 때의 변환으로 고정되므로 모양은 그대로) — 프레임마다 새 그라디언트 0
+  const TG = turnCapeGrads(c);
+  c.save(); c.translate(dx, 0); c.scale(Math.max(0.5, wBot), 1); c.fillStyle = TG.fold; c.fill(); c.restore();
+  c.save(); c.translate(0, sy); c.scale(1, Math.max(1, hem - sy)); c.fillStyle = TG.hi; c.fill(); c.restore();
   c.strokeStyle = ra('#0a0306', 0.6); c.lineWidth = 0.6; c.stroke();
-  if (!back) { c.strokeStyle = ra(cape.c2, 0.9); c.lineWidth = 1.1; c.beginPath(); c.moveTo(dx - wBot * 0.98, hem); c.lineTo(dx + wBot * 0.98, hem); c.stroke(); }
+  if (!back) {                                          // 앞모습: 밑단 장식선 — 톱니 밑단을 그대로 따라간다 (곧은 선이 발밑 바닥선처럼 보이지 않게)
+    c.strokeStyle = ra(cape.c2, 0.9); c.lineWidth = 1.1; c.beginPath();
+    for (let i = 0; i <= 6; i++) { const u = i / 6, x = dx + wBot + sway - u * 2 * wBot; if (i) c.lineTo(x, hem + (i % 2 ? 1.6 : -0.4) - 0.9); else c.moveTo(x, hem - 0.9); }
+    c.stroke();
+  }
   if (cape.style === 'royal') { c.strokeStyle = '#e8c872'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(dx - wTop, sy + 0.5); c.quadraticCurveTo(dx, sy - 2, dx + wTop, sy + 0.5); c.stroke(); }
   c.restore();
 }

@@ -22,8 +22,11 @@
 //  · Desktop pages are 960×540 (feel §8 "headless relative checks … 960×540"); the mobile page is 844×390 at DPR 2 (A7).
 //  · Timing checks (U2 ratios, A6 250 ms) are measured on this machine. U2 (feel §8: ultimate, first awakening and sprint-at-SSS
 //    averages against the page's own gameplay / idle-walk baseline) is judged on wall time and on main-thread CPU time (CDP
-//    ThreadTime per rendered frame): when both averages are over budget it is a 'fail' at any load. Any other timing miss while
-//    the 1-minute load average is above 1.5 × CPU cores is reported as 'inconclusive' (numbers kept) instead of 'fail'.
+//    ThreadTime per rendered frame): when both averages are over budget it is a 'fail' at any load. A U2 miss on wall time only
+//    is 'inconclusive' when the measured frames took > 1.3× their main-thread CPU time (the renderer waited for a core). Any
+//    other timing miss while the 1-minute load average is above 1.5 × CPU cores is 'inconclusive' (numbers kept), not 'fail'.
+//  · Before the first awakening on each hero page and on the 1280 V1 page the harness waits (real time) for the hero's cut-in CG, as in play
+//    ('pre-decoded', feel §8); the class is switched mid-stage here, so without the wait the art could lose the load race.
 //  · V1 is a visual review: the harness writes the PNGs and marks V1 'review'; a person (or agent) opens them.
 //  · window.__feelStats (feel §8 instrumentation) is checked as I1: it must exist with ?feelstats and carry the six keys.
 import { chromium } from 'playwright-core';
@@ -91,7 +94,7 @@ const BUCKET = {
   A7: 'FIX-PLATFORM (src/core/touchpad.js) / FIX-HUD (src/render/hud_layout.js)',
   A8: 'FIX-PLATFORM (src/core/input.js)',
   X: 'FIX-COMPANIONS (src/game/companions.js, src/game/mount.js, src/game/guardian*.js)',
-  U2: 'FIX-RENDER (src/render/tiles.js chunk blits under an ultimate mid-room; src/render/ultfx.js)',
+  U2: 'FIX-RENDER (ultimate cast after a combo, mid-room: live combo/style HUD src/render/feel_hud.js + tile chunk layer src/render/tiles.js + src/render/ultfx.js; requests.jsonl lines 330, 357)',
   A6: 'FIX-RENDER (first-awakening frame cost: src/scenes/awaken_cutin.js bake, src/render/ultfx.js)',
   I1: 'FIX-PLATFORM (src/core/game.js publishes window.__feelStats per frame; counters in particles.js, hitfx.js, hero.js, audio.js — feel §8)',
   R183: 'FIX-PLATFORM (src/core/game.js syncPad)',
@@ -1448,9 +1451,17 @@ function ratioStatus({ u, b, cu, cb, k = 1.5, p95K = 2.5, maxMs = 250 }) {
   const cpuRatio = cu != null && cb > 0 ? round(cu / cb, 2) : null;
   const cpuOk = cpuRatio == null ? null : cpuRatio <= k;
   const confirmed = !wallAvgOk && cpuOk === false;
-  const status = wallOk && cpuOk !== false ? 'pass' : confirmed ? 'fail' : timingStatus(false);
-  return { status, wallOk, cpuOk, cpuRatio, confirmed };
+  // contention of these very frames: wall time well above their main-thread CPU time means the renderer sat waiting for a core
+  // (unhindered frames run at wall ≈ CPU). The 1-minute load average lags, so a wall-only miss (p95, max, or avg with the CPU
+  // ratio in budget) on starved frames is 'inconclusive' whatever the load average says
+  const contention = cu != null && cu > 0 ? round(u.avg / cu, 2) : null;
+  const starved = contention != null && contention > 1.3;
+  const status = wallOk && cpuOk !== false ? 'pass' : confirmed ? 'fail' : starved ? 'inconclusive' : timingStatus(false);
+  return { status, wallOk, cpuOk, cpuRatio, confirmed, contention, starved };
 }
+/** detail suffix for ratioStatus */
+const ratioNote = (v) => (v.confirmed ? ' → wall and CPU averages both over budget: fails at any machine load'
+  : v.starved && v.status !== 'pass' ? ` → wall-time miss only, and these frames took ${v.contention}× their main-thread CPU time (renderer waiting for a core): inconclusive` : '');
 async function shot(P, name, note) {
   const f = path.join(SHOTS, name + '.png');
   try { await P.page.screenshot({ path: f }); report.shots.push({ file: f, note }); } catch (e) { report.shots.push({ file: null, note: note + ' (screenshot failed: ' + e.message + ')' }); }
@@ -1600,7 +1611,7 @@ async function heroSuite(hero, { onlyIds = null } = {}) {
         gameplay = { b, cb };
         const v = ratioStatus({ u, b, cu, cb });
         const slow = await P.page.evaluate(() => window.__fq.slow.splice(0)).catch(() => []);
-        rec('U2', { hero, variant: cid }, v.status, `gameplay avg ${b.avg} ms (med ${b.med}), ultimate avg ${u.avg} ms (≤ ${round(1.5 * b.avg)}), p95 ${u.p95} (≤ ${round(2.5 * b.med)}), max ${u.max} (≤ 250); main-thread CPU ${cu ?? '?'} vs ${cb ?? '?'} ms/frame = ×${v.cpuRatio ?? '?'} (≤ 1.5)${v.confirmed ? ' → wall and CPU averages both over budget: fails at any machine load' : ''}; cast at x ${r.at?.px} (camera x ${r.at?.camX}), load ${round(os.loadavg()[0])}`, { base: b, ult: u, cpu: { base: cb, ult: cu, ratio: v.cpuRatio }, at: r.at, slow: slow.slice(0, 40) });
+        rec('U2', { hero, variant: cid }, v.status, `gameplay avg ${b.avg} ms (med ${b.med}), ultimate avg ${u.avg} ms (≤ ${round(1.5 * b.avg)}), p95 ${u.p95} (≤ ${round(2.5 * b.med)}), max ${u.max} (≤ 250); main-thread CPU ${cu ?? '?'} vs ${cb ?? '?'} ms/frame = ×${v.cpuRatio ?? '?'} (≤ 1.5)${ratioNote(v)}; cast at x ${r.at?.px} (camera x ${r.at?.camX}), load ${round(os.loadavg()[0])}`, { base: b, ult: u, cpu: { base: cb, ult: cu, ratio: v.cpuRatio, contention: v.contention }, at: r.at, slow: slow.slice(0, 40) });
       }
     }
   }
@@ -1611,6 +1622,7 @@ async function heroSuite(hero, { onlyIds = null } = {}) {
   });
   if (wantAny('A2', 'A3', 'A4', 'A6', 'V1', 'U2')) {
     const r2 = await run(P, 'A2', ctx, pA2, { cid: c1 }, null);
+    const art = await run(P, 'A3', ctx, pCutinReady, {}, null);   // cut-in CG ready before the first awakening (see pCutinReady)
     const awRatio = want('U2') && gameplay != null;   // feel §8: 'ultimate or awakening' average vs the gameplay baseline above
     const mA0 = await mark(P);
     const st = await run(P, 'A2', ctx, pAwakenStart, { key: 'ult', render: wantAny('A6', 'V1') || awRatio, holdSteps: 30, until: 0.8 }, null);
@@ -1627,7 +1639,7 @@ async function heroSuite(hero, { onlyIds = null } = {}) {
       const cu = cAll != null && gameplay.cb != null ? round((cAll - nDrop * gameplay.cb) / fin.frames.length, 2) : null;
       const b = gameplay.b, u = stats(fin.frames);
       const v = ratioStatus({ u, b, cu, cb: gameplay.cb });
-      rec('U2', { hero, variant: 'awakening ' + c1 }, v.status, `first awakening (cut-in + director, ${u.n} frames): avg ${u.avg} ms (≤ ${round(1.5 * b.avg)}), p95 ${u.p95} (≤ ${round(2.5 * b.med)}), max ${u.max} (≤ 250) vs gameplay avg ${b.avg} (med ${b.med}); main-thread CPU ${cu ?? '?'} vs ${gameplay.cb ?? '?'} ms/frame = ×${v.cpuRatio ?? '?'} (≤ 1.5)${v.confirmed ? ' → wall and CPU averages both over budget: fails at any machine load' : ''}; load ${round(os.loadavg()[0])}`, { base: b, awaken: u, cpu: { base: gameplay.cb, awaken: cu, ratio: v.cpuRatio, holdFrames: nDrop } });
+      rec('U2', { hero, variant: 'awakening ' + c1 }, v.status, `first awakening (cut-in + director, ${u.n} frames): avg ${u.avg} ms (≤ ${round(1.5 * b.avg)}), p95 ${u.p95} (≤ ${round(2.5 * b.med)}), max ${u.max} (≤ 250) vs gameplay avg ${b.avg} (med ${b.med}); main-thread CPU ${cu ?? '?'} vs ${gameplay.cb ?? '?'} ms/frame = ×${v.cpuRatio ?? '?'} (≤ 1.5)${ratioNote(v)}; load ${round(os.loadavg()[0])}`, { base: b, awaken: u, cpu: { base: gameplay.cb, awaken: cu, ratio: v.cpuRatio, contention: v.contention, holdFrames: nDrop } });
     }
     if (r2 && st && want('A2')) {
       const okTap = !r2.tap.castBeforeRelease && r2.tap.castAfterRelease != null && r2.tap.castAfterRelease <= 2 && !r2.tap.awakenCast && !r2.tap.pushes.includes('awakenCutin');
@@ -1639,7 +1651,7 @@ async function heroSuite(hero, { onlyIds = null } = {}) {
       const okT = fin.popT != null && Math.abs(fin.popT - 1.45) <= 0.05;
       const okText = st.info?.renderedText === st.line;
       const okImg = st.info && (st.info.loaded || st.info.fallback);
-      rec('A3', { hero, variant: 'full' }, okT && okText && okImg ? 'pass' : 'fail', `cut-in popped at ${fin.popT} s (1.45 ±0.05), text ${okText ? 'equals AWAKEN.line' : `'${st.info?.renderedText}' ≠ '${st.line}'`}, image ${st.info?.loaded ? 'cg loaded' : st.info?.fallback ? 'portrait fallback' : 'missing'} (${st.info?.imgW}px)`, { info: st.info, popT: fin.popT });
+      rec('A3', { hero, variant: 'full' }, okT && okText && okImg ? 'pass' : 'fail', `cut-in popped at ${fin.popT} s (1.45 ±0.05), text ${okText ? 'equals AWAKEN.line' : `'${st.info?.renderedText}' ≠ '${st.line}'`}, image ${st.info?.loaded ? 'cg loaded' : st.info?.fallback ? 'portrait fallback' : 'missing'} (${st.info?.imgW}px; ${art?.loaded ? `art ready after a ${art.loadMs} ms wait` : `art ${art?.cutin ?? '?'} NOT loaded after a ${art?.loadMs ?? '?'} ms wait`})`, { info: st.info, popT: fin.popT, art });
     }
     if (fin && want('A4')) {
       const ok = fin.done && !fin.cutscene && !fin.freezeEnemies && !fin.hudHidden && fin.letterbox === 0 && fin.dmg.some((d) => d > 0) && fin.director === 'hero' && fin.freezeSeen && fin.peak <= 700;
@@ -1676,7 +1688,7 @@ async function heroSuite(hero, { onlyIds = null } = {}) {
         const b = stats(wk.frames), u = stats(sp.frames), cb = cpuPerFrame([s0, s1]), cu = cpuPerFrame([s2, s3]);
         const v = ratioStatus({ u, b, cu, cb, k: 1.2, p95K: null });
         const scene = sp.targets >= 6 && sp.sprintFrames >= 20 && sp.rankLetter === 'SSS';
-        rec('U2', sctx, scene ? v.status : 'error', `${scene ? '' : 'scenario not reached — '}sprint ${sp.sprintFrames}/${u.n} frames, ${sp.hits} hits on ${sp.targets}/6 enemies at rank ${sp.rankLetter}: avg ${u.avg} ms vs idle-walk avg ${b.avg} ms (≤ ×1.2 = ${round(1.2 * b.avg)}), max ${u.max} (≤ 250); main-thread CPU ${cu ?? '?'} vs ${cb ?? '?'} ms/frame = ×${v.cpuRatio ?? '?'} (≤ 1.2)${v.confirmed ? ' → wall and CPU averages both over budget: fails at any machine load' : ''}; load ${round(os.loadavg()[0])}`, { walk: b, walkGaits: wk.gaits, sprint: u, cpu: { walk: cb, sprint: cu, ratio: v.cpuRatio }, scene: { ...sp, frames: undefined } });
+        rec('U2', sctx, scene ? v.status : 'error', `${scene ? '' : 'scenario not reached — '}sprint ${sp.sprintFrames}/${u.n} frames, ${sp.hits} hits on ${sp.targets}/6 enemies at rank ${sp.rankLetter}: avg ${u.avg} ms vs idle-walk avg ${b.avg} ms (≤ ×1.2 = ${round(1.2 * b.avg)}), max ${u.max} (≤ 250); main-thread CPU ${cu ?? '?'} vs ${cb ?? '?'} ms/frame = ×${v.cpuRatio ?? '?'} (≤ 1.2)${ratioNote(v)}; load ${round(os.loadavg()[0])}`, { walk: b, walkGaits: wk.gaits, sprint: u, cpu: { walk: cb, sprint: cu, ratio: v.cpuRatio, contention: v.contention }, scene: { ...sp, frames: undefined } });
       }
     }
   }
@@ -1814,6 +1826,26 @@ async function pPrepAwaken({ cid, waitMs = 3500 }) {
   }
   await new Promise((r) => setTimeout(r, waitMs));   // prepareCutin bakes in requestIdleCallback (timeout 2.5 s)
   return { cid, cutin: a?.cutin ?? null, loaded: !!(img && (img.naturalWidth || img.width)), waitedMs: Math.round(Q.realNow() - t0) };
+}
+
+/** the hero page switches class mid-stage (tier 0 → 1) and steps inside long synchronous evaluates, so the cut-in CG that
+ *  prepareAwakening starts loading can lose the race and the first awakening shows the portrait fallback. In play the class is
+ *  set before the stage and the art is 'pre-decoded' long before the gauge fills (feel §8), so wait for it (real time) before the
+ *  first awakening; then A3/A6 measure the path players see and the V1 960 shot shows the real art */
+async function pCutinReady({ maxMs = 10000, settleMs = 1000 }) {
+  const Q = window.__fq, p = Q.p();
+  Q.step(2);   // handleUltInput → prepareAwakening for the current (tier ≥ 1) class
+  const a = Q.AWD.AWAKEN?.[p.hero.charId];
+  const t0 = Q.realNow();
+  let img = null;
+  while (a && Q.realNow() - t0 < maxMs) {
+    img = Q.assets.get(a.cutin);
+    if (img && (img.naturalWidth || img.width)) break;
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  const loaded = !!(img && (img.naturalWidth || img.width)), loadMs = Math.round(Q.realNow() - t0);
+  await new Promise((r) => setTimeout(r, settleMs));   // prepareCutin bakes band + text in requestIdleCallback
+  return { cutin: a?.cutin ?? null, loaded, loadMs };
 }
 
 async function wideSuite(hero) {

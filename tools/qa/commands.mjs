@@ -25,6 +25,15 @@ const C = new Checks(!args.verbose);
 const DEVICES = list(args.only, ['kb', 'pad', 'touch']);
 const ONLY_TECH = list(args.tech, null);
 const TECHS = Object.values(DOCS).filter((d) => d.tech?.cmd && (!ONLY_TECH || ONLY_TECH.includes(d.id))).map((d) => ({ doc: d.id, ...d.tech }));
+// unknown devices / technique docs must not turn into a vacuous green run
+{
+  const badDev = DEVICES.filter((d) => !['kb', 'pad', 'touch'].includes(d));
+  const badTech = (ONLY_TECH || []).filter((id) => !DOCS[id]?.tech?.cmd);
+  if (badDev.length || badTech.length || !TECHS.length) {
+    console.error(`${badDev.length ? `unknown --only ${badDev.join(', ')} (kb, pad, touch) ` : ''}${badTech.length ? `no technique doc ${badTech.join(', ')} (docs with a command: ${Object.values(DOCS).filter((d) => d.tech?.cmd).map((d) => d.id).join(', ')})` : ''}`.trim() || 'no techniques to test');
+    process.exit(2);
+  }
+}
 const VARIANTS = args.quick ? [['still', 1]] : [['still', 1], ['still', -1], ['run', 1], ['run', -1]];
 const HOLD = 3;              // frames per direction
 const RUN = 14;              // frames of running before a 'run' case (≈ 0.23 s at full speed)

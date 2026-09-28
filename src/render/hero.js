@@ -597,6 +597,15 @@ function chain(key, E, ax, ay, n, seg, cfg, lim) {
     if (ch.fresh || Math.abs(wx - ch.lx) + Math.abs(wy - ch.ly) > 110 * hs) {
       const a = cfg.rest ?? 0.2;
       ch.reset(wx, wy, -fac * Math.sin(a), Math.cos(a)); ch.fresh = 0; ch.lx = wx; ch.ly = wy;
+      // 새(또는 순간 이동한) 사슬은 쉬는 각도의 곧은 막대로 시작한다 → 메뉴·턴테이블 첫 프레임, 방 입장 직후 목도리·망토가
+      // 막대처럼 뻗었다가 떨어진다. 제자리에서 미리 늘어뜨려(1/60초 × 36걸음, 바람 밀기·바닥·몸 뒤 한계 포함) 정지 상태로 시작
+      const gy = p.onGround !== false ? p.bottom - 0.6 * hs : null, pf = -fac * (cfg.push ?? 0);
+      const L = lim !== undefined && !P.rot && P.sx > 0.95 ? p.cx + fac * hs * lim : null;
+      for (let k = 0; k < 36; k++) {
+        ch.update(1 / 60, wx, wy, pf, 0, gy);
+        if (L !== null) for (let i = 1; i < n; i++) { const q = ch.pts[i]; if ((q.x - L) * fac > 0) q.x = L; }
+      }
+      for (const q of ch.pts) { q.px = q.x; q.py = q.y; }
     } else if (ch.fac !== undefined && ch.fac !== fac) {
       // 방향 전환: 사슬 모양을 앵커 기준으로 거울 뒤집기 (옛 앵커 → 새 앵커). 뒤집지 않으면 몸 앞쪽에 남은 점들이
       // 뒤쪽 한계(lim)로 끌려가며 큰 속도를 얻어 망토·머리카락이 3~4프레임 수평·위로 휙 넘어간다 (heroes3rev §5.2).

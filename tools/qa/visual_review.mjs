@@ -25,8 +25,13 @@ import { ownerOf } from './lib/owners.mjs';
 const args = parseFlags();
 const QUICK = !!args.quick;
 const ALL = ['stages', 'bosses', 'enemies', 'companions', 'heroes', 'cutins', 'endings', 'menus', 'hud', 'galleries'];
-const GROUPS = list(args.only, ALL).filter((g) => ALL.includes(g));
+const GROUPS = list(args.only, ALL);
 const VPS = list(args.vp, ['desk', 'phone1']);
+{
+  // an unknown group or viewport must not turn into a vacuous green run
+  const badG = GROUPS.filter((g) => !ALL.includes(g)), badV = VPS.filter((v) => v !== 'w960' && !VIEWPORTS[v]);
+  if (badG.length || badV.length || !GROUPS.length) { console.error(`${badG.length ? `unknown --only ${badG.join(', ')} (${ALL.join(', ')}) ` : ''}${badV.length ? `unknown --vp ${badV.join(', ')} (${Object.keys(VIEWPORTS).join(', ')}, w960)` : ''}`.trim() || 'no groups'); process.exit(2); }
+}
 const OUT = path.join(QA_DIR, 'visual');
 fs.mkdirSync(OUT, { recursive: true });
 const C = new Checks(true);
@@ -79,7 +84,35 @@ const frameStats = (s) => s.eval(() => {
   return { mean: +mean.toFixed(1), sd: +Math.sqrt(Math.max(0, sq / n - mean * mean)).toFixed(1), top: g.top?.name ?? null };
 });
 
-/** One shot of the current page: screenshot + flat-frame check. meta.file = owner file for a finding. */
+/** CSS-px clip (16:9, about half the game canvas) centred on the hero, or on the hero–enemy midpoint for 'enemy', so a
+ *  creature stays readable in its sheet tile. null when there is no world. */
+const focusClip = (s, which = 'hero') => s.eval((which) => {
+  const g = window.__game, w = g.world, cam = w?.camera, p = w?.player;
+  if (!cam || !p) return null;
+  const e = which === 'enemy' && w.__vrEnemy && !w.__vrEnemy.dead ? w.__vrEnemy : null;
+  const wx = e ? (p.cx + e.cx) / 2 : p.cx, wy = e ? (p.cy + e.cy) / 2 : p.cy;
+  const r = g.canvas.getBoundingClientRect();
+  const k = r.width / (cam.w || r.width);
+  const W = Math.round(Math.min(r.width, Math.max(420, r.width * 0.55))), H = Math.round(Math.min(r.height, (W * 9) / 16));
+  let x = r.left + (wx - cam.x) * k - W / 2, y = r.top + (wy - cam.y) * k - H * 0.6;
+  x = Math.max(r.left, Math.min(r.left + r.width - W, x)); y = Math.max(r.top, Math.min(r.top + r.height - H, y));
+  return { x: Math.round(x), y: Math.round(y), width: W, height: H };
+}, which).catch(() => null);
+
+/** CSS-px clip of the menu turntable stage (HeroView.rect, UI px of a uiScale scene) plus a margin; null → whole page. */
+const viewClip = (s) => s.eval(() => {
+  const g = window.__game, r = g.top?.cur?.view?.rect;
+  if (!r || !(r.w > 0)) return null;
+  const c = g.canvas.getBoundingClientRect();
+  const k = c.width / (g.top?.uiScale ? (g.uiW || g.viewW) : g.viewW);
+  const pad = 16;
+  const x = Math.max(c.left, c.left + (r.x - pad) * k), y = Math.max(c.top, c.top + (r.y - pad) * k);
+  const w = Math.min(c.left + c.width - x, (r.w + 2 * pad) * k), h = Math.min(c.top + c.height - y, (r.h + 2 * pad) * k);
+  return w > 40 && h > 40 ? { x: Math.round(x), y: Math.round(y), width: Math.round(w), height: Math.round(h) } : null;
+}).catch(() => null);
+
+/** One shot of the current page: screenshot + flat-frame check. meta.file = owner file for a finding; meta.clip = CSS-px
+ *  region of the page (focusClip) instead of the whole viewport. */
 let CUR_VP = 'desk';
 async function shot(s, shots, label, meta = {}) {
   // phones: the scripted keyboard input switched the pad to keyboard mode; show the touch pad as a player would see it
@@ -88,7 +121,7 @@ async function shot(s, shots, label, meta = {}) {
     await s.wait(150);
   }
   const st = await frameStats(s).catch(() => ({ mean: -1, sd: -1 }));
-  const buf = await s.page.screenshot({ type: 'jpeg', quality: 70 });
+  const buf = await s.page.screenshot({ type: 'jpeg', quality: 70, ...(meta.clip ? { clip: meta.clip } : {}) });
   const blank = st.sd >= 0 && st.sd < (meta.flatOk ? 0 : 3.5);
   const r = { label, img: buf.toString('base64'), ...st, blank, errs: s.errs.length, file: meta.file || null };
   shots.push(r);
@@ -255,7 +288,7 @@ const GROUP_FNS = {
             if (!e || e.dead || !w.entities.includes(e)) return 'gone';
             return e.cx > c.x - 16 && e.cx < c.x + c.w + 16 && e.cy > c.y - 16 && e.cy < c.y + c.h + 16 ? 'ok' : 'off screen';
           });
-          const r = await shot(s, shots, `${id} (${st})${where === 'ok' ? '' : ` · ${where}`}`, { file: fileOf(id) });
+          const r = await shot(s, shots, `${id} (${st})${where === 'ok' ? '' : ` · ${where}`}`, { file: fileOf(id), clip: await focusClip(s, 'enemy') });
           if (where !== 'ok') { r.err = where; flagged.push({ label: `${id} (${st}, ${vp})`, why: `enemy ${where} at its shot (review by hand; not counted red)`, file: fileOf(id), top: r.top }); }
           await clear();
           await play(s, 2);
@@ -297,17 +330,17 @@ const GROUP_FNS = {
           await play(s, 24, `if (p) p.buffs.invincible = 9999; key('ArrowRight', i < 20);`);
           const st = await s.eval(() => window.__game.world.player?.mount?.state ?? 'none');
           const ok = st === 'riding';
-          const r = await shot(s, shots, `${id} ridden${ok ? '' : ` · mount state ${st}`}`, { file });
+          const r = await shot(s, shots, `${id} ridden${ok ? '' : ` · mount state ${st}`}`, { file, clip: await focusClip(s) });
           if (!ok) { r.err = `not ridden (${st})`; bad.push(`${id}: mount state ${st}`); }
         } else {
           const out = await s.eval((id) => (window.__game.world.companions?.guards || []).some((g) => g.id === id && !g.dead), id);
-          const r = await shot(s, shots, `${id} idle${out ? '' : ' · not out'}`, { file });
+          const r = await shot(s, shots, `${id} idle${out ? '' : ' · not out'}`, { file, clip: await focusClip(s) });
           if (!out) { r.err = 'not out'; bad.push(`${id}: guardian not out`); continue; }
           await s.eval(() => { const w = window.__game.world, p = w.player, f = p.facing || 1; w.spawnEnemy('skeleton', p.cx + f * 180, p.bottom - 2, { elite: false, facing: -f }); });
           await play(s, 6, 'if (p) p.buffs.invincible = 9999;');
           const cast = await s.eval(() => !!window.__game.world.companions?.debug?.skill?.(0));
           await play(s, 14, 'if (p) p.buffs.invincible = 9999;');
-          const r2 = await shot(s, shots, `${id} skill${cast ? '' : ' · skill not cast'}`, { file });
+          const r2 = await shot(s, shots, `${id} skill${cast ? '' : ' · skill not cast'}`, { file, clip: await focusClip(s) });
           if (!cast) { r2.err = 'skill not cast'; bad.push(`${id}: skill not cast`); }
         }
       } catch (e) { harness.push(`${id}: ${String(e?.message || e).split('\n')[0]}`); }
@@ -334,7 +367,7 @@ const GROUP_FNS = {
           await s.eval((id) => { const p = window.__game.world.player; p.hero.classId = id; p.refreshStats?.(); for (const e of window.__game.world.entities || []) if (e.kind === 'enemy') e.dead = true; }, cls.id);
           await play(s, 20); await s.wait(500); await waitBakes(s, 3000);
           await play(s, 24, `if (p) p.buffs.invincible = 9999; if (i === 10) key('KeyX', true); if (i === 13) key('KeyX', false);`);
-          await shot(s, shots, `${hero} T${cls.tier} ${cls.id} attack`, { file: 'src/render/hero.js' });
+          await shot(s, shots, `${hero} T${cls.tier} ${cls.id} attack`, { file: 'src/render/hero.js', clip: await focusClip(s) });
         }
         // status-tab turntable: every tier × 8 yaws (§5.1 "6 heroes × 3 tiers × 8 yaws"); --quick: tier 2 at 0/90/180°
         for (const cls of QUICK ? tiers.slice(-1) : tiers) {
@@ -345,11 +378,12 @@ const GROUP_FNS = {
             const ok = await s.eval((a) => {
               const m = window.__game.top, v = m?.cur?.view;
               if (!v) return false;
-              v.autoSpin = false; v.stopSpin?.(false); v.tweenTo?.(a, 0.05, { user: true });
+              // beginUser cancels a running pose demo (the demo draws the side-profile card flip on purpose, platform §7.3)
+              v.beginUser?.(); v.autoSpin = false; v.stopSpin?.(false); v.tweenTo?.(a, 0.05, { user: true });
               return true;
             }, (deg * Math.PI) / 180);
             await play(s, 16);
-            await shot(s, shots, `${hero} T${cls.tier} ${cls.id} yaw ${deg}°${ok ? '' : ' (no turntable view)'}`, { file: 'src/scenes/menu/hero_view.js' });
+            await shot(s, shots, `${hero} T${cls.tier} ${cls.id} yaw ${deg}°${ok ? '' : ' (no turntable view)'}`, { file: 'src/scenes/menu/hero_view.js', clip: await viewClip(s) });
           }
           await s.eval(() => { const g = window.__game; for (let i = 0; i < 3 && g.top?.name === 'menu'; i++) g.pop(); });
           await play(s, 5);

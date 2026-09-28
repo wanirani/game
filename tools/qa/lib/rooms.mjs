@@ -22,6 +22,17 @@ export async function gotoRoom(s, stage, room, { hero = null } = {}) {
   }
   await settle(s.page, 20);
   await waitBakes(s);
+  await idleFlush(s);
+}
+
+/** Real time for the game's own idle-time prewarm after boot / stage entry (hitfx sprite caches, ultfx pools and
+ *  prepareFor: setTimeout 250–300 ms + requestIdleCallback). A player always gets it (title card, intro); a frozen page that
+ *  arms the canvas counter at once would count those pools as "created after stage start". */
+export async function idleFlush(s, ms = 700) {
+  await s.eval((ms) => new Promise((res) => setTimeout(() => {
+    const idle = typeof requestIdleCallback === 'function' ? (f) => requestIdleCallback(f, { timeout: 1500 }) : (f) => setTimeout(f, 50);
+    idle(() => idle(() => res()));
+  }, ms)), ms).catch(() => {});
 }
 
 /** Waits (real time, ≤ maxMs) until no painted rig / painted boss / enemy rig is still loading or baking. */
