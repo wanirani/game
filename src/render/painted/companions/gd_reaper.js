@@ -112,7 +112,7 @@ function draw(ctx, g, world, rig) {
   K.end();
   gGlow(ctx, fx, fy, (cast ? 9 : 6) + Math.sin(t * 7) * 0.6, '#7aff9a', 0.55, 0.3);
   const ef = cast ? 1 + clamp(at / 0.18, 0, 1) : an === 'attack' || an === 'assist' ? 1.4 : 1;
-  gGlow(ctx, ex, ey, 1.7 * ef, '#7aff9a', 0.8, 0.2); gGlow(ctx, ex2, ey2, 1.4 * ef, '#7aff9a', 0.7, 0.2);
+  gGlow(ctx, (ex + ex2) / 2 + 0.4, (ey + ey2) / 2, 2.4 * ef, '#7aff9a', 0.75, 0.35);   // 두 눈불 (한 장)
   // 날 끝 궤적 (얇은 초록 호)
   if (P.trail && q > 0.5) {
     ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = '#b8ffc8'; ctx.lineCap = 'round';

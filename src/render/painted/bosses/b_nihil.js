@@ -189,6 +189,10 @@ async function bakeExtras(rig) {
     mb += (mask.width * mask.height * 4 * 2) / 1048576;
   }
   rig.memMB += mb;
+  // 발광 퍼프(kit 색별 캐시 캔버스)도 굽기 때 만든다: P2 메아리 색 · P3 아가리 · P4 태양 · 사망 빛이 싸움 도중 처음 쓰일 때
+  // 새 캔버스가 생기지 않게 (MASTER_PLAN §5.2 '싸움 시작 뒤 새 오프스크린 캔버스 0'). glowE 가 쓰는 (색, 심) 조합 전부
+  for (const c of [VIO_D, NEB, STARC, VIO_L, BITE, DAWN, IRIS, ...Object.values(ECHO_COL)]) puff(c);
+  puff(WHITE, true);
 }
 
 // ───────────────────────── 변환 도우미 ─────────────────────────

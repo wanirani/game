@@ -1,0 +1,236 @@
+{
+ "id": "gd_momo",
+ "tier": "T1",
+ "srcTD": 4,
+ "note": "\ubaa8\ubaa8: body = reference tapir (strict side view facing right, closed sleepy eyes, star/crescent fur) minus the curled trunk and the tail; trunk + tail cut from the same reference (pivots at the snout / rump); cloud = sheet0 right dream cloud, cropped from the sheet into src/gd_momo_cloud.webp first (rembg only keeps the tapir on the full sheet) and soft-matted. k: body ~26 logical px rump-to-snout.",
+ "sources": {
+  "r": {
+   "raw": "gd_momo_ref.webp",
+   "file": "gd_momo_ref.png",
+   "mode": "",
+   "k": 0.021
+  },
+  "c": {
+   "raw": "gd_momo_cloud.webp",
+   "file": "gd_momo_cloud.png",
+   "mode": "soft",
+   "k": 0.03
+  }
+ },
+ "parts": {
+  "body": {
+   "src": "r",
+   "box": [
+    290,
+    230,
+    2100,
+    1360
+   ],
+   "minus": [
+    [
+     [
+      1800,
+      600
+     ],
+     [
+      1880,
+      600
+     ],
+     [
+      1900,
+      470
+     ],
+     [
+      2130,
+      470
+     ],
+     [
+      2130,
+      880
+     ],
+     [
+      1800,
+      880
+     ]
+    ],
+    [
+     [
+      280,
+      660
+     ],
+     [
+      500,
+      660
+     ],
+     [
+      545,
+      860
+     ],
+     [
+      556,
+      1030
+     ],
+     [
+      280,
+      1030
+     ]
+    ]
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1100,
+     1340
+    ],
+    "trunk": [
+     1805,
+     750
+    ],
+    "eye": [
+     1590,
+     630
+    ],
+    "mouth": [
+     1680,
+     775
+    ],
+    "st1": [
+     820,
+     560
+    ],
+    "st2": [
+     1000,
+     430
+    ],
+    "st3": [
+     1200,
+     340
+    ],
+    "st4": [
+     1680,
+     470
+    ],
+    "ear": [
+     1400,
+     300
+    ],
+    "rump": [
+     570,
+     950
+    ]
+   }
+  },
+  "trunk": {
+   "src": "r",
+   "box": [
+    1790,
+    460,
+    2110,
+    890
+   ],
+   "poly": [
+    [
+     1800,
+     600
+    ],
+    [
+     1880,
+     600
+    ],
+    [
+     1900,
+     470
+    ],
+    [
+     2130,
+     470
+    ],
+    [
+     2130,
+     880
+    ],
+    [
+     1800,
+     880
+    ]
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1805,
+     750
+    ],
+    "tip": [
+     2040,
+     600
+    ],
+    "nose": [
+     1985,
+     620
+    ]
+   }
+  },
+  "tail": {
+   "src": "r",
+   "box": [
+    280,
+    650,
+    580,
+    1040
+   ],
+   "poly": [
+    [
+     280,
+     660
+    ],
+    [
+     500,
+     660
+    ],
+    [
+     545,
+     860
+    ],
+    [
+     556,
+     1030
+    ],
+    [
+     280,
+     1030
+    ]
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     556,
+     950
+    ],
+    "tip": [
+     380,
+     700
+    ]
+   }
+  },
+  "cloud": {
+   "src": "c",
+   "box": [
+    0,
+    40,
+    1070,
+    510
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     520,
+     300
+    ],
+    "top": [
+     520,
+     140
+    ]
+   }
+  }
+ }
+}

@@ -11,5 +11,6 @@ export const companions = {
   gd_reaper: () => import('../companions/gd_reaper.js'),
   gd_mirra: () => import('../companions/gd_mirra.js'),
   gd_lumen: () => import('../companions/gd_lumen.js'),
+  gd_momo: () => import('../companions/gd_momo.js'),
 };
 export const npcs = {};

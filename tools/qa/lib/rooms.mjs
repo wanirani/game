@@ -43,8 +43,14 @@ export async function waitBakes(s, maxMs = 8000) {
   return last;
 }
 
-/** Boss room: walk right until the boss exists, close intro/dialogues, wait for the fight. */
+/** Boss room: step over the arena line (walls/pillars on the way are not the point of these tools; walks right when the
+ *  room has no arena marker), close intro/dialogues, wait for the fight. */
 export async function enterFight(s) {
+  await s.eval(() => {
+    const w = window.__game.world, p = w?.player;
+    if (!p || w.boss || w.arenaX === undefined) return;
+    p.x = w.arenaX + 48 * 1.6; p.vx = 0;   // TILE = 48 (core/game.js); startBoss fires past arenaX + TILE
+  });
   await s.page.keyboard.down('ArrowRight');
   const n = await stepUntil(s.page, '!!w.boss', 900);
   await s.page.keyboard.up('ArrowRight');

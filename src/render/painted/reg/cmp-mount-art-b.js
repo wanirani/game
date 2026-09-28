@@ -5,5 +5,11 @@
 // npcs:       { '<npcId>': () => import('../npcs/<id>.js') }
 export const bosses = {};
 export const enemies = [];
-export const companions = {};
+// 탈것 그리기는 src/render/mounts_b.js (MOUNT_DRAW_B → 채색 리그가 준비되면 퍼핏, 아니면 벡터).
+export const companions = {
+  mt_direwolf: () => import('../companions/mt_direwolf.js'),
+  mt_wyvern: () => import('../companions/mt_wyvern.js'),
+  mt_giantbat: () => import('../companions/mt_giantbat.js'),
+  mt_gale: () => import('../companions/mt_gale.js'),
+};
 export const npcs = {};

@@ -73,6 +73,21 @@ export function packageOf(file) {
 
 export function ownerOf(file) { return { bucket: bucketOf(file), pkg: packageOf(file) }; }
 
+/** W4 bucket for a package key (reports that only name the package, e.g. platform suite rows): the bucket of the first
+ *  concrete path its owns globs describe ('src/render/painted/**' → 'src/render/painted/x.js'). null when unknown. */
+export function bucketOfPackage(key) {
+  if (!key) return null;
+  const all = [...(plan().waves || []).flatMap((w) => w.packages || []), ...(plan().decisions?.external_packages || [])];
+  const p = all.find((x) => x.key === key);
+  for (const g0 of p?.owns || []) {
+    if (g0.startsWith('!')) continue;
+    const sample = String(g0).trim().split(/\s+/)[0].replace(/\{([^,}]*)[^}]*\}/g, '$1').replace(/\*\*\/?/g, 'x/').replace(/\*/g, 'x').replace(/\?/g, 'x').replace(/\/$/, '/x.js');
+    const b = bucketOf(sample);
+    if (b) return b;
+  }
+  return null;
+}
+
 /** { bucket: [finding…] } — a finding's file is f.file or f.files[0]; findings without a file go under '(harness)'. */
 export function groupFindings(list) {
   const out = {};

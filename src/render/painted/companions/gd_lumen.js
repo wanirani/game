@@ -57,25 +57,26 @@ function draw(ctx, g, world, rig) {
   const sc = 0.4 + 0.6 * ap;
   const lampCol = hurt > 0 && Math.sin(t * 40) > 0 ? '#ff9ae8' : '#ffd070';
   if (hurt > 0) ctx.translate(Math.sin(t * 70) * 1.1 * hurt, 0);
-  gGlow(ctx, 0, RIM_Y - 4 + bob, 16 + flare * 26 + (aw ? 4 : 0), '#6fe8ff', 0.28 + flare * 0.55 + (aw ? 0.1 : 0));
+  gGlow(ctx, 0, RIM_Y + 1 + bob, 17 + flare * 26 + (aw ? 4 : 0), '#6fe8ff', 0.32 + flare * 0.5 + (aw ? 0.1 : 0) + Math.sin(t * 3.1) * 0.04);   // 갓·촉수의 생물 발광
   ctx.translate(0, bob);
   ctx.translate(0, RIM_Y - 3); ctx.rotate(tilt + spin); if (sc !== 1) ctx.scale(sc, sc); ctx.translate(0, -(RIM_Y - 3));
   W.t = t; W.lean = lean; W.lash = lash; W.pulse = pulse;
   const bx = 1 + pulse * 0.1 + flare * 0.18, by = 1 - pulse * 0.12 + flare * 0.14;
   K.begin(ctx, rig, 0);
   // 촉수 · 구완 (갓 아래: 수축 때 살짝 짧아진다)
-  K.warpY('tent', 'a', 0, RIM_Y + 0.4, 0, 1 + pulse * 0.04, 1 - pulse * 0.08 - lash * 0.12, q > 0.5 ? 16 : 8, tentOff, 0.95);
-  const tg = Math.max(lash * 0.45, flare * 0.3, q >= 0.95 ? 0.16 + Math.sin(t * 3.1) * 0.05 : 0);   // 생물 발광 (높음 품질: 늘 은은하게)
+  const nW = q > 0.5 ? 8 : 5, tsy = 1 - pulse * 0.08 - lash * 0.12;
+  K.warpY('tent', 'a', 0, RIM_Y + 0.4, 0, 1 + pulse * 0.04, tsy, nW, tentOff, 0.95);
+  const tg = Math.max(lash * 0.45, flare * 0.3);   // 찌릿 · 섬광 때만 촉수가 빛난다 (평소 발광은 몸 뒤 큰 빛 한 장)
   if (tg > 0.02) {
     const gco = ctx.globalCompositeOperation; ctx.globalCompositeOperation = 'lighter';
-    K.warpY('tent', 'a', 0, RIM_Y + 0.4, 0, 1 + pulse * 0.04, 1 - pulse * 0.08 - lash * 0.12, q > 0.5 ? 16 : 8, tentOff, tg, 'glow', 1);
+    K.warpY('tent', 'a', 0, RIM_Y + 0.4, 0, 1 + pulse * 0.04, tsy, nW, tentOff, tg, 'glow', 1);
     ctx.globalCompositeOperation = gco;
   }
   // 갓 (수축 = 옆으로 넓고 납작)
   K.put('bell', 'a', 0, RIM_Y, 0, bx, by, 0.95);
-  if (q > 0.5 || flare > 0) {
+  if (flare > 0.02 || lash > 0.05) {   // 등불이 타오를 때만 갓 전체가 빛난다
     const gco = ctx.globalCompositeOperation; ctx.globalCompositeOperation = 'lighter';
-    K.put('bell', 'a', 0, RIM_Y, 0, bx, by, 0.1 + flare * 0.45 + Math.sin(t * 2.5) * 0.04, 'glow');
+    K.put('bell', 'a', 0, RIM_Y, 0, bx, by, flare * 0.5 + lash * 0.2, 'glow');
     ctx.globalCompositeOperation = gco;
   }
   K.pivotPos('bell', 'a', 'fire', 0, RIM_Y, 0, bx, by, _q);
