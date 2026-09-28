@@ -471,6 +471,9 @@ export class DuelScene extends MiniGame {
     const stars = clamp(Math.round((0.5 - f.react) / 0.055) + 1, 1, 5);
     text(ctx, `속사 ${'★'.repeat(stars)}${'☆'.repeat(5 - stars)}   배당 ×${f.mult}${f.feint ? '   가짜 신호 주의' : ''}`, vw / 2, iy + 68, { size: 12, align: 'center', weight: 700, color: '#e8d8b0', ow: 2, maxWidth: iw - 20 });
     const rx0 = vw / 2 - rowW / 2, ry = iy + 80;
+    // 초상은 칸마다 작은 캔버스에 구워 두고 한 프레임에 한 칸만 다시 굽는다 (drawHero 는 한 번에 그라데이션 수십 개:
+    // 5칸을 매 프레임 그리면 결투자 둘과 합쳐 drawHero 7번 — MASTER_PLAN §5.2 medium 6 / low 3 초과)
+    this._thumbTurn = ((this._thumbTurn ?? -1) + 1) % n;
     for (let i = 0; i < n; i++) {
       const fx = rx0 + i * (fs + fg), fy = ry;
       // 탭 영역: 칸 사이를 넓혀 손가락 크기(약 44 CSS px) 이상 (그림은 그대로)
@@ -483,9 +486,12 @@ export class DuelScene extends MiniGame {
       ctx.lineWidth = sel ? 2.5 : 1.2; ctx.strokeStyle = sel ? '#ffe7a0' : '#6a5030'; ctx.stroke();
       ctx.clip();
       if (un) {
-        const P = this.mini ??= FOES.map((F) => duelist(F.look, null, 1));
-        const p = P[i]; p.cx = fx + fs / 2; p.bottom = fy + fs + 58; p.t = t; p.rig = null;
-        try { drawHero(ctx, p, null, { scale: 0.95 }); } catch { /* 무시 */ }
+        const th = this.miniThumb(ctx, i, fs, t);
+        if (th) ctx.drawImage(th, fx, fy, fs, fs);
+        else {
+          const p = this.miniDuelist(i); p.cx = fx + fs / 2; p.bottom = fy + fs + 58; p.t = t; p.rig = null;
+          try { drawHero(ctx, p, null, { scale: 0.95 }); } catch { /* 무시 */ }
+        }
       } else {
         text(ctx, '?', fx + fs / 2, fy + fs / 2 + 10, { size: 28, align: 'center', weight: 900, family: FONT.num, color: '#4a3a30', ow: 0 });
       }
@@ -503,5 +509,34 @@ export class DuelScene extends MiniGame {
     this.hits.add('duel', br, !can);
     drawBtn(ctx, br, '결투 신청!', { tone: 'crimson', size: 19, sub: this.free ? '무료 한 판' : `${fmt(this.bet)} G`, key: 'confirm', disabled: !can, hot: this.hits.over(br), pressed: this.hits.pressed(br), pulse: can, t });
     keyHints(ctx, [['dpadV', '상대 선택']], px + pw - 14, py - 9, { align: 'right', size: 12 });
+  }
+  miniDuelist(i) { return (this.mini ??= FOES.map((F) => duelist(F.look, null, 1)))[i]; }
+  /**
+   * 결투자 i 의 초상 캔버스 (fs × fs UI px, 지금 화면 배율의 기기 픽셀). 처음 한 번 + 차례(_thumbTurn)가 올 때만 drawHero 로 다시 굽는다
+   * → 숨 쉬는 동작은 약 12 fps 로 이어지고, 늦게 도착한 영웅 그림도 곧 반영된다. 캔버스를 못 만들면 null (직접 그린다)
+   */
+  miniThumb(ctx, i, fs, t) {
+    let k = 1;
+    try { const m = ctx.getTransform(); k = Math.hypot(m.a, m.b) || 1; } catch { k = 1; }
+    k = clamp(k, 0.5, 4);
+    const px = Math.max(8, Math.ceil(fs * k));
+    const T = this._thumbs ??= [];
+    let e = T[i];
+    if (!e || e.px !== px) {
+      let cv = null;
+      try { if (typeof document !== 'undefined') cv = Object.assign(document.createElement('canvas'), { width: px, height: px }); } catch { cv = null; }
+      const x = cv?.getContext('2d');
+      if (!x) return null;
+      e = T[i] = { cv, x, px, drawn: false };
+    }
+    if (!e.drawn || this._thumbTurn === i) {
+      const x = e.x, s = px / fs;
+      x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, px, px);
+      x.setTransform(s, 0, 0, s, 0, 0);
+      const p = this.miniDuelist(i); p.cx = fs / 2; p.bottom = fs + 58; p.t = t; p.rig = null;
+      try { drawHero(x, p, null, { scale: 0.95 }); } catch { /* 무시 */ }
+      e.drawn = true;
+    }
+    return e.cv;
   }
 }

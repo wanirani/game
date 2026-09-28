@@ -142,7 +142,7 @@ export class SlotScene extends MiniGame {
       if (jackpot) b.slotJackpots = (b.slotJackpots ?? 0) + 1;
       const c = this.cab, S = this.P(this.vw / 2, c.y + 84 + ROW_H * 1.5);
       this.settle({ win: true, payout: pay, tier, popup: tier !== 'win', title: jackpot ? '잭팟!!!' : '대박 당첨!', sub: `${SLOT_NAMES[top.sym]} ${wins.length > 1 ? `외 ${wins.length - 1}줄` : ''} · 배당 ×${mult}`, cx: S.x, cy: S.y, delay: jackpot ? 1.6 : 1.0 });
-      if (jackpot) { this.jackpotT = 0; this._jpWarm = false; const T = this.P(this.vw / 2, c.y + 40); this.coins.burst(T.x, T.y, 60, { up: 1100, spread: 1.6 }); }
+      if (jackpot) { this.jackpotT = 0; const T = this.P(this.vw / 2, c.y + 40); this.coins.burst(T.x, T.y, 60, { up: 1100, spread: 1.6 }); }
     } else {
       this.msg = this.spins % 4 === 0 ? '아깝다! 한 번만 더?' : '꽝… 다음 기회에!'; this.msgCol = '#b8a080';
       this.settle({ win: false, tier: 'lose', popup: false, quiet: true });
@@ -224,11 +224,15 @@ export class SlotScene extends MiniGame {
       this.drawSide(ctx, L.sideX, L.sideY, L.sideW, L.sideH);
     }
     this.drawBottom(ctx);
+    // JACKPOT — 금박 피 글씨 (글자 크기는 고정, 등장은 ctx.scale 로: 비트맵을 다시 굽지 않게).
+    // 비트맵은 장면의 첫 그리기(페이드 인 중)에 미리 굽는다 — 잭팟 순간(섬광·코인 분수)에 굽느라 프레임이 끊기지 않게.
+    // 등장 연출의 outBack 최대 배율(≈1.1)까지 담도록 조금 크게 굽는다 (ui.textEntry 는 더 높은 해상도가 필요할 때만 다시 굽는다)
+    const size = Math.round(clamp(78 * L.k, 56, 78));
+    const opts = this._jpOpts ??= { size, style: 'gold', drips: 0.7, t: 0, maxWidth: vw - 40 };
+    opts.size = size; opts.maxWidth = vw - 40;
+    if (this._jpWarm !== size) { this._jpWarm = size; ctx.save(); ctx.scale(1.12, 1.12); prewarmText(ctx, 'JACKPOT!!', opts); ctx.restore(); }
     if (this.jackpotT < 2.6) {
-      // JACKPOT — 금박 피 글씨 (글자 크기는 고정, 등장은 ctx.scale 로: 비트맵을 다시 굽지 않게)
-      const size = Math.round(clamp(78 * L.k, 56, 78));
-      const opts = { size, style: 'gold', drips: 0.7, t: this.jackpotT, maxWidth: vw - 40 };
-      if (!this._jpWarm) { this._jpWarm = true; prewarmText(ctx, 'JACKPOT!!', opts); }
+      opts.t = this.jackpotT;
       const kk = ease.outBack(clamp(this.jackpotT / 0.4, 0, 1)) * clamp((2.6 - this.jackpotT) / 0.4, 0, 1);
       const J = this.P(vw / 2, 250);
       ctx.save(); ctx.translate(vw / 2, J.y); ctx.scale(kk, kk); ctx.rotate(Math.sin(t * 8) * 0.04);

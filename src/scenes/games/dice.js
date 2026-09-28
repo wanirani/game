@@ -30,6 +30,7 @@ export class DiceScene extends MiniGame {
   }
   layoutDice(snap) {
     const cx = this.vw / 2, cy = 232;
+    this._dcx = cx;
     this.dice.forEach((d, i) => {
       d.x1 = cx + (i - 1) * 108 + rand(-10, 10); d.y1 = cy + rand(-12, 12);
       if (snap) { d.x = d.x1; d.y = d.y1; }
@@ -181,6 +182,15 @@ export class DiceScene extends MiniGame {
     return { W, H, bh, ctrlTop, ctrlH, top, bot, k, trayTop, trayH, trayCy: trayTop + trayH / 2, tw, sumY: trayTop + trayH + 26 + 30, sideW, sideY: sideY + Math.max(0, (bot - sideY - sideH) / 2), sideH };
   }
   get L() { return this._L ?? (this._L = this.lay()); }
+  /** 화면 크기가 바뀌면 (창 크기·회전·UI 배율) 쟁반 가운데(vw/2)가 옮겨 가므로 주사위 좌표도 같이 옮긴다 */
+  resize() {
+    this._L = null;
+    if (!this.dice || this._dcx === undefined) return;
+    const dx = this.vw / 2 - this._dcx;
+    if (!dx) return;
+    for (const d of this.dice) { d.x += dx; d.x0 += dx; d.x1 += dx; }
+    this._dcx += dx;
+  }
   /** 쟁반 설계 좌표(가운데 x = vw/2, 쟁반 가운데 y = 224) → 화면 좌표 */
   P(x, y) { const L = this.L, cx = this.vw / 2; return { x: cx + (x - cx) * L.k, y: L.trayCy + (y - 224) * L.k }; }
   stageY(y) { const L = this.L; return L.trayCy + (y - 224) * L.k; }

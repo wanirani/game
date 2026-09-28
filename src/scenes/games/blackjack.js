@@ -282,10 +282,11 @@ export class BlackjackScene extends MiniGame {
     ctx.strokeStyle = 'rgba(232,200,114,0.6)'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.ellipse(bx, by, 52, 34, 0, 0, TAU); ctx.stroke();
     if (this.phase !== 'ready' || this.result) {
-      const amt = this.roundFree ? 0 : this.roundBet;
       const stacks = this.doubled ? 2 : 1;
+      // 한 더미 = 이번 판에 건 금액 (더블이면 두 더미). this.bet 은 정산 뒤 남은 금화에 맞춰 바뀔 수 있어 쓰지 않는다
+      const amt = this.roundFree ? 0 : Math.round(this.roundBet / stacks);
       // 쌓인 칩: 맨 위 칩에만 금액 (판돈은 HUD 에도 있다)
-      for (let kk = 0; kk < stacks; kk++) for (let i = 0; i < 4; i++) drawChip(ctx, bx - 16 + kk * 34, by + 6 - i * 5, 17, amt === 0 ? 0 : this.bet, { t, label: i === 3 ? undefined : '' });
+      for (let kk = 0; kk < stacks; kk++) for (let i = 0; i < 4; i++) drawChip(ctx, bx - 16 + kk * 34, by + 6 - i * 5, 17, amt, { t, label: i === 3 ? undefined : '' });
     }
   }
   /** 펠트에 인쇄된 글자 (설계 좌표 → 화면, 글자 크기는 그대로) */

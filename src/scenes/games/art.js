@@ -17,16 +17,43 @@ export function rr(c, x, y, w, h, r) {
   c.arcTo(x, y, x + w, y, r);
   c.closePath();
 }
-/** 부드러운 가산 광원 */
+/**
+ * 부드러운 가산 광원. 색마다 한 번 구운 방사 그라데이션 스프라이트(64 px)를 늘려 그린다
+ * — 결투 먼지·촛불·카드 빛처럼 한 프레임에 수십 번 불려도 그라데이션을 새로 만들지 않는다 (MASTER_PLAN §5.2).
+ */
+const GLOW_PX = 64, GLOW_MAX = 48;
+const GLOW_CACHE = new Map();
+function glowSprite(col) {
+  let s = GLOW_CACHE.get(col);
+  if (s !== undefined) return s;
+  s = null;
+  try {
+    const cv = typeof OffscreenCanvas === 'function' ? new OffscreenCanvas(GLOW_PX, GLOW_PX) : typeof document !== 'undefined' ? Object.assign(document.createElement('canvas'), { width: GLOW_PX, height: GLOW_PX }) : null;
+    const x = cv?.getContext('2d');
+    if (x) {
+      const h = GLOW_PX / 2, g = x.createRadialGradient(h, h, 0, h, h, h);
+      g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)');
+      x.fillStyle = g; x.fillRect(0, 0, GLOW_PX, GLOW_PX);
+      s = cv;
+    }
+  } catch { s = null; }
+  if (GLOW_CACHE.size >= GLOW_MAX) GLOW_CACHE.delete(GLOW_CACHE.keys().next().value);
+  GLOW_CACHE.set(col, s);
+  return s;
+}
 export function glow(c, x, y, r, col, a = 1) {
   if (a <= 0.003 || r <= 0) return;
   c.save();
   c.globalCompositeOperation = 'lighter';
   c.globalAlpha *= clamp(a, 0, 1);
-  const g = c.createRadialGradient(x, y, 0, x, y, r);
-  g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)');
-  c.fillStyle = g;
-  c.fillRect(x - r, y - r, r * 2, r * 2);
+  const spr = glowSprite(col);
+  if (spr) { c.imageSmoothingEnabled = true; c.drawImage(spr, x - r, y - r, r * 2, r * 2); }
+  else {
+    const g = c.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = g;
+    c.fillRect(x - r, y - r, r * 2, r * 2);
+  }
   c.restore();
 }
 /** 좌우 대칭 경로: 오른쪽 절반(축 위 시작점 → 축 위 끝점)을 그리고 왼쪽은 거울상으로 되돌아옴

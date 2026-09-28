@@ -452,10 +452,16 @@ export function innBackdrop(c, vw, vh, t, dim = 0.62, oy = 0.72) {
   glow(c, vw * 0.42, vh * 0.55, vh * 0.7, '#ff7a2a', 0.12 * fl);
   vignetteSoft(c, vw, vh, 0.75);
 }
+const VIG = { key: '', g: null };
+/** 화면 가장자리 어둡게 (크기·세기가 같으면 지난 프레임의 그라데이션을 다시 쓴다) */
 export function vignetteSoft(c, w, h, a = 0.7) {
-  const g = c.createRadialGradient(w / 2, h * 0.5, h * 0.3, w / 2, h * 0.5, h * 0.95);
-  g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, `rgba(0,0,0,${a})`);
-  c.fillStyle = g; c.fillRect(0, 0, w, h);
+  const key = `${w}|${h}|${a}`;
+  if (VIG.key !== key || !VIG.g) {
+    const g = c.createRadialGradient(w / 2, h * 0.5, h * 0.3, w / 2, h * 0.5, h * 0.95);
+    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, `rgba(0,0,0,${a})`);
+    VIG.key = key; VIG.g = g;
+  }
+  c.fillStyle = VIG.g; c.fillRect(0, 0, w, h);
 }
 /** 펠트 테이블 (위에서 비스듬히 본 둥근 사각형: 나무 테두리 + 펠트) */
 export function feltTable(c, x, y, w, h, { felt = '#5a0a1c', felt2 = '#22040c', wood = '#4a2a16', r = 60 } = {}) {
@@ -716,6 +722,14 @@ export class MiniGame extends Scene {
     const stake = this.inRound;
     this.quit = { t: 0, sel: stake ? 1 : 0, stake };
     audio.sfx('menu_move');
+  }
+  /**
+   * game.autoPause (탭 숨김·휴대폰 세로 회전·마지막 패드 끊김, platform §4.4/§5.3): 판이 진행 중이면 '그만두기' 확인 창을 띄워
+   * 게임을 멈춘다 (기본 선택 '계속하기') — 기억 카드 제한 시간·결투 신호·릴이 손을 뗀 사이에 흘러가지 않게
+   */
+  autoPause() {
+    if (this.game.top !== this || this.leaving || this.quit || !this.inRound) return;
+    this.openQuit();
   }
   closeQuit(yes) {
     const Q = this.quit;

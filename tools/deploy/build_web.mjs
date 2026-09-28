@@ -73,36 +73,13 @@ export async function buildWeb(o = {}) {
   const warn = (m) => { report.warnings.push(m); log(opts, '  경고: ' + m); };
   const lap = (k, t) => { report.timings[k] = Date.now() - t; };
 
-  // ── 0. 사전 점검: lo/ 변형, 글꼴, 맵 ──
-  if (opts.variants && SRC === ROOT) {
-    const t = Date.now();
-    const chk = spawnSync('python3', ['tools/assets/make_variants.py', '--check', '--quiet'], { cwd: ROOT, encoding: 'utf8' });
-    if (chk.status === 1) {
-      log(opts, '· assets/lo 가 낡아 다시 만든다 (tools/assets/make_variants.py)');
-      const mk = spawnSync('python3', ['tools/assets/make_variants.py', '--quiet'], { cwd: ROOT, encoding: 'utf8', stdio: opts.quiet ? 'pipe' : 'inherit' });
-      if (mk.status !== 0) warn(`assets/lo 를 다시 만들지 못했습니다 (PIL 필요): 있는 사본만 씁니다`);
-    } else if (chk.status !== 0) warn(`assets/lo 검사를 돌리지 못했습니다 (${(chk.stderr || chk.error?.message || '').trim().split('\n').pop()})`);
-    lap('variants', t);
-  }
-  if (opts.fontsCheck && fs.existsSync(path.join(SRC, 'tools/fonts/build_fonts.py'))) {
-    const t = Date.now();
-    const probe = spawnSync('python3', ['-c', 'import fontTools'], { encoding: 'utf8' });
-    if (probe.status !== 0) { warn('글꼴 검사를 건너뜀: python3 fontTools 가 없습니다 (pip install fonttools)'); report.checks.fonts = 'skipped (no fontTools)'; }
-    else {
-      const r = spawnSync('python3', ['tools/fonts/build_fonts.py', '--check'], { cwd: SRC, encoding: 'utf8' });
-      const tail = (r.stdout + r.stderr).trim().split('\n').slice(0, 12).join('\n');
-      if (r.status === 0) report.checks.fonts = 'ok';
-      else if (opts.allowFontGaps) { report.checks.fonts = 'FAILED (allowed)'; warn('글꼴 검사 실패 (--allow-font-gaps 로 계속):\n' + tail); }
-      else throw new BuildError('글꼴 검사 실패 — python3 tools/fonts/build_fonts.py 로 글꼴을 다시 만들어야 합니다 (임시 빌드는 --allow-font-gaps):\n' + tail);
-    }
-    lap('fonts', t);
-  }
-  if (opts.validate && fs.existsSync(path.join(SRC, 'tools/validate_maps.mjs'))) {
-    const t = Date.now();
-    const r = spawnSync(process.execPath, ['tools/validate_maps.mjs'], { cwd: SRC, encoding: 'utf8' });
-    if (r.status !== 0) throw new BuildError('맵 검사 실패 (node tools/validate_maps.mjs):\n' + (r.stdout + r.stderr).trim().split('\n').slice(-15).join('\n'));
-    report.checks.maps = (r.stdout.trim().split('\n').pop() || 'ok').trim();
-    lap('validate', t);
+  // ── 0. 사전 점검: lo/ 변형, 글꼴, 맵 ── (실패하면 예전 결과도 지운다: 실패한 빌드 뒤에 낡은 dist/web 이 배포되지 않게)
+  try {
+    precheck(SRC, opts, report, warn, lap);
+  } catch (e) {
+    rmrf(OUT);
+    if (opts.deployBundle) rmrf(deployDirFor(OUT));
+    throw e;
   }
 
   // ── 1. 허용 목록 복사 ──
@@ -200,7 +177,8 @@ export async function buildWeb(o = {}) {
     });
     once(/<script src="src\/boot-gate\.js"><\/script>/, () => `<script src="build-info.js?v=__BN_INFO__"></script>\n<script src="src/boot-gate.js?v=${fileHash8('src/boot-gate.js')}"></script>`, 'src/boot-gate.js 스크립트');
     once(/<script type="module" src="src\/main\.js"><\/script>/, () => `<script type="module" src="${scriptSrc}"></script>`, 'src/main.js 모듈 스크립트');
-    const preTags = preloads.map((u) => `<link rel="modulepreload" href="${u}">`).join('\n');
+    // 번들이면 main 조각 하나만: 글꼴 preload 보다 먼저 받도록 fetchpriority="high" (HTTP/2 에서 대역폭 우선)
+    const preTags = preloads.map((u) => `<link rel="modulepreload" href="${u}"${opts.bundle ? ' fetchpriority="high"' : ''}>`).join('\n');
     once(/<link rel="manifest"[^>]*>/, (m) => `${m}\n${preTags}`, 'manifest 링크');
     write('index.html', html);
     lap('html', t);
@@ -311,6 +289,41 @@ export async function buildWeb(o = {}) {
   report.ok = true;
   report.timings.total = Date.now() - t0;
   return report;
+}
+
+/** 사전 점검: lo/ 변형 최신화, 글꼴 검사, 맵 검사 */
+function precheck(SRC, opts, report, warn, lap) {
+  if (opts.variants && SRC === ROOT) {
+    const t = Date.now();
+    const chk = spawnSync('python3', ['tools/assets/make_variants.py', '--check', '--quiet'], { cwd: ROOT, encoding: 'utf8' });
+    if (chk.status === 1) {
+      log(opts, '· assets/lo 가 낡아 다시 만든다 (tools/assets/make_variants.py)');
+      const mk = spawnSync('python3', ['tools/assets/make_variants.py', '--quiet'], { cwd: ROOT, encoding: 'utf8', stdio: opts.quiet ? 'pipe' : 'inherit' });
+      if (mk.status !== 0) warn(`assets/lo 를 다시 만들지 못했습니다 (PIL 필요): 있는 사본만 씁니다`);
+    } else if (chk.status !== 0) warn(`assets/lo 검사를 돌리지 못했습니다 (${(chk.stderr || chk.error?.message || '').trim().split('\n').pop()})`);
+    lap('variants', t);
+  }
+  if (opts.fontsCheck && fs.existsSync(path.join(SRC, 'tools/fonts/build_fonts.py'))) {
+    const t = Date.now();
+    const probe = spawnSync('python3', ['-c', 'import fontTools'], { encoding: 'utf8' });
+    if (probe.status !== 0) { warn('글꼴 검사를 건너뜀: python3 fontTools 가 없습니다 (pip install fonttools)'); report.checks.fonts = 'skipped (no fontTools)'; }
+    else {
+      const r = spawnSync('python3', ['tools/fonts/build_fonts.py', '--check'], { cwd: SRC, encoding: 'utf8' });
+      const tail = (r.stdout + r.stderr).trim().split('\n').slice(0, 12).join('\n');
+      if (r.status === 0) report.checks.fonts = 'ok';
+      else if (opts.allowFontGaps) { report.checks.fonts = 'FAILED (allowed)'; warn('글꼴 검사 실패 (--allow-font-gaps 로 계속):\n' + tail); }
+      else throw new BuildError('글꼴 검사 실패 — python3 tools/fonts/build_fonts.py 로 글꼴을 다시 만들어야 합니다 (임시 빌드는 --allow-font-gaps):\n' + tail);
+    }
+    lap('fonts', t);
+  }
+  if (opts.validate && fs.existsSync(path.join(SRC, 'tools/validate_maps.mjs'))) {
+    const t = Date.now();
+    const r = spawnSync(process.execPath, ['tools/validate_maps.mjs'], { cwd: SRC, encoding: 'utf8' });
+    if (r.status !== 0) throw new BuildError('맵 검사 실패 (node tools/validate_maps.mjs):\n' + (r.stdout + r.stderr).trim().split('\n').slice(-15).join('\n'));
+    report.checks.maps = (r.stdout.trim().split('\n').pop() || 'ok').trim();
+    lap('validate', t);
+  }
+
 }
 
 /** 업로드 묶음 폴더: dist/web → dist/deploy, 그 밖의 --out X → X-deploy */
