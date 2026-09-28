@@ -53,7 +53,8 @@ const CY = -26;
 function layout(e, q) {
   P.reset();
   const r = q.rot, s = Math.sin(r), c = Math.cos(r);
-  const ax = -CY * s, ay = q.bob + CY - CY * c;
+  // pivot a (the talons, 0,0) rotated about (0, CY): a rear-back (r < 0) swings the talons forward, the head back
+  const ax = CY * s, ay = q.bob + CY - CY * c;
   K.pivotPos('body', 'a', 'root', ax, ay, r, 1, 1, _q);
   // far wing a beat behind, slightly smaller, darkened
   P.place('wing', _q[0] - 2, _q[1] + 1, r + q.wF, 'deep', 0.88, 0.88 * q.sy);

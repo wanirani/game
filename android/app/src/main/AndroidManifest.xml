@@ -7,7 +7,7 @@
     package="com.bloodnocturne.game"
     android:installLocation="auto">
 
-    <!-- 웹 폰트(Google Fonts) 로딩용. 게임 파일 자체는 전부 APK 안에서 읽는다 -->
+    <!-- 계정·클라우드 저장 API 프록시(/api/*)와 새 버전 확인(downloads/latest.json)용. 게임 파일·글꼴은 전부 APK 안에서 읽는다 -->
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- navigator.vibrate() (타격 진동) -->
     <uses-permission android:name="android.permission.VIBRATE" />

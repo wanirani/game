@@ -11,6 +11,8 @@ import * as hellhound from '../enemies/hellhound.js';
 import * as shadow_hunter from '../enemies/shadow_hunter.js';
 import * as chaos_spawn from '../enemies/chaos_spawn.js';
 import * as abyss_eye from '../enemies/abyss_eye.js';
+import * as vampire_bride from '../enemies/vampire_bride.js';
+import * as void_demon from '../enemies/void_demon.js';
 
 export const bosses = {};
 export const enemies = [
@@ -20,6 +22,8 @@ export const enemies = [
   { mod: shadow_hunter },
   { mod: chaos_spawn },
   { mod: abyss_eye },
+  { mod: vampire_bride },
+  { mod: void_demon },
 ];
 export const companions = {};
 export const npcs = {};

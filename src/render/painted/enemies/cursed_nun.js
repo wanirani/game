@@ -113,7 +113,7 @@ export function draw(ctx, e, world, o, rig) {
     ctx.globalCompositeOperation = gco;
     K.glow(L.cx + Math.sin(c.rot) * -4, L.cy + 5, 6 + 12 * q.pray, VIO, gl);
     if (q.pray > 0.2) K.glow(L.hx, L.hy, 4 + 8 * q.pray, VIO, 0.8 * q.pray);
-    if (q.pray > 0.9 && (e.animT ?? 0) < 0.5) glint(ctx, L.cx, L.cy + 6, 5 + 3 * q.pray, '#f0d8ff', (q.pray - 0.9) * 10);
+    if (q.pray > 0.9 && e.anim === 'pray' && (e.animT ?? 0) < 0.5) glint(ctx, L.cx, L.cy + 6, 5 + 3 * q.pray, '#f0d8ff', (q.pray - 0.9) * 10);
   }
   K.end();
   if (!world || !o.cam || o.flash) return;
@@ -121,7 +121,7 @@ export function draw(ctx, e, world, o, rig) {
   const pool = e._fx ?? (e._fx = new K.FxPool(22));
   const dt = pool.step(K.clockOf(e, world));
   const f = e.facing < 0 ? -1 : 1, sc = (e.scale || 1) * (rig.scale ?? 1), lo = K.lod() === 0 ? 0.5 : 1;
-  for (let n = pool.rate(0, (6 + 10 * q.pray) * lo, dt); n > 0; n--) pool.add(0, e.cx + K.frand(-12, 10) * sc, e.bottom - K.frand(4, 18) * sc, K.frand(-10, 10) - f * trail * 2, K.frand(-30, -8), K.frand(0.5, 0.9), K.frand(3, 5.5) * sc, VIO);
+  for (let n = pool.rate(0, (6 + 10 * q.pray) * lo, dt); n > 0; n--) pool.add(0, e.cx + K.frand(-12, 10) * sc, e.bottom - K.frand(4, 18) * sc, K.frand(-10, 10) - f * q.trail * 2, K.frand(-30, -8), K.frand(0.5, 0.9), K.frand(3, 5.5) * sc, VIO);
   for (let n = pool.rate(1, 0.8, dt); n > 0; n--) pool.add(1, e.cx + f * sc * (L.ex + 1), e.bottom + sc * (L.ey + 3), 0, K.frand(10, 30), K.frand(0.6, 1), 1.3 * sc, '#a0101c');
   if (e.flashT > 0.1 && !e._hitFx) { e._hitFx = true; for (let i = 0; i < 8; i++) pool.add(0, e.cx + K.frand(-8, 8), e.bottom - 44 + K.frand(-12, 12), K.frand(-120, 120), K.frand(-140, 20), K.frand(0.35, 0.6), K.frand(3, 5), VIO); }
   if (e.flashT <= 0) e._hitFx = false;

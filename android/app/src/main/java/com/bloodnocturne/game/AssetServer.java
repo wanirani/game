@@ -25,8 +25,12 @@ import java.util.Map;
  *
  * - file:// 대신 https 출처를 쓰므로 ES 모듈, localStorage(세이브), 폰트, fetch 가 일반 웹과 똑같이 동작한다.
  * - appassets.androidplatform.net 은 안드로이드가 이 용도로 예약해 둔 도메인이라 실제 네트워크로 나가지 않는다.
+ * - assets/www 는 웹 배포 빌드(dist/web, tools/deploy/build_web.mjs)와 같은 파일이다 (sw.js·downloads/·_redirects 제외).
  * - 쿼리 문자열(?v=2 등)은 무시하고, 없는 파일은 404 를 돌려준다 (게임은 이미지 404 시 절차적 그림으로 대체).
- * - index.html 에는 assets/app/head_inject.html 조각을 </head> 앞에 끼워 넣는다.
+ * - 휴대폰 밀도 APK(apk.json assets="lo")에는 bg/·cg/·portraits/ 원본 대신 assets/lo/ 사본만 들어 있다:
+ *   원본 경로로 요청이 오면 lo/ 사본을 준다 (assets.js 가 어떤 변형을 고르든 그림이 빠지지 않게).
+ * - /api/* 는 ApiProxy 가 계정 서버(apk.json api.origin = tools/apk/api_origin.txt)로 대신 보낸다 (docs/ACCOUNTS.md §1).
+ * - index.html 에는 assets/app/head_inject.html 조각을 </head> 앞에 끼워 넣는다 ({{VERSION}}, {{CONFIG}} = apk.json 을 채워서).
  *
  * MIME 표는 tools/apk/verify_apk.mjs 가 이 파일에서 그대로 읽어 헤드리스 검증에 쓴다
  * (형식 `MIME.put("확장자", "타입");` 을 유지할 것).
@@ -35,11 +39,15 @@ final class AssetServer {
     static final String HOST = "appassets.androidplatform.net";
     static final String ORIGIN = "https://" + HOST;
     static final String START_URL = ORIGIN + "/index.html";
+    /** 빌드가 넣는 앱 설정 (tools/apk/build_apk.sh → pack_web.py): {api:{origin,aliases}, assets:'full'|'lo'|'lo+td', web:{…}} */
+    static final String CONFIG_ASSET = "app/apk.json";
 
     private static final String TAG = "BloodNocturne";
     private static final String WWW = "www";
     private static final String INJECT_ASSET = "app/head_inject.html";
     private static final Charset UTF8 = Charset.forName("UTF-8");
+    /** 휴대폰 밀도 APK 에서 원본이 빠지는 폴더 (tools/assets/make_variants.py 의 lo/ 대상과 같다) */
+    private static final java.util.regex.Pattern LO_TWIN = java.util.regex.Pattern.compile("^assets/((?:bg|cg|portraits)/.+\\.webp)$");
 
     private static final Map<String, String> MIME = new HashMap<>();
     static {
@@ -80,11 +88,25 @@ final class AssetServer {
 
     private final AssetManager am;
     private final String version;
+    private final String configJson;
+    private final ApiProxy api;
     private volatile String injectCache;
 
-    AssetServer(AssetManager am, String version) {
+    /** configJson: assets/app/apk.json 내용 (없으면 "{}"), api: /api 프록시 (null 이면 /api/* 는 503 JSON) */
+    AssetServer(AssetManager am, String version, String configJson, ApiProxy api) {
         this.am = am;
         this.version = version == null ? "" : version;
+        this.configJson = configJson == null || configJson.trim().isEmpty() ? "{}" : configJson.trim();
+        this.api = api;
+    }
+
+    /** APK 에셋 텍스트 파일 (없으면 null) */
+    static String readAssetText(AssetManager am, String path) {
+        try {
+            return new String(readAll(am.open(path, AssetManager.ACCESS_BUFFER)), UTF8);
+        } catch (IOException e) {
+            return null;
+        }
     }
 
     static boolean isLocal(Uri u) {
@@ -134,6 +156,11 @@ final class AssetServer {
         Uri u = req.getUrl();
         if (!isLocal(u)) return null;
         String method = req.getMethod() == null ? "GET" : req.getMethod().toUpperCase(Locale.ROOT);
+        // 계정 API: 파일이 아니라 서버로 대신 보낸다 (퍼센트 인코딩·쿼리는 그대로)
+        String encoded = u.getEncodedPath();
+        String apiRel = encoded == null ? null : normalize(encoded);
+        if (apiRel != null && (apiRel.equals("api") || apiRel.startsWith("api/"))) return proxy(req, method, "/" + apiRel, u.getEncodedQuery());
+
         String path = u.getPath();
         if (path == null || path.isEmpty()) path = "/";
         if (path.endsWith("/")) path = path + "index.html";
@@ -148,10 +175,33 @@ final class AssetServer {
         }
         if (!method.equals("GET") && !method.equals("HEAD")) return status(405, "Method Not Allowed");
 
-        String asset = WWW + "/" + rel;
+        try {
+            return file(req, method, rel, WWW + "/" + rel, headers);
+        } catch (FileNotFoundException e) {
+            // 휴대폰 밀도 APK: 원본이 빠진 배경·CG·초상화는 lo/ 사본으로
+            java.util.regex.Matcher lo = LO_TWIN.matcher(rel);
+            if (lo.matches()) {
+                try {
+                    return file(req, method, rel, WWW + "/assets/lo/" + lo.group(1), baseHeaders());
+                } catch (FileNotFoundException e2) {
+                    return status(404, "Not Found");
+                } catch (IOException e2) {
+                    Log.w(TAG, "asset read failed: " + rel + " (lo)", e2);
+                    return status(500, "Internal Server Error");
+                }
+            }
+            return status(404, "Not Found");
+        } catch (IOException e) {
+            Log.w(TAG, "asset read failed: " + rel, e);
+            return status(500, "Internal Server Error");
+        }
+    }
+
+    /** rel(요청 경로)의 MIME 으로 asset(APK 안 실제 경로)을 준다. 없으면 FileNotFoundException */
+    private WebResourceResponse file(WebResourceRequest req, String method, String rel, String asset, Map<String, String> headers) throws IOException {
         String mime = mimeOf(rel);
         String enc = isText(mime) ? "utf-8" : null;
-        try {
+        {
             if (rel.equals("index.html")) {
                 byte[] html = injectIndex(readAll(am.open(asset, AssetManager.ACCESS_BUFFER)));
                 headers.put("Content-Length", String.valueOf(html.length));
@@ -169,11 +219,22 @@ final class AssetServer {
                     : am.open(asset, AssetManager.ACCESS_STREAMING);
             if (method.equals("HEAD")) am.open(asset).close(); // 존재 확인
             return new WebResourceResponse(mime, enc, 200, "OK", headers, in);
-        } catch (FileNotFoundException e) {
-            return status(404, "Not Found");
-        } catch (IOException e) {
-            Log.w(TAG, "asset read failed: " + asset, e);
-            return status(500, "Internal Server Error");
+        }
+    }
+
+    /** /api/* → ApiProxy (응답은 언제나 JSON 또는 서버 응답 그대로; 이 스레드는 WebView 의 요청 처리 스레드라 막아도 된다) */
+    private WebResourceResponse proxy(WebResourceRequest req, String method, String path, String query) {
+        ApiProxy.Result r = api != null
+                ? api.forward(method, path + (query != null ? "?" + query : ""), req.getRequestHeaders())
+                : ApiProxy.error(503, "unavailable", ApiProxy.MSG_UNAVAILABLE, "unavailable", "proxy disabled");
+        if (r.status >= 500 || r.header(ApiProxy.ERROR_HEADER) != null || (r.detail != null && r.detail.contains("stash"))) {
+            Log.w(TAG, "api proxy " + method + " " + path + " → " + r.status + " (" + r.detail + ")");
+        }
+        try {
+            return new WebResourceResponse(r.mime, r.charset, r.status, r.reason, r.headers, new ByteArrayInputStream(r.body));
+        } catch (IllegalArgumentException e) {
+            ApiProxy.Result x = ApiProxy.error(502, "network", ApiProxy.MSG_NETWORK, "network", String.valueOf(e));
+            return new WebResourceResponse(x.mime, x.charset, x.status, x.reason, x.headers, new ByteArrayInputStream(x.body));
         }
     }
 
@@ -258,7 +319,9 @@ final class AssetServer {
         String inject = injectCache;
         if (inject == null) {
             try {
-                inject = new String(readAll(am.open(INJECT_ASSET)), UTF8).replace("{{VERSION}}", version);
+                inject = new String(readAll(am.open(INJECT_ASSET)), UTF8)
+                        .replace("{{VERSION}}", version.replaceAll("[^0-9A-Za-z._+-]", ""))
+                        .replace("{{CONFIG}}", configJson.replace("</", "<\\/"));
             } catch (IOException e) {
                 inject = "";
             }

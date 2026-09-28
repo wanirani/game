@@ -1808,7 +1808,7 @@ RENDER_B.clockwork_soldier = (ctx, e, world, o) => {
 RENDER_B.cog_wheel = (ctx, e, world, o) => {
   FL = !!o?.flash;
   const t = e.t, an = e.anim, at = e.animT;
-  const R = e.def.size.h / 2, rot = e.rot ?? t;
+  const R = e.def.size.h / 2, rot = (e.rot ?? t) * (e.facing < 0 ? -1 : 1);   // 좌향은 좌우 반전 좌표 → 회전도 되돌려야 굴러가는 방향과 맞는다
   const fast = Math.abs(e.vx ?? 0) > 180, wind = an === 'wind';
   shadow(ctx, R * 0.8, 0.45);
   ctx.save(); ctx.translate(0, -R);

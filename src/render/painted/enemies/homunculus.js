@@ -22,6 +22,7 @@ const _q = [0, 0], _h = [0, 0];
 const Q = { aN: [0, 0], aF: [0, 0], lg: [[0, 0], [0, 0]] };
 const set2 = (a, x, y) => { a[0] = x; a[1] = y; };
 const HIP = -16.2;
+const LO = { ex: 0, ey: 0, e2x: 0, e2y: 0, cx: 0, cy: 0, px: 0, py: 0, tr: 0 };   // layout result, reused every frame
 let T = 0, TB = 0;
 /** feeding tube: steep drop out of the connector that flattens toward the tip, wobbling */
 function tubeBend(u) { return TB + Math.sin(T * 4.2 - u * 5) * 0.06; }
@@ -99,7 +100,9 @@ function layout(e, q) {
   K.pivotPos('head', 'neck', 'eye2', nx, ny, hr, 1, 1, _q);
   const e2x = _q[0], e2y = _q[1];
   K.pivotPos('body', 'hip', 'port', hx, hy, tr, 1, 1, _q);
-  return { ex, ey, e2x, e2y, cx, cy, px: _q[0], py: _q[1], tr };
+  const o = LO;
+  o.ex = ex; o.ey = ey; o.e2x = e2x; o.e2y = e2y; o.cx = cx; o.cy = cy; o.px = _q[0]; o.py = _q[1]; o.tr = tr;
+  return o;
 }
 
 function die(e, world, rig) {

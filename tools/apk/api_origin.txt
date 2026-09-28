@@ -1,0 +1,9 @@
+# 블러드 녹턴 APK — 계정·클라우드 저장 API 서버 주소 (tools/apk/build_apk.sh 가 빌드할 때 읽어 APK 의 assets/app/apk.json 에 넣는다)
+#
+# 앱 안의 /api/* 요청은 AssetServer 의 프록시가 이 주소로 대신 보낸다 (docs/ACCOUNTS.md §1, MASTER_PLAN §1.20).
+# 같은 사이트의 /downloads/latest.json 으로 새 버전도 확인한다.
+# 형식: 주석(#)과 빈 줄을 뺀 첫 줄 = https://호스트[:포트] (경로·끝 슬래시 없이). 환경 변수 API_ORIGIN 으로 덮어쓸 수 있다.
+#
+# ※ 자리표시 값: 배포(DELIVER-WEB)로 실제 Netlify 사이트 이름이 정해지면 DELIVER-APK 가 이 줄을 그 주소로 바꾸고 다시 빌드한다.
+#    (src/core/cloud.js 의 APP_API_BASE 와 같은 사이트여야 웹·앱이 같은 계정을 쓴다)
+https://blood-nocturne.netlify.app

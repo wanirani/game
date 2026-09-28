@@ -90,7 +90,10 @@ function draw(ctx, g, world, rig) {
     K.pivotPos('perch', 'a', 'eye', px, py, nod, 1, 1, _q); const p1x = _q[0], p1y = _q[1];
     K.pivotPos('perch', 'a', 'eye2', px, py, nod, 1, 1, _q); const p2x = _q[0], p2y = _q[1];
     K.pivotPos('perch', 'a', 'top', px, py, nod, 1, 1, _q); const phx = _q[0], phy = _q[1] + 3.5;
-    if (aw) { K.local(); gHalo(ctx, phx, phy, 6.4, 6, '#fff2c0', haloA * 0.7, 0.4, t * 0.5); }   // 그림 속 후광 바깥에 하나 더 (머리 뒤)
+    // 머리 뒤 후광 고리: 그림 속 후광(머리 뒤 크림색 원판)은 작은 화면에서 머리와 섞여 보이지 않는다 → 날 때와 같은 빛 고리를 늘 두른다
+    K.local();
+    gHalo(ctx, phx, phy, 4.9, 4.7, '#ffe7a0', haloA * 0.85, 0.45);
+    if (aw) gHalo(ctx, phx, phy, 6.6, 6.2, '#fff2c0', haloA * 0.7, 0.4, t * 0.5);   // 각성: 바깥에 하나 더
     K.put('perch', 'a', px, py, nod, 1, 1);
     if (pk >= 0.5) { e1x = p1x; e1y = p1y; e2x = p2x; e2y = p2y; }
     ctx.globalAlpha = ga;

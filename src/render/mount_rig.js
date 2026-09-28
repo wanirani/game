@@ -32,9 +32,8 @@
 const TAU = Math.PI * 2;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const lerp = (a, b, t) => a + (b - a) * t;
+const fin = (v, d) => (Number.isFinite(v) ? v : d);
 const smooth = (t) => t * t * (3 - 2 * t);
-/** 결정론적 잡음 0..1 (정수 시드) */
-const h1 = (i) => { const s = Math.sin(i * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
 
 // ───────────────────────── 템플릿 ─────────────────────────
 export const TEMPLATES = Object.create(null);
@@ -219,13 +218,14 @@ const AIR = new Set(['jump', 'fall', 'flap', 'glide', 'hover', 'dive', 'wall', '
  */
 export function quadPose(m, dt, P, T) {
   const S = P.s;
-  const a = m.anim ?? 'idle', at = m.animT ?? 0, t = m.t ?? 0;
+  // 입력은 유한한 값만 쓴다 (NaN 하나가 스프링 상태에 들어가면 그 탈것의 포즈가 영영 NaN 이 된다)
+  const a = m.anim ?? 'idle', at = fin(m.animT, 0), t = fin(m.t, 0);
   const ground = m.onGround !== false && !AIR.has(a);
-  const speedK = clamp(m.speedK ?? Math.abs(m.vx ?? 0) / 400, 0, 1.6);
+  const speedK = clamp(fin(m.speedK ?? Math.abs(fin(m.vx, 0)) / 400, 0), 0, 1.6);
   const run = a === 'run' || a === 'charge' || a === 'flee' || (a === 'turn' && speedK > 0.5);
   const walk = !run && (a === 'walk' || (a === 'turn' && speedK > 0.05));
   const swim = a === 'swim' || (!!m.inWater && !ground);
-  const rearK = clamp(m.rearK ?? 0, 0, 1);
+  const rearK = clamp(fin(m.rearK, 0), 0, 1);
   P.t = t;
   // 걸음새 선택
   let gait = 'stand';
@@ -236,7 +236,7 @@ export function quadPose(m, dt, P, T) {
   else if (run) gait = 'gallop';
   else if (walk) gait = speedK > 0.55 ? 'trot' : 'walk';
   P.gait = gait;
-  const ph = m.phase ?? 0;
+  const ph = fin(m.phase, 0);
   const duty = gait === 'gallop' ? T.duty.gallop : gait === 'trot' ? T.duty.trot : T.duty.walk;
   const strideLen = gait === 'gallop' ? 110 : 70;
   const sweep = strideLen * duty * (gait === 'gallop' && T.gallop === 'trot' ? 0.8 : 1);
@@ -258,7 +258,7 @@ export function quadPose(m, dt, P, T) {
   S.sq = dt > 0 ? lerp(S.sq, sq, clamp(dt * 30, 0, 1)) : sq;
   bob += S.sq * 5;
   // 몸 기울기: 런타임 pitch (앞들기·공중·피격) + 걸음 흔들림
-  let pitch = m.pitch ?? -0.7 * rearK;
+  let pitch = fin(m.pitch, -0.7 * rearK);
   if (gait === 'walk') pitch += Math.sin(cyc * 2) * 0.02;
   else if (gait === 'gallop' && m.pitch == null) pitch += Math.sin(cyc) * 0.07;
   if (gait === 'swim') pitch -= 0.1;

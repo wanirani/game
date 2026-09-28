@@ -25,6 +25,17 @@ const SNOW = '#e4f6ff';
 const S = 1.12;                                   // the painted shroud ≈ the 72 px hurtbox (hem fades into mist)
 const CAST = 0.65;
 
+// hoisted warp callbacks (no per-frame closures); WW is set right before each warp
+const WW = { t: 0, mist: 0, td: 1, trail: 0, ph: 0 };
+const mistOff = (u) => {
+  const mist = WW.mist, k = WW.td / S;
+  _q[0] = (Math.sin(WW.t * 9 - u * 11) * 10 * mist - u * 16 * mist) * k; _q[1] = -u * mist * 10 * k; return _q;
+};
+const shroudOff = (u) => {
+  const w = Math.max(0, u - 0.22) / 0.78;
+  _q[0] = (-(w * w) * WW.trail - Math.sin(WW.ph - u * 5) * w * 3) * WW.td / S; _q[1] = Math.sin(WW.ph * 0.7 - u * 3) * w * 1.2 * WW.td; return _q;
+};
+
 /** snow-dissolve amount 0..1 (vanish: 0→1, appear: 1→0) */
 function mistOf(e) {
   if (e.anim === 'vanish') return clamp((e.animT ?? e.stateT ?? 0) / 0.3, 0, 1);
@@ -42,8 +53,10 @@ export function draw(ctx, e, world, o, rig) {
   const hurt = K.hurtOf(e), sq = K.squashK(e);
   const mist = mistOf(e);
   const bob = Math.sin(t * 2) * 3;
-  const lean = clamp(vx * 0.003, -0.2, 0.32) + cast * 0.16 - (hurt ? 0.28 : 0);
-  const ax = cast * 3 - (hurt ? 4 : 0), ay = -40 + bob;
+  // the cast lean eases back after the release (the AI returns to 'float' at 1.0 s; holding it until then snapped)
+  const castLean = casting ? (fired ? 1 - clamp((at - 0.72) / 0.26, 0, 1) : cast) : 0;
+  const lean = clamp(vx * 0.003, -0.2, 0.32) + castLean * 0.16 - (hurt ? 0.28 : 0);
+  const ax = castLean * 3 - (hurt ? 4 : 0), ay = -40 + bob;
   const breath = 1 + Math.sin(t * 1.7) * 0.02;
   const sx = S * (1 + sq * 0.12), sy = S * breath * (1 - sq * 0.1);
   if (e.dying > 0 && world) {
@@ -63,21 +76,17 @@ export function draw(ctx, e, world, o, rig) {
   K.pivotPos('body', 'a', 'top', ax, ay, lean, sx, sy, _q);
   const tx = _q[0], ty = _q[1];
   const ph = t * 3.8;
+  WW.t = t; WW.mist = mist; WW.td = rig.td; WW.trail = trail; WW.ph = ph;
   if (mist > 0.01) {
     // blown apart into snow: the bands shear sideways in a fast wave, rise and thin out
-    K.warpY('body', 'top', tx, ty - mist * 8, lean, sx * (1 + mist * 0.15), sy, K.nStrips(14), (u) => {
-      _q[0] = (Math.sin(t * 9 - u * 11) * 10 * mist - u * 16 * mist) * rig.td / S; _q[1] = -u * mist * 10 * rig.td / S; return _q;
-    }, (1 - mist) ** 1.5, 'base', 0);
+    K.warpY('body', 'top', tx, ty - mist * 8, lean, sx * (1 + mist * 0.15), sy, K.nStrips(14), mistOff, (1 - mist) ** 1.5, 'base', 0);
   } else {
     if (!o.flash && K.lod() > 1) {   // additive frost glow pass (high quality only)
       const gco = ctx.globalCompositeOperation; ctx.globalCompositeOperation = 'lighter';
       K.put('body', 'top', tx - trail * 0.25, ty - 1, lean, sx * 1.04, sy * 1.02, 0.16 + 0.22 * cast + (hurt ? 0.2 : 0), 'glow');
       ctx.globalCompositeOperation = gco;
     }
-    K.warpY('body', 'top', tx, ty, lean, sx, sy, K.nStrips(10), (u) => {
-      const w = Math.max(0, u - 0.22) / 0.78;
-      _q[0] = (-(w * w) * trail - Math.sin(ph - u * 5) * w * 3) * rig.td / S; _q[1] = Math.sin(ph * 0.7 - u * 3) * w * 1.2 * rig.td; return _q;
-    }, 1, 'base', 0);
+    K.warpY('body', 'top', tx, ty, lean, sx, sy, K.nStrips(10), shroudOff, 1, 'base', 0);
   }
   const vis = 1 - mist;
   // long skeletal arm from the sleeve: hangs and sways; reaches for the player while casting; recoils when hit

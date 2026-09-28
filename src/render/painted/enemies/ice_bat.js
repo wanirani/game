@@ -45,7 +45,9 @@ export function draw(ctx, e, world, o, rig) {
   if (!o.flash && shiver) {
     // the icicle grows under the chin; its glint peaks on the drop frame
     K.begin(ctx, rig, 0);
-    K.pivotPos('fly', 'a', 'chin', 0, -13, 0, 1, 1, _q);
+    // follow the body drawBat just posed (bob and squash on the fast wingbeat) so the icicle stays on the chin
+    const A = Math.sin(PX.t * 19), sq = K.squashK(PX);
+    K.pivotPos(rig.parts.fly ? 'fly' : 'body', 'a', 'chin', 0, -13 - A * 2.2, 0, 1 - A * 0.03 + sq * 0.12, 1 + A * 0.05 - sq * 0.12, _q);
     icicle(ctx, _q[0], _q[1] + 1, 2 + 7 * sk, sk);
     glint(ctx, _q[0], _q[1] + 3 + 6 * sk, 3 + 5 * sk, '#e8fbff', sk > 0.45 ? (sk - 0.45) / 0.55 : 0);
     K.end();

@@ -239,7 +239,7 @@ export function drawGuardian(ctx, g, world, opts = {}) {
     let ok = false;
     try { ok = drawPaintedDirect(g, ctx, world, id); } catch { ok = false; }
     ctx.restore();
-    PO.world = null;
+    PO.world = null; PO.opts = null; PO.cam = null;
     if (ok) return true;
     // 채색 그리기 실패 (레지스트리가 벡터로 되돌렸다) → 절차 그림
   } else if (pr === 1) g._gvSeen = true;
@@ -249,7 +249,12 @@ export function drawGuardian(ctx, g, world, opts = {}) {
 export function drawGuardianProcedural(ctx, g, world, opts = {}) {
   const id = g?.id ?? g?.def?.id;
   const fa = GUARDIAN_DRAW_A[id];
-  if (fa) return fa(ctx, g, world, opts) !== false;
+  if (fa) {   // A 그림은 ctx 를 옮기고 돌린다 → B 와 같이 save/restore 로 감싸 호출 측 상태를 그대로 둔다
+    let r;
+    ctx.save();
+    try { r = fa(ctx, g, world, opts); } finally { ctx.restore(); }
+    return r !== false;
+  }
   const fb = GB.GUARDIAN_DRAW_B?.[id];
   if (typeof fb === 'function') {
     let r;

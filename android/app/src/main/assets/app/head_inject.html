@@ -1,13 +1,24 @@
-<style>#fsBtn{display:none!important}</style>
 <script>
 (function () {
-  // 안드로이드 앱 전용 조각 (AssetServer.java 가 index.html 의 </head> 바로 앞에 끼워 넣는다)
-  // - 앱은 이미 몰입형 전체화면이므로 브라우저용 전체화면 버튼(#fsBtn)은 숨긴다
-  // - 게임 파일은 모두 APK 안에 있으므로 서비스 워커(오프라인 캐시)는 쓰지 않는다 (저장공간 중복 방지)
+  // 안드로이드 앱 전용 조각 (AssetServer.java 가 index.html 의 </head> 바로 앞에 끼워 넣는다. 게임 모듈보다 먼저 실행된다)
+  // - {{CONFIG}} = assets/app/apk.json (tools/apk/pack_web.py 가 만든다): {api:{origin,aliases}, assets:'full'|'lo'|'lo+td', web:{…}}
+  // - 앱은 이미 몰입형 전체화면이다: 캔버스 패드의 ⛶ 버튼은 platform.canFullscreen() 이 __BN_APP 을 보고 숨긴다
+  // - 게임 파일은 모두 APK 안에 있으므로 서비스 워커(오프라인 캐시)는 쓰지 않는다 (platform.js 도 __BN_APP 이면 등록하지 않는다)
   // - navigator.vibrate 는 네이티브 진동으로 연결한다 (WebView 버전에 따라 동작하지 않는 경우 대비)
+  // - 안전 영역 window.__BN_INSETS / 화면 키보드 window.__BN_IME 의 첫 값 (바뀌면 MainActivity 가 다시 넣고 'bn-insets' 를 보낸다)
+  // - /api/* 요청은 BNAndroid.apiStash 로 본문·헤더를 맡기고 같은 출처로 보낸다 → AssetServer 의 프록시가 계정 서버로 전달 (docs/ACCOUNTS.md §1)
+  var C = {{CONFIG}};
   var root = document.documentElement;
   root.classList.add('bn-app', 'bn-android');
-  window.__BN_APP = { platform: 'android', version: '{{VERSION}}' };
+  var B = window.BNAndroid || null;
+  var api = C && C.api && typeof C.api.origin === 'string' && C.api.origin ? C.api : null;
+  window.__BN_APP = {
+    platform: 'android',
+    version: '{{VERSION}}',
+    assets: (C && C.assets) || 'full',
+    apiProxy: !!(api && B && typeof B.apiStash === 'function'),
+    apiBase: api ? '/api' : null,
+  };
   try {
     var sw = navigator.serviceWorker;
     if (sw) {
@@ -16,7 +27,6 @@
     }
   } catch (e) {}
   try {
-    var B = window.BNAndroid;
     if (B && B.vibrate) {
       Object.defineProperty(navigator, 'vibrate', {
         configurable: true, writable: true,
@@ -24,5 +34,70 @@
       });
     }
   } catch (e) {}
+  var readJson = function (name) {
+    try { var s = B && typeof B[name] === 'function' ? B[name]() : ''; return s ? JSON.parse(s) : null; } catch (e) { return null; }
+  };
+  var ins = readJson('insets');
+  if (ins && typeof ins === 'object') { window.__BN_INSETS = ins; try { window.dispatchEvent(new Event('bn-insets')); } catch (e) {} }
+  var ime = readJson('ime');
+  if (ime && typeof ime === 'object') window.__BN_IME = ime;
+
+  // ── /api 프록시 ──
+  // WebView 는 가로챈 요청의 본문을 네이티브에 넘겨주지 않는다. 그래서 요청마다 id 를 만들어 본문·헤더를 먼저 맡기고(apiStash),
+  // 같은 출처의 /api/…?__bnreq=id 로 보낸다. 같은 출처 '/api/…' 와 계정 서버 주소(api.origin, aliases = src/core/cloud.js 의 APP_API_BASE) 모두 이 길로 간다.
+  // 프록시가 서버에 닿지 못하면(X-BN-Proxy-Error) 웹에서 서버에 못 닿았을 때처럼 네트워크 오류(TypeError)로 던진다.
+  if (api && window.fetch && B && typeof B.apiStash === 'function') {
+    var nativeFetch = window.fetch;
+    var hosts = [location.origin, api.origin].concat(Array.isArray(api.aliases) ? api.aliases : []);
+    var MAX = 4 * 1024 * 1024;
+    var apiPath = function (u) {
+      var x;
+      try { x = new URL(u, location.href); } catch (e) { return null; }
+      if (hosts.indexOf(x.origin) < 0 || !/^\/api(\/|$)/.test(x.pathname)) return null;
+      return x;
+    };
+    var rid = function () {
+      var a = new Uint8Array(16), s = '';
+      crypto.getRandomValues(a);
+      for (var i = 0; i < a.length; i++) s += (a[i] + 256).toString(16).slice(1);
+      return s;
+    };
+    var bodyText = function (b, req) {
+      if (b == null) return req && req.body ? req.clone().text() : null;
+      if (typeof b === 'string') return b;
+      if (typeof URLSearchParams !== 'undefined' && b instanceof URLSearchParams) return b.toString();
+      if (typeof Blob !== 'undefined' && b instanceof Blob) return b.text();
+      if (b instanceof ArrayBuffer || ArrayBuffer.isView(b)) return new TextDecoder().decode(b);
+      throw new TypeError('앱의 /api 요청은 글 본문만 보낼 수 있습니다');
+    };
+    var wrapped = function (input, init) {
+      var req = typeof Request !== 'undefined' && input instanceof Request ? input : null;
+      var x = apiPath(req ? req.url : String(input));
+      if (!x) return nativeFetch.apply(window, arguments);
+      var o = init || {};
+      return Promise.resolve()
+        .then(function () { return bodyText(o.body !== undefined ? o.body : null, o.body === undefined ? req : null); })
+        .then(function (text) {
+          var method = String(o.method || (req && req.method) || 'GET').toUpperCase();
+          var h = new Headers(o.headers || (req ? req.headers : undefined));
+          var lines = [];
+          h.forEach(function (v, k) { lines.push(k + ': ' + v); });
+          if (text != null && text.length > MAX) throw new TypeError('요청 본문이 너무 큽니다');
+          var id = rid();
+          if (!B.apiStash(id, method, lines.join('\n'), text == null ? null : String(text))) throw new TypeError('Failed to fetch');
+          var q = x.search ? x.search + '&' : '?';
+          return nativeFetch.call(window, x.pathname + q + '__bnreq=' + id, {
+            method: method, headers: h, cache: 'no-store', credentials: 'omit', referrerPolicy: 'no-referrer',
+            redirect: o.redirect || (req && req.redirect) || 'follow', signal: o.signal || (req && req.signal) || undefined,
+          });
+        })
+        .then(function (res) {
+          var pe = res.headers.get('X-BN-Proxy-Error');
+          if (pe) throw new TypeError('Failed to fetch (' + pe + ')');
+          return res;
+        });
+    };
+    try { Object.defineProperty(window, 'fetch', { configurable: true, writable: true, value: wrapped }); } catch (e) { window.fetch = wrapped; }
+  }
 })();
 </script>

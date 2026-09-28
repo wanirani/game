@@ -30,8 +30,11 @@ function pose(e) {
   else if (an === 'land') { const k = 1 - clamp(at / 0.22, 0, 1); sx = 1 + 0.35 * k * (1 + Math.sin(at * 40) * 0.2); sy = 1 - 0.3 * k; splat = k; }
   else { sx = 1 + Math.sin(t * 4) * 0.05; sy = 1 - Math.sin(t * 4) * 0.05; }
   if (e.onGround === false && an !== 'jump') { air = true; lift = 2; }
-  return { t, sx, sy, lift, air, flare, splat };
+  const q = Q;   // reused every frame (no per-frame allocation)
+  q.t = t; q.sx = sx; q.sy = sy; q.lift = lift; q.air = air; q.flare = flare; q.splat = splat;
+  return q;
 }
+const Q = { t: 0, sx: 1, sy: 1, lift: 0, air: false, flare: 0, splat: 0 };
 
 function die(e, world, rig, q) {
   e._pcorpse = true;

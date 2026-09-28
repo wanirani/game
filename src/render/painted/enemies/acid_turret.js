@@ -21,8 +21,11 @@ function pose(e) {
   const t = e.t ?? 0, an = e.anim, at = e.animT ?? 0;
   const ck = an === 'charge' ? clamp(at / (e.params?.charge ?? 0.8), 0, 1) : 0;
   const fk = an === 'fire' ? 1 - clamp(at / 0.4, 0, 1) : 0;
-  return { t, ck, fk, shake: an === 'charge' ? Math.sin(t * 60) * ck * 1.2 : 0, sq: 1 - fk * 0.06 };
+  const q = Q;   // reused every frame (no per-frame allocation)
+  q.t = t; q.ck = ck; q.fk = fk; q.shake = an === 'charge' ? Math.sin(t * 60) * ck * 1.2 : 0; q.sq = 1 - fk * 0.06;
+  return q;
 }
+const Q = { t: 0, ck: 0, fk: 0, shake: 0, sq: 1 };
 
 function die(e, world, rig, q) {
   e._pcorpse = true;

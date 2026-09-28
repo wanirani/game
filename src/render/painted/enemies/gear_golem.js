@@ -25,7 +25,39 @@ export const spec = {
 const P = new Placer();
 const _q = [0, 0], _f = [0, 0], _s = [0, 0], _c = [0, 0], _st = [0, 0];
 const VARS = [['base', 'deep'], ['dmg1', 'deep_dmg1'], ['dmg2', 'deep_dmg2']];
-const Q = {};
+const Q = {}, LO = { hx: 0, hy: 0, tr: 0 };   // pose / layout results, reused every frame
+// Piston punch: the forearm shoots out along its axis on a telescoping rod (outer brass sleeve + inner steel ram) so the
+// fist reaches the AI's strike box (melee + 14 px ahead at −78…−38; the spark puff lands at melee + 10). PISTON = rod
+// length at full extension; the rod is procedural, drawn between the body and the near forearm.
+const PISTON = 84;
+let CTX = null, FLASHED = false, RX = 0, RY = 0, RD = 0, RE = 0;
+let NX = 0, NY = 0;
+/** one rod section: dark outline, body colour, a thin highlight on the upper edge */
+function seg(ctx, x0, y0, x1, y1, w, col, hi) {
+  ctx.strokeStyle = '#140c06'; ctx.lineWidth = w + 2;
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+  ctx.strokeStyle = FLASHED ? '#f4f0ec' : col; ctx.lineWidth = w;
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+  if (!FLASHED) {
+    const o = -w * 0.28;
+    ctx.strokeStyle = hi; ctx.lineWidth = w * 0.22;
+    ctx.beginPath(); ctx.moveTo(x0 + NX * o, y0 + NY * o); ctx.lineTo(x1 + NX * o, y1 + NY * o); ctx.stroke();
+  }
+}
+const ROD = () => {
+  if (RE < 1) return;
+  const ctx = CTX, c = Math.cos(RD), s = Math.sin(RD);
+  const lx = RX + c * (RE + 5), ly = RY + s * (RE + 5), sl = RE * 0.5 + 3, sx = RX + c * sl, sy = RY + s * sl;
+  NX = -s; NY = c;   // side normal (highlight on the upper edge)
+  K.local();
+  ctx.lineCap = 'butt';
+  seg(ctx, RX, RY, lx, ly, 3.8, '#8e949c', '#e8ecf2');          // inner steel ram (into the forearm)
+  seg(ctx, RX, RY, sx, sy, 6.6, '#7a5a2e', '#e0b870');          // outer brass sleeve out of the elbow gear
+  // collar at the end of the sleeve
+  ctx.strokeStyle = '#140c06'; ctx.lineWidth = 2.6;
+  ctx.beginPath(); ctx.moveTo(sx + NX * 4.4, sy + NY * 4.4); ctx.lineTo(sx - NX * 4.4, sy - NY * 4.4); ctx.stroke();
+  ctx.strokeStyle = FLASHED ? '#f4f0ec' : '#c89a4a'; ctx.lineWidth = 1.4; ctx.stroke();
+};
 
 function pose(e) {
   const t = e.t ?? 0, an = e.anim, at = e.animT ?? 0;
@@ -45,8 +77,10 @@ function pose(e) {
       const k = ease.outCubic(clamp(at / wu, 0, 1));
       q.aN = lerp(1.16, 2.5, k); q.lean = lerp(0.02, -0.14, k); q.heat = 0.5 + 0.5 * k; q.tele = k;
     } else {
+      // the ram fires out level with the strike box (forearm axis ≈ horizontal after the lean), holds a beat, retracts
       const k = ease.outExpo(clamp((at - wu) / 0.07, 0, 1)), back = clamp((at - wu - 0.3) / 0.3, 0, 1);
-      q.aN = lerp(lerp(2.5, 0.02, k), 1.16, back); q.ext = 9 * k * (1 - back); q.lean = lerp(-0.14, 0.22, k) * (1 - back);
+      const retract = ease.inOutCubic(clamp((at - wu - 0.14) / 0.2, 0, 1));
+      q.aN = lerp(lerp(2.5, -0.19, k), 1.16, back); q.ext = PISTON * k * (1 - retract); q.lean = lerp(-0.14, 0.22, k) * (1 - back);
       q.hx = 5 * k * (1 - back); q.heat = 1 - back * 0.5; q.flash = clamp(1 - (at - wu) / 0.2, 0, 1);
       q.lN = 0.3 * (1 - back); q.lF = -0.25 * (1 - back);
     }
@@ -79,11 +113,16 @@ function layout(e, q, vN, vF) {
   P.place('leg', hx - 5, -lp.len - q.liftN, q.lN, vN);
   P.place('pelvis', hx, -lp.len - 10 + q.bob * 0.5, 0, vN);
   P.place('body', hx, hy, tr, vN, 1, 1, 'hip');
-  // near forearm: turns on the elbow gear, the piston pushes it out along its axis
+  // near forearm: turns on the elbow gear, the piston pushes it out along its axis on the telescoping rod
   const d = q.aN + tr;
+  RX = _s[0]; RY = _s[1]; RD = d; RE = q.ext;
+  if (q.ext >= 1) P.place('farm', _s[0], _s[1], 0, vN).fx = ROD;
   P.place('farm', _s[0] + Math.cos(d) * q.ext, _s[1] + Math.sin(d) * q.ext, d - fp.ang, vN);
   _f[0] = _s[0] + Math.cos(d) * (fp.len + q.ext); _f[1] = _s[1] + Math.sin(d) * (fp.len + q.ext);
-  return { hx, hy, tr };
+  // Placer slots are reused frame to frame: only the procedural rod stays out of the corpse
+  for (let i = 0; i < P.n; i++) P.L[i].noCorpse = P.L[i].fx === ROD;
+  LO.hx = hx; LO.hy = hy; LO.tr = tr;
+  return LO;
 }
 
 function die(e, world, rig, vN) {
@@ -107,6 +146,7 @@ export function draw(ctx, e, world, o, rig) {
   }
   const sq = K.squashK(e);
   if (sq > 0) ctx.scale(1 + 0.05 * sq, 1 - 0.05 * sq);
+  CTX = ctx; FLASHED = !!o.flash;
   K.begin(ctx, rig, K.flashK(e, o));
   K.shadow(32, 0.5);
   const L = layout(e, q, vN, vF);

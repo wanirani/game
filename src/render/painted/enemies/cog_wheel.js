@@ -26,7 +26,9 @@ function die(e, world, rig, R, rot) {
 
 export function draw(ctx, e, world, o, rig) {
   const t = e.t ?? 0, an = e.anim, at = e.animT ?? 0;
-  const R = (e.def?.size?.h ?? 44) / 2, rot = e.rot ?? t;
+  // e.rot is the world roll angle (distance / radius); the local frame is mirrored when facing left, so the spin is
+  // mirrored back with the facing sign — otherwise a wheel rolling left turns clockwise (skids backwards)
+  const R = (e.def?.size?.h ?? 44) / 2, rot = (e.rot ?? t) * (e.facing < 0 ? -1 : 1);
   const wind = an === 'wind', fast = Math.abs(e.vx ?? 0) > 180;
   const heat = wind ? clamp(at / 0.45, 0, 1) : fast ? 0.7 : 0.35;
   if (e.dying > 0 && world) { if (!e._pcorpse) die(e, world, rig, R, rot); return; }

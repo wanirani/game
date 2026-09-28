@@ -1,0 +1,197 @@
+{
+ "id": "vampire_bride",
+ "tier": "T2",
+ "srcTD": 4,
+ "note": "ART-ENEMY-5: one Kling parts sheet (bride_sheet, image-conditioned on bride_ref): calm head + screaming head (tiara, veil sides, black hair, lace collar), the whole gown from the neckline down to the bloody hem dissolving in red mist, the torn lace veil, one long gloved arm with black claws (split at the elbow), the bouquet of withered black roses.",
+ "sources": {
+  "s": {
+   "raw": "bride_sheet.webp",
+   "file": "a5_bride_sheet.png",
+   "k": 0.05
+  },
+  "x": {
+   "raw": "bride_scream.webp",
+   "file": "a5_bride_scream.png",
+   "k": 0.05,
+   "mode": "rembg"
+  }
+ },
+ "parts": {
+  "head": {
+   "src": "s",
+   "box": [
+    30,
+    10,
+    660,
+    710
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     350,
+     640
+    ],
+    "eyes": [
+     350,
+     330
+    ],
+    "mouth": [
+     350,
+     400
+    ],
+    "top": [
+     350,
+     60
+    ]
+   }
+  },
+  "scream": {
+   "src": "x",
+   "box": [
+    1680,
+    10,
+    2290,
+    710
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1950,
+     640
+    ],
+    "eyes": [
+     1950,
+     300
+    ],
+    "mouth": [
+     1950,
+     420
+    ],
+    "top": [
+     1950,
+     60
+    ]
+   }
+  },
+  "gown": {
+   "src": "s",
+   "box": [
+    0,
+    520,
+    1490,
+    1720
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1140,
+     560
+    ],
+    "hem": [
+     900,
+     1620
+    ],
+    "waist": [
+     1110,
+     760
+    ]
+   }
+  },
+  "veil": {
+   "src": "s",
+   "box": [
+    590,
+    110,
+    1690,
+    500
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1650,
+     190
+    ]
+   }
+  },
+  "uarm": {
+   "src": "s",
+   "box": [
+    1500,
+    630,
+    1740,
+    1010
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1600,
+     680
+    ],
+    "b": [
+     1605,
+     990
+    ]
+   }
+  },
+  "farm": {
+   "src": "s",
+   "box": [
+    1490,
+    960,
+    1760,
+    1560
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1605,
+     990
+    ],
+    "b": [
+     1605,
+     1420
+    ],
+    "tip": [
+     1600,
+     1540
+    ]
+   }
+  },
+  "claw": {
+   "src": "s",
+   "box": [
+    1700,
+    820,
+    2210,
+    1000
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1730,
+     880
+    ],
+    "b": [
+     2180,
+     900
+    ]
+   }
+  },
+  "bouquet": {
+   "src": "s",
+   "box": [
+    1780,
+    1040,
+    2290,
+    1660
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     2020,
+     1450
+    ]
+   }
+  }
+ }
+}

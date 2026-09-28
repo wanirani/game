@@ -1,0 +1,21 @@
+{
+ "id": "void_demon",
+ "tier": "T3",
+ "srcTD": 4,
+ "note": "ART-ENEMY-5: one Kling parts sheet (void_sheet, image-conditioned on void_ref): the front body (horned head with white eyes and the faint event-horizon ring, spiked shoulders, a torso that is a window onto a violet starfield, dissolving into a mist tail), the long clawed arm from the side piece (split at the elbow) and the separate straight arm (far arm).",
+ "sources": {
+  "s": { "raw": "void_sheet.webp", "file": "a5_void_sheet.png", "k": 0.058 }
+ },
+ "parts": {
+  "body": { "src": "s", "box": [100, 30, 760, 1750], "keep": "largest",
+            "piv": { "a": [430, 560], "top": [430, 60], "eyes": [452, 440], "shN": [640, 610], "shF": [240, 610], "core": [440, 820], "tail": [470, 1700] } },
+  "uarm": { "src": "s", "box": [1400, 590, 1600, 930], "keep": "largest",
+            "poly": [[1420, 600], [1495, 592], [1545, 760], [1590, 830], [1590, 930], [1480, 930], [1470, 830], [1420, 700]],
+            "piv": { "a": [1460, 620], "b": [1515, 900] } },
+  "farm": { "src": "s", "box": [1440, 870, 1810, 1510], "keep": "largest",
+            "poly": [[1470, 880], [1590, 880], [1600, 1000], [1640, 1170], [1790, 1250], [1810, 1510], [1470, 1510], [1490, 1280], [1560, 1180], [1500, 1000]],
+            "piv": { "a": [1515, 900], "b": [1620, 1230], "tip": [1690, 1460] } },
+  "arm2": { "src": "s", "box": [1860, 370, 2230, 1590], "keep": "largest",
+            "piv": { "a": [2040, 410], "b": [2010, 1300], "tip": [2000, 1550] } }
+ }
+}

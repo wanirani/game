@@ -13,7 +13,7 @@
 //
 // 규칙: 그리기에서 Math.random · world.fx.emit 을 쓰지 않는다 (불꽃·연기는 시간 함수로 그린다). 그라디언트는 지역 좌표에서
 // 한 번 만들어 캐시한다 (캔버스 그라디언트는 채울 때의 변환을 따른다). 품질: high 전부 · medium 불꽃 수 절반 · low 눈빛만.
-import { clamp, lerp, TAU, shade, rgba } from '../core/math.js';
+import { clamp, lerp, TAU, shade } from '../core/math.js';
 import { game } from '../core/game.js';
 import * as RIG from './mount_rig.js';
 import * as MB from './mounts_b.js';

@@ -17,15 +17,16 @@
 //   바닥 위 250–290 · 400–460px (11행 발판과 7행 근처) — 바닥에 서서 세로 광선 틈을 찾으면 된다. erase 띠는 플레이어 높이 90px.
 //   collapse: 1초 예고 뒤 벽이 80px/s 로 경기장 가운데 약 23칸(양쪽 10칸)까지 조여 오고 12초 뒤 열린다 (13행 디딤돌은 벽 속).
 //   maw: 흡입(500px/s², 최고 230px/s — 달리기 245–305px/s 보다 느리다) 2.5초 → 0.65초 예고 뒤 앞쪽 300×200 물기.
-// 그림: 벡터 (2부 기준 — 채색 아트는 W3 ART-BOSS-8). 보스 등장 때(setup) 한 번 굽는 것: 도자기 가면(흰 판·색 번짐 2장) ·
+// 그림: 채색 퍼핏 src/render/painted/bosses/b_nihil.js (ART-BOSS-8 — 준비되면 컬링 대리 개체가 대신 그린다, ?painted=0 이면 아래 벡터).
+//   벡터(대체 그림): 보스 등장 때(setup) 한 번 굽는 것: 도자기 가면(흰 판·색 번짐 2장) ·
 //   가면 위로 스치는 얼굴 7장(드라큘라·혼돈·나르키사·지즈·몰록·마라·사신) · 손바닥 눈알 · 메아리 실루엣 4장 · 흰 불꽃 코로나 ·
 //   강착원반 · 별밤 무늬(패턴). 매 프레임: 별밤을 품은 두건 실루엣(프리즘 윤곽) · 빛의 갈비뼈 · 피해만큼 뜨는 작은 눈 수십 개 ·
 //   이 빠진 후광 · 공허의 촉수 · 두 개의 거대한 도자기 손(마디 셋 손가락, 흑요석 손톱, 빛이 새는 금, 손바닥 눈) ·
 //   P3 찢어진 아가리(별 조각 이빨 · 강착원반 · 무너지는 별 · 특이점) · P4 검은 태양. 싸움 중 새 캔버스 0 (MASTER_PLAN §5.2):
 //   발광(glowSprite) · 조명 색광(lighting) · 연기 파티클(hitfx soft) 색도 등장 때 미리 굽는다.
-// 채색 아트(ART-BOSS-8)가 읽을 상태: bx, by (가면 가운데; by 에 bob 을 더해 그린다) · face (−1..1, 몸 좌우 뒤집힘) · formPhase ·
-//   introK · glitch · tear (P3 찢김 0~1) · mawK (아가리 열림 0~1) · sunK (P4 0~1) · implode (final 빨려듦 0~1) · tilt · look ·
-//   echoKey/echoA · faceIdx/faceA · hands[{x, y, rot, s, curl, spread, point, eye(0~1), side, mode}] · dieT
+// 채색 아트(ART-BOSS-8)가 읽는 상태 (읽기만): bx, by (가면 가운데; by 에 bob 을 더해 그린다) · face (−1..1, 몸 좌우 뒤집힘) · sxOf() · formPhase ·
+//   introK · glitch · tear (P3 찢김 0~1) · mawK (아가리 열림 0~1) · sunK (P4 0~1) · implode (final 빨려듦 0~1) · tilt · look · lookY ·
+//   echoKey/echoA/echoFlick · faceIdx/faceA · hands[{i, x, y, rot, s, curl, spread, point, eye(0~1), side, mode, a, hitT}] · _lastHit · coreY() · dieT
 import { BossC, telegraph, warnText, strikeRect, strikeLine, strikeCircle, strikeColumn, strikeFloor, pullField, wallsClose, wallsOpen, wallsX, killTransients, darken, screenTint } from './c_common.js';
 import { PI, R, LG, RG, glow, glowE, glowSprite, warnRect, warnLine, warnCircle, impact, boltPath } from './b_common.js';
 import { Entity } from '../entity.js';
@@ -33,6 +34,8 @@ import { T } from '../../core/physics.js';
 import { audio } from '../../core/audio.js';
 import { TAU, clamp, lerp, rand, approach, rgba, wrapAngle } from '../../core/math.js';
 import * as HFX from '../../render/hitfx.js';
+import { registerPainted, hasPainted } from '../../render/painted/registry.js';   // [hook:art-boss-8] 채색 퍼핏 등록 (그리기 전용)
+import { bosses as ART8 } from '../../render/painted/reg/art-boss-8.js';   // [hook:art-boss-8]
 
 // ───────────────────────── 색 · 치수 ─────────────────────────
 const TS = 48;   // 타일 (core/game.js TILE — 모듈 최상위에서 import 값을 읽지 않는다)
@@ -504,6 +507,8 @@ function mkHand(i, side) {
 
 export class Nihil extends BossC {
   setup() {
+    // [hook:art-boss-8] 모음(reg/index.js)에 art-boss-8 줄이 아직 없으면 여기서 한 번 등록 (이미 있으면 아무것도 안 함). BossB.init 의 preloadPainted 보다 먼저 돈다
+    if (!hasPainted?.('b_nihil') && ART8?.b_nihil) registerPainted?.('b_nihil', { kind: 'boss', importer: ART8.b_nihil });   // [hook:art-boss-8]
     ensureArt(this.world);
     tabs();
     this.noGravity = true;

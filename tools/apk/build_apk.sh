@@ -3,12 +3,18 @@
 #  블러드 녹턴 — 안드로이드 APK 빌드 (Gradle 없이: aapt2 + javac + d8 + zipalign + apksigner)
 # ══════════════════════════════════════════════════════════════════════════════
 #
-#  사용법
-#    tools/apk/build_apk.sh             빌드 → dist/BloodNocturne.apk (+ 서명/정렬/내용물 검증)
+#  사용법 (먼저 웹 배포 빌드: node tools/deploy/build_web.mjs → dist/web)
+#    tools/apk/build_apk.sh             빌드 → dist/BloodNocturne.apk (+ 서명/정렬/권한/크기/내용물 검증)
 #    tools/apk/build_apk.sh --verify    빌드 후 헤드리스 부팅 검증(tools/apk/verify_apk.mjs)까지 실행
 #    tools/apk/build_apk.sh --verify-only   이미 만든 APK 로 검증만
 #
 #  필요한 것: bash, curl, unzip, zip, python3(+Pillow), JDK 17+ (java/javac/jar/keytool), node(--verify 시)
+#
+#  APK 에 들어가는 웹 파일 = dist/web (tools/deploy/build_web.mjs 결과: 번들·lo/ 변형·글꼴) − sw.js − downloads/ − _redirects
+#    (platform §9.4-4, MASTER_PLAN §1.20). tools/apk/pack_web.py 가 꾸린다.
+#  크기 예산 45 MB (채색 그림 포함): 넘으면 휴대폰 밀도 단계로 — lo (bg/cg/portraits 원본 대신 assets/lo 사본) → lo+td (채색 아틀라스 0.75배).
+#    서명한 APK 가 예산을 넘으면 빌드 실패.
+#  계정 API: 앱 안의 /api/* 는 AssetServer 프록시가 tools/apk/api_origin.txt 의 사이트로 보낸다 (docs/ACCOUNTS.md §1).
 #  Android SDK 가 없으면 $ANDROID_HOME(기본 /root/android-sdk)에 자동 설치한다:
 #    commandlinetools → sdkmanager → platform-tools, build-tools;34.0.0, platforms;android-34 (라이선스 자동 동의)
 #
@@ -35,10 +41,13 @@
 #    ANDROID_HOME   SDK 위치 (기본 /root/android-sdk)     BUILD_TOOLS  (기본 34.0.0)
 #    KEYSTORE       키스토어 경로                          KEYSTORE_PROPS  비밀번호 파일 경로
 #    VERSION_NAME / VERSION_CODE
+#    WEB_DIR        웹 배포 빌드 폴더 (기본 dist/web)
+#    APK_BUDGET_MB  APK 크기 예산 (기본 45)                APK_ASSETS  auto(기본) | full | lo | lo+td (단계 강제)
+#    API_ORIGIN     계정 서버 주소 (기본: tools/apk/api_origin.txt)
 #
-#  앱 구조: android/app/src/main/ (AndroidManifest.xml, java/…/MainActivity.java, AssetServer.java, res/, assets/app/)
-#    게임 파일(index.html, manifest.webmanifest, sw.js, css/, src/, assets/)은 APK 의 assets/www/ 에 들어가고
-#    WebView 가 https://appassets.androidplatform.net/index.html 가상 출처로 불러온다.
+#  앱 구조: android/app/src/main/ (AndroidManifest.xml, java/…/MainActivity.java, AssetServer.java, ApiProxy.java, WebViewCheck.java, res/, assets/app/)
+#    게임 파일은 APK 의 assets/www/ 에 들어가고 WebView 가 https://appassets.androidplatform.net/index.html 가상 출처로 불러온다.
+#    assets/app/head_inject.html (앱 전용 조각) · assets/app/apk.json (계정 서버 주소, 에셋 단계 — pack_web.py 가 쓴다)
 # ══════════════════════════════════════════════════════════════════════════════
 set -euo pipefail
 
@@ -57,10 +66,14 @@ B="$OUT/apk-build"
 APK="$OUT/BloodNocturne.apk"
 KS="${KEYSTORE:-$ROOT/tools/android/release.keystore}"
 KS_PROPS="${KEYSTORE_PROPS:-$ROOT/tools/android/keystore.properties}"
-# APK 에 넣을 웹 게임 파일 (tools/, docs/, node_modules/ 등은 제외)
-WEB_FILES=(index.html manifest.webmanifest sw.js css src assets)
-# 이미 압축된 형식은 무압축 저장 (빠른 읽기 + openFd 로 길이/Range 지원)
+# APK 에 넣을 웹 게임 파일: 웹 배포 빌드 결과 (sw.js · downloads/ · _redirects 는 pack_web.py 가 뺀다)
+WEB_DIR="${WEB_DIR:-$ROOT/dist/web}"
+BUDGET_MB="${APK_BUDGET_MB:-45}"
+ASSET_STAGE="${APK_ASSETS:-auto}"
+# 이미 압축된 형식은 무압축 저장 (빠른 읽기 + openFd 로 길이/Range 지원) — pack_web.py 의 NO_COMPRESS 와 같게
 NO_COMPRESS=(png webp jpg jpeg gif avif mp3 ogg oga opus m4a aac mp4 webm woff woff2)
+# 허용 권한 (platform WP-9 acceptance 1)
+ALLOWED_PERMS=("android.permission.INTERNET" "android.permission.VIBRATE")
 
 say() { printf '\033[1;31m▶\033[0m %s\n' "$*"; }
 die() { printf '\033[1;41m 오류 \033[0m %s\n' "$*" >&2; exit 1; }
@@ -70,7 +83,7 @@ case "${1:-}" in
   "") ;;
   --verify) MODE="build+verify" ;;
   --verify-only) MODE="verify" ;;
-  -h|--help) sed -n '2,45p' "$0"; exit 0 ;;
+  -h|--help) sed -n '2,/^set -euo/p' "$0" | sed '$d'; exit 0 ;;
   *) die "알 수 없는 옵션: $1 (--verify, --verify-only, --help)" ;;
 esac
 
@@ -152,26 +165,30 @@ fi
 [[ "$VC" =~ ^[0-9]+$ ]] || die "VERSION_CODE 는 정수여야 합니다: $VC"
 say "버전 $VN (code $VC) · build-tools $BT_VER · $PLATFORM · minSdk $MIN_SDK · targetSdk $TARGET_SDK"
 
-# ─── 4. 작업 폴더 초기화 · 웹 게임 파일 복사 ────────────────────────────────
+# ─── 4. 작업 폴더 초기화 · 웹 배포 빌드(dist/web) 꾸리기 ────────────────────
+[[ -f "$WEB_DIR/index.html" && -f "$WEB_DIR/build-info.js" ]] \
+  || die "웹 배포 빌드가 없습니다: $WEB_DIR (먼저 node tools/deploy/build_web.mjs)"
+# 소스가 웹 빌드보다 새로우면 알린다 (APK 가 낡은 게임을 싣지 않게)
+NEWER="$(find "$ROOT/src" "$ROOT/css" "$ROOT/assets" "$ROOT/index.html" -type f -newer "$WEB_DIR/build-info.js" \
+  ! -path '*/.*' ! -name '*.md' ! -name '*.py' 2>/dev/null | head -3 || true)"
+if [[ -n "$NEWER" ]]; then
+  printf '\033[1;33m  경고\033[0m 웹 빌드보다 새로운 소스가 있습니다 (예: %s) — 최신 게임을 넣으려면 node tools/deploy/build_web.mjs 를 다시 실행하세요\n' \
+    "$(echo "$NEWER" | head -1 | sed "s#^$ROOT/##")"
+fi
 rm -rf "${B:?}"
-mkdir -p "$B/assets/www" "$B/res-gen" "$B/compiled" "$B/gen" "$B/classes" "$B/dex"
-present=()
-for f in "${WEB_FILES[@]}"; do
-  if [[ -e "$ROOT/$f" ]]; then present+=("$f")
-  elif [[ "$f" == "sw.js" ]]; then :
-  else die "웹 게임 파일이 없습니다: $f"; fi
-done
-say "웹 게임 파일 복사: ${present[*]}"
-tar -C "$ROOT" -h \
-  --exclude='.*' --exclude='__pycache__' --exclude='*.py' --exclude='*.pyc' \
-  --exclude='*.blend' --exclude='*.blend1' --exclude='*.psd' --exclude='*.kra' --exclude='*.xcf' \
-  --exclude='*.md' --exclude='*.log' --exclude='Thumbs.db' --exclude='desktop.ini' \
-  -cf - "${present[@]}" | tar -C "$B/assets/www" -xf -
+mkdir -p "$B/assets" "$B/res-gen" "$B/compiled" "$B/gen" "$B/classes" "$B/dex"
 cp -R "$APP_DIR/assets/." "$B/assets/"          # app/head_inject.html (앱 전용 조각)
-[[ -f "$B/assets/www/index.html" ]] || die "index.html 복사 실패"
+say "웹 파일 꾸리기: $(sed -n 's/.*"version":"\([^"]*\)".*/\1/p' "$WEB_DIR/build-info.js" | head -1) ← ${WEB_DIR#$ROOT/} (예산 ${BUDGET_MB} MB, 단계 ${ASSET_STAGE})"
+PACK_ARGS=(--web "$WEB_DIR" --out "$B/assets" --budget-mb "$BUDGET_MB" --assets "$ASSET_STAGE"
+  --origin-file "$ROOT/tools/apk/api_origin.txt" --cloud-js "$ROOT/src/core/cloud.js" --report "$B/pack_report.json")
+[[ -n "${API_ORIGIN:-}" ]] && PACK_ARGS+=(--origin "$API_ORIGIN")
+python3 "$ROOT/tools/apk/pack_web.py" "${PACK_ARGS[@]}" || die "웹 파일 꾸리기 실패 (tools/apk/pack_web.py)"
+[[ -f "$B/assets/www/index.html" && -f "$B/assets/app/apk.json" ]] || die "index.html / apk.json 이 없습니다"
+STAGE_USED="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["assets"])' "$B/assets/app/apk.json")"
+API_USED="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["api"]["origin"])' "$B/assets/app/apk.json")"
 WWW_COUNT="$(find "$B/assets/www" -type f | wc -l)"
 WWW_SIZE="$(du -sh "$B/assets/www" | cut -f1)"
-say "  → 파일 ${WWW_COUNT}개, ${WWW_SIZE}"
+say "  → 파일 ${WWW_COUNT}개, ${WWW_SIZE} (에셋 단계 ${STAGE_USED})"
 
 # ─── 5. 런처 아이콘 생성 (assets/ui/icon-512.png) ───────────────────────────
 say "런처 아이콘 생성"
@@ -228,6 +245,13 @@ grep -q "package: name='com.bloodnocturne.game' versionCode='$VC' versionName='$
 grep -q "sdkVersion:'$MIN_SDK'" "$B/badging.txt" || die "minSdk 불일치"
 grep -q "targetSdkVersion:'$TARGET_SDK'" "$B/badging.txt" || die "targetSdk 불일치"
 grep -q "launchable-activity: name='com.bloodnocturne.game.MainActivity'" "$B/badging.txt" || die "런처 액티비티 없음"
+# 권한: INTERNET, VIBRATE 만 (platform WP-9 acceptance 1)
+sed -n "s/^uses-permission: name='\([^']*\)'.*/\1/p" "$B/badging.txt" | LC_ALL=C sort -u >"$B/perms.txt"
+while read -r perm; do
+  ok=0; for a in "${ALLOWED_PERMS[@]}"; do [[ "$perm" == "$a" ]] && ok=1; done
+  (( ok )) || die "허용하지 않은 권한이 들어 있습니다: $perm"
+done <"$B/perms.txt"
+for a in "${ALLOWED_PERMS[@]}"; do grep -qx "$a" "$B/perms.txt" || die "권한이 빠졌습니다: $a"; done
 # APK 안의 assets/www 목록이 복사한 웹 게임 파일과 정확히 같은지 (aapt2 가 빠뜨린 파일이 없는지)
 (cd "$B/assets/www" && find . -type f | sed 's#^\./##' | LC_ALL=C sort) >"$B/expected-files.txt"
 unzip -Z1 "$APK" >"$B/apk-all.txt"
@@ -235,22 +259,29 @@ sed -n 's#^assets/www/##p' "$B/apk-all.txt" | grep -v '/$' | LC_ALL=C sort >"$B/
 if ! diff -u "$B/expected-files.txt" "$B/apk-files.txt" >"$B/files.diff"; then
   head -40 "$B/files.diff"; die "APK 의 게임 파일 목록이 원본과 다릅니다 ($B/files.diff)"
 fi
-for must in index.html src/main.js css/style.css assets/ui/icon-512.png; do
+for must in index.html build-info.js src/boot-gate.js css/style.css assets/ui/icon-512.png; do
   grep -qx "$must" "$B/apk-files.txt" || die "APK 에 $must 가 없습니다"
 done
-for must in assets/app/head_inject.html classes.dex AndroidManifest.xml resources.arsc; do
+for must in sw.js _redirects; do
+  grep -qx "$must" "$B/apk-files.txt" && die "APK 에 $must 가 들어 있습니다 (앱에서는 쓰지 않음)"
+done
+grep -q '^downloads/' "$B/apk-files.txt" && die "APK 에 downloads/ 가 들어 있습니다"
+for must in assets/app/head_inject.html assets/app/apk.json classes.dex AndroidManifest.xml resources.arsc; do
   grep -qx "$must" "$B/apk-all.txt" || die "APK 에 $must 가 없습니다"
 done
 
 SIZE_B="$(stat -c %s "$APK")"
 SIZE_H="$(python3 -c "print(f'{$SIZE_B/1048576:.1f} MB')")"
+BUDGET_B="$(python3 -c "print(int(float('$BUDGET_MB')*1048576))")"
+(( SIZE_B <= BUDGET_B )) || die "APK 가 크기 예산을 넘습니다: $SIZE_H > ${BUDGET_MB} MB (에셋 단계 ${STAGE_USED}; APK_ASSETS=lo+td 로 더 줄일 수 있습니다)"
 SHA="$(sha256sum "$APK" | cut -d' ' -f1)"
 CERT="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$B/apksigner-verify.txt" | head -1)"
 echo
 say "완료: $APK"
-echo "    크기        $SIZE_H ($SIZE_B bytes)"
+echo "    크기        $SIZE_H ($SIZE_B bytes, 예산 ${BUDGET_MB} MB)"
 echo "    패키지      com.bloodnocturne.game  $VN (versionCode $VC)"
-echo "    게임 파일   ${WWW_COUNT}개 (${WWW_SIZE}, 압축 전)"
+echo "    게임 파일   ${WWW_COUNT}개 (${WWW_SIZE}, 압축 전) · 에셋 단계 ${STAGE_USED}"
+echo "    계정 API    /api/* → ${API_USED}"
 echo "    SHA-256     $SHA"
 echo "    서명 인증서 SHA-256  $CERT"
 printf '%s\n' "$APK $SIZE_B $SHA" >"$OUT/BloodNocturne.apk.sha256.txt"

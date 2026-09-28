@@ -23,6 +23,7 @@ const P = new Placer();
 const _q = [0, 0];
 const Q = {};
 const HIP = -49.5, BOOT = -21.8;
+const LO = { shx: 0, shy: 0, hx: 0, hy: 0, ex: 0, ey: 0, hipY: 0, tr: 0 };   // layout result, reused every frame
 
 function pose(e) {
   const t = e.t ?? 0, an = e.anim, at = e.animT ?? 0;
@@ -83,7 +84,9 @@ function layout(e, q) {
   const hx = nb[0], hy = nb[1];
   if (q.hold) P.place('flask', hx, hy + 1, dirOf(q.armN) - Math.PI / 2 + 0.3, 'base', 0.9, 0.9, 'c');
   K.pivotPos('body', 'hip', 'eye', 0, hipY, tr, 1, 1, _q);
-  return { shx, shy, hx, hy, ex: _q[0], ey: _q[1], hipY, tr };
+  const o = LO;
+  o.shx = shx; o.shy = shy; o.hx = hx; o.hy = hy; o.ex = _q[0]; o.ey = _q[1]; o.hipY = hipY; o.tr = tr;
+  return o;
 }
 
 function die(e, world, rig) {

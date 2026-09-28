@@ -25,10 +25,12 @@ function wave(u) {
 /** local geometry: the fish is drawn centred at (0, CY) (feet origin = e.bottom, the body centre half a height up) */
 const CY = -15, HX = 11;    // head pivot sits HX px right of the body centre
 
+const Q = { under: false, rot: 0, dy: 0, alpha: 1, amp: 1, freq: 10, rip: 0 };   // reused every frame (no per-frame allocation)
 function pose(e) {
   const an = e.anim, at = e.animT ?? 0;
   const under = an === 'swim' || an === 'ripple';
-  const q = { under, rot: 0, dy: 0, alpha: 1, amp: 1, freq: 10, rip: 0 };
+  const q = Q;
+  q.under = under; q.rot = 0; q.dy = 0; q.alpha = 1; q.amp = 1; q.freq = 10; q.rip = 0;
   if (an === 'leap' || (!under && e.dying > 0)) {
     q.rot = Math.atan2(e.vy ?? 0, Math.abs(e.vx ?? 1) + 1) * 0.85;
     q.amp = 1.5; q.freq = 18;
@@ -41,7 +43,9 @@ function pose(e) {
 
 function die(e, world, rig, q) {
   e._pcorpse = true;
-  K.spawnDissolve(world, e, rig, [{ name: 'body', pv: 'head', x: HX, y: CY + q.dy, rot: q.rot, sx: 1, sy: 1 }],
+  // same head placement as draw(): the head pivot sits HX along the pitched body axis
+  const c = Math.cos(q.rot), s = Math.sin(q.rot);
+  K.spawnDissolve(world, e, rig, [{ name: 'body', pv: 'head', x: c * HX, y: CY + q.dy + s * HX, rot: q.rot, sx: 1, sy: 1 }],
     { life: 0.7, strips: 8, drift: 50, rise: 8, col: '#bfe8ff', kind: 1, n: 16, spread: 170, cy: -13 });
 }
 

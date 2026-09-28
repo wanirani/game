@@ -34,22 +34,25 @@ function place(name, pv, x, y, rot, vn = 'base', sx = 1, sy = 1, kind = 0) {
   return o;
 }
 
-const POSE = { lift: 0, wsy: 1, rot: 0, bob: 0, lean: 0, dU: 1.35, dF: 0.55, dL: 0.55, rk: 0, ak: 0, dive: 0, trail: 4, tremble: 0 };
+const POSE = { lift: 0, wsy: 1, rot: 0, bob: 0, lean: 0, dU: 1.35, dF: 0.55, dL: 0.55, rk: 0, ak: 0, dive: 0, dk: 0, trail: 4, tremble: 0 };
 function pose(e) {
   const t = e.t ?? 0, an = e.anim, at = e.animT ?? e.stateT ?? 0;
   const q = POSE;
   const flap = Math.sin(t * 3.5);
-  q.lift = flap; q.wsy = 0.76 + 0.24 * Math.abs(flap); q.rot = 0; q.lean = 0; q.rk = 0; q.ak = 0; q.dive = 0; q.tremble = 0;
+  q.lift = flap; q.wsy = 0.76 + 0.24 * Math.abs(flap); q.rot = 0; q.lean = 0; q.rk = 0; q.ak = 0; q.dive = 0; q.dk = 0; q.tremble = 0;
   q.bob = Math.sin(t * 1.8) * 2 - flap * 1.4;
   q.dU = 1.3 + Math.sin(t * 1.8) * 0.04; q.dF = 0.55; q.dL = 0.62 + Math.sin(t * 1.8) * 0.04;
   q.trail = 4 + Math.min(12, Math.hypot(e.vx ?? 0, e.vy ?? 0) * 0.02);
   let la = e.aimA !== undefined ? (e.facing >= 0 ? e.aimA : Math.PI - e.aimA) : 0.6;
   la = Math.atan2(Math.sin(la), Math.cos(la));
   if (an === 'raise') {
+    // raised on 0.55 s (the feather rain leaves), then lowered back to the flight pose by 0.88 s — the AI flies on at
+    // 0.9 s, so holding the lance aloft to the end snapped it down in one frame
     const k = ease.outCubic(clamp(at / RAISE, 0, 1));
-    q.rk = k; q.lift = lerp(flap, 1.3, k); q.wsy = lerp(q.wsy, 1, k);
-    q.dU = lerp(q.dU, -1.25, k); q.dF = lerp(q.dF, -1.45, k); q.dL = lerp(q.dL, -1.52, k); q.lean = -0.08 * k;
-    if (at > RAISE) q.lift = 1.3 - clamp((at - RAISE) / 0.3, 0, 1) * 1.1;          // the downbeat that throws the feathers
+    const r = at <= RAISE ? k : 1 - ease.inOutCubic(clamp((at - RAISE - 0.05) / 0.28, 0, 1));
+    const lift = at > RAISE ? 1.3 - clamp((at - RAISE) / 0.3, 0, 1) * 1.1 : 1.3;    // the downbeat that throws the feathers
+    q.rk = r; q.lift = lerp(flap, lift, r); q.wsy = lerp(q.wsy, 1, r);
+    q.dU = lerp(q.dU, -1.25, r); q.dF = lerp(q.dF, -1.45, r); q.dL = lerp(q.dL, -1.52, r); q.lean = -0.08 * r;
   } else if (an === 'aim') {
     const k = clamp(at / AIM, 0, 1);
     q.ak = k; q.tremble = Math.sin(t * 40) * 0.025 * k;
@@ -58,9 +61,20 @@ function pose(e) {
     const dl = la - q.rot;
     q.dL = lerp(q.dL, dl, ease.outCubic(Math.min(1, k * 1.6))) + q.tremble; q.dF = q.dL; q.dU = q.dL + 0.95;
   } else if (an === 'dive') {
-    q.dive = 1; q.lift = -1; q.wsy = 0.62;
-    q.rot = clamp(la, -0.5, 1.3) * 0.8;
-    q.dL = la - q.rot; q.dF = q.dL; q.dU = q.dL + 0.8; q.trail = 16; q.bob = 0;
+    // launch: 0.1 s from the couched aim pose into the dive pose
+    const g = ease.outCubic(clamp(at / 0.1, 0, 1));
+    const r0 = clamp(la, -0.6, 1.3) * 0.4, r1 = clamp(la, -0.5, 1.3) * 0.8;
+    q.dive = 1; q.dk = g; q.lift = lerp(0.7, -1, g); q.wsy = lerp(0.95, 0.62, g);
+    q.rot = lerp(r0, r1, g);
+    q.dL = la - q.rot; q.dF = q.dL; q.dU = q.dL + lerp(0.95, 0.8, g); q.trail = 16; q.bob = 0;
+  } else if (e.state === 'climb') {
+    // pull-up after the dive (anim 'fly'): ease out of the dive pose instead of snapping level with open wings
+    const dk = 1 - ease.inOutCubic(clamp((e.stateT ?? 0) / 0.4, 0, 1));
+    if (dk > 0) {
+      const r1 = clamp(la, -0.5, 1.3) * 0.8, dl = la - r1;
+      q.dk = dk; q.rot = r1 * dk; q.lift = lerp(q.lift, -1, dk); q.wsy = lerp(q.wsy, 0.62, dk);
+      q.dL = lerp(q.dL, dl, dk); q.dF = lerp(q.dF, dl, dk); q.dU = lerp(q.dU, dl + 0.8, dk); q.trail = lerp(q.trail, 16, dk); q.bob *= 1 - dk;
+    }
   }
   if (K.hurtOf(e)) { q.lean -= 0.22; q.lift += Math.sin(t * 50) * 0.3; }
   return q;
@@ -74,8 +88,8 @@ function layout(e, q) {
   K.pivotPos('torso', 'hip', 'sh', hipX, hipY, tr, 1, 1, _q); const sx = _q[0], sy = _q[1];
   K.pivotPos('torso', 'hip', 'wing', hipX, hipY, tr, 1, 1, _q); const wx = _q[0], wy = _q[1];
   // wings: rotation about the shoulder joint (0 = as painted: spread up and back; + raises, − beats down/back)
-  const wr = q.dive ? -1.0 : -0.25 + 0.38 * q.lift;
-  place('wing', 'a', wx + 6, wy - 3, wr + 0.3 + (q.dive ? 0.08 : 0), 'deep', 0.88, q.wsy * 0.95);   // far wing
+  const wr = lerp(-0.25 + 0.38 * q.lift, -1.0, q.dk);
+  place('wing', 'a', wx + 6, wy - 3, wr + 0.3 + 0.08 * q.dk, 'deep', 0.88, q.wsy * 0.95);   // far wing
   L.lowerAt = NP;
   place('lower', 'a', hipX, hipY, tr * 0.6, 'base', 1, 1, 1);
   place('torso', 'hip', hipX, hipY, tr);
@@ -95,6 +109,19 @@ function layout(e, q) {
   K.pivotPos('skull', 'a', 'eye', nx + 0.5, ny + 0.5, hr, 1, 1, _q); L.eyex = _q[0]; L.eyey = _q[1];
   L.cx = hipX; L.cy = hipY - 14;
   return L;
+}
+
+// hoisted per-frame helpers (no closures): rag warp offsets, local → world point through the body rotation
+const RG = { ph: 0, trail: 0, td: 1 };
+const ragOff = (u) => {
+  const w = Math.max(0, u - 0.12) / 0.88;
+  _q[0] = (-(w * w) * RG.trail - Math.sin(RG.ph - u * 6) * w * 2.2) * RG.td; _q[1] = 0; return _q;
+};
+const WP = { x: 0, y: 0, f: 1, sc: 1, c: 1, s: 0 };
+function wpt(x, y) {
+  const yy = y + 52;
+  _w[0] = WP.x + WP.f * WP.sc * (x * WP.c - yy * WP.s); _w[1] = WP.y + WP.sc * (x * WP.s + yy * WP.c - 52);
+  return _w;
 }
 
 export function draw(ctx, e, world, o, rig) {
@@ -125,15 +152,12 @@ export function draw(ctx, e, world, o, rig) {
   const lay = layout(e, q);
   const flick = 0.6 + 0.4 * Math.sin(t * 7) * Math.sin(t * 3.1);
   if (!o.flash) K.glow(lay.cx, lay.cy - 6, 40, '#fff2b0', 0.1 + q.rk * 0.18 + q.ak * 0.1);
-  const ph = t * 4.2, trail = q.trail;
+  RG.ph = t * 4.2; RG.trail = q.trail; RG.td = rig.td;
   for (let i = 0; i < NP; i++) {
     const p = PL[i];
     if (p.kind === 1) {
       // temple rags: bands below the sash stream back and flutter (feet swing with them)
-      K.warpY(p.name, p.pv, p.x, p.y, p.rot, p.sx, p.sy, K.nStrips(9), (u) => {
-        const w = Math.max(0, u - 0.12) / 0.88;
-        _q[0] = (-(w * w) * trail - Math.sin(ph - u * 6) * w * 2.2) * rig.td; _q[1] = 0; return _q;
-      }, 1, p.vn, 0);
+      K.warpY(p.name, p.pv, p.x, p.y, p.rot, p.sx, p.sy, K.nStrips(9), ragOff, 1, p.vn, 0);
       continue;
     }
     K.put(p.name, p.pv, p.x, p.y, p.rot, p.sx, p.sy, 1, p.vn);
@@ -157,8 +181,7 @@ export function draw(ctx, e, world, o, rig) {
   const pool = e._fx ?? (e._fx = new K.FxPool(26));
   const dt = pool.step(K.clockOf(e, world));
   const f = e.facing < 0 ? -1 : 1, sc = (e.scale || 1) * (rig.scale ?? 1), lo = K.lod() === 0 ? 0.5 : 1;
-  const c = Math.cos(q.rot), s = Math.sin(q.rot);
-  const wpt = (x, y) => { const yy = y + 52; _w[0] = e.cx + f * sc * (x * c - yy * s); _w[1] = e.bottom + sc * (x * s + yy * c - 52); return _w; };
+  WP.x = e.cx; WP.y = e.bottom; WP.f = f; WP.sc = sc; WP.c = Math.cos(q.rot); WP.s = Math.sin(q.rot);
   if (q.rk > 0) {
     wpt(lay.halox, lay.haloy);
     for (let n = pool.rate(0, 22 * lo * q.rk, dt); n > 0; n--) pool.add(0, _w[0] + K.frand(-22, 22) * sc, _w[1] + K.frand(4, 30) * sc, K.frand(-10, 10), K.frand(-70, -30), K.frand(0.35, 0.7), K.frand(2, 3.5) * sc, '#ffe7a0');

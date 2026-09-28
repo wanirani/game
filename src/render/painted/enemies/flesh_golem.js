@@ -26,7 +26,7 @@ const P = new Placer();
 const _q = [0, 0], _f = [0, 0], _g = [0, 0], _b = [0, 0];
 const VARS = [['base', 'deep'], ['dmg1', 'deep_dmg1'], ['dmg2', 'deep_dmg2']];
 const HIP = -34, TAU = Math.PI * 2;
-const Q = {};
+const Q = {}, LO = { hx: 0, hy: 0, tr: 0 };   // pose / layout results, reused every frame
 
 function pose(e) {
   const t = e.t ?? 0, an = e.anim, at = e.animT ?? 0;
@@ -76,7 +76,8 @@ function layout(e, q, vN, vF) {
   K.pivotPos('body', 'hip', 'armF', hx, hy, tr, 1, 1, _q);
   const fp = K.part('farm');
   _g[0] = _q[0] + Math.cos(q.aF) * fp.len; _g[1] = _q[1] + Math.sin(q.aF) * fp.len;
-  return { hx, hy, tr };
+  LO.hx = hx; LO.hy = hy; LO.tr = tr;
+  return LO;
 }
 
 function die(e, world, rig) {

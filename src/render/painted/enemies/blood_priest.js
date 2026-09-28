@@ -32,25 +32,40 @@ function pose(e) {
     const up = ease.outCubic(clamp(at / 0.25, 0, 1)), down = clamp((at - hold) / 0.3, 0, 1);
     q.raise = up * (1 - down);
     q.arm = lerp(q.arm, -1.3, q.raise); q.lean = lerp(q.lean, -0.1, q.raise); q.tip = -0.1 * q.raise;
-  } else if (an === 'channel') {
-    const k = ease.outCubic(clamp(at / 0.25, 0, 1));
-    q.chan = k; q.arm = lerp(q.arm, 0.15 + Math.sin(t * 18) * 0.03, k); q.tip = 0.55 * k; q.lean = 0.06;
   }
+  // channel: the chalice tips toward the ally; the AI drops back to idle on the heal frame, so the pour is eased back
+  // after it instead of snapping upright (render-only memory e._bp; a fresh entity never blends)
+  const m = e._bp ?? (e._bp = { k: 0, t0: 0 });
+  let ck = 0;
+  if (an === 'channel') { ck = ease.outCubic(clamp(at / 0.25, 0, 1)); m.k = ck; m.t0 = t; }
+  else if (m.k > 0) { const u = clamp((t - m.t0) / 0.3, 0, 1); ck = m.k * (1 - ease.inOutCubic(u)); if (u >= 1) m.k = 0; }
+  if (ck > 0) { q.chan = ck; q.arm = lerp(q.arm, 0.15 + Math.sin(t * 18) * 0.03 * (an === 'channel' ? 1 : 0), ck); q.tip = 0.55 * ck; q.lean = lerp(q.lean, 0.06, ck); }
   if (K.hurtOf(e)) { q.lean = -0.2; q.arm += 0.4; }
   return q;
 }
 
+/** set placement i of `out` (reused objects per frame; the corpse passes a fresh array) */
+function slot(out, i, name, x, y, rot) {
+  const o = out[i] ?? (out[i] = { name: '', pv: 'a', x: 0, y: 0, rot: 0, sx: 1, sy: 1, vn: 'base' });
+  o.name = name; o.x = x; o.y = y; o.rot = rot;
+  return o;
+}
 function place(q, t, out) {
   const tr = q.lean;
   K.pivotPos('body', 'a', 'sh', 0, 0, tr, 1, 1, _q); const sx = _q[0], sy = _q[1] + q.bob;
   const ap = K.part('arm'), L = ap?.len ?? 23;
   const cx = sx + Math.cos(q.arm) * L, cy = sy + Math.sin(q.arm) * L;
-  out.push({ name: 'body', pv: 'a', x: 0, y: q.bob, rot: tr, sx: 1, sy: 1, vn: 'base' });
-  out.push({ name: 'arm', pv: 'a', x: sx, y: sy, rot: q.arm - (ap?.ang ?? 0), sx: 1, sy: 1, vn: 'base' });
-  out.push({ name: 'chalice', pv: 'a', x: cx, y: cy, rot: q.tip + Math.sin(t * 1.6) * 0.03, sx: 1, sy: 1, vn: 'base' });
+  slot(out, 0, 'body', 0, q.bob, tr);
+  slot(out, 1, 'arm', sx, sy, q.arm - (ap?.ang ?? 0));
+  slot(out, 2, 'chalice', cx, cy, q.tip + Math.sin(t * 1.6) * 0.03);
   return out;
 }
 const PCS = [];
+const RW = { ph: 0, walk: 0, sway: 0, td: 1 };
+const robeOff = (u) => {                  // hoisted warp callback (no per-frame closure)
+  const w = Math.max(0, 0.5 - u) / 0.5;            // u: 0 = the feet pivot row (hem) … 1 = top of the mitre
+  _q[0] = (-(w * w) * 3 * RW.walk + Math.sin(RW.ph - u * 4) * w * 1.6 * (0.4 + Math.abs(RW.sway))) * RW.td; _q[1] = 0; return _q;
+};
 
 export function draw(ctx, e, world, o, rig) {
   const t = e.t ?? 0;
@@ -74,14 +89,11 @@ export function draw(ctx, e, world, o, rig) {
   // blood sigil under the feet while casting (local space, behind the priest)
   if (!o.flash && q.raise > 0.02) sigil(ctx, 0, -1, 26 + 4 * q.raise, t, q.raise);
   if (!o.flash) K.glow(0, -40, 36, '#ff2a44', 0.1 + 0.35 * q.raise + 0.25 * q.chan);
-  PCS.length = 0; place(q, t, PCS);
-  const ph = t * (q.walk ? 6 : 2), sway = q.sway;
+  place(q, t, PCS);
   const b = PCS[0];
   // robe: the hem (lower half) sways with the step and trails behind while walking
-  K.warpY('body', 'a', b.x, b.y, b.rot, 1, 1, K.nStrips(9), (u) => {
-    const w = Math.max(0, 0.5 - u) / 0.5;            // u: 0 = the feet pivot row (hem) … 1 = top of the mitre
-    _q[0] = (-(w * w) * 3 * q.walk + Math.sin(ph - u * 4) * w * 1.6 * (0.4 + Math.abs(sway))) * rig.td; _q[1] = 0; return _q;
-  }, 1, 'base', 0);
+  RW.ph = t * (q.walk ? 6 : 2); RW.walk = q.walk; RW.sway = q.sway; RW.td = rig.td;
+  K.warpY('body', 'a', b.x, b.y, b.rot, 1, 1, K.nStrips(9), robeOff, 1, 'base', 0);
   const a = PCS[1], c = PCS[2];
   K.put(a.name, a.pv, a.x, a.y, a.rot);
   K.put(c.name, c.pv, c.x, c.y, c.rot);

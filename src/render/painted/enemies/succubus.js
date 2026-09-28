@@ -36,7 +36,9 @@ function pose(e) {
     const k = clamp(at / KISS, 0, 1);
     q.kiss = at < KISS ? ease.outCubic(k) : 0; q.fired = at >= KISS ? clamp(1 - (at - KISS) / 0.3, 0, 1) : 0;
     const slow = Math.sin(t * 2.2);
-    q.wr = lerp(q.wr, 0.38 + 0.08 * slow, k); q.wsy = lerp(q.wsy, 1, k);
+    // the spread wings are held through the release, then resume the wingbeat before the AI returns to 'fly' (0.95 s)
+    const hold = at < KISS ? k : 1 - ease.inOutCubic(clamp((at - KISS - 0.08) / 0.3, 0, 1));
+    q.wr = lerp(q.wr, 0.38 + 0.08 * slow, hold); q.wsy = lerp(q.wsy, 1, hold);
     q.lean = at < KISS ? -0.12 * q.kiss : lerp(0.1, 0, clamp((at - KISS) / 0.4, 0, 1));
   } else if (an === 'fold') {
     const k = ease.outCubic(clamp(at / FOLD, 0, 1));
@@ -46,6 +48,14 @@ function pose(e) {
     q.dive = 1; q.wr = -1.05; q.wsx = 0.58; q.wsy = 0.85; q.flare = 1; q.bob = 0;
     q.rot = clamp(Math.atan2(vy, Math.max(20, Math.abs(vx))), -0.6, 1.2) * 0.75; q.lean = 0;
     q.trail = 18; q.tailA = 0.05; q.tailF = 16;
+  } else if (e.state === 'climb') {
+    // pull-up after the dive (anim 'fly'): ease out of the dive pose instead of snapping upright with open wings
+    const dk = 1 - ease.inOutCubic(clamp((e.stateT ?? 0) / 0.35, 0, 1));
+    if (dk > 0) {
+      q.rot = clamp(Math.atan2(vy, Math.max(20, Math.abs(vx))), -0.6, 1.2) * 0.75 * dk;
+      q.wr = lerp(q.wr, -1.05, dk); q.wsx = lerp(1, 0.58, dk); q.wsy = lerp(q.wsy, 0.85, dk); q.flare = dk;
+      q.bob *= 1 - dk; q.trail = lerp(q.trail, 18, dk);
+    }
   }
   if (K.hurtOf(e)) { q.lean -= 0.2; q.wr += Math.sin(t * 50) * 0.15; }
   return q;
@@ -76,14 +86,18 @@ function drawPuppet(e, q, rig, o, t, pieces) {
     K.put('body', 'a', ax - 17, ay - 4, tr, 1, 1, 0.1);
   }
   // body: skirt bands (below the waist) stream back and ripple; the torso stays rigid
-  const ph = t * 4, trail = q.trail;
+  SW.ph = t * 4; SW.trail = q.trail; SW.td = rig.td;
   K.pivotPos('body', 'a', 'top', ax, ay, tr, 1, 1, _q);         // warp rows measured from the top (u = 0 at the horns)
-  K.warpY('body', 'top', _q[0], _q[1], tr, 1, 1, K.nStrips(10), (u) => {
-    const w = Math.max(0, u - 0.5) / 0.5;
-    _q[0] = (-(w * w) * trail - Math.sin(ph - u * 7) * w * 2.6) * rig.td; _q[1] = 0; return _q;
-  }, 1, 'base', 0);
-  return { ax, ay, tr };
+  K.warpY('body', 'top', _q[0], _q[1], tr, 1, 1, K.nStrips(10), skirtOff, 1, 'base', 0);
+  BP.ax = ax; BP.ay = ay; BP.tr = tr;
+  return BP;
 }
+const BP = { ax: 0, ay: 0, tr: 0 };
+const SW = { ph: 0, trail: 0, td: 1 };
+const skirtOff = (u) => {                 // hoisted warp callback (no per-frame closure)
+  const w = Math.max(0, u - 0.5) / 0.5;
+  _q[0] = (-(w * w) * SW.trail - Math.sin(SW.ph - u * 7) * w * 2.6) * SW.td; _q[1] = 0; return _q;
+};
 
 export function draw(ctx, e, world, o, rig) {
   const t = e.t ?? 0;
