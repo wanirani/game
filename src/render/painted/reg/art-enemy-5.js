@@ -7,11 +7,13 @@
 // ART-ENEMY-5 (s12–s13, 9종). 벡터 렌더러(enemies_b.js)는 그대로 남아 에셋이 없거나 로딩 중일 때 대신 그린다.
 import * as bat_swarm from '../enemies/bat_swarm.js';
 import * as royal_guard from '../enemies/royal_guard.js';
+import * as hellhound from '../enemies/hellhound.js';
 
 export const bosses = {};
 export const enemies = [
   { mod: bat_swarm },
   { mod: royal_guard },
+  { mod: hellhound },
 ];
 export const companions = {};
 export const npcs = {};

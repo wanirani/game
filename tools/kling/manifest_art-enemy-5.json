@@ -238,6 +238,171 @@
      "decision": "rejected: take 1 used"
     }
    ]
+  },
+  {
+   "shot": "bride_ref",
+   "tool": "text_to_image",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "inputs": [],
+   "for": [
+    "vampire_bride"
+   ],
+   "generationId": "ASsctNwMQdNFjmQQ-bR1g4jlt_Aa4gb1GkzyceDSaswdEqefTeyt4PN6dVfzNG-ARN57YQXA",
+   "images": [
+    {
+     "name": "bride_ref_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2QzNzNhN2U3LWUzODItNDBmZC1iYWIyLWYwNjRjOGRkN2ZhMi82MTM1MDg4NTcyMDI2OTU1OTc1L3RlbXBlZGFvZS5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      1760,
+      2368
+     ],
+     "kept": false,
+     "decision": "rejected: dark pink backdrop behind the figure (bad matte)"
+    },
+    {
+     "name": "bride_ref_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzVhNDAwOWNlLTNlZGItNDU4NS1iODYxLTJlZjc3MzllNjZkMC83Mzk2MjYwNDAyNzY5MjM1Njc3L3RlbXBqZ3ByMi5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      1760,
+      2368
+     ],
+     "kept": true,
+     "decision": "kept: vampire_bride reference (3/4 view facing right, grey bg); parts sheet made from it"
+    }
+   ]
+  },
+  {
+   "shot": "dl_ref",
+   "tool": "text_to_image",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "inputs": [],
+   "for": [
+    "demon_lord"
+   ],
+   "generationId": "AbhrIY6a1-S90cbHjY8hP7udhhy4YiOl2CZ4mWqV0ib9nVoryBHkFpifNT23IO5DqaPnLHxU",
+   "images": [
+    {
+     "name": "dl_ref_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzEyMTYzNzQzLWVhOTYtNDZkMC1iMzgzLTNlMmIxOTNkZDgzMi81NDYyNjA0MzQ0Njg0NjgzOTExL3RlbXB5MjRrNC5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      1760,
+      2368
+     ],
+     "kept": true,
+     "decision": "kept: demon_lord reference (more profile, flaming greatsword down-forward)"
+    },
+    {
+     "name": "dl_ref_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpbc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2IwMjI2NTYwLTMxNTgtNDJjOC1iMDZlLWQxM2Y2YjFjYjVlYS8tNjMxMDE4Njk1MzE4OTE0MDIvdGVtcG1pM3Z5LnBuZw.origin?x-kcdn-pid=112372",
+     "size": [
+      1760,
+      2368
+     ],
+     "kept": false,
+     "decision": "rejected: frontal stance"
+    }
+   ]
+  },
+  {
+   "shot": "chaos_ref",
+   "tool": "text_to_image",
+   "aspect": "1:1",
+   "imageCount": 2,
+   "inputs": [],
+   "for": [
+    "chaos_spawn"
+   ],
+   "generationId": "Ad5-OnqmLGi4rBbmSARUyJJYcogwDnGoAsC1l4F-QzOMr89ScekTEH9zLJJs7YScQR-wjZJl",
+   "images": [
+    {
+     "name": "chaos_ref_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0Lzk4OTYwMjllLTg5YTMtNDIwNC1iZTg0LTA0MGI3ZjMzYjcwMC82MzE0OTk2NzIwNzY5ODkzNzA3L3RlbXA3Y2VocC5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      2048,
+      2048
+     ],
+     "kept": false,
+     "decision": "rejected: smaller maw, puddle"
+    },
+    {
+     "name": "chaos_ref_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2Y3ZTEyZTQ5LWQ0MzktNDE5ZS1hMjQwLThkNDc4ZDhmYmM1My8zOTAxNDUyMjE0OTU5NTIzNzY3L3RlbXA1eXlzZy5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      2048,
+      2048
+     ],
+     "kept": true,
+     "decision": "kept: chaos_spawn reference (big toothy maw, many eyes)"
+    }
+   ]
+  },
+  {
+   "shot": "eye_ref",
+   "tool": "text_to_image",
+   "aspect": "1:1",
+   "imageCount": 2,
+   "inputs": [],
+   "for": [
+    "abyss_eye"
+   ],
+   "generationId": "AcJ3Tfbg2qwtRVojuzg-8Vgj-5Np4f1dUgfDIRKvfDBZaYuXkKoyzzZKMeEfKFKljIOCTbWM",
+   "images": [
+    {
+     "name": "eye_ref_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2Q4ODFkMjU1LTRiODktNGExZi1iM2YzLWU4YTBmYzIxNzYyYy8tMzk2MTYyNTExNjQ2NjAwNjEyMS90ZW1wZ25sdHgucG5n.origin?x-kcdn-pid=112372",
+     "size": [
+      2048,
+      2048
+     ],
+     "kept": true,
+     "decision": "kept: abyss_eye reference (clean grey bg)"
+    },
+    {
+     "name": "eye_ref_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpbc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzVkMGZmMGFlLWUyY2QtNGZiNC05MzU2LTliOTA5YTAxYjA3MS81Njg0NDcwNDA4NjQ1NjQ1NjYvdGVtcDF3cG14LnBuZw.origin?x-kcdn-pid=112372",
+     "size": [
+      2048,
+      2048
+     ],
+     "kept": false,
+     "decision": "rejected: red glow on the floor below"
+    }
+   ]
+  },
+  {
+   "shot": "void_ref",
+   "tool": "text_to_image",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "inputs": [],
+   "for": [
+    "void_demon"
+   ],
+   "generationId": "AbfNW34gIz_aNrZbJIo8DIw6mRjnXu6Za471PTjjGYpZ_2g20biXuWN-UHt4lTqfwj6WD48S",
+   "images": [
+    {
+     "name": "void_ref_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzY3Yzc5YmQzLTk4NDYtNDg1MS05MDg4LWM3YmIwMmYyYjk5MC8tNzQ5OTEwOTA3MDQ2NDU5NTg0L3RlbXA2bm16Yi5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      1760,
+      2368
+     ],
+     "kept": false,
+     "decision": "rejected: take 2 has the richer void body"
+    },
+    {
+     "name": "void_ref_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2NkYWQzN2VmLTU4NDgtNDNhMy04ZTBkLWNlNTc1MjljYzZkNy81Njg2MzMxNDkwNDkxNDgyMjE0L3RlbXA3c3EwZC5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      1760,
+      2368
+     ],
+     "kept": true,
+     "decision": "kept: void_demon reference (nebula body, halo, mist tail)"
+    }
+   ]
   }
  ]
 }

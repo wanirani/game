@@ -17,6 +17,7 @@ import * as frog_demon from '../enemies/frog_demon.js';
 import * as drowned from '../enemies/drowned.js';
 import * as water_spirit from '../enemies/water_spirit.js';
 import * as gear_golem from '../enemies/gear_golem.js';
+import * as harpy from '../enemies/harpy.js';
 
 export const bosses = {};
 export const enemies = [
@@ -32,6 +33,7 @@ export const enemies = [
   { mod: drowned },
   { mod: water_spirit },
   { mod: gear_golem },
+  { mod: harpy },
 ];
 export const companions = {};
 export const npcs = {};
