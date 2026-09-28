@@ -17,11 +17,15 @@
 //  · Keyboard = input.sources.key[action]; gamepad = a mocked navigator.getGamepads (tools/qa/lib/fakepad.mjs);
 //    touch = CDP touch events on the canvas pad (tools/qa/lib/touch.mjs) — the DOM .b.ult button of feel §10 A7 no longer exists.
 //  · Passive dummies: new Enemy(id, …) with hp 1e7, a no-op AI and harmless = true, placed on the widest flat floor of s04 r1.
-//  · Every page records pageerror and console.error (same filter as tools/integration.mjs); any error fails the run.
-//  · Timing checks (U2 ratios, A6 250 ms) are measured on this machine; when one fails while the 1-minute load average is above
-//    1.5 × CPU cores it is reported as 'inconclusive' (numbers kept) instead of 'fail'.
+//  · Every page records pageerror and console.error (same filter as tools/integration.mjs); any error fails the run, and an
+//    error raised while a check runs is also recorded as an 'error' case under that check's id.
+//  · Desktop pages are 960×540 (feel §8 "headless relative checks … 960×540"); the mobile page is 844×390 at DPR 2 (A7).
+//  · Timing checks (U2 ratios, A6 250 ms) are measured on this machine. U2 (feel §8: ultimate, first awakening and sprint-at-SSS
+//    averages against the page's own gameplay / idle-walk baseline) is judged on wall time and on main-thread CPU time (CDP
+//    ThreadTime per rendered frame): when both averages are over budget it is a 'fail' at any load. Any other timing miss while
+//    the 1-minute load average is above 1.5 × CPU cores is reported as 'inconclusive' (numbers kept) instead of 'fail'.
 //  · V1 is a visual review: the harness writes the PNGs and marks V1 'review'; a person (or agent) opens them.
-//  · window.__feelStats (feel §8 instrumentation) is checked as I1 and, when present, used for the budget samples.
+//  · window.__feelStats (feel §8 instrumentation) is checked as I1: it must exist with ?feelstats and carry the six keys.
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -39,8 +43,9 @@ for (let i = 0; i < argv.length; i++) {
   const k = a.slice(2), v = argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[++i] : true;
   args[k] = v;
 }
-const KNOWN_ARGS = new Set(['only', 'heroes', 'out', 'quick', 'headed', 'keep']);
+const KNOWN_ARGS = new Set(['only', 'heroes', 'out', 'quick', 'headed']);
 for (const k of Object.keys(args)) if (!KNOWN_ARGS.has(k)) { console.error(`unknown option --${k} (known: ${[...KNOWN_ARGS].join(', ')})`); process.exit(2); }
+for (const k of ['only', 'heroes', 'out']) if (args[k] === true) { console.error(`--${k} needs a value`); process.exit(2); }
 const OUT = path.resolve(String(args.out && args.out !== true ? args.out : '/tmp/claude-0/qa_feel'));
 const SHOTS = path.join(OUT, 'shots');
 const ALL_HEROES = ['kael', 'sera', 'victor', 'bran', 'lia', 'azel'];
@@ -1402,6 +1407,7 @@ async function closePage(P) {
 }
 async function run(P, id, ctx, fn, arg, judge) {
   if (P.fatal) { rec(id, ctx, 'error', 'page did not start: ' + P.fatal); return null; }
+  const e0 = P.errs.length;
   try {
     const r = await P.page.evaluate(fn, arg ?? {});
     if (r?.error) { rec(id, ctx, 'error', r.error, r); return r; }
@@ -1410,6 +1416,9 @@ async function run(P, id, ctx, fn, arg, judge) {
   } catch (e) {
     rec(id, ctx, 'error', 'exception: ' + String(e?.message || e).split('\n')[0].slice(0, 300));
     return null;
+  } finally {
+    // feel §10: every case must also report zero page or console errors — pin them on the check that was running
+    if (P.errs.length > e0) rec(id, ctx, 'error', `${P.errs.length - e0} page/console error(s) during this check: ${P.errs.slice(e0, e0 + 2).join(' · ').slice(0, 400)}`, { errors: P.errs.slice(e0) });
   }
 }
 /** { cpu: main-thread CPU seconds (null without CDP), fn: rendered frames so far } — CPU per frame between two marks = Δcpu / Δfn */
