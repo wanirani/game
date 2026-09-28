@@ -118,8 +118,9 @@ function die(e, world, rig) {
 }
 
 /** the red aiming line from the painted muzzle (x0,y0) to (x1,y1) = the far end of the AI's ray, local space */
-function laser(ctx, x0, y0, x1, y1, k, t) {
-  if (Math.abs(x1 - x0) + Math.abs(y1 - y0) < 2) return;
+function laser(ctx, x0, y0, x1, y1, k, t, a) {
+  // nothing to draw when the ray ends at/behind the muzzle (soldier pressed against a wall)
+  if ((x1 - x0) * Math.cos(a) + (y1 - y0) * Math.sin(a) < 2) return;
   K.local();
   const blink = k > 0.7 ? (Math.sin(t * 60) > 0 ? 1 : 0.45) : 0.65;
   const ga = ctx.globalAlpha, gco = ctx.globalCompositeOperation;
@@ -153,7 +154,7 @@ export function draw(ctx, e, world, o, rig) {
       // World px → local px: divide by the elite/rig scale (the local frame is scaled, the ray is not).
       const sc = (e.scale || 1) * (rig.scale ?? 1), L = e.aimLen ?? 400;
       const la = e.facing >= 0 ? (e.aimA ?? 0) : Math.PI - (e.aimA ?? Math.PI);
-      laser(ctx, _m[0], _m[1], (20 + Math.cos(la) * L) / sc, (-50 + Math.sin(la) * L) / sc, q.tele, q.t);
+      laser(ctx, _m[0], _m[1], (20 + Math.cos(la) * L) / sc, (-50 + Math.sin(la) * L) / sc, q.tele, q.t, q.gun);
       if (q.tele > 0.6) glint(ctx, _m[0], _m[1], 5 + 3 * Math.sin(q.t * 30), '#ff8080', (q.tele - 0.6) * 2.5);
     }
     if (q.flash > 0) { K.glow(_m[0] + Math.cos(q.gun) * 3, _m[1] + Math.sin(q.gun) * 3, 8 + 14 * q.flash, '#ffd070', q.flash); K.glow(_m[0], _m[1], 5, '#ffffff', q.flash); }

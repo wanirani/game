@@ -1,0 +1,40 @@
+{
+ "id": "demon_lord",
+ "tier": "T3",
+ "srcTD": 4,
+ "note": "ART-ENEMY-5: three Kling sheets image-conditioned on dl_ref: dl_sheet2 (side figure → head, bare lava-cracked torso with pauldron, thigh; loose upper arm, fist forearm, open claw hand), dl_sheet1 (side figure → the digitigrade shin + hoof, free of the watermark that covers sheet2's hoof), dl_props (bat wing, flaming greatsword, tattered cape, barbed tail). derive.py strips the cyan rim halo of the two body sheets. Body parts face left in the sheets → flipX.",
+ "sources": {
+  "b": { "raw": "dl_sheet2.webp", "file": "a5_dl_sheet2.png", "k": 0.068 },
+  "l": { "raw": "dl_sheet1.webp", "file": "a5_dl_sheet1.png", "k": 0.068 },
+  "p": { "raw": "dl_props.webp", "file": "a5_dl_props.png", "k": 0.06 }
+ },
+ "parts": {
+  "head": { "src": "b", "box": [1850, 10, 2255, 475], "flipX": true, "keep": "largest",
+            "poly": [[1850, 10], [2255, 10], [2255, 395], [2120, 415], [2045, 438], [2012, 475], [1890, 475], [1850, 440]],
+            "piv": { "a": [1992, 452], "eye": [1902, 345], "mouth": [1898, 420], "horn": [2235, 45] } },
+  "torso": { "src": "b", "box": [1850, 405, 2245, 948], "flipX": true, "keep": "largest",
+            "poly": [[1850, 470], [1990, 470], [2040, 440], [2120, 412], [2245, 418], [2245, 948], [1850, 948]],
+            "piv": { "a": [2010, 908], "neck": [1995, 458], "shN": [2075, 545], "shF": [2125, 530], "gem": [1885, 880], "chest": [1930, 650] } },
+  "thigh": { "src": "b", "box": [1870, 885, 2145, 1300], "flipX": true, "keep": "largest",
+            "piv": { "a": [2012, 930], "b": [2015, 1255] } },
+  "shin": { "src": "l", "box": [520, 1285, 805, 1705], "flipX": true, "keep": "largest",
+            "poly": [[565, 1285], [725, 1285], [745, 1400], [705, 1500], [790, 1600], [805, 1705], [540, 1705], [560, 1560], [585, 1440], [560, 1330]],
+            "piv": { "a": [645, 1318], "b": [660, 1655] } },
+  "uarm": { "src": "b", "box": [1005, 735, 1315, 1145], "flipX": true, "keep": "largest",
+            "piv": { "a": [1165, 775], "b": [1150, 1108] } },
+  "fist": { "src": "b", "box": [1385, 105, 1665, 612], "flipX": true, "keep": "largest",
+            "piv": { "a": [1525, 588], "b": [1530, 225], "grip": [1532, 195] } },
+  "hand": { "src": "b", "box": [1415, 765, 1765, 1045], "flipX": true, "keep": "largest",
+            "piv": { "a": [1735, 985], "b": [1540, 885] } },
+  "wing": { "src": "p", "box": [50, 35, 565, 565], "keep": "largest", "k": 0.09,
+            "poly": [[50, 250], [160, 155], [300, 85], [430, 55], [480, 62], [545, 125], [565, 200], [565, 430], [525, 565], [400, 485], [250, 425], [110, 335]],
+            "piv": { "a": [548, 300], "b": [70, 320] } },
+  "sword": { "src": "p", "box": [290, 750, 2255, 1045], "keep": "largest",
+            "piv": { "a": [312, 890], "grip": [640, 888], "b": [2230, 905], "mid": [1500, 900] } },
+  "cape": { "src": "p", "box": [45, 300, 315, 845], "keep": "largest", "k": 0.09,
+            "piv": { "a": [175, 335] } },
+  "tail": { "src": "p", "box": [1175, 1060, 2150, 1655], "keep": "largest", "k": 0.05,
+            "poly": [[1175, 1470], [1400, 1440], [1650, 1330], [1850, 1260], [1960, 1100], [2040, 1060], [2150, 1120], [2140, 1450], [1950, 1620], [1600, 1655], [1250, 1655], [1175, 1620]],
+            "piv": { "a": [1215, 1565], "b": [2025, 1105] } }
+ }
+}
