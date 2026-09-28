@@ -914,7 +914,8 @@ export class MiniGame extends Scene {
     ctx.globalAlpha = fa;
     if (win) {
       // 뒤쪽 광선
-      ctx.save(); ctx.translate(vw / 2, y + 30); ctx.rotate(this.clock * 0.3); ctx.globalCompositeOperation = 'lighter';
+      // 뒤쪽 광선은 천천히 돈다 — 설정 '동작 줄이기'(reduceMotion)에서는 멈춰 둔다 (R12)
+      ctx.save(); ctx.translate(vw / 2, y + 30); ctx.rotate(this.game.settings?.reduceMotion ? 0 : this.clock * 0.3); ctx.globalCompositeOperation = 'lighter';
       ctx.fillStyle = jp ? 'rgba(255,230,140,0.12)' : 'rgba(255,200,120,0.08)';
       for (let i = 0; i < 12; i++) { ctx.rotate(TAU / 12); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-30, -300); ctx.lineTo(30, -300); ctx.fill(); }
       ctx.restore();
