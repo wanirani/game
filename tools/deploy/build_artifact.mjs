@@ -37,6 +37,8 @@ const LOOSE = [/^fonts\//, /^painted\/enemies\//, /^painted\/.+\/manifest\.json$
 // 첫 팩: 타이틀·메뉴에 곧바로 필요한 것 (타이틀이 받는 것: 배경, 영웅 초상화, 여섯 영웅의 기본 직업 퍼펫, 망토 질감)
 const BOOT = [/^(lo\/)?bg\/title\.webp$/, /^ui\//, /^(lo\/)?portraits\/(kael|sera|victor|bran|lia|azel)\.webp$/, /^icons\//,
   /^puppets\/(_shared|kael\/kael_hunter|sera\/sera_exorcist|victor\/victor_gunslinger|bran\/bran_knight|lia\/lia_assassin|azel\/azel_dhampir)\//];
+// 둘째 팩: 마을(허브)에 들어가자마자 필요한 것
+const HUB = [/^(lo\/)?bg\/(hub|worldmap|shop|smith|inn|church)\.webp$/, /^(lo\/)?portraits\/npc_/, /^puppets\/npc\//, /^tex\/tex_(wood|dirt)\./, /^props\/(prop_crate|deco_village_)/];
 
 class ArtifactError extends Error {}
 
@@ -66,7 +68,8 @@ export function buildArtifact({ from = path.join(ROOT, 'dist/web'), out = path.j
   const packed = all.filter((r) => !LOOSE.some((re) => re.test(r)));
   for (const r of loose) cp(`assets/${r}`);
   const boot = packed.filter((r) => BOOT.some((re) => re.test(r)));
-  const rest = packed.filter((r) => !BOOT.some((re) => re.test(r)));
+  const hub = packed.filter((r) => !BOOT.some((re) => re.test(r)) && HUB.some((re) => re.test(r)));
+  const rest = packed.filter((r) => !BOOT.some((re) => re.test(r)) && !HUB.some((re) => re.test(r)));
   const cap = packMB * MB;
   const packs = [];
   const index = { v: 1, packs: [], files: {}, complete: true };
@@ -80,6 +83,7 @@ export function buildArtifact({ from = path.join(ROOT, 'dist/web'), out = path.j
     }
   };
   addPack(boot);
+  addPack(hub);
   addPack(rest);
   if (packs.length > LIMITS.packs) throw new ArtifactError(`팩이 ${packs.length}개로 한도 ${LIMITS.packs}개를 넘습니다 (--pack-mb 를 키운다)`);
   packs.forEach((pk, n) => {
