@@ -19,7 +19,7 @@
 - 개발 서버: `node tools/serve.mjs 8080` → `http://localhost:8080/` (번들 없이 모듈 그대로; 서비스 워커는 개발용 네트워크 우선)
 - 바로 스테이지: `index.html?scene=stage&stage=s03&char=lia&room=r2&debug` (debug = 히트박스/FPS 표시)
 - 스모크: `node tools/smoke.mjs --url "index.html?scene=stage&stage=s01" --out /tmp/claude-0/shots_x --steps "right:1,attack:0.2,shot"` → 콘솔 오류 목록 + 스크린샷
-  - `--steps` 토큰: `right|left|up|down|jump|attack|dash|sub|skill1|skill2|ult|menu|enter|swap[:초]`, `a+b:초`(동시), `wait:초`, `shot`, `eval=JS식` · `--mobile` = 844×390 터치 기기
+  - `--steps` 토큰: `right|left|up|down|jump|attack|dash|sub|skill1|skill2|ult|menu|enter|swap[:초]` (그 밖의 이름은 KeyboardEvent code 그대로, 예 `KeyV:0.6`), `a+b:초`(동시), `wait:초`, `shot`, `eval=JS식`(쉼표 금지 — 토큰 구분자) · `--mobile` = 844×390 터치 기기
 - 맵 검증: `node tools/validate_maps.mjs [stageId] [--debug s14:r2]` (오류 0이어야 함; 2부 기믹 문자·도달성 포함)
 - 결정적 시험 방법 (부하가 큰 기계에서도 같은 결과): 페이지에서 루프를 멈추고(`game._pageHidden = true`) `game.tick(1/60)` 을 직접 돌린다. `window.__game` = Game. 헤드리스 Chromium: `import { chromium } from 'playwright-core'`, `executablePath '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'`. 공용 도우미는 `tools/qa/lib/` (`step.mjs`, `perfprobe.mjs`, `suite.mjs` …).
 
@@ -98,9 +98,9 @@ rAF ─▶ input.pollFrame() (패드 읽기·진동 정리) ─▶ (세로 잠�
        → flash/vignette → 토스트(스테이지·허브는 hudLayout().toast(i)) (taps 묶음은 rAF 끝 마이크로태스크에서 봉인)
     ─▶ game.syncPad() (가상 패드 표시의 유일한 주인)
 ```
-스테이지 한 틱 (`World.update`, 순서 요약): 히트스톱이면 입자만 0.3배 dt + 카메라 스프링 → 슬로모/`timeStop`/`freezeEnemies` 시간 배율 →
-`gimmick.beforePlayer` (GimmickDirector) → 엔티티 루프 (Player: `mount.tick` → `updateGait` → 이동 → `physics(prePhysics … postPhysics, squashSpring)` → 공격 입력 `handleUltInput` …; CompanionDirector: `companions.update`; 적·보스·투사체) →
-`fx.update` → `gimmick.update` → `style.update` → 오버레이 → 보스 페이즈 감시 → 조명(`lights`, `gimmick.lights`) → 카메라.
+스테이지 한 틱 (`World.update`, 순서 요약): 히트스톱이면 입자만 0.3배 dt + 카메라 추적만 하고 끝 → 슬로모(`slowmoScale`)/`timeStop` 시간 배율 →
+엔티티 루프 (맨 앞의 보이지 않는 GimmickDirector 가 `gimmick.beforePlayer`; Player: `mount.tick` → `updateGait` → 이동 → `physics(prePhysics … postPhysics, squashSpring)` → 공격 입력 `handleUltInput` …; CompanionDirector: `companions.update`; 적·보스·투사체 — `timeStop`·`freezeEnemies` 중엔 적 탄 정지) →
+`fx.update` → `gimmick.update` → `style.update` → 오버레이(`tickOverlays`) → 보스 페이즈 감시(`pollBossPhase`) → 처치 슬로모 → 콤보 시간 → 카메라(`camera.follow`) → 방 출구·가짜 벽·보스 트리거·클리어 → 조명 수집(`lights`, `gimmick.lights`).
 그리기: 먼 배경(거울 허상이면 뒤집기) → 중경 → `gimmick.drawWorld('under')` → 타일 → `'back'` → 엔티티(z 순) → 액체 → `'front'` → 조명 → 앞 배경 → `gimmick.drawScreen` → 손맛 오버레이(레터박스·색보정·집중선·임팩트 프레임) → fx 'top' → HUD(§9).
 
 ## 4. 코어 API
@@ -111,7 +111,7 @@ rAF ─▶ input.pollFrame() (패드 읽기·진동 정리) ─▶ (세로 잠�
   `safe {l,r,t,b}`(논리 px)·`safeCss`·`cssScale`·`canvasRect`, `uiK/uiW/uiH`, `tier`/`quality`('low'|'medium'|'high', auto 는 조절기; 결과는 settings.autoTier 로 다음 실행에),
   `dirty`, `syncPad()`, `autoPause()`, `inGameplay`, `hudScene()`, `resize()`. 상수 `VIEW_H MIN_VIEW_W MAX_VIEW_W TILE STEP PAD_SCENES QUALITY_TIERS`.
 - `Scene`: `enter(params)`, `exit()`, `update(dt)`, `render(ctx)`, `resize()`, `onResume(result)`, `autoPause()`(선택).
-  **장면 플래그**: `opaque`(false 면 아래 장면도 그림) · `updateBelow` · `uiScale`(true = uiK 배율 배치·포인터 UI 좌표·글자 하한 11) · `hidePad`/`showPad`(없으면 `PAD_SCENES` = stage hub bossrush survival practice ultCutin) · `padHideButtons`(true | 버튼 id[]) · `hideToasts`/`deferToasts` · `toastX/toastY/toastUp` · `keepAwake` · `hideCursor`.
+  **장면 플래그**: `opaque`(false 면 아래 장면도 그림) · `updateBelow` · `uiScale`(true = uiK 배율 배치·포인터 UI 좌표·글자 하한 11) · `hidePad`/`showPad`(없으면 `PAD_SCENES` = stage hub bossrush survival practice ultCutin) · `padHideButtons`(true | 버튼 id[]) · `hideToasts`/`deferToasts` · `toastX/toastY/toastUp/toastW`(toastW = 상자 최대 폭, ≤ 2줄) · `keepAwake` · `hideCursor`.
 - `ui` (`core/ui.js`): `text(ctx,str,x,y,{size,color,align,weight,family,outline,ow,baseline,shadow,maxWidth})`, `wrap`, `paragraph`, `panel`, `bar`, `button(ctx, rect, label, {selected})→tapped`, `ListMenu`, `drawCover`, `vignette`, `hint`, `COLORS`, `RARITY_NAMES`.
   - 글꼴 `FONT = { body, title, logo, blood, num, numDeco, dmg, brush }` (Noto Sans KR · Hahmlet · Grenze Gotisch · Cinzel · BN Num · BN Dmg · BN Brush · BN Seal; `assets/fonts/`, `tools/fonts/`). `fontsReady`(부팅 때 최대 ≈1.8초 대기), `loadFace`, `loadBrush()`(붓글씨를 미리), `faceReady`.
   - 피 글씨 `bloodText(ctx, str, x, y, {size, style:'blood'|'gold'|'bone', drips, t, align, …}) → {w,h}` (비트맵 캐시), `prewarmText`, `clearTextCache`, `TEXT_STYLES`.
@@ -121,7 +121,7 @@ rAF ─▶ input.pollFrame() (패드 읽기·진동 정리) ─▶ (세로 잠�
 - `audio` (`core/audio.js`): `sfx(name, {vol, pitch, pan, delay})`, `music(id, {fade})`, `stopMusic(fade)`, `duck(amount, time)`, `unlock()`, `setVolumes`, `suspend/resume`, `liveCount(prefix)`, `stopSfx`, `has`, `lead(name)`(타격까지 선행 시간), `setQuality`, `stats`, `current`.
   등록부: 내장 73종(+`_default`) + 체감 45종(`sfx_feel.js` `FEEL_SFX`, audio.js 를 import 하지 않음) + `defineSfx(name, def, vol)` 로 등록한 외부 효과음(`audio_companions.js` 31종). 정의 `fn(S, H)`, `H = SFX_KIT = {T, N, FM, ARP, BOOM, CRACKLE, mtof, R}`. 예산: 100 ms 창에 체감 효과음 시작 10/8/6, hit* 7개 이상이면 재질 레이어 생략, 동시 26.
 - `assets` (`core/assets.js`): `get('bg/s01_village')` → Image | null (null 이면 절차적 대체 그림), `preload([...])`, `pattern(ctx, key)`, `url(key, ver)`, `json(key)`, `load(key)`, `has/exists`.
-  폴더별 확장자 bg/portraits/tex/cg/painted = webp, icons/props = png. **저사양 변형** `assets/lo/` (low 등급·medium 저해상도에서 bg/cg/portraits 자동 선택, 실패하면 원본). **디코딩 LRU** 예산 `ASSET_BUDGET` 터치 160 MB / 데스크톱 400 MB, 채색 텍스처 장면당 24 MB / 64 MB (`track(id, bytes, {group:'painted', release})`, `untrack`, `touch`, `stats()`). **에셋 팩** `usePack('assets/packs/index.json')` (아티팩트 배포, §13).
+  폴더별 확장자 bg/portraits/tex/cg/painted/puppets = webp, icons/props/ui = png (`json(key)` 은 리그·manifest). **저사양 변형** `assets/lo/` (low 등급·medium 저해상도에서 bg/cg/portraits 자동 선택, 실패하면 원본). **디코딩 LRU** 예산 `ASSET_BUDGET` 터치 160 MB / 데스크톱 400 MB, 채색 텍스처 장면당 24 MB / 64 MB (`track(id, bytes, {group:'painted', release})`, `untrack`, `touch`, `stats()`). **에셋 팩** `usePack('assets/packs/index.json')` (아티팩트 배포, §13).
 - `world.fx` (Particles, owner FEEL-REACT): `emit/burst(type,x,y,n,{color,speed,angle,spread})` — 타입 `spark hit blood dust smoke ember fire magic holy ice dark thunder shard soul gold water` + 프리셋 `ecto paper gravel goo bloodmist feather` (`PARTICLE_PRESETS`); `ring`, `flash`, `slash`, `ghost(drawFn, life, layer)`, `text(x,y,str,{color,size,crit})`, `sprite(img,x,y,{…})`, `ering`, `speedLine`, `dmg(target, value, styleKey, o)`(DNF 숫자 기둥·합계), `callout(x,y,text,o)`, `addDecal(d, cap)`/`clearDecals()`.
 - `world.camera` (`core/camera.js`): `kick(dx,dy)`(스프링 반동), `addTrauma(t)`, `shake(mag,time)`(옛 API → 트라우마; mag ≥ 8 이면 bus 'shake'), `punchZoom(z,t)`, `zoomPulse(z,tin,hold,tout)`, `roll`(±0.03 rad), `cine(x,y,zoom,t)|cine(entity,zoom,t)`, `cineEnd(t)`, `frameOn(x,y,zoom)`, `lookBoost`, `floorY`, `tick(dt)`(월드가 멈춘 오버레이가 매 프레임; `tickShake` 는 옛 이름), `reset()`, `toScreen`, `visible`. 터치 모드는 추적점을 바라보는 쪽으로 화면 폭 6 % 당긴다.
 - `world.lighting.add(x,y,r,color,i)` (엔티티의 `lights(L)` 에서), `world.hitstop = s`, `world.slowmo = s` (배율 `world.slowmoScale`), `world.timeStop`.
