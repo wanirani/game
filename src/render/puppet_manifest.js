@@ -3,7 +3,7 @@
 export const PUPPETS = {
  "azel": {
   "azel_bloodking": {
-   "h": "df5d489c7faa",
+   "h": "32a829227d1f",
    "turn": true,
    "lv": [
     "hi",
@@ -12,7 +12,7 @@ export const PUPPETS = {
    ]
   },
   "azel_dawnbringer": {
-   "h": "1e28dc6f332e",
+   "h": "f7656b2c8004",
    "turn": true,
    "lv": [
     "hi",
@@ -39,7 +39,7 @@ export const PUPPETS = {
    ]
   },
   "azel_nosferatu": {
-   "h": "63b2f8106496",
+   "h": "1204663d2103",
    "turn": true,
    "lv": [
     "hi",
@@ -68,7 +68,7 @@ export const PUPPETS = {
  },
  "bran": {
   "bran_berserker": {
-   "h": "7c7e251b7317",
+   "h": "253969e3a55d",
    "turn": true,
    "lv": [
     "hi",
@@ -77,7 +77,7 @@ export const PUPPETS = {
    ]
   },
   "bran_bloodrage": {
-   "h": "14e4dc81e8fa",
+   "h": "dc9f7b57ddc9",
    "turn": true,
    "lv": [
     "hi",
@@ -86,7 +86,7 @@ export const PUPPETS = {
    ]
   },
   "bran_crusader": {
-   "h": "2f3e093062be",
+   "h": "4d76f85da02a",
    "turn": true,
    "lv": [
     "hi",
@@ -95,7 +95,7 @@ export const PUPPETS = {
    ]
   },
   "bran_guardian": {
-   "h": "40e555939eca",
+   "h": "e624b3a25424",
    "turn": true,
    "lv": [
     "hi",
@@ -104,7 +104,7 @@ export const PUPPETS = {
    ]
   },
   "bran_knight": {
-   "h": "200a32d93702",
+   "h": "deb856e8fc52",
    "turn": true,
    "lv": [
     "hi",
@@ -113,7 +113,7 @@ export const PUPPETS = {
    ]
   },
   "bran_paladin": {
-   "h": "884f720d4604",
+   "h": "0ed6ad527c68",
    "turn": true,
    "lv": [
     "hi",
@@ -122,7 +122,7 @@ export const PUPPETS = {
    ]
   },
   "bran_warlord": {
-   "h": "cd1988f4a10d",
+   "h": "b50f89248beb",
    "turn": true,
    "lv": [
     "hi",
@@ -133,7 +133,7 @@ export const PUPPETS = {
  },
  "kael": {
   "kael_bloodhunter": {
-   "h": "97e3bed05203",
+   "h": "e4ef47f711ef",
    "turn": true,
    "lv": [
     "hi",
@@ -142,7 +142,7 @@ export const PUPPETS = {
    ]
   },
   "kael_crusader": {
-   "h": "6b0ba8a70883",
+   "h": "3cfa68e88150",
    "turn": true,
    "lv": [
     "hi",
@@ -151,7 +151,7 @@ export const PUPPETS = {
    ]
   },
   "kael_hunter": {
-   "h": "201d2e65c880",
+   "h": "d9d4d4131c9f",
    "turn": true,
    "lv": [
     "hi",
@@ -160,7 +160,7 @@ export const PUPPETS = {
    ]
   },
   "kael_inquisitor": {
-   "h": "1c0677e355bd",
+   "h": "3e07c3b823d9",
    "turn": true,
    "lv": [
     "hi",
@@ -169,7 +169,7 @@ export const PUPPETS = {
    ]
   },
   "kael_nightraven": {
-   "h": "d90c3841e372",
+   "h": "2cf47538e3f3",
    "turn": true,
    "lv": [
     "hi",
@@ -178,7 +178,7 @@ export const PUPPETS = {
    ]
   },
   "kael_stalker": {
-   "h": "57a85ffd2dd2",
+   "h": "f223b4cd9bcc",
    "turn": true,
    "lv": [
     "hi",
@@ -187,7 +187,7 @@ export const PUPPETS = {
    ]
   },
   "kael_templar": {
-   "h": "a5095a41b87b",
+   "h": "0c3c4e8089ec",
    "turn": true,
    "lv": [
     "hi",
@@ -198,7 +198,7 @@ export const PUPPETS = {
  },
  "lia": {
   "lia_assassin": {
-   "h": "67069e14aa80",
+   "h": "baed423f730f",
    "turn": true,
    "lv": [
     "hi",
@@ -207,7 +207,7 @@ export const PUPPETS = {
    ]
   },
   "lia_bladedancer": {
-   "h": "a78497078bad",
+   "h": "f14a6df577bf",
    "turn": true,
    "lv": [
     "hi",
@@ -216,7 +216,7 @@ export const PUPPETS = {
    ]
   },
   "lia_dancer": {
-   "h": "c77395ff8d26",
+   "h": "05a96bf577cc",
    "turn": true,
    "lv": [
     "hi",
@@ -225,7 +225,7 @@ export const PUPPETS = {
    ]
   },
   "lia_kunoichi": {
-   "h": "9ae91c6b267f",
+   "h": "0c3a3706564b",
    "turn": true,
    "lv": [
     "hi",
@@ -234,7 +234,7 @@ export const PUPPETS = {
    ]
   },
   "lia_ninja": {
-   "h": "0421545f771a",
+   "h": "c6538ae3987d",
    "turn": true,
    "lv": [
     "hi",
@@ -243,7 +243,7 @@ export const PUPPETS = {
    ]
   },
   "lia_reaper": {
-   "h": "53f803e6da57",
+   "h": "43806b3f37da",
    "turn": true,
    "lv": [
     "hi",
@@ -252,7 +252,7 @@ export const PUPPETS = {
    ]
   },
   "lia_shadowmaster": {
-   "h": "ffa179040613",
+   "h": "4a5149959c75",
    "turn": true,
    "lv": [
     "hi",
@@ -337,7 +337,7 @@ export const PUPPETS = {
  },
  "sera": {
   "sera_archmage": {
-   "h": "de5136ae5045",
+   "h": "df4607a7066a",
    "turn": true,
    "lv": [
     "hi",
@@ -346,7 +346,7 @@ export const PUPPETS = {
    ]
   },
   "sera_elementalist": {
-   "h": "c8b77ba5acee",
+   "h": "c51b4aab307b",
    "turn": true,
    "lv": [
     "hi",
@@ -355,7 +355,7 @@ export const PUPPETS = {
    ]
   },
   "sera_exorcist": {
-   "h": "13ae689df8fe",
+   "h": "e208d710b422",
    "turn": true,
    "lv": [
     "hi",
@@ -364,7 +364,7 @@ export const PUPPETS = {
    ]
   },
   "sera_oracle": {
-   "h": "b5dbff3914f5",
+   "h": "bbb14e8bd8b1",
    "turn": true,
    "lv": [
     "hi",
@@ -373,7 +373,7 @@ export const PUPPETS = {
    ]
   },
   "sera_priestess": {
-   "h": "2573ba6906d0",
+   "h": "f919e84cbee8",
    "turn": true,
    "lv": [
     "hi",
@@ -382,7 +382,7 @@ export const PUPPETS = {
    ]
   },
   "sera_saint": {
-   "h": "a38fa66ed6fc",
+   "h": "62ba86b7e77e",
    "turn": true,
    "lv": [
     "hi",
@@ -391,7 +391,7 @@ export const PUPPETS = {
    ]
   },
   "sera_stormcaller": {
-   "h": "426e17ca5f4f",
+   "h": "ccbfce3086ed",
    "turn": true,
    "lv": [
     "hi",
@@ -402,7 +402,7 @@ export const PUPPETS = {
  },
  "victor": {
   "victor_deadeye": {
-   "h": "a81c2eb66a7b",
+   "h": "11241adbabb5",
    "turn": true,
    "lv": [
     "hi",
@@ -411,7 +411,7 @@ export const PUPPETS = {
    ]
   },
   "victor_desperado": {
-   "h": "f54b60a44433",
+   "h": "209cd32a390f",
    "turn": true,
    "lv": [
     "hi",
@@ -420,7 +420,7 @@ export const PUPPETS = {
    ]
   },
   "victor_executioner": {
-   "h": "06ec35dcf320",
+   "h": "08a6909acb99",
    "turn": true,
    "lv": [
     "hi",
@@ -429,7 +429,7 @@ export const PUPPETS = {
    ]
   },
   "victor_gunlord": {
-   "h": "b94d54b04761",
+   "h": "d138290c6c33",
    "turn": true,
    "lv": [
     "hi",
@@ -438,7 +438,7 @@ export const PUPPETS = {
    ]
   },
   "victor_gunslinger": {
-   "h": "614502964170",
+   "h": "4e14361ef1f3",
    "turn": true,
    "lv": [
     "hi",
@@ -447,7 +447,7 @@ export const PUPPETS = {
    ]
   },
   "victor_hellfire": {
-   "h": "52d7f897e621",
+   "h": "35db037739a2",
    "turn": true,
    "lv": [
     "hi",
@@ -456,7 +456,7 @@ export const PUPPETS = {
    ]
   },
   "victor_phantom": {
-   "h": "e8280d7ae5e3",
+   "h": "d2ec69152d41",
    "turn": true,
    "lv": [
     "hi",

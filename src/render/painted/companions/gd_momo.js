@@ -28,7 +28,11 @@ async function load() {
 const PV = { st1: [0, 0], st2: [0, 0], st3: [0, 0], st4: [0, 0] };
 
 function draw(ctx, g, world, rig) {
-  const t = g.t ?? 0, at = g.animT ?? 0, an = g.anim ?? 'idle';
+  const t = g.t ?? 0;
+  let at = g.animT ?? 0, an = g.anim ?? 'idle';
+  // 협공 「코 휘두르기」(guardian.js kindMelee): 0.12 돌진 뒤 0.14 에 때리는 순간 anim 이 'attack'(animT 0)으로 바뀐다 →
+  // 그대로 그리면 휘두른 코를 다시 젖혔다가 한 번 더 무는 것처럼 보인다. 동작(g.act)이 협공이면 협공 시간축으로 이어 그린다
+  if (an === 'attack' && g.act?.name === 'assist') { an = 'assist'; at = 0.12 + (g.act.t ?? 0); }
   const f = g.facing < 0 ? -1 : 1, vxf = (g.vx ?? 0) * f;
   const cast = an === 'skill', atk = an === 'attack', asst = an === 'assist', emote = an === 'emote';
   const hurt = an === 'hurt' ? 1 - clamp(at / 0.3, 0, 1) : 0;

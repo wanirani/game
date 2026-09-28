@@ -94,8 +94,405 @@
    "src": "src/lia/lia_kunoichi_q3f.webp",
    "adopted": "b (두 인물 중 오른쪽 = 3/4 앞; 왼쪽은 버림)",
    "note": "c 는 거의 정면"
+  },
+  {
+   "id": "kael_hunter_q3f",
+   "generationId": "AbwMf9-Bqz85Fow2s6DEK-St1bHpVbF-tiXJ4UbdU7rsTYUikQrqsSbnEBgiAp06uR7k1T-d",
+   "images": 1,
+   "credits": 2,
+   "inputs": [
+    "kael_hunter_side.jpg",
+    "kael_hunter_front.jpg (turn5 1번 인물)"
+   ],
+   "src": "src/kael/kael_hunter_q3f.webp",
+   "adopted": true,
+   "note": "3/4 앞 ≈25~50°, 서 있는 자세"
+  },
+  {
+   "id": "kael_bloodhunter_q3f",
+   "generationId": "AX_O0mC4DrF62EM09ZBR4YSrMqQf5OyYpOGo-1hbKSv5QwEOYhOYSYU1cqy29l1SMpLmPP18",
+   "images": 1,
+   "credits": 2,
+   "inputs": [
+    "kael_bloodhunter_side.jpg",
+    "kael_bloodhunter_front.jpg (turn5 1번 인물)"
+   ],
+   "src": "src/kael/kael_bloodhunter_q3f.webp",
+   "adopted": true,
+   "note": "3/4 앞 ≈25~50°, 서 있는 자세"
+  },
+  {
+   "id": "kael_crusader_q3f",
+   "generationId": "AbJdcoHKqfH2QRtSXHPmc9LnfTBTA9Y7IPgl4flyisw4Nu1XSdNd5vDQmQONkwQSwEPjg5JB",
+   "images": 1,
+   "credits": 2,
+   "inputs": [
+    "kael_crusader_side.jpg",
+    "kael_crusader_front.jpg (turn5 1번 인물)"
+   ],
+   "src": "src/kael/kael_crusader_q3f.webp",
+   "adopted": true,
+   "note": "3/4 앞 ≈25~50°, 서 있는 자세"
+  },
+  {
+   "id": "kael_inquisitor_q3f",
+   "generationId": "Ab6IbYGp9uGgfdyoW1VveNBbPiS4xiBD_5qJR8sY0RDfPbqiSMp-fKV0t3DMRVX0PjuELSbW",
+   "images": 1,
+   "credits": 2,
+   "inputs": [
+    "kael_inquisitor_side.jpg",
+    "kael_inquisitor_front.jpg (turn5 1번 인물)"
+   ],
+   "src": "src/kael/kael_inquisitor_q3f.webp",
+   "adopted": true,
+   "note": "3/4 앞 ≈25~50°, 서 있는 자세"
+  },
+  {
+   "id": "kael_nightraven_q3f",
+   "generationId": "AQNjIx3fe7B_PY4Hiqg7gr9NxxYy5Mz4Rorsvoa_dxh1ZI7S6aY94wm0tg7oyEV6mMjEsfwL",
+   "images": 1,
+   "credits": 2,
+   "inputs": [
+    "kael_nightraven_side.jpg",
+    "kael_nightraven_front.jpg (turn5 1번 인물)"
+   ],
+   "src": "src/kael/kael_nightraven_q3f.webp",
+   "adopted": true,
+   "note": "3/4 앞 ≈25~50°, 서 있는 자세"
+  },
+  {
+   "id": "kael_stalker_q3f",
+   "generationId": "AVLy41D2Hz2258ZmdO1Q_oug2XWtTTG0i3hwI4z9DXWeyKE3pYhx8KuXOjKcs5xJuVjLhDaC",
+   "images": 1,
+   "credits": 2,
+   "inputs": [
+    "kael_stalker_side.jpg",
+    "kael_stalker_front.jpg (turn5 1번 인물)"
+   ],
+   "src": "src/kael/kael_stalker_q3f.webp",
+   "adopted": true,
+   "note": "3/4 앞 ≈25~50°, 서 있는 자세"
+  },
+  {
+   "id": "kael_templar_q3f",
+   "generationId": "AVjo9Ngj_NGUA4vT3srd6NqEQVqEUrpDmrMbZnt0qmNdUAvE1AdNqt4Y291tqTx6uCMmNrnD",
+   "images": 1,
+   "credits": 2,
+   "inputs": [
+    "kael_templar_side.jpg",
+    "kael_templar_front.jpg (turn5 1번 인물)"
+   ],
+   "src": "src/kael/kael_templar_q3f.webp",
+   "adopted": true,
+   "note": "3/4 앞 ≈25~50°, 서 있는 자세"
+  },
+  {
+   "id": "bran_knight_q3f",
+   "generationId": "AewbXGnOoBJeSJKUHDhZqJIgFf3qLkuBgsO_8nV9YHgKx_I7f0Har9i392sqg8ZK-V4mfc8m",
+   "images": 1,
+   "credits": 2,
+   "inputs": [
+    "bran_knight_side.jpg",
+    "bran_knight_front.jpg (turn5 1번 인물)"
+   ],
+   "src": "src/bran/bran_knight_q3f.webp",
+   "adopted": true,
+   "note": "3/4 앞 ≈25~50°, 서 있는 자세"
+  },
+  {
+   "id": "bran_paladin_q3f",
+   "generationId": "AR3m9Ec7KHJ64Sks2nW0ZeLoU8U_BBHpEVAAFsDD_cE2Ph6tDTVu5Zo_FtY61sOcHpPVZqig",
+   "images": 1,
+   "credits": 2,
+   "inputs": [
+    "bran_paladin_side.jpg",
+    "bran_paladin_front.jpg (turn5 1번 인물)"
+   ],
+   "src": null,
+   "adopted": false,
+   "note": "거의 정면(≈10°)"
+  },
+  {
+   "id": "bran_crusader_q3f",
+   "generationId": "AWCuxbhYYNDqnnO3LT8C6GE0gTQ0wt1g805kDJ2EJE32ATiA_XKLWiQfNfVy7xeHayZ86Hsn",
+   "images": 1,
+   "credits": 2,
+   "inputs": [
+    "bran_crusader_side.jpg",
+    "bran_crusader_front.jpg (turn5 1번 인물)"
+   ],
+   "src": "src/bran/bran_crusader_q3f.webp",
+   "adopted": true,
+   "note": "3/4 앞 ≈25~50°, 서 있는 자세"
+  },
+  {
+   "id": "bran_berserker_q3f",
+   "generationId": "AQMGIzZlnpLoKP0IyB8TkD-5b3SVtKqBuBfnYwP59dbHHh3bVEnu6C26LecBIv8yN0GNDyl7",
+   "images": 1,
+   "credits": 2,
+   "inputs": [
+    "bran_berserker_side.jpg",
+    "bran_berserker_front.jpg (turn5 1번 인물)"
+   ],
+   "src": null,
+   "adopted": false,
+   "note": "걷는 자세"
+  },
+  {
+   "id": "bran_warlord_q3f",
+   "generationId": "AUjvLtLA5pLz2Gkr-_eC-O6Fdlbdo-NMITjFoycPGleEWbowoTs14Q4pCsRJhz9ppAer6jeW",
+   "images": 1,
+   "credits": 2,
+   "inputs": [
+    "bran_warlord_side.jpg",
+    "bran_warlord_front.jpg (turn5 1번 인물)"
+   ],
+   "src": null,
+   "adopted": false,
+   "note": "거의 정면"
+  },
+  {
+   "id": "bran_bloodrage_q3f",
+   "generationId": "Abje8sOL4zj5r_rmO10KmCPtYYnN7r1YSwPu_8nUPExPEolGnyA5CvzObd-j7jQ4sqCCi9Ls",
+   "images": 1,
+   "credits": 2,
+   "inputs": [
+    "bran_bloodrage_side.jpg",
+    "bran_bloodrage_front.jpg (turn5 1번 인물)"
+   ],
+   "src": null,
+   "adopted": false,
+   "note": "거의 정면"
+  },
+  {
+   "id": "lia_bladedancer_q3f",
+   "generationId": "ARcoZxHXqXP8WJb32RGdv6KrgJob8GOZn4o2rGelYMiRXL7su9Gc2WP2feJO_kZKuWAY_zSi",
+   "images": 1,
+   "credits": 2,
+   "inputs": [
+    "lia_bladedancer_side.jpg",
+    "lia_bladedancer_front.jpg (turn5 1번 인물)"
+   ],
+   "src": "src/lia/lia_bladedancer_q3f.webp",
+   "adopted": true,
+   "note": "3/4 앞 ≈25~50°, 서 있는 자세"
+  },
+  {
+   "id": "lia_reaper_q3f",
+   "generationId": "AS077Ip6YhbJu2uQ3qCUlFzBqBa03sPW3R2sFJvMSM7nzqXu2R9vsLx-y1k5V2jeYc264SjY",
+   "images": 1,
+   "credits": 2,
+   "inputs": [
+    "lia_reaper_side.jpg",
+    "lia_reaper_front.jpg (turn5 1번 인물)"
+   ],
+   "src": "src/lia/lia_reaper_q3f.webp",
+   "adopted": true,
+   "note": "3/4 앞 ≈25~50°, 서 있는 자세"
+  },
+  {
+   "id": "lia_shadowmaster_q3f",
+   "generationId": "AUxEHYwFLKawoLQfFBxAPIWkDRtRfxAs5DTy2HffEKr4oEBc5oTk32iHLphuPQR2-f2wGBAP",
+   "images": 1,
+   "credits": 2,
+   "inputs": [
+    "lia_shadowmaster_side.jpg",
+    "lia_shadowmaster_front.jpg (turn5 1번 인물)"
+   ],
+   "src": null,
+   "adopted": false,
+   "note": "세 인물 시트(가운데가 거의 옆모습)"
+  },
+  {
+   "id": "azel_bloodking_q3f",
+   "generationId": "ASD6e_7uoJreshT25L2LQYKPZOevwVDF5OEQXzzTxwg6madjWg-yLnWCHRRvwYp25O5a0NV6",
+   "images": 1,
+   "credits": 2,
+   "inputs": [
+    "azel_bloodking_side.jpg",
+    "azel_bloodking_front.jpg (turn5 1번 인물)"
+   ],
+   "src": "src/azel/azel_bloodking_q3f.webp",
+   "adopted": true,
+   "note": "3/4 앞 ≈25~50°, 서 있는 자세"
+  },
+  {
+   "id": "azel_dawnbringer_q3f",
+   "generationId": "AazfMXj7MG8TZhthYnUuOnv5-Ra6PMBafH7TGJdYddDWdtHI9X8wZtBHSSyR9g5Xn0p5IPTL",
+   "images": 1,
+   "credits": 2,
+   "inputs": [
+    "azel_dawnbringer_side.jpg",
+    "azel_dawnbringer_front.jpg (turn5 1번 인물)"
+   ],
+   "src": null,
+   "adopted": false,
+   "note": "거의 정면·얼굴이 반대로"
+  },
+  {
+   "id": "azel_nosferatu_q3f",
+   "generationId": "AUKpAvMyrlyqTTxG_Oos2cPxDLXwxoDoM6BGBmjTBX-IQORRKcBCABlfPu0ELqUEKlDXnlSW",
+   "images": 1,
+   "credits": 2,
+   "inputs": [
+    "azel_nosferatu_side.jpg",
+    "azel_nosferatu_front.jpg (turn5 1번 인물)"
+   ],
+   "src": "src/azel/azel_nosferatu_q3f.webp",
+   "adopted": true,
+   "note": "3/4 앞 ≈25~50°, 서 있는 자세"
+  },
+  {
+   "id": "sera_elementalist_q3f",
+   "generationId": "AdalZfecPHECUcVjPdfgrxlGATmO8vFZh_rN81zwH1y4WzsiL3eRh9sElEZlL6yYNShShR7H",
+   "images": 1,
+   "credits": 2,
+   "inputs": [
+    "sera_elementalist_side.jpg",
+    "sera_elementalist_front.jpg (turn5 1번 인물)"
+   ],
+   "src": "src/sera/sera_elementalist_q3f.webp",
+   "adopted": true,
+   "note": "3/4 앞 ≈25~50°, 서 있는 자세"
+  },
+  {
+   "id": "victor_executioner_q3f",
+   "generationId": "AWLP4k-NF_5KBA6qpcTZkYoTFePUW8biip3w8z22G96D4r5mQigSMn4ux1VHRTLIKqrHEE84",
+   "images": 1,
+   "credits": 2,
+   "inputs": [
+    "victor_executioner_side.jpg",
+    "victor_executioner_front.jpg (turn5 1번 인물)"
+   ],
+   "src": "src/victor/victor_executioner_q3f.webp",
+   "adopted": true,
+   "note": "3/4 앞 ≈25~50°, 서 있는 자세"
+  },
+  {
+   "id": "bran_guardian_q3f",
+   "generationId": "AUx-zTacZUTL-IPJTAmx-Co4vRfsfqig__KO7pfpSauvRU7xMDtZ-TPYQZ005aYAE-w8T5Et",
+   "images": 1,
+   "credits": 2,
+   "inputs": [
+    "bran_guardian_side.jpg",
+    "bran_guardian_front.jpg (turn5 1번 인물)"
+   ],
+   "src": "src/bran/bran_guardian_q3f.webp",
+   "adopted": true,
+   "note": "3/4 앞 ≈25~50°, 서 있는 자세"
+  },
+  {
+   "id": "bran_paladin_q3f#2",
+   "generationId": "AXt70bApYXGmF5EM8XAbbOmtX8P4YP01FwWe-_GXiIrcokHDZFTEctKzqj0dI-ZR0W2ykPXh",
+   "images": 1,
+   "credits": 2,
+   "inputs": [
+    "bran_paladin_side.jpg",
+    "bran_paladin_front.jpg",
+    "bran_knight_q3f 생성본(자세 참조)"
+   ],
+   "src": "src/bran/bran_paladin_q3f.webp",
+   "adopted": true,
+   "note": "자세 참조 재생성 — 서 있는 3/4 앞"
+  },
+  {
+   "id": "bran_warlord_q3f#2",
+   "generationId": "AQ4IOFCGRwXCiTvAp4-VUVomxfsnEn-VuH0QXaUW-vEQE05uRbY3CLMfLc4efCY4ajg4ffFD",
+   "images": 1,
+   "credits": 2,
+   "inputs": [
+    "bran_warlord_side.jpg",
+    "bran_warlord_front.jpg",
+    "bran_knight_q3f 생성본(자세 참조)"
+   ],
+   "src": "src/bran/bran_warlord_q3f.webp",
+   "adopted": true,
+   "note": "자세 참조 재생성 — 서 있는 3/4 앞"
+  },
+  {
+   "id": "bran_bloodrage_q3f#2",
+   "generationId": "AejvadG4XDGlcPWwjTsHTxt_3G30aPW_m8Xi0Ni4NlC5TwMvv8HLFXsGLWMW8-0D5oK936q6",
+   "images": 1,
+   "credits": 2,
+   "inputs": [
+    "bran_bloodrage_side.jpg",
+    "bran_bloodrage_front.jpg",
+    "bran_knight_q3f 생성본(자세 참조)"
+   ],
+   "src": "src/bran/bran_bloodrage_q3f.webp",
+   "adopted": true,
+   "note": "자세 참조 재생성 — 서 있는 3/4 앞"
+  },
+  {
+   "id": "bran_berserker_q3f#2",
+   "generationId": "AQHnmWscYtsC8-kuI9Roq8FDJD6rvpirOj6LD9RHbgfKTjMlB2efwRxD86HVsVNFRYaCbmYa",
+   "images": 1,
+   "credits": 2,
+   "inputs": [
+    "bran_berserker_side.jpg",
+    "bran_berserker_front.jpg",
+    "bran_knight_q3f 생성본(자세 참조)"
+   ],
+   "src": null,
+   "adopted": false,
+   "note": "다시 걷는 자세(옆 원화가 걷는 자세라 따라감)"
+  },
+  {
+   "id": "azel_dawnbringer_q3f#2",
+   "generationId": "AS-_5AQ15J1tRC70ecGEqDvCyV3EXmmo_5V7X8ITm-Z-Q1eTeUDbDtZrPzJ3m6GHAU9I9Q05",
+   "images": 1,
+   "credits": 2,
+   "inputs": [
+    "azel_dawnbringer_side.jpg",
+    "azel_dawnbringer_front.jpg",
+    "kael_crusader_q3f 생성본(자세 참조)"
+   ],
+   "src": null,
+   "adopted": false,
+   "note": "걷는 자세·코트 끝이 그림 밖으로 잘림"
+  },
+  {
+   "id": "bran_berserker_q3f#3",
+   "generationId": "AcJU3ZdaPff5o70l6mWN5ehbFpdGoVykU6vwVzC7t6fae88j10JaNRiRck0g-5uru_SotCEj",
+   "images": 1,
+   "credits": 2,
+   "inputs": [
+    "bran_berserker_front.jpg",
+    "bran_knight_q3f 생성본(자세 참조)"
+   ],
+   "src": "src/bran/bran_berserker_q3f.webp",
+   "adopted": true,
+   "note": "옆 원화(걷는 자세)를 빼고 정면+자세 참조만 → 서 있는 3/4 앞"
+  },
+  {
+   "id": "azel_dawnbringer_q3f#3",
+   "generationId": "AX4ojFIWPeZwu2eEGntUVHU403Z70oSz-kYbTLXNQ5FEENYADEt15edUU1fGenYRp6viV5vX",
+   "images": 1,
+   "credits": 2,
+   "inputs": [
+    "azel_dawnbringer_front.jpg",
+    "kael_crusader_q3f 생성본(자세 참조)"
+   ],
+   "src": "src/azel/azel_dawnbringer_q3f.webp",
+   "adopted": true,
+   "note": "옆 원화(걷는 자세)를 빼고 정면+자세 참조만 → 서 있는 3/4 앞"
+  },
+  {
+   "id": "lia_shadowmaster_q3f#2",
+   "generationId": "AfkC87xIAYMx9GlBku6v9Yk3FSxQ9zdFo6j276VPky8LHM1GS4vrWwttbLoUn_HW_syHuS4A",
+   "images": 1,
+   "credits": 2,
+   "inputs": [
+    "lia_shadowmaster_front.jpg",
+    "lia_bladedancer_q3f 생성본(자세 참조)"
+   ],
+   "src": "src/lia/lia_shadowmaster_q3f.webp",
+   "adopted": true,
+   "note": "옆 원화(걷는 자세)를 빼고 정면+자세 참조만 → 서 있는 3/4 앞"
   }
  ],
- "credits_used": 20,
- "images_used": 10
+ "credits_used": 80,
+ "images_used": 40,
+ "template_q3f_pose": "Repaint 图片2(또는 图片3) as the <person> of 图片1: keep EXACTLY the camera angle, the three-quarter body turn toward the left, the calm standing pose with both feet planted (NOT walking) … replace the figure with the <person> of 图片1 — same face, hair, build, wearing exactly the outfit of 图片1: <outfit>. One single figure only, full body …, plain light-grey studio background, same painterly style, empty hands, no weapons, no cape, no text, no watermark.",
+ "_note_q3f": "프롬프트 방향: 얼굴·가슴·발끝이 그림 왼쪽 아래(화면 왼쪽)를 향함 = y135. 생성본 발밑 바닥 그림자는 build_turn deshadow 로 지움"
 }

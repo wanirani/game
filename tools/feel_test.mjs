@@ -491,6 +491,9 @@ async function pC1C3() {
   const ms = p.moveSet;
   const cases = [['L', ms.ground?.[0], 'ground'], ['M', ms.ground?.[1], 'ground'], ['H', ms.up, 'up'], ['F', ms.ground?.[3] ?? ms.charge, 'ground']];
   const out = { rows: [], bloom: null };
+  const R0 = Math.random;
+  Math.random = () => 0.99;   // no crits: a crit adds HITSTOP.mod.crit frames (C1 checks the class base values)
+  try {
   for (const [wantCls, mv, kind] of cases) {
     Q.reset(); p.facing = 1;
     const d = Q.dummy('skeleton', 64, { facing: -1 });
@@ -514,6 +517,7 @@ async function pC1C3() {
     }
     Q.step(30); d.dead = true; Q.step(2);
   }
+  } finally { Math.random = R0; }
   return out;
 }
 
@@ -669,6 +673,9 @@ async function pC8() {
 async function pC9() {
   const Q = window.__fq, w = Q.w(), p = Q.p();
   const out = {};
+  const R0 = Math.random;
+  Math.random = () => 0.99;   // no crits: crit damage/style points would move the thresholds this check measures
+  try {
   // armor_knight is never launched by whip1
   Q.reset(); p.facing = 1;
   let d = Q.dummy('armor_knight', 70, { facing: -1 });
@@ -700,6 +707,7 @@ async function pC9() {
   for (let i = 0; i < 4; i++) { Q.hit(d, { moveId: 'gs3', finisher: true, kb: [460, -360], hitstop: 0.1 }); Q.step(20); }
   out.pillar = { wclass: d.wclass, dx: +(d.x - x0).toFixed(2), dy: +(d.y - y0).toFixed(2) };
   d.dead = true; Q.step(2);
+  } finally { Math.random = R0; }
   return out;
 }
 
@@ -828,6 +836,9 @@ async function pC13() {
 async function pC14() {
   const Q = window.__fq, w = Q.w(), p = Q.p(), S = w.style, ranks = Q.FH.STYLE.ranks;
   const out = {};
+  const R0 = Math.random;
+  Math.random = () => 0.99;   // no crits: crit damage/style points would move the thresholds this check measures
+  try {
   const words = new Set();
   const watch = () => { const a = S.ann; if (a?.cur?.word) words.add(a.cur.word); for (const q of a?.queue ?? []) if (q?.word) words.add(q.word); };
   // varied combo
@@ -871,6 +882,7 @@ async function pC14() {
   }
   out.spam = { maxRank: spamMax, letter: ranks[spamMax - 1]?.r ?? '-', pts: Math.round(S.pts) };
   d.dead = true; Q.step(2);
+  } finally { Math.random = R0; }
   return out;
 }
 
@@ -1180,9 +1192,15 @@ async function pX1() {
   p.x = Q.home.x; p.y = Q.fl.y - p.h - 1; p.vx = 0; p.facing = 1; Q.step(20);
   const d = Q.dummy('skeleton', 120, { facing: -1 });
   Q.step(2);
+  const R0 = Math.random;
+  Math.random = () => 0.99;   // no crits (a crit adds hitstop frames and knockback)
+  try {
   // rider normal attacks
   const rows = [];
   for (let i = 0; i < 3; i++) {
+    // put the dummy back in reach (the previous hit knocked it away) before each swing
+    Q.until(() => d.onGround !== false, 60);
+    d.x = p.cx + 120 - d.w / 2; d.vx = 0; p.facing = 1; Q.step(2);
     const n0 = Q.log.hits.length, c0 = w.combo?.n ?? 0, pts0 = w.style?.pts ?? 0;
     w.freezeLog.length = 0;
     Q.press('attack', 2);
@@ -1199,6 +1217,7 @@ async function pX1() {
   const ch = Q.log.hits.slice(n1).filter((x) => x.tid === d.__id);
   out.charge = { hits: ch.length, tags: ch[0]?.tags ?? null, hs: ch[0]?.hs ?? null, comboDelta: (w.combo?.n ?? 0) - c1, stillRiding: !!p.mount?.riding };
   Q.step(40);
+  } finally { Math.random = R0; }
   d.dead = true; Q.step(2);
   return out;
 }

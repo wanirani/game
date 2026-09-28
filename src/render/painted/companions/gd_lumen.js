@@ -24,14 +24,16 @@ async function load() {
   return rig;
 }
 
-// warpY 오프셋 (텍셀): u = 0 테두리 … 1 촉수 끝. 매 프레임 값만 바꿔 쓰는 닫힘 하나 (할당 없음)
-const W = { t: 0, lean: 0, lash: 0, pulse: 0 };
+// warpY 오프셋: u = 0 테두리 … 1 촉수 끝. 매 프레임 값만 바꿔 쓰는 닫힘 하나 (할당 없음).
+// warpY 는 텍셀 단위를 받는다 → 아래 수치(텍셀 밀도 1.25 에서 맞춘 값)를 W.k = rig.td / 1.25 로 곱해
+// 화면 크기·품질(텍셀 밀도 1.25~2.75)과 상관없이 같은 논리 px 만큼 흔들리게 한다 (ghost.js 처럼 rig.td 를 곱하는 규약)
+const W = { t: 0, lean: 0, lash: 0, pulse: 0, k: 1 };
 const _o = [0];
 const tentOff = (u) => {
   const u2 = u * u;
   _o[0] = (Math.sin(W.t * 2.3 - u * 4.2) * 2.2 * u + Math.sin(W.t * 3.7 - u * 7) * 0.9 * u2   // 물결
     - W.lean * 7 * u2 - W.pulse * 2.5 * u2                                                     // 헤엄: 뒤로 끌림
-    + W.lash * 14 * u2) * 1;                                                                   // 찌르기: 앞으로 휘두름
+    + W.lash * 14 * u2) * W.k;                                                                 // 찌르기: 앞으로 휘두름
   return _o;
 };
 
@@ -60,7 +62,7 @@ function draw(ctx, g, world, rig) {
   gGlow(ctx, 0, RIM_Y + 1 + bob, 17 + flare * 26 + (aw ? 4 : 0), '#6fe8ff', 0.32 + flare * 0.5 + (aw ? 0.1 : 0) + Math.sin(t * 3.1) * 0.04);   // 갓·촉수의 생물 발광
   ctx.translate(0, bob);
   ctx.translate(0, RIM_Y - 3); ctx.rotate(tilt + spin); if (sc !== 1) ctx.scale(sc, sc); ctx.translate(0, -(RIM_Y - 3));
-  W.t = t; W.lean = lean; W.lash = lash; W.pulse = pulse;
+  W.t = t; W.lean = lean; W.lash = lash; W.pulse = pulse; W.k = (rig.td || 1.25) / 1.25;
   const bx = 1 + pulse * 0.1 + flare * 0.18, by = 1 - pulse * 0.12 + flare * 0.14;
   K.begin(ctx, rig, 0);
   // 촉수 · 구완 (갓 아래: 수축 때 살짝 짧아진다)
