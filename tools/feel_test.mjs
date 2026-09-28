@@ -1573,7 +1573,7 @@ async function heroSuite(hero, { onlyC2 = false } = {}) {
         gameplay = { b, cb };
         const v = ratioStatus({ u, b, cu, cb });
         const slow = await P.page.evaluate(() => window.__fq.slow.splice(0)).catch(() => []);
-        rec('U2', { hero, variant: cid }, v.status, `gameplay avg ${b.avg} ms (med ${b.med}), ultimate avg ${u.avg} ms (≤ ${round(1.5 * b.avg)}), p95 ${u.p95} (≤ ${round(2.5 * b.med)}), max ${u.max} (≤ 250); main-thread CPU ${cu ?? '?'} vs ${cb ?? '?'} ms/frame = ×${v.cpuRatio ?? '?'} (≤ 1.5)${v.cpuOk === false ? ' → over budget at any load' : ''}; cast at x ${r.at?.px} (camera x ${r.at?.camX}), load ${round(os.loadavg()[0])}`, { base: b, ult: u, cpu: { base: cb, ult: cu, ratio: v.cpuRatio }, at: r.at, slow: slow.slice(0, 40) });
+        rec('U2', { hero, variant: cid }, v.status, `gameplay avg ${b.avg} ms (med ${b.med}), ultimate avg ${u.avg} ms (≤ ${round(1.5 * b.avg)}), p95 ${u.p95} (≤ ${round(2.5 * b.med)}), max ${u.max} (≤ 250); main-thread CPU ${cu ?? '?'} vs ${cb ?? '?'} ms/frame = ×${v.cpuRatio ?? '?'} (≤ 1.5)${v.confirmed ? ' → wall and CPU averages both over budget: fails at any machine load' : ''}; cast at x ${r.at?.px} (camera x ${r.at?.camX}), load ${round(os.loadavg()[0])}`, { base: b, ult: u, cpu: { base: cb, ult: cu, ratio: v.cpuRatio }, at: r.at, slow: slow.slice(0, 40) });
       }
     }
   }
@@ -1600,7 +1600,7 @@ async function heroSuite(hero, { onlyC2 = false } = {}) {
       const cu = cAll != null && gameplay.cb != null ? round((cAll - nDrop * gameplay.cb) / fin.frames.length, 2) : null;
       const b = gameplay.b, u = stats(fin.frames);
       const v = ratioStatus({ u, b, cu, cb: gameplay.cb });
-      rec('U2', { hero, variant: 'awakening ' + c1 }, v.status, `first awakening (cut-in + director, ${u.n} frames): avg ${u.avg} ms (≤ ${round(1.5 * b.avg)}), p95 ${u.p95} (≤ ${round(2.5 * b.med)}), max ${u.max} (≤ 250) vs gameplay avg ${b.avg} (med ${b.med}); main-thread CPU ${cu ?? '?'} vs ${gameplay.cb ?? '?'} ms/frame = ×${v.cpuRatio ?? '?'} (≤ 1.5)${v.cpuOk === false ? ' → over budget at any load' : ''}; load ${round(os.loadavg()[0])}`, { base: b, awaken: u, cpu: { base: gameplay.cb, awaken: cu, ratio: v.cpuRatio, holdFrames: nDrop } });
+      rec('U2', { hero, variant: 'awakening ' + c1 }, v.status, `first awakening (cut-in + director, ${u.n} frames): avg ${u.avg} ms (≤ ${round(1.5 * b.avg)}), p95 ${u.p95} (≤ ${round(2.5 * b.med)}), max ${u.max} (≤ 250) vs gameplay avg ${b.avg} (med ${b.med}); main-thread CPU ${cu ?? '?'} vs ${gameplay.cb ?? '?'} ms/frame = ×${v.cpuRatio ?? '?'} (≤ 1.5)${v.confirmed ? ' → wall and CPU averages both over budget: fails at any machine load' : ''}; load ${round(os.loadavg()[0])}`, { base: b, awaken: u, cpu: { base: gameplay.cb, awaken: cu, ratio: v.cpuRatio, holdFrames: nDrop } });
     }
     if (r2 && st && want('A2')) {
       const okTap = !r2.tap.castBeforeRelease && r2.tap.castAfterRelease != null && r2.tap.castAfterRelease <= 2 && !r2.tap.awakenCast && !r2.tap.pushes.includes('awakenCutin');
@@ -1649,7 +1649,7 @@ async function heroSuite(hero, { onlyC2 = false } = {}) {
         const b = stats(wk.frames), u = stats(sp.frames), cb = cpuPerFrame([s0, s1]), cu = cpuPerFrame([s2, s3]);
         const v = ratioStatus({ u, b, cu, cb, k: 1.2, p95K: null });
         const scene = sp.targets >= 6 && sp.sprintFrames >= 20 && sp.rankLetter === 'SSS';
-        rec('U2', sctx, scene ? v.status : 'error', `${scene ? '' : 'scenario not reached — '}sprint ${sp.sprintFrames}/${u.n} frames, ${sp.hits} hits on ${sp.targets}/6 enemies at rank ${sp.rankLetter}: avg ${u.avg} ms vs idle-walk avg ${b.avg} ms (≤ ×1.2 = ${round(1.2 * b.avg)}), max ${u.max} (≤ 250); main-thread CPU ${cu ?? '?'} vs ${cb ?? '?'} ms/frame = ×${v.cpuRatio ?? '?'} (≤ 1.2)${v.cpuOk === false ? ' → over budget at any load' : ''}; load ${round(os.loadavg()[0])}`, { walk: b, walkGaits: wk.gaits, sprint: u, cpu: { walk: cb, sprint: cu, ratio: v.cpuRatio }, scene: { ...sp, frames: undefined } });
+        rec('U2', sctx, scene ? v.status : 'error', `${scene ? '' : 'scenario not reached — '}sprint ${sp.sprintFrames}/${u.n} frames, ${sp.hits} hits on ${sp.targets}/6 enemies at rank ${sp.rankLetter}: avg ${u.avg} ms vs idle-walk avg ${b.avg} ms (≤ ×1.2 = ${round(1.2 * b.avg)}), max ${u.max} (≤ 250); main-thread CPU ${cu ?? '?'} vs ${cb ?? '?'} ms/frame = ×${v.cpuRatio ?? '?'} (≤ 1.2)${v.confirmed ? ' → wall and CPU averages both over budget: fails at any machine load' : ''}; load ${round(os.loadavg()[0])}`, { walk: b, walkGaits: wk.gaits, sprint: u, cpu: { walk: cb, sprint: cu, ratio: v.cpuRatio }, scene: { ...sp, frames: undefined } });
       }
     }
   }
