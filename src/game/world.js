@@ -6,7 +6,7 @@ import { Lighting } from '../core/lighting.js';
 import { T, Debris, isSolidType } from '../core/physics.js';
 import { input } from '../core/input.js';
 import { rand, randi, chance, clamp, overlap, TAU, pick } from '../core/math.js';
-import { audio } from '../core/audio.js';
+import { audio, SFX } from '../core/audio.js';
 import { bus } from '../core/events.js';
 import { saves } from '../core/save.js';
 import { getDiff } from '../data/difficulty.js';
@@ -38,6 +38,7 @@ import { AW_GAIN } from '../data/feel_hit.js';   // [hook:awaken]
 import { createGimmick } from './gimmicks.js';   // [hook:gimmick]
 import { CompanionSystem } from './companions.js';   // [hook:cmp]
 import { touchpad } from '../core/touchpad.js';   // [hook:plat]
+import * as HFX from '../render/hitfx.js';   // [hook:feel] 첫 타격 스프라이트 미리 굽기 (prewarmHitFx)
 
 // ── 손맛·각성 상수 (feel.md §4.9, §6.1). AW_GAIN(data/feel_hit.js)에 값이 없으면 이 기본값을 쓴다 ──
 const SLOWMO_BASE = 0.35;                      // 기본 슬로모션 배율 (보스 격파 등 옛 호출부)
@@ -98,10 +99,24 @@ export class World {
     this.gimmick = null;   // [hook:gimmick]
     this.companions = this.makePart('companions', () => new CompanionSystem(this));   // [hook:cmp]
     this.loadRoom(roomId || this.stage.start || Object.keys(this.stage.rooms)[0]);
+    this.prewarmHitFx();   // [hook:feel]
     bus.emit('stageEntered', { stageId });
     this.banner = { text: this.stage.name, sub: `CHAPTER ${this.stage.chapter ?? ''} · ${this.stage.sub ?? ''}`, t: 3.2, color: '#e8c872', big: true };
   }
 
+  /**
+   * 첫 타격·첫 피격이 쓰는 공용 스프라이트(숫자 아틀라스, 흰 테 타격 스프라이트, 피격 섬광)를 스테이지 시작 때 굽는다
+   * (보스 방으로 바로 들어가 부팅 뒤 한가할 때의 미리 굽기보다 먼저 싸워도 스테이지 도중 새 캔버스 0 — MASTER_PLAN §5.2).
+   * 이미 구웠으면 캐시 조회뿐이다. 나머지 색·문구·자국은 hitfx.prewarm 이 부팅 뒤 (글꼴을 기다려) 한가할 때 굽는다.
+   * 숫자 아틀라스는 글꼴이 늦게 오면 같은 캔버스에 다시 굽는다 (hitfx.digitAtlas).
+   */
+  prewarmHitFx() {
+    try {
+      for (const s of ['normal', 'crit', 'hurt', 'total']) HFX.digitAtlas?.(s);
+      for (const f of [HFX.cut, HFX.glow, HFX.star, HFX.streak, HFX.ring]) f?.('#ffffff');
+      HFX.star?.('#ffe080'); HFX.soft?.('#ff2040');
+    } catch (e) { console.warn('[world] prewarmHitFx', e); }
+  }
   /** 그래픽 품질 설정 → 파티클 수·조명 해상도 (스테이지 도중 설정을 바꿔도 즉시 반영) */
   applyQuality() {
     const q = this.qualityNow();
@@ -224,7 +239,16 @@ export class World {
   stickRect() {
     const vw = this.game.viewW, vh = this.game.viewH;
     const z = touchpad.stickZone?.();   // [hook:plat]
-    if (z && z.w > 0 && z.h > 0) return { x0: z.x, x1: z.x + z.w, y0: z.y, y1: z.y + z.h };   // [hook:plat]
+    if (z && z.w > 0 && z.h > 0) {
+      if (z.x + z.w / 2 <= vw / 2) return { x0: z.x, x1: z.x + z.w, y0: z.y, y1: z.y + z.h };   // [hook:plat]
+      // [hook:plat] 왼손 모드: 스틱은 오른쪽, 버튼 무리가 왼쪽 아래 — 그 무리(일시정지·가방·전체 화면 제외)를 피한다
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+      for (const r of touchpad.occupiedRects?.() ?? []) {
+        if (r.id === 'pause' || r.id === 'bag' || r.id === 'fullscreen' || !(r.y + r.h > vh * 0.3)) continue;
+        x0 = Math.min(x0, r.x); x1 = Math.max(x1, r.x + r.w); y0 = Math.min(y0, r.y); y1 = Math.max(y1, r.y + r.h);
+      }
+      if (x1 > x0 && (x0 + x1) / 2 < vw / 2) return { x0, x1, y0, y1 };
+    }
     try {
       const st = document.getElementById('stick'), cv = this.game.canvas;
       const r = st?.getBoundingClientRect(), c = cv?.getBoundingClientRect();
@@ -299,7 +323,10 @@ export class World {
   inUnrevealedFake(e) {
     if (e === this.player) return false;
     const m = this.map, tx = Math.floor(e.cx / TILE), ty = Math.floor(e.cy / TILE);
-    return m.typeAt(tx, ty) === T.FAKE && !m.revealed.has(m.idx(tx, ty));
+    const t = m.typeAt(tx, ty);
+    if (t === T.FAKE) return !m.revealed.has(m.idx(tx, ty));
+    // [hook:gimmick] 드러나지 않은 비밀 공간 속 액체·가시·발판도 벽으로 그려진다 (render/tiles.js hiddenAt) — 그 속 적·아이템도 숨긴다
+    return (t === T.LIQUID || t === T.SPIKE || t === T.ONEWAY) && !!this.tiles?.hiddenAt?.(tx, ty);
   }
   nearestEnemy(x, y, maxD = 9999) {
     let best = null, bd = maxD;
@@ -488,15 +515,16 @@ export class World {
     const guardian = !!attack?.tags?.includes('guardian');   // [hook:cmp] 수호신 공격: 콤보 시간 연장 없음·SP ×0.4·흡혈 없음 (companions §5)
     const n0 = this.combo.n;
     this.combo.n++;
+    this.combo.dmg = (n0 === 0 ? 0 : (this.combo.dmg || 0)) + (info.dmg > 0 && Number.isFinite(info.dmg) ? info.dmg : 0);   // [hook:feel] 콤보 총 피해 (feel_hud 가 읽는다)
     if (!guardian) this.combo.t = this.combo.window = 2.6 + (this.hero.classId?.startsWith('lia_dancer') || this.hero.classId === 'lia_bladedancer' || this.hero.classId === 'lia_reaper' ? 1 : 0);
     else if (n0 === 0) this.combo.t = this.combo.window = 1.0;   // [hook:cmp]
     if (this.combo.n > this.combo.max) this.combo.max = this.combo.n;
     this.run.hits++;
-    const rank = styleRank(this.combo.n);
     this.addScore(10 * (1 + Math.floor(this.combo.n / 10)));
     this.run.sp = Math.min(100, this.run.sp + (info.crit ? 2.4 : 1.4) * (1 + (p.stats.ultGain ?? 0) / 100) * (guardian ? 0.4 : 1));   // [hook:cmp]
     if (!guardian && p.stats.lifesteal > 0 && info.dmg > 0) p.heal(info.dmg * p.stats.lifesteal / 100, false);   // [hook:cmp]
-    if (this.combo.n % 25 === 0) { audio.sfx('combo'); this.fx.text(p.cx, p.y - 40, `${this.combo.n} HIT!`, { color: rank.c, size: 26 }); bus.emit('combo', { count: this.combo.n }); }
+    // [hook:feel] '{n} HIT!' 는 feel_hud 콤보 기둥 하나만 그린다 (머리 위 글자 중복 제거). 이정표 소리는 style.js 의 combo_milestone — 없을 때만 옛 'combo'
+    if (this.combo.n % 25 === 0) { if (!SFX.combo_milestone) audio.sfx('combo'); bus.emit('combo', { count: this.combo.n }); }
     if (COMBO_MILESTONES.has(this.combo.n)) bus.emit('comboMilestone', { n: this.combo.n });   // [hook:feel]
     this.style?.onHit?.(info, attack, target);   // [hook:feel]
     this.awOnHit(target, info, attack);   // [hook:awaken]
@@ -515,6 +543,7 @@ export class World {
     if (n > (this.state.stats.maxCombo ?? 0)) this.state.stats.maxCombo = n;
     this.combo.best = Math.max(this.combo.best, n);
     this.combo.n = 0;
+    this.combo.dmg = 0;   // [hook:feel]
   }
   addScore(n) {
     const s = Math.round(n * (this.diff.scoreMult ?? 1));
@@ -990,7 +1019,7 @@ export class World {
     this.run.hearts = Math.max(this.run.hearts, 10);
     if (full) this.run.lives = this.diff.lives;
     this.resetBoss();
-    this.combo.n = 0;
+    this.combo.n = 0; this.combo.dmg = 0;   // [hook:feel]
     this.banner = { text: 'READY?', sub: `남은 목숨 ${this.run.lives}`, t: 1.6, color: '#ffe7a0' };
     this.freezeEnemies = false; this.hudHidden = false; this.letterbox = 0;   // [hook:feel] 연출 도중 쓰러졌을 때 남지 않게
     this.gimmick?.onRespawn?.();   // [hook:gimmick]

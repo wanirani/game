@@ -138,9 +138,7 @@ export function bar(ctx, x, y, w, h, ratio, { color = COLORS.hp, back = 'rgba(0,
   ratio = clamp(ratio, 0, 1);
   ctx.fillStyle = back; ctx.fillRect(x, y, w, h);
   if (ghost !== null && ghost > ratio) { ctx.fillStyle = 'rgba(255,240,200,0.55)'; ctx.fillRect(x, y, w * clamp(ghost, 0, 1), h); }
-  const g = ctx.createLinearGradient(x, y, x, y + h);
-  g.addColorStop(0, color); g.addColorStop(1, rgba('#000000', 0.35));
-  ctx.fillStyle = color; ctx.fillRect(x, y, w * ratio, h);
+  ctx.fillStyle = color; ctx.fillRect(x, y, w * ratio, h);   // (쓰이지 않던 그라데이션 생성 제거 — HUD 가 매 프레임 4~5번 부른다, R12)
   if (shine) { ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(x, y, w * ratio, Math.max(1, h * 0.35)); }
   ctx.strokeStyle = edge; ctx.lineWidth = 1.5; ctx.strokeRect(x - 0.5, y - 0.5, w + 1, h + 1);
 }

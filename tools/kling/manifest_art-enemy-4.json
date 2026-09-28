@@ -683,7 +683,7 @@
       1760
      ],
      "kept": true,
-     "decision": "kept: ice_golem parts: torso+head, separate arm, separate leg"
+     "decision": "kept: ice_golem torso, arm, leg"
     },
     {
      "name": "golem_sheet_2",
@@ -718,7 +718,7 @@
       1760
      ],
      "kept": true,
-     "decision": "kept: blood_priest parts: side figure with chalice, sleeve arms, rosary"
+     "decision": "kept: blood_priest body, sleeve arm, chalice"
     },
     {
      "name": "priest_sheet_2",
@@ -763,7 +763,7 @@
       1760
      ],
      "kept": true,
-     "decision": "kept: cursed_nun parts: side figure, sleeve arms"
+     "decision": "kept: cursed_nun body (side figure) + sleeve arm"
     }
    ]
   },

@@ -72,7 +72,7 @@
    "aspect": "4:3",
    "imageCount": 2,
    "prompt": "sheet(id) in tools/painted/prompts/cmp-guard-art-a.mjs",
-   "decision": "pending"
+   "decision": "kept both: sheet1 (#1) = body/arm/wing cut source (src/gd_fairy_sheet1.webp); sheet0 (#0) kept for reference only (src/gd_fairy_sheet0.webp)"
   },
   {
    "guardian": "gd_spiritwolf",
@@ -85,7 +85,7 @@
    "aspect": "4:3",
    "imageCount": 2,
    "prompt": "sheet(id) in tools/painted/prompts/cmp-guard-art-a.mjs",
-   "decision": "pending"
+   "decision": "kept #1 as src/gd_spiritwolf_sheet1.webp (fore/hind leg pieces; body + tail come from the ref)"
   },
   {
    "guardian": "gd_imp",
@@ -98,7 +98,7 @@
    "aspect": "4:3",
    "imageCount": 2,
    "prompt": "sheet(id) in tools/painted/prompts/cmp-guard-art-a.mjs",
-   "decision": "pending"
+   "decision": "kept #1 as src/gd_imp_sheet1.webp (staff, wing, tail pieces; body comes from the Step-4 edit)"
   },
   {
    "guardian": "gd_knight",
@@ -111,7 +111,7 @@
    "aspect": "4:3",
    "imageCount": 2,
    "prompt": "sheet(id) in tools/painted/prompts/cmp-guard-art-a.mjs",
-   "decision": "pending"
+   "decision": "kept #1 as src/gd_knight_sheet1.webp (hilt + blade stub and heater shield pieces; body/forearm come from the Step-4 edit; long spectral blade drawn at runtime)"
   },
   {
    "guardian": "gd_whelp",
@@ -124,7 +124,7 @@
    "aspect": "4:3",
    "imageCount": 2,
    "prompt": "sheet(id) in tools/painted/prompts/cmp-guard-art-a.mjs",
-   "decision": "pending"
+   "decision": "kept #0 as src/gd_whelp_sheet0.webp (bone-bat wing piece; body/jaw/tail come from the Step-4 edit)"
   },
   {
    "guardian": "gd_owl",
@@ -137,7 +137,7 @@
    "aspect": "4:3",
    "imageCount": 2,
    "prompt": "sheet(id) in tools/painted/prompts/cmp-guard-art-a.mjs",
-   "decision": "pending"
+   "decision": "kept both: sheet0 (#0) = flying body + two wings + perched pose (src/gd_owl_sheet0.webp); sheet1 (#1) kept for reference only (src/gd_owl_sheet1.webp)"
   },
   {
    "guardian": "gd_imp",
@@ -180,5 +180,29 @@
   }
  ],
  "imagesGenerated": 30,
- "creditsSpent": 60
+ "creditsSpent": 60,
+ "used": {
+  "gd_fairy": [
+   "gd_fairy_sheet1"
+  ],
+  "gd_spiritwolf": [
+   "gd_spiritwolf_ref",
+   "gd_spiritwolf_sheet1"
+  ],
+  "gd_imp": [
+   "gd_imp_edit",
+   "gd_imp_sheet1"
+  ],
+  "gd_knight": [
+   "gd_knight_edit",
+   "gd_knight_sheet1"
+  ],
+  "gd_whelp": [
+   "gd_whelp_edit",
+   "gd_whelp_sheet0"
+  ],
+  "gd_owl": [
+   "gd_owl_sheet0"
+  ]
+ }
 }

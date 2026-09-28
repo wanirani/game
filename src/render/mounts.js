@@ -108,8 +108,10 @@ function col(C, c) {
 const DEEP = new Map();
 function deep(c) { if (typeof c !== 'string' || c[0] !== '#') return c; let v = DEEP.get(c); if (!v) { v = shade(c, -0.38); DEEP.set(c, v); } return v; }
 /** 가산 빛 방울 (캐시된 퍼프) */
+let LB = false;                 // 가산 묶음 중 (합성 모드를 이미 'lighter' 로 둠 → 상태 바꾸기 생략)
 function glow(ctx, x, y, r, color, a) {
   if (a <= 0.01 || r < 0.5) return;
+  if (LB) { const g0 = ctx.globalAlpha; ctx.globalAlpha = g0 * Math.min(1, a); ctx.drawImage(puff(color, true), x - r, y - r, r * 2, r * 2); ctx.globalAlpha = g0; return; }
   const op = ctx.globalCompositeOperation, ga = ctx.globalAlpha;
   ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = ga * Math.min(1, a);
   ctx.drawImage(puff(color, true), x - r, y - r, r * 2, r * 2);
@@ -605,6 +607,7 @@ function partGeo(p) {
 /** 부품 한 장 (유령 = 구운 발광 실루엣) */
 function pput(D, C, p, pv, x, y, rot, sx, sy, deep, tk) {
   if (!p) return;
+  if (rot > -0.012 && rot < 0.012) rot = 0;                 // 거의 0 인 회전은 없앤다 (축 정렬 그리기가 훨씬 싸다)
   if (C.tint) { const im = p.v.glow ?? p.v.flash; if (im) { const q = typeof pv === 'string' ? p[pv] : pv; D.img(im, q[0], q[1], x, y, rot, sx, sy, 1); } return; }
   D.part(p, pickVariant(p, 0, deep, tk), pv, x, y, rot, sx, sy, 1);
 }
@@ -623,14 +626,17 @@ function pTail(D, ctx, C, Tp, tk) {
   if (!img) return;
   const g = partGeo(Tp), a = Tp.a, b = Tp.b, k = Tp.k;
   const H = img.height, W = img.width;
-  const lo = C.q === 0 ? Math.min(n, 2) : n;                // low: 띠 두 개
+  const lo = Math.min(n, C.q === 0 ? 2 : 3);                 // 띠 수: 낮음 2 · 그 밖 3 (띠마다 회전 그리기 1번)
   const ov = ctx.globalAlpha < 0.98 ? 0 : 1;                  // 반투명(소환·해산)일 때 띠를 겹치면 줄무늬가 보인다
   let wx = P.tx, wy = P.ty;
   for (let i = 0; i < lo; i++) {
     const u0 = i / lo, u1 = (i + 1) / lo;
     const ax = a[0] + (b[0] - a[0]) * u0, ay = a[1] + (b[1] - a[1]) * u0;
-    const y0 = i === 0 ? 0 : Math.floor(ay) - ov, y1 = i === lo - 1 ? H : Math.floor(a[1] + (b[1] - a[1]) * u1) + ov;
     const ang = P.ta[Math.min(n - 1, Math.round(i * n / lo))];
+    // 다음 띠와 각도가 다르면 바깥쪽에 쐐기 틈이 벌어진다 → 그만큼 아래로 늘려 덮는다 (너비의 반 × 각도 차)
+    const nx = i < lo - 1 ? P.ta[Math.min(n - 1, Math.round((i + 1) * n / lo))] : ang;
+    const wedge = Math.min(H * 0.25, Math.ceil(Math.abs(nx - ang) * W * 0.5));
+    const y0 = i === 0 ? 0 : Math.floor(ay) - ov, y1 = i === lo - 1 ? H : Math.min(H, Math.floor(a[1] + (b[1] - a[1]) * u1) + ov + wedge);
     D.set(ax, ay, wx, wy, ang - g.ang, k, k);
     if (y1 > y0) ctx.drawImage(img, 0, y0, W, y1 - y0, 0, y0, W, y1 - y0);
     const seg = g.len / lo;
@@ -663,7 +669,11 @@ function paintedQuad(ctx, C, layer, rig) {
   if (C.flash) D.flash(0.62);
   D.end();
   tackBack(ctx, C);
-  if (!C.tint) paintedFx(ctx, C, rig, D, hr);
+  if (!C.tint) {
+    const op = ctx.globalCompositeOperation;
+    ctx.globalCompositeOperation = 'lighter'; LB = true;
+    try { paintedFx(ctx, C, rig, D, hr); } finally { LB = false; ctx.globalCompositeOperation = op; }
+  }
 }
 /** 머리 부품의 점 → 지역 좌표 */
 function headPt(D, C, H, name, hr, out) {
@@ -688,8 +698,8 @@ function flames(ctx, x, y, ang, len, w, n, t, seed, col, core, a) {
     const aa = ang + (i - (n - 1) / 2) * 0.28 + Math.sin(t * 6 + i * 2.1 + seed) * 0.14;
     const L = len * (0.65 + h * 0.5) * (0.85 + 0.15 * Math.sin(t * 11 + i * 1.7 + seed));
     const c = Math.cos(aa), s = Math.sin(aa);
-    for (let j = 0; j < 3; j++) {
-      const u = (j + 0.5) / 3, wob = Math.sin(t * 9 + i * 1.3 + u * 5 + seed) * w * 0.6 * u;
+    for (let j = 0; j < 2; j++) {
+      const u = (j + 0.5) / 2, wob = Math.sin(t * 9 + i * 1.3 + u * 5 + seed) * w * 0.6 * u;
       const px = x + c * L * u - s * wob, py = y + s * L * u + c * wob, r = w * (1.1 - u * 0.7);
       ctx.globalAlpha = ga * a * (1 - u * 0.45);
       ctx.drawImage(j === 0 ? imgC : img, px - r, py - r, r * 2, r * 2);
@@ -713,7 +723,7 @@ function paintedFx(ctx, C, rig, D, hr) {
   // 불갈기 · 영혼불 갈기 (목 위 점들)
   const mane = aw && fx.awMane ? fx.awMane : fx.mane;
   if (mane && q > 0) {
-    const n = q === 2 ? 3 : 2, up = -PI / 2 - 0.5 - P.mane * 0.6;
+    const n = q === 2 ? 2 : 1, up = -PI / 2 - 0.5 - P.mane * 0.6;
     for (const name of mane) {
       if (!headPt(D, C, R.head, name, hr, _q)) continue;
       flames(ctx, _q[0], _q[1], up, fx.maneLen ?? 9, fx.maneW ?? 3.2, n, t, name.length + _q[0] * 0.01, glowC, fx.core ?? '#fff4c8', (fx.maneA ?? 0.55) + P.fire * 0.25);
@@ -736,11 +746,11 @@ function paintedFx(ctx, C, rig, D, hr) {
     let x = P.tx, y = P.ty;
     for (let i = 0; i < P.ta.length; i++) {
       x += Math.cos(P.ta[i]) * P.tl; y += Math.sin(P.ta[i]) * P.tl;
-      if (i % (q === 2 ? 1 : 2) === 0) glow(ctx, x, y, 4 + i * 0.8, glowC, 0.25 * flick(t, i + 3));
+      if (i % (q === 2 ? 2 : 3) === 1) glow(ctx, x, y, 5 + i * 0.9, glowC, 0.3 * flick(t, i + 3));
     }
   }
   // 발굽 불빛
-  if (fx.hoofs) for (let i = 0; i < 4; i++) { const L = P.legs[i]; glow(ctx, L.fx, L.fy - 2, i < 2 ? 4 : 5.5, glowC, (i < 2 ? 0.22 : 0.35) * (0.7 + 0.3 * flick(t, i))); }
+  if (fx.hoofs) for (let i = 2; i < 4; i++) { const L = P.legs[i]; glow(ctx, L.fx, L.fy - 2, 6, glowC, 0.35 * (0.7 + 0.3 * flick(t, i))); }   // 가까운 발만
   // 콧김 (대기)
   if (P.snort > 0.05 && fx.snort !== false && headPt(D, C, R.head, 'muzzle', hr, _q)) {
     const c = fx.snort ?? '#b8b8c0';
@@ -757,6 +767,20 @@ export function drawMountIcon(ctx, id, x, y, r) {
   if (typeof fB === 'function') { fB(ctx, id, x, y, r); return; }
   const pal = MOUNT_PAL[id];
   if (!pal) return;
+  // 채색 머리 (구워져 있으면): 정수리~주둥이 가운데를 원 가운데에, 머리 길이 = 반지름의 1.3배
+  const rig = paintedRig(id), H = rig?.parts?.head;
+  if (H?.eye && H?.muzzle && H?.poll) {
+    const hl = Math.hypot(H.muzzle[0] - H.poll[0], H.muzzle[1] - H.poll[1]) || 1;
+    const s = (r * 1.3) / hl;
+    const cx = (H.poll[0] + H.muzzle[0]) / 2 - (H.muzzle[0] - H.poll[0]) * 0.12, cy = (H.poll[1] + H.muzzle[1]) / 2;
+    ctx.save();
+    ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.clip();
+    PD.begin(ctx);
+    PD.part(H, pickVariant(H, 0, false, null), [cx, cy], x, y, 0, s, s, 1);
+    PD.end();
+    ctx.restore();
+    return;
+  }
   let v = ICON_POSE.get(id);
   if (!v) {
     const rig = id === 'mt_boar' ? 'boar' : id === 'mt_silva' ? 'stag' : 'horse';

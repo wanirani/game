@@ -1,0 +1,140 @@
+{
+ "id": "cursed_nun",
+ "tier": "T2",
+ "srcTD": 4,
+ "note": "New design (ART-ENEMY-4): parts sheets from the nun_ref take 1 reference. Body = the side figure of nun_sheet take 2 (faces left -> flipX): blindfolded bleeding eye, habit, veil, torn hem glowing violet, bare dark feet; its hanging near arm is inpainted away and replaced by the separate sleeve-arm piece (same sheet, same scale). The violet rosary cross (nun_sheet take 1) is worn inverted.",
+ "sources": {
+  "s2": {
+   "file": "a4_cursed_nun_sheet2.png",
+   "k": 0.05,
+   "raw": "cursed_nun_sheet2.webp"
+  },
+  "s1": {
+   "file": "a4_cursed_nun_sheet1.png",
+   "k": 0.036,
+   "raw": "cursed_nun_sheet1.webp"
+  }
+ },
+ "parts": {
+  "body": {
+   "src": "s2",
+   "box": [
+    990,
+    80,
+    1420,
+    1680
+   ],
+   "flipX": true,
+   "keep": "largest",
+   "inpaint": [
+    [
+     [
+      1150,
+      470
+     ],
+     [
+      1262,
+      470
+     ],
+     [
+      1266,
+      700
+     ],
+     [
+      1263,
+      890
+     ],
+     [
+      1200,
+      905
+     ],
+     [
+      1198,
+      1048
+     ],
+     [
+      1150,
+      1052
+     ],
+     [
+      1112,
+      1000
+     ],
+     [
+      1112,
+      880
+     ],
+     [
+      1140,
+      700
+     ]
+    ]
+   ],
+   "piv": {
+    "a": [
+     1202,
+     1643
+    ],
+    "top": [
+     1119,
+     100
+    ],
+    "sh": [
+     1200,
+     440
+    ],
+    "eye": [
+     1089,
+     228
+    ],
+    "chest": [
+     1040,
+     560
+    ],
+    "hem": [
+     1202,
+     1333
+    ]
+   }
+  },
+  "arm": {
+   "src": "s2",
+   "box": [
+    715,
+    330,
+    905,
+    1060
+   ],
+   "flipX": true,
+   "piv": {
+    "a": [
+     800,
+     420
+    ],
+    "b": [
+     783,
+     1000
+    ]
+   }
+  },
+  "cross": {
+   "src": "s1",
+   "box": [
+    1930,
+    1372,
+    2110,
+    1662
+   ],
+   "piv": {
+    "a": [
+     2014,
+     1386
+    ],
+    "c": [
+     2014,
+     1480
+    ]
+   }
+  }
+ }
+}

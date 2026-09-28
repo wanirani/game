@@ -1,0 +1,216 @@
+{
+ "id": "harpy",
+ "tier": "T2",
+ "srcTD": 4,
+ "note": "Cut from the Kling parts sheet (harpy_sheet = sheet take 2, input: reference take 1; its prompt added 'No tower, no building.' because the reference had a clock tower behind her): the side figure (black wild mane, hooked beak, fanged scream, yellow eyes, pale chest, brown scaled feather body, long tail feathers, golden taloned legs) mirrored to face right, with the spread wing cut out as its own part (flapped at the shoulder; reused darkened for the far wing).",
+ "sources": {
+  "s": {
+   "raw": "harpy_sheet.webp",
+   "file": "a3_harpy_sheet.png",
+   "k": 0.035
+  }
+ },
+ "parts": {
+  "body": {
+   "src": "s",
+   "box": [
+    850,
+    60,
+    2200,
+    1700
+   ],
+   "minus": [
+    [
+     [
+      1162,
+      515
+     ],
+     [
+      1275,
+      415
+     ],
+     [
+      1450,
+      315
+     ],
+     [
+      1550,
+      277
+     ],
+     [
+      1850,
+      165
+     ],
+     [
+      2025,
+      40
+     ],
+     [
+      2250,
+      90
+     ],
+     [
+      2325,
+      215
+     ],
+     [
+      2300,
+      340
+     ],
+     [
+      2250,
+      440
+     ],
+     [
+      2150,
+      615
+     ],
+     [
+      1925,
+      740
+     ],
+     [
+      1750,
+      840
+     ],
+     [
+      1475,
+      890
+     ],
+     [
+      1275,
+      890
+     ],
+     [
+      1200,
+      840
+     ],
+     [
+      1162,
+      740
+     ]
+    ]
+   ],
+   "keep": "largest",
+   "flipX": true,
+   "feather": 2,
+   "piv": {
+    "a": [
+     1100,
+     1665
+    ],
+    "root": [
+     1187,
+     665
+    ],
+    "eye": [
+     957,
+     402
+    ],
+    "beak": [
+     887,
+     465
+    ],
+    "talon": [
+     1050,
+     1640
+    ],
+    "chest": [
+     1000,
+     700
+    ]
+   }
+  },
+  "wing": {
+   "src": "s",
+   "box": [
+    1150,
+    30,
+    2336,
+    900
+   ],
+   "poly": [
+    [
+     1162,
+     515
+    ],
+    [
+     1275,
+     415
+    ],
+    [
+     1450,
+     315
+    ],
+    [
+     1550,
+     277
+    ],
+    [
+     1850,
+     165
+    ],
+    [
+     2025,
+     40
+    ],
+    [
+     2250,
+     90
+    ],
+    [
+     2325,
+     215
+    ],
+    [
+     2300,
+     340
+    ],
+    [
+     2250,
+     440
+    ],
+    [
+     2150,
+     615
+    ],
+    [
+     1925,
+     740
+    ],
+    [
+     1750,
+     840
+    ],
+    [
+     1475,
+     890
+    ],
+    [
+     1275,
+     890
+    ],
+    [
+     1200,
+     840
+    ],
+    [
+     1162,
+     740
+    ]
+   ],
+   "keep": "largest",
+   "flipX": true,
+   "piv": {
+    "a": [
+     1187,
+     665
+    ],
+    "b": [
+     2287,
+     140
+    ]
+   }
+  }
+ }
+}

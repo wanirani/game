@@ -11,5 +11,7 @@ export const companions = {
   gd_spiritwolf: () => import('../companions/gd_spiritwolf.js'),
   gd_imp: () => import('../companions/gd_imp.js'),
   gd_knight: () => import('../companions/gd_knight.js'),
+  gd_whelp: () => import('../companions/gd_whelp.js'),
+  gd_owl: () => import('../companions/gd_owl.js'),
 };
 export const npcs = {};

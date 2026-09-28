@@ -56,7 +56,24 @@ for (const c of CASES) {
       if (k === 'rightboss') {
         const t0 = Date.now();
         await page.keyboard.down(KEY.right);
-        while (Date.now() - t0 < Number(d) * 1000 && !(await page.evaluate(() => !!window.__game?.world?.boss))) await page.waitForTimeout(120);
+        // 막히면(가로 이동 없음) 점프해서 계단·턱을 넘는다 (s01 보스방 입구의 2칸 턱 등)
+        let lastX = null, jumpT = 0;
+        while (Date.now() - t0 < Number(d) * 1000) {
+          const st = await page.evaluate(() => { const g = window.__game, w = g?.world; return { boss: !!w?.boss, x: w?.player?.x ?? 0, top: g?.scenes?.[g.scenes.length - 1]?.name }; });
+          if (st.boss) break;
+          // 길목의 '!' 대사(예: s13 보스방 입구)는 넘긴다
+          if (st.top === 'dialogue') { await page.keyboard.press(KEY.enter); await page.waitForTimeout(200); continue; }
+          if (st.top === 'pause') { await page.keyboard.press(KEY.menu); await page.waitForTimeout(200); continue; }
+          if (lastX != null && Math.abs(st.x - lastX) < 2 && Date.now() - jumpT > 700) {
+            jumpT = Date.now();
+            // 두 번 점프 (s01 보스방 입구의 벽은 4칸 — 한 번 점프로는 못 넘는다)
+            await page.keyboard.down(KEY.jump); await page.waitForTimeout(260); await page.keyboard.up(KEY.jump);
+            await page.waitForTimeout(90);
+            await page.keyboard.down(KEY.jump); await page.waitForTimeout(260); await page.keyboard.up(KEY.jump);
+          }
+          lastX = st.x;
+          await page.waitForTimeout(120);
+        }
         await page.keyboard.up(KEY.right); await page.waitForTimeout(40);
         continue;
       }

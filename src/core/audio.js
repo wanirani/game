@@ -1150,10 +1150,15 @@ export class Engine {
     this.stats.starts++;
     this.lastT[name] = now; this.lastV[name] = vol;
     this.prune(now);
-    let same = 0, oldest = null;
-    for (const x of this.live) if (x.name === name && x.end > now) { same++; if (!oldest || x.st < oldest.st) oldest = x; }
-    if (same >= (def.max ?? 4) && oldest) this.steal(oldest, now);
-    if (this.live.length >= MAX_SFX) { let o2 = this.live[0]; for (const x of this.live) if (x.st < o2.st) o2 = x; this.steal(o2, now); this.prune(now); }
+    // 이미 빼앗긴(페이드아웃 중) 소리는 세지 않는다 → 같은 프레임에 40개가 몰려도 서로 다른 소리를 하나씩 빼앗아 동시 발음이 MAX_SFX 를 넘지 않는다
+    let same = 0, oldest = null, act = 0, o2 = null;
+    for (const x of this.live) {
+      if (x.end <= now || x.stolen) continue;
+      act++; if (!o2 || x.st < o2.st) o2 = x;
+      if (x.name === name) { same++; if (!oldest || x.st < oldest.st) oldest = x; }
+    }
+    if (same >= (def.max ?? 4) && oldest) { this.steal(oldest, now); act--; if (o2 === oldest) { o2 = null; for (const x of this.live) if (x.end > now && !x.stolen && (!o2 || x.st < o2.st)) o2 = x; } }
+    if (act >= MAX_SFX && o2) this.steal(o2, now);
     const out = c.createGain(); let node = out;
     if (o.pan && c.createStereoPanner) { const p = c.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, o.pan)); out.connect(p); node = p; }
     node.connect(this.sfxG);
@@ -1164,7 +1169,7 @@ export class Engine {
     try { def.fn(S, H); } finally { this.live.push({ name, st: now, end: now + (o.delay || 0) + S.end + 0.05, out, node, wet }); }
     if (def.duck) this.duck(def.duck[0] * Math.min(1, vol), def.duck[1]);
   }
-  steal(x, now) { x.out.gain.cancelScheduledValues(now); x.out.gain.setTargetAtTime(0, now, 0.012); x.end = Math.min(x.end, now + 0.06); }
+  steal(x, now) { x.stolen = true; x.out.gain.cancelScheduledValues(now); x.out.gain.setTargetAtTime(0, now, 0.012); x.end = Math.min(x.end, now + 0.06); }
   /** 이름이 prefix 로 시작하는, 아직 울리는 효과음 수 */
   liveCount(prefix = '', now = this.ctx.currentTime) {
     let n = 0;

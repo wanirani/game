@@ -30,5 +30,214 @@
    "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qSgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBowYWdlbnRfdXBsb2FkLzE3OTA2MDUyMjQvbE1JT0ZQMzVKai93b2xmX2xlZ3MuanBn.origin?x-kcdn-pid=112372"
   }
  },
- "calls": []
+ "calls": [
+  {
+   "shot": "rg_torso",
+   "tool": "image_to_image",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "inputs": [
+    "knight_torso"
+   ],
+   "for": [
+    "royal_guard"
+   ],
+   "generationId": "AQ2YobSgzdbz02JPbTIv0uR97hi3ZCLlystc97zbyv7x8sbgYvBUjc2EH8-nFCMeDaW3M4t4",
+   "images": [
+    {
+     "name": "rg_torso_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzJkNjEzNjBmLTlmNWMtNGYzZC05ZjY0LWQ2YjVkOGU0MjgwMS8yNzMyMjg1MzAwNzgzMjIyODQxL3RlbXBrb24yYy5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      1760,
+      2336
+     ],
+     "kept": false,
+     "decision": "rejected: the other take was used"
+    },
+    {
+     "name": "rg_torso_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzgxMjdkMzhhLWVhNmItNDUxMy05MDcyLWQ3NWQ5NWJjNTA1Zi8tMjgxODg2MzkxNDUzNzU1OTE5NC90ZW1wMDVtZGIucG5n.origin?x-kcdn-pid=112372",
+     "size": [
+      1760,
+      2336
+     ],
+     "kept": true,
+     "decision": "kept: royal_guard cuirass source (crest crisper than take 1, same composition as knight_torso)"
+    }
+   ]
+  },
+  {
+   "shot": "rg_sheet1",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "inputs": [
+    "knight_sheet1"
+   ],
+   "for": [
+    "royal_guard"
+   ],
+   "generationId": "ARFLoocqqaLY-c7IcdZVg_cQrk7fqxEDrnmqUvARe-j93nXLd15CCpKhWG0ZQLwSrUOFOEjD",
+   "images": [
+    {
+     "name": "rg_sheet1_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzNkM2NlZjhjLWYxNDgtNGRhZC04YjY0LTMyYzdjY2YxNjcyMC8tMzA3MTk4NDg5OTE0OTUyNTI4NC90ZW1wN3ZuYjQucG5n.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": true,
+     "decision": "kept: royal_guard limbs + cape (knight_sheet1 composition kept)"
+    },
+    {
+     "name": "rg_sheet1_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2Q4ZGMyNDI0LTRhZDctNDc3OS1hYWI0LWJiYTE4MmEwOTlkNi8tMTI5ODYyODY0MDczOTc5NDAwL3RlbXA5d3RobS5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": false,
+     "decision": "rejected: sword turned red, take 1 used"
+    }
+   ]
+  },
+  {
+   "shot": "rg_sheet2",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "inputs": [
+    "knight_sheet2"
+   ],
+   "for": [
+    "royal_guard"
+   ],
+   "generationId": "Aa913L1jomGI3NaiDZaAMSgstu6dcphSM_qThkTpZYRmGbzt6MNtxXFYRxfkOjcXOgEVImGW",
+   "images": [
+    {
+     "name": "rg_sheet2_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2MxOTliN2MzLWMxNzUtNGEzNy05NDIzLWM1ZTQ0MDJiY2JmNC8xMzY5MTgxNjU4NjMxNTczNzAzL3RlbXBvY2h3NS5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": false,
+     "decision": "rejected: halberd head became a feather/crescent, no spear point"
+    },
+    {
+     "name": "rg_sheet2_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzNjMGE0NWZiLWNjNjItNGUzNS05NmJhLWVkZmJlZWY1YzFkZC83NTU4NTExMjg3ODk1MjU0NTM3L3RlbXBmdmw4MC5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": true,
+     "decision": "kept: royal_guard plumed helm + halberd (axe, back spike, spear point, tassel) + shield"
+    }
+   ]
+  },
+  {
+   "shot": "hh_body",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "inputs": [
+    "wolf_body"
+   ],
+   "for": [
+    "hellhound"
+   ],
+   "generationId": "AXORB7yOYba91JG4cdI8FOn-3ae-uJhQBLtUYUbT-_fQtO7mDXPGAL4qpTsN09-M8bv9nsIY",
+   "images": [
+    {
+     "name": "hh_body_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2IyZDM1NTU1LTkwODAtNGI2Yy04Yjc2LTBhMzk3OGRlNDMyYS82MDM5NDg3MjY3Njk3NzE3NzE5L3RlbXB4aW8xZi5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": true,
+     "decision": "kept: hellhound body (wolf_body composition kept: head, jaws, hackles in place)"
+    },
+    {
+     "name": "hh_body_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0Lzk4MmI2NzA2LTEzNTMtNDQ0MS04MGFkLTE0MzZmMGM5ZjlkOS84NjI4NjYyNzk0MDA2NDI5ODc5L3RlbXA0djA2cS5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": false,
+     "decision": "rejected: painted a front leg under the chest and moved the head"
+    }
+   ]
+  },
+  {
+   "shot": "hh_legs",
+   "tool": "image_to_image",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "inputs": [
+    "wolf_legs"
+   ],
+   "for": [
+    "hellhound"
+   ],
+   "generationId": "ARg5_Eeb2h-SteEML0JdR-5HhikWLGM6LRBmfsgfIz_D8qnQu7-sbdOBTd9rOK3WnYvZT4WI",
+   "images": [
+    {
+     "name": "hh_legs_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzAyZjVlZDVlLWEwNDItNGFlNy1hNDdhLWFhNWNkMDBhYjhlYy8tNjQ0MjY3Mjg1MzE4MTY4MDA4Ni90ZW1wbTUwYXYucG5n.origin?x-kcdn-pid=112372",
+     "size": [
+      2720,
+      1536
+     ],
+     "kept": false,
+     "decision": "rejected: heavier glow halo, take 2 used"
+    },
+    {
+     "name": "hh_legs_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzdkMWVlYWVlLTYyOTItNDdlNi1iNDEwLTlhZmExMmE4NGZmNy8yNTA3MDk4NTkwMjU1MDkyMzQ0L3RlbXBqMHc5ei5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      2720,
+      1536
+     ],
+     "kept": true,
+     "decision": "kept: hellhound legs + flaming tail"
+    }
+   ]
+  },
+  {
+   "shot": "shadow_fx",
+   "tool": "text_to_image",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "inputs": [],
+   "for": [
+    "shadow_hunter"
+   ],
+   "generationId": "AY1AZaaekZgreTQ70v8IcJb60xbt6sm_zInF60rny_ZHbw3kzimuvWY6sBokBpVQTo60FUNR",
+   "images": [
+    {
+     "name": "shadow_fx_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2U4MjUxOTI3LWY1MzItNDBlZC04YjlmLWNhNDdkMGNlNTI3Mi8tMjc0NDIyNTc2NDc3NTA2Mzg4Mi90ZW1wbW9zd2cucG5n.origin?x-kcdn-pid=112372",
+     "size": [
+      2720,
+      1536
+     ],
+     "kept": true,
+     "decision": "kept: shadow_hunter smoke wisps, dripping shadow, grinning shadow tendrils"
+    },
+    {
+     "name": "shadow_fx_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzY4NGJkOTg2LTM0ZjktNGQwYi04MDYyLWVhOTE0NzhmNDVmOC80NDA2NjE3NzA3NTA5NDMwMDA3L3RlbXB6MWl0Ni5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      2720,
+      1536
+     ],
+     "kept": false,
+     "decision": "rejected: take 1 used"
+    }
+   ]
+  }
+ ]
 }

@@ -29,8 +29,6 @@ export const STEP = 1 / 60;
 export const PAD_SCENES = new Set(['stage', 'hub', 'bossrush', 'survival', 'practice', 'ultCutin']);
 /** 품질 조절기가 프레임 시간을 재는 장면 (게임플레이만). 토스트도 이 장면들이 그리는 HUD 위에서만 hudLayout 줄을 쓴다 */
 const GOV_SCENES = new Set(['stage', 'hub', 'bossrush', 'survival', 'practice']);
-/** 장면 플래그(deferToasts)가 아직 없어도 토스트를 미뤄 두는 연출 장면 (MASTER_PLAN §1.10: 필살 컷인 동안 토스트 없음) */
-const DEFER_TOAST_SCENES = new Set(['ultCutin']);
 /** 품질 등급별 DPR 상한·백킹 픽셀 예산·이미지 보간 (platform §6.4, MASTER_PLAN §5.2) */
 export const QUALITY_TIERS = Object.freeze({
   low: Object.freeze({ cap: 1, budget: 1.0e6, smooth: 'low' }),
@@ -60,8 +58,8 @@ const ZERO = Object.freeze({ l: 0, r: 0, t: 0, b: 0 });
  *  uiScale        : true 면 ctx.scale(game.uiK) 안에서 그린다 → game.uiW × game.uiH 로 배치, 포인터도 UI 좌표, 글자 크기 하한 11
  *  hideToasts     : 토스트 숨김 / deferToasts: 숨기고 시간도 멈춤(장면을 벗어난 뒤 표시)
  *  toastY/toastX  : 토스트 줄 기준 위치 (기본: 화면 가운데 위 y=92; world 가 있는 게임플레이 장면은 hudLayout().toast(i) 줄)
- *                   toastUp: true 면 기준선에서 위로 쌓는다
- *  autoPause()    : 기기를 세로로 돌리거나 탭이 숨겨질 때 호출 (게임플레이 장면이 일시정지 메뉴를 띄움)
+ *                   toastUp: true 면 기준선에서 위로 쌓는다 · toastW: 상자 최대 폭 (≤ 2줄 줄바꿈, 중심은 toastX ± toastW/2 안)
+ *  autoPause()  : 기기를 세로로 돌리거나 탭이 숨겨질 때 호출 (게임플레이 장면이 일시정지 메뉴를 띄움)
  */
 export class Scene {
   constructor(game) { this.game = game; this.opaque = true; this.updateBelow = false; this.t = 0; }
@@ -239,7 +237,8 @@ class Game {
 
   /**
    * 가상 패드 표시의 유일한 주인 (platform P-18, §5.1). 매 rAF 호출.
-   * 보임 = 입력 모드 'touch' (패드·키보드로 바뀌면 0.25초 뒤 숨김) · 세로 잠금 아님 · 맨 위 장면이 showPad 이거나 PAD_SCENES, hidePad 아님.
+   * 보임 = 입력 모드 'touch' (패드·키보드로 바뀌면 0.25초 뒤 숨김) · 세로 잠금 아님 · 맨 위 장면이 showPad 이거나 PAD_SCENES, hidePad 아님
+   *        · 그 장면의 world.hudHidden 아님 (각성 연출).
    * padHideButtons 는 그대로 touchpad 에 넘긴다.
    * 캔버스 패드(input.pad = touchpad.initTouchPad 결과)가 없어 예전 DOM 패드(#touch)를 쓰는 동안에만 input.setPadOff 로도 알린다
    * (캔버스 패드가 있을 때 setPadOff 를 부르면 input 이 패드 표시를 한 번 더 정해 두 주인이 된다).
@@ -247,7 +246,8 @@ class Game {
   syncPad() {
     const top = this.top;
     if (this.inputMode === 'touch') this._touchAt = this.realTime;
-    const scene = !!top && !top.hidePad && (!!top.showPad || PAD_SCENES.has(top.name)) && !this.portraitLocked;
+    // world.hudHidden: 각성 컷인·감독 연출 동안 HUD 와 함께 패드도 숨긴다 (입력이 잠긴 연출 화면을 버튼이 가리지 않게)   [hook:awaken]
+    const scene = !!top && !top.hidePad && (!!top.showPad || PAD_SCENES.has(top.name)) && !this.portraitLocked && !top.world?.hudHidden;
     const show = scene && this.realTime - this._touchAt < PAD_HIDE_DELAY;
     this.padShown = show;
     const o = this._padOpts;
@@ -347,12 +347,12 @@ class Game {
     if (this.toasts.length > 5) this.toasts.shift();
   }
   /**
-   * 토스트를 숨기고 시간도 멈출 때인가: scene.deferToasts · 연출 장면 이름 · 보이는 게임플레이 장면이 HUD 를 숨긴 동안
-   * (world.hudHidden: 각성 연출 — HUD 가 통째로 사라진 화면에 토스트만 뜨지 않게)
+   * 토스트를 숨기고 시간도 멈출 때인가: scene.deferToasts (필살·각성 컷인, 동료 합류, 스토리 — 장면이 직접 켠다) · 보이는 게임플레이 장면이
+   * HUD 를 숨긴 동안 (world.hudHidden: 각성 연출 — HUD 가 통째로 사라진 화면에 토스트만 뜨지 않게)
    */
   toastsDeferred(sc) {
     if (!sc) return false;
-    if (sc.deferToasts || DEFER_TOAST_SCENES.has(sc.name)) return true;
+    if (sc.deferToasts) return true;
     return !!this.hudScene()?.world?.hudHidden;
   }
   /** 지금 화면에 HUD 가 보이는 게임플레이 장면 (맨 위이거나, 그 위에 반투명 장면만 있을 때) | null */
@@ -589,6 +589,31 @@ class Game {
     const minX = 6 + (S.l || 0) / k, maxX = vw - 6 - (S.r || 0) / k;
     ctx.textAlign = 'center';
     ctx.font = font(17, 700, FONT.body);
+    // [hook:plat] scene.toastW (장면 좌표 최대 폭): 그 폭 안에서 ≤ 2줄로 줄바꿈하고 상자 중심을 toastX ± toastW/2 안에 둔다 (마을 가게 초상 칸 등)
+    const tw = Number(top?.toastW) >= 80 ? Number(top.toastW) : 0;
+    if (tw) {
+      const lh = 22, lo = Math.max(minX, x0 - tw / 2), hi = Math.min(maxX, x0 + tw / 2);
+      let yb = y0, prevH = 0;
+      this.toasts.forEach((t, i) => {
+        t.shown = true;
+        const lines = this.wrapToast(ctx, t, tw - 36, 17, 2);
+        const h = 28 + (lines.length - 1) * lh;
+        if (i > 0) yb = dy > 0 ? yb + prevH + 2 : yb - h - 2;
+        prevH = h;
+        const a = Math.min(1, t.t * 3, (t.max - t.t) * 6);
+        if (a <= 0) return;
+        ctx.globalAlpha = a;
+        const w = Math.min(hi - lo, tw, t._ww + 36);
+        const x = clamp(x0, lo + w / 2, hi - w / 2);
+        ctx.fillStyle = 'rgba(10,4,12,0.78)';
+        ctx.fillRect(x - w / 2, yb - 20, w, h);
+        ctx.strokeStyle = 'rgba(200,160,90,0.6)';
+        ctx.strokeRect(x - w / 2 + 0.5, yb - 19.5, w - 1, h - 1);
+        ctx.fillStyle = t.color;
+        for (let j = 0; j < lines.length; j++) ctx.fillText(lines[j], x, yb + j * lh);
+      });
+      return;
+    }
     this.toasts.forEach((t, i) => {
       t.shown = true;
       const a = Math.min(1, t.t * 3, (t.max - t.t) * 6);

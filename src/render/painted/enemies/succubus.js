@@ -77,7 +77,8 @@ function drawPuppet(e, q, rig, o, t, pieces) {
   }
   // body: skirt bands (below the waist) stream back and ripple; the torso stays rigid
   const ph = t * 4, trail = q.trail;
-  K.warpY('body', 'a', ax, ay, tr, 1, 1, K.nStrips(10), (u) => {
+  K.pivotPos('body', 'a', 'top', ax, ay, tr, 1, 1, _q);         // warp rows measured from the top (u = 0 at the horns)
+  K.warpY('body', 'top', _q[0], _q[1], tr, 1, 1, K.nStrips(10), (u) => {
     const w = Math.max(0, u - 0.5) / 0.5;
     _q[0] = (-(w * w) * trail - Math.sin(ph - u * 7) * w * 2.6) * rig.td; _q[1] = 0; return _q;
   }, 1, 'base', 0);

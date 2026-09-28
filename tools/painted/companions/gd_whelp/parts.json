@@ -1,0 +1,32 @@
+{
+ "id": "gd_whelp",
+ "tier": "T1",
+ "srcTD": 4,
+ "note": "크론: body = Step-4 edit (side view facing right, wings removed) minus the curled tail and the lower jaw; tail = edit tail curl (root pivot, sways); jaw = lower jaw (hinge pivot, opens for breath/roar); wing = sheet0 bone-bat wing (root at its bottom-right = shoulder, spreads back-up; near wing base, far wing deep). k: ~41 logical px snout to tail.",
+ "sources": {
+  "e": { "raw": "gd_whelp_edit.webp", "file": "gd_whelp_edit.png", "mode": "", "k": 0.026 },
+  "s": { "raw": "gd_whelp_sheet0.webp", "file": "gd_whelp_sheet0.png", "mode": "", "k": 0.02 }
+ },
+ "parts": {
+  "body": {
+   "src": "e", "box": [700, 380, 1940, 1720],
+   "minus": [[[1395, 1102], [1470, 1122], [1530, 1142], [1580, 1152], [1620, 1150], [1660, 1142], [1700, 1137], [1745, 1150], [1760, 1215], [1700, 1260], [1620, 1265], [1520, 1240], [1440, 1190], [1385, 1140]]],
+   "fade": [[700, 850, 760, 1480, "left", 1.5]],
+   "piv": { "c": [1150, 1080], "wr": [1200, 840], "tail": [760, 1390], "hinge": [1420, 1105], "mouth": [1640, 1150], "eye": [1590, 858], "eye2": [1770, 880], "fire": [1180, 1130], "horn": [1370, 470], "horn2": [1700, 450] }
+  },
+  "tail": {
+   "src": "e", "box": [250, 850, 790, 1480],
+   "fade": [[750, 850, 790, 1480, "right", 1.5]],
+   "piv": { "a": [770, 1390], "tip": [590, 1030] }
+  },
+  "jaw": {
+   "src": "e", "box": [1380, 1095, 1770, 1270],
+   "poly": [[1395, 1102], [1470, 1122], [1530, 1142], [1580, 1152], [1620, 1150], [1660, 1142], [1700, 1137], [1745, 1150], [1760, 1215], [1700, 1260], [1620, 1265], [1520, 1240], [1440, 1190], [1385, 1140]],
+   "piv": { "a": [1420, 1105], "tip": [1720, 1230] }
+  },
+  "wing": {
+   "src": "s", "box": [850, 110, 2310, 1250], "keep": "largest",
+   "piv": { "a": [2065, 1070], "tip": [880, 640], "wrist": [2150, 300] }
+  }
+ }
+}

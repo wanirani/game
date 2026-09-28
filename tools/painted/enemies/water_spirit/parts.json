@@ -1,0 +1,52 @@
+{
+ "id": "water_spirit",
+ "tier": "T1",
+ "srcTD": 4,
+ "note": "Cut from the Kling parts sheet (water_spirit_sheet = sheet take 2, input: reference take 2), matted with --soft so the translucent water keeps its alpha: the whole front figure (glowing white eyes and heart, gown of flowing water, the water ribbon wrapped around her) as one part, swayed at runtime with a seam-free warp.",
+ "sources": {
+  "s": {
+   "raw": "water_spirit_sheet.webp",
+   "file": "a3_water_spirit_sheet.png",
+   "k": 0.0434,
+   "mode": "soft"
+  }
+ },
+ "parts": {
+  "body": {
+   "src": "s",
+   "box": [
+    0,
+    100,
+    1185,
+    1690
+   ],
+   "keep": "all",
+   "piv": {
+    "a": [
+     600,
+     1660
+    ],
+    "mid": [
+     600,
+     900
+    ],
+    "heart": [
+     567,
+     482
+    ],
+    "eye": [
+     573,
+     282
+    ],
+    "handL": [
+     311,
+     882
+    ],
+    "handR": [
+     856,
+     893
+    ]
+   }
+  }
+ }
+}

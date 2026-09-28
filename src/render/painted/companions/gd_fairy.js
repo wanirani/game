@@ -39,7 +39,7 @@ function draw(ctx, g, world, rig) {
   const sc = 0.55 + 0.45 * ap;
   if (hurt > 0) ctx.translate(Math.sin(t * 70) * 1.2 * hurt, 0);
   // 반짝이 꼬리 · 빛의 핵 (몸 뒤, 발 원점 좌표)
-  if (!perch && q > 0.5) gSparkles(ctx, t, -1, -13 + bob, q >= 0.95 ? 6 : 3, 10 + Math.max(0, vxf) * 0.02, '#fff2b0', 0.85);
+  if (!perch && q > 0.5) gSparkles(ctx, t, -1, -13 + bob, q >= 0.95 ? 4 : 3, 10 + Math.max(0, vxf) * 0.02, '#fff2b0', 0.85);
   gGlow(ctx, 0, -14 + bob, (cast ? 22 : 11) * sc, '#fff2b0', (cast ? 0.75 : 0.32) + Math.sin(t * 4) * 0.06);
   ctx.translate(0, -13 + bob);
   ctx.rotate(tilt);
@@ -60,8 +60,10 @@ function draw(ctx, g, world, rig) {
     // 오른쪽(+x) 날개는 그대로, 왼쪽은 좌우 거울 (sx 음수)
     const rot = (a0 + fold + d) * side, rot2 = (a0 + fold - d * 0.7) * side;
     K.put(pn, 'a', _q[0], _q[1], rot, ws * side, ws, wa);
+    // 번짐 두 번째 장 · 빛 한 겹은 큰 윗날개에만 (그리기 비용 ≤ 절차 그림 ×1.5)
+    if (pn !== 'wingU') continue;
     if (q > 0.5) K.put(pn, 'a', _q[0], _q[1], rot2, ws * side, ws, wa * 0.5);
-    if (q >= 0.95) { const gco = ctx.globalCompositeOperation; ctx.globalCompositeOperation = 'lighter'; K.put(pn, 'a', _q[0], _q[1], rot, ws * side, ws, 0.16 + 0.08 * Math.sin(t * 6 + i), 'glow'); ctx.globalCompositeOperation = gco; }
+    if (q >= 0.95) { const gco = ctx.globalCompositeOperation; ctx.globalCompositeOperation = 'lighter'; K.put(pn, 'a', _q[0], _q[1], rot, ws * side, ws, 0.18 + 0.08 * Math.sin(t * 6 + i), 'glow'); ctx.globalCompositeOperation = gco; }
   }
   K.put('body', 'a', bx, by, 0, 1, 1);
   // 지팡이 팔 (어깨 sh): 각 0 = 수평 앞, - = 위로

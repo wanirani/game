@@ -115,7 +115,11 @@ export function composeLook(state, hero) {
     const v = base?.visual || {};
     look.equip[slot] = { ...v, rarity: inst.rarity, level: inst.level, baseId: inst.baseId, wtype: base?.wtype };
     if (slot === 'head' && v.headgear) { look.headgear = v.headgear; look.headColor = v.color; }
-    if (slot === 'body' && v.armor) { look.armor = v.armor; look.armorColor = v.color; look.armorTrim = v.trim; }
+    if (slot === 'body' && v.armor) {
+      // 시작 갑옷은 직업 색을 덮지 않는다 (직업 원화·팔레트 유지; 벡터 기본색은 갑옷 종류에서 나와 시작 갑옷 색과 같다). 다른 갑옷은 그 색으로
+      if (ch.startArmor?.includes(inst.baseId)) look.armor ??= v.armor;
+      else { look.armor = v.armor; look.armorColor = v.color; look.armorTrim = v.trim; }
+    }
     if (slot === 'cloak' && v.cape) { look.cape = { color: v.color, color2: v.color2 ?? v.color, len: v.len ?? 1, style: v.cape }; }
     if (slot === 'acc1' || slot === 'acc2') { if (v.aura) look.accAura = v.aura; }
   }

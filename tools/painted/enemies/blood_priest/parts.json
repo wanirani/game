@@ -1,0 +1,187 @@
+{
+ "id": "blood_priest",
+ "tier": "T2",
+ "srcTD": 4,
+ "note": "New design (ART-ENEMY-4): parts sheet (priest_sheet take 1, from priest_ref take 1): the side-view blood priest (faces left -> flipX) with mitre, fur-collared chasuble, gold-cross stole and the rosary hand, cut without the chalice arm; the chalice arm = the hanging sleeve piece (cut at the cuff) + the gripping hand with the blood-filled golden chalice cut from the side figure.",
+ "sources": {
+  "s": {
+   "file": "a4_blood_priest_sheet1.png",
+   "k": 0.052,
+   "raw": "blood_priest_sheet1.webp"
+  }
+ },
+ "parts": {
+  "body": {
+   "src": "s",
+   "box": [
+    900,
+    20,
+    1870,
+    1735
+   ],
+   "flipX": true,
+   "keep": "largest",
+   "poly": [
+    [
+     948,
+     29
+    ],
+    [
+     1005,
+     29
+    ],
+    [
+     1124,
+     286
+    ],
+    [
+     1148,
+     410
+    ],
+    [
+     1243,
+     448
+    ],
+    [
+     1338,
+     495
+    ],
+    [
+     1433,
+     667
+    ],
+    [
+     1529,
+     905
+    ],
+    [
+     1671,
+     1333
+    ],
+    [
+     1862,
+     1643
+    ],
+    [
+     1814,
+     1705
+    ],
+    [
+     1333,
+     1729
+    ],
+    [
+     1000,
+     1705
+    ],
+    [
+     919,
+     1643
+    ],
+    [
+     907,
+     1333
+    ],
+    [
+     902,
+     952
+    ],
+    [
+     919,
+     790
+    ],
+    [
+     1005,
+     719
+    ],
+    [
+     1017,
+     571
+    ],
+    [
+     990,
+     443
+    ],
+    [
+     955,
+     310
+    ],
+    [
+     936,
+     143
+    ]
+   ],
+   "fade": [],
+   "piv": {
+    "a": [
+     1333,
+     1714
+    ],
+    "sh": [
+     1060,
+     679
+    ],
+    "eye": [
+     1040,
+     452
+    ],
+    "top": [
+     964,
+     48
+    ],
+    "hem": [
+     1333,
+     1450
+    ],
+    "chest": [
+     1110,
+     900
+    ]
+   }
+  },
+  "arm": {
+   "src": "s",
+   "box": [
+    1600,
+    560,
+    1850,
+    1075
+   ],
+   "flipX": true,
+   "piv": {
+    "a": [
+     1802,
+     592
+    ],
+    "b": [
+     1719,
+     1030
+    ]
+   }
+  },
+  "chalice": {
+   "src": "s",
+   "box": [
+    698,
+    588,
+    888,
+    832
+   ],
+   "flipX": true,
+   "piv": {
+    "a": [
+     876,
+     702
+    ],
+    "cup": [
+     765,
+     640
+    ],
+    "rim": [
+     765,
+     605
+    ]
+   }
+  }
+ }
+}

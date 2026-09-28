@@ -1,0 +1,325 @@
+{
+ "id": "royal_guard",
+ "tier": "T2",
+ "srcTD": 4,
+ "note": "Knight-rig reuse (ART-ENEMY-5): the armor_knight sources re-painted as crimson-and-gold royal armour by composition-keeping Kling edits (rg_torso = edit of knight_torso, rg_sheet1 = edit of knight_sheet1, rg_sheet2 = edit of knight_sheet2), so the knight's cuirass/limb/shield boxes and pivots still fit. The plumed helm gets a new polygon (the plume flows back), the longsword became a halberd (own box + pivots: a = butt, b = spear point, grip/grip2 = the two hands, head/edge = blade). All neural-only mattes (crimson steel on grey).",
+ "sources": {
+  "t": {
+   "raw": "rg_torso.webp",
+   "file": "a5_rg_torso.png",
+   "k": 0.0288,
+   "mode": "rembg"
+  },
+  "s1": {
+   "raw": "rg_sheet1.webp",
+   "file": "a5_rg_sheet1.png",
+   "k": 0.0525,
+   "mode": "rembg"
+  },
+  "s2": {
+   "raw": "rg_sheet2.webp",
+   "file": "a5_rg_sheet2.png",
+   "k": 0.0546,
+   "mode": "rembg"
+  }
+ },
+ "parts": {
+  "torso": {
+   "src": "t",
+   "box": [
+    400,
+    150,
+    1420,
+    2320
+   ],
+   "keep": "largest",
+   "flipX": true,
+   "piv": {
+    "a": [
+     880,
+     1250
+    ],
+    "neck": [
+     765,
+     290
+    ],
+    "shN": [
+     1120,
+     420
+    ],
+    "shF": [
+     560,
+     400
+    ],
+    "hipN": [
+     960,
+     1250
+    ],
+    "hipF": [
+     800,
+     1250
+    ]
+   }
+  },
+  "helm": {
+   "src": "s2",
+   "box": [
+    1060,
+    30,
+    1410,
+    410
+   ],
+   "flipX": true,
+   "poly": [
+    [
+     1080,
+     345
+    ],
+    [
+     1100,
+     300
+    ],
+    [
+     1110,
+     250
+    ],
+    [
+     1135,
+     200
+    ],
+    [
+     1160,
+     160
+    ],
+    [
+     1150,
+     110
+    ],
+    [
+     1165,
+     70
+    ],
+    [
+     1200,
+     42
+    ],
+    [
+     1260,
+     36
+    ],
+    [
+     1330,
+     50
+    ],
+    [
+     1398,
+     82
+    ],
+    [
+     1405,
+     160
+    ],
+    [
+     1392,
+     232
+    ],
+    [
+     1352,
+     252
+    ],
+    [
+     1302,
+     242
+    ],
+    [
+     1276,
+     276
+    ],
+    [
+     1256,
+     312
+    ],
+    [
+     1230,
+     326
+    ],
+    [
+     1192,
+     342
+    ],
+    [
+     1162,
+     372
+    ],
+    [
+     1126,
+     402
+    ],
+    [
+     1104,
+     402
+    ],
+    [
+     1094,
+     380
+    ]
+   ],
+   "piv": {
+    "a": [
+     1170,
+     372
+    ],
+    "eye": [
+     1140,
+     284
+    ],
+    "top": [
+     1170,
+     60
+    ]
+   }
+  },
+  "shin": {
+   "src": "s1",
+   "box": [
+    1895,
+    1150,
+    2120,
+    1630
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1975,
+     1215
+    ],
+    "b": [
+     1962,
+     1560
+    ],
+    "toe": [
+     2105,
+     1612
+    ],
+    "heel": [
+     1915,
+     1592
+    ]
+   }
+  },
+  "uarm": {
+   "src": "s1",
+   "box": [
+    1620,
+    585,
+    1790,
+    826
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1688,
+     612
+    ],
+    "b": [
+     1690,
+     815
+    ]
+   },
+   "k": 0.0615
+  },
+  "farm": {
+   "src": "s1",
+   "box": [
+    1880,
+    660,
+    2065,
+    1095
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1960,
+     715
+    ],
+    "b": [
+     1955,
+     965
+    ],
+    "grip": [
+     1960,
+     1025
+    ]
+   }
+  },
+  "cape": {
+   "src": "s1",
+   "box": [
+    1485,
+    1008,
+    1830,
+    1642
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1655,
+     1022
+    ]
+   }
+  },
+  "shield": {
+   "src": "s2",
+   "box": [
+    1750,
+    15,
+    2262,
+    1070
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     2005,
+     520
+    ]
+   }
+  },
+  "halberd": {
+   "src": "s2",
+   "box": [
+    1455,
+    18,
+    1765,
+    1745
+   ],
+   "keep": "largest",
+   "k": 0.0706,
+   "piv": {
+    "a": [
+     1603,
+     1725
+    ],
+    "b": [
+     1605,
+     30
+    ],
+    "grip": [
+     1603,
+     1450
+    ],
+    "grip2": [
+     1603,
+     1150
+    ],
+    "head": [
+     1600,
+     500
+    ],
+    "edge": [
+     1487,
+     520
+    ]
+   }
+  }
+ }
+}

@@ -1,0 +1,261 @@
+{
+ "id": "hellhound",
+ "tier": "T2",
+ "srcTD": 4,
+ "note": "Wolf-rig reuse (ART-ENEMY-5): the wolf's two sources re-painted as a lava-born hellhound by composition-keeping Kling edits (hh_body = edit of wolf_body, hh_legs = edit of wolf_legs), so the wolf's boxes, polygons and pivots still fit; the flame mane and the flaming tail tuft were painted in. Box tops raised for the flame mane.",
+ "sources": {
+  "b": {
+   "raw": "hh_body.webp",
+   "file": "a5_hh_body.png",
+   "k": 0.031
+  },
+  "l": {
+   "raw": "hh_legs.webp",
+   "file": "a5_hh_legs.png",
+   "k": 0.024
+  }
+ },
+ "parts": {
+  "body": {
+   "src": "b",
+   "box": [
+    430,
+    120,
+    2080,
+    1350
+   ],
+   "keep": "largest",
+   "fade": [
+    [
+     1700,
+     1150,
+     2080,
+     1350,
+     "down",
+     1.0
+    ]
+   ],
+   "piv": {
+    "a": [
+     1200,
+     700
+    ],
+    "shoulder": [
+     1440,
+     900
+    ],
+    "shoulder2": [
+     1360,
+     880
+    ],
+    "hip": [
+     700,
+     880
+    ],
+    "hip2": [
+     620,
+     860
+    ],
+    "tail": [
+     470,
+     620
+    ],
+    "eye": [
+     1806,
+     840
+    ],
+    "eye2": [
+     1940,
+     856
+    ],
+    "mouth": [
+     1880,
+     1080
+    ],
+    "nose": [
+     1990,
+     1000
+    ]
+   }
+  },
+  "fleg": {
+   "src": "l",
+   "box": [
+    120,
+    250,
+    730,
+    1340
+   ],
+   "keep": "largest",
+   "flipX": true,
+   "piv": {
+    "a": [
+     470,
+     380
+    ],
+    "b": [
+     300,
+     1290
+    ]
+   }
+  },
+  "hleg": {
+   "src": "l",
+   "box": [
+    1290,
+    520,
+    1790,
+    1330
+   ],
+   "flipX": true,
+   "poly": [
+    [
+     1440,
+     580
+    ],
+    [
+     1560,
+     545
+    ],
+    [
+     1700,
+     560
+    ],
+    [
+     1770,
+     660
+    ],
+    [
+     1765,
+     1000
+    ],
+    [
+     1720,
+     1080
+    ],
+    [
+     1640,
+     1150
+    ],
+    [
+     1580,
+     1220
+    ],
+    [
+     1560,
+     1300
+    ],
+    [
+     1340,
+     1310
+    ],
+    [
+     1340,
+     1240
+    ],
+    [
+     1440,
+     1200
+    ],
+    [
+     1520,
+     1120
+    ],
+    [
+     1580,
+     1040
+    ],
+    [
+     1540,
+     900
+    ],
+    [
+     1450,
+     760
+    ]
+   ],
+   "piv": {
+    "a": [
+     1610,
+     650
+    ],
+    "b": [
+     1450,
+     1290
+    ],
+    "hock": [
+     1720,
+     1000
+    ]
+   },
+   "keep": "largest",
+   "fade": [
+    [
+     1290,
+     520,
+     1790,
+     700,
+     "up",
+     1.2
+    ]
+   ],
+   "k": 0.033
+  },
+  "tail": {
+   "src": "l",
+   "box": [
+    1620,
+    420,
+    2660,
+    1020
+   ],
+   "flipX": true,
+   "poly": [
+    [
+     1640,
+     440
+    ],
+    [
+     2660,
+     600
+    ],
+    [
+     2660,
+     1010
+    ],
+    [
+     2100,
+     1010
+    ],
+    [
+     1800,
+     950
+    ],
+    [
+     1660,
+     850
+    ]
+   ],
+   "fade": [
+    [
+     1620,
+     420,
+     1700,
+     1020,
+     "left",
+     1.0
+    ]
+   ],
+   "piv": {
+    "a": [
+     1680,
+     640
+    ],
+    "b": [
+     2630,
+     900
+    ]
+   }
+  }
+ }
+}

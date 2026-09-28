@@ -3,7 +3,7 @@
  "model": "kling-image-v3_0_omni (image_to_image, img_resolution 2k)",
  "prompts": "tools/painted/prompts/cmp-mount-art-a.mjs (SHOTS: <id>_ref / <id>_body / <id>_legs)",
  "creditsPerImage": 2,
- "note": "Result URLs expire after 24 h; kept images are stored as q93 webp under tools/painted/companions/<id>/src/. The bottom-right Kling logo is removed by the matte step before cutting.",
+ "note": "Result URLs expire after 24 h; kept images are stored as q93 webp under tools/painted/companions/<id>/src/. The bottom-right Kling logo is removed by the matte step before cutting. Final: 5 of 30 images used (one side-view reference per mount); every part is cut from those references by tools/painted/companions/mt_warhorse/mounts_build.py.",
  "refs": {
   "portrait:mt_warhorse": "https://s15-kling.klingai.com/kimg/EMXN1y8qTwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo1YWdlbnRfdXBsb2FkLzE3OTA2MDI4NjAvQ0ZLS1Z3TWdmdC9jbXBfbV93YXJob3JzZS5qcGc.origin?x-kcdn-pid=112372",
   "portrait:mt_boar": "https://s15-kling.klingai.com/kimg/EMXN1y8qSwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBoxYWdlbnRfdXBsb2FkLzE3OTA2MDI4NjIvaVV2aXhMMm9hTy9jbXBfbV9ib2FyLmpwZw.origin?x-kcdn-pid=112372",
@@ -77,7 +77,7 @@
    "inputs": [
     "mt_warhorse_ref (chosen result)"
    ],
-   "decision": "pending"
+   "decision": "rejected, both unused: the image edit kept the legs (or redrew a front 3/4 view) instead of a legless body. The body, head and tail parts were cut from the side-view reference instead (tools/painted/companions/<id>/config.json)."
   },
   {
    "mount": "mt_warhorse",
@@ -88,7 +88,7 @@
    "inputs": [
     "mt_warhorse_ref (chosen result)"
    ],
-   "decision": "pending"
+   "decision": "rejected, both unused: the sheet painted legs in front/3/4 views with inconsistent joints and lighting. The leg parts were cut from the side-view reference instead (near legs; far legs are darkened copies at runtime)."
   },
   {
    "mount": "mt_boar",
@@ -99,7 +99,7 @@
    "inputs": [
     "mt_boar_ref (chosen result)"
    ],
-   "decision": "pending"
+   "decision": "rejected, both unused: the image edit kept the legs (or redrew a front 3/4 view) instead of a legless body. The body, head and tail parts were cut from the side-view reference instead (tools/painted/companions/<id>/config.json)."
   },
   {
    "mount": "mt_boar",
@@ -110,7 +110,7 @@
    "inputs": [
     "mt_boar_ref (chosen result)"
    ],
-   "decision": "pending"
+   "decision": "rejected, both unused: the sheet painted legs in front/3/4 views with inconsistent joints and lighting. The leg parts were cut from the side-view reference instead (near legs; far legs are darkened copies at runtime)."
   },
   {
    "mount": "mt_skelsteed",
@@ -121,7 +121,7 @@
    "inputs": [
     "mt_skelsteed_ref (chosen result)"
    ],
-   "decision": "pending"
+   "decision": "rejected, both unused: the image edit kept the legs (or redrew a front 3/4 view) instead of a legless body. The body, head and tail parts were cut from the side-view reference instead (tools/painted/companions/<id>/config.json)."
   },
   {
    "mount": "mt_skelsteed",
@@ -132,7 +132,7 @@
    "inputs": [
     "mt_skelsteed_ref (chosen result)"
    ],
-   "decision": "pending"
+   "decision": "rejected, both unused: the sheet painted legs in front/3/4 views with inconsistent joints and lighting. The leg parts were cut from the side-view reference instead (near legs; far legs are darkened copies at runtime)."
   },
   {
    "mount": "mt_ignis",
@@ -143,7 +143,7 @@
    "inputs": [
     "mt_ignis_ref (chosen result)"
    ],
-   "decision": "pending"
+   "decision": "rejected, both unused: the image edit kept the legs (or redrew a front 3/4 view) instead of a legless body. The body, head and tail parts were cut from the side-view reference instead (tools/painted/companions/<id>/config.json)."
   },
   {
    "mount": "mt_ignis",
@@ -154,7 +154,7 @@
    "inputs": [
     "mt_ignis_ref (chosen result)"
    ],
-   "decision": "pending"
+   "decision": "rejected, both unused: the sheet painted legs in front/3/4 views with inconsistent joints and lighting. The leg parts were cut from the side-view reference instead (near legs; far legs are darkened copies at runtime)."
   },
   {
    "mount": "mt_silva",
@@ -165,7 +165,7 @@
    "inputs": [
     "mt_silva_ref (chosen result)"
    ],
-   "decision": "pending"
+   "decision": "rejected, both unused: the image edit kept the legs (or redrew a front 3/4 view) instead of a legless body. The body, head and tail parts were cut from the side-view reference instead (tools/painted/companions/<id>/config.json)."
   },
   {
    "mount": "mt_silva",
@@ -176,7 +176,7 @@
    "inputs": [
     "mt_silva_ref (chosen result)"
    ],
-   "decision": "pending"
+   "decision": "rejected, both unused: the sheet painted legs in front/3/4 views with inconsistent joints and lighting. The leg parts were cut from the side-view reference instead (near legs; far legs are darkened copies at runtime)."
   }
  ],
  "imagesGenerated": 30,

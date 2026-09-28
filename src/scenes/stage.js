@@ -17,15 +17,26 @@ export class StageScene extends Scene {
     const h = this.world.player?.hero;
     try { if (h?.charId && PUPPET.puppetEnabled?.() !== false) PUPPET.preloadPuppet?.(h.charId, h.classId); } catch (e) { console.error(e); }   // [hook:plat]
   }
-  exit() { if (this.game.world === this.world) this.game.world = null; }
+  exit() { this._pauseWanted = false; if (this.game.world === this.world) this.game.world = null; }
   resize() { this.world?.camera.setView(this.game.viewW, this.game.viewH); }
   onResume() { this.world.player?.refreshStats(); }
   canPause() { const w = this.world; return !!w?.player && !w.cleared && !w.player.dead && !w.cutscene; }
-  /** 기기를 세로로 돌리거나 탭이 백그라운드로 가면 일시정지 메뉴를 띄운다 (core/game.js) */
-  autoPause() { if (this.game.top === this && this.game.fade.dir <= 0 && this.canPause()) this.game.push('pause', { world: this.world }); }
+  /**
+   * 기기를 세로로 돌리거나 탭이 백그라운드로 가거나 패드가 끊기면 일시정지 메뉴를 띄운다 (core/game.js).
+   * 지금 열 수 없으면 (필살기·각성 연출 world.cutscene, 페이드 중) 기억해 두었다가 열 수 있게 된 첫 update 에서 연다 (platform §4.1).
+   */
+  autoPause() {
+    const g = this.game, w = this.world;
+    if (g.top === this && g.fade.dir <= 0 && this.canPause()) { this._pauseWanted = false; g.push('pause', { world: w }); return; }
+    if (w?.player && !w.cleared && !w.player.dead) this._pauseWanted = true;   // [hook:plat]
+  }
   update(dt) {
     const w = this.world;
     this.game.state.stats.playTime = (this.game.state.stats.playTime ?? 0) + dt;
+    if (this._pauseWanted) {   // [hook:plat] 연출 중에 들어온 자동 일시정지 요청
+      if (w.cleared || w.player?.dead) this._pauseWanted = false;
+      else if (this.game.fade.dir <= 0 && this.canPause()) { this._pauseWanted = false; this.game.push('pause', { world: w }); return; }
+    }
     if (input.pressed('menu') && this.canPause()) {
       audio.sfx('menu_ok');
       this.game.push('pause', { world: w });

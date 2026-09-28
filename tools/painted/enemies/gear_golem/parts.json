@@ -1,0 +1,275 @@
+{
+ "id": "gear_golem",
+ "tier": "T3",
+ "srcTD": 4,
+ "note": "Cut from the Kling parts sheet (gear_golem_sheet = sheet take 1, input: reference take 2): the side figure (brass dome head with the glowing visor, riveted round torso with the furnace grille, smoke stack, the back cog seen edge-on, the shoulder and upper arm down to the elbow gear) as the body (mirrored to face right, cut at the waist), the plated piston forearm + fist as the punching arm (turning on the elbow gear; reused darkened for the far arm), the separate legs item split into pelvis + two legs, and the big spoked cog item mounted on the back (spins; it is what the golem throws).",
+ "sources": {
+  "s": {
+   "raw": "gear_golem_sheet.webp",
+   "file": "a3_gear_golem_sheet.png",
+   "k": 0.063
+  }
+ },
+ "parts": {
+  "body": {
+   "src": "s",
+   "box": [
+    1100,
+    80,
+    1700,
+    910
+   ],
+   "minus": [
+    [
+     [
+      1100,
+      905
+     ],
+     [
+      1700,
+      905
+     ],
+     [
+      1700,
+      1000
+     ],
+     [
+      1100,
+      1000
+     ]
+    ]
+   ],
+   "fade": [
+    [
+     1100,
+     860,
+     1700,
+     905,
+     "down",
+     1.0
+    ]
+   ],
+   "keep": "largest",
+   "flipX": true,
+   "feather": 2,
+   "piv": {
+    "a": [
+     1400,
+     880
+    ],
+    "hip": [
+     1400,
+     880
+    ],
+    "sh": [
+     1400,
+     540
+    ],
+    "cog": [
+     1620,
+     560
+    ],
+    "furnace": [
+     1170,
+     620
+    ],
+    "eye": [
+     1300,
+     300
+    ],
+    "stack": [
+     1604,
+     120
+    ],
+    "elbow": [
+     1500,
+     820
+    ]
+   }
+  },
+  "farm": {
+   "src": "s",
+   "box": [
+    1170,
+    740,
+    1605,
+    1330
+   ],
+   "poly": [
+    [
+     1440,
+     760
+    ],
+    [
+     1560,
+     750
+    ],
+    [
+     1600,
+     860
+    ],
+    [
+     1545,
+     945
+    ],
+    [
+     1500,
+     1080
+    ],
+    [
+     1460,
+     1210
+    ],
+    [
+     1420,
+     1310
+    ],
+    [
+     1310,
+     1320
+    ],
+    [
+     1210,
+     1270
+    ],
+    [
+     1180,
+     1120
+    ],
+    [
+     1230,
+     1010
+    ],
+    [
+     1270,
+     910
+    ],
+    [
+     1330,
+     830
+    ]
+   ],
+   "keep": "largest",
+   "flipX": true,
+   "piv": {
+    "a": [
+     1500,
+     820
+    ],
+    "b": [
+     1330,
+     1210
+    ],
+    "fist": [
+     1320,
+     1230
+    ]
+   }
+  },
+  "pelvis": {
+   "src": "s",
+   "box": [
+    1780,
+    735,
+    2120,
+    1000
+   ],
+   "keep": "largest",
+   "k": 0.067,
+   "piv": {
+    "a": [
+     1950,
+     760
+    ],
+    "l": [
+     1810,
+     910
+    ],
+    "r": [
+     2090,
+     910
+    ]
+   }
+  },
+  "leg": {
+   "src": "s",
+   "box": [
+    1615,
+    860,
+    1905,
+    1675
+   ],
+   "keep": "largest",
+   "k": 0.067,
+   "poly": [
+    [
+     1650,
+     880
+    ],
+    [
+     1840,
+     860
+    ],
+    [
+     1860,
+     1000
+    ],
+    [
+     1840,
+     1150
+    ],
+    [
+     1905,
+     1250
+    ],
+    [
+     1905,
+     1675
+    ],
+    [
+     1615,
+     1675
+    ],
+    [
+     1615,
+     1250
+    ],
+    [
+     1700,
+     1150
+    ],
+    [
+     1720,
+     1000
+    ]
+   ],
+   "piv": {
+    "a": [
+     1790,
+     900
+    ],
+    "b": [
+     1760,
+     1650
+    ]
+   }
+  },
+  "cog": {
+   "src": "s",
+   "box": [
+    1690,
+    88,
+    2282,
+    681
+   ],
+   "keep": "largest",
+   "k": 0.068,
+   "piv": {
+    "a": [
+     1986,
+     385
+    ]
+   }
+  }
+ }
+}

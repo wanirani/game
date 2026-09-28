@@ -1,0 +1,226 @@
+{
+ "id": "drowned",
+ "tier": "T2",
+ "srcTD": 4,
+ "note": "Cut from the Kling parts sheet (drowned_sheet = sheet take 2, input: reference take 1): the side figure (long weed-green hair, grey drowned face with glowing eyes, torn blue shirt, the bloated corpse belly) as the body above the belt with the near arm cut out and the shirt / trousers behind it cloned over from the cloth in front of it (make_src.py \u2192 src/drowned_body.webp), the trousers and bare feet as one legs piece, the hanging near arm, and the loose forearm with the clawed hand as the reaching far arm.",
+ "sources": {
+  "s": {
+   "raw": "drowned_sheet.webp",
+   "file": "a3_drowned_sheet.png",
+   "k": 0.05
+  },
+  "b": {
+   "raw": "drowned_body.webp",
+   "file": "a3_drowned_body.png",
+   "k": 0.05
+  }
+ },
+ "parts": {
+  "body": {
+   "src": "b",
+   "box": [
+    820,
+    60,
+    1300,
+    850
+   ],
+   "minus": [
+    [
+     [
+      760,
+      727
+     ],
+     [
+      975,
+      771
+     ],
+     [
+      975,
+      1110
+     ],
+     [
+      760,
+      1110
+     ]
+    ]
+   ],
+   "fade": [
+    [
+     820,
+     790,
+     1300,
+     850,
+     "down",
+     1.0
+    ]
+   ],
+   "keep": "largest",
+   "feather": 2,
+   "piv": {
+    "a": [
+     1060,
+     780
+    ],
+    "hip": [
+     1060,
+     780
+    ],
+    "shN": [
+     930,
+     420
+    ],
+    "shF": [
+     1010,
+     430
+    ],
+    "mouth": [
+     1140,
+     285
+    ],
+    "eye": [
+     1111,
+     216
+    ],
+    "belly": [
+     1180,
+     640
+    ]
+   }
+  },
+  "legs": {
+   "src": "b",
+   "box": [
+    820,
+    730,
+    1300,
+    1700
+   ],
+   "minus": [
+    [
+     [
+      760,
+      727
+     ],
+     [
+      975,
+      771
+     ],
+     [
+      975,
+      1110
+     ],
+     [
+      760,
+      1110
+     ]
+    ]
+   ],
+   "keep": "largest",
+   "feather": 2,
+   "piv": {
+    "a": [
+     1060,
+     780
+    ],
+    "b": [
+     1030,
+     1670
+    ]
+   }
+  },
+  "arm": {
+   "src": "s",
+   "box": [
+    840,
+    360,
+    1085,
+    1100
+   ],
+   "poly": [
+    [
+     860,
+     393
+    ],
+    [
+     971,
+     371
+    ],
+    [
+     1004,
+     504
+    ],
+    [
+     1016,
+     682
+    ],
+    [
+     1038,
+     860
+    ],
+    [
+     1071,
+     949
+    ],
+    [
+     1075,
+     1082
+    ],
+    [
+     1027,
+     1096
+    ],
+    [
+     971,
+     1062
+    ],
+    [
+     949,
+     949
+    ],
+    [
+     916,
+     793
+    ],
+    [
+     871,
+     638
+    ],
+    [
+     849,
+     504
+    ]
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     930,
+     420
+    ],
+    "b": [
+     1030,
+     1010
+    ]
+   }
+  },
+  "farm": {
+   "src": "s",
+   "box": [
+    1240,
+    1050,
+    1560,
+    1400
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1262,
+     1085
+    ],
+    "b": [
+     1490,
+     1300
+    ]
+   }
+  }
+ }
+}

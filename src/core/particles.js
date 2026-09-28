@@ -284,7 +284,8 @@ export class Particles {
     for (const p of this.list) {
       if (p.layer !== layer) continue;
       const t = 1 - p.life / p.max; // 0→1
-      const a = clamp((p.alpha ?? 1) * (p.life / p.max) * 1.4, 0, 1) * (p.flicker ? 0.6 + Math.random() * 0.4 : 1);
+      // 깜빡임은 그리기 전용 값 (수명·위치로 만든 잡음): 게임 진행용 Math.random 을 소비하지 않는다 (렌더 빈도가 보스 AI 난수를 바꾸지 않게)
+      const a = clamp((p.alpha ?? 1) * (p.life / p.max) * 1.4, 0, 1) * (p.flicker ? 0.8 + 0.2 * Math.sin(p.life * 57 + (p.x + p.y) * 0.31) : 1);
       ctx.globalCompositeOperation = p.add ? 'lighter' : 'source-over';
       switch (p.shape) {
         case 'circle': {

@@ -308,10 +308,18 @@ function apply(on, hb) {
   applyHidden(hb);
   if (on === S.visible) return;
   S.visible = on;
-  if (!on) releaseAll();
+  if (!on) releaseAll(true);   // 필살·각성 컷인처럼 잠깐 숨길 때는 스틱을 누르고 있는 손가락을 기억한다
   if (S.cv && !S.editor) S.cv.style.display = on ? '' : 'none';
   S.occKey = ''; S.pending = true;
-  if (on) { layout(); startLoop(); }
+  if (on) { layout(); startLoop(); resumeStick(); }
+}
+/** 숨기는 동안 기억해 둔 스틱 손가락이 아직 화면에 있으면 같은 받침에서 이어 간다 (다시 떼었다 누르지 않아도 계속 달린다) */
+function resumeStick() {
+  const s = S.stick, p = S.ptrs.get(s.id);
+  if (!p || p.kind !== 'stick' || !p.suspended) return;
+  p.suspended = false;
+  s.active = true; s.fx = p.x; s.fy = p.y;
+  stickSend(); S.pending = true;
 }
 function legacyVisible(on) {
   if (now() - S.ownerT < 600) return; // game.syncPad 가 주인이다
@@ -446,12 +454,14 @@ function stickSend() {
   i.touch.axis(dx / L.R, dy / L.R, { sprint: s.sprint });
   sendDirs(dx, dy, dist / L.R);
 }
-function releaseAll() {
+function releaseAll(keepStick = false) {
+  const s = S.stick;
+  const held = keepStick && s.active ? S.ptrs.get(s.id) : null;   // 잠깐 숨김: 스틱 손가락은 멈춘 채 기억 (resumeStick)
   for (const [, p] of S.ptrs) {
     if (p.kind === 'btn' || p.kind === 'sys') for (const id of p.ids) releaseBtn(p, id, false);
   }
   S.ptrs.clear();
-  const s = S.stick;
+  if (held?.kind === 'stick') { held.suspended = true; S.ptrs.set(s.id, held); }
   if (s.active) { s.active = false; s.relT = now(); s.ex = s.ax; s.ey = s.ay; }
   s.sprint = false;
   for (const a in S.counts) S.counts[a] = 0;
@@ -578,6 +588,7 @@ function onMove(e) {
   const L = S.L;
   if (!L) return;
   if (p.kind === 'stick') {
+    if (p.suspended) return;   // 패드가 숨은 동안: 위치만 기억 (입력은 보내지 않는다)
     const s = S.stick;
     s.fx = x; s.fy = y;
     if (settings().touchStick !== 'fixed') {

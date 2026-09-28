@@ -11,5 +11,6 @@ export const companions = {
   mt_boar: () => import('../companions/mt_boar.js'),
   mt_skelsteed: () => import('../companions/mt_skelsteed.js'),
   mt_ignis: () => import('../companions/mt_ignis.js'),
+  mt_silva: () => import('../companions/mt_silva.js'),
 };
 export const npcs = {};
