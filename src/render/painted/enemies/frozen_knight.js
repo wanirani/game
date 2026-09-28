@@ -42,32 +42,55 @@ function bone(name, x, y, dir, vn) {
   return _r;
 }
 
-/** swordsman arm/blade pose (same contract as the vector slashPose in render/enemies_b.js; angle 0 = down, + = forward) */
+/**
+ * swordsman arm/blade pose (same angles as the vector slashPose in render/enemies_b.js; angle 0 = down, + = forward).
+ * Unlike the vector contract the painted puppet does not snap between AI segments: each wind-up starts from the pose
+ * that was on screen when it began (idle hold, the end of the previous combo cut, the guard before a counter), the final
+ * cut settles back during the AI's 0.6 s hold, and leaving a slash or the guard eases into the hold pose (render-only
+ * memory on the entity, e._sw; a fresh entity — gallery, bestiary — never blends).
+ */
 const S = { arm: 0.45, arm2: 0.35, blade: 1.95, lean: 0, wind: 0, trail: null, legSpread: 0, guard: 0, last: false, strike: 0 };
 const TR = [0, 0, 0];
+const BLEND = 0.22;                       // s: slash/guard → hold ease-out
 export function slashPose(e) {
   const an = e.anim, t = e.t ?? 0, P = e.params ?? {};
   S.arm = 0.4; S.arm2 = 0.3; S.blade = 1.95 + Math.sin(t * 1.8) * 0.03; S.lean = 0; S.wind = 0; S.trail = null; S.legSpread = 0; S.guard = 0; S.last = false; S.strike = 0;
-  if (an === 'guard') { S.arm = 1.1; S.arm2 = 0.3; S.blade = Math.PI; S.lean = -0.08; S.guard = 1; return S; }
-  if (an === 'walk') { S.arm = 0.55 + Math.sin(t * 6) * 0.1; S.arm2 = 0.35; S.blade = 1.9; return S; }
-  if (an !== 'slash') return S;
-  const combo = P.combo ?? 2, ci = e.comboI ?? 0, last = ci >= combo - 1;
-  const wu = e.counter ? 0.25 : ci === 0 ? (P.windup ?? 0.55) : 0.3;
-  const st = e.stateT ?? e.animT ?? 0;
-  let from, to;
-  if (last) { from = 3.6; to = 1.0; } else if (ci === 0) { from = -0.6; to = 1.9; } else { from = 1.1; to = 3.2; }
-  S.last = last;
-  if (st < wu) {
-    const k = ease.outCubic(clamp(st / wu, 0, 1));
-    const a = lerp(1.9, from, k);
-    S.arm = a * 0.75; S.arm2 = a * 0.25; S.blade = a + (last ? 0.3 : 0); S.lean = last ? -0.12 * k : -0.05 * k; S.wind = k;
-  } else {
-    const k = ease.outExpo(clamp((st - wu) / 0.1, 0, 1));
-    const a = lerp(from, to, k);
-    S.arm = a * 0.75; S.arm2 = a * 0.25; S.blade = a; S.lean = last ? 0.25 * k : 0.12 * k; S.legSpread = 1; S.strike = k;
-    const fade = 1 - clamp((st - wu - 0.1) / 0.2, 0, 1);
-    if (fade > 0) { TR[0] = from; TR[1] = a; TR[2] = fade; S.trail = TR; }
+  const combo = P.combo ?? 2, ci = e.comboI ?? 0;
+  const key = an === 'slash' ? (e.counter ? 'c' : 's') + ci : an === 'guard' ? 'g' : 'h';
+  const m = e._sw ?? (e._sw = { key, arm: S.arm, arm2: S.arm2, blade: S.blade, lean: 0, sp: 0, a0: S.arm, a20: S.arm2, b0: S.blade, l0: 0, sp0: 0, t0: -1e9 });
+  if (m.key !== key) { m.key = key; m.a0 = m.arm; m.a20 = m.arm2; m.b0 = m.blade; m.l0 = m.lean; m.sp0 = m.sp; m.t0 = t; }
+  if (an === 'guard') { S.arm = 1.1; S.arm2 = 0.3; S.blade = Math.PI; S.lean = -0.08; S.guard = 1; }
+  else if (an === 'walk') { S.arm = 0.55 + Math.sin(t * 6) * 0.1; S.arm2 = 0.35; S.blade = 1.9; }
+  if (an === 'slash') {
+    const last = ci >= combo - 1;
+    const wu = e.counter ? 0.25 : ci === 0 ? (P.windup ?? 0.55) : 0.3;
+    const st = e.stateT ?? e.animT ?? 0;
+    let from, to;
+    if (last) { from = 3.6; to = 1.0; } else if (ci === 0) { from = -0.6; to = 1.9; } else { from = 1.1; to = 3.2; }
+    S.last = last;
+    if (st < wu) {
+      // wind-up from the pose on screen when this cut began (m.*0) to the cocked blade
+      const k = ease.outCubic(clamp(st / wu, 0, 1));
+      S.arm = lerp(m.a0, from * 0.75, k); S.arm2 = lerp(m.a20, from * 0.25, k); S.blade = lerp(m.b0, from + (last ? 0.3 : 0), k);
+      S.lean = lerp(m.l0, last ? -0.12 : -0.05, k); S.legSpread = m.sp0 * (1 - k); S.wind = k;
+    } else {
+      const k = ease.outExpo(clamp((st - wu) / 0.1, 0, 1));
+      const a = lerp(from, to, k);
+      S.arm = a * 0.75; S.arm2 = a * 0.25; S.blade = a; S.lean = last ? 0.25 * k : 0.12 * k; S.legSpread = 1; S.strike = k;
+      const fade = 1 - clamp((st - wu - 0.1) / 0.2, 0, 1);
+      if (fade > 0) { TR[0] = from; TR[1] = a; TR[2] = fade; S.trail = TR; }
+      if (last) {
+        // the AI holds the final cut for 0.6 s: settle back to the guard-down hold in its second half
+        const r = ease.inOutCubic(clamp((st - wu - 0.3) / 0.28, 0, 1));
+        if (r > 0) { S.arm = lerp(S.arm, 0.4, r); S.arm2 = lerp(S.arm2, 0.3, r); S.blade = lerp(S.blade, 1.95, r); S.lean *= 1 - r; S.legSpread = 1 - r; }
+      }
+    }
+  } else if (t - m.t0 < BLEND) {
+    // leaving a slash / the guard (or entering the guard): ease from the pose that was on screen
+    const u = ease.outCubic(clamp((t - m.t0) / BLEND, 0, 1));
+    S.arm = lerp(m.a0, S.arm, u); S.arm2 = lerp(m.a20, S.arm2, u); S.blade = lerp(m.b0, S.blade, u); S.lean = lerp(m.l0, S.lean, u); S.legSpread = m.sp0 * (1 - u);
   }
+  m.arm = S.arm; m.arm2 = S.arm2; m.blade = S.blade; m.lean = S.lean; m.sp = S.legSpread;
   return S;
 }
 
@@ -94,7 +117,14 @@ export function layoutSwordKnight(e, q, s, vars = ['base', 'deep']) {
   const dU = dirOf(s.arm), ex = snx + Math.cos(dU) * up.len, ey = sny + Math.sin(dU) * up.len;
   const fRot = dirOf(s.arm + s.arm2) - fp.ang;
   K.pivotPos('farm', 'a', 'grip', ex, ey, fRot, 1, 1, _q); const gx = _q[0], gy = _q[1];
-  const dS = dirOf(s.blade);
+  const sl = sw ? swordLen(sw) : 50;
+  let dS = dirOf(s.blade);
+  // the painted greatsword is longer than the vector blade the pose angles were made for: on the ground, keep the tip
+  // above the floor (feet line y = 0) — the low back wind-up of the rising cut otherwise buries it 18–25 px deep
+  if (e.onGround !== false && gy + Math.sin(dS) * sl > -2) {
+    const sn = clamp((-2 - gy) / sl, -1, 1);
+    dS = Math.atan2(sn, (Math.cos(dS) >= 0 ? 1 : -1) * Math.sqrt(1 - sn * sn));
+  }
   // far hand on the grip below the near hand (pommel side), 2-bone IK from the far shoulder
   const gA = fp.piv.grip ?? fp.piv.b, fa = fp.piv.a;
   const gLen = Math.hypot(gA[0] - fa[0], gA[1] - fa[1]) * FK.k, gAng = Math.atan2(gA[1] - fa[1], gA[0] - fa[0]);
@@ -114,7 +144,6 @@ export function layoutSwordKnight(e, q, s, vars = ['base', 'deep']) {
   place('uarm', snx, sny, dU - up.ang, vN);
   place('farm', ex, ey, fRot, vN);
   L.nx = nx; L.ny = ny; L.hr = hr; L.snx = snx; L.sny = sny; L.gx = gx; L.gy = gy; L.dS = dS;
-  const sl = sw ? swordLen(sw) : 50;
   L.tipx = gx + Math.cos(dS) * sl; L.tipy = gy + Math.sin(dS) * sl;
   L.reach = Math.hypot(L.tipx - snx, L.tipy - sny);
   K.pivotPos('helm', 'a', 'eye', nx + 1, ny + 2, hr, 1, 1, _q); L.eyeX = _q[0]; L.eyeY = _q[1];
@@ -128,15 +157,18 @@ function swordLen(sw) {
 }
 
 /** draw the posed parts (cape strip-warped, sword with an additive glow pass) */
+const CW = { t: 0, walk: false };
+const capeOff = (u) => {                  // hoisted strip callback (no per-frame closure)
+  const walk = CW.walk;
+  _q[0] = -(u * u) * (walk ? 22 : 7) - Math.sin(CW.t * (walk ? 9 : 2.2) - u * 3) * u * 6 * (walk ? 1 : 0.35); _q[1] = 0; return _q;
+};
 function drawParts(e, o, glowA) {
   const t = e.t ?? 0, walk = e.anim === 'walk';
   for (let i = 0; i < NP; i++) {
     const p = PL[i];
     if (p.cape) {
-      const sway = walk ? 1 : 0.35;
-      K.strips(p.name, p.pv, p.x, p.y, p.rot, p.sx, p.sy, K.nStrips(8), 'y', (u) => {
-        _q[0] = -(u * u) * (walk ? 22 : 7) - Math.sin(t * (walk ? 9 : 2.2) - u * 3) * u * 6 * sway; _q[1] = 0; return _q;
-      }, 1, p.vn);
+      CW.t = t; CW.walk = walk;
+      K.strips(p.name, p.pv, p.x, p.y, p.rot, p.sx, p.sy, K.nStrips(8), 'y', capeOff, 1, p.vn);
       continue;
     }
     K.put(p.name, p.pv, p.x, p.y, p.rot, p.sx, p.sy, 1, p.vn);

@@ -1,6 +1,8 @@
 // 채색 수호신: 하티 (gd_spiritwolf, 영혼 늑대) — CMP-GUARD-ART-A. T2 채색 퍼핏 (에셋 assets/painted/companions/gd_spiritwolf/).
-// 조각: body (옆모습 몸통·머리·목갈기, 아래다리와 꼬리를 잘라 낸 참조 그림) · tail (별빛 불꽃 꼬리, 뿌리 피벗) ·
-//   fleg / hleg (앞·뒷다리 — 몸 뒤에 어깨·엉덩이 피벗으로 매달아 흔든다, 먼 쪽 다리는 어둡게).
+// 조각: body (옆모습 몸통·목갈기, 머리·아래다리·꼬리를 잘라 낸 참조 그림) · tail (별빛 불꽃 꼬리, 뿌리 피벗) ·
+//   fleg / hleg (앞·뒷다리 — 몸 뒤에 어깨·엉덩이 피벗으로 매달아 흔든다, 먼 쪽 다리는 어둡게) ·
+//   머리 셋 (body.neck 피벗에 매단다 — 참조 그림의 머리는 어깨 너머 뒤를 돌아보고 있어서 앞을 보게 따로 그린다):
+//   headI (참조 머리 좌우 반전: 평소) · headA (시트의 이빨 드러낸 머리: 공격·덮치기·돌진) · headH (시트의 울부짖는 머리: 울음·스킬).
 // 상태: idle 숨쉬기·꼬리 · run 질주(회전 갤럽) · pounce 도약(앞다리 뻗고 뒷다리 차기) · attack 물기(앞으로 튀어나감) ·
 //   howl/skill 고개 들고 울부짖기(울음 고리) · emote 엎드려 꼬리 흔들기 · hurt 움찔 · appear 안개에서 솟아남. 각성: 두 갈래 꼬리.
 // 영체: 몸 전체를 살짝 투명하게 + 가산 빛 한 겹(높음 품질), 몸 속 별이 반짝이고 귀끝·꼬리끝에 불꽃 빛.
@@ -10,35 +12,44 @@ import { gGlow, gStar, gHalo, gAwake } from '../../guardians.js';
 
 export const spec = {
   id: 'gd_spiritwolf', tier: 'T2', src: '../companions/gd_spiritwolf',
-  bake: { outline: 0.35, outlineParts: { tail: 0.2 }, deep: { fleg: 0.62, hleg: 0.62 }, deepTint: 'rgb(90,150,180)', glow: { body: '#bff4ff', tail: '#e8fbff' }, flash: false },
+  bake: { outline: 0.35, outlineParts: { tail: 0.2 }, deep: { fleg: 0.62, hleg: 0.62 }, deepTint: 'rgb(90,150,180)', glow: { body: '#bff4ff', tail: '#e8fbff', headI: '#bff4ff', headA: '#bff4ff', headH: '#bff4ff' }, flash: false },
 };
 
 const _q = [0, 0];
 const easeOut = (k) => 1 - (1 - k) * (1 - k);
-const P = { fN: 0, fF: 0, hN: 0, hF: 0, pitch: 0, bob: 0, lunge: 0, tail: 0, tailA: 0.1, tailF: 2, crouch: 0, sy: 1 };
+const P = { fN: 0, fF: 0, hN: 0, hF: 0, pitch: 0, bob: 0, lunge: 0, tail: 0, tailA: 0.1, tailF: 2, crouch: 0, sy: 1, head: 0, hp: 'headI' };
+// 다리 각: + = 발끝이 앞으로 (다리 그림은 어깨·엉덩이에서 아래로 뻗어 있다 → 그리기 회전은 −각)
 
 function pose(g, t, at, an, vxf, vy, hurt) {
   const q = P;
   q.fN = 0.03; q.fF = -0.03; q.hN = -0.03; q.hF = 0.03; q.pitch = 0; q.bob = Math.sin(t * 2.4) * 0.35; q.lunge = 0;
   q.tail = Math.sin(t * 1.4) * 0.06; q.tailA = 0.1; q.tailF = 2.2; q.crouch = 0; q.sy = 1 + Math.sin(t * 2.4) * 0.008;
+  q.head = Math.sin(t * 1.3) * 0.05; q.hp = 'headI';
   const run = an === 'run' || an === 'move' || an === 'assist' || (an === 'idle' && Math.abs(vxf) > 60);
   if (run) {
     const ph = t * 15, A = 0.75;
     q.fN = Math.sin(ph) * A; q.fF = Math.sin(ph + 0.4) * A; q.hN = Math.sin(ph + 2.6) * A; q.hF = Math.sin(ph + 3) * A;
     q.pitch = Math.sin(ph) * 0.05; q.bob = Math.sin(ph * 2) * 1.4; q.tail = 0.35; q.tailA = 0.08; q.tailF = 16;
+    q.head = 0.18 + Math.sin(ph) * 0.05;   // 달릴 때는 머리를 낮춘다
+    if (an === 'assist') q.hp = 'headA';
   } else if (an === 'pounce') {
-    q.fN = q.fF = -0.95; q.hN = q.hF = 1.0; q.pitch = clamp((vy ?? 0) * 0.0011, -0.3, 0.3) - 0.05; q.tail = 0.45; q.tailF = 10;
+    // 도약: 앞다리는 앞으로 뻗고 뒷다리는 뒤로 찬다 (절차 그림과 같은 방향)
+    q.fN = q.fF = 0.95; q.hN = q.hF = -1.0; q.pitch = clamp((vy ?? 0) * 0.0011, -0.3, 0.3) - 0.05; q.tail = 0.45; q.tailF = 10;
+    q.head = 0.05; q.hp = 'headA';
   } else if (an === 'attack') {
     const ch = Math.abs(Math.sin(at * 26));
-    q.lunge = 3.5 * ch; q.pitch = 0.08 * ch; q.fN = -0.3; q.fF = -0.15; q.hN = 0.25; q.hF = 0.2;
+    q.lunge = 3.5 * ch; q.pitch = 0.08 * ch; q.fN = 0.35; q.fF = 0.2; q.hN = -0.3; q.hF = -0.2;
+    q.head = 0.12 - ch * 0.16; q.hp = 'headA';
   } else if (an === 'howl' || an === 'skill') {
     const k = easeOut(clamp(at / 0.2, 0, 1));
     q.pitch = -0.2 * k; q.hN = q.hF = 0.35 * k; q.fN = -0.12 * k; q.fF = 0.05; q.crouch = 1.5 * k; q.tail = -0.25 * k; q.tailA = 0.04; q.tailF = 18;
+    q.head = 0.1 * (1 - k); q.hp = k > 0.35 ? 'headH' : 'headI';
   } else if (an === 'emote') {
+    // 앞으로 엎드려 꼬리 흔들기 (놀자는 인사): 앞다리를 앞으로 뻗고 가슴을 낮춘다
     const k = Math.sin(clamp(at, 0, 1) * Math.PI);
-    q.pitch = 0.16 * k; q.fN = q.fF = -0.6 * k; q.tail = -0.2; q.tailA = 0.32; q.tailF = 18;
+    q.pitch = 0.16 * k; q.fN = q.fF = 0.6 * k; q.tail = -0.2; q.tailA = 0.32; q.tailF = 18; q.head = -0.12 * k;
   }
-  if (hurt > 0) { q.pitch = -0.14 * hurt; q.lunge = -3 * hurt; }
+  if (hurt > 0) { q.pitch = -0.14 * hurt; q.lunge = -3 * hurt; q.head = -0.25 * hurt; }
   return q;
 }
 
@@ -81,15 +92,21 @@ function draw(ctx, g, world, rig) {
   leg('hN', 'hleg', q.hN, 'base', 1.08);
   leg('fN', 'fleg', q.fN, 'base', 0.97);
   K.put('body', 'a', bx, by, q.pitch, 1, q.sy);
+  // 머리 (목 피벗): 몸 기울기 + 머리 각
+  const hp = K.part(q.hp) ? q.hp : 'headI';
+  K.pivotPos('body', 'a', 'neck', bx, by, q.pitch, 1, q.sy, _q); const kx = _q[0], ky = _q[1];
+  const hr = q.pitch + q.head;
+  K.put(hp, 'a', kx, ky, hr, 1, 1);
   if (hiQ) {
-    const gco = ctx.globalCompositeOperation; ctx.globalCompositeOperation = 'lighter';
-    K.put('body', 'a', bx, by, q.pitch, 1, q.sy, 0.1 + 0.05 * Math.sin(t * 3), 'glow');
+    const gco = ctx.globalCompositeOperation, ga = 0.1 + 0.05 * Math.sin(t * 3); ctx.globalCompositeOperation = 'lighter';
+    K.put('body', 'a', bx, by, q.pitch, 1, q.sy, ga, 'glow');
+    K.put(hp, 'a', kx, ky, hr, 1, 1, ga, 'glow');
     ctx.globalCompositeOperation = gco;
   }
-  K.pivotPos('body', 'a', 'eye', bx, by, q.pitch, 1, q.sy, _q); const ex = _q[0], ey = _q[1];
-  K.pivotPos('body', 'a', 'nose', bx, by, q.pitch, 1, q.sy, _q); const nx = _q[0], ny = _q[1];
-  K.pivotPos('body', 'a', 'ear', bx, by, q.pitch, 1, q.sy, _q); const e1x = _q[0], e1y = _q[1];
-  K.pivotPos('body', 'a', 'ear2', bx, by, q.pitch, 1, q.sy, _q); const e2x = _q[0], e2y = _q[1];
+  K.pivotPos(hp, 'a', 'eye', kx, ky, hr, 1, 1, _q); const ex = _q[0], ey = _q[1];
+  K.pivotPos(hp, 'a', 'mouth', kx, ky, hr, 1, 1, _q); const nx = _q[0], ny = _q[1];
+  K.pivotPos(hp, 'a', 'ear', kx, ky, hr, 1, 1, _q); const e1x = _q[0], e1y = _q[1];
+  K.pivotPos(hp, 'a', 'ear2', kx, ky, hr, 1, 1, _q); const e2x = _q[0], e2y = _q[1];
   K.pivotPos('tail', 'a', 'tip', tx, ty, q.tail + tw + q.pitch, 1, 1, _q); const ttx = _q[0], tty = _q[1];
   K.end();
   // 빛: 흰 눈 · 귀끝 · 꼬리끝 · 몸 속 별
@@ -102,10 +119,10 @@ function draw(ctx, g, world, rig) {
     const tw2 = 0.5 + 0.5 * Math.sin(t * (2 + i * 0.7) + i * 2.1);
     gStar(ctx, bx - 8 + i * 5.5 + Math.sin(i * 3.1) * 2, by - 16 + Math.cos(i * 2.3) * 3, 0.9 + tw2 * 0.9, 0.25 + tw2 * 0.55, i);
   }
-  if (an === 'attack') gGlow(ctx, nx + 3, ny + 1, 4 + Math.abs(Math.sin(at * 26)) * 4, '#e8fbff', 0.6);
+  if (an === 'attack') gGlow(ctx, nx + 1, ny, 4 + Math.abs(Math.sin(at * 26)) * 4, '#e8fbff', 0.6);
   if ((an === 'howl' || an === 'skill') && at < 0.9) {
     const k = clamp(at / 0.9, 0, 1);
-    for (let i = 0; i < 3; i++) { const kk = (k + i * 0.3) % 1; gHalo(ctx, nx + 4, ny - 6, 5 + kk * 16, 4 + kk * 11, '#bff4ff', (1 - kk) * 0.6, 0.8); }
+    for (let i = 0; i < 3; i++) { const kk = (k + i * 0.3) % 1; gHalo(ctx, nx + 2, ny - 4, 5 + kk * 16, 4 + kk * 11, '#bff4ff', (1 - kk) * 0.6, 0.8); }
     gGlow(ctx, bx, -20, 26, '#7ee0ff', 0.35);
   }
 }

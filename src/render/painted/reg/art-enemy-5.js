@@ -9,6 +9,8 @@ import * as bat_swarm from '../enemies/bat_swarm.js';
 import * as royal_guard from '../enemies/royal_guard.js';
 import * as hellhound from '../enemies/hellhound.js';
 import * as shadow_hunter from '../enemies/shadow_hunter.js';
+import * as chaos_spawn from '../enemies/chaos_spawn.js';
+import * as abyss_eye from '../enemies/abyss_eye.js';
 
 export const bosses = {};
 export const enemies = [
@@ -16,6 +18,8 @@ export const enemies = [
   { mod: royal_guard },
   { mod: hellhound },
   { mod: shadow_hunter },
+  { mod: chaos_spawn },
+  { mod: abyss_eye },
 ];
 export const companions = {};
 export const npcs = {};

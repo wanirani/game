@@ -403,6 +403,216 @@
      "decision": "kept: void_demon reference (nebula body, halo, mist tail)"
     }
    ]
+  },
+  {
+   "shot": "bride_sheet",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "inputs": [
+    "bride_ref"
+   ],
+   "for": [
+    "vampire_bride"
+   ],
+   "generationId": "AQAeoobNoiON4Utq5XOiczMWx0gfV69thMCEYwloS7dffD2iAmFNm3a49FZunzdWFARsgCSh",
+   "images": [
+    {
+     "name": "bride_sheet_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2FkZWNlZmUxLThkYTAtNDBjOS1iODg1LTlmZjJmZGUwOWFiYi8tMjA3NzI2MTE3MzM2MjQwMjkxL3RlbXBsa25uOS5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": null,
+     "decision": "pending"
+    },
+    {
+     "name": "bride_sheet_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2IyN2ZhMjYyLTJkZmMtNDhlZS1hZThlLWZhM2Y3Yzc3MGFhYi8tNjkyMzc3MDkyMDUxNzY2NzI1Mi90ZW1wZ3JybTcucG5n.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": null,
+     "decision": "pending"
+    }
+   ]
+  },
+  {
+   "shot": "dl_sheet",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "inputs": [
+    "dl_ref"
+   ],
+   "for": [
+    "demon_lord"
+   ],
+   "generationId": "AUti3GgZatOorJQkzXlUTsYKMZgG9ByUxHsxJl5K6Fx7Zk09kHDExGeMO-CxvNjjF3qw-CeD",
+   "images": [
+    {
+     "name": "dl_sheet_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpbc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzIyMTZhODdjLTM0ODUtNDYyYi04MWFiLTQwNDMzOWM1ZWMzYy81MzQ0NjQxNTc5MTg2NDQ1OTYvdGVtcHFqYWVzLnBuZw.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": null,
+     "decision": "pending"
+    },
+    {
+     "name": "dl_sheet_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2UyZjFmZTY3LWY4Y2EtNDdhNy1iZDEzLWQ1OTQwYTdlMmE2Yi8yNTMzOTY4NDQ5NzMzNTQyODc5L3RlbXB5NWpoci5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": null,
+     "decision": "pending"
+    }
+   ]
+  },
+  {
+   "shot": "dl_props",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "inputs": [
+    "dl_ref"
+   ],
+   "for": [
+    "demon_lord"
+   ],
+   "generationId": "ARuYiqDm-S-huETV8dwb9X8GT9mNwyVQOIFrmCZOvA2m8wyZCB9RQdei3rTatMefVZvB5MGs",
+   "images": [
+    {
+     "name": "dl_props_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2MzOTk2ODM5LWJlNzAtNDZkMi05MDNhLTA2ZTlmMjYzMmYxYi8tMTA3NjYxOTE2Nzg1MDY5NDAwNi90ZW1wZ2k1aWoucG5n.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": null,
+     "decision": "pending"
+    },
+    {
+     "name": "dl_props_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2U0NjgxYzQ2LTJhMTktNGU1ZS1iZmQ0LTM2NDE1NGUwMDkyYy8tNjUyNjMyNTczNTA1MzQzNzY3OC90ZW1wY2wzY2UucG5n.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": null,
+     "decision": "pending"
+    }
+   ]
+  },
+  {
+   "shot": "chaos_sheet",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "inputs": [
+    "chaos_ref"
+   ],
+   "for": [
+    "chaos_spawn"
+   ],
+   "generationId": "AVP-spGOLH3Mslz9s8rMp_7WTsFMLWH2iEHzGDl_hDiOj1eHwD-M9K0PlJHcy6-aqJyh-4E0",
+   "images": [
+    {
+     "name": "chaos_sheet_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzhhNjZmYzk1LTc0ZDctNGJlMy1hNjc1LTc1MDYxNmZhNGY2My85MTgyNDY2NTYyNjAyNjYzNDczL3RlbXB6OTA1eS5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": true,
+     "decision": "kept: chaos_spawn body (left figure) \u2192 tools/painted/enemies/chaos_spawn/src/chaos_body.webp"
+    },
+    {
+     "name": "chaos_sheet_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzViZjZhMjFkLWUwYTAtNDVjMy04N2MxLWIwYzUyNWRjNjNiMS81MTA5ODE4NzQ4NzIyMzk3MTI2L3RlbXA4aTh4eC5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": true,
+     "decision": "kept: chaos_spawn tentacle (bottom, no halo) \u2192 src/chaos_tent.webp"
+    }
+   ]
+  },
+  {
+   "shot": "eye_sheet",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "inputs": [
+    "eye_ref"
+   ],
+   "for": [
+    "abyss_eye"
+   ],
+   "generationId": "AQfDRwAMWZsBtoyI5_zkgq8cBtFEXsbTacSX1UB_GJKLwHte6uEY52ze-xTA4HMuBYzEZ5cJ",
+   "images": [
+    {
+     "name": "eye_sheet_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2UwZGRjOGI1LTI4ZTYtNDA3My05OWYyLWNkMzgyM2I3OGE3ZC83Mzg0OTIxOTU5MzQ5MDIyMjUzL3RlbXBiaGczdC5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": true,
+     "decision": "kept: abyss_eye sac (blank eye) + lid + tentacle bundle \u2192 src/eye_sac.webp"
+    },
+    {
+     "name": "eye_sheet_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0Lzg2ZjZlMGNhLTQzMDMtNDBhNi04OTNmLTMyYmUzNzFmYWMxMC82OTU1NjkzNTMxOTgxODgyODExL3RlbXBmcjR5eC5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": true,
+     "decision": "kept: abyss_eye iris disc \u2192 src/eye_iris.webp"
+    }
+   ]
+  },
+  {
+   "shot": "void_sheet",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "inputs": [
+    "void_ref"
+   ],
+   "for": [
+    "void_demon"
+   ],
+   "generationId": "AZUZAnkD-OPmVaewzb4o8ECybteIqWVpyjSe6nB90aQbfubmTTnnI37LPS7U3uKD83_HxfPd",
+   "images": [
+    {
+     "name": "void_sheet_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzYyMTMzMGJjLWVkNjEtNGU2YS1iN2ZlLTdlNzVhMjk0ZTg0Zi8xMjUyMzYwNDcwOTc5NTU3MTExL3RlbXA1a3pvcC5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": null,
+     "decision": "pending"
+    },
+    {
+     "name": "void_sheet_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0Lzc0OTI2NzI0LTQxMTEtNGU1Yy04OTYxLTMwYTExNDYxM2IwNS8tNjk1MTI0NDQ3OTIzMzkwMjk0Ny90ZW1wNXFpeWoucG5n.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": null,
+     "decision": "pending"
+    }
+   ]
   }
  ]
 }

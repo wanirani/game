@@ -51,7 +51,7 @@ const STATES = [
   ['대기', 'idle'], ['걷기', 'walk'], ['질주', 'run'], ['돌진', 'charge'], ['점프', 'jump'], ['낙하', 'fall'], ['착지', 'land', { animT: 0.05 }],
   ['앞들기', 'rear', { rearK: 1 }], ['특수', 'special', { animT: 0.05 }], ['피격', 'hurt', { flashT: 0.1, animT: 0.05 }], ['비틀', 'knocked', { pitch: 0.18, animT: 0.1 }],
   ['도주', 'flee'], ['소환', 'summon', { alpha: 0.6, scale: 0.95 }], ['해산', 'dismiss', { rearK: 0.7, alpha: 0.6 }], ['헤엄', 'swim', { inWater: true, onGround: false }], ['돌기', 'turn', { animT: 0.08 }],
-  ['땅파기', 'dig', { animT: 0.12 }], ['울음', 'howl', { animT: 0.25 }], ['잔상', 'run', { tint: '#8ac8ff' }],
+  ['땅파기', 'dig', { animT: 0.12 }], ['울음', 'howl', { animT: 0.25 }], ['잔상', 'run', { tint: '#8ac8ff' }], ['돌진 잔상', 'charge', { tint: 'def' }], ['퇴장 유령', 'run', { tint: '#ff6a7a', alpha: 0.5 }],
 ];
 const RUNLIKE = new Set(['run', 'charge', 'flee']);
 function makeView(id, st, t) {
@@ -77,7 +77,7 @@ function apply(v, anim, o) {
   v.alpha = o.alpha ?? 1; v.scale = o.scale ?? 1;
   v.pose = RIG.mountPose(v, 1 / 60) ?? v.pose;
   if (v.pose) { const s = RIG.seatOf(v.pose, {}); v.ride.sx = s.x; v.ride.sy = s.y; v.ride.lean = s.lean; }
-  v._tint = o.tint ?? null;
+  v._tint = o.tint === 'def' ? (v.def?.color ?? '#ff6a4a') : (o.tint ?? null);   // 'def' = 돌진 잔상 색 (mount.js: def.color)
 }
 function lookOf(charId, classId) {
   const ch = CHARACTERS[charId];

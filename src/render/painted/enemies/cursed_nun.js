@@ -26,28 +26,46 @@ function pose(e) {
   q.bob = Math.sin(t * 2) * 2.2; q.lean = clamp((e.vx ?? 0) * f * 0.002, -0.08, 0.12);
   q.arm = Math.PI / 2 - 0.08 + Math.sin(t * 1.4) * 0.05; q.pray = 0; q.crossLift = 0;
   q.sway = Math.sin(t * 2.2) * 0.25; q.trail = Math.min(10, Math.abs(e.vx ?? 0) * 0.08);
+  // the AI ends the prayer on the frame the last cross flies (or when every cross is gone), so the release is eased
+  // after it instead of snapping back to the float pose (render-only memory e._nun; a fresh entity never blends)
+  const m = e._nun ?? (e._nun = { k: 0, t0: 0 });
+  let pk = 0;
   if (e.anim === 'pray') {
     const pr = (P.pray ?? 0.9) + 0.3;
     const up = ease.outCubic(clamp(at / 0.3, 0, 1)), down = clamp((at - pr - 0.6) / 0.4, 0, 1);
-    q.pray = up * (1 - down);
-    q.arm = lerp(q.arm, 0.75 + Math.sin(t * 9) * 0.04, q.pray);
-    q.lean = lerp(q.lean, -0.12, q.pray);
-    q.crossLift = q.pray; q.sway *= 1 - q.pray;
+    pk = up * (1 - down);
+    m.k = pk; m.t0 = t;
+  } else if (m.k > 0) {
+    const u = clamp((t - m.t0) / 0.35, 0, 1);
+    pk = m.k * (1 - ease.inOutCubic(u));
+    if (u >= 1) m.k = 0;
+  }
+  if (pk > 0) {
+    q.pray = pk;
+    q.arm = lerp(q.arm, 0.75 + Math.sin(t * 9) * 0.04, pk);
+    q.lean = lerp(q.lean, -0.12, pk);
+    q.crossLift = pk; q.sway *= 1 - pk;
   }
   if (K.hurtOf(e)) { q.lean = -0.18; q.arm += 0.3; }
   return q;
 }
 
+/** set placement i of `out` (reused objects per frame; the corpse passes a fresh array) */
+function slot(out, i, name, x, y, rot, sx, sy) {
+  const o = out[i] ?? (out[i] = { name: '', pv: 'a', x: 0, y: 0, rot: 0, sx: 1, sy: 1, vn: 'base' });
+  o.name = name; o.x = x; o.y = y; o.rot = rot; o.sx = sx; o.sy = sy;
+  return o;
+}
 function place(q, out) {
   const bx = 0, by = -1 + q.bob, tr = q.lean;
   K.pivotPos('body', 'a', 'sh', bx, by, tr, 1, 1, _q); const sx = _q[0], sy = _q[1];
   K.pivotPos('body', 'a', 'chest', bx, by, tr, 1, 1, _q); const cx = _q[0], cy = _q[1];
   const ap = K.part('arm');
-  out.push({ name: 'body', pv: 'a', x: bx, y: by, rot: tr, sx: 1, sy: 1, vn: 'base' });
-  out.push({ name: 'arm', pv: 'a', x: sx, y: sy, rot: q.arm - (ap?.ang ?? 0), sx: 1, sy: 1, vn: 'base' });
+  slot(out, 0, 'body', bx, by, tr, 1, 1);
+  slot(out, 1, 'arm', sx, sy, q.arm - (ap?.ang ?? 0), 1, 1);
   // the inverted cross hangs from the neck (pendulum); while praying it rises before her chest
   const lx = cx - 3 + 11 * q.crossLift, ly = cy - 1 - 12 * q.crossLift;
-  out.push({ name: 'cross', pv: 'a', x: lx, y: ly, rot: Math.PI + q.sway * 0.4, sx: 1 + 0.3 * q.crossLift, sy: 1 + 0.3 * q.crossLift, vn: 'base' });
+  slot(out, 2, 'cross', lx, ly, Math.PI + q.sway * 0.4, 1 + 0.3 * q.crossLift, 1 + 0.3 * q.crossLift);
   const al = ap?.len ?? 30;
   L.hx = sx + Math.cos(q.arm) * al; L.hy = sy + Math.sin(q.arm) * al;
   L.cx = lx; L.cy = ly;
@@ -55,6 +73,11 @@ function place(q, out) {
   return out;
 }
 const PCS = [];
+const HW = { ph: 0, trail: 0, td: 1 };
+const hemOff = (u) => {                   // hoisted warp callback (no per-frame closure)
+  const w = Math.max(0, 0.42 - u) / 0.42;          // u: 0 = the feet pivot row … 1 = top of the veil
+  _q[0] = (-(w * w) * HW.trail - Math.sin(HW.ph - u * 6) * w * 1.8) * HW.td; _q[1] = 0; return _q;
+};
 
 export function draw(ctx, e, world, o, rig) {
   const t = e.t ?? 0;
@@ -76,14 +99,11 @@ export function draw(ctx, e, world, o, rig) {
   K.begin(ctx, rig, K.flashK(e, o));
   K.shadow(18, 0.25);
   if (!o.flash) K.glow(0, -40, 34, '#7a30d0', 0.12 + 0.3 * q.pray);
-  PCS.length = 0; place(q, PCS);
+  place(q, PCS);
   const b = PCS[0], a = PCS[1], c = PCS[2];
   // habit: the hem (bottom third) ripples and trails the glide; the torso and head stay rigid
-  const ph = t * 3.2, trail = q.trail;
-  K.warpY('body', 'a', b.x, b.y, b.rot, 1, 1, K.nStrips(9), (u) => {
-    const w = Math.max(0, 0.42 - u) / 0.42;          // u: 0 = the feet pivot row … 1 = top of the veil
-    _q[0] = (-(w * w) * trail - Math.sin(ph - u * 6) * w * 1.8) * rig.td; _q[1] = 0; return _q;
-  }, 1, 'base', 0);
+  HW.ph = t * 3.2; HW.trail = q.trail; HW.td = rig.td;
+  K.warpY('body', 'a', b.x, b.y, b.rot, 1, 1, K.nStrips(9), hemOff, 1, 'base', 0);
   K.put(c.name, c.pv, c.x, c.y, c.rot, c.sx, c.sy);
   K.put(a.name, a.pv, a.x, a.y, a.rot);
   if (!o.flash) {

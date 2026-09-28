@@ -156,6 +156,8 @@ export const ENEMIES = {
   harpy: {
     tier: 'T2', aspect: '4:3', sheetAspect: '4:3',
     who: 'harpy',
+    // appended to the sheet prompt as sent: keeps the "clock tower" of the subject line out of the parts sheet
+    sheetExtra: 'No tower, no building.',
     subject: 'A savage harpy, a bird-woman nesting at the top of a clock tower: a wild pale face with glowing golden eyes and a snarling mouth with small fangs, a mane of tangled black hair, a lean pale body covered on the chest by a breastplate of rust-brown plumage, arms that are great rust-brown feathered wings with dark tips, a skirt of brown feathers from the waist, scaly yellow bird legs with long black talons, a fan of long tail feathers.',
     pose: 'Hovering in the air, both wings spread wide open, the talons hanging below.',
     parts: [
@@ -194,7 +196,7 @@ export const ENEMIES = {
 export const EXTRAS = {};
 
 export const ref = (id) => refPrompt(ENEMIES[id]);
-export const sheet = (id) => sheetPrompt(ENEMIES[id]);
+export const sheet = (id) => clean(`${sheetPrompt(ENEMIES[id])} ${ENEMIES[id].sheetExtra ?? ''}`);
 
 if (process.argv[1]?.endsWith('art-enemy-3.mjs')) {
   const [id, kind = 'ref'] = process.argv.slice(2);

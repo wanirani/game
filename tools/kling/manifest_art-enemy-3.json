@@ -1,0 +1,557 @@
+{
+ "package": "ART-ENEMY-3",
+ "model": "kling-image-v3_0_omni",
+ "img_resolution": "2k",
+ "prompts": "tools/painted/prompts/art-enemy-3.mjs",
+ "credits": {
+  "before": 5893.0,
+  "per_image": 2,
+  "budget": 900,
+  "after": 5491.0,
+  "spent_by_package": 94,
+  "note": "account shared with concurrent packages (ART-BOSS-8, ART-ENEMY-4/5, CMP-*): the before/after delta (5893 -> 5491) includes their jobs; this package: 24 calls, 47 delivered images x 2 credits = 94 credits (the moderation-blocked homunculus sheet take 1 was refunded)"
+ },
+ "raw_takes": "every delivered take was downloaded; the kept ones are copied (webp) into tools/painted/enemies/<id>/src/",
+ "calls": [
+  {
+   "key": "slime_ref",
+   "tool": "text_to_image",
+   "prompt": "node tools/painted/prompts/art-enemy-3.mjs slime ref",
+   "imageCount": 2,
+   "generationId": "AU3zSFlOVBsMce4A8Aa6fKsaUg5jbJHNIMjoI5OgIcifOHa4eBlCX3-EDGbxRdc087Hmtbeq",
+   "images": [
+    {
+     "take": 1,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2FmMDMwYWFlLWU1N2ItNGFlYS1iOWJlLWU4N2UwY2E5OWU0Ny8tMjk4NzA4NTE1MjM2NjE3NTQ4My90ZW1wZTRuejAucG5n.origin?x-kcdn-pid=112372",
+     "decision": "kept: cut directly (T1 sprite) -> src/slime_ref.webp"
+    },
+    {
+     "take": 2,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzUxZjBiYzU2LWZhZDctNGZjMC1hZDdhLWE2MDQ0Yjk5YjA5ZS81ODEzMDU0MzE3MDY3MzkwMTU1L3RlbXBsdzBoYi5wbmc.origin?x-kcdn-pid=112372",
+     "decision": "rejected (the other take was chosen)"
+    }
+   ],
+   "credits": 4
+  },
+  {
+   "key": "homunculus_ref",
+   "tool": "text_to_image",
+   "prompt": "node tools/painted/prompts/art-enemy-3.mjs homunculus ref",
+   "imageCount": 2,
+   "generationId": "AaPplQJxhTPeYgqMK-_h8vlhaRcHj0Z2WqsNtVeeTp0AAHKpWhRKbLugRfYWrQsbUvQP9S65",
+   "images": [
+    {
+     "take": 1,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzljZTIzMTI4LTg0MzUtNGZjZS04NDJhLWIwZTRlNjUzNDMxMi8tMTM1MTc1Mjg2MDA3ODA4NzEyNy90ZW1wdWp1cGoucG5n.origin?x-kcdn-pid=112372",
+     "decision": "kept: sheet input (图片1) and the source of every part but the tube (side view cut) -> src/homunculus_ref.webp"
+    },
+    {
+     "take": 2,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzJiZjA3NWI5LWY4ZjYtNDBiOS04ODI1LTIwNDZiOTljZWUzMS8tNTEyODUzOTIzMDQyMzYxMzM2Ny90ZW1wcm91d2gucG5n.origin?x-kcdn-pid=112372",
+     "decision": "rejected (the other take was chosen)"
+    }
+   ],
+   "credits": 4
+  },
+  {
+   "key": "flesh_golem_ref",
+   "tool": "text_to_image",
+   "prompt": "node tools/painted/prompts/art-enemy-3.mjs flesh_golem ref",
+   "imageCount": 2,
+   "generationId": "AXlH8XoQ5BMHr8E1gBXTYwKk1O3JLdrdyFimuZ0_n-8MUYyFvV4b98La5SIk5GgDeTh3VrpT",
+   "images": [
+    {
+     "take": 1,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzQ3MTgwZGE0LWQ1YTQtNDBlZS05MGQyLWI0YjgwYTU1ZjMzNy8yMzYwNDg3NTI5MDExMzIwNDQ3L3RlbXA1ZGF3Yi5wbmc.origin?x-kcdn-pid=112372",
+     "decision": "kept: sheet input (图片1) -> src/flesh_golem_ref.webp"
+    },
+    {
+     "take": 2,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2E0Y2MxNDM0LTExMTEtNDMwNC1iZGUwLTc0MjhmOTUwNzlmZC82MDA3NjM3MzI4Njg4ODA5MzI0L3RlbXBham10ci5wbmc.origin?x-kcdn-pid=112372",
+     "decision": "rejected (the other take was chosen)"
+    }
+   ],
+   "credits": 4
+  },
+  {
+   "key": "plague_doctor_ref",
+   "tool": "text_to_image",
+   "prompt": "node tools/painted/prompts/art-enemy-3.mjs plague_doctor ref",
+   "imageCount": 2,
+   "generationId": "AUTV4LfBSetTkfuILJywFpOq_hUv36PLv6RyyDEjB4qV5Abrhbpi1ZezylOdqlHrJ_QPHuAO",
+   "images": [
+    {
+     "take": 1,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2E5OTliMTE3LTllZTMtNDU0OC04OTcyLTZkYzA2NjU2MjQ4Ni8tODA0MTcxMzExMjMxOTc0OTU4My90ZW1wbzNhaWMucG5n.origin?x-kcdn-pid=112372",
+     "decision": "rejected (the other take was chosen)"
+    },
+    {
+     "take": 2,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzEyN2E3ZmQ1LTQ5YmMtNDZlMy05NDY1LTM3NWIzZjUwZTQyYy8yMzYyMzAyMjIxMjAxNDQxOTQ0L3RlbXBtbXk4OS5wbmc.origin?x-kcdn-pid=112372",
+     "decision": "kept: sheet input (图片1) -> src/plague_doctor_ref.webp"
+    }
+   ],
+   "credits": 4
+  },
+  {
+   "key": "acid_turret_ref",
+   "tool": "text_to_image",
+   "prompt": "node tools/painted/prompts/art-enemy-3.mjs acid_turret ref",
+   "imageCount": 2,
+   "generationId": "ARHRm9898wAfUXxQ894jt234FPCKzU7UDaylBzG9xXP0wZ67Au5Y4-ukw_nlntH6BpjARqBE",
+   "images": [
+    {
+     "take": 1,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzQ4ODNhY2YwLWYyODgtNGMxMS05Yjk3LTRhYzIzOWU0NThjZC81NjUzMzI0Nzk0NjQ1MjA0MDM3L3RlbXB0bXdyNy5wbmc.origin?x-kcdn-pid=112372",
+     "decision": "rejected (the other take was chosen)"
+    },
+    {
+     "take": 2,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2JlZjU2M2FhLWU5ZDMtNGJkMy04ODE3LTZmOTA3ZWM2ZWRjYS8yMzA0ODAyMTM0NTA3NDc1NDQ0L3RlbXA3YWtmOS5wbmc.origin?x-kcdn-pid=112372",
+     "decision": "kept: cut directly (T1: copper still + flask; the brick furnace re-cropped by make_src.py into src/acid_turret_base.webp) -> src/acid_turret_ref.webp"
+    }
+   ],
+   "credits": 4
+  },
+  {
+   "key": "merman_ref",
+   "tool": "text_to_image",
+   "prompt": "node tools/painted/prompts/art-enemy-3.mjs merman ref",
+   "imageCount": 2,
+   "generationId": "AdNYURkK3owpfA874lfR8qSrSl5dIKYfaB6VkyGS2kTL-01f29aXR1OPi0oPb-FOaUhHIJn2",
+   "images": [
+    {
+     "take": 1,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzEzZThjYWFlLTg0MzUtNDRiNi05OTRlLTg1NDJlYjRiOWY0Yy8tNDA4NzUzMTI5MTg1MTA1MDI4NC90ZW1wYm53dTcucG5n.origin?x-kcdn-pid=112372",
+     "decision": "kept: cut directly (side view: body, arms, legs) -> src/merman_ref.webp; also the sheet input (图片1)"
+    },
+    {
+     "take": 2,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzRkNmY2YTFiLTJlMjgtNGEzMS1iNjc2LThiZTI5ZjU2MmUwMi8tMTEwODg1MzEyNzM1MjczNDk5L3RlbXBsMGswai5wbmc.origin?x-kcdn-pid=112372",
+     "decision": "rejected (the other take was chosen)"
+    }
+   ],
+   "credits": 4
+  },
+  {
+   "key": "killer_fish_ref",
+   "tool": "text_to_image",
+   "prompt": "node tools/painted/prompts/art-enemy-3.mjs killer_fish ref",
+   "imageCount": 2,
+   "generationId": "AdE7rJJPrGs0tMKwW1qI6E3YYTasJEMnYOqkVdub4s24W_wmceQcv_G9CP0bYzVw0Pd8DrZ9",
+   "images": [
+    {
+     "take": 1,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzBiN2JiMGY4LTBhZjUtNDMxZC04ODIyLTZkN2I3OTA2MDRhYS8tMzQ2NjQzMTA3NzI2OTk3MDQ3Mi90ZW1wYnJscDgucG5n.origin?x-kcdn-pid=112372",
+     "decision": "kept: cut directly (T1) -> src/killer_fish_ref.webp"
+    },
+    {
+     "take": 2,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzJlN2YxNDkwLWE1YzYtNDA5MS1hMzQ1LWUzNTlhYTliOTIzOS8tNjkxNTgxNjE5MTY0MzQxOTU4L3RlbXA2d2cyNy5wbmc.origin?x-kcdn-pid=112372",
+     "decision": "rejected (the other take was chosen)"
+    }
+   ],
+   "credits": 4
+  },
+  {
+   "key": "frog_demon_ref",
+   "tool": "text_to_image",
+   "prompt": "node tools/painted/prompts/art-enemy-3.mjs frog_demon ref",
+   "imageCount": 2,
+   "generationId": "AYXja8i4GGWimAw11SU7yVtwYgRtT2B2zGMUU9tJZQ_N2kDyqkYxfNCrLXr12-3LWcw7yQjQ",
+   "images": [
+    {
+     "take": 1,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzNjNjg5OGU2LTEwNzItNDU5NC1hZjY0LWMyZGUyYzAwZWIwNC8tODQ4NTMzMTA3MjMzODg2ODU4L3RlbXAyMHRlMS5wbmc.origin?x-kcdn-pid=112372",
+     "decision": "rejected (the other take was chosen)"
+    },
+    {
+     "take": 2,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpbc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2FiMmRjZDZjLTQxNDUtNDM0MC1iYWQzLTk4MmJlNzRlOGQxMy85OTU1MDQ4MTUwNjg4MTE0NzYvdGVtcGw0bmpnLnBuZw.origin?x-kcdn-pid=112372",
+     "decision": "kept: sheet input (图片1) -> src/frog_demon_ref.webp"
+    }
+   ],
+   "credits": 4
+  },
+  {
+   "key": "drowned_ref",
+   "tool": "text_to_image",
+   "prompt": "node tools/painted/prompts/art-enemy-3.mjs drowned ref",
+   "imageCount": 2,
+   "generationId": "ASWoIex-OuVYZlX-CoGSGpADmrb9Bqludw309Q097KcR5kN98AjQsYNIHyb2S-n6sr_ooH5V",
+   "images": [
+    {
+     "take": 1,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2ZkOTFiYTk1LTJiY2YtNDhiYS1hZDgyLTVkY2JkYjBkZmQwYS8zNTQ2MTEzOTg1OTY5MDQyMDYwL3RlbXByazBmbC5wbmc.origin?x-kcdn-pid=112372",
+     "decision": "kept: sheet input (图片1) -> src/drowned_ref.webp"
+    },
+    {
+     "take": 2,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0Lzk1YTY4NGJmLTQ5YzgtNGVmNi04NjMyLTU4NTFjNWY5ZThiYi8yMzYwNTMxMzgyMjA4NDIwMDY2L3RlbXA1N2x1eS5wbmc.origin?x-kcdn-pid=112372",
+     "decision": "rejected (the other take was chosen)"
+    }
+   ],
+   "credits": 4
+  },
+  {
+   "key": "water_spirit_ref",
+   "tool": "text_to_image",
+   "prompt": "node tools/painted/prompts/art-enemy-3.mjs water_spirit ref",
+   "imageCount": 2,
+   "generationId": "ARp8-vqB9ECGJ30cCCvy7k0bJDoY4p3pp1M1qMttMAQROpWFWijzmzKe9J_ApOchU2AYKmB4",
+   "images": [
+    {
+     "take": 1,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzllMmVjYmNmLTM0MmYtNDkxOC1hMWQxLTljMDAzOTM2Y2I5ZC8tMzY5MDMxMTU5MTc3MTQ2NTY4OS90ZW1wdndhcnYucG5n.origin?x-kcdn-pid=112372",
+     "decision": "rejected (the other take was chosen)"
+    },
+    {
+     "take": 2,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzBkZmRkOWUyLTE5MDMtNDQ0ZC1iYzM5LWQzMTEyMmIzZDIwNi8tMzkyMTQzNDc1Njk4NDkwOTkxMi90ZW1wM2U0c3QucG5n.origin?x-kcdn-pid=112372",
+     "decision": "kept: sheet input (图片1) -> src/water_spirit_ref.webp"
+    }
+   ],
+   "credits": 4
+  },
+  {
+   "key": "gear_golem_ref",
+   "tool": "text_to_image",
+   "prompt": "node tools/painted/prompts/art-enemy-3.mjs gear_golem ref",
+   "imageCount": 2,
+   "generationId": "Ab5xHyQQk3yXTA2ZT_wJQaJ08OlnmqxgN519TJTJa8P730YP50brUk2CS9nZnmMuPqWWr5x-",
+   "images": [
+    {
+     "take": 1,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0Lzk5NDNhOWNmLWQ1MzYtNGRhYy1iYWZhLTgzNzI4NTI3Mjc5Ni82NjUxNjc5ODY0ODUwMDgxMDIwL3RlbXB5cjluYS5wbmc.origin?x-kcdn-pid=112372",
+     "decision": "rejected (the other take was chosen)"
+    },
+    {
+     "take": 2,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzJkNmE0YWZiLWVjMmUtNDEzMS1iOWNiLTg2OTc2ZTE0NjIyZi82ODYyODAwMTYyMTM0MTM4OTYyL3RlbXB5bXo1dC5wbmc.origin?x-kcdn-pid=112372",
+     "decision": "kept: sheet input (图片1) -> src/gear_golem_ref.webp"
+    }
+   ],
+   "credits": 4
+  },
+  {
+   "key": "harpy_ref",
+   "tool": "text_to_image",
+   "prompt": "node tools/painted/prompts/art-enemy-3.mjs harpy ref",
+   "imageCount": 2,
+   "generationId": "AVXF_XpofX6RyA0QKDgOQX004oDsaHtvpZPbRN_Cb4Kl1TMZkqukbmMtxAi5W1n0KuurIHA0",
+   "images": [
+    {
+     "take": 1,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2U5MTcwZmUwLTZmYTEtNGFmZC05YTZmLTNlYTA2OTA4OThjNy83MzM5Njg0MDAyNTQzMjMzNzc0L3RlbXBqZ2d0MC5wbmc.origin?x-kcdn-pid=112372",
+     "decision": "kept: sheet input (图片1) -> src/harpy_ref.webp"
+    },
+    {
+     "take": 2,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzE1Y2JkNzQwLTFlMmMtNGNiOS04ODJkLTBjNWRjOWYyYmM2My8tMTM4MzkyMjgwNzY0NzE0NTUxOS90ZW1wczhqNGsucG5n.origin?x-kcdn-pid=112372",
+     "decision": "rejected (the other take was chosen)"
+    }
+   ],
+   "credits": 4
+  },
+  {
+   "key": "clockwork_soldier_ref",
+   "tool": "text_to_image",
+   "prompt": "node tools/painted/prompts/art-enemy-3.mjs clockwork_soldier ref",
+   "imageCount": 2,
+   "generationId": "ARaGp8h6Na7NHF1z-y3mvjVed8I3TJsJv5NJhTUtR9Gz6Pu3JbWsa974xLFn2mxr4oyJYQDN",
+   "images": [
+    {
+     "take": 1,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpbc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2U1YmRkOTQzLWRiNmItNDg4Zi05Y2UzLTk1MjJkZDJmNTBmOS84MjI5NTM5NDY4NTM1MzE2NzMvdGVtcHlsYWN4LnBuZw.origin?x-kcdn-pid=112372",
+     "decision": "rejected (the other take was chosen)"
+    },
+    {
+     "take": 2,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzIxN2ZmZTcwLTk0ZmEtNDc2NC04NTE3LTA2MGJiOGYyMDhiMi8tOTIyMTM5MTI5NzM2NDA2MzUzNS90ZW1wMTRtZngucG5n.origin?x-kcdn-pid=112372",
+     "decision": "kept: sheet input (图片1) -> src/clockwork_soldier_ref.webp"
+    }
+   ],
+   "credits": 4
+  },
+  {
+   "key": "cog_wheel_ref",
+   "tool": "text_to_image",
+   "prompt": "node tools/painted/prompts/art-enemy-3.mjs cog_wheel ref",
+   "imageCount": 2,
+   "generationId": "AYv2iC4b2PcGm-3lYjUymyAeyaMKYEd-5oQqVwu4qhmaxYFq0XV3poIY4Ov3Wp6TZHQd_91S",
+   "images": [
+    {
+     "take": 1,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2ZjMDRkNWM0LWFlNTctNGMyOS1iZmEyLWI3Y2IxNjkxOGY1Ni8yMTEyNjk5MzY0Mzc5Mjg4NjMwL3RlbXA3ODV3ai5wbmc.origin?x-kcdn-pid=112372",
+     "decision": "kept: cut directly (T1) -> src/cog_wheel_ref.webp"
+    },
+    {
+     "take": 2,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzY1YzZlMTMyLThmN2QtNDUzOC1hOTFlLTc4MWViZWRkNGU4MS8xNjA4OTQ2NDA0OTI2NzY5MzE5L3RlbXB4ZmpjYS5wbmc.origin?x-kcdn-pid=112372",
+     "decision": "rejected (the other take was chosen)"
+    }
+   ],
+   "credits": 4
+  },
+  {
+   "key": "homunculus_sheet",
+   "tool": "image_to_image",
+   "prompt": "node tools/painted/prompts/art-enemy-3.mjs homunculus sheet",
+   "imageCount": 2,
+   "inputs": {
+    "图片1": {
+     "take": 1,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzljZTIzMTI4LTg0MzUtNGZjZS04NDJhLWIwZTRlNjUzNDMxMi8tMTM1MTc1Mjg2MDA3ODA4NzEyNy90ZW1wdWp1cGoucG5n.origin?x-kcdn-pid=112372"
+    }
+   },
+   "generationId": "ARuC7hjbdETGdwbDvBiVhtmrhGQXOFmqThWN0lowXmnLEm9pvJMszNO1HGkdmAFILg5vaF8z",
+   "images": [
+    {
+     "take": 1,
+     "url": null,
+     "decision": "not delivered: SENSITIVE_RESULT (moderation), refunded"
+    },
+    {
+     "take": 2,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2EyODcwOTE5LTQ5MzUtNDg4OS05Yjg1LWFjZTI3ZTQ1MTJhMy8xMTcwNDM4MzQ0MjgzMDIyODQzL3RlbXBmMDQ0bi5wbmc.origin?x-kcdn-pid=112372",
+     "decision": "kept: the feeding tube part -> src/homunculus_sheet.webp"
+    }
+   ],
+   "credits": 2
+  },
+  {
+   "key": "flesh_golem_sheet",
+   "tool": "image_to_image",
+   "prompt": "node tools/painted/prompts/art-enemy-3.mjs flesh_golem sheet",
+   "imageCount": 2,
+   "inputs": {
+    "图片1": {
+     "take": 1,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzQ3MTgwZGE0LWQ1YTQtNDBlZS05MGQyLWI0YjgwYTU1ZjMzNy8yMzYwNDg3NTI5MDExMzIwNDQ3L3RlbXA1ZGF3Yi5wbmc.origin?x-kcdn-pid=112372"
+    }
+   },
+   "generationId": "AZD7WF8v-P4li0s2FxQLTyOSrZ02KmGI4sTbW8DNueItNucGMU_l8h_Ek9Mvzf-T1E6A5QS5",
+   "images": [
+    {
+     "take": 1,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzlmYjJhNzgxLWQ3ZjYtNDMyZS05NzEyLTY1NTEzOGZhOWFhMi83OTE2NTYxNzM2NDE5NjM1ODIzL3RlbXAzbzhocC5wbmc.origin?x-kcdn-pid=112372",
+     "decision": "kept: parts sheet -> src/flesh_golem_sheet.webp"
+    },
+    {
+     "take": 2,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2ZkMDA2NDAyLTA1ZWYtNGQwZi1hNTE2LWU2ODBjNzRiZGYwZi80MTAwMDY1Mzc4Mzk1MzI3MTI2L3RlbXB6a29reC5wbmc.origin?x-kcdn-pid=112372",
+     "decision": "kept as alternative (src/flesh_golem_sheet2.webp), not cut"
+    }
+   ],
+   "credits": 4
+  },
+  {
+   "key": "plague_doctor_sheet",
+   "tool": "image_to_image",
+   "prompt": "node tools/painted/prompts/art-enemy-3.mjs plague_doctor sheet",
+   "imageCount": 2,
+   "inputs": {
+    "图片1": {
+     "take": 2,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzEyN2E3ZmQ1LTQ5YmMtNDZlMy05NDY1LTM3NWIzZjUwZTQyYy8yMzYyMzAyMjIxMjAxNDQxOTQ0L3RlbXBtbXk4OS5wbmc.origin?x-kcdn-pid=112372"
+    }
+   },
+   "generationId": "AdTVoPFW4h_-C0m3pa12An8M9glP-g-Mt12OttZ9mfqYsJ7A2SFCnTRMq1EbJwWZGGd7J3Wo",
+   "images": [
+    {
+     "take": 1,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzY4OGVhYTRmLTVhNDEtNGEwMy05ZjdkLTI0MTIwOGU2ZDIyZi8tMjQ0MTc5NDU5NjY1MjIyOTc1MS90ZW1wa216YWoucG5n.origin?x-kcdn-pid=112372",
+     "decision": "kept as alternative (src/plague_doctor_sheet1.webp), not cut"
+    },
+    {
+     "take": 2,
+     "url": "https://s16-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzlmMzNlYTkzLWEyNTItNDkwNy1hOWJjLWRjOWVlN2E0NjczYS8tMTk4NDk4MDIxMjY1MDE1MTE5MS90ZW1wc3oydGoucG5n.origin?x-kcdn-pid=112372",
+     "decision": "kept: parts sheet -> src/plague_doctor_sheet.webp"
+    }
+   ],
+   "credits": 4
+  },
+  {
+   "key": "merman_sheet",
+   "tool": "image_to_image",
+   "prompt": "node tools/painted/prompts/art-enemy-3.mjs merman sheet",
+   "imageCount": 2,
+   "inputs": {
+    "图片1": {
+     "take": 1,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzEzZThjYWFlLTg0MzUtNDRiNi05OTRlLTg1NDJlYjRiOWY0Yy8tNDA4NzUzMTI5MTg1MTA1MDI4NC90ZW1wYm53dTcucG5n.origin?x-kcdn-pid=112372"
+    }
+   },
+   "generationId": "AeCpceD59OmbNSf1Dt6eWd5LRfy0XkWeNr8noAm7MLf02dNpMer4qpk4oDjLd8EsujlaDxLF",
+   "images": [
+    {
+     "take": 1,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2ViNWRkNGZmLTAzOGEtNDU1Yi05ZDM1LTI4OTJjMTEyNjM2NS8tMzQ2OTIwNzI3MjYyMTkyODIxNi90ZW1wYmFncDQucG5n.origin?x-kcdn-pid=112372",
+     "decision": "rejected"
+    },
+    {
+     "take": 2,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzFjYzNiMTQ2LWNjYTItNDE3OS05MWI5LWU4OWE3MDdmY2QzZS8tNDE3NDI3NjY2MjYzMjExNTUzNC90ZW1wbHIzNHIucG5n.origin?x-kcdn-pid=112372",
+     "decision": "kept as alternative (src/merman_sheet.webp), not cut: the reference cut read better"
+    }
+   ],
+   "credits": 4
+  },
+  {
+   "key": "frog_demon_sheet",
+   "tool": "image_to_image",
+   "prompt": "node tools/painted/prompts/art-enemy-3.mjs frog_demon sheet",
+   "imageCount": 2,
+   "inputs": {
+    "图片1": {
+     "take": 2,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpbc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2FiMmRjZDZjLTQxNDUtNDM0MC1iYWQzLTk4MmJlNzRlOGQxMy85OTU1MDQ4MTUwNjg4MTE0NzYvdGVtcGw0bmpnLnBuZw.origin?x-kcdn-pid=112372"
+    }
+   },
+   "generationId": "AYn_Le20Z_ii0EbLzA4es-Ig7mQ7-P06FWcTU1Xskm3wI6_k6CATKV1fJmdM0jTwuemgbAda",
+   "images": [
+    {
+     "take": 1,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2IxNGNlYmNkLTEwNzctNDY1MS04NDk5LTljOWRiNzNjYjNhZi8tNTU2NDQ2MTkzNDMwMTAzMzQ0OS90ZW1wNWczZ2gucG5n.origin?x-kcdn-pid=112372",
+     "decision": "kept: parts sheet -> src/frog_demon_sheet.webp"
+    },
+    {
+     "take": 2,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzZjYzU1NWYyLWFhNGEtNDZiYS05NDZkLWYyNmRlMTNmOGY4Ni82MDY2NzM2Njk3MTI4NTA5MTk3L3RlbXA5MTRzay5wbmc.origin?x-kcdn-pid=112372",
+     "decision": "kept as alternative (src/frog_demon_sheet2.webp), not cut"
+    }
+   ],
+   "credits": 4
+  },
+  {
+   "key": "drowned_sheet",
+   "tool": "image_to_image",
+   "prompt": "node tools/painted/prompts/art-enemy-3.mjs drowned sheet",
+   "imageCount": 2,
+   "inputs": {
+    "图片1": {
+     "take": 1,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2ZkOTFiYTk1LTJiY2YtNDhiYS1hZDgyLTVkY2JkYjBkZmQwYS8zNTQ2MTEzOTg1OTY5MDQyMDYwL3RlbXByazBmbC5wbmc.origin?x-kcdn-pid=112372"
+    }
+   },
+   "generationId": "Ab79gXstlhx89eFdYWcLmL31Q0oIeTRXhtgRfGuk0ORxkPCcQBLUgoNPFSb2Bka_Dug1Cl2z",
+   "images": [
+    {
+     "take": 1,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzQzZjRkYTA0LTBmNTAtNDdlNi04YTAwLWI0OWRjYTYzODI2MS8tNTE4NjQ1MjMxMDIxODM2NzY3MS90ZW1wY20wMnMucG5n.origin?x-kcdn-pid=112372",
+     "decision": "kept as alternative (src/drowned_sheet1.webp), not cut"
+    },
+    {
+     "take": 2,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2RkMTdhY2Y0LWI1MDItNGIzYy1iODE3LWMzNjA5MDkzOTMzNC84NzAxMDkwNDYxOTM3MTk3MDQxL3RlbXB6b3A1eS5wbmc.origin?x-kcdn-pid=112372",
+     "decision": "kept: parts sheet -> src/drowned_sheet.webp (+ src/drowned_body.webp via make_src.py)"
+    }
+   ],
+   "credits": 4
+  },
+  {
+   "key": "water_spirit_sheet",
+   "tool": "image_to_image",
+   "prompt": "node tools/painted/prompts/art-enemy-3.mjs water_spirit sheet",
+   "imageCount": 2,
+   "inputs": {
+    "图片1": {
+     "take": 2,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzBkZmRkOWUyLTE5MDMtNDQ0ZC1iYzM5LWQzMTEyMmIzZDIwNi8tMzkyMTQzNDc1Njk4NDkwOTkxMi90ZW1wM2U0c3QucG5n.origin?x-kcdn-pid=112372"
+    }
+   },
+   "generationId": "ASylKlydTgejR4CZ7m11C2XC6xDu-1sX9gWHwKGQpopXYaT53K-CKNb9q9aVHXS7eCs-hveK",
+   "images": [
+    {
+     "take": 1,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzUzZTUxMGU5LTc4MmMtNDNkOC04N2JhLTIyNDkzODgzODZlZi8tMjA1ODgxMTA4NDgzNjMyMDYxOS90ZW1wOGhsZTEucG5n.origin?x-kcdn-pid=112372",
+     "decision": "rejected"
+    },
+    {
+     "take": 2,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2M3ZTIxYjI4LWVhM2ItNDlmMC04NjgzLWRlNTdkNzM5YzQ2NS83NTI4NzUyNzQ4NzQ3MzE2MjYxL3RlbXA3OWJrYS5wbmc.origin?x-kcdn-pid=112372",
+     "decision": "kept: parts sheet (soft matte) -> src/water_spirit_sheet.webp"
+    }
+   ],
+   "credits": 4
+  },
+  {
+   "key": "gear_golem_sheet",
+   "tool": "image_to_image",
+   "prompt": "node tools/painted/prompts/art-enemy-3.mjs gear_golem sheet",
+   "imageCount": 2,
+   "inputs": {
+    "图片1": {
+     "take": 2,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzJkNmE0YWZiLWVjMmUtNDEzMS1iOWNiLTg2OTc2ZTE0NjIyZi82ODYyODAwMTYyMTM0MTM4OTYyL3RlbXB5bXo1dC5wbmc.origin?x-kcdn-pid=112372"
+    }
+   },
+   "generationId": "ATIdBP7oXAm0NQedXuv7ErhSjNvAhxIa1r9vmJ4QAqcat2wTdynSpIC2AqEyraLCIbEm9Uvr",
+   "images": [
+    {
+     "take": 1,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzYxZDVlYWM0LTM2NWItNGIyYi05ZTg4LTdjM2MzZmM0OTUxYS80NjM1MTcwOTEyMDQ2OTk3ODIwL3RlbXBrbW0weC5wbmc.origin?x-kcdn-pid=112372",
+     "decision": "kept: parts sheet -> src/gear_golem_sheet.webp"
+    },
+    {
+     "take": 2,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzM3YWU4OTVjLTgzZGYtNDZmYS1hYzJjLTQ0ZDcwMzU3ZTE1NC82OTk5NzMyNDUzMDU0NTY1OTU3L3RlbXBiYW9jOS5wbmc.origin?x-kcdn-pid=112372",
+     "decision": "kept as alternative (src/gear_golem_sheet2.webp), not cut"
+    }
+   ],
+   "credits": 4
+  },
+  {
+   "key": "harpy_sheet",
+   "tool": "image_to_image",
+   "prompt": "node tools/painted/prompts/art-enemy-3.mjs harpy sheet",
+   "imageCount": 2,
+   "inputs": {
+    "图片1": {
+     "take": 1,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2U5MTcwZmUwLTZmYTEtNGFmZC05YTZmLTNlYTA2OTA4OThjNy83MzM5Njg0MDAyNTQzMjMzNzc0L3RlbXBqZ2d0MC5wbmc.origin?x-kcdn-pid=112372"
+    }
+   },
+   "generationId": "AeYoicGB5b6-5JgIpN65h9xo5QnB0cag0ZZmWf5Lvzdh1RG9abrSlpOQurlkzBSxsBevb33X",
+   "images": [
+    {
+     "take": 1,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2JjZDA1OTIzLWI2MjMtNDczOS05Y2RlLTE1OGEyNWRmMTlkOC84OTY1OTgzMDcwNjk1NDYzMTI2L3RlbXA1YXEyaC5wbmc.origin?x-kcdn-pid=112372",
+     "decision": "kept as alternative (src/harpy_sheet1.webp), not cut"
+    },
+    {
+     "take": 2,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0Lzg0ODZkOTZhLTM4NDUtNDQzZS1hOGEwLTljOWVlNTE5YTdiMC84NjEyNTM3MjY0ODg3Mzg1NTY5L3RlbXB3cjlxdi5wbmc.origin?x-kcdn-pid=112372",
+     "decision": "kept: parts sheet (side figure + wing) -> src/harpy_sheet.webp"
+    }
+   ],
+   "credits": 4
+  },
+  {
+   "key": "clockwork_soldier_sheet",
+   "tool": "image_to_image",
+   "prompt": "node tools/painted/prompts/art-enemy-3.mjs clockwork_soldier sheet",
+   "imageCount": 2,
+   "inputs": {
+    "图片1": {
+     "take": 2,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzIxN2ZmZTcwLTk0ZmEtNDc2NC04NTE3LTA2MGJiOGYyMDhiMi8tOTIyMTM5MTI5NzM2NDA2MzUzNS90ZW1wMTRtZngucG5n.origin?x-kcdn-pid=112372"
+    }
+   },
+   "generationId": "AU1PsCr8zJqSXnKJslsldVX8SVhAX4hlWYCfe2KMXOHt_CTWAlW_lB_A38ou6vYvNgFbiUcl",
+   "images": [
+    {
+     "take": 1,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2Q4N2M1NzYwLTNlODYtNDVlOS05YTFiLTYyMWE1ZjBkOWQzMi8yMzU1MDkyNTYxMjA4NjcwMDI0L3RlbXA4b21nYS5wbmc.origin?x-kcdn-pid=112372",
+     "decision": "kept: musket + back gear -> src/clockwork_soldier_sheet.webp"
+    },
+    {
+     "take": 2,
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2QyNmUxMzgxLThlY2YtNDg3NS1hZGZkLTY1YjVhYjRjYzdkMC8tODgwODMzMDM4NTA3NzU3NjAyMi90ZW1wc2ZmM2sucG5n.origin?x-kcdn-pid=112372",
+     "decision": "kept: body/forearm/leg (cyan rim glow stripped by make_src.py) -> src/clockwork_soldier_sheet2.webp"
+    }
+   ],
+   "credits": 4
+  }
+ ]
+}

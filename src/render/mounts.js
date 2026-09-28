@@ -6,6 +6,7 @@
 //      back = 먼 다리·꼬리·몸·가까운 다리·목·머리·마구 / front = 등자 끈·등자·고삐 (기수의 가까운 다리 위에 겹친다).
 //      opts.tint = 단색 유령 (돌진 잔상·필살기 퇴장), opts.flash / m.flashT > 0 = 피격 번쩍임, opts.noFx = 불꽃·빛 생략.
 //      opts.rider === false = 기수 없이 혼자 (고삐는 목 위에 늘어지고 등자는 안장에 매달린다; 메뉴에서 탈것만 보일 때).
+//      opts.rider 를 주지 않으면 MountGhost 의 기수 없는 상태(m.state summon · dismiss · knocked · ult · fade)는 저절로 기수 없음.
 //  drawMountIcon(ctx, id, x, y, r)   초상화가 없을 때의 절차적 머리 아이콘 (원 안). 2부 B 탈것은 MB.MOUNT_ICON_B[id] 가 있으면 그것.
 //  preloadMounts(ids, game)          채색 탈것 미리 굽기 (선택: 동료 탭·마구간·스테이지 입장에서 불러도 된다; drawMount 도 처음 볼 때 시작한다)
 //  MOUNT_PAL                         탈것별 색 (갤러리·아이콘·B 패키지 참고용)
@@ -17,7 +18,7 @@ import { game } from '../core/game.js';
 import * as RIG from './mount_rig.js';
 import * as MB from './mounts_b.js';
 import * as REG from './painted/registry.js';
-import { puff, Drawer, pickVariant } from './painted/kit.js';
+import { puff, Drawer, pickVariant, silhouette } from './painted/kit.js';
 
 const OUT = '#0a0608';
 const PI = Math.PI;
@@ -61,7 +62,9 @@ export function preloadMounts(ids, g = game) {
 }
 
 // ───────────────────────── 디스패처 ─────────────────────────
-const O0 = { alpha: 1, tint: null, scale: 1, noFx: false, flash: false, rider: true };
+const O0 = { alpha: 1, tint: null, scale: 1, noFx: false, flash: false, rider: null };
+/** 기수 없이 그려지는 MountGhost 상태 (소환 안개 · 하차 · 낙마 도주 · 필살기 퇴장 · 사라짐): opts.rider 를 주지 않으면 고삐를 늘어뜨린다 */
+const RIDERLESS = new Set(['summon', 'dismiss', 'knocked', 'ult', 'fade']);
 export function drawMount(ctx, m, world, layer = 'back', opts = O0) {
   if (!m) return;
   const fnB = MB.MOUNT_DRAW_B?.[m.id];
@@ -85,14 +88,14 @@ export function drawMount(ctx, m, world, layer = 'back', opts = O0) {
   const q = qTier(world);
   const C = S0;
   C.m = m; C.P = P; C.T = RIG.templateFor(m); C.pal = palOf(m.id); C.tint = tint; C.flash = flash; C.fx = fx; C.q = q;
-  C.t = world?.time ?? m.t ?? 0; C.aw = !!m.awakened; C.world = world; C.f = f; C.ridden = o.rider !== false; C.rig = null;
+  C.t = world?.time ?? m.t ?? 0; C.aw = !!m.awakened; C.world = world; C.f = f; C.rig = null;
+  C.ridden = o.rider != null ? o.rider !== false : !RIDERLESS.has(m.state);
   try {
-    let rig = paintedRig(m.id);
-    if (rig && tint && tint !== rig.def?.glow) rig = null;                 // 다른 색 유령은 벡터 실루엣 (구운 발광 실루엣은 한 색)
+    const rig = paintedRig(m.id);                                          // 유령(tint)도 채색 실루엣 (색별 실루엣은 silOf 가 만든다)
     if (rig && rig.mount && P.kind === 'quad') paintedQuad(ctx, C, layer, rig);
     else if (P.kind === 'quad') (layer === 'front' ? vecFront : vecBack)(ctx, C);
     else throw new Error('no drawer for rig ' + (m.rig ?? P.tpl));
-  } finally { ctx.restore(); }
+  } finally { ctx.restore(); C.m = null; C.P = null; C.world = null; C.rig = null; }   // 장면이 바뀐 뒤 옛 월드·탈것을 붙잡지 않게
 }
 /** 그리기 문맥 (한 번에 하나만 그리므로 재사용) */
 const S0 = { m: null, P: null, T: null, pal: null, tint: null, flash: false, fx: true, q: 2, t: 0, aw: false, world: null, f: 1, ridden: true, rig: null };
@@ -608,8 +611,33 @@ function partGeo(p) {
 function pput(D, C, p, pv, x, y, rot, sx, sy, deep, tk) {
   if (!p) return;
   if (rot > -0.012 && rot < 0.012) rot = 0;                 // 거의 0 인 회전은 없앤다 (축 정렬 그리기가 훨씬 싸다)
-  if (C.tint) { const im = p.v.glow ?? p.v.flash; if (im) { const q = typeof pv === 'string' ? p[pv] : pv; D.img(im, q[0], q[1], x, y, rot, sx, sy, 1); } return; }
+  if (C.tint) { const im = silOf(C, p); if (im) { const q = typeof pv === 'string' ? p[pv] : pv; D.img(im, q[0], q[1], x, y, rot, sx, sy, 1); } return; }
   D.part(p, pickVariant(p, 0, deep, tk), pv, x, y, rot, sx, sy, 1);
+}
+/**
+ * 유령(opts.tint) 색의 부품 실루엣. 구운 발광(def.glow) 색이면 그것, 아니면 흰 실루엣(v.flash)에서 색별로 한 번 만들어
+ * 부품에 캐시한다 (돌진 잔상 = 탈것 색, 스킬 잔상 = 영웅 색, 필살기 퇴장 = 분홍 …). 캔버스로 먼저 쓰고 ImageBitmap 이 되면 바꾼다.
+ * 부품마다 SIL_MAX 색까지만 만들고 그 뒤로는 구운 발광 실루엣을 쓴다 (메모리 상한).
+ */
+const SIL_MAX = 8;
+function silOf(C, p) {
+  const t = C.tint, v = p.v;
+  if (t === C.rig?.def?.glow && v.glow) return v.glow;
+  const cache = p._sil ??= new Map();
+  let im = cache.get(t);
+  if (im === undefined) {
+    const src = v.flash ?? v.glow;
+    im = null;
+    if (src && cache.size < SIL_MAX) {
+      try {
+        im = silhouette(src, t);
+        if (typeof createImageBitmap === 'function') createImageBitmap(im).then((b) => { if (cache.get(t) === im) cache.set(t, b); }, () => { /* 캔버스 유지 */ });
+      } catch { im = null; }
+    }
+    im ??= v.glow ?? v.flash ?? null;
+    cache.set(t, im);
+  }
+  return im;
 }
 function pLeg(D, C, U, Lw, L, len1, len2, deep, tk) {
   if (!U || !Lw) return;
@@ -621,15 +649,24 @@ function pLeg(D, C, U, Lw, L, len1, len2, deep, tk) {
 /** 꼬리: 부품을 a→b 방향 가로 띠로 잘라 사슬 마디 각도대로 이어 붙인다 */
 function pTail(D, ctx, C, Tp, tk) {
   if (!Tp) return;
-  const P = C.P, n = P.ta.length;
-  const img = C.tint ? (Tp.v.glow ?? Tp.v.flash) : pickVariant(Tp, 0, false, tk);
+  const img = C.tint ? silOf(C, Tp) : pickVariant(Tp, 0, false, tk);
   if (!img) return;
+  tailBands(D, ctx, C, Tp, img, ctx.globalAlpha < 0.98 ? 0 : 1);   // 반투명(소환·해산)일 때 띠를 겹치면 줄무늬가 보인다
+  // 피격 번쩍임: 꼬리는 Drawer 기록(D.part)을 거치지 않으므로 여기서 흰 실루엣을 바로 가산으로 덧그린다 (몸이 그 위를 덮는다)
+  if (C.flash && Tp.v.flash) {
+    const op = ctx.globalCompositeOperation, ga = ctx.globalAlpha;
+    ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = ga * 0.62;
+    tailBands(D, ctx, C, Tp, Tp.v.flash, 0);
+    ctx.globalCompositeOperation = op; ctx.globalAlpha = ga;
+  }
+}
+function tailBands(D, ctx, C, Tp, img, ov) {
+  const P = C.P, n = P.ta.length;
   const g = partGeo(Tp), a = Tp.a, b = Tp.b, k = Tp.k;
   const H = img.height, W = img.width;
   // 띠 수 (띠마다 회전 그리기 1번): 낮음 2 · 그 밖엔 꼬리가 거의 곧으면 2, 휘면 3
   const bend = n > 1 ? Math.abs(P.ta[n - 1] - P.ta[0]) : 0;
   const lo = Math.min(n, C.q === 0 || bend < 0.3 ? 2 : 3);
-  const ov = ctx.globalAlpha < 0.98 ? 0 : 1;                  // 반투명(소환·해산)일 때 띠를 겹치면 줄무늬가 보인다
   let wx = P.tx, wy = P.ty;
   for (let i = 0; i < lo; i++) {
     const u0 = i / lo, u1 = (i + 1) / lo;
@@ -721,7 +758,7 @@ function paintedFx(ctx, C, rig, D, hr) {
     glow(ctx, _e[0], _e[1], er + (P.hurt ?? 0) * 1.5, ec, 0.75 * (1 - P.blink * 0.8));
     if (C.fx && q > 0) glow(ctx, _e[0], _e[1], er * 2.2, ec, 0.24);
   }
-  if (!C.fx) return;
+  if (!C.fx || q === 0) return;                                  // 낮음 품질: 눈빛만 (companions §11 품질 단계)
   // 불갈기 · 영혼불 갈기 (목 위 점들)
   const mane = aw && fx.awMane ? fx.awMane : fx.mane;
   if (mane && q > 0) {
@@ -735,7 +772,7 @@ function paintedFx(ctx, C, rig, D, hr) {
   const bodyGlows = aw && fx.awBody ? fx.awBody : fx.body;
   if (bodyGlows) for (const [name, r, a0] of bodyGlows) {
     if (!bodyPt(D, C, R.body, name, _q)) continue;
-    glow(ctx, _q[0], _q[1], r, glowC, a0 * (0.75 + 0.25 * flick(t, r)) * (q === 0 ? 0.6 : 1));
+    glow(ctx, _q[0], _q[1], r, glowC, a0 * (0.75 + 0.25 * flick(t, r)));
   }
   // 머리의 빛 (뿔 · 엄니)
   const headGlows = aw && fx.awHead ? fx.awHead : fx.head;

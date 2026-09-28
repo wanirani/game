@@ -68,7 +68,8 @@ function layout(e, q, s, vars) {
   const tr = s.lean + roll + q.lean * 0.5;
   // legs (far first): heavy stride, feet planted on the slab
   const air = e.onGround === false && !(e.stun > 0);
-  const lf = air ? 0.25 : q.hipB * 0.7, ln = air ? -0.15 : q.hipF * 0.7;
+  // the slam lunge (near foot forward, far foot back) follows s.hit, so it settles with the arms during the recovery
+  const lf = air ? 0.25 : q.hipB * 0.7 - 0.24 * s.hit, ln = air ? -0.15 : q.hipF * 0.7 + 0.3 * s.hit;
   place('leg', 'a', hipX - 7, hipY, dirOf(lf) - (legP?.ang ?? 0), vF);
   K.pivotPos('torso', 'hip', 'shF', hipX, hipY, tr, 1, 1, _q); const sfx = _q[0], sfy = _q[1];
   K.pivotPos('torso', 'hip', 'shN', hipX, hipY, tr, 1, 1, _q); const snx = _q[0], sny = _q[1];
@@ -90,7 +91,9 @@ function layout(e, q, s, vars) {
 
 export function draw(ctx, e, world, o, rig) {
   const t = e.t ?? 0;
-  const q = bipedPose(e, { stride: 5, legSwing: 0.36, armSwing: 0.2, knee: 0.5, bobAmp: 2.2, walkLean: 0.04 });
+  // pose 'none': the slam is posed by slamPose alone (the generic overhead attack pose kept its lunge and lean until the
+  // AI left the slam, so the golem snapped upright on the first walk frame)
+  const q = bipedPose(e, { stride: 5, legSwing: 0.36, armSwing: 0.2, knee: 0.5, bobAmp: 2.2, walkLean: 0.04, pose: 'none' });
   const s = slamPose(e);
   const hpK = e.stats?.maxHp ? e.hp / e.stats.maxHp : 1;
   const dl = e.dying > 0 ? 2 : hpK < 0.3 ? 2 : hpK < 0.6 ? 1 : 0;

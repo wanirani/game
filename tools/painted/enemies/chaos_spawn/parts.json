@@ -1,0 +1,72 @@
+{
+ "id": "chaos_spawn",
+ "tier": "T1",
+ "srcTD": 4,
+ "note": "ART-ENEMY-5: one boiling many-eyed flesh ball (chaos_sheet_1, left figure: its own short tentacles, fanged maw, red slit eyes, magenta veins) + one long tentacle (chaos_sheet_2, bottom) swung as bending chains around the body. Both are image-conditioned on chaos_ref (the kept reference).",
+ "sources": {
+  "b": {
+   "raw": "chaos_body.webp",
+   "file": "a5_chaos_body.png",
+   "k": 0.059
+  },
+  "t": {
+   "raw": "chaos_tent.webp",
+   "file": "a5_chaos_tent.png",
+   "k": 0.015
+  }
+ },
+ "parts": {
+  "body": {
+   "src": "b",
+   "box": [
+    20,
+    80,
+    1000,
+    1120
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     540,
+     1090
+    ],
+    "eye": [
+     669,
+     639
+    ],
+    "mouth": [
+     740,
+     800
+    ],
+    "top": [
+     560,
+     130
+    ],
+    "c": [
+     560,
+     600
+    ]
+   }
+  },
+  "tent": {
+   "src": "t",
+   "box": [
+    200,
+    1200,
+    2320,
+    1670
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     330,
+     1440
+    ],
+    "b": [
+     2290,
+     1330
+    ]
+   }
+  }
+ }
+}

@@ -1999,5 +1999,149 @@
    ]
   }
  ],
- "kling": {}
+ "kling": {
+  "model": "kling-image-v3_0_omni (image_to_image, 2k, 图片1 = portrait)",
+  "prompts": "tools/painted/prompts/art-boss-8.mjs",
+  "manifest": "tools/kling/manifest_art-boss-8.json",
+  "images": {
+   "nh_robe": {
+    "generationId": "AZ8a7iWOlJdSA8a2Nsl6jw65-IQkUZyaVxkrD-TTFwSOaDxGjxw1Iqqhn2QQHMLN6UjAPDR1",
+    "imageCount": 2,
+    "prompt": "tools/painted/prompts/art-boss-8.mjs SHOTS.nh_robe",
+    "decision": "both unused: tall reaper with a tiny hood opening (face ~1/7 of the width at the top 15%) — the mask would float far above the 80x100 core hitbox; replaced by nh_robe2."
+   },
+   "nh_mask": {
+    "generationId": "AdsiWjfxkKsVa6-9lnznXNxxiriLESI1BiLNU-4OM0Z5iSG5BALSz59JEmYs_fQPmZJV7htK",
+    "imageCount": 2,
+    "prompt": "tools/painted/prompts/art-boss-8.mjs SHOTS.nh_mask",
+    "decision": "#2 kept → raw/b_nihil/mask_a (drop shadow and stray strings removed with a luminance matte, composited on flat grey; this cleaned mask was uploaded as 图片2 for grin/faces). #1 unused (rounder, softer outline)."
+   },
+   "nh_hand": {
+    "generationId": "Ab3lKeFWPkOykCJXrsGxdnRM5g0PLqKYRThYdNwAEJTTa7Toamf_Vd_z1pk_2U64y8Z6nxdZ",
+    "imageCount": 2,
+    "prompt": "tools/painted/prompts/art-boss-8.mjs SHOTS.nh_hand",
+    "decision": "#1 kept → raw/b_nihil/hand_a (flat palm, long jointed fingers + thumb cut into 14 finger segments + palm; the palm eye is a separate part). #2 unused (fingers overlap, not separable)."
+   },
+   "nh_eyes": {
+    "generationId": "AckY0KEnkQAxbrYsYsGUtKjyli5tLnI3_YSnIO-BYkWFoNV_xMTtEXX9GLsCsjowgV-Np1sf",
+    "imageCount": 2,
+    "prompt": "tools/painted/prompts/art-boss-8.mjs SHOTS.nh_eyes",
+    "decision": "#1 kept → raw/b_nihil/eyes_b (the glowing slit square used as the additive iris glint; black level lifted). #2 kept → raw/b_nihil/eyes_a (palm eye patch + loose eyeball)."
+   },
+   "nh_teeth": {
+    "generationId": "Aa3UZZNoY6zFkx2w-Tg3GGSVT2Ayc3dORZfd2DR45rUUzm4ryPgyDDcttcLikwOkvfsQjBxm",
+    "imageCount": 2,
+    "prompt": "tools/painted/prompts/art-boss-8.mjs SHOTS.nh_teeth",
+    "decision": "#1 kept → raw/b_nihil/teeth_a (torn lip strip lined with needle teeth; drawn in row slices for both maw lips). #2 unused (teeth too sparse)."
+   },
+   "nh_disk": {
+    "generationId": "AbZ2l0j7ZnGfGF8Lvh_mKN5JNKfSBZkLol3y6gt0-jp6w0WArNAWGCNKlw_U0y5WtC4YGy1-",
+    "imageCount": 1,
+    "prompt": "tools/painted/prompts/art-boss-8.mjs SHOTS.nh_disk",
+    "decision": "kept → raw/b_nihil/disk_a (accretion disk inside the maw, additive, black background kept, rembg off)."
+   },
+   "nh_sun": {
+    "generationId": "AR3mzT4xxgLKhQcXE40tnugSlkkwWPfg0PeGlJ3Uorz4SNJkh_YXIemVtPsGgX70rGWph3Xb",
+    "imageCount": 2,
+    "prompt": "tools/painted/prompts/art-boss-8.mjs SHOTS.nh_sun",
+    "decision": "#1 kept → raw/b_nihil/sun_a, #2 kept → raw/b_nihil/sun_b (two corona layers of the P4 black sun, counter-rotated, additive; black level lifted)."
+   },
+   "nh_debris": {
+    "generationId": "AdsE1rsSlS8SeSZfDJYtCyvHD61-gTWJ7YgajylpvLmrZOg_3xeeeK6IqUeoo-p-x3Xx1jok",
+    "imageCount": 1,
+    "prompt": "tools/painted/prompts/art-boss-8.mjs SHOTS.nh_debris",
+    "decision": "kept → raw/b_nihil/debris_a (10 porcelain / void-cloth shards for death and world debris)."
+   },
+   "nh_echo_dracula": {
+    "generationId": "ASEt45TjBBhEDmpLsmdt1tQiV5fGwfrqTgL4rHGUJEj6cZFPEWj97yPD3APZrsXUx8381jJm",
+    "imageCount": 1,
+    "prompt": "tools/painted/prompts/art-boss-8.mjs SHOTS.nh_echo_dracula",
+    "decision": "kept → raw/b_nihil/echo_dracula (ghost silhouette for echoKey dracula)."
+   },
+   "nh_echo_chaos": {
+    "generationId": "ATcyKBurcEiwAj_Ty3GhFdxDpnDafn_pcjQbYm7TabFyrA5KyYBjWdCKCJu5FuRLX1bhz_os",
+    "imageCount": 1,
+    "prompt": "tools/painted/prompts/art-boss-8.mjs SHOTS.nh_echo_chaos",
+    "decision": "kept → raw/b_nihil/echo_chaos."
+   },
+   "nh_echo_narkissa": {
+    "generationId": "AYgv00qrhoY1LXzpPXhQ6aChP_7IX6CkY-GfjQGHXMwj1hMU3nBjoXYpgzELnH-OFppn1_td",
+    "imageCount": 1,
+    "prompt": "tools/painted/prompts/art-boss-8.mjs SHOTS.nh_echo_narkissa",
+    "decision": "kept → raw/b_nihil/echo_narkissa."
+   },
+   "nh_echo_ziz": {
+    "generationId": "AZMnx5UfH8cNJ0eG6ajPbgXeTVujEz40FnLEHstDqk9oOsDZtwZVINoUXQYp0CdmbIgXDoml",
+    "imageCount": 1,
+    "prompt": "tools/painted/prompts/art-boss-8.mjs SHOTS.nh_echo_ziz",
+    "decision": "kept → raw/b_nihil/echo_ziz."
+   },
+   "nh_grin": {
+    "generationId": "Aa-k4lqnhxo2Zns7Avn2c3wBQydsPggnY3K0yPr2xa6m5ikDelODeZxjgkuCIvbnWil91Zky",
+    "imageCount": 2,
+    "prompt": "tools/painted/prompts/art-boss-8.mjs SHOTS.nh_grin",
+    "decision": "#1 kept → raw/b_nihil/grin_a (mask torn into a jagged ear-to-ear grin; crossfaded over the mask in P2+). #2 unused (grin too narrow)."
+   },
+   "nh_face_dracula": {
+    "generationId": "Ae4Y83QQFPITNPG73vhIjgm0fh8-2F3H-wk6Fh1sEZ0TxjX5b-EYEw81ojI9jtmYMB9DTEAj",
+    "imageCount": 1,
+    "prompt": "tools/painted/prompts/art-boss-8.mjs SHOTS.nh_face_dracula",
+    "decision": "unused: became a full human face with hair (breaks the mask crossfade); replaced by nh_face_dracula2."
+   },
+   "nh_face_chaos": {
+    "generationId": "AT4YINUgoL8c8DJGRUl8bapfpvTEtqML5cqVR9EsOYGxfoAvWIJ6g4POVUlHjnfMW4WcBxXF",
+    "imageCount": 1,
+    "prompt": "tools/painted/prompts/art-boss-8.mjs SHOTS.nh_face_chaos",
+    "decision": "kept → raw/b_nihil/face_chaos."
+   },
+   "nh_face_narkissa": {
+    "generationId": "AaFHir074XIo83SUaR8fcqmabsVYLbyktHXWIhhxuKNaBAKhKlARUEvGZzOIKiZQkYA5Cqss",
+    "imageCount": 1,
+    "prompt": "tools/painted/prompts/art-boss-8.mjs SHOTS.nh_face_narkissa",
+    "decision": "kept → raw/b_nihil/face_narkissa."
+   },
+   "nh_face_ziz": {
+    "generationId": "AZXxvC45rDmPi-jK__gIA62cykmQ6mYft9vVKwAPW-xbnHX6BHQb2SvzCl4GWs98l-4Qr9sW",
+    "imageCount": 1,
+    "prompt": "tools/painted/prompts/art-boss-8.mjs SHOTS.nh_face_ziz",
+    "decision": "kept → raw/b_nihil/face_ziz."
+   },
+   "nh_face_moloch": {
+    "generationId": "AeWYCl-CywP5qmWoMBFjH-RwgV-UsyS30HZVxweBtxsQmv2tnf8JbPiBo6BZYUN41TVRd1N3",
+    "imageCount": 1,
+    "prompt": "tools/painted/prompts/art-boss-8.mjs SHOTS.nh_face_moloch",
+    "decision": "kept → raw/b_nihil/face_moloch."
+   },
+   "nh_face_mara": {
+    "generationId": "AVtHOyquAtfdhT-ptE16tONAoGWgPX3-3AcHhw27AOC4ySOjIC07oEgf1DRd9DPCm7zsO6-G",
+    "imageCount": 1,
+    "prompt": "tools/painted/prompts/art-boss-8.mjs SHOTS.nh_face_mara",
+    "decision": "kept → raw/b_nihil/face_mara (eye line higher than the mask → pivot c moved to (1027,890))."
+   },
+   "nh_face_death": {
+    "generationId": "AdDi6uOAEdFlKmH3uU-6qMK_ph50j4Z9M736Rvh6aRzGfCgqqAfVr9kykP_P-raqYbibAEu4",
+    "imageCount": 1,
+    "prompt": "tools/painted/prompts/art-boss-8.mjs SHOTS.nh_face_death",
+    "decision": "kept → raw/b_nihil/face_death."
+   },
+   "nh_face_chaos2": {
+    "generationId": "AYuT4EXhaf2_IJkO_MNKsBbZkxhMvzVXokOL-mW91eqQEQRE3nC7m19XT4mAW6B95dqcw-b-",
+    "imageCount": 1,
+    "prompt": "tools/painted/prompts/art-boss-8.mjs SHOTS.nh_face_chaos2",
+    "decision": "unused: still only a forehead star, no extra eyes; nh_face_chaos v1 kept."
+   },
+   "nh_face_dracula2": {
+    "generationId": "AWJo3VdbpjUKNZA_mPRDjJ9dNZNEWL6BEN3pVcb50qnw7YNKTmBvkFrVFx0CzfH2xbrCmBAo",
+    "imageCount": 1,
+    "prompt": "tools/painted/prompts/art-boss-8.mjs SHOTS.nh_face_dracula2",
+    "decision": "kept → raw/b_nihil/face_dracula (red eyes, blood tears, fangs, stays inside the mask outline; pivot c (1000,955))."
+   },
+   "nh_robe2": {
+    "generationId": "AQRi4q-r2nKS0GWa1VESOHRig0EMjlLindi2z_rftpPcAJCuRzH0AlbIIeoWBTg-7WlgrhnA",
+    "imageCount": 2,
+    "prompt": "tools/painted/prompts/art-boss-8.mjs SHOTS.nh_robe2",
+    "decision": "#2 kept → raw/b_nihil/robe_a (wide looming-bust shroud, chest void window, ragged hem; drawn in row slices that sway and fade above the floor). #1 unused (hood opening off-centre)."
+   }
+  }
+ }
 }
