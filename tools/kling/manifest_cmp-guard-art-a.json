@@ -7,13 +7,139 @@
  "creditsBefore": 5917,
  "note": "Result URLs expire after 24 h; every kept image is stored as q93 webp under tools/painted/companions/<id>/src/ (the chosen Step-1 reference as <id>_ref.webp). Watermark (bottom-right Kling logo) is filled by matte.py before cutting; the kept refs are cropped/cleaned.",
  "generations": [
-  {"guardian": "gd_fairy", "step": "ref", "generationId": "AX4loFmjh_5wtWLbnL0R2knA0DiC1_iSEI-sy6EAlQ7RMeXXoLsvFSh6_bdrPCDY4dX6RXM5", "tool": "text_to_image", "aspect": "1:1", "imageCount": 2, "decision": "pending"},
-  {"guardian": "gd_spiritwolf", "step": "ref", "generationId": "AR-Og29Yrc-CQezp-BjX6RT-tPrjxK2em8HqFDn6mjSQONYggDYmdfvL0a3q-CTQdJWLtjkr", "tool": "text_to_image", "aspect": "4:3", "imageCount": 2, "decision": "pending"},
-  {"guardian": "gd_imp", "step": "ref", "generationId": "ASstDQvxNkP1NFDAkrO6SmsQoX2P-f0bYNkJc4PZcK24P9oTsVm8aV98YPI5G6kvFOwEGA5A", "tool": "text_to_image", "aspect": "1:1", "imageCount": 2, "decision": "pending"},
-  {"guardian": "gd_knight", "step": "ref", "generationId": "AZNcstM3U7gbsTY9CuJC52kEr4UE-c-AIAoR-EhADFlfaey-aTi4UUn7BqYPjbH3ootvCJth", "tool": "text_to_image", "aspect": "3:4", "imageCount": 2, "decision": "pending"},
-  {"guardian": "gd_whelp", "step": "ref", "generationId": "ASQyq5iRBnZMs-Gmi5vmg5ypA_0fM3ebb7_IMAnDImy6uJgp1-pzWeR6KglRIRE9I3f1wq3s", "tool": "text_to_image", "aspect": "4:3", "imageCount": 2, "decision": "pending"},
-  {"guardian": "gd_owl", "step": "ref", "generationId": "AcfeqI2QReva5YlTDdcCN5-QgDLc_KOYNXTT59nGo5dOrIpRQplV6hfgbRRagvHG2IxP_u_e", "tool": "text_to_image", "aspect": "3:4", "imageCount": 2, "decision": "pending"}
+  {
+   "guardian": "gd_fairy",
+   "step": "ref",
+   "generationId": "AX4loFmjh_5wtWLbnL0R2knA0DiC1_iSEI-sy6EAlQ7RMeXXoLsvFSh6_bdrPCDY4dX6RXM5",
+   "tool": "text_to_image",
+   "aspect": "1:1",
+   "imageCount": 2,
+   "decision": "kept #1 as src/gd_fairy_ref.webp (both saved as src/gd_fairy_ref0/1.webp)"
+  },
+  {
+   "guardian": "gd_spiritwolf",
+   "step": "ref",
+   "generationId": "AR-Og29Yrc-CQezp-BjX6RT-tPrjxK2em8HqFDn6mjSQONYggDYmdfvL0a3q-CTQdJWLtjkr",
+   "tool": "text_to_image",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "decision": "kept #1 as src/gd_spiritwolf_ref.webp (both saved as src/gd_spiritwolf_ref0/1.webp)"
+  },
+  {
+   "guardian": "gd_imp",
+   "step": "ref",
+   "generationId": "ASstDQvxNkP1NFDAkrO6SmsQoX2P-f0bYNkJc4PZcK24P9oTsVm8aV98YPI5G6kvFOwEGA5A",
+   "tool": "text_to_image",
+   "aspect": "1:1",
+   "imageCount": 2,
+   "decision": "kept #0 as src/gd_imp_ref.webp (both saved as src/gd_imp_ref0/1.webp)"
+  },
+  {
+   "guardian": "gd_knight",
+   "step": "ref",
+   "generationId": "AZNcstM3U7gbsTY9CuJC52kEr4UE-c-AIAoR-EhADFlfaey-aTi4UUn7BqYPjbH3ootvCJth",
+   "tool": "text_to_image",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "decision": "kept #0 as src/gd_knight_ref.webp (both saved as src/gd_knight_ref0/1.webp)"
+  },
+  {
+   "guardian": "gd_whelp",
+   "step": "ref",
+   "generationId": "ASQyq5iRBnZMs-Gmi5vmg5ypA_0fM3ebb7_IMAnDImy6uJgp1-pzWeR6KglRIRE9I3f1wq3s",
+   "tool": "text_to_image",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "decision": "kept #0 as src/gd_whelp_ref.webp (both saved as src/gd_whelp_ref0/1.webp)"
+  },
+  {
+   "guardian": "gd_owl",
+   "step": "ref",
+   "generationId": "AcfeqI2QReva5YlTDdcCN5-QgDLc_KOYNXTT59nGo5dOrIpRQplV6hfgbRRagvHG2IxP_u_e",
+   "tool": "text_to_image",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "decision": "kept #1 as src/gd_owl_ref.webp (both saved as src/gd_owl_ref0/1.webp)"
+  },
+  {
+   "guardian": "gd_fairy",
+   "step": "sheet",
+   "generationId": "ARZGBnwaNTfnJoj5mxAKOicijD2jrOEuuQvzFehC60iIkSCF3T1iYaRcWMdln4-JeHzCjBjM",
+   "tool": "image_to_image",
+   "inputs": {
+    "image_1": "ref #1 (Kling result URL)"
+   },
+   "aspect": "4:3",
+   "imageCount": 2,
+   "prompt": "sheet(id) in tools/painted/prompts/cmp-guard-art-a.mjs",
+   "decision": "pending"
+  },
+  {
+   "guardian": "gd_spiritwolf",
+   "step": "sheet",
+   "generationId": "AcdYt9S1nCbeMUVcbiFMWw8zcya91c6h7qdACq6PwOL0N0lkK8Ca2NiWCCFHTp3-oR69jZdr",
+   "tool": "image_to_image",
+   "inputs": {
+    "image_1": "ref #1 (Kling result URL)"
+   },
+   "aspect": "4:3",
+   "imageCount": 2,
+   "prompt": "sheet(id) in tools/painted/prompts/cmp-guard-art-a.mjs",
+   "decision": "pending"
+  },
+  {
+   "guardian": "gd_imp",
+   "step": "sheet",
+   "generationId": "AbGUo6-YuIjzF8BciJ8OmDk4eD27wKgEEKqduxYxbHFJYj6N7s4EkGv0uJ5mnJxs8Nbg_UKT",
+   "tool": "image_to_image",
+   "inputs": {
+    "image_1": "ref #0 (Kling result URL)"
+   },
+   "aspect": "4:3",
+   "imageCount": 2,
+   "prompt": "sheet(id) in tools/painted/prompts/cmp-guard-art-a.mjs",
+   "decision": "pending"
+  },
+  {
+   "guardian": "gd_knight",
+   "step": "sheet",
+   "generationId": "AYs3gbq1FYDlRhpL4O6IFaeiYzAru9InBPGyRTK_Ykr3IT9-aViNSlbE1pggIZ56taTphohg",
+   "tool": "image_to_image",
+   "inputs": {
+    "image_1": "ref #0 (Kling result URL)"
+   },
+   "aspect": "4:3",
+   "imageCount": 2,
+   "prompt": "sheet(id) in tools/painted/prompts/cmp-guard-art-a.mjs",
+   "decision": "pending"
+  },
+  {
+   "guardian": "gd_whelp",
+   "step": "sheet",
+   "generationId": "AW93Hpy21zQoA39N4hM5pK-zW2wv-3IfA2oC8X2hK_ppxnKa9mozGnq0fWG8oC4SZcHahfSJ",
+   "tool": "image_to_image",
+   "inputs": {
+    "image_1": "ref #0 (Kling result URL)"
+   },
+   "aspect": "4:3",
+   "imageCount": 2,
+   "prompt": "sheet(id) in tools/painted/prompts/cmp-guard-art-a.mjs",
+   "decision": "pending"
+  },
+  {
+   "guardian": "gd_owl",
+   "step": "sheet",
+   "generationId": "AZ73szThjaSxMyoanblXM1UnxPbDyOz6LZ5NuQA5Dtv5NJGfcusfqQO-HemcpT24HW_NNOv4",
+   "tool": "image_to_image",
+   "inputs": {
+    "image_1": "ref #1 (Kling result URL)"
+   },
+   "aspect": "4:3",
+   "imageCount": 2,
+   "prompt": "sheet(id) in tools/painted/prompts/cmp-guard-art-a.mjs",
+   "decision": "pending"
+  }
  ],
- "imagesGenerated": 12,
- "creditsSpent": 24
+ "imagesGenerated": 24,
+ "creditsSpent": 48
 }

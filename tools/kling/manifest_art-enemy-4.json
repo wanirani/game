@@ -1,0 +1,54 @@
+{
+ "package": "ART-ENEMY-4",
+ "model": "kling-image-v3_0_omni",
+ "img_resolution": "2k",
+ "prompts": "tools/painted/prompts/art-enemy-4.mjs",
+ "credits": {
+  "before": 5893.0,
+  "per_image": 2,
+  "budget": 900
+ },
+ "uploads": {
+  "bat_body_fly": {
+   "from": "tools/painted/enemies/bat/src/bat_body_fly.webp",
+   "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qTQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBozYWdlbnRfdXBsb2FkLzE3OTA2MDI3MTEvVE9ndUpiQTNsQy9iYXRfYm9keV9mbHkuanBn.origin?x-kcdn-pid=112372"
+  },
+  "bat_sheet1": {
+   "from": "tools/painted/enemies/bat/src/bat_sheet1.webp",
+   "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qSwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBoxYWdlbnRfdXBsb2FkLzE3OTA2MDI3MTMvVTh6WVo5Q2Z5Zi9iYXRfc2hlZXQxLmpwZw.origin?x-kcdn-pid=112372"
+  },
+  "wolf_body": {
+   "from": "tools/painted/enemies/wolf/src/wolf_body.webp",
+   "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qSgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBowYWdlbnRfdXBsb2FkLzE3OTA2MDI3MTUvbVZsVWY1MDcyWC93b2xmX2JvZHkuanBn.origin?x-kcdn-pid=112372"
+  },
+  "wolf_legs": {
+   "from": "tools/painted/enemies/wolf/src/wolf_legs.webp",
+   "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qSgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBowYWdlbnRfdXBsb2FkLzE3OTA2MDI3MTgvQkFRQkZqamRLei93b2xmX2xlZ3MuanBn.origin?x-kcdn-pid=112372"
+  },
+  "knight_torso": {
+   "from": "tools/painted/enemies/armor_knight/src/knight_torso.webp",
+   "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qTQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBozYWdlbnRfdXBsb2FkLzE3OTA2MDI3MjEvdFlkdUpOYjVFeS9rbmlnaHRfdG9yc28uanBn.origin?x-kcdn-pid=112372"
+  },
+  "knight_sheet1": {
+   "from": "tools/painted/enemies/armor_knight/src/knight_sheet1.webp",
+   "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qTgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo0YWdlbnRfdXBsb2FkLzE3OTA2MDI3MjMvYmZMdWxGaFB6ai9rbmlnaHRfc2hlZXQxLmpwZw.origin?x-kcdn-pid=112372"
+  },
+  "knight_sheet2": {
+   "from": "tools/painted/enemies/armor_knight/src/knight_sheet2.webp",
+   "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qTgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo0YWdlbnRfdXBsb2FkLzE3OTA2MDI3MjYvVzdYTjlCWUxPTS9rbmlnaHRfc2hlZXQyLmpwZw.origin?x-kcdn-pid=112372"
+  },
+  "ghost_sheet1": {
+   "from": "tools/painted/enemies/ghost/src/ghost_sheet1.webp",
+   "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qTQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBozYWdlbnRfdXBsb2FkLzE3OTA2MDI3MjkvUGdPaldlQVVkNi9naG9zdF9zaGVldDEuanBn.origin?x-kcdn-pid=112372"
+  },
+  "skeleton_edit": {
+   "from": "tools/painted/enemies/skeleton/src/skeleton_edit.webp",
+   "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qTgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo0YWdlbnRfdXBsb2FkLzE3OTA2MDI3MzEvYktPUXJzMFNIQS9za2VsZXRvbl9lZGl0LmpwZw.origin?x-kcdn-pid=112372"
+  },
+  "skeleton_ref": {
+   "from": "tools/painted/enemies/skeleton/src/skeleton_ref.webp",
+   "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qTQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBozYWdlbnRfdXBsb2FkLzE3OTA2MDI3MzQvcXFvcFdVWXF4aC9za2VsZXRvbl9yZWYuanBn.origin?x-kcdn-pid=112372"
+  }
+ },
+ "calls": []
+}
