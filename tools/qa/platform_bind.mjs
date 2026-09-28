@@ -183,7 +183,10 @@ try {
     // system buttons: Ⅱ → pause, 가방 → menu on the inventory tab
     const sys = [];
     for (const [id, want] of [['pause', /pause$/], ['bag', /menu$/]]) {
-      const b = (await padLayout(s.page)).buttons[id];
+      // after the pause scene is popped the pad shows its system buttons again on its own (real-time) redraw: poll for
+      // the button (≤ ~2.5 s, stepping the game) instead of reading the layout once — a single read was flaky at load 12+
+      let b = null;
+      for (let k = 0; k < 25 && !b; k++) { b = (await padLayout(s.page)).buttons[id] || null; if (!b) { await step(s.page, 2); await s.wait(100); } }
       if (!b) { sys.push(`${id}: not on screen`); continue; }
       await t.down(63, b.cx, b.cy); await step(s.page, 3); await t.up(63); await step(s.page, 12);
       const r = await s.eval(async () => { const g = window.__game; let tab = null; try { const M = await import('/src/scenes/menu/menu.js'); tab = g.top?.name === 'menu' ? M.MENU_TABS?.[g.top.ti]?.id ?? null : null; } catch { /* */ } return { scenes: g.scenes.map((x) => x.name).join('>'), tab }; });
