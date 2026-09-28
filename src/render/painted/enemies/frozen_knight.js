@@ -185,7 +185,11 @@ export function drawSwordKnight(ctx, e, world, o, rig, cfg) {
   drawParts(e, o, cfg.glow ? cfg.glow(e.t ?? 0, s) : 0);
   if (!o.flash) {
     K.glow(L.eyeX, L.eyeY, 3 + 4 * s.wind, cfg.eye, 0.6 + 0.4 * s.wind + 0.1 * Math.sin((e.t ?? 0) * 5));
-    if (s.trail) swingTrail(ctx, L.snx, L.sny, s.trail[0], s.trail[1], L.reach, s.last ? 18 : 13, cfg.trail, s.trail[2] * 0.85);
+    if (s.trail) {
+      // arc swept by the tip about the near shoulder, ending exactly on the drawn tip
+      const aT = Math.PI / 2 - Math.atan2(L.tipy - L.sny, L.tipx - L.snx);
+      swingTrail(ctx, L.snx, L.sny, aT + clamp(s.trail[0] - s.trail[1], -1.7, 1.7), aT, L.reach + 2, s.last ? 16 : 12, cfg.trail, s.trail[2] * 0.8);
+    }
     if (s.wind > 0.45) glint(ctx, L.tipx, L.tipy, 5 + 6 * s.wind, cfg.glint ?? '#ffffff', (s.wind - 0.45) / 0.55);
     if (s.guard) K.glow(L.gx + Math.cos(L.dS) * 20, L.gy + Math.sin(L.dS) * 20, 16, cfg.trail, 0.35 + 0.15 * Math.sin((e.t ?? 0) * 20));
   }

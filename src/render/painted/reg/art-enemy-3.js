@@ -9,6 +9,8 @@ import * as slime from '../enemies/slime.js';
 import * as killer_fish from '../enemies/killer_fish.js';
 import * as cog_wheel from '../enemies/cog_wheel.js';
 import * as acid_turret from '../enemies/acid_turret.js';
+import * as plague_doctor from '../enemies/plague_doctor.js';
+import * as homunculus from '../enemies/homunculus.js';
 
 export const bosses = {};
 export const enemies = [
@@ -16,6 +18,8 @@ export const enemies = [
   { mod: killer_fish },
   { mod: cog_wheel },
   { mod: acid_turret },
+  { mod: plague_doctor },
+  { mod: homunculus },
 ];
 export const companions = {};
 export const npcs = {};

@@ -50,6 +50,7 @@ function restGroup(r) {
   if (/^(tex|props)\//.test(r)) return [10, 'deco'];                  // 스테이지마다 쓰는 질감·소품
   if (/^bg\//.test(r)) return [20, 'bg'];
   if (/^painted\/bosses\//.test(r)) return [30, 'bosses'];
+  if (/^painted\/companions\//.test(r)) return [35, 'companions'];   // 탈것·수호신 채색 아틀라스
   if (/^portraits\//.test(r)) return [40, 'portraits'];
   if ((m = /^puppets\/([^/]+)\//.exec(r))) return [50, 'puppets/' + m[1]]; // 영웅별 (그 영웅을 고른 사람만)
   if (/^cg\//.test(r)) return [60, 'cg'];                             // 스토리 장면
@@ -111,7 +112,8 @@ export function buildArtifact({ from = path.join(ROOT, 'dist/web'), out = path.j
       });
       // 묶음 전체가 목표의 1.25 배 안이면 한 팩에 (끝자락만 따로 떨어진 자잘한 팩을 만들지 않는다)
       const total = sizes.reduce((s, b) => s + b, 0);
-      const limit = total + (cur ? cur.size : 0) <= cap * 1.25 ? cap * 1.25 : cap;
+      const soft = Math.min(LIMITS.binFileBytes, cap * 1.25);
+      const limit = total + (cur ? cur.size : 0) <= soft ? soft : cap;
       list.forEach((r, i) => {
         if (!cur || (cur.size + sizes[i] > limit && cur.list.length)) { cur = { list: [], size: 0 }; packs.push(cur); }
         cur.list.push([r, sizes[i]]); cur.size += sizes[i];

@@ -18,7 +18,8 @@
 //
 // ── 포즈 필드 (네발) ─────────────────────────────────────────────────────────────────────────────
 //  tpl, id, kind:'quad', gait('stand'|'walk'|'trot'|'gallop'|'air'|'swim'|'rear'|'knocked'), t
-//  pitch (몸 회전, 뒷발 축 px,0; 앞들기 = 음수) · bob (+ = 아래) · px (회전 축 x) · sq (착지 찌그러짐 0..1) · turnK (0..1, 1 = 돌기 끝)
+//  pitch (몸 회전, 뒷발 축 px,0; 앞들기 = 음수) · bob (+ = 아래) · px (회전 축 x) · stretch (질주 가로 늘임, px 기준) · sq (착지 찌그러짐 0..1)
+//  turnK (0..1, 1 = 돌기 끝)
 //  bx, by, ba            몸통 중심 · 각도 (= pitch)
 //  legs[i] = { rx, ry, kx, ky, fx, fy, a1, a2, up }   관절(어깨·엉덩이) → 무릎(비절) → 발굽 바닥, a1/a2 = 두 마디 각도, up = 발이 뜬 정도 0..1
 //  nx, ny, na            목 뿌리 · 목 각도 (−x 위쪽)     hx, hy, ha   머리 뿌리(목 끝) · 머리 각도
@@ -92,7 +93,8 @@ registerTemplate('stag', {
  * 채색 퍼핏의 관절이 이 값에 맞춰 놓이므로 그림과 벡터가 같은 안장·같은 발 위치를 쓴다.
  */
 export const MOUNT_TUNE = {
-  mt_warhorse: {},
+  // tools/painted/companions/mt_warhorse/mounts_build.py tune <id> 의 출력 (채색 그림 관절에서 잰 값, 게임 px)
+  mt_warhorse: { sh: [19.32, -32.91], hp: [-20.75, -31.0], far: [4, -1.5], l1f: 14.32, l2f: 18.84, l1h: 12.84, l2h: 18.77, footF: 2.53, footH: -0.81, sink: 1.2, neck: { x: 23.85, y: -51.99, a: -0.862, len: 24.19 }, head: { a: 1.068, len: 18.79 }, tail: { x: -25.19, y: -49.37, n: 5, len: 9.07, a: 1.806 }, seat: [2.38, -56.05], body: { x: 5.2, y: -44.1, rx: 31.0, ry: 14.1 } },
   mt_skelsteed: { body: { ry: 12 }, neck: { a: -1.08 }, tail: { a: 1.75 } },
   mt_ignis: { neck: { a: -1.06 } },
   mt_boar: {},
@@ -115,7 +117,7 @@ export function templateFor(m) {
   if (!T) {
     T = merge(base, MOUNT_TUNE[id]);
     const ds = m?.def?.seat;
-    if (ds && Number.isFinite(ds.x) && Number.isFinite(ds.y)) T = { ...T, seat: [ds.x, ds.y] };
+    if (ds && Number.isFinite(ds.x) && Number.isFinite(ds.y) && !MOUNT_TUNE[id]?.seat) T = { ...T, seat: [ds.x, ds.y] };   // 그림에서 잰 안장이 있으면 그것
     MERGED.set(key, T);
   }
   return T;
@@ -190,7 +192,7 @@ function newPose(T, m) {
   const n = T.tail?.n ?? 4;
   return {
     tpl: T.name, id: m.id ?? null, kind: T.kind, gait: 'stand', t: 0,
-    pitch: 0, bob: 0, px: T.hp?.[0] ?? 0, sq: 0, turnK: 1,
+    pitch: 0, bob: 0, px: T.hp?.[0] ?? 0, stretch: 1, sq: 0, turnK: 1,
     bx: 0, by: 0, ba: 0,
     legs: [leg(), leg(), leg(), leg()],
     nx: 0, ny: 0, na: 0, hx: 0, hy: 0, ha: 0, jaw: 0, ear: 0, blink: 0, snort: 0, look: 0,
@@ -271,7 +273,8 @@ export function quadPose(m, dt, P, T) {
   // 회전 (뒷발 축) + 들썩임 + 속도 늘임
   const px = T.hp[0], c = Math.cos(pitch), s = Math.sin(pitch);
   const stretch = 1 + (gait === 'gallop' ? T.stretch * (0.5 + 0.5 * Math.sin(cyc * 2)) : 0) + (a === 'charge' ? T.stretch : 0);
-  P.px = px;
+  P.px = px; P.stretch = stretch;
+  bob += T.sink ?? 0;                                   // 쉴 때 다리를 살짝 굽혀 들썩임 여유를 둔다 (그림 다리는 곧게 펴져 있다)
   const X = (x, y) => px + ((x - px) * stretch) * c - y * s;
   const Y = (x, y) => ((x - px) * stretch) * s + y * c + bob;
   const B = T.body;
@@ -290,7 +293,7 @@ export function quadPose(m, dt, P, T) {
     const L = P.legs[i];
     L.rx = X(rx0, ry0); L.ry = Y(rx0, ry0);
     const l1 = fore ? T.l1f : T.l1h, l2 = fore ? T.l2f : T.l2h, len = l1 + l2;
-    const restX = rx0 + (fore ? 1 : 1.5);
+    const restX = rx0 + (fore ? T.footF ?? 1 : T.footH ?? 1.5);
     let tx = restX, ty = 0, up = 0;
     if (gait === 'walk' || gait === 'trot' || gait === 'gallop') {
       const fc = footCycle(ph + offs[i], duty, sweep, lift);

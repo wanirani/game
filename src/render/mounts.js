@@ -16,7 +16,7 @@ import { game } from '../core/game.js';
 import * as RIG from './mount_rig.js';
 import * as MB from './mounts_b.js';
 import * as REG from './painted/registry.js';
-import { puff } from './painted/kit.js';
+import { puff, Drawer, pickVariant } from './painted/kit.js';
 
 const OUT = '#0a0608';
 const PI = Math.PI;
@@ -86,8 +86,9 @@ export function drawMount(ctx, m, world, layer = 'back', opts = O0) {
   C.m = m; C.P = P; C.T = RIG.templateFor(m); C.pal = palOf(m.id); C.tint = tint; C.flash = flash; C.fx = fx; C.q = q;
   C.t = world?.time ?? m.t ?? 0; C.aw = !!m.awakened; C.world = world; C.f = f;
   try {
-    const rig = tint ? null : paintedRig(m.id);
-    if (rig && rig.mount?.draw) rig.mount.draw(ctx, C, layer, rig);
+    let rig = paintedRig(m.id);
+    if (rig && tint && tint !== rig.def?.glow) rig = null;                 // 다른 색 유령은 벡터 실루엣 (구운 발광 실루엣은 한 색)
+    if (rig && rig.mount && P.kind === 'quad') paintedQuad(ctx, C, layer, rig);
     else if (P.kind === 'quad') (layer === 'front' ? vecFront : vecBack)(ctx, C);
     else throw new Error('no drawer for rig ' + (m.rig ?? P.tpl));
   } finally { ctx.restore(); }
@@ -156,6 +157,7 @@ function vecBack(ctx, C) {
   // 5) 목 · 갈기 · 머리
   drawNeck(ctx, C);
   drawHead(ctx, C);
+  stirrupStrap(ctx, C);
   // 6) 효과: 불꽃·콧김·각성
   if (C.fx) drawFxBack(ctx, C);
   void bones;
@@ -534,23 +536,185 @@ function drawFxBack(ctx, C) {
 // ───────────────────────── 벡터: front 층 ─────────────────────────
 function vecFront(ctx, C) {
   const { P, T, pal, m } = C;
-  const footY = m.def?.footY ?? 22;
   const sx = P.sl.x, sy = P.sl.y;
-  // 등자 끈 + 등자 (기수 발 = 안장 + (7, footY))
-  const fx = sx + 7, fy = sy + footY;
-  ctx.strokeStyle = col(C, pal.leather); ctx.lineWidth = 1.8;
-  ctx.beginPath(); ctx.moveTo(sx + 3, sy - 1); ctx.lineTo(fx - 1, fy - 2); ctx.stroke();
-  ctx.strokeStyle = col(C, pal.bones ? pal.steel : T.name === 'stag' ? pal.trim : pal.steel); ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(fx - 5, fy + 1); ctx.lineTo(fx - 3, fy - 2.5); ctx.lineTo(fx + 3, fy - 2.5); ctx.lineTo(fx + 5, fy + 1); ctx.closePath(); ctx.stroke();
+  // 등자 (기수 발바닥 아래: 안장 + (9, footY + 4)). 끈은 back 층(stirrupStrap) — 기수 다리 뒤로 지나간다
+  const fx = sx + 9, fy = sy + (m.def?.footY ?? 22) + 4;
+  const iron = pal.bones ? pal.steel : T.name === 'stag' ? pal.trim : pal.steel;
+  ctx.strokeStyle = C.tint ? C.tint : OUT; ctx.lineWidth = 2.6;
+  ctx.beginPath(); ctx.moveTo(fx - 4.5, fy); ctx.lineTo(fx - 2.5, fy - 3.5); ctx.lineTo(fx + 2.5, fy - 3.5); ctx.lineTo(fx + 4.5, fy); ctx.closePath(); ctx.stroke();
+  ctx.strokeStyle = col(C, iron); ctx.lineWidth = 1.2; ctx.stroke();
   // 고삐: 재갈 → 기수 손 (안장 앞 위)
-  if (T.name !== 'boar' || true) {
-    const hl = T.head.len;
-    const bx = P.hx + Math.cos(P.ha) * hl * 0.8 - Math.sin(P.ha) * 3, by = P.hy + Math.sin(P.ha) * hl * 0.8 + Math.cos(P.ha) * 3;
-    const rx = sx + 12, ry = sy - 14;
-    ctx.strokeStyle = col(C, pal.bones || m.id === 'mt_ignis' ? '#6a6660' : '#3a2418'); ctx.lineWidth = pal.bones || m.id === 'mt_ignis' ? 1.4 : 1.1;
-    if (pal.bones || m.id === 'mt_ignis') ctx.setLineDash([2, 1.5]);
-    ctx.beginPath(); ctx.moveTo(bx, by); ctx.quadraticCurveTo((bx + rx) / 2, Math.max(by, ry) + 8, rx, ry); ctx.stroke();
-    ctx.setLineDash([]);
+  const hl = T.head.len;
+  const bx = P.hx + Math.cos(P.ha) * hl * 0.8 - Math.sin(P.ha) * 3, by = P.hy + Math.sin(P.ha) * hl * 0.8 + Math.cos(P.ha) * 3;
+  const rx = sx + 12, ry = sy - 14;
+  const chain = pal.bones || m.id === 'mt_ignis';
+  ctx.strokeStyle = col(C, chain ? '#6a6660' : '#3a2418'); ctx.lineWidth = chain ? 1.4 : 1.1;
+  if (chain) ctx.setLineDash([2, 1.5]);
+  ctx.beginPath(); ctx.moveTo(bx, by); ctx.quadraticCurveTo((bx + rx) / 2, Math.max(by, ry) + 8, rx, ry); ctx.stroke();
+  if (chain) ctx.setLineDash([]);
+}
+/** 등자 끈 (back 층 맨 위: 몸 앞, 기수 다리 뒤) */
+function stirrupStrap(ctx, C) {
+  const { P, pal, m } = C;
+  const sx = P.sl.x, sy = P.sl.y, fx = sx + 9, fy = sy + (m.def?.footY ?? 22) + 4;
+  ctx.strokeStyle = C.tint ? C.tint : OUT; ctx.lineWidth = 2.8;
+  ctx.beginPath(); ctx.moveTo(sx + 2, sy + 1); ctx.lineTo(fx, fy - 3.5); ctx.stroke();
+  ctx.strokeStyle = col(C, pal.leather); ctx.lineWidth = 1.5; ctx.stroke();
+}
+
+// ───────────────────────── 채색 퍼핏 (네발) ─────────────────────────
+// 부품 (manifest, tools/painted/companions/<id>/config.json): body(hp·sh·seat·neck·tail·… 피벗) · head(목+머리, base·poll·muzzle·eye·…) ·
+// foreU/foreL · hindU/hindL (a = 윗관절, b = 아랫관절/발굽 바닥) · tail (a 뿌리 → b 끝, 가로 띠로 잘라 꼬리 사슬을 따라 굽힌다).
+// 관절 위치는 리그 포즈(MOUNT_TUNE = 그림에서 잰 치수)에서 오고, 부품은 그 관절에 맞춰 돌린다. 먼 다리 = 가까운 다리의 어두운 변형.
+// 모듈(src/render/painted/companions/<id>.js)이 rig.mount = { tint: 'aw'|null, fx: {...} } 를 붙여 이 그리기를 켠다.
+const PD = new Drawer();
+const _q = [0, 0], _e = [0, 0];
+function partGeo(p) {
+  if (p._g) return p._g;
+  const a = p.a ?? [0, 0], b = p.b ?? [0, p.h];
+  p._g = { ang: Math.atan2(b[1] - a[1], b[0] - a[0]), len: Math.hypot(b[0] - a[0], b[1] - a[1]) * p.k };
+  return p._g;
+}
+/** 부품 한 장 (유령 = 구운 발광 실루엣) */
+function pput(D, C, p, pv, x, y, rot, sx, sy, deep, tk) {
+  if (!p) return;
+  if (C.tint) { const im = p.v.glow ?? p.v.flash; if (im) { const q = typeof pv === 'string' ? p[pv] : pv; D.img(im, q[0], q[1], x, y, rot, sx, sy, 1); } return; }
+  D.part(p, pickVariant(p, 0, deep, tk), pv, x, y, rot, sx, sy, 1);
+}
+function pLeg(D, C, U, Lw, L, len1, len2, deep, tk) {
+  if (!U || !Lw) return;
+  const gu = partGeo(U), gl = partGeo(Lw);
+  const s1 = U.k * clamp(len1 / (gu.len || len1), 0.8, 1.25), s2 = Lw.k * clamp(len2 / (gl.len || len2), 0.8, 1.25);
+  pput(D, C, Lw, 'a', L.kx, L.ky, L.a2 - gl.ang, s2, s2, deep, tk);
+  pput(D, C, U, 'a', L.rx, L.ry, L.a1 - gu.ang, s1, s1, deep, tk);
+}
+/** 꼬리: 부품을 a→b 방향 가로 띠로 잘라 사슬 마디 각도대로 이어 붙인다 */
+function pTail(D, ctx, C, Tp, tk) {
+  if (!Tp) return;
+  const P = C.P, n = P.ta.length;
+  const img = C.tint ? (Tp.v.glow ?? Tp.v.flash) : pickVariant(Tp, 0, false, tk);
+  if (!img) return;
+  const g = partGeo(Tp), a = Tp.a, b = Tp.b, k = Tp.k;
+  const H = img.height, W = img.width;
+  const lo = C.q === 0 ? Math.min(n, 2) : n;                // low: 띠 두 개
+  let wx = P.tx, wy = P.ty;
+  for (let i = 0; i < lo; i++) {
+    const u0 = i / lo, u1 = (i + 1) / lo;
+    const ax = a[0] + (b[0] - a[0]) * u0, ay = a[1] + (b[1] - a[1]) * u0;
+    const y0 = i === 0 ? 0 : Math.floor(ay) - 1, y1 = i === lo - 1 ? H : Math.ceil(a[1] + (b[1] - a[1]) * u1) + 1;
+    const ang = P.ta[Math.min(n - 1, Math.round(i * n / lo))];
+    D.set(ax, ay, wx, wy, ang - g.ang, k, k);
+    if (y1 > y0) ctx.drawImage(img, 0, y0, W, y1 - y0, 0, y0, W, y1 - y0);
+    const seg = g.len / lo;
+    wx += Math.cos(ang) * seg; wy += Math.sin(ang) * seg;
+  }
+}
+function paintedQuad(ctx, C, layer, rig) {
+  if (layer === 'front') { vecFront(ctx, C); return; }
+  const { P, T, m } = C, R = rig.parts, D = PD;
+  const tk = C.aw && rig.mount.tint && rig.tintKeys?.includes(rig.mount.tint) ? rig.mount.tint : null;
+  // 발밑 그림자
+  if (!C.tint && m.onGround !== false) {
+    const ga = ctx.globalAlpha;
+    ctx.globalAlpha = ga * 0.34; ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.ellipse((T.sh[0] + T.hp[0]) / 2, 0, (T.sh[0] - T.hp[0]) / 2 + 12, 3.6, 0, 0, TAU); ctx.fill();
+    ctx.globalAlpha = ga;
+  }
+  D.begin(ctx);
+  if (C.flash) D.startFlash();
+  pTail(D, ctx, C, R.tail, tk);
+  pLeg(D, C, R.hindU, R.hindL, P.legs[0], T.l1h, T.l2h, true, tk);
+  pLeg(D, C, R.foreU, R.foreL, P.legs[1], T.l1f, T.l2f, true, tk);
+  const B = R.body, k = B.k, L2 = P.legs[2];
+  pput(D, C, B, 'hp', L2.rx, L2.ry, P.pitch, k * (P.stretch ?? 1), k, false, tk);
+  const H = R.head, hr = P.na - T.neck.a;
+  pput(D, C, H, 'base', P.nx, P.ny, hr, k, k, false, tk);
+  pLeg(D, C, R.hindU, R.hindL, P.legs[2], T.l1h, T.l2h, false, tk);
+  pLeg(D, C, R.foreU, R.foreL, P.legs[3], T.l1f, T.l2f, false, tk);
+  if (C.flash) D.flash(0.62);
+  D.end();
+  stirrupStrap(ctx, C);
+  if (!C.tint) paintedFx(ctx, C, rig, D, hr);
+}
+/** 머리 부품의 점 → 지역 좌표 */
+function headPt(D, C, H, name, hr, out) {
+  const q = H?.[name];
+  if (!q) return null;
+  return D.pt(H.base[0], H.base[1], q[0], q[1], C.P.nx, C.P.ny, hr, H.k, H.k, out);
+}
+function bodyPt(D, C, B, name, out) {
+  const q = B?.[name];
+  if (!q) return null;
+  const L2 = C.P.legs[2];
+  return D.pt(B.hp[0], B.hp[1], q[0], q[1], L2.rx, L2.ry, C.P.pitch, B.k * (C.P.stretch ?? 1), B.k, out);
+}
+/** 불꽃 혀 (가산 퍼프 몇 겹; 시간 함수라 Math.random 없음) */
+function flames(ctx, x, y, ang, len, w, n, t, seed, col, core, a) {
+  if (a <= 0.01) return;
+  const op = ctx.globalCompositeOperation, ga = ctx.globalAlpha;
+  ctx.globalCompositeOperation = 'lighter';
+  const img = puff(col, false), imgC = puff(core, true);
+  for (let i = 0; i < n; i++) {
+    const h = flick(seed, i * 1.7);
+    const aa = ang + (i - (n - 1) / 2) * 0.28 + Math.sin(t * 6 + i * 2.1 + seed) * 0.14;
+    const L = len * (0.65 + h * 0.5) * (0.85 + 0.15 * Math.sin(t * 11 + i * 1.7 + seed));
+    const c = Math.cos(aa), s = Math.sin(aa);
+    for (let j = 0; j < 3; j++) {
+      const u = (j + 0.5) / 3, wob = Math.sin(t * 9 + i * 1.3 + u * 5 + seed) * w * 0.6 * u;
+      const px = x + c * L * u - s * wob, py = y + s * L * u + c * wob, r = w * (1.1 - u * 0.7);
+      ctx.globalAlpha = ga * a * (1 - u * 0.45);
+      ctx.drawImage(j === 0 ? imgC : img, px - r, py - r, r * 2, r * 2);
+    }
+  }
+  ctx.globalCompositeOperation = op; ctx.globalAlpha = ga;
+}
+/** 채색 탈것 효과: 눈빛 · 불갈기 · 영혼불 · 뿔빛 · 콧김 · 각성 불씨 (mount 모듈의 fx 표) */
+function paintedFx(ctx, C, rig, D, hr) {
+  const { P, pal, t, q } = C, R = rig.parts, fx = rig.mount.fx ?? {};
+  const aw = C.aw;
+  const glowC = aw ? (fx.awGlow ?? pal.awake) : (fx.glow ?? pal.glow);
+  // 눈
+  if (headPt(D, C, R.head, 'eye', hr, _e)) {
+    const ec = aw && fx.awEye ? fx.awEye : fx.eye ?? pal.eye;
+    glow(ctx, _e[0], _e[1], 3.2 + (P.hurt ?? 0) * 1.5, ec, 0.75 * (1 - P.blink * 0.8));
+    if (C.fx && q > 0) glow(ctx, _e[0], _e[1], 7, ec, 0.3);
+  }
+  if (!C.fx) return;
+  // 불갈기 · 영혼불 갈기 (목 위 점들)
+  const mane = aw && fx.awMane ? fx.awMane : fx.mane;
+  if (mane && q > 0) {
+    const n = q === 2 ? 3 : 2, up = -PI / 2 - 0.5 - P.mane * 0.6;
+    for (const name of mane) {
+      if (!headPt(D, C, R.head, name, hr, _q)) continue;
+      flames(ctx, _q[0], _q[1], up, fx.maneLen ?? 9, fx.maneW ?? 3.2, n, t, name.length + _q[0] * 0.01, glowC, fx.core ?? '#fff4c8', (fx.maneA ?? 0.55) + P.fire * 0.25);
+    }
+  }
+  // 몸의 빛 (갈비 속 영혼불 · 용암 균열 · 각성 불씨)
+  const bodyGlows = aw && fx.awBody ? fx.awBody : fx.body;
+  if (bodyGlows) for (const [name, r, a0] of bodyGlows) {
+    if (!bodyPt(D, C, R.body, name, _q)) continue;
+    glow(ctx, _q[0], _q[1], r, glowC, a0 * (0.75 + 0.25 * flick(t, r)) * (q === 0 ? 0.6 : 1));
+  }
+  // 머리의 빛 (뿔 · 엄니)
+  const headGlows = aw && fx.awHead ? fx.awHead : fx.head;
+  if (headGlows && q > 0) for (const [name, r, a0] of headGlows) {
+    if (!headPt(D, C, R.head, name, hr, _q)) continue;
+    glow(ctx, _q[0], _q[1], r * (1 + (P.howl ?? 0) * 0.6), glowC, a0 * (0.8 + 0.2 * flick(t, r + 1)) + (P.howl ?? 0) * 0.3);
+  }
+  // 꼬리 불꽃
+  if (fx.tailFire && q > 0) {
+    let x = P.tx, y = P.ty;
+    for (let i = 0; i < P.ta.length; i++) {
+      x += Math.cos(P.ta[i]) * P.tl; y += Math.sin(P.ta[i]) * P.tl;
+      if (i % (q === 2 ? 1 : 2) === 0) glow(ctx, x, y, 4 + i * 0.8, glowC, 0.25 * flick(t, i + 3));
+    }
+  }
+  // 발굽 불빛
+  if (fx.hoofs) for (let i = 0; i < 4; i++) { const L = P.legs[i]; glow(ctx, L.fx, L.fy - 2, i < 2 ? 4 : 5.5, glowC, (i < 2 ? 0.22 : 0.35) * (0.7 + 0.3 * flick(t, i))); }
+  // 콧김 (대기)
+  if (P.snort > 0.05 && fx.snort !== false && headPt(D, C, R.head, 'muzzle', hr, _q)) {
+    const c = fx.snort ?? '#b8b8c0';
+    for (let k = 0; k < (q ? 3 : 1); k++) glow(ctx, _q[0] + 3 + k * 4 * P.snort, _q[1] + 1 - k * 1.5, 2.5 + k * 2 * P.snort, c, 0.35 * P.snort * (1 - k * 0.25));
   }
 }
 

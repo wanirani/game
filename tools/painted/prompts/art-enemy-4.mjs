@@ -126,13 +126,13 @@ Object.assign(SHOTS, {
     tool: 'image_to_image', aspect: '4:3', n: 2, inputs: ['succ_ref_b'], for: ['succubus'],
     prompt: sheet('winged demoness', [
       'the head with the curved horns, the face and the long flowing hair',
-      'the torso in the laced leather corset from the neck to the hips (no head, no arms, no legs, no wings)',
+      'the torso: the bodice of the black gown with the crimson trim from the neck to the waist (no head, no arms, no wings, no skirt)',
+      'the long flowing split skirt of the gown from the waist to the ragged hem, black outside with the crimson lining (no legs)',
       'one bat wing alone fully spread flat with the black finger bones fanning out, the shoulder joint at the left end of the piece',
       'one upper arm in a long black glove',
       'one forearm in a long black glove with the clawed hand open',
-      'one thigh in the black bodysuit',
-      'one lower leg in a high black boot',
-      'the thin black demon tail with the heart-shaped spade tip lying straight and horizontal',
+      'one whole leg in the high black heeled boot, from the hip to the toe',
+      'the thin black demon tail with the spade tip lying straight and horizontal',
     ]),
   },
   priest_sheet: {

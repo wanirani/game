@@ -8,7 +8,7 @@
 | `build_web.mjs` | `dist/web` (게시 폴더) + `dist/deploy` (Netlify 업로드 묶음) 만들기, 공개 금지 검사, 번들, 서비스 워커 주입, 크기 보고 |
 | `serve_dist.mjs` | `dist/web` 로컬 서버: netlify.toml 헤더·`_redirects`·brotli/gzip·ETag (Netlify 흉내) |
 | `smoke_deployed.mjs` | 배포된 사이트(또는 `--local`) 확인: 헤더, 빌드 일치, 공개 금지 파일 404, APK, API, 워커·설치 가능, 페이지 오류 0 |
-| `test_sw.mjs` | 서비스 워커 수명 주기 시험: 설치·미리 받기, /api 미캐시, 오프라인(타이틀·마을·s01), 새 빌드 대기·적용·옛 캐시 삭제·그림 무효화 |
+| `test_sw.mjs` | 서비스 워커 수명 주기 시험: 설치·미리 받기, /api 미캐시, 서버를 내린 진짜 오프라인(타이틀·마을·s01), 옛 워커 아래 새 빌드 페이지가 새 리그·fonts.json 을 받음, 새 빌드 대기·적용·옛 캐시 삭제·바뀐 그림만 무효화 |
 | `build_artifact.mjs` | `dist/web` → `dist/artifact` (claude.ai 아티팩트: 조각 ≤ 8, 그림 팩 ≤ 40, 한도 검사, 올리기 계획) |
 | `lib/bundle.mjs` · `lib/scope.mjs` · `lib/minify.mjs` · `lib/acorn.mjs` | 의존성 없는 ES 모듈 번들러 (Node 내장 acorn 사용) |
 | `../assets/make_variants.py` | `assets/lo/` 저사양 그림 (bg·cg·portraits 60 %, webp q72) — 증분·멱등 |

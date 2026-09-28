@@ -14,7 +14,7 @@
    "tool": "text_to_image",
    "aspect": "1:1",
    "imageCount": 2,
-   "decision": "kept #1 as src/gd_fairy_ref.webp (both saved as src/gd_fairy_ref0/1.webp)"
+   "decision": "kept #1 as src/gd_fairy_ref.webp"
   },
   {
    "guardian": "gd_spiritwolf",
@@ -23,7 +23,7 @@
    "tool": "text_to_image",
    "aspect": "4:3",
    "imageCount": 2,
-   "decision": "kept #1 as src/gd_spiritwolf_ref.webp (both saved as src/gd_spiritwolf_ref0/1.webp)"
+   "decision": "kept #1 as src/gd_spiritwolf_ref.webp"
   },
   {
    "guardian": "gd_imp",
@@ -32,7 +32,7 @@
    "tool": "text_to_image",
    "aspect": "1:1",
    "imageCount": 2,
-   "decision": "kept #0 as src/gd_imp_ref.webp (both saved as src/gd_imp_ref0/1.webp)"
+   "decision": "kept #0 as src/gd_imp_ref.webp"
   },
   {
    "guardian": "gd_knight",
@@ -41,7 +41,7 @@
    "tool": "text_to_image",
    "aspect": "3:4",
    "imageCount": 2,
-   "decision": "kept #0 as src/gd_knight_ref.webp (both saved as src/gd_knight_ref0/1.webp)"
+   "decision": "kept #0 as src/gd_knight_ref.webp"
   },
   {
    "guardian": "gd_whelp",
@@ -50,7 +50,7 @@
    "tool": "text_to_image",
    "aspect": "4:3",
    "imageCount": 2,
-   "decision": "kept #0 as src/gd_whelp_ref.webp (both saved as src/gd_whelp_ref0/1.webp)"
+   "decision": "kept #0 as src/gd_whelp_ref.webp"
   },
   {
    "guardian": "gd_owl",
@@ -59,7 +59,7 @@
    "tool": "text_to_image",
    "aspect": "3:4",
    "imageCount": 2,
-   "decision": "kept #1 as src/gd_owl_ref.webp (both saved as src/gd_owl_ref0/1.webp)"
+   "decision": "kept #1 as src/gd_owl_ref.webp"
   },
   {
    "guardian": "gd_fairy",
@@ -150,7 +150,7 @@
    "aspect": "1:1",
    "imageCount": 2,
    "prompt": "EXTRAS.imp_edit in tools/painted/prompts/cmp-guard-art-a.mjs",
-   "decision": "pending"
+   "decision": "kept #1 as src/gd_imp_edit.webp (wings/staff gone, arms at the sides; tail tip cut at build time)"
   },
   {
    "guardian": "gd_knight",
@@ -163,7 +163,7 @@
    "aspect": "3:4",
    "imageCount": 2,
    "prompt": "EXTRAS.knight_edit in tools/painted/prompts/cmp-guard-art-a.mjs",
-   "decision": "pending"
+   "decision": "kept #1 as src/gd_knight_edit.webp (shield and sword gone, fist held forward)"
   },
   {
    "guardian": "gd_whelp",
@@ -176,7 +176,7 @@
    "aspect": "4:3",
    "imageCount": 2,
    "prompt": "EXTRAS.whelp_edit in tools/painted/prompts/cmp-guard-art-a.mjs",
-   "decision": "pending"
+   "decision": "kept #0 as src/gd_whelp_edit.webp (wings gone, side view facing right)"
   }
  ],
  "imagesGenerated": 30,

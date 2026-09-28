@@ -404,10 +404,11 @@ function sizeReport(OUT, report, { html, chunkFiles, cssFonts, opts, warn }) {
       jsRaw += s.raw; jsBr += s.br; jsGz += s.gz;
     }
   }
-  // 첫 화면 경로: html + css + build-info + boot-gate + main 조각 + 첫 화면 글꼴 + bg/title + index.html 이 부르는 ui 아이콘
+  // 첫 화면 경로: html + css + build-info + boot-gate + main 조각 + 첫 화면 글꼴 + bg/title + 탭 아이콘(파비콘)
+  // (apple-touch-icon·192/512 아이콘·매니페스트 아이콘은 홈 화면에 추가할 때만 받으므로 넣지 않는다)
   const crit = new Set(['index.html', 'build-info.js', 'src/boot-gate.js', 'css/style.css', 'css/touchpad.css', 'assets/bg/title.webp', ...chunkFiles]);
   for (const f of FIRST_FONTS) crit.add(`assets/fonts/${f}`);
-  for (const m of html.matchAll(/href="(assets\/ui\/[^"?]+)"/g)) crit.add(m[1]);
+  for (const m of html.matchAll(/<link rel="icon"[^>]*?sizes="(\d+)x\d+"[^>]*?href="(assets\/ui\/[^"?]+)"/g)) if (Number(m[1]) <= 64) crit.add(m[2]);
   let critRaw = 0, critBr = 0;
   const critList = [];
   for (const rel of crit) {

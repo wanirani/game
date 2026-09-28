@@ -81,6 +81,7 @@ def tune(pid):
     out = {
         'sh': sh, 'hp': hp, 'far': cfg['frame'].get('far', [4, -1.5]),
         'l1f': d(sh, kn), 'l2f': d(kn, fh), 'l1h': d(hp, hk), 'l2h': d(hk, hh),
+        'footF': round(fh[0] - sh[0], 2), 'footH': round(hh[0] - hp[0], 2), 'sink': cfg['frame'].get('sink', 1.2),
         'neck': {'x': nb[0], 'y': nb[1], 'a': ang(nb, poll), 'len': d(nb, poll)},
         'head': {'a': ang(poll, muz), 'len': d(poll, muz)},
         'tail': {'x': tr[0], 'y': tr[1], 'n': n, 'len': round(d(tr, tt) / n, 2), 'a': ang(tr, tt)},

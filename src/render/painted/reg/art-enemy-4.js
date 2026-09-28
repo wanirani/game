@@ -9,6 +9,7 @@ import * as ice_bat from '../enemies/ice_bat.js';
 import * as snow_wolf from '../enemies/snow_wolf.js';
 import * as frozen_knight from '../enemies/frozen_knight.js';
 import * as death_knight from '../enemies/death_knight.js';
+import * as frost_wraith from '../enemies/frost_wraith.js';
 
 export const bosses = {};
 export const enemies = [
@@ -16,6 +17,7 @@ export const enemies = [
   { mod: snow_wolf },
   { mod: frozen_knight },
   { mod: death_knight },
+  { mod: frost_wraith },
 ];
 export const companions = {};
 export const npcs = {};

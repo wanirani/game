@@ -1,0 +1,170 @@
+{
+ "id": "gd_imp",
+ "tier": "T1",
+ "srcTD": 4,
+ "note": "\ud54c: body = Step-4 edit of the reference (wings, tail and staff removed, arms at the sides; tail stub cut); staff / wing / tail = sheet1 isolated pieces.",
+ "sources": {
+  "e": {
+   "raw": "gd_imp_edit.webp",
+   "file": "gd_imp_edit.png",
+   "mode": "",
+   "k": 0.0214
+  },
+  "s": {
+   "raw": "gd_imp_sheet1.webp",
+   "file": "gd_imp_sheet1.png",
+   "mode": "",
+   "k": 0.0139
+  }
+ },
+ "parts": {
+  "body": {
+   "src": "e",
+   "box": [
+    530,
+    395,
+    1515,
+    1830
+   ],
+   "keep": "largest",
+   "minus": [
+    [
+     [
+      520,
+      1090
+     ],
+     [
+      760,
+      1100
+     ],
+     [
+      780,
+      1180
+     ],
+     [
+      740,
+      1270
+     ],
+     [
+      520,
+      1290
+     ]
+    ]
+   ],
+   "piv": {
+    "a": [
+     1130,
+     1805
+    ],
+    "hand": [
+     1362,
+     1430
+    ],
+    "wl": [
+     830,
+     1060
+    ],
+    "wr": [
+     1340,
+     1060
+    ],
+    "tail": [
+     800,
+     1230
+    ],
+    "eye": [
+     1087,
+     752
+    ],
+    "eye2": [
+     1287,
+     762
+    ],
+    "horn": [
+     1000,
+     430
+    ],
+    "horn2": [
+     1350,
+     505
+    ],
+    "mouth": [
+     1180,
+     880
+    ],
+    "top": [
+     1150,
+     420
+    ]
+   }
+  },
+  "staff": {
+   "src": "s",
+   "k": 0.0237,
+   "box": [
+    1195,
+    300,
+    2320,
+    585
+   ],
+   "rot": 90,
+   "piv": {
+    "a": [
+     1450,
+     472
+    ],
+    "skull": [
+     2057,
+     428
+    ],
+    "fire": [
+     2150,
+     405
+    ],
+    "end": [
+     1214,
+     486
+    ]
+   }
+  },
+  "wing": {
+   "src": "s",
+   "box": [
+    0,
+    1105,
+    1170,
+    1665
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1150,
+     1500
+    ],
+    "b": [
+     30,
+     1300
+    ]
+   }
+  },
+  "tail": {
+   "src": "s",
+   "box": [
+    1180,
+    1290,
+    2340,
+    1430
+   ],
+   "piv": {
+    "a": [
+     2325,
+     1372
+    ],
+    "b": [
+     1200,
+     1352
+    ]
+   }
+  }
+ }
+}

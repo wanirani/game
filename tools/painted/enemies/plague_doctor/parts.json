@@ -1,0 +1,155 @@
+{
+ "id": "plague_doctor",
+ "tier": "T2",
+ "srcTD": 4,
+ "note": "Cut from the Kling parts sheet (plague_doctor_sheet = sheet take 2, input: reference take 2): the armless side figure (wide-brimmed hat, beaked mask with green goggles, leather capelet, long coat with belt) as the body, the loose sleeve + gloved hand as both arms (the far one darkened), the knee boot as both legs, the brass-handled cane and the green flask (held while throwing, two small copies hang on the belt). The figure faces left on the sheet, so every cut is mirrored (flipX).",
+ "sources": {
+  "s": {
+   "raw": "plague_doctor_sheet.webp",
+   "file": "a3_plague_doctor_sheet.png",
+   "k": 0.049
+  }
+ },
+ "parts": {
+  "body": {
+   "src": "s",
+   "box": [
+    920,
+    76,
+    1566,
+    1556
+   ],
+   "keep": "largest",
+   "flipX": true,
+   "piv": {
+    "a": [
+     1270,
+     1545
+    ],
+    "hip": [
+     1215,
+     800
+    ],
+    "shoulder": [
+     1235,
+     520
+    ],
+    "eye": [
+     1082,
+     287
+    ],
+    "beak": [
+     995,
+     496
+    ],
+    "v1": [
+     1135,
+     812
+    ],
+    "v2": [
+     1175,
+     816
+    ],
+    "hem": [
+     1270,
+     1545
+    ]
+   }
+  },
+  "arm": {
+   "src": "s",
+   "box": [
+    2020,
+    232,
+    2230,
+    772
+   ],
+   "keep": "largest",
+   "flipX": true,
+   "k": 0.054,
+   "piv": {
+    "a": [
+     2105,
+     263
+    ],
+    "b": [
+     2113,
+     650
+    ],
+    "hand": [
+     2113,
+     650
+    ]
+   }
+  },
+  "boot": {
+   "src": "s",
+   "box": [
+    1708,
+    935,
+    2143,
+    1630
+   ],
+   "keep": "largest",
+   "flipX": true,
+   "k": 0.034,
+   "piv": {
+    "a": [
+     2030,
+     965
+    ],
+    "b": [
+     2020,
+     1605
+    ]
+   }
+  },
+  "cane": {
+   "src": "s",
+   "box": [
+    1535,
+    528,
+    1725,
+    1602
+   ],
+   "keep": "largest",
+   "flipX": true,
+   "k": 0.0377,
+   "piv": {
+    "a": [
+     1650,
+     580
+    ],
+    "b": [
+     1672,
+     1590
+    ],
+    "grip": [
+     1650,
+     580
+    ]
+   }
+  },
+  "flask": {
+   "src": "s",
+   "box": [
+    1704,
+    86,
+    1917,
+    424
+   ],
+   "keep": "largest",
+   "k": 0.037,
+   "piv": {
+    "a": [
+     1810,
+     118
+    ],
+    "c": [
+     1810,
+     330
+    ]
+   }
+  }
+ }
+}

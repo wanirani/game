@@ -421,8 +421,8 @@
       2336,
       1760
      ],
-     "kept": null,
-     "decision": "pending"
+     "kept": false,
+     "decision": "rejected: weaker side figure / composition drifted from the ghost sheet"
     },
     {
      "name": "fw_sheet_2",
@@ -431,8 +431,8 @@
       2336,
       1760
      ],
-     "kept": null,
-     "decision": "pending"
+     "kept": true,
+     "decision": "kept: frost_wraith source (side hooded figure, skeletal arm, crowned screaming head; ghost composition kept)"
     }
    ]
   },
@@ -456,8 +456,8 @@
       1760,
       2336
      ],
-     "kept": null,
-     "decision": "pending"
+     "kept": false,
+     "decision": "rejected: pose drifted from the skeleton composition"
     },
     {
      "name": "angel_body_2",
@@ -466,8 +466,8 @@
       1760,
       2336
      ],
-     "kept": null,
-     "decision": "pending"
+     "kept": true,
+     "decision": "kept: bone_angel body source (skeleton-rig composition kept)"
     }
    ]
   },
@@ -491,8 +491,8 @@
       2336,
       1760
      ],
-     "kept": null,
-     "decision": "pending"
+     "kept": true,
+     "decision": "kept: bone_angel props: wing, lance, arm bones"
     },
     {
      "name": "angel_props_2",
@@ -501,8 +501,8 @@
       2336,
       1760
      ],
-     "kept": null,
-     "decision": "pending"
+     "kept": false,
+     "decision": "rejected: props less clean"
     }
    ]
   },
@@ -524,8 +524,8 @@
       1760,
       2368
      ],
-     "kept": null,
-     "decision": "pending"
+     "kept": false,
+     "decision": "rejected: snowy background baked in"
     },
     {
      "name": "golem_ref_2",
@@ -534,8 +534,8 @@
       1760,
       2368
      ],
-     "kept": null,
-     "decision": "pending"
+     "kept": true,
+     "decision": "kept: ice_golem reference (clean background) -> input for golem_sheet"
     }
    ]
   },
@@ -557,8 +557,8 @@
       1760,
       2368
      ],
-     "kept": null,
-     "decision": "pending"
+     "kept": false,
+     "decision": "rejected: too revealing, posed from behind"
     },
     {
      "name": "succ_ref_2",
@@ -567,8 +567,8 @@
       1760,
       2368
      ],
-     "kept": null,
-     "decision": "pending"
+     "kept": false,
+     "decision": "rejected: too revealing"
     }
    ]
   },
@@ -590,8 +590,8 @@
       1760,
       2368
      ],
-     "kept": null,
-     "decision": "pending"
+     "kept": true,
+     "decision": "kept: blood_priest reference (take 2 blocked by moderation, refunded)"
     }
    ],
    "note": "one of the two images was blocked by the content filter (SENSITIVE_RESULT, credits refunded)"
@@ -614,8 +614,8 @@
       1760,
       2368
      ],
-     "kept": null,
-     "decision": "pending"
+     "kept": true,
+     "decision": "kept: cursed_nun reference"
     },
     {
      "name": "nun_ref_2",
@@ -624,8 +624,146 @@
       1760,
       2368
      ],
-     "kept": null,
-     "decision": "pending"
+     "kept": false,
+     "decision": "rejected: weaker silhouette"
+    }
+   ]
+  },
+  {
+   "shot": "succ_ref_b",
+   "tool": "text_to_image",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "inputs": [],
+   "for": [
+    "succubus"
+   ],
+   "generationId": "ASPdV2EzscAomkZDJHTkfMQmFUejGub3gG9CNTA12HxR6Ls498JcLpuNtWdfhXxzMSrl9HpM",
+   "images": [
+    {
+     "name": "succ_ref_b_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzRmZTQ0MjhlLWFmOGQtNGU4NC1hMGE5LWZmZjA1ZTE3Yjc0My82NjI1MzcxNDI1MjU0NjI3MzQwL3RlbXB5b2Mzay5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      1760,
+      2368
+     ],
+     "kept": false,
+     "decision": "rejected: less side-on than take 2"
+    },
+    {
+     "name": "succ_ref_b_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzU3NjY4MzAwLTg4MTYtNDJiMC1hYzRmLTU1YWVkMjY5NDgzMi8tODU2NDMyMjg2NDI4NDEwMTY3NS90ZW1wMnF6bzUucG5n.origin?x-kcdn-pid=112372",
+     "size": [
+      1760,
+      2368
+     ],
+     "kept": true,
+     "decision": "kept: succubus reference: covered black battle gown, side-on flight pose -> input for succ_sheet"
+    }
+   ]
+  },
+  {
+   "shot": "golem_sheet",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "inputs": [
+    "golem_ref"
+   ],
+   "for": [
+    "ice_golem"
+   ],
+   "generationId": "AZI1ZxvpyEpQ2uMIe_o7tcMOrUXjScAkoGSI8DzW4Nps2P07J6djja2phUKrlqE1cKDjbdsp",
+   "images": [
+    {
+     "name": "golem_sheet_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2Y1NTdjNjhmLTZkM2QtNGI4ZC1iOTRiLTY0MWYxMjNlNDVhMC8zODE0MDgxMDk0MjI2MTA1NDgwL3RlbXA2ZG11MC5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": true,
+     "decision": "kept: ice_golem parts: torso+head, separate arm, separate leg"
+    },
+    {
+     "name": "golem_sheet_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpbc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzhhYjhhNGIzLTMyMDktNGZjYi05NWQwLTlhNzQwYWRlNGQ1NC8tMzkyNjk2NjI1NjU1OTMzMTUvdGVtcHl2Nzg2LnBuZw.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": false,
+     "decision": "rejected: pieces not usable as a side rig (tiny body, pillar)"
+    }
+   ]
+  },
+  {
+   "shot": "priest_sheet",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "inputs": [
+    "priest_ref"
+   ],
+   "for": [
+    "blood_priest"
+   ],
+   "generationId": "ARgvQFkBfi1rHMxGHY72EGoYGhR_BwWkXZoLrdd56kqmc5sR9ZuvKAxfMLFjTP0wA0RAtnhn",
+   "images": [
+    {
+     "name": "priest_sheet_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2ViNDU3NzdiLWYwZmItNGI0Yy04N2ZkLTRiOTg0OGMwY2RiMy8tMzIzODM3NTk2ODA3NDM5ODQyNS90ZW1wdHFneHgucG5n.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": true,
+     "decision": "kept: blood_priest parts: side figure with chalice, sleeve arms, rosary"
+    },
+    {
+     "name": "priest_sheet_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpdc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzFkMWI1M2I1LTY2NzctNGM5MS04YzBhLTExMmQyOGQwYWQ2OS8tNzE5MDY5OTk2NzgyMTc4ODU1NS90ZW1wa3Y2MGMucG5n.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": false,
+     "decision": "rejected: skeleton/cloth piece unusable, bloody horizontal arm"
+    }
+   ]
+  },
+  {
+   "shot": "nun_sheet",
+   "tool": "image_to_image",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "inputs": [
+    "nun_ref"
+   ],
+   "for": [
+    "cursed_nun"
+   ],
+   "generationId": "AXoEYQBqjDb9hijnRLd-tmbVZhIFbqyhgSTSjNOT1F5yzCVPNLGVQxLg9njquEPMxXI6W-9q",
+   "images": [
+    {
+     "name": "nun_sheet_1",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0LzZjM2FhNmE1LTlkZDItNDJlYy04NzEwLTg2Yjc5YjU5YjBlOC8tOTg0MTE4OTI1OTMyNzU5MDE0L3RlbXBra2cwcC5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": true,
+     "decision": "kept: cursed_nun: glowing rosary cross piece (piece 4) + veil"
+    },
+    {
+     "name": "nun_sheet_2",
+     "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0L2NjOWE0MmZhLTIyZGYtNDFjYS04M2E0LWYyMDVlZjJkYzJjMi83NzM4NzAxNzAxMjMwNTA0MDk5L3RlbXA1c292cC5wbmc.origin?x-kcdn-pid=112372",
+     "size": [
+      2336,
+      1760
+     ],
+     "kept": true,
+     "decision": "kept: cursed_nun parts: side figure, sleeve arms"
     }
    ]
   }
