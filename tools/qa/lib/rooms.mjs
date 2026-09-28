@@ -29,6 +29,8 @@ export async function gotoRoom(s, stage, room, { hero = null } = {}) {
  *  prepareFor: setTimeout 250–300 ms + requestIdleCallback). A player always gets it (title card, intro); a frozen page that
  *  arms the canvas counter at once would count those pools as "created after stage start". */
 export async function idleFlush(s, ms = 700) {
+  // web fonts first: a late font load bumps ui.fontEpoch and every glyph/text cache rebuilds (new canvases) mid-measurement
+  await s.eval(() => Promise.race([document.fonts?.ready, new Promise((r) => setTimeout(r, 5000))])).catch(() => {});
   await s.eval((ms) => new Promise((res) => setTimeout(() => {
     const idle = typeof requestIdleCallback === 'function' ? (f) => requestIdleCallback(f, { timeout: 1500 }) : (f) => setTimeout(f, 50);
     idle(() => idle(() => res()));

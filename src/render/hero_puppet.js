@@ -548,6 +548,19 @@ export function capeCanvas(col) {
   }
   return cv;
 }
+// 패턴 객체도 결 캔버스별로 한 번만 만든다 (프레임마다 createPattern·DOMMatrix 할당 없음). 변환은 쓰기 직전에 매번 덮어쓴다
+const CAPE_PATO = new WeakMap(), PXF = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
+function capePattern(c, cv) {
+  let pat = CAPE_PATO.get(cv);
+  if (pat === undefined) { pat = c.createPattern(cv, 'repeat'); if (pat && typeof pat.setTransform !== 'function') pat = null; CAPE_PATO.set(cv, pat); }
+  return pat;
+}
+/** 패턴 변환 = translate(x, y) · rotate(r) · scale(k) */
+function patXf(pat, x, y, r, k) {
+  const cs = Math.cos(r) * k, sn = Math.sin(r) * k;
+  PXF.a = cs; PXF.b = sn; PXF.c = -sn; PXF.d = cs; PXF.e = x; PXF.f = y;
+  pat.setTransform(PXF);
+}
 const CAPE_OFF = new Float32Array(32), FOLD = new Float32Array(32);
 /** 망토 주름: 띠 중심선을 따라 폭 방향으로 비킨 세로 주름 3줄(그늘 + 옆 반사광). 밝은 망토(성기사 흰 망토)도 평평한 판처럼 보이지 않게 */
 function capeFolds(c, off, n, col) {
@@ -592,10 +605,10 @@ function drawCapePup(c, E, K, s) {
   ribbonPath(c, off, n, WS, false);
   const cv = G.tint ? null : capeCanvas(cp.c);
   if (cv) {
-    const pat = c.createPattern(cv, 'repeat');
+    const pat = capePattern(c, cv);
     const e = (n - 1) * 2, ang = Math.atan2(off[e + 1] - off[1], off[e] - off[0]);
-    if (pat && typeof DOMMatrix !== 'undefined') {
-      pat.setTransform(new DOMMatrix().translateSelf(off[0], off[1]).rotateSelf(((ang + 0.95) * 180) / PI).scaleSelf(0.16, 0.16));
+    if (pat) {
+      patXf(pat, off[0], off[1], ang + 0.95, 0.16);
       c.fillStyle = pat; c.fill();
     } else { c.fillStyle = cp.c; c.fill(); }
     // 부피감: 뒤쪽 가장자리 어둡게 + 윤곽
@@ -791,8 +804,8 @@ export function drawTurnCape(ctx, I, cape, yaw, behind, t) {
   c.closePath();
   const cv = capeCanvas(cape.c);
   if (cv) {
-    const pat = c.createPattern(cv, 'repeat');
-    if (pat && typeof DOMMatrix !== 'undefined') pat.setTransform(new DOMMatrix().translateSelf(dx - wBot, sy).scaleSelf(0.2, 0.2));
+    const pat = capePattern(c, cv);
+    if (pat) patXf(pat, dx - wBot, sy, 0, 0.2);
     c.fillStyle = pat || cape.c;
   } else c.fillStyle = cape.c;
   c.fill();

@@ -16,8 +16,12 @@
 //   · 고유 능력: 모르스 처형(일반 적, 3초 내부 대기) · 미라 되비추기(5초마다, 탄이 있을 확률 40%)
 //   장면 두 가지: '필드' (일반 적 둘 — 광역이 둘을 치고 플레이어 베기는 1.4 배, 처형 적용) · '보스' (한 대상, 처형 없음)
 // 합격 기준 (어기면 종료 코드 1):
-//   B1  모든 수호신 × 모든 영웅 × 점검점 (동료 Lv, 영웅 Lv) = (1,5) (10,15) (20,30) (30,45) (30,60) (30,68) 에서
-//       유대 0 · 유대 5 모두, 두 장면 모두, 플레이어 3.0·3.5 mv/s 모두 → 몫 ∈ [6%, 30%]   (companions §9 "Hard limits")
+//   B1  모든 수호신 × 점검점 (동료 Lv, 영웅 Lv) = (1,5) (10,15) (20,30) (30,45) (30,60) (30,68) 에서 '모형 몫' ∈ [6%, 30%]
+//       (companions §9 "Hard limits"). 모형 몫 = 영웅 여섯의 평균 × (필드·보스 평균), 그 점검점의 자연스러운 유대 단계
+//       (0 · 2 · 4 · 5 · 5 · 5), 플레이어 3.25 mv/s. 그 수호신이 합류하기 전의 점검점(합류 챕터의 영웅 레벨 − 3 보다 낮은
+//       영웅 Lv — 예: 틱톡은 9장 합류라 (1,5)·(10,15) 없음, 2부 수호신은 (30,45) 부터)은 판정하지 않는다 ('—').
+//       영웅별 최저–최고와 유대 0–5 · 3.0–3.5 mv/s 전체 폭은 참고로 함께 보이고, 영웅 하나라도 범위를 벗어나면 경고한다.
+//   --set gd_fairy.attack.mv=0.9,gd_fairy.attack.interval=1.1   데이터를 바꾸지 않고 수치를 가정해 다시 잰다 (FIX-COMPANIONS 가 값을 고르는 용도)
 //   B2  그림메인 Lv 1 버티기 배율 ≈ 1.29 · 기수 몫 ≈ 0.39 (명세 §9 예시; 공식·데이터 어긋남 검출)
 // 참고 (경고만): 명세 기대 범위 Lv1 8–12% · Lv15 13–18% · Lv30 유대5 20–28% (필드, 3.25 mv/s, 영웅 평균) 밖의 수호신,
 //   탈것 버티기·특수기 초당 배율이 아홉 탈것 중앙값의 0.6 배 미만 / 1.6 배 초과, 스테이지 구간별 수호신 몫 요약.
@@ -45,7 +49,7 @@ const argv = process.argv.slice(2);
 const flag = (k) => argv.includes('--' + k);
 const optv = (k, d) => { const i = argv.indexOf('--' + k); return i >= 0 && argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[i + 1] : d; };
 const JSON_OUT = flag('json'), VERBOSE = flag('verbose');
-const posArgs = argv.filter((a, i) => !a.startsWith('--') && argv[i - 1] !== '--mvps');
+const posArgs = argv.filter((a, i) => !a.startsWith('--') && argv[i - 1] !== '--mvps' && argv[i - 1] !== '--set');
 const HEROES = posArgs.length ? posArgs : Object.keys(CHARACTERS);
 for (const h of HEROES) if (!CHARACTERS[h]) { console.error(`알 수 없는 영웅: ${h} (${Object.keys(CHARACTERS).join(', ')})`); process.exit(2); }
 const MVPS_ONE = optv('mvps', null);
@@ -53,7 +57,17 @@ const MVPS = MVPS_ONE ? [Number(MVPS_ONE)] : [3.0, 3.5];
 const MVPS_MID = MVPS_ONE ? Number(MVPS_ONE) : 3.25;
 if (MVPS.some((v) => !(v > 0))) { console.error('--mvps 는 양수'); process.exit(2); }
 
-const CHECKS = [[1, 5], [10, 15], [20, 30], [30, 45], [30, 60], [30, 68]];
+// 점검점 (동료 Lv, 영웅 Lv, 그때의 자연스러운 유대 단계: 합류 뒤 스테이지마다 ≈19점 — 클리어 6 + 보스 10 + 50킬 3, 공물 제외)
+// --set 경로=값 (what-if): MOUNTS/GUARDIANS 의 숫자 필드를 메모리에서만 바꾼다
+for (const part of String(optv('set', '')).split(',').map((x) => x.trim()).filter(Boolean)) {
+  const [k, v] = part.split('=');
+  const keys = k.split('.');
+  let o = MOUNTS[keys[0]] ?? GUARDIANS[keys[0]];
+  for (let i = 1; o && i < keys.length - 1; i++) o = o[keys[i]];
+  if (!o || !(keys.at(-1) in o) || !Number.isFinite(Number(v)) || typeof o[keys.at(-1)] !== 'number') { console.error(`--set 경로 오류 (숫자 필드만): ${part}`); process.exit(2); }
+  o[keys.at(-1)] = Number(v);
+}
+const CHECKS = [[1, 5, 0], [10, 15, 2], [20, 30, 4], [30, 45, 5], [30, 60, 5], [30, 68, 5]];
 const LIMIT = [0.06, 0.30];
 const EXPECT = [
   { cLv: 1, hLv: 5, bond: 0, band: [0.08, 0.12], label: 'Lv1' },
@@ -285,24 +299,37 @@ function mountModel(id, lv, rank) {
 const out = { checks: [], expect: [], mounts: [], tiers: [], fails: [], warns: [] };
 
 // B1: 점검점 × 유대 0/5 × 장면 × mvps × 영웅
+/** 수호신이 합류하는 챕터에 들어설 때의 영웅 레벨 (카엘 기준 실행) */
+const joinHeroLv = (gid) => { stageForLevel('kael', 1); const i = Math.max(0, Math.min(STAGE_ORDER.length - 1, (GUARDIANS[gid].chapter ?? 1) - 1)); return PROG.kael[i]?.plv ?? 1; };
 const rows = [];
 for (const gid of GUARDIAN_IDS) {
-  const row = { gid, name: GUARDIANS[gid].name, cells: [] };
-  for (const [cLv, hLv] of CHECKS) {
-    let lo = Infinity, hi = -Infinity, loAt = null, hiAt = null;
-    for (const cid of HEROES) for (const bond of [0, 5]) for (const mvps of MVPS) for (const scen of [{ n: 2, boss: false }, { n: 1, boss: true }]) {
-      const m = guardianModel(cid, gid, cLv, bond, hLv, { ...scen, mvps });
-      const tag = `${cid} 유대${bond} ${scen.boss ? '보스' : '필드'} ${mvps}mv/s`;
-      if (m.share < lo) { lo = m.share; loAt = tag; }
-      if (m.share > hi) { hi = m.share; hiAt = tag; }
+  const row = { gid, name: GUARDIANS[gid].name, cells: [], joinLv: joinHeroLv(gid) };
+  for (const [cLv, hLv, nb] of CHECKS) {
+    const applies = hLv >= row.joinLv - 3;
+    let lo = Infinity, hi = -Infinity, loAt = null, hiAt = null, elo = Infinity, ehi = -Infinity, sum = 0, n = 0;
+    for (const cid of HEROES) {
+      let hs = 0;
+      for (const scen of [{ n: 2, boss: false }, { n: 1, boss: true }]) {
+        const m = guardianModel(cid, gid, cLv, nb, hLv, { ...scen, mvps: MVPS_MID });
+        hs += m.share / 2;
+        for (const bond of [0, 5]) for (const mvps of MVPS) {
+          const x = guardianModel(cid, gid, cLv, bond, hLv, { ...scen, mvps }).share;
+          elo = Math.min(elo, x); ehi = Math.max(ehi, x);
+        }
+      }
+      if (hs < lo) { lo = hs; loAt = cid; }
+      if (hs > hi) { hi = hs; hiAt = cid; }
+      sum += hs; n++;
     }
-    const ok = lo >= LIMIT[0] - 1e-9 && hi <= LIMIT[1] + 1e-9;
-    row.cells.push({ cLv, hLv, lo, hi, ok, loAt, hiAt });
-    if (!ok) out.fails.push(`B1 ${GUARDIANS[gid].name}(${gid}) (Lv${cLv}, 영웅 Lv${hLv}): ${pct(lo)}–${pct(hi)} — ${lo < LIMIT[0] ? `최저 ${loAt}` : `최고 ${hiAt}`}`);
+    const share = sum / n;
+    const ok = !applies || (share >= LIMIT[0] - 1e-9 && share <= LIMIT[1] + 1e-9);
+    row.cells.push({ cLv, hLv, bond: nb, applies, share, lo, hi, ok, loAt, hiAt, elo, ehi });
+    if (!ok) out.fails.push(`B1 ${GUARDIANS[gid].name}(${gid}) (Lv${cLv}, 영웅 Lv${hLv}, 유대 ${nb}): 모형 몫 ${pct(share)} (영웅별 ${pct(lo)} ${loAt} – ${pct(hi)} ${hiAt}) — 범위 [${pct(LIMIT[0])}, ${pct(LIMIT[1])}] 밖`);
+    else if (applies && (lo < LIMIT[0] || hi > LIMIT[1])) out.warns.push(`영웅에 따라 범위 밖: ${GUARDIANS[gid].name} (Lv${cLv}, 영웅 Lv${hLv}) ${lo < LIMIT[0] ? `${loAt} ${pct(lo)}` : `${hiAt} ${pct(hi)}`} (모형 몫 ${pct(share)})`);
   }
   rows.push(row);
 }
-out.checks = rows.map((r) => ({ gid: r.gid, cells: r.cells.map((c) => ({ cLv: c.cLv, hLv: c.hLv, lo: r2(c.lo * 100), hi: r2(c.hi * 100), ok: c.ok })) }));
+out.checks = rows.map((r) => ({ gid: r.gid, joinHeroLv: r.joinLv, cells: r.cells.map((c) => ({ cLv: c.cLv, hLv: c.hLv, bond: c.bond, applies: c.applies, share: r2(c.share * 100), lo: r2(c.lo * 100), hi: r2(c.hi * 100), ok: c.ok, rangeLo: r2(c.elo * 100), rangeHi: r2(c.ehi * 100) })) }));
 
 // 기대 범위 (경고)
 const expRows = [];
@@ -320,14 +347,24 @@ out.expect = expRows.map((r) => ({ gid: r.gid, cells: r.cells.map((c) => ({ labe
 
 // 탈것
 const MLV = [[1, 0], [10, 2], [20, 3], [30, 5]];
+/** 명세가 정한 역할 때문에 튀는 값 (설명만 붙인다) */
+const ROLE = {
+  'mt_boar.ehp': '명세 §1.1 탱커 (HP 1.30 · 흡수 0.80 · 받는 피해 0.85 · 피해 감소 +8)',
+  'mt_boar.buffer': '명세 §1.1 탱커',
+  'mt_direwolf.spRate': '특수기 「서리 포효」는 기절 1초 + 공격 속도 +15% 5초가 본 몫 (피해는 곁들임)',
+  'mt_giantbat.spRate': '특수기 「초음파」는 기절 1.2초 + 비밀 드러내기가 본 몫',
+  'mt_silva.spRate': '특수기 「정화의 울음」은 부패 정화 40 + 회복 5% 가 본 몫',
+  'mt_wyvern.spRate': '특수기 「화염 숨결」은 명세대로 1초 지속 ≈2.9 배율 (공중 사용 가능)',
+};
 const mrows = [];
 for (const [lv, rank] of MLV) {
   const list = MOUNT_IDS.map((id) => mountModel(id, lv, rank));
   const mb = med(list.map((m) => m.buffer)), me = med(list.map((m) => m.ehp)), ms = med(list.map((m) => m.spRate));
-  for (const m of list) {
+  if (lv === 10) for (const m of list) {   // 튀는 값은 대표 레벨 하나에서만 (레벨마다 같은 말을 되풀이하지 않게)
     for (const [k, v, mdn, label] of [['buffer', m.buffer, mb, '버티기 배율'], ['ehp', m.ehp, me, '탑승 중 유효 체력'], ['spRate', m.spRate, ms, '특수기 초당 배율']]) {
-      if (v < mdn * 0.6 || v > mdn * 1.6) out.warns.push(`탈것 튀는 값: ${m.name} Lv${lv} ${label} ${v} (아홉 탈것 중앙값 ${r2(mdn)})`);
-      void k;
+      if (!(v < mdn * 0.6 || v > mdn * 1.6)) continue;
+      const why = ROLE[`${m.id}.${k}`];
+      out.warns.push(`탈것 튀는 값: ${m.name} Lv${lv} ${label} ${v} (아홉 탈것 중앙값 ${r2(mdn)})${why ? ` — ${why}` : ''}`);
     }
   }
   mrows.push({ lv, rank, list });
@@ -371,23 +408,25 @@ if (JSON_OUT) { console.log(JSON.stringify(out, null, 1)); process.exit(out.fail
 
 // ── 표 ──
 console.log(`동료 밸런스 모형 — 영웅 ${HEROES.join(', ')} · 보통 난이도 · 플레이어 ${MVPS.join('/')} mv/s · 장면 필드(적 2)·보스(적 1) · 유대 0/5`);
-console.log(`\n■ 수호신 피해 몫 [${pct(LIMIT[0])}, ${pct(LIMIT[1])}] (점검점: 동료 Lv, 영웅 Lv — 칸 = 모든 조합의 최저–최고)`);
-const head = ['수호신'.padEnd(10), ...CHECKS.map(([c, h]) => `(${c},${h})`.padEnd(15))].join('');
-console.log('  ' + head);
-for (const r of rows) console.log('  ' + `${r.name}`.padEnd(9, '　').slice(0, 9).padEnd(10) + r.cells.map((c) => `${c.ok ? ' ' : '✗'}${pct(c.lo)}–${pct(c.hi)}`.padEnd(15)).join(''));
+const nm = (s) => s + '　'.repeat(Math.max(0, 5 - s.length));
+console.log(`\n■ 수호신 피해 몫 — 합격 범위 [${pct(LIMIT[0])}, ${pct(LIMIT[1])}] (점검점 (동료 Lv, 영웅 Lv) 유대 단계; 칸 = 모형 몫 [영웅별 최저–최고], ${MVPS_MID} mv/s, '—' = 합류 전)`);
+console.log('  ' + nm('수호신') + ' 합류 ' + CHECKS.map(([c, h, b]) => `(${c},${h}) 유대${b}`.padEnd(22)).join(''));
+for (const r of rows) console.log('  ' + nm(r.name) + ` Lv${String(r.joinLv).padEnd(3)}` + r.cells.map((c) => (c.applies ? `${c.ok ? ' ' : '✗'}${pct(c.share)} [${pct(c.lo)}–${pct(c.hi)}]` : ` — (${pct(c.share)})`).padEnd(22)).join(''));
+console.log(`  (참고: 영웅 여섯 × 필드·보스 × 유대 0–5 × ${MVPS.join('–')} mv/s 전체 폭)`);
+for (const r of rows) console.log('  ' + nm(r.name) + '       ' + r.cells.map((c) => ` ${pct(c.elo)}–${pct(c.ehi)}`.padEnd(22)).join(''));
 if (VERBOSE) {
-  console.log('\n  (세부: 카엘 · 필드 · 3.25 mv/s · 유대 0 — 자동 / 스킬 / 협공 / 고유, 초당 피해)');
-  for (const gid of GUARDIAN_IDS) for (const [cLv, hLv] of CHECKS) {
-    const m = guardianModel(tierHero, gid, cLv, 0, hLv, { n: 2, boss: false, mvps: MVPS_MID });
-    console.log(`   ${GUARDIANS[gid].name.padEnd(5, '　')} (${cLv},${hLv}) ${m.stage} 영웅 공격 ${m.heroAtk} · 몫 ${pct(m.share)} · 자동 ${m.parts.auto.toFixed(1)} 스킬 ${m.parts.skill.toFixed(1)} 협공 ${m.parts.assist.toFixed(1)} 고유 ${m.parts.passive.toFixed(1)} / 플레이어 ${m.p.toFixed(1)} · 간격 ${m.d.interval}s · 스킬 대기 ${m.d.skillCd}s`);
+  console.log(`\n  (세부: ${tierHero} · 필드 · ${MVPS_MID} mv/s · 점검점 유대 — 자동 / 스킬 / 협공 / 고유, 초당 피해)`);
+  for (const gid of GUARDIAN_IDS) for (const [cLv, hLv, nb] of CHECKS) {
+    const m = guardianModel(tierHero, gid, cLv, nb, hLv, { n: 2, boss: false, mvps: MVPS_MID });
+    console.log(`   ${nm(GUARDIANS[gid].name)} (${cLv},${hLv}) ${m.stage} 영웅 공격 ${m.heroAtk} · 몫 ${pct(m.share)} · 자동 ${m.parts.auto.toFixed(1)} 스킬 ${m.parts.skill.toFixed(1)} 협공 ${m.parts.assist.toFixed(1)} 고유 ${m.parts.passive.toFixed(1)} / 플레이어 ${m.p.toFixed(1)} · 간격 ${m.d.interval}s · 스킬 대기 ${m.d.skillCd}s`);
   }
 }
 console.log(`\n■ 명세 기대 범위 (필드 · ${MVPS_MID} mv/s · 영웅 평균; 벗어나도 경고만)`);
-for (const r of expRows) console.log('  ' + `${r.name}`.padEnd(9, '　').slice(0, 9).padEnd(10) + r.cells.map((c) => `${c.inBand ? ' ' : '!'}${c.label} ${pct(c.avg)}`.padEnd(20)).join(''));
+for (const r of expRows) console.log('  ' + nm(r.name) + ' ' + r.cells.map((c) => `${c.inBand ? ' ' : '!'}${c.label} ${pct(c.avg)}`.padEnd(20)).join(''));
 console.log('\n■ 탈것 (버티기 = 탈것이 쓰러질 때까지 받는 피해 ÷ 기수 최대 HP · 보스 ×1.3 · 기수 몫 = 그동안 기수가 받는 양 · 유효 체력 = 탑승부터 쓰러질 때까지 버티는 양 (탑승 효과 피해 감소 포함) · 특수기 = 단일 대상 배율/초)');
 for (const r of mrows) {
   console.log(`  Lv ${r.lv} · 유대 ${r.rank}`);
-  for (const m of r.list) console.log(`    ${m.name.padEnd(5, '　')} HP ${m.hpR.toFixed(2)}× · 버티기 ${m.buffer.toFixed(2)} (보스 ${m.bossBuffer.toFixed(2)}) · 기수 몫 ${m.riderShare.toFixed(2)} · 유효 체력 ${m.ehp.toFixed(2)}× · 돌진 ${m.charge.toFixed(2)} · 특수기 ${m.spRate.toFixed(3)}/s · 공격 기여 ${pct(m.offense)} · 재소환 ${m.recall}s`);
+  for (const m of r.list) console.log(`    ${nm(m.name)} HP ${m.hpR.toFixed(2)}× · 버티기 ${m.buffer.toFixed(2)} (보스 ${m.bossBuffer.toFixed(2)}) · 기수 몫 ${m.riderShare.toFixed(2)} · 유효 체력 ${m.ehp.toFixed(2)}× · 돌진 ${m.charge.toFixed(2)} · 특수기 ${m.spRate.toFixed(3)}/s · 공격 기여 ${pct(m.offense)} · 재소환 ${m.recall}s`);
 }
 console.log(`  그림메인 Lv1 확인: 버티기 ${wh.buffer} (명세 ≈1.29) · 기수 몫 ${wh.riderShare} (명세 ≈0.39) ${b2 ? '✓' : '✗'}`);
 console.log(`\n■ 스테이지 구간 (${tierHero}, 필드, ${MVPS_MID} mv/s; 동료 Lv = 영웅 Lv×0.7, 유대 = 합류 뒤 스테이지마다 19점, 2부 수호신은 Lv 25 합류)`);
@@ -395,9 +434,9 @@ for (const t of tierRows) console.log(`  ${t.label} · 영웅 Lv ${t.hLv} · 동
 console.log('\n■ 생존 기여 (Lv1 유대0 → Lv30 유대5; HP%/분 = 스킬·고유 회복, 재생 = 오라 초당 HP)');
 for (const s of surv) {
   const f = (x) => [x.healPerMin ? `회복 ${x.healPerMin}%/분` : '', x.regen ? `재생 ${x.regen}/s` : '', x.drAvg ? `평균 피해 감소 ${x.drAvg}%` : '', x.dmgReduce ? `오라 피해 감소 ${x.dmgReduce}%` : '', x.lifesteal ? `흡혈 ${x.lifesteal}%` : ''].filter(Boolean).join(' · ') || '-';
-  console.log(`  ${s.name.padEnd(5, '　')} ${f(s.lv1)}  →  ${f(s.lv30)}${s.lv30.notes.length ? ` (${s.lv30.notes.join(', ')})` : ''}`);
+  console.log(`  ${nm(s.name)} ${f(s.lv1)}  →  ${f(s.lv30)}${s.lv30.notes.length ? ` (${s.lv30.notes.join(', ')})` : ''}`);
 }
 if (out.warns.length) { console.log(`\n경고 ${out.warns.length}건 (명세 기대 범위·튀는 값, 실패 아님):`); for (const w of out.warns) console.log('  ! ' + w); }
 if (out.fails.length) { console.log(`\n실패 ${out.fails.length}건:`); for (const f of out.fails) console.log('  ✗ ' + f); }
-else console.log('\n✓ B1 모든 수호신 몫이 [6%, 30%] 안 · ✓ B2 탈것 공식 확인');
+else console.log('\n✓ B1 모든 수호신의 모형 몫이 [6%, 30%] 안 · ✓ B2 탈것 공식 확인');
 process.exit(out.fails.length ? 1 : 0);
