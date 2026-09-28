@@ -50,7 +50,11 @@ function pose(an, at, t) {
 }
 
 function draw(ctx, g, world, rig) {
-  const t = g.t ?? 0, at = g.animT ?? 0, an = g.anim ?? 'idle';
+  const t = g.t ?? 0, an = g.anim ?? 'idle';
+  let at = g.animT ?? 0;
+  // 처형 (guardian_ai_b reap · 협공 뒤 거두기): 이미 벤 뒤에 새 'blink' 동작 + 'attack' 모습으로 옆에 나타난다 (act.t ≈ animT).
+  // 보통 낫질(kindBlink)은 blink 0.1초 뒤에 attack 이 되므로 act.t - animT ≥ 0.1 → 처형일 때만 내리치는 한가운데(0.1)부터 그린다
+  if (an === 'attack' && g.act?.name === 'blink' && (g.act.t ?? 0) - at < 0.05) at += 0.1;
   const f = g.facing < 0 ? -1 : 1, vxf = (g.vx ?? 0) * f;
   const cast = an === 'skill', blink = an === 'blink', emote = an === 'emote';
   const atkLike = an === 'attack' || an === 'assist' || cast;

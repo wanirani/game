@@ -25,14 +25,14 @@ async function load() {
 }
 
 /** 둘레를 도는 거울 조각 (앞/뒤 반을 몸 앞뒤로 나눠 그린다) */
-function shards(ctx, t, n, R, cy, sp, front, a) {
+function shards(ctx, t, n, R, cy, sp, front, a, glow = true) {
   for (let i = 0; i < n; i++) {
     const an = t * sp + (i / n) * TAU, z = Math.sin(an);
     if ((z > 0) !== front) continue;
     const s = (0.85 + 0.15 * z) * (i % 3 === 2 ? 0.75 : 1), x = Math.cos(an) * R, y = cy + z * R * 0.3 + Math.sin(t * 2 + i) * 0.8;
     const nm = i % 2 ? 'shard2' : 'shard';
     K.put(nm, 'a', x, y, t * (i % 2 ? -1.6 : 1.3) + i, s, s, a * (front ? 1 : 0.7), front ? 'base' : 'deep');
-    if (front) {
+    if (front && glow) {   // 가산 반짝임 한 겹 (낮은 품질에서는 생략 — 절차 그림의 hiQ 번짐과 같은 규칙)
       const gco = ctx.globalCompositeOperation; ctx.globalCompositeOperation = 'lighter';
       K.put(nm, 'a', x, y, t * (i % 2 ? -1.6 : 1.3) + i, s, s, a * (0.25 + 0.2 * Math.sin(t * 7 + i * 2)), 'glow');
       ctx.globalCompositeOperation = gco;
@@ -85,7 +85,7 @@ function draw(ctx, g, world, rig) {
   K.put('arm', 'a', ex, ey, aa);
   K.pivotPos('arm', 'a', 'glass', ex, ey, aa, 1, 1, _q);
   const mx = _q[0], my = _q[1];
-  shards(ctx, t, nSh, rSh, -15, spSh, true, shA);
+  shards(ctx, t, nSh, rSh, -15, spSh, true, shA, q > 0.5);
   // 각성: 머리 위 거울 조각 관
   if (aw) {
     K.pivotPos('body', 'a', 'crown', 0, 0, 0, 1, 1, _q);

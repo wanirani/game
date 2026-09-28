@@ -520,7 +520,11 @@ function reaperPose(an, at, t) {
 function drawReaper(ctx, g, world, opts) {
   const P = reaperParts();
   if (!P?.body) return false;
-  const s = pre(ctx, g, world, opts), t = s.t, at = s.at, an = s.an;
+  const s = pre(ctx, g, world, opts), t = s.t, an = s.an;
+  let at = s.at;
+  // 처형 (guardian_ai_b reap): 이미 벤 뒤에 새 'blink' 동작 + 'attack' 모습 (act.t ≈ animT) → 내리치는 한가운데(0.1)부터.
+  // 보통 낫질(kindBlink)은 blink 0.1초 뒤에 attack 이 되어 act.t - animT ≥ 0.1 이라 그대로 그린다
+  if (an === 'attack' && g.act?.name === 'blink' && (g.act.t ?? 0) - at < 0.05) at += 0.1;
   const blink = an === 'blink', cast = an === 'skill', atkLike = an === 'attack' || an === 'assist' || cast;
   const bob = Math.sin(t * 2.1 + (g.seed ?? 0)) * 1.6;
   const tilt = clamp(s.vxf * 0.0007, -0.15, 0.22) - s.hurt * 0.3 + (cast && at > 0.18 && at < 0.54 ? 0.12 : 0);
@@ -988,7 +992,13 @@ function momoParts() {
 function drawMomo(ctx, g, world, opts) {
   const P = momoParts();
   if (!P?.body) return false;
-  const s = pre(ctx, g, world, opts), t = s.t, at = s.at, an = s.an;
+  const s = pre(ctx, g, world, opts), t = s.t;
+  let at = s.at, an = s.an;
+  // 협공 「코 휘두르기」(guardian.js kindMelee): 때리는 순간 anim 이 'attack'(animT 0)으로 바뀐다 → 동작(g.act)이 협공이면
+  // 협공 시간축(돌진 0.12 + 동작 시간)으로 이어 그린다 (안 그러면 휘두른 코를 다시 젖혀 한 번 더 무는 것처럼 보인다)
+  if (an === 'attack' && g.act?.name === 'assist') { an = 'assist'; at = 0.12 + (g.act.t ?? 0); }
+  // 협공 직후 곧바로 이어진 자동 공격: anim 이 이미 'attack' 이라 begin() 이 animT 를 0 으로 되돌리지 않는다 → 새 동작 시간으로
+  else if (an === 'attack' && g.act?.name === 'attack' && Number.isFinite(g.act.t)) at = Math.min(at, g.act.t);
   const cast = an === 'skill', atk = an === 'attack', asst = an === 'assist', emote = an === 'emote';
   const bob = Math.sin(t * 1.7 + (g.seed ?? 0)) * 1.3;
   const breath = Math.sin(t * 2.1) * 0.025;
@@ -1015,8 +1025,8 @@ function drawMomo(ctx, g, world, opts) {
   gGlow(ctx, 0, -12 + bob, cast ? 26 : 14, '#c060ff', (cast ? 0.45 : 0.16) + (s.aw ? 0.08 : 0));
   // 구름 (살짝 떠다니며 숨쉼)
   const cb = Math.sin(t * 1.3) * 0.04;
-  blit(ctx, P.cloud, Math.sin(t * 0.9) * 0.6, 0, 0, 1 + cb, 1 - cb, 0.95);
-  if (s.hiQ) blitAdd(ctx, P.cloud, 0, 0, 0, 1.02, 1.02, 0.12);
+  blit(ctx, P.cloud, Math.sin(t * 0.9) * 0.6, 0, 0, (1 + cb) * sc, (1 - cb) * sc, 0.95);   // 나타날 때(appear) 몸과 함께 커진다
+  if (s.hiQ) blitAdd(ctx, P.cloud, 0, 0, 0, 1.02 * sc, 1.02 * sc, 0.12);
   ctx.translate(0, bob * 0.6 + lift);
   ctx.translate(0, -5); ctx.rotate(tilt); ctx.scale(sc * sx, sc * sy); ctx.translate(0, 5);
   // 꼬리 (살랑)

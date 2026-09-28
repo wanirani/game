@@ -23,7 +23,8 @@ import { TOWN_NPCS } from './src/data/town.js';
 import { _debugHost } from './src/render/hero_puppet.js';
 
 // NPC: spec.npc = 'npc_marta' 처럼 NPC id (true 면 spec.char 를 id 로). look 은 데이터 객체 그대로 — 런타임이 객체 동일성으로
-// NPC id 를 찾는다(hero_puppet.npcIdOf). 데이터에 없는 NPC(npc_greta·npc_rook2)는 look.npcId 로 지정. equip 은 사본에 덮어씀(npcId 유지)
+// NPC id 를 찾는다(hero_puppet.npcIdOf). NPCS·TOWN_NPCS 에 look 이 없는 NPC(npc_rook2 등, 옛 데이터의 npc_greta)는 NPC_EXTRA·look.npcId 로 지정.
+// equip 은 사본에 덮어씀(npcId 유지)
 const NPC_EXTRA = { npc_greta: { build: 'normal', height: 0.97, fem: true, outfit: 'villager', skin: '#e8c8a8', hair: '#b8b0a8', hairStyle: 'braid', primary: '#6a4a30', secondary: '#3a2a1a', trim: '#b8322a', pants: '#2a2018', boots: '#3a2418' } };
 function npcLook(id, equip) {
   const base = NPCS[id]?.look || TOWN_NPCS?.[id]?.look || null;
@@ -180,15 +181,28 @@ async function render(s) {
     const d = ctx.getImageData(0, 0, W, H).data;
     joints = {};
     const r = Math.max(2, Math.round(1.4 * sc * hs));
+    const alphaAt = (X, Y) => (X < 0 || Y < 0 || X >= W || Y >= H) ? 255 : d[(Y * W + X) * 4 + 3];
+    const scr = (x, y) => { Hh.tx(P, x, y, O); return [fx + fac * hs * sc * O[0], fy + hs * sc * O[1]]; };
+    // NPC 뼈 중간점은 원 대신 '뼈를 가로지르는 틈'만 본다: 그레타 손짓처럼 가는 손목(칠해진 폭 < 원 지름)은 원이 팔 바깥 배경을 집어
+    // 틈으로 오탐한다. 뼈 방향 ±r 을 따라가며 각 점에서 수직 ±1.5 논리px 안의 최대 알파를 구하고 그 최솟값 — 팔이 끊겨야 낮다
+    const BONE = npcId ? { ua1: ['s1', 'e1'], fa1: ['e1', 'h1'], th1: ['hp1', 'k1'], sn1: ['k1', 'a1'], th2: ['hp2', 'k2'], sn2: ['k2', 'a2'] } : {};
     for (const [k, [x, y]] of Object.entries(pts)) {
-      Hh.tx(P, x, y, O);
-      const cx = Math.round(fx + fac * hs * sc * O[0]), cy = Math.round(fy + hs * sc * O[1]);
+      const [fcx, fcy] = scr(x, y), cx = Math.round(fcx), cy = Math.round(fcy);
       let mn = 255;
-      for (let yy = -r; yy <= r; yy++) for (let xx = -r; xx <= r; xx++) {
-        if (xx * xx + yy * yy > r * r) continue;
-        const X = cx + xx, Y = cy + yy;
-        if (X < 0 || Y < 0 || X >= W || Y >= H) continue;
-        const a = d[(Y * W + X) * 4 + 3]; if (a < mn) mn = a;
+      const b = BONE[k];
+      if (b) {
+        const [ax, ay] = scr(SK[b[0] + 'x'], SK[b[0] + 'y']), [bx, by] = scr(SK[b[1] + 'x'], SK[b[1] + 'y']);
+        const L = Math.hypot(bx - ax, by - ay) || 1, ux = (bx - ax) / L, uy = (by - ay) / L, w = Math.max(2, Math.round(1.5 * sc * hs));
+        for (let t = -r; t <= r; t++) {
+          let mx = 0;
+          for (let q = -w; q <= w && mx < 255; q++) mx = Math.max(mx, alphaAt(Math.round(fcx + ux * t - uy * q), Math.round(fcy + uy * t + ux * q)));
+          if (mx < mn) mn = mx;
+        }
+      } else {
+        for (let yy = -r; yy <= r; yy++) for (let xx = -r; xx <= r; xx++) {
+          if (xx * xx + yy * yy > r * r) continue;
+          const a = alphaAt(cx + xx, cy + yy); if (a < mn) mn = a;
+        }
       }
       joints[k] = [cx, cy, mn];
     }

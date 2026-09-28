@@ -345,12 +345,12 @@ const GROUP_FNS = {
     const harness = [];
     try {
       await prepWorld(s); await waitBakes(s, 4000);
-      await play(s, 40, WALK);
+      await play(s, 170, WALK);   // the chapter title card is gone by then
       await shot(s, shots, 'hud base', { file: 'src/render/hud.js' });
       await s.eval(() => { const w = window.__game.world; w.run.sp = 100; w.run.aw = 100; if (w.combo) { w.combo.n = 42; w.combo.t = 3; } w.player.hp = Math.ceil((w.player.stats?.hp ?? 100) * 0.3); });
       await play(s, 30, 'if (i % 8 === 0) key("KeyX", true); if (i % 8 === 3) key("KeyX", false); if (p) p.buffs.invincible = 9999;');
       await shot(s, shots, 'hud full gauges + combo', { file: 'src/render/feel_hud.js' });
-      await play(s, 30, `if (p) p.buffs.invincible = 9999; if (i === 0) key('KeyR', true); if (i === 3) key('KeyR', false);`);
+      await play(s, 75, `if (p) p.buffs.invincible = 9999; if (i === 0) key('KeyR', true); if (i === 3) key('KeyR', false);`);
       await shot(s, shots, 'hud mounted', { file: 'src/render/companion_hud.js' });
     } catch (e) { harness.push(String(e?.message || e).split('\n')[0]); }
     await sheet(env, `hud_${vp}`, `HUD matrix (${vp})`, shots, tileOf(vp));

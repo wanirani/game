@@ -33,6 +33,8 @@ function draw(ctx, g, world, rig) {
   // 협공 「코 휘두르기」(guardian.js kindMelee): 0.12 돌진 뒤 0.14 에 때리는 순간 anim 이 'attack'(animT 0)으로 바뀐다 →
   // 그대로 그리면 휘두른 코를 다시 젖혔다가 한 번 더 무는 것처럼 보인다. 동작(g.act)이 협공이면 협공 시간축으로 이어 그린다
   if (an === 'attack' && g.act?.name === 'assist') { an = 'assist'; at = 0.12 + (g.act.t ?? 0); }
+  // 협공 직후 곧바로 이어진 자동 공격: anim 이 이미 'attack' 이라 begin() 이 animT 를 0 으로 되돌리지 않는다 → 새 동작 시간으로
+  else if (an === 'attack' && g.act?.name === 'attack' && Number.isFinite(g.act.t)) at = Math.min(at, g.act.t);
   const f = g.facing < 0 ? -1 : 1, vxf = (g.vx ?? 0) * f;
   const cast = an === 'skill', atk = an === 'attack', asst = an === 'assist', emote = an === 'emote';
   const hurt = an === 'hurt' ? 1 - clamp(at / 0.3, 0, 1) : 0;
@@ -104,10 +106,10 @@ function draw(ctx, g, world, rig) {
   ctx.restore();
   // 구름 (몸 앞: 발굽이 잠긴다, 살짝 떠다니며 숨쉼)
   K.begin(ctx, rig, 0);
-  K.put('cloud', 'a', cx, -3.2, 0, 1 + cb, 1 - cb, 0.95);
+  K.put('cloud', 'a', cx, -3.2, 0, (1 + cb) * sc, (1 - cb) * sc, 0.95);   // 나타날 때(appear) 몸과 함께 커진다
   if (q > 0.5) {
     const gco = ctx.globalCompositeOperation; ctx.globalCompositeOperation = 'lighter';
-    K.put('cloud', 'a', cx, -3.2, 0, 1.02 + cb, 1.02 - cb, 0.1 + (cast ? 0.15 : 0), 'glow');
+    K.put('cloud', 'a', cx, -3.2, 0, (1.02 + cb) * sc, (1.02 - cb) * sc, 0.1 + (cast ? 0.15 : 0), 'glow');
     ctx.globalCompositeOperation = gco;
   }
   K.end();

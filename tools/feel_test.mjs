@@ -134,10 +134,11 @@ function saveReport() {
     review: report.cases.filter((c) => c.status === 'review').length,
     pageErrors: report.errors.length,
   };
-  // W4 triage: every failing case with the fix bucket of the file it most likely lives in (MASTER_PLAN §5.3)
-  report.defects = report.cases.filter((c) => c.status === 'fail' || c.status === 'error').map((c) => ({
+  // W4 triage: every failing case with the fix bucket of the file it most likely lives in (MASTER_PLAN §5.3);
+  // timing checks that missed their budget on an overloaded machine are listed too, as unconfirmed S3
+  report.defects = report.cases.filter((c) => c.status === 'fail' || c.status === 'error' || c.status === 'inconclusive').map((c) => ({
     id: c.id, hero: c.hero ?? null, variant: c.variant ?? null, sev: c.status === 'error' ? 'S2' : (/^(U2|A6)$/.test(c.id) ? 'S3' : 'S2'),
-    detail: c.detail, bucket: BUCKET[c.id] ?? BUCKET[c.id[0]] ?? 'FIX-TOOLS',
+    confirmed: c.status !== 'inconclusive', detail: c.detail, bucket: BUCKET[c.id] ?? BUCKET[c.id[0]] ?? 'FIX-TOOLS',
   }));
   report.finished = new Date().toISOString();
   report.machine.loadEnd = os.loadavg().map((x) => +x.toFixed(1));

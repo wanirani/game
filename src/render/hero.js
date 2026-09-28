@@ -2225,7 +2225,8 @@ function drawLayers(c, E, K, P, W, tt) {
   group(drawLeg, SK, K, true);
   drawSkirt(SK, K, P, true);
   drawTabard(SK, K);
-  if (ST.coil) { sp(SK, K, 0.1, -backAt(K, 0.1) * 0.3); drawWhipCoil(W, QX, QY, SW.tr * 0.05 + Math.sin(tt * 3) * 0.05); }
+  // 채찍 고리: 발 딛음(p.feel.stepK, feel_move 가 딛을 때 1 → 8/s 로 줄어듦)마다 살짝 튕긴다 (feel.md §3.3.2 'special')
+  if (ST.coil) { sp(SK, K, 0.1, -backAt(K, 0.1) * 0.3); drawWhipCoil(W, QX, QY, SW.tr * 0.05 + Math.sin(tt * 3) * 0.05 + (E.p?.feel?.stepK ?? 0) * 0.07); }
   if (K.o === 'merchant') drawPack(SK, K);
   drawMantle(SK, K);
   drawCollar(SK, K, true);
