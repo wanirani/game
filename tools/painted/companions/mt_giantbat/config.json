@@ -2,7 +2,7 @@
  "id": "mt_giantbat",
  "kind": "companion",
  "td": 3.0,
- "note": "All parts are cut from one Kling side-view reference (src/mt_giantbat_ref.webp, generation AYo1SF2z\u2026 #1): level flight, near wing raised. The wing root overlapping the shoulder stays on the body; the far wing is the near one darkened at runtime. frame: local game px = (src - [ox, gy]) * lps; the rider seat lands on the data seat (MOUNTS.mt_giantbat.seat = -4, -52).",
+ "note": "All parts are cut from one Kling side-view reference (src/mt_giantbat_ref.webp, generation AYo1SF2z… #1): level flight, near wing raised. The wing root overlapping the shoulder stays on the body; the far wing is the near one darkened at runtime. frame: local game px = (src - [ox, gy]) * lps; the rider seat lands on the data seat (MOUNTS.mt_giantbat.seat = -4, -52). The wing mask stops at y 1330: the thin trailing finger that reaches down to the hind foot is left out (under strong wing folds its affine stretch turned it into long stray lines).",
  "frame": {
   "ox": 1226,
   "gy": 1650,
@@ -316,23 +316,19 @@
        ],
        [
         20,
-        1600
+        1330
        ],
        [
-        300,
-        1580
+        560,
+        1330
        ],
        [
-        480,
-        1490
-       ],
-       [
-        600,
-        1440
+        640,
+        1300
        ],
        [
         700,
-        1330
+        1280
        ],
        [
         800,
@@ -436,7 +432,7 @@
     10,
     80,
     1300,
-    1610
+    1345
    ],
    "pivots": {
     "root": [

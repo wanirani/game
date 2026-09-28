@@ -434,7 +434,7 @@ function batPose(m, dt, P, T) {
       const step = moving ? Math.sin(cyc + (far ? PI : 0)) : 0;
       const gx = w.rx + W.gx + (far ? 6 : 0) + step * (run ? 11 : 6), gy = -Math.max(0, step) * (run ? 6 : 3);
       const dx = (gx - w.wx) * S.gw, dy = (gy - w.wy) * S.gw;
-      w.wx += dx; w.wy += dy; w.tx += dx * 0.6; w.ty += dy * 0.6;
+      w.wx += dx; w.wy += dy; w.tx += dx; w.ty += dy;
     }
     const L = P.legs[i];
     L.rx = w.rx; L.ry = w.ry; L.kx = L.fx = w.wx; L.ky = L.fy = w.wy; L.a1 = L.a2 = Math.atan2(w.wy - w.ry, w.wx - w.rx); L.up = ground ? 0 : 1;
@@ -501,8 +501,8 @@ RIG.registerTemplate('bat', {
   leg: { a: [-33.35, -22.29], b: [-53.22, -2.16] },
   seat: [-3.97, -52.27],
   wing: wingT([-1.81, -53.57], [1.21, -101.09], [-93.83, -128.74], {
-    fold: [0.35, 0.85, -0.5, -0.4], sweep: [-0.35, -0.62, -0.95, -0.02], far: [6, -3], period: 0.28, down: 0.5, glide: [0.45, 0.25],
-    hover: { per: 0.2, amp: 0.45, bias: 0.4 }, gx: 20, fingers: 4,
+    fold: [-0.1, -0.6, -0.62, -0.12], sweep: [-0.35, -0.62, -0.95, -0.02], far: [6, -3], period: 0.28, down: 0.5, glide: [0.45, 0.25],
+    hover: { per: 0.2, amp: 0.45, bias: 0.4 }, gx: 22, fingers: 4,
   }),
   crawlSink: 9, jawMax: 0.6,
 });

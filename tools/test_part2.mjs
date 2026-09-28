@@ -300,6 +300,20 @@ async function shot(P, name) {
   } catch (e) { console.log(`  (스크린샷 실패 ${name}: ${e.message})`); }
 }
 const sameSet = (a, b) => a.length === b.length && [...a].sort().join() === [...b].sort().join();
+/**
+ * CDP 로 보낸 탭·클릭·터치는 CDP 응답이 온 뒤에야 페이지 주 스레드에서 처리될 수 있다 (passive 리스너 → 비차단 입력).
+ * 부하가 크면 바로 이어지는 page.evaluate 가 먼저 돌아 입력을 놓치므로, fn 이 {done:true} 를 돌려줄 때까지
+ * 한 번씩 다시 부르며(fn 안에서 한 스텝씩 진행) 최대 maxMs 기다린다. 판정 자체는 그대로 — 입력이 도착할 시간만 준다.
+ */
+async function stepUntil(P, fn, arg, maxMs = 3000) {
+  const t0 = Date.now();
+  let r = null;
+  for (;;) {
+    r = await P.page.evaluate(fn, arg);
+    if (r?.done || Date.now() - t0 > maxMs) return r;
+    await P.page.waitForTimeout(25);
+  }
+}
 /** 캔버스 논리 좌표의 탭 영역(ui.taps, uiScale 장면은 k 배) → 페이지 CSS 좌표 */
 async function tapPoint(P, id) {
   return P.page.evaluate(async (id) => {
@@ -744,9 +758,10 @@ async function flowGroup() {
     await shot(P, 'flow_worldmap_p1');
     const pt = await tapPoint(P, 'tab0');
     if (pt) await P.page.mouse.click(pt.x, pt.y);
+    await stepUntil(P, () => { const T = window.__T, wm = T.top(); T.draw(); T.tick(1); return { done: wm.page === 0 }; });
     const c = await P.page.evaluate(() => {
       const T = window.__T, wm = T.top();
-      T.draw(); T.tick(3);
+      T.draw(); T.tick(2);
       const tapPage = wm.page;
       T.tap('Escape'); T.tick(4);
       T.until(() => T.top()?.name === 'hub' && T.g.fade.dir === 0, 3);
@@ -988,6 +1003,8 @@ async function mobileGroup() {
     let r = { mode, pad: pad.source, visible: pad.visible, jump: !!jb };
     if (jb) {
       await t.down(11, jb.cx, jb.cy);
+      // 가상 패드가 점프를 받을 때까지 (touchpad → input.touch.set('jump') → sources.touch.jump) — 스텝은 돌리지 않는다
+      r.padJump = !!(await stepUntil(P, () => ({ done: !!window.__T.input.sources?.touch?.jump })))?.done;
       const a = await P.page.evaluate(() => { const T = window.__T, p = T.p(); let minVy = 1e9; for (let i = 0; i < 6; i++) { T.tick(1); minVy = Math.min(minVy, p.vy); } return { minVy: Math.round(minVy), inWater: !!T.w().gimmickOf('deep')?.inWater }; });
       await t.up(11);
       r = { ...r, ...a };
@@ -1069,7 +1086,8 @@ async function mobileGroup() {
     });
     const pt = await tapPoint(P, 'tab1');
     if (pt) await t.tap(pt.x, pt.y, 50);
-    const r = await P.page.evaluate(() => { const T = window.__T, wm = T.top(); T.draw(); T.tick(3); const out = { top: wm.name, page: wm.page, uiK: T.g.uiK }; T.tick(45); return out; });   // 45: 지도 교차 페이드가 끝난 뒤 스크린샷
+    const r = await stepUntil(P, () => { const T = window.__T, wm = T.top(); T.draw(); T.tick(1); return { done: wm.page === 1, top: wm.name, page: wm.page, uiK: T.g.uiK, frames: T.frames }; });
+    await P.page.evaluate(() => window.__T.tick(45));   // 45: 지도 교차 페이드가 끝난 뒤 스크린샷
     await shot(P, 'mobile_worldmap');
     check(G, '지도 (터치): tab1 을 눌러 2부 지도로', !!pt && r.top === 'worldmap' && r.page === 1 && !errsSince(P, e0).length, { ...r, tab1: pt?.z ? [pt.z.x, pt.z.y, pt.z.w, pt.z.h, pt.z.k] : null, errs: errsSince(P, e0) });
   } catch (e) { check(G, '지도 휴대폰 실행', false, e.stack); }
