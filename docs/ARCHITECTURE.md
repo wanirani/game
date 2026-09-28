@@ -89,10 +89,12 @@ index.html ─▶ build-info.js(배포 빌드만: window.__BN_BUILD) ─▶ src/
 ```
 프레임 (`core/game.js`):
 ```
-rAF ─▶ input.pollFrame() (패드 읽기·진동 정리) ─▶ game.govern(dt) (auto 품질 조절기)
-    ─▶ game.tick(1/60) × n : input.update → 맨 위 장면.update (updateBelow 면 아래도) → 토스트 시간
+rAF ─▶ input.pollFrame() (패드 읽기·진동 정리) ─▶ (세로 잠금이면 진행 멈춤)
+    ─▶ game.tick(1/60) × n (최대 5) : input.update → 페이드·flash·vignette·토스트 시간 → 맨 위 장면.update (updateBelow 면 아래도) → audio.update
+    ─▶ game.govern(dt) (auto 품질 조절기)
     ─▶ render() (fpsCap 60: 틱이 돈 rAF 또는 game.dirty 일 때만) : 불투명 장면부터 위로, uiScale 장면은 ctx.scale(uiK)
-       → flash/vignette → 토스트(스테이지·허브는 hudLayout().toast(i)) → taps 묶음 봉인 → game.syncPad() (가상 패드 표시의 유일한 주인)
+       → flash/vignette → 토스트(스테이지·허브는 hudLayout().toast(i)) (taps 묶음은 rAF 끝 마이크로태스크에서 봉인)
+    ─▶ game.syncPad() (가상 패드 표시의 유일한 주인)
 ```
 스테이지 한 틱 (`World.update`, 순서 요약): 히트스톱이면 입자만 0.3배 dt + 카메라 스프링 → 슬로모/`timeStop`/`freezeEnemies` 시간 배율 →
 `gimmick.beforePlayer` (GimmickDirector) → 엔티티 루프 (Player: `mount.tick` → `updateGait` → 이동 → `physics(prePhysics … postPhysics, squashSpring)` → 공격 입력 `handleUltInput` …; CompanionDirector: `companions.update`; 적·보스·투사체) →
@@ -121,7 +123,7 @@ rAF ─▶ input.pollFrame() (패드 읽기·진동 정리) ─▶ game.govern(d
 - `world.fx` (Particles, owner FEEL-REACT): `emit/burst(type,x,y,n,{color,speed,angle,spread})` — 타입 `spark hit blood dust smoke ember fire magic holy ice dark thunder shard soul gold water` + 프리셋 `ecto paper gravel goo bloodmist feather` (`PARTICLE_PRESETS`); `ring`, `flash`, `slash`, `ghost(drawFn, life, layer)`, `text(x,y,str,{color,size,crit})`, `sprite(img,x,y,{…})`, `ering`, `speedLine`, `dmg(target, value, styleKey, o)`(DNF 숫자 기둥·합계), `callout(x,y,text,o)`, `addDecal(d, cap)`/`clearDecals()`.
 - `world.camera` (`core/camera.js`): `kick(dx,dy)`(스프링 반동), `addTrauma(t)`, `shake(mag,time)`(옛 API → 트라우마; mag ≥ 8 이면 bus 'shake'), `punchZoom(z,t)`, `zoomPulse(z,tin,hold,tout)`, `roll`(±0.03 rad), `cine(x,y,zoom,t)|cine(entity,zoom,t)`, `cineEnd(t)`, `frameOn(x,y,zoom)`, `lookBoost`, `floorY`, `tick(dt)`(월드가 멈춘 오버레이가 매 프레임; `tickShake` 는 옛 이름), `reset()`, `toScreen`, `visible`. 터치 모드는 추적점을 바라보는 쪽으로 화면 폭 6 % 당긴다.
 - `world.lighting.add(x,y,r,color,i)` (엔티티의 `lights(L)` 에서), `world.hitstop = s`, `world.slowmo = s` (배율 `world.slowmoScale`), `world.timeStop`.
-- `world` (`game/world.js`): `player, map, stage, room, run{hp,mp,hearts,lives,score,sp,aw,awakenN,sub,time,kills,mount,…}, diff, state, hero, entities, time, rt`(실시간 — 히트스톱에도 흐름), `mode`('stage'|'town'|아케이드), `banner`;
+- `world` (`game/world.js`): `player, map, stage, room, run{hp,mp,hearts,lives,score,sp,aw,awakenN,sub,time,kills,mount,…}, diff, state, hero, entities, time, rt`(실시간 — 히트스톱에도 흐름), `mode`('story'|'town'|'bossrush'|'survival'…), `banner`;
   `add(e)`, `spawnEnemy(id, footX, footY, {params,facing,elite})`, `spawnProjectile(opts)`, `spawnPickup(type,x,y,data)`, `enemies()`, `hittables()`, `nearestEnemy(x,y,max)`, `gainExp(n)`, `addScore(n)`, `applyPowerup(id)`, `playScript(id)`, `gotoRoom(id)`, `startBoss()`, `startUltimate(p)`, `collect(pk)`, `respawn()`, `qualityNow()`, `stickRect()`/`clearStickAtSpawn()`.
   새 필드: `style`(스타일 미터) · `awakenState {ready, holdK}` · `gimmick`(GimmickSet|null) · `gimmickOf(kind)` · `liquid`(방 → 스테이지 → 'water') · `companions`(CompanionSystem) · `freezeEnemies` · `freezeLog`/`frozenRecent`(경직 상한·입력 버퍼 연장) · `overlays` · `hudHidden` · `letterbox` · `killSlowT` · `cutscene/cleared/transitioning/inputLock`.
 - 전투 (`game/combat.js`): `playerStrike(world, rect, attack)`, `enemyStrike(world, rect, attack)`, `hitTarget` (→ `impact.js` 순서 §7.2). Attack 스키마는 파일 상단 주석. 대상은 `takeHit(dmg, attack, world, info)`·`hurtbox()`·`stats{def,res,weak,resist}` 구현. 새 attack 필드: `moveId`, `capFn(target,dmg,world)`, `final`, `hitstop`(0 이면 경직 없음), `tags`(['awaken'], ['companion','guardian'], 'purge' …).
@@ -204,7 +206,7 @@ rAF ─▶ input.pollFrame() (패드 읽기·진동 정리) ─▶ game.govern(d
 ### 7.3 필살기 (`game/skills.js` castUltimate, `render/ultfx.js`, `scenes/overlays.js` ultCutin; FX-ULTS·FX-ULTKIT·OVERLAYS)
 - `castUltimate(p, world)`: `p.mount?.beforeCast` → bus `ultimateCast {charId, tier, classId}` → 컷인 `game.push('ultCutin', {charId, world, classId})`(0.9초, 붓글씨 기술명, 2차 전직 금테) → `ULTS[charId](p, w, v)` (v = {charId, classId, tier 0–2, color, accent, q, low, name, title}). 피해량은 전직 단계와 무관, 연출만 커진다.
 - `ULTFX` 키트: `begin(w, p, o) → 세션 | null`, `beat(w, x, y, o)`, `final(w, x, y, o)`(임팩트 프레임 ≤ 2/시전), `afterimage(w, p, tint, o)`, `end(w, p, {quick})`, `prepare`, `flourish(w, classId, x, y, o)`, `active`, `tierOf`, `accentOf`, `glow(color)`, `sprite(name)`; `ULT_TIERS`, `ULT_FLOURISH`(2차 전직 24종), `ULTFX_STATS`. 화면 층은 `world.overlays`, 캔버스는 풀(시전 중 새 캔버스 0).
-- `FXKIT` (skills.js 끝, 각성 감독이 쓰는 연출 도구 모음). `SKILL_IMPL[id](p, world, lv)`, `castSkill`, `castTechnique`, `TECH_NAMES` (+ `skills_p2.js`: `SKILL_IMPL_P2`, `TECH_NAMES_P2` = tech_mirror 경영참 · tech_whirl 와류참 · tech_purge 정화의 불꽃).
+- `FXKIT` (skills.js 끝, 각성 감독이 쓰는 연출 도구 모음). `SKILL_IMPL[id](p, world, lv)`, `castSkill`, `castTechnique`, 기술 이름표 `TECH_NAMES`(모듈 내부) (+ `skills_p2.js`: `SKILL_IMPL_P2`, `TECH_NAMES_P2` = tech_mirror 경영참 · tech_whirl 와류참 · tech_purge 정화의 불꽃).
 
 ### 7.4 각성기 (`game/awaken.js`, `data/awaken.js`, `scenes/awaken_cutin.js`, `game/awaken_directors(_b).js`; AWAKEN-CORE·AWAKEN-DIR-A/B)
 - 조건: 1차 전직 이상(`AWAKEN_RULES.minTier` 1) + `run.sp` 100 + `run.aw` 100. 입력(`handleUltInput(p, world)`, player.handleAttackInput 첫 줄): 준비 안 됨 → 누르는 즉시 필살기 / 준비됨 → 0.20초 미만 톡 = 뗄 때 필살기, 0.20–0.45초에 떼면 취소, 0.45초 누르면 각성 / 'awaken'(V) = 준비됐으면 즉시 각성, 아니면 필살기. 판정은 `input.down` + `pressTime/releasedAt`(R16), 한 프레임을 놓치거나 장면이 쌓이면 길게 누르기 취소.
@@ -235,7 +237,7 @@ rAF ─▶ input.pollFrame() (패드 읽기·진동 정리) ─▶ game.govern(d
 
 | id | 이름 · 칭호 | 합류 | 장 |
 |---|---|---|---|
-| `mt_warhorse` | 그림메인 · 흑철 군마 | flag `stable_open` (첫 마을 방문, cmp_stable_open) | 1 |
+| `mt_warhorse` | 그림메인 · 흑철 군마 | flag `stable_open` (1장 클리어 뒤 첫 마을 방문, cmp_stable_open) | 1 |
 | `mt_boar` | 바르그 · 철엄니 멧돼지 | 마구간 구입 6,000 G | 2 |
 | `mt_skelsteed` | 코슈타 · 망령 해골마 | b_dullahan 첫 처치 | 3 |
 | `mt_direwolf` | 스콜 · 서리 늑대 | 의뢰 cq_skoll (그레타) | 4 |

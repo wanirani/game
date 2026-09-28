@@ -22,6 +22,7 @@
 //      채색: 날개 부품 한 장을 root · wrist · tip 세 점이 이 세 점에 오도록 아핀 변환 (내려치면 저절로 뒤집힌다).
 //  ta[i] = 꼬리 마디 절대 각도 (길이 T.tailSeg[i].len; 비룡·그리핀은 마디마다 부품 하나, 늑대는 부품 한 장을 띠로 잘라 굽힌다)
 //  bat: legs[0] / [2] = 먼 / 가까운 뒷다리 (rx,ry 엉덩이 → fx,fy 발), legs[1] / [3] = 먼 / 가까운 날개 손목 (땅을 짚는 앞발)
+//  fa = 그리는 쪽이 읽는 동작 이름 (= m.anim; 메뉴 미리보기(state 'view')의 'special' 은 늑대 howl · 비룡 breath · 박쥐 screech 로 바꿔 그린다)
 //  s.b = 이 모듈의 스프링 상태 (그리는 쪽은 읽지 않는다). 포즈는 structuredClone 으로 복사된다 (잔상) → 함수·클래스를 넣지 않는다.
 //
 // 규칙: 그리기에서 Math.random · world.fx.emit 을 쓰지 않는다 (빛은 시간 함수). 그라디언트는 지역 좌표에서 한 번 만들어 캐시.
@@ -121,6 +122,22 @@ function headLimit(P, T) {
   if (!lim) return;
   const rel = P.na - P.pitch - T.neck.a, c = clamp(rel, lim[0], lim[1]);
   if (c !== rel) headAdj(P, T, c - rel);
+}
+/**
+ * 메뉴 미리보기 (mount.js mountView: state 'view') 의 'special' 은 말처럼 앞들기(rearK · pitch)로 온다 →
+ * 앞들기가 특수기가 아닌 B 탈것은 제 특수기 모습으로 그린다 (늑대 포효 · 비룡 숨결 · 박쥐 초음파; 그리핀은 도약 전 앞들기 그대로).
+ * m 을 고치지 않는다: m 을 프로토타입으로 하는 얇은 대리 객체 (탈것마다 하나, 캐시)
+ */
+const VIEW_SP = { wolf: 'howl', wyvern: 'breath', bat: 'screech' };
+const VPX = new WeakMap();
+function viewSpecial(m, T) {
+  if (m?.state !== 'view' || m.anim !== 'special') return m;
+  const a = VIEW_SP[T.name];
+  if (!a) return m;
+  let o = VPX.get(m);
+  if (!o) { o = Object.create(m); VPX.set(m, o); }
+  o.anim = a; o.rearK = 0; o.pitch = 0;
+  return o;
 }
 function finishSeat(P, m) {
   const f = (m.facing ?? 1) < 0 ? -1 : 1;
@@ -255,6 +272,8 @@ function wingSolve(dt, P, T, st, rx, ry, frx, fry) {
 
 // ───────────────────────── 포즈: 늑대 ─────────────────────────
 function wolfPose(m, dt, P, T) {
+  m = viewSpecial(m, T);
+  P.fa = m.anim ?? 'idle';                                  // 그리는 쪽이 읽는 실제 동작 이름 (미리보기 특수기 대체 포함)
   RIG.quadPose(m, dt, P, quadT(T));
   const S = bs(P);
   const a = m.anim ?? 'idle', at = fin(m.animT, 0), t = fin(m.t, 0), vy = fin(m.vy, 0);
@@ -280,6 +299,10 @@ function wolfPose(m, dt, P, T) {
     airLegs(P, T, vy < 0 ? 'tuck' : 'strike', vy < 0 ? 'trail' : 'tuck', t, 0.8);
   }
   if (a === 'hurt') P.jaw = Math.max(P.jaw, 0.4 * P.hurt);
+  if (a === 'idle' && onG) {   // 대기: 헐떡임 (6.5초마다 2초, 혀를 내민 듯 입을 빠르게 여닫는다)
+    const u = (t * 0.9 + S.seed * 0.17) % 6.5;
+    if (u < 2) P.jaw = Math.max(P.jaw, (0.2 + 0.14 * Math.sin(t * 14)) * Math.sin(u / 2 * PI));
+  }
   S.dp += (dpT - S.dp) * ease(onG ? 22 : 12, dt);
   S.hd += (hdT - S.hd) * ease(14, dt);
   S.lift += (lift - S.lift) * ease(30, dt);
@@ -307,6 +330,8 @@ function wolfPose(m, dt, P, T) {
 
 // ───────────────────────── 포즈: 날개 달린 네발 (비룡 · 그리핀) ─────────────────────────
 function flyQuadPose(m, dt, P, T) {
+  m = viewSpecial(m, T);
+  P.fa = m.anim ?? 'idle';                                  // 그리는 쪽이 읽는 실제 동작 이름 (미리보기 특수기 대체 포함)
   RIG.quadPose(m, dt, P, quadT(T));
   const S = bs(P);
   const a = m.anim ?? 'idle', at = fin(m.animT, 0), t = fin(m.t, 0), vy = fin(m.vy, 0);
@@ -332,6 +357,10 @@ function flyQuadPose(m, dt, P, T) {
   if (fm || hm) airLegs(P, T, fm, hm, t, 1);
   if (a === 'charge' && !gri) P.jaw = Math.max(P.jaw, 0.45);
   if (a === 'hurt') P.jaw = Math.max(P.jaw, 0.4 * P.hurt);
+  if (!gri && a === 'idle' && onG) {   // 비룡 대기: 5초마다 혀 날름 (입을 두 번 짧게) + 목을 살짝 움츠렸다 편다
+    const u = (t + S.seed * 0.29) % 5.2;
+    if (u < 0.5) { P.jaw = Math.max(P.jaw, 0.34 * Math.abs(Math.sin(u / 0.5 * TAU))); hdT = -0.08 * Math.sin(u / 0.5 * PI); }
+  }
   const fast = a === 'dive' || a === 'charge';
   S.dp += (dpT - S.dp) * ease(onG ? 22 : fast ? 16 : 9, dt);
   S.hd += (hdT - S.hd) * ease(12, dt);
@@ -362,6 +391,8 @@ const _p0 = [0, 0], _p1 = [0, 0];
 
 // ───────────────────────── 포즈: 박쥐 ─────────────────────────
 function batPose(m, dt, P, T) {
+  m = viewSpecial(m, T);
+  P.fa = m.anim ?? 'idle';                                  // 그리는 쪽이 읽는 실제 동작 이름 (미리보기 특수기 대체 포함)
   const S = bs(P);
   const a = m.anim ?? 'idle', at = fin(m.animT, 0), t = fin(m.t, 0), vx = fin(m.vx, 0);
   const swim = a === 'swim' || (!!m.inWater && m.onGround === false);
@@ -417,7 +448,8 @@ function batPose(m, dt, P, T) {
   P.hx = P.nx + Math.cos(P.na) * N.len; P.hy = P.ny + Math.sin(P.na) * N.len;
   P.jaw = S.jw;
   { const b = (t + S.seed * 0.3) % 3.4; P.blink = b < 0.12 ? Math.sin(b / 0.12 * PI) : 0; }
-  P.ear = a === 'hurt' || a === 'charge' ? 1 : 0; P.look = 0; P.snort = 0; P.howl = 0; P.paw = 0; P.dig = 0; P.mane = 0; P.fire = 0;
+  { const e = (t * 0.83 + S.seed * 0.07) % 3.1; P.ear = a === 'hurt' || a === 'charge' ? 1 : e < 0.25 ? Math.sin(e / 0.25 * PI) : 0; }   // 귀 쫑긋 (대기 특수)
+  P.look = 0; P.snort = 0; P.howl = 0; P.paw = 0; P.dig = 0; P.mane = 0; P.fire = 0;
   P.charge = a === 'charge' ? 1 : 0; P.hurt = a === 'hurt' ? Math.max(0, 1 - at / 0.25) : 0;
   P.tx = BX(T.tail.x, T.tail.y); P.ty = BY(T.tail.x, T.tail.y);
   // 뒷다리 (한 마디): 땅에서는 발이 바닥에 닿는 각도, 날 때는 뒤로 늘어진다
@@ -843,7 +875,7 @@ function vHead(ctx, C) {
       ctx.fillStyle = col(C, pal.dark); ctx.beginPath(); ctx.moveTo(-2, -1); ctx.lineTo(L * 0.78, 0); ctx.lineTo(L * 0.7, 3); ctx.quadraticCurveTo(L * 0.3, 5, -3, 3); ctx.closePath(); ctx.fill(); ctx.stroke();
       if (!C.tint) { ctx.fillStyle = '#f4e8d0'; ctx.beginPath(); for (let x = L * 0.2; x < L * 0.72; x += 3) { ctx.moveTo(x, -0.5); ctx.lineTo(x + 1, -2.5); ctx.lineTo(x + 2, -0.5); } ctx.fill(); }
       ctx.restore();
-      if (jaw > 0.1 && !C.tint) { ctx.fillStyle = C.fx && C.m.anim === 'breath' ? '#ff9a3a' : '#4a0a0a'; ctx.beginPath(); ctx.moveTo(L * 0.25, 2); ctx.lineTo(L, 1); ctx.lineTo(L * 0.25 + Math.cos(jaw * 0.55) * L * 0.78, 3 + Math.sin(jaw * 0.55) * L * 0.78); ctx.closePath(); ctx.fill(); }
+      if (jaw > 0.1 && !C.tint) { ctx.fillStyle = C.fx && (C.P.fa ?? C.m.anim) === 'breath' ? '#ff9a3a' : '#4a0a0a'; ctx.beginPath(); ctx.moveTo(L * 0.25, 2); ctx.lineTo(L, 1); ctx.lineTo(L * 0.25 + Math.cos(jaw * 0.55) * L * 0.78, 3 + Math.sin(jaw * 0.55) * L * 0.78); ctx.closePath(); ctx.fill(); }
       ctx.fillStyle = col(C, pal.coat);
       ctx.beginPath(); ctx.moveTo(-5, -6); ctx.quadraticCurveTo(L * 0.3, -9, L * 0.55, -5); ctx.lineTo(L + 1, -2.5); ctx.lineTo(L + 0.5, 1.5); ctx.quadraticCurveTo(L * 0.5, 3.5, -4, 6); ctx.closePath(); ctx.fill(); ctx.stroke();
       if (!C.tint) {
@@ -1056,7 +1088,7 @@ function vecAnchors(C) {
   return AN;
 }
 function fxB(ctx, C, A) {
-  const { P, pal, t, q, m } = C, a = m.anim;
+  const { P, pal, t, q, m } = C, a = P.fa ?? m.anim;
   const ec = C.aw ? pal.awake : pal.eye;
   if (A.has.eye) {
     glow(ctx, A.eye[0], A.eye[1], 3 + (P.hurt ?? 0) * 1.5, ec, 0.75 * (1 - (P.blink ?? 0) * 0.8));
@@ -1223,7 +1255,7 @@ function pHead(D, ctx, C, R, tk) {
       D.pt(J.hinge[0], J.hinge[1], J.tip[0], J.tip[1], _j[0], _j[1], jr, J.k, J.k, _jt);
       const up = headPt(D, C, H, H.mouth ? 'mouth' : 'muzzle', hr, _q) ?? _q;
       D.end();
-      ctx.fillStyle = C.flash ? '#ff9a9a' : T.name === 'wyvern' && C.m.anim === 'breath' ? '#ff8a2a' : '#3a080c';
+      ctx.fillStyle = C.flash ? '#ff9a9a' : T.name === 'wyvern' && (C.P.fa ?? C.m.anim) === 'breath' ? '#ff8a2a' : '#3a080c';
       ctx.beginPath(); ctx.moveTo(_j[0], _j[1]); ctx.lineTo(up[0], up[1]); ctx.lineTo(_jt[0], _jt[1]); ctx.closePath(); ctx.fill();
     }
     pput(D, C, J, 'hinge', _j[0], _j[1], jr, J.k, J.k, false, tk);

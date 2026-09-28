@@ -12,9 +12,31 @@ Status
 
 | boss | painted | Kling images | atlas | baked MB desktop / phone | renderer |
 |---|---|---|---|---|---|
+| `b_nightwing` (s01) | done (ART-BOSS-1) — all states, blood-frenzy tint phase 2, ghost afterimages, death breakup | 15 | 99 KiB (1024×556, 14 parts) | — | `src/render/painted/bosses/b_nightwing.js` |
+| `b_banshee` (s02) | done (ART-BOSS-1) — all states, requiem tint phase 2, strip-warped shroud, painted chains/wraiths, death dissolve | 11 | 91 KiB (1024×479, 15 parts) | — | `…/b_banshee.js` |
+| `b_dullahan` (s03) | done (ART-BOSS-1) — mounted + on-foot rigs (horse + rider, lance tip locked to `lanceTip()`), transform, dismount horse dissolve, painted phantom-horse and thrown-skull projectiles, ghost afterimages, staged death breakup | 16 | 172 KiB (1024×716, 27 parts) | 8.8 (td 1.9) / 1.1 (td 0.7) | `…/b_dullahan.js` |
+| `b_crimson` (s04) | done (ART-BOSS-2) — assembled 7 states + transform, split form 6 states, hit, dmg 0–2, both death paths | 15 (11 calls, 5 rejected) | 159 KiB (1024×785, 22 parts) | 8.7 / 4.0 (dpr 1.5 / 1) · phone 1.05 | `…/b_crimson.js` |
 | `b_bonedragon` (s05) | **done — every logic state, phase 2 twin, death breakup; verified desktop + 844×390; adversarial review 2026‑09‑26 (§11)** | 11 (prototype) + 3 + 6 (review: burrow rim, 2 rejected calls) | 390 KB (2048×1001, 37 parts) | 14.1 / 4.2 | `src/render/painted/bosses/b_bonedragon.js` |
-| other 12 Part 1 bosses | vector (automatic fallback, unchanged) | — | — | — | §6 |
-| 7 Part 2 bosses | not built yet | — | — | — | §7 |
+| `b_grimoire` (s06) | done (ART-BOSS-2) — 7 states + transform, phase 1 red-ink tint, phase 2 chain break + forbidden tint, hit, dmg 0–2, death breakup | 12 (9 calls, 3 rejected) | 214 KiB (1024×676, 37 parts) | 12.3 / 6.3 · phone 1.5 | `…/b_grimoire.js` |
+| `b_chimera` (s07) | done (ART-BOSS-3) — all states/phases/death, `rng.mjs` PASS | 13 | 142 KiB (1024×532, 23 parts) | 7.97 (td 2.0) / 0.98 (td 0.745) | `…/b_chimera.js` |
+| `b_leviathan` (s08) | done (ART-BOSS-3) — all states/phases/death, `rng.mjs` PASS; body = one painted strip bent along the 30 logic segments (§6.1) | 7 | 236 KiB (1024×902, 14 parts; fin boxes rebuilt in review) | 13.6 (td 1.78) / 2.1–4.6 | `…/b_leviathan.js` |
+| `b_colossus` (s09) | done (ART-BOSS-3) — all states/phases/death, `rng.mjs` PASS; hit flash on the struck part only | 11 | 273 KiB (2048×736, 26 parts) | 14.3 (td 1.90) / 1.9 | `…/b_colossus.js` |
+| `b_frostqueen` (s10) | done (ART-BOSS-4) — all states, ice clones, death | 11 | 112 KiB (1024×461, 27 parts) | — | `…/b_frostqueen.js` |
+| `b_death` (s11) | done (ART-BOSS-4) — both forms, all states, death | 10 | 148 KiB (1024×544, 26 parts) | — | `…/b_death.js` |
+| `b_dracula` (s12) | done (ART-BOSS-5) — both forms + transform | 15 | 261 KiB (2048×608, 39 parts) | — | `…/b_dracula.js` |
+| `b_chaos` (s13) | done (ART-BOSS-5) — eye ring, core, echoes, death | 7 | 332 KiB (2048×969, 32 parts) | — | `…/b_chaos.js` |
+| `b_narkissa` (s14) | done (ART-BOSS-6) — incl. shatter phase | 48 for the three ART-BOSS-6 bosses (`tools/kling/manifest_art-boss-6.json`) | 338 KiB (2048×715, 34 parts) | 4.4 (td 1.1, 1280×720 dpr 1) / 1.5 (td 0.7) | `…/b_narkissa.js` |
+| `b_moloch` (s15) | done (ART-BOSS-6) | (see above) | 320 KiB (2048×803, 30 parts) | 5.6 / 1.9 | `…/b_moloch.js` |
+| `b_dagon` (s16) | done (ART-BOSS-6) | (see above) | 358 KiB (2048×888, 32 parts) | 5.7 / 1.9 | `…/b_dagon.js` |
+| `b_ziz` (s17) | done (ART-BOSS-7) | 11 | 456 KiB (2048×1587, 24 parts) | — | `…/b_ziz.js` |
+| `b_mara` (s18) | done (ART-BOSS-7) — incl. dreamshift / form 2 | 13 | 303 KiB (2048×576, 29 parts) | — | `…/b_mara.js` |
+| `b_behemoth` (s19) | done (ART-BOSS-7) — queen, sacs, kneel | 10 | 508 KiB (2048×888, 30 parts) | — | `…/b_behemoth.js` |
+| `b_nihil` (s20) | done (ART-BOSS-8) — all four forms incl. form 2 and final | 23 | 567 KiB (2048×1767, 54 parts) | — | `…/b_nihil.js` |
+
+All 20 bosses are painted (`node tools/qa/painted_registry.mjs` → `cover.bosses` 20/20, 2026‑09‑28). Kling counts come from
+the package reports or, where a report gave none, the `generations` of `tools/kling/manifest_art-boss-<n>.json`; atlas
+sizes are the files on disk (KiB). "—" = not measured in the package report: read `window.__painted[id].memMB` in the
+game or run `node tools/painted/bench.mjs <id>`. The vector renderers stay as the automatic fallback (`?painted=0`).
 
 ---
 
@@ -378,6 +400,9 @@ head on a Bézier) and leap mode (segments follow the head history `hist`). Fiel
 - Tint: enrage = `blood`-style rule (cyan photophores → red).
 - Cull: whole arch — union of all segment points ±r, plus the surface band. Hurtboxes = `contacts` (unchanged).
 - Memory: ~40 parts, similar to the dragon (~12–15 MB desktop).
+- **As built (ART-BOSS-3):** the body is ONE straight painted strip bent along the 30 logic segments (`drawChain` in
+  `b_leviathan.js`; the pattern repeats along the arc) instead of separate segment tiles — 14 parts in total. The hit
+  flash is limited to the struck hit part (`b.hitPart`), not the whole body (same for the Colossus, §6.2).
 
 **Chaos Lord `b_chaos` (s13)** — eyes ring (`eyes[i].a/r/open/blink/look/dead`), core (`core`, `exposed`), mouth,
 `third` eye, `glitch`, `invert`, `shadows` (old-boss echoes), `shards`.
@@ -412,6 +437,7 @@ and split phase (`split`, `pc.helm/gF/gB/hal/…` free-floating pieces with `x,y
 - Procedural: steam (smoke preset, white), sparks, oil drips (`ichor` preset recoloured), glowing core halo.
 - Memory: large sprites (the body is ~200×360 logic px) → cap td lower (budget will do it), bake `deep` for back parts.
 - Its body is background (no contact damage) — keep drawing it behind the player (z), like now.
+- As built (ART-BOSS-3): the hit flash is limited to the struck hit part (`b.hitPart`).
 
 **Grimoire `b_grimoire` (s06)** — `open` (cover angle), `flutter`, `tilt`, `eyeOpen/blink/lookX/lookY`, `elem/elemI`,
 `runeK`, `chainsBroken`, `fury`.
@@ -454,6 +480,8 @@ and split phase (`split`, `pc.helm/gF/gB/hal/…` free-floating pieces with `x,y
 - Procedural: ghost-fire from the neck and the horse's hooves/mane (flame puffs), horse dissolve = the horse sprites
   drawn with rising alpha-cut noise (draw strips with decreasing alpha + ember particles), cape `Strand`.
 - Phantom horse projectile: the horse sprite with the glow silhouette variant (flash parts → `glow`).
+- As built (ART-BOSS-1): the lance is drawn on the logic lance line (`b + dir·(170 + lanceX)`, tip locked to
+  `lanceTip()`), with the hand sliding along the shaft — so the painted tip is exactly where the lance hits.
 
 ### 6.4 Humanoids — procedural cloth + painted texture (Banshee, Frost Queen, Death, Dracula)
 
@@ -496,6 +524,11 @@ form 2 winged demon (`d2`, `hands`, `redSky`) — portraits `b_dracula` and `b_d
 ---
 
 ## 7. Part 2 bosses (`docs/specs/world2.md` §6)
+
+All seven are built (status table at the top): renderers `src/render/painted/bosses/<id>.js` — `b_narkissa`, `b_moloch`,
+`b_dagon` (ART-BOSS-6), `b_ziz`, `b_mara`, `b_behemoth` (ART-BOSS-7), `b_nihil` (ART-BOSS-8); logic in
+`src/game/bosses/c_*.js` / `d_*.js` on `BossC` (`c_common.js`), whose painted hooks are the `BossB` ones. The table below
+is the original design brief; read the renderers for what was actually done.
 
 | boss | rig type | painted parts (Kling shots) | procedural layers | notes |
 |---|---|---|---|---|
@@ -543,6 +576,18 @@ form 2 winged demon (`d2`, `hands`, `redSky`) — portraits `b_dracula` and `b_d
     anchor was actually used.
 14. **Facing needs hysteresis** when it is derived from a position difference that can hover around zero.
 15. **Cull bounds include lingering effects** (scars far from the current hole, ash spawned above the head, shards).
+16. **Flash each part right after drawing it** (`D.part(…)` then `D.flash(a)`), not once for all parts at the end:
+    a late flash pass paints the white silhouettes of parts hidden behind later layers (a torso cut edge behind a head,
+    an upper limb behind a chest plate) over the front layers. Draw the additive flash strips of bent/chain parts
+    *without* the gap-hiding overlap, or the overlaps add twice and show as zebra stripes (ART-BOSS-3 review).
+17. **Offscreen/flash buffers are created once** in the renderer's `init()` (e.g. `b_chimera`/`b_leviathan`
+    `flashBuf`, half the game canvas), never inside `draw`. If the view grows, lower the buffer's scale instead of
+    re-creating it (MASTER_PLAN §5.2: 0 new offscreen canvases after stage start).
+18. **World rect → device pixels uses the whole transform** (all six terms, four corners). Camera shake/roll
+    (`camera.rot` up to 0.012 + 0.03 rad) makes `m[1]`/`m[2]` non-zero; using only the diagonal put the device rect
+    ~70 px off at roll 0.03 and cut the flash strip.
+19. **Resolve the effective quality tier** (`game.quality`/`game.tier` before `settings.quality`, which may be `'auto'`)
+    in every renderer — the `tierOf`/`qualityOf` helpers of `b_chimera`, `b_leviathan`, `b_colossus`.
 
 ---
 
@@ -566,7 +611,9 @@ form 2 winged demon (`d2`, `hands`, `redSky`) — portraits `b_dracula` and `b_d
 - [ ] `node tools/integration.mjs --only <stage>_boss,…` (+ a few other bosses) → no page errors, other bosses unchanged.
 - [ ] Config `kling` block lists every image with its prompt/decision; raw sources committed as webp.
 - [ ] `node tools/painted/rng.mjs <id>` → PASS (same `Math.random` call count and boss trajectory painted vs vector over
-      1500 frames incl. phase changes).
+      1500 frames incl. phase changes). A boss whose real loop leaves timers/projectiles behind needs an `RNG_SCRIPT`
+      that resets those leftovers at frame 0 (`tools/painted/poses/b_crimson.mjs` shows one), and the **vector** draw
+      code must not call `rand()` either (the hit-flash jitter of `a_crimson`/`a_grimoire` did; fixed).
 - [ ] `node tools/painted/pop.mjs <id> --mobile --cpu 5` (antechamber) → `painted ready` before `boss created`, 0 vector
       frames; `--from boss` → vector frames followed by a cross-fade, no errors.
 - [ ] Arena ledges visible over the body in every pose; nothing drawn below the floor (wall attacks, death shards).

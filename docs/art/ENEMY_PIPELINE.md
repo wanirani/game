@@ -22,6 +22,12 @@ five did not record theirs): `tools/painted/enemies/genlog.json`.
 The chosen Step-1 reference of every enemy is kept as `tools/painted/enemies/<id>/src/<id>_ref.webp` (Step 3/4 need it
 as 图片1; Kling result URLs expire after 24 h, so download the reference the moment you pick it).
 
+**Production status (2026‑09‑28):** every drawn enemy is painted — 90/90 render ids (all 91 enemies except the invisible
+`medusa_spawner`), registered through `src/render/painted/reg/{art-enemy-1…5, enemy-p2-c-art, enemy-p2-d-art}.js` (85) plus
+the five references above, which `src/render/painted/enemies/index.js` registers itself; each
+with its vector renderer kept as the fallback (`node tools/qa/painted_registry.mjs` → `cover.enemies`, `mod.enemy`).
+Per-package Kling provenance: `tools/kling/manifest_art-enemy-<n>.json`, `manifest_enemy-p2-c-art.json`, `manifest_enemy-p2-d-art.json`.
+
 ---
 
 ## 1. Files and ownership
