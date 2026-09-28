@@ -8,12 +8,14 @@
 import * as bat_swarm from '../enemies/bat_swarm.js';
 import * as royal_guard from '../enemies/royal_guard.js';
 import * as hellhound from '../enemies/hellhound.js';
+import * as shadow_hunter from '../enemies/shadow_hunter.js';
 
 export const bosses = {};
 export const enemies = [
   { mod: bat_swarm },
   { mod: royal_guard },
   { mod: hellhound },
+  { mod: shadow_hunter },
 ];
 export const companions = {};
 export const npcs = {};

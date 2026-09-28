@@ -582,13 +582,13 @@ function onMove(e) {
   if (S.editor) { editMove(e); return; }
   const p = S.ptrs.get(e.pointerId);
   if (!p) return;
+  if (p.suspended) { p.x = e.clientX; p.y = e.clientY; return; }   // 패드가 숨은 동안: 위치만 기억 (가로채지도, 입력을 보내지도 않는다)
   claim(e);
   const x = e.clientX, y = e.clientY;
   p.x = x; p.y = y;
   const L = S.L;
   if (!L) return;
   if (p.kind === 'stick') {
-    if (p.suspended) return;   // 패드가 숨은 동안: 위치만 기억 (입력은 보내지 않는다)
     const s = S.stick;
     s.fx = x; s.fy = y;
     if (settings().touchStick !== 'fixed') {
@@ -612,6 +612,7 @@ function onUp(e) {
   if (S.editor) { editUp(e); return; }
   const p = S.ptrs.get(e.pointerId);
   if (!p) return;
+  if (p.suspended) { S.ptrs.delete(e.pointerId); return; }   // 숨은 동안 뗀 스틱 손가락: 잊기만 한다 (입력은 숨길 때 이미 풀었다)
   claim(e);
   S.ptrs.delete(e.pointerId);
   const cancel = e.type === 'pointercancel';

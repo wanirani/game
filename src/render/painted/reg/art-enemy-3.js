@@ -18,6 +18,7 @@ import * as drowned from '../enemies/drowned.js';
 import * as water_spirit from '../enemies/water_spirit.js';
 import * as gear_golem from '../enemies/gear_golem.js';
 import * as harpy from '../enemies/harpy.js';
+import * as clockwork_soldier from '../enemies/clockwork_soldier.js';
 
 export const bosses = {};
 export const enemies = [
@@ -34,6 +35,7 @@ export const enemies = [
   { mod: water_spirit },
   { mod: gear_golem },
   { mod: harpy },
+  { mod: clockwork_soldier },
 ];
 export const companions = {};
 export const npcs = {};

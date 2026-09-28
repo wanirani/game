@@ -1,0 +1,580 @@
+{
+ "id": "clockwork_soldier",
+ "tier": "T2",
+ "srcTD": 4,
+ "note": "Cut from the Kling parts sheets (input: reference take 2). Sheet take 2 (clockwork_soldier_sheet2): the third side figure (tall black shako with a white plume, porcelain skull face with red button eyes and a painted moustache, red coat with white cross-belts and gold epaulettes, navy trousers, black knee boots) \u2014 Kling painted a cyan rim glow round every figure, stripped by make_src.py into the matte a3_clockwork_soldier_sheet2c.png. body = the figure without the forearm (inpainted), the legs below the coat and the back gear; farm = the blue cuff + white glove (turns at the elbow, holds the musket); leg = the near trouser leg + boot (used twice, the far one darkened). Sheet take 1 (clockwork_soldier_sheet): the musket (sling removed) and the brass wind-up gear (spins on the back). Everything faces left on the sheets, so every cut is mirrored (flipX). Run make_src.py before build.py.",
+ "sources": {
+  "s": {
+   "raw": "clockwork_soldier_sheet2.webp",
+   "file": "a3_clockwork_soldier_sheet2c.png",
+   "k": 0.07
+  },
+  "t": {
+   "raw": "clockwork_soldier_sheet.webp",
+   "file": "a3_clockwork_soldier_sheet.png",
+   "k": 0.041
+  }
+ },
+ "parts": {
+  "body": {
+   "src": "s",
+   "box": [
+    1040,
+    100,
+    1345,
+    1476
+   ],
+   "inpaint": [
+    [
+     [
+      1178,
+      886
+     ],
+     [
+      1200,
+      879
+     ],
+     [
+      1230,
+      894
+     ],
+     [
+      1250,
+      922
+     ],
+     [
+      1255,
+      965
+     ],
+     [
+      1252,
+      1010
+     ],
+     [
+      1205,
+      1017
+     ],
+     [
+      1203,
+      1052
+     ],
+     [
+      1195,
+      1092
+     ],
+     [
+      1170,
+      1100
+     ],
+     [
+      1138,
+      1100
+     ],
+     [
+      1110,
+      1092
+     ],
+     [
+      1099,
+      1050
+     ],
+     [
+      1101,
+      1008
+     ],
+     [
+      1124,
+      994
+     ],
+     [
+      1130,
+      958
+     ],
+     [
+      1134,
+      920
+     ],
+     [
+      1156,
+      899
+     ]
+    ]
+   ],
+   "minus": [
+    [
+     [
+      1300,
+      470
+     ],
+     [
+      1480,
+      470
+     ],
+     [
+      1480,
+      880
+     ],
+     [
+      1300,
+      880
+     ]
+    ],
+    [
+     [
+      1040,
+      1008
+     ],
+     [
+      1203,
+      1008
+     ],
+     [
+      1234,
+      1102
+     ],
+     [
+      1262,
+      1165
+     ],
+     [
+      1295,
+      1192
+     ],
+     [
+      1345,
+      1192
+     ],
+     [
+      1345,
+      1490
+     ],
+     [
+      1040,
+      1490
+     ]
+    ]
+   ],
+   "keep": "largest",
+   "feather": 1.5,
+   "flipX": true,
+   "piv": {
+    "a": [
+     1225,
+     1473
+    ],
+    "hip": [
+     1160,
+     1000
+    ],
+    "elbow": [
+     1200,
+     892
+    ],
+    "eye": [
+     1145,
+     512
+    ],
+    "back": [
+     1318,
+     640
+    ],
+    "chest": [
+     1150,
+     760
+    ],
+    "top": [
+     1170,
+     140
+    ]
+   }
+  },
+  "farm": {
+   "src": "s",
+   "box": [
+    1095,
+    875,
+    1260,
+    1105
+   ],
+   "poly": [
+    [
+     1180,
+     893
+    ],
+    [
+     1200,
+     886
+    ],
+    [
+     1225,
+     900
+    ],
+    [
+     1243,
+     925
+    ],
+    [
+     1248,
+     965
+    ],
+    [
+     1246,
+     1004
+    ],
+    [
+     1215,
+     1010
+    ],
+    [
+     1200,
+     1012
+    ],
+    [
+     1197,
+     1050
+    ],
+    [
+     1190,
+     1085
+    ],
+    [
+     1170,
+     1093
+    ],
+    [
+     1140,
+     1093
+    ],
+    [
+     1115,
+     1085
+    ],
+    [
+     1106,
+     1050
+    ],
+    [
+     1108,
+     1012
+    ],
+    [
+     1130,
+     1000
+    ],
+    [
+     1136,
+     960
+    ],
+    [
+     1140,
+     925
+    ],
+    [
+     1160,
+     905
+    ]
+   ],
+   "feather": 1.5,
+   "flipX": true,
+   "piv": {
+    "a": [
+     1200,
+     892
+    ],
+    "b": [
+     1150,
+     1050
+    ],
+    "hand": [
+     1150,
+     1050
+    ]
+   }
+  },
+  "leg": {
+   "src": "s",
+   "box": [
+    1090,
+    990,
+    1300,
+    1476
+   ],
+   "poly": [
+    [
+     1098,
+     995
+    ],
+    [
+     1200,
+     995
+    ],
+    [
+     1232,
+     1100
+    ],
+    [
+     1258,
+     1160
+    ],
+    [
+     1276,
+     1192
+    ],
+    [
+     1284,
+     1260
+    ],
+    [
+     1294,
+     1340
+    ],
+    [
+     1286,
+     1400
+    ],
+    [
+     1280,
+     1440
+    ],
+    [
+     1284,
+     1474
+    ],
+    [
+     1166,
+     1474
+    ],
+    [
+     1181,
+     1440
+    ],
+    [
+     1186,
+     1400
+    ],
+    [
+     1178,
+     1340
+    ],
+    [
+     1172,
+     1300
+    ],
+    [
+     1156,
+     1270
+    ],
+    [
+     1148,
+     1230
+    ],
+    [
+     1142,
+     1170
+    ],
+    [
+     1128,
+     1115
+    ],
+    [
+     1108,
+     1060
+    ],
+    [
+     1100,
+     1020
+    ]
+   ],
+   "feather": 1.5,
+   "flipX": true,
+   "piv": {
+    "a": [
+     1160,
+     1000
+    ],
+    "b": [
+     1225,
+     1473
+    ]
+   },
+   "inpaint": [
+    [
+     [
+      1178,
+      886
+     ],
+     [
+      1200,
+      879
+     ],
+     [
+      1230,
+      894
+     ],
+     [
+      1250,
+      922
+     ],
+     [
+      1255,
+      965
+     ],
+     [
+      1252,
+      1010
+     ],
+     [
+      1205,
+      1017
+     ],
+     [
+      1203,
+      1052
+     ],
+     [
+      1195,
+      1092
+     ],
+     [
+      1170,
+      1100
+     ],
+     [
+      1138,
+      1100
+     ],
+     [
+      1110,
+      1092
+     ],
+     [
+      1099,
+      1050
+     ],
+     [
+      1101,
+      1008
+     ],
+     [
+      1124,
+      994
+     ],
+     [
+      1130,
+      958
+     ],
+     [
+      1134,
+      920
+     ],
+     [
+      1156,
+      899
+     ]
+    ]
+   ]
+  },
+  "rifle": {
+   "src": "t",
+   "box": [
+    565,
+    160,
+    1745,
+    400
+   ],
+   "minus": [
+    [
+     [
+      1080,
+      259
+     ],
+     [
+      1175,
+      262
+     ],
+     [
+      1225,
+      262
+     ],
+     [
+      1275,
+      268
+     ],
+     [
+      1325,
+      290
+     ],
+     [
+      1352,
+      318
+     ],
+     [
+      1400,
+      318
+     ],
+     [
+      1425,
+      313
+     ],
+     [
+      1475,
+      299
+     ],
+     [
+      1498,
+      302
+     ],
+     [
+      1498,
+      405
+     ],
+     [
+      1080,
+      405
+     ]
+    ]
+   ],
+   "keep": "largest",
+   "flipX": true,
+   "piv": {
+    "a": [
+     1480,
+     268
+    ],
+    "b": [
+     571,
+     210
+    ],
+    "muzzle": [
+     571,
+     210
+    ],
+    "butt": [
+     1740,
+     340
+    ]
+   }
+  },
+  "gear": {
+   "src": "t",
+   "box": [
+    1915,
+    24,
+    2285,
+    390
+   ],
+   "keep": "largest",
+   "k": 0.063,
+   "piv": {
+    "a": [
+     2099,
+     206
+    ],
+    "c": [
+     2099,
+     206
+    ]
+   }
+  }
+ }
+}

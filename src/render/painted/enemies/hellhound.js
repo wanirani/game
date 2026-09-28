@@ -20,7 +20,7 @@ export const spec = {
 };
 
 const EYE = '#ffb030';
-const _q = [0, 0], _j = [0, 0];
+const _q = [0, 0], _j = [0, 0], _m = [0, 0];
 const PL = [];
 let NP = 0;
 function place(name, pv, x, y, rot, vn = 'base', sx = 1, sy = 1) {
@@ -174,15 +174,15 @@ export function draw(ctx, e, world, o, rig) {
     if (q.tele > 0.5 && e.anim !== 'breath') glint(ctx, mx + 1, my - 3, 3 + 3 * q.tele, '#fff0d0', 0.8 * (q.tele - 0.5) / 0.5);
     if (e.anim === 'breath' && q.tele > 0.4) glint(ctx, mx + 4, my - 2, 4 + 4 * q.tele, '#ffd080', (q.tele - 0.4) / 0.6);
   }
+  K.pivotPos('body', 'a', 'a', L.ax, L.ay, q.lean, L.sx, 1, _m);      // mane root for the embers (needs the rig: before end())
   K.end();
   // embers off the flame mane and the tail tuft, sparks under the gallop (world space, per second of game time)
   if (world && o.cam) {
     const pool = e._fx ?? (e._fx = new K.FxPool(26));
     const dt = pool.step(K.clockOf(e, world));
     const lo = K.lod() === 0, f = e.facing < 0 ? -1 : 1, fast = e.anim === 'charge';
-    K.pivotPos('body', 'a', 'a', L.ax, L.ay, q.lean, L.sx, 1, _j);
     for (let k = pool.rate(0, (lo ? 5 : 10) * (fast ? 2 : 1), dt); k > 0; k--) {
-      toWorld(e, rig, _j[0] + K.frand(-16, 14), _j[1] - K.frand(8, 16), _q);
+      toWorld(e, rig, _m[0] + K.frand(-16, 14), _m[1] - K.frand(8, 16), _q);
       pool.add(3, _q[0], _q[1], -f * K.frand(10, fast ? 120 : 30), -K.frand(30, 80), K.frand(0.4, 0.8), K.frand(1.5, 3), K.fr() < 0.5 ? '#ff9a3a' : '#ffd070');
     }
     if (fast && e.onGround !== false) {
