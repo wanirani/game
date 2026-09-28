@@ -26,7 +26,7 @@ import { STAGES, STAGE_ORDER } from '../src/data/stages.js';
 import { ENEMIES } from '../src/data/enemies.js';
 import { BOSSES } from '../src/data/bosses.js';
 import { QUESTS } from '../src/data/quests.js';
-import { getDiff } from '../src/data/difficulty.js';
+import { getDiff, DIFF } from '../src/data/difficulty.js';
 import { enemyStats } from '../src/game/enemy.js';
 import { computeStats, expToNext } from '../src/game/stats.js';
 import { newHero } from '../src/game/progression.js';
@@ -44,12 +44,19 @@ const diffId = pos[0] || 'normal', charId = pos[1] || 'kael';
 const CHECK = flag('check'), STRICT = flag('strict'), JSON_OUT = flag('json'), ACC = flag('acc'), DOCS = flag('docs'), QUESTS_ON = flag('quests');
 const SEED = Number(optv('seed', 1)) || 1;
 const SEEDS = 5;
+// getDiff 는 모르는 id 를 보통으로 바꾼다 — 오타(예: hardd)가 보통 난이도 표를 'hardd' 라는 이름으로 내지 않게 막는다
+if (!DIFF[diffId]) { console.error(`알 수 없는 난이도: ${diffId} (${Object.keys(DIFF).join(', ')})`); process.exit(2); }
 const diff = getDiff(diffId);
 if (!CHARACTERS[charId]) { console.error(`알 수 없는 영웅: ${charId} (${Object.keys(CHARACTERS).join(', ')})`); process.exit(2); }
+// world2 §15 목표는 보통 난이도 기준 실행에만 있다 (MASTER_PLAN §5.1: hard/inferno 는 --check 없이 표만 검토)
+if (CHECK && diffId !== 'normal') { console.error(`--check 는 normal 난이도에서만 쓴다 (world2 §15 목표 = 보통 난이도 기준). ${diffId} 는 --check 없이 표로 검토하세요.`); process.exit(2); }
 const KNOBS = {};
 for (const part of String(optv('k', '')).split(',').map((s) => s.trim()).filter(Boolean)) {
   const [name, v] = part.split('=');
   if (!/^(eexp|ehp|eatk|bexp|bhp|batk)(\.[a-z0-9_]+)?$/.test(name) || !Number.isFinite(Number(v))) { console.error(`--k 형식 오류: ${part}`); process.exit(2); }
+  // 이름.id 의 id 오타는 아무 데도 적용되지 않은 채 조용히 넘어가므로 막는다 (e* = 일반 적, b* = 보스)
+  const [kind, id] = name.split('.');
+  if (id && !(kind[0] === 'b' ? BOSSES[id] : ENEMIES[id])) { console.error(`--k 의 ${kind[0] === 'b' ? '보스' : '적'} id 가 없음: ${part}`); process.exit(2); }
   KNOBS[name] = Number(v);
 }
 const P2_IDS = new Set(['s14', 's15', 's16', 's17', 's18', 's19', 's20']);

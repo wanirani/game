@@ -1,11 +1,12 @@
 // Platform QA runner — platform.md §11 WP-10, MASTER_PLAN §5.1 "runtime platform".
 // Runs the platform suites one after another (each in its own process), then prints one summary by issue.
 //
-//   node tools/qa/run_platform.mjs [--only pad,touch,view,menu,pwa,load,turntable] [--strict] [--assume PKG,…] [--shots]
+//   node tools/qa/run_platform.mjs [--only pad,bind,touch,view,menu,pwa,load,turntable] [--strict] [--assume PKG,…] [--shots]
 //                                  [--jobs N] (suites in parallel, default 2; output buffered per suite) [--timeout <s per suite>]
 //   npm run qa:platform
 //
-// Suites: pad (platform_pad), touch (platform_touch + the --layout matrix), view (platform_view without its pwa group),
+// Suites: pad (platform_pad), bind (platform_bind: awaken/mount/guard on keyboard, pad and touch + every canvas button,
+//         stepped), touch (platform_touch + the --layout matrix), view (platform_view without its pwa group),
 //         menu (platform_menu), pwa (platform_pwa), load (platform_load; --dist when dist/web exists),
 //         turntable (tools/qa/turntable.mjs when PLAT-TURNTABLE has added it).
 // Reports: /tmp/claude-0/qa/platform/<suite>.json and summary.json (red checks by issue and by owning package: a
@@ -29,6 +30,7 @@ const dist = fs.existsSync(path.join(ROOT, 'dist/web/index.html'));
 
 const SUITES = [
   { key: 'pad', file: 'platform_pad.mjs', report: 'platform_pad.json' },
+  { key: 'bind', file: 'platform_bind.mjs', report: 'platform_bind.json' },
   { key: 'touch', file: 'platform_touch.mjs', report: 'platform_touch.json' },
   { key: 'touch', file: 'platform_touch.mjs', extra: ['--layout', '--only', 'matrix'], report: 'platform_touch_layout.json' },
   { key: 'view', file: 'platform_view.mjs', extra: ['--skip', 'pwa'], report: 'platform_view.json' },
@@ -72,7 +74,7 @@ async function runOne(s) {
   if (rp && fs.existsSync(rp)) { try { rep = JSON.parse(fs.readFileSync(rp, 'utf8')); } catch { rep = null; } }
   runs.push({ ...s, ...r, rep });
 }
-const COST = { view: 10, pad: 5, menu: 3, touch: 2, turntable: 2, pwa: 1, load: 1 }; // longest first packs the workers best
+const COST = { view: 10, pad: 5, menu: 3, touch: 2, turntable: 2, bind: 1, pwa: 1, load: 1 }; // longest first packs the workers best
 const queue = todo.slice().sort((a, b) => (COST[b.key] ?? 1) - (COST[a.key] ?? 1));
 await Promise.all(Array.from({ length: Math.min(JOBS, queue.length) }, async () => { while (queue.length) await runOne(queue.shift()); }));
 runs.sort((a, b) => a.idx - b.idx);

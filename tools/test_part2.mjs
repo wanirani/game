@@ -26,6 +26,11 @@ const GROUPS = ['static', 'rooms', 'gimmicks', 'bosses', 'flow', 'legacy', 'endi
 if (ONLY) { const bad = ONLY.filter((g) => !GROUPS.includes(g)); if (bad.length) { console.error(`알 수 없는 검사 묶음: ${bad.join(', ')} (가능: ${GROUPS.join(' ')})`); process.exit(2); } }
 const want = (g) => (STATIC_ONLY ? g === 'static' : !ONLY || ONLY.includes(g));
 
+const P2 = ['s14', 's15', 's16', 's17', 's18', 's19', 's20'];
+const P2_BOSSES = { s14: 'b_narkissa', s15: 'b_moloch', s16: 'b_dagon', s17: 'b_ziz', s18: 'b_mara', s19: 'b_behemoth', s20: 'b_nihil' };
+// --boss 오타(또는 값 없이 --boss)는 보스 검사를 모두 건너뛴 채 "0개 모두 통과" 로 끝나므로 막는다
+if (BOSS_ONLY) { const bad = BOSS_ONLY.filter((b) => !Object.values(P2_BOSSES).includes(b)); if (bad.length) { console.error(`알 수 없는 2부 보스: ${bad.join(', ')} (가능: ${Object.values(P2_BOSSES).join(' ')})`); process.exit(2); } }
+
 const results = [];   // {group, name, ok, info}
 function check(group, name, ok, info) {
   results.push({ group, name, ok: !!ok, info });
@@ -33,8 +38,6 @@ function check(group, name, ok, info) {
 }
 const short = (v) => { const s = typeof v === 'string' ? v : JSON.stringify(v); return s && s.length > 600 ? s.slice(0, 600) + '…' : s; };
 
-const P2 = ['s14', 's15', 's16', 's17', 's18', 's19', 's20'];
-const P2_BOSSES = { s14: 'b_narkissa', s15: 'b_moloch', s16: 'b_dagon', s17: 'b_ziz', s18: 'b_mara', s19: 'b_behemoth', s20: 'b_nihil' };
 const RECRUITS = { s14: 'gd_mirra', s15: 'mt_ignis', s16: 'gd_lumen', s17: 'mt_gale', s18: 'gd_momo', s19: 'mt_silva' };   // world2 §14 (MASTER_PLAN §1.2)
 const P2_SIDE = ['bd_rift', 'bd_mirror', 'bd_deep', 'bd_storm', 'bd_combo200', 'hd_ember', 'hd_plus15', 'rk_stars', 'rk_stars6', 'el_pearl', 'ab_dawnflower', 'mt_feast', 'cm_dreams'];
 // world2 §1.4 — 2부 대본 id 전부
@@ -793,6 +796,8 @@ async function legacyGroup() {
 async function endingsGroup() {
   const G = 'endings';
   const lastLine = '새벽의 별은 지지 않는다.';
+  const P1_LAST = '밤은 끝났다. 좋은 아침을.', P2_SUB = '제2부 균열의 순례';   // world2 §1.7
+  const P2_HEADS = CREDITS_P2_REF.map((s) => s.trim().match(/^—\s*(.+?)\s*—$/)?.[1]).filter(Boolean);   // CREDITS_P2 의 소제목 (1부 크레딧에는 없어야 한다)
   const creditParts = CREDITS_P2_REF.map((s) => s.trim()).filter(Boolean).flatMap((s) => s.replace(/^—\s*|\s*—$/g, '').split(' — ')).map((s) => s.trim()).filter(Boolean);
   for (const [n, kind] of [[6, 'p2true'], [0, 'p2']]) {
     if (BOSS_ONLY && !BOSS_ONLY.includes('b_nihil')) break;
@@ -802,10 +807,12 @@ async function endingsGroup() {
     const { c, errs } = out;
     const cr = c.credits.find((x) => x.kind === kind);
     const missing = cr ? creditParts.filter((s) => !cr.text.includes(s)) : creditParts;
-    const closing = kind !== 'p2true' || !!cr?.text.includes(lastLine);
-    check(G, `별의 조각 ${n}개: s20 결과 → leave() → 엔딩 ${kind} · ending_${kind} · 크레딧(CREDITS_P2${kind === 'p2true' ? ' + 마지막 줄' : ''}) · 마을`,
-      c.ok && c.top === 'hub' && c.endings.includes(kind) && c.stories.includes(`ending_${kind}`) && !!cr && !missing.length && closing && c.flags.includes('ending_' + kind) && !errs.length,
-      { top: c.top, endings: c.endings, stories: c.stories, credits: c.credits.map((x) => x.kind), missing: missing.slice(0, 8), closing, flags: c.flags, log: c.log, errs });
+    // world2 §1.7: p2true 는 마지막 줄을 lastLine 으로 바꾸고, p2 는 1부 마지막 줄을 그대로 둔다. 두 갈래 모두 부제가 2부판.
+    const closing = kind === 'p2true' ? !!cr?.text.includes(lastLine) && !cr.text.includes(P1_LAST) : !!cr?.text.includes(P1_LAST) && !cr.text.includes(lastLine);
+    const sub = !!cr?.text.includes(P2_SUB);
+    check(G, `별의 조각 ${n}개: s20 결과 → leave() → 엔딩 ${kind} · ending_${kind} · 크레딧(CREDITS_P2 · 2부 부제 · ${kind === 'p2true' ? '새 마지막 줄' : '1부 마지막 줄'}) · 마을`,
+      c.ok && c.top === 'hub' && c.endings.includes(kind) && c.stories.includes(`ending_${kind}`) && !!cr && !missing.length && closing && sub && c.flags.includes('ending_' + kind) && !errs.length,
+      { top: c.top, endings: c.endings, stories: c.stories, credits: c.credits.map((x) => x.kind), missing: missing.slice(0, 8), closing, sub, flags: c.flags, log: c.log, errs });
   }
   // 1부 회귀: s12 (유물 없음) → 배드/노멀, s13 → 진엔딩 → 프롤로그
   const cases = [
@@ -832,10 +839,14 @@ async function endingsGroup() {
         T.autoEnding = true;
         g.go('ending', { from: cs.from }, { fade: false });
         const ok = T.until(() => T.top()?.name === cs.end && g.fade.dir === 0, 150);
-        return { ok, top: T.top()?.name, endings: T.cap.endings.slice(), stories: T.cap.stories.slice(), p2: !!P.flags.p2_started, log: T.cap.scenes.slice(-8) };
+        return { ok, top: T.top()?.name, endings: T.cap.endings.slice(), stories: T.cap.stories.slice(), p2: !!P.flags.p2_started, log: T.cap.scenes.slice(-8), credits: T.cap.credits.map((c) => ({ kind: c.kind, text: c.text })) };
       }, cs);
-      const pass = r.ok && r.endings.includes(cs.kind) && r.stories.includes(`ending_${cs.kind}`) && (!cs.prologue || (r.stories.includes('p2_prologue') && r.p2));
-      check(G, `1부 회귀: ${cs.name}`, pass && !errsSince(P, e0).length, { ...r, errs: errsSince(P, e0) });
+      // world2 §1.7: 2부 엔딩을 본 적 없는 1부 엔딩 크레딧에는 2부 줄이 없다 (부제·마지막 줄도 1부 그대로)
+      const cr = r.credits.find((x) => x.kind === cs.kind);
+      const p2Lines = cr ? [P2_SUB, lastLine, ...P2_HEADS].filter((s) => cr.text.includes(s)) : null;
+      const pass = r.ok && r.endings.includes(cs.kind) && r.stories.includes(`ending_${cs.kind}`) && (!cs.prologue || (r.stories.includes('p2_prologue') && r.p2))
+        && !!cr && !p2Lines.length && cr.text.includes(P1_LAST);
+      check(G, `1부 회귀: ${cs.name} (크레딧에 2부 줄 없음)`, pass && !errsSince(P, e0).length, { ...r, credits: r.credits.map((x) => x.kind), p2Lines, errs: errsSince(P, e0) });
     } catch (e) { check(G, `1부 회귀 ${cs.name} 실행`, false, e.stack); }
     await P?.close();
   }
@@ -892,14 +903,23 @@ async function itemsGroup() {
       ['tech_whirl', 'd23', [['ArrowUp'], [], ['ArrowUp']]],
       ['tech_purge', 'd26', [['ArrowUp'], ['ArrowRight']]],
     ];
-    const r = await P.page.evaluate((techs) => {
-      const T = window.__T, w = T.w(), p = T.p(), st = T.g.state;
+    const r = await P.page.evaluate(async (techs) => {
+      const T = window.__T, p = T.p(), st = T.g.state;
+      const [{ SKILL_IMPL }, { DOCS }] = await Promise.all([import('/src/game/skills.js'), import('/src/data/lore.js')]);
+      // 어떤 기술이 나갔는지 기록 (castTechnique 가 SKILL_IMPL[id] 를 부른다) — 다른 커맨드 기술이 대신 나가도 MP 는 줄기 때문
+      const fired = [];
+      for (const k of Object.keys(SKILL_IMPL)) {
+        if (!k.startsWith('tech_') || SKILL_IMPL[k]._qaWrap) continue;
+        const f = SKILL_IMPL[k];
+        SKILL_IMPL[k] = Object.assign(function (...a) { fired.push(k); return f.apply(this, a); }, { _qaWrap: true });
+      }
       T.hero60(); T.tick(30);
       for (const [, d] of techs) if (!st.progress.docs.includes(d)) st.progress.docs.push(d);
       const out = [];
-      for (const [id, , seq] of techs) {
+      for (const [id, d, seq] of techs) {
         T.full(); p.facing = 1; T.tick(60);
-        const mp0 = p.mp;
+        fired.length = 0;
+        const mp0 = p.mp, cost = DOCS[d]?.tech?.mp ?? null;
         let held = [];
         for (const keys of seq) {
           for (const k of held) if (!keys.includes(k)) T.key(k, false);
@@ -910,13 +930,13 @@ async function itemsGroup() {
         for (const k of held) T.key(k, false);
         let spent = 0;
         for (let i = 0; i < 20; i++) { T.tick(1); spent = Math.max(spent, mp0 - p.mp); }
-        out.push({ id, mp0: Math.round(mp0), spent: Math.round(spent) });
+        out.push({ id, mp0: Math.round(mp0), spent: Math.round(spent), cost, fired: fired.slice() });
         T.tick(90);
       }
       return out;
     }, techs);
     await shot(P, 'items_techs');
-    for (const t of r) check(G, `${t.id}: 커맨드 입력 → 발동 (MP 소모)`, t.spent >= 10, t);
+    for (const t of r) check(G, `${t.id}: 커맨드 입력 → 바로 그 기술 발동 · MP ${t.cost ?? '?'} 소모`, t.cost > 0 && t.fired.length === 1 && t.fired[0] === t.id && Math.abs(t.spent - t.cost) <= 1, t);
     check(G, '기술 검사 오류 0', !errsSince(P, e0).length, errsSince(P, e0));
   } catch (e) { check(G, '기술 검사 실행', false, e.stack); }
   await P?.close();
@@ -939,7 +959,8 @@ async function mobileGroup() {
     const hit = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
     const bad = [];
     for (const [a, ra] of mine) for (const [b, rb] of occ) if (hit(ra, rb)) bad.push(`${a}×${b}`);
-    return { n, occ: occ.length, bad };
+    // rows = 이번에 실제로 그린 게이지 줄 수, boss = 보스 바가 보이는가 (둘 다 없으면 비교가 헛돈다)
+    return { n, rows: w.gimmick?.meterRows ?? 0, boss: !!L.bossShown, occ: occ.length, bad };
   })();
   const touchOn = async (P, t) => {
     const [w, h] = await P.page.evaluate(() => [innerWidth, innerHeight]);
@@ -967,7 +988,7 @@ async function mobileGroup() {
     const ov = await P.page.evaluate(overlapCheck);
     await shot(P, 'mobile_s16_r2');
     check(G, 's16 r2 (터치): 점프 버튼 → 물속 헤엄 (vy < 0)', mode === 'touch' && r.jump && r.minVy < 0 && r.inWater && !errsSince(P, e0).length, { ...r, errs: errsSince(P, e0) });
-    check(G, 's16 r2 (터치): 기믹 게이지가 패드·일시정지·보스 바와 겹치지 않음', !ov.bad.length, ov);
+    check(G, 's16 r2 (터치): 기믹 게이지가 패드·일시정지와 겹치지 않음', ov.occ > 0 && ov.rows >= 1 && !ov.bad.length, ov);
   } catch (e) { check(G, 's16 r2 휴대폰 실행', false, e.stack); }
   await P?.close(); P = null;
   // s17 r2: 상승 기류
@@ -988,8 +1009,39 @@ async function mobileGroup() {
     const ov = await P.page.evaluate(overlapCheck);
     await shot(P, 'mobile_s17_r2');
     check(G, 's17 r2 (터치): 상승 기류 → vy < 0', mode === 'touch' && r.at > 0 && !errsSince(P, e0).length, { mode, ...r, errs: errsSince(P, e0) });
-    check(G, 's17 r2 (터치): 기믹 게이지가 패드·일시정지·보스 바와 겹치지 않음', !ov.bad.length, ov);
+    check(G, 's17 r2 (터치): 기믹 게이지 자리가 패드·일시정지와 겹치지 않음', ov.occ > 0 && !ov.bad.length, ov);
   } catch (e) { check(G, 's17 r2 휴대폰 실행', false, e.stack); }
+  await P?.close(); P = null;
+  // s16 보스방: 보스 바가 보이는 채로 물속 공기 게이지를 띄워 셋(게이지·보스 바·패드)이 겹치지 않는지 (§17-12 '보스 바')
+  try {
+    P = await openPage('index.html?scene=stage&stage=s16&room=boss', { ready: 'stage', god: 'full', mobile: true });
+    const e0 = P.errs.length;
+    const cdp = await P.ctx.newCDPSession(P.page), t = new Touch(cdp, P.page);
+    const mode = await touchOn(P, t);
+    const r = await P.page.evaluate(() => {
+      const T = window.__T, w = T.w(), p = T.p();
+      T.hero60();
+      let lastX = p.x;
+      T.hold('ArrowRight', 40);
+      for (let i = 0; i < 60 * 30 && !w.boss; i++) {
+        T.tick(1);
+        if (T.top()?.name !== 'stage') continue;
+        if (i % 20 === 19) { if (Math.abs(p.x - lastX) < 4) T.hold('KeyZ', 0.25); lastX = p.x; }
+      }
+      T.release('ArrowRight');
+      const fight = T.until(() => w.bossActive && !w.cutscene && T.top()?.name === 'stage' && T.g.fade.dir === 0, 40);
+      const d = w.gimmickOf('deep');
+      const X = 30 * 48, Y = 16 * 48 - p.h;   // 경기장 물(21–55열, 12–15줄) 바닥에 선다 — 머리가 물속
+      T.pin = () => { p.x = X; p.y = Y; p.vx = 0; p.vy = 0; };
+      T.tick(150);
+      T.pin = null;
+      return { boss: !!w.boss, fight, air: d ? Math.round(d.air) : null, under: !!d?.headUnder };
+    });
+    const ov = await P.page.evaluate(overlapCheck);
+    await shot(P, 'mobile_s16_boss');
+    check(G, 's16 보스방 (터치): 보스 바가 보일 때 공기 게이지가 보스 바·패드·일시정지와 겹치지 않음',
+      mode === 'touch' && r.fight && r.air < 100 && ov.boss && ov.rows >= 1 && ov.occ > 0 && !ov.bad.length && !errsSince(P, e0).length, { mode, ...r, ...ov, errs: errsSince(P, e0) });
+  } catch (e) { check(G, 's16 보스방 휴대폰 실행', false, e.stack); }
   await P?.close(); P = null;
   // 지도: 탭을 눌러 지도 전환
   try {
@@ -1103,3 +1155,9 @@ console.log(bad.length ? `✗ ${bad.length}개 실패` : `✓ ${results.length}�
 fs.mkdirSync('/tmp/claude-0/proto/wpj', { recursive: true });
 fs.writeFileSync('/tmp/claude-0/proto/wpj/report.json', JSON.stringify(results, null, 1));
 if (bad.length) process.exitCode = 1;
+// 고른 묶음이 검사를 하나도 돌리지 않았으면(예: --only loot --boss b_moloch) 통과로 치지 않는다 — integration.mjs --only 와 같은 규칙
+const empty = (STATIC_ONLY ? ['static'] : ONLY ?? []).filter((g) => !byGroup[g]);
+if (!results.length || empty.length) {
+  console.log(`✗ 고른 검사가 하나도 돌지 않음${empty.length ? ': ' + empty.join(', ') : ''} (--only · --boss 조합을 확인)`);
+  process.exitCode = 2;
+}

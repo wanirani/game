@@ -908,7 +908,7 @@ function drawLumen(ctx, g, world, opts) {
 // 쪽빛 동그란 몸(금빛 별·초승달 무늬) · 크림색 가슴털 · 졸린 보랏빛 눈 · 둥근 귀 · 짧게 말린 코 · 뭉툭한 다리 · 곱슬 꼬리 · 보랏빛 꿈 구름.
 // 발 원점 (구름 밑), 몸 중심 (0,-13). 코 뿌리 (13.4,-13.4) — guardian_ai_b mouth (cx + w*0.55, cy + 2) 와 같은 높이.
 const INDIGO = [[0, '#5a54a0'], [0.5, '#2e2a62'], [1, '#141030']];
-const TRUNK = [13.4, -13.4];
+const TRUNK = [13.4, -14.6];
 function momoParts() {
   return cached('momo', () => {
     const cloud = bake(-15.5, -8.6, 15.5, 0.6, (x) => {
@@ -925,21 +925,23 @@ function momoParts() {
       x.fillStyle = '#1a1634';
       for (const lx of [-7.2, 5.4]) { x.beginPath(); x.moveTo(lx - 1.4, -9); x.lineTo(lx - 1.2, -4.6); x.lineTo(lx + 1.3, -4.6); x.lineTo(lx + 1.4, -9); x.closePath(); x.fill(); }
       x.fillStyle = '#6a4a8a'; for (const lx of [-7.2, 5.4]) { x.beginPath(); x.ellipse(lx, -4.5, 1.5, 0.7, 0, 0, TAU); x.fill(); }
-      // 몸통
+      // 몸통 (둥글고 통통한 등)
       x.fillStyle = rad(x, -2, -17, 1, 13, INDIGO, -3, -19);
-      x.beginPath(); x.ellipse(-1.6, -13, 11.6, 7.6, 0, 0, TAU); x.fill();
+      x.beginPath(); x.ellipse(-2.2, -12.8, 11.4, 7.8, 0, 0, TAU); x.fill();
       x.strokeStyle = OUT; x.lineWidth = 0.4; x.stroke();
-      // 머리
-      x.fillStyle = rad(x, 9, -17, 0.6, 7, INDIGO, 8, -18);
-      x.beginPath(); x.ellipse(8.6, -14.6, 5.8, 5.2, 0.1, 0, TAU); x.fill(); x.stroke();
-      // 주둥이 (코 뿌리)
-      x.fillStyle = '#2a2458'; x.beginPath(); x.ellipse(12.6, -13.2, 2.4, 2, 0.2, 0, TAU); x.fill();
-      // 크림색 가슴·볼 털
-      x.fillStyle = rad(x, 5, -9, 0.5, 6, [[0, '#fff8e0'], [0.6, '#f0e0b8'], [1, '#c8b080']]);
-      x.beginPath(); x.moveTo(1.6, -13.6); x.bezierCurveTo(3.4, -16, 8, -15.2, 9.6, -12.2); x.bezierCurveTo(10, -9.6, 8.6, -7, 6.6, -6.4);
-      for (let i = 0; i < 6; i++) x.lineTo(6.2 - i * 1, -6.2 + (i % 2) * 0.9);
-      x.bezierCurveTo(1, -8.4, 0.8, -11.6, 1.6, -13.6); x.closePath(); x.fill();
-      x.strokeStyle = 'rgba(160,130,90,0.6)'; x.lineWidth = 0.22; x.beginPath(); for (let i = 0; i < 6; i++) { x.moveTo(3 + i * 0.9, -12.4 + i * 0.7); x.lineTo(2.4 + i * 0.9, -10.6 + i * 0.7); } x.stroke();
+      // 크림색 가슴털 (목 아래 · 앞다리 위)
+      x.fillStyle = rad(x, 5.6, -9.4, 0.5, 5, [[0, '#fff8e0'], [0.6, '#f0e0b8'], [1, '#c8b080']]);
+      x.beginPath(); x.moveTo(2.4, -12.6); x.bezierCurveTo(4, -13.8, 7.6, -13.2, 8.8, -10.6); x.bezierCurveTo(9, -8.6, 8, -6.8, 6.8, -6.2);
+      for (let i = 0; i < 5; i++) x.lineTo(6.2 - i * 0.9, -6 + (i % 2) * 0.9);
+      x.bezierCurveTo(2.2, -7.6, 1.8, -10.6, 2.4, -12.6); x.closePath(); x.fill();
+      x.strokeStyle = 'rgba(160,130,90,0.6)'; x.lineWidth = 0.22; x.beginPath(); for (let i = 0; i < 5; i++) { x.moveTo(3.4 + i * 0.9, -11.4 + i * 0.6); x.lineTo(2.9 + i * 0.9, -9.8 + i * 0.6); } x.stroke();
+      // 머리 (몸 앞 위쪽, 주둥이가 앞으로 길게)
+      x.fillStyle = rad(x, 8.6, -17.2, 0.6, 6.4, INDIGO, 8, -18.6);
+      x.beginPath(); x.moveTo(4.2, -18.4); x.bezierCurveTo(5.2, -21.8, 10.4, -21.6, 12, -18.2);
+      x.bezierCurveTo(13.4, -16.6, 14.4, -15.6, 14.2, -13.8); x.bezierCurveTo(13.8, -12.4, 12.2, -11.6, 10.4, -11.8);
+      x.bezierCurveTo(8, -11.6, 5.2, -12.6, 4.2, -14.6); x.closePath(); x.fill();
+      x.strokeStyle = OUT; x.lineWidth = 0.38; x.stroke();
+      x.fillStyle = 'rgba(140,130,220,0.3)'; x.beginPath(); x.ellipse(8.4, -19.4, 3, 1, -0.2, 0, TAU); x.fill();
       // 털결 (등)
       x.strokeStyle = 'rgba(140,130,220,0.35)'; x.lineWidth = 0.28;
       x.beginPath(); for (let i = 0; i < 9; i++) { const px = -11 + i * 2.2; x.moveTo(px, -18.6 + Math.abs(i - 4) * 0.35); x.lineTo(px - 0.8, -17.2 + Math.abs(i - 4) * 0.35); } x.stroke();
@@ -959,20 +961,20 @@ function momoParts() {
       star(-8.2, -15, 1.3); star(-5.4, -12, 0.9); star(0.2, -16.2, 1.1); star(-10.4, -11.8, 0.7); star(2.2, -19, 0.6);
       x.beginPath(); for (const [dx, dy] of [[-6.8, -17.8], [-1.2, -13.6], [-9, -18.2], [1.6, -14.2], [-3, -9.8]]) { x.moveTo(dx + 0.3, dy); x.arc(dx, dy, 0.3, 0, TAU); } x.fill();
       // 졸린 눈 (감은 초승달 + 속눈썹) · 보랏빛 눈두덩 · 미소
-      x.fillStyle = 'rgba(190,120,230,0.5)'; x.beginPath(); x.ellipse(9.6, -16.6, 1.8, 1.1, 0, 0, TAU); x.fill();
-      x.strokeStyle = '#140c24'; x.lineWidth = 0.4; x.beginPath(); x.arc(9.7, -17, 1.2, 0.35, 2.7); x.stroke();
-      x.lineWidth = 0.22; x.beginPath(); x.moveTo(10.8, -16.4); x.lineTo(11.4, -16.1); x.moveTo(10.3, -16); x.lineTo(10.7, -15.5); x.stroke();
-      x.strokeStyle = '#140c24'; x.lineWidth = 0.28; x.beginPath(); x.moveTo(10.4, -12.4); x.quadraticCurveTo(11.4, -11.6, 12.4, -12.2); x.stroke();
-      x.fillStyle = 'rgba(255,140,190,0.35)'; x.beginPath(); x.ellipse(10.8, -14.2, 1, 0.6, 0, 0, TAU); x.fill();
+      x.fillStyle = 'rgba(190,120,230,0.55)'; x.beginPath(); x.ellipse(9.2, -17, 1.8, 1.1, 0, 0, TAU); x.fill();
+      x.strokeStyle = '#140c24'; x.lineWidth = 0.4; x.beginPath(); x.arc(9.3, -17.4, 1.2, 0.35, 2.7); x.stroke();
+      x.lineWidth = 0.22; x.beginPath(); x.moveTo(10.4, -16.8); x.lineTo(11, -16.5); x.moveTo(9.9, -16.4); x.lineTo(10.3, -15.9); x.stroke();
+      x.strokeStyle = '#140c24'; x.lineWidth = 0.28; x.beginPath(); x.moveTo(9.6, -13); x.quadraticCurveTo(10.8, -12.2, 12, -12.8); x.stroke();
+      x.fillStyle = 'rgba(255,140,190,0.35)'; x.beginPath(); x.ellipse(10.2, -14.8, 1, 0.6, 0, 0, TAU); x.fill();
     });
     // 코 (뿌리 원점, +x 로 뻗고 끝이 아래로 말림)
-    const trunk = bake(-0.6, -2.4, 8.4, 5.4, (x) => {
+    const trunk = bake(-0.8, -2.8, 7.4, 6.4, (x) => {
       x.fillStyle = lin(x, 0, -2, 0, 3, [[0, '#4a4488'], [1, '#1c1840']]);
-      x.beginPath(); x.moveTo(0, -1.9); x.bezierCurveTo(3, -2.2, 6.4, -1.8, 7.6, 0.6); x.bezierCurveTo(8.2, 2.4, 7.4, 4.2, 6, 4.6);
-      x.bezierCurveTo(5.4, 3.6, 6.4, 2.6, 5.8, 1.4); x.bezierCurveTo(5, 0.6, 2.6, 1.4, 0, 1.9); x.closePath(); x.fill();
-      x.strokeStyle = OUT; x.lineWidth = 0.32; x.stroke();
-      x.strokeStyle = 'rgba(140,130,220,0.45)'; x.lineWidth = 0.22; x.beginPath(); for (let i = 1; i < 5; i++) { x.moveTo(i * 1.3, -1.7); x.quadraticCurveTo(i * 1.3 + 0.4, 0, i * 1.3, 1.6); } x.stroke();
-      x.fillStyle = '#0c0818'; x.beginPath(); x.ellipse(6.4, 4.2, 0.55, 0.35, 0.4, 0, TAU); x.fill();
+      x.beginPath(); x.moveTo(-0.4, -2.4); x.bezierCurveTo(2.6, -2.6, 5.4, -1.8, 6.4, 0.8); x.bezierCurveTo(7, 2.8, 6.2, 5, 4.6, 5.6);
+      x.bezierCurveTo(3.8, 4.8, 4.8, 3.4, 4.4, 2.2); x.bezierCurveTo(3.8, 1, 2, 1.6, -0.4, 2.2); x.closePath(); x.fill();
+      x.strokeStyle = OUT; x.lineWidth = 0.34; x.stroke();
+      x.strokeStyle = 'rgba(150,140,230,0.35)'; x.lineWidth = 0.2; x.beginPath(); x.moveTo(0.6, -1.9); x.bezierCurveTo(3, -1.9, 4.8, -1.2, 5.6, 0.8); x.stroke();
+      x.fillStyle = '#0c0818'; x.beginPath(); x.ellipse(5, 5.2, 0.6, 0.38, 0.5, 0, TAU); x.fill();
     });
     // 꼬리 (뿌리 원점, -x 로)
     const tail = bake(-6.4, -4.6, 0.6, 2.2, (x) => {
@@ -992,7 +994,7 @@ function drawMomo(ctx, g, world, opts) {
   const breath = Math.sin(t * 2.1) * 0.025;
   let tilt = clamp(s.vxf * 0.0006, -0.12, 0.18) - s.hurt * 0.25, sx = 1 - breath, sy = 1 + breath, lift = 0;
   // 코 자세: 각 (0 = 앞으로, + = 아래로 말림) · 길이 배율
-  let ta = 0.25 + Math.sin(t * 1.5) * 0.12, tl = 1, open = 0;
+  let ta = 0.3 + Math.sin(t * 1.5) * 0.12, tl = 1, open = 0;
   if (atk) {   // 0~0.12 뒤로 젖힘 → 0.14 덥석 → 복귀 (bite 판정 0.14)
     if (at < 0.12) { ta = lerp(0.25, -0.75, easeOut(at / 0.12)); tilt -= 0.08 * (at / 0.12); }
     else if (at < 0.2) { const k = easeOut((at - 0.12) / 0.08); ta = lerp(-0.75, 0.3, k); tl = lerp(1, 1.75, k); tilt += 0.14 * k; open = k; }
@@ -1032,7 +1034,7 @@ function drawMomo(ctx, g, world, opts) {
   gGlow(ctx, -3.4, -18.2, 3, '#ffe08a', tw(0), 0.3); gGlow(ctx, -8.2, -15, 2.4, '#ffe08a', tw(1), 0.3); gGlow(ctx, 0.2, -16.2, 2.2, '#ffe08a', tw(2), 0.3);
   if (s.hiQ) gGlow(ctx, 8.2, -18.6, 2.2, '#ffe08a', tw(3), 0.3);
   // 코끝 (덥석 섬광)
-  const c = Math.cos(ta), sn = Math.sin(ta), tipX = TRUNK[0] + c * 7 * tl - sn * 2.4, tipY = TRUNK[1] + sn * 7 * tl + c * 2.4;
+  const c = Math.cos(ta), sn = Math.sin(ta), tipX = TRUNK[0] + c * 5.2 * tl - sn * 4.6, tipY = TRUNK[1] + sn * 5.2 * tl + c * 4.6;
   if ((atk && at > 0.12 && at < 0.26) || (asst && at > 0.18 && at < 0.3)) { gGlow(ctx, tipX, tipY, 7, '#d080ff', 0.7, 0.25); gStar(ctx, tipX, tipY, 4, 0.8, t * 4); }
   // 각성: 머리 위 초승달 후광 + 별가루
   if (s.aw) {

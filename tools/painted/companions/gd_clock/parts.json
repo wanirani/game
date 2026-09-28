@@ -1,0 +1,217 @@
+{
+ "id": "gd_clock",
+ "tier": "T1",
+ "srcTD": 4,
+ "note": "\ud2f1\ud1a1: body = sheet0 doll (far arm removed: sleeve/hand minus above the skirt edge, hand-over-skirt inpainted); umb = sheet0 arm holding the open umbrella (flipX, shoulder pivot); key + gear = sheet1 flat front views. k: 30 logical px from head to shoes.",
+ "sources": {
+  "a": {
+   "raw": "gd_clock_sheet0.webp",
+   "file": "gd_clock_sheet0.png",
+   "mode": "",
+   "k": 0.019
+  },
+  "b": {
+   "raw": "gd_clock_sheet1.webp",
+   "file": "gd_clock_sheet1.png",
+   "mode": "",
+   "k": 0.019
+  }
+ },
+ "parts": {
+  "body": {
+   "src": "a",
+   "box": [
+    55,
+    130,
+    1065,
+    1650
+   ],
+   "keep": "largest",
+   "minus": [
+    [
+     [
+      760,
+      815
+     ],
+     [
+      800,
+      860
+     ],
+     [
+      850,
+      915
+     ],
+     [
+      900,
+      925
+     ],
+     [
+      966,
+      955
+     ],
+     [
+      970,
+      1088
+     ],
+     [
+      900,
+      1050
+     ],
+     [
+      850,
+      1020
+     ],
+     [
+      820,
+      1002
+     ],
+     [
+      790,
+      965
+     ],
+     [
+      765,
+      930
+     ],
+     [
+      752,
+      880
+     ]
+    ]
+   ],
+   "inpaint": [
+    [
+     [
+      818,
+      996
+     ],
+     [
+      850,
+      1016
+     ],
+     [
+      900,
+      1046
+     ],
+     [
+      948,
+      1074
+     ],
+     [
+      900,
+      1090
+     ],
+     [
+      840,
+      1066
+     ],
+     [
+      806,
+      1030
+     ]
+    ]
+   ],
+   "piv": {
+    "a": [
+     560,
+     1635
+    ],
+    "sh": [
+     762,
+     805
+    ],
+    "key": [
+     470,
+     930
+    ],
+    "eye": [
+     540,
+     540
+    ],
+    "eye2": [
+     780,
+     530
+    ],
+    "head": [
+     560,
+     430
+    ],
+    "top": [
+     560,
+     150
+    ]
+   }
+  },
+  "umb": {
+   "src": "a",
+   "box": [
+    1005,
+    15,
+    2225,
+    1020
+   ],
+   "keep": "largest",
+   "flipX": true,
+   "piv": {
+    "a": [
+     2150,
+     672
+    ],
+    "hand": [
+     1600,
+     700
+    ],
+    "tip": [
+     1098,
+     40
+    ],
+    "cog": [
+     1200,
+     170
+    ],
+    "hook": [
+     1790,
+     990
+    ]
+   }
+  },
+  "key": {
+   "src": "b",
+   "k": 0.014,
+   "box": [
+    1780,
+    145,
+    2205,
+    1075
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1986,
+     1040
+    ],
+    "b": [
+     1990,
+     330
+    ]
+   }
+  },
+  "gear": {
+   "src": "b",
+   "k": 0.012,
+   "box": [
+    1798,
+    1170,
+    2210,
+    1582
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     2004,
+     1377
+    ]
+   }
+  }
+ }
+}
