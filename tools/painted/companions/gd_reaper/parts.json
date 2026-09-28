@@ -1,0 +1,158 @@
+{
+ "id": "gd_reaper",
+ "tier": "T1",
+ "srcTD": 4,
+ "note": "\ubaa8\ub974\uc2a4: body = Step-4 edit (scythe + lantern removed, empty fists, smoky robe); the art faces LEFT -> flipX. fists = the two bony fists cut again from the edit, drawn over the scythe shaft. scythe / lantern / book = sheet1 loose pieces (scythe not flipped: the blade curves forward). k: 40 logical px from hood tip to smoke end, scythe ~44 px long.",
+ "sources": {
+  "e": {
+   "raw": "gd_reaper_edit.webp",
+   "file": "gd_reaper_edit.png",
+   "mode": "soft",
+   "k": 0.02
+  },
+  "s": {
+   "raw": "gd_reaper_sheet1.webp",
+   "file": "gd_reaper_sheet1.png",
+   "mode": "",
+   "k": 0.028
+  }
+ },
+ "parts": {
+  "body": {
+   "src": "e",
+   "box": [
+    290,
+    205,
+    1760,
+    2250
+   ],
+   "flipX": true,
+   "fade": [
+    [
+     200,
+     1980,
+     1800,
+     2250,
+     "down",
+     1.4
+    ]
+   ],
+   "piv": {
+    "a": [
+     760,
+     2200
+    ],
+    "grip": [
+     455,
+     1095
+    ],
+    "eye": [
+     512,
+     750
+    ],
+    "eye2": [
+     750,
+     738
+    ],
+    "top": [
+     575,
+     238
+    ],
+    "chest": [
+     700,
+     1150
+    ],
+    "fist2": [
+     640,
+     1095
+    ]
+   }
+  },
+  "fists": {
+   "src": "e",
+   "box": [
+    330,
+    1005,
+    705,
+    1185
+   ],
+   "flipX": true,
+   "piv": {
+    "a": [
+     455,
+     1095
+    ]
+   }
+  },
+  "scythe": {
+   "src": "s",
+   "box": [
+    1310,
+    100,
+    2340,
+    1682
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1402,
+     1125
+    ],
+    "hang": [
+     1400,
+     480
+    ],
+    "tip": [
+     2325,
+     350
+    ],
+    "butt": [
+     1437,
+     1662
+    ],
+    "edge": [
+     1900,
+     215
+    ]
+   }
+  },
+  "lantern": {
+   "src": "s",
+   "k": 0.014,
+   "box": [
+    1838,
+    362,
+    2120,
+    926
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     1978,
+     385
+    ],
+    "fire": [
+     1980,
+     788
+    ]
+   }
+  },
+  "book": {
+   "src": "s",
+   "k": 0.012,
+   "box": [
+    1753,
+    1236,
+    2302,
+    1653
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     2025,
+     1437
+    ]
+   }
+  }
+ }
+}

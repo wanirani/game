@@ -229,18 +229,19 @@ cp "$B/base.apk" "$B/unsigned.apk"
   --ks-pass env:BN_KS_PASS --key-pass env:BN_KEY_PASS \
   --v1-signing-enabled false --v2-signing-enabled true --v3-signing-enabled true \
   --out "$B/signed.apk" "$B/aligned.apk"
-mkdir -p "$OUT"
-cp "$B/signed.apk" "$APK.tmp" && mv -f "$APK.tmp" "$APK"
 rm -f "$B/unsigned.apk" "$B/aligned.apk" "$B/base.apk"
+# 검사는 작업 폴더의 서명본(CAND)에 한다. 모두 통과해야 dist/BloodNocturne.apk 로 바꿔 놓는다
+# (예산 초과·검사 실패 APK 가 그 자리에 남으면 build_web.mjs 가 그것을 downloads/ 로 내보낸다)
+CAND="$B/signed.apk"
 
 # ─── 9. 검증 ────────────────────────────────────────────────────────────────
 say "검증: apksigner verify / zipalign -c / aapt2 dump badging / 내용물 비교"
-"$BT/apksigner" verify --verbose --print-certs "$APK" >"$B/apksigner-verify.txt" 2>&1 \
+"$BT/apksigner" verify --verbose --print-certs "$CAND" >"$B/apksigner-verify.txt" 2>&1 \
   || { cat "$B/apksigner-verify.txt"; die "apksigner verify 실패"; }
 grep -q "Verified using v2 scheme (APK Signature Scheme v2): true" "$B/apksigner-verify.txt" || die "v2 서명 없음"
 grep -q "Verified using v3 scheme (APK Signature Scheme v3): true" "$B/apksigner-verify.txt" || die "v3 서명 없음"
-"$BT/zipalign" -c -p 4 "$APK" || die "zipalign 검사 실패"
-"$BT/aapt2" dump badging "$APK" >"$B/badging.txt" 2>&1 || { cat "$B/badging.txt"; die "aapt2 dump badging 실패"; }
+"$BT/zipalign" -c -p 4 "$CAND" || die "zipalign 검사 실패"
+"$BT/aapt2" dump badging "$CAND" >"$B/badging.txt" 2>&1 || { cat "$B/badging.txt"; die "aapt2 dump badging 실패"; }
 grep -q "package: name='com.bloodnocturne.game' versionCode='$VC' versionName='$VN'" "$B/badging.txt" || die "패키지/버전 정보 불일치"
 grep -q "sdkVersion:'$MIN_SDK'" "$B/badging.txt" || die "minSdk 불일치"
 grep -q "targetSdkVersion:'$TARGET_SDK'" "$B/badging.txt" || die "targetSdk 불일치"
@@ -254,7 +255,7 @@ done <"$B/perms.txt"
 for a in "${ALLOWED_PERMS[@]}"; do grep -qx "$a" "$B/perms.txt" || die "권한이 빠졌습니다: $a"; done
 # APK 안의 assets/www 목록이 복사한 웹 게임 파일과 정확히 같은지 (aapt2 가 빠뜨린 파일이 없는지)
 (cd "$B/assets/www" && find . -type f | sed 's#^\./##' | LC_ALL=C sort) >"$B/expected-files.txt"
-unzip -Z1 "$APK" >"$B/apk-all.txt"
+unzip -Z1 "$CAND" >"$B/apk-all.txt"
 sed -n 's#^assets/www/##p' "$B/apk-all.txt" | grep -v '/$' | LC_ALL=C sort >"$B/apk-files.txt"
 if ! diff -u "$B/expected-files.txt" "$B/apk-files.txt" >"$B/files.diff"; then
   head -40 "$B/files.diff"; die "APK 의 게임 파일 목록이 원본과 다릅니다 ($B/files.diff)"
@@ -270,10 +271,12 @@ for must in assets/app/head_inject.html assets/app/apk.json classes.dex AndroidM
   grep -qx "$must" "$B/apk-all.txt" || die "APK 에 $must 가 없습니다"
 done
 
-SIZE_B="$(stat -c %s "$APK")"
+SIZE_B="$(stat -c %s "$CAND")"
 SIZE_H="$(python3 -c "print(f'{$SIZE_B/1048576:.1f} MB')")"
 BUDGET_B="$(python3 -c "print(int(float('$BUDGET_MB')*1048576))")"
-(( SIZE_B <= BUDGET_B )) || die "APK 가 크기 예산을 넘습니다: $SIZE_H > ${BUDGET_MB} MB (에셋 단계 ${STAGE_USED}; APK_ASSETS=lo+td 로 더 줄일 수 있습니다)"
+(( SIZE_B <= BUDGET_B )) || die "APK 가 크기 예산을 넘습니다: $SIZE_H > ${BUDGET_MB} MB (에셋 단계 ${STAGE_USED}; APK_ASSETS=lo+td 로 더 줄일 수 있습니다) — ${APK#$ROOT/} 는 바꾸지 않았습니다"
+mkdir -p "$OUT"
+cp "$CAND" "$APK.tmp" && mv -f "$APK.tmp" "$APK"
 SHA="$(sha256sum "$APK" | cut -d' ' -f1)"
 CERT="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$B/apksigner-verify.txt" | head -1)"
 echo

@@ -273,6 +273,7 @@ async function proxyApi(route, req, apiPath, query) {
   apiLog.push({ method, path: apiPath, stash: !!env, id: !!id, bodyLen: env?.body?.length ?? 0, pageBody: (req.postDataBuffer()?.length ?? 0) });
   const fail = (status, code, pe) => route.fulfill({ status, headers: { 'cache-control': 'no-store', 'x-bn-proxy': '1', ...(pe ? { 'x-bn-proxy-error': pe } : {}) }, contentType: 'application/json; charset=utf-8', body: JSON.stringify({ ok: false, error: code, message: MSG[code] || code }) });
   if (!CFG.api?.origin || !API) return fail(503, 'unavailable', 'unavailable');
+  if (id && !env && !['GET', 'HEAD'].includes(method)) return fail(502, 'network', 'network'); // ApiProxy: 맡긴 본문이 없으면 보내지 않는다
   const upstream = apiPath === '/api/__down' ? 'http://127.0.0.1:1' : API.url; // 검증 전용: 서버에 닿지 못하는 경우
   const canBody = !['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(method);
   const needsBody = ['POST', 'PUT', 'PATCH'].includes(method);
@@ -478,6 +479,14 @@ try {
     const e = await fetch(`${origin}/api/__echo?q=1`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer t0k' }, body: JSON.stringify({ 한글: '본문 ✓' }) });
     out.echo = { status: e.status, json: await e.json(), cookie: e.headers.get('set-cookie') };
     out.down = await fetch('/api/__down').then(() => 'resolved', (x) => x?.name || String(x));
+    // 동시에 여러 요청 (본문·쿼리·헤더가 서로 섞이지 않는지) · Request 객체 입력 · 배열 헤더 · 바이트 본문
+    const multi = await Promise.all([0, 1, 2, 3, 4].map((i) => fetch(`/api/__echo?i=${i}`, { method: 'POST', headers: [['Content-Type', 'application/json'], ['X-I', String(i)]], body: JSON.stringify({ i }) }).then((r) => r.json())));
+    out.multi = multi.map((j, i) => j.body === JSON.stringify({ i }) && j.query === `i=${i}` && j.headers?.['x-i'] === String(i));
+    const rq = await fetch(new Request('/api/__echo', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: '{"r":"요청"}' })).then((r) => r.json());
+    const bytes = await fetch('/api/__echo', { method: 'POST', body: new TextEncoder().encode('{"b":"바이트"}') }).then((r) => r.json());
+    out.forms = { req: rq.method === 'PUT' && rq.body === '{"r":"요청"}', bytes: bytes.body === '{"b":"바이트"}' };
+    const other = await fetch('build.json', { cache: 'no-store' });
+    out.nonApi = other.status === 200 && !other.headers.get('x-bn-proxy');
     out.stashLeft = Object.keys(window.__bnStash).length;
     const c = window.__game.cloud;
     out.base = c?.base;
@@ -500,6 +509,8 @@ try {
   check('계정 서버 주소로 보낸 POST 도 프록시로 · 본문·헤더 그대로', apiRes.echo.status === 200 && echoBody === JSON.stringify({ 한글: '본문 ✓' }) && apiRes.echo.json?.headers?.authorization === 'Bearer t0k' && apiRes.echo.json?.query === 'q=1' && !apiRes.echo.cookie,
     JSON.stringify({ status: apiRes.echo.status, body: echoBody, q: apiRes.echo.json?.query, auth: apiRes.echo.json?.headers?.authorization }));
   check('서버에 닿지 못하면 fetch 가 네트워크 오류(TypeError)', apiRes.down === 'TypeError', apiRes.down);
+  check('동시 요청 5건: 본문·쿼리·헤더가 각자 요청에 그대로', apiRes.multi.every(Boolean), JSON.stringify(apiRes.multi));
+  check('Request 객체 · 바이트 본문도 프록시로 그대로, /api 밖 요청은 감싸지 않음', apiRes.forms.req && apiRes.forms.bytes && apiRes.nonApi, JSON.stringify({ ...apiRes.forms, nonApi: apiRes.nonApi }));
   check('맡긴 요청이 남지 않음', apiRes.stashLeft === 0, String(apiRes.stashLeft));
   check('cloud.js: 서버 확인 → ready (앱 주소 ' + (apiRes.base || '?') + ')', apiRes.probe === true && apiRes.state === 'ready', `${apiRes.probe} / ${apiRes.state}`);
   check('cloud.js: 가입 → 로그인 상태 → 내 정보 → 로그아웃', apiRes.signup.ok === true && apiRes.loggedIn === true && apiRes.me.ok === true && apiRes.logout.ok === true && apiRes.logout.remote === true, JSON.stringify({ s: apiRes.signup, me: apiRes.me, out: apiRes.logout }));
@@ -512,6 +523,32 @@ try {
   const acc = await page.evaluate(() => ({ name: window.__game?.top?.name, screen: window.__game?.top?.screen, state: window.__game?.cloud?.state, inputs: document.querySelectorAll('input').length }));
   check('계정 화면이 서버 연결 상태로 열림', acc.name === 'account' && acc.state === 'ready' && acc.screen && !/offline|unavailable|blocked/.test(acc.screen), JSON.stringify(acc));
   await page.screenshot({ path: path.join(outDir, 'apk_account_phone.png') });
+  // 화면 키보드 브리지 → 계정 화면 (account.js 가 __BN_IME 만큼 패널을 올리고, 0 이 되면 내린다)
+  const lift = await page.evaluate(async (js) => {
+    const t = window.__game?.top;
+    if (t?.name !== 'account' || typeof t.show !== 'function') return { skip: 'account scene' };
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    t.show('login');
+    await wait(700);
+    const all = document.querySelectorAll('input');
+    const inp = all[all.length - 1]; // 비밀번호 칸 (가장 아래)
+    if (!inp) return { skip: 'input' };
+    inp.focus();
+    const IME = Math.round(window.innerHeight * 0.55);
+    (0, eval)(js.replace('%s', JSON.stringify({ bottom: IME })));
+    await wait(800);
+    const up = t.lift;
+    await new Promise((r) => requestAnimationFrame(r));
+    const ir = inp.getBoundingClientRect();
+    const visible = ir.bottom <= window.innerHeight - IME + 1;
+    (0, eval)(js.replace('%s', '{"bottom":0}'));
+    await wait(800);
+    const down = t.lift;
+    inp.blur();
+    t.show('home');
+    return { screen: 'login', ime: IME, up: Math.round(up), down: Math.round(down), visible, inputBottom: Math.round(ir.bottom), ih: window.innerHeight };
+  }, IME_JS);
+  check('__BN_IME → 계정 입력 칸이 키보드 위로 올라가고 닫히면 제자리 (account.js)', !lift.skip && lift.up > 1 && lift.down < 1 && lift.visible, JSON.stringify(lift));
   check('타이틀·계정 페이지 오류 없음', page.__errs.length === 0, page.__errs.slice(0, 5).join(' | '));
   const extHosts = [...new Set(external.map((u) => new URL(u).host))];
   check('계정 서버로 직접 나간 요청 없음 (모두 프록시)', !extHosts.includes(new URL(CFG.api?.origin || 'https://x.invalid').host), extHosts.join(', ') || '외부 요청 없음');

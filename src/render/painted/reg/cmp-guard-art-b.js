@@ -5,5 +5,9 @@
 // npcs:       { '<npcId>': () => import('../npcs/<id>.js') }
 export const bosses = {};
 export const enemies = [];
-export const companions = {};
+// 수호신 채색 퍼핏 (kind 'companion'): render/guardians.js drawGuardian 이 레지스트리로 그린다 (준비 전·실패·?painted=0 이면 guardians_b.js 절차 그림)
+export const companions = {
+  gd_clock: () => import('../companions/gd_clock.js'),
+  gd_reaper: () => import('../companions/gd_reaper.js'),
+};
 export const npcs = {};

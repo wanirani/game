@@ -42,6 +42,15 @@ final class WebViewCheck {
         }
     }
 
+    /**
+     * 판단에 쓸 주 버전: 기본 User-Agent 의 Chrome/NN (실제 엔진 버전)이 있으면 그것, 없으면 제공 패키지 versionName 의 주 버전.
+     * 일부 제공자는 versionName 이 Chromium 버전이 아니다 (예: 화웨이 com.huawei.webview "12.1.2.322" = Chromium 99) →
+     * 패키지 번호만 보면 멀쩡한 기기를 막게 된다.
+     */
+    static int effectiveMajor(int packageMajor, int uaMajor) {
+        return uaMajor > 0 ? uaMajor : packageMajor;
+    }
+
     /** 실행해도 되는가: 버전을 알아냈고 98 미만일 때만 막는다 (알아내지 못하면 막지 않는다) */
     static boolean ok(int major) {
         return major < 0 || major >= MIN_MAJOR;

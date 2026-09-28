@@ -59,6 +59,10 @@ public final class ApiProxyCheck {
         check("webview: 알 수 없으면 막지 않음", WebViewCheck.ok(WebViewCheck.majorOf(null)) && WebViewCheck.ok(WebViewCheck.chromeMajorFromUa("Dalvik")), null);
         check("webview: Play 패키지", WebViewCheck.playPackage(null).equals("com.google.android.webview") && WebViewCheck.playPackage("com.android.chrome").equals("com.android.chrome") && WebViewCheck.playPackage("x;rm").equals("com.google.android.webview"), null);
         check("webview: 최소 버전 98", WebViewCheck.MIN_MAJOR == 98, null);
+        check("webview: 엔진(UA) 버전 우선 — 화웨이 12.1.2.322 + Chrome/99 는 통과",
+                WebViewCheck.ok(WebViewCheck.effectiveMajor(WebViewCheck.majorOf("12.1.2.322"), WebViewCheck.chromeMajorFromUa("Mozilla/5.0 (Linux; Android 10; wv) Chrome/99.0.4844.88 Mobile Safari/537.36")))
+                && !WebViewCheck.ok(WebViewCheck.effectiveMajor(120, 97))
+                && WebViewCheck.effectiveMajor(120, -1) == 120 && WebViewCheck.effectiveMajor(-1, -1) == -1, null);
 
         // ── 도우미 ──
         check("사유 문구: ASCII 만", ApiProxy.reasonOf(200, "확인 OK").equals("OK") && ApiProxy.reasonOf(429, null).equals("Too Many Requests") && ApiProxy.reasonOf(299, "").equals("Status 299"), null);
@@ -129,7 +133,13 @@ public final class ApiProxyCheck {
         r = p.forward("POST", "/api/auth/login?__bnreq=login00002", null);
         check("로그인 → 200 + 토큰", r.status == 200 && body(r).contains("\"token\":\""), desc(r));
         r = p.forward("POST", "/api/auth/login?__bnreq=missing0001", null);
-        check("맡긴 요청이 없으면 본문 없이 보내고 서버 오류를 그대로", r.status >= 400 && r.status < 500 && r.detail.contains("stash"), desc(r));
+        check("맡긴 요청이 없는 POST 는 본문 없이 보내지 않고 network 오류", r.status == 502 && "network".equals(r.header(ApiProxy.ERROR_HEADER)) && r.detail.contains("stash"), desc(r));
+        Map<String, String> logoutHeaders = new HashMap<>(authHeaders);
+        r = p.forward("POST", "/api/auth/logout?__bnreq=missing0002", logoutHeaders);
+        ApiProxy.Result me2 = p.forward("GET", "/api/auth/me", authHeaders);
+        check("맡긴 요청이 없는 로그아웃은 서버에 닿지 않음 (세션 유지)", r.status == 502 && me2.status == 200, desc(r) + " / me " + me2.status);
+        r = p.forward("GET", "/api/auth/me?__bnreq=missing0003", authHeaders);
+        check("맡긴 요청이 없는 GET 은 WebView 헤더로 보냄", r.status == 200 && body(r).contains("\"id\":\"" + id + "\"") && r.detail.contains("stash"), desc(r));
 
         // ── 서버 상태 · 넘겨주기 · 방식 ──
         r = p.forward("GET", "/api/__status?code=429", null);

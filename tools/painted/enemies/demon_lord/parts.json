@@ -2,7 +2,7 @@
  "id": "demon_lord",
  "tier": "T3",
  "srcTD": 4,
- "note": "ART-ENEMY-5: three Kling sheets image-conditioned on dl_ref: dl_sheet2 (side figure \u2192 head, bare lava-cracked torso with pauldron, thigh; loose upper arm, fist forearm, open claw hand), dl_sheet1 (side figure \u2192 the digitigrade shin + hoof, free of the watermark that covers sheet2's hoof), dl_props (bat wing, flaming greatsword, tattered cape, barbed tail). derive.py strips the cyan rim halo of the two body sheets. Body parts face left in the sheets \u2192 flipX.",
+ "note": "ART-ENEMY-5: three Kling sheets image-conditioned on dl_ref: dl_sheet2 (side figure \u2192 head, bare lava-cracked torso with pauldron, thigh; loose upper arm, fist forearm, open claw hand), dl_sheet1 (side figure \u2192 the digitigrade shin + hoof, free of the watermark that covers sheet2's hoof), dl_props (bat wing, flaming greatsword, tattered cape, barbed tail). derive.py strips the cyan rim halo of the two body sheets. Body parts face left in the sheets \u2192 flipX. Review fix (ART-ENEMY-5 verify): the cape is the right-hand panel of the props-sheet cloak (flipX, so it flares backwards from the far shoulder; the old box caught the wing tip and the cloak collar), the tail is one connected piece from its thick root (pivot a, right end) along the arch to the arrowhead (the old poly cut through the tail and left a floating hook).",
  "sources": {
   "b": {
    "raw": "dl_sheet2.webp",
@@ -404,88 +404,39 @@
   "cape": {
    "src": "p",
    "box": [
-    45,
-    300,
-    315,
-    845
+    385,
+    620,
+    600,
+    1600
    ],
-   "keep": "all",
-   "k": 0.09,
+   "keep": "largest",
+   "flipX": true,
+   "k": 0.065,
    "piv": {
     "a": [
-     175,
-     335
+     402,
+     640
     ]
    }
   },
   "tail": {
    "src": "p",
    "box": [
-    1175,
-    1060,
-    2150,
-    1655
+    830,
+    1150,
+    1895,
+    1640
    ],
-   "keep": "all",
+   "keep": "largest",
    "k": 0.05,
-   "poly": [
-    [
-     1175,
-     1470
-    ],
-    [
-     1400,
-     1440
-    ],
-    [
-     1650,
-     1330
-    ],
-    [
-     1850,
-     1260
-    ],
-    [
-     1960,
-     1100
-    ],
-    [
-     2040,
-     1060
-    ],
-    [
-     2150,
-     1120
-    ],
-    [
-     2140,
-     1450
-    ],
-    [
-     1950,
-     1620
-    ],
-    [
-     1600,
-     1655
-    ],
-    [
-     1250,
-     1655
-    ],
-    [
-     1175,
-     1620
-    ]
-   ],
    "piv": {
     "a": [
-     1215,
-     1565
+     1885,
+     1535
     ],
     "b": [
-     2025,
-     1105
+     1040,
+     1168
     ]
    }
   }

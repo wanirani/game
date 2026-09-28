@@ -109,7 +109,10 @@ function layout(ctx, e, q, o, vb, t, td) {
   place('cape', 'a', sfx - 3, sfy - 6, 0.1 + tr * 0.5, 'deep');
   // far leg, tail, far arm
   leg(-2, hipY + 2, q, false, 'deep');
-  K.chain('tail', -6, hipY + 3, Math.PI * 0.92 + Math.sin(t * 1.3) * 0.1, 1, K.lod() === 0 ? 4 : 7, (u, j) => (j === 0 ? 0 : Math.sin(t * 2.2 - u * 4) * 0.07 + 0.03), 1, 'deep', true);
+  // tail: painted root (pivot a) on the right, arch + arrowhead to the left → chain sgn −1; flipY keeps it upright
+  const tailDir = Math.PI * 0.92 + Math.sin(t * 1.3) * 0.1;
+  K.chain('tail', -6, hipY + 3, tailDir, 1, K.lod() === 0 ? 4 : 7, (u, j) => (j === 0 ? 0 : Math.sin(t * 2.2 - u * 4) * 0.07 + 0.03), 1, 'deep', true);
+  place('tail', 'a', -6, hipY + 3, tailDir + Math.PI, 'deep');   // the unbent chain as one piece (corpse)
   const fe = bone('uarm', sfx, sfy, q.fU, 'deep'); const fex = fe[0], fey = fe[1];
   bone('hand', fex, fey, q.fF, 'deep');
   K.pivotPos('hand', 'a', 'b', fex, fey, q.fF - K.part('hand').ang, 1, 1, _f);

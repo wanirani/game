@@ -251,6 +251,11 @@ final class ApiProxy {
         if (origin == null) return error(503, "unavailable", MSG_UNAVAILABLE, "unavailable", "no api origin configured");
         final String target = origin + path + (query != null ? "?" + query : "");
         final boolean stashMissing = id != null && s == null;
+        // 페이지가 본문을 맡겼다고 표시했는데(__bnreq) 맡긴 요청이 없으면(시간 초과·개수 초과로 버려짐) 본문 없이 보내지 않는다:
+        // 본문이 빠진 요청은 다른 요청이 된다 (예: 로그아웃 {all:true} 가 이 기기만 로그아웃). 네트워크 오류로 돌려 클라이언트가 다시 시도하게 한다
+        if (stashMissing && !m.equals("GET") && !m.equals("HEAD")) {
+            return error(502, "network", MSG_NETWORK, "network", "stash id not found: " + m + " " + path + " (not forwarded without its body)");
+        }
         final AtomicReference<HttpURLConnection> conn = new AtomicReference<>();
         Future<Result> f = POOL.submit(() -> send(target, m, headers, body, conn));
         try {

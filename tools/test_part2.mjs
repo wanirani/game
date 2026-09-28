@@ -9,7 +9,8 @@
 //
 // 실행 검사는 헤드리스 Chromium + tools/serve.mjs. 게임 루프를 멈추고(game._pageHidden) game.tick(1/60) 을
 // 직접 돌려 진행한다 — 부하가 큰 기계에서도 결과가 같다. 모든 사례는 페이지 오류·콘솔 오류 0 이어야 통과한다
-// (tools/integration.mjs 와 같은 거르개). 종료 코드: 실패가 하나라도 있으면 1.
+// (tools/integration.mjs 와 같은 거르개). 종료 코드: 실패가 하나라도 있으면 1, --only/--boss 에 없는 이름이거나
+// 고른 묶음이 검사를 하나도 돌리지 않았으면 2 (조용히 통과하지 않게).
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -654,10 +655,17 @@ async function bossFlow(sid, { patterns = true, death = true, loot = false, clea
     }
     if (clears || ending) {
       e0 = P.errs.length;
-      const c = await P.page.evaluate(({ sid, rid, ending }) => {
+      let left = false;
+      if (ending) {
+        // §17 시각 검토: 두 엔딩 제목 카드 (ENDING n · 영문 제목 · 「이름」 이 모두 보이는 2.4–4.4초 사이에서 멈춰 찍는다)
+        left = await P.page.evaluate(() => { const T = window.__T; T.autoEnding = false; T.top().leave(); return true; });
+        const card = await P.page.evaluate(() => { const T = window.__T; return T.until(() => T.top()?.name === 'ending' && T.top().t > 3 && T.g.fade.dir === 0, 60) ? T.top().kind : null; });
+        if (card) await shot(P, `ending_card_${card}`);
+      }
+      const c = await P.page.evaluate(({ sid, rid, ending, left }) => {
         const T = window.__T, g = T.g, st = g.state, res = T.top();
         T.autoEnding = !!ending;
-        res.leave();
+        if (!left) res.leave();
         const done = () => { const n = T.top()?.name; return g.fade.dir === 0 && (ending ? n === 'hub' : (n === 'hub' || n === 'ending')) && !g.scenes.some((s) => s.name === 'companionJoin'); };
         const ok = T.until(done, ending ? 240 : 90);
         T.tick(60);
@@ -667,7 +675,7 @@ async function bossFlow(sid, { patterns = true, death = true, loot = false, clea
           owned: rid ? !!st.companions?.owned?.[rid] : null, stories: T.cap.stories.slice(), endings: T.cap.endings.slice(),
           credits: T.cap.credits.map((c) => ({ kind: c.kind, text: c.text })), flags: Object.keys(P2.flags).filter((f) => /^ending_/.test(f)), log: T.cap.scenes.slice(-12),
         };
-      }, { sid, rid: RECRUITS[sid] ?? null, ending });
+      }, { sid, rid: RECRUITS[sid] ?? null, ending, left });
       const errs = errsSince(P, e0);
       await shot(P, `after_${bid}${ending ? '_' + (shards?.length ?? 0) : ''}`);
       return { c, errs };
@@ -1021,26 +1029,22 @@ async function mobileGroup() {
     const r = await P.page.evaluate(() => {
       const T = window.__T, w = T.w(), p = T.p();
       T.hero60();
-      let lastX = p.x;
-      T.hold('ArrowRight', 40);
-      for (let i = 0; i < 60 * 30 && !w.boss; i++) {
-        T.tick(1);
-        if (T.top()?.name !== 'stage') continue;
-        if (i % 20 === 19) { if (Math.abs(p.x - lastX) < 4) T.hold('KeyZ', 0.25); lastX = p.x; }
-      }
-      T.release('ArrowRight');
+      // 키 입력을 보내면 입력 모드가 'kb' 로 바뀌어 HUD 가 키보드 배치를 쓴다 (멈춘 루프에서는 realTime 이 안 흘러 패드도 안 숨는다).
+      // 터치 검사이므로 걷지 않고 입구 단(0–20열, 윗면 11줄)의 X 표시 너머로 옮겨 보스전을 연다 (world: p.x > arenaX + TILE)
+      p.x = (w.arenaX ?? 16 * 48) + 2 * 48; p.y = 11 * 48 - p.h; p.vx = 0; p.vy = 0;
+      T.until(() => !!w.boss, 5);
       const fight = T.until(() => w.bossActive && !w.cutscene && T.top()?.name === 'stage' && T.g.fade.dir === 0, 40);
       const d = w.gimmickOf('deep');
       const X = 30 * 48, Y = 16 * 48 - p.h;   // 경기장 물(21–55열, 12–15줄) 바닥에 선다 — 머리가 물속
       T.pin = () => { p.x = X; p.y = Y; p.vx = 0; p.vy = 0; };
       T.tick(150);
       T.pin = null;
-      return { boss: !!w.boss, fight, air: d ? Math.round(d.air) : null, under: !!d?.headUnder };
+      return { boss: !!w.boss, fight, air: d ? Math.round(d.air) : null, under: !!d?.headUnder, modeAfter: T.input.mode };
     });
     const ov = await P.page.evaluate(overlapCheck);
     await shot(P, 'mobile_s16_boss');
     check(G, 's16 보스방 (터치): 보스 바가 보일 때 공기 게이지가 보스 바·패드·일시정지와 겹치지 않음',
-      mode === 'touch' && r.fight && r.air < 100 && ov.boss && ov.rows >= 1 && ov.occ > 0 && !ov.bad.length && !errsSince(P, e0).length, { mode, ...r, ...ov, errs: errsSince(P, e0) });
+      mode === 'touch' && r.modeAfter === 'touch' && r.fight && r.air < 100 && ov.boss && ov.rows >= 1 && ov.occ > 0 && !ov.bad.length && !errsSince(P, e0).length, { mode, ...r, ...ov, errs: errsSince(P, e0) });
   } catch (e) { check(G, 's16 보스방 휴대폰 실행', false, e.stack); }
   await P?.close(); P = null;
   // 지도: 탭을 눌러 지도 전환
@@ -1151,13 +1155,13 @@ const bad = results.filter((r) => !r.ok);
 const byGroup = {};
 for (const r of results) { const g = (byGroup[r.group] ??= { ok: 0, bad: 0 }); r.ok ? g.ok++ : g.bad++; }
 console.log('\n' + Object.entries(byGroup).map(([g, v]) => `${g} ${v.ok}/${v.ok + v.bad}`).join(' · ') + `  (${Math.round((Date.now() - t0) / 1000)}초)`);
-console.log(bad.length ? `✗ ${bad.length}개 실패` : `✓ ${results.length}개 모두 통과`);
+// 고른 묶음이 검사를 하나도 돌리지 않았으면(예: --only loot --boss b_moloch) 통과로 치지 않는다 — integration.mjs --only 와 같은 규칙
+const empty = (STATIC_ONLY ? ['static'] : ONLY ?? []).filter((g) => !byGroup[g]);
+const none = !results.length || empty.length > 0;
+if (bad.length) console.log(`✗ ${bad.length}개 실패`);
+else if (!none) console.log(`✓ ${results.length}개 모두 통과`);
+if (none) console.log(`✗ 고른 검사가 하나도 돌지 않음${empty.length ? ': ' + empty.join(', ') : ''} (--only · --boss 조합을 확인)`);
 fs.mkdirSync('/tmp/claude-0/proto/wpj', { recursive: true });
 fs.writeFileSync('/tmp/claude-0/proto/wpj/report.json', JSON.stringify(results, null, 1));
 if (bad.length) process.exitCode = 1;
-// 고른 묶음이 검사를 하나도 돌리지 않았으면(예: --only loot --boss b_moloch) 통과로 치지 않는다 — integration.mjs --only 와 같은 규칙
-const empty = (STATIC_ONLY ? ['static'] : ONLY ?? []).filter((g) => !byGroup[g]);
-if (!results.length || empty.length) {
-  console.log(`✗ 고른 검사가 하나도 돌지 않음${empty.length ? ': ' + empty.join(', ') : ''} (--only · --boss 조합을 확인)`);
-  process.exitCode = 2;
-}
+else if (none) process.exitCode = 2;

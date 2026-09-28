@@ -35,7 +35,8 @@ let srv;
 if (args.dist) {
   const { start: startDist } = await import('./deploy/serve_dist.mjs');
   const dir = args.dist === true ? undefined : path.resolve(String(args.dist));
-  srv = await startDist(port, { quiet: true, ...(dir ? { dir } : {}) });
+  // 빌드가 없으면 스택 대신 한 줄로 알리고 2 (케이스 실패 1 과 구분 — 준비 오류)
+  try { srv = await startDist(port, { quiet: true, ...(dir ? { dir } : {}) }); } catch (e) { console.error(`✗ --dist: ${e.message}`); process.exit(2); }
 } else srv = await start(port);
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--autoplay-policy=no-user-gesture-required'] });
 const report = [];

@@ -99,7 +99,7 @@
   "sheet5": "lia/lia_ninja_turn5",
   "views5": [
    "y90",
-   "y135",
+   "-",
    "y180",
    "ym90",
    "-"
@@ -108,6 +108,15 @@
   "viewsQ": [
    "-",
    "ym135"
-  ]
+  ],
+  "extra": [
+   {
+    "sheet": "lia/lia_ninja_q3f",
+    "views": [
+     "y135"
+    ]
+   }
+  ],
+  "_whyQ3f": "ART-HERO-B: turn5 의 2번째 인물(3/4 앞)이 정면에서 15~20°만 돌아 정면과 거의 같음 → 한 장짜리 3/4 앞(q3f, 클링 img2img) 로 y135 교체"
  }
 }

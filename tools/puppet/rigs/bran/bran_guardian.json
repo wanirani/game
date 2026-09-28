@@ -121,9 +121,19 @@
   ],
   "qback": "bran/bran_guardian_qback",
   "viewsQ": [
-   "ym135",
+   "-",
    "-"
   ],
-  "fixups": null
+  "fixups": null,
+  "extra": [
+   {
+    "sheet": "bran/bran_guardian_q3b",
+    "views": [
+     "ym135"
+    ],
+    "pockets": null
+   }
+  ],
+  "_whyQ3b": "ART-HERO-B: qback 두 인물 모두 좌우 대칭 정면 뒷모습 → 한 장짜리 3/4 뒤(q3b, 클링 img2img: 뒷모습 크롭을 1번 입력) 로 ym135 교체. 흰 판금이라 pockets 끔"
  }
 }

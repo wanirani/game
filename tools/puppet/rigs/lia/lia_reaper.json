@@ -100,7 +100,9 @@
   "viewsQ": [
    "-",
    "ym135"
-  ]
+  ],
+  "extra": [],
+  "_whyExtra": "ART-HERO-B: 기본 직업(lia_assassin)의 extra(3/4 앞 q3f)를 상속하지 않게 비움"
  },
  "regions": {
   "skirt": {

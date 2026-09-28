@@ -134,7 +134,7 @@
    "aspect": "3:4",
    "imageCount": 2,
    "prompt": "EXTRAS.reaper_edit in tools/painted/prompts/cmp-guard-art-b.mjs",
-   "decision": "pending"
+   "decision": "kept #1 as src/gd_reaper_edit.webp (floating smoky robe, empty fists in front; the reaper actually faces LEFT in the ref -> flipX in parts.json); #0 rejected (feet on the ground instead of smoke)"
   }
  ]
 }

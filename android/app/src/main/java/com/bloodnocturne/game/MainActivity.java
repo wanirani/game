@@ -128,6 +128,7 @@ public class MainActivity extends Activity {
     private boolean imeOpen;
     private volatile int lastPadId = -1;
     private int rumbleDevId = -1;
+    private int rumbleFor = -2;
     private long rumbleDevAt;
     private long rumbleErrAt;
     private final Handler ui = new Handler(Looper.getMainLooper());
@@ -294,24 +295,42 @@ public class MainActivity extends Activity {
         }
     }
 
-    /** 지금 쓰이는 WebView 제공자와 버전. WebView 가 없거나 꺼져 있으면 null */
+    /**
+     * 지금 쓰이는 WebView 제공자와 버전. WebView 가 없거나 꺼져 있으면 null.
+     * 제공 패키지(getCurrentWebViewPackage, API 26+)의 versionName 과 기본 User-Agent 의 Chrome/NN 을 함께 읽고,
+     * 판단은 엔진 버전(UA)을 우선한다 (WebViewCheck.effectiveMajor — versionName 이 Chromium 번호가 아닌 제공자 대비).
+     */
     private WvInfo webViewInfo() {
+        String pkg = null, ver = null;
+        int pkgMajor = -1;
+        boolean provider = false;
         if (Build.VERSION.SDK_INT >= 26) {
             try {
                 PackageInfo p = WebView.getCurrentWebViewPackage();
-                if (p != null) return new WvInfo(p.packageName, p.versionName, WebViewCheck.majorOf(p.versionName));
+                if (p != null) {
+                    pkg = p.packageName;
+                    ver = p.versionName;
+                    pkgMajor = WebViewCheck.majorOf(ver);
+                    provider = true;
+                }
             } catch (Throwable t) {
                 Log.w(TAG, "getCurrentWebViewPackage failed", t);
             }
         }
+        int uaMajor = -1;
         try {
-            String ua = WebSettings.getDefaultUserAgent(this); // WebView 제공자를 불러온다: 없으면 예외
-            int m = WebViewCheck.chromeMajorFromUa(ua);
-            return new WvInfo(null, m > 0 ? String.valueOf(m) : "?", m);
+            uaMajor = WebViewCheck.chromeMajorFromUa(WebSettings.getDefaultUserAgent(this)); // WebView 제공자를 불러온다: 없으면 예외
+            provider = true;
         } catch (Throwable t) {
-            Log.e(TAG, "no WebView provider", t);
-            return null;
+            if (!provider) {
+                Log.e(TAG, "no WebView provider", t);
+                return null;
+            }
+            Log.w(TAG, "default user agent unavailable", t);
         }
+        int major = WebViewCheck.effectiveMajor(pkgMajor, uaMajor);
+        String shown = ver != null && major == pkgMajor ? ver : major > 0 ? String.valueOf(major) : ver != null ? ver : "?";
+        return new WvInfo(pkg, shown, major);
     }
 
     /** info == null: WebView 없음. 아니면 버전이 낮음 → 업데이트 안내 + Play 스토어 버튼 (+ 그래도 실행) */
@@ -659,14 +678,16 @@ public class MainActivity extends Activity {
         return Math.max(1, Math.min(255, (int) Math.round(k * 255)));
     }
 
-    /** 진동 모터가 있는 게임패드 (마지막으로 입력한 패드 우선). 3초 동안 기억한다 */
+    /** 진동 모터가 있는 게임패드 (마지막으로 입력한 패드 우선). 찾은 결과(없음 포함)를 3초 동안 기억한다 — 타격마다 장치 목록을 훑지 않게 */
     private synchronized InputDevice padDevice() {
         long now = System.currentTimeMillis();
         int pref = lastPadId;
-        if (rumbleDevId >= 0 && now - rumbleDevAt < 3000 && (pref < 0 || pref == rumbleDevId)) {
+        if (now - rumbleDevAt < 3000 && pref == rumbleFor) {
+            if (rumbleDevId < 0) return null;
             InputDevice d = InputDevice.getDevice(rumbleDevId);
             if (d != null) return d;
         }
+        rumbleFor = pref;
         InputDevice found = null;
         InputDevice p = pref >= 0 ? InputDevice.getDevice(pref) : null;
         if (p != null && hasRumble(p)) found = p;
@@ -709,9 +730,8 @@ public class MainActivity extends Activity {
     private void checkForUpdate() {
         if (apiOrigin == null) return;
         final SharedPreferences p = getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-        long now = System.currentTimeMillis();
+        final long now = System.currentTimeMillis();
         if (now - p.getLong("updCheckAt", 0) < UPDATE_EVERY_MS) return;
-        p.edit().putLong("updCheckAt", now).apply();
         final String url = apiOrigin + "/downloads/latest.json";
         final long mine = versionCode();
         Thread th = new Thread(() -> {
@@ -722,7 +742,10 @@ public class MainActivity extends Activity {
                 c.setReadTimeout(8000);
                 c.setUseCaches(false);
                 c.setRequestProperty("Accept", "application/json");
-                if (c.getResponseCode() != 200) return;
+                int code = c.getResponseCode();
+                // 서버가 답했을 때만 다음 확인을 12시간 미룬다 (오프라인으로 켠 날은 다음 실행 때 다시 확인)
+                p.edit().putLong("updCheckAt", now).apply();
+                if (code != 200) return;
                 JSONObject j = new JSONObject(new String(readCapped(c.getInputStream(), 65536), UTF8));
                 final long vc = j.optLong("versionCode", -1);
                 final String vn = j.optString("versionName", "");
