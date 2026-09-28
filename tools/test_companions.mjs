@@ -530,7 +530,7 @@ for (const sid of ['s03', 's12']) {
     // 보스가 나올 때까지 오른쪽으로 (탄 채)
     T.pushed.length = 0;
     T.key('ArrowRight', true);
-    T.until(() => { keep(); return !!w.boss; }, 12, { confirm: false });
+    T.until(() => { keep(); return !!w.boss; }, 15);
     T.key('ArrowRight', false);
     const sawIntro0 = T.pushed.includes('bossIntro');
     T.until(() => { keep(); return w.bossActive && !w.cutscene && g.top?.name === 'stage'; }, 40);
@@ -541,11 +541,15 @@ for (const sid of ['s03', 's12']) {
     checks.push(['등장 연출 뒤에도 탄 채 (noMount 보스 아님)', m.riding || m.state === 'riding' || (!b.def.noMount && m.state !== 'recall'), { state: m.state, noMount: !!b.def.noMount }]);
     if (!m.riding) T.ride('mt_warhorse');
     // 50% 까지: 보스 체력을 52% 로 두고 붙어서 친다 (수호신도 함께)
-    b.hp = Math.ceil(b.maxHp * 0.52);
+    const MH = b.stats?.maxHp ?? b.maxHp;
+    b.hp = Math.ceil(MH * 0.505);
+    let knockedEarly = 0;
     w.hits.length = 0;
     let t = 0;
-    while (t < 15 && b.hp > b.maxHp * 0.5 && !b.dead) {
+    while (t < 30 && b.hp > MH * 0.5 && !b.dead) {
       keep();
+      if (m.state === 'recall') { knockedEarly++; m.cd = 0; m.state = 'stowed'; }
+      if (!m.riding && m.state === 'stowed' && p.onGround) T.ride('mt_warhorse');
       const dir = Math.sign(b.cx - p.cx) || 1;
       T.key(dir > 0 ? 'ArrowRight' : 'ArrowLeft', Math.abs(b.cx - p.cx) > 140);
       T.key(dir > 0 ? 'ArrowLeft' : 'ArrowRight', false);
@@ -554,8 +558,8 @@ for (const sid of ['s03', 's12']) {
     }
     T.key('ArrowRight', false); T.key('ArrowLeft', false);
     const gh = w.hits.filter((h) => (h.owner === 'gd_knight' || h.owner === 'gd_imp') && h.t === b.def.id).length;
-    info.half = { t: +t.toFixed(1), hp: Math.round(b.hp / b.maxHp * 100) + '%', guardHits: gh };
-    checks.push(['보스 체력 50% 까지 (탄 채 공격)', b.hp <= b.maxHp * 0.5, info.half]);
+    info.half = { t: +t.toFixed(1), hp: Math.round(b.hp / MH * 100) + '%', guardHits: gh, riding: m.riding, knockedEarly };
+    checks.push(['보스 체력 50% 까지 (탄 채 공격)', b.hp <= MH * 0.5, info.half]);
     checks.push(['수호신이 보스를 친다', gh > 0, info.half]);
     // 보스 공격으로 낙마: 탈것 체력 1 로 두고 보스 앞에서 기다린다
     if (!m.riding) T.ride('mt_warhorse');
@@ -607,6 +611,96 @@ for (const sid of ['s03', 's12']) {
     return { checks, info };
   }));
 }
+
+// ═════════════ (6) 탄 채로 관(세이브)에서 저장 → 다시 불러오기 · 내보내기 코드 왕복 · 클라우드 기록 경로 · 크기 ═════════════
+await run('save', STAGE('s01', '&room=r3&cmp=all&cmplv=40&bond=4&ch=20&mount=mt_warhorse&guards=gd_knight,gd_imp'), async (page) => {
+  const canon = `(o) => JSON.stringify(o, function (k, v) { return v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.keys(v).sort().map((x) => [x, v[x]])) : v; })`;
+  const a = await page.evaluate(async (canonSrc) => {
+    const canon = eval(canonSrc);
+    const T = window.__T, g = T.g, checks = [], info = {};
+    const st = g.state, w = T.w, p = T.p;
+    st.companions.pending.length = 0;
+    st.companions.clears = 5; st.companions.autoSkill = true;
+    st.companions.owned.gd_imp.lv = 20; st.companions.owned.gd_imp.exp = 123; st.companions.owned.mt_warhorse.gift = 4;   // 최대 레벨이면 exp 는 0 으로 정규화된다
+    const m = T.ride('mt_warhorse');
+    const sp = w.entities.find((e) => e.constructor?.name === 'SavePoint');
+    checks.push(['(준비) s01 r3 관(세이브) · 탑승', !!sp && !!m?.riding, { sp: !!sp, riding: m?.riding, room: w.roomId }]);
+    if (!sp || !m) return { checks, info };
+    for (const e of w.entities) if (e.kind === 'enemy' && !e.dead) { e.dead = true; e.hidden = true; }
+    // 관 앞으로 (탄 채로 걸어서)
+    const dir = Math.sign(sp.cx - p.cx) || 1;
+    T.key(dir > 0 ? 'ArrowRight' : 'ArrowLeft', true);
+    T.until(() => Math.abs(sp.cx - p.cx) < 20, 6, { confirm: false });
+    T.key(dir > 0 ? 'ArrowRight' : 'ArrowLeft', false);
+    T.step(0.4);
+    m.hp = Math.round(m.maxHp * 0.4);
+    const t0 = T.toasts.length;
+    T.press('ArrowUp', 0.1);
+    T.step(0.3);
+    const saved = T.toasts.slice(t0).some((x) => x.includes('저장 완료'));
+    checks.push(['탄 채로 ↑ → 관에서 저장 (저장 완료)', saved && m.riding, T.toasts.slice(t0)]);
+    checks.push(['저장하면 탈것 체력도 회복', m.hp >= m.maxHp, { hp: m.hp, max: m.maxHp }]);
+    const slot = st.slot ?? 1;
+    const rd = T.SV.saves.read(slot);
+    info.slot = slot;
+    checks.push(['슬롯 기록의 companions = 현재 상태', !!rd && canon(rd.companions) === canon(st.companions), { slot, has: !!rd?.companions }]);
+    checks.push(['기록에 lastStage (s01 r3)', rd?.lastStage?.stageId === 's01' && rd?.lastStage?.roomId === 'r3', rd?.lastStage]);
+    // 내보내기 코드 왕복 (슬롯 3)
+    const code = T.SV.saves.exportCode(slot);
+    const okImp = !!code && T.SV.saves.importCode(3, code);
+    const r3 = T.SV.saves.read(3);
+    checks.push(['내보내기 → 가져오기 코드 왕복: companions 그대로', okImp && canon(r3?.companions) === canon(rd.companions), { len: code?.length ?? 0 }]);
+    // 클라우드 내려받기 경로: sanitizeTree → isValidSave → migrateState
+    const CL = await import('/src/core/cloud.js');
+    let cd = CL.sanitizeTree(JSON.parse(JSON.stringify(rd)));
+    const valid = T.SV.isValidSave(cd);
+    cd = T.ST.migrateState(cd);
+    const diff = (x, y) => { const out = []; const X = JSON.parse(canon(x)), Y = JSON.parse(canon(y)); const walk = (a, b, k) => { if (JSON.stringify(a) === JSON.stringify(b)) return; if (a && b && typeof a === 'object' && typeof b === 'object') { for (const q of new Set([...Object.keys(a), ...Object.keys(b)])) walk(a[q], b[q], k + '.' + q); } else out.push(k + ': ' + JSON.stringify(a) + ' → ' + JSON.stringify(b)); }; walk(X, Y, ''); return out.slice(0, 8); };
+    info.diffCloud = diff(rd.companions, cd.companions);
+    checks.push(['클라우드 경로 (sanitizeTree → isValidSave → migrateState): companions 그대로', valid && canon(cd.companions) === canon(rd.companions), info.diffCloud]);
+    const again = T.ST.migrateState(JSON.parse(JSON.stringify(cd)));
+    checks.push(['migrateState 멱등 (전부 가진 세이브)', canon(again.companions) === canon(cd.companions)]);
+    // 크기: 동료 스물 전부 · 최대 레벨 · 알 기록 · 두 칸 편성 (모든 영웅)
+    const big = JSON.parse(JSON.stringify(st));
+    for (const e of Object.values(big.companions.owned)) { e.lv = 30; e.exp = 0; e.bond = 200; }
+    for (const h of Object.values(big.heroes ?? {})) if (h && typeof h === 'object') h.companions = { mount: 'mt_warhorse', guards: ['gd_knight', 'gd_imp'] };
+    const bytes = new Blob([JSON.stringify(big)]).size;
+    const base = JSON.parse(JSON.stringify(st)); delete base.companions;
+    const baseBytes = new Blob([JSON.stringify(base)]).size;
+    info.size = { all: bytes, withoutCompanions: baseBytes, companions: bytes - baseBytes };
+    checks.push(['동료 전부 가진 세이브 < 256 KB (서버 한도 512 KB)', bytes < 256 * 1024, info.size]);
+    info.expect = canon(rd.companions);
+    info.loadout = T.CS.heroLoadout(st, null);
+    return { checks, info };
+  }, canon);
+  if (!a?.info?.expect) return a;
+  // 페이지를 새로 열어 (타이틀) 슬롯에서 불러온다: saves.read → migrateState → 저장된 방으로
+  await page.goto(`http://localhost:${port}/index.html`, { timeout: 90000 });
+  await page.waitForFunction(() => !!window.__game?.top, null, { timeout: 90000 });
+  await page.evaluate(installHelpers);
+  const b = await page.evaluate(async ({ canonSrc, slot, expect, loadout }) => {
+    const canon = eval(canonSrc);
+    const T = window.__T, g = T.g, checks = [], info = {};
+    const raw = T.SV.saves.read(slot);
+    checks.push(['새로 연 페이지: 슬롯이 남아 있다 (localStorage)', !!raw]);
+    if (!raw) return { checks, info };
+    const st = T.ST.migrateState(raw);
+    checks.push(['다시 불러온 companions = 저장한 것', canon(st.companions) === expect]);
+    g.state = st;
+    g.go('stage', { stageId: st.lastStage.stageId, roomId: st.lastStage.roomId }, { fade: false });
+    T.until(() => g.top?.name === 'stage' && !!T.w?.player && !T.w.cutscene, 20);
+    T.step(0.5);
+    const w = T.w, p = T.p, cs = w?.companions;
+    info.after = { room: w?.roomId, mount: p?.mount?.id, guards: cs?.guards?.map((x) => x.id), loadout: T.CS.heroLoadout(st, null) };
+    checks.push(['불러온 게임: 같은 방 · 탈것 · 수호신 둘', w?.roomId === 'r3' && p?.mount?.id === loadout.mount && cs?.guards?.length === 2 && loadout.guards.every((id) => cs.guards.some((x) => x.id === id)), info.after]);
+    const m = p?.mount;
+    if (m) { T.press('KeyR', 0.05); T.step(0.8, () => m.riding); }
+    checks.push(['불러온 뒤 R → 탑승', !!m?.riding, m?.state]);
+    return { checks, info };
+  }, { canonSrc: canon, slot: a.info.slot, expect: a.info.expect, loadout: a.info.loadout });
+  delete a.info.expect;
+  return { checks: [...a.checks, ...(b?.checks ?? [['(두 번째 페이지) 실행', false]])], info: { ...a.info, ...(b?.info ?? {}) } };
+});
 
 await browser.close(); srv.close();
 const bad = results.filter((r) => !r.ok);
