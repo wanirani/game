@@ -48,12 +48,13 @@ const DEF = {
     teeth: { noDmg: true, outline: 1.2 },
     disk: { noDmg: true, outline: 0 }, sunA: { noDmg: true, outline: 0 }, sunB: { noDmg: true, outline: 0 },
   },
+  // 손가락 마디는 겹쳐 이어지므로 외곽선을 가늘게 (굵으면 관절마다 검은 고리가 보인다)
   prefix: {
-    f0_: { flash: true, deep: 0.6, cracks: 1, char: 0, holes: 0, crackMinLum: 150 },
-    f1_: { flash: true, deep: 0.6, cracks: 1, char: 0, holes: 0, crackMinLum: 150 },
-    f2_: { flash: true, deep: 0.6, cracks: 1, char: 0, holes: 0, crackMinLum: 150 },
-    f3_: { flash: true, deep: 0.6, cracks: 1, char: 0, holes: 0, crackMinLum: 150 },
-    f4_: { flash: true, deep: 0.6, cracks: 1, char: 0, holes: 0, crackMinLum: 150 },
+    f0_: { flash: true, deep: 0.6, cracks: 1, char: 0, holes: 0, crackMinLum: 150, outline: 0.7 },
+    f1_: { flash: true, deep: 0.6, cracks: 1, char: 0, holes: 0, crackMinLum: 150, outline: 0.7 },
+    f2_: { flash: true, deep: 0.6, cracks: 1, char: 0, holes: 0, crackMinLum: 150, outline: 0.7 },
+    f3_: { flash: true, deep: 0.6, cracks: 1, char: 0, holes: 0, crackMinLum: 150, outline: 0.7 },
+    f4_: { flash: true, deep: 0.6, cracks: 1, char: 0, holes: 0, crackMinLum: 150, outline: 0.7 },
     face_: { noDmg: true, outline: 0 },
     echo_: { noDmg: true, outline: 0 },
     mfr: { noDmg: true, outline: 1 },

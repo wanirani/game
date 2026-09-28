@@ -68,7 +68,7 @@
    "aspect": "4:3",
    "imageCount": 2,
    "prompt": "sheet(id) in tools/painted/prompts/cmp-guard-art-b.mjs",
-   "decision": "pending"
+   "decision": "kept both: sheet0 (#0) = body (arms at the sides) + the arm holding the open umbrella (src/gd_clock_sheet0.webp); sheet1 (#1) = flat front-view wind-up key + cogwheel (src/gd_clock_sheet1.webp)"
   },
   {
    "guardian": "gd_reaper",
@@ -81,7 +81,7 @@
    "aspect": "4:3",
    "imageCount": 2,
    "prompt": "sheet(id) in tools/painted/prompts/cmp-guard-art-b.mjs",
-   "decision": "pending"
+   "decision": "kept #1 (src/gd_reaper_sheet1.webp): loose scythe, lantern and ledger book; neither sheet has the body without the scythe -> Step-4 edit reaper_edit; #0 rejected (framed boxes, no loose lantern)"
   },
   {
    "guardian": "gd_mirra",
@@ -94,7 +94,7 @@
    "aspect": "4:3",
    "imageCount": 2,
    "prompt": "sheet(id) in tools/painted/prompts/cmp-guard-art-b.mjs",
-   "decision": "pending"
+   "decision": "kept #0 (src/gd_mirra_sheet0.webp): floating seated figure with the hand mirror (body; wings cut away), big crystal wing, loose shards; #1 rejected (standing pose, no wings)"
   },
   {
    "guardian": "gd_lumen",
@@ -107,7 +107,7 @@
    "aspect": "4:3",
    "imageCount": 2,
    "prompt": "sheet(id) in tools/painted/prompts/cmp-guard-art-b.mjs",
-   "decision": "pending"
+   "decision": "kept both: sheet1 (#1) = full jellyfish (bell cut above the rim) + oral-arm bundle (src/gd_lumen_sheet1.webp); sheet0 (#0) = loose ruffled tentacle ribbon (src/gd_lumen_sheet0.webp)"
   },
   {
    "guardian": "gd_momo",
@@ -120,6 +120,20 @@
    "aspect": "4:3",
    "imageCount": 2,
    "prompt": "sheet(id) in tools/painted/prompts/cmp-guard-art-b.mjs",
+   "decision": "kept #0 (src/gd_momo_sheet0.webp): dream cloud; body + curled trunk are cut from the reference (the sheet trunk came out as a straight pipe); #1 rejected (front view + framed boxes)"
+  },
+  {
+   "guardian": "gd_reaper",
+   "step": "edit",
+   "key": "reaper_edit",
+   "generationId": "AZCEKrlal0nZwOAWH0q7TYS4kC3YuBB9t1hNSN-d7pua7WOqLJx-h7Ft3ECelNN-p6zAF6p4",
+   "tool": "image_to_image",
+   "inputs": {
+    "image_1": "kept ref #0 (Kling result URL)"
+   },
+   "aspect": "3:4",
+   "imageCount": 2,
+   "prompt": "EXTRAS.reaper_edit in tools/painted/prompts/cmp-guard-art-b.mjs",
    "decision": "pending"
   }
  ]

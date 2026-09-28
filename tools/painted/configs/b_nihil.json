@@ -5,7 +5,7 @@
  "raw": "tools/painted/raw/b_nihil",
  "td": 1.6,
  "quality": 88,
- "hurtboxNotes": "",
+ "hurtboxNotes": "BOSS_PIPELINE §8 (documented, gameplay NOT changed): logic hit parts = core 80x100 at (bx, by+bob) (mawK>0.55: at maw y+60, 0.5 def; P4 sun 150x150) · palm eye 50x50 at the hand centre (only while the eye is open) · hand 110*s box 30*s up the finger axis · shroud 220x<=150 below the mask. The painted mask (74x109 px at k) is centred on the core box (pivot c = mask centre, rotated by tilt); in P3 the two halves spread by (6+44*open)*1.18 px like the vector mask and the maw core glow sits at MAW_Y. The hand is drawn in the logic hand frame translate(x,y) rotate(rot) scale(-side*s, s) with the palm-eye centre (src 868,1145) at local (0,4) = pEye centre; fingers follow the logic curl/spread/point rules (segment length L*cos(CURL[k]*curl), finger length x1.22) so the hand box covers palm + proximal segments. P4: the black disk radius is the logic r = 84*(0.35+0.65*sunK) inside the 150 px core box, the corona art is scaled so its hole matches r. The robe (512 px wide at k, face pivot on the mask) is drawn in row slices; the lower (tatter) part is squashed so the hem ends at roomBelow()+4 and everything is clipped at the floor, so the shroud box (mask +50 .. floor) lies on painted cloth.",
  "matte": {
   "default": {
    "key": 9,

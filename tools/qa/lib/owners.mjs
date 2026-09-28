@@ -90,3 +90,11 @@ export function norm(file) {
   return f.replace(/^\.\//, '').replace(/[?#].*$/, '');
 }
 export { ROOT };
+
+/** Packages still running (/tmp/claude-0/plan/state.json "running"), minus QA-TOOLS itself. */
+export function inFlight() {
+  try {
+    const s = JSON.parse(fs.readFileSync('/tmp/claude-0/plan/state.json', 'utf8'));
+    return new Set((s.running || []).filter((k) => k !== 'QA-TOOLS'));
+  } catch { return new Set(); }
+}

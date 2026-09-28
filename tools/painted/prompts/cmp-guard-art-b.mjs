@@ -90,7 +90,10 @@ export const GUARDIANS = {
 };
 
 /** single-part / edit prompts (Step 3/4) added while cutting: key → { guardian, aspect, inputs, prompt } */
-export const EXTRAS = {};
+export const EXTRAS = {
+  reaper_edit: { guardian: 'gd_reaper', aspect: '3:4', inputs: ['ref (gd_reaper_ref.webp)'],
+    prompt: 'Edit 图片1: remove the oversized scythe completely (the long wooden shaft and the big curved silver blade) and remove the green lantern completely; the two bony hands stay exactly where they are, closed as empty fists held in front of the chest as if gripping an invisible pole; repaint the black robe, the hood and the smoky wisps that were hidden behind the shaft and the lantern. Keep everything else exactly identical: the same tiny hooded skeleton reaper, same skull face with glowing green eyes, same tattered black robe and smoky bottom, same three-quarter side view facing right, same size and position, same painting style and lighting, on a plain flat uniform medium grey background (#808080) with no cast shadow and no floor.' },
+};
 
 export const ref = (id) => clean(withStyle(refPrompt(GUARDIANS[id])));
 export const sheet = (id) => clean(withStyle(sheetPrompt(GUARDIANS[id])));

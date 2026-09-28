@@ -1,0 +1,33 @@
+{
+ "package": "CMP-MOUNT-ART-B",
+ "model": "kling-image-v3_0_omni (image_to_image, img_resolution 2k)",
+ "prompts": "tools/painted/prompts/cmp-mount-art-b.mjs (SHOTS: <id>_ref; retries logged below with their exact deviations)",
+ "creditsPerImage": 2,
+ "budgetCredits": 200,
+ "note": "Result URLs expire after 24 h; kept images are stored as q93 webp under tools/painted/companions/<id>/src/<id>_ref.webp. The bottom-right Kling logo is removed by the matte step (tools/painted/matte.py) before cutting. Every part (body, head, jaw, legs, tail, wing) is cut from the one side-view reference per mount by tools/painted/companions/mt_direwolf/mounts_b_build.py; far legs and the far wing are the near ones darkened at runtime. The planned separate wing sheets (<id>_wing shots) were not needed: each reference shows the near wing fully and uncovered.",
+ "refs": {
+  "portrait:mt_direwolf": "https://s15-kling.klingai.com/kimg/EMXN1y8qTwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo1YWdlbnRfdXBsb2FkLzE3OTA2MDg4OTQvcnpHQ2VyY3psSS9jbXBfbV9kaXJld29sZi5qcGc.origin?x-kcdn-pid=112372",
+  "portrait:mt_wyvern": "https://s15-kling.klingai.com/kimg/EMXN1y8qTQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBozYWdlbnRfdXBsb2FkLzE3OTA2MDg4OTcvQmNHaVJzUzBpUC9jbXBfbV93eXZlcm4uanBn.origin?x-kcdn-pid=112372",
+  "portrait:mt_giantbat": "https://s15-kling.klingai.com/kimg/EMXN1y8qTwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo1YWdlbnRfdXBsb2FkLzE3OTA2MDg4OTgvNnc5SUlzcjdaaS9jbXBfbV9naWFudGJhdC5qcGc.origin?x-kcdn-pid=112372",
+  "portrait:mt_gale": "https://s15-kling.klingai.com/kimg/EMXN1y8qTAoGdXBsb2FkEg55bGFiLXN0dW50LXNncBoyYWdlbnRfdXBsb2FkLzE3OTA2MDg5MDAvOERIcjJ3MElZVy9jbXBfbXRfZ2FsZS5qcGc.origin?x-kcdn-pid=112372",
+  "mt_wyvern_ref#2(mirrored, logo painted out)": "https://s15-kling.klingai.com/kimg/EMXN1y8qSgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBowYWdlbnRfdXBsb2FkLzE3OTA2MDk2NzAvYkZoQlV2RGVwbC93eXYyX2ZsaXAuanBn.origin?x-kcdn-pid=112372"
+ },
+ "generations": [
+  {"mount": "mt_direwolf", "shot": "mt_direwolf_ref", "generationId": "AQDvKHnzNwtmvYH_FG2zyhnlhn3i4K1YIuOcS-mjvRYffmnE2K-HO4wrkUnAES01sfi7MZtW", "aspect": "4:3", "imageCount": 2, "inputs": ["portrait:mt_direwolf"],
+   "decision": "#1 kept → src/mt_direwolf_ref.webp (strict side view facing right, head forward, all four legs separated, saddle with bone ornaments). #2 unused (faces left)."},
+  {"mount": "mt_wyvern", "shot": "mt_wyvern_ref", "generationId": "ATD1QtA__L6E7dmPDbDEYYvQgp_NxcTpszXuP-tqCI0bzxcMpL3wtE0L-evfSClmOQaY9VST", "aspect": "4:3", "imageCount": 2, "inputs": ["portrait:mt_wyvern"],
+   "decision": "#1 unused (upright sitting posture, saddle bag instead of a saddle). #2 → base of the kept image: level four-legged drake posture, near wing raised, faces left, no saddle; mirrored and the logo painted out, then edited (see mt_wyvern_saddle)."},
+  {"mount": "mt_giantbat", "shot": "mt_giantbat_ref", "generationId": "AYo1SF2zKyPCsWpFe-bv1k-5g9NtGrSclS6vFmY6Hc9z1UB5JaDLIX1pJBeZ6CvJoi64tAaG", "aspect": "4:3", "imageCount": 2, "inputs": ["portrait:mt_giantbat"],
+   "decision": "#1 kept → src/mt_giantbat_ref.webp (level flight, head forward, near wing raised and fully visible, silver saddle and chains). #2 unused (crouching crawl pose, wing covering the body)."},
+  {"mount": "mt_gale", "shot": "mt_gale_ref", "generationId": "AVZTM1bOt4Em2MTwKlac0uPOvsjPlkfgfV1goVbkWz0XiOtyrKuwMTATA5iWtJ9UXiDBEK2k", "aspect": "4:3", "imageCount": 2, "inputs": ["portrait:mt_gale"],
+   "decision": "both unused: three-quarter leaping poses with overlapping legs (not cuttable into a side-view puppet)."},
+  {"mount": "mt_wyvern", "shot": "mt_wyvern_ref (retry: image_2 = attempt #1 as design ref, 'level raptor posture, no front legs, riding saddle')", "generationId": "AbqLcgoNso6Y-TxnZHrRTvb2EWcjX4ny6hDdfO_1DYFr0uGeuDwSIqu5rZyZECzwCsFFyBoB", "aspect": "4:3", "imageCount": 2, "inputs": ["portrait:mt_wyvern", "result of ATD1QtA… #1"],
+   "decision": "both unused: Kling copied the upright sitting posture of image_2 (and still painted four legs)."},
+  {"mount": "mt_gale", "shot": "mt_gale_ref (retry: image_2 = the kept wolf reference as camera/pose reference)", "generationId": "ARwl3A6_K3UrvP11UgGxQH7T8Xfo62U_wtjbc8kmgW1W0cdwUAT1vKl8RnXgmS1peSurFy5q", "aspect": "4:3", "imageCount": 2, "inputs": ["portrait:mt_gale", "result of AQDvKHnz… #1"],
+   "decision": "#1 kept → src/mt_gale_ref.webp (all four feet on the ground, eagle head forward, wings raised, gold-fitted saddle; slight three-quarter turn of the chest). #2 unused (body took on the wolf's fur mantle and saddle)."},
+  {"mount": "mt_wyvern", "shot": "mt_wyvern_saddle (edit: 'add a brown leather riding saddle … keep everything else identical')", "generationId": "AW3v5fXmFiMcyMFFyZIMVKnd0SNCDb2F0ZBaroApCrpXktOy_OKboiHrWE6ov6z_oP92ZS16", "aspect": "4:3", "imageCount": 2, "inputs": ["mt_wyvern_ref#2(mirrored, logo painted out)"],
+   "decision": "#2 kept → src/mt_wyvern_ref.webp (riding saddle with stirrup, pose kept). #1 unused (saddle bag instead of a saddle)."}
+ ],
+ "imagesGenerated": 14,
+ "creditsSpent": 28
+}
