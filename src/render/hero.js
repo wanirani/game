@@ -642,6 +642,13 @@ function chain(key, E, ax, ay, n, seg, cfg, lim) {
         const A = cfg.flut * 14 * (0.14 + Math.min(1.2, Math.abs(vx) / 260)) * dt * dt;
         for (let i = 2; i < n; i++) { const q = ch.pts[i]; q.y += Math.sin(G.t * 13 - i * 0.9) * A * (i / n); }
       }
+      // cfg.up (망토): 점이 앵커(어깨)보다 up 이상 올라가지 않게 — 질주·대시 급정지나 뒤로 대시(방향 전환) 뒤 사슬이 채찍처럼
+      // 휘돌아 머리 위로 깃발처럼 서는 현상 방지 (세라 달리기 → 뒤로 순간이동: 망토 끝이 12프레임 동안 어깨 위 ~180°).
+      // 걸린 점은 위로 가던 속도를 버리고 가로 속도도 절반만 남긴다(넘어가려던 기세를 꺾음)
+      if (cfg.up !== undefined) {
+        const top = wy - cfg.up * hs;
+        for (let i = 1; i < n; i++) { const q = ch.pts[i]; if (q.y < top) { q.y = top; if (q.py < top) q.py = top; q.px = q.x - (q.x - q.px) * 0.5; } }
+      }
     }
     for (let i = 0; i < n; i++) { const q = ch.pts[i]; out[i * 2] = (q.x - p.cx) * fac / hs; out[i * 2 + 1] = (q.y - p.bottom) / hs; }
   } else {
@@ -652,6 +659,8 @@ function chain(key, E, ax, ay, n, seg, cfg, lim) {
       const a = a0 + (cfg.curl ?? 0.05) * i * (vx > 60 ? 1 : 0.5);
       x -= Math.sin(a) * seg; y += Math.cos(a) * seg;
       if (y > -0.6 && p.onGround !== false) y = -0.6;
+      if (cfg.up !== undefined && y < ay - cfg.up) y = ay - cfg.up;   // 잔상도 망토가 어깨 위로 서지 않게
+
       out[i * 2] = x; out[i * 2 + 1] = y;
     }
   }
@@ -1374,7 +1383,8 @@ const CC_VEIL = { g: 1400, d: 0.9, push: 150, rest: 0.3, curl: 0.06, flut: 60 };
 const CC_VHAIR = { g: 1400, d: 0.9, push: 150, rest: 0.22, curl: 0.05 };
 const CC_SCARF = { g: 1100, d: 0.9, push: 250, rest: 0.5, curl: 0.03, flut: 150 };
 const CC_SCARF_L = { g: 950, d: 0.9, push: 400, rest: 0.9, curl: 0.03, flut: 200 };
-const CC_CAPE = { g: 1500, d: 0.93, push: 90, rest: 0.12, curl: 0.04, flut: 110 };
+// up: 망토 점이 앵커(어깨) 위로 올라갈 수 있는 한계(로컬 단위) — chain() 참고
+const CC_CAPE = { g: 1500, d: 0.93, push: 90, rest: 0.12, curl: 0.04, flut: 110, up: 3 };
 const CC_BAND = { g: 900, d: 0.9, push: 360, rest: 0.95, curl: 0.12, flut: 240 };
 const CC_BAND2 = { g: 900, d: 0.9, push: 360, rest: 1.4, curl: 0.12, flut: 240 };
 const HAIR_CFG = {

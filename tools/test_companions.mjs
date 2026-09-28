@@ -35,7 +35,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { Touch, padLayout, pressButton, ensureTouchMode } from './qa/lib/touch.mjs';
-import { fakePadInit, connect, setButton, BTN } from './qa/lib/fakepad.mjs';
+import { fakePadInit, connect, press as padPress, BTN } from './qa/lib/fakepad.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const argv = process.argv.slice(2);
@@ -701,6 +701,602 @@ await run('save', STAGE('s01', '&room=r3&cmp=all&cmplv=40&bond=4&ch=20&mount=mt_
   delete a.info.expect;
   return { checks: [...a.checks, ...(b?.checks ?? [['(두 번째 페이지) 실행', false]])], info: { ...a.info, ...(b?.info ?? {}) } };
 });
+
+// ═════════════ (7) 844×390 터치: 탑승/수호 버튼 · 누르기 · 재사용 대기 가림막 · 캔버스 위젯 탭 · 겹침 없음 ═════════════
+await run('mobile', STAGE('s01', '&cmp=all&ch=20&mount=mt_warhorse&guards=gd_knight,gd_imp'), async (page, ctx) => {
+  const checks = [], info = {};
+  const cdp = await ctx.newCDPSession(page);
+  const t = new Touch(cdp, page);
+  const ev = () => page.evaluate(() => window.__T.events.length);
+  const evSince = (n, name) => page.evaluate(([n, name]) => window.__T.events.slice(n).filter((e) => e.ev === name), [n, name]);
+  const calm = () => page.evaluate(() => { const T = window.__T; for (const e of T.w.entities) if (e.kind === 'enemy' && !e.dead) { e.dead = true; e.hidden = true; } const p = T.p; p.hp = p.stats.hp; T.g.state.companions.autoSkill = false; T.g.state.companions.pending.length = 0; });
+  await calm();
+  const mode = await ensureTouchMode(t, page);
+  checks.push(['(준비) 터치 모드', mode === 'touch', mode]);
+  await page.waitForTimeout(500);
+  const L = await padLayout(page);
+  info.pad = { source: L.source, visible: L.visible, ids: Object.keys(L.buttons) };
+  checks.push(['패드에 탑승 · 수호 버튼 (장착했을 때)', L.visible && !!L.buttons.mount && !!L.buttons.guard, info.pad]);
+  // 겹침: 탑승/수호 버튼 ↔ 다른 버튼 · 스틱 자리 (CSS px)
+  const ov = (a, b) => Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+  const circ = (b) => ({ x: b.cx - b.d / 2, y: b.cy - b.d / 2, w: b.d, h: b.d });
+  const hits = [];
+  for (const id of ['mount', 'guard']) {
+    const a = L.buttons[id];
+    if (!a) continue;
+    for (const [k, b] of Object.entries(L.buttons)) if (k !== id && Math.hypot(a.cx - b.cx, a.cy - b.cy) < (a.d + b.d) / 2 - 1) hits.push(`${id}×${k}`);
+    if (L.stick && ov(circ(a), L.stick) > 0) hits.push(`${id}×stick`);
+  }
+  checks.push(['탑승/수호 버튼이 다른 버튼 · 스틱 자리와 겹치지 않는다', !hits.length, { hits, stick: L.stick }]);
+  // 탑승 버튼
+  await pressButton(t, page, 'mount', 100);
+  await page.waitForFunction(() => window.__T.m?.riding, null, { timeout: 4000 }).catch(() => {});
+  const rode = await page.evaluate(() => !!window.__T.m?.riding);
+  checks.push(['탑승 버튼 → 탄다', rode]);
+  // 수호 버튼 (적 셋 앞에서) + 재사용 대기 가림막 (버튼 자리 픽셀)
+  const sample = (id) => page.evaluate(async (id) => {
+    const tp = (await import('/src/core/touchpad.js')).touchpad;
+    const b = tp.buttons().find((x) => x.id === id), cv = document.getElementById('tpadcv');
+    if (!b || !cv) return null;
+    const r = cv.getBoundingClientRect(), kx = cv.width / r.width, ky = cv.height / r.height;
+    const x = Math.round((b.cx - b.d * 0.35 - r.x) * kx), y = Math.round((b.cy - b.d * 0.35 - r.y) * ky), w = Math.round(b.d * 0.7 * kx), h = Math.round(b.d * 0.7 * ky);
+    const d = cv.getContext('2d').getImageData(x, y, w, h).data;
+    let lum = 0; for (let i = 0; i < d.length; i += 4) lum += (d[i] + d[i + 1] + d[i + 2]) * d[i + 3] / 255;
+    return { lum: Math.round(lum / (d.length / 4)), n: d.length / 4 };
+  }, id);
+  await page.evaluate(() => { const T = window.__T; for (const x of T.cs.guards) x.skillCd = 0; T.spawn('skeleton', 180); T.spawn('zombie', -180); });
+  await page.waitForTimeout(300);
+  const before = await sample('guard');
+  const n0 = await ev();
+  await pressButton(t, page, 'guard', 100);
+  await page.waitForTimeout(400);
+  const cast = await evSince(n0, 'guardianSkill');
+  // 버튼 가림막은 가장 먼저 준비되는 수호신 기준이다: 두 번째 수호신까지 쓰면 가림막이 덮인다
+  await pressButton(t, page, 'guard', 100);
+  await page.waitForTimeout(400);
+  const cast2 = await evSince(n0, 'guardianSkill');
+  checks.push(['수호 버튼 → 수호신 스킬 (수동, 두 번 누르면 둘 다)', cast.length >= 1 && cast2.length >= 2 && cast2.every((e) => !e.auto) && new Set(cast2.map((e) => e.id)).size === 2, cast2.map((e) => e.id)]);
+  const during1 = await sample('guard');
+  await page.waitForTimeout(1200);
+  const during2 = await sample('guard');
+  const cdNow = await page.evaluate(() => Math.min(...window.__T.cs.guards.map((x) => x.skillCd)));
+  info.overlay = { before, during1, during2, cdNow: +cdNow.toFixed(1) };
+  checks.push(['재사용 대기 가림막이 그려지고 (버튼이 어두워짐) 시간이 가며 바뀐다', !!before && !!during1 && during1.lum < before.lum - 3 && during2 && during2.lum !== during1.lum && cdNow > 0, info.overlay]);
+  // 캔버스 위젯 탭 (HUD 의 동료 위젯: 수호신 칸 · 탈것)
+  await calm();
+  await page.evaluate(() => { const T = window.__T; for (const x of T.cs.guards) x.skillCd = 0; });
+  await page.waitForTimeout(300);
+  const rects = await page.evaluate(() => {
+    const T = window.__T, R = T.cs.hudRects || [];
+    const list = Array.isArray(R) ? R : Object.entries(R).map(([k, r]) => ({ act: k, ...r }));
+    return list.map((r) => { const a = String(r.act ?? r.kind ?? r.id ?? ''); const c = T.toClient(r.x + r.w / 2, r.y + r.h / 2); return { act: a, slot: r.slot, cx: c.x, cy: c.y }; });
+  });
+  info.widgets = rects.map((r) => r.act);
+  const gw = rects.find((r) => r.act.startsWith('guard'));
+  let wOk = false;
+  if (gw) {
+    const n1 = await ev();
+    await t.tap(gw.cx, gw.cy, 60);
+    await page.waitForTimeout(400);
+    wOk = (await evSince(n1, 'guardianSkill')).length >= 1;
+  }
+  checks.push(['캔버스 수호신 위젯 탭 → 스킬', !!gw && wOk, { widgets: info.widgets }]);
+  const mw = rects.find((r) => r.act === 'mount');
+  let mOk = false;
+  if (mw) {
+    const was = await page.evaluate(() => !!window.__T.m?.riding);
+    await t.tap(mw.cx, mw.cy, 60);
+    await page.waitForTimeout(700);
+    const now = await page.evaluate(() => !!window.__T.m?.riding);
+    mOk = was !== now;
+    info.mountWidget = { was, now };
+  }
+  checks.push(['캔버스 탈것 위젯 탭 → 탑승/하차 전환', !!mw && mOk, info.mountWidget]);
+  // 위젯이 패드 버튼 밑에 깔리지 않는다
+  const Lb = await padLayout(page);
+  const under = [];
+  for (const r of rects) for (const [k, b] of Object.entries(Lb.buttons)) if (Math.hypot(r.cx - b.cx, r.cy - b.cy) < b.d / 2) under.push(`${r.act}@${k}`);
+  checks.push(['동료 위젯 중심이 패드 버튼 밑에 있지 않다', !under.length, under]);
+  return { checks, info };
+}, { mobile: true });
+
+// ═════════════ (8) 가짜 게임패드: 버튼 10(L3) 탑승 · 11(R3) 수호신 스킬 ═════════════
+await run('pad', STAGE('s01', '&cmp=all&ch=20&mount=mt_warhorse&guards=gd_knight,gd_imp'), async (page) => {
+  const checks = [], info = {};
+  await page.evaluate(() => { const T = window.__T; for (const e of T.w.entities) if (e.kind === 'enemy' && !e.dead) { e.dead = true; e.hidden = true; } T.g.state.companions.autoSkill = false; T.g.state.companions.pending.length = 0; });
+  await connect(page);
+  await page.waitForTimeout(300);
+  info.mode = await page.evaluate(() => window.__game.input?.mode ?? null);
+  await padPress(page, BTN.L3, 120, 200);
+  await page.waitForFunction(() => window.__T.m?.riding, null, { timeout: 4000 }).catch(() => {});
+  const rode = await page.evaluate(() => ({ riding: !!window.__T.m?.riding, mode: window.__game.input?.mode ?? null }));
+  checks.push(['패드 버튼 10 (L3) → 탑승', rode.riding, rode]);
+  await page.evaluate(() => { const T = window.__T; for (const x of T.cs.guards) x.skillCd = 0; T.spawn('skeleton', 200); T.spawn('zombie', -200); });
+  const n0 = await page.evaluate(() => window.__T.events.length);
+  await padPress(page, BTN.R3, 120, 300);
+  const cast = await page.evaluate((n) => window.__T.events.slice(n).filter((e) => e.ev === 'guardianSkill'), n0);
+  checks.push(['패드 버튼 11 (R3) → 수호신 스킬 (수동)', cast.length >= 1 && !cast[0].auto, cast.map((e) => e.id)]);
+  await page.waitForTimeout(300);
+  await padPress(page, BTN.L3, 120, 700);
+  const off = await page.evaluate(() => ({ riding: !!window.__T.m?.riding, state: window.__T.m?.state }));
+  checks.push(['다시 10 → 하차', !off.riding, off]);
+  info.mode = rode.mode;
+  return { checks, info };
+}, { initScripts: [fakePadInit({})] });
+
+// ═════════════ (2부) 이야기 명령 {cmd:'recruit'}: 대본 · 이야기 장면 · 대화 장면 · 플래그만 있는 세이브 ═════════════
+await run('recruit', STAGE('s01', '&ch=20'), (page) => page.evaluate(async () => {
+  const T = window.__T, g = T.g, checks = [], info = {};
+  const { SCRIPTS } = await import('/src/data/story.js');
+  const want = { gd_mirra: 's14_outro', mt_ignis: 's15_outro', gd_lumen: 's16_outro', mt_gale: 's17_outro', gd_momo: 's18_outro', mt_silva: 's19_outro' };
+  // 대본: 여섯 아웃트로에 recruit 명령 + 같은 플래그 · 조건 분기/선택지보다 앞
+  const found = {}, bad = [];
+  for (const [sid, sc] of Object.entries(SCRIPTS)) {
+    const lines = Array.isArray(sc) ? sc : sc?.lines ?? [];
+    lines.forEach((l, i) => {
+      if (l?.cmd !== 'recruit') return;
+      (found[l.id] ??= []).push(sid);
+      const next = lines[i + 1];
+      if (!(next?.cmd === 'flag' && next.key === 'recruit_' + l.id)) bad.push(`${sid}:${l.id} 플래그 없음`);
+      if (l.if) bad.push(`${sid}:${l.id} 조건부`);
+      const firstBranch = lines.findIndex((x) => x?.choice || x?.if);
+      if (firstBranch >= 0 && firstBranch < i) bad.push(`${sid}:${l.id} 분기 뒤 (${firstBranch} < ${i})`);
+    });
+  }
+  info.found = found;
+  checks.push(['대본: 2부 여섯 동료의 recruit 명령이 제 아웃트로에', Object.entries(want).every(([id, sid]) => found[id]?.includes(sid)) && Object.keys(found).length === 6, found]);
+  checks.push(['recruit 바로 뒤 같은 플래그 · 조건 분기보다 앞', !bad.length, bad]);
+  checks.push(['데이터: 여섯 동료의 합류 조건 = recruit_<id> 플래그', Object.keys(want).every((id) => T.D.COMPANIONS?.[id]?.obtain?.flag === 'recruit_' + id || (T.D.MOUNTS[id] ?? T.D.GUARDIANS[id])?.obtain?.flag === 'recruit_' + id)]);
+  const st = g.state;
+  st.companions.pending.length = 0;
+  checks.push(['(준비) 2부 동료 미보유', Object.keys(want).every((id) => !T.CS.isOwned(st, id))]);
+  // 이야기 장면 (s14_outro): 건너뛰기로도 recruit 가 실행된다 → 허브에서 합류 연출
+  T.pushed.length = 0;
+  g.go('story', { script: 's14_outro', then: 'hub', thenParams: { from: 's14' } }, { fade: false });
+  T.step(0.2, null, { close: false });
+  const sc = g.top;
+  checks.push(['이야기 장면 열림', sc?.name === 'story', sc?.name]);
+  T.until(() => g.top?.name === 'hub' && !!T.w?.player && !T.CS.pendingIds(st).length, 40);
+  info.story = { flag: !!st.progress.flags.recruit_gd_mirra, owned: T.CS.isOwned(st, 'gd_mirra'), src: st.companions.owned.gd_mirra?.src, pushed: T.pushed.filter((n) => n !== 'dialogue').slice(0, 6) };
+  checks.push(['이야기 장면 → 플래그 + 미라 합류 (출처 story)', info.story.flag && info.story.owned && info.story.src === 'story', info.story]);
+  checks.push(['허브에서 합류 연출 (companionJoin)', T.pushed.includes('companionJoin'), info.story.pushed]);
+  // 대화 장면 (월드에서 playScript): s15_outro → 이그니스
+  g.go('stage', { stageId: 's01' }, { fade: false });
+  T.until(() => g.top?.name === 'stage' && !!T.w?.player && !T.w.cutscene, 20);
+  T.w.playScript('s15_outro');
+  T.step(0.1, null, { close: false });
+  const dlg = g.top?.name;
+  T.until(() => g.top?.name === 'stage', 60);
+  info.dialogue = { opened: dlg, flag: !!st.progress.flags.recruit_mt_ignis, owned: T.CS.isOwned(st, 'mt_ignis') };
+  checks.push(['대화 장면 (playScript) → 플래그 + 이그니스 합류', dlg === 'dialogue' && info.dialogue.flag && info.dialogue.owned, info.dialogue]);
+  // 플래그만 있는 세이브 (동료 시스템 없는 러너가 남긴 기록): 불러올 때 합류
+  const old = JSON.parse(JSON.stringify(st));
+  delete old.companions;
+  old.progress.flags = { ...old.progress.flags, recruit_gd_lumen: true, recruit_mt_gale: true };
+  const mig = T.ST.migrateState(old);
+  const own = Object.keys(mig.companions?.owned ?? {});
+  checks.push(['플래그만 있는 세이브 → 불러오면 루멘 · 게일 합류', own.includes('gd_lumen') && own.includes('mt_gale'), own]);
+  const st2 = JSON.parse(JSON.stringify(st));
+  st2.progress.flags.recruit_gd_momo = true;
+  const got = T.CS.evaluateUnlocks(st2, { silent: true });
+  checks.push(['evaluateUnlocks: 플래그 → 모모 합류 (멱등)', got.includes('gd_momo') && T.CS.evaluateUnlocks(st2, { silent: true }).length === 0, got]);
+  // 아케이드 상태에서는 플래그만
+  const arc = JSON.parse(JSON.stringify(st)); arc.arcade = true;
+  const saveState = g.state; g.state = arc;
+  const r = g.companions?.recruit?.('mt_silva');
+  g.state = saveState;
+  checks.push(['아케이드: recruit 는 플래그만 (합류 없음)', r == null && !!arc.progress.flags.recruit_mt_silva && !T.CS.isOwned(arc, 'mt_silva')]);
+  return { checks, info };
+}));
+
+// ═════════════ (2부) 영혼의 마구간: 구입 · 잠금/금화 부족 · 알 부화 · 그레타 의뢰 · 공물 ═════════════
+await run('stable', 'index.html?scene=hub&cmp=mt_warhorse&ch=4', (page) => page.evaluate(async () => {
+  const T = window.__T, g = T.g, checks = [], info = {};
+  const st = g.state;
+  st.companions.pending.length = 0;
+  st.gold = 30000; st.progress.chapter = 4;
+  T.until(() => g.top?.name === 'hub' && !!T.w?.player, 10);
+  const open = () => {
+    g.push('stable', { world: T.w });
+    T.step(0.5, null, { close: true });
+    return g.top?.name === 'stable' ? g.top : null;
+  };
+  let sc = open();
+  checks.push(['마구간 장면이 열린다 (4장)', !!sc && !sc.closed && sc.tabs.length === 4, { top: g.top?.name, tabs: sc?.tabs?.map((t) => t.id) }]);
+  if (!sc) return { checks, info };
+  const tabTo = (id) => { sc.tab = sc.tabs.findIndex((t) => t.id === id); sc.onTab(); T.step(0.05, null, { close: false }); };
+  const pick = (id) => { const i = sc.entries.findIndex((e) => e.id === id || e.q?.id === id); if (i >= 0) sc.list.index = i; return i >= 0; };
+  const confirm = () => { for (let k = 0; k < 40 && sc.modal; k++) { T.key('KeyZ', true); g.tick(1 / 60); T.key('KeyZ', false); g.tick(1 / 60); } };
+  // 구입: 바르그 (6,000 G) · 소악마 계약서 핌 (7,500 G)
+  tabTo('shop');
+  for (const [id, price] of [['mt_boar', 6000], ['gd_imp', 7500]]) {
+    const gold0 = st.gold;
+    T.pushed.length = 0;
+    const ok = pick(id);
+    sc.act();
+    const modal = !!sc.modal;
+    T.step(0.5, null, { close: false });   // 모달이 입력을 받기 시작하는 시간
+    confirm();
+    T.step(0.3, null, { close: false });
+    info[id] = { modal, gold: gold0 - st.gold, owned: T.CS.isOwned(st, id), pushed: T.pushed.slice(0, 3), pending: T.CS.pendingIds(st) };
+    checks.push([`구입 ${id}: 확인 창 → ${price} G · 합류 · 합류 연출`, ok && modal && st.gold === gold0 - price && T.CS.isOwned(st, id) && T.pushed.includes('companionJoin') && !T.CS.pendingIds(st).includes(id), info[id]]);
+    for (let k = 0; k < 10 && g.top?.name === 'companionJoin'; k++) g.pop();
+    T.step(0.2, null, { close: true });
+  }
+  // 잠금 · 금화 부족 · 이미 보유
+  const cp = JSON.parse(JSON.stringify(st));
+  delete cp.companions.owned.mt_boar; cp.progress.chapter = 1;
+  const lock = T.CS.buyCompanion(cp, 'mt_boar');
+  cp.progress.chapter = 4; cp.gold = 100;
+  const poor = T.CS.buyCompanion(cp, 'mt_boar');
+  const again = T.CS.buyCompanion(st, 'mt_boar');
+  checks.push(['잠금(장 미달) · 금화 부족 · 이미 보유는 거절 (금화 그대로)', !lock.ok && lock.msg.includes('2장') && !poor.ok && poor.msg === T.D.CMP_TEXT.poor && cp.gold === 100 && !again.ok, { lock: lock.msg, poor: poor.msg, again: again.msg }]);
+  // 알 부화: 알 → 스테이지 두 번 → 부화 탭에서 깨기
+  T.CS.obtainEgg(st, 'gd_whelp');
+  const e0 = T.CS.eggStatus(st).find((e) => e.id === 'gd_whelp');
+  T.CS.stageClearUpdate(st);
+  const e1 = T.CS.eggStatus(st).find((e) => e.id === 'gd_whelp');
+  T.CS.stageClearUpdate(st);
+  const e2 = T.CS.eggStatus(st).find((e) => e.id === 'gd_whelp');
+  checks.push(['알: 받은 뒤 스테이지 두 번 클리어해야 부화 가능', !!e0 && !e0.ready && e0.left === 2 && !e1.ready && e1.left === 1 && e2.ready, [e0, e1, e2].map((e) => e && e.left)]);
+  tabTo('eggs');
+  T.pushed.length = 0;
+  pick('gd_whelp'); sc.act();
+  T.step(3.0, null, { close: false });
+  info.egg = { owned: T.CS.isOwned(st, 'gd_whelp'), src: st.companions.owned.gd_whelp?.src, pushed: T.pushed.slice(0, 3), eggs: Object.keys(st.companions.eggs) };
+  checks.push(['부화 탭: 알이 깨지고 크론 합류 (출처 egg) · 합류 연출', info.egg.owned && info.egg.src === 'egg' && T.pushed.includes('companionJoin') && !info.egg.eggs.includes('gd_whelp'), info.egg]);
+  for (let k = 0; k < 10 && g.top?.name === 'companionJoin'; k++) g.pop();
+  T.step(0.2, null, { close: true });
+  // 그레타 의뢰: 받기 → 진행 채우기 → 보상 → 합류
+  const questMates = Object.fromEntries(['cq_hati', 'cq_skoll'].map((q) => [q, T.D.COMPANION_ORDER.find((id) => T.CS.companionDef?.(id)?.obtain?.quest === q || (T.D.MOUNTS[id] ?? T.D.GUARDIANS[id])?.obtain?.quest === q)]));
+  info.questMates = questMates;
+  for (const qid of ['cq_hati', 'cq_skoll']) {
+    tabTo('quests');
+    const had = pick(qid);
+    const e = sc.cur;
+    const st0 = e?.status;
+    sc.act();
+    const accepted = !!st.quests?.active?.[qid];
+    const Qd = (await import('/src/data/quests.js')).QUESTS[qid];
+    if (accepted) st.quests.active[qid].n = Qd.goal.count;
+    sc.refresh(); pick(qid);
+    const st1 = sc.cur?.status;
+    T.pushed.length = 0;
+    sc.act();
+    T.step(0.6, null, { close: false });
+    for (let k = 0; k < 60 && sc.popup; k++) { T.key('KeyZ', true); g.tick(1 / 60); T.key('KeyZ', false); g.tick(1 / 60); }
+    T.step(0.4, null, { close: false });
+    const mate = questMates[qid];
+    const row = { had, before: st0, accepted, ready: st1, owned: T.CS.isOwned(st, mate), done: st.quests?.done?.includes(qid), pushed: T.pushed.slice(0, 3) };
+    info[qid] = row;
+    checks.push([`그레타 의뢰 ${qid}: 받기 → 완료 → 보상 → ${mate} 합류 · 합류 연출`, had && st0 === 'available' && accepted && st1 === 'ready' && row.owned && row.done && T.pushed.includes('companionJoin'), row]);
+    for (let k = 0; k < 10 && g.top?.name === 'companionJoin'; k++) g.pop();
+    T.step(0.2, null, { close: true });
+  }
+  // 공물: 경험치 + 유대 (주기마다 한 번) · 금화
+  tabTo('tribute');
+  pick('mt_warhorse');
+  const e = st.companions.owned.mt_warhorse;
+  const b0 = e.bond, x0 = e.lv * 1e6 + e.exp, g0 = st.gold;
+  const cost = T.CS.tributeCost(st, 'mt_warhorse');
+  sc.act();
+  const b1 = e.bond, x1 = e.lv * 1e6 + e.exp, g1 = st.gold;
+  sc.act();
+  const b2 = e.bond, x2 = e.lv * 1e6 + e.exp;
+  info.tribute = { cost, gold: g0 - g1, bond: [b0, b1, b2], exp: [x0, x1, x2] };
+  checks.push(['공물: 금화 · 경험치 · 유대 +8 (같은 주기 두 번째는 유대 없음)', g0 - g1 === cost && b1 === b0 + 8 && x1 > x0 && b2 === b1 && x2 > x1, info.tribute]);
+  sc.close?.();
+  T.step(0.3);
+  return { checks, info };
+}));
+
+// ═════════════ (2부) 깊은 물: 탄 채 들어가면 하차 · 물속 소환 거절 · 루멘 숨 감소 ×0.5 ═════════════
+await run('deep', STAGE('s16', '&cmp=all&ch=20&mount=mt_warhorse&guards=gd_lumen,gd_knight'), (page) => page.evaluate(async () => {
+  const T = window.__T, g = T.g, checks = [], info = {};
+  const st = g.state;
+  st.companions.pending.length = 0; st.companions.autoSkill = false;
+  T.until(() => g.top?.name === 'stage' && !T.w.cutscene, 10);
+  const w = T.w, p = w.player;
+  const kill = () => { for (const e of w.entities) if ((e.kind === 'enemy' || e.kind === 'boss') && !e.dead) { e.dead = true; e.hidden = true; } p.hp = p.stats.hp; };
+  // 깊은 물이 3×3 칸 이상인 곳이 있는 방
+  const LIQ = (await import('/src/core/physics.js')).T.LIQUID;
+  let spot = null, room = null;
+  const order = [w.roomId, ...Object.keys(w.stage.rooms).filter((r) => r !== w.roomId)];
+  for (const rid of order) {
+    if (w.roomId !== rid) w.loadRoom(rid);
+    const m = w.map;
+    for (let ty = 3; ty < m.h - 1 && !spot; ty++) for (let tx = 2; tx < m.w - 2 && !spot; tx++) {
+      let ok = true;
+      for (let yy = ty - 2; yy <= ty && ok; yy++) for (let xx = tx - 1; xx <= tx + 1 && ok; xx++) if (m.typeAt(xx, yy) !== LIQ) ok = false;
+      if (ok) spot = { tx, ty };
+    }
+    if (spot) { room = rid; break; }
+  }
+  info.spot = { room, spot };
+  checks.push(['(준비) s16 에 깊은 물 (3×3 칸 이상)', !!spot && !!w.gimmickOf('deep'), info.spot]);
+  if (!spot) return { checks, info };
+  kill();
+  T.step(0.3);
+  // 물가에서 탄 뒤 물속으로 옮긴다
+  const m = T.ride('mt_warhorse');
+  checks.push(['(준비) 탑승', !!m?.riding]);
+  const ev0 = T.events.length, t0 = T.toasts.length;
+  p.cx = spot.tx * 48 + 24; p.bottom = (spot.ty + 1) * 48 - 2; p.vx = 0; p.vy = 0;
+  T.step(0.3, () => { kill(); return false; });
+  const deep = w.gimmickOf('deep');
+  const dis = T.events.slice(ev0).filter((e) => e.ev === 'dismounted');
+  info.dismount = { reasons: dis.map((e) => e.reason), riding: m.riding, inWater: deep.inWater, toasts: T.toasts.slice(t0, t0 + 3) };
+  checks.push(['탄 채 깊은 물 → 하차 (사유 deep) + 안내', !m.riding && dis.some((e) => e.reason === 'deep') && T.toasts.slice(t0).includes(T.D.CMP_TEXT.deep), info.dismount]);
+  checks.push(['내린 기수 몸이 물속에서 박히지 않는다', T.fitsNow(), { x: p.x, b: p.bottom, w: p.w, h: p.h }]);
+  // 물속에서 R → 거절
+  const hold = () => { p.cx = spot.tx * 48 + 24; p.bottom = (spot.ty + 1) * 48 - 2; p.vx = 0; p.vy = 0; kill(); };
+  m.cd = 0; m.state = 'stowed';
+  T.step(0.1, () => { hold(); return false; });
+  const t1 = T.toasts.length;
+  T.key('KeyR', true); T.step(2 / 60, () => { hold(); return false; }); T.key('KeyR', false);
+  T.step(0.6, () => { hold(); return false; });
+  info.refuse = { riding: m.riding, state: m.state, inWater: deep.inWater, head: deep.headUnder, toasts: T.toasts.slice(t1, t1 + 3) };
+  checks.push(['물속에서 R → 소환 거절 (물속에서는 탈것을 부를 수 없다)', !m.riding && m.state !== 'summoning' && T.toasts.slice(t1).includes(T.D.CMP_TEXT.underwater), info.refuse]);
+  // 루멘: 숨 감소 ×0.5 (머리까지 잠긴 채 2초)
+  const drain = (guards) => {
+    T.CS.equipGuardian(st, null, 0, guards[0] ?? null); T.CS.equipGuardian(st, null, 1, guards[1] ?? null);
+    w.companions.sync(true);
+    T.step(0.05, () => { hold(); return false; });
+    deep.air = 100;
+    let under = 0;
+    T.step(2.0, () => { hold(); if (deep.headUnder) under++; return false; });
+    return { used: 100 - deep.air, under, mul: w.companions.airDrainMul };
+  };
+  const withLumen = drain(['gd_lumen', 'gd_knight']);
+  const without = drain(['gd_knight', null]);
+  info.air = { withLumen, without, ratio: +(withLumen.used / Math.max(1e-6, without.used)).toFixed(3) };
+  checks.push(['루멘 장착: airDrainMul 0.5 · 숨 감소가 절반', withLumen.mul === 0.5 && without.mul === 1 && withLumen.under > 100 && Math.abs(info.air.ratio - 0.5) < 0.06, info.air]);
+  return { checks, info };
+}));
+
+// ═════════════ (2부) 게일 windMul 0.5 · 실바 blightMul 0.5 ═════════════
+await run('wind_blight', STAGE('s17', '&cmp=all&ch=20&mount=mt_warhorse'), (page) => page.evaluate(async () => {
+  const T = window.__T, g = T.g, checks = [], info = {};
+  const st = g.state;
+  st.companions.pending.length = 0;
+  const into = (sid) => {
+    if (T.w?.stage?.id !== sid) {
+      g.go('stage', { stageId: sid }, { fade: false });
+      T.until(() => g.top?.name === 'stage' && T.w?.stage?.id === sid && !!T.w.player, 20);
+    }
+    T.until(() => g.top?.name === 'stage' && !T.w.cutscene && !T.w.transitioning, 20);
+    T.hook();
+    return T.w;
+  };
+  // 바람 (s17): 같은 돌풍에서 땅 위 W 상한 = maxPush × 0.5 × windMul
+  let w = into('s17');
+  const kill = (ww) => { for (const e of ww.entities) if ((e.kind === 'enemy' || e.kind === 'boss') && !e.dead) { e.dead = true; e.hidden = true; } ww.player.hp = ww.player.stats.hp; };
+  const windFor = (id) => {
+    const p = w.player;
+    const m = T.ride(id);
+    kill(w); T.step(0.4, () => { kill(w); return false; });
+    const x0 = p.cx, b0 = p.bottom;
+    const wind = w.gimmickOf('wind');
+    wind.setAuto(false); wind.W = 0;
+    wind.gust(1, 900, 1.5, 0);
+    let maxW = 0;
+    T.step(1.2, () => { kill(w); p.cx = x0; p.bottom = b0; p.vx = 0; maxW = Math.max(maxW, Math.abs(wind.W)); return false; });
+    return { id, riding: !!m?.riding, ground: p.onGround, maxW: Math.round(maxW), windMul: m?.def?.windMul ?? 1 };
+  };
+  const wa = windFor('mt_warhorse'), wg = windFor('mt_gale');
+  info.wind = { warhorse: wa, gale: wg, ratio: +(wg.maxW / Math.max(1, wa.maxW)).toFixed(3) };
+  checks.push(['게일: 돌풍 몫 절반 (windMul 0.5)', wa.riding && wg.riding && wg.windMul === 0.5 && wa.maxW > 50 && Math.abs(info.wind.ratio - 0.5) < 0.06, info.wind]);
+  // 부패 (s19): 포자 구름 속 게이지 증가 × blightMul
+  w = into('s19');
+  const blightFor = (id) => {
+    const p = w.player;
+    const m = T.ride(id);
+    kill(w); T.step(0.4, () => { kill(w); return false; });
+    const b = w.gimmickOf('blight');
+    const x0 = p.cx, b0 = p.bottom;
+    b.reset?.(); b.meter = 0;
+    b.addCloud(p.cx - 150, p.y - 150, 300, p.h + 200, 5);
+    T.step(1.0, () => { kill(w); p.cx = x0; p.bottom = b0; p.vx = 0; return false; });
+    return { id, riding: !!m?.riding, meter: +b.meter.toFixed(2), blightMul: m?.def?.blightMul ?? 1 };
+  };
+  const ba = blightFor('mt_warhorse'), bs = blightFor('mt_silva');
+  info.blight = { warhorse: ba, silva: bs, ratio: +(bs.meter / Math.max(1e-6, ba.meter)).toFixed(3) };
+  checks.push(['실바: 부패 게이지 증가 절반 (blightMul 0.5)', ba.riding && bs.riding && bs.blightMul === 0.5 && ba.meter > 5 && Math.abs(info.blight.ratio - 0.5) < 0.06, info.blight]);
+  return { checks, info };
+}));
+
+// ═════════════ (2부) 유대 4단계 각성: 파생 수치 · 탈것 9 · 수호신 11 의 모습이 실제로 달라진다 ═════════════
+await run('awakened', STAGE('s01', '&cmp=all&ch=20'), (page) => page.evaluate(async () => {
+  const T = window.__T, g = T.g, checks = [], info = {};
+  const st = g.state, p = T.p;
+  const MR = await import('/src/render/mounts.js'), GR = await import('/src/render/guardians.js');
+  const ids = [...T.D.MOUNT_IDS, ...T.D.GUARDIAN_IDS];
+  // 파생 수치: 유대 3단계 = 아님, 4단계 = 각성
+  const bondAt = (r) => { for (const id of ids) st.companions.owned[id].bond = T.D.BOND_RANKS[r]; };
+  const der = (id) => (T.D.MOUNT_IDS.includes(id) ? T.CS.mountDerived(st, id, p.stats) : T.CS.guardianDerived(st, id, p.stats));
+  bondAt(3);
+  const off = ids.filter((id) => der(id)?.awakened);
+  bondAt(4);
+  const on = ids.filter((id) => der(id)?.awakened);
+  checks.push(['파생 수치: 유대 3단계 awakened=false · 4단계 true (스무 동료)', off.length === 0 && on.length === ids.length, { off, missing: ids.filter((id) => !on.includes(id)) }]);
+  // 런타임 객체에 반영 (탈것 · 수호신)
+  T.CS.equipMount(st, null, 'mt_warhorse'); T.CS.equipGuardian(st, null, 0, 'gd_knight'); T.CS.equipGuardian(st, null, 1, 'gd_imp');
+  T.cs.sync(true); p.refreshStats?.(); T.step(0.6);
+  checks.push(['런타임: 탈것 · 수호신 객체의 awakened', !!p.mount?.awakened && T.cs.guards.every((x) => !!x.d?.awakened), { mount: p.mount?.awakened, guards: T.cs.guards.map((x) => x.d?.awakened) }]);
+  // 그림: 같은 순간을 각성 전/후로 그려 픽셀 비교 (채색 그림이 준비되면 그 경로로)
+  try { await MR.preloadMounts(T.D.MOUNT_IDS); } catch { /* 벡터로 비교 */ }
+  const W = 360, H = 300;
+  const cv = () => { const c = document.createElement('canvas'); c.width = W; c.height = H; return c; };
+  const diff = (a, b) => {
+    const A = a.getContext('2d').getImageData(0, 0, W, H).data, B = b.getContext('2d').getImageData(0, 0, W, H).data;
+    let n = 0, ink = 0;
+    for (let i = 0; i < A.length; i += 4) {
+      if (A[i + 3] > 20 || B[i + 3] > 20) ink++;
+      if (Math.abs(A[i] - B[i]) + Math.abs(A[i + 1] - B[i + 1]) + Math.abs(A[i + 2] - B[i + 2]) + Math.abs(A[i + 3] - B[i + 3]) > 60) n++;
+    }
+    return { n, ink };
+  };
+  const mRows = [], gRows = [];
+  for (const id of T.D.MOUNT_IDS) {
+    const draw = (aw) => {
+      const c = cv(), ctx = c.getContext('2d');
+      const v = T.M.mountView(id);
+      v.cx = W / 2; v.bottom = H - 30; v.t = 1.3; v.awakened = aw; v.rank = aw ? 4 : 3;
+      ctx.save(); MR.drawMount(ctx, v, null, 'back'); MR.drawMount(ctx, v, null, 'front'); ctx.restore();
+      return c;
+    };
+    const d = diff(draw(false), draw(true));
+    mRows.push({ id, ...d });
+  }
+  for (const id of T.D.GUARDIAN_IDS) {
+    const def = T.D.GUARDIANS[id];
+    const fake = (aw) => ({ id, def, anim: 'idle', animT: 0, t: 0.35, facing: 1, alpha: 1, seed: 0, vx: 0, vy: 0, cx: W / 2, bottom: H - 60, perched: false, d: { awakened: aw }, hopY: () => 0 });
+    // 채색 그림 준비 (paintedReady 가 불러오기를 시작한다)
+    for (let k = 0; k < 20; k++) { const c = cv(); GR.drawGuardian(c.getContext('2d'), fake(false), null, { awakened: false }); await new Promise((r) => setTimeout(r, 25)); }
+    const draw = (aw, proc) => { const c = cv(), ctx = c.getContext('2d'); (proc ? GR.drawGuardianProcedural : GR.drawGuardian)(ctx, fake(aw), null, { awakened: aw, alpha: 1, hop: 0 }); return c; };
+    const d = diff(draw(false, false), draw(true, false));
+    const dp = diff(draw(false, true), draw(true, true));
+    gRows.push({ id, n: d.n, ink: d.ink, proc: dp.n });
+  }
+  info.mounts = mRows; info.guards = gRows;
+  const weakM = mRows.filter((r) => !(r.n >= 150 && r.n >= r.ink * 0.01));
+  // 수호신은 작다 (잉크 400–2,700 px): 바뀐 픽셀이 잉크의 2.5% 이상 · 20 px 이상이면 '다르게 그려진다' (5% 미만은 info.subtle 로 알린다)
+  const vis = (n, ink) => n >= 20 && n >= ink * 0.025;
+  const weakG = gRows.filter((r) => !(vis(r.n, r.ink) && vis(r.proc, r.ink)));
+  info.subtle = gRows.filter((r) => Math.min(r.n, r.proc) < r.ink * 0.05).map((r) => `${r.id} ${(Math.min(r.n, r.proc) / r.ink * 100).toFixed(1)}%`);
+  checks.push(['탈것 9: 각성 모습이 실제로 다르게 그려진다 (픽셀 비교)', !weakM.length, weakM]);
+  checks.push(['수호신 11: 각성 모습이 다르게 그려진다 (채색 · 절차 그림 모두)', !weakG.length, weakG]);
+  return { checks, info };
+}));
+
+// ═════════════ 메뉴 「동료」 탭 — 키보드만: 탈것 장착 · 수호신 두 칸 · 자동 스킬 순환 · 8장 전 2번 칸 잠금 ═════════════
+await run('menu', STAGE('s01', '&cmp=all&ch=8'), (page) => page.evaluate(async () => {
+  const T = window.__T, g = T.g, checks = [], info = {};
+  const st = g.state;
+  st.companions.pending.length = 0;
+  T.CS.equipMount(st, null, null); T.CS.equipGuardian(st, null, 0, null); T.CS.equipGuardian(st, null, 1, null);
+  T.cs.sync(true); T.step(0.2);
+  const tap = (code, n = 1) => { for (let i = 0; i < n; i++) { T.key(code, true); g.tick(1 / 60); T.key(code, false); g.tick(1 / 60); g.tick(1 / 60); } };
+  g.push('menu', { world: T.w, tab: 'companions' });
+  T.step(0.3, null, { close: false, render: 5 });
+  const menu = g.top, tb = menu?.cur;
+  checks.push(['(준비) 메뉴 동료 탭', menu?.name === 'menu' && tb?.constructor?.name === 'CompanionsTab', [menu?.name, tb?.constructor?.name]]);
+  if (!tb) return { checks, info };
+  if (menu.focus !== 'content') tap('ArrowDown');
+  const notes = [];
+  const n0 = menu.notify.bind(menu);
+  menu.notify = (t, c) => { notes.push(String(t)); return n0(t, c); };
+  // 탈것 목록에서 바르그로 내려가 Z
+  const to = (id) => { for (let k = 0; k < 30 && tb.curId !== id; k++) tap(tb.ids().indexOf(id) > tb.sel[tb.kind] ? 'ArrowDown' : 'ArrowUp'); return tb.curId === id; };
+  const reachedMount = tb.kind === 'mount' && to('mt_boar');
+  tap('KeyZ');
+  T.step(0.2, null, { close: false });
+  const L1 = T.CS.heroLoadout(st, null);
+  info.mount = { reached: reachedMount, loadout: L1.mount, world: T.p?.mount?.id ?? null, focus: menu.focus, area: tb.area };
+  checks.push(['키보드: 바르그 선택 → Z 장착 (월드 탈것도 바뀜)', reachedMount && L1.mount === 'mt_boar' && T.p?.mount?.id === 'mt_boar', info.mount]);
+  // 나눔 단추로 수호신 목록: 맨 위에서 ↑ → 나눔 → → → ↓
+  for (let k = 0; k < 20 && tb.area === 'list'; k++) tap('ArrowUp');
+  const seg = tb.area;
+  tap('ArrowRight'); tap('ArrowDown');
+  info.seg = { seg, kind: tb.kind, area: tb.area };
+  const okG1 = tb.kind === 'guardian' && to('gd_knight'); tap('KeyZ');
+  const okG2 = to('gd_owl'); tap('KeyZ');
+  T.step(0.3, null, { close: false });
+  const L2 = T.CS.heroLoadout(st, null);
+  info.guards = { okG1, okG2, loadout: [...L2.guards], world: T.cs.guards.map((x) => x.id) };
+  checks.push(['키보드: 나눔 단추 → 수호신 → 가웨인 · 미네르바 두 칸 장착 (8장)', seg === 'seg' && okG1 && okG2 && L2.guards[0] === 'gd_knight' && L2.guards[1] === 'gd_owl' && T.cs.guards.length === 2, info.guards]);
+  // 자동 스킬 (A): 기기 기본 → 켬 → 끔 → 기기 기본
+  const seq = [st.companions.autoSkill];
+  for (let i = 0; i < 3; i++) { tap('KeyA'); seq.push(st.companions.autoSkill); }
+  checks.push(['A: 자동 스킬 순환 (기기 기본 → 켬 → 끔 → 기기 기본)', JSON.stringify(seq) === JSON.stringify([null, true, false, null]), seq]);
+  // Z 다시 → 해제
+  to('gd_owl'); tap('KeyZ');
+  const L3 = T.CS.heroLoadout(st, null);
+  checks.push(['장착한 수호신에서 Z → 해제', L3.guards[1] == null && L3.guards[0] === 'gd_knight', L3.guards]);
+  // 8장 전: 2번 칸 잠금
+  st.progress.chapter = 7;
+  notes.length = 0;
+  tb.activateSlot(2);
+  const lockMsg = notes.includes(T.D.CMP_TEXT.slot2Locked);
+  const btns = tb.buttonsFor('gd_imp').map((b) => b.label);
+  const r = T.CS.equipGuardian(st, null, 1, 'gd_imp');
+  info.lock = { lockMsg, btns, r };
+  checks.push(['7장: 2번 칸 잠금 (칸 누르면 안내 · 단추에 수호신 2 없음 · 장착 거절)', lockMsg && !btns.some((l) => l.includes('수호신 2')) && !r.ok && r.msg === T.D.CMP_TEXT.slot2Locked, info.lock]);
+  st.progress.chapter = 8;
+  tap('KeyX');
+  T.step(0.3, null, { close: false });
+  checks.push(['X 로 메뉴를 닫는다', g.top?.name === 'stage', g.top?.name]);
+  return { checks, info };
+}));
+
+// ═════════════ HUD 위젯: 장착하면 탭 영역 · 해제하면 없음 · 마을에서는 수호 위젯 없음 ═════════════
+await run('hud', STAGE('s01', '&cmp=all&ch=20&mount=mt_warhorse&guards=gd_knight,gd_imp'), (page) => page.evaluate(async () => {
+  const T = window.__T, g = T.g, checks = [], info = {};
+  const st = g.state;
+  st.companions.pending.length = 0;
+  const rects = () => { g.input?.beginRender?.(); g.render(); const R = T.cs?.hudRects || []; return (Array.isArray(R) ? R : Object.entries(R).map(([k, r]) => ({ act: k, ...r }))).map((r) => String(r.act ?? r.kind ?? r.id ?? '')); };
+  T.step(0.3);
+  const a = rects();
+  checks.push(['스테이지: 탈것 + 수호신 둘 위젯 (탭 영역)', a.includes('mount') && a.filter((x) => x.startsWith('guard')).length === 2, a]);
+  T.CS.equipMount(st, null, null); T.CS.equipGuardian(st, null, 0, null); T.CS.equipGuardian(st, null, 1, null);
+  T.cs.sync(true); T.step(0.3);
+  const b = rects();
+  checks.push(['모두 해제하면 위젯 · 탭 영역 없음', b.length === 0, b]);
+  const t0 = T.toasts.length;
+  T.press('KeyR', 0.05); T.press('KeyG', 0.05);
+  T.step(0.2);
+  const said = T.toasts.slice(t0);
+  checks.push(['장착 없음: R · G 는 안내만 (메뉴 › 동료)', said.includes(T.D.CMP_TEXT.noMount) && said.includes(T.D.CMP_TEXT.noGuard), said]);
+  T.CS.equipMount(st, null, 'mt_warhorse'); T.CS.equipGuardian(st, null, 0, 'gd_knight');
+  g.go('hub', { from: 'load' }, { fade: false });
+  T.until(() => g.top?.name === 'hub' && !!T.w?.player && T.w.mode === 'town', 20);
+  T.step(0.3);
+  const c = rects();
+  const ev0 = T.events.length;
+  T.press('KeyG', 0.05);
+  const gcast = T.events.slice(ev0).filter((e) => e.ev === 'guardianSkill').length;
+  info.town = { rects: c, guards: T.cs?.guards?.length, gcast };
+  // companions §7.1: 장착한 것이 없거나 마을이면 위젯 전체를 숨긴다 · 마을에서 수호신은 공격하지 않고 G 는 무시
+  checks.push(['마을: 동료 위젯 전체 숨김 · G 무시', c.length === 0 && gcast === 0, info.town]);
+  return { checks, info };
+}));
+
+// ═════════════ 입력 바인딩: R/G · 패드 10/11 (두 배치) · 터치 mount/guard ═════════════
+await run('bindings', STAGE('s01'), (page) => page.evaluate(async () => {
+  const T = window.__T, g = T.g, checks = [], info = {};
+  const C = await import('/src/data/controls.js');
+  const { touchpad, PAD_IDS } = await import('/src/core/touchpad.js').then((m) => ({ touchpad: m.touchpad, PAD_IDS: m.PAD_IDS ?? null }));
+  const inp = g.input;
+  checks.push(['키보드 기본: mount = R · guard = G (다시 지정 가능)', C.KEY_DEFAULTS.mount.includes('KeyR') && C.KEY_DEFAULTS.guard.includes('KeyG') && C.REMAPPABLE.includes('mount') && C.REMAPPABLE.includes('guard')]);
+  checks.push(['패드 두 배치 모두 mount = 10 (L3) · guard = 11 (R3)', ['arcade', 'classic'].every((k) => C.PAD_PRESETS[k].mount.includes(10) && C.PAD_PRESETS[k].guard.includes(11))]);
+  checks.push(['터치: mount · guard 버튼', C.TOUCH_BINDINGS.mount.includes('mount') && C.TOUCH_BINDINGS.guard.includes('guard') && (!PAD_IDS || (PAD_IDS.includes('mount') && PAD_IDS.includes('guard')))]);
+  const live = [];
+  for (const preset of ['arcade', 'classic']) {
+    inp.setPreset(preset);
+    const b = inp.bindings;
+    live.push({ preset, key: [b.key.mount, b.key.guard], pad: [b.pad.mount, b.pad.guard], acts: [inp.padActs[10], inp.padActs[11]] });
+  }
+  inp.setPreset('arcade');
+  info.live = live;
+  checks.push(['실행 중 바인딩 (두 배치): 키 R/G · 패드 10/11 이 mount/guard 로 풀린다', live.every((l) => l.key[0].includes('KeyR') && l.key[1].includes('KeyG') && l.acts[0]?.includes('mount') && l.acts[1]?.includes('guard')), live]);
+  // 10/11 이 다른 동작과 겹치지 않는다 (메뉴 viewReset 은 메뉴 전용)
+  const clash = live.map((l) => ({ p: l.preset, a10: (l.acts[0] || []).filter((a) => a !== 'mount'), a11: (l.acts[1] || []).filter((a) => a !== 'guard' && a !== 'viewReset') }));
+  checks.push(['패드 10/11 에 게임 동작 겹침 없음 (11 의 viewReset 은 메뉴 전용)', clash.every((c) => !c.a10.length && !c.a11.length), clash]);
+  return { checks, info };
+}));
+
+// ═════════════ (9)(10) 도구: scan_mount_fit · balance_companions ═════════════
+if (want('tools') && !SKIP_TOOLS) {
+  const t0 = Date.now(), checks = [], info = {};
+  for (const name of ['scan_mount_fit', 'balance_companions']) {
+    const r = spawnSync(process.execPath, [path.join(ROOT, 'tools', name + '.mjs')], { cwd: ROOT, encoding: 'utf8', timeout: 900000, maxBuffer: 64 << 20 });
+    const lines = String(r.stdout || '').trim().split('\n');
+    const tail = lines.slice(-4).join(' | ');
+    info[name] = { code: r.status, tail, err: String(r.stderr || '').trim().split('\n').slice(-2).join(' | ') };
+    checks.push([`${name}.mjs 합격 (종료 코드 0)`, r.status === 0, tail]);
+  }
+  record('tools', { checks, info }, [], t0);
+}
 
 await browser.close(); srv.close();
 const bad = results.filter((r) => !r.ok);
