@@ -21,7 +21,7 @@ const FX = {
   eye: '#ff5a2a', eyeR: 2.8, snort: '#b8b8c0',
   awGlow: '#ff8a2a', awEye: '#ffb050',
   awBody: [['em0', 6, 0.55], ['em1', 6, 0.5], ['em2', 5, 0.45]],
-  awMane: ['m0', 'm1', 'm2'], maneLen: 7, maneW: 2.2, maneA: 0.3, core: '#ffc070',
+  awMane: ['m0', 'm1'], maneLen: 7, maneW: 2.2, maneA: 0.3, core: '#ffc070',
 };
 
 export default {

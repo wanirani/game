@@ -2,9 +2,9 @@
  "id": "mt_skelsteed",
  "kind": "companion",
  "td": 3.0,
- "note": "All parts cut from the side-view reference (src/mt_skelsteed_ref.webp). Hind leg pivots at the stifle (bottom of the flank, like the warhorse hip at the belly line): the femur stays painted on the flank, the tibia (upper part) and cannon+hoof (lower part) swing. Fore leg pivots at the elbow. Near fore = front skeletal fore leg, near hind = skeletal hind leg; far legs reuse them darkened. Awakened = baked tint 'aw' (soul fire blue -> green-white). frame: local = (src - [ox, gy]) * lps; seat.y = -54 like the data seat.",
+ "note": "All parts cut from the side-view reference (src/mt_skelsteed_ref.webp). Hind leg pivots at the stifle (bottom of the flank, like the warhorse hip at the belly line): the femur stays painted on the flank, the tibia (upper part) and cannon+hoof (lower part) swing. Fore leg pivots at the elbow. Near fore = front skeletal fore leg, near hind = skeletal hind leg; far legs reuse them darkened. Awakened = baked tint 'aw' (soul fire blue -> green-white). frame: local = (src - [ox, gy]) * lps; seat.y = -54 like the data seat. ox is chosen so the saddle lands on the data seat x (MOUNTS.mt_skelsteed.seat.x), which also centres the barrel over the hitbox.",
  "frame": {
-  "ox": 992,
+  "ox": 1155.3,
   "gy": 1712,
   "lps": 0.04688,
   "bodyBox": [

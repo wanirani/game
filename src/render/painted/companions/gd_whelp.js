@@ -6,7 +6,7 @@
 //   emote 딱딱 깨물기 · hurt 움찔 · appear 커지며 나타남. 각성: 날개에 보랏빛 불꽃 막.
 import * as K from '../enemy_kit.js';
 import { clamp } from '../../../core/math.js';
-import { gGlow, gHalo } from '../../guardians.js';
+import { gGlow, gHalo, gAwake } from '../../guardians.js';
 
 export const spec = {
   id: 'gd_whelp', tier: 'T1', src: '../companions/gd_whelp',
@@ -29,7 +29,7 @@ function draw(ctx, g, world, rig) {
   const cast = an === 'skill', emote = an === 'emote', atk = an === 'attack', ast = an === 'assist';
   const hurt = an === 'hurt' ? 1 - clamp(at / 0.3, 0, 1) : 0;
   const ap = an === 'appear' ? easeOut(clamp(at / 0.3, 0, 1)) : 1;
-  const aw = !!(g.d?.awakened);
+  const aw = gAwake(g);
   const hiQ = (world?.fx?.quality ?? 1) >= 0.95;
   const beat = Math.sin(t * 11);
   const bob = -beat * 1.4 + Math.sin(t * 2.1 + (g.seed ?? 0)) * 1.2;

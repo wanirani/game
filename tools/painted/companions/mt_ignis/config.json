@@ -2,9 +2,9 @@
  "id": "mt_ignis",
  "kind": "companion",
  "td": 3.0,
- "note": "All parts cut from the side-view reference (src/mt_ignis_ref.webp). The flame mane flows back over the saddle and stays on the head part (behind the rider). Near fore = the lower-standing front fore leg, near hind = the rear-most hind leg; far legs reuse them darkened. Idle embers come from mount_b.js particles, so the painted renderer only pulses the lava cracks, eyes, mouth and hooves. Awakened = baked tint 'aw' (flames/lava -> white-hot). frame: local = (src - [ox, gy]) * lps; seat.y = -56 like the data seat.",
+ "note": "All parts cut from the side-view reference (src/mt_ignis_ref.webp). The flame mane flows back over the saddle and stays on the head part (behind the rider). Near fore = the lower-standing front fore leg, near hind = the rear-most hind leg; far legs reuse them darkened. Idle embers come from mount_b.js particles, so the painted renderer only pulses the lava cracks, eyes, mouth and hooves. Awakened = baked tint 'aw' (flames/lava -> white-hot). frame: local = (src - [ox, gy]) * lps; seat.y = -56 like the data seat. ox is chosen so the saddle lands on the data seat x (MOUNTS.mt_ignis.seat.x), which also centres the barrel over the hitbox.",
  "frame": {
-  "ox": 978,
+  "ox": 1106.8,
   "gy": 1705,
   "lps": 0.05209,
   "bodyBox": [

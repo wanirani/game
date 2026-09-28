@@ -5,7 +5,7 @@
 // 그리기 규약: drawGuardian 이 발 중앙 원점·facing 반전을 걸어 준 ctx. world 는 null 일 수 있다(메뉴). 게임 상태를 바꾸지 않는다.
 import * as K from '../enemy_kit.js';
 import { clamp, lerp, TAU } from '../../../core/math.js';
-import { gGlow, gStar, gHalo, gSparkles } from '../../guardians.js';
+import { gGlow, gStar, gHalo, gSparkles, gAwake } from '../../guardians.js';
 
 export const spec = { id: 'gd_fairy', tier: 'T1', src: '../companions/gd_fairy', bake: { outline: 0.3, outlineParts: { wingU: 0, wingL: 0 }, flash: false, glow: { wingU: '#dff6ff', wingL: '#dff6ff' } } };
 
@@ -31,7 +31,7 @@ function draw(ctx, g, world, rig) {
   const atk = an === 'attack' || an === 'assist';
   const hurt = an === 'hurt' ? 1 - clamp(at / 0.3, 0, 1) : 0;
   const ap = an === 'appear' ? easeOut(clamp(at / 0.3, 0, 1)) : 1;
-  const aw = !!(g.d?.awakened);
+  const aw = gAwake(g);
   const q = world?.fx?.quality ?? 1;
   const bob = perch ? Math.sin(t * 2) * 0.3 : Math.sin(t * 3 + (g.seed ?? 0)) * 1.4;
   let tilt = perch ? -0.05 : clamp(vxf * 0.0008, -0.18, 0.3) - hurt * 0.35;

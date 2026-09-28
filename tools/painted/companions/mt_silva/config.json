@@ -2,9 +2,9 @@
  "id": "mt_silva",
  "kind": "companion",
  "td": 3.0,
- "note": "All parts cut from the side-view reference (src/mt_silva_ref.webp, mirrored from the Kling output so it faces right; the watermark is therefore bottom-left). The fluffy tail is one rigid band (tailN 1) that flicks from its root. Near fore = front-most fore leg, near hind = the rear-most hind leg; far legs reuse them darkened. Antler glow + howl brightening are drawn here; holy sparkles come from mount_b.js particles. Awakened = baked tint 'aw' (green antler light -> gold). frame: local = (src - [ox, gy]) * lps; seat.y = -54 like the data seat.",
+ "note": "All parts cut from the side-view reference (src/mt_silva_ref.webp, mirrored from the Kling output so it faces right; the watermark is therefore bottom-left). The fluffy tail is one rigid band (tailN 1) that flicks from its root. Near fore = front-most fore leg, near hind = the rear-most hind leg; far legs reuse them darkened. Antler glow + howl brightening are drawn here; holy sparkles come from mount_b.js particles. Awakened = baked tint 'aw' (green antler light -> gold). frame: local = (src - [ox, gy]) * lps; seat.y = -54 like the data seat. ox is chosen so the saddle lands on the data seat x (MOUNTS.mt_silva.seat.x), which also centres the barrel over the hitbox.",
  "frame": {
-  "ox": 1065,
+  "ox": 1154.7,
   "gy": 1748,
   "lps": 0.06186,
   "bodyBox": [

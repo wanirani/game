@@ -6,7 +6,7 @@
 // 영체: 몸 전체를 살짝 투명하게 + 가산 빛 한 겹(높음 품질), 몸 속 별이 반짝이고 귀끝·꼬리끝에 불꽃 빛.
 import * as K from '../enemy_kit.js';
 import { clamp } from '../../../core/math.js';
-import { gGlow, gStar, gHalo } from '../../guardians.js';
+import { gGlow, gStar, gHalo, gAwake } from '../../guardians.js';
 
 export const spec = {
   id: 'gd_spiritwolf', tier: 'T2', src: '../companions/gd_spiritwolf',
@@ -54,7 +54,7 @@ function draw(ctx, g, world, rig) {
   const f = g.facing < 0 ? -1 : 1, vxf = (g.vx ?? 0) * f;
   const hurt = an === 'hurt' ? 1 - clamp(at / 0.3, 0, 1) : 0;
   const ap = an === 'appear' ? easeOut(clamp(at / 0.3, 0, 1)) : 1;
-  const aw = !!(g.d?.awakened);
+  const aw = gAwake(g);
   const hiQ = (world?.fx?.quality ?? 1) >= 0.95;
   const q = pose(g, t, at, an, vxf, g.vy, hurt);
   // 그림자

@@ -6,7 +6,7 @@
 //   guard/skill 방패를 앞으로 치켜들고 빛 · emote 검을 세워 경례 · hurt 움찔 · appear 안개에서 솟아남. 각성: 금빛 방패 테두리 · 금빛 기운.
 import * as K from '../enemy_kit.js';
 import { clamp, lerp } from '../../../core/math.js';
-import { gGlow, gHalo } from '../../guardians.js';
+import { gGlow, gHalo, gAwake } from '../../guardians.js';
 
 export const spec = {
   id: 'gd_knight', tier: 'T2', src: '../companions/gd_knight',
@@ -64,7 +64,7 @@ function draw(ctx, g, world, rig) {
   const attack = an === 'attack', bash = an === 'assist';
   const hurt = an === 'hurt' ? 1 - clamp(at / 0.3, 0, 1) : 0;
   const ap = an === 'appear' ? easeOut(clamp(at / 0.35, 0, 1)) : 1;
-  const aw = !!(g.d?.awakened);
+  const aw = gAwake(g);
   const hiQ = (world?.fx?.quality ?? 1) >= 0.95;
   const bob = Math.sin(t * 2.6 + (g.seed ?? 0)) * 1.5;
   const moving = Math.abs(vxf) > 60;

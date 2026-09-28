@@ -5,7 +5,7 @@
 //   assist 던지기 · emote 키히힛 (들썩들썩) · hurt 움찔 · appear 커지며 나타남. 각성: 불타는 뿔. 해골 지팡이 끝의 불꽃은 가산 빛.
 import * as K from '../enemy_kit.js';
 import { clamp, lerp } from '../../../core/math.js';
-import { gGlow, gStar, gHalo } from '../../guardians.js';
+import { gGlow, gStar, gHalo, gAwake } from '../../guardians.js';
 
 export const spec = {
   id: 'gd_imp', tier: 'T1', src: '../companions/gd_imp',
@@ -29,7 +29,7 @@ function draw(ctx, g, world, rig) {
   const atk = an === 'attack' || an === 'assist';
   const hurt = an === 'hurt' ? 1 - clamp(at / 0.3, 0, 1) : 0;
   const ap = an === 'appear' ? easeOut(clamp(at / 0.3, 0, 1)) : 1;
-  const aw = !!(g.d?.awakened);
+  const aw = gAwake(g);
   const beat = Math.sin(t * 14);
   const bob = -beat * 1.5 + Math.sin(t * 2.3 + (g.seed ?? 0)) * 1.2;
   let tilt = clamp(vxf * 0.0009, -0.22, 0.28) - hurt * 0.35;

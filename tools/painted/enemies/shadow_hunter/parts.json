@@ -1,0 +1,148 @@
+{
+ "id": "shadow_hunter",
+ "tier": "T2",
+ "srcTD": 4,
+ "note": "Hero-puppet reuse (ART-ENEMY-5): the body is the player's own painted puppet (drawHero) composited as a living shadow at runtime; this atlas holds only the painted shadow FX from one Kling sheet (shadow_fx): two smoke columns with violet ember bases (rising around the feet / death), the ink puddle under the feet (cut from the dripping figure, legs removed) and one grinning shadow wraith that looms behind the hunter while it strikes.",
+ "sources": {
+  "fx": {
+   "raw": "shadow_fx.webp",
+   "file": "a5_shadow_fx.png",
+   "k": 0.034
+  }
+ },
+ "parts": {
+  "smoke": {
+   "src": "fx",
+   "box": [
+    15,
+    175,
+    495,
+    1135
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     255,
+     1105
+    ],
+    "top": [
+     250,
+     210
+    ]
+   }
+  },
+  "smoke2": {
+   "src": "fx",
+   "box": [
+    500,
+    175,
+    965,
+    1135
+   ],
+   "keep": "largest",
+   "piv": {
+    "a": [
+     735,
+     1105
+    ],
+    "top": [
+     730,
+     210
+    ]
+   }
+  },
+  "pool": {
+   "src": "fx",
+   "box": [
+    930,
+    1060,
+    1650,
+    1275
+   ],
+   "k": 0.056,
+   "poly": [
+    [
+     930,
+     1120
+    ],
+    [
+     1010,
+     1088
+    ],
+    [
+     1120,
+     1080
+    ],
+    [
+     1250,
+     1086
+    ],
+    [
+     1380,
+     1082
+    ],
+    [
+     1500,
+     1090
+    ],
+    [
+     1600,
+     1100
+    ],
+    [
+     1650,
+     1130
+    ],
+    [
+     1650,
+     1275
+    ],
+    [
+     930,
+     1275
+    ]
+   ],
+   "fade": [
+    [
+     930,
+     1060,
+     1650,
+     1110,
+     "up",
+     1.0
+    ]
+   ],
+   "piv": {
+    "a": [
+     1290,
+     1150
+    ]
+   }
+  },
+  "grin": {
+   "src": "fx",
+   "box": [
+    1550,
+    280,
+    2150,
+    1215
+   ],
+   "keep": "largest",
+   "k": 0.1,
+   "piv": {
+    "a": [
+     1860,
+     1160
+    ],
+    "eyes": [
+     1713,
+     697
+    ],
+    "mouth": [
+     1770,
+     735
+    ]
+   }
+  }
+ }
+}

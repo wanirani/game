@@ -2,9 +2,9 @@
  "id": "mt_warhorse",
  "kind": "companion",
  "td": 3.0,
- "note": "All parts are cut from the Step-1 side-view reference (src/mt_warhorse_ref.webp): the body/legs edit and the legs sheet were rejected (Kling kept the legs / painted front views). Near fore leg = the rear-ward fore leg of the pair, near hind = the vertical hind leg; far legs reuse them darkened. frame: local game px = (src - [ox, gy]) * lps; seat.y = -56 like the data seat.",
+ "note": "All parts are cut from the Step-1 side-view reference (src/mt_warhorse_ref.webp): the body/legs edit and the legs sheet were rejected (Kling kept the legs / painted front views). Near fore leg = the rear-ward fore leg of the pair, near hind = the vertical hind leg; far legs reuse them darkened. frame: local game px = (src - [ox, gy]) * lps; seat.y = -56 like the data seat. ox is chosen so the saddle lands on the data seat x (MOUNTS.mt_warhorse.seat.x), which also centres the barrel over the hitbox.",
  "frame": {
-  "ox": 1000,
+  "ox": 1133.9,
   "gy": 1690,
   "lps": 0.0477,
   "bodyBox": [

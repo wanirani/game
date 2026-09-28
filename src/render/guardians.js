@@ -201,6 +201,8 @@ function cached(key, make) {
 // ───────────────────────── 채색 퍼핏 연결 ─────────────────────────
 /** 채색 모듈이 읽는 이번 그리기의 부가 정보 (cam: 월드 변환 전 ctx 행렬 — 월드 좌표 연출용, opts, world) */
 export const PO = { cam: null, opts: null, world: null };
+/** 채색 모듈용: 각성 여부 (drawGuardian opts.awakened 우선, 없으면 g.d.awakened — 절차 그림 pre() 와 같은 규칙) */
+export const gAwake = (g) => !!(PO.opts?.awakened ?? g?.d?.awakened);
 /** 0 = 채색 없음/실패/꺼짐 · 1 = 굽는 중 · 2 = 준비됨 */
 function paintedReady(id, world) {
   if (!hasPainted(id)) return 0;

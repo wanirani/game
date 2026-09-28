@@ -6,7 +6,10 @@
  "credits": {
   "before": 5893.0,
   "per_image": 2,
-  "budget": 900
+  "budget": 900,
+  "after": 5507,
+  "spent_by_package": 86,
+  "note": "account shared with concurrent packages (ART-BOSS-8, ART-ENEMY-3/5, CMP-*): the before/after delta (5893 -> 5507) includes their jobs; this package: 22 calls, 43 delivered images x 2 credits = 86 credits (the moderation-blocked priest_ref image was refunded)"
  },
  "uploads": {
   "bat_body_fly": {
@@ -668,7 +671,7 @@
    "aspect": "4:3",
    "imageCount": 2,
    "inputs": [
-    "golem_ref"
+    "golem_ref (take 2)"
    ],
    "for": [
     "ice_golem"
@@ -703,7 +706,7 @@
    "aspect": "4:3",
    "imageCount": 2,
    "inputs": [
-    "priest_ref"
+    "priest_ref (take 1)"
    ],
    "for": [
     "blood_priest"
@@ -738,7 +741,7 @@
    "aspect": "4:3",
    "imageCount": 2,
    "inputs": [
-    "nun_ref"
+    "nun_ref (take 1)"
    ],
    "for": [
     "cursed_nun"
@@ -773,7 +776,7 @@
    "aspect": "4:3",
    "imageCount": 2,
    "inputs": [
-    "succ_ref_b"
+    "succ_ref_b (take 2)"
    ],
    "for": [
     "succubus"

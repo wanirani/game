@@ -5,7 +5,7 @@
 //   emote 고개 갸웃 · hurt 움찔 · appear 커지며 나타남 · perch 어깨에 앉음(가끔 눈 깜빡). 머리 뒤 후광, 각성: 두 번째 후광.
 import * as K from '../enemy_kit.js';
 import { clamp, lerp } from '../../../core/math.js';
-import { gGlow, gHalo } from '../../guardians.js';
+import { gGlow, gHalo, gAwake } from '../../guardians.js';
 
 export const spec = {
   id: 'gd_owl', tier: 'T1', src: '../companions/gd_owl',
@@ -39,7 +39,7 @@ function draw(ctx, g, world, rig) {
   const cast = an === 'skill', emote = an === 'emote', atk = an === 'attack' || an === 'assist';
   const hurt = an === 'hurt' ? 1 - clamp(at / 0.3, 0, 1) : 0;
   const ap = an === 'appear' ? easeOut(clamp(at / 0.3, 0, 1)) : 1;
-  const aw = !!(g.d?.awakened);
+  const aw = gAwake(g);
   const bob = Math.sin(t * 2.4 + (g.seed ?? 0)) * 1.3 * (1 - pk);
   let tilt = clamp(vxf * 0.0008, -0.2, 0.3) - hurt * 0.3;
   if (atk) tilt = 0.55;

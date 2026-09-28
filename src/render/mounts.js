@@ -626,7 +626,9 @@ function pTail(D, ctx, C, Tp, tk) {
   if (!img) return;
   const g = partGeo(Tp), a = Tp.a, b = Tp.b, k = Tp.k;
   const H = img.height, W = img.width;
-  const lo = Math.min(n, C.q === 0 ? 2 : 3);                 // 띠 수: 낮음 2 · 그 밖 3 (띠마다 회전 그리기 1번)
+  // 띠 수 (띠마다 회전 그리기 1번): 낮음 2 · 그 밖엔 꼬리가 거의 곧으면 2, 휘면 3
+  const bend = n > 1 ? Math.abs(P.ta[n - 1] - P.ta[0]) : 0;
+  const lo = Math.min(n, C.q === 0 || bend < 0.3 ? 2 : 3);
   const ov = ctx.globalAlpha < 0.98 ? 0 : 1;                  // 반투명(소환·해산)일 때 띠를 겹치면 줄무늬가 보인다
   let wx = P.tx, wy = P.ty;
   for (let i = 0; i < lo; i++) {
@@ -723,7 +725,7 @@ function paintedFx(ctx, C, rig, D, hr) {
   // 불갈기 · 영혼불 갈기 (목 위 점들)
   const mane = aw && fx.awMane ? fx.awMane : fx.mane;
   if (mane && q > 0) {
-    const n = q === 2 ? 2 : 1, up = -PI / 2 - 0.5 - P.mane * 0.6;
+    const n = 1, up = -PI / 2 - 0.5 - P.mane * 0.6;            // 점마다 불꽃 혀 하나 (퍼프 2장)
     for (const name of mane) {
       if (!headPt(D, C, R.head, name, hr, _q)) continue;
       flames(ctx, _q[0], _q[1], up, fx.maneLen ?? 9, fx.maneW ?? 3.2, n, t, name.length + _q[0] * 0.01, glowC, fx.core ?? '#fff4c8', (fx.maneA ?? 0.55) + P.fire * 0.25);
