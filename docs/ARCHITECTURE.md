@@ -27,12 +27,14 @@
 | 파라미터 | 뜻 |
 |---|---|
 | `scene=<이름>` | 그 장면으로 바로 (스택에 혼자면 닫힐 때 타이틀/마을로, P-26). 예: `scene=hub`, `scene=worldmap`, `scene=stable`, `scene=awakenCutin&char=lia`, `scene=ultCutin&char=lia` |
-| `stage=` `room=` `char=` `class=` `diff=` | 스테이지·방·영웅·직업·난이도 |
+| `stage=` `room=` `char=` `diff=` | 스테이지·방·영웅·난이도 (`?scene=stage` 의 임시 세이브, main.js) |
+| `class=` | 직업 — 컷인 장면(`scene=ultCutin`·`awakenCutin`)을 혼자 열 때만 읽는다 (`overlays.js`; 스테이지 임시 세이브의 직업은 바꾸지 않는다) |
+| `preset=` `course=` (+ `diff=` `stage=` `char=`) | 아케이드 장면(`scene=survival`·`bossrush`·`practice`)을 메뉴 없이 열 때 (`arcade_run.js` `directStart`) |
 | `debug` · `debug=taps` | 히트박스·FPS / 등록된 모든 탭 영역 (초록 OK · 노랑 최소 미달 · 빨강 32 CSS px 미만) |
 | `cmp=all\|id,id` `cmplv=N` `bond=N` `mount=id` `guards=id,id` `egg=id,id` `ride=1` `ch=N` | 동료 임시 세이브 (`applyCompanionDebug`, `?scene=stage`·`?scene=hub` 에서) |
 | `painted=0` | 채색 그림 전부 끄기 (벡터 대체; `window.__paintedOff = true` 와 같음). 적만: `window.__paintedEnemies = false` |
 | `nosw` | 서비스 워커 등록 안 함 |
-| `lo=1\|auto` | 저사양 그림 변형 `assets/lo/` 강제·자동 |
+| `lo=1\|auto\|0` | 저사양 그림 변형 `assets/lo/` 강제 · 자동(lo 목록 없이도 시도) · 끔 |
 
 **검사 명령 요약** (전체 회차: `node tools/qa/run_all.mjs [--quick] [--list]`, 결과 `/tmp/claude-0/qa/run_all.{json,md}`)
 | 묶음 | 명령 |
