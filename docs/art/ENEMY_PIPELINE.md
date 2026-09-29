@@ -39,7 +39,7 @@ Per-package Kling provenance: `tools/kling/manifest_art-enemy-<n>.json`, `manife
 | `src/render/painted/enemies/_biped.js` | shared T2 biped pose (same contract as the vector `drawSkel/drawArmor`), swing trail, telegraph glint, IK, debris claim |
 | `src/render/painted/enemies/index.js` | registry: render id → module; also registers `kind:'enemy'` entries in the shared `registry.js` |
 | `src/render/enemies.js` | dispatcher hook: painted if registered + loaded, else vector (0.3 s crossfade when a rig finishes after the vector art was already shown); preload on `roomEntered` |
-| `tools/painted/enemies/` | `prompts.mjs` (templates), `matte.py`, `insp_sheet.py`, `build.py`, `pipeline.py`, `<id>/parts.json` + `<id>/src/*.webp` (Kling sources **and the chosen reference** `<id>_ref.webp`), `gallery.html/js`, `shot.mjs`, `ingame.mjs`, `perf.mjs`, QA: `measure.mjs` (art vs logic/strike rects), `deathcheck.mjs` (airborne deaths, alpha probe, debris claim), `lifecycle.mjs` (re-bake / stage release / off switch), `bestiary.mjs`; `genlog.json` |
+| `tools/painted/enemies/` | `prompts.mjs` (templates), `matte.py`, `insp_sheet.py`, `build.py`, `pipeline.py`, `<id>/parts.json` + `<id>/src/*.webp` (Kling sources **and the chosen reference** `<id>_ref.webp`), `gallery.html/js` (clipped cells, `?noclip=1`; cell contract in §9 step 1), `shot.mjs`, `ingame.mjs`, `perf.mjs`, QA: `measure.mjs` (art vs logic/strike rects, ±240 × −200..+50 px window; §9 step 2), `deathcheck.mjs` (airborne deaths, alpha probe, debris claim), `lifecycle.mjs` (re-bake / stage release / off switch), `bestiary.mjs`; `genlog.json` |
 | `assets/painted/enemies/<id>/` | `atlas.webp` + `rig.json` (generated — never edit by hand) |
 
 `src/game/enemy.js` is unchanged: `Enemy.draw` already calls `drawEnemy`; the hook lives in `render/enemies.js`.
@@ -342,12 +342,26 @@ roster (6–9 types) ≈ 3–5 MB desktop, ≈ 1–1.5 MB phone.
 1. `node tools/painted/enemies/shot.mjs gallery --ids <id> --t 1.3 --zoom 3` — every state cell reads (idle, walk
    phases, wind-up with glint, strike frame with trail, follow-through, hurt flash+squash, stun, airborne, dying; T3: dmg 50 % / 20 %).
    Compare with `--vec` (A/B).
+   **Gallery cell contract** (`tools/painted/enemies/gallery.js`, query `?ids= &t= (freeze) &vec=1 &zoom= &bg= &cellw= &cellh=
+   &noclip=1`): every cell is clipped to its own rectangle, so a long pose never paints over its neighbours —
+   `?noclip=1` turns clipping off to see the full overhang. A `CASES` entry whose pose reaches past half a cell (tongue,
+   laser sight, halberd, spew, sword arc) sets `reach` / `reachL` / `rise` = logical px the pose needs right of the enemy's
+   centre / left of it / above its feet (the `measure.mjs` bbox plus a margin for glows). The cell is then
+   `max(cellw/2, reachL) + max(cellw/2, reach)` wide with the enemy `reachL` from its left edge, and the row is
+   `max(cellh, rise + 30)` tall (16 px floor strip + label room). `ROW(cases, ext)` gives a whole row defaults for these
+   fields under each case's own values (`royal_guard` `ROW([...], { rise: 160 })` for the upright halberd, `demon_lord`
+   `{ reach: 134, reachL: 68 }` for the greatsword at rest). A new long attack pose needs these fields, or it is cut at
+   the cell edge.
 2. Timing: the strike frame coincides with `params.windup` (AI hit frame) — the telegraph glint peaks just before it.
    **Reach**: `node tools/painted/enemies/measure.mjs --ids <id>` prints the painted and vector bounding boxes per state
    next to the logic rect and the AI strike rect. At the strike frame the weapon must reach the far edge of the strike
    rect within ~10 px (a player reads the range from the weapon; the gravedigger's first painted shovel stopped 50 px
    short of its 122 px slam) and the standing figure should fill the logic rect height within ~5 % (`spec.scale`;
    the first knight stood 80 px in an 88 px rect). Hit instants only — wind-up/recovery frames are not compared.
+   `measure.mjs` draws each gallery state at 4× into a window of ±240 logical px around the feet (x) and 200 px above /
+   50 px below them (y −200..+50); the old ±112 × −155..+70 window clipped every long reach at x 112 / y −155, so
+   `OVERHANG` (> 150 px past the logic rect; cull margin 200) could never fire sideways. A bbox edge at ±240 or −200 means
+   the pose reaches at least that far.
 3. Facing both ways, elite (`scale 1.15` + red aura), bestiary (`world === null`, big scale — no crash, readable):
    `node tools/painted/enemies/bestiary.mjs [--mobile]` opens the real bestiary card for each painted enemy.
 4. `node tools/painted/enemies/ingame.mjs --stage <sNN> --line <id>:idle,<id>:walk,<id>:attack@0.4 --kill 1` (pose spec

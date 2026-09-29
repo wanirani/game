@@ -620,12 +620,16 @@ function allGuardians(page) {
   });
 }
 
-await run('A', 'boss', STAGE('s03', '&room=boss&guards=gd_knight,gd_imp&cmplv=25'), (page) => page.evaluate(() => {
+await run('A', 'boss', STAGE('s03', '&room=boss&guards=gd_knight,gd_imp&cmplv=25'), (page) => page.evaluate(async () => {
   const T = window.__T, g = T.g, w = T.w, p = T.p, cs = w.companions;
   const ax = w.arenaX ?? (w.map.pxW * 0.3);
   let started = false;
   for (let i = 0; i < 200 && !w.bossActive; i++) { p.x = ax + 96; T.step(1 / 60); }
   started = !!w.bossActive;
+  // 늦게 받는 보스 (R1-REQ-229 · R2-TOOLS-GUARD-BOSS): world.boss 는 클래스 모듈이 올 때까지 PendingBoss(대역: 무적, state 'intro')다.
+  // 모듈은 비동기로 오므로 한 동기 evaluate 안에서는 바뀌지 않는다 → world.bossReady() 로 진짜 보스를 기다린 뒤 읽는다
+  const pend0 = !!w.boss?.pendingBoss;
+  if (pend0 && typeof w.bossReady === 'function') await Promise.race([w.bossReady(), new Promise((r) => setTimeout(r, 20000))]);
   for (let i = 0; i < 80 && g.top?.name !== 'stage'; i++) { T.press(i % 2 ? 'Enter' : 'KeyZ', 0.05); T.step(0.3); }
   for (let i = 0; i < 20 && w.cutscene; i++) T.step(0.25);
   const b = w.boss, hp0 = b?.hp;
@@ -636,9 +640,10 @@ await run('A', 'boss', STAGE('s03', '&room=boss&guards=gd_knight,gd_imp&cmplv=25
   const man = cs.tryGuardianSkill(false);
   T.step(1.5, null, 10);
   return {
-    info: { boss: b?.def?.id, started, hp0, hp: b?.hp, hits: bh.length, maxHs, man },
+    info: { boss: b?.def?.id, cls: b?.constructor?.name, pend0, started, hp0, hp: b?.hp, hits: bh.length, maxHs, man },
     checks: [
       ['보스전 시작', started && !!b, { started, boss: b?.def?.id }],
+      ['진짜 보스 (대역 PendingBoss 아님)', !!b && !b.pendingBoss, { pend0, cls: b?.constructor?.name }],
       ['수호신이 보스를 공격', bh.length >= 2 && b.hp < hp0, { hits: bh.length, hp0, hp: b?.hp }],
       ['보스전 수호신 자동 공격 경직 0', bh.length > 0 && bh.every((h) => h.hs === 0), bh.map((h) => h.hs)],
       ['보스전 중 수동 스킬', man === true],

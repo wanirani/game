@@ -990,7 +990,8 @@ async function pUlt({ cid, measure, captureFinal, setup = true }) {
   return res;
 }
 /**
- * feel §8 third headless ratio: 'sprinting with 6 enemies hit at SSS style: average ≤ 1.2× the idle-walk average'.
+ * feel §8 third headless ratio: 'sprinting with 6 enemies hit at SSS style: average ≤ 1.5× the idle-walk average (CPU ratio ≤ 1.5×
+ * as well); absolute guard: sprint average ≤ 10 ms' (U2_SPRINT).
  * part 'walk': six idle dummies ahead, the hero stands 30 frames then walks (pad stick 0.52) 60 frames — the baseline.
  * part 'sprint': same dummies, double-tap sprint while two dummies take a hit every 8 frames and the style meter is held at SSS.
  * Every frame is stepped and rendered; the Node side brackets each part with main-thread CPU marks.
@@ -1442,16 +1443,25 @@ function cpuPerFrame(...spans) {
   return n > 0 ? round((c * 1000) / n, 2) : null;
 }
 /**
- * feel §8 headless ratio: wall-time avg ≤ k·baseline avg, p95 ≤ p95K·baseline median, max ≤ 250 ms, plus the same avg ratio on
- * main-thread CPU time. When the wall-time average AND the CPU-time average are both over k the miss is a 'fail' at any machine
- * load (CPU time does not grow while the renderer waits for a core); any other miss is load-gated (timingStatus).
+ * feel §8 "Headless relative checks" (round 2 lead decision): ultimate or awakening avg ≤ 1.8× the gameplay avg (main-thread CPU
+ * ratio ≤ 1.8× as well), p95 ≤ 3.0× the gameplay median, absolute guard avg ≤ 12 ms; sprint at SSS avg ≤ 1.5× the idle-walk avg
+ * (CPU ratio ≤ 1.5×), absolute guard avg ≤ 10 ms. max ≤ 250 ms for both.
  */
-function ratioStatus({ u, b, cu, cb, k = 1.5, p95K = 2.5, maxMs = 250 }) {
-  const wallAvgOk = u.avg <= k * b.avg;
+const U2_ULT = { k: 1.8, p95K: 3.0, absMs: 12 };
+const U2_SPRINT = { k: 1.5, p95K: null, absMs: 10 };
+/**
+ * feel §8 headless ratio: wall-time avg ≤ k·baseline avg and ≤ absMs (absolute guard), p95 ≤ p95K·baseline median, max ≤ 250 ms,
+ * plus the same avg ratio on main-thread CPU time. A wall-time average miss that the CPU time confirms (ratio: CPU ratio also
+ * over k; absolute guard: CPU ms/frame also over absMs) is a 'fail' at any machine load (CPU time does not grow while the
+ * renderer waits for a core); any other miss is load-gated (timingStatus).
+ */
+function ratioStatus({ u, b, cu, cb, k = U2_ULT.k, p95K = U2_ULT.p95K, maxMs = 250, absMs = U2_ULT.absMs }) {
+  const ratioOk = u.avg <= k * b.avg, absOk = absMs == null || u.avg <= absMs;
+  const wallAvgOk = ratioOk && absOk;
   const wallOk = wallAvgOk && (p95K == null || u.p95 <= p95K * b.med) && (maxMs == null || u.max <= maxMs);
   const cpuRatio = cu != null && cb > 0 ? round(cu / cb, 2) : null;
   const cpuOk = cpuRatio == null ? null : cpuRatio <= k;
-  const confirmed = !wallAvgOk && cpuOk === false;
+  const confirmed = (!ratioOk && cpuOk === false) || (!absOk && cu != null && cu > absMs);
   // contention of these very frames: wall time well above their main-thread CPU time means the renderer sat waiting for a core
   // (unhindered frames run at wall ≈ CPU). The 1-minute load average lags, so a wall-only miss (p95, max, or avg with the CPU
   // ratio in budget) on starved frames is 'inconclusive' whatever the load average says
@@ -1612,7 +1622,7 @@ async function heroSuite(hero, { onlyIds = null } = {}) {
         gameplay = { b, cb };
         const v = ratioStatus({ u, b, cu, cb });
         const slow = await P.page.evaluate(() => window.__fq.slow.splice(0)).catch(() => []);
-        rec('U2', { hero, variant: cid }, v.status, `gameplay avg ${b.avg} ms (med ${b.med}), ultimate avg ${u.avg} ms (≤ ${round(1.5 * b.avg)}), p95 ${u.p95} (≤ ${round(2.5 * b.med)}), max ${u.max} (≤ 250); main-thread CPU ${cu ?? '?'} vs ${cb ?? '?'} ms/frame = ×${v.cpuRatio ?? '?'} (≤ 1.5)${ratioNote(v)}; cast at x ${r.at?.px} (camera x ${r.at?.camX}), load ${round(os.loadavg()[0])}`, { base: b, ult: u, cpu: { base: cb, ult: cu, ratio: v.cpuRatio, contention: v.contention }, at: r.at, slow: slow.slice(0, 40) });
+        rec('U2', { hero, variant: cid }, v.status, `gameplay avg ${b.avg} ms (med ${b.med}), ultimate avg ${u.avg} ms (≤ ×${U2_ULT.k} = ${round(U2_ULT.k * b.avg)}, ≤ ${U2_ULT.absMs} abs), p95 ${u.p95} (≤ ×${U2_ULT.p95K} med = ${round(U2_ULT.p95K * b.med)}), max ${u.max} (≤ 250); main-thread CPU ${cu ?? '?'} vs ${cb ?? '?'} ms/frame = ×${v.cpuRatio ?? '?'} (≤ ${U2_ULT.k})${ratioNote(v)}; cast at x ${r.at?.px} (camera x ${r.at?.camX}), load ${round(os.loadavg()[0])}`, { base: b, ult: u, cpu: { base: cb, ult: cu, ratio: v.cpuRatio, contention: v.contention }, at: r.at, slow: slow.slice(0, 40) });
       }
     }
   }
@@ -1640,7 +1650,7 @@ async function heroSuite(hero, { onlyIds = null } = {}) {
       const cu = cAll != null && gameplay.cb != null ? round((cAll - nDrop * gameplay.cb) / fin.frames.length, 2) : null;
       const b = gameplay.b, u = stats(fin.frames);
       const v = ratioStatus({ u, b, cu, cb: gameplay.cb });
-      rec('U2', { hero, variant: 'awakening ' + c1 }, v.status, `first awakening (cut-in + director, ${u.n} frames): avg ${u.avg} ms (≤ ${round(1.5 * b.avg)}), p95 ${u.p95} (≤ ${round(2.5 * b.med)}), max ${u.max} (≤ 250) vs gameplay avg ${b.avg} (med ${b.med}); main-thread CPU ${cu ?? '?'} vs ${gameplay.cb ?? '?'} ms/frame = ×${v.cpuRatio ?? '?'} (≤ 1.5)${ratioNote(v)}; load ${round(os.loadavg()[0])}`, { base: b, awaken: u, cpu: { base: gameplay.cb, awaken: cu, ratio: v.cpuRatio, contention: v.contention, holdFrames: nDrop } });
+      rec('U2', { hero, variant: 'awakening ' + c1 }, v.status, `first awakening (cut-in + director, ${u.n} frames): avg ${u.avg} ms (≤ ×${U2_ULT.k} = ${round(U2_ULT.k * b.avg)}, ≤ ${U2_ULT.absMs} abs), p95 ${u.p95} (≤ ×${U2_ULT.p95K} med = ${round(U2_ULT.p95K * b.med)}), max ${u.max} (≤ 250) vs gameplay avg ${b.avg} (med ${b.med}); main-thread CPU ${cu ?? '?'} vs ${gameplay.cb ?? '?'} ms/frame = ×${v.cpuRatio ?? '?'} (≤ ${U2_ULT.k})${ratioNote(v)}; load ${round(os.loadavg()[0])}`, { base: b, awaken: u, cpu: { base: gameplay.cb, awaken: cu, ratio: v.cpuRatio, contention: v.contention, holdFrames: nDrop } });
     }
     if (r2 && st && want('A2')) {
       const okTap = !r2.tap.castBeforeRelease && r2.tap.castAfterRelease != null && r2.tap.castAfterRelease <= 2 && !r2.tap.awakenCast && !r2.tap.pushes.includes('awakenCutin');
@@ -1687,9 +1697,9 @@ async function heroSuite(hero, { onlyIds = null } = {}) {
       const s2 = await mark(P); const sp = await run(P, 'U2', sctx, pSprintSSS, { part: 'sprint' }); const s3 = await mark(P);
       if (wk?.frames?.length && sp?.frames?.length) {
         const b = stats(wk.frames), u = stats(sp.frames), cb = cpuPerFrame([s0, s1]), cu = cpuPerFrame([s2, s3]);
-        const v = ratioStatus({ u, b, cu, cb, k: 1.2, p95K: null });
+        const v = ratioStatus({ u, b, cu, cb, ...U2_SPRINT });
         const scene = sp.targets >= 6 && sp.sprintFrames >= 20 && sp.rankLetter === 'SSS';
-        rec('U2', sctx, scene ? v.status : 'error', `${scene ? '' : 'scenario not reached — '}sprint ${sp.sprintFrames}/${u.n} frames, ${sp.hits} hits on ${sp.targets}/6 enemies at rank ${sp.rankLetter}: avg ${u.avg} ms vs idle-walk avg ${b.avg} ms (≤ ×1.2 = ${round(1.2 * b.avg)}), max ${u.max} (≤ 250); main-thread CPU ${cu ?? '?'} vs ${cb ?? '?'} ms/frame = ×${v.cpuRatio ?? '?'} (≤ 1.2)${ratioNote(v)}; load ${round(os.loadavg()[0])}`, { walk: b, walkGaits: wk.gaits, sprint: u, cpu: { walk: cb, sprint: cu, ratio: v.cpuRatio, contention: v.contention }, scene: { ...sp, frames: undefined } });
+        rec('U2', sctx, scene ? v.status : 'error', `${scene ? '' : 'scenario not reached — '}sprint ${sp.sprintFrames}/${u.n} frames, ${sp.hits} hits on ${sp.targets}/6 enemies at rank ${sp.rankLetter}: avg ${u.avg} ms vs idle-walk avg ${b.avg} ms (≤ ×${U2_SPRINT.k} = ${round(U2_SPRINT.k * b.avg)}, ≤ ${U2_SPRINT.absMs} abs), max ${u.max} (≤ 250); main-thread CPU ${cu ?? '?'} vs ${cb ?? '?'} ms/frame = ×${v.cpuRatio ?? '?'} (≤ ${U2_SPRINT.k})${ratioNote(v)}; load ${round(os.loadavg()[0])}`, { walk: b, walkGaits: wk.gaits, sprint: u, cpu: { walk: cb, sprint: cu, ratio: v.cpuRatio, contention: v.contention }, scene: { ...sp, frames: undefined } });
       }
     }
   }

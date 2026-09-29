@@ -575,6 +575,8 @@ for (const sid of ['s03', 's12']) {
     T.key('ArrowRight', true);
     T.until(() => { keep(); return !!w.boss; }, 15);
     T.key('ArrowRight', false);
+    // 늦게 받는 보스 (R1-REQ-229): 대역(PendingBoss)이면 진짜 보스 클래스가 올 때까지 기다린다 (멈춘 루프의 동기 단계로는 바뀌지 않는다)
+    if (w.boss?.pendingBoss && typeof w.bossReady === 'function') await Promise.race([w.bossReady(), new Promise((r) => setTimeout(r, 20000))]);
     const sawIntro0 = T.pushed.includes('bossIntro');
     T.until(() => { keep(); return w.bossActive && !w.cutscene && g.top?.name === 'stage'; }, 40);
     const b = w.boss;
@@ -644,12 +646,17 @@ for (const sid of ['s03', 's12']) {
     // 재사용 대기 중 R → 거절, 대기가 끝나면 R 로 재소환
     T.press('KeyR', 0.05);
     const refused = !m.riding && m.state === 'recall';
-    m.cd = 0.05;
-    T.step(0.3);
-    T.until(() => { keep(); return p.onGround; }, 3, { confirm: false });
+    // 대기를 0.05초로 줄이면 자연 대기(20초 · 초당 3%)가 채웠을 체력도 채운다: knockOff 가 남긴 체력 0 근처로 돌아온 탈것이
+    // 보스 한 방에 다시 낙마(recall 20초)해, 재탑승 · 자동 재탑승 검사가 보스 패턴에 따라 흔들렸다 (R2-TOOLS-CMP-BOSS-S03-FLAKE).
+    // 재탑승 구간은 무적 — 검사 대상은 R 재소환이지 피격이 아니다
+    m.cd = 0.05; m.hp = m.maxHp;
+    const shield = () => { keep(); p.iframes = Math.max(p.iframes ?? 0, 0.5); };
+    T.step(0.3, () => { shield(); return false; });
+    T.until(() => { shield(); return p.onGround; }, 3, { confirm: false });
+    shield();
     T.press('KeyR', 0.05);
-    T.step(1.0, () => { keep(); return m.riding && m.state === 'riding'; });
-    checks.push(['재소환 대기 중 R 거절 → 대기가 끝나면 R 로 다시 탄다', refused && m.riding, { refused, state: m.state }]);
+    T.step(1.0, () => { shield(); return m.riding && m.state === 'riding'; });
+    checks.push(['재소환 대기 중 R 거절 → 대기가 끝나면 R 로 다시 탄다', refused && m.riding, { refused, state: m.state, hp: m.hp, maxHp: m.maxHp }]);
     // 유대 3 공명: 필살기 → 수호신 무료 스킬 (공명) + 탈것 공명
     for (const x of cs.guards) x.skillCd = 0;
     const ev0 = T.events.length;
@@ -694,6 +701,7 @@ for (const sid of ['s03', 's12']) {
     T.key('ArrowRight', true);
     T.until(() => { keep(); return !!w.boss; }, 20);
     T.key('ArrowRight', false);
+    if (w.boss?.pendingBoss && typeof w.bossReady === 'function') await Promise.race([w.bossReady(), new Promise((r) => setTimeout(r, 20000))]);   // 늦게 받는 보스 (R1-REQ-229)
     T.until(() => { keep(); return w.bossActive && !w.cutscene && g.top?.name === 'stage'; }, 40);
     const b = w.boss;
     checks.push(['(준비) 보스전 시작', !!b && w.bossActive, b?.def?.id ?? null]);
