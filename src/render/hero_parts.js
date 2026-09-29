@@ -36,7 +36,11 @@ const GRC = new Map();
 const q2 = (v) => Math.round(v * 2) / 2;
 function gradMemo(k, f) {
   let g = GRC.get(k);
-  if (g === undefined) { if (GRC.size > 600) GRC.clear(); g = f(); GRC.set(k, g); }
+  if (g === undefined) {
+    // 가득 차면 오래된 1/4 만 비운다 (통째로 비우면 그 프레임에 정지한 부위 그라디언트까지 한꺼번에 다시 만들어 마을에서 22개/프레임 튐)
+    if (GRC.size > 600) { let n = 150; for (const key of GRC.keys()) { GRC.delete(key); if (--n <= 0) break; } }
+    g = f(); GRC.set(k, g);
+  }
   return g;
 }
 export const isHex = (c) => typeof c === 'string' && c.charCodeAt(0) === 35 && (c.length === 7 || c.length === 4);
@@ -107,16 +111,14 @@ export function capsule(ax, ay, bx, by, r0, r1, base, k = 1, line = true) {
   let nx = -dy / d, ny = dx / d;
   if (nx * -0.8 + ny * -0.6 < 0) { nx = -nx; ny = -ny; }
   const cx = (ax + bx) / 2, cy = (ay + by) / 2, r = Math.max(r0, r1);
-  if (G.pass !== 1) c.fillStyle = grad(cx + nx * r, cy + ny * r, cx - nx * r, cy - ny * r, base, k);
   capsulePath(c, ax, ay, bx, by, r0, r1);
-  fl();
+  // 팔다리는 매 프레임 움직인다 → 단위 그라디언트 + 채울 때 변환 (좌표마다 새 그라디언트를 만들지 않게 — 마을 NPC·벡터 영웅, #341)
+  if (G.pass !== 1) fillGrad(cx + nx * r, cy + ny * r, cx - nx * r, cy - ny * r, base, k);
   if (line) outline(base);
 }
 /** 방향 벡터 기준 음영으로 현재 path 채우기 (nx,ny = 역광 방향) */
 export function fillShaded(base, cx, cy, nx, ny, r, k = 1, line = true) {
-  const c = G.c;
-  c.fillStyle = grad(cx + nx * r, cy + ny * r, cx - nx * r, cy - ny * r, base, k);
-  c.fill();
+  fillGrad(cx + nx * r, cy + ny * r, cx - nx * r, cy - ny * r, base, k);
   if (line) outline(base);
 }
 export function ellipse(x, y, rx, ry, rot = 0) {

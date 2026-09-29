@@ -18,6 +18,8 @@ import {
   EL_COL, weaponReach, drawWeapon, drawLash, drawWhipCoil, drawWing, drawAuraMotes, drawMagicCircle, drawHalo, olc,
 } from './hero_parts.js';
 import * as PUP from './hero_puppet.js';
+import { NPCS } from '../data/npcs.js';
+import { TOWN_NPCS } from '../data/town.js';
 import * as GAIT from './hero_gait.js'; // feel.md 3.3.3 (WP1) — hero_gait.js 는 hero.js 를 import 하면 안 된다 (순환 → TDZ)
 
 const PI = Math.PI, HP = PI / 2;
@@ -738,8 +740,8 @@ function drawLeg(s, K, near) {
   if (K.heavy) {
     capsule(kx, ky, ax, ay, 3.8 * bw, 2.9 * bw, boot);
     ellipse(kx + 0.6, ky, 3.2 * bw, 2.8 * bw);
-    if (G.pass !== 1) G.c.fillStyle = grad(kx - 3, ky - 3, kx + 3, ky + 3, sh(K.ac, d + 0.08));
-    fl(); outline(K.ac);
+    if (G.pass !== 1) fillGrad(kx - 3, ky - 3, kx + 3, ky + 3, sh(K.ac, d + 0.08));   // 무릎은 매 프레임 움직인다 → 단위 그라디언트 (#341)
+    outline(K.ac);
   } else if (K.tall) {
     capsule(kx, ky, ax, ay, 3.6 * bw, 2.7 * bw, boot);
     if (G.pass !== 1) {
@@ -750,8 +752,8 @@ function drawLeg(s, K, near) {
     if (K.o === 'ninja') { // 정강이 보호대 + 무릎
       capsule(lerp(kx, ax, 0.14), lerp(ky, ay, 0.14), lerp(kx, ax, 0.72), lerp(ky, ay, 0.72), 2.7 * bw, 2.1 * bw, sh('#5e5c6e', d), 1.3);
       ellipse(kx + 0.4, ky, 2.4 * bw, 2.2 * bw);
-      if (G.pass !== 1) G.c.fillStyle = grad(kx - 2, ky - 2, kx + 2, ky + 2, sh('#6e6c7e', d));
-      fl(); outline('#6e6c7e');
+      if (G.pass !== 1) fillGrad(kx - 2, ky - 2, kx + 2, ky + 2, sh('#6e6c7e', d));
+      outline('#6e6c7e');
     }
   } else {
     capsule(kx, ky, ax, ay, 3.4 * bw, 2.5 * bw, skirtLeg ? sh(mx(K.skin, '#e8e0e0', 0.4), d) : pants);
@@ -839,7 +841,7 @@ function drawTorso(s, K, E) {
   const c = G.c;
   torsoPath(s, K);
   sp(s, K, 0.55, 0); const mx0 = QX, my0 = QY;
-  c.fillStyle = grad(mx0 - s.fx * 8, my0 - s.fy * 8, mx0 + s.fx * 8, my0 + s.fy * 8, K.torsoC); c.fill(); outline(K.torsoC);
+  fillGrad(mx0 - s.fx * 8, my0 - s.fy * 8, mx0 + s.fx * 8, my0 + s.fy * 8, K.torsoC); outline(K.torsoC);
   if (G.tint) return;
   const o = K.o;
   // 앞섶(열린 코트 안쪽 조끼/셔츠)
@@ -849,7 +851,7 @@ function drawTorso(s, K, E) {
     sp(s, K, 0.02, frontAt(K, 0.02) + 0.2); c.moveTo(QX, QY);
     for (let t = 0.1; t <= 0.96; t += 0.12) { sp(s, K, t, frontAt(K, t) + 0.2); c.lineTo(QX, QY); }
     for (let t = 0.96; t >= 0.02; t -= 0.12) { sp(s, K, t, frontAt(K, t) - (o === 'noble' ? 2.4 : 3.3) - (t > 0.8 ? 1.2 : 0)); c.lineTo(QX, QY); }
-    c.closePath(); c.fillStyle = grad(mx0, my0, mx0 + s.fx * 8, my0 + s.fy * 8, vest, 0.8); c.fill(); outline(vest, 0.6);
+    c.closePath(); fillGrad(mx0, my0, mx0 + s.fx * 8, my0 + s.fy * 8, vest, 0.8); outline(vest, 0.6);
     // 단추/라펠 선
     c.fillStyle = o === 'noble' ? '#e8c872' : sh(K.tr, -0.2);
     if (o !== 'hunter') for (let t = 0.24; t < 0.8; t += 0.18) { sp(s, K, t, frontAt(K, t) - 1.5); c.beginPath(); c.arc(QX, QY, 0.42, 0, TAU); c.fill(); }
@@ -865,7 +867,7 @@ function drawTorso(s, K, E) {
   }
   if (o === 'nun') { // 앞 패널 + 금십자
     bandPath(s, K, -0.1, 0.9, 0.95, 0.8, -0.1, -0.1, 0.2);
-    c.fillStyle = grad(mx0, my0, mx0 + s.fx * 7, my0 + s.fy * 7, K.se, 0.8); c.fill();
+    fillGrad(mx0, my0, mx0 + s.fx * 7, my0 + s.fy * 7, K.se, 0.8);
     sp(s, K, 0.62, frontAt(K, 0.62) * 0.45);
     c.fillStyle = K.tr; c.fillRect(QX - 0.6, QY - 3, 1.2, 6); c.fillRect(QX - 2, QY - 1.6, 4, 1.1);
     glow(QX, QY, 6, '#fff2b0', 0.35);
@@ -876,16 +878,16 @@ function drawTorso(s, K, E) {
   }
   if (o === 'ninja') { // 가슴 보호대
     bandPath(s, K, 0.5, 0.86, 0.85, 0.8, 0.3, 0.3, 0.35);
-    c.fillStyle = grad(mx0, my0 - 4, mx0 + s.fx * 6, my0, sh(K.tr, -0.35)); c.fill(); outline(K.tr, 0.6);
+    fillGrad(mx0, my0 - 4, mx0 + s.fx * 6, my0, sh(K.tr, -0.35)); outline(K.tr, 0.6);
   }
   if (o === 'smith' || o === 'innkeeper' || o === 'girl') { // 앞치마 윗단
     const ap = o === 'smith' ? K.se : '#e8e2d6';
     bandPath(s, K, 0.05, o === 'smith' ? 0.8 : 0.62, 1.02, 0.9, -0.2, -0.2, 0.35);
-    c.fillStyle = grad(mx0, my0, mx0 + s.fx * 7, my0 + s.fy * 7, ap, 0.7); c.fill(); outline(ap, 0.6);
+    fillGrad(mx0, my0, mx0 + s.fx * 7, my0 + s.fy * 7, ap, 0.7); outline(ap, 0.6);
   }
   if (o === 'lady' || o === 'innkeeper') { // 코르셋
     bandPath(s, K, 0.1, 0.55, 1.03, 0.98, 1.02, 1.0, 0.3);
-    c.fillStyle = grad(mx0 - s.fx * 7, my0, mx0 + s.fx * 7, my0, K.se, 0.8); c.fill(); outline(K.se, 0.6);
+    fillGrad(mx0 - s.fx * 7, my0, mx0 + s.fx * 7, my0, K.se, 0.8); outline(K.se, 0.6);
     c.strokeStyle = ra(K.tr, 0.8); c.lineWidth = 0.4; c.beginPath();
     for (let t = 0.15; t < 0.52; t += 0.08) { sp(s, K, t, frontAt(K, t) - 0.3); c.moveTo(QX, QY); sp(s, K, t + 0.04, frontAt(K, t) - 1.8); c.lineTo(QX, QY); }
     c.stroke();
@@ -899,7 +901,7 @@ function drawTorso(s, K, E) {
   if (o === 'knight' || (K.heavy && o !== 'nun')) { // 휘장(타바드) 윗부분
     if (o === 'knight') {
       bandPath(s, K, 0.02, 0.94, 0.98, 0.75, -0.25, -0.2, 0.45);
-      c.fillStyle = grad(mx0, my0, mx0 + s.fx * 8, my0 + s.fy * 8, K.pr, 0.9); c.fill(); outline(K.pr, 0.7);
+      fillGrad(mx0, my0, mx0 + s.fx * 8, my0 + s.fy * 8, K.pr, 0.9); outline(K.pr, 0.7);
       c.strokeStyle = K.tr; c.lineWidth = 0.7; c.beginPath(); sp(s, K, 0.02, -0.25 * backAt(K, 0.02) - 0.45); c.moveTo(QX, QY); sp(s, K, 0.94, -0.2 * backAt(K, 0.94) - 0.45); c.lineTo(QX, QY); c.stroke();
       // 문장(십자)
       sp(s, K, 0.6, frontAt(K, 0.6) * 0.4); c.fillStyle = K.tr; c.fillRect(QX - 0.7, QY - 3.2, 1.4, 6.4); c.fillRect(QX - 2.4, QY - 1.4, 4.8, 1.3);
@@ -907,7 +909,7 @@ function drawTorso(s, K, E) {
   }
   // 허리띠
   bandPath(s, K, 0.1, 0.2, 1, 1, 1, 1, 0.45);
-  c.fillStyle = grad(mx0, my0 - 3, mx0, my0 + 3, K.belt, 0.7); c.fill(); outline(K.belt, 0.6);
+  fillGrad(mx0, my0 - 3, mx0, my0 + 3, K.belt, 0.7); outline(K.belt, 0.6);
   sp(s, K, 0.15, frontAt(K, 0.15) + 0.2);
   c.fillStyle = K.o === 'hunter' ? '#c8ccd4' : K.tr; c.fillRect(QX - 1.8, QY - 1.4, 2.4, 2.8);
   if (K.o === 'hunter') { c.fillStyle = '#e8ecf4'; c.fillRect(QX - 1.1, QY - 1.2, 0.9, 2.4); }
@@ -925,7 +927,7 @@ function drawArmorChest(s, K, mx0, my0) {
   const c = G.c, a = K.armor;
   if (a === 'chain') {
     bandPath(s, K, -0.05, 0.92, 1.02, 1.02, 1.02, 1.02, 0.25);
-    c.fillStyle = grad(mx0 - s.fx * 8, my0, mx0 + s.fx * 8, my0, K.ac, 0.8); c.fill(); outline(K.ac, 0.6);
+    fillGrad(mx0 - s.fx * 8, my0, mx0 + s.fx * 8, my0, K.ac, 0.8); outline(K.ac, 0.6);
     c.save(); c.clip();
     c.strokeStyle = ra(sh(K.ac, -0.45), 0.55); c.lineWidth = 0.45;
     for (let t = -0.05; t < 0.95; t += 0.07) { c.beginPath(); for (let f = -8; f < 9; f += 1.6) { sp(s, K, t, f); c.moveTo(QX + 0.7, QY); c.arc(QX, QY, 0.7, 0, PI); } c.stroke(); }
@@ -934,7 +936,7 @@ function drawArmorChest(s, K, mx0, my0) {
   }
   if (a === 'leather') {
     bandPath(s, K, 0.28, 0.92, 1.06, 1.04, 0.9, 0.9, 0.35);
-    c.fillStyle = grad(mx0 - s.fx * 8, my0, mx0 + s.fx * 8, my0, K.ac, 0.9); c.fill(); outline(K.ac, 0.7);
+    fillGrad(mx0 - s.fx * 8, my0, mx0 + s.fx * 8, my0, K.ac, 0.9); outline(K.ac, 0.7);
     c.setLineDash([0.8, 0.8]); c.strokeStyle = ra(K.at, 0.8); c.lineWidth = 0.4;
     bandPath(s, K, 0.32, 0.88, 0.94, 0.92, 0.8, 0.8, -0.4); c.stroke(); c.setLineDash([]);
     return;
@@ -949,14 +951,14 @@ function drawArmorChest(s, K, mx0, my0) {
   sp(s, K, 0.6, -backAt(K, 0.6) - 0.8); c.lineTo(QX, QY);
   sp(s, K, 0.3, -backAt(K, 0.3) - 0.5); c.lineTo(QX, QY);
   c.closePath();
-  c.fillStyle = grad(mx0 - s.fx * 9, my0, mx0 + s.fx * 9, my0, ac, 1.1); c.fill(); outline(ac, 0.8);
+  fillGrad(mx0 - s.fx * 9, my0, mx0 + s.fx * 9, my0, ac, 1.1); outline(ac, 0.8);
   c.strokeStyle = K.at; c.lineWidth = 0.8; c.stroke();
   // 능선 하이라이트
   c.strokeStyle = ra('#ffffff', 0.5); c.lineWidth = 0.6; c.beginPath(); sp(s, K, 0.35, frontAt(K, 0.35) * 0.3); c.moveTo(QX, QY); sp(s, K, 0.9, frontAt(K, 0.9) * 0.5); c.lineTo(QX, QY); c.stroke();
   // 허리 판(fauld)
   for (let i = 0; i < 2; i++) {
     bandPath(s, K, 0.02 + i * 0.12, 0.14 + i * 0.12, 1.08, 1.06, 1.04, 1.02, 0.6);
-    c.fillStyle = grad(mx0 - s.fx * 8, my0, mx0 + s.fx * 8, my0, sh(ac, -0.1 + i * 0.05)); c.fill(); outline(ac, 0.6);
+    fillGrad(mx0 - s.fx * 8, my0, mx0 + s.fx * 8, my0, sh(ac, -0.1 + i * 0.05)); outline(ac, 0.6);
   }
   if (a === 'holy') { sp(s, K, 0.66, frontAt(K, 0.66) * 0.55); c.fillStyle = '#e8c872'; c.fillRect(QX - 0.7, QY - 3, 1.4, 6); c.fillRect(QX - 2.2, QY - 1.3, 4.4, 1.2); glow(QX, QY, 7, '#fff2b0', 0.4); }
   if (a === 'dark' && G.fx) {
@@ -1006,7 +1008,7 @@ function drawSkirt(s, K, P, near) {
   if (K.o === 'knight') base = near ? K.ac : sh(K.ac, d);
   if (K.o === 'smith' || K.o === 'innkeeper' || K.o === 'girl') base = sh(K.pr, d);
   const cx = (wfx + back) / 2, cy = (wfy + hemY) / 2;
-  c.fillStyle = grad(back, cy, hfx, cy, base, 0.9); c.fill(); outline(base, 0.8);
+  fillGrad(back, cy, hfx, cy, base, 0.9); outline(base, 0.8);
   if (G.tint) return;
   if (near) {
     // 옷 주름
@@ -1024,7 +1026,7 @@ function drawSkirt(s, K, P, near) {
     if (K.o === 'smith' || K.o === 'innkeeper' || K.o === 'girl') { // 앞치마 아랫단
       const ap = K.o === 'smith' ? K.se : '#e8e2d6';
       c.beginPath(); c.moveTo(wfx, wfy); c.lineTo(hfx + 0.4, hemY - (K.o === 'smith' ? 0 : 5)); c.lineTo(lerp(hfx, back, 0.45), hemY - (K.o === 'smith' ? 0 : 5)); c.lineTo(lerp(wfx, wbx, 0.45), wfy + 0.5); c.closePath();
-      c.fillStyle = grad(lerp(wfx, wbx, 0.5), wfy, wfx, wfy, ap, 0.6); c.fill(); outline(ap, 0.5);
+      fillGrad(lerp(wfx, wbx, 0.5), wfy, wfx, wfy, ap, 0.6); outline(ap, 0.5);
     }
   }
 }
@@ -1038,7 +1040,7 @@ function drawTabard(s, K) {
   const by = Math.min(ky + 3, -3);
   const lx = legXAt(s.hp1x, s.hp1y, s.k1x, s.k1y, s.a1x, s.a1y, by);
   c.beginPath(); c.moveTo(x0, y0); c.quadraticCurveTo(lx + 5, lerp(y0, by, 0.5), lx + 4 - SW.tr * 0.2, by); c.lineTo(lx - 4.5 - SW.tr * 0.4, by - SW.tr * 0.15); c.quadraticCurveTo(lx - 3.5, lerp(y1, by, 0.4), x1, y1); c.closePath();
-  c.fillStyle = grad(lx - 5, by, lx + 5, by, K.pr, 0.9); c.fill(); outline(K.pr, 0.7);
+  fillGrad(lx - 5, by, lx + 5, by, K.pr, 0.9); outline(K.pr, 0.7);
   if (!G.tint) { c.strokeStyle = K.tr; c.lineWidth = 0.8; c.beginPath(); c.moveTo(lx + 4 - SW.tr * 0.2, by); c.lineTo(lx - 4.5 - SW.tr * 0.4, by - SW.tr * 0.15); c.stroke(); }
   void hemY; void kx;
 }
@@ -1436,7 +1438,7 @@ function drawHairChains(s, K, E) {
   const pts = chain('hair', E, TX, TY, cfg.n, cfg.seg, cfg.cfg, TX + 1.5);
   for (let i = 0; i < cfg.n; i++) WS[i] = lerp(cfg.w0, cfg.w1, i / (cfg.n - 1)) * (K.headR / 6.7);
   if (K.hs === 'braid') {
-    for (let i = cfg.n - 1; i >= 0; i--) { ellipse(pts[i * 2], pts[i * 2 + 1], WS[i] * 1.3, WS[i]); c.fillStyle = grad(pts[i * 2] - 2, pts[i * 2 + 1] - 2, pts[i * 2] + 2, pts[i * 2 + 1] + 2, hc); c.fill(); outline(hc, 0.5); }
+    for (let i = cfg.n - 1; i >= 0; i--) { ellipse(pts[i * 2], pts[i * 2 + 1], WS[i] * 1.3, WS[i]); fillGrad(pts[i * 2] - 2, pts[i * 2 + 1] - 2, pts[i * 2] + 2, pts[i * 2 + 1] + 2, hc); outline(hc, 0.5); }
     return;
   }
   ribbonPath(c, pts, cfg.n, WS, true);
@@ -1517,7 +1519,7 @@ function drawCape(s, K, E) {
   for (let i = 0; i < n; i++) WS[i] = lerp(3.6, 9.8 + cp.len * 2.2, Math.pow(i / (n - 1), 0.75)) * K.hW;
   // 안감(앞쪽 가장자리로 살짝 보임)
   ribbonPath(c, pts, n, WS, false);
-  c.fillStyle = grad(pts[0], pts[1], pts[0] + 6, pts[1] + 30, sh(cp.c2, -0.1), 0.9); c.fill(); outline(cp.c2, 0.7);
+  fillGrad(pts[0], pts[1], pts[0] + 6, pts[1] + 30, sh(cp.c2, -0.1), 0.9); outline(cp.c2, 0.7);
   // 바깥면: 안감 쪽으로 1.6px 비켜서
   const off = cbuf('capeOff', n);
   for (let i = 0; i < n; i++) {
@@ -2334,6 +2336,37 @@ export function releaseHeroOffscreen() {
   for (const cv of [BODYC, TINTC]) if (cv && (cv.width || cv.height)) cv.width = cv.height = 0;
   for (const e of POOL) { e.key = null; e.rs = 0; e.tint = undefined; if (e.cv.width || e.cv.height) e.cv.width = e.cv.height = 0; }
 }
+/**
+ * 마을·스토리 NPC 의 벡터 그림 그라디언트(색·음영 강도마다 한 번)를 부팅 뒤 한가할 때 미리 만든다: 채색 퍼펫이 아직 오지 않은
+ * NPC 가 처음 화면에 들어오는 프레임에 10~20개가 한꺼번에 생겼다 (데스크톱 마을 최대 22/프레임 > 예산 16). 0×0 TINTC 에 효과 없이
+ * 한 번씩 그린다 (픽셀 0, 새 캔버스 0). 그리는 동안 퍼펫을 끄므로 퍼펫 로드를 건드리지 않는다
+ */
+const NPC_WARM = { done: false };
+function warmNpcGradients() {
+  if (NPC_WARM.done || !TINTC) return;
+  NPC_WARM.done = true;
+  const looks = [];
+  for (const T of [TOWN_NPCS, NPCS]) for (const n of Object.values(T || {})) if (n?.look && !looks.includes(n.look)) looks.push(n.look);
+  const g = TINTC.getContext('2d');
+  const p = { cx: 0, bottom: 0, facing: 1, anim: 'idle', animT: 0, t: 0, npc: true, look: null, rig: null, vx: 0, vy: 0, onGround: true, stats: { reach: 0 } };
+  const step = (dl) => {
+    const t0 = performance.now();
+    const fc = globalThis.__feelCounters, pe = PUP.puppetEnabled?.() !== false;
+    globalThis.__feelCounters = undefined;   // 화면 프레임의 heroDraws 에 세지 않게
+    try {
+      PUP.setPuppetEnabled?.(false);
+      while (looks.length && (dl?.timeRemaining ? dl.timeRemaining() > 2 : performance.now() - t0 < 4)) {
+        p.look = looks.shift();
+        g.setTransform(1, 0, 0, 1, 0, 0);
+        try { drawHero(g, p, null, { noFx: true }); } catch { /* 한 명 실패는 무시 */ }
+      }
+    } finally { PUP.setPuppetEnabled?.(pe); globalThis.__feelCounters = fc; }
+    if (looks.length) idleCall(step);
+  };
+  idleCall(step);
+}
+const idleCall = (f) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(f, { timeout: 1500 }) : setTimeout(f, 50));
+if (typeof window !== 'undefined' && typeof setTimeout === 'function') setTimeout(() => idleCall(warmNpcGradients), 2500);
 /**
  * 본체 레이어를 BODYC 에 그리고, col 단색 복사본을 TINTC 에 만든다. cap = 한 장의 픽셀 상한(offCap): 넘으면 배율을 낮춰 굽고,
  * 그 배율이 화면 배율보다 낮아 본체가 흐려질 때는 OB.direct = true (본체는 호출측이 원해상도로 직접 그리고, 부드러운 역광·섬광만 이 캔버스로)

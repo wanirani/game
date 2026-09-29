@@ -13,7 +13,7 @@ import { CHARACTERS } from '../data/characters.js';
 import { NPCS } from '../data/npcs.js';
 import { TOWN_NPCS } from '../data/town.js';
 import { PUPPETS } from './puppet_manifest.js';
-import { G, sh, ra, grad, fillGrad, ribbonPath, WS, drawWeapon, drawWing, glow, drawHalo } from './hero_parts.js';
+import { G, sh, ra, fillGrad, ribbonPath, WS, drawWeapon, drawWing, glow, drawHalo } from './hero_parts.js';
 
 const PI = Math.PI, HP = PI / 2, TAU = PI * 2;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -649,7 +649,7 @@ function drawBandPup(c, E, K, s) {
     for (let i = 0; i < n; i++) WS[i] = lerp(0.95, 0.6, i / (n - 1));
     ribbonPath(c, pts, n, WS, false);
     const bc = sh(K.band, -0.25 * j);
-    c.fillStyle = G.tint || grad(pts[0], pts[1] - 2, pts[0], pts[1] + 2, bc, 0.8); c.fill();
+    fillGrad(pts[0], pts[1] - 2, pts[0], pts[1] + 2, bc, 0.8);   // 띠 끝은 매 프레임 움직인다 → 단위 그라디언트 (G.tint 면 단색)
     if (!G.tint) { c.strokeStyle = ra('#1a0508', 0.55); c.lineWidth = 0.35; c.stroke(); }
   }
 }

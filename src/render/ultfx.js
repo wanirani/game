@@ -296,21 +296,23 @@ function drawBolt(ctx, P, col, wd, a) {
 const GLOW_CAP = 24, GLOW_POOL = 12, GLOW_REF = 256, LAYER = 512, SPR_CAP = 8;   // 빛 스프라이트 해상도는 품질별 (Q.glow: 256 / 192 / 128), 그리는 크기는 GLOW_REF 기준
 const GH = { bw: 150, bt: 180, bb: 30 };   // 잔상 비트맵 상자 (발 중앙 기준 좌우 bw, 위 bt, 아래 bb; 월드 px)
 const POOL = { glow: new Map(), glowSpare: [], layers: [], sprites: new Map(), spriteSpare: [], ghosts: [], sil: null, scratch: null };
-/** 풀을 미리 만든다 (부팅 뒤 한가할 때 · 스테이지 진입 뒤 한가할 때). 이미 있으면 모자란 만큼만 */
+/** 0×0 예비 캔버스 (쓸 때 크기를 준다 → 안 쓰면 메모리 0) */
+function mk0() { const c = mkCanvas(1, 1); if (c) c.width = c.height = 0; return c; }
+/**
+ * 풀을 미리 만든다 (부팅 뒤 한가할 때 · 스테이지 진입 뒤 한가할 때). 이미 있으면 모자란 만큼만.
+ * 캔버스 수는 그대로 미리 만들되(시전 중·컷인 중에 새 캔버스 0 — R1-REQ-339R) 모두 0×0 으로 두고, 쓸 때 크기를 준다: 빛·층·장식은
+ * prepareFor(스테이지 진입 뒤 한가할 때)가 이 영웅이 쓰는 것만 굽고, 잔상·실루엣은 첫 시전 때 키운다. 부팅 때 미리 키워 두던
+ * 빛 12장·층 2장·장식 4장·잔상 6장·실루엣은 phone1 에서 쓰지 않아도 ~4 MB 를 잡고 있었다 (R1-REQ-342 살아 있는 캔버스 예산)
+ */
 function ensurePools(q = 'high') {
   if (typeof document === 'undefined') return false;
   const B = Q[q] ?? Q.high;
-  while (POOL.glowSpare.length + POOL.glow.size < GLOW_POOL) { const c = mkCanvas(B.glow, B.glow); if (!c) return false; POOL.glowSpare.push(c); }
-  // 상한까지의 나머지는 0×0 예비 캔버스로 만들어 둔다 (쓸 때 크기를 준다 → 안 쓰면 메모리 0). 시전 중·컷인 중에 캔버스를 새로
-  // 만들지 않게 (R1-REQ-339R: 처음 보는 색의 빛·세 번째 화면 층·장식 스프라이트가 시전 도중 캔버스를 만들었다)
-  while (POOL.glowSpare.length + POOL.glow.size < GLOW_CAP) { const c = mkCanvas(1, 1); if (!c) break; c.width = c.height = 0; POOL.glowSpare.push(c); }
-  if (B.layer) while (POOL.layers.length < 2) POOL.layers.push({ key: null, c: mkCanvas(LAYER, LAYER), used: 0 });
-  if (POOL.layers.length < 3) { const c = mkCanvas(1, 1); if (c) { c.width = c.height = 0; POOL.layers.push({ key: null, c, used: 0 }); } }
-  while (POOL.spriteSpare.length + POOL.sprites.size < 4) POOL.spriteSpare.push(mkCanvas(256, 256));
-  while (POOL.spriteSpare.length + POOL.sprites.size < SPR_CAP) { const c = mkCanvas(1, 1); if (!c) break; c.width = c.height = 0; POOL.spriteSpare.push(c); }
-  const W = Math.ceil(2 * GH.bw * B.rs), H = Math.ceil((GH.bt + GH.bb) * B.rs);
-  while (POOL.ghosts.length < B.ghosts + 1) POOL.ghosts.push({ c: mkCanvas(W, H), part: null, until: 0 });
-  if (B.sil && !POOL.sil) POOL.sil = mkCanvas(Math.ceil(1280 * B.sil), Math.ceil(540 * B.sil));
+  while (POOL.glowSpare.length + POOL.glow.size < GLOW_CAP) { const c = mk0(); if (!c) return false; POOL.glowSpare.push(c); }
+  if (B.layer) while (POOL.layers.length < 2) { const c = mk0(); if (!c) break; POOL.layers.push({ key: null, c, used: 0 }); }
+  if (POOL.layers.length < 3) { const c = mk0(); if (c) POOL.layers.push({ key: null, c, used: 0 }); }
+  while (POOL.spriteSpare.length + POOL.sprites.size < SPR_CAP) { const c = mk0(); if (!c) break; POOL.spriteSpare.push(c); }
+  while (POOL.ghosts.length < B.ghosts + 1) { const c = mk0(); if (!c) break; POOL.ghosts.push({ c, part: null, until: 0 }); }
+  if (B.sil && !POOL.sil) POOL.sil = mk0();
   if (!POOL.scratch) POOL.scratch = mkCanvas(4, 4);
   ULTFX_STATS.pooled = true;
   return true;
