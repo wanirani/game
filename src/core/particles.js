@@ -426,6 +426,7 @@ export class Particles {
   draw(ctx, layer = 'front') {
     if (layer === 'back') this.drawDecals(ctx);
     if (layer === 'top') this.layoutCallouts();
+    let capD = -1;   // 'sprite' 최대 그리기 크기 (월드 단위, 처음 필요할 때 계산): 0.9 × √(캔버스 넓이) (요청 #414)
     for (const p of this.list) {
       if (p.layer !== layer) continue;
       const t = 1 - p.life / p.max; // 0→1
@@ -525,7 +526,12 @@ export class Particles {
           const k = age < popT ? p.s0 + (p.s1 - p.s0) * (age / popT) : p.s1 - (p.s1 - 1) * 0.4 * Math.min(1, (age - popT) / Math.max(0.01, p.max - popT));
           const al = p.alpha * (t < 0.35 ? 1 : Math.max(0, 1 - (t - 0.35) / 0.65));
           if (al <= 0.01 || k <= 0.001) break;
-          const iw = img.width || 1, ih = img.height || 1, s = (p.size / Math.max(iw, ih)) * k;
+          const iw = img.width || 1, ih = img.height || 1, im = Math.max(iw, ih);
+          let s = (p.size / im) * k;
+          // 필살기 마무리의 큰 빛 스프라이트가 줌 연출과 겹쳐 화면 전체를 덮는 가산 블릿(전체 화면 패스, feel §8 예산)이 되지 않게
+          // 그리는 크기를 화면 넓이의 0.81배 정사각형(16:9 에서 화면 높이의 1.2배)으로 제한한다 (요청 #414; 모양·위치는 그대로, 가장 큰 순간만 줄어든다)
+          if (capD < 0) { let tf = null; try { tf = ctx.getTransform?.(); } catch { tf = null; } const sy = tf ? Math.hypot(tf.c, tf.d) : 0; const cv = ctx.canvas; capD = sy > 0 && cv?.height && cv?.width ? (0.9 * Math.sqrt(cv.width * cv.height)) / sy : Infinity; }
+          if (im * s > capD) s = capD / im;
           ctx.globalAlpha = al;
           ctx.save(); ctx.translate(p.x, p.y); if (p.rot) ctx.rotate(p.rot);
           ctx.drawImage(img, -iw * s / 2, -ih * s / 2, iw * s, ih * s);

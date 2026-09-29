@@ -91,7 +91,7 @@ function entry(cid, cls, sib = false) {
   if (E) return E;
   const man = PUPPETS[cid]?.[cls];
   if (!man) { REG.set(key, NONE); return NONE; }
-  E = { key, cid, cls, man, state: 0, rig: null, PS: 1, J: null, parts: null, levels: [], lvIdx: {}, dark: {}, vars: new Map(), turnImg: null, turnMask: null, req: false, used: 0, gen: 0 };
+  E = { key, cid, cls, man, state: 0, rig: null, PS: 1, J: null, parts: null, levels: [], lvIdx: {}, dark: {}, vars: new Map(), turnImg: null, turnMask: null, req: false, used: 0, gen: 0, born: typeof performance !== 'undefined' ? performance.now() : 0 };
   REG.set(key, E);
   assets.json(`puppets/${key}/rig`, man.h).then((rig) => {
     if (!rig || !rig.levels || !rig.parts) { E.state = -1; return; }
@@ -248,15 +248,21 @@ if (typeof setTimeout === 'function') setTimeout(() => { bus.on('stageEntered', 
 // 합산되지만 assets 는 소유 모듈이 붙잡은 이미지라 스스로 내리지 않는다. 영웅을 여럿 바꿔 쓰면(파티·직업 탭·형제 미리 받기)
 // 한 판에 모든 영웅·직업의 텍스처가 쌓여 폰 예산을 넘으므로, 예산의 75% 를 넘으면 한동안(IDLE_MS) 그리지 않은 퍼펫부터
 // 텍스처와 구운 캔버스를 내린다 (리그 JSON 은 유지 → 다시 그릴 때 텍스처만 다시 받는다; 그동안은 벡터 대체 그림).
-const IDLE_MS = 4000, SWEEP_HI = 0.75, SWEEP_LO = 0.6;
+const IDLE_MS = 4000, FRESH_MS = 10000, SWEEP_HI = 0.75, SWEEP_LO = 0.6;
 let sweepAt = -1e9;
 const CID_USED = new Map();   // 영웅(cid) → 그 영웅의 퍼펫을 마지막으로 그린 시각
 let HERO_CID = null;          // 마지막으로 그린 (NPC 아닌) 영웅 = 보통 플레이어
 /** 그림 표시: 이 퍼펫과 그 영웅을 '쓰는 중'으로 (정리 우선순위) + 가끔 예산 확인 */
+let sweepQueued = false;
 function touchUse(E, t, hero = false) {
   E.used = t; CID_USED.set(E.cid, t);
   if (hero) HERO_CID = E.cid;
-  if (t - sweepAt >= 500) sweep(t);
+  if (t - sweepAt < 500 || sweepQueued) return;
+  // 정리는 이번 그리기 묶음(한 프레임·갤러리 한 장)이 끝난 뒤에: 긴 멈춤(로딩·탭 전환) 뒤 첫 프레임에서 먼저 그린 퍼펫이
+  // 아직 안 그린 퍼펫을 '쉬는 중'으로 보고 내리지 않게 (그 프레임에 모두 다시 쓰일 텍스처)
+  if (typeof setTimeout !== 'function') { sweep(t); return; }
+  sweepQueued = true;
+  setTimeout(() => { sweepQueued = false; sweep(performance.now()); }, 0);
 }
 function hasTextures(E) {
   if (E.turnImg || E.turnMask) return true;
@@ -290,7 +296,10 @@ function sweep(t, force = false) {
   const rank = (E) => (E.cid === HERO_CID ? 2 : t - (CID_USED.get(E.cid) ?? -1e9) < IDLE_MS ? 1 : 0);
   const idleFor = (E) => (E.cid === HERO_CID || E.cid === NPC_CID ? IDLE_MS : 1000);
   const list = [];
-  for (const E of REG.values()) if (E !== NONE && E.rig && t - E.used >= idleFor(E) && hasTextures(E)) list.push(E);
+  // 아직 한 번도 그리지 않은 퍼펫(부팅·형제 미리 받기)은 받은 뒤 FRESH_MS 동안 둔다: 여러 영웅을 차례로 그리는 화면(갤러리·파티)에서
+  // 곧 그릴 퍼펫을 그리기 전에 내렸다가 다시 받는 일이 없게. 스테이지 진입 정리(force)는 기다리지 않는다
+  const idle = (E) => (E.used ? t - E.used >= idleFor(E) : force || t - E.born >= FRESH_MS);
+  for (const E of REG.values()) if (E !== NONE && E.rig && idle(E) && hasTextures(E)) list.push(E);
   list.sort((a, b) => rank(a) - rank(b) || a.used - b.used);
   let freed = 0;
   for (const E of list) {

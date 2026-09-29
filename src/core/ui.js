@@ -599,6 +599,7 @@ function buildText(str, size, weight, family, styleName, st, spacing, amount, S,
   fg.globalCompositeOperation = 'source-over';
   blit(c, fc);
 
+  for (let i = 0; i <= 5; i++) { const sc = SCRATCH[i]; if (sc && sc.width * sc.height > 4096) { sc.width = 1; sc.height = 1; } } // 작업 캔버스 메모리 돌려주기 (다음 굽기가 다시 키운다)
   return { c: out, S, W, H, ox, oy, adv, asc, desc, fAsc, fDesc, drips, st, styleName, fontStr, fontOk: fontLoaded(fontStr, str), checkAt: 0, size, px: 0 };
 }
 function fontLoaded(fontStr, str) {

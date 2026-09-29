@@ -591,7 +591,7 @@ function drawReady(ctx, world, x, y, w, spFull, ready, holdK, now, T) {
 const MILE_SLAM = 0.12;                    // 이정표 2 → 1 박힘 시간
 const NUMC = { w: 240, h: 88 };            // NUM 캐시 한 줄 (논리 px; 가운데 = 숫자 회전 중심). 둘째 줄 = 흰 번쩍임
 const LBLC = { x: -178, y: 58, w: 178, h: 52 };   // LBL 캐시가 덮는 열 좌표 영역 ('HITS' 기준선 76 · '총 피해' 기준선 102)
-const NUM_KEY = { str: '', size: 0, rot: NaN, rank: -1, ph: -1, a: 0, ep: -1, w: 0, row: 0 };
+const NUM_KEY = { str: '', size: 0, rot: NaN, rank: -1, ph: -1, a: 0, ep: -1, w: 0, row: 0, asc: 0, desc: 0, k: 1 };
 const LBL_KEY = { T: null, dmg: '', a: 0, ep: -1 };
 
 /** 열 기준 변환 B 가 축 정렬(회전·기울임 없음)이고 가로세로 배율이 같은가 → 기기 픽셀에 맞춘 1:1 붙이기를 쓸 수 있다 */
@@ -610,7 +610,8 @@ function numSprite(str, size, rot, rank, ph, a) {
   const by = size * 0.36;
   g.font = font(size, 900, FONT.dmg);
   g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.lineJoin = 'round';
-  const w0 = g.measureText(str).width || size;
+  const m = g.measureText(str);
+  const w0 = m.width || size;
   const fit = Math.min(1, (NUMC.w - 24) / (w0 + 8));   // 아주 긴 수(다섯 자리 넘게)는 칸에 맞게 줄인다
   for (let j = 0; j < 2; j++) {
     g.setTransform(a, 0, 0, a, (NUMC.w / 2) * a, (NUMC.h / 2) * a + j * row);
@@ -622,8 +623,27 @@ function numSprite(str, size, rot, rank, ph, a) {
     } else { g.fillStyle = '#ffffff'; g.fillText(str, 0, by); }
   }
   K.str = str; K.size = size; K.rot = rot; K.rank = rank; K.ph = ph; K.a = a; K.ep = ep; K.w = w0 * fit; K.row = row;
+  K.asc = glyphAsc(m, size) * fit; K.desc = glyphDesc(m) * fit; K.k = fit;   // 튀기기가 칸을 넘지 않게 (popFit)
   FEEL_HUD_STATS.numBakes++;
   return K.w;
+}
+/** 숫자 글자의 기준선 위 높이 / 아래 깊이 (measureText 가 모르면 글꼴 크기의 0.8 / 0) */
+const glyphAsc = (m, size) => (m.actualBoundingBoxAscent > 0 ? m.actualBoundingBoxAscent : size * 0.8);
+const glyphDesc = (m) => (m.actualBoundingBoxDescent > 0 ? m.actualBoundingBoxDescent : 0);
+/**
+ * 튀기기(pop 배)를 칸 안에 가둔다 (열 좌표: 위 0 · 아래 colH · 왼쪽 −colW). 쉬는 숫자의 회전 중심 cy0 을 기준으로 튀되, 윗변이
+ * 칸 위로(점수 칸 쪽으로) 나가려 하면 세로 기준점 ay 를 올려 윗변을 칸 위에 붙이고, 칸이 모자라면 pop 을 줄인다.
+ * 넘치는 그림이 없으므로 hud.js 가 튀기기 프레임마다 화면 크기 클립을 걸 필요가 없다 (R1-REQ-330). 작은 수(≤ 49)는 예전 그대로
+ * 가운데에서 튄다. w = 숫자 너비, by = 회전 중심 → 기준선, asc/desc = 글자 높이·깊이, k = 긴 수를 줄인 배율 → { pop, ay }
+ */
+function popFit(pop, cy0, w, by, asc, desc, k, rot, colW, colH) {
+  if (!(pop > 1)) return { pop: 1, ay: cy0 };
+  const o = 3.5 * k + (w / 2) * Math.abs(Math.sin(rot || 0));   // 외곽선 반 폭 + 기울기로 올라가는 끝
+  const T0 = cy0 + by * k - asc - o, B0 = cy0 + by * k + desc + o;   // 쉬는 숫자의 윗변·아랫변
+  pop = Math.min(pop, Math.max(1, colH / Math.max(1, B0 - T0)), Math.max(1, (colW + NUM_R) / Math.max(1, w + 3.5 * k)));
+  if (!(pop > 1)) return { pop: 1, ay: cy0 };
+  const hi = (pop * T0) / (pop - 1), lo = (pop * B0 - colH) / (pop - 1);   // 위로 안 넘는 한계 · 아래로 안 넘는 한계
+  return { pop, ay: Math.min(hi, Math.max(lo, cy0)) };
 }
 /** LBL 캐시: 'HITS' + '총 피해 n' (dmg 가 빈 문자열이면 'HITS' 만 — 작은 배치·데미지 숫자 끔·끝나 사라지는 중) */
 function lblSprite(T, dmg, a) {
@@ -654,15 +674,19 @@ function blitLabels(ctx, B, dy) {
 }
 
 /**
- * 콤보 숫자 (오른쪽 끝 NUM_R, 기준선 NUM_BASE + dy): NUM 캐시를 붙인다. 튀기기(pop)는 오른쪽 끝을 기준으로, 기울기는 구울 때 숫자
- * 가운데를 중심으로 넣었다. flash 0..1 = 흰 번쩍임 (캐시 둘째 줄). 캐시 캔버스가 없으면 예전처럼 바로 그린다 (drawNumber)
+ * 콤보 숫자 (오른쪽 끝 NUM_R, 기준선 NUM_BASE + dy): NUM 캐시를 붙인다. 튀기기(pop)는 오른쪽 끝을 기준으로 하고 칸(colW × colH,
+ * 열 좌표) 위·아래·왼쪽으로 넘치지 않게 세로 기준점을 옮긴다 (popFit — 튀기기 프레임에 hud.js 클립이 없어도 점수 칸을 덮지 않는다).
+ * 기울기는 구울 때 숫자 가운데를 중심으로 넣었다. flash 0..1 = 흰 번쩍임 (캐시 둘째 줄). 캐시 캔버스가 없으면 바로 그린다 (drawNumber)
  */
-function drawNumberSpr(ctx, B, str, size, rot, pop, flash, rank, now, dy = 0) {
+function drawNumberSpr(ctx, B, str, size, rot, pop, flash, rank, now, dy = 0, colW = COL_W, colH = COL_H) {
   if (!str) return;
   const w = numSprite(str, size, rot, rank, numPhase(rank, now), devScale(B));
-  if (!w) { drawNumber(ctx, str, size, -1, rot, pop, flash, rank, now, dy); return; }
+  if (!w) { drawNumber(ctx, str, size, -1, rot, pop, flash, rank, now, dy, colW, colH); return; }
   const c = SPR.num, a = NUM_KEY.a, row = NUM_KEY.row, cw = c.width;
-  const cx = NUM_R - (pop * w) / 2, cy = NUM_BASE - size * 0.36 + dy;   // 회전 중심 (구운 줄의 가운데)
+  const cy0 = NUM_BASE - size * 0.36 + dy;   // 쉬는 숫자의 회전 중심 (구운 줄의 가운데)
+  let ay = cy0;
+  if (pop !== 1) ({ pop, ay } = popFit(pop, cy0, w, size * 0.36, NUM_KEY.asc, NUM_KEY.desc, NUM_KEY.k, rot, colW, colH));
+  const cx = NUM_R - (pop * w) / 2, cy = ay + pop * (cy0 - ay);   // 튄 숫자의 회전 중심 (오른쪽 끝 · 세로 기준점 ay 기준)
   const x = cx - (pop * NUMC.w) / 2, y = cy - (pop * NUMC.h) / 2;
   const snap = pop === 1 && dy === 0 && axisAligned(B);
   if (snap) {
@@ -738,7 +762,7 @@ export function drawComboHUD(ctx, world, vw, vh, touch) {
   // 글자를 띠 위에 그린다 (띠를 나중에 그리면 마지막 S 가 붓 자국에 덮인다)
   if (n >= 2) drawComboBanner(ctx, s, now, calm);
   if (rank > 0) drawRankLetter(ctx, B, style, s, rank, now, calm, n < 2 ? 0.7 : 1);   // 콤보가 끊긴 뒤 식어 가는 랭크는 조금 흐리게
-  if (n >= 2) drawComboBlock(ctx, B, world, c, s, rank, now, small, calm, T);
+  if (n >= 2) drawComboBlock(ctx, B, world, c, s, rank, now, small, calm, T, r.w / k, r.h / k);
   else if (ending) drawComboEnd(ctx, B, s, rank, now, calm, T);
   if (mile) drawMilestone(ctx, B, s, now, small, calm);
   ctx.restore();
@@ -746,16 +770,19 @@ export function drawComboHUD(ctx, world, vw, vh, touch) {
 }
 
 /** (캐시 캔버스가 없을 때만) 콤보 숫자를 바로 그린다. 오른쪽 끝 NUM_R, 기준선 NUM_BASE + dy. flash 0..1 = 흰 번쩍임 */
-function drawNumber(ctx, str, size, w, rot, pop, flash, rank, now, dy = 0) {
+function drawNumber(ctx, str, size, w, rot, pop, flash, rank, now, dy = 0, colW = COL_W, colH = COL_H) {
   if (!str) return;
   ctx.font = font(size, 900, FONT.dmg);
-  if (!(w > 0)) w = ctx.measureText(str).width;
-  const by = size * 0.36;
+  const m = ctx.measureText(str);
+  if (!(w > 0)) w = m.width;
+  const by = size * 0.36, cy0 = NUM_BASE - by + dy;
+  let ay = cy0;
+  if (pop !== 1) ({ pop, ay } = popFit(pop, cy0, w, by, glyphAsc(m, size), glyphDesc(m), 1, rot, colW, colH));
   ctx.save();
-  // 튀기기는 오른쪽 끝을 기준으로 (칸 오른쪽 밖으로 커지지 않게), 기울기는 숫자 가운데를 중심으로
-  ctx.translate(NUM_R, NUM_BASE - by + dy);
+  // 튀기기는 오른쪽 끝·세로 기준점 ay 를 기준으로 (칸 오른쪽·위로 커지지 않게, popFit), 기울기는 숫자 가운데를 중심으로
+  ctx.translate(NUM_R, ay);
   if (pop !== 1) ctx.scale(pop, pop);
-  ctx.translate(-w / 2, 0);
+  ctx.translate(-w / 2, cy0 - ay);
   if (rot) ctx.rotate(rot);
   ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.lineJoin = 'round';
   ctx.lineWidth = 7; ctx.strokeStyle = '#140004'; ctx.strokeText(str, 0, by);
@@ -774,7 +801,7 @@ function drawComboBanner(ctx, s, now, calm) {
   ctx.drawImage(B, -4 - BANNER.w * bs, 38 + (-BANNER.h / 2 + 2) * bs, BANNER.w * bs, BANNER.h * bs);
 }
 
-function drawComboBlock(ctx, B, world, c, s, rank, now, small, calm, T) {
+function drawComboBlock(ctx, B, world, c, s, rank, now, small, calm, T, colW, colH) {
   const info = rankInfo(rank);
   const popK = calm ? 0 : clamp(1 - (now - s.hitRt) / POP_T, 0, 1);
   const pop = 1 + 0.35 * popK;
@@ -785,7 +812,7 @@ function drawComboBlock(ctx, B, world, c, s, rank, now, small, calm, T) {
   ctx.beginPath(); ctx.moveTo(-168, 62.5); ctx.lineTo(-10, 62.5); ctx.lineTo(-12, 65); ctx.lineTo(-170, 65); ctx.closePath(); ctx.fill();
   ctx.globalAlpha = ga;
   // 숫자 (튀기기 + 흰 번쩍임)
-  drawNumberSpr(ctx, B, s.nStr, s.nSize, calm ? 0 : s.rot, pop, popK > 0.3 ? (popK - 0.3) / 0.7 * 0.7 : 0, rank, now);
+  drawNumberSpr(ctx, B, s.nStr, s.nSize, calm ? 0 : s.rot, pop, popK > 0.3 ? (popK - 0.3) / 0.7 * 0.7 : 0, rank, now, 0, colW, colH);
   // HITS + 총 피해 (LBL 캐시; 총 피해는 작은 배치·데미지 숫자 끔이면 뺀다) — 튀는 숫자 위에 (예전 순서 그대로)
   let dmg = '';
   if (!small && settingsOf(world)?.showDamage !== false) {

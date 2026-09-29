@@ -963,7 +963,8 @@ class Session {
     this.aura = auraOf(this.classId, this.charId, this.accent);
     this.elemN = Math.round(E.n * fq); this.backN = Math.round(E.back * fq); this.elemDone = 0; this.backDone = 0;
     this.cx = this.p?.cx ?? 0; this.cy = this.p?.cy ?? 0; this.ph = this.p?.h ?? 64;
-    this.tex = Q[this.q].layer && o.lines !== false ? layerFor(this.tier, this.color, this.accent) : null;
+    // medium 각성: 각성 연출(감독)이 화면 전체 어둡게·빛 층을 이미 두 장 쓰므로 집중선 층까지 얹으면 예산(medium 2)을 넘는다 → 생략
+    this.tex = Q[this.q].layer && o.lines !== false && !(this.awaken && this.q === 'medium') ? layerFor(this.tier, this.color, this.accent) : null;
     this.name = this.makeName();
     this.ov = addOv(w, { draw: (ctx, vw, vh) => this.draw(ctx, vw, vh), update: (dt) => this.update(dt) });
     ULTFX_STATS.sessions++;

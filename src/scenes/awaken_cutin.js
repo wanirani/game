@@ -9,6 +9,8 @@
 //  일러스트: assets/cg/cutin_<id>.webp (폭 1.15·vw, 얼굴 기준점을 (0.66·vw, 0.47·vh) 에), 없으면 초상(portraits/<id>) 으로 대신한다.
 //  글자는 FONT.brush (BN Brush, 필요할 때 받음) 로 한 번 구워 조각으로 찍는다. 붓글씨가 늦게 도착하면 다시 굽는다.
 //  prepareCutin(charId, tier) — awaken.js 가 스테이지 시작 무렵 불러 글꼴·캔버스·글자를 미리 준비한다 (첫 컷인이 끊기지 않게).
+//  전면 패스 (feel §8 ≤ 3/2/1): 일러스트·어둠은 띠를 둘러싼 상자로 잘라 그리고, low 의 퇴장 섬광은 암전 채우기에 섞는다
+//  → 컷인 한 프레임의 전면 채우기는 암전 한 장 (R1-REQ-338).
 // 스택에 혼자 남는 경우(?scene=awakenCutin 디버그 주소)에는 검은 바탕 위에 미리보기로 그린 뒤 타이틀로 간다.
 import { Scene } from '../core/game.js';
 import { input, ACTIONS } from '../core/input.js';
@@ -389,7 +391,7 @@ export class AwakenCutinScene extends Scene {
     if (!this.preview && this.p && !this.p.hidden) { this.p.hidden = true; this.hidPlayer = true; }
     this.ink = [];
     this.fired = new Set();
-    this.shakeT = 0; this.shakeA = 0; this.step = 0;
+    this.shakeT = 0; this.shakeA = 0; this.step = 0; this.exitFlash = 0;
     this.sfx('awaken_charge');
     if (!this.preview) { try { input.rumble?.(0.3, 0.45, 140); } catch { /* 진동 없음 */ } }
   }
@@ -456,6 +458,7 @@ export class AwakenCutinScene extends Scene {
     // 그림이 아직 안 왔으면(또는 초상으로 대신하는 중이면) 일러스트가 들어오기 직전까지 다시 본다
     if ((!this.img && t < 1) || (this.fallback && t < T.img + 0.03)) this.pickImage();
     if (this.shakeT > 0) this.shakeT -= dt;
+    if (this.exitFlash > 0) this.exitFlash = Math.max(0, this.exitFlash - EXIT_FLASH_DECAY * dt);
     this.step++;   // 흔들림 떨림은 갱신 걸음마다 한 번 정한다 (그리기는 난수를 쓰지 않는다, R1-REQ-335)
     // 시전 자세를 들어 올린 상태까지만 진행 (월드는 멈춰 있다)
     const p = this.p;
@@ -488,7 +491,8 @@ export class AwakenCutinScene extends Scene {
     this.once('exit', T.exit, () => {
       this.sfx('cutin_whoosh', { pitch: 0.8 });
       this.sfx(audio.has?.('impact_frame') ? 'impact_frame' : 'hit_heavy', { vol: 0.8 });
-      this.game.flash?.('#ffffff', 0.5, 3.5);
+      if (this.q === 'low') this.startExitFlash(0.5);   // low: 전면 패스 1장 예산 → 암전 채우기에 섞는다
+      else this.game.flash?.('#ffffff', 0.5, 3.5);
       this.kick(9);
     });
     // 먹물 방울
@@ -546,6 +550,8 @@ export class AwakenCutinScene extends Scene {
       if (g.top === this) { if (g.scenes.length <= 1) g.go('title', {}, { fade: false }); else g.pop(); }
     } else if (g.top === this) g.pop();
     try { this.params.onDone?.(!!aborted); } catch (e) { console.error('[awakenCutin] onDone', e); }
+    if (!aborted && this.exitFlash > 0.02) { try { g.flash?.('#ffffff', this.exitFlash, EXIT_FLASH_DECAY); } catch { /* 번쩍임 없음 */ } }   // 짧은 컷인: 남은 섬광은 게임이 마저
+    this.exitFlash = 0;
     if (this.pauseAfter && !this.preview && g.top !== this) g.autoPause();
   }
   /** enter 에서 숨긴 월드 쪽 영웅을 되돌린다 (한 번만) */
@@ -592,7 +598,7 @@ export class AwakenCutinScene extends Scene {
     //    검정 0.6 위에 dark 0.22 를 얹은 결과와 같은 색을 미리 섞어 둔다 (low 는 검정만)
     const dk = clamp(t / T.dim, 0, 1) * (t > T.exit ? lerp(1, 0.55, clamp((t - T.exit) / (T.end - T.exit), 0, 1)) : 1);
     if (this.preview) { ctx.fillStyle = '#07030a'; ctx.fillRect(0, 0, vw, vh); }
-    if (dk > 0.003) { ctx.fillStyle = this.dimFill(dk); ctx.fillRect(0, 0, vw, vh); }
+    if (dk > 0.003 || this.exitFlash > 0.003) { ctx.fillStyle = this.dimFill(dk, this.exitFlash); ctx.fillRect(0, 0, vw, vh); }
     // 2. 영웅 주변 집중선 — 화면을 거의 덮는 큰 합성이므로 low 에서는 그리지 않는다 (feel §8: low 전면 패스 1장 = 암전뿐;
     //    ULTFX 도 low 에서는 화면 층이 없다). 움직임은 띠 속 속도선이 맡는다
     if (this.q !== 'low' && t >= T.lines && t < T.exit + T.exitDur) {
@@ -615,16 +621,35 @@ export class AwakenCutinScene extends Scene {
     ctx.restore();
   }
 
-  /** 암전 색: 검정(0.6) 위에 영웅 dark(0.22, low 는 없음)를 겹친 결과를 한 색으로 (dk 배율). 문자열은 dk 단계별로 캐시 */
-  dimFill(dk) {
-    const q = Math.round(dk * 40);
-    if (this._dimQ === q && this._dimS) return this._dimS;
-    const k = q / 40, a1 = 0.6 * k, a2 = this.q === 'low' ? 0 : 0.22 * k;
+  /**
+   * 암전 색: 검정(0.6) 위에 영웅 dark(0.22, low 는 없음), 그 위에 흰 퇴장 섬광(fl, low 만)을 겹친 결과를 한 색으로 (dk 배율).
+   * 문자열은 dk·섬광 단계별로 캐시
+   */
+  dimFill(dk, fl = 0) {
+    const q = Math.round(dk * 40), qf = Math.round(clamp(fl, 0, 1) * 40);
+    if (this._dimQ === q && this._dimF === qf && this._dimS) return this._dimS;
+    const k = q / 40, f = qf / 40, a1 = 0.6 * k, a2 = this.q === 'low' ? 0 : 0.22 * k;
     const h = String(this.a.dark ?? '#000').replace('#', ''), n = parseInt(h.length === 3 ? h.split('').map((c) => c + c).join('') : h, 16) || 0;
-    const A = a1 + a2 * (1 - a1);   // 두 겹의 합성 알파
-    const mix = (c) => Math.round(A > 0 ? (c * a2) / A : 0);
-    this._dimQ = q; this._dimS = `rgba(${mix((n >> 16) & 255)},${mix((n >> 8) & 255)},${mix(n & 255)},${A.toFixed(3)})`;
+    const A = 1 - (1 - a1) * (1 - a2) * (1 - f);   // 세 겹의 합성 알파
+    const mix = (c) => Math.round(A > 0 ? clamp((c * a2 * (1 - f) + 255 * f) / A, 0, 255) : 0);
+    this._dimQ = q; this._dimF = qf; this._dimS = `rgba(${mix((n >> 16) & 255)},${mix((n >> 8) & 255)},${mix(n & 255)},${A.toFixed(3)})`;
     return this._dimS;
+  }
+  /**
+   * low 의 퇴장 섬광: game.flash(흰색 0.5) 대신 암전 채우기에 섞어 전면 패스를 한 장으로 둔다. 번쩍임 설정(flashFx)·상한 0.7·
+   * 1초에 강한 번쩍임 두 번 뒤 0.3 규칙은 game.flash 와 같게 따르고, 강한 번쩍임이면 게임의 번쩍임 기록에도 남긴다
+   */
+  startExitFlash(strength) {
+    const g = this.game, k = Number(g.settings?.flashFx ?? 1);
+    let a = Math.min(0.7, Math.max(0, strength) * (Number.isFinite(k) ? clamp(k, 0, 1) : 1));
+    try {
+      const log = g._flashLog, now = g.realTime ?? 0;
+      if (Array.isArray(log)) {
+        if (log.filter((x) => now - x <= 1).length >= 2) a = Math.min(a, 0.3);
+        if (a > 0.3) log.push(now);
+      }
+    } catch { /* 기록 없음 */ }
+    this.exitFlash = a > 0 ? a : 0;
   }
 
   heroScreen() {
@@ -707,6 +732,10 @@ export class AwakenCutinScene extends Scene {
     ctx.globalCompositeOperation = 'source-over';
     // 일러스트 (똑바로 세워 그린다: 회전을 되돌림)
     ctx.rotate(-ANG);
+    // 띠(회전한 사각형)를 둘러싼 똑바른 상자 ∩ 화면 (띠 원점 기준, 2 px 여유): 일러스트·어둠은 이 상자만 잘라 그린다.
+    // 보이는 곳은 어차피 띠 안뿐이고, 화면 전체 크기의 그리기(전면 패스)가 되지 않는다 (feel §8 · R1-REQ-338)
+    const bw = (L / 2) * COS + (H / 2) * Math.abs(SIN), bh = (L / 2) * Math.abs(SIN) + (H / 2) * COS;
+    const bx0 = Math.max(-bw, -ox) - 2, bx1 = Math.min(bw, vw - ox) + 2, by0 = Math.max(-bh, -oy) - 2, by1 = Math.min(bh, vh - oy) + 2;
     const img = this.img;
     const imgK = ease.outExpo(clamp((t - T.img) / T.imgIn, 0, 1));
     const drift = -vw * 0.04 * clamp((t - T.img - T.imgIn) / Math.max(0.2, T.end - T.img - T.imgIn), 0, 1);
@@ -719,12 +748,12 @@ export class AwakenCutinScene extends Scene {
         const dw = vw * 1.15 * (1 + 0.03 * imgK), dh = dw * ih / iw;
         const fx = this.face[0], fy = this.face[1];
         const left = vw * 0.66 - fx * dw + ix - vw / 2, top = -fy * dh;
-        ctx.drawImage(img, left, top, dw, dh);
-        // 왼쪽 45% 어둠 (글자 자리)
+        blitCrop(ctx, img, iw, ih, left, top, dw, dh, bx0, by0, bx1, by1);
+        // 왼쪽 45% 어둠 (글자 자리; 가로로만 변하는 띠 → 세로는 상자만큼)
         const sp = sprites();
-        if (sp) {
-          ctx.drawImage(sp.fade, left, -vh, dw * 0.45, vh * 2);
-          if (left > -L / 2) { ctx.fillStyle = 'rgba(0,0,0,0.75)'; ctx.fillRect(-L / 2 - 50, -vh, left + L / 2 + 51, vh * 2); }
+        if (sp && by1 > by0) {
+          ctx.drawImage(sp.fade, 0, 0, 256, 2, left, by0, dw * 0.45, by1 - by0);
+          if (left > -L / 2) { ctx.fillStyle = 'rgba(0,0,0,0.75)'; ctx.fillRect(-L / 2 - 50, by0, left + L / 2 + 51, by1 - by0); }
         }
         eyeX = left + this.eye[0] * dw; eyeY = top + this.eye[1] * dh;
       } else if (img && this.fb) {
@@ -880,6 +909,15 @@ export class AwakenCutinScene extends Scene {
   }
 }
 
+/** 퇴장 섬광이 사라지는 빠르기 (초당 알파; game.flash 의 decay 와 같은 뜻) */
+const EXIT_FLASH_DECAY = 3.5;
+/** 그림을 상자 (x0..x1, y0..y1) 와 겹치는 부분만 그린다 (원본 좌표를 같은 비율로 잘라 9인자 drawImage) */
+function blitCrop(ctx, img, iw, ih, x, y, w, h, x0, y0, x1, y1) {
+  const a = Math.max(x, x0), b = Math.min(x + w, x1), c = Math.max(y, y0), d = Math.min(y + h, y1);
+  if (!(b > a && d > c && iw > 0 && ih > 0 && w > 0 && h > 0)) return;
+  const kx = iw / w, ky = ih / h;
+  ctx.drawImage(img, (a - x) * kx, (c - y) * ky, (b - a) * kx, (d - c) * ky, a, c, b - a, d - c);
+}
 /** 흔들림 떨림 −1..1: 정수(갱신 걸음 번호)로 정하는 결정적 값 — 그리기가 게임 난수(Math.random)를 먹지 않게 (R1-REQ-335) */
 function jit(n) {
   let h = Math.imul((n | 0) ^ 0x9e3779b9, 0x85ebca6b);
