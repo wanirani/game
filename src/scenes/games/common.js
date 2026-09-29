@@ -621,7 +621,7 @@ export class MiniGame extends Scene {
       if (v === 0 || this.st.gold >= v) { this.setBet(v); return; }
     }
   }
-  poor() { this.game.toast('금화가 모자라요!', '#ff8080'); audio.sfx('menu_cancel'); }
+  poor() { this.game.toast('골드가 부족하다!', '#ff8080'); audio.sfx('menu_cancel'); }
   /** 판돈 차감. 성공 여부 */
   takeBet() {
     if (this.free && !session.freeUsed) {

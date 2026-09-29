@@ -103,7 +103,7 @@ side({ id: 'rk_ecto', name: '병에 담긴 원혼', giver: 'npc_rook', req: { ch
   desc: '유령이 남긴 엑토플라즘 8병. 수도의 귀족들 사이에서 "영혼 향수"로 팔린단다.',
   goal: { type: 'collect', item: 'm_ectoplasm', count: 8 }, reward: { gold: 900, exp: xp(4, 1), items: [it('m_stone_2', 2)] } });
 side({ id: 'rk_goldrush', name: '금화 비', giver: 'npc_rook', req: { chapter: 5 },
-  desc: '"성 안엔 금화가 굴러다닙죠." 스테이지에서 금화를 6,000 G 주워 로크에게 실력을 보여 주자.',
+  desc: '"성 안엔 금화가 굴러다닙죠." 스테이지에서 골드를 6,000 G 주워 로크에게 실력을 보여 주자.',
   goal: { type: 'gold', amount: 6000 }, reward: { gold: 2000, exp: xp(7, 1), items: [it('m_stone_4', 2), it('m_scroll_protect', 1)] } });
 
 // ── 하드윈 (대장간) ──

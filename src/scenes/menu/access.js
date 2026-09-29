@@ -295,7 +295,7 @@ export function stageChapter(sid) { return STAGES()[sid]?.chapter ?? (stageNo(si
 export function stageLevel(sid) { return STAGES()[sid]?.level ?? null; }
 /** 드롭 ID → 표시 이름 */
 export function dropName(id) {
-  const SPECIAL = { heart: '하트', food: '고기', mp: '마력 결정', gold: '금화', powerup: '파워업' };
+  const SPECIAL = { heart: '하트', food: '고기', mp: '마력 결정', gold: '골드', powerup: '파워업' };
   if (SPECIAL[id]) return SPECIAL[id];
   return ITEMS()[id]?.name ?? id;
 }

@@ -100,7 +100,7 @@ function goalLabel(g) {
     case 'enhance': return `장비 +${g.level} 강화`;
     case 'minigame': return `${g.game ? MINIGAME_NAMES[gameKey(g.game)] ?? g.game : '여관 미니게임'} 승리`;
     case 'combo': return `${g.count} HIT 콤보`;
-    case 'gold': return '금화 줍기';
+    case 'gold': return '골드 줍기';
     case 'talk': return `${NPCS[g.npc]?.name ?? g.npc}와 대화`;
   }
   return '목표';

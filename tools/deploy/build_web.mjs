@@ -10,7 +10,9 @@
 //   --max-lazy <n>         lazy 조각 수 상한 (기본 7 → main 포함 8개, 아티팩트 제한과 같게)
 //   --allow-font-gaps      글꼴 검사(tools/fonts/build_fonts.py --check) 실패를 경고로만 (임시 빌드용)
 //   --skip-validate        맵 검사(node tools/validate_maps.mjs)를 건너뛴다
-//   --apk <file>           dist/web/downloads/ 에 넣을 서명된 APK (기본: dist/BloodNocturne.apk 가 있으면)
+//   --apk <file>           dist/web/downloads/ 에 넣을 서명된 APK (기본: dist/BloodNocturne.apk 가 있으면).
+//                          APK 에 실은 웹 빌드(apk.json web.buildHash)가 이번 buildHash 와 같을 때만 넣는다 (옛 APK 는 경고 후 빼고, --strict 면 실패)
+//   --allow-stale-apk      옛 웹 빌드를 실은 APK 도 넣는다 (latest.json 에 stale:true · siteBuildHash 로 표시)
 //   --no-apk               APK 를 넣지 않는다
 //   --no-deploy-bundle     dist/deploy (Netlify 업로드 묶음) 를 만들지 않는다
 //   --strict               첫 화면 크기 예산(1.6 MB brotli) 초과도 실패로
@@ -29,9 +31,11 @@
 //     buildHash·build.json 에는 downloads/ 와 _redirects 를 넣지 않는다 (APK 에 들어가지 않는 배포 전용 파일). 그래서 새 APK 를
 //     downloads/ 에 넣으려고 다시 빌드해도 게임 파일이 같으면 buildHash 가 같고, 그때는 이전 dist/web/build.json 의 version·built·commit
 //     을 그대로 써서 build-info.js·build.json·index.html·sw.js 가 바이트까지 같다 → APK assets/www 와 dist/web 해시 비교(verify_apk)가 맞는다.
-//  6. sw.js 에 BUILD (캐시 이름 bn-<buildHash>, 미리 받을 목록) 주입. _redirects (/apk, /download → APK).
+//  6. sw.js 에 BUILD (캐시 이름 bn-<buildHash>, 미리 받을 목록) 주입. APK 는 실은 웹 빌드가 buildHash 와 같을 때만 downloads/ 에
+//     (latest.json 의 built = APK 를 만든 시각, web = APK 에 실은 웹 빌드). _redirects (/apk, /download → APK).
 //  7. 글꼴 검사, 맵 검사, 크기 보고 (brotli·gzip): 첫 화면 경로, dist/web ≤ 90 MB, APK 입력(dist/web − sw.js − downloads/) ≤ 45 MB.
-//  8. dist/deploy/ = Netlify 업로드 묶음: web/ (dist/web 하드 링크) + netlify/functions·lib + package.json(개발 의존성 제외) +
+//  8. dist/deploy/ = Netlify 업로드 묶음: web/ (dist/web 하드 링크) + netlify/functions·lib + package.json(개발 의존성 제외, 시험한 버전 고정) +
+//     package-lock.json (루트 잠금 파일에서 개발 전용 항목을 뺀 것) +
 //     netlify.toml (publish = "web", 빌드 명령 없음). 비밀 파일 검사. 배포 호출은 하지 않는다 (DELIVER-WEB 이 한다) — tools/deploy/README.md
 import fs from 'node:fs';
 import path from 'node:path';
@@ -68,7 +72,7 @@ class BuildError extends Error {}
 export async function buildWeb(o = {}) {
   const opts = {
     src: ROOT, out: path.join(ROOT, 'dist/web'), bundle: true, minify: true, maxLazy: 7,
-    fontsCheck: true, allowFontGaps: false, validate: true, apk: undefined, deployBundle: true, strict: false, quiet: false, sizes: true, variants: true, restamp: false,
+    fontsCheck: true, allowFontGaps: false, validate: true, apk: undefined, allowStaleApk: false, deployBundle: true, strict: false, quiet: false, sizes: true, variants: true, restamp: false,
     ...Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)),
   };
   const SRC = path.resolve(opts.src);
@@ -195,30 +199,6 @@ export async function buildWeb(o = {}) {
     write('index.html', html);
     lap('html', t);
 
-    // ── APK (downloads/) ──
-    let apk = null;
-    const apkFile = opts.apk === false ? null : opts.apk ? path.resolve(opts.apk) : path.join(ROOT, 'dist/BloodNocturne.apk');
-    if (apkFile && fs.existsSync(apkFile)) {
-      const info = apkInfo(apkFile);
-      const name = info.versionName && info.versionCode ? `BloodNocturne-${info.versionName}-${info.versionCode}.apk` : `BloodNocturne-${h8(info.sha256)}.apk`;
-      copy(`downloads/${name}`, apkFile);
-      apk = { file: `downloads/${name}`, from: posix(path.relative(ROOT, apkFile)), ...info };
-      write('downloads/latest.json', JSON.stringify({ versionName: info.versionName, versionCode: info.versionCode, sha256: info.sha256, bytes: info.bytes, url: `downloads/${name}`, built: new Date().toISOString() }, null, 1) + '\n');
-      log(opts, `· APK: ${apk.from} → ${apk.file} (${fmtMB(info.bytes)}, ${info.versionName ?? '?'} / ${info.versionCode ?? '?'})`);
-    } else if (opts.apk) throw new BuildError(`APK 가 없습니다: ${opts.apk}`);
-    else report.checks.apk = 'none (dist/BloodNocturne.apk 없음 — /apk 는 404)';
-    report.apk = apk;
-    // Netlify 리디렉트 (파일이 있으면 적용되지 않는다 — 그래서 downloads/BloodNocturne.apk 파일은 두지 않고 새 이름으로 보낸다)
-    const apkTarget = apk ? `/${apk.file}` : '/downloads/BloodNocturne.apk';
-    write('_redirects', [
-      '# tools/deploy/build_web.mjs 가 만든다 (platform §9.2). /api/* 는 함수의 config.path 가 맡으므로 여기서 가리지 않는다.',
-      `/apk                          ${apkTarget}   302`,
-      `/download                     ${apkTarget}   302`,
-      `/download/*                   ${apkTarget}   302`,
-      ...(apk ? [`/downloads/BloodNocturne.apk   ${apkTarget}   302`] : []),
-      '',
-    ].join('\n'));
-
     // ── 5. build.json · build-info.js · sw.js ──
     t = Date.now();
     const loKeys = loKeysOf(OUT);
@@ -295,6 +275,52 @@ export async function buildWeb(o = {}) {
     write('build.json', JSON.stringify(buildJson) + '\n');
     report.version = version; report.buildHash = buildHash; report.moduleCount = moduleCount; report.precache = pre.length; report.assetPrecache = assetPre.length; report.lo = loKeys.length;
     lap('manifest', t);
+
+    // ── APK (downloads/) — 지금 웹 빌드(buildHash)를 실은 APK 만 올린다 (PS-07) ──
+    // APK 의 assets/app/apk.json web.buildHash 가 이번 buildHash 와 다르면 옛 게임을 실은 APK 다: 기본은 올리지 않고 경고,
+    // --allow-stale-apk 면 latest.json 에 stale:true 로 표시해 올리고, --strict 면 빌드 실패. latest.json 의 built 는 APK 를 만든 시각.
+    let apk = null;
+    const apkFile = opts.apk === false ? null : opts.apk ? path.resolve(opts.apk) : path.join(ROOT, 'dist/BloodNocturne.apk');
+    if (apkFile && fs.existsSync(apkFile)) {
+      const info = apkInfo(apkFile);
+      const from = posix(path.relative(ROOT, apkFile));
+      const stale = info.webBuildHash !== buildHash;
+      if (stale) {
+        const m = `APK(${from}, ${info.versionName ?? '?'} / ${info.versionCode ?? '?'})가 지금 웹 빌드와 다릅니다: APK 의 웹 ${info.webBuildHash ?? '(알 수 없음)'}${info.webVersion ? ` (${info.webVersion})` : ''} ≠ dist/web ${buildHash} — tools/apk/build_apk.sh --verify 로 APK 를 다시 만든 뒤 build_web 을 다시 실행하세요`;
+        if (opts.strict) throw new BuildError(m);
+        if (!opts.allowStaleApk) {
+          warn(`${m}. 옛 APK 는 downloads/ 에 넣지 않았습니다 (/apk 는 404, 옛 APK 를 표시해 올리려면 --allow-stale-apk)`);
+          report.checks.apk = `stale — not published (APK web ${info.webBuildHash ?? '?'} ≠ ${buildHash})`;
+          report.apkStale = { from, versionName: info.versionName, versionCode: info.versionCode, webBuildHash: info.webBuildHash, webVersion: info.webVersion, siteBuildHash: buildHash, builtAt: info.builtAt, published: false };
+        } else warn(`${m}. --allow-stale-apk: latest.json 에 stale 로 표시해 올립니다`);
+      }
+      if (!stale || opts.allowStaleApk) {
+        const name = info.versionName && info.versionCode ? `BloodNocturne-${info.versionName}-${info.versionCode}.apk` : `BloodNocturne-${h8(info.sha256)}.apk`;
+        copy(`downloads/${name}`, apkFile);
+        apk = { file: `downloads/${name}`, from, ...info, stale };
+        const latest = {
+          versionName: info.versionName, versionCode: info.versionCode, sha256: info.sha256, bytes: info.bytes, url: `downloads/${name}`,
+          built: info.builtAt ?? new Date().toISOString(), web: { buildHash: info.webBuildHash, version: info.webVersion },
+          ...(stale ? { stale: true, siteBuildHash: buildHash } : {}),
+        };
+        write('downloads/latest.json', JSON.stringify(latest, null, 1) + '\n');
+        report.checks.apk = stale ? `stale — published with stale:true (APK web ${info.webBuildHash ?? '?'} ≠ ${buildHash})` : `ok (APK web = ${buildHash})`;
+        log(opts, `· APK: ${apk.from} → ${apk.file} (${fmtMB(info.bytes)}, ${info.versionName ?? '?'} / ${info.versionCode ?? '?'}, 웹 ${info.webBuildHash ?? '?'}${stale ? ' — 옛 빌드' : ' = 지금 빌드'})`);
+      }
+    } else if (opts.apk) throw new BuildError(`APK 가 없습니다: ${opts.apk}`);
+    else report.checks.apk = 'none (dist/BloodNocturne.apk 없음 — /apk 는 404)';
+    report.apk = apk;
+    // Netlify 리디렉트 (파일이 있으면 적용되지 않는다 — 그래서 downloads/BloodNocturne.apk 파일은 두지 않고 새 이름으로 보낸다)
+    const apkTarget = apk ? `/${apk.file}` : '/downloads/BloodNocturne.apk';
+    write('_redirects', [
+      '# tools/deploy/build_web.mjs 가 만든다 (platform §9.2). /api/* 는 함수의 config.path 가 맡으므로 여기서 가리지 않는다.',
+      `/apk                          ${apkTarget}   302`,
+      `/download                     ${apkTarget}   302`,
+      `/download/*                   ${apkTarget}   302`,
+      ...(apk ? [`/downloads/BloodNocturne.apk   ${apkTarget}   302`] : []),
+      '',
+    ].join('\n'));
+
 
     // ── 6. 마지막 공개 금지 검사 + 헤더 규칙 + 크기 ──
     denyCheck(OUT, report);
@@ -503,11 +529,33 @@ function makeDeployBundle(SRC, WEB, DEP, opts, warn) {
     }
   }
   if (!fnFiles.some((f) => f.startsWith('netlify/functions/'))) throw new BuildError('netlify/functions 가 비었습니다 (계정 API)');
-  // package.json: 함수 의존성만
+  // package.json: 함수 의존성만, 시험한 버전(루트 package-lock.json)으로 고정 (PS-09)
+  // + package-lock.json: 루트 잠금 파일에서 개발 전용 항목(dev: true)과 devDependencies 를 뺀 것 → Netlify 가 시험한 그 버전을 설치한다
   const pkg = JSON.parse(fs.readFileSync(path.join(SRC, 'package.json'), 'utf8'));
   delete pkg.devDependencies;
   pkg.scripts = {};
+  const lockPath = path.join(SRC, 'package-lock.json');
+  if (!fs.existsSync(lockPath)) throw new BuildError('package-lock.json 이 없습니다 — 함수 의존성 버전을 고정할 수 없습니다 (npm install 로 만든 뒤 다시)');
+  const lock = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
+  if (!(lock.lockfileVersion >= 2) || !lock.packages?.['']) throw new BuildError(`package-lock.json 형식을 모릅니다 (lockfileVersion ${lock.lockfileVersion}) — npm 7 이상으로 다시 만드세요`);
+  const deps = pkg.dependencies || {};
+  const pinned = {};
+  for (const name of Object.keys(deps)) {
+    const v = lock.packages[`node_modules/${name}`]?.version;
+    if (!v) throw new BuildError(`package-lock.json 에 ${name} 가 없습니다 — npm install 로 잠금 파일을 맞춘 뒤 다시`);
+    pinned[name] = v;
+  }
+  pkg.dependencies = pinned;
   fs.writeFileSync(path.join(DEP, 'package.json'), JSON.stringify(pkg, null, 2) + '\n');
+  const packages = {};
+  for (const [k, v] of Object.entries(lock.packages)) {
+    if (k === '') { packages[''] = { ...v, dependencies: pinned }; delete packages[''].devDependencies; continue; }
+    if (v?.dev) continue; // 개발 전용 (playwright-core 등)
+    packages[k] = v;
+  }
+  const depLock = { ...lock, packages };
+  delete depLock.dependencies; // lockfileVersion 2 의 옛 형식 사본 (packages 와 어긋나지 않게 뺀다)
+  fs.writeFileSync(path.join(DEP, 'package-lock.json'), JSON.stringify(depLock, null, 2) + '\n');
   // netlify.toml: [build] 만 바꾼다 (publish = "web", 빌드 명령 없음 — 이미 만든 결과를 올린다)
   const toml = fs.readFileSync(path.join(SRC, 'netlify.toml'), 'utf8');
   const lines = toml.split('\n');
@@ -532,7 +580,7 @@ function makeDeployBundle(SRC, WEB, DEP, opts, warn) {
   if (bad.length) throw new BuildError('dist/deploy 에 비밀·개발 파일이 있습니다:\n  ' + bad.join('\n  '));
   const top = fs.readdirSync(DEP).sort();
   log(opts, `· 업로드 묶음: ${posix(path.relative(ROOT, DEP))}/ (${top.join(', ')}) — web/ 하드 링크 ${linked}개${copied ? `, 복사 ${copied}개` : ''}, 함수 파일 ${fnFiles.length}개`);
-  return { dir: posix(path.relative(ROOT, DEP)), entries: top, functions: fnFiles.length };
+  return { dir: posix(path.relative(ROOT, DEP)), entries: top, functions: fnFiles.length, dependencies: pinned, lockPackages: Object.keys(packages).length - 1 };
 }
 
 // ───────────────────────── 자체 시험: 허용 폴더의 가짜 키스토어 ─────────────────────────
@@ -586,7 +634,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       bundle: !a['no-bundle'], minify: !a['no-minify'], maxLazy: a['max-lazy'] ? Number(a['max-lazy']) : 7,
       allowFontGaps: !!a['allow-font-gaps'], validate: !a['skip-validate'],
       apk: a['no-apk'] ? false : a.apk || undefined, deployBundle: !a['no-deploy-bundle'], strict: !!a.strict, quiet: !!a.quiet,
-      restamp: !!a.restamp,
+      restamp: !!a.restamp, allowStaleApk: !!a['allow-stale-apk'],
     });
     const rp = path.resolve(rep.out ? path.join(ROOT, rep.out) : path.join(ROOT, 'dist/web')) === path.join(ROOT, 'dist/web') ? path.join(ROOT, 'dist/build_web_report.json') : path.join(ROOT, rep.out + '-report.json');
     fs.writeFileSync(rp, JSON.stringify(rep, null, 1) + '\n');

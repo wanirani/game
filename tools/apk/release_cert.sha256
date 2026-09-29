@@ -1,0 +1,4 @@
+# 블러드 녹턴 릴리스 서명 인증서 SHA-256 지문 (공개 값 — 비밀이 아니다. APK 를 받은 누구나 apksigner verify --print-certs 로 볼 수 있다)
+# tools/apk/build_apk.sh 가 서명 전(키스토어)·후(APK)에 이 값과 대조해, 다른 키로 서명한 APK 를 만들지 않는다 (docs/RELEASE.md).
+# 첫 배포 APK 1.0.0 (versionCode 389753) 의 인증서. 키를 잃어 새 키로 바꿀 때만 고친다.
+8c437fd7feabc6de3b03fb60fe3db46d4725b930e9d6e25f7215f4b10bc21412

@@ -630,7 +630,7 @@ export const CMP_TEXT = {
   deep: '깊은 물에서는 탈것에서 내려 헤엄쳐야 한다',
   ledge: '{name}은(는) 이 턱을 넘지 못한다 — 내려서 올라가자',   // 날지 못하는 탈것이 못 넘는 턱에 막혔을 때 (방마다 한 번 — mount.js ledgeHint)
   townOnly: '마을에서는 싸울 수 없다',
-  cooldown: '쿨타임',
+  cooldown: '재사용 대기',
   assist: '협공!',
   execute: '처형',
   levelUp: 'Lv UP!',
@@ -646,7 +646,7 @@ export const CMP_TEXT = {
   unequipped: '{name}을(를) 해제했다',
   notOwned: '아직 함께하지 않는 동료다',
   owned: '이미 함께하고 있다',
-  poor: '금화가 모자라다',
+  poor: '골드가 부족하다',
   tributeDone: '{name}은(는) 더 이상 공물이 필요 없다',
   empty: '아직 동료가 없습니다',
   emptySub: '1장을 클리어하면 마을 동쪽 성문 밖 「영혼의 마구간」이 열립니다',

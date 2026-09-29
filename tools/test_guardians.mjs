@@ -177,7 +177,7 @@ await run('A', 'guard_key', STAGE('s05', '&guards=gd_knight,gd_imp&cmplv=10'), (
   const e2 = T.events.filter((e) => e.ev === 'guardianSkill');
   T.press('KeyG');
   const e3 = T.events.filter((e) => e.ev === 'guardianSkill');
-  const cool = T.texts.includes('쿨타임');
+  const cool = T.texts.includes('재사용 대기');
   const hud = cs.hudInfo();
   return {
     info: { e1: e1.map((e) => e.id), cd1, n3: e3.length, texts: T.texts.slice(-5) },
@@ -186,7 +186,7 @@ await run('A', 'guard_key', STAGE('s05', '&guards=gd_knight,gd_imp&cmplv=10'), (
       ['첫 번째 수호신(슬롯 0)부터', e1[0]?.id === cs.guards[0].id],
       ['재사용 대기 설정', cd1[0] > 20 && cd1[1] === 0, cd1],
       ['두 번째 G → 슬롯 1', e2.length === 2 && e2[1].id === cs.guards[1].id],
-      ['세 번째 G → 쿨타임 문구, 시전 없음', e3.length === 2 && cool, T.texts.slice(-4)],
+      ['세 번째 G → 재사용 대기 문구, 시전 없음', e3.length === 2 && cool, T.texts.slice(-4)],
       ['hudInfo 재사용 대기 반영', hud?.guards?.every((g) => !g.ready && g.cd > 0 && g.cdMax > 0), hud],
       ['call-out 대기열 ≤ 2', cs.callouts.length === 2 && cs.callouts[0].line.length > 0, cs.callouts.length],
     ],

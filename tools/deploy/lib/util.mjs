@@ -165,11 +165,27 @@ export function parseRedirectsFile(text) {
 // ── APK 정보 (zip 안 AndroidManifest.xml 이진 XML 에서 versionCode/versionName) ──
 export function apkInfo(file) {
   const buf = fs.readFileSync(file);
-  const info = { bytes: buf.length, sha256: sha256(buf), versionName: null, versionCode: null, package: null };
+  const info = { bytes: buf.length, sha256: sha256(buf), versionName: null, versionCode: null, package: null, webBuildHash: null, webVersion: null, builtAt: null };
   try {
     const xml = zipEntry(buf, 'AndroidManifest.xml');
     if (xml) Object.assign(info, axmlManifestInfo(xml));
   } catch { /* 버전 정보 없이 */ }
+  // APK 에 실은 웹 빌드 (PS-07): assets/app/apk.json 의 web.buildHash (tools/apk/pack_web.py), 없으면 assets/www/build-info.js 의 hash
+  try {
+    const cfg = zipEntry(buf, 'assets/app/apk.json');
+    const w = cfg ? JSON.parse(cfg.toString('utf8'))?.web : null;
+    if (w && typeof w === 'object') { info.webBuildHash = w.buildHash || w.hash || null; info.webVersion = w.version || null; }
+  } catch { /* 없음 */ }
+  if (!info.webBuildHash) {
+    try {
+      const bi = zipEntry(buf, 'assets/www/build-info.js')?.toString('utf8') || '';
+      const m = /window\.__BN_BUILD\s*=\s*(\{.*\});?\s*$/m.exec(bi);
+      const j = m ? JSON.parse(m[1]) : null;
+      if (j) { info.webBuildHash = j.hash || null; info.webVersion = j.version || null; }
+    } catch { /* 없음 */ }
+  }
+  // APK 를 만든 시각 = 서명된 파일의 수정 시각 (build_apk.sh 가 검사를 모두 통과한 뒤 dist/BloodNocturne.apk 로 옮긴다)
+  try { info.builtAt = fs.statSync(file).mtime.toISOString(); } catch { /* 없음 */ }
   return info;
 }
 function zipEntry(buf, name) {

@@ -16,7 +16,7 @@
 //    shieldT                        아리아 결계 남은 시간 (> 0 이면 플레이어 무적, 깜빡임 없음 — player.js 훅 #20)
 //    airDrainMul                    깊은 물 숨 감소 배율 (장착 수호신 passive.airDrainMul 의 최솟값: 루멘 0.5)
 //    mountBlocked                   noMount 보스전 중 (탈것은 소환을 거절한다)
-//    tryGuardianSkill(auto, g?)     → bool   첫 번째 준비된 수호신의 스킬 (없으면 '쿨타임')
+//    tryGuardianSkill(auto, g?)     → bool   첫 번째 준비된 수호신의 스킬 (없으면 '재사용 대기')
 //    castSkill(g, {auto, resonance}) 스킬 시전 (공명이면 60% 위력, 재사용 대기 소모 없음)
 //    keepFx(e)                      방을 옮겨도 다시 넣는 연출 개체 (아리아 결계·가웨인 방패벽: shieldT·wallT 와 함께 이어진다)
 //    ('mount' 입력은 탈것 런타임이 읽는다. 탈것을 장착하지 않아 p.mount 가 없을 때만 여기서 '장착한 탈것이 없다' 안내)

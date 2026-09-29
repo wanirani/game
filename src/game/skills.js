@@ -1,6 +1,6 @@
 // 스킬 런타임: 액티브 스킬 48종 · 캐릭터별 필살기 6종 · 비전서 커맨드 기술 11종 · 직업 휘두르기 특성
 // 공개 API
-//  SKILL_IMPL[skillId] = (player, world, level) => boolean(시전 성공, false 면 MP/쿨타임 소모 안 함)
+//  SKILL_IMPL[skillId] = (player, world, level) => boolean(시전 성공, false 면 MP/재사용 대기 소모 안 함)
 //  castSkill(player, world, skillId, level), castUltimate(player, world), castTechnique(player, world, tech)
 //  SKILL_IMPL.__onSwing(player, world, move) : 일반 공격 판정 시작 시 직업 특성 연출/효과
 //  FXKIT : 필살기·각성기 연출 도우미 모음 (이 파일에 이미 있는 도구들; 각성 감독 AWAKEN-DIR-A/B 가 쓴다. 목록은 파일 끝)

@@ -618,7 +618,7 @@ t('공물: 가격 · 경험치 · 주기당 유대 1번 (§7.3)', () => {
   const r3 = S.giveTribute(s, 'gd_fairy');
   eq([r3.ok, r3.bond, S.ownedEntry(s, 'gd_fairy').bond], [true, 8, 22]);
   s.gold = 10;
-  eq([S.giveTribute(s, 'gd_fairy').ok, S.giveTribute(s, 'gd_fairy').msg, s.gold], [false, '금화가 모자라다', 10]);
+  eq([S.giveTribute(s, 'gd_fairy').ok, S.giveTribute(s, 'gd_fairy').msg, s.gold], [false, '골드가 부족하다', 10]);
   eq(S.giveTribute(s, 'gd_owl').ok, false);
   s.gold = 1e6; s.companions.owned.gd_fairy.lv = 30; s.companions.owned.gd_fairy.exp = 0;
   // 최대 레벨 + 이번 주기 유대 이미 받음 → 얻을 게 없으니 금화를 받지 않는다
@@ -639,7 +639,7 @@ t('마구간 구입: 입고 챕터 · 금화 · 중복 (§7.3)', () => {
   eq(s.companions.owned.mt_boar.src, 'shop'); eq(s.companions.pending, ['mt_boar']);
   eq(S.buyCompanion(s, 'mt_boar'), { ok: false, msg: '이미 함께하고 있다' });
   s.progress.chapter = 3; s.gold = 7499;
-  eq(S.buyCompanion(s, 'gd_imp'), { ok: false, msg: '금화가 모자라다' }); eq(s.gold, 7499);
+  eq(S.buyCompanion(s, 'gd_imp'), { ok: false, msg: '골드가 부족하다' }); eq(s.gold, 7499);
   s.gold = 7500; eq(S.buyCompanion(s, 'gd_imp').ok, true); eq(s.gold, 0);
   eq(S.buyCompanion(s, 'gd_fairy').ok, false, '파는 동료가 아니다');
 });

@@ -365,7 +365,7 @@ export class MountRider {
     this.summonGhost = world.add?.(new MountGhost(p.cx, p.bottom, 120, 110, { mode: 'summon', rider: this, p, id: this.id, def: this.def, facing: p.facing })) ?? null;
     return true;
   }
-  /** 디버그·?ride=1 (CompanionSystem.debug.summon): 쿨타임·보스 금지를 무시하고 바로 태운다 */
+  /** 디버그·?ride=1 (CompanionSystem.debug.summon): 재사용 대기·보스 금지를 무시하고 바로 태운다 */
   summon(world, p, { force = true, instant = true } = {}) { return this.trySummon(world, p, { force, instant }); }
   cancelSummon(world, p) {
     if (this.state !== 'summoning' || this.seated) return;

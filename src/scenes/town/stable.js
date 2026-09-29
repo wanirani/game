@@ -574,12 +574,12 @@ export class StableScene extends ServiceScene {
     if (e.kind === 'owned') {
       const p = CS.tributePreview?.(st, e.id) ?? { cost: 0, useful: false };
       if (!p.useful) return { label: '더 바칠 공물이 없다', ok: false };
-      return gold >= p.cost ? { label: `공물 바치기 · ${fmt(p.cost)} G`, ok: true } : { label: `금화 부족 · ${fmt(p.cost)} G`, ok: false, color: '#ff8a7a' };
+      return gold >= p.cost ? { label: `공물 바치기 · ${fmt(p.cost)} G`, ok: true } : { label: `골드 부족 · ${fmt(p.cost)} G`, ok: false, color: '#ff8a7a' };
     }
     if (e.kind === 'shop') {
       if (CS.isOwned?.(st, e.id)) return { label: '함께하고 있다', ok: false };
       if ((st.progress?.chapter ?? 0) < e.row.chapter) return { label: e.row.lockNote, ok: false };
-      return gold >= e.row.price ? { label: `데려가기 · ${fmt(e.row.price)} G`, ok: true } : { label: `금화 부족 · ${fmt(e.row.price)} G`, ok: false, color: '#ff8a7a' };
+      return gold >= e.row.price ? { label: `데려가기 · ${fmt(e.row.price)} G`, ok: true } : { label: `골드 부족 · ${fmt(e.row.price)} G`, ok: false, color: '#ff8a7a' };
     }
     if (e.kind === 'egg') return e.egg.ready ? { label: '부화시키기', ok: true, color: '#ffe070' } : { label: '아직 따뜻하다…', ok: false };
     if (e.kind === 'quest') {

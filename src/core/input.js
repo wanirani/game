@@ -625,7 +625,7 @@ class Input {
     if (this.mode === 'pad') this._emitDevice(); else this.setMode('pad');
     const g = this.game;
     this._hotToast(`🎮 ${info.name} 연결됨`, '#c8e0ff', 2.4);
-    if (!info.standard) g?.toast?.('이 컨트롤러는 표준 배치가 아닙니다. 설정 › 조작에서 버튼을 지정해 주세요', '#ffd890', 4);
+    if (!info.standard) g?.toast?.('이 게임패드는 표준 배치가 아닙니다. 설정 › 조작에서 버튼을 지정해 주세요', '#ffd890', 4);
     const meta = g?.meta;
     if (meta && !meta.tips?.pad) {
       meta.tips = { ...(isObj(meta.tips) ? meta.tips : {}), pad: true };
@@ -647,7 +647,7 @@ class Input {
     this.stickL.x = this.stickL.y = this.stickL.mag = 0;
     this.stickR.x = this.stickR.y = this.stickR.mag = 0;
     const g = this.game;
-    this._hotToast('컨트롤러 연결이 끊어졌습니다', '#ffb0a0', 3);
+    this._hotToast('게임패드 연결이 끊어졌습니다', '#ffb0a0', 3);
     try { g?.autoPause?.(); } catch (e) { console.error(e); }
     haptics.reset();
     if (this.mode === 'pad') this.setMode(hasTouchScreen() || this._prevMode === 'touch' ? 'touch' : 'kb');

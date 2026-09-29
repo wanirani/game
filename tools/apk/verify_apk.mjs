@@ -151,7 +151,13 @@ check('head_inject: {{CONFIG}} · {{VERSION}} 자리표시', injectRaw.includes(
 check('head_inject: 자리표시는 한 번씩 (주석 안에 없음)', (injectRaw.match(/\{\{CONFIG\}\}/g) || []).length === 1 && (injectRaw.match(/\{\{VERSION\}\}/g) || []).length === 1);
 // AssetServer.injectIndex 와 같게 (Java String.replace = 모두 바꾸기)
 const inject = injectRaw.replaceAll('{{VERSION}}', 'verify').replaceAll('{{CONFIG}}', JSON.stringify(CFG).replace(/<\//g, '<\\/'));
-try { new Function(inject.replace(/^\s*<script>/, '').replace(/<\/script>\s*$/, '')); check('head_inject 스크립트 문법', true); } catch (e) { check('head_inject 스크립트 문법', false, e.message); }
+try { new Function(inject.replace(/^\s*<script>/, '').replace(/<\/script>[\s\S]*$/, '')); check('head_inject 스크립트 문법', true); } catch (e) { check('head_inject 스크립트 문법', false, e.message); }
+// CSP (PS-08): 조각 스크립트 뒤의 <meta http-equiv="Content-Security-Policy"> = 웹 index.html CSP − frame-ancestors (meta 로는 줄 수 없다)
+const cspOf = (s) => String(s || '').split(';').map((d) => d.trim().replace(/\s+/g, ' ')).filter((d) => d && !/^frame-ancestors\b/.test(d)).sort().join('; ');
+const metaCsp = /<meta http-equiv="Content-Security-Policy" content="([^"]+)">/i.exec(injectRaw);
+const tomlCsp = /Content-Security-Policy\s*=\s*"([^"]*script-src[^"]*)"/.exec(fs.readFileSync(path.join(ROOT, 'netlify.toml'), 'utf8'));
+check('head_inject: CSP meta 가 조각 스크립트 뒤에 있음 (그 뒤 스크립트는 \'self\' 파일만)', !!metaCsp && injectRaw.indexOf(metaCsp[0]) > injectRaw.lastIndexOf('</script>') && /script-src 'self'(;|$)/.test(metaCsp[1]));
+check('head_inject: CSP = 웹 CSP (netlify.toml, frame-ancestors 제외)', !!metaCsp && !!tomlCsp && cspOf(metaCsp[1]) === cspOf(tomlCsp[1]), metaCsp ? '' : 'meta 없음');
 
 // ── 3. 로컬 API 서버 + 자바 프록시 검사 ───────────────────────────────
 section('/api 프록시');
@@ -342,8 +348,10 @@ const bridgeStub = ({ insets, ime }) => {
     apiStash: (id, method, headers, body) => { window.__bnStash[id] = { method, headers, body }; return true; },
   };
 };
+// bypassCSP: 이 검증은 MainActivity.evaluateJavascript(뒤로 버튼·안전 영역·키보드)를 페이지 안 eval 로 흉내 내는데, 실제 WebView 의
+// evaluateJavascript 는 페이지 CSP 를 받지 않는다. CSP 자체는 아래 'CSP' 절에서 bypass 없이 따로 확인한다 (cspCheck)
 async function newCtx(opts, stub = {}) {
-  const ctx = await browser.newContext({ deviceScaleFactor: 2.625, isMobile: true, hasTouch: true, userAgent: UA, ...opts });
+  const ctx = await browser.newContext({ deviceScaleFactor: 2.625, isMobile: true, hasTouch: true, userAgent: UA, bypassCSP: true, ...opts });
   await ctx.addInitScript(bridgeStub, { insets: null, ime: { bottom: 0 }, ...stub });
   await ctx.route('**/*', handle);
   return ctx;
@@ -373,8 +381,40 @@ const canvasStats = (page) => page.evaluate(() => {
 });
 const frames = (page, n = 3) => page.evaluate((k) => new Promise((r) => { let i = 0; const f = () => (++i >= k ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); }), n);
 
+/** CSP 를 그대로 둔 채 (bypass 없이) 타이틀 → 스테이지 부팅, CSP 위반·오류가 없어야 한다 (PS-08) */
+async function cspCheck() {
+  section('CSP (bypass 없이)');
+  const ctx = await browser.newContext({ deviceScaleFactor: 2.625, isMobile: true, hasTouch: true, userAgent: UA, viewport: { width: 915, height: 412 } });
+  await ctx.addInitScript(bridgeStub, { insets: null, ime: { bottom: 0 } });
+  await ctx.addInitScript(() => {
+    window.__cspViolations = [];
+    document.addEventListener('securitypolicyviolation', (e) => window.__cspViolations.push(`${e.violatedDirective} ${e.blockedURI || ''}`.trim()));
+  });
+  await ctx.route('**/*', handle);
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', (e) => errs.push('PAGEERROR ' + e.message));
+  page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource|net::ERR_INTERNET_DISCONNECTED/.test(m.text())) errs.push('CONSOLE ' + m.text().slice(0, 300)); });
+  // page.waitForFunction 은 페이지 안에서 new Function 을 써서 CSP(unsafe-eval 없음)에 막힌다 → CDP 평가(문자열 식)로 기다린다
+  const until = async (expr, ms) => { const t0 = Date.now(); for (;;) { let v = false; try { v = await page.evaluate(expr); } catch { /* 이동 중 */ } if (v || Date.now() - t0 > ms) return !!v; await page.waitForTimeout(100); } };
+  await page.goto(START, { timeout: 60000, waitUntil: 'load' });
+  const title = await until("window.__game?.top?.name === 'title'", 45000);
+  const csp = await page.evaluate("(document.querySelector('meta[http-equiv=\"Content-Security-Policy\"]') || {}).content || ''");
+  await page.waitForTimeout(1000);
+  const v0 = await page.evaluate('window.__cspViolations'); // 이동하면 목록이 새로 시작하므로 타이틀 것을 먼저 읽는다
+  await page.goto(`${ORIGIN}/index.html?scene=stage&stage=s01${LITE ? '&lo=1' : ''}`, { timeout: 60000, waitUntil: 'load' });
+  const stage = await until('!!window.__game?.world?.player', 45000);
+  await page.waitForTimeout(1500);
+  const v = [...v0, ...(await page.evaluate('window.__cspViolations'))];
+  check('CSP 적용 상태로 타이틀 → 스테이지 부팅', title && stage && /script-src 'self'/.test(csp), `title=${title} stage=${stage}`);
+  check('CSP 위반 없음 (조각 스크립트·번들·글꼴·그림·/api)', v.length === 0, v.slice(0, 5).join(' | '));
+  check('CSP 페이지 오류 없음', errs.length === 0, errs.slice(0, 5).join(' | '));
+  await ctx.close();
+}
+
 let failed = false;
 try {
+  await cspCheck();
   section('부팅 · 브리지 (휴대폰 915×412)');
   const phone = await newCtx({ viewport: { width: 915, height: 412 }, serviceWorkers: 'allow' });
   const t0 = Date.now();

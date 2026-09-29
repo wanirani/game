@@ -60,6 +60,8 @@ AI_A.fleer = {
   update(e, world, dt) {
     const p = e.player;
     e.setAnim('fly');
+    // 가짜 벽 너머 숨은 방(s02 r3)에 둔 황금 박쥐: 벽이 드러나기 전에는 멈춰 기다린다 (먼저 깨어 달아나 버리지 않게)
+    if (e.state !== 'escape' && world.inUnrevealedFake?.(e)) { e.vx = 0; e.vy = 0; return; }
     e.twinkle -= dt;
     if (e.twinkle <= 0) { e.twinkle = 0.07; world.fx.emit('gold', e.cx + rand(-8, 8), e.cy + rand(-6, 6), { speed: 30 }); }
     if (e.state === 'escape') {

@@ -1,5 +1,5 @@
 // 옵션 › 조작의 하위 화면 — owner: PLAT-OPTIONS (platform §4.7 키 지정, §4.5 조작 안내, P-29 · MASTER_PLAN §1.4, §1.5 · companions §6)
-//  RemapPage('pad' | 'key')  컨트롤러 버튼 지정 / 키보드 키 지정: 12개 액션(controls.js REMAPPABLE). 줄을 고르면
+//  RemapPage('pad' | 'key')  게임패드 버튼 지정 / 키보드 키 지정: 12개 액션(controls.js REMAPPABLE). 줄을 고르면
 //                            "새 버튼을 누르세요… (3초, 취소: START)" → 다음 버튼 엣지(패드) 또는 e.code(키보드)를 잡아 input.remap().
 //                            다른 액션이 쓰던 값이면 서로 맞바꾸고 "‘대시’와 바꿨습니다" 토스트. START·Esc·Enter·방향은 input 이 거부한다.
 //                            아래 단추: 기본값 복원 · 아케이드/클래식 배치 · 차례대로 지정(비표준 패드용 마법사).
@@ -457,7 +457,7 @@ export class RemapPage {
   constructor(scene, dev) {
     this.sc = scene; this.game = scene.game;
     this.dev = dev === 'key' ? 'key' : 'pad';
-    this.title = this.dev === 'pad' ? '컨트롤러 버튼 지정' : '키보드 키 지정';
+    this.title = this.dev === 'pad' ? '게임패드 버튼 지정' : '키보드 키 지정';
     this.sel = 0; this.bsel = 0;
     this.scroll = new Scroll();
     this.cap = null; this.wiz = null; this.flash = {};
@@ -557,7 +557,7 @@ export class RemapPage {
     if (id === 'reset') {
       input.resetBindings(this.dev);
       saveSettings(g);
-      g.toast(this.dev === 'pad' ? '컨트롤러 배치를 기본값(아케이드)으로 되돌렸습니다' : '키보드 키를 기본값으로 되돌렸습니다', '#e8dcc8', 2.2);
+      g.toast(this.dev === 'pad' ? '게임패드 배치를 기본값(아케이드)으로 되돌렸습니다' : '키보드 키를 기본값으로 되돌렸습니다', '#e8dcc8', 2.2);
       audio.sfx('menu_ok');
       for (const a of REMAPPABLE) this.flash[a] = 1;
     } else if (id === 'arcade' || id === 'classic') {
@@ -639,18 +639,18 @@ export class RemapPage {
   status() {
     const m = input.mode;
     if (this.dev === 'key') {
-      if (m === 'pad') return { text: '컨트롤러로는 키보드 키를 지정할 수 없습니다. 키보드를 사용하세요', warn: true };
+      if (m === 'pad') return { text: '게임패드로는 키보드 키를 지정할 수 없습니다. 키보드를 사용하세요', warn: true };
       if (m === 'touch') return { text: '키보드가 연결되어 있을 때 쓸 수 있습니다. 줄을 누른 뒤 키보드 키를 누르세요', warn: true };
       return { text: '줄을 고르고 새 키를 누르세요. 첫 번째 키가 화면 안내에 표시됩니다', warn: false };
     }
     const info = input.padInfo;
     const preset = PRESET_NAMES[this.game.settings?.ctrlPreset] ?? PRESET_NAMES.arcade;
-    if (!info && !padConnected()) return { text: '연결된 컨트롤러가 없습니다. 컨트롤러의 아무 버튼이나 누르면 연결됩니다', warn: true };
-    const nonstd = info && info.standard === false ? ' · 표준 배치가 아닌 컨트롤러: 「차례대로 지정」을 권장합니다' : '';
+    if (!info && !padConnected()) return { text: '연결된 게임패드가 없습니다. 게임패드의 아무 버튼이나 누르면 연결됩니다', warn: true };
+    const nonstd = info && info.standard === false ? ' · 표준 배치가 아닌 게임패드: 「차례대로 지정」을 권장합니다' : '';
     return { text: `${info?.name ?? '게임패드'} · 지금 배치: ${preset}${nonstd}`, warn: !!nonstd };
   }
   hints() {
-    if (this.cap) return this.dev === 'pad' ? [[null, '', '컨트롤러 버튼을 누르세요 · 화면을 누르면 취소']] : [[null, '', '키보드 키를 누르세요 · 화면을 누르면 취소']];
+    if (this.cap) return this.dev === 'pad' ? [[null, '', '게임패드 버튼을 누르세요 · 화면을 누르면 취소']] : [[null, '', '키보드 키를 누르세요 · 화면을 누르면 취소']];
     if (input.mode === 'touch') return [[null, '', '줄을 누른 뒤 새 버튼을 누르세요 · 위아래로 밀면 더 보입니다']];
     return [['dpadV', '행동'], ['confirm', '지정'], ['cancel', '뒤로']];
   }

@@ -2,7 +2,7 @@
 // feel §7 (화면 번쩍임·각성 컷인·자동 달리기), companions §6 (조작 안내의 탈것·수호신), MASTER_PLAN §1.4 · §1.5 (설정 키와 줄 이름)
 //
 //  페이지 5개 (탭: 터치 · LB/RB · Q/E): 소리 · 화면 · 조작 · 터치 · 기타 — §1.5 표의 모든 줄 + 전체 화면(화면) + 기본값 복원(기타)
-//  하위 화면 (장면이 아님, options_controls.js): 컨트롤러 버튼 지정 › · 키보드 키 지정 › · 조작 안내 ›
+//  하위 화면 (장면이 아님, options_controls.js): 게임패드 버튼 지정 › · 키보드 키 지정 › · 조작 안내 ›
 //  버튼 배치 편집 › → touchpad.openEditor() (DOM 편집기; 열려 있는 동안 이 장면은 입력을 받지 않는다)
 //  - uiScale 장면: game.uiW × game.uiH 로 배치 (최소 720×400), 탭 대상은 ≥ 44 CSS px (줄·◀▶·탭·단추), ui.taps 에 등록
 //  - 입력은 메뉴 의미(input.bindings): 결정·취소·이전/다음 탭. 패드 START 는 설정을 닫는다. 휠·끌기·오른쪽 스틱으로 목록 스크롤
@@ -111,7 +111,7 @@ function buildRows(sc) {
         note: '화면에 표시할 버튼 모양입니다. 자동은 지금 쓰는 기기를 따릅니다.',
       },
       {
-        id: 'ctrlPreset', label: '컨트롤러 배치', type: 'enum',
+        id: 'ctrlPreset', label: '게임패드 배치', type: 'enum',
         opts: () => {
           const o = [['arcade', '아케이드'], ['classic', '클래식']];
           if (sc.s.ctrlPreset === 'custom' || sc.stash) o.push(['custom', '사용자 지정']);
@@ -119,7 +119,7 @@ function buildRows(sc) {
         },
         set: (v) => sc.setPreset(v),
         note: (s) => (s.ctrlPreset === 'classic' ? `클래식: ${presetSummary('classic')}`
-          : s.ctrlPreset === 'custom' ? '「컨트롤러 버튼 지정」에서 바꾼 배치입니다.'
+          : s.ctrlPreset === 'custom' ? '「게임패드 버튼 지정」에서 바꾼 배치입니다.'
             : `아케이드 (추천): ${presetSummary('arcade')}`),
       },
       {
@@ -127,15 +127,15 @@ function buildRows(sc) {
         note: (s) => {
           const east = (input.confirmPos?.() ?? 'south') === 'east';
           const now = east ? '오른쪽 버튼이 결정, 아래 버튼이 취소' : '아래 버튼이 결정, 오른쪽 버튼이 취소';
-          return s.ctrlConfirm === 'auto' ? `자동: 지금은 ${now}입니다 (Nintendo 컨트롤러는 오른쪽). 메뉴에서만 적용됩니다.` : `메뉴에서 ${now}입니다. 게임 조작은 바뀌지 않습니다.`;
+          return s.ctrlConfirm === 'auto' ? `자동: 지금은 ${now}입니다 (Nintendo 게임패드는 오른쪽). 메뉴에서만 적용됩니다.` : `메뉴에서 ${now}입니다. 게임 조작은 바뀌지 않습니다.`;
         },
       },
-      { id: 'padRemap', label: '컨트롤러 버튼 지정', type: 'link', value: () => PRESET_NAMES[sc.s.ctrlPreset] ?? '아케이드', run: () => sc.openSub('padRemap'), note: '행동마다 컨트롤러 버튼을 바꿉니다. 이미 쓰는 버튼을 고르면 두 행동의 버튼이 서로 바뀝니다.' },
+      { id: 'padRemap', label: '게임패드 버튼 지정', type: 'link', value: () => PRESET_NAMES[sc.s.ctrlPreset] ?? '아케이드', run: () => sc.openSub('padRemap'), note: '행동마다 게임패드 버튼을 바꿉니다. 이미 쓰는 버튼을 고르면 두 행동의 버튼이 서로 바뀝니다.' },
       { id: 'keyRemap', label: '키보드 키 지정', type: 'link', value: () => (sc.s.keyMap ? '사용자 지정' : '기본'), run: () => sc.openSub('keyRemap'), note: '행동마다 키보드 키를 바꿉니다. 이미 쓰는 키를 고르면 서로 바뀝니다.' },
       { id: 'ctrlDeadzone', label: '스틱 데드존', type: 'slider', min: 0.1, max: 0.4, step: 0.05, fmt: pct, note: '스틱을 살짝 기울였을 때 무시하는 범위입니다. 캐릭터가 저절로 움직이면 올리세요.', live: 'stick' },
-      { id: 'ctrlRumble', label: '컨트롤러 진동 세기', type: 'slider', min: 0, max: 1, step: 0.1, fmt: offPct, note: '타격·피격 때 컨트롤러가 떨리는 세기입니다.' },
+      { id: 'ctrlRumble', label: '게임패드 진동 세기', type: 'slider', min: 0, max: 1, step: 0.1, fmt: offPct, note: '타격·피격 때 게임패드가 떨리는 세기입니다.' },
       { id: 'autoSprint', label: '자동 달리기', type: 'bool', note: '같은 방향으로 계속 달리면 두 번 누르지 않아도 질주합니다.' },
-      { id: 'guide', label: '조작 안내', type: 'link', value: () => '', run: () => sc.openSub('guide'), note: '지금 배치로 만든 키보드·컨트롤러·터치 조작표를 봅니다 (탈것·수호신·각성기 포함).' },
+      { id: 'guide', label: '조작 안내', type: 'link', value: () => '', run: () => sc.openSub('guide'), note: '지금 배치로 만든 키보드·게임패드·터치 조작표를 봅니다 (탈것·수호신·각성기 포함).' },
     ],
     touch: [
       { id: 'touchOpacity', label: '투명도', type: 'slider', min: 0.1, max: 1, step: 0.05, fmt: pct, note: '화면 버튼이 보이는 정도입니다. 누르고 있는 버튼은 늘 또렷하게 보입니다.' },
@@ -227,7 +227,7 @@ export class OptionsScene extends Scene {
     this.nav = new Nav();
     this.sub = null; this.modal = null; this.flash = {}; this.shakeDemo = 0; this.saveT = 0;
     this.editing = false; this.closed = false; this.stash = null; this.follow = true; this.pageAnim = 1; this.L = null; this.geo = [];
-    // 표준 배치가 아닌 컨트롤러 (platform §4.2): 조작 페이지의 「컨트롤러 버튼 지정」에서 시작
+    // 표준 배치가 아닌 컨트롤러 (platform §4.2): 조작 페이지의 「게임패드 버튼 지정」에서 시작
     if (!sub && page == null && input.padInfo && input.padInfo.standard === false && this.s.ctrlPreset !== 'custom') {
       this.page = 2;
       this.sel[2] = Math.max(0, this.rows(2).findIndex((r) => r.id === 'padRemap'));

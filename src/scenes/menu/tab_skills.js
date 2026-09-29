@@ -1,5 +1,7 @@
 // 스킬 탭: 캐릭터별 스킬 트리(3계열 × 6단, 전직 계열은 5·6단에서 두 갈래) · 상세(현재/다음 레벨) · 습득/강화(SP) · 스킬 슬롯(1·2페이지 S/D) 등록
 // 낮은 화면(휴대폰 UI 배율)에서는 트리가 세로로 스크롤된다 (줄 높이 터치 46 · 그 밖 36 이상). 스킬을 길게 누르면 행동 메뉴.
+// 상세 칸의 효과 설명(현재 · 다음 레벨)은 넘치면 세로로 스크롤된다 (끌기 · 휠 · 패드 오른쪽 스틱). 낮은 칸(휴대폰)은 머리를 줄이고
+// 필요 조건을 설명 아래로 보내 두 효과가 스크롤 없이 보이게 한다 (감사 RU-01).
 // 습득·강화 뒤에는 m.changed() → player.refreshStats() 로 패시브가 바로 능력치에 반영된다.
 import { text, FONT } from '../../core/ui.js';
 import { audio } from '../../core/audio.js';
@@ -10,7 +12,7 @@ import { drawSkillGlyph } from '../../render/hud.js';
 import * as SkillD from '../../data/skills.js';
 import { Tab } from './base.js';
 import {
-  PAL, frame, heading, divider, brackets, glow, glowOval, gbutton, pill, para, diamond, glyph, Popup, ellipsize, keycap, rr,
+  PAL, frame, heading, divider, brackets, glow, glowOval, gbutton, pill, para, diamond, glyph, Popup, ellipsize, measure, keycap, rr,
   Scroller, scrollbar, clipBegin, clipEnd, vGrad, fillGradRect,
 } from './common.js';
 import * as D from './access.js';
@@ -41,6 +43,7 @@ export class SkillsTab extends Tab {
     this.nodeRects = []; this.slotRects = []; this.btnRects = [];
     this.pop = new Map(); // 습득 연출 {id: t}
     this.sc = new Scroller(); this.treeRect = null;
+    this.dsc = new Scroller(); this.detailRect = null; this.dKey = null;   // 상세 설명 스크롤
   }
   get tree() { return D.TREE(this.hero.charId); }
   get branches() { return this.tree?.branches ?? []; }
@@ -76,8 +79,8 @@ export class SkillsTab extends Tab {
     const lv = this.lv(id), chk = this.check(id);
     const items = [];
     const cost = sk.spCost ?? 1;
-    if (lv < (sk.maxLv ?? 5)) items.push({ label: lv ? '레벨 올리기' : '배우기', sub: `SP ${cost}`, disabled: !chk.ok, reason: chk.reason, run: () => this.learn(id) });
-    if (D.isActive(sk) && lv > 0) items.push({ label: '슬롯에 등록', sub: this.hero.slots?.includes(id) ? slotLabel(this.hero.slots.indexOf(id)) : '', run: () => this.slotMenu(id) });
+    if (lv < (sk.maxLv ?? 5)) items.push({ label: lv ? '레벨 업' : '배우기', sub: `SP ${cost}`, disabled: !chk.ok, reason: chk.reason, run: () => this.learn(id) });
+    if (D.isActive(sk) && lv > 0) items.push({ label: '슬롯 등록', sub: this.hero.slots?.includes(id) ? slotLabel(this.hero.slots.indexOf(id)) : '', run: () => this.slotMenu(id) });
     if (!items.length) { audio.sfx('menu_cancel'); this.m.notify('최고 레벨입니다', PAL.dim); return; }
     const r = this.nodeRects.find((n) => n.id === id);
     this.m.openModal(new Popup({ title: sk.name, items, x: r ? r.x + r.w + 6 : null, y: r ? r.y - 10 : null, w: 210 }));
@@ -102,6 +105,7 @@ export class SkillsTab extends Tab {
     for (const [k, v] of this.pop) { const nv = v - dt * 1.6; if (nv <= 0) this.pop.delete(k); else this.pop.set(k, nv); }
     if (!this.tree) { if (focused && nav.up) this.m.focusTabs(); else if (focused && nav.cancel) this.m.close(); return; }
     this.sc.update(dt, this.treeRect, ges);
+    if (this.detailRect) this.dsc.update(dt, this.detailRect, ges);
     // 길게 누르기 → 그 스킬의 행동 메뉴 (§5.6)
     if (ges.longPress) {
       for (const n of this.nodeRects) if (ges.held(n)) { this.m.focus = 'content'; this.sub = 'tree'; this.col = n.c; this.row = n.r; this.nodeMenu(n.id); return; }
@@ -143,7 +147,7 @@ export class SkillsTab extends Tab {
   }
   hints() {
     if (this.sub === 'slots') return [['←→', '슬롯'], ['Z', '스킬 넣기', '슬롯을 터치해 스킬을 넣으세요'], ['X', '트리로']];
-    return [['↑↓←→', '스킬'], ['Z', '배우기·강화', '스킬을 길게 누르거나 한 번 더 터치하면 배우기·등록'], ['A', '슬롯 등록']];
+    return [['↑↓←→', '스킬'], ['Z', '배우기·레벨 업', '스킬을 길게 누르거나 한 번 더 터치하면 배우기·레벨 업·슬롯 등록'], ['A', '슬롯 등록']];
   }
 
   render(ctx, A) {
@@ -283,7 +287,10 @@ export class SkillsTab extends Tab {
       if (!drawGlyph(ctx, k % 2 ? 'skill2' : 'skill1', cx - 27, cy + 8, 16)) keycap(ctx, k % 2 ? 'S2' : 'S1', cx - 27, cy + 8, { h: 16 });
       text(ctx, k < 2 ? 'Ⅰ' : 'Ⅱ', cx + 18, cy - 12, { size: 11, weight: 900, family: FONT.num, color: PAL.gold });
       if (nameW >= 30) {
-        text(ctx, ellipsize(ctx, sk ? sk.name : '비어 있음', nameW, 12, 700), cx + 26, cy + 4, { size: 12, weight: 700, color: sk ? PAL.bone : PAL.faint, ow: 2 });
+        // 좁은 칸(휴대폰 740×360)에서는 '비어 …' 로 잘리지 않게 더 짧은 말을 고르고, 스킬 이름은 한 단계 작은 글자로 (감사 RU-02)
+        const empty = ['비어 있음', '빈 칸', '—'].find((s) => measure(ctx, s, 12, 700) <= nameW) ?? '—';
+        const fs = sk && measure(ctx, sk.name, 12, 700) > nameW ? 11 : 12;
+        text(ctx, sk ? ellipsize(ctx, sk.name, nameW, fs, 700) : empty, cx + 26, cy + 4, { size: fs, weight: 700, color: sk ? PAL.bone : PAL.faint, ow: 2 });
         if (sk) text(ctx, `Lv ${this.lv(id)}`, cx + 26, cy + 19, { size: 10, weight: 700, family: FONT.num, color: PAL.dim });
       }
       if (sel) brackets(ctx, cx - 22, cy - 22, 44, 44, t, focused ? PAL.goldHi : PAL.goldMid);
@@ -292,53 +299,76 @@ export class SkillsTab extends Tab {
 
   drawDetail(ctx, x, y, w, h) {
     frame(ctx, x, y, w, h);
-    this.btnRects.length = 0;
+    this.btnRects.length = 0; this.detailRect = null;
     const id = this.selId, sk = id ? D.SKILLS()[id] : null, t = this.t;
     if (!sk) { text(ctx, this.sub === 'slots' ? '비어 있는 슬롯입니다' : '스킬을 고르세요', x + w / 2, y + h / 2, { size: 14, align: 'center', color: PAL.faint }); return; }
     const lv = this.lv(id), max = sk.maxLv ?? 5;
     const bc = sk.color && sk.color.startsWith('#') ? sk.color : PAL.gold;
+    // 낮은 칸 (휴대폰 844×390 → 355, 740×360 → 320): 머리를 줄이고 필요 조건을 설명 아래(스크롤 안)로 보낸다
+    const compact = h < 400;
     // 머리
-    glow(ctx, x + 50, y + 52, 50, bc, 0.3 + 0.08 * Math.sin(t * 3));
-    ctx.beginPath(); ctx.arc(x + 50, y + 52, 30, 0, TAU); ctx.fillStyle = '#0a060c'; ctx.fill();
-    ctx.save(); ctx.beginPath(); ctx.arc(x + 50, y + 52, 28, 0, TAU); ctx.clip(); ctx.globalAlpha *= lv ? 1 : 0.55;
-    try { drawSkillGlyph(ctx, sk, x + 50, y + 52, 60); } catch (e) { /* 무시 */ }
+    const IR = compact ? 22 : 30, icx = x + (compact ? 36 : 50), icy = y + (compact ? 40 : 52);
+    glow(ctx, icx, icy, IR + 20, bc, 0.3 + 0.08 * Math.sin(t * 3));
+    ctx.beginPath(); ctx.arc(icx, icy, IR, 0, TAU); ctx.fillStyle = '#0a060c'; ctx.fill();
+    ctx.save(); ctx.beginPath(); ctx.arc(icx, icy, IR - 2, 0, TAU); ctx.clip(); ctx.globalAlpha *= lv ? 1 : 0.55;
+    try { drawSkillGlyph(ctx, sk, icx, icy, IR * 2); } catch (e) { /* 무시 */ }
     ctx.restore();
-    ctx.strokeStyle = PAL.gold; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x + 50, y + 52, 30, 0, TAU); ctx.stroke();
-    const tx = x + 94;
-    text(ctx, ellipsize(ctx, sk.name, w - 104, 18, 800, FONT.title), tx, y + 42, { size: 18, weight: 800, family: FONT.title, color: PAL.bone, ow: 3 });
+    ctx.strokeStyle = PAL.gold; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(icx, icy, IR, 0, TAU); ctx.stroke();
+    const tx = x + (compact ? 68 : 94), ns = compact ? 16 : 18;
+    text(ctx, ellipsize(ctx, sk.name, x + w - 10 - tx, ns, 800, FONT.title), tx, y + (compact ? 30 : 42), { size: ns, weight: 800, family: FONT.title, color: PAL.bone, ow: 3 });
     let px = tx;
-    px += pill(ctx, D.isActive(sk) ? '액티브' : '패시브', px, y + 52, { color: D.isActive(sk) ? '#ffb070' : '#9ac8ff', size: 11, h: 18 }) + 6;
-    text(ctx, `Lv ${lv} / ${max}`, px, y + 66, { size: 13, weight: 800, family: FONT.num, color: lv ? PAL.goldHi : PAL.dim });
+    const py = y + (compact ? 38 : 52);
+    px += pill(ctx, D.isActive(sk) ? '액티브' : '패시브', px, py, { color: D.isActive(sk) ? '#ffb070' : '#9ac8ff', size: 11, h: 18 }) + 6;
+    text(ctx, `Lv ${lv} / ${max}`, px, py + 14, { size: 13, weight: 800, family: FONT.num, color: lv ? PAL.goldHi : PAL.dim });
     let cy = y + 96;
-    if (D.isActive(sk)) { text(ctx, `MP ${sk.cost ?? 0}  ·  재사용 ${sk.cd ?? 0}초`, x + 18, cy, { size: 12, weight: 700, color: '#8ac8ff' }); cy += 8; }
-    divider(ctx, x + 14, cy + 4, w - 28);
-    cy += 26;
-    // 현재 / 다음
+    if (compact) {
+      if (D.isActive(sk)) text(ctx, ellipsize(ctx, `MP ${sk.cost ?? 0}  ·  재사용 ${sk.cd ?? 0}초`, x + w - 10 - tx, 11, 700), tx, y + 72, { size: 11, weight: 700, color: '#8ac8ff' });
+      cy = y + 80;
+      divider(ctx, x + 14, cy, w - 28);
+      cy += 6;
+    } else {
+      if (D.isActive(sk)) { text(ctx, `MP ${sk.cost ?? 0}  ·  재사용 ${sk.cd ?? 0}초`, x + 18, cy, { size: 12, weight: 700, color: '#8ac8ff' }); cy += 8; }
+      divider(ctx, x + 14, cy + 4, w - 28);
+      cy += 10;
+    }
+    // 현재 / 다음 — 설명 칸 (넘치면 세로 스크롤)
     const btnH = input.touchMode ? 44 : 38, foot = y + h - btnH - 18;
     const reqs = D.reqsOf(this.hero, sk);
     const needLv = (sk.reqLevel ?? 1) + lv * 2;
     const reqList = [{ text: `캐릭터 레벨 ${needLv}`, ok: this.hero.level >= needLv }, ...reqs.filter((r) => !r.text.startsWith('캐릭터 레벨')), { text: `스킬 포인트 ${sk.spCost ?? 1}`, ok: (this.hero.sp ?? 0) >= (sk.spCost ?? 1) }];
-    const reqH = lv < max ? 24 + reqList.length * 18 : 0;
-    const txtBottom = foot - reqH - 6;
+    const pinReq = lv < max && !compact;   // 넓은 칸: 필요 조건은 버튼 위에 고정 (예전 배치)
+    const reqH = pinReq ? 24 + reqList.length * 18 : 0;
+    const BR = { x: x + 6, y: cy, w: w - 12, h: Math.max(40, foot - reqH - 2 - cy) };
+    this.detailRect = BR;
+    const key = `${id}|${lv}`;
+    if (key !== this.dKey) { this.dKey = key; this.dsc.reset(); }
+    const ts = compact ? 12 : 13, lh = compact ? 1.45 : 1.5;
+    const y00 = BR.y + (compact ? 16 : 20);
+    let by = y00 - this.dsc.y;
+    clipBegin(ctx, BR);
     const sec = (title, str, col) => {
-      if (cy > txtBottom - 20) return;
-      text(ctx, title, x + 18, cy, { size: 12, weight: 800, color: col });
-      cy += 18;
-      cy += para(ctx, str, x + 18, cy, w - 36, { size: 13, color: PAL.text, lh: 1.5, max: Math.max(1, Math.floor((txtBottom - cy) / 19.5)) }) + 8;
+      text(ctx, title, x + 18, by, { size: 12, weight: 800, color: col });
+      by += compact ? 16 : 18;
+      by += para(ctx, str, x + 18, by, w - 36, { size: ts, color: PAL.text, lh }) + (compact ? 6 : 8);
     };
     if (lv > 0) sec(`현재 효과 · Lv ${lv}`, D.skillDescOf(id, lv), PAL.gold);
     if (lv < max) sec(lv ? `다음 레벨 · Lv ${lv + 1}` : '습득 시 효과 · Lv 1', D.skillDescOf(id, lv + 1), lv ? PAL.good : '#ffb070');
     else sec('최고 레벨 달성', '더 이상 올릴 수 없습니다.', PAL.goldHi);
-    // 조건
-    if (lv < max) {
-      let ry = foot - reqH + 12;
+    // 조건: 낮은 칸에서는 설명 아래로 (스크롤 안)
+    const drawReqs = (ry, step) => {
       text(ctx, '필요 조건', x + 18, ry, { size: 12, weight: 800, color: PAL.dim });
       for (const r of reqList) {
-        ry += 18;
+        ry += step;
         glyph(ctx, r.ok ? 'check' : 'cross', x + 26, ry - 4, 11, r.ok ? PAL.good : PAL.bad, 2);
-        text(ctx, r.text, x + 38, ry, { size: 12, weight: 600, color: r.ok ? PAL.text : '#e89090' });
+        text(ctx, ellipsize(ctx, r.text, w - 50, 12, 600), x + 38, ry, { size: 12, weight: 600, color: r.ok ? PAL.text : '#e89090' });
       }
-    }
+      return ry;
+    };
+    if (lv < max && compact) by = drawReqs(by + 4, 17) + 12;
+    clipEnd(ctx, BR, this.dsc, 'rgba(12,6,16,0.95)');
+    this.dsc.setMax(by + this.dsc.y - (compact ? 6 : 8) - BR.y - BR.h + 4);
+    if (this.dsc.max > 0) scrollbar(ctx, x + w - 8, BR.y + 2, BR.h - 4, this.dsc, BR.h);
+    if (pinReq) drawReqs(foot - reqH + 12, 18);
     // 버튼
     const chk = lv < max ? this.check(id) : { ok: false, reason: '최고 레벨' };
     const acts = [];
@@ -348,7 +378,9 @@ export class SkillsTab extends Tab {
     acts.forEach((a, k) => {
       const r = { x: x + 14 + k * (bw + 8), y: y + h - btnH - 12, w: bw, h: btnH, run: a.run };
       if (!a.disabled) this.btnRects.push(this.m.ges.zone(r, 'primary', { src: 'skills.act' }));
-      gbutton(ctx, r, a.label, { hot: k === 0 && !a.disabled, disabled: a.disabled, size: 14, t, sub: k === 0 && lv < max ? `SP ${sk.spCost ?? 1}` : null });
+      // 낮은 칸에서는 필요 조건이 스크롤 아래에 있을 수 있으니, 막힌 이유를 버튼에 바로 적는다
+      const why = compact && a.disabled && chk.reason ? ellipsize(ctx, chk.reason, bw - 12, 11, 600) : null;
+      gbutton(ctx, r, a.label, { hot: k === 0 && !a.disabled, disabled: a.disabled, size: 14, t, sub: k === 0 && lv < max ? why ?? `SP ${sk.spCost ?? 1}` : null });
     });
   }
 }

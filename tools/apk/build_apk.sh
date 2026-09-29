@@ -7,6 +7,11 @@
 #    tools/apk/build_apk.sh             빌드 → dist/BloodNocturne.apk (+ 서명/정렬/권한/크기/내용물 검증)
 #    tools/apk/build_apk.sh --verify    빌드 후 헤드리스 부팅 검증(tools/apk/verify_apk.mjs)까지 실행
 #    tools/apk/build_apk.sh --verify-only   이미 만든 APK 로 검증만
+#    tools/apk/build_apk.sh --check-key     서명 키 점검만 (빌드·서명 없음): 키스토어·비밀번호 파일이 있고, 인증서가
+#                                           tools/apk/release_cert.sha256 에 적힌 배포 인증서와 같은지
+#    tools/apk/build_apk.sh --new-key       키스토어·비밀번호 파일이 둘 다 없을 때만 새 릴리스 키를 만든다 (처음 배포할 때만!
+#                                           배포 인증서가 적혀 있으면 거부 — 새 키 APK 는 설치된 앱을 업데이트하지 못한다)
+#    옵션은 함께 쓸 수 있다 (예: --new-key --verify)
 #
 #  필요한 것: bash, curl, unzip, zip, python3(+Pillow), JDK 17+ (java/javac/jar/keytool), node(--verify 시)
 #
@@ -22,9 +27,13 @@
 #    dist/BloodNocturne.apk           서명(v2+v3)·zipalign 된 릴리스 APK (dist/ 는 git 무시)
 #    dist/apk-build/                  중간 산출물 (매 빌드마다 새로 만든다)
 #
-#  서명 키 (git 에 올리지 않음 — .gitignore 에 등록됨)
-#    tools/android/release.keystore       처음 빌드할 때 자동 생성 (PKCS12, RSA 4096, 별칭 bloodnocturne)
-#    tools/android/keystore.properties    자동 생성된 비밀번호 (storePassword/keyPassword/keyAlias/storeFile)
+#  서명 키 (git 에 올리지 않음 — .gitignore 에 등록됨). 백업·복구·분실 시 대처: docs/RELEASE.md
+#    tools/android/release.keystore       릴리스 키스토어 (PKCS12, RSA 4096, 별칭 bloodnocturne)
+#    tools/android/keystore.properties    비밀번호 파일 (storePassword/keyPassword/keyAlias/storeFile)
+#    tools/apk/release_cert.sha256        배포 인증서 SHA-256 지문 (공개 값, git 에 올린다)
+#    · 두 파일이 없으면 빌드는 실패한다 (예전처럼 조용히 새 키를 만들지 않는다). 백업에서 복구하거나,
+#      정말 처음 배포하는 경우에만 --new-key 로 만든다 (그때 release_cert.sha256 이 없으면 새 지문을 적는다).
+#    · 키스토어 인증서(서명 전)와 서명한 APK 인증서(서명 후)가 release_cert.sha256 과 다르면 빌드 실패.
 #    ※ 이 두 파일을 잃어버리면 이미 설치된 앱 위에 업데이트 설치가 불가능하다(삭제 후 재설치 → 세이브 소실).
 #      반드시 안전한 곳에 백업할 것.
 #
@@ -66,6 +75,8 @@ B="$OUT/apk-build"
 APK="$OUT/BloodNocturne.apk"
 KS="${KEYSTORE:-$ROOT/tools/android/release.keystore}"
 KS_PROPS="${KEYSTORE_PROPS:-$ROOT/tools/android/keystore.properties}"
+# 배포 인증서 지문 (공개 값). RELEASE_CERT_FILE 로 바꿀 수 있다
+CERT_FILE="${RELEASE_CERT_FILE:-$ROOT/tools/apk/release_cert.sha256}"
 # APK 에 넣을 웹 게임 파일: 웹 배포 빌드 결과 (sw.js · downloads/ · _redirects 는 pack_web.py 가 뺀다)
 WEB_DIR="${WEB_DIR:-$ROOT/dist/web}"
 BUDGET_MB="${APK_BUDGET_MB:-45}"
@@ -79,13 +90,17 @@ say() { printf '\033[1;31m▶\033[0m %s\n' "$*"; }
 die() { printf '\033[1;41m 오류 \033[0m %s\n' "$*" >&2; exit 1; }
 
 MODE="build"
-case "${1:-}" in
-  "") ;;
-  --verify) MODE="build+verify" ;;
-  --verify-only) MODE="verify" ;;
-  -h|--help) sed -n '2,/^set -euo/p' "$0" | sed '$d'; exit 0 ;;
-  *) die "알 수 없는 옵션: $1 (--verify, --verify-only, --help)" ;;
-esac
+NEW_KEY=0
+for arg in "$@"; do
+  case "$arg" in
+    --verify) MODE="build+verify" ;;
+    --verify-only) MODE="verify" ;;
+    --check-key) MODE="check-key" ;;
+    --new-key|--new-release-key) NEW_KEY=1 ;;
+    -h|--help) sed -n '2,/^set -euo/p' "$0" | sed '$d'; exit 0 ;;
+    *) die "알 수 없는 옵션: $arg (--verify, --verify-only, --check-key, --new-key, --help)" ;;
+  esac
+done
 
 run_verify() {
   [[ -f "$APK" ]] || die "$APK 가 없습니다. 먼저 빌드하세요."
@@ -95,8 +110,12 @@ run_verify() {
 if [[ "$MODE" == "verify" ]]; then run_verify; exit 0; fi
 
 # ─── 1. 도구 확인 · SDK 설치 ─────────────────────────────────────────────────
-for t in java javac jar keytool python3 zip unzip curl; do command -v "$t" >/dev/null || die "'$t' 명령이 필요합니다"; done
-python3 -c 'import PIL' 2>/dev/null || die "python3 Pillow 가 필요합니다 (pip install pillow)"
+if [[ "$MODE" == "check-key" ]]; then
+  command -v keytool >/dev/null || die "'keytool' 명령이 필요합니다"
+else
+  for t in java javac jar keytool python3 zip unzip curl; do command -v "$t" >/dev/null || die "'$t' 명령이 필요합니다"; done
+  python3 -c 'import PIL' 2>/dev/null || die "python3 Pillow 가 필요합니다 (pip install pillow)"
+fi
 
 ensure_sdk() {
   if [[ -x "$BT/aapt2" && -x "$BT/d8" && -x "$BT/zipalign" && -x "$BT/apksigner" && -f "$BT/core-lambda-stubs.jar" && -f "$ANDROID_JAR" ]]; then return; fi
@@ -117,18 +136,33 @@ ensure_sdk() {
     || { tail -20 "$OUT/sdkmanager.log"; die "sdkmanager 설치 실패 (로그: $OUT/sdkmanager.log)"; }
   [[ -x "$BT/aapt2" && -f "$ANDROID_JAR" ]] || die "SDK 설치 후에도 build-tools/platform 을 찾을 수 없습니다"
 }
-ensure_sdk
+[[ "$MODE" == "check-key" ]] || ensure_sdk
 
-# ─── 2. 서명 키 (없으면 생성) ────────────────────────────────────────────────
+# ─── 2. 서명 키 (복구된 키만 쓴다. 새 키는 --new-key 일 때만) ──────────────────
 prop() { sed -n "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*//p" "$KS_PROPS" | head -1 | tr -d '\r'; }
+# 인증서 지문 정규화: 소문자 16진수 64자 (콜론·공백 제거)
+norm_fp() { tr -d ': \t\r' | tr 'A-F' 'a-f'; }
+# 배포 인증서 지문 (주석·빈 줄 제외 첫 줄) — 없으면 빈 값
+expected_cert() { [[ -f "$CERT_FILE" ]] && grep -v '^[[:space:]]*#' "$CERT_FILE" | grep -m1 -E '[0-9A-Fa-f]' | norm_fp || true; }
 
 ensure_keystore() {
   if [[ -f "$KS" ]]; then
-    [[ -f "$KS_PROPS" ]] || die "키스토어($KS)는 있는데 비밀번호 파일($KS_PROPS)이 없습니다"
-    return
+    [[ -f "$KS_PROPS" ]] || die "키스토어($KS)는 있는데 비밀번호 파일($KS_PROPS)이 없습니다. 백업에서 복구하세요 (docs/RELEASE.md)"
+    if (( NEW_KEY )); then die "--new-key 인데 키스토어($KS)가 이미 있습니다. 기존 키를 덮어쓰지 않습니다"; fi
+    return 0
   fi
-  [[ -f "$KS_PROPS" ]] && die "비밀번호 파일은 있는데 키스토어($KS)가 없습니다. 백업에서 복구하세요 (새 키를 만들면 기존 설치본 업데이트 불가)"
-  say "릴리스 키스토어 생성 → $KS"
+  [[ -f "$KS_PROPS" ]] && die "비밀번호 파일은 있는데 키스토어($KS)가 없습니다. 백업에서 복구하세요 (새 키를 만들면 기존 설치본 업데이트 불가, docs/RELEASE.md)"
+  if (( ! NEW_KEY )); then
+    die "릴리스 키스토어가 없습니다: ${KS#$ROOT/} · ${KS_PROPS#$ROOT/}
+       새 키를 만들지 않습니다 — 새 키로 서명한 APK 는 이미 설치된 앱을 업데이트하지 못합니다(삭제·재설치 → 기기 세이브 소실).
+       백업(오프라인 사본·비밀번호 관리자)에서 두 파일을 제자리에 복구한 뒤 다시 실행하세요: docs/RELEASE.md '키 복구'.
+       정말 처음 배포하는 경우에만: tools/apk/build_apk.sh --new-key"
+  fi
+  local want; want="$(expected_cert)"
+  [[ -z "$want" ]] || die "--new-key 거부: 배포 인증서가 이미 적혀 있습니다 (${CERT_FILE#$ROOT/}).
+       새 키 APK 는 설치된 앱을 업데이트하지 못합니다. 키를 잃어 서명 키를 바꾸기로 했다면 docs/RELEASE.md '키를 잃었을 때'를 따라
+       사용자 안내 후 ${CERT_FILE#$ROOT/} 를 지우고 다시 실행하세요"
+  say "릴리스 키스토어 생성 (--new-key) → $KS"
   mkdir -p "$(dirname "$KS")"
   local pw
   pw="$(python3 -c 'import secrets,string;a=string.ascii_letters+string.digits;print("".join(secrets.choice(a) for _ in range(32)))')"
@@ -152,6 +186,24 @@ export BN_KS_PASS BN_KEY_PASS
 BN_KS_PASS="$(prop storePassword)"
 BN_KEY_PASS="$(prop keyPassword)"; BN_KEY_PASS="${BN_KEY_PASS:-$BN_KS_PASS}"
 [[ -n "$BN_KS_PASS" ]] || die "$KS_PROPS 에 storePassword 가 없습니다"
+
+# 키스토어 인증서 지문 (비밀번호는 환경 변수로만 넘기고, 출력에서는 SHA256 줄만 읽는다)
+KS_CERT="$(keytool -list -v -keystore "$KS" -alias "$KS_ALIAS" -storepass:env BN_KS_PASS 2>/dev/null \
+  | sed -n 's/^[[:space:]]*SHA256:[[:space:]]*//p' | head -1 | norm_fp || true)"
+[[ "$KS_CERT" =~ ^[0-9a-f]{64}$ ]] || die "키스토어에서 별칭 '$KS_ALIAS' 의 인증서를 읽지 못했습니다 (비밀번호·별칭 확인: ${KS_PROPS#$ROOT/})"
+WANT_CERT="$(expected_cert)"
+if [[ -n "$WANT_CERT" ]]; then
+  [[ "$WANT_CERT" =~ ^[0-9a-f]{64}$ ]] || die "${CERT_FILE#$ROOT/} 의 지문 형식이 틀렸습니다 (16진수 64자)"
+  [[ "$KS_CERT" == "$WANT_CERT" ]] || die "키스토어 인증서가 배포 인증서와 다릅니다 — 이 키로 서명한 APK 는 설치된 앱을 업데이트하지 못합니다.
+       키스토어 ${KS_CERT:0:16}… ≠ 배포 ${WANT_CERT:0:16}… (${CERT_FILE#$ROOT/}). 백업에서 원래 키를 복구하세요 (docs/RELEASE.md)"
+  say "서명 키 확인: 인증서 SHA-256 ${KS_CERT:0:16}… = 배포 인증서"
+else
+  printf '\033[1;33m  경고\033[0m 배포 인증서 지문 파일이 없습니다 (%s) — 이번 서명 인증서를 적습니다. git 에 올리세요\n' "${CERT_FILE#$ROOT/}"
+fi
+if [[ "$MODE" == "check-key" ]]; then
+  say "서명 키 점검 끝 (빌드·서명 없음): ${KS#$ROOT/} · 별칭 $KS_ALIAS · 인증서 SHA-256 $KS_CERT"
+  exit 0
+fi
 
 # ─── 3. 버전 ────────────────────────────────────────────────────────────────
 VN="${VERSION_NAME:-$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["version"])' "$ROOT/package.json" 2>/dev/null || echo 1.0.0)}"
@@ -271,6 +323,14 @@ for must in assets/app/head_inject.html assets/app/apk.json classes.dex AndroidM
   grep -qx "$must" "$B/apk-all.txt" || die "APK 에 $must 가 없습니다"
 done
 
+# 서명 인증서 = 키스토어 인증서 = 배포 인증서 (다르면 설치된 앱을 업데이트하지 못하는 APK 다)
+CERT="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$B/apksigner-verify.txt" | head -1 | norm_fp)"
+grep -q '^Signer #2' "$B/apksigner-verify.txt" && die "서명자가 둘 이상입니다"
+[[ "$CERT" == "$KS_CERT" ]] || die "APK 서명 인증서(${CERT:0:16}…)가 키스토어 인증서(${KS_CERT:0:16}…)와 다릅니다"
+if [[ -n "$WANT_CERT" ]]; then
+  [[ "$CERT" == "$WANT_CERT" ]] || die "APK 서명 인증서가 배포 인증서(${CERT_FILE#$ROOT/})와 다릅니다 — ${APK#$ROOT/} 는 바꾸지 않았습니다"
+fi
+
 SIZE_B="$(stat -c %s "$CAND")"
 SIZE_H="$(python3 -c "print(f'{$SIZE_B/1048576:.1f} MB')")"
 BUDGET_B="$(python3 -c "print(int(float('$BUDGET_MB')*1048576))")"
@@ -278,7 +338,6 @@ BUDGET_B="$(python3 -c "print(int(float('$BUDGET_MB')*1048576))")"
 mkdir -p "$OUT"
 cp "$CAND" "$APK.tmp" && mv -f "$APK.tmp" "$APK"
 SHA="$(sha256sum "$APK" | cut -d' ' -f1)"
-CERT="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$B/apksigner-verify.txt" | head -1)"
 echo
 say "완료: $APK"
 echo "    크기        $SIZE_H ($SIZE_B bytes, 예산 ${BUDGET_MB} MB)"
@@ -288,5 +347,13 @@ echo "    계정 API    /api/* → ${API_USED}"
 echo "    SHA-256     $SHA"
 echo "    서명 인증서 SHA-256  $CERT"
 printf '%s\n' "$APK $SIZE_B $SHA" >"$OUT/BloodNocturne.apk.sha256.txt"
+if [[ -z "$WANT_CERT" ]]; then
+  (umask 022; {
+    echo "# 블러드 녹턴 릴리스 서명 인증서 SHA-256 지문 (공개 값 — 비밀이 아니다). build_apk.sh 가 이 값과 대조한다 (docs/RELEASE.md)"
+    echo "# $(date -u +%Y-%m-%d) versionName $VN versionCode $VC 에서 기록"
+    echo "$CERT"
+  } >"$CERT_FILE")
+  say "배포 인증서 지문을 적었습니다: ${CERT_FILE#$ROOT/} (git 에 올리세요)"
+fi
 
 if [[ "$MODE" == "build+verify" ]]; then run_verify; fi
