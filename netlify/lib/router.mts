@@ -49,7 +49,8 @@ export function redact(msg: string): string {
 
 /**
  * 안드로이드 앱(WebView 가상 출처)만 다른 출처 요청을 허용한다.
- *  - 앱은 게임 파일을 https://appassets.androidplatform.net 에서 열고 계정 API 는 이 사이트로 보낸다 → 브라우저 규칙상 cross-site.
+ *  - 앱은 게임 파일을 https://appassets.androidplatform.net 에서 연다. 지금 앱은 같은 출처 /api 를 앱의 프록시(ApiProxy.java)로 보내므로
+ *    CORS 가 필요 없지만, 프록시가 없는 옛 앱은 계정 API 를 이 사이트로 직접 보낸다 → 브라우저 규칙상 cross-site (docs/ACCOUNTS.md §1).
  *  - 이 출처는 안드로이드 WebView 만 쓸 수 있고 일반 웹페이지는 흉내 낼 수 없다. 앱이 아닌 프로그램은 어차피 CORS 없이 직접 요청할 수 있으므로
  *    허용해도 새 공격 경로가 생기지 않는다(토큰은 쿠키가 아니라 Authorization 헤더 — 자동으로 붙지 않는다).
  *  - 그 밖의 다른 사이트(cross-site) 요청은 전처럼 403 으로 거절한다.

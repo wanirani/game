@@ -1393,7 +1393,11 @@ async function runMode(mode) {
     };
     storageDump = async () => walk(dir).map((f) => fs.readFileSync(f, 'utf8')).join('\n');
     readRaw = async (store, key) => getStore(store, { consistency: 'strong' }).get(key);
-    cleanup = async () => { await server.stop(); fs.rmSync(dir, { recursive: true, force: true }); };
+    cleanup = async () => {
+      await server.stop();
+      fs.rmSync(dir, { recursive: true, force: true });
+      try { fs.rmdirSync(path.dirname(dir)); } catch { /* 다른 실행이 아직 쓰는 중이면 비어 있지 않다 — 그대로 둔다 */ }
+    };
   }
   let pass = 0, fail = 0, skip = 0;
   const t0 = Date.now();

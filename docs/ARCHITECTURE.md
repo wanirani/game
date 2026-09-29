@@ -6,6 +6,7 @@
 - 이 문서 = **지금 코드에 있는 계약**의 지도. 결정의 근거는 `docs/specs/MASTER_PLAN.md` §1 (여러 명세가 부딪칠 때 이긴다) → `docs/specs/{feel,platform,world2,companions}.md` → `docs/specs/ART_DECISION.md`. 계정·클라우드 저장은 `docs/ACCOUNTS.md`, 채색 그림 제작은 `docs/art/*_PIPELINE.md`, 배포는 `tools/deploy/README.md`.
 - 각 모듈의 머리말 주석이 가장 자세한 계약이다. 여기서는 파일 위치·공개 API·데이터 흐름·ID 목록만 모은다. 코드와 이 문서가 다르면 **코드가 맞고 이 문서가 낡은 것**이다 (고치는 곳: DOCS-ARCH → W4 FIX-TOOLS).
 - 마지막 전면 갱신: 2026-09-28 (W3 DOCS-ARCH, 같은 날 검수에서 코드와 다시 대조). 「진행 중」 표시는 이 시점에 아직 작업 중이던 패키지(부록 A)의 계약이다.
+- W4 1회차 동기화 (2026-09-29, FIX-TOOLS; 줄마다 코드와 대조): 두 단계 부팅·지연 장면(§3·§4), feel §8 계측, 늦게 받는 보스(§11.4), 시작 위치 옮기기·`bossReady`(§4·§8), 데미지 숫자 기둥·`setHudBand`(§4), HUD 클립·스프라이트 캐시(§9), 채색 텍스처 예산(§4·§12), 동료 조준·수호신 FX(§10), 각성 감독 늦게 받기(§7.4), 이동 발판 개별 설정(§8), QA 도구의 부팅 대기·성능 예산(§14).
 
 ## 목차
 0. 실행·디버그·검사 명령 · 1. 좌표/단위 · 2. 파일 지도와 규칙 · 3. 부팅과 프레임 흐름 · 4. 코어 API · 5. 입력·설정·저장 ·
@@ -227,6 +228,7 @@ rAF ─▶ input.pollFrame() (패드 읽기·진동 정리) ─▶ (세로 잠�
 - 컷인 장면 **`awakenCutin`**: `game.push('awakenCutin', { world, p, charId, classId, tier, short, onDone(aborted) })` — opaque false · hidePad · deferToasts · `world.hudHidden`; 1.45초(짧게 0.75초, settings.cutinMode 'short' 또는 같은 스테이지 두 번째부터), 0.5초 뒤 건너뛰기. 닫히면 pop 뒤 `onDone(false)` → 감독 시작. `prepareCutin(charId, tier)`. 그림 `assets/cg/cutin_<char>.webp`(없으면 초상화), 대사는 BN Brush 붓글씨 + 붉은 낙관.
 - 데이터: `AWAKEN[charId] = {name, line, lines, seal, cutin, portrait, face, eye, portraitFace, color, dark, accent, cue, style, ultMv, mvWeights, final, t2}`, `AWAKEN_RULES`(tapMax 0.20, holdFull 0.45, mvMul 2.2, t2Mul 1.15, bossCap 0.30, cutin, maxDirector 7), `T2[classId]`(2차 전직 '진 각성' 변형), `awakenOf`, `t2Of`, `awakenTitle(charId, tier)`, `AWAKEN_IDS`, `TITLE_PREFIX` '각성', `T2_PREFIX` '진 각성'.
 - 감독 계약: `(p, world, v) => 엔티티 | null` — 표 `AWAKEN_DIRECTOR[charId]`(`awaken_directors.js`, A: kael sera victor) · `AWAKEN_DIRECTOR_B[charId]`(`awaken_directors_b.js`, B: bran lia azel). 찾는 순서: `registerDirector` 로 등록한 것 → `AWAKEN_DIRECTOR` → `AWAKEN_DIRECTOR_B` → awaken.js 대체 연출. v = `{charId, classId, tier, data, t2, color, accent, dark, scale, mv(w), atk(w,o), hit(rect,w,o), final(rect,w,o), view(pad), foes(rect), cap, heal(frac), finish(), dur, started}`. 감독 엔티티가 죽거나 `finish()`/`dur`/최대 7초가 지나면 awaken.js 가 cutscene·freezeEnemies·hudHidden·레터박스를 되돌린다. FXKIT 이 비어 있으면 대체 연출. `prepareAwakenB`, `AWAKEN_DIR_A_DEBUG`/`AWAKEN_DIR_B_DEBUG`.
+- 화면 전체 패스 예산(feel §8 ≤ 3/2/1): 감독의 화면 전체 칠은 한 장으로 모은다 — 예: 빅터의 세피아(high 만)는 따로 칠하지 않고 `back()` 의 어둡힘 칠에 섞는다 (요청 #442). `tools/qa/perf_budget.mjs` 는 방의 기본 프레임을 뺀 '더한 패스'를 세고, 타일 층(`render/tiles.js`) 블릿은 확대 연출에서 한 조각이 화면을 덮어도 더한 패스로 치지 않는다 (요청 #453).
 - 규칙: 컷인은 한 번에 하나 (ultCutin 은 awakenCutin 이 스택에 있으면 곧바로 닫힘). castUltimate·castAwakening 은 cutscene·cleared·transitioning·inputLock·보스 소개·사망·경직 중에 거절. 둘 다 먼저 하차(`p.mount?.beforeCast`), 끝난 뒤 1.4초에 자동 재탑승.
 
 ## 8. 훅 지점 (전체 표: MASTER_PLAN §1.7)
@@ -368,7 +370,7 @@ rAF ─▶ input.pollFrame() (패드 읽기·진동 정리) ─▶ (세로 잠�
 - **`enemy_kit.js`**: 등급 T1(스프라이트+변형) · T2(미니 퍼펫 6–10부품) · T3(큰 퍼펫 + 손상 변형). `requestRig(spec)`, `rigReady`, `refreshRig`, `releaseRigs`, `rigStats`, `rigMemMB`, 그리기 `begin/end/local/part/put/putStretch/bone/pivotPos/strips/warpY/chain/glow/shadow`, `FxPool`, `groundBelow`, `spawnCorpse`, `spawnDissolve`, 도우미 `atkPhase hurtOf deathK squashK flashK lod nStrips clockOf`, `stats`. 적 모듈 = `export const spec = {id, src, …}` + `export function draw(ctx, e, world, o, rig)`. 스테이지 진입 때 그 스테이지 적 목록을 미리 굽고(`preloadPaintedEnemies`), 준비 전에 벡터로 보였으면 0.3초 교차 페이드.
 - **`hero_puppet.js`**: `puppetFor(p, look)`(준비 전 null → 벡터), `preloadPuppet(charId, classId)`, `hasPuppet`, `classOf`, `applySpec`, `drawLayers`, 턴테이블 `turnReady/drawTurnStep/drawTurnWeapon/drawTurnCape/drawTurnWings/drawTurnHalo/turnSteps`, NPC `NPC_CID 'npc'`/`npcIdOf`/`hasNpcPuppet`, `setPuppetEnabled`/`puppetEnabled`, `puppetStatus`, `puppetRev`, `PUP_H 90`, `capeCanvas`. 갑옷 색은 재질 마스크(R 갑옷, G 장식)로 다시 칠함, 망토는 절차적 베를레 띠, 무기·효과는 `hero_parts.js` 절차적 그림 → **장비·전직이 외형에 그대로 반영**된다.
 - **킬 스위치**: `?painted=0` · `window.__paintedOff = true` · `settings.painted === false` → 보스·적·동료가 벡터 (게임은 그대로 진행 가능해야 한다). 적만 `window.__paintedEnemies = false`. 영웅 퍼펫 `setPuppetEnabled(false)` 또는 look.puppet === false.
-- **메모리·성능 예산**: 보스 1체 구운 텍스처 데스크톱 ≈ 15 MB / 휴대폰 ≈ 6 MB (loadRig 가 텍셀 밀도를 낮춰 맞춤, 한 번에 보스 리그 1개, 스테이지 바뀌면 해제) · 적 1종 0.3–1.5 MB · 장면당 채색 텍스처 24 MB(터치)/64 MB(데스크톱) (`assets.track`) · 그리기 비용 ≤ 벡터의 1.5배 · 부품 그리기 ≤ ~90/보스 · 입자 풀 420/260/120 · 굽기는 페이드·대사·등장 연출 뒤에서만. 모든 파일은 assets.js 로 읽는다 (팩·lo/·LRU 적용). Kling 원화는 워터마크를 자르고 패키지별 `tools/kling/manifest_<pkg>.json` 에 출처를 남긴다.
+- **메모리·성능 예산**: 보스 1체 구운 텍스처 데스크톱 ≈ 15 MB / 휴대폰 ≈ 6 MB (loadRig 가 텍셀 밀도를 낮춰 맞춤, 한 번에 보스 리그 1개, 스테이지 바뀌면 해제) · 적 1종 0.3–1.5 MB · 채색 텍스처 예산 `assets.paintedBudget` 휴대폰 32 MB / 터치 태블릿 40 MB / 데스크톱 64 MB (`assets.track`; 싸움이 아닌 장면(허브·타이틀·월드맵·상점)에서는 painted/registry.js 가 구운 보스·적 리그를 놓는다) · 그리기 비용 ≤ 벡터의 1.5배 · 부품 그리기 ≤ ~90/보스 · 입자 풀 420/260/120 · 굽기는 페이드·대사·등장 연출 뒤에서만. 모든 파일은 assets.js 로 읽는다 (팩·lo/·LRU 적용). Kling 원화는 워터마크를 자르고 패키지별 `tools/kling/manifest_<pkg>.json` 에 출처를 남긴다.
 
 ## 13. 배포 (웹 · 서비스 워커 · 아티팩트 · APK)
 
@@ -381,11 +383,11 @@ rAF ─▶ input.pollFrame() (패드 읽기·진동 정리) ─▶ (세로 잠�
   - **네이티브 계약**: `window.__BN_APP = {platform:'android', version, assets:'full'|'lo'|'lo+td', apiProxy, apiBase}` · `window.__BN_INSETS {l,r,t,b}` CSS px + window 이벤트 `'bn-insets'`(노치·보이는 시스템 막대) · `window.__BN_IME {bottom}` CSS px + `'bn-ime'`(API 30 이상만, 그 아래는 undefined; account.js 가 입력 칸을 올린다) · 브리지 `window.BNAndroid`: `isApp() version() exitApp() vibrate(json) insets() ime() rumble(strong, weak, ms)`(연결된 컨트롤러: API 31+ VibratorManager, 그 아래 단일 모터, 패드 없으면 무시) `apiStash(id, method, headers, body)`(WebView 는 POST 본문을 가로챌 수 없어 본문을 먼저 맡긴다).
 
 ## 14. QA 도구
-- `tools/integration.mjs`: 케이스 `title hub worldmap inn arcade s01…s20 s01_boss…s20_boss menu` (`--list`), 페이지·콘솔 오류 0, 보스방은 끝에 `world.boss` 필요, `--mobile`, `--dist [dir]`(CSP 적용 빌드). 종료 코드 0/1/2.
-- `tools/test_part2.mjs` (P2-QA, world2 §17): `--static`(데이터) · 실행 묶음 `rooms gimmicks bosses flow legacy endings items loot mobile perf clears` · `--boss b_nihil,…`; 결과 `/tmp/claude-0/proto/wpj/`.
+- `tools/integration.mjs`: 케이스 `title hub worldmap inn arcade s01…s20 s01_boss…s20_boss menu` (`--list`), 페이지·콘솔 오류 0, 보스방은 끝에 `world.boss` 필요, `--mobile`, `--dist [dir]`(CSP 적용 빌드). 단계는 장면이 모두 등록된 뒤(`game.scenesReady !== false`, 60초 안에 안 되면 'BOOT' 실패)에 시작한다 (§3 두 단계 부팅). 종료 코드 0/1/2.
+- `tools/test_part2.mjs` (P2-QA, world2 §17): `--static`(데이터) · 실행 묶음 `rooms gimmicks bosses flow legacy endings items loot mobile perf clears` · `--boss b_nihil,…`; 보스 검사는 경기장에 들어선 뒤 `waitRealBoss`(`world.bossReady()` + 대역이 진짜 보스로 바뀔 때까지 한 프레임씩)로 늦게 받는 보스를 기다린다; 결과 `/tmp/claude-0/proto/wpj/`.
 - `tools/balance.mjs [difficulty] [charId] --check` (2부 s14–s20 행을 world2 §15 와 비교; 다른 영웅은 '1부 기준 보정' 범위, `--strict` 는 문구 그대로), `--json`, `--acc`, `--docs`, `--quests`, `--k 'ehp=…'`.
-- `tools/feel_test.mjs` (FEEL-QA, **진행 중**): feel §10 인수 검사 M1–M6 · C1–C15 · U1–U2 · A1–A8 · V1 · X1–X3 · I1 · R183, `--quick`, `--only`, `--heroes`; 결과 `/tmp/claude-0/qa_feel/`.
-- `tools/qa/` (QA-TOOLS, **진행 중**): `run_all.mjs`(§5.1 전체 회차, `--quick --only --skip --list --bail --apk --site --dist`) · `run_platform.mjs`(pad bind touch view menu pwa load turntable) · `platform_{pad,bind,touch,view,menu,pwa,load}.mjs` · `turntable.mjs` · `commands.mjs`(d02–d27 키보드·패드·터치, 서 있을 때·달릴 때, d14 vs 질주 공격) · `bindings.mjs` · `hook_tags.mjs`(`hook_tags_ratchet.json`, 그리기 경로의 fx.emit·난수 검사) · `painted_registry.mjs` · `perf_budget.mjs`(§5.2 예산: 프레임당 그라디언트·캔버스·입자 등, 결정적 계수) · `soak.mjs`(10분 반복: 힙·캔버스 ±10 %) · `visual_review.mjs`(접촉 시트) · 공용 `lib/`. 결과 `/tmp/claude-0/qa/`.
+- `tools/feel_test.mjs` (FEEL-QA): feel §10 인수 검사 M1–M6 · C1–C15 · U1–U2 · A1–A8 · V1 · X1–X3 · I1 · R183, `--quick`, `--only`, `--heroes`; 결과 `/tmp/claude-0/qa_feel/`.
+- `tools/qa/` (QA-TOOLS): `run_all.mjs`(§5.1 전체 회차, `--quick --only --skip --list --bail --apk --site --dist`) · `run_platform.mjs`(pad bind touch view menu pwa load turntable) · `platform_{pad,bind,touch,view,menu,pwa,load}.mjs` · `turntable.mjs` · `commands.mjs`(d02–d27 키보드·패드·터치, 서 있을 때·달릴 때, d14 vs 질주 공격) · `bindings.mjs` · `hook_tags.mjs`(`hook_tags_ratchet.json`, 그리기 경로의 fx.emit·난수 검사) · `painted_registry.mjs` · `perf_budget.mjs`(§5.2 예산: 프레임당 그라디언트·캔버스·입자·필살기/각성 때 더한 화면 전체 패스(타일 층 블릿 제외) 등, 결정적 계수; 살아 있는 캔버스는 새 페이지 s04 r1 → 메뉴 장비 탭에서 휴대폰 phone1·phone2 32 MB · phone1 low 26 MB · 태블릿 40 MB, 메뉴가 스테이지 기준보다 더하는 것 ≤ 8 MB, 데스크톱은 정보만 — W4 1회차 리드 결정) · `soak.mjs`(10분 반복: 힙·캔버스 ±10 %) · `visual_review.mjs`(접촉 시트) · 공용 `lib/`(`server.mjs` 의 `Session.waitGame()` 기본 조건은 `g.scenes.length > 0 && g.scenesReady !== false`). 결과 `/tmp/claude-0/qa/`.
 - 단위: `test_save_v2.mjs` · `test_settings_v2.mjs [--node]` · `test_companion_state.mjs` · `test_sfx.mjs [--levels]` · `test_hud_layout.mjs` · `test_mount.mjs` · `test_guardians.mjs` · `tools/accounts/test_api.mjs`·`test_client.mjs`.
 - 갤러리 `tools/gallery_{audio,bosses_a,bosses_b,bosses_c,bosses_d,enemies_a,enemies_b,enemies_c,enemies_d,guardians,hero,items,levelsA,mounts,story,town,turntable}.html` (`node tools/smoke.mjs --url tools/gallery_x.html --steps wait:1.5,shot`). 그림 도구 `tools/painted/{poses,fight,bench,rng,pop}.mjs`, `tools/puppet/{review,bench,ingame,shot}.mjs`.
 - 성능 예산(MASTER_PLAN §5.2)과 시험 기록 위치는 run_all 결과 문서에 모인다.
@@ -495,7 +497,7 @@ weapon:{type:'whip'|'sword'|'greatsword'|'dagger'|'gun'|'staff', style:1~6, colo
 - 이름은 네 묶음 사이에서 겹치지 않는다 (`node tools/test_sfx.mjs`). 2부는 기존 이름만 쓴다.
 
 ### 장면(Scene) 이름
-- 게임플레이·오버레이 (`scenes/index.js`): `title stage dialogue bossIntro ultCutin document gameover results pause awakenCutin companionJoin`
+- 게임플레이·오버레이 (`scenes/index.js`): `title stage dialogue bossIntro ultCutin document gameover results pause awakenCutin companionJoin` ('title' 만 main.js 가 바로 등록하고, 나머지는 지연 장면으로 뒤에 등록된다 — §3. 그 사이의 자리 장면 이름은 `loading`(game.js `PendingScene`))
 - 프런트 (`reg_front.js`): `slots difficulty charselect story options ending credits arcade bossrush survival practice arcadePause arcadeResults highscore initials frontConfirm saveCode account cloudConflict`
 - 여관·미니게임 (`reg_games.js`): `inn minigame_dice minigame_blackjack minigame_slot minigame_duel minigame_memory`
 - 메뉴 (`reg_menu.js`): `menu` — 탭 `MENU_TABS`: status(상태) equip(장비) inventory(인벤토리) skills(스킬) class(직업) companions(동료) quests(퀘스트) docs(비전서) bestiary(도감) system(기록). `game.push('menu', {tab})`. 스테이지·마을의 'map' 액션 = 인벤토리 탭.
@@ -513,7 +515,7 @@ weapon:{type:'whip'|'sword'|'greatsword'|'dagger'|'gun'|'staff', style:1~6, colo
 
 ---
 
-## 부록 A. 이 문서를 쓸 때 아직 진행 중이던 패키지 (2026-09-28)
+## 부록 A. 이 문서를 쓸 때 아직 진행 중이던 패키지 (2026-09-28) — W4 기준 모두 끝남 (표의 계약은 지금 코드와 대조했다)
 | 패키지 | 파일 | 이 문서의 해당 계약 |
 |---|---|---|
 | CMP-MOUNT-ART-B | `src/render/mounts_b.js`, `painted/companions/mt_direwolf.js`·`mt_wyvern.js`·`mt_giantbat.js`·`mt_gale.js` | §10 그림 (`MOUNT_DRAW_B`, `MOUNT_ICON_B`, 템플릿 wolf·wyvern·bat·griffin) — 지금 코드 기준 |

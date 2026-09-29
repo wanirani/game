@@ -311,7 +311,7 @@ test('시험용 주소 덮어쓰기가 다른 사이트를 가리켜도 같은 �
   await ctx.close();
 });
 
-test('안드로이드 앱: /api 프록시가 켜져 있으면 같은 출처 /api 만, 프록시 없는 옛 앱만 공식 사이트 API 직접(앱 출처 CORS)', async () => {
+test('안드로이드 앱: /api 프록시가 켜져 있으면 같은 출처 /api 만(가입 POST 포함), 프록시 없는 옛 앱만 공식 사이트 API 직접(앱 출처 CORS)', async () => {
   const cases = [
     { app: { platform: 'android', version: 'test', assets: 'full', apiProxy: true, apiBase: '/api' }, host: APP_HOST, base: '/api', other: SITE_HOST },
     { app: { platform: 'android', version: 'test', assets: 'full', apiProxy: false, apiBase: null }, host: SITE_HOST, base: cloudMod.APP_API_BASE, other: APP_HOST },
