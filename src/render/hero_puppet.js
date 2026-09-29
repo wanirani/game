@@ -250,9 +250,11 @@ if (typeof setTimeout === 'function') setTimeout(() => { bus.on('stageEntered', 
 const IDLE_MS = 4000, SWEEP_HI = 0.75, SWEEP_LO = 0.6;
 let sweepAt = -1e9;
 const CID_USED = new Map();   // 영웅(cid) → 그 영웅의 퍼펫을 마지막으로 그린 시각
+let HERO_CID = null;          // 마지막으로 그린 (NPC 아닌) 영웅 = 보통 플레이어
 /** 그림 표시: 이 퍼펫과 그 영웅을 '쓰는 중'으로 (정리 우선순위) + 가끔 예산 확인 */
-function touchUse(E, t) {
+function touchUse(E, t, hero = false) {
   E.used = t; CID_USED.set(E.cid, t);
+  if (hero) HERO_CID = E.cid;
   if (t - sweepAt >= 500) sweep(t);
 }
 function hasTextures(E) {
@@ -279,17 +281,15 @@ function sweep(t, force = false) {
   const budget = assets.paintedBudget;
   let have = assets.paintedBytes;
   if (!(budget > 0) || have <= budget * (force ? SWEEP_LO : SWEEP_HI)) return 0;
-  // 1순위: 한동안 그리지 않은 영웅의 퍼펫 (오래된 순). 2순위: 지금 그리는 영웅의, 그려지지 않은 형제 직업(미리 받기)·NPC
-  // → 방금 바꾼 직업이 미리 받아져 있어 벡터 대체 그림이 비치지 않고, 예산이 모자랄 때만 형제 직업을 놓는다
-  const idle = [], sibs = [];
-  for (const E of REG.values()) {
-    if (E === NONE || !E.rig || t - E.used < IDLE_MS || !hasTextures(E)) continue;
-    (t - (CID_USED.get(E.cid) ?? -1e9) < IDLE_MS ? sibs : idle).push(E);
-  }
-  const byUse = (a, b) => a.used - b.used;
-  idle.sort(byUse); sibs.sort(byUse);
+  // 순서: ① 한동안 아무 퍼펫도 그리지 않은 영웅의 것 ② 최근에 그린 다른 영웅·NPC 의 안 쓰는 직업 ③ 지금 플레이어 영웅의
+  // 그려지지 않은 형제 직업(미리 받기) — 각각 오래된 순. 방금 바꾼 직업이 미리 받아져 있어 벡터 대체 그림이 비치지 않고,
+  // 예산이 정말 모자랄 때만 플레이어의 형제 직업을 놓는다
+  const rank = (E) => (E.cid === HERO_CID ? 2 : t - (CID_USED.get(E.cid) ?? -1e9) < IDLE_MS ? 1 : 0);
+  const list = [];
+  for (const E of REG.values()) if (E !== NONE && E.rig && t - E.used >= IDLE_MS && hasTextures(E)) list.push(E);
+  list.sort((a, b) => rank(a) - rank(b) || a.used - b.used);
   let freed = 0;
-  for (const E of idle.concat(sibs)) {
+  for (const E of list) {
     if (have <= budget * SWEEP_LO) break;
     const b = releaseEntry(E);
     have -= b; freed += b;
@@ -334,7 +334,7 @@ export function puppetFor(p, look) {
   if (!I) return null;
   const E = I.E;
   if (I.gen !== E.gen) { I.gen = E.gen; I.V = null; I.lv = null; }   // 예산 때문에 텍스처를 놓았다 다시 받음 → 구운 변형·레벨 이력 버림
-  touchUse(E, performance.now());
+  touchUse(E, performance.now(), true);
   if (!ready(E)) return null;
   if (I.vk && !I.V) { I.V = E.vars.get(I.vk) || makeVariant(E, I.vk); E.vars.set(I.vk, I.V); }
   I.key = E.key + (I.vk ? '#' + I.vk : '');

@@ -159,7 +159,7 @@ function drawBoss(ctx, b, world, rig, st) {
   // 부위별 피격 섬광 (BOSS_PIPELINE §9): 얼굴·상체 = 가면+몸통 · 입속 눈 = 가면 · 요람(P2 는 살덩이 포함) = 요람 ·
   // 아기 머리 = 머리 자체 섬광(h.hitT)만 · 모르는 부위(null) = 벡터처럼 전부
   const fp = st.fp, ff = st.ff ??= {};
-  ff.face = !fp || fp === b.pFace;
+  ff.face = !fp || fp === b.pFace || (fp != null && fp === b.pTorso);   // 형태1 몸통 판정(pTorso)도 얼굴·상체 번쩍임 (요청 #383)
   ff.head = ff.face || fp === b.pEye;
   ff.cradle = !fp || fp === b.pCradle;
   if (!dying && (b.state === 'intro' || b.hp >= b.stats.maxHp)) { st.dead = {}; st.shards.clear(); }

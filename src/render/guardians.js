@@ -1378,7 +1378,8 @@ export function fxHolyBeam(ctx, h, world) {
 export function fxBoneShard(ctx, p, world) {
   const P = whelpParts();
   if (!P?.vert) return false;
-  const t = p.t ?? 0, rot = (p.rot ?? 0) + t * (p.spin || 14);
+  // 게임 투사체는 update 가 rot += spin·dt 로 이미 돌린다 (그것을 그대로). rot 가 멈춰 있으면(갤러리 가짜 개체) t 로 돌린다 — 둘을 더하면 두 배로 돈다
+  const t = p.t ?? 0, rot = p.rot || t * (p.spin || 14);
   gGlow(ctx, 0, 0, 14, '#b060ff', 0.45);
   ctx.save(); ctx.rotate(rot);
   ctx.fillStyle = '#e8e0d0'; ctx.strokeStyle = OUT; ctx.lineWidth = 1;

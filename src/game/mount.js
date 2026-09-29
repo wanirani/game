@@ -873,6 +873,8 @@ export class MountRider {
     while (n < 7 && isSolidType(map.typeAt(tx, ty0 - n))) n++;
     if (!n || n >= 7) return;                                                            // 벽이 아니거나 너무 높다
     if (isSolidType(map.typeAt(tx, ty0 - n - 1))) return;                               // 턱 위에 설 자리가 없다
+    // 부서지는 벽(T.BREAK)은 돌진으로 부수면 된다 (바르그 · 그림메인 · 이그니스 charge.breakWalls) — 내려서 오르라고 하지 않는다
+    if (this.def?.charge?.breakWalls) for (let i = 0; i < n; i++) if (map.typeAt(tx, ty0 - i) === T.BREAK) return;
     const h = p.bottom - (ty0 - n + 1) * TILE;                                           // 발에서 턱 윗면까지
     const reachOf = (v, air) => ((v * v) / (2 * GRAVITY)) * (1 + 0.81 * (air ?? 0));    // 공중 점프는 0.9배 속도 → 높이 0.81배
     const prof = this.profile(p), reach = reachOf(prof.jump, prof.airJumps);

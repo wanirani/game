@@ -176,6 +176,7 @@ export class World {
     place(start.tx);
     p.vx = 0; p.vy = 0; p.onGround = false;
     p.facing = room.facing ?? 1;
+    this._spawnPass = null;   // 터치 시작 위치 옮기기가 지나친 가로 구간 (그 안의 이야기 트리거는 그래도 발동: armSpawnTrigger)
     if (input.touchMode) this.clearStickAtSpawn(start, place);
     this.add(p);
     this.run.checkpoint = { roomId, x: p.x, y: p.y };
@@ -210,7 +211,7 @@ export class World {
         case '!': {
           const sid = room.triggers?.[n];
           const key = `${this.stage.id}:${roomId}:trig${n}`;
-          if (sid && !this.state.progress.seenScripts.includes(sid)) this.add(new StoryTrigger(m.tx, m.ty, sid, key));
+          if (sid && !this.state.progress.seenScripts.includes(sid)) this.armSpawnTrigger(this.add(new StoryTrigger(m.tx, m.ty, sid, key)));
           break;
         }
         case 'N': { const id = room.npcs?.[n]; if (id) this.add(new NPC(m.tx, m.ty, id, NPCS[id])); break; }
@@ -293,13 +294,34 @@ export class World {
       for (let tx = l; tx <= r; tx++) for (let ty = Math.min(top, start.ty - 1); ty <= start.ty; ty++) if (!free(tx, ty)) return false;
       return floor(x, start.ty + 1);
     };
-    // 최대 12칸 (R1-REQ-323 리드 결정: 왼손잡이 버튼 묶음은 6칸으로 다 비키지 못한다). 가려지지 않는 첫 바닥 칸에서 멈추고, 12칸으로도 안 되면 그대로 둔다
-    for (let k = 1; k <= SPAWN_SHIFT_MAX && covered(); k++) {
+    // 최대 12칸 (R1-REQ-323 리드 결정: 왼손잡이 버튼 묶음은 6칸으로 다 비키지 못한다). 가려지지 않는 첫 바닥 칸에서 멈추고, 12칸으로도 안 되면 그대로 둔다.
+    // 보스 경기장 표식(X)은 넘지 않고(들어서자마자 보스전이 시작되지 않게), 같은 층 적 배치 칸에는 3칸 앞에서 멈춘다 (스폰하자마자 접촉 피해 방지)
+    let maxTx = start.tx + SPAWN_SHIFT_MAX;
+    for (const mk of m.markers ?? []) {
+      if (!(mk.tx > start.tx)) continue;
+      if (mk.ch === 'X') maxTx = Math.min(maxTx, mk.tx - 1);
+      else if (mk.ch >= '1' && mk.ch <= '9' && mk.ty >= start.ty - 4 && mk.ty <= start.ty + 1) maxTx = Math.min(maxTx, mk.tx - 3);
+    }
+    const cx0 = p.x + p.w / 2;
+    for (let k = 1; start.tx + k <= maxTx && covered(); k++) {
       const x = start.tx + k;
       if (!fits(x)) break;
       place(x);
     }
     p.onGround = false;
+    // 옮기며 지나친 이야기 트리거('!')는 첫 프레임에 발동하게 넓힌다 (예: s01 r1 왼손 모드에서 첫 이야기 장면을 건너뛰던 문제)
+    const cx1 = p.x + p.w / 2;
+    if (cx1 > cx0 + 1) {
+      const pass = this._spawnPass = { x0: Math.min(cx0, this._spawnPass?.x0 ?? cx0), x1: cx1 };
+      for (const e of this.entities) if (e.kind === 'trigger') this.armSpawnTrigger(e, pass);
+    }
+  }
+  /** 시작 위치 옮기기(clearStickAtSpawn)가 건너뛴 이야기 트리거를 영웅 위치까지 넓혀, 다음 갱신에서 발동하게 한다 → e */
+  armSpawnTrigger(e, pass = this._spawnPass) {
+    if (!e || !pass || e.dead) return e;
+    const x1 = e.x + e.w;
+    if (x1 <= pass.x1 && x1 > pass.x0) e.w = Math.ceil(pass.x1 - e.x) + 2;   // 원래 자리보다 앞에 있었고 지금은 영웅 뒤에 있는 트리거
+    return e;
   }
 
   spawnPlaced(spec, x, y, key) {

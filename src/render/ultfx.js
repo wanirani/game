@@ -1045,7 +1045,10 @@ class Session {
   draw(ctx, vw, vh) {
     if (!this.started || this.dead) return;
     const imp = this.w.__ultImpact;
-    if (this.tex && !(imp && !imp.dead)) this.drawLayer(ctx, vw, vh);
+    // 컷인 장면이 위에 떠 있는 동안은 속도선 층을 그리지 않는다: 컷인의 어둡게·그림 패널(화면 전체 2층)에 가려 거의 안 보이고,
+    // 겹치면 한 프레임 화면 전체 층이 예산(medium 2)을 넘는다 (R1-REQ-338). 컷인이 끝나면 그대로 이어서 그린다
+    const top = this.w.game?.top?.name;
+    if (this.tex && !(imp && !imp.dead) && top !== 'ultCutin' && top !== 'awakenCutin') this.drawLayer(ctx, vw, vh);
     if (this.name) this.drawName(ctx, vw, vh);
   }
   drawLayer(ctx, vw, vh) {
