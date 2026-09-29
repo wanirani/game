@@ -168,7 +168,7 @@ export class Dracula extends BossB {
     this.facePlayer();
     const volleys = this.phase >= 1 ? 2 : 1;
     const per = 0.75;
-    if (t < 0.45) { this.capeT = 1; this.armLT = 1; this.armRT = 0.85; if (this.at(0.05)) audio.sfx('charge_ready', { vol: 0.4, pitch: 0.8 }); }
+    if (t < 0.45) { this.capeT = 1; this.armLT = 1; this.armRT = 0.85; if (this.at(0.05)) { audio.sfx('charge_ready', { vol: 0.4, pitch: 0.8 }); this.telegraphFor(0.4); } }
     for (let v = 0; v < volleys; v++) {
       if (this.at(0.45 + v * per)) {
         const x = this.cx + this.facing * 16, y = this.bottom - 92;
@@ -299,8 +299,8 @@ export class Dracula extends BossB {
     if (n >= 3) { world.game.toast('진·드라큘라: "피의 달이여, 떠올라라!"', '#ff8090'); }
   }
   update(dt, world) {
-    // 변신 연출 중에는 world.cutscene 이어도 직접 진행
-    if (this.state === 'transform' && this.dying <= 0) {
+    // 변신 연출 중에는 world.cutscene 이어도 직접 진행. 단 적 정지(각성 연출) 중에는 Boss.update 가 붙잡아 두게 넘긴다
+    if (this.state === 'transform' && this.dying <= 0 && !world.freezeEnemies) {
       this.decayLtn(dt, world);
       this.t += dt; this.animT += dt; this.stateT += dt;
       if (this.flashT > 0) this.flashT -= dt;
@@ -390,8 +390,10 @@ export class Dracula extends BossB {
     const f2 = this.def.form2 || {};
     this.def = { ...this.def, name: f2.name ?? this.def.name, title: f2.title ?? this.def.title, portrait: f2.portrait ?? this.def.portrait, contact: 0 };
     this.w = 150; this.h = 280;
-    const [v0, v1] = this.viewX(230);
-    this.place(clamp(cx, Math.max(v0, this.A.x0 + 240), Math.min(v1, this.A.x1 - 240)), F);
+    // 날개 끝(±300~340 px)까지 화면 안에 들도록 여백 300 (화면이 좁아 범위가 뒤집히면 가운데)
+    const [v0, v1] = this.viewX(300);
+    const lo = Math.max(v0, this.A.x0 + 240), hi = Math.min(v1, this.A.x1 - 240);
+    this.place(lo <= hi ? clamp(cx, lo, hi) : (lo + hi) / 2, F);
     this.vanish = 0; this.wrapT = 0;
     this.d2.scale = instant ? 1 : 0.05; this.d2.wing = this.d2.wingT = 0.6;
     this.restHands(true);
@@ -408,7 +410,14 @@ export class Dracula extends BossB {
     d.wingT = 0.55 + Math.sin(this.t * 1.2) * 0.08; d.jawT = 0.12; d.hoverT = 0; d.crouchT = 0;
     this.restHands();
     // 플레이어와 너무 멀면 천천히 걸어감
-    if (p && Math.abs(p.cx - this.cx) > 420) { const [v0, v1] = this.viewX(200); this.x += Math.sign(p.cx - this.cx) * 60 * dt; this.x = clamp(this.cx, Math.max(v0, this.A.x0 + 200), Math.min(v1, this.A.x1 - 200)) - this.w / 2; }
+    // 화면 안 유지: 여백 300·크기 (날개 끝), 보정은 초당 160 px 까지만 (카메라가 빨리 움직여도 미끄러지듯 끌려가지 않게)
+    if (p && Math.abs(p.cx - this.cx) > 420) {
+      const [v0, v1] = this.viewX(300 * (d.scale || 1));
+      const lo = Math.max(v0, this.A.x0 + 200), hi = Math.min(v1, this.A.x1 - 200);
+      const want = this.cx + Math.sign(p.cx - this.cx) * 60 * dt;
+      const tgt = lo <= hi ? clamp(want, lo, hi) : (lo + hi) / 2;
+      this.x += clamp(tgt - this.cx, -160 * dt, 160 * dt);
+    }
     if (t < (this.rest ?? this.restTime(0.9))) return;
     this.rest = this.restTime(rand(0.6, 1.0));
     const near = p && Math.abs(p.cx - this.cx) < 260;
@@ -473,7 +482,7 @@ export class Dracula extends BossB {
       if (lt < 0.4 && p) this.beamAim = Math.atan2(p.cy - my, p.cx - mx);
       const L = 1800;
       this.beam = { x0: mx, y0: my, x1: mx + Math.cos(this.beamAim) * L, y1: my + Math.sin(this.beamAim) * L, k: lt / 0.55, fire: false };
-      if (lt < dt * 1.5) audio.sfx('charge_ready', { vol: 0.35, pitch: 1.1 });
+      if (lt < dt * 1.5) { audio.sfx('charge_ready', { vol: 0.35, pitch: 1.1 }); this.telegraphFor(0.55 - lt); }
     } else if (this.beamI !== i) {
       this.beamI = i;
       const L = this.clipLen(mx, my, this.beamAim);
@@ -509,7 +518,7 @@ export class Dracula extends BossB {
       d.crouchT = 0.5; d.jawT = 0.6;
       const h = f > 0 ? this.hands.r : this.hands.l;
       h.tx = this.cx - f * 60 * s; h.ty = this.bottom - 300 * s;
-      if (t < dt * 1.5) audio.sfx('boss_roar', { vol: 0.5, pitch: 1.2 });
+      if (t < dt * 1.5) { audio.sfx('boss_roar', { vol: 0.5, pitch: 1.2 }); this.telegraphFor(0.45 - t); }
       this.clawWarn = { x0: f > 0 ? this.cx : this.cx - 280 * s, w: 280 * s, k: t / 0.45 };
     } else {
       this.clawWarn = null;
@@ -535,7 +544,7 @@ export class Dracula extends BossB {
   // 4) 도약 내려찍기 + 충격파
   s_quake(dt, world, t) {
     const p = this.P, d = this.d2, A = this.A, F = this.F;
-    if (t < 0.35) { d.crouchT = 1; d.wingT = 0.3; if (t < dt * 1.5) { this.qFrom = this.cx; } }
+    if (t < 0.35) { d.crouchT = 1; d.wingT = 0.3; if (t < dt * 1.5) { this.qFrom = this.cx; this.telegraphFor(1.25 - t); } }
     else if (t < 1.25) {
       d.crouchT = 0; d.wingT = 1;
       if (t < 0.35 + dt * 1.5) { audio.sfx('double_jump', { pitch: 0.5 }); audio.sfx('mist', { pitch: 0.5 }); world.fx.burst('dust', this.cx, F - 4, 20, { speed: 260, angle: -PI / 2, spread: 1.4 }); }

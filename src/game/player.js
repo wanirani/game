@@ -407,18 +407,14 @@ export class Player extends Entity {
     // 비전서 커맨드 기술 — f/b 는 커맨드 첫 방향을 넣던 순간의 방향 기준 (MASTER_PLAN §1.21)
     // faceFn: 새 input.command(seq, facingAt, within) → {ok, facing} 에는 함수로, 구 버전(숫자 facing) 에는 valueOf 로 현재 방향을 준다
     const faceFn = (this._faceFn ??= Object.assign((t) => this.facingAt(t), { valueOf: () => this.facing }));   // [hook:plat]
-    for (const d of this.state.progress?.docs || []) {
-      const tech = DOCS[d]?.tech;
-      if (!tech?.cmd) continue;
-      if (this.sprinting && tech.cmd[0] === 'f' && tech.cmd[1] === 'f' && input.time - (this.fm?.sprintAt ?? -9) > SPRINT.cmdWindow) continue;   // [hook:feel] →→ 뒤 0.25초가 지나면 질주 공격이 먼저 (MASTER_PLAN §1.4)
-      const r = input.command(tech.cmd, faceFn, tech.window ?? 0.6);   // [hook:plat]
-      if (r === true || r?.ok) {   // [hook:plat]
-        input.consume('attack');
-        const f0 = this.facing;
-        if (r.facing === 1 || r.facing === -1) this.facing = r.facing;   // [hook:plat] 커맨드를 시작한 쪽으로 돌아서서 시전
-        if (castTechnique(this, world, tech)) { if (this.facing !== f0) this.faceHoldT = 0.2; return; }   // [hook:plat] 같은 스텝의 이동 처리가 (아직 뒤로 누른) 방향으로 되돌리지 않게
-        this.facing = f0;
-      }
+    const pick = this.pickTechnique(faceFn);
+    if (pick) {
+      const { tech, r } = pick;
+      input.consume('attack');
+      const f0 = this.facing;
+      if (r.facing === 1 || r.facing === -1) this.facing = r.facing;   // [hook:plat] 커맨드를 시작한 쪽으로 돌아서서 시전
+      if (castTechnique(this, world, tech)) { if (this.facing !== f0) this.faceHoldT = 0.2; return; }   // [hook:plat] 같은 스텝의 이동 처리가 (아직 뒤로 누른) 방향으로 되돌리지 않게
+      this.facing = f0;
     }
     if (this.mount?.riding && down && this.mount.trySpecial(world, this)) { input.consume('attack'); return; }   // [hook:cmp] 탑승 특수기 (↓+공격)
     const ms = this.moveSet;
@@ -445,6 +441,56 @@ export class Player extends Entity {
     if (down && ms.crouch && !this.mount?.riding) { this.startMove(world, ms.crouch, 'crouch'); return; }   // [hook:cmp]
     this.chain = 0;
     this.startMove(world, ms.ground[0], 'ground');
+  }
+
+  /**
+   * 비전서 커맨드 기술 고르기 (MASTER_PLAN §1.21, R1-REQ-347/360). 배운 기술을 모두 입력 이력에 대 보고
+   * ① 방향 수가 가장 많은 커맨드 ② 같으면 첫 방향이 가장 최근인 (가장 촘촘한) 매치 ③ 그래도 같으면 먼저 배운 기술.
+   * (예전엔 배운 순서대로 처음 맞는 기술이 이겨서, 긴 커맨드의 부분열인 짧은 기술이 긴 기술을 가렸다: d13→백보신권, d19→천뢰…)
+   * input.command 는 성공하면 이력을 비우므로 후보마다 이력을 되돌려 놓고 판정하고, 고른 기술이 있을 때만 이력을 비운다.
+   * 터치 기술 메뉴(input.queueCommand)로 고른 기술은 그대로 우선한다. → { tech, r } | null
+   */
+  pickTechnique(faceFn) {
+    const docs = this.state.progress?.docs;
+    if (!docs?.length) return null;
+    const lateSprint = this.sprinting && input.time - (this.fm?.sprintAt ?? -9) > SPRINT.cmdWindow;
+    const techs = [];
+    for (const d of docs) {
+      const tech = DOCS[d]?.tech;
+      if (!tech?.cmd) continue;
+      if (lateSprint && tech.cmd[0] === 'f' && tech.cmd[1] === 'f') continue;   // [hook:feel] →→ 뒤 0.25초가 지나면 질주 공격이 먼저 (MASTER_PLAN §1.4)
+      techs.push(tech);
+    }
+    if (!techs.length) return null;
+    const tryCmd = (tech) => {
+      const r = input.command(tech.cmd, faceFn, tech.window ?? 0.6);   // [hook:plat]
+      return r === true || r?.ok ? r : null;   // [hook:plat]
+    };
+    const q = input._queuedCmd;
+    if (q && input.time - q.t <= 0.5) {
+      const qt = techs.find((t) => t.cmd.join(',') === q.key);
+      const r = qt && tryCmd(qt);
+      if (r) return { tech: qt, r };
+    }
+    const hist = Array.isArray(input.history) ? input.history : null;
+    const saved = hist ? hist.slice() : null;
+    const restore = () => { if (saved && hist.length !== saved.length) { hist.length = 0; for (const e of saved) hist.push(e); } };
+    const touchWin = input.mode === 'touch' ? 0.8 : 0;   // input.js CMD_TOUCH_WINDOW
+    let best = null;
+    for (let i = 0; i < techs.length; i++) {
+      const tech = techs[i];
+      restore();
+      const r = tryCmd(tech);
+      if (!r) continue;
+      const dirs = tech.cmd.reduce((n, s) => n + (String(s).startsWith('btn:') ? 0 : 1), 0);
+      restore();
+      const F = r.facing === -1 ? -1 : 1;
+      const m = typeof input._match === 'function' ? input._match(tech.cmd, F, Math.max(tech.window ?? 0.6, touchWin)) : null;
+      const t0 = m?.t0 ?? -Infinity;
+      if (!best || dirs > best.dirs || (dirs === best.dirs && t0 > best.t0)) best = { tech, r, dirs, t0 };
+    }
+    if (best && hist) hist.length = 0;   // input.command 가 성공했을 때처럼 이력을 비운다 (같은 입력으로 다시 나가지 않게)
+    return best ? { tech: best.tech, r: best.r } : null;
   }
 
   startMove(world, mv, kind) {

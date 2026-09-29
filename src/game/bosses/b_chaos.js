@@ -151,6 +151,7 @@ export class ChaosLord extends BossB {
     const E = this.liveEyes();
     if (this.at(0.05)) {
       audio.sfx('charge_ready', { vol: 0.4, pitch: 0.6 });
+      this.telegraphFor(0.85);   // 첫 광선까지 카운터 창
       const [v0, v1] = this.viewX(60);
       E.forEach((e, i) => { e.tx = lerp(v0, v1, (i + 0.5) / E.length) + rand(-30, 30); e.ty = F - rand(300, 400); e.fireAt = 0.9 + i * 0.28; e.laser = null; });
     }
@@ -195,6 +196,7 @@ export class ChaosLord extends BossB {
       E.forEach((e, i) => { e.tx = v0 + off + gap * (i + 0.5); e.ty = Math.max(A.top + 40, F - 440); });
       this.gridT = [0.9, 1.9, 2.9];
       audio.sfx('warning', { vol: 0.4 });
+      this.telegraphFor(0.85);
     }
     for (let r = 0; r < 3; r++) {
       const t0 = 0.9 + r * 1.0;
@@ -299,7 +301,7 @@ export class ChaosLord extends BossB {
   s_warp(dt, world, t) {
     const A = this.A, p = this.P;
     this.drift(dt, 0.3); this.mouthT = 1; this.thirdT = 0.6;
-    if (this.at(0.05)) { audio.sfx('warning', { vol: 0.6, pitch: 0.7 }); world.game.toast('현실이 뒤틀린다!', MAGENTA); }
+    if (this.at(0.05)) { audio.sfx('warning', { vol: 0.6, pitch: 0.7 }); world.game.toast('현실이 뒤틀린다!', MAGENTA); this.telegraphFor(1.05); }
     if (t < 1.1 && p) this.warpPreview = { x: A.x0 + A.x1 - p.cx, y: p.cy, k: t / 1.1 };
     if (this.at(1.1) && p && !p.dead) {
       const nx = A.x0 + A.x1 - p.cx;

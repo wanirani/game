@@ -806,6 +806,10 @@ function edgeSprite(color) {
   TINT_CACHE.set(color, c);
   return c;
 }
+/** 가장자리 색조 스프라이트를 미리 굽는다 (보스 setup 에서: 싸움 도중 캔버스 생성 0 — feel §8). edge 색 하나 또는 배열 */
+export function prewarmTint(edge) {
+  for (const c of Array.isArray(edge) ? edge : [edge]) if (c) edgeSprite(c);
+}
 /**
  * 화면 색조 (world.overlays): {color, alpha, edge(가장자리 색, 역비네트), dur(초, 없으면 clearTints 까지), fade}
  * 마라 dreamshift: screenTint(boss, { color: '#3c005a', alpha: 0.25, edge: '#b070ff' })
@@ -813,6 +817,7 @@ function edgeSprite(color) {
 export function screenTint(boss, { color = '#3c005a', alpha = 0.25, edge = null, dur = null, fade = 0.5 } = {}) {
   const w = boss?.world;
   if (!w?.addOverlay) return null;
+  if (edge) edgeSprite(edge);   // 첫 그리기 전에 굽는다 (보스는 setup 에서 prewarmTint 로 더 일찍)
   const o = {
     owner: boss, cTint: true, t: 0, end: null,
     life: dur ? dur + fade : undefined,

@@ -16,6 +16,29 @@ const PI = Math.PI;
 /** 전역 고유 타격 ID (같은 ID 로는 대상당 1회만 맞으므로 개체·공격마다 새로 발급) */
 const nid = () => 'b' + (++_zid);
 
+/** 맵(보스 방이면 잠긴 투기장) 좌우 경계 [x0, x1] (px) */
+function xBounds(world, pad = 8) {
+  const m = world.map, A = world.arena;
+  const x0 = Math.max(pad, A ? A.x0 : 0), x1 = Math.min((m?.pxW ?? 1e9) - pad, A ? A.x1 : 1e9);
+  return [x0, x1];
+}
+/** 비행체를 맵 안에 붙잡는다: Part 2 의 열린 하늘 방에서 0행 위(TileMap 은 맵 밖을 빈칸으로 본다)나 좌우 밖으로 날아가지 않게.
+ *  AI 갱신 끝에서 부른다 (다음 이동 적분이 밖으로 밀지 않게 바깥쪽 속도도 지운다) */
+function keepInMap(e, world, top = TILE) {
+  if (!world.map) return;
+  const [x0, x1] = xBounds(world);
+  if (e.x < x0) { e.x = x0; if (e.vx < 0) e.vx = 0; }
+  if (e.x + e.w > x1) { e.x = Math.max(x0, x1 - e.w); if (e.vx > 0) e.vx = 0; }
+  if (e.y < top) { e.y = top; if (e.vy < 0) e.vy = 0; }
+}
+/** 순간이동 도착 cx: 대상 cx + off 가 맵(투기장) 밖이면 반대쪽으로, 그래도 밖이면 경계 안으로 */
+function besideX(e, world, cx, off) {
+  const [x0, x1] = xBounds(world), lo = x0 + e.w / 2, hi = x1 - e.w / 2;
+  let x = cx + off;
+  if (x < lo || x > hi) x = cx - off;
+  return hi > lo ? clamp(x, lo, hi) : x;
+}
+
 // ───────────────────────── 지속 판정 영역 (경고 → 발동) ─────────────────────────
 /** 적 전용 장판/기둥/광선. delay 동안은 경고만(피해 없음), 이후 life 동안 판정.
  *  opts: {x,y,w,h, delay, life, attack, render(ctx,z,world), tick(z,world,dt), follow(z,world,dt), light, noHit, hitTest(z,world)→bool, onExpire} */
@@ -44,7 +67,7 @@ export class Zone extends Entity {
   /** 발동 후 0→1 */
   get liveK() { return this.t < this.delay ? 0 : clamp((this.t - this.delay) / this.maxLife, 0, 1); }
   update(dt, world) {
-    if (world.timeStop > 0) return;
+    if (world.timeStop > 0 || world.freezeEnemies) return;   // 각성 연출(적 정지) 중에는 적 탄처럼 경고·판정 모두 멈춘다
     this.t += dt;
     this.followFn?.(this, world, dt);
     this.tickFn?.(this, world, dt);
@@ -502,13 +525,24 @@ AI_B.fishleap = {
       e.inited = true;
       const top = liquidTop(world, e.cx, e.bottom);
       e.baseY = top ?? e.bottom;
-      // 수조 좌우 범위 (수면 줄의 액체 칸)
+      // 수조 좌우 범위 (수면 줄의 액체 칸). 위 칸이 막힌 수면(바위 턱·바닥 아래)은 뺀다:
+      // phase 물고기라 거기서 뛰면 바위를 뚫고 턱 위의 플레이어를 문다
       if (top != null) {
-        const ty = Math.floor((top + 4) / TILE);
-        let l = Math.floor(e.cx / TILE), r = l;
-        while (l > 0 && world.map.typeAt(l - 1, ty) === T.LIQUID) l--;
-        while (r < world.map.w - 1 && world.map.typeAt(r + 1, ty) === T.LIQUID) r++;
+        const m = world.map, ty = Math.floor((top + 4) / TILE);
+        const open = (x) => { const t = m.typeAt(x, ty - 1); return !isSolidType(t) && !(t === T.FAKE && !m.revealed?.has?.(m.idx(x, ty - 1))); };
+        let c = Math.floor(e.cx / TILE), L = c, R = c;
+        while (L > 0 && m.typeAt(L - 1, ty) === T.LIQUID) L--;
+        while (R < m.w - 1 && m.typeAt(R + 1, ty) === T.LIQUID) R++;
+        if (!open(c)) {   // 턱 아래에서 태어났으면 가장 가까운 열린 수면으로 (없으면 뛰지 않는다)
+          let best = -1;
+          for (let d = 1; d <= R - L && best < 0; d++) { if (c - d >= L && open(c - d)) best = c - d; else if (c + d <= R && open(c + d)) best = c + d; }
+          if (best >= 0) c = best; else e.noLeap = true;
+        }
+        let l = c, r = c;
+        while (l > L && open(l - 1)) l--;
+        while (r < R && open(r + 1)) r++;
         e.poolL = l * TILE + 8; e.poolR = (r + 1) * TILE - 8;
+        if (!e.noLeap) e.cx = clamp(e.cx, e.poolL, e.poolR);
       } else { e.poolL = e.cx - 160; e.poolR = e.cx + 160; }
       e.y = e.baseY + 6; e.setState('under');
       e.invuln = true; e.harmless = true;
@@ -521,7 +555,7 @@ AI_B.fishleap = {
         e.vx += (clamp(dx, -1, 1) * e.speed * 0.7 - e.vx) * Math.min(1, 2 * dt);
         if ((e.cx < e.poolL && e.vx < 0) || (e.cx > e.poolR && e.vx > 0)) e.vx = 0;
         if (Math.abs(e.vx) > 5) e.facing = Math.sign(e.vx);
-        if (e.cool <= 0 && p && Math.abs(dx) < 440 && Math.abs(p.bottom - e.baseY) < 320) { e.setState('ripple'); e.vx *= 0.3; }
+        if (e.cool <= 0 && p && !e.noLeap && e.cx >= e.poolL - 2 && e.cx <= e.poolR + 2 && Math.abs(dx) < 440 && Math.abs(p.bottom - e.baseY) < 320) { e.setState('ripple'); e.vx *= 0.3; }
         return;
       case 'ripple':
         e.setAnim('ripple'); e.vx *= 0.9; e.vy = 0;
@@ -529,6 +563,14 @@ AI_B.fishleap = {
         if (e.stateT > 0.35) {
           // 정점이 플레이어 위치에 오도록 겨누되, 착수 지점은 수조 안으로 제한
           e.vy = -(P.jumpV ?? 820) * rand(0.88, 1.05);
+          // 낮은 천장(공기 주머니) 아래에서는 머리가 천장에 박히지 않게 정점을 낮춘다
+          const tc = Math.floor(e.cx / TILE), ts = Math.floor(e.baseY / TILE);
+          for (let k = 1; k <= 8; k++) {
+            if (!isSolidType(world.map.typeAt(tc, ts - k))) continue;
+            const room = e.y - (ts - k + 1) * TILE;
+            if (e.vy * e.vy / 4000 > room) e.vy = -Math.sqrt(4000 * Math.max(24, room));
+            break;
+          }
           const air = -2 * e.vy / 2000;
           const tx = p ? p.cx + (p.vx ?? 0) * 0.25 : e.cx;
           const land = clamp(e.cx + (tx - e.cx) * 2, e.poolL, e.poolR);
@@ -772,7 +814,7 @@ AI_B.harpy = {
         }
         return;
       case 'shoot':
-        e.setAnim('shoot'); e.vy -= 60 * dt;
+        e.setAnim('shoot'); e.vy -= 60 * dt; keepInMap(e, world);
         if (e.stateT > 0.35) { e.setState('fly'); e.cool = (P.rate ?? 2.2) * rand(0.9, 1.2); }
         return;
       case 'aim':
@@ -790,6 +832,7 @@ AI_B.harpy = {
         return;
       case 'climb':
         e.setAnim('fly'); e.vy += (-280 - e.vy) * Math.min(1, 4 * dt); e.vx *= 0.97;
+        keepInMap(e, world);   // 열린 하늘 방(s17): 맵 위로 날아가 사라지지 않게
         if (e.stateT > 0.6) { e.setState('fly'); e.cool = (P.rate ?? 2.2) * rand(0.8, 1.1); }
         return;
     }
@@ -797,6 +840,7 @@ AI_B.harpy = {
     if (Math.abs(dx) > 360) e.side = -Math.sign(dx) || 1;
     sideFor(e, world, p, 170);
     hover(e, p.cx + e.side * 170, p.cy - 150 + Math.sin(e.t * 2.2) * 24, 2.4, dt, e.speed * 1.3);
+    keepInMap(e, world);
     faceP(e);
     if (e.cool <= 0 && e.distToPlayer() < 480) {
       if (Math.abs(dx) < 220 && chance(0.5)) { e.setState('aim'); e.hid = nid(); audio.sfx('bat', { vol: 0.5, pitch: 0.7 }); }
@@ -935,7 +979,7 @@ AI_B.wraith = {
       e.setAnim('vanish'); e.vx = 0; e.vy = 0; e.alpha = 1 - clamp(e.stateT / 0.3, 0, 1); e.invuln = e.stateT > 0.15;
       if (e.stateT > 0.35) {
         const side = -Math.sign(p.facing || 1);
-        e.cx = p.cx + side * rand(150, 220); e.y = p.bottom - 150 - e.h * 0.2;
+        e.cx = besideX(e, world, p.cx, side * rand(150, 220)); e.y = Math.max(TILE, p.bottom - 150 - e.h * 0.2);
         puff(world, 'ice', e.cx, e.cy, 14, { speed: 120 });
         e.setState('appear');
       }
@@ -1105,13 +1149,13 @@ AI_B.succubus = {
         if (e.stateT > 0.5 || (e.vy > 0 && solidAt(world, e.cx, e.bottom + 6))) e.setState('climb');
         return;
       case 'climb':
-        e.setAnim('fly'); e.vy += (-240 - e.vy) * Math.min(1, 4 * dt); e.vx *= 0.96;
+        e.setAnim('fly'); e.vy += (-240 - e.vy) * Math.min(1, 4 * dt); e.vx *= 0.96; keepInMap(e, world);
         if (e.stateT > 0.55) { e.setState('fly'); e.cool = (P.rate ?? 2.2) * rand(0.7, 1); }
         return;
       case 'vanish':
         e.setAnim('fly'); e.vx = 0; e.vy = 0; e.alpha = 1 - clamp(e.stateT / 0.25, 0, 1); e.invuln = true;
         if (e.stateT > 0.3) {
-          e.side = -e.side; e.cx = p.cx + e.side * (P.keep ?? 210); e.y = p.bottom - 180;
+          e.side = -e.side; e.cx = besideX(e, world, p.cx, e.side * (P.keep ?? 210)); e.side = Math.sign(e.cx - p.cx) || e.side; e.y = Math.max(TILE, p.bottom - 180);
           puff(world, 'magic', e.cx, e.cy, 14, { color: '#ff6aa0' });
           e.setState('appear');
         }
@@ -1236,7 +1280,7 @@ AI_B.angel = {
         }
         return;
       case 'climb':
-        e.setAnim('fly'); e.vy += (-300 - e.vy) * Math.min(1, 4 * dt); e.vx *= 0.96;
+        e.setAnim('fly'); e.vy += (-300 - e.vy) * Math.min(1, 4 * dt); e.vx *= 0.96; keepInMap(e, world);
         if (e.stateT > 0.7) { e.setState('fly'); e.cool = (P.rate ?? 2.4) * rand(0.8, 1.1); }
         return;
     }
@@ -1788,8 +1832,9 @@ AI_B.voider = {
       case 'blink':
         e.setAnim('blink'); e.vx = 0; e.vy = 0; e.alpha = 1 - clamp(e.stateT / 0.3, 0, 1); e.invuln = e.stateT > 0.15;
         if (e.stateT > 0.35) {
-          const side = -(Math.sign(p.facing) || 1);
-          e.cx = p.cx + side * 90; e.bottom = p.bottom - 10;
+          e.cx = besideX(e, world, p.cx, -(Math.sign(p.facing) || 1) * 90);   // 등 뒤가 맵(투기장) 밖이면 앞쪽으로
+          e.bottom = p.bottom - 10;
+          const side = Math.sign(e.cx - p.cx) || -(Math.sign(p.facing) || 1);
           e.facing = -side;
           puff(world, 'dark', e.cx, e.cy, 18, { speed: 160 });
           world.fx.ring(e.cx, e.cy, { color: '#b060ff', r0: 60, r1: 6, life: 0.3, width: 4 });

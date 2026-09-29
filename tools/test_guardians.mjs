@@ -688,14 +688,20 @@ await run('B', 'mirra_reflect', STAGE('s05', '&guards=gd_mirra&cmplv=10'), (page
   const T = window.__T, w = T.w, p = T.p;
   T.clearFoes();
   const z = T.spawn('zombie', 300);
-  let reflected = false;
+  // 미라는 가장 가까운 적 탄을 되돌린다: 이 케이스가 쏜 탄을 모두 지켜보고 (어느 것이 되돌아가도 통과),
+  // 새 탄을 쏘기 전에 되돌아가지 않은 앞 탄은 치운다 (남은 앞 탄이 더 가까워 새 탄 대신 잡히는 일이 없게) — 요청 #170
+  const shots = [];
+  const back = (q) => q.reflected === true || q.team === 'guardian' || q.team === 'player' || q.attack?.team === 'player';
+  let reflected = null;
   for (let k = 0; k < 8 && !reflected; k++) {
+    for (const q of shots) if (!q.dead && !back(q)) q.dead = true;
     const g = w.companions.guards[0];
     const pr = w.spawnProjectile({ x: g.cx + 60, y: g.cy, vx: -120, vy: 0, team: 'enemy', w: 12, h: 12, life: 3, owner: z, attack: { mv: 1, owner: z, tags: ['projectile'] } });
-    T.step(0.8, () => { if (pr.team === 'player' || pr.attack?.team === 'player') reflected = true; });
+    shots.push(pr);
+    T.step(0.8, () => { if (!reflected) reflected = shots.find(back) ? { k, i: shots.indexOf(shots.find(back)) } : null; });
   }
   void p;
-  return { checks: [['미라: 5초마다 탄 하나를 되돌림', reflected]] };
+  return { info: { shots: shots.length, reflected }, checks: [['미라: 5초마다 탄 하나를 되돌림', !!reflected]] };
 }));
 await run('B', 'lumen_flash', STAGE('s05', '&guards=gd_lumen&cmplv=10'), (page) => page.evaluate(() => {
   const T = window.__T, w = T.w, cs = w.companions;
@@ -711,16 +717,22 @@ await run('B', 'momo_eat', STAGE('s05', '&guards=gd_momo&cmplv=10'), (page) => p
   const T = window.__T, w = T.w, p = T.p, cs = w.companions;
   T.clearFoes();
   const z = T.spawn('zombie', 320);
-  let eaten = false;
+  // 모모는 가장 가까운 적 탄을 먹는다: 이 케이스가 쏜 탄을 모두 지켜보고, 새 탄을 쏘기 전에 앞 탄은 치운다 (요청 #170).
+  // 먹힌 탄 = 수명 전에 죽었고 onHit 표지가 지워짐 (swallow → quietExpire 가 콜백을 비운다; 플레이어·벽에 맞아 죽은 탄은 표지가 남는다)
+  const shots = [], mark = () => {};
+  const ate = (q) => q.dead && q.onHit === null && q.life > 0.1;
+  let eaten = null;
   for (let k = 0; k < 10 && !eaten; k++) {
-    const pr = w.spawnProjectile({ x: p.cx + 90, y: p.cy, vx: -40, vy: 0, team: 'enemy', w: 12, h: 12, life: 3, owner: z, attack: { mv: 0, owner: z, tags: ['projectile'] } });
-    T.step(0.8, () => { if (pr.dead && pr.life > 0.1) eaten = true; });
+    for (const q of shots) if (!q.dead) q.dead = true;
+    const pr = w.spawnProjectile({ x: p.cx + 90, y: p.cy, vx: -40, vy: 0, team: 'enemy', w: 12, h: 12, life: 3, owner: z, onHit: mark, attack: { mv: 0, owner: z, tags: ['projectile'] } });
+    shots.push(pr);
+    T.step(0.8, () => { if (!eaten && shots.some(ate)) eaten = { k, i: shots.findIndex(ate) }; });
   }
   p.iframes = 0; p.hp = Math.floor(p.stats.hp * 0.5);
   const hp0 = p.hp;
   cs.debug.skill(0);
   T.step(1.5);
-  return { info: { hp0, hp: p.hp }, checks: [['모모: 가까운 적 탄을 먹음', eaten], ['악몽 포식: 최대 HP 10% 회복', p.hp - hp0 >= Math.floor(p.stats.hp * 0.08), [hp0, p.hp]]] };
+  return { info: { shots: shots.length, eaten, hp0, hp: p.hp }, checks: [['모모: 가까운 적 탄을 먹음', !!eaten], ['악몽 포식: 최대 HP 10% 회복', p.hp - hp0 >= Math.floor(p.stats.hp * 0.08), [hp0, p.hp]]] };
 }));
 
 await browser.close();

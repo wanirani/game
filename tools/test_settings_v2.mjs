@@ -407,7 +407,9 @@ if (!NODE_ONLY) {
     if (u === '/__pack/index.json') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(pIndex)); return; }
     if (u === '/__pack/0.bnpack') { res.writeHead(200, { 'Content-Type': 'application/octet-stream' }); res.end(pBlob); return; }
     const lo = u.match(/^\/assets\/lo\/(.+)\.webp$/);
-    if (lo && lo[1] !== LO_MISSING) u = `/assets/${lo[1]}.webp`;
+    // LO_MISSING 은 디스크에 lo/ 파일이 생겨도 (make_variants) 항상 404 — 대체 경로 확인용 가짜 누락
+    if (lo && lo[1] === LO_MISSING) { res.writeHead(404); res.end('not found'); return; }
+    if (lo) u = `/assets/${lo[1]}.webp`;
     const f = path.join(ROOT, u);
     if (!f.startsWith(ROOT)) { res.writeHead(403); res.end(); return; }
     fs.readFile(f, (err, data) => {

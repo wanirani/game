@@ -3,20 +3,28 @@
 <head>
 <link rel="icon" href="data:,">
 <meta charset="utf-8">
+<base href="../">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>적 갤러리 B</title>
 <style>
   html, body { margin: 0; background: #07030a; color: #e8dcc0; font: 12px "Noto Sans KR", sans-serif; }
   canvas { display: block; }
+  #info { position: fixed; top: 4px; right: 8px; max-width: 60vw; font: 11px ui-monospace, Menlo, monospace; color: #9a8a9a; background: rgba(10,5,14,0.8); padding: 2px 6px; pointer-events: none; }
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
+<div id="info"></div>
 <script type="module">
 // 적 B 렌더러 갤러리: tools/gallery_enemies_b.html?ids=slime,merman&zoom=2&t=1.3&anim=1&proj=1
 //  ids: 표시할 적 (기본: 전체), zoom: 확대, t: 고정 시간, anim=1: 실시간 애니메이션, bg=light: 밝은 배경, proj=1: 투사체/장판 견본
+//  기본은 게임과 같은 render/enemies.js drawEnemy (채색 퍼핏, 리그가 없거나 아직 굽는 중이면 벡터 대체 그림) —
+//  vec=1: 벡터 RENDER_B 만 (A/B 비교), td: 리그를 굽는 텍셀 밀도 (게임 화면 배율 흉내, 기본 2)
 import { ENEMIES_B } from '../src/data/enemies_b.js';
 import { RENDER_B, PROJ_B, ZONE_B } from '../src/render/enemies_b.js';
+import { drawEnemy } from '../src/render/enemies.js';
+import { rigStats } from '../src/render/painted/enemy_kit.js';
+import { game } from '../src/core/game.js';
 
 const q = new URLSearchParams(location.search);
 const ids = (q.get('ids') || Object.keys(ENEMIES_B).join(',')).split(',').filter((id) => ENEMIES_B[id]);
@@ -24,6 +32,9 @@ const zoom = Number(q.get('zoom') || 1.4);
 const fixedT = q.has('t') ? Number(q.get('t')) : 1.37;
 const live = q.get('anim') === '1';
 const light = q.get('bg') === 'light';
+const vecOnly = q.get('vec') === '1';
+globalThis.__paintedEnemies = !vecOnly;
+game.scale = Number(q.get('td') ?? 2);
 
 // 적별 표시 프레임: [라벨, {anim, animT, state, stateT, ...}]
 const HIT = { flashT: 0.1 };
@@ -96,6 +107,7 @@ function makeEnt(id, f, t) {
   return Object.assign({
     def: d, id, t, anim: 'idle', animT: t % 1, state: f.state ?? f.anim ?? 'idle', stateT: t % 1, flashT: 0, stun: 0, params: { ...(d.aiParams || {}) },
     facing: 1, scale: 1, elite: false, dying: 0, vx: 0, vy: 0, alpha: 1, hp: maxHp, stats: { maxHp }, rig: {}, onGround: true,
+    w: d.size.w, h: d.size.h, cx: 0, bottom: 0, x: -d.size.w / 2, y: -d.size.h, cy: -d.size.h / 2,   // 발 원점 (drawEnemy 가 (cx, bottom) 으로 옮긴다)
   }, f, { t: f.t ?? t });
 }
 
@@ -116,10 +128,12 @@ function draw(now) {
       const e = makeEnt(id, f, live ? T + c * 0.13 : (f.t ?? T));
       const fn = RENDER_B[ENEMIES_B[id].render];
       ctx.save();
-      ctx.translate(x, y); ctx.scale(zoom * (e.scale || 1), zoom * (e.scale || 1));
+      ctx.translate(x, y);
       ctx.globalAlpha = e.alpha ?? 1;
-      try { if (fn) fn(ctx, e, null, { flash: e.flashT > 0 }); else { ctx.fillStyle = '#f0f'; ctx.fillRect(-10, -20, 20, 20); } }
-      catch (err) { console.error(id, label, err); ctx.fillStyle = '#f00'; ctx.fillRect(-10, -30, 20, 30); }
+      try {
+        if (!vecOnly) { ctx.scale(zoom, zoom); drawEnemy(ctx, e, null); }   // 게임과 같은 경로: 채색 퍼핏 (없으면 벡터), e.scale · 좌우 반전은 drawEnemy 가
+        else { ctx.scale(zoom * (e.scale || 1), zoom * (e.scale || 1)); if (fn) fn(ctx, e, null, { flash: e.flashT > 0 }); else { ctx.fillStyle = '#f0f'; ctx.fillRect(-10, -20, 20, 20); } }
+      } catch (err) { console.error(id, label, err); ctx.fillStyle = '#f00'; ctx.fillRect(-10, -30, 20, 30); }
       ctx.restore();
     });
   });
@@ -144,8 +158,15 @@ function draw(now) {
       zx += w + 40;
     }
   }
-  if (live) requestAnimationFrame(draw);
+  // 채색 리그는 비동기로 굽힌다: 모두 준비(또는 실패)될 때까지 다시 그린 뒤 멈춘다 (anim=1 이면 계속)
+  const st = vecOnly ? {} : rigStats(), rs = Object.values(st);
+  const done = rs.every((s) => s.ready || s.failed);
+  document.getElementById('info').textContent = vecOnly ? '벡터 (vec=1)' : `채색 리그 ${rs.filter((s) => s.ready).length}/${rs.length} 준비${rs.some((s) => s.failed) ? ` · 없음 ${rs.filter((s) => s.failed).length}` : ''}`;
+  drawn++;
+  window.__galleryReady = drawn > 3 && done;
+  if (live || !window.__galleryReady) requestAnimationFrame(draw);
 }
+let drawn = 0;
 requestAnimationFrame(draw);
 window.__ready = true;
 </script>

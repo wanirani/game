@@ -52,11 +52,19 @@ function makeCanvas(w, h) {
   if (typeof document !== 'undefined') { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
   return new OffscreenCanvas(w, h);
 }
+/** 빈 발광 캔버스 예비분: 보스 등장(BossB.init) 때 채워 두고, 싸움 도중 처음 쓰는 색은 여기서 꺼내 칠한다
+ *  (색 목록을 미리 모르는 보스도 전투 중 캔버스 생성 0 — feel §8 / MASTER_PLAN §5.2) */
+const GLOW_POOL = [];
+/** 발광 스프라이트 예비 캔버스를 n 장까지 채우고, 주어진 색(들)은 바로 굽는다 */
+export function prewarmGlows(n = 6, colors = null) {
+  while (GLOW_POOL.length < n) GLOW_POOL.push(makeCanvas(64, 64));
+  if (colors) for (const c of colors) { glowSprite(c, true); glowSprite(c, false); }
+}
 export function glowSprite(color, core = true) {
   const key = color + (core ? '1' : '0');
   let c = GLOWS.get(key);
   if (!c) {
-    c = makeCanvas(64, 64);
+    c = GLOW_POOL.pop() ?? makeCanvas(64, 64);
     const g = c.getContext('2d');
     const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
     if (core) { gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.18, rgba(color, 0.95)); }
@@ -343,10 +351,21 @@ export function arenaOf(world, boss) {
       for (let ty = Math.floor(floor / TILE) - 2; ty >= 0; ty--) if (solidAt(map, cx2, ty)) { tt = (ty + 1) * TILE; break; }
       top = Math.min(top, tt);
     }
-    // 좌우 벽: 바닥 바로 위 두 줄에서 중앙부터 바깥으로 첫 고체 타일
+    // 좌우 벽: 바닥 바로 위 두 줄이 모두 고체인 열
     const ty1 = Math.floor(floor / TILE) - 1, ty2 = ty1 - 1;
-    for (let t = tx; t * TILE < x1; t++) if (solidAt(map, t, ty1) && solidAt(map, t, ty2)) { X1 = Math.min(x1, t * TILE); break; }
-    for (let t = tx; (t + 1) * TILE > x0; t--) if (solidAt(map, t, ty1) && solidAt(map, t, ty2)) { X0 = Math.max(x0, (t + 1) * TILE); break; }
+    const wall = (t) => solidAt(map, t, ty1) && solidAt(map, t, ty2);
+    if (a && Number.isFinite(a.x0) && Number.isFinite(a.x1)) {
+      // 잠긴 투기장: 가장자리부터 안쪽으로, 가장자리에 붙어 이어지는 벽 열만 벽으로 본다 (c_common fixArena 와 같은 규칙).
+      // 가운데부터 찾으면 경기장 안의 받침대·기둥(s15 몰록 제단, s16 기둥)에서 멈춰 폭이 음수·반쪽이 된다
+      const t0 = Math.floor(x0 / TILE), t1 = Math.ceil(x1 / TILE) - 1;
+      let c = t0; while (c <= t1 && wall(c)) c++;
+      let d = t1; while (d >= c && wall(d)) d--;
+      if ((d + 1 - c) >= 4) { X0 = Math.max(x0, c * TILE); X1 = Math.min(x1, (d + 1) * TILE); }
+    } else {
+      // 투기장 없음 (갤러리·테스트): 중앙부터 바깥으로 첫 벽
+      for (let t = tx; t * TILE < x1; t++) if (wall(t)) { X1 = Math.min(x1, t * TILE); break; }
+      for (let t = tx; (t + 1) * TILE > x0; t--) if (wall(t)) { X0 = Math.max(x0, (t + 1) * TILE); break; }
+    }
   }
   const CX = (X0 + X1) / 2;
   return { x0: X0, x1: X1, w: X1 - X0, cx: CX, floor, top, h: floor - top };
@@ -372,6 +391,7 @@ export class BossB extends Boss {
     this.hitPart = null;
     this.alpha = 1;
     this.def0 = this.def;
+    prewarmGlows(6, [RIM, WARM, '#ffffff']);   // 등장 때: 전투 중 새 발광 색이 캔버스를 만들지 않게 (feel §8)
     this.setup?.();
     preloadPainted(this.def.id, this.world.game);   // 채색 렌더러가 등록된 보스면 굽기 시작
   }

@@ -19,7 +19,7 @@
 //   pose {sing, raise, cut, throw, lean, crouch, slump, reach, rear, grin} · rock (요람 흔들림 rad) · jt (관절, 몸 지역 좌표) ·
 //   legs[{kx, ky, fxw, fyw}] (P2 무릎·발, 월드) · heads[{alive, grow, x, y}] · faceP · mouthP · mouthK (입 벌림 0~1) · eyeT ·
 //   dawn ({fake}) · collapsed · rush · dieT
-import { BossC, telegraph, warnText, warnMark, strikeLine, strikeCircle, ringWave, gimmickOf, setBeat, screenTint, darken, muteMusic } from './c_common.js';
+import { BossC, telegraph, warnText, warnMark, strikeLine, strikeCircle, ringWave, gimmickOf, setBeat, screenTint, prewarmTint, darken, muteMusic } from './c_common.js';
 import { PI, R, C, LG, ink, glow, glowE, glowSprite, warnRect, warnLine, impact, hash, tube } from './b_common.js';
 import { Entity } from '../entity.js';
 import { T } from '../../core/physics.js';
@@ -369,6 +369,7 @@ export class Mara extends BossC {
     // [hook:art-boss-7] 모음(reg/index.js)에 art-boss-7 줄이 아직 없으면 여기서 한 번 등록 (이미 있으면 아무것도 안 함). BossB.init 의 preloadPainted 보다 먼저 돈다
     if (!hasPainted?.('b_mara') && ART7?.b_mara) registerPainted?.('b_mara', { kind: 'boss', importer: ART7.b_mara });   // [hook:art-boss-7]
     ensureArt(this.world);
+    prewarmTint('#b070ff');   // dreamshift 가장자리 색조: 전투 도중 캔버스를 만들지 않게 등장 때 굽는다
     this.noGravity = true;
     this.facing = -1;
     this.pose = { ...POSE0 }; this.pt = { ...POSE0 };

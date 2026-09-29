@@ -34,6 +34,10 @@ export class Dullahan extends ABoss {
   onIntro() { audio.sfx('boss_roar', { pitch: 0.7 }); this.rear = 0.6; this.skullUp = 1; }
   moves() {
     const ph = this.phase;
+    // 패턴 고를 때만 살아 있는 해골 수를 다시 센다: onExpire 없이 지워진 해골(동료 방패 breakProj, 방 재로드 등)이
+    // 세기를 영영 남겨 '해골' 공격과 손의 해골 그림이 사라지지 않게
+    const W = this.world?.entities;
+    if (W) { let n = 0; for (const e of W) if (e.kind === 'projectile' && e.owner === this && !e.dead && e.render === drawFlameSkull) n++; this.skullOut = n; }
     if (this.mounted) return [
       ['charge', 3], ['skull', this.skullOut ? 0 : 2.2], ['stomp', 2.2], ['thrust', 1.5], ['hellfire', ph >= 1 ? 2 : 0],
     ];

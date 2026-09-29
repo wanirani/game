@@ -44,8 +44,10 @@
 // 사운드 갤러리: 곡/효과음 재생 + 오프라인 렌더 검증 훅(window.__audioTest)
 import { audio, Engine, compileTrack, SFX } from '../src/core/audio.js';
 import { TRACKS } from '../src/data/music.js';
+import '../src/core/audio_companions.js';   // 동료 효과음 31종을 defineSfx 로 등록 (import 시점)
 
-const SFX_NAMES = 'whip whip_crack slash slash_heavy gun shotgun magic holy fire ice thunder dark hit hit_heavy crit clang enemy_die explode jump double_jump land dash mist hurt death heart coin item powerup levelup menu_move menu_ok menu_cancel door candle break_wall secret save heal chest boss_roar boss_die warning thunderclap stopwatch cross axe dagger holywater_burn enhance_hit enhance_success enhance_fail enhance_destroy dice card slot_spin slot_win win lose ult combo footstep splash bat ghost bell clock_tick ready go coin_insert extra_life type charge_ready'.split(' ');
+// 등록된 효과음 전부: 내장 + 체감(sfx_feel.js) + 동료(audio_companions.js). _default 는 모르는 이름의 대체음이라 뺀다
+const SFX_NAMES = Object.keys(SFX).filter((n) => n !== '_default');
 const $ = (id) => document.getElementById(id);
 let analyser = null;
 function ensure() {

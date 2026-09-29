@@ -117,6 +117,66 @@ export function gHitOne(world, e, attack, x, y) {
   return hitTarget(world, attack, e, x ?? e.cx, y ?? e.cy);
 }
 
+// ───────────────────────── 조준: 몸 사각형이 아니라 실제 피격 판정 (R1-REQ-372) ─────────────────────────
+// 보스의 피격 판정은 바닥에서 떠 있을 수 있다 (말 탄 둘라한: 다리 제외 → 바닥 위 83px · 드라큘라 1형태: 상반신만 → 64px).
+// 발 기준 근접 판정(높이 40–70px)은 그런 상자에 닿지 않아 가웨인 · 하티가 보스전 내내 허공을 쳤다. 그래서
+//  근접 동작(pounce slash bite bash swing blink · 협공 돌진)은 가장 가까운 판정 상자 옆으로 가고, 지면형은 그 높이까지 뛰어올라
+//  (최대 REACH_LIFT) 판정을 상자 아래쪽과 겹친 뒤 바닥으로 떨어진다. 비행형 · 투사체 · 범위 · 급강하 · 원뿔은 몸 가운데 대신 그 상자 가운데를 노린다.
+const REACH_LIFT = 150;   // 지면형 수호신이 뛰어올라 닿는 최대 높이 (px, 약 3칸)
+const okBox = (b) => !!b && !b.off && b.w > 0 && b.h > 0 && Number.isFinite(b.x) && Number.isFinite(b.y);
+/** 대상의 피격 판정 상자들 (gStrike 와 같은 순서: hitParts → hurtboxes → hurtbox → 몸) */
+function hurtBoxes(T) {
+  try {
+    const L = T.hitParts ? T.hitParts() : T.hurtboxes ? T.hurtboxes() : [T.hurtbox ? T.hurtbox() : T];
+    return Array.isArray(L) ? L : [];
+  } catch { return []; }
+}
+/**
+ * 노릴 판정 상자: (x, y) 에서 가장 가까운 것 (꺼진 부위 제외). floorY 를 주면 지면형: 바닥(floorY)에서 높이 bh 판정을 몇 px 올려야
+ * 닿는지를 세로 비용으로 본다 (덜 뛰어도 되는 상자 우선). 상자가 없으면(사라짐 · 변신 중) null.
+ */
+export function aimBox(T, x, y, floorY = null, bh = 0) {
+  if (!T) return null;
+  let best = null, bc = Infinity;
+  for (const b of hurtBoxes(T)) {
+    if (!okBox(b)) continue;
+    const dx = Math.max(0, b.x - x, x - (b.x + b.w));
+    const dy = floorY == null ? Math.max(0, b.y - y, y - (b.y + b.h)) : Math.max(0, floorY - bh - (b.y + b.h), b.y - floorY);
+    const c = dx + dy * 1.5;
+    if (c < bc) { bc = c; best = b; }
+  }
+  return best;
+}
+/** 노릴 점: (x, y) 에서 가장 가까운 판정 상자의 가운데 (상자가 없으면 몸 가운데) */
+export function aimPoint(T, x, y) {
+  const b = aimBox(T, x, y);
+  return b ? { x: b.x + b.w / 2, y: b.y + b.h / 2 } : { x: T.cx, y: T.cy };
+}
+/**
+ * 근접 동작의 자리 {x(발 중앙), y(g.bottom), lift, floor}: 대상의 가장 가까운 판정 상자의 가까운 쪽 가장자리에서 gap 만큼 바깥.
+ * 지면형은 대상의 발 높이(T.bottom)에 서되, 상자가 떠 있으면 판정(높이 bh, 발 기준)이 상자 아래쪽과 겹치게 lift 만큼 뛰어오른다.
+ * 비행형은 상자 가운데 높이. 상자가 없으면 예전처럼 몸 사각형 기준.
+ */
+function meleeSpot(g, T, dir, gap, bh) {
+  const fy = T.bottom;
+  const b = aimBox(T, g.cx, g.fly ? g.cy : fy - bh / 2, g.fly ? null : fy, bh);
+  if (!b) return { x: T.cx - dir * (T.w / 2 + gap), y: g.fly ? T.cy + g.h / 2 : fy, lift: 0, floor: fy };
+  const x = (dir > 0 ? b.x : b.x + b.w) - dir * gap;
+  if (g.fly) return { x, y: b.y + b.h / 2 + g.h / 2, lift: 0, floor: fy };
+  const lift = clamp(fy - bh - (b.y + b.h - Math.min(bh, b.h) * 0.6), 0, REACH_LIFT);
+  return { x, y: fy - lift, lift, floor: fy };
+}
+/** 동작 하나 동안: 처음 고른 자리를 대상이 움직인 만큼 옮긴다 (프레임마다 상자를 다시 골라 자리가 튀지 않게). a.aim 에 기억 */
+function trackSpot(g, a, T, dir, gap, bh) {
+  if (!a.aim) { const S = meleeSpot(g, T, dir, gap, bh); a.aim = { dx: S.x - T.cx, dy: S.y - T.bottom, lift: S.lift }; }
+  return { x: T.cx + a.aim.dx, y: T.bottom + a.aim.dy, lift: a.aim.lift, floor: T.bottom };
+}
+/** 노릴 점을 대상 기준 오프셋으로 한 번 기억해 둔다 (급강하 등: 대상이 움직이면 따라간다) */
+function trackPoint(g, a, T) {
+  if (!a.aimP) { const P = aimPoint(T, g.cx, g.cy); a.aimP = { dx: P.x - T.cx, dy: P.y - T.cy }; }
+  return { x: T.cx + a.aimP.dx, y: T.cy + a.aimP.dy };
+}
+
 // ───────────────────────── 수호신용 개체 ─────────────────────────
 /** 지속 판정 (Hitbox 와 비슷하지만 gStrike 로만 때린다). render(ctx, e, world) 는 월드 좌표 */
 export class GHit extends Entity {
@@ -172,7 +232,8 @@ export class GProj extends Projectile {
     if (this.gHoming && this.t > (this.homingDelay ?? 0.1) && this.life > dt) {
       const tgt = nearestFoe(world, this.cx, this.cy, 600);
       if (tgt) {
-        const want = Math.atan2(tgt.cy - this.cy, tgt.cx - this.cx);
+        const P = aimPoint(tgt, this.cx, this.cy);   // 몸 가운데가 아니라 가장 가까운 피격 판정 (떠 있는 보스 판정 — R1-REQ-372)
+        const want = Math.atan2(P.y - this.cy, P.x - this.cx);
         let cur = Math.atan2(this.vy, this.vx);
         const d = Math.atan2(Math.sin(want - cur), Math.cos(want - cur)), tn = (this.homingTurn ?? 6) * dt;
         cur += clamp(d, -tn, tn);
@@ -269,7 +330,11 @@ export class Guardian extends Entity {
   /** 동작 시작. o: {anim, pos(위치를 동작이 직접 정함), goal{x,y}, tgt, step(g,w,dt,a), end(g,w,a)} */
   begin(name, dur, o = {}) {
     this.act = { name, t: 0, dur, hit: 0, ...o };
-    this.setAnim(o.anim ?? name);
+    const an = o.anim ?? name;
+    // 같은 이름의 동작이 이어져도 새 동작은 처음부터 그린다 (협공 문 뒤 곧바로 자동 공격 등: 준비 · 타격 틀을 건너뛰지 않게 — R1-REQ-350).
+    // 협공은 예외: 0.12초 돌진('assist') 다음의 협공 동작이 그 시계를 이어 쓴다
+    if (an === this.anim && name !== 'assist') this.animT = 0;
+    else this.setAnim(an);
     return this.act;
   }
   /** 사각형: 몸 앞쪽 (지면형은 발 기준, 비행형은 몸 가운데 기준) */
@@ -345,8 +410,10 @@ export class Guardian extends Entity {
   startAssist(world, tgt) {
     if (!alive(tgt)) return false;
     const side = Math.sign(this.cx - tgt.cx) || -(this.facing || 1);
-    const px = tgt.cx + side * (tgt.w / 2 + this.w / 2 + 8);
-    const py = this.fly ? tgt.cy + this.h / 2 : tgt.bottom;
+    // 가장 가까운 피격 판정 옆으로 (몸 사각형 가운데는 떠 있는 보스 판정 밖일 수 있다 — R1-REQ-372). 지면형의 높이는 협공 동작이 맞춘다
+    const b = aimBox(tgt, this.cx, this.cy);
+    const px = b ? (side > 0 ? b.x + b.w : b.x) + side * (this.w / 2 + 8) : tgt.cx + side * (tgt.w / 2 + this.w / 2 + 8);
+    const py = this.fly ? (b ? b.y + b.h / 2 : tgt.cy) + this.h / 2 : tgt.bottom;
     const sx = this.cx, sy = this.bottom;
     this.assistCd = this.d?.assistCd ?? GUARD_RULES.assistCd;
     this.act = null; this.target = tgt; this.perched = false;
@@ -498,13 +565,14 @@ export class Guardian extends Entity {
 function shoot(g, world, tgt, s, o, i, n) {
   const x = g.cx + (g.facing || 1) * 8, y = g.cy;
   const ok = alive(tgt);
-  const tx = ok ? tgt.cx : x + (g.facing || 1) * 240, ty = ok ? tgt.cy : y;
+  const P = ok ? aimPoint(tgt, x, y) : null;   // 가장 가까운 피격 판정 가운데 (R1-REQ-372)
+  const tx = P ? P.x : x + (g.facing || 1) * 240, ty = P ? P.y : y;
   const ang = Math.atan2(ty - y, tx - x) + (n > 1 ? (i - (n - 1) / 2) * (s.spread ?? 0.1) : 0);
   const sp = s.speed ?? 640;
   const el = s.element ?? null, col = g.def.color;
   const pr = new GProj({
     x, y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, w: s.pw ?? 14, h: s.ph ?? 14,
-    render: s.proj ?? 'orb', color: col, life: ((s.range ?? 360) + 120) / sp, pierce: s.pierce ?? 1,
+    render: g.ai?.projRender ?? s.proj ?? 'orb', color: col, life: ((s.range ?? 360) + 120) / sp, pierce: s.pierce ?? 1,   // AI 가 자동 공격 탄 그림을 줄 수 있다 (미라 거울 파편 — R1-REQ-328)
     behavior: s.homing ? 'homing' : 'straight', homingTurn: 7, homingDelay: 0.05,
     trail: EL_TRAIL[el] ?? null, trailRate: 0.06 / qOf(world), light: { r: 50, color: col, i: 0.45 }, scale: s.scale ?? 1,
     owner: g, attack: g.atk(s, { ...o, proj: true }, tgt),
@@ -532,22 +600,29 @@ function kindPounce(g, world, tgt, s, o) {
   const sx = g.cx, sy = g.bottom;
   const leapT = o.assist ? 0.12 : (s.leapT ?? 0.25), bites = o.assist ? 1 : (s.bites ?? 2), gap = s.gap ?? 0.12;
   const bw = s.box?.w ?? 50, bh = s.box?.h ?? 40;
-  return g.begin('pounce', leapT + gap * bites + 0.14, {
+  const biteEnd = leapT + gap * bites;
+  return g.begin('pounce', biteEnd + 0.14, {
     pos: true, tgt,
     step(g, w, dt, a) {
       const T = a.tgt, ok = alive(T);
-      const ex = (ok ? T.cx : sx + dir * 140) - dir * ((ok ? T.w : 30) / 2 + 8), ey = ok ? T.bottom : sy;
+      // 가장 가까운 피격 판정 옆 (떠 있으면 그 높이로 뛰어올라 문다 — R1-REQ-372). 대상이 쓰러지면 마지막 자리
+      if (ok) a.spot = trackSpot(g, a, T, dir, 8, bh);
+      const S = a.spot ?? { x: sx + dir * 117, y: sy, lift: 0, floor: sy };
+      const ex = S.x, ey = S.y;
       g.facing = dir;
       if (a.t < leapT) {
         const k = a.t / leapT;
         g.cx = lerp(sx, ex, k); g.bottom = lerp(sy, ey, k) - Math.sin(k * Math.PI) * 60;
       } else {
-        g.cx = ex; g.bottom = ey; g.setAnim('attack');
+        g.cx = ex; g.bottom = ey;
+        if (a.hit < bites) g.setAnim('attack');
         while (a.hit < bites && a.t >= leapT + a.hit * gap) {
           a.hit++;
           g.strike(w, g.frontRect(bw, bh, 4), g.atk(s, o, T));
           audio.sfx('wolf_bite', { vol: 0.5, pitch: rand(0.95, 1.15) });
         }
+        // 뛰어올라 물었으면 바닥으로 떨어진다
+        if (S.lift > 0 && a.t > biteEnd) { const k = clamp((a.t - biteEnd) / 0.14, 0, 1); g.bottom = lerp(ey, S.floor, k * k); }
       }
     },
   });
@@ -561,14 +636,19 @@ function kindSlash(g, world, tgt, s, o) {
       const T = a.tgt, ok = alive(T);
       if (a.go === undefined) {
         if (!ok) { a.done = true; return; }
-        const dir = Math.sign(T.cx - g.cx) || g.facing || 1;
-        const ex = T.cx - dir * (T.w / 2 + bw * 0.35), ey = g.fly ? T.cy + g.h / 2 : T.bottom;
+        a.dir ??= Math.sign(T.cx - g.cx) || g.facing || 1;
+        const dir = a.dir;
+        // 가장 가까운 피격 판정 옆으로 미끄러진다 (떠 있으면 그 높이까지 떠올라 벤다 — R1-REQ-372)
+        const S = trackSpot(g, a, T, dir, bw * 0.35, bh);
+        const ex = S.x, ey = S.y;
         const dx = ex - g.cx, dy = ey - g.bottom, d = Math.hypot(dx, dy), st = sp * dt;
         g.facing = dir;
-        if (d <= st + 2 || a.t > 0.5) { if (d <= st + 2) { g.cx = ex; g.bottom = ey; } a.go = a.t; g.setAnim('attack'); }
+        if (d <= st + 2 || a.t > 0.5) { if (d <= st + 2) { g.cx = ex; g.bottom = ey; } a.go = a.t; a.floor = S.floor; a.lifted = g.bottom < S.floor - 4; g.setAnim('attack'); }
         else { g.cx += dx / d * st; g.bottom += dy / d * st; }
         return;
       }
+      // 떠올라 벴으면 마지막 베기 뒤 바닥 쪽으로 내려온다 (지면형)
+      if (a.lifted && !g.fly && a.hit >= hits && a.t >= a.go + 0.06 + gap * (hits - 1) + 0.08) g.bottom = Math.min(a.floor, g.bottom + 900 * dt);
       while (a.hit < hits && a.t >= a.go + 0.06 + a.hit * gap) {
         a.hit++;
         const r = g.frontRect(bw, bh, 0);
@@ -583,7 +663,8 @@ function kindSlash(g, world, tgt, s, o) {
 function kindCone(g, world, tgt, s, o) {
   const dur = s.dur ?? 0.5, bw = s.box?.w ?? 160, bh = s.box?.h ?? 60;
   const dir = Math.sign(tgt.cx - g.cx) || g.facing || 1;
-  const hold = { x: tgt.cx - dir * Math.min(110, bw * 0.6), y: (g.fly ? tgt.cy + g.h / 2 - 6 : tgt.bottom) };
+  const P = aimPoint(tgt, g.cx, g.cy);   // 가장 가까운 피격 판정 가운데를 향해 뿜는다 (R1-REQ-372)
+  const hold = { x: P.x - dir * Math.min(110, bw * 0.6), y: (g.fly ? P.y + g.h / 2 - 6 : tgt.bottom) };
   const act = g.begin(o.assist ? 'assist' : 'attack', dur + 0.2, { tgt, goal: hold, speed: 700 });
   const atk = g.atk(s, o, tgt);
   atk.rehit = s.rehit ?? 0.1;
@@ -606,7 +687,8 @@ function kindDive(g, world, tgt, s, o) {
     pos: true, tgt,
     step(g, w, dt, a) {
       const T = a.tgt, ok = alive(T);
-      const tx = ok ? T.cx : sx + dir * 100, ty = ok ? T.cy + g.h / 2 : sy + 60;
+      if (ok) a.pt = trackPoint(g, a, T);   // 가장 가까운 피격 판정 가운데로 내리꽂힌다 (R1-REQ-372)
+      const tx = a.pt ? a.pt.x : sx + dir * 100, ty = a.pt ? a.pt.y + g.h / 2 : sy + 60;
       g.facing = dir;
       if (a.t < up) { const k = a.t / up; g.cx = lerp(sx, tx - dir * 40, k); g.bottom = lerp(sy, ty - 90, k); g.setAnim('move'); }
       else if (a.t < up + sw) {
@@ -634,7 +716,9 @@ function kindBlink(g, world, tgt, s, o) {
         if (!ok) { a.done = true; return; }
         w.fx?.burst('dark', g.cx, g.cy, nq(w, 6), { speed: 80 });
         const p = w.player, side = Math.sign(T.cx - (p?.cx ?? g.cx)) || 1;
-        g.cx = T.cx + side * (T.w / 2 + 14); g.bottom = g.fly ? T.cy + g.h / 2 : T.bottom; g.facing = -side;
+        // 주인 반대편, 가장 가까운 피격 판정 바로 옆 (지면형은 떠 있는 판정 높이까지 — R1-REQ-372)
+        const S = meleeSpot(g, T, -side, 14, bh);
+        g.cx = S.x; g.bottom = S.y; g.facing = -side;
         w.fx?.burst('magic', g.cx, g.cy, nq(w, 6), { speed: 90, color: col });
         g.setAnim('attack');
       }
@@ -680,22 +764,27 @@ function kindMelee(boxW, boxH, sfx) {
       pos: true, tgt,
       step(g, w, dt, a) {
         const T = a.tgt, ok = alive(T);
-        const ex = (ok ? T.cx : sx + dir * 60) - dir * ((ok ? T.w : 30) / 2 + bw * 0.3), ey = g.fly ? (ok ? T.cy + g.h / 2 : sy) : (ok ? T.bottom : sy);
+        // 가장 가까운 피격 판정 옆 (떠 있으면 지면형은 뛰어올라 친다 — R1-REQ-372). 대상이 쓰러지면 마지막 자리
+        if (ok) a.spot = trackSpot(g, a, T, dir, bw * 0.3, bh);
+        const S = a.spot ?? { x: sx + dir * 60 - dir * (15 + bw * 0.3), y: sy, lift: 0, floor: sy };
         g.facing = dir;
         const k = Math.min(1, a.t / 0.12);
-        g.cx = lerp(sx, ex, k); g.bottom = lerp(sy, ey, k);
+        g.cx = lerp(sx, S.x, k); g.bottom = lerp(sy, S.y, k) - (S.lift > 0 ? Math.sin(k * Math.PI) * 18 : 0);
         if (!a.hit && a.t >= 0.14) {
           a.hit = 1; g.setAnim('attack');
           g.strike(w, g.frontRect(bw, bh, 0), g.atk(s, o, T));
           if (sfx) audio.sfx(sfx, { vol: 0.45, pitch: rand(0.95, 1.1) });
         }
+        // 뛰어올라 쳤으면 바닥으로 떨어진다
+        if (S.lift > 0 && a.t > 0.2) { const kk = clamp((a.t - 0.2) / 0.14, 0, 1); g.bottom = lerp(S.y, S.floor, kk * kk); }
       },
     });
   };
 }
 function kindArea(r0, flash) {
   return (g, world, tgt, s, o) => {
-    const r = s.r ?? r0, x = tgt.cx, y = tgt.cy, col = g.def.color;
+    const P = aimPoint(tgt, g.cx, g.cy);   // 가장 가까운 피격 판정 가운데 (R1-REQ-372)
+    const r = s.r ?? r0, x = P.x, y = P.y, col = g.def.color;
     world.add(new GHit({ x: x - r, y: y - r, w: r * 2, h: r * 2, life: 0.1, attack: g.atk(s, o, tgt), owner: g }));
     world.fx?.ring(x, y, { color: col, r0: r * 0.3, r1: r * 1.2, life: 0.3, width: 6 });
     if (flash) world.fx?.flash(x, y, { color: col, size: r * 2.4, life: 0.14 });
@@ -825,8 +914,44 @@ const IMP = {
 export function blockable(e) {
   return e.kind === 'projectile' && e.team === 'enemy' && !e.dead && e.behavior !== 'beam' && !e.unblockable && e.w <= 80 && e.h <= 80;
 }
+const noop = () => {};
+const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+const MUTED = new WeakMap();
+/** world.fx 대리 객체: 함수 호출(연출)은 모두 무시, 값(quality 등)은 그대로 읽힌다 */
+function mutedFx(fx) {
+  if (!fx || typeof fx !== 'object') return fx;
+  let m = MUTED.get(fx);
+  if (!m) { m = new Proxy(fx, { get: (t, k) => (typeof t[k] === 'function' ? noop : t[k]) }); MUTED.set(fx, m); }
+  return m;
+}
+/**
+ * 적 탄을 거둘 때 (가웨인 막기 · 방패벽, 미라 되비추기, 모모 먹기): 탄의 onExpire 를 '조용히' 부르고 콜백을 모두 지운다.
+ * 쏜 적이 onExpire 로 제 탄 수를 세는 장부(뒤라한의 불꽃 해골 skullOut 등)는 풀려야 한다 — 안 그러면 그 적은 그 공격을 다시 쓰지 못한다
+ * (R1-REQ-173). 대신 그 안에서 생기는 개체(폭발 판정 · 분열 탄 · 소환)는 월드에 넣지 않고, 연출 · 효과음 · 화면 흔들림도 막는다.
+ * guardian_ai_b.js 도 이 함수를 쓴다.
+ */
+export function quietExpire(world, q) {
+  const fn = q.onExpire;
+  q.onExpire = null; q.onHit = null; q.onWall = null; q.onLand = null;
+  if (typeof fn !== 'function' || !world) return;
+  const cam = world.camera;
+  const had = { add: own(world, 'add'), shake: !!cam && own(cam, 'shake'), sfx: own(audio, 'sfx') };
+  const prev = { add: world.add, fx: world.fx, shake: cam?.shake, sfx: audio.sfx };
+  world.add = (e) => { if (e && typeof e === 'object') { e.dead = true; e.world = world; } return e; };
+  world.fx = mutedFx(prev.fx);
+  if (cam) cam.shake = noop;
+  audio.sfx = noop;
+  try { fn(q, world, false); } catch (e) { warnOnce('onExpire', e); }
+  finally {
+    if (had.add) world.add = prev.add; else delete world.add;
+    world.fx = prev.fx;
+    if (cam) { if (had.shake) cam.shake = prev.shake; else delete cam.shake; }
+    if (had.sfx) audio.sfx = prev.sfx; else delete audio.sfx;
+  }
+}
 function breakProj(world, e, color = '#bfe6ff') {
   e.dead = true;
+  quietExpire(world, e);   // 쏜 적의 탄 장부(onExpire)는 풀되 터지지 않게 (R1-REQ-173: 뒤라한 불꽃 해골이 막힌 뒤 다시 나오게)
   world.fx?.burst('spark', e.cx, e.cy, nq(world, 8), { speed: 260, color });
   world.fx?.flash(e.cx, e.cy, { color, size: 40, life: 0.1 });
 }

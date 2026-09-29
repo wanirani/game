@@ -7,6 +7,8 @@
 //   fling     a fast drag released without a pause settles on a 45° step within 1.2 s (game time)               — acceptance 1
 //   keys      hold , / . 0.5 s = ±1.3 rad (2.6 rad/s); / toggles auto-spin; / / (double) resets                   — acceptance 2
 //   stick     fake pad right stick X = 1 for 0.5 s ≈ 1.6 rad; R3 resets to the default view and toggles auto-spin — acceptance 2
+//             + status → equip → class reached with RB (real flow, no rest()): the stick rotates on tab entry and
+//             during a showcase (and ends it) on every turntable tab                                             — #371
 //   wheel     one notch over the stage = 22.5° then the next 45° step; wheel over another panel does not rotate    — §7.2
 //   auto      auto-spin starts after 6 s idle, stops on input, never with reduceMotion                              — acceptance 3
 //   showcase  a tap on the hero plays the showcase in profile and yaw returns to the user's angle; double tap resets — acceptance 4
@@ -37,6 +39,7 @@ import { fakePadInit, connect, axes, setButton, BTN } from './lib/fakepad.mjs';
 const suite = new Suite('turntable');
 const env = await openEnv();
 const TABS = ['status', 'equip', 'class'];
+const MENU_TAB_COUNT = 12;   // RB presses before giving up on reaching a tab (MENU_TABS has 10; RB wraps)
 const PI = Math.PI, DEG = PI / 180;
 const G = { pkg: 'PLAT-TURNTABLE', gate: 'PLAT-TURNTABLE' };
 const SHOT_DIR = path.join(REPORT_DIR, 'shots', 'turntable');
@@ -323,6 +326,46 @@ try {
       pass: Math.abs(v1.yaw - v0.yaw) < 1e-6,
       detail: `RS (0.25, 0.95) for 1 s → ${d(v1.yaw - v0.yaw)}`,
     }));
+    // every turntable tab (#371): the real pad flow — RB moves to the tab (no seeding, no rest()), the stick is pushed
+    // right away (whatever the tab-entry state is: intro delay, spin-in tween), then again while a showcase plays
+    // (the intro's showcase), so a tab whose entry/showcase state swallows the stick shows up here
+    const tabName = () => s.eval(() => (window.__game.top?.cur?.constructor?.name || '').toLowerCase());
+    const push = async () => {
+      const a = await view(s);
+      await axes(s.page, 0, 0, 1, 0); await step(s, 30);
+      const b = await view(s);
+      await axes(s.page, 0, 0, 0, 0); await step(s, 2); await settle(s);
+      return { a, b, dy: b && a ? b.yaw - a.yaw : NaN };
+    };
+    const rotOk = (r) => Math.abs(Math.abs(r.dy) - 1.6) <= 0.12 && r.dy < 0;
+    for (const tab of TABS) {
+      let name = await tabName();
+      for (let i = 0; i < MENU_TAB_COUNT && !name.startsWith(tab); i++) {
+        await setButton(s.page, BTN.RB, 1); await step(s, 3); await setButton(s.page, BTN.RB, 0); await step(s, 3);
+        name = await tabName();
+      }
+      const reached = name.startsWith(tab);
+      let entry = null, show = null;
+      if (reached && tab !== 'status') { await step(s, 4); entry = await push(); }   // status: its entry was covered by stick.rotate above
+      if (reached) {
+        await s.eval(() => { const v = window.__game.top.cur.view; v.autoSpin = false; v.cool = 99; v.showcase(); });
+        await step(s, 40);   // the spin to profile (TT.SHOW_T) is over and the showcase moves are playing
+        const playing = (await view(s))?.seq;
+        show = { playing, ...(await push()) };
+        show.after = (await view(s))?.seq;
+      }
+      if (tab !== 'status') {
+        await suite.check({ id: `stick.rotate.${tab}`, group: 'stick', ...G, title: `${tab}: right stick X = 1 for 0.5 s rotates ≈ 1.6 rad (tab reached with RB)`, session: s }, async () => {
+          if (!reached) return { pass: false, detail: `RB did not reach the ${tab} tab (on ${name || 'nothing'})` };
+          return { pass: rotOk(entry), detail: `on entry (mode ${entry.a?.mode}, showcase ${entry.a?.seq}): 0.5 s of RS X = 1 → ${entry.dy.toFixed(3)} rad` };
+        });
+      }
+      await suite.check({ id: `stick.showcase.${tab}`, group: 'stick', ...G, title: `${tab}: the right stick rotates during a showcase and ends it`, session: s }, async () => {
+        if (!reached) return { pass: false, detail: `RB did not reach the ${tab} tab (on ${name || 'nothing'})` };
+        if (!show.playing) return { skip: `no showcase playing 40 frames after showcase() (mode ${show.a?.mode})` };
+        return { pass: rotOk(show) && !show.after, detail: `showcase playing → 0.5 s of RS X = 1 → ${show.dy.toFixed(3)} rad; showcase after: ${show.after}` };
+      });
+    }
     await suite.errors({ id: 'stick.errors', group: 'stick' }, s);
     await s.close();
   }, env);

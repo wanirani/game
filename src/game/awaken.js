@@ -12,6 +12,8 @@
 //  registerDirector(charId, fn)         영웅별 각성 감독 등록 (AWAKEN-DIR-A/B 가 import 시 등록해도 되고, AWAKEN_DIRECTOR(_B) 표로 줘도 된다)
 //  bossCapFn(world)                     각성 한 번의 보스 피해 상한 함수 (attack.capFn; impact.modDamage 가 적용)
 //  prepareAwakening(p, world)           컷인 그림 미리 받기·디코드 (handleUltInput 이 스테이지마다 처음 한 번 부른다)
+//  loadAwakenDirectors() → Promise<bool> 감독 모듈 두 개를 동적 import 로 받는다 (lazy 조각; 스테이지 진입 때 스스로 부른다,
+//                                       main.js·월드맵의 미리 받기에서 불러도 된다). awakenDirectorsReady() → bool
 //  AWAKEN_DEBUG                         시험용 기록 {casts, last, holds, fallback}
 //
 // 상태
@@ -37,8 +39,8 @@ import { CLASSES } from '../data/classes.js';
 import { AWAKEN, AWAKEN_RULES, T2 } from '../data/awaken.js';
 import { castUltimate, FXKIT, SkillFx } from './skills.js';
 import { playerStrike } from './combat.js';
-import { AWAKEN_DIRECTOR } from './awaken_directors.js';
-import { AWAKEN_DIRECTOR_B } from './awaken_directors_b.js';
+// 영웅별 각성 감독(awaken_directors.js · awaken_directors_b.js)은 첫 화면에 필요 없으므로 동적 import 로 늦게 받는다
+// (R1-REQ-229: 배포 번들에서 lazy 조각). loadAwakenDirectors() 아래 참고 — 받기 전에 시전하면 이 파일의 대체 연출이 바로 돈다.
 import { ULTFX } from '../render/ultfx.js';
 import { drawHero } from '../render/hero.js';
 import * as CUTIN from '../scenes/awaken_cutin.js';
@@ -63,7 +65,38 @@ export function registerDirector(charId, fn) {
 function kitReady() { try { return !!FXKIT && Object.keys(FXKIT).length > 0; } catch { return false; } }
 function directorOf(charId) {
   if (!kitReady()) return null;
-  return dirStore()[charId] ?? AWAKEN_DIRECTOR?.[charId] ?? AWAKEN_DIRECTOR_B?.[charId] ?? null;
+  if (!DIRS.A && !DIRS.B) loadAwakenDirectors();
+  return dirStore()[charId] ?? DIRS.A?.[charId] ?? DIRS.B?.[charId] ?? null;
+}
+
+// ───────────────────────── 감독 모듈 늦게 받기 (R1-REQ-229) ─────────────────────────
+// 동적 import 는 배포 번들에서 lazy 조각이 되어 첫 화면 바이트에서 빠진다. 받기는 스테이지 진입(world 의 stageEntered)·
+// 스테이지의 첫 필살 입력 판정(prepareAwakening)·각성 시전 때 스스로 시작하고, main.js·월드맵이 미리 불러도 된다 (여러 번 불러도 한 번만 받는다).
+// 받기 전(또는 실패: 오프라인에서 조각이 캐시에 없음)에 감독이 시작되면 이 파일의 대체 연출이 동기적으로 돈다 — 시전은 절대 막히지 않는다.
+const DIRS = { A: null, B: null, p: null, fails: 0 };
+/** 각성 감독 두 모듈을 받아 등록한다 → Promise<boolean> (이미 받았으면 바로 true) */
+export function loadAwakenDirectors() {
+  if (DIRS.A && DIRS.B) return Promise.resolve(true);
+  if (DIRS.p) return DIRS.p;
+  if (DIRS.fails >= 3) return Promise.resolve(false);
+  DIRS.p = Promise.all([import('./awaken_directors.js'), import('./awaken_directors_b.js')]).then(([A, B]) => {
+    DIRS.A = A?.AWAKEN_DIRECTOR ?? null; DIRS.B = B?.AWAKEN_DIRECTOR_B ?? null;
+    // 늦게 들어왔으면 이번 스테이지의 stageEntered 를 놓쳤으니 캐시 풀·스프라이트를 지금 (한가할 때) 굽게 한다
+    try { B?.prepareAwakenSoon?.(); } catch (e) { console.warn('[awaken] 감독 B 준비', e); }
+    try { A?.prepareAwakenSoonA?.(); } catch (e) { console.warn('[awaken] 감독 A 준비', e); }
+    return true;
+  }).catch((e) => {
+    DIRS.fails++; DIRS.p = null;
+    console.warn('[awaken] 각성 감독 모듈을 받지 못해 대체 연출을 씁니다', e);
+    return false;
+  });
+  return DIRS.p;
+}
+/** 감독 모듈이 들어왔는가 (시험·미리 받기용) */
+export function awakenDirectorsReady() { return !!(DIRS.A && DIRS.B); }
+// 스테이지에 들어서면 받기 시작 (첫 화면·타이틀 바이트와 겹치지 않게: 스테이지 진입 전에는 받지 않는다)
+if (typeof window !== 'undefined' && typeof setTimeout === 'function') {
+  setTimeout(() => { try { bus.on('stageEntered', () => { loadAwakenDirectors(); }); } catch (e) { console.warn('[awaken] bus', e); } }, 0);
 }
 
 // ───────────────────────── 규칙 ─────────────────────────
@@ -79,6 +112,8 @@ function blockedWhy(p, world) {
   if (world.inputLock) return 'inputLock';
   if (p.hurtT > 0) return 'hitstun';
   if (world.mode === 'town') return 'town';
+  // 보스의 월드 안 등장 상태('intro': 등장 장면이 닫힌 뒤에도 잠시 무적·화면 밖)가 끝나기 전 — 게이지만 쓰고 피해 0 (R1-REQ-162, skills.castUltimate 와 같은 규칙)
+  if (world.boss && !world.boss.dead && world.boss.state === 'intro') return 'bossIntro';
   const g = world.game, top = g?.top;
   if (g?.fade?.dir > 0) return 'fade';   // 장면 전환 페이드 중
   if (top && top.world !== world) return 'scene';   // 월드를 가진 장면(스테이지·허브·아케이드)이 맨 위가 아님 (보스 등장·대화·컷인 등)
@@ -284,6 +319,7 @@ export function castAwakening(p, world, { force = false } = {}) {
   const charId = p.hero?.charId, a = AWAKEN[charId];
   if (!a || !world?.game) return false;
   const classId = p.hero.classId, tier = tierOf(p);
+  loadAwakenDirectors();   // 아직이면 컷인이 도는 동안 받는다 (감독은 컷인이 끝난 뒤 고른다)
   endHold(p, world, 'silent');
   const run = world.run;
   run.sp = 0; run.aw = 0;
@@ -495,6 +531,7 @@ export function prepareAwakening(p, world) {
   const a = AWAKEN[charId];
   if (!a || tierOf(p) < R.minTier || world.mode === 'town') return;   // 각성할 수 없는 곳에서는 받지 않는다 (디코딩 메모리 약 4 MB)
   s.ok = true;
+  loadAwakenDirectors();   // 감독 모듈 (lazy 조각) — 이미 받았으면 아무 일도 없다
   try { edgeCanvas(); } catch { /* 캔버스 없음 */ }   // 길게 누르기 가장자리 어둠도 미리 굽는다 (스테이지 중 캔버스 생성 0개, feel §8)
   const decode = (img) => { try { img?.decode?.().catch(() => {}); } catch { /* 디코드 미지원 */ } };
   try { assets.load(a.cutin)?.then?.(decode); assets.load(a.portrait)?.then?.(decode); } catch (e) { console.error(e); }
