@@ -7,14 +7,23 @@ Netlify Functions(모던 함수, TypeScript) + Netlify Blobs 로 동작하며, �
 |---|---|
 | 함수 진입점 (`/api/*`) | `netlify/functions/api.mts` |
 | 공용 코드 (함수로 배포되지 않음) | `netlify/lib/*.mts` — `config` 상수, `http` 응답·본문, `runtime` 저장소·시계·환경, `crypto` 해시·토큰, `validate` 입력 검사, `ratelimit` 요청 제한, `accounts` 계정, `saves` 저장, `router` 라우팅, `admin` 운영 도구 |
-| 배포 설정 | `netlify.toml` (publish = 저장소 루트, 보안·캐시 헤더, 개발 파일 차단) |
+| 배포 설정 | `netlify.toml` (publish = `dist/web` — `tools/deploy/build_web.mjs` 가 허용 목록으로 만든 게시 폴더, 저장소 루트는 절대 올리지 않는다 · 정적 파일 보안·캐시 헤더) · 배포 절차 `tools/deploy/README.md` §3 |
+| 안드로이드 앱 프록시 | `android/app/src/main/assets/app/head_inject.html`(fetch 감싸기) → `AssetServer.java` → `ApiProxy.java` · 서버 주소 `tools/apk/api_origin.txt` (§1) |
 | 테스트 | `node tools/accounts/test_api.mjs` (= `npm run test:api`) · 브라우저 `node tools/accounts/test_client.mjs` (= `npm run test:client`) |
 | 운영 도구 | `node tools/accounts/admin.mjs` |
 
 ## 1. 동작 환경
 
-- **웹(Netlify)**: 게임과 API 가 같은 출처다. 클라이언트는 `fetch('/api/...')` 로 부른다. CORS 헤더는 두지 않는다.
-- **안드로이드 APK**: WebView 가 `https://appassets.androidplatform.net/` 에서 게임을 열고, `/api/*` 요청을 앱이 Netlify 사이트로 대신 전달한다. 그래서 브라우저 입장에서는 항상 같은 출처 요청이다. 클라이언트는 반드시 **절대 경로 `/api/...`** 를 써야 한다 (`api/...` 처럼 상대 경로로 쓰면 `/assets/api/...` 처럼 엉뚱한 곳으로 간다).
+- **웹(Netlify)**: 게임과 API 가 같은 출처다. 클라이언트는 `fetch('/api/...')` 로 부른다. CORS 헤더는 두지 않는다(안드로이드 앱 출처만 예외 — 아래).
+- **안드로이드 APK**: WebView 가 `https://appassets.androidplatform.net/` 에서 게임을 열고, `/api/*` 요청을 앱(`AssetServer` → `ApiProxy`)이 계정 서버로 대신 전달한다. 그래서 브라우저 입장에서는 항상 같은 출처 요청이다. 클라이언트는 반드시 **절대 경로 `/api/...`** 를 써야 한다 (`api/...` 처럼 상대 경로로 쓰면 `/assets/api/...` 처럼 엉뚱한 곳으로 간다).
+  - **서버 주소**: `tools/apk/api_origin.txt` 의 첫 줄(`https://호스트[:포트]`, 경로·끝 슬래시 없음 — 빌드할 때 환경 변수 `API_ORIGIN` 으로 덮어쓸 수 있다)을 `build_apk.sh` 가 APK 의 `assets/app/apk.json` `api.origin` 에 넣는다. `api.aliases` 에는 `src/core/cloud.js` 의 `APP_API_BASE` 사이트가 들어간다(`tools/apk/pack_web.py`). 두 값은 같은 사이트여야 웹과 앱이 같은 계정을 쓴다 — 사이트 이름이 바뀌면 둘 다 고치고 APK 를 다시 만든다. 주소가 없거나 형식이 틀리면 프록시가 꺼지고 `/api/*` 는 **503** `{ok:false, error:'unavailable'}` 이다.
+  - **요청 본문 전달**: WebView 의 `shouldInterceptRequest` 는 POST 본문을 넘겨주지 않는다. 그래서 앱 조각(`head_inject.html`, 게임 모듈보다 먼저 실행)이 `window.fetch` 를 감싸, 같은 출처 `/api/*` 와 계정 서버 주소(`api.origin`·`api.aliases`)로 가는 요청마다 무작위 id 를 만들고 `BNAndroid.apiStash(id, method, 헤더 줄들, 본문)` 으로 메서드·헤더·본문(글, 최대 4MB)을 먼저 맡긴 뒤 같은 출처 `/api/...?__bnreq=<id>` 로 보낸다. `cloud.js` 는 요청할 때마다 `fetch` 를 새로 찾으므로 감싼 것이 그대로 쓰인다. 조각은 `window.__BN_APP = {platform:'android', version, assets, apiProxy, apiBase:'/api'}` 도 만든다.
+  - **클라이언트 주소 선택**(`cloud.js` `pickApiBase`): 웹은 `/api`. 앱에서 `__BN_APP.apiProxy === true` 면 같은 출처 `/api`(`apiBase`, 같은 출처 경로만 받음) — 앱 코드의 사이트 이름에 기대지 않는다. 프록시가 없는 옛 앱에서만 `APP_API_BASE`(공식 사이트)를 직접 부르고, 서버는 이때를 위해 앱 출처 `https://appassets.androidplatform.net` 만 CORS 로 허용한다(`netlify/lib/router.mts` `APP_ORIGINS`: 사전 요청 204, 응답에 `Access-Control-Allow-Origin`·`Cross-Origin-Resource-Policy: cross-origin`, `Sec-Fetch-Site: cross-site` 검사 제외). 그 밖의 다른 출처에는 CORS 가 없다.
+  - **전달 규칙**(`ApiProxy.java`): 맡긴 메서드·헤더·본문을 **그대로** 서버에 보낸다(`Content-Type`·`Authorization` 포함). 빼는 요청 헤더: `Cookie`, `Origin`, `Referer`, `Sec-*`, `Proxy-*`, `X-Requested-With`(WebView 가 붙이는 앱 패키지 이름), `Host`·`Connection`·`Content-Length`·`Transfer-Encoding`·`Accept-Encoding`·`Keep-Alive`·`TE`·`Trailer`·`Upgrade`·`Expect` 같은 연결 단위 헤더. 쿼리의 `__bnreq` 는 떼고 보낸다. 서버의 상태 코드·응답 헤더·본문을 그대로 돌려주되 `Set-Cookie`·`Strict-Transport-Security`·`Alt-Svc`·연결 단위 헤더는 빼고, 언제나 `Cache-Control: no-store` 와 `X-BN-Proxy: 1` 을 붙인다. 리디렉트는 따라가지 않는다(3xx 는 아래 502). 서버는 기기에서 바로 오는 요청으로 보므로 `context.ip` 는 그 기기의 IP 다(망별 제한이 기기마다 따로 센다).
+  - **오류**(모두 서버 오류와 같은 모양 `{ok:false, error, message}` + `X-BN-Proxy-Error` 헤더): 전체 15초 안에 응답이 없으면 **504** `timeout`, 서버에 닿지 못함(오프라인·DNS·TLS)·3xx·응답 8MB 초과는 **502** `network`, 서버 주소 없음은 **503** `unavailable`. 앱 조각의 fetch 는 `X-BN-Proxy-Error` 를 보면 네트워크 오류(`TypeError`)로 던진다 → `cloud.js` 는 웹에서 서버에 못 닿았을 때와 똑같이 처리한다(오프라인 안내·재시도).
+  - **맡긴 요청의 수명**: 맡긴 요청은 60초가 지나면 버려지고, 32개가 쌓이면 가장 오래된 것부터 버려진다. `?__bnreq` 가 붙었는데 맡긴 요청이 없으면 GET·HEAD 가 아닌 요청은 **서버에 보내지 않고** 502 `network`(+`X-BN-Proxy-Error: network`)로 답한다 — 본문이 빠진 요청은 다른 요청이 되기 때문이다(예: 로그아웃 `{all:true}` 가 본문 없이 가면 '이 기기만 로그아웃'이 된다). 클라이언트는 네트워크 오류로 보고 다시 시도한다.
+  - **경로 제한**: `/api` 와 `/api/...` 만 전달한다(그 밖은 404). 경로에 인코딩된 점·슬래시·역슬래시(`%2e`, `%2f`, `%5c`, 대소문자 무관)나 `\` 가 있으면 **404** `not_found` — 프록시로 사이트의 `/api` 밖 경로에 닿지 못하게 한다.
+  - 시험: `node tools/apk/verify_apk.mjs` 가 `ApiProxy` 를 호스트 JVM 에서 로컬 API 서버에 대고 시험하고(`tools/apk/ApiProxyCheck.java`), 앱 페이지에서 가입·로그인·로그아웃이 프록시로 도는지 확인한다.
 - **claude.ai 임베드**: CSP 가 다른 호스트 요청을 막아 API 에 닿지 않는다. 클라이언트는 `GET /api/health` 가 실패하면(네트워크 오류, JSON 이 아님, `ok` 가 아님) 계정 기능을 숨기고 로컬 저장만 쓴다. `node tools/serve.mjs` 로 띄운 로컬 서버에도 API 가 없으므로 같은 방식으로 꺼진다.
 - **서비스 워커**(`sw.js`)는 `/api/` 요청을 가로채거나 캐시하지 않는다.
 

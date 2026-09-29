@@ -1340,6 +1340,20 @@ test('클라이언트: 시험용 API 주소(bn_api_base)는 같은 출처 경로
     assert.equal(client.isAndroidApp(loc), false, JSON.stringify(loc));
   }
   assert.match(client.APP_API_BASE, /^https:\/\/[a-z0-9-]+\.netlify\.app\/api$/);
+  // API 주소 고르기: 앱의 /api 프록시가 켜져 있으면 같은 출처 '/api' (사이트 이름에 기대지 않음), 프록시 없는 옛 앱만 APP_API_BASE
+  const appLoc = { protocol: 'https:', hostname: 'appassets.androidplatform.net' };
+  const webLoc = { protocol: 'https:', hostname: 'blood-nocturne.netlify.app' };
+  assert.equal(client.pickApiBase(webLoc, null, null), '/api');
+  assert.equal(client.pickApiBase(webLoc, { apiProxy: true, apiBase: '/api' }, null), '/api');
+  assert.equal(client.pickApiBase(appLoc, { platform: 'android', apiProxy: true, apiBase: '/api' }, null), '/api');
+  assert.equal(client.pickApiBase(appLoc, { apiProxy: true }, null), '/api');
+  assert.equal(client.pickApiBase(appLoc, { apiProxy: true, apiBase: 'https://evil.example/api' }, null), '/api'); // 다른 출처 apiBase 는 무시
+  assert.equal(client.pickApiBase(appLoc, { apiProxy: false, apiBase: null }, null), client.APP_API_BASE);
+  assert.equal(client.pickApiBase(appLoc, { apiProxy: 'yes' }, null), client.APP_API_BASE); // 정확히 true 일 때만
+  assert.equal(client.pickApiBase(appLoc, null, null), client.APP_API_BASE);
+  assert.equal(client.pickApiBase(appLoc, { apiProxy: true }, '/v2/api'), '/v2/api'); // 시험용 덮어쓰기가 먼저
+  assert.equal(client.pickApiBase(appLoc, null, 'https://evil.example/api'), client.APP_API_BASE); // 다른 사이트 덮어쓰기는 무시
+  assert.equal(client.pickApiBase(null, undefined, undefined), '/api');
 });
 
 // ═════════ 실행 ═════════

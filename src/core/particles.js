@@ -234,9 +234,10 @@ export class Particles {
     const nTry = 1 + 2 * Math.ceil(Math.max(w + 40, COL_SPREAD * (w + COL_GAP)) / COL_STEP_X);
     const B = this.band, view = B.hw > 0 && Number.isFinite(B.cx) && x > B.cx - B.hw && x < B.cx + B.hw;   // 대상이 화면 안이면 자리도 화면 안에서
     const vx0 = view ? B.cx - B.hw + w / 2 + 4 : -Infinity, vx1 = view ? B.cx + B.hw - w / 2 - 4 : Infinity;
-    let best = x, bestCost = Infinity;
+    const xc = view && vx0 <= vx1 ? Math.min(vx1, Math.max(vx0, x)) : x;   // 화면 가장자리 대상의 숫자가 잘리지 않게 안쪽에서 시작
+    let best = xc, bestCost = Infinity;
     for (let i = 0; i < nTry; i++) {
-      const cx = x + (i & 1 ? 1 : -1) * Math.ceil(i / 2) * COL_STEP_X;   // 0, +10, -10, +20, -20 …
+      const cx = xc + (i & 1 ? 1 : -1) * Math.ceil(i / 2) * COL_STEP_X;   // 0, +10, -10, +20, -20 …
       if (i > 0 && (cx < vx0 || cx > vx1)) continue;
       let cost = 0;
       for (const c of S) {
