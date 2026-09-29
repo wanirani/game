@@ -107,12 +107,6 @@ export function bundleModules({ root, entry, chunkDir = 'src/bundle/x', maxLazyC
       }
     }
   }
-  // lazy 모듈 소유: 여러 lazy 진입점이 함께 쓰는 모듈은 main 으로 올린다 (지금은 없음)
-  const owners = new Map();
-  for (const e of lazyEntries) for (const f of closure(e.target, mainSet)) owners.set(f, (owners.get(f) || new Set()).add(e.target));
-  const promoted = [];
-  for (const [f, es] of owners) if (es.size > 1 && !lazyEntries.some((e) => e.target === f)) { promoted.push(f); warnings.push(`${mods.get(f).rel}: 여러 lazy 조각이 함께 쓰므로 main 조각에 넣습니다`); }
-
   // ───────── 2. 조각 나누기 ─────────
   let groups = lazyEntries.map((e) => ({ entries: [e.target], importer: e.importer }));
   if (groups.length > maxLazyChunks) {
@@ -142,16 +136,27 @@ export function bundleModules({ root, entry, chunkDir = 'src/bundle/x', maxLazyC
     return out;
   };
   const mainOrder = order([entryFile], new Set());
-  if (promoted.length) {
-    // 진입 모듈 바로 앞에 끼워 넣는다
-    const extra = order(promoted, new Set(mainOrder));
-    mainOrder.splice(mainOrder.length - 1, 0, ...extra);
-  }
   const mainAll = new Set(mainOrder);
-  const chunks = [{ name: mainName, kind: 'main', files: mainOrder, imports: new Set(), exports: new Set(), entries: [] }];
-  groups.forEach((g, i) => {
-    const files = order(g.entries, mainAll);
-    chunks.push({ name: lazyName(i + 1), kind: 'lazy', files, imports: new Set(), exports: new Set(), entries: g.entries });
+  // 소유 집합: main 밖 모듈마다 그 모듈에 정적으로 닿는 lazy 묶음(group)들. 한 묶음만 닿으면 그 묶음의 조각,
+  // 여러 묶음이 닿으면(공유 모듈, 다른 묶음 안에서 정적으로도 쓰이는 lazy 진입점 포함) 같은 소유 집합끼리 모은 공유 조각에 넣는다.
+  // 공유 조각의 모듈이 import 하는 모듈은 소유 집합이 같거나 더 크므로 조각끼리의 import 는 순환하지 않는다 (큰 집합 쪽으로만).
+  const ownerOf = new Map();
+  groups.forEach((g, gi) => { for (const t of g.entries) for (const f of closure(t, mainAll)) (ownerOf.get(f) || ownerOf.set(f, new Set()).get(f)).add(gi); });
+  const globalOrder = order([entryFile, ...lazyEntries.map((e) => e.target)], new Set());
+  const byKey = new Map();
+  for (const f of globalOrder) {
+    if (mainAll.has(f)) continue;
+    const os = ownerOf.get(f);
+    if (!os) continue;
+    const key = [...os].sort((x, y) => x - y).join(',');
+    if (!byKey.has(key)) byKey.set(key, { key, size: os.size, first: Math.min(...os), files: [] });
+    byKey.get(key).files.push(f);
+  }
+  const lazyChunks = [...byKey.values()].sort((x, y) => x.size - y.size || x.first - y.first || (x.key < y.key ? -1 : 1));
+  const chunks = [{ name: mainName, kind: 'main', files: mainOrder, imports: new Map(), exports: new Set(), entries: [] }];
+  lazyChunks.forEach((lc, i) => {
+    const entries = lazyEntries.map((e) => e.target).filter((t) => lc.files.includes(t));
+    chunks.push({ name: lazyName(i + 1), kind: lc.size > 1 ? 'shared' : 'lazy', files: lc.files, imports: new Map(), exports: new Set(), entries });
   });
   for (const c of chunks) for (const f of c.files) {
     const m = mods.get(f);
@@ -265,7 +270,7 @@ export function bundleModules({ root, entry, chunkDir = 'src/bundle/x', maxLazyC
     // 다른 조각의 이름이면 import/export 로 잇는다
     const owner = t.mod.chunk;
     const txt = textOf(t);
-    if (owner !== c) { c.imports.add(txt); owner.exports.add(txt); }
+    if (owner !== c) { (c.imports.get(owner) || c.imports.set(owner, new Set()).get(owner)).add(txt); owner.exports.add(txt); }
     return txt;
   }
   const hoistFixes = new Map(); // chunk → [code]
@@ -332,7 +337,7 @@ export function bundleModules({ root, entry, chunkDir = 'src/bundle/x', maxLazyC
       const ns = nsName(tm);
       let txt;
       if (tm.chunk === c) txt = `Promise.resolve(${ns})`;
-      else if (tm.chunk.kind === 'lazy') { txt = `import(${JSON.stringify('./' + tm.chunk.name)}).then((__m) => __m.${ns})`; tm.chunk.exports.add(ns); }
+      else if (tm.chunk.kind !== 'main') { txt = `import(${JSON.stringify('./' + tm.chunk.name)}).then((__m) => __m.${ns})`; tm.chunk.exports.add(ns); }
       else { useFrom(c, { kind: 'ns', mod: tm }); txt = `Promise.resolve(${ns})`; }
       add(node.start, node.end, txt);
     }
@@ -373,7 +378,7 @@ export function bundleModules({ root, entry, chunkDir = 'src/bundle/x', maxLazyC
   for (const c of chunks) {
     const parts = [];
     parts.push(`/* BLOOD NOCTURNE — tools/deploy 번들 (${c.kind} 조각, 모듈 ${c.files.length}개). 원본: src/ */`);
-    if (c.imports.size) parts.push(`import { ${[...c.imports].sort().join(', ')} } from ${JSON.stringify('./' + chunks[0].name)};`);
+    for (const [src, names] of c.imports) parts.push(`import { ${[...names].sort().join(', ')} } from ${JSON.stringify('./' + src.name)};`);
     parts.push(...(hoistFixes.get(c) || []));
     parts.push(...nsCode.get(c));
     for (const b of bodies.get(c)) parts.push(`/* ── ${b.rel} ── */\n${b.code}\n;`);
