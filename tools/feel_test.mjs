@@ -1389,7 +1389,8 @@ async function openPage(key, url, { viewport = { width: 960, height: 540 }, mobi
   const P = { key, page, ctx, errs, url: full, t0: Date.now() };
   try {
     await page.goto(full, { timeout: 90000 });
-    await page.waitForFunction(() => { const g = window.__game; return !!g?.world?.player && g.top?.name === 'stage' && !(g.fade?.dir); }, null, { timeout: 120000, polling: 250 });
+    // scenesReady: two-phase boot (R1-REQ-229, request #426) — ?scene=stage already waits for the lazy scenes in main.js, kept explicit
+    await page.waitForFunction(() => { const g = window.__game; return !!g?.world?.player && g.top?.name === 'stage' && !(g.fade?.dir) && g.scenesReady !== false; }, null, { timeout: 120000, polling: 250 });
     await page.waitForTimeout(1500);   // first assets (puppet, cut-in preload) settle
     const ok = await page.evaluate(pageLib);
     if (ok !== 'ok') throw new Error('page library failed: ' + ok);

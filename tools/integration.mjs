@@ -49,6 +49,17 @@ for (const c of CASES) {
   page.on('console', (m) => { if (m.type() === 'error') { const t = m.text(); if (!/Failed to load resource|ERR_CERT|fonts\.g/.test(t)) errs.push('CONSOLE ' + t.slice(0, 300)); } });
   try {
     await page.goto(`http://localhost:${port}/${c.url}`, { timeout: 30000 });
+    // 두 단계 부팅 (R1-REQ-229, 요청 #426): 타이틀로 열면 window.__game 은 타이틀만 등록한 채 먼저 뜨고 나머지 장면은 뒤에 온다
+    // (game.scenesReady === false 동안). 단계는 장면이 모두 등록된 뒤에 시작한다 — Node 에서 page.evaluate 로 물어 CSP(--dist) 에도 안전
+    {
+      const t0 = Date.now();
+      let ready = false;
+      while (!ready && Date.now() - t0 < 60000) {
+        ready = await page.evaluate(() => { const g = window.__game; return !!g && g.scenes.length > 0 && g.scenesReady !== false; }).catch(() => false);
+        if (!ready) await page.waitForTimeout(100);
+      }
+      if (!ready) errs.push('BOOT 60초 안에 장면이 모두 등록되지 않음 (window.__game · game.scenesReady)');
+    }
     let n = 0;
     for (const s of c.steps.split(',')) {
       const [k, d] = s.split(':');

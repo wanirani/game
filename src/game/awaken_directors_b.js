@@ -722,7 +722,7 @@ function foes(S, pad = 20) {
 /** 화면에 보이는 적 (그리기용: 무적이어도 포함) */
 function visFoes(S) {
   const cam = S.cam, out = [];
-  try { for (const e of S.w.enemies()) if (cam.visible(e.x, e.y, e.w, e.h, 40)) out.push(e); } catch { /* 적 없음 */ }
+  try { for (const e of S.w.enemies()) if (!e.pendingBoss && cam.visible(e.x, e.y, e.w, e.h, 40)) out.push(e); } catch { /* 적 없음 */ }   // 보스 대역(PendingBoss)은 그리지 않는 빈자리
   return out;
 }
 function beat(S, x, y, power, ground = false) {

@@ -6,7 +6,7 @@
 //                      --every 는 시뮬레이션 초(기본 2), --render N = N 프레임마다 그리기(캡처 프레임은 항상 그린다),
 //                      --act 는 해당 시각에 boss.debugAct(상태)로 드문 패턴을 강제한다.
 //   모든 보스 공통 (BossB/BossC 포함: b.main 은 뼈 용의 전용 필드): 보스 위치 = b.main?.hx ?? b.bx ?? b.cx.
-//   플레이어는 죽지 않는다 (매 틱/100ms 마다 hp 를 크게 채움 — 한 방이 최대 체력보다 커도 world.respawn → 보스 회복이 일어나지 않게).
+//   플레이어는 죽지 않는다 (die() 를 막고 매 틱/100ms 마다 체력을 최대치로 채움 — 한 방이 최대 체력보다 커도 world.respawn → 보스 회복이 일어나지 않게).
 //   전투 도중 대사(dialogue)는 바로 넘긴다. 보스 체력은 --every 마다 --dmg 비율씩 깎는다 (무적 중이면 적용될 때까지 다시 시도).
 //   사망(b.dead) 뒤의 표본은 버린다 (world.boss 는 사망 후에도 치운 보스를 가리킨다).
 //   출력: <out>/fight_<tag>_<n>_<이유>.png, 상태 방문 수, 페이즈, 채색 활성 비율, FPS(실시간) 또는 틱/그리기 ms(--step), 페이지 오류
@@ -37,7 +37,11 @@ try {
         const w = g.world, p = w?.player;
         const top = g.scenes[g.scenes.length - 1];
         if (top?.name === 'dialogue' || top?.name === 'bossIntro') { if (typeof top.finish === 'function') top.finish(); else { g.pop(); top.onDone?.(); top.onEnd?.(); } }
-        if (p && !p.dead) p.hp = 1e6;
+        if (!p) return;
+        // 죽지 않게: 모든 사망 경로(피격·기믹·함정)가 부르는 die() 를 막고 체력을 최대치로 채운다
+        // (hp 를 1e6 으로 두면 HUD 에 '1000000 / 130' 이 찍혀 스크린샷이 어색하다)
+        if (!p.__fightKeep) { p.__fightKeep = true; p.die = function () { this.hp = this.stats?.hp ?? this.stats?.maxHp ?? 1; }; }
+        if (!p.dead) p.hp = p.stats?.hp ?? p.stats?.maxHp ?? p.hp;
       },
       /** 보스에게 최대 체력의 k 만큼 피해 → 실제로 들어갔는가 (무적·사망 연출 중이면 false) */
       hurt(k) {
@@ -75,8 +79,8 @@ try {
     while ((Date.now() - t0) / 1000 < secs) {
       const el = (Date.now() - t0) / 1000;
       const st = await s.page.evaluate(() => {
-        const w = window.__game.world, b = w.boss, p = w.player;
-        if (!b) return { gone: true, cleared: w.cleared };
+        const w = window.__game.world, b = w?.boss, p = w?.player;
+        if (!b || !p) return { gone: true, cleared: w?.cleared };
         return { dx: window.__fx.hx(b) - p.cx, state: b.state, dying: b.dying > 0, dead: b.dead, phase: b.phase, twin: !!b.twin };
       });
       if (st.gone || st.dead) { await snap('cleared'); break; }
@@ -115,6 +119,7 @@ try {
       const g = window.__game, F = window.__fight, dt = 1 / 60;
       for (let n = 0; n < 600 && F.i < frames; n++) {
         const w = g.world;
+        if (!w) return { end: true };   // 보스 처치 뒤 스테이지를 떠남 (결말/결과 장면)
         window.__fx.keep();
         let b = w.boss;
         if (b && b !== F.boss) { if (!b.pendingBoss) F.swaps++; F.boss = b; }   // 대역 → 진짜 보스, 재도전 재생성 등

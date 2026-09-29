@@ -16,12 +16,17 @@
 //   particles   live particles ≤ fx max 1400 / 900 / 500; ult/awakening peak ≤ 600/400/220 and 700/450/250           feel §8
 //   dmgnums     live damage numbers ≤ 24 / 16 / 10 and hit decals ≤ 40 / 24 / 0                                      feel §8
 //   passes      full-screen passes + special composites during ult/awakening ≤ 3 / 2 / 1 per frame                 feel §8
+//               (added over the room's own frames; blits from src/render/tiles.js are the level's tile layer, not an added
+//               pass — a cine zoom can put the whole view inside one tile chunk, request #453)
 //   drawfx      no FX spawned while rendering (spawn rate would follow the render rate)                           R12
 //   rng         Math.random consumed while rendering (listed, S4)                                                  #218
-//   textures    assets.stats(): total ≤ budget (160 MB touch / 400 MB desktop), painted ≤ paintedBudget (24 / 64 MB)  #59
+//   textures    assets.stats(): total ≤ budget (160 MB touch / 400 MB desktop), painted ≤ paintedBudget        #59
+//               (phones 32 MB · touch tablets 40 MB · desktop 64 MB: assets.paintedBudget, R1-RUN-TEX-TOUCH)
 //   backing     game canvas backing store ≤ 1.0 / 1.6 / 3.7 MP                                                     platform §6.4
 //   tpadcv      touch overlay backing DPR ≤ the game's DPR cap (1.0 low, 1.5 medium) and ≤ game.dpr; idle redraws ≤ 30 Hz
-//   livecanvas  canvases alive (WeakRef, after gc) ≤ 20 MB on phone1 with the menu open                            platform §6.7
+//   livecanvas  canvases alive (WeakRef, after gc) on a fresh page (stage s04 r1, then menu equip) ≤ LIVE_MB   platform §6.7
+//               (lead decision, round 1: phone1/phone2 32 MB, phone1low 26 MB, tablet 40 MB, desktop info only) and the
+//               menu adds ≤ 8 MB over the stage baseline on the same page
 // Report: /tmp/claude-0/qa/tools/perf_budget.json (+ .md): per scene × profile table, top gradient / canvas / RNG sites,
 // findings grouped by W4 bucket (by the file of the top call site). Exit 1 on any red check.
 import { openEnv } from './lib/server.mjs';
@@ -56,6 +61,11 @@ const BUDGET = {
   dmg: { high: 24, medium: 16, low: 10 },      // live damage numbers (feel §8)
   decals: { high: 40, medium: 24, low: 0 },    // hit decals (feel §8)
 };
+// live canvas budget with the menu open (platform §6.7, MASTER_PLAN §5.2). Lead decision in W4 round 1 (R1-REQ-342/455):
+// the render side alone holds ~25 MB on phone1 (tile chunks, ultfx boot pools, hit fx, touch pad), so 20 MB was not
+// reachable; touch phones 32 MB, phone1 at low quality 26 MB, touch tablet 40 MB, desktop profiles report only.
+const LIVE_MB = { phone1: 32, phone2: 32, phone1low: 26, tablet: 40 };
+const LIVE_MENU_ADD_MB = 8;   // opening the menu may add at most this much over the stage baseline
 const profiles = list(args.profiles, ['desk', 'phone1low']);
 // an unknown profile or scene id must not turn into a vacuous green run (0 checks → exit 0)
 const badProf = profiles.filter((p) => !PROFILES[p]);
@@ -161,8 +171,9 @@ function judge(prof, sc, m, info, extra = {}) {
   // full-screen passes during ult / awakening
   if (sc.kind === 'ult' || sc.kind === 'awaken') {
     // passes added by the ultimate / awakening = full-screen draws per frame minus the room's normal frames (sky, parallax…)
+    // tile-layer blits (src/render/tiles.js, f.fullTile) are the level itself at any camera zoom, not a pass the cast adds
     const base = extra.basePasses ?? 0;
-    const add = stats(fr.map((f) => Math.max(0, f.full - base) + f.special));
+    const add = stats(fr.map((f) => Math.max(0, f.full - (f.fullTile || 0) - base) + f.special));
     const specialFrames = fr.filter((f) => f.special > 0).length;
     const okA = add.p95 <= BUDGET.passes[T];
     const okS = T === 'low' ? specialFrames === 0 : specialFrames <= 2;
@@ -256,7 +267,7 @@ try {
         }
         if (sc.kind === 'ult' || sc.kind === 'awaken') {
           const b = await measureFrames(s.page, 12, 'if (p) p.buffs.invincible = 9999;');
-          extra.basePasses = stats(b.frames.map((f) => f.full)).p50;
+          extra.basePasses = stats(b.frames.map((f) => f.full - (f.fullTile || 0))).p50;
         }
         // canvases created from here on (after stage start) count against the "0 after stage start" budget
         await s.eval(() => { window.__perf.clearSites(); window.__perf.armed = true; });
@@ -317,27 +328,34 @@ try {
         }
       } catch (e) { C.add(`${prof}.tpadcv.harness`, 'error', String(e?.message || e).split('\n')[0]); }
     }
-    // live canvases with the menu open (phone1 budget ≤ 20 MB; reported for every profile)
+    // live canvases with the menu open (budget per touch profile, LIVE_MB; the whole-walk figure is reported for every profile)
     try {
       await s.eval(() => { const g = window.__game; if (g.world && g.top?.name !== 'menu') g.push('menu', { world: g.world, tab: 'equip' }); });
       await settle(s.page, 20); await s.wait(300); await settle(s.page, 5);
       const walk = await s.eval(() => { try { window.gc?.(); } catch { /* */ } return window.__perf.live(); });
       C.add(`${prof}.livecanvas.walk`, 'pass', `after the whole walk: ${walk.n} live canvases, ${MB(walk.bytes)} MB with the menu open (info)`);
-      // the §5.2 budget (phone1, menu open) on a fresh page: stage s04 → menu equip
-      let fresh = null;
-      if (prof.startsWith('phone1')) {
+      // the §5.2 budget on a fresh page: stage s04 r1 (baseline) → menu equip (total ≤ LIVE_MB, menu adds ≤ LIVE_MENU_ADD_MB)
+      let fresh = null, base = null;
+      const lim = LIVE_MB[prof];
+      if (lim) {
         const f = await env.page(P.vp, 'index.html?scene=stage&stage=s04&room=r1', { settings: { quality: P.quality }, initScripts: [perfProbeInit()] });
         await f.waitGame('!!g.world?.player');
         await freeze(f.page); await settle(f.page, 60); await waitBakes(f);
+        await idleFlush(f); await settle(f.page, 5);
+        const live = () => f.eval(() => { try { window.gc?.(); } catch { /* */ } const c = [...document.querySelectorAll('canvas')]; return { ...window.__perf.live(), dom: c.map((x) => `${x.id || 'canvas'} ${x.width}x${x.height}`) }; });
+        base = await live();
         await f.eval(() => { const g = window.__game; g.push('menu', { world: g.world, tab: 'equip' }); });
         await settle(f.page, 30); await f.wait(300); await settle(f.page, 5);
-        fresh = await f.eval(() => { try { window.gc?.(); } catch { /* */ } const c = [...document.querySelectorAll('canvas')]; return { ...window.__perf.live(), dom: c.map((x) => `${x.id || 'canvas'} ${x.width}x${x.height}`) }; });
+        fresh = await live();
         await f.close();
-        const lim = 20;
-        C.add(`${prof}.livecanvas`, MB(fresh.bytes) > lim ? 'fail' : 'pass', `fresh page, stage s04 + menu equip: ${fresh.n} live canvases, ${MB(fresh.bytes)} MB (budget ${lim} MB; DOM ${fresh.dom.join(', ')})`);
-        if (MB(fresh.bytes) > lim) findings.push({ id: `perf.livecanvas.${prof}`, sev: 'S3', kind: 'perf', title: `${MB(fresh.bytes)} MB of live canvases with the menu open on ${prof} (budget ${lim} MB)`, file: 'src/scenes/menu/common.js', ...ownerOf('src/scenes/menu/common.js') });
-      }
-      rows.push({ prof, scene: 'livecanvas', kind: 'mem', walk, fresh });
+        const add = MB(fresh.bytes - base.bytes);
+        const okT = MB(fresh.bytes) <= lim, okA = add <= LIVE_MENU_ADD_MB;
+        C.add(`${prof}.livecanvas`, okT ? 'pass' : 'fail', `fresh page, stage s04 + menu equip: ${fresh.n} live canvases, ${MB(fresh.bytes)} MB (budget ${lim} MB; DOM ${fresh.dom.join(', ')})`);
+        C.add(`${prof}.livecanvas.menu`, okA ? 'pass' : 'fail', `menu equip adds ${add} MB over the stage's ${MB(base.bytes)} MB (${base.n} → ${fresh.n} canvases; budget +${LIVE_MENU_ADD_MB} MB)`);
+        if (!okT) findings.push({ id: `perf.livecanvas.${prof}`, sev: 'S3', kind: 'perf', title: `${MB(fresh.bytes)} MB of live canvases with the menu open on ${prof} (budget ${lim} MB; stage alone ${MB(base.bytes)} MB)`, file: add > LIVE_MENU_ADD_MB ? 'src/scenes/menu/common.js' : 'src/render/tiles.js', ...ownerOf(add > LIVE_MENU_ADD_MB ? 'src/scenes/menu/common.js' : 'src/render/tiles.js') });
+        if (!okA) findings.push({ id: `perf.livecanvas.menu.${prof}`, sev: 'S3', kind: 'perf', title: `the menu adds ${add} MB of live canvases over the stage on ${prof} (budget +${LIVE_MENU_ADD_MB} MB)`, file: 'src/scenes/menu/common.js', ...ownerOf('src/scenes/menu/common.js') });
+      } else C.add(`${prof}.livecanvas`, 'pass', `no live-canvas budget for ${prof} (desktop: info only; whole walk ${MB(walk.bytes)} MB)`);
+      rows.push({ prof, scene: 'livecanvas', kind: 'mem', walk, base, fresh });
     } catch (e) { C.add(`${prof}.livecanvas.harness`, 'error', String(e?.message || e).split('\n')[0]); }
     const errs = [...new Set(s.errs)];
     C.add(`${prof}.errors`, errs.length ? 'fail' : 'pass', errs.length ? `${errs.length} page/console error(s): ${errs.slice(0, 3).join(' || ')}` : 'no page/console errors');

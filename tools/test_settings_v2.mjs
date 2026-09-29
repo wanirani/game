@@ -382,7 +382,9 @@ const MB = 1048576;
   ok(n.get('bg/x') === null && (await n.load('bg/y')) === null, 'Image 없는 환경(Node): null, 예외 없음');
   globalThis.Image = FakeImage;
   // 기본 예산
-  ok(A.ASSET_BUDGET.touch === 160 * MB && A.ASSET_BUDGET.desktop === 400 * MB && A.ASSET_BUDGET.paintedTouch === 24 * MB && A.ASSET_BUDGET.paintedDesktop === 64 * MB, '예산 상수 160/400 MB, 채색 24/64 MB');
+  // R1-RUN-TEX-TOUCH (리드 결정): 채색 예산 휴대폰 32 MB · 태블릿(터치, 화면 짧은 변 ≥ 700) 40 MB · 데스크톱 64 MB
+  ok(A.ASSET_BUDGET.touch === 160 * MB && A.ASSET_BUDGET.desktop === 400 * MB && A.ASSET_BUDGET.paintedTouch === 32 * MB && A.ASSET_BUDGET.paintedTablet === 40 * MB && A.ASSET_BUDGET.paintedDesktop === 64 * MB && A.ASSET_BUDGET.tabletMinSide === 700,
+    `예산 상수 160/400 MB, 채색 휴대폰 32 · 태블릿 40 · 데스크톱 64 MB (${A.ASSET_BUDGET.paintedTouch / MB}/${A.ASSET_BUDGET.paintedTablet / MB}/${A.ASSET_BUDGET.paintedDesktop / MB}, 태블릿 기준 ${A.ASSET_BUDGET.tabletMinSide})`);
   ok(mk().budget === 400 * MB, 'Node(데스크톱) 기본 예산 400 MB');
 }
 
@@ -421,8 +423,9 @@ if (!NODE_ONLY) {
   await new Promise((r) => srv.listen(0, r));
   const port = srv.address().port;
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--autoplay-policy=no-user-gesture-required'] });
-  const open = async ({ mobile = false, url = 'index.html', init = null, allow404 = null } = {}) => {
-    const ctx = await browser.newContext(mobile ? { viewport: { width: 844, height: 390 }, deviceScaleFactor: 3, hasTouch: true, isMobile: true } : { viewport: { width: 1280, height: 720 } });
+  const open = async ({ mobile = false, tablet = false, url = 'index.html', init = null, allow404 = null } = {}) => {
+    const ctx = await browser.newContext(tablet ? { viewport: { width: 1024, height: 768 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true }
+      : mobile ? { viewport: { width: 844, height: 390 }, deviceScaleFactor: 3, hasTouch: true, isMobile: true } : { viewport: { width: 1280, height: 720 } });
     const page = await ctx.newPage();
     const errs = [];
     page.on('pageerror', (e) => errs.push('PAGEERROR ' + e.message));
@@ -431,7 +434,8 @@ if (!NODE_ONLY) {
     if (init) await page.addInitScript(init.fn, init.arg);
     reqs.length = 0;
     await page.goto(`http://localhost:${port}/${url}`, { timeout: 30000 });
-    await page.waitForFunction(() => !!window.__game?.top, null, { timeout: 30000 });
+    // 두 단계 부팅 (R1-REQ-229/426): __game 은 타이틀과 함께 먼저 뜨고, 나머지 장면은 뒤에 등록된다 → 등록이 끝날 때까지 기다린다
+    await page.waitForFunction(() => !!window.__game?.top && window.__game.scenesReady !== false, null, { timeout: 30000 });
     return { ctx, page, errs };
   };
   const setLS = { fn: (v) => { if (!sessionStorage.getItem('__t')) { sessionStorage.setItem('__t', '1'); localStorage.setItem('bloodnocturne_settings', v); } } };
@@ -465,7 +469,15 @@ if (!NODE_ONLY) {
       ok(r.titleLo && /\/assets\/lo\/bg\/title\.webp/.test(r.title), `bg/title 은 lo/ (${r.title.slice(-40)})`);
       ok(!r.liaLo && /\/assets\/portraits\/lia\.webp/.test(r.lia) && r.st.lo.fallbacks >= 1, `lo/ 없는 portraits/lia → 원본으로 대체 (${r.lia.slice(-40)})`);
       ok(reqs.includes('/assets/lo/portraits/lia.webp') && !reqs.includes('/assets/lo/portraits/lia.webp', reqs.indexOf('/assets/lo/portraits/lia.webp') + 1), 'lo/ 실패한 키는 한 번만 시도');
-      ok(r.st.budget === 160 * MB && r.st.paintedBudget === 24 * MB, `터치 예산 160/24 MB (${r.st.budget / MB}/${r.st.paintedBudget / MB})`);
+      ok(r.st.budget === 160 * MB && r.st.paintedBudget === 32 * MB, `휴대폰(844x390) 터치 예산 160/32 MB (${r.st.budget / MB}/${r.st.paintedBudget / MB})`);
+      ok(errs.length === 0, `오류 없음 ${errs.slice(0, 3).join(' | ')}`);
+      await ctx.close();
+    }
+    // 6c-2. 터치 태블릿(1024x768, 짧은 변 768 ≥ 700) → 채색 예산 40 MB (R1-RUN-TEX-TOUCH)
+    {
+      const { ctx, page, errs } = await open({ tablet: true });
+      const r = await page.evaluate(() => { const a = window.__game.assets; return { tab: a.isTablet, touch: a.isTouch, b: a.budget, pb: a.paintedBudget }; });
+      ok(r.touch && r.tab && r.b === 160 * MB && r.pb === 40 * MB, `태블릿(1024x768 터치) 예산 160/40 MB (isTablet ${r.tab}, ${r.b / MB}/${r.pb / MB})`);
       ok(errs.length === 0, `오류 없음 ${errs.slice(0, 3).join(' | ')}`);
       await ctx.close();
     }

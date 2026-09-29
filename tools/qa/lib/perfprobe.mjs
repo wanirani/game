@@ -7,7 +7,8 @@
 //   armed            canvases created while armed are recorded with their call site (after stage start = a budget miss)
 //   on               counting is active (set around one game.render() by measureFrames)
 //   f                per-frame counters: grad (linear/radial/conic), pat, canv, draw (drawImage/fill/stroke/…Rect/…Text on any
-//                    context), mainDraw (on the game canvas), full (full-screen fills/blits on the game canvas), comp (draws
+//                    context), mainDraw (on the game canvas), full (full-screen fills/blits on the game canvas), fullTile (the
+//                    part of full drawn from src/render/tiles.js: the tile layer itself, request #453), comp (draws
 //                    under a non source-over composite), special (saturation/difference/… blends), rng (Math.random), fx (fx
 //                    spawns while rendering), ms (real render time)
 //   sites            { grad: Map(site → n), canv: Map, rng: Map, fx: Map } call sites (file:line) while counting / armed
@@ -23,7 +24,7 @@ export function perfProbeInit() {
       const P = window.__perf = {
         on: false, armed: false, realNow,
         f: null, sites: { grad: new Map(), canv: new Map(), rng: new Map(), fx: new Map() }, refs: [], mainCanvas: null,
-        reset() { this.f = { grad: 0, pat: 0, canv: 0, draw: 0, mainDraw: 0, full: 0, comp: 0, special: 0, rng: 0, fx: 0, ms: 0 }; },
+        reset() { this.f = { grad: 0, pat: 0, canv: 0, draw: 0, mainDraw: 0, full: 0, fullTile: 0, comp: 0, special: 0, rng: 0, fx: 0, ms: 0 }; },
         clearSites() { for (const m of Object.values(this.sites)) m.clear(); },
         live() { let n = 0, bytes = 0; this.refs = this.refs.filter((r) => { const c = r.deref(); if (!c) return false; n++; bytes += (c.width || 0) * (c.height || 0) * 4; return true; }); return { n, bytes }; },
       };
@@ -98,7 +99,11 @@ export function perfProbeInit() {
                     const t = this.getTransform();
                     const W = Math.abs(w * t.a) , H = Math.abs(h * t.d);
                     const cw = this.canvas.width, ch = this.canvas.height;
-                    if (W * H >= 0.9 * cw * ch) P.f.full++;
+                    if (W * H >= 0.9 * cw * ch) {
+                      P.f.full++;
+                      // a tile-chunk blit covers the whole view when a cine zoom puts the view inside one chunk (#453)
+                      if (m === 'drawImage' && site().startsWith('src/render/tiles.js:')) P.f.fullTile++;
+                    }
                   }
                 }
               }

@@ -332,7 +332,7 @@ export class HeartbeatGimmick extends MemberB {
     const pb = playerBody(this.world?.player);
     if (pb) out.push(pb);
     for (const e of this.world?.entities ?? []) {
-      if ((e.kind !== 'enemy' && e.kind !== 'boss') || e.dead) continue;
+      if ((e.kind !== 'enemy' && e.kind !== 'boss') || e.dead || e.pendingBoss) continue;   // 보스 대역(PendingBoss)은 몸이 없다
       out.push(e);
     }
     return out;

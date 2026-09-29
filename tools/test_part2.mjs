@@ -289,13 +289,36 @@ async function openPage(url, { mobile = false, ready = null, god = 'full', timeo
     await page.goto(RT.base + url + (url.includes('?') ? '&' : '?') + 'nosw', { timeout });
     await page.waitForFunction((r) => {
       const g = window.__game, top = g?.scenes?.[g.scenes.length - 1];
-      return !!(g && top && (!r || top.name === r) && (r !== 'stage' || g.world?.player));
+      // scenesReady: 두 단계 부팅 (R1-REQ-229, 요청 #426) — 타이틀로 열면 나머지 장면이 뒤에 등록된다
+      return !!(g && top && (!r || top.name === r) && (r !== 'stage' || g.world?.player) && g.scenesReady !== false);
     }, ready, { timeout, polling: 100 });
     await page.evaluate(installT, { god });
   } catch (e) { await P.close(); throw e; }
   return P;
 }
 const errsSince = (P, n) => [...new Set(P.errs.slice(n))];
+/**
+ * 진짜 보스 기다리기 (R1-REQ-229 · 451): world.js 는 bosses/lazy.js createBoss 로 보스를 만든다 — 클래스가 아직 없으면
+ * PendingBoss(대역, pendingBoss = true, debugAct 없음)가 서 있다가 모듈이 오면 update 에서 스스로 진짜 보스로 바뀐다.
+ * 모듈 도착은 비동기라 실제 시간이 필요하다. world.bossReady() → Promise<Boss|null> (FIX-ENGINE) 이 있으면 먼저 그것을 기다린다
+ * (게임 루프가 멈춰 있어도 모듈이 오는 즉시 바꿔 넣는다). 그 뒤(또는 없으면) 한 번에 한 프레임씩 진행하며 최대 maxMs 기다린다.
+ * 반환 { done, id, pending, cls, viaReady }
+ */
+async function waitRealBoss(P, maxMs = 20000) {
+  const viaReady = await P.page.evaluate(async (ms) => {
+    const w = window.__T.w();
+    if (typeof w?.bossReady !== 'function' || !w.boss?.pendingBoss) return null;
+    const b = await Promise.race([w.bossReady(), new Promise((r) => setTimeout(() => r(undefined), ms))]);
+    return b === undefined ? 'timeout' : (b?.constructor?.name ?? null);
+  }, maxMs).catch((e) => 'error: ' + e.message);
+  const r = await stepUntil(P, () => {
+    const T = window.__T, w = T.w(), b = w?.boss;
+    const done = !!b && !b.pendingBoss && typeof b.debugAct === 'function';
+    if (!done) T.tick(1);
+    return { done, id: b?.def?.id ?? b?.id ?? null, pending: !!b?.pendingBoss, cls: b?.constructor?.name ?? null };
+  }, null, maxMs);
+  return { ...r, viaReady };
+}
 async function shot(P, name) {
   try {
     await P.page.evaluate(() => window.__T.draw());
@@ -571,6 +594,9 @@ async function bossFlow(sid, { patterns = true, death = true, loot = false, clea
       if (!walked && w.arenaX !== undefined) { p.x = w.arenaX + 3 * 48; T.tick(5); }
       return { walked, boss: !!w.boss, x: Math.round(p.x), arenaX: w.arenaX, jumps };
     });
+    // 늦게 받는 보스 (R1-REQ-229 · 451): world.boss 는 클래스 모듈이 올 때까지 PendingBoss(대역)다.
+    // 모듈은 비동기로 오므로 멈춘 루프의 한 evaluate 안에서는 바뀌지 않는다 → 실제 시간을 주며 한 프레임씩 진행해 진짜 보스를 기다린다
+    const real = await waitRealBoss(P);
     const fight = await P.page.evaluate(() => {
       const T = window.__T, w = T.w();
       const ok = T.until(() => w.bossActive && !w.cutscene && T.top()?.name === 'stage' && T.g.fade.dir === 0, 40);
@@ -578,7 +604,7 @@ async function bossFlow(sid, { patterns = true, death = true, loot = false, clea
       T.base = { tiles: Array.from(w.map.tiles), magma: w.gimmickOf('magma')?.level, windAuto: w.gimmickOf('wind')?.auto };
       return { ok, top: T.top()?.name, id: b?.def?.id, phases: b?.def?.phases ?? [], hp: b?.hp, log: T.cap.scenes.slice(-6) };
     });
-    check(G, `${tag}: 걸어서 경기장 → 대사·소개 넘김 → 전투 시작`, walk.walked && fight.ok && fight.id === bid && !errsSince(P, e0).length, { walk, fight, errs: errsSince(P, e0) });
+    check(G, `${tag}: 걸어서 경기장 → 보스 모듈 도착(대역 → 진짜 보스) → 대사·소개 넘김 → 전투 시작`, walk.walked && real.done && fight.ok && fight.id === bid && !errsSince(P, e0).length, { walk, real, fight, errs: errsSince(P, e0) });
     if (!fight.ok) return;
     await shot(P, `boss_${bid}${ending ? '_' + (shards?.length ?? 0) : ''}_p0`);
     const nPh = fight.phases.length;
@@ -1048,13 +1074,17 @@ async function mobileGroup() {
     const e0 = P.errs.length;
     const cdp = await P.ctx.newCDPSession(P.page), t = new Touch(cdp, P.page);
     const mode = await touchOn(P, t);
-    const r = await P.page.evaluate(() => {
+    await P.page.evaluate(() => {
       const T = window.__T, w = T.w(), p = T.p();
       T.hero60();
       // 키 입력을 보내면 입력 모드가 'kb' 로 바뀌어 HUD 가 키보드 배치를 쓴다 (멈춘 루프에서는 realTime 이 안 흘러 패드도 안 숨는다).
       // 터치 검사이므로 걷지 않고 입구 단(0–20열, 윗면 11줄)의 X 표시 너머로 옮겨 보스전을 연다 (world: p.x > arenaX + TILE)
       p.x = (w.arenaX ?? 16 * 48) + 2 * 48; p.y = 11 * 48 - p.h; p.vx = 0; p.vy = 0;
       T.until(() => !!w.boss, 5);
+    });
+    const real = await waitRealBoss(P);   // 늦게 받는 보스: 대역(PendingBoss)이 진짜 보스로 바뀔 때까지 (R1-REQ-451)
+    const r = await P.page.evaluate(() => {
+      const T = window.__T, w = T.w(), p = T.p();
       const fight = T.until(() => w.bossActive && !w.cutscene && T.top()?.name === 'stage' && T.g.fade.dir === 0, 40);
       const d = w.gimmickOf('deep');
       const X = 30 * 48, Y = 16 * 48 - p.h;   // 경기장 물(21–55열, 12–15줄) 바닥에 선다 — 머리가 물속
@@ -1066,7 +1096,7 @@ async function mobileGroup() {
     const ov = await P.page.evaluate(overlapCheck);
     await shot(P, 'mobile_s16_boss');
     check(G, 's16 보스방 (터치): 보스 바가 보일 때 공기 게이지가 보스 바·패드·일시정지와 겹치지 않음',
-      mode === 'touch' && r.modeAfter === 'touch' && r.fight && r.air < 100 && ov.boss && ov.rows >= 1 && ov.occ > 0 && !ov.bad.length && !errsSince(P, e0).length, { mode, ...r, ...ov, errs: errsSince(P, e0) });
+      mode === 'touch' && real.done && r.modeAfter === 'touch' && r.fight && r.air < 100 && ov.boss && ov.rows >= 1 && ov.occ > 0 && !ov.bad.length && !errsSince(P, e0).length, { mode, real, ...r, ...ov, errs: errsSince(P, e0) });
   } catch (e) { check(G, 's16 보스방 휴대폰 실행', false, e.stack); }
   await P?.close(); P = null;
   // 지도: 탭을 눌러 지도 전환

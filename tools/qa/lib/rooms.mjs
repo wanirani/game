@@ -11,6 +11,7 @@ export async function gotoRoom(s, stage, room, { hero = null } = {}) {
       g.state = newGameState({ slot: 1, difficulty: 'normal', charId: hero });
     }
     if (window.__perf) window.__perf.armed = false;
+    if (g.scenesReady === false) await g.whenScenes?.();   // two-phase boot (R1-REQ-229, request #426): scene graph still loading
     g.go('stage', { stageId: stage, roomId: room }, { fade: false });
   }, { stage, room, hero });
   // let the async stage load (assets, painted bakes) finish: real time passes between these evaluates

@@ -350,6 +350,9 @@ if (hasDom() && typeof setTimeout === 'function') {
         setTimeout(() => prepareUltCutin(), 150);
       });
     } catch (e) { console.warn('[ultCutin] bus', e); }
+    // 장면 묶음이 늦게 도착해 '불러오는 중' 자리 장면이 곧바로 스테이지로 바뀐 경우 (느린 망에서 먼저 시작을 누름):
+    // 그 World 의 stageEntered 는 위 구독보다 먼저 지나갔으므로 지금 월드의 영웅 것을 따라잡아 굽는다 (첫 필살기에 새 캔버스 0)
+    try { if (GAME?.world?.player) { UI.loadBrush?.(); prepareUltCutin(); } } catch { /* 첫 컷인 때 굽는다 */ }
   }, 0);
 }
 /** 붉은 먹 밑줄 (가운데가 굵고 양끝이 가는 붓 획, 끝에서 살짝 튕긴다) */

@@ -186,7 +186,9 @@ t('2부 탈것 기본 수치 (MASTER_PLAN §1.2)', () => {
 t('1부 수호신 수치 (§4.9)', () => {
   const g = D.GUARDIANS;
   const row = (id) => [g[id].move, g[id].size.w, g[id].size.h, g[id].front, g[id].anchor.dx, g[id].anchor.dy, g[id].attack.mv, g[id].attack.interval, g[id].attack.range, g[id].skill.cd];
-  eq(row('gd_fairy'), ['fly', 16, 20, true, 34, -96, 0.5, 1.4, 320, 35]);
+  // gd_fairy attack.mv 0.5→0.9 · assist.mv 0.8→1.0: 리드 승인 튜닝 (R1-REQ-367, 지원형 몫 companions §9 B1 [6%, 30%])
+  eq(row('gd_fairy'), ['fly', 16, 20, true, 34, -96, 0.9, 1.4, 320, 35]);
+  eq([g.gd_fairy.assist.kind, g.gd_fairy.assist.r, g.gd_fairy.assist.mv], ['ring', 60, 1.0]);
   eq(row('gd_spiritwolf'), ['ground', 50, 36, false, 60, 0, 0.7, 1.0, 380, 26]);
   eq(row('gd_imp'), ['fly', 26, 28, false, 40, -110, 0.8, 1.2, 360, 28]);
   eq(row('gd_knight'), ['ground', 34, 72, false, 46, 0, 0.9, 1.3, 300, 30]);

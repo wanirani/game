@@ -324,6 +324,14 @@ test('안드로이드 앱: /api 프록시가 켜져 있으면 같은 출처 /api
     await openAccount(page);
     assert.equal(await page.evaluate(async () => (await import('/src/core/cloud.js')).cloud.state), 'ready', tag);
     assert.ok(log.some((r) => r.host === c.host && r.path === '/api/health'), `${tag}: ${c.host}/api/health 없음`);
+    // 본문이 있는 요청(가입 POST)도 같은 주소로 가고, 앱 기본값 '로그인 유지' 켬 → 토큰은 localStorage
+    const id = newId();
+    await showScreen(page, 'signup');
+    assert.equal((await scene(page)).remember, true, `${tag}: 앱 기본값은 로그인 유지 켬`);
+    await signupViaUi(page, id);
+    await page.waitForFunction(() => window.__game.top.screen === 'code', null, { timeout: 15000 });
+    assert.ok(log.some((r) => r.host === c.host && r.method === 'POST' && r.path === '/api/auth/signup'), `${tag}: ${c.host} 로 가입 POST 없음`);
+    assert.equal(JSON.parse((await storage(page)).local ?? 'null')?.id, id, `${tag}: localStorage 토큰`);
     assert.equal(log.filter((r) => r.host === c.other && r.path.startsWith('/api/')).length, 0, `${tag}: ${c.other} 로 API 요청`);
     assert.deepEqual(errs, [], tag);
     await ctx.close();

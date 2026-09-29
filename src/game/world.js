@@ -30,7 +30,8 @@ import { currentHero } from './state.js';
 import { createBackground } from '../render/background.js';
 import { TileRenderer } from '../render/tiles.js';
 import { drawHero } from '../render/hero.js';
-import { createBoss } from './bosses/lazy.js';   // R1-REQ-229 (요청 #380): 보스 클래스를 정적으로 싣지 않는 입구 — bosses/index.js 가 불러와져 있으면 곧바로 진짜 보스, 아니면 대역(PendingBoss)이 받는 동안 자리를 지킨다
+import { createBoss, loadBoss } from './bosses/lazy.js';
+import { GenericBoss } from './bosses/boss.js';   // bossReady: 보스 모듈을 끝내 받지 못하면 대역을 대체 보스로 (lazy.js 도 이미 정적으로 싣는 기반 모듈)   // R1-REQ-229 (요청 #380): 보스 클래스를 정적으로 싣지 않는 입구 — bosses/index.js 가 불러와져 있으면 곧바로 진짜 보스, 아니면 대역(PendingBoss)이 받는 동안 자리를 지킨다
 import { SCRIPTS } from '../data/story.js';
 import { CLASSES } from '../data/classes.js';
 import { Style } from './style.js';   // [hook:feel]
@@ -349,8 +350,9 @@ export class World {
   }
   spawnPickup(type, x, y, data = {}) { return this.add(new Pickup(type, x, y, data)); }
   hittables() {
-    return this.entities.filter((e) => (e.kind === 'enemy' || e.kind === 'boss' || (e.kind === 'prop' && e.takeHit)) && !e.dead && !e.hidden && !this.inUnrevealedFake(e));
+    return this.entities.filter((e) => (e.kind === 'enemy' || e.kind === 'boss' || (e.kind === 'prop' && e.takeHit)) && !e.dead && !e.hidden && !e.pendingBoss && !this.inUnrevealedFake(e));
   }
+  /** 살아 있는 적·보스. 보스 대역(PendingBoss)도 든다 (남은 적 수를 세는 쪽: 아케이드 웨이브). 대역은 invuln·harmless 라 조준하는 쪽은 invuln 을 거른다 */
   enemies() { return this.entities.filter((e) => (e.kind === 'enemy' || e.kind === 'boss') && !e.dead && !e.hidden && !(e.dying > 0) && !this.inUnrevealedFake(e)); }
   /** 아직 드러나지 않은 가짜 벽 속에 있는가 (비밀 방 안의 개체는 그리지도, 때리지도 않는다) */
   inUnrevealedFake(e) {
@@ -1110,7 +1112,7 @@ export class World {
     // 3인칭 카메라: 경기장 높이가 화면보다 크면 살짝 줌아웃해 보스 전신이 보이게
     this.camera.zoomTarget = clamp(this.game.viewH / (m.pxH - TILE), 0.74, 1);
     const id = this.room.bossId ?? this.stage.boss;
-    const bx = x0 + (x1 - x0) * 0.72;
+    const bx = this.bossSpawnX(x0, x1, this.game.viewW / (this.camera.zoomTarget || 1));   // R1-RUN-BOSSFRAME: 첫 구도에 보스가 담기는 거리
     const by = (m.h - 2) * TILE;
     this.bossSpawn = { id, x: bx, y: by };
     this.boss = createBoss(this, id, bx, by);
@@ -1130,6 +1132,21 @@ export class World {
       this.game.push('dialogue', { script: preId, world: this, onEnd: intro });
     } else intro();
   }
+  /**
+   * 보스 등장 x (R1-RUN-BOSSFRAME 리드 결정). 기본은 경기장 0.72 지점이지만 들어온 영웅에서 화면 너비(vw, 경기장 줌 기준 월드 px)의
+   * 0.75 배보다 멀면 그 거리로 당긴다 — 카메라의 영웅 0.6 : 보스 0.4 구도가 첫 화면부터 보스를 담는다 (s19 베헤모스는 입구에서 2000 px 였다).
+   * 영웅과는 0.45 vw 이상 띄운다. 영웅이 경기장 가운데보다 오른쪽에서 들어왔으면 좌우를 뒤집는다. 경기장 양 끝 두 칸 안쪽으로 자른다
+   */
+  bossSpawnX(x0, x1, vw) {
+    const p = this.player, hx = p ? p.x + p.w / 2 : x0;
+    const dir = hx <= (x0 + x1) / 2 ? 1 : -1;
+    const base = dir > 0 ? x0 + (x1 - x0) * 0.72 : x1 - (x1 - x0) * 0.72;
+    if (!(vw > 0) || !Number.isFinite(hx)) return base;
+    let bx = dir > 0 ? Math.min(base, hx + vw * 0.75) : Math.max(base, hx - vw * 0.75);
+    bx = dir > 0 ? Math.max(bx, hx + vw * 0.45) : Math.min(bx, hx - vw * 0.45);
+    const mg = Math.min(TILE * 2, (x1 - x0) / 4);
+    return clamp(bx, x0 + mg, x1 - mg);
+  }
   /** 경기장 바닥 높이(px): 경기장 칸들에서 맨 아래 단단한 땅 윗면의 중앙값 (구덩이·발판에 흔들리지 않게) */
   arenaFloorY(x0, x1) {   // [hook:plat]
     const m = this.map, ys = [];
@@ -1139,6 +1156,25 @@ export class World {
     if (!ys.length) return null;
     ys.sort((a, b) => a - b);
     return ys[ys.length >> 1];
+  }
+  /**
+   * 진짜 보스가 준비될 때까지 → Promise<Boss|null> (R1-REQ-229 요청 #451).
+   * world.boss 는 보스 클래스 모듈을 받는 동안 대역(PendingBoss: pendingBoss=true, 무적·무해·그리지 않음, state 'intro')일 수 있다.
+   * 대역은 보통 다음 update 에서 스스로 바뀌지만, 이 약속은 게임 루프가 멈춰 있어도(시험 도구의 단계 실행) 모듈이 도착하는 즉시
+   * 여기서 바꿔 넣고 진짜 보스를 돌려준다. 받기에 끝내 실패하면(세 번) 대역과 같은 규칙으로 GenericBoss. 보스가 없으면 null
+   */
+  bossReady() {
+    const b = this.boss;
+    if (!b?.pendingBoss) return Promise.resolve(b ?? null);
+    const id = b.id ?? b.def?.id;
+    const step = (tries) => loadBoss(id).then((C) => {
+      const cur = this.boss;
+      if (cur !== b) return cur?.pendingBoss ? this.bossReady() : (cur ?? null);   // 그 사이 update 가 바꿨거나 방을 떠났다
+      if (b.dead) return null;
+      if (typeof C === 'function') return b.become(C, this);
+      return tries > 1 ? step(tries - 1) : b.become(GenericBoss, this);
+    });
+    return step(3);
   }
   /** 플레이어 부활 시 보스전 초기화: 체력 회복 + 페이즈 되돌리기 */
   resetBoss() {

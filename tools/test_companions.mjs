@@ -150,7 +150,8 @@ async function withPage(url, fn, { mobile = false, initScripts = [], waitWorld =
   page.on('console', (m) => { if (m.type() === 'error') { const t = m.text(); if (!/Failed to load resource|ERR_CERT|fonts\.g/.test(t)) errs.push('CONSOLE ' + t.slice(0, 300)); } });
   try {
     await page.goto(`http://localhost:${port}/${url}`, { timeout: 90000 });
-    await page.waitForFunction((ww) => !!window.__game && (!ww || !!window.__game.world?.player), waitWorld, { timeout: 90000 });
+    // scenesReady: 두 단계 부팅 (R1-REQ-229, 요청 #426) — 타이틀로 열면 나머지 장면이 뒤에 등록된다
+    await page.waitForFunction((ww) => !!window.__game && window.__game.scenesReady !== false && (!ww || !!window.__game.world?.player), waitWorld, { timeout: 90000 });
     await page.evaluate(installHelpers);
     await page.evaluate(() => { const T = window.__T; T.step(2 / 60); T.hook(); });
     const out = await fn(page, ctx);
@@ -784,7 +785,7 @@ await run('save', STAGE('s01', '&room=r3&cmp=all&cmplv=40&bond=4&ch=20&mount=mt_
   if (!a?.info?.expect) return a;
   // 페이지를 새로 열어 (타이틀) 슬롯에서 불러온다: saves.read → migrateState → 저장된 방으로
   await page.goto(`http://localhost:${port}/index.html`, { timeout: 90000 });
-  await page.waitForFunction(() => !!window.__game?.top, null, { timeout: 90000 });
+  await page.waitForFunction(() => !!window.__game?.top && window.__game.scenesReady !== false, null, { timeout: 90000 });   // 두 단계 부팅 (#426)
   await page.evaluate(installHelpers);
   const b = await page.evaluate(async ({ canonSrc, slot, expect, loadout }) => {
     const canon = eval(canonSrc);

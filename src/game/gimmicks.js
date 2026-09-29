@@ -85,7 +85,7 @@ export function gimmickBodies(world, { player = true, bosses = true } = {}) {
   if (player && p && !p.dead) out.push(p);
   for (const e of world.entities) {
     if (e.dead || (e.dying > 0)) continue;
-    if (e.kind === 'enemy' || (bosses && e.kind === 'boss')) out.push(e);
+    if (e.kind === 'enemy' || (bosses && e.kind === 'boss' && !e.pendingBoss)) out.push(e);   // 보스 대역(PendingBoss)은 몸이 없다
   }
   return out;
 }

@@ -170,14 +170,19 @@ export class Session {
     if (wait) await this.waitGame();
   }
   /**
-   * window.__game exists and has a scene (or the given predicate holds).
+   * window.__game exists and has a scene and the lazy scene graph is registered (or the given predicate holds).
+   * Two-phase boot (R1-REQ-229 / request #426): main.js publishes window.__game with only 'title' registered and loads
+   * every other scene afterwards (game.lazyScenes; game.scenesReady === false until they land). The default predicate
+   * waits for scenesReady so a suite that opens plain index.html can go()/push() any scene at once. ?scene=… URLs are
+   * not affected (main.js waits for the scenes before the first go). platform_load.mjs measures the first frame with
+   * { wait: false } and its own predicate, not this one.
    * pred: a JS expression over `g` (string), or a function (arg) → truthy that runs in the page (reads window.__game).
    * CSP-safe (request #230): under the production CSP (script-src 'self', no 'unsafe-eval'; dist/web via serve_dist)
    * page.waitForFunction compiles its predicate with new Function inside the page and throws EvalError, so the
    * predicate is polled from Node instead: page.evaluate goes through CDP (Runtime.evaluate / callFunctionOn), which the
    * page CSP does not govern. Poll period 50 ms; a navigation in between counts as "not yet".
    */
-  async waitGame(pred = 'g.scenes.length > 0', timeout = 45000, arg = null) {
+  async waitGame(pred = 'g.scenes.length > 0 && g.scenesReady !== false', timeout = 45000, arg = null) {
     const expr = typeof pred === 'function' ? null : `(() => { const g = window.__game; return !!g && !!(${pred}); })()`;
     const fn = typeof pred === 'function' ? pred : null;
     const t0 = Date.now();
