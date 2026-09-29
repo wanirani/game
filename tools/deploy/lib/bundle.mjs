@@ -152,11 +152,42 @@ export function bundleModules({ root, entry, chunkDir = 'src/bundle/x', maxLazyC
     if (!byKey.has(key)) byKey.set(key, { key, size: os.size, first: Math.min(...os), files: [] });
     byKey.get(key).files.push(f);
   }
-  const lazyChunks = [...byKey.values()].sort((x, y) => x.size - y.size || x.first - y.first || (x.key < y.key ? -1 : 1));
+  let lazyChunks = [...byKey.values()].sort((x, y) => x.size - y.size || x.first - y.first || (x.key < y.key ? -1 : 1));
+  // 조각 수 상한 (maxLazyChunks = lazy + 공유 조각 수, 아티팩트는 main 포함 ≤ 8): 공유 조각 때문에 넘으면 합친다.
+  // 합치기는 조각 사이 정적 import 그래프에 순환을 만들지 않는다 (ES 평가 순서 유지):
+  //  (1) 조각 X 와 X 가 (간접으로라도) 정적으로 import 하는 조각 전부 → 한 조각. X 를 받을 때 어차피 함께 받던 것이라 X 쪽 비용이 없고,
+  //      합친 묶음에서 밖으로 나가는 import 가 없으므로 순환이 생길 수 없다. 가장 많은 조각을 줄이는 X 부터 (같으면 코드가 큰 X).
+  //  (2) 어느 조각도 다른 조각을 import 하지 않으면 가장 작은 둘을 합친다 (둘 다 나가는 import 가 없어 순환이 없다).
+  // 합친 조각 안의 모듈은 전역 평가 순서(globalOrder)대로 둔다 — 같은 조각 안의 의존 모듈이 늘 먼저 온다.
+  if (lazyChunks.length > Math.max(1, maxLazyChunks)) {
+    const pos = new Map(globalOrder.map((f, i) => [f, i]));
+    const bytesOf = (p) => p.files.reduce((s, f) => s + mods.get(f).code.length, 0);
+    while (lazyChunks.length > Math.max(1, maxLazyChunks)) {
+      const partOf = new Map();
+      for (const p of lazyChunks) for (const f of p.files) partOf.set(f, p);
+      const deps = new Map(lazyChunks.map((p) => [p, new Set()]));
+      for (const p of lazyChunks) for (const f of p.files) for (const d of mods.get(f).deps) { const q = partOf.get(d); if (q && q !== p) deps.get(p).add(q); }
+      const reach = (p) => { const seen = new Set(); const st = [...deps.get(p)]; while (st.length) { const q = st.pop(); if (seen.has(q)) continue; seen.add(q); st.push(...deps.get(q)); } return seen; };
+      let best = null;
+      for (const p of lazyChunks) {
+        const r = reach(p);
+        if (!r.size) continue;
+        const b = bytesOf(p);
+        if (!best || r.size > best.r.size || (r.size === best.r.size && b > best.bytes)) best = { p, r, bytes: b };
+      }
+      const merge = best ? [best.p, ...best.r] : [...lazyChunks].sort((x, y) => bytesOf(x) - bytesOf(y)).slice(0, 2);
+      const files = merge.flatMap((p) => p.files).sort((x, y) => pos.get(x) - pos.get(y));
+      const merged = { key: merge.map((p) => p.key).join('|'), size: Math.max(...merge.map((p) => p.size)), first: Math.min(...merge.map((p) => p.first)), files, merged: true };
+      lazyChunks = lazyChunks.filter((p) => !merge.includes(p));
+      lazyChunks.splice(0, 0, merged);
+      lazyChunks.sort((x, y) => x.first - y.first || x.size - y.size || (x.key < y.key ? -1 : 1));
+    }
+  }
   const chunks = [{ name: mainName, kind: 'main', files: mainOrder, imports: new Map(), exports: new Set(), entries: [] }];
   lazyChunks.forEach((lc, i) => {
     const entries = lazyEntries.map((e) => e.target).filter((t) => lc.files.includes(t));
-    chunks.push({ name: lazyName(i + 1), kind: lc.size > 1 ? 'shared' : 'lazy', files: lc.files, imports: new Map(), exports: new Set(), entries });
+    // lazy = 동적 import() 로 부르는 진입 모듈이 있는 조각, shared = 여러 lazy 조각이 함께 쓰는 모듈만 있는 조각
+    chunks.push({ name: lazyName(i + 1), kind: entries.length ? 'lazy' : 'shared', files: lc.files, imports: new Map(), exports: new Set(), entries });
   });
   for (const c of chunks) for (const f of c.files) {
     const m = mods.get(f);

@@ -14,6 +14,7 @@
 //   --no-apk               APK 를 넣지 않는다
 //   --no-deploy-bundle     dist/deploy (Netlify 업로드 묶음) 를 만들지 않는다
 //   --strict               첫 화면 크기 예산(1.6 MB brotli) 초과도 실패로
+//   --restamp              내용이 이전 빌드와 같아도 새 버전·시각을 찍는다 (기본: 같으면 이전 표시를 그대로 둔다, 아래 5)
 //   --quiet
 //
 // 하는 일 (순서):
@@ -25,6 +26,9 @@
 //  4. index.html 고치기: build-info.js (window.__BN_BUILD = {version, hash, modules, lo, …}, CSP 때문에 외부 파일) 를 부팅 관문보다 먼저,
 //     main 조각 modulepreload, CSS·부팅 관문·글꼴 주소에 ?v=<내용 해시>. css/style.css 의 @font-face 주소도 같은 값으로.
 //  5. build.json = {version, buildHash, files:{경로:{hash8, bytes}}, moduleCount, …} (서비스 워커가 그림 캐시를 검증할 때 읽는다)
+//     buildHash·build.json 에는 downloads/ 와 _redirects 를 넣지 않는다 (APK 에 들어가지 않는 배포 전용 파일). 그래서 새 APK 를
+//     downloads/ 에 넣으려고 다시 빌드해도 게임 파일이 같으면 buildHash 가 같고, 그때는 이전 dist/web/build.json 의 version·built·commit
+//     을 그대로 써서 build-info.js·build.json·index.html·sw.js 가 바이트까지 같다 → APK assets/www 와 dist/web 해시 비교(verify_apk)가 맞는다.
 //  6. sw.js 에 BUILD (캐시 이름 bn-<buildHash>, 미리 받을 목록) 주입. _redirects (/apk, /download → APK).
 //  7. 글꼴 검사, 맵 검사, 크기 보고 (brotli·gzip): 첫 화면 경로, dist/web ≤ 90 MB, APK 입력(dist/web − sw.js − downloads/) ≤ 45 MB.
 //  8. dist/deploy/ = Netlify 업로드 묶음: web/ (dist/web 하드 링크) + netlify/functions·lib + package.json(개발 의존성 제외) +
@@ -53,6 +57,8 @@ const SKIP_EXACT = new Set(['assets/lo/index.json']);
 const FIRST_FONTS = ['noto-sans-kr.woff2', 'hahmlet.woff2', 'grenze-gotisch.woff2', 'cinzel.woff2', 'cinzel-decorative-900.woff2', 'bn-num.woff2'];
 
 const h8 = (s) => s.slice(0, 8);
+/** 배포에만 쓰는 파일 (APK 에 들어가지 않고 게임 내용도 아니다): buildHash·build.json 에서 뺀다 */
+export const isDeployOnly = (rel) => rel === '_redirects' || rel.startsWith('downloads/');
 
 function log(opts, ...a) { if (!opts.quiet) console.log(...a); }
 
@@ -62,7 +68,7 @@ class BuildError extends Error {}
 export async function buildWeb(o = {}) {
   const opts = {
     src: ROOT, out: path.join(ROOT, 'dist/web'), bundle: true, minify: true, maxLazy: 7,
-    fontsCheck: true, allowFontGaps: false, validate: true, apk: undefined, deployBundle: true, strict: false, quiet: false, sizes: true, variants: true,
+    fontsCheck: true, allowFontGaps: false, validate: true, apk: undefined, deployBundle: true, strict: false, quiet: false, sizes: true, variants: true, restamp: false,
     ...Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)),
   };
   const SRC = path.resolve(opts.src);
@@ -72,6 +78,12 @@ export async function buildWeb(o = {}) {
   const report = { ok: false, out: posix(path.relative(ROOT, OUT)), warnings: [], skipped: [], checks: {}, sizes: {}, budgets: {}, timings: {} };
   const warn = (m) => { report.warnings.push(m); log(opts, '  경고: ' + m); };
   const lap = (k, t) => { report.timings[k] = Date.now() - t; };
+  // 이전 빌드의 표시 (내용이 같으면 그대로 다시 쓴다 — 5 단계). 출력 폴더를 지우기 전에 읽는다.
+  let prevBuild = null;
+  try {
+    const pj = JSON.parse(fs.readFileSync(path.join(OUT, 'build.json'), 'utf8'));
+    if (typeof pj?.buildHash === 'string' && typeof pj.version === 'string' && typeof pj.built === 'string') prevBuild = { buildHash: pj.buildHash, version: pj.version, built: pj.built, commit: pj.commit ?? null };
+  } catch { prevBuild = null; }
 
   // ── 0. 사전 점검: lo/ 변형, 글꼴, 맵 ── (실패하면 예전 결과도 지운다: 실패한 빌드 뒤에 낡은 dist/web 이 배포되지 않게)
   try {
@@ -210,21 +222,34 @@ export async function buildWeb(o = {}) {
     // ── 5. build.json · build-info.js · sw.js ──
     t = Date.now();
     const loKeys = loKeysOf(OUT);
-    const pkg = JSON.parse(fs.readFileSync(path.join(SRC, 'package.json'), 'utf8'));
-    const git = spawnSync('git', ['rev-parse', '--short=8', 'HEAD'], { cwd: SRC, encoding: 'utf8' });
-    const commit = git.status === 0 ? git.stdout.trim() : null;
-    const now = new Date();
-    const stamp = now.toISOString().replace(/[-:]/g, '').slice(0, 13); // 20260927T2345
-    const version = `${pkg.version}+${stamp}${commit ? '.' + commit : ''}`;
-    // buildHash: build-info.js·sw.js·build.json 을 뺀 모든 파일 (index.html 은 자리표시 상태로)
+    // buildHash: build-info.js·sw.js·build.json 을 뺀 모든 게임 파일 (index.html 은 자리표시 상태로, sw.js 는 BUILD 주입 전 원본).
+    // downloads/(APK·latest.json)·_redirects 는 뺀다: APK 에 들어가지 않고 게임 내용도 아니다 (APK 만 새로 넣은 빌드도 같은 buildHash)
     const hashed = {};
     for (const rel of walk(OUT)) {
+      if (isDeployOnly(rel)) continue;
       const buf = fs.readFileSync(path.join(OUT, rel));
       hashed[rel] = { hash8: h8(sha256(buf)), bytes: buf.length };
     }
     const buildHash = sha256(Object.entries(hashed).map(([k, v]) => `${k}:${v.hash8}:${v.bytes}`).join('\n')).slice(0, 12);
+    // 버전 표시: 게임 파일이 이전 빌드와 같으면(buildHash 같음) 이전 version·built·commit 을 그대로 → build-info.js·build.json·index.html·sw.js 가
+    // 바이트까지 같다 (APK 를 만든 뒤 그 APK 를 downloads/ 에 넣으려고 다시 빌드해도 APK assets/www = dist/web 이 유지된다). --restamp 면 새로 찍는다.
+    let version, builtAt, commit;
+    if (prevBuild && prevBuild.buildHash === buildHash && !opts.restamp) {
+      ({ version, built: builtAt, commit } = prevBuild);
+      report.restamped = false;
+      log(opts, `· 게임 파일이 이전 빌드(bn-${buildHash})와 같아 버전 표시를 그대로 둡니다: ${version} (새로 찍으려면 --restamp)`);
+    } else {
+      const pkg = JSON.parse(fs.readFileSync(path.join(SRC, 'package.json'), 'utf8'));
+      const git = spawnSync('git', ['rev-parse', '--short=8', 'HEAD'], { cwd: SRC, encoding: 'utf8' });
+      commit = git.status === 0 ? git.stdout.trim() : null;
+      const now = new Date();
+      const stamp = now.toISOString().replace(/[-:]/g, '').slice(0, 13); // 20260927T2345
+      version = `${pkg.version}+${stamp}${commit ? '.' + commit : ''}`;
+      builtAt = now.toISOString();
+      report.restamped = true;
+    }
     const info = {
-      version, hash: buildHash, built: now.toISOString(), modules: moduleCount, bundle: !!opts.bundle,
+      version, hash: buildHash, built: builtAt, modules: moduleCount, bundle: !!opts.bundle,
       lo: loKeys.length ? loKeys : null,
     };
     const infoJs = `/* 배포 빌드 정보 — tools/deploy/build_web.mjs 가 만든다 (CSP script-src 'self' 라 인라인이 아닌 파일). 부팅 관문(src/boot-gate.js)·assets.js 가 읽는다 */\nwindow.__BN_BUILD = ${JSON.stringify(info)};\n`;
@@ -258,14 +283,14 @@ export async function buildWeb(o = {}) {
     sw = sw.replace(swRe, `/*BN_BUILD*/${JSON.stringify(swBuild)}/*BN_BUILD_END*/`);
     write('sw.js', sw);
 
-    // build.json (자신 제외 모든 파일)
+    // build.json (자신과 배포 전용 파일(downloads/·_redirects) 제외 모든 파일 — APK 에도 들어가므로 APK 를 바꿔 넣어도 같아야 한다)
     const manifestFiles = {};
     for (const rel of walk(OUT)) {
-      if (rel === 'build.json') continue;
+      if (rel === 'build.json' || isDeployOnly(rel)) continue;
       const buf = fs.readFileSync(path.join(OUT, rel));
       manifestFiles[rel] = { hash8: h8(sha256(buf)), bytes: buf.length };
     }
-    const buildJson = { version, buildHash, built: now.toISOString(), commit, moduleCount, bundle: bundleInfo ? { dir: bundleInfo.dir, chunks: bundleInfo.chunks.map((c) => c.file) } : null, lo: loKeys.length, files: manifestFiles };
+    const buildJson = { version, buildHash, built: builtAt, commit, moduleCount, bundle: bundleInfo ? { dir: bundleInfo.dir, chunks: bundleInfo.chunks.map((c) => c.file) } : null, lo: loKeys.length, files: manifestFiles };
     write('build.json', JSON.stringify(buildJson) + '\n');
     report.version = version; report.buildHash = buildHash; report.moduleCount = moduleCount; report.precache = pre.length; report.assetPrecache = assetPre.length; report.lo = loKeys.length;
     lap('manifest', t);
@@ -559,6 +584,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       bundle: !a['no-bundle'], minify: !a['no-minify'], maxLazy: a['max-lazy'] ? Number(a['max-lazy']) : 7,
       allowFontGaps: !!a['allow-font-gaps'], validate: !a['skip-validate'],
       apk: a['no-apk'] ? false : a.apk || undefined, deployBundle: !a['no-deploy-bundle'], strict: !!a.strict, quiet: !!a.quiet,
+      restamp: !!a.restamp,
     });
     const rp = path.resolve(rep.out ? path.join(ROOT, rep.out) : path.join(ROOT, 'dist/web')) === path.join(ROOT, 'dist/web') ? path.join(ROOT, 'dist/build_web_report.json') : path.join(ROOT, rep.out + '-report.json');
     fs.writeFileSync(rp, JSON.stringify(rep, null, 1) + '\n');
