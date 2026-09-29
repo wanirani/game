@@ -213,28 +213,41 @@ const T0 = performance.now();
 // default cell size grows with the tallest enemy on the sheet (T3 bodies are ~100 px tall; ?cellw= / ?cellh= override)
 const maxH = Math.max(...rows.map((r) => r.d.size?.h ?? 40));
 const CELL_W = Number(Q.get('cellw') ?? Math.max(110, Math.ceil(maxH * 1.15))), CELL_H = Number(Q.get('cellh') ?? Math.max(130, Math.ceil(maxH * 1.3 + 16)));
+// a case may reach past half a cell (tongue, laser sight, halberd, spew): fields reach / reachL = logical px the pose needs
+// right / left of the enemy's centre → that cell is widened, the enemy sits reachL from its left edge. Every cell is clipped to
+// its own rectangle so a long pose never paints over its neighbours (?noclip=1 turns clipping off to see the full overhang)
+const CLIP = !Q.get('noclip');
+for (const r of rows) {
+  let x = 0;
+  for (const c of r.cases) {
+    const L = Math.max(CELL_W / 2, Number(c.f.reachL) || 0), R = Math.max(CELL_W / 2, Number(c.f.reach) || 0);
+    c.x = x; c.L = L; c.w = Math.ceil(L + R); x += c.w;
+  }
+  r.w = x;
+}
+const SHEET_W = Math.max(...rows.map((r) => r.w));
 function frame() {
-  const z = Number(zoomR.value), cellW = CELL_W, cellH = CELL_H;
-  const cols = Math.max(...rows.map((r) => r.cases.length));
+  const z = Number(zoomR.value), cellH = CELL_H;
   const dpr = window.devicePixelRatio || 1;
-  const W_ = Math.ceil(cols * cellW * z + 20), H_ = Math.ceil(rows.length * cellH * z + 20);
+  const W_ = Math.ceil(SHEET_W * z + 20), H_ = Math.ceil(rows.length * cellH * z + 20);
   if (cv.width !== W_ * dpr) { cv.width = W_ * dpr; cv.height = H_ * dpr; cv.style.width = W_ + 'px'; cv.style.height = H_ + 'px'; }
   globalThis.__paintedEnemies = !vecBox.checked;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.fillStyle = '#120c14'; ctx.fillRect(0, 0, W_, H_);
   if (bg.complete && bg.naturalWidth) { ctx.globalAlpha = 0.85; ctx.drawImage(bg, 0, 0, W_, W_ * bg.naturalHeight / bg.naturalWidth); ctx.globalAlpha = 1; }
   const t = Q.get('t') ? Number(Q.get('t')) : (performance.now() - T0) / 1000;
-  rows.forEach((r, ri) => r.cases.forEach((c, ci) => {
-    const e = c.e, f = c.f;
+  rows.forEach((r, ri) => r.cases.forEach((c) => {
+    const e = c.e, f = c.f, cw = c.w;
     e.t = t + (f.tOff ?? 0);
     if (f.animT === undefined && !Q.get('t')) e.animT = e.t % 2;
     if (f.hpK) { e.hp = f.hpK; e.stats.maxHp = 1; }
-    const x0 = 10 + ci * cellW * z, y0 = 10 + ri * cellH * z;
+    const x0 = 10 + c.x * z, y0 = 10 + ri * cellH * z;
     ctx.save();
     ctx.translate(x0, y0); ctx.scale(z, z);
-    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(2, 2, cellW - 4, cellH - 4);
-    ctx.fillStyle = 'rgba(40,30,20,0.6)'; ctx.fillRect(2, cellH - 16, cellW - 4, 14);
-    e.cx = cellW / 2; e.bottom = r.d.flying ? cellH * 0.55 + (r.d.size?.h ?? 40) / 2 : cellH - 16;
+    if (CLIP) { ctx.beginPath(); ctx.rect(0, 0, cw, cellH); ctx.clip(); }
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(2, 2, cw - 4, cellH - 4);
+    ctx.fillStyle = 'rgba(40,30,20,0.6)'; ctx.fillRect(2, cellH - 16, cw - 4, 14);
+    e.cx = c.L; e.bottom = r.d.flying ? cellH * 0.55 + (r.d.size?.h ?? 40) / 2 : cellH - 16;
     try { drawEnemy(ctx, e, null); } catch (err) { console.error(r.id, c.label, err); }
     ctx.fillStyle = '#ffd98a'; ctx.font = '9px sans-serif'; ctx.fillText(`${r.id} · ${c.label}`, 5, 11);
     ctx.restore();

@@ -350,13 +350,17 @@ roster (6–9 types) ≈ 3–5 MB desktop, ≈ 1–1.5 MB phone.
    the first knight stood 80 px in an 88 px rect). Hit instants only — wind-up/recovery frames are not compared.
 3. Facing both ways, elite (`scale 1.15` + red aura), bestiary (`world === null`, big scale — no crash, readable):
    `node tools/painted/enemies/bestiary.mjs [--mobile]` opens the real bestiary card for each painted enemy.
-4. `node tools/painted/enemies/ingame.mjs --stage <sNN> --line <id>:idle,<id>:walk,<id>:attack@0.4 --kill 1` and
+4. `node tools/painted/enemies/ingame.mjs --stage <sNN> --line <id>:idle,<id>:walk,<id>:attack@0.4 --kill 1` (pose spec
+   `id:anim[~state][@t][#facing]`: `@t` freezes any anim at t s — `cursed_nun:pray@0.6`, `blood_priest:cast@0.5`; `~state`
+   also sets `e.state` — `snow_wolf:wind~crouch@0.2`; without `@` the anim plays live) and
    `--mobile`: art sits on the ground line, matches the painted backdrop and lighting, corpses/dissolves outlive the entity,
    no duplicate vector debris, nothing sinks through the floor. `--debug` draws the hurtboxes, `--facing both` spawns
    each pose in both directions, `--elite`, `--quality low|medium`. Check the darkest stage the enemy appears in
    (s05 0.6, s08 0.55, s13 0.55 darkness) at phone size: small or dark states (a hanging bat) need an eye glint/rim.
    `node tools/painted/enemies/deathcheck.mjs --ids <id>`: kills them mid-air (launcher juggle) — pieces must land on
    the floor below — and probes that the death FX do not inherit another particle's alpha (ratio ≈ 1), debris left 0.
+   The alpha probe uses `--probe id,id` (default: the first T1 and the first T2/T3 painted id of `--ids`, else
+   bat,skeleton) and awaits each rig before drawing; non-painted/failed ids are skipped (R1-REQ-309).
 5. `?debug` hurtbox overlay vs art: art may overhang (wings, shields, shovels) but the body mass must sit inside the logical
    rect; if art grows, **document** the needed hurtbox change — never change gameplay silently. (Five references after the
    review fixes: body ≈ logic rect — knight via `spec.scale 1.1`; bat wings overhang ±15 px and the gravedigger's hump

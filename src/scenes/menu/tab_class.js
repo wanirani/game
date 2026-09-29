@@ -9,7 +9,7 @@ import * as PUP from '../../render/hero_puppet.js';
 import * as ProgM from '../../game/progression.js';
 import { Tab } from './base.js';
 import { HeroView, HeroStage, PixLayer, PixCache, pedestal, accentOf, turntableHints, pxScale } from './hero_view.js';
-import { PAL, frame, heading, divider, brackets, glow, glowOval, pill, para, rr, glyph, ellipsize, measure, leanMem } from './common.js';
+import { PAL, frame, heading, divider, brackets, glow, glowOval, pill, para, rr, glyph, ellipsize, measure, leanMem, takeCanvas, giveCanvas } from './common.js';
 import { fmtStatVal } from './tab_status.js';
 import * as D from './access.js';
 
@@ -29,7 +29,8 @@ export class ClassTab extends Tab {
   noSwipe(x, y) { return this.view.swipeBlock(x, y); }
   swipeBlock(x, y) { return this.view.swipeBlock(x, y); }
   free() { this.stage.free(); this.txt.free(); this.bg.free(); this.dropThumbs(); }
-  dropThumbs() { for (const T of this.thumbs.values()) { T.cv.width = T.cv.height = 1; } this.thumbs.clear(); }
+  /** 썸네일 캔버스는 메뉴 공용 풀로 (0×0 — 스테이지 도중 직업 탭을 다시 열어도 새 캔버스 0, R1-REQ-339B) */
+  dropThumbs() { for (const T of this.thumbs.values()) giveCanvas(T.cv); this.thumbs.clear(); }
   get chain() { return D.classChain(this.hero.classId).map((c) => c.id); }
   tiers() {
     const all = Object.values(D.CLASSES()).filter((c) => c.charId === this.hero.charId);
@@ -62,7 +63,7 @@ export class ClassTab extends Tab {
     try { rev = PUP.puppetRev?.() ?? 0; } catch { rev = 0; }
     const key = w + '|' + h + '|' + sc + '|' + rev;
     let T = this.thumbs.get(cid);
-    if (!T) { T = { cv: document.createElement('canvas'), key: null }; this.thumbs.set(cid, T); }
+    if (!T) { T = { cv: takeCanvas(), key: null }; this.thumbs.set(cid, T); }
     if (T.key !== key) {
       const c = T.cv;
       const pw = Math.ceil(w * sc), ph = Math.ceil(h * sc);

@@ -515,7 +515,8 @@ if (!NODE_ONLY) {
     // 6e. 팩 읽기 (실제 파일로 만든 팩, complete:false → 팩에 없는 것은 일반 경로)
     {
       const { ctx, page, errs } = await open({ init: { fn: () => { window.__BN_BUILD = { pack: '__pack/index.json' }; } } });
-      await page.waitForFunction(() => window.__game.assets.has('bg/title'), null, { timeout: 20000 });
+      // 초상화 미리 받기는 지연 장면이 온 뒤(window load + game.whenScenes)에 시작한다 (R1-REQ-229, 요청 #457) → 둘 다 캐시에 들 때까지
+      await page.waitForFunction(() => { const a = window.__game.assets; return window.__game.scenesReady !== false && a.has('bg/title') && a.has('portraits/kael') && a.has('portraits/lia'); }, null, { timeout: 30000 });
       const r = await page.evaluate(async () => {
         const a = window.__game.assets;
         const rig = await a.json('puppets/kael/kael_hunter/rig');

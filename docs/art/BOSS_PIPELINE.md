@@ -190,7 +190,9 @@ happens behind the boss-room fade / pre-fight dialogue / boss intro (≥ 3.6 s).
    pose sheet. `build_parts.py` writes `atlas.hash` into the manifest and the runtime appends it to the atlas URL, so
    a rebuilt atlas can never be paired with a stale cached manifest.
 7. **Verify** (all must pass, §9):
-   `node tools/painted/poses.mjs <id>` (+ `--mobile`, `--debug`), `node tools/painted/fight.mjs <id>` (+ `--mobile`),
+   `node tools/painted/poses.mjs <id>` (+ `--mobile`, `--debug`), `node tools/painted/fight.mjs <id>` (+ `--mobile`;
+   on a loaded machine use the deterministic stepped fight `--step [--frames 9000] [--render 2] [--act state@t,…] [--shots 48]`,
+   HP chipped by `--dmg 0.08` every `--every` s),
    `node tools/painted/bench.mjs <id> --dpr 1|2|--mobile`, and
    `node tools/integration.mjs --only <stage>_boss,…` (no page errors). Compare against `--vector` sheets.
 
@@ -603,7 +605,10 @@ is the original design brief; read the renderers for what was actually done.
 - [ ] Damage levels: visible but not muddy; burst once per level; second form/tint distinct from the first.
 - [ ] Death: breakup readable for ≥ 1.5 s, nothing pops out before the final flash, no pieces floating after the boss is removed.
 - [ ] Real-time fight `node tools/painted/fight.mjs <id>` and `--mobile`: all states visited, phases reached, death,
-      `paintedShare` > 0.9, **no page errors**.
+      `paintedShare` > 0.9, **no page errors**. On a loaded box use `--step` (game loop frozen, one tick per frame:
+      `--frames N --render N` draws every N-th frame, `--act state@t,…` forces rare patterns via `boss.debugAct`,
+      `--shots N`); `--dmg`/`--every` set how fast the boss HP is chipped. The fight is boss-agnostic (BossB/BossC bosses
+      without `main` included), the player cannot die and dialogues are skipped (R1-REQ-98).
 - [ ] Boss retry (player death during phase ≥ 1): the rebuilt boss is painted again, no orphan proxies.
 - [ ] Kill switch `?painted=0` and `window.__paintedOff` → vector boss, no errors; switching back re-attaches.
 - [ ] `node tools/painted/bench.mjs <id> --dpr 1`, `--dpr 2`, `--mobile`: painted raster ≤ 1.5× vector on CPU raster,
@@ -611,9 +616,13 @@ is the original design brief; read the renderers for what was actually done.
 - [ ] `node tools/integration.mjs --only <stage>_boss,…` (+ a few other bosses) → no page errors, other bosses unchanged.
 - [ ] Config `kling` block lists every image with its prompt/decision; raw sources committed as webp.
 - [ ] `node tools/painted/rng.mjs <id>` → PASS (same `Math.random` call count and boss trajectory painted vs vector over
-      1500 frames incl. phase changes). A boss whose real loop leaves timers/projectiles behind needs an `RNG_SCRIPT`
-      that resets those leftovers at frame 0 (`tools/painted/poses/b_crimson.mjs` shows one), and the **vector** draw
-      code must not call `rand()` either (the hit-flash jitter of `a_crimson`/`a_grimoire` did; fixed).
+      1500 frames incl. phase changes). `--mode pv` (default) painted vs vector, `--mode vv` vector vs vector (the harness
+      baseline: must PASS, otherwise the divergence is the tool's, not the renderer's), `--mode pp` painted vs painted.
+      Before recording, rng.mjs itself normalises the start state of both runs (quality tier, world clock, hitstop/slowmo,
+      background lightning/shooting-star timers, gimmick particle accumulators, camera, boss position/speed and AI rest
+      state, leftover projectiles/zones/minions, particle list), so per-boss `RNG_SCRIPT` frame-0 clean-ups for those are no
+      longer needed; an `RNG_SCRIPT` (`tools/painted/poses/<id>.mjs`) is still the place for scripted phase changes. The
+      **vector** draw code must not call `rand()` either (the hit-flash jitter of `a_crimson`/`a_grimoire` did; fixed).
 - [ ] `node tools/painted/pop.mjs <id> --mobile --cpu 5` (antechamber) → `painted ready` before `boss created`, 0 vector
       frames; `--from boss` → vector frames followed by a cross-fade, no errors.
 - [ ] Arena ledges visible over the body in every pose; nothing drawn below the floor (wall attacks, death shards).

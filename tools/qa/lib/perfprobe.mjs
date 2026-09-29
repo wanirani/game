@@ -12,7 +12,8 @@
 //                    under a non source-over composite), special (saturation/difference/… blends), rng (Math.random), fx (fx
 //                    spawns while rendering), ms (real render time)
 //   sites            { grad: Map(site → n), canv: Map, rng: Map, fx: Map } call sites (file:line) while counting / armed
-//   live()           live canvases created since load (WeakRef) → { n, bytes }
+//   live(top)        live canvases created since load (WeakRef) → { n, bytes } (+ sites: the top `top` creation sites by
+//                    current bytes, [[“creator ← caller”, bytes, n], …], when top > 0 — request #463)
 // Math.random is replaced by a seeded PRNG for the whole page (reproducible counts; window.__perfSeed(n) reseeds).
 // A context method is counted only while __perf.on or __perf.armed (canvas creation), so gameplay outside the measured
 // frames costs nothing extra.
@@ -26,7 +27,21 @@ export function perfProbeInit() {
         f: null, sites: { grad: new Map(), canv: new Map(), rng: new Map(), fx: new Map() }, refs: [], mainCanvas: null,
         reset() { this.f = { grad: 0, pat: 0, canv: 0, draw: 0, mainDraw: 0, full: 0, fullTile: 0, comp: 0, special: 0, rng: 0, fx: 0, ms: 0 }; },
         clearSites() { for (const m of Object.values(this.sites)) m.clear(); },
-        live() { let n = 0, bytes = 0; this.refs = this.refs.filter((r) => { const c = r.deref(); if (!c) return false; n++; bytes += (c.width || 0) * (c.height || 0) * 4; return true; }); return { n, bytes }; },
+        live(top = 0) {
+          let n = 0, bytes = 0;
+          const by = top > 0 ? new Map() : null;
+          this.refs = this.refs.filter((r) => {
+            const c = r.w.deref();
+            if (!c) return false;
+            const b = (c.width || 0) * (c.height || 0) * 4;
+            n++; bytes += b;
+            if (by) { const e = by.get(r.s) || [0, 0]; e[0] += b; e[1]++; by.set(r.s, e); }
+            return true;
+          });
+          const out = { n, bytes };
+          if (by) out.sites = [...by.entries()].sort((a, b) => b[1][0] - a[1][0]).slice(0, top).map(([k, [b, m]]) => [k, b, m]);
+          return out;
+        },
       };
       P.reset();
       const SPECIAL = new Set(['saturation', 'difference', 'hue', 'color', 'luminosity', 'exclusion', 'color-dodge', 'color-burn', 'soft-light', 'hard-light']);
@@ -47,12 +62,14 @@ export function perfProbeInit() {
         return out.join(' ← ') || '(unknown)';
       };
       const bump = (map, k, cap = 400) => { if (map.size < cap || map.has(k)) map.set(k, (map.get(k) || 0) + 1); };
+      /** every canvas is kept as a WeakRef with its creation site ("creator ← caller"), so live(top) can say who holds the bytes */
+      const keep = (c) => { let s = '(unknown)'; try { s = site2(3); } catch { /* */ } P.refs.push({ w: new WeakRef(c), s }); };
       // canvases
       const ce = Document.prototype.createElement;
       Document.prototype.createElement = function (tag, ...a) {
         const el = ce.call(this, tag, ...a);
         if (String(tag).toLowerCase() === 'canvas') {
-          P.refs.push(new WeakRef(el));
+          keep(el);
           if (P.on) P.f.canv++;
           if (P.armed || P.on) bump(P.sites.canv, site2(2));
         }
@@ -62,7 +79,7 @@ export function perfProbeInit() {
         const OC = OffscreenCanvas;
         window.OffscreenCanvas = function (w, h) {
           const c = new OC(w, h);
-          P.refs.push(new WeakRef(c));
+          keep(c);
           if (P.on) P.f.canv++;
           if (P.armed || P.on) bump(P.sites.canv, site2(2));
           return c;

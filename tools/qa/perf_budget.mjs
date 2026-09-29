@@ -342,7 +342,7 @@ try {
         await f.waitGame('!!g.world?.player');
         await freeze(f.page); await settle(f.page, 60); await waitBakes(f);
         await idleFlush(f); await settle(f.page, 5);
-        const live = () => f.eval(() => { try { window.gc?.(); } catch { /* */ } const c = [...document.querySelectorAll('canvas')]; return { ...window.__perf.live(), dom: c.map((x) => `${x.id || 'canvas'} ${x.width}x${x.height}`) }; });
+        const live = () => f.eval(() => { try { window.gc?.(); } catch { /* */ } const c = [...document.querySelectorAll('canvas')]; return { ...window.__perf.live(400), dom: c.map((x) => `${x.id || 'canvas'} ${x.width}x${x.height}`) }; });
         base = await live();
         await f.eval(() => { const g = window.__game; g.push('menu', { world: g.world, tab: 'equip' }); });
         await settle(f.page, 30); await f.wait(300); await settle(f.page, 5);
@@ -350,10 +350,18 @@ try {
         await f.close();
         const add = MB(fresh.bytes - base.bytes);
         const okT = MB(fresh.bytes) <= lim, okA = add <= LIVE_MENU_ADD_MB;
-        C.add(`${prof}.livecanvas`, okT ? 'pass' : 'fail', `fresh page, stage s04 + menu equip: ${fresh.n} live canvases, ${MB(fresh.bytes)} MB (budget ${lim} MB; DOM ${fresh.dom.join(', ')})`);
-        C.add(`${prof}.livecanvas.menu`, okA ? 'pass' : 'fail', `menu equip adds ${add} MB over the stage's ${MB(base.bytes)} MB (${base.n} → ${fresh.n} canvases; budget +${LIVE_MENU_ADD_MB} MB)`);
-        if (!okT) findings.push({ id: `perf.livecanvas.${prof}`, sev: 'S3', kind: 'perf', title: `${MB(fresh.bytes)} MB of live canvases with the menu open on ${prof} (budget ${lim} MB; stage alone ${MB(base.bytes)} MB)`, file: add > LIVE_MENU_ADD_MB ? 'src/scenes/menu/common.js' : 'src/render/tiles.js', ...ownerOf(add > LIVE_MENU_ADD_MB ? 'src/scenes/menu/common.js' : 'src/render/tiles.js') });
-        if (!okA) findings.push({ id: `perf.livecanvas.menu.${prof}`, sev: 'S3', kind: 'perf', title: `the menu adds ${add} MB of live canvases over the stage on ${prof} (budget +${LIVE_MENU_ADD_MB} MB)`, file: 'src/scenes/menu/common.js', ...ownerOf('src/scenes/menu/common.js') });
+        // who holds the bytes (request #463): live canvases by creation file, and what the menu added per file
+        const byFile = (lv) => { const m = new Map(); for (const [site, b] of lv.sites || []) { const k = siteFile(site) || '(unknown)'; m.set(k, (m.get(k) || 0) + b); } return m; };
+        const fT = byFile(fresh), fB = byFile(base);
+        const topT = [...fT.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
+        const topA = [...fT.entries()].map(([k, b]) => [k, b - (fB.get(k) || 0)]).filter(([, d]) => d > 0).sort((a, b) => b[1] - a[1]).slice(0, 8);
+        const fmt = (xs) => xs.map(([k, b]) => `${k.replace(/^src\//, '')} ${MB(b)}`).join(', ') || '-';
+        C.add(`${prof}.livecanvas`, okT ? 'pass' : 'fail', `fresh page, stage s04 + menu equip: ${fresh.n} live canvases, ${MB(fresh.bytes)} MB (budget ${lim} MB) · top files MB: ${fmt(topT)} · DOM ${fresh.dom.join(', ')}`);
+        C.add(`${prof}.livecanvas.menu`, okA ? 'pass' : 'fail', `menu equip adds ${add} MB over the stage's ${MB(base.bytes)} MB (${base.n} → ${fresh.n} canvases; budget +${LIVE_MENU_ADD_MB} MB) · grew: ${fmt(topA)}`);
+        const bigT = topT[0]?.[0] && topT[0][0] !== '(unknown)' ? topT[0][0] : 'src/render/tiles.js';
+        const bigA = topA[0]?.[0] && topA[0][0] !== '(unknown)' ? topA[0][0] : 'src/scenes/menu/common.js';
+        if (!okT) findings.push({ id: `perf.livecanvas.${prof}`, sev: 'S3', kind: 'perf', title: `${MB(fresh.bytes)} MB of live canvases with the menu open on ${prof} (budget ${lim} MB; stage alone ${MB(base.bytes)} MB)`, detail: `top creation files (MB): ${fmt(topT)}`, file: bigT, ...ownerOf(bigT) });
+        if (!okA) findings.push({ id: `perf.livecanvas.menu.${prof}`, sev: 'S3', kind: 'perf', title: `the menu adds ${add} MB of live canvases over the stage on ${prof} (budget +${LIVE_MENU_ADD_MB} MB)`, detail: `grew (MB): ${fmt(topA)}`, file: bigA, ...ownerOf(bigA) });
       } else C.add(`${prof}.livecanvas`, 'pass', `no live-canvas budget for ${prof} (desktop: info only; whole walk ${MB(walk.bytes)} MB)`);
       rows.push({ prof, scene: 'livecanvas', kind: 'mem', walk, base, fresh });
     } catch (e) { C.add(`${prof}.livecanvas.harness`, 'error', String(e?.message || e).split('\n')[0]); }
