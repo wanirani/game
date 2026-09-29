@@ -18,11 +18,16 @@ await startFight(s.page);
 const bake = await waitPainted(s.page, id);
 await freeze(s.page);
 const res = await s.page.evaluate(async ([script, frames, setq]) => {
-  const g = window.__game, w = g.world, b = w.boss, p = w.player, A = b.A, H0 = { ...b.main.hole };
+  const g = window.__game, w = g.world, b = w.boss, p = w.player, A = b.A, H0 = { ...(b.main?.hole ?? {}) };   // b.main = 뼈 용 전용 (굴 구멍)
   p.hp = 1e9; p.stats.maxHp = 1e9;
   let x = 99; Math.random = () => { x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0; return x / 4294967296; };
   const run = eval(script);
-  const vectorDraw = Object.getPrototypeOf(Object.getPrototypeOf(Object.getPrototypeOf(b))).draw;   // Boss.prototype.draw (벡터)
+  // 벡터 그리기 = Boss.prototype.draw (ABoss/BossB.draw 는 채색 대리 개체가 있으면 일찍 돌아가므로 쓰면 안 된다; BossC 는 한 단계 더 깊다)
+  let vectorDraw = null;
+  for (let pr = Object.getPrototypeOf(b); pr && pr !== Object.prototype; pr = Object.getPrototypeOf(pr)) {
+    if (pr.constructor?.name === 'Boss' && Object.prototype.hasOwnProperty.call(pr, 'draw')) { vectorDraw = pr.draw; break; }
+  }
+  if (!vectorDraw) throw new Error('bench: Boss.prototype.draw 를 찾지 못함');
   let mode = 'none';
   const stats = { painted: { js: [], fr: [] }, vector: { js: [], fr: [] }, none: { js: [], fr: [] } };
   const ctx = g.ctx;
@@ -37,6 +42,9 @@ const res = await s.page.evaluate(async ([script, frames, setq]) => {
   };
   const modes = ['painted', 'vector', 'none'];
   for (let i = 0; i < 90 + frames; i++) {
+    const top = g.scenes[g.scenes.length - 1];
+    if (top?.name === 'dialogue') top.finish?.();   // 전투 중 대사(페이즈 대사 등)는 넘긴다 — 위에 뜨면 스테이지가 멈춘다
+    p.hp = 1e6;                                     // 한 방이 최대 체력보다 커도 죽지 않게 (죽으면 world.respawn 이 보스를 되돌린다)
     run(i, b, p, A, H0);
     g.__tick(1 / 60);
     patch();
@@ -58,3 +66,4 @@ const res = await s.page.evaluate(async ([script, frames, setq]) => {
 console.log(JSON.stringify({ id, dpr, mobile, gpu, set: setq, bake, ...res }, null, 1));
 console.log(s.errors.join('\n') || 'NO ERRORS');
 await s.close();
+process.exit(s.errors.length ? 1 : 0);

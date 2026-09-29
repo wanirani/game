@@ -3,6 +3,9 @@
 //   node tools/painted/enemies/ingame.mjs --stage s01 --line skeleton:idle,skeleton:walk,skeleton:attack@0.3,bat:fly,bat:hang \
 //        [--mobile] [--vec] [--out dir] [--live 1] [--zoom 2] [--debug (hurtbox overlay)] [--elite] [--facing 1|-1|both]
 //        [--quality low|medium|high (persisted setting, applied before the rigs bake)] [--dpr 1.5]
+//   pose spec: id:anim[~state][@t][#facing] — '@t' freezes the pose at t s into the anim (animT = stateT = t, any anim: attack@0.3,
+//   cast@0.5, pray@0.6, shiver@0.3 …); without '@' the anim plays live (attack/slam/fling: frozen at 0). '~state' also sets e.state (snow_wolf:wind~crouch@0.2);
+//   hang / fly / dive set the matching state by themselves. Special: hurt (flash + stun), dmg50 / dmg20 (HP-damage variants).
 import { chromium } from 'playwright-core';
 import { start } from '../../serve.mjs';
 import fs from 'node:fs';
@@ -48,24 +51,26 @@ const info = await page.evaluate(async ({ line, vec, gap, px, debug, elite, faci
   items.forEach((s, i) => {
     const [spec0, fc] = s.split('#');
     const [idAnim, at] = spec0.split('@');
-    const [id, anim] = idAnim.split(':');
+    const [id, animSt = 'idle'] = idAnim.split(':');
+    const [anim, st] = animSt.split('~');
     const d = ENEMIES[id];
+    if (!d) throw new Error(`ingame: unknown enemy id '${id}' in --line`);
     const fx = p.cx + 120 + i * Number(gap ?? 90);
     let fy = p.bottom;
     if (d.flying) fy -= anim === 'hang' ? 150 : 70;
     const e = w.spawnEnemy(id, fx, fy, { facing: Number(fc ?? (facing && facing !== 'both' ? facing : -1)), elite: !!elite });
     e.awake = true;
-    e._pose = { anim, at: Number(at ?? 0) };
+    e._pose = { anim, st: st || null, fixed: at !== undefined || anim === 'attack' || anim === 'slam' || anim === 'fling', at: Number(at ?? 0) };   // attack/slam/fling without '@' = frozen at 0 (as before)
     e.update = function (dt) {
       this.t += dt;
       const P = this._pose;
       if (this.dying > 0) { this.dying -= dt; if (this.dying <= 0) this.dead = true; return; }
       if (this.flashT > 0) this.flashT -= dt;
       if (P.anim === 'hurt') { this.flashT = 0.1; this.stun = 0.2; this.anim = 'walk'; return; }
-      this.anim = P.anim === 'attack' || P.anim === 'slam' || P.anim === 'fling' ? P.anim : P.anim === 'hang' ? 'hang' : P.anim;
-      this.state = P.anim === 'hang' ? 'hang' : P.anim === 'fly' ? 'fly' : P.anim === 'dive' ? 'dive' : this.state;
-      if (P.anim === 'attack' || P.anim === 'slam' || P.anim === 'fling') this.animT = P.at;
-      else this.animT += dt;
+      this.anim = P.anim;
+      this.state = P.st ?? (P.anim === 'hang' || P.anim === 'fly' || P.anim === 'dive' ? P.anim : this.state);
+      // '@t' freezes any anim at t (renderers read animT, some stateT); no '@' = live loop
+      if (P.fixed) { this.animT = P.at; this.stateT = P.at; } else { this.animT += dt; this.stateT = (this.stateT ?? 0) + dt; }
       if (P.anim === 'dive') { this.vx = -220; this.vy = 160; } else if (!this.def.flying) { this.vx = 0; this.onGround = true; }
       if (P.anim === 'dmg50') { this.hp = this.stats.maxHp * 0.5; this.anim = 'idle'; }
       if (P.anim === 'dmg20') { this.hp = this.stats.maxHp * 0.2; this.anim = 'idle'; }

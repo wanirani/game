@@ -1,6 +1,7 @@
 // Death-path QA for painted enemies: kills enemies in the air (launcher juggle), over a pit edge and on the ground,
 // with a busy particle list (the corpse/dissolve must not inherit another particle's alpha), and films the result.
 //   node tools/painted/enemies/deathcheck.mjs [--stage s01] [--ids skeleton,armor_knight,gravedigger,bat,ghost] [--mobile] [--out dir]
+//        [--probe id,id (alpha probe ids; default = the first T1 and the first T2/T3 painted id of --ids, else bat,skeleton)]
 import { chromium } from 'playwright-core';
 import { start } from '../../serve.mjs';
 import fs from 'node:fs';
@@ -34,8 +35,9 @@ const res = await page.evaluate(async ({ ids }) => {
   p.takeHit = () => false; p.hp = 9999;
   for (const e of w.enemies()) if (Math.abs(e.cx - p.cx) < 1400) e.dead = true;
   const { PAINTED_ENEMIES } = await import('/src/render/painted/enemies/index.js');
-  for (const id of ids) kit.requestRig(PAINTED_ENEMIES[id].spec);
-  for (let k = 0; k < 80 && !ids.every((id) => kit.rigStats()[id]?.ready); k++) await new Promise((r) => setTimeout(r, 100));
+  const painted = ids.filter((id) => PAINTED_ENEMIES[id]);
+  const rigs = painted.map((id) => kit.requestRig(PAINTED_ENEMIES[id].spec));   // rig objects (several ids can share one src rig)
+  await Promise.race([Promise.all(rigs.map((r) => r.promise)), new Promise((r) => setTimeout(r, 8000))]);
   const L = [];
   ids.forEach((id, i) => {
     const e = w.spawnEnemy(id, p.cx + 110 + i * 85, p.bottom - 150, { facing: -1, elite: false });
@@ -73,25 +75,41 @@ for (const [i, ms] of [[0, 60], [1, 200], [2, 450], [3, 700]]) {
 const info = await page.evaluate(() => ({ airY: window.__airY, fx: window.__game.world.fx.list.filter((p) => p.shape === 'ghost').length }));
 // alpha-inheritance probe: a T1 dissolve and a T2 corpse drawn by fx.draw right after a nearly transparent particle must
 // look the same as when drawn after an opaque one (fx.draw leaves globalAlpha at the previous particle's value)
-const probe = await page.evaluate(async () => {
+const probe = await page.evaluate(async ({ ids, want }) => {
   const g = window.__game, w = g.world, p = w.player;
   const kit = await import('/src/render/painted/enemy_kit.js');
   const { PAINTED_ENEMIES } = await import('/src/render/painted/enemies/index.js');
+  const { ENEMIES } = await import('/src/data/enemies.js');
+  // probe ids: --probe, else the first T1 (dissolve) and the first T2/T3 (corpse) painted id of this run, else bat + skeleton
+  let pick = want ? want.split(',').filter(Boolean) : [];
+  if (!pick.length) {
+    const tierOf = (id) => PAINTED_ENEMIES[id]?.spec?.tier;
+    const t1 = ids.find((id) => tierOf(id) === 'T1'), t2 = ids.find((id) => tierOf(id) === 'T2' || tierOf(id) === 'T3');
+    pick = [t1, t2].filter(Boolean);
+    if (!pick.length) pick = ['bat', 'skeleton'];
+  }
   const out = {};
-  for (const id of ['bat', 'skeleton']) {
-    const rig = kit.requestRig(PAINTED_ENEMIES[id].spec);
-    const e = w.spawnEnemy(id, p.cx + 200, p.bottom - (id === 'bat' ? 60 : 0), { facing: 1, elite: false });
-    e.awake = true; e.state = 'fly'; e.anim = id === 'bat' ? 'fly' : 'idle';
+  for (const id of pick) {
+    const mod = PAINTED_ENEMIES[id], d = ENEMIES[id];
+    if (!mod || !d) { out[id] = { skipped: 'not a painted enemy' }; continue; }
+    // the rig must be baked before drawing (stages whose roster lacks this id have not requested it yet)
+    const rig = kit.requestRig(mod.spec);
+    await Promise.race([rig.promise, new Promise((r) => setTimeout(r, 8000))]);
+    if (!rig.ready) { out[id] = { skipped: rig.failed ? 'rig failed' : 'rig not ready after 8 s' }; continue; }
+    const flying = !!d.flying;
+    const e = w.spawnEnemy(id, p.cx + 200, p.bottom - (flying ? 60 : 0), { facing: 1, elite: false });
+    e.awake = true; e.anim = flying ? 'fly' : 'idle'; if (flying) e.state = 'fly';
     e.dying = 0.3; e.hp = 0;
     const c = document.createElement('canvas'); c.width = 400; c.height = 300;
     const cg = c.getContext('2d', { willReadFrequently: true });
     // record the ghost the renderer spawns on its first dying frame
     const n0 = w.fx.list.length;
     cg.setTransform(1, 0, 0, 1, 200 - e.cx, 260 - e.bottom);
-    PAINTED_ENEMIES[id].draw(cg, e, w, { flash: false, cam: cg.getTransform() }, rig);
+    mod.draw(cg, e, w, { flash: false, cam: cg.getTransform() }, rig);
     const gh = w.fx.list.slice(n0).find((q) => q.shape === 'ghost');
-    w.fx.list = w.fx.list.filter((q) => q !== gh);
     e.dead = true;
+    if (!gh) { out[id] = { skipped: 'no ghost particle on the first dying frame' }; continue; }
+    w.fx.list = w.fx.list.filter((q) => q !== gh);
     const sum = (prevAlpha) => {
       const Pfx = Object.getPrototypeOf(w.fx).constructor;
       const fx = new Pfx(10);
@@ -100,15 +118,18 @@ const probe = await page.evaluate(async () => {
       cg.setTransform(1, 0, 0, 1, 0, 0); cg.globalAlpha = 1; cg.clearRect(0, 0, 400, 300);
       cg.setTransform(1, 0, 0, 1, 200 - e.cx, 260 - e.bottom);
       fx.draw(cg, gh.layer);
-      const d = cg.getImageData(0, 0, 400, 300).data; let a = 0; for (let i = 3; i < d.length; i += 4) a += d[i];
+      const dd = cg.getImageData(0, 0, 400, 300).data; let a = 0; for (let i = 3; i < dd.length; i += 4) a += dd[i];
       return a;
     };
     const opaque = sum(1), dim = sum(0.03);
-    out[id] = { opaque, dim, ratio: +(dim / Math.max(1, opaque)).toFixed(3) };
+    out[id] = { tier: mod.spec.tier, opaque, dim, ratio: +(dim / Math.max(1, opaque)).toFixed(3) };
   }
   return out;
-});
+}, { ids, want: typeof A.probe === 'string' ? A.probe : null });
 console.log(JSON.stringify({ res, info, shots }));
 console.log('alpha probe (ratio should be ~1):', JSON.stringify(probe));
+const bad = Object.entries(probe).filter(([, v]) => v.ratio !== undefined && Math.abs(v.ratio - 1) > 0.05).map(([k]) => k);
+if (bad.length) console.log('ALPHA PROBE FAIL (dissolve/corpse inherits the previous particle alpha):', bad.join(','));
 console.log(errs.length ? errs.join('\n') : 'NO ERRORS');
 await browser.close(); srv.close();
+process.exit(errs.length || bad.length ? 1 : 0);
