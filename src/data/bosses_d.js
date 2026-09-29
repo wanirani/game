@@ -5,7 +5,7 @@
 //   베헤모스 hp 3000→2300 · hpMul 1.4→1.15 (방어 28 이 커서 명세 값이면 s19 타수 ≈250–280 → ≈155–180). 공격력 · 방어는 명세 그대로.
 export const BOSSES_D = {
   b_mara: {
-    id: 'b_mara', name: '마라', title: '악몽을 낳는 자', hp: 2700, hpMul: 1.25, atk: 41, def: 17, res: 24, exp: 8400, score: 330000,
+    id: 'b_mara', name: '마라', title: '악몽을 낳는 자', hp: 2700, hpMul: 1.25, atk: 41, def: 17, res: 24, exp: 2940, score: 330000,
     size: { w: 140, h: 220 }, flying: true, contact: 0.7, material: 'flesh', weak: ['holy', 'fire'], resist: ['dark', 'ice'], phases: [0.6, 0.3],
     music: 'boss3', portrait: 'portraits/b_mara', stageId: 's18', drops: ['u_mara', 'k_heart_5'], light: { r: 240, color: '#c060ff', i: 0.7 },
     form2: { name: '요람의 마라', title: '꿈을 삼키는 요람', portrait: 'portraits/b_mara' },
@@ -13,7 +13,7 @@ export const BOSSES_D = {
     desc: '잠든 자의 가슴에 올라앉는 악몽의 정령. 본래는 나쁜 꿈을 대신 먹어 주던 꿈의 산파였으나, 공허가 배를 채워 주지 않자 꿈을 낳기 시작했다.',
   },
   b_behemoth: {
-    id: 'b_behemoth', name: '베헤모스', title: '부패한 대지의 짐승', hp: 2300, hpMul: 1.15, atk: 42, def: 28, res: 16, exp: 9000, score: 350000,
+    id: 'b_behemoth', name: '베헤모스', title: '부패한 대지의 짐승', hp: 2300, hpMul: 1.15, atk: 42, def: 28, res: 16, exp: 3150, score: 350000,
     size: { w: 340, h: 230 }, flying: false, contact: 1.0, material: 'flesh', weak: ['fire', 'holy'], resist: ['ice', 'dark'], phases: [0.6, 0.3],
     music: 'boss4', portrait: 'portraits/b_behemoth', stageId: 's19', drops: ['u_behemoth', 'k_heart_6'], light: { r: 300, color: '#9ad040', i: 0.6 },
     intro: '(대지가 신음한다. 숲 하나가 통째로 일어섰다.)',
@@ -21,7 +21,7 @@ export const BOSSES_D = {
   },
   b_nihil: {
     // 밸런스 (BOSS-P2-4, world2 §15 s20 보스 타수 180–260 · 받은 피해 14–24%): hpMul 1.6→1.32 (명세 값이면 kael 타수 ≈272–281 → ≈215–241)
-    id: 'b_nihil', name: '니힐', title: '태초의 공허', hp: 3200, hpMul: 1.32, atk: 44, def: 22, res: 22, exp: 15000, score: 600000,
+    id: 'b_nihil', name: '니힐', title: '태초의 공허', hp: 3200, hpMul: 1.32, atk: 44, def: 22, res: 22, exp: 5250, score: 600000,
     size: { w: 220, h: 280 }, flying: true, contact: 0.8, material: 'ghost', weak: ['holy'], resist: ['dark', 'ice', 'fire', 'thunder'], phases: [0.75, 0.45, 0.15],
     music: 'nihil', portrait: 'portraits/b_nihil', stageId: 's20', drops: ['u_nihil', 'u_nihil2'], light: { r: 340, color: '#ffffff', i: 0.6 },
     form2: { name: '니힐', title: '만유(萬有)를 흉내 내는 무', portrait: 'portraits/b_nihil2' },

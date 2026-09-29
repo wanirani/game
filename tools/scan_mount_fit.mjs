@@ -209,10 +209,11 @@ function traverse(stage, roomId, room, startMirror) {
   const K = (x, y) => (y + 10) * 10000 + (x + 10);
   // 이동 발판 (validate_maps 와 같은 해석: 'M' 오른쪽, 'V' 아래로 platRange 칸, 2칸 폭)
   const platAt = new Map(), platCells = [];
-  const range = room.platRange ?? 4;
+  let pi = -1;   // 발판별 덮어쓰기 room.platforms[i] = {range, speed} (i = M·V 표식을 행 우선으로 함께 센 번호, world.js 와 같음)
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const c = ch(x, y);
     if (c !== 'M' && c !== 'V') continue;
+    const range = room.platforms?.[++pi]?.range ?? room.platRange ?? 4;
     const cells = [];
     for (let k = 0; k <= range; k++) for (let w = 0; w < 2; w++) {
       const px = c === 'M' ? x + k + w : x + w, py = (c === 'V' ? y + k : y) - 1;

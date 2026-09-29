@@ -7,7 +7,8 @@
 // API
 //   createBoss(world, id, x, y)  동기. 클래스가 있으면 진짜 보스, 아직 받는 중이면 PendingBoss(대역)를 돌려준다:
 //                                대역은 무적·무해·보이지 않는 채로 기다리다가 클래스가 들어오면 world.entities·world.boss 에서
-//                                진짜 보스로 스스로 바뀐다 (보스 등장 연출 동안이라 눈에 띄지 않는다). 세 번 실패하면 GenericBoss.
+//                                진짜 보스로 스스로 바뀐다 (보스 등장 연출 동안이라 눈에 띄지 않는다). 세 번 실패하거나
+//                                20초 안에 오지 않으면 GenericBoss (다시 받기는 1.5초 간격).
 //   loadBoss(id) → Promise<class|null>   한 번만 받는다 (실패하면 최대 3번까지 다시 시도)
 //   preloadBosses(ids) · preloadStageBosses(stageId) · loadAllBosses()   미리 받기 (월드맵·스테이지 진입·아케이드·도구)
 //   bossLoaded(id) · knownBoss(id) · BOSS_IDS · registerBosses({id: class}) · forgetBoss(id) (시험용: 다시 늦게 받게)
@@ -45,6 +46,8 @@ export const BOSS_IDS = Object.freeze(Object.keys(MODS));
 const REG = Object.create(null);    // id → class (받았거나 index.js 가 등록한 것)
 const LOAD = new Map();             // id → { p: Promise|null, fails }
 const MAX_FAILS = 3;
+const RETRY = 1.5;                  // 대역: 실패 뒤 다시 받기까지 (게임 초)
+const STALL = 20;                   // 대역: 이만큼 기다려도 안 오면 GenericBoss (게임 초)
 
 /** 이미 불러온 클래스 등록 ({id: class}; 함수가 아닌 값은 건너뛴다) */
 export function registerBosses(map) {
@@ -98,7 +101,7 @@ if (typeof window !== 'undefined' && typeof setTimeout === 'function') {
 const OFF = { x: -99999, y: -99999, w: 1, h: 1 };
 /** 클래스가 들어올 때까지 자리를 지키는 대역: 무적·무해·그리지 않음, 상태 'intro' (각성·필살기는 intro 보스를 기다린다) */
 export class PendingBoss extends Boss {
-  init() { this.pendingBoss = true; this.invuln = true; this.harmless = true; this.noGravity = true; this.waitT = 0; this.alpha = 0; }
+  init() { this.pendingBoss = true; this.invuln = true; this.harmless = true; this.noGravity = true; this.waitT = 0; this.retryT = 0; this.alpha = 0; }
   hurtboxes() { return []; }
   hitParts() { return []; }
   contactParts() { return []; }
@@ -110,13 +113,20 @@ export class PendingBoss extends Boss {
     const id = this.id;
     if (bossLoaded(id)) { this.become(REG[id], world); return; }
     const st = LOAD.get(id);
-    if (!knownBoss(id) || (st && !st.p && st.fails >= MAX_FAILS)) { this.become(GenericBoss, world); return; }
-    if (!st?.p) loadBoss(id);   // 실패 뒤 다시 시도 (최대 MAX_FAILS)
+    // 세 번 실패했거나, 받기가 끝나지 않은 채 STALL 초가 지나면 (멈춘 망: 약속이 영영 안 끝남) GenericBoss — 잠긴 투기장에 보스 없이 갇히지 않게
+    if (!knownBoss(id) || (st && !st.p && st.fails >= MAX_FAILS) || this.waitT > STALL) { this.become(GenericBoss, world); return; }
+    // 실패 뒤 다시 시도: RETRY 초 간격 (흔들리는 모바일 망에서 세 번을 한꺼번에 다 쓰지 않게)
+    if (!st?.p && (this.retryT -= dt) <= 0) { this.retryT = RETRY; loadBoss(id); }
   }
   /** 진짜 보스로 바뀐다: 같은 자리·같은 데이터로 만들어 world.entities 와 world.boss 에서 자리를 바꾼다 */
   become(C, world) {
     const w = world ?? this.world;
-    const real = new C(w, this.def, this.x + this.w / 2, this.y + this.h);
+    let real;
+    try { real = new C(w, this.def, this.x + this.w / 2, this.y + this.h); } catch (e) {
+      if (C === GenericBoss) throw e;
+      console.error(`[bosses] ${this.id} 보스를 만들지 못했습니다`, e);   // 받은 모듈이 깨졌으면 매 프레임 오류 대신 대체 보스로
+      real = new GenericBoss(w, this.def, this.x + this.w / 2, this.y + this.h);
+    }
     const E = w.entities, i = E ? E.indexOf(this) : -1;
     if (i >= 0) { E[i] = real; real.world = w; } else w.add?.(real);
     if (w.boss === this) w.boss = real;

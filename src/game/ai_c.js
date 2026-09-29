@@ -32,8 +32,7 @@ import { TILE } from '../core/game.js';
 import { hitTarget } from './combat.js';
 import { Zone } from './ai_b.js';
 import { PROJ_RENDER } from './projectiles.js';
-import { ZONE_B } from '../render/enemies_b.js';
-import { PROJ_C, ZONE_C } from '../render/enemies_c.js';
+import { ENEMY_VEC } from '../render/enemies.js';   // 벡터 그림은 늦게 받는다 (R1-REQ-229): ENEMY_VEC.b/.c 를 그리는 순간에 찾는다
 
 const PI = Math.PI;
 let _zid = 0;
@@ -314,11 +313,11 @@ const SI = {
   },
 };
 /** 장판 그리기: ZONE_C[name] → fb (그리는 순간에 찾는다) */
-const zr = (name, fb) => (ctx, z, w) => (ZONE_C[name] ?? fb)?.(ctx, z, w);
+const zr = (name, fb) => (ctx, z, w) => (ENEMY_VEC.c?.ZONE_C?.[name] ?? fb)?.(ctx, z, w);
 /** 투사체 그리기: PROJ_C[name] → fb */
-const pr = (name, fb) => (ctx, p, w) => (PROJ_C[name] ?? fb)?.(ctx, p, w);
+const pr = (name, fb) => (ctx, p, w) => (ENEMY_VEC.c?.PROJ_C?.[name] ?? fb)?.(ctx, p, w);
 const fireball = (ctx, p, w) => PROJ_RENDER.fireball?.(ctx, p, w);
-const pillar = (ctx, z, w) => ZONE_B.pillar?.(ctx, z, w);
+const pillar = (ctx, z, w) => ENEMY_VEC.b?.ZONE_B?.pillar?.(ctx, z, w);
 
 /** 쇳물 웅덩이 (슬래그 골렘): 발 근처 바닥에만 둔다. yRef = 기준 바닥 y */
 function magmaPuddle(e, world, x, yRef, life, mv) {

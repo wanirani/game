@@ -9,9 +9,14 @@ import { isSolidType, T } from '../core/physics.js';
 import { TILE } from '../core/game.js';
 import { enemyStrike } from './combat.js';
 import { Entity } from './entity.js';
-import { PROJ_B, ZONE_B } from '../render/enemies_b.js';
+import { ENEMY_VEC } from '../render/enemies.js';
 
 let _zid = 0;
+// 벡터 그림(render/enemies_b.js)은 늦게 받는다 (R1-REQ-229: 첫 화면 번들에서 뺀다). 그리는 순간에 ENEMY_VEC.b 에서 찾고,
+// 아직 없으면 그 프레임은 그리지 않는다. 대리 함수는 키마다 하나 (투사체·장판마다 새 함수를 만들지 않게)
+const _VB = Object.create(null);
+const PB = (k) => _VB['p' + k] ??= (ctx, p, w) => ENEMY_VEC.b?.PROJ_B?.[k]?.(ctx, p, w);
+const ZB = (k) => _VB['z' + k] ??= (ctx, z, w) => ENEMY_VEC.b?.ZONE_B?.[k]?.(ctx, z, w);
 const PI = Math.PI;
 /** 전역 고유 타격 ID (같은 ID 로는 대상당 1회만 맞으므로 개체·공격마다 새로 발급) */
 const nid = () => 'b' + (++_zid);
@@ -303,13 +308,13 @@ AI_B.brute = {
             const x = e.cx + e.facing * (reach * 0.8 + i * 50);
             const top = groundTop(world, x, e.bottom - 30, 120);
             if (top == null || Math.abs(top - e.bottom) > 50) break;
-            addZone(world, { x: x - 18, y: top - 92, w: 36, h: 92, delay: 0.18 + i * 0.09, life: 0.42, owner: e, render: ZONE_B.icespike, light: { r: 70, color: '#9fe8ff', i: 0.6 }, data: { seed: rand(0, 99) },
+            addZone(world, { x: x - 18, y: top - 92, w: 36, h: 92, delay: 0.18 + i * 0.09, life: 0.42, owner: e, render: ZB('icespike'), light: { r: 70, color: '#9fe8ff', i: 0.6 }, data: { seed: rand(0, 99) },
               attack: atk(e, 1.35, { element: 'ice', type: 'mag', kb: [140, -600], hitId: e.hid }) });
           }
           ensureMag(e);
         } else {
           for (const d of [1, -1]) {
-            const pr = e.shoot({ x: gx, y: gy - 16, vx: d * e.facing * 420, vy: 0, w: 34, h: 30, render: PROJ_B.fleshwave, color: '#b8ff90', life: 0.9, collideWalls: true,
+            const pr = e.shoot({ x: gx, y: gy - 16, vx: d * e.facing * 420, vy: 0, w: 34, h: 30, render: PB('fleshwave'), color: '#b8ff90', life: 0.9, collideWalls: true,
               attack: { mv: 1.1, kb: [200, -420] } });
             pr.fadeOut = true;
           }
@@ -351,7 +356,7 @@ AI_B.plague = {
         const sx = e.cx + e.facing * 8, sy = e.bottom - 70;
         const vy0 = -rand(560, 640), g = 2000 * 0.9;
         const vx = arcVx(p.cx - sx, p.bottom - 10 - sy, vy0, g, 480);
-        e.shoot({ x: sx, y: sy, vx, vy: vy0, w: 16, h: 16, behavior: 'arc', gravity: 0.9, collideWalls: 'land', render: PROJ_B.flask, spin: 12 * e.facing, life: 3,
+        e.shoot({ x: sx, y: sy, vx, vy: vy0, w: 16, h: 16, behavior: 'arc', gravity: 0.9, collideWalls: 'land', render: PB('flask'), spin: 12 * e.facing, life: 3,
           attack: { mv: 0.8, type: 'mag' },
           onLand: (pr, w) => { pr.dead = true; poisonPool(w, e, pr.cx, pr.bottom); },
           onExpire: (pr, w, byHit) => { if (byHit) puff(w, 'blood', pr.cx, pr.cy, 8, { color: '#8aff5a' }); } });
@@ -386,7 +391,7 @@ function poisonPool(world, e, x, y) {
   audio.sfx('break_wall', { vol: 0.3, pitch: 1.8 });
   puff(world, 'blood', x, top - 6, 10, { color: '#8aff5a', angle: -PI / 2, spread: 1.3, speed: 220 });
   puff(world, 'smoke', x, top - 10, 5, { color: '#4a8a3a', speed: 40 });
-  addZone(world, { x: x - 52, y: top - 26, w: 104, h: 26, delay: 0.05, life: 2.4, owner: e, render: ZONE_B.poison, light: { r: 70, color: '#8aff5a', i: 0.45 },
+  addZone(world, { x: x - 52, y: top - 26, w: 104, h: 26, delay: 0.05, life: 2.4, owner: e, render: ZB('poison'), light: { r: 70, color: '#8aff5a', i: 0.45 },
     attack: atk(e, 0.55, { type: 'mag', rehit: 0.6, kb: [80, -260], hitId: 'pp' + (++_zid) }) });
 }
 
@@ -408,7 +413,7 @@ AI_B.distiller = {
           const vy0 = -rand(600, 700), g = 2000 * 0.85;
           const k = 0.75 + i * 0.25;
           const vx = arcVx((p.cx - sx) * k, p.bottom - sy, vy0, g, 460);
-          e.shoot({ x: sx, y: sy, vx, vy: vy0, w: 14, h: 14, behavior: 'arc', gravity: 0.85, collideWalls: 'land', render: PROJ_B.acid, life: 3,
+          e.shoot({ x: sx, y: sy, vx, vy: vy0, w: 14, h: 14, behavior: 'arc', gravity: 0.85, collideWalls: 'land', render: PB('acid'), life: 3,
             attack: { mv: 0.85, type: 'mag' },
             onLand: (pr, w) => { pr.dead = true; acidPuddle(w, e, pr.cx, pr.bottom); } });
         }
@@ -427,7 +432,7 @@ AI_B.distiller = {
 function acidPuddle(world, e, x, y) {
   const top = groundTop(world, x, y - 10, 100) ?? y;
   puff(world, 'blood', x, top - 4, 6, { color: '#b0ff4a', angle: -PI / 2, spread: 1.2, speed: 180 });
-  addZone(world, { x: x - 30, y: top - 18, w: 60, h: 18, delay: 0.02, life: 1.6, owner: e, render: ZONE_B.acid,
+  addZone(world, { x: x - 30, y: top - 18, w: 60, h: 18, delay: 0.02, life: 1.6, owner: e, render: ZB('acid'),
     attack: atk(e, 0.5, { type: 'mag', rehit: 0.6, kb: [60, -240], hitId: 'ap' + (++_zid) }) });
 }
 
@@ -695,7 +700,7 @@ AI_B.spirit = {
       if (e.stateT > 0.6 && !e.did) {
         e.did = true;
         for (let i = 0; i < 3; i++) {
-          const pr = bolt(e, { x: e.cx + e.facing * 16, y: e.cy - 6, vx: e.facing * 250, vy: 0, w: 16, h: 16, render: PROJ_B.waterorb, behavior: 'wave', life: 3.2,
+          const pr = bolt(e, { x: e.cx + e.facing * 16, y: e.cy - 6, vx: e.facing * 250, vy: 0, w: 16, h: 16, render: PB('waterorb'), behavior: 'wave', life: 3.2,
             light: { r: 50, color: '#6ad8ff', i: 0.6 }, attack: { mv: 0.85 } });
           pr.waveAmp = 150; pr.waveFreq = 6; pr.waveA = i * (TAU / 3);
         }
@@ -709,7 +714,7 @@ AI_B.spirit = {
       if (e.stateT > 0.35 && !e.did) {
         e.did = true;
         const x = p.cx, top = groundTop(world, x, p.bottom - 20, 200) ?? p.bottom;
-        addZone(world, { x: x - 26, y: top - 190, w: 52, h: 190, delay: 0.75, life: 0.45, owner: e, render: ZONE_B.pillar, light: { r: 90, color: '#6ad8ff', i: 0.7 },
+        addZone(world, { x: x - 26, y: top - 190, w: 52, h: 190, delay: 0.75, life: 0.45, owner: e, render: ZB('pillar'), light: { r: 90, color: '#6ad8ff', i: 0.7 },
           attack: atk(e, 1.3, { type: 'mag', kb: [120, -720], hitId: 'wp' + (++_zid) }), data: { seed: rand(0, 50) } });
         audio.sfx('splash', { vol: 0.35, pitch: 0.8 });
       }
@@ -755,7 +760,7 @@ AI_B.geargolem = {
       if (e.stateT > 0.55 && !e.did) {
         e.did = true;
         const sx = e.cx + e.facing * 30, sy = e.bottom - 30;
-        e.shoot({ x: sx, y: sy, vx: e.facing * 300, vy: -200, w: 30, h: 30, render: PROJ_B.cog, behavior: 'beam', life: 3.4, collideWalls: false, color: '#d8a040',
+        e.shoot({ x: sx, y: sy, vx: e.facing * 300, vy: -200, w: 30, h: 30, render: PB('cog'), behavior: 'beam', life: 3.4, collideWalls: false, color: '#d8a040',
           attack: { mv: 1.2, kb: [320, -380] }, rolling: true, follow: rollCog });
         audio.sfx('clang', { vol: 0.5, pitch: 1.3 });
       }
@@ -807,7 +812,7 @@ AI_B.harpy = {
           const n = P.count ?? 5, base = angleTo(e.cx, e.cy, p.cx, p.cy - 10);
           for (let i = 0; i < n; i++) {
             const a = base + (i - (n - 1) / 2) * 0.16;
-            e.shoot({ x: e.cx + e.facing * 10, y: e.cy, vx: Math.cos(a) * 430, vy: Math.sin(a) * 430, w: 14, h: 10, render: PROJ_B.feather, life: 2.4, attack: { mv: 0.75 } });
+            e.shoot({ x: e.cx + e.facing * 10, y: e.cy, vx: Math.cos(a) * 430, vy: Math.sin(a) * 430, w: 14, h: 10, render: PB('feather'), life: 2.4, attack: { mv: 0.75 } });
           }
           audio.sfx('dagger', { vol: 0.5, pitch: 1.5 });
           e.setState('shoot');
@@ -967,7 +972,7 @@ AI_B.wraith = {
         const n = P.count ?? 5, base = angleTo(e.cx, e.cy, p.cx, p.cy - 8);
         for (let i = 0; i < n; i++) {
           const a = base + (i - (n - 1) / 2) * 0.2;
-          bolt(e, { x: e.cx + e.facing * 12, y: e.cy - 8, vx: Math.cos(a) * 360, vy: Math.sin(a) * 360, w: 12, h: 12, render: PROJ_B.frostshard, life: 2.5, trail: 'ice', trailRate: 0.06,
+          bolt(e, { x: e.cx + e.facing * 12, y: e.cy - 8, vx: Math.cos(a) * 360, vy: Math.sin(a) * 360, w: 12, h: 12, render: PB('frostshard'), life: 2.5, trail: 'ice', trailRate: 0.06,
             attack: { mv: 0.8, element: 'ice' } });
         }
         audio.sfx('ice', { vol: 0.6 });
@@ -1054,7 +1059,7 @@ AI_B.swordsman = {
           e.strike(-10, -110, 120, 110, 1.9, { kb: [380, -480], hitstop: 0.09, hitId: 'sk' + (++_zid) });
           world.camera.shake(6, 0.2);
           const soul = P.wave === 'soul';
-          const pr = bolt(e, { x: e.cx + e.facing * 50, y: e.bottom - 26, vx: e.facing * 420, vy: 0, w: 34, h: 50, render: soul ? PROJ_B.soulwave : PROJ_B.icewave, life: 1.3,
+          const pr = bolt(e, { x: e.cx + e.facing * 50, y: e.bottom - 26, vx: e.facing * 420, vy: 0, w: 34, h: 50, render: soul ? PB('soulwave') : PB('icewave'), life: 1.3,
             light: { r: 70, color: soul ? '#6aff9a' : '#9fe8ff', i: 0.7 }, attack: { mv: 1.2, element: soul ? 'dark' : 'ice', kb: [260, -420] }, trail: soul ? 'soul' : 'ice', trailRate: 0.04 });
           pr.fadeOut = true;
           puff(world, soul ? 'soul' : 'ice', e.cx + e.facing * 60, e.bottom - 10, 14, { speed: 200 });
@@ -1103,7 +1108,7 @@ AI_B.icebat = {
     if (e.state === 'shiver') {
       e.vx *= 0.8; e.vy *= 0.8; e.setAnim('shiver');
       if (e.stateT > 0.38) {
-        e.shoot({ x: e.cx, y: e.bottom + 4, vx: 0, vy: 60, w: 10, h: 22, behavior: 'fall', gravity: 0.55, render: PROJ_B.icicle, life: 2.5,
+        e.shoot({ x: e.cx, y: e.bottom + 4, vx: 0, vy: 60, w: 10, h: 22, behavior: 'fall', gravity: 0.55, render: PB('icicle'), life: 2.5,
           attack: { mv: 1.0, element: 'ice', kb: [120, -200] },
           onLand: (pr, w) => { pr.dead = true; w.fx.burst('ice', pr.cx, pr.bottom - 4, 10, { angle: -PI / 2, spread: 1.3, speed: 180 }); audio.sfx('ice', { vol: 0.3, pitch: 1.6 }); } });
         audio.sfx('ice', { vol: 0.3, pitch: 1.3 });
@@ -1132,7 +1137,7 @@ AI_B.succubus = {
           e.did = true;
           for (let i = 0; i < 3; i++) {
             const a = (e.facing > 0 ? 0 : PI) + (i - 1) * 0.5 - 0.2;
-            bolt(e, { x: e.cx + e.facing * 14, y: e.bottom - 64, vx: Math.cos(a) * 190, vy: Math.sin(a) * 190, w: 16, h: 16, render: PROJ_B.heart, behavior: 'homing', homingTurn: 1.6, homingDelay: 0.25 + i * 0.1, life: 3.4, speed: 210,
+            bolt(e, { x: e.cx + e.facing * 14, y: e.bottom - 64, vx: Math.cos(a) * 190, vy: Math.sin(a) * 190, w: 16, h: 16, render: PB('heart'), behavior: 'homing', homingTurn: 1.6, homingDelay: 0.25 + i * 0.1, life: 3.4, speed: 210,
               light: { r: 45, color: '#ff4a8a', i: 0.6 }, attack: { mv: 0.8, element: 'dark', stun: 0.5 } });
           }
           audio.sfx('magic', { vol: 0.4, pitch: 1.7 });
@@ -1198,7 +1203,7 @@ AI_B.priest = {
           const x = p.cx + (i - 1) * 78 + (p.vx ?? 0) * 0.15;
           const top = groundTop(world, x, p.bottom - 30, 220);
           if (top == null) continue;
-          addZone(world, { x: x - 16, y: top - 120, w: 32, h: 120, delay: 0.75 + i * 0.12, life: 0.4, owner: e, render: ZONE_B.bloodspear, light: { r: 70, color: '#ff2a44', i: 0.7 }, data: { seed: rand(0, 50) },
+          addZone(world, { x: x - 16, y: top - 120, w: 32, h: 120, delay: 0.75 + i * 0.12, life: 0.4, owner: e, render: ZB('bloodspear'), light: { r: 70, color: '#ff2a44', i: 0.7 }, data: { seed: rand(0, 50) },
             attack: atk(e, 1.3, { type: 'mag', element: 'dark', kb: [100, -650], hitId: 'bs' + (++_zid) }),
             tick: (z, w) => { if (z.active && !z.data.burst) { z.data.burst = true; w.fx.burst('blood', z.cx, z.bottom - 6, 10, { angle: -PI / 2, spread: 0.5, speed: 380, color: '#d0142a' }); audio.sfx('slash', { vol: 0.35, pitch: 0.6 }); } } });
         }
@@ -1259,7 +1264,7 @@ AI_B.angel = {
           e.did = true;
           for (let i = 0; i < 7; i++) {
             const a = PI / 2 + (i - 3) * 0.2 + rand(-0.04, 0.04);
-            e.shoot({ x: e.cx + (i - 3) * 6, y: e.cy + 6, vx: Math.cos(a) * 330 + (p.cx - e.cx) * 0.4, vy: Math.sin(a) * 330, w: 10, h: 18, render: PROJ_B.bonefeather, life: 2.2, attack: { mv: 0.75 } });
+            e.shoot({ x: e.cx + (i - 3) * 6, y: e.cy + 6, vx: Math.cos(a) * 330 + (p.cx - e.cx) * 0.4, vy: Math.sin(a) * 330, w: 10, h: 18, render: PB('bonefeather'), life: 2.2, attack: { mv: 0.75 } });
           }
           audio.sfx('dagger', { vol: 0.5, pitch: 0.8 });
         }
@@ -1313,7 +1318,7 @@ AI_B.nun = {
         const n = P.count ?? 6;
         e.crosses = [];
         for (let i = 0; i < n; i++) {
-          const c = bolt(e, { x: e.cx, y: e.cy, vx: 0, vy: 0, w: 16, h: 20, render: PROJ_B.cross, behavior: 'orbit', orbitR: 62, orbitSpeed: 3.2, life: 6, collideWalls: false,
+          const c = bolt(e, { x: e.cx, y: e.cy, vx: 0, vy: 0, w: 16, h: 20, render: PB('cross'), behavior: 'orbit', orbitR: 62, orbitSpeed: 3.2, life: 6, collideWalls: false,
             light: { r: 40, color: '#b060ff', i: 0.5 }, attack: { mv: 0.85, element: 'dark' } });
           c.orbitA = i * TAU / n;
           e.crosses.push(c);
@@ -1360,7 +1365,7 @@ AI_B.bride = {
           e.did = true;
           for (let i = 0; i < 4; i++) {
             const a = (e.facing > 0 ? 0 : PI) + (i - 1.5) * 0.45;
-            bolt(e, { x: e.cx + e.facing * 10, y: e.bottom - 66, vx: Math.cos(a) * 260, vy: Math.sin(a) * 260, w: 18, h: 12, render: PROJ_B.bat, behavior: 'homing', homingTurn: 2.0, homingDelay: 0.35, life: 3, speed: 280,
+            bolt(e, { x: e.cx + e.facing * 10, y: e.bottom - 66, vx: Math.cos(a) * 260, vy: Math.sin(a) * 260, w: 18, h: 12, render: PB('bat'), behavior: 'homing', homingTurn: 2.0, homingDelay: 0.35, life: 3, speed: 280,
               attack: { mv: 0.8, element: 'dark' } });
           }
           world.fx.ring(e.cx, e.bottom - 66, { color: '#ff3a5a', r0: 10, r1: 110, life: 0.35, width: 5 });
@@ -1446,7 +1451,7 @@ AI_B.demonlord = {
           const x = p.cx + (i - 1) * 96;
           const top = groundTop(world, x, p.bottom - 30, 240);
           if (top == null) continue;
-          addZone(world, { x: x - 26, y: top - 170, w: 52, h: 170, delay: 0.7 + Math.abs(i - 1) * 0.18, life: 0.5, owner: e, render: ZONE_B.hellfire, light: { r: 110, color: '#ff6a1a', i: 0.9 }, data: { seed: rand(0, 50) },
+          addZone(world, { x: x - 26, y: top - 170, w: 52, h: 170, delay: 0.7 + Math.abs(i - 1) * 0.18, life: 0.5, owner: e, render: ZB('hellfire'), light: { r: 110, color: '#ff6a1a', i: 0.9 }, data: { seed: rand(0, 50) },
             attack: atk(e, 1.4, { type: 'mag', element: 'fire', kb: [120, -700], hitId: 'hf' + (++_zid) }),
             tick: (z, w) => { if (z.active && !z.data.b) { z.data.b = true; w.fx.burst('fire', z.cx, z.bottom - 10, 12, { angle: -PI / 2, spread: 0.4, speed: 420 }); w.camera.shake(3, 0.1); audio.sfx('fire', { vol: 0.4 }); } } });
         }
@@ -1563,7 +1568,7 @@ AI_B.chaos = {
       if (e.stateT > 0.6) {
         for (let i = 0; i < 5; i++) {
           const vy0 = -rand(520, 700), a = (i - 2) * 0.35;
-          bolt(e, { x: e.cx, y: e.bottom - 36, vx: e.facing * (130 + i * 60) * Math.cos(a) + (i - 2) * 30, vy: vy0, w: 14, h: 14, behavior: 'arc', gravity: 0.8, collideWalls: 'land', render: PROJ_B.chaosorb, life: 3,
+          bolt(e, { x: e.cx, y: e.bottom - 36, vx: e.facing * (130 + i * 60) * Math.cos(a) + (i - 2) * 30, vy: vy0, w: 14, h: 14, behavior: 'arc', gravity: 0.8, collideWalls: 'land', render: PB('chaosorb'), life: 3,
             light: { r: 40, color: '#d040ff', i: 0.5 }, attack: { mv: 0.8, element: 'dark' },
             onLand: (pr, w) => { pr.dead = true; w.fx.burst('dark', pr.cx, pr.bottom - 4, 6, { speed: 90 }); w.fx.burst('magic', pr.cx, pr.bottom - 4, 5, { color: '#d040ff' }); } });
         }
@@ -1614,7 +1619,7 @@ AI_B.hound = {
       e.trailT -= dt;
       if (e.trailT <= 0) {
         e.trailT = 0.1;
-        addZone(world, { x: e.cx - 14, y: e.bottom - 20, w: 28, h: 20, delay: 0.12, life: 1.1, owner: e, render: ZONE_B.flametrail, noHit: false, data: { seed: rand(0, 50) },
+        addZone(world, { x: e.cx - 14, y: e.bottom - 20, w: 28, h: 20, delay: 0.12, life: 1.1, owner: e, render: ZB('flametrail'), noHit: false, data: { seed: rand(0, 50) },
           attack: atk(e, 0.4, { type: 'mag', element: 'fire', rehit: 0.5, kb: [80, -300], hitId: e.trailId }) });
       }
     }
@@ -1668,7 +1673,7 @@ AI_B.eyebeam = {
       // 조준선 + 광선 (눈을 따라다니는 판정)
       ensureMag(e);
       const eye = e;
-      addZone(world, { x: ex, y: ey, w: 1, h: 1, delay: (P.aim ?? 1.1), life: (P.fire ?? 0.9), owner: e, render: ZONE_B.beam, z: 7,
+      addZone(world, { x: ex, y: ey, w: 1, h: 1, delay: (P.aim ?? 1.1), life: (P.fire ?? 0.9), owner: e, render: ZB('beam'), z: 7,
         attack: atk(e, 0.7, { type: 'mag', element: 'dark', rehit: 0.22, kb: [240, -300], hitId: 'eb' + (++_zid) }),
         follow: (z) => {
           if (eye.dead || eye.dying > 0 || (eye.state !== 'aim' && eye.state !== 'fire')) { z.dead = true; return; }
@@ -1758,7 +1763,7 @@ AI_B.shadow = {
         if (mv.proj) {
           const pr = mv.proj, base = pr.angle !== undefined ? (e.facing > 0 ? pr.angle : PI - pr.angle) : (e.facing > 0 ? 0 : PI);
           ensureMag(e);
-          bolt(e, { x: e.cx + e.facing * (pr.offX ?? 30), y: e.bottom + (pr.offY ?? -60), vx: Math.cos(base) * Math.min(700, pr.speed ?? 500), vy: Math.sin(base) * Math.min(700, pr.speed ?? 500), w: 14, h: 10, render: PROJ_B.darkbolt, life: Math.min(1.2, pr.life ?? 0.8),
+          bolt(e, { x: e.cx + e.facing * (pr.offX ?? 30), y: e.bottom + (pr.offY ?? -60), vx: Math.cos(base) * Math.min(700, pr.speed ?? 500), vy: Math.sin(base) * Math.min(700, pr.speed ?? 500), w: 14, h: 10, render: PB('darkbolt'), life: Math.min(1.2, pr.life ?? 0.8),
             light: { r: 50, color: '#b060ff', i: 0.6 }, attack: { mv: 0.9, element: 'dark' } });
         }
       }
@@ -1804,7 +1809,7 @@ AI_B.voider = {
           e.did = true;
           for (let i = 0; i < 2; i++) {
             const a = (e.facing > 0 ? 0 : PI) + (i ? -0.7 : 0.7);
-            bolt(e, { x: e.cx + e.facing * 20, y: e.cy - 10, vx: Math.cos(a) * 220, vy: Math.sin(a) * 220, w: 20, h: 20, render: PROJ_B.voidorb, behavior: 'homing', homingTurn: 2.2, homingDelay: 0.3, life: 3.6, speed: 250,
+            bolt(e, { x: e.cx + e.facing * 20, y: e.cy - 10, vx: Math.cos(a) * 220, vy: Math.sin(a) * 220, w: 20, h: 20, render: PB('voidorb'), behavior: 'homing', homingTurn: 2.2, homingDelay: 0.3, life: 3.6, speed: 250,
               light: { r: 60, color: '#b060ff', i: 0.6 }, attack: { mv: 1.0, element: 'dark' } });
           }
           audio.sfx('dark', { vol: 0.6 });
@@ -1816,7 +1821,7 @@ AI_B.voider = {
         if (e.stateT > 0.5 && !e.did) {
           e.did = true;
           const rx = p.cx + (Math.sign(p.cx - e.cx) || 1) * 110, ry = p.bottom - 60;
-          addZone(world, { x: rx - 22, y: ry - 34, w: 44, h: 68, delay: 0.6, life: 2.2, owner: e, render: ZONE_B.rift, light: { r: 90, color: '#b060ff', i: 0.7 }, data: {},
+          addZone(world, { x: rx - 22, y: ry - 34, w: 44, h: 68, delay: 0.6, life: 2.2, owner: e, render: ZB('rift'), light: { r: 90, color: '#b060ff', i: 0.7 }, data: {},
             attack: atk(e, 0.9, { type: 'mag', element: 'dark', rehit: 0.45, kb: [100, -200], hitId: 'vr' + (++_zid) }),
             tick: (z, w, dtt) => {
               if (!z.active) return;

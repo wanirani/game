@@ -230,10 +230,13 @@ function check(stage, roomId, room) {
   const platAt = new Map(); // 발 칸 key → 발판 번호
   const platCells = [];     // 발판 번호 → [[x, y], …]
   {
-    const range = room.platRange ?? 4;
+    // 발판별 덮어쓰기 (world.js loadRoom 과 같은 규칙, R1-SEED-PLAT): room.platforms[i] = {range, speed} —
+    // i 는 M·V 표식을 지도 순서(행 우선)대로 함께 센 번호. 없으면 방 기본값 room.platRange (속도는 도달성과 무관)
+    let pi = -1;
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       const c = at(x, y);
       if (c !== 'M' && c !== 'V') continue;
+      const range = room.platforms?.[++pi]?.range ?? room.platRange ?? 4;
       const cells = [];
       for (let k = 0; k <= range; k++) for (let w = 0; w < 2; w++) {
         const px = c === 'M' ? x + k + w : x + w, py = (c === 'V' ? y + k : y) - 1;
@@ -317,10 +320,14 @@ function check(stage, roomId, room) {
           // (점프 760–800 → 한 번 ≈ 2.7–3칸, 두 번 ≈ 5.5칸). 그 높이(머리 칸 ay-1 위로 up 3 → 2칸, up 4 → 1칸)가 막혀 있으면 빠듯하다.
           // 꼭짓점은 착지 쪽에 있으므로 이동의 뒤쪽 절반(착지 열 포함)만 본다 — 도움닫기 쪽 천장은 비스듬히 빠져나가면 된다
           // (예: s15/r2 는 ###### 천장 끝에서 뛰면 여유 있음; 고치기 전 s19/r4 의 행 10 → 행 7 가지 연결은 머리 위 2칸째가 윗길 바닥)
+          // 맞춤 (게임 안 실측, 브란 = 가장 약한 점프 · 발판 끝에서 뛰어 공중 점프를 누를 수 있는 프레임 수):
+          //   머리 위 2칸째만 막힘(한 칸 여유) + 옆 4칸 — s14/r2 · s15/r2 오른쪽 출구: 28프레임 = 천장을 없앤 것과 같음 → 빠듯하지 않음
+          //   머리 위 2칸째만 막힘 + 옆 5칸 — 고치기 전 s19/r4 (17,10)→(12,7): 12프레임 → 빠듯함
+          //   그래서 머리 바로 위(1칸째)가 막히면 옆 4칸부터, 2칸째만 막히면 옆 5칸부터 빠듯한 점프로 본다
           let tj = false;
           if (grounded && d >= 4 && (up === 3 || up === 4)) {   // 옆 3칸 이하는 올라가며 건너면 된다 (넓힌 뒤 s19/r4 의 옆 3칸 연결은 넉넉함 — #181 재현)
             const need = up === 3 ? 2 : 1;
-            for (let k = Math.ceil(d / 2); k <= d && !tj; k++) for (let r = 1; r <= need && !tj; r++) tj = !free(x + dir * k, ay - 1 - r, ph);
+            for (let k = Math.ceil(d / 2); k <= d && !tj; k++) for (let r = 1; r <= need && !tj; r++) tj = !free(x + dir * k, ay - 1 - r, ph) && (r === 1 || d >= 5);
           }
           if (tj && strict) continue;
           const to = tj ? (tx, ty) => { if (push(tx, ty)) tight.push({ x, y, tx, ty, up, d }); } : push;

@@ -8,9 +8,16 @@ import { isSolidType } from '../core/physics.js';
 import { TILE } from '../core/game.js';
 import { enemyStrike } from './combat.js';
 import { Hitbox } from './projectiles.js';
-import { PROJ_A, drawFlamePillar, drawPhantomGhost } from '../render/enemies_a.js';
+import { ENEMY_VEC } from '../render/enemies.js';
 
 let _hid = 0;
+
+// 벡터 그림(render/enemies_a.js)은 늦게 받는다 (R1-REQ-229: 첫 화면 번들에서 뺀다). 그리는 순간에 ENEMY_VEC.a 에서 찾고,
+// 아직 없으면 그 프레임은 그리지 않는다. 대리 함수는 키마다 하나 (투사체마다 새 함수를 만들지 않게)
+const _PA = Object.create(null);
+const PA = (k) => _PA[k] ??= (ctx, p, w) => ENEMY_VEC.a?.PROJ_A?.[k]?.(ctx, p, w);
+const drawFlamePillar = (ctx, h, w) => ENEMY_VEC.a?.drawFlamePillar?.(ctx, h, w);
+const drawPhantomGhost = (ctx, x, y, a, al) => ENEMY_VEC.a?.drawPhantomGhost?.(ctx, x, y, a, al);
 
 // ───────────────────────── 공용 도우미 ─────────────────────────
 /** 적 스탯엔 mag 가 없으므로 마법 공격 전에 atk 로 채움 */
@@ -200,7 +207,7 @@ AI_A.wisp = {
         const n = P.count ?? 3, base = angleTo(e.cx, e.cy, p.cx, p.cy);
         for (let i = 0; i < n; i++) {
           const a = base + (i - (n - 1) / 2) * 0.28;
-          e.shoot({ x: e.cx, y: e.cy, vx: Math.cos(a) * 210, vy: Math.sin(a) * 210, w: 12, h: 12, render: PROJ_A.soulfire, life: 3.2, light: { r: 50, color: '#40ffc0', i: 0.7 }, attack: { mv: 0.8, type: 'mag', element: 'fire' } });
+          e.shoot({ x: e.cx, y: e.cy, vx: Math.cos(a) * 210, vy: Math.sin(a) * 210, w: 12, h: 12, render: PA('soulfire'), life: 3.2, light: { r: 50, color: '#40ffc0', i: 0.7 }, attack: { mv: 0.8, type: 'mag', element: 'fire' } });
         }
         audio.sfx('fire', { vol: 0.4, pitch: 1.4 });
         world.fx.burst('magic', e.cx, e.cy, 8, { color: '#80ffd8' });
@@ -238,7 +245,7 @@ AI_A.digger = {
         world.fx.ring(gx, e.bottom - 2, { color: '#ffcf90', r0: 6, r1: 60, life: 0.3, width: 4 });
         audio.sfx('hit_heavy', { pitch: 0.7 }); audio.sfx('break_wall', { vol: 0.5, pitch: 0.8 });
         // 땅을 타고 달리는 충격파
-        e.shoot({ x: gx, y: e.bottom - 14, vx: e.facing * 340, vy: 0, w: 26, h: 28, render: PROJ_A.dirtwave, life: 0.9, attack: { mv: 1.1, kb: [260, -380] } });
+        e.shoot({ x: gx, y: e.bottom - 14, vx: e.facing * 340, vy: 0, w: 26, h: 28, render: PA('dirtwave'), life: 0.9, attack: { mv: 1.1, kb: [260, -380] } });
       }
       if (e.stateT > (P.slamTime ?? 1.4)) { e.setState('walk'); e.cool = P.rate ?? 1.6; }
       return;
@@ -250,7 +257,7 @@ AI_A.digger = {
         e.didHit = true;
         for (let i = 0; i < 3; i++) {
           const vx = clamp(dx * 1.1, -420, 420) * (0.7 + i * 0.25);
-          e.shoot({ x: e.cx + e.facing * 30, y: e.y + 30, vx, vy: -560 - i * 90, w: 16, h: 16, behavior: 'arc', gravity: 0.9, render: PROJ_A.clod, spin: 8 * e.facing, life: 3, collideWalls: false, attack: { mv: 0.9 } });
+          e.shoot({ x: e.cx + e.facing * 30, y: e.y + 30, vx, vy: -560 - i * 90, w: 16, h: 16, behavior: 'arc', gravity: 0.9, render: PA('clod'), spin: 8 * e.facing, life: 3, collideWalls: false, attack: { mv: 0.9 } });
         }
         world.fx.burst('dust', e.cx + e.facing * 20, e.bottom - 4, 8, {});
         audio.sfx('axe', { vol: 0.5, pitch: 0.6 });
@@ -309,7 +316,7 @@ AI_A.mud = {
         e.vx *= 0.8; e.setAnim('throw');
         if (e.stateT >= (P.throwWind ?? 0.55) && !e.didHit) {
           e.didHit = true;
-          e.shoot({ x: e.cx + e.facing * 8, y: e.y + 6, vx: clamp(dx * 1.25, -440, 440), vy: -600, w: 16, h: 16, behavior: 'arc', gravity: 0.9, render: PROJ_A.mud, spin: 6, life: 3, collideWalls: false, attack: { mv: 1.0 },
+          e.shoot({ x: e.cx + e.facing * 8, y: e.y + 6, vx: clamp(dx * 1.25, -440, 440), vy: -600, w: 16, h: 16, behavior: 'arc', gravity: 0.9, render: PA('mud'), spin: 6, life: 3, collideWalls: false, attack: { mv: 1.0 },
             onExpire: (pr, w) => w.fx.burst('dust', pr.cx, pr.cy, 6, { color: '#5a4230' }) });
           audio.sfx('splash', { vol: 0.5 });
         }
@@ -346,7 +353,7 @@ AI_A.axeKnight = {
         const y = e.high ? e.bottom - 70 : e.bottom - 20;
         const x0 = e.cx + dir * 24, D = clamp(adx + 70, 200, P.range ?? 540), T = 0.75;
         e.shoot({
-          x: x0, y, vx: dir * 400, vy: 0, w: 28, h: 28, behavior: 'beam', collideWalls: false, pierce: 99, render: PROJ_A.axeSpin, spin: 18 * dir, life: 3.2,
+          x: x0, y, vx: dir * 400, vy: 0, w: 28, h: 28, behavior: 'beam', collideWalls: false, pierce: 99, render: PA('axeSpin'), spin: 18 * dir, life: 3.2,
           attack: { mv: 1.2, kb: [300, -260], rehit: 0.6 },
           follow: (pr) => {
             const t = pr.t;
@@ -457,13 +464,13 @@ AI_A.archer = {
         e.fired = true;
         if (e.state === 'draw') {
           const sp = P.arrowSpeed ?? 560;
-          e.shoot({ x: sx, y: sy, vx: Math.cos(e.aimA) * sp * e.facing, vy: Math.sin(e.aimA) * sp, w: 22, h: 8, render: PROJ_A.arrow, life: 2.5, attack: { mv: 1.1, kb: [200, -150] } });
+          e.shoot({ x: sx, y: sy, vx: Math.cos(e.aimA) * sp * e.facing, vy: Math.sin(e.aimA) * sp, w: 22, h: 8, render: PA('arrow'), life: 2.5, attack: { mv: 1.1, kb: [200, -150] } });
         } else {
           const g = 2000 * 0.6;
           for (let i = 0; i < 3; i++) {
             const tx = p.cx + (i - 1) * 64 + rand(-12, 12), T2 = 1.0 + i * 0.08;
             const vx = (tx - sx) / T2, vy = (p.bottom - 20 - sy - 0.5 * g * T2 * T2) / T2;
-            e.shoot({ x: sx, y: sy, vx, vy, w: 20, h: 8, behavior: 'arc', gravity: 0.6, render: PROJ_A.arrow, life: 3, attack: { mv: 0.9, kb: [120, -100] } });
+            e.shoot({ x: sx, y: sy, vx, vy, w: 20, h: 8, behavior: 'arc', gravity: 0.6, render: PA('arrow'), life: 3, attack: { mv: 0.9, kb: [120, -100] } });
           }
         }
         audio.sfx('dagger', { vol: 0.5, pitch: 0.8 });
@@ -588,9 +595,9 @@ AI_A.imp = {
           const base = angleTo(ox, oy, p.cx, p.cy);
           const light = { r: 50, color: '#b060ff', i: 0.7 };
           if (e.casts % 2) {
-            for (let i = -1; i <= 1; i++) { const a = base + i * 0.3; e.shoot({ x: ox, y: oy, vx: Math.cos(a) * 240, vy: Math.sin(a) * 240, w: 14, h: 14, render: PROJ_A.darkorb, life: 3, light, attack: { mv: 0.9, type: 'mag', element: 'dark' } }); }
+            for (let i = -1; i <= 1; i++) { const a = base + i * 0.3; e.shoot({ x: ox, y: oy, vx: Math.cos(a) * 240, vy: Math.sin(a) * 240, w: 14, h: 14, render: PA('darkorb'), life: 3, light, attack: { mv: 0.9, type: 'mag', element: 'dark' } }); }
           } else {
-            e.shoot({ x: ox, y: oy, vx: Math.cos(base) * 190, vy: Math.sin(base) * 190, w: 20, h: 20, behavior: 'homing', homingTurn: 1.8, render: PROJ_A.darkorb, life: 3.2, light, attack: { mv: 1.3, type: 'mag', element: 'dark' } });
+            e.shoot({ x: ox, y: oy, vx: Math.cos(base) * 190, vy: Math.sin(base) * 190, w: 20, h: 20, behavior: 'homing', homingTurn: 1.8, render: PA('darkorb'), life: 3.2, light, attack: { mv: 1.3, type: 'mag', element: 'dark' } });
           }
           audio.sfx('dark', { vol: 0.5 });
         }
@@ -664,7 +671,7 @@ AI_A.puppet = {
         e.fired = true;
         const ox = e.cx + e.facing * 10, oy = e.cy - 10;
         const base = angleTo(ox, oy, p.cx, p.cy);
-        for (let i = -1; i <= 1; i++) { const a = base + i * 0.2; e.shoot({ x: ox, y: oy, vx: Math.cos(a) * 380, vy: Math.sin(a) * 380, w: 14, h: 6, render: PROJ_A.needle, life: 2, attack: { mv: 0.8, kb: [120, -80] } }); }
+        for (let i = -1; i <= 1; i++) { const a = base + i * 0.2; e.shoot({ x: ox, y: oy, vx: Math.cos(a) * 380, vy: Math.sin(a) * 380, w: 14, h: 6, render: PA('needle'), life: 2, attack: { mv: 0.8, kb: [120, -80] } }); }
         audio.sfx('dagger', { vol: 0.5, pitch: 1.5 });
       }
       if (e.stateT > wu + 0.4) { e.setState('hop'); e.cool = rand(0.3, 0.6); }
@@ -771,7 +778,7 @@ AI_A.bookfiend = {
       if (e.stateT >= T && !e.fired) {
         e.fired = true;
         const base = angleTo(e.cx, e.cy, p.cx, p.cy);
-        for (let i = -1; i <= 1; i++) { const a = base + i * 0.25; e.shoot({ x: e.cx, y: e.cy, vx: Math.cos(a) * 260, vy: Math.sin(a) * 260, w: 14, h: 14, render: PROJ_A.page, spin: 14, life: 2.6, light: { r: 40, color: '#ffcf60', i: 0.5 }, attack: { mv: 0.85, type: 'mag' } }); }
+        for (let i = -1; i <= 1; i++) { const a = base + i * 0.25; e.shoot({ x: e.cx, y: e.cy, vx: Math.cos(a) * 260, vy: Math.sin(a) * 260, w: 14, h: 14, render: PA('page'), spin: 14, life: 2.6, light: { r: 40, color: '#ffcf60', i: 0.5 }, attack: { mv: 0.85, type: 'mag' } }); }
         audio.sfx('magic', { vol: 0.4, pitch: 1.3 });
         world.fx.burst('shard', e.cx, e.cy, 6, { color: '#efe4c8', grav: 200 });
       }
@@ -891,10 +898,10 @@ AI_A.teleporter = {
           e.fired = true; e.casts++;
           const light = { r: 40, color: '#a0b8ff', i: 0.5 };
           if (e.casts % 2) {
-            for (let i = 0; i < 8; i++) { const a = i / 8 * TAU; e.shoot({ x: e.cx, y: e.cy - 6, vx: Math.cos(a) * 170, vy: Math.sin(a) * 170, w: 14, h: 14, render: PROJ_A.glyph, color: '#a0b8ff', life: 2.6, light, attack: { mv: 0.8, type: 'mag', element: 'dark' } }); }
+            for (let i = 0; i < 8; i++) { const a = i / 8 * TAU; e.shoot({ x: e.cx, y: e.cy - 6, vx: Math.cos(a) * 170, vy: Math.sin(a) * 170, w: 14, h: 14, render: PA('glyph'), color: '#a0b8ff', life: 2.6, light, attack: { mv: 0.8, type: 'mag', element: 'dark' } }); }
           } else {
             const base = angleTo(e.cx, e.cy, p.cx, p.cy);
-            for (let i = 0; i < 3; i++) { const a = base + (i - 1) * 0.5; e.shoot({ x: e.cx, y: e.cy - 6, vx: Math.cos(a) * 160, vy: Math.sin(a) * 160, w: 14, h: 14, behavior: 'homing', homingTurn: 2.2, homingDelay: 0.3, render: PROJ_A.glyph, color: '#c8a0ff', life: 2.6, light, attack: { mv: 0.8, type: 'mag', element: 'dark' } }); }
+            for (let i = 0; i < 3; i++) { const a = base + (i - 1) * 0.5; e.shoot({ x: e.cx, y: e.cy - 6, vx: Math.cos(a) * 160, vy: Math.sin(a) * 160, w: 14, h: 14, behavior: 'homing', homingTurn: 2.2, homingDelay: 0.3, render: PA('glyph'), color: '#c8a0ff', life: 2.6, light, attack: { mv: 0.8, type: 'mag', element: 'dark' } }); }
           }
           audio.sfx('dark', { vol: 0.5 });
         }

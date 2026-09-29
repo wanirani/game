@@ -195,7 +195,7 @@ export class Particles {
     if (target && typeof target === 'object' && key !== 'hurt' && key !== 'heal' && key !== 'total') {
       const now = this.clock;
       col = target._dmgCol;
-      const w = lay ? lay.L.w : 12 * String(Math.round(Number(value) || 0)).length;
+      const w = lay?.L ? lay.L.w : 12 * String(lay?.str ?? Math.round(Number(value) || 0)).length;   // 아틀라스가 없으면(L null: 글자 대체 경로) 대략 폭
       if (!col || col.done || now - col.t > (C.gap ?? 0.5)) {
         const wr = Math.max(w, lay?.str?.length ? (w / lay.str.length) * COL_RESERVE : w);
         col = target._dmgCol = { n: 0, hi: 0, t: now, t0: now, total: 0, hits: 0, x: x, y, w: wr, gh: 0, done: false, queued: false, tp: null };

@@ -51,7 +51,7 @@ export const BOSSES_B = {
   },
   b_chaos: {
     id: 'b_chaos', name: '혼돈의 군주', title: '심연 너머의 무한한 눈',
-    hp: 2000, hpMul: 1.3, atk: 34, def: 16, res: 18, exp: 5000, score: 200000,
+    hp: 2000, hpMul: 1.3, atk: 34, def: 16, res: 18, exp: 2500, score: 200000,
     size: { w: 170, h: 190 }, flying: true, material: 'ghost', contact: 0.8,
     weak: ['holy'], resist: ['dark'], phases: [0.7, 0.4, 0.12],
     music: 'chaos', portrait: 'portraits/b_chaos', stageId: 's13', drops: ['u_chaos'],

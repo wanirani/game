@@ -32,8 +32,7 @@ import { rand, chance, clamp, angleTo, TAU } from '../core/math.js';
 import { audio } from '../core/audio.js';
 import { isSolidType, T } from '../core/physics.js';
 import { TILE } from '../core/game.js';
-import * as RD from '../render/enemies_d.js';
-import * as RA from '../render/enemies_a.js';
+import { ENEMY_VEC } from '../render/enemies.js';   // 벡터 그림(enemies_d/_a)은 늦게 받는다 (R1-REQ-229): 그리는 순간에 ENEMY_VEC.d/.a 에서 찾는다
 import * as HFX from '../render/hitfx.js';
 
 const PI = Math.PI;
@@ -883,10 +882,10 @@ const PF = {}, ZF = {};
 const _zr = {}, _pr = {};
 /** 장판 렌더러: ZONE_D[key] 가 있으면 그것, 없으면 ZF[key] (호출 때 고른다 → 렌더 패키지가 나중에 채워도 된다) */
 function zoneRender(key) {
-  return _zr[key] ??= (ctx, z, world) => { const f = RD.ZONE_D?.[key]; (typeof f === 'function' ? f : ZF[key])?.(ctx, z, world); };
+  return _zr[key] ??= (ctx, z, world) => { const f = ENEMY_VEC.d?.ZONE_D?.[key]; (typeof f === 'function' ? f : ZF[key])?.(ctx, z, world); };
 }
 function projRender(key) {
-  return _pr[key] ??= (ctx, p, world) => { const f = RD.PROJ_D?.[key]; (typeof f === 'function' ? f : PF[key])?.(ctx, p, world); };
+  return _pr[key] ??= (ctx, p, world) => { const f = ENEMY_VEC.d?.PROJ_D?.[key]; (typeof f === 'function' ? f : PF[key])?.(ctx, p, world); };
 }
 /** 결정적 잡음 0..1 (그리기 코드에서는 Math.random 을 쓰지 않는다) */
 const h1 = (n) => { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
@@ -917,7 +916,7 @@ PF.gale_crescent = (ctx, p) => {
   }
 };
 PF.puppet_needle = (ctx, p, world) => {
-  const f = RA.PROJ_A?.needle;
+  const f = ENEMY_VEC.a?.PROJ_A?.needle;
   if (typeof f === 'function') { f(ctx, p, world); return; }
   ctx.rotate(Math.atan2(p.vy, p.vx));
   ctx.strokeStyle = '#e8e0f0'; ctx.lineWidth = 2;

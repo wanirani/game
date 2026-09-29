@@ -15,7 +15,7 @@ const heart5 = (p) => ({ id: 'heart', p, qty: 5 });
 export const ENEMIES_D = {
   // ───────────────────────── s17 폭풍의 공중정원 (lv 56) ─────────────────────────
   storm_harpy: {
-    id: 'storm_harpy', name: '폭풍 하피', lv: 56, hp: 70, atk: 18, def: 5, res: 8, exp: 44, gold: [10, 24], score: 1400,
+    id: 'storm_harpy', name: '폭풍 하피', lv: 56, hp: 88, atk: 23, def: 5, res: 8, exp: 35, gold: [10, 24], score: 1400,
     size: { w: 50, h: 54 }, ai: 'harpy', aiParams: { rate: 2.0, count: 7 }, render: 'storm_harpy', flying: true,
     speed: 160, kbResist: 0.3, material: 'flesh', weak: ['ice', 'dark'], resist: ['thunder'], light: { r: 60, color: '#bfe0ff', i: 0.4 },
     palette: { body: '#7a8aa0' },
@@ -23,7 +23,7 @@ export const ENEMIES_D = {
     desc: '번개를 머금은 깃털의 하피. 날개를 활짝 펴면 전기가 흐르는 깃털이 부채꼴로 쏟아진다.',
   },
   gale_knight: {
-    id: 'gale_knight', name: '질풍 창기사', lv: 56, hp: 130, atk: 19, def: 8, res: 8, exp: 58, gold: [10, 24], score: 2400,
+    id: 'gale_knight', name: '질풍 창기사', lv: 56, hp: 163, atk: 25, def: 8, res: 8, exp: 46, gold: [10, 24], score: 2400,
     size: { w: 46, h: 86 }, ai: 'galeknight', aiParams: { hover: 150, dash: 820, windup: 0.6, rate: 2.0 }, render: 'gale_knight', flying: true,
     speed: 120, kbResist: 0.5, material: 'metal', weak: ['ice', 'dark'], resist: ['thunder'],
     palette: { body: '#e8e0c8' },
@@ -31,7 +31,7 @@ export const ENEMIES_D = {
     desc: '바람을 타는 날개 달린 창기사. 긴 창을 수평으로 겨누면 곧 번개처럼 돌진한다. 멀리서는 바람의 초승달을 날린다.',
   },
   thunder_roc: {
-    id: 'thunder_roc', name: '뇌조', lv: 56, hp: 200, atk: 20, def: 8, res: 10, exp: 80, gold: [16, 40], score: 3200,
+    id: 'thunder_roc', name: '뇌조', lv: 56, hp: 250, atk: 26, def: 8, res: 10, exp: 64, gold: [16, 40], score: 3200,
     size: { w: 110, h: 70 }, ai: 'roc', aiParams: { rate: 2.6, bolts: 3, swoop: 0.6 }, render: 'thunder_roc', flying: true, phase: true,
     speed: 150, kbResist: 0.8, material: 'flesh', weak: ['ice', 'dark'], resist: ['thunder', 'fire'], light: { r: 120, color: '#bfe0ff', i: 0.7 },
     palette: { body: '#2a2a3a' },
@@ -39,7 +39,7 @@ export const ENEMIES_D = {
     desc: '폭풍 구름 속에 둥지를 튼 거대한 새. 날개 끝으로 땅의 세 곳을 가리키면 곧 그 자리에 벼락이 꽂힌다.',
   },
   cloud_jelly: {
-    id: 'cloud_jelly', name: '뇌운 해파리', lv: 56, hp: 50, atk: 17, def: 2, res: 12, exp: 34, gold: [10, 24], score: 1400,
+    id: 'cloud_jelly', name: '뇌운 해파리', lv: 56, hp: 63, atk: 22, def: 2, res: 12, exp: 27, gold: [10, 24], score: 1400,
     size: { w: 44, h: 56 }, ai: 'jelly', aiParams: { range: 110, charge: 0.6, rate: 2.2 }, render: 'cloud_jelly', flying: true, phase: true, noArena: true,
     speed: 45, kbResist: 0.1, material: 'slime', weak: ['ice'], resist: ['thunder'], light: { r: 70, color: '#bfe0ff', i: 0.6 },
     palette: { body: '#9aa8b8' },
@@ -49,7 +49,7 @@ export const ENEMIES_D = {
 
   // ───────────────────────── s18 악몽의 미궁 (lv 60) ─────────────────────────
   puppeteer: {
-    id: 'puppeteer', name: '악몽 인형사', lv: 60, hp: 120, atk: 18, def: 6, res: 14, exp: 62, gold: [10, 24], score: 2500,
+    id: 'puppeteer', name: '악몽 인형사', lv: 60, hp: 120, atk: 22, def: 6, res: 14, exp: 50, gold: [10, 24], score: 2500,
     size: { w: 44, h: 90 }, ai: 'puppeteer', aiParams: { keep: 220, maxPuppets: 2, summon: 5, rate: 2.4 }, render: 'puppeteer', flying: true,
     speed: 60, kbResist: 0.4, material: 'paper', weak: ['fire', 'holy'], resist: ['dark'], light: { r: 60, color: '#c060ff', i: 0.4 },
     palette: { body: '#3a2a3a' },
@@ -57,7 +57,7 @@ export const ENEMIES_D = {
     desc: '손가락마다 실을 매단 키 큰 인형사. 저주 인형을 불러내 실로 조종하고 바늘을 부채꼴로 던진다. 인형사를 쓰러뜨리면 인형들도 무너진다.',
   },
   faceless: {
-    id: 'faceless', name: '얼굴 없는 자', lv: 60, hp: 180, atk: 20, def: 10, res: 10, exp: 70, gold: [16, 40], score: 3000,
+    id: 'faceless', name: '얼굴 없는 자', lv: 60, hp: 180, atk: 24, def: 10, res: 10, exp: 56, gold: [16, 40], score: 3000,
     size: { w: 36, h: 104 }, ai: 'stalker', aiParams: { sight: 700, creep: 170, blink: 7, grab: 0.35 }, render: 'faceless',
     speed: 170, kbResist: 0.7, material: 'flesh', weak: ['holy'], resist: ['dark', 'ice'],
     palette: { body: '#141218' },
@@ -65,7 +65,7 @@ export const ENEMIES_D = {
     desc: '얼굴이 있어야 할 자리가 매끈한 키 큰 형체. 당신이 바라보는 동안에는 움직이지 않는다. 등을 돌리는 순간 — 이미 등 뒤에 있다.',
   },
   dream_eater: {
-    id: 'dream_eater', name: '꿈 삼키는 자', lv: 60, hp: 150, atk: 19, def: 8, res: 14, exp: 60, gold: [10, 24], score: 2400,
+    id: 'dream_eater', name: '꿈 삼키는 자', lv: 60, hp: 150, atk: 23, def: 8, res: 14, exp: 48, gold: [10, 24], score: 2400,
     size: { w: 64, h: 80 }, ai: 'voider', aiParams: { keep: 260, rate: 2.3 }, render: 'dream_eater', flying: true, phase: true,
     speed: 70, kbResist: 0.7, material: 'ghost', weak: ['holy', 'fire'], resist: ['dark'], light: { r: 80, color: '#c060ff', i: 0.6 },
     palette: { body: '#5a2a7a' },
@@ -75,7 +75,7 @@ export const ENEMIES_D = {
 
   // ───────────────────────── s19 썩어가는 숲 (lv 64) ─────────────────────────
   rot_treant: {
-    id: 'rot_treant', name: '썩은 나무거인', lv: 64, hp: 230, atk: 20, def: 12, res: 8, exp: 80, gold: [16, 40], score: 3200,
+    id: 'rot_treant', name: '썩은 나무거인', lv: 64, hp: 230, atk: 24, def: 12, res: 8, exp: 64, gold: [16, 40], score: 3200,
     size: { w: 72, h: 120 }, ai: 'treant', aiParams: { sight: 480, windup: 0.8, rate: 2.2, sporeHits: 4 }, render: 'rot_treant',
     speed: 32, kbResist: 0.95, material: 'paper', weak: ['fire', 'holy'], resist: ['ice', 'dark'],
     palette: { body: '#4a3a24' },
@@ -83,7 +83,7 @@ export const ENEMIES_D = {
     desc: '균사에 먹혀 걸어 다니게 된 고목. 두 팔을 땅에 꽂으면 뿌리 가시가 줄지어 솟는다. 여러 번 베이면 몸속의 포자를 뿜는다.',
   },
   plague_moth: {
-    id: 'plague_moth', name: '역병 나방', lv: 64, hp: 55, atk: 18, def: 3, res: 8, exp: 40, gold: [10, 24], score: 1400,
+    id: 'plague_moth', name: '역병 나방', lv: 64, hp: 72, atk: 22, def: 3, res: 8, exp: 32, gold: [10, 24], score: 1400,
     size: { w: 56, h: 40 }, ai: 'moth', aiParams: { dust: 3.0, hover: 180 }, render: 'plague_moth', flying: true,
     speed: 120, kbResist: 0.1, material: 'paper', weak: ['fire'], resist: ['dark'], light: { r: 50, color: '#c8ff6a', i: 0.4 },
     palette: { body: '#8a7a4a' },
@@ -91,7 +91,7 @@ export const ENEMIES_D = {
     desc: '날개 가루가 곧 포자인 커다란 나방. 머리 위를 맴돌며 부패의 가루를 뿌린다. 불에 약하다.',
   },
   fungal_husk: {
-    id: 'fungal_husk', name: '균사 망자', lv: 64, hp: 110, atk: 18, def: 5, res: 5, exp: 46, gold: [10, 24], score: 2100,
+    id: 'fungal_husk', name: '균사 망자', lv: 64, hp: 143, atk: 22, def: 5, res: 5, exp: 37, gold: [10, 24], score: 2100,
     size: { w: 34, h: 84 }, ai: 'husk', aiParams: { riseTime: 0.9, chaseMul: 1.2, sight: 440 }, render: 'fungal_husk',
     speed: 44, kbResist: 0.3, material: 'flesh', weak: ['fire', 'holy'], resist: ['dark'],
     palette: { body: '#6a6a4a' },
@@ -101,7 +101,7 @@ export const ENEMIES_D = {
 
   // ───────────────────────── s20 태초의 공허 (lv 68) ─────────────────────────
   void_herald: {
-    id: 'void_herald', name: '공허의 전령', lv: 68, hp: 170, atk: 20, def: 9, res: 16, exp: 74, gold: [16, 40], score: 3100,
+    id: 'void_herald', name: '공허의 전령', lv: 68, hp: 170, atk: 24, def: 9, res: 16, exp: 59, gold: [16, 40], score: 3100,
     size: { w: 44, h: 100 }, ai: 'herald', aiParams: { keep: 280, aim: 0.9, rate: 2.4, blink: 0.4 }, render: 'void_herald', flying: true, phase: true,
     speed: 80, kbResist: 0.6, material: 'ghost', weak: ['holy'], resist: ['dark', 'ice', 'fire'], light: { r: 90, color: '#ffffff', i: 0.6 },
     palette: { body: '#0a0814' },
@@ -109,7 +109,7 @@ export const ENEMIES_D = {
     desc: '별이 없는 밤을 두른 사제. 무지갯빛 광선으로 조준선을 긋고 하늘에서 죽어 가는 별을 떨어뜨린다. 공격 뒤에는 반대편으로 건너뛴다.',
   },
   nihil_spawn: {
-    id: 'nihil_spawn', name: '무의 파편', lv: 68, hp: 80, atk: 19, def: 5, res: 12, exp: 44, gold: [10, 24], score: 1400,
+    id: 'nihil_spawn', name: '무의 파편', lv: 68, hp: 80, atk: 23, def: 5, res: 12, exp: 35, gold: [10, 24], score: 1400,
     size: { w: 48, h: 48 }, ai: 'chaos', aiParams: { sight: 520, rate: 1.8 }, render: 'nihil_spawn',
     speed: 80, kbResist: 0.4, material: 'ghost', weak: ['holy'], resist: ['dark'], light: { r: 60, color: '#ffffff', i: 0.4 },
     palette: { body: '#12101a' },
