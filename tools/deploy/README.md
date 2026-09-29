@@ -76,6 +76,9 @@ node tools/qa/platform_load.mjs --dist                 # 느린 4G·빠른 4G·W
    값을 넣거나 바꾼 뒤에는 다시 배포해야 함수에 적용된다. 운영 도구(`tools/accounts/admin.mjs`)도 같은 값을 쓴다.
 4. 확인: `node tools/deploy/smoke_deployed.mjs https://blood-nocturne.netlify.app` (모두 ✓ 이어야 한다 — `/api/health`, 앱 출처 CORS 포함).
    APK 없이 배포했다면 `--no-apk`.
+   TLS 를 다시 맺는 프록시 뒤(클라우드 작업 환경)라면 `--ca=<프록시 CA PEM>` 을 붙인다 — 브라우저가 그 CA 공개키만 믿는다(검증은 끄지 않는다).
+   Netlify 는 배포 페이지에 자체 도구 스크립트(`/.netlify/scripts/hud`)를 끼워 넣는다. 그 스크립트가 만든 인라인 코드는 우리 CSP 가 막아 콘솔 오류가 남지만 게임과 상관없다.
+   스모크는 이 경우를 따로 세고(오류로 치지 않음), 없애려면 Netlify 사이트 설정에서 도구 모음(Netlify Drawer/툴바)을 끈다.
 
 ## 4. 서비스 워커 (sw.js)
 

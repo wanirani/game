@@ -12,6 +12,8 @@
 //       설치 가능(Page.getInstallabilityErrors 비어 있음), /api/ 응답이 Cache Storage 에 없음.
 // 보고: dist/smoke_<호스트>.json. 모두 통과하면 exit 0.
 // 프록시: HTTPS_PROXY 가 있으면 HTTP 검사와 브라우저가 그 프록시를 쓴다 (이 작업 환경).
+//       TLS 를 다시 맺는 프록시면 --ca=<프록시 CA PEM> 로 그 CA 공개키만 브라우저가 믿게 한다 (검증은 끄지 않는다).
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -26,7 +28,16 @@ const PRIVATE = ['/tools/android/release.keystore', '/tools/android/keystore.pro
   '/docs/ACCOUNTS.md', '/.git/config', '/.git/HEAD', '/netlify/functions/api.mts', '/netlify/lib/crypto.mts', '/node_modules/playwright-core/package.json',
   '/dist/web/index.html', '/android/AndroidManifest.xml', '/tools/deploy/build_web.mjs', '/.env', '/tools/.qa_accounts/x'];
 
-export async function smoke(base, { browser = true, apk = true, api = true, quiet = false } = {}) {
+/** PEM 파일들의 첫 인증서 공개키 SHA-256 (base64) — 크롬 --ignore-certificate-errors-spki-list 형식 */
+export function spkiHashes(files = []) {
+  return files.map((f) => {
+    const pub = new crypto.X509Certificate(fs.readFileSync(f)).publicKey.export({ type: 'spki', format: 'der' });
+    return crypto.createHash('sha256').update(pub).digest('base64');
+  });
+}
+
+export async function smoke(base, { browser = true, apk = true, api = true, quiet = false, ca = [] } = {}) {
+  const caSpki = spkiHashes(ca);
   const origin = new URL(base).origin;
   const https = origin.startsWith('https:');
   const results = [];
@@ -84,7 +95,14 @@ export async function smoke(base, { browser = true, apk = true, api = true, quie
       for (const [k, v] of Object.entries(want)) {
         const got = hdr(res, k);
         if (k.toLowerCase() === 'content-type') { if (!got.startsWith(String(v).split(';')[0])) bad.push(`${p} ${k}: ${got}`); continue; }
-        if (got !== v) bad.push(`${p} ${k}: "${got}" ≠ "${v}"`);
+        // *.netlify.app 은 Netlify 가 더 엄격한 HSTS(includeSubDomains; preload)를 붙인다 — max-age 가 규칙 이상이면 통과
+        if (k.toLowerCase() === 'strict-transport-security') {
+          const gm = /max-age=(\d+)/.exec(got)?.[1], wm = /max-age=(\d+)/.exec(String(v))?.[1];
+          if (!gm || (wm && +gm < +wm)) bad.push(`${p} ${k}: "${got}" ≠ "${v}"`);
+          continue;
+        }
+        // Netlify 는 쉼표 뒤 공백을 지운다 ("public, max-age=3600" → "public,max-age=3600")
+        if (got.replace(/\s*,\s*/g, ',') !== String(v).replace(/\s*,\s*/g, ',')) bad.push(`${p} ${k}: "${got}" ≠ "${v}"`);
       }
       const cc = hdr(res, 'cache-control');
       if ((cc.match(/max-age=/g) || []).length > 1) bad.push(`${p} Cache-Control 이 겹침: ${cc}`);
@@ -200,13 +218,28 @@ export async function smoke(base, { browser = true, apk = true, api = true, quie
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bn-smoke-'));
     let ctx;
     try {
-      ctx = await chromium.launchPersistentContext(dir, { executablePath: CHROME, headless: true, proxy, viewport: { width: 1280, height: 720 }, args: ['--autoplay-policy=no-user-gesture-required'] });
+      const args = ['--autoplay-policy=no-user-gesture-required'];
+      // --ca <pem>: TLS 를 다시 맺는 프록시(이 작업 환경)의 CA 를 믿는다 — 검증을 끄지 않고 그 CA 공개키만 허용
+      if (caSpki.length) args.push('--ignore-certificate-errors-spki-list=' + caSpki.join(','));
+      ctx = await chromium.launchPersistentContext(dir, { executablePath: CHROME, headless: true, proxy, viewport: { width: 1280, height: 720 }, args });
+      // Netlify 가 배포 페이지에 끼워 넣는 도구 스크립트(/.netlify/scripts/hud)는 게임 코드가 아니고, 그 인라인 스크립트는
+      // 우리 CSP(script-src 'self')가 막아 콘솔 오류만 남긴다 → 막고 횟수만 기록한다 (사이트 설정에서 끌 수 있다)
+      let netlifyHud = 0, netlifyCsp = 0;
+      await ctx.route('**/.netlify/scripts/**', (r) => { netlifyHud++; r.abort(); });
       const open = async (u, wait = 0) => {
         const page = await ctx.newPage();
         const errs = [];
         const reqs = [];
         page.on('pageerror', (e) => errs.push('PAGEERROR ' + e.message));
-        page.on('console', (m) => { if (m.type() === 'error' && !IGNORE_CONSOLE.test(m.text())) errs.push('CONSOLE ' + m.text().slice(0, 200)); });
+        page.on('console', (m) => {
+          if (m.type() !== 'error' || IGNORE_CONSOLE.test(m.text())) return;
+          const at = m.location()?.url || '';
+          // Netlify 도구 스크립트가 넣은 인라인 스크립트를 우리 CSP 가 막은 것 — 게임 오류가 아니다
+          // (서비스 워커가 가져온 도구 스크립트는 ctx.route 로 막히지 않는다 → 그 스크립트가 만든 srcdoc 창에서 차단이 난다. 게임은 iframe·srcdoc 을 쓰지 않는다)
+          const fromHud = /\/\.netlify\/scripts\//.test(at) || (at === 'about:srcdoc' && reqs.some((x) => /\/\.netlify\/scripts\//.test(x)));
+          if (fromHud && /Content Security Policy/.test(m.text())) { netlifyCsp++; return; }
+          errs.push('CONSOLE ' + m.text().slice(0, 160) + (at ? ` @ ${at.replace(origin, '')}` : ''));
+        });
         page.on('request', (r) => reqs.push(r.url()));
         await page.goto(origin + '/' + u, { timeout: 90000 });
         await page.waitForFunction(() => window.__game?.scenes?.length > 0 && !document.getElementById('boot'), null, { timeout: 90000, polling: 200 });
@@ -242,6 +275,7 @@ export async function smoke(base, { browser = true, apk = true, api = true, quie
         await check(id, `${u}: 페이지 오류 0`, async () => ({ pass: !p.errs.length, detail: p.errs.slice(0, 4).join(' | ') || (p.page ? `scene ${await p.page.evaluate(() => (window.__game?.scenes || []).map((s) => s.name).join('>'))}${lazy ? `, lazy 조각 ${lazy}개` : ''}` : '') }));
         await p.page?.close();
       }
+      if (netlifyHud || netlifyCsp) console.log(`  · Netlify 도구 스크립트(/.netlify/scripts/hud): ${netlifyHud}번 막음, 그 스크립트가 넣은 인라인 코드의 CSP 차단 ${netlifyCsp}건 — 게임 코드가 아님`);
     } finally {
       await ctx?.close().catch(() => {});
       fs.rmSync(dir, { recursive: true, force: true });
@@ -261,7 +295,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   }
   let rep;
   try {
-    rep = await smoke(base, { browser: !a['no-browser'], apk: !a['no-apk'], api: !(a['no-api'] || (srv && !a.api)) });
+    rep = await smoke(base, { browser: !a['no-browser'], apk: !a['no-apk'], api: !(a['no-api'] || (srv && !a.api)), ca: a.ca ? String(a.ca).split(',') : [] });
   } finally { await srv?.close(); }
   const host = new URL(base).host.replace(/[^a-z0-9.-]/gi, '_');
   mkdirp(path.join(ROOT, 'dist'));
