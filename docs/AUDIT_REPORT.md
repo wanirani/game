@@ -157,7 +157,24 @@
 
 감사 수정 뒤 한 번에 다시 돌린 결과다.
 
-<!-- REGRESSION_TABLE -->
+| 시험 | 명령 | 결과 |
+|---|---|---|
+| 맵 검증 | `node tools/validate_maps.mjs` | 통과 (오류 0, 옛 경고 1: s11) |
+| 2부 정적 검사 | `node tools/test_part2.mjs --static` | 20/20 |
+| 계정 API | `npm run test:api` | 메모리 75/0, 서버 65/0 (10 건너뜀은 이전과 같음) |
+| 계정 클라이언트 | `npm run test:client` | 11/0 |
+| 글꼴 | `python3 tools/fonts/build_fonts.py --check` | 첫 화면 469.6 KB / 상한 500 KB |
+| 웹 빌드 | `node tools/deploy/build_web.mjs` | 성공, 첫 화면 경로 brotli 0.67 MB / 예산 1.60 MB, 사이트 54.3 MB / 예산 90 MB |
+| 게시 폴더 부팅 | `node tools/qa/platform_load.mjs --dist` | 10/0 (wifi 첫 프레임 0.8초, 페이지 오류 0) |
+| 서비스 워커 | `node tools/deploy/test_sw.mjs` | 15/15 |
+| 아티팩트 점검 | `node tools/deploy/build_artifact.mjs --check` | 통과 (파일 252, 54.3 MB) |
+| 통합 (데스크톱) | `node tools/integration.mjs --only hub,menu,s01,s19` | 4/4 |
+| 통합 (모바일) | `node tools/integration.mjs --mobile --only title,hub` | 2/2 |
+
+- 수정을 맡은 에이전트들이 각자 돌린 시험도 모두 통과했다.
+  - 세이브 65/0, 설정 427/0, 메뉴 39/0, 동료 상태 79/0, 수호자 22/22
+  - 화면 배치 16/0, 게임패드 시험(1번 타이밍 흔들림 뒤 2번 연속 통과)
+- 빌드는 경고 1개를 냈다. 기존 APK 가 옛 웹 빌드라서 내려받기에 싣지 않았다는 경고로, PS-07 이 의도한 동작이다. 출시 때 APK 를 다시 만들면 사라진다.
 
 ## 7. 출시 전에 할 일
 
