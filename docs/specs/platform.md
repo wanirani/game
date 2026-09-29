@@ -405,7 +405,7 @@ Minimums in **CSS px**, computed from logical size × `uiK` × `cssScale`:
 
 ### 6.6 Fullscreen, orientation, wake lock, cursor (`src/core/platform.js`, new)
 - **Android Chrome and Firefox:** ⛶ calls `requestFullscreen({navigationUI:'hide'})`, then `screen.orientation.lock('landscape')`. `fullscreenAuto` (default on for touch) requests fullscreen on the **first tap** at the title screen.
-- **iPhone Safari**, detected when `!document.fullscreenEnabled` and there is no `webkitRequestFullscreen` on `documentElement`: hide ⛶. Show once a title card "홈 화면에 추가하면 전체 화면으로 즐길 수 있어요 (공유 → 홈 화면에 추가)", dismissible, stored in meta.
+- **iPhone Safari**, detected when `!document.fullscreenEnabled` and there is no `webkitRequestFullscreen` on `documentElement`: hide ⛶. Show once a title card "홈 화면에 추가하면 전체 화면으로 즐길 수 있어요 (공유 → 홈 화면에 추가). 홈 화면 앱은 기록을 따로 보관하니, 먼저 계정 저장이나 저장 코드로 옮겨 두세요", dismissible, stored in meta. (iOS keeps home-screen web app storage separate from Safari, so the card tells players to move their save first.)
 - **iPad Safari 16.4+:** fullscreen supported.
 - **Installed PWA** (`display-mode: fullscreen|standalone`) **or APK** (`__BN_APP`): hide ⛶. The APK already hides it.
 - **Desktop:** Options → 화면 → 전체 화면 켜기/끄기, and `Alt+Enter` toggles. `F11` is left to the browser.

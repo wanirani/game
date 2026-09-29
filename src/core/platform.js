@@ -37,7 +37,8 @@ const UA = NAV?.userAgent || '';
 const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
 export const AUDIO_HINT_TEXT = '소리를 켜려면 화면을 클릭하거나 아무 키나 누르세요';
-export const A2HS_TEXT = '홈 화면에 추가하면 전체 화면으로 즐길 수 있어요 (공유 → 홈 화면에 추가)';
+// 홈 화면 앱은 사파리와 저장소가 따로라 세이브가 비어 보인다 (PS-10) — 옮기는 방법을 같이 알린다
+export const A2HS_TEXT = '홈 화면에 추가하면 전체 화면으로 즐길 수 있어요 (공유 → 홈 화면에 추가). 홈 화면 앱은 기록을 따로 보관하니, 먼저 계정 저장이나 저장 코드로 옮겨 두세요';
 export const UPDATE_READY_TEXT = '새 버전이 준비되었습니다';
 const UPDATE_LATER_TEXT = '새 버전은 타이틀 화면에서 적용됩니다';
 const STORAGE_TIP_TEXT = '브라우저 저장공간은 지워질 수 있어요. 계정 저장(클라우드)이나 저장 코드로 백업하세요';
