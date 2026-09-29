@@ -11,8 +11,11 @@
 //  - import * as M 과 동적 import() 결과에는 게터로 된 네임스페이스 객체를 만든다 (라이브 바인딩 유지).
 //    M.x (읽기, x 가 실제로 내보낸 이름)는 바로 x 의 최종 이름으로 바꾼다.
 //  - import.meta.url 은 원래 모듈 주소(new URL('<조각 기준 상대 경로>', import.meta.url).href)로 바꾼다 (assets.js·ui.js 가 이 값으로 경로를 계산).
-//  - 정적으로는 닿지 않고 동적 import() 로만 닿는 모듈(채색 보스 그림 등)은 lazy 조각으로 나눈다. lazy 조각은 main 조각에서 쓰는
-//    이름을 import 하고, 자기 네임스페이스 객체를 export 한다. import('../x.js') 는 import('./lazy-N.js').then(m => m.NS) 가 된다.
+//  - 정적으로는 닿지 않고 동적 import() 로만 닿는 모듈(채색 보스 그림 등)은 lazy 조각으로 나눈다. lazy 조각은 main 조각(과 공유 조각)에서
+//    쓰는 이름을 import 하고, 자기 네임스페이스 객체를 export 한다. import('../x.js') 는 import('./lazy-N.js').then(m => m.NS) 가 된다.
+//    main 밖 모듈은 '소유 집합'(그 모듈에 정적으로 닿는 lazy 묶음들)이 같은 것끼리 한 조각에 모인다: 한 묶음만 쓰면 그 묶음의 조각,
+//    여러 묶음이 함께 쓰면 공유 조각. 조각끼리의 정적 import 는 더 큰 소유 집합 쪽으로만 가므로 순환하지 않는다. 조각이 maxLazyChunks 를
+//    넘으면 '한 조각 + 그 조각이 import 하는 조각 전부'를 합쳐 줄인다 (순환 없음, 그 조각을 받을 때 어차피 함께 받던 것).
 //  - 이름을 바꾼 클래스·함수 선언은 .name 을 원래 이름으로 되돌린다 (hub.js 가 e.constructor.name === 'Door' 로 비교한다).
 // 제약: 문자열이 아닌 동적 import, import.meta.url 이 아닌 import.meta, 상대 경로가 아닌 import 는 오류로 멈춘다 (지금 코드에는 없다).
 // 최상위 await 는 그대로 둔다 (조각도 모듈이다).
@@ -418,6 +421,18 @@ export function bundleModules({ root, entry, chunkDir = 'src/bundle/x', maxLazyC
   }
   // lazy 가 main 을 import 하는데 main 이 다른 lazy 를 import 하는 일은 없다 (main 은 import 하지 않는다)
   if (chunks[0].imports.size) throw new Error('main 조각이 다른 조각을 정적으로 import 합니다 (번들러 오류)');
+  // 조각 사이 정적 import 에 순환이 없어야 한다 (평가 순서가 원본 ES 모듈과 같게) — 소유 집합·합치기 규칙이 보장하지만 한 번 더 확인한다
+  {
+    const state = new Map();
+    const visit = (c, path) => {
+      if (state.get(c) === 2) return;
+      if (state.get(c) === 1) throw new Error(`조각 import 순환: ${[...path, c].map((x) => x.name).join(' → ')} (번들러 오류)`);
+      state.set(c, 1);
+      for (const d of c.imports.keys()) visit(d, [...path, c]);
+      state.set(c, 2);
+    };
+    for (const c of chunks) visit(c, []);
+  }
 
   const allowedFree = new Set(HELPER_GLOBALS);
   for (const m of used) for (const n of m.an.free.keys()) allowedFree.add(n);

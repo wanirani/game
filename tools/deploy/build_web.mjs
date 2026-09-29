@@ -467,7 +467,8 @@ function sizeReport(OUT, report, { html, chunkFiles, cssFonts, opts, warn }) {
     report.budgets.apkLite = { bytes: lite, budget: BUDGET.apkInputBytes, ok: lite <= BUDGET.apkInputBytes, note: 'APK 가 bg/cg/portraits 원본 대신 assets/lo 만 실을 때' };
     const m = `APK 입력(dist/web 전부)이 ${fmtMB(apkInput)} 로 예산 ${fmtMB(BUDGET.apkInputBytes)} 을 넘습니다 → APK 는 bg/cg/portraits 원본을 빼고 assets/lo 만 실어야 합니다 (그때 ${fmtMB(lite)}, MASTER_PLAN §1.20)`;
     if (!report.budgets.apkLite.ok) throw new BuildError(m + ' — 그래도 예산 초과');
-    warn(m);
+    // 정해진 경로라 경고가 아니다: tools/apk/pack_web.py --assets auto 가 알아서 lo 단계를 고른다 (최종 크기는 build_apk.sh 가 서명한 APK 로 확인)
+    log(opts, `        APK 입력 ${fmtMB(apkInput)} > ${fmtMB(BUDGET.apkInputBytes)} → APK 는 lo 단계 (bg/cg/portraits 는 assets/lo 사본만, ${fmtMB(lite)}) — tools/apk/pack_web.py 가 고른다 (MASTER_PLAN §1.20)`);
   }
   if (!report.budgets.criticalBr.ok) {
     const m = `첫 화면 경로가 brotli ${fmtMB(critBr)} 로 예산 ${fmtMB(BUDGET.criticalBr)} 을 넘습니다 (가장 큰 것: ${critList.slice(0, 3).map(([f, b]) => `${f} ${fmtKB(b)}`).join(', ')})`;

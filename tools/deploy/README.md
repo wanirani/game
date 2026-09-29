@@ -24,15 +24,23 @@ node tools/deploy/build_web.mjs --selftest-deny # 공개 금지 검사가 빌드
 - **허용 목록만 복사**: `index.html manifest.webmanifest sw.js robots.txt css/ src/boot-gate.js assets/ (lo/·fonts/ 포함) downloads/`.
   `tools/ docs/ android/ netlify/ node_modules/ dist/ .git/`, `*.keystore *.jks *.p12 *.properties .env*` 등이 들어가면 **빌드 실패 + 출력 폴더 삭제**.
   서명 키(`tools/android/release.keystore`, `keystore.properties`)는 절대 올라가지 않는다.
-- **번들**: `src/main.js` 에서 닿는 모듈 330여 개 → `src/bundle/<내용 해시>/app.js` 하나 (+ 채색 보스 그림 같은 동적 import 용 `lazy-1…7.js`).
-  첫 방문 요청이 모듈 290여 개 → 2개(부팅 관문 + app.js)로 줄었다. 해시 폴더라 1년 캐시(immutable). 개발 트리(`node tools/serve.mjs`)는 번들 없이 그대로 돈다.
-  번들러 문제가 의심되면 `--no-bundle` (모듈 그대로 + `<link rel=modulepreload>` 전부) 로 비교할 수 있다.
+- **번들**: `src/main.js` 에서 **정적으로** 닿는 모듈(타이틀·부팅, 20여 개) → `src/bundle/<내용 해시>/app.js` (첫 화면 조각). 나머지(장면 등록부·퀘스트·동료,
+  채색 보스·적 그림, 보스 로직 등 `import()` 로 부르는 모듈)는 `lazy-1…7.js` 조각 (R1-REQ-229). 첫 방문 요청은 부팅 관문 + app.js 2개.
+  lazy 진입점이 다른 lazy 묶음 안에서 정적으로도 쓰이면 그 모듈은 '소유 묶음 집합'이 같은 것끼리 공유 조각에 들어가고(조각끼리 import 는
+  더 큰 집합 쪽으로만 → 순환 없음), 조각 수가 `--max-lazy`(기본 7, main 포함 8 = 아티팩트 한도)를 넘으면 한 조각과 그 조각이 import 하는
+  조각 전부를 합친다 (그 조각을 받을 때 어차피 함께 받던 것이라 비용 없음, 순환 없음). 해시 폴더라 1년 캐시(immutable).
+  개발 트리(`node tools/serve.mjs`)는 번들 없이 그대로 돈다. 번들러 문제가 의심되면 `--no-bundle` (모듈 그대로 + `<link rel=modulepreload>` 전부) 로 비교할 수 있다.
 - `index.html` 고침: `build-info.js` (window.__BN_BUILD — 부팅 진행률 분모, lo/ 목록) 를 부팅 관문보다 먼저, main 조각 modulepreload,
   CSS·부팅 관문·글꼴 주소에 `?v=<내용 해시>` (css 의 @font-face 도 같은 값).
 - `build.json` = 파일별 `{hash8, bytes}` (서비스 워커가 그림 캐시를 검증), `_redirects` = `/apk`·`/download` → 최신 APK.
+  **buildHash·build.json 에는 `downloads/`·`_redirects` 를 넣지 않는다** (APK 에 들어가지 않는 배포 전용 파일). 게임 파일이 이전 `dist/web` 과 같으면
+  (buildHash 같음) 이전 version·built·commit 을 그대로 써서 `build-info.js`·`build.json`·`index.html`·`sw.js` 가 바이트까지 같다 →
+  DELIVER 흐름(build_web → build_apk.sh --verify → 새 APK 를 downloads/ 에 넣으려고 build_web 다시)에서도 APK `assets/www` = dist/web 해시 비교
+  (tools/apk/verify_apk.mjs, platform WP-9 수락 3) 가 맞는다 (R1-REQ-324). 내용이 같아도 새로 찍으려면 `--restamp`.
 - 검사: `python3 tools/fonts/build_fonts.py --check` (실패하면 빌드 실패 — 임시 빌드만 `--allow-font-gaps`), `node tools/validate_maps.mjs`,
   netlify.toml 헤더 규칙 겹침·CSP, 크기 예산.
-- **크기 예산**: 사이트(dist/web − downloads) ≤ 90 MB (실패), APK 입력 ≤ 45 MB (넘으면 경고 + "APK 는 bg/cg/portraits 원본 대신 assets/lo 만" 크기),
+- **크기 예산**: 사이트(dist/web − downloads) ≤ 90 MB (실패), APK 입력 ≤ 45 MB (넘으면 "APK 는 bg/cg/portraits 원본 대신 assets/lo 만" 크기를 알리고
+  그것도 넘으면 실패 — 정해진 경로라 경고가 아니다: `tools/apk/pack_web.py --assets auto` 가 lo 단계를 고른다, APK 어림 ≈ 38 MB),
   첫 화면 경로 brotli ≤ 1.6 MB (경고, `--strict` 면 실패).
 - APK: `dist/BloodNocturne.apk` 가 있으면 (또는 `--apk <파일>`) `downloads/BloodNocturne-<versionName>-<versionCode>.apk` + `downloads/latest.json`.
   `/downloads/BloodNocturne.apk`·`/apk`·`/download` 는 리디렉트로 이 파일을 가리킨다 (같은 APK 를 두 번 올리지 않는다). `--no-apk` 로 뺀다.
