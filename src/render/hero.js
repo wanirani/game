@@ -1908,7 +1908,7 @@ const POOL = [];
 let poolTick = 0;
 // 합성 풀 10장을 모듈 초기화 때 미리 만든다 (MASTER_PLAN §5.2: 스테이지 시작 뒤 새 캔버스 0 — 첫 잔상·각성 컷인 섬광이
 // 캔버스를 만들지 않게). 크기 0 으로 두고 쓸 때 키운다(메모리는 쓰는 만큼만)
-if (typeof document !== 'undefined') for (let i = 0; i < 10; i++) POOL.push({ cv: document.createElement('canvas'), key: null, tick: 0, rs: 0 });
+if (typeof document !== 'undefined') for (let i = 0; i < 10; i++) { const cv = document.createElement('canvas'); cv.width = 0; cv.height = 0; POOL.push({ cv, key: null, tick: 0, rs: 0 }); }
 function poolGet(key, W, H) {
   poolTick++;
   let best = null;

@@ -85,7 +85,7 @@ function levelImg(E, L) { return assets.get(akey(E, 'atlas', L), E.man.h); }   /
 function levelPeek(E, L) { return peek(akey(E, 'atlas', L)); }
 function maskImg(E, L) { return assets.get(akey(E, 'mask', L), E.man.h); }
 function maskPeek(E, L) { return peek(akey(E, 'mask', L)); }
-function entry(cid, cls, lazy = false) {
+function entry(cid, cls) {
   const key = cid + '/' + cls;
   let E = REG.get(key);
   if (E) return E;
@@ -100,9 +100,8 @@ function entry(cid, cls, lazy = false) {
     E.levels = Object.entries(rig.levels).map(([name, L]) => ({ name, scale: L.scale, rects: L.rects, size: L.size })).sort((a, b) => a.scale - b.scale);
     E.levels.forEach((L, i) => { E.lvIdx[L.name] = i; });
     E.opts = rig.opts || {};
-    // 게임 화면용 두 레벨 + 그 재질 마스크(≈14KB, 장비 색을 바꿀 때 원래 색이 한 프레임 비치지 않게). ui 레벨은 메뉴에서 필요할 때.
-    // lazy(텍스처 예산이 빠듯할 때의 형제 미리 받기) = 리그만 받고 텍스처는 처음 그릴 때
-    if (!lazy) requestLevels(E);
+    // 게임 화면용 두 레벨 + 그 재질 마스크(≈14KB, 장비 색을 바꿀 때 원래 색이 한 프레임 비치지 않게). ui 레벨은 메뉴에서 필요할 때
+    requestLevels(E);
   });
   return E;
 }
@@ -131,8 +130,7 @@ function preloadSiblings(cid) {
   SIB.add(cid);
   const ids = Object.keys(PUPPETS[cid] || {});
   let i = 0;
-  // 채색 텍스처 예산의 절반을 넘었으면 리그(수 KB)만 받아 둔다 — 형제 직업 텍스처(직업당 ≈2 MB)로 폰 예산이 차지 않게
-  const next = () => { if (i >= ids.length) return; entry(cid, ids[i++], assets.paintedBytes > assets.paintedBudget * 0.5); idle(next); };
+  const next = () => { if (i >= ids.length) return; entry(cid, ids[i++]); idle(next); };
   const idle = (f) => (typeof window.requestIdleCallback === 'function' ? window.requestIdleCallback(f, { timeout: 1500 }) : setTimeout(f, 120));
   idle(next);
 }
@@ -224,7 +222,7 @@ function recolorCanvas(src, mk, V) {
 //    새로 만들지 않는다 (MASTER_PLAN §5.2 스테이지 도중 캔버스 0, R1-REQ-339R). 안 쓰는 예비는 메모리 0
 const SPARE = [];
 let MASK_TMP = null;
-function fillSpares(n = 8) {
+function fillSpares(n = 12) {
   if (typeof document === 'undefined') return;
   while (SPARE.length < n) { const c = document.createElement('canvas'); c.width = 0; c.height = 0; SPARE.push(c); }
 }
@@ -251,7 +249,12 @@ if (typeof setTimeout === 'function') setTimeout(() => { bus.on('stageEntered', 
 // 텍스처와 구운 캔버스를 내린다 (리그 JSON 은 유지 → 다시 그릴 때 텍스처만 다시 받는다; 그동안은 벡터 대체 그림).
 const IDLE_MS = 4000, SWEEP_HI = 0.75, SWEEP_LO = 0.6;
 let sweepAt = -1e9;
-function sweepSoon(t) { if (t - sweepAt >= 500) sweep(t); }
+const CID_USED = new Map();   // 영웅(cid) → 그 영웅의 퍼펫을 마지막으로 그린 시각
+/** 그림 표시: 이 퍼펫과 그 영웅을 '쓰는 중'으로 (정리 우선순위) + 가끔 예산 확인 */
+function touchUse(E, t) {
+  E.used = t; CID_USED.set(E.cid, t);
+  if (t - sweepAt >= 500) sweep(t);
+}
 function hasTextures(E) {
   if (E.turnImg || E.turnMask) return true;
   for (const L of E.levels) if (assets.has(akey(E, 'atlas', L)) || assets.has(akey(E, 'mask', L))) return true;
@@ -276,11 +279,17 @@ function sweep(t, force = false) {
   const budget = assets.paintedBudget;
   let have = assets.paintedBytes;
   if (!(budget > 0) || have <= budget * (force ? SWEEP_LO : SWEEP_HI)) return 0;
-  const list = [];
-  for (const E of REG.values()) if (E !== NONE && E.rig && t - E.used >= IDLE_MS && hasTextures(E)) list.push(E);
-  list.sort((a, b) => a.used - b.used);
+  // 1순위: 한동안 그리지 않은 영웅의 퍼펫 (오래된 순). 2순위: 지금 그리는 영웅의, 그려지지 않은 형제 직업(미리 받기)·NPC
+  // → 방금 바꾼 직업이 미리 받아져 있어 벡터 대체 그림이 비치지 않고, 예산이 모자랄 때만 형제 직업을 놓는다
+  const idle = [], sibs = [];
+  for (const E of REG.values()) {
+    if (E === NONE || !E.rig || t - E.used < IDLE_MS || !hasTextures(E)) continue;
+    (t - (CID_USED.get(E.cid) ?? -1e9) < IDLE_MS ? sibs : idle).push(E);
+  }
+  const byUse = (a, b) => a.used - b.used;
+  idle.sort(byUse); sibs.sort(byUse);
   let freed = 0;
-  for (const E of list) {
+  for (const E of idle.concat(sibs)) {
     if (have <= budget * SWEEP_LO) break;
     const b = releaseEntry(E);
     have -= b; freed += b;
@@ -325,7 +334,7 @@ export function puppetFor(p, look) {
   if (!I) return null;
   const E = I.E;
   if (I.gen !== E.gen) { I.gen = E.gen; I.V = null; I.lv = null; }   // 예산 때문에 텍스처를 놓았다 다시 받음 → 구운 변형·레벨 이력 버림
-  E.used = performance.now(); sweepSoon(E.used);
+  touchUse(E, performance.now());
   if (!ready(E)) return null;
   if (I.vk && !I.V) { I.V = E.vars.get(I.vk) || makeVariant(E, I.vk); E.vars.set(I.vk, I.V); }
   I.key = E.key + (I.vk ? '#' + I.vk : '');
@@ -361,7 +370,7 @@ function npcPuppet(p, look) {
   }
   if (!I) return null;
   if (I.gen !== I.E.gen) { I.gen = I.E.gen; I.lv = null; }
-  I.E.used = performance.now(); sweepSoon(I.E.used);
+  touchUse(I.E, performance.now());
   if (!ready(I.E)) return null;
   return I;
 }
@@ -621,7 +630,7 @@ export function capeCanvas(col) {
   if (cv === undefined) {
     const tex = capeTex();
     if (!tex || typeof document === 'undefined') return null;
-    cv = document.createElement('canvas'); cv.width = tex.naturalWidth || tex.width; cv.height = tex.naturalHeight || tex.height;
+    cv = spareCanvas(tex.naturalWidth || tex.width, tex.naturalHeight || tex.height);   // 예비 캔버스 (싸움 도중 새 망토 색이어도 캔버스를 만들지 않음)
     const g = cv.getContext('2d');
     g.fillStyle = col; g.fillRect(0, 0, cv.width, cv.height);
     g.globalCompositeOperation = 'overlay'; g.drawImage(tex, 0, 0);
@@ -785,7 +794,7 @@ function weaponPup(c, W, x, y, ang, fire) {
 export function turnReady(I) {
   const E = I?.E;
   if (!E?.rig?.turn) return false;
-  E.used = performance.now();
+  touchUse(E, performance.now());
   if (!E.turnImg) E.turnImg = assets.get(`puppets/${E.key}/turn`, E.man.h);
   if (E.rig.turn.mask && !E.turnMask) E.turnMask = assets.get(`puppets/${E.key}/turn_mask`, E.man.h);
   return !!E.turnImg;

@@ -18,9 +18,9 @@ const PHASE_CH = new Set(['a', 'b', 'z', 'Z']); // 위상 타일 문자 (tilemap
 const DARK_CACHE = new Map();   // 톤다운 소품 사본 (모든 TileRenderer 공용: 방을 오갈 때 다시 굽지 않는다)
 const DARK_CAP = 40;            // 상한 (소품 사본 ≤ 192×288 → 최악 ≈ 9 MB, 보통 2 MB 안팎)
 // 타일 층 (모든 TileRenderer 공용, 게임 캔버스 백킹 크기): 첫 스테이지 프레임에 한 번 만들고 크기만 맞춘다.
-// 스테이지를 그리지 않는 동안(마을·메뉴·타이틀) 0.6초 뒤 0×0 으로 비워 메모리를 돌려준다 (다시 그리면 같은 캔버스를 키운다)
+// 스테이지를 그리지 않는 동안(마을·메뉴·타이틀) 0.25초 뒤 0×0 으로 비워 메모리를 돌려준다 (다시 그리면 같은 캔버스를 키운다)
 const LAYER = { c: null, g: null, used: 0, timer: 0, key: { owner: null } };
-const LAYER_IDLE_MS = 600;
+const LAYER_IDLE_MS = 250;
 function layerIdle() {
   LAYER.timer = 0;
   if (!LAYER.c) return;
