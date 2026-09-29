@@ -33,9 +33,14 @@ function fillSpares(n = SPARE_N) {
   while (SPARE.length < n) { const c = document.createElement('canvas'); c.width = 0; c.height = 0; SPARE.push(c); HITFX_STATS.canvases++; }
 }
 fillSpares();
-let NO_SPARE = false;   // 미리 굽기(prewarm) 중에는 예비를 쓰지 않고 새로 만든다 (예비는 싸움 도중 처음 보는 것용)
+let NO_SPARE = false;   // 미리 굽기(prewarm) 중에는 싸움용 예비를 쓰지 않는다 (예비는 싸움 도중 처음 보는 것용) → WARM_SPARE 에서
+// 미리 굽기 몫의 0×0 캔버스: 모듈을 평가할 때(스테이지가 생기기 전) 한꺼번에 만들어 두고, 한가할 때 도는 굽기 작업은 크기만 준다
+// → 곧장 스테이지로 들어가거나 지연 장면 교체로 스테이지가 먼저 시작돼도 그 뒤 새 캔버스 0 (feel §8, #216/#478). 남은 것은 싸움용 예비로
+const WARM_SPARE = [];
+const WARM_N = 80;
+if (typeof document !== 'undefined' && document.createElement) while (WARM_SPARE.length < WARM_N) { const c = document.createElement('canvas'); c.width = 0; c.height = 0; WARM_SPARE.push(c); HITFX_STATS.canvases++; }
 function mkCanvas(w, h) {
-  let c = NO_SPARE ? null : SPARE.pop() ?? null;
+  let c = NO_SPARE ? WARM_SPARE.pop() ?? null : SPARE.pop() ?? null;
   if (c) { c.width = w; c.height = h; return c; }
   if (typeof document !== 'undefined' && document.createElement) { c = document.createElement('canvas'); c.width = w; c.height = h; }
   else if (typeof OffscreenCanvas !== 'undefined') c = new OffscreenCanvas(w, h);
@@ -598,11 +603,12 @@ export function prewarm() {
     const t0 = now();
     do {
       const j = jobs.shift();
-      if (!j) return;
+      if (!j) break;
       NO_SPARE = true;
       try { j(); } catch (e) { console.warn('[hitfx] prewarm', e); } finally { NO_SPARE = false; }
     } while (jobs.length && (dl && !dl.didTimeout && typeof dl.timeRemaining === 'function' ? dl.timeRemaining() > 2 : now() - t0 < 4));
     if (jobs.length) idle(step);
+    else while (WARM_SPARE.length) SPARE.push(WARM_SPARE.pop());   // 남은 0×0 은 싸움용 예비로
   };
   idle(step);
 }
