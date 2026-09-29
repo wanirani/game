@@ -195,7 +195,11 @@ const STAGE_OF = {
   shadow_hunter: 's13_abyss', chaos_spawn: 's13_abyss', abyss_eye: 's13_abyss', void_demon: 's13_abyss', demon_lord: 's13_abyss',
 };
 
-const ids = (Q.get('ids') ?? 'skeleton').split(',');
+const ids = (Q.get('ids') ?? 'skeleton').split(',').filter((id) => {
+  if (ENEMIES[id]) return true;
+  if (id) console.warn('[gallery] unknown enemy id skipped:', id);   // shot.mjs reports warnings, so a typo still fails the run
+  return false;
+});
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 const vecBox = document.getElementById('vec'), zoomR = document.getElementById('zoom');
 if (Q.get('vec')) vecBox.checked = true;

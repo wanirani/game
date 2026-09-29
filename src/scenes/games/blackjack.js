@@ -246,9 +246,12 @@ export class BlackjackScene extends MiniGame {
     const xL = cx - vw / (2 * k), wD = vw / k, hD = vh / k;
     const top = 206;
     // 펠트
-    const g = ctx.createRadialGradient(cx, 380, 40, cx, 400, wD * 0.7);
-    g.addColorStop(0, '#7a0e22'); g.addColorStop(0.6, '#4a0614'); g.addColorStop(1, '#1a0206');
-    ctx.fillStyle = g; ctx.fillRect(xL, top, wD, hD - top);
+    ctx.fillStyle = cachedGrad('bj-felt|' + cx + '|' + wD, () => { // 화면 크기가 같으면 같은 그라디언트 (R1-REQ-341B)
+      const n = ctx.createRadialGradient(cx, 380, 40, cx, 400, wD * 0.7);
+      n.addColorStop(0, '#7a0e22'); n.addColorStop(0.6, '#4a0614'); n.addColorStop(1, '#1a0206');
+      return n;
+    });
+    ctx.fillRect(xL, top, wD, hD - top);
     ctx.save(); ctx.globalAlpha = 0.05; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.beginPath();
     for (let i = xL - hD; i < xL + wD; i += 9) { ctx.moveTo(i, top); ctx.lineTo(i + (hD - top), hD); }
     ctx.stroke(); ctx.restore();
@@ -367,9 +370,7 @@ function drawDealer(c, cx, base, t, mood, mt, blink, flick) {
   c.lineJoin = 'round'; c.lineCap = 'round';
   // ── 몸통 (연미복) ──
   c.save(); c.translate(0, breathe * 0.5);
-  const coat = c.createLinearGradient(-120, -80, 120, 0);
-  coat.addColorStop(0, '#2a1830'); coat.addColorStop(0.5, '#140a16'); coat.addColorStop(1, '#07030a');
-  c.fillStyle = coat;
+  c.fillStyle = cachedGrad('bj-coat', () => { const n = c.createLinearGradient(-120, -80, 120, 0); n.addColorStop(0, '#2a1830'); n.addColorStop(0.5, '#140a16'); n.addColorStop(1, '#07030a'); return n; });
   c.beginPath();
   c.moveTo(-126, 0); c.quadraticCurveTo(-124, -54, -92, -68); c.quadraticCurveTo(-50, -84, -18, -80);
   c.lineTo(18, -80); c.quadraticCurveTo(50, -84, 92, -68); c.quadraticCurveTo(124, -54, 126, 0); c.closePath(); c.fill();
@@ -382,9 +383,7 @@ function drawDealer(c, cx, base, t, mood, mt, blink, flick) {
   // 셔츠 V + 라펠
   c.fillStyle = '#c8bcb0';
   c.beginPath(); c.moveTo(-24, -80); c.lineTo(24, -80); c.lineTo(0, 0); c.closePath(); c.fill();
-  const lap = c.createLinearGradient(-40, -80, 0, 0);
-  lap.addColorStop(0, '#8a1428'); lap.addColorStop(1, '#3a0610');
-  c.fillStyle = lap;
+  c.fillStyle = cachedGrad('bj-lapel', () => { const n = c.createLinearGradient(-40, -80, 0, 0); n.addColorStop(0, '#8a1428'); n.addColorStop(1, '#3a0610'); return n; });
   for (const s of [-1, 1]) { c.beginPath(); c.moveTo(s * 24, -80); c.lineTo(s * 46, -76); c.lineTo(s * 22, -34); c.lineTo(s * 8, 0); c.lineTo(s * 2, -2); c.closePath(); c.fill(); }
   // 조끼 + 금 사슬
   c.fillStyle = '#2a0a14';
@@ -429,9 +428,7 @@ function drawDealer(c, cx, base, t, mood, mt, blink, flick) {
     c.strokeStyle = '#1a0408'; c.lineWidth = 1.4; c.stroke();
   }
   // 얼굴
-  const fg = c.createRadialGradient(-10, -126, 6, 0, -112, 46);
-  fg.addColorStop(0, '#b8384a'); fg.addColorStop(0.55, '#7a1428'); fg.addColorStop(1, '#2a0410');
-  c.fillStyle = fg;
+  c.fillStyle = cachedGrad('bj-face', () => { const n = c.createRadialGradient(-10, -126, 6, 0, -112, 46); n.addColorStop(0, '#b8384a'); n.addColorStop(0.55, '#7a1428'); n.addColorStop(1, '#2a0410'); return n; });
   c.beginPath();
   c.moveTo(0, -154);
   c.bezierCurveTo(26, -154, 32, -132, 30, -114);
@@ -519,8 +516,7 @@ function drawDealerHands(c, cx, base, t, flick) {
   for (const s of [-1, 1]) {
     const tap = s < 0 ? Math.max(0, Math.sin(t * 5)) * 2 : flick * -8;
     c.save(); c.translate(s * 92 + (s > 0 ? flick * 10 : 0), -6 + tap);
-    const hg = c.createLinearGradient(-20, -14, 20, 10);
-    hg.addColorStop(0, '#9a2a3a'); hg.addColorStop(1, '#3a0612');
+    const hg = cachedGrad('bj-hand', () => { const n = c.createLinearGradient(-20, -14, 20, 10); n.addColorStop(0, '#9a2a3a'); n.addColorStop(1, '#3a0612'); return n; });
     // 소매
     c.fillStyle = '#140a16'; rr(c, -24, -28, 48, 18, 6); c.fill();
     c.fillStyle = '#c8bcb0'; c.fillRect(-20, -12, 40, 4);

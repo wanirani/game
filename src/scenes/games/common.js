@@ -32,10 +32,11 @@ import { addByBase } from '../../game/inventory.js';
 import { newGameState } from '../../game/state.js';
 import { drawIcon } from '../../render/icons.js';
 import { rr, glow, drawCoin, drawChip } from './art.js';
-import { vGrad, hGrad, rGrad, fillPathGrad } from '../menu/common.js';
+import { vGrad, hGrad, rGrad, fillPathGrad, fillGradRect } from '../menu/common.js';
 // 그라디언트는 menu/common 의 원점 기준 캐시로 (R1-REQ-341B, feel §8 — 여관·미니게임 한 프레임 20~56개였다)
 const GP_SHINE = [0, 'rgba(255,220,160,0.08)', 1, 'rgba(0,0,0,0)'];
 const CANDLE = [0, '#b8a888', 0.4, '#f4ecd8', 1, '#8a7a60'], FLAME = [0, '#fffbe0', 0.5, '#ffb040', 1, 'rgba(255,80,0,0)'];
+const HDR_BAND = [0, 'rgba(10,4,12,0)', 0.2, 'rgba(10,4,12,0.78)', 0.8, 'rgba(10,4,12,0.78)', 1, 'rgba(10,4,12,0)'];
 
 export const GOLD = '#e8c872', BONE = '#efe4cf', CRIMSON = '#b3122e', DIM = '#9d8f80';
 export const BETS = [50, 100, 500, 1000];
@@ -471,15 +472,12 @@ export function vignetteSoft(c, w, h, a = 0.7) {
 export function feltTable(c, x, y, w, h, { felt = '#5a0a1c', felt2 = '#22040c', wood = '#4a2a16', r = 60 } = {}) {
   c.save();
   c.fillStyle = 'rgba(0,0,0,0.55)'; rr(c, x - 4, y + 10, w + 8, h + 8, r + 6); c.fill();
-  const wg = c.createLinearGradient(0, y - 16, 0, y + h + 16);
-  wg.addColorStop(0, '#8a5a30'); wg.addColorStop(0.15, wood); wg.addColorStop(1, '#1a0c06');
-  rr(c, x - 16, y - 16, w + 32, h + 32, r + 14); c.fillStyle = wg; c.fill();
+  rr(c, x - 16, y - 16, w + 32, h + 32, r + 14); fillPathGrad(c, vGrad(c, h + 32, [0, '#8a5a30', 0.15, wood, 1, '#1a0c06']), 0, y - 16); // 캐시
   c.lineWidth = 2; c.strokeStyle = '#0c0604'; c.stroke();
   c.strokeStyle = 'rgba(232,200,114,0.45)'; c.lineWidth = 1.5;
   rr(c, x - 9, y - 9, w + 18, h + 18, r + 8); c.stroke();
-  const fg = c.createRadialGradient(x + w / 2, y + h * 0.35, 10, x + w / 2, y + h * 0.5, Math.max(w, h) * 0.7);
-  fg.addColorStop(0, felt); fg.addColorStop(1, felt2);
-  rr(c, x, y, w, h, r); c.fillStyle = fg; c.fill();
+  // 원점(바깥 원 중심) 기준 캐시: 안쪽 원은 0.15h 위
+  rr(c, x, y, w, h, r); fillPathGrad(c, rGrad(c, 0, -h * 0.15, 10, Math.max(w, h) * 0.7, [0, felt, 1, felt2]), x + w / 2, y + h * 0.5);
   // 펠트 결
   c.save(); rr(c, x, y, w, h, r); c.clip();
   c.globalAlpha = 0.05; c.strokeStyle = '#fff'; c.lineWidth = 1;
@@ -850,9 +848,7 @@ export class MiniGame extends Scene {
     } else {
       const tw = 300;
       ctx.save();
-      const g = ctx.createLinearGradient(vw / 2 - tw / 2, 0, vw / 2 + tw / 2, 0);
-      g.addColorStop(0, 'rgba(10,4,12,0)'); g.addColorStop(0.2, 'rgba(10,4,12,0.78)'); g.addColorStop(0.8, 'rgba(10,4,12,0.78)'); g.addColorStop(1, 'rgba(10,4,12,0)');
-      ctx.fillStyle = g; ctx.fillRect(vw / 2 - tw / 2, 6, tw, 50);
+      fillGradRect(ctx, hGrad(ctx, tw, HDR_BAND), vw / 2 - tw / 2, 6, tw, 50); // 캐시 그라디언트
       ctx.fillStyle = 'rgba(232,200,114,0.5)'; ctx.fillRect(vw / 2 - tw * 0.35, 55, tw * 0.7, 1);
       ctx.restore();
       goldText(ctx, this.info.name, vw / 2, 36, 26, { glowCol: this.info.accent });

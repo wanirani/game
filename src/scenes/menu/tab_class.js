@@ -30,7 +30,7 @@ export class ClassTab extends Tab {
   /** 메뉴의 가로 밀기(탭 넘기기)를 무시할 곳: 회전 무대 (platform §5.6) */
   noSwipe(x, y) { return this.view.swipeBlock(x, y); }
   swipeBlock(x, y) { return this.view.swipeBlock(x, y); }
-  free() { this.stage.free(); this.txt.free(); this.bg.free(); this.dropThumbs(); }
+  free() { this.view.release(); this.stage.free(); this.txt.free(); this.bg.free(); this.dropThumbs(); }
   /** 썸네일 캔버스는 메뉴 공용 풀로 (0×0 — 스테이지 도중 직업 탭을 다시 열어도 새 캔버스 0, R1-REQ-339B) */
   dropThumbs() { for (const T of this.thumbs.values()) giveCanvas(T.cv); this.thumbs.clear(); }
   get chain() { return D.classChain(this.hero.classId).map((c) => c.id); }
@@ -43,7 +43,7 @@ export class ClassTab extends Tab {
   }
   onShow() { if (!this.sel) this.sel = this.hero.classId; this.view.wake(); }
   /** 탭을 떠날 때: 끌기·누름·회전을 끝내고 캐시 레이어·썸네일의 픽셀을 돌려준다 (돌아오면 다시 굽는다 — 폰 캔버스 예산 §5.2) */
-  onHide() { this.view.sleep(); this.stage.release(); this.txt.release(); this.bg.release(); this.dropThumbs(); }
+  onHide() { this.view.sleep(); this.view.release(); this.stage.release(); this.txt.release(); this.bg.release(); this.dropThumbs(); }
   lookFor(cid) {
     if (this.rev !== this.m.rev) { this.rev = this.m.rev; this.looks.clear(); this.dropThumbs(); }
     let L = this.looks.get(cid);

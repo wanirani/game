@@ -246,7 +246,9 @@ export class MenuScene extends Scene {
     // 폰·태블릿 등급(leanMem)은 배경을 반 해상도로 굽고 쌍선형으로 붙인다: 흐린 스냅샷·그라디언트·옅은 결뿐이라 차이가 거의 없고
     // 전체 화면 레이어가 1/4 크기 (phone1 2.8 → 0.7 MB — R1-REQ-342). 가는 선(막대 테두리)은 선명하게 매 프레임 따로 그린다
     const lean = leanMem(this.game);
-    this.bgLayer.draw(ctx, 'bgs' + (assets.has('tex/tex_blood_marble') ? 1 : 0), 0, 0, W, H, lean ? ctxScale(ctx) * 0.5 : null, (c) => {
+    // 큰 터치 태블릿은 반 해상도도 0.3 MP 넘게 커진다 → 0.2 MP(≈0.8 MB)로 더 줄인다 (흐린 1/4 스냅샷이라 차이가 안 보인다 — R1-REQ-342)
+    const bgScale = lean ? Math.min(ctxScale(ctx) * 0.5, Math.sqrt(2e5 / Math.max(1, W * H))) : null;
+    this.bgLayer.draw(ctx, 'bgs' + (assets.has('tex/tex_blood_marble') ? 1 : 0), 0, 0, W, H, bgScale, (c) => {
       c.imageSmoothingQuality = 'low'; c.drawImage(this.snap, 0, 0, W, H); c.imageSmoothingQuality = 'high';
       this.drawBackdrop(c, W, H);
     }, lean ? 'low' : 'medium');
