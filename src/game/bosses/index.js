@@ -6,6 +6,11 @@ import { BOSS_A } from './bosses_a.js';
 import { BOSS_B } from './bosses_b.js';
 import { BOSS_C } from './bosses_c.js';   // [hook:p2]
 import { BOSS_D } from './bosses_d.js';   // [hook:p2]
+import { registerBosses } from './lazy.js';
+// 늦게 받기 입구 (R1-REQ-229): lazy.js 는 보스 모듈을 정적으로 싣지 않는 createBoss(대역 → 진짜 보스)·loadBoss·preloadStageBosses 를 준다.
+// 이 파일은 모든 보스를 정적으로 싣는 동기 대체 경로로 남고, 불러와지면 자기 클래스를 lazy 레지스트리에 등록한다
+// (그러면 lazy.createBoss 도 곧바로 진짜 보스를 만든다). 첫 화면 바이트에서 보스를 빼려면 world.js·아케이드가 lazy.js 를 쓰면 된다.
+export { loadBoss, loadAllBosses, preloadBosses, preloadStageBosses, stageBossIds, bossLoaded, knownBoss, BOSS_IDS } from './lazy.js';
 
 export const BOSS_CLASSES = { ...BOSS_A, ...BOSS_B };
 // 2부(C/D) 병합. 2부 보스 파일이 순환 import 로 이 모듈보다 늦게 초기화되는 경우(예: 갤러리가 bosses_c.js 를 먼저 부름)
@@ -13,6 +18,7 @@ export const BOSS_CLASSES = { ...BOSS_A, ...BOSS_B };
 let p2Merged = false;
 function mergeP2() {   // [hook:p2]
   try { Object.assign(BOSS_CLASSES, BOSS_C, BOSS_D); p2Merged = true; } catch { /* 초기화 전 → createBoss 에서 다시 */ }
+  try { registerBosses(BOSS_CLASSES); } catch { /* lazy.js 초기화 전 → createBoss 에서 다시 */ }
 }
 mergeP2();
 

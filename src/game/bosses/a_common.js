@@ -56,6 +56,24 @@ export function rg(ctx, key, x0, y0, r0, x1, y1, r1, stops) {
   for (let i = 0; i < stops.length; i += 2) g.addColorStop(stops[i], stops[i + 1]);
   return key ? cacheSet(key, g) : g;
 }
+/** 예고·판정 효과용 캐시 그라디언트 (섬광 모드 무시). 로컬 좌표·단위 좌표로 만들고 translate/scale 해서 쓴다:
+ *  프레임마다 새 그라디언트를 만들지 않게 (feel §8 그라디언트 예산 16/10/6) */
+function cLin(ctx, key, x0, y0, x1, y1, stops) {
+  let g = GC.get(key);
+  if (g) return g;
+  g = ctx.createLinearGradient(x0, y0, x1, y1);
+  for (let i = 0; i < stops.length; i += 2) g.addColorStop(stops[i], stops[i + 1]);
+  return cacheSet(key, g);
+}
+function cRad(ctx, key, r, stops) {
+  let g = GC.get(key);
+  if (g) return g;
+  g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+  for (let i = 0; i < stops.length; i += 2) g.addColorStop(stops[i], stops[i + 1]);
+  return cacheSet(key, g);
+}
+/** 깜박임·진행도 양자화 (캐시 키 수를 묶는다) */
+const q8 = (v) => Math.round(clamp(v, 0, 1) * 8) / 8;
 /** 부드러운 발광 (가산 합성, 섬광 영향 없음) */
 export function glow(ctx, x, y, r, color, a = 1) {
   if (a <= 0.01 || r < 1) return;
@@ -270,9 +288,11 @@ export class Telegraph extends Entity {
       }
       case 'band': {
         ctx.globalCompositeOperation = 'lighter';
-        const g = ctx.createLinearGradient(0, this.y0, 0, this.y1);
-        g.addColorStop(0, rgba(col, 0)); g.addColorStop(0.5, rgba(col, 0.18 + 0.2 * blink)); g.addColorStop(1, rgba(col, 0));
-        ctx.fillStyle = g; ctx.fillRect(this.x0, this.y0, this.x1 - this.x0, this.y1 - this.y0);
+        const bh = Math.round(this.y1 - this.y0), bq = q8(blink);
+        ctx.translate(0, this.y0);
+        ctx.fillStyle = cLin(ctx, 'tb' + col + bh + '|' + bq, 0, 0, 0, bh, [0, rgba(col, 0), 0.5, rgba(col, 0.18 + 0.2 * bq), 1, rgba(col, 0)]);
+        ctx.fillRect(this.x0, 0, this.x1 - this.x0, this.y1 - this.y0);
+        ctx.translate(0, -this.y0);
         ctx.fillStyle = rgba(col, 0.8 * blink);
         ctx.fillRect(this.x0, this.y0, this.x1 - this.x0, 2); ctx.fillRect(this.x0, this.y1 - 2, this.x1 - this.x0, 2);
         if (this.arrows) {
@@ -288,9 +308,11 @@ export class Telegraph extends Entity {
       case 'column': {
         const x = this.cx0, w = this.cw;
         ctx.globalCompositeOperation = 'lighter';
-        const g = ctx.createLinearGradient(0, this.y0, 0, this.y1);
-        g.addColorStop(0, rgba(col, 0)); g.addColorStop(1, rgba(col, 0.2 + 0.25 * blink));
-        ctx.fillStyle = g; ctx.fillRect(x - w / 2, this.y0, w, this.y1 - this.y0);
+        const chh = Math.round(this.y1 - this.y0), bq = q8(blink);
+        ctx.translate(0, this.y0);
+        ctx.fillStyle = cLin(ctx, 'tc' + col + chh + '|' + bq, 0, 0, 0, chh, [0, rgba(col, 0), 1, rgba(col, 0.2 + 0.25 * bq)]);
+        ctx.fillRect(x - w / 2, 0, w, this.y1 - this.y0);
+        ctx.translate(0, -this.y0);
         ctx.fillStyle = rgba(col, 0.5 * blink);
         ctx.fillRect(x - w / 2, this.y0, 2, this.y1 - this.y0); ctx.fillRect(x + w / 2 - 2, this.y0, 2, this.y1 - this.y0);
         ctx.strokeStyle = rgba(col, 0.9); ctx.lineWidth = 3;
@@ -303,9 +325,9 @@ export class Telegraph extends Entity {
         const r = this.r ?? 40, flat = this.type === 'circle' ? 0.28 : 1;
         ctx.translate(this.px, this.py); ctx.scale(1, flat);
         ctx.globalCompositeOperation = 'lighter';
-        const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
-        g.addColorStop(0, rgba(col, 0.05)); g.addColorStop(0.8, rgba(col, 0.2 + 0.2 * blink)); g.addColorStop(1, rgba(col, 0.5));
-        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill();
+        const rr = Math.max(1, Math.round(r)), bq = q8(blink);
+        ctx.fillStyle = cRad(ctx, 'tr' + col + rr + '|' + bq, rr, [0, rgba(col, 0.05), 0.8, rgba(col, 0.2 + 0.2 * bq), 1, rgba(col, 0.5)]);
+        ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill();
         ctx.strokeStyle = rgba(col, 0.95); ctx.lineWidth = 3 / Math.sqrt(flat); ctx.stroke();
         ctx.strokeStyle = rgba('#ffffff', 0.8); ctx.lineWidth = 2 / Math.sqrt(flat);
         ctx.beginPath(); ctx.arc(0, 0, r * (2 - k), 0, TAU); ctx.stroke();
@@ -412,9 +434,10 @@ function drawBeamStyle(ctx, b, k) {
   ctx.translate(b.x0, b.y0); ctx.rotate(Math.atan2(dy, dx));
   ctx.globalCompositeOperation = 'lighter';
   const w = b.width * (0.6 + 0.4 * k) * (1 + 0.08 * Math.sin(b.t * 50));
-  const g = ctx.createLinearGradient(0, -w, 0, w);
-  g.addColorStop(0, rgba(b.color, 0)); g.addColorStop(0.3, rgba(b.color, 0.5 * k)); g.addColorStop(0.5, rgba('#ffffff', 0.95 * k)); g.addColorStop(0.7, rgba(b.color, 0.5 * k)); g.addColorStop(1, rgba(b.color, 0));
-  ctx.fillStyle = g; ctx.fillRect(0, -w, L, w * 2);
+  // 단위 폭(-1..1) 그라디언트를 캐시해 두고 폭만큼 늘린다 (k 는 8단계)
+  const kq = q8(k);
+  ctx.fillStyle = cLin(ctx, 'bm' + b.color + '|' + kq, 0, -1, 0, 1, [0, rgba(b.color, 0), 0.3, rgba(b.color, 0.5 * kq), 0.5, rgba('#ffffff', 0.95 * kq), 0.7, rgba(b.color, 0.5 * kq), 1, rgba(b.color, 0)]);
+  if (w > 0.01) { ctx.save(); ctx.scale(1, w); ctx.fillRect(0, -1, L, 2); ctx.restore(); }
   glow(ctx, 0, 0, w * 2.2, b.color, k);
   glow(ctx, L, 0, w * 1.6, b.color, k * 0.8);
 }
@@ -488,30 +511,35 @@ export function groundWave(b, x, dir, o = {}) {
     team: 'enemy', owner: b, x, y: floor - h / 2, vx: dir * (o.speed ?? 520), vy: 0, w: o.w ?? 34, h, life: o.life ?? 2.4, pierce: 99, collideWalls: true,
     color, color2: o.color2 ?? '#fff2c0', style: o.style ?? 'dust', light: { r: 90, color, i: 0.8 },
     onWall: (p) => { p.dead = true; },
-    render: drawGroundWave,
+    render: drawGroundWave, update: groundWaveUpdate,
     attack: { stats: b.stats, mv: o.mv ?? 0.9, kb: [320, -420], dir, element: o.element ?? null, type: o.type ?? 'phys' },
   });
 }
-function drawGroundWave(ctx, p, world) {
+/** 충격파 한 스텝: 투사체 이동 + 부스러기/불꽃을 시뮬레이션 속도(초당 30)로 뿌린다 (그리기에서 뿌리면 렌더 속도를 따라간다) */
+const WAVE_FX = { fire: 'fire', soul: 'soul', blood: 'blood', arcane: 'magic', acid: 'blood', dust: 'dust', ice: 'ice' };
+function groundWaveUpdate(dt, world) {
+  Object.getPrototypeOf(this).update.call(this, dt, world);
+  if (this.dead || !world?.fx) return;
+  this.fxT = (this.fxT ?? 0) - dt;
+  if (this.fxT > 0) return;
+  this.fxT += 1 / 30;
+  const d = Math.sign(this.vx) || 1;
+  world.fx.emit(WAVE_FX[this.style] || 'dust', this.cx - d * 10, this.bottom - 6, opt({ angle: -Math.PI / 2 - d * 0.5, spread: 0.5, speed: 160, color: this.style === 'acid' ? '#7cff5a' : undefined }));
+}
+function drawGroundWave(ctx, p) {
   const d = Math.sign(p.vx) || 1, h = p.h, w = p.w, t = p.t;
   ctx.scale(d, 1);
   ctx.globalCompositeOperation = 'lighter';
   const fl = 0.85 + 0.15 * Math.sin(t * 40);
   for (let i = 0; i < 3; i++) {
     const hh = h * (1.1 - i * 0.25) * fl, ww = w * (1.4 + i * 0.7);
-    const g = ctx.createLinearGradient(-ww, 0, w * 0.4, 0);
-    g.addColorStop(0, rgba(p.color, 0)); g.addColorStop(0.7, rgba(p.color, 0.45)); g.addColorStop(1, rgba(p.color2, 0.9 - i * 0.25));
-    ctx.fillStyle = g;
+    ctx.fillStyle = cLin(ctx, 'gw' + p.color + p.color2 + w + '|' + i, -ww, 0, w * 0.4, 0, [0, rgba(p.color, 0), 0.7, rgba(p.color, 0.45), 1, rgba(p.color2, 0.9 - i * 0.25)]);
     ctx.beginPath(); ctx.moveTo(-ww, h / 2);
     ctx.quadraticCurveTo(-ww * 0.2, h / 2 - hh * 1.1, w * 0.45, h / 2 - hh * 0.2 - 4);
     ctx.lineTo(w * 0.45, h / 2); ctx.closePath(); ctx.fill();
   }
   glow(ctx, 0, h * 0.3, h * 1.2, p.color, 0.6);
-  // 부스러기/불꽃
-  if (world && Math.random() < 0.5) {
-    const type = { fire: 'fire', soul: 'soul', blood: 'blood', arcane: 'magic', acid: 'blood', dust: 'dust', ice: 'ice' }[p.style] || 'dust';
-    world.fx.emit(type, p.cx - d * 10, p.bottom - 6, opt({ angle: -Math.PI / 2 - d * 0.5, spread: 0.5, speed: 160, color: p.style === 'acid' ? '#7cff5a' : undefined }));
-  }
+  // 부스러기/불꽃은 groundWaveUpdate 가 뿌린다
 }
 /**
  * 바닥 분출 기둥: delay 동안 경고 → life 동안 판정.
@@ -536,7 +564,7 @@ export function erupt(b, x, o = {}) {
       }
     },
   });
-  hb.update = heldHitboxUpdate;   // [hook:feel] 적 정지 중 분출 시계도 멈춤
+  hb.update = eruptUpdate;   // [hook:feel] 적 정지 중 분출 시계도 멈춤 (+ 부스러기/불꽃은 여기서)
   b.telegraphFor?.(hb.delay);   // [hook:feel] 분출 예고 동안 카운터
   b.world.add(hb);
   return hb;
@@ -546,23 +574,46 @@ function heldHitboxUpdate(dt, world) {   // [hook:feel]
   if (heldByFreeze(world, this.owner)) return;
   Hitbox.prototype.update.call(this, dt, world);
 }
+/** 분출 한 스텝: 주인 사망 시 소멸, 적 정지 중 멈춤, 경고 먼지(초당 18)·분출 불꽃(초당 36)을 시뮬레이션 속도로 뿌린다 */
+const ERUPT_FX = { soul: 'soul', arcane: 'magic', ice: 'ice' };
+function eruptUpdate(dt, world) {   // [hook:feel]
+  if (this.owner && this.owner.dying > 0) { this.dead = true; return; }
+  if (heldByFreeze(world, this.owner)) return;
+  Hitbox.prototype.update.call(this, dt, world);
+  if (this.dead || !world?.fx) return;
+  this.fxT = (this.fxT ?? 0) - dt;
+  if (this.fxT > 0) return;
+  const floor = this.y + this.h, cx = this.x + this.w / 2;
+  if (this.t < this.delay) { this.fxT += 1 / 18; world.fx.emit('dust', cx + rand(-this.w / 2, this.w / 2), floor - 4, { speed: 40, angle: -PI / 2 }); return; }
+  this.fxT += 1 / 36;
+  if (this.drawFn) return;   // 전용 그리기를 쓰는 분출은 불꽃을 직접 챙긴다
+  const k = clamp(this.life / this.maxLife, 0, 1), hh = this.h * clamp((1 - k) * 6, 0, 1), st = this.style;
+  world.fx.emit(ERUPT_FX[st] || 'fire', cx + rand(-this.w / 3, this.w / 3), floor - rand(0, hh), opt({ speed: 80, angle: -PI / 2, color: st === 'soul' || st === 'arcane' ? this.color : undefined }));
+}
 /** 보스가 직접 만드는 판정(장판 등)용 Hitbox: new Hitbox(o) 와 같지만 적 정지 중에는 멈춘다. o.owner = 보스 */
 export function bossHitbox(o) {   // [hook:feel]
   const hb = new Hitbox(o);
   hb.update = heldHitboxUpdate;
   return hb;
 }
-function drawEruption(ctx, h, world) {
+function drawEruption(ctx, h) {
   const floor = h.y + h.h, cx = h.x + h.w / 2;
-  if (h.owner && (h.owner.dying > 0)) { h.dead = true; return; }
+  if (h.owner && (h.owner.dying > 0)) return;   // 소멸은 eruptUpdate 가 한다
   if (h.t < h.delay) {
     // 경고: 바닥 균열 + 빛기둥 암시
     const k = h.t / h.delay, blink = 0.5 + 0.5 * Math.sin(h.t * (14 + k * 30));
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    const g = ctx.createLinearGradient(0, floor - h.h * 0.6 * k, 0, floor);
-    g.addColorStop(0, rgba(h.color, 0)); g.addColorStop(1, rgba(h.color, 0.25 + 0.3 * blink));
-    ctx.fillStyle = g; ctx.fillRect(h.x, floor - h.h * 0.6 * k, h.w, h.h * 0.6 * k);
+    const H = h.h * 0.6 * k;
+    if (H >= 1) {
+      // 단위 높이 그라디언트(색별 1개)를 늘려 칠하고 깜박임은 globalAlpha 로
+      ctx.save();
+      ctx.globalAlpha *= 0.25 + 0.3 * blink;
+      ctx.translate(h.x, floor - H); ctx.scale(h.w, H);
+      ctx.fillStyle = cLin(ctx, 'ew' + h.color, 0, 0, 0, 1, [0, rgba(h.color, 0), 1, rgba(h.color, 1)]);
+      ctx.fillRect(0, 0, 1, 1);
+      ctx.restore();
+    }
     ctx.strokeStyle = rgba(h.color, 0.9); ctx.lineWidth = 3;
     ctx.beginPath(); ctx.ellipse(cx, floor - 2, h.w * 0.6, 7, 0, 0, TAU); ctx.stroke();
     ctx.strokeStyle = rgba('#ffffff', 0.6 * blink); ctx.lineWidth = 2;
@@ -570,7 +621,6 @@ function drawEruption(ctx, h, world) {
     for (let i = 0; i < 5; i++) { const a = (i / 5) * PI - PI; ctx.moveTo(cx, floor - 2); ctx.lineTo(cx + Math.cos(a) * h.w * 0.7 * k, floor - 2 + Math.sin(a) * 6); }
     ctx.stroke();
     ctx.restore();
-    if (Math.random() < 0.3 && world) world.fx.emit('dust', cx + rand(-h.w / 2, h.w / 2), floor - 4, { speed: 40, angle: -PI / 2 });
     return;
   }
   const k = clamp(h.life / h.maxLife, 0, 1);
@@ -579,17 +629,20 @@ function drawEruption(ctx, h, world) {
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
   const hh = h.h * rise, x = cx, t = h.t;
-  const g = ctx.createLinearGradient(0, floor - hh, 0, floor);
-  g.addColorStop(0, rgba(h.color, 0)); g.addColorStop(0.3, rgba(h.color, 0.6 * k + 0.2)); g.addColorStop(1, rgba('#ffffff', 0.8 * k));
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.moveTo(x - h.w * 0.55, floor);
-  for (let i = 0; i <= 8; i++) { const u = i / 8; ctx.lineTo(x - h.w * 0.5 * (1 - u * 0.6) + Math.sin(t * 30 + i * 2) * 5, floor - hh * u); }
-  for (let i = 8; i >= 0; i--) { const u = i / 8; ctx.lineTo(x + h.w * 0.5 * (1 - u * 0.6) + Math.sin(t * 27 + i * 3) * 5, floor - hh * u); }
-  ctx.closePath(); ctx.fill();
+  if (hh >= 1) {
+    const kq = q8(k);
+    ctx.fillStyle = cLin(ctx, 'ef' + h.color + '|' + kq, 0, 0, 0, 1, [0, rgba(h.color, 0), 0.3, rgba(h.color, 0.6 * kq + 0.2), 1, rgba('#ffffff', 0.8 * kq)]);
+    ctx.beginPath();
+    ctx.moveTo(x - h.w * 0.55, floor);
+    for (let i = 0; i <= 8; i++) { const u = i / 8; ctx.lineTo(x - h.w * 0.5 * (1 - u * 0.6) + Math.sin(t * 30 + i * 2) * 5, floor - hh * u); }
+    for (let i = 8; i >= 0; i--) { const u = i / 8; ctx.lineTo(x + h.w * 0.5 * (1 - u * 0.6) + Math.sin(t * 27 + i * 3) * 5, floor - hh * u); }
+    ctx.closePath();
+    // 경로는 월드 좌표로 만들었고, 채우기 직전 변환으로 단위 높이 그라디언트를 기둥 높이에 맞춘다
+    ctx.save(); ctx.translate(0, floor - hh); ctx.scale(1, hh); ctx.fill(); ctx.restore();
+  }
   glow(ctx, x, floor - hh * 0.4, h.w * 1.6, h.color, k);
   ctx.restore();
-  if (world && Math.random() < 0.6) world.fx.emit(h.style === 'soul' ? 'soul' : h.style === 'arcane' ? 'magic' : h.style === 'ice' ? 'ice' : 'fire', x + rand(-h.w / 3, h.w / 3), floor - rand(0, hh), opt({ speed: 80, angle: -PI / 2, color: h.style === 'soul' || h.style === 'arcane' ? h.color : undefined }));
+  // 불꽃은 eruptUpdate 가 뿌린다
 }
 /**
  * 낙하물: 바닥에 예고 기둥 → delay 후 위에서 떨어짐. o.render 로 모양, o.onLand 로 착지 효과

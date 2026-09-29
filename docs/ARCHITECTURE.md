@@ -20,7 +20,7 @@
 - 바로 스테이지: `index.html?scene=stage&stage=s03&char=lia&room=r2&debug` (debug = 히트박스/FPS 표시)
 - 스모크: `node tools/smoke.mjs --url "index.html?scene=stage&stage=s01" --out /tmp/claude-0/shots_x --steps "right:1,attack:0.2,shot"` → 콘솔 오류 목록 + 스크린샷
   - `--steps` 토큰: `right|left|up|down|jump|attack|dash|sub|skill1|skill2|ult|menu|enter|swap[:초]` (그 밖의 이름은 KeyboardEvent code 그대로, 예 `KeyV:0.6`), `a+b:초`(동시), `wait:초`, `shot`, `eval=JS식`(쉼표 금지 — 토큰 구분자) · `--mobile` = 844×390 터치 기기
-- 맵 검증: `node tools/validate_maps.mjs [stageId] [--debug s14:r2]` (오류 0이어야 함; 2부 기믹 문자·도달성 포함)
+- 맵 검증: `node tools/validate_maps.mjs [stageId] [--debug s14:r2] [--stages 모듈] [--tight]` (오류 0이어야 함; 2부 기믹 문자·도달성 포함. `--tight` = 천장 아래 빠듯한 점프로만 닿는 출구·문·보스 트리거를 후보 경고로 보여 줌 — 어림 규칙이라 실제 궤적으로 확인할 것, 기본 검사에는 없음)
 - 결정적 시험 방법 (부하가 큰 기계에서도 같은 결과): 페이지에서 루프를 멈추고(`game._pageHidden = true`) `game.tick(1/60)` 을 직접 돌린다. `window.__game` = Game. 헤드리스 Chromium: `import { chromium } from 'playwright-core'`, `executablePath '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'`. 공용 도우미는 `tools/qa/lib/` (`step.mjs`, `perfprobe.mjs`, `suite.mjs` …).
 
 **디버그 URL 파라미터**

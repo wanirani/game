@@ -39,6 +39,7 @@ import { createGimmick } from './gimmicks.js';   // [hook:gimmick]
 import { CompanionSystem } from './companions.js';   // [hook:cmp]
 import { touchpad } from '../core/touchpad.js';   // [hook:plat]
 import * as HFX from '../render/hitfx.js';   // [hook:feel] 첫 타격 스프라이트 미리 굽기 (prewarmHitFx)
+import * as HL from '../render/hud_layout.js';   // 데미지 숫자·판정 문구가 HUD 윗줄 뒤에 숨지 않게 (R1-REQ-331, syncHudBand)
 
 // ── 손맛·각성 상수 (feel.md §4.9, §6.1). AW_GAIN(data/feel_hit.js)에 값이 없으면 이 기본값을 쓴다 ──
 const SLOWMO_BASE = 0.35;                      // 기본 슬로모션 배율 (보스 격파 등 옛 호출부)
@@ -56,6 +57,9 @@ export const STYLE_RANKS = [
 ];
 // 보스가 남기는 일시적인 개체 종류 (부활 시 정리 대상). 'hazard' = B계열 보스의 Zone(장판·광선 등)
 const BOSS_TRANSIENT = new Set(['projectile', 'hitbox', 'effect', 'hazard', 'zone']);
+const TOP_EDGE_R = { x: 0, y: -2000, w: 0, h: 2004 };
+/** HUD 비키기(syncHudBand)용 화면 위끝 띠 (논리 px; 재사용 객체) */
+const TOP_EDGE = (vw) => { TOP_EDGE_R.w = vw; return TOP_EDGE_R; };
 export function styleRank(n) { let r = STYLE_RANKS[0]; for (const s of STYLE_RANKS) if (n >= s.n) r = s; return r; }
 
 export class World {
@@ -480,12 +484,40 @@ export class World {
     this.bg.drawFront(ctx, cam, vw, vh, this.time);
     gm?.drawScreen?.(ctx, vw, vh);   // [hook:gimmick] 화면 색조·게이지 (world.hudHidden 이면 게이지는 기믹이 숨긴다)
     if (this.overlays.length || this.letterbox > 0) this.drawOverlays(ctx, vw, vh);   // [hook:feel] 레터박스·색보정·집중선·임팩트 프레임
+    this.syncHudBand(cam, vw, vh);
     ctx.save(); cam.apply(ctx); this.fx.draw(ctx, 'top'); ctx.restore();
     if (this.timeStop > 0) {
       ctx.save(); ctx.globalCompositeOperation = 'saturation'; ctx.fillStyle = 'rgba(0,0,0,0.9)'; ctx.fillRect(0, 0, vw, vh); ctx.restore();
       ctx.fillStyle = 'rgba(80,100,200,0.12)'; ctx.fillRect(0, 0, vw, vh);
     }
     ctx.imageSmoothingQuality = q0;
+  }
+  /**
+   * HUD 윗줄(초상·체력·하트·점수, 보일 때의 콤보 열과 위쪽 보스 바)을 월드 좌표로 fx 에 넘긴다: 데미지 숫자 기둥·판정 문구는
+   * 그 아래로 비켜 그린다 (띄운 적의 큰 치명타가 이름·체력 바 뒤에 숨던 문제, R1-REQ-331). HUD 가 숨으면 끈다.
+   */
+  syncHudBand(cam, vw, vh) {
+    const fx = this.fx;
+    if (typeof fx?.setHudBand !== 'function') return;
+    let L = null;
+    if (!this.hudHidden) { try { L = HL.hudLayout?.(this, vw, vh) ?? null; } catch { L = null; } }
+    if (!L) { fx.setHudBand(null, 0); return; }
+    const z = cam.zoom || 1, ox = cam.x + (cam.shakeX || 0), oy = cam.y + (cam.shakeY || 0);
+    const B = (this._hudBand ??= []);
+    let n = 0;
+    const put = (r) => {
+      if (!r || !(r.w > 0) || !(r.h > 0)) return;
+      const d = (B[n++] ??= { x0: 0, x1: 0, y0: 0, y1: 0 });
+      d.x0 = ox + r.x / z; d.x1 = ox + (r.x + r.w) / z; d.y0 = oy + r.y / z; d.y1 = oy + (r.y + r.h) / z;
+    };
+    put(L.portrait); put(L.vitals); put(L.hearts); put(L.skills); put(L.ult); put(L.awGauge); put(L.score);
+    if (this.awakenState?.ready) put(L.ready);
+    if (this.companions?.hudRects?.length) put(L.companions);
+    if ((this.combo?.n ?? 0) >= 2 || (this.style?.rank ?? 0) > 0) put(L.combo);
+    if (L.bossShown && L.bossSlot === 'top') put(L.bossBar);
+    if (Array.isArray(L.pad)) for (const r of L.pad) if (r && r.y + r.h < vh * 0.35) put(r);   // 터치: 위쪽 버튼 (일시정지·전체 화면)
+    put(TOP_EDGE(vw));   // 화면 위끝: 높이 띄운 적의 숫자가 화면 밖으로 나가지 않게
+    fx.setHudBand(B, n, ox + vw / z / 2);
   }
   drawDebris(ctx, d) {
     ctx.save(); ctx.translate(d.x + d.w / 2, d.y + d.h / 2); ctx.rotate(d.rot);
@@ -494,9 +526,16 @@ export class World {
     ctx.restore();
   }
   drawPlatform(ctx, p, crumble = false) {
-    const g = ctx.createLinearGradient(0, p.y, 0, p.y + p.h);
-    g.addColorStop(0, crumble ? '#7a6a58' : '#8a7a6a'); g.addColorStop(1, crumble ? '#3a2e24' : '#3a3440');
-    ctx.fillStyle = g; ctx.fillRect(p.x, p.y, p.w, p.h);
+    // 세로 그라데이션은 (종류, 높이)마다 원점 기준 하나를 만들어 두고 옮겨 칠한다 (매 프레임 새로 만들지 않게, R1-REQ-341E)
+    const PG = (World._platGrad ??= new Map()), key = (crumble ? 'c' : 'm') + p.h;
+    let g = PG.get(key);
+    if (!g) {
+      g = ctx.createLinearGradient(0, 0, 0, p.h);
+      g.addColorStop(0, crumble ? '#7a6a58' : '#8a7a6a'); g.addColorStop(1, crumble ? '#3a2e24' : '#3a3440');
+      if (PG.size > 16) PG.clear();
+      PG.set(key, g);
+    }
+    ctx.save(); ctx.translate(p.x, p.y); ctx.fillStyle = g; ctx.fillRect(0, 0, p.w, p.h); ctx.restore();
     ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(p.x, p.y, p.w, 2);
     ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.strokeRect(p.x + 0.5, p.y + 0.5, p.w - 1, p.h - 1);
     if (crumble) { ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.beginPath(); ctx.moveTo(p.x + 14, p.y); ctx.lineTo(p.x + 20, p.y + p.h); ctx.moveTo(p.x + 34, p.y); ctx.lineTo(p.x + 28, p.y + p.h); ctx.stroke(); }

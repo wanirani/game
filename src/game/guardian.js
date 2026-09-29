@@ -27,7 +27,7 @@
 //  간단한 절차 그림(자리 표시)을 그린다. FX 도우미 fx*(ctx, e, world) 도 true 를 돌려주면 대체 그림을 생략한다.
 //  렌더러가 읽는 필드: g.id g.def g.anim g.animT g.facing g.alpha g.t g.hopY() g.d.awakened g.act?.name g.target
 import { Entity } from './entity.js';
-import { Projectile } from './projectiles.js';
+import { Projectile, PROJ_RENDER } from './projectiles.js';
 import { hitTarget } from './combat.js';
 import { guardianDerived } from './companion_state.js';
 import { GUARDIAN_AI_B } from './guardian_ai_b.js';
@@ -296,6 +296,7 @@ export class Guardian extends Entity {
     try { this.ai?.init?.(this); } catch (e) { console.warn('[guardian] init', id, e); }
     this.refresh();
     prewarmGlow(def);   // 자리 표시 그림의 빛 스프라이트를 미리 (전투 중 새 캔버스를 만들지 않게 — MASTER_PLAN §5.2)
+    try { GR.prewarmFx?.(id); } catch { /* 연출 스프라이트는 첫 사용 때 */ }   // 운석 · 뼛조각 연출 (R1-REQ-237)
   }
   get player() { return this.system?.world?.player ?? null; }
   get state() { return this.system?.world?.state ?? null; }
@@ -888,7 +889,7 @@ const IMP = {
         const x = p.cx + f * (40 + ((i * 7) % n) / n * wid + rand(-20, 20));
         const m = new GProj({
           x, y: openY(world, x, top), vx: f * 90, vy: 380, w: 22, h: 22, behavior: 'fall', gravity: 0.35, life: 2.4, pierce: 1,
-          render: 'fireball', color: '#ff7a2a', scale: 1.4, owner: g, trail: 'fire', trailRate: 0.04 / qOf(world),
+          render: drawMeteor, color: '#ff7a2a', scale: 1.4, owner: g, trail: 'fire', trailRate: 0.04 / qOf(world),   // 운석 줄기 그림 (R1-REQ-237)
           light: { r: 80, color: '#ff7a2a', i: 0.6 },
           attack: g.atk({ mv: (sk.mv ?? 0.9) * 0.5, type: 'mag', element: 'fire' }, { skill: true, mul, hitstop: 0, proj: true }),
         });
@@ -1005,7 +1006,7 @@ const WHELP = {
     for (let i = 0; i < n; i++) {
       const pr = new GProj({
         x: p.cx, y: p.cy, vx: 0, vy: 0, w: 18, h: 18, behavior: 'orbit', owner: p, orbitR: sk.r ?? 90, orbitSpeed: 5, orbitA: (i / n) * TAU,
-        life: dur, pierce: sk.pierce ?? 99, collideWalls: false, render: 'bone', spin: 14, color: '#e8e0d0', fadeOut: true,
+        life: dur, pierce: sk.pierce ?? 99, collideWalls: false, render: drawBoneShard, spin: 14, color: '#e8e0d0', fadeOut: true,   // 뼛조각 그림 (R1-REQ-237)
         light: i % 2 ? null : { r: 50, color: '#b060ff', i: 0.4 },
         attack: g.atk({ mv: sk.mv ?? 0.5, element: sk.element ?? 'dark', rehit: sk.rehit ?? 0.3 }, { skill: true, mul, hitstop: 0, proj: true }),
       });
@@ -1321,6 +1322,9 @@ function drawCone(ctx, h, world) {
   ctx.quadraticCurveTo(x0 + f * len * 0.5, h.y + h.h + 6 + Math.cos(t * 27) * 4, x0, h.cy + 4);
   ctx.fill();
 }
+/** 핌 운석 · 크론 뼛조각: 수호신 연출 도우미(render/guardians.js)가 그리면 그것, 아니면 기본 투사체 그림 (원점 = 투사체 중심) */
+function drawMeteor(ctx, pr, w) { if (!drew(GR.fxMeteor, ctx, pr, w)) PROJ_RENDER.fireball(ctx, pr, w); }
+function drawBoneShard(ctx, pr, w) { if (!drew(GR.fxBoneShard, ctx, pr, w)) PROJ_RENDER.bone(ctx, pr, w); }
 function drawPhantomWolf(ctx, pr) {
   const f = Math.sign(pr.vx) || 1, a = Math.min(1, pr.life / 0.15);
   ctx.scale(f, 1);

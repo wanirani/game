@@ -484,6 +484,15 @@ if (typeof window !== 'undefined' && typeof setTimeout === 'function') {
   setTimeout(() => { try { hook(); } catch (e) { console.warn('[awakenB] hook', e); } }, 0);
   setTimeout(() => idle(() => { try { ensurePool(); prepareAwakenB(); } catch (e) { console.warn('[awakenB] pool', e); } }, 2500), 1600);
 }
+/**
+ * awaken.js 가 이 모듈을 늦게(동적 import, R1-REQ-229) 받은 직후 부른다 (R1-REQ-339E): 캔버스 풀은 지금 — 받는 중은
+ * 스테이지 준비 단계라 싸움 도중 캔버스 생성 0 (feel §8) — 만들고, 이번 스테이지의 stageEntered 를 놓쳤으니 미리 굽기는 곧 한가할 때.
+ */
+export function prepareAwakenSoon() {
+  try { hook(); } catch (e) { console.warn('[awakenB] hook', e); }
+  try { ensurePool(); } catch (e) { console.warn('[awakenB] pool', e); }
+  schedulePrep(300);
+}
 
 // ═══════════════════════════ 영웅 잔상 비트맵 (drawHero 1회) ═══════════════════════════
 /** 영웅·직업별 잔상 비트맵 목록 (브란: 망령 기사 경례·돌격 / 리아: 순간이동 베기 둘 + 그림자 분신) */

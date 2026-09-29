@@ -15,6 +15,8 @@ const CHUNK = 16; // 타일 단위 청크 크기
 const DEPTH_R = 3; // 깊이 음영: 빈칸까지의 거리를 찾는 반경(타일)
 const MAX_CHUNKS = 8; // 구워 둔 청크 캔버스 상한 (청크 하나 768×768 ≈ 2.4MB). 화면 밖의 오래된 청크부터 버리고 캔버스는 재사용
 const PHASE_CH = new Set(['a', 'b', 'z', 'Z']); // 위상 타일 문자 (tilemap.js PHASE 와 같음)
+const DARK_CACHE = new Map();   // 톤다운 소품 사본 (모든 TileRenderer 공용: 방을 오갈 때 다시 굽지 않는다)
+const DARK_CAP = 40;            // 상한 (소품 사본 ≤ 192×288 → 최악 ≈ 9 MB, 보통 2 MB 안팎)
 // 원경이 트인 하늘/달인 테마: 절차적 창문('W')이 허공에 떠 보이므로 그리지 않는다
 export const OPEN_SKY_THEMES = new Set(['village', 'town', 'graveyard', 'gate', 'spire', 'throne', 'abyss', 'sky', 'void', 'blight']);
 
@@ -113,8 +115,36 @@ export class TileRenderer {
     this.secretMask();
     this.cls = this.snapshot();
     this.props = this.placeProps();
-    this.darkCache = new Map();
+    this.darkCache = DARK_CACHE;   // 톤다운 소품 사본 (방이 바뀌어도 같은 소품은 다시 굽지 않는다: 모듈 공용)
     this.liquidKind = null; this.lastT = 0; // 마지막 drawLiquid 의 액체 종류·시간 (draw 에서 깊은 물 뒷면을 칠할 때 씀)
+    this.chunkTiles = CHUNK;       // 청크당 타일 수 (painted kit.ledgesOver 가 청크를 굽지 않고 읽는다)
+    this.prewarm();
+  }
+  /**
+   * 방을 불러올 때 한 번: 이 방이 쓸 캔버스를 미리 만든다 → 스테이지 도중 새 캔버스 0 (MASTER_PLAN §5.2, feel §8, R1-REQ-340R).
+   * 청크 캔버스는 0×0 으로 만들어 풀에 넣고 쓸 때 크기를 준다 (쓰지 않는 청크는 메모리 0 — 살아 있는 캔버스 예산).
+   * 작은 스프라이트(윗면 띠·깊이 음영 알파맵·창문·기둥·폭포 광택 캔버스)와 배경 소품의 톤다운 사본은 지금 굽는다.
+   * 소품 이미지가 아직 안 왔으면 drawDecor 가 이미지가 오는 대로 전부 굽는다 (보이는 순간이 아니라 도착하는 순간).
+   */
+  prewarm() {
+    const m = this.map;
+    if (!m || typeof document === 'undefined') return;
+    this.poolCap = Math.min(Math.ceil(m.w / CHUNK) * Math.ceil(m.h / CHUNK), MAX_CHUNKS + 2);
+    while (this.pool.length < this.poolCap) { const c = document.createElement('canvas'); c.width = 0; c.height = 0; this.pool.push(c); }
+    this.topStrip();
+    if (!this.depthCtx) { const c = document.createElement('canvas'); c.width = CHUNK + 2; c.height = CHUNK + 2; this.depthCtx = c.getContext('2d'); }
+    const decor = m.decor || [];
+    if (!OPEN_SKY_THEMES.has(this.stage.theme) && decor.some((d) => d.ch === 'W')) this.windowSprites();
+    if (decor.some((d) => d.ch === '|')) this.pillarSprite();
+    if (!this.sheen) { this.sheen = document.createElement('canvas'); this.sheen.width = 0; this.sheen.height = 0; this.sheenCol = null; }
+    this.warmProps();
+  }
+  /** 이 방 소품의 톤다운 사본을 모두 굽는다 (이미지가 아직 없으면 다음 호출에). 다 구웠으면(또는 없는 파일) true */
+  warmProps() {
+    if (this.propsWarm) return true;
+    let ok = true;
+    for (const p of this.props) if (!this.darkProp(p.d.id, p.d.w, p.d.h, p.d.dim) && !assets.failed?.('props/' + p.d.id)) ok = false;
+    return (this.propsWarm = ok);
   }
   /**
    * 위상 타일 목록: GIMMICK-ENGINE 의 tilemap 이 채우는 map.phaseTiles [{idx,tx,ty,key}] (없으면 a/b/z/Z 마커).
@@ -201,12 +231,14 @@ export class TileRenderer {
   }
   /** 배경용으로 채도를 낮추고 어둡게 톤다운한 소품 이미지 (캐시) — 적·파괴 가능한 오브젝트와 구분되게 */
   darkProp(id, w, h, dim = 0.5) {
-    const key = id + w + 'x' + h + ':' + dim;
+    const key = id + w + 'x' + h + ':' + dim + ':' + this.style.edge;
     let c = this.darkCache.get(key);
     if (c) return c;
     const img = assets.get('props/' + id);
     if (!img) return null;
-    c = document.createElement('canvas');
+    // 상한이면 가장 오래된 사본의 캔버스를 다시 쓴다 (그리는 쪽은 매번 이 함수로 찾으므로 밀려난 사본을 붙잡지 않는다)
+    if (this.darkCache.size >= DARK_CAP) { const k0 = this.darkCache.keys().next().value; c = this.darkCache.get(k0); this.darkCache.delete(k0); }
+    c ??= document.createElement('canvas');
     c.width = w; c.height = h;
     const g = c.getContext('2d');
     g.drawImage(img, 0, 0, w, h);
@@ -296,13 +328,13 @@ export class TileRenderer {
     }
     return mask;
   }
-  /** 청크를 버리고 캔버스는 풀에 돌려 둔다 (최대 2장) */
+  /** 청크를 버리고 캔버스는 풀에 돌려 둔다 (방을 불러올 때 만든 수만큼). 2장 넘게 쌓이는 것은 비워(0×0) 메모리를 돌려준다 */
   drop(key) {
     const c = this.chunks.get(key);
     if (!c) return;
     this.chunks.delete(key);
-    if (this.pool.length < 2) this.pool.push(c.canvas);
-    else c.canvas.width = c.canvas.height = 0; // 풀에 못 넣은 캔버스는 바로 비워 GPU/비트맵 메모리를 돌려준다 (GC 를 기다리지 않음)
+    if (this.pool.length >= 2) c.canvas.width = c.canvas.height = 0; // 바로 비워 GPU/비트맵 메모리를 돌려준다 (GC 를 기다리지 않음)
+    if (this.pool.length < Math.max(2, this.poolCap ?? 2)) this.pool.push(c.canvas); // 캔버스 자체는 다시 쓴다 (도중에 새로 만들지 않게)
   }
   /**
    * (tx,ty) 가 드러나지 않은 비밀 공간 속이라 벽으로 그려지는 칸인가 (가짜 벽 + 그 안의 액체·가시·발판).
@@ -329,6 +361,7 @@ export class TileRenderer {
     let canvas = c ? c.canvas : this.pool.pop();
     let g;
     if (canvas) {
+      if (canvas.width !== S || canvas.height !== S) { canvas.width = S; canvas.height = S; } // 풀의 0×0 캔버스
       g = canvas.getContext('2d');
       g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
       g.clearRect(0, 0, S, S);
@@ -637,11 +670,20 @@ export class TileRenderer {
     const S = CHUNK * TILE;
     this.frame++;
     this.secretMask(); // 비밀 통로가 드러났으면 해당 청크를 먼저 버린다
-    const x0 = Math.floor(cam.x / S), x1 = Math.floor((cam.x + cam.vw) / S);
-    const y0 = Math.floor(cam.y / S), y1 = Math.floor((cam.y + cam.vh) / S);
+    // 청크마다 보이는 부분만 복사한다: 필살기 줌·회전 중 768² 청크 전체를 변환해 그리면 소프트웨어 래스터(과 저사양 GPU)가
+    // 화면 밖 텍셀까지 거르느라 몇 배 느려진다 (R1-REQ-330R). 가장자리는 화면 밖(여유 8px + 흔들림·회전)이라 이음매가 보이지 않는다
+    const v = this.viewRect(cam);
+    const x0 = Math.floor(v.l / S), x1 = Math.floor(v.r / S);
+    const y0 = Math.floor(v.t / S), y1 = Math.floor(v.b / S);
     for (let cy = Math.max(0, y0); cy <= Math.min(Math.floor((m.h - 1) / CHUNK), y1); cy++) {
       for (let cx = Math.max(0, x0); cx <= Math.min(Math.floor((m.w - 1) / CHUNK), x1); cx++) {
-        ctx.drawImage(this.chunk(cx, cy), cx * S, cy * S);
+        const ox = cx * S, oy = cy * S;
+        const sx = Math.max(0, Math.floor(v.l - ox)), sy = Math.max(0, Math.floor(v.t - oy));
+        const sw = Math.min(S, Math.ceil(v.r - ox)) - sx, sh = Math.min(S, Math.ceil(v.b - oy)) - sy;
+        if (sw <= 0 || sh <= 0) continue;
+        const c = this.chunk(cx, cy);
+        if (sw === S && sh === S) ctx.drawImage(c, ox, oy);
+        else ctx.drawImage(c, sx, sy, sw, sh, ox + sx, oy + sy, sw, sh);
       }
     }
     if (this.chunks.size > MAX_CHUNKS) this.evict();
@@ -655,6 +697,16 @@ export class TileRenderer {
     ctx.fillStyle = '#050206';
     if (!m.openLeft) ctx.fillRect(-400, -400, 400, m.pxH + 800);
     if (!m.openRight) ctx.fillRect(m.pxW, -400, 400, m.pxH + 800);
+  }
+  /** 이번 프레임에 보이는 월드 영역 {l,t,r,b}: 카메라 흔들림 오프셋과 화면 회전(회전한 화면을 덮는 사각형) + 여유 8px */
+  viewRect(cam) {
+    const zx = cam.x + (cam.shakeX || 0), zy = cam.y + (cam.shakeY || 0), vw = cam.vw, vh = cam.vh;
+    let ex = 8, ey = 8;
+    const rot = cam.rot || 0;
+    if (rot) { const c = Math.abs(Math.cos(rot)), s = Math.abs(Math.sin(rot)); ex += (vw * c + vh * s - vw) / 2; ey += (vw * s + vh * c - vh) / 2; }
+    const r = this._vr ??= { l: 0, t: 0, r: 0, b: 0 };
+    r.l = zx - ex; r.t = zy - ey; r.r = zx + vw + ex; r.b = zy + vh + ey;
+    return r;
   }
   /**
    * 위상 타일(거울 a/b · 심장 박동 z/Z) 중 지금 벽인 것만 그린다: 주 텍스처(청크와 같은 월드 정렬·배율) + 바탕색 + 윗면 띠 + 테두리.
@@ -905,6 +957,7 @@ export class TileRenderer {
   }
   /** 배경 장식 문자 ('W' 창문, '|' 기둥) + 테마 소품 */
   drawDecor(ctx, cam, t) {
+    if (!this.propsWarm) this.warmProps();   // 소품 이미지가 도착하는 대로 톤다운 사본을 모두 굽는다 (보이는 순간이 아니라)
     const openSky = OPEN_SKY_THEMES.has(this.stage.theme);
     for (const d of this.map.decor) {
       const x = d.tx * TILE, y = d.ty * TILE;

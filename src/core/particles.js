@@ -13,6 +13,8 @@
 // fx.dmg(target, value, styleKey, {x, y, color, style})        DNF 숫자 기둥 · 3타 이상 '합계' · 품질별 살아 있는 숫자 상한
 // fx.callout(x, y, text, {color, size, life, vy, outline, skew}) 캐시 스프라이트 문구
 // fx.addDecal(d, cap) / fx.clearDecals()                       자국 (hitfx.stampDecal 이 자리를 잡는다; 방 로딩 때 비움)
+// fx.setHudBand(rects, n, cx)                                  HUD 윗줄 월드 사각형 (world.render 가 매 프레임): 숫자·문구를 그 아래로
+//   숫자 기둥은 살아 있는 이웃 기둥과 숫자 폭만큼 비켜 서고, 판정 문구는 그 대상 기둥 위끝 위 차선에 선다 (R1-REQ-331/358)
 // update(dt, map) 는 그대로 (히트스톱 중에는 world 가 0.3배 dt 로 부른다)
 import { rand, TAU, clamp } from './math.js';
 import { TILE } from './game.js';
@@ -48,7 +50,20 @@ const PRESETS = {
 export const PARTICLE_PRESETS = Object.keys(PRESETS);
 
 const COL_DEF = { gap: 0.5, step: 16, height: 8, totalAfter: 3, totalDelay: 0.35 };
-const COL_NUDGE = [0, 26, -26, 52, -52];   // 겹친 숫자 기둥 비키기 (px, 22px 안에서 0.5초 안에 시작한 기둥이 있으면)
+// 숫자 기둥 가로 비키기 (R1-REQ-331): 새 기둥은 살아 있는 이웃 기둥과 '숫자 폭'만큼 떨어져 선다 (필살기로 80px 간격의 적 무리를
+// 한꺼번에 치면 '434' '98' '44' 가 '4349844' 로 붙어 보이던 문제). 폭은 지금 숫자와 5글자 숫자 중 넓은 쪽을 예약한다 (마지막 큰 타격).
+const COL_LIVE = 1.3;      // 마지막 타격 뒤 이만큼(초)은 자리를 차지한 기둥으로 본다 (숫자 hold + 사라짐 + 합계)
+const COL_GAP = 12;        // 이웃 기둥 사이 최소 여백 (px)
+const COL_V = 120;         // 이보다 위아래로 떨어진 기둥은 겹치지 않는 것으로 본다 (px)
+const COL_RESERVE = 5;     // 기둥 폭 예약 (글자 수)
+const COL_STEP_X = 10;     // 빈자리 찾기 간격 (px)
+/** 그리기용 결정적 잡음 0..1 (mulberry32 한 번): 그리기 경로에서 Math.random 을 쓰지 않는다 (R1-REQ-333) */
+function hash01(n) {
+  let t = (n + 0x6d2b79f5) | 0;
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
 const qKey = (q) => (q >= 0.95 ? 'high' : q >= 0.7 ? 'medium' : 'low');
 const DMG_CAP = { high: 24, medium: 16, low: 10 };
 
@@ -61,8 +76,41 @@ export class Particles {
     this.clock = 0;       // 파티클 시계 (데미지 숫자 기둥 · 합계 타이밍)
     this.dmgLive = 0;     // 살아 있는 데미지 숫자 수
     this._cols = [];      // 합계를 기다리는 숫자 기둥
+    this._live = [];      // 자리를 차지한 숫자 기둥 (가로 비키기·판정 문구 차선)
+    this._calls = [];     // 살아 있는 판정 문구 (서로 겹치지 않게 쌓기)
+    this._seq = 0;        // 숫자 떨림 잡음 씨앗
+    // HUD 윗줄(초상·체력·점수·콤보·위쪽 보스 바)의 월드 좌표 사각형 — world.render 가 매 프레임 setHudBand 로 준다.
+    // 숫자 기둥·판정 문구는 이 아래로 내려 그린다 (크게 뜬 치명타가 이름·체력 바 뒤에 숨지 않게, R1-REQ-331)
+    this.band = { n: 0, r: [], stamp: 0 };
   }
-  clear() { this.list.length = 0; this.decals.length = 0; this._cols.length = 0; this.dmgLive = 0; if (this._colStarts) this._colStarts.length = 0; }
+  clear() { this.list.length = 0; this.decals.length = 0; this._cols.length = 0; this.dmgLive = 0; this._live.length = 0; this._calls.length = 0; }
+  /**
+   * HUD 윗줄 사각형을 월드 좌표로 넘긴다: rects = [{x0, x1, y0, y1}] (재사용 배열이어도 된다 — 값을 복사한다), n = 개수, cx = 화면 가운데 x.
+   * n 0 = 끔 (HUD 숨김·연출). 그리기 층 'top' 을 그리기 직전에 부른다.
+   */
+  setHudBand(rects, n = rects?.length ?? 0, cx = null) {
+    const B = this.band;
+    B.stamp++;
+    B.n = 0;
+    B.cx = cx;   // 화면 가운데 x (차선이 막힌 문구를 기둥의 어느 옆에 둘지)
+    for (let i = 0; i < n; i++) {
+      const s = rects[i];
+      if (!s || !(s.x1 > s.x0) || !(s.y1 > s.y0)) continue;
+      const d = (B.r[B.n] ??= { x0: 0, x1: 0, y0: 0, y1: 0 });
+      d.x0 = s.x0; d.x1 = s.x1; d.y0 = s.y0; d.y1 = s.y1;
+      B.n++;
+    }
+  }
+  /** (x0..x1) 가로 범위가 HUD 윗줄 사각형과 겹치고 위끝 top 이 그 안(또는 위)에 있으면, 사각형 아래로 내려야 할 거리 (0 = 그대로) */
+  bandPush(x0, x1, top) {
+    const B = this.band;
+    let push = 0;
+    for (let i = 0; i < B.n; i++) {
+      const r = B.r[i];
+      if (x1 > r.x0 && x0 < r.x1 && top < r.y1 + 3) push = Math.max(push, r.y1 + 3 - top);
+    }
+    return push;
+  }
   /** 자국만 비운다 (world.loadRoom) */
   clearDecals() { this.decals.length = 0; }
 
@@ -141,55 +189,102 @@ export class Particles {
     const st = o.style ?? HFX.dmgStyle?.(key) ?? {};
     const C = FH.DMG_STYLE?.column ?? COL_DEF;
     const x = o.x ?? target?.cx ?? 0, y = o.y ?? target?.y ?? 0;
+    const color = o.color ?? null;
+    const lay = this.layoutDmg(value, key, st, color);
     let px = x, py = y, col = null;
     if (target && typeof target === 'object' && key !== 'hurt' && key !== 'heal' && key !== 'total') {
       const now = this.clock;
       col = target._dmgCol;
-      if (!col || col.done || now - col.t > (C.gap ?? 0.5)) col = target._dmgCol = { n: 0, t: now, t0: now, total: 0, hits: 0, x: this.colX(x, y, now), y, done: false, queued: false };
-      else col.n = (col.n + 1) % (C.height ?? 8);
+      const w = lay ? lay.L.w : 12 * String(Math.round(Number(value) || 0)).length;
+      if (!col || col.done || now - col.t > (C.gap ?? 0.5)) {
+        const wr = Math.max(w, lay?.str?.length ? (w / lay.str.length) * COL_RESERVE : w);
+        col = target._dmgCol = { n: 0, hi: 0, t: now, t0: now, total: 0, hits: 0, x: x, y, w: wr, gh: 0, done: false, queued: false, tp: null };
+        col.x = this.colX(x, y, now, wr, col);
+      } else col.n = (col.n + 1) % (C.height ?? 8);
+      col.hi = Math.max(col.hi ?? 0, col.n);
       col.t = now; col.total += Number(value) || 0; col.hits++;
+      if (w > (col.w ?? 0)) col.w = w;
       px = col.x; py = col.y - col.n * (C.step ?? 16);
       if (col.hits >= (C.totalAfter ?? 3) && !col.queued) { col.queued = true; this._cols.push(col); }
     }
     if (key !== 'hurt' && key !== 'total' && this.dmgLive >= this.dmgCap() && this.recountDmg() >= this.dmgCap()) return null;
-    const p = this.spawnDmg(px, py, value, key, st, o.color ?? null);
-    if (p && col) p.col = col;   // 기둥 숫자는 기둥과 함께 떠오른다 (간격 16px 유지)
+    const p = this.spawnDmg(px, py, value, key, st, color, lay);
+    if (p && col) {   // 기둥 숫자는 기둥과 함께 떠오른다 (간격 16px 유지)
+      p.col = col; col.gh = Math.max(col.gh ?? 0, (p.A.h / p.A.k));
+      if (p.tagAbove && p.A.tag) col.tagH = Math.max(col.tagH ?? 0, (p.A.tag[3] / p.A.k) * 0.72);   // 'CRITICAL' 같은 윗 꼬리표
+    }
     return p;
   }
   /**
-   * 새 숫자 기둥의 x: 0.5초 안에 22px 이내에서 시작한 다른 기둥이 있으면 ±26px(다음은 ±52px) 비켜 선다
-   * (한 번 휘둘러 겹쳐 선 두 적을 맞히면 '43' '42' 가 '4342' 로 붙어 보이지 않게)
+   * 새 숫자 기둥의 x (R1-REQ-331): 살아 있는 다른 기둥과 (두 기둥 폭의 반 + 8px) 이상 떨어진, 대상에 가장 가까운 자리.
+   * 위아래로 120px 넘게 떨어진 기둥은 비키지 않는다. 한 기둥 폭 + 40px 안에 빈자리가 없으면 겹침이 가장 적은 자리.
+   * (예전: 22px 안에서 시작한 기둥만 ±26/±52px 비켰다 — 80px 떨어진 적들의 긴 숫자는 그대로 붙어 보였다)
    */
-  colX(x, y, now) {
-    const S = (this._colStarts ??= []);
-    while (S.length && now - S[0][2] > 0.5) S.shift();
-    let nx = x;
-    for (const off of COL_NUDGE) {
-      const cx = x + off;
-      if (!S.some((s) => Math.abs(s[0] - cx) < 22 && Math.abs(s[1] - y) < 48)) { nx = cx; break; }
+  colX(x, y, now, w = 40, self = null) {
+    const S = this._live;
+    let k = 0;
+    for (let i = 0; i < S.length; i++) { const c = S[i]; if (now - c.t <= COL_LIVE && c !== self) S[k++] = c; }
+    S.length = k;
+    const nTry = 1 + 2 * Math.floor((w + 40) / COL_STEP_X);
+    let best = x, bestCost = Infinity;
+    for (let i = 0; i < nTry; i++) {
+      const cx = x + (i & 1 ? 1 : -1) * Math.ceil(i / 2) * COL_STEP_X;   // 0, +10, -10, +20, -20 …
+      let cost = 0;
+      for (const c of S) {
+        if (Math.abs(c.y - y) > COL_V) continue;
+        const need = (c.w + w) / 2 + COL_GAP, gap = Math.abs(c.x - cx);
+        if (gap < need) cost += need - gap;
+      }
+      if (cost === 0) { best = cx; break; }
+      if (cost < bestCost - 0.5) { bestCost = cost; best = cx; }
     }
-    S.push([nx, y, now]);
-    if (S.length > 32) S.shift();
-    return nx;
+    if (self) { S.push(self); if (S.length > 48) S.shift(); }
+    return best;
   }
-  /** 숫자 기둥이 지금까지 떠오른 높이 (첫 타격부터 0.6초에 걸쳐 rise px) */
-  colRise(col, rise) { const u = Math.min(1, Math.max(0, (this.clock - col.t0) / 0.6)); return rise * (1 - (1 - u) * (1 - u) * (1 - u)); }
-  spawnDmg(x, y, value, key, st, color) {
+  /** 기둥의 지금 위끝 (월드 y, HUD 비키기 전): 가장 높은 숫자와 '합계' 중 위쪽 */
+  colTop(c) {
+    const step = FH.DMG_STYLE?.column?.step ?? COL_DEF.step;
+    const gh = c.gh || 24;
+    let top = c.y - this.colRise(c, 40) - (c.hi ?? c.n) * step - gh / 2 - (c.tagH ?? 0);
+    const T = c.tp;
+    if (T && T.life > 0) top = Math.min(top, T.y - this.riseOf(T) - (T.A ? T.A.h / T.A.k : gh) / 2);
+    return top;
+  }
+  /** 기둥 전체를 HUD 윗줄 아래로 내리는 거리 (그리기 프레임마다 한 번 계산) */
+  colShift(c) {
+    const B = this.band;
+    if (!B.n) return 0;
+    if (c._shS === B.stamp) return c._sh;
+    const hw = (c.w || 40) / 2;
+    c._shS = B.stamp;
+    c._sh = this.bandPush(c.x - hw, c.x + hw, this.colTop(c));
+    return c._sh;
+  }
+  /** 기둥에 붙지 않은 숫자의 떠오름 (px) */
+  riseOf(p) { const age = p.max - p.life, u = Math.min(1, age / Math.max(0.2, p.max)); return p.rise * (1 - (1 - u) * (1 - u) * (1 - u)); }
+  /** 숫자 문자열·아틀라스·배치 → {A, str, L} | null (아틀라스 없음) */
+  layoutDmg(value, key, st, color) {
     const A = HFX.digitAtlas?.(key, color && color !== st.color ? color : null);
     let str = HFX.fmtDmg ? HFX.fmtDmg(value) : String(Math.round(value));
     if (key === 'crit') str += '!';
     if (st.prefix === '+') str = '+' + str;
+    if (!A) return { A: null, str, L: null };
+    return { A, str, L: HFX.dmgLayout(A, str) };
+  }
+  /** 숫자 기둥이 지금까지 떠오른 높이 (첫 타격부터 0.6초에 걸쳐 rise px) */
+  colRise(col, rise) { const u = Math.min(1, Math.max(0, (this.clock - col.t0) / 0.6)); return rise * (1 - (1 - u) * (1 - u) * (1 - u)); }
+  spawnDmg(x, y, value, key, st, color, lay = null) {
+    const { A, str, L } = lay ?? this.layoutDmg(value, key, st, color);
     if (!A) {
       this.text(x, y, str, { color: color ?? st.color ?? '#fff', size: st.size ?? 20, crit: key === 'crit', outline: st.outline ?? '#200008', vy: st.fall ? 60 : -90 });
       return null;
     }
-    const L = HFX.dmgLayout(A, str);
     const hold = st.hold ?? 0.6, life = hold + 0.28;
     const p = {
       shape: 'dmg', x, y, vx: 0, vy: 0, grav: 0, drag: 1, life, max: life, layer: 'top', add: false,
       A, q: L.q, w: L.w, key, pop: st.pop ?? 1.35, popT: key === 'crit' || key === 'total' ? 0.1 : 0.07, rise: st.rise ?? 40,
       fall: !!st.fall, jit: st.jitter ?? 0, jitT: st.jitterT ?? (st.fall ? 0.3 : 0.1), hold,
-      star: st.star ? HFX.star?.('#ffe080') : null, tagAbove: !!st.tag, jx: 0, jy: 0,
+      star: st.star ? HFX.star?.('#ffe080') : null, tagAbove: !!st.tag, jx: 0, jy: 0, sd: (this._seq = (this._seq + 1) | 0),
     };
     this.list.push(p);
     this.dmgLive++;
@@ -200,7 +295,33 @@ export class Particles {
     const life = o.life ?? FH.CALLOUT?.life ?? 0.6;
     const spr = HFX.textSprite?.(text, o);
     if (!spr) { this.text(x, y, text, { color: o.color ?? '#ffe8c0', size: o.size ?? 15, life, vy: o.vy ?? -70, outline: o.outline ?? '#1a0610' }); return null; }
-    const p = { shape: 'callout', spr, x, y, vx: 0, vy: o.vy ?? FH.CALLOUT?.vy ?? -70, grav: 0, drag: 0.95, life, max: life, layer: 'top', add: false };
+    const p = { shape: 'callout', spr, x, y, vx: 0, vy: o.vy ?? FH.CALLOUT?.vy ?? -70, grav: 0, drag: 0.95, life, max: life, layer: 'top', add: false, lane: null, stack: 0 };
+    // 차선 (R1-REQ-358): 이 자리에 살아 있는 숫자 기둥이 있으면 문구는 그 기둥 위끝 위에 선다 (그릴 때마다 기둥을 따라간다).
+    // 같은 기둥 위에 먼저 선 문구가 있으면 그 위로 한 줄씩 쌓는다. 기둥이 없으면 이웃 문구와 겹치지 않게 위로 비킨다.
+    const hw = spr.w / 2, now = this.clock;
+    let lane = null, best = Infinity;
+    for (const c of this._live) {
+      if (now - c.t > COL_LIVE) continue;
+      const dx = Math.abs(c.x - x);
+      if (dx < (c.w || 40) / 2 + hw && y > this.colTop(c) - spr.h && y - spr.h < c.y + 20 && dx < best) { best = dx; lane = c; }
+    }
+    const C = this._calls;
+    let k = 0;
+    for (let i = 0; i < C.length; i++) { const q = C[i]; if (q.life > 0 && this.list.includes(q)) C[k++] = q; }
+    C.length = k;
+    if (lane) { p.lane = lane; for (const q of C) if (q.lane === lane) p.stack = Math.max(p.stack, q.stack + 1); }
+    else {
+      for (let pass = 0; pass < 4; pass++) {
+        let moved = false;
+        for (const q of C) {
+          if (q.lane || Math.abs(q.x - p.x) >= (q.spr.w + spr.w) / 2 + 4 || Math.abs(q.y - p.y) >= (q.spr.h + spr.h) / 2 + 2) continue;
+          p.y = q.y - (q.spr.h + spr.h) / 2 - 2; moved = true;
+        }
+        if (!moved) break;
+      }
+    }
+    C.push(p);
+    if (C.length > 24) C.shift();
     this.list.push(p);
     return p;
   }
@@ -256,7 +377,8 @@ export class Particles {
         const st = HFX.dmgStyle?.('total') ?? {};
         const step = FH.DMG_STYLE?.column?.step ?? COL_DEF.step;
         const top = c.y - (c.n + 1) * step - 8 - this.colRise(c, HFX.dmgStyle?.('normal')?.rise ?? 40);
-        this.spawnDmg(c.x, top, c.total, 'total', st, null);
+        const tp = this.spawnDmg(c.x, top, c.total, 'total', st, null);
+        if (tp) { tp.colRef = c; c.tp = tp; }   // 합계는 기둥과 함께 HUD 아래로 비킨다
       }
     }
   }
@@ -416,7 +538,21 @@ export class Particles {
           ctx.globalCompositeOperation = 'source-over';
           ctx.globalAlpha = t < 0.65 ? 1 : clamp(1 - (t - 0.65) / 0.35, 0, 1);
           const w = spr.w * k, h = spr.h * k;
-          ctx.drawImage(spr.canvas, p.x - w / 2, p.y - h / 2, w, h);
+          let X = p.x, Y = p.y;
+          const c = p.lane;
+          if (c) {
+            // 기둥 위끝 위 차선 (기둥이 HUD 아래로 비키면 같이). 그 차선이 HUD 윗줄에 걸리면 기둥 옆으로
+            const laneY = this.colTop(c) + this.colShift(c) - spr.h / 2 - 4 - p.stack * (spr.h + 2);
+            if (laneY < Y) {
+              if (this.band.n && this.bandPush(X - spr.w / 2, X + spr.w / 2, laneY - spr.h / 2) > 0) {
+                const side = (c.x >= (this.band.cx ?? c.x) ? -1 : 1);
+                X = c.x + side * ((c.w || 40) / 2 + spr.w / 2 + 6);
+                Y = Math.max(Y, c.y + this.colShift(c) - this.colRise(c, 40) - p.stack * (spr.h + 2));
+              } else Y = laneY;
+            }
+          }
+          if (this.band.n) Y += this.bandPush(X - w / 2, X + w / 2, Y - h / 2);
+          ctx.drawImage(spr.canvas, X - w / 2, Y - h / 2, w, h);
           break;
         }
         case 'text': {
@@ -448,15 +584,25 @@ export class Particles {
     let X = p.x, Y;
     if (p.fall) Y = p.y + 10 * age + 70 * age * age;
     else if (p.col) Y = p.y - this.colRise(p.col, p.rise);
-    else { const u = Math.min(1, age / Math.max(0.2, p.max)); Y = p.y - p.rise * (1 - (1 - u) * (1 - u) * (1 - u)); }
+    else Y = p.y - this.riseOf(p);
     if (p.jit && age < p.jitT) {
-      // 떨림: 게임 프레임마다 한 번만 새 값 (고주사율 화면에서도 같은 떨림)
-      if (p._jf !== this.clock) { p._jf = this.clock; p.jx = rand(-p.jit, p.jit); p.jy = rand(-p.jit, p.jit); }
+      // 떨림: 게임 프레임마다 한 번만 새 값 (고주사율 화면에서도 같은 떨림). 잡음은 (숫자, 시계) 해시 — 게임 난수를 쓰지 않는다 (R1-REQ-333)
+      if (p._jf !== this.clock) {
+        p._jf = this.clock;
+        const f = Math.round(this.clock * 240) * 131 + (p.sd | 0) * 7919;
+        p.jx = (hash01(f) * 2 - 1) * p.jit; p.jy = (hash01(f + 1) * 2 - 1) * p.jit;
+      }
       X += p.jx; Y += p.jy;
     }
     const al = age < p.hold ? 1 : clamp(1 - (age - p.hold) / Math.max(0.05, p.max - p.hold), 0, 1);
     if (al <= 0.01) return;
     const k = A.k, gh = (A.h / k) * sc;
+    // HUD 윗줄 아래로 (R1-REQ-331): 기둥 숫자·합계는 기둥째, 따로 뜬 숫자(플레이어 피격·회복)는 하나씩
+    if (this.band.n) {
+      const c = p.col ?? p.colRef;
+      if (c) Y += this.colShift(c);
+      else Y += this.bandPush(X - (p.w / 2) * sc, X + (p.w / 2) * sc, Y - gh / 2);
+    }
     if (p.star) {
       const s = 48 * sc;
       ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = al * 0.75;

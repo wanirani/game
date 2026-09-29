@@ -3,35 +3,53 @@
 import { rgba } from './math.js';
 
 // 광원 스프라이트 캐시: 매 프레임 방사형 그라데이션을 새로 만드는 대신 미리 그린 원을 늘여 그린다 (모바일 성능)
-const SPR = 128;
-let _hole = null;
-const _glow = new Map();
-function radialSprite(stops) {
+// 색마다 캔버스를 만들던 것을 아틀라스 한 장(칸 64px × 64칸)으로 바꿨다: 아틀라스는 월드를 만들 때(스테이지 준비) 한 번 만들고,
+// 처음 보는 색은 빈 칸에 그라데이션 한 번으로 칠한다 — 싸움 도중 캔버스 생성 0 (feel §8, R1-REQ-340E)
+const SLOT = 64, COLS = 8, ROWS = 8, SLOTS = COLS * ROWS;
+const ATL = { c: null, g: null, map: new Map(), next: 1 };   // 칸 0 = 어둠 구멍
+function atlas() {
+  if (ATL.c) return ATL;
+  if (typeof document === 'undefined' || !document.createElement) return null;
   const c = document.createElement('canvas');
-  c.width = c.height = SPR;
-  const g = c.getContext('2d'), h = SPR / 2;
-  const gr = g.createRadialGradient(h, h, 0, h, h, h);
+  c.width = SLOT * COLS; c.height = SLOT * ROWS;
+  ATL.c = c; ATL.g = c.getContext('2d');
+  paintSlot(0, [[0, 'rgba(0,0,0,1)'], [0.5, 'rgba(0,0,0,0.55)'], [1, 'rgba(0,0,0,0)']]);
+  return ATL;
+}
+/** 칸 i 에 방사형 원을 칠한다 (가장자리 1px 여백: 이웃 칸이 보간으로 번지지 않게) */
+function paintSlot(i, stops) {
+  const g = ATL.g;
+  if (!g) return;
+  const x = (i % COLS) * SLOT, y = Math.floor(i / COLS) * SLOT, h = SLOT / 2;
+  g.clearRect(x, y, SLOT, SLOT);
+  const gr = g.createRadialGradient(x + h, y + h, 0, x + h, y + h, h - 1);
   for (const [o, col] of stops) gr.addColorStop(o, col);
-  g.fillStyle = gr; g.fillRect(0, 0, SPR, SPR);
-  return c;
+  g.fillStyle = gr; g.fillRect(x, y, SLOT, SLOT);
 }
-/** 어둠에 구멍을 내는 검은 원 (세기 1 기준, globalAlpha 로 조절) */
-function holeSprite() {
-  return (_hole ??= radialSprite([[0, 'rgba(0,0,0,1)'], [0.5, 'rgba(0,0,0,0.55)'], [1, 'rgba(0,0,0,0)']]));
-}
-/** 색광 원 (세기 2 기준 알파 0.44 — globalAlpha = 세기/2) */
-function glowSprite(color) {
-  let c = _glow.get(color);
-  if (!c) {
-    if (_glow.size > 48) _glow.clear();
-    c = radialSprite([[0, rgba(color, 0.44)], [1, rgba(color, 0)]]);
-    _glow.set(color, c);
+/** 색광 원의 칸 번호 (세기 2 기준 알파 0.44 — globalAlpha = 세기/2). 칸이 다 차면 처음부터 다시 쓴다 */
+function glowSlot(color) {
+  let i = ATL.map.get(color);
+  if (i === undefined) {
+    if (ATL.next >= SLOTS) { ATL.map.clear(); ATL.next = 1; }
+    i = ATL.next++;
+    ATL.map.set(color, i);
+    paintSlot(i, [[0, rgba(color, 0.44)], [1, rgba(color, 0)]]);
   }
-  return c;
+  return i;
+}
+/** 아틀라스 칸 i 를 (dx, dy) 에 d×d 로 그린다 */
+function drawSlot(ctx, i, dx, dy, d) {
+  ctx.drawImage(ATL.c, (i % COLS) * SLOT, Math.floor(i / COLS) * SLOT, SLOT, SLOT, dx, dy, d, d);
+}
+/** 방에 들어갈 때 알려진 광원 색을 미리 칠해 둔다 (world.loadRoom; 없어도 된다 — 처음 쓸 때 칠한다) */
+export function prewarmLightColors(colors) {
+  if (!atlas()) return;
+  for (const c of colors || []) if (typeof c === 'string' && c) glowSlot(c);
 }
 
 export class Lighting {
   constructor() {
+    atlas();   // 광원 아틀라스 (한 번만; 월드를 만들 때 = 스테이지 준비 단계)
     this.canvas = document.createElement('canvas');
     this.lctx = this.canvas.getContext('2d');
     this.lights = [];
@@ -62,7 +80,7 @@ export class Lighting {
         const sx = (L.x - cam.x - cam.shakeX) * z, sy = (L.y - cam.y - cam.shakeY) * z, r = L.r * z;
         if (sx + r < 0 || sy + r < 0 || sx - r > W || sy - r > H) continue;
         l.globalAlpha = Math.min(1, L.i);
-        l.drawImage(holeSprite(), sx - r, sy - r, r * 2, r * 2);
+        drawSlot(l, 0, sx - r, sy - r, r * 2);
       }
       l.globalAlpha = 1;
       const q = ctx.imageSmoothingQuality; ctx.imageSmoothingQuality = 'low';
@@ -79,7 +97,7 @@ export class Lighting {
       const sx = (L.x - cam.x - cam.shakeX) * zz, sy = (L.y - cam.y - cam.shakeY) * zz, r = L.r * zz * 0.7;
       if (sx + r < 0 || sy + r < 0 || sx - r > viewW || sy - r > viewH) continue;
       ctx.globalAlpha = Math.min(1, L.i / 2);
-      ctx.drawImage(glowSprite(L.color), sx - r, sy - r, r * 2, r * 2);
+      drawSlot(ctx, glowSlot(L.color), sx - r, sy - r, r * 2);
     }
     ctx.restore();
     if (this.lightning > 0) {

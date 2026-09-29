@@ -33,7 +33,7 @@
 //   render/guardians_b.js (CMP-GUARD-ART-B, 선택 export): fxGear (톱니 탄) · fxMirrorShard (거울 파편 탄) · fxKaleido (파편 궤도 고리:
 //     e.data {orbitT}) · fxMirrorPane (되비추기 거울면: e.data {a, gx, gy}) · fxLumenFlash (섬광: e.data {R}) · fxLumenBolts (e.data {segs}) ·
 //     fxStunSparks (기절 표시: e.data {list}) · fxMomoVortex (흡입 소용돌이: e.data {f}) · fxMorsel (삼킨 탄 조각)
-import { GFx, GProj, gStrike, gHitOne, blockable, runKind } from './guardian.js';
+import { GFx, GProj, gStrike, gHitOne, blockable, runKind, quietExpire } from './guardian.js';
 import * as GR from '../render/guardians.js';
 import * as GB from '../render/guardians_b.js';
 import { audio } from '../core/audio.js';
@@ -92,40 +92,7 @@ const keep = (g, e) => (g.system?.keepFx ? g.system.keepFx(e) : e);
 function flick(g, dur = 0.22) { if (!g.act) g.begin('attack', dur, {}); }
 /** 적 탄 (미라·모모 고유 능력 대상): blockable + 장판·궤도·고정 탄 제외 */
 function shotOK(q) { return blockable(q) && q.behavior !== 'pool' && q.behavior !== 'orbit' && q.behavior !== 'static'; }
-const noop = () => {};
-const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
-const MUTED = new WeakMap();
-/** world.fx 대리 객체: 함수 호출(연출)은 모두 무시, 값(quality 등)은 그대로 읽힌다 */
-function mutedFx(fx) {
-  if (!fx || typeof fx !== 'object') return fx;
-  let m = MUTED.get(fx);
-  if (!m) { m = new Proxy(fx, { get: (t, k) => (typeof t[k] === 'function' ? noop : t[k]) }); MUTED.set(fx, m); }
-  return m;
-}
-/**
- * 적 탄을 거둘 때 (되비추기·먹기): 탄의 onExpire 를 '조용히' 부르고 콜백을 모두 지운다.
- * 쏜 적이 onExpire 로 제 탄 수를 세는 장부(뒤라한의 불꽃 해골 skullOut 등)는 풀려야 한다 — 안 그러면 그 적은 그 공격을 다시 쓰지 못한다.
- * 대신 그 안에서 생기는 개체(폭발 판정·분열 탄·소환)는 월드에 넣지 않고, 연출·효과음·화면 흔들림도 막는다 (먹힌 탄이 터지지 않게).
- */
-function quietExpire(world, q) {
-  const fn = q.onExpire;
-  q.onExpire = null; q.onHit = null; q.onWall = null; q.onLand = null;
-  if (typeof fn !== 'function' || !world) return;
-  const cam = world.camera;
-  const had = { add: own(world, 'add'), shake: !!cam && own(cam, 'shake'), sfx: own(audio, 'sfx') };
-  const prev = { add: world.add, fx: world.fx, shake: cam?.shake, sfx: audio.sfx };
-  world.add = (e) => { if (e && typeof e === 'object') { e.dead = true; e.world = world; } return e; };
-  world.fx = mutedFx(prev.fx);
-  if (cam) cam.shake = noop;
-  audio.sfx = noop;
-  try { fn(q, world, false); } catch (e) { warnOnce('onExpire', e); }
-  finally {
-    if (had.add) world.add = prev.add; else delete world.add;
-    world.fx = prev.fx;
-    if (cam) { if (had.shake) cam.shake = prev.shake; else delete cam.shake; }
-    if (had.sfx) audio.sfx = prev.sfx; else delete audio.sfx;
-  }
-}
+// 적 탄을 조용히 거두는 quietExpire 는 guardian.js 에 있다 (가웨인 막기 · 방패벽도 같은 것을 쓴다 — R1-REQ-173)
 /** 수호신 또는 주인 r 안의 가장 가까운 적 탄 */
 function nearShot(world, g, r) {
   const p = world.player;
@@ -328,7 +295,8 @@ const CLOCK = {
 function reap(g, world, e) {
   const P = g.def.passive ?? {}, col = g.def.color;
   if (!alive(e) || e.invuln || e.wakeInv > 0) return false;
-  const atk = g.atk({ mv: 1, type: 'phys', element: 'dark', kb: [220, -280] }, { extra: { flat: Math.ceil(e.hp) + 1, hitstop: 0.03, shake: 2 } }, e);
+  // 경직 0: 자동 처형이 플레이어가 치지 않았는데 세상을 멈추지 않게 (companions §14 C10 #4 — R1-REQ-368). 흔들림 · 영혼 폭발 · '처형' 글자는 그대로
+  const atk = g.atk({ mv: 1, type: 'phys', element: 'dark', kb: [220, -280] }, { extra: { flat: Math.ceil(e.hp) + 1, hitstop: 0, shake: 2 } }, e);
   atk.tags.push('execute');
   const info = gHitOne(world, e, atk, e.cx, e.cy);
   if (!info) return false;
@@ -572,6 +540,7 @@ function pickTargets(world, p, n) {
 }
 const MIRRA = {
   init(g) { g.mem.reflCd = 0; g.mem.scanT = 0; prewarm(() => glow('#dff4ff')); },   // 처음 날아드는 탄은 곧바로 (그다음부터 5초마다)
+  projRender: drawMirrorShard,   // 자동 공격 「거울 파편」도 스킬 파편과 같은 거울 조각으로 (guardian.js shoot 가 읽는다 — R1-REQ-328)
   skill(g, world, mul, o) {
     const p = world.player, sk = g.def.skill, col = g.def.color;
     const n = sk.count ?? 8, orbitT = sk.orbit ?? 1.0, spd = 980;

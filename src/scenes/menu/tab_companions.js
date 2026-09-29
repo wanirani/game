@@ -559,8 +559,9 @@ export class CompanionsTab extends Tab {
       const s = clamp(Math.min((h - foot - 18) / 178, (w - 20) / 150), 0.7, 1.8);
       HV.pedestal?.(ctx, fx, fy, s * 0.75, t, acc);
       const special = MOUNT_CYCLE[this.cyc % MOUNT_CYCLE.length][0] === 'special';
-      this.fig.draw(ctx, fx, fy, s, { layer: 'back', facing: 1 });
-      if (p && this.fig.ride) {
+      const rider = !!(p && this.fig.ride);   // 영웅이 없으면 기수 없는 마구 (고삐가 허공에 뜨지 않게 — R1-REQ-238)
+      this.fig.draw(ctx, fx, fy, s, { layer: 'back', facing: 1, rider });
+      if (rider) {
         p.ride = this.fig.ride; p.cx = 0; p.bottom = 0; p.facing = 1; p.move = null;
         const want = special ? 'ride_rear' : 'ride';
         if (p.anim !== want) { p.anim = want; p.animT = 0; }
@@ -569,7 +570,7 @@ export class CompanionsTab extends Tab {
         try { HERO.drawHero(ctx, p, null, { scale: HS }); } catch (e) { if (!this._herr) { this._herr = true; console.warn('[companions tab] rider', e); } }
         ctx.restore();
       }
-      this.fig.draw(ctx, fx, fy, s, { layer: 'front', facing: 1 });
+      this.fig.draw(ctx, fx, fy, s, { layer: 'front', facing: 1, rider });
     } else {
       // 수호신: 영웅 대기 + 기준점의 수호신
       const s = clamp(Math.min((h - foot - 16) / 170, (w - 20) / 170), 0.7, 1.6);

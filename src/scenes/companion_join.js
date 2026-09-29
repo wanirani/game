@@ -70,8 +70,11 @@ export class CompanionFigure {
     const a = anim && GUARD_ANIMS.has(anim) ? anim : anim ? 'idle' : null;
     if (a && a !== g.anim) { g.anim = a; g.animT = 0; }
   }
-  /** 발 중앙 (x, bottom) 에 배율 scale 로. layer: 탈것의 뒤('back')·앞('front') 층 (기수를 사이에 그릴 때), 'all' = 둘 다 */
-  draw(ctx, x, bottom, scale = 1, { layer = 'all', facing = 1, alpha = 1, awakened = false } = {}) {
+  /**
+   * 발 중앙 (x, bottom) 에 배율 scale 로. layer: 탈것의 뒤('back')·앞('front') 층 (기수를 사이에 그릴 때), 'all' = 둘 다.
+   * rider: 두 층 사이에 기수를 그리는가 (기본: 'all' 이면 아니다 → 고삐를 목에 걸고 등자를 짧게 — render/mounts.js opts.rider, R1-REQ-238)
+   */
+  draw(ctx, x, bottom, scale = 1, { layer = 'all', facing = 1, alpha = 1, awakened = false, rider = layer !== 'all' } = {}) {
     ctx.save();
     try {
       if (alpha < 1) ctx.globalAlpha *= clamp(alpha, 0, 1);
@@ -79,8 +82,9 @@ export class CompanionFigure {
       ctx.scale(scale, scale);
       if (this.mv) {
         this.mv.facing = facing < 0 ? -1 : 1;
-        if (layer === 'all' || layer === 'back') drawMountView(ctx, this.mv, 'back');
-        if (layer === 'all' || layer === 'front') drawMountView(ctx, this.mv, 'front');
+        const mo = rider ? undefined : { rider: false };
+        if (layer === 'all' || layer === 'back') drawMountView(ctx, this.mv, 'back', mo);
+        if (layer === 'all' || layer === 'front') drawMountView(ctx, this.mv, 'front', mo);
       } else if (this.g && layer !== 'front') {
         const g = this.g;
         g.facing = facing < 0 ? -1 : 1; g.cx = 0; g.bottom = 0; g.x = -g.w / 2; g.y = -g.h; g.d.awakened = !!awakened;

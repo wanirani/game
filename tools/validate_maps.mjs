@@ -7,6 +7,8 @@
 // 사용: node tools/validate_maps.mjs [stageId] [--stages 모듈경로]
 //   --stages: STAGES 대신 그 모듈이 export 하는 STAGES 를 검사 (작업 중인 맵·시험용 방)
 //   --debug s14:r2 : 그 방의 도달 지도(닿은 발 위치 '·')를 출력
+//   --tight : 난이도 후보 (요청 #161/#181) — 필수 목표(출구·문·보스 트리거)에 천장 아래 빠듯한 점프로만 닿는 방을 경고로 보여 준다.
+//             어림 규칙(물리 재현 아님)이라 확인이 필요한 후보 목록일 뿐이다 → 기본 검사에서는 끔
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { STAGES as GAME_STAGES } from '../src/data/stages.js';
@@ -27,6 +29,7 @@ const STAGES = si >= 0 ? (await import(pathToFileURL(resolve(argv[si + 1] ?? '')
 if (!STAGES || typeof STAGES !== 'object') { console.log(`--stages ${argv[si + 1] ?? ''}: 모듈이 STAGES 객체를 export 하지 않음`); process.exit(2); }
 const di = argv.indexOf('--debug');
 const DEBUG_ROOM = di >= 0 ? argv[di + 1] : null;
+const TIGHT = argv.includes('--tight');
 const only = argv.find((a, i) => !a.startsWith('--') && !(si >= 0 && i === si + 1) && !(di >= 0 && i === di + 1));
 let errors = 0, warns = 0;
 const err = (s) => { errors++; console.log('  ✗ ' + s); };
@@ -263,8 +266,14 @@ function check(stage, roomId, room) {
   let [sx, sy] = ps[0];
   while (sy < H && !node(sx, sy, start)) sy++;
   if (sy >= H) { err(`${roomId}: P 아래에 바닥이 없음`); return; }
+  // explore(strict): 도달 BFS. strict = 천장 아래 빠듯한 점프를 뺀 탐색 (요청 #161/#181 — 오류가 아니라 난이도 신호(경고)용).
+  // 빠듯한 점프 = 땅에서 3~4칸 올라 4칸 이상 옆으로 가는데 꼭짓점 쪽 머리 위가 막힌 경우: 실제 포물선(점프 760–800,
+  // 중력 2200, 공중 점프 1회)은 천장에 부딪혀, 공중 점프를 좁은 프레임 창에 눌러야만 되는 곳이 많다 (예: 고치기 전 s19/r4 가지 연결).
+  // tight = 전체 탐색에서 새 칸을 처음 연 빠듯한 점프들 (경고 문구의 예시)
+  const explore = (strict) => {
   const seen = new Set([key(sx, sy, start)]);
   const seenXY = new Set([xyKey(sx, sy)]);
+  const tight = [];
   const q = [[sx, sy, start, false]];
   // 낙하: 설 수 있는 곳/물/상승 기류에서 멈춤
   const fall = (x, y, ph) => {
@@ -284,7 +293,8 @@ function check(stage, roomId, room) {
     const push = (nx, ny, nph = ph, nair = false) => {
       if (nx < -1 || nx > W) return; /* 방 밖(천장 위 보이지 않는 벽) 무한 탐색 방지 */
       const k = key(nx, ny, nph);
-      if (!seen.has(k)) { seen.add(k); seenXY.add(xyKey(nx, ny)); q.push([nx, ny, nph, nair]); }
+      if (!seen.has(k)) { seen.add(k); seenXY.add(xyKey(nx, ny)); q.push([nx, ny, nph, nair]); return true; }
+      return false;
     };
     const land = (nx, ny, nph = ph) => { if (node(nx, ny, nph)) push(nx, ny, nph); else { const f = fall(nx, ny, nph); if (f) push(f[0], f[1], nph); } };
     for (const dx of [-1, 1]) {
@@ -303,11 +313,22 @@ function check(stage, roomId, room) {
         for (let d = 1; d <= reach; d++) {
           const nx = x + dir * d;
           if (!clearRow(x, nx, ay, ph)) break;
+          // 머리 위 여유: 3~4칸 오르는 점프는 공중 점프를 써서 꼭짓점이 착지 높이보다 ≈ (5.5 − up)칸 위로 올라간다
+          // (점프 760–800 → 한 번 ≈ 2.7–3칸, 두 번 ≈ 5.5칸). 그 높이(머리 칸 ay-1 위로 up 3 → 2칸, up 4 → 1칸)가 막혀 있으면 빠듯하다.
+          // 꼭짓점은 착지 쪽에 있으므로 이동의 뒤쪽 절반(착지 열 포함)만 본다 — 도움닫기 쪽 천장은 비스듬히 빠져나가면 된다
+          // (예: s15/r2 는 ###### 천장 끝에서 뛰면 여유 있음; 고치기 전 s19/r4 의 행 10 → 행 7 가지 연결은 머리 위 2칸째가 윗길 바닥)
+          let tj = false;
+          if (grounded && d >= 4 && (up === 3 || up === 4)) {   // 옆 3칸 이하는 올라가며 건너면 된다 (넓힌 뒤 s19/r4 의 옆 3칸 연결은 넉넉함 — #181 재현)
+            const need = up === 3 ? 2 : 1;
+            for (let k = Math.ceil(d / 2); k <= d && !tj; k++) for (let r = 1; r <= need && !tj; r++) tj = !free(x + dir * k, ay - 1 - r, ph);
+          }
+          if (tj && strict) continue;
+          const to = tj ? (tx, ty) => { if (push(tx, ty)) tight.push({ x, y, tx, ty, up, d }); } : push;
           // 해당 열에서 아래로 착지
           const f = fall(nx, ay, ph);
-          if (f && f[1] <= y + 8) push(f[0], f[1]);
-          if (standable(nx, ay, ph)) push(nx, ay);
-          if (updraft(nx, ay) || swim(nx, ay, ph)) push(nx, ay); // 옆에서 기류·물로 뛰어듦
+          if (f && f[1] <= y + 8) to(f[0], f[1]);
+          if (standable(nx, ay, ph)) to(nx, ay);
+          if (updraft(nx, ay) || swim(nx, ay, ph)) to(nx, ay); // 옆에서 기류·물로 뛰어듦
         }
       }
     }
@@ -334,6 +355,9 @@ function check(stage, roomId, room) {
       }
     }
   }
+  return { seenXY, tight };
+  };
+  const { seenXY, tight } = explore(false);
   const reached = (x, y) => { for (let yy = y - 1; yy <= y + 1; yy++) for (let xx = x - 1; xx <= x + 1; xx++) if (seenXY.has(xyKey(xx, yy))) return true; return false; };
   const anyInCol = (x) => { for (let y = 0; y < H; y++) if (seenXY.has(xyKey(x, y))) return true; return false; };
   // 출구: 가장자리 열의 열린 칸(몸 2칸이 빈 곳)에 닿았거나, 그 바로 안쪽 칸에서 열린 칸으로 걸어 나갈 수 있어야 한다
@@ -358,6 +382,25 @@ function check(stage, roomId, room) {
     if (c === 'S' && !reached(x, y)) warn(`${roomId}: 세이브 (${x},${y}) 도달 불가`);
     if (c === 'Q' && !reached(x, y) && !reached(x - 1, y) && !reached(x + 1, y)) warn(`${roomId}: 거울 스위치 Q (${x},${y}) 도달 불가`);
     if ((c === 'H' || c === '$' || c === '@') && !reached(x, y) && !reached(x - 1, y) && !reached(x + 1, y) && !reached(x, y + 1)) warn(`${roomId}: 비밀/보물 '${c}' (${x},${y}) 근처 도달 불가(부수기 필요 여부 확인)`);
+  }
+  // 난이도 신호 (#161/#181, --tight): 필수 목표(출구·문·보스 트리거)에 빠듯한 점프 없이는 닿지 못하면 경고 (오류 아님 — 실제 궤적으로 확인할 것)
+  if (TIGHT && tight.length) {
+    const S = explore(true).seenXY;
+    const has2 = (x, y) => { for (let yy = y - 1; yy <= y + 1; yy++) for (let xx = x - 1; xx <= x + 1; xx++) if (S.has(xyKey(xx, yy))) return true; return false; };
+    const col2 = (x) => { for (let y = 0; y < H; y++) if (S.has(xyKey(x, y))) return true; return false; };
+    const exit2 = (col, inner) => { for (let y = 0; y < H; y++) { if (S.has(xyKey(col, y))) return true; if (S.has(xyKey(inner, y)) && !BLOCK_BODY.has(at(col, y)) && !BLOCK_BODY.has(at(col, y - 1))) return true; } return false; };
+    const lost = [];
+    if (room.exitRight && exitOk(W - 1, W - 2) && !exit2(W - 1, W - 2)) lost.push('오른쪽 출구');
+    if (room.exitLeft && exitOk(0, 1) && !exit2(0, 1)) lost.push('왼쪽 출구');
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const c = at(x, y);
+      if (c === 'D' && reached(x, y) && !has2(x, y)) lost.push(`문 (${x},${y})`);
+      if (c === 'X' && (anyInCol(x) || anyInCol(x + 1)) && !col2(x) && !col2(x + 1)) lost.push(`보스 트리거 X 열(${x})`);
+    }
+    if (lost.length) {
+      const t = tight.find((e) => !S.has(xyKey(e.tx, e.ty))) ?? tight[0];
+      warn(`${roomId}: [빠듯한 점프 후보] ${lost.join(', ')} — 천장 아래 빠듯한 점프로만 닿음 (예: (${t.x},${t.y})→(${t.tx},${t.ty}) 위 ${t.up}칸·옆 ${t.d}칸, 꼭짓점 쪽 머리 위 막힘). 공중 점프 타이밍이 좁을 수 있으니 실제 궤적으로 확인`);
+    }
   }
 }
 

@@ -162,6 +162,9 @@ export const MOUNTS = {
     cry: { sfx: 'boar_grunt', pitch: 1 }, hoof: { sfx: 'gallop', pitch: 1.3, vol: 0.5 },
     rig: 'boar', palette: ['#3a2618', '#5a3a24', '#8a8e9a', '#c8ccd8', '#ff4a2a'],
     body: { w: 64, h: 80 }, seat: { x: -6, y: -48 }, footY: 20,
+    // 점프 700 은 일부러 낮다 (돌파형의 약점): 지금 중력(2200)으로 약 2.3칸 — 3칸 턱(≈796 필요)은 못 넘어 바르그로는 108방 중 64방만
+    // 내리지 않고 지난다 (그림메인 93 · 나머지 103–104; tools/scan_mount_fit.mjs). 그런 턱에 막히면 mount.js ledgeHint 가 방마다 한 번
+    // '바르그는 이 턱을 넘지 못한다 — 내려서 올라가자' 를 띄운다 (R 로 내려 뛰어오른 뒤 다시 R). 리드 결정 R1-REQ-369: 700 유지.
     move: { speed: 350, accel: 2600, decel: 2600, airAccel: 1100, jump: 700, airJumps: 0 },
     charge: { name: '철엄니 돌격', desc: '어떤 공격에도 멈추지 않고 돌격해 적을 크게 밀어낸다. 부서지는 벽도 뚫는다.',
       dur: 0.5, speed: 820, mv: 1.4, kb: [520, -200], cd: 1.0, iframes: 0.15, superArmor: true, breakWalls: true },
@@ -349,10 +352,10 @@ export const GUARDIANS = {
     cry: { sfx: 'fairy_chime', pitch: 1 }, palette: ['#ffe070', '#f8d8a0', '#7ac860', '#bfe8ff', '#ffffff'],
     move: 'fly', size: { w: 16, h: 20 }, front: true, anchor: { dx: 34, dy: -96 }, speed: 1000, engage: 320, bias: 'front', perch: 'head',
     attack: { name: '빛의 바늘', desc: '적을 쫓아가는 빛의 바늘을 쏜다.', kind: 'proj', proj: 'orb', homing: true, speed: 700,
-      mv: 0.5, type: 'mag', element: 'holy', interval: 1.4, range: 320 },
+      mv: 0.9, type: 'mag', element: 'holy', interval: 1.4, range: 320 },   // mv 0.5→0.9 · 협공 0.8→1.0: 지원형이어도 몫 [6%, 30%] 안 (companions §9 B1 — R1-REQ-367)
     skill: { name: '요정의 가호', desc: '최대 HP의 25%를 회복하고 2초 동안 황금 결계로 모든 피해를 막는다.', cd: 35, heal: 0.25, shield: 2.0,
       line: '빛이여, 이 사람을 지켜 줘!' },
-    assist: { name: '빛의 파동', desc: '적 주위에 빛의 파동을 일으킨다.', kind: 'ring', r: 60, mv: 0.8, type: 'mag', element: 'holy' },
+    assist: { name: '빛의 파동', desc: '적 주위에 빛의 파동을 일으킨다.', kind: 'ring', r: 60, mv: 1.0, type: 'mag', element: 'holy' },
     aura: { base: { hpRegen: 0.8, resHoly: 10 }, perLv: { hpRegen: 0.04 } },
     passive: { name: '치유의 맥동', desc: 'HP가 85% 미만이면 8초마다 최대 HP의 4%를 회복시킨다.', every: 8, below: 0.85, heal: 0.04, healPerLv: 0.001 },
     light: { color: '#fff2b0', r: 110, i: 0.7 },
@@ -625,6 +628,7 @@ export const CMP_TEXT = {
   bossRetreat: '{name}이(가) 겁에 질려 물러섰다',
   underwater: '물속에서는 탈것을 부를 수 없다',
   deep: '깊은 물에서는 탈것에서 내려 헤엄쳐야 한다',
+  ledge: '{name}은(는) 이 턱을 넘지 못한다 — 내려서 올라가자',   // 날지 못하는 탈것이 못 넘는 턱에 막혔을 때 (방마다 한 번 — mount.js ledgeHint)
   townOnly: '마을에서는 싸울 수 없다',
   cooldown: '쿨타임',
   assist: '협공!',

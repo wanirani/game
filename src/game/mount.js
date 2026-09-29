@@ -157,6 +157,11 @@ export class MountRider {
   // ───────────── 붙이기 · 떼기 · 능력치 ─────────────
   attach(world, p) {
     this.world = world;
+    // 채색 탈것 굽기(130–310 ms)를 첫 소환 전에 시작한다 (첫 소환 안개에서 벡터 → 채색으로 튀지 않게 — R1-REQ-308). 한 번만
+    if (!this.preloaded) {
+      this.preloaded = true;
+      try { const pr = MDRAW.preloadMounts?.([this.id], world?.game ?? undefined); pr?.catch?.(() => {}); } catch { /* 첫 그리기 때 굽는다 */ }
+    }
     this.refresh(p);
     const s = this.runStore;
     if (s) {
@@ -833,6 +838,8 @@ export class MountRider {
       world.fx?.burst('shard', p.cx + p.facing * p.w / 2, p.cy, nq(world, 10), { speed: 200, color: '#8a7a6a' });
       audio.sfx('hit_heavy', { vol: 0.6, pitch: 0.7 });
     }
+    // 못 넘는 턱 안내 (R1-REQ-369)
+    try { this.ledgeHint(dt, world, p); } catch (e) { warnOnce('ledge', '[mount] ledgeHint', e); }
     // 비행 탈것: 위로 나가는 출구가 없는 방에서는 화면 위로 못 나간다
     if (this.def?.flight && !world.room?.exitUp && p.y < 4) { p.y = 4; if (p.vy < 0) p.vy = 0; }
     // 끼임 해소: 스킬 등으로 몸이 벽에 들어가면 옆으로 밀어 보고, 안 되면 내린다
@@ -846,6 +853,32 @@ export class MountRider {
     const probe = this.solidAbove(world, p, dk.probe);
     this.duck = approach(this.duck, probe ? 1 : 0, dk.rate * dt);
     this.animate(dt, world, p);
+  }
+  /**
+   * 못 넘는 턱 안내 (R1-REQ-369): 날지 못하는 탈것으로 턱에 붙어 1.2초 넘게 밀었는데, 그 턱이 탈것 점프(공중 점프 포함)로는 못 넘고
+   * 5칸 이하(내려서 걸어 뛰면 오를 만한 높이)이면 방마다 한 번 '{name}은(는) 이 턱을 넘지 못한다 — 내려서 올라가자'.
+   * 바르그(점프 700 ≈ 2.3칸)가 3칸 턱에서 막히는 것이 설계상 약점이라 (data/companions.js mt_boar), 어떻게 지나가는지를 알려 준다.
+   */
+  ledgeHint(dt, world, p) {
+    if (this.def?.flight || this.act || this.chargeT > 0 || this.hintRoom === world.roomId) { this.ledgeT = 0; return; }
+    const dir = p.hitWall ? Math.sign(p.hitWall) : 0;
+    if (!dir || Math.sign(this.ax) !== dir) { this.ledgeT = Math.max(0, (this.ledgeT ?? 0) - dt * 2); return; }
+    this.ledgeT = (this.ledgeT ?? 0) + dt;
+    if (this.ledgeT < 1.2) return;
+    this.ledgeT = 0;
+    const map = world.map;
+    if (!map?.typeAt) return;
+    const tx = Math.floor((dir > 0 ? p.x + p.w + 2 : p.x - 2) / TILE), ty0 = Math.floor((p.bottom - 2) / TILE);
+    let n = 0;
+    while (n < 7 && isSolidType(map.typeAt(tx, ty0 - n))) n++;
+    if (!n || n >= 7) return;                                                            // 벽이 아니거나 너무 높다
+    if (isSolidType(map.typeAt(tx, ty0 - n - 1))) return;                               // 턱 위에 설 자리가 없다
+    const h = p.bottom - (ty0 - n + 1) * TILE;                                           // 발에서 턱 윗면까지
+    const prof = this.profile(p), up = (prof.jump * prof.jump) / (2 * GRAVITY);
+    const reach = up * (1 + 0.81 * (prof.airJumps ?? 0));                                // 공중 점프는 0.9배 속도 → 높이 0.81배
+    if (h <= reach + 4 || h > TILE * 5 + 4) return;
+    this.hintRoom = world.roomId;
+    this.note(world, cmpText('ledge', { name: this.name }));
   }
   solidAbove(world, p, d) {
     const map = world.map;

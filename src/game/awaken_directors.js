@@ -194,12 +194,25 @@ function blitAt(ctx, img, x, y, s, rot, a, add, ax = 0.5, ay = 0.5, sy = s) {
   ctx.globalAlpha = 1;
 }
 /** 번개 경로 (평평한 배열) */
-function boltPts(x0, y0, x1, y1, n = 8, jag = 22) {
+function boltPts(x0, y0, x1, y1, n = 8, jag = 22, rnd = rand) {
   const P = [x0, y0], dx = x1 - x0, dy = y1 - y0, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;
-  for (let i = 1; i < n; i++) { const u = i / n, j = rand(-jag, jag) * Math.sin(u * Math.PI); P.push(x0 + dx * u + nx * j, y0 + dy * u + ny * j); }
+  for (let i = 1; i < n; i++) { const u = i / n, j = rnd(-jag, jag) * Math.sin(u * Math.PI); P.push(x0 + dx * u + nx * j, y0 + dy * u + ny * j); }
   P.push(x1, y1);
   return P;
 }
+/**
+ * 그리기용 결정적 난수 (R1-REQ-333): 그리기 경로에서 Math.random 을 쓰면 게임 난수 흐름이 그리기 빈도에 따라 달라진다.
+ * hseed(씨앗) 뒤 hr(a, b) — mulberry32. 씨앗에 시간 조각을 넣으면 예전처럼 매 박자 모양이 바뀐다.
+ */
+let HS = 0;
+const hseed = (s) => { HS = (s | 0) ^ 0x9e3779b9; };
+const hr = (a = 0, b = 1) => {
+  HS = (HS + 0x6d2b79f5) | 0;
+  let t = HS;
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return a + (((t ^ (t >>> 14)) >>> 0) / 4294967296) * (b - a);
+};
 function pathPts(ctx, P) { ctx.beginPath(); ctx.moveTo(P[0], P[1]); for (let i = 2; i < P.length; i += 2) ctx.lineTo(P[i], P[i + 1]); }
 /** 2차 베지어 */
 const bzx = (L, u) => (1 - u) * (1 - u) * L.x0 + 2 * (1 - u) * u * L.cx + u * u * L.x1;
@@ -386,8 +399,11 @@ function idle(fn) {
 }
 function schedulePrewarm() { setTimeout(() => idle(() => { const w = game?.world; if (w?.player) prewarm(w, w.player); }), 350); }
 // 부팅 뒤에 버스를 건다 (모듈 최상위에서는 가져온 값에 손대지 않는다: 순환 import 규칙)
-if (typeof window !== 'undefined' && typeof setTimeout === 'function') {
-  setTimeout(() => {
+let HOOKED = false;
+function hookBus() {
+  if (HOOKED) return;
+  HOOKED = true;
+  {
     try {
       bus.on('stageEntered', schedulePrewarm);
       bus.on('roomEntered', () => {
@@ -398,8 +414,19 @@ if (typeof window !== 'undefined' && typeof setTimeout === 'function') {
       // 시전 순간(컷인 전) 한 번 더: 스테이지 진입 뒤 다른 기술에 밀려난 스프라이트만 다시 굽는다 (감독 도중 굽기 0)
       bus.on('awakenCast', (d) => { const w = game?.world, p = w?.player; if (d?.charId && p?.hero?.charId === d.charId && AWAKEN_DIRECTOR[d.charId]) prewarm(w, p, true); });
     } catch (e) { console.warn('[awaken-dir-a] bus', e); }
-    schedulePrewarm();
-  }, 1300);
+  }
+}
+if (typeof window !== 'undefined' && typeof setTimeout === 'function') {
+  setTimeout(() => { hookBus(); schedulePrewarm(); }, 1300);
+}
+/**
+ * awaken.js 가 이 모듈을 늦게(동적 import, R1-REQ-229) 받은 직후 부른다: 이번 스테이지의 stageEntered 를 놓쳤으니
+ * 버스를 바로 걸고, 작은 작업 캔버스는 지금(받는 중 = 스테이지 준비 단계) 만들고, 미리 굽기는 한가할 때.
+ */
+export function prepareAwakenSoonA() {
+  hookBus();
+  try { if (!PREP.scratch) PREP.scratch = mkCanvas(4, 4); } catch (e) { console.warn('[awaken-dir-a] 캔버스', e); }
+  schedulePrewarm();
 }
 
 // ═══════════════════════════ 감독 문맥 · 타격 · 틀 ═══════════════════════════
@@ -1096,7 +1123,7 @@ function seraDirector(p, w, v) {
         K.glow(ctx, P.x, P.gy, 120, P.col[0], 0.75 * a);
         K.glow(ctx, P.x, top + 10, 80, P.col[1], 0.6 * a);
         if (P.el === 'thunder' && age < PLIFE) {
-          ctx.strokeStyle = P.col[0]; pathPts(ctx, boltPts(P.x + rand(-10, 10), top, P.x + rand(-10, 10), P.gy, 9, 26)); lineGlow(ctx, a, P.col[0], '#ffffff', 4);
+          hseed(Math.round(P.x) * 131 + Math.floor(lt * 30)); ctx.strokeStyle = P.col[0]; pathPts(ctx, boltPts(P.x + hr(-10, 10), top, P.x + hr(-10, 10), P.gy, 9, 26, hr)); lineGlow(ctx, a, P.col[0], '#ffffff', 4);
         }
       }
       // 연쇄 번개

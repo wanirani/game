@@ -98,8 +98,7 @@ export class Pickup extends Entity {
       case 'gold': drawCoin(ctx, this.data.amount ?? 1, this.t); break;
       case 'mp': {
         ctx.globalCompositeOperation = 'lighter';
-        const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 12);
-        g.addColorStop(0, '#fff'); g.addColorStop(0.4, '#5aa8ff'); g.addColorStop(1, 'rgba(0,0,0,0)');
+        const g = gradOf(ctx, 'mp', (c) => { const q = c.createRadialGradient(0, 0, 0, 0, 0, 12); q.addColorStop(0, '#fff'); q.addColorStop(0.4, '#5aa8ff'); q.addColorStop(1, 'rgba(0,0,0,0)'); return q; });
         ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, 12, 0, TAU); ctx.fill();
         break;
       }
@@ -109,8 +108,7 @@ export class Pickup extends Entity {
         const col = COLORS.rarity[it?.rarity ?? 0];
         // 희귀도 빛기둥
         ctx.globalCompositeOperation = 'lighter';
-        const g = ctx.createLinearGradient(0, -90, 0, 14);
-        g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, col);
+        const g = gradOf(ctx, 'item|' + col, (c) => { const q = c.createLinearGradient(0, -90, 0, 14); q.addColorStop(0, 'rgba(0,0,0,0)'); q.addColorStop(1, col); return q; });
         ctx.globalAlpha = 0.35 + 0.15 * Math.sin(this.t * 5);
         ctx.fillStyle = g; ctx.fillRect(-7, -90, 14, 104);
         ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
@@ -138,13 +136,19 @@ export class Pickup extends Entity {
   }
 }
 
+// 픽업 그라데이션 캐시 (원점 기준 좌표라 그대로 다시 쓴다): 매 프레임 새로 만들던 것 (R1-REQ-341E)
+const GRADS = new Map();
+function gradOf(ctx, key, make) {
+  let g = GRADS.get(key);
+  if (!g) { if (GRADS.size > 64) GRADS.clear(); g = make(ctx); GRADS.set(key, g); }
+  return g;
+}
+
 export function drawHeart(ctx, r, t = 0) {
   const s = 1 + Math.sin(t * 8) * 0.06;
   ctx.scale(s, s);
   ctx.shadowColor = '#ff2040'; ctx.shadowBlur = 10;
-  const g = ctx.createLinearGradient(0, -r, 0, r);
-  g.addColorStop(0, '#ff6a7a'); g.addColorStop(1, '#a00820');
-  ctx.fillStyle = g;
+  ctx.fillStyle = gradOf(ctx, 'heart|' + r, (c) => { const q = c.createLinearGradient(0, -r, 0, r); q.addColorStop(0, '#ff6a7a'); q.addColorStop(1, '#a00820'); return q; });
   ctx.beginPath();
   ctx.moveTo(0, r * 0.9);
   ctx.bezierCurveTo(-r * 1.4, -r * 0.1, -r * 0.7, -r * 1.2, 0, -r * 0.45);

@@ -558,8 +558,10 @@ function drawAcidPool(ctx, h, world) {
 function drawGreenBolt(ctx, b, k) {
   const seed = Math.floor(b.t * 30);
   ctx.globalAlpha *= k;
-  bolt(ctx, b.x0 + rand(-6, 6), b.y0, b.x1, b.y1, '#c8ff8a', 5, seed, 26);
-  bolt(ctx, b.x0 + rand(-20, 20), b.y0, b.x1 + rand(-30, 30), b.y1, '#7cff5a', 2, seed + 5, 34);
+  // 떨림은 (시각 칸) 해시로: 그리기가 게임 난수(Math.random)를 쓰지 않게 (BOSS_PIPELINE §8.5)
+  const j = (n, a) => (hash(seed * 7 + n) * 2 - 1) * a;
+  bolt(ctx, b.x0 + j(1, 6), b.y0, b.x1, b.y1, '#c8ff8a', 5, seed, 26);
+  bolt(ctx, b.x0 + j(2, 20), b.y0, b.x1 + j(3, 30), b.y1, '#7cff5a', 2, seed + 5, 34);
   glow(ctx, b.x1, b.y1 - 10, 90, '#c8ff8a', k);
 }
 function drawGlassBit(ctx) { ctx.fillStyle = 'rgba(200,255,240,0.7)'; ctx.beginPath(); ctx.moveTo(-5, -6); ctx.lineTo(6, -2); ctx.lineTo(-2, 6); ctx.closePath(); ctx.fill(); }

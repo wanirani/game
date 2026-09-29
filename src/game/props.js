@@ -7,13 +7,20 @@ import { input } from '../core/input.js';
 import { TILE } from '../core/game.js';
 import { text } from '../core/ui.js';
 
+// 불꽃 둘레의 빛 무리: 원점 기준 반지름 22 그라데이션 하나를 만들어 두고 옮겨·늘려 칠한다
+// (촛불마다 매 프레임 새 그라데이션을 만들던 것이 프레임당 그라데이션 예산의 최대 원인이었다, R1-REQ-341E)
+let FLAME_GLOW = null;
 function drawFlame(ctx, x, y, s = 1, t = 0, color = '#ff9a3a') {
   const f = 1 + Math.sin(t * 23 + x) * 0.12 + Math.sin(t * 37) * 0.06;
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
-  const g = ctx.createRadialGradient(x, y - 5 * s, 0, x, y - 5 * s, 22 * s);
-  g.addColorStop(0, 'rgba(255,200,120,0.55)'); g.addColorStop(1, 'rgba(255,100,20,0)');
-  ctx.fillStyle = g; ctx.fillRect(x - 24 * s, y - 30 * s, 48 * s, 48 * s);
+  if (!FLAME_GLOW) {
+    FLAME_GLOW = ctx.createRadialGradient(0, 0, 0, 0, 0, 22);
+    FLAME_GLOW.addColorStop(0, 'rgba(255,200,120,0.55)'); FLAME_GLOW.addColorStop(1, 'rgba(255,100,20,0)');
+  }
+  ctx.save(); ctx.translate(x, y - 5 * s); ctx.scale(s, s);
+  ctx.fillStyle = FLAME_GLOW; ctx.fillRect(-24, -25, 48, 48);
+  ctx.restore();
   ctx.fillStyle = color;
   ctx.beginPath(); ctx.ellipse(x, y - 6 * s * f, 4 * s, 9 * s * f, 0, 0, TAU); ctx.fill();
   ctx.fillStyle = '#fff6d0';

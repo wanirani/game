@@ -1,7 +1,11 @@
 // 동료 HUD — owner: CMP-UI (companions §7.1, §7.5; MASTER_PLAN §1.8 · 요청 24 HUD-LAYOUT · 요청 104 CMP-SYS)
 //
 //  drawCompanionHUD(ctx, world, o) → 탭 판정 사각형 배열 [{x,y,w,h, act:'mount'|'guard', slot?}] | null
-//      o = { x, y, touch, rect: L.companions (x 244–372, y 92–160), lane: L.callouts (300×52 카드 줄), layout: L }
+//      o = { x, y, touch, rect: L.companionsDraw, lane: L.callouts (300×52 카드 줄), layout: L }
+//        rect 는 그리기 상자: hud.js 가 L.companions (x 244–372, y 92–160) 를 hud_layout.js 의 CMP_INK {l:8, t:8, r:4} 만큼 안으로
+//        줄여 넘긴다 (116×61.6 at (252,100) → 위젯 배율 ≈0.906). 탈것 위젯의 받침 원판(r+3.5) · 탑승 금빛 고리 · 비행형 스태미나 호(r+7)
+//        · 수호신 받침 원판(r+3)은 이 상자 밖으로 왼쪽·위 최대 8px, 오른쪽 4px 번진다 — 그래도 L.companions 안이다 (MASTER_PLAN §1.8).
+//        이 파일이 잉크를 스스로 o.rect 안에 가두도록 바뀌면 같은 변경에서 CMP_INK 를 {l:0,t:0,r:0} 으로 (두 번 줄지 않게).
 //      hud.js 가 돌려받은 배열을 world.companions.hudRects 에 둔다 (CompanionSystem.handleTaps 가 터치 대체 경로로 쓴다).
 //      배열·사각형은 모듈이 재사용한다 (프레임마다 할당 없음) — 다음 그리기까지만 유효.
 //      터치(o.touch)면 사각형은 손가락 판정 크기(44 CSS px, 이웃과는 간격 가운데까지)로 넓힌 것이고 ui.taps 에도 같은 영역을 올린다.
@@ -30,7 +34,7 @@ import * as GDRAW from './guardians.js';
 const HALF_PI = Math.PI / 2;
 const MOUNT_R = 20, GUARD_R = 19;           // 지름 40 / 38 (companions §7.1)
 const GUARD_DX = [46, 90];                   // 수호신 위젯 왼쪽 끝 (탈것 위젯 기준)
-const BASE_W = 128, BASE_H = 68;             // L.companions 기본 크기
+const BASE_W = 128, BASE_H = 68;             // L.companions 기본 크기 (o.rect 가 이보다 작으면 위젯을 그만큼 줄여 그린다)
 const HP_COL = '#e8a040', HP_LOW = '#ff4a3a', STAM_COL = '#7ec8ff', GOLD = '#ffd070';
 const CARD_IN = 0.18, CARD_HOLD = 1.2, CARD_OUT = 0.2, CARD_CUT = 0.55;
 
