@@ -814,9 +814,9 @@ Targets: 60 fps on a mid-range Android device (2021 or newer, `medium`), 50 fps 
 | camera roll or rotation | on | on | off |
 
 Headless relative checks (the WP8 harness, same machine, 960×540):
-- Ultimate or awakening average frame time ≤ **1.5×** the gameplay average, and p95 ≤ **2.5×** the gameplay median.
+- Ultimate or awakening average frame time ≤ **1.8×** the gameplay average (main-thread CPU ratio ≤ 1.8× as well), and p95 ≤ **3.0×** the gameplay median; absolute guard on this harness: ultimate average ≤ 12 ms. (Round 2 lead decision: the old 1.5×/2.5× ratios failed only because the gameplay baseline is very light — 5–7 ms — while every absolute cost stays far under the 16.7 ms frame.)
 - No frame over **250 ms** after the first 2 s of a stage, including the first awakening.
-- Sprinting with 6 enemies hit at SSS style: average ≤ 1.2× the idle-walk average.
+- Sprinting with 6 enemies hit at SSS style: average ≤ **1.5×** the idle-walk average (CPU ratio ≤ 1.5× as well); absolute guard: sprint average ≤ 10 ms. (Round 2 lead decision, was 1.2×.)
 
 Instrumentation: `window.__feelStats = { particles, dmgNums, ghosts, gradients, heroDraws, sfxStarts }`. It is updated only when `?debug` or `?feelstats` is in the URL.
 
