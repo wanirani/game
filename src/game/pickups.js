@@ -37,13 +37,16 @@ export class Pickup extends Entity {
     if (this.life <= 0) { this.dead = true; return; }
     if (!this.placed || (!this.magnet && world.map.isSolidPx(this.cx, this.cy))) { this.placed = true; this.unstick(world.map); }
     const p = world.player;
+    // 가방이 가득 차 못 주운 아이템(world.refuseFull): 자리가 날 때까지 끌려오지 않고 바닥에 남는다 (닿으면 경고만)
+    if (this.bagFull && this.t % 0.5 < dt && world.canTake?.(this)) this.bagFull = false;
+    const held = !!this.bagFull;
     const mag = p && (p.buffs?.magnet || (p.stats?.magnet ?? 0) > 0);
     const dist = p ? Math.hypot(p.cx - this.cx, p.cy - this.cy) : Infinity;
     // 보스 격파(스테이지 클리어) 후에는 남은 전리품을 플레이어에게 끌어모음
     const vacuum = world.cleared && p && !p.dead && this.t > this.delay + 0.8 && VACUUM.has(this.type);
     // 아직 드러나지 않은 비밀 방(가짜 벽) 속의 물건은 벽 너머로 끌려 나오지 않는다 (이미 날아오던 것·클리어 후 회수는 그대로)
     const pullable = (dist < this.pull || (mag && dist < 320)) && !world.inUnrevealedFake?.(this);
-    if (p && this.t > this.delay && (this.magnet || vacuum || pullable)) {
+    if (p && this.t > this.delay && !held && (this.magnet || vacuum || pullable)) {
       this.magnet = true;
       const dx = p.cx - this.cx, dy = p.cy - this.cy, d = Math.hypot(dx, dy) || 1;
       const sp = 700;

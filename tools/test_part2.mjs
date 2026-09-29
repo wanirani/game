@@ -156,7 +156,46 @@ async function staticChecks() {
     }
   }
   check(G, '맵·퀘스트·보스 드롭·대본 give 가 가리키는 아이템/적/NPC 가 모두 있다', !m2.length, m2);
+  // 모으기(collect) 의뢰의 아이템은 수락 가능해질 때(req.chapter = 마지막으로 깬 장) 이미 열린 스테이지(장 ≤ req+1)의 적·보스 드롭·배치,
+  // 또는 그 장의 로크 잡화점에서 나와야 한다 (감사 EC-02: 마르타 「약초 수프」의 월하초는 출처가 없었다)
+  {
+    const { shopStock } = await imp('src/data/shop.js');
+    const first = {};
+    const note = (id, ch, why) => { if (typeof id === 'string' && (!first[id] || ch < first[id][0])) first[id] = [ch, why]; };
+    for (const [sid, st] of Object.entries(STAGES)) {
+      const ch = st.chapter ?? 99;
+      for (const [rid, room] of Object.entries(st.rooms ?? {})) {
+        for (const sp of Object.values(room.enemies ?? {})) { const id = typeof sp === 'string' ? sp : sp?.id; for (const d of ENEMIES[id]?.drops ?? []) note(d.id, ch, `${sid} ${id}`); }
+        for (const it of [...(room.items ?? []), ...(room.chests ?? [])]) note(it, ch, `${sid}/${rid}`);
+      }
+      for (const d of BOSSES[st.boss]?.drops ?? []) note(typeof d === 'string' ? d : d?.id, ch, `${sid} ${st.boss}`);
+    }
+    for (let c = 0; c <= 20; c++) for (const g of shopStock(c)) note(g.baseId, c, `로크 잡화점 ${c}장`);
+    const late = Object.values(QUESTS).filter((q) => q.goal?.type === 'collect').map((q) => [q.id, q.goal.item, q.req?.chapter ?? 0, first[q.goal.item] ?? null])
+      .filter(([, , req, f]) => !f || f[0] > req + 1);
+    check(G, '모으기 의뢰의 아이템은 수락 시점까지 열린 스테이지·상점에서 얻을 수 있다 (m_herb 포함)', !late.length && !!first.m_herb, late.length ? late : first.m_herb);
+  }
   check(G, 'k_star_1…6 · k_heart_1…6 · k_rift_lantern · k_dawnflower 아이템이 있다', [1, 2, 3, 4, 5, 6].every((n) => ITEMS[`k_star_${n}`] && ITEMS[`k_heart_${n}`]) && ITEMS.k_rift_lantern && ITEMS.k_dawnflower && SHARDS?.length === 6 && HEARTS?.length === 6);
+  // 가방이 가득 차도 새벽꽃(유일한 출처 s19 r4)·중요 물품은 반드시 들어가고, 못 받은 보상은 보관함으로 갔다가 자리가 나면 들어온다 (감사 EC-01)
+  {
+    const INV = await imp('src/game/inventory.js');
+    const [{ newGameState }, { makeItem }] = await Promise.all([imp('src/game/state.js'), imp('src/data/items.js')]);
+    const st = newGameState({ slot: 1 });
+    const wid = Object.keys(ITEMS).find((k) => ITEMS[k].slot === 'weapon' && !ITEMS[k].unique);
+    for (let i = 0; INV.freeSlots(st) > 0 && i < 400; i++) INV.addItem(st, makeItem(wid), { silent: true });
+    const full = INV.freeSlots(st) === 0;
+    const normal = makeItem(wid);
+    const r = { full, normalRefused: !INV.canAdd(st, normal) && !INV.addItem(st, normal, { silent: true }) };
+    const flower = makeItem('k_dawnflower');
+    r.flowerCanAdd = INV.canAdd(st, flower);
+    r.flowerAdded = !!INV.addItem(st, flower, { silent: true }) && INV.countItem(st, 'k_dawnflower') === 1;
+    r.stillFull = INV.freeSlots(st) === 0;   // 중요 물품은 한도에 들지 않는다
+    r.reward = INV.grantItem(st, 'u_alberto', 1);
+    INV.removeItem(st, st.inventory.find((i) => i.baseId === wid).uid);
+    r.delivered = INV.deliverLoot(st);
+    r.alberto = INV.countItem(st, 'u_alberto') === 1 && !st.progress.lootQueue.length;
+    check(G, '가방 300/300: 새벽꽃(중요 물품)은 들어가고 일반 아이템은 거절, 못 받은 보상은 보관함 → 자리가 나면 지급', r.full && r.normalRefused && r.flowerCanAdd && r.flowerAdded && r.stillFull && r.reward.queued === 1 && r.delivered === 1 && r.alberto, r);
+  }
   const myth = Object.values(MYTHIC_WEAPONS_P2 ?? {});
   check(G, 'MYTHIC_WEAPONS_P2 는 무기 종류별 6종 (u_dawn_*)', myth.length === 6 && myth.every((id) => ITEMS[id]?.slot === 'weapon' && /^u_dawn_/.test(id)), MYTHIC_WEAPONS_P2);
 
@@ -947,6 +986,55 @@ async function itemsGroup() {
     check(G, 'rk_stars 진행 = progress.shards (2/3 → 3/3 달성)', r.stars.active && r.stars.two === 2 && !r.stars.doneAt2 && r.stars.three === 3 && r.stars.doneAt3, r.stars);
     check(G, '아이템/의뢰 검사 오류 0', !errsSince(P, e0).length, errsSince(P, e0));
   } catch (e) { check(G, '아이템 검사 실행', false, e.stack); }
+  await P?.close();
+  // 가방 300/300 으로 s19 r4 (감사 EC-01): 새벽꽃은 주워지고, 일반 아이템은 바닥에 남으며(배치 기록 없음),
+  // 상자·보스 전리품은 방을 떠나면, 남은 전리품은 스테이지 끝에 보관함으로 → 자리가 나면 world.update 가 가방에 넣는다
+  try {
+    P = await openPage('index.html?scene=stage&stage=s19&room=r4', { ready: 'stage', god: 'full' });
+    const e0 = P.errs.length;
+    const r = await P.page.evaluate(async () => {
+      const T = window.__T, w = T.w(), st = T.g.state, p = T.p();
+      const [INV, { ITEMS, makeItem }] = await Promise.all([import('/src/game/inventory.js'), import('/src/data/items.js')]);
+      const wid = Object.keys(ITEMS).find((k) => ITEMS[k].slot === 'weapon' && !ITEMS[k].unique);
+      st.inventory = st.inventory.filter((i) => ITEMS[i.baseId]?.slot !== 'key');
+      for (let i = 0; INV.freeSlots(st) > 0 && i < 400; i++) INV.addItem(st, makeItem(wid), { silent: true });
+      if (st.progress.lootQueue) st.progress.lootQueue.length = 0;
+      const pk = (id) => w.entities.find((e) => e.kind === 'pickup' && !e.dead && e.data?.item?.baseId === id);
+      const touch = (e, n = 20) => { for (let i = 0; i < n && !e.dead; i++) { p.x = e.cx - p.w / 2; p.y = e.y + e.h - p.h; p.vx = p.vy = 0; T.tick(1); } };
+      const out = { full: INV.freeSlots(st) === 0 };
+      T.tick(30);
+      const flower = pk('k_dawnflower');
+      out.flowerPlaced = !!flower;
+      if (flower) touch(flower);
+      out.flower = INV.countItem(st, 'k_dawnflower') === 1 && st.progress.secrets.includes('s19:r4:item0');
+      // 배치 일반 아이템 (가짜 secretKey) · 상자 내용물(keep) · 적 드롭
+      const plain = w.spawnPickup('item', p.cx + 60, p.y, { item: makeItem('c_hipotion', { qty: 1 }), vx: 0, vy: 0 });
+      plain.secretKey = 's19:r4:qa_item';
+      const potion0 = INV.countItem(st, 'c_hipotion');
+      T.tick(30); touch(plain, 30);
+      out.plainStays = !plain.dead && plain.bagFull === true && !st.progress.secrets.includes('s19:r4:qa_item') && INV.countItem(st, 'c_hipotion') === potion0;
+      const chest = w.spawnPickup('item', p.cx - 60, p.y, { item: makeItem(wid), keep: true, vx: 0, vy: 0 });
+      T.tick(30); touch(chest, 30);
+      out.chestStays = !chest.dead;
+      // 방을 떠난다 → keep 은 보관함으로, 배치 아이템은 기록 없이 다음에 다시 놓인다
+      w.loadRoom('r4'); T.tick(5);
+      const q = st.progress.lootQueue ?? [];
+      out.queuedOnLeave = q.length === 1 && q[0].baseId === wid;
+      out.plainNotQueued = !q.some((i) => i.baseId === 'c_hipotion');
+      // 스테이지 끝 자동 회수: 가득 찬 가방 → 보관함
+      w.spawnPickup('item', p.cx, p.y - 40, { item: makeItem('u_goldbat'), keep: true, vx: 0, vy: 0 });
+      w.collectLeftovers();
+      out.leftoverQueued = q.some((i) => i.baseId === 'u_goldbat');
+      // 자리가 나면 1초 안에 가방으로
+      for (let k = 0; k < 3; k++) INV.removeItem(st, st.inventory.find((i) => i.baseId === wid && !INV.isEquipped(st, i.uid)).uid);
+      T.tick(90);
+      out.delivered = !q.length && INV.countItem(st, 'u_goldbat') === 1;
+      out.queueLeft = q.map((i) => i.baseId);
+      return out;
+    });
+    const ok = r.full && r.flowerPlaced && r.flower && r.plainStays && r.chestStays && r.queuedOnLeave && r.plainNotQueued && r.leftoverQueued && r.delivered;
+    check(G, '가방 300/300 (s19 r4): 새벽꽃 획득 · 일반 아이템은 바닥에 남음 · 상자/남은 전리품은 보관함 → 자리가 나면 지급', ok && !errsSince(P, e0).length, { ...r, errs: errsSince(P, e0) });
+  } catch (e) { check(G, '가방 가득 참 검사 실행', false, e.stack); }
   await P?.close();
   // 비전서 기술 (커맨드 입력 → MP 소모)
   try {

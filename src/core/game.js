@@ -10,6 +10,8 @@
 //   game.syncPad()          가상 패드 표시의 유일한 주인 (touchpad.setVisible)
 //   game.flash(color, strength, decay) · game.flashCapped(strength, record = true) → 정책을 적용한 세기 (직접 그리는 번쩍임용)
 //   game.vignette(color, a, decay) · game.toast(text, color, time)
+//   game.saveFailed({kind, key, slot})  저장 실패 경고 (main.js 가 saves.onFail 로 잇는다, PS-01): 경고 토스트를 띄우고, 같은 처리 안에서
+//                           뒤따르는 '저장 완료'·'여정을 기록했다' 토스트는 거짓 성공 안내이므로 지우거나(회복 안내만 남김) 버린다
 //   game.pop() 이 마지막 장면이면 타이틀로 (빈 스택 방지)
 //   game.lazyScenes(loader) · game.whenScenes() · game.scenesReady · game.retryScenes()   첫 화면 밖 장면을 나중에 받는다 (R1-REQ-229):
 //                           그동안 go/push 한 미등록 장면은 '불러오는 중' 자리 장면(name 'loading')이 지키다가 도착하면 제자리 교체
@@ -48,6 +50,14 @@ const UI_TEXT_FLOOR = 11;               // uiScale 장면을 그리는 동안의
 const PAD_HIDE_DELAY = 0.25;            // 입력이 패드·키보드로 바뀐 뒤 가상 패드를 숨기기까지 (초; 터치로 오면 바로 보인다)
 const FLASH_CAP = 0.7, FLASH_SOFT = 0.3; // 화면 번쩍임 상한, 1초에 강한 번쩍임이 2번 넘으면 그 뒤의 상한
 const ZERO = Object.freeze({ l: 0, r: 0, t: 0, b: 0 });
+// 저장 실패 경고 (PS-01). 성공 안내 걸러 내기: 월드 세이브 포인트 '저장 완료 — 체력과 마력이…' 는 머리말만 떼고,
+// 마을·교회의 '…여정을 기록했다' · '저장 공간에 접근할 수 없어…' 는 경고와 겹치므로 버린다
+const SAVE_FAIL_QUOTA = '저장 공간이 부족해 저장하지 못했습니다';
+const SAVE_FAIL_BLOCKED = '저장 공간에 접근할 수 없어 저장하지 못했습니다';
+const SAVE_FAIL_HINT = '게임을 닫기 전에 계정 저장이나 저장 코드로 백업하세요';
+const SAVE_WARN = new Set([SAVE_FAIL_QUOTA, SAVE_FAIL_BLOCKED, SAVE_FAIL_HINT]);
+const SAVE_OK_HEAD = /^저장 완료\s*(?:[—–-]\s*)?/;
+const SAVE_OK_DROP = /^(?:저장 완료\s*$|저장 공간에 접근할 수 없어|(?:슬롯 \d+에 )?여정을 기록했다)/;
 
 /**
  * Scene 기본 클래스. 모든 장면은 이를 상속한다.
@@ -498,11 +508,34 @@ class Game {
     if (s >= v.a) { v.color = typeof color === 'string' && color[0] === '#' ? color : '#ff0020'; v.decay = fadeRate(decay, 3); v.a = s; }
   }
   toast(text, color = '#f3e2b8', time = 2.4) {
-    const s = String(text ?? '');
+    let s = String(text ?? '');
+    // 방금(같은 처리 안에서) 저장에 실패했다: 뒤따르는 성공 안내는 거짓이므로 '저장 완료 — ' 머리말을 떼거나 버린다 (경고는 이미 떴다)
+    if (this._saveFailNow && !SAVE_WARN.has(s)) {
+      if (SAVE_OK_DROP.test(s)) return;
+      s = s.replace(SAVE_OK_HEAD, '');
+    }
     if (!s.trim()) return; // 빈 알림은 빈 상자만 남기고 줄을 차지하므로 버린다
     const tm = Number(time) > 0 ? Number(time) : 2.4;
+    const same = this.toasts.find((t) => t.text === s && SAVE_WARN.has(s));
+    if (same) { same.t = Math.max(same.t, tm); return; } // 같은 저장 경고는 한 줄만 (시간만 늘린다)
     this.toasts.push({ text: s, color, t: tm, max: tm, shown: undefined });
     if (this.toasts.length > 5) this.toasts.shift();
+  }
+  /**
+   * 저장 실패 경고 (saves.onFail → main.js). 세이브 슬롯 실패는 매번, 설정·메타 실패는 실행마다 한 번만 알린다.
+   * 새 기록은 이번 실행 동안 메모리에 남아 이어하기·클라우드 올리기에는 쓰이지만, 게임을 닫으면 사라진다
+   */
+  saveFailed(f) {
+    const slot = Number.isInteger(f?.slot);
+    if (!slot && this._saveFailWarned) return;
+    this._saveFailWarned = true;
+    const head = f?.kind === 'quota' ? SAVE_FAIL_QUOTA : SAVE_FAIL_BLOCKED;
+    this.toast(head, '#ff8a8a', 5);
+    this.toast(SAVE_FAIL_HINT, '#f3c9a8', 5);
+    this.dirty = true;
+    // 같은 처리(동기 호출) 안에서 뒤따르는 '저장 완료' 토스트를 걸러 낸다 → 다음 마이크로태스크에서 푼다
+    this._saveFailNow = true;
+    Promise.resolve().then(() => { this._saveFailNow = false; });
   }
   /**
    * 토스트를 숨기고 시간도 멈출 때인가: scene.deferToasts (필살·각성 컷인, 동료 합류, 스토리 — 장면이 직접 켠다) · 보이는 게임플레이 장면이

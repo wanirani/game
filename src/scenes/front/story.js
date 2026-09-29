@@ -19,7 +19,7 @@ import { SCRIPTS } from '../../data/story.js';
 import { CHARACTERS } from '../../data/characters.js';
 import { NPCS } from '../../data/npcs.js';
 import { BOSSES } from '../../data/bosses.js';
-import { addByBase } from '../../game/inventory.js';
+import { grantItem } from '../../game/inventory.js';
 import { drawHints } from '../../core/prompts.js';
 import { Ambience, kenBurns, ornament, gbutton, menuItem, goSafe, glowSprite, featherPortrait, TapZones, GOLD, BONE, DIM } from './common.js';
 
@@ -96,7 +96,7 @@ export class StoryScene extends Scene {
   runCmd(l, quiet = false) {
     const st = this.state, g = this.game;
     switch (l.cmd) {
-      case 'give': if (st) { try { addByBase(st, l.item, l.qty ?? 1); } catch { /* 무시 */ } if (!quiet) { g.toast(`획득: ${l.name ?? l.item} ×${l.qty ?? 1}`, '#e8c872'); audio.sfx('item'); } } break;
+      case 'give': if (st) { try { grantItem(st, l.item, l.qty ?? 1); } catch { /* 무시 */ } if (!quiet) { g.toast(`획득: ${l.name ?? l.item} ×${l.qty ?? 1}`, '#e8c872'); audio.sfx('item'); } } break;
       case 'gold': if (st) { st.gold = (st.gold ?? 0) + (l.amount ?? 0); if (!quiet) { g.toast(`${l.amount} G 획득`, '#ffd84a'); audio.sfx('coin'); } } break;
       case 'flag': if (st) st.progress.flags[l.key] = l.value ?? true; break;
       case 'quest': bus.emit('questOffer', { questId: l.id }); g.quests?.accept?.(l.id); break;

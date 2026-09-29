@@ -19,6 +19,10 @@
 //  a2hsHint() → bool, dismissA2hs(), A2HS_TEXT   아이폰 사파리 '홈 화면에 추가' 안내 카드 (한 번 닫으면 meta.tips.a2hs, MASTER_PLAN §1.6)
 //  requestPersist() → Promise<bool>     저장공간 영구 보존 요청 (첫 슬롯 저장 뒤 자동으로 한 번)
 //  registerServiceWorker()              initPlatform 이 페이지 load 뒤 자동 호출 (https 또는 localhost, ?nosw·APK·아티팩트 제외)
+//  backGuard() → { on, armed }          웹 뒤로 가기 센티널 상태 (§5.6, PS-02). 브라우저·설치형 PWA 의 뒤로 가기(제스처)는
+//                                       게임을 떠나지 않고 APK 뒤로 버튼(MainActivity.onGameBack)과 같게 동작한다:
+//                                       타이틀 첫 화면이면 '한 번 더 누르면 나갑니다' 안내 뒤 두 번째에 떠나고, 그 밖에는 Escape
+//                                       (게임플레이 = 일시정지 메뉴, 메뉴·겹친 화면 = 닫기/취소). APK·틀(iframe) 안에서는 쓰지 않는다
 // ── 장면 플래그 (선택) ──
 //  scene.keepAwake = true | false   화면 꺼짐 방지를 장면이 직접 정한다 (없으면 WAKE_SCENES 기준)
 //  scene.hideCursor = true | false  2초 동안 마우스를 안 움직이면 커서를 숨길지 (없으면 CURSOR_SCENES 기준)
@@ -387,6 +391,74 @@ export function applyUpdate() {
   setTimeout(() => { if (!reloading) { reloading = true; W.location.reload(); } }, 4000);
 }
 
+// ───────────────────────── 뒤로 가기 센티널 (§5.6, PS-02) ─────────────────────────
+// 기본 항목(B) 위에 센티널 항목(S, state.bnBack)을 하나 쌓아 둔다. 뒤로 가기 → B 로 돌아오며 popstate → S 를 다시 쌓고 게임에 Escape.
+// 크롬은 사용자 입력 없이 쌓은 항목을 뒤로 가기에서 건너뛰므로(history manipulation intervention) 처음 쌓기는 입력(탭·키) 중에 하고,
+// 입력이 없는 컨트롤러 사용자를 위해 게임 화면(타이틀 첫 화면 밖)에 들어가면 주기 점검에서도 쌓는다
+export const BACK_EXIT_TEXT = '뒤로 가기를 한 번 더 누르면 게임을 나갑니다';
+const BACK_EXIT_MS = 2500;
+const BACK_KEY = 'bnBack';
+let backOn = false, backArmed = false, exitAskUntil = 0;
+function backGuardAllowed() {
+  if (!W?.history?.pushState || isApp()) return false; // APK: 뒤로 버튼을 MainActivity 가 받아 같은 규칙으로 처리한다
+  try { if (W.top !== W) return false; } catch { return false; } // 틀 안(아티팩트 미리보기 등): 부모 페이지의 뒤로 가기를 가로채지 않는다
+  return true;
+}
+/** 지금 뒤로 가기가 '앱 나가기'인가: 타이틀 첫 화면 (MainActivity.BACK_PROBE_JS 와 같은 판정) */
+function backMeansExit() {
+  const S = G?.scenes;
+  if (!S?.length) return true;
+  const t = S[S.length - 1];
+  return S.length === 1 && t?.name === 'title' && t.mode !== 'menu';
+}
+function armBack() {
+  if (!backOn || backArmed || now() < exitAskUntil) return;
+  try { W.history.pushState({ [BACK_KEY]: 1 }, ''); backArmed = true; } catch { /* 보안 오류 등: 센티널 없이 계속 */ }
+}
+/** 게임에 뒤로(Escape) 한 번: APK 의 ESCAPE_JS 와 같이 keydown → 120 ms 뒤 keyup (input.js 가 한 프레임 이상 눌림으로 본다) */
+function sendBack() {
+  try {
+    const o = { key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true, cancelable: true };
+    const t = D.activeElement || D.body || D;
+    t.dispatchEvent(new KeyboardEvent('keydown', o));
+    setTimeout(() => { try { t.dispatchEvent(new KeyboardEvent('keyup', o)); } catch { /* 무시 */ } }, 120);
+  } catch { /* 무시 */ }
+  if (G) G.dirty = true;
+}
+function onPopState(e) {
+  if (e?.state?.[BACK_KEY]) { backArmed = true; return; } // 앞으로 가기로 센티널에 돌아왔다
+  if (!backArmed) return; // 센티널을 쌓은 적이 없다 (다른 이유의 popstate)
+  backArmed = false;
+  if (!G) return;
+  if (backMeansExit()) {
+    // 타이틀: 센티널을 다시 쌓지 않는다 → 안내 시간 안에 한 번 더 누르면 그대로 떠난다 (두 번 넘게 붙잡지 않는다)
+    exitAskUntil = now() + BACK_EXIT_MS;
+    call(() => G.toast?.(BACK_EXIT_TEXT, '#cfc2a8', BACK_EXIT_MS / 1000));
+    return;
+  }
+  armBack();
+  sendBack();
+}
+/** 사용자 입력 중: 센티널이 없으면 쌓는다 (입력 중에 쌓은 항목은 크롬이 건너뛰지 않는다) */
+function onUserInput(e) {
+  if (!backOn || backArmed) return;
+  if (e?.type === 'keydown' && (e.key === 'Escape' || e.repeat)) return; // Escape 는 사용자 활성화가 아니다
+  armBack();
+}
+/** 주기 점검: 게임 화면에서 센티널이 없으면 (컨트롤러만 쓰는 경우, 타이틀 안내 뒤 다시 들어온 경우) 쌓는다 */
+function syncBack() {
+  if (!backOn || backArmed || now() < exitAskUntil) return;
+  if (!backMeansExit()) armBack();
+}
+function initBackGuard() {
+  backOn = backGuardAllowed();
+  if (!backOn) return;
+  backArmed = !!W.history.state?.[BACK_KEY]; // 새로 고침: 이미 센티널 위에 있다
+  W.addEventListener('popstate', onPopState);
+  for (const ev of ['pointerdown', 'pointerup', 'keydown', 'touchend']) W.addEventListener(ev, onUserInput, { capture: true, passive: true });
+}
+export function backGuard() { return { on: backOn, armed: backArmed }; }
+
 // ───────────────────────── 주기 점검 (0.5초) ─────────────────────────
 let lastTopName = null;
 function tick() {
@@ -398,6 +470,7 @@ function tick() {
   setCursorHidden(cursorWanted());
   checkSwUpdate(); // 탭을 오래 켜 둔 데스크톱도 30분마다 새 버전을 확인한다 (그 전에는 바로 돌아온다)
   flushUpdateToast();
+  syncBack();
   if (storageTipPending && G.top?.name === 'hub' && !(G.toasts?.length)) {
     storageTipPending = false;
     // 그사이 계정에 로그인했으면(클라우드 백업 중) 안내하지 않는다
@@ -411,7 +484,7 @@ function tick() {
 export const api = {
   safeInsets, safeRect, onInsetsChange, isStandalone, isApp, isIOS, isAndroid, isAndroidWeb,
   fullscreenAvailable, canFullscreen, isFullscreen, enterFullscreen, exitFullscreen, toggleFullscreen,
-  onUpdateReady, applyUpdate, updateReady, audioHint, a2hsHint, dismissA2hs, requestPersist,
+  onUpdateReady, applyUpdate, updateReady, audioHint, a2hsHint, dismissA2hs, requestPersist, backGuard,
   AUDIO_HINT_TEXT, A2HS_TEXT, UPDATE_READY_TEXT,
   get audioHintOn() { return audioHint(); },
 };
@@ -464,6 +537,9 @@ export function initPlatform(game) {
     if (G) G.dirty = true;
   });
   W.addEventListener('keydown', () => { wakeDenied = false; }, { passive: true, once: true });
+
+  // 뒤로 가기(제스처) = 일시정지·닫기, 타이틀에서는 한 번 확인 (§5.6, PS-02)
+  initBackGuard();
 
   // 첫 슬롯 저장 뒤 저장공간 보존 요청
   try { G?.saves?.onWrite?.((ev) => { if (ev?.type === 'write') onFirstSave(); }); } catch { /* 무시 */ }

@@ -2,7 +2,8 @@
 // hp/atk/def 는 레벨 1 기준값 — enemyStats() 가 스테이지 레벨(s01 lv1 … s06 lv14)로 스케일한다.
 // 상대적 강도: 박쥐 10 / 해골 ~32 / 갑옷 ~85 / 대형 120~200
 // material: 타격 이펙트 재질 ('flesh','bone','metal','ghost','stone','slime','paper','ice','fire')
-// drops: 'heart' 'food' 'mp' + 재료 m_bone m_fang m_ectoplasm m_iron m_feather m_cloth m_crystal m_blood m_soul m_dark (+ 강화석 m_stone_N)
+// drops: 'heart' 'food' 'mp' + 재료 m_bone m_fang m_ectoplasm m_iron m_feather m_cloth m_crystal m_blood m_soul m_dark m_herb (+ 강화석 m_stone_N)
+//   m_herb(월하초): 마르타 의뢰 「약초 수프」(1장 클리어 뒤 수락, 5묶음) — s01 빙의된 주민 · s02 진흙 인간 · 무덤지기가 떨군다 (로크 잡화점에서도 판다)
 
 const UNDEAD = ['holy'];
 
@@ -62,7 +63,7 @@ export const ENEMIES_A = {
     size: { w: 30, h: 80 }, ai: 'walker',
     aiParams: { atkRange: 104, reachX: 0, reach: 100, reachY: 58, reachH: 22, windup: 0.55, atkTime: 0.95, atkMv: 1.3, chaseMul: 1.4, sight: 360, atkSfx: 'slash' },
     render: 'possessed', speed: 55, material: 'flesh', weak: ['holy'], resist: ['dark'],
-    drops: [{ id: 'm_cloth', p: 0.1 }, { id: 'food', p: 0.05 }],
+    drops: [{ id: 'm_cloth', p: 0.1 }, { id: 'food', p: 0.05 }, { id: 'm_herb', p: 0.08 }],
     desc: '악령에게 몸을 빼앗긴 에슈빌의 농부. 쇠스랑을 뒤로 당기는 순간을 잘 보라. 안타깝지만 이제 구할 방법은 없다.',
   },
 
@@ -93,14 +94,14 @@ export const ENEMIES_A = {
     id: 'gravedigger', name: '저주받은 무덤지기', lv: 3, hp: 150, atk: 14, def: 5, res: 3, exp: 30, gold: [10, 25], score: 1200,
     size: { w: 52, h: 96 }, ai: 'digger', aiParams: { sight: 460, melee: 118, rate: 1.6 }, render: 'gravedigger', speed: 48,
     kbResist: 0.8, material: 'flesh', weak: ['holy', 'fire'], resist: ['dark'], light: { r: 90, color: '#ffb050', i: 0.75 },
-    drops: [{ id: 'm_cloth', p: 0.2 }, { id: 'm_iron', p: 0.12 }, { id: 'food', p: 0.2 }, { id: 'heart', p: 0.3, qty: 5 }],
+    drops: [{ id: 'm_cloth', p: 0.2 }, { id: 'm_iron', p: 0.12 }, { id: 'food', p: 0.2 }, { id: 'heart', p: 0.3, qty: 5 }, { id: 'm_herb', p: 0.25 }],
     desc: '백 년 동안 무덤을 파 온 거한. 죽어서도 삽을 놓지 못한다. 삽을 머리 위로 치켜들면 땅이 갈라진다.',
   },
   mud_man: {
     id: 'mud_man', name: '진흙 인간', lv: 3, hp: 40, atk: 10, def: 3, exp: 9, gold: [2, 6], score: 300,
     size: { w: 40, h: 76 }, ai: 'mud', aiParams: { sight: 440 }, render: 'mud_man', speed: 45,
     kbResist: 0.4, material: 'stone', weak: ['fire', 'ice'], resist: ['thunder'],
-    drops: [{ id: 'm_crystal', p: 0.03 }, { id: 'heart', p: 0.1 }],
+    drops: [{ id: 'm_crystal', p: 0.03 }, { id: 'heart', p: 0.1 }, { id: 'm_herb', p: 0.2 }],
     desc: '무덤가 진창에 스민 원념이 사람 모양으로 뭉친 것. 땅속으로 가라앉았다가 발밑에서 불쑥 솟아오른다. 거품이 끓는 곳을 조심하라.',
   },
 

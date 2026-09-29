@@ -4,7 +4,9 @@
 //  isEquipped(state, uid) / canEquip(state, hero, inst) / useItem(state, hero, uid, player) → {ok, msg}
 //  sortInventory(state, mode:'type'|'rarity'|'new') / sellItem(state, uid, qty) → 골드 / sellJunk(state, maxRarity) → {count, gold}
 //  toggleLock(state, uid) → locked / buyItem(state, baseId, {rarity, price, qty}) → {ok, msg, item}
-//  quickHeal(state, hero, player) → {ok, msg} (전투 중 가장 알맞은 회복약 자동 사용) / freeSlots(state)
+//  quickHeal(state, hero, player) → {ok, msg} (전투 중 가장 알맞은 회복약 자동 사용) / freeSlots(state) / usedSlots(state) / canAdd(state, inst)
+//  queueLoot(state, inst) / deliverLoot(state) → 넣은 개수 (가방이 가득 차 받지 못한 전리품 보관함 progress.lootQueue)
+//  grantItem(state, baseId, qty, opts) → {added, queued} (보상 지급: 못 넣은 몫은 보관함으로)
 //  equippedByOther(state, hero, uid) → charId|null / ensureWeapon(state, hero) → 새로 낀 무기|null
 // 아이템 인스턴스: { uid, baseId, slot, icon, rarity(0~5), level(강화 0~15), affixes:[{stat,value,id}], qty, locked, t }
 import { ITEMS, makeItem, isEquipment, buyPrice, sellPrice, itemName, itemStats } from '../data/items.js';
@@ -20,14 +22,34 @@ export function findItem(state, uid) {
   return state.inventory.find((i) => i.uid === uid) || null;
 }
 
-export function freeSlots(state) { return INV_LIMIT - (state?.inventory?.length ?? 0); }
+/** 중요 물품(key 칸: 유물·퀘스트 물품·별의 조각·세계의 심장)은 가방 한도에 들지 않고 가득 차도 반드시 들어간다 (유일한 출처를 잃지 않게) */
+export const limitFree = (base) => base?.slot === 'key';
+/** 한도에 드는 칸 수 (중요 물품 제외) */
+export function usedSlots(state) {
+  let n = 0;
+  for (const i of state?.inventory ?? []) if (!limitFree(ITEMS[i.baseId])) n++;
+  return n;
+}
+export function freeSlots(state) { return INV_LIMIT - usedSlots(state); }
+/** inst 를 통째로 받을 수 있는가 (쌓이는 물건은 기존 묶음의 남은 수량 + 빈 칸 수로 계산) */
+export function canAdd(state, inst) {
+  if (!inst || !state?.inventory) return false;
+  const base = ITEMS[inst.baseId];
+  if (limitFree(base)) return true;
+  const free = freeSlots(state);
+  if (!base?.stack) return free > 0;
+  let room = Math.max(0, free) * base.stack;
+  for (const ex of state.inventory) if (ex.baseId === inst.baseId) room += Math.max(0, base.stack - (ex.qty ?? 1));
+  return room >= (inst.qty ?? 1);
+}
 
 export function addItem(state, inst, { silent = false } = {}) {
   if (!inst) return null;
   const base = ITEMS[inst.baseId];
   inst.t ??= Date.now() * 1000 + (++_seq % 1000);
+  const cap = limitFree(base) ? Infinity : INV_LIMIT;
   if (base?.stack) {
-    let left = inst.qty ?? 1, last = null;
+    let left = inst.qty ?? 1, last = null, used = usedSlots(state);
     for (const ex of state.inventory) {
       if (left <= 0) break;
       if (ex.baseId !== inst.baseId || (ex.qty ?? 1) >= base.stack) continue;
@@ -35,18 +57,72 @@ export function addItem(state, inst, { silent = false } = {}) {
       ex.qty = (ex.qty ?? 1) + add; left -= add; last = ex;
     }
     // 남은 수량은 새 묶음으로
-    while (left > 0 && state.inventory.length < INV_LIMIT) {
+    while (left > 0 && used < cap) {
       const n = Math.min(left, base.stack);
       const it = last ? makeItem(inst.baseId, { qty: n }) : inst;
-      it.qty = n; state.inventory.push(it); left -= n; last = it;
+      it.qty = n; state.inventory.push(it); left -= n; last = it; used++;
     }
     if (last && !silent) bus.emit('itemPicked', { item: last, qty: inst.qty ?? 1 });
     return last;
   }
-  if (state.inventory.length >= INV_LIMIT) return null;
+  if (usedSlots(state) >= cap) return null;
   state.inventory.push(inst);
   if (!silent) bus.emit('itemPicked', { item: inst, qty: inst.qty ?? 1 });
   return inst;
+}
+
+// ── 보관함: 가방이 가득 차 받지 못한 전리품 (progress.lootQueue — 세이브에 그대로 남는다) ──
+//  상자 내용물·보스 확정 드롭·스테이지 끝 자동 회수처럼 다시 얻을 수 없는 물건을 버리지 않고 모아 두었다가,
+//  가방에 자리가 나면 deliverLoot 가 순서대로 넣는다 (world.update 가 1초마다, 마을에서도 부른다).
+export const LOOT_QUEUE_MAX = 200;
+export function lootQueue(state) {
+  const pr = state?.progress;
+  if (!pr) return [];
+  if (!Array.isArray(pr.lootQueue)) pr.lootQueue = [];
+  return pr.lootQueue;
+}
+/** 보관함에 넣기. 넘치면 가장 흔한(희귀도 낮고 고유·중요 물품이 아닌) 가장 오래된 것부터 밀어낸다 */
+export function queueLoot(state, inst) {
+  if (!inst || !state?.progress) return false;
+  const q = lootQueue(state);
+  q.push(inst);
+  while (q.length > LOOT_QUEUE_MAX) {
+    let k = -1;
+    for (let i = 0; i < q.length; i++) {
+      const b = ITEMS[q[i]?.baseId];
+      if (!b || limitFree(b) || b.unique) continue;
+      if (k < 0 || (q[i].rarity ?? 0) < (q[k].rarity ?? 0)) k = i;
+    }
+    q.splice(k < 0 ? 0 : k, 1);
+  }
+  return true;
+}
+/** 보관함 → 가방 (자리가 나는 만큼). 반환: 넣은 개수 */
+export function deliverLoot(state) {
+  const q = state?.progress?.lootQueue;
+  if (!Array.isArray(q) || !q.length) return 0;
+  let n = 0;
+  for (let i = 0; i < q.length;) {
+    if (!ITEMS[q[i]?.baseId]) { q.splice(i, 1); continue; }
+    if (!canAdd(state, q[i])) { i++; continue; }
+    addItem(state, q[i]);
+    q.splice(i, 1); n++;
+  }
+  return n;
+}
+
+/** 보상 지급: addByBase + 가방이 가득 차 못 넣은 몫은 보관함으로 → { added, queued } (대사 give · 의뢰 보상) */
+export function grantItem(state, baseId, qty = 1, opts = {}) {
+  const b = ITEMS[baseId];
+  if (!b || !state?.inventory) return { added: 0, queued: 0 };
+  const before = countItem(state, baseId);
+  addByBase(state, baseId, qty, opts);
+  const added = countItem(state, baseId) - before, queued = Math.max(0, qty - added);
+  if (queued > 0) {
+    if (b.stack) queueLoot(state, makeItem(baseId, { ...opts, qty: queued }));
+    else for (let k = 0; k < queued; k++) queueLoot(state, makeItem(baseId, opts));
+  }
+  return { added, queued };
 }
 
 export function addByBase(state, baseId, qty = 1, opts = {}) {

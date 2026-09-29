@@ -188,7 +188,7 @@ export class InventoryTab extends Tab {
     this.filterRects.length = 0;
     let fx = A.x + 12;
     const fy = A.y + 10, fh = touch ? 36 : 30;
-    const sw = touch ? 72 : 70, cnt = `${this.state.inventory.length} / ${D.INV_LIMIT()}`;
+    const sw = touch ? 72 : 70, cnt = `${D.usedSlots(this.state)} / ${D.INV_LIMIT()}`;
     // 폭이 모자라면 분류 버튼의 좌우 여백을 줄여 오른쪽 수량 표시 자리를 남긴다. 터치는 버튼마다 48 px 이상 (§6.3 여유 포함 44 CSS px)
     const fgap = 6, avail = (A.x + GW - sw - 12) - fx - fgap;
     let fsize = 13, names = FILTERS.map((f) => f.name);

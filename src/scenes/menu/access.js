@@ -55,6 +55,8 @@ export function descLines(inst) {
 
 // ───────────────────────── 인벤토리 ─────────────────────────
 export const INV_LIMIT = () => InvM.INV_LIMIT ?? 300;
+/** 가방 한도에 드는 칸 수 (중요 물품은 한도 밖 — inventory.usedSlots) */
+export const usedSlots = (state) => (fn(InvM.usedSlots) ? safe(() => InvM.usedSlots(state), state?.inventory?.length ?? 0) : state?.inventory?.length ?? 0);
 export const findItem = (state, uid) => InvM.findItem(state, uid);
 export function canEquipOf(state, hero, inst) {
   const f = fn(InvM.canEquip);

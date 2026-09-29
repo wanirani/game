@@ -46,6 +46,7 @@ async function boot() {
   game.meta = saves.loadMeta();
   game.audio = audio; game.assets = assets; game.saves = saves;
   game.onSettingsAuto = (st) => saves.saveSettings(st); // 자동 품질 조정 결과를 다음 실행에도 유지
+  saves.onFail((f) => game.saveFailed(f)); // 저장 공간 부족·차단: '저장 완료' 대신 경고 (PS-01)
   audio.setVolumes(game.settings.musicVol, game.settings.sfxVol);
   game.init(canvas);
   initPlatform(game); // [hook:plat] 안전 영역·전체 화면·화면 꺼짐 방지·커서·서비스 워커 (game.platform)

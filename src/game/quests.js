@@ -22,7 +22,7 @@ import { ENEMIES } from '../data/enemies.js';
 import { BOSSES } from '../data/bosses.js';
 import { STAGES } from '../data/stages.js';
 import { NPCS } from '../data/npcs.js';
-import { addByBase, countItem, consumeByBase } from './inventory.js';
+import { countItem, consumeByBase, grantItem } from './inventory.js';
 import { addExp } from './progression.js';
 
 let G = null;
@@ -190,10 +190,15 @@ export function claimQuest(s, qid) {
     if (hero && out.exp) out.levelUps = addExp(hero, out.exp);
     for (const i of r.items || []) {
       if (!ITEMS[i.id]) continue;
-      if (addByBase(s, i.id, i.qty ?? 1)) out.items.push({ id: i.id, qty: i.qty ?? 1, name: ITEMS[i.id].name });
+      const qty = i.qty ?? 1;
+      // 가방이 가득 차 못 받은 몫은 보관함으로 (자리가 나면 world 가 넣는다) — 보상을 버리지 않는다
+      const { queued } = grantItem(s, i.id, qty);
+      if (queued) out.queued = (out.queued ?? 0) + queued;
+      out.items.push({ id: i.id, qty, name: ITEMS[i.id].name });
     }
   } finally { claiming--; }
   if (out.levelUps && G?.world?.player?.hero === hero) G.world.player.refreshStats?.();
+  if (out.queued) G?.toast?.(`가방이 가득 차 보상 ${out.queued}개를 보관함에 맡겼다 — 자리가 나면 자동으로 챙긴다`, '#ffb060', 3.2);
   bus.emit('questClaimed', { questId: qid, reward: out });
   return out;
 }

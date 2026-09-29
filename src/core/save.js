@@ -3,6 +3,11 @@
 // saves.exportCode(slot) → 문자열, saves.importCode(slot, code)
 // saves.onWrite(fn) → 해제 함수. 슬롯 저장·삭제·가져오기와 메타 저장 뒤 fn({ type:'write'|'remove'|'meta', slot }) 호출 (클라우드 동기화용)
 // saves.store(slot, data) → 클라우드에서 받은 기록을 savedAt 그대로 저장 (onWrite 알림 없음)
+// 쓰기 실패 (저장 공간 부족 QuotaExceededError · 저장소 차단): write/store/saveSettings/saveMeta 가 false 를 돌려주고,
+//  새 기록은 이번 실행 동안 메모리에 남아 읽기(read·list·exportCode·클라우드 올리기)가 옛 기록 대신 그것을 돌려준다.
+//  공간 부족이면 게임이 만든 사본(클라우드 받기 전 백업 bloodnocturne_slot_N_backup)을 지우고 한 번 다시 쓴다.
+//  saves.onFail(fn) → 해제 함수. 실패할 때마다 fn({ kind:'quota'|'unavailable', key, slot? }) — main.js 가 game.saveFailed 로 경고 토스트를 띄운다.
+//  saves.lastFail → 마지막 실패 정보 | null (다음 쓰기가 성공하면 null). onWrite 알림에는 ok(true|false)가 함께 실린다
 // isValidSave(obj) → 불러와도 안전한 최소 구조인지 (가져오기 코드·손상된 슬롯 거부용)
 // 설정 (settingsVersion 2, MASTER_PLAN §1.5 · platform §10):
 //  DEFAULT_SETTINGS — 모든 설정 키의 기본값 (한 곳에서만 정의). SETTINGS_SCHEMA — 키별 허용 값 (옵션 화면이 값 목록으로 쓸 수 있다)
@@ -13,16 +18,58 @@
 import { CHARACTERS } from '../data/characters.js';
 
 const PREFIX = 'bloodnocturne_';
+// 기기에 쓰지 못한 최신 기록 (이번 실행 동안만). 읽기는 이것을 먼저 본다: 쓰기 실패 뒤에도 옛 기록이 되살아나지 않게
 const mem = {};
+/** 지워도 되는, 게임이 스스로 만든 사본: 클라우드 받기 전 이 기기 기록 백업 (core/cloud.js) */
+const SPARE_KEY = /^bloodnocturne_slot_\d+_backup$/;
+let failHook = null; // SaveSystem 이 받는다 (실패 알림)
 
-function lsGet(k) {
-  try { return localStorage.getItem(k); } catch { return mem[k] ?? null; }
+/** 저장 공간 부족 오류인가 (브라우저마다 이름·코드가 다르다) */
+export function isQuotaError(e) {
+  if (!e) return false;
+  return e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED' || e.code === 22 || e.code === 1014;
 }
+function lsGet(k) {
+  if (Object.hasOwn(mem, k)) return mem[k];
+  try { return localStorage.getItem(k); } catch { return null; }
+}
+/** 게임이 만든 백업 사본을 지운다 → 지운 글자 수 */
+function freeSpare() {
+  let freed = 0;
+  try {
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && SPARE_KEY.test(k)) keys.push(k);
+    }
+    for (const k of keys) {
+      try { freed += (localStorage.getItem(k) || '').length || 1; localStorage.removeItem(k); } catch { /* 무시 */ }
+    }
+  } catch { /* 저장소 자체를 쓸 수 없음 */ }
+  return freed;
+}
+/** 쓰기. 공간이 부족하면 백업 사본을 지우고 한 번 더 쓴다. 실패하면 메모리에 두고 알린 뒤 false */
 function lsSet(k, v) {
-  try { localStorage.setItem(k, v); return true; } catch { mem[k] = v; return false; }
+  let err = null;
+  try { localStorage.setItem(k, v); delete mem[k]; flushPending(); return true; } catch (e) { err = e; }
+  if (isQuotaError(err) && freeSpare() > 0) {
+    try { localStorage.setItem(k, v); delete mem[k]; console.warn('[saves] 저장 공간이 부족해 백업 사본을 지우고 저장했다'); return true; } catch (e) { err = e; }
+  }
+  mem[k] = v;
+  const kind = isQuotaError(err) ? 'quota' : 'unavailable';
+  if (typeof localStorage !== 'undefined') console.warn(`[saves] ${k} 저장 실패 (${kind}):`, err?.name || err); // (Node 도구에는 저장소가 없다)
+  try { failHook?.({ kind, key: k }); } catch (e) { console.error('[saves]', e); }
+  return false;
+}
+/** 쓰기가 다시 되면(공간이 생겼다) 메모리에만 있던 다른 기록도 조용히 기기에 옮긴다 */
+function flushPending() {
+  for (const k of Object.keys(mem)) {
+    try { localStorage.setItem(k, mem[k]); delete mem[k]; } catch { return; }
+  }
 }
 function lsDel(k) {
-  try { localStorage.removeItem(k); } catch { delete mem[k]; }
+  delete mem[k];
+  try { localStorage.removeItem(k); } catch { /* 무시 */ }
 }
 
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -207,18 +254,35 @@ export const DEFAULT_META = {
 };
 
 class SaveSystem {
-  constructor() { this.listeners = new Set(); this.settings = null; /* 마지막으로 불러오거나 저장한 설정 객체 (= game.settings) */ }
+  constructor() {
+    this.listeners = new Set(); this.failFns = new Set();
+    this.settings = null; /* 마지막으로 불러오거나 저장한 설정 객체 (= game.settings) */
+    this.lastFail = null; /* 마지막 쓰기 실패 { kind, key, slot, at } | null */
+    failHook = (f) => this.failed(f);
+  }
   /** 저장 알림 구독 (core/cloud.js 가 쓴다). 구독자 오류는 저장을 막지 않는다 */
   onWrite(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
   notify(ev) {
     for (const fn of this.listeners) { try { fn(ev); } catch (e) { console.error('[saves]', e); } }
   }
+  /** 쓰기 실패 구독 (main.js → 경고 토스트). fn({ kind:'quota'|'unavailable', key, slot? }) */
+  onFail(fn) { this.failFns.add(fn); return () => this.failFns.delete(fn); }
+  failed(f) {
+    const m = /^bloodnocturne_slot_(\d+)$/.exec(f.key);
+    const ev = { ...f, slot: m ? Number(m[1]) : undefined, at: Date.now() };
+    this.lastFail = ev;
+    for (const fn of this.failFns) { try { fn(ev); } catch (e) { console.error('[saves]', e); } }
+  }
+  /** 이번 실행에서 기기에 쓰지 못하고 메모리에만 있는 기록이 있는가 */
+  pending() { return Object.keys(mem).length > 0; }
   slotKey(slot) { return `${PREFIX}slot_${slot}`; }
   write(slot, state) {
     state.savedAt = Date.now();
     state.slot = slot;
     const ok = lsSet(this.slotKey(slot), JSON.stringify(state));
-    this.notify({ type: 'write', slot });
+    if (ok) this.lastFail = null;
+    // 실패해도 알린다: 로그인 중이면 클라우드(core/cloud.js)가 메모리의 새 기록을 올려 진행을 지킨다
+    this.notify({ type: 'write', slot, ok });
     return ok;
   }
   /** 받은 기록을 그대로 저장 (savedAt 유지, 알림 없음). 구조가 올바르지 않으면 false */
@@ -260,9 +324,9 @@ class SaveSystem {
       const obj = JSON.parse(raw);
       if (!isValidSave(obj)) return false;
       obj.slot = slot;
-      lsSet(this.slotKey(slot), JSON.stringify(obj));
-      this.notify({ type: 'write', slot });
-      return true;
+      const ok = lsSet(this.slotKey(slot), JSON.stringify(obj));
+      this.notify({ type: 'write', slot, ok });
+      return true; // 코드는 올바르다 (기기에 쓰지 못했으면 onFail 경고가 따로 뜬다)
     } catch { return false; }
   }
   /** 설정 불러오기: v1 → v2 이관과 값 검증(migrateSettings). 이관·보정이 있었으면 결과를 한 번 다시 저장한다 */
@@ -288,6 +352,6 @@ class SaveSystem {
       return { ...structuredClone(DEFAULT_META), ...m };
     } catch { return structuredClone(DEFAULT_META); }
   }
-  saveMeta(m) { lsSet(PREFIX + 'meta', JSON.stringify(m)); this.notify({ type: 'meta' }); }
+  saveMeta(m) { const ok = lsSet(PREFIX + 'meta', JSON.stringify(m)); this.notify({ type: 'meta', ok }); return ok; }
 }
 export const saves = new SaveSystem();

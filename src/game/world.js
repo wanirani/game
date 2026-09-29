@@ -25,7 +25,7 @@ import { Pickup } from './pickups.js';
 import { Candle, Chest, SavePoint, Statue, Door, MovingPlatform, CrumblePlatform, Lamp, StoryTrigger, NPC } from './props.js';
 import { rollCandleLoot, rollEnemyLoot, rollChestLoot, rollBossLoot } from './loot.js';
 import { addExp } from './progression.js';
-import { addItem } from './inventory.js';
+import { addItem, canAdd, queueLoot, deliverLoot } from './inventory.js';
 import { currentHero } from './state.js';
 import { createBackground } from '../render/background.js';
 import { TileRenderer } from '../render/tiles.js';
@@ -154,6 +154,7 @@ export class World {
     if (!room) { console.error('room not found', roomId); return; }
     this.gimmick?.dispose?.(); this.gimmick = null;   // [hook:gimmick]
     this.fx.clearDecals?.(); this.overlays.length = 0; this.roomFoes = 0; this.killPend.length = 0;   // [hook:feel]
+    this.stashRoomLoot();   // 가방이 가득 차 못 주운 상자·보스 전리품은 방을 떠나도 보관함으로
     this.room = room; this.roomId = roomId;
     this.map = new TileMap(room);
     this.entities = []; this.platforms = []; this.debrisList = [];
@@ -389,6 +390,7 @@ export class World {
     else if (this.slowmoScale !== SLOWMO_BASE) this.slowmoScale = SLOWMO_BASE;   // [hook:feel] 누가 slowmo 를 0 으로 끊어도 다음 슬로모션은 기본 배율
     this.time += sdt;
     if (!this.cutscene && !this.cleared) this.run.time += dt;
+    if ((this._stashT = (this._stashT ?? 0) - dt) <= 0) { this._stashT = 1; if (this.state?.progress?.lootQueue?.length) this.deliverStash(); }   // 보관함 → 가방 (자리가 났으면)
     if (this.timeStop > 0) this.timeStop -= dt;
     this.bg.update?.(sdt, this);
 
@@ -766,12 +768,15 @@ export class World {
     // 숨겨진 상자(벽 틈)는 내용물을 플레이어 쪽으로 튀기고, 가까이 가면 날아오게 함
     const side = Math.sign(this.player.cx - chest.cx) || 1;
     const extra = chest.hiddenNiche ? { vx: side * rand(60, 160), pull: 140 } : {};
-    for (const d of rollChestLoot(this, chest.contents)) this.spawnPickup(d.type, chest.cx, chest.y, { ...extra, ...d.data });
+    // keep: 상자는 다시 열 수 없으므로, 가방이 가득 차 못 주운 채 방을 떠나도 보관함으로 간다 (stashRoomLoot)
+    for (const d of rollChestLoot(this, chest.contents)) this.spawnPickup(d.type, chest.cx, chest.y, { ...extra, ...d.data, keep: true });
   }
+  /** 줍기 → 실제로 챙겼으면 true. 가방이 가득 차 받을 수 없는 아이템은 바닥에 그대로 남긴다 (배치 아이템의 secrets 도 기록하지 않음 → 다시 들어오면 또 있다) */
   collect(pk) {
-    if (pk.dead) return;
-    pk.dead = true;
+    if (pk.dead) return false;
     const p = this.player, d = pk.data, st = this.state;
+    if (pk.type === 'item' && d.item && !canAdd(st, d.item)) { this.refuseFull(pk); return false; }
+    pk.dead = true;
     if (pk.secretKey) st.progress.secrets.push(pk.secretKey);
     switch (pk.type) {
       case 'heart': {
@@ -801,7 +806,7 @@ export class World {
         const res = addItem(st, it);
         const name = itemName(it);
         if (res) { audio.sfx('item'); this.game.toast(`획득: ${name}${(it.qty ?? 1) > 1 ? ' ×' + it.qty : ''}`, ['#efe4cf', '#6fe07a', '#5aa8ff', '#c07cff', '#ffa640', '#ff4a5a'][it.rarity ?? 0]); }
-        else this.game.toast('가방이 가득 찼다!', '#ff6060');
+        else { queueLoot(st, it); this.game.toast('가방이 가득 찼다! 보관함에 맡겨 두었다', '#ff6060'); }   // canAdd 를 통과했으니 오지 않는 길 — 와도 버리지 않는다
         const base = ITEMS[it.baseId];
         if (base?.relic && !st.progress.relics.includes(it.baseId)) {
           st.progress.relics.push(it.baseId);
@@ -841,6 +846,39 @@ export class World {
       case 'powerup': this.applyPowerup(d.id); break;
       case 'oneup': this.run.lives++; audio.sfx('extra_life'); this.game.toast('★ 1UP ★', '#ffe070'); break;
     }
+    return true;
+  }
+  /** 가방이 가득 차 못 주운 아이템: 끌려오던 것을 멈춰 제자리에 떨구고, 경고는 몇 초에 한 번만 */
+  refuseFull(pk) {
+    pk.bagFull = true; pk.magnet = false; pk.vx = 0; pk.vy = Math.min(0, pk.vy ?? 0);
+    if (this.time - (this._fullToastAt ?? -99) < 3) return;
+    this._fullToastAt = this.time;
+    this.game.toast('가방이 가득 찼다! 가방을 비우면 주울 수 있다', '#ff6060');
+    audio.sfx('menu_cancel');
+  }
+  /** Pickup.update 가 묻는다: 가방이 가득 차 멈춰 둔 아이템을 이제 받을 수 있는가 */
+  canTake(pk) { return pk.type !== 'item' || !pk.data?.item || canAdd(this.state, pk.data.item); }
+  /**
+   * 방을 떠날 때: 가방이 가득 차 못 주운 채 남은 되찾을 수 없는 전리품(상자 내용물·보스 드롭 = data.keep)을 보관함으로.
+   * 배치 아이템(secretKey)은 기록하지 않았으니 다시 들어오면 또 놓인다. 일반 적 드롭은 예전처럼 두고 간 것으로 친다.
+   */
+  stashRoomLoot() {
+    if (this.arcade || !this.entities?.length) return 0;
+    let n = 0;
+    for (const e of this.entities) {
+      if (e.kind !== 'pickup' || e.dead || e.type !== 'item' || !e.data?.item || e.secretKey || !e.data.keep) continue;
+      if (!e.bagFull && canAdd(this.state, e.data.item)) continue;
+      e.dead = true; queueLoot(this.state, e.data.item); n++;
+    }
+    if (n > 0) this.game.toast(`가방이 가득 차 전리품 ${n}개를 보관함에 맡겼다 — 자리가 나면 자동으로 챙긴다`, '#ffb060', 3.2);
+    return n;
+  }
+  /** 보관함(가방이 가득 차 맡겨 둔 전리품) → 가방. world.update 가 1초마다 부른다 */
+  deliverStash() {
+    if (this.arcade) return 0;
+    const n = deliverLoot(this.state);
+    if (n > 0) { audio.sfx('item'); this.game.toast(`보관함에 맡겨 둔 전리품 ${n}개를 챙겼다`, '#ffe070'); }
+    return n;
   }
   /** 2부 핵심 아이템 기록 + 배너 + 버스 이벤트 (예전 세이브는 배열이 없을 수 있다) */
   collectP2Key(base, id) {   // [hook:p2]
@@ -1216,7 +1254,7 @@ export class World {
     // STAGE CLEAR 배너가 LEVEL UP 배너를 덮으므로 레벨업은 토스트로 따로 알림
     if (lvUp > 0) this.game.toast(`LEVEL UP! Lv.${this.hero.level} — 스킬 포인트 획득`, '#ffe070', 3.2);
     this.addScore((boss.def.score ?? 20000));
-    for (const d of rollBossLoot(this, boss)) this.spawnPickup(d.type, boss.cx + rand(-40, 40), boss.cy, d.data);
+    for (const d of rollBossLoot(this, boss)) this.spawnPickup(d.type, boss.cx + rand(-40, 40), boss.cy, { ...d.data, keep: true });   // keep: 첫 처치 확정 고유 장비 등 — 가방이 가득 차도 보관함으로 (stashRoomLoot · collectLeftovers)
     for (let i = 0; i < 20; i++) setTimeout(() => this.fx.burst('fire', boss.cx + rand(-80, 80), boss.cy + rand(-80, 80), 8, { speed: 200 }), i * 60);
     bus.emit('bossKilled', { bossId: boss.def.id, stageId: this.stage.id, time: this.run.time });
     this.banner = { text: 'STAGE CLEAR', sub: boss.def.name + ' 격파!', t: 4, color: '#ffe070', big: true };
@@ -1237,7 +1275,7 @@ export class World {
   }
   /** 스테이지 종료 시 바닥에 남은 전리품(보스 드롭 등)을 자동 획득 */
   collectLeftovers() {
-    let n = 0;
+    let n = 0, kept = 0;
     for (const e of this.entities) {
       if (e.kind !== 'pickup' || e.dead || !['gold', 'item', 'oneup', 'doc'].includes(e.type)) continue;
       if (e.type === 'doc') {
@@ -1247,10 +1285,17 @@ export class World {
         if (e.secretKey) st.progress.secrets.push(e.secretKey);
         if (d.docId && !st.progress.docs.includes(d.docId)) { st.progress.docs.push(d.docId); st.stats.docs = (st.stats.docs ?? 0) + 1; this.run.docsFound.push(d.docId); bus.emit('docFound', { docId: d.docId }); }
         if (d.loreId && !st.progress.lore.includes(d.loreId)) st.progress.lore.push(d.loreId);
-      } else this.collect(e);
+      } else if (!this.collect(e)) {
+        // 가방이 가득 참: 스테이지를 떠나면 사라지므로 보관함에 맡긴다 (배치 아이템은 이제 챙긴 것으로 기록)
+        e.dead = true;
+        if (e.secretKey) this.state.progress.secrets.push(e.secretKey);
+        queueLoot(this.state, e.data.item); kept++;
+        continue;
+      }
       n++;
     }
     if (n > 0) { this.player.refreshStats(); this.game.toast(`남은 전리품 ${n}개를 자동으로 챙겼다`, '#ffe070'); }
+    if (kept > 0) this.game.toast(`가방이 가득 차 전리품 ${kept}개를 보관함에 맡겼다 — 자리가 나면 자동으로 챙긴다`, '#ffb060', 3.2);
   }
   finishStage() {
     this.collectLeftovers();

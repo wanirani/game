@@ -13,6 +13,7 @@ const ROOK_GOODS = [
   ['c_potion', 0, 1], ['c_hipotion', 3, 1], ['c_ether', 0, 1], ['c_hiether', 6, 1], ['c_elixir', 9, 1.1, '귀한 물건'],
   ['c_antidote', 0, 1], ['c_bread', 0, 1], ['c_meat', 1, 1], ['c_holywater', 2, 1], ['c_rage_tonic', 4, 1], ['c_warp', 0, 1],
   ['m_stone_1', 0, 1.3], ['m_stone_2', 3, 1.3], ['m_stone_3', 6, 1.35, '한정 입고'],
+  ['m_herb', 1, 1.5],   // 월하초: 마르타 의뢰 「약초 수프」(1장부터) — 묘지의 진흙 인간·무덤지기 드롭이 모자랄 때
   ['m_scroll_bless', 4, 1.2], ['m_scroll_protect', 5, 1.2, '비쌈'],
   // 2부 (world2 §7.6)
   ['m_stone_4', 14, 1.35], ['m_stone_5', 16, 1.4, '한정 입고'],
