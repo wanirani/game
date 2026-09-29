@@ -25,6 +25,7 @@ import { SCRIPTS } from '../../data/story.js';
 import { ITEMS } from '../../data/items.js';
 import { CHARACTERS } from '../../data/characters.js';
 import { currentHero } from '../../game/state.js';
+import { preloadStageBosses } from '../../game/bosses/lazy.js';
 import { drawIcon } from '../../render/icons.js';
 import { ensureState, uiPanel, uiButton } from './common.js';
 import { glow } from './facades.js';
@@ -464,6 +465,8 @@ export class WorldMapScene extends Scene {
       this.fx.ring(p.x, p.y, { color: '#ff4a5a', r0: 10, r1: 120, life: 0.5, width: 6 });
     }
     this.depart = { t: 0, id: n.id };
+    // 출발 연출·도입 이야기 동안 그 스테이지 보스 조각을 미리 받는다 (R1-REQ-229 / 요청 #381 (3); 스테이지 입장 때도 다시 부르지만 멱등)
+    if (!n.arena) { try { preloadStageBosses(n.id)?.catch?.(() => null); } catch (e) { console.warn(e); } }
     this.saveNow();
   }
   /**

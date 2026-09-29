@@ -130,6 +130,9 @@ export class SmithScene extends ServiceScene {
     const B = this.busy, vw = this.vw, vh = this.vh;
     B.t += dt;
     B.shake = Math.max(0, B.shake - dt * 30); B.flash = Math.max(0, B.flash - dt * 3);
+    // 흔들림 오프셋·확률 글자 깜박임은 여기서 뽑는다 (renderOver 에서 Math.random 을 쓰지 않는다 — R1-REQ-336, #218)
+    B.sx = (Math.random() - 0.5) * B.shake; B.sy = (Math.random() - 0.5) * B.shake;
+    B.flick = Math.random();
     const cx = vw / 2, ay = vh * 0.6;
     const hits = [0.62, 1.2, 1.72, 2.12];
     const REVEAL = 2.34;
@@ -344,7 +347,7 @@ export class SmithScene extends ServiceScene {
     if (!B) return;
     const { vw, vh } = L;
     const t = B.t, r = B.res;
-    const sx = (Math.random() - 0.5) * B.shake, sy = (Math.random() - 0.5) * B.shake;
+    const sx = B.sx || 0, sy = B.sy || 0;
     ctx.save();
     // 암전 + 화덕 빛
     ctx.fillStyle = `rgba(3,1,4,${Math.min(0.93, t * 3)})`; ctx.fillRect(0, 0, vw, vh);
@@ -412,7 +415,7 @@ export class SmithScene extends ServiceScene {
     if (!B.revealed) {
       text(ctx, nameOf(B.inst), cx, vh * 0.14, { size: 20, weight: 800, family: FONT.title, color: rarityColor(B.inst.rarity), align: 'center', ow: 4 });
       text(ctx, `+${B.inst.level ?? 0}  ▶  +${(B.inst.level ?? 0) + 1}`, cx, vh * 0.14 + 34, { size: 22, weight: 900, family: FONT.num, color: '#fff4d8', align: 'center', ow: 4 });
-      const fl = 0.6 + Math.random() * 0.4 * heat;
+      const fl = 0.6 + (B.flick ?? 0.5) * 0.4 * heat;
       ctx.globalAlpha = fl;
       text(ctx, `성공 확률 ${Math.round(B.rate)}%`, cx, vh * 0.14 + 62, { size: 15, weight: 800, color: '#ffc070', align: 'center', ow: 3 });
       ctx.globalAlpha = 1;

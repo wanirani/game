@@ -361,7 +361,8 @@ export function puppetFor(p, look) {
     // 직업을 막 바꿨는데(전직·장비 탭·QA) 새 직업 원화가 아직 오는 중: 같은 영웅의 직전 퍼펫으로 잇는다 —
     // 벡터 대체 그림(프레임마다 그라디언트)이 한순간 비치지 않게. 준비되면 REV 가 올라 스냅샷도 새로 찍힌다
     const P = p && typeof p === 'object' ? LAST.get(p) : null;
-    if (!P || P.E === E || P.E.cid !== E.cid || P.E.state !== 1 || P.gen !== P.E.gen) return null;
+    // 새 직업 원화를 끝내 못 받았으면(state < 0: 파일 없음·실패) 옛 직업 그림을 계속 쓰지 않고 벡터로 (새 직업 옷차림이 맞게 보이도록)
+    if (E.state < 0 || !P || P.E === E || P.E.cid !== E.cid || P.E.state !== 1 || P.gen !== P.E.gen) return null;
     touchUse(P.E, now);
     return P;
   }

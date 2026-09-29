@@ -552,6 +552,8 @@ export class ServiceScene extends Scene {
   get toastX() { return this.layout().pw / 2; }
   get toastY() { return this.vh - 214; }
   get toastUp() { return true; }
+  /** 토스트 상자 최대 폭: 초상화 칸 안 (game.drawToasts 가 ≤ 2줄로 줄바꿈하고 중심을 칸 안에 둔다 — R1-REQ-176) */
+  get toastW() { return this.layout().pw - 16; }
   get state() { return this.game.state; }
   get hero() { return currentHero(this.game.state); }
   talk(kindOrText) {

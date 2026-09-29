@@ -603,7 +603,7 @@ export class MiniGame extends Scene {
     this.phase = 'ready';
     this.result = null;
     this.quit = null;
-    this.shakeT = 0; this.shakeMag = 0; this.flashA = 0; this.flashCol = '#fff';
+    this.shakeT = 0; this.shakeMag = 0; this.shakeX = 0; this.shakeY = 0; this.flashA = 0; this.flashCol = '#fff';
     this.leaving = false;
     this.clock = 0;
     this.betPop = null;
@@ -790,6 +790,9 @@ export class MiniGame extends Scene {
     this.coins.update(dt);
     this.shakeT = Math.max(0, this.shakeT - dt);
     if (this.shakeT <= 0) this.shakeMag = 0;
+    // 흔들림 오프셋은 update 에서 뽑는다 (그리기에서 Math.random 을 쓰지 않는다 — R1-REQ-336, #218)
+    this.shakeX = this.shakeT > 0 ? rand(-1, 1) * this.shakeMag : 0;
+    this.shakeY = this.shakeT > 0 ? rand(-1, 1) * this.shakeMag : 0;
     this.flashA = Math.max(0, this.flashA - dt * 2.5);
     if (this.betPop && (this.betPop.t += dt) > 1.1) this.betPop = null;
     // '그만두기' 확인 창이 떠 있으면 게임은 멈춘다 (타이머·릴·딜러·결투 신호)
@@ -827,7 +830,7 @@ export class MiniGame extends Scene {
     this.hits.clear();
     const vw = this.vw, vh = this.vh;
     ctx.save();
-    if (this.shakeT > 0) ctx.translate(rand(-1, 1) * this.shakeMag, rand(-1, 1) * this.shakeMag);
+    if (this.shakeT > 0 && (this.shakeX || this.shakeY)) ctx.translate(this.shakeX, this.shakeY);
     this.draw(ctx);
     this.fx.draw(ctx, 'back');
     this.fx.draw(ctx, 'front');

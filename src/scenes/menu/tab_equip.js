@@ -11,7 +11,7 @@ import { Tab } from './base.js';
 import { HeroView, HeroStage, PixLayer, PixCache, pedestal, accentOf, turntableHints, pxScale } from './hero_view.js';
 import {
   PAL, RARITY_COL, frame, heading, divider, selBar, brackets, glow, gbutton, Scroller, scrollbar, clipBegin, clipEnd, ellipsize, pill, inRect, measure, Popup,
-  leanMem,
+  leanMem, wrapC,
 } from './common.js';
 import { fmtStatVal } from './tab_status.js';
 import * as D from './access.js';
@@ -20,6 +20,15 @@ import { CHARACTERS } from '../../data/characters.js';
 const SUMMARY = ['hp', 'mp', 'atk', 'mag', 'def', 'res', 'crit'];
 const SLOT_ICON_EMPTY = { weapon: '무기', head: '머리', body: '몸', cloak: '망토', acc1: '장신구', acc2: '장신구' };
 
+/**
+ * 목록 줄의 이름: 폭 w 에 다 들어가지 않으면 강화 접두 '+N ' 을 뺀다 (아이콘 칸이 이미 +N 을 보여 준다).
+ * 최소 UI 720×405 에서 '+11 …' 처럼 이름이 통째로 잘리던 문제 (R1-REQ-212)
+ */
+function fitName(c, inst, w, size) {
+  const full = D.nameOf(inst);
+  if (!inst?.level || measure(c, full, size, 800) <= w) return full;
+  return full.replace(/^\+\d+\s*/, '') || full;
+}
 /** 아이템 핵심 능력치 요약 "공격력 +12 · 치명타 +3%" */
 export function statLine(inst, max = 2) {
   const st = D.statsOf(inst);
@@ -273,7 +282,7 @@ export class EquipTab extends Tab {
         text(c, D.SLOT_NAMES()[slot], tx, y + (tall ? 16 : Math.round(r.h * 0.36)), { size: 11, weight: 700, color: sel ? PAL.gold : PAL.dim, ow: 2 });
         if (inst) {
           const ns = tall ? 15 : 14;
-          text(c, ellipsize(c, D.nameOf(inst), w - (tx - x) - 8, ns, 800), tx, y + (tall ? 35 : Math.round(r.h * 0.8)), { size: ns, weight: 800, color: RARITY_COL[inst.rarity ?? 0], ow: 3 });
+          text(c, ellipsize(c, fitName(c, inst, w - (tx - x) - 8, ns), w - (tx - x) - 8, ns, 800), tx, y + (tall ? 35 : Math.round(r.h * 0.8)), { size: ns, weight: 800, color: RARITY_COL[inst.rarity ?? 0], ow: 3 });
           if (tall) text(c, ellipsize(c, statLine(inst), w - (tx - x) - 8, 11, 600), tx, y + 51, { size: 11, weight: 600, color: PAL.text, ow: 2 });
         } else text(c, '— 비어 있음 —', tx, y + (tall ? 36 : Math.round(r.h * 0.8)), { size: 13, weight: 600, color: PAL.faint, ow: 2 });
       });
@@ -360,7 +369,7 @@ export class EquipTab extends Tab {
       this.txt.draw(ctx, 'row' + i, `${rkey}|${live ? 1 : 0}|${iconReady(row.inst)}`, x0, Math.round(r.y), r.x + r.w - x0, r.h, (c) => {
         const y0 = Math.round(r.y);
         if (!live) drawSlot(c, r.x + 10, y0 + 4, s, row.inst, { selected: sel });
-        const nm = ellipsize(c, D.nameOf(row.inst), r.w - (tx - r.x) - 70, 14, 800);
+        const nm = ellipsize(c, fitName(c, row.inst, r.w - (tx - r.x) - 70, 14), r.w - (tx - r.x) - 70, 14, 800);
         text(c, nm, tx, y0 + 19, { size: 14, weight: 800, color: row.ok ? RARITY_COL[row.inst.rarity ?? 0] : '#8a6a6a', ow: 3 });
         text(c, ellipsize(c, row.ok ? statLine(row.inst) : row.reason, r.w - (tx - r.x) - 12, 11, 600), tx, y0 + 36, { size: 11, weight: 600, color: row.ok ? PAL.text : PAL.bad, ow: 2 });
         if (row.here) pill(c, '장착 중', r.x + r.w - 8, y0 + 7, { align: 'right', color: PAL.goldHi, bg: 'rgba(110,14,34,0.92)', size: 10, h: 16 });
@@ -379,7 +388,11 @@ export class EquipTab extends Tab {
     this.txt.draw(ctx, 'cmp', ckey, RX + 4, cy - 6, RW - 8, hr ? cmpH + 2 : 64, (c) => {
       divider(c, RX + 16, cy, RW - 32);
       if (!hr) {
-        text(c, this.list.length ? '장비를 고르면 능력치 변화를 비교합니다' : '상점이나 보물상자에서 장비를 구해 보세요', RX + RW / 2, cy + 44, { size: 13, align: 'center', color: PAL.dim });
+        // 좁은 오른쪽 판(최소 UI 720×405)에서는 두 줄로 (예전: 한 줄이 판 양쪽으로 잘렸다 — R1-REQ-212)
+        const msg = this.list.length ? '장비를 고르면 능력치 변화를 비교합니다' : '상점이나 보물상자에서 장비를 구해 보세요';
+        const lines = wrapC(c, msg, RW - 24, 13, 500).slice(0, 2);
+        const y0 = lines.length > 1 ? cy + 34 : cy + 44;
+        lines.forEach((ln, i) => text(c, ln, RX + RW / 2, y0 + i * 18, { size: 13, align: 'center', color: PAL.dim, maxWidth: RW - 16 }));
         return;
       }
       const diffs = [];

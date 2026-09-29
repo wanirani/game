@@ -31,6 +31,8 @@ import * as CMP from '../../game/companions.js';   // [hook:cmp] companionHubEnt
 import { TOWN_STAGE, BUILDINGS, TOWN_NPCS, TOWN_PROPS, TOWN_TALK, eliseInTown } from '../../data/town.js';
 import { FLOOR, drawFacades, facadeLights, prebakeFacades, setFacadeScale, anvilPos, glow } from './facades.js';
 import { uiPanel, uiButton, uiHints } from './common.js';
+import { vGrad, fillGradRect } from '../menu/common.js';
+const BANNER_BG = [0, 'rgba(0,0,0,0)', 0.5, 'rgba(6,2,10,0.65)', 1, 'rgba(0,0,0,0)'];
 
 const RELIC_IDS = ['k_relic_1', 'k_relic_2', 'k_relic_3', 'k_relic_4', 'k_relic_5'];
 const HEART_IDS = ['k_heart_1', 'k_heart_2', 'k_heart_3', 'k_heart_4', 'k_heart_5', 'k_heart_6'];
@@ -480,9 +482,7 @@ export class HubScene extends Scene {
     ctx.save();
     ctx.globalAlpha = a;
     const y = vh * 0.3;
-    const g = ctx.createLinearGradient(0, y - 60, 0, y + 40);
-    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.5, 'rgba(6,2,10,0.65)'); g.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = g; ctx.fillRect(0, y - 60, vw, 100);
+    fillGradRect(ctx, vGrad(ctx, 100, BANNER_BG), 0, y - 60, vw, 100); // 캐시 그라디언트 (R1-REQ-341B)
     ctx.strokeStyle = 'rgba(232,200,114,0.6)'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(vw / 2 - 220 * k, y + 14); ctx.lineTo(vw / 2 + 220 * k, y + 14); ctx.stroke();
     text(ctx, b.text, vw / 2, y, { size: 44, weight: 800, family: FONT.title, color: '#f3d690', align: 'center', ow: 5 });

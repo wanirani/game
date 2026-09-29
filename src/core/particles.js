@@ -274,6 +274,21 @@ export class Particles {
       tp.y -= ah + 2;
     }
   }
+  /** 가장 오래된 데미지 숫자 하나를 바로 뺀다 (기둥 prefer 의 숫자 우선; 플레이어 피격·회복·합계는 건드리지 않는다) → 뺐으면 true */
+  evictDmg(prefer = null) {
+    const L = this.list;
+    let bi = -1, bs = -Infinity;
+    for (let i = 0; i < L.length; i++) {
+      const q = L[i];
+      if (q.shape !== 'dmg' || q.key === 'hurt' || q.key === 'heal' || q.key === 'total') continue;
+      const sc = (q.max - q.life) + (prefer && q.col === prefer ? 1e3 : 0);
+      if (sc > bs) { bs = sc; bi = i; }
+    }
+    if (bi < 0) return false;
+    L[bi] = L[L.length - 1]; L.pop();
+    if (this.dmgLive > 0) this.dmgLive--;
+    return true;
+  }
   /** 기둥의 지금 위끝 (월드 y, HUD 비키기 전): 가장 높은 숫자와 '합계' 중 위쪽 */
   colTop(c) {
     const step = FH.DMG_STYLE?.column?.step ?? COL_DEF.step;
@@ -288,10 +303,27 @@ export class Particles {
     const B = this.band;
     if (!B.n) return 0;
     if (c._shS === B.stamp) return c._sh;
-    const hw = (c.w || 40) / 2;
+    const hw = (c.w || 40) / 2, x = c.x + this.colNudge(c);
     c._shS = B.stamp;
-    c._sh = this.bandPush(c.x - hw, c.x + hw, this.colTop(c));
+    c._sh = this.bandPush(x - hw, x + hw, this.colTop(c));
     return c._sh;
+  }
+  /**
+   * 기둥을 화면 안으로 옆으로 미는 거리 (그리기 프레임마다 한 번): 기둥을 세운 뒤 카메라가 움직여(필살기 줌·흔들림·추적)
+   * 화면 가장자리에 걸친 기둥의 숫자가 잘리지 않게. 가운데가 화면 밖으로 반 폭 넘게 나간 기둥(화면 밖 대상)은 그대로 둔다.
+   */
+  colNudge(c) {
+    const B = this.band;
+    if (!(B.hw > 0) || !Number.isFinite(B.cx)) return 0;
+    if (c._dxS === B.stamp) return c._dx;
+    const hw = (c.w || 40) / 2, L = B.cx - B.hw + hw + 4, R = B.cx + B.hw - hw - 4;
+    let dx = 0;
+    if (L <= R) {
+      if (c.x < L && c.x > L - 2 * hw - 4) dx = L - c.x;
+      else if (c.x > R && c.x < R + 2 * hw + 4) dx = R - c.x;
+    }
+    c._dxS = B.stamp; c._dx = dx;
+    return dx;
   }
   /** 기둥에 붙지 않은 숫자의 떠오름 (px) */
   riseOf(p) { return this.riseAt(p, p.max - p.life); }
@@ -387,6 +419,8 @@ export class Particles {
         const st = HFX.dmgStyle?.('total') ?? {};
         const step = FH.DMG_STYLE?.column?.step ?? COL_DEF.step;
         const top = c.y - (c.n + 1) * step - 8 - this.colRise(c, HFX.dmgStyle?.('normal')?.rise ?? 40);
+        // 상한(24/16/10)이 찼으면 '합계'가 한도를 넘기지 않게 가장 오래된 숫자 하나를 내린다 (이 기둥 것 먼저 — 합계가 그 숫자들을 대신한다)
+        if (this.recountDmg() >= this.dmgCap()) this.evictDmg(c);
         const tp = this.spawnDmg(c.x, top, c.total, 'total', st, null);
         if (tp) { tp.colRef = c; c.tp = tp; this.staggerTotal(tp); }   // 합계는 기둥과 함께 HUD 아래로 비킨다
       }
@@ -422,8 +456,8 @@ export class Particles {
     const put = (x0, x1, y0, y1) => { const r = (O[n] ??= { x0: 0, x1: 0, y0: 0, y1: 0 }); r.x0 = x0; r.x1 = x1; r.y0 = y0; r.y1 = y1; n++; };
     for (const c of this._live) {
       if (now - c.t > 1.0 && !(c.tp && c.tp.life > 0)) continue;
-      const hw = (c.w || 40) / 2, sh = this.colShift(c), gh = c.gh || 24;
-      put(c.x - hw, c.x + hw, this.colTop(c) + sh, c.y - this.colRise(c, 40) + gh / 2 + sh);
+      const hw = (c.w || 40) / 2, sh = this.colShift(c), gh = c.gh || 24, x = c.x + this.colNudge(c);
+      put(x - hw, x + hw, this.colTop(c) + sh, c.y - this.colRise(c, 40) + gh / 2 + sh);
     }
     for (const p of this.list) {
       if (p.shape !== 'callout' || p.layer !== 'top') continue;
@@ -648,9 +682,10 @@ export class Particles {
     if (al <= 0.01) return;
     const k = A.k, gh = (A.h / k) * sc;
     // HUD 윗줄 아래로 (R1-REQ-331): 기둥 숫자·합계는 기둥째, 따로 뜬 숫자(플레이어 피격·회복)는 하나씩
+    const cc = p.col ?? p.colRef;
+    if (cc) X += this.colNudge(cc);   // 화면 가장자리에 걸친 기둥은 화면 안으로
     if (this.band.n) {
-      const c = p.col ?? p.colRef;
-      if (c) Y += this.colShift(c);
+      if (cc) Y += this.colShift(cc);
       else Y += this.bandPush(X - (p.w / 2) * sc, X + (p.w / 2) * sc, Y - gh / 2);
     }
     if (p.star) {
