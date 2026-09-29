@@ -757,6 +757,15 @@ export function bossRushBests(meta) {
   }
   return meta.bossRushBests;
 }
+/**
+ * 아케이드 임시 세이브를 치우고 아케이드 전의 세이브로 되돌린다 (타이틀·아케이드 메뉴·결과 화면).
+ * 여기(front/common.js)에 두어 타이틀이 arcade.js(→ 보스·아이템 데이터)를 첫 화면 조각으로 끌어오지 않게 한다 (R1-REQ-229).
+ * arcade.js 가 같은 이름으로 다시 내보낸다
+ */
+export function endArcade(game) {
+  if (game.state?.arcade) game.state = game._arcadePrev ?? null;
+  game._arcadePrev = null;
+}
 /** main.js 의 recordScore 를 모드별 보존 버전으로 교체 (시그니처 동일) */
 export function installRecordScore(game) {
   if (game._frontRecord) return;

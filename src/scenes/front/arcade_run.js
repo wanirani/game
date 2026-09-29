@@ -6,6 +6,8 @@
 //    절대 나오지 않는다. 정예는 def.elite === false 인 적에겐 붙이지 않는다. 베테랑 이상 난이도는 가시 구덩이(arena 'pit') 방.
 //    적은 가시 없는 바닥 기둥의 양 끝에서 나온다. 웨이브마다 채색 적 리그를 미리 굽고, 풀에서 빠진 종류는 놓는다 (휴대폰 메모리).
 //  - 보스 러시: 다음 라운드 보스의 채색 리그를 대기 시간에 미리 굽는다 (preloadPainted). 2부 보스는 클래스가 준비된 것만 (arcade.js).
+//  - 보스 클래스는 늦게 받기 입구(game/bosses/lazy.js)로 만든다 (R1-REQ-229): 코스 시작 때 첫 보스부터 차례로, 서바이벌은 보스 웨이브를
+//    정할 때 미리 받는다. 아직 오지 않았으면 createBoss 가 대역(PendingBoss)을 돌려주고, 등장 연출 동안 진짜 보스로 바뀐다.
 //  - 결과·랭크 글자는 피 글씨(bloodText). 일시정지·결과는 uiScale 장면 (탭 대상 ≥ 44 CSS px, 기기별 글리프 안내)
 //  - 게임플레이 위 모드 표시는 hudLayout 의 기믹 게이지 줄에 둔다 (터치: 가운데 위 시스템 버튼 아래)
 import { Scene, TILE } from '../../core/game.js';
@@ -18,7 +20,7 @@ import { drawHints, promptMode } from '../../core/prompts.js';
 import { clamp, ease, rgba, fmt, rand, randi, pick, chance } from '../../core/math.js';
 import { isSolidType, T } from '../../core/physics.js';
 import { World } from '../../game/world.js';
-import { createBoss } from '../../game/bosses/index.js';
+import { createBoss, loadBoss, preloadBosses } from '../../game/bosses/lazy.js';
 import { drawHUD } from '../../render/hud.js';
 import { hudLayout } from '../../render/hud_layout.js';
 import { preloadPainted } from '../../render/painted/registry.js';
@@ -101,7 +103,7 @@ class ArcadeRunScene extends Scene {
     g.state = buildArcadeState(c, charId);
     return { ...c, charId };
   }
-  exit() { if (this.game.world === this.world) this.game.world = null; }
+  exit() { this._pauseWanted = false; if (this.game.world === this.world) this.game.world = null; }
   resize() { this.world?.camera.setView(this.game.viewW, this.game.viewH); }
   onResume() { this.world?.player?.refreshStats(); }
   makeArenaWorld(level, roomId = null) {
@@ -149,13 +151,24 @@ class ArcadeRunScene extends Scene {
     w.banner = { text: 'READY?', sub: `남은 목숨 ${w.run.lives}`, t: 1.6, color: '#ffe7a0' };
   }
   canPause() { const w = this.world; return !!w && !this.done && !w.player.dead && !w.cutscene && !w.transitioning; }
-  /** 기기를 세로로 돌리거나 탭이 백그라운드로 가면 일시정지 메뉴 (StageScene.autoPause 와 같음, core/game.js 가 호출) */
-  autoPause() { if (this.game.top === this && this.game.fade.dir <= 0 && this.canPause()) this.game.push('arcadePause', { run: this }); }
+  /**
+   * 기기를 세로로 돌리거나 탭이 백그라운드로 가거나 패드가 끊기면 일시정지 메뉴 (StageScene.autoPause 와 같음, core/game.js 가 호출).
+   * 지금 열 수 없으면 (필살기·각성 연출 world.cutscene, 페이드 중) 기억해 두었다가 열 수 있게 된 첫 update 에서 연다 (platform §4.1)
+   */
+  autoPause() {
+    const g = this.game, w = this.world;
+    if (g.top === this && g.fade.dir <= 0 && this.canPause()) { this._pauseWanted = false; g.push('arcadePause', { run: this }); return; }
+    if (w?.player && !this.done && !w.player.dead) this._pauseWanted = true;
+  }
   update(dt) {
     const w = this.world;
     if (!w) return;
     const st = this.game.state;
     if (st?.stats) st.stats.playTime = (st.stats.playTime ?? 0) + dt;
+    if (this._pauseWanted) {   // 연출 중에 들어온 자동 일시정지 요청 (R1-REQ-215)
+      if (this.done || w.player?.dead) this._pauseWanted = false;
+      else if (this.game.fade.dir <= 0 && this.canPause()) { this._pauseWanted = false; this.game.push('arcadePause', { run: this }); return; }
+    }
     if (input.pressed('menu') && this.canPause()) { audio.sfx('menu_ok'); this.game.push('arcadePause', { run: this }); return; }
     this.phaseT += dt;
     this.tick?.(dt);
@@ -240,6 +253,11 @@ export class BossRushScene extends ArcadeRunScene {
     audio.music('arena');
     this.call = { main: 'BOSS RUSH', sub: `${COURSES[this.cfg.course ?? 0]?.name ?? ''} · ${this.queue.length}연전`, color: '#ff4a5a', t: 0 };
     this.warm(this.queue[0]);
+    // 보스 클래스 모듈: 첫 보스를 먼저 받고(등장까지 2.3초), 나머지 코스는 그 뒤에 한꺼번에 (느린 망에서 첫 보스와 다투지 않게)
+    try {
+      const [first, ...rest] = this.queue;
+      Promise.resolve(loadBoss(first)).catch(() => null).then(() => preloadBosses(rest)).catch(() => null);
+    } catch { /* 늦게 받기 입구 교체 중: createBoss 가 받는다 */ }
   }
   /** 보스의 채색 리그를 미리 굽는다 (라운드 사이 대기 시간 뒤에서 끝난다; 채색 렌더러가 없으면 아무것도 안 함) */
   warm(id) {
@@ -366,6 +384,8 @@ export class SurvivalScene extends ArcadeRunScene {
     const c = this.safeCols;
     this.edgeL = c ? c.slice(0, 4) : null; this.edgeR = c ? c.slice(-4) : null;
     this.bossIds = arenaBosses(this.p2);
+    // 첫 보스 웨이브(5)의 보스 클래스를 한가할 때 미리 받는다 (다음 보스는 보스 웨이브를 정할 때)
+    if (this.bossIds.length) { try { loadBoss(this.bossIds[0])?.catch?.(() => null); } catch { /* createBoss 가 받는다 */ } }
     const orig = w.addScore.bind(w);
     w.addScore = (n) => orig(n * this.mult);
     audio.music('arena');
@@ -422,6 +442,7 @@ export class SurvivalScene extends ArcadeRunScene {
       this.bossId = ids.length ? ids[this.bossesUsed % ids.length] : null;
       this.bossesUsed++;
       if (this.bossId) { try { preloadPainted(this.bossId, this.game)?.catch?.(() => {}); } catch { /* 무시 */ } }
+      if (this.bossId) { try { loadBoss(this.bossId)?.catch?.(() => null); } catch { /* createBoss 가 받는다 */ } }   // 보스 클래스 (등장 2.3초 전)
     }
     this.spawnT = 0.6;
     this.phase = 'wave'; this.phaseT = 0;

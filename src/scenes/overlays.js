@@ -8,12 +8,16 @@
 //              2차 전직(tier 2)은 금테. t=0 에 cutin_whoosh. hidePad · deferToasts (MASTER_PLAN §1.13). 설정 reduceMotion 이면 속도선·확대를 줄인다.
 //              game.push('ultCutin', { charId, world, classId? }) — classId 가 없으면 world.player.hero.classId.
 //              각성 컷인(awakenCutin)이 스택에 있으면 곧바로 닫힌다 (컷인은 한 번에 하나).
+//              캔버스(망점·어둠 띠·글자 재기·기술명 비트맵)는 스테이지에 들어설 때(bus 'stageEntered') 한가할 때 미리 만든다
+//              → 싸움 도중 새 캔버스 0 (feel §8, R1-REQ-339A). prepareUltCutin(charId?) 로 직접 불러도 된다.
+//              초상화는 띠를 둘러싼 화면 상자만큼만 잘라 그린다 → 컷인 한 프레임의 전면 패스는 암전 한 장 (R1-REQ-338).
 //  document  : 비전서/기록 열람. uiScale (platform §6.2), 안내 글리프, 기술 커맨드는 방향 화살표 + 지금 기기의 버튼 글리프.
 //  gameover  : GAME OVER(피 글씨) → CONTINUE?(금박 글씨) 카운트다운. uiScale, 버튼 ≥ 44 CSS px (ui.taps), 안내 글리프, 토스트는 미룬다.
 //              포기·크레딧 소진 → 마을 {from: 스테이지 id} (마을은 동쪽 성문 앞에서 시작; pause '마을로 귀환' 과 같은 규칙)
 // 모든 장면은 스택에 혼자 남아도(?scene=ultCutin&char=lia 같은 디버그 주소) 오류 없이 그리고, 닫히면 타이틀로 간다 (game.pop).
-import { Scene } from '../core/game.js';
+import { Scene, game as GAME } from '../core/game.js';
 import { input } from '../core/input.js';
+import { bus } from '../core/events.js';
 import { audio } from '../core/audio.js';
 import { assets } from '../core/assets.js';
 import * as UI from '../core/ui.js';
@@ -242,11 +246,12 @@ const UC = {
   out: 0.16,                          // 퇴장: 띠가 가운데 선으로 접히며 사라진다
 };
 const ANG_BAND = -6 * DEG, ANG_STRIPE = -8.5 * DEG;
+const COS_B = Math.cos(ANG_BAND), SIN_B = Math.abs(Math.sin(ANG_BAND));
 /** 초상화 얼굴 위치 (0..1 이미지 좌표; assets/portraits/<id>.webp 800×1134 기준) */
 const FACE = { kael: [0.37, 0.2], sera: [0.41, 0.21], victor: [0.5, 0.25], bran: [0.48, 0.2], lia: [0.44, 0.22], azel: [0.37, 0.22] };
 const NAME_PX = 50;
 
-// 한 번 굽는 공용 그림: 망점 타일, 왼쪽 어둠 띠
+// 한 번 굽는 공용 그림: 망점 타일, 왼쪽 어둠 띠 (스테이지에 들어설 때 prepareUltCutin 이 만든다)
 let SPR = null;
 function ultSprites() {
   if (SPR || !hasDom()) return SPR;
@@ -260,26 +265,35 @@ function ultSprites() {
   return SPR;
 }
 
-// 기술명 비트맵 캐시 (기술명·색·해상도·붓글씨 여부별): 스테이지 중 필살기를 다시 써도 캔버스를 새로 만들지 않는다 (feel §8)
+// 기술명 비트맵 캐시 (기술명·색별로 캔버스 하나): 스테이지 중 필살기를 다시 써도 캔버스를 새로 만들지 않는다 (feel §8).
+// 붓글씨가 늦게 오거나 글꼴 세대·화면 배율이 바뀌면 같은 캔버스에 다시 굽는다 (그 스프라이트를 들고 있는 장면도 새 글자를 그린다)
 const NAME_CACHE = new Map();
 const NAME_CACHE_MAX = 8;
 let MEASURE = null;
+const measureCtx = () => (MEASURE ||= mkCanvas(1, 1).getContext('2d'));
 /**
  * 기술명 비트맵: 먹 그림자(3,3) + 6px 먹 테두리 + 흰색→캐릭터 색 채움. 붓글씨가 아직 없으면 FONT.title 900 으로 굽고,
- * 도착하면 장면이 다시 굽는다. 반환 {c, w, h, ox, oy, adv, brush} (w·h·ox·oy·adv 는 논리 px)
+ * 도착하면 다시 굽는다. 반환 {c, w, h, ox, oy, adv, brush, S, epoch} (w·h·ox·oy·adv 는 논리 px)
  */
 function bakeName(str, color, S) {
   const brush = !!UI.faceReady?.('BN Brush');
-  const key = `${str}|${color}|${S}|${UI.fontEpoch ?? 0}`; // 글꼴이 늦게 도착하면(세대 변경) 대체 글꼴로 구운 것을 다시 쓰지 않는다
-  const hit = NAME_CACHE.get(key + (brush ? '|b' : '|t'));
-  if (hit) return hit;
+  const epoch = UI.fontEpoch ?? 0;
+  const key = `${str}|${color}`;
+  let spr = NAME_CACHE.get(key);
+  // 붓글씨로 구운 것은 최종본 (한 번 받은 글꼴은 바뀌지 않는다). 대체 글꼴로 구운 것은 붓글씨가 오거나 글꼴 세대가 바뀌면 다시 굽는다
+  if (spr?.c && spr.S === S && (spr.brush || (!brush && spr.epoch === epoch))) return spr;
   const fontStr = brush ? `400 ${NAME_PX}px ${FONT.brush}` : `900 ${NAME_PX}px ${FONT.title}`;
-  const m = (MEASURE ||= mkCanvas(1, 1).getContext('2d'));
+  const m = measureCtx();
   m.font = fontStr;
   const adv = Math.max(1, m.measureText(str).width);
   const pad = 14;
   const w = adv + pad * 2 + 4, h = NAME_PX * 1.45 + pad * 2;
-  const c = mkCanvas(w * S, h * S), g = c.getContext('2d');
+  const cw = Math.max(1, Math.ceil(w * S)), chh = Math.max(1, Math.ceil(h * S));
+  const c = spr?.c ?? mkCanvas(cw, chh);
+  if (c.width !== cw || c.height !== chh) { c.width = cw; c.height = chh; }   // 크기를 바꾸면 내용·상태가 비워진다
+  const g = c.getContext('2d');
+  g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+  g.clearRect(0, 0, c.width, c.height);
   g.scale(S, S);
   g.font = fontStr; g.textBaseline = 'alphabetic'; g.lineJoin = 'round'; g.lineCap = 'round';
   const ox = pad, oy = pad + NAME_PX * 1.02;
@@ -289,11 +303,53 @@ function bakeName(str, color, S) {
   const gr = g.createLinearGradient(0, oy - NAME_PX * 0.85, 0, oy + NAME_PX * 0.08);
   gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.42, '#fffaf0'); gr.addColorStop(1, color);
   g.fillStyle = gr; g.fillText(str, ox, oy);
-  const spr = { c, w, h, ox, oy, adv, brush };
-  if (brush) NAME_CACHE.delete(key + '|t'); // 붓글씨가 도착했으면 대체 글꼴 비트맵은 버린다
-  NAME_CACHE.set(key + (brush ? '|b' : '|t'), spr);
+  if (!spr) spr = {};
+  Object.assign(spr, { c, w, h, ox, oy, adv, brush, S, epoch });
+  NAME_CACHE.delete(key); NAME_CACHE.set(key, spr);
   while (NAME_CACHE.size > NAME_CACHE_MAX) NAME_CACHE.delete(NAME_CACHE.keys().next().value);
   return spr;
+}
+/** 캐릭터의 필살기 이름·색 (장면과 미리 굽기가 같은 값을 쓴다) */
+const ultLabel = (ch) => ({ skill: ch?.ult?.name ?? '필살기', col: ch?.ult?.color ?? '#fff2b0' });
+/** 기술명 비트맵 해상도 (논리 px → 백킹 px) */
+const nameScale = (g) => clamp(g?.scale || 1, 1, 2.5);
+const idle = (fn, timeout = 1500) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(fn, { timeout }) : setTimeout(fn, 60));
+
+/**
+ * 필살기 컷인 미리 준비 (스테이지에 들어설 때 스스로 부른다): 망점·어둠 띠·글자 재기 캔버스, 망점 패턴, 지금 영웅의 기술명 비트맵.
+ * 한가할 때 굽고, 붓글씨가 아직이면 받은 뒤 한 번 더 (같은 캔버스에) 굽는다 → 싸움 도중 새 캔버스 0 (feel §8 · R1-REQ-339A).
+ * charId 를 주지 않으면 그때의 game.world 영웅.
+ */
+export function prepareUltCutin(charId = null) {
+  if (!hasDom()) return;
+  const run = () => {
+    try {
+      const spr = ultSprites();
+      measureCtx();
+      const ctx = GAME?.ctx;
+      if (spr && !spr.pattern && ctx?.createPattern) { try { spr.pattern = ctx.createPattern(spr.dot, 'repeat'); } catch { spr.pattern = null; } }
+      const ch = CHARACTERS[charId ?? GAME?.world?.player?.hero?.charId];
+      if (!ch) return;
+      const { skill, col } = ultLabel(ch);
+      bakeName(skill, col, nameScale(GAME));
+    } catch (e) { console.error('[ultCutin] 미리 굽기', e); }
+  };
+  idle(run);
+  if (!UI.faceReady?.('BN Brush')) {
+    try { Promise.resolve(UI.loadBrush?.()).then((ok) => { if (ok) idle(run); }, () => {}); } catch { /* 글꼴 없음: title 로 그린다 */ }
+  }
+}
+// 스테이지(아케이드·연습·마을 포함)에 들어설 때마다 미리 준비한다. World 생성자가 알리므로 game.world 가 바뀐 뒤(타이머)에 굽는다.
+// 모듈 최상위에서 가져온 값(bus)에 곧바로 닿지 않는다 (순환 import 규칙): 다음 틱에 붙인다
+if (hasDom() && typeof setTimeout === 'function') {
+  setTimeout(() => {
+    try {
+      bus.on('stageEntered', () => {
+        try { UI.loadBrush?.(); } catch { /* 글꼴 없음 */ }
+        setTimeout(() => prepareUltCutin(), 150);
+      });
+    } catch (e) { console.warn('[ultCutin] bus', e); }
+  }, 0);
 }
 /** 붉은 먹 밑줄 (가운데가 굵고 양끝이 가는 붓 획, 끝에서 살짝 튕긴다) */
 function inkStroke(len) {
@@ -320,8 +376,9 @@ export class UltCutinScene extends Scene {
     const C = CLASSES[classId]?.charId === this.charId ? CLASSES[classId] : CLASSES[this.ch.rootClass];
     this.cls = C ?? null;
     this.tier = clamp(Number(C?.tier) || 0, 0, 2);
-    this.col = this.ch.ult?.color ?? '#fff2b0';
-    this.skill = this.ch.ult?.name ?? '필살기';
+    const lab = ultLabel(this.ch);
+    this.col = lab.col;
+    this.skill = lab.skill;
     this.dur = UC.dur;
     // 컷인은 한 번에 하나: 각성 컷인 위에는 뜨지 않는다 (MASTER_PLAN §1.13)
     if (this.game.scenes.some((s) => s !== this && s.name === 'awakenCutin')) this.dur = 0;
@@ -351,7 +408,7 @@ export class UltCutinScene extends Scene {
   /** 기술명 비트맵을 (다시) 굽는다 — 화면 배율에 맞춘 해상도 */
   bake() {
     if (!hasDom()) return;
-    try { this.nameSpr = bakeName(this.skill, this.col, clamp(this.game.scale || 1, 1, 2.5)); } catch (e) { console.error(e); this.nameSpr = null; }
+    try { this.nameSpr = bakeName(this.skill, this.col, nameScale(this.game)); } catch (e) { console.error(e); this.nameSpr = null; }
   }
   /** game.autoPause (탭 숨김·기기 회전·패드 끊김): 0.9초 컷인은 끝까지 두고, 닫힐 때 아래 장면에 넘긴다 */
   autoPause() { this.pauseAfter = true; }
@@ -411,9 +468,12 @@ export class UltCutinScene extends Scene {
     ctx.fillStyle = this.grad; ctx.fill();
     ctx.save();
     ctx.clip();
-    // 초상화는 똑바로 세워 그린다 (띠 회전·접힘을 되돌림)
+    // 초상화는 똑바로 세워 그린다 (띠 회전·접힘을 되돌림). 띠(회전한 사각형)를 둘러싼 화면 상자만 잘라 그린다:
+    // 보이는 곳은 어차피 띠 안뿐이고, 화면을 거의 덮는 큰 그리기(전면 패스)가 되지 않는다 (feel §8 · R1-REQ-338)
     ctx.scale(1, 1 / squash); ctx.rotate(-ANG_BAND); ctx.translate(-bx, -cy);
-    this.drawPortrait(ctx, vw, vh, t, bx - cx, spr);
+    const hw = L * COS_B + hb * squash * SIN_B, hh = L * SIN_B + hb * squash * COS_B;
+    const box = { x0: Math.max(0, bx - hw), x1: Math.min(vw, bx + hw), y0: Math.max(0, cy - hh), y1: Math.min(vh, cy + hh) };
+    this.drawPortrait(ctx, vw, vh, t, bx - cx, spr, box);
     ctx.translate(bx, cy); ctx.rotate(ANG_BAND); ctx.scale(1, squash);
     // 속도선 (왼쪽으로 1800 px/s)
     ctx.globalCompositeOperation = 'lighter';
@@ -501,8 +561,11 @@ export class UltCutinScene extends Scene {
     ctx.restore();
     ctx.restore();
   }
-  /** 초상화 (얼굴을 띠 가운데 줄에): 없으면 캐릭터 색 광채 + 영문 이름으로 대신한다 */
-  drawPortrait(ctx, vw, vh, t, slide, spr) {
+  /**
+   * 초상화 (얼굴을 띠 가운데 줄에): 없으면 캐릭터 색 광채 + 영문 이름으로 대신한다.
+   * box = 띠를 둘러싼 화면 상자 {x0, y0, x1, y1}: 초상화·어둠 띠를 이 상자로 잘라 그린다 (없으면 통째로)
+   */
+  drawPortrait(ctx, vw, vh, t, slide, spr, box = null) {
     const img = assets.get(this.ch.portrait);
     const cy = vh * 0.5;
     const kI = ease.outExpo(clamp((t - UC.img) / UC.imgIn, 0, 1));
@@ -523,9 +586,16 @@ export class UltCutinScene extends Scene {
     const z = this.calm ? 1 : 1 + 0.06 * clamp(t / UC.dur, 0, 1);
     const dw = pw * z, dh = ph * z;
     const ix = X + off - fx * dw, iy = faceY - fy * dh;
-    ctx.drawImage(img, ix, iy, dw, dh);
-    // 왼쪽 가장자리 어둠: 검은 띠에 이어 붙고 글자가 읽히게
-    if (spr?.fade) ctx.drawImage(spr.fade, 0, 0, 256, 2, ix - 2, cy - vh * 0.5, dw * 0.46, vh);
+    const B = box ?? { x0: 0, y0: 0, x1: vw, y1: vh };
+    const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+    // 2 px 여유 (띠 모서리의 이미지 보간 가장자리가 잘린 선으로 보이지 않게), 초상화 밖으로는 넘지 않는다
+    const x0 = Math.max(ix, B.x0 - 2), x1 = Math.min(ix + dw, B.x1 + 2), y0 = Math.max(iy, B.y0 - 2), y1 = Math.min(iy + dh, B.y1 + 2);
+    if (x1 > x0 && y1 > y0 && iw > 0 && ih > 0) {
+      const kx = iw / dw, ky = ih / dh;
+      ctx.drawImage(img, (x0 - ix) * kx, (y0 - iy) * ky, (x1 - x0) * kx, (y1 - y0) * ky, x0, y0, x1 - x0, y1 - y0);
+    }
+    // 왼쪽 가장자리 어둠: 검은 띠에 이어 붙고 글자가 읽히게 (가로로만 변하는 띠 → 세로는 상자만큼)
+    if (spr?.fade && B.y1 > B.y0) ctx.drawImage(spr.fade, 0, 0, 256, 2, ix - 2, B.y0 - 2, dw * 0.46, B.y1 - B.y0 + 4);
   }
 }
 

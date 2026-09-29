@@ -380,6 +380,33 @@ function mkCanvas(w, h) {
   if (typeof OffscreenCanvas !== 'undefined' && typeof document === 'undefined') return new OffscreenCanvas(w, h);
   const c = document.createElement('canvas'); c.width = w; c.height = h; return c;
 }
+// 캐시 비트맵 캔버스 풀 (R1-REQ-339P, feel §8 '스테이지 시작 뒤 새 캔버스 0'): 캐시에서 내린 비트맵의 캔버스는 1×1 로 줄여 여기 두었다가
+// 다음 글씨에 다시 쓴다. 비어 있으면 1초 넘게 그리지 않은 캐시 항목의 캔버스를 가져온다. 부팅 때(모듈을 읽을 때) 미리 만들어 둔다
+const TXT_FREE = [];
+const TXT_POOL = 12, TXT_FREE_MAX = 24;
+function takeTextCanvas(w, h) {
+  let c = TXT_FREE.pop();
+  if (!c) {
+    const now = nowSec();
+    for (const [k, e] of TXT_CACHE) { if (now - (e.used ?? 0) > 1) { dropEntry(k); c = TXT_FREE.pop(); break; } }
+  }
+  if (!c) c = mkCanvas(1, 1); // 풀도 비고 모두 지금 쓰는 중: 어쩔 수 없이 새로
+  c.width = w; c.height = h; // 크기 지정 = 초기화 (같은 크기여도 비트맵·상태를 지운다)
+  return c;
+}
+function freeTextCanvas(c) {
+  if (!c || TXT_FREE.length >= TXT_FREE_MAX) return;
+  try { c.width = 1; c.height = 1; TXT_FREE.push(c); } catch { /* 무시 */ }
+}
+/** 피 글씨용 작업 캔버스·풀·방울 스프라이트를 미리 만든다 (부팅 때 한 번; 스테이지 도중 새 캔버스를 만들지 않게) */
+export function prewarmTextCanvases() {
+  try {
+    if (typeof document === 'undefined' && typeof OffscreenCanvas === 'undefined') return;
+    for (let i = 0; i <= 6; i++) SCRATCH[i] ||= mkCanvas(1, 1);
+    while (TXT_FREE.length < TXT_POOL) TXT_FREE.push(mkCanvas(1, 1));
+    for (const st of Object.values(TEXT_STYLES)) if (st?.drip) dripSprites(st.drip);
+  } catch (e) { console.warn('[ui] prewarm text canvases', e); }
+}
 function scratch(which, w, h) {
   let c = SCRATCH[which];
   if (!c) c = SCRATCH[which] = mkCanvas(w, h);
@@ -526,7 +553,7 @@ function buildText(str, size, weight, family, styleName, st, spacing, amount, S,
   const [ec, ek] = scratch(5, PW, PH);
   prep(ek); ek.fillStyle = st.edge; ek.strokeStyle = st.edge; ek.lineWidth = edgeW; shape(ek, 'stroke'); shape(ek, 'fill');
 
-  const out = mkCanvas(PW, PH), c = out.getContext('2d');
+  const out = takeTextCanvas(PW, PH), c = out.getContext('2d');
   prep(c);
   // 2) 발광(1/4 해상도로 흐려 늘림) + 그림자 + 바깥 테두리
   if (glow) {
@@ -681,15 +708,16 @@ function textEntry(ctx, str, opts) {
     while (TXT_CACHE.size && (TXT_CACHE.size >= TXT_CACHE_MAX || TXT_PX > TXT_PX_MAX)) dropEntry(TXT_CACHE.keys().next().value);
   } else TXT_CACHE.delete(key);
   TXT_CACHE.set(key, e); // 최근 사용 순서 유지 (LRU)
+  e.used = now;
   return e;
 }
 function dropEntry(key) {
   const e = TXT_CACHE.get(key);
-  if (e) { TXT_PX -= e.px || 0; TXT_CACHE.delete(key); }
+  if (e) { TXT_PX -= e.px || 0; TXT_CACHE.delete(key); freeTextCanvas(e.c); }
   return null;
 }
 /** 피 글씨 캐시 비우기 (글꼴 교체 등) */
-export function clearTextCache() { TXT_CACHE.clear(); TXT_PX = 0; }
+export function clearTextCache() { for (const e of TXT_CACHE.values()) freeTextCanvas(e.c); TXT_CACHE.clear(); TXT_PX = 0; }
 
 // ───────────────────────── 글꼴 세대 (platform P-28) ─────────────────────────
 /**
@@ -739,6 +767,7 @@ function bumpFontEpoch(ev) {
   for (const fn of EPOCH_FNS) { try { fn(fontEpoch, fams); } catch (e) { console.error(e); } }
 }
 try { document.fonts.addEventListener('loadingdone', bumpFontEpoch); } catch { /* 문서 없음(노드 도구) */ }
+prewarmTextCanvases(); // 부팅 때 피 글씨 작업 캔버스·풀을 만들어 둔다 (R1-REQ-339P)
 // 화면 크기가 바뀌면 피 글씨 캐시를 비운다 (배율이 바뀌어 예전 해상도 비트맵은 메모리만 차지한다; 다음 그릴 때 새 배율로 굽는다)
 let resizeT = 0;
 try {

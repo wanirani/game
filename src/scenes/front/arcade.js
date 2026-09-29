@@ -2,8 +2,9 @@
 // owner: PLAT-FRONT-B (world2 §11, MASTER_PLAN §1.14·§1.16, platform §6.2–6.3)
 //  - 2부 (world2 §11): BOSS_ORDER 에 2부 보스 7명, COURSES '이계편'·'전 보스 연속(20연전)', LEVEL_PRESETS '이계의 순례자'.
 //    p2Known(game) 이 거짓이면 p2 코스·프리셋을 숨기고, 저장된 arcadeCfg 가 숨긴 항목을 가리키면 0번으로 돌아간다.
-//    2부 보스는 클래스가 준비된 것(bosses_c/d 레지스트리에 있는 것)만 코스에 넣는다. 아직 스텁인 보스(예: 작업 중인 b_nihil)는
-//    범용 보스로 대신하지 않고 건너뛴다. 준비된 2부 보스가 하나도 없는 코스는 숨긴다.
+//    2부 보스는 늦게 받기 입구(game/bosses/lazy.js)가 아는 것만 코스에 넣는다 (지금은 20명 모두). 보스 클래스 모듈은 정적으로
+//    싣지 않는다 (R1-REQ-229: 첫 화면 바이트에서 보스 로직을 뺀다) — 실전 장면(arcade_run.js)이 라운드 전에 미리 받는다.
+//    아는 2부 보스가 하나도 없는 코스는 숨긴다.
 //  - 무기·방어구: baseIdFor(slot, min(7, wtier)) (티어 7 = 2부 장비)
 //  - 연습 스테이지 목록은 모든 슬롯의 해금 합집합 (STAGE_ORDER 전체 → s14~s20 도 자동으로)
 //  - uiScale 장면: game.uiW × game.uiH (최소 720×400) 로 배치. 탭 대상은 ui.taps (모드 카드·옵션 줄·시작·뒤로 ≥ 44/36 CSS px),
@@ -25,14 +26,12 @@ import { baseIdFor, ITEMS, makeItem } from '../../data/items.js';
 import { SKILLS } from '../../data/skills.js';
 import { SCRIPTS } from '../../data/story.js';
 import * as QD from '../../data/quests.js';
-import * as BOSS_REG from '../../game/bosses/index.js';
-import * as BOSS_REG_C from '../../game/bosses/bosses_c.js';
-import * as BOSS_REG_D from '../../game/bosses/bosses_d.js';
+import * as BOSS_LAZY from '../../game/bosses/lazy.js';   // 보스 클래스 모듈을 정적으로 싣지 않는 입구 (R1-REQ-229)
 import { newGameState } from '../../game/state.js';
 import { addItem, addByBase } from '../../game/inventory.js';
 import {
   Ambience, kenBurns, shade, frame, heading, portraitIn, gbutton,
-  follow, fmtClock, bossRushBests, GOLD, BONE,
+  follow, fmtClock, bossRushBests, GOLD, BONE, endArcade,
 } from './common.js';
 import * as FRONT from './common.js'; // scoreList (PLAT-FRONT-A 의 새 내보내기: 없어도 멈추지 않게 이름공간으로 부른다, R6)
 
@@ -66,12 +65,12 @@ export const COURSES = [
 ];
 const P2_COLOR = '#c8b8ff';
 
-/** 2부 보스 클래스가 준비되었는가 (아직 스텁이면 bosses_c/d 레지스트리에서 빠져 있다 → 범용 보스 대신 건너뛴다) */
+/**
+ * 이 보스를 아케이드에 낼 수 있는가: 늦게 받기 입구(lazy.js)가 클래스 모듈을 아는 보스 (20명 모두 진짜 클래스가 있다;
+ * 받는 동안은 대역, 받지 못하면 범용 보스로 대신한다 — lazy.createBoss)
+ */
 export function bossReady(id) {
-  try {
-    const C = BOSS_REG.BOSS_CLASSES?.[id] ?? BOSS_REG_C.BOSS_C?.[id] ?? BOSS_REG_D.BOSS_D?.[id];
-    return typeof C === 'function';
-  } catch { return false; }
+  try { return !!BOSS_LAZY.knownBoss?.(id); } catch { return false; }
 }
 /** 이 보스를 아케이드에 낼 수 있는가: 데이터가 있고, 2부 보스면 클래스까지 준비됨 */
 function bossUsable(id) {
@@ -221,10 +220,7 @@ export function startArcade(game, cfg, charId) {
   game.go(scene, { cfg: { ...cfg, charId } }, { fadeTime: 0.6 });
 }
 /** 아케이드 종료 시 이전 세이브 복원 */
-export function endArcade(game) {
-  if (game.state?.arcade) game.state = game._arcadePrev ?? null;
-  game._arcadePrev = null;
-}
+export { endArcade };   // 몸체는 front/common.js (타이틀이 이 파일을 싣지 않게, R1-REQ-229)
 
 export class ArcadeScene extends Scene {
   constructor(g) { super(g); this.uiScale = true; this.hidePad = true; }

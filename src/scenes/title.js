@@ -21,10 +21,10 @@ import { drawHints, drawGlyph, glyphWidth, promptMode } from '../core/prompts.js
 import { clamp, ease, lerp, fmt, rand } from '../core/math.js';
 import { hudSafe } from '../render/hud_layout.js';
 import { CHARACTERS, CHAR_ORDER } from '../data/characters.js';
-import { endArcade } from './front/arcade.js';
+// 아케이드 장면(arcade.js → 보스·아이템·퀘스트 데이터)은 정적으로 싣지 않는다: endArcade 는 front/common.js 의 것 (R1-REQ-229)
 import {
   Ambience, kenBurns, shade, menuItem, ornament, applySettings, installRecordScore, gbutton, frame, linGrad, radGrad, glowSprite,
-  GOLD, BONE, DIM, follow, modeName, scoreList,
+  GOLD, BONE, DIM, follow, modeName, scoreList, endArcade,
 } from './front/common.js';
 import { drawCloudBadge, accountBadge } from './front/cloud_ui.js';
 

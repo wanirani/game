@@ -321,6 +321,7 @@ function ensureBaked(charId, tier, classId, vw, vh, S) {
   const key = prepKey(charId, tier, classId, vw, S);
   if (PREP.key === key && PREP.band && PREP.text) return PREP;
   sprites();
+  if (!POOL.has('fallback')) pooled('fallback', 8, 8);   // 컷인 그림이 늦으면 쓰는 초상 대체 캔버스도 지금 만들어 둔다 (컷인 도중 새 캔버스 0)
   PREP.band = bakeBand(a, vw, vh, Math.min(S, 1.25));
   PREP.text = bakeText(a, vw, S, tier, charId, classId);
   PREP.key = key;
@@ -388,7 +389,7 @@ export class AwakenCutinScene extends Scene {
     if (!this.preview && this.p && !this.p.hidden) { this.p.hidden = true; this.hidPlayer = true; }
     this.ink = [];
     this.fired = new Set();
-    this.shakeT = 0; this.shakeA = 0;
+    this.shakeT = 0; this.shakeA = 0; this.step = 0;
     this.sfx('awaken_charge');
     if (!this.preview) { try { input.rumble?.(0.3, 0.45, 140); } catch { /* 진동 없음 */ } }
   }
@@ -455,6 +456,7 @@ export class AwakenCutinScene extends Scene {
     // 그림이 아직 안 왔으면(또는 초상으로 대신하는 중이면) 일러스트가 들어오기 직전까지 다시 본다
     if ((!this.img && t < 1) || (this.fallback && t < T.img + 0.03)) this.pickImage();
     if (this.shakeT > 0) this.shakeT -= dt;
+    this.step++;   // 흔들림 떨림은 갱신 걸음마다 한 번 정한다 (그리기는 난수를 쓰지 않는다, R1-REQ-335)
     // 시전 자세를 들어 올린 상태까지만 진행 (월드는 멈춰 있다)
     const p = this.p;
     if (p?.move?.id === 'aw_cast' && p.moveT < 0.45) { p.moveT += dt; p.animT += dt; }
@@ -526,6 +528,12 @@ export class AwakenCutinScene extends Scene {
     if (this.ink.length > 60) this.ink.splice(0, this.ink.length - 60);
   }
 
+  /**
+   * game.autoPause (탭 숨김·기기 회전·패드 끊김): 1.45초 컷인은 끝까지 두고, 닫힐 때 아래 장면에 넘긴다
+   * (각성 감독이 world.cutscene 을 잡고 있으면 StageScene·아케이드 장면이 기억해 두었다가 연출이 끝나면 일시정지 메뉴를 연다)
+   */
+  autoPause() { this.pauseAfter = true; }
+
   /** 끝: 먼저 장면을 닫고(onDone 이 다른 장면을 쌓아도 안전) 감독을 시작한다 */
   finish(aborted) {
     if (this.done) return;
@@ -538,6 +546,7 @@ export class AwakenCutinScene extends Scene {
       if (g.top === this) { if (g.scenes.length <= 1) g.go('title', {}, { fade: false }); else g.pop(); }
     } else if (g.top === this) g.pop();
     try { this.params.onDone?.(!!aborted); } catch (e) { console.error('[awakenCutin] onDone', e); }
+    if (this.pauseAfter && !this.preview && g.top !== this) g.autoPause();
   }
   /** enter 에서 숨긴 월드 쪽 영웅을 되돌린다 (한 번만) */
   showPlayer() {
@@ -673,7 +682,7 @@ export class AwakenCutinScene extends Scene {
     const kOut = ease.inCubic(clamp((t - T.exit) / T.exitDur, 0, 1));
     const slide = (1 - kIn) * (vw + 160);
     let ox = vw / 2 + slide * COS - kOut * vw * 1.15, oy = vh * 0.47 + slide * SIN - kOut * vh * 0.5;
-    if (this.shakeT > 0) { const s = this.shakeA * (this.shakeT / 0.14); ox += rand(-s, s); oy += rand(-s, s); }
+    if (this.shakeT > 0) { const s = this.shakeA * (this.shakeT / 0.14); ox += s * jit(this.step * 4); oy += s * jit(this.step * 4 + 1); }
     const flashK = t >= T.stinger ? clamp(1 - (t - T.stinger) / 0.22, 0, 1) : 0;
     const landK = clamp(1 - (t - (T.band + T.bandIn)) / 0.18, 0, 1) * (t >= T.band + T.bandIn * 0.6 ? 1 : 0);
     ctx.save();
@@ -862,7 +871,7 @@ export class AwakenCutinScene extends Scene {
     const s = 2.3 - 1.3 * ease.outCubic(k);
     const dw = tt.w * s, dh = tt.h * s;
     let x = vw / 2 - dw / 2, y = vh * 0.28 - tt.base * s;
-    if (this.shakeT > 0) { const a = this.shakeA * (this.shakeT / 0.14) * 0.6; x += rand(-a, a); y += rand(-a, a); }
+    if (this.shakeT > 0) { const a = this.shakeA * (this.shakeT / 0.14) * 0.6; x += a * jit(this.step * 4 + 2); y += a * jit(this.step * 4 + 3); }
     ctx.globalAlpha = clamp(k * 1.6, 0, 1);
     ctx.drawImage(tt.c, x, y, dw, dh);
     // 쾅 찍히는 순간 흰 잔상
@@ -871,6 +880,12 @@ export class AwakenCutinScene extends Scene {
   }
 }
 
+/** 흔들림 떨림 −1..1: 정수(갱신 걸음 번호)로 정하는 결정적 값 — 그리기가 게임 난수(Math.random)를 먹지 않게 (R1-REQ-335) */
+function jit(n) {
+  let h = Math.imul((n | 0) ^ 0x9e3779b9, 0x85ebca6b);
+  h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35); h ^= h >>> 16;
+  return ((h >>> 0) / 4294967295) * 2 - 1;
+}
 /** 공백은 앞 글자 조각에 붙인다 → 다음으로 찍히는(공백이 아닌) 글자의 경계 */
 function nextCut(L, gi) {
   let j = gi + 1;

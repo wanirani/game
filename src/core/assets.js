@@ -15,7 +15,8 @@
 //  · 장면 전환(맨 아래 장면이 바뀜 — window.__game 을 보고 스스로 알아챈다, 또는 assets.sceneChange()) 1.5초 뒤:
 //    전환 뒤에 쓰이지 않은 bg/·cg/ 를 오래된 순으로 내린다 (bg+cg 합이 예산의 30 % 이하가 될 때까지)
 //  · 전체가 예산을 넘으면: 최근 5초 안에 쓰지 않은 bg/·cg/·portraits/·ui/ 이미지와 release 가 있는 추적 항목을 오래된 순으로 내린다
-//  · 채색 텍스처(painted/·puppets/ 이미지 + track(…, {group:'painted'}) 항목)는 장면당 24 MB(터치) / 64 MB(데스크톱) 예산에 합산하고,
+//  · 채색 텍스처(painted/·puppets/ 이미지 + track(…, {group:'painted'}) 항목)는 장면당 32 MB(터치 휴대폰) / 40 MB(터치 태블릿: 화면 짧은 변
+//    ≥ 700 CSS px) / 64 MB(데스크톱) 예산(assets.paintedBudget)에 합산하고,
 //    넘으면 release 가 있는 채색 추적 항목을 오래된 순으로 내린다. painted/·puppets/ 이미지 자체는 자동으로 내리지 않는다 (소유 모듈이 붙잡고 있음)
 //  내린 이미지는 1×1 투명 이미지로 바꿔 디코딩 메모리를 돌려준다 (붙잡은 쪽이 그려도 예외 없음). 다음 get() 이 다시 받는다.
 //  assets.track(id, bytes, {group, release}) / untrack(id) / touch(id): 로더 밖에서 만든 텍스처(구운 리그 등)를 예산에 넣는다.
@@ -49,7 +50,8 @@ const SCENE_FOLDERS = new Set(['bg', 'cg']);                     // 장면 전�
 const TRIM_FOLDERS = new Set(['bg', 'cg', 'portraits', 'ui']);   // 전체 예산 초과 때 정리
 const PAINTED_GROUPS = ['painted', 'puppets'];                   // 채색 텍스처 예산에 합산
 const MB = 1048576;
-export const ASSET_BUDGET = Object.freeze({ touch: 160 * MB, desktop: 400 * MB, paintedTouch: 24 * MB, paintedDesktop: 64 * MB, sceneShare: 0.3 });
+// 채색 텍스처 예산 (R1-RUN-TEX-TOUCH, 리드 결정): 터치 휴대폰 32 MB, 터치 태블릿(짧은 변 ≥ 700 CSS px) 40 MB, 데스크톱 64 MB
+export const ASSET_BUDGET = Object.freeze({ touch: 160 * MB, desktop: 400 * MB, paintedTouch: 32 * MB, paintedTablet: 40 * MB, paintedDesktop: 64 * MB, tabletMinSide: 700, sceneShare: 0.3 });
 const KEEP_MS = 5000;          // 최근 5초 안에 쓴 것은 예산 초과 정리에서 내리지 않는다 (지금 그려지는 중)
 const SCENE_GRACE_MS = 1500;   // 장면 전환 뒤 새 장면이 제 이미지를 요청할 여유
 const POLL_MS = 250;           // 환경(등급·장면) 확인 주기
@@ -91,6 +93,15 @@ function touchEnv() {
     return isTouchDevice() || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
   } catch { return false; }
 }
+/** 터치 태블릿인가: 화면의 짧은 변(CSS px) ≥ 700. screen 을 모르면 창 크기로 */
+function tabletEnv() {
+  try {
+    if (!hasWin) return false;
+    const sw = Number(window.screen?.width) || 0, sh = Number(window.screen?.height) || 0;
+    const side = sw > 0 && sh > 0 ? Math.min(sw, sh) : Math.min(window.innerWidth || 0, window.innerHeight || 0);
+    return side >= ASSET_BUDGET.tabletMinSide;
+  } catch { return false; }
+}
 /** game 이 아직 없을 때 백킹 높이 추정 (game.resize 와 같은 계산: 논리 높이 540, 폭 960~1280) */
 function estimateBackingH(tier) {
   try {
@@ -120,7 +131,7 @@ class Assets {
     this.total = 0;
     this.ext = new Map();                 // track() 항목: id → {id, bytes, group, release, t}
     this.evictions = 0; this.releasedTracked = 0;
-    this._budget = null; this._paintedBudget = null; this._isTouch = null;
+    this._budget = null; this._paintedBudget = null; this._isTouch = null; this._isTablet = null;
     this._trimQ = false;
     // 변형(lo/)
     this.loIndex = null;                  // null = lo 파일 없음 · true = bg/cg/portraits 전부 · Set(키)
@@ -341,7 +352,8 @@ class Assets {
   // ───────────────────────── 예산 (디코딩 LRU) ─────────────────────────
   get isTouch() { return (this._isTouch ??= touchEnv()); }
   get budget() { return this._budget ?? (this.isTouch ? ASSET_BUDGET.touch : ASSET_BUDGET.desktop); }
-  get paintedBudget() { return this._paintedBudget ?? (this.isTouch ? ASSET_BUDGET.paintedTouch : ASSET_BUDGET.paintedDesktop); }
+  get isTablet() { return (this._isTablet ??= this.isTouch && tabletEnv()); }
+  get paintedBudget() { return this._paintedBudget ?? (!this.isTouch ? ASSET_BUDGET.paintedDesktop : this.isTablet ? ASSET_BUDGET.paintedTablet : ASSET_BUDGET.paintedTouch); }
   get paintedBytes() { let b = 0; for (const g of PAINTED_GROUPS) b += this.groups[g] || 0; return b; }
   /** 예산 바꾸기 (QA·도구): { total, painted } 바이트, null 이면 기본값 */
   setBudget({ total, painted } = {}) {

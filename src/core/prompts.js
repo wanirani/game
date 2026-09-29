@@ -153,17 +153,39 @@ function specOf(action, mode) {
   return { id: `p:${set}:b${i}`, parts: [{ kind: 'btn', set, index: i }] };
 }
 
-// 비트맵 캐시
+// 비트맵 캐시 (Map 순서 = 최근 사용 순서). 캔버스는 모듈을 읽을 때 GLYPH_POOL 개를 1×1 로 만들어 두고 돌려 쓴다
+// (R1-REQ-339P, feel §8 '스테이지 시작 뒤 새 캔버스 0'): 풀이 비면 가장 오래 안 쓴 글리프의 캔버스를 다시 쓴다
 const CACHE = new Map();
-const CACHE_MAX = 160;
+const GLYPH_POOL = 64;
+const FREE = [];
+let made = 0;
 let measureCtx = null;
 function scratchCtx() {
   if (measureCtx) return measureCtx;
   try { measureCtx = document.createElement('canvas').getContext('2d'); } catch { measureCtx = null; }
   return measureCtx;
 }
+function newCanvas() { const c = document.createElement('canvas'); c.width = 1; c.height = 1; made++; return c; }
+/** 글리프 캔버스 풀과 재기용 캔버스를 미리 만든다 (모듈을 읽을 때 한 번 부른다; 더 불러도 GLYPH_POOL 개까지만) → 만든 수 */
+export function prewarmGlyphs() {
+  try {
+    if (typeof document === 'undefined') return made;
+    scratchCtx();
+    while (made < GLYPH_POOL) FREE.push(newCanvas());
+  } catch { /* 문서 없음 */ }
+  return made;
+}
+function takeCanvas() {
+  if (FREE.length) return FREE.pop();
+  const k = CACHE.keys().next().value; // 가장 오래 안 쓴 글리프
+  if (k !== undefined) { const e = CACHE.get(k); CACHE.delete(k); return e.cv; }
+  return newCanvas();
+}
 /** 캐시 비우기 (설정 변경 등으로 모양이 바뀔 때; 보통은 키에 모두 들어 있어 필요 없다) */
-export function clearGlyphCache() { CACHE.clear(); SPEC_MEMO.clear(); }
+export function clearGlyphCache() {
+  for (const e of CACHE.values()) { try { e.cv.width = 1; e.cv.height = 1; FREE.push(e.cv); } catch { /* 무시 */ } }
+  CACHE.clear(); SPEC_MEMO.clear();
+}
 
 const labelSize = (h) => Math.round(Math.max(9, h * 0.62));
 const ellipsize = (s, n) => (s.length > n ? s.slice(0, n) : s);
@@ -391,7 +413,7 @@ function scaleOf(ctx) {
 function bitmapOf(spec, h, sc) {
   const key = `${spec.id}|${h}|${sc}|${UI.fontEpoch}`;
   let e = CACHE.get(key);
-  if (e) return e;
+  if (e) { CACHE.delete(key); CACHE.set(key, e); return e; } // 최근 사용 순서
   const mctx = scratchCtx();
   if (!mctx) return null;
   const gap = Math.max(2, Math.round(h * 0.12));
@@ -399,14 +421,13 @@ function bitmapOf(spec, h, sc) {
   const w = ws.reduce((a, b) => a + b, 0) + gap * (ws.length - 1);
   let cv = null;
   try {
-    cv = document.createElement('canvas');
-    cv.width = Math.max(1, Math.ceil(w * sc)); cv.height = Math.max(1, Math.ceil(h * sc));
+    cv = takeCanvas();
+    cv.width = Math.max(1, Math.ceil(w * sc)); cv.height = Math.max(1, Math.ceil(h * sc)); // 크기 지정 = 초기화 (같은 크기여도)
     const c = cv.getContext('2d');
     c.scale(sc, sc);
     let x = 0;
     spec.parts.forEach((p, k) => { drawPart(c, p, x, 0, ws[k], h); x += ws[k] + gap; });
-  } catch (err) { console.error('[prompts] glyph', err); return null; }
-  if (CACHE.size >= CACHE_MAX) CACHE.clear();
+  } catch (err) { console.error('[prompts] glyph', err); if (cv) FREE.push(cv); return null; }
   e = { cv, w };
   CACHE.set(key, e);
   return e;
@@ -504,3 +525,5 @@ export function drawHints(ctx, items, x, y, { align = 'left', size = 12, color =
   ctx.restore();
   return cx;
 }
+
+prewarmGlyphs(); // 부팅 때 글리프 캔버스 풀을 만든다 (R1-REQ-339P)

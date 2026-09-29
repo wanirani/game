@@ -308,6 +308,7 @@ function apply(on, hb) {
   applyHidden(hb);
   if (on === S.visible) return;
   S.visible = on;
+  if (on && !drawAssetsAsked) loadDrawAssets();
   if (!on) releaseAll(true);   // 필살·각성 컷인처럼 잠깐 숨길 때는 스틱을 누르고 있는 손가락을 기억한다
   if (S.cv && !S.editor) S.cv.style.display = on ? '' : 'none';
   S.occKey = ''; S.pending = true;
@@ -756,8 +757,20 @@ function isPressed(id) {
 }
 
 // ───────────────────────── 그리기 ─────────────────────────
-let drawAssetsReady = false, SKILL_DB = null, SUB_DB = null, glyphFn = null, iconFn = null;
+let drawAssetsReady = false, drawAssetsAsked = false, SKILL_DB = null, SUB_DB = null, glyphFn = null, iconFn = null;
+/**
+ * 스킬·보조무기 버튼 그림(hud.js·icons.js·스킬 데이터)은 첫 화면 뒤에 받는다 (R1-REQ-229: 이 모듈들은 나머지 장면과 같은 lazy 조각에
+ * 있다) — 지연 장면(game.whenScenes)이 다 오면, 늦어도 패드가 처음 보일 때. 그 전에는 버튼 글자만 그린다 (drawAssetsReady)
+ */
+function scheduleDrawAssets() {
+  setTimeout(() => { // main.js 가 game.lazyScenes 를 부른 뒤 (같은 동기 구간) 에 본다
+    const p = game()?.whenScenes?.();
+    if (p && typeof p.then === 'function') p.then(() => setTimeout(loadDrawAssets, 0), () => loadDrawAssets()); else loadDrawAssets();
+  }, 0);
+}
 function loadDrawAssets() {
+  if (drawAssetsAsked) return;
+  drawAssetsAsked = true;
   Promise.all([import('../render/hud.js'), import('../render/icons.js'), import('../data/skills.js'), import('../data/subweapons.js')]).then(([h, ic, sk, sw]) => {
     glyphFn = h.drawSkillGlyph ?? null; iconFn = ic.drawIcon ?? null; SKILL_DB = sk.SKILLS ?? null; SUB_DB = sw.SUBWEAPONS ?? null;
     drawAssetsReady = true; S.pending = true;
@@ -1377,7 +1390,7 @@ export function initTouchPad(input) {
     window.addEventListener('resize', () => { S.pending = true; startLoop(); });
     try { onFontEpoch?.(() => { S.fontEpoch++; S.pending = true; startLoop(); }); } catch { /* 글꼴 알림 없음 */ }
     try { S.input?.onMode?.((m) => { if (m !== 'touch' && !S.editor) releaseAll(); }); } catch { /* 예전 input */ }
-    loadDrawAssets();
+    scheduleDrawAssets();
     const L = layout(true);
     // 버튼 그림은 미리 굽는다 (게임 도중 새 캔버스를 만들지 않게; 다시 구울 때는 같은 캔버스를 쓴다).
     // 터치 모드이거나 터치 화면이 있는 기기에서만 (키보드로 시작한 터치 노트북이 스테이지 도중 터치로 바뀌어도 새 캔버스 0개).

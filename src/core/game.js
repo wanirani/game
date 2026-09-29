@@ -204,13 +204,22 @@ class Game {
    * 첫 화면(타이틀) 밖의 장면을 나중에 받는다: loader(game) → Promise (그 안에서 game.register(…) 들을 부른다).
    * 끝나기 전에 등록되지 않은 장면으로 go/push 하면 '불러오는 중' 자리 장면이 대신 서고, 도착하면 제자리에서 진짜 장면으로 바뀐다
    * (go 로 온 자리는 화면 전체, push 로 온 자리는 아래 장면 위에 반투명). 실패하면 두 번 더 시도하고, 그래도 안 되면 자리 장면이
-   * 실패 안내와 다시 시도(확인·탭)를 보여 준다. 반환: Promise<boolean> (game.whenScenes() 와 같다). 진행 중에는 game.scenesReady = false
+   * 실패 안내와 다시 시도(확인·탭)를 보여 준다. 반환: Promise<boolean> (game.whenScenes() 와 같다). 진행 중에는 game.scenesReady = false.
+   * { defer: true } 면 game.loadScenes() 를 부르거나 등록되지 않은 장면으로 처음 go/push 할 때 받기 시작한다 (첫 화면을 먼저 그리려고)
    */
-  lazyScenes(loader) {
+  lazyScenes(loader, { defer = false } = {}) {
     if (typeof loader !== 'function') return Promise.resolve(true);
     this.scenesReady = false;
-    this._lazy = { loader, tries: 0, err: null, done: false, p: null };
-    return this._loadLazy();
+    const L = this._lazy = { loader, tries: 0, err: null, done: false, started: false, p: null, resolve: null };
+    L.p = new Promise((r) => { L.resolve = r; });
+    if (!defer) this.loadScenes();
+    return L.p;
+  }
+  /** defer 로 미뤄 둔 지연 장면을 지금 받기 시작한다 (이미 시작했으면 그대로). 등록되지 않은 장면으로 go/push 해도 바로 시작한다 */
+  loadScenes() {
+    const L = this._lazy;
+    if (L && !L.started) { L.started = true; const done = L.resolve; this._loadLazy().then((ok) => done(ok)); }
+    return this.whenScenes();
   }
   _loadLazy() {
     const L = this._lazy;
@@ -227,8 +236,7 @@ class Game {
       console.error('[game] 장면을 불러오지 못했습니다', e);
       return false;
     });
-    L.p = attempt();
-    return L.p;
+    return attempt();
   }
   /** 지연 장면이 모두 등록되면 true 로 풀리는 Promise (지연 장면이 없으면 바로 true) */
   whenScenes() { return this._lazy?.p ?? Promise.resolve(true); }
@@ -239,7 +247,8 @@ class Game {
     const L = this._lazy;
     if (!L || L.done || !L.err) return L?.p ?? Promise.resolve(true);
     L.tries = 0;
-    return this._loadLazy();
+    L.p = this._loadLazy();
+    return L.p;
   }
   /** 자리 장면을 진짜 장면으로 제자리 교체 (없는 이름이면 닫는다) */
   _swapPending(ph) {
@@ -387,7 +396,7 @@ class Game {
   make(name) {
     const C = this.registry[name];
     if (!C) {
-      if (this.scenesPending) return new PendingScene(this, name); // 지연 장면이 아직 오는 중 (R1-REQ-229)
+      if (this.scenesPending) { this.loadScenes(); return new PendingScene(this, name); } // 지연 장면이 아직 오는 중 (R1-REQ-229)
       throw new Error('Unknown scene: ' + name);
     }
     return new C(this);

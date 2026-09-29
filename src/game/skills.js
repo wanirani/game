@@ -2543,8 +2543,8 @@ function grade(w, col, a, life, comp = 'source-over') {
 let _pendFlash = null;
 /** 지금 이 월드에서 살아 있는 필살기 감독의 화면 층 상태 (없으면 null) */
 function liveScr(w) { const s = ULT_LIVE; return s && !s.e.dead && s.w === w ? s.e.d?.scr ?? null : null; }
-/** game.flash 층이 켜져 있는가 */
-function flashOn(w) { return (Number(w?.game?.flashFx?.a) || 0) > 0.01; }
+/** game.flash 층이 켜져 있는가. game.render 는 a > 0 이면 한 장을 칠하므로 같은 기준 (꼬리 a ≤ 0.01 프레임에 색조까지 겹치면 높음에서 4장) */
+function flashOn(w) { return (Number(w?.game?.flashFx?.a) || 0) > 0; }
 /** 키트(ultfx)의 임팩트 프레임(화면 전체를 덮는 두 장)이 그려지는 중인가: 그동안 색조는 어차피 가려진다 */
 function impactOn(w) { const im = w?.__ultImpact; return !!im && !im.dead; }
 /** 컷인 장면이 월드를 멈추고 자기 암전을 그리는 동안인가 */
@@ -2564,7 +2564,9 @@ function ultFlash(w, col, a, decay = 4, v = null, merge = false) {
   if (S) scrFlash(S, f, w); else _pendFlash = f;   // 시전 순간(감독이 생기기 전): 감독이 시작할 때 넘겨받는다
 }
 function scrFlash(S, f, w) {
-  const now = Number(w?.game?.time) || 0, log = S.flog;
+  // 1초 제한은 번쩍임이 '보이는' 시계로 잰다: 합친 번쩍임은 월드 오버레이와 함께 흐르고 컷인이 월드를 멈춘 동안은 멈추므로
+  // world.rt (히트스톱 중에도 흐르고 컷인 중에는 멈춤). game.time 으로 재면 시전 번쩍임이 컷인 길이만큼 일찍 기록에서 빠진다
+  const now = Number(w?.rt ?? w?.game?.time) || 0, log = S.flog;
   while (log.length && now - log[0] > 1) log.shift();
   const s = log.length >= 2 ? Math.min(f.a, 0.3) : f.a;
   if (s > 0.3) log.push(now);
@@ -2692,7 +2694,9 @@ function ultDirector(w, p, o) {
     draw(ctx, e, ww) {
       if (underCutin(ww)) return;   // 컷인이 월드를 멈추고 자기 암전을 그리는 동안은 쉰다 (화면 전체 층 하나 덜기)
       const r = Math.min(1, e.lt / 0.2) * clamp((e.life - e.lt) / 0.35, 0, 1);
-      dimLayer(ctx, e, S, dimCol, dim * r, o.sky ?? null, r);
+      // 낮음(층 예산 1): 키트의 임팩트 프레임(흰 채우기 0.7 → 0.4, 2~3프레임)이 그 프레임의 한 장이므로 암전은 쉰다
+      // (그 아래는 거의 가려지고, 합친 마무리 번쩍임도 키트 설계대로 임팩트 프레임 뒤에 보인다)
+      if (!(S.q < 0.7 && impactOn(ww))) dimLayer(ctx, e, S, dimCol, dim * r, o.sky ?? null, r);
       o.bg?.(ctx, e, ww, r);
     },
   });
