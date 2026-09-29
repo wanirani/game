@@ -17,7 +17,7 @@
 import * as UI from '../core/ui.js';
 import * as FH from '../data/feel_hit.js';
 import { rand, TAU, clamp, hexToRgb } from '../core/math.js';
-import { TILE } from '../core/game.js';
+import { TILE, game } from '../core/game.js';
 import { isSolidType } from '../core/physics.js';
 import { bus } from '../core/events.js';
 
@@ -620,6 +620,9 @@ if (typeof window !== 'undefined' && typeof setTimeout === 'function') {
     try {
       const onEnter = () => { fillSpares(); if (!HITFX_STATS.prewarmed) prewarm(); };
       bus.on('stageEntered', onEnter); bus.on('roomEntered', () => fillSpares());
+      // 지연 장면 교체(R1-REQ-229 두 단계 부팅)로 stageEntered 가 이 구독보다 먼저 지나갔으면 지금 (요청 #478 의 hitfx 몫):
+      // world.prewarmHitFx 가 예비를 다 쓴 채로 남아 스테이지 첫 1초의 미리 굽기(각성 감독·필살기)가 새 캔버스를 만들었다
+      if (game?.world?.player) onEnter();
     } catch (e) { console.warn('[hitfx] bus', e); }
   }, 0);
   setTimeout(() => {

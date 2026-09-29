@@ -2376,9 +2376,15 @@ function bodyOffscreen(ctx, K, P, W, tt, hs, fac, col, cap = Infinity) {
   const ds = Math.hypot(m.a, m.b) || 1;
   let rs = Math.min(ds, 3);
   const bw = 122 * hs, bt = 152 * hs, bb = 22 * hs;
-  const px = 4 * bw * (bt + bb) * rs * rs;
+  // 한 장의 픽셀 수 = area·rs² (Wd×Hd). 상한을 넘으면 먼저 화면 밀도(rs·hs = ds, 손실 없음)까지만 낮추고, 그래도 넘을 때만 더 낮추며
+  // 본체를 직접 그린다 (예전 식 4·bw·(bt+bb)·rs² 는 두 장 몫이라 한 장이 0.125 MP 에서 잘려, 태블릿 스테이지 영웅까지 매 프레임 본체를 두 번 그렸다)
+  const area = 2 * bw * (bt + bb);
   OB.direct = false;
-  if (px > cap) { rs *= Math.sqrt(cap / px); OB.direct = rs * hs < ds * 0.98; }
+  if (area * rs * rs > cap) {
+    rs = Math.min(rs, ds / hs);
+    const px = area * rs * rs;
+    if (px > cap) { rs *= Math.sqrt(cap / px); OB.direct = rs * hs < ds * 0.98; }
+  }
   const Wd = Math.ceil(2 * bw * rs), Hd = Math.ceil((bt + bb) * rs);
   BODYC = offCanvas(BODYC, Wd, Hd); TINTC = offCanvas(TINTC, Wd, Hd);
   const oc = BODYC.getContext('2d');
