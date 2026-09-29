@@ -3,6 +3,7 @@
 // b_nihil: 4페이즈(phases 3개), drops 에 세계의 심장 없음 · 신화 무기(MYTHIC_WEAPONS_P2)는 game/loot.js 가 첫 처치 때 준다.
 // 밸런스 (BOSS-P2-3, world2 §15 · node tools/balance.mjs normal kael): 마라 hpMul 1.35→1.25 (s18 보스 타수 ≈150–170),
 //   베헤모스 hp 3000→2300 · hpMul 1.4→1.15 (방어 28 이 커서 명세 값이면 s19 타수 ≈250–280 → ≈155–180). 공격력 · 방어는 명세 그대로.
+// 경험치 (W4 FIX-DATA, 요청 #233 · 리드 결정 #346): exp ×0.35 (마라 8400→2940, 베헤모스 9000→3150, 니힐 15000→5250) — bosses_c.js 머리말 참고.
 export const BOSSES_D = {
   b_mara: {
     id: 'b_mara', name: '마라', title: '악몽을 낳는 자', hp: 2700, hpMul: 1.25, atk: 41, def: 17, res: 24, exp: 2940, score: 330000,

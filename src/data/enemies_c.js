@@ -7,6 +7,9 @@
 //   렌더 ID = 적 id (render/enemies_c.js RENDER_C; 없으면 palette.body 타원 대체).
 // noArena: 천장·깊은 물 등 방 기믹이 있어야 제대로 움직이는 적 → 아케이드 서바이벌(arcade_run)이 소환하지 않는다 (MASTER_PLAN §1.14).
 // elite:false → 정예로 등장하지 않는다 (world.spawnEnemy).
+// 밸런스 (W4 FIX-DATA, 요청 #234 · #325 · 리드 결정 #346, world2 §15 · node tools/balance.mjs normal <영웅> --check):
+//   exp 전원 ×0.8. atk forge_imp 17→19 · slag_golem 19→21 · chain_warden 18→20 · bellows 18→20 (s15 받는 피해 %).
+//   hp abyss_angler 95→114 · sunken_priest 75→90 · coral_crab 120→144 · siren 70→84 (s16 처치 타수; 위 등급 구간보다 조금 높다).
 
 const heart5 = (p) => ({ id: 'heart', p, qty: 5 });
 

@@ -114,7 +114,8 @@ def('bran_warlord', { charId: 'bran', tier: 2, parent: 'bran_berserker', name: '
 def('bran_bloodrage', { charId: 'bran', tier: 2, parent: 'bran_berserker', name: '혈귀 광전사', eng: 'BLOODRAGE', reqLevel: 25,
   desc: '악마의 피에 잠식된 광전사.', perk: '흡혈 8%, 공격 속도 +20%',
   mult: { atk: 1.4, agi: 1.2 }, flat: { lifesteal: 8, atkSpd: 20 },
-  look: { primary: '#1a0a0a', secondary: '#ff1a2a', trim: '#ff1a2a', armor: 'dark', armorColor: '#2a0a0e', headgear: 'horns', wings: 'demon', eyes: '#ff1a2a', eyeGlow: true, aura: { color: '#ff1a2a', type: 'blood' }, markings: 'runes' } });
+  // cape: null — 브란의 푸른 망토(characters.js)가 악마 날개 위에 그려지지 않게 (HERO-REVIEW #225 / 요청 #349)
+  look: { primary: '#1a0a0a', secondary: '#ff1a2a', trim: '#ff1a2a', armor: 'dark', armorColor: '#2a0a0e', headgear: 'horns', wings: 'demon', cape: null, eyes: '#ff1a2a', eyeGlow: true, aura: { color: '#ff1a2a', type: 'blood' }, markings: 'runes' } });
 
 // ── 리아: 단검 ──
 def('lia_assassin', { charId: 'lia', tier: 0, name: '암살자', eng: 'ASSASSIN', reqLevel: 1, next: ['lia_ninja', 'lia_dancer'],
@@ -142,7 +143,8 @@ def('lia_bladedancer', { charId: 'lia', tier: 2, parent: 'lia_dancer', name: '�
 def('lia_reaper', { charId: 'lia', tier: 2, parent: 'lia_dancer', name: '사신의 낫', eng: 'REAPER', reqLevel: 25,
   desc: '죽음과 계약한 자.', perk: '처치 시 HP 3% 회복, 암흑 피해 +40%',
   mult: { atk: 1.4 }, flat: { dark: 40, critDmg: 40, lifesteal: 3 },
-  look: { primary: '#0a0a0a', secondary: '#3a8a5a', trim: '#6affb0', headgear: 'hood', wings: 'bone', aura: { color: '#6affb0', type: 'dark' }, eyes: '#6affb0', eyeGlow: true } });
+  // scarf 짧게 — 칼날 무희의 긴 금빛 스카프가 뼈 날개 사이로 흘러내리지 않게 (HERO-REVIEW #225 / 요청 #349)
+  look: { primary: '#0a0a0a', secondary: '#3a8a5a', trim: '#6affb0', headgear: 'hood', wings: 'bone', scarf: { color: '#e8c872', long: false }, aura: { color: '#6affb0', type: 'dark' }, eyes: '#6affb0', eyeGlow: true } });
 
 // ── 아젤: 장검 ──
 def('azel_dhampir', { charId: 'azel', tier: 0, name: '담피르', eng: 'DHAMPIR', reqLevel: 1, next: ['azel_vampire', 'azel_holyblade'],

@@ -1,4 +1,6 @@
-// 부트스트랩: 설정/메타 로드 → 게임 초기화 → 플랫폼 셸 → 장면 등록 → 퀘스트·동료 → 폰트 대기 → 타이틀
+// 부트스트랩: 설정/메타 로드 → 게임 초기화 → 플랫폼 셸 → 타이틀 등록 → 폰트·타이틀 배경 대기 → 타이틀
+// 첫 화면(타이틀) 밖의 장면·퀘스트·동료는 import() 로 나중에 받는다 (R1-REQ-229, platform P-09 §9.1: 번들러가 lazy 조각으로 나눈다).
+// 그 사이에 다른 장면으로 가면 game.lazyScenes 의 '불러오는 중' 자리 장면이 기다린다. 이 파일의 정적 import 만 첫 조각에 들어간다.
 // 부팅 관문·진행률·오류 화면은 src/boot-gate.js (일반 스크립트, 이 모듈보다 먼저 실행) 가 맡는다: window.__BN_BOOT
 import { game } from './core/game.js';
 import { audio } from './core/audio.js';
@@ -7,13 +9,34 @@ import { saves } from './core/save.js';
 import { cloud } from './core/cloud.js';
 import { fontsReady } from './core/ui.js';
 import { initPlatform } from './core/platform.js';
-import { registerScenes } from './scenes/index.js';
-import { initQuests } from './game/quests.js';
-import { initCompanions, applyCompanionDebug } from './game/companion_events.js'; // [hook:cmp]
+import { TitleScene } from './scenes/title.js';
 
 const BOOT = typeof window !== 'undefined' ? window.__BN_BOOT : null;
 // 동료 디버그 매개변수 (companions §8): ?scene=hub&cmp=all&ch=8 처럼 쓰면 임시 세이브를 만들어 적용한다
 const CMP_DEBUG_KEYS = ['cmp', 'ch', 'mount', 'guards', 'egg', 'cmplv', 'bond'];
+const TITLE_BG_WAIT = 2500;
+
+/** 첫 화면 밖의 모든 것 (한 번만 등록): 장면 등록부 · 퀘스트 · 동료. game.lazyScenes 가 부르고 실패하면 다시 부른다 */
+let rest = null;
+async function loadRest(g) {
+  const [S, Q, C] = await Promise.all([
+    import('./scenes/index.js'),
+    import('./game/quests.js'),
+    import('./game/companion_events.js'), // [hook:cmp]
+  ]);
+  if (!rest) {
+    S.registerScenes(g);
+    Q.initQuests(g);
+    C.initCompanions(g); // [hook:cmp] game.companions = {recruit, unlock, evaluate, state} + 버스 구독
+    rest = { S, Q, C };
+  }
+  return rest;
+}
+/** 브라우저가 한가할 때 (없으면 setTimeout) */
+function idle(fn, ms = 1200) {
+  const run = () => { try { fn(); } catch (e) { console.warn(e); } };
+  setTimeout(() => (typeof requestIdleCallback === 'function' ? requestIdleCallback(run, { timeout: 4000 }) : run()), ms);
+}
 
 async function boot() {
   if (window.__BN_BLOCKED) return; // 지원하지 않는 브라우저: boot-gate.js 가 안내를 띄웠다
@@ -26,9 +49,7 @@ async function boot() {
   audio.setVolumes(game.settings.musicVol, game.settings.sfxVol);
   game.init(canvas);
   initPlatform(game); // [hook:plat] 안전 영역·전체 화면·화면 꺼짐 방지·커서·서비스 워커 (game.platform)
-  registerScenes(game);
-  initQuests(game);
-  initCompanions(game); // [hook:cmp] game.companions = {recruit, unlock, evaluate, state} + 버스 구독
+  game.register('title', TitleScene); // 나머지 장면은 loadRest (scenes/index.js registerScenes)
   cloud.init(game); // 계정·클라우드 저장 (로그인한 적이 없으면 네트워크 요청 없음)
   game.cloud = cloud; // platform.js 의 저장공간 안내가 로그인(클라우드 백업) 여부를 본다 (cloud.loggedIn)
   game.recordScore = (score, stageId, mode = 'story') => {
@@ -48,32 +69,43 @@ async function boot() {
   };
   const params = new URLSearchParams(location.search);
   game.debug = params.has('debug');
+  const start = params.get('scene');
+  const direct = !!start && start !== 'title'; // ?scene=stage 등: 나머지 장면이 올 때까지 기다린다
+  // 타이틀 배경은 첫 화면의 일부라 글꼴과 함께 일찍 받기 시작한다 (최대 2.5초 기다림, 실패해도 타이틀이 대체 그림을 그린다)
+  const bg = direct ? null : Promise.resolve(assets.preload(['bg/title'])).catch(() => null);
+  let restP = null;
+  const kick = () => (restP ??= game.lazyScenes(loadRest));
+  if (direct) kick();
   // 첫 화면 글꼴 (core/ui.js 가 부팅 때 시작한 로딩; 시간 제한이 있어 실패해도 시스템 글꼴로 계속된다)
   try { await fontsReady; } catch { /* 글꼴 실패 무시 */ }
   BOOT?.step?.('fonts');
-  const start = params.get('scene');
-  // 타이틀 배경은 첫 화면의 일부라 부팅 진행률에 넣어 기다린다 (최대 2.5초, 실패해도 계속: 타이틀이 대체 그림을 그린다)
-  if (!start || start === 'title' || !game.registry[start]) {
-    await Promise.race([Promise.resolve(assets.preload(['bg/title'])).catch(() => null), new Promise((r) => setTimeout(r, 2500))]);
+  kick(); // 첫 화면 글꼴을 받은 뒤 나머지를 받는다 (느린 연결에서 글꼴·배경과 대역폭을 다투지 않게)
+  if (direct && !(await restP)) throw game._lazy?.err ?? new Error('장면을 불러오지 못했습니다');
+  if (!direct || !game.registry[start]) {
+    await Promise.race([bg ?? Promise.resolve(assets.preload(['bg/title'])).catch(() => null), new Promise((r) => setTimeout(r, TITLE_BG_WAIT))]);
   }
   BOOT?.step?.('title');
-  // 영웅 초상화는 첫 화면 뒤에 받는다 (부팅과 대역폭을 다투지 않고 페이지 load 를 늦추지 않게)
+  // 영웅 초상화는 첫 화면과 나머지 장면 뒤에 받는다 (부팅과 대역폭을 다투지 않고 페이지 load 를 늦추지 않게)
   const later = () => assets.preload(['portraits/kael', 'portraits/sera', 'portraits/victor', 'portraits/bran', 'portraits/lia', 'portraits/azel']);
-  if (document.readyState === 'complete') setTimeout(later, 0); else window.addEventListener('load', () => setTimeout(later, 0), { once: true });
+  const afterLoad = new Promise((r) => (document.readyState === 'complete' ? r() : window.addEventListener('load', () => r(), { once: true })));
+  Promise.all([afterLoad, game.whenScenes()]).then(() => setTimeout(later, 0));
+  // 각성 감독(lazy 조각)도 한가할 때 미리 받는다 (FIX-ENGINE 요청 #386: loadAwakenDirectors 는 멱등, 스테이지 입장 때도 받는다)
+  game.whenScenes().then((ok) => { if (ok) idle(() => import('./game/awaken.js').then((m) => m.loadAwakenDirectors?.()).catch(() => null)); });
   game.start();
-  if (start && game.registry[start]) {
+  if (direct && game.registry[start]) {
     const debugState = async () => {
       const { newGameState } = await import('./game/state.js');
       return newGameState({ slot: 1, difficulty: params.get('diff') || 'normal', charId: params.get('char') || 'kael' });
     };
+    const applyCmp = (st) => rest?.C?.applyCompanionDebug?.(st, params); // [hook:cmp] cmp/mount/guards/ride… (키가 없으면 아무것도 하지 않는다)
     if (start === 'stage') {
       game.state = await debugState();
-      applyCompanionDebug(game.state, params); // [hook:cmp] cmp/mount/guards/ride… (키가 없으면 아무것도 하지 않는다)
+      applyCmp(game.state); // [hook:cmp]
       game.go('stage', { stageId: params.get('stage') || 's01', roomId: params.get('room') || null }, { fade: false });
     } else {
       if (start === 'hub' && CMP_DEBUG_KEYS.some((k) => params.has(k))) {
         game.state = await debugState();
-        applyCompanionDebug(game.state, params); // [hook:cmp]
+        applyCmp(game.state); // [hook:cmp]
       }
       game.go(start, {}, { fade: false });
     }

@@ -9,6 +9,9 @@
 //   gale_knight 는 돌풍을 읽지만(맞바람이면 돌진 안 함) 바람 없이도 온전히 싸우므로 서바이벌에 나와도 된다.
 //   treant/moth/husk 의 포자는 blight 기믹이 없으면 독 Zone 으로 대체되므로(world2 §5.3) 서바이벌에 나와도 된다.
 //   puppeteer 가 부른 저주 인형(puppet_maiden)은 경험치 30%·재료 드롭 없음 (무한 사냥 방지, ai_d.js).
+// 밸런스 (W4 FIX-DATA, 요청 #234 · #325 · 리드 결정 #346, world2 §15 · node tools/balance.mjs normal <영웅> --check):
+//   exp 전원 ×0.8. atk: s17 네 종 18/19/20/17 → 23/25/26/22, 나머지 8종 ×1.2 (7단계 장비가 풀리는 s17 부터 받는 피해 %).
+//   hp: s17 네 종 ×1.25 (storm_harpy 88 · gale_knight 163 · thunder_roc 250 · cloud_jelly 63), plague_moth 55→72 · fungal_husk 110→143.
 
 const heart5 = (p) => ({ id: 'heart', p, qty: 5 });
 

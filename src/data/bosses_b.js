@@ -1,6 +1,7 @@
 // 보스 데이터 B (8~13장 + 드라큘라 + 혼돈). 스키마: game/bosses/boss.js 상단 주석
 // hp/atk/def 는 레벨 1 기준값 — enemyStats() 가 스테이지 레벨로 스케일한다. hpMul: 추가 체력 배율 (드라큘라는 두 형태 합산).
 // phases: 체력 비율 경계 (HUD 눈금 표시). light: 기본 광원. contact: 접촉 피해 배율.
+// b_chaos exp 5000→2500 (W4 FIX-DATA, 요청 #235 · 리드 결정 #346): 1부 마지막 보스 = 2부 진입 레벨. world2 §15 s14 진입 Lv 39–43 (전에는 45).
 export const BOSSES_B = {
   b_leviathan: {
     id: 'b_leviathan', name: '레비아탄', title: '검은 물의 심연룡',

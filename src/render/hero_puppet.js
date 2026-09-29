@@ -320,6 +320,7 @@ function bakeDark(src, a = FAR_DARK) {
 
 // ───────────────────────── 퍼펫 인스턴스 (look 별) ─────────────────────────
 const INST = new WeakMap();
+const LAST = new WeakMap();   // 엔티티 → 마지막으로 그려진(준비된) 인스턴스: 직업을 막 바꿔 새 원화가 로드되는 동안 대신 그린다
 /**
  * 이 엔티티/look 을 퍼펫으로 그릴 수 있으면 인스턴스, 아니면 null (로드 중·에셋 없음·끔 → 벡터 대체).
  * 호출할 때마다 필요한 로드를 건드리므로 매 프레임 불러도 된다 (캐시).
@@ -338,13 +339,22 @@ export function puppetFor(p, look) {
   if (!I) return null;
   const E = I.E;
   if (I.gen !== E.gen) { I.gen = E.gen; I.V = null; I.lv = null; }   // 예산 때문에 텍스처를 놓았다 다시 받음 → 구운 변형·레벨 이력 버림
-  touchUse(E, performance.now(), true);
-  if (!ready(E)) return null;
+  const now = performance.now();
+  touchUse(E, now, true);
+  if (!ready(E)) {
+    // 직업을 막 바꿨는데(전직·장비 탭·QA) 새 직업 원화가 아직 오는 중: 같은 영웅의 직전 퍼펫으로 잇는다 —
+    // 벡터 대체 그림(프레임마다 그라디언트)이 한순간 비치지 않게. 준비되면 REV 가 올라 스냅샷도 새로 찍힌다
+    const P = p && typeof p === 'object' ? LAST.get(p) : null;
+    if (!P || P.E === E || P.E.cid !== E.cid || P.E.state !== 1 || P.gen !== P.E.gen) return null;
+    touchUse(P.E, now);
+    return P;
+  }
   if (I.vk && !I.V) {
     I.V = E.vars.get(I.vk) || makeVariant(E, I.vk); E.vars.set(I.vk, I.V);
     for (const L of E.levels) if (L.name !== 'ui') maskImg(E, L);   // 형제 미리 받기는 마스크 없이 받으므로 장비 색이 있으면 여기서 요청
   }
   I.key = E.key + (I.vk ? '#' + I.vk : '');
+  if (p && typeof p === 'object') LAST.set(p, I);
   return I;
 }
 // ───────────────────────── NPC 퍼펫 ─────────────────────────

@@ -240,7 +240,11 @@ function blit(ctx, img, x, y, sx = 1, rot = 0, a = 1, add = false, ax = 0.5, ay 
 }
 /** 빛 스프라이트 (가산): 해상도(품질별 256/192/128px, hitfx 96px 대체)와 무관하게 GLOW_REF px 기준 배율 s 로 그린다 */
 function blitGlow(ctx, gl, x, y, s, a) {
-  if (gl?.width) blit(ctx, gl, x, y, s * GLOW_REF / gl.width, 0, a, true);
+  if (!gl?.width) return;
+  // 화면 넓이의 70% 를 넘는 빛 상자는 전체 화면 합성 한 번과 같다 (perf §5.2 화면 전체 층 예산) → 그 크기에서 멈춘다
+  const c = ctx.canvas;
+  if (c?.width && c.height) { const t = ctx.getTransform(), k = Math.hypot(t.a, t.b) || 1, m = Math.sqrt(0.7 * c.width * c.height) / (k * GLOW_REF); if (s > m) s = m; }
+  blit(ctx, gl, x, y, s * GLOW_REF / gl.width, 0, a, true);
 }
 /** 가로로 늘어선 스프라이트 시트의 fi 번째 칸 */
 function drawFrame(ctx, img, fi, nf, x, y, sx, sy, rot, a, add = false) {
@@ -1054,6 +1058,8 @@ class Session {
   drawLayer(ctx, vw, vh) {
     let a = this.env;
     if (this.finalAt != null && this.q === 'medium') a *= 1 - clamp((this.t - this.finalAt) / 0.12, 0, 1);   // medium: 마무리 번쩍임과 겹치지 않게 (화면 전체 층 ≤ 2)
+    const fl = this.w.game?.flashFx?.a ?? 0;
+    if (fl > 0) a *= clamp(1 - fl / 0.2, 0, 1);   // 화면 번쩍임(game.flash)이 덮는 동안은 집중선 층을 쉬고, 번쩍임이 0.2 아래로 식으면 다시 번진다 (화면 전체 층 ≤ 3, perf §5.2)
     if (a < 0.01) return;
     const cam = this.w.camera;
     const sp = cam?.toScreen ? cam.toScreen(this.cx, this.cy - 10) : { x: vw / 2, y: vh / 2 };
@@ -2269,7 +2275,9 @@ function finalImpl(w, x, y, o = {}) {
   for (let i = 0; i < T.final.rings; i++) { const [c, r, life, wd] = RING[i]; fx.ring(x, y, { color: c, r0: 16 + 14 * i, r1: vw * r, life, width: wd }); }
   // 섬광 핵 · 별 · 가로 렌즈 줄
   const g = glowNear(mixC(col, '#ffffff', 0.35), s ? mixC(s.color, '#ffffff', 0.35) : null);
-  if (g) fx.sprite(g, x, y, { size: 380 + 80 * tier, life: 0.34, s0: 0.3, s1: 1.25, alpha: 0.95 });
+  // 핵 크기: 최대 배율(1.25)에서, 마무리 줌 펀치(≤1.25)가 더해져도 화면 넓이의 70% 를 넘지 않게 (넘으면 화면 전체 층 하나가 는다, perf §5.2)
+  const core = cam?.w > 0 && cam.h > 0 ? Math.min(380 + 80 * tier, Math.sqrt(0.7 * cam.w * cam.h) / (1.25 * Math.max(cam.zoom ?? 1, 1.25))) : 380 + 80 * tier;
+  if (g) fx.sprite(g, x, y, { size: core, life: 0.34, s0: 0.3, s1: 1.25, alpha: 0.95 });
   if (T.final.star) {
     const st = HFX.star?.(acc);
     if (st) fx.sprite(st, x, y, { size: 240 + 60 * tier, angle: rand(-0.2, 0.2), life: 0.26, s0: 0.3, s1: 1.2 });

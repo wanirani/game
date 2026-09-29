@@ -30,7 +30,7 @@ import { currentHero } from './state.js';
 import { createBackground } from '../render/background.js';
 import { TileRenderer } from '../render/tiles.js';
 import { drawHero } from '../render/hero.js';
-import { createBoss } from './bosses/index.js';
+import { createBoss } from './bosses/lazy.js';   // R1-REQ-229 (요청 #380): 보스 클래스를 정적으로 싣지 않는 입구 — bosses/index.js 가 불러와져 있으면 곧바로 진짜 보스, 아니면 대역(PendingBoss)이 받는 동안 자리를 지킨다
 import { SCRIPTS } from '../data/story.js';
 import { CLASSES } from '../data/classes.js';
 import { Style } from './style.js';   // [hook:feel]

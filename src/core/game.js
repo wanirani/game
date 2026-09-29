@@ -10,6 +10,9 @@
 //   game.syncPad()          가상 패드 표시의 유일한 주인 (touchpad.setVisible)
 //   game.flash(color, strength, decay) · game.vignette(color, a, decay) · game.toast(text, color, time)
 //   game.pop() 이 마지막 장면이면 타이틀로 (빈 스택 방지)
+//   game.lazyScenes(loader) · game.whenScenes() · game.scenesReady · game.retryScenes()   첫 화면 밖 장면을 나중에 받는다 (R1-REQ-229):
+//                           그동안 go/push 한 미등록 장면은 '불러오는 중' 자리 장면(name 'loading')이 지키다가 도착하면 제자리 교체
+//   game.enableFeelStats()  feel §8 계측 (?feelstats · ?debug 면 init 에서 켠다) → 그린 프레임마다 window.__feelStats
 // 주의 (순환 import): hud_layout.js · touchpad.js 등이 이 파일을 import 한다 → 모듈 최상위에서 import 값에 접근하지 않는다.
 import { input } from './input.js';
 import { clamp, rgba } from './math.js';
@@ -107,6 +110,10 @@ class Game {
     this.gov = { start: null, tier: null, ema: STEP, slowT: 0, goodT: 0, lastChange: -Infinity, lastRaise: -Infinity, ceil: 2, top: null, toasted: false };
     this._watch = { q: undefined, u: undefined, a: undefined };
     this._insErr = false;
+    // 지연 장면 (P-09 첫 화면 분리, R1-REQ-229): lazyScenes(loader) 가 끝나기 전에는 false. 도구는 이 값이 true 가 될 때까지 기다린다
+    this.scenesReady = true;
+    this._lazy = null;
+    this.feelStats = null;  // ?feelstats · ?debug: 그린 프레임마다 window.__feelStats (feel §8)
   }
 
   /** 실제 품질 등급 'low'|'medium'|'high' (설정 'auto' 는 품질 조절기 결과) */
@@ -134,6 +141,125 @@ class Game {
     window.addEventListener('pageshow', () => { this._pageHidden = false; this.last = performance.now(); this.dirty = true; });
     // 글꼴이 늦게 도착하면 한 번 다시 그린다 (fpsCap 그리기 건너뛰기 중에도 새 글꼴이 보이게)
     onFontEpoch(() => { this.dirty = true; });
+    try { const q = new URLSearchParams(location.search); if (q.has('feelstats') || q.has('debug')) this.enableFeelStats(); } catch { /* 주소 없음 */ }
+  }
+
+  // ─────────────────────────── feel §8 계측 (R1-REQ-329) ───────────────────────────
+  /**
+   * ?feelstats · ?debug 일 때만 켠다 (그 밖에는 아무것도 세지 않는다). 그린 프레임마다 window.__feelStats 를 고쳐 쓴다:
+   *   particles  보이는 게임플레이 장면의 world.fx.list 길이 · dmgNums 살아 있는 데미지 숫자 · ghosts 살아 있는 잔상(fx.ghost)
+   *   gradients  지난 프레임 이후 create*Gradient 호출 수 · heroDraws 이번 프레임 drawHero 전체 그리기 수
+   *   sfxStarts  최근 100 ms(게임 시간) 안에 시작한 효과음 수 (audio.stats.starts)
+   * heroDraws 는 render/hero.js 가 globalThis.__feelCounters.heroDraws 를 올리면 그 값, 아니면 추정치(주인공 1 + 잔상 수,
+   * heroDrawsEstimated: true). 다른 모듈도 __feelCounters 에 자기 카운터를 올릴 수 있다 (있을 때만: globalThis.__feelCounters?.x++)
+   */
+  enableFeelStats() {
+    if (this.feelStats) return this.feelStats;
+    const S = { particles: 0, dmgNums: 0, ghosts: 0, gradients: 0, heroDraws: 0, sfxStarts: 0, heroDrawsEstimated: true, frame: 0, t: 0 };
+    const C = { gradients: 0, heroDraws: 0, heroHooked: false };
+    try {
+      const protos = [globalThis.CanvasRenderingContext2D?.prototype, globalThis.OffscreenCanvasRenderingContext2D?.prototype].filter(Boolean);
+      for (const P of protos) {
+        for (const m of ['createLinearGradient', 'createRadialGradient', 'createConicGradient']) {
+          const f = P[m];
+          if (typeof f !== 'function' || f.__feelCount) continue;
+          const w = function (...a) { C.gradients++; return f.apply(this, a); };
+          w.__feelCount = true;
+          P[m] = w;
+        }
+      }
+    } catch (e) { console.warn('[feelStats] gradient counter', e); }
+    globalThis.__feelCounters = C;
+    this._sfxHist = [];
+    this.feelStats = S;
+    try { window.__feelStats = S; } catch { /* 창 없음 */ }
+    return S;
+  }
+  /** render() 끝에서 한 번 (계측이 켜졌을 때만) */
+  publishFeelStats() {
+    const S = this.feelStats, C = globalThis.__feelCounters;
+    if (!S || !C) return;
+    const w = this.hudScene()?.world ?? this.top?.world ?? null;
+    const L = Array.isArray(w?.fx?.list) ? w.fx.list : null;
+    let ghosts = 0, dmg = 0;
+    if (L) for (const p of L) { if (p.shape === 'ghost') ghosts++; else if (p.shape === 'dmg') dmg++; }
+    S.particles = L ? L.length : 0;
+    S.dmgNums = dmg;
+    S.ghosts = ghosts;
+    S.gradients = C.gradients; C.gradients = 0;
+    if (C.heroDraws > 0) C.heroHooked = true;
+    S.heroDrawsEstimated = !C.heroHooked;
+    S.heroDraws = C.heroHooked ? C.heroDraws : (w?.player ? 1 : 0) + ghosts;
+    C.heroDraws = 0;
+    // 효과음: 누적 시작 수를 (게임 시간, 누적) 표본으로 남겨 100 ms 창의 차이를 잰다 (걸음 단위 시험에서도 맞게 게임 시간 기준)
+    const H = this._sfxHist, now = this.time, st = Number(this.audio?.stats?.starts) || 0;
+    H.push(now, st);
+    while (H.length >= 4 && now - H[2] >= 0.1) H.splice(0, 2);
+    S.sfxStarts = Math.max(0, st - H[1]);
+    S.frame = this.frame; S.t = now;
+  }
+
+  // ─────────────────────────── 지연 장면 (P-09, R1-REQ-229) ───────────────────────────
+  /**
+   * 첫 화면(타이틀) 밖의 장면을 나중에 받는다: loader(game) → Promise (그 안에서 game.register(…) 들을 부른다).
+   * 끝나기 전에 등록되지 않은 장면으로 go/push 하면 '불러오는 중' 자리 장면이 대신 서고, 도착하면 제자리에서 진짜 장면으로 바뀐다
+   * (go 로 온 자리는 화면 전체, push 로 온 자리는 아래 장면 위에 반투명). 실패하면 두 번 더 시도하고, 그래도 안 되면 자리 장면이
+   * 실패 안내와 다시 시도(확인·탭)를 보여 준다. 반환: Promise<boolean> (game.whenScenes() 와 같다). 진행 중에는 game.scenesReady = false
+   */
+  lazyScenes(loader) {
+    if (typeof loader !== 'function') return Promise.resolve(true);
+    this.scenesReady = false;
+    this._lazy = { loader, tries: 0, err: null, done: false, p: null };
+    return this._loadLazy();
+  }
+  _loadLazy() {
+    const L = this._lazy;
+    L.err = null;
+    const attempt = () => Promise.resolve().then(() => L.loader(this)).then(() => {
+      L.done = true; L.err = null;
+      this.scenesReady = true; this.dirty = true;
+      for (const sc of [...this.scenes]) if (sc.pendingFor) this._swapPending(sc);
+      return true;
+    }, (e) => {
+      L.tries++;
+      if (L.tries < 3) { console.warn('[game] 장면 불러오기 재시도', L.tries, e?.message ?? e); return new Promise((r) => setTimeout(r, 500 * L.tries)).then(attempt); }
+      L.err = e; this.dirty = true;
+      console.error('[game] 장면을 불러오지 못했습니다', e);
+      return false;
+    });
+    L.p = attempt();
+    return L.p;
+  }
+  /** 지연 장면이 모두 등록되면 true 로 풀리는 Promise (지연 장면이 없으면 바로 true) */
+  whenScenes() { return this._lazy?.p ?? Promise.resolve(true); }
+  /** 지연 장면을 기다리는 중이거나 실패한 상태 (등록되지 않은 이름이 아직 '모름'이 아니다) */
+  get scenesPending() { return !!this._lazy && !this._lazy.done; }
+  /** 실패한 지연 장면 다시 받기 (자리 장면의 '다시 시도') */
+  retryScenes() {
+    const L = this._lazy;
+    if (!L || L.done || !L.err) return L?.p ?? Promise.resolve(true);
+    L.tries = 0;
+    return this._loadLazy();
+  }
+  /** 자리 장면을 진짜 장면으로 제자리 교체 (없는 이름이면 닫는다) */
+  _swapPending(ph) {
+    const i = this.scenes.indexOf(ph);
+    if (i < 0) return;
+    const name = ph.pendingFor, C = this.registry[name];
+    if (!C) {
+      console.error('Unknown scene: ' + name);
+      if (i > 0) { this.scenes.splice(i, 1); ph.exit?.(); } else if (this.registry.title) this.go('title', {}, { fade: false });
+      this.dirty = true;
+      return;
+    }
+    const sc = new C(this);
+    sc.name = name;
+    ph.exit?.();
+    this.scenes[i] = sc;
+    sc.enter(ph.params ?? {});
+    input.flush();
+    if (i === 0) this.assets?.sceneChange?.();
+    this.dirty = true;
   }
 
   // ─────────────────────────── 화면 배치 (platform §6.1, §6.2, §6.4) ───────────────────────────
@@ -260,7 +386,10 @@ class Game {
 
   make(name) {
     const C = this.registry[name];
-    if (!C) throw new Error('Unknown scene: ' + name);
+    if (!C) {
+      if (this.scenesPending) return new PendingScene(this, name); // 지연 장면이 아직 오는 중 (R1-REQ-229)
+      throw new Error('Unknown scene: ' + name);
+    }
     return new C(this);
   }
 
@@ -270,14 +399,14 @@ class Game {
   go(name, params = {}, { fade = true, fadeTime = 0.35, color = '#000' } = {}) {
     const doIt = () => {
       // 없는 장면 이름이면 스택을 비우기 전에 멈춘다 (빈 스택 = 검은 화면, P-26). 스택이 이미 비었으면 타이틀로
-      if (!this.registry[name]) {
+      if (!this.registry[name] && !this.scenesPending) {
         console.error('Unknown scene: ' + name);
         if (this.scenes.length || !this.registry.title) return;
         name = 'title'; params = {};
       }
       while (this.scenes.length) this.scenes.pop().exit();
       const sc = this.make(name);
-      sc.name = name;
+      sc.name = sc.pendingFor ? 'loading' : name;
       this.scenes.push(sc);
       sc.enter(params);
       input.flush();
@@ -290,7 +419,7 @@ class Game {
   /** 위에 장면을 쌓는다 (일시정지 메뉴, 대화창 등) */
   push(name, params = {}) {
     const sc = this.make(name);
-    sc.name = name;
+    sc.name = sc.pendingFor ? 'loading' : name;
     this.scenes.push(sc);
     sc.enter(params);
     input.flush();
@@ -543,6 +672,7 @@ class Game {
       ctx.fillText(`FPS ${this.fps.toFixed(0)}  ${this.tier}${this.autoQualityOn() ? '(auto)' : ''} ×${this.dpr.toFixed(2)} ui ${this.uiK}  scenes:${this.scenes.map((s) => s.name).join('>')}`, 6, this.viewH - 6);
     }
     if (taps.debug) taps.drawDebug(ctx); // ?debug=taps
+    if (this.feelStats) this.publishFeelStats();
   }
 
   /** 가장자리 비네트: 가운데는 투명, 모서리로 갈수록 진하게 (타원) */
@@ -704,6 +834,55 @@ class Game {
     t._wk = key; t._lines = lines;
     t._ww = Math.max(...lines.map((s) => ctx.measureText(s).width));
     return lines;
+  }
+}
+
+/**
+ * 지연 장면이 아직 오지 않았을 때 그 자리를 지키는 장면 (R1-REQ-229). game.make() 가 만들고 이름은 'loading'.
+ * 장면이 도착하면 game._swapPending 이 제자리에서 진짜 장면으로 바꾼다 (enter 에 같은 params). go 로 온 자리는 화면 전체를 덮고,
+ * push 로 온 자리는 아래 장면 위에 반투명하게 뜬다. 취소: push 자리는 닫고, 바닥 자리는 타이틀로. 실패하면 확인·탭으로 다시 시도.
+ */
+class PendingScene extends Scene {
+  constructor(game, name) {
+    super(game);
+    this.pendingFor = name; this.params = {};
+    this.uiScale = true; this.hidePad = true; this.hideToasts = true;
+  }
+  enter(params) {
+    this.params = params ?? {};
+    this.opaque = this.game.scenes.indexOf(this) <= 0;
+  }
+  update() {
+    const g = this.game;
+    if (g.registry[this.pendingFor] || !g.scenesPending) { g._swapPending(this); return; }
+    if (g._lazy?.err && (input.pressed('confirm') || input.pointer.tapped)) { g.retryScenes(); return; }
+    if (input.pressed('cancel')) {
+      if (g.scenes.indexOf(this) > 0) g.pop();
+      else if (g.registry.title) g.go('title', {}, { fade: false });
+    }
+  }
+  render(ctx) {
+    const g = this.game, W = g.uiW, H = g.uiH;
+    ctx.fillStyle = this.opaque ? '#07030a' : 'rgba(7,3,10,0.6)';
+    ctx.fillRect(0, 0, W, H);
+    const cx = W / 2, cy = H / 2, err = !!g._lazy?.err;
+    if (!err) { // 도는 핏빛 고리 (그라데이션 없음)
+      const a = (this.t * 5) % (Math.PI * 2);
+      ctx.lineWidth = 4; ctx.lineCap = 'round';
+      ctx.strokeStyle = 'rgba(120,20,30,0.45)';
+      ctx.beginPath(); ctx.arc(cx, cy - 18, 16, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = '#d8323c';
+      ctx.beginPath(); ctx.arc(cx, cy - 18, 16, a, a + 1.9); ctx.stroke();
+    }
+    ctx.textAlign = 'center';
+    ctx.fillStyle = err ? '#ff9a90' : '#e8d8c0';
+    ctx.font = font(18, 700, FONT.body);
+    ctx.fillText(err ? '불러오기에 실패했습니다' : '불러오는 중…', cx, cy + 24);
+    if (err) {
+      ctx.fillStyle = '#a89880';
+      ctx.font = font(14, 500, FONT.body);
+      ctx.fillText('화면을 누르거나 확인 버튼을 누르면 다시 시도합니다', cx, cy + 50);
+    }
   }
 }
 
