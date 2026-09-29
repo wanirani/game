@@ -296,27 +296,34 @@ function drawBolt(ctx, P, col, wd, a) {
 const GLOW_CAP = 24, GLOW_POOL = 12, GLOW_REF = 256, LAYER = 512, SPR_CAP = 8;   // 빛 스프라이트 해상도는 품질별 (Q.glow: 256 / 192 / 128), 그리는 크기는 GLOW_REF 기준
 const GH = { bw: 150, bt: 180, bb: 30 };   // 잔상 비트맵 상자 (발 중앙 기준 좌우 bw, 위 bt, 아래 bb; 월드 px)
 const POOL = { glow: new Map(), glowSpare: [], layers: [], sprites: new Map(), spriteSpare: [], ghosts: [], sil: null, scratch: null };
-/** 0×0 예비 캔버스 (쓸 때 크기를 준다 → 안 쓰면 메모리 0) */
-function mk0() { const c = mkCanvas(1, 1); if (c) c.width = c.height = 0; return c; }
+/** 0×0 예비 캔버스 (쓸 때 크기를 준다 → 안 쓰면 메모리 0). 가져온 값(game)에 손대지 않으므로 모듈 최상위에서 불러도 된다 */
+function mk0() {
+  if (typeof document === 'undefined' || !document.createElement) return null;
+  const c = document.createElement('canvas'); c.width = 0; c.height = 0;
+  ULTFX_STATS.canvases++;
+  return c;
+}
 /**
  * 풀을 미리 만든다 (부팅 뒤 한가할 때 · 스테이지 진입 뒤 한가할 때). 이미 있으면 모자란 만큼만.
  * 캔버스 수는 그대로 미리 만들되(시전 중·컷인 중에 새 캔버스 0 — R1-REQ-339R) 모두 0×0 으로 두고, 쓸 때 크기를 준다: 빛·층·장식은
  * prepareFor(스테이지 진입 뒤 한가할 때)가 이 영웅이 쓰는 것만 굽고, 잔상·실루엣은 첫 시전 때 키운다. 부팅 때 미리 키워 두던
  * 빛 12장·층 2장·장식 4장·잔상 6장·실루엣은 phone1 에서 쓰지 않아도 ~4 MB 를 잡고 있었다 (R1-REQ-342 살아 있는 캔버스 예산)
  */
-function ensurePools(q = 'high') {
+function ensurePools() {
   if (typeof document === 'undefined') return false;
-  const B = Q[q] ?? Q.high;
+  if (ULTFX_STATS.pooled) return true;
+  // 개수는 등급과 무관하게 가장 많은 'high' 기준 (0×0 이라 비용이 없다): 품질 조절기가 스테이지 도중 등급을 올려도 새로 만들 것이 없다
   while (POOL.glowSpare.length + POOL.glow.size < GLOW_CAP) { const c = mk0(); if (!c) return false; POOL.glowSpare.push(c); }
-  if (B.layer) while (POOL.layers.length < 2) { const c = mk0(); if (!c) break; POOL.layers.push({ key: null, c, used: 0 }); }
-  if (POOL.layers.length < 3) { const c = mk0(); if (c) POOL.layers.push({ key: null, c, used: 0 }); }
+  while (POOL.layers.length < 3) { const c = mk0(); if (!c) break; POOL.layers.push({ key: null, c, used: 0 }); }
   while (POOL.spriteSpare.length + POOL.sprites.size < SPR_CAP) { const c = mk0(); if (!c) break; POOL.spriteSpare.push(c); }
-  while (POOL.ghosts.length < B.ghosts + 1) { const c = mk0(); if (!c) break; POOL.ghosts.push({ c, part: null, until: 0 }); }
-  if (B.sil && !POOL.sil) POOL.sil = mk0();
-  if (!POOL.scratch) POOL.scratch = mkCanvas(4, 4);
+  while (POOL.ghosts.length < Q.high.ghosts + 1) { const c = mk0(); if (!c) break; POOL.ghosts.push({ c, part: null, until: 0 }); }
+  if (!POOL.sil) POOL.sil = mk0();
+  if (!POOL.scratch) { const c = mk0(); if (c) { c.width = 4; c.height = 4; POOL.scratch = c; } }
   ULTFX_STATS.pooled = true;
   return true;
 }
+// 모듈을 평가할 때 바로 만든다 (스테이지가 생기기 전 — 지연 장면 교체·곧장 스테이지 진입에서도 스테이지 시작 뒤 새 캔버스 0, 요청 #478)
+try { ensurePools(); } catch (e) { console.warn('[ultfx] pool', e); }
 
 // ── 256px 빛 (색별, LRU 24) ──
 let GLOW_WIN = 0, GLOW_N = 0;
@@ -862,8 +869,8 @@ function addOv(w, o) {
 // ═══════════════════════════ 잔상 (캐시 비트맵) ═══════════════════════════
 function ghostSlot(w, holdMs = 0) {
   const now = perfNow();
-  for (const s of POOL.ghosts) if (now >= s.until || s.part?.done) { s.part = null; s.until = now + holdMs; return s; }
-  const B = Q[qk(w)];
+  const B = Q[qk(w)], n = Math.min(POOL.ghosts.length, B.ghosts + 1);   // 풀은 'high' 개수만큼 있지만 이 등급의 몫만 쓴다
+  for (let i = 0; i < n; i++) { const s = POOL.ghosts[i]; if (now >= s.until || s.part?.done) { s.part = null; s.until = now + holdMs; return s; } }
   if (POOL.ghosts.length < B.ghosts + 1) {
     const c = mkCanvas(Math.ceil(2 * GH.bw * B.rs), Math.ceil((GH.bt + GH.bb) * B.rs));
     if (!c) return null;
@@ -2132,7 +2139,7 @@ const PREP = { key: null };
 function prepareFor(w, p) {
   if (typeof document === 'undefined' || !w || !p?.hero) return false;
   const q = qk(w), cls = p.hero.classId, ch = p.hero.charId, key = `${cls}|${q}`;
-  ensurePools(q);
+  ensurePools();
   if (PREP.key === key) return true;
   const tier = tierOfClass(cls), col = ultColor(ch), acc = visAccent(cls, col);
   // 필살기 색 + 각성 색 (awaken.js 가 v.color = T2.color ?? AWAKEN.color 로 부른다)
@@ -2207,12 +2214,16 @@ function hookBus() {
     PREP_POLL = setInterval(() => { try { if (prepStale()) schedulePrepare(); } catch { /* 다음 번에 */ } }, 1000);
   }
 }
-// 부팅 뒤 한가할 때 풀을 만든다 (모듈 최상위에서는 가져온 값에 접근하지 않는다: 순환 import 규칙)
+// 풀(0×0 캔버스 ~45장, 1 ms 미만)은 모듈 평가 때 이미 만들었다 (위 ensurePools). 버스는 모듈을 읽은 직후에 건다 (모듈 최상위에서는
+// 가져온 값에 접근하지 않는다: 순환 import 규칙 → setTimeout 0). 예전처럼 부팅 1.2 초 + 한가할 때 만들면, 타이틀 없이 곧장 스테이지로
+// 들어가거나 지연 장면 교체(R1-REQ-229 두 단계 부팅)로 stageEntered 가 구독보다 먼저 지나간 경우 스테이지 시작 뒤에 캔버스가 생겼다
+// (요청 #478 의 ultfx 몫). 이미 스테이지가 돌고 있으면(구독 전에 stageEntered 가 지나감) 이 영웅의 빛·층 굽기도 바로 예약한다
 if (typeof window !== 'undefined' && typeof setTimeout === 'function') {
   setTimeout(() => {
     hookBus();
-    idle(() => { try { ensurePools(qk(game?.world)); const w = game?.world; if (w?.player) prepareFor(w, w.player); } catch (e) { console.warn('[ultfx] pool', e); } }, 1500);
-  }, 1200);
+    if (game?.world?.player) schedulePrepare();
+  }, 0);
+  setTimeout(() => idle(() => { try { const w = game?.world; if (w?.player) prepareFor(w, w.player); } catch (e) { console.warn('[ultfx] prepare', e); } }, 1500), 1200);
 }
 
 // ═══════════════════════════ 공개 API ═══════════════════════════

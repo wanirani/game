@@ -17,6 +17,7 @@ const MAX_CHUNKS = 8; // 구워 둔 청크 캔버스 상한 (청크 하나 768×
 const PHASE_CH = new Set(['a', 'b', 'z', 'Z']); // 위상 타일 문자 (tilemap.js PHASE 와 같음)
 const DARK_CACHE = new Map();   // 톤다운 소품 사본 (모든 TileRenderer 공용: 방을 오갈 때 다시 굽지 않는다)
 const DARK_CAP = 40;            // 상한 (소품 사본 ≤ 192×288 → 최악 ≈ 9 MB, 보통 2 MB 안팎)
+const DARK_SPARE = [];          // 방을 불러올 때 미리 만든 0×0 캔버스: 소품 이미지가 스테이지 시작 뒤에 도착해도 새 캔버스를 만들지 않는다
 // 원경이 트인 하늘/달인 테마: 절차적 창문('W')이 허공에 떠 보이므로 그리지 않는다
 export const OPEN_SKY_THEMES = new Set(['village', 'town', 'graveyard', 'gate', 'spire', 'throne', 'abyss', 'sky', 'void', 'blight']);
 
@@ -142,6 +143,14 @@ export class TileRenderer {
   /** 이 방 소품의 톤다운 사본을 모두 굽는다 (이미지가 아직 없으면 다음 호출에). 다 구웠으면(또는 없는 파일) true */
   warmProps() {
     if (this.propsWarm) return true;
+    // 아직 못 구운 사본 수만큼 0×0 예비 캔버스를 둔다 (처음 부를 때 = 방을 불러올 때; 이미지가 늦게 와도 도중에 새 캔버스 0 — feel §8)
+    if (!this.darkSpared && typeof document !== 'undefined') {
+      this.darkSpared = true;
+      const need = new Set();
+      for (const p of this.props) { const k = this.darkKey(p.d.id, p.d.w, p.d.h, p.d.dim); if (!this.darkCache.has(k)) need.add(k); }
+      const n = Math.min(need.size, DARK_CAP);
+      while (DARK_SPARE.length < n) { const c = document.createElement('canvas'); c.width = 0; c.height = 0; DARK_SPARE.push(c); }
+    }
     let ok = true;
     for (const p of this.props) if (!this.darkProp(p.d.id, p.d.w, p.d.h, p.d.dim) && !assets.failed?.('props/' + p.d.id)) ok = false;
     return (this.propsWarm = ok);
@@ -230,15 +239,16 @@ export class TileRenderer {
     return out;
   }
   /** 배경용으로 채도를 낮추고 어둡게 톤다운한 소품 이미지 (캐시) — 적·파괴 가능한 오브젝트와 구분되게 */
+  darkKey(id, w, h, dim = 0.5) { return id + w + 'x' + h + ':' + dim + ':' + this.style.edge; }
   darkProp(id, w, h, dim = 0.5) {
-    const key = id + w + 'x' + h + ':' + dim + ':' + this.style.edge;
+    const key = this.darkKey(id, w, h, dim);
     let c = this.darkCache.get(key);
     if (c) return c;
     const img = assets.get('props/' + id);
     if (!img) return null;
     // 상한이면 가장 오래된 사본의 캔버스를 다시 쓴다 (그리는 쪽은 매번 이 함수로 찾으므로 밀려난 사본을 붙잡지 않는다)
     if (this.darkCache.size >= DARK_CAP) { const k0 = this.darkCache.keys().next().value; c = this.darkCache.get(k0); this.darkCache.delete(k0); }
-    c ??= document.createElement('canvas');
+    c ??= DARK_SPARE.pop() ?? document.createElement('canvas');
     c.width = w; c.height = h;
     const g = c.getContext('2d');
     g.drawImage(img, 0, 0, w, h);
