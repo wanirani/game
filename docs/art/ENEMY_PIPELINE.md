@@ -352,7 +352,8 @@ roster (6–9 types) ≈ 3–5 MB desktop, ≈ 1–1.5 MB phone.
    `node tools/painted/enemies/bestiary.mjs [--mobile]` opens the real bestiary card for each painted enemy.
 4. `node tools/painted/enemies/ingame.mjs --stage <sNN> --line <id>:idle,<id>:walk,<id>:attack@0.4 --kill 1` (pose spec
    `id:anim[~state][@t][#facing]`: `@t` freezes any anim at t s — `cursed_nun:pray@0.6`, `blood_priest:cast@0.5`; `~state`
-   also sets `e.state` — `snow_wolf:wind~crouch@0.2`; without `@` the anim plays live) and
+   also sets `e.state` — `snow_wolf:wind~crouch@0.2`; without `@` the anim plays live, except `attack`/`slam`/`fling`,
+   which stay frozen at 0 as before) and
    `--mobile`: art sits on the ground line, matches the painted backdrop and lighting, corpses/dissolves outlive the entity,
    no duplicate vector debris, nothing sinks through the floor. `--debug` draws the hurtboxes, `--facing both` spawns
    each pose in both directions, `--elite`, `--quality low|medium`. Check the darkest stage the enemy appears in

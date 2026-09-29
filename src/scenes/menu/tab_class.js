@@ -9,7 +9,9 @@ import * as PUP from '../../render/hero_puppet.js';
 import * as ProgM from '../../game/progression.js';
 import { Tab } from './base.js';
 import { HeroView, HeroStage, PixLayer, PixCache, pedestal, accentOf, turntableHints, pxScale } from './hero_view.js';
-import { PAL, frame, heading, divider, brackets, glow, glowOval, pill, para, rr, glyph, ellipsize, measure, leanMem, takeCanvas, giveCanvas } from './common.js';
+import { PAL, frame, heading, divider, brackets, glow, glowOval, pill, para, rr, glyph, ellipsize, measure, leanMem, takeCanvas, giveCanvas, vGrad, fillPathGrad } from './common.js';
+// 카드 그라디언트 색 멈춤 (common.js 캐시 키 — 같은 배열이면 매 프레임 새 그라디언트 0, R1-REQ-341B)
+const CARD_ON = [0, 'rgba(70,16,32,0.96)', 1, 'rgba(8,4,10,0.96)'], CARD_OFF = [0, 'rgba(30,18,30,0.94)', 1, 'rgba(8,4,10,0.96)'];
 import { fmtStatVal } from './tab_status.js';
 import * as D from './access.js';
 
@@ -194,19 +196,16 @@ export class ClassTab extends Tab {
     const acc = accentOf(look);
     if (st.key === 'cur') glowOval(ctx, r.x + r.w / 2, r.y + r.h / 2, r.w * 0.7, r.h * 0.9, '#ff3050', 0.25 + 0.08 * Math.sin(t * 3));
     if (st.key === 'ready') glowOval(ctx, r.x + r.w / 2, r.y + r.h / 2, r.w * 0.7, r.h * 0.9, '#60ff90', 0.18 + 0.1 * Math.sin(t * 5));
-    const g = ctx.createLinearGradient(0, r.y, 0, r.y + r.h);
     const on = st.key === 'cur' || st.key === 'done';
-    g.addColorStop(0, on ? 'rgba(70,16,32,0.96)' : 'rgba(30,18,30,0.94)'); g.addColorStop(1, 'rgba(8,4,10,0.96)');
-    rr(ctx, r.x, r.y, r.w, r.h, 6); ctx.fillStyle = g; ctx.fill();
+    rr(ctx, r.x, r.y, r.w, r.h, 6); fillPathGrad(ctx, vGrad(ctx, r.h, on ? CARD_ON : CARD_OFF), 0, r.y); // 캐시 그라디언트
     ctx.strokeStyle = sel ? PAL.goldHi : st.key === 'cur' ? PAL.gold : st.key === 'done' ? PAL.goldMid : st.key === 'ready' ? '#6ad08a' : '#3e3036';
     ctx.lineWidth = sel || st.key === 'cur' ? 2 : 1.2; ctx.stroke();
     // 썸네일
     const tw = 54, th = r.h - 8;
     ctx.save();
     rr(ctx, r.x + 4, r.y + 4, tw, th, 4); ctx.clip();
-    const bg = ctx.createLinearGradient(0, r.y, 0, r.y + r.h);
-    bg.addColorStop(0, rgba(acc, 0.22)); bg.addColorStop(1, 'rgba(0,0,0,0.3)');
-    ctx.fillStyle = bg; ctx.fillRect(r.x + 4, r.y + 4, tw, th);
+    ctx.translate(0, r.y); ctx.fillStyle = vGrad(ctx, r.h, [0, rgba(acc, 0.22), 1, 'rgba(0,0,0,0.3)']); // 원점 기준 캐시 (직업 색마다 하나)
+    ctx.fillRect(r.x + 4, 4, tw, th); ctx.translate(0, -r.y);
     const img = this.thumb(c.id, tw, th + 8, ctx);
     ctx.globalAlpha *= st.key === 'closed' ? 0.35 : st.key === 'locked' ? 0.7 : 1;
     ctx.imageSmoothingQuality = 'medium';   // 거의 1:1 복사 — 'high' 필터는 비싸기만 하다 (P-11)

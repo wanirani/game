@@ -4,7 +4,8 @@
 //   --mode pv (기본) 채색 대 벡터 · vv 벡터 대 벡터 (기준선: 도구 자체의 흔들림 확인) · pp 채색 대 채색
 //   poses/<bossId>.mjs 의 STAGE 와 (있으면) RNG_SCRIPT(i, b, p, w) — 프레임별 대본(페이즈 전환 등). 없으면 47%/73% 프레임에 체력을 깎아 페이즈를 넘긴다.
 //   녹화 전에 두 실행의 출발 상태를 맞춘다 (채색 실행만 굽기를 기다리는 동안 실제 루프가 더 돌기 때문, requests #119/#126/#156/#322):
-//     품질 등급 고정(high) · 세계 시계 · 히트스톱/슬로모 · 배경 번개/별똥별 타이머 · 기믹 파티클 누적기 · 카메라 ·
+//     품질 등급 고정(high) · 세계 시계 · 히트스톱/슬로모 · 배경 번개/별똥별 타이머 · 기믹 파티클 누적기 ·
+//     플레이어 위치와 카메라(줌·흔들림·반동까지; 보스 setup() 전에 — 지즈처럼 출발 위치를 카메라·플레이어로 정하는 보스) ·
 //     보스 위치(homeX, 없으면 방의 보스 출현 지점) · 보스 속도 · 보스 AI 휴식 상태(idleWait/lastAtk/atkCount/forced/jobs) ·
 //     보스가 남긴 탄·장판·소환물 · 입자 목록. 보스별 RNG_SCRIPT 의 0 프레임 정리는 이 뒤에 돌아 덮어쓸 수 있다.
 import { open, startFight, freeze, waitPainted } from './lib.mjs';
@@ -36,7 +37,7 @@ async function run(vector) {
         if (e === b || e === p || e.kind === 'painted' || e.kind === 'bossart') continue;
         if (e.owner === b || e.owner?.owner === b || e.boss === b || e.summoner === b || e.queen === b) e.dead = true;
       }
-      if (w.fx?.list) w.fx.list.length = 0;
+      if (w.fx?.clear) { w.fx.clear(); w.fx.clock = 0; } else if (w.fx?.list) w.fx.list.length = 0;   // particles + damage-number columns
       if (b.homeX !== undefined) b.x = b.homeX - b.w / 2;
       else if (w.bossSpawn && (w.bossSpawn.id ?? b.def?.id) === b.def?.id) { b.x = w.bossSpawn.x - b.w / 2; b.y = w.bossSpawn.y - b.h; }
       b.vx = 0; b.vy = 0; b.flashT = 0; b.clearJobs?.();
@@ -44,9 +45,21 @@ async function run(vector) {
       if ('lastAtk' in b) b.lastAtk = null;
       if ('atkCount' in b) b.atkCount = 0;
       if (Array.isArray(b.forced)) b.forced.length = 0;
-      b.setup?.(); b.hp = b.stats.maxHp; b.phase = 0; b.inferno = false; b.setState('idle'); b.cool = 0.5; b.t = 0;
+      // player and camera BEFORE setup(): some bosses aim their start position at them (Ziz: zx from the player's x, zy from
+      // camera.y via hoverY()). follow(…, snap) snaps the centre but not the zoom, shake or kick springs, which still carry the
+      // real-time wait (longer in the painted run) → settle those too. Snapped again after setup (the camera frames the boss).
       p.hp = p.stats.hp = 1e9; p.x = (b.A?.x0 ?? b.x - 400) + 330; p.vx = 0; p.vy = 0;
-      w.camera?.follow?.(p, 1 / 60, true);
+      const snapCam = () => {
+        const c = w.camera;
+        if (!c) return;
+        c.baseZoom = c.zoomTarget ?? 1; c.punch = null; c.pulse = null; c.focus = null; c.roll = 0; c.lookBoost = 0; c.time = 0;
+        c.trauma = 0; c.traumaFloor = 0; c.traumaHold = 0; c.kickX = 0; c.kickY = 0; c.kvx = 0; c.kvy = 0;
+        if (c._cine && !(c._cine.to > 0)) c._cine = null;   // a fading intro framing (never an active one)
+        c.follow?.(p, 1 / 60, true);
+      };
+      snapCam();
+      b.setup?.(); b.hp = b.stats.maxHp; b.phase = 0; b.inferno = false; b.setState('idle'); b.cool = 0.5; b.t = 0;
+      snapCam();
       const rows = []; let h = 0;
       for (let i = 0; i < frames; i++) {
         p.iframes = 1e9; p.hp = 1e9;

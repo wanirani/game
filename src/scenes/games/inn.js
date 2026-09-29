@@ -16,6 +16,10 @@ import {
   Hits, gPanel, drawBtn, goldText, goldPlaque, Roller, bubble, bubbleText, vignetteSoft, affordableBet, GOLD, keyHints, tapMinOf, fxQualityOf,
 } from './common.js';
 import { rr, glow, drawChip, drawEmblem, heartPath } from './art.js';
+import { vGrad, fillPathGrad, fillGradRect } from '../menu/common.js';
+const TOP_FADE = [0, 'rgba(4,1,6,0.85)', 1, 'rgba(4,1,6,0)'];
+// 게임 카드 그라디언트 색 멈춤 (menu/common 캐시 — 매 프레임 새 그라디언트 0, R1-REQ-341B)
+const CARD_HOT = [0, '#3a1424', 1, '#0a0408'], CARD_OFF = [0, '#22101c', 1, '#0a0408'];
 
 // 그림(bg/inn) 속 고양이 위치 (이미지 비율 좌표)
 const CAT = { x0: 0.735, x1: 0.945, y0: 0.745, y1: 0.915, hx: 0.772, hy: 0.797 };
@@ -225,9 +229,7 @@ export class InnScene extends Scene {
     ctx.fillStyle = 'rgba(8,3,10,0.28)'; ctx.fillRect(0, 0, vw, vh);
     glow(ctx, vw * 0.42, vh * 0.56, vh * 0.55, '#ff8a3a', 0.16 * fl);
     vignetteSoft(ctx, vw, vh, 0.7);
-    const tg = ctx.createLinearGradient(0, 0, 0, 70);
-    tg.addColorStop(0, 'rgba(4,1,6,0.85)'); tg.addColorStop(1, 'rgba(4,1,6,0)');
-    ctx.fillStyle = tg; ctx.fillRect(0, 0, vw, 70);
+    fillGradRect(ctx, vGrad(ctx, 70, TOP_FADE), 0, 0, vw, 70); // 캐시 그라디언트
     for (const m of this.motes) glow(ctx, (m.x + Math.sin(m.ph * 0.5) * 0.01) * vw, m.y * vh, 5 * m.s, '#ffc070', 0.25 + 0.2 * Math.sin(m.ph * 3));
     this.drawCat(ctx);
 
@@ -409,9 +411,7 @@ export class InnScene extends Scene {
       ctx.save();
       ctx.fillStyle = 'rgba(0,0,0,0.5)'; rr(ctx, cx + 2, cy + 6, cw, ch, 12); ctx.fill();
       if (k > 0.05) { ctx.save(); ctx.shadowColor = G.accent; ctx.shadowBlur = 22 * k; rr(ctx, cx, cy, cw, ch, 12); ctx.fillStyle = '#000'; ctx.fill(); ctx.restore(); }
-      const bg = ctx.createLinearGradient(0, cy, 0, cy + h);
-      bg.addColorStop(0, k > 0.5 ? '#3a1424' : '#22101c'); bg.addColorStop(1, '#0a0408');
-      rr(ctx, cx, cy, cw, ch, 12); ctx.fillStyle = bg; ctx.fill();
+      rr(ctx, cx, cy, cw, ch, 12); fillPathGrad(ctx, vGrad(ctx, h, k > 0.5 ? CARD_HOT : CARD_OFF), 0, cy); // 캐시 (cy → cy+h)
       ctx.lineWidth = 1.5 + k; ctx.strokeStyle = k > 0.5 ? '#ffe7a0' : hov ? '#c8a050' : '#6a5030'; ctx.stroke();
       rr(ctx, cx + 5, cy + 5, cw - 10, ch - 10, 8); ctx.lineWidth = 1; ctx.strokeStyle = `rgba(232,200,114,${0.15 + k * 0.25})`; ctx.stroke();
       // 문장

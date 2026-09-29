@@ -11,7 +11,7 @@ import * as SkillD from '../../data/skills.js';
 import { Tab } from './base.js';
 import {
   PAL, frame, heading, divider, brackets, glow, glowOval, gbutton, pill, para, diamond, glyph, Popup, ellipsize, keycap, rr,
-  Scroller, scrollbar, clipBegin, clipEnd,
+  Scroller, scrollbar, clipBegin, clipEnd, vGrad, fillGradRect,
 } from './common.js';
 import * as D from './access.js';
 
@@ -174,9 +174,7 @@ export class SkillsTab extends Tab {
       const x0 = A.x + 10 + c * cw;
       const bc = br.color && br.color.startsWith('#') ? br.color : PAL.gold;
       // 기둥 배경
-      const g = ctx.createLinearGradient(0, top - 46, 0, bot);
-      g.addColorStop(0, rgba(bc, 0.07)); g.addColorStop(1, rgba(bc, 0));
-      ctx.fillStyle = g; ctx.fillRect(x0 + 4, top - 46, cw - 8, bot - top + 46);
+      fillGradRect(ctx, vGrad(ctx, bot - top + 46, [0, rgba(bc, 0.07), 1, rgba(bc, 0)]), x0 + 4, top - 46, cw - 8, bot - top + 46); // 캐시 (R1-REQ-341B)
       if (c > 0) { ctx.fillStyle = 'rgba(200,160,90,0.14)'; ctx.fillRect(x0, top - 40, 1, bot - top + 34); }
       text(ctx, ellipsize(ctx, br.name ?? br.id, cw - 24, 15, 800, FONT.title), x0 + 14, top - 30, { size: 15, weight: 800, family: FONT.title, color: bc, ow: 3 });
       const gateName = br.kind === 'class' && br.gate ? `${D.CLASSES()[br.gate[0]]?.name ?? ''} 계열 전용` : '공용 기술';

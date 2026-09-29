@@ -17,6 +17,9 @@ import { composeLook, STAT_INFO } from '../../game/stats.js';
 import { addByBase } from '../../game/inventory.js';
 import { SHOP_LINES } from '../../data/town.js';
 import { ServiceScene, Modal, RewardPopup, makeInst, hitRect, rowBg, Snap, uiPanel, uiButton, uiHints, josa } from './common.js';
+import { vGrad, rGrad, fillGradRect } from '../menu/common.js';
+// 직업 카드 그라디언트 색 멈춤 (menu/common 캐시 — 매 프레임 새 그라디언트 0, R1-REQ-341B)
+const CARD_SEL = [0, 'rgba(60,30,50,0.92)', 1, 'rgba(6,3,8,0.95)'], CARD_OFF = [0, 'rgba(20,12,22,0.88)', 1, 'rgba(6,3,8,0.95)'];
 import { glow } from './facades.js';
 
 const TIER_NAME = ['기본 직업', '상급 직업', '최상급 직업'];
@@ -279,18 +282,16 @@ export class ChurchScene extends ServiceScene {
       this.cardRects.push(r);
       const sel = i === this.sel;
       const chk = canChangeClass(hero, c.id);
-      const g = ctx.createLinearGradient(0, r.y, 0, r.y + r.h);
-      g.addColorStop(0, sel ? 'rgba(60,30,50,0.92)' : 'rgba(20,12,22,0.88)'); g.addColorStop(1, 'rgba(6,3,8,0.95)');
-      ctx.fillStyle = g; ctx.fillRect(r.x, r.y, r.w, r.h);
+      fillGradRect(ctx, vGrad(ctx, r.h, sel ? CARD_SEL : CARD_OFF), r.x, r.y, r.w, r.h); // 캐시 그라디언트
       ctx.strokeStyle = sel ? COLORS.gold : 'rgba(110,85,48,0.6)'; ctx.lineWidth = sel ? 2.5 : 1; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
       if (sel) { ctx.save(); ctx.shadowColor = 'rgba(232,200,114,0.5)'; ctx.shadowBlur = 18; ctx.strokeRect(r.x, r.y, r.w, r.h); ctx.restore(); }
       // 미리보기 (좌측)
       const look = composeLook(st, { ...hero, classId: c.id });
       const pw = Math.min(150, r.w * 0.42);
       ctx.save(); ctx.beginPath(); ctx.rect(r.x + 2, r.y + 2, pw, r.h - 4); ctx.clip();
-      const lg = ctx.createRadialGradient(r.x + pw / 2, r.y + r.h * 0.55, 10, r.x + pw / 2, r.y + r.h * 0.55, r.h * 0.6);
-      lg.addColorStop(0, rgba(look.aura?.color ?? '#e8c872', 0.2)); lg.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = lg; ctx.fillRect(r.x, r.y, pw, r.h);
+      const lx = r.x + pw / 2, ly = r.y + r.h * 0.55; // 원점 기준 캐시 (직업 빛깔마다 하나)
+      ctx.translate(lx, ly); ctx.fillStyle = rGrad(ctx, 0, 0, 10, r.h * 0.6, [0, rgba(look.aura?.color ?? '#e8c872', 0.2), 1, 'rgba(0,0,0,0)']);
+      ctx.fillRect(r.x - lx, r.y - ly, pw, r.h); ctx.translate(-lx, -ly);
       this.preview(ctx, c.id, look, r.x + pw / 2 + 4, r.y + r.h - 22, clamp(r.h / 150, 1.3, 2.1), look.aura?.color, !sel);
       ctx.restore();
       // 정보 (우측)

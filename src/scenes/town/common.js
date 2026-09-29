@@ -250,12 +250,13 @@ export class ScrollList {
   }
 }
 
+// 그라디언트 색 멈춤: menu/common 의 원점 기준 캐시 키 (같은 배열 = 매 프레임 새 그라디언트 0 — R1-REQ-341B, feel §8)
+const ROW_SEL = [0, 'rgba(140,22,40,0.92)', 1, 'rgba(50,8,18,0.75)'], ROW_DIM = [0, 'rgba(16,10,16,0.7)', 1, 'rgba(10,6,12,0.7)'], ROW_OFF = [0, 'rgba(28,16,26,0.88)', 1, 'rgba(10,6,12,0.7)'];
+const SVC_SHADE = [0, 'rgba(4,2,6,0.25)', 0.35, 'rgba(4,2,6,0.55)', 1, 'rgba(4,2,6,0.8)'];
+const PORT_FADE = [0, 'rgba(4,2,6,0)', 1, 'rgba(4,2,6,0.95)'], PORT_SFADE = [0, 'rgba(4,2,6,0)', 1, 'rgba(4,2,6,0.85)'];
 /** 목록 한 줄 배경 */
 export function rowBg(ctx, r, sel, { tint = null, dim = false } = {}) {
-  const g = ctx.createLinearGradient(r.x, 0, r.x + r.w, 0);
-  if (sel) { g.addColorStop(0, 'rgba(140,22,40,0.92)'); g.addColorStop(1, 'rgba(50,8,18,0.75)'); }
-  else { g.addColorStop(0, dim ? 'rgba(16,10,16,0.7)' : 'rgba(28,16,26,0.88)'); g.addColorStop(1, 'rgba(10,6,12,0.7)'); }
-  ctx.fillStyle = g; ctx.fillRect(r.x, r.y, r.w, r.h);
+  MenuUI.fillGradRect(ctx, MenuUI.hGrad(ctx, r.w, sel ? ROW_SEL : dim ? ROW_DIM : ROW_OFF), r.x, r.y, r.w, r.h); // 캐시 그라디언트
   if (tint) { ctx.fillStyle = tint; ctx.fillRect(r.x, r.y, 4, r.h); }
   ctx.strokeStyle = sel ? COLORS.gold : 'rgba(110,85,48,0.55)'; ctx.lineWidth = sel ? 2 : 1;
   ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
@@ -627,9 +628,7 @@ export class ServiceScene extends Scene {
     const L = this.layout(), { vw, vh } = L;
     // 배경
     drawCover(ctx, this.bgKey ? assets.get(this.bgKey) : null, vw, vh, { fallback: ['#1a0e14', '#060308'] });
-    const g = ctx.createLinearGradient(0, 0, vw, 0);
-    g.addColorStop(0, 'rgba(4,2,6,0.25)'); g.addColorStop(0.35, 'rgba(4,2,6,0.55)'); g.addColorStop(1, 'rgba(4,2,6,0.8)');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, vw, vh);
+    MenuUI.fillGradRect(ctx, MenuUI.hGrad(ctx, vw, SVC_SHADE), 0, 0, vw, vh); // 캐시 그라디언트
     this.renderAmbient?.(ctx, L);
     // 불씨
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
@@ -719,12 +718,8 @@ export class ServiceScene extends Scene {
       glow(ctx, x + w * 0.55, y + h * 0.35, h * 0.55, this.portraitGlow ?? '#ff8a3a', 0.22);
       ctx.globalCompositeOperation = 'source-over';
       ctx.drawImage(img, x, y, w, h);
-      const fade = ctx.createLinearGradient(0, vh - 190, 0, vh);
-      fade.addColorStop(0, 'rgba(4,2,6,0)'); fade.addColorStop(1, 'rgba(4,2,6,0.95)');
-      ctx.fillStyle = fade; ctx.fillRect(x, vh - 190, w, 190);
-      const sfade = ctx.createLinearGradient(L.pw - 70, 0, L.pw + 6, 0);
-      sfade.addColorStop(0, 'rgba(4,2,6,0)'); sfade.addColorStop(1, 'rgba(4,2,6,0.85)');
-      ctx.fillStyle = sfade; ctx.fillRect(L.pw - 70, 56, 76, vh);
+      MenuUI.fillGradRect(ctx, MenuUI.vGrad(ctx, 190, PORT_FADE), x, vh - 190, w, 190);   // 캐시 그라디언트
+      MenuUI.fillGradRect(ctx, MenuUI.hGrad(ctx, 76, PORT_SFADE), L.pw - 70, 56, 76, vh);
       ctx.restore();
     }
     // 대사창: 대사 전체의 줄 수에 맞춰 위로 늘어난다 (3~5줄) — 긴 기도 힌트 등이 잘리지 않도록

@@ -732,12 +732,12 @@ export class HeroView {
 /** '입력 있음' 으로 보는 누르고 있는 액션 */
 const HELD = ['left', 'right', 'up', 'down', 'confirm', 'cancel', 'viewL', 'viewR', 'prevTab', 'nextTab'];
 
+const RB_HOT = [0, 'rgba(150,26,44,0.95)', 1, 'rgba(14,6,12,0.92)'], RB_OFF = [0, 'rgba(58,20,34,0.9)', 1, 'rgba(14,6,12,0.92)'];
 /** 둥근 고딕 버튼 바탕 */
 function roundBtn(ctx, x, y, r, hot) {
   ctx.beginPath(); ctx.arc(x, y, r, 0, TAU);
-  const g = ctx.createRadialGradient(x - r * 0.3, y - r * 0.35, 1, x, y, r);
-  g.addColorStop(0, hot ? 'rgba(150,26,44,0.95)' : 'rgba(58,20,34,0.9)'); g.addColorStop(1, 'rgba(14,6,12,0.92)');
-  ctx.fillStyle = g; ctx.fill();
+  // 원점 기준 캐시 그라디언트 (R1-REQ-341B: 예전에는 단추마다 프레임마다 새 그라디언트)
+  MENU.fillPathGrad(ctx, MENU.rGrad(ctx, -r * 0.3, -r * 0.35, 1, r, hot ? RB_HOT : RB_OFF), x, y);
   ctx.strokeStyle = hot ? PAL.goldHi : PAL.goldDim; ctx.lineWidth = 1.4; ctx.stroke();
 }
 /** 회전 화살표 (원 화살표): dir +1 = 시계 방향 ⟳ (오른쪽으로 돌리기), −1 = 반시계 ⟲ (왼쪽으로 돌리기) */

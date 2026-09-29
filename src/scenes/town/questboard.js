@@ -9,6 +9,11 @@ import { ITEMS } from '../../data/items.js';
 import { SCRIPTS } from '../../data/story.js';
 import { drawIcon } from '../../render/icons.js';
 import { ServiceScene, ScrollList, Modal, RewardPopup, makeInst, hitRect, npcInfo, uiButton } from './common.js';
+import { vGrad, rGrad, fillGradRect, fillPathGrad } from '../menu/common.js';
+// 게시판 그라디언트 색 멈춤 (menu/common 캐시 — 매 프레임 새 그라디언트 0, R1-REQ-341B)
+const BOARD = [0, '#5a3a22', 1, '#2a1a0e'], NOTE_ON = [0, '#efe2c0', 1, '#c8b48a'], NOTE_FADED = [0, '#8a7a60', 1, '#5a4a38'];
+const PAPER = [0, '#eadcb8', 1, '#c4ae84'], PAPER_DONE = [0, '#a89878', 1, '#7a6a50'];
+const DETAIL = [0, '#efe4c6', 0.7, '#d6c49a', 1, '#a88a5a'];
 import { glow } from './facades.js';
 
 const INK = '#2a1a10', INK2 = '#5a4630';
@@ -120,9 +125,7 @@ export class QuestBoardScene extends ServiceScene {
     ctx.save(); ctx.globalCompositeOperation = 'lighter'; glow(ctx, x + w / 2, y + 30, w * 0.9, '#ffb45a', 0.28 + Math.sin(this.t * 3) * 0.03); ctx.restore();
     // 기둥 + 판
     ctx.fillStyle = '#1e120a'; ctx.fillRect(x + 12, y, 12, h + 20); ctx.fillRect(x + w - 24, y, 12, h + 20);
-    const bg = ctx.createLinearGradient(0, y + 20, 0, y + h);
-    bg.addColorStop(0, '#5a3a22'); bg.addColorStop(1, '#2a1a0e');
-    ctx.fillStyle = bg; ctx.fillRect(x, y + 24, w, h - 30);
+    ctx.translate(0, y + 20); ctx.fillStyle = vGrad(ctx, h - 20, BOARD); ctx.fillRect(x, 4, w, h - 30); ctx.translate(0, -(y + 20)); // 캐시 (y+20 → y+h)
     for (let yy = y + 36; yy < y + h - 6; yy += 14) { ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x, yy, w, 1.5); }
     ctx.strokeStyle = '#120a04'; ctx.lineWidth = 4; ctx.strokeRect(x, y + 24, w, h - 30);
     // 지붕
@@ -137,8 +140,7 @@ export class QuestBoardScene extends ServiceScene {
       const px = x + 14 + (i % 3) * ((w - 28) / 3) + rng.range(0, 8), py = y + 40 + Math.floor(i / 3) * ((h - 70) / 3) + rng.range(0, 10);
       ctx.save(); ctx.translate(px + pw / 2, py + ph / 2); ctx.rotate(rng.range(-0.12, 0.12) + Math.sin(this.t * 1.3 + i) * 0.01);
       const faded = i >= n;
-      const pg = ctx.createLinearGradient(0, -ph / 2, 0, ph / 2); pg.addColorStop(0, faded ? '#8a7a60' : '#efe2c0'); pg.addColorStop(1, faded ? '#5a4a38' : '#c8b48a');
-      ctx.fillStyle = pg; ctx.fillRect(-pw / 2, -ph / 2, pw, ph);
+      fillGradRect(ctx, vGrad(ctx, ph, faded ? NOTE_FADED : NOTE_ON), -pw / 2, -ph / 2, pw, ph); // 캐시 그라디언트
       ctx.fillStyle = faded ? 'rgba(40,30,20,0.3)' : 'rgba(50,30,15,0.55)';
       for (let l = 0; l < 5; l++) ctx.fillRect(-pw / 2 + 6, -ph / 2 + 12 + l * 8, (pw - 12) * rng.range(0.5, 1), 2);
       ctx.fillStyle = '#8a1426'; ctx.beginPath(); ctx.arc(0, -ph / 2 + 4, 3, 0, TAU); ctx.fill();
@@ -182,10 +184,8 @@ export class QuestBoardScene extends ServiceScene {
     const ready = this.tab === 1 && Q.canClaim(st, q.id);
     const main = q.kind === 'main';
     ctx.save();
-    const g = ctx.createLinearGradient(0, r.y, 0, r.y + r.h);
-    g.addColorStop(0, this.tab === 2 ? '#a89878' : '#eadcb8'); g.addColorStop(1, this.tab === 2 ? '#7a6a50' : '#c4ae84');
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.moveTo(r.x + 3, r.y); ctx.lineTo(r.x + r.w - 2, r.y + 2); ctx.lineTo(r.x + r.w, r.y + r.h - 1); ctx.lineTo(r.x, r.y + r.h); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(r.x + 3, r.y); ctx.lineTo(r.x + r.w - 2, r.y + 2); ctx.lineTo(r.x + r.w, r.y + r.h - 1); ctx.lineTo(r.x, r.y + r.h); ctx.closePath();
+    fillPathGrad(ctx, vGrad(ctx, r.h, this.tab === 2 ? PAPER_DONE : PAPER), 0, r.y); // 캐시 그라디언트
     ctx.fillStyle = 'rgba(90,60,30,0.18)'; ctx.fillRect(r.x, r.y + r.h - 8, r.w, 8);
     if (sel) { ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 3; ctx.shadowColor = 'rgba(255,210,120,0.7)'; ctx.shadowBlur = 12; ctx.strokeRect(r.x - 1, r.y - 1, r.w + 2, r.h + 2); ctx.shadowBlur = 0; }
     // 핀 / 인장
@@ -219,9 +219,8 @@ export class QuestBoardScene extends ServiceScene {
     for (let x = r.x + r.w; x >= r.x; x -= 16) ctx.lineTo(x, r.y + r.h - rng.range(0, 5));
     for (let y = r.y + r.h; y >= r.y; y -= 18) ctx.lineTo(r.x + rng.range(0, 4), y);
     ctx.closePath();
-    const g = ctx.createRadialGradient(r.x + r.w / 2, r.y + r.h / 2, 20, r.x + r.w / 2, r.y + r.h / 2, Math.max(r.w, r.h) * 0.75);
-    g.addColorStop(0, '#efe4c6'); g.addColorStop(0.7, '#d6c49a'); g.addColorStop(1, '#a88a5a');
-    ctx.fillStyle = g; ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 16; ctx.fill(); ctx.shadowBlur = 0;
+    ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 16; // 원점 기준 캐시 그라디언트 (그림자는 변환과 무관)
+    fillPathGrad(ctx, rGrad(ctx, 0, 0, 20, Math.max(r.w, r.h) * 0.75, DETAIL), r.x + r.w / 2, r.y + r.h / 2); ctx.shadowBlur = 0;
     ctx.strokeStyle = 'rgba(80,50,20,0.6)'; ctx.lineWidth = 1.5; ctx.stroke();
     if (!q) { text(ctx, '의뢰서를 고르세요', r.x + r.w / 2, r.y + r.h / 2, { size: 16, align: 'center', color: INK2, outline: null, ow: 0 }); ctx.restore(); return; }
     const st = this.state;

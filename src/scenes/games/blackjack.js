@@ -7,7 +7,7 @@ import { audio } from '../../core/audio.js';
 import { text, FONT } from '../../core/ui.js';
 import { clamp, lerp, rand, ease, fmt, TAU, pick } from '../../core/math.js';
 import { MiniGame, innBackdrop, drawBtn, gPanel, bubble, candle, GOLD } from './common.js';
-import { drawCard, drawChip, glow, rr, catHead } from './art.js';
+import { drawCard, drawChip, glow, rr, catHead, cachedGrad } from './art.js';
 
 const CW = 76, CH = 106;
 const SAY = {
@@ -405,9 +405,11 @@ function drawDealer(c, cx, base, t, mood, mt, blink, flick) {
   // 뿔 (뒤)
   for (const s of [-1, 1]) {
     c.save(); c.scale(s, 1);
-    const hg = c.createLinearGradient(18, -140, 76, -196);
-    hg.addColorStop(0, '#e8dcc0'); hg.addColorStop(0.5, '#9a8468'); hg.addColorStop(1, '#1a0e0a');
-    c.fillStyle = hg;
+    c.fillStyle = cachedGrad('bj-horn', () => { // 로컬 좌표 고정 → 한 번만 (R1-REQ-341B)
+      const n = c.createLinearGradient(18, -140, 76, -196);
+      n.addColorStop(0, '#e8dcc0'); n.addColorStop(0.5, '#9a8468'); n.addColorStop(1, '#1a0e0a');
+      return n;
+    });
     c.beginPath();
     c.moveTo(14, -140);
     c.bezierCurveTo(30, -170, 58, -184, 70, -206);
@@ -464,9 +466,13 @@ function drawDealer(c, cx, base, t, mood, mt, blink, flick) {
     c.beginPath(); c.ellipse(ex, ey, 8.5, 4.6 * eo + 0.5, s * -0.18, 0, TAU); c.fill();
     if (!blink) {
       c.save(); c.globalCompositeOperation = 'lighter';
-      const eg = c.createRadialGradient(ex, ey, 0, ex, ey, 18);
-      eg.addColorStop(0, mood === 'angry' ? 'rgba(255,90,30,0.9)' : 'rgba(255,200,60,0.8)'); eg.addColorStop(1, 'rgba(0,0,0,0)');
-      c.fillStyle = eg; c.fillRect(ex - 18, ey - 18, 36, 36);
+      const angry = mood === 'angry'; // 눈 위치(±13, −113)·기분별 → 캐시 (R1-REQ-341B)
+      c.fillStyle = cachedGrad('bj-eye|' + ex + '|' + ey + '|' + angry, () => {
+        const n = c.createRadialGradient(ex, ey, 0, ex, ey, 18);
+        n.addColorStop(0, angry ? 'rgba(255,90,30,0.9)' : 'rgba(255,200,60,0.8)'); n.addColorStop(1, 'rgba(0,0,0,0)');
+        return n;
+      });
+      c.fillRect(ex - 18, ey - 18, 36, 36);
       c.restore();
       c.fillStyle = mood === 'angry' ? '#ff6a2a' : '#ffd040';
       c.beginPath(); c.ellipse(ex, ey, 6, 3.8 * eo, s * -0.18, 0, TAU); c.fill();

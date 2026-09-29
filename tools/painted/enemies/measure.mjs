@@ -23,7 +23,9 @@ const rows = await page.evaluate(async ({ ids, thr }) => {
   const { CASES } = await import('/tools/painted/enemies/gallery.js');
   const { drawEnemy } = await import('/src/render/enemies.js');
   const { ENEMIES } = await import('/src/data/enemies.js');
-  const S = 4, W = 900, H = 900, OX = 450, OY = 620;
+  // window: ±240 logical px around the feet, 200 px above / 50 below (a tongue, laser sight, halberd or sword arc reaches
+  // past 112 px — the old 900×900 window clipped every such bbox at x 112.3 / y −155, so OVERHANG could never fire sideways)
+  const S = 4, W = 1920, H = 1000, OX = 960, OY = 800;
   const c = document.createElement('canvas'); c.width = W; c.height = H;
   const g = c.getContext('2d', { willReadFrequently: true });
   const out = [];

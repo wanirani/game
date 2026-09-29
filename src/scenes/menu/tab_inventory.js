@@ -9,8 +9,10 @@ import { drawSlot } from '../../render/icons.js';
 import { Tab } from './base.js';
 import {
   PAL, RARITY_COL, frame, heading, divider, brackets, glow, gbutton, Scroller, scrollbar, clipBegin, clipEnd, pill, para, rr,
-  glyph, Popup, inRect, measure, wrapC,
+  glyph, Popup, inRect, measure, wrapC, vGrad, fillPathGrad,
 } from './common.js';
+// 필터 단추 그라디언트 색 멈춤 (common.js 캐시 — 매 프레임 새 그라디언트 0, R1-REQ-341B)
+const PILL_ON = [0, '#a0182e', 1, '#4a0614'], PILL_OFF = [0, 'rgba(40,24,36,0.9)', 1, 'rgba(14,8,14,0.9)'];
 import { fmtStatVal } from './tab_status.js';
 import * as D from './access.js';
 import { josa } from '../town/common.js';
@@ -203,9 +205,7 @@ export class InventoryTab extends Tab {
       this.filterRects.push(r);
       const on = k === this.fi;
       rr(ctx, r.x, r.y, r.w, r.h, fh / 2);
-      const g = ctx.createLinearGradient(0, r.y, 0, r.y + r.h);
-      if (on) { g.addColorStop(0, '#a0182e'); g.addColorStop(1, '#4a0614'); } else { g.addColorStop(0, 'rgba(40,24,36,0.9)'); g.addColorStop(1, 'rgba(14,8,14,0.9)'); }
-      ctx.fillStyle = g; ctx.fill();
+      fillPathGrad(ctx, vGrad(ctx, r.h, on ? PILL_ON : PILL_OFF), 0, r.y);
       ctx.strokeStyle = on ? PAL.gold : this.m.ges.over(r) ? PAL.goldMid : PAL.goldDim; ctx.lineWidth = 1; ctx.stroke();
       text(ctx, names[k], r.x + r.w / 2, r.y + r.h / 2 + 5, { size: fsize, align: 'center', weight: 800, color: on ? PAL.goldHi : PAL.text, ow: 2 });
       if (on && this.sub === 'filter' && focused) brackets(ctx, r.x, r.y, r.w, r.h, t);

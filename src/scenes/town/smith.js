@@ -10,8 +10,11 @@ import { countItem } from '../../game/inventory.js';
 import { drawIcon, drawSlot } from '../../render/icons.js';
 import { CHARACTERS } from '../../data/characters.js';
 import { SHOP_LINES } from '../../data/town.js';
+import { vGrad, fillGradRect } from '../menu/common.js';
 import { ServiceScene, ScrollList, Modal, itemRow, drawItemDetail, baseOf, nameOf, makeInst, statsOf, statName, fmtStat, isEquippedAny, SLOT_LABEL, WTYPE_LABEL, EQUIP_KINDS, hitRect, openBuy, mergeLines, rarityColor, uiPanel, uiButton, uiHints, josa } from './common.js';
 import { glow } from './facades.js';
+// 주문서 칩 그라디언트 색 멈춤 (menu/common 캐시 — 매 프레임 새 그라디언트 0, R1-REQ-341B)
+const CHIP_PROT = [0, 'rgba(40,80,150,0.95)', 1, 'rgba(8,4,10,0.95)'], CHIP_BLESS = [0, 'rgba(150,110,20,0.95)', 1, 'rgba(8,4,10,0.95)'], CHIP_OFF = [0, 'rgba(24,14,22,0.9)', 1, 'rgba(8,4,10,0.95)'];
 
 const FAIL_TEXT = { keep: ['실패 시 단계 유지', '#b8b0a0'], down: ['실패 시 1단계 하락', '#ffa640'], destroy: ['실패 시 하락 · 파괴 위험', '#ff5a5a'] };
 /**
@@ -325,9 +328,7 @@ export class SmithScene extends ServiceScene {
       const have = countItem(st, id);
       const on = this.opt[key] && have > 0;
       const rr = this.tz('chip:' + key, { x, y: chipY, w: cw, h: 38 });
-      const g = ctx.createLinearGradient(0, rr.y, 0, rr.y + rr.h);
-      g.addColorStop(0, on ? (key === 'protect' ? 'rgba(40,80,150,0.95)' : 'rgba(150,110,20,0.95)') : 'rgba(24,14,22,0.9)'); g.addColorStop(1, 'rgba(8,4,10,0.95)');
-      ctx.fillStyle = g; ctx.fillRect(rr.x, rr.y, rr.w, rr.h);
+      fillGradRect(ctx, vGrad(ctx, rr.h, on ? (key === 'protect' ? CHIP_PROT : CHIP_BLESS) : CHIP_OFF), rr.x, rr.y, rr.w, rr.h); // 캐시 그라디언트
       ctx.strokeStyle = on ? '#ffe7a0' : have ? 'rgba(160,130,80,0.8)' : 'rgba(80,60,50,0.6)'; ctx.lineWidth = on ? 2 : 1; ctx.strokeRect(rr.x + 0.5, rr.y + 0.5, rr.w - 1, rr.h - 1);
       drawIcon(ctx, key === 'protect' ? 'scroll_protect' : 'scroll_bless', rr.x + 18, rr.y + 19, 24);
       ctx.globalAlpha = have ? 1 : 0.45;

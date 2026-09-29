@@ -32,6 +32,10 @@ import { addByBase } from '../../game/inventory.js';
 import { newGameState } from '../../game/state.js';
 import { drawIcon } from '../../render/icons.js';
 import { rr, glow, drawCoin, drawChip } from './art.js';
+import { vGrad, hGrad, rGrad, fillPathGrad } from '../menu/common.js';
+// 그라디언트는 menu/common 의 원점 기준 캐시로 (R1-REQ-341B, feel §8 — 여관·미니게임 한 프레임 20~56개였다)
+const GP_SHINE = [0, 'rgba(255,220,160,0.08)', 1, 'rgba(0,0,0,0)'];
+const CANDLE = [0, '#b8a888', 0.4, '#f4ecd8', 1, '#8a7a60'], FLAME = [0, '#fffbe0', 0.5, '#ffb040', 1, 'rgba(255,80,0,0)'];
 
 export const GOLD = '#e8c872', BONE = '#efe4cf', CRIMSON = '#b3122e', DIM = '#9d8f80';
 export const BETS = [50, 100, 500, 1000];
@@ -301,29 +305,24 @@ export function goldText(c, str, x, y, size, { align = 'center', family = FONT.t
   if (glowCol) { c.shadowColor = glowCol; c.shadowBlur = size * 0.5; }
   c.lineWidth = ow; c.strokeStyle = '#1a0a06'; c.strokeText(str, x, y);
   c.shadowBlur = 0;
-  const g = c.createLinearGradient(0, y - size * 0.85, 0, y + size * 0.1);
-  g.addColorStop(0, top); g.addColorStop(0.55, mid); g.addColorStop(1, bot);
-  c.fillStyle = g; c.fillText(str, x, y);
+  const gy = y - size * 0.85; // 원점 기준 캐시 그라디언트 (글자 크기·색마다 하나; 가로 배율만 걸려 있어 세로로 옮겨도 된다)
+  c.translate(0, gy); c.fillStyle = vGrad(c, size * 0.95, [0, top, 0.55, mid, 1, bot]); c.fillText(str, x, y - gy);
   c.restore();
 }
 
 /** 고딕 유리 패널 (둥근 모서리, 금 이중 테두리, 모서리 장식) */
 export function gPanel(c, x, y, w, h, { a = 0.84, edge = '#8a6a34', glowCol = null, r = 10, orn = true } = {}) {
   c.save();
-  const g = c.createLinearGradient(0, y, 0, y + h);
-  g.addColorStop(0, `rgba(30,14,30,${a})`); g.addColorStop(1, `rgba(8,4,10,${Math.min(1, a + 0.08)})`);
   rr(c, x, y, w, h, r);
   if (glowCol) { c.shadowColor = glowCol; c.shadowBlur = 18; }
-  c.fillStyle = g; c.fill();
+  fillPathGrad(c, vGrad(c, h, [0, `rgba(30,14,30,${a})`, 1, `rgba(8,4,10,${Math.min(1, a + 0.08)})`]), 0, y); // 캐시 (그림자는 변환과 무관)
   c.shadowBlur = 0;
   c.lineWidth = 2; c.strokeStyle = edge; c.stroke();
   rr(c, x + 5, y + 5, w - 10, h - 10, Math.max(2, r - 4));
   c.lineWidth = 1; c.strokeStyle = 'rgba(232,200,114,0.2)'; c.stroke();
   // 위쪽 은은한 광택
   c.globalCompositeOperation = 'lighter';
-  const sh = c.createLinearGradient(0, y, 0, y + Math.min(40, h * 0.3));
-  sh.addColorStop(0, 'rgba(255,220,160,0.08)'); sh.addColorStop(1, 'rgba(0,0,0,0)');
-  c.fillStyle = sh; rr(c, x + 2, y + 2, w - 4, Math.min(40, h * 0.3), r); c.fill();
+  rr(c, x + 2, y + 2, w - 4, Math.min(40, h * 0.3), r); fillPathGrad(c, vGrad(c, Math.min(40, h * 0.3), GP_SHINE), 0, y);
   c.globalCompositeOperation = 'source-over';
   if (orn) {
     c.fillStyle = GOLD;
@@ -364,9 +363,7 @@ export function drawBtn(c, r, label, o = {}) {
     c.save(); c.shadowColor = tone[2]; c.shadowBlur = 16; c.globalAlpha *= k;
     rr(c, r.x, y, r.w, r.h, 9); c.fillStyle = tone[0]; c.fill(); c.restore();
   }
-  const g = c.createLinearGradient(0, y, 0, y + r.h);
-  g.addColorStop(0, pr ? tone[1] : tone[0]); g.addColorStop(1, pr ? tone[0] : tone[1]);
-  rr(c, r.x, y, r.w, r.h, 9); c.fillStyle = g; c.fill();
+  rr(c, r.x, y, r.w, r.h, 9); fillPathGrad(c, vGrad(c, r.h, pr ? [0, tone[1], 1, tone[0]] : [0, tone[0], 1, tone[1]]), 0, y); // 캐시
   c.lineWidth = hot ? 2.2 : 1.6; c.strokeStyle = hot ? '#ffe7a0' : '#8a6a34'; c.stroke();
   // 윗면 광택
   c.fillStyle = 'rgba(255,240,220,0.12)'; rr(c, r.x + 3, y + 3, r.w - 6, r.h * 0.42, 7); c.fill();
@@ -496,19 +493,15 @@ export function feltTable(c, x, y, w, h, { felt = '#5a0a1c', felt2 = '#22040c', 
 /** 촛불 (x,y = 초 바닥) */
 export function candle(c, x, y, h, t, seed = 0) {
   const w = h * 0.26;
-  const g = c.createLinearGradient(x - w / 2, 0, x + w / 2, 0);
-  g.addColorStop(0, '#b8a888'); g.addColorStop(0.4, '#f4ecd8'); g.addColorStop(1, '#8a7a60');
-  c.fillStyle = g; rr(c, x - w / 2, y - h, w, h, w * 0.3); c.fill();
+  rr(c, x - w / 2, y - h, w, h, w * 0.3); fillPathGrad(c, hGrad(c, w, CANDLE), x - w / 2, 0); // 캐시
   c.fillStyle = '#f4ecd8';
   c.beginPath(); c.ellipse(x + w * 0.3, y - h * 0.7, w * 0.12, h * 0.16, 0, 0, TAU); c.fill();
   const fl = Math.sin(t * 9 + seed) * 0.5 + Math.sin(t * 17 + seed * 2) * 0.3;
   const fx = x + fl * 1.2, fy = y - h - 2;
   glow(c, fx, fy - h * 0.2, h * 2.2, '#ff9a3a', 0.28 + fl * 0.04);
   c.save(); c.globalCompositeOperation = 'lighter';
-  const fg = c.createRadialGradient(fx, fy - h * 0.12, 0, fx, fy - h * 0.12, h * 0.34);
-  fg.addColorStop(0, '#fffbe0'); fg.addColorStop(0.5, '#ffb040'); fg.addColorStop(1, 'rgba(255,80,0,0)');
-  c.fillStyle = fg;
-  c.beginPath(); c.moveTo(fx, fy - h * 0.46); c.quadraticCurveTo(fx + h * 0.16, fy - h * 0.08, fx, fy + h * 0.02); c.quadraticCurveTo(fx - h * 0.16, fy - h * 0.08, fx, fy - h * 0.46); c.fill();
+  c.beginPath(); c.moveTo(fx, fy - h * 0.46); c.quadraticCurveTo(fx + h * 0.16, fy - h * 0.08, fx, fy + h * 0.02); c.quadraticCurveTo(fx - h * 0.16, fy - h * 0.08, fx, fy - h * 0.46);
+  fillPathGrad(c, rGrad(c, 0, 0, 0, h * 0.34, FLAME), fx, fy - h * 0.12); // 원점 기준 캐시 (불꽃이 흔들려도 같은 그라디언트)
   c.restore();
 }
 

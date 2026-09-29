@@ -203,8 +203,11 @@ export function drawDie(c, x, y, s, q, opt = {}) {
     c.transform(_u[0] * s, _u[1] * s, _w[0] * s, _w[1] * s, x + _n[0] * 0.5 * s, y + _n[1] * 0.5 * s);
     // 면
     const base = boneAt(0.25 + lam * 0.75);
-    const g = c.createLinearGradient(-0.5, -0.5, 0.5, 0.5);
-    g.addColorStop(0, shadeCached(base, 0.18)); g.addColorStop(0.55, base); g.addColorStop(1, shadeCached(base, -0.22));
+    const g = cachedGrad('die|' + base, () => { // 면 색 5단계 × 단위 좌표 → 캐시
+      const n = c.createLinearGradient(-0.5, -0.5, 0.5, 0.5);
+      n.addColorStop(0, shadeCached(base, 0.18)); n.addColorStop(0.55, base); n.addColorStop(1, shadeCached(base, -0.22));
+      return n;
+    });
     rr(c, -0.47, -0.47, 0.94, 0.94, 0.17);
     c.fillStyle = g; c.fill();
     // 뼈 질감: 옅은 결 무늬
@@ -243,8 +246,19 @@ export function drawDie(c, x, y, s, q, opt = {}) {
 }
 function glowLocal(c, x, y, r, col, a) {
   c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = a * 0.8;
-  const g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)');
-  c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); c.restore();
+  // 로컬 좌표(단위 크기) 고정값이라 위치·반지름·색으로 캐시 (R1-REQ-341B)
+  c.fillStyle = cachedGrad('gl|' + x + '|' + y + '|' + r + '|' + col, () => { const n = c.createRadialGradient(x, y, 0, x, y, r); n.addColorStop(0, col); n.addColorStop(1, 'rgba(0,0,0,0)'); return n; });
+  c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); c.restore();
+}
+/**
+ * 그라디언트 캐시 (R1-REQ-341B, feel §8: 매 프레임 새 그라디언트 ≤ 16/10/6). 여기 그림들은 원점에 옮겨 놓고 그리므로
+ * 그라디언트 좌표가 크기·색에만 달려 있다 → 그 값으로 만든 키로 한 번 만들어 다시 쓴다 (256개 넘으면 오래된 것부터 버린다)
+ */
+const GCACHE = new Map();
+export function cachedGrad(key, make) {
+  let g = GCACHE.get(key);
+  if (!g) { g = make(); if (GCACHE.size >= 256) GCACHE.delete(GCACHE.keys().next().value); GCACHE.set(key, g); }
+  return g;
 }
 const _shc = new Map();
 function shadeCached(col, a) {
@@ -334,8 +348,11 @@ export function drawCard(c, card, x, y, w, h, opt = {}) {
 function drawCardFace(c, card, w, h, r) {
   const suit = SUITS[card.suit], col = suit.red ? RED : INK;
   // 양피지 바탕
-  const g = c.createLinearGradient(-w / 2, -h / 2, w / 2, h / 2);
-  g.addColorStop(0, '#fbf3e0'); g.addColorStop(0.6, '#efe2c4'); g.addColorStop(1, '#d8c6a0');
+  const g = cachedGrad('cf|' + w + '|' + h, () => { // 원점 기준 → 크기별 캐시
+    const n = c.createLinearGradient(-w / 2, -h / 2, w / 2, h / 2);
+    n.addColorStop(0, '#fbf3e0'); n.addColorStop(0.6, '#efe2c4'); n.addColorStop(1, '#d8c6a0');
+    return n;
+  });
   rr(c, -w / 2, -h / 2, w, h, r); c.fillStyle = g; c.fill();
   c.lineWidth = Math.max(1, w * 0.018); c.strokeStyle = '#2a1810'; c.stroke();
   // 안쪽 테두리 (금 + 진홍)
@@ -450,9 +467,12 @@ function crown(c, x, y, w, col, tiara = false) {
 
 function drawCardBack(c, w, h, r, style, t) {
   const soul = style === 'soul';
-  const g = c.createLinearGradient(-w / 2, -h / 2, w / 2, h / 2);
-  if (soul) { g.addColorStop(0, '#3a2a6a'); g.addColorStop(0.5, '#1c1238'); g.addColorStop(1, '#0a0618'); }
-  else { g.addColorStop(0, '#8a1428'); g.addColorStop(0.5, '#5a0816'); g.addColorStop(1, '#2a0208'); }
+  const g = cachedGrad('cb|' + w + '|' + h + '|' + soul, () => { // 원점 기준 → 크기·무늬별 캐시
+    const n = c.createLinearGradient(-w / 2, -h / 2, w / 2, h / 2);
+    if (soul) { n.addColorStop(0, '#3a2a6a'); n.addColorStop(0.5, '#1c1238'); n.addColorStop(1, '#0a0618'); }
+    else { n.addColorStop(0, '#8a1428'); n.addColorStop(0.5, '#5a0816'); n.addColorStop(1, '#2a0208'); }
+    return n;
+  });
   rr(c, -w / 2, -h / 2, w, h, r); c.fillStyle = g; c.fill();
   c.lineWidth = Math.max(1, w * 0.02); c.strokeStyle = '#140608'; c.stroke();
   // 격자 무늬
@@ -469,9 +489,12 @@ function drawCardBack(c, w, h, r, style, t) {
   rr(c, ix, iy, iw, ih, r * 0.5); c.stroke();
   // 가운데 문장: 달 위의 검은 고양이
   const mr = w * 0.27;
-  const mg = c.createRadialGradient(-mr * 0.3, -mr * 0.3, mr * 0.1, 0, 0, mr);
-  if (soul) { mg.addColorStop(0, '#e8f8ff'); mg.addColorStop(0.7, '#8ac8ff'); mg.addColorStop(1, '#3a5aaa'); }
-  else { mg.addColorStop(0, '#fff4d0'); mg.addColorStop(0.7, '#e8c060'); mg.addColorStop(1, '#8a5a1a'); }
+  const mg = cachedGrad('cbm|' + mr + '|' + soul, () => {
+    const n = c.createRadialGradient(-mr * 0.3, -mr * 0.3, mr * 0.1, 0, 0, mr);
+    if (soul) { n.addColorStop(0, '#e8f8ff'); n.addColorStop(0.7, '#8ac8ff'); n.addColorStop(1, '#3a5aaa'); }
+    else { n.addColorStop(0, '#fff4d0'); n.addColorStop(0.7, '#e8c060'); n.addColorStop(1, '#8a5a1a'); }
+    return n;
+  });
   c.fillStyle = mg; c.beginPath(); c.arc(0, 0, mr, 0, TAU); c.fill();
   c.lineWidth = w * 0.02; c.strokeStyle = '#2a1408'; c.stroke();
   catHead(c, 0, mr * 0.18, mr * 1.05, soul ? '#8affc8' : '#ffd040');
@@ -752,8 +775,11 @@ export function drawChip(c, x, y, r, value, { selected = false, disabled = false
   c.translate(x, y + lift);
   if (selected) glow(c, 0, 0, r * 2, value === 1000 ? '#ffd060' : '#ff5060', 0.55);
   c.fillStyle = shadeCached(c2, -0.3); c.beginPath(); c.arc(0, 4, r, 0, TAU); c.fill();
-  const g = c.createRadialGradient(-r * 0.3, -r * 0.4, r * 0.1, 0, 0, r);
-  g.addColorStop(0, shadeCached(c1, 0.25)); g.addColorStop(0.7, c1); g.addColorStop(1, c2);
+  const g = cachedGrad('chip|' + r + '|' + c1 + '|' + c2, () => { // 원점 기준 → 크기·색별 캐시
+    const n = c.createRadialGradient(-r * 0.3, -r * 0.4, r * 0.1, 0, 0, r);
+    n.addColorStop(0, shadeCached(c1, 0.25)); n.addColorStop(0.7, c1); n.addColorStop(1, c2);
+    return n;
+  });
   c.fillStyle = g; c.beginPath(); c.arc(0, 0, r, 0, TAU); c.fill();
   // 가장자리 무늬
   c.fillStyle = value === 50 ? '#3a2a60' : '#f4ecd8';
@@ -782,12 +808,10 @@ export function drawChip(c, x, y, r, value, { selected = false, disabled = false
 export function drawRevolver(c, x, y, s, ang = 0, { metal = '#b8bcc8', trim = '#d8b040', grip = '#5a3018' } = {}) {
   c.save(); c.translate(x, y); c.rotate(ang); c.scale(s, s);
   c.lineJoin = 'round';
-  const m = c.createLinearGradient(0, -0.2, 0, 0.1);
-  m.addColorStop(0, shadeCached(metal, 0.4)); m.addColorStop(0.5, metal); m.addColorStop(1, shadeCached(metal, -0.5));
+  // 단위 좌표 고정 → 색별 캐시 (R1-REQ-341B)
+  const m = cachedGrad('rv-m|' + metal, () => { const n = c.createLinearGradient(0, -0.2, 0, 0.1); n.addColorStop(0, shadeCached(metal, 0.4)); n.addColorStop(0.5, metal); n.addColorStop(1, shadeCached(metal, -0.5)); return n; });
   // 손잡이
-  const gg = c.createLinearGradient(-0.3, 0, -0.1, 0.4);
-  gg.addColorStop(0, shadeCached(grip, 0.25)); gg.addColorStop(1, shadeCached(grip, -0.4));
-  c.fillStyle = gg;
+  c.fillStyle = cachedGrad('rv-g|' + grip, () => { const n = c.createLinearGradient(-0.3, 0, -0.1, 0.4); n.addColorStop(0, shadeCached(grip, 0.25)); n.addColorStop(1, shadeCached(grip, -0.4)); return n; });
   c.beginPath(); c.moveTo(-0.12, 0.02); c.quadraticCurveTo(-0.16, 0.26, -0.28, 0.4); c.lineTo(-0.42, 0.36); c.quadraticCurveTo(-0.36, 0.2, -0.34, 0.02); c.closePath(); c.fill();
   c.strokeStyle = '#140a06'; c.lineWidth = 0.025; c.stroke();
   // 몸체 + 총열

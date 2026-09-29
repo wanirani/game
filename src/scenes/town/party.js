@@ -14,6 +14,10 @@ import { composeLook, expToNext } from '../../game/stats.js';
 import { findItem } from '../../game/inventory.js';
 import { ITEMS } from '../../data/items.js';
 import { hitRect, nameOf, Snap, padHidden, ensureState, uiPanel, uiButton, uiHints, josa } from './common.js';
+import { vGrad, fillGradRect } from '../menu/common.js';
+// 카드 그라디언트 색 멈춤 (menu/common 캐시 — 매 프레임 새 그라디언트 0, R1-REQ-341B)
+const CARD_SEL = [0, 'rgba(70,20,34,0.95)', 1, 'rgba(6,3,8,0.96)'], CARD_OFF = [0, 'rgba(22,12,20,0.92)', 1, 'rgba(6,3,8,0.96)'];
+const CARD_FADE = [0, 'rgba(6,3,8,0)', 1, 'rgba(6,3,8,1)'], LOCK = [0, '#c8a060', 1, '#6a4a20'];
 import { glow } from './facades.js';
 
 const STAR_KEYS = ['공격', '방어', '속도', '마법', '사거리'];
@@ -142,9 +146,7 @@ export class PartyScene extends Scene {
     ctx.save();
     const lift = sel ? -6 - Math.sin(t * 3) * 2 : 0;
     ctx.translate(0, lift);
-    const g = ctx.createLinearGradient(0, r.y, 0, r.y + r.h);
-    g.addColorStop(0, sel ? 'rgba(70,20,34,0.95)' : 'rgba(22,12,20,0.92)'); g.addColorStop(1, 'rgba(6,3,8,0.96)');
-    ctx.fillStyle = g; ctx.fillRect(r.x, r.y, r.w, r.h);
+    fillGradRect(ctx, vGrad(ctx, r.h, sel ? CARD_SEL : CARD_OFF), r.x, r.y, r.w, r.h); // 캐시 그라디언트
     // 초상화 (위쪽 은은하게)
     const img = assets.get(c.portrait);
     if (img) {
@@ -153,9 +155,8 @@ export class PartyScene extends Scene {
       ctx.globalAlpha = e.open ? (sel ? 0.55 : 0.32) : 0.12;
       ctx.drawImage(img, r.x + r.w / 2 - iw / 2, r.y - ih * 0.05, iw, ih);
       ctx.globalAlpha = 1;
-      const fg = ctx.createLinearGradient(0, r.y + r.h * 0.2, 0, r.y + r.h * 0.62);
-      fg.addColorStop(0, 'rgba(6,3,8,0)'); fg.addColorStop(1, 'rgba(6,3,8,1)');
-      ctx.fillStyle = fg; ctx.fillRect(r.x, r.y + r.h * 0.2, r.w, r.h * 0.43);
+      ctx.translate(0, r.y + r.h * 0.2); ctx.fillStyle = vGrad(ctx, r.h * 0.42, CARD_FADE); // 캐시 (0.2h → 0.62h)
+      ctx.fillRect(r.x, 0, r.w, r.h * 0.43); ctx.translate(0, -(r.y + r.h * 0.2));
       ctx.restore();
     }
     // 캐릭터 (절차적, 현재 외형)
@@ -184,8 +185,7 @@ export class PartyScene extends Scene {
       // 자물쇠
       const lx = r.x + r.w / 2, ly = r.y + r.h * 0.4;
       ctx.strokeStyle = '#8a7a64'; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.arc(lx, ly - 6, 8, Math.PI, 0); ctx.stroke();
-      const lg = ctx.createLinearGradient(0, ly - 6, 0, ly + 12); lg.addColorStop(0, '#c8a060'); lg.addColorStop(1, '#6a4a20');
-      ctx.fillStyle = lg; ctx.fillRect(lx - 11, ly - 6, 22, 18);
+      fillGradRect(ctx, vGrad(ctx, 18, LOCK), lx - 11, ly - 6, 22, 18); // 캐시 그라디언트
       ctx.strokeStyle = '#1a0a04'; ctx.lineWidth = 1.5; ctx.strokeRect(lx - 11, ly - 6, 22, 18);
       ctx.fillStyle = '#1a0a04'; ctx.beginPath(); ctx.arc(lx, ly + 1, 2.5, 0, TAU); ctx.fill(); ctx.fillRect(lx - 1, ly + 2, 2, 5);
     }

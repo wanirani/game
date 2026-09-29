@@ -11,8 +11,11 @@ import { drawEnemy } from '../../render/enemies.js';
 import { Tab } from './base.js';
 import {
   PAL, EL, frame, heading, divider, selBar, brackets, glow, glowOval, gauge, pill, para, rr, glyph, ellipsize, measure,
-  Scroller, scrollbar, clipBegin, clipEnd,
+  Scroller, scrollbar, clipBegin, clipEnd, takeCanvas, giveCanvas, vGrad, rGrad, fillGradRect,
 } from './common.js';
+// 초상 칸 그라디언트 색 멈춤 (common.js 캐시 — 매 프레임 새 그라디언트 0, R1-REQ-341B)
+const BOSS_FADE = [0, 'rgba(6,3,10,0)', 1, 'rgba(6,3,10,0.9)'];
+const PORT_BG = [0, '#1a1024', 1, '#06030a'], PORT_VIG = [0, 'rgba(0,0,0,0)', 1, 'rgba(0,0,0,0.75)'], PORT_FLOOR = [0, 'rgba(30,18,24,0.85)', 1, 'rgba(4,2,4,1)'];
 import * as D from './access.js';
 
 const ANIMS = [['idle', 2.6], ['walk', 2.2], ['idle', 1.4], ['attack', 1.1]];
@@ -26,7 +29,7 @@ export class BestiaryTab extends Tab {
     this.ent = null; this.entId = null; this.at = 0; this.ai = 0;
     this.sil = null; // 실루엣용 작은 캔버스
   }
-  free() { if (this.sil) { this.sil.width = this.sil.height = 1; this.sil = null; } }
+  free() { giveCanvas(this.sil); this.sil = null; } // 메뉴 공용 풀로 (0×0)
   build() {
     const E = D.ENEMIES(), B = D.BOSSES(), S = D.STAGES();
     const p2 = D.p2Known(this.state);
@@ -176,16 +179,13 @@ export class BestiaryTab extends Tab {
     if (img) {
       const s = Math.max(w / img.width, h / img.height);
       ctx.drawImage(img, x + (w - img.width * s) / 2, y + (h - img.height * s) * 0.55, img.width * s, img.height * s);
-    } else { const g = ctx.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, '#1a1024'); g.addColorStop(1, '#06030a'); ctx.fillStyle = g; ctx.fillRect(x, y, w, h); }
+    } else fillGradRect(ctx, vGrad(ctx, h, PORT_BG), x, y, w, h);
     ctx.fillStyle = 'rgba(6,3,10,0.55)'; ctx.fillRect(x, y, w, h);
-    const vg = ctx.createRadialGradient(x + w / 2, y + h * 0.6, h * 0.15, x + w / 2, y + h * 0.6, w * 0.7);
-    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.75)');
-    ctx.fillStyle = vg; ctx.fillRect(x, y, w, h);
+    const vx = x + w / 2, vy = y + h * 0.6;
+    ctx.translate(vx, vy); ctx.fillStyle = rGrad(ctx, 0, 0, h * 0.15, w * 0.7, PORT_VIG); ctx.fillRect(x - vx, y - vy, w, h); ctx.translate(-vx, -vy);
     const floor = y + h - 22;
     if (!r.boss) {
-      const fg = ctx.createLinearGradient(0, floor, 0, y + h);
-      fg.addColorStop(0, 'rgba(30,18,24,0.85)'); fg.addColorStop(1, 'rgba(4,2,4,1)');
-      ctx.fillStyle = fg; ctx.fillRect(x, floor, w, y + h - floor);
+      fillGradRect(ctx, vGrad(ctx, y + h - floor, PORT_FLOOR), x, floor, w, y + h - floor);
       ctx.fillStyle = 'rgba(220,170,110,0.2)'; ctx.fillRect(x, floor, w, 1);
     }
     if (r.boss) this.drawBossArt(ctx, r, x, y, w, h, seen, t);
@@ -223,9 +223,8 @@ export class BestiaryTab extends Tab {
     };
     if (seen) {
       draw(ctx);
-      const g = ctx.createLinearGradient(0, y + h * 0.55, 0, y + h);
-      g.addColorStop(0, 'rgba(6,3,10,0)'); g.addColorStop(1, 'rgba(6,3,10,0.9)');
-      ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
+      const fy = y + h * 0.55; // 캐시 그라디언트 (fy → y+h, 위쪽은 첫 색 = 투명)
+      ctx.translate(0, fy); ctx.fillStyle = vGrad(ctx, h * 0.45, BOSS_FADE); ctx.fillRect(x, y - fy, w, h); ctx.translate(0, -fy);
     } else {
       // 미발견 보스: 어둠 속에 희미하게 비치는 초상 + 붉은 안개
       ctx.fillStyle = '#050208'; ctx.fillRect(x, y, w, h);
@@ -239,7 +238,7 @@ export class BestiaryTab extends Tab {
   silhouette(ctx, x, y, w, h, fn) {
     const sc = Math.min(2, this.game.scale);
     const pw = Math.ceil(w * sc), ph = Math.ceil(h * sc);
-    if (!this.sil) this.sil = document.createElement('canvas');
+    if (!this.sil) this.sil = takeCanvas(); // 메뉴 공용 풀에서 (스테이지 도중 새 캔버스 0 — R1-REQ-339B)
     const c = this.sil;
     if (c.width !== pw || c.height !== ph) { c.width = pw; c.height = ph; }
     const g = c.getContext('2d');

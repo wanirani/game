@@ -9,8 +9,17 @@ import * as LoreM from '../../data/lore.js';
 import { Tab } from './base.js';
 import {
   PAL, frame, heading, divider, selBar, brackets, glow, glowOval, gbutton, pill, para, rr, glyph, ellipsize, measure, keycap, diamond,
-  Scroller, scrollbar, clipBegin, clipEnd,
+  Scroller, scrollbar, clipBegin, clipEnd, vGrad, hGrad, rGrad, fillPathGrad,
 } from './common.js';
+// 그라디언트 색 멈춤 (common.js 캐시 — 매 프레임 새 그라디언트 0, R1-REQ-341B)
+const PILL_ON = [0, '#a0182e', 1, '#4a0614'], PILL_OFF = [0, 'rgba(40,24,36,0.9)', 1, 'rgba(14,8,14,0.9)'];
+const TOME = {
+  tech: [0, '#07040a', 0.08, '#8a1a2e', 0.5, '#5a0c1c', 1, '#07040a'],
+  lore: [0, '#07040a', 0.08, '#2e2a6a', 0.5, '#1c1a44', 1, '#07040a'],
+  none: [0, '#07040a', 0.08, '#1e1a20', 0.5, '#141016', 1, '#07040a'],
+};
+const DOC_HEAD_ON = [0, 'rgba(232,210,160,0.16)', 1, 'rgba(0,0,0,0)'], DOC_HEAD_OFF = [0, 'rgba(120,100,100,0.08)', 1, 'rgba(0,0,0,0)'];
+const LORE_ON = [0, '#e2d4ae', 1, '#c0ac80'], LORE_OFF = [0, '#3a3036', 1, '#221c20'], LORE_VIG = [0, 'rgba(0,0,0,0)', 1, 'rgba(70,40,10,0.45)'];
 import { fmtStatVal } from './tab_status.js';
 import * as D from './access.js';
 
@@ -131,9 +140,7 @@ export class DocsTab extends Tab {
       this.modeRects.push(r);
       const on = k === this.mode;
       rr(ctx, r.x, r.y, r.w, r.h, mh / 2);
-      const g = ctx.createLinearGradient(0, r.y, 0, r.y + r.h);
-      if (on) { g.addColorStop(0, '#a0182e'); g.addColorStop(1, '#4a0614'); } else { g.addColorStop(0, 'rgba(40,24,36,0.9)'); g.addColorStop(1, 'rgba(14,8,14,0.9)'); }
-      ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = on ? PAL.gold : PAL.goldDim; ctx.lineWidth = 1; ctx.stroke();
+      fillPathGrad(ctx, vGrad(ctx, r.h, on ? PILL_ON : PILL_OFF), 0, r.y); ctx.strokeStyle = on ? PAL.gold : PAL.goldDim; ctx.lineWidth = 1; ctx.stroke();
       glyph(ctx, k ? 'scroll' : 'book', r.x + 16, r.y + r.h / 2, 13, on ? PAL.goldHi : PAL.dim, 1.4);
       text(ctx, lb, r.x + 28, r.y + r.h / 2 + 5, { size: 13, weight: 800, color: on ? PAL.goldHi : PAL.text, ow: 2 });
       if (on && this.sub === 'mode' && focused) brackets(ctx, r.x, r.y, r.w, r.h, t);
@@ -214,9 +221,7 @@ export class DocsTab extends Tab {
     const hi = have ? (tech ? '#8a1a2e' : '#2e2a6a') : '#1e1a20';
     if (have && sel) glowOval(ctx, r.x + r.w / 2, r.y + r.h / 2, r.w * 0.7, r.h * 0.7, tech ? '#ff3050' : '#6a6aff', 0.3);
     // 책등 + 표지
-    const g = ctx.createLinearGradient(r.x, 0, r.x + r.w, 0);
-    g.addColorStop(0, '#07040a'); g.addColorStop(0.08, hi); g.addColorStop(0.5, base); g.addColorStop(1, '#07040a');
-    rr(ctx, r.x, r.y, r.w, r.h, 4); ctx.fillStyle = g; ctx.fill();
+    rr(ctx, r.x, r.y, r.w, r.h, 4); fillPathGrad(ctx, hGrad(ctx, r.w, TOME[have ? (tech ? 'tech' : 'lore') : 'none']), r.x, 0); // 캐시 (hi·base 와 같은 색)
     ctx.strokeStyle = have ? '#8a6a30' : '#2e2428'; ctx.lineWidth = 1.2; ctx.stroke();
     // 책등 줄
     ctx.fillStyle = have ? 'rgba(232,200,114,0.5)' : 'rgba(80,60,60,0.4)';
@@ -291,9 +296,8 @@ export class DocsTab extends Tab {
     const have = this.hasDoc(id);
     const tech = d.tech;
     // 양피지 머리
-    const hg = ctx.createLinearGradient(0, y + 10, 0, y + 84);
-    hg.addColorStop(0, have ? 'rgba(232,210,160,0.16)' : 'rgba(120,100,100,0.08)'); hg.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = hg; ctx.fillRect(x + 8, y + 8, w - 16, 76);
+    ctx.translate(0, y + 10); ctx.fillStyle = vGrad(ctx, 74, have ? DOC_HEAD_ON : DOC_HEAD_OFF); // 캐시 (y+10 → y+84)
+    ctx.fillRect(x + 8, -2, w - 16, 76); ctx.translate(0, -(y + 10));
     text(ctx, have ? '— 비 전 서 —' : '— 미 발 견 —', x + w / 2, y + 30, { size: 12, align: 'center', weight: 700, family: FONT.title, color: have ? '#c89a60' : PAL.faint });
     text(ctx, have ? d.name : '???', x + w / 2, y + 58, { size: 20, align: 'center', weight: 800, family: FONT.title, color: have ? PAL.bone : PAL.faint, ow: 4, maxWidth: w - 30 });
     divider(ctx, x + 30, y + 72, w - 60);
@@ -356,12 +360,10 @@ export class DocsTab extends Tab {
     const cats = LoreM.LORE_CATS || {};
     // 양피지
     const px = x + 14, py = y + 14, pw = w - 28, ph = h - (input.touchMode ? 44 : 34) - 36;
-    const g = ctx.createLinearGradient(0, py, 0, py + ph);
-    g.addColorStop(0, have ? '#e2d4ae' : '#3a3036'); g.addColorStop(1, have ? '#c0ac80' : '#221c20');
-    rr(ctx, px, py, pw, ph, 3); ctx.fillStyle = g; ctx.fill();
-    const vg = ctx.createRadialGradient(px + pw / 2, py + ph / 2, ph * 0.2, px + pw / 2, py + ph / 2, pw * 0.8);
-    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(70,40,10,0.45)');
-    ctx.fillStyle = vg; ctx.fillRect(px, py, pw, ph);
+    // 그라디언트는 원점 기준 캐시 (R1-REQ-341B: 예전에는 매 프레임 2개)
+    rr(ctx, px, py, pw, ph, 3); fillPathGrad(ctx, vGrad(ctx, ph, have ? LORE_ON : LORE_OFF), 0, py);
+    const vcx = px + pw / 2, vcy = py + ph / 2;
+    ctx.translate(vcx, vcy); ctx.fillStyle = rGrad(ctx, 0, 0, ph * 0.2, pw * 0.8, LORE_VIG); ctx.fillRect(px - vcx, py - vcy, pw, ph); ctx.translate(-vcx, -vcy);
     ctx.strokeStyle = have ? '#6a4a2a' : '#2a2226'; ctx.lineWidth = 2; ctx.strokeRect(px + 6, py + 6, pw - 12, ph - 12);
     if (!have) {
       text(ctx, '???', x + w / 2, py + 60, { size: 22, align: 'center', weight: 800, family: FONT.title, color: '#6a5a60', outline: null });

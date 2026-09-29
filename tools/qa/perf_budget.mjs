@@ -26,7 +26,8 @@
 //   tpadcv      touch overlay backing DPR ≤ the game's DPR cap (1.0 low, 1.5 medium) and ≤ game.dpr; idle redraws ≤ 30 Hz
 //   livecanvas  canvases alive (WeakRef, after gc) on a fresh page (stage s04 r1, then menu equip) ≤ LIVE_MB   platform §6.7
 //               (lead decision, round 1: phone1/phone2 32 MB, phone1low 26 MB, tablet 40 MB, desktop info only) and the
-//               menu adds ≤ 8 MB over the stage baseline on the same page
+//               menu adds ≤ 8 MB over the stage baseline on the same page (the baseline waits for the boot-time deferred
+//               bakes, waitBootBakes; the fresh page's own page errors count in <profile>.errors)
 // Report: /tmp/claude-0/qa/tools/perf_budget.json (+ .md): per scene × profile table, top gradient / canvas / RNG sites,
 // findings grouped by W4 bucket (by the file of the top call site). Exit 1 on any red check.
 import { openEnv } from './lib/server.mjs';
@@ -134,6 +135,23 @@ const siteFile = (site) => {
   const pick = parts.length > 1 && HELPERS.test(parts[0]) ? parts[1] : parts[0];
   return pick.split(':')[0];
 };
+/**
+ * Real time until the game's boot-time deferred bakes have landed (feel_hud prewarm: setTimeout 1.5 s after module load,
+ * then the BN Dmg / logo font wait ≤ 2.5 s, then an idle callback — it fills 7 canvases that were created 0×0 at load).
+ * A fresh page measured before that counts those bytes against whatever is measured next. → true once baked (or no
+ * feel_hud module to ask), false after maxMs.
+ */
+async function waitBootBakes(s, maxMs = 8000) {
+  const t0 = Date.now();
+  for (;;) {
+    const ok = await s.eval(async () => {
+      try { const m = await import('/src/render/feel_hud.js'); return !m.FEEL_HUD_STATS || m.FEEL_HUD_STATS.bakes > 0; } catch { return true; }
+    }).catch(() => false);
+    if (ok) return true;
+    if (Date.now() - t0 > maxMs) return false;
+    await s.wait(150);
+  }
+}
 
 /** Evaluate one measured scene against the budgets; records checks + findings. */
 function judge(prof, sc, m, info, extra = {}) {
@@ -329,6 +347,7 @@ try {
       } catch (e) { C.add(`${prof}.tpadcv.harness`, 'error', String(e?.message || e).split('\n')[0]); }
     }
     // live canvases with the menu open (budget per touch profile, LIVE_MB; the whole-walk figure is reported for every profile)
+    const freshErrs = [];
     try {
       await s.eval(() => { const g = window.__game; if (g.world && g.top?.name !== 'menu') g.push('menu', { world: g.world, tab: 'equip' }); });
       await settle(s.page, 20); await s.wait(300); await settle(s.page, 5);
@@ -339,15 +358,24 @@ try {
       const lim = LIVE_MB[prof];
       if (lim) {
         const f = await env.page(P.vp, 'index.html?scene=stage&stage=s04&room=r1', { settings: { quality: P.quality }, initScripts: [perfProbeInit()] });
-        await f.waitGame('!!g.world?.player');
-        await freeze(f.page); await settle(f.page, 60); await waitBakes(f);
-        await idleFlush(f); await settle(f.page, 5);
-        const live = () => f.eval(() => { try { window.gc?.(); } catch { /* */ } const c = [...document.querySelectorAll('canvas')]; return { ...window.__perf.live(400), dom: c.map((x) => `${x.id || 'canvas'} ${x.width}x${x.height}`) }; });
-        base = await live();
-        await f.eval(() => { const g = window.__game; g.push('menu', { world: g.world, tab: 'equip' }); });
-        await settle(f.page, 30); await f.wait(300); await settle(f.page, 5);
-        fresh = await live();
-        await f.close();
+        try {
+          await f.waitGame('!!g.world?.player');
+          await freeze(f.page); await settle(f.page, 60); await waitBakes(f);
+          await idleFlush(f); await settle(f.page, 5);
+          // boot-time deferred bakes must land before the stage baseline, or the menu check is blamed for them:
+          // feel_hud fills its 7 canvases (≈ 1.8 MB on phone1, 3.7 MB on tablet) 1.5 s after boot + font wait ≤ 2.5 s + idle
+          const bootBaked = await waitBootBakes(f);
+          if (!bootBaked) C.add(`${prof}.livecanvas.boot`, 'warn', 'feel_hud boot bake did not land within 8 s — the stage baseline may be low and the menu delta high');
+          await idleFlush(f); await settle(f.page, 5);
+          const live = () => f.eval(() => { try { window.gc?.(); } catch { /* */ } const c = [...document.querySelectorAll('canvas')]; return { ...window.__perf.live(400), dom: c.map((x) => `${x.id || 'canvas'} ${x.width}x${x.height}`) }; });
+          base = await live();
+          await f.eval(() => { const g = window.__game; g.push('menu', { world: g.world, tab: 'equip' }); });
+          await settle(f.page, 30); await f.wait(300); await settle(f.page, 5);
+          fresh = await live();
+        } finally {
+          freshErrs.push(...f.errs.map((e) => `[fresh s04 r1 + menu] ${e}`));   // page errors on the fresh page count in <prof>.errors too
+          await f.close().catch(() => {});
+        }
         const add = MB(fresh.bytes - base.bytes);
         const okT = MB(fresh.bytes) <= lim, okA = add <= LIVE_MENU_ADD_MB;
         // who holds the bytes (request #463): live canvases by creation file, and what the menu added per file
@@ -365,7 +393,7 @@ try {
       } else C.add(`${prof}.livecanvas`, 'pass', `no live-canvas budget for ${prof} (desktop: info only; whole walk ${MB(walk.bytes)} MB)`);
       rows.push({ prof, scene: 'livecanvas', kind: 'mem', walk, base, fresh });
     } catch (e) { C.add(`${prof}.livecanvas.harness`, 'error', String(e?.message || e).split('\n')[0]); }
-    const errs = [...new Set(s.errs)];
+    const errs = [...new Set([...s.errs, ...freshErrs])];
     C.add(`${prof}.errors`, errs.length ? 'fail' : 'pass', errs.length ? `${errs.length} page/console error(s): ${errs.slice(0, 3).join(' || ')}` : 'no page/console errors');
     if (errs.length) findings.push({ id: `perf.errors.${prof}`, sev: 'S2', kind: 'errors', title: `page/console errors during the perf walk (${prof})`, detail: errs.slice(0, 5).join(' || '), file: 'src/game/world.js', ...ownerOf('src/game/world.js') });
     await s.close();

@@ -33,6 +33,7 @@
 import { input } from '../core/input.js';
 import { audio } from '../core/audio.js';
 import { bus } from '../core/events.js';
+import { game } from '../core/game.js';   // 구독 시점에 이미 스테이지 안인지 (아래 감독 받기) — 모듈 최상위에서는 읽지 않는다 (순환 import)
 import { assets } from '../core/assets.js';
 import { clamp, rand, TAU, ease, rgba, overlap } from '../core/math.js';
 import { CLASSES } from '../data/classes.js';
@@ -95,8 +96,13 @@ export function loadAwakenDirectors() {
 /** 감독 모듈이 들어왔는가 (시험·미리 받기용) */
 export function awakenDirectorsReady() { return !!(DIRS.A && DIRS.B); }
 // 스테이지에 들어서면 받기 시작 (첫 화면·타이틀 바이트와 겹치지 않게: 스테이지 진입 전에는 받지 않는다)
+// 두 단계 부팅(R1-REQ-229)에서 이 모듈은 지연 장면 조각과 함께 평가되고, 장면이 도착한 같은 마이크로태스크 사슬에서 스테이지가 서면
+// stageEntered 가 이 구독(setTimeout 0)보다 먼저 지나간다 → 구독하는 순간 이미 월드가 있으면 지금 받는다 (요청 #478: 싸움 도중 풀 생성 0)
 if (typeof window !== 'undefined' && typeof setTimeout === 'function') {
-  setTimeout(() => { try { bus.on('stageEntered', () => { loadAwakenDirectors(); }); } catch (e) { console.warn('[awaken] bus', e); } }, 0);
+  setTimeout(() => {
+    try { bus.on('stageEntered', () => { loadAwakenDirectors(); }); } catch (e) { console.warn('[awaken] bus', e); }
+    try { if (game?.world?.player) loadAwakenDirectors(); } catch { /* 부팅 중: 게임이 아직 없다 */ }
+  }, 0);
 }
 
 // ───────────────────────── 규칙 ─────────────────────────

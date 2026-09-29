@@ -8,7 +8,13 @@ import { audio } from '../../core/audio.js';
 import { text, FONT, bloodText, prewarmText } from '../../core/ui.js';
 import { clamp, lerp, ease, fmt, TAU } from '../../core/math.js';
 import { MiniGame, innBackdrop, drawBtn, gPanel, goldText, record, GOLD } from './common.js';
-import { SLOT_SYMBOLS, SLOT_NAMES, slotSprite, glow, rr } from './art.js';
+import { SLOT_SYMBOLS, SLOT_NAMES, slotSprite, glow, rr, cachedGrad } from './art.js';
+import { vGrad, hGrad, fillGradRect, fillPathGrad } from '../menu/common.js';
+const CAB = [0, '#2a0810', 0.5, '#5a0e1e', 1, '#1a0408'], PLAQUE = [0, '#1a0608', 1, '#3a0a12'];
+const STOP_ON = [0, '#ff4a5a', 1, '#8a0a1a'], STOP_OFF = [0, '#4a2a2a', 1, '#2a1414'];
+// 릴 원통 그라디언트 색 멈춤 (menu/common 캐시 — 매 프레임 새 그라디언트 0, R1-REQ-341B)
+const DRUM = [0, '#6a5a48', 0.2, '#e8dcc4', 0.5, '#faf4e6', 0.8, '#e8dcc4', 1, '#6a5a48'];
+const DRUM_SHADE = [0, 'rgba(10,2,6,0.75)', 0.22, 'rgba(10,2,6,0)', 0.78, 'rgba(10,2,6,0)', 1, 'rgba(10,2,6,0.75)'];
 
 const COUNTS = { skull: 8, bat: 5, heart: 4, cross: 3, moon: 2, grail: 1, seven: 1 };
 const PAY = { skull: 2, bat: 3, heart: 6, cross: 12, moon: 30, grail: 80, seven: 100 };
@@ -245,9 +251,7 @@ export class SlotScene extends MiniGame {
     // 몸체
     ctx.save();
     ctx.fillStyle = 'rgba(0,0,0,0.6)'; rr(ctx, c.x + 6, c.y + 14, c.w, c.h, 26); ctx.fill();
-    const bg = ctx.createLinearGradient(c.x, 0, c.x + c.w, 0);
-    bg.addColorStop(0, '#2a0810'); bg.addColorStop(0.5, '#5a0e1e'); bg.addColorStop(1, '#1a0408');
-    rr(ctx, c.x, c.y + 40, c.w, c.h - 40, 22); ctx.fillStyle = bg; ctx.fill();
+    rr(ctx, c.x, c.y + 40, c.w, c.h - 40, 22); fillPathGrad(ctx, hGrad(ctx, c.w, CAB), c.x, 0); // 캐시 그라디언트
     ctx.lineWidth = 3; ctx.strokeStyle = '#0a0204'; ctx.stroke();
     rr(ctx, c.x + 7, c.y + 47, c.w - 14, c.h - 54, 17); ctx.lineWidth = 2; ctx.strokeStyle = GOLD; ctx.stroke();
     // 역광 테두리
@@ -258,9 +262,7 @@ export class SlotScene extends MiniGame {
     ctx.save(); ctx.translate(cx, c.y + 40);
     for (const s of [-1, 1]) {
       ctx.save(); ctx.scale(s, 1);
-      const wg = ctx.createLinearGradient(0, -40, 150, 20);
-      wg.addColorStop(0, '#3a1a3a'); wg.addColorStop(1, '#0a040c');
-      ctx.fillStyle = wg;
+      ctx.fillStyle = cachedGrad('slot-wing', () => { const n = ctx.createLinearGradient(0, -40, 150, 20); n.addColorStop(0, '#3a1a3a'); n.addColorStop(1, '#0a040c'); return n; });
       ctx.beginPath(); ctx.moveTo(40, -6);
       ctx.quadraticCurveTo(110, -64, c.w * 0.56, -40);
       ctx.quadraticCurveTo(c.w * 0.5, -20, c.w * 0.52, 4);
@@ -272,17 +274,14 @@ export class SlotScene extends MiniGame {
       ctx.beginPath(); ctx.moveTo(40, -6); ctx.quadraticCurveTo(110, -64, c.w * 0.56, -40); ctx.stroke();
       ctx.restore();
     }
-    const mg = ctx.createRadialGradient(-10, -34, 4, 0, -24, 42);
-    mg.addColorStop(0, '#ff8a6a'); mg.addColorStop(0.6, '#c0102a'); mg.addColorStop(1, '#4a0010');
+    const mg = cachedGrad('slot-moon', () => { const n = ctx.createRadialGradient(-10, -34, 4, 0, -24, 42); n.addColorStop(0, '#ff8a6a'); n.addColorStop(0.6, '#c0102a'); n.addColorStop(1, '#4a0010'); return n; });
     glow(ctx, 0, -24, 90, '#ff2040', 0.45);
     ctx.fillStyle = mg; ctx.beginPath(); ctx.arc(0, -24, 40, 0, TAU); ctx.fill();
     ctx.restore();
     // 간판
     const mx = c.x + 30, my = c.y + 30, mw = c.w - 60, mh = 50;
     rr(ctx, mx, my, mw, mh, 12);
-    const pg = ctx.createLinearGradient(0, my, 0, my + mh);
-    pg.addColorStop(0, '#1a0608'); pg.addColorStop(1, '#3a0a12');
-    ctx.fillStyle = pg; ctx.fill(); ctx.lineWidth = 2.5; ctx.strokeStyle = GOLD; ctx.stroke();
+    fillPathGrad(ctx, vGrad(ctx, mh, PLAQUE), 0, my); ctx.lineWidth = 2.5; ctx.strokeStyle = GOLD; ctx.stroke();
     // 전구
     const n = 22, hot = this.showT < 2 && this.wins.length || this.jackpotT < 3;
     for (let i = 0; i < n; i++) {
@@ -311,9 +310,7 @@ export class SlotScene extends MiniGame {
       const r = this.reels[i], x = this.reelX(i);
       ctx.save();
       rr(ctx, x + 3, ry, rw - 6, rh, 6); ctx.clip();
-      const dg = ctx.createLinearGradient(0, ry, 0, ry + rh);
-      dg.addColorStop(0, '#6a5a48'); dg.addColorStop(0.2, '#e8dcc4'); dg.addColorStop(0.5, '#faf4e6'); dg.addColorStop(0.8, '#e8dcc4'); dg.addColorStop(1, '#6a5a48');
-      ctx.fillStyle = dg; ctx.fillRect(x, ry, rw, rh);
+      fillGradRect(ctx, vGrad(ctx, rh, DRUM), x, ry, rw, rh); // 캐시 그라디언트
       const blur = Math.abs(r.v) > 9;
       const base = Math.floor(r.pos), frac = r.pos - base;
       const len = r.strip.length;
@@ -335,9 +332,7 @@ export class SlotScene extends MiniGame {
         ctx.globalAlpha = 1;
       }
       // 원통 음영
-      const sg = ctx.createLinearGradient(0, ry, 0, ry + rh);
-      sg.addColorStop(0, 'rgba(10,2,6,0.75)'); sg.addColorStop(0.22, 'rgba(10,2,6,0)'); sg.addColorStop(0.78, 'rgba(10,2,6,0)'); sg.addColorStop(1, 'rgba(10,2,6,0.75)');
-      ctx.fillStyle = sg; ctx.fillRect(x, ry, rw, rh);
+      fillGradRect(ctx, vGrad(ctx, rh, DRUM_SHADE), x, ry, rw, rh);
       if (this.tease && i === 2 && r.state === 'spin') { ctx.fillStyle = `rgba(255,40,60,${0.12 + 0.1 * Math.sin(t * 16)})`; ctx.fillRect(x, ry, rw, rh); }
       ctx.restore();
       if (this.tease && i === 2 && r.state === 'spin') {
@@ -412,9 +407,7 @@ export class SlotScene extends MiniGame {
       const x = C.x, by = C.y - bh / 2;
       ctx.save();
       ctx.fillStyle = 'rgba(0,0,0,0.5)'; rr(ctx, x - bw / 2, by + 3, bw, bh, 13); ctx.fill();
-      const bgc = ctx.createLinearGradient(0, by, 0, by + bh);
-      bgc.addColorStop(0, active ? '#ff4a5a' : '#4a2a2a'); bgc.addColorStop(1, active ? '#8a0a1a' : '#2a1414');
-      ctx.fillStyle = bgc; rr(ctx, x - bw / 2, by + (pr ? 2 : 0), bw, bh, 13); ctx.fill();
+      rr(ctx, x - bw / 2, by + (pr ? 2 : 0), bw, bh, 13); fillPathGrad(ctx, vGrad(ctx, bh, active ? STOP_ON : STOP_OFF), 0, by); // 캐시
       ctx.strokeStyle = active ? '#ffe7a0' : '#6a5030'; ctx.lineWidth = 1.5; ctx.stroke();
       if (active) glow(ctx, x, by + 13, 30, '#ff4050', 0.35 + 0.2 * Math.sin(t * 10 + i));
       text(ctx, '정지', x, by + 18 + (pr ? 2 : 0), { size: 13, align: 'center', weight: 900, color: active ? '#fff' : '#8a7060', ow: 2 });
