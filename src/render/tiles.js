@@ -337,6 +337,15 @@ export class TileRenderer {
     if (this.pool.length < Math.max(2, this.poolCap ?? 2)) this.pool.push(c.canvas); // 캔버스 자체는 다시 쓴다 (도중에 새로 만들지 않게)
   }
   /**
+   * 구운 청크를 전부 풀로 돌리고 풀의 캔버스를 모두 0×0 으로 비운다 (R1-REQ-342, 요청 #460): 불투명한 메뉴가 화면을 덮는 동안
+   * 폰·태블릿 등급에서 menu.js 가 부른다. 캔버스 객체는 풀에 남으므로 다음 draw 가 보이는 청크만 풀의 캔버스로 다시 굽는다
+   * (새 캔버스 0 — feel §8). 깊이 음영·윗면 띠 같은 작은 스프라이트는 그대로 둔다
+   */
+  releaseChunks() {
+    for (const key of [...this.chunks.keys()]) this.drop(key);
+    for (const c of this.pool) if (c.width || c.height) c.width = c.height = 0;
+  }
+  /**
    * (tx,ty) 가 드러나지 않은 비밀 공간 속이라 벽으로 그려지는 칸인가 (가짜 벽 + 그 안의 액체·가시·발판).
    * world.inUnrevealedFake 가 이것도 보면 비밀 물웅덩이 속 적·아이템이 벽 위에 비쳐 보이지 않는다.
    */

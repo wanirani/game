@@ -1493,6 +1493,7 @@ export const touchpad = {
     const t0 = now();
     for (let i = 0; i < n; i++) draw(L, w);
     S.pending = true;
+    if (!S.visible && !S.editor) releaseCanvas();   // 숨은 패드면 재어 본 뒤 백킹을 다시 놓는다
     return (now() - t0) / n;
   },
   layoutInfo() {

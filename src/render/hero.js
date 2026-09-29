@@ -1919,12 +1919,17 @@ function poolGet(key, W, H) {
   if (best.cv.width < W || best.cv.height < H) { best.cv.width = Math.max(best.cv.width, W); best.cv.height = Math.max(best.cv.height, H); }
   return best;
 }
+/** 합성 캔버스 배율 rs 를 폰·태블릿 등급의 한 장 픽셀 상한(offCap) 안으로: 상자 (2·bw) × h 월드 px */
+function capScale(rs, bw, h, world) {
+  const px = 2 * bw * h * rs * rs, cap = offCap(world);
+  return px > cap ? rs * Math.sqrt(cap / px) : rs;
+}
 function drawComposite(ctx, p, world, opts, K) {
   const m = ctx.getTransform();
   const sc = Math.hypot(m.a, m.b) || 1;
-  const rs = Math.min(sc, opts.tint ? 1.5 : 2.5);
   const hs = heroScale(p, world, opts, p.look || DEF_LOOK, K);
   const bw = 130 * hs, bt = 150 * hs, bb = 24 * hs;
+  const rs = capScale(Math.min(sc, opts.tint ? 1.5 : 2.5), bw, bt + bb, world);   // 폰·태블릿: 한 장 ≤ OFF_MAX_LEAN (메뉴 턴테이블 교차 페이드)
   const W = Math.ceil(2 * bw * rs), H = Math.ceil((bt + bb) * rs);
   const key = p.snapshot ? p : null;
   const e = poolGet(key, W, H);
@@ -2021,9 +2026,9 @@ function drawHeroYaw(ctx, p, world, opts, K, look) {
 const YT_O = {};
 function drawYawTinted(ctx, p, world, opts, K, look) {
   const m = ctx.getTransform();
-  const rs = Math.min(Math.hypot(m.a, m.b) || 1, 1.5);
   const hs = heroScale(p, world, opts, look, K);
   const bw = 130 * hs, bt = 150 * hs, bb = 24 * hs;
+  const rs = capScale(Math.min(Math.hypot(m.a, m.b) || 1, 1.5), bw, bt + bb, world);
   const W = Math.ceil(2 * bw * rs), H = Math.ceil((bt + bb) * rs);
   const e = poolGet(null, W, H), oc = e.cv.getContext('2d');
   oc.setTransform(1, 0, 0, 1, 0, 0); oc.clearRect(0, 0, W + 2, H + 2);
@@ -2183,12 +2188,15 @@ export function drawHero(ctx, p, world, opts = {}) {
   }
   // 본체: 역광 테두리(뒤-위로 비켜 찍은 차가운 단색 복사본) → 본체 → 섬광
   if (off) {
-    const S = bodyOffscreen(ctx, K, P, W, tt, hs, fac, flashK > 0 ? flashCol : RIM_COL);
+    const S = bodyOffscreen(ctx, K, P, W, tt, hs, fac, flashK > 0 ? flashCol : RIM_COL, offCap(world));
     if (wantRim) { // 채색 퍼펫은 자체 명암이 있어 테두리를 가늘고 옅게
       const pk = K.pup ? PUP_RIM : null;
       blitOff(ctx, TINTC, S, fac, hs, -fac * (pk ? pk[0] : 1.05) * hs, -(pk ? pk[1] : 0.95) * hs, pk ? pk[2] : RIM_A, 'source-over');
     }
-    blitOff(ctx, BODYC, S, fac, hs, 0, 0, 1, 'source-over');
+    // 픽셀 상한에 걸려 오프스크린이 화면보다 성기면(폰·태블릿 메뉴 미리보기) 본체는 원해상도로 직접 그린다.
+    // 천 사슬은 오프스크린 패스에서 이번 프레임만큼 이미 움직였으므로 dt 0 으로 (두 번 진행하지 않게)
+    if (S.direct) { const d0 = E.dt; E.dt = 0; drawLayers(c, E, K, P, W, tt); E.dt = d0; }
+    else blitOff(ctx, BODYC, S, fac, hs, 0, 0, 1, 'source-over');
     if (flashK > 0) blitOff(ctx, TINTC, S, fac, hs, 0, 0, 0.75 * flashK, 'lighter');
   } else drawLayers(c, E, K, P, W, tt);
   // 5) 채찍 끈 / 궤적 / 효과
@@ -2295,18 +2303,49 @@ const PUP_RIM = [0.8, 0.75, 0.5];
 // 몸 전체를 전용 캔버스(BODY)에 한 번 그리고 → 그 알파로 단색 복사본(TINT)을 만들어
 // 뒤-위로 비켜 찍으면 가장자리에 차가운 역광선이 남는다. 벡터 패스는 1회뿐이라 저렴하다.
 const RIM_COL = '#a4b8ff', RIM_A = 0.58, FLASH_COL = '#ffd0c0';
+// 두 장 모두 모듈 초기화 때 0×0 으로 만든다 (스테이지 시작 뒤 새 캔버스 0 — feel §8). 쓸 때 키우고, 메뉴를 닫을 때
+// releaseHeroOffscreen() 이 다시 0×0 으로 돌려준다 (R1-REQ-342)
 let BODYC = null, TINTC = null;
-const OB = { W: 0, H: 0, bw: 0, bt: 0, bb: 0 };
+if (typeof document !== 'undefined') { BODYC = document.createElement('canvas'); BODYC.width = BODYC.height = 0; TINTC = document.createElement('canvas'); TINTC.width = TINTC.height = 0; }
+const OB = { W: 0, H: 0, bw: 0, bt: 0, bb: 0, direct: false };
 function offCanvas(cv, W, H) {
   if (!cv) cv = document.createElement('canvas');
   if (cv.width < W || cv.height < H) { cv.width = Math.max(cv.width, W); cv.height = Math.max(cv.height, H); }
   return cv;
 }
-/** 본체 레이어를 BODYC 에 그리고, col 단색 복사본을 TINTC 에 만든다 */
-function bodyOffscreen(ctx, K, P, W, tt, hs, fac, col) {
+/**
+ * 폰·태블릿 등급(실제 등급이 'high' 가 아님 — 설정 'auto' 의 기본)에서 영웅 오프스크린 한 장의 픽셀 상한 (R1-REQ-342, 요청 #461/#499).
+ * 메뉴 미리보기(큰 배율 × 장치 배율)가 역광·섬광 두 장을 1.2 MP 씩 키웠다 (태블릿 +9.6 MB). 스테이지 영웅은 상한 아래(≤ 0.23 MP)라 그대로.
+ * 'high'(데스크톱)·등급을 모르는 도구 페이지는 상한 없음 (예전과 같음)
+ */
+const OFF_MAX_LEAN = 0.25e6;
+const gameOf = (world) => world?.game ?? (typeof window !== 'undefined' ? window.__game : null);
+function offCap(world) {
+  let t = null;
+  try { t = world?.qualityNow?.() ?? null; } catch { t = null; }
+  if (!t) { const g = gameOf(world); t = g?.tier ?? g?.quality ?? null; }
+  return t && t !== 'high' ? OFF_MAX_LEAN : Infinity;
+}
+/**
+ * 메뉴를 닫을 때(menu.js exit) 부른다: 미리보기가 키운 역광·섬광 오프스크린과 합성 풀 캔버스를 0×0 으로 돌려준다.
+ * 캔버스 객체는 그대로 두므로 다음 그리기가 스테이지 크기로 다시 키운다 (새 캔버스 0)
+ */
+export function releaseHeroOffscreen() {
+  for (const cv of [BODYC, TINTC]) if (cv && (cv.width || cv.height)) cv.width = cv.height = 0;
+  for (const e of POOL) { e.key = null; e.rs = 0; e.tint = undefined; if (e.cv.width || e.cv.height) e.cv.width = e.cv.height = 0; }
+}
+/**
+ * 본체 레이어를 BODYC 에 그리고, col 단색 복사본을 TINTC 에 만든다. cap = 한 장의 픽셀 상한(offCap): 넘으면 배율을 낮춰 굽고,
+ * 그 배율이 화면 배율보다 낮아 본체가 흐려질 때는 OB.direct = true (본체는 호출측이 원해상도로 직접 그리고, 부드러운 역광·섬광만 이 캔버스로)
+ */
+function bodyOffscreen(ctx, K, P, W, tt, hs, fac, col, cap = Infinity) {
   const m = ctx.getTransform();
-  const rs = Math.min(Math.hypot(m.a, m.b) || 1, 3);
+  const ds = Math.hypot(m.a, m.b) || 1;
+  let rs = Math.min(ds, 3);
   const bw = 122 * hs, bt = 152 * hs, bb = 22 * hs;
+  const px = 4 * bw * (bt + bb) * rs * rs;
+  OB.direct = false;
+  if (px > cap) { rs *= Math.sqrt(cap / px); OB.direct = rs * hs < ds * 0.98; }
   const Wd = Math.ceil(2 * bw * rs), Hd = Math.ceil((bt + bb) * rs);
   BODYC = offCanvas(BODYC, Wd, Hd); TINTC = offCanvas(TINTC, Wd, Hd);
   const oc = BODYC.getContext('2d');

@@ -8,7 +8,8 @@
 //                           settings.quality 는 'auto' 그대로 둔다)
 //   game.dirty              true 면 다음 rAF 에 틱이 없어도 한 번 그린다 (fpsCap 60 은 틱이 돈 rAF 에서만 그린다)
 //   game.syncPad()          가상 패드 표시의 유일한 주인 (touchpad.setVisible)
-//   game.flash(color, strength, decay) · game.vignette(color, a, decay) · game.toast(text, color, time)
+//   game.flash(color, strength, decay) · game.flashCapped(strength, record = true) → 정책을 적용한 세기 (직접 그리는 번쩍임용)
+//   game.vignette(color, a, decay) · game.toast(text, color, time)
 //   game.pop() 이 마지막 장면이면 타이틀로 (빈 스택 방지)
 //   game.lazyScenes(loader) · game.whenScenes() · game.scenesReady · game.retryScenes()   첫 화면 밖 장면을 나중에 받는다 (R1-REQ-229):
 //                           그동안 go/push 한 미등록 장면은 '불러오는 중' 자리 장면(name 'loading')이 지키다가 도착하면 제자리 교체
@@ -462,17 +463,29 @@ class Game {
     this.fade.dir = 1; this.fade.speed = 1 / Math.max(0.01, time); this.fade.color = color; this.fade.pending = cb;
   }
   /**
-   * 화면 번쩍임 (feel §4.9, 광과민 대책): 세기 × settings.flashFx (0 / 0.5 / 1), 상한 0.7.
-   * 최근 1초에 0.3 넘는 번쩍임이 이미 2번 있었으면 그 뒤의 것은 0.3 까지만.
+   * 번쩍임 세기 정책만 적용해 돌려준다 — 그리기는 부른 쪽이 한다 (암전 채우기에 섞는 각성 컷인의 퇴장 섬광처럼 game.flash 의
+   * 전체 화면 패스를 쓰지 않는 번쩍임; game._flashLog 를 직접 만지지 않는다). game.flash 와 같은 규칙:
+   * 세기 × settings.flashFx (0 / 0.5 / 1), 상한 0.7, 최근 1초에 0.3 넘는 번쩍임이 이미 2번 있었으면 0.3 까지.
+   * record (기본 true): 0.3 을 넘는 번쩍임을 기록에 남긴다 (그 뒤의 flash·flashCapped 가 센다). false 면 미리 보기만 한다.
+   * → 실제로 쓸 세기 0‥0.7 (0 = 번쩍이지 않는다)
    */
-  flash(color = '#fff', strength = 0.8, decay = 4) {
+  flashCapped(strength = 0.8, record = true) {
     const k = Number(this.settings?.flashFx ?? 1);
     let a = Math.min(FLASH_CAP, Math.max(0, Number(strength) || 0) * (Number.isFinite(k) ? clamp(k, 0, 1) : 1));
-    if (!(a > 0)) return;
+    if (!(a > 0)) return 0;
     const now = this.realTime, log = this._flashLog;
     while (log.length && now - log[0] > 1) log.shift();
     if (log.length >= 2) a = Math.min(a, FLASH_SOFT);
-    if (a > FLASH_SOFT) log.push(now);
+    if (record && a > FLASH_SOFT) log.push(now);
+    return a;
+  }
+  /**
+   * 화면 번쩍임 (feel §4.9, 광과민 대책): 세기 × settings.flashFx (0 / 0.5 / 1), 상한 0.7.
+   * 최근 1초에 0.3 넘는 번쩍임이 이미 2번 있었으면 그 뒤의 것은 0.3 까지만 (flashCapped).
+   */
+  flash(color = '#fff', strength = 0.8, decay = 4) {
+    const a = this.flashCapped(strength);
+    if (!(a > 0)) return;
     const f = this.flashFx;
     if (a >= f.a) { f.color = color; f.decay = fadeRate(decay, 4); f.a = a; }
   }
