@@ -531,8 +531,8 @@ export class World {
     if (typeof fx?.setHudBand !== 'function') return;
     let L = null;
     if (!this.hudHidden) { try { L = HL.hudLayout?.(this, vw, vh) ?? null; } catch { L = null; } }
-    if (!L) { fx.setHudBand(null, 0); return; }
     const z = cam.zoom || 1, ox = cam.x + (cam.shakeX || 0), oy = cam.y + (cam.shakeY || 0);
+    if (!L) { fx.setHudBand(null, 0, ox + vw / z / 2, vw / z / 2); return; }   // HUD 가 숨어도 화면 범위는 준다 (숫자 기둥 자리 찾기)
     const B = (this._hudBand ??= []);
     let n = 0;
     const put = (r) => {
@@ -547,7 +547,7 @@ export class World {
     if (L.bossShown && L.bossSlot === 'top') put(L.bossBar);
     if (Array.isArray(L.pad)) for (const r of L.pad) if (r && r.y + r.h < vh * 0.35) put(r);   // 터치: 위쪽 버튼 (일시정지·전체 화면)
     put(TOP_EDGE(vw));   // 화면 위끝: 높이 띄운 적의 숫자가 화면 밖으로 나가지 않게
-    fx.setHudBand(B, n, ox + vw / z / 2);
+    fx.setHudBand(B, n, ox + vw / z / 2, vw / z / 2);
   }
   drawDebris(ctx, d) {
     ctx.save(); ctx.translate(d.x + d.w / 2, d.y + d.h / 2); ctx.rotate(d.rot);

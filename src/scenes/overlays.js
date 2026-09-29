@@ -343,6 +343,7 @@ export function prepareUltCutin(charId = null) {
 // 모듈 최상위에서 가져온 값(bus)에 곧바로 닿지 않는다 (순환 import 규칙): 다음 틱에 붙인다
 if (hasDom() && typeof setTimeout === 'function') {
   setTimeout(() => {
+    try { ultSprites(); measureCtx(); } catch { /* 캔버스 없음: 첫 컷인 때 만든다 */ }   // 공용 캔버스는 장면을 불러온 직후(부팅·타이틀) 한 번
     try {
       bus.on('stageEntered', () => {
         try { UI.loadBrush?.(); } catch { /* 글꼴 없음 */ }

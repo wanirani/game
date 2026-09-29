@@ -55,6 +55,19 @@ function pooled(name, w, h) {
   g.shadowColor = 'transparent'; g.shadowBlur = 0; g.shadowOffsetX = 0; g.shadowOffsetY = 0;
   return c;
 }
+/**
+ * 풀 전체를 한 번에 만든다: 공용 그림 + 초상 대체 + 가장 긴 대사(줄 수)만큼의 글자 캔버스 (각 8×8, 구울 때 크기를 바꾼다).
+ * 장면 모듈을 불러온 직후(부팅·타이틀) 한 번 → 영웅·전직이 바뀌어 다시 굽더라도 스테이지·컷인 도중 새 캔버스 0 (feel §8, R1-REQ-339A)
+ */
+function initPool() {
+  if (typeof document === 'undefined' || POOL.has('fallback')) return;
+  let maxLines = 3;
+  try { maxLines = Math.max(1, ...Object.values(AWAKEN).map((x) => (Array.isArray(x?.lines) ? x.lines.length : 0))); } catch { /* 데이터 초기화 전: 3줄 */ }
+  for (const n of ['fallback', 'probe', 'band', 'seal', 'title', ...Array.from({ length: maxLines }, (_, i) => 'line' + i)]) if (!POOL.has(n)) pooled(n, 8, 8);
+  sprites();
+}
+// 모듈 최상위에서는 가져온 값(AWAKEN)에 닿지 않는다 (순환 import 규칙): 다음 틱에 만든다
+if (typeof document !== 'undefined' && typeof setTimeout === 'function') setTimeout(() => { try { initPool(); } catch (e) { console.warn('[awakenCutin] 풀', e); } }, 0);
 const game = () => (typeof window !== 'undefined' ? window.__game : null);
 function qualityNow() {
   const g = game();
@@ -323,7 +336,7 @@ function ensureBaked(charId, tier, classId, vw, vh, S) {
   const key = prepKey(charId, tier, classId, vw, S);
   if (PREP.key === key && PREP.band && PREP.text) return PREP;
   sprites();
-  if (!POOL.has('fallback')) pooled('fallback', 8, 8);   // 컷인 그림이 늦으면 쓰는 초상 대체 캔버스도 지금 만들어 둔다 (컷인 도중 새 캔버스 0)
+  initPool();
   PREP.band = bakeBand(a, vw, vh, Math.min(S, 1.25));
   PREP.text = bakeText(a, vw, S, tier, charId, classId);
   PREP.key = key;

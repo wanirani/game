@@ -57,6 +57,7 @@ const COL_GAP = 12;        // 이웃 기둥 사이 최소 여백 (px)
 const COL_V = 170;         // 이보다 위아래로 떨어진 기둥은 겹치지 않는 것으로 본다 (px; 기둥 8줄 + 떠오름 + 합계 높이쯤)
 const COL_RESERVE = 5;     // 기둥 폭 예약 (글자 수)
 const COL_STEP_X = 10;     // 빈자리 찾기 간격 (px)
+const COL_SPREAD = 4.5;    // 빈자리 찾기 범위: 대상에서 좌우로 (기둥 폭 + 여백) × 이 배수까지 (필살기가 끌어모은 적 무리도 기둥마다 자리가 나게)
 /** 그리기용 결정적 잡음 0..1 (mulberry32 한 번): 그리기 경로에서 Math.random 을 쓰지 않는다 (R1-REQ-333) */
 function hash01(n) {
   let t = (n + 0x6d2b79f5) | 0;
@@ -85,14 +86,16 @@ export class Particles {
   }
   clear() { this.list.length = 0; this.decals.length = 0; this._cols.length = 0; this.dmgLive = 0; this._live.length = 0; }
   /**
-   * HUD 윗줄 사각형을 월드 좌표로 넘긴다: rects = [{x0, x1, y0, y1}] (재사용 배열이어도 된다 — 값을 복사한다), n = 개수, cx = 화면 가운데 x.
+   * HUD 윗줄 사각형을 월드 좌표로 넘긴다: rects = [{x0, x1, y0, y1}] (재사용 배열이어도 된다 — 값을 복사한다), n = 개수, cx = 화면 가운데 x,
+   * hw = 화면 반폭 (월드 단위; 새 숫자 기둥을 화면 밖으로 비키지 않게).
    * n 0 = 끔 (HUD 숨김·연출). 그리기 층 'top' 을 그리기 직전에 부른다.
    */
-  setHudBand(rects, n = rects?.length ?? 0, cx = null) {
+  setHudBand(rects, n = rects?.length ?? 0, cx = null, hw = null) {
     const B = this.band;
     B.stamp++;
     B.n = 0;
     B.cx = cx;   // 화면 가운데 x (차선이 막힌 문구를 기둥의 어느 옆에 둘지)
+    B.hw = hw;   // 화면 반폭 (월드 단위, 없으면 null): 새 숫자 기둥 자리를 화면 안에서 찾는다
     for (let i = 0; i < n; i++) {
       const s = rects[i];
       if (!s || !(s.x1 > s.x0) || !(s.y1 > s.y0)) continue;
@@ -196,11 +199,12 @@ export class Particles {
       const now = this.clock;
       col = target._dmgCol;
       const w = lay?.L ? lay.L.w : 12 * String(lay?.str ?? Math.round(Number(value) || 0)).length;   // 아틀라스가 없으면(L null: 글자 대체 경로) 대략 폭
-      if (!col || col.done || now - col.t > (C.gap ?? 0.5)) {
+      // 기둥이 꽉 찼으면(높이 8칸) 맨 아래 칸에 겹쳐 쓰지 않고 옆에 새 기둥을 세운다 (연타가 빠른 필살기에서 아직 선명한 숫자 위에 겹쳐 한 숫자로 읽히던 문제)
+      if (!col || col.done || now - col.t > (C.gap ?? 0.5) || col.n + 1 >= (C.height ?? 8)) {
         const wr = Math.max(w, lay?.str?.length ? (w / lay.str.length) * COL_RESERVE : w);
         col = target._dmgCol = { n: 0, hi: 0, t: now, t0: now, total: 0, hits: 0, x: x, y, w: wr, gh: 0, done: false, queued: false, tp: null };
         col.x = this.colX(x, y, now, wr, col);
-      } else col.n = (col.n + 1) % (C.height ?? 8);
+      } else col.n++;
       col.hi = Math.max(col.hi ?? 0, col.n);
       col.t = now; col.total += Number(value) || 0; col.hits++;
       if (w > (col.w ?? 0)) col.w = w;
@@ -211,24 +215,29 @@ export class Particles {
     const p = this.spawnDmg(px, py, value, key, st, color, lay);
     if (p && col) {   // 기둥 숫자는 기둥과 함께 떠오른다 (간격 16px 유지)
       p.col = col; col.gh = Math.max(col.gh ?? 0, (p.A.h / p.A.k));
+      col.until = Math.max(col.until ?? 0, this.clock + p.max);   // 이 숫자가 사라질 때까지 기둥 자리를 비워 두지 않는다
       if (p.tagAbove && p.A.tag) col.tagH = Math.max(col.tagH ?? 0, (p.A.tag[3] / p.A.k) * 0.72);   // 'CRITICAL' 같은 윗 꼬리표
     }
     return p;
   }
   /**
-   * 새 숫자 기둥의 x (R1-REQ-331): 살아 있는 다른 기둥과 (두 기둥 폭의 반 + 8px) 이상 떨어진, 대상에 가장 가까운 자리.
-   * 위아래로 120px 넘게 떨어진 기둥은 비키지 않는다. 한 기둥 폭 + 40px 안에 빈자리가 없으면 겹침이 가장 적은 자리.
+   * 새 숫자 기둥의 x (R1-REQ-331): 살아 있는 다른 기둥과 (두 기둥 폭의 반 + COL_GAP) 이상 떨어진, 대상에 가장 가까운 화면 안 자리.
+   * 위아래로 COL_V 넘게 떨어진 기둥은 비키지 않는다. 좌우 (기둥 폭 + 여백) × COL_SPREAD 안에 빈자리가 없으면 겹침이 가장 적은 자리.
    * (예전: 22px 안에서 시작한 기둥만 ±26/±52px 비켰다 — 80px 떨어진 적들의 긴 숫자는 그대로 붙어 보였다)
    */
   colX(x, y, now, w = 40, self = null) {
     const S = this._live;
     let k = 0;
-    for (let i = 0; i < S.length; i++) { const c = S[i]; if (c !== self && (now - c.t <= COL_LIVE || (c.queued && !c.done) || (c.tp && c.tp.life > 0))) S[k++] = c; }   // '합계'가 떠 있는 동안도 자리를 차지한다
+    // 숫자가 보이는 동안(until: 마지막 숫자의 수명 끝) · 합계를 기다리거나 '합계'가 떠 있는 동안 자리를 차지한다
+    for (let i = 0; i < S.length; i++) { const c = S[i]; if (c !== self && (now < (c.until ?? c.t + COL_LIVE) || (c.queued && !c.done) || (c.tp && c.tp.life > 0))) S[k++] = c; }
     S.length = k;
-    const nTry = 1 + 2 * Math.floor((w + 40) / COL_STEP_X);
+    const nTry = 1 + 2 * Math.ceil(Math.max(w + 40, COL_SPREAD * (w + COL_GAP)) / COL_STEP_X);
+    const B = this.band, view = B.hw > 0 && Number.isFinite(B.cx) && x > B.cx - B.hw && x < B.cx + B.hw;   // 대상이 화면 안이면 자리도 화면 안에서
+    const vx0 = view ? B.cx - B.hw + w / 2 + 4 : -Infinity, vx1 = view ? B.cx + B.hw - w / 2 - 4 : Infinity;
     let best = x, bestCost = Infinity;
     for (let i = 0; i < nTry; i++) {
       const cx = x + (i & 1 ? 1 : -1) * Math.ceil(i / 2) * COL_STEP_X;   // 0, +10, -10, +20, -20 …
+      if (i > 0 && (cx < vx0 || cx > vx1)) continue;
       let cost = 0;
       for (const c of S) {
         if (Math.abs(c.y - y) > COL_V) continue;
@@ -240,6 +249,26 @@ export class Particles {
     }
     if (self) { S.push(self); if (S.length > 48) S.shift(); }
     return best;
+  }
+  /**
+   * 새 '합계'가 이웃 기둥의 떠 있는 '합계'와 겹치면 한 줄씩 위로 올린다 (최대 3줄). 합계는 큰 글씨에 '합계' 글자가 왼쪽에 붙어
+   * 기둥 예약 폭보다 넓다 — 같은 타수로 나란히 끝난 이웃 기둥의 합계가 한 숫자로 붙어 보이던 문제 (R1-REQ-331)
+   */
+  staggerTotal(tp) {
+    const box = (q) => { const k = q.A.k, tw = q.A.tag ? q.A.tag[2] / k : 0; return [q.x - q.w / 2 - tw, q.x + q.w / 2 + 2, (q.A.h / k) * 0.8]; };
+    const [a0, a1, ah] = box(tp);
+    for (let tries = 0; tries < 3; tries++) {
+      let hit = false;
+      for (const o of this._live) {
+        const q = o.tp;
+        if (!q || q === tp || !(q.life > 0)) continue;
+        const [b0, b1, bh] = box(q);
+        if (a1 <= b0 || a0 >= b1) continue;
+        if (Math.abs((q.y - this.riseOf(q)) - tp.y) < (ah + bh) / 2) { hit = true; break; }
+      }
+      if (!hit) return;
+      tp.y -= ah + 2;
+    }
   }
   /** 기둥의 지금 위끝 (월드 y, HUD 비키기 전): 가장 높은 숫자와 '합계' 중 위쪽 */
   colTop(c) {
@@ -353,7 +382,7 @@ export class Particles {
         const step = FH.DMG_STYLE?.column?.step ?? COL_DEF.step;
         const top = c.y - (c.n + 1) * step - 8 - this.colRise(c, HFX.dmgStyle?.('normal')?.rise ?? 40);
         const tp = this.spawnDmg(c.x, top, c.total, 'total', st, null);
-        if (tp) { tp.colRef = c; c.tp = tp; }   // 합계는 기둥과 함께 HUD 아래로 비킨다
+        if (tp) { tp.colRef = c; c.tp = tp; this.staggerTotal(tp); }   // 합계는 기둥과 함께 HUD 아래로 비킨다
       }
     }
   }

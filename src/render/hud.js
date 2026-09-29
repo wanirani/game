@@ -50,8 +50,9 @@ export function drawHUD(ctx, world, vw, vh) {
   const cr = drawCompanionHUD(ctx, world, cmpOpts(L, T)); // [hook:cmp]
   if (world.companions) { if (!cr) NO_RECTS.length = 0; try { world.companions.hudRects = cr || NO_RECTS; } catch { /* 읽기 전용이면 동료 쪽이 직접 관리 */ } } // [hook:cmp]
   drawScore(ctx, L.score, world, hero, p, run, T);
-  // 콤보·스타일 열 (L.combo). 튀기기·박힘 첫 프레임은 칸 위·왼쪽으로 잠깐 넘치므로 그동안만 다른 영역(점수·동료 카드 줄 등)을 빼고
-  // 자른다 (feel_hud.hudOverflow). 쉬는 그림은 칸 안에 있으므로 매 프레임 화면 크기 클립을 걸지 않는다 (R1-REQ-330)
+  // 콤보·스타일 열 (L.combo). 랭크 글자 등장·이정표 박힘 첫 프레임은 칸 위·왼쪽으로 잠깐 넘치므로 그동안만 다른 영역(점수·동료 카드 줄
+  // 등)을 빼고 자른다 (feel_hud.hudOverflow). 숫자 튀기기는 feel_hud 가 칸 안에 가두고(popFit), 쉬는 그림도 칸 안에 있으므로
+  // 매 프레임 화면 크기 클립을 걸지 않는다 (R1-REQ-330)
   const cc = hudOverflow(world, 'combo') ? avoidClip(L, 'combo') : null; // [hook:feel]
   if (cc) { ctx.save(); ctx.clip(cc, 'evenodd'); }
   drawComboHUD(ctx, world, vw, vh, T); // [hook:feel]

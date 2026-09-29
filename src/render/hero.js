@@ -2063,6 +2063,7 @@ export function drawHero(ctx, p, world, opts = {}) {
   const K = specOf(look, p);
   if (opts.yaw !== undefined && !opts._turn && !opts._inner) { drawHeroYaw(ctx, p, world, opts, K, look); return; }
   if (!opts._inner && (opts.tint || (opts.alpha !== undefined && opts.alpha < 0.995))) { drawComposite(ctx, p, world, opts, K); return; }
+  const fc = globalThis.__feelCounters; if (fc) fc.heroDraws++;   // feel §8 heroDraws (R1-REQ-329: ?feelstats / ?debug 때만 있는 객체)
   const hs = heroScale(p, world, opts, look, K);
   const fac = p.facing < 0 ? -1 : 1;
   const tt = p.t ?? world?.time ?? performance.now() / 1000;
