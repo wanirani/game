@@ -17,6 +17,27 @@ const MAX_CHUNKS = 8; // 구워 둔 청크 캔버스 상한 (청크 하나 768×
 const PHASE_CH = new Set(['a', 'b', 'z', 'Z']); // 위상 타일 문자 (tilemap.js PHASE 와 같음)
 const DARK_CACHE = new Map();   // 톤다운 소품 사본 (모든 TileRenderer 공용: 방을 오갈 때 다시 굽지 않는다)
 const DARK_CAP = 40;            // 상한 (소품 사본 ≤ 192×288 → 최악 ≈ 9 MB, 보통 2 MB 안팎)
+// 타일 층 (모든 TileRenderer 공용, 게임 캔버스 백킹 크기): 첫 스테이지 프레임에 한 번 만들고 크기만 맞춘다.
+// 스테이지를 그리지 않는 동안(마을·메뉴·타이틀) 0.6초 뒤 0×0 으로 비워 메모리를 돌려준다 (다시 그리면 같은 캔버스를 키운다)
+const LAYER = { c: null, g: null, used: 0, timer: 0, key: { owner: null } };
+const LAYER_IDLE_MS = 600;
+function layerIdle() {
+  LAYER.timer = 0;
+  if (!LAYER.c) return;
+  if (Date.now() - LAYER.used < LAYER_IDLE_MS) { LAYER.timer = setTimeout(layerIdle, LAYER_IDLE_MS); return; }
+  LAYER.c.width = 0; LAYER.c.height = 0; LAYER.key.owner = null;
+}
+/** ctx 의 캔버스 크기에 맞춘 타일 층 → { c, g, key } | null (DOM 이 없으면 층 없이 직접 그린다) */
+function tileLayer(ctx) {
+  const W = ctx.canvas?.width | 0, H = ctx.canvas?.height | 0;
+  if (!W || !H || typeof document === 'undefined') return null;
+  if (!LAYER.c) { LAYER.c = document.createElement('canvas'); LAYER.g = LAYER.c.getContext('2d'); }
+  if (!LAYER.g) return null;
+  if (LAYER.c.width !== W || LAYER.c.height !== H) { LAYER.c.width = W; LAYER.c.height = H; LAYER.key.owner = null; }
+  LAYER.used = Date.now();
+  if (!LAYER.timer && typeof setTimeout === 'function') LAYER.timer = setTimeout(layerIdle, LAYER_IDLE_MS);
+  return LAYER;
+}
 // 원경이 트인 하늘/달인 테마: 절차적 창문('W')이 허공에 떠 보이므로 그리지 않는다
 export const OPEN_SKY_THEMES = new Set(['village', 'town', 'graveyard', 'gate', 'spire', 'throne', 'abyss', 'sky', 'void', 'blight']);
 
@@ -667,25 +688,33 @@ export class TileRenderer {
   }
   draw(ctx, cam) {
     const m = this.map;
-    const S = CHUNK * TILE;
     this.frame++;
     this.secretMask(); // 비밀 통로가 드러났으면 해당 청크를 먼저 버린다
-    // 청크마다 보이는 부분만 복사한다: 필살기 줌·회전 중 768² 청크 전체를 변환해 그리면 소프트웨어 래스터(과 저사양 GPU)가
-    // 화면 밖 텍셀까지 거르느라 몇 배 느려진다 (R1-REQ-330R). 가장자리는 화면 밖(여유 8px + 흔들림·회전)이라 이음매가 보이지 않는다
     const v = this.viewRect(cam);
-    const x0 = Math.floor(v.l / S), x1 = Math.floor(v.r / S);
-    const y0 = Math.floor(v.t / S), y1 = Math.floor(v.b / S);
-    for (let cy = Math.max(0, y0); cy <= Math.min(Math.floor((m.h - 1) / CHUNK), y1); cy++) {
-      for (let cx = Math.max(0, x0); cx <= Math.min(Math.floor((m.w - 1) / CHUNK), x1); cx++) {
-        const ox = cx * S, oy = cy * S;
-        const sx = Math.max(0, Math.floor(v.l - ox)), sy = Math.max(0, Math.floor(v.t - oy));
-        const sw = Math.min(S, Math.ceil(v.r - ox)) - sx, sh = Math.min(S, Math.ceil(v.b - oy)) - sy;
-        if (sw <= 0 || sh <= 0) continue;
-        const c = this.chunk(cx, cy);
-        if (sw === S && sh === S) ctx.drawImage(c, ox, oy);
-        else ctx.drawImage(c, sx, sy, sw, sh, ox + sx, oy + sy, sw, sh);
+    // 청크를 화면 크기 층 하나(LAYER)에 모아 한 번에 붙인다 (R1-REQ-330R): 메인 캔버스가 한 프레임에 768² 청크 캔버스를
+    // 4~6장씩 참조하면, 필살기처럼 그리기가 많은 프레임에서 캔버스 기록(recording)이 한도를 넘어 프레임 도중 래스터가
+    // 몇 번씩 일어났다 (s04 중간 지점 필살기 7~15배). 층은 변환·청크가 그대로면 다시 합성하지 않는다 (서 있는 카메라 = 블릿 1번).
+    // 위상 타일·깊은 물·방 밖 어둠은 움직이거나 매번 달라서 층 밖(메인 캔버스)에 그대로 그린다.
+    const L = tileLayer(ctx);
+    if (L) {
+      const t = ctx.getTransform(), K = L.key;
+      const same = K.owner === this && K.a === t.a && K.b === t.b && K.c === t.c && K.d === t.d && K.e === t.e && K.f === t.f &&
+        K.l === v.l && K.t === v.t && K.r === v.r && K.b2 === v.b && this.visibleReady(v);
+      if (same) this.eachVisible(v, (cx, cy) => { const c = this.chunks.get(`${cx},${cy}`); if (c) c.used = this.frame; });
+      else {
+        const g = L.g;
+        g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+        g.clearRect(0, 0, L.c.width, L.c.height);
+        g.setTransform(t);
+        g.imageSmoothingEnabled = ctx.imageSmoothingEnabled; g.imageSmoothingQuality = ctx.imageSmoothingQuality;
+        this.blitChunks(g, v);
+        K.owner = this; K.a = t.a; K.b = t.b; K.c = t.c; K.d = t.d; K.e = t.e; K.f = t.f; K.l = v.l; K.t = v.t; K.r = v.r; K.b2 = v.b;
       }
-    }
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.drawImage(L.c, 0, 0);
+      ctx.restore();
+    } else this.blitChunks(ctx, v);
     if (this.chunks.size > MAX_CHUNKS) this.evict();
     if (this.phaseList.length) this.drawPhase(ctx, cam);
     // 깊은 물: 개체 뒤쪽 몸통 (앞쪽 옅은 층과 수면선은 drawLiquid 가 개체 위에 그린다)
@@ -697,6 +726,36 @@ export class TileRenderer {
     ctx.fillStyle = '#050206';
     if (!m.openLeft) ctx.fillRect(-400, -400, 400, m.pxH + 800);
     if (!m.openRight) ctx.fillRect(m.pxW, -400, 400, m.pxH + 800);
+  }
+  /** 보이는 영역(v)과 겹치는 청크마다 fn(cx, cy) */
+  eachVisible(v, fn) {
+    const m = this.map, S = CHUNK * TILE;
+    const x0 = Math.max(0, Math.floor(v.l / S)), x1 = Math.min(Math.floor((m.w - 1) / CHUNK), Math.floor(v.r / S));
+    const y0 = Math.max(0, Math.floor(v.t / S)), y1 = Math.min(Math.floor((m.h - 1) / CHUNK), Math.floor(v.b / S));
+    for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) fn(cx, cy);
+  }
+  /** 보이는 청크가 모두 구워져 있고 다시 구울 필요가 없는가 (층을 다시 합성하지 않아도 되는가) */
+  visibleReady(v) {
+    const tex = this.texState();
+    let ok = true;
+    this.eachVisible(v, (cx, cy) => { const c = this.chunks.get(`${cx},${cy}`); if (!c || (tex & ~c.tex)) ok = false; });
+    return ok;
+  }
+  /**
+   * 청크마다 보이는 부분만 복사한다: 필살기 줌·회전 중 768² 청크 전체를 변환해 그리면 화면 밖 텍셀까지 거르느라 느리다.
+   * 가장자리는 화면 밖(여유 8px + 흔들림·회전)이라 이음매가 보이지 않는다
+   */
+  blitChunks(ctx, v) {
+    const S = CHUNK * TILE;
+    this.eachVisible(v, (cx, cy) => {
+      const ox = cx * S, oy = cy * S;
+      const sx = Math.max(0, Math.floor(v.l - ox)), sy = Math.max(0, Math.floor(v.t - oy));
+      const sw = Math.min(S, Math.ceil(v.r - ox)) - sx, sh = Math.min(S, Math.ceil(v.b - oy)) - sy;
+      if (sw <= 0 || sh <= 0) return;
+      const c = this.chunk(cx, cy);
+      if (sw === S && sh === S) ctx.drawImage(c, ox, oy);
+      else ctx.drawImage(c, sx, sy, sw, sh, ox + sx, oy + sy, sw, sh);
+    });
   }
   /** 이번 프레임에 보이는 월드 영역 {l,t,r,b}: 카메라 흔들림 오프셋과 화면 회전(회전한 화면을 덮는 사각형) + 여유 8px */
   viewRect(cam) {

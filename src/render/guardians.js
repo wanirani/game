@@ -1569,12 +1569,13 @@ export function fxBreath(ctx, h, world) {
 
 /**
  * 스킬 연출 스프라이트를 미리 굽는다 (guardian.js 가 수호신을 만들 때 부른다 — 전투 중 첫 스킬에서 새 캔버스를 만들지 않게, MASTER_PLAN §5.2).
- * 핌 운석(fxMeteor) · 크론 뼛조각(fxBoneShard: 채색 퍼핏을 쓰면 절차 부위가 아직 안 구워져 있다). 굽기 실패는 첫 사용 때 다시 시도한다.
+ * 핌 운석(fxMeteor) · 크론 뼛조각(fxBoneShard: 채색 퍼핏을 쓰면 절차 부위가 아직 안 구워져 있다) + 두 수호신의 스킬 자세가 처음 쓰는 빛.
+ * 굽기 실패는 첫 사용 때 다시 시도한다.
  */
 export function prewarmFx(id) {
   if (!hasDoc) return;
   try {
-    if (id === 'gd_imp') { meteorSpr(); glowSpr('#ff7a2a'); }
-    else if (id === 'gd_whelp') { whelpParts(); glowSpr('#b060ff'); glowSpr('#f0d8ff', 0.25); }
+    if (id === 'gd_imp') { meteorSpr(); glowSpr('#ff7a2a'); starSpr(); }                                   // + 스킬 자세의 불꽃 고리 별
+    else if (id === 'gd_whelp') { whelpParts(); glowSpr('#b060ff'); glowSpr('#f0d8ff', 0.25); glowSpr('#c080ff'); }   // + 스킬 자세의 벌린 입 빛
   } catch { /* 첫 사용 때 다시 */ }
 }

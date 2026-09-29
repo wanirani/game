@@ -37,30 +37,31 @@ export function drawHUD(ctx, world, vw, vh) {
   const hero = world.hero, run = world.run, st = p.stats;
   const T = hudTouch(); // 휴대폰에서는 작은 글자를 키운다 (캔버스가 0.7배 정도로 축소되어 보임)
   const L = hudLayout(world, vw, vh);
+  const D = globalThis.__hudDbg || {}; // FIXHUD-TMP
   ctx.save();
-  drawPortrait(ctx, L.portrait, hero, p);
-  drawVitals(ctx, L.vitals, hero, p, st, T);
-  drawHeartsRow(ctx, L.hearts, world, run, p);
-  drawSkills(ctx, L.skills, hero, p, T);
-  drawUltGauge(ctx, L.ult, world, run, T);
+  if (!D.portrait) drawPortrait(ctx, L.portrait, hero, p);
+  if (!D.vitals) drawVitals(ctx, L.vitals, hero, p, st, T);
+  if (!D.hearts) drawHeartsRow(ctx, L.hearts, world, run, p);
+  if (!D.skills) drawSkills(ctx, L.skills, hero, p, T);
+  if (!D.ult) drawUltGauge(ctx, L.ult, world, run, T);
   // 각성 게이지 + 준비 문구 칸 L.ready ('필살기 준비!' · '각성 가능!' 모두 FEEL-HUD). SP 막대 위에 빛을 겹치므로 필살 게이지 다음에
-  drawAwGauge(ctx, world, L.awGauge.x, L.awGauge.y, L.awGauge.w, T); // [hook:feel]
+  if (!D.aw) drawAwGauge(ctx, world, L.awGauge.x, L.awGauge.y, L.awGauge.w, T); // [hook:feel]
   // 동료 위젯 (companions §7.1): 칸 L.companions 안쪽 사각형 L.companionsDraw 에 (탑승·기력 고리가 칸 밖 하트 줄을 덮지 않게).
   // 탭 판정용 사각형은 world.companions.hudRects 에 둔다
-  const cr = drawCompanionHUD(ctx, world, cmpOpts(L, T)); // [hook:cmp]
+  const cr = D.cmp ? null : drawCompanionHUD(ctx, world, cmpOpts(L, T)); // [hook:cmp]
   if (world.companions) { if (!cr) NO_RECTS.length = 0; try { world.companions.hudRects = cr || NO_RECTS; } catch { /* 읽기 전용이면 동료 쪽이 직접 관리 */ } } // [hook:cmp]
-  drawScore(ctx, L.score, world, hero, p, run, T);
+  if (!D.score) drawScore(ctx, L.score, world, hero, p, run, T);
   // 콤보·스타일 열 (L.combo). 튀기기·박힘 첫 프레임은 칸 위·왼쪽으로 잠깐 넘치므로 다른 영역(점수·동료 카드 줄 등) 위에는 그리지 않게 자른다
-  const cc = avoidClip(L, 'combo');
+  const cc = D.clip ? null : avoidClip(L, 'combo');
   if (cc) { ctx.save(); ctx.clip(cc, 'evenodd'); }
-  drawComboHUD(ctx, world, vw, vh, T); // [hook:feel]
+  if (!D.combo) drawComboHUD(ctx, world, vw, vh, T); // [hook:feel]
   if (cc) ctx.restore();
   if (L.bossShown) drawBossBar(ctx, L.bossBar, world.boss);
   // 알림 칸 하나: 배너(스테이지 제목·STAGE CLEAR·LEVEL UP …)가 이긴다. 배너가 없을 때만 알림을 그린다
   // (알림 단어가 2.2배로 박히는 첫 프레임은 칸 위로 16 px 까지 넘친다 → 토스트 줄·다른 영역은 빼고 자른다)
   if (world.banner) drawBanner(ctx, L.transient, world, world.banner);
-  else if (world.style?.ann?.cur) { // [hook:feel]
-    const ac = avoidClip(L, 'transient');
+  else if (world.style?.ann?.cur && !D.ann) { // [hook:feel]
+    const ac = D.clip ? null : avoidClip(L, 'transient');
     if (ac) { ctx.save(); ctx.clip(ac, 'evenodd'); }
     drawAnnouncer(ctx, world, vw, vh); // [hook:feel]
     if (ac) ctx.restore();

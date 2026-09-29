@@ -297,8 +297,13 @@ function ensurePools(q = 'high') {
   if (typeof document === 'undefined') return false;
   const B = Q[q] ?? Q.high;
   while (POOL.glowSpare.length + POOL.glow.size < GLOW_POOL) { const c = mkCanvas(B.glow, B.glow); if (!c) return false; POOL.glowSpare.push(c); }
+  // 상한까지의 나머지는 0×0 예비 캔버스로 만들어 둔다 (쓸 때 크기를 준다 → 안 쓰면 메모리 0). 시전 중·컷인 중에 캔버스를 새로
+  // 만들지 않게 (R1-REQ-339R: 처음 보는 색의 빛·세 번째 화면 층·장식 스프라이트가 시전 도중 캔버스를 만들었다)
+  while (POOL.glowSpare.length + POOL.glow.size < GLOW_CAP) { const c = mkCanvas(1, 1); if (!c) break; c.width = c.height = 0; POOL.glowSpare.push(c); }
   if (B.layer) while (POOL.layers.length < 2) POOL.layers.push({ key: null, c: mkCanvas(LAYER, LAYER), used: 0 });
+  if (POOL.layers.length < 3) { const c = mkCanvas(1, 1); if (c) { c.width = c.height = 0; POOL.layers.push({ key: null, c, used: 0 }); } }
   while (POOL.spriteSpare.length + POOL.sprites.size < 4) POOL.spriteSpare.push(mkCanvas(256, 256));
+  while (POOL.spriteSpare.length + POOL.sprites.size < SPR_CAP) { const c = mkCanvas(1, 1); if (!c) break; c.width = c.height = 0; POOL.spriteSpare.push(c); }
   const W = Math.ceil(2 * GH.bw * B.rs), H = Math.ceil((GH.bt + GH.bb) * B.rs);
   while (POOL.ghosts.length < B.ghosts + 1) POOL.ghosts.push({ c: mkCanvas(W, H), part: null, until: 0 });
   if (B.sil && !POOL.sil) POOL.sil = mkCanvas(Math.ceil(1280 * B.sil), Math.ceil(540 * B.sil));
@@ -337,6 +342,7 @@ export function glowSprite(color, force = false) {
   c = POOL.glowSpare.pop() ?? (M.size < cap ? mkCanvas(Q[qk(game?.world)].glow, Q[qk(game?.world)].glow) : null);
   if (!c) { const k0 = M.keys().next().value; c = M.get(k0); M.delete(k0); }
   if (!c) return null;
+  if (!c.width) { const S = Q[qk(game?.world)].glow; c.width = S; c.height = S; }   // 0×0 예비 캔버스
   try { bakeGlow(resetCtx(c), key, c.width); } catch (e) { console.warn('[ultfx] glow', e); }
   ULTFX_STATS.bakes++;
   M.set(key, c);
@@ -383,6 +389,7 @@ function layerTex(key, spec) {
   if (!e && Ls.length < 3) { const c = mkCanvas(LAYER, LAYER); if (c) { e = { key: null, c, used: 0 }; Ls.push(e); } }
   if (!e) { const busy = new Set(); const s = live(game?.world); if (s?.tex) busy.add(s.tex); e = Ls.filter((l) => !busy.has(l.c)).sort((a, b) => a.used - b.used)[0]; }
   if (!e?.c) return null;
+  if (e.c.width !== LAYER) { e.c.width = LAYER; e.c.height = LAYER; }   // 0×0 예비 층
   try { bakeLayer(e.c, spec); } catch (err) { console.warn('[ultfx] layer', err); return null; }
   ULTFX_STATS.bakes++;
   e.key = key; e.used = perfNow();
@@ -1200,8 +1207,10 @@ function bakeSilhouettes(w, vw, vh, im) {
   const px = clamp(sp.x, 0, vw) * k, py = clamp(sp.y, 0, vh) * k, R = Math.hypot(W, H);
   g.fillStyle = im.fg; g.globalAlpha = 0.34;
   g.beginPath();
+  // 그리기 경로라 게임플레이 Math.random 을 쓰지 않는다 (R1-REQ-337): 마무리 지점으로 정한 시드의 자체 난수
+  const rnd = mulberry(((Math.round(im.cx) * 73856093) ^ (Math.round(im.cy) * 19349663)) >>> 0);
   for (let i = 0; i < 48; i++) {
-    const a = (i + Math.random() * 0.7) / 48 * TAU, r0 = R * (0.08 + Math.random() * 0.12), hw = (0.004 + Math.random() * 0.012);
+    const a = (i + rnd() * 0.7) / 48 * TAU, r0 = R * (0.08 + rnd() * 0.12), hw = (0.004 + rnd() * 0.012);
     g.moveTo(px + Math.cos(a) * r0, py + Math.sin(a) * r0);
     g.lineTo(px + Math.cos(a - hw) * R, py + Math.sin(a - hw) * R); g.lineTo(px + Math.cos(a + hw) * R, py + Math.sin(a + hw) * R); g.closePath();
   }

@@ -14,7 +14,7 @@
 // fx.callout(x, y, text, {color, size, life, vy, outline, skew}) 캐시 스프라이트 문구
 // fx.addDecal(d, cap) / fx.clearDecals()                       자국 (hitfx.stampDecal 이 자리를 잡는다; 방 로딩 때 비움)
 // fx.setHudBand(rects, n, cx)                                  HUD 윗줄 월드 사각형 (world.render 가 매 프레임): 숫자·문구를 그 아래로
-//   숫자 기둥은 살아 있는 이웃 기둥과 숫자 폭만큼 비켜 서고, 판정 문구는 그 대상 기둥 위끝 위 차선에 선다 (R1-REQ-331/358)
+//   숫자 기둥은 살아 있는 이웃 기둥과 숫자 폭만큼 비켜 서고, 판정 문구는 겹치는 기둥·문구 위 줄로 올라간다 (R1-REQ-331/358)
 // update(dt, map) 는 그대로 (히트스톱 중에는 world 가 0.3배 dt 로 부른다)
 import { rand, TAU, clamp } from './math.js';
 import { TILE } from './game.js';
@@ -54,7 +54,7 @@ const COL_DEF = { gap: 0.5, step: 16, height: 8, totalAfter: 3, totalDelay: 0.35
 // 한꺼번에 치면 '434' '98' '44' 가 '4349844' 로 붙어 보이던 문제). 폭은 지금 숫자와 5글자 숫자 중 넓은 쪽을 예약한다 (마지막 큰 타격).
 const COL_LIVE = 1.3;      // 마지막 타격 뒤 이만큼(초)은 자리를 차지한 기둥으로 본다 (숫자 hold + 사라짐 + 합계)
 const COL_GAP = 12;        // 이웃 기둥 사이 최소 여백 (px)
-const COL_V = 120;         // 이보다 위아래로 떨어진 기둥은 겹치지 않는 것으로 본다 (px)
+const COL_V = 170;         // 이보다 위아래로 떨어진 기둥은 겹치지 않는 것으로 본다 (px; 기둥 8줄 + 떠오름 + 합계 높이쯤)
 const COL_RESERVE = 5;     // 기둥 폭 예약 (글자 수)
 const COL_STEP_X = 10;     // 빈자리 찾기 간격 (px)
 /** 그리기용 결정적 잡음 0..1 (mulberry32 한 번): 그리기 경로에서 Math.random 을 쓰지 않는다 (R1-REQ-333) */
@@ -77,13 +77,13 @@ export class Particles {
     this.dmgLive = 0;     // 살아 있는 데미지 숫자 수
     this._cols = [];      // 합계를 기다리는 숫자 기둥
     this._live = [];      // 자리를 차지한 숫자 기둥 (가로 비키기·판정 문구 차선)
-    this._calls = [];     // 살아 있는 판정 문구 (서로 겹치지 않게 쌓기)
+    this._obst = [];      // 판정 문구 배치용 장애물 사각형 (그리기마다 재사용)
     this._seq = 0;        // 숫자 떨림 잡음 씨앗
     // HUD 윗줄(초상·체력·점수·콤보·위쪽 보스 바)의 월드 좌표 사각형 — world.render 가 매 프레임 setHudBand 로 준다.
     // 숫자 기둥·판정 문구는 이 아래로 내려 그린다 (크게 뜬 치명타가 이름·체력 바 뒤에 숨지 않게, R1-REQ-331)
     this.band = { n: 0, r: [], stamp: 0 };
   }
-  clear() { this.list.length = 0; this.decals.length = 0; this._cols.length = 0; this.dmgLive = 0; this._live.length = 0; this._calls.length = 0; }
+  clear() { this.list.length = 0; this.decals.length = 0; this._cols.length = 0; this.dmgLive = 0; this._live.length = 0; }
   /**
    * HUD 윗줄 사각형을 월드 좌표로 넘긴다: rects = [{x0, x1, y0, y1}] (재사용 배열이어도 된다 — 값을 복사한다), n = 개수, cx = 화면 가운데 x.
    * n 0 = 끔 (HUD 숨김·연출). 그리기 층 'top' 을 그리기 직전에 부른다.
@@ -295,33 +295,8 @@ export class Particles {
     const life = o.life ?? FH.CALLOUT?.life ?? 0.6;
     const spr = HFX.textSprite?.(text, o);
     if (!spr) { this.text(x, y, text, { color: o.color ?? '#ffe8c0', size: o.size ?? 15, life, vy: o.vy ?? -70, outline: o.outline ?? '#1a0610' }); return null; }
-    const p = { shape: 'callout', spr, x, y, vx: 0, vy: o.vy ?? FH.CALLOUT?.vy ?? -70, grav: 0, drag: 0.95, life, max: life, layer: 'top', add: false, lane: null, stack: 0 };
-    // 차선 (R1-REQ-358): 이 자리에 살아 있는 숫자 기둥이 있으면 문구는 그 기둥 위끝 위에 선다 (그릴 때마다 기둥을 따라간다).
-    // 같은 기둥 위에 먼저 선 문구가 있으면 그 위로 한 줄씩 쌓는다. 기둥이 없으면 이웃 문구와 겹치지 않게 위로 비킨다.
-    const hw = spr.w / 2, now = this.clock;
-    let lane = null, best = Infinity;
-    for (const c of this._live) {
-      if (now - c.t > COL_LIVE) continue;
-      const dx = Math.abs(c.x - x);
-      if (dx < (c.w || 40) / 2 + hw && y > this.colTop(c) - spr.h && y - spr.h < c.y + 20 && dx < best) { best = dx; lane = c; }
-    }
-    const C = this._calls;
-    let k = 0;
-    for (let i = 0; i < C.length; i++) { const q = C[i]; if (q.life > 0 && this.list.includes(q)) C[k++] = q; }
-    C.length = k;
-    if (lane) { p.lane = lane; for (const q of C) if (q.lane === lane) p.stack = Math.max(p.stack, q.stack + 1); }
-    else {
-      for (let pass = 0; pass < 4; pass++) {
-        let moved = false;
-        for (const q of C) {
-          if (q.lane || Math.abs(q.x - p.x) >= (q.spr.w + spr.w) / 2 + 4 || Math.abs(q.y - p.y) >= (q.spr.h + spr.h) / 2 + 2) continue;
-          p.y = q.y - (q.spr.h + spr.h) / 2 - 2; moved = true;
-        }
-        if (!moved) break;
-      }
-    }
-    C.push(p);
-    if (C.length > 24) C.shift();
+    // 자리(가로·세로 비키기)는 그릴 때 정한다 (layoutCallouts): 숫자 기둥·다른 문구와 겹치면 그 위 줄로 (R1-REQ-358)
+    const p = { shape: 'callout', spr, x, y, vx: 0, vy: o.vy ?? FH.CALLOUT?.vy ?? -70, grav: 0, drag: 0.95, life, max: life, layer: 'top', add: false, dx: x, dy: y };
     this.list.push(p);
     return p;
   }
@@ -401,8 +376,42 @@ export class Particles {
     }
   }
 
+  /**
+   * 판정 문구 배치 (그리기 층 'top' 마다 한 번, R1-REQ-358): 살아 있는 숫자 기둥(HUD 비키기 포함)과 먼저 놓인 문구를 장애물로 두고,
+   * 겹치는 문구는 그 장애물 위끝 바로 위로 올린다 (기둥 위 차선). 올라가다 HUD 윗줄에 걸리면 그 아래로 되돌린다.
+   * 결과는 p.dx / p.dy (그리기 위치; 실제 위치 p.x / p.y 는 그대로)
+   */
+  layoutCallouts() {
+    const O = this._obst, now = this.clock;
+    let n = 0;
+    const put = (x0, x1, y0, y1) => { const r = (O[n] ??= { x0: 0, x1: 0, y0: 0, y1: 0 }); r.x0 = x0; r.x1 = x1; r.y0 = y0; r.y1 = y1; n++; };
+    for (const c of this._live) {
+      if (now - c.t > 1.0 && !(c.tp && c.tp.life > 0)) continue;
+      const hw = (c.w || 40) / 2, sh = this.colShift(c), gh = c.gh || 24;
+      put(c.x - hw, c.x + hw, this.colTop(c) + sh, c.y - this.colRise(c, 40) + gh / 2 + sh);
+    }
+    for (const p of this.list) {
+      if (p.shape !== 'callout' || p.layer !== 'top') continue;
+      const spr = p.spr;
+      if (!spr?.canvas) continue;
+      const hw = spr.w / 2 + 2, hh = spr.h / 2 + 1;
+      const X = p.x;
+      let Y = p.y;
+      for (let pass = 0; pass < 10; pass++) {
+        let hit = null;
+        for (let i = 0; i < n; i++) { const r = O[i]; if (X + hw > r.x0 && X - hw < r.x1 && Y + hh > r.y0 && Y - hh < r.y1 && (!hit || r.y0 < hit.y0)) hit = r; }
+        if (!hit) break;
+        Y = hit.y0 - hh - 1;
+      }
+      if (this.band.n) Y += this.bandPush(X - hw, X + hw, Y - hh);
+      p.dx = X; p.dy = Y;
+      put(X - hw, X + hw, Y - hh, Y + hh);
+    }
+  }
+
   draw(ctx, layer = 'front') {
     if (layer === 'back') this.drawDecals(ctx);
+    if (layer === 'top') this.layoutCallouts();
     for (const p of this.list) {
       if (p.layer !== layer) continue;
       const t = 1 - p.life / p.max; // 0→1
@@ -537,21 +546,7 @@ export class Particles {
           const k = age < 0.08 ? 1.45 - 0.45 * (age / 0.08) : 1;
           ctx.globalCompositeOperation = 'source-over';
           ctx.globalAlpha = t < 0.65 ? 1 : clamp(1 - (t - 0.65) / 0.35, 0, 1);
-          const w = spr.w * k, h = spr.h * k;
-          let X = p.x, Y = p.y;
-          const c = p.lane;
-          if (c) {
-            // 기둥 위끝 위 차선 (기둥이 HUD 아래로 비키면 같이). 그 차선이 HUD 윗줄에 걸리면 기둥 옆으로
-            const laneY = this.colTop(c) + this.colShift(c) - spr.h / 2 - 4 - p.stack * (spr.h + 2);
-            if (laneY < Y) {
-              if (this.band.n && this.bandPush(X - spr.w / 2, X + spr.w / 2, laneY - spr.h / 2) > 0) {
-                const side = (c.x >= (this.band.cx ?? c.x) ? -1 : 1);
-                X = c.x + side * ((c.w || 40) / 2 + spr.w / 2 + 6);
-                Y = Math.max(Y, c.y + this.colShift(c) - this.colRise(c, 40) - p.stack * (spr.h + 2));
-              } else Y = laneY;
-            }
-          }
-          if (this.band.n) Y += this.bandPush(X - w / 2, X + w / 2, Y - h / 2);
+          const w = spr.w * k, h = spr.h * k, X = p.dx ?? p.x, Y = p.dy ?? p.y;
           ctx.drawImage(spr.canvas, X - w / 2, Y - h / 2, w, h);
           break;
         }

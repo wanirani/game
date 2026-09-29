@@ -856,7 +856,7 @@ export class MountRider {
   }
   /**
    * 못 넘는 턱 안내 (R1-REQ-369): 날지 못하는 탈것으로 턱에 붙어 1.2초 넘게 밀었는데, 그 턱이 탈것 점프(공중 점프 포함)로는 못 넘고
-   * 5칸 이하(내려서 걸어 뛰면 오를 만한 높이)이면 방마다 한 번 '{name}은(는) 이 턱을 넘지 못한다 — 내려서 올라가자'.
+   * 내려서 영웅의 점프(공중 점프 포함)로는 오를 수 있으면 방마다 한 번 '{name}은(는) 이 턱을 넘지 못한다 — 내려서 올라가자'.
    * 바르그(점프 700 ≈ 2.3칸)가 3칸 턱에서 막히는 것이 설계상 약점이라 (data/companions.js mt_boar), 어떻게 지나가는지를 알려 준다.
    */
   ledgeHint(dt, world, p) {
@@ -864,7 +864,7 @@ export class MountRider {
     const dir = p.hitWall ? Math.sign(p.hitWall) : 0;
     if (!dir || Math.sign(this.ax) !== dir) { this.ledgeT = Math.max(0, (this.ledgeT ?? 0) - dt * 2); return; }
     this.ledgeT = (this.ledgeT ?? 0) + dt;
-    if (this.ledgeT < 1.2) return;
+    if (this.ledgeT < 1.2 || !p.onGround) return;   // 높이는 땅에 선 채로 잰다 (뛰어오른 중이면 착지까지 기다린다)
     this.ledgeT = 0;
     const map = world.map;
     if (!map?.typeAt) return;
@@ -874,9 +874,10 @@ export class MountRider {
     if (!n || n >= 7) return;                                                            // 벽이 아니거나 너무 높다
     if (isSolidType(map.typeAt(tx, ty0 - n - 1))) return;                               // 턱 위에 설 자리가 없다
     const h = p.bottom - (ty0 - n + 1) * TILE;                                           // 발에서 턱 윗면까지
-    const prof = this.profile(p), up = (prof.jump * prof.jump) / (2 * GRAVITY);
-    const reach = up * (1 + 0.81 * (prof.airJumps ?? 0));                                // 공중 점프는 0.9배 속도 → 높이 0.81배
-    if (h <= reach + 4 || h > TILE * 5 + 4) return;
+    const reachOf = (v, air) => ((v * v) / (2 * GRAVITY)) * (1 + 0.81 * (air ?? 0));    // 공중 점프는 0.9배 속도 → 높이 0.81배
+    const prof = this.profile(p), reach = reachOf(prof.jump, prof.airJumps);
+    const jv = p.jumpVel?.(), foot = Number.isFinite(jv) ? reachOf(jv, p.maxAirJumps?.() ?? 1) : TILE * 5;   // 내려서 걸어 뛰면 닿는 높이
+    if (h <= reach + 4 || h > foot - 4) return;
     this.hintRoom = world.roomId;
     this.note(world, cmpText('ledge', { name: this.name }));
   }

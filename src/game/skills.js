@@ -58,7 +58,7 @@ export function castUltimate(p, world) {
   world.startUltimate?.(p);
   audio.sfx('ult');
   _pendFlash = null;
-  ultFlash(world, '#ffffff', 0.5, 3, v);   // 높음: game.flash · 중간·낮음: 감독 암전 층에 합친다 (컷인이 끝나고 월드가 움직일 때 보인다)
+  ultFlash(world, '#ffffff', 0.5, 3, v, true);   // 감독 암전 층에 합친다 (컷인이 덮는 동안 따로 한 장을 쓰지 않고, 컷인이 끝나 월드가 움직일 때 보인다)
   prewarmUlt(v);   // 컷인이 월드를 멈춘 동안 캐시 스프라이트를 굽는다 (연출 도중 캔버스 생성 없음)
   const fn = ULTS[p.hero.charId] || ULTS.kael;
   fn(p, world, v);
@@ -278,20 +278,25 @@ function blit(ctx, img, x, y, w, h, a) {
 // 필살기의 빛·빛기둥은 화면보다 훨씬 크게 늘여 그리는 일이 많다. 화면 밖 부분을 잘라 그리면 같은 그림에 채우는 넓이만 줄고,
 // 화면을 실제로 거의 다 덮는 경우만 '전체 화면 층'으로 남는다. 좌우·상하가 대칭인 스프라이트(빛·빛기둥 단면)에만 쓴다
 const BIG_BLIT = 60000;   // 이보다 작은 그림(지역 좌표 넓이)은 변환을 읽지 않고 그대로 그린다
-/** 회전 없는 변환에서 (x, y, w, h) 중 캔버스 안쪽만 그린다. 처리했으면 true (그렸거나 화면 밖), 회전이 있으면 false */
+/** (x, y, w, h) 중 캔버스에 보일 수 있는 부분만 그린다: 캔버스 네 모서리를 지역 좌표로 되돌린 상자와 겹치는 부분
+ *  (카메라 기울기처럼 회전이 있어도 된다). 처리했으면 true (잘라 그렸거나 화면 밖), 전부 보이면 false → 그대로 그린다 */
 function blitVisible(ctx, img, x, y, w, h) {
-  const m = ctx.getTransform?.(), cv = ctx.canvas;
-  if (!m || !cv || m.b !== 0 || m.c !== 0) return false;
-  let X0 = m.a * x + m.e, X1 = m.a * (x + w) + m.e, Y0 = m.d * y + m.f, Y1 = m.d * (y + h) + m.f;
-  if (X1 < X0) { const t = X0; X0 = X1; X1 = t; }   // 뒤집힌 변환: 대칭 스프라이트라 그림은 같다
-  if (Y1 < Y0) { const t = Y0; Y0 = Y1; Y1 = t; }
-  const x0 = Math.max(0, X0), x1 = Math.min(cv.width, X1), y0 = Math.max(0, Y0), y1 = Math.min(cv.height, Y1);
+  const cv = ctx.canvas;
+  if (!cv || !(w > 0) || !(h > 0)) return false;
+  let inv;
+  try { inv = ctx.getTransform().inverse(); } catch { return false; }
+  if (!inv || !Number.isFinite(inv.a)) return false;
+  const W = cv.width, H = cv.height;
+  let lx0 = Infinity, ly0 = Infinity, lx1 = -Infinity, ly1 = -Infinity;
+  for (let i = 0; i < 4; i++) {
+    const X = i & 1 ? W : 0, Y = i & 2 ? H : 0, lx = inv.a * X + inv.c * Y + inv.e, ly = inv.b * X + inv.d * Y + inv.f;
+    if (lx < lx0) lx0 = lx; if (lx > lx1) lx1 = lx; if (ly < ly0) ly0 = ly; if (ly > ly1) ly1 = ly;
+  }
+  const x0 = Math.max(x, lx0), x1 = Math.min(x + w, lx1), y0 = Math.max(y, ly0), y1 = Math.min(y + h, ly1);
   if (!(x1 > x0 && y1 > y0)) return true;   // 화면 밖
-  if (x0 === X0 && x1 === X1 && y0 === Y0 && y1 === Y1) return false;   // 전부 화면 안: 그대로 그린다
-  const kx = img.width / (X1 - X0), ky = img.height / (Y1 - Y0);
-  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.drawImage(img, (x0 - X0) * kx, (y0 - Y0) * ky, (x1 - x0) * kx, (y1 - y0) * ky, x0, y0, x1 - x0, y1 - y0);
-  ctx.restore();
+  if (x0 === x && x1 === x + w && y0 === y && y1 === y + h) return false;   // 전부 화면 안: 그대로 그린다
+  const kx = img.width / w, ky = img.height / h;
+  ctx.drawImage(img, (x0 - x) * kx, (y0 - y) * ky, (x1 - x0) * kx, (y1 - y0) * ky, x0, y0, x1 - x0, y1 - y0);
   return true;
 }
 /** 둥근 빛 스프라이트(원형 대칭)는 회전·뒤집기와 무관하므로 닮음 변환이면 화면 좌표로 옮겨 보이는 부분만 그린다. 처리했으면 true */
@@ -301,8 +306,15 @@ function blitRound(ctx, img, x, y, r) {
   const s2 = Math.abs(m.a * m.d - m.b * m.c);
   // 닮음 변환(회전·균일 배율·뒤집기)이 아니면 (바닥에 눕힌 타원 등) 축 정렬 방식으로 넘긴다
   if (!(s2 > 0) || Math.abs(m.a * m.a + m.b * m.b - m.c * m.c - m.d * m.d) > 0.02 * s2 || Math.abs(m.a * m.c + m.b * m.d) > 0.02 * s2) return blitVisible(ctx, img, x - r, y - r, r * 2, r * 2);
-  const R = r * Math.sqrt(s2), cx = m.a * x + m.c * y + m.e, cy = m.b * x + m.d * y + m.f;
-  const x0 = Math.max(0, cx - R), x1 = Math.min(cv.width, cx + R), y0 = Math.max(0, cy - R), y1 = Math.min(cv.height, cy + R);
+  const W = cv.width, H = cv.height, cx = m.a * x + m.c * y + m.e, cy = m.b * x + m.d * y + m.f;
+  let R = r * Math.sqrt(s2), x0 = 0, x1 = 0, y0 = 0, y1 = 0;
+  // 보이는 넓이가 캔버스의 85% 를 넘는 빛은 반지름을 줄인다: 빛 번짐이 화면 전체 층이 되지 않게 (feel §8; 가장자리는 어차피 거의 투명)
+  for (let k = 0; k < 4; k++) {
+    x0 = Math.max(0, cx - R); x1 = Math.min(W, cx + R); y0 = Math.max(0, cy - R); y1 = Math.min(H, cy + R);
+    const area = (x1 - x0) * (y1 - y0);
+    if (!(area > 0.85 * W * H)) break;
+    R *= Math.sqrt(0.85 * W * H / area) * 0.97;
+  }
   if (!(x1 > x0 && y1 > y0)) return true;
   const kx = img.width / (2 * R), ky = img.height / (2 * R);
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -2373,11 +2385,14 @@ const TIER_NAME = [22, 28, 34];
  */
 function ultCtx(p, w) {
   const charId = p?.hero?.charId, classId = p?.hero?.classId, C = CLASSES[classId], ch = CHARACTERS[charId];
-  const color = ch?.ult?.color ?? '#fff2b0';
-  let accent = C?.look?.aura?.color ?? C?.look?.secondary ?? color;
-  if (typeof accent !== 'string' || accent[0] !== '#' || lumOf(accent) < 0.22) accent = color;
+  const color = ch?.ult?.color ?? '#fff2b0', accent = accentFor(C, color);
   const q = clamp(Number(w?.fx?.quality) || 1, 0.3, 1);
   return { charId, classId, tier: clamp(C?.tier ?? 0, 0, 2), color, accent, q, low: q < 0.7, name: ch?.ult?.name ?? '', title: C?.name ?? '' };
+}
+/** 직업 강조색 (look.aura.color → look.secondary → 필살기 색). 거의 검은 색은 필살기 색으로 */
+function accentFor(C, color) {
+  const a = C?.look?.aura?.color ?? C?.look?.secondary ?? color;
+  return typeof a !== 'string' || a[0] !== '#' || lumOf(a) < 0.22 ? color : a;
 }
 /** 품질 배율을 곱한 개수 (최소 lo) */
 const qn = (v, n, lo = 1) => Math.max(lo, Math.round(n * (v?.q ?? 1)));
@@ -2419,6 +2434,42 @@ function prewarmUlt(v) {
     if (v.charId === 'victor') for (const [r, s] of [['A', '♠'], ['A', '♣'], ['8', '♣'], ['8', '♠']]) cardSprite(38, 54, r, s);
     HFX.star?.(v.color); HFX.star?.(v.accent);
   } catch (e) { console.warn('[skills] prewarm', e); }
+}
+
+/** 스테이지에 들어설 때(한가할 때) 지금 영웅의 필살기 스프라이트를 모든 직업 강조색까지 미리 굽는다:
+ *  전직을 바꾸거나 시전 직전에 직업이 바뀌어도(시험 도구 등) 시전 순간에 새로 구울 것이 없다 (feel §8) */
+function prewarmHero(w) {
+  const p = w?.player;
+  if (!p?.hero?.charId) return;
+  const v = ultCtx(p, w);
+  prewarmUlt(v);
+  const done = new Set([v.accent, v.color]);
+  for (const C of Object.values(CLASSES)) {
+    if (C?.charId !== p.hero.charId) continue;
+    const a = accentFor(C, v.color);
+    if (done.has(a)) continue;
+    done.add(a);
+    glowSprite(a); beamSprite(a, '#ffffff', false); beamSprite(a, '#ffffff', true);
+    HFX.star?.(a);
+  }
+}
+function idleRun(fn, timeout = 800) {
+  if (typeof requestIdleCallback === 'function') requestIdleCallback(() => fn(), { timeout });
+  else setTimeout(fn, 60);
+}
+function warmNow() {
+  try { sprPool(); const w = game?.world; if (w?.player) prewarmHero(w); } catch (e) { console.warn('[skills] prewarm', e); }
+}
+// 부팅 뒤 한가할 때 캔버스 풀을 만들고, 스테이지에 들어설 때마다(전직을 바꿀 때도) 필살기 스프라이트를 굽는다.
+// 모듈 최상위에서는 가져온 값(bus·game)에 접근하지 않는다 (순환 import 규칙): 타이머 안에서 연결한다
+if (typeof window !== 'undefined' && typeof setTimeout === 'function') {
+  setTimeout(() => {
+    try {
+      bus.on('stageEntered', () => setTimeout(() => idleRun(warmNow), 200));
+      bus.on('classChanged', () => idleRun(warmNow));
+    } catch (e) { console.warn('[skills] bus', e); }
+    idleRun(warmNow, 1500);
+  }, 1000);
 }
 
 /** 키트가 없을 때의 최소 시작 연출: 전직 단계별 줌인 + 기술명 (feel §5.2 표의 cast zoom · skill name) */
@@ -2476,7 +2527,7 @@ function grade(w, col, a, life, comp = 'source-over') {
   if (!(a > 0.004)) return null;
   return w.addOverlay?.({
     life,
-    draw(ctx, vw, vh) { const k = 1 - clamp(this.t / life, 0, 1); if (k <= 0 || flashOn(w)) return; ctx.globalCompositeOperation = comp; ctx.globalAlpha = a * k; ctx.fillStyle = col; ctx.fillRect(0, 0, vw, vh); },
+    draw(ctx, vw, vh) { const k = 1 - clamp(this.t / life, 0, 1); if (k <= 0 || flashOn(w) || impactOn(w)) return; ctx.globalCompositeOperation = comp; ctx.globalAlpha = a * k; ctx.fillStyle = col; ctx.fillRect(0, 0, vw, vh); },
   }) ?? null;
 }
 // ── 필살기 화면 층 예산 (feel §8: 필살기·각성기 동안 전체 화면 층 ≤ 3 / 2 / 1, 높음/중간/낮음) ──
@@ -2490,16 +2541,19 @@ let _pendFlash = null;
 function liveScr(w) { const s = ULT_LIVE; return s && !s.e.dead && s.w === w ? s.e.d?.scr ?? null : null; }
 /** game.flash 층이 켜져 있는가 */
 function flashOn(w) { return (Number(w?.game?.flashFx?.a) || 0) > 0.01; }
+/** 키트(ultfx)의 임팩트 프레임(화면 전체를 덮는 두 장)이 그려지는 중인가: 그동안 색조는 어차피 가려진다 */
+function impactOn(w) { const im = w?.__ultImpact; return !!im && !im.dead; }
 /** 컷인 장면이 월드를 멈추고 자기 암전을 그리는 동안인가 */
 function underCutin(w) { const n = w?.game?.top?.name; return n === 'ultCutin' || n === 'awakenCutin'; }
 /**
  * 필살기 번쩍임: 높음(품질 ≥ 0.95)은 game.flash, 중간·낮음은 감독 암전 층에 합친다.
  * 광과민 정책은 game.flash 와 같다 (설정 배율 flashFx · 상한 0.7 · 1초 안에 0.3 넘는 번쩍임이 둘이면 그 뒤로는 0.3).
- * v 가 없으면 살아 있는 감독의 품질을 쓰고, 감독도 없으면 game.flash 그대로.
+ * v 가 없으면 살아 있는 감독의 품질을 쓰고, 감독도 없으면 game.flash 그대로. merge = true 는 품질과 무관하게 암전 층에 합친다
+ * (시전 번쩍임: 컷인 장면이 덮는 동안 따로 한 장을 쓰지 않고, 컷인이 끝나 월드가 움직일 때 배경에서 번쩍인다).
  */
-function ultFlash(w, col, a, decay = 4, v = null) {
+function ultFlash(w, col, a, decay = 4, v = null, merge = false) {
   const S = liveScr(w), q = v?.q ?? S?.q;
-  if (q == null || q >= 0.95) { w?.game?.flash?.(col, a, decay); return; }
+  if (!merge && (q == null || q >= 0.95)) { w?.game?.flash?.(col, a, decay); return; }
   const s = Math.min(0.7, Math.max(0, Number(a) || 0) * flashK(w));
   if (!(s > 0)) return;
   const f = { col, a: s, decay: Number(decay) > 0 ? Math.max(0.25, Number(decay)) : 4 };
@@ -2545,7 +2599,9 @@ function dimLayer(ctx, e, S, col, ad, sky, r) {
     q.addColorStop(0, cssC(t)); q.addColorStop(1, cssC(b));
     return q;
   });
-  ctx.beginPath(); ctx.rect(e.x, e.y, e.w, e.h); fillU(ctx, g, 0, sky.y, 1, sky.h);
+  // 단위 공간(세로 0..1 = sky.y..sky.y+h)으로 옮겨 같은 사각형을 칠한다 (fillRect 한 번)
+  if (!(sky.h > 0)) return;
+  ctx.save(); ctx.transform(1, 0, 0, sky.h, 0, sky.y); ctx.fillStyle = g; ctx.fillRect(e.x, (e.y - sky.y) / sky.h, e.w, e.h / sky.h); ctx.restore();
 }
 /** 감독 엔티티가 살아 있는 동안 유지되는 화면 레이어 (draw(ctx, vw, vh) 안에서 this.e 로 감독을 읽는다) */
 function holdOverlay(w, e, draw) {
@@ -2910,7 +2966,7 @@ ULTS.victor = (p, w, v = ultCtx(p, w)) => {
       // 세피아 색조 (슬로모션과 난사 동안, 산탄에서 걷힌다)
       holdOverlay(ww, e, function (ctx, vw, vh) {
         const d = e.d, a = 0.2 * Math.min(1, e.lt / 0.25) * (d.shotT ? 1 - clamp((e.lt - d.shotT) / 0.2, 0, 1) : 1);
-        if (a <= 0.005) return;
+        if (a <= 0.005 || flashOn(ww) || impactOn(ww) || underCutin(ww)) return;   // 번쩍이는 동안·임팩트 프레임·컷인 동안은 쉰다 (이 파일의 화면 층은 둘까지)
         ctx.globalAlpha = a; ctx.fillStyle = '#6a4216'; ctx.fillRect(0, 0, vw, vh);
       });
     },
@@ -3055,10 +3111,10 @@ ULTS.lia = (p, w, v = ultCtx(p, w)) => {
   const snapBase = p.snapshot();
   ultDirector(w, p, {
     v, dur: 2.1, dim: 0.85, dimCol: '#08000a', d: { cuts: [], net: [], ct: 0, n: 0, fin: false, vg: 0 },
-    start(e, ww) { if (v.q >= 0.95) ww.game.vignette?.('#ff0020', 0.5, 1.2); },
     tick(e, ww, dt) {
-      // 붉은 비네트 유지: 높음에서만 (화면 전체 층 예산), 마무리 번쩍임(1.5초) 전에 걷히도록 1.12초까지만 새로 켠다 (0.42 → 초당 1.2 감소)
-      if (v.q >= 0.95 && e.lt < 1.12 && (e.d.vg -= dt) <= 0) { e.d.vg = 0.3; ww.game.vignette?.('#ff0020', 0.42, 1.2); }
+      // 붉은 비네트 유지: 높음에서만 (화면 전체 층 예산), 마무리 번쩍임(1.5초) 전에 걷히도록 1.12초까지만 새로 켠다 (0.42 → 초당 1.2 감소).
+      // 컷인이 월드를 멈추고 있는 동안에는 켜지 않는다 (컷인 위에 한 장 더 얹지 않게; 컷인이 끝나 월드가 움직일 때 0.5 로 시작)
+      if (v.q >= 0.95 && e.lt < 1.12 && !underCutin(ww) && (e.d.vg -= dt) <= 0) { ww.game.vignette?.('#ff0020', e.d.vg0 ? 0.42 : 0.5, 1.2); e.d.vg = 0.3; e.d.vg0 = true; }
       const C = e.d.cuts;
       for (let i = C.length - 1; i >= 0; i--) { C[i].t += dt; if (C[i].t > 0.14) { if (e.d.net.length < 110) e.d.net.push(C[i]); C[i] = C[C.length - 1]; C.pop(); } }
       if (e.lt > 0.15 && e.lt < 1.35) {
@@ -3169,11 +3225,10 @@ ULTS.azel = (p, w, v = ultCtx(p, w)) => {
   ];
   ultDirector(w, p, {
     v, dur: 2.15, dim: 0.6, dimCol: '#0c0004', steps,
+    // 핏빛 하늘: 암전과 같은 한 장으로 칠한다 (세로 그라디언트 캐시; 화면 전체 층 하나 덜기, feel §8)
+    sky: { y: V0.y, h: V0.h, top: '#5a0010', ta: 0.45, bottom: '#1a0004', ba: 0 },
     bg(ctx, e, ww, a) {
       const rise = ease.outCubic(clamp(e.lt / 0.6, 0, 1)), MR = V0.h * 0.26;
-      const g = ctx.createLinearGradient(0, V0.y, 0, V0.y + V0.h);
-      g.addColorStop(0, rgba('#5a0010', 0.45 * a)); g.addColorStop(1, rgba('#1a0004', 0));
-      ctx.fillStyle = g; ctx.fillRect(V0.x - 60, V0.y - 60, V0.w + 120, V0.h + 120);
       const pulse = e.lt > 1.42 ? Math.max(0, 1 - (e.lt - 1.42) / 0.4) : 0;
       bloodMoon(ctx, V0.x + V0.w * 0.5, V0.y + V0.h * 0.3 + (1 - rise) * 120, MR * (1 + pulse * 0.08), a * (0.4 + rise * 0.6), e.lt);
     },
@@ -3202,9 +3257,9 @@ ULTS.azel = (p, w, v = ultCtx(p, w)) => {
       for (const [t0, dur, a0, a1, dy] of SW) {
         if (lt < t0 || lt > t0 + dur + 0.25) continue;
         const u = ease.outCubic(clamp((lt - t0) / dur, 0, 1)), fade = 1 - clamp((lt - t0 - dur) / 0.25, 0, 1);
-        for (let k = 3; k >= 0; k--) {
+        for (let k = 3; k >= 0; k--) {   // 잔상 겹(k ≥ 1)은 둘레 빛 없이, 앞 겹만 둘레 빛 (화면만 한 가산 빛 네 장 → 한 장; 화면을 다 덮지 않는 크기)
           ctx.save(); ctx.translate(cx, cy); ctx.scale(p.facing, dy); ctx.rotate(lerp(a0, a1, Math.max(0, u - k * 0.06)));
-          crescent(ctx, R, R * 0.24, k === 0 ? '#ff1a3a' : (v.tier >= 1 && k === 2 ? v.accent : '#ff1a3a'), fade * (1 - k * 0.22), '#ffe0e4'); ctx.restore();
+          crescent(ctx, R, R * 0.24, k === 0 ? '#ff1a3a' : (v.tier >= 1 && k === 2 ? v.accent : '#ff1a3a'), fade * (1 - k * 0.22), '#ffe0e4', k === 0 ? 1 : 0); ctx.restore();
         }
       }
     },

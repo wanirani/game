@@ -97,12 +97,22 @@ export function createBackground(stage, map) {
     if (world.lighting) world.lighting.lightning = (bg.lightning > 0.5 ? bg.lightning : bg.lightning * 0.3) * bg.flashK;
   };
 
-  bg.drawFar = (ctx, cam, vw, vh, t) => {
-    // 하늘 그라데이션
+  // 그라데이션은 프레임마다 만들지 않는다 (MASTER_PLAN §5.2 새 그라데이션 16/10/6, R1-REQ-341R): 크기·색이 같으면 캐시를 다시 쓰고,
+  // 위치만 바뀌는 것(긴 방의 하늘 이음새·달)은 원점 기준으로 한 번 만들어 translate 로 옮겨 그린다
+  const G = { sky: null, skyH: 0, fog: null, fogH: 0, moon: null, sg: null, sgKey: '', fg: null, fgKey: '' };
+  const skyGrad = (ctx, vh) => {
+    if (G.sky && G.skyH === vh) return G.sky;
     const g = ctx.createLinearGradient(0, 0, 0, vh);
     g.addColorStop(0, theme.sky[0]); g.addColorStop(0.55, theme.sky[1]); g.addColorStop(1, theme.sky[2]);
-    ctx.fillStyle = g; ctx.fillRect(0, 0, vw, vh);
+    G.sky = g; G.skyH = vh;
+    return g;
+  };
+  bg.drawFar = (ctx, cam, vw, vh, t) => {
     const img = assets.get(stage.bg);
+    // 하늘 그라데이션: 불투명한 원경이 화면 전체를 덮으면(긴 방이 아니고 가로도 모자라지 않음) 가려지므로 칠하지 않는다 (전체 화면 칠하기 1번 절약)
+    const roomH0 = map ? map.pxH : vh;
+    const covers = img && !(roomH0 > vh * 2) && img.width * ((vh * 1.08) / img.height) >= vw;
+    if (!covers) { ctx.fillStyle = skyGrad(ctx, vh); ctx.fillRect(0, 0, vw, vh); }
     if (img) {
       // 방 크기에 맞춰 원경이 끝에서 끝까지 이동하도록 패럴랙스 계수 산출
       const scale = (vh * 1.08) / img.height;
@@ -123,16 +133,27 @@ export function createBackground(stage, map) {
         const top = topColor(img, theme.sky[0]);
         const fadeH = ih * 0.25;
         if (oy > 0) {
-          const sg = ctx.createLinearGradient(0, oy - vh * 1.5, 0, oy);
-          sg.addColorStop(0, rgbCss(top, 1, 0.5)); sg.addColorStop(1, rgbCss(top));
-          ctx.fillStyle = sg; ctx.fillRect(0, 0, vw, oy + 1);
+          // 원경 위 하늘 이음새: (0, −1.5vh)→(0, 0) 그라데이션을 한 번 만들어 oy 로 옮겨 그린다
+          const k = `${top}|${vh}`;
+          if (G.sgKey !== k) {
+            G.sg = ctx.createLinearGradient(0, -vh * 1.5, 0, 0);
+            G.sg.addColorStop(0, rgbCss(top, 1, 0.5)); G.sg.addColorStop(1, rgbCss(top)); G.sgKey = k;
+          }
+          ctx.save(); ctx.translate(0, oy);
+          ctx.fillStyle = G.sg; ctx.fillRect(0, -oy, vw, oy + 1);
+          ctx.restore();
         }
         if (oy < vh) {
           ctx.drawImage(img, ox, oy, iw, ih);
           if (iw < vw) { ctx.save(); ctx.scale(-1, 1); ctx.drawImage(img, -ox, oy, iw, ih); ctx.restore(); }
-          const fg = ctx.createLinearGradient(0, oy, 0, oy + fadeH);
-          fg.addColorStop(0, rgbCss(top)); fg.addColorStop(1, rgbCss(top, 0));
-          ctx.fillStyle = fg; ctx.fillRect(0, oy, vw, fadeH);
+          const k = `${top}|${fadeH}`;
+          if (G.fgKey !== k) {
+            G.fg = ctx.createLinearGradient(0, 0, 0, fadeH);
+            G.fg.addColorStop(0, rgbCss(top)); G.fg.addColorStop(1, rgbCss(top, 0)); G.fgKey = k;
+          }
+          ctx.save(); ctx.translate(0, oy);
+          ctx.fillStyle = G.fg; ctx.fillRect(0, 0, vw, fadeH);
+          ctx.restore();
         }
       } else {
         ctx.drawImage(img, ox, oy, iw, ih);
@@ -144,9 +165,12 @@ export function createBackground(stage, map) {
     } else if (theme.moon) {
       ctx.save(); ctx.globalCompositeOperation = 'lighter';
       const mx = vw * 0.72 - cam.x * 0.02, my = vh * 0.24;
-      const mg = ctx.createRadialGradient(mx, my, 10, mx, my, 160);
-      mg.addColorStop(0, rgba(theme.moon, 0.9)); mg.addColorStop(0.25, rgba(theme.moon, 0.35)); mg.addColorStop(1, rgba(theme.moon, 0));
-      ctx.fillStyle = mg; ctx.fillRect(mx - 160, my - 160, 320, 320);
+      if (!G.moon) {
+        G.moon = ctx.createRadialGradient(0, 0, 10, 0, 0, 160);
+        G.moon.addColorStop(0, rgba(theme.moon, 0.9)); G.moon.addColorStop(0.25, rgba(theme.moon, 0.35)); G.moon.addColorStop(1, rgba(theme.moon, 0));
+      }
+      ctx.translate(mx, my);
+      ctx.fillStyle = G.moon; ctx.fillRect(-160, -160, 320, 320);
       ctx.restore();
     }
     // 별빛은 먼 하늘에 속하므로 원경에 그린다 (게임 층 앞을 가리지 않음)
@@ -181,12 +205,18 @@ export function createBackground(stage, map) {
     // 안개 띠
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
+    if (!G.fog || G.fogH !== vh) {
+      G.fog = []; G.fogH = vh;
+      for (let i = 0; i < 3; i++) {
+        const y = vh * (0.55 + i * 0.16), g = ctx.createLinearGradient(0, y - 60, 0, y + 60);
+        g.addColorStop(0, rgba(theme.fog, 0)); g.addColorStop(0.5, rgba(theme.fog, 0.045)); g.addColorStop(1, rgba(theme.fog, 0));
+        G.fog.push(g);
+      }
+    }
     for (let i = 0; i < 3; i++) {
       const y = vh * (0.55 + i * 0.16);
       const off = ((t * (8 + i * 6) - cam.x * (0.2 + i * 0.1)) % vw + vw) % vw;
-      const g = ctx.createLinearGradient(0, y - 60, 0, y + 60);
-      g.addColorStop(0, rgba(theme.fog, 0)); g.addColorStop(0.5, rgba(theme.fog, 0.045)); g.addColorStop(1, rgba(theme.fog, 0));
-      ctx.fillStyle = g;
+      ctx.fillStyle = G.fog[i];
       ctx.fillRect(off - vw, y - 60, vw * 2, 120);
     }
     ctx.restore();
@@ -205,7 +235,7 @@ let _vig = null;
 function vignetteSprite(vw, vh) {
   const w = Math.ceil(vw / 4), h = Math.ceil(vh / 4);
   if (_vig && _vig.width === w && _vig.height === h) return _vig;
-  _vig = document.createElement('canvas');
+  _vig ??= document.createElement('canvas');   // 화면 크기가 바뀌면 같은 캔버스를 다시 굽는다 (새 캔버스를 만들지 않음)
   _vig.width = w; _vig.height = h;
   const g = _vig.getContext('2d');
   const vg = g.createRadialGradient(w / 2, h / 2, h * 0.4, w / 2, h / 2, h * 1.0);
@@ -328,10 +358,12 @@ function drawStars(ctx, bg, cam, vw, vh, t) {
     const hx = s.x * vw + Math.cos(s.a) * d, hy = s.y * vh + Math.sin(s.a) * d;
     const tx = hx - Math.cos(s.a) * s.len, ty = hy - Math.sin(s.a) * s.len;
     const a = Math.sin(Math.PI * Math.min(1, k)) * 0.9;
-    const g = ctx.createLinearGradient(tx, ty, hx, hy);
-    g.addColorStop(0, 'rgba(220,220,255,0)'); g.addColorStop(1, `rgba(255,255,255,${a})`);
-    ctx.strokeStyle = g; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(hx, hy); ctx.stroke();
+    // 꼬리 그라데이션은 별똥별마다 한 번 (머리 기준 −len→0 축에 만들어 회전해 그리고, 밝기는 globalAlpha 로)
+    if (!s.g) { s.g = ctx.createLinearGradient(-s.len, 0, 0, 0); s.g.addColorStop(0, 'rgba(220,220,255,0)'); s.g.addColorStop(1, 'rgba(255,255,255,1)'); }
+    ctx.save(); ctx.translate(hx, hy); ctx.rotate(s.a); ctx.globalAlpha *= a;
+    ctx.strokeStyle = s.g; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-s.len, 0); ctx.lineTo(0, 0); ctx.stroke();
+    ctx.restore();
     ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.beginPath(); ctx.arc(hx, hy, 1.8, 0, TAU); ctx.fill();
   }
   ctx.restore();

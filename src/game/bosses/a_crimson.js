@@ -26,6 +26,17 @@ export class CrimsonArmor extends ABoss {
     const h = this.pc.helm;
     return [{ x: this.x + 6, y: this.y + 6, w: this.w - 12, h: this.h - 30 }, { x: h.x - 22, y: h.y - 26, w: 44, h: 50 }];
   }
+  /** 맞는 판정 (R1-REQ-146 사인오프, 선택지 A): 조립 형태는 몸통 + 채색 투구(발 기준 −300…−200, 목 ±34) — 머리를 노린 공격이 맞는다.
+   *  접촉 피해(hurtboxes)는 그대로. 부위 방어 배율 1 (방어력 변화 없음). 분리 형태는 hurtboxes 와 같다 */
+  hitParts() {
+    const hb = this.hurtboxes();
+    if (this.split) return hb;
+    const P = this.pose(), n = this.W(P.T.x + 6, 0), cr = this.crouch * 30 * S;
+    const L = this._hp || (this._hp = [{ defMul: 1 }, { defMul: 1, helm: true }]);
+    Object.assign(L[0], hb[0]);
+    const h = L[1]; h.x = n.x - 34; h.y = this.bottom - 300 + cr; h.w = 68; h.h = 100;
+    return L;
+  }
   onIntro() { audio.sfx('clang', { pitch: 0.5 }); audio.sfx('boss_roar', { pitch: 0.6 }); this.visor = 1; }
   moves() {
     const ph = this.phase, p = this.player, far = p && Math.abs(p.cx - this.cx) > 420;

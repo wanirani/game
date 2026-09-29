@@ -176,9 +176,14 @@ export class Leviathan extends BossB {
   updateParts() {
     const F = this.A.floor;
     const hr = this.headR, c = Math.cos(this.ha), s = Math.sin(this.ha);
-    const hcx = this.hx + c * 48, hcy = this.hy + s * 30;
+    // 맞는 머리 판정 (R1-REQ-112 사인오프): 채색 두개골은 머리 축을 따라 -57..+134 px 라 예전 104x72(+48,+30)는 주둥이·턱을
+    // 놓쳤다 → 중심 +62 (두 축 모두), 가로로 누우면 128x72 · 세우면 72x128. 접촉 피해(contacts[0])는 예전 상자 그대로 둔다
+    const ocx = this.hx + c * 48, ocy = this.hy + s * 30;   // 예전 중심: 접촉 판정·물속 판정용
+    const horiz = Math.abs(c) >= Math.abs(s);
+    hr.w = horiz ? 128 : 72; hr.h = horiz ? 72 : 128;
+    const hcx = this.hx + c * 62, hcy = this.hy + s * 62;
     hr.x = hcx - hr.w / 2; hr.y = hcy - hr.h / 2;
-    hr.off = hcy > F + 10;
+    hr.off = ocy > F + 10;
     let k = 0;
     for (let n = 0; n < this.bodyParts.length; n++) {
       const i = 4 + n * 4, bp = this.bodyParts[n];
@@ -188,7 +193,7 @@ export class Leviathan extends BossB {
     }
     // 접촉 판정: 머리 + 보이는 마디
     const cs = this.contacts;
-    cs[k].x = hr.x + 8; cs[k].y = hr.y + 8; cs[k].w = hr.w - 16; cs[k].h = hr.h - 16;
+    cs[k].x = ocx - 52 + 8; cs[k].y = ocy - 36 + 8; cs[k].w = 104 - 16; cs[k].h = 72 - 16;
     if (!hr.off) k++;
     for (let i = 3; i < N && k < cs.length; i += 2) {
       if (this.sy[i] > F - 6) continue;

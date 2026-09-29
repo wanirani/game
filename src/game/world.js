@@ -57,6 +57,7 @@ export const STYLE_RANKS = [
 ];
 // 보스가 남기는 일시적인 개체 종류 (부활 시 정리 대상). 'hazard' = B계열 보스의 Zone(장판·광선 등)
 const BOSS_TRANSIENT = new Set(['projectile', 'hitbox', 'effect', 'hazard', 'zone']);
+const SPAWN_SHIFT_MAX = 12;                     // 터치 스틱(왼손잡이: 버튼 묶음)에 가린 시작 위치를 오른쪽으로 옮기는 최대 칸 수
 const TOP_EDGE_R = { x: 0, y: -2000, w: 0, h: 2004 };
 /** HUD 비키기(syncHudBand)용 화면 위끝 띠 (논리 px; 재사용 객체) */
 const TOP_EDGE = (vw) => { TOP_EDGE_R.w = vw; return TOP_EDGE_R; };
@@ -197,8 +198,13 @@ export class World {
           this.add(c); break;
         }
         case 'D': { const door = new Door(m.tx, m.ty, (room.doors?.[n]) ?? room.next); door.mark = room.doorMarks?.[n] ?? null; this.add(door); break; }   // [hook:gimmick] 문 표식 (world2 §3.8)
-        case 'M': { const pl = new MovingPlatform(m.tx, m.ty, false, room.platRange ?? 4, room.platSpeed ?? 80); this.add(pl); this.platforms.push(pl); break; }
-        case 'V': { const pl = new MovingPlatform(m.tx, m.ty, true, room.platRange ?? 4, room.platSpeed ?? 70); this.add(pl); this.platforms.push(pl); break; }
+        case 'M': case 'V': {
+          // 발판별 덮어쓰기 (R1-SEED-PLAT): room.platforms[i] = {range, speed} — i 는 M·V 표식을 지도 순서대로 함께 센 번호.
+          // 없으면 방 기본값 (room.platRange / room.platSpeed)
+          const vert = m.ch === 'V', o = room.platforms?.[(counters.plat = (counters.plat ?? -1) + 1)] ?? null;
+          const pl = new MovingPlatform(m.tx, m.ty, vert, o?.range ?? room.platRange ?? 4, o?.speed ?? room.platSpeed ?? (vert ? 70 : 80));
+          this.add(pl); this.platforms.push(pl); break;
+        }
         case 'F': { const pl = new CrumblePlatform(m.tx, m.ty); this.add(pl); this.platforms.push(pl); break; }
         case 'L': break;
         case '!': {
@@ -287,7 +293,8 @@ export class World {
       for (let tx = l; tx <= r; tx++) for (let ty = Math.min(top, start.ty - 1); ty <= start.ty; ty++) if (!free(tx, ty)) return false;
       return floor(x, start.ty + 1);
     };
-    for (let k = 1; k <= 6 && covered(); k++) {
+    // 최대 12칸 (R1-REQ-323 리드 결정: 왼손잡이 버튼 묶음은 6칸으로 다 비키지 못한다). 가려지지 않는 첫 바닥 칸에서 멈추고, 12칸으로도 안 되면 그대로 둔다
+    for (let k = 1; k <= SPAWN_SHIFT_MAX && covered(); k++) {
       const x = start.tx + k;
       if (!fits(x)) break;
       place(x);
@@ -395,6 +402,7 @@ export class World {
       if (p.x < this.arena.x0) { p.x = this.arena.x0; p.vx = Math.max(0, p.vx); }
       if (p.x + p.w > this.arena.x1) { p.x = this.arena.x1 - p.w; p.vx = Math.min(0, p.vx); }
     }
+    this.camera.boss = this.arena && this.bossActive && this.boss && !this.boss.dead ? this.boss : null;   // 보스 경기장 구도 (R1-RUN-BOSSFRAME)
     this.camera.follow(p, dt);
     // 방 가장자리 출구
     if (!this.transitioning && !p.dead && !this.arena) {

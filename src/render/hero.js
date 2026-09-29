@@ -1622,8 +1622,8 @@ const CONE = { on: false, a0: 0, span: 0 };
 function crescent(c, n, tc, a) {
   const core = mx(tc, '#ffffff', 0.3);
   const gx0 = TRX1[0], gy0 = TRY1[0], gx1 = TRX1[n - 1], gy1 = TRY1[n - 1];
-  const cone = CONE.on && typeof c.createConicGradient === 'function';
-  const lin = !cone && Math.abs(gx1 - gx0) + Math.abs(gy1 - gy0) >= 4;
+  const cone = !G.lowq && CONE.on && typeof c.createConicGradient === 'function';
+  const lin = !G.lowq && !cone && Math.abs(gx1 - gx0) + Math.abs(gy1 - gy0) >= 4;
   const fill = (col, a0, am, a1) => {
     let g;
     if (cone) {
@@ -1723,11 +1723,11 @@ function drawStreak(E, K, p, mv, which) {
   const k = 1 - ST.u * 0.7, tc = trailColor(K, mv), hw = mv.finisher || mv.lunge > 300 ? 4.2 : 3;
   const c = G.c;
   c.save(); c.globalCompositeOperation = 'lighter';
-  let g = c.createLinearGradient(x0, 0, x1, 0);
-  g.addColorStop(0, ra(tc, 0)); g.addColorStop(0.25, ra(tc, 0.55 * k)); g.addColorStop(1, ra(tc, 0.1 * k));
+  let g = G.lowq ? ra(tc, 0.3 * k) : c.createLinearGradient(x0, 0, x1, 0);
+  if (!G.lowq) { g.addColorStop(0, ra(tc, 0)); g.addColorStop(0.25, ra(tc, 0.55 * k)); g.addColorStop(1, ra(tc, 0.1 * k)); }
   c.fillStyle = g; c.beginPath(); c.moveTo(x0, y0 - hw * 0.4); c.quadraticCurveTo(lerp(x0, x1, 0.55), y0 - hw, x1, y0); c.quadraticCurveTo(lerp(x0, x1, 0.55), y0 + hw, x0, y0 + hw * 0.4); c.closePath(); c.fill();
-  g = c.createLinearGradient(x0, 0, x1, 0);
-  g.addColorStop(0, ra('#ffffff', 0.2 * k)); g.addColorStop(0.5, ra('#ffffff', 0.95 * k)); g.addColorStop(1, ra('#ffffff', 0));
+  g = G.lowq ? ra('#ffffff', 0.6 * k) : c.createLinearGradient(x0, 0, x1, 0);
+  if (!G.lowq) { g.addColorStop(0, ra('#ffffff', 0.2 * k)); g.addColorStop(0.5, ra('#ffffff', 0.95 * k)); g.addColorStop(1, ra('#ffffff', 0)); }
   c.fillStyle = g; c.beginPath(); c.moveTo(x0, y0 - 0.6); c.lineTo(x1, y0); c.lineTo(x0, y0 + 0.6); c.closePath(); c.fill();
   // 속도선
   c.strokeStyle = ra(tc, 0.45 * k); c.lineWidth = 0.6;
@@ -2070,6 +2070,7 @@ export function drawHero(ctx, p, world, opts = {}) {
   let dt = 0;
   if (rig) { dt = rig.lastT === undefined ? 0 : clamp(tt - rig.lastT, 0, 0.05); rig.lastT = tt; }
   G.c = ctx; G.tint = opts.tint || null; G.t = tt; G.fx = !opts.tint && !opts.noFx;
+  G.lowq = (world?.qualityNow?.() ?? world?.game?.quality) === 'low';   // 저품질: 무기 궤적·찌르기 섬광의 그라디언트를 단색으로 (§5.2 그라디언트 6/프레임)
   // ── 자세 ──
   const P = rig ? (rig.P || (rig.P = newPose())) : P_TMP;
   resetPose(P);

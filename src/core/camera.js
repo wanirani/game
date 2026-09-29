@@ -13,6 +13,7 @@
 //  frameOn(x, y, zoom)          연출 구도를 즉시 적용하고 x/y 를 바로 다시 계산 (월드가 멈춘 컷인 장면용; 끝낼 때 cineEnd)
 //  lookBoost                    추가 룩어헤드(px, 바라보는 방향). 질주·대시 소유자가 매 프레임 넣는다
 //  floorY                       보스 경기장 바닥 y(px) 힌트: 바닥이 화면 아래쪽에 오도록 세로 구도를 잡는다 (null = 끔)
+//  boss                         보스 경기장 가로 구도 대상 (영웅 0.6 : 보스 0.4 가중점, 영웅은 화면 가장자리에서 15% 안쪽; null = 끔)
 //  tick(dt)                     흔들림·스프링·줌 연출·연출 구도만 진행 (월드가 멈춘 오버레이 장면이 매 프레임 부른다; tickShake 는 옛 이름)
 //  reset()                      방 로딩 시 줌·연출·흔들림 초기화
 // 터치 모드에서 오른쪽을 볼 때는 추적점을 화면 폭의 6% 앞쪽으로 당긴다 (platform §5.4: 버튼 묶음에 적이 가리기 전에 보이게).
@@ -28,6 +29,8 @@ const PUNCH_OUT = 0.18;
 const TOUCH_BIAS = 0.06;               // 화면 폭 대비 (platform §5.4)
 const ARENA_FLOOR = 0.1;               // 경기장: 바닥 아래로 보여 줄 화면 높이 비율
 const ARENA_HEAD = 0.14;               // 경기장: 플레이어 머리 위로 최소한 남길 화면 높이 비율
+const BOSS_W_HERO = 0.6;               // 보스 경기장 구도: 영웅 가중치 (보스 0.4)
+const BOSS_EDGE = 0.15;                // 보스 경기장 구도: 영웅과 화면 가장자리 사이 최소 거리 (화면 폭 비율)
 
 // 값 노이즈 (흰 잡음 대신 부드럽게 흔들린다): 정수 격자 해시를 smoothstep 으로 보간, -1..1
 function hash(n) {
@@ -64,6 +67,7 @@ export class Camera {
     this.lookX = 0; this.lookY = 0;
     this.lookBoost = 0;              // [hook:feel] 질주·대시 추가 룩어헤드 px
     this.floorY = null;              // [hook:plat] 보스 경기장 바닥 y (px)
+    this.boss = null;                // 보스 경기장 구도 대상 (world 가 경기장이 잠긴 동안 넣는다; R1-RUN-BOSSFRAME)
     this.cx = 0; this.cy = 0;        // 부드럽게 따라가는 추적 중심 (월드 좌표)
     this.shakeX = 0; this.shakeY = 0; // 이번 프레임의 흔들림+반동 오프셋 (lighting.js 도 읽는다)
     this.rot = 0;                    // 이번 프레임의 화면 회전 (rad)
@@ -94,7 +98,7 @@ export class Camera {
     this.trauma = 0; this.traumaFloor = 0; this.traumaHold = 0;
     this.kickX = 0; this.kickY = 0; this.kvx = 0; this.kvy = 0;
     this.shakeX = 0; this.shakeY = 0; this.rot = 0;
-    this.roll = 0; this.lookBoost = 0; this.floorY = null;
+    this.roll = 0; this.lookBoost = 0; this.floorY = null; this.boss = null;
   }
 
   // ─────────────────────────── 흔들림·반동 ───────────────────────────
@@ -189,6 +193,18 @@ export class Camera {
     const wantLookY = t.onGround ? -40 : ((t.vy || 0) > 300 ? 40 : -20);
     this.lookY = snap ? wantLookY : lerp(this.lookY, wantLookY, 1 - Math.pow(0.1, dt));
     let fx = cx + this.lookX, fy = cy + this.lookY;
+    const B = this.boss;
+    if (B && !B.dead && !B.hidden) {
+      // 보스 경기장 구도 (R1-RUN-BOSSFRAME): 영웅(0.6)과 보스 몸통 중심(0.4)의 가중점을 겨누되, 영웅은 화면 가로 15% 안쪽에 둔다.
+      // 둘 다 담을 수 없으면 영웅이 우선 (보스는 다가오면서 들어온다). 경기장 경계 클램프는 아래 clampCentre·clamp 가 한다
+      let bx = B.cx ?? (B.x + (B.w ?? 0) / 2);
+      if (Number.isFinite(bx)) {
+        const b = this.bounds;
+        if (b) bx = clamp(bx, b.x, b.x + b.w);   // 화면 밖에 세워 둔 몸통(잠수·비행 이탈)은 경기장 끝으로
+        const m = vwB * (0.5 - BOSS_EDGE);
+        fx = clamp(BOSS_W_HERO * (cx + this.lookX * 0.5) + (1 - BOSS_W_HERO) * bx, cx - m, cx + m);
+      }
+    }
     if (this.floorY != null) {
       // [hook:plat] 보스 경기장: 바닥이 화면 아래 10% 지점에 오게 (높은 방에서 땅 속만 보이던 문제). 높이 뛰면 머리 위 여백을 지키며 따라간다
       const floorFy = this.floorY + vhB * ARENA_FLOOR - vhB / 2;

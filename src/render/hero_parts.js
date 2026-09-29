@@ -13,7 +13,7 @@ export const EL_COL = { holy: '#fff2b0', fire: '#ff7a2a', ice: '#9fe8ff', dark: 
 export const RARITY_COL = ['#d8d0c0', '#6fe07a', '#5aa8ff', '#c07cff', '#ffa640', '#ff4a5a'];
 
 /** 현재 그리기 상태 (drawHero 가 설정) */
-export const G = { c: null, tint: null, t: 0, olw: 0.85, fx: true, pass: 0 };
+export const G = { c: null, tint: null, t: 0, olw: 0.85, fx: true, pass: 0, lowq: false };   // lowq: 저품질 등급 → 장식용 그라디언트 대신 단색
 /** 부위 묶음(팔·다리)을 이음매 없이: 1패스 외곽선(두껍게) → 2패스 채우기 */
 export function group(fn, a, b, cc) {
   if (G.tint) { fn(a, b, cc); return; }

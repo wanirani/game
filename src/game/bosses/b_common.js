@@ -57,8 +57,8 @@ function makeCanvas(w, h) {
 const GLOW_POOL = [];
 /** 발광 스프라이트 예비 캔버스를 n 장까지 채우고, 주어진 색(들)은 바로 굽는다 */
 export function prewarmGlows(n = 6, colors = null) {
+  if (colors) for (const c of colors) { glowSprite(c, true); glowSprite(c, false); }   // 색을 먼저 굽고 (예비분을 쓰지 않게)
   while (GLOW_POOL.length < n) GLOW_POOL.push(makeCanvas(64, 64));
-  if (colors) for (const c of colors) { glowSprite(c, true); glowSprite(c, false); }
 }
 export function glowSprite(color, core = true) {
   const key = color + (core ? '1' : '0');
@@ -391,8 +391,9 @@ export class BossB extends Boss {
     this.hitPart = null;
     this.alpha = 1;
     this.def0 = this.def;
-    prewarmGlows(6, [RIM, WARM, '#ffffff']);   // 등장 때: 전투 중 새 발광 색이 캔버스를 만들지 않게 (feel §8)
     this.setup?.();
+    // 등장 때 (setup 의 색 미리 굽기가 예비분을 쓴 뒤) 예비 캔버스를 다시 채운다: 전투 중 처음 쓰는 발광 색도 캔버스를 만들지 않게 (feel §8)
+    prewarmGlows(6, [RIM, WARM, '#ffffff']);
     preloadPainted(this.def.id, this.world.game);   // 채색 렌더러가 등록된 보스면 굽기 시작
   }
   setState(s) { super.setState(s); this.st = 0; this.pst = 0; }
