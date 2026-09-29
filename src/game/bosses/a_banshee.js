@@ -20,7 +20,14 @@ export class Banshee extends ABoss {
     this.chainsV = [new VerletChain(7, 11, { gravity: 700, damping: 0.94 }), new VerletChain(7, 11, { gravity: 700, damping: 0.94 })];
     this.orbs = [];
   }
-  hurtboxes() { return [{ x: this.x + 12, y: this.y + 6, w: this.w - 24, h: this.h - 30 }]; }
+  /** 몸통 + 머리 (R1-REQ-112 판정 점검): 두건 쓴 머리는 발밑 기준 (4, -172)·배율 SC 로 그려져 몸통 상자 위로 다 나와 있었다 →
+   *  그림과 같은 기울기(lean·0.6, 발밑 100px 위 회전축)로 머리 상자를 따로 둔다. 첫 상자(몸통)는 hurtbox() 대표 판정 그대로 */
+  hurtboxes() {
+    const l = (this.lean || 0) * 0.6, f = this.facing || 1, c = Math.cos(l), s = Math.sin(l);
+    const k = 100 - 172 * SC, fl = f * SC * 4;
+    const hx = this.cx + c * fl - s * k, hy = this.bottom - 100 + s * fl + c * k;
+    return [{ x: this.x + 12, y: this.y + 6, w: this.w - 24, h: this.h - 30 }, { x: hx - 24, y: hy - 30, w: 48, h: 60 }];
+  }
   onIntro() { audio.sfx('ghost', { pitch: 0.6, vol: 1 }); this.mouth = 1; this.arms = 1; }
   moves() {
     const ph = this.phase;

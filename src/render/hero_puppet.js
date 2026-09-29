@@ -7,6 +7,7 @@
 //       먼 쪽 팔다리는 어둡게 구운 사본, 갑옷 색은 재질 마스크(R=갑옷, G=장식)로 다시 칠한 변형(장착 시 1회)
 //       망토는 절차적 베를레 띠 + 벨벳 결 텍스처, 무기·궤적·효과는 기존 절차적 코드(hero_parts.js)
 import { assets } from '../core/assets.js';
+import { bus } from '../core/events.js';
 import { CLASSES, classChain } from '../data/classes.js';
 import { CHARACTERS } from '../data/characters.js';
 import { NPCS } from '../data/npcs.js';
@@ -84,13 +85,13 @@ function levelImg(E, L) { return assets.get(akey(E, 'atlas', L), E.man.h); }   /
 function levelPeek(E, L) { return peek(akey(E, 'atlas', L)); }
 function maskImg(E, L) { return assets.get(akey(E, 'mask', L), E.man.h); }
 function maskPeek(E, L) { return peek(akey(E, 'mask', L)); }
-function entry(cid, cls) {
+function entry(cid, cls, lazy = false) {
   const key = cid + '/' + cls;
   let E = REG.get(key);
   if (E) return E;
   const man = PUPPETS[cid]?.[cls];
   if (!man) { REG.set(key, NONE); return NONE; }
-  E = { key, cid, cls, man, state: 0, rig: null, PS: 1, J: null, parts: null, levels: [], lvIdx: {}, dark: {}, vars: new Map(), turnImg: null, turnMask: null };
+  E = { key, cid, cls, man, state: 0, rig: null, PS: 1, J: null, parts: null, levels: [], lvIdx: {}, dark: {}, vars: new Map(), turnImg: null, turnMask: null, req: false, used: 0, gen: 0 };
   REG.set(key, E);
   assets.json(`puppets/${key}/rig`, man.h).then((rig) => {
     if (!rig || !rig.levels || !rig.parts) { E.state = -1; return; }
@@ -99,15 +100,22 @@ function entry(cid, cls) {
     E.levels = Object.entries(rig.levels).map(([name, L]) => ({ name, scale: L.scale, rects: L.rects, size: L.size })).sort((a, b) => a.scale - b.scale);
     E.levels.forEach((L, i) => { E.lvIdx[L.name] = i; });
     E.opts = rig.opts || {};
-    // 게임 화면용 두 레벨 + 그 재질 마스크(≈14KB, 장비 색을 바꿀 때 원래 색이 한 프레임 비치지 않게). ui 레벨은 메뉴에서 필요할 때
-    for (const L of E.levels) if (L.name !== 'ui') { levelImg(E, L); maskImg(E, L); }
+    // 게임 화면용 두 레벨 + 그 재질 마스크(≈14KB, 장비 색을 바꿀 때 원래 색이 한 프레임 비치지 않게). ui 레벨은 메뉴에서 필요할 때.
+    // lazy(텍스처 예산이 빠듯할 때의 형제 미리 받기) = 리그만 받고 텍스처는 처음 그릴 때
+    if (!lazy) requestLevels(E);
   });
   return E;
+}
+/** 게임 화면용 두 레벨 + 그 재질 마스크를 요청 (ui 레벨은 메뉴에서 필요할 때). 텍스처를 놓았다가 다시 쓸 때도 이것으로 다시 받는다 */
+function requestLevels(E) {
+  E.req = true;
+  for (const L of E.levels) if (L.name !== 'ui') { levelImg(E, L); maskImg(E, L); }
 }
 /** 준비 상태: 리그 + 레벨 이미지 하나 이상 (ui 레벨은 여기서 요청하지 않는다) */
 function ready(E) {
   if (E.state === 1) return true;
   if (E.state < 0 || !E.rig) return false;
+  if (!E.req) requestLevels(E);   // 예산 때문에 텍스처를 놓았던 퍼펫을 다시 쓴다
   for (const L of E.levels) if (levelPeek(E, L)) { E.state = 1; REV++; preloadSiblings(E.cid); return true; }
   if (E.levels.filter((L) => L.name !== 'ui').every((L) => assets.failed(akey(E, 'atlas', L)))) E.state = -1;
   return false;
@@ -123,7 +131,8 @@ function preloadSiblings(cid) {
   SIB.add(cid);
   const ids = Object.keys(PUPPETS[cid] || {});
   let i = 0;
-  const next = () => { if (i >= ids.length) return; entry(cid, ids[i++]); idle(next); };
+  // 채색 텍스처 예산의 절반을 넘었으면 리그(수 KB)만 받아 둔다 — 형제 직업 텍스처(직업당 ≈2 MB)로 폰 예산이 차지 않게
+  const next = () => { if (i >= ids.length) return; entry(cid, ids[i++], assets.paintedBytes > assets.paintedBudget * 0.5); idle(next); };
   const idle = (f) => (typeof window.requestIdleCallback === 'function' ? window.requestIdleCallback(f, { timeout: 1500 }) : setTimeout(f, 120));
   idle(next);
 }
@@ -197,11 +206,11 @@ function recolorPx(px, m, ch, tgt, fin, strength) {
 /** 원본 이미지 + 재질 마스크 → 다시 칠한 캔버스 */
 function recolorCanvas(src, mk, V) {
   const W = src.naturalWidth || src.width, Hh = src.naturalHeight || src.height;
-  const cv = document.createElement('canvas'); cv.width = W; cv.height = Hh;
+  const cv = spareCanvas(W, Hh);
   const g = cv.getContext('2d', { willReadFrequently: true });
   g.drawImage(src, 0, 0);
   const d = g.getImageData(0, 0, W, Hh);
-  const mc = document.createElement('canvas'); mc.width = W; mc.height = Hh;
+  const mc = MASK_TMP ??= document.createElement('canvas'); mc.width = W; mc.height = Hh;   // 마스크 확대용 작업 캔버스 (공용, 매번 새로 만들지 않음)
   const mg = mc.getContext('2d', { willReadFrequently: true });
   mg.imageSmoothingEnabled = true; mg.drawImage(mk, 0, 0, W, Hh);
   const m = mg.getImageData(0, 0, W, Hh).data;
@@ -211,6 +220,75 @@ function recolorCanvas(src, mk, V) {
   mc.width = mc.height = 1;
   return cv;
 }
+// ── 굽기용 예비 캔버스 (0×0): 부팅·스테이지/방 진입 때 채워 둔다 → 싸움 도중 새 레벨(카메라 줌)·변형을 구울 때 캔버스를
+//    새로 만들지 않는다 (MASTER_PLAN §5.2 스테이지 도중 캔버스 0, R1-REQ-339R). 안 쓰는 예비는 메모리 0
+const SPARE = [];
+let MASK_TMP = null;
+function fillSpares(n = 8) {
+  if (typeof document === 'undefined') return;
+  while (SPARE.length < n) { const c = document.createElement('canvas'); c.width = 0; c.height = 0; SPARE.push(c); }
+}
+function spareCanvas(w, h) {
+  const c = SPARE.pop() ?? document.createElement('canvas');
+  c.width = w; c.height = h;
+  return c;
+}
+/** 다 쓴 굽기 캔버스를 예비로 돌린다 (0×0 → 메모리 0) */
+function recycle(c) {
+  if (!c || typeof c.getContext !== 'function') return;
+  c.width = 0; c.height = 0;
+  if (SPARE.length < 16) SPARE.push(c);
+}
+fillSpares();
+// 스테이지·방 진입(로딩 페이드 뒤) 때 예비를 다시 채운다 (싸움 도중에는 새로 만들지 않게). events.js 는 잎 모듈이지만
+// 순환 import 로 초기화 순서가 바뀌어도 안전하게 한 박자 늦춰 구독한다
+if (typeof setTimeout === 'function') setTimeout(() => { bus.on('stageEntered', () => { fillSpares(); sweep(performance.now(), true); }); bus.on('roomEntered', () => fillSpares()); }, 0);
+
+// ───────────────────────── 텍스처 예산 (R1-RUN-TEX-TOUCH) ─────────────────────────
+// 퍼펫 아틀라스·마스크·턴테이블(assets 'puppets' 묶음)은 채색 텍스처 예산(assets.paintedBudget: 터치 폰·태블릿 / 데스크톱)에
+// 합산되지만 assets 는 소유 모듈이 붙잡은 이미지라 스스로 내리지 않는다. 영웅을 여럿 바꿔 쓰면(파티·직업 탭·형제 미리 받기)
+// 한 판에 모든 영웅·직업의 텍스처가 쌓여 폰 예산을 넘으므로, 예산의 75% 를 넘으면 한동안(IDLE_MS) 그리지 않은 퍼펫부터
+// 텍스처와 구운 캔버스를 내린다 (리그 JSON 은 유지 → 다시 그릴 때 텍스처만 다시 받는다; 그동안은 벡터 대체 그림).
+const IDLE_MS = 4000, SWEEP_HI = 0.75, SWEEP_LO = 0.6;
+let sweepAt = -1e9;
+function sweepSoon(t) { if (t - sweepAt >= 500) sweep(t); }
+function hasTextures(E) {
+  if (E.turnImg || E.turnMask) return true;
+  for (const L of E.levels) if (assets.has(akey(E, 'atlas', L)) || assets.has(akey(E, 'mask', L))) return true;
+  return false;
+}
+/** 한 퍼펫의 텍스처·구운 캔버스를 내린다 → 내린 (예산) 바이트 */
+function releaseEntry(E) {
+  let b = 0;
+  for (const L of E.levels) b += assets.release(akey(E, 'atlas', L)) + assets.release(akey(E, 'mask', L));
+  b += assets.release(`puppets/${E.key}/turn`) + assets.release(`puppets/${E.key}/turn_mask`);
+  E.turnImg = null; E.turnMask = null;
+  for (const k in E.dark) recycle(E.dark[k]);
+  E.dark = {};
+  for (const V of E.vars.values()) { for (const k in V.img) recycle(V.img[k]); for (const k in V.dark) recycle(V.dark[k]); recycle(V.turn); }
+  E.vars.clear();
+  E.state = 0; E.req = false; E.gen++;
+  return b;
+}
+/** 예산 확인 → 오래 안 쓴 퍼펫부터 내린다. force: 스테이지 진입처럼 전환 시점이면 문턱 없이 예산의 SWEEP_LO 까지 */
+function sweep(t, force = false) {
+  sweepAt = t;
+  const budget = assets.paintedBudget;
+  let have = assets.paintedBytes;
+  if (!(budget > 0) || have <= budget * (force ? SWEEP_LO : SWEEP_HI)) return 0;
+  const list = [];
+  for (const E of REG.values()) if (E !== NONE && E.rig && t - E.used >= IDLE_MS && hasTextures(E)) list.push(E);
+  list.sort((a, b) => a.used - b.used);
+  let freed = 0;
+  for (const E of list) {
+    if (have <= budget * SWEEP_LO) break;
+    const b = releaseEntry(E);
+    have -= b; freed += b;
+  }
+  return freed;
+}
+/** QA: 퍼펫 텍스처 정리를 바로 돌린다 → 내린 바이트 */
+export function sweepPuppets(force = true) { return sweep(performance.now(), force); }
 /** 변형 레벨 캔버스 (그 레벨의 마스크가 로드 전이면 null) */
 function variantLevel(E, V, L) {
   const got = V.img[L.name];
@@ -220,8 +298,7 @@ function variantLevel(E, V, L) {
   return (V.img[L.name] = recolorCanvas(src, mk, V));
 }
 function bakeDark(src, a = FAR_DARK) {
-  const cv = document.createElement('canvas');
-  cv.width = src.naturalWidth || src.width; cv.height = src.naturalHeight || src.height;
+  const cv = spareCanvas(src.naturalWidth || src.width, src.naturalHeight || src.height);
   const c = cv.getContext('2d');
   c.drawImage(src, 0, 0);
   c.globalCompositeOperation = 'source-atop'; c.fillStyle = `rgba(14,8,24,${a})`; c.fillRect(0, 0, cv.width, cv.height);
@@ -241,12 +318,14 @@ export function puppetFor(p, look) {
   if (I === undefined) {
     const cid = p?.ch?.id, cls = cid ? classOf(p, look) : null;
     const E = cid && cls ? entry(cid, cls) : NONE;
-    I = E === NONE ? null : { E, look, vk: '', V: null, key: E.key, lv: null };
+    I = E === NONE ? null : { E, look, vk: '', V: null, key: E.key, lv: null, gen: E.gen };
     if (I) { I.vk = variantKey(E, look) ; }
     INST.set(look, I);
   }
   if (!I) return null;
   const E = I.E;
+  if (I.gen !== E.gen) { I.gen = E.gen; I.V = null; I.lv = null; }   // 예산 때문에 텍스처를 놓았다 다시 받음 → 구운 변형·레벨 이력 버림
+  E.used = performance.now(); sweepSoon(E.used);
   if (!ready(E)) return null;
   if (I.vk && !I.V) { I.V = E.vars.get(I.vk) || makeVariant(E, I.vk); E.vars.set(I.vk, I.V); }
   I.key = E.key + (I.vk ? '#' + I.vk : '');
@@ -277,10 +356,13 @@ function npcPuppet(p, look) {
   if (I === undefined) {
     const id = npcIdOf(p, look);
     const E = id && PUPPETS[NPC_CID]?.[id] ? entry(NPC_CID, id) : NONE;
-    I = E === NONE ? null : { E, look, vk: '', V: null, key: E.key, lv: null, npc: id };
+    I = E === NONE ? null : { E, look, vk: '', V: null, key: E.key, lv: null, npc: id, gen: E.gen };
     INST_NPC.set(look, I);
   }
-  if (!I || !ready(I.E)) return null;
+  if (!I) return null;
+  if (I.gen !== I.E.gen) { I.gen = I.E.gen; I.lv = null; }
+  I.E.used = performance.now(); sweepSoon(I.E.used);
+  if (!ready(I.E)) return null;
   return I;
 }
 /** 이 NPC 에 채색 퍼펫 에셋이 있는가 (로드 여부와 무관) */
@@ -703,6 +785,7 @@ function weaponPup(c, W, x, y, ang, fire) {
 export function turnReady(I) {
   const E = I?.E;
   if (!E?.rig?.turn) return false;
+  E.used = performance.now();
   if (!E.turnImg) E.turnImg = assets.get(`puppets/${E.key}/turn`, E.man.h);
   if (E.rig.turn.mask && !E.turnMask) E.turnMask = assets.get(`puppets/${E.key}/turn_mask`, E.man.h);
   return !!E.turnImg;

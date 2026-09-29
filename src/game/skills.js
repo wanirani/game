@@ -1822,7 +1822,11 @@ function boomRing(w, x, y, r, col) {
       }
       glow(ctx, x, y, r * 1.1, col, 0.5 * a);
     },
-    light(L, e) { L.add(x, y - 30, r * 2.4, col, 1.2 * (1 - e.k)); },
+    light(L, e) {
+      const R = r * 2.4, i = 1.2 * (1 - e.k);
+      if (R <= 420) { L.add(x, y - 30, R, col, i); return; }
+      L.add(x, y - 30, R, col, i, false); L.add(x, y - 30, 300, col, i);   // 화면만 한 빛은 어둠만 걷고 가산 번짐은 가운데만 (카엘 궁극기와 같은 규칙)
+    },
   });
 }
 
@@ -2560,7 +2564,7 @@ function ultFlash(w, col, a, decay = 4, v = null, merge = false) {
   if (S) scrFlash(S, f, w); else _pendFlash = f;   // 시전 순간(감독이 생기기 전): 감독이 시작할 때 넘겨받는다
 }
 function scrFlash(S, f, w) {
-  const now = Number(w?.game?.realTime) || 0, log = S.flog;
+  const now = Number(w?.game?.time) || 0, log = S.flog;
   while (log.length && now - log[0] > 1) log.shift();
   const s = log.length >= 2 ? Math.min(f.a, 0.3) : f.a;
   if (s > 0.3) log.push(now);
@@ -2679,8 +2683,8 @@ function trackUlt(e, w) {
 function ultDirector(w, p, o) {
   const cam = w.camera, v = o.v ?? ultCtx(p, w), steps = (o.steps || []).sort((a, b) => a[0] - b[0]);
   const bound = (e) => { e.x = cam.x - 80; e.y = cam.y - 80; e.w = cam.vw + 160; e.h = cam.vh + 160; };
-  // 화면 층 상태: 중간·낮음의 번쩍임은 암전 층에 합친다 (fa/fc/fd; 실제 시간으로 줄어든다). ultFlash 가 ULT_LIVE 로 찾아온다
-  const S = { q: v.q, fa: 0, fc: '#ffffff', fd: 4, flog: [], rt: null };
+  // 화면 층 상태: 중간·낮음의 번쩍임과 시전 번쩍임은 암전 층에 합친다 (fa/fc/fd). ultFlash 가 ULT_LIVE 로 찾아온다
+  const S = { q: v.q, fa: 0, fc: '#ffffff', fd: 4, flog: [] };
   if (_pendFlash) { scrFlash(S, _pendFlash, w); _pendFlash = null; }   // 시전 번쩍임 (castUltimate)
   const dim = o.dim ?? 0.55, dimCol = o.dimCol ?? '#05020a';
   fx(w, {
@@ -2700,15 +2704,14 @@ function ultDirector(w, p, o) {
       if (e.d.kit) kitCall('begin', ww, p, { color: v.color, accent: v.accent, tier: v.tier, classId: v.classId, charId: v.charId, dimCol: o.dimCol ?? '#05020a', kind: 'ult', dur: o.dur, maxDur: o.dur + 4, ...(o.kit || {}) });
       else beginLocal(ww, p, v);
       trackUlt(e, ww);
+      // 합친 번쩍임은 game.flash 처럼 줄어든다: 화면 오버레이의 update 는 실제 시간으로 흐르고(경직 중에도) 컷인이 월드를 멈춘 동안은 멈춘다.
+      // 그리는 것은 없다 (draw 없음 → 화면 층 아님)
+      ww.addOverlay?.({ update(dt) { if (e.dead) { this.dead = true; return; } if (S.fa > 0) S.fa = Math.max(0, S.fa - S.fd * dt); } });
       o.start?.(e, ww);
       keepInRoom(ww, p);
     },
     tick(e, ww, dt) {
       ww.cutscene = true;
-      // 합친 번쩍임은 game.flash 처럼 실제 시간으로 줄어든다 (슬로모션과 무관; 컷인으로 멈췄던 동안은 건너뛴다)
-      const now = Number(ww.game?.realTime) || 0;
-      if (S.rt != null && S.fa > 0) S.fa = Math.max(0, S.fa - S.fd * clamp(now - S.rt, 0, 0.05));
-      S.rt = now;
       while (e.d.i < steps.length && steps[e.d.i][0] <= e.lt) steps[e.d.i++][1](ww, e);
       o.tick?.(e, ww, dt);
       keepInRoom(ww, p);

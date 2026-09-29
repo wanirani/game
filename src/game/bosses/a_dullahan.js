@@ -9,6 +9,7 @@ import { paintedDebris } from '../../render/painted/registry.js';
 
 const STEEL = '#2a2c36', STEEL2 = '#5a5e70', GOLD = '#c8a048', GHOST = '#cfdcff', GHOST2 = '#7a8cc8', BFIRE = '#8ab8ff', OFIRE = '#ff8a2a';
 const _Q = new Float32Array(16);
+const NO_OFF = Object.freeze({ x: 0, y: 0 });
 
 export class Dullahan extends ABoss {
   setup() {
@@ -19,17 +20,29 @@ export class Dullahan extends ABoss {
   get S() { return this.mounted ? 1.3 : 1.2; }
   hurtboxes() {
     const S = this.S;
-    if (this.mounted) return [
-      { x: this.cx - 34 * S, y: this.bottom - 180 * S, w: 64 * S, h: 84 * S },   // 기사 몸통 (주 판정)
-      { x: this.x + 14, y: this.bottom - 118 * S, w: this.w - 28, h: 54 * S },  // 말 몸통
-    ];
+    if (this.mounted) {
+      // 앞발 들기(rear) 동안 그림은 뒷발(-46,0) 기준으로 몸을 일으킨다 → 판정 상자도 그 회전을 따라 중심만 옮긴다 (R1-REQ-112)
+      const k = this.rearOff(0, -138), h = this.rearOff(0, -91);
+      return [
+        { x: this.cx - 34 * S + k.x, y: this.bottom - 180 * S + k.y, w: 64 * S, h: 84 * S },   // 기사 몸통 (주 판정)
+        { x: this.x + 14 + h.x, y: this.bottom - 118 * S + h.y, w: this.w - 28, h: 54 * S },  // 말 몸통
+      ];
+    }
     return [{ x: this.x + 10, y: this.y + 4, w: this.w - 20, h: this.h - 6 }];
+  }
+  /** 기승 중 지역 점 (lx, ly) 가 rear 회전(뒷발 -46,0 축, -rear·0.55 rad)으로 옮겨 간 만큼의 월드 변위 */
+  rearOff(lx, ly) {
+    const r = this.rear;
+    if (!(r > 0.02)) return NO_OFF;
+    const S = this.S, a = -r * 0.55, c = Math.cos(a), s = Math.sin(a), dx = lx + 46;
+    const nx = -46 + dx * c - ly * s, ny = dx * s + ly * c;
+    return { x: (this.facing || 1) * S * (nx - lx), y: S * (ny - ly) };
   }
   /** 플레이어 공격 판정: 기승 중에는 기사+말 몸통 전체 (다리 제외) */
   hurtbox() {
     if (!this.mounted) return this.hurtboxes()[0];
-    const S = this.S;
-    return { x: this.x + 14, y: this.bottom - 180 * S, w: this.w - 28, h: 116 * S };
+    const S = this.S, o = this.rearOff(0, -114);
+    return { x: this.x + 14 + o.x, y: this.bottom - 180 * S + o.y, w: this.w - 28, h: 116 * S };
   }
   onIntro() { audio.sfx('boss_roar', { pitch: 0.7 }); this.rear = 0.6; this.skullUp = 1; }
   moves() {

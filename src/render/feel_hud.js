@@ -2,7 +2,10 @@
 // feel.md §4.10 (콤보·스타일·알림), §6.1 (각성 게이지 UI), §9 WP3. 위치는 MASTER_PLAN §1.8 → hud_layout.js 의 hudLayout() 만 쓴다
 // (feel §4.10 의 픽셀 위치·'터치에서 80 px 내리기' 는 §1.8 이 대신한다). 여기서 새 영역 좌표를 정하지 않는다.
 //
-// ── 그리기 계약: hud.js drawHUD 가 이 순서로 부른다 (각 함수는 ctx 상태를 save/restore 로 되돌린다) ──
+// ── 그리기 계약: hud.js drawHUD 가 이 순서로 부른다 (각 함수는 ctx 상태를 위젯마다 save/restore 한 번으로 되돌린다) ──
+//  0. hudOverflow(world, 'combo' | 'transient') → true = 이번 프레임에 그 위젯이 칸 밖으로 넘치는 연출 중
+//       (콤보 열: 랭크 글자 등장 0.16초 · 이정표 박힘 0.12초 / 알림: 단어 2.2배 박힘 · 색수차 0.15초). hud.js 는 그때만
+//       다른 영역을 빼는 클립(avoidClip)을 건다 — 쉬는 그림은 칸 안에 들어가므로 매 프레임 자르지 않는다 (R1-REQ-330).
 //  1. drawAwGauge(ctx, world, x, y, w, touch) → true = 준비 문구 칸까지 맡았다 (hud.js 는 기존 '필살기 준비!' 를 그리지 않는다)
 //                                              false = world.player/run 이 없다 (hud.js 가 기존 문구를 그린다)
 //       (x, y, w) = L.awGauge (120×20). 준비 문구는 바로 아래 칸 (x, y + 22, w + 10, 22) = L.ready 에 그린다.
@@ -13,7 +16,8 @@
 //       SP 만 가득이면 '필살기 준비!' + 필살 버튼 글리프 (0차 전직 포함; 예전처럼 깜빡인다).
 //       길게 누르는 중(world.awakenState.holdK 0..1)에는 각성 막대 위로 흰 채움이 차오르고 빛이 세진다.
 //  2. drawComboHUD(ctx, world, vw, vh, touch) → true = 콤보 열을 맡았다 (hud.js 의 기존 콤보 표시는 그리지 않는다) | false = world.combo 없음
-//       L.combo 칸 안에 오른쪽 정렬. 칸 높이·너비에 맞춰 통째로 줄이고(낮으면 '총 피해' 줄을 뺀 작은 배치) 칸 아래로는 그리지 않는다.
+//       L.combo 칸 안에 오른쪽 정렬. 칸 높이·너비에 맞춰 통째로 줄이고(낮으면 '총 피해' 줄을 뺀 작은 배치) 칸 아래로는 그리지 않는다
+//       (쉬는 그림은 칸 안에 들어가고, 넘치는 연출 중에만 칸 아래·오른쪽을 자른다).
 //       겹치는 순서: 붓 띠 → 랭크 글자 → 숫자·HITS·막대·총 피해 → 이정표.
 //       구운 붓 띠 위 콤보 숫자 (46/52/58/64 px, 타격마다 1.35→1 로 튀고 ±3° 기울기, 랭크 색 그라데이션), 'HITS',
 //       콤보 시간 핏빛 막대 (combo.t / combo.window), '총 피해 n', 왼쪽에 스타일 랭크 글자 (D~SSS, −0.12 rad, 다음 랭크까지 진행 고리),
@@ -22,14 +26,19 @@
 //       L.transient 칸 가운데. hud.js 는 world.banner 가 없을 때만 부른다 → 배너(스테이지 제목·STAGE CLEAR·LEVEL UP …)가 이긴다.
 //       world.style.ann.cur 를 그린다 (대기열 2·0.8초 간격·0.7초 유지 + 0.25초 사라짐은 style.js 가 관리, 효과음도 style.js).
 //       붓 띠가 쓸고 지나가며 단어가 2.2→1 로 박히고(되튐) 0.15초 동안 색수차 (빨강 −2 px · 청록 +2 px), 아래에 한국어 부제 16 px.
-//       칸보다 길면 40 % 까지 줄인다 (40 % 로도 칸을 넘는 아주 좁은 칸에서만 25 % 까지). 칸 밖(가로 ± 6 px, 위 16 px·아래 6 px)은
-//       늘 잘라 낸다 → 2.2배 박힘의 첫 프레임도 옆 상시 영역·패드·토스트 줄을 덮지 않는다.
+//       칸보다 길면 40 % 까지 줄인다 (40 % 로도 칸을 넘는 아주 좁은 칸에서만 25 % 까지). 박힘·색수차 동안 칸 밖(가로 ± 6 px,
+//       위 16 px·아래 6 px)을 잘라 낸다 → 2.2배 박힘의 첫 프레임도 옆 상시 영역·패드·토스트 줄을 덮지 않는다 (그 뒤 그림은 그 안에 있다).
 //       SSS 는 금빛과 핏빛이 번갈아 빛난다.
 //  시간: 튀기기·박힘 연출은 world.rt (실제 시간 — 히트스톱 중에도 흐른다), 알림의 유지·사라짐은 style 의 age (게임 시간).
 //  동작 줄이기(settings.reduceMotion): 튀기기·기울기·박힘·색수차·붓 쓸기 없이 나타났다 사라진다. 저품질(low): 광택 흐름·핏방울 생략.
 //
 // ── 스프라이트 캐시 (feel §4.10 'brush banner sprite, pre-rendered'; §8·MASTER_PLAN §5.2 '스테이지 도중 새 캔버스 0') ──
-//  캔버스 5장: 콤보 붓 띠 · 알림 붓 띠 · 게이지 광채 · 랭크 글자 묶음(D~SSS + SSS 핏빛) · 알림 단어 묶음(같은 순서).
+//  캔버스 7장: 콤보 붓 띠 · 알림 붓 띠 · 게이지 광채 · 랭크 글자 묶음(D~SSS + SSS 핏빛) · 알림 단어 묶음(같은 순서)
+//   + 콤보 열 캐시 2장 (R1-REQ-330): NUM = 콤보 숫자(외곽선·랭크 색 그라데이션·기울기, 아래 줄은 흰 번쩍임),
+//     LBL = 랭크 색 밑줄 + 'HITS' + '총 피해 n'. 둘 다 내용(숫자·랭크·SSS 색 단계·총 피해·화면 배율·글꼴 세대)이 바뀔 때만
+//     다시 굽고, 매 프레임은 붙이기만 한다 (쉴 때는 기기 픽셀에 맞춰 1:1 로 붙여 작은 글자도 흐려지지 않는다).
+//  매 프레임 요소마다 save/restore 하지 않는다: 위젯마다 한 번 저장하고, 요소 사이에는 열 기준 변환으로 되돌린다.
+//  콤보 기울기는 콤보 수에서 정해지는 값이다 (그리는 중에 난수를 쓰지 않는다, R1-REQ-348).
 //  부팅 1.5초 뒤 글꼴(BN Dmg · Grenze Gotisch)을 기다렸다가 한가할 때 prewarmFeelHud() 가 굽는다. 그 전에 HUD 가 먼저 그려지면 그때 굽는다.
 //  글꼴이 늦게 도착하거나(ui.onFontEpoch) 화면 배율이 올라가면 한가할 때 같은 캔버스에 다시 굽는다 (새 캔버스 없음).
 //  brushSprite('banner' | 'band') → 구운 붓 띠 캔버스 | null (다른 HUD 가 같은 붓 띠를 쓰고 싶을 때). 논리 크기는 BRUSH_SIZE.
@@ -91,10 +100,11 @@ const WRD = { w: 470, h: 64, base: 46, size: 40, skew: -0.2 };
 
 // ───────────────────────── 스프라이트 캐시 ─────────────────────────
 /** QA 용 통계 */
-export const FEEL_HUD_STATS = { canvases: 0, bakes: 0, fontRebakes: 0, prewarmed: false, syncBakes: 0, dmgHooks: 0 };
+export const FEEL_HUD_STATS = { canvases: 0, bakes: 0, fontRebakes: 0, prewarmed: false, syncBakes: 0, dmgHooks: 0, numBakes: 0, lblBakes: 0 };
 const SPR = {
   S: 0, banner: undefined, band: null, glow: null, letters: null, words: null,
   letterW: [], wordMeta: [], lastScale: NaN, fontDirty: false, pending: false, watching: false,
+  num: null, lbl: null,   // 콤보 열 캐시 캔버스 (bake('all') 에서 한 번 만든다; 내용은 numSprite / lblSprite 가 바뀔 때만 굽는다)
 };
 
 function mkCanvas() {
@@ -275,6 +285,8 @@ function bake(what = 'all') {
       SPR.banner = bakeBrush(SPR.banner, BANNER, S);
       SPR.band = bakeBrush(SPR.band, BAND, S);
       SPR.glow = bakeGlow(SPR.glow, S);
+      SPR.num ??= mkCanvas();   // 크기·내용은 처음 그릴 때 정해진다 (NUM_KEY / LBL_KEY 가 비어 있으니 그때 굽는다)
+      SPR.lbl ??= mkCanvas();
     }
     SPR.letters = bakeLetters(SPR.letters, S);
     SPR.words = bakeWords(SPR.words, S);
@@ -337,35 +349,35 @@ if (typeof window !== 'undefined' && typeof setTimeout === 'function') {
 }
 
 // ───────────────────────── 캐시한 그라데이션 (원점 기준 → 위치가 바뀌어도 그대로 쓴다) ─────────────────────────
-let GCTX = null;
-const NUM_G = new Map();
-let HI_G = null;
-function gradCtx(ctx) { if (GCTX !== ctx) { GCTX = ctx; NUM_G.clear(); HI_G = null; } }
+// 문맥(ctx)마다 따로 둔다: 콤보 숫자는 NUM 캐시 캔버스에, 광택은 화면 캔버스에 칠하므로 한 프레임에 두 문맥을 오가도 버리지 않는다
+const GRADS = new WeakMap();
+function gcache(ctx) { let m = GRADS.get(ctx); if (!m) GRADS.set(ctx, (m = { num: new Map(), hi: null })); return m; }
+/** SSS(c2 가 있는 랭크)의 금↔핏빛 단계 0..7 (그 밖의 랭크는 0) */
+const numPhase = (rank, now) => (rankInfo(rank)?.c2 ? Math.floor(((Math.sin(now * 6) + 1) / 2) * 7.99) : 0);
 /** 콤보 숫자 채움: 기준선(by)이 원점 아래 by 에 있는 좌표계 기준. SSS 는 금↔핏빛 8단계 */
-function numGrad(ctx, rank, size, now) {
-  gradCtx(ctx);
+function numGrad(ctx, rank, size, ph) {
+  const M = gcache(ctx).num;
   const info = rankInfo(rank);
-  const ph = info?.c2 ? Math.floor(((Math.sin(now * 6) + 1) / 2) * 7.99) : 0;
   const key = rank * 10000 + size * 10 + ph;
-  let g = NUM_G.get(key);
+  let g = M.get(key);
   if (!g) {
     const by = size * 0.36;
     const c = info ? (info.c2 ? mix(info.c, info.c2, ph / 7) : info.c) : '#ffb070';
     g = ctx.createLinearGradient(0, by - size * 0.76, 0, by);
     g.addColorStop(0, '#ffffff'); g.addColorStop(0.42, mix(c, '#ffffff', 0.4)); g.addColorStop(1, c);
-    if (NUM_G.size > 96) NUM_G.clear();
-    NUM_G.set(key, g);
+    if (M.size > 96) M.clear();
+    M.set(key, g);
   }
   return g;
 }
 /** 각성 막대 위로 흐르는 광택 (0 … 22 px) */
 function hiGrad(ctx) {
-  gradCtx(ctx);
-  if (!HI_G) {
-    HI_G = ctx.createLinearGradient(0, 0, 22, 0);
-    HI_G.addColorStop(0, 'rgba(255,200,200,0)'); HI_G.addColorStop(0.5, 'rgba(255,225,225,0.8)'); HI_G.addColorStop(1, 'rgba(255,200,200,0)');
+  const m = gcache(ctx);
+  if (!m.hi) {
+    m.hi = ctx.createLinearGradient(0, 0, 22, 0);
+    m.hi.addColorStop(0, 'rgba(255,200,200,0)'); m.hi.addColorStop(0.5, 'rgba(255,225,225,0.8)'); m.hi.addColorStop(1, 'rgba(255,200,200,0)');
   }
-  return HI_G;
+  return m.hi;
 }
 let READY_COLS = null;   // '각성 가능!' 금 ↔ 핏빛 8단계 (처음 쓸 때 만든다)
 function readyCol(now) {
@@ -419,13 +431,20 @@ function comboDmg(world, s) {
   return Number.isFinite(v) ? v : s.dmgN === (world.combo?.n ?? 0) ? s.dmg : 0;
 }
 
+/** 콤보 n 번째 타격의 숫자 기울기 −3° … +3°: n 을 섞은 결정적 값 (타격마다 달라 보이지만 난수 상태를 쓰지 않는다) */
+function tiltOf(n) {
+  let h = Math.imul((n | 0) ^ 0x5bd1e995, 0x2c1b3c6d);
+  h = Math.imul(h ^ (h >>> 15), 0x297a2d39);
+  h ^= h >>> 13;
+  return (((h >>> 0) / 4294967296) * 2 - 1) * ROT_MAX;
+}
 /** 콤보 수·랭크 변화 → 튀기기·이정표·끝 연출 시각 */
 function track(world, s, now) {
   if (s.style !== world.style) hookStyle(world, s);
   const n = Math.max(0, world.combo.n | 0);
   if (n > s.n) {
     s.hitRt = now;
-    s.rot = (Math.random() * 2 - 1) * ROT_MAX;
+    s.rot = tiltOf(n);   // 콤보 수로 정해지는 기울기 (그리는 중 난수 없음, R1-REQ-348)
     s.endRt = -9;
     for (const m of milestones()) if (s.n < m && n >= m) { s.mile = m; s.mileRt = now; s.mileStr = `${m} HIT!`; }
   } else if (n < s.n) {
@@ -476,15 +495,16 @@ function drawGauge(ctx, world, s, x, y, w, f, full, ready, holdK, tier, now, T) 
   text(ctx, s.pctStr, x + w, y + 9, { size: T ? 12 : 10, align: 'right', weight: 700, family: FONT.num, color: full ? '#ffb0b8' : COLORS.dim });
   // 두 게이지가 가득(또는 길게 누르는 중): SP 막대(hud.js: L.ult 안 (x, y − 14, w, 10))와 각성 막대가 함께 빛난다
   const glowOn = (ready || holdK > 0) && SPR.glow;
-  if (glowOn) {
+  if (glowOn) {   // (요소마다 save/restore 하지 않는다: 합성·알파만 바꿨다가 되돌린다)
     const a = clamp(0.7 + 0.3 * Math.sin(now * 7) + holdK * 0.4, 0, 1);
-    ctx.save();
+    const ga = ctx.globalAlpha, op = ctx.globalCompositeOperation;
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha *= a;
+    ctx.globalAlpha = ga * a;
     glowAround(ctx, x, y - 14, w, 10);
     glowAround(ctx, x, by, w, bh);
     if (holdK > 0) glowAround(ctx, x, by, w, bh);
-    ctx.restore();
+    ctx.globalCompositeOperation = op;
+    ctx.globalAlpha = ga;
   }
   ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x, by, w, bh);
   const fw = w * clamp(f, 0, 1);
@@ -496,10 +516,11 @@ function drawGauge(ctx, world, s, x, y, w, f, full, ready, holdK, tier, now, T) 
       // 흐르는 광택 (1.4초에 한 번 채운 곳을 지나간다)
       const hw = 22, pos = ((now / 1.4) % 1) * (fw + hw) - hw;
       const l = Math.max(0, pos), r = Math.min(fw, pos + hw);
-      if (r > l) {
-        ctx.save(); ctx.translate(x + pos, 0);
+      if (r > l) {   // 광택 그라데이션은 원점 기준 (0 … 22 px) → 옮겼다가 그만큼 되돌린다
+        const ox = x + pos;
+        ctx.translate(ox, 0);
         ctx.fillStyle = hiGrad(ctx); ctx.fillRect(l - pos, by, r - l, bh);
-        ctx.restore();
+        ctx.translate(-ox, 0);
       }
       // 핏방울: 막대 아래에 맺혔다가 떨어진다 (채운 곳에서만)
       ctx.fillStyle = '#9a0c20';

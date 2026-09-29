@@ -7,6 +7,8 @@
 //  gStrike(world, rect, attack) → n   수호신 전용 타격: 적·보스만 (소품·촛불·거울 스위치·포자 주머니 등 noGuardianHit 대상은 건너뜀 —
 //                                       타격 불꽃·효과음·경직도 없다). 부위 판정(hitParts)·몸통(hurtboxes/hurtbox)은 combat.playerStrike 와 같다.
 //  gHitOne(world, target, attack, x, y) 한 대상만 직접 타격 (번개 연쇄 등)
+//  aimBox(T, x, y, floorY?, bh?) · aimPoint(T, x, y)   노릴 피격 판정 상자 / 그 가운데 (떠 있는 보스 판정 — 근접 동작이 뛰어올라 친다)
+//  quietExpire(world, q)              적 탄을 거둘 때 onExpire 를 조용히 한 번 (쏜 적의 장부만 풀리고 폭발·연출은 없다; guardian_ai_b 도 쓴다)
 //  class GHit / GProj / GFx           수호신용 지속 판정 · 투사체 · 연출 개체 (모두 gStrike 로만 때린다)
 //  GUARDIAN_AI[id] = { init, think, attack, skill, assist, passive, onEvent, drawWorld }   (1부 여섯: 아리아 하티 핌 가웨인 크론 미네르바)
 //  aiFor(id)                          GUARDIAN_AI → GUARDIAN_AI_B(guardian_ai_b.js, CMP-GUARD-AI-B) → 데이터 기반 기본 AI

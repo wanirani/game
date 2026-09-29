@@ -399,6 +399,9 @@ export class Mara extends BossC {
     this.pFace = { x: 0, y: 0, w: 70, h: 118, defMul: 1.0, face: true };
     this.pEye = { x: 0, y: 0, w: 36, h: 44, defMul: 0.5, eye: true };
     this.pCradle = { x: 0, y: 0, w: 216, h: 104, defMul: 1.5 };
+    // 1형태 상체 (R1-REQ-112 판정 점검): 접촉 몸통(cBody)의 요람 위 절반이 맞지 않는 빈틈이었다 → 요람과 같은 방어 배율로 맞는다.
+    // 채색 렌더러는 부위를 이름으로 가려 섬광을 켠다 → 맞으면 '얼굴·상체'(pFace) 섬광으로 넘긴다
+    this.pTorso = { x: 0, y: 0, w: 124, h: 112, defMul: 1.5, torso: true, onHit: () => { this.hitPart = this.pFace; } };
     this.cBody = { x: 0, y: 0, w: 1, h: 1 }; this.cTop = { x: 0, y: 0, w: 1, h: 1 };
     this.faceP = { x: 0, y: 0 }; this.mouthP = { x: 0, y: 0 };
     this._hp = []; this._cp = []; this._pt = { x: 0, y: 0 }; this._k = [0, 0];
@@ -615,6 +618,7 @@ export class Mara extends BossC {
     if (this.form === 1) {
       pc.x = this.bx - 136; pc.y = this.by + this.bob - 124; pc.w = 272; pc.h = 124;
       cb.x = this.bx - 62; cb.y = this.by + this.bob - 236; cb.w = 124; cb.h = 230;
+      const pt = this.pTorso; pt.x = cb.x; pt.y = cb.y; pt.w = 124; pt.h = 112;   // 요람 윗면(by+bob-124)까지
     } else {
       pc.x = this.bx - 150; pc.y = this.by - 178; pc.w = 300; pc.h = 178;
       cb.x = this.bx - 120; cb.y = this.by - 164; cb.w = 240; cb.h = 158;
@@ -631,6 +635,7 @@ export class Mara extends BossC {
     if (this.eyeT > 0 && this.mouthK > 0.45) L.push(this.pEye);
     if (this.form === 2) for (const h of this.heads) if (h.alive && h.grow > 0.9) L.push(h.part);
     L.push(this.pFace, this.pCradle);
+    if (this.form === 1) L.push(this.pTorso);
     return L;
   }
   /** 접촉은 몸통만. 돌진 · 붕괴 · 가짜 죽음 동안은 없다 (돌진 피해는 몸을 따라가는 지대가 맡는다) */

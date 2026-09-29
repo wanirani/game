@@ -19,12 +19,24 @@ import * as FH from '../data/feel_hit.js';
 import { rand, TAU, clamp, hexToRgb } from '../core/math.js';
 import { TILE } from '../core/game.js';
 import { isSolidType } from '../core/physics.js';
+import { bus } from '../core/events.js';
 
 /** QA 용 통계 (캔버스 생성 수, 굽기 횟수) */
 export const HITFX_STATS = { canvases: 0, bakes: 0, rebakes: 0, prewarmed: false };
 
+// 예비 캔버스 (0×0): 부팅 때와 스테이지·방 진입 때 채워 두고, 처음 보는 색·문구·아틀라스가 싸움 도중에 나오면 여기서 꺼내
+// 크기만 준다 → 스테이지 도중 새 캔버스 0 (MASTER_PLAN §5.2, R1-REQ-339R/#216). 안 쓰는 예비는 메모리 0
+const SPARE = [];
+const SPARE_N = 24;
+function fillSpares(n = SPARE_N) {
+  if (typeof document === 'undefined' || !document.createElement) return;
+  while (SPARE.length < n) { const c = document.createElement('canvas'); c.width = 0; c.height = 0; SPARE.push(c); HITFX_STATS.canvases++; }
+}
+fillSpares();
+let NO_SPARE = false;   // 미리 굽기(prewarm) 중에는 예비를 쓰지 않고 새로 만든다 (예비는 싸움 도중 처음 보는 것용)
 function mkCanvas(w, h) {
-  let c = null;
+  let c = NO_SPARE ? null : SPARE.pop() ?? null;
+  if (c) { c.width = w; c.height = h; return c; }
   if (typeof document !== 'undefined' && document.createElement) { c = document.createElement('canvas'); c.width = w; c.height = h; }
   else if (typeof OffscreenCanvas !== 'undefined') c = new OffscreenCanvas(w, h);
   if (c) HITFX_STATS.canvases++;
@@ -587,7 +599,8 @@ export function prewarm() {
     do {
       const j = jobs.shift();
       if (!j) return;
-      try { j(); } catch (e) { console.warn('[hitfx] prewarm', e); }
+      NO_SPARE = true;
+      try { j(); } catch (e) { console.warn('[hitfx] prewarm', e); } finally { NO_SPARE = false; }
     } while (jobs.length && (dl && !dl.didTimeout && typeof dl.timeRemaining === 'function' ? dl.timeRemaining() > 2 : now() - t0 < 4));
     if (jobs.length) idle(step);
   };
@@ -595,6 +608,14 @@ export function prewarm() {
 }
 // 부팅 뒤(글꼴 도착 후) 조금 있다가 미리 굽는다. 모듈 최상단에서는 가져온 값을 건드리지 않는다 (순환 import 규칙)
 if (typeof window !== 'undefined' && typeof setTimeout === 'function') {
+  // 스테이지·방에 들어설 때(로딩 중) 예비 캔버스를 다시 채우고, 부팅 뒤 미리 굽기가 아직이면 바로 시작한다
+  // (보스 방으로 곧장 들어가도 첫 타격에 캔버스를 만들지 않게 — #216)
+  setTimeout(() => {
+    try {
+      const onEnter = () => { fillSpares(); if (!HITFX_STATS.prewarmed) prewarm(); };
+      bus.on('stageEntered', onEnter); bus.on('roomEntered', () => fillSpares());
+    } catch (e) { console.warn('[hitfx] bus', e); }
+  }, 0);
   setTimeout(() => {
     const go = () => setTimeout(prewarm, 300);
     try { const p = UI.loadFace?.('BN Dmg'); if (p?.then) p.then(go, go); else go(); } catch { go(); }

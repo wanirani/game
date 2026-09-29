@@ -223,7 +223,7 @@ export class Particles {
   colX(x, y, now, w = 40, self = null) {
     const S = this._live;
     let k = 0;
-    for (let i = 0; i < S.length; i++) { const c = S[i]; if (now - c.t <= COL_LIVE && c !== self) S[k++] = c; }
+    for (let i = 0; i < S.length; i++) { const c = S[i]; if (c !== self && (now - c.t <= COL_LIVE || (c.queued && !c.done) || (c.tp && c.tp.life > 0))) S[k++] = c; }   // '합계'가 떠 있는 동안도 자리를 차지한다
     S.length = k;
     const nTry = 1 + 2 * Math.floor((w + 40) / COL_STEP_X);
     let best = x, bestCost = Infinity;
@@ -394,16 +394,30 @@ export class Particles {
       if (p.shape !== 'callout' || p.layer !== 'top') continue;
       const spr = p.spr;
       if (!spr?.canvas) continue;
-      const hw = spr.w / 2 + 2, hh = spr.h / 2 + 1;
-      const X = p.x;
-      let Y = p.y;
-      for (let pass = 0; pass < 10; pass++) {
-        let hit = null;
-        for (let i = 0; i < n; i++) { const r = O[i]; if (X + hw > r.x0 && X - hw < r.x1 && Y + hh > r.y0 && Y - hh < r.y1 && (!hit || r.y0 < hit.y0)) hit = r; }
-        if (!hit) break;
-        Y = hit.y0 - hh - 1;
+      const age = p.max - p.life, k = age < 0.08 ? 1.45 - 0.45 * (age / 0.08) : 1;   // 튀어나오는 순간의 크기까지 (그리기와 같은 식)
+      const hw = (spr.w * k) / 2 + 2, hh = (spr.h * k) / 2 + 1;
+      // 후보 자리: 제자리, 그리고 가로로 겹치는 장애물마다 그 바로 위·바로 아래 (그리고 좌우로 한 칸씩 비킨 제자리).
+      // HUD 윗줄에 걸리지 않고 아무 장애물과도 겹치지 않는 후보 중 제자리에서 가장 가까운 곳 (위쪽을 조금 더 선호)
+      const free = (x, y) => {
+        if (this.band.n && this.bandPush(x - hw, x + hw, y - hh) > 0) return false;
+        for (let i = 0; i < n; i++) { const r = O[i]; if (x + hw > r.x0 && x - hw < r.x1 && y + hh > r.y0 && y - hh < r.y1) return false; }
+        return true;
+      };
+      let X = p.x, Y = p.y, best = Infinity;
+      const tryAt = (x, y) => {
+        const c = Math.abs(y - p.y) * (y > p.y ? 1.5 : 1) + Math.abs(x - p.x) * 2;
+        if (c < best && free(x, y)) { best = c; X = x; Y = y; }
+      };
+      tryAt(p.x, p.y);
+      if (best > 0) {
+        for (let i = 0; i < n; i++) {
+          const r = O[i];
+          if (!(p.x + hw > r.x0 && p.x - hw < r.x1)) continue;
+          tryAt(p.x, r.y0 - hh - 1); tryAt(p.x, r.y1 + hh + 1);
+        }
+        tryAt(p.x - (hw * 2 + 4), p.y); tryAt(p.x + (hw * 2 + 4), p.y);
+        if (best === Infinity) { X = p.x; Y = this.band.n ? p.y + this.bandPush(p.x - hw, p.x + hw, p.y - hh) : p.y; }   // 빈자리 없음: HUD 아래로만
       }
-      if (this.band.n) Y += this.bandPush(X - hw, X + hw, Y - hh);
       p.dx = X; p.dy = Y;
       put(X - hw, X + hw, Y - hh, Y + hh);
     }

@@ -15,7 +15,13 @@ export class Nightwing extends ABoss {
     this.lastX = this.cx; this.dvx = 0; this.rage = 0; this.gT = 0; this.cont = false; this.chainLeft = 0;
     this.y = this.floorY - 150 - this.h;
   }
-  hurtboxes() { return [{ x: this.x + 10, y: this.y + 4, w: this.w - 20, h: this.h - 10 }]; }
+  /** 몸통 + 머리 (R1-REQ-112 판정 점검): 머리는 발밑 기준 (4, -128) 에 그려져 몸통 상자 위로 거의 다 나와 있었다 →
+   *  그림과 같은 기울기(lean, 발밑 60px 위 회전축)로 머리 상자를 따로 둔다. 첫 상자(몸통)는 hurtbox() 대표 판정 그대로 */
+  hurtboxes() {
+    const l = this.lean || 0, f = this.facing || 1, c = Math.cos(l), s = Math.sin(l);
+    const hx = this.cx + c * 4 * f + s * 68, hy = this.bottom - 60 + s * 4 * f - c * 68;
+    return [{ x: this.x + 10, y: this.y + 4, w: this.w - 20, h: this.h - 10 }, { x: hx - 28, y: hy - 26, w: 56, h: 52 }];
+  }
   onIntro(world) {
     audio.sfx('boss_roar', { pitch: 1.3 });
     this.mouth = 1.2;
