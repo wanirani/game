@@ -85,7 +85,7 @@ function levelImg(E, L) { return assets.get(akey(E, 'atlas', L), E.man.h); }   /
 function levelPeek(E, L) { return peek(akey(E, 'atlas', L)); }
 function maskImg(E, L) { return assets.get(akey(E, 'mask', L), E.man.h); }
 function maskPeek(E, L) { return peek(akey(E, 'mask', L)); }
-function entry(cid, cls) {
+function entry(cid, cls, sib = false) {
   const key = cid + '/' + cls;
   let E = REG.get(key);
   if (E) return E;
@@ -100,15 +100,16 @@ function entry(cid, cls) {
     E.levels = Object.entries(rig.levels).map(([name, L]) => ({ name, scale: L.scale, rects: L.rects, size: L.size })).sort((a, b) => a.scale - b.scale);
     E.levels.forEach((L, i) => { E.lvIdx[L.name] = i; });
     E.opts = rig.opts || {};
-    // 게임 화면용 두 레벨 + 그 재질 마스크(≈14KB, 장비 색을 바꿀 때 원래 색이 한 프레임 비치지 않게). ui 레벨은 메뉴에서 필요할 때
-    requestLevels(E);
+    // 게임 화면용 두 레벨 + 그 재질 마스크(≈14KB, 장비 색을 바꿀 때 원래 색이 한 프레임 비치지 않게). ui 레벨은 메뉴에서 필요할 때.
+    // 형제 직업 미리 받기(sib)는 아틀라스만: 마스크는 디코딩하면 아틀라스와 같은 크기라 폰 텍스처 예산을 두 배로 먹는다 — 처음 그릴 때 받는다
+    requestLevels(E, !sib);
   });
   return E;
 }
 /** 게임 화면용 두 레벨 + 그 재질 마스크를 요청 (ui 레벨은 메뉴에서 필요할 때). 텍스처를 놓았다가 다시 쓸 때도 이것으로 다시 받는다 */
-function requestLevels(E) {
+function requestLevels(E, masks = true) {
   E.req = true;
-  for (const L of E.levels) if (L.name !== 'ui') { levelImg(E, L); maskImg(E, L); }
+  for (const L of E.levels) if (L.name !== 'ui') { levelImg(E, L); if (masks) maskImg(E, L); }
 }
 /** 준비 상태: 리그 + 레벨 이미지 하나 이상 (ui 레벨은 여기서 요청하지 않는다) */
 function ready(E) {
@@ -130,7 +131,7 @@ function preloadSiblings(cid) {
   SIB.add(cid);
   const ids = Object.keys(PUPPETS[cid] || {});
   let i = 0;
-  const next = () => { if (i >= ids.length) return; entry(cid, ids[i++]); idle(next); };
+  const next = () => { if (i >= ids.length) return; entry(cid, ids[i++], true); idle(next); };
   const idle = (f) => (typeof window.requestIdleCallback === 'function' ? window.requestIdleCallback(f, { timeout: 1500 }) : setTimeout(f, 120));
   idle(next);
 }
@@ -336,7 +337,10 @@ export function puppetFor(p, look) {
   if (I.gen !== E.gen) { I.gen = E.gen; I.V = null; I.lv = null; }   // 예산 때문에 텍스처를 놓았다 다시 받음 → 구운 변형·레벨 이력 버림
   touchUse(E, performance.now(), true);
   if (!ready(E)) return null;
-  if (I.vk && !I.V) { I.V = E.vars.get(I.vk) || makeVariant(E, I.vk); E.vars.set(I.vk, I.V); }
+  if (I.vk && !I.V) {
+    I.V = E.vars.get(I.vk) || makeVariant(E, I.vk); E.vars.set(I.vk, I.V);
+    for (const L of E.levels) if (L.name !== 'ui') maskImg(E, L);   // 형제 미리 받기는 마스크 없이 받으므로 장비 색이 있으면 여기서 요청
+  }
   I.key = E.key + (I.vk ? '#' + I.vk : '');
   return I;
 }
