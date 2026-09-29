@@ -177,10 +177,32 @@ export function netOf(ip: string): string {
   return `${h.slice(0, 4).map((x) => x.toString(16)).join(':')}::/64`;
 }
 
-/** 망(netOf)을 그대로 저장하지 않도록 키로 바꾼다 (AUTH_PEPPER 가 있으면 HMAC) */
-export function ipKey(ip: string): string {
+/**
+ * 넓은 망: IPv6 는 앞 48비트(/48 — 서버·가입자 한 곳이 보통 받는 크기, /64 가 65,536개), IPv4·그 밖은 null (따로 묶지 않는다).
+ * 아이디별 비밀번호 실패를 /48 단위로도 세어, /48 하나에서 /64 를 돌려 가며 추측·잠금하는 것을 막는다 (ratelimit.mts, PS-04)
+ */
+export function wideNetOf(ip: string): string | null {
   const net = netOf(ip);
+  const m = /^([0-9a-f]{1,4}):([0-9a-f]{1,4}):([0-9a-f]{1,4}):[0-9a-f]{1,4}::\/64$/.exec(net);
+  return m ? `${m[1]}:${m[2]}:${m[3]}::/48` : null;
+}
+
+/** 망 이름을 그대로 저장하지 않도록 키로 바꾼다 (AUTH_PEPPER 가 있으면 HMAC) */
+export function netKey(net: string): string {
   const pepper = env('AUTH_PEPPER');
   const h = pepper ? createHmac('sha256', pepper).update('ip:' + net) : createHash('sha256').update('bn-ip:' + net);
   return h.digest('hex').slice(0, 40);
+}
+/** 요청 IP 의 망(netOf) 키 */
+export function ipKey(ip: string): string { return netKey(netOf(ip)); }
+
+let pepperWarned = false;
+/**
+ * AUTH_PEPPER 가 없으면 함수 인스턴스마다 한 번 경고를 남긴다 (PS-05): 망 키가 소금 없는 SHA-256 이라 IPv4 는 전수 대입으로 되돌릴 수 있고,
+ * Blobs 가 유출되면 비밀번호 해시를 pepper 없이 오프라인 추측할 수 있다. 배포 전에 넣어야 한다 (docs/RELEASE.md, docs/ACCOUNTS.md §6)
+ */
+export function warnIfNoPepper(): void {
+  if (pepperWarned || env('AUTH_PEPPER')) return;
+  pepperWarned = true;
+  console.warn('[api] 경고: AUTH_PEPPER 환경 변수가 없습니다 — 비밀번호 해시·IP 키에 pepper 가 적용되지 않습니다. Netlify 환경 변수(범위 Functions)에 넣고 다시 배포하세요 (docs/ACCOUNTS.md §6)');
 }

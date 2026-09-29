@@ -263,14 +263,31 @@ export function paintedDebris(boss, i) {
   try { return e.mod.debris(i, e.rig); } catch { return null; }
 }
 
+// ───────────────────────── ctx 상태 스택 되감기 (채색 그리기 예외) ─────────────────────────
+// 채색 모듈은 ctx.save/restore 를 직접 부른다 → 그리다 예외가 나면 짝이 맞지 않아 상태 스택이 프레임마다 쌓인다.
+// lineDashOffset 은 상태와 함께 저장되므로, 표식 값을 넣은 채 save 해 두면 restore 를 거듭해 그 저장 지점까지 정확히 돌아올 수 있다.
+//   const m = unwindMark(ctx);  try { … ; unwindDone(ctx, m); } catch { unwindTo(ctx, m); /* 벡터로 */ }
+const UNWIND_MARK = 1 / 1024;   // 그리기 코드가 쓰지 않는 값 (float 로도 정확히 표현됨)
+/** save() + 되감기 표식. 반환 = 원래 lineDashOffset (unwindDone/unwindTo 에 넘긴다) */
+export function unwindMark(ctx) { const o = ctx.lineDashOffset; ctx.lineDashOffset = UNWIND_MARK; ctx.save(); ctx.lineDashOffset = o; return o; }
+/** 정상 종료: unwindMark 의 짝 restore */
+export function unwindDone(ctx, o) { ctx.restore(); ctx.lineDashOffset = o; }
+/** 예외 뒤: 그리기 코드가 열어 둔 save 까지 모두 되돌려 unwindMark 직전 상태로 (최대 64단) */
+export function unwindTo(ctx, o) {
+  for (let i = 0; i < 64; i++) { ctx.restore(); if (ctx.lineDashOffset === UNWIND_MARK) break; }
+  ctx.lineDashOffset = o;
+}
+
 // ───────────────────────── 적/NPC: 직접 그리기 ─────────────────────────
-/** 판정 사각형이 그림과 비슷한 개체용: 준비됐으면 그리고 true (컬링은 호출 측 개체 사각형 기준) */
+/** 판정 사각형이 그림과 비슷한 개체용: 준비됐으면 그리고 true (컬링은 호출 측 개체 사각형 기준). 그리다 예외가 나면 ctx 를 되감고 벡터로 (false) */
 export function drawPaintedDirect(ent, ctx, world, id = ent.def?.id ?? ent.id) {
   if (!id || !REG.has(id)) return false;
   const e = ready(id, world?.game);
   if (!e) return false;
   const st = ent._paintedSt ??= (e.mod.init?.(ent, e.rig) ?? {});
-  try { e.mod.draw(ctx, ent, world, e.rig, st); return true; } catch (err) {
+  const m = unwindMark(ctx);
+  try { e.mod.draw(ctx, ent, world, e.rig, st); unwindDone(ctx, m); return true; } catch (err) {
+    unwindTo(ctx, m);
     console.error('[painted] 그리기 오류 → 벡터로 전환:', id, err); e.state = 'failed'; return false;
   }
 }

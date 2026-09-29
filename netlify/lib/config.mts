@@ -9,7 +9,9 @@ export const STORES = {
   users: 'bn-users', // key = 로그인 아이디 → 사용자 레코드
   sessions: 'bn-sessions', // key = SHA-256(토큰) hex → {id, uid, createdAt, expiresAt}
   saves: 'bn-saves', // key = <uid>/slot1..3, <uid>/meta → {rev, savedAt, data}
-  limits: 'bn-ratelimit', // key = ip/auth/<망 해시>, ip/signup/<망 해시>, lock/login/<id>/all, lock/login/<id>/net/<망 해시>, lock/recover/<id>/net/<망 해시>
+  // key = ip/auth/<망 해시>, ip/signup/<망 해시>, lock/login/<id>/all, lock/login/<id>/net/<망 해시>, lock/login/<id>/wide/<IPv6 /48 해시>,
+  //       lock/login/<id>/ok/<망 해시> (로그인에 성공한 망 = 믿는 망), lock/recover/<id>/net/<망 해시>
+  limits: 'bn-ratelimit',
 } as const;
 
 /** 요청 본문 최대 크기 (바이트) */
@@ -40,14 +42,22 @@ export const SESSION = {
 /**
  * 요청 제한. '망'(network) = IPv4 주소 하나 또는 IPv6 /64 (한 기기가 보통 /64 전체를 쓰므로 주소를 바꿔 가며 우회하지 못하게).
  * 비밀번호·복구 코드 시도는 확인 전에 원자적으로 자리를 잡는다(동시 요청으로 한도를 넘길 수 없다).
+ * 아이디 전체 잠금은 공격자가 망을 늘리는 만큼 주인을 막을 수 있으므로 (PS-04): 잠금 시간은 짧게 시작해 늘리되 상한을 두고,
+ * 이 아이디로 로그인에 성공한 적이 있는 망(믿는 망)에서 온 요청에는 걸지 않는다. IPv6 는 /48 단위로도 센다.
  */
 export const RATE = {
   loginFailMax: 5, // 아이디+망별: 비밀번호 실패 5회 → 그 망에서만 10분 잠금 (다른 망의 주인은 영향 없음 — 잠금 악용 방지)
   loginFailWindowMs: 10 * MIN,
   loginLockMs: 10 * MIN,
-  idFailMax: 20, // 아이디별(모든 망 합계): 1시간에 20회 실패 → 30분 동안 모두 잠금 (분산 추측 방지)
+  wideFailMax: 10, // 아이디+IPv6 /48 별: 1시간에 10회 실패 → 그 /48 에서 30분 잠금 (/48 하나로 /64 65,536개를 돌리는 추측·잠금 방지)
+  wideFailWindowMs: HOUR,
+  wideLockMs: 30 * MIN,
+  idFailMax: 20, // 아이디별(모든 망 합계): 1시간에 20회 실패 → 믿는 망이 아닌 곳에서 잠금 (분산 추측 방지)
   idFailWindowMs: HOUR,
-  idLockMs: 30 * MIN,
+  idLockMs: 2 * MIN, // 첫 잠금 2분, 24시간 안에 다시 잠기면 두 배씩 (2 → 4 → 8 → 10분 상한)
+  idLockMaxMs: 10 * MIN,
+  idStrikeDecayMs: DAY, // 마지막 잠금 뒤 24시간 동안 잠기지 않으면 다시 2분부터
+  trustMs: 90 * DAY, // 로그인(가입·복구 포함)에 성공한 망은 90일 동안 믿는다: 아이디 전체 잠금을 받지 않는다 (/64 면 /48 잠금도)
   recoverFailMax: 5, // 아이디+망별: 복구 코드 실패 5회 → 그 망에서 10분 잠금 (코드가 80비트라 전체 한도는 두지 않음)
   recoverFailWindowMs: 10 * MIN,
   recoverLockMs: 10 * MIN,
@@ -55,6 +65,14 @@ export const RATE = {
   ipAuthWindowMs: 10 * MIN,
   ipSignupMax: 5, // 망별 가입 1시간에 5개
   ipSignupWindowMs: HOUR,
+} as const;
+
+/** 매일 도는 정리 함수 (netlify/functions/cleanup.mts, PS-05): 끝난 제한 기록·오래된 믿는 망·만료된 세션 저장값을 지운다 */
+export const CLEANUP = {
+  limitIdleMs: 2 * HOUR, // 창이 끝나고(시작 + 가장 긴 창 1시간) 잠금도 풀린 지 이만큼 지난 카운터
+  sessionGraceMs: 30 * DAY, // 세션 저장값은 만료 뒤 30일 (사용자 기록의 만료 시각이 기준이라 저장값이 늦을 수 있다)
+  maxPerRun: 4000, // 저장소마다 한 번에 읽는 최대 수 (함수 시간 제한 안에서; 남은 것은 다음 날)
+  concurrency: 24,
 } as const;
 
 /** 동시 수정 충돌 시 조건부 쓰기 재시도 횟수 */

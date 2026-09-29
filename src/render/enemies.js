@@ -12,7 +12,7 @@ import { game } from '../core/game.js';
 import { ENEMIES } from '../data/enemies.js';
 import { STAGES } from '../data/stages.js';
 import { bus } from '../core/events.js';
-import { paintedEnabled } from './painted/registry.js';
+import { paintedEnabled, unwindMark, unwindDone, unwindTo } from './painted/registry.js';
 
 // 벡터 렌더러 (enemies_a/b + 2부 enemies_c/d) 는 늦게 받는다 (R1-REQ-229): 이 파일이 정적으로 싣지 않으므로 번들러가 따로
 // 떼어 내 첫 화면 바이트에서 빠질 수 있다 (AI 모듈 ai_*.js 가 PROJ/ZONE 도우미를 정적으로 가져오는 동안은 이미 실린 모듈이라
@@ -86,8 +86,10 @@ function drawVector(ctx, e, world, flash) {
   }
 }
 
+/** 그리다 예외를 낸 채색 적 모듈 (render 키) — 이번 실행 동안 벡터로 그린다 (보스 PaintedBody 의 'failed' 와 같은 규칙) */
+const DRAW_FAILED = new Set();
 export function drawEnemy(ctx, e, world) {
-  const pm = PAINTED_ENEMIES[e.def.render] && paintedEnemiesOn(world?.game) ? PAINTED_ENEMIES[e.def.render] : null;
+  const pm = PAINTED_ENEMIES[e.def.render] && paintedEnemiesOn(world?.game) && !DRAW_FAILED.has(e.def.render) ? PAINTED_ENEMIES[e.def.render] : null;
   if (pm && world && world !== _preWorld) preloadWorld(world);
   const rig = pm ? requestRig(pm.spec) : null;
   ctx.save();
@@ -102,11 +104,19 @@ export function drawEnemy(ctx, e, world) {
     if (e._vecSeen) { const now = performance.now(); if (e._pT === undefined) e._pT = now; k = clamp((now - e._pT) / 300, 0, 1); if (k >= 1) e._vecSeen = false; }
     if (k < 1) { const ga = ctx.globalAlpha; ctx.globalAlpha = ga * (1 - k); drawVector(ctx, e, world, flash); ctx.globalAlpha = ga; }
     const q0 = ctx.imageSmoothingQuality;
-    ctx.save();
-    if (k < 1) ctx.globalAlpha *= k;
-    if (rig.scale !== 1) ctx.scale(rig.scale, rig.scale);     // spec.scale: painted figure sized to the logic rect
-    pm.draw(ctx, e, world, { flash, cam }, rig);
-    ctx.restore();
+    const m = unwindMark(ctx);   // = ctx.save() + 되감기 표식: 모듈이 그리다 던지면 모듈이 연 save 까지 되돌린다
+    try {
+      if (k < 1) ctx.globalAlpha *= k;
+      if (rig.scale !== 1) ctx.scale(rig.scale, rig.scale);     // spec.scale: painted figure sized to the logic rect
+      pm.draw(ctx, e, world, { flash, cam }, rig);
+      unwindDone(ctx, m);
+    } catch (err) {
+      // 그리기 오류 → 이 적 종류는 벡터로 (월드 그리기는 계속). 이번 프레임도 벡터로 그린다
+      unwindTo(ctx, m);
+      DRAW_FAILED.add(e.def.render);
+      console.error('[painted enemy] 그리기 오류 → 벡터로 전환:', e.def.render, err);
+      drawVector(ctx, e, world, flash);
+    }
     ctx.imageSmoothingQuality = q0;
   } else {
     if (pm && !rig?.failed) e._vecSeen = true;

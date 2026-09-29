@@ -3,6 +3,7 @@
 import type { Context } from '@netlify/functions';
 import { ApiError, errorResponse, json, MESSAGES, ok } from './http.mts';
 import { Ctx, now } from './runtime.mts';
+import { warnIfNoPepper } from './crypto.mts';
 import { changePassword, deleteAccount, login, logout, me, recover, signup } from './accounts.mts';
 import { deleteSlot, getMeta, getSlot, listSaves, parseSlot, putMeta, putSlot } from './saves.mts';
 
@@ -65,6 +66,7 @@ const CORS_HEADERS: Record<string, string> = {
 };
 
 export async function handle(req: Request, context?: Context): Promise<Response> {
+  warnIfNoPepper();
   const origin = (req.headers.get('origin') ?? '').trim();
   const app = APP_ORIGINS.has(origin) ? origin : null;
   // 사전 요청(preflight): 앱 출처에만 응답한다 (다른 출처는 아래 라우터가 405 로 거절)
