@@ -3,7 +3,9 @@
 //  - netlify.toml 의 운영 CSP 를 문서 응답에 그대로 붙인다 (claude.ai 흉내에는 connect-src 'none' 을 더해 다른 요청을 모두 막는다)
 //  - /api/* 는 실제 핸들러(netlify/functions/api.mts) + 메모리 저장소(mem_store.mjs)로 처리한다
 // 확인: 게스트·claude.ai·오프라인에서 요청 0건/안내, '로그인 유지' 켬·끔 저장 위치와 서버 세션 길이, 로그아웃·모든 기기 로그아웃,
-//       약한 비밀번호 사전 차단, 시험용 주소 덮어쓰기로 다른 사이트에 보내지 않음, 형식이 틀린 서버 응답 거부, CSP 위반 0건
+//       약한 비밀번호 사전 차단, 시험용 주소 덮어쓰기로 다른 사이트에 보내지 않음, 형식이 틀린 서버 응답 거부, CSP 위반 0건,
+//       안드로이드 앱 흉내(https://appassets.androidplatform.net + window.__BN_APP): /api 프록시가 켜져 있으면 같은 출처 /api 만,
+//       프록시 없는 옛 앱만 공식 사이트(APP_API_BASE) 직접 + 앱 출처 CORS
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -26,6 +28,9 @@ scrypto.setHashCostForTests({ N: 1024, r: 8, p: 1 });
 const toml = fs.readFileSync(path.join(ROOT, 'netlify.toml'), 'utf8');
 const CSP = /Content-Security-Policy = "([^"]+)"/.exec(toml)[1];
 const CSP_CLAUDE = CSP.replace("connect-src 'self'", "connect-src 'none'");
+const cloudMod = await import(path.join(ROOT, 'src/core/cloud.js'));
+const APP_HOST = 'appassets.androidplatform.net';
+const SITE_HOST = new URL(cloudMod.APP_API_BASE).host; // 앱이 직접 부르는 공식 사이트 (프록시 없는 옛 앱)
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.png': 'image/png', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.wav': 'audio/wav', '.woff2': 'font/woff2' };
 
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--autoplay-policy=no-user-gesture-required'] });
@@ -38,7 +43,8 @@ async function newContext({ offline = false, hooks = {} } = {}) {
     const req = route.request();
     const u = new URL(req.url());
     log.push({ host: u.host, path: u.pathname, method: req.method() });
-    if (u.host !== 'game.test' && u.host !== 'claude.ai') return route.abort('blockedbyclient');
+    if (u.host !== 'game.test' && u.host !== 'claude.ai' && u.host !== APP_HOST && u.host !== SITE_HOST) return route.abort('blockedbyclient');
+    if (u.host === SITE_HOST && !u.pathname.startsWith('/api/')) return route.fulfill({ status: 404, body: 'not found' });
     if (u.pathname.startsWith('/api/')) {
       if (u.host === 'claude.ai') return route.fulfill({ status: 404, contentType: 'text/html', body: '<h1>404</h1>' });
       const hook = hooks[u.pathname];
@@ -53,26 +59,28 @@ async function newContext({ offline = false, hooks = {} } = {}) {
     if (!file.startsWith(ROOT) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) return route.fulfill({ status: 404, body: 'not found' });
     const ext = path.extname(file);
     const headers = { 'content-type': MIME[ext] ?? 'application/octet-stream', 'cache-control': 'no-store' };
-    if (ext === '.html') headers['content-security-policy'] = u.host === 'claude.ai' ? CSP_CLAUDE : CSP;
+    // 앱(AssetServer)은 CSP 를 붙이지 않는다 — 웹 흉내에만 운영 CSP
+    if (ext === '.html' && u.host !== APP_HOST) headers['content-security-policy'] = u.host === 'claude.ai' ? CSP_CLAUDE : CSP;
     return route.fulfill({ status: 200, headers, body: fs.readFileSync(file) });
   });
   if (offline) await ctx.setOffline(true);
   return { ctx, log };
 }
 
-/** 게임을 열고 준비될 때까지 기다린다. errs: 페이지 오류·CSP 위반 */
-async function openGame(ctx, url = 'https://game.test/index.html', init = null) {
+/** 게임을 열고 준비될 때까지 기다린다 (부팅이 두 단계라 타이틀 뒤에 늦게 등록되는 장면까지: game.scenesReady). errs: 페이지 오류·CSP 위반 */
+async function openGame(ctx, url = 'https://game.test/index.html', init = null, app = null) {
   const page = await ctx.newPage();
   const errs = [];
   page.on('pageerror', (e) => errs.push('PAGEERROR ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errs.push('CONSOLE ' + m.text().slice(0, 200)); });
-  await page.addInitScript((initStore) => {
+  await page.addInitScript(({ initStore, app }) => {
+    if (app) window.__BN_APP = app; // 앱 조각(head_inject.html)이 게임 모듈보다 먼저 만드는 값 흉내
     window.__csp = [];
     document.addEventListener('securitypolicyviolation', (e) => window.__csp.push(`${e.violatedDirective} ${e.blockedURI}`));
     if (initStore) for (const [k, v] of Object.entries(initStore)) { try { localStorage.setItem(k, v); } catch { /* 무시 */ } }
-  }, init);
+  }, { initStore: init, app });
   await page.goto(url, { timeout: 30000 });
-  await page.waitForFunction(() => window.__game && window.__game.scenes.length > 0, null, { timeout: 30000 });
+  await page.waitForFunction(() => window.__game && window.__game.scenes.length > 0 && window.__game.scenesReady !== false, null, { timeout: 30000 });
   return { page, errs };
 }
 const scene = (page) => page.evaluate(() => ({ name: window.__game.top?.name, screen: window.__game.top?.screen, msg: window.__game.top?.msg?.text ?? null, remember: window.__game.top?.remember }));
@@ -196,13 +204,13 @@ test("'로그인 유지' 끔(데스크톱 기본): 토큰은 sessionStorage, 서
   const token = JSON.parse(st.session).token;
   // 새로 고침: sessionStorage 는 남는다
   await page.reload();
-  await page.waitForFunction(() => window.__game && window.__game.scenes.length > 0);
+  await page.waitForFunction(() => window.__game && window.__game.scenes.length > 0 && window.__game.scenesReady !== false);
   await page.waitForFunction(async () => (await import('/src/core/cloud.js')).cloud.verified, null, { timeout: 10000 });
   assert.equal(await page.evaluate(async () => (await import('/src/core/cloud.js')).cloud.id), id);
   // 같은 기기의 새 창(다른 탭)에는 로그인이 없다
   const other = await ctx.newPage();
   await other.goto('https://game.test/index.html');
-  await other.waitForFunction(() => window.__game && window.__game.scenes.length > 0);
+  await other.waitForFunction(() => window.__game && window.__game.scenes.length > 0 && window.__game.scenesReady !== false);
   assert.equal(await other.evaluate(async () => (await import('/src/core/cloud.js')).cloud.loggedIn), false);
   await other.close();
   // 로그아웃: 저장소·동기화 기록(아이디)·서버 세션 모두 정리
@@ -303,6 +311,25 @@ test('시험용 주소 덮어쓰기가 다른 사이트를 가리켜도 같은 �
   await ctx.close();
 });
 
+test('안드로이드 앱: /api 프록시가 켜져 있으면 같은 출처 /api 만, 프록시 없는 옛 앱만 공식 사이트 API 직접(앱 출처 CORS)', async () => {
+  const cases = [
+    { app: { platform: 'android', version: 'test', assets: 'full', apiProxy: true, apiBase: '/api' }, host: APP_HOST, base: '/api', other: SITE_HOST },
+    { app: { platform: 'android', version: 'test', assets: 'full', apiProxy: false, apiBase: null }, host: SITE_HOST, base: cloudMod.APP_API_BASE, other: APP_HOST },
+  ];
+  for (const c of cases) {
+    const { ctx, log } = await newContext();
+    const { page, errs } = await openGame(ctx, `https://${APP_HOST}/index.html`, null, c.app);
+    const tag = `apiProxy=${c.app.apiProxy}`;
+    assert.equal(await page.evaluate(async () => (await import('/src/core/cloud.js')).cloud.base), c.base, tag);
+    await openAccount(page);
+    assert.equal(await page.evaluate(async () => (await import('/src/core/cloud.js')).cloud.state), 'ready', tag);
+    assert.ok(log.some((r) => r.host === c.host && r.path === '/api/health'), `${tag}: ${c.host}/api/health 없음`);
+    assert.equal(log.filter((r) => r.host === c.other && r.path.startsWith('/api/')).length, 0, `${tag}: ${c.other} 로 API 요청`);
+    assert.deepEqual(errs, [], tag);
+    await ctx.close();
+  }
+});
+
 test('형식이 틀린 로그인 응답(아이디·토큰)은 저장하지 않음', async () => {
   const evil = { status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, id: '<img src=x onerror=alert(1)>', token: 'short' }) };
   const { ctx } = await newContext({ hooks: { '/api/auth/login': evil } });
@@ -320,7 +347,7 @@ test('형식이 틀린 로그인 응답(아이디·토큰)은 저장하지 않�
   // 저장소에 이상한 값이 들어 있어도 버린다
   await page.evaluate(() => localStorage.setItem('bn_auth', JSON.stringify({ id: '<b>x</b>', token: 'A'.repeat(43) })));
   await page.reload();
-  await page.waitForFunction(() => window.__game && window.__game.scenes.length > 0);
+  await page.waitForFunction(() => window.__game && window.__game.scenes.length > 0 && window.__game.scenesReady !== false);
   assert.equal(await page.evaluate(async () => (await import('/src/core/cloud.js')).cloud.loggedIn), false);
   assert.equal(await page.evaluate(() => localStorage.getItem('bn_auth')), null);
   await ctx.close();

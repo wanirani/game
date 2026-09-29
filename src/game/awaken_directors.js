@@ -1362,7 +1362,15 @@ function victorDirector(p, w, v) {
     },
     back(ctx, e) {
       const a = Math.min(1, e.lt / 0.2) * clamp((e.life - e.lt) / 0.35, 0, 1);
-      ctx.fillStyle = rgba('#1e1206', 0.6 * a); ctx.fillRect(e.x, e.y, e.w, e.h);
+      // 세피아(high 만, 폭발에서 걷힘)는 따로 화면 전체를 한 번 더 칠하지 않고 이 어둡힘 한 번에 섞는다 (전체 화면 칠 ≤ 3, 요청 #442).
+      // 두 source-over 칠 (#1e1206 A1 → #704214 A2) 과 같은 결과의 한 칠: A = 1-(1-A1)(1-A2), 색 = (C1·A1·(1-A2) + C2·A2) / A
+      const A1 = 0.6 * a, A2 = D.q === 'high' ? 0.14 * Math.min(1, e.lt / 0.25) * (S.det ? clamp(1 - (e.lt - S.det.t0) / 0.2, 0, 1) : 1) : 0;
+      const A = 1 - (1 - A1) * (1 - A2);
+      if (A <= 0.003) return;
+      if (A2 <= 0.003) { ctx.fillStyle = rgba('#1e1206', A1); ctx.fillRect(e.x, e.y, e.w, e.h); return; }
+      const k1 = (A1 * (1 - A2)) / A, k2 = A2 / A;
+      const r = Math.round(0x1e * k1 + 0x70 * k2), g = Math.round(0x12 * k1 + 0x42 * k2), b = Math.round(0x06 * k1 + 0x14 * k2);
+      ctx.fillStyle = `rgba(${r},${g},${b},${A.toFixed(3)})`; ctx.fillRect(e.x, e.y, e.w, e.h);
     },
     draw(ctx, e) {
       const lt = e.lt, rt = e.world?.rt ?? w.rt ?? 0;
@@ -1414,11 +1422,7 @@ function victorDirector(p, w, v) {
     },
     screen(ctx, vw, vh, e) {
       const lt = e.lt, rt = w.rt ?? 0;
-      // 세피아 (high 만) — 폭발에서 걷힌다
-      if (D.q === 'high') {
-        const a = 0.14 * Math.min(1, lt / 0.25) * (S.det ? clamp(1 - (lt - S.det.t0) / 0.2, 0, 1) : 1);
-        if (a > 0.005) { ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = a; ctx.fillStyle = '#704214'; ctx.fillRect(0, 0, vw, vh); ctx.globalAlpha = 1; }
-      }
+      // 세피아 (high 만) 는 back() 의 어둡힘 칠에 섞어 그린다 (화면 전체 칠 한 번 줄임, 요청 #442)
       // 반투명 여섯 약실 탄창 (건로드: 두 개)
       const cyl = PREP.cyl;
       const ca = Math.min(1, lt / 0.2) * clamp(1 - (lt - T_HOL) / 0.25, 0, 1);

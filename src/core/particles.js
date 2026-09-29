@@ -265,7 +265,10 @@ export class Particles {
         if (!q || q === tp || !(q.life > 0)) continue;
         const [b0, b1, bh] = box(q);
         if (a1 <= b0 || a0 >= b1) continue;
-        if (Math.abs((q.y - this.riseOf(q)) - tp.y) < (ah + bh) / 2) { hit = true; break; }
+        // 두 합계는 같은 곡선으로 떠오르므로, 지금(d0)과 먼저 뜬 합계가 사라질 때(dE) 사이의 세로 거리를 본다
+        // (지금만 보면: 먼저 뜬 합계가 이미 떠오른 만큼 비껴 보여도 나중 합계가 따라 올라와 같은 줄에서 겹쳤다)
+        const d0 = (q.y - this.riseOf(q)) - tp.y, dE = (q.y - q.rise) - (tp.y - this.riseAt(tp, Math.max(0, q.life)));
+        if ((d0 > 0) !== (dE > 0) || Math.min(Math.abs(d0), Math.abs(dE)) < (ah + bh) / 2) { hit = true; break; }
       }
       if (!hit) return;
       tp.y -= ah + 2;
@@ -291,7 +294,9 @@ export class Particles {
     return c._sh;
   }
   /** 기둥에 붙지 않은 숫자의 떠오름 (px) */
-  riseOf(p) { const age = p.max - p.life, u = Math.min(1, age / Math.max(0.2, p.max)); return p.rise * (1 - (1 - u) * (1 - u) * (1 - u)); }
+  riseOf(p) { return this.riseAt(p, p.max - p.life); }
+  /** 나이 age(초)일 때의 떠오름 (px) */
+  riseAt(p, age) { const u = Math.min(1, age / Math.max(0.2, p.max)); return p.rise * (1 - (1 - u) * (1 - u) * (1 - u)); }
   /** 숫자 문자열·아틀라스·배치 → {A, str, L} | null (아틀라스 없음) */
   layoutDmg(value, key, st, color) {
     const A = HFX.digitAtlas?.(key, color && color !== st.color ? color : null);

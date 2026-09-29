@@ -242,12 +242,19 @@ class Game {
   whenScenes() { return this._lazy?.p ?? Promise.resolve(true); }
   /** 지연 장면을 기다리는 중이거나 실패한 상태 (등록되지 않은 이름이 아직 '모름'이 아니다) */
   get scenesPending() { return !!this._lazy && !this._lazy.done; }
-  /** 실패한 지연 장면 다시 받기 (자리 장면의 '다시 시도') */
-  retryScenes() {
+  /**
+   * 실패한 지연 장면 다시 받기 (자리 장면의 '다시 시도'): 한 번 더 받아 보고, 그래도 안 되면 페이지를 다시 읽는다.
+   * Chromium(안드로이드 WebView 포함)은 받기에 실패한 동적 import 를 모듈 맵에 기억해 같은 페이지에서는 다시 요청하지 않으므로
+   * 페이지 안 재시도만으로는 살아나지 않는다. 지연 장면이 오기 전에는 타이틀뿐이라 다시 읽어도 잃을 진행이 없다. { reload: false } 면 읽지 않는다
+   */
+  retryScenes({ reload = true } = {}) {
     const L = this._lazy;
     if (!L || L.done || !L.err) return L?.p ?? Promise.resolve(true);
-    L.tries = 0;
-    L.p = this._loadLazy();
+    L.tries = 2; // 한 번만 (기억된 실패는 곧바로 돌아온다)
+    L.p = this._loadLazy().then((ok) => {
+      if (!ok && reload) { try { location.reload(); } catch { /* 창 없음 */ } }
+      return ok;
+    });
     return L.p;
   }
   /** 자리 장면을 진짜 장면으로 제자리 교체 (없는 이름이면 닫는다) */

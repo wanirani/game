@@ -11,6 +11,7 @@ import { Tab } from './base.js';
 import { HeroView, HeroStage, PixLayer, PixCache, pedestal, accentOf, turntableHints, pxScale } from './hero_view.js';
 import {
   PAL, RARITY_COL, frame, heading, divider, selBar, brackets, glow, gbutton, Scroller, scrollbar, clipBegin, clipEnd, ellipsize, pill, inRect, measure, Popup,
+  leanMem,
 } from './common.js';
 import { fmtStatVal } from './tab_status.js';
 import * as D from './access.js';
@@ -31,8 +32,10 @@ export class EquipTab extends Tab {
     super(m);
     this.view = new HeroView({ turntable: true, game: m.game });
     this.stage = new HeroStage();
-    this.txt = new PixCache(28);    // 줄·덩어리별 글자 캐시 (외곽선 글자는 매 프레임 그리기에 너무 비싸다 — P-11)
-    this.bg = new PixLayer();       // 세 판의 틀(그라디언트)·제목 — 한 장으로 구워 매 프레임 1:1 복사
+    this.txt = new PixCache(30);    // 줄·덩어리별 글자 캐시 (외곽선 글자는 매 프레임 그리기에 너무 비싸다 — P-11)
+    // 세 판의 틀(그라디언트)·제목 — 'high' 등급은 한 장으로 구워 매 프레임 1:1 복사. 폰·태블릿 등급(leanMem)은 틀을 매 프레임
+    // 그리고(그라디언트 캐시) 제목만 글자 캐시에 — 본문 크기 레이어(phone1 2.1 MB)를 두지 않는다 (R1-REQ-342)
+    this.bg = new PixLayer();
     this.heroRect = null;
     this.si = 0; this.sub = 'slots'; this.li = 0;
     this.sc = new Scroller();
@@ -233,13 +236,19 @@ export class EquipTab extends Tab {
     // 가운데 영웅 무대 자리
     const sh = Math.round(clamp(A.h * 0.52, 128, 260));
     const stageR = { x: MX + 8, y: A.y + 8, w: MW - 16, h: sh };
-    this.bg.draw(ctx, `${hero.charId}|${this.slot}|${nCand}|${touch ? 1 : 0}|${LW}|${MW}`, A.x - 3, A.y - 3, A.w + 6, A.h + 6, (c) => {
+    const lean = leanMem(this.m.game);
+    const headL = (c) => heading(c, '장착 장비', A.x + 16, A.y + (touch ? 24 : 26), LW - 32, { sub: D.CHARACTERS()[hero.charId]?.name?.split(' ')[0] });
+    const headR = (c) => heading(c, `${slotName} 교체`, RX + 16, A.y + 26, RW - 32, { sub: `${nCand}개` });
+    this.bg.drawBg(ctx, `${hero.charId}|${this.slot}|${nCand}|${touch ? 1 : 0}|${LW}|${MW}`, A.x - 3, A.y - 3, A.w + 6, A.h + 6, (c) => {
       frame(c, A.x, A.y, LW, A.h);
-      heading(c, '장착 장비', A.x + 16, A.y + (touch ? 24 : 26), LW - 32, { sub: D.CHARACTERS()[hero.charId]?.name?.split(' ')[0] });
       frame(c, MX, A.y, MW, A.h);
       frame(c, RX, A.y, RW, A.h);
-      heading(c, `${slotName} 교체`, RX + 16, A.y + 26, RW - 32, { sub: `${nCand}개` });
-    });
+      if (!lean) { headL(c); headR(c); }
+    }, lean);
+    if (lean) {
+      this.txt.draw(ctx, 'headL', `${hero.charId}|${touch ? 1 : 0}|${LW}`, A.x + 4, A.y + 4, LW - 8, 34, headL);
+      this.txt.draw(ctx, 'headR', `${slotName}|${nCand}|${RW}`, RX + 4, A.y + 4, RW - 8, 34, headR);
+    }
     // ── 왼쪽: 장비 칸 ──
     this.slotRects.length = 0;
     const rowH = Math.min(62, (A.h - top - 8) / 6);

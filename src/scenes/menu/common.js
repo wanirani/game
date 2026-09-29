@@ -32,27 +32,92 @@ export const EL = {
 };
 export const EL_ORDER = ['holy', 'fire', 'ice', 'dark', 'thunder'];
 
-// ───────────────────────── 발광 스프라이트 ─────────────────────────
-const GLOW = new Map();
-function glowSprite(color) {
-  let c = GLOW.get(color);
-  if (!c) {
-    c = document.createElement('canvas'); c.width = c.height = 64;
-    const g = c.getContext('2d');
-    const r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-    r.addColorStop(0, rgba(color, 1)); r.addColorStop(0.3, rgba(color, 0.5)); r.addColorStop(0.65, rgba(color, 0.14)); r.addColorStop(1, rgba(color, 0));
-    g.fillStyle = r; g.fillRect(0, 0, 64, 64);
-    GLOW.set(color, c);
-  }
-  return c;
+// ───────────────────────── 캔버스 풀 ─────────────────────────
+// 레이어·스냅샷 캔버스는 풀에서 빌리고 돌려준다 (돌려줄 때 0×0 = 픽셀 메모리 0). 모듈을 불러올 때(부팅 — 장면 조각은
+// 스테이지보다 먼저 온다) 미리 만들어 두어, 스테이지 도중 메뉴·마을 창을 처음 열어도 새 캔버스를 만들지 않는다
+// (R1-REQ-339B, feel §8 '스테이지 시작 뒤 새 캔버스 0'). 풀이 비면 그때만 만든다.
+const CV_POOL = [];
+const POOL_WARM = 40, POOL_MAX = 64;
+/** 풀에서 캔버스 한 장 (크기는 쓰는 쪽이 정한다) */
+export function takeCanvas() { return CV_POOL.pop() || document.createElement('canvas'); }
+/** 캔버스를 풀에 돌려준다: 0×0 으로 줄여 픽셀 메모리를 바로 돌려준다 */
+export function giveCanvas(cv) {
+  if (!cv || typeof cv.getContext !== 'function') return;
+  try { cv.width = 0; cv.height = 0; } catch { /* 무시 */ }
+  if (CV_POOL.length < POOL_MAX && !CV_POOL.includes(cv)) CV_POOL.push(cv);
 }
+/** QA: 풀 상태 */
+export function canvasPoolStats() { return { free: CV_POOL.length, warm: POOL_WARM, max: POOL_MAX }; }
+if (typeof document !== 'undefined') {
+  try { for (let i = 0; i < POOL_WARM; i++) { const c = document.createElement('canvas'); c.width = 0; c.height = 0; CV_POOL.push(c); } } catch { /* 문서 없음 */ }
+}
+
+// ───────────────────────── 발광 스프라이트 (아틀라스 한 장) ─────────────────────────
+/**
+ * 색마다 64×64 방사 그라디언트 한 칸을 아틀라스 캔버스 한 장에 둔다 (R1-REQ-339B). 예전에는 색마다 캔버스를 새로 만들어
+ * 스테이지·마을에서 처음 보는 색의 발광이 나오면 그 자리에서 캔버스가 생겼다. 아틀라스는 모듈을 불러올 때 만들고(8칸 × 2줄),
+ * 칸이 모자라면 줄을 늘리고(최대 8줄 = 64색, 512×512 = 1 MB — 캔버스를 새로 만들지 않고 높이만 바꾼 뒤 다시 칠한다),
+ * 그래도 넘치면 가장 오래 안 쓴 칸을 다시 쓴다. 칸의 가장자리는 완전히 투명해서 확대(쌍선형)해도 옆 칸이 번지지 않는다.
+ * stops = [위치, 불투명도, …] (색은 칸마다)
+ */
+export class GlowAtlas {
+  constructor(stops, rows = 2) {
+    this.stops = stops; this.cols = 8; this.rowsMax = 8; this.rows = rows;
+    this.map = new Map(); this.slot = []; this.use = 0; this.cv = null;
+    if (typeof document !== 'undefined') {
+      try { this.cv = document.createElement('canvas'); this.cv.width = 64 * this.cols; this.cv.height = 64 * rows; } catch { this.cv = null; }
+    }
+  }
+  paint(i, color) {
+    const g = this.cv.getContext('2d');
+    const x = (i % this.cols) * 64, y = Math.floor(i / this.cols) * 64;
+    g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+    g.clearRect(x, y, 64, 64);
+    const r = g.createRadialGradient(x + 32, y + 32, 0, x + 32, y + 32, 32);
+    const s = this.stops;
+    for (let k = 0; k < s.length; k += 2) r.addColorStop(s[k], rgba(color, s[k + 1]));
+    g.fillStyle = r; g.fillRect(x, y, 64, 64);
+  }
+  /** 색의 칸 번호 (없으면 칠한다). 아틀라스가 없으면 -1 */
+  index(color) {
+    const e = this.map.get(color);
+    if (e) { e.u = ++this.use; return e.i; }
+    if (!this.cv) return -1;
+    let i = this.slot.length;
+    if (i >= this.cols * this.rows) {
+      if (this.rows < this.rowsMax) {
+        this.rows = Math.min(this.rowsMax, this.rows * 2);
+        this.cv.height = 64 * this.rows; // 높이를 바꾸면 비워진다 → 있던 칸을 다시 칠한다
+        for (let k = 0; k < this.slot.length; k++) this.paint(k, this.slot[k]);
+      } else {
+        let best = 0, bu = Infinity;
+        for (let k = 0; k < this.slot.length; k++) { const u = this.map.get(this.slot[k])?.u ?? 0; if (u < bu) { bu = u; best = k; } }
+        this.map.delete(this.slot[best]); i = best;
+      }
+    }
+    this.slot[i] = color;
+    this.map.set(color, { i, u: ++this.use });
+    this.paint(i, color);
+    return i;
+  }
+  /** 색 color 의 발광을 (dx, dy, dw, dh) 에 그린다 (합성·알파는 호출측) */
+  draw(ctx, color, dx, dy, dw, dh) {
+    const i = this.index(color);
+    if (i < 0) return;
+    ctx.drawImage(this.cv, (i % this.cols) * 64, Math.floor(i / this.cols) * 64, 64, 64, dx, dy, dw, dh);
+  }
+  stats() { return { colors: this.map.size, rows: this.rows, bytes: this.cv ? this.cv.width * this.cv.height * 4 : 0 }; }
+}
+const GLOWS = new GlowAtlas([0, 1, 0.3, 0.5, 0.65, 0.14, 1, 0]);
+/** QA: 발광 아틀라스 상태 */
+export function glowStats() { return GLOWS.stats(); }
 /** 가산 합성 발광 (색은 #hex) */
 export function glow(ctx, x, y, r, color, a = 1) {
   if (a <= 0 || r <= 0) return;
   const op = ctx.globalCompositeOperation, ga = ctx.globalAlpha, sq = ctx.imageSmoothingQuality;
   ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = ga * clamp(a, 0, 1);
   ctx.imageSmoothingQuality = 'low'; // 부드러운 방사 그라디언트 확대: 쌍선형이면 충분 ('high' 는 소프트웨어 래스터에서 10배 느리다 — P-11)
-  ctx.drawImage(glowSprite(color), x - r, y - r, r * 2, r * 2);
+  GLOWS.draw(ctx, color, x - r, y - r, r * 2, r * 2);
   ctx.globalCompositeOperation = op; ctx.globalAlpha = ga; ctx.imageSmoothingQuality = sq;
 }
 /** 가로로 긴 타원형 발광 */
@@ -61,9 +126,67 @@ export function glowOval(ctx, x, y, rx, ry, color, a = 1) {
   const op = ctx.globalCompositeOperation, ga = ctx.globalAlpha, sq = ctx.imageSmoothingQuality;
   ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = ga * clamp(a, 0, 1);
   ctx.imageSmoothingQuality = 'low';
-  ctx.drawImage(glowSprite(color), x - rx, y - ry, rx * 2, ry * 2);
+  GLOWS.draw(ctx, color, x - rx, y - ry, rx * 2, ry * 2);
   ctx.globalCompositeOperation = op; ctx.globalAlpha = ga; ctx.imageSmoothingQuality = sq;
 }
+
+// ───────────────────────── 그라디언트 캐시 (R1-REQ-341B, feel §8 그라디언트 예산) ─────────────────────────
+// 메뉴·마을 창은 매 프레임 같은 패널·버튼·선택 막대를 그린다. 그라디언트를 원점 기준(0 → 길이)으로 한 번 만들어 두고
+// ctx.translate 로 제자리에 옮겨 채운다 → 스크롤로 움직이는 줄도 새 그라디언트 없이 (예전: gbutton 하나가 프레임마다 1개).
+const GRADS = new Map();
+const GRADS_MAX = 400;
+function keepGrad(key, g) {
+  if (GRADS.size >= GRADS_MAX) GRADS.delete(GRADS.keys().next().value);
+  GRADS.set(key, g);
+  return g;
+}
+/** 세로 그라디언트 (0,0)→(0,h). stops = [위치, 색, 위치, 색, …] (키에 들어가므로 같은 배열·문자열을 쓰면 싸다) */
+export function vGrad(ctx, h, stops) {
+  const key = 'v' + h + '|' + stops.join(',');
+  const g = GRADS.get(key);
+  if (g) return g;
+  const n = ctx.createLinearGradient(0, 0, 0, h);
+  for (let i = 0; i < stops.length; i += 2) n.addColorStop(stops[i], stops[i + 1]);
+  return keepGrad(key, n);
+}
+/** 가로 그라디언트 (0,0)→(w,0) */
+export function hGrad(ctx, w, stops) {
+  const key = 'h' + w + '|' + stops.join(',');
+  const g = GRADS.get(key);
+  if (g) return g;
+  const n = ctx.createLinearGradient(0, 0, w, 0);
+  for (let i = 0; i < stops.length; i += 2) n.addColorStop(stops[i], stops[i + 1]);
+  return keepGrad(key, n);
+}
+/** 원형 그라디언트: 중심 (0,0) 기준, 안쪽 원 (ox,oy,r0) → 바깥 원 (0,0,r1) */
+export function rGrad(ctx, ox, oy, r0, r1, stops) {
+  const key = 'r' + ox + ',' + oy + ',' + r0 + ',' + r1 + '|' + stops.join(',');
+  const g = GRADS.get(key);
+  if (g) return g;
+  const n = ctx.createRadialGradient(ox, oy, r0, 0, 0, r1);
+  for (let i = 0; i < stops.length; i += 2) n.addColorStop(stops[i], stops[i + 1]);
+  return keepGrad(key, n);
+}
+/** 원점 기준 그라디언트 g 로 (x,y,w,h) 사각형을 채운다 */
+export function fillGradRect(ctx, g, x, y, w, h) {
+  ctx.translate(x, y); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h); ctx.translate(-x, -y);
+}
+/**
+ * 원점 기준 그라디언트 g 로 지금 경로를 채운다. 경로는 만들 때의 변환으로 이미 고정돼 있고, 그라디언트는 채우는 순간의
+ * 변환으로 해석된다 → 채우는 동안만 (x,y) 로 옮기면 경로는 그대로, 칠만 제자리에 온다
+ */
+export function fillPathGrad(ctx, g, x, y) {
+  ctx.fillStyle = g; ctx.translate(x, y); ctx.fill(); ctx.translate(-x, -y);
+}
+// 자주 쓰는 색 멈춤 (같은 배열 = 같은 캐시 키)
+const FRAME_KEY = [0, 'rgba(255,200,140,0.07)', 1, 'rgba(255,200,140,0)'];
+const SEL_ON = [[0, 'rgba(176,26,52,0.78)', 0.55, 'rgba(110,14,36,0.42)', 1, 'rgba(60,6,20,0.04)'], [0, 'rgba(255,220,140,0.9)', 1, 'rgba(255,220,140,0)']];
+const SEL_DIM = [[0, `rgba(176,26,52,${0.78 * 0.45})`, 0.55, `rgba(110,14,36,${0.42 * 0.45})`, 1, 'rgba(60,6,20,0.04)'], [0, `rgba(255,220,140,${0.9 * 0.45})`, 1, 'rgba(255,220,140,0)']];
+const KEYCAP = [0, '#2e2230', 1, '#140c16'];
+const SCROLL_BAR = [0, PAL.goldMid, 1, PAL.goldDim];
+const BTN_OFF = [0, 'rgba(34,26,34,0.9)', 1, 'rgba(14,10,14,0.92)'];
+const BTN_HOT = [0, rgba('#b0182e', 0.95), 1, 'rgba(50,4,14,0.95)'];
+const BTN_ON = [0, 'rgba(46,24,40,0.92)', 1, 'rgba(14,6,14,0.94)'];
 
 // ───────────────────────── 기본 도형 ─────────────────────────
 export function rr(ctx, x, y, w, h, r) {
@@ -83,9 +206,7 @@ export function inRect(px, py, r) { return !!r && px >= r.x && px <= r.x + r.w &
 
 /** 장식 구분선 (양끝이 사라지는 금선 + 가운데 마름모) */
 export function divider(ctx, x, y, w, { color = PAL.goldMid, center = true, a = 0.85 } = {}) {
-  const g = ctx.createLinearGradient(x, 0, x + w, 0);
-  g.addColorStop(0, rgba(color, 0)); g.addColorStop(0.5, rgba(color, a)); g.addColorStop(1, rgba(color, 0));
-  ctx.fillStyle = g; ctx.fillRect(x, Math.round(y), w, 1);
+  fillGradRect(ctx, hGrad(ctx, w, [0, rgba(color, 0), 0.5, rgba(color, a), 1, rgba(color, 0)]), x, Math.round(y), w, 1);
   if (center) { diamond(ctx, x + w / 2, Math.round(y) + 0.5, 3.5, color); diamond(ctx, x + w / 2 - 9, Math.round(y) + 0.5, 1.6, color); diamond(ctx, x + w / 2 + 9, Math.round(y) + 0.5, 1.6, color); }
 }
 /** 왼쪽 정렬 소제목 + 아래 장식선 */
@@ -93,23 +214,20 @@ export function heading(ctx, str, x, y, w, { color = PAL.gold, size = 16, sub = 
   diamond(ctx, x + 4, y - size * 0.34, 3.2, PAL.crimsonHi);
   text(ctx, str, x + 13, y, { size, weight: 800, family: FONT.title, color, ow: 3 });
   if (sub) { ctx.font = font(size, 800, FONT.title); const tw = ctx.measureText(str).width; text(ctx, sub, x + 22 + tw, y, { size: 12, color: subColor, weight: 600, ow: 2 }); }
-  const g = ctx.createLinearGradient(x, 0, x + w, 0);
-  g.addColorStop(0, rgba(PAL.goldMid, 0.8)); g.addColorStop(0.7, rgba(PAL.goldMid, 0.25)); g.addColorStop(1, rgba(PAL.goldMid, 0));
-  ctx.fillStyle = g; ctx.fillRect(x, y + 7, w, 1);
+  fillGradRect(ctx, hGrad(ctx, w, HEAD_LINE), x, y + 7, w, 1);
 }
+const HEAD_LINE = [0, rgba(PAL.goldMid, 0.8), 0.7, rgba(PAL.goldMid, 0.25), 1, rgba(PAL.goldMid, 0)];
 
 /** 고딕 패널: 그라디언트 몸체 + 따뜻한 키라이트 + 이중 테두리 + 모서리 장식 */
 export function frame(ctx, x, y, w, h, { top = 'rgba(26,14,34,0.94)', bot = 'rgba(8,4,12,0.96)', edge = PAL.goldDim, corners = true, glowC = null, alpha = 1, key = true } = {}) {
   ctx.save();
   ctx.globalAlpha *= alpha;
-  const g = ctx.createLinearGradient(0, y, 0, y + h);
-  g.addColorStop(0, top); g.addColorStop(1, bot);
-  ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
+  // 그라디언트는 원점 기준 캐시 (R1-REQ-341B): 매 프레임 그리는 패널도 새 그라디언트를 만들지 않는다
+  fillGradRect(ctx, vGrad(ctx, h, [0, top, 1, bot]), x, y, w, h);
   if (key) {
     // 위쪽 따뜻한 키라이트 + 아래쪽 차가운 반사
-    const kg = ctx.createLinearGradient(0, y, 0, y + Math.min(60, h * 0.4));
-    kg.addColorStop(0, 'rgba(255,200,140,0.07)'); kg.addColorStop(1, 'rgba(255,200,140,0)');
-    ctx.fillStyle = kg; ctx.fillRect(x, y, w, Math.min(60, h * 0.4));
+    const kh = Math.min(60, h * 0.4);
+    fillGradRect(ctx, vGrad(ctx, kh, FRAME_KEY), x, y, w, kh);
     ctx.fillStyle = 'rgba(140,170,255,0.035)'; ctx.fillRect(x, y + h - 3, w, 3);
   }
   ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.lineWidth = 3; ctx.strokeRect(x - 1, y - 1, w + 2, h + 2);
@@ -134,13 +252,10 @@ export function cornerOrn(ctx, x, y, w, h, c = PAL.goldMid, L = 15) {
 /** 목록 선택 막대 (진홍 그라디언트 + 금선 + 발광) */
 export function selBar(ctx, x, y, w, h, t, { dim = false } = {}) {
   const pulse = 0.5 + 0.5 * Math.sin(t * 5);
-  const g = ctx.createLinearGradient(x, 0, x + w, 0);
-  const a = dim ? 0.45 : 1;
-  g.addColorStop(0, `rgba(176,26,52,${0.78 * a})`); g.addColorStop(0.55, `rgba(110,14,36,${0.42 * a})`); g.addColorStop(1, 'rgba(60,6,20,0.04)');
-  ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
-  const lg = ctx.createLinearGradient(x, 0, x + w, 0);
-  lg.addColorStop(0, `rgba(255,220,140,${0.9 * a})`); lg.addColorStop(1, 'rgba(255,220,140,0)');
-  ctx.fillStyle = lg; ctx.fillRect(x, y, w, 1); ctx.fillRect(x, y + h - 1, w, 1);
+  const S = dim ? SEL_DIM : SEL_ON;
+  fillGradRect(ctx, hGrad(ctx, w, S[0]), x, y, w, h);
+  const lg = hGrad(ctx, w, S[1]);
+  fillGradRect(ctx, lg, x, y, w, 1); fillGradRect(ctx, lg, x, y + h - 1, w, 1);
   if (!dim) {
     glowOval(ctx, x + 18, y + h / 2, 60, h * 0.9, '#ff3050', 0.22 + 0.12 * pulse);
     diamond(ctx, x + 1, y + h / 2, 4.5 + pulse * 1.2, PAL.goldHi);
@@ -166,9 +281,7 @@ export function brackets(ctx, x, y, w, h, t, color = PAL.goldHi) {
 export function keycap(ctx, label, x, y, { h = 18, color = PAL.bone } = {}) {
   ctx.font = font(11, 800, FONT.body);
   const w = Math.max(h, ctx.measureText(label).width + 10);
-  const g = ctx.createLinearGradient(0, y, 0, y + h);
-  g.addColorStop(0, '#2e2230'); g.addColorStop(1, '#140c16');
-  rr(ctx, x, y, w, h, 4); ctx.fillStyle = g; ctx.fill();
+  rr(ctx, x, y, w, h, 4); fillPathGrad(ctx, vGrad(ctx, h, KEYCAP), 0, y);
   ctx.strokeStyle = '#8a6a3a'; ctx.lineWidth = 1; ctx.stroke();
   ctx.fillStyle = 'rgba(255,240,200,0.12)'; ctx.fillRect(x + 3, y + 2, w - 6, 1);
   ctx.fillStyle = color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -227,9 +340,7 @@ export function gauge(ctx, x, y, w, h, ratio, color, { back = 'rgba(0,0,0,0.55)'
   if (ghost !== null && ghost > ratio) { rr(ctx, x, y, w * clamp(ghost, 0, 1), h, h / 2); ctx.fillStyle = 'rgba(126,224,126,0.45)'; ctx.fill(); }
   if (ratio > 0) {
     const fw = Math.max(h, w * ratio);
-    const g = ctx.createLinearGradient(0, y, 0, y + h);
-    g.addColorStop(0, color); g.addColorStop(1, rgba(color, 0.55));
-    rr(ctx, x, y, fw, h, h / 2); ctx.fillStyle = g; ctx.fill();
+    rr(ctx, x, y, fw, h, h / 2); fillPathGrad(ctx, vGrad(ctx, h, [0, color, 1, rgba(color, 0.55)]), 0, y);
     ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(x + h / 2, y + 1, Math.max(0, fw - h), Math.max(1, h * 0.3));
     if (glowEnd) glow(ctx, x + fw - 1, y + h / 2, h * 2.2, color, 0.5);
   }
@@ -360,6 +471,15 @@ export function ellipsize(ctx, str, w, size, weight = 500, family = FONT.body) {
 }
 
 // ───────────────────────── 레이어 캐시 ─────────────────────────
+/**
+ * 캔버스 메모리 절약 모드: 실제 품질 등급(game.tier, 설정 'auto' 포함)이 'high' 가 아니면 — 휴대폰·태블릿의 기본 — 큰 정적 레이어를
+ * 줄여 굽거나(메뉴 배경: 반 해상도) 굽지 않고 매 프레임 그린다(탭의 판 틀: 그라디언트는 캐시). MASTER_PLAN §5.2 메모리:
+ * phone1 에서 메뉴를 연 채 살아 있는 캔버스 ≤ 20 MB (R1-REQ-342). 'high'(데스크톱)는 예전처럼 장치 픽셀 1:1 레이어 (P-11)
+ */
+export function leanMem(game = input.game) {
+  const t = game?.tier ?? game?.quality;
+  return !!t && t !== 'high';
+}
 /** ctx 의 지금 변환 배율 (논리 px → 캔버스 px) */
 export function ctxScale(ctx) {
   try { const m = ctx.getTransform(); return Math.hypot(m.a, m.b) || 1; } catch { return 1; }
@@ -385,7 +505,8 @@ export function budgetScale(ctx, w, h, scale) {
  */
 export class Layer {
   constructor() { this.cv = null; this.key = null; }
-  draw(ctx, key, x, y, w, h, scale, fn) {
+  /** copyQ: 배율 경로로 붙일 때의 필터 (기본 'medium'; 흐린 배경을 반 해상도로 구웠으면 'low' 쌍선형이면 충분) */
+  draw(ctx, key, x, y, w, h, scale, fn, copyQ = 'medium') {
     let m = null;
     if (!(scale > 0)) { try { m = ctx.getTransform(); } catch { m = null; } }
     const cv0 = ctx?.canvas, maxPx = Math.max(2.5e5, (cv0?.width || 0) * (cv0?.height || 0));
@@ -395,7 +516,7 @@ export class Layer {
     const k = key + '|' + w + '|' + h + '|' + scale + '|' + (exact ? 1 : 0) + '|' + fontEpoch;
     if (this.key !== k || !this.cv) {
       const pw = Math.max(1, Math.ceil(w * scale)), ph = Math.max(1, Math.ceil(h * scale));
-      if (!this.cv) this.cv = document.createElement('canvas');
+      if (!this.cv) this.cv = takeCanvas(); // 풀에서 (스테이지 도중 새 캔버스 0 — R1-REQ-339B)
       if (this.cv.width !== pw || this.cv.height !== ph) { this.cv.width = pw; this.cv.height = ph; }
       const c = this.cv.getContext('2d');
       c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, pw, ph);
@@ -413,12 +534,16 @@ export class Layer {
     }
     // 거의 1:1 복사(배율을 1/64 로 내림)라 'medium' 이면 충분하다. 'high' 는 1:1 이 아닌 전체 화면 복사가 10배 느리다 (P-11)
     const sq = ctx.imageSmoothingQuality;
-    if (sq === 'high') ctx.imageSmoothingQuality = 'medium';
+    if (sq === 'high' || copyQ === 'low') ctx.imageSmoothingQuality = copyQ === 'low' ? 'low' : 'medium';
     ctx.drawImage(this.cv, 0, 0, this.cv.width, this.cv.height, x, y, this.cv.width / scale, this.cv.height / scale);
     ctx.imageSmoothingQuality = sq;
   }
   invalidate() { this.key = null; }
-  free() { if (this.cv) { this.cv.width = this.cv.height = 1; } this.cv = null; this.key = null; }
+  /** 캔버스를 풀에 돌려준다 (픽셀 메모리 0). 다음 draw 에서 풀에서 다시 빌려 굽는다 */
+  free() { giveCanvas(this.cv); this.cv = null; this.key = null; }
+  release() { this.free(); }
+  /** 지금 차지한 픽셀 메모리 (바이트) */
+  get bytes() { return this.cv ? this.cv.width * this.cv.height * 4 : 0; }
 }
 
 // ───────────────────────── 입력 ─────────────────────────
@@ -776,9 +901,7 @@ export function scrollbar(ctx, x, y, h, sc, viewH) {
   const th = Math.max(24, h * viewH / total);
   const ty = y + (h - th) * clamp(sc.y / sc.max, 0, 1);
   ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(x, y, 4, h);
-  const g = ctx.createLinearGradient(0, ty, 0, ty + th);
-  g.addColorStop(0, PAL.goldMid); g.addColorStop(1, PAL.goldDim);
-  ctx.fillStyle = g; ctx.fillRect(x, ty, 4, th);
+  fillGradRect(ctx, vGrad(ctx, th, SCROLL_BAR), x, ty, 4, th);
 }
 
 /** 스크롤 영역 클립 + 위아래 페이드 */
@@ -786,19 +909,17 @@ export function clipBegin(ctx, r) { ctx.save(); ctx.beginPath(); ctx.rect(r.x, r
 export function clipEnd(ctx, r, sc, fadeC = 'rgba(8,4,12,0.95)') {
   ctx.restore();
   if (!sc) return;
-  if (sc.y > 1) { const g = ctx.createLinearGradient(0, r.y, 0, r.y + 18); g.addColorStop(0, fadeC); g.addColorStop(1, 'rgba(8,4,12,0)'); ctx.fillStyle = g; ctx.fillRect(r.x, r.y, r.w, 18); }
-  if (sc.y < sc.max - 1) { const g = ctx.createLinearGradient(0, r.y + r.h - 18, 0, r.y + r.h); g.addColorStop(0, 'rgba(8,4,12,0)'); g.addColorStop(1, fadeC); ctx.fillStyle = g; ctx.fillRect(r.x, r.y + r.h - 18, r.w, 18); }
+  if (sc.y > 1) fillGradRect(ctx, vGrad(ctx, 18, [0, fadeC, 1, 'rgba(8,4,12,0)']), r.x, r.y, r.w, 18);
+  if (sc.y < sc.max - 1) fillGradRect(ctx, vGrad(ctx, 18, [0, 'rgba(8,4,12,0)', 1, fadeC]), r.x, r.y + r.h - 18, r.w, 18);
 }
 
 // ───────────────────────── 버튼 ─────────────────────────
 /** 고딕 버튼 (그리기만; 탭 판정은 호출측 ges.tap) */
 export function gbutton(ctx, r, label, { hot = false, disabled = false, size = 15, icon = null, t = 0, color = null, sub = null, accent = PAL.crimson } = {}) {
   ctx.save();
-  const g = ctx.createLinearGradient(0, r.y, 0, r.y + r.h);
-  if (disabled) { g.addColorStop(0, 'rgba(34,26,34,0.9)'); g.addColorStop(1, 'rgba(14,10,14,0.92)'); }
-  else if (hot) { g.addColorStop(0, rgba(accent === PAL.crimson ? '#b0182e' : accent, 0.95)); g.addColorStop(1, 'rgba(50,4,14,0.95)'); }
-  else { g.addColorStop(0, 'rgba(46,24,40,0.92)'); g.addColorStop(1, 'rgba(14,6,14,0.94)'); }
-  rr(ctx, r.x, r.y, r.w, r.h, 4); ctx.fillStyle = g; ctx.fill();
+  // 몸체 그라디언트는 높이·상태별 캐시 (R1-REQ-341B: 예전에는 단추 하나가 프레임마다 새 그라디언트 1개 — 허브 34/프레임의 한 몫)
+  const stops = disabled ? BTN_OFF : hot ? (accent === PAL.crimson ? BTN_HOT : [0, rgba(accent, 0.95), 1, 'rgba(50,4,14,0.95)']) : BTN_ON;
+  rr(ctx, r.x, r.y, r.w, r.h, 4); fillPathGrad(ctx, vGrad(ctx, r.h, stops), 0, r.y);
   ctx.strokeStyle = 'rgba(0,0,0,0.9)'; ctx.lineWidth = 3; ctx.stroke();
   rr(ctx, r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1, 4);
   ctx.strokeStyle = disabled ? '#3e3238' : hot ? PAL.gold : PAL.goldDim; ctx.lineWidth = hot ? 1.6 : 1.2; ctx.stroke();

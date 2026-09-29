@@ -241,7 +241,10 @@ function recycle(c) {
 fillSpares();
 // 스테이지·방 진입(로딩 페이드 뒤) 때 예비를 다시 채운다 (싸움 도중에는 새로 만들지 않게). events.js 는 잎 모듈이지만
 // 순환 import 로 초기화 순서가 바뀌어도 안전하게 한 박자 늦춰 구독한다
-if (typeof setTimeout === 'function') setTimeout(() => { bus.on('stageEntered', () => { fillSpares(); sweep(performance.now(), true); }); bus.on('roomEntered', () => fillSpares()); }, 0);
+// 스테이지 진입 강제 정리는 곧바로 하지 않고, 진입 뒤 첫 영웅 그리기 묶음이 끝난 다음에 한다 (forceNext → touchUse):
+// stageEntered 는 월드 생성 도중(첫 그리기 전)에 오므로, 그때 정리하면 이번 스테이지 플레이어의 퍼펫(방금 미리 받았거나 메뉴에서
+// 다른 영웅 뒤에 그린 것)이 '다른 영웅·안 그린 퍼펫'으로 보여 가장 먼저 내려진다 → 첫 몇 프레임 벡터 대체 그림 + 다시 받기
+if (typeof setTimeout === 'function') setTimeout(() => { bus.on('stageEntered', () => { fillSpares(); forceNext = true; }); bus.on('roomEntered', () => fillSpares()); }, 0);
 
 // ───────────────────────── 텍스처 예산 (R1-RUN-TEX-TOUCH) ─────────────────────────
 // 퍼펫 아틀라스·마스크·턴테이블(assets 'puppets' 묶음)은 채색 텍스처 예산(assets.paintedBudget: 터치 폰·태블릿 / 데스크톱)에
@@ -254,15 +257,19 @@ const CID_USED = new Map();   // 영웅(cid) → 그 영웅의 퍼펫을 마지�
 let HERO_CID = null;          // 마지막으로 그린 (NPC 아닌) 영웅 = 보통 플레이어
 /** 그림 표시: 이 퍼펫과 그 영웅을 '쓰는 중'으로 (정리 우선순위) + 가끔 예산 확인 */
 let sweepQueued = false;
+let forceNext = false;        // 스테이지 진입: 다음 영웅(플레이어) 그리기 뒤 한 번 강제 정리 (위 stageEntered 구독)
 function touchUse(E, t, hero = false) {
   E.used = t; CID_USED.set(E.cid, t);
   if (hero) HERO_CID = E.cid;
-  if (t - sweepAt < 500 || sweepQueued) return;
+  if (sweepQueued) return;
+  const force = forceNext && hero;
+  if (!force && t - sweepAt < 500) return;
+  if (force) forceNext = false;
   // 정리는 이번 그리기 묶음(한 프레임·갤러리 한 장)이 끝난 뒤에: 긴 멈춤(로딩·탭 전환) 뒤 첫 프레임에서 먼저 그린 퍼펫이
   // 아직 안 그린 퍼펫을 '쉬는 중'으로 보고 내리지 않게 (그 프레임에 모두 다시 쓰일 텍스처)
-  if (typeof setTimeout !== 'function') { sweep(t); return; }
+  if (typeof setTimeout !== 'function') { sweep(t, force); return; }
   sweepQueued = true;
-  setTimeout(() => { sweepQueued = false; sweep(performance.now()); }, 0);
+  setTimeout(() => { sweepQueued = false; sweep(performance.now(), force); }, 0);
 }
 function hasTextures(E) {
   if (E.turnImg || E.turnMask) return true;

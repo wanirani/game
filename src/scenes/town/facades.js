@@ -9,6 +9,7 @@
 //  drawStallHead(ctx, id, x, y, s, t, k) · drawSpiritWisp(ctx, id, x, y, s, t, a) : 마구간 장면(stable.js)도 쓰는 동료 그림
 import { RNG, hashStr, TAU, clamp, rgba, shade, lerp } from '../../core/math.js';
 import { text, FONT } from '../../core/ui.js';
+import { GlowAtlas } from '../menu/common.js';
 import { TILE, game } from '../../core/game.js';
 import { BUILDINGS, TOWN_FLOOR_ROW, TOWN_LAMPS } from '../../data/town.js';
 import { companionDef } from '../../data/companions.js';
@@ -30,22 +31,23 @@ const HEIGHT = { wall: 340, inn: 440, shop: 360, board: 210, smith: 420, church:
 const PAD = 44;
 
 // ───────────────────────── 공용 광채 스프라이트 ─────────────────────────
+// 색마다 캔버스를 만들지 않고 아틀라스 한 장(menu/common GlowAtlas, 모듈을 불러올 때 생성)의 칸에 칠한다 — 마을을 걷다 처음 보는
+// 색의 불빛이 나와도 새 캔버스 0 (R1-REQ-339B 와 같은 규칙, feel §8)
+const GLOWS = new GlowAtlas([0, 0.9, 0.25, 0.45, 0.6, 0.12, 1, 0]);
 const glowCache = new Map();
+/** 색 하나짜리 광채 캔버스 (예전 API — 다른 모듈이 캔버스 자체가 필요할 때만; 이 파일의 glow() 는 아틀라스를 쓴다) */
 export function glowSprite(color = '#ffb45a') {
   let c = glowCache.get(color);
   if (c) return c;
   c = document.createElement('canvas'); c.width = c.height = 64;
-  const g = c.getContext('2d');
-  const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-  gr.addColorStop(0, rgba(color, 0.9)); gr.addColorStop(0.25, rgba(color, 0.45)); gr.addColorStop(0.6, rgba(color, 0.12)); gr.addColorStop(1, rgba(color, 0));
-  g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+  GLOWS.draw(c.getContext('2d'), color, 0, 0, 64, 64);
   glowCache.set(color, c);
   return c;
 }
 export function glow(ctx, x, y, r, color, a = 1) {
   if (a <= 0.01) return;
   ctx.globalAlpha = a;
-  ctx.drawImage(glowSprite(color), x - r, y - r, r * 2, r * 2);
+  GLOWS.draw(ctx, color, x - r, y - r, r * 2, r * 2);
   ctx.globalAlpha = 1;
 }
 
@@ -981,6 +983,18 @@ const ICON = {
   },
 };
 
+const SIGN_GRAD = new Map();
+/** 간판 판의 세로 그라디언트 (y0 → y0+h, 간판 로컬 좌표) — 높이별로 한 번만 만든다 */
+function signGrad(ctx, y0, h) {
+  const k = y0 + '|' + h;
+  let g = SIGN_GRAD.get(k);
+  if (!g) {
+    g = ctx.createLinearGradient(0, y0, 0, y0 + h); g.addColorStop(0, '#4a2c1a'); g.addColorStop(1, '#1e100a');
+    if (SIGN_GRAD.size > 32) SIGN_GRAD.clear();
+    SIGN_GRAD.set(k, g);
+  }
+  return g;
+}
 function drawSign(ctx, b, t) {
   const s = b._sign;
   if (!s) return;
@@ -998,8 +1012,7 @@ function drawSign(ctx, b, t) {
   ctx.beginPath(); ctx.moveTo(-s.w / 2 + 12, 0); ctx.lineTo(-s.w / 2 + 12, 10); ctx.moveTo(s.w / 2 - 12, 0); ctx.lineTo(s.w / 2 - 12, 10); ctx.stroke();
   // 판 (어두운 나무 + 금테)
   const y0 = 10, h = s.h;
-  const g = ctx.createLinearGradient(0, y0, 0, y0 + h); g.addColorStop(0, '#4a2c1a'); g.addColorStop(1, '#1e100a');
-  ctx.fillStyle = g;
+  ctx.fillStyle = signGrad(ctx, y0, h); // 높이별 캐시 (R1-REQ-341B: 예전에는 간판마다 프레임마다 새 그라디언트 — 허브 2/프레임)
   ctx.beginPath(); ctx.moveTo(-s.w / 2, y0 + 6); ctx.quadraticCurveTo(-s.w / 2, y0, -s.w / 2 + 6, y0); ctx.lineTo(s.w / 2 - 6, y0); ctx.quadraticCurveTo(s.w / 2, y0, s.w / 2, y0 + 6);
   ctx.lineTo(s.w / 2, y0 + h - 6); ctx.quadraticCurveTo(s.w / 2, y0 + h, s.w / 2 - 6, y0 + h); ctx.lineTo(-s.w / 2 + 6, y0 + h); ctx.quadraticCurveTo(-s.w / 2, y0 + h, -s.w / 2, y0 + h - 6); ctx.closePath();
   ctx.fill();

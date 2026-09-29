@@ -7,7 +7,7 @@ import { clamp } from '../../core/math.js';
 import { input } from '../../core/input.js';
 import { Tab } from './base.js';
 import { HeroView, HeroStage, PixLayer, PixCache, pedestal, accentOf, turntableHints, pxScale } from './hero_view.js';
-import { PAL, EL, EL_ORDER, frame, heading, divider, diamond, gauge, pill, selBar, glow, num, para, measure, ellipsize, inRect } from './common.js';
+import { PAL, EL, EL_ORDER, frame, heading, divider, diamond, gauge, pill, selBar, glow, num, para, measure, ellipsize, inRect, leanMem } from './common.js';
 import * as D from './access.js';
 import { SUBWEAPONS } from '../../data/subweapons.js';
 
@@ -159,7 +159,8 @@ export class StatusTab extends Tab {
     const sh = Math.round(clamp(A.h - 178, 108, 226));
     const sx = A.x + 8, sy = A.y + 8, sw = LW - 16;
     // 왼쪽 판의 틀 (정적)
-    this.bg.draw(ctx, `${LW}`, A.x - 3, A.y - 3, LW + 6, A.h + 6, (c) => frame(c, A.x, A.y, LW, A.h));
+    // 판의 틀: 폰·태블릿 등급은 굽지 않고 매 프레임 (그라디언트 캐시 — 캔버스 예산 R1-REQ-342), 'high' 는 구워 1:1 복사
+    this.bg.drawBg(ctx, `${LW}`, A.x - 3, A.y - 3, LW + 6, A.h + 6, (c) => frame(c, A.x, A.y, LW, A.h), leanMem(this.m.game));
     const accent = accentOf(this.look);
     this.stage.draw(ctx, sx, sy, sw, sh, t, pxScale(ctx), accent);
     const foot = Math.round(clamp(sh * 0.115, 14, 26));

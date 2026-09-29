@@ -17,7 +17,9 @@ import * as PUPPET from '../../render/hero_puppet.js';
 import { currentHero } from '../../game/state.js';
 import {
   PAL, glow, glowOval, diamond, glyph, hintRow, Layer, Nav, Gesture, Embers, brackets, inRect, ellipsize,
+  takeCanvas, giveCanvas, leanMem, ctxScale, vGrad, hGrad, rGrad, fillGradRect, fillPathGrad,
 } from './common.js';
+import * as HERO_R from '../../render/hero.js';
 import { heroPerfSample } from './hero_view.js';
 import { StatusTab } from './tab_status.js';
 import { EquipTab } from './tab_equip.js';
@@ -43,6 +45,10 @@ export const MENU_TABS = [
   { id: 'system', name: '기록', glyph: 'hourglass', C: () => SystemTab },
 ];
 const TOP_H = 62, BOT_H = 34;
+// 캐시 그라디언트의 색 멈춤 (R1-REQ-341B)
+const BAR_LINE = [0, 'rgba(200,160,80,0.05)', 0.5, 'rgba(232,200,114,0.85)', 1, 'rgba(200,160,80,0.05)'];
+const TAB_SEL = [0, 'rgba(150,22,44,0.95)', 0.55, 'rgba(90,10,28,0.92)', 1, 'rgba(40,4,14,0.9)'];
+const CLOSE_ON = [0, '#3a1420', 1, '#12060c'], CLOSE_HOT = [0, '#8a1a2a', 1, '#12060c'];
 // 상단 막대: 탭 화살표·닫기 단추는 44 CSS px 이상 (§6.3; 폰 UI 배율에서 1 UI px ≈ 0.83 CSS px → 여유 영역 포함 52.8 UI px)
 const ARROW_W = 44, CLOSE_W = 50, BAR_GAP = 10, BAR_M = 8;
 
@@ -83,7 +89,10 @@ export class MenuScene extends Scene {
     window.removeEventListener('wheel', this._onWheel);
     for (const k in this.tabs) this.tabs[k].free?.();
     this.bgLayer.free();
+    giveCanvas(this.snap); // 캔버스는 공용 풀로 (다음에 메뉴를 열 때 새로 만들지 않는다 — R1-REQ-339B)
     this.snap = null;
+    // 영웅 미리보기(큰 배율)가 키운 역광·섬광 오프스크린을 게임 크기로 돌려준다 (render/hero.js 가 내보내면 — R1-REQ-342 요청)
+    try { HERO_R.releaseHeroOffscreen?.(); } catch (e) { console.warn(e); }
     try { this.world?.player?.refreshStats(); } catch (e) { console.warn(e); }
   }
   get hero() { return this.state ? currentHero(this.state) : null; }
@@ -198,19 +207,24 @@ export class MenuScene extends Scene {
   captureSnapshot(ctx) {
     const src = ctx.canvas;
     const sw = Math.max(64, Math.round(this.game.viewW / 4)), sh = Math.max(36, Math.round(this.game.viewH / 4));
-    const c = document.createElement('canvas'); c.width = sw; c.height = sh;
+    // 캔버스는 공용 풀에서 (스테이지 도중 메뉴를 열어도 새 캔버스 0 — R1-REQ-339B). 중간 캔버스는 바로 돌려준다
+    const c = takeCanvas(); c.width = sw; c.height = sh;
     const g = c.getContext('2d');
     g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+    const mid = takeCanvas();
     try {
       // 두 단계 축소 → 부드러운 흐림
-      const mid = document.createElement('canvas'); mid.width = sw * 2; mid.height = sh * 2;
+      mid.width = sw * 2; mid.height = sh * 2;
       const mg = mid.getContext('2d'); mg.imageSmoothingQuality = 'high';
       mg.drawImage(src, 0, 0, src.width, src.height, 0, 0, mid.width, mid.height);
       g.drawImage(mid, 0, 0, sw, sh);
-      mid.width = mid.height = 1;
     } catch (e) { g.fillStyle = '#0a0610'; g.fillRect(0, 0, sw, sh); }
+    giveCanvas(mid);
     this.snap = c;
     this.opaque = true; // 이후로는 아래 장면을 그리지 않음 (성능)
+    // 메뉴가 화면을 덮는 동안 스테이지 타일 청크 픽셀은 필요 없다 → 폰·태블릿 등급이면 돌려준다 (render/tiles.js 가
+    // releaseChunks 를 내보내면 — R1-REQ-342 요청. 닫으면 보이는 청크만 풀의 캔버스로 다시 굽는다)
+    if (leanMem(this.game)) { try { this.world?.tiles?.releaseChunks?.(); } catch (e) { console.warn(e); } }
   }
 
   render(ctx) {
@@ -229,10 +243,14 @@ export class MenuScene extends Scene {
     // 열고 닫는 동안(k < 1)은 그 위에 스냅샷을 (1 − k) 로 덮는다 = 스냅샷 위에 배경을 k 로 그린 것과 같은 결과.
     // 1/4 해상도 흐린 스냅샷의 4배 확대는 쌍선형('low')이면 충분하다 ('high' 는 매 프레임 수십 ms)
     ctx.save();
-    this.bgLayer.draw(ctx, 'bgs' + (assets.has('tex/tex_blood_marble') ? 1 : 0), 0, 0, W, H, null, (c) => {
+    // 폰·태블릿 등급(leanMem)은 배경을 반 해상도로 굽고 쌍선형으로 붙인다: 흐린 스냅샷·그라디언트·옅은 결뿐이라 차이가 거의 없고
+    // 전체 화면 레이어가 1/4 크기 (phone1 2.8 → 0.7 MB — R1-REQ-342). 가는 선(막대 테두리)은 선명하게 매 프레임 따로 그린다
+    const lean = leanMem(this.game);
+    this.bgLayer.draw(ctx, 'bgs' + (assets.has('tex/tex_blood_marble') ? 1 : 0), 0, 0, W, H, lean ? ctxScale(ctx) * 0.5 : null, (c) => {
       c.imageSmoothingQuality = 'low'; c.drawImage(this.snap, 0, 0, W, H); c.imageSmoothingQuality = 'high';
       this.drawBackdrop(c, W, H);
-    });
+    }, lean ? 'low' : 'medium');
+    this.drawBarLines(ctx, W, H);
     if (k < 1) {
       const sq = ctx.imageSmoothingQuality;
       ctx.globalAlpha = 1 - k; ctx.imageSmoothingQuality = 'low';
@@ -286,16 +304,18 @@ export class MenuScene extends Scene {
     const tg = c.createLinearGradient(0, 0, 0, TOP_H);
     tg.addColorStop(0, 'rgba(26,10,20,0.97)'); tg.addColorStop(1, 'rgba(10,4,10,0.95)');
     c.fillStyle = tg; c.fillRect(0, 0, W, TOP_H);
-    c.fillStyle = 'rgba(0,0,0,0.9)'; c.fillRect(0, TOP_H, W, 2);
-    const lg = c.createLinearGradient(0, 0, W, 0);
-    lg.addColorStop(0, 'rgba(200,160,80,0.05)'); lg.addColorStop(0.5, 'rgba(232,200,114,0.85)'); lg.addColorStop(1, 'rgba(200,160,80,0.05)');
-    c.fillStyle = lg; c.fillRect(0, TOP_H - 1, W, 1); c.fillRect(0, TOP_H + 3, W, 1);
     // 하단 막대
     const by = H - BOT_H;
     const bg = c.createLinearGradient(0, by, 0, H);
     bg.addColorStop(0, 'rgba(14,6,14,0.94)'); bg.addColorStop(1, 'rgba(4,2,6,0.98)');
     c.fillStyle = bg; c.fillRect(0, by, W, BOT_H);
-    c.fillStyle = lg; c.fillRect(0, by, W, 1);
+  }
+  /** 상단·하단 막대의 가는 테두리 선: 배경 레이어(반 해상도일 수 있다) 밖에서 매 프레임 선명하게 (그라디언트는 캐시) */
+  drawBarLines(ctx, W, H) {
+    ctx.fillStyle = 'rgba(0,0,0,0.9)'; ctx.fillRect(0, TOP_H, W, 2);
+    const lg = hGrad(ctx, W, BAR_LINE);
+    fillGradRect(ctx, lg, 0, TOP_H - 1, W, 1); fillGradRect(ctx, lg, 0, TOP_H + 3, W, 1);
+    fillGradRect(ctx, lg, 0, H - BOT_H, W, 1);
   }
 
   drawTabBar(ctx, W, S) {
@@ -330,12 +350,10 @@ export class MenuScene extends Scene {
     // 선택 판
     const py = 6, ph = TOP_H - 10;
     ctx.save();
-    const g = ctx.createLinearGradient(0, py, 0, py + ph);
-    g.addColorStop(0, 'rgba(150,22,44,0.95)'); g.addColorStop(0.55, 'rgba(90,10,28,0.92)'); g.addColorStop(1, 'rgba(40,4,14,0.9)');
     ctx.beginPath();
     ctx.moveTo(sx + 6, py + ph); ctx.lineTo(sx + 2, py + 8); ctx.quadraticCurveTo(sx + 2, py, sx + 10, py);
     ctx.lineTo(sx + tw - 10, py); ctx.quadraticCurveTo(sx + tw - 2, py, sx + tw - 2, py + 8); ctx.lineTo(sx + tw - 6, py + ph); ctx.closePath();
-    ctx.fillStyle = g; ctx.fill();
+    fillPathGrad(ctx, vGrad(ctx, ph, TAB_SEL), 0, py); // 캐시 (R1-REQ-341B)
     ctx.strokeStyle = PAL.gold; ctx.lineWidth = 1.2; ctx.stroke();
     glowOval(ctx, sx + tw / 2, py + ph * 0.55, tw * 0.7, ph * 0.8, '#ff3a50', 0.28 + 0.06 * Math.sin(t * 4));
     ctx.fillStyle = 'rgba(255,230,180,0.25)'; ctx.fillRect(sx + 10, py + 2, tw - 20, 1);
@@ -362,9 +380,7 @@ export class MenuScene extends Scene {
     const hov = ges.over(this.closeRect);
     const cx = closeX + CLOSE_W / 2, cy = 5 + (TOP_H - 10) / 2;
     ctx.beginPath(); ctx.arc(cx, cy, 17, 0, TAU);
-    const cg = ctx.createRadialGradient(cx - 4, cy - 5, 2, cx, cy, 18);
-    cg.addColorStop(0, hov ? '#8a1a2a' : '#3a1420'); cg.addColorStop(1, '#12060c');
-    ctx.fillStyle = cg; ctx.fill();
+    fillPathGrad(ctx, rGrad(ctx, -4, -5, 2, 18, hov ? CLOSE_HOT : CLOSE_ON), cx, cy); // 캐시 (R1-REQ-341B)
     ctx.strokeStyle = hov ? PAL.gold : PAL.goldDim; ctx.lineWidth = 1.5; ctx.stroke();
     glyph(ctx, 'cross', cx, cy, 16, hov ? PAL.goldHi : PAL.bone, 2);
   }

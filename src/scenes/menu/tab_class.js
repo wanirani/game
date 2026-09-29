@@ -9,7 +9,7 @@ import * as PUP from '../../render/hero_puppet.js';
 import * as ProgM from '../../game/progression.js';
 import { Tab } from './base.js';
 import { HeroView, HeroStage, PixLayer, PixCache, pedestal, accentOf, turntableHints, pxScale } from './hero_view.js';
-import { PAL, frame, heading, divider, brackets, glow, glowOval, pill, para, rr, glyph, ellipsize, measure } from './common.js';
+import { PAL, frame, heading, divider, brackets, glow, glowOval, pill, para, rr, glyph, ellipsize, measure, leanMem } from './common.js';
 import { fmtStatVal } from './tab_status.js';
 import * as D from './access.js';
 
@@ -132,10 +132,11 @@ export class ClassTab extends Tab {
     const DW = Math.round(clamp(A.w * 0.35, 300, 380));
     const TW = A.w - DW - 12;
     // 두 판의 틀 (정적)
-    this.bg.draw(ctx, `${TW}`, A.x - 3, A.y - 3, A.w + 6, A.h + 6, (c) => {
+    // 판의 틀: 폰·태블릿 등급은 굽지 않고 매 프레임 (그라디언트 캐시 — 캔버스 예산 R1-REQ-342), 'high' 는 구워 1:1 복사
+    this.bg.drawBg(ctx, `${TW}`, A.x - 3, A.y - 3, A.w + 6, A.h + 6, (c) => {
       frame(c, A.x, A.y, TW, A.h);
       frame(c, A.x + TW + 12, A.y, DW, A.h);
-    });
+    }, leanMem(this.m.game));
     const ch = D.CHARACTERS()[this.hero.charId];
     const T = this.tiers();
     const chain = this.chain;

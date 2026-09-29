@@ -112,7 +112,7 @@ export class PixLayer {
     const k = `${key}|${w}|${h}|${s}|${exact ? 1 : 0}|${UI.fontEpoch ?? 0}`;
     if (this.key !== k || !this.cv) {
       const pw = Math.max(1, Math.ceil(w * s)), ph = Math.max(1, Math.ceil(h * s));
-      if (!this.cv) this.cv = document.createElement('canvas');
+      if (!this.cv) this.cv = MENU.takeCanvas(); // 풀에서 (스테이지 도중 새 캔버스 0 — R1-REQ-339B)
       if (this.cv.width !== pw || this.cv.height !== ph) { this.cv.width = pw; this.cv.height = ph; }
       const c = this.cv.getContext('2d');
       c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, pw, ph);
@@ -132,10 +132,23 @@ export class PixLayer {
     }
     ctx.restore();
   }
+  /**
+   * 판 틀 같은 배경용: live 면 굽지 않고 ctx 에 바로 그린다 (레이어 캔버스 없음 — 폰·태블릿 등급의 캔버스 예산, R1-REQ-342.
+   * frame()·heading() 의 그라디언트는 common.js 캐시라 매 프레임 새로 만들지 않는다). 아니면 draw() 와 같다
+   */
+  drawBg(ctx, key, x, y, w, h, fn, live = false) {
+    if (!live) { this.draw(ctx, key, x, y, w, h, fn); return; }
+    if (this.cv) this.free();
+    ctx.save();
+    try { fn(ctx); } catch (e) { console.error(e); }
+    ctx.restore();
+  }
   invalidate() { this.key = null; }
-  /** 픽셀 메모리만 돌려준다 (캔버스는 1×1 로 남겨 다음 draw 에서 다시 키워 쓴다) — 탭을 떠날 때 */
-  release() { if (this.cv) { this.cv.width = this.cv.height = 1; } this.key = null; }
-  free() { if (this.cv) { this.cv.width = this.cv.height = 1; } this.cv = null; this.key = null; }
+  /** 픽셀 메모리를 돌려준다 (캔버스는 공용 풀로 — 다음 draw 에서 풀에서 다시 빌린다) — 탭을 떠날 때 */
+  release() { this.free(); }
+  free() { MENU.giveCanvas(this.cv); this.cv = null; this.key = null; }
+  /** 지금 차지한 픽셀 메모리 (바이트) */
+  get bytes() { return this.cv ? this.cv.width * this.cv.height * 4 : 0; }
 }
 
 /**

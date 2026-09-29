@@ -16,7 +16,7 @@ Netlify Functions(모던 함수, TypeScript) + Netlify Blobs 로 동작하며, �
 
 - **웹(Netlify)**: 게임과 API 가 같은 출처다. 클라이언트는 `fetch('/api/...')` 로 부른다. CORS 헤더는 두지 않는다(안드로이드 앱 출처만 예외 — 아래).
 - **안드로이드 APK**: WebView 가 `https://appassets.androidplatform.net/` 에서 게임을 열고, `/api/*` 요청을 앱(`AssetServer` → `ApiProxy`)이 계정 서버로 대신 전달한다. 그래서 브라우저 입장에서는 항상 같은 출처 요청이다. 클라이언트는 반드시 **절대 경로 `/api/...`** 를 써야 한다 (`api/...` 처럼 상대 경로로 쓰면 `/assets/api/...` 처럼 엉뚱한 곳으로 간다).
-  - **서버 주소**: `tools/apk/api_origin.txt` 의 첫 줄(`https://호스트[:포트]`, 경로·끝 슬래시 없음 — 빌드할 때 환경 변수 `API_ORIGIN` 으로 덮어쓸 수 있다)을 `build_apk.sh` 가 APK 의 `assets/app/apk.json` `api.origin` 에 넣는다. `api.aliases` 에는 `src/core/cloud.js` 의 `APP_API_BASE` 사이트가 들어간다(`tools/apk/pack_web.py`). 두 값은 같은 사이트여야 웹과 앱이 같은 계정을 쓴다 — 사이트 이름이 바뀌면 둘 다 고치고 APK 를 다시 만든다. 주소가 없거나 형식이 틀리면 프록시가 꺼지고 `/api/*` 는 **503** `{ok:false, error:'unavailable'}` 이다.
+  - **서버 주소**: `tools/apk/api_origin.txt` 의 첫 줄(`https://호스트[:포트]`, 경로·끝 슬래시 없음 — 빌드할 때 환경 변수 `API_ORIGIN` 으로 덮어쓸 수 있다)을 `build_apk.sh` 가 APK 의 `assets/app/apk.json` `api.origin` 에 넣는다. `api.aliases` 에는 `src/core/cloud.js` 의 `APP_API_BASE` 사이트가 들어간다(`tools/apk/pack_web.py`). 두 값은 같은 사이트여야 웹과 앱이 같은 계정을 쓴다 — 사이트 이름이 바뀌면 둘 다 고치고 APK 를 다시 만든다. 파일이 없거나 형식이 틀리면 APK 빌드가 멈춘다. 앱이 실행 중에 이 설정을 읽지 못하면 프록시가 꺼지고 같은 출처 `/api/*` 는 **503** `{ok:false, error:'unavailable'}` 이다.
   - **요청 본문 전달**: WebView 의 `shouldInterceptRequest` 는 POST 본문을 넘겨주지 않는다. 그래서 앱 조각(`head_inject.html`, 게임 모듈보다 먼저 실행)이 `window.fetch` 를 감싸, 같은 출처 `/api/*` 와 계정 서버 주소(`api.origin`·`api.aliases`)로 가는 요청마다 무작위 id 를 만들고 `BNAndroid.apiStash(id, method, 헤더 줄들, 본문)` 으로 메서드·헤더·본문(글, 최대 4MB)을 먼저 맡긴 뒤 같은 출처 `/api/...?__bnreq=<id>` 로 보낸다. `cloud.js` 는 요청할 때마다 `fetch` 를 새로 찾으므로 감싼 것이 그대로 쓰인다. 조각은 `window.__BN_APP = {platform:'android', version, assets, apiProxy, apiBase:'/api'}` 도 만든다.
   - **클라이언트 주소 선택**(`cloud.js` `pickApiBase`): 웹은 `/api`. 앱에서 `__BN_APP.apiProxy === true` 면 같은 출처 `/api`(`apiBase`, 같은 출처 경로만 받음) — 앱 코드의 사이트 이름에 기대지 않는다. 프록시가 없는 옛 앱에서만 `APP_API_BASE`(공식 사이트)를 직접 부르고, 서버는 이때를 위해 앱 출처 `https://appassets.androidplatform.net` 만 CORS 로 허용한다(`netlify/lib/router.mts` `APP_ORIGINS`: 사전 요청 204, 응답에 `Access-Control-Allow-Origin`·`Cross-Origin-Resource-Policy: cross-origin`, `Sec-Fetch-Site: cross-site` 검사 제외). 그 밖의 다른 출처에는 CORS 가 없다.
   - **전달 규칙**(`ApiProxy.java`): 맡긴 메서드·헤더·본문을 **그대로** 서버에 보낸다(`Content-Type`·`Authorization` 포함). 빼는 요청 헤더: `Cookie`, `Origin`, `Referer`, `Sec-*`, `Proxy-*`, `X-Requested-With`(WebView 가 붙이는 앱 패키지 이름), `Host`·`Connection`·`Content-Length`·`Transfer-Encoding`·`Accept-Encoding`·`Keep-Alive`·`TE`·`Trailer`·`Upgrade`·`Expect` 같은 연결 단위 헤더. 쿼리의 `__bnreq` 는 떼고 보낸다. 서버의 상태 코드·응답 헤더·본문을 그대로 돌려주되 `Set-Cookie`·`Strict-Transport-Security`·`Alt-Svc`·연결 단위 헤더는 빼고, 언제나 `Cache-Control: no-store` 와 `X-BN-Proxy: 1` 을 붙인다. 리디렉트는 따라가지 않는다(3xx 는 아래 502). 서버는 기기에서 바로 오는 요청으로 보므로 `context.ip` 는 그 기기의 IP 다(망별 제한이 기기마다 따로 센다).
@@ -30,10 +30,10 @@ Netlify Functions(모던 함수, TypeScript) + Netlify Blobs 로 동작하며, �
 ## 2. 공통 규칙
 
 - 요청·응답 본문은 UTF-8 JSON. 모든 응답은 `{ ok: boolean, ... }` 이고, 실패하면 `{ ok:false, error:"코드", message:"한국어 안내" }` 가 붙는다. 화면에는 `message` 를 그대로 보여 주면 된다. 분기는 `error` 코드로 한다.
-- 본문이 있는 요청은 반드시 `Content-Type: application/json` 이어야 한다(아니면 415). 다른 사이트가 `fetch(no-cors)`·form 으로 보낼 수 있는 `text/plain`·form 형식을 받지 않아, 방문자 브라우저를 빌린 가입·로그인·잠금 공격(CSRF)을 막는다. 같은 이유로 `Sec-Fetch-Site: cross-site` 요청은 403.
+- 본문이 있는 요청은 반드시 `Content-Type: application/json` 이어야 한다(아니면 415). 다른 사이트가 `fetch(no-cors)`·form 으로 보낼 수 있는 `text/plain`·form 형식을 받지 않아, 방문자 브라우저를 빌린 가입·로그인·잠금 공격(CSRF)을 막는다. 같은 이유로 `Sec-Fetch-Site: cross-site` 요청은 403 (안드로이드 앱 출처 `https://appassets.androidplatform.net` 만 예외 — §1).
 - JSON 중첩은 64단계까지(넘으면 400), 세이브·메타의 `data` 는 32단계까지이고 `__proto__` 키를 쓸 수 없다(넘거나 있으면 422).
 - 로그인이 필요한 요청은 `Authorization: Bearer <토큰>` 헤더를 붙인다. 토큰은 base64url 43자.
-- 모든 API 응답 헤더: `Content-Type: application/json; charset=utf-8`, `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'; sandbox`, `X-Frame-Options: DENY`, `Cross-Origin-Resource-Policy: same-origin`.
+- 모든 API 응답 헤더: `Content-Type: application/json; charset=utf-8`, `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'; sandbox`, `X-Frame-Options: DENY`, `Cross-Origin-Resource-Policy: same-origin` (안드로이드 앱 출처 요청에는 CORS 헤더와 `cross-origin` — §1).
 - 429 응답에는 `Retry-After` 헤더와 본문 `retryAfter`(초)가 함께 온다.
 - 본문 크기 제한: 인증 4KB, 슬롯 저장 512KB, 메타 64KB (넘으면 413).
 - 시각은 모두 밀리초 epoch(`Date.now()` 형식). `savedAt` 은 **서버 시각**이다.
@@ -55,7 +55,7 @@ Netlify Functions(모던 함수, TypeScript) + Netlify Blobs 로 동작하며, �
 | 401 | `invalid_credentials` | 로그인 실패 (아이디가 없든 비밀번호가 틀리든 같은 응답) |
 | 401 | `invalid_recovery` | 복구 실패 (아이디가 없든 코드가 틀리든 같은 응답) |
 | 403 | `wrong_password` | 비밀번호 변경·탈퇴 때 지금 비밀번호가 틀림 (세션은 유효 — 로그아웃시키지 말 것) |
-| 403 | `forbidden` | 다른 사이트에서 보낸 요청 (`Sec-Fetch-Site: cross-site`) |
+| 403 | `forbidden` | 다른 사이트에서 보낸 요청 (`Sec-Fetch-Site: cross-site`, 안드로이드 앱 출처 제외) |
 | 404 | `not_found` | 없는 API 경로 |
 | 404 | `slot_empty` | 클라우드 슬롯이 비어 있음 (본문에 `slot`, `rev`) |
 | 405 | `method_not_allowed` | 허용되지 않는 메서드 (`Allow` 헤더 참고) |
@@ -156,14 +156,18 @@ Netlify Functions(모던 함수, TypeScript) + Netlify Blobs 로 동작하며, �
   - IP 는 Netlify 가 채우는 `context.ip` 만 쓴다. `X-Forwarded-For`·`x-nf-client-connection-ip` 등 요청 헤더는 클라이언트가 위조할 수 있으므로 절대 쓰지 않는다(없으면 모두 하나의 'unknown' 묶음으로 센다).
   - 숫자는 `netlify/lib/config.mts` 의 `RATE` 에서 바꾼다. PC방·학교처럼 여러 명이 IP 하나를 쓰는 곳에서 막히면 `ipAuthMax` 를 올린다.
 - **흔한 비밀번호 거부**: 온라인 추측 제한만으로는 `12345678`·`qwer1234`·`1q2w3e4r` 같은 비밀번호가 하루 안에 뚫릴 수 있어 가입·변경·복구 때 `weak_password` 로 막는다.
-- **다른 사이트에서 오는 요청**: 본문이 있는 요청은 `Content-Type: application/json` 만 받고(415), `Sec-Fetch-Site: cross-site` 는 거절한다(403). CORS 헤더는 두지 않는다 — 다른 출처의 사전 확인(OPTIONS)은 405 로 끝난다. 토큰은 쿠키가 아니라 `Authorization` 헤더로만 오간다.
+- **다른 사이트에서 오는 요청**: 본문이 있는 요청은 `Content-Type: application/json` 만 받고(415), `Sec-Fetch-Site: cross-site` 는 거절한다(403). CORS 헤더는 두지 않는다 — 다른 출처의 사전 확인(OPTIONS)은 405 로 끝난다. 예외는 안드로이드 앱 출처 `https://appassets.androidplatform.net` 하나(`router.mts` `APP_ORIGINS`, 프록시가 없는 옛 앱이 공식 사이트를 직접 부를 때): 이 출처는 안드로이드 WebView 만 쓸 수 있어 일반 웹페이지가 흉내 낼 수 없고, 앱이 아닌 프로그램은 어차피 CORS 없이 요청할 수 있으므로 새 공격 경로가 생기지 않는다. 토큰은 쿠키가 아니라 `Authorization` 헤더로만 오간다(자동으로 붙지 않는다).
 - **입력 검사**: 라우트·메서드 엄격 확인(404/405), 본문 크기를 실제로 세어 제한, UTF-8·JSON 오류는 400, JSON 은 파싱 전에 중첩 깊이를 재어 64단계 초과는 400(수십만 겹 배열로 뒤의 재귀 처리를 넘치게 하는 DoS 방지), 슬롯 번호는 `1|2|3` 만, 세이브는 `isValidSave` 와 같은 구조 검사(테스트가 무작위 변형 400개로 클라이언트 함수와 결과가 같은지 확인한다). 세이브·메타 `data` 는 32단계 이하, `__proto__` 키 금지(422 — 클라이언트가 합치거나 대입할 때 프로토타입이 바뀌는 것 방지).
 - **경합**: 로그인이 옛 비밀번호를 확인한 뒤 세션을 만들기 전에 다른 기기가 비밀번호를 바꾸면, 그 로그인은 세션을 받지 못한다(예전: 비밀번호 변경의 '다른 세션 폐기' 뒤에 붙어 살아남았다). 로그인 재해시는 확인한 비밀번호가 그대로일 때만 쓴다(예전: 방금 바뀐 새 비밀번호를 옛 비밀번호로 되돌릴 수 있었다). 비밀번호 변경은 그사이 다른 변경이 있었으면 `wrong_password`. 탈퇴는 사용자 레코드를 지운 뒤 세이브를 한 번 더 쓸고, 세이브 쓰기는 쓴 뒤 계정이 아직 있는지 확인해 없으면 방금 쓴 것을 지운다(탈퇴한 계정의 세이브가 남지 않는다).
 - **배포 문맥**: 운영(`production`)은 사이트 전역 저장소, 그 밖(미리보기·브랜치·dev)은 배포별 저장소. 배포 문맥을 알 수 없으면 어떤 저장소도 열지 않고 500(운영 요청이 배포별 저장소에 쓰면 다음 배포 때 데이터가 사라지고, 미리보기 요청이 운영 저장소에 쓰면 섞이므로).
 - **응답·로그**: 스택 트레이스나 내부 정보는 응답에 넣지 않는다(500 은 일반 메시지만). 로그에는 오류 종류와, URL·메일·IPv4/IPv6·토큰·해시·키처럼 보이는 긴 문자열을 가린 문구만 남긴다(Netlify Blobs 오류에는 저장소 응답 본문이 붙을 수 있다). 비밀번호·토큰·복구 코드·IP·요청 본문은 남기지 않는다.
 - **API 응답 헤더**: `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'; sandbox`, `X-Frame-Options: DENY`, `Cross-Origin-Resource-Policy: same-origin`, `Referrer-Policy: no-referrer`, `nosniff`, `no-store` (`netlify.toml` 의 `[[headers]]` 는 정적 파일에만 적용되므로 함수가 직접 붙인다).
-- **정적 사이트 헤더**(`netlify.toml`): `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`, `Cross-Origin-Opener-Policy: same-origin`, `Strict-Transport-Security: max-age=31536000`, `X-Frame-Options: SAMEORIGIN`, CSP(`default-src 'self'`, Google Fonts 허용, `connect-src 'self'`, `object-src 'none'`, `frame-ancestors 'self'`). `index.html` 의 인라인 스크립트 때문에 `script-src` 에 `'unsafe-inline'` 이 들어 있다 — 인라인 스크립트를 파일로 옮기면 빼야 한다(로그인 토큰이 브라우저 저장소에 있으므로 XSS 는 곧 토큰 탈취다). `/node_modules`, `/netlify`, `/tools`, `/android`, `/docs`, `/dist`, `/.git`, `package*.json`, `netlify.toml` 은 강제 404 로 막았다(로컬에서 `netlify deploy` 로 올릴 때 서명 키 같은 git 무시 파일이 섞여도 노출되지 않게).
-- **캐시**: `index.html`·`src/*`·`css/*`·`sw.js`·매니페스트는 `no-cache`(매번 재검증), `?v=` 가 붙는 이미지(`assets/bg|portraits|tex|cg|icons|props`)는 1년 `immutable` — 그림을 바꾸면 `src/core/assets.js` 의 `version` 을 올린다. 글꼴은 7일, 앱 아이콘은 1일.
+- **정적 사이트 헤더**(`netlify.toml`, 게시 폴더 `dist/web` 의 모든 파일; 함수 응답에는 적용되지 않는다): `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`(gamepad·fullscreen·screen-wake-lock·autoplay 는 self, camera·microphone·geolocation·payment·usb 는 막음), `Cross-Origin-Opener-Policy: same-origin`, `Strict-Transport-Security: max-age=31536000`(includeSubDomains 없음), `X-Frame-Options: SAMEORIGIN`, CSP `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; media-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'`.
+  - **`script-src 'self'` 만**: 인라인 스크립트가 없다 — 부팅 관문은 `src/boot-gate.js`, 빌드 정보(`window.__BN_BUILD`)는 빌드가 만드는 파일 `build-info.js`, 나머지는 모듈이다. `'unsafe-inline'`·외부 호스트는 넣지 않는다(`build_web.mjs` 가 `script-src 'self'` 가 아니면 빌드를 멈춘다). 로그인 토큰이 브라우저 저장소에 있으므로 XSS 는 곧 토큰 탈취다.
+  - **글꼴**: 모두 자체 파일(`assets/fonts`, `font-src 'self'`) — Google Fonts 같은 외부 글꼴·스타일시트는 쓰지 않는다.
+  - `style-src` 의 `'unsafe-inline'` 은 계정 화면이 넣는 `<style id="bn-account-style">` 과 캔버스 코드의 `element.style` 때문에 필요하다(스크립트 실행 권한은 아니다).
+  - **개발 파일 차단**: 예전의 강제 404 리디렉트(`/tools`, `/docs`, `/netlify`, `/android`, `/node_modules`, `/.git` …)는 없앴다. 게시 폴더 `dist/web` 는 `tools/deploy/build_web.mjs` 가 **허용 목록**(`index.html`, `build-info.js`, `manifest.webmanifest`, `sw.js`, `robots.txt`, `css/`, `src/`(부팅 관문 + 번들 조각), `assets/`(`lo/`·`fonts/` 포함), `downloads/`)으로만 만들고, `tools|docs|android|node_modules|netlify|dist|.git` 경로나 `*.keystore *.jks *.p12 *.properties .env*` 가 섞이면 빌드가 실패하고 출력 폴더를 지우므로 그런 경로는 처음부터 사이트에 없다(`smoke_deployed.mjs` 가 404 인지 확인한다).
+- **캐시**(`netlify.toml`): `/`·`/index.html`·`/sw.js`(+`Service-Worker-Allowed: /`)·`/build.json`·`/build-info.js` 는 `no-cache`(매번 재검증). 번들 조각 `/src/bundle/<내용 해시>/*` 는 폴더 이름이 내용 해시라 `public, max-age=31536000, immutable`. `/src/boot-gate.js`·`/css/*`·`/assets/*`(그림·글꼴·리그 JSON)는 파일 이름에 해시가 없어 `public, max-age=0, must-revalidate`(ETag 재검증 — 한 배포의 아틀라스와 다른 배포의 리그가 섞이지 않게). 재방문 속도는 서비스 워커가 맡는다: 코드·CSS·글꼴은 `bn-<빌드 해시>` 캐시, 그림은 `bn-assets-v1` 캐시에서 주되 저장할 때 붙인 내용 해시를 `build.json` 의 해시와 비교해 다르면 새로 받는다. 매니페스트 1시간, `/downloads/*.apk` 5분(첨부), `/downloads/latest.json` `no-cache`. `/api/*` 는 함수가 `no-store` 를 붙이고, 서비스 워커는 `/api/`·`/downloads/`·`build.json`·`sw.js` 를 건드리지 않는다.
 - **전송**: Netlify 가 HTTPS 를 강제한다. 토큰은 `Authorization` 헤더로만 오가고 쿠키를 쓰지 않는다. 클라이언트는 토큰을 '로그인 유지'면 `localStorage`, 아니면 `sessionStorage` 에 두므로 XSS 가 곧 토큰 탈취다 — CSP 를 느슨하게 만들지 말 것.
 
 ## 6. 환경 변수
@@ -172,16 +176,24 @@ Netlify Functions(모던 함수, TypeScript) + Netlify Blobs 로 동작하며, �
 
 | 이름 | 필수 | 설명 |
 |---|---|---|
-| `AUTH_PEPPER` | 선택 | 설정하면 비밀번호·복구 코드를 `HMAC-SHA256(pepper)` 한 뒤 scrypt 하고, IP 해시에도 쓴다. Blobs 데이터가 유출돼도 pepper 없이는 오프라인 추측이 불가능해진다. 32자 이상 무작위 문자열을 Netlify 환경 변수(범위: Functions)에 넣는다. **한 번 넣은 뒤 바꾸거나 지우면 그 뒤로 해시된 계정은 로그인할 수 없다**(오류 없이 "비밀번호가 올바르지 않습니다"가 된다). 처음 넣는 것은 언제든 괜찮다 — 기존 계정은 다음 로그인 때 자동으로 옮겨진다. |
+| `AUTH_PEPPER` | 선택 | 설정하면 비밀번호·복구 코드를 `HMAC-SHA256(pepper)` 한 뒤 scrypt 하고, IP 해시에도 쓴다. Blobs 데이터가 유출돼도 pepper 없이는 오프라인 추측이 불가능해진다. 32자 이상 무작위 문자열을 Netlify 환경 변수(범위: Functions)에 넣는다. **한 번 넣은 뒤 바꾸거나 지우면 그 뒤로 해시된 계정은 로그인할 수 없다**(오류 없이 "비밀번호가 올바르지 않습니다"가 된다). 처음 넣는 것은 언제든 괜찮다 — 기존 계정은 다음 로그인 때 자동으로 옮겨진다. 값 만들기·넣는 곳은 `tools/deploy/README.md` §3, 넣거나 바꾼 뒤에는 다시 배포해야 함수에 적용된다. 운영 도구(`tools/accounts/admin.mjs`)도 같은 값을 쓴다(§8). |
 
 코드는 환경 변수를 `Netlify.env.get()` 으로만 읽는다.
 
 ## 7. 배포
 
-1. Netlify 에 저장소를 연결한다(git 연동 권장). 빌드 명령 없음, 게시 디렉터리 `.`, 함수 디렉터리 `netlify/functions` — 모두 `netlify.toml` 에 들어 있다. Node 22 (`NODE_VERSION`).
-2. 의존성: `@netlify/blobs`, `@netlify/functions` (`package.json`). Netlify 가 설치하고 함수를 번들한다. `netlify/lib/*.mts` 는 `api.mts` 가 import 해서 함께 번들되며 따로 함수가 되지 않는다.
-3. 배포 후 `https://<사이트>/api/health` 가 `{"ok":true,"api":1,...}` 를 돌려주면 끝.
-4. 로컬에서 Netlify 환경 그대로 시험하려면 `npx netlify dev` (이때 데이터는 배포별 저장소라 운영과 분리된다).
+자세한 절차와 명령은 `tools/deploy/README.md` §3 이 기준이다. 요점:
+
+1. **저장소 루트를 절대 올리지 않는다** (`netlify deploy --dir .` 금지 — 서명 키·개발 도구·문서가 섞인다). 게시하는 것은 `dist/web` 뿐이다.
+2. `node tools/deploy/build_web.mjs` → `dist/web`(허용 목록으로 만든 게시 폴더, §5) + `dist/deploy`(Netlify 업로드 묶음: `web/` = dist/web, 계정 API 소스 `netlify/functions`·`netlify/lib`, 개발 의존성을 뺀 `package.json`, `publish = "web"` 이고 빌드 명령이 없는 `netlify.toml`). 글꼴·맵 검사나 공개 금지 검사가 실패하면 빌드가 멈춘다.
+3. 올리기 (둘 중 하나):
+   - 이미 만든 결과: `dist/deploy/` 를 올린다 (Netlify MCP 로 배포 폴더를 넘기거나 `cd dist/deploy && npx netlify deploy --prod --dir web --functions netlify/functions --site <사이트 ID>`).
+   - Git 연동 빌드: 저장소의 `netlify.toml` 이 `[build] command = "node tools/deploy/build_web.mjs --no-apk --no-deploy-bundle"`, `publish = "dist/web"`, 함수 디렉터리 `netlify/functions`, `NODE_VERSION = "22"` 로 같은 결과를 만든다.
+   - 두 경우 모두 Netlify 가 함수 의존성(`@netlify/blobs`, `@netlify/functions`)을 설치하고 `api.mts` 를 번들한다. `netlify/lib/*.mts` 는 `api.mts` 가 import 해서 함께 번들되며 따로 함수가 되지 않는다. `/api/*` 는 함수의 `config.path` 가 맡는다(`_redirects` 에 넣지 않는다).
+4. **`AUTH_PEPPER`**(선택, 강력 권장): `tools/deploy/README.md` §3 의 방법으로 만든 32자 이상 무작위 값을 Netlify 사이트 설정 → Environment variables 에 범위 **Functions** 로 넣고 다시 배포한다. 값은 저장소·문서·채팅에 적지 않는다. 한 번 넣은 뒤에는 바꾸거나 지우지 않는다(§6).
+5. 확인: `node tools/deploy/smoke_deployed.mjs https://<사이트>` — 헤더(CSP·캐시), 빌드 일치, 공개 금지 경로 404, `/api/health` = `{"ok":true,"api":1,...}`·`no-store`, 앱 출처 CORS 사전 요청, 서비스 워커가 `/api/` 를 캐시하지 않음, 페이지 오류 0 (APK 없이 배포했다면 `--no-apk`).
+6. 사이트 주소가 정해지거나 바뀌면 `src/core/cloud.js` 의 `APP_API_BASE` 와 `tools/apk/api_origin.txt` 를 같은 사이트로 맞추고 APK 를 다시 만든다(§1).
+7. 로컬에서 Netlify 환경 그대로 시험하려면 `npx netlify dev` (이때 데이터는 배포별 저장소라 운영과 분리된다). 게시 폴더만 시험할 때는 `node tools/deploy/serve_dist.mjs`(API 없음 → 계정 기능은 꺼진다).
 
 ## 8. 운영
 
@@ -217,7 +229,7 @@ npm run test:client                                # 브라우저(헤드리스 C
 
 - 핸들러를 `Request`/`Context` 로 직접 부른다(Node 22.18+ 가 `.mts` 의 타입을 지우고 바로 실행). 시계는 `setClock` 으로, 저장소는 `setStoreFactory` 로 바꿔 끼운다(`netlify/lib/runtime.mts`). 해시 비용은 `setHashCostForTests` 로 낮춰 빠르게 돌리고, 매개변수를 확인하는 테스트(`realHash`)만 운영 값으로 돈다(HTTP·환경 변수로는 바꿀 수 없다).
 - '공격:'·'경합:' 테스트는 보안 검토에서 찾은 문제를 재현한다: 동시 요청으로 잠금·가입 한도 우회(저장소 연산 가로채기 `hook` 으로 요청을 한 줄로 세운 뒤 한꺼번에 풀고, scrypt 호출 수로 실제 비밀번호 확인 횟수를 센다), 잠금 악용, 분산 추측, CSRF(text/plain·cross-site), IPv6 주소 돌리기, IP 헤더 위조, 비밀번호 변경·재해시·탈퇴 경합, 깊은 JSON·`__proto__`, 로그 가리기, 응답 헤더, 흔한 비밀번호, scrypt 매개변수·옛 해시 올리기, 로그인 유지, 모든 기기 로그아웃, 배포 문맥 없음.
-- `tools/accounts/test_client.mjs`: 헤드리스 Chromium 에서 게임을 `https://game.test`(공식 사이트 역할)·`https://claude.ai`(임베드 역할)로 열고 `netlify.toml` 의 CSP 를 그대로 붙여, 게스트 요청 0건·claude.ai 요청 0건·오프라인 안내·'로그인 유지' 켬/끔(저장 위치·서버 세션 길이·새 창)·로그아웃과 흔적 삭제·모든 기기 로그아웃(오프라인이면 유지하고 알림)·약한 비밀번호 사전 차단·시험 주소 덮어쓰기·형식이 틀린 응답 거부를 확인한다.
+- `tools/accounts/test_client.mjs`: 헤드리스 Chromium 에서 게임을 `https://game.test`(공식 사이트 역할)·`https://claude.ai`(임베드 역할)로 열고 `netlify.toml` 의 CSP 를 그대로 붙여, 게스트 요청 0건·claude.ai 요청 0건·오프라인 안내·'로그인 유지' 켬/끔(저장 위치·서버 세션 길이·새 창)·로그아웃과 흔적 삭제·모든 기기 로그아웃(오프라인이면 유지하고 알림)·약한 비밀번호 사전 차단·시험 주소 덮어쓰기·형식이 틀린 응답 거부, 안드로이드 앱 흉내(`https://appassets.androidplatform.net` + `window.__BN_APP`)에서 프록시가 켜져 있으면 같은 출처 `/api` 만 부르고 프록시 없는 옛 앱만 공식 사이트를 앱 출처 CORS 로 부르는지를 확인한다. `test_api.mjs` 의 '클라이언트:' 테스트는 `pickApiBase` 의 모든 경우(웹·앱 프록시·옛 앱·시험용 덮어쓰기·다른 출처 값 무시)를 확인한다.
 - 모든 엔드포인트와 오류 경로(404/405, 깨진 JSON, 크기 제한, 아이디·비밀번호 규칙, 잠금, IP 제한, 세션 만료·연장·최대 10개, 복구 코드 1회성, 탈퇴 후 재가입, rev 충돌·force·묘비, 동시 저장, 배포 문맥 분리, 저장소 장애 시 500, 평문 비밀이 저장소에 없음)를 확인한다.
 - 로컬 BlobsServer 는 읽기 응답에 ETag 를 주지 않아 그 모드에서는 조건부 쓰기 대신 덮어쓰기로 동작한다(운영 Netlify Blobs 는 ETag 를 준다). 동시성 테스트는 메모리 모드에서만 돈다.
 
@@ -225,7 +237,7 @@ npm run test:client                                # 브라우저(헤드리스 C
 
 | 파일 | 내용 |
 |---|---|
-| `src/core/cloud.js` | API 클라이언트(`cloud`): 사용 가능 판단, 토큰, 요청(시간 제한·JSON·오프라인), 슬롯·메타 동기화, 입력 검사(서버 규칙과 같음) |
+| `src/core/cloud.js` | API 클라이언트(`cloud`): 사용 가능 판단, API 주소 선택(`pickApiBase` — 웹·앱 프록시는 `/api`, 프록시 없는 옛 앱만 `APP_API_BASE`), 토큰, 요청(시간 제한·JSON·오프라인), 슬롯·메타 동기화, 입력 검사(서버 규칙과 같음) |
 | `src/core/save.js` | `saves.onWrite(fn)` — 슬롯 저장·삭제·가져오기·메타 저장 알림 / `saves.store(slot, data)` — 받은 기록을 `savedAt` 그대로 저장(알림 없음) |
 | `src/scenes/front/account.js` | 계정 화면 `account`: 로그인·회원가입(복구 코드 1회 표시·복사)·비밀번호 변경·복구 코드로 재설정·로그아웃·계정 삭제·지금 동기화. 서버를 못 쓰면 안내 |
 | `src/scenes/front/cloud_ui.js` | 구름 상태 아이콘·문구, 세이브 요약 카드, 충돌 선택 `cloudConflict` |
@@ -244,5 +256,5 @@ npm run test:client                                # 브라우저(헤드리스 C
 - **새 계정**은 이 기기의 기록을 모두 올린다. **기존 계정으로 로그인**하면 클라우드 전용 슬롯은 받아 오고, 이 기기에만 있는 슬롯은 올릴지 묻는다.
 - **메타**는 덮어쓰지 않고 합친다: 해금 캐릭터·엔딩은 합집합, 클리어 수·서바이벌 최고 기록은 큰 값, 도감은 항목별 큰 값, 명예의 전당은 두 목록을 합쳐 모드별 상위 20개(스토리 모드는 회차 `run` 당 한 줄), 보스 러시는 코스별 최단 기록. 마지막 캐릭터·이니셜·아케이드 설정 같은 기기 설정은 이 기기 값이 우선.
 - **입력 칸**: 캔버스 위에 실제 `<input>`(아이디 `autocomplete=username`, 비밀번호 `current-password`/`new-password`, `autocapitalize=off`)을 `<form>` 에 넣어 띄운다 — 모바일 키보드·비밀번호 관리자가 동작한다. 스타일은 JS 가 넣는 `<style id="bn-account-style">`. `core/input.js` 는 글자를 입력할 수 있는 요소(읽기 전용 제외)에서 누른 키를 게임 키로 쓰지 않는다.
-- **안드로이드 앱**: 클라이언트는 항상 같은 출처의 `fetch('/api/...')` 를 쓴다. 앱이 요청 본문을 전달하려면 `shouldInterceptRequest` 대신 페이지 쪽에서 `window.fetch` 를 감싸 JS 브리지로 넘기면 된다 — `cloud.js` 는 요청할 때마다 `fetch` 를 새로 찾으므로 감싼 것이 그대로 쓰인다. 브리지는 메서드·본문과 함께 **`Content-Type: application/json`·`Authorization` 헤더를 그대로** 전달해야 한다(Content-Type 이 빠지면 415). `Sec-Fetch-Site: cross-site` 를 붙이지 말 것(403). 서버는 앱 쪽 요청의 IP 를 Netlify 가 본 접속 IP(`context.ip`)로 세므로, 앱이 모든 사용자의 요청을 한 서버에서 대신 보내는 구조라면 망별 제한에 한꺼번에 걸린다 — 기기에서 직접 Netlify 로 보내야 한다.
+- **안드로이드 앱**: 앱의 /api 프록시가 켜져 있으면(`window.__BN_APP.apiProxy === true`) 웹과 똑같이 같은 출처 `fetch('/api/...')` 를 쓰고, 앱 조각이 감싼 `fetch` 가 본문·헤더를 `BNAndroid.apiStash` 로 맡겨 프록시로 보낸다(§1). 프록시가 없는 옛 앱에서만 `APP_API_BASE` 를 직접 부른다(앱 출처 CORS). 주소 선택은 `pickApiBase(location, window.__BN_APP, localStorage.bn_api_base)` 한 곳이다. `cloud.js` 는 요청할 때마다 `fetch` 를 새로 찾으므로 감싼 것이 그대로 쓰인다. 서버는 기기에서 바로 오는 요청으로 보므로 IP 제한은 기기마다 따로 센다. 프록시가 서버에 닿지 못하면(`X-BN-Proxy-Error`) 네트워크 오류가 되어 웹의 오프라인과 같은 안내·재시도를 탄다. 화면 키보드 높이는 `window.__BN_IME`(API 30+)를 쓰고, 없으면 계정 화면이 어림값을 쓴다.
 
