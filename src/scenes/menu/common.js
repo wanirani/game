@@ -55,17 +55,17 @@ if (typeof document !== 'undefined') {
 // ───────────────────────── 발광 스프라이트 (아틀라스 한 장) ─────────────────────────
 /**
  * 색마다 64×64 방사 그라디언트 한 칸을 아틀라스 캔버스 한 장에 둔다 (R1-REQ-339B). 예전에는 색마다 캔버스를 새로 만들어
- * 스테이지·마을에서 처음 보는 색의 발광이 나오면 그 자리에서 캔버스가 생겼다. 아틀라스는 모듈을 불러올 때 만들고(8칸 × 2줄),
- * 칸이 모자라면 줄을 늘리고(최대 8줄 = 64색, 512×512 = 1 MB — 캔버스를 새로 만들지 않고 높이만 바꾼 뒤 다시 칠한다),
- * 그래도 넘치면 가장 오래 안 쓴 칸을 다시 쓴다. 칸의 가장자리는 완전히 투명해서 확대(쌍선형)해도 옆 칸이 번지지 않는다.
- * stops = [위치, 불투명도, …] (색은 칸마다)
+ * 스테이지·마을에서 처음 보는 색의 발광이 나오면 그 자리에서 캔버스가 생겼다. 아틀라스 캔버스는 모듈을 불러올 때(부팅) 0×0 으로
+ * 만들어 두고, 처음 쓸 때 크기를 준다 (쓰기 전에는 메모리 0). 한 줄 4칸, 칸이 모자라면 줄을 두 배로 늘리고(최대 16줄 = 64색,
+ * 256×1024 = 1 MB — 캔버스를 새로 만들지 않고 높이만 바꾼 뒤 있던 칸을 다시 칠한다), 그래도 넘치면 가장 오래 안 쓴 칸을 다시 쓴다.
+ * 칸의 가장자리는 완전히 투명해서 확대(쌍선형)해도 옆 칸이 번지지 않는다. stops = [위치, 불투명도, …] (색은 칸마다)
  */
 export class GlowAtlas {
-  constructor(stops, rows = 2) {
-    this.stops = stops; this.cols = 8; this.rowsMax = 8; this.rows = rows;
+  constructor(stops) {
+    this.stops = stops; this.cols = 4; this.rowsMax = 16; this.rows = 0;
     this.map = new Map(); this.slot = []; this.use = 0; this.cv = null;
     if (typeof document !== 'undefined') {
-      try { this.cv = document.createElement('canvas'); this.cv.width = 64 * this.cols; this.cv.height = 64 * rows; } catch { this.cv = null; }
+      try { this.cv = document.createElement('canvas'); this.cv.width = 0; this.cv.height = 0; } catch { this.cv = null; }
     }
   }
   paint(i, color) {
@@ -86,8 +86,9 @@ export class GlowAtlas {
     let i = this.slot.length;
     if (i >= this.cols * this.rows) {
       if (this.rows < this.rowsMax) {
-        this.rows = Math.min(this.rowsMax, this.rows * 2);
-        this.cv.height = 64 * this.rows; // 높이를 바꾸면 비워진다 → 있던 칸을 다시 칠한다
+        this.rows = this.rows ? Math.min(this.rowsMax, this.rows * 2) : 1;
+        // 크기를 바꾸면 비워진다 → 있던 칸을 다시 칠한다
+        this.cv.width = 64 * this.cols; this.cv.height = 64 * this.rows;
         for (let k = 0; k < this.slot.length; k++) this.paint(k, this.slot[k]);
       } else {
         let best = 0, bu = Infinity;
