@@ -16,3 +16,11 @@ tools/android/*.jks
 
 # editor atomic-write temp files
 *.tmp.[0-9]*.*
+
+# 비밀값·서명 키 (어디에 있든 커밋하지 않는다)
+.env
+.env.*
+!.env.example
+*.keystore
+*.jks
+keystore.properties
