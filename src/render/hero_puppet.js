@@ -285,9 +285,12 @@ function sweep(t, force = false) {
   // 순서: ① 한동안 아무 퍼펫도 그리지 않은 영웅의 것 ② 최근에 그린 다른 영웅·NPC 의 안 쓰는 직업 ③ 지금 플레이어 영웅의
   // 그려지지 않은 형제 직업(미리 받기) — 각각 오래된 순. 방금 바꾼 직업이 미리 받아져 있어 벡터 대체 그림이 비치지 않고,
   // 예산이 정말 모자랄 때만 플레이어의 형제 직업을 놓는다
+  // 쉬는 시간 문턱: 플레이어 영웅·NPC 는 IDLE_MS(화면 밖에 잠깐 나간 NPC 를 곧바로 다시 받지 않게), 다른 영웅은 1초
+  // (스테이지에는 플레이어 한 명만 그려지고, 파티 화면처럼 여럿을 그리는 동안은 매 프레임 쓰여 쉬지 않는다)
   const rank = (E) => (E.cid === HERO_CID ? 2 : t - (CID_USED.get(E.cid) ?? -1e9) < IDLE_MS ? 1 : 0);
+  const idleFor = (E) => (E.cid === HERO_CID || E.cid === NPC_CID ? IDLE_MS : 1000);
   const list = [];
-  for (const E of REG.values()) if (E !== NONE && E.rig && t - E.used >= IDLE_MS && hasTextures(E)) list.push(E);
+  for (const E of REG.values()) if (E !== NONE && E.rig && t - E.used >= idleFor(E) && hasTextures(E)) list.push(E);
   list.sort((a, b) => rank(a) - rank(b) || a.used - b.used);
   let freed = 0;
   for (const E of list) {
