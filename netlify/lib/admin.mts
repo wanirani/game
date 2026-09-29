@@ -24,7 +24,7 @@ export async function adminShow(c: Ctx, rawId: string): Promise<Record<string, u
   // 아이디 전체 실패 수·잠금 + 잠긴 망 수 (망은 해시라 어느 IP 인지는 알 수 없다)
   const lock = async (kind: 'login' | 'recover') => {
     const s = await lockStatus(c, kind, u.id);
-    return { failures: s.failures, lockedUntil: s.lockedUntil ? new Date(s.lockedUntil).toISOString() : null, lockedNetworks: s.lockedNetworks };
+    return { failures: s.failures, lockedUntil: s.lockedUntil ? new Date(s.lockedUntil).toISOString() : null, lockedNetworks: s.lockedNetworks, lockedWideNetworks: s.lockedWideNetworks, trustedNetworks: s.trustedNetworks };
   };
   const slots = await Promise.all(SLOTS.map(async (s) => {
     const m = await saves.getMetadata(`${u.uid}/slot${s}`);

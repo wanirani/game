@@ -320,7 +320,8 @@ export class Modal {
       if (i >= 0 && !this.buttons[i].disabled) return this.result(i);
       audio.sfx('menu_cancel');
     }
-    if (input.pressed('cancel') || input.pressed('menu')) return { value: 'cancel', qty: q?.value };
+    // 키보드 Enter 는 결정과 메뉴에 함께 묶여 있다 → 비활성 버튼에서 Enter 가 창을 닫지 않게 (다른 장면의 menu && !confirm 규칙)
+    if (input.pressed('cancel') || (input.pressed('menu') && !input.pressed('confirm'))) return { value: 'cancel', qty: q?.value };
     return null;
   }
   move(d) {

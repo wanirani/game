@@ -3,7 +3,7 @@ import { BODY_LIMIT, CAS_RETRIES, SESSION, SLOTS, STORES } from './config.mts';
 import { ApiError, fail, failRetry, ok, readJson, readOptionalJson } from './http.mts';
 import { burn, hashSecret, needsRehash, newRecoveryCode, newToken, newUid, normalizeRecoveryCode, sha256hex, TOKEN_RE, verifySecret } from './crypto.mts';
 import type { SecretHash } from './crypto.mts';
-import { attemptFailed, attemptSucceeded, beginAttempt, checkSignupByIp, clearLocks, limitAuthByIp, releaseSignup, reserveSignup } from './ratelimit.mts';
+import { attemptFailed, attemptSucceeded, beginAttempt, checkSignupByIp, clearLocks, limitAuthByIp, releaseSignup, reserveSignup, trustNetwork } from './ratelimit.mts';
 import type { Attempt } from './ratelimit.mts';
 import { now } from './runtime.mts';
 import type { Ctx } from './runtime.mts';
@@ -169,6 +169,8 @@ export async function signup(c: Ctx): Promise<Response> {
     if (!user) await releaseSignup(c).catch(() => {});
   }
   const token = await createSession(c, user!, remember);
+  // 가입한 망은 주인이 비밀번호를 정한 곳이다: 믿는 망으로 적어 아이디 전체 잠금을 받지 않게 한다 (실패해도 가입은 그대로)
+  await trustNetwork(c, id).catch(() => {});
   return ok({ id, token, recoveryCode }, 201);
 }
 
@@ -278,6 +280,7 @@ export async function recover(c: Ctx): Promise<Response> {
   await dropSessionBlobs(c, dropped);
   // 주인이 되찾았으므로 모든 망의 로그인·복구 잠금을 푼다 (잠금 공격을 받던 중이라도 바로 들어올 수 있게)
   await Promise.all([clearLocks(c, 'recover', id!), clearLocks(c, 'login', id!)]);
+  await trustNetwork(c, id!).catch(() => {}); // 잠금 해제로 믿는 망 기록도 지워졌다 — 되찾은 망을 다시 적는다
   const token = await createSession(c, user!, remember, user!.pw.hash);
   return ok({ id: user!.id, recoveryCode, token });
 }

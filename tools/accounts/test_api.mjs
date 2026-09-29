@@ -982,15 +982,97 @@ test('공격: 잠금 악용 — 다른 네트워크에서 5번 틀려도 주인�
   expectOk(await login(u.id, 'new-password-1', { ip: attacker }));
 });
 
-test('공격: 분산 추측 — 여러 네트워크 합계 20번 실패하면 30분 동안 모두 잠김', async () => {
-  const u = await signup(newId(), PW, { ip: freshIp() });
-  for (let i = 0; i < 19; i++) expectErr(await login(u.id, 'wrong-password', { ip: freshIp() }), 401, 'invalid_credentials');
-  const r = await login(u.id, 'wrong-password', { ip: freshIp() });
-  expectErr(r, 429, 'locked');
-  assert.equal(r.body.retryAfter, 30 * 60);
-  expectErr(await login(u.id, PW, { ip: freshIp() }), 429, 'locked');
-  advance(30 * MIN + 1000);
-  expectOk(await login(u.id, PW, { ip: freshIp() }));
+test('공격: 분산 추측 — 여러 네트워크 합계 20번 실패하면 믿지 않는 망에서 잠김 (2분 → 4 → 8 → 10분 상한, 24시간 뒤 다시 2분)', async () => {
+  const home = freshIp();
+  const u = await signup(newId(), PW, { ip: home }); // 가입한 망 = 믿는 망
+  const round = async (wantSec) => {
+    for (let i = 0; i < 19; i++) expectErr(await login(u.id, 'wrong-password', { ip: freshIp() }), 401, 'invalid_credentials');
+    const r = await login(u.id, 'wrong-password', { ip: freshIp() });
+    expectErr(r, 429, 'locked');
+    assert.equal(r.body.retryAfter, wantSec);
+    expectErr(await login(u.id, PW, { ip: freshIp() }), 429, 'locked'); // 처음 보는 망: 맞는 비밀번호도 잠김
+    expectOk(await login(u.id, PW, { ip: home }));                     // 믿는 망: 주인은 그대로 들어온다
+    advance(wantSec * 1000 + 1000);
+  };
+  await round(2 * 60);
+  expectOk(await login(u.id, PW, { ip: freshIp() })); // 잠금이 풀리면 새 망도
+  await round(4 * 60);
+  await round(8 * 60);
+  await round(10 * 60);
+  await round(10 * 60); // 상한
+  advance(DAY);
+  await round(2 * 60); // 24시간 동안 잠기지 않으면 처음부터
+});
+
+test('공격(PS-04): IPv6 /48 하나에서 /64 를 돌려도 주인을 잠그지 못함 (/48 별 한도), 망이 여럿이어도 믿는 망·잠시 뒤에는 로그인', async () => {
+  const home = freshIp();
+  const u = await signup(newId(), PW, { ip: home });
+  const h48 = (++idSeq).toString(16);
+  const v6 = (p48, sub, host) => `2001:db8:${p48}:${sub.toString(16)}::${host.toString(16)}`;
+  // /48 하나에서 /64 네 개 × 5번: 10번째에 그 /48 이 잠기고, 아이디 전체 수는 10 에서 멈춘다
+  let fails = 0, locked = 0;
+  for (let sub = 0; sub < 4; sub++) for (let host = 1; host <= 5; host++) {
+    const r = await login(u.id, 'wrong-password', { ip: v6(h48, sub, host) });
+    if (r.status === 401) fails++; else { expectErr(r, 429, 'locked'); locked++; }
+  }
+  // /64 마다 5번째(망 잠금)·/48 의 10번째(/48 잠금) 시도는 확인한 뒤 429 → 비밀번호 확인은 모두 10번, 나머지 10번은 확인 없이 잠김
+  assert.equal(fails, 8, `401 ${fails}번`);
+  assert.equal(locked, 12);
+  expectErr(await login(u.id, PW, { ip: v6(h48, 9, 1) }), 429, 'locked'); // 공격자 /48 은 잠김
+  expectOk(await login(u.id, PW, { ip: '192.0.2.55' }));                  // 주인은 다른 망에서 바로 로그인 (예전: 30분 잠김)
+  // /48 을 둘 더 써서 아이디 전체 한도(20)를 채워도 잠금은 2분이고, 믿는 망(가입한 IPv4·방금 로그인한 망)은 막히지 않는다
+  const b48 = (++idSeq).toString(16), c48 = (++idSeq).toString(16);
+  const more = [];
+  for (let i = 0; i < 10; i++) more.push(await login(u.id, 'wrong-password', { ip: v6(i < 9 ? b48 : c48, i, 1) }));
+  expectErr(more.at(-1), 429, 'locked');
+  assert.equal(more.at(-1).body.retryAfter, 2 * 60);
+  expectErr(await login(u.id, PW, { ip: '198.18.0.9' }), 429, 'locked'); // 처음 보는 망
+  expectOk(await login(u.id, PW, { ip: home }));
+  expectOk(await login(u.id, PW, { ip: '192.0.2.55' }));
+  // 믿는 IPv6 /64 (예전에 로그인한 곳)는 같은 /48 이 잠겨도 들어온다
+  const own = v6(c48, 0x77, 1);
+  advance(2 * MIN + 1000);
+  const tok = expectOk(await login(u.id, PW, { ip: own })).token; // 잠금이 풀린 뒤 이 /64 에서 로그인 → 믿는 망
+  for (let sub = 0; sub < 10; sub++) await login(u.id, 'wrong-password', { ip: v6(c48, 0x100 + sub, 1) }); // 같은 /48 의 다른 /64 들
+  expectErr(await login(u.id, PW, { ip: v6(c48, 0x200, 1) }), 429, 'locked'); // 그 /48 의 믿지 않는 /64 는 잠김
+  expectOk(await login(u.id, PW, { ip: own }));
+  // 비밀번호 변경(세션 필요)도 믿는 망에서는 잠금과 무관
+  const NEW = 'violet-dusk-2048'; SECRETS.add(NEW);
+  expectOk(await call('POST', '/api/auth/password', { body: { oldPassword: PW, newPassword: NEW }, token: tok, ip: own }));
+  expectOk(await login(u.id, NEW, { ip: own }));
+});
+
+test('정리(PS-05): 매일 도는 함수가 끝난 제한 기록·90일 지난 믿는 망·만료된 세션 저장값만 지운다', async () => {
+  const { runCleanup } = await import(path.join(ROOT, 'netlify/lib/cleanup.mts'));
+  const fn = await import(path.join(ROOT, 'netlify/functions/cleanup.mts'));
+  assert.equal(fn.config.schedule, '@daily');
+  assert.equal(fn.config.path, undefined, '예약 함수는 URL 로 부를 수 없어야 한다');
+  const c = new rt.Ctx(new Request('https://cleanup.local/'), { ip: 'cleanup', deploy: { context: DEPLOY } });
+  const lim = c.store(cfg.STORES.limits);
+  const keysOf = async (id) => (await lim.list({ prefix: `lock/login/${id}/` })).blobs.map((b) => b.key.split('/').slice(3, 4)[0]).sort();
+  const home = freshIp();
+  const u = await signup(newId(), PW, { ip: home });
+  const bad = freshIp();
+  for (let i = 0; i < 5; i++) await login(u.id, 'wrong-password', { ip: bad }); // 그 망 10분 잠금
+  await runCleanup(c);
+  expectErr(await login(u.id, PW, { ip: bad }), 429, 'locked'); // 살아 있는 잠금은 그대로
+  assert.deepEqual(await keysOf(u.id), ['all', 'net', 'ok']);
+  advance(3 * HOUR);
+  const r1 = await runCleanup(c);
+  assert.ok(r1.limits.deleted >= 2, JSON.stringify(r1));
+  assert.deepEqual(await keysOf(u.id), ['ok'], '끝난 카운터는 지우고 믿는 망은 남긴다');
+  expectOk(await call('GET', '/api/auth/me', { token: u.token })); // 세션은 그대로
+  expectOk(await login(u.id, PW, { ip: bad }));
+  const tok = expectOk(await login(u.id, PW, { ip: home })).token;
+  advance(91 * DAY); // 믿는 망 90일, 세션 30일 + 저장값 유예 30일 지남
+  const r2 = await runCleanup(c);
+  assert.ok(r2.sessions.deleted >= 2, JSON.stringify(r2));
+  assert.deepEqual(await keysOf(u.id), []);
+  expectErr(await call('GET', '/api/auth/me', { token: tok }), 401, 'unauthorized');
+  expectOk(await login(u.id, PW, { ip: home })); // 계정은 그대로
+  // 예약 함수 진입점: 204, 저장소 오류에도 예외 없이
+  const res = await fn.default(new Request('https://cleanup.local/', { method: 'POST', body: '{"next_run":"x"}' }), { deploy: { context: DEPLOY } });
+  assert.equal(res.status, 204);
 });
 
 test('안드로이드 앱 출처만 다른 출처 허용: preflight 204·CORS 헤더, 앱의 cross-site 요청 허용, 그 밖의 출처는 그대로 403', async () => {

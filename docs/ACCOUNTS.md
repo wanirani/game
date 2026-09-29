@@ -1,12 +1,12 @@
 # 계정 · 클라우드 저장 API (블러드 녹턴)
 
 플레이어가 **아이디 + 비밀번호**로 계정을 만들고, 세이브 슬롯 1~3과 전역 기록(메타)을 서버에 저장해 여러 기기에서 이어 하는 기능의 서버 쪽 설계서다.
-Netlify Functions(모던 함수, TypeScript) + Netlify Blobs 로 동작하며, 별도의 DB나 필수 환경 변수 없이 배포만 하면 켜진다.
+Netlify Functions(모던 함수, TypeScript) + Netlify Blobs 로 동작하며, 별도의 DB 없이 배포만 하면 켜진다. **운영 배포 전에 환경 변수 `AUTH_PEPPER` 를 반드시 넣는다**(§6·§7, 없으면 함수가 경고를 남긴다).
 
 | 항목 | 위치 |
 |---|---|
-| 함수 진입점 (`/api/*`) | `netlify/functions/api.mts` |
-| 공용 코드 (함수로 배포되지 않음) | `netlify/lib/*.mts` — `config` 상수, `http` 응답·본문, `runtime` 저장소·시계·환경, `crypto` 해시·토큰, `validate` 입력 검사, `ratelimit` 요청 제한, `accounts` 계정, `saves` 저장, `router` 라우팅, `admin` 운영 도구 |
+| 함수 진입점 (`/api/*`) | `netlify/functions/api.mts` · 매일 정리하는 예약 함수 `netlify/functions/cleanup.mts` (§4) |
+| 공용 코드 (함수로 배포되지 않음) | `netlify/lib/*.mts` — `config` 상수, `http` 응답·본문, `runtime` 저장소·시계·환경, `crypto` 해시·토큰, `validate` 입력 검사, `ratelimit` 요청 제한, `cleanup` 기록 정리, `accounts` 계정, `saves` 저장, `router` 라우팅, `admin` 운영 도구 |
 | 배포 설정 | `netlify.toml` (publish = `dist/web` — `tools/deploy/build_web.mjs` 가 허용 목록으로 만든 게시 폴더, 저장소 루트는 절대 올리지 않는다 · 정적 파일 보안·캐시 헤더) · 배포 절차 `tools/deploy/README.md` §3 |
 | 안드로이드 앱 프록시 | `android/app/src/main/assets/app/head_inject.html`(fetch 감싸기) → `AssetServer.java` → `ApiProxy.java` · 서버 주소 `tools/apk/api_origin.txt` (§1) |
 | 테스트 | `node tools/accounts/test_api.mjs` (= `npm run test:api`) · 브라우저 `node tools/accounts/test_client.mjs` (= `npm run test:client`) |
@@ -65,7 +65,7 @@ Netlify Functions(모던 함수, TypeScript) + Netlify Blobs 로 동작하며, �
 | 415 | `unsupported_media_type` | 본문이 있는데 `Content-Type` 이 `application/json` 이 아님 |
 | 422 | `invalid_save` | 세이브 구조 검사 실패 |
 | 422 | `invalid_meta` | 메타 구조 검사 실패 |
-| 429 | `locked` | 같은 망에서 이 아이디 비밀번호 5회 실패 → 그 망에서 10분 잠금 / 모든 망 합계 1시간 20회 실패 → 30분 잠금 / 같은 망에서 복구 코드 5회 실패 → 10분 잠금 |
+| 429 | `locked` | 같은 망에서 이 아이디 비밀번호 5회 실패 → 그 망에서 10분 잠금 / 같은 IPv6 /48 에서 1시간 10회 실패 → 그 /48 에서 30분 잠금 / 모든 망 합계 1시간 20회 실패 → 믿는 망(로그인에 성공했던 망)이 아닌 곳에서 2분 잠금(이어지면 4·8·10분) / 같은 망에서 복구 코드 5회 실패 → 10분 잠금 |
 | 429 | `rate_limited` | 같은 망 인증 시도 10분 20회 초과 |
 | 429 | `signup_limited` | 같은 망 가입 1시간 5개 초과 |
 | 500 | `server_error` | 서버·저장소 일시 오류 (잠시 뒤 재시도) |
@@ -134,11 +134,13 @@ Netlify Functions(모던 함수, TypeScript) + Netlify Blobs 로 동작하며, �
 | `bn-users` | 로그인 아이디 (`hunter_01`) | `{v:1, id, uid, createdAt, updatedAt, pw, rc, sessions:[{h, createdAt, expiresAt, refreshedAt}]}` — `pw`·`rc` 는 `{alg:"scrypt", N, r, p, len, salt, hash, pep}` |
 | `bn-sessions` | 토큰의 SHA-256 hex | `{id, uid, createdAt, expiresAt}` |
 | `bn-saves` | `<uid>/slot1`·`slot2`·`slot3`, `<uid>/meta` | `{rev, savedAt, data}` 또는 묘비 `{rev, savedAt, deleted:true}`. Blobs 메타데이터 `{rev, savedAt, summary?, deleted?}` (목록은 본문 없이 메타데이터만 읽는다) |
-| `bn-ratelimit` | `ip/auth/<망 해시>`, `ip/signup/<망 해시>`, `lock/login/<아이디>/all`, `lock/login/<아이디>/net/<망 해시>`, `lock/recover/<아이디>/net/<망 해시>` | `{n, start, lockedUntil?}` — 망 = IPv4 주소 하나 또는 IPv6 /64 |
+| `bn-ratelimit` | `ip/auth/<망 해시>`, `ip/signup/<망 해시>`, `lock/login/<아이디>/all`, `lock/login/<아이디>/net/<망 해시>`, `lock/login/<아이디>/wide/<IPv6 /48 해시>`, `lock/login/<아이디>/ok/<망 해시>`, `lock/recover/<아이디>/net/<망 해시>` | 카운터 `{n, start, lockedUntil?, strikes?, struckAt?}` (`strikes` = 아이디 전체 잠금이 이어진 횟수), 믿는 망 `ok/…` = `{at}` — 망 = IPv4 주소 하나 또는 IPv6 /64 |
 
 - `uid` 는 가입 때 만드는 무작위 128비트 내부 식별자다. 저장 데이터 키에 로그인 아이디 대신 `uid` 를 써서, 탈퇴 후 같은 아이디로 다시 가입해도 이전 데이터(혹시 남은 조각 포함)와 절대 섞이지 않는다.
 - 세션 인증은 두 곳을 모두 확인한다: `bn-sessions` 에 토큰 해시가 있고, **그리고** 사용자 레코드의 `sessions` 목록에도 있으며 만료 전이어야 한다(목록이 기준). 그래서 중간에 지우기가 실패해도 폐기된 토큰이 되살아나지 않는다.
 - 모든 쓰기는 ETag 조건부 쓰기(`onlyIfNew` / `onlyIfMatch`)로 경합을 막는다: 같은 아이디 동시 가입은 하나만 성공, 같은 `baseRev` 동시 저장도 하나만 성공한다.
+- **기록 정리** (PS-05, `netlify/functions/cleanup.mts` → `netlify/lib/cleanup.mts`, 하루 한 번 예약 실행, URL 로는 부를 수 없다): Blobs 에는 만료(TTL)가 없어 지우지 않으면 무기한 쌓인다. `bn-ratelimit` 에서는 창(최장 1시간)이 끝나고 잠금도 풀린 지 2시간이 지난 카운터(잠금 점증 `strikes` 가 살아 있는 24시간 동안은 남긴다)와 90일이 지난 믿는 망 기록을, `bn-sessions` 에서는 만료된 지 30일이 지난 세션 저장값을 지운다(인증은 사용자 레코드의 만료 시각이 기준이라 저장값이 늦을 수 있어 여유를 둔다). 사용자 레코드의 `sessions` 목록은 다음 로그인 때 정리된다. 한 번에 저장소마다 4,000개까지 읽고(함수 시간 제한) 시작 위치를 날마다 바꾼다. 숫자는 `config.mts` 의 `CLEANUP`.
+- **보관하는 것**: 아이디, 비밀번호·복구 코드의 scrypt 해시, 세션 토큰의 SHA-256, 세이브·메타, 망(IPv4 주소 또는 IPv6 /64·/48)의 해시(`AUTH_PEPPER` HMAC) — 실패 카운터는 창이 끝난 뒤 하루 안에, 믿는 망은 90일 뒤, 세션 저장값은 만료 30일 뒤 지워진다. 원래 IP·요청 본문은 저장하지 않는다.
 - 로컬 Blobs 서버(`netlify dev`)는 키를 파일 경로로 저장하므로 한 키가 다른 키의 경로 앞부분이 되면 안 된다(`lock/login/<아이디>` 와 `lock/login/<아이디>/…` 를 함께 쓰지 않고 `…/all` 을 쓰는 이유).
 
 ## 5. 보안 설계
@@ -149,7 +151,9 @@ Netlify Functions(모던 함수, TypeScript) + Netlify Blobs 로 동작하며, �
 - **계정 존재 여부 숨김**: 로그인·복구는 아이디가 없을 때도 가짜 scrypt 를 돌려 시간과 응답 본문이 같다. 없는 아이디도 실패 횟수를 세고 똑같이 잠긴다. (가입은 성격상 `id_taken` 을 알려 줄 수밖에 없으므로 망별 제한으로 대량 조회를 막는다.)
 - **비밀번호 추측 제한** (Blobs 에 저장, 고정 창). '망' = IPv4 주소 하나 또는 IPv6 /64 (한 가입자는 보통 /64 전체를 받으므로 주소 하나씩 세면 주소만 바꿔 무한히 우회된다. `::ffff:a.b.c.d` 는 IPv4 로 본다):
   - 아이디+망: 비밀번호(로그인, 비밀번호 변경·탈퇴 때의 지금 비밀번호 확인) 10분 안에 5회 실패 → **그 망에서만** 10분 잠금. 잠긴 동안은 맞는 비밀번호도 거부. 성공하면 그 망의 기록 초기화. 다른 망에 있는 주인은 영향을 받지 않는다(아이디만 알면 누구나 주인을 잠가 버리던 잠금 악용 방지).
-  - 아이디 전체(모든 망 합계): 1시간에 20회 실패 → 30분 동안 모든 망에서 잠금 (여러 IP 로 나눠 추측하는 공격 방지). 성공한 시도는 이 수에서 빠진다.
+  - 아이디+IPv6 /48: 1시간에 10회 실패 → 그 /48 에서 30분 잠금. VPS 한 대가 받는 /48 에는 /64 가 65,536개 있어, /64 만 세면 /48 하나로 아이디 전체 한도를 채워 주인을 잠글 수 있었다(PS-04).
+  - 아이디 전체(모든 망 합계): 1시간에 20회 실패 → **믿는 망이 아닌 곳에서** 잠금 (여러 IP 로 나눠 추측하는 공격 방지). 잠금은 2분에서 시작해 24시간 안에 다시 잠길 때마다 두 배(4·8분), 상한 10분 — 예전의 30분 고정 잠금은 망만 여럿이면 30분마다 20번으로 주인을 무기한 막을 수 있었다. 24시간 동안 잠기지 않으면 다시 2분부터. 성공한 시도는 이 수에서 빠진다.
+  - **믿는 망**: 이 아이디로 가입·로그인·복구(비밀번호 변경·탈퇴 확인 포함)에 성공한 망(IPv4 주소 또는 IPv6 /64, 그리고 그 /48)은 90일 동안 아이디 전체 잠금을 받지 않는다(믿는 /64 는 /48 잠금도 받지 않는다). 그래서 공격자가 망을 아무리 늘려도 주인은 평소 쓰던 곳에서 로그인·비밀번호 변경·탈퇴 확인을 할 수 있다. 망별 5회 한도는 믿는 망에도 그대로다. 처음 보는 망의 주인은 잠금(최대 10분)을 기다리거나 복구 코드를 쓴다.
   - 복구 코드: 아이디+망 10분에 5회 실패 → 그 망에서 10분 잠금 (코드가 80비트라 전체 한도는 두지 않는다). 복구에 성공하면 그 아이디의 모든 로그인·복구 잠금이 풀린다 — 잠금 공격을 받는 중에도 주인은 복구 코드로 바로 들어올 수 있다.
   - **확인 전에 자리를 잡는다**: 시도마다 비밀번호를 확인하기 *전에* 조건부 쓰기로 카운터를 1 올리고(한도가 찼으면 거절), 실패하면 그대로 두어 실패 1회로 치고, 한도째 시도가 실패하면 잠근다. 예전처럼 '잠겼나 확인 → 확인 → 실패 기록' 순서면 동시 요청 수십 개가 모두 첫 단계를 통과해 한도보다 훨씬 많이 확인된다(시험: 한 망에서 동시 12개 → 12번 확인, 여러 IP 동시 40개 → 40번 확인. 지금은 5번·20번).
   - 망별: 인증 시도(가입·로그인·복구·비밀번호 변경·탈퇴) 10분에 20회, 가입 1시간에 5개(가입 자리도 원자적으로 잡고 실패하면 돌려준다 — 동시 가입으로 한도를 넘지 못한다). 망은 원문 대신 해시(`AUTH_PEPPER` 가 있으면 HMAC)로만 저장한다.
@@ -172,11 +176,11 @@ Netlify Functions(모던 함수, TypeScript) + Netlify Blobs 로 동작하며, �
 
 ## 6. 환경 변수
 
-필수 환경 변수는 **없다**. Blobs 는 Netlify 가 자동으로 연결한다.
+Blobs 는 Netlify 가 자동으로 연결한다. **`AUTH_PEPPER` 는 운영 배포 전에 반드시 넣는다** — 코드는 없어도 동작하지만(개발·시험용), 그러면 망 해시가 소금 없는 SHA-256 이라 IPv4 는 전수 대입으로 되돌릴 수 있고(아이디와 IP 가 이어진다), Blobs 가 유출되면 비밀번호 해시를 오프라인으로 추측할 수 있다. 없으면 함수가 인스턴스마다 한 번 `[api] 경고: AUTH_PEPPER 환경 변수가 없습니다 …` 를 로그에 남긴다(Netlify 함수 로그에서 확인). 배포 순서는 `docs/RELEASE.md` §2.
 
 | 이름 | 필수 | 설명 |
 |---|---|---|
-| `AUTH_PEPPER` | 선택 | 설정하면 비밀번호·복구 코드를 `HMAC-SHA256(pepper)` 한 뒤 scrypt 하고, IP 해시에도 쓴다. Blobs 데이터가 유출돼도 pepper 없이는 오프라인 추측이 불가능해진다. 32자 이상 무작위 문자열을 Netlify 환경 변수(범위: Functions)에 넣는다. **한 번 넣은 뒤 바꾸거나 지우면 그 뒤로 해시된 계정은 로그인할 수 없다**(오류 없이 "비밀번호가 올바르지 않습니다"가 된다). 처음 넣는 것은 언제든 괜찮다 — 기존 계정은 다음 로그인 때 자동으로 옮겨진다. 값 만들기·넣는 곳은 `tools/deploy/README.md` §3, 넣거나 바꾼 뒤에는 다시 배포해야 함수에 적용된다. 운영 도구(`tools/accounts/admin.mjs`)도 같은 값을 쓴다(§8). |
+| `AUTH_PEPPER` | **운영 필수** | 설정하면 비밀번호·복구 코드를 `HMAC-SHA256(pepper)` 한 뒤 scrypt 하고, IP 해시에도 쓴다. Blobs 데이터가 유출돼도 pepper 없이는 오프라인 추측이 불가능해진다. 32자 이상 무작위 문자열을 Netlify 환경 변수(범위: Functions)에 넣는다. **한 번 넣은 뒤 바꾸거나 지우면 그 뒤로 해시된 계정은 로그인할 수 없다**(오류 없이 "비밀번호가 올바르지 않습니다"가 된다). 처음 넣는 것은 언제든 괜찮다 — 기존 계정은 다음 로그인 때 자동으로 옮겨진다. 값 만들기·넣는 곳은 `tools/deploy/README.md` §3, 넣거나 바꾼 뒤에는 다시 배포해야 함수에 적용된다. 운영 도구(`tools/accounts/admin.mjs`)도 같은 값을 쓴다(§8). |
 
 코드는 환경 변수를 `Netlify.env.get()` 으로만 읽는다.
 
@@ -185,12 +189,12 @@ Netlify Functions(모던 함수, TypeScript) + Netlify Blobs 로 동작하며, �
 자세한 절차와 명령은 `tools/deploy/README.md` §3 이 기준이다. 요점:
 
 1. **저장소 루트를 절대 올리지 않는다** (`netlify deploy --dir .` 금지 — 서명 키·개발 도구·문서가 섞인다). 게시하는 것은 `dist/web` 뿐이다.
-2. `node tools/deploy/build_web.mjs` → `dist/web`(허용 목록으로 만든 게시 폴더, §5) + `dist/deploy`(Netlify 업로드 묶음: `web/` = dist/web, 계정 API 소스 `netlify/functions`·`netlify/lib`, 개발 의존성을 뺀 `package.json`, `publish = "web"` 이고 빌드 명령이 없는 `netlify.toml`). 글꼴·맵 검사나 공개 금지 검사가 실패하면 빌드가 멈춘다.
+2. `node tools/deploy/build_web.mjs` → `dist/web`(허용 목록으로 만든 게시 폴더, §5) + `dist/deploy`(Netlify 업로드 묶음: `web/` = dist/web, 계정 API 소스 `netlify/functions`·`netlify/lib`, 개발 의존성을 빼고 시험한 버전으로 고정한 `package.json` + 루트 잠금 파일에서 개발 전용 항목을 뺀 `package-lock.json`(Netlify 가 배포 때마다 다른 버전을 받지 않게), `publish = "web"` 이고 빌드 명령이 없는 `netlify.toml`). 글꼴·맵 검사나 공개 금지 검사가 실패하면 빌드가 멈춘다.
 3. 올리기 (둘 중 하나):
    - 이미 만든 결과: `dist/deploy/` 를 올린다 (Netlify MCP 로 배포 폴더를 넘기거나 `cd dist/deploy && npx netlify deploy --prod --dir web --functions netlify/functions --site <사이트 ID>`).
    - Git 연동 빌드: 저장소의 `netlify.toml` 이 `[build] command = "node tools/deploy/build_web.mjs --no-apk --no-deploy-bundle"`, `publish = "dist/web"`, 함수 디렉터리 `netlify/functions`, `NODE_VERSION = "22"` 로 같은 결과를 만든다.
-   - 두 경우 모두 Netlify 가 함수 의존성(`@netlify/blobs`, `@netlify/functions`)을 설치하고 `api.mts` 를 번들한다. `netlify/lib/*.mts` 는 `api.mts` 가 import 해서 함께 번들되며 따로 함수가 되지 않는다. `/api/*` 는 함수의 `config.path` 가 맡는다(`_redirects` 에 넣지 않는다).
-4. **`AUTH_PEPPER`**(선택, 강력 권장): `tools/deploy/README.md` §3 의 방법으로 만든 32자 이상 무작위 값을 Netlify 사이트 설정 → Environment variables 에 범위 **Functions** 로 넣고 다시 배포한다. 값은 저장소·문서·채팅에 적지 않는다. 한 번 넣은 뒤에는 바꾸거나 지우지 않는다(§6).
+   - 두 경우 모두 Netlify 가 함수 의존성(`@netlify/blobs`, `@netlify/functions`)을 설치하고 `api.mts`·`cleanup.mts`(하루 한 번 도는 예약 함수, §4 기록 정리) 를 번들한다. `netlify/lib/*.mts` 는 함수가 import 해서 함께 번들되며 따로 함수가 되지 않는다. `/api/*` 는 함수의 `config.path` 가 맡는다(`_redirects` 에 넣지 않는다).
+4. **`AUTH_PEPPER`**(운영 필수 — **첫 운영 배포 전에**): `tools/deploy/README.md` §3 의 방법으로 만든 32자 이상 무작위 값을 Netlify 사이트 설정 → Environment variables 에 범위 **Functions** 로 넣고 다시 배포한다. 값은 저장소·문서·채팅에 적지 않는다. 한 번 넣은 뒤에는 바꾸거나 지우지 않는다(§6).
 5. 확인: `node tools/deploy/smoke_deployed.mjs https://<사이트>` — 헤더(CSP·캐시), 빌드 일치, 공개 금지 경로 404, `/api/health` = `{"ok":true,"api":1,...}`·`no-store`, 앱 출처 CORS 사전 요청, 서비스 워커가 `/api/` 를 캐시하지 않음, 페이지 오류 0 (APK 없이 배포했다면 `--no-apk`).
 6. 사이트 주소가 정해지거나 바뀌면 `src/core/cloud.js` 의 `APP_API_BASE` 와 `tools/apk/api_origin.txt` 를 같은 사이트로 맞추고 APK 를 다시 만든다(§1).
 7. 로컬에서 Netlify 환경 그대로 시험하려면 `npx netlify dev` (이때 데이터는 배포별 저장소라 운영과 분리된다). 게시 폴더만 시험할 때는 `node tools/deploy/serve_dist.mjs`(API 없음 → 계정 기능은 꺼진다).

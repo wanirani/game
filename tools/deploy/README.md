@@ -43,6 +43,9 @@ node tools/deploy/build_web.mjs --selftest-deny # 공개 금지 검사가 빌드
   그것도 넘으면 실패 — 정해진 경로라 경고가 아니다: `tools/apk/pack_web.py --assets auto` 가 lo 단계를 고른다, APK 어림 ≈ 38 MB),
   첫 화면 경로 brotli ≤ 1.6 MB (경고, `--strict` 면 실패).
 - APK: `dist/BloodNocturne.apk` 가 있으면 (또는 `--apk <파일>`) `downloads/BloodNocturne-<versionName>-<versionCode>.apk` + `downloads/latest.json`.
+  **APK 에 실은 웹 빌드(`assets/app/apk.json` 의 `web.buildHash`)가 이번 buildHash 와 같을 때만** 넣는다 (PS-07). 다르면 옛 게임을 실은 APK 라
+  경고하고 넣지 않는다(`/apk` 는 404) — `tools/apk/build_apk.sh --verify` 로 다시 만든 뒤 build_web 을 다시 실행한다. `--allow-stale-apk` 면
+  `latest.json` 에 `stale: true`·`siteBuildHash` 를 적어 올리고, `--strict` 면 빌드 실패. `latest.json` 의 `built` 는 APK 를 만든 시각, `web` 은 APK 에 실은 웹 빌드.
   `/downloads/BloodNocturne.apk`·`/apk`·`/download` 는 리디렉트로 이 파일을 가리킨다 (같은 APK 를 두 번 올리지 않는다). `--no-apk` 로 뺀다.
 
 ## 2. 로컬 확인
@@ -59,13 +62,15 @@ node tools/qa/platform_load.mjs --dist                 # 느린 4G·빠른 4G·W
 **절대 저장소 루트를 올리지 않는다** (`netlify deploy --dir .` 금지).
 
 1. `node tools/deploy/build_web.mjs` (경고 확인 — 글꼴·맵 검사 실패면 멈춘다).
-2. 올리기: **`dist/deploy/` 폴더**를 올린다. 그 안에 `web/`(= dist/web), `netlify/functions`·`netlify/lib`(계정 API), 개발 의존성을 뺀 `package.json`,
+2. 올리기: **`dist/deploy/` 폴더**를 올린다. 그 안에 `web/`(= dist/web), `netlify/functions`·`netlify/lib`(계정 API + 매일 도는 정리 함수),
+   개발 의존성을 빼고 시험한 버전으로 고정한 `package.json` + 루트 잠금 파일에서 개발 전용 항목을 뺀 `package-lock.json` (PS-09),
    `publish = "web"` 이고 빌드 명령이 없는 `netlify.toml` 이 들어 있다. Netlify 가 함수 의존성(@netlify/blobs 등)을 설치하고 함수를 묶는다.
    - Netlify MCP: 사이트 ID `344c289d-84c8-446a-8f4e-acc8485359ff` 에 `dist/deploy` 를 배포 폴더로 넘긴다.
    - CLI: `cd dist/deploy && npx netlify deploy --prod --dir web --functions netlify/functions --site <사이트 ID>`
    - Git 연동 빌드를 쓰면 저장소의 netlify.toml 이 `node tools/deploy/build_web.mjs --no-apk --no-deploy-bundle` 로 dist/web 을 만든다
      (그 빌드 환경에 python3 fontTools 가 없으면 글꼴 검사는 경고로 건너뛴다).
-3. **환경 변수 `AUTH_PEPPER`** (선택, 강력 권장): Netlify 사이트 설정 → Environment variables 에 범위 **Functions** 로 32자 이상 무작위 문자열.
+3. **환경 변수 `AUTH_PEPPER`** (**운영 필수 — 첫 운영 배포 전에**, docs/RELEASE.md §2): Netlify 사이트 설정 → Environment variables 에 범위 **Functions** 로 32자 이상 무작위 문자열.
+   없으면 함수 로그에 `[api] 경고: AUTH_PEPPER 환경 변수가 없습니다` 가 남는다.
    `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"` 로 만든다. 저장소·문서·채팅에 값을 적지 않는다.
    **한 번 넣은 뒤 바꾸거나 지우면 그 뒤로 해시된 계정은 로그인할 수 없다** (docs/ACCOUNTS.md §6). 처음 넣는 것은 언제든 괜찮다(다음 로그인 때 옮겨짐).
    값을 넣거나 바꾼 뒤에는 다시 배포해야 함수에 적용된다. 운영 도구(`tools/accounts/admin.mjs`)도 같은 값을 쓴다.
