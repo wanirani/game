@@ -233,13 +233,14 @@ export async function buildWeb(o = {}) {
     const buildHash = sha256(Object.entries(hashed).map(([k, v]) => `${k}:${v.hash8}:${v.bytes}`).join('\n')).slice(0, 12);
     // 버전 표시: 게임 파일이 이전 빌드와 같으면(buildHash 같음) 이전 version·built·commit 을 그대로 → build-info.js·build.json·index.html·sw.js 가
     // 바이트까지 같다 (APK 를 만든 뒤 그 APK 를 downloads/ 에 넣으려고 다시 빌드해도 APK assets/www = dist/web 이 유지된다). --restamp 면 새로 찍는다.
+    // package.json 의 version 을 올렸으면(게임 파일은 그대로여도) 새로 찍는다 — 옛 번호가 남지 않게.
     let version, builtAt, commit;
-    if (prevBuild && prevBuild.buildHash === buildHash && !opts.restamp) {
+    const pkg = JSON.parse(fs.readFileSync(path.join(SRC, 'package.json'), 'utf8'));
+    if (prevBuild && prevBuild.buildHash === buildHash && prevBuild.version.startsWith(`${pkg.version}+`) && !opts.restamp) {
       ({ version, built: builtAt, commit } = prevBuild);
       report.restamped = false;
       log(opts, `· 게임 파일이 이전 빌드(bn-${buildHash})와 같아 버전 표시를 그대로 둡니다: ${version} (새로 찍으려면 --restamp)`);
     } else {
-      const pkg = JSON.parse(fs.readFileSync(path.join(SRC, 'package.json'), 'utf8'));
       const git = spawnSync('git', ['rev-parse', '--short=8', 'HEAD'], { cwd: SRC, encoding: 'utf8' });
       commit = git.status === 0 ? git.stdout.trim() : null;
       const now = new Date();

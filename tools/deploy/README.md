@@ -34,7 +34,7 @@ node tools/deploy/build_web.mjs --selftest-deny # 공개 금지 검사가 빌드
   CSS·부팅 관문·글꼴 주소에 `?v=<내용 해시>` (css 의 @font-face 도 같은 값).
 - `build.json` = 파일별 `{hash8, bytes}` (서비스 워커가 그림 캐시를 검증), `_redirects` = `/apk`·`/download` → 최신 APK.
   **buildHash·build.json 에는 `downloads/`·`_redirects` 를 넣지 않는다** (APK 에 들어가지 않는 배포 전용 파일). 게임 파일이 이전 `dist/web` 과 같으면
-  (buildHash 같음) 이전 version·built·commit 을 그대로 써서 `build-info.js`·`build.json`·`index.html`·`sw.js` 가 바이트까지 같다 →
+  (buildHash 같음, package.json version 도 같음) 이전 version·built·commit 을 그대로 써서 `build-info.js`·`build.json`·`index.html`·`sw.js` 가 바이트까지 같다 →
   DELIVER 흐름(build_web → build_apk.sh --verify → 새 APK 를 downloads/ 에 넣으려고 build_web 다시)에서도 APK `assets/www` = dist/web 해시 비교
   (tools/apk/verify_apk.mjs, platform WP-9 수락 3) 가 맞는다 (R1-REQ-324). 내용이 같아도 새로 찍으려면 `--restamp`.
 - 검사: `python3 tools/fonts/build_fonts.py --check` (실패하면 빌드 실패 — 임시 빌드만 `--allow-font-gaps`), `node tools/validate_maps.mjs`,
