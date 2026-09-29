@@ -317,9 +317,9 @@ export class CompanionSystem {
   autoSkill(p) {
     const w = this.world;
     let near = 0;
-    for (const e of w.enemies()) { if (!e.harmless && Math.hypot(e.cx - p.cx, e.cy - p.cy) <= GUARD_RULES.auto.r) near++; }
+    for (const e of w.enemies()) { if (!e.harmless && !e.pendingBoss && Math.hypot(e.cx - p.cx, e.cy - p.cy) <= GUARD_RULES.auto.r) near++; }
     const b = w.boss;
-    const boss = !!(w.bossActive && b && !b.dead && !(b.dying > 0) && Math.hypot(b.cx - p.cx, b.cy - p.cy) <= GUARD_RULES.auto.bossR);
+    const boss = !!(w.bossActive && b && !b.pendingBoss && !b.dead && !(b.dying > 0) && Math.hypot(b.cx - p.cx, b.cy - p.cy) <= GUARD_RULES.auto.bossR);
     const low = p.hp < p.stats.hp * GUARD_RULES.auto.fairyHp;
     for (const g of this.guards) {
       if (!g.skillReady()) continue;

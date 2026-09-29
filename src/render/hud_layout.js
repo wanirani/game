@@ -59,7 +59,7 @@ export function hudSafe(g = game) {
 /** 보스 체력바가 지금 보이는가 (등장 연출·대화 중·쓰러지는 중에는 숨김) */
 export function bossBarShown(world) {
   const b = world?.boss;
-  return !!(b && world.bossActive && !b.dead && !(b.dying > 0) && !world.cutscene);
+  return !!(b && world.bossActive && !b.pendingBoss && !b.dead && !(b.dying > 0) && !world.cutscene);
 }
 
 // ── §1.4 터치 배치 모형 (PLAT-TOUCH 가 실제 패드를 그리기 전까지의 대체 + 시험용) ──

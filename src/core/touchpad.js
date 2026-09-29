@@ -7,6 +7,7 @@
 //            배치 편집기가 열리면 .edit 가 붙어 모든 입력을 받는다 (DOM 도구 막대 + 어두운 배경).
 //   #tpadcv  버튼·스틱을 그리는 투명 캔버스 (pointer-events:none). 백킹 DPR = min(기기 DPR, game.dpr, 1.2 MP 예산).
 //            상태가 바뀔 때만, 최대 30 Hz 로 다시 그린다. 패드가 숨으면 display:none (합성 비용 없음).
+//            숨은 동안에는 백킹을 0×0 으로 놓고(R1-REQ-342), 다시 보일 때 같은 작업 안에서 되살려 그린 뒤 보인다.
 //   예전 DOM 패드(#touch)는 초기화할 때 지운다 (예전 도우미 setPad·hidePad·padPush·townPad 는 #touch 가 없으면 조용히 넘어간다).
 //
 // API
@@ -310,9 +311,14 @@ function apply(on, hb) {
   S.visible = on;
   if (on && !drawAssetsAsked) loadDrawAssets();
   if (!on) releaseAll(true);   // 필살·각성 컷인처럼 잠깐 숨길 때는 스틱을 누르고 있는 손가락을 기억한다
-  if (S.cv && !S.editor) S.cv.style.display = on ? '' : 'none';
   S.occKey = ''; S.pending = true;
-  if (on) { layout(); startLoop(); resumeStick(); }
+  if (on) {
+    const L = layout(); startLoop(); resumeStick();
+    // 숨은 동안 놓아 둔 백킹을 되살려 같은 작업 안에서 그린 뒤 보인다 → 빈 캔버스·지난 그림이 한 프레임도 비치지 않는다
+    if (L && !S.editor) paintNow(L);
+  }
+  if (S.cv && !S.editor) S.cv.style.display = on ? '' : 'none';
+  if (!on) releaseCanvas();    // R1-REQ-342: 메뉴·마을·컷신 동안 전체 화면 백킹(phone1 ≈ 2.8 MB)을 들고 있지 않는다
 }
 /** 숨기는 동안 기억해 둔 스틱 손가락이 아직 화면에 있으면 같은 받침에서 이어 간다 (다시 떼었다 누르지 않아도 계속 달린다) */
 function resumeStick() {
@@ -677,14 +683,17 @@ function tick(t) {
   }
   const fading = !S.stick.active && now() - S.stick.relT < STICK_FADE * 1000 + 40;
   const live = S.visible || S.editor || fading || S.swapHold || S.swapGap || S.late.size;
+  // 숨은 캔버스(display:none)에는 그리지 않는다: 그리면 놓아 둔 백킹을 다시 잡는다 (루프는 ⇄·미룬 뗌 처리 때문에 돈다)
+  const shown = S.visible || !!S.editor;
   if (live) {
     const changed = stateChanged(L, w);
-    if ((changed || S.pending || S.anim || fading) && t - S.lastDraw >= DRAW_MS) {
+    if (shown && (changed || S.pending || S.anim || fading) && t - S.lastDraw >= DRAW_MS) {
       S.lastDraw = t; S.pending = false;
       draw(L, w);
     } else if (changed) S.pending = true;
     startLoop();
-  } else if (S.ctx && S.drawn) { clearCanvas(); }
+  }
+  if (!shown && S.ctx && (S.drawn || S.cv.width || S.cv.height)) releaseCanvas();
 }
 
 /** 다시 그릴 필요가 있나: 그리는 값들을 숫자 배열로 모아 지난번과 비교 (할당 없음) */
@@ -787,16 +796,35 @@ function ensureCanvasSize(L) {
   const cv = S.cv;
   const dpr = overlayDpr(L);
   const bw = Math.max(1, Math.round(L.W * dpr)), bh = Math.max(1, Math.round(L.H * dpr));
-  if (cv.width !== bw || cv.height !== bh) { cv.width = bw; cv.height = bh; S.spriteKey = ''; }
+  if (cv.width !== bw || cv.height !== bh) {
+    // 놓아 둔 백킹(0×0)을 되살릴 때는 버튼 그림을 다시 굽지 않는다: 배치·DPR·글꼴이 그대로면 bakeSprites 가 스스로 알아본다
+    const restore = cv.width === 0 && cv.height === 0;
+    cv.width = bw; cv.height = bh;
+    if (!restore) S.spriteKey = '';
+  }
   S.dpr = dpr;
   return dpr;
 }
-function clearCanvas() {
-  const c = S.ctx;
-  if (!c) return;
-  c.setTransform(1, 0, 0, 1, 0, 0);
-  c.clearRect(0, 0, S.cv.width, S.cv.height);
+/**
+ * 숨은 동안 오버레이 백킹을 0×0 으로 놓는다 (R1-REQ-342: phone1 1266×585 ≈ 2.8 MB). 버튼 그림 캔버스(스프라이트)는 그대로 둔다.
+ * 다시 보일 때 apply → paintNow 가 같은 작업 안에서 크기를 되돌리고 그린 다음 display 를 켠다 (깜박임 없음)
+ */
+function releaseCanvas() {
+  const cv = S.cv;
+  if (!cv || S.editor) return;
+  if (cv.width !== 0 || cv.height !== 0) { cv.width = 0; cv.height = 0; }
   S.drawn = false;
+  S.pending = true;
+}
+/** 지금 상태로 바로 한 번 그린다 (보이기 직전·편집기 열고 닫을 때): 다음 rAF 까지 빈 캔버스가 비치지 않게 */
+function paintNow(L) {
+  if (!S.ctx || !L) return;
+  try {
+    const w = readState();
+    stateChanged(L, w);
+    S.pending = false;
+    draw(L, w);
+  } catch (e) { S.pending = true; console.error('[touchpad] draw', e); }
 }
 
 /**
@@ -1180,6 +1208,7 @@ function openEditor(opts = {}) {
   root.style.pointerEvents = 'auto';
   root.style.zIndex = '25';
   root.style.background = 'rgba(4,1,6,0.62)';
+  paintNow(L);   // 숨어 있던 패드면 놓아 둔 백킹을 되살려 편집기를 바로 그린다 (빈 캔버스가 한 프레임 비치지 않게)
   S.cv.style.display = '';
   buildBar();
   window.addEventListener('keydown', onEditKey, true);
@@ -1209,10 +1238,11 @@ function closeEditor(opts = {}) {
   S.bar?.remove(); S.bar = null;
   const root = S.root;
   if (root) { root.classList.remove('edit'); root.style.pointerEvents = 'none'; root.style.zIndex = '10'; root.style.background = ''; }
-  if (S.cv) S.cv.style.display = S.visible ? '' : 'none';
-  layout(true);
+  const L = layout(true);
   S.occKey = ''; S.pending = true;
-  if (!S.visible) clearCanvas();
+  // 보이는 패드는 같은 작업 안에서 다시 그리고(편집기 그림이 한 프레임 남지 않게), 숨은 패드는 백킹을 놓는다
+  if (S.visible) paintNow(L); else releaseCanvas();
+  if (S.cv) S.cv.style.display = S.visible ? '' : 'none';
   startLoop();
   try { E.onClose?.(saved); } catch (e) { console.error('[touchpad] onClose', e); }
   return saved;
@@ -1362,6 +1392,7 @@ function ensureDom() {
   if (!cv) { cv = d.createElement('canvas'); cv.id = 'tpadcv'; root.appendChild(cv); }
   Object.assign(cv.style, { position: 'absolute', left: '0', top: '0', width: '100%', height: '100%', pointerEvents: 'none', display: S.visible ? '' : 'none' });
   S.root = root; S.cv = cv; S.ctx = cv.getContext('2d');
+  if (!S.visible && !S.editor) releaseCanvas();   // 기본 300×150 백킹도 처음 보일 때까지 잡지 않는다
   return !!S.ctx;
 }
 function removeLegacyPad() {
