@@ -650,19 +650,11 @@ export class AwakenCutinScene extends Scene {
   }
   /**
    * low 의 퇴장 섬광: game.flash(흰색 0.5) 대신 암전 채우기에 섞어 전면 패스를 한 장으로 둔다. 번쩍임 설정(flashFx)·상한 0.7·
-   * 1초에 강한 번쩍임 두 번 뒤 0.3 규칙은 game.flash 와 같게 따르고, 강한 번쩍임이면 게임의 번쩍임 기록에도 남긴다
+   * 1초에 강한 번쩍임 두 번 뒤 0.3 규칙은 game.flashCapped 로 game.flash 와 같게 따른다 (기록도 거기서 남긴다)
    */
   startExitFlash(strength) {
-    const g = this.game, k = Number(g.settings?.flashFx ?? 1);
-    let a = Math.min(0.7, Math.max(0, strength) * (Number.isFinite(k) ? clamp(k, 0, 1) : 1));
-    try {
-      const log = g._flashLog, now = g.realTime ?? 0;
-      if (Array.isArray(log)) {
-        if (log.filter((x) => now - x <= 1).length >= 2) a = Math.min(a, 0.3);
-        if (a > 0.3) log.push(now);
-      }
-    } catch { /* 기록 없음 */ }
-    this.exitFlash = a > 0 ? a : 0;
+    const a = this.game.flashCapped?.(strength);
+    this.exitFlash = Number.isFinite(a) && a > 0 ? a : 0;
   }
 
   heroScreen() {
