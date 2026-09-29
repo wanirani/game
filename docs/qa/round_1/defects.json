@@ -1,0 +1,3805 @@
+[
+ {
+  "id": "R1-REQ-372",
+  "title": "Ground melee guardians never hit bosses whose hurtbox floats (s03 mounted Dullahan: gd_knight/gd_spiritwolf 0 hits; s12 Dracula: gd_spiritwolf 0 hits)",
+  "sev": "S2",
+  "bucket": "FIX-COMPANIONS",
+  "pkg": "CMP-SYS",
+  "files": [
+   "src/game/guardian.js"
+  ],
+  "suite": "companions",
+  "repro": "node tools/test_companions.mjs — see /tmp/claude-0/plan/requests.jsonl line 372 (from CMP-QA (verify))",
+  "expected": "request implemented; companions green for this item",
+  "actual": "Ground melee guardian attacks never reach bosses whose hurtbox floats above the floor. kindPounce (guardian.js ~L530) lands the guardian at T.bottom and strikes frontRect(50x40); kindSlash (~L555) glides to ey = T.bottom and strikes frontRect(80x70); kindMelee (bite/bash/swing) likewise uses a box anchored at the guardian's own feet. Measured with tools/test_companions.mjs --case boss_reach,boss_s03 (each guardian alone next to the boss for 10 s): s03 b_dullahan while mounted (hurtboxes() bottom = floor-83 px: knight torso + horse body, legs excluded) -> gd_knight 0 hits and gd_spiritwolf 0 hi",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L372",
+   "/tmp/claude-0/qa/round_1/logs/run_all/companions.log"
+  ],
+  "hint": "kindPounce/kindSlash/kindMelee: aim at the nearest hitParts/hurtboxes box and raise the strike rect to overlap it.",
+  "source": "request",
+  "requests": [
+   372
+  ],
+  "confirmedThisRound": true,
+  "occurrences": [
+   {
+    "id": "run_all.companions",
+    "step": "companions",
+    "sev": "S2",
+    "title": "companions exited 1",
+    "detail": "✓ hud (4/4, 1.9s) | ✓ bindings (5/5, 1.6s) | ✗ tools (1/2, 4.1s) |     FAIL balance_companions.mjs 합격 (종료 코드 0) —  | 실패 2건: |   ✗ B1 아리아(gd_fairy) (Lv1, 영웅 Lv5, 유대 0): 모형 몫 4.1% (영웅별 4.0% lia – 4.2% sera) — 범위 [6.0%, 30.0%] 밖 |   ✗ B1 아리아(gd_fairy) (Lv10, 영웅 Lv15, 유대 2): 모형 몫 5.3% (영웅별 4.7% victor – 5.8% sera) — 범위 [6.0%, 30.0%] 밖 | ✓ passives (2/2, 1.7s) | 17/22 사례 통과 — 실패: guardians, boss_s03, b"
+   }
+  ],
+  "occurrenceCount": 1
+ },
+ {
+  "id": "R1-REQ-343",
+  "title": "Font subsets miss 52 glyphs used in the game (Noto Sans KR/Hahmlet: 宮狩血銃鐵鴉 + 46 Hangul; BN Brush 46; BN Seal 宮): those characters render in a fallback font",
+  "sev": "S2",
+  "bucket": "FIX-DELIVERY",
+  "pkg": "FONTS-FU",
+  "files": [
+   "tools/fonts/build_fonts.py",
+   "assets/fonts/noto-sans-kr.woff2"
+  ],
+  "suite": "fonts, build_web",
+  "repro": "python3 tools/fonts/build_fonts.py --check ; node tools/deploy/build_web.mjs — see /tmp/claude-0/plan/requests.jsonl line 343, 93 (from QA-TOOLS)",
+  "expected": "request implemented; fonts, build_web green for this item",
+  "actual": "Round 1: fonts --check red (52/52/46/1 glyphs missing) AND node tools/deploy/build_web.mjs refuses to build (font gate) and deletes dist/web, so load_dist, sw_offline and artifact --check cannot run on a release build (they were re-run on a temporary --allow-font-gaps build, see delivery2/) || python3 tools/fonts/build_fonts.py --check fails: Noto Sans KR and Hahmlet subsets miss 52 glyphs (宮狩血銃鐵鴉 + 겹깁깥꽤꿉꿔꿸끕낍낱뉘늠닳닷뒹룻밟밥볕북뻐뼘센셌쌌썰씬씹옮잤젯쩐쩝춥칵콧킁텼톨팅팩핑헐홈훨힝), BN Brush misses 46, BN Seal misses 宮; first uses in src/data/story_p2.js:131, src/data/awaken.js:46, src/core/touchpad.js:1311, src/scenes/front/options.js:90 ... Re-run python3 tools/fonts/build_fonts.py (first-screen total must stay <= 500 KB; currently 456.8 KB).",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L343",
+   "/tmp/claude-0/plan/requests.jsonl#L93",
+   "/tmp/claude-0/qa/round_1/logs/run_all/fonts.log",
+   "/tmp/claude-0/qa/round_1/logs/run_all/build_web.log"
+  ],
+  "hint": "Re-run python3 tools/fonts/build_fonts.py after the text freeze (first-screen fonts <= 500 KB; now 456.8 KB).",
+  "source": "request",
+  "requests": [
+   343,
+   93
+  ],
+  "confirmedThisRound": true,
+  "occurrences": [
+   {
+    "id": "run_all.fonts",
+    "step": "fonts",
+    "sev": "S2",
+    "title": "fonts exited 1",
+    "file": "tools/fonts/build_fonts.py",
+    "detail": "  ✗ Hahmlet (hahmlet.woff2) 에 없는 글자 52자: 宮狩血銃鐵鴉겹깁깥꽤꿉꿔꿸끕낍낱뉘늠닳닷뒹룻밟밥볕북뻐뼘센셌쌌썰씬씹옮잤젯쩐쩝춥칵콧킁텼톨팅팩핑헐홈훨힝 |       처음 쓰인 곳: 宮 src/data/story_p2.js:131, 狩 src/data/awaken.js:46, 血 src/data/awaken.js:121, 銃 src/data/awaken.js:76, 鐵 src/data/awaken.js:91, 鴉 src/data/awaken.js:106, 겹 src/core/touchpad.js:1311, 깁 src/scenes/front/options.js:90 … |   ✗ BN Brush (bn-brush.woff2) 에 없는 글자 46자: 겹깁깥꽤꿉꿔꿸끕낍낱뉘늠닳닷뒹룻밟밥볕북뻐뼘센셌쌌"
+   },
+   {
+    "id": "run_all.build_web",
+    "step": "build_web",
+    "sev": "S2",
+    "title": "build_web exited 1",
+    "detail": "  Cinzel Decorative  cinzel-decorative-900.woff2  css      13.1 KB  OK |   BN Num             bn-num.woff2                 first     2.0 KB  OK |   BN Dmg             bn-dmg.woff2                 early     5.7 KB  OK |   BN Brush           bn-brush.woff2               lazy    137.8 KB  빠짐 46자 |   BN Seal            bn-seal.woff2                early     8.8 KB  빠짐 1자 |   첫 화면 글꼴 합계 456.8 KB (상한 50"
+   }
+  ],
+  "occurrenceCount": 2
+ },
+ {
+  "id": "R1-REQ-347",
+  "title": "Technique commands shadowed by earlier-learned shorter ones: d13 casts tech_palm, d16 tech_tatsu/tech_hadou, d19 tech_thunder (§1.21 requires d19 from a standstill), d26 while running casts tech_hydro",
+  "sev": "S2",
+  "bucket": "FIX-ENGINE",
+  "pkg": "HOOK-SWEEP",
+  "files": [
+   "src/game/player.js"
+  ],
+  "suite": "commands",
+  "repro": "node tools/qa/commands.mjs — see /tmp/claude-0/plan/requests.jsonl line 347, 360 (from QA-TOOLS)",
+  "expected": "request implemented; commands green for this item",
+  "actual": "Technique command matching (the loop over p.state.progress.docs in acquisition order, using input.command subsequence matching) lets the first-learned technique whose command is a subsequence of the input win, so longer commands are shadowed: d13 연금 폭쇄 (←↓→+attack) casts tech_palm (d07) from a standstill and while running; d16 환영 분신 casts tech_tatsu (d05) from a standstill and tech_hadou (d02) while running; d19 진·그랜드 크로스 (→↓←↑+attack) casts tech_thunder (d11) in every case (MASTER_PLAN §1.21 requires d19 from a standstill); d26 정화의 불꽃 while running casts tech_hydro (d14). All four cast correc",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L347",
+   "/tmp/claude-0/plan/requests.jsonl#L360",
+   "/tmp/claude-0/qa/round_1/logs/run_all/commands.log",
+   "/tmp/claude-0/qa/round_1/logs/tools/commands.json"
+  ],
+  "hint": "player.js technique match: try candidates longest command first; tie-break equal lengths by the most recent first direction (tightest match); keep →→+attack late in a sprint = dash attack.",
+  "source": "request",
+  "requests": [
+   347,
+   360
+  ],
+  "confirmedThisRound": true,
+  "occurrences": [
+   {
+    "id": "commands.d13:still:1",
+    "step": "commands",
+    "sev": "S2",
+    "title": "d13 연금 폭쇄 still facing → fails on kb/pad/touch — shadowed by tech_palm (an earlier-learned technique whose command is a subsequence wins; the longest matching command should win)",
+    "file": "src/game/player.js",
+    "detail": "kb: cast tech_palm; pad: cast tech_palm; touch: cast tech_palm"
+   },
+   {
+    "id": "commands.d13:still:-1",
+    "step": "commands",
+    "sev": "S2",
+    "title": "d13 연금 폭쇄 still facing ← fails on kb/pad/touch — shadowed by tech_palm (an earlier-learned technique whose command is a subsequence wins; the longest matching command should win)",
+    "file": "src/game/player.js",
+    "detail": "kb: cast tech_palm; pad: cast tech_palm; touch: cast tech_palm"
+   },
+   {
+    "id": "commands.d13:run:1",
+    "step": "commands",
+    "sev": "S2",
+    "title": "d13 연금 폭쇄 run facing → fails on kb/pad/touch — shadowed by tech_palm (an earlier-learned technique whose command is a subsequence wins; the longest matching command should win)",
+    "file": "src/game/player.js",
+    "detail": "kb: cast tech_palm; pad: cast tech_palm; touch: cast tech_palm"
+   },
+   {
+    "id": "commands.d13:run:-1",
+    "step": "commands",
+    "sev": "S2",
+    "title": "d13 연금 폭쇄 run facing ← fails on kb/pad/touch — shadowed by tech_palm (an earlier-learned technique whose command is a subsequence wins; the longest matching command should win)",
+    "file": "src/game/player.js",
+    "detail": "kb: cast tech_palm; pad: cast tech_palm; touch: cast tech_palm"
+   },
+   {
+    "id": "commands.d16:still:1",
+    "step": "commands",
+    "sev": "S2",
+    "title": "d16 환영 분신 still facing → fails on kb/pad/touch — shadowed by tech_tatsu (an earlier-learned technique whose command is a subsequence wins; the longest matching command should win)",
+    "file": "src/game/player.js",
+    "detail": "kb: cast tech_tatsu; pad: cast tech_tatsu; touch: cast tech_tatsu"
+   },
+   {
+    "id": "commands.d16:still:-1",
+    "step": "commands",
+    "sev": "S2",
+    "title": "d16 환영 분신 still facing ← fails on kb/pad/touch — shadowed by tech_tatsu (an earlier-learned technique whose command is a subsequence wins; the longest matching command should win)",
+    "file": "src/game/player.js",
+    "detail": "kb: cast tech_tatsu; pad: cast tech_tatsu; touch: cast tech_tatsu"
+   },
+   {
+    "id": "commands.d16:run:1",
+    "step": "commands",
+    "sev": "S2",
+    "title": "d16 환영 분신 run facing → fails on kb/pad/touch — shadowed by tech_hadou (an earlier-learned technique whose command is a subsequence wins; the longest matching command should win)",
+    "file": "src/game/player.js",
+    "detail": "kb: cast tech_hadou; pad: cast tech_hadou; touch: cast tech_hadou"
+   },
+   {
+    "id": "commands.d16:run:-1",
+    "step": "commands",
+    "sev": "S2",
+    "title": "d16 환영 분신 run facing ← fails on kb/pad/touch — shadowed by tech_hadou (an earlier-learned technique whose command is a subsequence wins; the longest matching command should win)",
+    "file": "src/game/player.js",
+    "detail": "kb: cast tech_hadou; pad: cast tech_hadou; touch: cast tech_hadou"
+   },
+   {
+    "id": "commands.d19:still:1",
+    "step": "commands",
+    "sev": "S2",
+    "title": "d19 진·그랜드 크로스 still facing → fails on kb/pad/touch — shadowed by tech_thunder (an earlier-learned technique whose command is a subsequence wins; the longest matching command should win)",
+    "file": "src/game/player.js",
+    "detail": "kb: cast tech_thunder; pad: cast tech_thunder; touch: cast tech_thunder"
+   },
+   {
+    "id": "commands.d19:still:-1",
+    "step": "commands",
+    "sev": "S2",
+    "title": "d19 진·그랜드 크로스 still facing ← fails on kb/pad/touch — shadowed by tech_thunder (an earlier-learned technique whose command is a subsequence wins; the longest matching command should win)",
+    "file": "src/game/player.js",
+    "detail": "kb: cast tech_thunder; pad: cast tech_thunder; touch: cast tech_thunder"
+   },
+   {
+    "id": "commands.d19:run:1",
+    "step": "commands",
+    "sev": "S2",
+    "title": "d19 진·그랜드 크로스 run facing → fails on kb/pad/touch — shadowed by tech_thunder (an earlier-learned technique whose command is a subsequence wins; the longest matching command should win)",
+    "file": "src/game/player.js",
+    "detail": "kb: cast tech_thunder; pad: cast tech_thunder; touch: cast tech_thunder"
+   },
+   {
+    "id": "commands.d19:run:-1",
+    "step": "commands",
+    "sev": "S2",
+    "title": "d19 진·그랜드 크로스 run facing ← fails on kb/pad/touch — shadowed by tech_thunder (an earlier-learned technique whose command is a subsequence wins; the longest matching command should win)",
+    "file": "src/game/player.js",
+    "detail": "kb: cast tech_thunder; pad: cast tech_thunder; touch: cast tech_thunder"
+   }
+  ],
+  "occurrenceCount": 14
+ },
+ {
+  "id": "R1-REQ-132",
+  "title": "b_common.arenaOf() wall scan starts at the centre column: inverted arena (w = -48) when the centre is solid (s15 Moloch altar)",
+  "sev": "S3",
+  "bucket": "FIX-AI-BOSS",
+  "pkg": "FEEL-BOSSHOOKS",
+  "files": [
+   "src/game/bosses/b_common.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 132, 147 (from BOSS-P2-KIT)",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "arenaOf(): the left/right wall scan starts at the arena's centre column and stops at the first solid column, so when the centre column is solid terrain the result is inverted (s15 boss room, Moloch's altar: centre col 36 is a plinth -> x0 1776 > x1 1728, w = -48). Suggested fix: scan inward from world.arena.x0/x1 and treat only contiguous solid columns at floor-1/floor-2 touching the arena edge as walls (same rule as c_common.js fixArena). Verified that this rule gives identical bounds for all 13 Part 1 boss rooms and s14.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L132",
+   "/tmp/claude-0/plan/requests.jsonl#L147"
+  ],
+  "hint": "Scan inward from world.arena.x0/x1 and treat only contiguous solid columns touching the edge as walls.",
+  "source": "request",
+  "requests": [
+   132,
+   147
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-143",
+  "title": "ai_b Zone.update keeps ticking (and striking) while world.freezeEnemies is set during an awakening",
+  "sev": "S3",
+  "bucket": "FIX-AI-BOSS",
+  "pkg": null,
+  "files": [
+   "src/game/ai_b.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 143 (from ENEMY-P2-D-AI)",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "Zone.update (ai_b.js) only returns early on world.timeStop; it keeps ticking (warning timers advance and active zones strike) while world.freezeEnemies is set during an awakening. ai_d.js works around it with a subclass (ZoneD.update returns while freezeEnemies). Suggested one-line fix in Zone.update: if (world.timeStop > 0 || world.freezeEnemies) return;",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L143"
+  ],
+  "hint": "Zone.update: `if (world.timeStop > 0 || world.freezeEnemies) return;` (ZoneD already does this).",
+  "source": "request",
+  "requests": [
+   143
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-155",
+  "title": "harpy \"climb\" and voider \"blink\" leave the map in Part 2 rooms (storm_harpy at cy -92 in s17 r5)",
+  "sev": "S3",
+  "bucket": "FIX-AI-BOSS",
+  "pkg": null,
+  "files": [
+   "src/game/ai_b.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 155 (from ENEMY-P2-D-AI)",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "Two reused Part 1 kinds leave the map in Part 2 rooms (found by the ENEMY-P2-D-AI verifier's stepped probe on s17-s19): (1) AI_B.harpy 'climb' (ai_b.js ~line 791) pushes vy toward -280 for 0.6 s with no top clamp, so storm_harpy rose to cy = -59..-92 in s17/r5 (TileMap.typeAt returns EMPTY above row 0, so nothing stops a flyer); (2) AI_B.voider 'blink' (ai_b.js ~line 1792) sets e.cx = p.cx + side*90 with no map clamp, so dream_eater (phase) landed at cx = -89 when the player stood near the left edge of s19/r1. Suggested fix: clamp like ai_d.js keepInMap (x in [8, pxW-8-w], y >= 8) at the end o",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L155"
+  ],
+  "hint": "Clamp harpy climb to the map top (>= 1 tile) and clamp voider blink x to the map/arena bounds.",
+  "source": "request",
+  "requests": [
+   155
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-158",
+  "title": "Dracula form 2 screen clamp margin too small (wings off screen) and the clamp drags the boss with the camera",
+  "sev": "S3",
+  "bucket": "FIX-AI-BOSS",
+  "pkg": "ART-BOSS-5",
+  "files": [
+   "src/game/bosses/b_dracula.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 158 (from ART-BOSS-5)",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "Form 2 (true form) screen clamp: s_d_idle does `this.x = clamp(this.cx, max(viewX(200)[0], A.x0+200), min(viewX(200)[1], A.x1-200))` on every walking frame, and becomeDemon() clamps to viewX(230). (a) Use a margin of at least 300·d2.scale for form 2 (e.g. viewX(300)) in both places so the wings stay on screen; (b) cap how fast the clamp may move the boss (e.g. at most 160 px/s) so it does not slide along with the camera edge; or drop the per-frame clamp and let it just walk. Low severity, gameplay unchanged otherwise.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L158"
+  ],
+  "hint": "Use viewX(300*scale) in s_d_idle and becomeDemon(); cap the clamp correction speed (~160 px/s).",
+  "source": "request",
+  "requests": [
+   158
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-174",
+  "title": "Dullahan skullOut counter can get stuck (a skull removed without onExpire, e.g. 가웨인 shield breakProj) and he stops throwing skulls",
+  "sev": "S3",
+  "bucket": "FIX-AI-BOSS",
+  "pkg": "ART-BOSS-1",
+  "files": [
+   "src/game/bosses/a_dullahan.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 174, 173 (from CMP-GUARD-AI-B (verify))",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "Optional hardening: skullOut is only decremented in the skull projectile's onExpire, so anything that removes a skull without expire() leaves the counter stuck, e.g. a companion shield, a future reflect/eat, or a room reload mid-throw. Recount instead of trusting the counter, e.g. in the pattern pick: this.skullOut = this.world.entities.filter((e) => e.kind === 'projectile' && e.owner === this && !e.dead && e.render === drawFlameSkull).length (only on pick, not per frame).",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L174",
+   "/tmp/claude-0/plan/requests.jsonl#L173"
+  ],
+  "hint": "Recount live skull projectiles in the pattern pick instead of trusting skullOut (FIX-COMPANIONS also makes breakProj call expire(), see R1-REQ-173).",
+  "source": "request",
+  "requests": [
+   174,
+   173
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-332",
+  "title": "a_common drawGroundWave()/drawEruption() spawn FX (world.fx.emit) and call Math.random inside projectile render callbacks",
+  "sev": "S3",
+  "bucket": "FIX-AI-BOSS",
+  "pkg": "FEEL-BOSSHOOKS",
+  "files": [
+   "src/game/bosses/a_common.js"
+  ],
+  "suite": "hook_tags, perf",
+  "repro": "node tools/qa/hook_tags.mjs ; node tools/qa/perf_budget.mjs --profiles phone1,phone2,tablet,desk,fhd2x,phone1low — see /tmp/claude-0/plan/requests.jsonl line 332 (from QA-TOOLS)",
+  "expected": "request implemented; hook_tags, perf green for this item",
+  "actual": "drawGroundWave() (line ~511-513) and drawEruption() (lines ~573 and ~592) are projectile render callbacks (render: drawGroundWave / drawEruption) that call Math.random() and world.fx.emit(...). Move the debris/spark spawn into the projectile's update/tick (e.g. an onTick hook or a per-step timer using the world RNG) and keep draw pure.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L332",
+   "/tmp/claude-0/qa/round_1/logs/run_all/hook_tags.log",
+   "/tmp/claude-0/qa/round_1/logs/tools/hook_tags.json",
+   "/tmp/claude-0/qa/round_1/logs/run_all/perf.log",
+   "/tmp/claude-0/qa/round_1/logs/tools/perf_budget.json"
+  ],
+  "hint": "Move debris/spark spawns into the projectile update (onTick / per-step timer with world RNG); keep draw pure.",
+  "source": "request",
+  "requests": [
+   332
+  ],
+  "confirmedThisRound": true,
+  "occurrences": [
+   {
+    "id": "draw.fx:src/game/bosses/a_common.js:513",
+    "step": "hook_tags",
+    "sev": "S3",
+    "title": "world.fx.emit() inside drawGroundWave() — spawns per rendered frame",
+    "file": "src/game/bosses/a_common.js",
+    "line": 513,
+    "detail": ""
+   },
+   {
+    "id": "draw.fx:src/game/bosses/a_common.js:573",
+    "step": "hook_tags",
+    "sev": "S3",
+    "title": "world.fx.emit() inside drawEruption() — spawns per rendered frame",
+    "file": "src/game/bosses/a_common.js",
+    "line": 573,
+    "detail": ""
+   },
+   {
+    "id": "draw.fx:src/game/bosses/a_common.js:592",
+    "step": "hook_tags",
+    "sev": "S3",
+    "title": "world.fx.emit() inside drawEruption() — spawns per rendered frame",
+    "file": "src/game/bosses/a_common.js",
+    "line": 592,
+    "detail": ""
+   },
+   {
+    "id": "draw.rng:src/game/bosses/a_common.js:511",
+    "step": "hook_tags",
+    "sev": "S4",
+    "title": "RNG in drawGroundWave() — rendering consumes gameplay Math.random",
+    "file": "src/game/bosses/a_common.js",
+    "line": 511,
+    "detail": ""
+   },
+   {
+    "id": "draw.rng:src/game/bosses/a_common.js:573",
+    "step": "hook_tags",
+    "sev": "S4",
+    "title": "RNG in drawEruption() — rendering consumes gameplay Math.random",
+    "file": "src/game/bosses/a_common.js",
+    "line": 573,
+    "detail": ""
+   },
+   {
+    "id": "draw.rng:src/game/bosses/a_common.js:592",
+    "step": "hook_tags",
+    "sev": "S4",
+    "title": "RNG in drawEruption() — rendering consumes gameplay Math.random",
+    "file": "src/game/bosses/a_common.js",
+    "line": 592,
+    "detail": ""
+   },
+   {
+    "id": "perf.drawfx.phone1.s01boss",
+    "step": "perf",
+    "sev": "S3",
+    "title": "FX spawned from a draw path in s01boss: the spawn rate follows the render rate",
+    "file": "src/game/bosses/a_common.js",
+    "detail": "emit ← src/game/bosses/a_common.js:513 ×18"
+   },
+   {
+    "id": "perf.drawfx.phone1.s02boss",
+    "step": "perf",
+    "sev": "S3",
+    "title": "FX spawned from a draw path in s02boss: the spawn rate follows the render rate",
+    "file": "src/game/bosses/a_common.js",
+    "detail": "emit ← src/game/bosses/a_common.js:592 ×35, ghost ← src/render/painted/enemy_kit.js:689 ×1"
+   },
+   {
+    "id": "perf.drawfx.phone1.s04boss",
+    "step": "perf",
+    "sev": "S3",
+    "title": "FX spawned from a draw path in s04boss: the spawn rate follows the render rate",
+    "file": "src/game/bosses/a_common.js",
+    "detail": "emit ← src/game/bosses/a_common.js:513 ×5"
+   },
+   {
+    "id": "perf.drawfx.phone2.s02boss",
+    "step": "perf",
+    "sev": "S3",
+    "title": "FX spawned from a draw path in s02boss: the spawn rate follows the render rate",
+    "file": "src/game/bosses/a_common.js",
+    "detail": "emit ← src/game/bosses/a_common.js:573 ×66"
+   },
+   {
+    "id": "perf.drawfx.phone2.s03boss",
+    "step": "perf",
+    "sev": "S3",
+    "title": "FX spawned from a draw path in s03boss: the spawn rate follows the render rate",
+    "file": "src/game/bosses/a_common.js",
+    "detail": "emit ← src/game/bosses/a_common.js:513 ×46"
+   },
+   {
+    "id": "perf.drawfx.phone2.s04boss",
+    "step": "perf",
+    "sev": "S3",
+    "title": "FX spawned from a draw path in s04boss: the spawn rate follows the render rate",
+    "file": "src/game/bosses/a_common.js",
+    "detail": "emit ← src/game/bosses/a_common.js:513 ×22"
+   }
+  ],
+  "occurrenceCount": 22
+ },
+ {
+  "id": "R1-REQ-340B",
+  "title": "b_common.js creates a canvas in the first seconds of a boss fight (after the stage-start bakes)",
+  "sev": "S3",
+  "bucket": "FIX-AI-BOSS",
+  "pkg": "FEEL-BOSSHOOKS",
+  "files": [
+   "src/game/bosses/b_common.js"
+  ],
+  "suite": "perf",
+  "repro": "node tools/qa/perf_budget.mjs --profiles phone1,phone2,tablet,desk,fhd2x,phone1low — see /tmp/claude-0/plan/requests.jsonl line 340 (from QA-TOOLS)",
+  "expected": "request implemented; perf green for this item",
+  "actual": "Canvases created in the first seconds of a fight (after the stage-start bakes): painted kit.js:88 <- kit.js:691 (puff sprite, x5 in s14/s20 boss rooms), kit.js:88 <- b_narkissa.js:587, enemy_kit.js:31 <- enemy_kit.js:445 (x3 in s20 r1, lazy rig bake when an enemy first appears), tiles.js:209 <- :933 and tiles.js:336 <- :644 (dark prop / tile caches), lighting.js:10 <- :27 (glowSprite on first light of a colour), b_common.js:52. Prewarm per room on load (the boss intro is a good place for boss-only caches) and key caches so a direct boss-room entry does not allocate on first hit; c_common scree",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L340",
+   "/tmp/claude-0/qa/round_1/logs/run_all/perf.log",
+   "/tmp/claude-0/qa/round_1/logs/tools/perf_budget.json"
+  ],
+  "hint": "Prewarm the boss-only cache during the boss intro (or at room load).",
+  "source": "request",
+  "requests": [
+   340
+  ],
+  "confirmedThisRound": true,
+  "occurrences": [
+   {
+    "id": "perf.canvas.phone1.s08boss.src/game/bosses/b_common.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s08boss (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/game/bosses/b_common.js",
+    "detail": "src/game/bosses/b_common.js:52 ← src/game/bosses/b_common.js:59 ×1"
+   },
+   {
+    "id": "perf.canvas.phone1.s14boss.src/game/bosses/b_common.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s14boss (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/game/bosses/b_common.js",
+    "detail": "src/game/bosses/b_common.js:52 ← src/game/bosses/b_common.js:59 ×1"
+   },
+   {
+    "id": "perf.canvas.phone2.s08boss.src/game/bosses/b_common.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s08boss (phone2) — pool it at init / bake during load or the boss intro",
+    "file": "src/game/bosses/b_common.js",
+    "detail": "src/game/bosses/b_common.js:52 ← src/game/bosses/b_common.js:59 ×1"
+   },
+   {
+    "id": "perf.canvas.phone2.s14boss.src/game/bosses/b_common.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s14boss (phone2) — pool it at init / bake during load or the boss intro",
+    "file": "src/game/bosses/b_common.js",
+    "detail": "src/game/bosses/b_common.js:52 ← src/game/bosses/b_common.js:59 ×1"
+   },
+   {
+    "id": "perf.canvas.tablet.s08boss.src/game/bosses/b_common.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s08boss (tablet) — pool it at init / bake during load or the boss intro",
+    "file": "src/game/bosses/b_common.js",
+    "detail": "src/game/bosses/b_common.js:52 ← src/game/bosses/b_common.js:59 ×1"
+   },
+   {
+    "id": "perf.canvas.tablet.s14boss.src/game/bosses/b_common.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s14boss (tablet) — pool it at init / bake during load or the boss intro",
+    "file": "src/game/bosses/b_common.js",
+    "detail": "src/game/bosses/b_common.js:52 ← src/game/bosses/b_common.js:59 ×1"
+   },
+   {
+    "id": "perf.canvas.desk.s08boss.src/game/bosses/b_common.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s08boss (desk) — pool it at init / bake during load or the boss intro",
+    "file": "src/game/bosses/b_common.js",
+    "detail": "src/game/bosses/b_common.js:52 ← src/game/bosses/b_common.js:59 ×1"
+   },
+   {
+    "id": "perf.canvas.desk.s14boss.src/game/bosses/b_common.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s14boss (desk) — pool it at init / bake during load or the boss intro",
+    "file": "src/game/bosses/b_common.js",
+    "detail": "src/game/bosses/b_common.js:52 ← src/game/bosses/b_common.js:59 ×1"
+   },
+   {
+    "id": "perf.canvas.fhd2x.s08boss.src/game/bosses/b_common.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s08boss (fhd2x) — pool it at init / bake during load or the boss intro",
+    "file": "src/game/bosses/b_common.js",
+    "detail": "src/game/bosses/b_common.js:52 ← src/game/bosses/b_common.js:59 ×1"
+   },
+   {
+    "id": "perf.canvas.fhd2x.s14boss.src/game/bosses/b_common.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s14boss (fhd2x) — pool it at init / bake during load or the boss intro",
+    "file": "src/game/bosses/b_common.js",
+    "detail": "src/game/bosses/b_common.js:52 ← src/game/bosses/b_common.js:59 ×1"
+   },
+   {
+    "id": "perf.canvas.phone1low.s08boss.src/game/bosses/b_common.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s08boss (phone1low) — pool it at init / bake during load or the boss intro",
+    "file": "src/game/bosses/b_common.js",
+    "detail": "src/game/bosses/b_common.js:52 ← src/game/bosses/b_common.js:59 ×1"
+   },
+   {
+    "id": "perf.canvas.phone1low.s14boss.src/game/bosses/b_common.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s14boss (phone1low) — pool it at init / bake during load or the boss intro",
+    "file": "src/game/bosses/b_common.js",
+    "detail": "src/game/bosses/b_common.js:52 ← src/game/bosses/b_common.js:59 ×1"
+   }
+  ],
+  "occurrenceCount": 12
+ },
+ {
+  "id": "R1-REQ-62",
+  "title": "Dracula transform shortcut in update() ignores world.freezeEnemies (keeps animating/acting during an awakening freeze)",
+  "sev": "S3",
+  "bucket": "FIX-AI-BOSS",
+  "pkg": "ART-BOSS-5",
+  "files": [
+   "src/game/bosses/b_dracula.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 62 (from FEEL-BOSSHOOKS)",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "update(): make the transform shortcut `if (this.state === 'transform' && this.dying <= 0 && !world.freezeEnemies)` so a frozen Dracula falls through to super.update (which holds it)",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L62"
+  ],
+  "hint": "b_dracula.js update(): add `&& !world.freezeEnemies` to the transform shortcut so a frozen Dracula falls through to super.update().",
+  "source": "request",
+  "requests": [
+   62
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-RUN-GRAD-BOSS",
+  "title": "Part 1 boss attack FX in a_common.js create gradients per frame in bursts: :306 (s04/s06/s07 boss, x332 in 120 frames of phone1 s07boss), :502 drawGroundWave (s01/s03/s04/s06 boss, x300 phone2 s03boss), :563/:582 drawEruption (s02/s06 boss, x214 phone2 s02boss), :291 (x183 phone1low s05boss) — these bursts keep the boss-room p95 over budget (s04boss p95 21 at medium, budget 10) after the props.js/background.js baseline is fixed",
+  "sev": "S3",
+  "bucket": "FIX-AI-BOSS",
+  "pkg": "FEEL-BOSSHOOKS",
+  "files": [
+   "src/game/bosses/a_common.js"
+  ],
+  "suite": "perf",
+  "repro": "node tools/qa/perf_budget.mjs --profiles phone1,phone2 --scenes s04boss,s07boss,s03boss,s02boss (the 'grad' checks and 'top sites' in perf_budget.md)",
+  "expected": "<= 10 new gradients per frame at medium (p95) in every boss room",
+  "actual": "Round 1 perf_budget (phone1/phone2/tablet/phone1low): a_common.js:306 x807, :502 x891, :563 x347, :291 x183, :582 x56 over the measured boss rooms; perf.grad.phone1.s04boss p95 21, s07boss p95 15, phone2.s02boss/s03boss p95 14/15 (props.js:14 and background.js:187 are the per-frame baseline, a_common.js the bursts)",
+  "evidence": [
+   "/tmp/claude-0/qa/round_1/logs/tools/perf_budget.json",
+   "/tmp/claude-0/qa/round_1/logs/tools/perf_budget.md",
+   "/tmp/claude-0/qa/round_1/logs/run_all/perf.log"
+  ],
+  "hint": "Cache the telegraph/wave/eruption gradients per (colour, size) and translate/scale them, or bake them into sprites at boss setup; skip the decorative ones on low (same budget as R1-REQ-341E/R, feel §8 16/10/6).",
+  "source": "run (verify triage of perf.grad top sites)",
+  "requests": [],
+  "confirmedThisRound": true,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-173",
+  "title": "guardian breakProj() kills enemy projectiles without calling expire()/onExpire (leaves Dullahan skullOut stuck)",
+  "sev": "S3",
+  "bucket": "FIX-COMPANIONS",
+  "pkg": "CMP-SYS",
+  "files": [
+   "src/game/guardian.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 173 (from CMP-GUARD-AI-B (verify))",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "가웨인 breakProj (방패벽 + 4초마다 막기) kills enemy projectiles with dead = true and never calls their onExpire. Shooters that count their live shots in onExpire then stay stuck: b_dullahan's flame skulls do skullOut++ on throw and skullOut-- only in onExpire, and skullOut > 0 zeroes the 'skull' attack weight and hides the skull in his hand until the phase-2 dismount (a_dullahan.js lines 38/40/145-151/511/609). Reproduced with 미라/모모 before this verify fixed guardian_ai_b.js. Fix: call the projectile's onExpire in a sandbox before removing it, as guardian_ai_b.js quietExpire(world, q) now does: world.add",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L173"
+  ],
+  "hint": "Call the projectile's expire()/onExpire instead of setting dead directly.",
+  "source": "request",
+  "requests": [
+   173
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-308",
+  "title": "Painted mount bake (130-310 ms) runs on the first summon: MountRider.attach does not preload the mount",
+  "sev": "S3",
+  "bucket": "FIX-COMPANIONS",
+  "pkg": "CMP-MOUNT",
+  "files": [
+   "src/game/mount.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 308, 313 (from CMP-MOUNT-ART-A)",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "In MountRider.attach(world, p) (or wherever the equipped mount is first set up for a stage), call MDRAW.preloadMounts?.([this.id]) once (mount.js already has `import * as MDRAW from '../render/mounts.js'`). preloadMounts starts the painted bake for that mount (130-310 ms, 0.1-0.2 MB) before the first summon.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L308",
+   "/tmp/claude-0/plan/requests.jsonl#L313"
+  ],
+  "hint": "MountRider.attach: MDRAW.preloadMounts?.([this.id]) once.",
+  "source": "request",
+  "requests": [
+   308,
+   313
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-367",
+  "title": "gd_fairy (아리아) guardian damage share 4.1% / 5.3% below the C10 #10 floor [6%, 30%]",
+  "sev": "S3",
+  "bucket": "FIX-COMPANIONS",
+  "pkg": "CMP-DATA",
+  "files": [
+   "src/data/companions.js"
+  ],
+  "suite": "balance_companions, companions",
+  "repro": "node tools/balance_companions.mjs ; node tools/test_companions.mjs — see /tmp/claude-0/plan/requests.jsonl line 367 (from CMP-QA)",
+  "expected": "request implemented; balance_companions, companions green for this item",
+  "actual": "gd_fairy (아리아) guardian share is below the C10 #10 floor: modelled share 4.1% at (companion Lv1, hero Lv5, bond 0) and 5.3% at (Lv10, hero Lv15, bond 2); the hard band is [6%, 30%]. Suggested data change: attack.mv 0.5 -> 0.9 and assist.mv 0.8 -> 1.0 (gives 6.3% / 8.0% / 10.8% / 16.4% at the §9 checkpoints, max 29.5% at bond 5 × 3.5 mv/s, still inside 30%); alternative attack.mv 0.8 + attack.interval 1.2 + assist.mv 1.0 (6.4% / 8.2%). If support guardians are meant to deal less, amend companions §9 to exempt support-role guardians from the 6% floor instead, and tell CMP-QA so B1 can skip them.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L367",
+   "/tmp/claude-0/qa/round_1/logs/run_all/balance_companions.log",
+   "/tmp/claude-0/qa/round_1/logs/run_all/companions.log"
+  ],
+  "hint": "companions.js gd_fairy attack.mv 0.5→0.9, assist.mv 0.8→1.0 (or amend §9 to exempt support guardians).",
+  "source": "request",
+  "requests": [
+   367
+  ],
+  "confirmedThisRound": true,
+  "occurrences": [
+   {
+    "id": "run_all.balance_companions",
+    "step": "balance_companions",
+    "sev": "S2",
+    "title": "balance_companions exited 1",
+    "file": "tools/balance_companions.mjs",
+    "detail": "  ! 탈것 튀는 값: 스칼렛 Lv10 특수기 초당 배율 0.63 (아홉 탈것 중앙값 0.38) — 특수기 「화염 숨결」은 명세대로 1초 지속 ≈2.9 배율 (공중 사용 가능) |   ! 탈것 튀는 값: 녹티스 Lv10 특수기 초당 배율 0.1 (아홉 탈것 중앙값 0.38) — 특수기 「초음파」는 기절 1.2초 + 비밀 드러내기가 본 몫 |   ! 탈것 튀는 값: 실바 Lv10 특수기 초당 배율 0.15 (아홉 탈것 중앙값 0.38) — 특수기 「정화의 울음」은 부패 정화 40 + 회복 5% 가 본 몫 | 실패 2건: |   ✗ B1 아리아(gd_fairy) (Lv1, 영웅 Lv5, 유대 0): 모형 몫 4.1% (영웅별 4.0% lia – 4.2% sera) — 범위 [6.0%, 30.0%] 밖 |   ✗"
+   },
+   {
+    "id": "run_all.companions",
+    "step": "companions",
+    "sev": "S2",
+    "title": "companions exited 1",
+    "detail": "✓ hud (4/4, 1.9s) | ✓ bindings (5/5, 1.6s) | ✗ tools (1/2, 4.1s) |     FAIL balance_companions.mjs 합격 (종료 코드 0) —  | 실패 2건: |   ✗ B1 아리아(gd_fairy) (Lv1, 영웅 Lv5, 유대 0): 모형 몫 4.1% (영웅별 4.0% lia – 4.2% sera) — 범위 [6.0%, 30.0%] 밖 |   ✗ B1 아리아(gd_fairy) (Lv10, 영웅 Lv15, 유대 2): 모형 몫 5.3% (영웅별 4.7% victor – 5.8% sera) — 범위 [6.0%, 30.0%] 밖 | ✓ passives (2/2, 1.7s) | 17/22 사례 통과 — 실패: guardians, boss_s03, b"
+   }
+  ],
+  "occurrenceCount": 2
+ },
+ {
+  "id": "R1-REQ-368",
+  "title": "모르스 (gd_reaper) automatic execute applies hitstop 0.03 (world freezes 2 frames without a player hit; C10 #4)",
+  "sev": "S3",
+  "bucket": "FIX-COMPANIONS",
+  "pkg": "CMP-GUARD-AI-B",
+  "files": [
+   "src/game/guardian_ai_b.js"
+  ],
+  "suite": "companions",
+  "repro": "node tools/test_companions.mjs — see /tmp/claude-0/plan/requests.jsonl line 368 (from CMP-QA)",
+  "expected": "request implemented; companions green for this item",
+  "actual": "모르스 (gd_reaper) execute passive: reap() builds its attack with extra { hitstop: 0.03, shake: 2 }, so every automatic execute freezes the game for 2 frames (world.hitstop > 0) without any player hit. Set hitstop: 0 on the execute attack (keep the shake, soul burst and '처형' text), or, if the freeze is intended, amend companions §14 C10 #4 / §4 hitstop table to list execute as an exception.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L368",
+   "/tmp/claude-0/qa/round_1/logs/run_all/companions.log"
+  ],
+  "hint": "reap(): hitstop 0 on the execute attack (keep shake, soul burst, 처형 text).",
+  "source": "request",
+  "requests": [
+   368
+  ],
+  "confirmedThisRound": true,
+  "occurrences": [
+   {
+    "id": "run_all.companions",
+    "step": "companions",
+    "sev": "S2",
+    "title": "companions exited 1",
+    "detail": "✓ hud (4/4, 1.9s) | ✓ bindings (5/5, 1.6s) | ✗ tools (1/2, 4.1s) |     FAIL balance_companions.mjs 합격 (종료 코드 0) —  | 실패 2건: |   ✗ B1 아리아(gd_fairy) (Lv1, 영웅 Lv5, 유대 0): 모형 몫 4.1% (영웅별 4.0% lia – 4.2% sera) — 범위 [6.0%, 30.0%] 밖 |   ✗ B1 아리아(gd_fairy) (Lv10, 영웅 Lv15, 유대 2): 모형 몫 5.3% (영웅별 4.7% victor – 5.8% sera) — 범위 [6.0%, 30.0%] 밖 | ✓ passives (2/2, 1.7s) | 17/22 사례 통과 — 실패: guardians, boss_s03, b"
+   }
+  ],
+  "occurrenceCount": 1
+ },
+ {
+  "id": "R1-REQ-233",
+  "title": "Part 2 balance outside world2 §15 targets for all six heroes (player level 7-25 above target s16-s20, hits/taken too low): exp tuning #233-#235 not applied",
+  "sev": "S3",
+  "bucket": "FIX-DATA",
+  "pkg": "ENEMY-P2-C-AI",
+  "files": [
+   "src/data/enemies_c.js",
+   "src/data/enemies_d.js",
+   "src/data/bosses_c.js",
+   "src/data/bosses_d.js",
+   "src/data/bosses_b.js"
+  ],
+  "suite": "balance.kael, balance.sera, balance.victor, balance.bran, balance.lia, balance.azel",
+  "repro": "node tools/balance.mjs normal kael --check ; node tools/balance.mjs normal sera --check ; node tools/balance.mjs normal victor --check ; node tools/balance.mjs normal bran --check ; node tools/balance.mjs normal lia --check ; node tools/balance.mjs normal azel --check — see /tmp/claude-0/plan/requests.jsonl line 233, 234, 235, 236, 325, 346 (from P2-QA)",
+  "expected": "request implemented; balance.kael, balance.sera, balance.victor, balance.bran, balance.lia, balance.azel green for this item",
+  "actual": "Part 2 boss exp is ~3x too high: each P2 boss alone gives 6-7 levels, so the world2 §15 reference run reaches s20 at Lv 80 and ends at Lv 89 (target entry 60-65, end 64-68) and every later row is too easy. Set exp: b_narkissa 6000→2100, b_moloch 6600→2310, b_dagon 7200→2520, b_ziz 7800→2730, b_mara 8400→2940, b_behemoth 9000→3150, b_nihil 15000→5250 (×0.35). Verify: node tools/balance.mjs normal kael --check (with the enemies_c/d and b_chaos requests below it passes for all six heroes; preview without editing data: --k 'bexp=0.35,...' see tools/balance.mjs header).",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L233",
+   "/tmp/claude-0/plan/requests.jsonl#L234",
+   "/tmp/claude-0/plan/requests.jsonl#L235",
+   "/tmp/claude-0/plan/requests.jsonl#L236",
+   "/tmp/claude-0/plan/requests.jsonl#L325",
+   "/tmp/claude-0/plan/requests.jsonl#L346",
+   "/tmp/claude-0/qa/round_1/logs/run_all/balance.kael.log",
+   "/tmp/claude-0/qa/round_1/logs/run_all/balance.sera.log",
+   "/tmp/claude-0/qa/round_1/logs/run_all/balance.victor.log",
+   "/tmp/claude-0/qa/round_1/logs/run_all/balance.bran.log",
+   "/tmp/claude-0/qa/round_1/logs/run_all/balance.lia.log",
+   "/tmp/claude-0/qa/round_1/logs/run_all/balance.azel.log"
+  ],
+  "hint": "Apply #233 + #234 as amended by request line 325 (hp/atk per enemy) and #235 (b_chaos exp 5000→2500); lead decision line 346: keep calibrated --check.",
+  "source": "request",
+  "requests": [
+   233,
+   234,
+   235,
+   236,
+   325,
+   346
+  ],
+  "confirmedThisRound": true,
+  "occurrences": [
+   {
+    "id": "run_all.balance.kael",
+    "step": "balance.kael",
+    "sev": "S3",
+    "title": "balance.kael exited 1",
+    "file": "src/data/enemies.js",
+    "detail": "   s19 plv = 75  (목표 56–61, 높음) |    s19 hitsMed = 4  (목표 5–10, 낮음) |    s19 takenMed = 4.8  (목표 6–13, 낮음) |    s20 plv = 80  (목표 60–65, 높음) |    s20 takenMed = 5.4  (목표 7–14, 낮음) |    end plv = 89  (목표 64–68, 높음)"
+   },
+   {
+    "id": "run_all.balance.sera",
+    "step": "balance.sera",
+    "sev": "S3",
+    "title": "balance.sera exited 1",
+    "file": "src/data/enemies.js",
+    "detail": "   s17 hitsMed = 3  (목표 3.1–10.3, 낮음) |    s18 plv = 69  (목표 52–57, 높음) |    s19 plv = 75  (목표 56–61, 높음) |    s19 hitsMed = 3  (목표 3.1–11.5, 낮음) |    s20 plv = 80  (목표 60–65, 높음) |    end plv = 89  (목표 64–68, 높음)"
+   },
+   {
+    "id": "run_all.balance.victor",
+    "step": "balance.victor",
+    "sev": "S3",
+    "title": "balance.victor exited 1",
+    "file": "src/data/enemies.js",
+    "detail": "   s16 plv = 57  (목표 46–50, 높음) |    s17 plv = 63  (목표 49–53, 높음) |    s18 plv = 69  (목표 52–57, 높음) |    s19 plv = 75  (목표 56–61, 높음) |    s20 plv = 80  (목표 60–65, 높음) |    end plv = 89  (목표 64–68, 높음)"
+   },
+   {
+    "id": "run_all.balance.bran",
+    "step": "balance.bran",
+    "sev": "S3",
+    "title": "balance.bran exited 1",
+    "file": "src/data/enemies.js",
+    "detail": "   s17 takenMed = 1.3  (목표 1.4–5, 낮음) |    s18 plv = 69  (목표 52–57, 높음) |    s19 plv = 75  (목표 56–61, 높음) |    s20 plv = 80  (목표 60–65, 높음) |    s20 takenMed = 1.5  (목표 1.6–5.9, 낮음) |    end plv = 89  (목표 64–68, 높음)"
+   },
+   {
+    "id": "run_all.balance.lia",
+    "step": "balance.lia",
+    "sev": "S3",
+    "title": "balance.lia exited 1",
+    "file": "src/data/enemies.js",
+    "detail": "   s16 plv = 57  (목표 46–50, 높음) |    s17 plv = 63  (목표 49–53, 높음) |    s18 plv = 69  (목표 52–57, 높음) |    s19 plv = 75  (목표 56–61, 높음) |    s20 plv = 80  (목표 60–65, 높음) |    end plv = 89  (목표 64–68, 높음)"
+   },
+   {
+    "id": "run_all.balance.azel",
+    "step": "balance.azel",
+    "sev": "S3",
+    "title": "balance.azel exited 1",
+    "file": "src/data/enemies.js",
+    "detail": "   s16 plv = 57  (목표 46–50, 높음) |    s17 plv = 63  (목표 49–53, 높음) |    s18 plv = 69  (목표 52–57, 높음) |    s19 plv = 75  (목표 56–61, 높음) |    s20 plv = 80  (목표 60–65, 높음) |    end plv = 89  (목표 64–68, 높음)"
+   }
+  ],
+  "occurrenceCount": 6
+ },
+ {
+  "id": "R1-REQ-349",
+  "title": "bran_bloodrage draws Bran's blue cape over its demon wings; lia_reaper long gold scarf trails through the bone wings",
+  "sev": "S3",
+  "bucket": "FIX-DATA",
+  "pkg": null,
+  "files": [
+   "src/data/classes.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 349 (from ART-HERO-B)",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "bran_bloodrage: add look.cape = null (it currently inherits Bran's blue character cape #2a3a6a, drawn over its demon wings). lia_reaper: make the scarf short, e.g. look.scarf = { color: '#e8c872', long: false } (or null), so the long gold scarf no longer trails through the bone wings. Leave bran_berserker/warlord as they are (warlord already sets its own dark-red cape).",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L349"
+  ],
+  "hint": "classes.js: bran_bloodrage look.cape = null; lia_reaper look.scarf = { color: \"#e8c872\", long: false }.",
+  "source": "request",
+  "requests": [
+   349
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-324",
+  "title": "Second build_web (to publish the new APK in downloads/) restamps build-info/build.json/index.html so verify_apk hash parity fails against the published dist/web",
+  "sev": "S3",
+  "bucket": "FIX-DELIVERY",
+  "pkg": "DELIVERY-WEB",
+  "files": [
+   "tools/deploy/build_web.mjs"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 324 (from APK-FU)",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "Make the DELIVER flow (build_web -> build_apk.sh --verify -> build_web again to publish the new APK in downloads/) keep dist/web identical to the APK's assets/www: exclude downloads/ from buildHash, and when nothing outside downloads/ changed keep the previous version/built stamp (or add a --refresh-downloads mode that only rewrites downloads/, latest.json and _redirects). Today the second build_web restamps build-info.js, build.json and index.html (build-info.js?v=), so tools/apk/verify_apk.mjs's hash parity check (platform WP-9 acceptance 3) fails against the published dist/web although game",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L324"
+  ],
+  "hint": "Exclude downloads/ from buildHash and keep the stamp when nothing else changed (or --refresh-downloads mode).",
+  "source": "request",
+  "requests": [
+   324
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-162",
+  "title": "Awakening can be cast while the boss is still in its in-world intro state (boss frozen invulnerable in \"intro\")",
+  "sev": "S3",
+  "bucket": "FIX-ENGINE",
+  "pkg": "AWAKEN-CORE",
+  "files": [
+   "src/game/awaken.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 162 (from FX-ULTS (verify))",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "canAwaken/castAwakening: also refuse while the active boss is still in its in-world intro state: `if (world.boss && !world.boss.dead && world.boss.state === 'intro') return false;` (castUltimate in skills.js now does the same). Boss.update returns early while world.cutscene, so a cast right after the bossIntro scene freezes the boss in 'intro' (invulnerable, e.g. b_leviathan s_intro lasts 1.2 s with its hurtbox parked off-screen) for the whole cut-in + director: the gauge is spent for 0 damage. Measured: Victor ult at s08 boss right after the intro scene -> Leviathan 10235 -> 10235.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L162"
+  ],
+  "hint": "canAwaken/castAwakening: refuse while world.boss && !dead && state === \"intro\" (castUltimate already does).",
+  "source": "request",
+  "requests": [
+   162
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-331",
+  "title": "Ultimate final frame: neighbouring damage-number columns and \"다운\" callouts run together and read as one number; big crits hide behind the HUD name/HP bar",
+  "sev": "S3",
+  "bucket": "FIX-ENGINE",
+  "pkg": "HOOK-SWEEP",
+  "files": [
+   "src/core/particles.js",
+   "src/render/hitfx.js"
+  ],
+  "suite": "feel",
+  "repro": "node tools/feel_test.mjs — see /tmp/claude-0/plan/requests.jsonl line 331, 358 (from FEEL-QA)",
+  "expected": "request implemented; feel green for this item",
+  "actual": "Round 1 V1 review: sera '44484 410' (neighbouring columns merge), azel '다운 96다운다운' callouts collide with damage columns, bran 'CRITICAL 44240' drawn in the HUD top band next to the style badge, kael '50 HIT!' milestone over damage columns || Readability at the ultimate's final frame (V1 review, /tmp/claude-0/qa/round_1/logs/feel/shots/ult_final_*_960.png): damage-number columns of neighbouring targets 80 px apart run into each other and read as one number (sera_saint: '434' '98' '44x' -> '4349844', which also runs under the style-rank badge next to the HITS counter); launched targets near the top put big crit numbers behind the HUD name/HP bar (bran_warlord). Suggest a horizontal de-collision of column anchors (at least one number width between live columns) and clamping column tops below the HUD top band (hudLayout top rows).",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L331",
+   "/tmp/claude-0/plan/requests.jsonl#L358",
+   "/tmp/claude-0/qa/round_1/shots/feel_ult_final_960.jpg",
+   "/tmp/claude-0/qa/round_1/logs/feel/shots/ult_final_sera_960.png",
+   "/tmp/claude-0/qa/round_1/logs/feel/shots/ult_final_azel_960.png",
+   "/tmp/claude-0/qa/round_1/logs/feel/shots/ult_final_bran_960.png",
+   "/tmp/claude-0/qa/round_1/logs/run_all/feel.log"
+  ],
+  "hint": "fx.dmg column de-collision (>= one number width between live columns), callouts in their own lane, clamp column tops below the HUD top band.",
+  "source": "request",
+  "requests": [
+   331,
+   358
+  ],
+  "confirmedThisRound": true,
+  "occurrences": [
+   {
+    "id": "run_all.feel",
+    "step": "feel",
+    "sev": "S2",
+    "title": "feel exited 1",
+    "detail": "[116s] REV  V1 — 24 PNGs in /tmp/claude-0/qa_feel/shots to review: no watermark, face in the band, text not clipped at 960/1280, Korean in the brush font | feel_test: 138 pass, 5 fail, 0 inconclusive, 1 to review; page errors 0; 116s |   I1: fail (fail 1) |   U2: fail (pass 14, fail 4) |   V1: review (review 1) | report: /tmp/claude-0/qa/round_1/logs/feel/report.json"
+   }
+  ],
+  "occurrenceCount": 1
+ },
+ {
+  "id": "R1-REQ-339E",
+  "title": "awaken_directors_b.js creates canvases during an ult/awakening (x8 on phone1 low)",
+  "sev": "S3",
+  "bucket": "FIX-ENGINE",
+  "pkg": "AWAKEN-DIR-B",
+  "files": [
+   "src/game/awaken_directors_b.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 339 (from QA-TOOLS)",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "Canvases created after stage start (feel §8 budget: 0), with call sites 'creator <- caller': skills.js:234 <- :253 (x4-8 per ult) and <- :245; hitfx.js:28 <- :60 (first hit sprite caches); overlays.js:35 <- :277 / :282 (ult cut-in); prompts.js:402 <- :437 (glyph cache on first prompt); menu/common.js:40 <- :64 (hub/menu layer); awaken_directors_b.js:91 <- :99 (x8 during an ult/awakening on phone1 low); awaken_cutin.js:178. Prewarm these caches at stage load / scene enter (or allocate once and reuse), as ultfx/hitfx already do for other sprites.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L339"
+  ],
+  "hint": "Allocate once at init/prepareAwakening and reuse.",
+  "source": "request",
+  "requests": [
+   339
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-340E",
+  "title": "lighting.js glowSprite creates a canvas on the first light of a colour after stage start",
+  "sev": "S3",
+  "bucket": "FIX-ENGINE",
+  "pkg": null,
+  "files": [
+   "src/core/lighting.js"
+  ],
+  "suite": "perf",
+  "repro": "node tools/qa/perf_budget.mjs --profiles phone1,phone2,tablet,desk,fhd2x,phone1low — see /tmp/claude-0/plan/requests.jsonl line 340 (from QA-TOOLS)",
+  "expected": "request implemented; perf green for this item",
+  "actual": "Canvases created in the first seconds of a fight (after the stage-start bakes): painted kit.js:88 <- kit.js:691 (puff sprite, x5 in s14/s20 boss rooms), kit.js:88 <- b_narkissa.js:587, enemy_kit.js:31 <- enemy_kit.js:445 (x3 in s20 r1, lazy rig bake when an enemy first appears), tiles.js:209 <- :933 and tiles.js:336 <- :644 (dark prop / tile caches), lighting.js:10 <- :27 (glowSprite on first light of a colour), b_common.js:52. Prewarm per room on load (the boss intro is a good place for boss-only caches) and key caches so a direct boss-room entry does not allocate on first hit; c_common scree",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L340",
+   "/tmp/claude-0/qa/round_1/logs/run_all/perf.log",
+   "/tmp/claude-0/qa/round_1/logs/tools/perf_budget.json"
+  ],
+  "hint": "Prewarm glow sprites for the room palette at room load.",
+  "source": "request",
+  "requests": [
+   340
+  ],
+  "confirmedThisRound": true,
+  "occurrences": [
+   {
+    "id": "perf.canvas.phone1.s01boss.src/core/lighting.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s01boss (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/core/lighting.js",
+    "detail": "src/core/lighting.js:10 ← src/core/lighting.js:27 ×4"
+   },
+   {
+    "id": "perf.canvas.phone1.s02boss.src/core/lighting.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s02boss (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/core/lighting.js",
+    "detail": "src/core/lighting.js:10 ← src/core/lighting.js:27 ×1"
+   },
+   {
+    "id": "perf.canvas.phone1.s03boss.src/core/lighting.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s03boss (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/core/lighting.js",
+    "detail": "src/core/lighting.js:10 ← src/core/lighting.js:27 ×2"
+   },
+   {
+    "id": "perf.canvas.phone1.s04boss.src/core/lighting.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s04boss (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/core/lighting.js",
+    "detail": "src/core/lighting.js:10 ← src/core/lighting.js:27 ×3"
+   },
+   {
+    "id": "perf.canvas.phone1.s05boss.src/core/lighting.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s05boss (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/core/lighting.js",
+    "detail": "src/core/lighting.js:10 ← src/core/lighting.js:27 ×1"
+   },
+   {
+    "id": "perf.canvas.phone1.s07boss.src/core/lighting.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s07boss (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/core/lighting.js",
+    "detail": "src/core/lighting.js:10 ← src/core/lighting.js:27 ×2"
+   },
+   {
+    "id": "perf.canvas.phone1.s08boss.src/core/lighting.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s08boss (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/core/lighting.js",
+    "detail": "src/core/lighting.js:10 ← src/core/lighting.js:27 ×1"
+   },
+   {
+    "id": "perf.canvas.phone1.s09boss.src/core/lighting.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s09boss (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/core/lighting.js",
+    "detail": "src/core/lighting.js:10 ← src/core/lighting.js:27 ×2"
+   },
+   {
+    "id": "perf.canvas.phone1.s10r1.src/core/lighting.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s10r1 (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/core/lighting.js",
+    "detail": "src/core/lighting.js:10 ← src/core/lighting.js:27 ×1"
+   },
+   {
+    "id": "perf.canvas.phone1.s10boss.src/core/lighting.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s10boss (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/core/lighting.js",
+    "detail": "src/core/lighting.js:10 ← src/core/lighting.js:27 ×2"
+   },
+   {
+    "id": "perf.canvas.phone1.s11boss.src/core/lighting.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s11boss (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/core/lighting.js",
+    "detail": "src/core/lighting.js:10 ← src/core/lighting.js:27 ×1"
+   },
+   {
+    "id": "perf.canvas.phone1.s12boss.src/core/lighting.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s12boss (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/core/lighting.js",
+    "detail": "src/core/lighting.js:10 ← src/core/lighting.js:27 ×2"
+   }
+  ],
+  "occurrenceCount": 146
+ },
+ {
+  "id": "R1-REQ-341E",
+  "title": "props.js:14 builds new gradients every frame (top site in 110 of 122 gradient findings; x588 in 120 frames of the s20 boss); pickups.js:145 (~1-2/frame in s15-s18 rooms) and world.js:497 (1/frame in s10/s17/s20 r1) add to it",
+  "sev": "S3",
+  "bucket": "FIX-ENGINE",
+  "pkg": "HOOK-SWEEP",
+  "files": [
+   "src/game/props.js",
+   "src/game/pickups.js",
+   "src/game/world.js"
+  ],
+  "suite": "perf",
+  "repro": "node tools/qa/perf_budget.mjs --profiles phone1,phone2,tablet,desk,fhd2x,phone1low — see /tmp/claude-0/plan/requests.jsonl line 341 (from QA-TOOLS)",
+  "expected": "request implemented; perf green for this item",
+  "actual": "New gradients per rendered frame over the §5.2 tier budget (high 16 / medium 10 / low 6): low tier p95 12 in ordinary rooms; desk hub 34/frame; desk s20 boss p95 18 (max 31). Top sites: hero_parts.js:186, :54, :104 (hero body shading, rebuilt per frame per hero), background.js:187 and :102, props.js:14 (x588 in 120 frames of the s20 boss), menu/common.js:797, facades.js:1001. Cache gradients (per colour/size key, translate instead of rebuilding) or bake them into sprites; skip the decorative ones on low tier.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L341",
+   "/tmp/claude-0/qa/round_1/logs/run_all/perf.log",
+   "/tmp/claude-0/qa/round_1/logs/tools/perf_budget.json"
+  ],
+  "hint": "Cache per (colour,size) and translate, or bake into a sprite; same for the pickups.js:145 and world.js:497 gradients.",
+  "source": "request",
+  "requests": [
+   341
+  ],
+  "confirmedThisRound": true,
+  "occurrences": [
+   {
+    "id": "perf.grad.phone1.s01boss",
+    "step": "perf",
+    "sev": "S3",
+    "title": "15 new gradients per frame (p95) in s01boss at medium — budget 10",
+    "file": "src/game/props.js",
+    "detail": "top sites: src/game/props.js:14 ×600, src/render/background.js:187 ×360, src/render/background.js:102 ×120, src/game/bosses/a_common.js:502 ×96"
+   },
+   {
+    "id": "perf.grad.phone1.s02boss",
+    "step": "perf",
+    "sev": "S3",
+    "title": "12 new gradients per frame (p95) in s02boss at medium — budget 10",
+    "file": "src/game/props.js",
+    "detail": "top sites: src/game/props.js:14 ×600, src/render/background.js:187 ×360, src/render/background.js:102 ×120, src/game/bosses/a_common.js:582 ×56"
+   },
+   {
+    "id": "perf.grad.phone1.s03boss",
+    "step": "perf",
+    "sev": "S3",
+    "title": "12 new gradients per frame (p95) in s03boss at medium — budget 10",
+    "file": "src/game/props.js",
+    "detail": "top sites: src/game/props.js:14 ×600, src/render/background.js:187 ×360, src/render/background.js:102 ×120, src/render/hero.js:1631 ×60"
+   },
+   {
+    "id": "perf.grad.phone1.s04boss",
+    "step": "perf",
+    "sev": "S3",
+    "title": "21 new gradients per frame (p95) in s04boss at medium — budget 10",
+    "file": "src/game/props.js",
+    "detail": "top sites: src/game/props.js:14 ×600, src/render/background.js:187 ×360, src/render/background.js:102 ×120, src/game/bosses/a_common.js:306 ×77"
+   },
+   {
+    "id": "perf.grad.phone1.s05r1",
+    "step": "perf",
+    "sev": "S3",
+    "title": "11 new gradients per frame (p95) in s05r1 at medium — budget 10",
+    "file": "src/game/props.js",
+    "detail": "top sites: src/game/props.js:14 ×240, src/render/background.js:187 ×180, src/render/background.js:102 ×60, src/render/hero.js:1631 ×33"
+   },
+   {
+    "id": "perf.grad.phone1.s05boss",
+    "step": "perf",
+    "sev": "S3",
+    "title": "13 new gradients per frame (p95) in s05boss at medium — budget 10",
+    "file": "src/game/props.js",
+    "detail": "top sites: src/game/props.js:14 ×600, src/render/background.js:187 ×360, src/render/background.js:102 ×120, src/render/hero.js:1631 ×51"
+   },
+   {
+    "id": "perf.grad.phone1.s06r1",
+    "step": "perf",
+    "sev": "S3",
+    "title": "11 new gradients per frame (p95) in s06r1 at medium — budget 10",
+    "file": "src/game/props.js",
+    "detail": "top sites: src/game/props.js:14 ×240, src/render/background.js:187 ×180, src/render/background.js:102 ×60, src/render/hero.js:1631 ×33"
+   },
+   {
+    "id": "perf.grad.phone1.s06boss",
+    "step": "perf",
+    "sev": "S3",
+    "title": "11 new gradients per frame (p95) in s06boss at medium — budget 10",
+    "file": "src/game/props.js",
+    "detail": "top sites: src/game/props.js:14 ×480, src/render/background.js:187 ×360, src/render/background.js:102 ×120, src/render/hero.js:1631 ×60"
+   },
+   {
+    "id": "perf.grad.phone1.s07boss",
+    "step": "perf",
+    "sev": "S3",
+    "title": "15 new gradients per frame (p95) in s07boss at medium — budget 10",
+    "file": "src/game/props.js",
+    "detail": "top sites: src/game/props.js:14 ×480, src/render/background.js:187 ×360, src/game/bosses/a_common.js:306 ×332, src/render/background.js:102 ×120"
+   },
+   {
+    "id": "perf.grad.phone1.s08r1",
+    "step": "perf",
+    "sev": "S3",
+    "title": "11 new gradients per frame (p95) in s08r1 at medium — budget 10",
+    "file": "src/game/props.js",
+    "detail": "top sites: src/game/props.js:14 ×240, src/render/background.js:187 ×180, src/render/background.js:102 ×60, src/render/hero.js:1631 ×33"
+   },
+   {
+    "id": "perf.grad.phone1.s08boss",
+    "step": "perf",
+    "sev": "S3",
+    "title": "11 new gradients per frame (p95) in s08boss at medium — budget 10",
+    "file": "src/game/props.js",
+    "detail": "top sites: src/game/props.js:14 ×480, src/render/background.js:187 ×360, src/render/background.js:102 ×120, src/render/hero.js:1631 ×60"
+   },
+   {
+    "id": "perf.grad.phone1.s09r1",
+    "step": "perf",
+    "sev": "S3",
+    "title": "11 new gradients per frame (p95) in s09r1 at medium — budget 10",
+    "file": "src/game/props.js",
+    "detail": "top sites: src/game/props.js:14 ×240, src/render/background.js:187 ×180, src/render/background.js:102 ×60, src/render/hero.js:1631 ×33"
+   }
+  ],
+  "occurrenceCount": 91
+ },
+ {
+  "id": "R1-RUN-BOSSFRAME",
+  "title": "Part 2 boss arenas: the boss is off screen from the arena entry — Behemoth (s19) and Nihil (s20) are not in the frame in any phase shot, Moloch (s15) only shows a horn/arm at the right edge, Narkissa/Ziz barely; the fight starts facing an empty screen with only the boss bar",
+  "sev": "S3",
+  "bucket": "FIX-ENGINE",
+  "pkg": "HOOK-SWEEP",
+  "files": [
+   "src/core/camera.js"
+  ],
+  "suite": "visual/integration",
+  "repro": "node tools/integration.mjs --only s15_boss,s19_boss,s20_boss (shot _1 after the intro) and node tools/qa/visual_review.mjs (bosses sheet)",
+  "expected": "boss (or most of its body) visible when the fight starts",
+  "actual": "visual_review bosses_desk: b_behemoth start/phase 2/phase 3/low HP and b_nihil start..low HP show no boss body; integration s15_boss_1 shows only Moloch's horn and arm at x>1200 of 1280",
+  "evidence": [
+   "/tmp/claude-0/qa/round_1/logs/visual/bosses_desk.png",
+   "/tmp/claude-0/qa/round_1/shots/visual/bosses_rows_mara_behemoth_nihil.jpg",
+   "/tmp/claude-0/qa/round_1/shots/integ_boss2_sheet.jpg"
+  ],
+  "hint": "Boss-arena camera: frame the boss with the player in wide arenas (bias/zoom-out toward world.boss while the arena is locked, as the tall-room arena bias does), or spawn/park the boss inside the entry view; lead: confirm intended framing",
+  "source": "run",
+  "requests": [],
+  "confirmedThisRound": true,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-330",
+  "title": "Ultimate frames cost 2-7x gameplay CPU when cast after a combo (live combo/style HUD) or mid-room (U2; kael_templar over budget every run)",
+  "sev": "S3",
+  "bucket": "FIX-HUD",
+  "pkg": "FEEL-HUD",
+  "files": [
+   "src/render/feel_hud.js",
+   "src/render/hud.js"
+  ],
+  "suite": "feel",
+  "repro": "node tools/feel_test.mjs — see /tmp/claude-0/plan/requests.jsonl line 357, 359, 330 (from FEEL-QA)",
+  "expected": "request implemented; feel green for this item",
+  "actual": "Round 1 feel_test U2 after a combo at x~4953 (s04 r1): kael_templar ult CPU x6.71 (avg 33.3 ms, p95 84), azel_nosferatu x2.86, victor_gunlord x2.22, bran_warlord x1.67 (budget x1.5); 14 other U2 cases pass || Ultimate frames cost 2-5x the gameplay CPU when the ultimate is cast right after hitting enemies. The trigger is not the cast position alone (line 330): with fresh page, same hero/class/spot (s04 r1, x~4950, camera x 4543), 6 passive dummies, stepped 1/60 s + render at 960x540: (a) 60-frame baseline with the hero idle, then ult -> ult avg 5-7 ms, main-thread CPU 4.7-5.9 ms/frame; (b) the same baseline but the hero walks and swings into the dummies (combo + style rank live when the ult starts) -> ult avg 19-21 ms, CPU 13-16 ms/frame, frames of 80-135 ms (render side, tick <1 ms), repeatable on ",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L357",
+   "/tmp/claude-0/plan/requests.jsonl#L359",
+   "/tmp/claude-0/plan/requests.jsonl#L330",
+   "/tmp/claude-0/qa/round_1/logs/run_all/feel.log"
+  ],
+  "hint": "Profile shows restore() inside HUD draws (drawPortrait, drawRankLetter): drop per-element save/clip/restore during ults, cache the combo column as a sprite; the tiles.js chunk-blit half is R1-REQ-330R (FIX-RENDER) — verify together with node tools/feel_test.mjs --only U2 on all six heroes, several runs.",
+  "source": "request",
+  "requests": [
+   357,
+   359,
+   330
+  ],
+  "confirmedThisRound": true,
+  "occurrences": [
+   {
+    "id": "run_all.feel",
+    "step": "feel",
+    "sev": "S2",
+    "title": "feel exited 1",
+    "detail": "[116s] REV  V1 — 24 PNGs in /tmp/claude-0/qa_feel/shots to review: no watermark, face in the band, text not clipped at 960/1280, Korean in the brush font | feel_test: 138 pass, 5 fail, 0 inconclusive, 1 to review; page errors 0; 116s |   I1: fail (fail 1) |   U2: fail (pass 14, fail 4) |   V1: review (review 1) | report: /tmp/claude-0/qa/round_1/logs/feel/report.json"
+   }
+  ],
+  "occurrenceCount": 1
+ },
+ {
+  "id": "R1-REQ-229",
+  "title": "Load budget missed (P-09): dist/web slow 4G first frame 11.8 s (budget 9 s), fast 4G 2.7 s (budget 2.5 s), 1.94 MB on the critical path (budget 1.6 MB): every module is statically imported from main.js",
+  "sev": "S3",
+  "bucket": "FIX-PLATFORM",
+  "pkg": "HOOK-SWEEP",
+  "files": [
+   "src/main.js"
+  ],
+  "suite": "platform, load_dist",
+  "repro": "node tools/qa/run_platform.mjs ; node tools/qa/platform_load.mjs --dist — see /tmp/claude-0/plan/requests.jsonl line 229 (from DELIVERY-WEB)",
+  "expected": "request implemented; platform, load_dist green for this item",
+  "actual": "Round 1 (dist/web, temporary --allow-font-gaps build): slow4g first frame 11.8 s (budget 9), fast4g 2.7 s (budget 2.5), first-frame bytes 1.98 MB (JS 1388 KB br, woff2 478 KB); build_web warns critical path brotli 1.76 MB > 1.60 MB (largest src/bundle/.../app.js 1252 KB, hahmlet.woff2 234 KB, noto-sans-kr.woff2 160 KB) || Split the first-load JavaScript: today every module is statically imported from src/main.js, so the production bundle's main chunk is 1.17 MB brotli (5.1 MB minified) and must download before the title. Load per-stage content on demand with dynamic import() (the bundler turns each into a lazy chunk automatically): boss logic+vector draw (src/game/bosses/*.js ≈ 300 KB br), vector enemy renderers (enemies_a/b/c/d.js ≈ 110 KB br), awaken directors (≈ 40 KB br), Part 2 story data (story_p2*.js ≈ 30 KB br). Preload the current stage's chunk from the stage/world-map scene.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L229",
+   "/tmp/claude-0/qa/round_1/delivery2/load_dist.log",
+   "/tmp/claude-0/qa/round_1/logs/platform/platform_load_dist.json",
+   "/tmp/claude-0/qa/round_1/delivery2/build_web_gaps.log",
+   "/tmp/claude-0/qa/round_1/logs/run_all/platform.log"
+  ],
+  "hint": "Dynamic import() for per-stage content (boss logic + vector draw, vector enemy renderers, awaken directors) so the bundler emits lazy chunks; cross-bucket follow-ups in bosses/index.js (FIX-AI-BOSS), render/enemies.js (FIX-RENDER), awaken.js (FIX-ENGINE); FIX-DELIVERY re-measures with platform_load --dist.",
+  "source": "request",
+  "requests": [
+   229
+  ],
+  "confirmedThisRound": true,
+  "occurrences": [
+   {
+    "id": "platform.platform_load.mjs.load.slow4g",
+    "step": "platform",
+    "sev": "S2",
+    "title": "platform_load.mjs load.slow4g (P-09)",
+    "detail": "first frame 11.8 s, title bg 11.8 s, 27 requests, 1.94 MB, 2 modules requested over 0 ms"
+   },
+   {
+    "id": "platform.platform_load.mjs.load.fast4g",
+    "step": "platform",
+    "sev": "S2",
+    "title": "platform_load.mjs load.fast4g (P-09)",
+    "detail": "first frame 2.7 s, title bg 2.8 s, 55 requests, 2.41 MB, 2 modules requested over 1 ms"
+   },
+   {
+    "id": "platform.platform_load.mjs.load.slow4g",
+    "step": "load_dist",
+    "sev": "S3",
+    "title": "load.slow4g (P-09) slow4g: first frame ≤ 9 s (dist/web)",
+    "detail": "first frame 11.8 s, title bg 11.8 s, 28 requests, 1.98 MB, 2 modules requested over 0 ms"
+   },
+   {
+    "id": "platform.platform_load.mjs.load.fast4g",
+    "step": "load_dist",
+    "sev": "S3",
+    "title": "load.fast4g (P-09) fast4g: first frame ≤ 2.5 s (dist/web)",
+    "detail": "first frame 2.7 s, title bg 2.7 s, 55 requests, 2.43 MB, 2 modules requested over 0 ms"
+   }
+  ],
+  "occurrenceCount": 4
+ },
+ {
+  "id": "R1-REQ-329",
+  "title": "window.__feelStats (feel §8 instrumentation, ?debug / ?feelstats) is not published: feel_test I1 fails",
+  "sev": "S3",
+  "bucket": "FIX-PLATFORM",
+  "pkg": "HOOK-SWEEP",
+  "files": [
+   "src/core/game.js"
+  ],
+  "suite": "feel",
+  "repro": "node tools/feel_test.mjs — see /tmp/claude-0/plan/requests.jsonl line 329 (from FEEL-QA)",
+  "expected": "request implemented; feel green for this item",
+  "actual": "Round 1 feel_test I1: window.__feelStats is not defined with ?feelstats || Implement the feel §8 instrumentation: when the URL has ?debug or ?feelstats, publish window.__feelStats = { particles, dmgNums, ghosts, gradients, heroDraws, sfxStarts } once per rendered frame (particles = world.fx.list.length, dmgNums = live atlas damage numbers, ghosts = live afterimages, gradients = create*Gradient calls this frame, heroDraws = drawHero full redraws this frame, sfxStarts = audio SFX starts in the last 100 ms; audio.js already keeps {starts, feel, dropped, skipped} 'for __feelStats.sfxStarts'). Without the query flag nothing is counted or published.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L329",
+   "/tmp/claude-0/qa/round_1/logs/run_all/feel.log"
+  ],
+  "hint": "game.js: publish {particles, dmgNums, ghosts, gradients, heroDraws, sfxStarts} once per rendered frame when the flag is set (counters in particles.js, hitfx.js, hero.js, audio.js).",
+  "source": "request",
+  "requests": [
+   329
+  ],
+  "confirmedThisRound": true,
+  "occurrences": [
+   {
+    "id": "run_all.feel",
+    "step": "feel",
+    "sev": "S2",
+    "title": "feel exited 1",
+    "detail": "[116s] REV  V1 — 24 PNGs in /tmp/claude-0/qa_feel/shots to review: no watermark, face in the band, text not clipped at 960/1280, Korean in the brush font | feel_test: 138 pass, 5 fail, 0 inconclusive, 1 to review; page errors 0; 116s |   I1: fail (fail 1) |   U2: fail (pass 14, fail 4) |   V1: review (review 1) | report: /tmp/claude-0/qa/round_1/logs/feel/report.json"
+   }
+  ],
+  "occurrenceCount": 1
+ },
+ {
+  "id": "R1-REQ-339P",
+  "title": "prompts.js glyph cache (and a ui.js cache) create canvases on the first prompt after stage start",
+  "sev": "S3",
+  "bucket": "FIX-PLATFORM",
+  "pkg": "PLAT-INPUT",
+  "files": [
+   "src/core/prompts.js",
+   "src/core/ui.js"
+  ],
+  "suite": "perf",
+  "repro": "node tools/qa/perf_budget.mjs --profiles phone1,phone2,tablet,desk,fhd2x,phone1low — see /tmp/claude-0/plan/requests.jsonl line 339 (from QA-TOOLS)",
+  "expected": "request implemented; perf green for this item",
+  "actual": "Canvases created after stage start (feel §8 budget: 0), with call sites 'creator <- caller': skills.js:234 <- :253 (x4-8 per ult) and <- :245; hitfx.js:28 <- :60 (first hit sprite caches); overlays.js:35 <- :277 / :282 (ult cut-in); prompts.js:402 <- :437 (glyph cache on first prompt); menu/common.js:40 <- :64 (hub/menu layer); awaken_directors_b.js:91 <- :99 (x8 during an ult/awakening on phone1 low); awaken_cutin.js:178. Prewarm these caches at stage load / scene enter (or allocate once and reuse), as ultfx/hitfx already do for other sprites.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L339",
+   "/tmp/claude-0/qa/round_1/logs/run_all/perf.log",
+   "/tmp/claude-0/qa/round_1/logs/tools/perf_budget.json"
+  ],
+  "hint": "Prewarm the glyph cache for the active device at scene enter.",
+  "source": "request",
+  "requests": [
+   339
+  ],
+  "confirmedThisRound": true,
+  "occurrences": [
+   {
+    "id": "perf.canvas.phone1.s01r1.src/core/prompts.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s01r1 (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/core/prompts.js",
+    "detail": "src/core/prompts.js:402 ← src/core/prompts.js:437 ×3"
+   },
+   {
+    "id": "perf.canvas.phone1.s02boss.src/core/prompts.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s02boss (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/core/prompts.js",
+    "detail": "src/core/prompts.js:402 ← src/core/prompts.js:437 ×3"
+   },
+   {
+    "id": "perf.canvas.phone1.ult.kael.src/core/ui.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in ult.kael (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/core/ui.js",
+    "detail": "src/core/ui.js:381 ← src/core/ui.js:529 ×1"
+   },
+   {
+    "id": "perf.canvas.phone1.ult.sera.src/core/ui.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in ult.sera (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/core/ui.js",
+    "detail": "src/core/ui.js:381 ← src/core/ui.js:529 ×1"
+   },
+   {
+    "id": "perf.canvas.phone1.ult.victor.src/core/ui.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in ult.victor (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/core/ui.js",
+    "detail": "src/core/ui.js:381 ← src/core/ui.js:529 ×1"
+   },
+   {
+    "id": "perf.canvas.phone1.ult.bran.src/core/ui.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in ult.bran (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/core/ui.js",
+    "detail": "src/core/ui.js:381 ← src/core/ui.js:529 ×1"
+   },
+   {
+    "id": "perf.canvas.phone1.ult.lia.src/core/ui.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in ult.lia (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/core/ui.js",
+    "detail": "src/core/ui.js:381 ← src/core/ui.js:529 ×1"
+   },
+   {
+    "id": "perf.canvas.phone1.ult.azel.src/core/ui.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in ult.azel (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/core/ui.js",
+    "detail": "src/core/ui.js:381 ← src/core/ui.js:529 ×1"
+   },
+   {
+    "id": "perf.canvas.phone1.hub.src/core/prompts.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in hub (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/core/prompts.js",
+    "detail": "src/core/prompts.js:402 ← src/core/prompts.js:437 ×1"
+   },
+   {
+    "id": "perf.canvas.phone1.menu.src/core/prompts.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in menu (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/core/prompts.js",
+    "detail": "src/core/prompts.js:402 ← src/core/prompts.js:437 ×1"
+   },
+   {
+    "id": "perf.canvas.phone2.s01r1.src/core/prompts.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s01r1 (phone2) — pool it at init / bake during load or the boss intro",
+    "file": "src/core/prompts.js",
+    "detail": "src/core/prompts.js:402 ← src/core/prompts.js:437 ×3"
+   },
+   {
+    "id": "perf.canvas.phone2.s02boss.src/core/prompts.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s02boss (phone2) — pool it at init / bake during load or the boss intro",
+    "file": "src/core/prompts.js",
+    "detail": "src/core/prompts.js:402 ← src/core/prompts.js:437 ×3"
+   }
+  ],
+  "occurrenceCount": 57
+ },
+ {
+  "id": "R1-RUN-TEX-TOUCH",
+  "title": "Painted texture budget exceeded on touch profiles: phone1/phone2/phone1low 24.7 MB decoded painted (budget 24 MB) during every ult/awakening, hub and menu scene; tablet up to 61.4 MB (menu)",
+  "sev": "S3",
+  "bucket": "FIX-PLATFORM",
+  "pkg": "PLAT-SAVE-ASSETS",
+  "files": [
+   "src/core/assets.js"
+  ],
+  "suite": "perf",
+  "repro": "node tools/qa/perf_budget.mjs --profiles phone1,tablet --scenes ult.sera,menu (check <profile>.<scene>.textures)",
+  "expected": "painted decoded <= 24 MB on phone/tablet touch profiles",
+  "actual": "phone1.ult.sera: decoded 129.2/160 MB, painted 24.7/24 MB (45 evictions); tablet.menu: painted 61.4/24 MB (69 evictions); 48 failing checks over 12 scenes x 4 touch profiles",
+  "evidence": [
+   "/tmp/claude-0/qa/round_1/logs/tools/perf_budget.json",
+   "/tmp/claude-0/qa/round_1/logs/tools/perf_budget.md",
+   "/tmp/claude-0/qa/round_1/logs/run_all/perf.log"
+  ],
+  "hint": "assets.js decoded LRU: enforce the painted budget of the tier (evict non-resident painted atlases before ult/awakening bakes); lead: confirm tablet uses the 24 MB touch budget (§5.2 names phone1/phone2 24 MB, desktop 64 MB)",
+  "source": "run",
+  "requests": [],
+  "confirmedThisRound": true,
+  "occurrences": [
+   {
+    "id": "perf.tex.phone1.ult.sera",
+    "step": "perf",
+    "sev": "S3",
+    "title": "texture budget exceeded in ult.sera (phone1): decoded 129.2/160 MB, painted 24.7/24 MB",
+    "file": "src/core/assets.js",
+    "detail": ""
+   },
+   {
+    "id": "perf.tex.phone1.awaken.sera",
+    "step": "perf",
+    "sev": "S3",
+    "title": "texture budget exceeded in awaken.sera (phone1): decoded 129.2/160 MB, painted 24.7/24 MB",
+    "file": "src/core/assets.js",
+    "detail": ""
+   },
+   {
+    "id": "perf.tex.phone1.ult.victor",
+    "step": "perf",
+    "sev": "S3",
+    "title": "texture budget exceeded in ult.victor (phone1): decoded 133.9/160 MB, painted 31.7/24 MB",
+    "file": "src/core/assets.js",
+    "detail": ""
+   },
+   {
+    "id": "perf.tex.phone1.awaken.victor",
+    "step": "perf",
+    "sev": "S3",
+    "title": "texture budget exceeded in awaken.victor (phone1): decoded 133.9/160 MB, painted 31.7/24 MB",
+    "file": "src/core/assets.js",
+    "detail": ""
+   },
+   {
+    "id": "perf.tex.phone1.ult.bran",
+    "step": "perf",
+    "sev": "S3",
+    "title": "texture budget exceeded in ult.bran (phone1): decoded 148.1/160 MB, painted 38.5/24 MB",
+    "file": "src/core/assets.js",
+    "detail": ""
+   },
+   {
+    "id": "perf.tex.phone1.awaken.bran",
+    "step": "perf",
+    "sev": "S3",
+    "title": "texture budget exceeded in awaken.bran (phone1): decoded 148.1/160 MB, painted 38.5/24 MB",
+    "file": "src/core/assets.js",
+    "detail": ""
+   },
+   {
+    "id": "perf.tex.phone1.ult.lia",
+    "step": "perf",
+    "sev": "S3",
+    "title": "texture budget exceeded in ult.lia (phone1): decoded 133.4/160 MB, painted 44.5/24 MB",
+    "file": "src/core/assets.js",
+    "detail": ""
+   },
+   {
+    "id": "perf.tex.phone1.awaken.lia",
+    "step": "perf",
+    "sev": "S3",
+    "title": "texture budget exceeded in awaken.lia (phone1): decoded 133.4/160 MB, painted 44.5/24 MB",
+    "file": "src/core/assets.js",
+    "detail": ""
+   },
+   {
+    "id": "perf.tex.phone1.ult.azel",
+    "step": "perf",
+    "sev": "S3",
+    "title": "texture budget exceeded in ult.azel (phone1): decoded 139.3/160 MB, painted 52.7/24 MB",
+    "file": "src/core/assets.js",
+    "detail": ""
+   },
+   {
+    "id": "perf.tex.phone1.awaken.azel",
+    "step": "perf",
+    "sev": "S3",
+    "title": "texture budget exceeded in awaken.azel (phone1): decoded 139.3/160 MB, painted 52.7/24 MB",
+    "file": "src/core/assets.js",
+    "detail": ""
+   },
+   {
+    "id": "perf.tex.phone1.hub",
+    "step": "perf",
+    "sev": "S3",
+    "title": "texture budget exceeded in hub (phone1): decoded 139.5/160 MB, painted 55.6/24 MB",
+    "file": "src/core/assets.js",
+    "detail": ""
+   },
+   {
+    "id": "perf.tex.phone1.menu",
+    "step": "perf",
+    "sev": "S3",
+    "title": "texture budget exceeded in menu (phone1): decoded 148.1/160 MB, painted 59.1/24 MB",
+    "file": "src/core/assets.js",
+    "detail": ""
+   }
+  ],
+  "occurrenceCount": 48
+ },
+ {
+  "id": "R1-REQ-133",
+  "title": "painted kit.quality() and b_bonedragon read settings.quality (\"auto\") instead of the governed tier: painted art always runs at high on phones",
+  "sev": "S3",
+  "bucket": "FIX-RENDER",
+  "pkg": "ART-KIT",
+  "files": [
+   "src/render/painted/kit.js",
+   "src/render/painted/bosses/b_bonedragon.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 133 (from ART-BOSS-2 (verify))",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "quality(game) reads only game.settings.quality, which is 'auto' by default since settings v2 → QUALITY['auto'] is undefined → every painted renderer and the bake (textureDensity tdMul, memoryBudgetMB low → 6 MB, registry envOf) run at 'high' on phones even after the governor dropped to medium/low. Resolve the effective tier first: const t = game?.quality ?? game?.tier ?? game?.settings?.quality; return QUALITY[t] ?? QUALITY.high. Same one-line fix is still needed in renderers that read settings.quality directly: b_bonedragon.js:121, b_chimera.js:89, b_colossus.js:69, b_leviathan.js:71 (b_crims",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L133"
+  ],
+  "hint": "const t = game?.quality ?? game?.tier ?? settings.quality; QUALITY[t] ?? QUALITY.high.",
+  "source": "request",
+  "requests": [
+   133
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-330R",
+  "title": "Ultimate cast mid-room (camera x~4500 in s04 r1) renders 7-15x slower than at the stage start: the TileRenderer.draw chunk blits under the ultimate composite passes (bisect: stubbing TileRenderer.draw alone restores 7.6-9.7 ms avg; no chunk re-bakes) — half of the U2 ult frame-cost miss",
+  "sev": "S3",
+  "bucket": "FIX-RENDER",
+  "pkg": "GIMMICK-RENDER",
+  "files": [
+   "src/render/tiles.js"
+  ],
+  "suite": "feel",
+  "repro": "node tools/feel_test.mjs — see /tmp/claude-0/plan/requests.jsonl line 330 (from FEEL-QA)",
+  "expected": "request implemented; feel green for this item",
+  "actual": "Investigate ultimate frame cost that depends on where the ultimate is cast. Same page, same hero (kael_templar), same 6 passive dummies, stepped 1/60 s + render, 1280x720 headless Chromium: cast at the s04 start spawn (camera clamped at x 0, 4 tile chunks cached) render avg 9-11 ms, p95 18-24; cast mid-room at x~4968 (camera x 4543, 8 chunks cached) render avg 62-150 ms, p95 160-650, with gameplay at the same spot at med ~8 ms. Bisect by stubbing one layer at a time during the ultimate: stubbing TileRenderer.draw (chunk drawImage blits) alone brings it back to 7.6-9.7 ms avg; stubbing lighting",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L330",
+   "/tmp/claude-0/qa/round_1/logs/run_all/feel.log"
+  ],
+  "hint": "Compose the visible tile chunks once per frame into a pooled view-sized layer (one blit) or draw them before/outside the ultimate composite/filter state; R1-REQ-330 (FIX-HUD) is the HUD half.",
+  "source": "request",
+  "requests": [
+   330
+  ],
+  "confirmedThisRound": true,
+  "occurrences": [
+   {
+    "id": "run_all.feel",
+    "step": "feel",
+    "sev": "S2",
+    "title": "feel exited 1",
+    "detail": "[116s] REV  V1 — 24 PNGs in /tmp/claude-0/qa_feel/shots to review: no watermark, face in the band, text not clipped at 960/1280, Korean in the brush font | feel_test: 138 pass, 5 fail, 0 inconclusive, 1 to review; page errors 0; 116s |   I1: fail (fail 1) |   U2: fail (pass 14, fail 4) |   V1: review (review 1) | report: /tmp/claude-0/qa/round_1/logs/feel/report.json"
+   }
+  ],
+  "occurrenceCount": 1
+ },
+ {
+  "id": "R1-REQ-338",
+  "title": "Ultimate/awakening full-screen passes over the §5.2 budget (desk p95 7 vs 3; phone1 low p95 5 vs 1)",
+  "sev": "S3",
+  "bucket": "FIX-RENDER",
+  "pkg": "FX-ULTKIT",
+  "files": [
+   "src/render/ultfx.js"
+  ],
+  "suite": "perf",
+  "repro": "node tools/qa/perf_budget.mjs --profiles phone1,phone2,tablet,desk,fhd2x,phone1low — see /tmp/claude-0/plan/requests.jsonl line 338 (from QA-TOOLS)",
+  "expected": "request implemented; perf green for this item",
+  "actual": "Ultimate full-screen passes over the feel §8 budget: during the kael tier-2 ultimate the game canvas gets p95 7 (max 8) extra full-screen fills/blits per frame over the room's own passes on desk/high (budget 3) and p95 5 on phone1 low (budget 1); the awakening adds p95 3 on low (budget 1). Merge flash/tint/vignette layers into one pass per frame and drop to one on low tier.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L338",
+   "/tmp/claude-0/qa/round_1/logs/run_all/perf.log",
+   "/tmp/claude-0/qa/round_1/logs/tools/perf_budget.json"
+  ],
+  "hint": "Merge flash/tint/vignette into one pass per frame; one pass on low tier (the skills.js full-screen fills are R1-REQ-338S, FIX-SYSTEMS).",
+  "source": "request",
+  "requests": [
+   338
+  ],
+  "confirmedThisRound": true,
+  "occurrences": [
+   {
+    "id": "perf.passes.phone1.ult.kael",
+    "step": "perf",
+    "sev": "S3",
+    "title": "6 extra full-screen passes per frame (p95) during ult.kael at medium (budget 2)",
+    "file": "src/render/ultfx.js",
+    "detail": ""
+   },
+   {
+    "id": "perf.passes.phone1.awaken.kael",
+    "step": "perf",
+    "sev": "S3",
+    "title": "4 extra full-screen passes per frame (p95) during awaken.kael at medium (budget 2)",
+    "file": "src/render/ultfx.js",
+    "detail": ""
+   },
+   {
+    "id": "perf.passes.phone1.ult.sera",
+    "step": "perf",
+    "sev": "S3",
+    "title": "6 extra full-screen passes per frame (p95) during ult.sera at medium (budget 2)",
+    "file": "src/render/ultfx.js",
+    "detail": ""
+   },
+   {
+    "id": "perf.passes.phone1.awaken.sera",
+    "step": "perf",
+    "sev": "S3",
+    "title": "4 extra full-screen passes per frame (p95) during awaken.sera at medium (budget 2)",
+    "file": "src/render/ultfx.js",
+    "detail": ""
+   },
+   {
+    "id": "perf.passes.phone1.ult.victor",
+    "step": "perf",
+    "sev": "S3",
+    "title": "5 extra full-screen passes per frame (p95) during ult.victor at medium (budget 2)",
+    "file": "src/render/ultfx.js",
+    "detail": ""
+   },
+   {
+    "id": "perf.passes.phone1.awaken.victor",
+    "step": "perf",
+    "sev": "S3",
+    "title": "4 extra full-screen passes per frame (p95) during awaken.victor at medium (budget 2)",
+    "file": "src/render/ultfx.js",
+    "detail": ""
+   },
+   {
+    "id": "perf.passes.phone1.ult.bran",
+    "step": "perf",
+    "sev": "S3",
+    "title": "5 extra full-screen passes per frame (p95) during ult.bran at medium (budget 2)",
+    "file": "src/render/ultfx.js",
+    "detail": ""
+   },
+   {
+    "id": "perf.passes.phone1.awaken.bran",
+    "step": "perf",
+    "sev": "S3",
+    "title": "4 extra full-screen passes per frame (p95) during awaken.bran at medium (budget 2)",
+    "file": "src/render/ultfx.js",
+    "detail": ""
+   },
+   {
+    "id": "perf.passes.phone1.ult.lia",
+    "step": "perf",
+    "sev": "S3",
+    "title": "6 extra full-screen passes per frame (p95) during ult.lia at medium (budget 2)",
+    "file": "src/render/ultfx.js",
+    "detail": ""
+   },
+   {
+    "id": "perf.passes.phone1.awaken.lia",
+    "step": "perf",
+    "sev": "S3",
+    "title": "4 extra full-screen passes per frame (p95) during awaken.lia at medium (budget 2)",
+    "file": "src/render/ultfx.js",
+    "detail": ""
+   },
+   {
+    "id": "perf.passes.phone1.ult.azel",
+    "step": "perf",
+    "sev": "S3",
+    "title": "9 extra full-screen passes per frame (p95) during ult.azel at medium (budget 2)",
+    "file": "src/render/ultfx.js",
+    "detail": ""
+   },
+   {
+    "id": "perf.passes.phone1.awaken.azel",
+    "step": "perf",
+    "sev": "S3",
+    "title": "4 extra full-screen passes per frame (p95) during awaken.azel at medium (budget 2)",
+    "file": "src/render/ultfx.js",
+    "detail": ""
+   }
+  ],
+  "occurrenceCount": 72
+ },
+ {
+  "id": "R1-REQ-339R",
+  "title": "hitfx.js / ultfx.js / hero_puppet.js create canvases after stage start (first hit sprite caches, ult pools, puppet caches during an awakening)",
+  "sev": "S3",
+  "bucket": "FIX-RENDER",
+  "pkg": "FEEL-REACT",
+  "files": [
+   "src/render/hitfx.js",
+   "src/render/ultfx.js",
+   "src/render/hero_puppet.js"
+  ],
+  "suite": "perf",
+  "repro": "node tools/qa/perf_budget.mjs --profiles phone1,phone2,tablet,desk,fhd2x,phone1low — see /tmp/claude-0/plan/requests.jsonl line 339, 216 (from QA-TOOLS)",
+  "expected": "request implemented; perf green for this item",
+  "actual": "Canvases created after stage start (feel §8 budget: 0), with call sites 'creator <- caller': skills.js:234 <- :253 (x4-8 per ult) and <- :245; hitfx.js:28 <- :60 (first hit sprite caches); overlays.js:35 <- :277 / :282 (ult cut-in); prompts.js:402 <- :437 (glyph cache on first prompt); menu/common.js:40 <- :64 (hub/menu layer); awaken_directors_b.js:91 <- :99 (x8 during an ult/awakening on phone1 low); awaken_cutin.js:178. Prewarm these caches at stage load / scene enter (or allocate once and reuse), as ultfx/hitfx already do for other sprites.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L339",
+   "/tmp/claude-0/plan/requests.jsonl#L216",
+   "/tmp/claude-0/qa/round_1/logs/run_all/perf.log",
+   "/tmp/claude-0/qa/round_1/logs/tools/perf_budget.json"
+  ],
+  "hint": "Prewarm at stage load (World init already calls prewarmHitFx for part of it).",
+  "source": "request",
+  "requests": [
+   339,
+   216
+  ],
+  "confirmedThisRound": true,
+  "occurrences": [
+   {
+    "id": "perf.canvas.phone1.s01boss.src/render/hitfx.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s01boss (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/render/hitfx.js",
+    "detail": "src/render/hitfx.js:28 ← src/render/hitfx.js:60 ×1"
+   },
+   {
+    "id": "perf.canvas.phone1.s04boss.src/render/hitfx.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s04boss (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/render/hitfx.js",
+    "detail": "src/render/hitfx.js:28 ← src/render/hitfx.js:60 ×3"
+   },
+   {
+    "id": "perf.canvas.phone1.s05boss.src/render/hitfx.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s05boss (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/render/hitfx.js",
+    "detail": "src/render/hitfx.js:28 ← src/render/hitfx.js:60 ×1"
+   },
+   {
+    "id": "perf.canvas.phone1.s09boss.src/render/hitfx.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s09boss (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/render/hitfx.js",
+    "detail": "src/render/hitfx.js:28 ← src/render/hitfx.js:60 ×2"
+   },
+   {
+    "id": "perf.canvas.phone1.s13boss.src/render/hitfx.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s13boss (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/render/hitfx.js",
+    "detail": "src/render/hitfx.js:28 ← src/render/hitfx.js:60 ×1"
+   },
+   {
+    "id": "perf.canvas.phone1.s15boss.src/render/hitfx.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s15boss (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/render/hitfx.js",
+    "detail": "src/render/hitfx.js:28 ← src/render/hitfx.js:60 ×1"
+   },
+   {
+    "id": "perf.canvas.phone1.ult.kael.src/render/hitfx.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in ult.kael (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/render/hitfx.js",
+    "detail": "src/render/hitfx.js:28 ← src/render/hitfx.js:60 ×6"
+   },
+   {
+    "id": "perf.canvas.phone1.ult.kael.src/render/ultfx.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in ult.kael (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/render/ultfx.js",
+    "detail": "src/render/ultfx.js:117 ← src/render/ultfx.js:383 ×1"
+   },
+   {
+    "id": "perf.canvas.phone1.awaken.kael.src/render/hitfx.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in awaken.kael (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/render/hitfx.js",
+    "detail": "src/render/hitfx.js:28 ← src/render/hitfx.js:60 ×1"
+   },
+   {
+    "id": "perf.canvas.phone1.ult.sera.src/render/hitfx.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in ult.sera (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/render/hitfx.js",
+    "detail": "src/render/hitfx.js:28 ← src/render/hitfx.js:60 ×4"
+   },
+   {
+    "id": "perf.canvas.phone1.ult.sera.src/render/ultfx.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in ult.sera (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/render/ultfx.js",
+    "detail": "src/render/ultfx.js:117 ← src/render/ultfx.js:337 ×1"
+   },
+   {
+    "id": "perf.canvas.phone1.awaken.sera.src/render/hitfx.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in awaken.sera (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/render/hitfx.js",
+    "detail": "src/render/hitfx.js:28 ← src/render/hitfx.js:60 ×1"
+   }
+  ],
+  "occurrenceCount": 118
+ },
+ {
+  "id": "R1-REQ-340R",
+  "title": "Painted kit puff sprite, enemy_kit lazy rig bake, painted b_narkissa / b_chaos / b_grimoire caches and tiles.js dark prop caches create canvases in the first seconds of a fight (270 perf findings: tiles 120, kit 95, enemy_kit 41, b_chaos 6, b_narkissa 6, b_grimoire 2)",
+  "sev": "S3",
+  "bucket": "FIX-RENDER",
+  "pkg": "ART-KIT",
+  "files": [
+   "src/render/painted/kit.js",
+   "src/render/painted/enemy_kit.js",
+   "src/render/painted/bosses/b_narkissa.js",
+   "src/render/painted/bosses/b_chaos.js",
+   "src/render/painted/bosses/b_grimoire.js",
+   "src/render/tiles.js"
+  ],
+  "suite": "perf",
+  "repro": "node tools/qa/perf_budget.mjs --profiles phone1,phone2,tablet,desk,fhd2x,phone1low — see /tmp/claude-0/plan/requests.jsonl line 340 (from QA-TOOLS)",
+  "expected": "request implemented; perf green for this item",
+  "actual": "Canvases created in the first seconds of a fight (after the stage-start bakes): painted kit.js:88 <- kit.js:691 (puff sprite, x5 in s14/s20 boss rooms), kit.js:88 <- b_narkissa.js:587, enemy_kit.js:31 <- enemy_kit.js:445 (x3 in s20 r1, lazy rig bake when an enemy first appears), tiles.js:209 <- :933 and tiles.js:336 <- :644 (dark prop / tile caches), lighting.js:10 <- :27 (glowSprite on first light of a colour), b_common.js:52. Prewarm per room on load (the boss intro is a good place for boss-only caches) and key caches so a direct boss-room entry does not allocate on first hit; c_common scree",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L340",
+   "/tmp/claude-0/qa/round_1/logs/run_all/perf.log",
+   "/tmp/claude-0/qa/round_1/logs/tools/perf_budget.json"
+  ],
+  "hint": "Prewarm per room on load (boss intro for boss-only caches); bake enemy rigs when the room loads.",
+  "source": "request",
+  "requests": [
+   340
+  ],
+  "confirmedThisRound": true,
+  "occurrences": [
+   {
+    "id": "perf.canvas.phone1.s01r1.src/render/painted/enemy_kit.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s01r1 (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/render/painted/enemy_kit.js",
+    "detail": "src/render/painted/enemy_kit.js:31 ← src/render/painted/enemy_kit.js:445 ×1"
+   },
+   {
+    "id": "perf.canvas.phone1.s01boss.src/render/painted/kit.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s01boss (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/render/painted/kit.js",
+    "detail": "src/render/painted/kit.js:88 ← src/render/painted/kit.js:691 ×4"
+   },
+   {
+    "id": "perf.canvas.phone1.s01boss.src/render/tiles.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s01boss (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/render/tiles.js",
+    "detail": "src/render/tiles.js:336 ← src/render/tiles.js:644 ×1"
+   },
+   {
+    "id": "perf.canvas.phone1.s02boss.src/render/painted/kit.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s02boss (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/render/painted/kit.js",
+    "detail": "src/render/painted/kit.js:88 ← src/render/painted/kit.js:691 ×5"
+   },
+   {
+    "id": "perf.canvas.phone1.s02boss.src/render/painted/enemy_kit.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s02boss (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/render/painted/enemy_kit.js",
+    "detail": "src/render/painted/enemy_kit.js:31 ← src/render/painted/enemy_kit.js:445 ×4, src/render/painted/enemy_kit.js:31 ← src/render/painted/enemy_kit.js:378 ×3"
+   },
+   {
+    "id": "perf.canvas.phone1.s02boss.src/render/tiles.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s02boss (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/render/tiles.js",
+    "detail": "src/render/tiles.js:336 ← src/render/tiles.js:644 ×1"
+   },
+   {
+    "id": "perf.canvas.phone1.s03boss.src/render/painted/kit.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s03boss (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/render/painted/kit.js",
+    "detail": "src/render/painted/kit.js:88 ← src/render/painted/kit.js:691 ×9"
+   },
+   {
+    "id": "perf.canvas.phone1.s03boss.src/render/tiles.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s03boss (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/render/tiles.js",
+    "detail": "src/render/tiles.js:336 ← src/render/tiles.js:644 ×1"
+   },
+   {
+    "id": "perf.canvas.phone1.s04boss.src/render/painted/kit.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s04boss (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/render/painted/kit.js",
+    "detail": "src/render/painted/kit.js:88 ← src/render/painted/kit.js:691 ×3"
+   },
+   {
+    "id": "perf.canvas.phone1.s04boss.src/render/tiles.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s04boss (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/render/tiles.js",
+    "detail": "src/render/tiles.js:209 ← src/render/tiles.js:933 ×1, src/render/tiles.js:336 ← src/render/tiles.js:644 ×1"
+   },
+   {
+    "id": "perf.canvas.phone1.s05boss.src/render/painted/kit.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s05boss (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/render/painted/kit.js",
+    "detail": "src/render/painted/kit.js:88 ← src/render/painted/kit.js:691 ×3"
+   },
+   {
+    "id": "perf.canvas.phone1.s05boss.src/render/tiles.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in s05boss (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/render/tiles.js",
+    "detail": "src/render/tiles.js:336 ← src/render/tiles.js:644 ×1"
+   }
+  ],
+  "occurrenceCount": 270
+ },
+ {
+  "id": "R1-REQ-341R",
+  "title": "Render-side gradients rebuilt every frame: background.js:187 (~3/frame) and :102/:126, hero.js:1631 (~0.5-1/frame in almost every room, :1634 in awakenings) and hero_parts.js (:132 in sera ult/awakening; request #341 also names :186/:54/:104) — hub desk p95 over 16, low tier p95 8-12 vs 6",
+  "sev": "S3",
+  "bucket": "FIX-RENDER",
+  "pkg": "GIMMICK-RENDER",
+  "files": [
+   "src/render/background.js",
+   "src/render/hero.js",
+   "src/render/hero_parts.js"
+  ],
+  "suite": "perf",
+  "repro": "node tools/qa/perf_budget.mjs --profiles phone1,phone2,tablet,desk,fhd2x,phone1low — see /tmp/claude-0/plan/requests.jsonl line 341 (from QA-TOOLS)",
+  "expected": "request implemented; perf green for this item",
+  "actual": "New gradients per rendered frame over the §5.2 tier budget (high 16 / medium 10 / low 6): low tier p95 12 in ordinary rooms; desk hub 34/frame; desk s20 boss p95 18 (max 31). Top sites: hero_parts.js:186, :54, :104 (hero body shading, rebuilt per frame per hero), background.js:187 and :102, props.js:14 (x588 in 120 frames of the s20 boss), menu/common.js:797, facades.js:1001. Cache gradients (per colour/size key, translate instead of rebuilding) or bake them into sprites; skip the decorative ones on low tier.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L341",
+   "/tmp/claude-0/qa/round_1/logs/run_all/perf.log",
+   "/tmp/claude-0/qa/round_1/logs/tools/perf_budget.json"
+  ],
+  "hint": "Cache per colour/size key and translate, or bake into sprites; skip decorative gradients on low. background.js is the big one; hero.js/hero_parts.js keep the p95 over the low-tier budget (6) once props.js (R1-REQ-341E) and background.js are fixed.",
+  "source": "request",
+  "requests": [
+   341
+  ],
+  "confirmedThisRound": true,
+  "occurrences": [
+   {
+    "id": "perf.grad.phone1.ult.azel",
+    "step": "perf",
+    "sev": "S3",
+    "title": "15 new gradients per frame (p95) in ult.azel at medium — budget 10",
+    "file": "src/render/background.js",
+    "detail": "top sites: src/render/background.js:187 ×450, src/game/skills.js:321 ×216, src/render/background.js:102 ×150, src/game/skills.js:3021 ×150"
+   },
+   {
+    "id": "perf.grad.phone1.hub",
+    "step": "perf",
+    "sev": "S3",
+    "title": "12 new gradients per frame (p95) in hub at medium — budget 10",
+    "file": "src/render/background.js",
+    "detail": "top sites: src/render/background.js:187 ×180, src/scenes/menu/common.js:797 ×159, src/scenes/town/facades.js:1001 ×120, src/render/background.js:102 ×60"
+   },
+   {
+    "id": "perf.grad.phone2.ult.azel",
+    "step": "perf",
+    "sev": "S3",
+    "title": "15 new gradients per frame (p95) in ult.azel at medium — budget 10",
+    "file": "src/render/background.js",
+    "detail": "top sites: src/render/background.js:187 ×450, src/game/skills.js:321 ×216, src/render/background.js:102 ×150, src/game/skills.js:3021 ×150"
+   },
+   {
+    "id": "perf.grad.phone2.hub",
+    "step": "perf",
+    "sev": "S3",
+    "title": "12 new gradients per frame (p95) in hub at medium — budget 10",
+    "file": "src/render/background.js",
+    "detail": "top sites: src/render/background.js:187 ×180, src/scenes/menu/common.js:797 ×159, src/scenes/town/facades.js:1001 ×120, src/render/background.js:102 ×60"
+   },
+   {
+    "id": "perf.grad.tablet.s15r1",
+    "step": "perf",
+    "sev": "S3",
+    "title": "11 new gradients per frame (p95) in s15r1 at medium — budget 10",
+    "file": "src/render/background.js",
+    "detail": "top sites: src/render/background.js:187 ×180, src/game/props.js:14 ×125, src/game/pickups.js:145 ×110, src/render/background.js:102 ×60"
+   },
+   {
+    "id": "perf.grad.tablet.ult.azel",
+    "step": "perf",
+    "sev": "S3",
+    "title": "15 new gradients per frame (p95) in ult.azel at medium — budget 10",
+    "file": "src/render/background.js",
+    "detail": "top sites: src/render/background.js:187 ×450, src/game/skills.js:321 ×216, src/render/background.js:102 ×150, src/game/skills.js:3021 ×150"
+   },
+   {
+    "id": "perf.grad.tablet.hub",
+    "step": "perf",
+    "sev": "S3",
+    "title": "16 new gradients per frame (p95) in hub at medium — budget 10",
+    "file": "src/render/background.js",
+    "detail": "top sites: src/render/background.js:187 ×180, src/scenes/menu/common.js:797 ×159, src/scenes/town/facades.js:1001 ×120, src/render/background.js:102 ×60"
+   },
+   {
+    "id": "perf.grad.phone1low.s01r1",
+    "step": "perf",
+    "sev": "S3",
+    "title": "9 new gradients per frame (p95) in s01r1 at low — budget 6",
+    "file": "src/render/background.js",
+    "detail": "top sites: src/render/background.js:187 ×180, src/render/background.js:102 ×60, src/game/props.js:14 ×60, src/render/hero.js:1631 ×33"
+   },
+   {
+    "id": "perf.grad.phone1low.s02r1",
+    "step": "perf",
+    "sev": "S3",
+    "title": "8 new gradients per frame (p95) in s02r1 at low — budget 6",
+    "file": "src/render/background.js",
+    "detail": "top sites: src/render/background.js:187 ×180, src/render/background.js:102 ×60, src/game/props.js:14 ×60, src/render/hero.js:1631 ×33"
+   },
+   {
+    "id": "perf.grad.phone1low.s03r1",
+    "step": "perf",
+    "sev": "S3",
+    "title": "9 new gradients per frame (p95) in s03r1 at low — budget 6",
+    "file": "src/render/background.js",
+    "detail": "top sites: src/render/background.js:187 ×180, src/game/props.js:14 ×120, src/render/background.js:102 ×60, src/render/hero.js:1631 ×33"
+   },
+   {
+    "id": "perf.grad.phone1low.s10r1",
+    "step": "perf",
+    "sev": "S3",
+    "title": "9 new gradients per frame (p95) in s10r1 at low — budget 6",
+    "file": "src/render/background.js",
+    "detail": "top sites: src/render/background.js:187 ×180, src/game/props.js:14 ×93, src/render/background.js:102 ×60, src/game/world.js:497 ×60"
+   },
+   {
+    "id": "perf.grad.phone1low.s10boss",
+    "step": "perf",
+    "sev": "S3",
+    "title": "9 new gradients per frame (p95) in s10boss at low — budget 6",
+    "file": "src/render/background.js",
+    "detail": "top sites: src/render/background.js:187 ×360, src/game/props.js:14 ×240, src/render/background.js:102 ×120, src/render/hero.js:1631 ×60"
+   }
+  ],
+  "occurrenceCount": 25
+ },
+ {
+  "id": "R1-REQ-54",
+  "title": "Painted kit.js loadManifest and enemy_kit.js buildRig fetch() directly instead of assets.js (packs, lo/ and the decoded LRU do not apply; R15)",
+  "sev": "S3",
+  "bucket": "FIX-RENDER",
+  "pkg": "ART-KIT",
+  "files": [
+   "src/render/painted/kit.js",
+   "src/render/painted/enemy_kit.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 54, 226 (from PLAT-SAVE-ASSETS)",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "Route painted loading through assets.js so packs, lo/ and the decoded LRU apply (R15): (a) kit.js loadManifest(dir): replace fetch(`${ASSET_ROOT}${dir}/manifest.json?v=…`) with `const m = await assets.json(`${dir}/manifest`); if (!m) throw new Error(...)` (pack-aware; json() resolves null on failure). (b) enemy_kit.js buildRig: replace fetch(base+'rig.json') with assets.json(`painted/enemies/${spec.src}/rig`) and loadImg(base+atlas) with assets.load(`painted/enemies/${spec.src}/${stem}`, man.v) (stem = atlas file name without .webp; EXT painted = webp), then assets.cache.delete(key) after the ",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L54",
+   "/tmp/claude-0/plan/requests.jsonl#L226"
+  ],
+  "hint": "Use assets.json(...) / assets image loaders.",
+  "source": "request",
+  "requests": [
+   54,
+   226
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-215",
+  "title": "ArcadeRunScene.autoPause drops the pause request while an ult/awakening cutscene runs (StageScene defers it)",
+  "sev": "S3",
+  "bucket": "FIX-SCENES-A",
+  "pkg": "PLAT-FRONT-B",
+  "files": [
+   "src/scenes/front/arcade_run.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 215 (from OVERLAYS (verify #2))",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "StageScene.autoPause(): when canPause() is false only because world.cutscene is set (an ultimate/awakening director is running), remember the request (e.g. this._pauseWanted = true) and push 'pause' on the first update() where canPause() is true again (clear it on scene exit / stage clear). Same for ArcadeRunScene.autoPause (src/scenes/front/arcade_run.js, PLAT-FRONT-B). overlays.js now hands a game.autoPause() that arrives during ultCutin/bossIntro to the scene below when the overlay closes (bossIntro already works end-to-end because onDone clears world.cutscene first).",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L215"
+  ],
+  "hint": "Remember the request (_pauseWanted) and push arcadePause on the first update where canPause() holds.",
+  "source": "request",
+  "requests": [
+   215
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-339A",
+  "title": "overlays.js (ult cut-in) and awaken_cutin.js create canvases after stage start",
+  "sev": "S3",
+  "bucket": "FIX-SCENES-A",
+  "pkg": "HOOK-SWEEP",
+  "files": [
+   "src/scenes/overlays.js",
+   "src/scenes/awaken_cutin.js"
+  ],
+  "suite": "perf",
+  "repro": "node tools/qa/perf_budget.mjs --profiles phone1,phone2,tablet,desk,fhd2x,phone1low — see /tmp/claude-0/plan/requests.jsonl line 339 (from QA-TOOLS)",
+  "expected": "request implemented; perf green for this item",
+  "actual": "Canvases created after stage start (feel §8 budget: 0), with call sites 'creator <- caller': skills.js:234 <- :253 (x4-8 per ult) and <- :245; hitfx.js:28 <- :60 (first hit sprite caches); overlays.js:35 <- :277 / :282 (ult cut-in); prompts.js:402 <- :437 (glyph cache on first prompt); menu/common.js:40 <- :64 (hub/menu layer); awaken_directors_b.js:91 <- :99 (x8 during an ult/awakening on phone1 low); awaken_cutin.js:178. Prewarm these caches at stage load / scene enter (or allocate once and reuse), as ultfx/hitfx already do for other sprites.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L339",
+   "/tmp/claude-0/qa/round_1/logs/run_all/perf.log",
+   "/tmp/claude-0/qa/round_1/logs/tools/perf_budget.json"
+  ],
+  "hint": "Allocate the cut-in canvases once (prepareCutin / scene init) and reuse.",
+  "source": "request",
+  "requests": [
+   339
+  ],
+  "confirmedThisRound": true,
+  "occurrences": [
+   {
+    "id": "perf.canvas.phone1.ult.kael.src/scenes/overlays.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in ult.kael (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/scenes/overlays.js",
+    "detail": "src/scenes/overlays.js:35 ← src/scenes/overlays.js:277 ×1, src/scenes/overlays.js:35 ← src/scenes/overlays.js:282 ×1, src/scenes/overlays.js:35 ← src/scenes/overlays.js:253 ×1, src/scenes/overlays.js:35 ← src/scenes/overlays.js:255 ×1"
+   },
+   {
+    "id": "perf.canvas.phone1.ult.sera.src/scenes/overlays.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in ult.sera (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/scenes/overlays.js",
+    "detail": "src/scenes/overlays.js:35 ← src/scenes/overlays.js:282 ×1"
+   },
+   {
+    "id": "perf.canvas.phone1.ult.victor.src/scenes/overlays.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in ult.victor (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/scenes/overlays.js",
+    "detail": "src/scenes/overlays.js:35 ← src/scenes/overlays.js:282 ×1"
+   },
+   {
+    "id": "perf.canvas.phone1.ult.bran.src/scenes/overlays.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in ult.bran (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/scenes/overlays.js",
+    "detail": "src/scenes/overlays.js:35 ← src/scenes/overlays.js:282 ×1"
+   },
+   {
+    "id": "perf.canvas.phone1.ult.lia.src/scenes/overlays.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in ult.lia (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/scenes/overlays.js",
+    "detail": "src/scenes/overlays.js:35 ← src/scenes/overlays.js:282 ×1"
+   },
+   {
+    "id": "perf.canvas.phone1.ult.azel.src/scenes/overlays.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in ult.azel (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/scenes/overlays.js",
+    "detail": "src/scenes/overlays.js:35 ← src/scenes/overlays.js:282 ×1"
+   },
+   {
+    "id": "perf.canvas.phone2.ult.kael.src/scenes/overlays.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in ult.kael (phone2) — pool it at init / bake during load or the boss intro",
+    "file": "src/scenes/overlays.js",
+    "detail": "src/scenes/overlays.js:35 ← src/scenes/overlays.js:277 ×1, src/scenes/overlays.js:35 ← src/scenes/overlays.js:282 ×1, src/scenes/overlays.js:35 ← src/scenes/overlays.js:253 ×1, src/scenes/overlays.js:35 ← src/scenes/overlays.js:255 ×1"
+   },
+   {
+    "id": "perf.canvas.phone2.ult.sera.src/scenes/overlays.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in ult.sera (phone2) — pool it at init / bake during load or the boss intro",
+    "file": "src/scenes/overlays.js",
+    "detail": "src/scenes/overlays.js:35 ← src/scenes/overlays.js:282 ×1"
+   },
+   {
+    "id": "perf.canvas.phone2.ult.victor.src/scenes/overlays.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in ult.victor (phone2) — pool it at init / bake during load or the boss intro",
+    "file": "src/scenes/overlays.js",
+    "detail": "src/scenes/overlays.js:35 ← src/scenes/overlays.js:282 ×1"
+   },
+   {
+    "id": "perf.canvas.phone2.ult.bran.src/scenes/overlays.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in ult.bran (phone2) — pool it at init / bake during load or the boss intro",
+    "file": "src/scenes/overlays.js",
+    "detail": "src/scenes/overlays.js:35 ← src/scenes/overlays.js:282 ×1"
+   },
+   {
+    "id": "perf.canvas.phone2.ult.lia.src/scenes/overlays.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in ult.lia (phone2) — pool it at init / bake during load or the boss intro",
+    "file": "src/scenes/overlays.js",
+    "detail": "src/scenes/overlays.js:35 ← src/scenes/overlays.js:282 ×1"
+   },
+   {
+    "id": "perf.canvas.phone2.ult.azel.src/scenes/overlays.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in ult.azel (phone2) — pool it at init / bake during load or the boss intro",
+    "file": "src/scenes/overlays.js",
+    "detail": "src/scenes/overlays.js:35 ← src/scenes/overlays.js:282 ×1"
+   }
+  ],
+  "occurrenceCount": 36
+ },
+ {
+  "id": "R1-REQ-339B",
+  "title": "menu/common.js Layer creates canvases after stage start (hub/menu layer)",
+  "sev": "S3",
+  "bucket": "FIX-SCENES-B",
+  "pkg": "PLAT-MENU",
+  "files": [
+   "src/scenes/menu/common.js"
+  ],
+  "suite": "perf",
+  "repro": "node tools/qa/perf_budget.mjs --profiles phone1,phone2,tablet,desk,fhd2x,phone1low — see /tmp/claude-0/plan/requests.jsonl line 339 (from QA-TOOLS)",
+  "expected": "request implemented; perf green for this item",
+  "actual": "Canvases created after stage start (feel §8 budget: 0), with call sites 'creator <- caller': skills.js:234 <- :253 (x4-8 per ult) and <- :245; hitfx.js:28 <- :60 (first hit sprite caches); overlays.js:35 <- :277 / :282 (ult cut-in); prompts.js:402 <- :437 (glyph cache on first prompt); menu/common.js:40 <- :64 (hub/menu layer); awaken_directors_b.js:91 <- :99 (x8 during an ult/awakening on phone1 low); awaken_cutin.js:178. Prewarm these caches at stage load / scene enter (or allocate once and reuse), as ultfx/hitfx already do for other sprites.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L339",
+   "/tmp/claude-0/qa/round_1/logs/run_all/perf.log",
+   "/tmp/claude-0/qa/round_1/logs/tools/perf_budget.json"
+  ],
+  "hint": "Pool the Layer canvases at scene init.",
+  "source": "request",
+  "requests": [
+   339
+  ],
+  "confirmedThisRound": true,
+  "occurrences": [
+   {
+    "id": "perf.canvas.phone1.hub.src/scenes/menu/common.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in hub (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/scenes/menu/common.js",
+    "detail": "src/scenes/menu/common.js:40 ← src/scenes/menu/common.js:64 ×1"
+   },
+   {
+    "id": "perf.canvas.phone2.hub.src/scenes/menu/common.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in hub (phone2) — pool it at init / bake during load or the boss intro",
+    "file": "src/scenes/menu/common.js",
+    "detail": "src/scenes/menu/common.js:40 ← src/scenes/menu/common.js:64 ×1"
+   },
+   {
+    "id": "perf.canvas.tablet.hub.src/scenes/menu/common.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in hub (tablet) — pool it at init / bake during load or the boss intro",
+    "file": "src/scenes/menu/common.js",
+    "detail": "src/scenes/menu/common.js:40 ← src/scenes/menu/common.js:64 ×1"
+   },
+   {
+    "id": "perf.canvas.desk.hub.src/scenes/menu/common.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in hub (desk) — pool it at init / bake during load or the boss intro",
+    "file": "src/scenes/menu/common.js",
+    "detail": "src/scenes/menu/common.js:40 ← src/scenes/menu/common.js:64 ×1"
+   },
+   {
+    "id": "perf.canvas.fhd2x.hub.src/scenes/menu/common.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in hub (fhd2x) — pool it at init / bake during load or the boss intro",
+    "file": "src/scenes/menu/common.js",
+    "detail": "src/scenes/menu/common.js:40 ← src/scenes/menu/common.js:64 ×1"
+   },
+   {
+    "id": "perf.canvas.phone1low.hub.src/scenes/menu/common.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in hub (phone1low) — pool it at init / bake during load or the boss intro",
+    "file": "src/scenes/menu/common.js",
+    "detail": "src/scenes/menu/common.js:40 ← src/scenes/menu/common.js:64 ×1"
+   }
+  ],
+  "occurrenceCount": 6
+ },
+ {
+  "id": "R1-REQ-341B",
+  "title": "menu/common.js:797 and town/facades.js:1001 build gradients per frame (hub desk 34/frame)",
+  "sev": "S3",
+  "bucket": "FIX-SCENES-B",
+  "pkg": "PLAT-MENU",
+  "files": [
+   "src/scenes/menu/common.js",
+   "src/scenes/town/facades.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 341 (from QA-TOOLS)",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "New gradients per rendered frame over the §5.2 tier budget (high 16 / medium 10 / low 6): low tier p95 12 in ordinary rooms; desk hub 34/frame; desk s20 boss p95 18 (max 31). Top sites: hero_parts.js:186, :54, :104 (hero body shading, rebuilt per frame per hero), background.js:187 and :102, props.js:14 (x588 in 120 frames of the s20 boss), menu/common.js:797, facades.js:1001. Cache gradients (per colour/size key, translate instead of rebuilding) or bake them into sprites; skip the decorative ones on low tier.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L341"
+  ],
+  "hint": "Cache per colour/size or bake into the layer.",
+  "source": "request",
+  "requests": [
+   341
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-342",
+  "title": "phone1 menu equip tab: 26.7 MB live canvases (budget 20 MB); phone1 low decoded painted textures 24.1 MB (budget 24 MB)",
+  "sev": "S3",
+  "bucket": "FIX-SCENES-B",
+  "pkg": "PLAT-MENU",
+  "files": [
+   "src/scenes/menu/common.js"
+  ],
+  "suite": "perf",
+  "repro": "node tools/qa/perf_budget.mjs --profiles phone1,phone2,tablet,desk,fhd2x,phone1low — see /tmp/claude-0/plan/requests.jsonl line 342 (from QA-TOOLS)",
+  "expected": "request implemented; perf green for this item",
+  "actual": "phone1 (844x390, medium) fresh page, stage s04 + menu equip tab: 26.7 MB of live canvases (budget 20 MB, platform §6.7); phone1 low tier menu also reaches 24.1 MB decoded painted textures vs the 24 MB painted budget. Release/shrink the menu Layer caches (and the turntable/hero caches) to the backing size of the tier.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L342",
+   "/tmp/claude-0/qa/round_1/logs/run_all/perf.log",
+   "/tmp/claude-0/qa/round_1/logs/tools/perf_budget.json"
+  ],
+  "hint": "Release/shrink menu Layer, turntable and hero caches to the tier backing size.",
+  "source": "request",
+  "requests": [
+   342
+  ],
+  "confirmedThisRound": true,
+  "occurrences": [
+   {
+    "id": "perf.livecanvas.phone1",
+    "step": "perf",
+    "sev": "S3",
+    "title": "27.9 MB of live canvases with the menu open on phone1 (budget 20 MB)",
+    "file": "src/scenes/menu/common.js",
+    "detail": ""
+   }
+  ],
+  "occurrenceCount": 1
+ },
+ {
+  "id": "R1-REQ-338S",
+  "title": "skills.js ultimates add their own full-viewport passes on top of ultfx: grade() layers (skills.js:2402-2407, e.g. :2625), direct fillRect(0, 0, vw, vh) overlays (:2761, :2885) and game.flash() calls — the skills.js half of the full-screen pass budget miss (R1-REQ-338)",
+  "sev": "S3",
+  "bucket": "FIX-SYSTEMS",
+  "pkg": "HOOK-SWEEP",
+  "files": [
+   "src/game/skills.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 338 (from QA-TOOLS)",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "Ultimate full-screen passes over the feel §8 budget: during the kael tier-2 ultimate the game canvas gets p95 7 (max 8) extra full-screen fills/blits per frame over the room's own passes on desk/high (budget 3) and p95 5 on phone1 low (budget 1); the awakening adds p95 3 on low (budget 1). Merge flash/tint/vignette layers into one pass per frame and drop to one on low tier.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L338"
+  ],
+  "hint": "Route these tints through the ultfx merged pass (or count them against the tier budget 3/2/1 and drop the decorative ones on medium/low).",
+  "source": "request",
+  "requests": [
+   338
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-339S",
+  "title": "skills.js creates 4-8 canvases per ultimate after stage start (skills.js:234 <- :253/:245)",
+  "sev": "S3",
+  "bucket": "FIX-SYSTEMS",
+  "pkg": "HOOK-SWEEP",
+  "files": [
+   "src/game/skills.js"
+  ],
+  "suite": "perf",
+  "repro": "node tools/qa/perf_budget.mjs --profiles phone1,phone2,tablet,desk,fhd2x,phone1low — see /tmp/claude-0/plan/requests.jsonl line 339 (from QA-TOOLS)",
+  "expected": "request implemented; perf green for this item",
+  "actual": "Canvases created after stage start (feel §8 budget: 0), with call sites 'creator <- caller': skills.js:234 <- :253 (x4-8 per ult) and <- :245; hitfx.js:28 <- :60 (first hit sprite caches); overlays.js:35 <- :277 / :282 (ult cut-in); prompts.js:402 <- :437 (glyph cache on first prompt); menu/common.js:40 <- :64 (hub/menu layer); awaken_directors_b.js:91 <- :99 (x8 during an ult/awakening on phone1 low); awaken_cutin.js:178. Prewarm these caches at stage load / scene enter (or allocate once and reuse), as ultfx/hitfx already do for other sprites.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L339",
+   "/tmp/claude-0/qa/round_1/logs/run_all/perf.log",
+   "/tmp/claude-0/qa/round_1/logs/tools/perf_budget.json"
+  ],
+  "hint": "Pool the ult canvases at init (as ultfx/hitfx do).",
+  "source": "request",
+  "requests": [
+   339
+  ],
+  "confirmedThisRound": true,
+  "occurrences": [
+   {
+    "id": "perf.canvas.phone1.ult.kael.src/game/skills.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in ult.kael (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/game/skills.js",
+    "detail": "src/game/skills.js:234 ← src/game/skills.js:253 ×4, src/game/skills.js:234 ← src/game/skills.js:245 ×1"
+   },
+   {
+    "id": "perf.canvas.phone1.awaken.kael.src/game/skills.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in awaken.kael (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/game/skills.js",
+    "detail": "src/game/skills.js:234 ← src/game/skills.js:245 ×1"
+   },
+   {
+    "id": "perf.canvas.phone1.ult.sera.src/game/skills.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in ult.sera (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/game/skills.js",
+    "detail": "src/game/skills.js:234 ← src/game/skills.js:253 ×6, src/game/skills.js:234 ← src/game/skills.js:245 ×2"
+   },
+   {
+    "id": "perf.canvas.phone1.ult.victor.src/game/skills.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in ult.victor (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/game/skills.js",
+    "detail": "src/game/skills.js:234 ← src/game/skills.js:253 ×8, src/game/skills.js:234 ← src/game/skills.js:245 ×3"
+   },
+   {
+    "id": "perf.canvas.phone1.ult.bran.src/game/skills.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in ult.bran (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/game/skills.js",
+    "detail": "src/game/skills.js:234 ← src/game/skills.js:253 ×9, src/game/skills.js:234 ← src/game/skills.js:245 ×4"
+   },
+   {
+    "id": "perf.canvas.phone1.ult.lia.src/game/skills.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in ult.lia (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/game/skills.js",
+    "detail": "src/game/skills.js:234 ← src/game/skills.js:253 ×10, src/game/skills.js:234 ← src/game/skills.js:245 ×5"
+   },
+   {
+    "id": "perf.canvas.phone1.ult.azel.src/game/skills.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in ult.azel (phone1) — pool it at init / bake during load or the boss intro",
+    "file": "src/game/skills.js",
+    "detail": "src/game/skills.js:234 ← src/game/skills.js:253 ×2, src/game/skills.js:234 ← src/game/skills.js:245 ×1"
+   },
+   {
+    "id": "perf.canvas.phone2.ult.kael.src/game/skills.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in ult.kael (phone2) — pool it at init / bake during load or the boss intro",
+    "file": "src/game/skills.js",
+    "detail": "src/game/skills.js:234 ← src/game/skills.js:253 ×4, src/game/skills.js:234 ← src/game/skills.js:245 ×1"
+   },
+   {
+    "id": "perf.canvas.phone2.awaken.kael.src/game/skills.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in awaken.kael (phone2) — pool it at init / bake during load or the boss intro",
+    "file": "src/game/skills.js",
+    "detail": "src/game/skills.js:234 ← src/game/skills.js:245 ×1"
+   },
+   {
+    "id": "perf.canvas.phone2.ult.sera.src/game/skills.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in ult.sera (phone2) — pool it at init / bake during load or the boss intro",
+    "file": "src/game/skills.js",
+    "detail": "src/game/skills.js:234 ← src/game/skills.js:253 ×6, src/game/skills.js:234 ← src/game/skills.js:245 ×2"
+   },
+   {
+    "id": "perf.canvas.phone2.ult.victor.src/game/skills.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in ult.victor (phone2) — pool it at init / bake during load or the boss intro",
+    "file": "src/game/skills.js",
+    "detail": "src/game/skills.js:234 ← src/game/skills.js:253 ×8, src/game/skills.js:234 ← src/game/skills.js:245 ×3"
+   },
+   {
+    "id": "perf.canvas.phone2.ult.bran.src/game/skills.js",
+    "step": "perf",
+    "sev": "S3",
+    "title": "canvas created after stage start in ult.bran (phone2) — pool it at init / bake during load or the boss intro",
+    "file": "src/game/skills.js",
+    "detail": "src/game/skills.js:234 ← src/game/skills.js:253 ×9, src/game/skills.js:234 ← src/game/skills.js:245 ×4"
+   }
+  ],
+  "occurrenceCount": 42
+ },
+ {
+  "id": "R1-RUN-GRAD-SKILLS",
+  "title": "Ultimate FX in skills.js build up to 20 new gradients per frame at medium (bran ult skills.js:367 x456/150 frames; azel ult skills.js:321 x216, :3021 x150), budget 10",
+  "sev": "S3",
+  "bucket": "FIX-SYSTEMS",
+  "pkg": "HOOK-SWEEP",
+  "files": [
+   "src/game/skills.js"
+  ],
+  "suite": "perf",
+  "repro": "node tools/qa/perf_budget.mjs --profiles phone1 --scenes ult.bran,ult.azel (check phone1.ult.bran.grad)",
+  "expected": "<= 10 new gradients per frame at medium (p95)",
+  "actual": "phone1/phone2/tablet ult.bran p95 20 (max 21), ult.azel p95 15",
+  "evidence": [
+   "/tmp/claude-0/qa/round_1/logs/tools/perf_budget.json",
+   "/tmp/claude-0/qa/round_1/logs/run_all/perf.log"
+  ],
+  "hint": "Cache those ult gradients per colour/size (or draw them from the ultfx sprite pool); skip decorative ones on low",
+  "source": "run",
+  "requests": [],
+  "confirmedThisRound": true,
+  "occurrences": [
+   {
+    "id": "perf.grad.phone1.ult.bran",
+    "step": "perf",
+    "sev": "S3",
+    "title": "20 new gradients per frame (p95) in ult.bran at medium — budget 10",
+    "file": "src/game/skills.js",
+    "detail": "top sites: src/game/skills.js:367 ×456, src/render/background.js:187 ×450, src/render/background.js:102 ×150, src/game/props.js:14 ×99"
+   },
+   {
+    "id": "perf.grad.phone2.ult.bran",
+    "step": "perf",
+    "sev": "S3",
+    "title": "20 new gradients per frame (p95) in ult.bran at medium — budget 10",
+    "file": "src/game/skills.js",
+    "detail": "top sites: src/game/skills.js:367 ×456, src/render/background.js:187 ×450, src/render/background.js:102 ×150, src/game/props.js:14 ×99"
+   },
+   {
+    "id": "perf.grad.tablet.ult.bran",
+    "step": "perf",
+    "sev": "S3",
+    "title": "20 new gradients per frame (p95) in ult.bran at medium — budget 10",
+    "file": "src/game/skills.js",
+    "detail": "top sites: src/game/skills.js:367 ×456, src/render/background.js:187 ×450, src/render/background.js:102 ×150, src/game/props.js:14 ×99"
+   },
+   {
+    "id": "perf.grad.desk.ult.bran",
+    "step": "perf",
+    "sev": "S3",
+    "title": "20 new gradients per frame (p95) in ult.bran at high — budget 16",
+    "file": "src/game/skills.js",
+    "detail": "top sites: src/game/skills.js:367 ×456, src/render/background.js:187 ×450, src/render/background.js:102 ×150, src/game/props.js:14 ×99"
+   },
+   {
+    "id": "perf.grad.fhd2x.ult.bran",
+    "step": "perf",
+    "sev": "S3",
+    "title": "20 new gradients per frame (p95) in ult.bran at high — budget 16",
+    "file": "src/game/skills.js",
+    "detail": "top sites: src/game/skills.js:367 ×456, src/render/background.js:187 ×450, src/render/background.js:102 ×150, src/game/props.js:14 ×99"
+   },
+   {
+    "id": "perf.grad.phone1low.ult.bran",
+    "step": "perf",
+    "sev": "S3",
+    "title": "19 new gradients per frame (p95) in ult.bran at low — budget 6",
+    "file": "src/game/skills.js",
+    "detail": "top sites: src/game/skills.js:367 ×456, src/render/background.js:187 ×450, src/render/background.js:102 ×150, src/game/props.js:14 ×99"
+   }
+  ],
+  "occurrenceCount": 6
+ },
+ {
+  "id": "R1-REQ-344",
+  "title": "test_settings_v2 6c uses portraits/lia as the \"no lo/ variant\" key but assets/lo/portraits/lia.webp now exists (424 pass / 1 fail)",
+  "sev": "S3",
+  "bucket": "FIX-TOOLS",
+  "pkg": "PLAT-SAVE-ASSETS",
+  "files": [
+   "tools/test_settings_v2.mjs"
+  ],
+  "suite": "settings_v2",
+  "repro": "node tools/test_settings_v2.mjs — see /tmp/claude-0/plan/requests.jsonl line 344 (from QA-TOOLS)",
+  "expected": "request implemented; settings_v2 green for this item",
+  "actual": "Test 6c uses LO_MISSING = 'portraits/lia' (line 395) as the key that has no lo/ variant, but DELIVERY-WEB's make_variants now produced assets/lo/portraits/lia.webp, so the fallback check 'lo/ 없는 portraits/lia → 원본으로 대체' fails (424 pass, 1 fail). Use a key that can never exist under assets/lo/ (e.g. a test-only key served by a route, or pick one from assets/lo/index.json's missing list at runtime).",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L344",
+   "/tmp/claude-0/qa/round_1/logs/run_all/settings_v2.log"
+  ],
+  "hint": "Pick a key that can never exist under assets/lo/ (e.g. from assets/lo/index.json missing list at runtime).",
+  "source": "request",
+  "requests": [
+   344
+  ],
+  "confirmedThisRound": true,
+  "occurrences": [
+   {
+    "id": "run_all.settings_v2",
+    "step": "settings_v2",
+    "sev": "S2",
+    "title": "settings_v2 exited 1",
+    "file": "tools/test_settings_v2.mjs",
+    "detail": "▶ saves.loadSettings / saveSettings | ▶ save.js: 계정 훅 (onWrite) · isValidSave | ▶ assets.js: lo/ 선택 · LRU · track · 팩 | ▶ 브라우저 (헤드리스 Chromium) |   ✗ lo/ 없는 portraits/lia → 원본으로 대체 (t:33407/assets/lo/portraits/lia.webp?v=2) | ✗ test_settings_v2: 424 통과, 1 실패"
+   }
+  ],
+  "occurrenceCount": 1
+ },
+ {
+  "id": "R1-REQ-227",
+  "title": "docs/ACCOUNTS.md: dist/web publishing, CSP script-src 'self', deploy flow and the APK /api proxy details are not documented",
+  "sev": "S4",
+  "bucket": "FIX-ACCOUNTS",
+  "pkg": "EXT-ACCOUNTS",
+  "files": [
+   "docs/ACCOUNTS.md"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 227, 318, 326 (from DELIVERY-WEB)",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "Update §5 (정적 사이트 헤더/캐시) and §7 (배포): the site is now published from dist/web built by tools/deploy/build_web.mjs (allowlist; publish = 'dist/web', never the repo root), CSP script-src is 'self' only (no 'unsafe-inline', no Google Fonts), the forced-404 [[redirects]] for /tools /docs /netlify … are gone because those paths are never in dist/web, cache policy = no-cache for index/sw/build.json, immutable for src/bundle/<hash>/, must-revalidate for assets (SW bn-assets-v1 validates by build.json hash). Point the deploy steps and AUTH_PEPPER setup at tools/deploy/README.md §3.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L227",
+   "/tmp/claude-0/plan/requests.jsonl#L318",
+   "/tmp/claude-0/plan/requests.jsonl#L326"
+  ],
+  "hint": "Update §1 (APK proxy, stash expiry, encoded-path rejection), §5, §7.",
+  "source": "request",
+  "requests": [
+   227,
+   318,
+   326
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-317",
+  "title": "cloud.js: use same-origin \"/api\" when window.__BN_APP?.apiProxy (drop dependence on the hard-coded site name in the app)",
+  "sev": "S4",
+  "bucket": "FIX-ACCOUNTS",
+  "pkg": "EXT-ACCOUNTS",
+  "files": [
+   "src/core/cloud.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 317 (from APK-FU)",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "Optional cleanup: in the Android app use the same-origin base '/api' when window.__BN_APP?.apiProxy === true (head_inject sets __BN_APP.apiProxy and __BN_APP.apiBase='/api'), and keep APP_API_BASE only as the fallback when the proxy is off. Today the APK's head_inject fetch wrapper already sends requests for APP_API_BASE (and any other origin listed in apk.json api.aliases) through the /api proxy, so nothing is broken; this removes the dependence on the hard-coded site name inside the app. Keep APP_API_BASE and tools/apk/api_origin.txt pointing at the same site.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L317"
+  ],
+  "hint": "Optional cleanup; keep APP_API_BASE as fallback.",
+  "source": "request",
+  "requests": [
+   317
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-112",
+  "title": "Painted boss hurtbox sign-offs still pending (lead review of #112/#146)",
+  "sev": "S4",
+  "bucket": "FIX-AI-BOSS",
+  "pkg": "FEEL-BOSSHOOKS",
+  "files": [
+   "src/game/bosses/b_common.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 112, 146 (from ART-BOSS-3)",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "Optional hurtbox alignment for the head: headR is 104x72 centred at (hx+cos(ha)*48, hy+sin(ha)*30), i.e. it covers about -4..+100 px along the head axis when horizontal and only up to 66 px above hy when the head points up (bite). The painted cranium spans -57..+134 px along the axis (vector head: jaw tip +123, crown -125), so snout and jaw overhang the box by ~34 px (vector ~23 px) and by ~68 px when the head points up. Suggested: centre at (hx+cos*62, hy+sin*62) and size 128x72 when |cos|>=|sin|, 72x128 otherwise (contacts[0] follows headR, so bite contact reaches ~15-30 px further; re-check",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L112",
+   "/tmp/claude-0/plan/requests.jsonl#L146"
+  ],
+  "hint": "Lead: compare painted silhouettes vs hurtboxes (tools/painted/poses.mjs --debug) and sign off or adjust.",
+  "source": "request",
+  "requests": [
+   112,
+   146
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-185",
+  "title": "fishleap pool scan includes surface cells under a solid ledge: killer_fish leaps through rock",
+  "sev": "S4",
+  "bucket": "FIX-AI-BOSS",
+  "pkg": null,
+  "files": [
+   "src/game/ai_b.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 185 (from MAPS-P2-B (review))",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "AI_B.fishleap (killer_fish, phase:true): init() takes the fish's pool as the whole contiguous liquid run on its surface row (poolL..poolR) without checking that the cell above each surface cell is open, and the leap ignores tiles (phase). In rooms where that row runs under a dry ledge or floor (deep-water rooms), the fish swims under the ledge and leaps straight up through the rock to bite a player standing on it. Suggested fix: in init(), stop the poolL/poolR scan at surface cells whose upper neighbour is solid (world.map.typeAt(x, ty-1) is SOLID/BREAK/unrevealed FAKE), and optionally cap the",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L185"
+  ],
+  "hint": "In init(), stop the poolL/poolR scan where the cell above the surface is solid; clamp leaps to open columns.",
+  "source": "request",
+  "requests": [
+   185
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-196",
+  "title": "c_common screenTint() bakes its edge sprite lazily on first draw (canvas created mid-fight)",
+  "sev": "S4",
+  "bucket": "FIX-AI-BOSS",
+  "pkg": "BOSS-P2-KIT",
+  "files": [
+   "src/game/bosses/c_common.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 196 (from BOSS-P2-3)",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "screenTint(): bake edgeSprite(edge) when the overlay is created (or export a prewarmTint(color) that bosses can call in setup) instead of lazily on the overlay's first draw.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L196"
+  ],
+  "hint": "Bake edgeSprite when the overlay is created or export prewarmTint(color) for boss setup.",
+  "source": "request",
+  "requests": [
+   196
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-334",
+  "title": "a_chimera drawGreenBolt() uses Math.random while rendering",
+  "sev": "S4",
+  "bucket": "FIX-AI-BOSS",
+  "pkg": "ART-BOSS-3",
+  "files": [
+   "src/game/bosses/a_chimera.js"
+  ],
+  "suite": "hook_tags",
+  "repro": "node tools/qa/hook_tags.mjs — see /tmp/claude-0/plan/requests.jsonl line 334 (from QA-TOOLS)",
+  "expected": "request implemented; hook_tags green for this item",
+  "actual": "Math.random() in drawGreenBolt() lines 561-562 (render path). Store the bolt jitter on the projectile in update, or use a hash of (projectile id, age).",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L334",
+   "/tmp/claude-0/qa/round_1/logs/run_all/hook_tags.log",
+   "/tmp/claude-0/qa/round_1/logs/tools/hook_tags.json"
+  ],
+  "hint": "Store bolt jitter on the projectile in update or hash (id, age).",
+  "source": "request",
+  "requests": [
+   334
+  ],
+  "confirmedThisRound": true,
+  "occurrences": [
+   {
+    "id": "draw.rng:src/game/bosses/a_chimera.js:561",
+    "step": "hook_tags",
+    "sev": "S4",
+    "title": "RNG in drawGreenBolt() — rendering consumes gameplay Math.random",
+    "file": "src/game/bosses/a_chimera.js",
+    "line": 561,
+    "detail": ""
+   },
+   {
+    "id": "draw.rng:src/game/bosses/a_chimera.js:562",
+    "step": "hook_tags",
+    "sev": "S4",
+    "title": "RNG in drawGreenBolt() — rendering consumes gameplay Math.random",
+    "file": "src/game/bosses/a_chimera.js",
+    "line": 562,
+    "detail": ""
+   }
+  ],
+  "occurrenceCount": 2
+ },
+ {
+  "id": "R1-REQ-63",
+  "title": "telegraphFor() missing for b_chaos / b_dracula wind-ups (optional readability)",
+  "sev": "S4",
+  "bucket": "FIX-AI-BOSS",
+  "pkg": "ART-BOSS-5",
+  "files": [
+   "src/game/bosses/b_chaos.js",
+   "src/game/bosses/b_dracula.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 63 (from FEEL-BOSSHOOKS)",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "In each attack's windup branch (the parts that set slamWarn/laneWarn or draw warnRect/warnFloor/warnLine/warnBang before the hit), call this.telegraphFor(<remaining windup seconds>) once at the start of the windup (Boss API in boss.js; capped at 1.5 s; this.telegraph = false cancels)",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L63"
+  ],
+  "hint": "Call boss.telegraph / telegraphFor at the start of their big wind-ups like the other bosses.",
+  "source": "request",
+  "requests": [
+   63
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-309",
+  "title": "deathcheck.mjs crashes in its final alpha probe when the bat rig is not preloaded; ingame.mjs only honours attack/slam/fling pose specs",
+  "sev": "S4",
+  "bucket": "FIX-ASSETS",
+  "pkg": "ART-KIT",
+  "files": [
+   "tools/painted/enemies/deathcheck.mjs",
+   "tools/painted/enemies/ingame.mjs"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 309, 310 (from LEAD (ART-ENEMY-3/4 reports))",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "tools/painted/enemies/deathcheck.mjs crashes in its final alpha probe on stages that do not preload the bat rig (bat.draw with an unloaded rig -> TypeError in enemy_kit.pivotPos). Guard the probe or preload bat.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L309",
+   "/tmp/claude-0/plan/requests.jsonl#L310"
+  ],
+  "hint": "Guard/preload the bat rig; generalise pose-spec handling (cast@0.5, pray@0.6).",
+  "source": "request",
+  "requests": [
+   309,
+   310
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-311",
+  "title": "Painted enemy gallery (tools/painted/enemies/gallery.js) lacks CASES for the ART-ENEMY-3/4/5 enemies (they fall back to skeleton cases)",
+  "sev": "S4",
+  "bucket": "FIX-ASSETS",
+  "pkg": "ART-KIT",
+  "files": [
+   "tools/painted/enemies/gallery.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 311 (from LEAD (ART-ENEMY-4 verify))",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "tools/gallery_enemies_b.html (the listed smoke page for Part 1 enemy art) draws only vector RENDER_B; tools/painted/enemies/gallery.js lacks CASES for ART-ENEMY-3/4/5 enemies (they fall back to skeleton cases). Add painted cases so smoke exercises painted art.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L311"
+  ],
+  "hint": "Add painted CASES for the s07-s13 enemies.",
+  "source": "request",
+  "requests": [
+   311
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-98",
+  "title": "Painted QA tools: fight.mjs/bench.mjs throw for bosses without b.main (BossB/BossC), rng.mjs state normalisation, deathcheck hard-coded bat/skeleton",
+  "sev": "S4",
+  "bucket": "FIX-ASSETS",
+  "pkg": "ART-KIT",
+  "files": [
+   "tools/painted/fight.mjs",
+   "tools/painted/bench.mjs",
+   "tools/painted/rng.mjs",
+   "tools/painted/enemies/deathcheck.mjs"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 98, 99, 115, 118, 119, 125, 126, 156, 204, 321, 322 (from ART-BOSS-4)",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "Make the fight loop boss-agnostic: use b.cx instead of b.main.hx (Bone-Dragon field), top up p.hp from p.stats.maxHp (p.stats.hp is undefined, so the player dies and world.respawn refills the boss)",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L98",
+   "/tmp/claude-0/plan/requests.jsonl#L99",
+   "/tmp/claude-0/plan/requests.jsonl#L115",
+   "/tmp/claude-0/plan/requests.jsonl#L118",
+   "/tmp/claude-0/plan/requests.jsonl#L119",
+   "/tmp/claude-0/plan/requests.jsonl#L125",
+   "/tmp/claude-0/plan/requests.jsonl#L126",
+   "/tmp/claude-0/plan/requests.jsonl#L156",
+   "/tmp/claude-0/plan/requests.jsonl#L204",
+   "/tmp/claude-0/plan/requests.jsonl#L321",
+   "/tmp/claude-0/plan/requests.jsonl#L322"
+  ],
+  "hint": "b.main?.hole ?? {}, b.main?.hx ?? b.bx ?? b.cx, skip mid-fight dialogues, invulnerable player; rng.mjs normalise world.time/camera/bg timers/boss rest state.",
+  "source": "request",
+  "requests": [
+   98,
+   99,
+   115,
+   118,
+   119,
+   125,
+   126,
+   156,
+   204,
+   321,
+   322
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-206",
+  "title": "companion_hud.js header comment still documents o.rect = L.companions (now L.companionsDraw / CMP_INK)",
+  "sev": "S4",
+  "bucket": "FIX-COMPANIONS",
+  "pkg": "CMP-UI",
+  "files": [
+   "src/render/companion_hud.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 206 (from HUD-FINAL)",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "hud.js now passes o.x/o.y/o.rect = L.companionsDraw (src/render/hud_layout.js: L.companions inset by the exported CMP_INK {l:8,t:8,r:4} -> 116 x 61.6 at (252,100), so drawCompanionHUD scales the widgets by 0.906) instead of L.companions. Reason: the mount widget's backing disc (r+3.5), riding gold ring and flying-mount stamina arc (r+7) and the guardians' backing disc (r+3) paint up to 8 px left/above and 4 px right of the 128x68 origin box; with L.companions they put ~140 px of ink into the hearts/buff row (y 64-90) in the real-widget pixel check of tools/test_hud_layout.mjs. Please update th",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L206"
+  ],
+  "hint": "Update the contract comment.",
+  "source": "request",
+  "requests": [
+   206
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-237",
+  "title": "Imp meteor / whelp bone-storm projectiles still use built-in renders instead of GR.fxMeteor / fxBone (optional polish)",
+  "sev": "S4",
+  "bucket": "FIX-COMPANIONS",
+  "pkg": "CMP-SYS",
+  "files": [
+   "src/game/guardian.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 237 (from CMP-GUARD-ART-A)",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "Optional polish: the imp meteor projectiles (KIND/skill around line 802, render:'fireball') and the whelp bone-storm shards (around line 883, render:'bone') still use the built-in projectile renders. render/guardians.js already exports matching helpers with the same contract as the wolf phantom: GR.fxMeteor(ctx, pr, world) (ctx translated to the projectile centre; reads pr.vx/pr.vy for the streak direction and pr.scale) and GR.fxBoneShard(ctx, pr, world) (reads pr.t, pr.rot, pr.spin; purple soul-fire glow + spinning painted-style bone). Both return true when drawn. Suggest render: (ctx, pr, w)",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L237"
+  ],
+  "hint": "render: GR.fxMeteor / GR.fxBone like the wolf phantom.",
+  "source": "request",
+  "requests": [
+   237
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-238",
+  "title": "CompanionFigure draws a mount alone without { rider: false }: reins float where a rider hand would be",
+  "sev": "S4",
+  "bucket": "FIX-COMPANIONS",
+  "pkg": "CMP-UI",
+  "files": [
+   "src/scenes/companion_join.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 238 (from CMP-MOUNT-ART-A)",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "When CompanionFigure.draw() draws a mount alone (layer \"all\", no hero between the layers), pass the new opt { rider: false } to both drawMountView calls: drawMountView(ctx, this.mv, \"back\", { rider: false }) / (..., \"front\", { rider: false }). With it src/render/mounts.js hangs the reins over the neck to the pommel and hangs the stirrups short; without it the reins run to where a rider's hand would be (floating in the air). Keep the default (rider: true) when a hero is drawn between the back and front layers.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L238"
+  ],
+  "hint": "Pass { rider: false } to both drawMountView calls when no hero is drawn.",
+  "source": "request",
+  "requests": [
+   238
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-328",
+  "title": "미라 normal shots draw with the generic ice \"shard\" sprite (no AI projRender hook)",
+  "sev": "S4",
+  "bucket": "FIX-COMPANIONS",
+  "pkg": "CMP-SYS",
+  "files": [
+   "src/game/guardian.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 328 (from CMP-GUARD-ART-B)",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "Optional polish (low priority): let a guardian AI supply the renderer of its data-driven 'proj' auto-attack. In the proj runKind (currently `render: s.proj ?? 'orb'`, ~line 507) use e.g. `render: g.ai?.projRender ?? s.proj ?? 'orb'` (or accept a function in s.proj), so CMP-GUARD-AI-B can set MIRRA.projRender = drawMirrorShard (guardian_ai_b.js already has drawMirrorShard -> GB.fxMirrorShard). Today 미라's normal shots (companions.js gd_mirra attack.proj 'shard') draw with projectiles.js's generic ice 'shard' sprite, while her skill shards already use the painted-style mirror shard.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L328"
+  ],
+  "hint": "proj runKind: render: g.ai?.projRender ?? s.proj ?? \"orb\".",
+  "source": "request",
+  "requests": [
+   328
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-350",
+  "title": "Guardian.begin() keeps animT when the anim name repeats: wind-up/strike frames skipped (모모 auto after 협공)",
+  "sev": "S4",
+  "bucket": "FIX-COMPANIONS",
+  "pkg": "CMP-SYS",
+  "files": [
+   "src/game/guardian.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 350 (from CMP-GUARD-ART-B (verify))",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "Low priority: Guardian.begin(name) keeps animT when the anim name is unchanged (setAnim no-op). A new act whose anim equals the lingering one (e.g. 모모 auto-attack right after the 협공 bite, which kindMelee switched to anim attack at the hit; flick() on the frame an attack act ended) is drawn from the old animT, so the renderer skips the wind-up/strike. Suggest: in begin(), when (o.anim ?? name) === this.anim and name !== \"assist\" (assist relies on animT continuing after the 0.12 s dash), set this.animT = 0.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L350"
+  ],
+  "hint": "begin(): reset animT when (o.anim ?? name) === this.anim and name !== \"assist\".",
+  "source": "request",
+  "requests": [
+   350
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-369",
+  "title": "Design note: mt_boar (바르그) jump 700 cannot clear a 3-tile ledge (dismount needed in 38 rooms)",
+  "sev": "S4",
+  "bucket": "FIX-COMPANIONS",
+  "pkg": "CMP-DATA",
+  "files": [
+   "src/data/companions.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 369 (from CMP-QA)",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "Design note, no failure: mt_boar (바르그) move.jump 700 cannot clear a 3-tile ledge (about 796 is needed with the current gravity), so in the mounted-traversal model the boar has to dismount in 38 non-deep rooms (64/108 rooms fully rideable, versus 93 for 그림메인 and 103-104 for the others). If that is not intended, raise jump to about 800, or give it airJumps 1. Otherwise document it as the boar's trade-off in companions §3.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L369"
+  ],
+  "hint": "Design call: jump ~800 or airJumps 1, or document the trade-off in companions §3.",
+  "source": "request",
+  "requests": [
+   369
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-345",
+  "title": "§5.1 delivery row runs `serve_dist.mjs --check-load --offline`, which serve_dist does not implement",
+  "sev": "S4",
+  "bucket": "FIX-DELIVERY",
+  "pkg": "DELIVERY-WEB",
+  "files": [
+   "tools/deploy/serve_dist.mjs"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 345, 356 (from QA-TOOLS)",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "§5.1 lists `node tools/deploy/serve_dist.mjs --check-load --offline`, but serve_dist.mjs is only a server (no such flags; it would block forever). tools/qa/run_all.mjs runs the equivalent checks as `node tools/qa/platform_load.mjs --dist` (load budget) and `node tools/deploy/test_sw.mjs` (offline/update). Either add the two flags to serve_dist.mjs or update the §5.1 row to those commands.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L345",
+   "/tmp/claude-0/plan/requests.jsonl#L356"
+  ],
+  "hint": "Add the two flags to serve_dist.mjs (delegating to platform_load --dist / test_sw) or have the lead update the MASTER_PLAN §5.1 row.",
+  "source": "request",
+  "requests": [
+   345,
+   356
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-323",
+  "title": "Left-handed touch layout: spawn is shifted at most 6 tiles, hero still stands under the skill/ult buttons in s01 r1 (design call)",
+  "sev": "S4",
+  "bucket": "FIX-ENGINE",
+  "pkg": "HOOK-SWEEP",
+  "files": [
+   "src/game/world.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 323 (from HOOK-SWEEP (verify))",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "Follow-up to RESOLVED #91 (left-handed clearStickAtSpawn): the new stickRect() branch returns the right bbox of the bottom-left button cluster (phone1 844x390: x 3..403, y 212..518 logical, viewW 1169), but clearStickAtSpawn still shifts the spawn at most 6 tiles (k <= 6). In s01 r1 the P marker is at tx 1, so the hero stops at tx 7 (x ~225, still under skill1/dash), then settles at x ~345 under the 'ult' button (stepped probe, left-handed, touch mode). Right-handed is unaffected. Clearing the cluster would need ~13 tiles here, which would move the spawn past the tutorial '!' sign and toward t",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L323"
+  ],
+  "hint": "Lead/design: larger cap only for the cluster case (stop before triggers/NPCs) or accept the semi-transparent overlap.",
+  "source": "request",
+  "requests": [
+   323
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-333",
+  "title": "Math.random in draw paths: particles.js drawDmg(), awaken_directors.js draw()",
+  "sev": "S4",
+  "bucket": "FIX-ENGINE",
+  "pkg": "HOOK-SWEEP",
+  "files": [
+   "src/core/particles.js",
+   "src/game/awaken_directors.js"
+  ],
+  "suite": "hook_tags",
+  "repro": "node tools/qa/hook_tags.mjs — see /tmp/claude-0/plan/requests.jsonl line 333 (from QA-TOOLS)",
+  "expected": "request implemented; hook_tags green for this item",
+  "actual": "Math.random() inside draw paths: particles.js:454 drawDmg(), awaken_directors.js:1099 draw(). Precompute the jitter at spawn/update time (store it on the particle/effect) or use a deterministic hash of (id, t) in draw.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L333",
+   "/tmp/claude-0/qa/round_1/logs/run_all/hook_tags.log",
+   "/tmp/claude-0/qa/round_1/logs/tools/hook_tags.json"
+  ],
+  "hint": "Precompute jitter at spawn/update or hash (id, t) in draw.",
+  "source": "request",
+  "requests": [
+   333
+  ],
+  "confirmedThisRound": true,
+  "occurrences": [
+   {
+    "id": "draw.rng:src/core/particles.js:454",
+    "step": "hook_tags",
+    "sev": "S4",
+    "title": "RNG in drawDmg() — rendering consumes gameplay Math.random",
+    "file": "src/core/particles.js",
+    "line": 454,
+    "detail": ""
+   },
+   {
+    "id": "draw.rng:src/game/awaken_directors.js:1099",
+    "step": "hook_tags",
+    "sev": "S4",
+    "title": "RNG in draw() — rendering consumes gameplay Math.random",
+    "file": "src/game/awaken_directors.js",
+    "line": 1099,
+    "detail": ""
+   }
+  ],
+  "occurrenceCount": 2
+ },
+ {
+  "id": "R1-SEED-PLAT",
+  "title": "Moving platforms: platRange/platSpeed are per room only (no per-platform range/speed)",
+  "sev": "S4",
+  "bucket": "FIX-ENGINE",
+  "pkg": "HOOK-SWEEP",
+  "files": [
+   "src/game/world.js"
+  ],
+  "suite": "integration-notes",
+  "repro": "static review",
+  "expected": "fixed",
+  "actual": "world.js:196-197 uses room.platRange ?? 4 / room.platSpeed ?? 80 for every M/V platform in the room",
+  "evidence": [
+   "/tmp/claude-0/integration_notes.md"
+  ],
+  "hint": "world.js loadRoom M/V markers: accept room.platforms?.[i] or a per-marker override {range, speed}; maps keep the room default.",
+  "source": "seed",
+  "requests": [],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-348",
+  "title": "feel_hud.js:428 uses rand() while rendering the combo/style column",
+  "sev": "S4",
+  "bucket": "FIX-HUD",
+  "pkg": "FEEL-HUD",
+  "files": [
+   "src/render/feel_hud.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 348 (from QA-TOOLS)",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "feel_hud.js:428 (called from :572) calls rand()/Math.random while rendering the combo/style column (3 calls in 60 frames of the s05 stress scene). Store the jitter when the value changes (update) instead of per rendered frame.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L348"
+  ],
+  "hint": "Store jitter when the value changes.",
+  "source": "request",
+  "requests": [
+   348
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-92",
+  "title": "Optional touch technique radial (platform §5.5): needs input.queueCommand + a radial module",
+  "sev": "S4",
+  "bucket": "FIX-PLATFORM",
+  "pkg": "HOOK-SWEEP",
+  "files": [
+   "src/core/input.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 92 (from PLAT-TOUCH)",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "Optional (platform §5.5 P2 technique radial): the pad now exposes touchpad.setTechRadial(fn): a 350 ms long-press on ⇄ calls fn({x, y}) (client CSS px) instead of firing swap on release. If you (or the skills owner) add the radial, it needs input.queueCommand(techId) that the player consumes like an entered command; register the radial with touchpad.setTechRadial from the radial module (import { touchpad } from './touchpad.js'). Until then ⇄ always swaps on release (short or long press).",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L92"
+  ],
+  "hint": "Lead decision; optional.",
+  "source": "request",
+  "requests": [
+   92
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-216",
+  "title": "First-hit callout sprites still baked on direct boss-room entry (remainder of #216)",
+  "sev": "S4",
+  "bucket": "FIX-RENDER",
+  "pkg": "FEEL-REACT",
+  "files": [
+   "src/render/hitfx.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 216 (from BOSS-P2-4)",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "Prewarm the shared first-use sprite caches when a stage/boss room starts (e.g. from World init or the bossIntro push): HFX.digitAtlas for the default damage styles (player-hurt and hit styles), the impact.hitVisuals glow/star sprites for the default rim colours, HFX.soft('#ff2040') (impact.js player-hurt flash) and the common callout text sprites. Today a fight entered directly (boss rush, ?room=boss, respawn into a boss room) bakes 4-10 hitfx canvases on the first player hit (measured in the s20, s19 and s18 boss rooms; none come from the boss files).",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L216"
+  ],
+  "hint": "Prewarm common callout sprites with the boss intro.",
+  "source": "request",
+  "requests": [
+   216
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-220",
+  "title": "Optional: solid ledgesOver() helper in painted kit.js",
+  "sev": "S4",
+  "bucket": "FIX-RENDER",
+  "pkg": "ART-KIT",
+  "files": [
+   "src/render/painted/kit.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 220 (from ART-BOSS-6 (verify))",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "Optional: add a solid-platform variant of ledgesOver to kit.js (redraw standable SOLID tile tops: full tile for 1-tile-thick floating platforms, top 28px for pillar/wall tops). b_dagon.js now carries a private copy (platformsOver) because the s16 arena has no one-way ledges and its thin stone platforms/pillar tops were hidden behind the painted body during flood; other P2 arenas with solid platforms could reuse it.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L220"
+  ],
+  "hint": "Optional polish.",
+  "source": "request",
+  "requests": [
+   220
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-337",
+  "title": "ultfx.js:1204 consumes Math.random while rendering (144 calls / 150 frames of the kael ult)",
+  "sev": "S4",
+  "bucket": "FIX-RENDER",
+  "pkg": "FX-ULTKIT",
+  "files": [
+   "src/render/ultfx.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 337 (from QA-TOOLS)",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "ultfx.js:1204 (called from :1225) consumes Math.random while rendering: 144 calls in 150 rendered frames of the kael ultimate. Pre-roll the values when the effect is created/updated.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L337"
+  ],
+  "hint": "Pre-roll values when the effect is created/updated.",
+  "source": "request",
+  "requests": [
+   337
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-71",
+  "title": "render/enemies.js painted branch should use e.camXf ?? ctx.getTransform()",
+  "sev": "S4",
+  "bucket": "FIX-RENDER",
+  "pkg": "FEEL-BOSSHOOKS",
+  "files": [
+   "src/render/enemies.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 71 (from FEEL-REACT)",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "In drawEnemy's painted branch replace `const cam = rig?.ready ? ctx.getTransform() : null;` with `const cam = rig?.ready ? (e.camXf ?? ctx.getTransform()) : null;` (one line). Enemy.draw sets e.camXf = the canvas transform captured just before it applies the hit-reaction transform (hitstop vibration, knockdown lying rotation, lean, tumble spin, squash), and null when no reaction is active.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L71"
+  ],
+  "hint": "Read the cached transform first.",
+  "source": "request",
+  "requests": [
+   71
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-335",
+  "title": "awaken_cutin.js drawBand()/drawTitle() call rand() per rendered frame",
+  "sev": "S4",
+  "bucket": "FIX-SCENES-A",
+  "pkg": "AWAKEN-CORE",
+  "files": [
+   "src/scenes/awaken_cutin.js"
+  ],
+  "suite": "hook_tags",
+  "repro": "node tools/qa/hook_tags.mjs — see /tmp/claude-0/plan/requests.jsonl line 335 (from QA-TOOLS)",
+  "expected": "request implemented; hook_tags green for this item",
+  "actual": "rand()/Math.random in drawBand() (line ~676) and drawTitle() (line ~865). Seed the streak/letter jitter once per cut-in (enter) or per update step instead of per rendered frame.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L335",
+   "/tmp/claude-0/qa/round_1/logs/run_all/hook_tags.log",
+   "/tmp/claude-0/qa/round_1/logs/tools/hook_tags.json"
+  ],
+  "hint": "Seed jitter once per cut-in or per update step.",
+  "source": "request",
+  "requests": [
+   335
+  ],
+  "confirmedThisRound": true,
+  "occurrences": [
+   {
+    "id": "draw.rng:src/scenes/awaken_cutin.js:676",
+    "step": "hook_tags",
+    "sev": "S4",
+    "title": "RNG in drawBand() — rendering consumes gameplay Math.random",
+    "file": "src/scenes/awaken_cutin.js",
+    "line": 676,
+    "detail": ""
+   },
+   {
+    "id": "draw.rng:src/scenes/awaken_cutin.js:865",
+    "step": "hook_tags",
+    "sev": "S4",
+    "title": "RNG in drawTitle() — rendering consumes gameplay Math.random",
+    "file": "src/scenes/awaken_cutin.js",
+    "line": 865,
+    "detail": ""
+   }
+  ],
+  "occurrenceCount": 2
+ },
+ {
+  "id": "R1-REQ-176",
+  "title": "Town ServiceScene has no toastW getter: service-scene toasts are not confined to the panel",
+  "sev": "S4",
+  "bucket": "FIX-SCENES-B",
+  "pkg": "PLAT-TOWN",
+  "files": [
+   "src/scenes/town/common.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 176 (from PLAT-TOWN (verify))",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "drawToasts (the non-HUD branch used by uiScale scenes): honour an optional scene flag toastW (max box width in the scene's coordinates). When set, wrap the toast into at most 2 lines within toastW (or ellipsize to it) and clamp the box centre to [toastX - toastW/2, toastX + toastW/2] instead of only to the screen. Town ServiceScene (common.js) would then set get toastW() { return this.layout().pw - 16 } so toasts stay inside the NPC portrait column.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L176"
+  ],
+  "hint": "ServiceScene: get toastW() { return this.layout().pw - 16; }",
+  "source": "request",
+  "requests": [
+   176
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-212",
+  "title": "tab_equip hint text clipped on both sides at the 720x405 minimum UI layout",
+  "sev": "S4",
+  "bucket": "FIX-SCENES-B",
+  "pkg": "PLAT-TURNTABLE",
+  "files": [
+   "src/scenes/menu/tab_equip.js"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 212 (from PLAT-MENU (verify #2))",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "Minimum UI layout 720x405 (platform §6.2: tablet 1024x768 or desk 1280x720 with 설정 UI 배율 1.5, or a small phone on auto): (1) tab_equip.js line ~372 text(c, '장비를 고르면 능력치 변화를 비교합니다' …, RX + RW / 2, …, align:'center') has no maxWidth/wrap, so it is clipped on both sides of the narrow right panel ('비를 고르면 … 비교합니다' visible); add maxWidth: RW - 24 or wrap it with wrapC/para. (2) The right list rows ellipsize the item name to '+11 …' (the '+11 ' enhance prefix plus the 장착 중 badge leave no room for the name) — at narrow widths drop the '+N ' prefix from the name line (the slot icon already shows +N) o",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L212"
+  ],
+  "hint": "maxWidth: RW - 24 or wrap.",
+  "source": "request",
+  "requests": [
+   212
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-336",
+  "title": "Math.random in render paths: games/common.js render(), town/smith.js renderOver()",
+  "sev": "S4",
+  "bucket": "FIX-SCENES-B",
+  "pkg": "PLAT-GAMES",
+  "files": [
+   "src/scenes/games/common.js",
+   "src/scenes/town/smith.js"
+  ],
+  "suite": "hook_tags",
+  "repro": "node tools/qa/hook_tags.mjs — see /tmp/claude-0/plan/requests.jsonl line 336 (from QA-TOOLS)",
+  "expected": "request implemented; hook_tags green for this item",
+  "actual": "Math.random() in render paths: games/common.js:830 render(), town/smith.js:347 and :415 renderOver(). Move the sparkle/ember randomness into update().",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L336",
+   "/tmp/claude-0/qa/round_1/logs/run_all/hook_tags.log",
+   "/tmp/claude-0/qa/round_1/logs/tools/hook_tags.json"
+  ],
+  "hint": "Move sparkle/ember randomness into update().",
+  "source": "request",
+  "requests": [
+   336
+  ],
+  "confirmedThisRound": true,
+  "occurrences": [
+   {
+    "id": "draw.rng:src/scenes/games/common.js:830",
+    "step": "hook_tags",
+    "sev": "S4",
+    "title": "RNG in render() — rendering consumes gameplay Math.random",
+    "file": "src/scenes/games/common.js",
+    "line": 830,
+    "detail": ""
+   },
+   {
+    "id": "draw.rng:src/scenes/town/smith.js:347",
+    "step": "hook_tags",
+    "sev": "S4",
+    "title": "RNG in renderOver() — rendering consumes gameplay Math.random",
+    "file": "src/scenes/town/smith.js",
+    "line": 347,
+    "detail": ""
+   },
+   {
+    "id": "draw.rng:src/scenes/town/smith.js:415",
+    "step": "hook_tags",
+    "sev": "S4",
+    "title": "RNG in renderOver() — rendering consumes gameplay Math.random",
+    "file": "src/scenes/town/smith.js",
+    "line": 415,
+    "detail": ""
+   }
+  ],
+  "occurrenceCount": 3
+ },
+ {
+  "id": "R1-REQ-1",
+  "title": "gallery_audio.html uses a hard-coded 73-name SFX list (feel and companion sounds missing)",
+  "sev": "S4",
+  "bucket": "FIX-TOOLS",
+  "pkg": null,
+  "files": [
+   "tools/gallery_audio.html"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 1 (from AUDIO-FEEL)",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "Build SFX_NAMES from Object.keys(SFX).filter(n => n !== \"_default\") instead of the hard-coded 73-name list (optionally after import(\"../src/core/audio_companions.js\")), so the 45 feel and 31 companion sounds get buttons and ?spec=1 spectrograms",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L1"
+  ],
+  "hint": "Build SFX_NAMES from Object.keys(SFX).",
+  "source": "request",
+  "requests": [
+   1
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-161",
+  "title": "validate_maps reachability ignores jump-arc headroom (suggestion)",
+  "sev": "S4",
+  "bucket": "FIX-TOOLS",
+  "pkg": "GIMMICK-RENDER",
+  "files": [
+   "tools/validate_maps.mjs"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 161, 181 (from MAPS-P2-C)",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "The reachability BFS jump model ignores arc headroom. It accepts rising up to 5 rows in a free column and then moving 4-6 columns sideways at that height, checking only the two cells at that height, so a 4-column gap with a 3-row rise directly under a solid ceiling passes even though the real arc (jump 760-800 px/s, gravity 2200, one air jump, run 245-305 px/s) hits the ceiling. Example: before MAPS-P2-C fixed it, the s19/r4 link from the row-10 branch (cols 17-23) to the row-7 branch (cols 7-12) under the top path at row 4 validated clean although no hero could make it. Suggestion: for up >= ",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L161",
+   "/tmp/claude-0/plan/requests.jsonl#L181"
+  ],
+  "hint": "Model ceiling headroom in the BFS jump.",
+  "source": "request",
+  "requests": [
+   161,
+   181
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-170",
+  "title": "test_guardians B cases (mirra_reflect, momo_eat) watch only the newest projectile",
+  "sev": "S4",
+  "bucket": "FIX-TOOLS",
+  "pkg": "CMP-SYS",
+  "files": [
+   "tools/test_guardians.mjs"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 170 (from CMP-GUARD-AI-B)",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "B cases mirra_reflect and momo_eat watch only the projectile spawned in the current 0.8 s window, but the passives (correctly) pick the NEAREST enemy projectile within range, and earlier test projectiles (life 3) are still alive and nearer. The cases pass only because the B AIs now start with their passive ready (reflCd/eatCd = 0 on guardian creation), so the first test projectile is taken on its first frame. Make the check robust: record `reflected/eaten` for ANY projectile the case spawned (keep them in an array) or kill the previous projectile before spawning the next one.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L170"
+  ],
+  "hint": "Clear older test projectiles or track the nearest one.",
+  "source": "request",
+  "requests": [
+   170
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-311T",
+  "title": "tools/gallery_enemies_b.html (the §5.1 smoke page for Part 1 enemy art) draws only the vector RENDER_B, so the gallery smoke never exercises painted enemy art",
+  "sev": "S4",
+  "bucket": "FIX-TOOLS",
+  "pkg": null,
+  "files": [
+   "tools/gallery_enemies_b.html"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 311 (from LEAD (ART-ENEMY-4 verify))",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "tools/gallery_enemies_b.html (the listed smoke page for Part 1 enemy art) draws only vector RENDER_B; tools/painted/enemies/gallery.js lacks CASES for ART-ENEMY-3/4/5 enemies (they fall back to skeleton cases). Add painted cases so smoke exercises painted art.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L311"
+  ],
+  "hint": "Add a painted mode (or cases) that draws through render/enemies.js painted branch, like gallery_enemies_c/d.",
+  "source": "request",
+  "requests": [
+   311
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ },
+ {
+  "id": "R1-REQ-371T",
+  "title": "turntable.mjs stick check covers only the status tab",
+  "sev": "S4",
+  "bucket": "FIX-TOOLS",
+  "pkg": "QA-TOOLS",
+  "files": [
+   "tools/qa/turntable.mjs"
+  ],
+  "suite": "requests",
+  "repro": "see /tmp/claude-0/plan/requests.jsonl line 371 (from LEAD (ART-HERO-B report))",
+  "expected": "request implemented (no longer reproduces)",
+  "actual": "Right-stick rotation does not rotate the hero in the equip and class tabs (works in status tab); likely the intro showcase blocks input in src/scenes/menu/hero_view.js. Verify and fix; extend tools/qa/turntable.mjs stick check to equip/class tabs.",
+  "evidence": [
+   "/tmp/claude-0/plan/requests.jsonl#L371"
+  ],
+  "hint": "Extend the right-stick check to the equip and class tabs.",
+  "source": "request",
+  "requests": [
+   371
+  ],
+  "confirmedThisRound": false,
+  "occurrences": [],
+  "occurrenceCount": 0
+ }
+]
