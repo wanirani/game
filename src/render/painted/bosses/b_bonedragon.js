@@ -118,8 +118,9 @@ function drawBoss(ctx, b, world, rig, st) {
   const D = st.D;
   if (st.rig !== rig) { st.rig = rig; st._gm = null; }   // 다시 구운 리그로 바뀜 (텍셀 좌표 캐시 초기화)
   // 설정의 그래픽 품질이 바뀌면(자동 품질 저하 포함) 플래그를 따라간다
-  const qn = world.game?.settings?.quality ?? 'high';
-  if (st.q.name !== qn && !st.qLock) st.q = quality(world.game);
+  // (kit.quality 는 조절기가 정한 실제 등급 game.quality 를 본다 — 설정 기본값 'auto' 여도 폰에서 low/medium 을 따른다)
+  const q = quality(world.game);
+  if (st.q !== q && !st.qLock) st.q = q;
   const now = world.time ?? b.t;
   const dt = st.lt == null ? 1 / 60 : clamp(now - st.lt, 0, 0.05); st.lt = now;
   const A = b.A, floor = A.floor;

@@ -24,10 +24,17 @@ import { isSolidType, T as TT } from '../../core/physics.js';
 // existed this block held self-contained copies; the enemy renderers only use the API exported below, so the swap was
 // local to this file.
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════
-import { makeCanvas, silhouette as kSilhouette, outlined, darkened, bakeDamage, rr, hash1, seeded, textureDensity, nextIdle, sliceStart, quality } from './kit.js';
+import { makeCanvas, spareCanvas, silhouette as kSilhouette, outlined, darkened, bakeDamage, rr, hash1, seeded, textureDensity, nextIdle, sliceStart, quality } from './kit.js';
+import { assets } from '../../core/assets.js';
 
-/** runtime (GPU) canvas — scratch targets and sprites that are drawn every frame */
+/** runtime (GPU) canvas — scratch targets and sprites that are drawn every frame. Taken from the kit's spare pool
+ *  (0×0 canvases made at load / stage & room entry) so a first puff colour or a scratch resize mid-fight creates no
+ *  canvas (feel §8: canvases after stage start = 0) */
 export function mkCanvas(w, h) {
+  return spareCanvas(w, h, false);
+}
+/** bake-time target (the runtime atlas): a fresh canvas, so bakes behind the room fade do not drain the spare pool */
+function bakeTarget(w, h) {
   const c = document.createElement('canvas');
   c.width = Math.max(1, Math.ceil(w)); c.height = Math.max(1, Math.ceil(h));
   return c;
@@ -51,9 +58,6 @@ export const stats = { bakes: 0, bakeMs: 0 };      // cumulative bake work (live
 /** texel density (device px per logical px) the runtime atlas is baked at (kit: canvas scale × quality, oversampled) */
 function chooseTD(srcTD) {
   return textureDensity(game, 1, { min: 1.25, max: Math.min(srcTD, 2.75), over: 1.2 });
-}
-function loadImg(src) {
-  return new Promise((res, rej) => { const i = new Image(); i.decoding = 'async'; i.onload = () => res(i); i.onerror = () => rej(new Error('load ' + src)); i.src = src; });
 }
 
 /** shelf packer for the runtime atlas */
@@ -119,9 +123,14 @@ export function releaseRigs(keepSrcs) {
 }
 
 async function buildRig(rig, spec) {
-  const base = `assets/painted/enemies/${spec.src}/`;
-  const man = await (await fetch(base + 'rig.json')).json();
-  const img = await loadImg(base + (man.atlas ?? 'atlas.webp') + (man.v ? `?v=${man.v}` : ''));
+  // through assets.js (R15): packs, cache busting and the decoded budget apply; the source atlas is dropped from the
+  // cache after the bake (the baked runtime atlas is what stays), like kit.loadRig does for the bosses
+  const dir = `painted/enemies/${spec.src}`;
+  const man = await assets.json(`${dir}/rig`);
+  if (!man?.parts) throw new Error('rig.json missing ' + dir);
+  const akey = `${dir}/${String(man.atlas ?? 'atlas.webp').replace(/\.webp$/, '')}`;
+  const img = await assets.load(akey, man.v);
+  if (!img) throw new Error('load ' + akey);
   if (img.decode) await img.decode().catch(() => {});
   const t0 = performance.now();
   sliceStart();
@@ -183,9 +192,10 @@ async function buildRig(rig, spec) {
     if (!best || r.w * r.h < best.w * best.h) best = { ...r, mw };
   }
   const { w, h } = best.mw === 512 ? best : pack(items, best.mw);   // re-run the winner so item x/y match it
-  const atlas = mkCanvas(w, h), ag = atlas.getContext('2d');
+  const atlas = bakeTarget(w, h), ag = atlas.getContext('2d');
   for (const it of items) { ag.drawImage(it.c, it.x, it.y); it.part.v[it.k] = [it.x, it.y, it.c.width, it.c.height]; it.c.width = it.c.height = 0; }
   rig.atlas = atlas; rig.td = td; rig.srcTD = srcTD; rig.man = man;
+  assets.cache.delete(akey);   // source atlas no longer needed (a re-bake loads it again)
   rig.bytes = w * h * 4;
   rig.bakeMs = performance.now() - t0;
   stats.bakes++; stats.bakeMs += rig.bakeMs;

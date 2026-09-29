@@ -12,7 +12,7 @@
 //   death(표지가 찢겨 날아가고 눈알이 빠져 떨어짐 → 입이 발악 → 턱·책장·등이 흩어져 바닥에 떨어짐, 촉수는 먹물로 녹음)
 // 절차적 그로테스크 층: 촉수(체인 타일) · 입 속 목구멍(어둠 + 보랏빛) · 끈적한 침 줄 · 먹물/피 방울 → 바닥 튐 · 눈꺼풀 · 룬 원(구운 스프라이트) ·
 //   궤도를 도는 채색 낱장 · 보랏빛 불꽃
-import { Drawer, Chain, Strand, Particles, DamageState, Shards, halo, puff, rr, hash1, loadRig, pickVariant, quality, QUALITY, makeCanvas, ledgesOver } from '../kit.js';
+import { Drawer, Chain, Strand, Particles, DamageState, Shards, halo, puff, rr, hash1, loadRig, pickVariant, quality, QUALITY, spareCanvas, ledgesOver } from '../kit.js';
 
 const DIR = 'painted/bosses/b_grimoire';
 // 실제 품질 등급: 설정 기본값은 'auto' 라서 settings.quality 만 보면 폰에서도 늘 'high' 가 된다 → 조절기 결과(game.quality)를 먼저 본다
@@ -64,7 +64,11 @@ const DEF = {
 // ───────────────────────── 모듈 계약 ─────────────────────────
 export default {
   id: 'b_grimoire', kind: 'boss', ownsDeathFade: true,
-  async load(env) { return loadRig(DIR, DEF, env); },
+  async load(env) {
+    const rig = await loadRig(DIR, DEF, env);
+    for (const inner of [false, true]) runeSprite(ARC, inner);   // 기본 룬 원을 로드 때 굽는다; 원소·광폭 색은 처음 쓸 때 예비 캔버스로 (R1-REQ-340R)
+    return rig;
+  },
   init(boss, rig) {
     const tents = [];
     for (let i = 0; i < 4; i++) tents.push({ ch: new Chain(8), P: Array.from({ length: 8 }, () => ({ x: 0, y: 0 })), seed: 1.7 + i * 2.3 });
@@ -126,7 +130,7 @@ function runeSprite(color, inner) {
   let cv = _runes.get(key);
   if (cv) return cv;
   const N = 320, c = N / 2, R = 140;
-  cv = makeCanvas(N, N);
+  cv = spareCanvas(N, N);
   const g = cv.getContext('2d');
   g.strokeStyle = color; g.lineCap = 'round'; g.lineJoin = 'round';
   if (!inner) {

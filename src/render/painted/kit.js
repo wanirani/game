@@ -24,9 +24,10 @@
 //  2) 굽기는 로딩 페이드·보스 등장 연출 뒤에서 (registry.preloadPainted). 첫 전투 프레임에 굽지 않는다.
 //  3) 큰 스프라이트는 ctx.imageSmoothingQuality = 'low' (텍스처를 기기 해상도 근처로 구웠으므로 쌍선형이면 충분).
 //  4) 메모리 예산: 보스 1체 데스크톱 ≈15MB / 폰 ≈6MB (텍셀 밀도를 예산에 맞춰 자동으로 낮춘다).
-import { assets, ASSET_ROOT } from '../../core/assets.js';
+import { assets } from '../../core/assets.js';
 import { rgba } from '../../core/math.js';
-import { T as TILE_T } from '../../core/physics.js';
+import { T as TILE_T, isSolidType } from '../../core/physics.js';
+import { bus } from '../../core/events.js';
 
 export const PAD = 4;              // 외곽선 여유 (텍셀)
 const TAU = Math.PI * 2;
@@ -38,9 +39,13 @@ export const QUALITY = {
   medium: { name: 'medium', particles: 260, strands: 0.6, crackGlow: true, smear: true, halos: true, tdMul: 0.9, ambient: 0.7, flames: 4, tube: 2, ledges: true },
   low: { name: 'low', particles: 120, strands: 0, crackGlow: false, smear: false, halos: false, tdMul: 0.75, ambient: 0.4, flames: 2, tube: 1, ledges: true },
 };
+/**
+ * 실제 품질 등급: 설정 기본값은 'auto' 라서 settings.quality 만 보면 폰에서도 늘 'high' 가 된다 →
+ * 품질 조절기가 정한 game.quality(= game.tier)를 먼저 보고, 없으면(갤러리·도구) 설정값, 그것도 등급이 아니면 high
+ */
 export function quality(game) {
-  const q = game?.settings?.quality ?? 'high';
-  return QUALITY[q] ?? QUALITY.high;
+  const t = game?.quality ?? game?.tier ?? game?.settings?.quality;
+  return QUALITY[t] ?? QUALITY.high;
 }
 /** 폰/태블릿(터치 위주·메모리 적음) 여부 */
 export function isPhone() {
@@ -91,6 +96,31 @@ export function makeCanvas(w, h) {
   return c;
 }
 function ctx2d(c) { return c.getContext('2d', { willReadFrequently: true }); }
+// ── 예비 캔버스 (0×0): 모듈 로드·스테이지/방 진입(로딩 페이드 뒤) 때 만들어 두고, 그리기 도중 처음 쓰는 작은 캐시
+//    (퍼프 색, 룬 원, 거울 유리, 적 렌더러의 작업 캔버스)가 여기서 꺼내 쓴다 → 스테이지 시작 뒤 새 캔버스 0 (feel §8, R1-REQ-340R).
+//    쓰지 않는 예비는 픽셀이 없어 메모리를 먹지 않는다. 비면 그때만 새로 만든다 (드묾)
+const SPARE = [];
+const SPARE_N = 24;
+function fillSpares() {
+  if (typeof document === 'undefined') return;
+  while (SPARE.length < SPARE_N) { const c = document.createElement('canvas'); c.width = 0; c.height = 0; SPARE.push(c); }
+}
+/** 예비 캔버스 하나를 w×h 로 (없으면 새로). 굽기용 makeCanvas 와 같은 CPU 캔버스 속성 (read=false 면 기본 컨텍스트) */
+export function spareCanvas(w, h, read = true) {
+  w = Math.max(1, Math.ceil(w)); h = Math.max(1, Math.ceil(h));
+  const c = SPARE.pop();
+  if (!c) return read ? makeCanvas(w, h) : runtimeCanvas(w, h);
+  c.width = w; c.height = h;
+  c.getContext('2d', read ? { willReadFrequently: true } : undefined);
+  return c;
+}
+function runtimeCanvas(w, h) {
+  if (typeof document === 'undefined') return new OffscreenCanvas(w, h);
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  return c;
+}
+fillSpares();
+if (typeof setTimeout === 'function') setTimeout(() => { bus.on('stageEntered', fillSpares); bus.on('roomEntered', fillSpares); }, 0);
 export function silhouette(src, color) {
   const c = makeCanvas(src.width, src.height), g = ctx2d(c);
   g.drawImage(src, 0, 0); g.globalCompositeOperation = 'source-in'; g.fillStyle = color; g.fillRect(0, 0, c.width, c.height);
@@ -309,10 +339,11 @@ export function nextIdle(sliceMs = 8) {
   });
 }
 export function sliceStart() { _slice = performance.now(); }
+/** 매니페스트 JSON: assets.json 으로 받는다 (묶음 팩·캐시 무효화 규칙을 그대로 따름). 실패하면 예외 → 벡터 대체 */
 export async function loadManifest(dir) {
-  const r = await fetch(`${ASSET_ROOT}${dir}/manifest.json?v=${assets.version}`);
-  if (!r.ok) throw new Error(`painted manifest ${dir}: ${r.status}`);
-  return r.json();
+  const m = await assets.json(`${dir}/manifest`);
+  if (!m) throw new Error(`painted manifest ${dir}: missing`);
+  return m;
 }
 /** 부품 이미지 확보: 아틀라스(assets.js 키 '<dir>/atlas') 또는 부품별 파일 */
 async function loadAtlas(dir, man) {
@@ -660,8 +691,37 @@ export function ledgesOver(ctx, world, x0, y0, x1, y1, h = 28) {
       const on = tx <= tx1 && m.tiles[ty * m.w + tx] === TILE_T.ONEWAY;
       if (on && run < 0) run = tx;
       else if (!on && run >= 0) {
-        per ||= Math.max(1, Math.round((tr.chunk(0, 0)?.width || 16 * S) / S));   // 청크당 타일 수 (tiles.js CHUNK)
+        per ||= tr.chunkTiles ?? Math.max(1, Math.round((tr.chunk(0, 0)?.width || 16 * S) / S));   // 청크당 타일 수 (tiles.js CHUNK)
         n += blitRun(ctx, tr, run, tx - 1, ty, S, h, per); run = -1;
+      }
+    }
+  }
+  return n;
+}
+/**
+ * ledgesOver 의 단단한 발판판 (R1-REQ-220): 딛을 수 있는 단단한 타일 윗면을 타일 청크 그림에서 다시 복사한다.
+ * 한 방향 발판이 없는 경기장(얇은 돌 발판·기둥 꼭대기)에서 크게 칠한 몸통이 딛을 곳을 가리지 않게.
+ * 공중에 뜬 한 칸 두께 발판(위·아래 칸이 비었다)은 칸 전체, 기둥·벽 꼭대기(위 칸만 비었다)는 윗면 h(28)px 만.
+ * 비용: 발판 줄마다 drawImage 1번. ctx 는 카메라(월드) 변환 상태여야 한다.
+ */
+export function solidLedgesOver(ctx, world, x0, y0, x1, y1, h = 28) {
+  const m = world?.map, tr = world?.tiles;
+  if (!m?.tiles || !tr?.chunk || !(x1 > x0) || !(y1 > y0)) return 0;
+  const S = m.pxW / m.w, W = m.w;
+  const tx0 = Math.max(0, Math.floor(x0 / S)), tx1 = Math.min(W - 1, Math.floor(x1 / S));
+  const ty0 = Math.max(1, Math.floor(y0 / S)), ty1 = Math.min(m.h - 2, Math.floor(y1 / S));
+  const T = m.tiles, top = (tx, ty) => isSolidType(T[ty * W + tx]) && !isSolidType(T[(ty - 1) * W + tx]);
+  const kind = (tx, ty) => (!top(tx, ty) ? 0 : isSolidType(T[(ty + 1) * W + tx]) ? 2 : 1);   // 0 없음 · 1 뜬 발판(칸 전체) · 2 기둥 윗면
+  let n = 0, per = 0;
+  for (let ty = ty0; ty <= ty1; ty++) {
+    let run = -1, rk = 0;
+    for (let tx = tx0; tx <= tx1 + 1; tx++) {
+      const k = tx <= tx1 ? kind(tx, ty) : 0;
+      if (k && run < 0) { run = tx; rk = k; }
+      else if (run >= 0 && k !== rk) {
+        per ||= tr.chunkTiles ?? Math.max(1, Math.round((tr.chunk(0, 0)?.width || 16 * S) / S));   // 청크당 타일 수
+        n += blitRun(ctx, tr, run, tx - 1, ty, S, rk === 1 ? S : h, per);
+        run = k ? tx : -1; rk = k;
       }
     }
   }
@@ -683,12 +743,12 @@ function blitRun(ctx, tr, a, b, ty, S, h, per) {
 
 // ───────────────────────── 발광 퍼프 ─────────────────────────
 const _puff = new Map();
-/** 부드러운 원형 퍼프 스프라이트 (색별 1회 생성). core=true 면 흰 심 */
+/** 부드러운 원형 퍼프 스프라이트 (색별 1회 생성, 예비 캔버스 사용 → 싸움 도중 캔버스를 새로 만들지 않음). core=true 면 흰 심 */
 export function puff(color, core = false) {
   const k = color + (core ? '*' : '');
   let cv = _puff.get(k);
   if (!cv) {
-    cv = makeCanvas(64, 64);
+    cv = spareCanvas(64, 64);
     const c = ctx2d(cv), g = c.createRadialGradient(32, 32, 0, 32, 32, 32);
     if (core) { g.addColorStop(0, 'rgba(255,255,255,0.95)'); g.addColorStop(0.16, rgba(color, 0.9)); }
     else g.addColorStop(0, rgba(color, 0.9));

@@ -2,13 +2,13 @@
 // assets are loaded, else the vector hero), re-rendered as a cracked mirror image: silvered glass tint, a moving mirror
 // sheen, a spider-web crack pane (painted, from the shared glass sheet) over the chest and a few void-glass shards
 // orbiting the body. Own atlas = only that glass (0 own Kling images, docs/art/ENEMY_PIPELINE.md §7).
-// Driven by AI_B.shadow (mimics the player half a beat late): the pose comes from render/enemies_c.js reflectionPose
+// Driven by AI_B.shadow (mimics the player half a beat late): the pose comes from render/reflection_pose.js reflectionPose
 // (e.heroAnim / e.mv / e.mvT / dashT), exactly like the vector fallback. hurt = white flash + crack flare; death = the image
 // SHATTERS: the tinted silhouette splits into glass panes that fly apart and fall, with a shard burst.
 import * as K from '../enemy_kit.js';
 import { clamp } from '../../../core/math.js';
 import { drawHero } from '../../hero.js';
-import { reflectionPose } from '../../enemies_c.js';
+import { reflectionPose } from '../../reflection_pose.js';
 
 export const spec = {
   id: 'reflection', tier: 'T2', src: 'reflection',

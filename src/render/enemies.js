@@ -6,10 +6,6 @@
 // 로드 중에 이미 벡터로 보인 개체는 0.3초 크로스페이드로 전환한다. 스테이지 진입 시 해당 스테이지 적 목록을 미리 굽는다.
 // (끄기: 공용 ?painted=0 · window.__paintedOff · settings.painted=false, 적만: window.__paintedEnemies = false — A/B 비교·저사양 대비)
 import { TAU, clamp } from '../core/math.js';
-import { RENDER_A } from './enemies_a.js';
-import { RENDER_B } from './enemies_b.js';
-import { RENDER_C } from './enemies_c.js';   // [hook:p2]
-import { RENDER_D } from './enemies_d.js';   // [hook:p2]
 import { PAINTED_ENEMIES } from './painted/enemies/index.js';
 import { requestRig, refreshRig, releaseRigs } from './painted/enemy_kit.js';
 import { game } from '../core/game.js';
@@ -18,14 +14,29 @@ import { STAGES } from '../data/stages.js';
 import { bus } from '../core/events.js';
 import { paintedEnabled } from './painted/registry.js';
 
-export const ENEMY_RENDER = { ...RENDER_A, ...RENDER_B };
-// 2부(C/D) 병합. 2부 렌더 파일이 순환 import 로 이 모듈보다 늦게 초기화되는 경우(도우미를 보스/적 모듈에서 가져올 때)
-// 최상위에서 읽으면 초기화 전 참조 오류로 게임 전체가 멈추므로, 그때는 첫 그리기에서 다시 합친다.
-let p2Merged = false;
-function mergeP2() {   // [hook:p2]
-  try { Object.assign(ENEMY_RENDER, RENDER_C, RENDER_D); p2Merged = true; } catch { /* 초기화 전 → drawVector 에서 다시 */ }
+// 벡터 렌더러 (enemies_a/b + 2부 enemies_c/d) 는 늦게 받는다 (R1-REQ-229): 이 파일이 정적으로 싣지 않으므로 번들러가 따로
+// 떼어 내 첫 화면 바이트에서 빠질 수 있다 (AI 모듈 ai_*.js 가 PROJ/ZONE 도우미를 정적으로 가져오는 동안은 이미 실린 모듈이라
+// 곧바로 채워진다). 받기 전·실패 시에는 동기 대체 그림(팔레트 타원, drawVector)을 그린다. 합치는 순서는 예전 그대로 A → B → C → D.
+// (동적 import 는 모듈 평가가 끝난 뒤에 풀리므로 예전의 순환 import 초기화 순서 문제(p2Merged)도 없다)
+export const ENEMY_RENDER = {};
+/** 받은 벡터 렌더러 모듈 네임스페이스 (받기 전 null). AI 모듈의 투사체·장판 그리기(PROJ_*·ZONE_* 등)가 정적 import 대신
+ *  ENEMY_VEC.a?.PROJ_A 처럼 쓰는 입구 — 그래야 벡터 렌더러 묶음이 첫 화면 번들에서 빠진다 */
+export const ENEMY_VEC = { a: null, b: null, c: null, d: null };   // [hook:p2] c/d = 2부 렌더러
+let _vecP = null, vecReady = false;
+/** 벡터 적 렌더러 받기 (여러 번 불러도 한 번). → Promise<boolean> (실패하면 다음 방 진입 때 다시 시도) */
+export function loadEnemyRenderers() {
+  _vecP ??= Promise.all([
+    import('./enemies_a.js'), import('./enemies_b.js'),
+    import('./enemies_c.js'),   // [hook:p2] 2부 C
+    import('./enemies_d.js'),   // [hook:p2] 2부 D
+  ]).then(
+    ([a, b, c, d]) => { Object.assign(ENEMY_VEC, { a, b, c, d }); Object.assign(ENEMY_RENDER, a.RENDER_A, b.RENDER_B, c.RENDER_C, d.RENDER_D); vecReady = true; return true; },   // [hook:p2]
+    (err) => { _vecP = null; console.warn('[enemies] 벡터 렌더러를 불러오지 못함 → 대체 그림:', err?.message ?? err); return false; });
+  return _vecP;
 }
-mergeP2();
+/** 벡터 렌더러가 준비됐는가 (갤러리·도구가 기다릴 때: await loadEnemyRenderers()) */
+export const enemyRenderersReady = () => vecReady;
+loadEnemyRenderers();
 
 /** 채색 적 사용 여부: 공용 스위치(?painted=0 · window.__paintedOff · settings.painted=false) + 적 전용 window.__paintedEnemies=false */
 export const paintedEnemiesOn = (game) => globalThis.__paintedEnemies !== false && paintedEnabled(game);
@@ -51,6 +62,7 @@ export function preloadPaintedEnemies(ids) {
 // 다른 스테이지로 넘어가면 새 스테이지가 쓰지 않는 적 리그를 놓아 메모리가 스테이지 하나 분량을 넘지 않게 한다.
 let _stageId = null;
 bus.on('roomEntered', ({ stageId } = {}) => {
+  if (!vecReady) loadEnemyRenderers();   // 이전 받기가 실패했으면 다시 (오프라인 → 복구)
   if (!paintedEnemiesOn(game)) return;
   const ids = STAGES[stageId]?.enemies ?? [];
   if (stageId !== _stageId) { _stageId = stageId; releaseRigs([...paintedModsFor(ids)].map((m) => m.spec.src)); }
@@ -65,7 +77,6 @@ function preloadWorld(world) {
 }
 
 function drawVector(ctx, e, world, flash) {
-  if (!p2Merged) mergeP2();   // [hook:p2]
   const fn = ENEMY_RENDER[e.def.render];
   if (fn) fn(ctx, e, world, { flash });
   else {
@@ -80,7 +91,8 @@ export function drawEnemy(ctx, e, world) {
   if (pm && world && world !== _preWorld) preloadWorld(world);
   const rig = pm ? requestRig(pm.spec) : null;
   ctx.save();
-  const cam = rig?.ready ? ctx.getTransform() : null;   // 카메라 공간 (채색 렌더러의 월드 좌표 파티클용)
+  // 카메라 공간 (채색 렌더러의 월드 좌표 파티클용). Enemy.draw 가 맞음 반응 변환(흔들림·눕기·기울기) 직전에 잡아 둔 e.camXf 를 먼저 쓴다 (R1-REQ-71)
+  const cam = rig?.ready ? (e.camXf ?? ctx.getTransform()) : null;
   ctx.translate(e.cx, e.bottom);
   ctx.scale(e.facing < 0 ? -1 : 1, 1);
   if (e.scale && e.scale !== 1) ctx.scale(e.scale, e.scale);

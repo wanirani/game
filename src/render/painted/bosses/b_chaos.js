@@ -9,7 +9,7 @@
 //   boss { cx, cy, t, st, state, phase, hp/stats.maxHp, flashT, hitPart, core, eyes[{x,y,open,look,dead,hp,laser,part}], shards[{a,r,s,z,rot}],
 //          shadows[{kind,x,y,t,life,warn,d,st,f}], mouth, third, glitch, exposed, dying, _implode, A{floor,x0,x1} }
 // 판정은 바꾸지 않는다: 핵 110×110 (얼굴에 맞춤) · 눈 40×40 (그림 지름 ≈ 40) · 접촉 100×110. 팔·촉수·왕관은 그림만.
-import { Drawer, Particles, Shards, halo, puff, rr, hash1, loadRig, pickVariant, quality, QUALITY, ledgesOver, makeCanvas } from '../kit.js';
+import { Drawer, Particles, Shards, halo, puff, rr, hash1, loadRig, pickVariant, quality, QUALITY, ledgesOver, spareCanvas } from '../kit.js';
 
 const DIR = 'painted/bosses/b_chaos';
 const VIOLET = '#b060ff', VIOLET_L = '#e2c4ff', MAGENTA = '#ff3ad8', VOID = '#07030e';
@@ -44,6 +44,7 @@ export default {
     rig.shardP = names.filter((n) => /^sh\d/.test(n)).map((n) => rig.parts[n]);
     rig.tent = ['tn0', 'tn1', 'tn2', 'tn3', 'tn4', 'tncap'].map((n) => rig.parts[n]).filter(Boolean);
     rig.art = makeArt(rig);
+    vortexSprite(env?.quality?.halos !== false);   // 공허 소용돌이 스프라이트(+ 퍼프 색)를 로드 때 미리 굽는다 (R1-REQ-340R)
     return rig;
   },
   init(b, rig) {
@@ -140,7 +141,7 @@ const _vx = { full: null, dark: null };
 function vortexSprite(full) {
   const key = full ? 'full' : 'dark';
   if (_vx[key]) return _vx[key];
-  const cv = makeCanvas(VX_S, VX_S), c = cv.getContext('2d'), o = VX_S / 2, R = VX_R0;
+  const cv = spareCanvas(VX_S, VX_S), c = cv.getContext('2d'), o = VX_S / 2, R = VX_R0;   // 품질이 도중에 바뀐 드문 경우도 예비 캔버스
   c.globalAlpha = 0.9; c.drawImage(puff(VOID), o - R, o - R, R * 2, R * 2);
   c.globalAlpha = 0.8; c.drawImage(puff('#12052a'), o - R * 0.7, o - R * 0.7, R * 1.4, R * 1.4);
   if (full) {

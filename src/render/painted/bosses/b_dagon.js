@@ -11,8 +11,7 @@
 //          bulbs[{i,alive,grow,hitT,out,sx,sy,tx,ty,lx,ly}], lures, dmg, dash, twitch, dying, dieT, flashT, hitPart, pFace, pGill, pBody, A }
 // 좌표: 벡터 paintBody 와 같은 몸 좌표계 — translate(ox, oy−70) · scale(facing,1) · rotate(rot·π/2) · translate(0,70).
 //   원점 = 상체 밑 수면선, +x = 바라보는 쪽, 위 = −y. 바닥(A.floor) 아래는 잘라 그린다. 판정은 바꾸지 않는다.
-import { Drawer, Particles, Shards, halo, rr, loadRig, pickVariant, quality, QUALITY, makeCanvas, ik2 } from '../kit.js';
-import { isSolidType } from '../../../core/physics.js';
+import { Drawer, Particles, Shards, halo, rr, loadRig, pickVariant, quality, QUALITY, makeCanvas, ik2, solidLedgesOver } from '../kit.js';
 
 const DIR = 'painted/bosses/b_dagon';
 const BIO = '#6fffe8', WATER = '#6fd8ff', ICHOR = '#58ffd8', GILLC = '#ff5a6a', CORAL_L = '#ff9d7e', PALE = '#bff4ff', HEART = '#4aa8ff';
@@ -590,40 +589,8 @@ function frontArm(ctx, D, rig, b, st, s, t, lvl, recOn, V) {
 }
 
 // ───────────────────────── 돌 발판 덧그리기 ─────────────────────────
-/**
- * 딛을 수 있는 단단한 타일 윗면을 타일 청크 그림에서 다시 복사한다 (kit.ledgesOver 의 단단한 발판판).
- * 공중에 뜬 한 칸 두께 발판(위·아래 칸이 비었다)은 칸 전체, 기둥·벽 꼭대기(위 칸만 비었다)는 윗면 28px 만.
- */
-function platformsOver(ctx, world, x0, y0, x1, y1) {
-  const m = world?.map, tr = world?.tiles;
-  if (!m?.tiles || !tr?.chunk || !(x1 > x0) || !(y1 > y0)) return 0;
-  const S = m.pxW / m.w, W = m.w;
-  const tx0 = Math.max(0, Math.floor(x0 / S)), tx1 = Math.min(W - 1, Math.floor(x1 / S));
-  const ty0 = Math.max(1, Math.floor(y0 / S)), ty1 = Math.min(m.h - 2, Math.floor(y1 / S));
-  const T = m.tiles, top = (tx, ty) => isSolidType(T[ty * W + tx]) && !isSolidType(T[(ty - 1) * W + tx]);
-  const kind = (tx, ty) => (!top(tx, ty) ? 0 : isSolidType(T[(ty + 1) * W + tx]) ? 2 : 1);   // 0 없음 · 1 뜬 발판(칸 전체) · 2 기둥 윗면
-  let n = 0, per = 0;
-  for (let ty = ty0; ty <= ty1; ty++) {
-    let run = -1, rk = 0;
-    for (let tx = tx0; tx <= tx1 + 1; tx++) {
-      const k = tx <= tx1 ? kind(tx, ty) : 0;
-      if (k && run < 0) { run = tx; rk = k; }
-      else if (run >= 0 && k !== rk) {
-        const hTile = rk === 1 ? S : 28;
-        per ||= Math.max(1, Math.round((tr.chunk(0, 0)?.width || 16 * S) / S));   // 청크당 타일 수
-        for (let a = run; a <= tx - 1;) {
-          const cx = Math.floor(a / per), cy = Math.floor(ty / per), end = Math.min(tx - 1, cx * per + per - 1), c = tr.chunk(cx, cy);
-          if (!c) break;
-          const sx = (a - cx * per) * S, sy = (ty - cy * per) * S, w = (end - a + 1) * S, hh = Math.min(hTile, c.height - sy);
-          if (w > 0 && hh > 0) { ctx.drawImage(c, sx, sy, w, hh, a * S, ty * S, w, hh); n++; }
-          a = end + 1;
-        }
-        run = k ? tx : -1; rk = k;
-      }
-    }
-  }
-  return n;
-}
+// 딛을 수 있는 단단한 타일 윗면 덧그리기는 kit.solidLedgesOver (예전 이 파일의 platformsOver 를 키트로 옮김, R1-REQ-220)
+const platformsOver = solidLedgesOver;
 
 // ───────────────────────── 균열 발광 ─────────────────────────
 function glowOver(ctx, D, part, lvl, pivot, x, y, rot, sc, a, t, st, deep = false, sxm = 1, sym = 1) {

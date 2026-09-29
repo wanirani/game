@@ -602,7 +602,8 @@ function bakeMirror(f) {
 }
 function makeArt(rig) {
   const R = rig.parts;
-  let M = null;
+  // 벽거울 유리는 로드(굽기) 때 미리 굽는다 → 싸움 도중 캔버스를 만들지 않음 (R1-REQ-340R)
+  let M = R.frame?.gc && R.frame.gr && R.frame.gb ? bakeMirror(R.frame) : null;
   const GD = new Drawer(), GL_L = { x: 0, y: 0, f: 1, rot: 0, c: 1, s: 0, sc: 1, a: 1 };
   const glass = ['deb2', 'blade2', 'deb4', 'blade'].map((n) => R[n]).filter(Boolean);   // 밝은 유리 조각만 (검은 파편은 어두운 배경에서 얼룩처럼 보인다)
   const drawPart = (ctx, p, x, y, rot, kx, ky, alpha) => {

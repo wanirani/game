@@ -22,6 +22,7 @@ import { bus } from '../../core/events.js';
 import { quality, textureDensity, memoryBudgetMB } from './kit.js';
 import { STAGES } from '../../data/stages.js';
 import { REG_PACKAGES } from './reg/index.js';
+import { releaseRigs } from './enemy_kit.js';
 
 /** id → { kind, importer, mod, rig, state:'idle'|'loading'|'ready'|'failed', promise, err } */
 const REG = new Map();
@@ -308,3 +309,26 @@ bus.on('stageEntered', ({ stageId } = {}) => {
   const keep = STAGES[stageId]?.boss;
   for (const [id, e] of REG) if (e.kind === 'boss' && id !== keep && e.state === 'ready') releasePainted(id);
 });
+
+// 전투가 없는 장면(마을·타이틀·월드맵·상점·이야기 …)이 맨 아래에 깔리면 화면에 없는 보스·적의 구운 텍스처를 놓는다
+// (R1-RUN-TEX-TOUCH: 터치 기기 채색 예산 안에 마을 퍼펫·동료가 들어가게). 메뉴·일시정지처럼 스테이지 위에 쌓인 장면은
+// 바닥이 여전히 전투 장면이므로 놓지 않는다 (돌아가면 곧바로 이어 그림). 스테이지로 돌아가면 방 진입 때 다시 굽는다.
+// 동료(탈것·수호수)·NPC 채색은 마을에도 보이므로 유지. 1.5초마다 바닥 장면만 확인 (비용 무시할 만함)
+const FIGHT_SCENES = new Set(['stage', 'bossrush', 'survival', 'practice']);
+let _offBase = null;
+function releaseOffStage() {
+  const g = GAME ?? (typeof window !== 'undefined' ? window.__game : null);
+  const base = g?.scenes?.[0];
+  if (!base) return;
+  if (FIGHT_SCENES.has(base.name)) { _offBase = null; return; }
+  if (base === _offBase) return;
+  const now = performance.now();
+  let pending = false;
+  for (const [id, e] of REG) {
+    if (e.kind !== 'boss' || e.state !== 'ready') continue;
+    if (now - (e.lastDraw ?? 0) > 1000) releasePainted(id); else pending = true;
+  }
+  releaseRigs([]);          // 적 리그 (쓰러지는 중인 시체는 자기 리그를 붙잡고 있어 안전)
+  if (!pending) _offBase = base;   // 이 바닥 장면은 처리 끝 (다음 장면 전환까지 다시 보지 않음)
+}
+if (typeof window !== 'undefined' && typeof setInterval === 'function') setInterval(releaseOffStage, 1500);

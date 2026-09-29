@@ -6,7 +6,7 @@
 //  기믹 게이지(gimmicks.drawScreen → hudLayout().meter(i))와 토스트(game.js → hudLayout().toast(i))는 각자 그린다.
 // prompts.drawGlyph (PLAT-INPUT) — 스킬 슬롯·페이지 안내의 버튼 글리프 (기기별 키캡/패드/터치 아이콘; platform §4.5)
 // 각성 컷인·연출 중(world.hudHidden)에는 HUD 전체를 그리지 않는다 (동료 위젯의 탭 판정 사각형도 비운다).
-import { text, bar, bloodText, prewarmText, font, FONT, COLORS } from '../core/ui.js';
+import { text, bar, bloodText, prewarmText, font, FONT, COLORS, fontEpoch } from '../core/ui.js';
 import { assets } from '../core/assets.js';
 import { fmt, fmtTime, TAU, clamp, rgba } from '../core/math.js';
 import { drawIcon } from './icons.js';
@@ -18,7 +18,7 @@ import { CHARACTERS } from '../data/characters.js';
 import { CLASSES } from '../data/classes.js';
 import { expToNext } from '../game/stats.js';
 import { hudLayout, hudTouch } from './hud_layout.js';
-import { drawComboHUD, drawAnnouncer, drawAwGauge } from './feel_hud.js'; // [hook:feel]
+import { drawComboHUD, drawAnnouncer, drawAwGauge, hudOverflow } from './feel_hud.js'; // [hook:feel]
 import { drawCompanionHUD } from './companion_hud.js'; // [hook:cmp]
 import { drawGlyph, bindingOf, promptMode } from '../core/prompts.js'; // [hook:plat]
 import { input } from '../core/input.js';
@@ -37,31 +37,31 @@ export function drawHUD(ctx, world, vw, vh) {
   const hero = world.hero, run = world.run, st = p.stats;
   const T = hudTouch(); // 휴대폰에서는 작은 글자를 키운다 (캔버스가 0.7배 정도로 축소되어 보임)
   const L = hudLayout(world, vw, vh);
-  const D = globalThis.__hudDbg || {}; // FIXHUD-TMP
   ctx.save();
-  if (!D.portrait) drawPortrait(ctx, L.portrait, hero, p);
-  if (!D.vitals) drawVitals(ctx, L.vitals, hero, p, st, T);
-  if (!D.hearts) drawHeartsRow(ctx, L.hearts, world, run, p);
-  if (!D.skills) drawSkills(ctx, L.skills, hero, p, T);
-  if (!D.ult) drawUltGauge(ctx, L.ult, world, run, T);
+  drawPortrait(ctx, L.portrait, hero, p);
+  drawVitals(ctx, L.vitals, hero, p, st, T);
+  drawHeartsRow(ctx, L.hearts, world, run, p);
+  drawSkills(ctx, L.skills, hero, p, T);
+  drawUltGauge(ctx, L.ult, world, run, T);
   // 각성 게이지 + 준비 문구 칸 L.ready ('필살기 준비!' · '각성 가능!' 모두 FEEL-HUD). SP 막대 위에 빛을 겹치므로 필살 게이지 다음에
-  if (!D.aw) drawAwGauge(ctx, world, L.awGauge.x, L.awGauge.y, L.awGauge.w, T); // [hook:feel]
+  drawAwGauge(ctx, world, L.awGauge.x, L.awGauge.y, L.awGauge.w, T); // [hook:feel]
   // 동료 위젯 (companions §7.1): 칸 L.companions 안쪽 사각형 L.companionsDraw 에 (탑승·기력 고리가 칸 밖 하트 줄을 덮지 않게).
   // 탭 판정용 사각형은 world.companions.hudRects 에 둔다
-  const cr = D.cmp ? null : drawCompanionHUD(ctx, world, cmpOpts(L, T)); // [hook:cmp]
+  const cr = drawCompanionHUD(ctx, world, cmpOpts(L, T)); // [hook:cmp]
   if (world.companions) { if (!cr) NO_RECTS.length = 0; try { world.companions.hudRects = cr || NO_RECTS; } catch { /* 읽기 전용이면 동료 쪽이 직접 관리 */ } } // [hook:cmp]
-  if (!D.score) drawScore(ctx, L.score, world, hero, p, run, T);
-  // 콤보·스타일 열 (L.combo). 튀기기·박힘 첫 프레임은 칸 위·왼쪽으로 잠깐 넘치므로 다른 영역(점수·동료 카드 줄 등) 위에는 그리지 않게 자른다
-  const cc = D.clip ? null : avoidClip(L, 'combo');
+  drawScore(ctx, L.score, world, hero, p, run, T);
+  // 콤보·스타일 열 (L.combo). 튀기기·박힘 첫 프레임은 칸 위·왼쪽으로 잠깐 넘치므로 그동안만 다른 영역(점수·동료 카드 줄 등)을 빼고
+  // 자른다 (feel_hud.hudOverflow). 쉬는 그림은 칸 안에 있으므로 매 프레임 화면 크기 클립을 걸지 않는다 (R1-REQ-330)
+  const cc = hudOverflow(world, 'combo') ? avoidClip(L, 'combo') : null; // [hook:feel]
   if (cc) { ctx.save(); ctx.clip(cc, 'evenodd'); }
-  if (!D.combo) drawComboHUD(ctx, world, vw, vh, T); // [hook:feel]
+  drawComboHUD(ctx, world, vw, vh, T); // [hook:feel]
   if (cc) ctx.restore();
   if (L.bossShown) drawBossBar(ctx, L.bossBar, world.boss);
   // 알림 칸 하나: 배너(스테이지 제목·STAGE CLEAR·LEVEL UP …)가 이긴다. 배너가 없을 때만 알림을 그린다
-  // (알림 단어가 2.2배로 박히는 첫 프레임은 칸 위로 16 px 까지 넘친다 → 토스트 줄·다른 영역은 빼고 자른다)
+  // (알림 단어가 2.2배로 박히는 첫 프레임은 칸 위로 16 px 까지 넘친다 → 그동안만 토스트 줄·다른 영역은 빼고 자른다)
   if (world.banner) drawBanner(ctx, L.transient, world, world.banner);
-  else if (world.style?.ann?.cur && !D.ann) { // [hook:feel]
-    const ac = D.clip ? null : avoidClip(L, 'transient');
+  else if (world.style?.ann?.cur) { // [hook:feel]
+    const ac = hudOverflow(world, 'transient') ? avoidClip(L, 'transient') : null;
     if (ac) { ctx.save(); ctx.clip(ac, 'evenodd'); }
     drawAnnouncer(ctx, world, vw, vh); // [hook:feel]
     if (ac) ctx.restore();
@@ -73,8 +73,9 @@ export function drawHUD(ctx, world, vw, vh) {
  * 연출이 칸 밖으로 잠깐 넘치는 위젯(콤보 열·알림)의 클립: 넘칠 수 있는 범위(REACH)에 걸리는 다른 영역(상시 영역·게이지 줄·토스트 줄·
  * 보스 바·알림 칸)만 화면 전체에서 뺀 경로 (evenodd; 영역끼리는 겹치지 않는다 — tools/test_hud_layout.mjs). 걸리는 영역이 없으면 null
  * (클립 없음). self 칸은 빼지 않으므로 평소 그림은 그대로이고, 넘친 부분 중 다른 영역에 닿는 곳만 잘린다.
- * (배치 L, self)마다 한 번 만든다 — 매 프레임 할당 없음
- *  combo: feel_hud 는 튀기기·랭크 글자·이정표 박힘을 칸 위·왼쪽으로 넘치게 둔다 (재 보니 ≤ 12 px) → 위·왼쪽 32 px, 오른쪽 6 px
+ * (배치 L, self)마다 한 번 만든다 — 매 프레임 할당 없음. 넘치는 연출 중(feel_hud.hudOverflow)에만 건다: 화면 크기 evenodd 경로
+ * 클립은 래스터가 비싸서(휴대폰 DPR 3 에서 프레임당 ~1 ms) 쉬는 프레임마다 걸지 않는다 (R1-REQ-330)
+ *  combo: feel_hud 는 랭크 글자 등장·이정표 박힘을 칸 위·왼쪽으로 넘치게 둔다 (재 보니 ≤ 12 px) → 위·왼쪽 32 px, 오른쪽 6 px
  *  transient: 알림 단어 2.2배 박힘 — feel_hud 클립 (가로 ± 6, 위 16, 아래 6 px)
  */
 const AVOID = ['portrait', 'vitals', 'hearts', 'skills', 'ult', 'awGauge', 'ready', 'companions', 'callouts', 'score', 'combo', 'transient'];
@@ -139,11 +140,11 @@ export function drawHUDPart(ctx, world, vw, vh, part) {
     case 'awGauge': r = drawAwGauge(ctx, world, L.awGauge.x, L.awGauge.y, L.awGauge.w, T); break;
     case 'companions': r = drawCompanionHUD(ctx, world, cmpOpts(L, T)); break;
     case 'score': drawScore(ctx, L.score, world, hero, p, run, T); break;
-    case 'combo': { const cc = avoidClip(L, 'combo'); if (cc) ctx.clip(cc, 'evenodd'); r = drawComboHUD(ctx, world, vw, vh, T); break; }
+    case 'combo': { const cc = hudOverflow(world, 'combo') ? avoidClip(L, 'combo') : null; if (cc) ctx.clip(cc, 'evenodd'); r = drawComboHUD(ctx, world, vw, vh, T); break; }
     case 'boss': if (L.bossShown) drawBossBar(ctx, L.bossBar, world.boss); break;
     case 'transient': {
       if (world.banner) { drawBanner(ctx, L.transient, world, world.banner); r = 'banner'; break; }
-      const ac = avoidClip(L, 'transient'); if (ac) ctx.clip(ac, 'evenodd');
+      const ac = hudOverflow(world, 'transient') ? avoidClip(L, 'transient') : null; if (ac) ctx.clip(ac, 'evenodd');
       r = drawAnnouncer(ctx, world, vw, vh); break;
     }
     default: break;
@@ -152,23 +153,63 @@ export function drawHUDPart(ctx, world, vw, vh, part) {
   return r;
 }
 
+// ── HUD 스프라이트 캐시 (R1-REQ-330) ──
+// 초상화(800×1134 원본)를 매 프레임 원 클립 안에 줄여 그리면 save·clip·restore 와 큰 그림 축소가 프레임마다 든다 → 영웅·레벨·배율·
+// 그림 준비 상태가 바뀔 때만 작은 캔버스에 구워 한 번에 붙인다. 목숨 아이콘·스킬 문장도 같은 방식.
+// 캔버스는 이 모듈을 불러올 때 만든다 (스테이지 도중 새 캔버스 0, MASTER_PLAN §5.2). 굽는 배율 = 지금 HUD 변환의 기기 배율 (0.25 단위 올림).
+const mkCanvas = () => { try { if (typeof document === 'undefined' || !document.createElement) return null; const c = document.createElement('canvas'); c.width = c.height = 1; return c; } catch { return null; } };
+const PORT = { c: mkCanvas(), id: null, iw: 0, col: null, lv: -1, a: 0, ep: -1 };   // 초상화 + 금테 + 레벨 배지 (칸 66×66 + 둘레 1 px)
+const LIFE = { c: mkCanvas(), id: null, iw: 0, col: null, r: 0, a: 0 };           // 점수 칸의 목숨 아이콘
+const SKG = { c: mkCanvas(), keys: ['', ''], a: 0 };  // 스킬 슬롯 2칸의 문장 (38×38 칸 두 개를 가로로)
+export const HUD_SPRITE_STATS = { portraitBakes: 0, lifeBakes: 0, skillBakes: 0 };
+/** 지금 ctx 변환에서 HUD 1 단위가 기기 픽셀 몇 개인가 (0.25 단위로 올림, 1 ~ 4) */
+function hudScale(ctx) {
+  let a = 1;
+  try { const m = ctx.getTransform(); a = Math.hypot(m.a, m.b) || 1; } catch { /* 변환을 못 읽으면 1 */ }
+  return Math.min(4, Math.max(1, Math.ceil(a * 4 - 0.01) / 4));
+}
+/** 캐시 캔버스를 (w×h 논리 px, 배율 a) 로 맞추고 지운 2D 문맥 (변환 = 배율 a) */
+function prepSprite(c, w, h, a) {
+  const W = Math.ceil(w * a), H = Math.ceil(h * a);
+  if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
+  const g = c.getContext('2d');
+  g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, W, H);
+  g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+  g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';   // 큰 초상화를 한 번 줄일 때만 — 품질 우선
+  g.setTransform(a, 0, 0, a, 0, 0);
+  return g;
+}
+
 // ── 왼쪽 위: 초상화 + 레벨 배지 (66×66) ──
 function drawPortrait(ctx, r, hero, p) {
-  const cx = r.x + 33, cy = r.y + 33;
+  const img = assets.get(CHARACTERS[hero.charId]?.portrait);
+  const c = PORT.c;
+  if (!c) { paintPortrait(ctx, r.x, r.y, img, hero, p); return; }
+  const a = hudScale(ctx), K = PORT, iw = img ? img.width * 65536 + img.height : 0, col = p.look?.primary ?? null;
+  if (K.id !== hero.charId || K.iw !== iw || K.col !== col || K.lv !== hero.level || K.a !== a || K.ep !== fontEpoch) {
+    const g = prepSprite(c, 68, 68, a);
+    paintPortrait(g, 1, 1, img, hero, p);
+    K.id = hero.charId; K.iw = iw; K.col = col; K.lv = hero.level; K.a = a; K.ep = fontEpoch;
+    HUD_SPRITE_STATS.portraitBakes++;
+  }
+  ctx.drawImage(c, 0, 0, c.width, c.height, r.x - 1, r.y - 1, c.width / a, c.height / a);
+}
+/** 초상화 한 장을 (x, y) 칸(66×66)에 칠한다 (캐시에 굽거나, 캐시 캔버스가 없으면 화면에 바로) */
+function paintPortrait(ctx, x, y, img, hero, p) {
+  const cx = x + 33, cy = y + 33;
   ctx.save();
   ctx.beginPath(); ctx.arc(cx, cy, 30, 0, TAU); ctx.closePath();
   ctx.fillStyle = '#12060c'; ctx.fill();
   ctx.clip();
-  const img = assets.get(CHARACTERS[hero.charId].portrait);
-  if (img) ctx.drawImage(img, cx - 44, r.y + 3, 88, 88 * (img.height / img.width));
-  else { ctx.fillStyle = p.look.primary ?? '#444'; ctx.fillRect(r.x + 1, r.y + 1, 64, 64); }
+  if (img) ctx.drawImage(img, cx - 44, y + 3, 88, 88 * (img.height / img.width));
+  else { ctx.fillStyle = p.look?.primary ?? '#444'; ctx.fillRect(x + 1, y + 1, 64, 64); }
   ctx.restore();
   ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(cx, cy, 31, 0, TAU); ctx.stroke();
   ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(cx, cy, 32.5, 0, TAU); ctx.stroke();
   // 레벨 배지 (영역 안쪽 오른쪽 아래)
-  ctx.fillStyle = '#5a0a18'; ctx.beginPath(); ctx.arc(r.x + 53, r.y + 53, 12, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#5a0a18'; ctx.beginPath(); ctx.arc(x + 53, y + 53, 12, 0, TAU); ctx.fill();
   ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 1.5; ctx.stroke();
-  text(ctx, hero.level, r.x + 53, r.y + 58, { size: 12, align: 'center', weight: 800, family: FONT.num, color: '#fff' });
+  text(ctx, hero.level, x + 53, y + 58, { size: 12, align: 'center', weight: 800, family: FONT.num, color: '#fff' });
 }
 
 // ── 이름 / HP / MP / EXP (230×50) ──
@@ -262,7 +303,7 @@ function drawSkills(ctx, r, hero, p, T) {
     ctx.strokeStyle = COLORS.goldDark; ctx.lineWidth = 1.5; ctx.strokeRect(x + 0.5, y + 0.5, 37, 37);
     const sk = SKILLS[sid];
     if (sk) {
-      drawSkillGlyph(ctx, sk, x + 19, y + 19, 30);
+      drawSlotGlyph(ctx, i, sid, sk, x, y);
       const cd = p.skillCd[sid] ?? 0;
       if (cd > 0) {
         const f = clamp(cd / (sk.cd || 1), 0, 1);
@@ -394,17 +435,47 @@ function drawBanner(ctx, r, world, bn) {
   ctx.restore();
 }
 
-/** 목숨 아이콘: 영웅 초상화를 작은 원에 */
+/** 목숨 아이콘: 영웅 초상화를 작은 원에 (LIFE 캐시; 영웅·반지름·배율·그림 준비 상태가 바뀔 때만 굽는다) */
 function drawLifeIcon(ctx, x, y, r, hero, p) {
+  const img = assets.get(CHARACTERS[hero.charId]?.portrait);
+  const c = LIFE.c;
+  if (!c) { paintLifeIcon(ctx, x, y, r, img, p); return; }
+  const a = hudScale(ctx), m = r + 1.5, d = m * 2, K = LIFE, iw = img ? img.width * 65536 + img.height : 0, col = p.look?.primary ?? null;
+  if (K.id !== hero.charId || K.iw !== iw || K.col !== col || K.r !== r || K.a !== a) {
+    const g = prepSprite(c, d, d, a);
+    paintLifeIcon(g, m, m, r, img, p);
+    K.id = hero.charId; K.iw = iw; K.col = col; K.r = r; K.a = a;
+    HUD_SPRITE_STATS.lifeBakes++;
+  }
+  ctx.drawImage(c, 0, 0, c.width, c.height, x - m, y - m, c.width / a, c.height / a);
+}
+function paintLifeIcon(ctx, x, y, r, img, p) {
   ctx.save();
   ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fillStyle = '#12060c'; ctx.fill();
   ctx.save(); ctx.clip();
-  const img = assets.get(CHARACTERS[hero.charId]?.portrait);
   if (img) ctx.drawImage(img, x - r * 1.45, y - r * 1.05, r * 2.9, r * 2.9 * (img.height / img.width));
   else { ctx.fillStyle = p.look?.primary ?? '#844'; ctx.fillRect(x - r, y - r, r * 2, r * 2); }
   ctx.restore();
   ctx.strokeStyle = '#ff8a9a'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.stroke();
   ctx.restore();
+}
+
+/** 스킬 슬롯 i 의 문장을 (x + 19, y + 19) 에 30 px 로 — SKG 캐시 (스킬·배율이 바뀔 때만 굽는다; 페이지를 넘기면 다시 굽는다) */
+function drawSlotGlyph(ctx, i, sid, sk, x, y) {
+  const c = SKG.c;
+  if (!c) { drawSkillGlyph(ctx, sk, x + 19, y + 19, 30); return; }
+  const a = hudScale(ctx);
+  if (a !== SKG.a) { SKG.a = a; SKG.keys[0] = SKG.keys[1] = ''; prepSprite(c, 76, 38, a); }
+  if (SKG.keys[i] !== sid) {
+    const g = c.getContext('2d');
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(Math.floor(i * 38 * a), 0, Math.ceil(38 * a) + 1, c.height);
+    g.setTransform(a, 0, 0, a, 0, 0);
+    drawSkillGlyph(g, sk, i * 38 + 19, 19, 30);
+    SKG.keys[i] = sid; HUD_SPRITE_STATS.skillBakes++;
+  }
+  const sx = Math.round(i * 38 * a), sw = Math.round((i + 1) * 38 * a) - sx;
+  ctx.drawImage(c, sx, 0, sw, c.height, x, y, sw / a, c.height / a);
 }
 
 // ── 스킬 문양: 이름의 핵심어로 문장(紋章)을 고르고, 액티브는 원형·패시브는 마름모 바탕 ──

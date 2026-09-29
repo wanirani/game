@@ -35,7 +35,7 @@
 // ── 스프라이트 캐시 (feel §4.10 'brush banner sprite, pre-rendered'; §8·MASTER_PLAN §5.2 '스테이지 도중 새 캔버스 0') ──
 //  캔버스 7장: 콤보 붓 띠 · 알림 붓 띠 · 게이지 광채 · 랭크 글자 묶음(D~SSS + SSS 핏빛) · 알림 단어 묶음(같은 순서)
 //   + 콤보 열 캐시 2장 (R1-REQ-330): NUM = 콤보 숫자(외곽선·랭크 색 그라데이션·기울기, 아래 줄은 흰 번쩍임),
-//     LBL = 랭크 색 밑줄 + 'HITS' + '총 피해 n'. 둘 다 내용(숫자·랭크·SSS 색 단계·총 피해·화면 배율·글꼴 세대)이 바뀔 때만
+//     LBL = 'HITS' + '총 피해 n'. 둘 다 내용(숫자·랭크·SSS 색 단계·총 피해·화면 배율·글꼴 세대)이 바뀔 때만
 //     다시 굽고, 매 프레임은 붙이기만 한다 (쉴 때는 기기 픽셀에 맞춰 1:1 로 붙여 작은 글자도 흐려지지 않는다).
 //  매 프레임 요소마다 save/restore 하지 않는다: 위젯마다 한 번 저장하고, 요소 사이에는 열 기준 변환으로 되돌린다.
 //  콤보 기울기는 콤보 수에서 정해지는 값이다 (그리는 중에 난수를 쓰지 않는다, R1-REQ-348).
@@ -585,6 +585,130 @@ function drawReady(ctx, world, x, y, w, spFull, ready, holdK, now, T) {
 }
 
 // ───────────────────────── 2. 콤보 · 스타일 열 ─────────────────────────
+// 열 좌표: 원점 = 칸 오른쪽 위 (r.x + r.w, r.y), 설계 크기 COL_W × COL_H 를 k 배로 줄여 그린다 (x 는 음수 쪽).
+// 매 프레임 하는 일 (R1-REQ-330): 붓 띠 1장 · 진행 고리 2획 · 랭크 글자 1~2장 · 밑줄 1칠 · NUM 1~2장 · LBL 1장 · 콤보 시간 막대 사각형 몇 개.
+// save/restore 는 위젯마다 한 번이고, 요소 사이에는 열 기준 변환 B 로 되돌린다. 자르기는 넘치는 연출 중에만 건다 (comboSpills).
+const MILE_SLAM = 0.12;                    // 이정표 2 → 1 박힘 시간
+const NUMC = { w: 240, h: 88 };            // NUM 캐시 한 줄 (논리 px; 가운데 = 숫자 회전 중심). 둘째 줄 = 흰 번쩍임
+const LBLC = { x: -178, y: 58, w: 178, h: 52 };   // LBL 캐시가 덮는 열 좌표 영역 ('HITS' 기준선 76 · '총 피해' 기준선 102)
+const NUM_KEY = { str: '', size: 0, rot: NaN, rank: -1, ph: -1, a: 0, ep: -1, w: 0, row: 0 };
+const LBL_KEY = { T: null, dmg: '', a: 0, ep: -1 };
+
+/** 열 기준 변환 B 가 축 정렬(회전·기울임 없음)이고 가로세로 배율이 같은가 → 기기 픽셀에 맞춘 1:1 붙이기를 쓸 수 있다 */
+const axisAligned = (B) => Math.abs(B.b) < 1e-9 && Math.abs(B.c) < 1e-9 && Math.abs(B.a - B.d) < 1e-9 && B.a > 0;
+/** 굽는 배율 = 열 1 단위가 기기 픽셀 몇 개인가 (축 정렬이 아니면 크기 배율의 근사) */
+const devScale = (B) => (axisAligned(B) ? B.a : Math.max(0.5, Math.hypot(B.a, B.b)));
+
+/** NUM 캐시를 (숫자, 크기, 기울기, 랭크, SSS 색 단계, 배율, 글꼴 세대) 에 맞춘다 → 숫자 너비 (논리 px) | 0 = 캐시 캔버스 없음 */
+function numSprite(str, size, rot, rank, ph, a) {
+  const c = SPR.num;
+  if (!c) return 0;
+  const K = NUM_KEY, ep = UI.fontEpoch ?? 0;
+  if (K.str === str && K.size === size && K.rot === rot && K.rank === rank && K.ph === ph && K.a === a && K.ep === ep) return K.w;
+  const row = Math.ceil(NUMC.h * a);
+  const g = prep(c, NUMC.w * a, row * 2);
+  const by = size * 0.36;
+  g.font = font(size, 900, FONT.dmg);
+  g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.lineJoin = 'round';
+  const w0 = g.measureText(str).width || size;
+  const fit = Math.min(1, (NUMC.w - 24) / (w0 + 8));   // 아주 긴 수(다섯 자리 넘게)는 칸에 맞게 줄인다
+  for (let j = 0; j < 2; j++) {
+    g.setTransform(a, 0, 0, a, (NUMC.w / 2) * a, (NUMC.h / 2) * a + j * row);
+    if (rot) g.rotate(rot);
+    if (fit < 1) g.scale(fit, fit);
+    if (j === 0) {
+      g.lineWidth = 7; g.strokeStyle = '#140004'; g.strokeText(str, 0, by);
+      g.fillStyle = numGrad(g, rank, size, ph); g.fillText(str, 0, by);
+    } else { g.fillStyle = '#ffffff'; g.fillText(str, 0, by); }
+  }
+  K.str = str; K.size = size; K.rot = rot; K.rank = rank; K.ph = ph; K.a = a; K.ep = ep; K.w = w0 * fit; K.row = row;
+  FEEL_HUD_STATS.numBakes++;
+  return K.w;
+}
+/** LBL 캐시: 'HITS' + '총 피해 n' (dmg 가 빈 문자열이면 'HITS' 만 — 작은 배치·데미지 숫자 끔·끝나 사라지는 중) */
+function lblSprite(T, dmg, a) {
+  const c = SPR.lbl;
+  if (!c) return false;
+  const K = LBL_KEY, ep = UI.fontEpoch ?? 0;
+  if (K.T === T && K.dmg === dmg && K.a === a && K.ep === ep) return true;
+  const g = prep(c, LBLC.w * a, LBLC.h * a);
+  g.setTransform(a, 0, 0, a, -LBLC.x * a, -LBLC.y * a);   // 열 좌표 그대로 그린다
+  drawLabels(g, T, dmg);
+  K.T = T; K.dmg = dmg; K.a = a; K.ep = ep;
+  FEEL_HUD_STATS.lblBakes++;
+  return true;
+}
+/** 'HITS' · 총 피해 (열 좌표) — LBL 캐시에 굽거나, 캐시 캔버스가 없으면 화면에 바로 그린다 */
+function drawLabels(g, T, dmg) {
+  text(g, 'HITS', NUM_R - 2, 76, { size: T ? 16 : 14, align: 'right', weight: 800, family: FONT.dmg, color: '#ffd0a0', ow: 3 });
+  if (dmg) text(g, dmg, NUM_R - 2, 102, { size: T ? 14 : 12, align: 'right', weight: 700, family: FONT.num, color: '#e8d6c0', ow: 3 });
+}
+/** LBL 캐시를 붙인다 (dy = 끝 연출의 떠오름). 쉴 때는 기기 픽셀에 맞춰 1:1 */
+function blitLabels(ctx, B, dy) {
+  const c = SPR.lbl, a = LBL_KEY.a;
+  if (dy === 0 && axisAligned(B)) {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(c, Math.round(B.e + B.a * LBLC.x), Math.round(B.f + B.d * LBLC.y));
+    ctx.setTransform(B);
+  } else ctx.drawImage(c, 0, 0, c.width, c.height, LBLC.x, LBLC.y + dy, c.width / a, c.height / a);
+}
+
+/**
+ * 콤보 숫자 (오른쪽 끝 NUM_R, 기준선 NUM_BASE + dy): NUM 캐시를 붙인다. 튀기기(pop)는 오른쪽 끝을 기준으로, 기울기는 구울 때 숫자
+ * 가운데를 중심으로 넣었다. flash 0..1 = 흰 번쩍임 (캐시 둘째 줄). 캐시 캔버스가 없으면 예전처럼 바로 그린다 (drawNumber)
+ */
+function drawNumberSpr(ctx, B, str, size, rot, pop, flash, rank, now, dy = 0) {
+  if (!str) return;
+  const w = numSprite(str, size, rot, rank, numPhase(rank, now), devScale(B));
+  if (!w) { drawNumber(ctx, str, size, -1, rot, pop, flash, rank, now, dy); return; }
+  const c = SPR.num, a = NUM_KEY.a, row = NUM_KEY.row, cw = c.width;
+  const cx = NUM_R - (pop * w) / 2, cy = NUM_BASE - size * 0.36 + dy;   // 회전 중심 (구운 줄의 가운데)
+  const x = cx - (pop * NUMC.w) / 2, y = cy - (pop * NUMC.h) / 2;
+  const snap = pop === 1 && dy === 0 && axisAligned(B);
+  if (snap) {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    const dx = Math.round(B.e + B.a * x), dyy = Math.round(B.f + B.d * y);
+    ctx.drawImage(c, 0, 0, cw, row, dx, dyy, cw, row);
+    if (flash > 0) { const ga = ctx.globalAlpha; ctx.globalAlpha = ga * flash; ctx.drawImage(c, 0, row, cw, row, dx, dyy, cw, row); ctx.globalAlpha = ga; }
+    ctx.setTransform(B);
+    return;
+  }
+  const dw = (pop * cw) / a, dh = (pop * row) / a;
+  ctx.drawImage(c, 0, 0, cw, row, x, y, dw, dh);
+  if (flash > 0) { const ga = ctx.globalAlpha; ctx.globalAlpha = ga * flash; ctx.drawImage(c, 0, row, cw, row, x, y, dw, dh); ctx.globalAlpha = ga; }
+}
+
+/** 이번 프레임에 콤보 열이 칸 밖으로 넘치는 연출 중인가: 랭크 글자 등장(1.6 → 1) · 이정표 박힘(2 → 1). 그 밖의 그림은 칸 안에 있다 */
+function comboSpills(s, now, calm, mile) {
+  if (calm) return false;
+  return now - s.rankRt < RANKUP_T + 1 / 60 || (mile && now - s.mileRt < MILE_SLAM + 1 / 60);
+}
+const ANN_SPILL_T = Math.max(SLAM_T, CHROMA_T) + 1 / 60;   // 알림 단어 박힘·색수차 (칸 위 16 px 까지 넘친다)
+
+/**
+ * 이번 프레임에 위젯이 제 칸 밖으로 넘치는 연출 중인가 (which = 'combo' | 'transient'). hud.js 는 true 일 때만 다른 영역을 빼는
+ * 클립을 건다 — 쉬는 그림은 칸 안에 있으므로 매 프레임 자르지 않는다 (R1-REQ-330). 콤보는 이 프레임의 콤보·랭크 변화를 먼저
+ * 반영한다 (drawComboHUD 가 같은 프레임에 다시 반영해도 바뀌는 것이 없다).
+ */
+export function hudOverflow(world, which) {
+  if (!world || calmOf(world)) return false;
+  const now = nowOf(world);
+  if (which === 'combo') {
+    if (!world.combo) return false;
+    const s = stateOf(world);
+    track(world, s, now);
+    return comboSpills(s, now, false, s.mile > 0 && now - s.mileRt < MILE_T && s.n > 0);
+  }
+  if (which === 'transient') {
+    const cur = world.style?.ann?.cur;
+    if (!cur) return false;
+    const s = STATE.get(world);
+    const tA = s && s.annRef === cur ? now - s.annRt : Number(cur.age) || 0;
+    return tA < ANN_SPILL_T;
+  }
+  return false;
+}
+
 export function drawComboHUD(ctx, world, vw, vh, touch) {
   const c = world?.combo;
   if (!c || !ctx) return false;
@@ -603,82 +727,77 @@ export function drawComboHUD(ctx, world, vw, vh, touch) {
   let k = Math.min(1, r.w / COL_W, r.h / COL_H);
   if (k < 0.7) { small = true; k = Math.min(1, r.w / COL_W, r.h / COL_H_SMALL); }
   const calm = calmOf(world);
+  const T = !!touch;   // 휴대폰: 캔버스가 0.7배쯤으로 줄어 보이므로 작은 글자('HITS'·'총 피해')를 키운다
   ctx.save();
   ctx.translate(r.x + r.w, r.y);
   if (k !== 1) ctx.scale(k, k);
-  // 칸 아래·오른쪽으로는 절대 그리지 않는다 (튀기기·박힘 연출 중에도; 터치 y 297 한계·패드 보호). 위·왼쪽은 잠깐 넘쳐도 된다
-  ctx.beginPath(); ctx.rect(-COL_W - 200, -200, COL_W + 200 + 6, 200 + r.h / k); ctx.clip();
-  // 겹치는 순서: 붓 띠 → 랭크 글자 → 숫자·HITS·막대 → 이정표. SS·SSS 글자는 넓어서 붓 띠 왼쪽 끝과 겹치므로
+  const B = ctx.getTransform();
+  // 칸 아래·오른쪽으로는 그리지 않는다 (터치 y 297 한계·패드 보호). 쉬는 그림은 칸 안에 있으므로 넘치는 연출 중에만 자른다
+  if (comboSpills(s, now, calm, mile)) { ctx.beginPath(); ctx.rect(-COL_W - 200, -200, COL_W + 200 + 6, 200 + r.h / k); ctx.clip(); }
+  // 겹치는 순서: 붓 띠 → 랭크 글자 → 밑줄 → 숫자 → HITS·총 피해 → 막대 → 이정표. SS·SSS 글자는 넓어서 붓 띠 왼쪽 끝과 겹치므로
   // 글자를 띠 위에 그린다 (띠를 나중에 그리면 마지막 S 가 붓 자국에 덮인다)
   if (n >= 2) drawComboBanner(ctx, s, now, calm);
-  if (rank > 0) {   // 콤보가 끊긴 뒤 식어 가는 랭크는 조금 흐리게
-    if (n < 2) { ctx.save(); ctx.globalAlpha *= 0.7; drawRankLetter(ctx, style, s, rank, now, calm); ctx.restore(); }
-    else drawRankLetter(ctx, style, s, rank, now, calm);
-  }
-  const T = !!touch;   // 휴대폰: 캔버스가 0.7배쯤으로 줄어 보이므로 작은 글자('HITS'·'총 피해')를 키운다
-  if (n >= 2) drawComboBlock(ctx, world, c, s, rank, now, small, calm, T);
-  else if (ending) {
-    const t = (now - s.endRt) / END_T;
-    ctx.save();
-    ctx.globalAlpha *= (1 - t) * (1 - t);
-    ctx.translate(0, -10 * t);
-    drawNumber(ctx, s.endStr, s.endSize, s.endW, calm ? 0 : s.endRot, 1, 0, rank, now);
-    text(ctx, 'HITS', NUM_R - 2, 76, { size: T ? 16 : 14, align: 'right', weight: 800, family: FONT.dmg, color: '#ffd0a0', ow: 3 });
-    ctx.restore();
-  }
-  if (mile) drawMilestone(ctx, s, now, small, calm);
+  if (rank > 0) drawRankLetter(ctx, B, style, s, rank, now, calm, n < 2 ? 0.7 : 1);   // 콤보가 끊긴 뒤 식어 가는 랭크는 조금 흐리게
+  if (n >= 2) drawComboBlock(ctx, B, world, c, s, rank, now, small, calm, T);
+  else if (ending) drawComboEnd(ctx, B, s, rank, now, calm, T);
+  if (mile) drawMilestone(ctx, B, s, now, small, calm);
   ctx.restore();
   return true;
 }
 
-/** 콤보 숫자 (오른쪽 끝 NUM_R, 기준선 NUM_BASE). 회전·튀기기는 숫자 가운데를 중심으로. flash 0..1 = 흰 번쩍임 */
-function drawNumber(ctx, str, size, w, rot, pop, flash, rank, now) {
+/** (캐시 캔버스가 없을 때만) 콤보 숫자를 바로 그린다. 오른쪽 끝 NUM_R, 기준선 NUM_BASE + dy. flash 0..1 = 흰 번쩍임 */
+function drawNumber(ctx, str, size, w, rot, pop, flash, rank, now, dy = 0) {
   if (!str) return;
   ctx.font = font(size, 900, FONT.dmg);
   if (!(w > 0)) w = ctx.measureText(str).width;
   const by = size * 0.36;
   ctx.save();
   // 튀기기는 오른쪽 끝을 기준으로 (칸 오른쪽 밖으로 커지지 않게), 기울기는 숫자 가운데를 중심으로
-  ctx.translate(NUM_R, NUM_BASE - by);
+  ctx.translate(NUM_R, NUM_BASE - by + dy);
   if (pop !== 1) ctx.scale(pop, pop);
   ctx.translate(-w / 2, 0);
   if (rot) ctx.rotate(rot);
   ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.lineJoin = 'round';
   ctx.lineWidth = 7; ctx.strokeStyle = '#140004'; ctx.strokeText(str, 0, by);
-  ctx.fillStyle = numGrad(ctx, rank, size, now); ctx.fillText(str, 0, by);
+  ctx.fillStyle = numGrad(ctx, rank, size, numPhase(rank, now)); ctx.fillText(str, 0, by);
   if (flash > 0) { ctx.globalAlpha *= flash; ctx.fillStyle = '#ffffff'; ctx.fillText(str, 0, by); }
   ctx.restore();
   return w;
 }
 
-/** 콤보 숫자 뒤 붓 띠 (숫자와 함께 조금 튄다) */
+/** 콤보 숫자 뒤 붓 띠 (숫자와 함께 조금 튄다; 오른쪽 끝 (−4, 38) 기준 — 변환 없이 늘인 사각형으로 붙인다) */
 function drawComboBanner(ctx, s, now, calm) {
   const B = SPR.banner;
   if (!B) return;
   const popK = calm ? 0 : clamp(1 - (now - s.hitRt) / POP_T, 0, 1);
-  const bs = 1 + 0.35 * popK * 0.4;   // 오른쪽 끝을 기준으로 튄다 (칸 오른쪽 밖으로 나가지 않게)
-  ctx.save();
-  ctx.translate(-4, 38);
-  if (bs !== 1) ctx.scale(bs, bs);
-  ctx.drawImage(B, -BANNER.w, -BANNER.h / 2 + 2, BANNER.w, BANNER.h);
-  ctx.restore();
+  const bs = 1 + 0.35 * popK * 0.4;   // 칸 오른쪽 밖으로 나가지 않게 오른쪽 끝을 기준으로
+  ctx.drawImage(B, -4 - BANNER.w * bs, 38 + (-BANNER.h / 2 + 2) * bs, BANNER.w * bs, BANNER.h * bs);
 }
 
-function drawComboBlock(ctx, world, c, s, rank, now, small, calm, T) {
+function drawComboBlock(ctx, B, world, c, s, rank, now, small, calm, T) {
   const info = rankInfo(rank);
   const popK = calm ? 0 : clamp(1 - (now - s.hitRt) / POP_T, 0, 1);
   const pop = 1 + 0.35 * popK;
-  // 랭크 색 밑줄 (붓 띠는 drawComboBanner 가 랭크 글자보다 먼저 그렸다)
+  // 랭크 색 밑줄 (숫자 아래에 깔린다)
   const ga = ctx.globalAlpha;
   ctx.fillStyle = info?.c ?? '#e8c872';
   ctx.globalAlpha = ga * 0.9;
   ctx.beginPath(); ctx.moveTo(-168, 62.5); ctx.lineTo(-10, 62.5); ctx.lineTo(-12, 65); ctx.lineTo(-170, 65); ctx.closePath(); ctx.fill();
   ctx.globalAlpha = ga;
-  // 숫자
-  ctx.font = font(s.nSize, 900, FONT.dmg);
-  if (s.nW < 0) s.nW = ctx.measureText(s.nStr).width;
-  drawNumber(ctx, s.nStr, s.nSize, s.nW, calm ? 0 : s.rot, pop, popK > 0.3 ? (popK - 0.3) / 0.7 * 0.7 : 0, rank, now);
-  text(ctx, 'HITS', NUM_R - 2, 76, { size: T ? 16 : 14, align: 'right', weight: 800, family: FONT.dmg, color: '#ffd0a0', ow: 3 });
+  // 숫자 (튀기기 + 흰 번쩍임)
+  drawNumberSpr(ctx, B, s.nStr, s.nSize, calm ? 0 : s.rot, pop, popK > 0.3 ? (popK - 0.3) / 0.7 * 0.7 : 0, rank, now);
+  // HITS + 총 피해 (LBL 캐시; 총 피해는 작은 배치·데미지 숫자 끔이면 뺀다) — 튀는 숫자 위에 (예전 순서 그대로)
+  let dmg = '';
+  if (!small && settingsOf(world)?.showDamage !== false) {
+    const d = comboDmg(world, s);
+    if (d > 0) {
+      const v = Math.round(d);
+      if (v !== s.dmgShown) { s.dmgShown = v; s.dmgStr = `총 피해 ${fmt(v)}`; }
+      dmg = s.dmgStr;
+    }
+  }
+  if (lblSprite(T, dmg, devScale(B))) blitLabels(ctx, B, 0);
+  else drawLabels(ctx, T, dmg);
   // 콤보 시간 (90×4 핏빛 막대, 오른쪽으로 줄어든다 + 줄어드는 끝에 맺힌 핏방울)
   const bw = 90, bx = NUM_R - 2 - bw, by = 81;
   const f = clamp((Number(c.t) || 0) / (Number(c.window) || 2.6), 0, 1), fw = bw * f, fx = bx + bw - fw;
@@ -693,22 +812,31 @@ function drawComboBlock(ctx, world, c, s, rank, now, small, calm, T) {
       ctx.beginPath(); ctx.arc(fx + 1.35, by + 3 + len, 1.3, 0, TAU); ctx.fill();
     }
   }
-  // 총 피해 (작은 배치·데미지 숫자 끔이면 생략)
-  if (!small && settingsOf(world)?.showDamage !== false) {
-    const d = comboDmg(world, s);
-    if (d > 0) {
-      const v = Math.round(d);
-      if (v !== s.dmgShown) { s.dmgShown = v; s.dmgStr = `총 피해 ${fmt(v)}`; }
-      text(ctx, s.dmgStr, NUM_R - 2, 102, { size: T ? 14 : 12, align: 'right', weight: 700, family: FONT.num, color: '#e8d6c0', ow: 3 });
-    }
-  }
 }
 
-/** 스타일 랭크 글자 (D~SSS) + 다음 랭크까지 진행 고리 */
-function drawRankLetter(ctx, style, s, rank, now, calm) {
+/** 콤보가 끝난 뒤 0.4초: 마지막 숫자와 'HITS' 가 떠오르며 사라진다 */
+function drawComboEnd(ctx, B, s, rank, now, calm, T) {
+  const t = (now - s.endRt) / END_T;
+  const ga = ctx.globalAlpha;
+  ctx.globalAlpha = ga * (1 - t) * (1 - t);
+  const dy = -10 * t;
+  drawNumberSpr(ctx, B, s.endStr, s.endSize, calm ? 0 : s.endRot, 1, 0, rank, now, dy);
+  if (lblSprite(T, '', devScale(B))) blitLabels(ctx, B, dy);
+  else text(ctx, 'HITS', NUM_R - 2, 76 + dy, { size: T ? 16 : 14, align: 'right', weight: 800, family: FONT.dmg, color: '#ffd0a0', ow: 3 });
+  ctx.globalAlpha = ga;
+}
+
+/** 랭크 글자 묶음의 칸 j 를 (글자 가운데 기준) 그린다 */
+function drawLetterCell(ctx, A, j, S) {
+  ctx.drawImage(A, (j % LET.cols) * LET.w * S, Math.floor(j / LET.cols) * LET.h * S, LET.w * S, LET.h * S, -LET.w / 2, -LET.base + LET.size * 0.36, LET.w, LET.h);
+}
+/** 스타일 랭크 글자 (D~SSS) + 다음 랭크까지 진행 고리. alphaK = 콤보가 끊긴 뒤 흐리게 (0.7). 끝나면 변환은 B, 알파는 그대로 */
+function drawRankLetter(ctx, B, style, s, rank, now, calm, alphaK) {
   const info = rankInfo(rank);
   if (!info) return;
   const cx = LETTER_X, cy = LETTER_Y;
+  const ga = ctx.globalAlpha, al = ga * alphaK;
+  ctx.globalAlpha = al;
   const prog = clamp(Number(style?.progress) || 0, 0, 1);
   ctx.lineWidth = 2;
   ctx.strokeStyle = 'rgba(255,255,255,0.14)';
@@ -721,42 +849,45 @@ function drawRankLetter(ctx, style, s, rank, now, calm) {
   const big = info.r.length > 1 ? 0.35 : 0.6;   // SS·SSS 는 옆 붓 띠를 덜 덮게 덜 튄다
   const sc = calm ? 1 : 1 + big - big * ease.outBack(t);
   const i = rank - 1, A = SPR.letters;
-  ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(-0.12);
   const lw = SPR.letterW[i] || LET.size;
   const fit = Math.min(1, (RING_R * 2 + 14) / lw) * sc;
   if (fit !== 1) ctx.scale(fit, fit);
   if (A) {
-    const S = SPR.S;
-    const cell = (j) => ctx.drawImage(A, (j % LET.cols) * LET.w * S, Math.floor(j / LET.cols) * LET.h * S, LET.w * S, LET.h * S, -LET.w / 2, -LET.base + LET.size * 0.36, LET.w, LET.h);
-    cell(i);
+    drawLetterCell(ctx, A, i, SPR.S);
     if (info.c2) {   // SSS: 금빛 위로 핏빛이 번갈아
-      ctx.globalAlpha *= 0.85 * (Math.sin(now * 6) + 1) / 2;
-      cell(ranks().length);
+      ctx.globalAlpha = al * 0.85 * (Math.sin(now * 6) + 1) / 2;
+      drawLetterCell(ctx, A, ranks().length, SPR.S);
     }
   } else text(ctx, info.r, 0, LET.size * 0.36, { size: LET.size, align: 'center', weight: 900, family: FONT.logo, color: info.c, ow: 6 });
-  ctx.restore();
+  ctx.setTransform(B);
+  ctx.globalAlpha = ga;
 }
 
-/** 콤보 이정표 '{n} HIT!' — 랭크 글자 아래에서 2→1 로 박힌다 */
-function drawMilestone(ctx, s, now, small, calm) {
+/** 콤보 이정표 '{n} HIT!' — 랭크 글자 아래에서 2→1 로 박힌다. 끝나면 변환은 B, 알파는 그대로 */
+function drawMilestone(ctx, B, s, now, small, calm) {
   const t = now - s.mileRt;
   const a = t < MILE_T - 0.3 ? 1 : clamp((MILE_T - t) / 0.3, 0, 1);
   if (a <= 0) return;
-  const sc = calm ? 1 : t < 0.12 ? 2 - ease.outCubic(t / 0.12) : 1;
+  const sc = calm ? 1 : t < MILE_SLAM ? 2 - ease.outCubic(t / MILE_SLAM) : 1;
   const col = s.mile >= 100 ? '#ffe070' : s.mile >= 50 ? '#ffa640' : '#ffffff';
   const size = small ? 14 : 19, y = small ? 82 : 100;   // 기준선을 중심으로 박힌다 (아래로 커지지 않게)
-  ctx.save();
-  ctx.globalAlpha *= a;
+  const ga = ctx.globalAlpha;
+  ctx.globalAlpha = ga * a;
   ctx.translate(LETTER_X, y);
   if (sc !== 1) ctx.scale(sc, sc);
   ctx.transform(1, 0, -0.2, 1, 0, 0);
   text(ctx, s.mileStr, 0, 0, { size, align: 'center', weight: 900, family: FONT.dmg, color: col, outline: '#1a0006', ow: 4 });
-  ctx.restore();
+  ctx.setTransform(B);
+  ctx.globalAlpha = ga;
 }
 
 // ───────────────────────── 3. 알림 (아나운서) ─────────────────────────
+/** 알림 단어 묶음의 줄 j 를 (단어 가운데·기준선 기준) 그린다 */
+function drawWordRow(ctx, W, j, S) {
+  ctx.drawImage(W, 0, j * WRD.h * S, WRD.w * S, WRD.h * S, -WRD.w / 2, -WRD.base, WRD.w, WRD.h);
+}
 export function drawAnnouncer(ctx, world, vw, vh) {
   const cur = world?.style?.ann?.cur;
   if (!cur || !ctx) return false;
@@ -782,10 +913,11 @@ export function drawAnnouncer(ctx, world, vw, vh) {
   let fit = clamp(maxW / (ww + 24), 0.4, 1);
   // 아주 좁은 칸 (큰 패드 touchScale 1.3 + 안전 영역 인셋: 70 px 안팎)에서는 40 % 로도 칸을 넘친다 → 칸에 맞게 더 줄인다 (최소 25 %)
   if (ww * fit > r.w + 8) fit = Math.max(0.25, (r.w + 8) / ww);
-  // 칸 밖으로는 그리지 않는다 (가로 ± 6 px — 옆 영역과의 간격 8 px 안, 위 16 px·아래 6 px 여유). 2.2배 박힘의 첫 몇 프레임이 옆 상시 영역
-  // (옮겨 간 콤보 열 x 14–314·동료 카드 줄)·패드 버튼·위쪽 토스트 줄을 덮지 않게 — 칸 안에서는 그대로 박힌다
-  ctx.beginPath(); ctx.rect(r.x - 6, r.y - 16, r.w + 12, r.h + 22); ctx.clip();
-  ctx.globalAlpha *= clamp(alpha, 0, 1);
+  // 박힘(2.2배)·색수차 동안만 칸 밖을 잘라 낸다 (가로 ± 6 px — 옆 영역과의 간격 8 px 안, 위 16 px·아래 6 px 여유): 첫 몇 프레임이
+  // 옆 상시 영역(옮겨 간 콤보 열 x 14–314·동료 카드 줄)·패드 버튼·위쪽 토스트 줄을 덮지 않게. 그 뒤 그림은 그 안에 있다 (R1-REQ-330)
+  if (!calm && tA < ANN_SPILL_T) { ctx.beginPath(); ctx.rect(r.x - 6, r.y - 16, r.w + 12, r.h + 22); ctx.clip(); }
+  const ga = ctx.globalAlpha * clamp(alpha, 0, 1);
+  ctx.globalAlpha = ga;
   // 붓 띠: 왼쪽에서 오른쪽으로 쓸며 그려진다 (0.1초)
   const band = SPR.band;
   if (band) {
@@ -793,41 +925,40 @@ export function drawAnnouncer(ctx, world, vw, vh) {
     const bw = Math.min(r.w + 12, ww * fit + 110), bh = BAND.h * clamp(fit + 0.15, 0.6, 1);
     if (sw > 0.01) ctx.drawImage(band, 0, 0, band.width * sw, band.height, cx - bw / 2, r.y + 32 - bh * 0.46, bw * sw, bh);
   }
-  // 단어: 2.2 → 1 로 박히고 되튄다 + 0.15초 색수차
+  // 단어: 2.2 → 1 로 박히고 되튄다 + 0.15초 색수차 (요소마다 save/restore 하지 않고, 끝나면 E 로 되돌린다)
   const sc = calm ? 1 : 2.2 - 1.2 * ease.outBack(clamp(tA / SLAM_T, 0, 1));
-  ctx.save();
+  const E = ctx.getTransform();
   ctx.translate(cx, by);
   ctx.scale(fit * sc, fit * sc);
   if (!calm && tA < CHROMA_T) {
     const k = 1 - tA / CHROMA_T;
-    ctx.save();
     ctx.font = `900 ${meta?.size ?? WRD.size}px ${FONT.dmg}`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
     ctx.transform(1, 0, WRD.skew, 1, 0, 0);
-    ctx.globalAlpha *= 0.75 * k;
+    ctx.globalAlpha = ga * 0.75 * k;
     ctx.fillStyle = '#ff1030'; ctx.fillText(word, -2, 0);
     ctx.fillStyle = '#20f0ff'; ctx.fillText(word, 2, 0);
-    ctx.restore();
+    ctx.transform(1, 0, -WRD.skew, 1, 0, 0);
+    ctx.globalAlpha = ga;
   }
   const W = SPR.words;
   if (W && meta) {
-    const S = SPR.S;
-    const row = (j) => ctx.drawImage(W, 0, j * WRD.h * S, WRD.w * S, WRD.h * S, -WRD.w / 2, -WRD.base, WRD.w, WRD.h);
-    row(i);
+    drawWordRow(ctx, W, i, SPR.S);
     if (rankInfo(i + 1)?.c2) {   // SSS: 금빛 ↔ 핏빛
-      ctx.globalAlpha *= 0.8 * (Math.sin(now * 7) + 1) / 2;
-      row(ranks().length);
+      ctx.globalAlpha = ga * 0.8 * (Math.sin(now * 7) + 1) / 2;
+      drawWordRow(ctx, W, ranks().length, SPR.S);
+      ctx.globalAlpha = ga;
     }
   } else {
     ctx.transform(1, 0, WRD.skew, 1, 0, 0);
     text(ctx, word, 0, 0, { size: WRD.size, align: 'center', weight: 900, family: FONT.dmg, color: cur.c ?? '#fff', outline: '#1a0006', ow: 7 });
   }
-  ctx.restore();
+  ctx.setTransform(E);
   // 한국어 부제
   if (cur.sub) {
     const sa = calm ? 1 : clamp((tA - 0.06) / 0.1, 0, 1);
     if (sa > 0) {
-      ctx.globalAlpha *= sa;
+      ctx.globalAlpha = ga * sa;
       text(ctx, cur.sub, cx, r.y + 58, { size: Math.max(11, Math.round(16 * Math.min(1, fit + 0.2))), align: 'center', weight: 800, family: FONT.title, color: '#f3e2c8', outline: 'rgba(20,0,4,0.92)', ow: 4, maxWidth: maxW });
     }
   }
@@ -836,4 +967,4 @@ export function drawAnnouncer(ctx, world, vw, vh) {
 }
 
 /** 시험·도구용 */
-export const FEEL_HUD_DEBUG = { SPR, stateOf, bake, layout: { COL_W, COL_H, COL_H_SMALL, BANNER, BAND, LET, WRD, GLW } };
+export const FEEL_HUD_DEBUG = { SPR, stateOf, bake, hudOverflow, NUM_KEY, LBL_KEY, layout: { COL_W, COL_H, COL_H_SMALL, BANNER, BAND, LET, WRD, GLW, NUMC, LBLC } };
