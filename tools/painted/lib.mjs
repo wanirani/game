@@ -40,16 +40,22 @@ export async function startFight(page, bossId = null) {
     const p = w.player;
     p.x = w.arenaX + 48 * 3; p.y -= 4;
   }, bossId);
-  await page.waitForFunction(() => window.__game.world.boss, null, { timeout: 15000 });
-  for (let i = 0; i < 20; i++) {
-    const done = await page.evaluate(() => {
+  // 대사/등장 연출을 닫으며 진짜 보스를 기다린다: 보스 클래스는 늦게 받을 수 있어(bosses/lazy.js) world.boss 가 잠시
+  // 대역(PendingBoss, pendingBoss=true)일 수 있다 — 대역은 스테이지가 돌아야 진짜로 바뀌므로 위에 뜬 연출부터 닫는다
+  let ready = false;
+  for (let i = 0; i < 120 && !ready; i++) {
+    ready = await page.evaluate(() => {
       const g = window.__game, top = g.scenes[g.scenes.length - 1];
-      if (top.name === 'bossIntro' || top.name === 'dialogue') { g.pop(); top.onDone?.(); top.onEnd?.(); return false; }
-      return top.name === 'stage';
+      if (top?.name === 'bossIntro' || top?.name === 'dialogue') {
+        if (typeof top.finish === 'function') top.finish(); else { g.pop(); top.onDone?.(); top.onEnd?.(); }
+        return false;
+      }
+      const b = g.world?.boss;
+      return !!b && !b.pendingBoss && top?.name === 'stage';
     });
-    if (done) break;
-    await page.waitForTimeout(150);
+    if (!ready) await page.waitForTimeout(150);
   }
+  if (!ready) throw new Error('startFight: 보스가 준비되지 않음 (world.boss 없음/대역 상태 또는 스테이지가 맨 위가 아님)');
   await page.evaluate(() => { const w = window.__game.world; w.cutscene = false; });
   await page.waitForTimeout(200);
 }
