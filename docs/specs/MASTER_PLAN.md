@@ -2285,7 +2285,6 @@ The 16 fix buckets are spawned per round (one agent per bucket with defects). Th
 - **Tests:**
   ```
   node tools/deploy/build_artifact.mjs --check
-  node tools/deploy/serve_dist.mjs --root dist/artifact --check-load
   ```
 
 #### DELIVER-HANDOFF — Keystore hand-off and release notes (S)
@@ -2446,7 +2445,7 @@ The full suite runs every round, in this order. A round that stops early still r
 | perf | `node tools/qa/perf_budget.mjs --profiles phone1,phone2,tablet,desk,fhd2x  (§5.2)` |
 | soak | `node tools/qa/soak.mjs --minutes 10` |
 | visual | `node tools/qa/visual_review.mjs  (contact sheets: every P2 room, 20 bosses × phases, 91 enemies, 20 companions, 6 heroes × 3 tiers × 8 yaws, 6 cut-ins at 960 and 1280, both ending cards, HUD matrix) — reviewed by opening the PNGs` |
-| delivery | `node tools/deploy/build_web.mjs && node tools/deploy/serve_dist.mjs --check-load --offline` |
+| delivery | `node tools/deploy/build_web.mjs && node tools/qa/platform_load.mjs --dist && node tools/deploy/test_sw.mjs` |
 | delivery | `tools/apk/build_apk.sh --verify && node tools/apk/verify_apk.mjs` |
 | delivery | `node tools/deploy/build_artifact.mjs --check  (≤ 511 files, ≤ 256 MB, batches ≤ 255 files / 64 MB; boots with zero errors from dist/artifact)` |
 | post-deploy | `node tools/deploy/smoke_deployed.mjs https://<site>` |

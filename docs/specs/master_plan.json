@@ -2737,7 +2737,7 @@
    },
    {
     "kind": "delivery",
-    "command": "node tools/deploy/build_web.mjs && node tools/deploy/serve_dist.mjs --check-load --offline"
+    "command": "node tools/deploy/build_web.mjs && node tools/qa/platform_load.mjs --dist && node tools/deploy/test_sw.mjs"
    },
    {
     "kind": "delivery",
@@ -8716,8 +8716,7 @@
      ],
      "consumes": [],
      "tests": [
-      "node tools/deploy/build_artifact.mjs --check",
-      "node tools/deploy/serve_dist.mjs --root dist/artifact --check-load"
+      "node tools/deploy/build_artifact.mjs --check"
      ],
      "size": "M",
      "scope": "v1.0 planned to republish tools/artifact/blood_nocturne.html with its files; the tree already exceeds the 511-files-per-version limit, so the packed build is required.",

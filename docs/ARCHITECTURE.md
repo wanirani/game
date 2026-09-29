@@ -47,7 +47,7 @@
 | 성능·지속·시각 | `node tools/qa/perf_budget.mjs [--quick] [--profiles …]` · `node tools/qa/soak.mjs --minutes 10` · `node tools/qa/visual_review.mjs [--quick]` |
 | 배포 | `node tools/deploy/build_web.mjs [--selftest-deny]` · `node tools/qa/platform_load.mjs --dist` · `node tools/deploy/test_sw.mjs` · `node tools/deploy/build_artifact.mjs --check` · `node tools/deploy/smoke_deployed.mjs --local` · `tools/apk/build_apk.sh --verify` |
 
-(참고: MASTER_PLAN §5.1 의 `serve_dist.mjs --check-load --offline` 은 없는 옵션이다. 같은 검사는 `platform_load.mjs --dist` + `deploy/test_sw.mjs` — 요청 #345.)
+(MASTER_PLAN §5.1 delivery 행: `build_web.mjs` → `platform_load.mjs --dist` → `deploy/test_sw.mjs`.)
 
 ## 1. 좌표/단위
 - 논리 해상도: 높이 540 고정, 폭 960~1280 (`game.viewW`). 타일 `TILE = 48`. 휴대폰은 폭이 넓다 (844×390 CSS → vw 1168, 740×360 → vw 1110).
