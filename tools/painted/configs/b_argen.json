@@ -3,8 +3,8 @@
  "kind": "boss",
  "out": "assets/painted/bosses/b_argen",
  "raw": "tools/painted/raw/b_argen",
- "td": 1.6,
- "quality": 88,
+ "td": 1.05,
+ "quality": 78,
  "hurtboxNotes": "BOSS_PIPELINE §8.8 (documented, gameplay NOT changed): logic hit parts = core 74x74 at body (14,-4) (P2+, listed first), head 76x60 at head.{x,y}, neck 66x66 at neck point 4, body 214x98 at (0,2), near wing S..Wr box (+60 below), tail points 2..6 box. The painted torso spans about -118..150 x -75..56 (spikes and chest included), so the chest front and the back spikes reach ~35 px beyond the body box; the painted wing membrane and finger tips (up to ~600 px) have no hurtbox, exactly like the vector wing membrane. Neck/tail strips follow the logic chains; head + jaw sit on head.{lx,ly,a,jaw}; the core gem is drawn exactly at the logic core point.",
  "matte": {
   "default": {
@@ -584,7 +584,7 @@
    "name": "wing",
    "src": "wing_a",
    "mask": "wing",
-   "lps": 0.25,
+   "lps": 0.205,
    "box": [
     30,
     60,
@@ -804,24 +804,6 @@
      60,
      2580,
      700
-    ],
-    [
-     1140,
-     480,
-     1590,
-     870
-    ],
-    [
-     790,
-     980,
-     1070,
-     1440
-    ],
-    [
-     1490,
-     740,
-     1890,
-     1100
     ],
     [
      1880,

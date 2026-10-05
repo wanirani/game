@@ -50,7 +50,7 @@ const DEF = {
 // 로직 상수 (e_argen.js 와 같은 값)
 const CC = [14, -4], SHN = [26, -50], SHF = [12, -56];
 const NECK_R0 = 40, NECK_R1 = 29, TAIL_R0 = 29;   // 채색 띠 굵기 (로직 판정과 무관 — 그림 비례만)
-const WING_UP = -2.3, WING_S = 0.82;   // 날개: 위로 든 자세의 어깨→손목 각 · 크기 배율
+const WING_UP = -2.3, WING_S = 1;   // 날개: 위로 든 자세의 어깨→손목 각 · 크기 배율 (아틀라스 lps 0.205 가 이미 게임 크기 — 텍셀 낭비 없게)
 const CRYS_SPR = ['cr1', 'cr2', 'cr3', 'cr4'];
 
 // ───────────────────────── 모듈 계약 ─────────────────────────
@@ -210,10 +210,10 @@ function glowOver(ctx, D, st, p, pivot, x, y, rot, sx, sy, a, t, vk) {
 function drawWing(D, ctx, st, p, Wg, far, sk, t) {
   const ix = p.wr[0] - p.sh[0], iy = p.wr[1] - p.sh[1];
   const lx = Wg.Wr.x - Wg.S.x, ly = Wg.Wr.y - Wg.S.y;
-  // 날갯짓 폭을 줄인다: 옆모습에서 내려친 날개가 바닥까지 늘어지지 않게 (위로 든 자세 기준 각의 60%) · 내려칠수록 짧게(원근)
+  // 날갯짓 폭을 줄인다: 옆모습에서 내려친 날개가 바닥까지 늘어지지 않게 (위로 든 자세 기준 각의 70%) · 내려칠수록 짧게(원근)
   const d = Math.atan2(Math.sin(Math.atan2(ly, lx) - WING_UP), Math.cos(Math.atan2(ly, lx) - WING_UP));
   const dn = clamp(-d / 1.4, 0, 1);
-  const rot = WING_UP + d * 0.6 - Math.atan2(iy, ix);
+  const rot = WING_UP + d * 0.7 - Math.atan2(iy, ix);
   const k = p.k * WING_S * clamp(Math.hypot(lx, ly) / (Math.hypot(ix, iy) * p.k * WING_S), 0.85, 1.15) * (far ? 0.9 : 1) * (1 - 0.22 * dn);
   drawPart(D, st, p, 'sh', Wg.S.x, Wg.S.y, rot, k, k * (1 - 0.2 * dn), sk, far);
   if (!far) glowOver(ctx, D, st, p, 'sh', Wg.S.x, Wg.S.y, rot, k, k * (1 - 0.2 * dn), 0.45, t + 1.3, 1);

@@ -28,7 +28,7 @@ import { registerPainted, hasPainted, paintedDraw } from '../../render/painted/r
 import { bosses as EXB } from '../../render/painted/reg/ex-boss.js';
 
 // ── 색 ──
-const SIL = '#d6dded', SIL_L = '#f7f9ff', SIL_M = '#a4aec2', SIL_D = '#5a6276', SIL_DD = '#262b38';
+const SIL = '#c6cede', SIL_L = '#f2f5fc', SIL_M = '#8a94ab', SIL_D = '#4a5166', SIL_DD = '#232836';
 const BELLY = '#e6dcc4', BELLY_D = '#958a72', HORN = '#efe5cc', HORN_D = '#857a64';
 const VOID = '#8a3cff', VOID_D = '#16052a', VOID_M = '#4a1688', VOID_L = '#d4a8ff';
 const PURE = '#bfe8ff', BOLT = '#eef6ff', SKY = '#9fd8ff', MOUTH = '#2a0814', THROAT = '#6a1424';
@@ -57,7 +57,7 @@ const TB = [-110, -2];          // 꼬리 뿌리
 const CC = [14, -4];            // 공허의 핵 (몸통 가운데 옆구리의 깨진 구멍 — 채색 몸통의 구멍 자리)
 const SHN = [26, -50], SHF = [12, -56];   // 날개 뿌리 (가까운 · 먼) — 등 위. 두 날개 모두 몸통 뒤에 그린다 (옆구리의 핵이 가려지지 않게)
 const BACK = [-66, -30];        // 날개막이 몸에 붙는 곳
-const L1 = 150, L2 = 165, FL = [240, 214, 180, 136];
+const L1 = 138, L2 = 150, FL = [210, 188, 160, 122];
 const NN = 9, TN = 11;          // 목 · 꼬리 점 수
 const POSE0 = { raise: 0, spread: 0, fold: 0, rear: 0, lunge: 0, mouth: 0, coreOpen: 0, tail: 0, curl: 0, legs: 0, roar: 0, bow: 0 };
 const POSE_RATE = { raise: 7, spread: 6, fold: 4, rear: 5, lunge: 7, mouth: 12, coreOpen: 5, tail: 9, curl: 5, legs: 4, roar: 6, bow: 2.5 };
@@ -189,7 +189,7 @@ export class Argen extends BossC {
       const W = this.wing[key], far = key === 'f';
       const ph = this.flapPh - (far ? 0.35 : 0);
       let up = clamp(0.5 + 0.42 * Math.sin(ph) * (1 - s.fold) + 0.5 * s.raise, -0.15, 1.15);
-      let a1 = lerp(-3.5, -1.8, up), a2 = a1 - lerp(1.15, 0.55, up) * (1 - 0.35 * s.spread);
+      let a1 = lerp(-3.25, -1.8, up), a2 = a1 - lerp(1.15, 0.6, up) * (1 - 0.35 * s.spread);   // 내려친 날개가 바닥까지 늘어지지 않게 (옆모습)
       a1 = lerp(a1, -2.2, s.fold); a2 = lerp(a2, -3.25, s.fold);
       W.a1 = a1; W.a2 = a2;
       const k = W.sc;
@@ -906,7 +906,7 @@ export class Argen extends BossC {
       }
       ctx.restore();
     }
-    if (this.silverK > 0.05) glowE(ctx, this.zx, this.zy - 20, 360, 220, PURE, 0.22 * this.silverK);
+    if (this.silverK > 0.05) glowE(ctx, this.zx, this.zy - 20, 360, 220, PURE, 0.14 * this.silverK);
   }
   paintBody(ctx, world, flash) {
     const A = this.A, fl = R.fl;
@@ -1083,6 +1083,11 @@ export class Argen extends BossC {
     ctx.closePath();
     ink(ctx, fl ? '#fff' : LG(ctx, 'ag_torso', 0, -64, 0, 60, [0, SIL_L, 0.3, SIL, 0.72, SIL_M, 1, SIL_D]), 3);
     if (fl) return;
+    // 아래쪽 그늘 (몸통이 둥글게 보이게)
+    ctx.save(); ctx.clip();
+    ctx.fillStyle = 'rgba(20,24,40,0.28)'; ctx.beginPath(); ctx.ellipse(-4, 46, 130, 30, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.ellipse(0, -40, 96, 14, -0.05, 0, TAU); ctx.fill();
+    ctx.restore();
     // 배 비늘판
     ctx.save();
     ctx.beginPath(); ctx.moveTo(-104, 18); ctx.bezierCurveTo(-60, 44, 0, 60, 60, 52); ctx.bezierCurveTo(90, 46, 108, 30, 110, 20); ctx.lineTo(96, 30); ctx.bezierCurveTo(60, 44, 0, 46, -60, 30); ctx.closePath();
@@ -1130,13 +1135,13 @@ export class Argen extends BossC {
 
   drawNeck(ctx, fl) {
     const N = this.neck;
-    taper(ctx, N, NN, 31, 19);
+    taper(ctx, N, NN, 36, 23);
     ink(ctx, fl ? '#fff' : LG(ctx, 'ag_neck', 0, -260, 0, 40, [0, SIL_L, 0.45, SIL, 1, SIL_M]), 2.6);
     if (fl) return;
-    bellyBand(ctx, N, NN, 31, 19, -1, 'ag_nbelly');
+    bellyBand(ctx, N, NN, 36, 23, -1, 'ag_nbelly');
     for (let i = 1; i < NN - 1; i++) {
       const x = N[i * 2], y = N[i * 2 + 1], tx = N[i * 2 + 2] - N[i * 2 - 2], ty = N[i * 2 + 3] - N[i * 2 - 1], L = Math.hypot(tx, ty) || 1;
-      const nx = ty / L, ny = -tx / L, r = lerp(31, 19, i / (NN - 1));
+      const nx = ty / L, ny = -tx / L, r = lerp(36, 23, i / (NN - 1));
       // 등 가시
       const bx = x + nx * r * 0.92, by = y + ny * r * 0.92, sl = 10;
       ctx.beginPath(); ctx.moveTo(bx - tx / L * 5, by - ty / L * 5); ctx.lineTo(bx + nx * sl - tx / L * 7, by + ny * sl - ty / L * 7); ctx.lineTo(bx + tx / L * 5, by + ty / L * 5); ctx.closePath();
@@ -1151,7 +1156,7 @@ export class Argen extends BossC {
   drawHead(ctx, fl) {
     const H = this.head, t = this.t, s = this.ps, sk = this.silverK;
     ctx.save();
-    ctx.translate(H.lx, H.ly); ctx.rotate(H.a);
+    ctx.translate(H.lx, H.ly); ctx.rotate(H.a); ctx.scale(1.2, 1.2);   // 머리는 조금 크게 (채색 머리와 비례를 맞춘다 — 판정 상자는 그대로)
     const jaw = H.jaw;
     // 뿔 둘 (뒤쪽 뿔은 어둡게)
     for (const [k, col] of [[0, HORN_D], [1, HORN]]) {
@@ -1264,8 +1269,8 @@ export class Argen extends BossC {
   /** 은빛이 돌아온다: 비늘 가장자리의 빛 + 몸에 흐르는 은빛 */
   drawSilver(ctx) {
     const k = this.silverK, t = this.t;
-    glowE(ctx, 0, -10, 150, 70, PURE, 0.28 * k);
-    glowE(ctx, this.head.lx, this.head.ly, 70, 50, PURE, 0.3 * k);
+    glowE(ctx, 0, -10, 150, 70, PURE, 0.14 * k);
+    glowE(ctx, this.head.lx, this.head.ly, 70, 50, PURE, 0.18 * k);
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
     ctx.strokeStyle = rgba(BOLT, 0.5 * k); ctx.lineWidth = 1.5;
     const b = Math.floor(t * 6);
