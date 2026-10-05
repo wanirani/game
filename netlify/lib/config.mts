@@ -105,6 +105,7 @@ export const TELEMETRY = {
 /** 온라인 기록 (netlify/lib/online.mts·boards.mts, docs/specs/online.md). 숫자를 바꾸면 명세와 docs/ONLINE.md 도 고친다 */
 export const ONLINE = {
   runTtlMs: 6 * HOUR, // 런 토큰 유효 기간
+  endlessRunTtlMs: 30 * HOUR, // 서바이벌·무한의 탑 런 토큰 유효 기간 (time 상한 anyTimeMaxMs 24시간 + 여유 — 6시간이 넘는 긴 탑 런도 올린다)
   runSkewMs: MIN, // 토큰 시작 시각이 서버 시각보다 이만큼 넘게 미래면 위조로 본다
   timeSlack: 0.9, // 걸린 실제 시간 ≥ result.time × 0.9 − 3초
   timeGraceMs: 3000,

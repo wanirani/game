@@ -30,7 +30,7 @@ export const MESSAGES: Record<string, string> = {
   // 온라인 기록 (docs/specs/online.md)
   invalid_board: '순위표 이름이 올바르지 않습니다.',
   invalid_run: '이 기록의 런 정보를 확인할 수 없습니다.',
-  run_expired: '기록을 보낼 수 있는 시간이 지났습니다. (런 시작 후 6시간)',
+  run_expired: '기록을 보낼 수 있는 시간이 지났습니다. (런 시작 후 6시간 · 서바이벌·무한의 탑은 30시간)',
   run_used: '이미 제출한 기록입니다.',
   invalid_result: '기록 값이 올바르지 않습니다.',
   implausible_time: '기록 시간이 실제로 걸린 시간과 맞지 않습니다.',

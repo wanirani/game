@@ -183,7 +183,7 @@ test('런 시작·제출: 시작 때 POST /api/runs, 정산 화면이 결과+고
   await ctx.close();
 });
 
-test('오프라인 대기열: 제출이 끊기면 기기에 두고, 연결되면 다시 보냄 · 6시간 지난 것은 버림', async () => {
+test('오프라인 대기열: 제출이 끊기면 기기에 두고, 연결되면 다시 보냄 · 6시간 지난 것은 버림 (무한의 탑은 30시간)', async () => {
   const M = makeMock();
   const ctx = await newContext(M);
   const { page, errs } = await openGame(ctx, { init: AUTH });
@@ -200,15 +200,21 @@ test('오프라인 대기열: 제출이 끊기면 기기에 두고, 연결되면
   assert.equal(M.finishes.length, 0);
   // 6시간 지난 항목 하나 더 (보내지 않고 버려야 한다)
   await page.evaluate(() => { const q = JSON.parse(localStorage.getItem('bn_online_q')); q.unshift({ ...q[0], at: Date.now() - 7 * 3600e3, body: { ...q[0].body, run: 'run.old' } }); localStorage.setItem('bn_online_q', JSON.stringify(q)); });
+  // 무한의 탑 런은 30시간 유효 (서버 runTtlOf) → 7시간 지난 탑 기록은 보내고, 31시간 지난 것은 버린다
+  await page.evaluate(() => {
+    const q = JSON.parse(localStorage.getItem('bn_online_q')), p = q[q.length - 1];
+    const tower = (run, h) => ({ ...p, board: 'tower:normal', at: Date.now() - h * 3600e3, body: { ...p.body, board: 'tower:normal', run, result: { ...p.body.result, floor: 300 } } });
+    q.push(tower('run.tower', 7), tower('run.tower.old', 31));
+    localStorage.setItem('bn_online_q', JSON.stringify(q));
+  });
   M.down.clear();
   const flushed = page.evaluate(() => new Promise((res) => { import('/src/core/events.js').then(({ bus }) => { const off = bus.on('online:flushed', (o) => { off(); res(o); }); }); }));
   await page.evaluate(() => window.dispatchEvent(new Event('online')));
   const o = await flushed;
-  assert.equal(o.sent.length, 1);
+  assert.equal(o.sent.length, 2);
   assert.equal(o.sent[0].rank, 3);
-  assert.equal(o.dropped, 1);
-  assert.equal(M.finishes.length, 1);
-  assert.equal(M.finishes[0].run, 'run.1.practice:s01:normal');
+  assert.equal(o.dropped, 2);
+  assert.deepEqual(M.finishes.map((f) => f.run), ['run.1.practice:s01:normal', 'run.tower']);
   q = await page.evaluate(() => JSON.parse(localStorage.getItem('bn_online_q')));
   assert.equal(q.length, 0);
   assert.deepEqual(errs, []);

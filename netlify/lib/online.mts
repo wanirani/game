@@ -125,6 +125,9 @@ function checkGhost(g: unknown): string | null {
   return g as string;
 }
 
+/** 런 토큰 유효 기간: 끝이 없는 모드(서바이벌·무한의 탑 — time 상한 24시간)는 endlessRunTtlMs, 나머지 보드는 runTtlMs (6시간) */
+export const runTtlOf = (board: string): number => (/^(survival|tower):/.test(board) ? ONLINE.endlessRunTtlMs : ONLINE.runTtlMs);
+
 /** 'YYYYMMDDHH' (UTC) — 쓴 nonce 키의 칸 (정리 함수가 키만 보고 지운다) */
 const hourKey = (t: number): string => new Date(t).toISOString().slice(0, 13).replace(/[-T]/g, '');
 export const nonceKey = (ts: number, n: string): string => `used/${hourKey(ts)}/${n}`;
@@ -138,7 +141,7 @@ export async function finishRun(c: Ctx): Promise<Response> {
   if (!claims || !sameAcct(claims.a, a.uid) || claims.ts > t + ONLINE.runSkewMs) fail('invalid_run', 400);
   // 요청에 board 를 함께 보내면 런의 보드와 같아야 한다
   if (body.board !== undefined && body.board !== null && body.board !== claims!.b) fail('invalid_run', 400);
-  if (t - claims!.ts > ONLINE.runTtlMs) fail('run_expired', 410);
+  if (t - claims!.ts > runTtlOf(claims!.b)) fail('run_expired', 410);
   const board = parseBoard(claims!.b, t, 'write');
   if (!board) fail('run_expired', 410); // 서명은 맞는데 보드가 지금 받을 수 없음 = 오래된 일일 도전
   const res = checkResult(board!, body.result);

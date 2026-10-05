@@ -5,7 +5,7 @@
 //  - 런 흐름 (§4): startRun(board) → 로그인 중이면 POST /api/runs 를 비동기로 (실패해도 게임은 그대로) → finishRun(h, result, ghost)
 //    · 제출 본문 { run, result, board, ghost? }. 422 invalid_ghost 면 고스트를 빼고 다시 (그 밖의 4xx 는 버림 — §2.2 표)
 //    · 연결 문제(오프라인·시간 초과·5xx·429)로 못 보낸 결과는 기기 대기열(localStorage bn_online_q, 계정별, 최대 6개)에 두었다가
-//      다시 연결될 때(online 이벤트 · 로그인 · 아케이드/명예의 전당 화면) 보낸다. run 은 시작 뒤 6시간만 유효 → 지난 것은 버린다
+//      다시 연결될 때(online 이벤트 · 로그인 · 아케이드/명예의 전당 화면) 보낸다. run 은 시작 뒤 6시간(서바이벌·무한의 탑 30시간)만 유효 → 지난 것은 버린다
 //    · 버스 'online:flushed' {sent:[{board, rank, total, best}], dropped} — 대기열에서 보낸 결과 (아케이드 메뉴가 토스트)
 //  - 일일 도전: GET /api/daily 를 한국 시간(UTC+9) 날짜마다 한 번 (bn_online_daily 에 그날 것만 보관)
 //  - 순위표: GET /api/boards/<board>?limit=50 (로그인 중이면 인증 헤더 → me), 30초 메모리 캐시. 제출하면 그 보드 캐시를 지운다
@@ -17,6 +17,9 @@ import { cloud, sanitizeTree, MESSAGES } from './cloud.js';
 
 const K_Q = 'bn_online_q', K_DAILY = 'bn_online_daily', K_NICK = 'bn_online_nick', K_GHOST = 'bn_ghost_best';
 export const RUN_TTL = 6 * 3600e3;            // run 유효 시간 (서버 서명 6시간)
+export const RUN_TTL_ENDLESS = 30 * 3600e3;   // 서바이벌·무한의 탑 run 유효 시간 (서버 ONLINE.endlessRunTtlMs — 6시간이 넘는 긴 탑 런)
+/** 보드의 run 유효 시간 (서버 online.mts runTtlOf 와 같다) */
+export const runTtlOf = (board) => (/^(survival|tower):/.test(String(board)) ? RUN_TTL_ENDLESS : RUN_TTL);
 export const GHOST_MAX = 24 * 1024;           // 고스트 base64 상한 (§2.2)
 const Q_MAX = 6, BOARD_TTL = 30e3, LOCAL_GHOSTS = 6;
 const BOARD_RE = /^(bossrush:\d{1,2}:[a-z_]{2,16}|survival:[a-z_]{2,16}|practice:s\d{2}:[a-z_]{2,16}|daily:\d{8}|tower:[a-z_]{2,16})$/;
@@ -35,7 +38,7 @@ export const ONLINE_MESSAGES = {
   banned_nick: '쓸 수 없는 낱말이 들어 있어요. 다른 별명을 정해 주세요.',
   forbidden_nick: '쓸 수 없는 낱말이 들어 있어요. 다른 별명을 정해 주세요.',
   invalid_run: '기록을 확인할 수 없어 순위에 올리지 못했어요.',
-  run_expired: '시작한 지 6시간이 지나 순위에 올릴 수 없어요.',
+  run_expired: '시작한 지 너무 오래되어 순위에 올릴 수 없어요.',
   run_used: '이미 제출한 기록이에요.',
   invalid_result: '기록 값이 올바르지 않아 순위에 올리지 못했어요.',
   invalid_board: '순위표를 찾을 수 없어요.',
@@ -262,7 +265,7 @@ function enqueue(e) {
 /** 대기 중인 결과 수 (이 계정 것, 지난 것 제외) */
 export function queueSize(id = cloud.id) {
   const now = Date.now();
-  return readQ().filter((e) => e.id === id && now - e.at < RUN_TTL).length;
+  return readQ().filter((e) => e.id === id && now - e.at < runTtlOf(e.board)).length;
 }
 let flushing = null;
 /** 대기열 보내기 (로그인·연결 중일 때). → Promise<{sent, dropped, left}> */
@@ -273,7 +276,7 @@ export function flushQueue() {
     try {
       let q = readQ();
       const now = Date.now();
-      const keep = q.filter((e) => now - e.at < RUN_TTL - 60e3);
+      const keep = q.filter((e) => now - e.at < runTtlOf(e.board) - 60e3);
       out.dropped += q.length - keep.length;
       q = keep;
       if (!q.length || !cloud.loggedIn || !cloud.eligible()) { if (out.dropped) writeQ(q); out.left = q.length; return out; }

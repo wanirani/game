@@ -276,6 +276,27 @@ test('무한의 탑: floor 1~999 필수, time ≥ floor × 3초·24시간 이하
   assert.deepEqual(expectOk(await board(tb)).entries.map((e) => [e.floor, e.time]), [[20, 2_000_000], [13, 1_900_000], [12, 800_000]]);
 });
 
+test('런 유효 기간: 서바이벌·무한의 탑은 30시간 (6시간이 넘는 긴 탑 런도 제출), 그 밖의 보드는 6시간 · 층마다 3초 하한 그대로', async () => {
+  const { TOWER_RULES } = gd;
+  const u = await signup();
+  const fin = (run, result) => call('POST', '/api/runs/finish', { body: { run, result }, token: u.token });
+  const tw = await start(u, 'tower:normal'), sv = await start(u, 'survival:normal'), br = await start(u, 'bossrush:0:normal');
+  advance(7 * HOUR);
+  expectErr(await fin(br.run, RES()), 410, 'run_expired');
+  assert.equal(expectOk(await fin(tw.run, RES({ floor: 400, time: 6.5 * HOUR }))).entry.floor, 400);
+  assert.equal(expectOk(await fin(sv.run, RES({ wave: 300, time: 6.5 * HOUR }))).entry.wave, 300);
+  // 층마다 최소 3초 (TOWER_RULES.minFloorSec) 는 긴 런에도 그대로
+  const t2 = await start(u, 'tower:normal');
+  advance(7 * HOUR);
+  expectErr(await fin(t2.run, RES({ floor: 999, time: 999 * TOWER_RULES.minFloorSec * 1000 - 1 })), 422, 'implausible_time');
+  // 30시간 직전은 통과, 지나면 410
+  const t3 = await start(u, 'tower:normal'), t4 = await start(u, 'tower:normal');
+  advance(ONLINE.endlessRunTtlMs);
+  expectOk(await fin(t3.run, RES({ floor: 50, time: 20 * HOUR })));
+  advance(1000);
+  expectErr(await fin(t4.run, RES({ floor: 50, time: 20 * HOUR })), 410, 'run_expired');
+});
+
 test('제출: 같은 런은 한 번만 (409 run_used)', async () => {
   const u = await signup();
   const s = await start(u, 'bossrush:0:normal');
@@ -618,7 +639,7 @@ test('탈퇴: 순위 기록·고스트·별명·계정별 제한 기록을 모�
   assert.equal(expectOk(await call('PUT', '/api/profile/nick', { body: { nick: 'nosferatu' }, token: w.token })).nick, 'nosferatu');
 });
 
-test('정리: 쓴 런 기록(7시간 뒤)·61일 지난 일일 도전·표시 없는 고스트(1시간 뒤)·버려진 별명·하루 제출 카운터(하루 창)', async () => {
+test('정리: 쓴 런 기록(가장 긴 유효 기간 30시간 + 2시간 뒤)·61일 지난 일일 도전·표시 없는 고스트(1시간 뒤)·버려진 별명·하루 제출 카운터(하루 창)', async () => {
   const c = ctx();
   const u = await signup();
   const d0 = kst();
@@ -643,7 +664,8 @@ test('정리: 쓴 런 기록(7시간 뒤)·61일 지난 일일 도전·표시 �
   assert.ok(!(await keysOf(cfg.STORES.limits)).includes(`acct/${uid}/run-m`));
   advance(5 * HOUR);
   r = await runCleanup(c);
-  assert.equal((await runKeys()).length, 0, JSON.stringify(r));
+  // 쓴 런 기록은 키에 보드가 없어 모두 가장 긴 유효 기간(서바이벌·무한의 탑 30시간)으로 본다 → 8시간 뒤에도 남긴다
+  assert.equal((await runKeys()).length, 2, JSON.stringify(r));
   assert.ok(!(await keysOf(cfg.STORES.ghosts)).includes('practice.s08.normal/deadbeefdeadbeefdeadbeefdeadbeef'));
   assert.ok(!(await keysOf(cfg.STORES.nicks)).includes(nickLib.nickKey('ghostnick')));
   assert.equal(expectOk(await call('GET', `/api/ghosts/practice:s08:normal/1`)).data, ghostData(11), '순위표의 고스트는 그대로');
@@ -651,6 +673,10 @@ test('정리: 쓴 런 기록(7시간 뒤)·61일 지난 일일 도전·표시 �
   advance(20 * HOUR);
   await runCleanup(c);
   assert.ok(!(await keysOf(cfg.STORES.limits)).includes(`acct/${uid}/run-d`));
+  assert.equal((await runKeys()).length, 2, '28시간: 아직 남긴다 (시작 시각 + 1시간 + 30시간 + 1시간)');
+  advance(4 * HOUR);
+  r = await runCleanup(c);
+  assert.equal((await runKeys()).length, 0, JSON.stringify(r));
   // 60일: 아직 남김 (제출 마감) / 62일: 지움
   advance(59 * DAY);
   await runCleanup(c);
