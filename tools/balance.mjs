@@ -168,7 +168,7 @@ function simulate(cid) {
     exp += gain;
     while (level < 99 && exp >= expToNext(level)) { exp -= expToNext(level); level++; }
     for (const d of st.docs || []) if (!docsSoFar.includes(d)) docsSoFar.push(d);
-    if (!st.side) mainLevel = level;   // 외전(s21, docs/specs/ex_s21.md)은 2부 엔딩 뒤 — 행만 보여 주고 끝 레벨 판정에는 넣지 않는다
+    if (!st.side) mainLevel = level;   // 외전(s21 · s22, docs/specs/ex_s21.md · ex_s22.md)은 2부 엔딩 뒤 — 행만 보여 주고 끝 레벨 판정에는 넣지 않는다
   });
   return { rows, endLevel: mainLevel, sideEndLevel: level, combo };
 }
@@ -223,7 +223,7 @@ if (JSON_OUT) {
   const extra = [ACC && '장신구 포함', DOCS && '비전서 포함', QUESTS_ON && '메인 퀘스트 경험치 포함', Object.keys(KNOBS).length && `가정 ${Object.keys(KNOBS).length}개`].filter(Boolean).join(' · ');
   console.log(`${diffId} · ${charId} (${ch.weaponType}) — 기본 콤보 1타 평균 배율 mvHit ${run.combo.mvHit.toFixed(2)}, 초당 배율 ${run.combo.perSec.toFixed(2)}${extra ? ' · ' + extra : ''}`);
   console.table(run.rows);
-  console.log(`s20 클리어 후 레벨 ${run.endLevel}${run.sideEndLevel !== run.endLevel ? ` (외전 s21 까지 ${run.sideEndLevel})` : ''}`);
+  console.log(`s20 클리어 후 레벨 ${run.endLevel}${run.sideEndLevel !== run.endLevel ? ` (외전 ${STAGE_ORDER.filter((id) => STAGES[id]?.side).join(" · ")} 까지 ${run.sideEndLevel})` : ''}`);
   if (CHECK) {
     if (ratio) console.log(`1부 기준 보정 비율 (${charId} ÷ kael, ${ANCHOR.join('/')} 평균): ` + Object.entries(ratio).map(([k, v]) => `${k} ×${v.toFixed(2)}`).join(', '));
     if (!fails.length) console.log(`✓ world2 §15 목표 안 (2부 s14–s20, ${mode})`);
