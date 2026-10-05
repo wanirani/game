@@ -316,6 +316,13 @@ function betterRush(x, y) {
   if (!ok(y)) return x;
   return num(y.time) < num(x.time) ? y : x;
 }
+/** 무한의 탑 기록 둘 중 좋은 것 (돌파한 층 ↑ → 시간 ↓) */
+function betterTower(x, y) {
+  const ok = (e) => isObj(e) && num(e.floor) > 0;
+  if (!ok(x)) return ok(y) ? y : (x ?? y ?? null);
+  if (!ok(y)) return x;
+  return num(y.floor) > num(x.floor) || (num(y.floor) === num(x.floor) && num(y.time) < num(x.time)) ? y : x;
+}
 function mergeCounts(a, b) {
   const out = { ...(isObj(b) ? b : {}) };
   for (const [k, v] of Object.entries(isObj(a) ? a : {})) {
@@ -327,7 +334,7 @@ function mergeCounts(a, b) {
 
 /**
  * 이 기기 메타(a)와 서버 메타(b)를 합친다: 해금 캐릭터·엔딩은 합집합, 클리어 수·서바이벌 최고 기록은 큰 값,
- * 도감은 항목별 큰 값, 명예의 전당은 두 목록을 합쳐 모드별 상위 20개, 보스 러시는 코스별 최단 기록.
+ * 도감은 항목별 큰 값, 명예의 전당은 두 목록을 합쳐 모드별 상위 20개, 보스 러시는 코스별 최단 기록, 무한의 탑은 난이도별 최고 층.
  * 그 밖의 필드(마지막 캐릭터·이니셜·아케이드 설정 등)는 이 기기 값이 우선.
  */
 export function mergeMeta(a, b) {
@@ -347,6 +354,11 @@ export function mergeMeta(a, b) {
     const A = isObj(a.bossRushBests) ? a.bossRushBests : {}, B = isObj(b.bossRushBests) ? b.bossRushBests : {};
     out.bossRushBests = {};
     for (const k of new Set([...Object.keys(A), ...Object.keys(B)])) out.bossRushBests[k] = betterRush(A[k], B[k]);
+  }
+  if (isObj(a.towerBest) || isObj(b.towerBest)) {   // [hook:plat] 무한의 탑 난이도별 최고 (front/arcade_run.js)
+    const A = isObj(a.towerBest) ? a.towerBest : {}, B = isObj(b.towerBest) ? b.towerBest : {};
+    out.towerBest = {};
+    for (const k of new Set([...Object.keys(A), ...Object.keys(B)])) out.towerBest[k] = betterTower(A[k], B[k]);
   }
   return JSON.parse(JSON.stringify(out));
 }

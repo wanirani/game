@@ -143,8 +143,8 @@ export class World {
     const q = this.game.quality ?? this.game.settings?.quality ?? 'high';   // [hook:plat]
     return q === 'low' || q === 'medium' ? q : 'high';
   }
-  /** 아케이드 계열 모드 (보스 러시·서바이벌·스테이지 연습): 세이브 기록 없음 */
-  get arcade() { return this.mode === 'bossrush' || this.mode === 'survival' || this.mode === 'practice'; }
+  /** 아케이드 계열 모드 (보스 러시·서바이벌·스테이지 연습·무한의 탑): 세이브 기록 없음 */
+  get arcade() { return this.mode === 'bossrush' || this.mode === 'survival' || this.mode === 'practice' || this.mode === 'tower'; }   // [hook:plat] 무한의 탑 (front/arcade_tower.js)
   /** 이 방의 액체 종류 (방 설정 우선: world2 §3.1) */
   get liquid() { return this.room?.liquid ?? this.stage.liquid ?? 'water'; }   // [hook:gimmick]
   /** 방 기믹 중 kind 하나 (없으면 null — 호출부는 반드시 null 확인) */

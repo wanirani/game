@@ -228,7 +228,7 @@ async function runBands(ids) {
     const sp = writeSpec(buildTrack(id), dir, dir);
     const og = path.join(bal, `${id}.orig.json`);
     if (!fs.existsSync(og)) { fs.mkdirSync(bal, { recursive: true }); fs.writeFileSync(og, await run(process.execPath, [REF, '--measure', id])); }
-    await run('python3', [PY, 'balance', sp, path.join(dir, `${id}.gm.json`)]);
+    await run('python3', [PY, 'balance', sp, path.join(dir, `${id}.gm.json`), '--mix-only']);
     const o = JSON.parse(fs.readFileSync(og, 'utf8')), g = JSON.parse(fs.readFileSync(path.join(dir, `${id}.gm.json`), 'utf8'));
     rows[id] = o.bands.map((b, i) => (g.bands[i] - g.total) - (b - o.total));
   });

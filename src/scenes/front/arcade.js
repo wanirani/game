@@ -1,4 +1,6 @@
-// 아케이드 모드 선택: 보스 러시 / 서바이벌 / 스테이지 연습 + 난이도·레벨 프리셋·코스/스테이지 → 캐릭터 선택 → 임시 세이브로 시작
+// 아케이드 모드 선택: 보스 러시 / 서바이벌 / 스테이지 연습 / 오늘의 도전 / 무한의 탑 + 난이도·레벨 프리셋·코스/스테이지 → 캐릭터 선택 → 임시 세이브로 시작
+//  - 무한의 탑 (front/arcade_tower.js, data/tower.js): 난이도·헌터 등급만 고른다. 런 시드는 startArcade 가 새로 뽑아 state.arcade.seed 에
+//    둔다 (cfg.seed 가 정수면 그것 — 시험·?seed=). 메뉴는 시드를 기억하지 않는다 (arcadeCfg 에서 뺀다)
 // owner: PLAT-FRONT-B (world2 §11, MASTER_PLAN §1.14·§1.16, platform §6.2–6.3)
 //  - 2부 (world2 §11): BOSS_ORDER 에 2부 보스 7명, COURSES '이계편'·'전 보스 연속(20연전)', LEVEL_PRESETS '이계의 순례자'.
 //    p2Known(game) 이 거짓이면 p2 코스·프리셋을 숨기고, 저장된 arcadeCfg 가 숨긴 항목을 가리키면 0번으로 돌아간다.
@@ -34,7 +36,7 @@ import { newGameState } from '../../game/state.js';
 import { addItem, addByBase } from '../../game/inventory.js';
 import {
   Ambience, kenBurns, shade, frame, heading, portraitIn, gbutton,
-  follow, fmtClock, bossRushBests, GOLD, BONE, DIM as DIMC, endArcade,
+  follow, fmtClock, bossRushBests, towerBests, GOLD, BONE, DIM as DIMC, endArcade,
 } from './common.js';
 import * as FRONT from './common.js'; // scoreList (PLAT-FRONT-A 의 새 내보내기: 없어도 멈추지 않게 이름공간으로 부른다, R6)
 import * as ONLINE from '../../core/online.js';   // 리더보드·일일 도전 (docs/specs/online.md)
@@ -46,8 +48,9 @@ export const ARCADE_MODES = {
   survival: { id: 'survival', name: '서바이벌', eng: 'SURVIVAL', color: '#ffa640', art: 'bg/s_arena', tag: '끝없는 마물의 물결', desc: '피의 투기장에 끝없이 몰려오는 마물의 물결. 웨이브를 넘길수록 적은 강해지고 점수 배율은 올라간다. 목숨은 단 하나!' },
   practice: { id: 'practice', name: '스테이지 연습', eng: 'STAGE PRACTICE', color: '#5aa8ff', art: 'bg/s06_library', tag: '해금한 스테이지 재도전', desc: '해금한 스테이지를 이야기 없이 다시 도전한다. 클리어 시간과 점수, 랭크를 갈고닦아 명예의 전당에 이름을 올려라.' },
   daily: { id: 'daily', name: '오늘의 도전', eng: 'DAILY', color: '#7ee0c0', art: 'bg/s11_chapel', tag: '매일 바뀌는 스테이지와 규칙', desc: '오늘 정해진 스테이지·헌터·규칙으로 겨룬다. 몇 번이든 도전할 수 있고 가장 빠른 기록만 남는다.' },
+  tower: { id: 'tower', name: '무한의 탑', eng: 'ENDLESS TOWER', color: '#b79cff', art: 'bg/s10_spire', tag: '층마다 강해지는 끝없는 탑', desc: '층을 오를수록 마물은 강해진다. 5층마다 군주가, 10층마다 안식처가 기다린다. 축복을 모아 얼마나 높이 오를 수 있을까? 목숨은 단 하나!' },
 };
-export const MODE_ORDER = ['bossrush', 'survival', 'practice', 'daily'];
+export const MODE_ORDER = ['bossrush', 'survival', 'practice', 'daily', 'tower'];
 /** 고스트 선택 (연습·일일 도전) */
 export const GHOST_CHOICES = [{ id: 'off', name: '끔' }, { id: 'top', name: '1위' }, { id: 'mine', name: '내 최고' }];
 /** 헌터 등급 (p2: 2부를 아는 플레이어에게만 보인다) */
@@ -223,8 +226,10 @@ export function buildArcadeState(cfg, charId) {
   st.progress.seenScripts = Object.keys(SCRIPTS);
   st.quests = { active: {}, done: Object.keys(QD.QUESTS ?? {}) };
   st.progress.unlocked = [...STAGE_ORDER];
+  // 무한의 탑: 런 시드 (층 계획·정예·촛불 보상 — World 가 state.arcade.seed 로 world.rng 를 만든다)
+  if (cfg.kind === 'tower') st.arcade.seed = (Number.isInteger(cfg.seed) ? cfg.seed : Math.floor(Math.random() * 4294967296)) >>> 0;
   const d = getDiff(cfg.diff);
-  st.lives = cfg.kind === 'survival' ? 1 : d.lives;
+  st.lives = cfg.kind === 'survival' || cfg.kind === 'tower' ? 1 : d.lives;
   return st;
 }
 /** 캐릭터 선택 후 호출: 임시 세이브를 만들고 모드 장면으로 */
@@ -235,7 +240,8 @@ export function startArcade(game, cfg, charId) {
   if (!game.state?.arcade) game._arcadePrev = game.state ?? null;
   game.state = buildArcadeState(cfg, charId);
   const scene = cfg.kind === 'practice' ? 'practice' : cfg.kind;
-  game.go(scene, { cfg: { ...cfg, charId } }, { fadeTime: 0.6 });
+  const seed = game.state.arcade?.seed;
+  game.go(scene, { cfg: { ...cfg, charId, ...(Number.isInteger(seed) ? { seed } : {}) } }, { fadeTime: 0.6 });
 }
 /**
  * 일일 도전 응답이 이 게임 데이터로 돌릴 수 있는가 → 연습 설정 { kind:'practice', diff, preset, stageId, charId, cls, daily } 또는 null
@@ -273,6 +279,7 @@ export class ArcadeScene extends Scene {
     this.stages = practiceStages(this.game, unlocks);
     const saved = m.arcadeCfg && typeof m.arcadeCfg === 'object' && !Array.isArray(m.arcadeCfg) ? m.arcadeCfg : {}; // 망가진 옛 설정은 버린다
     this.cfg = sanitizeCfg({ ...saved, ...(cfg ?? {}) }, this.p2, this.stages);
+    delete this.cfg.seed;   // 무한의 탑 시드는 판마다 새로 (메뉴·arcadeCfg 에 남기지 않는다)
     this.modeIndex = Math.max(0, MODE_ORDER.indexOf(this.cfg.kind));
     this.row = 0; // 0: 모드 카드, 1..: 옵션 줄
     this.amb = new Ambience({ embers: 50, motes: 20, bats: 6, lightning: true });
@@ -600,6 +607,10 @@ export class ArcadeScene extends Scene {
       if (b) return `${COURSES[ci]?.short ?? COURSES[ci]?.name ?? ''} 최단 기록  ${fmtClock(b.time ?? 0)} · ${fmt(b.score ?? 0)}점 · ${CHARACTERS[b.charId]?.name ?? ''}`;
     }
     if (this.kind === 'survival' && (m.survivalBest ?? 0) > 0) return `최고 기록  웨이브 ${m.survivalBest}${top ? ` · ${fmt(top.score)}점` : ''}`;
+    if (this.kind === 'tower') {
+      const b = towerBests(m)[this.cfg.diff];
+      return b?.floor ? `${getDiff(this.cfg.diff).name} 최고 기록  ${b.floor}층 돌파 · ${fmtClock(b.time ?? 0)} · ${CHARACTERS[b.charId]?.name ?? ''}` : `${getDiff(this.cfg.diff).name} 기록이 아직 없습니다`;
+    }
     if (top) return `최고 점수  ${fmt(top.score)}점 · ${top.name || CHARACTERS[top.charId]?.name || ''}`;
     return '아직 기록이 없습니다';
   }

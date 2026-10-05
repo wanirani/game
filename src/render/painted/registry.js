@@ -331,7 +331,7 @@ bus.on('stageEntered', ({ stageId } = {}) => {
 // (R1-RUN-TEX-TOUCH: 터치 기기 채색 예산 안에 마을 퍼펫·동료가 들어가게). 메뉴·일시정지처럼 스테이지 위에 쌓인 장면은
 // 바닥이 여전히 전투 장면이므로 놓지 않는다 (돌아가면 곧바로 이어 그림). 스테이지로 돌아가면 방 진입 때 다시 굽는다.
 // 동료(탈것·수호수)·NPC 채색은 마을에도 보이므로 유지. 1.5초마다 바닥 장면만 확인 (비용 무시할 만함)
-const FIGHT_SCENES = new Set(['stage', 'bossrush', 'survival', 'practice']);
+const FIGHT_SCENES = new Set(['stage', 'bossrush', 'survival', 'practice', 'tower']);
 let _offBase = null;
 function releaseOffStage() {
   const g = GAME ?? (typeof window !== 'undefined' ? window.__game : null);

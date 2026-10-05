@@ -43,7 +43,7 @@ import { DIFFICULTIES, getDiff } from '../../data/difficulty.js';
 import {
   ARCADE_MODES, LEVEL_PRESETS, COURSES, courseBosses, endArcade, arenaBosses, p2Known, sanitizeCfg, practiceStages, buildArcadeState,
 } from './arcade.js';
-import { frame, menuItem, fmtClock, portraitIn, qualifies, heading, kenBurns, shade, bossRushBests, DIM, puppet } from './common.js';
+import { frame, menuItem, fmtClock, portraitIn, qualifies, heading, kenBurns, shade, bossRushBests, towerBests, DIM, puppet } from './common.js';
 import * as ONLINE from '../../core/online.js';
 import { GhostRecorder, GhostPlayer, decodeGhost } from '../../game/ghost.js';
 
@@ -52,8 +52,8 @@ const NO_SPAWN = new Set(['medusa_spawner', 'mimic', 'golden_bat', 'killer_fish'
 /** 가시 구덩이 방을 쓰는 난이도인가 (베테랑 이상). 모듈 최상위에서 import 값을 읽지 않도록 함수로 둔다 */
 const isHardDiff = (id) => { const h = DIFFICULTIES.findIndex((d) => d.id === 'hard'); return h >= 0 && DIFFICULTIES.findIndex((d) => d.id === id) >= h; };
 
-/** 기둥 tx 에서 위→아래로 첫 바닥 윗면 y (없으면 맵 아래 - 2칸) */
-function groundY(map, tx) {
+/** 기둥 tx 에서 위→아래로 첫 바닥 윗면 y (없으면 맵 아래 - 2칸). 무한의 탑(arcade_tower.js)도 쓴다 */
+export function groundY(map, tx) {
   tx = clamp(tx, 0, map.w - 1);
   // 1순위: 화면 아래쪽 절반의 단단한 바닥, 2순위: 단방향 발판
   for (const ok of [(t) => isSolidType(t), (t) => t === T.ONEWAY]) {
@@ -65,7 +65,7 @@ function groundY(map, tx) {
   return (map.h - 2) * TILE;
 }
 /** 단단한 바닥이 있고 양옆 두 칸 안에 가시가 없는 기둥들 (가시 구덩이 방에서 소환·부활·보상 위치) */
-function safeColumns(map) {
+export function safeColumns(map) {
   const out = [];
   for (let tx = 2; tx < map.w - 2; tx++) {
     const ty = Math.round(groundY(map, tx) / TILE);
@@ -107,7 +107,8 @@ function drawDark(ctx, w, vw, vh) {
   ctx.restore();
 }
 
-class ArcadeRunScene extends Scene {
+/** 아케이드 실전 장면의 바탕 (무한의 탑 TowerScene 이 이어받는다 — front/arcade_tower.js) */
+export class ArcadeRunScene extends Scene {
   get modeId() { return 'bossrush'; }
   enter({ cfg = null } = {}) {
     const g = this.game;
@@ -158,6 +159,7 @@ class ArcadeRunScene extends Scene {
     const num = (k) => { const v = q?.get(k); return v != null && v !== '' && Number.isFinite(+v) ? +v : undefined; };
     if (num('preset') !== undefined) want.preset = num('preset');
     if (num('course') !== undefined) want.course = num('course');
+    if (num('seed') !== undefined) want.seed = num('seed') >>> 0;   // 무한의 탑: 시드 고정 (시험·재현)
     if (q?.get('diff')) want.diff = q.get('diff');
     if (q?.get('stage')) want.stageId = q.get('stage');
     const c = sanitizeCfg(want, p2Known(g), this.modeId === 'practice' && !q?.get('stage') ? practiceStages(g) : null);
@@ -273,12 +275,13 @@ class ArcadeRunScene extends Scene {
     try {
       const st = this.game.state, w = this.world, kind = this.cfg.kind;
       const hero = st?.heroes?.[this.cfg.charId];
-      const submit = !!this.board && (kind === 'survival' ? (res.extra?.wave ?? 0) >= 1 : !!cleared);
+      const submit = !!this.board && (kind === 'survival' ? (res.extra?.wave ?? 0) >= 1 : kind === 'tower' ? (res.extra?.floor ?? 0) >= 1 : !!cleared);
       const result = {
         time: Math.round((kind === 'practice' ? w.run.time : this.clock) * 1000), score: res.score ?? 0,
         hero: this.cfg.charId, cls: hero?.classId ?? '', level: hero?.level ?? this.P.lv, deaths: st?.stats?.deaths ?? 0,
       };
       if (kind === 'survival') result.wave = res.extra?.wave ?? 0;
+      if (kind === 'tower') result.floor = res.extra?.floor ?? 0;   // 돌파한 층 (§1 tower:<diff>)
       if (res.rank) result.rank = res.rank;
       const ghost = submit && this.rec ? this.rec.encode() : null;
       return { h: this.orun ?? null, board: this.board, result, ghost, submit, daily: !!this.cfg.daily };
@@ -754,6 +757,8 @@ export class ArcadePauseScene extends Scene {
       menuItem(ctx, r, l, { selected: this.menu.index === i, sub: s, size: 19 });
       taps.add(`item:${i}`, r, { owner: this, kind: 'primary', src: 'arcadePause.item' });
     });
+    // 모드별 옆 칸 (무한의 탑: 받은 축복) — 메뉴 열 오른쪽
+    this.run.drawPauseSide?.(ctx, { x: W / 2 + iw / 2 + 18, y: y0, w: W / 2 - iw / 2 - 30, h: n * (ih + gap) - gap });
     const w2 = this.run.world;
     const sy = y0 + n * (ih + gap) + 20;
     text(ctx, `SCORE ${fmt(w2.run.score)}   ·   ${fmtClock(this.run.clock || w2.run.time)}`, W / 2, sy, { size: 14, align: 'center', weight: 800, family: FONT.num, color: '#d8c8b0', ow: 3 });
@@ -782,6 +787,11 @@ export class ArcadeResultsScene extends Scene {
       if (!b || p.time < (b.time ?? 1e9)) { bests[course] = { time: p.time, score: this.final, charId: p.charId, course, date: this.date }; best = true; }
     }
     if (p.kind === 'survival' && (p.extra?.wave ?? 0) > (m.survivalBest ?? 0)) { m.survivalBest = p.extra.wave; best = true; }
+    if (p.kind === 'tower' && (p.extra?.floor ?? 0) > 0) {
+      // 무한의 탑: 난이도별 최고 (돌파한 층 ↑ → 시간 ↓)
+      const tb = towerBests(m), d = p.cfg?.diff ?? 'normal', b = tb[d], fl = p.extra.floor;
+      if (!b || fl > (b.floor ?? 0) || (fl === b.floor && p.time < (b.time ?? 1e9))) { tb[d] = { floor: fl, time: p.time, score: this.final, charId: p.charId, blessings: p.extra.blessings ?? [], date: this.date }; best = true; }
+    }
     this.newBest = best;
     saves.saveMeta(m);
     this.qual = qualifies(g, p.kind, this.final);
@@ -855,7 +865,7 @@ export class ArcadeResultsScene extends Scene {
     if (this.t - this.doneT < 0.4 || this.left) return;
     this.left = true;
     const g = this.game, r = this.res;
-    const entry = { score: this.final, mode: r.kind, charId: r.charId, diff: r.cfg?.diff, stageId: r.stageId, date: this.date, wave: r.extra?.wave, bosses: r.extra?.bosses, time: r.time };
+    const entry = { score: this.final, mode: r.kind, charId: r.charId, diff: r.cfg?.diff, stageId: r.stageId, date: this.date, wave: r.extra?.wave, bosses: r.extra?.bosses, floor: r.extra?.floor, time: r.time };
     if (this.qual) g.push('initials', { score: this.final, mode: r.kind, entry, onDone: () => g.go('highscore', { mode: r.kind, highlight: this.date, back: 'arcade', board: r.online?.submit ? r.online.board : null }) });
     else g.go('arcade', { cfg: r.cfg?.daily ? { kind: 'daily', ghost: r.cfg.ghost } : r.cfg });
   }
@@ -881,7 +891,7 @@ export class ArcadeResultsScene extends Scene {
     const g = this.game, t = g.time, r = this.res;
     const L = this.layout(), { W, H, x, y, w } = L;
     const M = (r.cfg?.daily ? ARCADE_MODES.daily : ARCADE_MODES[r.kind]) ?? ARCADE_MODES.bossrush;
-    kenBurns(ctx, assets.get(r.kind === 'practice' ? (STAGES[r.stageId]?.bg ?? 'bg/s_arena') : 'bg/s_arena'), W, H, t, { z0: 1.05, z1: 1.1 });
+    kenBurns(ctx, assets.get(r.kind === 'practice' ? (STAGES[r.stageId]?.bg ?? 'bg/s_arena') : r.kind === 'tower' ? ARCADE_MODES.tower.art : 'bg/s_arena'), W, H, t, { z0: 1.05, z1: 1.1 });
     ctx.fillStyle = 'rgba(6,2,10,0.74)'; ctx.fillRect(0, 0, W, H);
     shade(ctx, W, H, { top: 0.5, bottom: 0.6, vig: 0.8 });
     // 제목 (피 글씨: 성공 = 금박, 실패 = 피)

@@ -695,6 +695,7 @@ export const MODES = [
   { id: 'bossrush', name: '보스 러시', eng: 'BOSS RUSH' },
   { id: 'survival', name: '서바이벌', eng: 'SURVIVAL' },
   { id: 'practice', name: '스테이지 연습', eng: 'PRACTICE' },
+  { id: 'tower', name: '무한의 탑', eng: 'TOWER' },
 ];
 export const MODE_NAME = Object.fromEntries(MODES.map((m) => [m.id, m.name]));
 /** 모드 이름 (알 수 없는 모드·손상된 값은 '') */
@@ -757,6 +758,16 @@ export function bossRushBests(meta) {
     if (b && b.time > 0) meta.bossRushBests[b.course ?? 0] = { ...b, course: b.course ?? 0 };
   }
   return meta.bossRushBests;
+}
+/**
+ * 무한의 탑 난이도별 최고 기록 { [난이도 id]: { floor(돌파한 층), time(초), score, charId, blessings, date } } (front/arcade_run.js 결과 화면이 쓴다).
+ * 망가진 값은 빈 기록으로 고친다
+ */
+export function towerBests(meta) {
+  if (!meta) return {};
+  const t = meta.towerBest;
+  if (!t || typeof t !== 'object' || Array.isArray(t)) meta.towerBest = {};
+  return meta.towerBest;
 }
 /**
  * 아케이드 임시 세이브를 치우고 아케이드 전의 세이브로 되돌린다 (타이틀·아케이드 메뉴·결과 화면).

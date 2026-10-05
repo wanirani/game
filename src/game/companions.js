@@ -53,7 +53,7 @@ import {
   MOUNTS, GUARDIANS, GUARD_RULES, CMP_EXP, BOND_GAIN, BOND_NAMES, CMP_TEXT, CMP_MAX_LV, companionDef, isMountId, isGuardianId,
 } from '../data/companions.js';
 
-const ARCADE = new Set(['bossrush', 'survival', 'practice']);
+const ARCADE = new Set(['bossrush', 'survival', 'practice', 'tower']);
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 let RSEQ = 0;
 // 필살기·각성기 이벤트는 모듈에서 한 번만 구독하고 지금 월드(game.world)의 동료 시스템으로 넘긴다

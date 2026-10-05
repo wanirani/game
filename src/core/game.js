@@ -32,9 +32,9 @@ export const TILE = 48;          // 타일 한 칸 (논리 px)
 export const STEP = 1 / 60;
 // 가상 패드를 보여 주는 게임플레이 장면 (그 외 장면이 맨 위에 있으면 패드를 숨긴다)
 // 장면이 this.hidePad = true / this.showPad = true 로 직접 지정할 수도 있다
-export const PAD_SCENES = new Set(['stage', 'hub', 'bossrush', 'survival', 'practice', 'ultCutin']);
+export const PAD_SCENES = new Set(['stage', 'hub', 'bossrush', 'survival', 'practice', 'tower', 'ultCutin']);   // [hook:plat] tower = 무한의 탑
 /** 품질 조절기가 프레임 시간을 재는 장면 (게임플레이만). 토스트도 이 장면들이 그리는 HUD 위에서만 hudLayout 줄을 쓴다 */
-const GOV_SCENES = new Set(['stage', 'hub', 'bossrush', 'survival', 'practice']);
+const GOV_SCENES = new Set(['stage', 'hub', 'bossrush', 'survival', 'practice', 'tower']);
 /** 품질 등급별 DPR 상한·백킹 픽셀 예산·이미지 보간 (platform §6.4, MASTER_PLAN §5.2) */
 export const QUALITY_TIERS = Object.freeze({
   low: Object.freeze({ cap: 1, budget: 1.0e6, smooth: 'low' }),

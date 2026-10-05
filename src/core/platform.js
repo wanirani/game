@@ -44,7 +44,7 @@ const UPDATE_LATER_TEXT = '새 버전은 타이틀 화면에서 적용됩니다'
 const STORAGE_TIP_TEXT = '브라우저 저장공간은 지워질 수 있어요. 계정 저장(클라우드)이나 저장 코드로 백업하세요';
 
 // 게임플레이·게임 진행 중 장면: 화면 꺼짐 방지 (타이틀·결과 화면에서는 풀어 준다, §6.6)
-const PAD_SCENES = ['stage', 'hub', 'bossrush', 'survival', 'practice', 'ultCutin'];
+const PAD_SCENES = ['stage', 'hub', 'bossrush', 'survival', 'practice', 'tower', 'ultCutin'];
 const WAKE_SCENES = new Set([
   ...PAD_SCENES, 'awakenCutin', 'bossIntro', 'dialogue', 'document', 'gameover', 'pause', 'menu', 'arcadePause', 'companionJoin',
   'story', 'worldmap', 'inn', 'shop', 'smith', 'church', 'questboard', 'party', 'stable',

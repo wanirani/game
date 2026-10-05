@@ -26,7 +26,7 @@ const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const COLOR = { join: '#ffd070', egg: '#e8c872', bond: '#ffb0d0' };
 let offs = [];
 
-const ARCADE_MODES = new Set(['bossrush', 'survival', 'practice']);
+const ARCADE_MODES = new Set(['bossrush', 'survival', 'practice', 'tower']);
 /** 스토리 진행 세이브인가 (아케이드 임시 세이브·아케이드 월드는 동료가 없다). 마을(town)·스토리 스테이지·장면 사이(월드 없음)는 참 */
 function storyState(game) {
   const st = game?.state;

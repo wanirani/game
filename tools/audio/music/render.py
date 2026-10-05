@@ -295,14 +295,14 @@ def kenergy(x, sr):
     y = sg.lfilter(b2, a2, sg.lfilter(b1, a1, x, axis=0), axis=0)
     return float(10 * np.log10(np.mean(y * y, axis=0).sum() + 1e-20))
 
-def balance(spec_path, out_path):
+def balance(spec_path, out_path, solos=True):
     """GM 렌더의 파트별 단독 에너지(마른 신호, 도입+본문 1회+3 s) + 전체 마른 믹스 옥타브 대역"""
     spec = json.load(open(spec_path)); sr = spec['rate']
     S = schedule(spec, sr, passes=1)
     n = S['B0'] + S['L'] + 3 * sr + int(0.05 * sr)
     ev = [(e[0] + int(0.05 * sr) if e[0] > 0 else 0, *e[1:]) for e in S['ev']]  # 원본 측정과 같은 0.05 s 시작 지연
     res = {'parts': {}}
-    for p in spec['parts']:
+    for p in (spec['parts'] if solos else []):
         sub = [e for e in ev if e[2] == p['mch']]
         y = fsynth.render_events(sub, n, rate=sr, reverb=False, chorus=False)[:n].astype(np.float64)
         res['parts'][p['cid']] = kenergy(y, sr)
@@ -313,7 +313,7 @@ def balance(spec_path, out_path):
 if __name__ == '__main__':
     mode = sys.argv[1]
     if mode == 'build': build(sys.argv[2])
-    elif mode == 'balance': balance(sys.argv[2], sys.argv[3])
+    elif mode == 'balance': balance(sys.argv[2], sys.argv[3], '--mix-only' not in sys.argv)
     elif mode == 'check':
         a = sys.argv[3:]; g = lambda k, d: a[a.index(k) + 1] if k in a else d
         only = g('--only', None)
