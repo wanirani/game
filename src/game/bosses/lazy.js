@@ -40,6 +40,7 @@ const MODS = {
   b_mara: () => import('./d_mara.js').then((m) => m.Mara),
   b_behemoth: () => import('./d_behemoth.js').then((m) => m.Behemoth),
   b_nihil: () => import('./d_nihil.js').then((m) => m.Nihil),
+  b_argen: () => import('./e_argen.js').then((m) => m.Argen),   // 외전 s21
 };
 export const BOSS_IDS = Object.freeze(Object.keys(MODS));
 

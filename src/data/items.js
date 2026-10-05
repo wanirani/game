@@ -438,6 +438,13 @@ const UNIQUE_LIST = [
   { id: 'u_nihil2', name: '공허를 두른 망토', slot: 'cloak', tier: 7, icon: 'cloak_7', lvReq: 68, rarity: 5, boss: 'b_nihil',
     stats: { def: 26, res: 40, hp: 120, lifesteal: 2, moveSpd: 10, resDark: 30 }, visual: { cape: 'royal', color: '#05030a', color2: '#e8e0ff', len: 1.3 },
     effect: '별 없는 밤 — 이동 속도 +10%, 암흑 저항 +30%', desc: '별 없는 밤을 잘라 지은 망토. 안감에는 아직 태어나지 않은 별들이 희미하게 떠다닌다.' },
+  // ── 외전 보스 고유 (s21 아르겐, 7단계 — docs/specs/ex_s21.md) ──
+  { id: 'u_argen', name: '은룡창 아르겐', slot: 'weapon', wtype: 'spear', tier: 7, icon: 'spear_7', lvReq: 70, rarity: 5, boss: 'b_argen',
+    stats: { atk: 188, thunder: 35, reach: 10, crit: 8, atkSpd: 6 }, element: 'thunder', visual: { style: 6, glow: '#d8e4ff', rift: true },
+    effect: '은빛 번개 숨결 — 번개 피해 +35%, 공격 속도 +6%', desc: '정화된 아르겐이 스스로 떨군 뿔을 벼린 창. 창날에 귀를 대면 구름 위의 바람 소리가 들린다.' },
+  { id: 'u_argen2', name: '은룡의 비늘 망토', slot: 'cloak', tier: 7, icon: 'cloak_7', lvReq: 70, rarity: 5, boss: 'b_argen',
+    stats: { def: 28, res: 40, hp: 110, dmgReduce: 5, resDark: 30, jumpPow: 8 }, visual: { cape: 'tattered', color: '#c8d2e6', color2: '#8a5ad0', len: 1.3 },
+    effect: '정화의 비늘 — 받는 피해 −5%, 암흑 저항 +30%', desc: '공허의 결정이 떨어져 나간 자리에 새로 돋은 은빛 비늘을 엮었다. 두르면 어둠이 비늘에 닿지 못하고 미끄러진다.' },
   { id: 'u_alberto', name: '알베르토의 묵주', slot: 'acc', tier: 7, icon: 'amulet_7', lvReq: 50, rarity: 4,
     stats: { res: 20, holy: 20, hpRegen: 2, resDark: 20 }, visual: { aura: { color: '#fff2b0', type: 'holy' } },
     effect: '늙은 사제의 기도 — HP 재생 +2/초, 신성 피해 +20%', desc: '알베르토 신부가 백 년 동안 굴린 묵주. 알 하나하나에 헌터들의 이름이 새겨져 있다.' },

@@ -1,11 +1,12 @@
 // 보스 레지스트리: BOSS_CLASSES[id] = class extends Boss (bosses_a/b.js + 2부 bosses_c/d.js 에서 병합)
-// = { ...BOSS_A, ...BOSS_B, ...BOSS_C, ...BOSS_D } (world2 §6). 아직 클래스가 없는(스텁) 2부 보스는 GenericBoss 로 대체된다.
+// = { ...BOSS_A, ...BOSS_B, ...BOSS_C, ...BOSS_D, ...BOSS_E } (world2 §6 · 외전 E = s21 아르겐). 아직 클래스가 없는(스텁) 2부 보스는 GenericBoss 로 대체된다.
 import { BOSSES } from '../../data/bosses.js';
 import { GenericBoss } from './boss.js';
 import { BOSS_A } from './bosses_a.js';
 import { BOSS_B } from './bosses_b.js';
 import { BOSS_C } from './bosses_c.js';   // [hook:p2]
 import { BOSS_D } from './bosses_d.js';   // [hook:p2]
+import { BOSS_E } from './bosses_e.js';   // [hook:p2] 외전 (s21 아르겐)
 import { registerBosses } from './lazy.js';
 // 늦게 받기 입구 (R1-REQ-229): lazy.js 는 보스 모듈을 정적으로 싣지 않는 createBoss(대역 → 진짜 보스)·loadBoss·preloadStageBosses 를 준다.
 // 이 파일은 모든 보스를 정적으로 싣는 동기 대체 경로로 남고, 불러와지면 자기 클래스를 lazy 레지스트리에 등록한다
@@ -17,7 +18,7 @@ export const BOSS_CLASSES = { ...BOSS_A, ...BOSS_B };
 // 최상위에서 읽으면 초기화 전 참조 오류로 게임 전체가 멈추므로, 그때는 첫 createBoss 에서 다시 합친다.
 let p2Merged = false;
 function mergeP2() {   // [hook:p2]
-  try { Object.assign(BOSS_CLASSES, BOSS_C, BOSS_D); p2Merged = true; } catch { /* 초기화 전 → createBoss 에서 다시 */ }
+  try { Object.assign(BOSS_CLASSES, BOSS_C, BOSS_D, BOSS_E); p2Merged = true; } catch { /* 초기화 전 → createBoss 에서 다시 */ }
   try { registerBosses(BOSS_CLASSES); } catch { /* lazy.js 초기화 전 → createBoss 에서 다시 */ }
 }
 mergeP2();
