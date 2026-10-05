@@ -309,8 +309,9 @@ test('한 판: 메뉴 → 헌터 선택 → 1층 처치·출구 → 5층 보스�
   const stall = await page.evaluate(async () => {
     const { isSolidType } = await import('/src/core/physics.js');
     const g = window.__game, t = g.top, w = t.world, p = w.player, m = w.map;
-    // 남은 적은 이 검사 동안 쓰러지지 않게 한다: 위에서 받은 가시 반사(무적이어도 맞으면 곁의 적을 친다)나 자석 축복이 끌어온
-    // 무작위 강화(성광의 오라)가 영웅에게 닿은 적을 쓰러뜨리면(방·시드마다 다름) 남은 적 수가 줄어 불러내기 시계가 다시 시작된다 (흔들리는 실패)
+    // 적은 이 검사 동안 시험이 직접 처치할 때만 쓰러진다 (박쥐도): 위에서 받은 가시 반사(무적이어도 맞으면 곁의 적을 친다)나 자석 축복이
+    // 끌어온 무작위 강화(성광의 오라)가 영웅에게 닿은 적을 쓰러뜨리면(방·시드·난수마다 다름) 남은 적 수가 줄어 불러내기 시계가 다시 시작되거나
+    // 박쥐가 먼저 죽어 처치 수가 모자란다 (흔들리는 실패)
     const held = w.enemies().filter((e) => !e.invuln);
     for (const e of held) e.invuln = true;
     p.buffs.invincible = 9999;
@@ -318,7 +319,7 @@ test('한 판: 메뉴 → 헌터 선택 → 1층 처치·출구 → 5층 보스�
     const o = t.summonStragglers.bind(t);
     t.summonStragglers = () => { n++; return o(); };
     for (let i = 0; i < 60 * 32 && !n; i++) {
-      if (i % 180 === 90) w.spawnEnemy('bat', p.cx + 100, p.bottom - 40, { level: 5, elite: false });
+      if (i % 180 === 90) w.spawnEnemy('bat', p.cx + 100, p.bottom - 40, { level: 5, elite: false }).invuln = true;
       if (i % 180 === 150) for (const e of w.enemies()) if (e.def?.id === 'bat') { e.dead = true; w.onEnemyKilled(e, null); kills++; }
       g.tick(1 / 60);
     }
