@@ -23,6 +23,8 @@ const CASES = [
   // rightboss:N = 보스가 나올 때까지(최대 N초) 오른쪽으로 걷기, intro:N = 보스 소개·대사를 넘겨 전투가 시작될 때까지(최대 N초).
   // 부하가 큰 기계에서도 고정 시간 대기에 기대지 않는다 (2부 보스방은 입구에서 경기장까지 15칸).
   ...STAGES.map((s) => ({ id: s + '_boss', url: `index.html?scene=stage&stage=${s}&room=boss`, boss: true, steps: 'wait:2.5,rightboss:8,intro:25,wait:1,shot,attack:0.2,attack:0.2,attack:0.2,wait:1,shot' })),
+  // 7번째 영웅 이졸데(창): 1부 첫 스테이지와 2부 합류 다음 스테이지를 이졸데로 (docs/specs/hero7.md)
+  ...['s01', 's15'].map((s) => ({ id: s + '_isolde', url: `index.html?scene=stage&stage=${s}&char=isolde`, steps: 'wait:3,shot,right:1.2,attack:0.15,wait:0.2,attack:0.15,jump:0.3,attack:0.15,wait:0.8,right:1,shot,menu:0.1,wait:0.6,shot,menu:0.1,wait:0.4,sub:0.1,skill1:0.1,wait:0.5' })),
   { id: 'menu', url: 'index.html?scene=stage&stage=s02', steps: 'wait:2.5,menu:0.1,wait:0.5,down:0.1,enter:0.1,wait:1,shot,KeyE:0.1,wait:0.4,shot,KeyE:0.1,wait:0.4,shot,KeyE:0.1,wait:0.4,shot,KeyE:0.1,wait:0.4,shot' },
   // 무한의 탑: 1층 전투 → (시험 훅 debugKillAll) 층 돌파 → 출구 (데스크톱 ▲, 휴대폰 가만히 서 있기) → 2층. towerfloor:N = 최대 N초
   { id: 'tower', url: 'index.html?scene=tower&seed=4242&preset=3&diff=normal', steps: 'wait:1.5,towerfloor:40,shot' },
