@@ -43,7 +43,7 @@ const { STAGES } = await import(path.join(ROOT, 'src/data/stages.js'));
 const { BOSSES } = await import(path.join(ROOT, 'src/data/bosses.js'));
 const { CLASSES } = await import(path.join(ROOT, 'src/data/classes.js'));
 const STAGE_IDS = list(args.stages, QUICK ? ['s01', 's05', 's10', 's14', 's17', 's20'] : Object.keys(STAGES).filter((k) => /^s\d\d$/.test(k)));
-const HEROES = list(args.heroes, QUICK ? ['kael', 'lia'] : ['kael', 'sera', 'victor', 'bran', 'lia', 'azel']);
+const HEROES = list(args.heroes, QUICK ? ['kael', 'lia'] : ['kael', 'sera', 'victor', 'bran', 'lia', 'azel', 'isolde']);
 const BOSS_FILES = fs.readdirSync(path.join(ROOT, 'src/game/bosses'));
 const bossFile = (id) => { const f = BOSS_FILES.find((x) => x.endsWith(`_${String(id).replace(/^b_/, '')}.js`)); return f ? `src/game/bosses/${f}` : 'src/game/bosses/boss.js'; };
 

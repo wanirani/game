@@ -13,7 +13,7 @@ import { isDeepStrictEqual } from 'node:util';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const imp = (p) => import(path.join(ROOT, p));
-const { SAVE_VERSION, newGameState, migrateState, ensureHero } = await imp('src/game/state.js');
+const { SAVE_VERSION, newGameState, migrateState, ensureHero, storyJoinedChars } = await imp('src/game/state.js');
 const { computeStats } = await imp('src/game/stats.js');
 const { isValidSave, saves } = await imp('src/core/save.js');
 const { CHARACTERS } = await imp('src/data/characters.js');
@@ -197,6 +197,23 @@ ok(bytes < 256 * 1024, `20장 세이브는 256 KB 미만이어야 함 (${bytes} 
 ok(bytes < SAVE_LIMIT / 2, `서버 한도 ${SAVE_LIMIT} B 의 절반 미만`);
 ok(isValidSave(bigM) && (!serverValid || serverValid(bigM)), '20장 세이브 isValidSave');
 ok(isDeepStrictEqual(quiet(() => migrateState(clone(bigM))), bigM), '20장 세이브 멱등');
+
+// ── 6b. 7번째 영웅 이졸데: 14장 아웃트로 합류(isolde_joined)를 14장을 이미 깬 세이브에 소급 (docs/specs/hero7.md) ──
+section('hero7 late join (isolde_joined)');
+{
+  ok(!m1.progress.flags.isolde_joined && !storyJoinedChars(m1).includes('isolde'), '1부 완료(14장 전) 세이브는 이졸데 미합류');
+  ok(storyJoinedChars(m1).includes('lia') && storyJoinedChars(m1).includes('azel'), '1부 완료 세이브: 리아·아젤 합류 플래그(boss_b_banshee·boss_b_grimoire) → storyJoinedChars');
+  const p = clone(m1); p.progress.cleared.s14 = { rank: 'A', time: 500, score: 1 };
+  const pm = migrateState(clone(p));
+  ok(pm.progress.flags.isolde_joined === true && storyJoinedChars(pm).includes('isolde'), '14장을 깬 옛 세이브 → isolde_joined 소급, storyJoinedChars 에 isolde');
+  ok(isDeepStrictEqual(migrateState(clone(pm)), pm), '소급 후 멱등');
+  ok(bigM.progress.flags.isolde_joined === true, '20장 세이브도 isolde_joined');
+  const ar = clone(p); ar.arcade = { kind: 'practice' };
+  const am = migrateState(ar);
+  ok(!am.progress.flags.isolde_joined && storyJoinedChars(am).length === 0, '아케이드 임시 세이브는 소급·합류 목록 없음');
+  const iso = newGameState({ slot: 1, difficulty: 'normal', charId: 'isolde' });
+  ok(iso.heroes.isolde && iso.charId === 'isolde' && isValidSave(iso) && (!serverValid || serverValid(iso)), '이졸데로 새 게임 → isValidSave (클라이언트·서버)');
+}
 
 // ── 7. 내보내기 코드 왕복 ──
 section('export/import code round trip');

@@ -51,10 +51,9 @@ for (const k of Object.keys(args)) if (!KNOWN_ARGS.has(k)) { console.error(`unkn
 for (const k of ['only', 'heroes', 'out']) if (args[k] === true) { console.error(`--${k} needs a value`); process.exit(2); }
 const OUT = path.resolve(String(args.out && args.out !== true ? args.out : '/tmp/claude-0/qa_feel'));
 const SHOTS = path.join(OUT, 'shots');
-const ALL_HEROES = ['kael', 'sera', 'victor', 'bran', 'lia', 'azel'];
-const OPT_HEROES = ['isolde'];   // 7번째 영웅: 통합(CHAR_ORDER) 전까지는 --heroes 로만 (기본 실행 목록은 그대로)
+const ALL_HEROES = ['kael', 'sera', 'victor', 'bran', 'lia', 'azel', 'isolde'];   // = src/data/characters.js CHAR_ORDER (7번째 영웅 이졸데 포함)
 const HEROES = args.heroes && args.heroes !== true ? String(args.heroes).split(',').map((s) => s.trim()).filter(Boolean) : (args.quick ? ['kael', 'lia'] : ALL_HEROES);
-for (const h of HEROES) if (!ALL_HEROES.includes(h) && !OPT_HEROES.includes(h)) { console.error(`unknown hero ${h}`); process.exit(2); }
+for (const h of HEROES) if (!ALL_HEROES.includes(h)) { console.error(`unknown hero ${h}`); process.exit(2); }
 const ALL_IDS = ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', ...Array.from({ length: 15 }, (_, i) => 'C' + (i + 1)), 'U1', 'U2', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'V1', 'X1', 'X2', 'X3', 'I1', 'R183'];
 const ONLY = args.only && args.only !== true ? String(args.only).split(',').map((s) => s.trim().toUpperCase()).filter(Boolean) : null;
 // an entry is an exact id (C2, R183) or a one-letter group (C = C1…C15); anything else (R18, C1X) would match no check and the

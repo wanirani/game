@@ -38,9 +38,9 @@ const CONTENT_TYPE = {
 const LOOSE = [/^fonts\//, /^painted\/enemies\//, /^painted\/.+\/manifest\.json$/];
 // 첫 팩: 타이틀 화면이 곧바로 쓰는 것만 (이 팩을 다 받아야 타이틀 배경이 뜨므로 작게)
 const TITLE = [/^(lo\/)?bg\/title\.webp$/, /^ui\//];
-// 다음 팩: 캐릭터 고르기·메뉴 (영웅 초상화, 여섯 영웅의 기본 직업 퍼펫, 아이템 아이콘)
-const BOOT = [/^(lo\/)?portraits\/(kael|sera|victor|bran|lia|azel)\.webp$/, /^icons\//,
-  /^puppets\/(_shared|kael\/kael_hunter|sera\/sera_exorcist|victor\/victor_gunslinger|bran\/bran_knight|lia\/lia_assassin|azel\/azel_dhampir)\//];
+// 다음 팩: 캐릭터 고르기·메뉴 (영웅 초상화, 일곱 영웅의 기본 직업 퍼펫, 아이템 아이콘)
+const BOOT = [/^(lo\/)?portraits\/(kael|sera|victor|bran|lia|azel|isolde)\.webp$/, /^icons\//,
+  /^puppets\/(_shared|kael\/kael_hunter|sera\/sera_exorcist|victor\/victor_gunslinger|bran\/bran_knight|lia\/lia_assassin|azel\/azel_dhampir|isolde\/isolde_lancer)\//];
 // 다음 팩: 마을(허브)에 들어가자마자 필요한 것
 const HUB = [/^(lo\/)?bg\/(hub|worldmap|shop|smith|inn|church)\.webp$/, /^(lo\/)?portraits\/npc_/, /^puppets\/npc\//, /^tex\/tex_(wood|dirt)\./, /^props\/(prop_crate|deco_village_)/];
 // 나머지의 묶음 순서 (한 화면이 함께 쓰는 것끼리). 묶음이 바뀌면 새 팩을 연다 (지금 팩이 minFill 보다 작으면 이어 담는다)

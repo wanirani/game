@@ -206,7 +206,7 @@ export class CharSelectScene extends Scene {
     ctx.shadowBlur = 0;
     text(ctx, c.open ? ch.title : 'LOCKED', ix + 2, T.titleY, { size: T.titleSize, weight: 800, color: c.open ? '#ff8a8a' : '#8a6a6a', ow: 3, maxWidth: iw });
     ornament(ctx, ix + iw / 2, T.ornY, iw, { color: acc, alpha: 0.9 });
-    const desc = c.open ? ch.desc : `${ch.unlock?.text ?? '특정 조건을 만족하면 합류합니다.'}\n악마성 어딘가에서 이 헌터가 당신을 기다리고 있다.`;
+    const desc = c.open ? ch.desc : `${ch.unlock?.text ?? '특정 조건을 만족하면 합류합니다.'}\n${ch.unlock?.hint ?? '악마성 어딘가에서 이 헌터가 당신을 기다리고 있다.'}`;
     // 능력치·무기 줄이 로스터 타일 위에 들어가도록 설명 줄 수를 정한다
     const entries = Object.entries(ch.stars ?? {});
     const statRows = Math.ceil(entries.length / 2);

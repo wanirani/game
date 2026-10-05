@@ -61,8 +61,8 @@ const DPR = Math.min(2, window.devicePixelRatio || 1);
 const W = LABEL_W + CW * YAWS.length + 10;
 
 // ── 외형 만들기 (메뉴와 같은 composeLook: 직업 계보 + 장비 칸) ──
-// ?heroes=isolde,kael — 목록 밖 영웅(통합 전 7번째 영웅 등)도 볼 수 있게. 없으면 예전처럼 CHAR_ORDER 앞 6명 (turntable.mjs 기본 검사)
-const heroes = (Q.get('heroes') ? Q.get('heroes').split(',') : (CHAR_ORDER || Object.keys(CHARACTERS)).slice(0, 6)).filter((id) => CHARACTERS[id]);
+// ?heroes=isolde,kael — 일부 영웅만 볼 때. 없으면 CHAR_ORDER 전원 (7명, turntable.mjs 기본 검사)
+const heroes = (Q.get('heroes') ? Q.get('heroes').split(',') : (CHAR_ORDER || Object.keys(CHARACTERS))).filter((id) => CHARACTERS[id]);
 function classesOf(cid) { return Object.values(CLASSES).filter((c) => c.charId === cid); }
 function bestOf(filter) {
   let best = null;
@@ -212,7 +212,7 @@ window.__tt = {
   },
   readyCount,
   /**
-   * QA 비용 측정: 영웅 6명의 2차 전직 외형을 n 번씩 그린다 (deg = null → 옆모습 경로, 숫자·배열 → opts.yaw, 배열이면 차례로).
+   * QA 비용 측정: 목록의 영웅마다 2차 전직 외형을 n 번씩 그린다 (deg = null → 옆모습 경로, 숫자·배열 → opts.yaw, 배열이면 차례로).
    * 캔버스는 하나를 다시 쓴다 (할당 비용 제외). 시간은 바깥(CDP CPU 시간)에서 잰다 (platform §7.3: yaw ≤ 1.5 × 옆모습)
    */
   bench(deg, n = 10, w = 160, h = 190) {

@@ -72,7 +72,7 @@ const profiles = list(args.profiles, ['desk', 'phone1low']);
 const badProf = profiles.filter((p) => !PROFILES[p]);
 if (badProf.length || !profiles.length) { console.error(`unknown --profiles ${badProf.join(', ') || '(empty)'} (known: ${Object.keys(PROFILES).join(', ')})`); process.exit(2); }
 const STAGES = Array.from({ length: 20 }, (_, i) => `s${String(i + 1).padStart(2, '0')}`);
-const HEROES = ['kael', 'sera', 'victor', 'bran', 'lia', 'azel'];
+const HEROES = ['kael', 'sera', 'victor', 'bran', 'lia', 'azel', 'isolde'];   // = src/data/characters.js CHAR_ORDER
 
 /** Scene list: {id, kind: 'room'|'boss'|'stress'|'ult'|'awaken'|'hub'|'menu', stage, room, hero} */
 function sceneList() {

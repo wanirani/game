@@ -26,7 +26,7 @@ const QUICK = !!args.quick;
 const SCALE = Number(args['timeout-scale']) || 1;
 const LOG_DIR = path.join(QA_DIR, 'run_all');
 fs.mkdirSync(LOG_DIR, { recursive: true });
-const HEROES = ['kael', 'sera', 'victor', 'bran', 'lia', 'azel'];
+const HEROES = ['kael', 'sera', 'victor', 'bran', 'lia', 'azel', 'isolde'];   // = src/data/characters.js CHAR_ORDER
 const exists = (rel) => fs.existsSync(path.join(ROOT, rel));
 const MIN = 60000;
 

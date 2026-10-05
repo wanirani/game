@@ -138,7 +138,10 @@ export const ONLINE = {
 /** 동시 수정 충돌 시 조건부 쓰기 재시도 횟수 */
 export const CAS_RETRIES = 5;
 
-/** 저장 데이터 구조 검사에 쓰는 캐릭터 ID (src/data/characters.js 의 CHARACTERS 키와 같아야 한다 — tools/accounts/test_api.mjs 가 확인) */
-export const CHARACTER_IDS: readonly string[] = ['kael', 'sera', 'victor', 'bran', 'lia', 'azel'];
+/**
+ * 저장 데이터 구조 검사·온라인 기록·일일 도전에 쓰는 캐릭터 ID (src/data/characters.js 의 CHARACTERS 키와 같아야 한다 — tools/accounts/test_api.mjs 가 확인).
+ * 순서 = CHAR_ORDER. 일일 도전(runs.mts dailyFor)은 이 목록에서 고른다 — 잠긴 영웅(리아·아젤·이졸데)도 오늘의 도전에서는 체험할 수 있다
+ */
+export const CHARACTER_IDS: readonly string[] = ['kael', 'sera', 'victor', 'bran', 'lia', 'azel', 'isolde'];
 
 export const SLOTS: readonly number[] = [1, 2, 3];

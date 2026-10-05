@@ -2,7 +2,7 @@
 // base: Lv1 능력치, growth: 레벨당 성장치
 // move: speed(px/s), jump(초기 점프 속도), airJumps(기본 공중 점프 수), dash('dash'|'mist'|'roll'|'blink'), dashSpeed
 // size: 피격 판정 크기 / look: 외형 (render/hero.js 가 해석) / weaponType: 기본 무기 계열
-// unlock: null 이면 처음부터 사용 가능
+// unlock: null 이면 처음부터 사용 가능. { type:'story', flag, text, hint? } — flag 가 세이브에 켜지면 합류 (game/state.js storyJoinedChars), hint 는 잠긴 선택 화면 둘째 줄
 export const CHARACTERS = {
   kael: {
     id: 'kael', name: '카엘 발크레인', eng: 'KAEL VALCRANE', title: '뱀파이어 헌터',
@@ -131,7 +131,7 @@ export const CHARACTERS = {
     startSub: 'axe', startWeapon: 'w_spear_1', startArmor: ['a_body_3'],
     rootClass: 'isolde_lancer', ult: { name: '천룡강림', color: '#8ae8ff' },
     stars: { 공격: 4, 방어: 3, 속도: 3, 마법: 2, 사거리: 4 },
-    unlock: { type: 'story', flag: 'isolde_joined', text: '2부 14장 「거울의 성」 클리어 시 합류' }, portrait: 'portraits/isolde',
+    unlock: { type: 'story', flag: 'isolde_joined', text: '2부 14장 「거울의 성」 클리어 시 합류', hint: '균열 너머 어딘가에서 이 헌터가 당신을 기다리고 있다.' }, portrait: 'portraits/isolde',
   },
 };
 export const CHAR_ORDER = ['kael', 'sera', 'victor', 'bran', 'lia', 'azel', 'isolde'];

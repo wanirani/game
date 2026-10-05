@@ -16,6 +16,8 @@ export const CLASS_INFO: Readonly<Record<string, readonly [string, number]>> = {
   lia_dancer: ['lia', 1], lia_bladedancer: ['lia', 2], lia_reaper: ['lia', 2],
   azel_dhampir: ['azel', 0], azel_vampire: ['azel', 1], azel_nosferatu: ['azel', 2], azel_bloodking: ['azel', 2],
   azel_holyblade: ['azel', 1], azel_dawnbringer: ['azel', 2], azel_seraph: ['azel', 2],
+  isolde_lancer: ['isolde', 0], isolde_dragoon: ['isolde', 1], isolde_stormlord: ['isolde', 2], isolde_wyrmknight: ['isolde', 2],
+  isolde_valkyrie: ['isolde', 1], isolde_einherjar: ['isolde', 2], isolde_spearsaint: ['isolde', 2],
 };
 
 /** 난이도 id (src/data/difficulty.js DIFFICULTIES 순서) */

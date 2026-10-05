@@ -552,7 +552,7 @@ test('일일 도전: 같은 날 같은 값, 날마다 다름, 한국 자정에 �
     assert.ok(Number.isInteger(d.seed) && d.seed >= 0 && d.seed <= 0xffffffff);
     seen.stage.add(d.stageId); seen.hero.add(d.hero); seen.diff.add(d.diff); d.mods.forEach((m) => seen.mods.add(m)); seen.seeds.add(d.seed); seen.n.add(d.mods.length);
   }
-  assert.ok(seen.stage.size >= 12 && seen.hero.size === 6 && seen.diff.size === 2 && seen.mods.size === 6 && seen.seeds.size === 60 && seen.n.size === 2, JSON.stringify(Object.fromEntries(Object.entries(seen).map(([k, v]) => [k, v.size]))));
+  assert.ok(seen.stage.size >= 12 && seen.hero.size === cfg.CHARACTER_IDS.length && seen.diff.size === 2 && seen.mods.size === 6 && seen.seeds.size === 60 && seen.n.size === 2, JSON.stringify(Object.fromEntries(Object.entries(seen).map(([k, v]) => [k, v.size]))));
   // 비밀 키가 다르면 다른 도전 (키를 모르면 미리 알 수 없다)
   const mine = runs.dailyFor('20261010');
   ENV.set('AUTH_PEPPER', 'another-secret-pepper-value-123456789');
