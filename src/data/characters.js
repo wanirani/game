@@ -1,4 +1,4 @@
-// 플레이어블 캐릭터 6인
+// 플레이어블 캐릭터 7인 (이졸데는 통합 전까지 CHAR_ORDER 밖)
 // base: Lv1 능력치, growth: 레벨당 성장치
 // move: speed(px/s), jump(초기 점프 속도), airJumps(기본 공중 점프 수), dash('dash'|'mist'|'roll'|'blink'), dashSpeed
 // size: 피격 판정 크기 / look: 외형 (render/hero.js 가 해석) / weaponType: 기본 무기 계열
@@ -112,6 +112,26 @@ export const CHARACTERS = {
     rootClass: 'azel_dhampir', ult: { name: '블러드 녹턴', color: '#ff2a4a' },
     stars: { 공격: 4, 방어: 3, 속도: 4, 마법: 4, 사거리: 3 },
     unlock: { type: 'story', flag: 'boss_b_grimoire', text: '6장 「금단의 대도서관」 클리어 시 합류' }, portrait: 'portraits/azel',
+  },
+  // 7번째 영웅 (docs/specs/hero7.md). 선택 화면·파티·아케이드 목록(CHAR_ORDER)에는 통합 때 들어간다 — 그 전에는 ?char=isolde 로만
+  isolde: {
+    id: 'isolde', name: '이졸데 드라켄', eng: 'ISOLDE DRACHEN', title: '용창 기사',
+    desc: '균열 너머에서 무너진 하늘 기사단의 마지막 용기사. 용을 균열에 빼앗기고도 창만은 놓지 않았다. 긴 창의 사거리와 누구보다 높은 도약, 하늘에서 내리꽂는 급강하 찌르기가 장기다.',
+    weaponType: 'spear', weaponTypes: ['spear'],
+    base: { hp: 125, mp: 55, atk: 15, mag: 8, def: 9, res: 8, agi: 12, luck: 7, crit: 7 },
+    growth: { hp: 15.5, mp: 4.2, atk: 2.45, mag: 1.2, def: 1.35, res: 1.1, agi: 0.7, luck: 0.45 },
+    move: { speed: 280, jump: 880, airJumps: 1, dash: 'dash', dashSpeed: 680 },
+    size: { w: 30, h: 84 },
+    look: {
+      build: 'normal', height: 1.02, skin: '#f2dccc', hair: '#dfe2ec', hairStyle: 'braid', eyes: '#3ad8c8',
+      outfit: 'knight', coat: 'short', primary: '#2a3450', secondary: '#6ad0e0', trim: '#d8dce8',
+      pants: '#1a2238', boots: '#2a3242', scarf: null, headgear: 'winghelm', headColor: '#b8c2d8', cape: { color: '#1a2238', color2: '#6ad0e0', len: 0.7 }, beard: null,
+      armor: 'plate', armorColor: '#a8b4cc', armorTrim: '#6ad0e0',
+    },
+    startSub: 'axe', startWeapon: 'w_spear_1', startArmor: ['a_body_3'],
+    rootClass: 'isolde_lancer', ult: { name: '천룡강림', color: '#8ae8ff' },
+    stars: { 공격: 4, 방어: 3, 속도: 3, 마법: 2, 사거리: 4 },
+    unlock: { type: 'story', flag: 'isolde_joined', text: '2부 14장 「거울의 성」 클리어 시 합류' }, portrait: 'portraits/isolde',
   },
 };
 export const CHAR_ORDER = ['kael', 'sera', 'victor', 'bran', 'lia', 'azel'];

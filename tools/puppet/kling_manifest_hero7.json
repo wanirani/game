@@ -1,0 +1,44 @@
+{
+ "_doc": "퍼펫 원화·초상·컷인 클링 생성 기록 — hero7 (이졸데 isolde, H7-ART). images = 과금 이미지 수(후보 포함). 채택본은 tools/puppet/src/isolde/ 에 워터마크 제거 후 저장(초상 assets/portraits/isolde.webp, 컷인 assets/cg/cutin_isolde.webp). 형식은 kling_manifest_heroes3.json 과 같다.",
+ "model": "kling-image-v3_0_omni",
+ "budget": {
+  "credits": 300,
+  "credits_per_image": 2,
+  "images_max": 150,
+  "plan_images": 45
+ },
+ "uploads": {
+  "isolde_portrait_b.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qSwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBoxYWdlbnRfdXBsb2FkLzE3OTEyMTM3NzYvT2c1QzNwaTBPVy9wb3J0cmFpdF9iLmpwZw.origin?x-kcdn-pid=112372"
+ },
+ "entries": [
+  {
+   "id": "isolde_portrait_v1",
+   "tool": "text_to_image",
+   "images": 2,
+   "generationId": "AXrVpBgEyvz8b6g2cAxx-KZ2LPBorxPEavn2B92EWCCNxFwd8Zds8qK9Rz9DeG0Llnikol4a",
+   "inputs": [],
+   "aspect_ratio": "2:3",
+   "img_resolution": "2k",
+   "picked": "-",
+   "prompt": "Isolde Drachen, a tall athletic young female dragon knight (dragoon) in her twenties, a beautiful fierce determined face, teal-green eyes, long silver-white hair woven into a single thick braid, an open-faced silver winged headpiece: a silver brow-guard circlet with two swept-back silver dragon-wing crests at the temples, her whole face fully visible (no visor, no faceplate). She wears sleek silver-blue plate armour with dragon-scale engraved pauldrons, a silver breastplate over deep navy cloth, a deep navy tabard skirt with silver trim hanging between armoured tassets, silver plate gauntlets and greaves, a short dark navy half-cape over one shoulder, holding a very long dragon lance upright: a long silver leaf-shaped spearhead and a flowing pale silver-blue dragon-mane tassel below the blade, faint cyan lightning crackling along the spearhead. Dark gothic fantasy character art, full body heroic standing pose, highly detailed painterly digital illustration, dramatic rim lighting, dark atmospheric background with red moonlight glow, game character select art, single character only, no text, no letters, no watermark.",
+   "note": "FAILED(얼굴): 두 후보 모두 면갑 달린 투구(눈만 보임) — \"open-faced headpiece/circlet\" 문구 무시(파이프라인 §2.2 함정과 같음). 둘 다 \"dragon-mane tassel\" 을 용 꼬리로 그림. b 는 구도·갑옷·은발 땋은 머리·창이 좋아서 편집 대상(image_1)으로 재시도"
+  },
+  {
+   "id": "isolde_portrait_v2",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AYWaRvT2NIhvWtt7KtZ3vbO57EPeaH6YwzDfv6SRDe2x-Yn4Ntvnboo_9ZK_8wXFna-zeHJA",
+   "inputs": [
+    "isolde_portrait_b.jpg (v1 candidate b: composition/armour)"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": null,
+   "prompt": "Edit 图片1. Keep the same young woman, the same pose, the same silver plate armour, the same navy cloth and cape, the same long spear with lightning in her hand, the same long silver-white braid, the same blood-moon background, composition, framing, lighting and painterly dark gothic fantasy style. REMOVE THE HELMET AND VISOR COMPLETELY: she is bare-headed, her whole face uncovered and clearly visible — a beautiful fierce young woman in her twenties with fair skin, a strong jaw, determined expression and glowing teal-green eyes, her silver-white hair swept back from her forehead into the single thick braid. On her head she wears only a slim silver circlet across her brow with two small swept-back silver dragon-wing ornaments at the temples that rise just above her hair; nothing covers her eyes, nose, cheeks or mouth. Remove the dragon tail completely: no tail anywhere, only the cape and the armoured legs. No helmet, no visor, no mask, no faceplate, no text, no letters, no watermark."
+  }
+ ],
+ "images_used": {
+  "isolde": 4
+ },
+ "credits_used": 8
+}
