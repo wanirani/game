@@ -3,7 +3,7 @@
 //  - 게임 루프를 멈추고(game._pageHidden) game.tick(1/60) 을 직접 돌린다 → 부하와 상관없이 같은 결과
 // 확인: 층 계획 재현(같은 시드 → 같은 방·적, 다른 시드 → 다름)·방 풀 검증(tools/tower_rooms.mjs) ·
 //       메뉴 → 헌터 선택 → 탑 · 1층 적 = 계획 · 처치 → 출구(▲) → 2층 · 5층 보스 등장·격파 → 축복(키보드) → 출구(가만히 서 있기) ·
-//       축복 12종 효과(능력치·버프·가시·가속·대시 무적·부활) · 10층 안식처(회복 + 축복 셋, 패드로 고르기) · 일시정지 축복 칸 ·
+//       축복 12종 효과(능력치·버프·가시·가속·대시 무적·부활) · 갇힌 적 불러내기(졸개만 잡아도 25초, 벽에 박지 않음) · 10층 안식처(회복 + 축복 셋, 패드로 고르기) · 일시정지 축복 칸 ·
 //       쓰러짐 → 결과(층·시간·처치·축복) → 기기 최고 기록(meta.towerBest) · 온라인 제출 본문(board tower:<diff>, floor) ·
 //       명예의 전당(기기 탭 탑 부문·온라인 보드 tower:normal) · 휴대폰(740×360·844×390) 메뉴 5장 카드 배치·탭 크기·터치로 축복 고르기 ·
 //       콘솔 오류 0
@@ -238,6 +238,7 @@ test('한 판: 메뉴 → 헌터 선택 → 1층 처치·출구 → 5층 보스�
   await key(page, 'ArrowRight');
   await key(page, 'Enter');
   await tickUntil(page, "g.top.name === 'tower' && t.phase === 'gate'", 200, '축복 → 출구');
+  assert.equal(await page.evaluate(() => window.__game.top.paused), false, '축복을 고른 뒤 일시정지 표시가 풀린다 (층 이름·출구 안내·적 방향 표시)');
   const took5 = await page.evaluate(() => window.__game.top.takenOrder);
   assert.deepEqual(took5, [offer5[2]], '→ 다음 카드 = 세 번째');
   await tickUntil(page, 't.floor === 6', 400, '가만히 서 있으면 6층');
@@ -298,6 +299,30 @@ test('한 판: 메뉴 → 헌터 선택 → 1층 처치·출구 → 5층 보스�
   // HUD 아이콘 줄
   await ticks(page, 10);
   await shot(page, 'blessings_hud');
+  // 갇힌 적 불러내기: 졸개만 계속 잡아(처치 수는 늘어도) 남은 적 수가 새로 줄지 않으면 25초 뒤 불러낸다 — 불러낸 적은 벽에 박히지 않는다
+  const stall = await page.evaluate(async () => {
+    const { isSolidType } = await import('/src/core/physics.js');
+    const g = window.__game, t = g.top, w = t.world, p = w.player, m = w.map;
+    p.buffs.invincible = 9999;
+    let n = 0, kills = 0;
+    const o = t.summonStragglers.bind(t);
+    t.summonStragglers = () => { n++; return o(); };
+    for (let i = 0; i < 60 * 32 && !n; i++) {
+      if (i % 180 === 90) w.spawnEnemy('bat', p.cx + 100, p.bottom - 40, { level: 5, elite: false });
+      if (i % 180 === 150) for (const e of w.enemies()) if (e.def?.id === 'bat') { e.dead = true; w.onEnemyKilled(e, null); kills++; }
+      g.tick(1 / 60);
+    }
+    delete t.summonStragglers;
+    let inWall = 0;
+    for (const e of w.enemies()) {
+      if (e.kind !== 'enemy' || e.def?.flying) continue;
+      for (let x = e.x + 4; x <= e.x + e.w - 4; x += 8) for (let y = e.y + 4; y <= e.y + e.h - 4; y += 8) if (isSolidType(m.typeAt(Math.floor(x / 48), Math.floor(y / 48)))) { inWall++; x = Infinity; break; }
+    }
+    p.buffs.invincible = 0;
+    return { n, kills, inWall };
+  });
+  assert.ok(stall.n === 1 && stall.kills >= 5, `졸개만 잡아도 불러내기 ${JSON.stringify(stall)}`);
+  assert.equal(stall.inWall, 0, '불러낸 적이 벽에 박힘');
 
   // 10층 안식처: 회복 + 축복 셋 (패드로 고르기)
   await page.evaluate(() => { const t = window.__game.top; t.debugFloor(10); const p = t.world.player; p.hp = Math.round(p.stats.hp * 0.4); });

@@ -289,7 +289,8 @@ def build_turn(rig_path, quiet=False):
     sheet = Image.fromarray(Sa, 'RGBA')
     out_dir = ensure(os.path.join(OUT, cid, clsid))
     tp = os.path.join(out_dir, 'turn.webp')
-    sheet.save(tp, 'WEBP', quality=80, alpha_quality=85, method=6)
+    # opt-in turn.quality (hero7): 턴 시트 webp 품질 (기본 80). APK 그림 단계 예산(45 MB, build_web)이 빠듯해 이졸데는 72
+    sheet.save(tp, 'WEBP', quality=int(T.get('quality', 80)), alpha_quality=85, method=6)
     steps = {}
     for d in STEPS:
         l = LBL[d]

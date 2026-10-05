@@ -519,8 +519,14 @@ def build_hands(C, rig):
             if erode_k:
                 hm = cv2.erode(hm, np.ones((erode_k, erode_k), np.uint8))
             inhull = (hm > 0) & m & al
-            hand = hand | (inhull & band & ~rodish & ~rod)       # 막대 앞을 지나는 손가락
-            inside = inhull & ((band & (rodish | rod)) | rod)
+            rodlike = rodish | rod
+            if c.get('rodClose'):
+                # opt-in (hero7): 막대 하이라이트(흰 줄)처럼 초록에 둘러싸인 저채도 픽셀도 막대로 본다
+                kk = int(c['rodClose'])
+                rodlike = rodlike | (cv2.morphologyEx((rodlike & band).astype(np.uint8), cv2.MORPH_CLOSE,
+                                                      cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kk, kk))) > 0)
+            hand = hand | (inhull & band & ~rodlike & ~rod)       # 막대 앞을 지나는 손가락
+            inside = inhull & ((band & rodlike) | rod)
             if inside.any():
                 bb = bbox(inside | hand, 30, al.shape[1], al.shape[0])
                 bx0, by0, bx1, by1 = bb

@@ -3,7 +3,7 @@
 //  - 월드 하나로 층을 갈아 끼운다: 층마다 합성 스테이지(id 'tower', 방 하나)를 world.stage 에 넣고 loadRoom — 영웅·런 상태는 이어진다.
 //    전투 층 = 실제 스테이지 방의 사본(출구 막음, 기믹 끔), 보스·안식처 층 = 투기장. world.diff = 층 배율을 곱한 난이도 (towerDiff)
 //  - 흐름: enter(층 이름 1.2초) → fight(적 = 계획대로 그 방의 자리에) → clear → 축복(보스·안식처) → gate(출구: 영웅 발밑에 열린다,
-//    ▲ 또는 그 위에 잠시 서 있기) → 암전 → 다음 층. 25초 동안 아무도 쓰러뜨리지 못하면 남은 적을 영웅 곁으로 불러낸다 (갇힌 적)
+//    ▲ 또는 그 위에 잠시 서 있기) → 암전 → 다음 층. 남은 적 수가 25초 동안 줄지 않으면 남은 적을 영웅 곁으로 불러낸다 (갇힌 적)
 //  - 축복: 능력치는 영웅의 refreshStats 를 이 장면이 감싸 덧씌운다 (applyBlessingStats — 장비 능력치 계산 뒤, 체력은 깎지 않는다).
 //    대시 무적·처치 가속·가시 반사·부활은 이 장면이, 보조 무기 탄수는 트리플 샷 버프(영구 9999)로
 //  - 목숨 하나 (부활 축복 제외). 쓰러지면 결과 → 돌파한 층이 1 이상이면 온라인 보드 tower:<diff> 에 제출 (서바이벌처럼 늘)
@@ -37,7 +37,7 @@ import { frame, fmtClock, heading, DIM, GOLD, BONE } from './common.js';
 
 const COLOR = '#b79cff';
 const GATE_HOLD = 1.4;     // 출구 위에 가만히 서 있으면 올라가는 시간 (초)
-const STUCK_T = 25;        // 이 시간 동안 처치가 없으면 남은 적을 불러낸다
+const STUCK_T = 25;        // 이 시간 동안 남은 적 수가 줄지 않으면 남은 적을 불러낸다 (부하를 부르는 적의 졸개만 잡아서는 미뤄지지 않게)
 
 // ── 출구 그림 (한 번만 굽는다 — 프레임마다 그라데이션을 만들지 않는다) ──
 let gateSpr = null;
@@ -152,7 +152,7 @@ export class TowerScene extends ArcadeRunScene {
     w.loadRoom(key);
     if (plan.kind !== 'combat') { const m = w.map; w.arena = { x0: 0, x1: m.pxW, cam: { x: 0, y: 0, w: m.pxW, h: m.pxH } }; }
     w.banner = null;
-    this.gate = null; this.stuckT = 0; this.killMark = w.run.kills; this.reward = 0; this.rewardDone = false;
+    this.gate = null; this.stuckT = 0; this.aliveMin = Infinity; this.reward = 0; this.rewardDone = false;
     this.phase = 'enter'; this.phaseT = 0;
     const sub = plan.kind === 'boss' ? `군주의 층 · ${BOSSES[plan.bossId]?.name ?? ''}` : plan.kind === 'rest' ? '안식처 · 숨을 고르고 축복을 받는다' : `${STAGES[plan.sid]?.name ?? ''} · 적 ${plan.enemies.length}마리`;
     this.call = { main: `제 ${n}층`, sub, color: plan.kind === 'boss' ? '#ff4a5a' : plan.kind === 'rest' ? '#9fe8c8' : COLOR, t: 0 };
@@ -216,7 +216,7 @@ export class TowerScene extends ArcadeRunScene {
     });
     audio.sfx('mist', { vol: 0.5 });
   }
-  /** 갇힌 적 (오래 처치가 없을 때): 영웅 양옆 바닥으로 불러낸다 — 영웅 높이에서 벽·가시를 만나기 전 칸까지만 (벽 속·벽 너머에 놓지 않게) */
+  /** 갇힌 적 (남은 적 수가 오래 줄지 않을 때): 영웅 양옆 바닥으로 불러낸다 — 영웅 높이에서 벽·가시를 만나기 전 칸까지만 (벽 속·벽 너머에 놓지 않게) */
   summonStragglers() {
     const w = this.world, p = w.player, m = w.map;
     const fy = Math.floor((p.bottom - 1) / TILE), ptx = Math.floor(p.cx / TILE);
@@ -413,8 +413,10 @@ export class TowerScene extends ArcadeRunScene {
         else if (this.kind === 'rest' && this.phaseT > 1.0) this.restHere();
         break;
       case 'fight': {
-        if (w.run.kills !== this.killMark) { this.killMark = w.run.kills; this.stuckT = 0; } else this.stuckT += dt;
+        // 진행 = 남은 적 수가 새로 줄었을 때. 처치 수로 세면 손이 닿지 않는 곳에서 졸개를 계속 부르는 적(인형술사 등)이 있을 때
+        // 졸개만 잡는 동안 불러내기가 끝없이 미뤄진다
         const alive = w.enemies().length;
+        if (alive < this.aliveMin) { this.aliveMin = alive; this.stuckT = 0; } else this.stuckT += dt;
         if (alive === 0) this.floorClear();
         else if (this.stuckT > STUCK_T) { this.stuckT = 0; this.summonStragglers(); }
         break;

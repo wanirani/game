@@ -21,7 +21,8 @@
     -0.584,
     0.812
    ],
-   "rodHalf": 40,
+   "rodHalf": 44,
+   "rodClose": 17,
    "wrist": [
     800,
     740
