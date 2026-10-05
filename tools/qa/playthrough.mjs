@@ -1,7 +1,7 @@
 // 자동 플레이스루: 스테이지 입구에서 보스 방까지 실제 키보드 입력으로 방을 차례로 지나 보스를 쓰러뜨리고 결과 화면까지 간다.
 //
 //   node tools/qa/playthrough.mjs [--only s03,s14] [--god] [--char kael] [--preset 3|4] [--jobs 2] [--room-timeout 120]
-//                                 [--boss-timeout 240] [--out dir] [--json] [--verbose]
+//                                 [--boss-timeout 240] [--room r2] [--wall-cap 15] [--out dir] [--json]
 //
 // 시작: 아케이드 '스테이지 연습' (?scene=practice&stage=…&preset=…) — 강한 헌터 등급(LEVEL_PRESETS; 2부는 '이계의 순례자' = 4,
 //   meta.konami 로 연다), 이야기 대사 없음. 루프는 lib/step.mjs freeze 로 멈추고 한 스텝(1/60초)씩 돌린다 (결정적·빠름).
@@ -27,6 +27,7 @@ const GOD = flag('god');
 const ONLY = opt('only', null)?.split(',').map((s) => s.trim()).filter(Boolean) ?? null;
 const CHAR = opt('char', 'kael');
 const PRESET_ARG = opt('preset', null);
+const ROOM_ARG = opt('room', null);
 const JOBS = Math.max(1, +opt('jobs', 2));
 const ROOM_TIMEOUT = +opt('room-timeout', 120) * 60;     // 프레임
 const BOSS_TIMEOUT = +opt('boss-timeout', 240) * 60;
@@ -112,7 +113,7 @@ function installHelper() {
       }
       if (b) o.boss = { ...(P.hb(b) || {}), hp: b.hp, mhp: b.stats?.maxHp ?? b.maxHp, dead: !!b.dead, dying: b.dying > 0, pending: !!b.pendingBoss, id: b.def?.id ?? b.id, active: !!w.bossActive };
       const wind = w?.gimmickOf?.('wind');
-      if (wind) { o.wind = wind.phase; o.windRem = Math.max(0, (wind.dur ?? 0) - (wind.pt ?? 0)); }
+      if (wind) { o.wind = wind.phase; o.windRem = Math.max(0, (wind.dur ?? 0) - (wind.pt ?? 0)); o.windDir = wind.dir; }
       const hb = w?.gimmickOf?.('heartbeat');
       if (hb) { o.hb = { rem: Math.max(0, hb.beat - hb.timer), beat: hb.beat, idx: hb.beatIndex }; if (full) o.hb.cells = hb.cells.map((c) => [c.idx, c.even]); }
       if (p && w) {
@@ -192,6 +193,8 @@ async function playStage(env, stageId) {
     await s.eval(installHelper);
     await s.eval((god) => { window.__pt.god = god; }, GOD);
     let obs = await run(30);
+    // --room r2: 그 방부터 (stuck 확인용 — 방 하나를 길게 돌려 본다)
+    if (ROOM_ARG && stage.rooms[ROOM_ARG] && obs.room !== ROOM_ARG) { await s.eval((r) => window.__game.world.gotoRoom(r), ROOM_ARG); obs = await run(40); rep.startRoom = ROOM_ARG; }
     const info = await s.eval(() => { const p = window.__game.world.player; return { w: p.w, h: p.h, speed: p.moveProfile(null).speed, jump: p.jumpVel(), airJumps: p.maxAirJumps(), wallJump: !!p.ch.move.wallJump, lv: p.hero.level }; });
     rep.hero = info;
     const hero = heroModel(info);
@@ -199,11 +202,11 @@ async function playStage(env, stageId) {
     rep.route = route;
     let room = null, R = null, nav = null, gsnap = null, gridVer = -1, nextRoom = null, phaseRoom = false;
     const visited = [];
-    let bossStart = null, resultWait = 0, lastProgress = 0;
+    let bossStart = null, resultWait = 0, dmgLast = 0;
     const finishRoom = (status, extra = {}) => {
       if (!R || R.status) return;
       R.status = status; R.frames = frame - R.f0; R.time = +(R.frames / 60).toFixed(1);
-      R.deaths = obs.deaths - R.d0; R.damage = Math.round(obs.dmg - R.dmg0);
+      R.deaths = obs.deaths - R.d0; R.damage = Math.round((obs.p ? obs.dmg : dmgLast) - R.dmg0);
       Object.assign(R, extra);
       if (R.deaths > 0 && status === 'ok') R.status = 'died';
     };
@@ -292,6 +295,7 @@ async function playStage(env, stageId) {
         continue;
       }
       if (obs.top === 'loading' || !obs.p) { obs = await run(10); continue; }
+      dmgLast = obs.dmg;
       // ── 방 바뀜 ──
       if (obs.room !== room) {
         if (R && !R.status) finishRoom(R.next === obs.room || !R.next ? 'ok' : 'ok', { exitTo: obs.room });
@@ -411,7 +415,14 @@ async function playStage(env, stageId) {
         await keys({ right: true }); obs = await run(6, { room: true }); continue;
       }
       // 바람: 돌풍 중에는 기다린다 (바람 반대쪽으로 버티기)
-      if (obs.wind === 'on') { await keys({}); obs = await run(6, { room: true }); continue; }
+      if (obs.wind === 'on') {
+        // 돌풍: 바람 반대쪽으로 버틴다 (바람 방향으로 걷는 길이면 그냥 걷는다)
+        const bw = nav.best(node);
+        if (!(bw?.e.walk != null && !bw.e.macro && Math.sign(bw.e.walk) === Math.sign(obs.windDir))) {
+          trace('wind-resist');
+          await keys({ [obs.windDir > 0 ? 'left' : 'right']: true }); obs = await run(4, { room: true }); continue;
+        }
+      }
       obs = await navStep(node, hNow);
     }
 

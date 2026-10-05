@@ -231,6 +231,14 @@ export class RoomNav {
     if (!(g.floor(tx, fy) || this.crumbleAt(tx, fy))) return false;
     return !g.solid(tx, fy - 1) && !g.solid(tx, fy - 2);
   }
+  /** 노드 몸 칸의 위험 (가시 · 해로운 액체) → 추가 비용(초) */
+  nodeHazard(n) {
+    if (typeof n !== 'number') return 0;
+    const { tx, fy } = this.decode(n), g = this.grid;
+    let k = 0;
+    for (const ty of [fy - 1, fy - 2]) { const t = g.typeAt(tx, ty); if (t === T.SPIKE || (t === T.LIQUID && this.liquidHurts)) k++; }
+    return k ? this.hazardCost * (1 + k) : 0;
+  }
   crumbleAt(tx, fy) { return this.crumbles.some((c) => Math.floor(c.ox / TILE) === tx && Math.round(c.oy / TILE) === fy); }
   key(tx, fy) { return fy * this.W + tx; }
   decode(n) { if (typeof n === 'string') return null; return { tx: n % this.W, fy: Math.floor(n / this.W) }; }
@@ -283,7 +291,7 @@ export class RoomNav {
     const spd = hero.speed;
     if (!isW && !isP) {
       const { tx, fy } = this.decode(n);
-      for (const d of [-1, 1]) if (this.standable(tx + d, fy)) E.push({ to: this.key(tx + d, fy), cost: TILE / spd, walk: d, frames: Math.ceil(TILE / spd * 60) });
+      for (const d of [-1, 1]) if (this.standable(tx + d, fy)) E.push({ to: this.key(tx + d, fy), cost: TILE / spd + this.nodeHazard(this.key(tx + d, fy)), walk: d, frames: Math.ceil(TILE / spd * 60) });
       // 걸어서 나가는 출구
       if (exits.R && tx === g.w - 1) E.push({ to: 'EXIT', cost: TILE / spd, walk: 1, exit: 'R', frames: 12 });
       if (exits.L && tx === 0) E.push({ to: 'EXIT', cost: TILE / spd, walk: -1, exit: 'L', frames: 12 });
@@ -325,7 +333,7 @@ export class RoomNav {
         if (to == null && r.plat >= 0 && !isP) to = this.nodeOf({ x: r.x, y: r.y, w: hero.w, h: hero.h, onGround: true });
       } else if (r.end === 'swim' && g.deep) to = this.nodeOf({ x: r.x, y: r.y, w: hero.w, h: hero.h, onGround: false });
       if (to == null || to === n) continue;
-      const cost = r.frames / 60 + 0.25 + r.hazard * this.hazardCost / 10;
+      const cost = r.frames / 60 + 0.25 + r.hazard * this.hazardCost / 10 + (to === 'EXIT' ? 0 : this.nodeHazard(to));
       const prev = seen.get(to);
       if (!prev || prev.cost > cost) seen.set(to, { to, cost, macro: m.id, frames: r.frames, exit: r.exit, hazard: r.hazard });
     }

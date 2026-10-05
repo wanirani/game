@@ -136,6 +136,7 @@ Netlify Functions(모던 함수, TypeScript) + Netlify Blobs 로 동작하며, �
 | `bn-saves` | `<uid>/slot1`·`slot2`·`slot3`, `<uid>/meta` | `{rev, savedAt, data}` 또는 묘비 `{rev, savedAt, deleted:true}`. Blobs 메타데이터 `{rev, savedAt, summary?, deleted?}` (목록은 본문 없이 메타데이터만 읽는다) |
 | `bn-ratelimit` | `ip/auth/<망 해시>`, `ip/signup/<망 해시>`, `lock/login/<아이디>/all`, `lock/login/<아이디>/net/<망 해시>`, `lock/login/<아이디>/wide/<IPv6 /48 해시>`, `lock/login/<아이디>/ok/<망 해시>`, `lock/recover/<아이디>/net/<망 해시>` | 카운터 `{n, start, lockedUntil?, strikes?, struckAt?}` (`strikes` = 아이디 전체 잠금이 이어진 횟수), 믿는 망 `ok/…` = `{at}` — 망 = IPv4 주소 하나 또는 IPv6 /64 |
 
+- 익명 통계(`POST /api/t`·`GET /api/stats`)는 다섯 번째 저장소 `bn-telemetry` 를 쓰고 계정과 이어지지 않는다 — `docs/TELEMETRY.md` (망별 제한 카운터 `ip/tel/<망 해시>` 만 `bn-ratelimit` 에, 매일 정리 함수가 30일 지난 통계 원본도 지운다).
 - `uid` 는 가입 때 만드는 무작위 128비트 내부 식별자다. 저장 데이터 키에 로그인 아이디 대신 `uid` 를 써서, 탈퇴 후 같은 아이디로 다시 가입해도 이전 데이터(혹시 남은 조각 포함)와 절대 섞이지 않는다.
 - 세션 인증은 두 곳을 모두 확인한다: `bn-sessions` 에 토큰 해시가 있고, **그리고** 사용자 레코드의 `sessions` 목록에도 있으며 만료 전이어야 한다(목록이 기준). 그래서 중간에 지우기가 실패해도 폐기된 토큰이 되살아나지 않는다.
 - 모든 쓰기는 ETag 조건부 쓰기(`onlyIfNew` / `onlyIfMatch`)로 경합을 막는다: 같은 아이디 동시 가입은 하나만 성공, 같은 `baseRev` 동시 저장도 하나만 성공한다.
