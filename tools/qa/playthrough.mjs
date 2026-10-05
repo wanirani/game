@@ -10,7 +10,11 @@
 //   까지 남은 비용. 실행은 닫힌 고리: 매 착지마다 지금 상태로 다시 굴려 보고(검증) 어긋나면 그 간선에 벌점 → 다시 계획.
 // 모드: --god = 매 스텝 무적(buffs.invincible)·체력 채움 (순수 이동·진행 검사). 기본 = 정상 피해, 사망·피해·시간 기록
 //   (목숨은 줄면 다시 채워 뒷방을 계속 본다 — 사망 수는 그대로 센다).
-// 방 제한 시간(게임 시간)을 넘기면 stuck: 스크린샷·위치 기록 후 world.gotoRoom(다음 방) 으로 옮겨 나머지를 계속 본다.
+// 기믹: 이동·붕괴 발판(표본 노드·예측 검증) · 거울 스위치(길이 없으면 ▲) · 심장 박동(낙관적 계획 + 박자 예측 검증·대기) ·
+//   깊은 물(헤엄 칸) · 상승 기류(시뮬레이터) · 바람(돌풍 전 남은 시간 확인·버티기) · 부서지는 벽(옆에서 공격). 보스전은 단순 근접 + 스킬.
+// 방 제한 시간(게임 시간)을 넘기면 stuck: 스크린샷·위치·결정 기록(trace) 후 world.gotoRoom(다음 방) 으로 옮겨 나머지를 계속 본다.
+//   diagnosis: route-planned = 계획기는 길을 찾았는데 못 지남 (봇 한계 의심 — --room rX --room-timeout 600 으로 길게 확인)
+//              no-route = 길을 못 찾음 (맵·기믹 결함 후보) · boss = 보스전이 끝나지 않음.
 // 출력: /tmp/claude-0/qa/playthrough/<시각>[-god]/report.json · stuck_*.png · 콘솔 표 · --json 이면 마지막 줄에 요약 JSON.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -255,8 +259,10 @@ async function playStage(env, stageId) {
     const stuck = async (reason) => {
       const f = await shot(`stuck_${stageId}_${room}.png`);
       const p = obs.p || {};
+      // 진단: 계획기가 목표까지 길을 찾았으면 실행(봇) 한계 의심, 못 찾았으면 맵·기믹 확인 대상 (결함 후보)
+      const diagnosis = isBoss(room) ? 'boss' : nav?.goalHit ? 'route-planned' : 'no-route';
       finishRoom('stuck', { reason, pos: { x: Math.round(p.x), y: Math.round(p.y), tx: Math.floor((p.x + p.w / 2) / TILE), fy: Math.round((p.y + p.h) / TILE), og: p.og }, shot: f,
-        reached: nav?.reached?.size ?? 0, goalReachable: !!nav?.goalHit, trail: R.trail?.slice(-12), trace: R.trace?.slice(-25), h: nav ? nav.hOf(nav.nodeOf(p, p.plat ?? -1)) : null });
+        reached: nav?.reached?.size ?? 0, goalReachable: !!nav?.goalHit, trail: R.trail?.slice(-12), trace: R.trace?.slice(-25), diagnosis, h: nav ? nav.hOf(nav.nodeOf(p, p.plat ?? -1)) : null });
       await keys({});
       if (nextRoom) {
         await s.eval((n) => window.__game.world.gotoRoom(n), nextRoom);
@@ -266,6 +272,7 @@ async function playStage(env, stageId) {
       return false;
     };
 
+    function isBoss(r) { return !!stage.rooms[r]?.boss; }
     const isOverlay = (t) => t && !['practice', 'stage', 'arcadeResults', 'loading'].includes(t);
     let overlayN = 0, fightT = 0, swimT = 0, waitN = 0, noNode = 0, airN = 0, fnav = null, fnavKey = null, fightStall = 0, lastFightX = null;
     const bossTarget = (b, p) => {
@@ -683,6 +690,10 @@ const summary = {
   died: results.flatMap((r) => r.rooms.filter((x) => x.status === 'died').map((x) => `${r.stage}:${x.room}`)),
   deaths: results.reduce((a, r) => a + r.deaths, 0), pageErrors: results.flatMap((r) => r.pageErrors.map((e) => `${r.stage}: ${e}`)),
   wallSec: Math.round((Date.now() - t0) / 1000),
+  // stuck 분류: route-planned = 계획기는 길을 찾았는데 시간 안에 못 지남 (봇 실행 한계 의심) · no-route = 길 없음 (결함 후보) · boss = 보스전
+  stuckRoutePlanned: results.flatMap((r) => r.rooms.filter((x) => x.status === 'stuck' && x.diagnosis === 'route-planned').map((x) => `${r.stage}:${x.room}`)),
+  stuckNoRoute: results.flatMap((r) => r.rooms.filter((x) => x.status === 'stuck' && x.diagnosis !== 'route-planned').map((x) => `${r.stage}:${x.room}:${x.diagnosis}`)),
+  harnessErrors: results.flatMap((r) => r.errors.map((e) => `${r.stage}: ${e}`)),
 };
 fs.writeFileSync(path.join(OUT, 'report.json'), JSON.stringify({ summary, stages: results }, null, 1));
 // 콘솔 표
