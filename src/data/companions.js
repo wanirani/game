@@ -339,15 +339,16 @@ export const MOUNTS = {
     join: '부패에서 풀려난 흰 사슴의 신령이 고개를 숙였다. 뿔 사이의 빛이 다시 또렷하게 빛난다.',
     chips: ['뿔 돌격', '정화의 울음', '부패 저항'],
   }),
-  // ─ 외전 (docs/specs/ex_s21.md §3): 정화된 아르겐 — s21_outro 의 recruit 명령 (플래그 recruit_mt_argen). 새 그림 없음:
-  //   벡터 비룡 리그('wyvern', render/mounts_b.js MOUNT_PAL_B 은청색) · 초상화는 보스 초상화(portraits/b_argen)를 머리에 맞춰 자른다.
+  // ─ 외전 (docs/specs/ex_s21.md §3): 정화된 아르겐 — s21_outro 의 recruit 명령 (플래그 recruit_mt_argen).
+  //   벡터 비룡 리그('wyvern', render/mounts_b.js MOUNT_PAL_B 은청색) · 초상화는 정화된 모습(portraits/cmp_mt_argen — 보스 초상화와 같은 구도,
+  //   공허 결정 없음·청록 눈, tools/kling/manifest_polish-1.json)을 머리에 맞춰 자른다 (보스 초상화 portraits/b_argen 은 싸움·싸움 전 대사).
   //   수치는 기존 탈것 범위 안 (스칼렛 mt_wyvern 과 게일 mt_gale 사이: 활공·급강하 충격파는 스칼렛, 번개·돌풍 저항은 게일 쪽).
   //   특수기 「은빛 번개 숨결」 = 숨결(kind 'breath', element 'thunder' — game/mount.js SPECIALS.breath 가 속성에 맞춰 색·입자·소리를 고른다)
   mt_argen: mount({
     id: 'mt_argen', part: 2, chapter: 21, name: '아르겐', title: '은빛 뇌룡', color: '#9fe8ff',
     role: '공중전 — 활공, 번개 급강하, 은빛 번개 숨결',
     desc: '하늘 기사단의 성소를 지키던 은빛 용. 공허의 핵에서 풀려나 다시 이졸데의 곁으로 돌아왔다.',
-    portrait: 'portraits/b_argen', iconFocus: { x: 0.31, y: 0.25, s: 0.34 },
+    portrait: 'portraits/cmp_mt_argen', iconFocus: { x: 0.31, y: 0.25, s: 0.34 },
     obtain: { type: 'flag', flag: 'recruit_mt_argen', hint: '외전 「하늘 정원의 둥지」에서 만날 수 있다' },
     cry: { sfx: 'roar_small', pitch: 0.85 }, hoof: { sfx: 'footstep', pitch: 0.8, vol: 0.8 },
     rig: 'wyvern', variant: 'silver', palette: ['#d8e0ea', '#6a7890', '#8ae8f0', '#f0f8ff', '#1e2a40'],

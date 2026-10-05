@@ -38,16 +38,20 @@ const RVX = (text) => [
 ];
 // 합류 전 영웅이 NPC로 말할 때 (story.js 의 R 과 같은 모양) — 이졸데(hero7)가 플레이 중인 영웅이 아닐 때
 const R = (who, text) => ({ who, text, side: 'right' });
-// 정화된 아르겐 (탈것 동료 mt_argen) — 초상화는 보스 초상화를 그대로 쓴다 (data/companions.js mt_argen.portrait 와 같다)
-const AG = (text) => ({ who: 'mt_argen', name: '아르겐', portrait: 'portraits/b_argen', text });
+// 정화된 아르겐 (탈것 동료 mt_argen) — 정화된 초상화 (data/companions.js mt_argen.portrait 와 같다). 공허에 물든 보스 초상화(portraits/b_argen)는
+// 싸움 전·싸움 중 대사(b_argen_pre·corrupt·awaken)만, 정화 뒤(b_argen_post·s21_outro)는 이것
+const PURE = 'portraits/cmp_mt_argen';
+const AG = (text) => ({ who: 'mt_argen', name: '아르겐', portrait: PURE, text });
 /** 동료 합류 — recruit 명령 + 같은 플래그 (world2 §2.4: 플래그가 합류의 원본) */
 const recruit = (id) => [{ cmd: 'recruit', id }, flag('recruit_' + id)];
 
 export const SCRIPTS_EX = {
   // ═══════════════════════════ 외전 21장 하늘 정원의 둥지 ═══════════════════════════
+  // 배경: 제목 카드는 하늘 정원의 둥지(bg/s21_nest, tools/kling/manifest_polish-1.json) → 에슈빌 장면은 마을(hub) → 길을 나서는 끝은 다시 둥지
   s21_intro: [
-    bgm('story'), bg('hub'),
+    bgm('story'), bg('s21_nest'),
     title('외전', '하늘 정원의 둥지'),
+    bg('hub'),
     N('공허와의 싸움이 끝나고 한 달. 에슈빌에는 다시 평범한 아침이 돌아와 있었다.'),
     N('그날 새벽, 성문 위로 서늘한 바람이 불어왔다. 바람 끝에 아득한 울음소리 하나가 실려 있었다.'),
     se('thunder'), quake(4, 0.5, SILVER),
@@ -74,6 +78,7 @@ export const SCRIPTS_EX = {
     L('self_end'),
     ...RVX('…용의 울음이라. 니힐이 부서질 때 흩어진 공허의 부스러기가 아직 하늘 정원 위에 남아 있었던 모양이군.'),
     ...RVX('등불을 들고 가라. 폭풍의 공중정원 위로 길을 열어 두겠다. 다만 각오는 해 둬라. 공허에 물든 것은 제 주인도 알아보지 못한다.'),
+    bg('s21_nest'),
     N('등불의 검은 불꽃이 구름 위를 가리켰다. 일행은 다시 한번 균열 너머의 하늘로 길을 나섰다.'),
     N('[TIP] 하늘 정원에도 돌풍이 분다. 상승 기류를 타고 높이 올라, 공중에서 ↓+공격으로 아래의 적과 발밑의 부서지는 벽을 노려라.'),
   ],
@@ -168,7 +173,7 @@ export const SCRIPTS_EX = {
   b_argen_post: [
     N('공허의 핵이 부서진 자리에서, 마지막 결정 조각이 햇빛에 녹듯 사라졌다.'),
     N('높이 날아오른 은빛 용이 구름 위를 크게 한 바퀴 돌며 길게 울었다. 그 울음에는 더 이상 차갑고 텅 빈 소리가 섞여 있지 않았다.'),
-    S('b_argen', '(크르르르——!)'),
+    S('b_argen', '(크르르르——!)', { portrait: PURE }),
   ],
   s21_outro: [
     bgm('story'),

@@ -66,7 +66,7 @@ const MOUNT_TABLE = [
   ['mt_gale', '게일', '폭풍 그리핀', 'flag:recruit_mt_gale', 17, 'griffin', 'portraits/cmp_mt_gale', 'griffin_cry'],
   ['mt_silva', '실바', '백록 신령', 'flag:recruit_mt_silva', 19, 'stag', 'portraits/cmp_mt_silva', 'stag_call'],
   // 외전 (docs/specs/ex_s21.md §3): 초상화는 보스 초상화를 머리에 맞춰 자른다 (새 그림 없음)
-  ['mt_argen', '아르겐', '은빛 뇌룡', 'flag:recruit_mt_argen', 21, 'wyvern', 'portraits/b_argen', 'roar_small'],
+  ['mt_argen', '아르겐', '은빛 뇌룡', 'flag:recruit_mt_argen', 21, 'wyvern', 'portraits/cmp_mt_argen', 'roar_small'],
 ];
 const GUARD_TABLE = [
   ['gd_fairy', '아리아', '빛의 요정', 'boss:b_banshee', 2, 'portraits/cmp_g_fairy', 'fairy_chime'],

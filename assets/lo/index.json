@@ -27,6 +27,7 @@
   "bg/s18_nightmare",
   "bg/s19_blight",
   "bg/s20_void",
+  "bg/s21_nest",
   "bg/s_arena",
   "bg/shop",
   "bg/smith",
@@ -110,6 +111,7 @@
   "portraits/cmp_m_skelsteed",
   "portraits/cmp_m_warhorse",
   "portraits/cmp_m_wyvern",
+  "portraits/cmp_mt_argen",
   "portraits/cmp_mt_gale",
   "portraits/cmp_mt_ignis",
   "portraits/cmp_mt_silva",
@@ -288,6 +290,13 @@
    "h": 603,
    "bytes": 64918,
    "srcBytes": 177650
+  },
+  "bg/s21_nest.webp": {
+   "src": "81fe6f20f578",
+   "w": 1512,
+   "h": 603,
+   "bytes": 71990,
+   "srcBytes": 171532
   },
   "bg/s_arena.webp": {
    "src": "6bfabef43771",
@@ -869,6 +878,13 @@
    "h": 581,
    "bytes": 25870,
    "srcBytes": 79698
+  },
+  "portraits/cmp_mt_argen.webp": {
+   "src": "a8889c1c74d1",
+   "w": 457,
+   "h": 581,
+   "bytes": 28790,
+   "srcBytes": 84884
   },
   "portraits/cmp_mt_gale.webp": {
    "src": "2fff96969735",
