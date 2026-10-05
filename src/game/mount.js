@@ -898,12 +898,12 @@ export class MountRider {
     if (this.chargeT > 0 && this.chargeKind === 'dive') {   // 급강하 착지 충격파
       const sh = this.chargeLandShock ?? { r: 120, mv: 0.8 };
       this.endCharge(world, p, 'land');
-      const r = sh.r ?? 120;
-      this.strike(world, { x: p.cx - r, y: p.bottom - 70, w: r * 2, h: 76 }, this.atk({ mv: sh.mv ?? 0.8, element: this.def?.charge?.air?.element ?? 'fire', kb: [320, -420], launch: true, hitstop: 0.06, shake: 6, tags: ['mount'] }, p));
-      fx?.ering?.(p.cx, p.bottom, { color: '#ff8a3a', r0: 10, r1: r * 1.2, ry: 0.3, life: 0.4, width: 7 });
-      fx?.burst('fire', p.cx, p.bottom - 6, nq(world, 18), { angle: -Math.PI / 2, spread: 2.4, speed: 260 });
+      const r = sh.r ?? 120, el = this.def?.charge?.air?.element ?? 'fire', E = elemFx(el);
+      this.strike(world, { x: p.cx - r, y: p.bottom - 70, w: r * 2, h: 76 }, this.atk({ mv: sh.mv ?? 0.8, element: el, kb: [320, -420], launch: true, hitstop: 0.06, shake: 6, tags: ['mount'] }, p));
+      fx?.ering?.(p.cx, p.bottom, { color: E.ring, r0: 10, r1: r * 1.2, ry: 0.3, life: 0.4, width: 7 });
+      fx?.burst(E.burst, p.cx, p.bottom - 6, nq(world, 18), { angle: -Math.PI / 2, spread: 2.4, speed: 260 });
       world.camera?.shake?.(6, 0.22);
-      audio.sfx('explode', { vol: 0.7 });
+      audio.sfx(E.boom, { vol: 0.7 });
     }
     if (vyBefore > L.vy) {   // 무거운 착지: 흔들림 · 먼지 고리 · 쿵 · 발밑의 적을 튕긴다
       world.camera?.shake?.(L.shake ?? 3, 0.15);
@@ -1183,6 +1183,16 @@ export class MountRider {
 const ADAPT = new WeakMap();
 function crossed(a, b, x) { return a <= b ? (x > a && x <= b) : (x > a || x <= b); }
 
+/**
+ * 숨결·급강하 충격파의 속성별 색·입자·소리 (스칼렛 mt_wyvern = 화염, 외전 아르겐 mt_argen = 번개; 데이터의 element 로 고른다).
+ * breath = drawBreath 의 세 겹 색 (바깥 → 안쪽), loop/gap/vol = 숨결 중 반복 효과음, emit = 숨결 입자, ring/burst/boom = 급강하 착지
+ */
+const ELEM_FX = {
+  fire: { breath: ['#ff4a1a', '#ff9a3a', '#ffe0a0'], light: '#ff8a3a', loop: 'fire_breath', gap: 0.2, vol: 0.7, emit: 'fire', ring: '#ff8a3a', burst: 'fire', boom: 'explode' },
+  thunder: { breath: ['#4aa8ff', '#9fe8ff', '#f4fbff'], light: '#bfe8ff', loop: 'thunder', gap: 0.32, vol: 0.4, emit: 'thunder', ring: '#bfe8ff', burst: 'thunder', boom: 'thunder' },
+};
+const elemFx = (el) => ELEM_FX[el] ?? ELEM_FX.fire;
+
 // ───────────────────────── 특수기 여섯 (1부) ─────────────────────────
 const SPECIALS = {
   /** 그림메인 「앞발 강타」: 앞발을 치켜들고 (0.3초 무적) 내리찍어 좌우 넓게 띄운다 */
@@ -1254,10 +1264,10 @@ const SPECIALS = {
     if (b?.dur) { r.roarT = b.dur; p.refreshStats?.(); fx?.text(p.cx, p.y - 58, `공격 속도 +${b.atkSpd}%`, { color: '#8ae8ff', size: 15, life: 1.2, vy: -40 }); }
     r.startAct({ name: 'howl', dur: 0.5, anim: 'howl', riderAnim: 'ride_rear', moveMul: 0.4 });
   },
-  /** 스칼렛 「화염 숨결」: 1초 동안 입 앞으로 불길 (공중 가능, 낙하 제한) */
+  /** 스칼렛 「화염 숨결」 · 아르겐 「은빛 번개 숨결」: 1초 동안 입 앞으로 숨결 (공중 가능, 낙하 제한). 색·입자·소리는 속성(sp.element)대로 */
   breath(r, world, p, sp) {
-    const bw = sp.box?.w ?? 220, bh = sp.box?.h ?? 80, dur = sp.dur ?? 1.0;
-    const atk = r.atk({ mv: r.power(sp.mv ?? 0.35), type: sp.type ?? 'mag', element: sp.element ?? 'fire', rehit: sp.rehit ?? 0.12, kb: [120, -60], hitstop: 0.02, shake: 1, stun: 0.12, tags: ['mount', 'special'] }, p);
+    const bw = sp.box?.w ?? 220, bh = sp.box?.h ?? 80, dur = sp.dur ?? 1.0, E = elemFx(sp.element ?? 'fire');
+    const atk = r.atk({ mv: r.power(sp.mv ?? 0.35), type: sp.type ?? 'mag', element: sp.element ?? 'fire', rehit: sp.rehit ?? 0.12, kb: [120, -60], hitstop: 0.02, shake: 1, stun: sp.stun ?? 0.12, tags: ['mount', 'special'] }, p);
     let act = null;
     const hb = r.hit(world, {
       x: p.cx, y: p.bottom - 90, w: bw, h: bh, life: dur, z: 12, attack: atk,
@@ -1266,7 +1276,8 @@ const SPECIALS = {
         if (!pp || !r.seated || (act && r.act !== act)) { h.life = 0; return; }
         const mx = pp.cx + f * 40, my = pp.bottom - 78; h.x = f > 0 ? mx : mx - bw; h.y = my - bh / 2; h.data = f;
       },
-      light: { r: 150, color: '#ff8a3a', i: 0.8 },
+      light: { r: 150, color: E.light, i: 0.8 },
+      cols: E.breath,
       render: drawBreath,
     });
     hb.t0 = world.time;
@@ -1274,8 +1285,8 @@ const SPECIALS = {
     act = r.startAct({ name: 'breath', dur, anim: 'breath', riderAnim: 'ride', moveMul: 0.5, vyMax: sp.vyMax ?? 60, noGlide: true, noFly: true,
       tick(rr, w, pp, a, dt) {
         sfxT -= dt;
-        if (sfxT <= 0) { sfxT = 0.2; audio.sfx('fire_breath', { vol: 0.7 }); }
-        if (Math.random() < 0.7 * q(w)) { const f = pp.facing || 1; w.fx?.emit('fire', pp.cx + f * rand(50, bw), pp.bottom - 78 + rand(-25, 25), { angle: f > 0 ? 0 : Math.PI, spread: 0.3, speed: rand(200, 360) }); }
+        if (sfxT <= 0) { sfxT = E.gap; audio.sfx(E.loop, { vol: E.vol }); }
+        if (Math.random() < 0.7 * q(w)) { const f = pp.facing || 1; w.fx?.emit(E.emit, pp.cx + f * rand(50, bw), pp.bottom - 78 + rand(-25, 25), { angle: f > 0 ? 0 : Math.PI, spread: 0.3, speed: rand(200, 360) }); }
       },
       end() { hb.life = Math.min(hb.life, 0.01); } });
     r.cry(world, { vol: 0.7 });
@@ -1532,6 +1543,7 @@ const FB_COL = {
   mt_skelsteed: { coat: '#d8d0bc', dark: '#8a8478', hi: '#f4eee0', mane: '#6ad0ff', cloth: '#1a1418', trim: '#6ad0ff', eye: '#8ae8ff', metal: '#4a4a56', hoof: '#6a6458', bones: true, flame: '#6ad0ff' },
   mt_direwolf: { coat: '#c8d8e8', dark: '#6a7a8a', hi: '#f4faff', mane: '#8aa0b4', cloth: '#3a2a20', trim: '#e8e0d0', eye: '#8ae8ff', metal: '#9aa6b0', hoof: '#4a5460' },
   mt_wyvern: { coat: '#a01828', dark: '#5a0a14', hi: '#d8404a', mane: '#2a1418', cloth: '#3a1a10', trim: '#ffd070', eye: '#ffd070', metal: '#ff8a3a', hoof: '#2a1418', belly: '#ff9a4a', wing: '#7a1020' },
+  mt_argen: { coat: '#c8d2de', dark: '#6a7688', hi: '#f4f8ff', mane: '#2a3450', cloth: '#2a3450', trim: '#6ad0e0', eye: '#8af0ff', metal: '#9fe8ff', hoof: '#1a2030', belly: '#a8e8f0', wing: '#9aa8bc' },
   mt_giantbat: { coat: '#2a1e24', dark: '#141016', hi: '#4a3440', mane: '#3a1a24', cloth: '#c8c8d0', trim: '#c8c8d0', eye: '#ff2a3a', metal: '#c8c8d0', hoof: '#141016', wing: '#4a1422' },
   mt_ignis: { coat: '#2a140c', dark: '#150a06', hi: '#6a2e14', mane: '#ff8a2a', cloth: '#6a1a0a', trim: '#ffc040', eye: '#fff0b0', metal: '#3a2a20', hoof: '#1a0e0a', flame: '#ff8a2a' },
   mt_gale: { coat: '#c8b898', dark: '#6a5a4a', hi: '#efe4cc', mane: '#f4f0e8', cloth: '#3a4a6a', trim: '#ffe880', eye: '#9fd0ff', metal: '#d8c890', hoof: '#4a4038', wing: '#d8d0c0' },
@@ -1917,14 +1929,14 @@ function drawChainPillar(ctx, h) {
   ctx.restore();
 }
 function drawBreath(ctx, h) {
-  const f = h.data ?? 1, k = Math.min(1, h.t / 0.1) * Math.min(1, h.life / 0.15), t = h.t;
+  const f = h.data ?? 1, k = Math.min(1, h.t / 0.1) * Math.min(1, h.life / 0.15), t = h.t, cols = h.cols ?? ELEM_FX.fire.breath;
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
   const x0 = f > 0 ? h.x : h.x + h.w, y0 = h.y + h.h / 2;
   for (let i = 0; i < 3; i++) {
     const L = h.w * (0.6 + 0.4 * ((t * 3 + i * 0.33) % 1)), sp = h.h * 0.5 * (0.5 + 0.5 * (L / h.w));
     ctx.globalAlpha = 0.35 * k;
-    ctx.fillStyle = i === 0 ? '#ff4a1a' : i === 1 ? '#ff9a3a' : '#ffe0a0';
+    ctx.fillStyle = cols[i];
     ctx.beginPath(); ctx.moveTo(x0, y0 - 6); ctx.quadraticCurveTo(x0 + f * L * 0.5, y0 - sp, x0 + f * L, y0 + Math.sin(t * 20 + i) * 6); ctx.quadraticCurveTo(x0 + f * L * 0.5, y0 + sp, x0, y0 + 6); ctx.fill();
   }
   ctx.restore();

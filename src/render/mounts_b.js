@@ -4,6 +4,7 @@
 //   wolf     스콜 mt_direwolf     네발 · 도약 질주 'bound' · 척추 늘임 ±6% · 꼬리 흩날림 · 송곳니 돌진 = 덮치기(앞발 뻗기) · 벽 차기 · 포효
 //   wyvern   스칼렛 mt_wyvern     네발 비룡 + 날개 (그림이 네발 비룡이라 네발 엔진 + 날개; 명세의 두 발 걷기 대신) · 날갯짓 (내림 0.18 / 올림 0.22초)
 //                                 · 활공 · 급강하 (몸이 내리꽂히는 각도로 기운다) · 화염 숨결 (입이 숨결 상자에 온다) · 긴 꼬리 3마디
+//            아르겐 mt_argen      외전 (docs/specs/ex_s21.md) — 같은 비룡 리그 · 벡터만 (채색 그림 없음) · 은청색 팔레트 · 목구멍 번개 빛 · 번개 숨결
 //   bat      녹티스 mt_giantbat   전용 자세 (T.pose): 날개 손목을 딛고 기기 · 이륙 · 날갯짓 0.28초 · 정지 비행 잔 날갯짓 · 급강하 · 흡혈 급습 · 초음파
 //   griffin  게일 mt_gale         네발 + 깃털 날개 · 활공 · 날갯짓 · 질풍 돌격 (8방향: 몸이 그 방향으로 기운다) · 뇌명 급강하 (도약 'jump' → 0.08초
 //                                 날개를 치켜들고 멈칫 'dive' → 날개를 뒤로 접고 내리꽂힘 → 착지 'land' 0.26초 웅크림). 번개 입자는 mount_b.js 가 낸다.
@@ -47,6 +48,8 @@ export const MOUNT_PAL_B = {
   mt_wyvern: { coat: '#a01828', hi: '#d8404a', dark: '#5a0a14', belly: '#ff9a4a', bellyHi: '#ffd070', horn: '#2a1418', membrane: '#8a1422', vein: '#4a0810', leather: '#6a3a1c', trim: '#c89040', claw: '#1a0c0e', eye: '#ffd070', glow: '#ff8a3a', awake: '#ffb060', breath: '#ff9a4a' },
   mt_giantbat: { coat: '#2a1e24', hi: '#4a3440', dark: '#141016', membrane: '#5a1422', vein: '#ff2a3a', ear: '#8a4a4a', silver: '#c8c8d0', leather: '#2a1a1e', trim: '#c8c8d0', claw: '#0c080a', fang: '#f0e8e0', eye: '#ff2a3a', glow: '#ff2a3a', awake: '#ff7a8a', breath: '#ff6a7a' },
   mt_gale: { coat: '#b8bcc4', hi: '#e8eaee', dark: '#6a6e78', feather: '#f4f4f0', featherDk: '#9aa0aa', gold: '#ffd060', beak: '#f0c040', scale: '#d8b060', leather: '#6a4424', trim: '#ffd060', claw: '#2a2420', eye: '#9fd0ff', glow: '#bfe0ff', awake: '#fff2a0', breath: '#dff0ff' },
+  // 외전 아르겐: 은빛 비늘 · 청록 배 · 상아 뿔 · 남색 마구 (이졸데의 색) — mouth = 숨결 때 벌린 입속
+  mt_argen: { coat: '#c8d2de', hi: '#f4f8ff', dark: '#6a7688', belly: '#a8e8f0', bellyHi: '#e0fbff', horn: '#e8e0cc', membrane: '#9aa8bc', vein: '#5a6a80', leather: '#2a3450', trim: '#6ad0e0', claw: '#1a2030', eye: '#8af0ff', glow: '#9fe8ff', awake: '#e0fbff', breath: '#bff4ff', mouth: '#9fe8ff' },
 };
 const palOf = (id) => MOUNT_PAL_B[id] ?? MOUNT_PAL_B.mt_direwolf;
 
@@ -603,7 +606,7 @@ function drawB(ctx, m, world, layer = 'back', opts = O0) {
     C.m = null; C.P = null; C.world = null; C.rig = null;
   }
 }
-export const MOUNT_DRAW_B = { mt_direwolf: drawB, mt_wyvern: drawB, mt_giantbat: drawB, mt_gale: drawB };
+export const MOUNT_DRAW_B = { mt_direwolf: drawB, mt_wyvern: drawB, mt_giantbat: drawB, mt_gale: drawB, mt_argen: drawB };
 
 // ───────────────────────── 공용 그리기 도우미 ─────────────────────────
 const LIGHT = new Map();
@@ -875,7 +878,7 @@ function vHead(ctx, C) {
       ctx.fillStyle = col(C, pal.dark); ctx.beginPath(); ctx.moveTo(-2, -1); ctx.lineTo(L * 0.78, 0); ctx.lineTo(L * 0.7, 3); ctx.quadraticCurveTo(L * 0.3, 5, -3, 3); ctx.closePath(); ctx.fill(); ctx.stroke();
       if (!C.tint) { ctx.fillStyle = '#f4e8d0'; ctx.beginPath(); for (let x = L * 0.2; x < L * 0.72; x += 3) { ctx.moveTo(x, -0.5); ctx.lineTo(x + 1, -2.5); ctx.lineTo(x + 2, -0.5); } ctx.fill(); }
       ctx.restore();
-      if (jaw > 0.1 && !C.tint) { ctx.fillStyle = C.fx && (C.P.fa ?? C.m.anim) === 'breath' ? '#ff9a3a' : '#4a0a0a'; ctx.beginPath(); ctx.moveTo(L * 0.25, 2); ctx.lineTo(L, 1); ctx.lineTo(L * 0.25 + Math.cos(jaw * 0.55) * L * 0.78, 3 + Math.sin(jaw * 0.55) * L * 0.78); ctx.closePath(); ctx.fill(); }
+      if (jaw > 0.1 && !C.tint) { ctx.fillStyle = C.fx && (C.P.fa ?? C.m.anim) === 'breath' ? (pal.mouth ?? '#ff9a3a') : '#4a0a0a'; ctx.beginPath(); ctx.moveTo(L * 0.25, 2); ctx.lineTo(L, 1); ctx.lineTo(L * 0.25 + Math.cos(jaw * 0.55) * L * 0.78, 3 + Math.sin(jaw * 0.55) * L * 0.78); ctx.closePath(); ctx.fill(); }
       ctx.fillStyle = col(C, pal.coat);
       ctx.beginPath(); ctx.moveTo(-5, -6); ctx.quadraticCurveTo(L * 0.3, -9, L * 0.55, -5); ctx.lineTo(L + 1, -2.5); ctx.lineTo(L + 0.5, 1.5); ctx.quadraticCurveTo(L * 0.5, 3.5, -4, 6); ctx.closePath(); ctx.fill(); ctx.stroke();
       if (!C.tint) {
@@ -1101,10 +1104,10 @@ function fxB(ctx, C, A) {
     const s = Math.max(P.snort ?? 0, P.howl ?? 0);
     if (s > 0.05 && A.has.nose) for (let k = 0; k < (q === 2 ? 3 : 2); k++) glow(ctx, A.nose[0] + 3 + k * 4 * s, A.nose[1] + 1 - k * 2, 2.5 + k * 2.2 * s, pal.breath, 0.4 * s * (1 - k * 0.25));
     if (a === 'charge' && A.has.mouth) glow(ctx, A.mouth[0], A.mouth[1], 6, pal.glow, 0.35);
-  } else if (id === 'mt_wyvern') {
-    // 목구멍 불씨 (늘) · 숨결: 입에 불빛
+  } else if (id === 'mt_wyvern' || id === 'mt_argen') {
+    // 목구멍 불씨 (늘) · 숨결: 입에 불빛 (아르겐은 팔레트대로 번개 빛)
     if (A.has.throat) glow(ctx, A.throat[0], A.throat[1], 6 + 2 * flick(t, 2), C.aw ? pal.awake : pal.glow, 0.22 + 0.12 * flick(t * 0.7, 5));
-    if ((a === 'breath' || P.jaw > 0.4) && A.has.mouth) { const k = a === 'breath' ? 1 : P.jaw; glow(ctx, A.mouth[0], A.mouth[1], 7 + 4 * k, pal.breath, 0.5 * k); if (q === 2) glow(ctx, A.mouth[0] + 6, A.mouth[1], 10 * k, '#ffd070', 0.3 * k); }
+    if ((a === 'breath' || P.jaw > 0.4) && A.has.mouth) { const k = a === 'breath' ? 1 : P.jaw; glow(ctx, A.mouth[0], A.mouth[1], 7 + 4 * k, pal.breath, 0.5 * k); if (q === 2) glow(ctx, A.mouth[0] + 6, A.mouth[1], 10 * k, pal.bellyHi ?? '#ffd070', 0.3 * k); }
   } else if (id === 'mt_giantbat') {
     if ((a === 'screech' || a === 'charge') && A.has.mouth) glow(ctx, A.mouth[0], A.mouth[1], 8, pal.breath, 0.45);
   } else if (id === 'mt_gale') {
@@ -1365,7 +1368,7 @@ function iconDraw(ctx, id, x, y, r) {
       PD.end();
       return;
     }
-    const rigName = { mt_direwolf: 'wolf', mt_wyvern: 'wyvern', mt_giantbat: 'bat', mt_gale: 'griffin' }[id];
+    const rigName = { mt_direwolf: 'wolf', mt_wyvern: 'wyvern', mt_giantbat: 'bat', mt_gale: 'griffin', mt_argen: 'wyvern' }[id];
     if (!rigName) return;
     let v = ICON_V.get(id);
     if (!v) {
@@ -1386,4 +1389,4 @@ function iconDraw(ctx, id, x, y, r) {
     C.m = null; C.P = null;
   } finally { ctx.restore(); }
 }
-export const MOUNT_ICON_B = { mt_direwolf: iconDraw, mt_wyvern: iconDraw, mt_giantbat: iconDraw, mt_gale: iconDraw };
+export const MOUNT_ICON_B = { mt_direwolf: iconDraw, mt_wyvern: iconDraw, mt_giantbat: iconDraw, mt_gale: iconDraw, mt_argen: iconDraw };

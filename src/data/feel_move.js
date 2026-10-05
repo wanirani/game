@@ -54,6 +54,7 @@ export const SURFACE = {
   s15: 'metal',   // 대장간 지옥
   s16: { liquid: 'water', dry: 'stone' },
   s17: 'stone', s18: 'flesh', s19: 'dirt', s20: 'stone',
+  s21: 'stone',   // 외전: 하늘 정원의 둥지 (s17 과 같은 하늘 대리석)
   hub: 'dirt', town: 'dirt',   // 마을 허브 (HubScene 의 TOWN_STAGE.id 는 'town')
   _default: 'stone',
 };

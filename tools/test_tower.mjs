@@ -122,7 +122,7 @@ const foes = (page) => page.evaluate(() => window.__game.world.enemies().filter(
 const planOf = (page, n, seed = null) => page.evaluate(async ([n, seed]) => {
   const T = await import('/src/data/tower.js');
   const t = window.__game.scenes.find((s) => s.name === 'tower');
-  const P = new T.TowerPlanner(seed ?? t.seed, { stages: t.planner.stages, order: t.planner.order, enemies: t.planner.enemies, bosses: t.planner.bosses, P: t.planner.P, eliteBase: t.planner.eliteBase });
+  const P = new T.TowerPlanner(seed ?? t.seed, { stages: t.planner.stages, order: t.planner.order, enemies: t.planner.enemies, bosses: t.planner.bosses, lateBosses: t.planner.lateBosses, P: t.planner.P, eliteBase: t.planner.eliteBase });
   const p = P.plan(n);
   return { kind: p.kind, key: p.key ?? null, bossId: p.bossId ?? null, foes: p.enemies.map((e) => e.id + (e.elite ? '*' : '')).sort() };
 }, [n, seed]);
@@ -173,6 +173,12 @@ test('층 계획: 같은 시드 → 같은 방·적·보스, 다른 시드 → �
   assert.deepEqual(T.blessingOffer(5, 10, full, 0).sort(), ['crit', 'might']);
   // 2부 풀
   assert.ok(mk(1, STAGE_ORDER).rooms.length > mk(1).rooms.length);
+  // 외전 보스 (lateBosses, docs/specs/ex_s21.md): 순서 구간의 계획은 그대로이고, 순서를 다 지난 무작위 구간에서만 후보가 된다
+  const late = (seed) => new T.TowerPlanner(seed, { stages: STAGES, order: STAGE_ORDER_P1, enemies: ENEMIES, bosses, lateBosses: ['b_argen'], P: 60, eliteBase: 0.04 });
+  assert.deepEqual(dump(late(4242)).slice(0, 2 * STAGE_ORDER_P1.length), dump(mk(4242)).slice(0, 2 * STAGE_ORDER_P1.length), '외전 보스를 더해도 순서 구간은 같다');
+  const argenAt = [];
+  for (let sd = 1; sd <= 40; sd++) { const L = late(sd); for (let f = 1; f <= 120; f++) { const p = L.plan(f); if (p.kind === 'boss' && p.bossId === 'b_argen') argenAt.push(f); } }
+  assert.ok(argenAt.length > 0 && argenAt.every((f) => f > 2 * STAGE_ORDER_P1.length), `아르겐 층 ${argenAt.slice(0, 8)}`);
   // 방 풀 검증 (validate_maps --stages): 오류 0
   const r = spawnSync(process.execPath, [path.join(ROOT, 'tools/tower_rooms.mjs')], { encoding: 'utf8' });
   assert.equal(r.status, 0, r.stdout + r.stderr);

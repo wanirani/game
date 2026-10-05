@@ -32,7 +32,7 @@ import { ENEMIES } from '../../data/enemies.js';
 import { BOSSES } from '../../data/bosses.js';
 import { BLESSINGS, BLESSING, TowerPlanner, towerRoom, towerDiff, applyBlessingStats, blessingOffer, floorKind } from '../../data/tower.js';
 import { ArcadeRunScene, groundY } from './arcade_run.js';
-import { arenaBosses } from './arcade.js';
+import { arenaBosses, exKnown, sideBosses } from './arcade.js';
 import { frame, fmtClock, heading, DIM, GOLD, BONE } from './common.js';
 
 const COLOR = '#b79cff';
@@ -101,8 +101,11 @@ export class TowerScene extends ArcadeRunScene {
     const g = this.game, w = this.world;
     this.seed = (Number.isInteger(g.state?.arcade?.seed) ? g.state.arcade.seed : Number.isInteger(this.cfg.seed) ? this.cfg.seed : 1) >>> 0;
     this.baseDiff = { ...w.diff };
-    this.order = this.p2 ? STAGE_ORDER : STAGE_ORDER_P1;
-    this.planner = new TowerPlanner(this.seed, { stages: STAGES, order: this.order, enemies: ENEMIES, bosses: arenaBosses(this.p2), P: this.P.lv, eliteBase: this.baseDiff.elite ?? 0 });
+    // 외전(s21 · 아르겐, docs/specs/ex_s21.md): 스테이지 순서에는 넣지 않고(순서 구간 1~40층의 계획은 그대로), 외전을 알면
+    // 아르겐을 무작위 구간(41층 이후 → 첫 보스 층 45층)의 보스 후보에만 더한다 (lateBosses)
+    const ex = exKnown(g);
+    this.order = this.p2 ? STAGE_ORDER.filter((id) => !STAGES[id]?.side) : STAGE_ORDER_P1;
+    this.planner = new TowerPlanner(this.seed, { stages: STAGES, order: this.order, enemies: ENEMIES, bosses: arenaBosses(this.p2), lateBosses: this.p2 && ex ? sideBosses() : [], P: this.P.lv, eliteBase: this.baseDiff.elite ?? 0 });
     this.floor = 0; this.cleared = 0; this.bossKills = 0;
     this.taken = {}; this.takenOrder = []; this.picks = 0; this.reviveLeft = 0;
     this.hasteT = 0; this._thornN = 0; this._dashSeen = undefined;

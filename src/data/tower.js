@@ -10,6 +10,8 @@
 //  땅 자리 4개 미만 제외, ROOM_DENY 제외. 기믹은 끈다(gimmick: null). 검증: node tools/tower_rooms.mjs (validate_maps --stages 로
 //  땅 자리마다 문 'D' 를 두고 도달성 BFS) — 지금 풀 74방(1부 59·2부 15), 오류 0.
 //  층 f 의 스테이지 단계 = floor((f-1)/2) (스테이지 순서대로 두 층씩), 순서를 다 지나면(1부 27층·전체 41층부터) 시드로 아무 단계.
+//  스테이지 순서는 장면이 정한다 (2부를 알면 1·2부 이야기 순서. 외전 s21 은 넣지 않는다 — 순서 구간의 층 계획이 외전을 알든 모르든 같게).
+//  보스: 순서 구간은 bosses 를 단계에 맞춰, 무작위 구간(순서를 다 지난 층)은 bosses + lateBosses(외전 보스, 41층 이후) 중 시드로.
 //  방은 그 단계 ±1 의 방 중 최근 4층에 나오지 않은 것, 적 풀은 단계-1 ~ 단계 스테이지의 적 (서바이벌과 같은 제외 규칙).
 //
 // ── 시드 (재현) ── 런 시드(state.arcade.seed, 32비트) 하나로 층마다 따로 난수를 만든다 (rngOf(seed, f, 소금)):
@@ -240,9 +242,10 @@ export function towerFoeOk(enemies, id) {
  *  층은 1부터 차례로 만들어 기억한다 (최근 방 피하기가 앞 층에 기댄다). eliteBase = 난이도 정예 확률
  */
 export class TowerPlanner {
-  constructor(seed, { stages, order, enemies, bosses = [], P = 25, eliteBase = 0 } = {}) {
+  constructor(seed, { stages, order, enemies, bosses = [], lateBosses = [], P = 25, eliteBase = 0 } = {}) {
     this.seed = seed >>> 0;
     this.stages = stages; this.order = order ?? []; this.enemies = enemies; this.bosses = bosses; this.P = P; this.eliteBase = eliteBase;
+    this.lateBosses = lateBosses ?? [];   // 무작위 구간에만 섞는 보스 (외전 아르겐 — 장면이 외전을 알 때만 준다)
     this.rooms = towerRooms(stages, this.order);
     this.plans = [];
     this.lastBoss = null;
@@ -261,11 +264,11 @@ export class TowerPlanner {
     const kind = floorKind(f), tier = this.tierOf(f), level = TOWER_CURVE.level(this.P, f);
     if (kind === 'rest') return { f, kind, tier, level, enemies: [] };
     if (kind === 'boss') {
-      const B = this.bosses;
+      const n = this.order.length || 1, ordered = Math.floor((f - 1) / 2) < n;
+      const B = ordered || !this.lateBosses.length ? this.bosses : [...this.bosses, ...this.lateBosses];
       let bossId = null;
       if (B.length) {
-        const n = this.order.length || 1;
-        let i = Math.floor((f - 1) / 2) < n ? Math.min(B.length - 1, Math.round((tier / Math.max(1, n - 1)) * (B.length - 1))) : rngOf(this.seed, 'boss', f).int(0, B.length - 1);
+        let i = ordered ? Math.min(B.length - 1, Math.round((tier / Math.max(1, n - 1)) * (B.length - 1))) : rngOf(this.seed, 'boss', f).int(0, B.length - 1);
         if (B[i] === this.lastBoss) i = (i + 1) % B.length;
         bossId = B[i];
         this.lastBoss = bossId;

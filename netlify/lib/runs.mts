@@ -5,7 +5,7 @@
 //  - 키: AUTH_PEPPER 에서 용도별로 유도한다. 없으면 고정 문자열 (개발·시험용 — 인스턴스마다 한 번 경고).
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { CHARACTER_IDS } from './config.mts';
-import { CLASS_INFO, LEVEL_PRESETS, P2_STAGES, STAGE_IDS, STAGE_LEVELS } from './gamedata.mts';
+import { CLASS_INFO, DAILY_STAGE_IDS, LEVEL_PRESETS, P2_STAGES, STAGE_LEVELS } from './gamedata.mts';
 import { env } from './runtime.mts';
 
 const FALLBACK_KEY = 'bn-online-dev-key-not-secret';
@@ -91,7 +91,7 @@ export function dailyFor(date: string): Daily {
   const k = key('daily');
   const h = Buffer.concat([0, 1].map((i) => createHmac('sha256', k).update(`daily:${date}:${i}`).digest()));
   const w = (i: number): number => h.readUInt32BE(i * 4); // 16개
-  const stageId = STAGE_IDS[w(1) % STAGE_IDS.length];
+  const stageId = DAILY_STAGE_IDS[w(1) % DAILY_STAGE_IDS.length];   // 외전 제외 (gamedata.mts DAILY_STAGE_IDS)
   const hero = CHARACTER_IDS[w(3) % CHARACTER_IDS.length];
   const presets = dailyPresets(stageId);
   const preset = presets[w(4) % presets.length];

@@ -65,6 +65,8 @@ const MOUNT_TABLE = [
   ['mt_ignis', '이그니스', '화염 군마', 'flag:recruit_mt_ignis', 15, 'horse', 'portraits/cmp_mt_ignis', 'neigh'],
   ['mt_gale', '게일', '폭풍 그리핀', 'flag:recruit_mt_gale', 17, 'griffin', 'portraits/cmp_mt_gale', 'griffin_cry'],
   ['mt_silva', '실바', '백록 신령', 'flag:recruit_mt_silva', 19, 'stag', 'portraits/cmp_mt_silva', 'stag_call'],
+  // 외전 (docs/specs/ex_s21.md §3): 초상화는 보스 초상화를 머리에 맞춰 자른다 (새 그림 없음)
+  ['mt_argen', '아르겐', '은빛 뇌룡', 'flag:recruit_mt_argen', 21, 'wyvern', 'portraits/b_argen', 'roar_small'],
 ];
 const GUARD_TABLE = [
   ['gd_fairy', '아리아', '빛의 요정', 'boss:b_banshee', 2, 'portraits/cmp_g_fairy', 'fairy_chime'],
@@ -80,12 +82,13 @@ const GUARD_TABLE = [
   ['gd_momo', '모모', '꿈먹는 맥', 'flag:recruit_gd_momo', 18, 'portraits/cmp_gd_momo', 'momo_gulp'],
 ];
 const obtainKey = (o) => `${o.type}:${o.flag ?? o.boss ?? o.quest ?? o.price ?? o.count}`;
-t('탈것 9 · 수호신 11 · 순서', () => {
+t('탈것 10 (외전 아르겐 포함) · 수호신 11 · 순서', () => {
   eq(D.MOUNT_IDS, MOUNT_TABLE.map((r) => r[0]));
   eq(D.GUARDIAN_IDS, GUARD_TABLE.map((r) => r[0]));
   eq(D.COMPANION_ORDER, [...D.MOUNT_IDS, ...D.GUARDIAN_IDS]);
-  eq(D.UNLOCK_ORDER.length, 20);
-  eq(new Set(D.UNLOCK_ORDER).size, 20);
+  eq(D.UNLOCK_ORDER.length, 21);
+  eq(new Set(D.UNLOCK_ORDER).size, 21);
+  eq(D.UNLOCK_ORDER[D.UNLOCK_ORDER.length - 1], 'mt_argen');
 });
 for (const [id, name, title, ob, ch, rig, portrait, cry] of MOUNT_TABLE) {
   t(`탈것 ${id} ${name}`, () => {
@@ -172,6 +175,14 @@ t('2부 탈것 기본 수치 (MASTER_PLAN §1.2)', () => {
   eq(row('mt_ignis'), [60, 90, -4, -56, 26, 430, 1700, 2100, 1300, 820, 0, 0.95, 0.7, 1, 0.12, 18]);
   eq(row('mt_gale'), [64, 86, -6, -54, 22, 400, 2200, 2200, 2000, 840, 1, 0.8, 0.65, 1.05, 0.08, 20]);
   eq(row('mt_silva'), [58, 88, -4, -54, 24, 440, 2000, 2200, 1500, 900, 1, 0.85, 0.65, 1, 0.1, 16]);
+  // 외전 아르겐: 스칼렛(같은 비룡 리그 · 몸 크기 · 안장)과 게일 사이 — 기존 탈것 수치 범위 안
+  eq(row('mt_argen'), [66, 90, -10, -58, 24, 380, 2100, 2100, 1800, 800, 0, 0.95, 0.7, 1, 0.12, 22]);
+  eq(m.mt_argen.flight, { type: 'glide', flaps: 3, flapVy: -620, glideFall: 140, glideSpeed: 420 });
+  eq([m.mt_argen.charge.element, m.mt_argen.charge.air.element, m.mt_argen.charge.air.shock, m.mt_argen.special.kind, m.mt_argen.special.element, m.mt_argen.special.name], ['thunder', 'thunder', { r: 130, mv: 0.9 }, 'breath', 'thunder', '은빛 번개 숨결']);
+  eq([m.mt_argen.ride, m.mt_argen.windMul], [{ thunder: 15, resThunder: 20 }, 0.5]);
+  const MOV = ['speed', 'accel', 'decel', 'airAccel', 'jump'], others = Object.values(m).filter((d) => d.id !== 'mt_argen');
+  for (const k of MOV) ok(m.mt_argen.move[k] >= Math.min(...others.map((d) => d.move[k])) && m.mt_argen.move[k] <= Math.max(...others.map((d) => d.move[k])), '아르겐 move.' + k + ' 범위');
+  for (const k of ['hp', 'absorb', 'taken', 'armor', 'recall']) ok(m.mt_argen[k] >= Math.min(...others.map((d) => d[k])) && m.mt_argen[k] <= Math.max(...others.map((d) => d[k])), '아르겐 ' + k + ' 범위');
   eq(m.mt_gale.move.airSpeed, 440);
   eq(m.mt_gale.flight, { type: 'glide', flaps: 2, flapVy: -600, glideFall: 140, glideSpeed: 440 });
   const c = m.mt_ignis.charge; eq([c.name, c.dur, c.speed, c.mv, c.element, c.kb, c.launch, c.cd, c.iframes, c.trail], ['화염 돌진', 0.38, 820, 1.3, 'fire', [440, -280], true, 0.8, 0.2, { life: 1, mv: 0.3, element: 'fire', rehit: 0.25 }]);
@@ -749,7 +760,7 @@ console.log('6. 디버그');
 t('cmp=all · cmplv · mount · guards(2칸이면 8장) · ride', () => {
   const s = freshState({ chapter: 0 });
   const r = S.applyCompanionDebug(s, new URLSearchParams('cmp=all&cmplv=10&mount=mt_warhorse&guards=gd_knight,g_imp&ride=1'));
-  eq(S.ownedIds(s).length, 20); eq(r.granted.length, 20); eq(r.ride, true);
+  eq(S.ownedIds(s).length, 21); eq(r.granted.length, 21); eq(r.ride, true);   // 탈것 10 (외전 아르겐 포함) + 수호신 11
   ok(Object.values(s.companions.owned).every((e) => e.lv === 10 && e.src === 'debug' && e.seen), '레벨·출처');
   eq(s.companions.pending, []); eq(s.progress.chapter, 8); eq(s.heroes.kael.companions, { mount: 'mt_warhorse', guards: ['gd_knight', 'gd_imp'] });
   eq(s.companions._debug, { ride: true }); ok(!JSON.stringify(s).includes('_debug'), '_debug 는 저장되지 않는다');

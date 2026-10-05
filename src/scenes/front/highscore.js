@@ -22,7 +22,7 @@ import {
   Ambience, kenBurns, shade, frame, heading, ornament, gbutton, backButton, footer, MODES, modeName,
   recordHighScore, scoreList, fmtClock, follow, bossRushBests, towerBests, linGrad, radGrad, GOLD, BONE, DIM,
 } from './common.js';
-import { COURSES, visibleCourses, p2Known } from './arcade.js';
+import { COURSES, visibleCourses, p2Known, exKnown } from './arcade.js';
 import * as ENDING from './ending.js';
 import { bus } from '../../core/events.js';
 import { cloud } from '../../core/cloud.js';
@@ -44,8 +44,8 @@ function detail(h) {
     case 'bossrush': return `${h.bosses ?? '?'}체 격파${h.time ? ' · ' + fmtClock(h.time) : ''}`;
     case 'survival': return `WAVE ${h.wave ?? '?'}`;
     case 'tower': return `${h.floor ?? 0}층 돌파${d ? ' · ' + d.name : ''}`;
-    case 'practice': return stg ? `${stg.chapter}장 ${stg.name}` : '연습';
-    default: return h.stageId === 'ending' ? '엔딩 도달' : stg ? `${stg.chapter}장 클리어` : (d?.name ?? '');
+    case 'practice': return stg ? `${stg.side ? '외전' : `${stg.chapter}장`} ${stg.name}` : '연습';
+    default: return h.stageId === 'ending' ? '엔딩 도달' : stg ? (stg.side ? '외전 클리어' : `${stg.chapter}장 클리어`) : (d?.name ?? '');
   }
 }
 /** 본 엔딩 수 / 전체 엔딩 수 (ending.js ENDINGS: bad·normal·true + 2부 p2·p2true) */
@@ -87,6 +87,7 @@ export class HighscoreScene extends Scene {
     audio.music(this.game.state && !this.game.state.arcade ? 'hub' : 'title');
     // 온라인 탭
     this.p2 = p2Known(this.game);
+    this.ex = exKnown(this.game);   // 외전 코스·외전 스테이지 순위표 (docs/specs/ex_s21.md)
     const cfg = this.game.meta?.arcadeCfg ?? {};
     this.sel = { kind: 'bossrush', course: 0, diff: 'normal', stageId: 's01', ...(lastSel ?? {}), ...(lastSel ? {} : { kind: OKINDS.some((k) => k.id === cfg.kind) ? cfg.kind : 'bossrush', course: cfg.course ?? 0, diff: cfg.diff ?? 'normal', stageId: cfg.stageId ?? 's01' }), ...(selOf(board) ?? {}) };
     this.fixSel();
@@ -139,12 +140,12 @@ export class HighscoreScene extends Scene {
     const S = this.sel;
     if (!OKINDS.some((k) => k.id === S.kind)) S.kind = 'bossrush';
     if (!DIFFICULTIES.some((d) => d.id === S.diff)) S.diff = 'normal';
-    const cs = visibleCourses(this.p2);
+    const cs = visibleCourses(this.p2, this.ex);
     if (!cs.includes(S.course)) S.course = cs[0] ?? 0;
     const st = this.stageList();
     if (!st.includes(S.stageId)) S.stageId = st[0];
   }
-  stageList() { return (this.p2 ? STAGE_ORDER : STAGE_ORDER_P1).filter((id) => STAGES[id]); }
+  stageList() { return (this.p2 ? STAGE_ORDER : STAGE_ORDER_P1).filter((id) => STAGES[id] && (!STAGES[id].side || this.ex)); }
   board() {
     const S = this.sel;
     if (S.kind === 'daily') return `daily:${ONLINE.kstDay()}`;
@@ -156,17 +157,17 @@ export class HighscoreScene extends Scene {
     const ki = Math.max(0, OKINDS.findIndex((k) => k.id === S.kind));
     rows.push({ id: 'kind', label: '종류', value: OKINDS[ki].name, n: OKINDS.length, i: ki, set: (i) => { S.kind = OKINDS[i].id; } });
     if (S.kind === 'bossrush') {
-      const cs = visibleCourses(this.p2), ci = Math.max(0, cs.indexOf(S.course));
+      const cs = visibleCourses(this.p2, this.ex), ci = Math.max(0, cs.indexOf(S.course));
       rows.push({ id: 'course', label: '코스', value: COURSES[cs[ci]]?.short ?? COURSES[cs[ci]]?.name ?? '', n: cs.length, i: ci, set: (i) => { S.course = cs[i]; } });
     }
     if (S.kind === 'practice') {
       const st = this.stageList(), si = Math.max(0, st.indexOf(S.stageId)), sd = STAGES[st[si]];
-      rows.push({ id: 'stage', label: '스테이지', value: `${sd.chapter}장 ${sd.name}`, n: st.length, i: si, set: (i) => { S.stageId = st[i]; } });
+      rows.push({ id: 'stage', label: '스테이지', value: `${sd.side ? '외전' : `${sd.chapter}장`} ${sd.name}`, n: st.length, i: si, set: (i) => { S.stageId = st[i]; } });
     }
     if (S.kind === 'daily') {
       const d = ONLINE.dailyNow(), sd = d ? STAGES[d.stageId] : null, day = ONLINE.kstDay();
       rows.push({ id: 'date', label: '날짜', value: `오늘 · ${+day.slice(4, 6)}월 ${+day.slice(6, 8)}일`, n: 1, i: 0, info: true, set() {} });
-      if (sd) rows.push({ id: 'dstage', label: '스테이지', value: `${sd.chapter}장 ${sd.name}`, n: 1, i: 0, info: true, set() {} });
+      if (sd) rows.push({ id: 'dstage', label: '스테이지', value: `${sd.side ? '외전' : `${sd.chapter}장`} ${sd.name}`, n: 1, i: 0, info: true, set() {} });
     } else {
       const di = Math.max(0, DIFFICULTIES.findIndex((d) => d.id === S.diff));
       rows.push({ id: 'diff', label: '난이도', value: DIFFICULTIES[di].name, color: DIFFICULTIES[di].color, n: DIFFICULTIES.length, i: di, set: (i) => { S.diff = DIFFICULTIES[i].id; } });

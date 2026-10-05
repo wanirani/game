@@ -57,6 +57,9 @@ export class BestiaryTab extends Tab {
       group('이계 · 떠도는 마물', Object.keys(E).filter((id) => D.isP2Enemy(id)));
       const bosses2 = D.P2_STAGE_IDS.map((sid) => S[sid]?.boss).filter((id) => id && B[id]);
       for (const id of Object.keys(B)) if (!bosses2.includes(id) && D.isP2Boss(id)) bosses2.push(id);
+      // 외전 보스(s21 아르겐)는 외전이 열렸거나 이미 쓰러뜨렸을 때만 (docs/specs/ex_s21.md — 2부 엔딩 전 스포일러 방지)
+      const P = this.state.progress || {};
+      for (let i = bosses2.length - 1; i >= 0; i--) { const sid = B[bosses2[i]]?.stageId; if (S[sid]?.side && !(P.unlocked || []).includes(sid) && !(P.bosses || []).includes(bosses2[i])) bosses2.splice(i, 1); }
       group('이계의 군주', bosses2, true);
       if (rows.length > start) rows.splice(start, 0, { header: '제2부 · 이계', part: 2 });
     }

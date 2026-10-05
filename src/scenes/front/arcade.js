@@ -7,6 +7,9 @@
 //    2부 보스는 늦게 받기 입구(game/bosses/lazy.js)가 아는 것만 코스에 넣는다 (지금은 20명 모두). 보스 클래스 모듈은 정적으로
 //    싣지 않는다 (R1-REQ-229: 첫 화면 바이트에서 보스 로직을 뺀다) — 실전 장면(arcade_run.js)이 라운드 전에 미리 받는다.
 //    아는 2부 보스가 하나도 없는 코스는 숨긴다.
+//  - 외전 (docs/specs/ex_s21.md): BOSS_ORDER 끝(STORY_BOSSES 뒤)에 외전 보스 b_argen, COURSES '이계편 · 외전'·'전 보스 연속(21연전)' (ex: true).
+//    exKnown(game) — 어느 슬롯이든 외전 스테이지(s21) 해금 · 2부 엔딩을 본 적 있음 · 코나미 — 이 거짓이면 외전 코스를 숨기고,
+//    서바이벌 보스 웨이브·무한의 탑(무작위 구간, 41층 이후)에도 외전 보스를 넣지 않는다. 연습 목록의 s21 은 슬롯 해금을 따른다 (2부 엔딩 뒤 세계 지도가 연다)
 //  - 무기·방어구: baseIdFor(slot, min(7, wtier)) (티어 7 = 2부 장비)
 //  - 연습 스테이지 목록은 모든 슬롯의 해금 합집합 (STAGE_ORDER 전체 → s14~s20 도 자동으로)
 //  - uiScale 장면: game.uiW × game.uiH (최소 720×400) 로 배치. 탭 대상은 ui.taps (모드 카드·옵션 줄·시작·뒤로 ≥ 44/36 CSS px),
@@ -25,7 +28,7 @@ import { clamp, ease, rgba, fmt } from '../../core/math.js';
 import { CHARACTERS } from '../../data/characters.js';
 import { CLASSES, classChain } from '../../data/classes.js';
 import { DIFFICULTIES, getDiff } from '../../data/difficulty.js';
-import { STAGES, STAGE_ORDER } from '../../data/stages.js';
+import { STAGES, STAGE_ORDER, SIDE_STAGES } from '../../data/stages.js';
 import { BOSSES } from '../../data/bosses.js';
 import { baseIdFor, ITEMS, makeItem } from '../../data/items.js';
 import { SKILLS } from '../../data/skills.js';
@@ -64,9 +67,12 @@ export const LEVEL_PRESETS = [
 export const BOSS_ORDER = [
   'b_nightwing', 'b_banshee', 'b_dullahan', 'b_crimson', 'b_bonedragon', 'b_grimoire', 'b_chimera', 'b_leviathan', 'b_colossus', 'b_frostqueen', 'b_death', 'b_dracula', 'b_chaos',
   'b_narkissa', 'b_moloch', 'b_dagon', 'b_ziz', 'b_mara', 'b_behemoth', 'b_nihil',
+  'b_argen',   // 외전 (s21) — 외전을 아는 플레이어에게만 (exKnown)
 ];
 /** BOSS_ORDER 에서 1부 보스 수 (이 뒤는 2부) */
 export const P1_BOSSES = 13;
+/** BOSS_ORDER 에서 이야기(1·2부) 보스 수 (이 뒤는 외전 보스) */
+export const STORY_BOSSES = 20;
 /** 보스 러시 코스 (번호는 기록 키: 0~2 는 예전 그대로). short = 기록·명예의 전당용 짧은 이름 (같은 이름의 두 코스를 구분) */
 export const COURSES = [
   { name: '전반전', sub: '1~6장 보스', from: 0, to: 6, short: '전반전' },
@@ -74,8 +80,11 @@ export const COURSES = [
   { name: '전 보스 연속', sub: '13연전', from: 0, to: 13, short: '전 보스 13연전' },
   { name: '이계편', sub: '14~20장 보스', from: 13, to: 20, p2: true, short: '이계편' },
   { name: '전 보스 연속', sub: '20연전', from: 0, to: 20, p2: true, short: '전 보스 20연전' },
+  { name: '이계편 · 외전', sub: '14장~외전 보스', from: 13, to: 21, p2: true, ex: true, short: '이계편+외전' },
+  { name: '전 보스 연속', sub: '21연전', from: 0, to: 21, p2: true, ex: true, short: '전 보스 21연전' },
 ];
 const P2_COLOR = '#c8b8ff';
+const EX_COLOR = '#c8e4ff';   // 외전 (s21 · 아르겐)
 
 /**
  * 이 보스를 아케이드에 낼 수 있는가: 늦게 받기 입구(lazy.js)가 클래스 모듈을 아는 보스 (20명 모두 진짜 클래스가 있다;
@@ -116,21 +125,34 @@ export function p2Known(game, unlocks = null) {
   const st = game?.state?.arcade ? game?._arcadePrev : game?.state;
   return !!(Array.isArray(st?.progress?.unlocked) && st.progress.unlocked.includes('s14'));
 }
+/**
+ * 외전(docs/specs/ex_s21.md)을 아는 플레이어인가: 어느 슬롯이든 외전 스테이지 해금, 또는 2부 엔딩을 본 적 있음(외전이 열리는 조건), 또는 코나미 커맨드.
+ * unlocks 를 주면 슬롯을 다시 읽지 않는다.
+ */
+export function exKnown(game, unlocks = null) {
+  const m = game?.meta;
+  if (m?.konami) return true;
+  if (Array.isArray(m?.endingsSeen) && m.endingsSeen.some((k) => typeof k === 'string' && k.startsWith('p2'))) return true;
+  const u = unlocks ?? slotUnlocks();
+  if (SIDE_STAGES.some((id) => u.has(id))) return true;
+  const st = game?.state?.arcade ? game?._arcadePrev : game?.state;
+  return !!(Array.isArray(st?.progress?.unlocked) && SIDE_STAGES.some((id) => st.progress.unlocked.includes(id)));
+}
 /** 이 헌터 등급을 고를 수 있는가 */
 export function presetAvailable(i, p2) {
   const P = LEVEL_PRESETS[i];
   return !!P && (!P.p2 || !!p2);
 }
-/** 이 코스를 고를 수 있는가: 2부 코스는 p2Known + 준비된 2부 보스가 하나 이상 */
-export function courseAvailable(ci, p2) {
+/** 이 코스를 고를 수 있는가: 2부 코스는 p2Known + 준비된 2부 보스가 하나 이상, 외전 코스(ex)는 exKnown 도 */
+export function courseAvailable(ci, p2, ex = false) {
   const c = COURSES[ci];
   if (!c) return false;
   if (!c.p2) return true;
-  if (!p2) return false;
+  if (!p2 || (c.ex && !ex)) return false;
   return BOSS_ORDER.slice(Math.max(c.from, P1_BOSSES), c.to).some((id) => bossUsable(id));
 }
 export const visiblePresets = (p2) => LEVEL_PRESETS.map((_, i) => i).filter((i) => presetAvailable(i, p2));
-export const visibleCourses = (p2) => COURSES.map((_, i) => i).filter((i) => courseAvailable(i, p2));
+export const visibleCourses = (p2, ex = false) => COURSES.map((_, i) => i).filter((i) => courseAvailable(i, p2, ex));
 
 /** 코스의 보스 목록 (2부 보스는 준비된 것만; 비면 첫 코스) */
 export function courseBosses(ci) {
@@ -148,19 +170,23 @@ export function courseLabel(ci) {
   const n = courseBosses(ci).length;
   return n === c.to - c.from ? `${c.name} · ${c.sub}` : `${c.name} · ${n}연전`;
 }
-/** 서바이벌 보스 웨이브에 나오는 보스 (1부, 2부를 알면 준비된 2부 보스까지) */
-export function arenaBosses(p2) {
-  return BOSS_ORDER.filter((id, i) => BOSSES[id] && (i < P1_BOSSES || (p2 && bossReady(id))));
+/** 서바이벌 보스 웨이브에 나오는 보스 (1부, 2부를 알면 준비된 2부 보스까지, 외전을 알면(ex) 외전 보스까지) */
+export function arenaBosses(p2, ex = false) {
+  return BOSS_ORDER.filter((id, i) => BOSSES[id] && (i < P1_BOSSES || (p2 && bossReady(id) && (i < STORY_BOSSES || ex))));
 }
-/** 아케이드 설정 정리: 모르는 모드·난이도, 숨긴(또는 없는) 헌터 등급·코스는 기본값/0번으로 */
-export function sanitizeCfg(cfg, p2, stages = null) {
+/** 외전 보스 중 준비된 것 (무한의 탑: 스테이지 순서를 다 지난 무작위 구간에만 섞는다 — data/tower.js lateBosses) */
+export function sideBosses() {
+  return BOSS_ORDER.slice(STORY_BOSSES).filter((id) => bossUsable(id));
+}
+/** 아케이드 설정 정리: 모르는 모드·난이도, 숨긴(또는 없는) 헌터 등급·코스는 기본값/0번으로 (ex = exKnown: 외전 코스) */
+export function sanitizeCfg(cfg, p2, stages = null, ex = false) {
   const c = { kind: 'bossrush', diff: 'normal', preset: 1, course: 0, stageId: 's01', ...(cfg && typeof cfg === 'object' && !Array.isArray(cfg) ? cfg : {}) };
   if (!MODE_ORDER.includes(c.kind)) c.kind = 'bossrush';
   if (!GHOST_CHOICES.some((g) => g.id === c.ghost)) c.ghost = 'off';
   if (!DIFFICULTIES.some((d) => d.id === c.diff)) c.diff = 'normal';
   c.preset = Number(c.preset); c.course = Number(c.course);
   if (!Number.isInteger(c.preset) || !presetAvailable(c.preset, p2)) c.preset = 0;
-  if (!Number.isInteger(c.course) || !courseAvailable(c.course, p2)) c.course = 0;
+  if (!Number.isInteger(c.course) || !courseAvailable(c.course, p2, ex)) c.course = 0;
   if (stages && !stages.includes(c.stageId)) c.stageId = stages[0] ?? 's01';
   if (!STAGES[c.stageId] || !STAGE_ORDER.includes(c.stageId)) c.stageId = 's01';
   return c;
@@ -235,7 +261,7 @@ export function buildArcadeState(cfg, charId) {
 /** 캐릭터 선택 후 호출: 임시 세이브를 만들고 모드 장면으로 */
 export function startArcade(game, cfg, charId) {
   const unlocks = slotUnlocks();
-  cfg = sanitizeCfg(cfg, p2Known(game, unlocks), practiceStages(game, unlocks));
+  cfg = sanitizeCfg(cfg, p2Known(game, unlocks), practiceStages(game, unlocks), exKnown(game, unlocks));
   if (!CHARACTERS[charId]) charId = 'kael';
   if (!game.state?.arcade) game._arcadePrev = game.state ?? null;
   game.state = buildArcadeState(cfg, charId);
@@ -276,9 +302,10 @@ export class ArcadeScene extends Scene {
     const m = this.game.meta ?? {};
     const unlocks = slotUnlocks();
     this.p2 = p2Known(this.game, unlocks);
+    this.ex = exKnown(this.game, unlocks);   // 외전 코스 (docs/specs/ex_s21.md)
     this.stages = practiceStages(this.game, unlocks);
     const saved = m.arcadeCfg && typeof m.arcadeCfg === 'object' && !Array.isArray(m.arcadeCfg) ? m.arcadeCfg : {}; // 망가진 옛 설정은 버린다
-    this.cfg = sanitizeCfg({ ...saved, ...(cfg ?? {}) }, this.p2, this.stages);
+    this.cfg = sanitizeCfg({ ...saved, ...(cfg ?? {}) }, this.p2, this.stages, this.ex);
     delete this.cfg.seed;   // 무한의 탑 시드는 판마다 새로 (메뉴·arcadeCfg 에 남기지 않는다)
     this.modeIndex = Math.max(0, MODE_ORDER.indexOf(this.cfg.kind));
     this.row = 0; // 0: 모드 카드, 1..: 옵션 줄
@@ -343,7 +370,7 @@ export class ArcadeScene extends Scene {
       const clsName = dc.cls ? CLASSES[dc.cls]?.name : null;
       const mods = dc.daily.mods.map((m) => ONLINE.modName(m));
       return [
-        { id: 'dstage', label: '스테이지', value: `제${st.chapter}장 ${st.name} · ${getDiff(dc.diff).name}`, color: st.part === 2 ? P2_COLOR : null, n: 1, i: 0, info: true, set() {} },
+        { id: 'dstage', label: '스테이지', value: `${st.side ? '외전' : `제${st.chapter}장`} ${st.name} · ${getDiff(dc.diff).name}`, color: st.part === 2 ? P2_COLOR : null, n: 1, i: 0, info: true, set() {} },
         { id: 'dhero', label: '헌터', value: `${ch?.name ?? dc.charId}${clsName ? ` · ${clsName}` : ''} (Lv.${P.lv})`, n: 1, i: 0, info: true, set() {} },
         { id: 'drules', label: '규칙', value: mods.length ? mods.join(' · ') : '특별 규칙 없음', color: mods.length ? '#ffb070' : null, n: 1, i: 0, info: true, set() {} },
         ghostRow,
@@ -357,14 +384,14 @@ export class ArcadeScene extends Scene {
       { id: 'preset', label: '헌터 등급', value: `${P.name} (Lv.${P.lv})`, color: P.p2 ? P2_COLOR : null, n: pres.length, i: pi, set: (i) => { c.preset = pres[i]; } },
     ];
     if (k === 'bossrush') {
-      const cs = visibleCourses(this.p2);
+      const cs = visibleCourses(this.p2, this.ex);
       const ci = Math.max(0, cs.indexOf(c.course));
-      rows.push({ id: 'course', label: '코스', value: courseLabel(cs[ci]), color: COURSES[cs[ci]]?.p2 ? P2_COLOR : null, n: cs.length, i: ci, set: (i) => { c.course = cs[i]; } });
+      rows.push({ id: 'course', label: '코스', value: courseLabel(cs[ci]), color: COURSES[cs[ci]]?.ex ? EX_COLOR : COURSES[cs[ci]]?.p2 ? P2_COLOR : null, n: cs.length, i: ci, set: (i) => { c.course = cs[i]; } });
     }
     if (k === 'practice') {
       const si = Math.max(0, this.stages.indexOf(c.stageId));
       const st = STAGES[this.stages[si]];
-      rows.push({ id: 'stage', label: '스테이지', value: `제${st.chapter}장 ${st.name}`, color: st.part === 2 ? P2_COLOR : null, n: this.stages.length, i: si, set: (i) => { c.stageId = this.stages[i]; } });
+      rows.push({ id: 'stage', label: '스테이지', value: st.side ? `외전 ${st.name}` : `제${st.chapter}장 ${st.name}`, color: st.side ? EX_COLOR : st.part === 2 ? P2_COLOR : null, n: this.stages.length, i: si, set: (i) => { c.stageId = this.stages[i]; } });
       rows.push(ghostRow);
     }
     return rows;

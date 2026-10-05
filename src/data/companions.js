@@ -1,4 +1,4 @@
-// 동료(탈것 9 · 수호신 11) 순수 데이터 — owner: CMP-DATA (companions §1–4, §9, §12.1; MASTER_PLAN §1.2)
+// 동료(탈것 10 — 외전 아르겐 포함 · 수호신 11) 순수 데이터 — owner: CMP-DATA (companions §1–4, §9, §12.1; MASTER_PLAN §1.2)
 // 순수 데이터 모듈: node 에서 import 가능, DOM 없음. 데이터 모듈(items.js 의 josa)만 import 한다.
 //
 // id 체계는 MASTER_PLAN §1.2: 탈것 mt_*, 수호신 gd_* (명세의 m_*/g_* 는 LEGACY_IDS 로 옮겨 읽는다).
@@ -338,6 +338,34 @@ export const MOUNTS = {
     hazard: { poison: 0 }, blightMul: 0.5,
     join: '부패에서 풀려난 흰 사슴의 신령이 고개를 숙였다. 뿔 사이의 빛이 다시 또렷하게 빛난다.',
     chips: ['뿔 돌격', '정화의 울음', '부패 저항'],
+  }),
+  // ─ 외전 (docs/specs/ex_s21.md §3): 정화된 아르겐 — s21_outro 의 recruit 명령 (플래그 recruit_mt_argen). 새 그림 없음:
+  //   벡터 비룡 리그('wyvern', render/mounts_b.js MOUNT_PAL_B 은청색) · 초상화는 보스 초상화(portraits/b_argen)를 머리에 맞춰 자른다.
+  //   수치는 기존 탈것 범위 안 (스칼렛 mt_wyvern 과 게일 mt_gale 사이: 활공·급강하 충격파는 스칼렛, 번개·돌풍 저항은 게일 쪽).
+  //   특수기 「은빛 번개 숨결」 = 숨결(kind 'breath', element 'thunder' — game/mount.js SPECIALS.breath 가 속성에 맞춰 색·입자·소리를 고른다)
+  mt_argen: mount({
+    id: 'mt_argen', part: 2, chapter: 21, name: '아르겐', title: '은빛 뇌룡', color: '#9fe8ff',
+    role: '공중전 — 활공, 번개 급강하, 은빛 번개 숨결',
+    desc: '하늘 기사단의 성소를 지키던 은빛 용. 공허의 핵에서 풀려나 다시 이졸데의 곁으로 돌아왔다.',
+    portrait: 'portraits/b_argen', iconFocus: { x: 0.31, y: 0.25, s: 0.34 },
+    obtain: { type: 'flag', flag: 'recruit_mt_argen', hint: '외전 「하늘 정원의 둥지」에서 만날 수 있다' },
+    cry: { sfx: 'roar_small', pitch: 0.85 }, hoof: { sfx: 'footstep', pitch: 0.8, vol: 0.8 },
+    rig: 'wyvern', variant: 'silver', palette: ['#d8e0ea', '#6a7890', '#8ae8f0', '#f0f8ff', '#1e2a40'],
+    light: { color: '#bfe8ff', r: 70, i: 0.4 },
+    body: { w: 66, h: 90 }, seat: { x: -10, y: -58 }, footY: 24,
+    move: { speed: 380, airSpeed: 420, accel: 2100, decel: 2100, airAccel: 1800, jump: 800, airJumps: 0 },
+    flight: { type: 'glide', flaps: 3, flapVy: -620, glideFall: 140, glideSpeed: 420 },
+    charge: { name: '뇌광 돌진', desc: '땅에서는 번개를 두르고 돌진해 적을 감전시키고, 공중에서는 비스듬히 내리꽂혀 번개 충격파를 일으킨다.',
+      dur: 0.3, speed: 760, mv: 1.1, element: 'thunder', kb: [360, -240], stun: 0.3, cd: 0.9, iframes: 0.2,
+      air: { name: '번개 급강하', angle: 50, speed: 900, maxT: 0.6, mv: 1.5, element: 'thunder', shock: { r: 130, mv: 0.9 } } },
+    special: { name: '은빛 번개 숨결', desc: '1초 동안 앞쪽으로 은빛 번개를 뿜어 적을 감전시킨다. 공중에서도 쓸 수 있다.', kind: 'breath', cd: 6, element: 'thunder', type: 'mag', air: true,
+      dur: 1.0, box: { w: 240, h: 80 }, rehit: 0.12, mv: 0.36, stun: 0.2, vyMax: 60 },
+    ride: { thunder: 15, resThunder: 20 }, rideDesc: '번개 피해 +15% · 번개 저항 +20%',
+    passive: { name: '은룡의 비늘', desc: '날갯짓 세 번과 활공으로 멀리 날아가고, 돌풍에 밀리는 힘이 절반이 된다.' },
+    hp: 0.95, absorb: 0.70, taken: 1.00, armor: 0.12, recall: 22,
+    windMul: 0.5,
+    join: '공허의 핵에서 풀려난 은빛 용이 당신 곁에 날개를 접었다. 이졸데의 오랜 짝이 이제 당신의 하늘이 되어 준다.',
+    chips: ['뇌광 돌진 · 번개 급강하', '은빛 번개 숨결', '활공 · 돌풍 저항'],
   }),
 };
 

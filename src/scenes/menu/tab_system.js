@@ -130,7 +130,9 @@ export class SystemTab extends Tab {
     let y = A.y + 42 + nRows * rh + hg;
     heading(ctx, '스테이지 기록', A.x + 16, y, LW - 32, { size: 14, sub: p2 ? '제1부 · 제2부' : null });
     y += 12;
-    const p1Ids = D.STAGE_ORDER_P1(), p2Ids = p2 ? D.P2_STAGE_IDS : [];
+    // 외전(s21, side)은 열렸을 때만 2부 칸 끝에 (docs/specs/ex_s21.md)
+    const sideIds = D.STAGE_ORDER_P2().filter((sid) => D.STAGES()[sid]?.side && (P.unlocked || []).includes(sid));
+    const p1Ids = D.STAGE_ORDER_P1(), p2Ids = p2 ? [...D.P2_STAGE_IDS, ...sideIds] : [];
     const all = [...p1Ids, ...p2Ids], pgap = p2Ids.length ? 12 : 0;
     const bgap = all.length > 14 ? 3 : 4;
     const mw = Math.min(48, (LW - 32 - (all.length - 1) * bgap - pgap) / Math.max(1, all.length));
@@ -142,7 +144,8 @@ export class SystemTab extends Tab {
       rr(ctx, cx, y, mw, boxH, 4);
       ctx.fillStyle = c ? (part2 ? 'rgba(48,18,70,0.9)' : 'rgba(60,14,28,0.9)') : 'rgba(14,8,14,0.9)'; ctx.fill();
       ctx.strokeStyle = c ? (part2 ? '#a878e8' : PAL.goldMid) : open ? PAL.goldDim : '#2e2428'; ctx.lineWidth = 1; ctx.stroke();
-      text(ctx, String(D.stageChapter(sid) ?? k + 1), cx + mw / 2, y + 13, { size: 10, align: 'center', weight: 800, family: FONT.num, color: c ? PAL.dim : PAL.faint, ow: 2 });
+      const side = !!D.STAGES()[sid]?.side;
+      text(ctx, side ? '외전' : String(D.stageChapter(sid) ?? k + 1), cx + mw / 2, y + 13, { size: side ? 9 : 10, align: 'center', weight: 800, family: side ? FONT.body : FONT.num, color: c ? PAL.dim : PAL.faint, ow: 2, maxWidth: mw - 2 });
       const my = y + boxH * 0.66;
       if (c?.rank) {
         const col = RANK_COL[c.rank] ?? PAL.bone;

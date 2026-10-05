@@ -42,7 +42,7 @@ import { POWERUPS } from '../../data/powerups.js';
 import { CHARACTERS } from '../../data/characters.js';
 import { DIFFICULTIES, getDiff } from '../../data/difficulty.js';
 import {
-  ARCADE_MODES, LEVEL_PRESETS, COURSES, courseBosses, endArcade, arenaBosses, p2Known, sanitizeCfg, practiceStages, buildArcadeState,
+  ARCADE_MODES, LEVEL_PRESETS, COURSES, courseBosses, endArcade, arenaBosses, p2Known, exKnown, sanitizeCfg, practiceStages, buildArcadeState,
 } from './arcade.js';
 import { frame, menuItem, fmtClock, portraitIn, qualifies, heading, kenBurns, shade, bossRushBests, towerBests, DIM, puppet } from './common.js';
 import * as ONLINE from '../../core/online.js';
@@ -118,6 +118,7 @@ export class ArcadeRunScene extends Scene {
     this.P = LEVEL_PRESETS[cfg.preset ?? 1] ?? LEVEL_PRESETS[1];
     this.diff = getDiff(cfg.diff);
     this.p2 = p2Known(g);
+    this.ex = exKnown(g);   // 외전 보스(아르겐)를 서바이벌 보스 웨이브에 (docs/specs/ex_s21.md)
     this.phase = 'ready'; this.phaseT = 0;
     this.clock = 0; this.done = false;
     this.world = this.makeWorld();
@@ -163,7 +164,7 @@ export class ArcadeRunScene extends Scene {
     if (num('seed') !== undefined) want.seed = num('seed') >>> 0;   // 무한의 탑: 시드 고정 (시험·재현)
     if (q?.get('diff')) want.diff = q.get('diff');
     if (q?.get('stage')) want.stageId = q.get('stage');
-    const c = sanitizeCfg(want, p2Known(g), this.modeId === 'practice' && !q?.get('stage') ? practiceStages(g) : null);
+    const c = sanitizeCfg(want, p2Known(g), this.modeId === 'practice' && !q?.get('stage') ? practiceStages(g) : null, exKnown(g));
     let charId = q?.get('char') || cfg?.charId || g.state?.charId || 'kael';
     if (!CHARACTERS[charId]) charId = 'kael';
     if (!g.state?.arcade) g._arcadePrev = g.state ?? null;
@@ -476,7 +477,7 @@ export class SurvivalScene extends ArcadeRunScene {
     this.kills0 = 0;
     const c = this.safeCols;
     this.edgeL = c ? c.slice(0, 4) : null; this.edgeR = c ? c.slice(-4) : null;
-    this.bossIds = arenaBosses(this.p2);
+    this.bossIds = arenaBosses(this.p2, this.ex);
     // 첫 보스 웨이브(5)의 보스 클래스를 한가할 때 미리 받는다 (다음 보스는 보스 웨이브를 정할 때)
     if (this.bossIds.length) { try { loadBoss(this.bossIds[0])?.catch?.(() => null); } catch { /* createBoss 가 받는다 */ } }
     const orig = w.addScore.bind(w);
@@ -491,7 +492,7 @@ export class SurvivalScene extends ArcadeRunScene {
   }
   /** 이번 웨이브에 나올 수 있는 적: 1부 스테이지 순서(2부를 알면 전체)의 두 단계, 투기장에서 싸울 수 없는 적 제외 */
   pool() {
-    const order = this.p2 ? STAGE_ORDER : STAGE_ORDER_P1;
+    const order = this.p2 ? STAGE_ORDER.filter((id) => !STAGES[id]?.side) : STAGE_ORDER_P1;   // 외전(s21)은 새 적이 없어 순서에서 뺀다
     const tier = clamp(Math.floor((this.wave - 1) / 2), 0, order.length - 1);
     const ok = (id) => !!ENEMIES[id] && !NO_SPAWN.has(id) && !ENEMIES[id].noArena;
     const ids = new Set();
@@ -664,8 +665,8 @@ export class PracticeScene extends ArcadeRunScene {
     const dl = this.cfg.daily;
     if (dl) {
       const mods = (dl.mods ?? []).map((m) => ONLINE.modName(m));
-      this.call = { main: 'DAILY CHALLENGE', sub: mods.length ? `규칙: ${mods.join(' · ')}` : `제${w.stage.chapter}장 ${w.stage.name}`, color: '#7ee0c0', t: 0 };
-    } else this.call = { main: 'STAGE PRACTICE', sub: `제${w.stage.chapter}장 ${w.stage.name}`, color: '#5aa8ff', t: 0 };
+      this.call = { main: 'DAILY CHALLENGE', sub: mods.length ? `규칙: ${mods.join(' · ')}` : `${w.stage.side ? '외전' : `제${w.stage.chapter}장`} ${w.stage.name}`, color: '#7ee0c0', t: 0 };
+    } else this.call = { main: 'STAGE PRACTICE', sub: `${w.stage.side ? '외전' : `제${w.stage.chapter}장`} ${w.stage.name}`, color: '#5aa8ff', t: 0 };
     this.phase = 'play';
   }
   tick(dt) { if (this.call) { this.call.t += dt / 2.4; if (this.call.t >= 1) this.call = null; } }
@@ -693,7 +694,7 @@ export class PracticeScene extends ArcadeRunScene {
     return {
       title: cleared ? 'STAGE CLEAR' : 'GAME OVER', score: run.score + bonus, time: run.time, rank: cleared ? rank : null,
       rows: [
-        ['스테이지', `제${stage.chapter}장 ${stage.name}`],
+        ['스테이지', `${stage.side ? '외전' : `제${stage.chapter}장`} ${stage.name}`],
         ['클리어 시간', cleared ? fmtClock(run.time) : '-'],
         ['처치 수', `${run.kills}`],
         ['최대 콤보', `${Math.max(w.combo.best, w.combo.max)} HITS`],

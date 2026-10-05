@@ -78,7 +78,7 @@ export class SlotsScene extends Scene {
       try { st = raw ? migrateState(raw) : null; } catch (e) { console.error(e); }
       const P = st?.progress ?? {};
       const unlocked = Array.isArray(P.unlocked) ? P.unlocked : ['s01'];
-      const far = STAGE_ORDER.filter((id) => unlocked.includes(id)).pop() ?? 's01';
+      const far = STAGE_ORDER.filter((id) => unlocked.includes(id) && !STAGES[id]?.side).pop() ?? 's01';   // 외전(s21)은 이야기 진행 표시에서 뺀다
       // 표시는 정리된 기록 기준 (B103: 알 수 없는 id 는 hasOwn 으로 거른다)
       const charId = own(CHARACTERS, st?.charId) ? st.charId : own(CHARACTERS, s.charId) ? s.charId : null;
       const hero = charId ? st?.heroes?.[charId] : null;

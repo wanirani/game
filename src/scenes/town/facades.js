@@ -1244,7 +1244,7 @@ const HEADS = {
     eyeDot(c, 14, -31, p[3], 2, 0.35);
     c.fillStyle = '#1a0808'; c.fillRect(13.6, -33, 0.9, 4);
     const em = 0.4 + Math.sin(t * 5 + k) * 0.3;
-    c.globalCompositeOperation = 'lighter'; glow(c, 27, -28, 8, '#ff8a3a', Math.max(0, em)); c.globalCompositeOperation = 'source-over';
+    c.globalCompositeOperation = 'lighter'; glow(c, 27, -28, 8, v === 'silver' ? '#9fe8ff' : '#ff8a3a', Math.max(0, em)); c.globalCompositeOperation = 'source-over';   // 외전 아르겐(variant silver): 번개 빛
   },
   bat(c, p, id, v, t, k) {
     const flap = Math.sin(t * 1.6 + k) * 1.5;

@@ -184,6 +184,7 @@ export class ChurchScene extends ServiceScene {
         : `되찾은 세계의 심장은 ${n}개일세. 여섯을 모두 되찾아야 공허로 가는 길이 열린다네.`);
     }
     if (F.p2_done && !F.stars_all && (P.shards?.length ?? 0) < 6) p2.push('여섯 세계에 숨겨진 별의 조각을 모두 모으면, 공허를 빛으로 채울 수 있을지도 모르네.');
+    if (F.p2_done && has(P.unlocked, 's21') && !P.cleared?.s21) p2.push('요즘 구름 위에서 용이 우는 소리가 들린다지. 이졸데가 밤마다 하늘만 올려다본다더군. 성문 밖 지도를 펼쳐 보게.');   // 외전 (docs/specs/ex_s21.md)
     const gen = ['콤보가 길게 이어질수록 점수가 불어난다네. 쉬지 말고 몰아치게.', '가끔은 금빛 박쥐가 나타난다지. 놓치지 말게, 금화를 잔뜩 떨군다네.', '무기를 강화하려거든 하드윈을 찾게. 그 친구의 망치는 틀린 적이 없어.', '물러설 줄 아는 것도 용기라네. 성수는 넉넉히 챙기게.'];
     const pool = F.p2_started && p2.length ? p2 : p1.length ? p1 : p2;
     const list = pool.length && Math.random() < 0.8 ? pool : gen;

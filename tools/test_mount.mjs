@@ -2,6 +2,7 @@
 // 탈것 런타임 테스트 (CMP-MOUNT; companions §3, §11.4, §14 C2; world2 §14; MASTER_PLAN §1.2 · §1.7 · §1.14)
 //   node tools/test_mount.mjs                          1부 탈것 여섯 (그림메인 바르그 코슈타 스콜 스칼렛 녹티스) + 공통 규칙 + 터치·패드
 //   node tools/test_mount.mjs --only mt_ignis,mt_gale,mt_silva   2부 탈것 (CMP-MOUNT-B 의 mount_b.js 가 채운 뒤) — 탈것 id 나 사례 이름으로 고른다
+//   (외전 아르겐 mt_argen 은 기본 실행에 든다 · --only mt_argen 으로 따로)
 //   --case name[,name]   특정 사례만   --verbose   통과 항목도   --shots   사례마다 스크린샷 (/tmp/claude-0/proto/CMP-MOUNT/)
 // 헤드리스 Chromium + tools/serve.mjs. 게임 시간은 game.tick(1/60) 을 직접 돌려 진행한다 (결정적). 터치·패드 사례만 실제 시간으로 잠깐 돈다.
 // 모든 사례는 페이지 오류·콘솔 오류 0 이어야 통과한다.
@@ -873,6 +874,70 @@ await run('pad', ['mt_warhorse', 'pad'], STAGE('s01', '&cmp=all&cmplv=10&mount=m
   checks.push(['L3 → 하차', !r3.riding, r3]);
   return { checks };
 }, { initScripts: [fakePadInit({ connected: false })] });
+
+// ═════════════ 외전 아르겐 (mt_argen, docs/specs/ex_s21.md §3): 비룡 리그 · 날갯짓 셋 + 활공 · 뇌광 돌진 · 번개 급강하 충격파 · 은빛 번개 숨결 ═════════════
+// 데이터만으로 동작한다 (MOUNT_B 없음): 숨결·충격파의 색·입자·소리는 mount.js ELEM_FX 가 속성(thunder)으로 고른다. 기본 실행에 든다 (--only mt_argen 으로 따로)
+await run('ex_mt_argen', ['ex', 'mt_argen'], STAGE('s01', '&cmp=all&cmplv=10'), (page) => page.evaluate(() => {
+  const T = window.__T, w = T.w, p = T.p, checks = [], info = {};
+  T.step(0.5); T.clearFoes();
+  const m = T.ride('mt_argen'); T.reset(m); T.step(0.3);
+  T.setHome();
+  const def = m.def;
+  checks.push(['아르겐 탑승 · 비룡 리그 · 몸 크기', m.riding && def.rig === 'wyvern' && p.w === def.body.w && p.h === def.body.h, [def.rig, p.w, p.h]]);
+  // 날갯짓 세 번 → 네 번째는 없음 → 활공
+  T.key('KeyZ', true); T.step(0.05); T.key('KeyZ', false); T.step(0.35);
+  const flapsVy = [];
+  for (let i = 0; i < 4; i++) { T.key('KeyZ', true); T.step(1 / 60); flapsVy.push(Math.round(p.vy)); T.key('KeyZ', false); T.step(0.2); }
+  checks.push(['날갯짓 세 번 (네 번째 없음)', flapsVy.slice(0, 3).every((v) => v <= -500) && flapsVy[3] > -500, flapsVy]);
+  T.key('KeyZ', true);
+  let maxVy = -1e9;
+  T.step(0.8, () => { if (!p.onGround) maxVy = Math.max(maxVy, p.vy); return p.onGround; });
+  T.key('KeyZ', false);
+  checks.push(['활공 (vy ≤ glideFall)', maxVy <= def.flight.glideFall + 1, maxVy]);
+  T.step(1.2, () => p.onGround);
+  // 공중 돌진 = 번개 급강하 → 착지 충격파 (스칼렛 사례와 같은 순서)
+  T.goHome(); T.reset(m); T.step(0.2); p.facing = 1;
+  const dz = T.spawn('zombie', 120);
+  T.step(1.2);
+  const dh = dz.hp;
+  T.key('KeyZ', true); T.step(0.2); T.key('KeyZ', false);
+  T.press('KeyC', 0.05);
+  const kind = m.chargeKind;
+  T.step(1.0, () => p.onGround);
+  T.step(0.1);
+  checks.push(['공중 돌진 = 번개 급강하', kind === 'dive' && T.texts.includes(def.charge.air.name), kind]);
+  checks.push(['급강하 착지 충격파', dz.dead || dz.hp < dh, [dh, dz.hp]]);
+  // 땅 돌진 = 뇌광 돌진 (번개)
+  T.step(0.5); T.clearFoes(); T.goHome(); T.reset(m); T.step(0.2); p.facing = 1;
+  const gz = T.spawn('zombie', 120); T.step(1.2);
+  const gh = gz.hp;
+  T.press('KeyC', 0.05);
+  const gk = m.chargeKind, gel = m.chargeAtk?.element;
+  T.step(0.6);
+  checks.push(['땅 돌진 = 뇌광 돌진 · 번개 · 적을 친다', gk === 'ground' && gel === 'thunder' && (gz.dead || gz.hp < gh), [gk, gel, gh, gz.hp]]);
+  // 은빛 번개 숨결: 공중에서도, 1초, 낙하 ≤ vyMax, 번개 색 숨결 판정이 적을 친다
+  T.step(0.5); T.clearFoes(); T.goHome(); T.reset(m); T.step(0.3); p.facing = 1;
+  const bz = T.spawn('zombie', 110), bh = bz.hp;
+  T.step(1.0);
+  T.key('KeyZ', true); T.step(0.25); T.key('KeyZ', false);
+  T.step(0.2);
+  T.key('ArrowDown', true); T.press('KeyX', 0.05); T.key('ArrowDown', false);
+  const breathing = m.act?.name === 'breath';
+  const hb = w.entities.find((e) => e.kind === 'hitbox' && e.attack?.tags?.includes('special') && Array.isArray(e.cols));
+  info.breath = { el: hb?.attack?.element, cols: hb?.cols, light: hb?.light?.color };
+  let vyMaxBreath = -1e9;
+  T.step(0.6, () => { if (!p.onGround && m.act?.name === 'breath') vyMaxBreath = Math.max(vyMaxBreath, p.vy); return false; });
+  T.step(1.0);
+  checks.push(['공중 은빛 번개 숨결 · 재사용 대기 · 이름', breathing && m.specialCd > 0 && T.texts.includes(def.special.name), [breathing, m.specialCd]]);
+  checks.push(['숨결 판정 = 번개 (색 · 빛 · 속성)', info.breath.el === 'thunder' && info.breath.cols?.[0] === '#4aa8ff' && info.breath.light === '#bfe8ff', info.breath]);
+  checks.push(['숨결 중 낙하 ≤ vyMax', vyMaxBreath <= def.special.vyMax + 1, vyMaxBreath]);
+  checks.push(['숨결이 적을 친다', bz.dead || bh - bz.hp > 0, [bh, bz.hp]]);
+  // 달리기
+  T.goHome(); T.reset(m); T.key('ArrowRight', true); T.step(1.2); T.key('ArrowRight', false);
+  checks.push(['달린다', Math.abs(p.vx) > def.move.speed * 0.8 || m.anim === 'run', p.vx]);
+  checks.push(['돌풍 저항 windMul 0.5 · 탑승 보너스 번개', def.windMul === 0.5 && def.ride.thunder === 15 && def.ride.resThunder === 20]);
+  return { checks, info };
+}));
 
 // ═════════════ 2부 탈것 (CMP-MOUNT-B 가 채운 뒤: --only mt_ignis,mt_gale,mt_silva) ═════════════
 for (const id of P2) {
