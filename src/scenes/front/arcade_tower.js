@@ -193,15 +193,17 @@ export class TowerScene extends ArcadeRunScene {
     const w = this.world, plan = this.plan, R = this.troom, p = w.player, m = w.map;
     this.phase = 'fight'; this.phaseT = 0; this.stuckT = 0;
     const used = new Map();
-    const free = (tx, ty) => { const t = m.typeAt(tx, ty); return !isSolidType(t) && t !== T.SPIKE && t !== T.LIQUID; };
+    const free = (tx, ty) => { const t = m.typeAt(tx, ty); return !isSolidType(t) && t !== T.SPIKE && t !== T.LIQUID && t !== T.FAKE; };
     plan.enemies.forEach((spec) => {
       const def = ENEMIES[spec.id];
       if (!def || !R) return;
       let si = spec.slot, s = R.slots[si];
       // 영웅 바로 곁의 자리는 같은 종류의 다른 자리로 (첫 번째로 충분히 먼 자리)
       const near = (q) => Math.abs((q.tx + 0.5) * TILE - p.cx) < 260 && Math.abs((q.gy + 1) * TILE - p.bottom) < 220;
-      if (near(s)) {
-        const alt = R.slots.findIndex((q, i) => i !== si && (def.flying || q.ground) && !near(q));
+      // 비밀 방(가짜 벽 너머 — s02 r3·s06 r3) 속 자리도: 거기 나온 적은 보이지도 맞지도 않고 남은 적 수에도 들지 않는다 (world.inUnrevealedFake)
+      const secret = (q) => m.typeAt(q.tx, Math.floor(((def.flying ? q.ty : q.gy) + 1 - (def.size?.h ?? TILE) / 2 / TILE))) === T.FAKE;
+      if (near(s) || secret(s)) {
+        const alt = R.slots.findIndex((q, i) => i !== si && (def.flying || q.ground) && !near(q) && !secret(q));
         if (alt >= 0) { si = alt; s = R.slots[si]; }
       }
       const k = used.get(si) ?? 0; used.set(si, k + 1);
