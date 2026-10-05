@@ -59,8 +59,9 @@ const ifC = (id, text) => ({ if: 'recruit_' + id, ...C(id, text) });
 const recruit = (id) => [{ cmd: 'recruit', id }, flag('recruit_' + id)];
 
 /** 등불 너머로 들려오는 다른 헌터의 목소리 (지금 플레이 중인 헌터는 건너뛴다) — world2 §1.3 b_nihil_final */
-const HERO_IDS = ['kael', 'sera', 'victor', 'bran', 'lia', 'azel'];
-const otherHeroes = (lines) => HERO_IDS.flatMap((id) => [ifChar(id, 'skip_' + id), { who: id, text: lines[id], side: 'right' }, L('skip_' + id)]);
+const HERO_IDS = ['kael', 'sera', 'victor', 'bran', 'lia', 'azel', 'isolde'];
+const HERO_JOIN = { isolde: 'isolde_joined' };   // 2부에 합류하는 영웅(hero7)은 합류 플래그가 있을 때만 목소리가 들린다
+const otherHeroes = (lines) => HERO_IDS.flatMap((id) => [ifChar(id, 'skip_' + id), { ...(HERO_JOIN[id] ? { if: HERO_JOIN[id] } : {}), who: id, text: lines[id], side: 'right' }, L('skip_' + id)]);
 
 /** 마을 NPC 가 의뢰를 처음 한 번만 직접 건네는 패턴: 처음엔 offer 줄 + 의뢰 수락, 다음부터는 again 줄 */
 const offerOnce = (qid, offer, again) => [
@@ -412,6 +413,7 @@ export const SCRIPTS_P2B = {
       bran: '새벽 서약의 이름으로! 그대의 등은 우리가 지키고 있소!',
       lia: '…끝내고 와. 결사 보고서에 "실종"이라고 쓰기 싫으니까.',
       azel: '빛을 두려워하던 나도 지금 네 빛을 보고 있다. 끝까지 비춰라!',
+      isolde: '하늘이 무너지는 걸 한 번은 지켜보기만 했다. 두 번은 없다. 창을 겨눠라, 끝까지!',
     }),
     se('bell'),
     S(A, '주여, 이 아이의 빛을… 꺼뜨리지 마소서.'),

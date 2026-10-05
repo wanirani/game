@@ -16,7 +16,7 @@ import { text, font, bar, ListMenu, FONT, COLORS, vignette, taps } from '../../c
 import { drawGlyph, glyphWidth } from '../../core/prompts.js';
 import { TAU, clamp, rand, fmt, ease, RNG, hashStr } from '../../core/math.js';
 import { World } from '../../game/world.js';
-import { newGameState, currentHero } from '../../game/state.js';
+import { newGameState, currentHero, storyJoinedChars } from '../../game/state.js';
 import { expToNext, MAX_LEVEL } from '../../game/stats.js';
 import { drawHero } from '../../render/hero.js';
 import { drawIcon } from '../../render/icons.js';
@@ -73,8 +73,23 @@ export class HubScene extends Scene {
     audio.music('hub');
     assets.preload(['bg/worldmap', 'bg/shop', 'bg/smith', 'portraits/npc_rook', 'portraits/npc_hadwin', 'portraits/npc_alberto']);
     this.refreshBoard();
+    this.syncHeroUnlocks();
     if (g.settings?.autoSave) { try { saves.write(g.state.slot ?? 1, g.state); } catch (e) { /* 저장 실패 무시 */ } }
     CMP.companionHubEnter?.(g, this);   // [hook:cmp] 마구간 개장 · 2번 칸 안내 · 합류 연출 (다른 장면이 위에 있으면 다음 onResume 에)
+  }
+
+  /**
+   * 세이브의 합류 플래그 → 메타 헌터 해금 (game/state.js storyJoinedChars). 합류 장면(unlockChar)보다 먼저 그 장을 깬 세이브
+   * (예: 이졸데 합류 장면이 생기기 전에 14장을 깬 세이브 — migrateState 가 isolde_joined 를 소급)도 선택 화면·헌터 교체에 나온다
+   */
+  syncHeroUnlocks() {
+    const g = this.game, m = g.meta;
+    if (!m || !Array.isArray(m.unlockedChars)) return;
+    const add = storyJoinedChars(g.state).filter((id) => !m.unlockedChars.includes(id));
+    if (!add.length) return;
+    m.unlockedChars.push(...add);
+    try { saves.saveMeta(m); } catch (e) { /* 저장 실패 무시 */ }
+    for (const id of add) g.toast(`${CHARACTERS[id]?.name ?? id} 합류! (캐릭터 해금)`, '#ffe070');
   }
 
   /** World 생성 + 마을 전용 패치. spawn: 'gate' 면 동쪽 성문 앞, 'inn' 이면 여관 문 앞, 숫자면 해당 x */

@@ -9,7 +9,7 @@ import { Particles } from '../../core/particles.js';
 import { drawHero } from '../../render/hero.js';
 import { CHARACTERS, CHAR_ORDER } from '../../data/characters.js';
 import { CLASSES } from '../../data/classes.js';
-import { ensureHero } from '../../game/state.js';
+import { ensureHero, storyJoinedChars } from '../../game/state.js';
 import { composeLook, expToNext } from '../../game/stats.js';
 import { findItem } from '../../game/inventory.js';
 import { ITEMS } from '../../data/items.js';
@@ -32,6 +32,7 @@ export class PartyScene extends Scene {
     const st = ensureState(this.game);
     const unlocked = new Set(this.game.meta?.unlockedChars ?? ['kael']);
     for (const id in st.heroes || {}) unlocked.add(id);
+    for (const id of storyJoinedChars(st)) unlocked.add(id);   // 합류 플래그가 있는 세이브 (메타가 아직 모르는 경우)
     this.list = CHAR_ORDER.map((id) => ({ id, ch: CHARACTERS[id], open: unlocked.has(id), rig: {}, snap: new Snap() }));
     this.index = Math.max(0, this.list.findIndex((e) => e.id === st.charId));
     this.fx = new Particles(300);

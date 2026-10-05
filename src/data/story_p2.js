@@ -14,7 +14,7 @@
 // 재생 방식: p2_prologue·_intro·_outro·ending_* 은 컷신(scenes/front/story.js: bg·flash·title·wait 지원),
 //           나머지는 대화 오버레이(scenes/dialogue.js: bg·flash·title 은 무시). b_narkissa_shatter 는 보스 코드가 3페이즈 전환 때 민다.
 // 플래그  쓰기: rook_revealed · p2_started (p2_prologue) · recruit_<동료 id> (recruit 명령과 같은 값 — recruit 를 모르는 러너에서도 합류가 남도록)
-//               · p2_done (두 엔딩)
+//               · isolde_joined (s14_outro, 7번째 영웅 합류 — unlockChar 와 함께; 14장을 이미 깬 세이브는 game/state.js migrateState 가 소급) · p2_done (두 엔딩)
 //         읽기: carmilla_trust2, dawnflower_given
 // 주의: 결과 화면은 아웃트로의 조건부 분기(ifChar/ifFlag) 뒤에 아직 켜지지 않은 flag 명령이 있으면 아웃트로를 다시 튼다
 //       (results.js hasNewBranch) → 아웃트로의 합류(recruit + flag)는 조건부 분기보다 앞에 둔다.
@@ -58,6 +58,9 @@ const C = (id, text, x) => ({ who: id, name: CMP[id][0], portrait: CMP[id][1], t
 const ifC = (id, text) => ({ if: 'recruit_' + id, ...C(id, text) });
 /** 동료 합류 — recruit 명령 + 같은 플래그 (world2 §2.4: 플래그가 합류의 원본) */
 const recruit = (id) => [{ cmd: 'recruit', id }, flag('recruit_' + id)];
+// 합류 전 영웅이 NPC로 말할 때 (story.js 의 R·RN 과 같은 모양) — 2부 합류 영웅 이졸데(hero7)
+const R = (who, text) => ({ who, text, side: 'right' });
+const RN = (who, name, text) => ({ who, name, text, side: 'right' }); // 이름을 밝히기 전: 명패에 name 을 대신 표시
 
 const SCRIPTS_P2A = {
   // ═══════════════════════════ 2부 프롤로그 : 균열의 순례 ═══════════════════════════
@@ -215,6 +218,46 @@ const SCRIPTS_P2A = {
       lia: '…등 뒤는 원래 아무한테도 안 맡기는데. 너라면, 뭐. 괜찮아.',
       azel: '내 등 뒤를 비추겠다고? 흡혈귀의 아들도 제대로 비칠지는 모르겠군. …부탁한다.',
       default: '잘 부탁해, 미라.' }),
+    // ── 이졸데 합류 (docs/specs/hero7.md §1: 14장 보스 처치 후, 플래그 isolde_joined). 1부 리아·아젤 합류와 같은 방식:
+    //    unlockChar(메타 해금) + NEW HUNTER 제목 카드 + 플래그. 플래그는 조건부 분기(ifChar) 앞쪽 줄기에서 켠다 (results.js hasNewBranch)
+    //    이졸데로 플레이 중이면(다른 슬롯에서 이미 해금) 혼잣말 분기. 새 CG 없이 각성 컷인 그림을 한 장면 빌려 쓴다
+    ifChar('isolde', 'isolde_self'),
+    N('그런데 맑아진 거울들 가운데 단 하나가 아직 뿌옇게 흐려 있었다. 그 안쪽에서 무언가가 유리를 두드린다.'),
+    se('break_wall'), quake(10, 0.6, MIRROR), cg('cg/cutin_isolde'),
+    N('쩌저적—! 거울이 안에서부터 깨지고, 은빛 창끝이 먼저 튀어나왔다. 날개 장식 서클릿을 쓴 기사가 유리 조각을 헤치며 걸어 나온다.'),
+    RN('isolde', '은빛 창기사', '나르키사는 어디 있지? 이번에야말로 그 가면을 꿰뚫어 주겠다!'),
+    cg(),
+    H({ kael: '여제라면 방금 끝났다. 창을 거둬라. 적은 아니다.',
+      sera: '진정하세요! 여제는… 이제 편히 잠들었어요.',
+      victor: '워워, 창끝은 저쪽으로. 여제라면 한발 늦었어, 아가씨.',
+      bran: '창을 내리시오, 기사여. 여제와의 싸움은 이미 끝났소.',
+      lia: '…늦었어. 여제는 끝났어. 그 창, 이쪽으로 겨누지 마.',
+      azel: '여제라면 이미 깨졌다. 그 창끝은 거두는 게 좋겠군.',
+      default: '여제는 이미 쓰러졌어. 창을 내려.' }),
+    C('gd_mirra', '정말이에요. 그녀는 이제 쉬고 있어요. 당신 얼굴도 거울에서 풀려났잖아요.'),
+    R('isolde', '…그런가. 거울에 붙들려 있는 사이에 다 끝나 버렸군. 실례했다.'),
+    R('isolde', '이졸데 드라켄. 균열 너머 하늘 기사단의… 마지막 용기사다.'),
+    R('isolde', '하늘이 갈라지던 날, 균열이 내 용 아르겐을 삼켰다. 그 뒤를 쫓아 세계를 건너다 이 성의 거울에 갇혔지.'),
+    RV('하늘 기사단… 공중정원의 용기사들인가. 그 창이 아직 꺾이지 않았을 줄은 몰랐군.'),
+    R('isolde', '그 목소리, 옛 노래 속 까마귀 파수꾼인가. …좋다. 아르겐이 끌려간 곳이 공허라면 너희와 같은 길이다. 내 창을 빌려주겠다.'),
+    H({ kael: '용을 쫓는 기사라. 쫓는 것만 다를 뿐 사냥꾼의 눈이군. 환영한다, 이졸데.',
+      sera: '아르겐이 무사하도록 저도 함께 기도할게요. 환영해요, 이졸데!',
+      victor: '용 한 마리 찾는 여정이라. 보수는 없어도 구경값은 하겠군. 잘 부탁한다, 창잡이.',
+      bran: '무너진 기사단의 마지막 한 사람이라… 남의 일 같지 않소. 그대의 창 옆에 서겠소.',
+      lia: '…높은 데서 내리꽂는 거라면 나도 자신 있는데. 뭐, 같이 가 보든가.',
+      azel: '잃은 것을 되찾으려고 세계를 건넜다라. …그 집념이라면 믿을 만하지. 함께 가자.',
+      default: '함께 가자, 이졸데.' }),
+    { cmd: 'unlockChar', id: 'isolde' },
+    { if: '!isolde_joined', cmd: 'title', text: 'NEW HUNTER', sub: '용창 기사 이졸데 드라켄 합류' },
+    flag('isolde_joined'),
+    R('isolde', '높은 곳은 내게 맡겨라. 하늘은 원래 용기사의 전장이니까.'),
+    go('isolde_end'),
+    L('isolde_self'),
+    H('여제가 모아 둔 얼굴 가운데엔 기사단 형제들의 얼굴도 있었다. …이제 편히 쉬어라.'),
+    H('아르겐. 네가 끌려간 곳이 공허의 밑바닥이라 해도, 이 창으로 길을 내겠다.'),
+    { cmd: 'unlockChar', id: 'isolde' },
+    flag('isolde_joined'),
+    L('isolde_end'),
     RV('다음은 영겁의 용광로다. …뜨거운 곳이니 각오해 두어라.'),
   ],
 
@@ -571,6 +614,8 @@ export const SCRIPTS_P2 = { ...SCRIPTS_P2A, ...SCRIPTS_P2B };
 
 /** 2부 크레딧 (world2 §1.7 — story.js CREDITS 와 같은 형식: '— 제목 —' 은 소제목, '역할 — 이름' 은 두 칸 행, '' 은 간격) */
 export const CREDITS_P2 = [
+  '— 제2부 · 균열 너머의 헌터 —',
+  '용창 기사 — 이졸데 드라켄', '',
   '— 제2부 · 이계의 수호자들 —',
   '14장 — 만경의 여제 나르키사', '15장 — 용광로의 우상 몰록', '16장 — 가라앉은 성소의 사제왕 다곤',
   '17장 — 폭풍을 부르는 거신조 지즈', '18장 — 악몽을 낳는 자 마라', '19장 — 부패한 대지의 짐승 베헤모스',

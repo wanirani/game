@@ -67,6 +67,17 @@ export function ensureHero(state, charId) {
 
 export function currentHero(state) { return state.heroes[state.charId]; }
 
+/**
+ * 이 세이브의 스토리 플래그로 합류가 확정된 영웅 id (CHARACTERS[id].unlock = { type:'story', flag }).
+ * 헌터 해금은 메타(meta.unlockedChars)에 남지만 합류 장면 이전 세이브·다른 기기의 메타에는 없을 수 있다 →
+ * 마을(town/hub.js)이 들어올 때 메타에 보태고, 헌터 교체(town/party.js)는 이 목록도 열어 준다. 아케이드 임시 세이브는 []
+ */
+export function storyJoinedChars(state) {
+  const f = state?.progress?.flags;
+  if (!isObj(f) || state.arcade) return [];
+  return Object.values(CHARACTERS).filter((c) => c.unlock?.type === 'story' && c.unlock.flag && f[c.unlock.flag] === true).map((c) => c.id);
+}
+
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const EQUIP_SLOTS = ['weapon', 'head', 'body', 'cloak', 'acc1', 'acc2'];
 
@@ -79,6 +90,8 @@ export function migrateState(s) {
   // 별의 조각·세계의 심장: 문자열 id 만, 중복 없이 (개수로 진엔딩을 가르므로)   [hook:p2]
   for (const k of ['shards', 'hearts']) s.progress[k] = [...new Set(s.progress[k].filter((id) => typeof id === 'string'))];
   if (!s.progress.unlocked.includes('s01')) s.progress.unlocked.push('s01');
+  // 7번째 영웅 이졸데(hero7)는 14장 아웃트로에서 합류한다(isolde_joined). 합류 장면이 생기기 전에 14장을 깬 세이브도 합류한 것으로 (아케이드 임시 세이브 제외)
+  if (!s.arcade && s.progress.cleared.s14) s.progress.flags.isolde_joined = true;
   s.progress.chapter = Number.isFinite(s.progress.chapter) ? s.progress.chapter : 0;
   if (!isObj(s.quests)) s.quests = { active: {}, done: [] };
   if (!isObj(s.quests.active)) s.quests.active = {};
