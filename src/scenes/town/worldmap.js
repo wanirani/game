@@ -1,13 +1,15 @@
 // 월드맵 (world2 §10 · platform WP-7) — owner: WORLDMAP-P2
 //   두 장의 지도
 //     0 악마성 Ⅰ : 양피지 지도 위 1부 13개 스테이지(STAGE_ORDER_P1) + 투기장. 에슈빌에서 출발, 드라큘라의 유물 5
+//                  + 외전 s22 (side, page 0, docs/specs/ex_s22.md): 2부 엔딩(p2_done) 뒤에만 2장 안개의 묘지에서 갈라지는 '외전' 노드 (1부 장 사슬에는 들지 않는다)
 //     1 이계 Ⅱ   : 2부 s14~s20 (에슈빌 균열문 → 나선을 그리며 한가운데 태초의 공허로). 세계의 심장 6 · 별의 조각 6
 //                  + 외전 s21 (side, docs/specs/ex_s21.md): 2부 엔딩(p2_done) 뒤에만 17장 위쪽에 '외전' 노드로 나타난다 (17장에서 갈라지는 은빛 길)
 //     2부 지도는 flags.p2_started 이거나 s14 가 열렸을 때만 있다 — 없으면 탭 없이 예전 그대로.
 //     아직 맵이 없는 2부 스테이지(STAGES 에 없음)는 잠긴 노드로만 보인다.
 //   enter({ page }) : 페이지 지정이 우선. 없으면 가장 최근에 열린 미클리어 스테이지나 lastStage 가 2부면 1, 아니면 0
 //   해금 연출 (차례로): s13 (유물 5 + s12 클리어) · s14 (2부 시작 → flags.s14_revealed) · s20 (처음 열렸을 때 → flags.s20_revealed)
-//                       · s21 외전 (2부 엔딩 p2_done 뒤 처음 지도를 열 때 해금 → flags.s21_revealed)
+//                       · 외전 s21 · s22 (2부 엔딩 p2_done 뒤 처음 지도를 열 때 해금 → flags.<id>_revealed; 연출은 그 외전의 쪽(STAGES[id].page)에서,
+//                         두 외전이 한꺼번에 열리면 s21(이계 Ⅱ) → s22(악마성 Ⅰ) 차례로 — startReveal 이 쪽을 넘긴다)
 //   옛 세이브 (2부가 생기기 전에 s13 을 깼다): 들어오자마자 2부 프롤로그 → 마을 (world2 §2.2 — 지도는 마을 위에 쌓이는 장면이라 바로 가지 않는다)
 //   입력: 방향 = 노드 · 결정 = 출발 · 취소/메뉴 = 닫기 · 지도 전환 = Q/E·S/D·Tab (패드 LB/RB·LT·SELECT) · 터치 = 노드/탭/버튼
 //   uiScale 장면 (game.uiW × game.uiH 로 배치), 안내 줄은 기기별 글리프 (prompts.drawHints), 탭 영역은 ui.taps (터치 여유 포함)
@@ -41,8 +43,15 @@ const PAGE_KEYS = ['prevTab', 'nextTab', 'swap', 'skill1', 'skill2', 'map'];
 
 // 2부 스테이지 순서 (STAGE_ORDER_P2 는 있는 것만 담으므로 지도는 이 목록으로 자리를 잡는다)
 const P2_IDS = ['s14', 's15', 's16', 's17', 's18', 's19', 's20'];
-// 외전 (STAGES[id].side): 열렸을 때만 노드가 생기고, from 노드에서 갈라지는 길로 잇는다 (나선 사슬에는 들지 않는다)
-const SIDE_FROM = { s21: 's17' };
+// 외전 (STAGES[id].side): 열렸을 때만 노드가 생기고, from 노드에서 갈라지는 길로 잇는다 (1부 장 사슬·2부 나선 사슬에는 들지 않는다).
+//   어느 지도에 놓일지는 STAGES[id].page (없으면 1 = 이계 지도): s21 → 이계 Ⅱ 17장 위, s22 → 악마성 Ⅰ 2장 안개의 묘지 위쪽 숲 언덕
+const SIDE_FROM = { s21: 's17', s22: 's02' };
+const sidePage = (id) => STAGES[id]?.page ?? 1;
+// 외전 정보판의 동료 칸 (합류 플래그 · 합류 전/뒤 문구)
+const SIDE_INFO = {
+  s21: { flag: 'recruit_mt_argen', got: '은빛 용 아르겐 합류', wait: '구름 위에서 누군가 기다린다', col: '#c8e4ff', gotCol: '#e8f6ff' },
+  s22: { flag: 'recruit_gd_munin', got: '늙은 까마귀 무닌 합류', wait: '까마귀가 이름을 부른다', col: '#ff8a9e', gotCol: '#ffd0d8' },
+};
 // STAGES 에 아직 없는 2부 스테이지의 자리 (잠긴 노드로만 보인다; 값은 world2 §4.2)
 const P2_STUB = {
   s14: { name: '거울의 성', color: '#cfe8ff', mapPos: { x: 0.16, y: 0.74 } },
@@ -74,6 +83,7 @@ const REVEALS = {
   s14: { title: '균열이 열렸다', sub: '에슈빌 하늘 너머로 이계의 길이 드러났다', color: '#b060ff', tcol: '#e0b0ff', fx: 'magic' },
   s20: { title: '태초의 공허', sub: '여섯 세계의 심장이 공허로 가는 길을 비춘다', color: '#ffffff', tcol: '#ffffff', fx: 'holy' },
   s21: { title: '외전 · 하늘 정원의 둥지', sub: '구름 위 하늘 정원에서 용의 울음이 들려온다', color: '#c8e4ff', tcol: '#e8f6ff', crack: '#e8f6ff', fx: 'magic' },
+  s22: { title: '외전 · 이름 없는 언덕', sub: '안개의 묘지 너머에서 까마귀들이 이름 없는 칼을 부른다', color: '#ff4a6a', tcol: '#ffd0d8', crack: '#ffd0d8', fx: 'dark' },
 };
 
 /** 글자 폭을 재는 캔버스 (update 에서도 이름표 배치를 계산할 수 있게) */
@@ -135,14 +145,15 @@ export class WorldMapScene extends Scene {
       F.s20_revealed = true;
       queue.push(this.mkReveal('s20', 1));
     }
-    // 외전 (docs/specs/ex_s21.md): 2부 엔딩(두 엔딩 모두 p2_done) 뒤 처음 지도를 열 때 열고 한 번 알린다. 이야기 진행(엔딩)과는 무관
+    // 외전 (docs/specs/ex_s21.md · ex_s22.md): 2부 엔딩(두 엔딩 모두 p2_done) 뒤 처음 지도를 열 때 열고 한 번 알린다. 이야기 진행(엔딩)과는 무관
     //   p2_done 은 엔딩 대본 끝에서야 켜지므로, 엔딩 장면이 먼저 저장한 ending_p2·ending_p2true 도 본다 (엔딩 도중 앱을 닫은 세이브 — hub.js 와 같은 규칙)
+    //   연출은 그 외전이 놓인 지도에서 (s21 이계 Ⅱ · s22 악마성 Ⅰ — 처음 여는 2부 완주 세이브는 둘이 차례로, startReveal 이 쪽을 넘긴다)
     const p2Ended = !!(F.p2_done || F.ending_p2 || F.ending_p2true);
     for (const id of SIDE_STAGES) {
       if (!p2Ended || F[`${id}_revealed`] || !REVEALS[id]) continue;
       if (!P.unlocked.includes(id)) P.unlocked.push(id);
       F[`${id}_revealed`] = true;
-      queue.push(this.mkReveal(id, 1));
+      queue.push(this.mkReveal(id, sidePage(id)));
     }
     // ③ 지도 두 장
     this.hasP2 = !!(F.p2_started || P.unlocked.includes('s14'));
@@ -189,8 +200,10 @@ export class WorldMapScene extends Scene {
         if (id === 's13' && !P.unlocked.includes('s13')) continue;
         nodes.push({ id, stage: STAGES[id] });
       }
+      this.sideNodes(0, nodes, links);   // 외전 (s22) — 투기장 노드 앞
       if (STAGES.arena) nodes.push({ id: 'arena', stage: STAGES.arena, arena: true });
-      const chain = nodes.filter((n) => !n.arena && n.id !== 's13');
+      // 1부 장 사슬: 투기장·역성(s13)·외전은 빼고 (외전을 넣으면 s12 → s22 길이 생긴다)
+      const chain = nodes.filter((n) => !n.arena && !n.side && n.id !== 's13');
       if (chain.length) links.push({ a: null, b: chain[0], seed: 0, always: true });
       for (let i = 0; i < chain.length - 1; i++) links.push({ a: chain[i], b: chain[i + 1], seed: i + 1 });
       const s13 = nodes.find((n) => n.id === 's13'), s12 = nodes.find((n) => n.id === 's12');
@@ -202,16 +215,23 @@ export class WorldMapScene extends Scene {
       }
       links.push({ a: null, b: nodes[0], seed: 0 });
       for (let i = 0; i < nodes.length - 1; i++) links.push({ a: nodes[i], b: nodes[i + 1], seed: i + 1, wide: nodes[i + 1].id === 's20' ? 1.6 : 1 });
-      // 외전: 열렸을 때만 (2부 엔딩 뒤). 나선 사슬 끝이 아니라 SIDE_FROM 노드에서 갈라지는 은빛 길
-      for (const id of SIDE_STAGES) {
-        if (!P.unlocked.includes(id)) continue;
-        const n = { id, stage: STAGES[id], side: true };
-        nodes.push(n);
-        const from = nodes.find((m) => m.id === SIDE_FROM[id]);
-        if (from) links.push({ a: from, b: n, seed: 21, col: STAGES[id].color, side: true, always: true });
-      }
+      this.sideNodes(1, nodes, links);   // 외전 (s21)
     }
     return { page, nodes, links };
+  }
+  /**
+   * 외전 노드: 열렸을 때만 (2부 엔딩 뒤), 이 쪽(STAGES[id].page)에 놓이는 것만. 장 사슬 끝이 아니라 SIDE_FROM 노드에서 갈라지는 길로 잇는다
+   * (이계 Ⅱ 는 그 외전의 색, 악마성 Ⅰ 양피지는 1부 길과 같은 붉은 잉크)
+   */
+  sideNodes(page, nodes, links) {
+    const P = this.state.progress;
+    for (const id of SIDE_STAGES) {
+      if (sidePage(id) !== page || !P.unlocked.includes(id)) continue;
+      const n = { id, stage: STAGES[id], side: true };
+      nodes.push(n);
+      const from = nodes.find((m) => m.id === SIDE_FROM[id]);
+      if (from) links.push({ a: from, b: n, seed: 21, col: page === 1 ? STAGES[id].color : PAGES[0].path, side: true, always: true });
+    }
   }
   /** 기본 선택: 가장 늦게 열린 미클리어 노드, 없으면 마지막으로 열린 노드 */
   defaultIndex(page) {
@@ -232,7 +252,7 @@ export class WorldMapScene extends Scene {
       const id = P.unlocked[i];
       if ((STAGES[id] || P2_IDS.includes(id)) && id !== 'arena' && !P.cleared?.[id]) recent = id;   // 아직 맵이 없는 2부 스테이지도 센다
     }
-    const p2 = (id) => P2_IDS.includes(id) || SIDE_STAGES.includes(id);   // 외전도 이계 지도
+    const p2 = (id) => P2_IDS.includes(id) || (SIDE_STAGES.includes(id) && sidePage(id) === 1);   // 외전은 놓인 쪽을 따른다 (s21 이계 · s22 악마성)
     return p2(recent) || p2(st.lastStage?.stageId);
   }
 
@@ -667,10 +687,10 @@ export class WorldMapScene extends Scene {
     const R = sel ? 21 : 17;
     const col = page === 1 ? n.stage.color ?? '#b060ff' : null;
     ctx.save();
-    if (page === 1 && n.side) {
-      // 외전: 천천히 도는 은빛 점선 고리
+    if (n.side) {
+      // 외전: 천천히 도는 점선 고리 (이계 Ⅱ 는 그 외전의 색, 악마성 Ⅰ 양피지는 1부 길 잉크)
       ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(t * 0.5);
-      ctx.strokeStyle = rgba(col, 0.75); ctx.lineWidth = 1.5; ctx.setLineDash([3, 4]);
+      ctx.strokeStyle = rgba(col ?? PG.path, page === 1 ? 0.75 : 0.85); ctx.lineWidth = 1.5; ctx.setLineDash([3, 4]);
       ctx.beginPath(); ctx.arc(0, 0, R + 5, 0, TAU); ctx.stroke();
       ctx.restore();
     }
@@ -943,21 +963,21 @@ export class WorldMapScene extends Scene {
     docs.forEach((d, i) => { const has = P.docs?.includes(d); ctx.globalAlpha = has ? 1 : 0.3; drawIcon(ctx, 'doc', vx + 8 + i * 24, rows[0] - 5, 20); ctx.globalAlpha = 1; });
     if (!docs.length) value('없음', rows[0], '#6a5a50', vx);
     else value(`${found}/${docs.length}`, rows[0], found === docs.length ? '#8ae0a0' : '#c8b8a0', vx + 2 + docs.length * 24);
+    if (n.side) {
+      // 외전: 유물·세계의 심장·별의 조각 대신 이야기 안내와 동료 (합류했으면 이름) — s21 아르겐 · s22 무닌
+      const si = SIDE_INFO[n.id] ?? {}, got = !!(si.flag && P.flags?.[si.flag]);
+      label('외전', rows[1]);
+      value('2부 엔딩 그 뒤의 이야기', rows[1], si.col ?? '#c8e4ff', vx);
+      label('동료', rows[2]);
+      value(got ? si.got ?? '' : si.wait ?? '', rows[2], got ? si.gotCol ?? '#ffffff' : page === 1 ? '#8a7aa0' : '#a08a7a', vx);
+      return;
+    }
     if (page === 0) {
       if (!s.relic) return;
       const has = P.relics?.includes(s.relic);
       label('유물', rows[1]);
       ctx.globalAlpha = has ? 1 : 0.35; drawIcon(ctx, ITEMS[s.relic]?.icon ?? 'relic_1', vx + 8, rows[1] - 5, 22); ctx.globalAlpha = 1;
       value(has ? ITEMS[s.relic]?.name ?? '' : '어딘가에 잠들어 있다', rows[1], has ? '#ff8a9a' : '#8a6a6a');
-      return;
-    }
-    if (n.side) {
-      // 외전: 세계의 심장·별의 조각 대신 이야기 안내와 동료 (s21 아르겐 — 합류했으면 이름)
-      label('외전', rows[1]);
-      value('2부 엔딩 그 뒤의 이야기', rows[1], '#c8e4ff', vx);
-      label('동료', rows[2]);
-      const got = !!P.flags?.recruit_mt_argen;
-      value(got ? '은빛 용 아르겐 합류' : '구름 위에서 누군가 기다린다', rows[2], got ? '#e8f6ff' : '#8a7aa0', vx);
       return;
     }
     if (n.id === 's20' || (!s.shard && !s.heart)) {

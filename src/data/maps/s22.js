@@ -146,7 +146,7 @@ export const ROOMS = {
     gimmick: null,
     enemies: { 1: 'crow', 4: 'shadow_hunter', 5: 'faceless', 7: 'mimic' },
     chests: ['epic'],
-    triggers: [''],   // 자리표시 (검증기 통과용): EX2-INTEG 가 대본을 넣으며 's22_t1' 로 바꾼다
+    triggers: ['s22_t1'],   // 까마귀 학당 대본 (data/story_ex.js — EX2-INTEG)
     exitRight: 'r4',
   },
   // ── r4 · 깃털 우물 (34×48) — 예배당 아래 옛 우물 → 납골당으로 수직 하강. 지하라 바람 없음. P 는 왼쪽 위 입구 선반(윗면 6행).
@@ -253,7 +253,7 @@ export const ROOMS = {
       '################################################################################',
     ],
     enemies: { 2: 'ghost', 3: 'phantom_sword', 4: 'shadow_hunter', 5: 'faceless' },
-    triggers: [''],   // 자리표시 (검증기 통과용): EX2-INTEG 가 대본을 넣으며 's22_t2' 로 바꾼다
+    triggers: ['s22_t2'],   // 가면의 회랑 대본 (data/story_ex.js — EX2-INTEG)
     exitRight: 'boss',
   },
   // ── boss · 무너진 종루 (60×18) — s21 boss 방(아르겐의 둥지)과 같은 뼈대 (보스 로직 e_nemain.js PATTERNS.room · floorRow 16 과 맞춘다, EX2-BOSS):

@@ -72,6 +72,7 @@ const STEPS = [
   S('feel', 'runtime', node('tools/feel_test.mjs', ...(QUICK ? ['--quick'] : [])), 60 * MIN, { optional: true }),   // --quick: kael + lia
   S('mount', 'runtime', node('tools/test_mount.mjs'), 40 * MIN),
   S('guardians', 'runtime', node('tools/test_guardians.mjs'), 40 * MIN),
+  S('nemain', 'runtime', node('tools/test_nemain.mjs'), 20 * MIN),   // 외전 보스 네메인 패턴 (docs/specs/ex_s22.md §8)
   S('companions', 'runtime', node('tools/test_companions.mjs'), 40 * MIN, { optional: true }),
   S('commands', 'runtime', node('tools/qa/commands.mjs', ...(QUICK ? ['--quick'] : [])), 60 * MIN, { report: path.join(TOOLS_DIR, 'commands.json') }),
   // ── platform (pad, touch, view, menu, bind, turntable, load, pwa)

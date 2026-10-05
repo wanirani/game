@@ -89,6 +89,8 @@
   "portraits/b_moloch",
   "portraits/b_narkissa",
   "portraits/b_narkissa2",
+  "portraits/b_nemain",
+  "portraits/b_nemain2",
   "portraits/b_nightwing",
   "portraits/b_nihil",
   "portraits/b_nihil2",
@@ -105,6 +107,7 @@
   "portraits/cmp_gd_lumen",
   "portraits/cmp_gd_mirra",
   "portraits/cmp_gd_momo",
+  "portraits/cmp_gd_munin",
   "portraits/cmp_m_boar",
   "portraits/cmp_m_direwolf",
   "portraits/cmp_m_giantbat",
@@ -725,6 +728,20 @@
    "bytes": 43238,
    "srcBytes": 88892
   },
+  "portraits/b_nemain.webp": {
+   "src": "49947c23e3fb",
+   "w": 457,
+   "h": 581,
+   "bytes": 26910,
+   "srcBytes": 76798
+  },
+  "portraits/b_nemain2.webp": {
+   "src": "e259120148ad",
+   "w": 457,
+   "h": 581,
+   "bytes": 18104,
+   "srcBytes": 54382
+  },
   "portraits/b_nightwing.webp": {
    "src": "898beea05fb6",
    "w": 457,
@@ -836,6 +853,13 @@
    "h": 581,
    "bytes": 18424,
    "srcBytes": 52302
+  },
+  "portraits/cmp_gd_munin.webp": {
+   "src": "5e1433e8365f",
+   "w": 457,
+   "h": 581,
+   "bytes": 21762,
+   "srcBytes": 65282
   },
   "portraits/cmp_m_boar.webp": {
    "src": "161982832831",

@@ -33,8 +33,9 @@ Status
 | `b_behemoth` (s19) | done (ART-BOSS-7) — queen, sacs, kneel | 10 | 508 KiB (2048×888, 30 parts) | — | `…/b_behemoth.js` |
 | `b_nihil` (s20) | done (ART-BOSS-8) — all four forms incl. form 2 and final | 23 | 567 KiB (2048×1767, 54 parts) | — | `…/b_nihil.js` |
 | `b_argen` (s21, side chapter) | done (EX-BOSS) — all 8 patterns + stagger, corrupt/awaken transitions (crystals grow / shatter as rigid shards), silver 'pure' tint for phase 3, 5 s purification (core gem shatters, no breakup — the logic flies him away) | 19 (`tools/kling/manifest_ex-boss.json`, 38 credits) | 115 KiB (1024×585, 19 parts, td 1.05 — kept small for the APK lo stage) | 10.2 (td 1.05) / 4.5 (td 0.70) | `…/b_argen.js` |
+| `b_nemain` (s22, side chapter) | done (EX2-BOSS) — all 8 patterns + stagger, unmask transition (lacquer mask splits into two rigid painted shards, bare half-unmasked head), spread feather mantle (one wing sprite, far = deep, near = mirrored) + 3-band crimson drape on a chain, 40-crow swarm drawn ×quality (16–40) from 2 painted frames, 5 s submission (daggers drop, kneel and hold; arcade: scatter into crows at 3.5 s) | 21 (`tools/kling/manifest_ex2-boss.json`, 42 credits; portrait 2 composited from the bare-head part) | 48 KiB (1024×290, 20 parts, td 2.0) | 2.3 (td 1.63) / 0.37 (td 0.70) · phone draw JS 0.14 ms + raster 0.6 | `…/b_nemain.js` |
 
-All 20 story bosses are painted (`node tools/qa/painted_registry.mjs` → `cover.bosses` 20/20, 2026‑09‑28); the side-chapter boss `b_argen` (s21) makes it 21/21 (2026‑10‑05). Kling counts come from
+All 20 story bosses are painted (`node tools/qa/painted_registry.mjs` → `cover.bosses` 20/20, 2026‑09‑28); the side-chapter bosses `b_argen` (s21) and `b_nemain` (s22) make it 22/22 (2026‑10‑05). Kling counts come from
 the package reports or, where a report gave none, the `generations` of `tools/kling/manifest_art-boss-<n>.json`; atlas
 sizes are the files on disk (KiB). "—" = not measured in the package report: read `window.__painted[id].memMB` in the
 game or run `node tools/painted/bench.mjs <id>`. The vector renderers stay as the automatic fallback (`?painted=0`).

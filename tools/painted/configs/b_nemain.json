@@ -852,5 +852,58 @@
    }
   }
  ],
- "hurtboxNotes": "BOSS_PIPELINE §8.8 (documented, gameplay NOT changed): logic hit parts = head 40x40 at pts.head (mask 0.85 / bare 1.0 / kneel 0.6), body 42x56 between hip and neck (1.0, exposed/kneel 0.7), legs 38x(hip height) (1.15), spread cloak 200x130 behind the shoulders (1.3, spread > 0.5 only). The painted torso/legs/head sit on the same logic joints (pts.hip/neck/head/knN/ftN) as the vector rig; the spread wings (up to ~150 px each side) and the trailing drape have no hurtbox except the spread-cloak box, exactly like the vector cloak. No parts while sunk (shadowStep), dissolved into crows (murder) or hidden in the eclipse darkness."
+ "hurtboxNotes": "BOSS_PIPELINE §8.8 (documented, gameplay NOT changed): logic hit parts = head 40x40 at pts.head (mask 0.85 / bare 1.0 / kneel 0.6), body 42x56 between hip and neck (1.0, exposed/kneel 0.7), legs 38x(hip height) (1.15), spread cloak 200x130 behind the shoulders (1.3, spread > 0.5 only). The painted torso/legs/head sit on the same logic joints (pts.hip/neck/head/knN/ftN) as the vector rig; the spread wings (up to ~150 px each side) and the trailing drape have no hurtbox except the spread-cloak box, exactly like the vector cloak. No parts while sunk (shadowStep), dissolved into crows (murder) or hidden in the eclipse darkness.",
+ "kling": {
+  "manifest": "tools/kling/manifest_ex2-boss.json",
+  "prompts": "tools/painted/prompts/ex2-boss.mjs",
+  "images": {
+   "full_a": {
+    "shot": "nm_full",
+    "generationId": "AbFGDZzf6jWSbNn44LnErcKAUuFM94P045bfI7uZYawesp6VpZbU07vxM5FqZtTC0J1bWKtn",
+    "pick": 1,
+    "use": "torso, thigh, shin (lps 0.06)"
+   },
+   "heads_a": {
+    "shot": "nm_heads2",
+    "generationId": "AQXwJsUSYVsMoxn4tHvLhTS9o05GcjCqb7u6LpzBMIpVjC2Oa-7s988vQqux8WRYrJ5LWEbn",
+    "pick": 2,
+    "use": "headM (left), headB (right, half-unmasked) — lps 0.026"
+   },
+   "arms_a": {
+    "shot": "nm_arms",
+    "generationId": "AXM0GiMCP2W0CmAchNloWnzcZ3T5YqF_S2hWz2_jWpqkJpLmx17X882cRIx6ZiRqcdfPemv8",
+    "pick": 1,
+    "use": "armU, armF, dagger"
+   },
+   "cloak_a": {
+    "shot": "nm_cloak",
+    "generationId": "Af4IxpVzTTTNzQiu8jHYpjcNfa129KwdiVLcKvh9YmSfDhvzh8GMYdnXibV211ME30I9IGoH",
+    "pick": 1,
+    "use": "wing, clkA, clkB, clkC (lps 0.13)"
+   },
+   "crows_a": {
+    "shot": "nm_crows",
+    "generationId": "AebLdyyoTat282U_N4CX3nHsrGP47dTbInDL3c8G_jL41IYeNVIvmk6fzYxYg7yb2uFUVoxj",
+    "pick": 2,
+    "use": "crowU, crowD"
+   },
+   "debris_a": {
+    "shot": "nm_debris",
+    "generationId": "AWKXC6o55_bjjYVzObgeJEAmvdHowEzG6j5SHO9ue1JbWPNYlOn5gznatj_SzTT6PHuW7GaF",
+    "pick": 1,
+    "use": "debMskA/B (red tint), debFth, debFthR, debLq1/2"
+   }
+  },
+  "rejected": [
+   "nm_portrait #2",
+   "nm_portrait2 #1 #2",
+   "nm_portrait2b #1 #2",
+   "nm_heads #1 #2",
+   "nm_heads2 #1",
+   "nm_full #2",
+   "nm_arms #2",
+   "nm_cloak #2",
+   "nm_crows #1"
+  ]
+ }
 }

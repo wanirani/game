@@ -11,8 +11,8 @@ const args = Object.fromEntries(process.argv.slice(2).reduce((a, v, i, arr) => {
 const out = args.out || '/tmp/claude-0/integ';
 const mobile = !!args.mobile;
 const KEY = { right: 'ArrowRight', left: 'ArrowLeft', up: 'ArrowUp', down: 'ArrowDown', jump: 'KeyZ', attack: 'KeyX', dash: 'KeyC', sub: 'KeyA', skill1: 'KeyS', skill2: 'KeyD', ult: 'KeyF', menu: 'Escape', enter: 'Enter', swap: 'KeyQ' };
-// 1부 s01–s13 + 2부 s14–s20 (P2-QA) + 외전 s21 (EX-INTEG, docs/specs/ex_s21.md). 보스방 케이스 <id>_boss 는 끝에 world.boss 가 있어야 통과한다.
-const STAGES = ['s01','s02','s03','s04','s05','s06','s07','s08','s09','s10','s11','s12','s13','s14','s15','s16','s17','s18','s19','s20','s21'];
+// 1부 s01–s13 + 2부 s14–s20 (P2-QA) + 외전 s21 (EX-INTEG, docs/specs/ex_s21.md) · s22 (EX2-INTEG, docs/specs/ex_s22.md). 보스방 케이스 <id>_boss 는 끝에 world.boss 가 있어야 통과한다.
+const STAGES = ['s01','s02','s03','s04','s05','s06','s07','s08','s09','s10','s11','s12','s13','s14','s15','s16','s17','s18','s19','s20','s21','s22'];
 const CASES = [
   { id: 'title', url: 'index.html', steps: 'wait:1.5,shot,enter:0.1,wait:1,shot,down:0.1,down:0.1,wait:0.3,shot' },
   { id: 'hub', url: 'index.html?scene=hub', steps: 'wait:2,shot,right:2,shot,menu:0.1,wait:0.5,shot' },

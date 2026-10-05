@@ -167,6 +167,7 @@ check('debugAct(없는 상태) → false', (await page.evaluate((id) => { const 
     out.cage = { inGap, onRing, r0: Math.round(r0), r1, burst };
     // 그믐: 어둠 켜짐 → 기습 3번 (각 베기 170×110) → 어둠 복원
     G.build(id, { phase: 1 }); G.step(9); b = G.boss;
+    b.debugAct('idle'); for (let t = 0; t < 6 && b._cDark?.list?.length; t += 0.1) G.step(0.1);   // 저절로 고른 그믐의 어둠이 남아 있으면 끝날 때까지
     const L = G.world.lighting, d0 = L.darkness;
     b.debugAct('eclipse'); G.step(0.2); const dOn = L.darkness;
     const cuts = new Set(); let riseWin = 0;

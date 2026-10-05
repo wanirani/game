@@ -124,12 +124,12 @@ export const STAGES = {
     gimmick: { kind: 'wind', dir: 1, force: 850, on: 2.4, off: 3.8 }, color: '#c8e4ff', next: null, mapPos: { x: 0.8, y: 0 }, req: '2부의 끝을 본 뒤, 구름 위 하늘 정원에서 용의 울음이 들려오면 갈 수 있다' }),
   // ── EX stage s22 (EX2-MAP 맵 · EX2-INTEG 통합) — 외전 「까마귀의 이름」 (docs/specs/ex_s22.md). 2부 엔딩(p2_done) 뒤에 열린다.
   //    side: true · page: 0 = 1부 지도(에슈빌 쪽)에서 2장 안개의 묘지로부터 갈라지는 외전 노드 (town/worldmap.js SIDE_FROM.s22 = 's02')
-  //    intro/outro '' = 아직 대본 없음 (외전 대본 s22_intro · s22_outro 는 EX2-INTEG 가 쓰고 이 두 빈 값을 지우면 S() 기본값 s22_intro/s22_outro 가 된다).
-  //    STAGE_ORDER_P2 · 세계 지도 노드 · 해금은 EX2-INTEG — 그때까지 일반 진행에서는 닿지 않는다 ──
+  //    해금은 s21 과 같은 세계 지도 고리 (p2_done 이면 s22 를 열고 한 번 해금 연출 — 처음 지도를 여는 2부 완주 세이브는 s21 · s22 연출이 차례로),
+  //    클리어해도 progress.chapter 를 올리지 않는다 (results.js). 대본 s22_intro · s22_t1 · s22_t2 · s22_outro · b_nemain_* = data/story_ex.js ──
   s22: S({ id: 's22', chapter: 22, part: 2, page: 0, side: true, name: '이름 없는 언덕', sub: '안개의 묘지 너머, 이름 없는 칼들이 자란 곳', theme: 'graveyard', bg: 'bg/s02_graveyard', tex: 'tex/tex_mossy_stone', tex2: 'tex/tex_dirt', tileStyle: 'moss',
-    music: 's02', level: 72, darkness: 0.5, darkColor: '#06020c', liquid: 'water', boss: 'b_nemain', rooms: S22, parTime: 600, intro: '', outro: '',
+    music: 's02', level: 72, darkness: 0.5, darkColor: '#06020c', liquid: 'water', boss: 'b_nemain', rooms: S22, parTime: 600,
     enemies: ['crow', 'ghost', 'phantom_sword', 'shadow_hunter', 'faceless', 'wisp', 'mimic'], docs: [], shard: null, heart: null,
-    gimmick: { kind: 'wind', dir: 'alt', force: 760, on: 2.2, off: 4.2 }, color: '#ff4a6a', next: null, mapPos: { x: 0.13, y: 0.5 },
+    gimmick: { kind: 'wind', dir: 'alt', force: 760, on: 2.2, off: 4.2 }, color: '#ff4a6a', next: null, mapPos: { x: 0.13, y: 0.55 },
     req: '2부의 끝을 본 뒤, 까마귀 결사의 소집령이 에슈빌에 날아들면 갈 수 있다' }),
   arena: S({ id: 'arena', chapter: 0, name: '피의 투기장', sub: '서바이벌 & 보스 러시', theme: 'arena', bg: 'bg/s_arena', tex: 'tex/tex_castle_stone', tex2: 'tex/tex_dirt', tileStyle: 'stone',
     music: 'arena', level: 10, darkness: 0.3, boss: null, rooms: ARENA, parTime: 600, intro: null, outro: null,
@@ -137,8 +137,8 @@ export const STAGES = {
 };
 /** 1부 스테이지 (월드맵 첫 쪽, 서바이벌 적 풀 등 1부만 쓰는 곳) */
 export const STAGE_ORDER_P1 = ['s01', 's02', 's03', 's04', 's05', 's06', 's07', 's08', 's09', 's10', 's11', 's12', 's13'];
-/** 2부 스테이지 중 STAGES 에 실제로 있는 것만 (맵이 한 묶음씩 들어와도 모든 소비처가 그대로 동작). 끝의 s21 은 외전 (side: true) */
-export const STAGE_ORDER_P2 = ['s14', 's15', 's16', 's17', 's18', 's19', 's20', 's21'].filter((id) => STAGES[id]);   // [hook:p2]
+/** 2부 스테이지 중 STAGES 에 실제로 있는 것만 (맵이 한 묶음씩 들어와도 모든 소비처가 그대로 동작). 끝의 s21 · s22 는 외전 (side: true) */
+export const STAGE_ORDER_P2 = ['s14', 's15', 's16', 's17', 's18', 's19', 's20', 's21', 's22'].filter((id) => STAGES[id]);   // [hook:p2]
 /** 외전 스테이지 (STAGES[id].side — 2부 엔딩 뒤 세계 지도가 연다. 이야기 장 수·엔딩 판정에는 들지 않는다) */
 export const SIDE_STAGES = STAGE_ORDER_P2.filter((id) => STAGES[id].side);
 /** 이 스테이지가 외전인가 */

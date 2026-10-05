@@ -1,0 +1,149 @@
+{
+ "package": "EX2-BOSS",
+ "model": "kling-image-v3_0_omni (portraits: text_to_image · parts / edits: image_to_image, img_resolution 2k)",
+ "prompts": "tools/painted/prompts/ex2-boss.mjs (SHOTS)",
+ "refs": {
+  "portrait": "nm_portrait #1 full-res PNG 1760x2368 (file_upload) — 图片1 for every image_to_image call",
+  "uploadUrl": "https://s15-kling.klingai.com/kimg/EMXN1y8qRQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBorYWdlbnRfdXBsb2FkLzE3OTEyMzk2NjMvSk5vMXkzcklFMS9ubXAxLnBuZw.origin?x-kcdn-pid=112372"
+ },
+ "creditsCap": 120,
+ "creditsAtStart": 5143,
+ "generations": [
+  {
+   "boss": "b_nemain",
+   "shot": "nm_portrait",
+   "tool": "text_to_image",
+   "generationId": "ASK53MO7fLj_QHaTL3zsreIa7A7xFdMz9oS8CcEPX__p-npGIbORF77v5hqXi61aR17j--QO",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "credits": 4,
+   "refs": "none",
+   "decision": "#1 kept → assets/portraits/b_nemain.webp (raw 1760x2368 → width 761 LANCZOS → top 968 rows = 761x968, WebP q82 m6, 76,798 B; urlWithoutWatermark). Three-quarter view facing right: cracked black-lacquer crow-beak HALF mask (pale lips and chin visible), red eye glint, silver-grey hair, feather mantle with crimson lining full of small red eyes, neck tattoo, two long crow-beak daggers, cracked bell + moon. Full-res PNG uploaded as 图片1 for every part. #2 unused (the mask covered the whole face — not a half mask)."
+  },
+  {
+   "boss": "gd_munin",
+   "shot": "munin_portrait",
+   "tool": "text_to_image",
+   "generationId": "ATXBjyk23ePDjbrJorLGTlxlx6I38D6HMrfDA8xCJVtZrfralbdH0Lume6ef9k9WyuLJ3DwA",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "credits": 4,
+   "refs": "none",
+   "decision": "#1 kept → assets/portraits/cmp_gd_munin.webp (761x968 q82, 65,282 B — same processing as the other companion portraits). Old raven in profile on a weathered gravestone, a crest of ragged grey feathers, crimson-ringed eye, faded red ribbon tied around the leg, crimson moonlit sky like the guardian portrait set. iconFocus {x:0.68, y:0.27, s:0.4} (head with crest and beak tip). #2 unused (grey wing, ribbon on the stone, garbled letters on the gravestone)."
+  },
+  {
+   "boss": "b_nemain",
+   "shot": "nm_portrait2",
+   "tool": "image_to_image",
+   "generationId": "AdUBD9eB9Fbr5PX5Uw8dLjVUPrary-LeUrR-OZfof2o9AqtwWSFvrLuuvavHhRBzMIrXX7Sj",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "credits": 4,
+   "refs": "portrait",
+   "decision": "both rejected: the edit kept the beak mask intact (only a cheek scar and red daggers changed). Retried once as nm_portrait2b."
+  },
+  {
+   "boss": "b_nemain",
+   "shot": "nm_full",
+   "tool": "image_to_image",
+   "generationId": "AbFGDZzf6jWSbNn44LnErcKAUuFM94P045bfI7uZYawesp6VpZbU07vxM5FqZtTC0J1bWKtn",
+   "aspect": "9:16",
+   "imageCount": 2,
+   "credits": 4,
+   "refs": "portrait",
+   "decision": "#1 kept → raw/b_nemain/full_a (strict profile facing right, armless shoulder stumps, no mantle: torso, thigh and shin+boot are cut from it at lps 0.06; the masked head is masked off). #2 unused (faces left, has an arm and a dagger)."
+  },
+  {
+   "boss": "b_nemain",
+   "shot": "nm_heads",
+   "tool": "image_to_image",
+   "generationId": "AbJmMptlXe_dI3Vm2kHetvOGyqN9TYf56DHgRCGz0uN1mS3k3nkbvRMfAGAQZoKVtIjEz6kD",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "credits": 4,
+   "refs": "portrait",
+   "decision": "partly failed: #1 two masked heads (no bare face); #2 masked head OK but the bare head faces LEFT with black bun hair that does not match the masked head's silver hair. Retried once as nm_heads2."
+  },
+  {
+   "boss": "b_nemain",
+   "shot": "nm_arms",
+   "tool": "image_to_image",
+   "generationId": "AXM0GiMCP2W0CmAchNloWnzcZ3T5YqF_S2hWz2_jWpqkJpLmx17X882cRIx6ZiRqcdfPemv8",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "credits": 4,
+   "refs": "portrait",
+   "decision": "#1 kept → raw/b_nemain/arms_a (piece 1 = upper arm with a crow-skull pauldron, piece 2 = bracer forearm with the fist on top, pieces 4/5 = curved black crow-beak daggers with silver edge and skull pommel; the two loose fists are unused). #2 unused (purple sheen, vertical daggers, bare-skin forearm)."
+  },
+  {
+   "boss": "b_nemain",
+   "shot": "nm_cloak",
+   "tool": "image_to_image",
+   "generationId": "Af4IxpVzTTTNzQiu8jHYpjcNfa129KwdiVLcKvh9YmSfDhvzh8GMYdnXibV211ME30I9IGoH",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "credits": 4,
+   "refs": "portrait",
+   "decision": "#1 kept → raw/b_nemain/cloak_a (wings spread + crimson back panel with red eyes and feather motifs; one wing = 'wing' part, the panel = three bands clkA/B/C; the crow head the model added at the collar is masked off). #2 unused (more eyes, but the panel and wings overlap more — harder to cut)."
+  },
+  {
+   "boss": "b_nemain",
+   "shot": "nm_crows",
+   "tool": "image_to_image",
+   "generationId": "AebLdyyoTat282U_N4CX3nHsrGP47dTbInDL3c8G_jL41IYeNVIvmk6fzYxYg7yb2uFUVoxj",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "credits": 4,
+   "refs": "portrait",
+   "decision": "#2 kept → raw/b_nemain/crows_a (crow 3 = wings up 'crowU', crow 4 = wings down 'crowD' — natural blue-black sheen, red eye). #1 unused (oversaturated violet-blue wings)."
+  },
+  {
+   "boss": "b_nemain",
+   "shot": "nm_debris",
+   "tool": "image_to_image",
+   "generationId": "AWKXC6o55_bjjYVzObgeJEAmvdHowEzG6j5SHO9ue1JbWPNYlOn5gznatj_SzTT6PHuW7GaF",
+   "aspect": "1:1",
+   "imageCount": 1,
+   "credits": 2,
+   "refs": "portrait",
+   "decision": "#1 kept → raw/b_nemain/debris_a (whole crow mask instead of two halves → cut into two pieces with masks debMskA/B; its cyan eye is recoloured crimson by the 'red' bake tint; black feather, red-black feather, two lacquer shards. The two straight daggers and the strap are unused)."
+  },
+  {
+   "boss": "b_nemain",
+   "shot": "nm_portrait2b",
+   "tool": "image_to_image",
+   "generationId": "Ad5XalYnStK10L_6cs_Wn9xoHneG6FHx1vnrzYXB7ydaUZc0MdslbJTk4_ltCJ7TErL7Z2g6",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "credits": 4,
+   "refs": "portrait",
+   "retryOf": "nm_portrait2",
+   "decision": "retry (1 of 1 allowed) — both rejected again: the mask stays on (#1 only more cracks, #2 unchanged). No further portrait attempt (retry limit). b_nemain2 was composited instead from the nm_heads2 bare head (see derived)."
+  },
+  {
+   "boss": "b_nemain",
+   "shot": "nm_heads2",
+   "tool": "image_to_image",
+   "generationId": "AQXwJsUSYVsMoxn4tHvLhTS9o05GcjCqb7u6LpzBMIpVjC2Oa-7s988vQqux8WRYrJ5LWEbn",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "credits": 4,
+   "refs": "portrait",
+   "retryOf": "nm_heads",
+   "decision": "retry (1 of 1 allowed) — #2 kept → raw/b_nemain/heads_a: left = masked head (headM), right = the same head with the beak mask broken away (only the lacquer cap is left = 'half-unmasked'), crimson eye with bleeding scar streaks, the same loose silver-grey hair, both strict profile facing right (headB). #1 unused (two masked heads again)."
+  }
+ ],
+ "derived": [
+  {
+   "file": "assets/portraits/b_nemain2.webp",
+   "from": "raw/b_nemain/heads_a right head (nm_heads2 #2) matted by tools/painted/matte.py + nm_portrait #1 background (Gaussian blur 22, brightness 0.55)",
+   "how": "head scaled to 95% of the width, top at 10%, bottom of the neck faded out over 22%, dark drop shadow, crimson glow from below (the mantle lining), elliptical vignette; resized to 761 wide and cut to 968 rows like the other Part 2 portraits, WebP q82 m6, 54,382 B",
+   "why": "nm_portrait2 failed twice (mask never removed) and the job retry limit was used up; the bare-head part already shows the spec look (half-fallen mask, Lia's crimson eye, scar, silver hair). A close-up 'reveal' portrait instead of the same full composition."
+  }
+ ],
+ "imagesSpent": 21,
+ "creditsSpent": 42,
+ "creditsAtEnd": 5101,
+ "note": "Result URLs expire after 24 h; every kept part image is stored as q95 webp under tools/painted/raw/b_nemain/ (portraits → assets/portraits/*.webp). urlWithoutWatermark was used, so no watermark removal was needed. Lo copies by python3 tools/assets/make_variants.py. Guardian (gd_munin) puppet art is not made (spec §2.2: vector + portrait only).",
+ "budget": "21 images × 2 credits = 42 credits (cap 120, expected ≈34 + 2 retries; account 5143 → 5101)"
+}

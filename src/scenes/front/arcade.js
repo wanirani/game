@@ -7,9 +7,10 @@
 //    2부 보스는 늦게 받기 입구(game/bosses/lazy.js)가 아는 것만 코스에 넣는다 (지금은 20명 모두). 보스 클래스 모듈은 정적으로
 //    싣지 않는다 (R1-REQ-229: 첫 화면 바이트에서 보스 로직을 뺀다) — 실전 장면(arcade_run.js)이 라운드 전에 미리 받는다.
 //    아는 2부 보스가 하나도 없는 코스는 숨긴다.
-//  - 외전 (docs/specs/ex_s21.md): BOSS_ORDER 끝(STORY_BOSSES 뒤)에 외전 보스 b_argen, COURSES '이계편 · 외전'·'전 보스 연속(21연전)' (ex: true).
-//    exKnown(game) — 어느 슬롯이든 외전 스테이지(s21) 해금 · 2부 엔딩을 본 적 있음 · 코나미 — 이 거짓이면 외전 코스를 숨기고,
-//    서바이벌 보스 웨이브·무한의 탑(무작위 구간, 41층 이후)에도 외전 보스를 넣지 않는다. 연습 목록의 s21 은 슬롯 해금을 따른다 (2부 엔딩 뒤 세계 지도가 연다)
+//  - 외전 (docs/specs/ex_s21.md · ex_s22.md): BOSS_ORDER 끝(STORY_BOSSES 뒤)에 외전 보스 b_argen · b_nemain,
+//    COURSES 5 '이계편 · 외전'·6 '전 보스 연속(21연전)'·7 '외전편(외전 2연전)'·8 '전 보스 연속(22연전)' (ex: true — 번호는 기록 키라 0~6 은 그대로).
+//    exKnown(game) — 어느 슬롯이든 외전 스테이지(s21·s22) 해금 · 2부 엔딩을 본 적 있음 · 코나미 — 이 거짓이면 외전 코스를 숨기고,
+//    서바이벌 보스 웨이브·무한의 탑(무작위 구간, 41층 이후)에도 외전 보스를 넣지 않는다. 연습 목록의 s21·s22 는 슬롯 해금을 따른다 (2부 엔딩 뒤 세계 지도가 연다)
 //  - 무기·방어구: baseIdFor(slot, min(7, wtier)) (티어 7 = 2부 장비)
 //  - 연습 스테이지 목록은 모든 슬롯의 해금 합집합 (STAGE_ORDER 전체 → s14~s20 도 자동으로)
 //  - uiScale 장면: game.uiW × game.uiH (최소 720×400) 로 배치. 탭 대상은 ui.taps (모드 카드·옵션 줄·시작·뒤로 ≥ 44/36 CSS px),
@@ -68,6 +69,7 @@ export const BOSS_ORDER = [
   'b_nightwing', 'b_banshee', 'b_dullahan', 'b_crimson', 'b_bonedragon', 'b_grimoire', 'b_chimera', 'b_leviathan', 'b_colossus', 'b_frostqueen', 'b_death', 'b_dracula', 'b_chaos',
   'b_narkissa', 'b_moloch', 'b_dagon', 'b_ziz', 'b_mara', 'b_behemoth', 'b_nihil',
   'b_argen',   // 외전 (s21) — 외전을 아는 플레이어에게만 (exKnown)
+  'b_nemain',  // 외전 (s22)
 ];
 /** BOSS_ORDER 에서 1부 보스 수 (이 뒤는 2부) */
 export const P1_BOSSES = 13;
@@ -82,9 +84,11 @@ export const COURSES = [
   { name: '전 보스 연속', sub: '20연전', from: 0, to: 20, p2: true, short: '전 보스 20연전' },
   { name: '이계편 · 외전', sub: '14장~외전 보스', from: 13, to: 21, p2: true, ex: true, short: '이계편+외전' },
   { name: '전 보스 연속', sub: '21연전', from: 0, to: 21, p2: true, ex: true, short: '전 보스 21연전' },
+  { name: '외전편', sub: '외전 보스 2연전', from: 20, to: 22, p2: true, ex: true, short: '외전 2연전' },
+  { name: '전 보스 연속', sub: '22연전', from: 0, to: 22, p2: true, ex: true, short: '전 보스 22연전' },
 ];
 const P2_COLOR = '#c8b8ff';
-const EX_COLOR = '#c8e4ff';   // 외전 (s21 · 아르겐)
+const EX_COLOR = '#c8e4ff';   // 외전 코스 (s21 아르겐 · s22 네메인)
 
 /**
  * 이 보스를 아케이드에 낼 수 있는가: 늦게 받기 입구(lazy.js)가 클래스 모듈을 아는 보스 (20명 모두 진짜 클래스가 있다;
