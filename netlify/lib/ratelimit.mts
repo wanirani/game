@@ -82,6 +82,18 @@ export async function limitTelemetryByIp(c: Ctx): Promise<void> {
   if (wait > 0) failRetry('rate_limited', wait);
 }
 
+// ── 계정별 제한 (온라인 기록: 런 시작·제출·별명 — online.mts). 키 acct/<uid>/<종류>, 탈퇴 때 clearAccountLimits ──
+/** 계정별 고정 창 제한 — 초과 시 429 rate_limited. what: run-s(런 시작)·run-m(제출 1분)·run-d(제출 하루)·nick(별명) */
+export async function limitAccount(c: Ctx, uid: string, what: string, max: number, windowMs: number): Promise<void> {
+  const wait = await windowHit(c.store(STORES.limits), `acct/${uid}/${what}`, max, windowMs, true);
+  if (wait > 0) failRetry('rate_limited', wait);
+}
+export async function clearAccountLimits(c: Ctx, uid: string): Promise<void> {
+  const st = c.store(STORES.limits);
+  const { blobs } = await st.list({ prefix: `acct/${uid}/` });
+  await Promise.all(blobs.map((b) => st.delete(b.key)));
+}
+
 const signupKey = (c: Ctx): string => `ip/signup/${ipKey(c.ip)}`;
 
 /** 망별 가입 수 제한 검사만 (아이디 중복 확인 전에 빨리 거절) — 초과 시 429 signup_limited */
@@ -267,5 +279,6 @@ export function limitRecordExpired(key: string, rec: unknown, t: number, idleMs:
   if (!Number.isFinite(r.start)) return true;
   if (Number.isFinite(r.lockedUntil) && (r.lockedUntil as number) + idleMs > t) return false;
   if (Object.keys(strikesOf(r, t)).length) return false;
-  return (r.start as number) + RATE.idFailWindowMs + idleMs <= t; // 가장 긴 창(1시간) + 여유
+  const windowMs = /^acct\/[^/]+\/run-d$/.test(key) ? 24 * 3_600_000 : RATE.idFailWindowMs; // 계정별 하루 제출 수는 하루 창
+  return (r.start as number) + windowMs + idleMs <= t; // 가장 긴 창(1시간, 하루 제출 수는 하루) + 여유
 }

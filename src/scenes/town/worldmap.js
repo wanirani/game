@@ -382,6 +382,9 @@ export class WorldMapScene extends Scene {
     if (this.reveal) { this.updateReveal(dt, L); return; }
     if (this.depart) { this.depart.t += dt; if (this.depart.t > 0.55 && !this.depart.gone) { this.depart.gone = true; this.launch(this.depart.id); } return; }
     if (this.closing) return;
+    // 고른 스테이지의 배경 음악을 미리 받는다 (녹음 음원, 장면을 막지 않음 — core/audio_rec.js)
+    const pf = this.cur();
+    if (pf && pf !== this._pfNode) { this._pfNode = pf; if (this.isOpen(pf)) audio.prefetch?.(pf.arena ? 'arena' : pf.stage?.music); }
     // 지도 전환 (두 장뿐이라 어느 쪽 키든 맞은편 지도로)
     if (this.pages[1] && PAGE_KEYS.some((a) => input.pressed(a))) { this.setPage(1 - this.page); return; }
     const nodes = this.nodes, n = nodes.length;

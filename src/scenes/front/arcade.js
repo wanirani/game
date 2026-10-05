@@ -9,6 +9,9 @@
 //  - 연습 스테이지 목록은 모든 슬롯의 해금 합집합 (STAGE_ORDER 전체 → s14~s20 도 자동으로)
 //  - uiScale 장면: game.uiW × game.uiH (최소 720×400) 로 배치. 탭 대상은 ui.taps (모드 카드·옵션 줄·시작·뒤로 ≥ 44/36 CSS px),
 //    아래 안내 줄은 지금 기기의 글리프 (prompts.drawHints)
+//  - 온라인 (docs/specs/online.md §4): '오늘의 도전' 카드 — GET /api/daily (한국 시간 날짜마다 한 번) 의 스테이지·헌터·직업·등급·
+//    난이도·규칙으로 헌터 선택 없이 연습 장면을 연다 (startDaily). 카드 옆에 내 최고·오늘의 TOP 3 (로그인 안 했으면 안내 문구).
+//    연습·일일 도전은 '고스트: 끔 / 1위 / 내 최고' 줄 (cfg.ghost). 옵션 판이 아래 안내 줄에 닿으면 줄 높이(≥ 36 CSS px)·카드 높이를 줄인다
 import { Scene } from '../../core/game.js';
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
@@ -31,16 +34,22 @@ import { newGameState } from '../../game/state.js';
 import { addItem, addByBase } from '../../game/inventory.js';
 import {
   Ambience, kenBurns, shade, frame, heading, portraitIn, gbutton,
-  follow, fmtClock, bossRushBests, GOLD, BONE, endArcade,
+  follow, fmtClock, bossRushBests, GOLD, BONE, DIM as DIMC, endArcade,
 } from './common.js';
 import * as FRONT from './common.js'; // scoreList (PLAT-FRONT-A 의 새 내보내기: 없어도 멈추지 않게 이름공간으로 부른다, R6)
+import * as ONLINE from '../../core/online.js';   // 리더보드·일일 도전 (docs/specs/online.md)
+import { cloud } from '../../core/cloud.js';
+import { bus } from '../../core/events.js';
 
 export const ARCADE_MODES = {
   bossrush: { id: 'bossrush', name: '보스 러시', eng: 'BOSS RUSH', color: '#ff4a5a', art: 'portraits/b_dracula', tag: '군주들과의 연속 결투', desc: '악마성의 군주들과 쉬지 않고 연속으로 맞붙는다. 라운드 사이에 체력이 조금 회복된다. 가장 빠른 격파 시간에 도전하라!' },
   survival: { id: 'survival', name: '서바이벌', eng: 'SURVIVAL', color: '#ffa640', art: 'bg/s_arena', tag: '끝없는 마물의 물결', desc: '피의 투기장에 끝없이 몰려오는 마물의 물결. 웨이브를 넘길수록 적은 강해지고 점수 배율은 올라간다. 목숨은 단 하나!' },
   practice: { id: 'practice', name: '스테이지 연습', eng: 'STAGE PRACTICE', color: '#5aa8ff', art: 'bg/s06_library', tag: '해금한 스테이지 재도전', desc: '해금한 스테이지를 이야기 없이 다시 도전한다. 클리어 시간과 점수, 랭크를 갈고닦아 명예의 전당에 이름을 올려라.' },
+  daily: { id: 'daily', name: '오늘의 도전', eng: 'DAILY', color: '#7ee0c0', art: 'bg/s11_chapel', tag: '매일 바뀌는 스테이지와 규칙', desc: '오늘 정해진 스테이지·헌터·규칙으로 겨룬다. 몇 번이든 도전할 수 있고 가장 빠른 기록만 남는다.' },
 };
-export const MODE_ORDER = ['bossrush', 'survival', 'practice'];
+export const MODE_ORDER = ['bossrush', 'survival', 'practice', 'daily'];
+/** 고스트 선택 (연습·일일 도전) */
+export const GHOST_CHOICES = [{ id: 'off', name: '끔' }, { id: 'top', name: '1위' }, { id: 'mine', name: '내 최고' }];
 /** 헌터 등급 (p2: 2부를 아는 플레이어에게만 보인다) */
 export const LEVEL_PRESETS = [
   { name: '견습 사냥꾼', lv: 10, tier: 0, wtier: 2, rarity: 1, enh: 3, docs: 4, potions: 3 },
@@ -144,6 +153,7 @@ export function arenaBosses(p2) {
 export function sanitizeCfg(cfg, p2, stages = null) {
   const c = { kind: 'bossrush', diff: 'normal', preset: 1, course: 0, stageId: 's01', ...(cfg && typeof cfg === 'object' && !Array.isArray(cfg) ? cfg : {}) };
   if (!MODE_ORDER.includes(c.kind)) c.kind = 'bossrush';
+  if (!GHOST_CHOICES.some((g) => g.id === c.ghost)) c.ghost = 'off';
   if (!DIFFICULTIES.some((d) => d.id === c.diff)) c.diff = 'normal';
   c.preset = Number(c.preset); c.course = Number(c.course);
   if (!Number.isInteger(c.preset) || !presetAvailable(c.preset, p2)) c.preset = 0;
@@ -173,6 +183,7 @@ export function buildArcadeState(cfg, charId) {
   // 직업: 첫 번째 계보로 전직
   let cls = hero.classId;
   for (let k = 0; k < P.tier; k++) { const nx = CLASSES[cls]?.next?.[k === 0 ? (charId.length % 2) : 0]; if (nx && CLASSES[nx]) cls = nx; }
+  if (cfg.cls && CLASSES[cfg.cls]?.charId === charId) cls = cfg.cls;   // 일일 도전: 정해진 직업
   hero.classId = cls;
   // 무기·방어구: 티어(1~7, 7 = 2부 장비)에 맞는 베이스 (baseIdFor)
   const wt = Math.min(7, P.wtier);
@@ -199,8 +210,15 @@ export function buildArcadeState(cfg, charId) {
     for (const s of actives) { if (slots.includes(s.id)) continue; const i = slots.indexOf(null); if (i < 0) break; slots[i] = s.id; }
     hero.slots = slots;
   } catch { /* 스킬 데이터 교체 중 */ }
-  // 소모품
-  try { addByBase(st, 'c_potion', P.potions); } catch { /* 무시 */ }
+  // 일일 도전 규칙 (docs/specs/online.md §2.5): 난이도 배율·월드 규칙·시드 → World 가 만들 때 읽는다 (game/world.js)
+  const dl = cfg.daily && typeof cfg.daily === 'object' ? cfg.daily : null;
+  if (dl) {
+    const { diffOver, rules } = ONLINE.applyMods(getDiff(cfg.diff), dl.mods);
+    st.arcade.diffOver = diffOver; st.arcade.rules = rules;
+    if (Number.isInteger(dl.seed)) st.arcade.seed = dl.seed >>> 0;
+  }
+  // 소모품 (물약 금지 규칙이면 넣지 않는다)
+  if (!st.arcade.rules?.noPotion) { try { addByBase(st, 'c_potion', P.potions); } catch { /* 무시 */ } }
   // 스토리 대사·퀘스트 알림은 건너뜀
   st.progress.seenScripts = Object.keys(SCRIPTS);
   st.quests = { active: {}, done: Object.keys(QD.QUESTS ?? {}) };
@@ -218,6 +236,28 @@ export function startArcade(game, cfg, charId) {
   game.state = buildArcadeState(cfg, charId);
   const scene = cfg.kind === 'practice' ? 'practice' : cfg.kind;
   game.go(scene, { cfg: { ...cfg, charId } }, { fadeTime: 0.6 });
+}
+/**
+ * 일일 도전 응답이 이 게임 데이터로 돌릴 수 있는가 → 연습 설정 { kind:'practice', diff, preset, stageId, charId, cls, daily } 또는 null
+ * (스테이지·헌터·난이도가 없으면 null; 직업이 그 헌터의 것이 아니면 등급 기본 직업, 등급이 없으면 1번)
+ */
+export function dailyCfg(d, ghost = 'off') {
+  if (!d || !STAGES[d.stageId] || !STAGE_ORDER.includes(d.stageId) || !CHARACTERS[d.hero]) return null;
+  const diff = DIFFICULTIES.some((x) => x.id === d.diff) ? d.diff : null;
+  if (!diff) return null;
+  const preset = Number.isInteger(d.preset) && LEVEL_PRESETS[d.preset] ? d.preset : 1;
+  const cls = CLASSES[d.cls]?.charId === d.hero ? d.cls : null;
+  const mods = (d.mods ?? []).filter((m) => ONLINE.DAILY_MODS[m]);
+  return { kind: 'practice', diff, preset, course: 0, stageId: d.stageId, charId: d.hero, cls, ghost, daily: { date: d.date, seed: d.seed, board: d.board, mods } };
+}
+/** 일일 도전 시작: 헌터 선택 없이 연습 장면으로 (2부 스테이지·등급도 그대로 — 서버가 정한 도전) */
+export function startDaily(game, d, ghost = 'off') {
+  const cfg = dailyCfg(d, ghost);
+  if (!cfg) return false;
+  if (!game.state?.arcade) game._arcadePrev = game.state ?? null;
+  game.state = buildArcadeState(cfg, cfg.charId);
+  game.go('practice', { cfg }, { fadeTime: 0.6 });
+  return true;
 }
 /** 아케이드 종료 시 이전 세이브 복원 */
 export { endArcade };   // 몸체는 front/common.js (타이틀이 이 파일을 싣지 않게, R1-REQ-229)
@@ -237,15 +277,71 @@ export class ArcadeScene extends Scene {
     this.row = 0; // 0: 모드 카드, 1..: 옵션 줄
     this.amb = new Ambience({ embers: 50, motes: 20, bats: 6, lightning: true });
     this.amb.nextBolt = 3;
-    this.selK = [0, 0, 0];
+    this.selK = MODE_ORDER.map(() => 0);
     this.optK = 0; // 옵션 줄 강조 애니메이션
     this._grad = new Map();
+    this._L = null;
+    // 오늘의 도전 (카드를 고를 때 받는다 — 게스트도 볼 수 있다, §4)
+    this.daily = { state: 'idle', d: null, cfg: null, msg: null, board: null, boardState: 'idle' };
+    this.alive = true;
+    this.offs = [];
+    try {
+      this.offs.push(bus.on('online:flushed', (o) => {
+        if (!this.alive || !o?.sent?.length) return;
+        const r = o.sent[o.sent.length - 1];
+        this.game.toast(`기다리던 기록 ${o.sent.length}개를 순위에 올렸어요${r.rank ? ` (${r.rank}위)` : ''}`, '#9fe8c8', 3);
+      }));
+    } catch { /* 버스 없음 */ }
+    try { ONLINE.flushQueue(); } catch { /* 온라인 모듈 교체 중 */ }
+    if (this.kind === 'daily') this.loadDaily();
     taps.clear();
   }
+  exit() { this.alive = false; for (const f of this.offs ?? []) f?.(); this.offs = []; }
   get kind() { return MODE_ORDER[this.modeIndex] ?? 'bossrush'; }
-  /** 옵션 줄 (지금 모드). 각 줄: { id, label, value, color, n, i, set(i) } — n/i 는 보이는 항목 기준 */
+  /** 오늘의 도전 받기 (그날 것은 기기에 남아 있으면 요청 없음) → 순위 TOP 3 */
+  loadDaily(force = false) {
+    const D = this.daily;
+    if (D.state === 'loading' || (D.state === 'ready' && !force)) return;
+    D.state = 'loading'; D.msg = null;
+    ONLINE.getDaily({ force }).then((r) => {
+      if (!this.alive) return;
+      const c = r.ok ? dailyCfg(r.daily, this.cfg.ghost) : null;
+      if (!r.ok || !c) { D.state = 'error'; D.msg = r.ok ? '이 버전에서 열 수 없는 도전이에요. 게임을 새로 고쳐 주세요' : (r.error === 'unavailable' ? '여기서는 온라인 기능을 쓸 수 없어요' : r.error === 'offline' ? '인터넷에 연결되어 있지 않아요' : '오늘의 도전을 불러오지 못했어요'); return; }
+      D.state = 'ready'; D.d = r.daily; D.cfg = c;
+      this._L = null;
+      this.loadDailyBoard();
+    }).catch(() => { if (this.alive) { D.state = 'error'; D.msg = '오늘의 도전을 불러오지 못했어요'; } });
+  }
+  loadDailyBoard() {
+    const D = this.daily;
+    if (!D.d || D.boardState === 'loading') return;
+    D.boardState = 'loading';
+    ONLINE.getBoard(D.d.board, { limit: 50 }).then((b) => {
+      if (!this.alive) return;
+      D.board = b.ok ? b : null; D.boardState = b.ok ? 'ready' : 'error';
+    }).catch(() => { if (this.alive) D.boardState = 'error'; });
+  }
+  /** 옵션 줄 (지금 모드). 각 줄: { id, label, value, color, n, i, set(i), info } — n/i 는 보이는 항목 기준, info = 바꿀 수 없는 안내 줄 */
   options() {
     const c = this.cfg, k = this.kind;
+    const gi = Math.max(0, GHOST_CHOICES.findIndex((x) => x.id === c.ghost));
+    const ghostRow = { id: 'ghost', label: '고스트', value: GHOST_CHOICES[gi].name, color: gi ? '#9fd8ff' : null, n: GHOST_CHOICES.length, i: gi, set: (i) => { c.ghost = GHOST_CHOICES[i].id; } };
+    if (k === 'daily') {
+      const D = this.daily, dc = D.cfg;
+      if (D.state !== 'ready' || !dc) {
+        const v = D.state === 'error' ? `${D.msg ?? '불러오지 못했어요'} — 눌러서 다시` : '불러오는 중…';
+        return [{ id: 'dstate', label: '오늘의 도전', value: v, color: D.state === 'error' ? '#ff9a8a' : '#c8b8a8', n: 1, i: 0, info: D.state !== 'error', retry: D.state === 'error', set() {} }, ghostRow];
+      }
+      const st = STAGES[dc.stageId], ch = CHARACTERS[dc.charId], P = LEVEL_PRESETS[dc.preset] ?? LEVEL_PRESETS[1];
+      const clsName = dc.cls ? CLASSES[dc.cls]?.name : null;
+      const mods = dc.daily.mods.map((m) => ONLINE.modName(m));
+      return [
+        { id: 'dstage', label: '스테이지', value: `제${st.chapter}장 ${st.name} · ${getDiff(dc.diff).name}`, color: st.part === 2 ? P2_COLOR : null, n: 1, i: 0, info: true, set() {} },
+        { id: 'dhero', label: '헌터', value: `${ch?.name ?? dc.charId}${clsName ? ` · ${clsName}` : ''} (Lv.${P.lv})`, n: 1, i: 0, info: true, set() {} },
+        { id: 'drules', label: '규칙', value: mods.length ? mods.join(' · ') : '특별 규칙 없음', color: mods.length ? '#ffb070' : null, n: 1, i: 0, info: true, set() {} },
+        ghostRow,
+      ];
+    }
     const pres = visiblePresets(this.p2);
     const pi = Math.max(0, pres.indexOf(c.preset));
     const P = LEVEL_PRESETS[pres[pi]];
@@ -262,11 +358,13 @@ export class ArcadeScene extends Scene {
       const si = Math.max(0, this.stages.indexOf(c.stageId));
       const st = STAGES[this.stages[si]];
       rows.push({ id: 'stage', label: '스테이지', value: `제${st.chapter}장 ${st.name}`, color: st.part === 2 ? P2_COLOR : null, n: this.stages.length, i: si, set: (i) => { c.stageId = this.stages[i]; } });
+      rows.push(ghostRow);
     }
     return rows;
   }
   change(row, d) {
     const r = this.options()[row];
+    if (r?.retry) { audio.sfx('menu_ok'); this.loadDaily(true); return; }
     if (!r || r.n <= 1) return;
     const i = (r.i + d + r.n) % r.n;
     if (i === r.i) return;
@@ -274,8 +372,21 @@ export class ArcadeScene extends Scene {
   }
   setMode(i, sfx = 'menu_move') {
     i = clamp(i, 0, MODE_ORDER.length - 1);
-    if (i !== this.modeIndex) { this.modeIndex = i; audio.sfx(sfx); }
+    if (i !== this.modeIndex) { this.modeIndex = i; audio.sfx(sfx); this._L = null; }
     this.cfg.kind = this.kind;
+    if (this.kind === 'daily') this.loadDaily();
+  }
+  /** 위·아래로 갈 수 있는 옵션 줄 번호(1부터): 안내 줄(info)은 건너뛴다 */
+  stepRow(d) {
+    const opts = this.options(), n = opts.length;
+    let r = this.row;
+    for (let k = 0; k <= n; k++) {
+      r += d;
+      if (r <= 0) return 0;
+      if (r > n) return this.row;
+      if (!opts[r - 1].info) return r;
+    }
+    return this.row;
   }
   update(dt) {
     const g = this.game, W = g.uiW || g.viewW, H = g.uiH || g.viewH;
@@ -294,14 +405,14 @@ export class ArcadeScene extends Scene {
     if (this.row === 0) {
       if (input.pressed('left')) this.setMode((this.modeIndex + MODE_ORDER.length - 1) % MODE_ORDER.length);
       else if (input.pressed('right')) this.setMode((this.modeIndex + 1) % MODE_ORDER.length);
-      else if (input.pressed('down')) { this.row = 1; audio.sfx('menu_move'); }
+      else if (input.pressed('down')) { const r = this.stepRow(1); if (r !== this.row) { this.row = r; audio.sfx('menu_move'); } }
       else if (input.pressed('confirm')) this.go();
       else if (input.pressed('cancel')) this.leave();
       return;
     }
     // 옵션 줄
-    if (input.pressed('up')) { this.row--; audio.sfx('menu_move'); }
-    else if (input.pressed('down')) { if (this.row < n) { this.row++; audio.sfx('menu_move'); } }
+    if (input.pressed('up')) { this.row = this.stepRow(-1); audio.sfx('menu_move'); }
+    else if (input.pressed('down')) { const r = this.stepRow(1); if (r !== this.row) { this.row = r; audio.sfx('menu_move'); } }
     else if (input.pressed('left')) this.change(this.row - 1, -1);
     else if (input.pressed('right')) this.change(this.row - 1, 1);
     else if (input.pressed('confirm')) this.go();
@@ -312,13 +423,21 @@ export class ArcadeScene extends Scene {
     const g = this.game;
     this.cfg.kind = this.kind;
     g.meta.arcadeCfg = { ...this.cfg }; saves.saveMeta(g.meta);
+    if (this.kind === 'daily') {
+      const D = this.daily;
+      if (D.state !== 'ready' || !D.d) { audio.sfx('menu_cancel'); if (D.state === 'error') this.loadDaily(true); return; }
+      audio.sfx('menu_ok'); audio.sfx('coin_insert');
+      g.flash(ARCADE_MODES.daily.color, 0.3, 3);
+      if (!startDaily(g, D.d, this.cfg.ghost)) { this.daily.state = 'error'; this.daily.msg = '이 버전에서 열 수 없는 도전이에요'; }
+      return;
+    }
     audio.sfx('menu_ok'); audio.sfx('coin_insert');
     g.flash(ARCADE_MODES[this.kind].color, 0.3, 3);
     g.go('charselect', { mode: 'arcade', arcade: { ...this.cfg }, difficulty: this.cfg.diff });
   }
   leave() { audio.sfx('menu_cancel'); this.game.go('title', { menu: true, index: 2 }); }
 
-  /** 배치 (UI px). 720×400 까지 겹치지 않는다 */
+  /** 배치 (UI px). 720×400 까지 겹치지 않는다 (옵션 판이 아래 안내 줄에 닿으면 줄 높이 → 카드 높이 순으로 줄인다) */
   layout(nOpt) {
     const g = this.game, W = g.uiW || g.viewW, H = g.uiH || g.viewH;
     const L0 = this._L;
@@ -326,19 +445,30 @@ export class ArcadeScene extends Scene {
     const small = H < 480;
     // 최소 UI 높이 근처(400~420, platform §6.2)에서는 제목·카드를 조금 줄여 옵션 판과 시작 버튼이 아래 안내 줄과 겹치지 않게 한다
     const tight = H < 420;
-    const gap = small ? 12 : 16;
-    const cw = Math.floor(Math.min(270, (W - 48 - gap * 2) / 3));
-    const CW = cw * 3 + gap * 2, x0 = Math.round((W - CW) / 2);
-    const cardY = tight ? 72 : small ? 76 : 100, ch = tight ? 108 : small ? 118 : 172;
-    const descY = cardY + ch + (tight ? 16 : small ? 20 : 26), descLH = small ? 15 : 17, descSize = small ? 12 : 13;
-    const oy = descY + descLH + (tight ? 10 : small ? 12 : 18);
-    const rowH = small ? 46 : 44;
+    const nC = MODE_ORDER.length;
+    const gap = small ? 10 : 14;
+    const cw = Math.floor(Math.min(nC > 3 ? 236 : 270, (W - 48 - gap * (nC - 1)) / nC));
+    const CW = cw * nC + gap * (nC - 1), x0 = Math.round((W - CW) / 2);
+    const cardY = tight ? 72 : small ? 76 : 100;
+    let ch = tight ? 108 : small ? 118 : 172, artH = tight ? 52 : small ? 60 : 104;
+    const descLH = small ? 15 : 17, descSize = small ? 12 : 13;
+    let descY, oy;
+    const calc = () => { descY = cardY + ch + (tight ? 16 : small ? 20 : 26); oy = descY + descLH + (tight ? 10 : small ? 12 : 18); };
+    calc();
+    // 목록 줄 ≥ 36 CSS px (platform §6.3): UI px 1 = cssScale × uiK CSS px
+    const per = Math.max(0.2, (g.cssScale || 1) * (g.uiK || 1));
+    const minRow = Math.max(36, Math.ceil(38 / per));
+    let rowH = small ? 46 : 44;
+    const foot = H - 36;
+    const need = () => oy - 6 + nOpt * rowH + 12;
+    if (need() > foot) rowH = Math.max(minRow, Math.floor((foot - (oy - 6) - 12) / nOpt));
+    if (need() > foot) { const cut = Math.min(need() - foot, ch - 84); ch -= cut; artH = Math.max(34, artH - cut); calc(); }
     const RW = small ? 250 : 270, PW = CW - RW - 16, rx = x0 + PW + 16;
     const panelH = nOpt * rowH + 12;
     return (this._L = {
       W, H, small, nOpt, top: tight ? 26 : small ? 30 : 44, hs: small ? 24 : 30,
-      gap, cw, CW, x0, cardY, ch, artH: tight ? 52 : small ? 60 : 104, descY, descLH, descSize,
-      oy, rowH, PW, RW, rx, panelH, labelW: small ? 112 : 124,
+      gap, cw, CW, x0, cardY, ch, artH, descY, descLH, descSize,
+      oy, rowH, PW, RW, rx, panelH, labelW: small ? 104 : 124,
       start: { x: rx, y: oy - 6 + panelH - 56, w: RW, h: 56 },
       back: { x: 12, y: 10, w: 104, h: 54 },
     });
@@ -375,7 +505,7 @@ export class ArcadeScene extends Scene {
     MODE_ORDER.forEach((id, i) => {
       const k = ease.outCubic(clamp((this.t - i * 0.07) / 0.45, 0, 1));
       const r = { x: L.x0 + i * (L.cw + L.gap), y: L.cardY + (1 - k) * 40, w: L.cw, h: L.ch };
-      this.drawCard(ctx, r, ARCADE_MODES[id], this.selK[i], k, i === this.modeIndex, L);
+      this.drawCard(ctx, r, ARCADE_MODES[id], this.selK[i] ?? 0, k, i === this.modeIndex, L);
       taps.add(`mode:${i}`, { x: L.x0 + i * (L.cw + L.gap), y: L.cardY, w: L.cw, h: L.ch }, { ...own, kind: 'primary', src: 'arcade.mode' });
     });
     // 지금 모드 설명 (최대 두 줄)
@@ -391,28 +521,59 @@ export class ArcadeScene extends Scene {
     const lw = L.labelW, vx = ox + lw + (ow - lw) / 2;
     opts.forEach((o, i) => {
       const y = oy + i * oh, sel = this.row === i + 1, by = y + oh / 2 + 6;
-      text(ctx, o.label, ox + 16, by, { size: 15, weight: 800, color: sel ? '#fff4dc' : '#c8b8a8', ow: 2 });
-      text(ctx, o.value, vx, by, { size: 15, align: 'center', weight: 800, color: o.color ?? (sel ? GOLD : BONE), ow: 2, maxWidth: ow - lw - 70 });
+      const vs = o.info && String(o.value).length > 22 ? 13 : 15;
+      text(ctx, o.label, ox + 16, by, { size: 15, weight: 800, color: sel ? '#fff4dc' : '#c8b8a8', ow: 2, maxWidth: lw - 20 });
+      text(ctx, o.value, vx, by - (vs < 15 ? 1 : 0), { size: vs, align: 'center', weight: 800, color: o.color ?? (sel ? GOLD : BONE), ow: 2, maxWidth: ow - lw - (o.n > 1 ? 70 : 24) });
       const on = o.n > 1, ac = sel ? GOLD : 'rgba(232,200,114,0.5)';
       if (on) {
         text(ctx, '◀', ox + lw + 14, by, { size: 16, align: 'center', color: ac, ow: 2 });
         text(ctx, '▶', ox + ow - 18, by, { size: 16, align: 'center', color: ac, ow: 2 });
       }
       if (i > 0) { ctx.fillStyle = 'rgba(232,200,114,0.08)'; ctx.fillRect(ox + 10, y, ow - 20, 1); }
-      // 탭: 이름 칸 = 다음 값, 값의 왼쪽 반 = 이전, 오른쪽 반 = 다음 (목록 줄 높이 ≥ 36 CSS px)
-      const zk = { ...own, kind: 'list', src: 'arcade.option', disabled: !on };
+      // 탭: 이름 칸 = 다음 값, 값의 왼쪽 반 = 이전, 오른쪽 반 = 다음 (목록 줄 높이 ≥ 36 CSS px). 안내 줄은 탭 없음
+      if (o.info) return;
+      const zk = { ...own, kind: 'list', src: 'arcade.option', disabled: !on && !o.retry };
       taps.add(`opt:${i}:1`, { x: ox, y, w: lw, h: oh }, zk);
       taps.add(`opt:${i}:-1`, { x: ox + lw, y, w: vx - ox - lw, h: oh }, zk);
       taps.add(`opt:${i}:1`, { x: vx, y, w: ox + ow - vx, h: oh }, zk);
     });
     // 기록 + 시작
-    const best = this.bestText();
-    if (best) wrap(ctx, best, L.RW, 12, 700).slice(0, 2).forEach((l, i) => text(ctx, l, L.rx + L.RW / 2, oy + 12 + i * 16, { size: 12, align: 'center', weight: 700, color: '#d8c0a0', ow: 2 }));
-    gbutton(ctx, L.start, '헌터 선택으로', { selected: true, accent: M.color, size: 16, icon: '▶' });
+    if (this.kind === 'daily') this.drawDailySide(ctx, L, t);
+    else {
+      const best = this.bestText();
+      if (best) wrap(ctx, best, L.RW, 12, 700).slice(0, 2).forEach((l, i) => text(ctx, l, L.rx + L.RW / 2, oy + 12 + i * 16, { size: 12, align: 'center', weight: 700, color: '#d8c0a0', ow: 2 }));
+    }
+    const ready = this.kind !== 'daily' || this.daily.state === 'ready';
+    gbutton(ctx, L.start, this.kind === 'daily' ? '도전 시작' : '헌터 선택으로', { selected: ready, disabled: !ready && this.daily.state === 'loading', accent: M.color, size: 16, icon: '▶' });
     taps.add('start', L.start, { ...own, kind: 'primary', src: 'arcade.start' });
     gbutton(ctx, L.back, '뒤로', { size: 15, icon: '◀' });
     taps.add('back', L.back, { ...own, kind: 'primary', src: 'arcade.back' });
     this.drawFooter(ctx, W, H);
+  }
+  /** 오늘의 도전: 오른쪽 칸 — 내 최고 · TOP 3 (로그인 안 했으면 안내 문구) */
+  drawDailySide(ctx, L, t) {
+    const D = this.daily, x = L.rx + 8, w = L.RW - 16, y0 = L.oy + 10, lh = 17;
+    const maxY = L.start.y - 6;
+    let y = y0;
+    const line = (s, o = {}) => { if (y + 4 > maxY) return; text(ctx, s, o.align === 'center' ? x + w / 2 : x, y, { size: 13, weight: 700, color: '#d8c0a0', ow: 2, maxWidth: w, ...o }); y += lh; };
+    if (D.state !== 'ready') { if (D.state === 'loading') line('오늘의 도전을 불러오는 중…', { align: 'center', color: DIMC }); return; }
+    const B = D.board, me = B?.me;
+    if (!cloud.loggedIn) line('로그인하면 순위에 오를 수 있어요', { color: '#9fd8ff', align: 'center' });
+    else if (me) line(`내 최고  ${ONLINE.fmtMs(me.time)} · ${me.rank}위`, { color: '#ffe7a0', align: 'center' });
+    else if (D.boardState === 'ready') line('오늘은 아직 기록이 없어요', { align: 'center' });
+    y += 3;
+    if (D.boardState === 'loading') { line('순위를 불러오는 중…', { align: 'center', color: DIMC }); return; }
+    if (D.boardState === 'error' || !B) { line('순위를 불러오지 못했어요', { align: 'center', color: DIMC }); return; }
+    const top = B.entries.slice(0, 3);
+    if (!top.length) { line('첫 기록의 주인공이 되어 보세요!', { align: 'center' }); return; }
+    line(`오늘의 TOP 3 · 전체 ${B.total}명`, { size: 12, color: GOLD, align: 'center' });
+    top.forEach((e, i) => {
+      if (y + 4 > maxY) return;
+      text(ctx, `${e.rank}`, x + 6, y, { size: 13, weight: 900, family: FONT.num, color: ['#ffe070', '#d8dce8', '#e0a060'][i] ?? BONE, ow: 2 });
+      text(ctx, e.nick, x + 26, y, { size: 13, weight: 800, color: BONE, ow: 2, maxWidth: w - 110 });
+      text(ctx, ONLINE.fmtMs(e.time), x + w, y, { size: 13, align: 'right', weight: 800, family: FONT.num, color: '#fff', ow: 2 });
+      y += lh;
+    });
   }
   /** 아래 안내 줄 (키보드·패드 글리프 / 터치 문구) */
   drawFooter(ctx, W, H) {
@@ -442,6 +603,17 @@ export class ArcadeScene extends Scene {
     if (top) return `최고 점수  ${fmt(top.score)}점 · ${top.name || CHARACTERS[top.charId]?.name || ''}`;
     return '아직 기록이 없습니다';
   }
+  /** 카드 그림: 오늘의 도전은 그날 스테이지 배경 */
+  artOf(M) {
+    if (M.id === 'daily') { const st = STAGES[this.daily.cfg?.stageId]; if (st?.bg) return st.bg; }
+    return M.art;
+  }
+  tagOf(M) {
+    if (M.id !== 'daily') return M.tag;
+    const D = this.daily;
+    if (D.state === 'ready' && D.d) { const s = D.d.date; return `${+s.slice(4, 6)}월 ${+s.slice(6, 8)}일 · 규칙 ${D.cfg.daily.mods.length}개`; }
+    return D.state === 'error' ? '불러오지 못했어요' : D.state === 'loading' ? '불러오는 중…' : M.tag;
+  }
   drawCard(ctx, r, M, s, k, cur, L) {
     const sc = 1 + 0.04 * s;
     ctx.save();
@@ -450,8 +622,9 @@ export class ArcadeScene extends Scene {
     frame(ctx, 0, 0, r.w, r.h, { accent: M.color, glow: s * (cur && this.row === 0 ? 1.2 : 0.5), edge: 0.4 + 0.6 * s });
     const ah = L.artH;
     const ar = { x: 6, y: 6, w: r.w - 12, h: ah };
-    const img = assets.get(M.art);
-    portraitIn(ctx, img, ar, { fy: M.art.startsWith('portraits') ? 0.18 : 0.5, zoom: 1 + 0.03 * s, fadeBottom: 0.55 });
+    const art = this.artOf(M);
+    const img = assets.get(art);
+    portraitIn(ctx, img, ar, { fy: art.startsWith('portraits') ? 0.18 : 0.5, zoom: 1 + 0.03 * s, fadeBottom: 0.55 });
     if (M.id === 'bossrush') {
       // 보스 초상화 몽타주 (2부를 알면 마지막 칸은 공허의 니힐)
       const ids = this.p2 ? ['b_death', 'b_chaos', 'b_nihil'] : ['b_nightwing', 'b_death', 'b_chaos'];
@@ -461,9 +634,9 @@ export class ArcadeScene extends Scene {
       });
     }
     ctx.fillStyle = rgba(M.color, 0.55); ctx.fillRect(r.w * 0.15, ah + 5, r.w * 0.7, 2);
-    text(ctx, M.eng, r.w / 2, ah + 2, { size: 13, align: 'center', weight: 900, family: FONT.logo, color: M.color, ow: 4 });
-    text(ctx, M.name, r.w / 2, ah + (L.small ? 32 : 38), { size: L.small ? 20 : 22, align: 'center', weight: 800, family: FONT.title, color: '#fff4e0', ow: 4 });
-    text(ctx, M.tag, r.w / 2, ah + (L.small ? 50 : 60), { size: L.small ? 12 : 13, align: 'center', weight: 600, color: '#d0c4b4', ow: 2 });
+    text(ctx, M.eng, r.w / 2, ah + 2, { size: 13, align: 'center', weight: 900, family: FONT.logo, color: M.color, ow: 4, maxWidth: r.w - 12 });
+    text(ctx, M.name, r.w / 2, ah + (L.small ? 32 : 38), { size: L.small ? 20 : 22, align: 'center', weight: 800, family: FONT.title, color: '#fff4e0', ow: 4, maxWidth: r.w - 12 });
+    text(ctx, this.tagOf(M), r.w / 2, ah + (L.small ? 50 : 60), { size: L.small ? 12 : 13, align: 'center', weight: 600, color: '#d0c4b4', ow: 2, maxWidth: r.w - 12 });
     ctx.restore();
   }
 }

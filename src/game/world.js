@@ -11,6 +11,7 @@ import { bus } from '../core/events.js';
 import { saves } from '../core/save.js';
 import { getDiff } from '../data/difficulty.js';
 import { STAGES } from '../data/stages.js';
+import { BOSSES } from '../data/bosses.js';
 import { NPCS } from '../data/npcs.js';
 import { POWERUPS } from '../data/powerups.js';
 import { SUBWEAPONS } from '../data/subweapons.js';
@@ -245,6 +246,12 @@ export class World {
     this.camera.follow(p, 1 / 60, true);
     const music = room.music ?? this.stage.music;
     if (music && !room.boss) audio.music(music);
+    // 보스방이 바로 옆이면 보스 음악을 미리 받는다 (녹음 음원 — 보스 등장 연출 동안 풀린다)
+    const rooms = this.stage.rooms;
+    for (const k of ['exitLeft', 'exitRight', 'exitUp', 'exitDown']) {
+      const nb = room[k] && rooms?.[room[k]];
+      if (nb?.boss) { audio.prefetch?.(BOSSES[nb.bossId ?? this.stage.boss]?.music ?? 'boss'); break; }
+    }
     bus.emit('roomEntered', { stageId: this.stage.id, roomId });
   }
 

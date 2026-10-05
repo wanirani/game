@@ -6,7 +6,7 @@
 //  - gbutton/backButton: { owner } 를 주면 ui.taps 에 등록 (터치 여유 영역으로 44 CSS px 보장) → update 에서 taps.hit(owner).
 //    예전 TapZones 도 내부적으로 ui.taps 에 등록한다 (owner = 그 TapZones) → 여유 영역·?debug=taps 오버레이·QA 감사를 함께 쓴다
 //  - setPad(show): 옛 이름. 가상 패드는 game.syncPad() 가 장면 플래그(hidePad/showPad)로 정한다 → 맨 위 장면의 플래그만 바꾼다
-//  - applySettings: 볼륨만 (가상 패드 투명도는 캔버스 패드가 settings.touchOpacity 를 직접 읽는다)
+//  - applySettings: 볼륨·음악 음원 (가상 패드 투명도는 캔버스 패드가 settings.touchOpacity 를 직접 읽는다)
 //  - gbutton/frame/ornament/menuItem/shade 의 그라데이션은 크기·색별로 한 번만 만든다 (MASTER_PLAN R12, feel §8: 저사양 프레임당 ≤ 6)
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
@@ -42,6 +42,7 @@ export function applySettings(game) {
   const s = game.settings;
   if (!s) return;
   audio.setVolumes(s.musicVol, s.sfxVol);
+  audio.setMusicSource?.(s.musicSource);
 }
 /** 다음 장면 이름이 등록되어 있지 않으면 대체 경로로 */
 export function goSafe(game, name, params = {}, opts) {

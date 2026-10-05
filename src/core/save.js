@@ -121,10 +121,18 @@ export function privacySignal() {
   try { return typeof navigator !== 'undefined' && navigator.globalPrivacyControl === true; } catch { return false; }
 }
 
+/** 배경 음악 기본 엔진: 녹음 음원, 단 데이터 절약(Save-Data)이거나 저사양(시작 등급 low — 웹의 lo/ 단계 기준과 같다)이면 합성 음원 */
+export function defaultMusicSource() {
+  try {
+    if (typeof navigator !== 'undefined' && navigator.connection?.saveData) return 'synth';
+    return autoQualityTier() === 'low' ? 'synth' : 'recorded';
+  } catch { return 'recorded'; }
+}
+
 /** 모든 설정 키의 기본값 (MASTER_PLAN §1.5 표 순서). 새 키는 여기와 SETTINGS_SCHEMA 에 함께 추가한다 */
 export const DEFAULT_SETTINGS = {
   settingsVersion: SETTINGS_VERSION,
-  musicVol: 0.6, sfxVol: 0.8,
+  musicVol: 0.6, sfxVol: 0.8, musicSource: defaultMusicSource(), // 음악 음원 (core/audio_rec.js) — 데이터 절약·저사양은 기본 합성
   quality: 'auto', fpsCap: 60, uiScale: 'auto', safeArea: 'fit',
   screenShake: 1, showDamage: true, flashFx: 1, cutinMode: 'full', reduceMotion: false,
   ctrlPrompts: 'auto', ctrlPreset: 'arcade', ctrlConfirm: 'auto', ctrlMap: null, keyMap: null,
@@ -149,6 +157,7 @@ const isKeyCode = (v) => typeof v === 'string' && /^[A-Za-z0-9]{1,32}$/.test(v);
 /** 키별 허용 값. type: 'num'(min..max) | 'enum'(values) | 'bool' | 'map'({action:[…]} | null) | 'layout'({id:{right,bottom,d}} | null) */
 export const SETTINGS_SCHEMA = Object.freeze({
   musicVol: num(0, 1), sfxVol: num(0, 1),
+  musicSource: oneOf('recorded', 'synth'),
   quality: oneOf('auto', 'low', 'medium', 'high'),
   fpsCap: oneOf(60, 0),
   uiScale: oneOf('auto', 1, 1.15, 1.3, 1.5),

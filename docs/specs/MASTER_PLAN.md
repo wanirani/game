@@ -279,6 +279,7 @@ Every module in this table exists after W0, with the listed exports as no-ops. T
 | settingsVersion | 2 | 2 | platform §10 | — | — |
 | musicVol | 0.6 | 0..1 | existing | 소리 | 배경 음악 |
 | sfxVol | 0.8 | 0..1 | existing | 소리 | 효과음 |
+| musicSource | 'recorded' | 'recorded'\|'synth' | recorded music (src/core/audio_rec.js); default 'synth' when Save-Data is on or the start tier is low (the tier that puts the web build on its lo/ stage) | 소리 | 음악 음원 |
 | quality | 'auto' | 'auto'\|'low'\|'medium'\|'high' | platform §6.4 (was detectQuality()) | 화면 | 그래픽 품질 |
 | fpsCap | 60 | 60 \| 0 | platform §6.5 | 화면 | 프레임 제한 |
 | uiScale | 'auto' | 'auto' \| 1 \| 1.15 \| 1.3 \| 1.5 | platform §6.2 | 화면 | 글자·UI 크기 |

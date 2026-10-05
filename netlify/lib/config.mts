@@ -15,6 +15,12 @@ export const STORES = {
   // 익명 통계 (docs/TELEMETRY.md): raw/<YYYY-MM-DD>/<HH>/<무작위> = 받은 묶음 그대로 (30일 뒤 삭제), hour/<YYYY-MM-DD>/<HH> = 시간 요약 (30일),
   //   agg/<YYYY-MM-DD> = 날 요약 (계속 보관), state/agg = 모은 시간 칸 기록. IP·계정은 넣지 않는다
   telemetry: 'bn-telemetry',
+  // 온라인 기록 (docs/specs/online.md, docs/ONLINE.md). <보드 키> = 보드 ID 의 ':' 를 '.' 로 바꾼 것 (bossrush.0.normal)
+  //   b/<보드 키>/i = 순위 목록(상위 indexKeep 개 + 계정 수), b/<보드 키>/e/<uid> = 계정의 최고 기록, u/<uid>/<보드 키> = 계정이 기록을 둔 보드 표시
+  boards: 'bn-boards',
+  ghosts: 'bn-ghosts', // key = <보드 키>/<uid> → {v, data(base64), t, h, c, at} — 상위 ghostTop 위 안의 최고 기록만
+  runs: 'bn-runs', // key = used/<시작 시각 UTC YYYYMMDDHH>/<런 nonce> → {at} — 한 번 제출한 런 (정리 함수가 지운다)
+  nicks: 'bn-nicks', // key = 소문자 별명의 UTF-8 hex → {uid, id, nick, at} — 별명 중복 방지 (대소문자 무시)
 } as const;
 
 /** 요청 본문 최대 크기 (바이트) */
@@ -22,6 +28,7 @@ export const BODY_LIMIT = {
   auth: 4 * 1024,
   save: 512 * 1024,
   meta: 64 * 1024,
+  finish: 48 * 1024, // POST /api/runs/finish (고스트 24KB 포함)
 } as const;
 
 /** 요청 JSON 의 최대 중첩 깊이 (넘으면 400 — 재귀 처리의 스택 넘침 방지). 세이브·메타 data 는 따로 DATA_MAX_DEPTH (넘으면 422) */
@@ -93,6 +100,38 @@ export const TELEMETRY = {
   concurrency: 16,
   keepErrors: 100, // 요약에 남기는 오류 묶음 수 (많은 순)
   keepCells: 40, // 방마다 남기는 사망 칸 수 (많은 순)
+} as const;
+
+/** 온라인 기록 (netlify/lib/online.mts·boards.mts, docs/specs/online.md). 숫자를 바꾸면 명세와 docs/ONLINE.md 도 고친다 */
+export const ONLINE = {
+  runTtlMs: 6 * HOUR, // 런 토큰 유효 기간
+  runSkewMs: MIN, // 토큰 시작 시각이 서버 시각보다 이만큼 넘게 미래면 위조로 본다
+  timeSlack: 0.9, // 걸린 실제 시간 ≥ result.time × 0.9 − 3초
+  timeGraceMs: 3000,
+  timeMinMs: 5000, // 보스 러시·연습·일일: time 5초 ~ 2시간
+  timeMaxMs: 2 * HOUR,
+  anyTimeMaxMs: 24 * HOUR, // 서바이벌 time 상한 (순위 기준은 아니다)
+  waveMax: 999,
+  levelMax: 99,
+  scoreMax: 99_999_999,
+  deathsMax: 9999,
+  ghostMaxChars: 24 * 1024, // 고스트 base64 글자 수 상한
+  ghostTop: 20, // 고스트는 이 순위 안의 최고 기록만 남긴다
+  rankTop: 100, // 순위를 알려 주는 범위 (밖이면 rank null)
+  indexKeep: 150, // 순위 목록에 남기는 수 (100위 안의 기록이 지워지면 101위 이후로 채운다)
+  boardLimit: 50, // GET /api/boards 기본 limit (최대 rankTop)
+  boardCacheSec: 30,
+  ghostCacheSec: 30,
+  dailyCacheSec: 300, // 일일 도전 (다음 한국 자정까지 남은 시간보다 길게는 두지 않는다)
+  dailyKeepDays: 60, // 이보다 오래된 일일 도전에는 제출할 수 없고, 정리 함수가 지운다
+  submitPerMin: 6, // 계정당 제출 1분 6번, 하루 300번
+  submitPerDay: 300,
+  startMax: 60, // 계정당 런 시작 10분 60번
+  startWindowMs: 10 * MIN,
+  nickMax: 10, // 계정당 별명 바꾸기 1시간 10번
+  nickWindowMs: HOUR,
+  indexRetries: 16, // 순위 목록 조건부 쓰기 재시도 (동시 제출이 많은 보드)
+  orphanGhostMs: HOUR, // 순위 목록에 표시가 없는 고스트는 이만큼 지난 뒤 정리한다 (막 저장 중인 것을 지우지 않게)
 } as const;
 
 /** 동시 수정 충돌 시 조건부 쓰기 재시도 횟수 */

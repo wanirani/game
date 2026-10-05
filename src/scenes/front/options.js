@@ -66,6 +66,11 @@ function buildRows(sc) {
     sound: [
       { id: 'musicVol', label: '배경 음악', type: 'slider', min: 0, max: 1, step: 0.1, fmt: offPct, note: '배경 음악의 크기입니다.' },
       { id: 'sfxVol', label: '효과음', type: 'slider', min: 0, max: 1, step: 0.1, fmt: offPct, note: '공격·타격·메뉴 소리의 크기입니다.' },
+      {
+        id: 'musicSource', label: '음악 음원', type: 'enum', opts: [['recorded', '녹음 음원'], ['synth', '합성 음원']],
+        note: (s) => (s.musicSource === 'synth' ? '합성 음원: 기기에서 바로 연주합니다. 내려받는 데이터가 없고 메모리를 적게 씁니다.'
+          : '녹음 음원: 녹음한 배경 음악을 내려받아 재생합니다 (곡마다 1~3 MB). 받지 못하면 합성 음원으로 연주합니다.'),
+      },
     ],
     screen: [
       {
@@ -306,7 +311,7 @@ export class OptionsScene extends Scene {
   /** 바꾼 값의 즉시 반영 · 미리 보기 */
   effect(r, v) {
     const g = this.game;
-    if (r.id === 'musicVol' || r.id === 'sfxVol' || r.id === 'touchOpacity') applySettings(g);
+    if (r.id === 'musicVol' || r.id === 'sfxVol' || r.id === 'musicSource' || r.id === 'touchOpacity') applySettings(g);
     if (r.id === 'sfxVol') { audio.sfx('coin'); return; }
     if (r.id === 'screenShake' && v > 0 && !this.s.reduceMotion) this.shakeDemo = 0.35 * v;
     if (r.id === 'flashFx' && v > 0) g.flash?.('#fff4e0', 0.45, 5);

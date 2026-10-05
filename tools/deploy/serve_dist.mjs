@@ -21,7 +21,7 @@ export const MIME = {
   '.css': 'text/css; charset=UTF-8', '.json': 'application/json; charset=UTF-8', '.webmanifest': 'application/manifest+json; charset=UTF-8',
   '.png': 'image/png', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.svg': 'image/svg+xml', '.ico': 'image/x-icon',
   '.woff2': 'font/woff2', '.woff': 'font/woff', '.txt': 'text/plain; charset=UTF-8', '.xml': 'application/xml',
-  '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.wav': 'audio/wav', '.apk': 'application/vnd.android.package-archive', '.bin': 'application/octet-stream',
+  '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.m4a': 'audio/mp4', '.wav': 'audio/wav', '.apk': 'application/vnd.android.package-archive', '.bin': 'application/octet-stream',
 };
 
 export async function start(port = 0, { dir = path.join(ROOT, 'dist/web'), toml = path.join(ROOT, 'netlify.toml'), quiet = false, host = undefined } = {}) {

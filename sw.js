@@ -13,6 +13,8 @@
 //               /src/·/css/·/assets/fonts/·build-info.js = bn-<buildHash> 에서 캐시 우선 (주소에 내용 해시가 붙어 있어 섞이지 않는다).
 //               /assets/** = bn-assets-v1 에서 캐시 우선. 키는 경로(쿼리 제외)이고 저장할 때 받은 내용의 sha256 앞 8자리를 x-bn-h 로
 //               붙여 둔다 → build.json 의 해시와 다르면(새 배포에서 그림이 바뀜) 쓰지 않고 새로 받는다. 오래된 것부터 지워 최대 MAX_ASSETS 개.
+//               /assets/audio/** = bn-audio-v1 (같은 해시 검증, 설치 때 미리 받지 않음 — 녹음 음악은 곡마다 1~3 MB). 바이트 상한 AUDIO_MAX_BYTES:
+//               넘으면 오래된 음악부터 지운다 (효과음·목록은 작아서 마지막에). 크기는 저장할 때 x-bn-len 으로 붙인다.
 //  · 새 배포 : 페이지 이동이 네트워크 우선이라 배포 뒤에는 페이지가 이미 새 빌드 코드로 도는데, 이 (옛) 워커는 새 워커가 SKIP_WAITING 을
 //               받을 때까지 계속 제어한다. 그 페이지는 build-info.js?v= 가 이 빌드와 달라서 알아본다 → 새 build.json 을 받아(build.next.json
 //               으로 보관) 그 페이지의 그림·해시 없는 파일(JS 글꼴·fonts.json)을 새 해시로 검증한다 (새 코드에 옛 리그·아틀라스를 주지 않게).
@@ -22,6 +24,9 @@
 const BUILD = /*BN_BUILD*/null/*BN_BUILD_END*/;
 const CACHE = BUILD ? `bn-${BUILD.hash}` : 'bn-dev';
 const ASSETS = 'bn-assets-v1';
+const AUDIO = 'bn-audio-v1';
+// 녹음 음악·효과음 캐시 바이트 상한 (곡 20~30개 분량 — 한 번 플레이에 듣는 곡은 오프라인에서도 다시 받지 않는다)
+const AUDIO_MAX_BYTES = 64 * 1024 * 1024;
 // 그림 캐시 상한: 한 번 플레이에 쓰는 그림(아이콘 120여 개, 영웅 퍼펫, 채색 괴물·보스 아틀라스, 배경)이 250개를 넘어
 // 캐시가 계속 갈리지 않도록 넉넉히 잡는다. 경로당 하나(해시가 바뀌면 교체)라 게임 전체 그림 수를 넘지 않는다.
 const MAX_ASSETS = 800;
@@ -75,19 +80,22 @@ self.addEventListener('message', (event) => {
 // ───────────────────────── activate ─────────────────────────
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
-    const keep = new Set([CACHE, ASSETS]);
+    const keep = new Set([CACHE, ASSETS, AUDIO]);
     for (const k of await caches.keys()) if (!keep.has(k)) await caches.delete(k);
     if (BUILD) {
-      // 새 배포에서 바뀌었거나 사라진 그림은 지운다 (낡은 그림을 새 코드와 섞어 쓰지 않도록)
+      // 새 배포에서 바뀌었거나 사라진 그림·소리는 지운다 (낡은 그림을 새 코드와 섞어 쓰지 않도록)
       const files = await manifest();
-      const ac = await caches.open(ASSETS);
-      for (const req of await ac.keys()) {
-        const res = await ac.match(req);
-        const f = files[relOf(new URL(req.url))];
-        if (!f || !res || res.headers.get('x-bn-h') !== f.hash8) await ac.delete(req);
+      for (const name of [ASSETS, AUDIO]) {
+        const ac = await caches.open(name);
+        for (const req of await ac.keys()) {
+          const res = await ac.match(req);
+          const f = files[relOf(new URL(req.url))];
+          if (!f || !res || res.headers.get('x-bn-h') !== f.hash8) await ac.delete(req);
+        }
       }
     } else {
-      await caches.delete(ASSETS); // 개발용 워커는 그림 캐시를 따로 두지 않는다
+      await caches.delete(ASSETS); // 개발용 워커는 그림·소리 캐시를 따로 두지 않는다
+      await caches.delete(AUDIO);
     }
     await self.clients.claim();
   })());
@@ -106,6 +114,7 @@ self.addEventListener('fetch', (event) => {
   if (req.mode === 'navigate') { event.respondWith(navigate(event)); return; }
   if (!BUILD) { event.respondWith(devFetch(event, req)); return; }
   if (rel === 'build-info.js') notePage(event, url);
+  if (rel.startsWith('assets/audio/')) { event.respondWith(assetFetch(event, req, url, rel, AUDIO)); return; }
   if (rel.startsWith('assets/') && !rel.startsWith('assets/fonts/')) { event.respondWith(assetFetch(event, req, url, rel)); return; }
   event.respondWith(codeFetch(event, req, url, rel));
 });
@@ -162,9 +171,9 @@ function manifest() {
   }
   return manifestP;
 }
-async function assetFetch(event, req, url, rel) {
+async function assetFetch(event, req, url, rel, name = ASSETS) {
   const key = abs(rel);
-  const [files, cache] = await Promise.all([filesFor(event.clientId), caches.open(ASSETS)]);
+  const [files, cache] = await Promise.all([filesFor(event.clientId), caches.open(name)]);
   const want = files[rel] && files[rel].hash8;
   const hit = await cache.match(key);
   if (hit && want && hit.headers.get('x-bn-h') === want) return hit;
@@ -172,7 +181,7 @@ async function assetFetch(event, req, url, rel) {
     const res = await fetch(req);
     if (want && res.ok && res.status === 200) {
       // 표시는 받은 내용의 해시 (기대 해시가 아니라): 서버가 이미 다른 배포 것을 주었으면 다음 검증에서 걸러진다
-      event.waitUntil(stamp(res.clone()).then((r) => cache.put(key, r)).then(() => trim(cache, MAX_ASSETS)).catch(() => {}));
+      event.waitUntil(stamp(res.clone()).then((r) => cache.put(key, r)).then(() => (name === AUDIO ? trimBytes(cache, AUDIO_MAX_BYTES) : trim(cache, MAX_ASSETS))).catch(() => {}));
     }
     return res;
   } catch (e) {
@@ -232,7 +241,8 @@ async function devFetch(event, req) {
   const cache = await caches.open(CACHE);
   try {
     const res = await fetch(req);
-    if (res.ok && res.status === 200 && res.type === 'basic') event.waitUntil(cache.put(req, res.clone()).then(() => trim(cache, DEV_MAX)).catch(() => {}));
+    // (녹음 음악은 크므로 개발용 캐시에 넣지 않는다)
+    if (res.ok && res.status === 200 && res.type === 'basic' && !/\/assets\/audio\/music\//.test(new URL(req.url).pathname)) event.waitUntil(cache.put(req, res.clone()).then(() => trim(cache, DEV_MAX)).catch(() => {}));
     return res;
   } catch (e) {
     const hit = await cache.match(req) || await cache.match(req, { ignoreSearch: true });
@@ -251,7 +261,31 @@ async function stamp(res) {
   let hex = '';
   for (let i = 0; i < 4; i++) hex += d[i].toString(16).padStart(2, '0');
   h.set('x-bn-h', hex);
+  h.set('x-bn-len', String(body.byteLength));
   return new Response(body, { status: res.status, statusText: res.statusText, headers: h });
+}
+// 바이트 상한: 넘으면 음악(assets/audio/music/)부터, 그다음 나머지를 오래된 순으로 지운다
+let trimmingB = null;
+function trimBytes(cache, max) {
+  if (trimmingB) return trimmingB;
+  trimmingB = (async () => {
+    const ents = [];
+    let total = 0;
+    for (const k of await cache.keys()) {
+      const r = await cache.match(k);
+      const n = Number(r && r.headers.get('x-bn-len')) || 0;
+      ents.push([k, n, /\/assets\/audio\/music\//.test(new URL(k.url).pathname)]);
+      total += n;
+    }
+    for (const pass of [true, false]) {
+      for (const [k, n, music] of ents) {
+        if (total <= max) return;
+        if (music !== pass || !n) continue;
+        await cache.delete(k); total -= n;
+      }
+    }
+  })().finally(() => { trimmingB = null; });
+  return trimmingB;
 }
 let trimming = null;
 function trim(cache, max) {

@@ -33,7 +33,9 @@
 //     을 그대로 써서 build-info.js·build.json·index.html·sw.js 가 바이트까지 같다 → APK assets/www 와 dist/web 해시 비교(verify_apk)가 맞는다.
 //  6. sw.js 에 BUILD (캐시 이름 bn-<buildHash>, 미리 받을 목록) 주입. APK 는 실은 웹 빌드가 buildHash 와 같을 때만 downloads/ 에
 //     (latest.json 의 built = APK 를 만든 시각, web = APK 에 실은 웹 빌드). _redirects (/apk, /download → APK).
-//  7. 글꼴 검사, 맵 검사, 크기 보고 (brotli·gzip): 첫 화면 경로, dist/web ≤ 90 MB, APK 입력(dist/web − sw.js − downloads/) ≤ 45 MB.
+//  7. 글꼴 검사, 맵 검사, 크기 보고 (brotli·gzip): 첫 화면 경로, dist/web(소리 제외) ≤ 90 MB, 소리 assets/audio (녹음 음악 ≤ 64 MB, 효과음 ≤ 3 MB),
+//     APK 입력(dist/web − sw.js − downloads/): 그림 단계는 소리를 뺀 크기로 45 MB 기준(넘으면 lo 단계), 소리 포함 APK 는 75 MB — 넘치는 음악은
+//     tools/apk/pack_web.py 가 우선순위 낮은 곡부터 뺀다 (그 곡은 앱에서 합성 음원).
 //  8. dist/deploy/ = Netlify 업로드 묶음: web/ (dist/web 하드 링크) + netlify/functions·lib + package.json(개발 의존성 제외, 시험한 버전 고정) +
 //     package-lock.json (루트 잠금 파일에서 개발 전용 항목을 뺀 것) +
 //     netlify.toml (publish = "web", 빌드 명령 없음). 비밀 파일 검사. 배포 호출은 하지 않는다 (DELIVER-WEB 이 한다) — tools/deploy/README.md
@@ -46,17 +48,22 @@ import { bundleModules, verifyChunks } from './lib/bundle.mjs';
 import { minify } from './lib/minify.mjs';
 
 export const BUDGET = {
-  siteBytes: 90 * MB,        // dist/web (downloads/ 제외) — MASTER_PLAN §1.20 (채색 그림 포함)
-  apkInputBytes: 45 * MB,    // APK 에 들어갈 웹 파일 (dist/web − sw.js − downloads/ − build.json − _redirects)
+  siteBytes: 90 * MB,        // dist/web (downloads/·assets/audio/ 제외) — MASTER_PLAN §1.20 (채색 그림 포함)
+  musicBytes: 64 * MB,       // assets/audio/music/ (녹음 배경 음악 — 서비스 워커가 미리 받지 않는다)
+  sfxBytes: 3 * MB,          // assets/audio/sfx/ (효과음 샘플 m4a + ogg)
+  apkImageBytes: 45 * MB,    // APK 그림 단계 기준: APK 입력에서 소리를 뺀 크기 (넘으면 lo 단계, MASTER_PLAN §1.20)
+  apkInputBytes: 75 * MB,    // APK 에 들어갈 웹 파일 전체 (dist/web − sw.js − downloads/ − build.json − _redirects, 소리 포함)
   criticalBr: 1.6 * MB,      // 첫 화면 경로 brotli (platform §9.1) — 기본 경고, --strict 면 실패
   fileBytes: 25 * MB,        // 파일 하나 (APK 제외)
-  apkBytes: 60 * MB,         // downloads/*.apk 하나 (APK 예산 45 MB 는 APK 담당이 지킨다; 여기서는 비정상 크기만 막는다)
+  apkBytes: 80 * MB,         // downloads/*.apk 하나 (APK 예산 75 MB 는 APK 담당이 지킨다; 여기서는 비정상 크기만 막는다)
 };
 const ROOT_FILES = ['index.html', 'manifest.webmanifest', 'sw.js', 'robots.txt'];
 const COPY_DIRS = ['css', 'assets'];
 // 허용 폴더 안에서도 옮기지 않는 파일 (작업 원본·임시·숨김). 이름은 보고에 남는다.
 const SKIP_FILE = /(^|\/)\.[^/]+$|(^|\/)(Thumbs\.db|desktop\.ini)$|\.(psd|psb|kra|xcf|blend|blend1|ai|sketch|fig|py|pyc|md|log|tmp|bak|orig|swp)$|\.tmp\.\d+\.|~$/i;
 const SKIP_EXACT = new Set(['assets/lo/index.json']);
+// assets/audio/ 에서는 게임이 받는 형식만 (녹음 원본 wav·작업 파일은 옮기지 않는다)
+const AUDIO_OK = /^assets\/audio\/(?:.+\.(m4a|ogg|json)|.*LICENSE[^/]*\.txt)$/;
 // 첫 화면에 필요한 글꼴 (css/style.css 의 기본 글꼴 + ui.js 의 first) — 크기 보고용
 const FIRST_FONTS = ['noto-sans-kr.woff2', 'hahmlet.woff2', 'grenze-gotisch.woff2', 'cinzel.woff2', 'cinzel-decorative-900.woff2', 'bn-num.woff2'];
 
@@ -120,7 +127,7 @@ export async function buildWeb(o = {}) {
     for (const d of COPY_DIRS) {
       for (const rel0 of walk(path.join(SRC, d))) {
         const rel = `${d}/${rel0}`;
-        if (SKIP_EXACT.has(rel) || SKIP_FILE.test(rel)) { if (!SKIP_EXACT.has(rel)) report.skipped.push(rel); continue; }
+        if (SKIP_EXACT.has(rel) || SKIP_FILE.test(rel) || (rel.startsWith('assets/audio/') && !AUDIO_OK.test(rel))) { if (!SKIP_EXACT.has(rel)) report.skipped.push(rel); continue; }
         copy(rel, path.join(SRC, rel));
       }
     }
@@ -441,7 +448,7 @@ function loKeysOf(OUT) {
 function sizeReport(OUT, report, { html, chunkFiles, cssFonts, opts, warn }) {
   const t = Date.now();
   const all = walk(OUT);
-  let site = 0, downloads = 0, apkInput = 0, count = 0;
+  let site = 0, downloads = 0, apkInput = 0, count = 0, music = 0, sfx = 0, audio = 0;
   const byDir = {};
   let jsRaw = 0, jsBr = 0, jsGz = 0;
   for (const rel of all) {
@@ -449,7 +456,9 @@ function sizeReport(OUT, report, { html, chunkFiles, cssFonts, opts, warn }) {
     const top = rel.includes('/') ? rel.split('/').slice(0, rel.startsWith('assets/') ? 2 : 1).join('/') : '(root)';
     byDir[top] = (byDir[top] || 0) + b;
     if (rel.startsWith('downloads/')) { downloads += b; continue; }
-    site += b; count++;
+    count++;
+    if (rel.startsWith('assets/audio/')) { audio += b; if (rel.startsWith('assets/audio/music/')) music += b; else if (rel.startsWith('assets/audio/sfx/')) sfx += b; }
+    else site += b;
     if (!/^(sw\.js|build\.json|_redirects)$/.test(rel)) apkInput += b;
     if (/^src\/.*\.js$/.test(rel)) {
       const s = transferSizes(fs.readFileSync(path.join(OUT, rel)), rel);
@@ -470,33 +479,45 @@ function sizeReport(OUT, report, { html, chunkFiles, cssFonts, opts, warn }) {
     critRaw += s.raw; critBr += s.br;
     critList.push([rel, s.br]);
   }
+  const apkImage = apkInput - audio;   // 그림 단계 기준 (소리 제외)
   report.sizes = {
-    siteBytes: site, siteFiles: count, downloadsBytes: downloads, apkInputBytes: apkInput,
+    siteBytes: site, siteFiles: count, downloadsBytes: downloads, apkInputBytes: apkInput, apkImageBytes: apkImage, audio: { music, sfx, total: audio },
     js: { raw: jsRaw, br: jsBr, gzip: jsGz }, critical: { raw: critRaw, br: critBr, files: critList.sort((a, b) => b[1] - a[1]) },
     byDir: Object.fromEntries(Object.entries(byDir).sort((a, b) => b[1] - a[1])),
   };
   report.budgets = {
     site: { bytes: site, budget: BUDGET.siteBytes, ok: site <= BUDGET.siteBytes },
+    music: { bytes: music, budget: BUDGET.musicBytes, ok: music <= BUDGET.musicBytes },
+    sfx: { bytes: sfx, budget: BUDGET.sfxBytes, ok: sfx <= BUDGET.sfxBytes },
+    apkImage: { bytes: apkImage, budget: BUDGET.apkImageBytes, ok: apkImage <= BUDGET.apkImageBytes },
     apkInput: { bytes: apkInput, budget: BUDGET.apkInputBytes, ok: apkInput <= BUDGET.apkInputBytes },
     criticalBr: { bytes: critBr, budget: BUDGET.criticalBr, ok: critBr <= BUDGET.criticalBr, fatal: !!opts.strict },
   };
-  log(opts, `· 크기: 사이트 ${fmtMB(site)} (${count}개, 예산 ${fmtMB(BUDGET.siteBytes)}), APK 입력 ${fmtMB(apkInput)} (예산 ${fmtMB(BUDGET.apkInputBytes)}), 내려받기 ${fmtMB(downloads)}`);
+  log(opts, `· 크기: 사이트 ${fmtMB(site)} (소리 제외, ${count}개, 예산 ${fmtMB(BUDGET.siteBytes)}), 소리 ${fmtMB(audio)} (음악 ${fmtMB(music)} / 예산 ${fmtMB(BUDGET.musicBytes)}, 효과음 ${fmtMB(sfx)} / ${fmtMB(BUDGET.sfxBytes)}), APK 입력 ${fmtMB(apkInput)} (그림 단계 기준 ${fmtMB(apkImage)} / ${fmtMB(BUDGET.apkImageBytes)}, 전체 예산 ${fmtMB(BUDGET.apkInputBytes)}), 내려받기 ${fmtMB(downloads)}`);
   log(opts, `        JS ${fmtMB(jsRaw)} → brotli ${fmtMB(jsBr)} / gzip ${fmtMB(jsGz)}; 첫 화면 경로 brotli ${fmtMB(critBr)} (예산 ${fmtMB(BUDGET.criticalBr)})`);
   if (!report.budgets.site.ok) throw new BuildError(`dist/web 이 예산을 넘습니다: ${fmtMB(site)} > ${fmtMB(BUDGET.siteBytes)}`);
-  if (!report.budgets.apkInput.ok) {
-    // MASTER_PLAN §1.20: 45 MB 를 넘으면 APK 는 bg/cg/portraits 의 원본 대신 assets/lo 만 싣는다 (APK 담당). 그 경우의 크기도 보고한다.
+  if (!report.budgets.music.ok) throw new BuildError(`녹음 음악(assets/audio/music)이 예산을 넘습니다: ${fmtMB(music)} > ${fmtMB(BUDGET.musicBytes)}`);
+  if (!report.budgets.sfx.ok) throw new BuildError(`효과음 샘플(assets/audio/sfx)이 예산을 넘습니다: ${fmtMB(sfx)} > ${fmtMB(BUDGET.sfxBytes)}`);
+  // MASTER_PLAN §1.20: 소리를 뺀 APK 입력이 45 MB 를 넘으면 APK 는 bg/cg/portraits 의 원본 대신 assets/lo 만 싣는다 (APK 담당). 그 경우의 크기도 보고한다.
+  let lite = apkImage;
+  if (!report.budgets.apkImage.ok) {
     let full = 0;
     for (const rel of all) {
       const m = /^assets\/((?:bg|cg|portraits)\/.+)\.webp$/.exec(rel);
       if (m && fs.existsSync(path.join(OUT, 'assets/lo', m[1] + '.webp'))) full += fs.statSync(path.join(OUT, rel)).size;
     }
-    const lite = apkInput - full;
-    report.budgets.apkLite = { bytes: lite, budget: BUDGET.apkInputBytes, ok: lite <= BUDGET.apkInputBytes, note: 'APK 가 bg/cg/portraits 원본 대신 assets/lo 만 실을 때' };
-    const m = `APK 입력(dist/web 전부)이 ${fmtMB(apkInput)} 로 예산 ${fmtMB(BUDGET.apkInputBytes)} 을 넘습니다 → APK 는 bg/cg/portraits 원본을 빼고 assets/lo 만 실어야 합니다 (그때 ${fmtMB(lite)}, MASTER_PLAN §1.20)`;
+    lite = apkImage - full;
+    report.budgets.apkLite = { bytes: lite, budget: BUDGET.apkImageBytes, ok: lite <= BUDGET.apkImageBytes, note: 'APK 가 bg/cg/portraits 원본 대신 assets/lo 만 실을 때 (소리 제외)' };
+    const m = `APK 입력(소리 제외)이 ${fmtMB(apkImage)} 로 그림 단계 기준 ${fmtMB(BUDGET.apkImageBytes)} 을 넘습니다 → APK 는 bg/cg/portraits 원본을 빼고 assets/lo 만 실어야 합니다 (그때 ${fmtMB(lite)}, MASTER_PLAN §1.20)`;
     if (!report.budgets.apkLite.ok) throw new BuildError(m + ' — 그래도 예산 초과');
     // 정해진 경로라 경고가 아니다: tools/apk/pack_web.py --assets auto 가 알아서 lo 단계를 고른다 (최종 크기는 build_apk.sh 가 서명한 APK 로 확인)
-    log(opts, `        APK 입력 ${fmtMB(apkInput)} > ${fmtMB(BUDGET.apkInputBytes)} → APK 는 lo 단계 (bg/cg/portraits 는 assets/lo 사본만, ${fmtMB(lite)}) — tools/apk/pack_web.py 가 고른다 (MASTER_PLAN §1.20)`);
+    log(opts, `        APK 입력(소리 제외) ${fmtMB(apkImage)} > ${fmtMB(BUDGET.apkImageBytes)} → APK 는 lo 단계 (bg/cg/portraits 는 assets/lo 사본만, ${fmtMB(lite)}) — tools/apk/pack_web.py 가 고른다 (MASTER_PLAN §1.20)`);
   }
+  // 소리 포함 APK: 효과음은 늘 싣고, 음악은 75 MB 안에서 우선순위대로 (넘치는 곡은 앱에서 합성 음원 — pack_web.py)
+  const withAudio = lite + audio;
+  report.budgets.apkAudio = { bytes: withAudio, budget: BUDGET.apkInputBytes, ok: withAudio <= BUDGET.apkInputBytes, musicFits: withAudio <= BUDGET.apkInputBytes, note: '그림 단계 + 소리 전부 (압축 전)' };
+  if (lite + sfx > BUDGET.apkInputBytes) throw new BuildError(`APK 입력(그림 단계 ${fmtMB(lite)} + 효과음 ${fmtMB(sfx)})이 ${fmtMB(BUDGET.apkInputBytes)} 을 넘습니다`);
+  if (!report.budgets.apkAudio.ok) log(opts, `        APK 에 소리를 다 실으면 ${fmtMB(withAudio)} > ${fmtMB(BUDGET.apkInputBytes)} → tools/apk/pack_web.py 가 우선순위 낮은 음악부터 뺀다 (그 곡은 앱에서 합성 음원)`);
   if (!report.budgets.criticalBr.ok) {
     const m = `첫 화면 경로가 brotli ${fmtMB(critBr)} 로 예산 ${fmtMB(BUDGET.criticalBr)} 을 넘습니다 (가장 큰 것: ${critList.slice(0, 3).map(([f, b]) => `${f} ${fmtKB(b)}`).join(', ')})`;
     if (opts.strict) throw new BuildError(m);

@@ -17,8 +17,17 @@
 //  각 정의의 fn(S, H) 는 H = { T, N, FM, ARP, BOOM, CRACKLE, mtof, R } 를 두 번째 인자로 받는다 (SFX_KIT 와 같은 객체).
 //  체감 효과음 예산: 100ms 창에서 시작 10개(보통 8, 낮음 6), 'hit' 재질 레이어는 hit* 7개 이상 재생 중이면 생략 (prio 는 예외).
 //  audio.liveCount(prefix) / audio.stopSfx(name) / audio.has(name) / audio.lead(name) / audio.setQuality(q) / audio.stats
+//
+// 녹음 음원 (audio_rec.js RecBank, 설정 musicSource 'recorded'|'synth' — MASTER_PLAN §1.5):
+//  audio.music(id) 는 assets/audio/music/<id>.m4a 가 있으면 녹음 곡(RecPlayer: AudioBufferSourceNode 고리, 잔향 송신 없음)을,
+//  없거나 받기·풀기 실패·코덱 없음·상한 초과·설정 'synth' 면 합성 트랙(Player)을 튼다. 페이드·덕킹·볼륨·일시정지 의미는 같다.
+//  녹음 곡이 아직 풀리지 않았으면 이전 곡은 곧바로 내리고 최대 REC_WAIT 초 기다린다 (넘으면 이번에는 합성 트랙 — 장면을 막지 않는다).
+//  audio.prefetch(id) 다음 곡 미리 받기 · audio.setMusicSource(v) 엔진 바꾸기 · audio.recStats() 메모리·상태 (QA)
+//  효과음 샘플: SFX 이름에 샘플이 있으면 샘플(+ 합성음 몫 s)으로 — assets/audio/sfx/index.json, 받기 전·실패 시 합성음만.
 import { TRACKS } from '../data/music.js';
 import { FEEL_SFX } from './sfx_feel.js';
+import { RecBank } from './audio_rec.js';
+import { saves } from './save.js';
 
 const LOOKAHEAD = 0.16;          // 스케줄 선행 시간(초)
 const TICK_MS = 25;              // 스케줄러 주기
@@ -28,6 +37,8 @@ const FEEL_WIN = 0.1;            // 체감 효과음 예산 창(초)
 const FEEL_CAP = { high: 10, medium: 8, low: 6 }; // 창당 체감 효과음 시작 상한 (feel §8)
 const HIT_LAYER_MAX = 6;         // hit* 가 이보다 많이 울리면 재질 레이어 생략
 const MAX_MUSIC_VOICES = 90;     // 음악 동시 보이스 안전 상한
+const REC_WAIT = 4;              // 녹음 곡이 풀리기를 기다리는 최대 시간(초) — 넘으면 이번에는 합성 트랙
+const NEXT_GUESS = { title: 'hub', prologue: 'hub', hub: 'worldmap', story: 'hub' }; // 다음에 나올 법한 곡 (미리 받기)
 const E0 = {};
 const STATS0 = Object.freeze({ starts: 0, feel: 0, dropped: 0, skipped: 0 });
 const HAS = Object.prototype.hasOwnProperty; // SFX 조회는 자기 속성만 ('constructor' 등 프로토타입 이름 차단)
@@ -637,6 +648,15 @@ const ARP = (S, w, notes, step, dur, vol, o, at = 0) => notes.forEach((m, i) => 
 const FM = (S, f, ratio, idx, at, dur, vol, o = E0) => T(S, 'sine', f, o.f1 ?? 0, at, dur, vol, { ...o, fm: [ratio, idx, o.fd ?? dur * 0.5] });
 const CRACKLE = (S, at, dur, n, vol, f = 2500) => { for (let i = 0; i < n; i++) N(S, at + R() * dur, 0.012 + R() * 0.02, vol * (0.4 + R() * 0.6), { f: ['bandpass', f * (0.6 + R() * 0.9), 0, 2] }); };
 const BOOM = (S, at, dur, vol, f0 = 90) => { T(S, 'sine', f0, 28, at, dur, vol, { sw: dur * 0.7 }); N(S, at, dur * 1.1, vol * 0.8, { f: ['lowpass', 2600, 160, 0.7] }); };
+// 녹음 샘플 한 번: b = {buf, off(앞 지연 건너뛰기)}, lvl 음량, r 재생 속도 배율 (피치 S.p 와 곱함)
+function playSample(S, b, lvl, r = 1) {
+  const c = S.c, s = c.createBufferSource(), g = c.createGain(), rate = Math.max(0.25, S.p * r);
+  s.buffer = b.buf; s.playbackRate.value = rate; g.gain.value = lvl;
+  s.connect(g); g.connect(S.out); s.start(S.t, b.off);
+  s.onended = () => { s.disconnect(); g.disconnect(); };
+  const d = (b.buf.duration - b.off) / rate;
+  if (d > S.end) S.end = d;
+}
 // fn(S, H) 의 두 번째 인자 — 합성 도우미 묶음 (기존 정의는 무시한다)
 const H = Object.freeze({ T, N, FM, ARP, BOOM, CRACKLE, mtof, R });
 /** 외부 효과음 모듈(audio_companions.js 등)용 합성 도우미: T 톤, N 노이즈, R 난수 (+ FM·ARP·BOOM·CRACKLE·mtof). H 와 같은 객체 */
@@ -1053,6 +1073,7 @@ export class Engine {
   constructor(ctx) {
     const c = this.ctx = ctx;
     this.waves = {}; this.voices = 0; this.live = []; this.lastT = {}; this.lastV = {}; this.players = []; this.compiled = {}; this._curves = {};
+    this.bank = null; // 효과음 샘플 공급자 (RecBank: sample(name) → {bufs, g, s, r} | null). 없으면 합성음만
     // 체감 효과음 예산: 최근 100ms 시작 시각 / 창당 상한 (품질별 10·8·6) / 통계 (starts 전체, feel 체감, dropped 예산 초과, skipped 레이어 생략)
     this.feelT = []; this.feelCap = FEEL_CAP.high; this.stats = { starts: 0, feel: 0, dropped: 0, skipped: 0 };
     const nb = c.createBuffer(1, c.sampleRate * 2, c.sampleRate), nd = nb.getChannelData(0);
@@ -1165,8 +1186,11 @@ export class Engine {
     let wet = null;
     if (def.rev) { wet = c.createGain(); wet.gain.value = def.rev; node.connect(wet); wet.connect(this.sfxRev); }
     const S = { e: this, c, t: now + 0.004 + (o.delay || 0), p: pitch * (1 + (R() * 2 - 1) * (def.vary ?? 0.035)), v: vol * (def.vol ?? 1), out, end: 0 };
+    // 녹음 샘플: 샘플 한 벌(무작위) + 합성음 몫 s (0 = 샘플만)
+    const sm = this.bank ? this.bank.sample(name) : null;
+    if (sm) { playSample(S, sm.bufs.length > 1 ? sm.bufs[(R() * sm.bufs.length) | 0] : sm.bufs[0], vol * sm.g, sm.r); S.v *= sm.s; }
     // 정의(외부 등록 포함)가 도중에 throw 해도 이미 만든 소리는 live 로 추적해 정리·스틸되게 한다
-    try { def.fn(S, H); } finally { this.live.push({ name, st: now, end: now + (o.delay || 0) + S.end + 0.05, out, node, wet }); }
+    try { if (!sm || sm.s > 0) def.fn(S, H); } finally { this.live.push({ name, st: now, end: now + (o.delay || 0) + S.end + 0.05, out, node, wet }); }
     if (def.duck) this.duck(def.duck[0] * Math.min(1, vol), def.duck[1]);
   }
   steal(x, now) { x.stolen = true; x.out.gain.cancelScheduledValues(now); x.out.gain.setTargetAtTime(0, now, 0.012); x.end = Math.min(x.end, now + 0.06); }
@@ -1202,6 +1226,12 @@ export class Engine {
     const comp = this.compile(id);
     if (!comp) return null;
     const p = new Player(this, id, comp, when, fadeIn);
+    this.players.push(p);
+    return p;
+  }
+  /** 녹음 곡 재생 (ent = RecBank 의 풀린 곡, bank = 붙잡기/놓기) */
+  playRec(id, ent, when, fadeIn = 0.02, bank = null) {
+    const p = new RecPlayer(this, id, ent, when, fadeIn, bank);
     this.players.push(p);
     return p;
   }
@@ -1280,6 +1310,40 @@ class Player {
     this.out.disconnect(); this.wet.disconnect(); this.dly.disconnect();
   }
 }
+// 녹음 곡 재생 인스턴스 — Player 와 같은 모양 (id, done, endT, deadAt, schedule, kill, dispose). 잔향·딜레이 송신 없이 musicIn 으로만
+class RecPlayer {
+  constructor(eng, id, ent, when, fadeIn, bank) {
+    const c = eng.ctx;
+    this.eng = eng; this.id = id; this.rec = true; this.ent = ent; this.bank = bank; this.done = false; this.deadAt = 0; this.endT = 0; this.st = when;
+    this.out = c.createGain();
+    const lvl = ent.gain;
+    this.out.gain.setValueAtTime(fadeIn > 0.03 ? 0 : lvl, when);
+    if (fadeIn > 0.03) this.out.gain.linearRampToValueAtTime(lvl, when + fadeIn);
+    this.out.connect(eng.musicIn);
+    const s = this.src = c.createBufferSource();
+    s.buffer = ent.buf;
+    if (ent.loop) { s.loop = true; s.loopStart = ent.ls; s.loopEnd = ent.le; }
+    s.connect(this.out);
+    s.start(when, ent.off);
+    if (!ent.loop) this.endT = when + ent.dur;
+    bank?.ref(ent);
+  }
+  schedule(until) { if (!this.ent.loop && !this.done && until >= this.endT) this.done = true; }
+  kill(fade = 1) {
+    const t = this.eng.ctx.currentTime, f = Math.max(0.02, fade), g = this.out.gain;
+    g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(0, t + f);
+    this.deadAt = t + f + 0.05;
+  }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    try { this.src.stop(); } catch { /* 이미 멈춤 */ }
+    this.src.disconnect(); this.out.disconnect();
+    this.bank?.unref(this.ent);
+    try { this.src.buffer = null; } catch { /* 무시 */ }
+    this.ent = { loop: this.ent.loop }; // 풀린 PCM 을 붙잡지 않는다
+  }
+}
 // 트랙 구조 조회용 (검증 도구)
 export { INST, SFX };
 
@@ -1288,6 +1352,8 @@ class AudioSystem {
   constructor() {
     this.ctx = null; this.eng = null; this.musicVol = 0.6; this.sfxVol = 0.8;
     this.want = null; this.player = null; this.hidden = false; this.timer = 0;
+    // 녹음 음원: rec = 뱅크, pend = 풀리기를 기다리는 곡 {id, at, fade, cut(이전 곡을 내렸는가)}, _src = setMusicSource 로 정한 값 (없으면 설정)
+    this.rec = new RecBank(); this.pend = null; this._src = null; this._trimT = 0;
     // iOS 사파리 등: touchend/click 제스처에서만 오디오가 풀리는 환경 대비 (한 번 풀리면 해제)
     if (typeof window !== 'undefined' && window.addEventListener) {
       const evs = ['touchend', 'click', 'keydown', 'pointerup'];
@@ -1305,6 +1371,8 @@ class AudioSystem {
         this.ctx = new AC({ latencyHint: 'interactive' });
         this.eng = new Engine(this.ctx);
         this.eng.setVolumes(this.musicVol, this.sfxVol);
+        this.eng.bank = this.rec; this.rec.attach(this.ctx); // 효과음 샘플 core 묶음 받기 시작
+        if (this.recorded) this.rec.index();
         // iOS 사파리 잠금 해제용 무음 버퍼
         const b = this.ctx.createBuffer(1, 1, 22050), s = this.ctx.createBufferSource(); s.buffer = b; s.connect(this.ctx.destination); s.start(0);
         this.timer = setInterval(() => this._tick(), TICK_MS);
@@ -1319,8 +1387,38 @@ class AudioSystem {
     this.musicVol = m ?? this.musicVol; this.sfxVol = s ?? this.sfxVol;
     this.eng?.setVolumes(this.musicVol, this.sfxVol);
     // 음악 음량 0 → 시퀀서 정지(모바일 CPU 절약), 다시 올리면 원하던 곡 재개
-    if (this.musicVol <= 0.001) { if (this.player) { this.player.kill(0.2); this.player = null; } }
+    if (this.musicVol <= 0.001) { this.pend = null; if (this.player) { this.player.kill(0.2); this.player = null; } }
     else this._sync();
+  }
+  /** 배경 음악 엔진: 설정 musicSource ('recorded' 녹음 | 'synth' 합성). setMusicSource 로 정하면 설정보다 우선 */
+  get musicSource() {
+    if (this._src) return this._src;
+    const st = (typeof window !== 'undefined' && window.__game?.settings) || saves.settings;
+    return st?.musicSource === 'synth' ? 'synth' : 'recorded';
+  }
+  get recorded() { return this.musicSource === 'recorded'; }
+  /** 엔진 바꾸기 ('recorded' | 'synth' | null = 설정을 따름): 지금 곡을 다른 엔진으로 교차 페이드해 다시 튼다 */
+  setMusicSource(v) {
+    const before = this.musicSource;
+    this._src = v === 'recorded' || v === 'synth' ? v : null;
+    if (this.musicSource === before) return;
+    if (this.recorded && this.ctx) this.rec.index();
+    if (this.player && this.want) { this.player.kill(0.6); this.player = null; this.fade = 0.6; }
+    this.pend = null;
+    this._sync();
+  }
+  /** 다음에 나올 법한 곡을 미리 받는다 (녹음 음원일 때만, 장면을 막지 않는다) */
+  prefetch(id) {
+    if (!id || !this.recorded) return;
+    id = String(id);
+    if (!TRACKS[id] && !this.rec.track(id)) return;
+    if (!this.ctx) { this.rec.warm(id); return; }
+    this.rec.prefetch(id);
+  }
+  /** 녹음 음원 상태 (QA): 뱅크 stats + 엔진·지금 곡 */
+  recStats() {
+    const p = this.player;
+    return { source: this.musicSource, ...this.rec.stats(), player: p ? { id: p.id, rec: !!p.rec } : null, pend: this.pend?.id ?? null };
   }
   sfx(name, opts) {
     if (!this.eng || this.ctx.state !== 'running') return;
@@ -1353,10 +1451,11 @@ class AudioSystem {
     if (!id || !TRACKS[id]) return; // 알 수 없는 곡 → 현재 곡 유지
     if (id === this.want) return;
     this.want = id; this.fade = opts.fade;
+    if (!this.ctx && this.recorded) this.rec.warm(id); // 첫 입력 전: 목록과 이 곡을 천천히 받아 둔다
     this._sync();
   }
   stopMusic(fade = 1) {
-    this.want = null;
+    this.want = null; this.pend = null;
     if (this.player) { this.player.kill(fade); this.player = null; }
   }
   duck(amount = 0.5, time = 0.5) { this.eng?.duck(amount, time); }
@@ -1365,20 +1464,49 @@ class AudioSystem {
     if (!this.eng || this.ctx.state !== 'running') return;
     if (!this.want || this.musicVol <= 0.001) return;
     if (this.player && this.player.id === this.want) return;
+    const want = this.want, now = this.ctx.currentTime;
+    // 녹음 곡: 풀려 있으면 바로, 아니면 이전 곡을 지금 내리고 받기·풀기를 기다린다 (REC_WAIT 넘으면 이번에는 합성 트랙)
+    let ent = null;
+    if (this.recorded && this.rec.usable(want)) {
+      ent = this.rec.entry(want);
+      if (!ent) {
+        if (this.pend?.id !== want) {
+          const f = this.fade, prev = this.player;
+          const pd = this.pend = { id: want, at: now, fade: f, cut: !!prev, busy: true };
+          if (prev) { prev.kill(f ?? 0.6); this.player = null; }
+          this.fade = undefined;
+          const go = () => { pd.busy = false; if (this.pend === pd) this._sync(); };
+          this.rec.load(want).then(go, go);
+        }
+        if (now - this.pend.at < REC_WAIT && this.pend.busy) return;
+      }
+    }
     // 전환: 기본은 이전 곡을 빠르게 페이드아웃하고 새 곡은 첫 박부터 온전히 (아케이드식 컷),
     //       fade 를 지정하면 그 시간만큼 교차 페이드
-    const now = this.ctx.currentTime, f = this.fade, prev = this.player;
+    const pd = this.pend?.id === want ? this.pend : null;
+    const f = pd ? pd.fade : this.fade, prev = this.player;
     let at = now + 0.06, fin = 0.02;
     if (prev) { prev.kill(f ?? 0.6); if (f == null) at = now + 0.25; else fin = f * 0.7; }
-    try { this.player = this.eng.playTrack(this.want, at, fin); }
+    else if (pd?.cut) { if (f == null) at = Math.max(at, pd.at + 0.25); else fin = Math.max(0.02, f * 0.7 - (now - pd.at)); }
+    try { this.player = ent ? this.eng.playRec(want, ent, at, fin, this.rec) : this.eng.playTrack(want, at, fin); }
     catch { this.player = null; }
-    this.fade = undefined;
+    this.fade = undefined; this.pend = null;
+    if (this.recorded && NEXT_GUESS[want]) this.rec.prefetch(NEXT_GUESS[want]);
     this._tick();
   }
   _tick() {
     if (!this.eng || this.ctx.state !== 'running') return;
     try { this.eng.tick(this.ctx.currentTime + LOOKAHEAD); } catch { /* 스케줄 오류 무시 */ }
     if (this.player && this.player.done && this.ctx.currentTime > this.player.endT) { if (this.want === this.player.id) this.want = null; this.player = null; }
+    const now = this.ctx.currentTime;
+    if (this.pend && now - this.pend.at >= REC_WAIT) this._sync();
+    // 풀린 녹음 곡 정리 (1초마다): 지금 곡·기다리는 곡·다음 곡만 남긴다 (페이드아웃 중인 곡은 재생기가 붙잡고 있다)
+    if (now - this._trimT > 1) {
+      this._trimT = now;
+      const keep = new Set();
+      for (const id of [this.want, this.pend?.id]) if (id) keep.add(this.rec.resolve(id));
+      if (this.rec.dec.size) this.rec.trim(keep);
+    }
   }
 }
 export const audio = new AudioSystem();
