@@ -24,10 +24,10 @@ import {
 } from './common.js';
 import { startArcade, ARCADE_MODES } from './arcade.js';
 
-const WNAME = { whip: '채찍', sword: '장검', greatsword: '대검', dagger: '쌍단검', gun: '쌍권총', staff: '지팡이·성서' };
+const WNAME = { whip: '채찍', sword: '장검', greatsword: '대검', dagger: '쌍단검', gun: '쌍권총', staff: '지팡이·성서', spear: '장창' };
 const DNAME = { dash: '돌진 대시', mist: '안개 변신', roll: '구르기', blink: '순간이동' };
-const STAGE_BG = { kael: 'bg/s03_gate', sera: 'bg/s11_chapel', victor: 'bg/s01_village', bran: 'bg/s04_hall', lia: 'bg/s09_clocktower', azel: 'bg/s12_throne' };
-const ACCENT = { kael: '#e8c872', sera: '#fff2b0', victor: '#ffb060', bran: '#8ab0ff', lia: '#ff4a6a', azel: '#ff2a4a' };
+const STAGE_BG = { kael: 'bg/s03_gate', sera: 'bg/s11_chapel', victor: 'bg/s01_village', bran: 'bg/s04_hall', lia: 'bg/s09_clocktower', azel: 'bg/s12_throne', isolde: 'bg/s17_sky' };
+const ACCENT = { kael: '#e8c872', sera: '#fff2b0', victor: '#ffb060', bran: '#8ab0ff', lia: '#ff4a6a', azel: '#ff2a4a', isolde: '#6ad0e0' };
 
 export class CharSelectScene extends Scene {
   constructor(g) { super(g); this.uiScale = true; this.hidePad = true; }

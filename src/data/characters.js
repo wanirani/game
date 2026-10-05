@@ -1,4 +1,4 @@
-// 플레이어블 캐릭터 7인 (이졸데는 통합 전까지 CHAR_ORDER 밖)
+// 플레이어블 캐릭터 7인 (CHAR_ORDER = 선택 화면·파티·아케이드·서버 목록 순서)
 // base: Lv1 능력치, growth: 레벨당 성장치
 // move: speed(px/s), jump(초기 점프 속도), airJumps(기본 공중 점프 수), dash('dash'|'mist'|'roll'|'blink'), dashSpeed
 // size: 피격 판정 크기 / look: 외형 (render/hero.js 가 해석) / weaponType: 기본 무기 계열
@@ -113,7 +113,7 @@ export const CHARACTERS = {
     stars: { 공격: 4, 방어: 3, 속도: 4, 마법: 4, 사거리: 3 },
     unlock: { type: 'story', flag: 'boss_b_grimoire', text: '6장 「금단의 대도서관」 클리어 시 합류' }, portrait: 'portraits/azel',
   },
-  // 7번째 영웅 (docs/specs/hero7.md). 선택 화면·파티·아케이드 목록(CHAR_ORDER)에는 통합 때 들어간다 — 그 전에는 ?char=isolde 로만
+  // 7번째 영웅 (docs/specs/hero7.md). 2부 14장 아웃트로(story_p2.js s14_outro)에서 합류 — 플래그 isolde_joined + 메타 unlockedChars
   isolde: {
     id: 'isolde', name: '이졸데 드라켄', eng: 'ISOLDE DRACHEN', title: '용창 기사',
     desc: '균열 너머에서 무너진 하늘 기사단의 마지막 용기사. 용을 균열에 빼앗기고도 창만은 놓지 않았다. 긴 창의 사거리와 누구보다 높은 도약, 하늘에서 내리꽂는 급강하 찌르기가 장기다.',
@@ -134,4 +134,4 @@ export const CHARACTERS = {
     unlock: { type: 'story', flag: 'isolde_joined', text: '2부 14장 「거울의 성」 클리어 시 합류' }, portrait: 'portraits/isolde',
   },
 };
-export const CHAR_ORDER = ['kael', 'sera', 'victor', 'bran', 'lia', 'azel'];
+export const CHAR_ORDER = ['kael', 'sera', 'victor', 'bran', 'lia', 'azel', 'isolde'];

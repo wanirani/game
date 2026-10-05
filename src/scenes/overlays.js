@@ -248,7 +248,7 @@ const UC = {
 const ANG_BAND = -6 * DEG, ANG_STRIPE = -8.5 * DEG;
 const COS_B = Math.cos(ANG_BAND), SIN_B = Math.abs(Math.sin(ANG_BAND));
 /** 초상화 얼굴 위치 (0..1 이미지 좌표; assets/portraits/<id>.webp 800×1134 기준) */
-const FACE = { kael: [0.37, 0.2], sera: [0.41, 0.21], victor: [0.5, 0.25], bran: [0.48, 0.2], lia: [0.44, 0.22], azel: [0.37, 0.22] };
+const FACE = { kael: [0.37, 0.2], sera: [0.41, 0.21], victor: [0.5, 0.25], bran: [0.48, 0.2], lia: [0.44, 0.22], azel: [0.37, 0.22], isolde: [0.5, 0.23] };
 const NAME_PX = 50;
 
 // 한 번 굽는 공용 그림: 망점 타일, 왼쪽 어둠 띠 (스테이지에 들어설 때 prepareUltCutin 이 만든다)

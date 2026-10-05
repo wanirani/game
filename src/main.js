@@ -111,7 +111,7 @@ async function boot() {
   await afterFrames(2, 200);
   game.loadScenes(); // 타이틀: 첫 화면이 보인 뒤 나머지 장면을 받는다 (그 전에 다른 장면으로 가면 그때 이미 시작했다)
   // 영웅 초상화는 나머지 장면 뒤에 받는다 (부팅과 대역폭을 다투지 않고 페이지 load 를 늦추지 않게)
-  const later = () => assets.preload(['portraits/kael', 'portraits/sera', 'portraits/victor', 'portraits/bran', 'portraits/lia', 'portraits/azel']);
+  const later = () => assets.preload(['portraits/kael', 'portraits/sera', 'portraits/victor', 'portraits/bran', 'portraits/lia', 'portraits/azel', 'portraits/isolde']);
   const afterLoad = new Promise((r) => (document.readyState === 'complete' ? r() : window.addEventListener('load', () => r(), { once: true })));
   Promise.all([afterLoad, game.whenScenes()]).then(() => setTimeout(later, 0));
   // 각성 감독(lazy 조각)도 한가할 때 미리 받는다 (FIX-ENGINE 요청 #386: loadAwakenDirectors 는 멱등, 스테이지 입장 때도 받는다)
