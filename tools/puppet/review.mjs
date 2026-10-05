@@ -14,7 +14,8 @@ const KCLS = ['kael_hunter', 'kael_crusader', 'kael_stalker', 'kael_templar', 'k
 const WT = ['whip', 'sword', 'greatsword', 'dagger', 'gun', 'staff'];
 const MK = { whip: ['g0', 'g1', 'g2', 'g3', 'a0', 'a1', 'up', 'down', 'crouch', 'dash', 'charge'], sword: ['g0', 'g1', 'g2', 'g3', 'a0', 'a1', 'a2', 'up', 'down', 'crouch', 'dash', 'charge'],
   greatsword: ['g0', 'g1', 'g2', 'a0', 'up', 'down', 'crouch', 'dash', 'charge'], dagger: ['g0', 'g1', 'g3', 'g4', 'a0', 'a1', 'a2', 'up', 'down', 'crouch', 'dash'],
-  gun: ['g0', 'g1', 'g3', 'a0', 'a1', 'up', 'down', 'crouch', 'dash'], staff: ['g0', 'g1', 'g2', 'a0', 'up', 'down', 'crouch', 'dash', 'charge'] };
+  gun: ['g0', 'g1', 'g3', 'a0', 'a1', 'up', 'down', 'crouch', 'dash'], staff: ['g0', 'g1', 'g2', 'a0', 'up', 'down', 'crouch', 'dash', 'charge'],
+  spear: ['g0', 'g1', 'g2', 'g3', 'a0', 'a1', 'up', 'down', 'crouch', 'dash', 'charge'] };
 const FR = [0.6, 1.02, 1.5, 1.98, 2.4];
 const ANIMS = [
   ['idle', {}], ['run', { anim: 'run', vx: 280, animate: 1 }], ['jump', { anim: 'jump', vy: -600, onGround: false }], ['fall', { anim: 'fall', vy: 500, onGround: false }],
@@ -27,8 +28,9 @@ const ANIMS = [
 function preset(p) {
   const [kind, a, b] = p.split(':');
   const list = [];
-  if (kind === 'atk') for (const mk of MK[b]) for (const f of FR) list.push({ cls: a, wt: b, mk, frac: f, label: `${a.slice(5)} ${b} ${mk} f${f}` });
-  if (kind === 'anims') for (const [n, o] of ANIMS) list.push({ cls: a, ...o, label: `${a.slice(5)} ${n}` });
+  const ch = a && a.includes('_') ? a.split('_')[0] : undefined;   // 직업 id 접두어 = 캐릭터 id (kael_hunter → kael, isolde_lancer → isolde)
+  if (kind === 'atk') for (const mk of MK[b]) for (const f of FR) list.push({ char: ch, cls: a, wt: b, mk, frac: f, label: `${a.split('_').slice(1).join('_')} ${b} ${mk} f${f}` });
+  if (kind === 'anims') for (const [n, o] of ANIMS) list.push({ char: ch, cls: a, ...o, label: `${a.split('_').slice(1).join('_')} ${n}` });
   if (kind === 'all') for (const cls of KCLS) for (const wt of WT) for (const mk of MK[wt]) for (const f of FR) list.push({ cls, wt, mk, frac: f, noPng: true, noHoles: true, warm: 20, label: `${cls.slice(5)} ${wt} ${mk} f${f}` });
   if (kind === 'allanims') for (const cls of KCLS) for (const [n, o] of ANIMS) for (const wt of (b ? [b] : ['whip'])) list.push({ cls, wt, ...o, noPng: !a || a === '-' ? false : true, label: `${cls.slice(5)} ${wt} ${n}` });
   return list;
@@ -50,7 +52,7 @@ for (const s of plan) {
   const r = await page.evaluate((s) => window.__api.render(s), s);
   const name = String(i).padStart(3, '0') + '_' + (s.label || 'cell').replace(/[^a-z0-9._-]+/gi, '_');
   if (r.url) fs.writeFileSync(path.join(outDir, name + '.png'), Buffer.from(r.url.split(',')[1], 'base64'));
-  report.push({ i, name, label: s.label, spec: s, an: r.an, joints: r.joints, ms: +r.ms.toFixed(3), fy: r.fy, fx: r.fx, sc: r.sc, pose: r.pose });
+  report.push({ i, name, label: s.label, spec: s, an: r.an, joints: r.joints, ms: +r.ms.toFixed(3), fy: r.fy, fx: r.fx, sc: r.sc, pose: r.pose, grip2: r.grip2 });
   i++;
 }
 fs.writeFileSync(path.join(outDir, 'report.json'), JSON.stringify(report, null, 1));

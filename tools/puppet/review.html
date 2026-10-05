@@ -210,7 +210,10 @@ async function render(s) {
   if (s.label) { ctx.fillStyle = '#fff'; ctx.font = '13px sans-serif'; ctx.fillText(s.label, 6, 16); }
   const url = s.noPng ? null : cv.toDataURL('image/png');
   const P = e.rig.P;
-  return { url, an, joints, ms, anim: e.anim, moveT: e.moveT, fy, fx, sc, pose: P ? { py: P.py, rot: P.rot, lean: P.lean } : null };
+  // 양손 무기(P.two): 먼 손(h2)이 무기 축(h1 에서 P.w1 방향) 위에 있는가 — perp = 축에서 벗어난 거리, along = 축을 따라 손잡이에서 (논리 px). 창(hero7) 먼 주먹 검사
+  let grip2 = null;
+  if (P && P.two && !s.yaw) { const SK = _debugHost().SK, dx = SK.h2x - SK.h1x, dy = SK.h2y - SK.h1y, c = Math.cos(P.w1), si = Math.sin(P.w1); grip2 = { perp: +Math.abs(dx * si - dy * c).toFixed(2), along: +(dx * c + dy * si).toFixed(2) }; }
+  return { url, an, joints, ms, anim: e.anim, moveT: e.moveT, fy, fx, sc, pose: P ? { py: P.py, rot: P.rot, lean: P.lean } : null, grip2 };
 }
 window.__api = { render, lookOf, moveOf, MOVESETS, CLASSES, CHARACTERS, HERO_DRAW_SCALE, preloadPuppet, puppetStatus };
 window.__ready = true;
