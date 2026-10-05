@@ -72,4 +72,5 @@
 | 아케이드 | `BOSS_ORDER` 끝 b_argen (`STORY_BOSSES = 20`), 코스 5 '이계편 · 외전'(14장~외전, 8연전) · 6 '전 보스 연속 21연전' (`ex: true`). `exKnown(game)` = 코나미 · 2부 엔딩 본 적 · 슬롯 외전 해금 — 외전 코스·외전 연습 순위표·서바이벌 보스 웨이브(`arenaBosses(p2, ex)`)·무한의 탑 무작위 구간(`TowerPlanner` `lateBosses`, 41층 이후 → 첫 후보 45층)을 연다. 연습 목록은 슬롯 해금 그대로 |
 | 서버 | `gamedata.mts` `STAGE_LEVELS.s21 = 70`(→ `practice:s21:*` 보드), `P2_STAGES` + s21, `SIDE_STAGES`, `DAILY_STAGE_IDS`(외전 제외 — 일일 도전 순서·이미 정해진 날짜의 도전 그대로), `COURSE_COUNT = 7`; `runs.mts` 일일 도전이 `DAILY_STAGE_IDS` 를 쓴다. `validate.mts`·`online.mts` 는 바꿀 것 없음 (스테이지·보스 목록을 보지 않는다) |
 | 시험 | `tools/integration.mjs` s21 · s21_boss, `test_part2 --static` 외전 검사, `test_companion_state` 아르겐 행·범위, `test_companions` recruit 7, `test_mount` `ex_mt_argen`, `test_tower` lateBosses, `tools/online/test_online.mjs` STAGE_IDS 21 · 일일 외전 제외 · 코스 6/연습 s21 보드 |
-| 예산 | 새 그림 없음 (APK lo 그림 단계는 아르겐 채색 뒤 그대로 — 빌드 보고서 수치는 통합 보고 참고) |
+| 예산 | 새 그림 없음. 그래도 APK lo 그림 단계는 **47,202,026 B (45.02 MB) / 45.00 MB — 16,106 B 넘침** (EX-BOSS 뒤 ≈44.994 MB; 늘어난 것은 JS 약 22 KB — 대본·코드). 기준은 올리지 않았다 → 리드 결정 대기 (`/tmp/claude-0/plan/ex_requests.md`: 그림 변화 없는 PNG 무손실 재압축이면 −24.6 KB) |
+| 도구 | `tools/balance.mjs` 끝 레벨 판정은 외전 앞(s20)에서 (s21 행은 정보) |
