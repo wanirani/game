@@ -34,8 +34,8 @@ export const RARITIES = [
 ];
 const RAR_W = [620, 260, 90, 26, 5, 0.6];
 
-export const WTYPES = ['whip', 'sword', 'greatsword', 'dagger', 'gun', 'staff'];
-export const WTYPE_NAMES = { whip: '채찍', sword: '장검', greatsword: '대검', dagger: '단검', gun: '총', staff: '지팡이' };
+export const WTYPES = ['whip', 'sword', 'greatsword', 'dagger', 'gun', 'staff', 'spear'];
+export const WTYPE_NAMES = { whip: '채찍', sword: '장검', greatsword: '대검', dagger: '단검', gun: '총', staff: '지팡이', spear: '창' };
 export const EQUIP_BASE_SLOTS = ['weapon', 'head', 'body', 'cloak', 'acc'];
 export const SLOT_LABELS = { weapon: '무기', head: '머리 방어구', body: '갑옷', cloak: '망토', acc: '장신구', consumable: '소모품', material: '재료', key: '중요 물품' };
 export const ELEMENT_LABELS = { fire: '화염', ice: '냉기', holy: '신성', dark: '암흑', thunder: '번개' };
@@ -75,7 +75,7 @@ function def(b) {
 const r0 = (v) => Math.max(1, Math.round(v));
 function mergeStats(a, b) { for (const k in b || {}) a[k] = (a[k] ?? 0) + b[k]; return a; }
 
-// ── 무기: 6계열 × 14종 (단계당 2종: a=표준, b=상위 변형; 13~14 = 7단계, 2부) ──
+// ── 무기: 7계열 × 14종 (단계당 2종: a=표준, b=상위 변형; 13~14 = 7단계, 2부) ──
 const T_ATK = [8, 17, 29, 44, 62, 84, 110];
 const T_WPRICE = [120, 480, 1300, 3000, 6400, 13000, 26000];
 const W_MUL = {
@@ -85,6 +85,7 @@ const W_MUL = {
   dagger: { atk: 0.76, crit: [3, 4, 5, 6, 7, 8, 9] },
   gun: { atk: 0.88, crit: [2, 3, 3, 4, 4, 5, 5] },
   staff: { atk: 0.5, mag: 1.05 },
+  spear: { atk: 1.06, crit: [1, 1, 2, 2, 3, 3, 4] },   // 채찍만큼 긴 사거리 · 장검과 대검 사이의 위력
 };
 // [이름, 속성, 추가 능력치, 색(외형), 설명]
 const WEAPON_TABLE = {
@@ -183,6 +184,22 @@ const WEAPON_TABLE = {
     ['천상의 성전', null, { mpRegen: 1, skillDmg: 12, res: 8 }, null, '천사의 깃펜으로 쓰였다는 성전. 책장을 넘기면 찬송이 들려온다.'],
     ['산호 성장(聖杖)', 'holy', { mp: 30, mpRegen: 1 }, null, '가라앉은 성소의 사제들이 들던 산호 지팡이. 물속에서도 기도가 닿는다.'],
     ['공허의 지팡이', 'dark', { skillDmg: 14 }, null, '공허의 조각을 박은 지팡이. 들여다보면 끝없이 빨려 든다.'],
+  ],
+  spear: [
+    ['물푸레 창', null, {}, null, '물푸레나무 자루에 쇠 창날을 박은 보병의 창. 길고 곧아서 거리를 재기 좋다.'],
+    ['견습 기사의 창', null, { agi: 2 }, null, '하늘 기사단 견습생이 처음 받는 창. 자루에 날개 문장이 낙인되어 있다.'],
+    ['강철 장창', null, { critDmg: 6 }, null, '두 사람 키만 한 강철 장창. 달려드는 기병도 창끝 하나로 멈춰 세운다.'],
+    ['날개 달린 사냥창', null, { crit: 3 }, null, '창날 밑에 날개 모양 귀가 달린 사냥창. 꿰뚫린 짐승이 자루를 타고 올라오지 못한다.'],
+    ['미늘창', null, { critDmg: 10, hp: 10 }, null, '도끼날과 갈고리를 함께 단 장병기. 베고, 찍고, 끌어내린다.'],
+    ['불꽃 혀의 창', 'fire', {}, '#f0a070', '용광로의 숨결을 머금은 창날. 찌른 상처가 안에서부터 타들어 간다.'],
+    ['근위대 파르티잔', null, { def: 4, hp: 20 }, null, '양옆으로 곁날이 솟은 근위대의 창. 성문 앞을 지키던 이들의 무기다.'],
+    ['뇌명의 투창', 'thunder', { atkSpd: 4 }, '#d8e8ff', '하늘 기사단의 투창을 장창으로 다시 벼린 것. 휘두를 때마다 푸른 불꽃이 튄다.'],
+    ['서리 송곳창', 'ice', {}, '#bfe8ff', '만년빙을 깎아 창날로 쓴 창. 찌른 자리에서 서리꽃이 번진다.'],
+    ['성광의 창', 'holy', { res: 6 }, null, '대성당 종탑의 성구를 녹여 벼렸다는 창. 어둠 속에서도 창끝이 희게 빛난다.'],
+    ['흑룡의 송곳니', 'dark', { lifesteal: 2 }, null, '균열 너머 흑룡의 송곳니를 창날로 박았다. 찌를 때마다 검은 불꽃이 상처를 핥는다.'],
+    ['용기사의 장창', null, { crit: 6, critDmg: 12, reach: 8 }, '#e8f4ff', '하늘 기사단 단장이 들던 창. 내리꽂은 자리에 용의 발톱 자국이 남는다.'],
+    ['균열의 창', 'dark', { crit: 6 }, '#cfc0e8', '공허의 균열에서 건져 낸 창. 창끝이 지나간 자리가 한동안 찢어진 채로 남는다.'],
+    ['폭풍 기사의 창', 'thunder', { reach: 10, atkSpd: 6 }, '#bfe0ff', '하늘 왕국 폭풍 기사단의 마지막 창. 하늘을 향해 들면 구름이 먼저 갈라진다.'],
   ],
 };
 for (const type of WTYPES) {
@@ -389,6 +406,9 @@ const UNIQUE_LIST = [
   { id: 'u_seraphim', name: '대천사의 홀 세라핌', slot: 'weapon', wtype: 'staff', tier: 6, icon: 'staff_5', lvReq: 42, rarity: 5, mythic: true,
     stats: { atk: 40, mag: 116, holy: 35, skillDmg: 20, mpRegen: 1.5 }, element: 'holy', visual: { style: 5, glow: '#fff2b0' },
     effect: '여섯 날개의 축복 — 스킬 피해 +20%, MP 재생 +1.5/초', desc: '최상급 천사 세라핌의 깃털이 감긴 홀. 들어 올리면 여섯 날개의 환영이 펼쳐진다.' },
+  { id: 'u_gungnir', name: '신창 궁니르', slot: 'weapon', wtype: 'spear', tier: 6, icon: 'spear_5', lvReq: 42, rarity: 5, mythic: true,
+    stats: { atk: 108, thunder: 30, reach: 10, crit: 6 }, element: 'thunder', visual: { style: 5, glow: '#bfe0ff' },
+    effect: '빗나가지 않는 창 — 번개 피해 +30%, 공격 범위 +10%', desc: '던지면 반드시 과녁을 꿰뚫고 주인의 손으로 돌아온다는 신의 창. 자루에 새긴 룬이 천둥처럼 웅웅 운다.' },
 
   // ── 2부 보스 고유 (7단계, world2 §7.5) ──
   { id: 'u_narkissa', name: '만경의 홀 나르키사', slot: 'weapon', wtype: 'staff', tier: 7, icon: 'staff_7', lvReq: 48, rarity: 5, boss: 'b_narkissa',
@@ -440,6 +460,9 @@ const UNIQUE_LIST = [
   { id: 'u_dawn_staff', name: '새벽의 홀 에오스', slot: 'weapon', wtype: 'staff', tier: 7, icon: 'staff_7', lvReq: 52, rarity: 5, mythic: true,
     stats: { atk: 75, mag: 220, holy: 40, skillDmg: 25, mpRegen: 2 }, element: 'holy', visual: { style: 6, glow: '#fff2b0', rift: true },
     effect: '여명의 여신 — 스킬 피해 +25%, MP 재생 +2/초', desc: '새벽 여신의 이름을 딴 홀. 들어 올리면 공허 한가운데서도 해가 뜬다.' },
+  { id: 'u_dawn_spear', name: '여명창 헬리오스', slot: 'weapon', wtype: 'spear', tier: 7, icon: 'spear_7', lvReq: 52, rarity: 5, mythic: true,
+    stats: { atk: 200, holy: 35, reach: 12, crit: 8 }, element: 'holy', visual: { style: 6, glow: '#fff2b0', rift: true },
+    effect: '하늘을 가르는 첫 햇살 — 신성 피해 +35%, 공격 범위 +12%', desc: '새벽 하늘을 처음 가른 햇살을 창날로 벼렸다. 내리꽂는 자리마다 동이 튼다.' },
 ];
 const U_PRICE = [2000, 5000, 12000, 25000, 50000, 90000, 150000];
 for (const u of UNIQUE_LIST) def({ ...u, unique: true, price: U_PRICE[u.tier - 1] * (u.rarity >= 5 ? 1.5 : 1) });

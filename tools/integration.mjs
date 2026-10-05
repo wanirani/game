@@ -24,6 +24,8 @@ const CASES = [
   // 부하가 큰 기계에서도 고정 시간 대기에 기대지 않는다 (2부 보스방은 입구에서 경기장까지 15칸).
   ...STAGES.map((s) => ({ id: s + '_boss', url: `index.html?scene=stage&stage=${s}&room=boss`, boss: true, steps: 'wait:2.5,rightboss:8,intro:25,wait:1,shot,attack:0.2,attack:0.2,attack:0.2,wait:1,shot' })),
   { id: 'menu', url: 'index.html?scene=stage&stage=s02', steps: 'wait:2.5,menu:0.1,wait:0.5,down:0.1,enter:0.1,wait:1,shot,KeyE:0.1,wait:0.4,shot,KeyE:0.1,wait:0.4,shot,KeyE:0.1,wait:0.4,shot,KeyE:0.1,wait:0.4,shot' },
+  // 무한의 탑: 1층 전투 → (시험 훅 debugKillAll) 층 돌파 → 출구 (데스크톱 ▲, 휴대폰 가만히 서 있기) → 2층. towerfloor:N = 최대 N초
+  { id: 'tower', url: 'index.html?scene=tower&seed=4242&preset=3&diff=normal', steps: 'wait:1.5,towerfloor:40,shot' },
 ];
 if (args.list) { console.log(CASES.map((c) => c.id).join(' ')); process.exit(0); }
 const only = args.only ? String(args.only).split(',').map((s) => s.trim()).filter(Boolean) : null;
@@ -87,6 +89,20 @@ for (const c of CASES) {
           await page.waitForTimeout(120);
         }
         await page.keyboard.up(KEY.right); await page.waitForTimeout(40);
+        continue;
+      }
+      if (k === 'towerfloor') {
+        // 무한의 탑: 1층 적이 나오면 모두 쓰러뜨리고, 출구가 열리면 데스크톱은 ▲, 휴대폰(--mobile)은 출구 위에 가만히 서서 2층으로
+        const t0 = Date.now();
+        let st = null, killed = false, upT = 0;
+        while (Date.now() - t0 < Number(d) * 1000) {
+          st = await page.evaluate(() => { const g = window.__game, t = g?.scenes?.find((s) => s.name === 'tower'); return { top: g?.top?.name, phase: t?.phase, floor: t?.floor, near: !!t?.gate?.near, fade: g?.fade?.a ?? 0, foes: t?.world?.enemies?.().length ?? -1 }; });
+          if (st.floor === 2 && st.phase === 'enter' && st.fade < 0.05) { st.ok = true; break; }
+          if (st.top === 'tower' && st.phase === 'fight' && st.foes > 0 && !killed) { killed = true; await page.evaluate(() => window.__game.top.debugKillAll()); }
+          if (st.top === 'tower' && st.phase === 'gate' && st.near && !mobile && Date.now() - upT > 600) { upT = Date.now(); await page.keyboard.down(KEY.up); await page.waitForTimeout(120); await page.keyboard.up(KEY.up); }
+          await page.waitForTimeout(150);
+        }
+        if (!st?.ok) errs.push(`NOFLOOR2 ${d}초 안에 2층으로 가지 못함 (${JSON.stringify(st)})`);
         continue;
       }
       if (k === 'intro') {

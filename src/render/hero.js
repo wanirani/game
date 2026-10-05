@@ -15,7 +15,7 @@ import { VerletChain } from '../core/physics.js';
 import { TAU, clamp, lerp, ease } from '../core/math.js';
 import {
   G, sh, mx, ra, F, capsule, grad, fillGrad, outline, ellipse, glow, ribbonPath, smoothClosed, WS, h01, group, fl,
-  EL_COL, weaponReach, drawWeapon, drawLash, drawWhipCoil, drawWing, drawAuraMotes, drawMagicCircle, drawHalo, olc, SPEAR_BUTT,
+  EL_COL, weaponReach, drawWeapon, drawLash, drawWhipCoil, drawWing, drawAuraMotes, drawMagicCircle, drawHalo, olc,
 } from './hero_parts.js';
 import * as PUP from './hero_puppet.js';
 import { NPCS } from '../data/npcs.js';
@@ -1312,6 +1312,30 @@ function drawHeadgear(K, E) {
       }
       break;
     }
+    case 'winghelm': {   // 날개 장식 투구 (이졸데): 얼굴이 보이는 반투구 + 콧대 가리개 + 옆머리의 은빛 깃 날개
+      const wc = K.armor === 'dark' ? '#5a5060' : K.armor === 'holy' ? '#fff8ec' : '#e8ecf4';
+      const wing = (x, y, k, far) => {
+        for (let i = 0; i < 4; i++) {
+          const a = -2.35 + i * 0.3, L = (9.5 - i * 1.3) * k, ca = Math.cos(a), sa = Math.sin(a), nx = -sa, ny = ca, w = 1.5 * k;
+          c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + ca * L * 0.55 + nx * w, y + sa * L * 0.55 + ny * w, x + ca * L, y + sa * L);
+          c.quadraticCurveTo(x + ca * L * 0.55 - nx * w, y + sa * L * 0.55 - ny * w, x, y); c.closePath();
+          c.fillStyle = grad(x - 6, y - 8, x + 2, y, far ? sh(wc, -0.35) : wc, 0.9); c.fill(); outline(far ? sh(wc, -0.35) : wc, 0.5);
+        }
+      };
+      wing(-2.4, -7.6, 0.85, true);
+      c.beginPath();
+      c.moveTo(7.4, -2.8); c.quadraticCurveTo(7.2, -8.2, 1.2, -9.7); c.quadraticCurveTo(-5.8, -10, -7.9, -4.4);
+      c.quadraticCurveTo(-8.5, 0.6, -6.7, 4.4); c.lineTo(-4.5, 4.0); c.quadraticCurveTo(-5.6, -0.4, -3.4, -3.3);
+      c.quadraticCurveTo(1.2, -4.7, 5.0, -3.5); c.lineTo(5.8, 0.2); c.lineTo(7.2, -0.6); c.closePath();
+      c.fillStyle = grad(-8, -6, 8, 3, hc, 1.1); c.fill(); outline(hc, 0.8);
+      if (!G.tint) {
+        c.strokeStyle = ra('#ffffff', 0.45); c.lineWidth = 0.6; c.beginPath(); c.moveTo(6.2, -5.6); c.quadraticCurveTo(1.4, -9.4, -5.4, -7.0); c.stroke();
+        c.strokeStyle = K.heavy ? K.at : gold; c.lineWidth = 0.75; c.beginPath(); c.moveTo(-3.6, -3.4); c.quadraticCurveTo(1.2, -4.9, 6.6, -3.4); c.stroke();
+        gem(3.0, -5.2, 0.95, K.se);
+      }
+      wing(-4.0, -6.4, 1, false);
+      break;
+    }
     case 'circlet': {
       c.strokeStyle = F(gold); c.lineWidth = 1.1;
       c.beginPath(); c.moveTo(-6.6, -3.2); c.quadraticCurveTo(0, -5.8, 6.4, -3.6); c.stroke();
@@ -1701,7 +1725,7 @@ function drawTrail(E, K, p, mv, which) {
     ext = clamp(need - (K.ua + K.fa + L), 0, 64);
   }
   const Ro = L + ext;
-  const wmax = clamp(Ro * (K.W.type === 'greatsword' ? 0.6 : K.W.type === 'dagger' ? 0.7 : 0.52), 9, 50) * (mv.finisher ? 1.15 : 1);
+  const wmax = clamp(Ro * (K.W.type === 'greatsword' ? 0.6 : K.W.type === 'dagger' ? 0.7 : K.W.type === 'spear' ? 0.38 : 0.52), 9, 50) * (mv.finisher ? 1.15 : 1);
   const n = TN;
   for (let k = 0; k < n; k++) {
     const u = k / (n - 1), tk = lerp(tStart, tEnd, u);
@@ -1752,12 +1776,17 @@ function drawStreak(E, K, p, mv, which) {
   const s = SK, P = E.P;
   const hx = which === 2 ? s.h2x : s.h1x, hy = which === 2 ? s.h2y : s.h1y, w = which === 2 ? P.w2 : P.w1;
   const L = weaponReach(K.W);
-  tx0(P, hx + Math.cos(w) * L * 0.6, hy + Math.sin(w) * L * 0.6); const x0 = TX, y0 = TY;
-  const x1 = (mv.box.x + mv.box.w * reach) / E.hs;
+  tx0(P, hx + Math.cos(w) * L * 0.6, hy + Math.sin(w) * L * 0.6); let x0 = TX, y0 = TY;
+  let x1 = (mv.box.x + mv.box.w * reach) / E.hs;
   if (x1 <= x0 + 4) return;
   const k = 1 - ST.u * 0.7, tc = trailColor(K, mv), hw = mv.finisher || mv.lunge > 300 ? 4.2 : 3;
   const c = G.c;
   c.save(); c.globalCompositeOperation = 'lighter';
+  if (mv.rise) {   // 위로 찌르기(창): 섬광을 판정 상자 가운데로 기울인다 (아래 그리기는 x0 → x1 가로 기준 그대로)
+    const y1 = (mv.box.y + mv.box.h * 0.5) / E.hs, len = Math.hypot(x1 - x0, y1 - y0);
+    c.translate(x0, y0); c.rotate(Math.atan2(y1 - y0, x1 - x0));
+    x0 = 0; y0 = 0; x1 = len;
+  }
   let g = G.lowq ? ra(tc, 0.3 * k) : c.createLinearGradient(x0, 0, x1, 0);
   if (!G.lowq) { g.addColorStop(0, ra(tc, 0)); g.addColorStop(0.25, ra(tc, 0.55 * k)); g.addColorStop(1, ra(tc, 0.1 * k)); }
   c.fillStyle = g; c.beginPath(); c.moveTo(x0, y0 - hw * 0.4); c.quadraticCurveTo(lerp(x0, x1, 0.55), y0 - hw, x1, y0); c.quadraticCurveTo(lerp(x0, x1, 0.55), y0 + hw, x0, y0 + hw * 0.4); c.closePath(); c.fill();
@@ -1769,7 +1798,17 @@ function drawStreak(E, K, p, mv, which) {
   c.beginPath();
   for (let i = 0; i < 3; i++) { const yy = y0 + (i - 1) * (hw + 2.5), xs = lerp(x0, x1, 0.15 + 0.2 * h01(i + Math.floor(ST.t * 60))); c.moveTo(xs, yy); c.lineTo(lerp(xs, x1, 0.7), yy); }
   c.stroke();
-  glow(x1 - 4, y0, 12, tc, 0.55 * k);
+  if (mv.drill) {   // 회전 드릴 찌르기 (창 모아 찌르기): 창끝에서 판정 끝까지 감기는 나선 두 가닥
+    const ph0 = ST.t * 46, amp = hw + 3;
+    c.lineWidth = 1.1;
+    for (const off of [0, Math.PI]) {
+      c.strokeStyle = ra(off ? '#ffffff' : tc, 0.75 * k);
+      c.beginPath();
+      for (let i = 0; i <= 16; i++) { const u = i / 16, x = lerp(x0, x1, u), y = y0 + Math.sin(u * 14 - ph0 + off) * amp * (0.4 + 0.6 * u); i ? c.lineTo(x, y) : c.moveTo(x, y); }
+      c.stroke();
+    }
+  }
+  glow(x1 - 4, y0, mv.drill ? 18 : 12, tc, 0.55 * k);
   c.restore();
 }
 
