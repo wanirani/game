@@ -49,7 +49,7 @@ const PATTERNS = {
 };
 const T48 = () => TILE || 48;
 // ── 몸 지역 좌표 (+x = 얼굴 쪽, y 아래가 양수, 원점 = 발 가운데 바닥) ──
-const UA = 30, FA = 29, TH = 40, SH = 41, DAG = 36;   // 위팔 · 아래팔(주먹까지) · 넓적다리 · 정강이 · 단검 길이
+const UA = 30, FA = 29, TH = 41, SH = 45, TORSO = 43, DAG = 36;   // 위팔 · 아래팔(주먹까지) · 넓적다리 · 정강이(발바닥까지) · 몸통(엉덩이→목) · 단검 — 채색 부품(full_a lps 0.06)의 비례
 const POSE0 = { lean: 0, crouch: 0, kneel: 0, spread: 0, caw: 0, bow: 0, sway: 0 };
 const POSE_RATE = { lean: 9, crouch: 9, kneel: 5, spread: 6, caw: 8, bow: 4, sway: 3 };
 /** 팔 자세 (각 = 몸 지역: 0 앞, π/2 아래) · gn/gf = 주먹에서 단검 방향 (역수 쥐기 ≈2.6 = 칼날이 뒤아래) */
@@ -127,18 +127,18 @@ export class Nemain extends BossC {
     const wk = this.walkK, wp = this.walkPh;
     const kn = clamp(s.kneel, 0, 1), cr = clamp(s.crouch, 0, 1);
     // 엉덩이 · 몸통 기울기 (앞 = +)
-    P.hip.x = -2 - 8 * kn + Math.sin(wp * 2) * 1.5 * wk; P.hip.y = -78 + 16 * cr + 36 * kn + Math.abs(Math.sin(wp)) * 2 * wk;
+    P.hip.x = -2 - 8 * kn + Math.sin(wp * 2) * 1.5 * wk; P.hip.y = -84 + 16 * cr + 40 * kn + Math.abs(Math.sin(wp)) * 2 * wk;
     const ta = 0.05 + 0.24 * s.lean - 0.08 * s.caw + 0.3 * s.bow + 0.12 * kn + Math.sin(t * 1.3) * 0.015 + 0.04 * s.sway;
     P.tA = ta;
-    P.neck.x = P.hip.x + Math.sin(ta) * 50; P.neck.y = P.hip.y - Math.cos(ta) * 50;
+    P.neck.x = P.hip.x + Math.sin(ta) * TORSO; P.neck.y = P.hip.y - Math.cos(ta) * TORSO;
     const ha = ta * 0.5 - 0.42 * s.caw + 0.5 * s.bow;
     P.hA = ha;
-    P.head.x = P.neck.x + 5 + Math.sin(ha) * 12; P.head.y = P.neck.y - 12 - Math.cos(ha) * 2;
+    P.head.x = P.neck.x + 4 + Math.sin(ha) * 12; P.head.y = P.neck.y - 12 + (1 - Math.cos(ha)) * 3;
     const ca = Math.cos(ha), sa = Math.sin(ha);
     P.beak.x = P.head.x + 24 * ca + 6 * sa; P.beak.y = P.head.y + 24 * sa - 6 * ca + 8;
     P.eye.x = P.head.x + 7 * ca + 4 * sa; P.eye.y = P.head.y + 7 * sa - 4 * ca;
     // 어깨 (가까운 = 앞쪽 약간, 먼 = 뒤)
-    P.shN.x = lerp(P.hip.x, P.neck.x, 0.86) + 3; P.shN.y = lerp(P.hip.y, P.neck.y, 0.86) + 2;
+    P.shN.x = lerp(P.hip.x, P.neck.x, 0.78) + 1; P.shN.y = lerp(P.hip.y, P.neck.y, 0.78) + 1;
     P.shF.x = P.shN.x - 7; P.shF.y = P.shN.y - 1;
     // 팔
     const arm = (S, E, H, D, a1, a2, g) => {
@@ -156,8 +156,8 @@ export class Nemain extends BossC {
     this.leg({ x: P.hip.x - 4, y: P.hip.y - 1 }, fF, P.knF, 1);
     P.ftN.x = fN.x; P.ftN.y = fN.y; P.ftF.x = fF.x; P.ftF.y = fF.y;
     if (kn > 0.01) {
-      P.ftN.x = lerp(P.ftN.x, 26, kn); P.ftN.y = lerp(P.ftN.y, 0, kn); P.knN.x = lerp(P.knN.x, 28, kn); P.knN.y = lerp(P.knN.y, -36, kn);
-      P.knF.x = lerp(P.knF.x, -8, kn); P.knF.y = lerp(P.knF.y, -4, kn); P.ftF.x = lerp(P.ftF.x, -44, kn); P.ftF.y = lerp(P.ftF.y, -6, kn);
+      P.ftN.x = lerp(P.ftN.x, 26, kn); P.ftN.y = lerp(P.ftN.y, 0, kn); P.knN.x = lerp(P.knN.x, 30, kn); P.knN.y = lerp(P.knN.y, -40, kn);
+      P.knF.x = lerp(P.knF.x, -8, kn); P.knF.y = lerp(P.knF.y, -4, kn); P.ftF.x = lerp(P.ftF.x, -48, kn); P.ftF.y = lerp(P.ftF.y, -6, kn);
     }
   }
   /** 두 마디 다리 IK (엉덩이 H → 발 F, 무릎은 앞으로 굽는다) */

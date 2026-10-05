@@ -688,6 +688,9 @@ function allGuardians(page) {
     const ids = D.GUARDIAN_IDS;
     const pairs = [];
     for (let i = 0; i < ids.length; i += 2) pairs.push([ids[i], ids[(i + 1) % ids.length]]);
+    // 수가 짝수(외전 무닌까지 12)면 한 칸 밀어 한 바퀴 더 — 모든 수호신이 1번·2번 칸에 한 번씩 선다. 11종일 때는 끝 짝(모모·아리아)이 그 몫을 했다:
+    // 아리아는 1번 칸에서 시작 지점 뒤쪽(-160) 좀비를 노려 쏜 빛 바늘이 지형에 막히는 일이 있다 (s05 · s11 시작 방, 2번 칸에서는 맞힌다)
+    if (ids.length % 2 === 0) for (let i = 1; i < ids.length; i += 2) pairs.push([ids[i], ids[(i + 1) % ids.length]]);
     const hitBy = {}, skills = {};
     for (const [a, b] of pairs) {
       S.equipGuardian(w.state, null, 0, a); S.equipGuardian(w.state, null, 1, b);
