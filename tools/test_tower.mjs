@@ -87,7 +87,7 @@ const shot = (page, name) => page.screenshot({ path: path.join(SHOTS, `${name}.p
 const freeze = (page) => page.evaluate(() => { window.__game._pageHidden = true; });
 const thaw = (page) => page.evaluate(() => { const g = window.__game; g._pageHidden = false; g.last = performance.now(); });
 /** 고정 스텝 n 번 (패드 읽기 포함), 끝에 한 번 그림 */
-const ticks = (page, n) => page.evaluate((n) => { const g = window.__game; for (let i = 0; i < n; i++) { try { g.input?.pollFrame?.(); } catch { /* */ } g.tick(1 / 60); } g.render?.(); }, n);
+const ticks = (page, n) => page.evaluate((n) => { const g = window.__game; for (let i = 0; i < n; i++) { try { g.input?.pollFrame?.(); } catch { /* */ } g.tick(1 / 60); } g.render?.(); g.syncPad?.(); }, n);
 /** 조건(문자열 식: g = game, t = 맨 아래 탑 장면, w = world, p = 영웅)이 참이 될 때까지 스텝 → 걸린 스텝, 못 하면 예외 */
 async function tickUntil(page, pred, max = 1200, what = pred) {
   const n = await page.evaluate(([pred, max]) => {
@@ -97,7 +97,7 @@ async function tickUntil(page, pred, max = 1200, what = pred) {
     const tw = () => g.scenes.find((s) => s.name === 'tower') ?? g.top;
     for (let i = 0; i <= max; i++) {
       const t = tw(), w = g.world ?? t?.world;
-      try { if (f(g, t, w, w?.player)) { g.render?.(); return i; } } catch { /* 아직 */ }
+      try { if (f(g, t, w, w?.player)) { g.render?.(); g.syncPad?.(); return i; } } catch { /* 아직 */ }
       try { g.input?.pollFrame?.(); } catch { /* */ }
       g.tick(1 / 60);
       if (i % 30 === 0) g.render?.();
@@ -330,9 +330,10 @@ test('한 판: 메뉴 → 헌터 선택 → 1층 처치·출구 → 5층 보스�
   assert.equal(await kill(), true);
   await tickUntil(page, '!p.dead && t.reviveLeft === 0', 400, '부활');
   assert.equal(await page.evaluate(() => window.__game.top.name), 'tower');
-  await ticks(page, 200);
+  await ticks(page, 200);   // 출구 위에서 되살아났으면 가만히 서 있어 11층으로 올라갈 수 있다
   const cleared = await page.evaluate(() => window.__game.top.cleared);
   assert.equal(cleared, 10);
+  const reached = await page.evaluate(() => window.__game.top.floor);
   assert.equal(await kill(), true);
   await tickUntil(page, "g.top.name === 'arcadeResults' && g.fade.a < 0.05", 600, '결과 화면');
   const res = await page.evaluate(() => { const r = window.__game.top.res; return { kind: r.kind, rows: r.rows.map((x) => [x[0], typeof x[1] === 'function' ? 'fn' : x[1]]), floor: r.extra.floor, bl: r.extra.blessings.length, time: r.time }; });
@@ -341,7 +342,7 @@ test('한 판: 메뉴 → 헌터 선택 → 1층 처치·출구 → 5층 보스�
   assert.ok(res.bl >= 12, `축복 ${res.bl}`);
   const rowMap = Object.fromEntries(res.rows);
   assert.equal(rowMap['돌파한 층'], '10층');
-  assert.equal(rowMap['도달한 층'], '제 10층');
+  assert.equal(rowMap['도달한 층'], `제 ${reached}층`);
   assert.ok(rowMap['처치 수'] && rowMap['받은 축복'] && rowMap['걸린 시간'], JSON.stringify(rowMap));
   // 기기 최고 기록
   const best = await page.evaluate(() => window.__game.meta.towerBest);
@@ -432,9 +433,12 @@ for (const vp of ['phone2', 'phone1']) {
     });
     assert.ok(pt.w >= 44 && pt.h >= 44, `축복 카드 ${pt.w}×${pt.h} CSS px`);
     await shot(page, `blessing_${vp}`);
+    await thaw(page);   // 터치 탭은 실제 프레임으로 (온라인 클라이언트 시험과 같게)
+    await page.waitForTimeout(200);
     await page.touchscreen.tap(pt.x, pt.y);
-    await tickUntil(page, "g.top.name === 'tower' && t.phase === 'gate'", 120, '터치 → 축복');
+    await page.waitForFunction(() => window.__game.top?.name === 'tower' && window.__game.top.takenOrder.length > 0, null, { timeout: 8000 });
     assert.equal(await page.evaluate(() => window.__game.top.takenOrder.at(-1)), pt.id);
+    await freeze(page);
     await ticks(page, 10);
     await shot(page, `tower_${vp}`);
     assert.deepEqual(errs, []);

@@ -114,6 +114,9 @@ test('게임 데이터 사본(gamedata.mts)이 src/data·arcade.js 와 같다', 
   const presets = [...block('LEVEL_PRESETS').matchAll(/\{[^}]*\}/g)].map((m) => ({ lv: Number(/lv: (\d+)/.exec(m[0])[1]), tier: Number(/tier: (\d+)/.exec(m[0])[1]), p2: /p2: true/.test(m[0]) }));
   assert.deepEqual(gd.LEVEL_PRESETS.map((p) => ({ lv: p.lv, tier: p.tier, p2: !!p.p2 })), presets);
   assert.equal(gd.COURSE_COUNT, [...block('COURSES').matchAll(/\{ name:/g)].length);
+  // 무한의 탑 층 규칙 (src/data/tower.js — 순수 데이터 모듈)
+  const { TOWER_RULES } = await import(path.join(ROOT, 'src/data/tower.js'));
+  assert.deepEqual({ ...gd.TOWER_RULES }, { ...TOWER_RULES });
 });
 
 test('배포 묶음: netlify/ 코드의 상대 import 는 netlify/ 안만 가리킨다 (dist/deploy 에는 netlify/ 만 들어간다)', () => {
@@ -195,10 +198,10 @@ test('런 시작: 인증 필요, 보드 ID 검사, {run, seed(32비트), ts}, �
   const old61 = kst(T - 61 * DAY), old60 = kst(T - 60 * DAY), tomorrow = kst(T + DAY);
   const bad = ['bossrush:5:normal', 'bossrush:01:normal', 'bossrush:-1:normal', 'bossrush:0:veryhard', 'bossrush:0', 'survival:Normal', 'survival:', 'practice:s21:normal',
     'practice:s00:hard', 'practice:s1:hard', 'practice:s01', 'daily:20261301', 'daily:20260230', `daily:${tomorrow}`, `daily:${old61}`, 'daily:2026105', 'story:s01', 'x', '', 'survival:normal ',
-    'BOSSRUSH:0:normal', 7, null, undefined];
+    'BOSSRUSH:0:normal', 7, null, undefined, 'tower:Normal', 'tower:', 'tower', 'tower:veryhard', 'tower:normal:1', 'tower:normal '];
   for (const b of bad) expectErr(await call('POST', '/api/runs', { body: { board: b }, token: u.token }), 400, 'invalid_board');
   const seeds = new Set();
-  for (const b of ['bossrush:0:easy', 'bossrush:4:inferno', 'survival:nightmare', 'practice:s20:hard', 'practice:s14:normal', `daily:${old60}`]) {
+  for (const b of ['bossrush:0:easy', 'bossrush:4:inferno', 'survival:nightmare', 'practice:s20:hard', 'practice:s14:normal', `daily:${old60}`, 'tower:normal']) {
     const r = expectOk(await call('POST', '/api/runs', { body: { board: b }, token: u.token }));
     assert.match(r.run, /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{43}$/);
     assert.ok(Number.isInteger(r.seed) && r.seed >= 0 && r.seed <= 0xffffffff, String(r.seed));
@@ -206,7 +209,7 @@ test('런 시작: 인증 필요, 보드 ID 검사, {run, seed(32비트), ts}, �
     assert.ok(!Buffer.from(r.run.split('.')[0], 'base64url').toString().includes(await uidOf(u.id)), '토큰에 uid 가 그대로 들어가지 않는다');
     seeds.add(r.seed);
   }
-  assert.equal(seeds.size, 6);
+  assert.equal(seeds.size, 7);
   const d = expectOk(await call('GET', '/api/daily'));
   const r1 = expectOk(await call('POST', '/api/runs', { body: { board: `daily:${today}` }, token: u.token }));
   const r2 = expectOk(await call('POST', '/api/runs', { body: { board: d.board }, token: u.token }));
@@ -232,6 +235,42 @@ test('제출: 성공 응답 {best, rank, total, entry}, 순위표에 반영', as
   // 서바이벌 항목에는 wave
   const s = expectOk(await play(u, 'survival:easy', RES({ wave: 12, time: 400_000 })));
   assert.equal(s.entry.wave, 12);
+  // 무한의 탑 항목에는 floor
+  const tw = expectOk(await play(u, 'tower:easy', RES({ floor: 7, time: 300_000 })));
+  assert.equal(tw.entry.floor, 7);
+  assert.equal(tw.entry.wave, undefined);
+  assert.deepEqual(expectOk(await board('tower:easy')).entries, [tw.entry]);
+});
+
+test('무한의 탑: floor 1~999 필수, time ≥ floor × 8초·24시간 이하, score ≤ (floor+1) × 500만, 순위 floor↓ → time↑, me.floor', async () => {
+  const { TOWER_RULES } = gd;
+  const u = await signup();
+  const s = await start(u, 'tower:hard');
+  advance(5 * HOUR);   // 런 유효 6시간 안 (24시간 상한은 값 검사가 먼저 거른다)
+  const fin = (result) => call('POST', '/api/runs/finish', { body: { run: s.run, result }, token: u.token });
+  for (const f of [0, 1000, 2.5, undefined, '3', -1]) expectErr(await fin(RES({ floor: f, time: 100_000 })), 422, 'invalid_result');
+  expectErr(await fin(RES({ floor: 3, time: 24 * HOUR + 1 })), 422, 'invalid_result');
+  expectErr(await fin(RES({ floor: 3, time: 3 * TOWER_RULES.minFloorSec * 1000 - 1 })), 422, 'implausible_time');
+  expectErr(await fin(RES({ floor: 3, time: 100_000, score: 4 * TOWER_RULES.maxScorePerFloor + 1 })), 422, 'invalid_result');
+  expectOk(await fin(RES({ floor: 3, time: 3 * TOWER_RULES.minFloorSec * 1000, score: 4 * TOWER_RULES.maxScorePerFloor })));   // 경계 통과 (런은 한 번)
+  // 걸린 실제 시간 검사도 그대로
+  const s2 = await start(u, 'tower:hard');
+  advance(10_000);
+  expectErr(await call('POST', '/api/runs/finish', { body: { run: s2.run, result: RES({ floor: 5, time: 120_000 }) }, token: u.token }), 422, 'implausible_time');
+  // 순위: 층이 높을수록, 같으면 빠를수록 · 최고 기록만
+  const [a, b, c] = [await signup(), await signup(), await signup()];
+  const tb = 'tower:nightmare';
+  expectOk(await play(a, tb, RES({ floor: 12, time: 900_000, score: 50 })));
+  expectOk(await play(b, tb, RES({ floor: 12, time: 800_000, score: 10 })));
+  const rc = expectOk(await play(c, tb, RES({ floor: 20, time: 2_000_000, score: 0 })));
+  assert.equal(rc.rank, 1);
+  const g = expectOk(await board(tb, { token: a.token }));
+  assert.deepEqual(g.entries.map((e) => [e.rank, e.floor, e.time]), [[1, 20, 2_000_000], [2, 12, 800_000], [3, 12, 900_000]]);
+  assert.deepEqual(g.me, { rank: 3, time: 900_000, score: 50, floor: 12 });
+  assert.equal(expectOk(await play(a, tb, RES({ floor: 11, time: 100_000, score: 9e6 }))).best, false, '낮은 층은 빨라도 갱신이 아니다');
+  assert.equal(expectOk(await play(a, tb, RES({ floor: 12, time: 850_000 }))).best, true, '같은 층이면 빠른 쪽');
+  assert.equal(expectOk(await play(a, tb, RES({ floor: 13, time: 1_900_000 }))).best, true);
+  assert.deepEqual(expectOk(await board(tb)).entries.map((e) => [e.floor, e.time]), [[20, 2_000_000], [13, 1_900_000], [12, 800_000]]);
 });
 
 test('제출: 같은 런은 한 번만 (409 run_used)', async () => {

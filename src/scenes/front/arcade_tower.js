@@ -20,6 +20,7 @@ import { isSolidType, T } from '../../core/physics.js';
 import { Entity } from '../../game/entity.js';
 import { playerStrike } from '../../game/combat.js';
 import { createBoss, loadBoss } from '../../game/bosses/lazy.js';
+import { assets } from '../../core/assets.js';
 import { hudLayout } from '../../render/hud_layout.js';
 import { drawIcon } from '../../render/icons.js';
 import { preloadPainted } from '../../render/painted/registry.js';
@@ -111,6 +112,7 @@ export class TowerScene extends ArcadeRunScene {
     this.patchPlayer();
     this.offs = [bus.on('enemyKilled', () => this.onKill())];
     gateSprite();
+    try { assets.preload?.(BLESSINGS.map((b) => `icons/${b.icon}`)); } catch { /* 아이콘은 그릴 때 받는다 */ }
     this.loadFloor(1);
   }
   exit() { super.exit(); for (const f of this.offs ?? []) f?.(); this.offs = []; }
@@ -515,7 +517,7 @@ export class TowerScene extends ArcadeRunScene {
     ids.slice(0, rows).forEach((b, i) => {
       const y = r.y + 34 + i * 28;
       const more = i === rows - 1 && ids.length > rows;
-      drawIcon(ctx, b.icon, r.x + 24, y + 12, 22, null, { glow: false });
+      if (!more) drawIcon(ctx, b.icon, r.x + 24, y + 12, 22, null, { glow: false });
       const used = b.id === 'phoenix' && this.reviveLeft <= 0;
       const label = more ? `외 ${ids.length - rows + 1}개` : `${b.name}${this.taken[b.id] > 1 ? ` ×${this.taken[b.id]}` : ''}${used ? ' (사용함)' : ''}`;
       text(ctx, label, r.x + 42, y + 17, { size: 13, weight: 700, color: used ? DIM : BONE, ow: 2, maxWidth: r.w - 52 });
