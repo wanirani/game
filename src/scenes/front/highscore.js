@@ -384,7 +384,7 @@ export class HighscoreScene extends Scene {
     } else if (this.ob.state === 'ready') {
       text(ctx, '내 순위', x0 + 12, y + 14, { size: 13, weight: 700, color: DIM, ow: 2 });
       if (me) {
-        text(ctx, `${me.rank}위`, x0 + LW - 12, y + 16, { size: 20, align: 'right', weight: 900, family: FONT.num, color: '#ffe070', ow: 3 });
+        text(ctx, me.rank ? `${me.rank}위` : '순위 밖', x0 + LW - 12, y + 16, { size: me.rank ? 20 : 15, align: 'right', weight: 900, family: me.rank ? FONT.num : FONT.body, color: '#ffe070', ow: 3 });
         text(ctx, this.recText(me), x0 + 12, y + 40, { size: 15, weight: 800, family: FONT.num, color: '#fff', ow: 2, maxWidth: LW - 24 });
       } else text(ctx, '아직 이 순위표에 기록이 없어요', x0 + 12, y + 40, { size: 13, weight: 700, color: BONE, ow: 2, maxWidth: LW - 24 });
       if (nick && y + 62 <= bot) text(ctx, `공개 별명: ${nick}`, x0 + 12, y + 62, { size: 12, weight: 700, color: DIM, ow: 2, maxWidth: LW - 24 });
@@ -419,7 +419,7 @@ export class HighscoreScene extends Scene {
     const CW = Math.max(1, Math.round(lw - 16));
     for (let i = i0; i < i1; i++) {
       const e = E[i], yy = list.y + i * rowH - sy, tb = yy + rowH / 2 + 5;
-      const mine = me && e.rank === me.rank;
+      const mine = !!me?.rank && e.rank === me.rank;
       ctx.save(); ctx.translate(lx + 8, 0);
       ctx.fillStyle = linGrad(ctx, `hsRow|${mine ? 'me' : e.rank <= 3 ? 'top' : 'row'}|${CW}`, 0, 0, CW, 0, [[0, mine ? 'rgba(220,170,50,0.5)' : e.rank <= 3 ? 'rgba(120,20,40,0.55)' : 'rgba(16,6,16,0.6)'], [1, 'rgba(16,6,16,0.15)']]);
       ctx.fillRect(0, yy + 1, CW, rowH - 3);

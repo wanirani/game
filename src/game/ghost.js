@@ -13,6 +13,7 @@ import { clamp } from '../core/math.js';
 export const GHOST_LIMIT = 24 * 1024;   // base64 글자 수 상한 (docs/specs/online.md §2.2)
 const MAGIC0 = 0x42, MAGIC1 = 0x47, VERSION = 1;   // 'BG'
 const UNIT = 4;                                     // 위치 양자화 (px)
+const TOL = 0;                                      // '반복' 허용 오차 (칸). 0 = 정확 (재생 위치 오차 ≤ UNIT/2 = 2 px). 1 로 하면 달리기는 줄지만 섞인 판은 오히려 는다
 /** 자세 표 (4비트 — 순서를 바꾸지 않는다: 이미 올린 고스트가 읽혀야 한다) */
 export const POSES = ['idle', 'run', 'jump', 'fall', 'dash', 'crouch', 'hurt', 'wall', 'throw', 'cast', 'charge', 'attack', 'flip', 'land', 'death', 'ride'];
 const POSE_OF = Object.fromEntries(POSES.map((p, i) => [p, i]));
@@ -80,6 +81,7 @@ export function encodeFrames(rec, step = 1) {
   u32(n);
   u8(rec.rooms.length);
   for (const id of rec.rooms) { const s = [...id].map((c) => c.charCodeAt(0) & 127); u8(s.length); s.forEach(u8); }
+  // px·py = 풀었을 때의 위치(복원값). 같은 이동을 되풀이해 원래 위치와 TOL 칸 안이면 '반복'으로 둔다 (오차 ≤ TOL 칸 + 반 칸)
   let pr = -1, px = 0, py = 0, dx = 0, dy = 0, st = -1, rep = 0;
   const flush = () => { while (rep > 0) { const k = Math.min(64, rep); u8(k - 1); rep -= k; } };
   for (let j = 0; j < n; j++) {
@@ -90,16 +92,16 @@ export function encodeFrames(rec, step = 1) {
     if (r !== pr || ex < -32 || ex > 31 || ey < -128 || ey > 127) {
       flush();
       u8(0xe0); u8(r); u16(x & 0xffff); u16(y & 0xffff);
-      dx = 0; dy = 0;
-    } else if (ex === dx && ey === dy) {
-      rep++;
+      dx = 0; dy = 0; px = x; py = y;
+    } else if (Math.abs(px + dx - x) <= TOL && Math.abs(py + dy - y) <= TOL) {
+      rep++; px += dx; py += dy;
     } else {
       flush();
       if (ey === 0) u8(0x40 | (ex & 63));
       else { u8(0x80 | (ex & 63)); u8(ey & 255); }
-      dx = ex; dy = ey;
+      dx = ex; dy = ey; px = x; py = y;
     }
-    pr = r; px = x; py = y;
+    pr = r;
   }
   flush();
   return Uint8Array.from(out);

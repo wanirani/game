@@ -6,10 +6,10 @@ Netlify Functions(모던 함수, TypeScript) + Netlify Blobs 로 동작하며, �
 | 항목 | 위치 |
 |---|---|
 | 함수 진입점 (`/api/*`) | `netlify/functions/api.mts` · 매일 정리하는 예약 함수 `netlify/functions/cleanup.mts` (§4) |
-| 공용 코드 (함수로 배포되지 않음) | `netlify/lib/*.mts` — `config` 상수, `http` 응답·본문, `runtime` 저장소·시계·환경, `crypto` 해시·토큰, `validate` 입력 검사, `ratelimit` 요청 제한, `cleanup` 기록 정리, `accounts` 계정, `saves` 저장, `router` 라우팅, `admin` 운영 도구 |
+| 공용 코드 (함수로 배포되지 않음) | `netlify/lib/*.mts` — `config` 상수, `http` 응답·본문, `runtime` 저장소·시계·환경, `crypto` 해시·토큰, `validate` 입력 검사, `ratelimit` 요청 제한, `cleanup` 기록 정리, `accounts` 계정, `saves` 저장, `router` 라우팅, `admin` 운영 도구 · 온라인 기록 `online` API, `boards` 순위 저장, `runs` 런 토큰·일일 도전, `nick` 별명, `gamedata` 게임 데이터 id 사본 (`docs/ONLINE.md`) |
 | 배포 설정 | `netlify.toml` (publish = `dist/web` — `tools/deploy/build_web.mjs` 가 허용 목록으로 만든 게시 폴더, 저장소 루트는 절대 올리지 않는다 · 정적 파일 보안·캐시 헤더) · 배포 절차 `tools/deploy/README.md` §3 |
 | 안드로이드 앱 프록시 | `android/app/src/main/assets/app/head_inject.html`(fetch 감싸기) → `AssetServer.java` → `ApiProxy.java` · 서버 주소 `tools/apk/api_origin.txt` (§1) |
-| 테스트 | `node tools/accounts/test_api.mjs` (= `npm run test:api`) · 브라우저 `node tools/accounts/test_client.mjs` (= `npm run test:client`) |
+| 테스트 | `node tools/accounts/test_api.mjs` (= `npm run test:api`) · 브라우저 `node tools/accounts/test_client.mjs` (= `npm run test:client`) · 온라인 기록 `npm run test:online` |
 | 운영 도구 | `node tools/accounts/admin.mjs` |
 
 ## 1. 동작 환경
@@ -82,10 +82,10 @@ Netlify Functions(모던 함수, TypeScript) + Netlify Blobs 로 동작하며, �
 | `POST /api/auth/signup` | `{id, password, remember?}` | **201** `{ok, id, token, recoveryCode}` | invalid_id, reserved_id, invalid_password, password_same_as_id, weak_password, id_taken, signup_limited, rate_limited |
 | `POST /api/auth/login` | `{id, password, remember?}` | `{ok, id, token}` | invalid_credentials, locked, rate_limited, bad_request |
 | `POST /api/auth/logout` | 없음, 또는 `{all:true}` (토큰 필요) | `{ok, revoked}` — 이 토큰만 폐기. `all:true` 면 이 계정의 **모든 세션**(다른 기기 포함) 폐기 | unauthorized |
-| `GET /api/auth/me` | — | `{ok, id, createdAt}` | unauthorized |
+| `GET /api/auth/me` | — | `{ok, id, createdAt, nick}` — `nick` = 순위표 공개 별명, 아직 없으면 `null` (`docs/specs/online.md` §2.6) | unauthorized |
 | `POST /api/auth/password` | `{oldPassword, newPassword}` | `{ok}` — **현재 토큰만 남기고** 다른 세션 모두 폐기 | wrong_password, invalid_password, password_same_as_id, weak_password, same_password, locked |
 | `POST /api/auth/recover` | `{id, recoveryCode, newPassword, remember?}` | `{ok, id, recoveryCode, token}` — 새 비밀번호 적용, **새 복구 코드** 발급, 기존 세션 **전부** 폐기 후 새 토큰 발급, 이 아이디의 모든 잠금 해제 | invalid_recovery, invalid_password, password_same_as_id, weak_password, locked |
-| `DELETE /api/auth/account` | `{password}` | `{ok}` — 계정·세션·모든 저장 데이터 삭제 | wrong_password, locked |
+| `DELETE /api/auth/account` | `{password}` | `{ok}` — 계정·세션·모든 저장 데이터·순위 기록·고스트·별명 삭제 | wrong_password, locked |
 | `POST /api/auth/account/delete` | `{password}` | 위와 같음 (DELETE 본문을 못 보내는 환경용) | |
 
 - **아이디**: 앞뒤 공백 제거 후 소문자로 바꿔 처리(대소문자 구분 없음). 4~16자, 영문 소문자로 시작, 영문 소문자·숫자·밑줄(`_`)만. 응답의 `id` 가 정규화된 아이디다.
@@ -136,12 +136,14 @@ Netlify Functions(모던 함수, TypeScript) + Netlify Blobs 로 동작하며, �
 | `bn-saves` | `<uid>/slot1`·`slot2`·`slot3`, `<uid>/meta` | `{rev, savedAt, data}` 또는 묘비 `{rev, savedAt, deleted:true}`. Blobs 메타데이터 `{rev, savedAt, summary?, deleted?}` (목록은 본문 없이 메타데이터만 읽는다) |
 | `bn-ratelimit` | `ip/auth/<망 해시>`, `ip/signup/<망 해시>`, `lock/login/<아이디>/all`, `lock/login/<아이디>/net/<망 해시>`, `lock/login/<아이디>/wide/<IPv6 /48 해시>`, `lock/login/<아이디>/ok/<망 해시>`, `lock/recover/<아이디>/net/<망 해시>` | 카운터 `{n, start, lockedUntil?, strikes?, struckAt?}` (`strikes` = 아이디 전체 잠금이 이어진 횟수), 믿는 망 `ok/…` = `{at}` — 망 = IPv4 주소 하나 또는 IPv6 /64 |
 
+- **온라인 기록**(리더보드·일일 도전·고스트, `docs/specs/online.md`·`docs/ONLINE.md`)은 저장소 4개를 더 쓴다: `bn-boards`(보드별 순위 목록 `b/<보드 키>/i`, 계정의 최고 기록 `b/<보드 키>/e/<uid>` — 운영 도구용 로그인 아이디 포함, 기록을 둔 보드 표시 `u/<uid>/<보드 키>`), `bn-ghosts`(상위 20위 고스트 `<보드 키>/<uid>`), `bn-runs`(제출한 런 nonce `used/<시>/<nonce>`, 7시간), `bn-nicks`(별명 중복 방지 `<소문자 별명 hex>` = `{uid, id, nick, at}`). 사용자 레코드에는 공개 별명 `nick` 이 더해지고, `bn-ratelimit` 에는 계정별 카운터 `acct/<uid>/run-s|run-m|run-d|nick` 이 생긴다. 순위표 응답에는 별명만 보이고 로그인 아이디·uid 는 나가지 않는다.
 - 익명 통계(`POST /api/t`·`GET /api/stats`)는 다섯 번째 저장소 `bn-telemetry` 를 쓰고 계정과 이어지지 않는다 — `docs/TELEMETRY.md` (망별 제한 카운터 `ip/tel/<망 해시>` 만 `bn-ratelimit` 에, 매일 정리 함수가 30일 지난 통계 원본도 지운다).
 - `uid` 는 가입 때 만드는 무작위 128비트 내부 식별자다. 저장 데이터 키에 로그인 아이디 대신 `uid` 를 써서, 탈퇴 후 같은 아이디로 다시 가입해도 이전 데이터(혹시 남은 조각 포함)와 절대 섞이지 않는다.
 - 세션 인증은 두 곳을 모두 확인한다: `bn-sessions` 에 토큰 해시가 있고, **그리고** 사용자 레코드의 `sessions` 목록에도 있으며 만료 전이어야 한다(목록이 기준). 그래서 중간에 지우기가 실패해도 폐기된 토큰이 되살아나지 않는다.
 - 모든 쓰기는 ETag 조건부 쓰기(`onlyIfNew` / `onlyIfMatch`)로 경합을 막는다: 같은 아이디 동시 가입은 하나만 성공, 같은 `baseRev` 동시 저장도 하나만 성공한다.
-- **기록 정리** (PS-05, `netlify/functions/cleanup.mts` → `netlify/lib/cleanup.mts`, 하루 한 번 예약 실행, URL 로는 부를 수 없다): Blobs 에는 만료(TTL)가 없어 지우지 않으면 무기한 쌓인다. `bn-ratelimit` 에서는 창(최장 1시간)이 끝나고 잠금도 풀린 지 2시간이 지난 카운터(잠금 점증 `strikes` 가 살아 있는 24시간 동안은 남긴다)와 90일이 지난 믿는 망 기록을, `bn-sessions` 에서는 만료된 지 30일이 지난 세션 저장값을 지운다(인증은 사용자 레코드의 만료 시각이 기준이라 저장값이 늦을 수 있어 여유를 둔다). 사용자 레코드의 `sessions` 목록은 다음 로그인 때 정리된다. 한 번에 저장소마다 4,000개까지 읽고(함수 시간 제한) 시작 위치를 날마다 바꾼다. 숫자는 `config.mts` 의 `CLEANUP`.
-- **보관하는 것**: 아이디, 비밀번호·복구 코드의 scrypt 해시, 세션 토큰의 SHA-256, 세이브·메타, 망(IPv4 주소 또는 IPv6 /64·/48)의 해시(`AUTH_PEPPER` HMAC) — 실패 카운터는 창이 끝난 뒤 하루 안에, 믿는 망은 90일 뒤, 세션 저장값은 만료 30일 뒤 지워진다. 원래 IP·요청 본문은 저장하지 않는다.
+- **기록 정리** (PS-05, `netlify/functions/cleanup.mts` → `netlify/lib/cleanup.mts`, 하루 한 번 예약 실행, URL 로는 부를 수 없다): Blobs 에는 만료(TTL)가 없어 지우지 않으면 무기한 쌓인다. `bn-ratelimit` 에서는 창(최장 1시간)이 끝나고 잠금도 풀린 지 2시간이 지난 카운터(잠금 점증 `strikes` 가 살아 있는 24시간 동안은 남긴다)와 90일이 지난 믿는 망 기록을, `bn-sessions` 에서는 만료된 지 30일이 지난 세션 저장값을 지운다(인증은 사용자 레코드의 만료 시각이 기준이라 저장값이 늦을 수 있어 여유를 둔다). 사용자 레코드의 `sessions` 목록은 다음 로그인 때 정리된다. 한 번에 저장소마다 4,000개까지 읽고(함수 시간 제한) 시작 위치를 날마다 바꾼다. 숫자는 `config.mts` 의 `CLEANUP`. 온라인 기록은 같은 함수가 7시간 지난 런 nonce(`bn-runs`), 61일 지난 일일 도전 보드(순위 목록·기록·표시·고스트), 순위 목록에 표시가 없는 고스트, 주인이 없는 별명 항목을 지운다(`docs/ONLINE.md` §3). 계정별 하루 제출 카운터는 하루 창 뒤에 지운다.
+- **보관하는 것**: 아이디, 비밀번호·복구 코드의 scrypt 해시, 세션 토큰의 SHA-256, 세이브·메타, 망(IPv4 주소 또는 IPv6 /64·/48)의 해시(`AUTH_PEPPER` HMAC) — 실패 카운터는 창이 끝난 뒤 하루 안에, 믿는 망은 90일 뒤, 세션 저장값은 만료 30일 뒤 지워진다. 온라인 기록: 공개 별명, 보드별 최고 기록(시간·점수·웨이브·영웅·직업·레벨·기록 시각 — 공개), 상위 20위 고스트(공개), 제출한 런 nonce(7시간). 원래 IP·요청 본문은 저장하지 않는다.
+- **탈퇴 때 지우는 것** (`purgeAccount`): 세이브·메타, 그 계정의 모든 보드 기록·순위 목록 항목(계정 수도 줄인다)·고스트·보드 표시, 세션, 로그인·복구 잠금 기록, 계정별 제한 카운터, 별명 자리(`bn-nicks`), 사용자 레코드 — 그리고 도중에 들어온 쓰기를 치우려고 세이브와 보드 기록을 한 번 더 쓴다. 탈퇴 도중 끝난 기록 제출은 쓴 뒤 계정이 없으면 스스로 지운다. 일일 도전 보드는 61일 뒤 통째로 지워진다.
 - 로컬 Blobs 서버(`netlify dev`)는 키를 파일 경로로 저장하므로 한 키가 다른 키의 경로 앞부분이 되면 안 된다(`lock/login/<아이디>` 와 `lock/login/<아이디>/…` 를 함께 쓰지 않고 `…/all` 을 쓰는 이유).
 
 ## 5. 보안 설계
@@ -213,14 +215,17 @@ node tools/accounts/admin.mjs show   hunter_01   # 생성일, 세션 수, 잠금
 node tools/accounts/admin.mjs unlock hunter_01   # 로그인·복구 잠금 해제
 node tools/accounts/admin.mjs revoke hunter_01   # 모든 기기 로그아웃
 node tools/accounts/admin.mjs reset  hunter_01   # 임시 비밀번호 + 새 복구 코드 발급, 모든 세션 폐기, 잠금 해제
-node tools/accounts/admin.mjs delete hunter_01 --yes   # 계정과 저장 데이터 전부 삭제
+node tools/accounts/admin.mjs delete hunter_01 --yes   # 계정과 저장 데이터 전부 삭제 (순위 기록·고스트·별명 포함)
+node tools/accounts/admin.mjs board practice:s01:normal       # 순위표 (별명 + 로그인 아이디) — 온라인 기록 운영은 docs/ONLINE.md §4
+node tools/accounts/admin.mjs board-remove practice:s01:normal 1 --yes   # 그 순위 계정의 기록·고스트 삭제
+node tools/accounts/admin.mjs nick 나쁜별명                     # 별명을 자동 별명으로 (또는 nick <아이디> <새 별명>)
 ```
 
 - **비밀번호를 잊은 사용자**: 먼저 복구 코드로 스스로 재설정하게 안내한다(`POST /api/auth/recover`). 복구 코드도 잃어버렸다면 본인 확인(예: 가입 시기, 캐릭터·진행 상황을 `show` 결과와 대조)을 한 뒤 `reset` 을 실행하고, 출력된 임시 비밀번호와 새 복구 코드를 그 사용자에게만 전달한다. 사용자는 로그인 후 비밀번호를 바꾸게 한다.
 - **잠김 문의**: 10분 뒤 자동으로 풀린다. 급하면 `unlock`.
 - **기기를 잃어버림**: `revoke` (또는 사용자가 비밀번호를 바꾸면 다른 세션이 모두 폐기된다).
 - Netlify CLI 로 원시 데이터를 볼 수도 있다: `netlify blobs:list bn-users`, `netlify blobs:get bn-users <아이디>` (해시가 보이므로 외부에 공유하지 말 것). 사용자 레코드를 손으로 고치지 말고 위 도구를 쓴다.
-- 백업: `bn-users` 와 `bn-saves` 를 `netlify blobs:list/get` 으로 내려받아 보관한다. `bn-sessions`·`bn-ratelimit` 는 백업할 필요가 없다(비워도 모두 다시 로그인하면 끝).
+- 백업: `bn-users` 와 `bn-saves` 를 `netlify blobs:list/get` 으로 내려받아 보관한다(순위를 지키려면 `bn-boards`·`bn-nicks` 도). `bn-sessions`·`bn-ratelimit` 는 백업할 필요가 없다(비워도 모두 다시 로그인하면 끝).
 - 만료된 세션·지난 제한 기록은 로그인·요청 때 필요한 만큼만 정리된다. 쌓인 `bn-ratelimit` 키는 전부 지워도 안전하다.
 
 ## 9. 테스트

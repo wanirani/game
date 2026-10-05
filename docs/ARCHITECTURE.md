@@ -191,6 +191,7 @@ rAF ─▶ input.pollFrame() (패드 읽기·진동 정리) ─▶ (세로 잠�
 - 저장하지 않는 런타임 값: `world.run.aw`(각성 게이지, 스테이지마다 0), `world.run.awakenN`, `world.run.mount`, `world.awakenState`.
 - 크기: 20장·동료 20·7단계 장비·가방 가득 세이브 < 256 KB (서버 한도 512 KB) — `tools/test_save_v2.mjs`. 고정 세이브 `tools/fixtures/save_v1.json`, `save_ch6_nocmp.json`.
 - 계정·클라우드 저장 (`core/cloud.js`, `/api/*`): `docs/ACCOUNTS.md` 참고 (장면 `account`, `cloudConflict`; 버스 `cloud:*`).
+- 온라인 순위·일일 도전·고스트 (`core/online.js` API 클라이언트·대기열·캐시, `game/ghost.js` 기록·묶기·재생): 계약 `docs/specs/online.md` (부록 A = 고스트 형식). 늦게 받는 조각에 실린다 (아케이드·명예의 전당·계정 장면이 import). 일일 도전 규칙은 임시 세이브 `state.arcade.{diffOver, rules, seed}` → `World` 가 `world.diff`·`world.rules {noPotion, noSub, dark, taken, dealt}`·`world.rng`(정예 출현·촛불 보상) 로 읽는다 (`combat.hitTarget`·`inventory.useItem`·`player.useSub`·`loot.rollCandleLoot` 의 `[hook:plat]` 줄). localStorage: `bn_online_q`(제출 대기열, 계정별·6시간) · `bn_online_daily`(그날 도전) · `bn_online_nick` · `bn_ghost_best`(보드별 내 최고 고스트 6개).
 
 ## 6. 플랫폼 셸
 
@@ -514,6 +515,7 @@ weapon:{type:'whip'|'sword'|'greatsword'|'dagger'|'gun'|'staff', style:1~6, colo
 - 2부: `shardFound {id}` · `heartFound {id}`
 - 동료: `companionUnlocked {id, source}` · `companionLevelUp {id, level}` · `bondUp {id, rank}` · `mounted {id}` · `dismounted {id, reason}` · `guardianSkill {id, auto}` · `eggObtained {id}` · `eggHatched {id}`
 - 계정 (`core/cloud.js`): `cloud:status {state}` `cloud:login {id, resumed}` `cloud:logout {id, reason}` `cloud:sync {phase:'start'|'done', …}` `cloud:conflict {slot}`
+- 온라인 (`core/online.js`): `online:flushed {sent:[{board, rank, total, best}], dropped, left}` (기기 대기열의 결과를 보냄)
 
 ---
 

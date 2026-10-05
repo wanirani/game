@@ -141,7 +141,7 @@ const INFO_TEXT = {
   nick: [
     { h: '공개 별명' },
     { b: '온라인 순위표에는 공개 별명만 보입니다. 로그인 아이디는 어디에도 공개되지 않습니다.' },
-    { b: '2~12자의 한글·영문·숫자·밑줄(_)로 정해 주세요. 띄어쓰기는 쓸 수 없습니다.' },
+    { b: '2~12자의 한글·영문·숫자·밑줄(_)로 정해 주세요. 띄어쓰기와 로그인 아이디는 넣을 수 없습니다.' },
     { b: '다른 사람과 겹치면 뒤에 #숫자가 붙고, 쓸 수 없는 낱말은 거절됩니다.' },
     { t: '정하지 않으면 처음 기록을 올릴 때 「헌터#1234」처럼 자동으로 만들어집니다.', c: DIM },
   ],
@@ -157,7 +157,7 @@ const INFO_TEXT = {
 const ERR_FIELD = {
   invalid_id: 'id', reserved_id: 'id', id_taken: 'id', invalid_password: 'pw', password_same_as_id: 'pw', same_password: 'pw', weak_password: 'pw',
   invalid_credentials: 'pw', wrong_password: 'old', invalid_recovery: 'code',
-  invalid_nick: 'nick', nick_banned: 'nick', banned_nick: 'nick', forbidden_nick: 'nick', nick_taken: 'nick',
+  invalid_nick: 'nick', nick_banned: 'nick', banned_nick: 'nick', forbidden_nick: 'nick', nick_taken: 'nick', nick_is_id: 'nick',
 };
 
 // ── 이 장면 밖에서 로그인이 만료된 기록 (다음에 계정 화면을 열면 로그인 칸으로 안내하고 아이디를 채운다) ──
@@ -250,7 +250,6 @@ export class AccountScene extends Scene {
     try { window.removeEventListener('online', this.onOnline); } catch { /* 창 없음 */ }
   }
   onResume() { this.readSlots(); }
-  resize() { this.place(); }
 
   /** 처음 보여 줄 화면을 정한다 (서버 확인 포함) */
   start(want = null) {
@@ -315,7 +314,7 @@ export class AccountScene extends Scene {
   }
   buildItems() {
     const d = this.def, it = [];
-    if (d.kind === 'list') d.items.forEach((x, i) => it.push({ kind: 'btn', id: x.id, label: x.label, sub: x.sub, danger: x.danger, row: i, col: 0 }));
+    if (d.kind === 'list') this.listItems().forEach((x, i) => it.push({ kind: 'btn', id: x.id, label: x.label, sub: x.sub, danger: x.danger, row: i, col: 0 }));
     else if (d.kind === 'form') {
       d.fields.forEach((f, i) => it.push({ kind: 'field', id: f.key, fi: i, row: i, col: 0 }));
       let r = d.fields.length;
@@ -514,9 +513,20 @@ export class AccountScene extends Scene {
     const btnY = Math.round(Math.min(y - gap + btnGap, G.y0 + G.PH - bottom - G.btnH));
     return { titleH, fy, checkY, btnY };
   }
+  /**
+   * 목록 화면의 줄. 내 계정(7줄)이 낮은 화면(740×360 등)에서 목록 줄 하한(36 CSS px)으로도 판에 들어가지 않으면
+   * '돌아가기' 줄을 뺀다 — 왼쪽 위 '뒤로' 버튼과 취소(Esc·B)가 같은 일을 한다
+   */
+  listItems() {
+    const list = this.def?.items ?? [];
+    if (this.screen !== 'profile') return list;
+    const G = this.geom(0), titleH = G.PH < 340 ? 46 : 54;
+    return list.length * this.minPx(36) > G.PH - titleH - 10 ? list.filter((x) => x.id !== 'back') : list;
+  }
+  resize() { this.place(); if (this.def?.kind === 'list' && this.listItems().length !== this.items.length) { const f = this.items[this.focus]?.id; this.buildItems(); this.focus = Math.max(0, this.items.findIndex((x) => x.id === f)); } }
   /** 목록 화면 줄 배치 */
   listLayout(G) {
-    const n = this.def.items.length, titleH = G.PH < 340 ? 46 : 54;
+    const n = this.items.filter((x) => x.kind === 'btn').length || this.def.items.length, titleH = G.PH < 340 ? 46 : 54;
     const avail = G.PH - titleH - 10;
     // 줄이 많아(내 계정 7줄) 판에 다 들어가지 않으면 줄 높이를 목록 줄 하한(36 CSS px)까지 줄이고 간격 없이 붙인다
     if (n * (G.rowH + 2) > avail) { const rowH = Math.max(this.minPx(36), Math.floor(avail / n)); return { titleH, rowH, pitch: rowH, y: G.y0 + titleH }; }

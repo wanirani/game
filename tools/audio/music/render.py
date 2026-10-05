@@ -15,7 +15,8 @@ X_MIN, X_MAX = 1.0, 6.0  # 루프 시작 후보: 본문 시작 + [1, 6] s (도�
 MATCH_DB = 50    # 이 정도 일치(1회째 대 2회째, ±0.1 s 창)면 충분
 XF = 2048        # 이음매 크로스페이드 (샘플, ≈46 ms) — 잔향/코러스 변조의 미세한 차이만 덮는다
 GUARD = 0.25     # loopEnd 뒤에 붙이는 가드 (= 루프 시작 직후 내용, 리샘플러 보간용)
-CEIL = -1.5      # 인코드 전 리미터 천장 (dBTP)
+CEIL = -2.0      # 인코드 전 리미터 천장 (dBTP) — AAC 오버슈트 여유 1 dB
+MAX_GR = 3.0     # 리미터 최대 이득 감소 (dB)
 
 def load_midi(path):
     div, tracks = fsynth.read_smf(path)
@@ -38,7 +39,7 @@ def load_midi(path):
         for t0, v in st: notes.append((t0, t0 + div, ch, a, v))
     return div, t2s, marks, setup, sorted(notes), counts
 
-def schedule(spec, sr):
+def schedule(spec, sr, passes=None):
     div, t2s, marks, setup, notes, counts = load_midi(spec['mid'])
     drums = set(spec['drums'])
     loop = spec['loop']
@@ -52,7 +53,7 @@ def schedule(spec, sr):
         if tick < ls_t: return int(round(t2s(tick) * sr))
         return B0 + int(round((t2s(tick) - s_ls) * sr)) + p * L
     ev = [(0, k, *rest) for (k, *rest) in setup]
-    passes = 2 if loop else 1
+    passes = passes or (2 if loop else 1)
     for (t0, t1, ch, key, vel) in notes:
         for p in range(passes if t0 >= ls_t else 1):
             a = smp(t0, p)
@@ -94,12 +95,19 @@ def find_offset(ref, dec, maxlag=8192):
     k = lags[ok][np.argmax(c[ok])]
     return int(k - s0)
 
-def encode(F, sr, kbps, out, work):
+def frame_snr(F, Y, fr=1024):
+    """프레임별 SNR 최솟값 (dB) — 음악이 있는 프레임만 (원본 −50 dBFS 이상)"""
+    n = min(len(F), len(Y)) // fr * fr
+    s = (F[:n].astype(np.float64) ** 2).reshape(-1, fr * 2).sum(1); d = ((Y[:n].astype(np.float64) - F[:n]) ** 2).reshape(-1, fr * 2).sum(1)
+    ok = s / (fr * 2) > 1e-5
+    return float(np.min(10 * np.log10((s[ok] + 1e-15) / (d[ok] + 1e-15)))) if ok.any() else 99.0
+
+def encode(F, sr, kbps, out, work, coder='twoloop'):
     os.makedirs(work, exist_ok=True)
     wav = os.path.join(work, os.path.basename(out) + '.wav')
     wavfile.write(wav, sr, F.astype(np.float32))
     tmp = out + '.tmp.m4a'
-    ff('-i', wav, '-c:a', 'aac', '-b:a', f'{kbps}k', '-ar', str(sr), '-ac', '2', '-movflags', '+faststart', '-map_metadata', '-1', tmp)
+    ff('-i', wav, '-c:a', 'aac', '-aac_coder', coder, '-b:a', f'{kbps}k', '-ar', str(sr), '-ac', '2', '-movflags', '+faststart', '-map_metadata', '-1', tmp)
     os.replace(tmp, out)
     return wav
 
@@ -150,13 +158,18 @@ def build(spec_path):
         a = np.abs(R).max(axis=1); thr = a.max() * 10 ** (-72 / 20)
         last = np.nonzero(a > thr)[0][-1]
         end = min(n, last + int(0.2 * sr))
+    # 목표 라우드니스로 이득 → 트루 피크 리미터(천장 CEIL). 리미터 이득 감소는 MAX_GR 까지만 허용하고,
+    # 그 이상 필요한 곡(타악 순간 피크가 큰 곡)은 목표보다 조금 조용하게 둔다.
     R0 = R
+    tp0 = dsp.true_peak(R0[:end + G + 2048])
     g_db = spec['lufs'] - dsp.lufs(R0[:end], sr)
-    for it in range(5):
+    cap = CEIL + MAX_GR - tp0
+    for it in range(8):
+        g_db = min(g_db, cap)
         R, lim_db = dsp.limit(R0 * 10 ** (g_db / 20), sr, CEIL)
         L1 = dsp.lufs(R[:end], sr)
-        if abs(L1 - spec['lufs']) < 0.08: break
-        g_db += spec['lufs'] - L1
+        if abs(L1 - spec['lufs']) < 0.05 or (g_db >= cap - 1e-9 and L1 < spec['lufs']): break
+        g_db += (spec['lufs'] - L1) * 1.3
     # ── 잘라내기 ──
     if loop:
         w = 0.5 - 0.5 * np.cos(np.linspace(0, np.pi, XF))[:, None]
@@ -170,20 +183,31 @@ def build(spec_path):
         F[-fo:] *= np.linspace(1, 0, fo)[:, None]
         LS = LE = 0; pre_match = None
     F = F.astype(np.float32)
-    # ── 인코드 → 디코드 → 프라이밍/피크 확인 (피크 초과면 이득 낮춰 재인코드) ──
-    for it in range(4):
-        wav = encode(F, sr, spec['kbps'], spec['out'], spec['work'])
+    # ── 인코드 → 디코드 → 프라이밍/피크/글리치 확인 ──
+    # ffmpeg 내장 AAC 인코더는 드물게 프레임 글리치(원본보다 수 dB 큰 순간 피크)를 낸다 → 다른 코더/비트레이트로 다시.
+    # 글리치가 아닌 작은 오버슈트(트루 피크 > tp)만 이득을 조금 낮춰 해결한다.
+    tries = [('twoloop', spec['kbps']), ('fast', spec['kbps']), ('twoloop', spec['kbps'] + 8), ('fast', spec['kbps'] + 8)]
+    ti = 0; enc_log = []
+    srcTP = dsp.true_peak(F)
+    for it in range(8):
+        coder, kb = tries[min(ti, len(tries) - 1)]
+        wav = encode(F, sr, kb, spec['out'], spec['work'], coder)
         D = decode(spec['out'], sr)
         off = find_offset(F, D)
         Draw = decode(spec['out'], sr, ignore_editlist=True)
         priming = find_offset(F, Draw)
         Y = D[off:off + len(F)] if off >= 0 else np.concatenate([np.zeros((-off, 2), np.float32), D])[:len(F)]
         tp = dsp.true_peak(Y)
+        fsnr = frame_snr(F, Y)
+        glitch = tp > srcTP + 1.2 or fsnr < -3
+        enc_log.append(dict(coder=coder, kbps=kb, tp=round(tp, 2), srcTP=round(srcTP, 2), minFrameSnr=round(fsnr, 1), glitch=bool(glitch)))
+        if os.environ.get('MUSIC_DEBUG'): print('  enc', enc_log[-1], file=sys.stderr)
+        if glitch and ti < len(tries) - 1: ti += 1; continue
         if tp <= spec['tp'] - 0.05: break
-        F *= np.float32(10 ** ((spec['tp'] - 0.15 - tp) / 20))
+        F *= np.float32(10 ** ((spec['tp'] - 0.15 - tp) / 20)); srcTP = dsp.true_peak(F)
     lu = dsp.lufs(Y[:LE] if loop else Y, sr)
     clip = int((np.abs(Y) >= 0.9999).sum())
-    q = dict(kbps=spec['kbps'], limitDb=lim_db, clip=clip, decodedLen=len(D), rawLen=len(Draw), editOffset=off, priming=priming,
+    q = dict(kbps=kb, coder=coder, enc=enc_log, limitDb=lim_db, clip=clip, decodedLen=len(D), rawLen=len(Draw), editOffset=off, priming=priming,
              prematch_db=pre_match)
     if loop:
         q['seam'] = dsp.seam_metrics(Y, LS, LE, sr)
@@ -215,7 +239,7 @@ def build(spec_path):
     entry = dict(file=os.path.basename(spec['out']), bytes=os.path.getsize(spec['out']), duration=round(len(F) / sr, 6), loop=loop,
                  loopStart=round(LS / sr, 6) if loop else 0, loopEnd=round(LE / sr, 6) if loop else round(len(F) / sr, 6),
                  loopStartSample=int(LS) if loop else 0, loopEndSample=int(LE) if loop else int(len(F)), samples=int(len(F)),
-                 priming=int(priming - off), lufs=round(lu, 2), peak=round(tp, 2), kbps=spec['kbps'])
+                 priming=int(priming - off), lufs=round(lu, 2), peak=round(tp, 2), kbps=kb)
     json.dump(dict(entry=entry, qa=q), open(spec['stats'], 'w'), indent=1, default=float)
     try: os.remove(wav)
     except OSError: pass
@@ -254,9 +278,41 @@ def check(index_path, only=None, budget=30.0, tpmax=-1.0):
     for f in fails: print('FAIL', f)
     if not fails: print('OK')
 
+BANDS = [31.5, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000]
+def octave_bands(x, sr):
+    from scipy import signal as sg
+    out = []
+    for f in BANDS:
+        w = 2 * np.pi * f / sr; al = np.sin(w) / (2 * np.sqrt(2)); a0 = 1 + al
+        y = sg.lfilter([al / a0, 0, -al / a0], [1, -2 * np.cos(w) / a0, (1 - al) / a0], x, axis=0)
+        out.append(float(10 * np.log10(np.mean(y * y, axis=0).sum() + 1e-20)))
+    return out
+
+def kenergy(x, sr):
+    from scipy import signal as sg
+    (b1, a1), (b2, a2) = dsp._kfilter(sr)
+    y = sg.lfilter(b2, a2, sg.lfilter(b1, a1, x, axis=0), axis=0)
+    return float(10 * np.log10(np.mean(y * y, axis=0).sum() + 1e-20))
+
+def balance(spec_path, out_path):
+    """GM 렌더의 파트별 단독 에너지(마른 신호, 도입+본문 1회+3 s) + 전체 마른 믹스 옥타브 대역"""
+    spec = json.load(open(spec_path)); sr = spec['rate']
+    S = schedule(spec, sr, passes=1)
+    n = S['B0'] + S['L'] + 3 * sr + int(0.05 * sr)
+    ev = [(e[0] + int(0.05 * sr) if e[0] > 0 else 0, *e[1:]) for e in S['ev']]  # 원본 측정과 같은 0.05 s 시작 지연
+    res = {'parts': {}}
+    for p in spec['parts']:
+        sub = [e for e in ev if e[2] == p['mch']]
+        y = fsynth.render_events(sub, n, rate=sr, reverb=False, chorus=False)[:n].astype(np.float64)
+        res['parts'][p['cid']] = kenergy(y, sr)
+    full = fsynth.render_events(ev, n, rate=sr, reverb=False, chorus=False)[:n].astype(np.float64)
+    res['bands'] = octave_bands(full, sr); res['total'] = kenergy(full, sr)
+    json.dump(res, open(out_path, 'w'))
+
 if __name__ == '__main__':
     mode = sys.argv[1]
     if mode == 'build': build(sys.argv[2])
+    elif mode == 'balance': balance(sys.argv[2], sys.argv[3])
     elif mode == 'check':
         a = sys.argv[3:]; g = lambda k, d: a[a.index(k) + 1] if k in a else d
         only = g('--only', None)

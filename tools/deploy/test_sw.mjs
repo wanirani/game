@@ -6,6 +6,7 @@
 // dist/web 을 serve_dist 로 띄워 헤드리스 Chromium 에서:
 //  1. 첫 방문 → 워커 설치·활성, bn-<buildHash> 에 미리 받기 목록 전부, bn-assets-v1 에 타이틀 배경·리그 JSON (해시 표시 x-bn-h)
 //  2. /api/ 요청은 어떤 캐시에도 들어가지 않는다 (P-10)
+//  2b. 소리(assets/audio/**)는 설치 때 미리 받지 않고(미리 받기 목록에 없음), 처음 받을 때 bn-audio-v1 에 x-bn-h(빌드 해시)·x-bn-len(바이트)로 들어간다
 //  3. 오프라인 새로고침 (서버를 내려서 워커의 fetch 도 진짜로 실패하게 — context.setOffline 은 워커의 fetch 를 막지 않는다):
 //     타이틀이 뜨고, 마을이 돌고, 스테이지 s01 이 돈다 (페이지 오류 0)
 //  4. 새 빌드(내용이 바뀐 리그 JSON·fonts.json·build-info.js, 새 BUILD 해시)를 같은 주소에서 내보낸다:
@@ -122,6 +123,23 @@ try {
     return hits;
   });
   check('api.never-cached', apiHits.length === 0, apiHits.join(', ') || '어느 캐시에도 없음');
+  // 2b. 소리: 미리 받지 않고, 처음 받을 때 크기 제한 캐시(bn-audio-v1)에
+  const audioPre = [...build.precache, ...(build.assets || [])].filter((u) => /^assets\/audio\//.test(u));
+  const audioFiles = Object.keys(bj.files).filter((f) => /^assets\/audio\/(sfx\/index\.json|music\/index\.json|sfx\/[^/]+\.ogg)$/.test(f)).slice(0, 3);
+  const music1 = Object.keys(bj.files).find((f) => /^assets\/audio\/music\/[^/]+\.m4a$/.test(f));
+  if (music1) audioFiles.push(music1);
+  const au = await page.evaluate(async (files) => {
+    const before = (await caches.open('bn-audio-v1').then((c) => c.keys())).length;
+    for (const f of files) await (await fetch(f)).arrayBuffer();
+    const c = await caches.open('bn-audio-v1');
+    const got = [];
+    for (let i = 0; i < 40; i++) { await new Promise((r) => setTimeout(r, 100)); got.length = 0; for (const f of files) { const h = await c.match(new URL(f, location.href).href); if (h) got.push([f, h.headers.get('x-bn-h'), Number(h.headers.get('x-bn-len'))]); } if (got.length === files.length) break; }
+    const inAssets = (await (await caches.open('bn-assets-v1')).keys()).filter((r) => /\/assets\/audio\//.test(r.url)).length;
+    return { before, got, inAssets };
+  }, audioFiles);
+  const auOk = audioFiles.length > 0 && au.got.length === audioFiles.length && au.got.every(([f, h, n]) => h === bj.files[f]?.hash8 && n === bj.files[f]?.bytes);
+  check('audio.runtime-cache', !audioPre.length && auOk && au.inAssets === 0,
+    `${audioPre.length ? `미리 받기 목록에 소리 ${audioPre.length}개! ` : '설치 때 미리 받지 않음, '}bn-audio-v1 ${au.got.length}/${audioFiles.length}개 (x-bn-h·x-bn-len = build.json${music1 ? `, 음악 ${music1.split('/').pop()} ${(bj.files[music1].bytes / 1048576).toFixed(2)} MB` : ''}), bn-assets-v1 에 소리 ${au.inAssets}개`);
   // 재방문 (캐시 우선): 코드 요청이 네트워크로 가지 않는다
   const netCode = [];
   const onReq = (r) => { if (/\/src\/bundle\//.test(r.url()) && !r.serviceWorker?.()) netCode.push(r.url()); };

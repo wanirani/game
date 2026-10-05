@@ -12,6 +12,8 @@
 //  7. loop:false 곡은 한 번 울리고 끝난다 (audio.current → null)
 //  8. 효과음 샘플: 목록·core 묶음이 풀린다 (m4a 실패 → ogg), 샘플 효과음 재생, 미리 받기(prefetch)
 //  9. 페이지 오류·콘솔 오류 0 (일부러 만든 404 의 'Failed to load resource' 는 제외)
+// 10. 실제 녹음 곡 (assets/audio/music/index.json 이 있으면): 곡 몇 개를 ffmpeg 로 WAV 로 풀어(프라이밍은 ffmpeg 가 자름) 실제 목록과 함께 주고,
+//     실제 루프 지점에서 이음매 앞뒤 RMS 가 이어지는지·이음매 표본 차가 곡 안의 보통 차이 수준인지 본다 (--real a,b 로 곡 고르기)
 import { chromium } from 'playwright-core';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -63,7 +65,7 @@ const port = srv.address().port;
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--autoplay-policy=no-user-gesture-required'] });
 
 /** 새 페이지: 시험용 빈 문서에서 audio.js 를 불러 둔다. route: 음악 목록·파일을 고정 자료로 (missing → 404) */
-async function open({ mobile = false, codecs = ['m4a', 'ogg'], noIndex = false } = {}) {
+async function open({ mobile = false, codecs = ['m4a', 'ogg'], noIndex = false, real = null } = {}) {
   const ctx = await browser.newContext(mobile ? { viewport: { width: 844, height: 390 }, deviceScaleFactor: 3, hasTouch: true, isMobile: true } : {});
   const page = await ctx.newPage();
   const errs = [];
@@ -73,6 +75,7 @@ async function open({ mobile = false, codecs = ['m4a', 'ogg'], noIndex = false }
   await page.route('**/assets/audio/music/**', (r) => {
     const f = new URL(r.request().url()).pathname.split('/').pop();
     if (f === 'index.json' && noIndex) return r.fulfill({ status: 404, body: '' });
+    if (real) { const w = real[f] || (f === 'index.json' ? path.join(root, 'assets/audio/music/index.json') : null); return w ? r.fulfill({ status: 200, contentType: 'application/octet-stream', body: fs.readFileSync(w) }) : r.fulfill({ status: 404, body: '' }); }
     const p = path.join(FX, f);
     if (!fs.existsSync(p)) return r.fulfill({ status: 404, body: '' });
     return r.fulfill({ status: 200, contentType: f.endsWith('.json') ? 'application/json' : 'audio/mp4', body: fs.readFileSync(p) });
@@ -203,6 +206,36 @@ try {
     ok(errs.length === 0, `9. 휴대폰 페이지 오류 0 ${errs.join(' | ')}`);
     await ctx.close();
   }
+  // ── 실제 녹음 곡의 루프 이음매 ──
+  const realIx = path.join(root, 'assets/audio/music/index.json');
+  if (fs.existsSync(realIx)) {
+    const ix = JSON.parse(fs.readFileSync(realIx, 'utf8'));
+    const argI = process.argv.indexOf('--real');
+    const ids = (argI > 0 ? process.argv[argI + 1].split(',') : ['title', 's01', 'boss', 'hub']).filter((id) => ix.tracks?.[id] && fs.existsSync(path.join(root, 'assets/audio/music', ix.tracks[id].file)));
+    const real = {};
+    for (const id of ids) { const w = `${FX}/real_${id}.wav`; ff(['-i', path.join(root, 'assets/audio/music', ix.tracks[id].file), '-c:a', 'pcm_f32le', w]); real[ix.tracks[id].file] = w; }
+    const { ctx, page, errs } = await open({ real });
+    for (const id of ids) {
+      await page.evaluate((id) => audio.music(id), id);
+      const st = await until(page, (id) => { const s = audio.recStats(); return s.player?.id === id && s.player.rec ? s : null; }, id, 15000);
+      const seam = st && await page.evaluate(async (id) => {
+        const e = audio.rec.entry(id), b = e.buf, sr = b.sampleRate;
+        const oc = new OfflineAudioContext(b.numberOfChannels, Math.ceil(sr * 0.4), sr), s = oc.createBufferSource();
+        s.buffer = b; s.loop = true; s.loopStart = e.ls; s.loopEnd = e.le; s.connect(oc.destination); s.start(0, e.le - 0.2);
+        const out = await oc.startRendering(), L = out.getChannelData(0), wrap = Math.round(sr * 0.2), w = Math.round(sr * 0.02);
+        const rms = (i0) => { let q = 0; for (let i = i0; i < i0 + w; i++) q += L[i] * L[i]; return Math.sqrt(q / w); };
+        const d = []; for (let i = 1; i < L.length; i++) d.push(Math.abs(L[i] - L[i - 1]));
+        const sorted = [...d].sort((a, b) => a - b), p99 = sorted[Math.floor(sorted.length * 0.99)];
+        let jw = 0; for (let i = wrap - 2; i <= wrap + 2; i++) jw = Math.max(jw, d[i - 1] ?? 0);
+        return { before: rms(wrap - w), after: rms(wrap), jw, p99, ls: e.ls, le: e.le, rate: sr, off: e.off };
+      }, id);
+      const rr = seam ? Math.max(seam.before, seam.after) / Math.max(1e-6, Math.min(seam.before, seam.after)) : 0;
+      ok(!!seam && seam.jw <= Math.max(seam.p99 * 3, 0.02) && rr < 2.5,
+        `10. 실제 곡 ${id}: 루프 ${seam?.ls?.toFixed(3)}–${seam?.le?.toFixed(3)} s (${seam?.rate} Hz, off ${seam?.off}), 이음매 앞뒤 20 ms RMS ${seam?.before?.toFixed(3)}/${seam?.after?.toFixed(3)}, 이음매 표본 차 ${seam?.jw?.toFixed(4)} (곡 안 99% ${seam?.p99?.toFixed(4)})`);
+    }
+    ok(errs.length === 0, `9. 실제 곡 페이지 오류 0 ${errs.slice(0, 3).join(' | ')}`);
+    await ctx.close();
+  } else console.log('· assets/audio/music/index.json 없음 — 실제 곡 검사(10)는 건너뜀');
 } catch (e) {
   fails.push('예외: ' + (e?.stack || e));
   console.log('✗ 예외: ' + (e?.stack || e));

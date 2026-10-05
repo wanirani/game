@@ -21,6 +21,9 @@ const ROOT = path.resolve(HERE, '../../..');
 const OUT = path.join(ROOT, 'assets/audio/music');
 const BUILD = process.env.AUDIO_BUILD_DIR || '/tmp/claude-0/audio_build';
 const CALIB = JSON.parse(fs.readFileSync(path.join(HERE, 'gm_calib.json'), 'utf8'));
+// 채널별 균형 보정 (dB): --balance 가 원본 신스 단독 음량과 GM 단독 음량을 비교해 만든다
+const BAL_PATH = path.join(HERE, 'balance.json');
+const BALANCE = fs.existsSync(BAL_PATH) ? JSON.parse(fs.readFileSync(BAL_PATH, 'utf8')) : {};
 
 const PPQ = 1920, RATE = 44100;
 const LUFS = -16, LUFS_JINGLE = -15, TP_MAX = -1.0, BUDGET_MB = 30;
@@ -33,7 +36,7 @@ const SPECTRO = ['title', 's01', 's14', 'boss', 'dracula', 'nihil'];
 const args = process.argv.slice(2);
 const opt = (k) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : null; };
 const ONLY = opt('--only') ? opt('--only').split(',').map((s) => s.trim()).filter(Boolean) : null;
-const CHECK = args.includes('--check'), NORENDER = args.includes('--no-render');
+const CHECK = args.includes('--check'), NORENDER = args.includes('--no-render'), BAL = args.includes('--balance'), BANDS = args.includes('--bands');
 const JOBS = +(opt('--jobs') || Math.max(1, os.cpus().length));
 const SPEC_IDS = opt('--spectro') ? opt('--spectro').split(',') : SPECTRO;
 
@@ -43,7 +46,7 @@ const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const median = (a) => { if (!a.length) return 60; const s = [...a].sort((x, y) => x - y); return s[s.length >> 1]; };
 
 // ── 곡 → 파트(MIDI 채널) 목록 ──
-export function buildTrack(id) {
+export function buildTrack(id, { noBalance = false } = {}) {
   const def = TRACKS[id], comp = compileTrack(def, id);
   // 섹션 타임라인 (도입 + 반복 순서 1회)
   const tl = []; let beat = 0;
@@ -107,7 +110,9 @@ export function buildTrack(id) {
   }
   // 채널 음량: 목표 진폭 A = vol × 10^(−L_prog/20) (L = GM 보정표), 곡 안 최대를 CC7 127 로
   const all = parts.concat(drumPart ? [drumPart] : []);
-  for (const p of all) p.A = p.vol * Math.pow(10, -(CALIB[p.drum ? 'd' + p.kit : String(p.prog)] ?? -18) / 20);
+  const bal = noBalance ? {} : BALANCE[id] || {};
+  for (const p of all) p.A = p.vol * Math.pow(10, -(CALIB[p.drum ? 'd' + p.kit : String(p.prog)] ?? -18) / 20) * Math.pow(10, (bal[p.cid] ?? 0) / 20);
+  for (const p of all) p.bal = bal[p.cid] ?? 0;
   const Amax = Math.max(...all.map((p) => p.A));
   for (const p of all) {
     p.cc7 = clamp(Math.round(127 * Math.sqrt(p.A / Amax)), 1, 127);
@@ -162,6 +167,79 @@ function findAliases(list) {
   return alias;
 }
 
+function writeSpec(T, midDir, specDir) {
+  fs.mkdirSync(midDir, { recursive: true }); fs.mkdirSync(specDir, { recursive: true });
+  const mid = path.join(midDir, `${T.id}.mid`);
+  fs.writeFileSync(mid, toMIDI(T));
+  const dlyParts = T.parts.filter((p) => p.dly > 0);
+  const dmax = Math.max(0, ...dlyParts.map((p) => p.dly));
+  const spec = {
+    id: T.id, name: T.def.name, mid, rate: RATE, loop: T.loop, kbps: KBPS[T.id] ?? KBPS.default,
+    lufs: JINGLES.has(T.id) ? LUFS_JINGLE : LUFS, tp: TP_MAX, out: path.join(OUT, `${T.id}.m4a`), work: path.join(BUILD, 'work'),
+    stats: path.join(specDir, `${T.id}.stats.json`), spectro: SPEC_IDS.includes(T.id) ? path.join(specDir, `${T.id}.png`) : null,
+    ideal: T.ideal, bpm: T.comp.bpm,
+    // 게임 엔진 리드 딜레이 재현: 지연 = min(1.5, 0.75박) (곡 기본 bpm), 송신은 채널별 dly (CC7 에 √(dly/dmax) 로 반영)
+    delay: dlyParts.length ? { time: Math.min(1.5, (60 / T.comp.bpm) * 0.75), gain: dmax, chans: Object.fromEntries(dlyParts.map((p) => [p.mch, Math.sqrt(p.dly / dmax)])) } : null,
+    drums: T.parts.filter((p) => p.drum).map((p) => p.mch),
+    rev: Object.fromEntries(T.parts.map((p) => [p.mch, p.rev])),
+    parts: T.parts.map((p) => ({ cid: p.cid, inst: p.inst, gm: p.drum ? `kit ${p.kit} ${p.name}` : `${p.prog} ${p.name}`, mch: p.mch, compiled: p.compiled, midi: p.notes.length, dedup: p.dedup || 0, cc7: p.cc7, cc91: p.cc91, cc93: p.cc93, cc10: p.cc10, bal: p.bal, lanes: p.lanes })),
+  };
+  const sp = path.join(specDir, `${T.id}.json`);
+  fs.writeFileSync(sp, JSON.stringify(spec, null, 1));
+  return sp;
+}
+
+// ── 균형 보정: 원본 신스(채널 단독) 대 GM(파트 단독) 상대 음량 차 → balance.json ──
+const dbsum = (xs) => 10 * Math.log10(xs.reduce((a, x) => a + Math.pow(10, x / 10), 0));
+async function runBalance(ids) {
+  const dir = path.join(BUILD, 'bal');
+  fs.mkdirSync(dir, { recursive: true });
+  const PY = path.join(HERE, 'render.py'), REF = path.join(HERE, 'ref_synth.mjs');
+  const res = {};
+  await pool(ids, JOBS, async (id) => {
+    const t = Date.now();
+    const sp = writeSpec(buildTrack(id, { noBalance: true }), dir, dir);
+    const og = path.join(dir, `${id}.orig.json`);
+    if (!fs.existsSync(og) || args.includes('--fresh')) fs.writeFileSync(og, await run(process.execPath, [REF, '--measure', id]));
+    await run('python3', [PY, 'balance', sp, path.join(dir, `${id}.gm.json`)]);
+    const o = JSON.parse(fs.readFileSync(og, 'utf8')), g = JSON.parse(fs.readFileSync(path.join(dir, `${id}.gm.json`), 'utf8'));
+    const keys = Object.keys(g.parts).filter((k) => o.chans[k] != null && Number.isFinite(o.chans[k]) && g.parts[k] > -150);
+    const os_ = dbsum(keys.map((k) => o.chans[k])), gs = dbsum(keys.map((k) => g.parts[k]));
+    res[id] = Object.fromEntries(keys.map((k) => [k, Math.round(clamp((o.chans[k] - os_) - (g.parts[k] - gs), -15, 15) * 10) / 10]));
+    console.log(`  ${id.padEnd(10)} ${((Date.now() - t) / 1000).toFixed(0)}s ${JSON.stringify(res[id])}`);
+  });
+  const all = { ...BALANCE, ...res };
+  const ord = Object.fromEntries(Object.keys(TRACKS).filter((k) => all[k]).map((k) => [k, all[k]]));
+  fs.writeFileSync(BAL_PATH, JSON.stringify(ord, null, 1) + '\n');
+  console.log(`balance.json 갱신 (${Object.keys(res).length}곡)`);
+}
+
+// ── 옥타브 대역 비교: 원본 신스 마른 믹스 대 GM 마른 믹스 (총 K 음량을 맞춘 뒤 대역별 dB 차) ──
+const BAND_HZ = [31.5, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
+async function runBands(ids) {
+  const dir = path.join(BUILD, 'bands'), bal = path.join(BUILD, 'bal');
+  fs.mkdirSync(dir, { recursive: true });
+  const PY = path.join(HERE, 'render.py'), REF = path.join(HERE, 'ref_synth.mjs');
+  const rows = {};
+  await pool(ids, JOBS, async (id) => {
+    const sp = writeSpec(buildTrack(id), dir, dir);
+    const og = path.join(bal, `${id}.orig.json`);
+    if (!fs.existsSync(og)) { fs.mkdirSync(bal, { recursive: true }); fs.writeFileSync(og, await run(process.execPath, [REF, '--measure', id])); }
+    await run('python3', [PY, 'balance', sp, path.join(dir, `${id}.gm.json`)]);
+    const o = JSON.parse(fs.readFileSync(og, 'utf8')), g = JSON.parse(fs.readFileSync(path.join(dir, `${id}.gm.json`), 'utf8'));
+    rows[id] = o.bands.map((b, i) => (g.bands[i] - g.total) - (b - o.total));
+  });
+  const lines = ['| id | ' + BAND_HZ.map((f) => (f >= 1000 ? f / 1000 + 'k' : f)).join(' | ') + ' |', '|---|' + BAND_HZ.map(() => '---').join('|') + '|'];
+  for (const id of ids) if (rows[id]) lines.push(`| ${id} | ${rows[id].map((d) => (d >= 0 ? '+' : '') + d.toFixed(1)).join(' | ')} |`);
+  const avg = BAND_HZ.map((_, i) => ids.filter((id) => rows[id]).reduce((a, id) => a + rows[id][i], 0) / ids.filter((id) => rows[id]).length);
+  lines.push(`| **mean** | ${avg.map((d) => (d >= 0 ? '+' : '') + d.toFixed(1)).join(' | ')} |`);
+  const table = lines.join('\n');
+  console.log(table);
+  fs.writeFileSync(path.join(dir, 'bands.md'), table + '\n');
+  const rd = path.join(HERE, 'README.md');
+  if (fs.existsSync(rd)) { const md = fs.readFileSync(rd, 'utf8'); if (md.includes('<!-- BANDS:BEGIN -->')) fs.writeFileSync(rd, md.replace(/<!-- BANDS:BEGIN -->[\s\S]*<!-- BANDS:END -->/, `<!-- BANDS:BEGIN -->\n${table}\n<!-- BANDS:END -->`)); }
+}
+
 function run(cmd, argv) {
   return new Promise((res, rej) => {
     const p = spawn(cmd, argv, { stdio: ['ignore', 'pipe', 'pipe'] });
@@ -190,28 +268,14 @@ async function main() {
     return;
   }
   for (const id of ONLY || []) if (!TRACKS[id]) { console.error(`알 수 없는 곡: ${id}`); process.exit(2); }
+  if (BAL) { await runBalance(ONLY || ids); return; }
+  if (BANDS) { await runBands(ONLY || ids); return; }
   const all = ids.map((id) => buildTrack(id));
   const aliases = findAliases(all);
   const want = all.filter((T) => (!ONLY || ONLY.includes(T.id)) && !aliases[T.id]);
   const specs = [];
   for (const T of want) {
-    const mid = path.join(BUILD, 'mid', `${T.id}.mid`);
-    fs.writeFileSync(mid, toMIDI(T));
-    const dlyParts = T.parts.filter((p) => p.dly > 0);
-    const dmax = Math.max(0, ...dlyParts.map((p) => p.dly));
-    const spec = {
-      id: T.id, name: T.def.name, mid, rate: RATE, loop: T.loop, kbps: KBPS[T.id] ?? KBPS.default,
-      lufs: JINGLES.has(T.id) ? LUFS_JINGLE : LUFS, tp: TP_MAX, out: path.join(OUT, `${T.id}.m4a`), work: path.join(BUILD, 'work'),
-      stats: path.join(BUILD, 'spec', `${T.id}.stats.json`), spectro: SPEC_IDS.includes(T.id) ? path.join(BUILD, 'spec', `${T.id}.png`) : null,
-      ideal: T.ideal, bpm: T.comp.bpm,
-      // 게임 엔진 리드 딜레이 재현: 지연 = min(1.5, 0.75박) (곡 기본 bpm), 송신은 채널별 dly (CC7 에 √(dly/dmax) 로 반영)
-      delay: dlyParts.length ? { time: Math.min(1.5, (60 / T.comp.bpm) * 0.75), gain: dmax, chans: Object.fromEntries(dlyParts.map((p) => [p.mch, Math.sqrt(p.dly / dmax)])) } : null,
-      drums: T.parts.filter((p) => p.drum).map((p) => p.mch),
-      rev: Object.fromEntries(T.parts.map((p) => [p.mch, p.rev])),
-      parts: T.parts.map((p) => ({ cid: p.cid, inst: p.inst, gm: p.drum ? `kit ${p.kit} ${p.name}` : `${p.prog} ${p.name}`, mch: p.mch, compiled: p.compiled, midi: p.notes.length, dedup: p.dedup || 0, cc7: p.cc7, cc91: p.cc91, cc93: p.cc93, cc10: p.cc10, lanes: p.lanes })),
-    };
-    const sp = path.join(BUILD, 'spec', `${T.id}.json`);
-    fs.writeFileSync(sp, JSON.stringify(spec, null, 1));
+    const sp = writeSpec(T, path.join(BUILD, 'mid'), path.join(BUILD, 'spec'));
     specs.push(sp);
   }
   console.log(`MIDI ${want.length}곡 → ${path.join(BUILD, 'mid')}` + (Object.keys(aliases).length ? `, 별칭 ${JSON.stringify(aliases)}` : ', 별칭 없음'));

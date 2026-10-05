@@ -22,6 +22,8 @@
 
 - `<course>`: arcade.js `COURSES` 의 인덱스. `<diff>`: difficulty id. `<stageId>`: `s01`…`s20`.
 - 일일 도전 날짜는 **한국 시간(UTC+9)** 기준이다.
+- 순위 기준 값이 모두 같으면 **먼저 세운 기록**이 위다. 순위는 1, 2, 3… 으로 겹치지 않는다.
+- 일일 도전 보드는 미래 날짜를 받지 않고, 런 시작·제출은 오늘부터 60일 전까지만 받는다(그보다 오래된 보드는 서버가 지운다).
 
 ## 2. API
 
@@ -36,19 +38,35 @@
 
 ### 2.2 런 제출
 `POST /api/runs/finish` (인증 필요, 본문 ≤ 48 KB)
-- 요청: `{ run, result, ghost? }`
+- 요청: `{ run, result, ghost?, board? }`
   - `result`: `{ time, score, wave?, rank?, hero, cls, level, deaths? }`
-  - `ghost`: base64 문자열, 24 KB 이하. 형식은 클라이언트가 정하고 서버는 열어 보지 않는다.
+    - `time` 은 ms, `rank` 는 등급 글자(`S`·`A`…), 서바이벌은 `wave` 필수.
+  - `board`(선택): 보내면 런의 보드와 같아야 한다(§3 '보드 일치'). 보드는 `run` 안에 있으므로 생략해도 된다.
+  - `ghost`: base64 문자열, 24 KB 이하. 형식은 클라이언트가 정하고 서버는 열어 보지 않는다 (부록 A).
 - 응답: `{ ok: true, best, rank, total, entry }`
   - `best`: 이번 기록이 그 계정의 최고 기록을 갱신했는가.
   - `rank`: 갱신 뒤 순위(1부터), 100위 밖이면 `null`.
+  - `total`: 그 보드에 기록이 있는 계정 수. `entry`: 그 계정의 지금 최고 기록(§2.3 항목 모양).
+- 실패(모두 `{ ok:false, error, message }`):
+
+  | HTTP | error | 뜻 · 클라이언트 처리 |
+  |---|---|---|
+  | 400 | `invalid_run` | 서명·형식이 틀림, 다른 계정의 런, `board` 불일치 → 버린다 |
+  | 400 | `invalid_board` | 보드 ID 가 틀림 (런 시작·순위표·고스트에서도) |
+  | 409 | `run_used` | 이미 제출한 런 → 버린다 |
+  | 410 | `run_expired` | 6시간이 지남(또는 60일 지난 일일 도전) → 버린다 |
+  | 422 | `invalid_result` · `implausible_time` · `invalid_ghost` | 값 범위·시간 검사·고스트 형식 실패. 런은 쓰이지 않으므로 고쳐서 다시 보낼 수 있다(고스트를 빼고 등) |
+  | 429 | `rate_limited` | 요청 제한 (`Retry-After`) → 나중에 다시 |
+  | 401 / 5xx | `unauthorized` / `server_error` | 다른 계정 API 와 같다. 5xx 면 같은 `run` 으로 다시 보낼 수 있다 |
 - 계정당 보드마다 **최고 기록 1개**만 남긴다.
 - 고스트는 갱신된 최고 기록이 **상위 20위 안**일 때만 저장한다. 밀려나면 지운다.
 
 ### 2.3 순위표
 `GET /api/boards/<board>?limit=50` (공개, limit ≤ 100)
 - 응답: `{ board, total, entries: [{ rank, nick, time, score, wave?, hero, cls, level, date, ghost: bool }], me? }`
+  - `date` 는 기록을 세운 서버 시각(ms epoch). `wave` 는 서바이벌 보드에만 있다.
 - 인증 헤더가 있으면 `me: { rank, time, score, wave? }` 를 함께 준다.
+  - 그 보드에 기록이 없으면 `me: null`, 100위 밖이면 `rank: null`. 토큰이 틀리면 다른 API 처럼 401.
 - `Cache-Control: public, max-age=30`. 인증한 요청은 `no-store`.
 
 ### 2.4 고스트
@@ -58,11 +76,14 @@
 ### 2.5 일일 도전
 `GET /api/daily` (공개)
 - 응답: `{ date, seed, stageId, diff, hero, cls, preset, mods: [..], board }`
+  - `date` = `'YYYYMMDD'`, `board` = `'daily:YYYYMMDD'`, `seed` = 32비트 부호 없는 정수, `diff` = `normal` 또는 `hard`.
+  - `preset` = `LEVEL_PRESETS` 인덱스. 2부 스테이지(s14~s20)는 2부 등급, 1부는 권장 레벨 이상인 등급 중 낮은 둘 중 하나.
+  - `cls` = `hero` 의 직업 중 그 등급의 단계(`LEVEL_PRESETS[preset].tier`)인 것. `hero` 는 아직 해금하지 않은 캐릭터일 수 있다.
 - 날짜에서 결정적으로 만든다.
   - 같은 날이면 누구나 같은 값을 받는다.
   - 서버 비밀값(HMAC 키)을 섞어 미리 알 수 없게 한다.
   - 키는 `AUTH_PEPPER` 가 있으면 그것을, 없으면 고정 문자열을 쓴다.
-- `mods`: 아래 목록에서 1~2개.
+- `mods`: 아래 목록에서 1~2개. `glass`+`no_potion`, `hp_x1.5`+`glass` 는 함께 나오지 않는다.
   - `hp_x1.5` (적 체력 1.5배)
   - `no_potion` (물약 금지)
   - `glass` (받는 피해 2배, 주는 피해 1.3배)
@@ -73,8 +94,8 @@
 ### 2.6 별명
 `PUT /api/profile/nick` (인증 필요)
 - 요청: `{ nick }`
-- 응답: `{ nick }`
-- `GET /api/auth/me` 응답에 `nick` 을 더한다.
+- 응답: `{ nick }` — 겹치면 `#숫자` 가 붙은 실제 별명. 실패: `invalid_nick`(형식), `banned_nick`(금칙어·운영자 사칭), `nick_is_id`(로그인 아이디가 들어감) — 모두 400.
+- `GET /api/auth/me` 응답에 `nick` 을 더한다 (아직 없으면 `null`).
 
 ## 3. 서버 검사
 
@@ -86,6 +107,7 @@
   - `level` 1~99, `score` 0~99,999,999.
   - `hero`·`cls` 는 데이터에 있는 id.
 - 계정당 제출은 1분에 6번, 하루에 300번까지.
+- 그 밖의 계정별 제한: 런 시작 10분에 60번, 별명 바꾸기 1시간에 10번 (429 `rate_limited`).
 
 ## 4. 클라이언트
 
@@ -102,3 +124,40 @@
   - 시작 화면에서 '고스트: 끔 / 1위 / 내 최고' 를 고르면 반투명 실루엣이 같은 경로를 달린다.
   - 고스트는 충돌하지 않는다.
 - **로그인하지 않았을 때**: 온라인 탭과 오늘의 도전 순위표는 볼 수 있다. 제출 자리에는 '로그인하면 순위에 오를 수 있어요' 를 띄운다.
+
+## 부록 A. 고스트 형식 (클라이언트 `src/game/ghost.js`)
+
+서버는 열어 보지 않는다. 바꾸면 `VERSION` 을 올리고, 읽는 쪽은 모르는 판을 버린다(고스트 없음으로).
+
+- **표본**: 연습·일일 도전에서 `world.run.time`(초)이 0.1초를 넘을 때마다 한 칸. 한 칸 = 방·발 중앙 x·발 y(`cx`, `bottom`)·방향·자세.
+  - 위치는 4 px 단위로 양자화한다 (재생 오차 ≤ 2 px). 재생은 같은 `run.time` 의 두 칸 사이를 직선 보간한다(같은 방일 때만).
+  - 자세 4비트: `idle run jump fall dash crouch hurt wall throw cast charge attack flip land death ride` (순서 고정, `move` 중 = attack).
+- **바이트** (작은 끝, little-endian):
+
+| 위치 | 크기 | 내용 |
+|---|---|---|
+| 0 | 2 | 'B' 'G' |
+| 2 | 1 | 판 = 1 |
+| 3 | 1 | 표본 간격 (1/100초: 10 = 10Hz, 20 = 5Hz, 40 = 2.5Hz) |
+| 4 | 1 | 위치 단위 (px, 4) |
+| 5 | 4 | 칸 수 |
+| 9 | 1+ | 방 수 R, 그 뒤 R 개의 (길이 1바이트 + ASCII id) |
+| … | … | 연산 줄 (아래) |
+
+- **연산** (칸을 만드는 연산은 지난 이동량 `dx, dy`(단위)와 지금 상태를 쓴다):
+
+| 첫 바이트 | 뒤 | 뜻 |
+|---|---|---|
+| `0x00–0x3F` | – | 반복: 지난 이동량·상태로 n+1 칸 (1–64) |
+| `0x40–0x7F` | – | 가로 이동: dx = 아래 6비트(부호, −32…31), dy = 0 → 한 칸 |
+| `0x80–0xBF` | 1 | 이동: dx = 아래 6비트(부호), dy = 다음 바이트(부호 8비트) → 한 칸 |
+| `0xC0–0xDF` | – | 상태: 비트 4 = 왼쪽을 봄, 비트 0–3 = 자세 (칸을 만들지 않음) |
+| `0xE0` | 5 | 절대 위치: 방 번호 1 + x 2 + y 2 (부호 16비트, 단위) → 한 칸, 이동량 0 |
+| `0xE1–0xFF` | – | 쓰지 않음 (만나면 끝) |
+
+- **크기**: 방이 바뀌거나 범위를 넘는 이동은 절대 위치. 보통 판 20분(12000칸)은 base64 약 14 KB (`tools/online/test_client_online.mjs` 흉내 경로),
+  1분 달리기는 약 0.6 KB. base64 가 24 KB 를 넘으면 같은 기록을 5Hz → 2.5Hz → 1.25Hz 로 줄여 다시 묶는다 (그래도 넘으면 고스트 없이 제출).
+- **재생**: '1위' = `GET /api/ghosts/<board>/1`, '내 최고' = 기기에 둔 내 최고 고스트(`localStorage bn_ghost_best`, 보드 6개) → 없으면 내 순위가
+  20위 안일 때 `GET /api/ghosts/<board>/<내 순위>`. 같은 방이면 영웅 그림을 단색(하늘색)·반투명으로, 다른 방이면 화면 가장자리에
+  '고스트: 앞/뒤 N초'(고스트가 이 방을 떠난 지 / 이 방에 올 때까지). 충돌·소리 없음.
+

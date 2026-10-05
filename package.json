@@ -12,6 +12,7 @@
     "test:client": "node tools/accounts/test_client.mjs",
     "test:telemetry": "node tools/telemetry/test_telemetry.mjs",
     "test:telemetry:client": "node tools/telemetry/test_client_telemetry.mjs",
+    "test:online:client": "node tools/online/test_client_online.mjs",
     "test:online": "node tools/online/test_online.mjs",
     "qa:platform": "node tools/qa/run_platform.mjs",
     "qa:platform:strict": "node tools/qa/run_platform.mjs --strict"

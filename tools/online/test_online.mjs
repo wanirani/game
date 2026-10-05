@@ -87,7 +87,7 @@ const start = async (u, board) => expectOk(await call('POST', '/api/runs', { bod
 /** 런 시작 → (걸린 시간만큼) 시계 → 제출 */
 async function play(u, board, result = RES(), { ghost, elapsed, extra = {} } = {}) {
   const s = await start(u, board);
-  advance(elapsed ?? (result.time ?? 0) + 500);
+  advance(elapsed ?? Math.ceil(Number(result.time) || 0) + 500);
   return call('POST', '/api/runs/finish', { body: { run: s.run, result, ...(ghost !== undefined ? { ghost } : {}), ...extra }, token: u.token });
 }
 const board = (b, o = {}) => call('GET', `/api/boards/${b}${o.q ?? ''}`, o);
@@ -183,7 +183,8 @@ test('별명: 대소문자 무시 중복 → #숫자, 같은 요청 반복은 �
   assert.equal(expectOk(await put(a, 'Vlad')).nick, 'Vlad');
   assert.equal((await board('survival:hard')).body.entries[0].nick, 'Vlad', '순위표 별명도 바뀐다');
   assert.equal(expectOk(await put(c, 'dracula')).nick, 'dracula', '풀린 별명은 다른 사람이 정확히 가져갈 수 있다');
-  assert.deepEqual((await keysOf(cfg.STORES.nicks)).map(nickLib.nickOfKey).sort(), ['dracula', bn.toLowerCase(), 'vlad'].sort());
+  const held = (await keysOf(cfg.STORES.nicks)).map(nickLib.nickOfKey);
+  assert.deepEqual(held.filter((n) => /dracula|vlad/.test(n)).sort(), ['dracula', bn.toLowerCase(), 'vlad'].sort());
 });
 
 // ═════════ 런 시작 ═════════
@@ -233,7 +234,7 @@ test('제출: 성공 응답 {best, rank, total, entry}, 순위표에 반영', as
   assert.equal(s.entry.wave, 12);
 });
 
-test('제출: 같은 런은 한 번만 (409 run_used), 동시에 두 번 보내도 하나만 성공', async () => {
+test('제출: 같은 런은 한 번만 (409 run_used)', async () => {
   const u = await signup();
   const s = await start(u, 'bossrush:0:normal');
   advance(70_000);
@@ -241,11 +242,15 @@ test('제출: 같은 런은 한 번만 (409 run_used), 동시에 두 번 보내�
   expectOk(await call('POST', '/api/runs/finish', { body, token: u.token }));
   expectErr(await call('POST', '/api/runs/finish', { body, token: u.token }), 409, 'run_used');
   expectErr(await call('POST', '/api/runs/finish', { body: { ...body, result: RES({ time: 59_000 }) }, token: u.token }), 409, 'run_used');
+});
+
+test('경합: 같은 런을 동시에 두 번 보내도 하나만 성공 (nonce onlyIfNew)', async () => {
+  const u = await signup();
   const s2 = await start(u, 'bossrush:0:normal');
   advance(70_000);
-  const both = await Promise.all([1, 2].map(() => call('POST', '/api/runs/finish', { body: { run: s2.run, result: RES({ time: 50_000 }) }, token: u.token })));
-  assert.deepEqual(both.map((r) => r.status).sort(), [200, 409]);
-});
+  const both = await Promise.all([1, 2, 3].map(() => call('POST', '/api/runs/finish', { body: { run: s2.run, result: RES({ time: 50_000 }) }, token: u.token })));
+  assert.deepEqual(both.map((r) => r.status).sort(), [200, 409, 409]);
+}, { memOnly: true });
 
 test('제출: 만료(6시간)·위조·다른 계정·다른 보드·다른 키의 런 거절', async () => {
   const u = await signup(), v = await signup();
@@ -465,7 +470,8 @@ test('안드로이드 앱 출처: 순위표 응답에 CORS 헤더, Vary 에 Auth
   assert.deepEqual((r.headers.get('vary') ?? '').split(',').map((s) => s.trim()).sort(), ['Authorization', 'Origin']);
   expectErr(await call('GET', '/api/boards/survival:normal', { headers: { origin: 'https://evil.example', 'sec-fetch-site': 'cross-site' } }), 403, 'forbidden');
   expectErr(await call('POST', '/api/runs', { body: { board: 'survival:normal' }, headers: { 'sec-fetch-site': 'cross-site' } }), 403, 'forbidden');
-  expectErr(await call('PUT', '/api/profile/nick', { raw: '{"nick":"abc"}', headers: { 'content-type': 'text/plain' } }), 415, 'unsupported_media_type');
+  const u = await signup();
+  expectErr(await call('PUT', '/api/profile/nick', { raw: '{"nick":"abc"}', token: u.token, headers: { 'content-type': 'text/plain' } }), 415, 'unsupported_media_type');
 });
 
 // ═════════ 일일 도전 ═════════
@@ -572,11 +578,13 @@ test('정리: 쓴 런 기록(7시간 뒤)·61일 지난 일일 도전·표시 �
   const c = ctx();
   const u = await signup();
   const d0 = kst();
+  const runKeys0 = new Set(await keysOf(cfg.STORES.runs, 'used/'));
   expectOk(await play(u, `daily:${d0}`, RES({ time: 20_000 }), { ghost: ghostData(10) }));
   expectOk(await play(u, 'practice:s08:normal', RES({ time: 20_000 }), { ghost: ghostData(11) }));
   const uid = await uidOf(u.id);
-  const runKeys = async () => keysOf(cfg.STORES.runs, 'used/');
-  assert.equal((await runKeys()).length, 2);
+  const mine = (await keysOf(cfg.STORES.runs, 'used/')).filter((k) => !runKeys0.has(k));
+  assert.equal(mine.length, 2);
+  const runKeys = async () => (await keysOf(cfg.STORES.runs, 'used/')).filter((k) => mine.includes(k));
   // 표시 없는 고스트·버려진 별명 (주인 없음)
   await store(cfg.STORES.ghosts).setJSON(`practice.s08.normal/deadbeefdeadbeefdeadbeefdeadbeef`, { v: 1, data: 'AAAA', t: 1, at: T }, { metadata: { at: T } });
   await store(cfg.STORES.nicks).setJSON(nickLib.nickKey('ghostnick'), { uid: 'x', id: 'nobody_here', nick: 'ghostnick', at: T });
@@ -602,7 +610,7 @@ test('정리: 쓴 런 기록(7시간 뒤)·61일 지난 일일 도전·표시 �
   // 60일: 아직 남김 (제출 마감) / 62일: 지움
   advance(59 * DAY);
   await runCleanup(c);
-  assert.ok((await keysOf(cfg.STORES.boards, `b/daily.${d0}/`)).length === 2);
+  assert.ok((await keysOf(cfg.STORES.boards, `b/daily.${d0}/`)).includes(`b/daily.${d0}/e/${uid}`));
   advance(2 * DAY);
   r = await runCleanup(c);
   assert.deepEqual(await keysOf(cfg.STORES.boards, `b/daily.${d0}/`), []);
@@ -656,7 +664,7 @@ test('운영: board(아이디 포함)·board-remove(순위·별명)·nick(새 �
 
 // ═════════ 동시성 (메모리 저장소) ═════════
 test('경합: 여러 계정이 같은 보드에 동시에 제출해도 기록이 빠지지 않는다 (순위 목록 조건부 쓰기)', async () => {
-  const b = 'survival:hard';
+  const b = 'survival:nightmare';
   const us = [];
   for (let i = 0; i < 12; i++) us.push(await signup('cc'));
   const ss = [];
@@ -667,7 +675,8 @@ test('경합: 여러 계정이 같은 보드에 동시에 제출해도 기록이
   const g = expectOk(await board(b));
   assert.equal(g.total, 12);
   assert.deepEqual(g.entries.map((e) => e.wave), Array.from({ length: 12 }, (_, i) => 16 - i));
-  assert.deepEqual(rs.map((r) => r.body.rank).sort((x, y) => x - y), Array.from({ length: 12 }, (_, i) => i + 1));
+  // 응답의 rank 는 '그 제출이 목록에 들어간 순간'의 순위 → 뒤에 들어온 더 좋은 기록에 밀릴 수만 있다
+  rs.forEach((r, i) => { const final = 12 - i; assert.ok(r.body.rank >= 1 && r.body.rank <= final, `${r.body.rank} ≤ ${final}`); assert.ok(r.body.total <= 12); });
 }, { memOnly: true });
 
 test('경합: 같은 계정의 런 여러 개가 동시에 끝나도 가장 좋은 기록이 남는다', async () => {
@@ -695,8 +704,10 @@ test('경합: 탈퇴하는 동안 끝난 제출이 순위표에 남지 않는다
   const gate = new Promise((r) => { release = r; });
   let held = false;
   backend.hook = async (op, st, key) => { if (!held && st === cfg.STORES.boards && op === 'setJSON' && key.startsWith('u/')) { held = true; await gate; } };
-  const fin = call('POST', '/api/runs/finish', { body: { run: s.run, result: RES() }, token: u.token });
-  while (!held) await new Promise((r) => setImmediate(r));
+  let settled = false;
+  const fin = call('POST', '/api/runs/finish', { body: { run: s.run, result: RES() }, token: u.token }).finally(() => { settled = true; });
+  while (!held && !settled) await new Promise((r) => setImmediate(r));
+  assert.ok(held, '제출이 기록 쓰기 전에 끝남');
   expectOk(await call('DELETE', '/api/auth/account', { body: { password: PW }, token: u.token, ip: freshIp() }));
   release();
   backend.hook = null;

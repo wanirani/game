@@ -559,7 +559,7 @@ export class ArcadeScene extends Scene {
     if (D.state !== 'ready') { if (D.state === 'loading') line('오늘의 도전을 불러오는 중…', { align: 'center', color: DIMC }); return; }
     const B = D.board, me = B?.me;
     if (!cloud.loggedIn) line('로그인하면 순위에 오를 수 있어요', { color: '#9fd8ff', align: 'center' });
-    else if (me) line(`내 최고  ${ONLINE.fmtMs(me.time)} · ${me.rank}위`, { color: '#ffe7a0', align: 'center' });
+    else if (me) line(`내 최고  ${ONLINE.fmtMs(me.time)}${me.rank ? ` · ${me.rank}위` : ''}`, { color: '#ffe7a0', align: 'center' });
     else if (D.boardState === 'ready') line('오늘은 아직 기록이 없어요', { align: 'center' });
     y += 3;
     if (D.boardState === 'loading') { line('순위를 불러오는 중…', { align: 'center', color: DIMC }); return; }

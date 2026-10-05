@@ -26,6 +26,10 @@ const W = typeof window !== 'undefined' ? window : null;
 /** 서버 오류 코드 → 문구 (계정 문구에 없는 것) */
 export const ONLINE_MESSAGES = {
   invalid_nick: '별명은 2~12자의 한글·영문·숫자·밑줄(_)로 정해 주세요.',
+  nick_is_id: '별명에 로그인 아이디를 넣을 수 없어요. 아이디는 공개되지 않게 지켜 드려요.',
+  implausible_time: '기록이 실제 걸린 시간과 맞지 않아 순위에 올리지 못했어요.',
+  invalid_ghost: '고스트 기록이 올바르지 않아 순위에 올리지 못했어요.',
+  ghost_not_found: '고스트를 찾을 수 없어요.',
   nick_banned: '쓸 수 없는 낱말이 들어 있어요. 다른 별명을 정해 주세요.',
   banned_nick: '쓸 수 없는 낱말이 들어 있어요. 다른 별명을 정해 주세요.',
   forbidden_nick: '쓸 수 없는 낱말이 들어 있어요. 다른 별명을 정해 주세요.',
@@ -96,8 +100,8 @@ export function fmtMs(ms) {
 
 // ───────────────────────── 별명 규칙 (§0) ─────────────────────────
 const NICK_CH = /^[가-힣A-Za-z0-9_]$/u;
-/** 별명 검사 → 오류 문구 또는 null (금칙어·겹침은 서버) */
-export function checkNick(raw) {
+/** 별명 검사 → 오류 문구 또는 null (금칙어·겹침은 서버). id: 로그인 아이디 (별명에 넣을 수 없다 — 서버 nick_is_id) */
+export function checkNick(raw, id = cloud.id) {
   const s = String(raw ?? '').normalize('NFC').trim();
   if (!s) return '별명을 입력해 주세요.';
   const cs = [...s];
@@ -106,6 +110,7 @@ export function checkNick(raw) {
   const bad = cs.find((c) => !NICK_CH.test(c));
   if (bad) return `「${bad}」 은(는) 쓸 수 없어요. 한글·영문·숫자·밑줄(_)만 쓸 수 있어요.`;
   if (cs.length < 2 || cs.length > 12) return `별명은 2~12자로 정해 주세요. (지금 ${cs.length}자)`;
+  if (typeof id === 'string' && id && s.toLowerCase().includes(id.toLowerCase())) return ONLINE_MESSAGES.nick_is_id;
   return null;
 }
 
@@ -260,7 +265,7 @@ export function flushQueue() {
       const keep = q.filter((e) => now - e.at < RUN_TTL - 60e3);
       out.dropped += q.length - keep.length;
       q = keep;
-      if (!q.length || !cloud.loggedIn || !cloud.eligible()) { writeQ(q); out.left = q.length; return out; }
+      if (!q.length || !cloud.loggedIn || !cloud.eligible()) { if (out.dropped) writeQ(q); out.left = q.length; return out; }
       const rest = [];
       let stop = false;
       for (const e of q) {
@@ -297,7 +302,7 @@ export function getDaily({ force = false } = {}) {
   if (dailyReq) return dailyReq;
   dailyReq = call('GET', '/daily', { timeout: 8000 }).then((r) => {
     if (!r.ok) return r;
-    const d = { date: String(r.date), seed: r.seed, stageId: r.stageId, diff: r.diff, hero: r.hero, cls: r.cls, preset: r.preset, mods: (r.mods ?? []).filter((m) => typeof m === 'string').slice(0, 4), board: r.board };
+    const d = { date: String(r.date), seed: r.seed, stageId: r.stageId, diff: r.diff, hero: r.hero, cls: r.cls, preset: r.preset, mods: (Array.isArray(r.mods) ? r.mods : []).filter((m) => typeof m === 'string').slice(0, 8), board: r.board };
     if (!okDaily(d)) return fail('bad_response');
     dailyMem = d;
     if (d.date === day) lsSet(K_DAILY, JSON.stringify({ day, data: d }));
@@ -324,7 +329,8 @@ export function getBoard(board, { limit = 50, force = false } = {}) {
       rank: Number.isFinite(e.rank) ? e.rank : i + 1, nick: String(e.nick ?? '???').slice(0, 24), time: Number(e.time) || 0, score: Number(e.score) || 0,
       wave: Number.isFinite(e.wave) ? e.wave : null, hero: String(e.hero ?? ''), cls: String(e.cls ?? ''), level: Number(e.level) || 0, date: e.date ?? null, ghost: !!e.ghost,
     }));
-    const me = isObj(r.me) && Number.isFinite(r.me.rank) ? { rank: r.me.rank, time: Number(r.me.time) || 0, score: Number(r.me.score) || 0, wave: Number.isFinite(r.me.wave) ? r.me.wave : null } : null;
+    // me.rank 는 순위 밖이면 null (기록은 있다)
+    const me = isObj(r.me) && (Number.isFinite(r.me.rank) || r.me.rank === null) && Number.isFinite(r.me.time) ? { rank: Number.isFinite(r.me.rank) ? r.me.rank : null, time: Number(r.me.time) || 0, score: Number(r.me.score) || 0, wave: Number.isFinite(r.me.wave) ? r.me.wave : null } : null;
     const out = { ok: true, board, total: Number.isFinite(r.total) ? r.total : entries.length, entries, me };
     boards.set(k, { at: Date.now(), data: out });
     return out;
@@ -374,7 +380,7 @@ export function saveLocalGhost(board, time, data, hero = '', cls = '') {
 export async function pickGhost(board, choice) {
   if (choice === 'top') {
     const r = await getGhost(board, 1);
-    return r.ok ? { ...r, src: 'top' } : { ok: false, message: r.error === 'not_found' ? '아직 1위 고스트가 없어요' : '고스트를 불러오지 못했어요' };
+    return r.ok ? { ...r, src: 'top' } : { ok: false, message: r.error === 'not_found' || r.error === 'ghost_not_found' ? '아직 1위 고스트가 없어요' : '고스트를 불러오지 못했어요' };
   }
   if (choice === 'mine') {
     const l = localGhost(board);

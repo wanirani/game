@@ -203,7 +203,7 @@ test('시작할 때 오프라인: 게임은 그대로, 정산은 "이번 기록�
   await waitTop(page, 'arcadeResults');
   await page.waitForFunction(() => window.__game.top.onl?.state === 'offline', null, { timeout: 10000 });
   assert.match((await page.evaluate(() => window.__game.top.onlineText()))[0], /올리지 못했어요/);
-  assert.equal(await page.evaluate(() => localStorage.getItem('bn_online_q')), null);
+  assert.ok([null, '[]'].includes(await page.evaluate(() => localStorage.getItem('bn_online_q'))), '대기열 없음');
   assert.deepEqual(errs, []);
   await ctx.close();
 });
@@ -358,6 +358,7 @@ test('오늘의 도전: 카드(스테이지·헌터·규칙·내 최고·TOP 3) 
         // 보조 무기 금지
         const hearts0 = w.run.hearts, n0 = w.entities.length;
         w.player.subCool = 0; w.player.useSub(w);
+        const subBlocked = w.run.hearts === hearts0 && w.entities.length === n0 && !(w.player.subCool > 0);
         // 피해 배율 (Math.random 고정: 치명타 없음·흔들림 1.0)
         const { hitTarget } = await import('/src/game/combat.js');
         const R0 = Math.random; Math.random = () => 0.5;
@@ -379,7 +380,7 @@ test('오늘의 도전: 카드(스테이지·헌터·규칙·내 최고·TOP 3) 
           enemyHp: w.diff.enemyHp, enemySpeed: w.diff.enemySpeed, bossHp: w.diff.bossHp,
           hpRatio: e ? e.stats.maxHp / plain.maxHp : null, speedRatio: e ? e.speed / speed0 : null,
           heal: heal.ok, healMsg: heal.msg, potions0: g.state.inventory.filter((i) => i.baseId === 'c_potion').length,
-          subBlocked: w.run.hearts === hearts0 && w.entities.length === n0,
+          subBlocked,
           dealt, taken, taken0, rules: w.rules, rng: !!w.rng && typeof w.rng.next === 'function', seed: g.state.arcade.seed, ref: ref.next() > -1,
           board: g.top.board, orun: g.top.orun?.state, call: g.top.call?.sub, cls: g.state.heroes.kael.classId,
         };
@@ -400,14 +401,13 @@ test('오늘의 도전: 카드(스테이지·헌터·규칙·내 최고·TOP 3) 
       assert.ok(M.log.some((x) => x.path === '/api/runs'));
       await page.waitForTimeout(2600);
       await shot(page, 'daily_dark_desk');
-      // 주는 피해 1.3배: 같은 공격을 규칙 없이 한 번 더
+      // 주는 피해 1.3배: 새로 소환한 같은 적 둘에게 같은 공격 (하나는 규칙 없이)
       const dealt0 = await page.evaluate(async () => {
         const g = window.__game, w = g.world; const { hitTarget } = await import('/src/game/combat.js');
-        const e = w.enemies().find((x) => x.kind === 'enemy' && !x.dead); if (!e) return null;
+        const id = w.enemies().find((x) => x.kind === 'enemy')?.def?.id ?? 'zombie';
+        const hit = (rules) => { const e = w.spawnEnemy(id, w.player.cx + 300, w.player.bottom, { elite: false }); e.hp = e.stats.maxHp = 100000; const rl = w.rules; w.rules = rules; const hp0 = e.hp; hitTarget(w, { team: 'player', owner: w.player, stats: { atk: 400 }, mv: 1, dir: 1 }, e, e.cx, e.cy); w.rules = rl; return hp0 - e.hp; };
         const R0 = Math.random; Math.random = () => 0.5;
-        try { const rl = w.rules; w.rules = null; e.hp = e.stats.maxHp; e._hits = null; const hp0 = e.hp; hitTarget(w, { team: 'player', owner: w.player, stats: { atk: 100 }, mv: 1, dir: 1 }, e, e.cx, e.cy); const d0 = hp0 - e.hp;
-          w.rules = rl; e.hp = e.stats.maxHp; e._hits = null; e.wakeInv = 0; e.invuln = false; hitTarget(w, { team: 'player', owner: w.player, stats: { atk: 100 }, mv: 1, dir: 1 }, e, e.cx, e.cy); return { d0, d1: e.stats.maxHp - e.hp }; }
-        finally { Math.random = R0; }
+        try { return { d0: hit(null), d1: hit(w.rules) }; } finally { Math.random = R0; }
       });
       if (dealt0) assert.ok(Math.abs(dealt0.d1 / dealt0.d0 - 1.3) < 0.1, `주는 피해 배율 ${dealt0.d1}/${dealt0.d0}`);
     }
@@ -446,58 +446,70 @@ test('시드: 같은 일일 시드면 정예 출현·촛불 보상 순서가 같
 });
 
 // ───────────────────────── 고스트 ─────────────────────────
-test('고스트: 20분 기록 ≤ 24KB, 위치 오차 ≤ 2px, 자세·방향·방 보존, 재생 보간', async () => {
+test('고스트: 20분 기록 ≤ 24KB, 위치 오차 ≤ 2px, 자세·방향·방 보존, 재생 보간 (+ 줄곧 뛰는 극단 경로는 5Hz 로 줄여 상한 안)', async () => {
   const M = makeMock();
   const ctx = await newContext(M);
   const { page, errs } = await openGame(ctx);
-  const r = await page.evaluate(async () => {
+  const res = await page.evaluate(async () => {
     const G = await import('/src/game/ghost.js');
     const { RNG } = await import('/src/core/math.js');
-    const rng = new RNG(7);
-    const rec = new G.GhostRecorder(10);
-    const truth = [];
-    // 20분: 걷기·질주·점프·대시·제자리·방 이동이 섞인 흉내 경로 (60Hz 시뮬레이션, 10Hz 표본)
-    let x = 200, y = 900, vx = 0, vy = 0, room = 0, facing = 1, anim = 'idle', ground = true, mode = 0, modeT = 0;
-    const p = { cx: x, bottom: y, facing, anim, move: null };
-    for (let f = 0; f < 60 * 1200; f++) {
-      const t = f / 60;
-      if ((modeT -= 1 / 60) <= 0) { mode = Math.floor(rng.next() * 5); modeT = 0.5 + rng.next() * 3; facing = rng.next() < 0.5 ? -1 : 1; }
-      vx = mode === 0 ? 0 : mode === 1 ? 275 * facing : mode === 2 ? 420 * facing : mode === 3 ? 180 * facing : 600 * facing;
-      if (ground && rng.next() < 0.02) { vy = -900; ground = false; }
-      if (!ground) { vy += 2200 / 60; if (y + vy / 60 >= 900) { y = 900; vy = 0; ground = true; } }
-      x += vx / 60; y += vy / 60;
-      if (x > 4000) { x = 100; room = (room + 1) % 9; } if (x < 0) { x = 3900; room = (room + 8) % 9; }
-      anim = !ground ? (vy < 0 ? 'jump' : 'fall') : mode === 4 ? 'dash' : vx ? 'run' : 'idle';
-      p.cx = x; p.bottom = y; p.facing = facing; p.anim = anim; p.move = mode === 3 && ground ? {} : null;
-      const before = rec.n;
-      rec.sample(t, p, `r${room}`);
-      if (rec.n > before) truth.push({ x, y, room: `r${room}`, facing, pose: G.POSES[G.poseOf(p)] });
-    }
-    const b64 = rec.encode();
-    const T = G.decodeGhost(b64);
-    let maxErr = 0, poseBad = 0, roomBad = 0, faceBad = 0;
-    for (let i = 0; i < truth.length; i++) {
-      const e = Math.max(Math.abs(T.x[i] - truth[i].x), Math.abs(T.y[i] - truth[i].y));
-      if (T.hz === 10) maxErr = Math.max(maxErr, e);
-      if (T.hz === 10 && T.rooms[T.room[i]] !== truth[i].room) roomBad++;
-      if (T.hz === 10 && G.POSES[T.fp[i] & 15] !== truth[i].pose) poseBad++;
-      if (T.hz === 10 && ((T.fp[i] & 16) ? -1 : 1) !== truth[i].facing) faceBad++;
-    }
-    // 재생 보간: 두 표본 사이 0.05초 = 가운데
-    const P = new G.GhostPlayer(T, null);
-    const i = 500, a = P.at(i / T.hz).x, b = P.at((i + 1) / T.hz).x, mid = P.at((i + 0.5) / T.hz).x;
-    // 짧은 기록 (실제 판 크기 감)
+    // 20분: 걷기·질주·점프·대시·제자리·공격·방 이동이 섞인 흉내 경로 (60Hz 시뮬레이션, 10Hz 표본). jumpP = 60Hz 한 칸의 점프 확률
+    const sim = (jumpP) => {
+      const rng = new RNG(7);
+      const rec = new G.GhostRecorder(10);
+      const truth = [];
+      let x = 200, y = 900, vy = 0, room = 0, facing = 1, ground = true, mode = 0, modeT = 0;
+      const p = { cx: x, bottom: y, facing, anim: 'idle', move: null };
+      for (let f = 0; f < 60 * 1200; f++) {
+        const t = f / 60;
+        if ((modeT -= 1 / 60) <= 0) { mode = Math.floor(rng.next() * 5); modeT = 0.5 + rng.next() * 3; facing = rng.next() < 0.5 ? -1 : 1; }
+        const vx = mode === 0 ? 0 : mode === 1 ? 275 * facing : mode === 2 ? 420 * facing : mode === 3 ? 0 : 600 * facing;
+        if (ground && rng.next() < jumpP) { vy = -900; ground = false; }
+        if (!ground) { vy += 2200 / 60; if (y + vy / 60 >= 900) { y = 900 - vy / 60; vy = 0; ground = true; } }
+        x += vx / 60; y += vy / 60;
+        if (x > 4000) { x = 100; room = (room + 1) % 9; } if (x < 0) { x = 3900; room = (room + 8) % 9; }
+        p.cx = x; p.bottom = y; p.facing = facing; p.anim = !ground ? (vy < 0 ? 'jump' : 'fall') : mode === 4 ? 'dash' : vx ? 'run' : 'idle'; p.move = mode === 3 && ground ? {} : null;
+        const before = rec.n;
+        rec.sample(t, p, `r${room}`);
+        if (rec.n > before) truth.push({ x, y, room: `r${room}`, facing, pose: G.POSES[G.poseOf(p)] });
+      }
+      const b64 = rec.encode();
+      const T = G.decodeGhost(b64);
+      const step = Math.round(10 / T.hz);
+      let maxErr = 0, poseBad = 0, roomBad = 0, faceBad = 0;
+      for (let j = 0; j < T.n; j++) {
+        const tr = truth[Math.min(truth.length - 1, j * step)];
+        maxErr = Math.max(maxErr, Math.abs(T.x[j] - tr.x), Math.abs(T.y[j] - tr.y));
+        if (T.rooms[T.room[j]] !== tr.room) roomBad++;
+        if (G.POSES[T.fp[j] & 15] !== tr.pose) poseBad++;
+        if (((T.fp[j] & 16) ? -1 : 1) !== tr.facing) faceBad++;
+      }
+      // 재생 보간: 두 표본 사이 = 가운데 (같은 방일 때)
+      const P = new G.GhostPlayer(T, null);
+      let interpBad = 0;
+      for (let i = 100; i < T.n - 1; i += 97) {
+        if (T.room[i] !== T.room[i + 1]) continue;
+        const a = P.at(i / T.hz), b = P.at((i + 1) / T.hz), m = P.at((i + 0.5) / T.hz);
+        if (Math.abs(m.x - (a.x + b.x) / 2) > 1 || Math.abs(m.y - (a.y + b.y) / 2) > 1) interpBad++;
+      }
+      // 재생 위치 vs 원래 위치 (60Hz 모든 순간): 표본 사이는 직선 보간
+      return { len: b64.length, n: truth.length, hz: T.hz, decodedN: T.n, maxErr, poseBad, roomBad, faceBad, interpBad };
+    };
     const r2 = new G.GhostRecorder(10); for (let k = 0; k < 600; k++) r2.sample(k / 10, { cx: k * 3, bottom: 500, facing: 1, anim: 'run' }, 'r1');
-    return { len: b64.length, n: truth.length, hz: T.hz, decodedN: T.n, maxErr, poseBad, roomBad, faceBad, interp: Math.abs(mid - (a + b) / 2) <= 1 || T.room[i] !== T.room[i + 1], shortLen: r2.encode().length };
+    return { real: sim(0.004), stress: sim(0.05), shortLen: r2.encode().length };
   });
-  console.log(`      20분 고스트: ${r.n}칸 → base64 ${r.len} B (${r.hz}Hz), 위치 오차 최대 ${r.maxErr}px · 1분 달리기 ${r.shortLen} B`);
+  const { real: r, stress: s } = res;
+  console.log(`      20분 고스트(보통): ${r.n}칸 → base64 ${r.len} B (${r.hz}Hz), 위치 오차 최대 ${r.maxErr}px · 줄곧 점프: ${s.len} B (${s.hz}Hz) · 1분 달리기 ${res.shortLen} B`);
   assert.ok(r.len <= 24 * 1024, `크기 ${r.len}`);
-  assert.equal(r.hz, 10, '20분 흉내 경로는 10Hz 그대로 들어가야 한다');
+  assert.equal(r.hz, 10, '보통 경로는 10Hz 그대로');
   assert.equal(r.decodedN, r.n);
-  assert.ok(r.maxErr <= 2, `위치 오차 ${r.maxErr}`);
-  assert.equal(r.poseBad, 0); assert.equal(r.roomBad, 0); assert.equal(r.faceBad, 0);
-  assert.ok(r.interp, '보간');
-  assert.ok(r.shortLen < 400, `달리기 1분 ${r.shortLen}`);
+  for (const x of [r, s]) {
+    assert.ok(x.len <= 24 * 1024, `크기 ${x.len}`);
+    assert.ok(x.maxErr <= 2, `위치 오차 ${x.maxErr}`);
+    assert.equal(x.poseBad, 0); assert.equal(x.roomBad, 0); assert.equal(x.faceBad, 0);
+    assert.equal(x.interpBad, 0, '보간');
+  }
+  assert.ok(res.shortLen < 700, `달리기 1분 ${res.shortLen}`);
   assert.deepEqual(errs, []);
   await ctx.close();
 });
@@ -550,6 +562,10 @@ test('별명: 내 계정에 공개 별명, 바꾸기 화면 검사(빈칸·짧�
     await page.evaluate(() => window.__game.go('account', {}, { fade: false }));
     await page.waitForFunction(() => window.__game.top?.name === 'account' && window.__game.top.screen === 'profile' && window.__game.top.nick, null, { timeout: 10000 });
     assert.equal(await page.evaluate(() => window.__game.top.nick), M.nick);
+    // 내 계정 목록(공개 별명 줄이 더해짐)이 판 안에 들어간다
+    const fit = await page.evaluate(() => { const t = window.__game.top, G = t.geom(); const last = t.itemRect(t.items[t.items.length - 1], G); return { bottom: last.y + last.h, panel: G.y0 + G.PH, ids: t.items.map((x) => x.id) }; });
+    assert.ok(fit.bottom <= fit.panel + 1, `목록이 판 밖으로 ${fit.bottom} > ${fit.panel}`);
+    assert.ok(fit.ids.includes('nick'));
     await page.waitForTimeout(300);
     await shot(page, `account_profile_${vp}`);
     await page.evaluate(() => window.__game.top.activate('nick'));

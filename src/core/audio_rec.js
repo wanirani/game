@@ -30,7 +30,7 @@ export const MUSIC_DIR = 'audio/music/', SFX_DIR = 'audio/sfx/';
 const MIN_RATE = 16000;        // 이보다 낮게 풀어야 상한에 들면 그 곡은 합성음
 const MAX_RAW = 3;             // 메모리에 둘 압축 바이트 곡 수
 const MEM_WAIT_MS = 3000;      // 상한 때문에 페이드아웃 중인 곡이 놓이기를 기다리는 최대 시간
-const REF_LUFS = -16;          // 녹음 곡 음량 기준 (index.lufs → 이 크기로)
+const REF_LUFS = -19;          // 녹음 곡 음량 기준 (index.lufs → 이 크기로) = 합성 트랙과 같은 출력 크기 (엔진 통과 측정: -16.1 LUFS 파일을 그대로 틀면 합성 title 보다 2.8 dB 큼)
 const hasWin = typeof window !== 'undefined';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -79,12 +79,14 @@ async function fetchJson(rel) {
   if (!b) return null;
   try { return JSON.parse(new TextDecoder().decode(b)); } catch { return null; }
 }
+const DEC = new Map(); // rate → 풀기 전용 OfflineAudioContext (렌더하지 않고 decodeAudioData 에만 쓴다 — 하나를 다시 쓴다)
 /** rate 로 풀기 (rate 0 = ctx 그대로). 콜백·프라미스 둘 다 받는 브라우저 대비 */
 function decodeAt(ctx, data, rate) {
   return new Promise((res, rej) => {
     let c = ctx;
     if (rate && rate !== ctx.sampleRate) {
-      try { const OC = window.OfflineAudioContext || window.webkitOfflineAudioContext; c = new OC(2, 1, rate); } catch { c = ctx; }
+      c = DEC.get(rate);
+      if (!c) { try { const OC = window.OfflineAudioContext || window.webkitOfflineAudioContext; c = new OC(2, 1, rate); DEC.set(rate, c); } catch { c = ctx; } }
     }
     try { const p = c.decodeAudioData(data, res, rej); if (p && p.then) p.then(res, rej); } catch (e) { rej(e); }
   });
@@ -213,7 +215,9 @@ export class RecBank {
     const lead = buf.duration - dur;
     const off = pr > 0 && lead >= (pr / fr) * 0.5 ? Math.min(pr / fr, buf.duration * 0.5) : 0;   // 브라우저가 프라이밍을 자르지 않았다
     const loop = t.loop !== false;
-    let ls = (Number(t.loopStart) || 0) + off, le = (Number.isFinite(+t.loopEnd) && +t.loopEnd > 0 ? +t.loopEnd : dur) + off;
+    // 루프 지점: 샘플 번호(loopStartSample/loopEndSample, 파일 rate 기준)가 있으면 그것으로 (초 값은 반올림돼 있다)
+    const sec = (k) => (Number.isInteger(t[k + 'Sample']) && t[k + 'Sample'] >= 0 ? t[k + 'Sample'] / fr : Number(t[k]));
+    let ls = (sec('loopStart') || 0) + off, le = (sec('loopEnd') > 0 ? sec('loopEnd') : dur) + off;
     le = Math.min(le, buf.duration);
     const lufs = Number(t.lufs);
     const gain = Number.isFinite(lufs) ? Math.min(2, Math.max(0.25, Math.pow(10, (REF_LUFS - lufs) / 20))) : 1;
@@ -250,10 +254,12 @@ export class RecBank {
       });
     });
   }
-  /** 실시간 컨텍스트 전 (첫 입력 전): 목록과 그 곡의 압축 바이트만 천천히 받아 둔다 */
-  warm(id, delay = 2500) {
+  /** 실시간 컨텍스트 전 (첫 입력 전): 타이틀이 자리 잡은 뒤(지연) 목록과 그 곡의 압축 바이트만 받아 둔다. 느린 망(4g 미만)에서는 하지 않는다
+   *  (첫 화면 경로에는 들어가지 않는다 — 첫 입력 전 소리 요청은 이것 하나) */
+  warm(id, delay = 6000) {
     if (this._warmT || !id) return;
-    this._warmT = setTimeout(() => { this.index().then(() => { if (this.track(this.resolve(id))) this._raw(this.resolve(id)); }); }, delay);
+    try { const et = navigator.connection?.effectiveType; if (et && et !== '4g') return; } catch { /* 모름 */ }
+    this._warmT = setTimeout(() => { if (this.ctx) return; this.index().then(() => { if (this.track(this.resolve(id))) this._raw(this.resolve(id)); }); }, delay);
   }
 
   // ───────────────────────── 효과음 샘플 ─────────────────────────
