@@ -444,7 +444,7 @@ function attackPose(P, S, p, K, mv, t) {
   if (spear && mv.rehit && def.streak && ph.ph === 1) {
     // 연속 찌르기: 판정이 다시 걸릴 때마다(rehit) 창이 끝까지 뻗고, 사이에는 반쯤 당긴다
     // 판정 구간 앞 25%는 와인드업(당긴 자세)에서 섞어 들어간다: 팔이 아직 등 뒤를 향할 때 곧장 끝까지 뻗으면 무기 손이 어깨에서 멀어져
-    // 먼 손(h1 − SPEAR_GAP·dir)이 닿지 않고 자루 옆에 뜬다 (H7-ART review grip2: g3·charge f1.02 perp 5.6px → 0)
+    // 먼 손(h1 − SPEAR_GAP·dir)이 닿지 않고 자루 옆에 뜬다 (H7-ART review grip2: g3·charge f1.02 perp 5.6px → 전 구간 ≤ 0.7px)
     const j = (1 - Math.cos(((ph.t - ph.h0) / mv.rehit) * TAU)) / 2;
     const kin = ease.inOutQuad(clamp(ph.u / 0.25, 0, 1));
     P.r1 = lerp(P.r1, lerp(1, 0.52, j), kin); P.lean -= 0.1 * j * kin; P.px -= 1.5 * j * kin;
