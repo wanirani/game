@@ -1,5 +1,5 @@
-// 프런트엔드 장면 등록: 타이틀/슬롯/난이도/캐릭터 선택/컷신/설정/엔딩/크레딧/아케이드(보스 러시·서바이벌·연습)/명예의 전당
-// 보조 장면: frontConfirm(예/아니요), saveCode(세이브 코드), initials(이니셜 입력), arcadePause, arcadeResults, practice
+// 프런트엔드 장면 등록: 타이틀/슬롯/난이도/캐릭터 선택/컷신/설정/엔딩/크레딧/아케이드(보스 러시·서바이벌·연습·무한의 탑)/명예의 전당
+// 보조 장면: frontConfirm(예/아니요), saveCode(세이브 코드), initials(이니셜 입력), arcadePause, arcadeResults, practice, towerBlessing(축복 고르기)
 // 계정: account(로그인·가입·비밀번호·복구·탈퇴·동기화), cloudConflict(클라우드 기록 받기/올리기 선택)
 import { TitleScene } from './title.js';
 import { SlotsScene } from './front/slots.js';
@@ -10,6 +10,7 @@ import { OptionsScene } from './front/options.js';
 import { EndingScene, CreditsScene } from './front/ending.js';
 import { ArcadeScene } from './front/arcade.js';
 import { BossRushScene, SurvivalScene, PracticeScene, ArcadePauseScene, ArcadeResultsScene } from './front/arcade_run.js';
+import { TowerScene, TowerBlessingScene } from './front/arcade_tower.js';
 import { HighscoreScene, InitialsScene } from './front/highscore.js';
 import { ConfirmScene, SaveCodeScene } from './front/dialogs.js';
 import { AccountScene } from './front/account.js';
@@ -28,6 +29,8 @@ export function register(game) {
   game.register('bossrush', BossRushScene);
   game.register('survival', SurvivalScene);
   game.register('practice', PracticeScene);
+  game.register('tower', TowerScene);
+  game.register('towerBlessing', TowerBlessingScene);
   game.register('arcadePause', ArcadePauseScene);
   game.register('arcadeResults', ArcadeResultsScene);
   game.register('highscore', HighscoreScene);
