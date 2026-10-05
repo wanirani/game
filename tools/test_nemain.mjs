@@ -35,12 +35,13 @@ for (const ph of [0, 1]) {
       G.step(ph ? 9 : 2);   // 등장 · 전환의 강제 패턴(murder)이 끝나게
       const b = G.boss, W = G.world;
       const n0 = G.notes.length;
+      const pre = new Set(W.entities);   // 등장 뒤 AI 가 이미 고른 패턴이 남긴 판정·탄은 세지 않는다
       const ok = b.debugAct(act);
       const st0 = b.state;
       let maxHaz = 0, maxProj = 0, tele = false, t = 0, back = -1, hits0 = W.player.hits, ghost = false, mins0 = (b._cMinions ?? []).length, mins = 0;
       for (; t < 14; t += 0.05) {
         G.step(0.05);
-        const ents = G.world.entities;
+        const ents = G.world.entities.filter((e) => !pre.has(e));
         maxHaz = Math.max(maxHaz, ents.filter((e) => e.kind === 'hazard' && !e.harmless).length);
         maxProj = Math.max(maxProj, ents.filter((e) => e.kind === 'projectile').length);
         mins = Math.max(mins, (b._cMinions ?? []).filter((e) => !e.dead).length);
@@ -94,38 +95,41 @@ check('debugAct(없는 상태) → false', (await page.evaluate((id) => { const 
 {
   const r = await page.evaluate(async (id) => {
     const G = window.__gal, out = {}, n0 = G.notes.length;
-    const hazards = () => G.world.entities.filter((e) => e.kind === 'hazard' && !e.harmless);
+    // debugAct 직전에 이미 있던 판정은 세지 않는다 (step(9) 동안 AI 가 고른 패턴의 까마귀·기둥·고리가 남아 있을 수 있다 — cancelPattern 은 이미 나간 판정을 지우지 않는다)
+    let pre = new Set();
+    const act = (b, s) => { pre = new Set(G.world.entities); return b.debugAct(s); };
+    const hazards = () => G.world.entities.filter((e) => e.kind === 'hazard' && !e.harmless && !pre.has(e));
     // 깃털 비수: 1페이즈 5개 · 2페이즈 7 + 7
     for (const ph of [0, 1]) {
       G.build(id, { phase: ph }); G.step(ph ? 9 : 2);
       const b = G.boss; let shot = 0; const sh = b.shoot.bind(b); b.shoot = (o) => { shot++; return sh(o); };
-      b.debugAct('featherVolley'); G.step(1.6);
+      act(b, 'featherVolley'); G.step(1.6);
       out['volley' + ph] = shot;
     }
     // 까마귀 급습: 1페이즈 3 · 2페이즈 5 줄 판정 (폭 34)
     for (const ph of [0, 1]) {
       G.build(id, { phase: ph }); G.step(ph ? 9 : 2);
-      const b = G.boss; b.debugAct('crowDive');
+      const b = G.boss; act(b, 'crowDive');
       const ids = new Set(); let th = 0;
       for (let t = 0; t < 3.5; t += 0.05) { G.step(0.05); for (const z of hazards()) if (z.line) { ids.add(z.attack.hitId); th = z.line.th; } }
       out['dive' + ph] = { n: ids.size, th };
     }
     // 그림자 걸음: 가라앉은 동안 판정 없음 → 솟아오름 = 카운터 창(telegraph) → 맞으면 stagger. 2페이즈는 두 번
     G.build(id); G.step(2); let b = G.boss;
-    b.debugAct('shadowStep'); G.step(0.5);
+    act(b, 'shadowStep'); G.step(0.5);
     out.sunk = { ghost: b.ghost, parts: b.hitParts().length, contact: b.contactParts().length };
     G.step(0.5);   // 1.0초: 솟아오름
     out.rise = { cWin: b.cWin, tele: b.telegraph, parts: b.hitParts().length };
     b.takeHit(10, { team: 'player', dir: 1 }, G.world, {}); G.step(0.05);
     out.counter = { state: b.state, stunned: b.stunned };
     G.build(id, { phase: 1 }); G.step(9); b = G.boss;
-    b.debugAct('shadowStep'); let slashes = 0; const seenS = new Set();
+    act(b, 'shadowStep'); let slashes = 0; const seenS = new Set();
     for (let t = 0; t < 4; t += 0.05) { G.step(0.05); for (const z of hazards()) if (!z.line && z.w === 160) seenS.add(z.attack.hitId); if (b.state !== 'shadowStep') break; }
     out.step2 = seenS.size;
     // 비석 없는 무덤: 기둥 5 / 7 (폭 56, 높이 5칸)
     for (const ph of [0, 1]) {
       G.build(id, { phase: ph }); G.step(ph ? 9 : 2); b = G.boss;
-      b.debugAct('nameless'); const cols = new Map();
+      act(b, 'nameless'); const cols = new Map();
       for (let t = 0; t < 3; t += 0.05) { G.step(0.05); for (const z of hazards()) if (z.w === 56) cols.set(z.attack.hitId, Math.round(z.h)); }
       out['grave' + ph] = { n: cols.size, h: [...cols.values()][0] };
     }
@@ -137,7 +141,7 @@ check('debugAct(없는 상태) → false', (await page.evaluate((id) => { const 
     out.nest = { caps, can: b.canCall(), picks: b.weights().map(([k]) => k).includes('nestCall') };
     // 까마귀 폭풍: 떼 동안 판정 없음 · 낮은 띠 + 높은 띠 · 노출 몸통 0.7 · 노출 중 5% → stagger
     G.build(id, { phase: 1 }); G.step(9); b = G.boss;
-    b.debugAct('murder'); G.step(0.3);
+    act(b, 'murder'); G.step(0.3);
     out.swarm = { ghost: b.ghost, parts: b.hitParts().length, contact: b.contactParts().length };
     const bands = new Set(); let exposed = null;
     const A = b.A, T = 48;
@@ -149,14 +153,14 @@ check('debugAct(없는 상태) → false', (await page.evaluate((id) => { const 
     }
     out.murder = { bands: [...bands], exposed };
     G.build(id, { phase: 1 }); G.step(9); b = G.boss;
-    b.debugAct('murder'); for (let t = 0; t < 9 && !b.exposed; t += 0.05) G.step(0.05);
+    act(b, 'murder'); for (let t = 0; t < 9 && !b.exposed; t += 0.05) G.step(0.05);
     const wasExp = b.exposed;
     b.takeHit(Math.ceil(b.stats.maxHp * 0.06), { team: 'player', dir: 1 }, G.world, {}); G.step(0.05);
     out.murderStagger = { wasExp, state: b.state };
     // 둥지 고리: 반지름 300 → 70, 틈(70°) 안의 플레이어는 맞지 않고 띠 위는 맞는다, 끝에 바깥으로 터진다
     G.build(id, { phase: 1 }); G.step(9); b = G.boss;
-    b.debugAct('featherCage'); G.step(0.6);
-    const cz = G.world.entities.find((e) => e.kind === 'hazard' && e.data?.cage && !e.harmless);
+    act(b, 'featherCage'); G.step(0.6);
+    const cz = G.world.entities.find((e) => e.kind === 'hazard' && e.data?.cage && !e.harmless && !pre.has(e));
     const cg = cz?.data.cage, p = G.world.player, save = { x: p.x, y: p.y };
     const placeAt = (ang) => { const hb = p.hurtbox(), ox = hb.x - p.x + hb.w / 2, oy = hb.y - p.y + hb.h / 2; p.x = cg.cx + Math.cos(ang) * cg.r - ox; p.y = cg.cy + Math.sin(ang) * cg.r - oy; };
     placeAt(cg.gap); const inGap = cz.rects(cz).length;
@@ -169,21 +173,32 @@ check('debugAct(없는 상태) → false', (await page.evaluate((id) => { const 
     G.build(id, { phase: 1 }); G.step(9); b = G.boss;
     b.debugAct('idle'); for (let t = 0; t < 6 && b._cDark?.list?.length; t += 0.1) G.step(0.1);   // 저절로 고른 그믐의 어둠이 남아 있으면 끝날 때까지
     const L = G.world.lighting, d0 = L.darkness;
-    b.debugAct('eclipse'); G.step(0.2); const dOn = L.darkness;
+    act(b, 'eclipse'); G.step(0.2); const dOn = L.darkness;
     const cuts = new Set(); let riseWin = 0;
     for (let t = 0; t < 5; t += 0.05) { G.step(0.05); if (b.cWin && b.telegraph) riseWin++; for (const z of hazards()) if (z.w === 170) cuts.add(z.attack.hitId); if (b.state !== 'eclipse') break; }
     G.step(0.6);
     out.eclipse = { d0: +d0.toFixed(2), on: +dOn.toFixed(2), back: +L.darkness.toFixed(2), cuts: cuts.size, riseWin: riseWin > 0 };
+    // 그믐 솟아오름에 카운터 → 무릎: 어둠·색조가 걷힌다 (무릎 꿇은 동안 방이 칠흑으로 남지 않게)
+    G.build(id, { phase: 1 }); G.step(9); b = G.boss;
+    b.debugAct('idle'); for (let t = 0; t < 6 && b._cDark?.list?.length; t += 0.1) G.step(0.1);
+    {
+      const LL = G.world.lighting, base = LL.darkness;
+      act(b, 'eclipse'); for (let t = 0; t < 3 && !b.cWin; t += 0.02) G.step(0.02);
+      const win = b.cWin, dIn = LL.darkness;
+      b.takeHit(10, { team: 'player', dir: 1 }, G.world, {}); G.step(0.05);
+      const st = b.state; G.step(0.3);
+      out.eclStag = { win, st, base: +base.toFixed(2), dIn: +dIn.toFixed(2), after: +LL.darkness.toFixed(2), tints: G.world.overlays.filter((o) => o.owner === b && o.cTint && !o.dead && o.end === null).length };
+    }
     // 15%: 대사(스토리) 한 번 + 그믐 강제 (부활해도 대사는 다시 안 나온다)
     G.S.forceCutscene = false; G.O.story = true;
     G.build(id, { phase: 1 }); G.world.mode = 'story'; G.step(9); b = G.boss;
     b.hp = Math.floor(b.stats.maxHp * 0.16); b.takeHit(Math.ceil(b.stats.maxHp * 0.02), { team: 'player', dir: 1 }, G.world, {});
     out.last = { forced: b.forced.slice(), hasScript: !!(await import('../src/data/story.js')).SCRIPTS.b_nemain_last };
-    b.debugAct('eclipse'); G.step(0.2);
+    act(b, 'eclipse'); G.step(0.2);
     out.last.dialog = G.world.dialog?.id ?? null;
     G.step(3); G.reset(); G.step(0.5);
     b.hp = Math.floor(b.stats.maxHp * 0.16); b.phase = 1; b.takeHit(Math.ceil(b.stats.maxHp * 0.02), { team: 'player', dir: 1 }, G.world, {});
-    b.debugAct('eclipse'); G.step(0.2);
+    act(b, 'eclipse'); G.step(0.2);
     out.last.again = G.world.dialog?.id ?? null;
     out.last.seen = G.world.state.progress.seenScripts.filter((s) => s === 'b_nemain_last').length;
     G.O.story = false;
@@ -203,6 +218,7 @@ check('debugAct(없는 상태) → false', (await page.evaluate((id) => { const 
   check('까마귀 폭풍: 노출 중 최대 체력 5% → stagger', r.murderStagger.wasExp && r.murderStagger.state === 'stagger', r.murderStagger);
   check('둥지 고리: 틈 안은 맞지 않고 띠 위는 맞는다 · 300 → 70 · 끝에 바깥으로 터진다', r.cage.inGap === 0 && r.cage.onRing === 1 && r.cage.r0 >= 290 && r.cage.r1 <= 72 && r.cage.burst, r.cage);
   check('그믐: 어둠 +0.45 → 기습 3번(카운터 창) → 어둠 복원', r.eclipse.on >= r.eclipse.d0 + 0.44 && r.eclipse.cuts === 3 && r.eclipse.riseWin && r.eclipse.back === r.eclipse.d0, r.eclipse);
+  check('그믐 카운터 → 무릎: 어둠·색조가 걷힌다', r.eclStag.win && r.eclStag.st === 'stagger' && r.eclStag.dIn > r.eclStag.base + 0.3 && r.eclStag.after === r.eclStag.base && r.eclStag.tints === 0, r.eclStag);
   check('15%: 그믐 강제 + 대사 b_nemain_last (스토리, 처음만 — 부활 뒤 다시 안 나온다)', r.last.forced.includes('eclipse') && (r.last.hasScript ? r.last.dialog === 'b_nemain_last' && r.last.seen === 1 : r.last.dialog === null) && r.last.again === null, r.last);
   check('패턴별 검사 오류 0', !r.notes.length, r.notes);
 }
@@ -211,7 +227,7 @@ check('debugAct(없는 상태) → false', (await page.evaluate((id) => { const 
 {
   const r = await page.evaluate((id) => {
     const G = window.__gal; G.build(id, { phase: 1 }); G.step(9);
-    const b = G.boss, n0 = G.notes.length, W = G.world, d0 = W.lighting.darkness;
+    const b = G.boss, n0 = G.notes.length, W = G.world, d0 = b._cDark?.base ?? W.lighting.darkness;   // AI 가 고른 그믐이 이미 어둡게 했을 수 있다 → 어둡히기 전 값
     b.debugAct('nestCall'); G.step(1.7);
     const mins = b._cMinions.filter((e) => !e.dead).length;
     b.debugAct('eclipse'); G.step(1.0);

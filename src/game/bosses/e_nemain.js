@@ -19,7 +19,7 @@
 //   pts (몸 지역 좌표의 골격 점 — rig()) · masked · maskBreakT · sink (0..1 가라앉음) · swarm (0..1 까마귀 떼로 흩어짐) · dark (0..1 그믐) ·
 //   ghost · stunned · exposed · cWin · flock {x,y,ph (Float32Array 40), a, n} · cage · daggersDown · dieT · vanishK · state · t · flashT · A
 // 컬링: 펼친 망토·까마귀 떼가 몸통 판정보다 훨씬 크므로 아르겐과 같은 ArtCull 대리 개체가 artBounds() 로 그린다.
-import { BossC, telegraph, strikeRect, strikeColumn, strikeLine, ringWave, spawnMinion, minionsAlive, darken, screenTint, prewarmTint, phaseScript } from './c_common.js';
+import { BossC, telegraph, strikeRect, strikeColumn, strikeLine, ringWave, spawnMinion, minionsAlive, darken, screenTint, prewarmTint, phaseScript, clearMood } from './c_common.js';
 import { PI, R, C, LG, ink, glow, glowE, glowSprite, warnRect, warnLine, warnFloor, impact, hash } from './b_common.js';
 import { Entity } from '../entity.js';
 import { TILE } from '../../core/game.js';
@@ -721,6 +721,7 @@ export class Nemain extends BossC {
     if (this.at(0.001)) {
       this.stunned = true; this.ghost = false; this.cWin = false; this.exposed = false; this.spd = 0;
       this.swarmT = 0; this.swarm = 0; this.sinkT = 0; this.sink = 0; this.darkT = 0; this.dark = 0;
+      clearMood(world, this, { soft: true });   // 그믐의 카운터 창에 맞았으면 어둠(+0.45)·색조도 걷는다 — 무릎 꿇은 동안 방이 칠흑으로 남지 않게
       this.flock.aT = 0;
       this.setPose({ kneel: 1, bow: 0.7, spread: 0, caw: 0, crouch: 0, lean: 0 }); this.arms('limp', 10);
       audio.sfx('hit_heavy', { pitch: 0.7 }); audio.sfx('dark', { pitch: 0.5, vol: 0.5 });
