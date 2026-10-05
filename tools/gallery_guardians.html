@@ -5,7 +5,7 @@
 <base href="../">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:,">
-<title>수호신 갤러리 — 11종 · 상태 · 연출</title>
+<title>수호신 갤러리 — 12종 · 상태 · 연출</title>
 <style>
   html, body { margin: 0; background: #07030a; color: #e8dcc0; font: 12px "Noto Sans KR", system-ui, sans-serif; }
   #bar { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 6px 10px; background: #120b16; border-bottom: 1px solid #3a2434; }
@@ -51,7 +51,7 @@ const SHOW_FX = Q.get('fx') !== '0', SHOW_ICONS = Q.get('icons') !== '0';
 // ?painted=0 은 레지스트리가 읽는다 (vec 체크와 같은 효과)
 
 const BASE = ['idle', 'move', 'attack', 'skill', 'assist', 'hurt', 'appear', 'emote'];
-const EXTRA = { gd_fairy: ['perch'], gd_owl: ['perch'], gd_spiritwolf: ['run', 'pounce', 'howl'], gd_knight: ['guard'], gd_reaper: ['blink'] };
+const EXTRA = { gd_fairy: ['perch'], gd_owl: ['perch'], gd_munin: ['perch'], gd_spiritwolf: ['run', 'pounce', 'howl'], gd_knight: ['guard'], gd_reaper: ['blink'] };
 const DUR = { attack: 0.7, skill: 1.1, assist: 0.5, hurt: 0.4, appear: 0.6, emote: 1.2, pounce: 0.6, howl: 1.2, blink: 0.5 };
 const statesOf = (id) => {
   const d = GUARDIANS[id];

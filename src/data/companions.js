@@ -591,7 +591,7 @@ export const GUARDIANS = {
     id: 'gd_munin', part: 2, chapter: 22, name: '무닌', title: '이름을 기억하는 까마귀', color: '#ff4a6a',
     role: '척후·암살형 — 약한 적을 노리는 급강하와 숨은 길 찾기',
     desc: '까마귀 결사의 둥지에서 서른 해를 산 늙은 까마귀. 이름 없이 쓰러진 칼들의 이름을 하나도 빠짐없이 외우고 있다.',
-    portrait: 'portraits/cmp_gd_munin', iconFocus: { x: 0.66, y: 0.27, s: 0.42 },
+    portrait: 'portraits/cmp_gd_munin', iconFocus: { x: 0.68, y: 0.27, s: 0.4 },   // 머리(회색 깃·진홍 테 눈·부리 끝) — EX2-BOSS 값 (ex2_requests)
     obtain: { type: 'flag', flag: 'recruit_gd_munin', hint: '외전 「이름 없는 언덕」에서 만날 수 있다' },
     cry: { sfx: 'crow_caw', pitch: 1.1 }, palette: ['#141018', '#2a2438', '#5a5468', '#c0142a', '#ff4a6a'],
     move: 'fly', size: { w: 24, h: 22 }, front: true, anchor: { dx: 30, dy: -118 }, speed: 1050, engage: 360, bias: 'lowhp', perch: 'shoulder',

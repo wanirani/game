@@ -80,15 +80,18 @@ const GUARD_TABLE = [
   ['gd_mirra', '미라', '거울 요정', 'flag:recruit_gd_mirra', 14, 'portraits/cmp_gd_mirra', 'mirror_chime'],
   ['gd_lumen', '루멘', '등불 해파리', 'flag:recruit_gd_lumen', 16, 'portraits/cmp_gd_lumen', 'jelly_zap'],
   ['gd_momo', '모모', '꿈먹는 맥', 'flag:recruit_gd_momo', 18, 'portraits/cmp_gd_momo', 'momo_gulp'],
+  // 외전 (docs/specs/ex_s22.md §3): 네메인의 늙은 까마귀 — 초상화는 EX2-BOSS (Kling)
+  ['gd_munin', '무닌', '이름을 기억하는 까마귀', 'flag:recruit_gd_munin', 22, 'portraits/cmp_gd_munin', 'crow_caw'],
 ];
 const obtainKey = (o) => `${o.type}:${o.flag ?? o.boss ?? o.quest ?? o.price ?? o.count}`;
-t('탈것 10 (외전 아르겐 포함) · 수호신 11 · 순서', () => {
+t('탈것 10 (외전 아르겐 포함) · 수호신 12 (외전 무닌 포함) · 순서', () => {
   eq(D.MOUNT_IDS, MOUNT_TABLE.map((r) => r[0]));
   eq(D.GUARDIAN_IDS, GUARD_TABLE.map((r) => r[0]));
   eq(D.COMPANION_ORDER, [...D.MOUNT_IDS, ...D.GUARDIAN_IDS]);
-  eq(D.UNLOCK_ORDER.length, 21);
-  eq(new Set(D.UNLOCK_ORDER).size, 21);
-  eq(D.UNLOCK_ORDER[D.UNLOCK_ORDER.length - 1], 'mt_argen');
+  eq(D.UNLOCK_ORDER.length, 22);
+  eq(new Set(D.UNLOCK_ORDER).size, 22);
+  eq(D.UNLOCK_ORDER[D.UNLOCK_ORDER.length - 1], 'gd_munin');   // chapter 22 — 외전 아르겐(21) 다음
+  eq(D.UNLOCK_ORDER.slice(-2), ['mt_argen', 'gd_munin']);
 });
 for (const [id, name, title, ob, ch, rig, portrait, cry] of MOUNT_TABLE) {
   t(`탈것 ${id} ${name}`, () => {
@@ -131,7 +134,8 @@ t('울음소리 배율·보조음 (§1.2)', () => {
 });
 t('울음·발굽 효과음 이름이 MASTER_PLAN §1.9 등록부에 있다', () => {
   const REG = new Set(('neigh gallop hoof_land boar_grunt wolf_howl wolf_bite wing_flap roar_small fire_breath screech bone_rattle fairy_chime knight_guard imp_cackle owl_hoot '
-    + 'gear_whir scythe soul_reap stag_call griffin_cry mirror_chime jelly_zap momo_gulp fire footstep dash').split(' '));
+    + 'gear_whir scythe soul_reap stag_call griffin_cry mirror_chime jelly_zap momo_gulp fire footstep dash'
+    + ' crow_caw').split(' '));   // crow_caw = 체감 효과음(core/sfx_feel.js, §1.9 체감 표) — 외전 무닌의 울음으로 재사용 (docs/specs/ex_s22.md §3, 새 소리 없음)
   for (const id of D.COMPANION_ORDER) {
     const d = D.companionDef(id);
     ok(REG.has(d.cry.sfx) && (!d.cry.extra || REG.has(d.cry.extra)), id + ' 울음 ' + JSON.stringify(d.cry));
@@ -760,7 +764,7 @@ console.log('6. 디버그');
 t('cmp=all · cmplv · mount · guards(2칸이면 8장) · ride', () => {
   const s = freshState({ chapter: 0 });
   const r = S.applyCompanionDebug(s, new URLSearchParams('cmp=all&cmplv=10&mount=mt_warhorse&guards=gd_knight,g_imp&ride=1'));
-  eq(S.ownedIds(s).length, 21); eq(r.granted.length, 21); eq(r.ride, true);   // 탈것 10 (외전 아르겐 포함) + 수호신 11
+  eq(S.ownedIds(s).length, 22); eq(r.granted.length, 22); eq(r.ride, true);   // 탈것 10 (외전 아르겐 포함) + 수호신 12 (외전 무닌 포함)
   ok(Object.values(s.companions.owned).every((e) => e.lv === 10 && e.src === 'debug' && e.seen), '레벨·출처');
   eq(s.companions.pending, []); eq(s.progress.chapter, 8); eq(s.heroes.kael.companions, { mount: 'mt_warhorse', guards: ['gd_knight', 'gd_imp'] });
   eq(s.companions._debug, { ride: true }); ok(!JSON.stringify(s).includes('_debug'), '_debug 는 저장되지 않는다');

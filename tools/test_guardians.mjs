@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // 수호신 런타임 테스트 (CMP-SYS; companions §14 C3, §4–§5, §7.4; MASTER_PLAN §1.2 · §1.14)
 //   node tools/test_guardians.mjs                A 그룹: CompanionSystem · 1부 수호신 여섯 (아리아 하티 핌 가웨인 크론 미네르바) · 허브 합류
+//                                                + 외전 무닌 (사례 munin — 미네르바의 비밀 찾기를 빌려 쓰므로 guardian.js 와 같은 A 그룹; --case munin 만 돌려도 된다)
 //   node tools/test_guardians.mjs --only B       B 그룹: 틱톡 · 모르스 · 미라 · 루멘 · 모모 (CMP-GUARD-AI-B 의 guardian_ai_b.js)
 //   node tools/test_guardians.mjs --only A,B     둘 다
 //   --case name[,name]   특정 사례만   --verbose   통과 항목도 자세히   --mobile   모든 사례를 휴대폰 화면(844×390, 터치)으로
@@ -431,6 +432,91 @@ await run('A', 'owl_secrets', STAGE('s01', '&room=r1&guards=gd_owl&cmplv=5'), (p
   };
 }));
 
+// 외전 무닌 (docs/specs/ex_s22.md §3): AI = 미네르바의 비밀 찾기(OWL.passive · OWL.drawWorld) + 데이터 kind 'dive' + GENERIC 스킬, 벡터 까마귀 그림
+await run('A', 'munin', STAGE('s01', '&room=r1&guards=gd_munin&cmplv=10'), (page) => page.evaluate(async () => {
+  const T = window.__T, g0 = T.g, w = T.w, p = T.p, cs = w.companions;
+  const G = await import('/src/game/guardian.js'), GR = await import('/src/render/guardians.js'), GB = await import('/src/render/guardians_b.js');
+  const { audio } = await import('/src/core/audio.js');
+  const { GUARD_RULES } = await import('/src/data/companions.js');
+  const g = cs.guards[0], checks = [], info = {};
+  const ai = G.aiFor('gd_munin'), owl = G.GUARDIAN_AI.gd_owl;
+  checks.push(['장착: 무닌 하나', cs.guards.length === 1 && g?.id === 'gd_munin', cs.guards.map((x) => x.id)]);
+  checks.push(['AI: passive · drawWorld = 미네르바(OWL) 것', ai.passive === owl.passive && ai.drawWorld === owl.drawWorld]);
+  checks.push(['AI: 스킬은 데이터 기반 GENERIC (올빼미 성광 아님) · 공격/협공은 데이터 kind', ai.skill !== owl.skill && ai.skill === G.aiFor('gd_no_such').skill && !ai.attack && !ai.assist && g.def.attack.kind === 'dive' && g.def.assist.kind === 'dive']);
+  // ① 비밀 찾기: 부서지는 벽 근처 → 윤곽 목록 + 제 울음(crow_caw, pitch 1.1) + 윤곽 그리기
+  const cries = [], sfx0 = audio.sfx;
+  audio.sfx = function (n, o) { cries.push([n, o?.pitch ?? 1, o?.vol ?? 1]); return sfx0.call(this, n, o); };
+  const br = w.map.markers.filter((m) => m.breakable), b = br[0];
+  const hold = () => { if (b) { p.x = b.tx * 48 - 3 * 48; p.y = b.ty * 48 - p.h + 48; p.vx = 0; p.vy = 0; } };
+  hold();
+  T.step(0.4, hold);
+  audio.sfx = sfx0;
+  let drawOk = true;
+  try { g0.render(); } catch (e) { drawOk = String(e); }
+  const caw = cries.find((c) => c[0] === 'crow_caw');
+  info.secrets = (g.mem.secrets?.length ?? 0) / 2; info.cries = cries.filter((c) => c[0] !== 'footstep').slice(0, 6);
+  checks.push(['비밀 찾기: 가까운 부서지는 벽을 윤곽 목록에', b && (g.mem.secrets?.length ?? 0) >= 2, info.secrets]);
+  checks.push(['새 비밀을 찾으면 제 울음 crow_caw (pitch 1.1, vol 0.5) · 올빼미 울음 아님', !!caw && Math.abs(caw[1] - 1.1) < 1e-6 && caw[2] === 0.5 && !cries.some((c) => c[0] === 'owl_hoot'), cries]);
+  checks.push(['윤곽·몸 그리기 오류 없음', drawOk === true, drawOk]);
+  // ② 급강하 (bias lowhp): 약한 적을 먼저 고르고, 내리꽂혀 맞힌다 (경직 0)
+  T.clearFoes(); w.hits.length = 0;
+  p.facing = 1;
+  const za = T.spawn('zombie', 120), zb = T.spawn('zombie', 210);
+  for (const z of [za, zb]) z.stats.maxHp = z.hp = 1e5;
+  zb.hp = zb.stats.maxHp * 0.1;
+  for (let i = 0; i < 240 && (za.harmless || zb.harmless); i++) T.step(1 / 60);   // 땅에서 솟아오르는 동안(harmless)은 표적이 아니다
+  const pick = g.pickTarget(w, p);
+  const anims = new Set();
+  T.step(3, () => anims.add(g.anim), 10);
+  const mh = w.hits.filter((h) => h.owner === 'gd_munin');
+  info.dive = { pick: pick === zb ? 'weak' : pick === za ? 'near' : String(pick?.def?.id), hits: mh.length, anims: [...anims] };
+  checks.push(['bias lowhp: 멀어도 체력 10% 적을 먼저 노린다', pick === zb, info.dive.pick]);
+  checks.push(['급강하로 적을 맞힘 (경직 0 · 태그 companion+guardian)', mh.length >= 1 && mh.every((h) => h.hs === 0 && h.tags.includes('guardian')), mh.slice(0, 3)]);
+  checks.push(["급강하 동작: 솟음('move') → 내리꽂힘('attack')", anims.has('attack') && anims.has('move'), [...anims]]);
+  // ③ 스킬 「까마귀 떼」 = GENERIC: 주인 둘레 r 170 휩쓸기 (속성 dark, 색 def.color)
+  T.clearFoes(); w.hits.length = 0;
+  const zc = T.spawn('zombie', 90); zc.stats.maxHp = zc.hp = 1e5;
+  T.step(0.1);
+  const ev0 = T.events.filter((e) => e.ev === 'guardianSkill').length;
+  cs.debug.skill(0);
+  const sweep = w.entities.find((e) => e.kind === 'hitbox' && e.owner === g);
+  const skAnim = g.anim;
+  T.step(0.3, null, 3);
+  const sh = w.hits.filter((h) => h.owner === 'gd_munin');
+  info.skill = { box: sweep ? [Math.round(sweep.w), Math.round(sweep.h)] : null, el: sweep?.attack?.element, anim: skAnim, hits: sh.length };
+  checks.push(['스킬 시전 (guardianSkill)', T.events.filter((e) => e.ev === 'guardianSkill').length === ev0 + 1]);
+  checks.push(['GENERIC 휩쓸기 판정 340×340 · 속성 dark · 스킬 자세', !!sweep && Math.round(sweep.w) === 340 && Math.round(sweep.h) === 340 && sweep.attack?.element === 'dark' && skAnim === 'skill', info.skill]);
+  checks.push(['스킬이 가까운 적을 침', sh.length >= 1, sh.length]);
+  // ④ 어깨 앉기: 싸움이 없고 주인이 3초 가만히 서 있으면 뒤쪽 어깨에 앉는다
+  T.clearFoes();
+  T.step(GUARD_RULES.perchIdle + 1.5, null, 15);
+  const A = g.anchor(p), dx = Math.abs(g.cx - (p.cx - (p.facing || 1) * 16)), dy = Math.abs(g.bottom - (p.bottom - p.h * 0.78));
+  info.perch = { perched: g.perched, anim: g.anim, dx: Math.round(dx), dy: Math.round(dy), anchor: [Math.round(A.x - p.cx), Math.round(A.y - p.bottom)] };
+  checks.push(["어깨 앉기: perched · anim 'perch' · 뒤쪽 어깨 (±10px)", g.perched && g.anim === 'perch' && dx <= 10 && dy <= 10, info.perch]);
+  // ⑤ 벡터 까마귀 그림: 상태마다 그려지고 (잉크 있음) 각성 모습이 다르다 · 원형 아이콘
+  const W = 120, H = 100;
+  const ink = (aw, anim, perched = false) => {
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const x = c.getContext('2d'); x.scale(2, 2);
+    const fake = { id: 'gd_munin', def: g.def, anim, animT: 0.12, t: 0.35, facing: 1, alpha: 1, seed: 0, vx: 0, vy: 0, cx: 30, bottom: 40, perched, d: { awakened: aw }, hopY: () => 0 };
+    const ok = GB.GUARDIAN_DRAW_B.gd_munin(x, fake, null, { awakened: aw }) === true;
+    const d = x.getImageData(0, 0, W, H).data;
+    let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 20) n++;
+    return { ok, n, d };
+  };
+  const st = {};
+  for (const an of ['idle', 'move', 'attack', 'assist', 'skill', 'emote', 'hurt', 'appear', 'perch']) { const r = ink(false, an, an === 'perch'); st[an] = r.ok ? r.n : -1; }
+  const a0 = ink(false, 'idle'), a1 = ink(true, 'idle');
+  let diff = 0; for (let i = 0; i < a0.d.length; i += 4) if (Math.abs(a0.d[i] - a1.d[i]) + Math.abs(a0.d[i + 1] - a1.d[i + 1]) + Math.abs(a0.d[i + 2] - a1.d[i + 2]) + Math.abs(a0.d[i + 3] - a1.d[i + 3]) > 60) diff++;
+  const ic = document.createElement('canvas'); ic.width = ic.height = 64;
+  const icOk = GR.drawGuardianIcon(ic.getContext('2d'), 'gd_munin', 32, 32, 30);
+  info.draw = { st, awDiff: diff, ink: a0.n, icOk };
+  checks.push(['그림: 아홉 상태 모두 그려짐 (잉크 ≥ 150px)', Object.values(st).every((n) => n >= 150), st]);
+  checks.push(['그림: 각성 모습이 다르다 (바뀐 픽셀 ≥ 잉크 5%)', diff >= a0.n * 0.05, { diff, ink: a0.n }]);
+  checks.push(['원형 아이콘 (GUARDIAN_ICON_B 자동)', icOk === true]);
+  return { info, checks };
+}));
+
 await run('A', 'resonance', STAGE('s05', '&guards=gd_knight,gd_imp&cmplv=10&bond=3'), (page) => page.evaluate(() => {
   const T = window.__T, w = T.w, cs = w.companions;
   T.clearFoes();
@@ -616,7 +702,7 @@ function allGuardians(page) {
       for (const e of T.events.filter((e) => e.ev === 'guardianSkill')) skills[e.id] = true;
     }
     const miss = ids.filter((id) => !hitBy[id]);
-    return { info: { hitBy, skills: Object.keys(skills).length, room: w.roomId }, checks: [['11 수호신 모두 적을 침', miss.length === 0, miss], ['11 수호신 모두 스킬 시전', Object.keys(skills).length === ids.length, Object.keys(skills)], ['플레이어 생존', !p.dead]] };
+    return { info: { hitBy, skills: Object.keys(skills).length, room: w.roomId }, checks: [[`${ids.length} 수호신 모두 적을 침`, miss.length === 0, miss], [`${ids.length} 수호신 모두 스킬 시전`, Object.keys(skills).length === ids.length, Object.keys(skills)], ['플레이어 생존', !p.dead]] };
   });
 }
 

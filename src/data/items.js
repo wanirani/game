@@ -445,6 +445,10 @@ const UNIQUE_LIST = [
   { id: 'u_argen2', name: '은룡의 비늘 망토', slot: 'cloak', tier: 7, icon: 'cloak_7', lvReq: 70, rarity: 5, boss: 'b_argen',
     stats: { def: 28, res: 40, hp: 110, dmgReduce: 5, resDark: 30, jumpPow: 8 }, visual: { cape: 'tattered', color: '#c8d2e6', color2: '#8a5ad0', len: 1.3 },
     effect: '정화의 비늘 — 받는 피해 −5%, 암흑 저항 +30%', desc: '공허의 결정이 떨어져 나간 자리에 새로 돋은 은빛 비늘을 엮었다. 두르면 어둠이 비늘에 닿지 못하고 미끄러진다.' },
+  // ── 외전 보스 고유 (s22 네메인, 7단계 — docs/specs/ex_s22.md §2.3). 7단계 단검 곡선: 마라 lvReq 62 · atk 118 → 신화 스텔라 142 의 0.94배 (아르겐 창 188 = 신화 창 200 의 0.94배와 같은 자리)
+  { id: 'u_nemain', name: '흑우 단검 네메인', slot: 'weapon', wtype: 'dagger', tier: 7, icon: 'dagger_7', lvReq: 72, rarity: 5, boss: 'b_nemain',
+    stats: { atk: 134, crit: 18, critDmg: 45, dark: 25, atkSpd: 10 }, element: 'dark', visual: { style: 6, glow: '#ff4a6a', rift: true },
+    effect: '이름 없는 칼 — 치명타 확률 +18%, 치명타 피해 +45%', desc: '네메인이 서른 해 동안 쥐었던 쌍단검 중 한 자루. 손잡이 안쪽에 아주 작은 글씨로 이름 하나가 새겨져 있다. 리아.' },
   { id: 'u_alberto', name: '알베르토의 묵주', slot: 'acc', tier: 7, icon: 'amulet_7', lvReq: 50, rarity: 4,
     stats: { res: 20, holy: 20, hpRegen: 2, resDark: 20 }, visual: { aura: { color: '#fff2b0', type: 'holy' } },
     effect: '늙은 사제의 기도 — HP 재생 +2/초, 신성 피해 +20%', desc: '알베르토 신부가 백 년 동안 굴린 묵주. 알 하나하나에 헌터들의 이름이 새겨져 있다.' },
