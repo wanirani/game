@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Feel acceptance harness (FEEL-QA) — docs/specs/feel.md §10, MASTER_PLAN §5.1 "runtime feel".
 //
-//   node tools/feel_test.mjs                    all checks, 6 heroes (≈ 4–8 min; stepped, so load mostly stretches the timing checks)
+//   node tools/feel_test.mjs                    all checks, 7 heroes = CHAR_ORDER (≈ 5–9 min; stepped, so load mostly stretches the timing checks)
 //   node tools/feel_test.mjs --quick            kael + lia only for the per-hero checks, one boss hero
 //   node tools/feel_test.mjs --only M,C5,A      run only these ids or groups (M1…M6 C1…C15 U1 U2 A1…A8 V1 X1…X3 I1 R183)
 //   node tools/feel_test.mjs --heroes kael,bran --out /tmp/x

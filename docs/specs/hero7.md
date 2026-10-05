@@ -1,5 +1,7 @@
 # 7번째 영웅: 이졸데 드라켄 (용창 기사) — 설계 계약
 
+> **상태: 통합 완료 (H7-INTEG, 2026-10-05)** — `CHAR_ORDER` 7번째, 선택 화면·헌터 교체·아케이드(탑·연습·보스 러시·서바이벌)·일일 도전·서버 목록·스토리 합류(s14_outro)·QA 목록에 들어갔다. 세부는 §7.
+
 리드가 정한 설계. 구현 세부(수치 미세 조정, 이름 다듬기)는 담당 에이전트가 정하되, 아래 **굵은 항목**은 바꾸지 않는다.
 바꿔야 할 이유가 생기면 `/tmp/claude-0/plan/h7_requests.md` 에 적고 리드에게 알린다.
 
@@ -62,6 +64,18 @@
 | H7-PLAY (게임) | `src/data/characters.js`, `classes.js`, `movesets.js`, `skills.js`, `awaken.js`, `items.js`·상점·전리품 표, `src/game/skills.js`(ULTS), 각성 director, `src/render/hero.js`(벡터 대체 그림의 창), `src/render/ultfx.js`, 소리 지정 |
 | H7-INTEG (나중) | 캐릭터 선택(7명 배치), 파티, 스토리 합류(`story_p2.js` 등), 아케이드·탑·오늘의 도전 영웅 목록, 서버 `netlify/lib/gamedata.mts`, 테스트 목록, 문서 |
 
-- **통합 전까지 `CHAR_ORDER` 에 넣지 않는다.** 데이터는 `CHARS.isolde` 로 두되, 선택 화면·아케이드·서버 목록에는 H7-INTEG 가 넣는다. 그 전에도 기존 시험이 모두 통과해야 한다(모든 `CHARS` 를 도는 코드가 있으면 확인).
+- ~~**통합 전까지 `CHAR_ORDER` 에 넣지 않는다.**~~ (통합 완료 — §7) 데이터는 `CHARS.isolde` 로 두되, 선택 화면·아케이드·서버 목록에는 H7-INTEG 가 넣는다. 그 전에도 기존 시험이 모두 통과해야 한다(모든 `CHARS` 를 도는 코드가 있으면 확인).
 - 시험용 진입: `?scene=stage&stage=s01&char=isolde` 같은 기존 디버그 경로가 있으면 그것을 쓴다.
 - 서로 필요한 것은 `/tmp/claude-0/plan/h7_requests.md` 에 한 줄씩 적는다 (`[보낸이→받는이] 내용`).
+
+## 7. 통합 기록 (H7-INTEG)
+
+| 항목 | 결과 |
+|---|---|
+| 목록 | `CHAR_ORDER` 7번째. 선택 화면 표(`STAGE_BG` = `bg/s17_sky`, `ACCENT` = `#6ad0e0`, `WNAME.spear` = '장창'), 잠긴 화면 둘째 줄 `unlock.hint`, `overlays.js FACE` [0.5, 0.23], `main.js` 초상 미리 받기, 아티팩트 BOOT 팩(초상·창기사 퍼펫). 타이틀 코나미 해금·엔딩 등장인물은 `CHAR_ORDER` 를 따라 자동 |
+| 배치 | 7명 타일: 데스크톱 1280×720 타일 57 UI px, 휴대폰 740×360 탭 46×53 CSS px, 844×390 탭 52×58 CSS px (`platform_view` front·arcade 통과). 헌터 교체 카드 7장 |
+| 스토리 | `s14_outro` 미라 합류 뒤: 흐린 거울이 깨지며 등장(`cg/cutin_isolde` 를 한 장면 빌림, 새 CG 없음) → 정체·용 아르겐·레이븐과 하늘 기사단 → `unlockChar` + NEW HUNTER 카드 + `isolde_joined`. 이졸데로 플레이 중이면 혼잣말 분기. `b_nihil_final` 다른 헌터 목소리, `CREDITS_P2` 첫 줄 |
+| 옛 세이브 | `migrateState`: `cleared.s14` 인 세이브 → `isolde_joined` 소급. `storyJoinedChars(state)` → 마을 입장 때 메타 `unlockedChars` 에 보태고 토스트, 헌터 교체도 연다 |
+| 서버 | `config.mts CHARACTER_IDS` + `gamedata.mts CLASS_INFO` 7직업 — 세이브 검사·온라인 기록·일일 도전(잠긴 영웅도 체험으로 고른다, 리아·아젤과 같음) |
+| 그림 요청 | g3·charge 와인드업 먼 주먹: 연속 찌르기(rehit) 앞 25% 를 당긴 자세에서 섞어 들어가게(`hero.js` attackPose) → review grip2 g3 0.66 · charge 0.32 px (전 5.6). 에인헤랴르 `wings: 'angel'` 은 유지 — §2 "신성 날개" 가 직업 정체성이고, 날개가 없으면 발키리와 실루엣이 거의 같다(같은 흰·금). 금 깃털 견갑은 날개 뿌리 앞에 겹쳐 '날개 달린 갑옷' 으로 읽힌다 |
+| QA | `turntable.mjs` 기본 묶음 = `CHAR_ORDER` 전원, 정면 대칭 하한 isolde 0.72(세운 창·한쪽 땋은 머리). `feel_test`·`perf_budget`·`visual_review`·`run_all` 기본 영웅에 isolde, `integration.mjs` `s01_isolde`·`s15_isolde`, `test_save_v2` 소급 검사 |

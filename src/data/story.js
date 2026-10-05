@@ -1,6 +1,6 @@
 // 스토리 스크립트 (대사·컷신). dialogue 장면이 재생한다.
 // SCRIPTS[id] = [ line... ]
-//  line = { who:'hero'|charId|npcId|bossId|'narrator'|'임의 이름', text: '문자열' 또는 {kael:'..', sera:'..', victor:'..', bran:'..', lia:'..', azel:'..', default:'..'}, side?:'left'|'right',
+//  line = { who:'hero'|charId|npcId|bossId|'narrator'|'임의 이름', text: '문자열' 또는 {kael:'..', sera:'..', victor:'..', bran:'..', lia:'..', azel:'..', isolde:'..', default:'..'}, side?:'left'|'right',
 //           name?:'명패 이름 덮어쓰기(이름을 밝히기 전 등)', portrait?:'portraits/… 초상화 덮어쓰기' }
 //       | { choice:[{ text, set:{flag:true}, goto:'label' }] , who, text }
 //       | { label:'이름' } | { goto:'label' } | { if:'flag' | '!flag' | {char:'kael'}, ...line }
@@ -12,6 +12,7 @@
 //          ending_bad/normal/true · <npcId>_ch<N>/_default/_tip<N>/_<stageId>(스테이지 안 NPC) · q_<questId>_start/_done
 // 챕터 N 대사 = N장을 클리어한 뒤(다음 장 출발 전)에 마을에서 듣는 대사.
 // 주요 플래그: elise_taken, lia_joined, elise_rescued, carmilla_trust1/2(+met1/2, 노멀 엔딩은 trust2), azel_joined, alberto_confessed, relics_all(퀘스트 런타임이 설정), abyss_open
+//              (2부: isolde_joined — story_p2.js s14_outro, 7번째 영웅 합류)
 
 const N = (text, x) => ({ who: 'narrator', text, ...x });
 const H = (text, x) => ({ who: 'hero', text, ...x });

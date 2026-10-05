@@ -186,7 +186,8 @@ rAF ─▶ input.pollFrame() (패드 읽기·진동 정리) ─▶ (세로 잠�
 ### 5.3 저장 (세이브 스키마 v2, `game/state.js` `SAVE_VERSION = 2`)
 - 슬롯 3 + 설정 + 메타(`DEFAULT_META`: unlockedChars, highScores, bossRushBest, survivalBest, konami, clears, endingsSeen, bestiary; `meta.tips {a2hs, storage, remap, pad}`). `saves.write/read/list/remove/exportCode/importCode/store/onWrite`, `isValidSave(obj)`(클라이언트·서버 공통, 버전과 무관).
 - `newGameState()` : `progress {chapter(최대 20), cleared, unlocked, flags, docs, lore, secrets, bosses, relics, seenScripts, shards[], hearts[]}` + `ensureCompanionState(state)`.
-- `migrateState(s)` (불러올 때마다, **멱등**, 모르는 필드 보존): 기존 보정 → shards/hearts 문자열·중복 정리 → `migrateCompanions(s)`(try/catch, 손상되면 동료만 초기화) → `s.version = 2`. 클라우드에서 받은 세이브도 이 함수를 거친다.
+- `migrateState(s)` (불러올 때마다, **멱등**, 모르는 필드 보존): 기존 보정 → shards/hearts 문자열·중복 정리 → 14장을 깬 세이브에 `flags.isolde_joined` 소급(7번째 영웅, 아케이드 제외) → `migrateCompanions(s)`(try/catch, 손상되면 동료만 초기화) → `s.version = 2`. 클라우드에서 받은 세이브도 이 함수를 거친다.
+- 헌터 해금은 메타 `unlockedChars` (스토리 `unlockChar` 명령·코나미 코드). `storyJoinedChars(state)` = 세이브 플래그로 합류가 확정된 영웅(`CHARACTERS[id].unlock {type:'story', flag}`) — 마을(`town/hub.js syncHeroUnlocks`)이 들어올 때 메타에 보태고 토스트, 헌터 교체(`town/party.js`)도 연다.
 - 동료 하위 트리 `state.companions = { v:1, owned:{id:{lv,exp,bond,got,src,gift,seen}}, eggs, pending, clears, autoSkill, slot2Seen, last }`, `state.heroes[charId].companions = { mount, guards:[g0,g1] }`.
 - 저장하지 않는 런타임 값: `world.run.aw`(각성 게이지, 스테이지마다 0), `world.run.awakenN`, `world.run.mount`, `world.awakenState`.
 - 크기: 20장·동료 20·7단계 장비·가방 가득 세이브 < 256 KB (서버 한도 512 KB) — `tools/test_save_v2.mjs`. 고정 세이브 `tools/fixtures/save_v1.json`, `save_ch6_nocmp.json`.
@@ -346,7 +347,8 @@ rAF ─▶ input.pollFrame() (패드 읽기·진동 정리) ─▶ (세로 잠�
 - `data/story_p2.js` `SCRIPTS_P2 = {...A, ...SCRIPTS_P2B}`, `CREDITS_P2`; `data/story_p2b.js` `SCRIPTS_P2B`. 합치기는 `data/story.js` 끝.
 - 스크립트 id: `p2_prologue` · 장마다 `s14_intro s14_t1 s14_t2 b_narkissa_pre b_narkissa_shatter b_narkissa_post s14_outro` · s15(`b_moloch_*`) · s16(`b_dagon_*`) · s17(`s17_t1 npc_rook_s17 s17_t2 b_ziz_*`) · s18(`npc_carmilla_s18 b_mara_pre b_mara_dream b_mara_post`) · s19(`b_behemoth_*`) · s20(`b_nihil_pre b_nihil_form2 b_nihil_final b_nihil_post s20_outro`) · 엔딩 `ending_p2`, `ending_p2true` · NPC 장별 `npc_<id>_ch14…ch20` · 의뢰 `q_<questId>_start/_done` (bd_rift bd_mirror bd_deep bd_storm bd_combo200 hd_ember hd_plus15 rk_stars rk_stars6 el_pearl ab_dawnflower mt_feast cm_dreams).
 - 새 명령 **`{cmd:'recruit', id}`**: `flags['recruit_'+id] = true` + `game.companions?.recruit?.(id)` (대화·컷신 모두, 건너뛰기도 실행; 합류 연출은 마을). 아웃트로의 합류 명령은 조건 분기보다 앞에 둔다 (results.js 가 새 분기를 보면 아웃트로를 다시 튼다).
-- 컷신 명령(`scenes/front/story.js`): `cg bg wait title flash recruit`. 새 플래그: `p2_started rook_revealed hearts_all stars_all p2_star p2_done s14_revealed s20_revealed dawnflower_given recruit_<6 ids> ending_p2 ending_p2true stable_open`.
+- 컷신 명령(`scenes/front/story.js`): `cg bg wait title flash recruit`. 새 플래그: `p2_started rook_revealed hearts_all stars_all p2_star p2_done s14_revealed s20_revealed dawnflower_given recruit_<6 ids> ending_p2 ending_p2true stable_open isolde_joined`.
+- 7번째 영웅 **이졸데**(hero7) 합류: `s14_outro` 미라 합류 뒤 — 1부 리아·아젤과 같은 `unlockChar` + `NEW HUNTER` 제목 카드 + `flag('isolde_joined')` (플래그는 조건 분기 앞 줄기에서 켠다), 이졸데로 플레이 중이면 `isolde_self` 분기. 새 CG 없이 `cg/cutin_isolde` 를 한 장면 빌린다. `b_nihil_final` 의 다른 헌터 목소리에 이졸데(합류 플래그가 있을 때만), `CREDITS_P2` 첫 줄에 이졸데.
 
 ### 11.6 아이템·비전서·퀘스트·지도·음악·아케이드
 - 7단계(ITEMS-P2/P2-DATA, `TIER_LV[6] = 50`, 로마 숫자 Ⅶ): 무기 `w_<type>_13/14`(아이콘 `<type>_7`, visual `{style:6, rift:true}` = 무지갯빛 균열 광택), 방어구 `a_head/body/cloak_13/14`, 장신구 `a_ring_13/14 a_amulet_13/14`, 재료 `m_mirror m_ember m_pearl m_gale m_dream m_spore m_void`, 열쇠 `k_rift_lantern k_heart_1…6(worldHeart, color) k_star_1…6(starShard) k_dawnflower`, 고유 `u_narkissa u_moloch u_dagon u_ziz u_ziz2 u_mara u_behemoth u_nihil u_nihil2 u_alberto`, 신화 `u_dawn_whip/sword/great/dagger/gun/staff` → `MYTHIC_WEAPONS_P2`. 드롭(`game/loot.js`): 보스 고유는 첫 처치 확정·다시 잡으면 40 %, 세계의 심장은 중복 없음, 신화(7단계 `MYTHIC_WEAPONS_P2`)는 b_nihil 첫 처치 확정·이후 50 % · 다른 2부 보스 1.5 % · s20 정예 0.6 % (× 드롭 배율).
@@ -362,7 +364,7 @@ rAF ─▶ input.pollFrame() (패드 읽기·진동 정리) ─▶ (세로 잠�
 
 ## 12. 채색 그림 시스템 (ART_DECISION: 모든 캐릭터·크리처 = Kling 원화로 만든 채색 컷아웃 퍼펫 + 절차적 VFX, 벡터는 대체 그림으로 남음)
 
-**현황 (2026-09-28, `node tools/qa/painted_registry.mjs`)**: 보스 20/20 · 적 렌더 id 90/90 (91종 중 보이지 않는 medusa_spawner 제외) · 동료 20/20 · 영웅 6명 × 7직업 = 42 + NPC 7명 퍼펫 (폴더 8: npc_alberto npc_carmilla npc_elise npc_greta npc_hadwin npc_marta npc_rook + 로크의 2부 모습 npc_rook2). 영웅 8방향 턴테이블 보기는 ART-HERO-B **진행 중**.
+**현황 (2026-09-28, `node tools/qa/painted_registry.mjs`)**: 보스 20/20 · 적 렌더 id 90/90 (91종 중 보이지 않는 medusa_spawner 제외) · 동료 20/20 · 영웅 7명 × 7직업 = 49 + NPC 7명 퍼펫 (폴더 8: npc_alberto npc_carmilla npc_elise npc_greta npc_hadwin npc_marta npc_rook + 로크의 2부 모습 npc_rook2). 영웅 8방향 턴테이블 보기는 ART-HERO-B **진행 중**.
 
 | 대상 | 런타임 | 에셋 | 제작 도구 | 플레이북 |
 |---|---|---|---|---|
@@ -403,6 +405,18 @@ rAF ─▶ input.pollFrame() (패드 읽기·진동 정리) ─▶ (세로 잠�
 
 ### 능력치 키 (`game/stats.js` STAT_INFO)
 `hp mp atk mag def res agi luck crit critDmg lifesteal hpRegen mpRegen moveSpd jumpPow airJumps atkSpd expBonus goldBonus dropBonus subDmg skillDmg cdr ultGain heartBonus fire ice holy dark thunder resFire resIce resHoly resDark resThunder dmgReduce reach magnet` (%류는 정수 %)
+
+### 플레이어블 영웅 (`data/characters.js` `CHARACTERS`, 순서 `CHAR_ORDER` — 선택 화면·헌터 교체·아케이드·엔딩 등장인물·서버 `CHARACTER_IDS`)
+| id | 이름 · 칭호 | 무기 | 기본 직업 → 1차 / 2차 | 해금 |
+|---|---|---|---|---|
+| `kael` | 카엘 발크레인 · 뱀파이어 헌터 | whip | kael_hunter | 처음부터 |
+| `sera` | 세라피나 룩스 · 퇴마 수녀 | staff | sera_exorcist | 처음부터 |
+| `victor` | 빅터 그림 · 괴물 사냥 총잡이 | gun | victor_gunslinger | 처음부터 |
+| `bran` | 브란 아이언하트 · 철심의 기사 | greatsword | bran_knight | 처음부터 |
+| `lia` | 리아 크로우 · 그림자 암살자 | dagger | lia_assassin | 2장 `s02_outro` (`lia_joined`) |
+| `azel` | 아젤 드 녹트 · 담피르 검사 | sword | azel_dhampir | 6장 `s06_outro` (`azel_joined`) |
+| `isolde` | 이졸데 드라켄 · 용창 기사 | spear | isolde_lancer → dragoon(stormlord·wyrmknight) / valkyrie(einherjar·spearsaint) | 2부 14장 `s14_outro` (`isolde_joined`) — 설계 `docs/specs/hero7.md` |
+영웅마다 7직업(기본 1 · 1차 2 · 2차 4), 채색 퍼펫 `assets/puppets/<id>/<classId>/`, 초상 `portraits/<id>`, 컷인 `cg/cutin_<id>`. 영웅별 표(선택 화면 `STAGE_BG`·`ACCENT`·`WNAME`, `overlays.js FACE`, `skills.js ULT_COLS`, `ultfx.js AURA_DEF`, `hero.js trailC`)는 새 영웅이 오면 모두 채운다. 일일 도전은 잠긴 영웅도 고른다(체험).
 
 ### 외형(look) 스키마 — `render/hero.js` 가 해석
 캐릭터 기본 look ← 직업 look ← 장비 visual 순으로 덮어씀 (`composeLook`). 채색 퍼펫도 같은 look 을 읽는다 (갑옷 색 마스크·무기·망토·날개·후광·오라).
@@ -492,7 +506,7 @@ weapon:{type:'whip'|'sword'|'greatsword'|'dagger'|'gun'|'staff', style:1~6, colo
 대사 스크립트에서 `{ cmd:'cg', id:'cg_prologue_moon' }` 로 전체화면 이벤트 CG 표시, `{ cmd:'cg', id:null }` 로 해제.
 1부: `cg_prologue_moon`(핏빛 달과 성의 출현) `cg_prologue_attack`(마을 습격) `cg_elise_taken`(엘리제 납치) `cg_alberto_church`(신부가 성물 전달) `cg_castle_gate`(성문 진입) `cg_carmilla_library`(도서관의 카밀라) `cg_elise_rescued`(엘리제 구출) `cg_death_appears`(사신 등장) `cg_dracula_throne`(왕좌의 드라큘라) `cg_dracula_transform`(악마 변신) `cg_castle_collapse`(성 붕괴·여명) `cg_abyss_gate`(심연의 문) `cg_true_ending`(진엔딩·여섯 영웅) `cg_bad_ending`(배드엔딩)
 2부: `cg_rift_sky`(하늘의 균열) `cg_rift_gate`(균열문) `cg_rook_reveal`(로크의 정체) `cg_mirror_empress`(거울의 여제) `cg_forge_idol`(용광로의 우상) `cg_sunken_cathedral`(가라앉은 성소) `cg_ziz_storm`(폭풍의 거신조) `cg_mara_cradle`(악몽의 요람) `cg_behemoth_rot`(부패한 짐승) `cg_void_descent`(공허로의 하강) `cg_nihil`(니힐) `cg_p2_ending`(파수꾼의 밤) `cg_p2_true`(새벽의 별)
-각성기 컷인 그림: `cutin_kael cutin_sera cutin_victor cutin_bran cutin_lia cutin_azel` (1600×637, 얼굴·눈 기준점은 `data/awaken.js`).
+각성기 컷인 그림: `cutin_kael cutin_sera cutin_victor cutin_bran cutin_lia cutin_azel cutin_isolde` (1600×637, 얼굴·눈 기준점은 `data/awaken.js`).
 
 ### 음악 트랙 ID (`data/music.js` TRACKS)
 `title prologue story sad hub inn shop smith church worldmap s01 … s13 arena boss boss2 dracula chaos victory gameover ending credits minigame` + 2부 `s14 s15 s16 s17 s18 s19 s20 boss3 boss4 nihil worldmap2` (boss3: 나르키사·다곤·마라 / boss4: 몰록·지즈·베헤모스 / nihil: 니힐 / worldmap2: 지도 1쪽). 마구간은 hub, 동료·각성은 새 곡 없음 (각성은 audio.duck).
