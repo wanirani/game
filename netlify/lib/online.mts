@@ -100,7 +100,7 @@ function checkResult(b: Board, r: unknown): Pick<Rec, 't' | 's' | 'w' | 'f' | 'h
   if (!int(r.score, 0, ONLINE.scoreMax) || !int(r.level, 1, ONLINE.levelMax)) badResult();
   if (b.kind === 'survival' && !int(r.wave, 1, ONLINE.waveMax)) badResult();
   if (b.kind === 'tower') {
-    // 무한의 탑: 돌파한 층 1~999, 층마다 최소 시간 (돌파한 층 × 8초), 층에 비해 지나친 점수
+    // 무한의 탑: 돌파한 층 1~999, 층마다 최소 시간 (돌파한 층 × 3초 — 층마다 건너뛸 수 없는 연출 시간), 층에 비해 지나친 점수
     if (!int(r.floor, 1, ONLINE.floorMax)) badResult();
     const f = r.floor as number;
     if (time < f * TOWER_RULES.minFloorSec * 1000) fail('implausible_time', 422);

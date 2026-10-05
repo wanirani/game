@@ -62,6 +62,7 @@
   "cg/cg_ziz_storm",
   "cg/cutin_azel",
   "cg/cutin_bran",
+  "cg/cutin_isolde",
   "cg/cutin_kael",
   "cg/cutin_lia",
   "cg/cutin_sera",
@@ -111,6 +112,7 @@
   "portraits/cmp_mt_gale",
   "portraits/cmp_mt_ignis",
   "portraits/cmp_mt_silva",
+  "portraits/isolde",
   "portraits/kael",
   "portraits/lia",
   "portraits/npc_alberto",
@@ -531,6 +533,13 @@
    "bytes": 39530,
    "srcBytes": 103748
   },
+  "cg/cutin_isolde.webp": {
+   "src": "220754476aa9",
+   "w": 960,
+   "h": 382,
+   "bytes": 48036,
+   "srcBytes": 122984
+  },
   "cg/cutin_kael.webp": {
    "src": "3e8636f4375b",
    "w": 960,
@@ -873,6 +882,13 @@
    "h": 581,
    "bytes": 20468,
    "srcBytes": 60722
+  },
+  "portraits/isolde.webp": {
+   "src": "e6b34f71c128",
+   "w": 480,
+   "h": 680,
+   "bytes": 32182,
+   "srcBytes": 99498
   },
   "portraits/kael.webp": {
    "src": "81f44125f131",

@@ -43,5 +43,5 @@ export const LEVEL_PRESETS: readonly { lv: number; tier: number; p2?: boolean }[
  * 기록 검사(online.mts): 걸린 시간 ≥ 돌파한 층 × minFloorSec 초, 점수 ≤ (돌파한 층 + 1) × maxScorePerFloor
  */
 export const TOWER_RULES: Readonly<{ bossEvery: number; restEvery: number; minFloorSec: number; maxScorePerFloor: number }> = {
-  bossEvery: 5, restEvery: 10, minFloorSec: 8, maxScorePerFloor: 5000000,
+  bossEvery: 5, restEvery: 10, minFloorSec: 3, maxScorePerFloor: 5000000,   // minFloorSec = 층마다 건너뛸 수 없는 연출 시간 (src/data/tower.js)
 };

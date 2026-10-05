@@ -105,7 +105,7 @@
 - 보드별 상한·하한
   - 보스 러시·연습·일일: `time` 은 5초 이상 2시간 이하.
   - 서바이벌: `wave` 는 1~999.
-  - 무한의 탑: `floor` 는 1~999, `time` 은 24시간 이하이고 `floor × 8초` 이상(층마다 최소 8초 — 넘지 못하면 `implausible_time`),
+  - 무한의 탑: `floor` 는 1~999, `time` 은 24시간 이하이고 `floor × 3초` 이상(층마다 건너뛸 수 없는 연출 시간 3초 — 넘지 못하면 `implausible_time`),
     `score` 는 `(floor + 1) × 5,000,000` 이하. 층 규칙 숫자는 `netlify/lib/gamedata.mts` `TOWER_RULES` = `src/data/tower.js` `TOWER_RULES`.
   - `level` 1~99, `score` 0~99,999,999.
   - `hero`·`cls` 는 데이터에 있는 id.

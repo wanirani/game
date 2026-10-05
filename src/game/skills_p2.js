@@ -45,6 +45,7 @@ const WANIM = {
   dagger: { slash: 'stab', up: 'uppercut', wide: 'spin_blade' },
   gun: { slash: 'shoot_double', up: 'shoot_up', wide: 'spin_blade' },
   staff: { slash: 'staff_swing', up: 'staff_swing_up', wide: 'spin_blade' },
+  spear: { slash: 'slash_wide', up: 'launch', wide: 'slash_wide' },
 };
 const wa = (p, k) => (WANIM[p.stats?.weaponType] || WANIM.sword)[k];
 /** 스킬 시전 자세: 판정 없는 가짜 move 로 렌더러 포즈만 구동 */

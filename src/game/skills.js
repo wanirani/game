@@ -1,8 +1,9 @@
-// 스킬 런타임: 액티브 스킬 48종 · 캐릭터별 필살기 6종 · 비전서 커맨드 기술 11종 · 직업 휘두르기 특성
+// 스킬 런타임: 액티브 스킬 56종 · 캐릭터별 필살기 7종 · 비전서 커맨드 기술 11종 · 직업 휘두르기 특성 (+ 급강하 충격파 특성 __onPound)
 // 공개 API
 //  SKILL_IMPL[skillId] = (player, world, level) => boolean(시전 성공, false 면 MP/재사용 대기 소모 안 함)
 //  castSkill(player, world, skillId, level), castUltimate(player, world), castTechnique(player, world, tech)
 //  SKILL_IMPL.__onSwing(player, world, move) : 일반 공격 판정 시작 시 직업 특성 연출/효과
+//  SKILL_IMPL.__onPound(player, world, r)     : 급강하 착지 충격파(player.groundPound) 직업 특성 → {r, element, color} | null
 //  FXKIT : 필살기·각성기 연출 도우미 모음 (이 파일에 이미 있는 도구들; 각성 감독 AWAKEN-DIR-A/B 가 쓴다. 목록은 파일 끝)
 // 필살기 (feel.md §5.2·§5.3, FX-ULTS): castUltimate 가 전직 단계·강조색을 읽어 ULTS[charId](p, w, v) 에 넘긴다.
 //  v = { charId, classId, tier(0~2), color(필살기 색), accent(직업 강조색), q(품질 배율), low, name, title }
@@ -138,6 +139,7 @@ const WANIM = {
   dagger: { slash: 'stab', up: 'uppercut', wide: 'spin_blade', thrust: 'thrust', down: 'stab_alt', cast: 'cast' },
   gun: { slash: 'shoot_double', up: 'shoot_up', wide: 'spin_blade', thrust: 'shoot', down: 'shoot_down', cast: 'shoot_double' },
   staff: { slash: 'staff_swing', up: 'staff_swing_up', wide: 'spin_blade', thrust: 'staff_swing', down: 'staff_swing', cast: 'cast' },
+  spear: { slash: 'slash_wide', up: 'launch', wide: 'slash_wide', thrust: 'thrust', down: 'slash_down', cast: 'cast' },   // 창 자세는 render/hero.js SPEAR_AK (양손)
 };
 const wa = (p, k) => (WANIM[p.stats.weaponType] || WANIM.sword)[k];
 
@@ -2378,6 +2380,402 @@ SKILL_IMPL.azel_fallen_wings = (p, w, lv) => {
 function featherRenderL(ctx, pr) { ctx.rotate(Math.atan2(pr.vy, pr.vx)); featherShape(ctx, 16 * pr.scale, '#fff2b0', '#fff8e0'); }
 function featherRenderD(ctx, pr) { ctx.rotate(Math.atan2(pr.vy, pr.vx)); featherShape(ctx, 16 * pr.scale, '#b060ff', '#3a1a5a'); }
 
+// ═══════════════════════════ 이졸데 ═══════════════════════════
+// 하늘빛 바람(창술) · 번개(용기사) · 흑룡의 불꽃(흑룡기사) · 금빛 투창(발키리). 번개의 용(stormDragon)은 뇌룡 승천·천룡강림·각성이 같이 쓴다
+const ISO_SKY = '#8ae8ff', ISO_BOLT = '#bfe8ff', ISO_GOLD = '#ffe8a0';
+/** 창끝 자리 (찌르기 자세에서 손 앞 d px, 판정 상자 높이) */
+const tipAt = (p, d = 110) => ({ x: p.cx + p.facing * d, y: p.bottom - 66 });
+/** 이 직업이 용기사 계열인가 / 발키리 계열인가 (계보: 창기사 → 용기사·발키리 → 2차) */
+const isoLine = (c, root) => c === root || CLASSES[c]?.parent === root;
+
+/** 바람의 창: 진행 방향으로 뻗는 옅은 창 모양 + 감기는 바람 두 줄기 (그라디언트 없음) */
+function galeRender(ctx, pr) {
+  const s = pr.scale, L = 120 * s * Math.min(1, pr.t * 14 + 0.2);
+  ctx.rotate(Math.atan2(pr.vy, pr.vx));
+  ctx.globalCompositeOperation = ADD;
+  glow(ctx, 0, 0, 46 * s, ISO_SKY, 0.45);
+  ctx.fillStyle = rgba(ISO_SKY, 0.35);
+  ctx.beginPath(); ctx.moveTo(30 * s, 0); ctx.lineTo(4 * s, -9 * s); ctx.lineTo(-L, -3 * s); ctx.lineTo(-L, 3 * s); ctx.lineTo(4 * s, 9 * s); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = rgba('#ffffff', 0.9);
+  ctx.beginPath(); ctx.moveTo(30 * s, 0); ctx.lineTo(6 * s, -3.5 * s); ctx.lineTo(-L * 0.7, -s); ctx.lineTo(-L * 0.7, s); ctx.lineTo(6 * s, 3.5 * s); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = rgba(ISO_SKY, 0.7); ctx.lineWidth = 1.6 * s; ctx.lineCap = 'round';
+  for (const o of [0, Math.PI]) {
+    ctx.beginPath();
+    for (let i = 0; i <= 12; i++) { const u = i / 12, x = lerp(20 * s, -L, u), y = Math.sin(u * 9 - pr.t * 40 + o) * 10 * s * (1 - u * 0.5); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+    ctx.stroke();
+  }
+  glow(ctx, 22 * s, 0, 16 * s, '#ffffff', 0.9);
+}
+/** 빛의 투창: 금빛 자루 + 창날 + 꼬리 빛 (발키리 특성·빛의 투창·영웅의 전당 공용) */
+function javelinRender(ctx, pr) {
+  const s = pr.scale, c = pr.color || ISO_GOLD;
+  ctx.rotate(Math.atan2(pr.vy, pr.vx));
+  ctx.globalCompositeOperation = ADD;
+  glow(ctx, -6 * s, 0, 40 * s, c, 0.4);
+  beamH(ctx, -70 * s, -6 * s, 0, 4 * s, c, 0.6);
+  ctx.fillStyle = rgba(c, 0.7); ctx.fillRect(-44 * s, -1.6 * s, 44 * s, 3.2 * s);
+  ctx.fillStyle = rgba('#ffffff', 0.95); ctx.fillRect(-40 * s, -0.6 * s, 40 * s, 1.2 * s);
+  ctx.fillStyle = rgba(c, 0.95);
+  ctx.beginPath(); ctx.moveTo(22 * s, 0); ctx.lineTo(1 * s, -5.5 * s); ctx.lineTo(-3 * s, 0); ctx.lineTo(1 * s, 5.5 * s); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-40 * s, 0); ctx.lineTo(-50 * s, -6 * s); ctx.lineTo(-46 * s, 0); ctx.lineTo(-50 * s, 6 * s); ctx.closePath(); ctx.fill();
+  glow(ctx, 14 * s, 0, 12 * s, '#ffffff', 0.9);
+}
+/** 빛의 투창 한 자루: 적을 꿰뚫고 날아가 벽·바닥에 꽂히거나 사거리 끝에서 빛으로 터진다 (o.boom = 폭발 모션 배율, 0 이면 폭발 없음) */
+function throwJavelin(w, p, x, y, ang, o = {}) {
+  const sp = o.speed ?? 1250, s = o.scale ?? 1, col = o.color ?? ISO_GOLD, tags = o.tags ?? ['skill'];
+  const burst = (pr, ww) => {
+    if (!(o.boom > 0)) { ww.fx.burst('holy', pr.cx, pr.cy, 6, { speed: 160 }); return; }
+    boom(ww, p, pr.cx, pr.cy, (o.r ?? 64) * s, { mv: o.boom, element: 'holy', c1: col, c2: '#ffffff', shake: 3, sfx: 'holy', hitstop: 0.04, atk: { tags } });
+  };
+  return shoot(w, p, {
+    x, y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, w: 34 * s, h: 14 * s, scale: s, render: javelinRender, color: col,
+    life: o.life ?? 0.75, pierce: 99, collideWalls: true, gravity: o.gravity ?? 0.1, light: { r: 90 * s, color: col, i: 0.8 },
+    attack: atk(p, { mv: o.mv ?? 1, element: 'holy', kb: [220, -160], hitstop: 0.04, shake: 2, tags }),
+    onWall: (pr, ww) => { burst(pr, ww); pr.dead = true; },
+    onExpire: (pr, ww, byHit) => { if (!byHit) burst(pr, ww); },
+  });
+}
+
+// ── 번개의 용: 경로(Catmull-Rom) 위를 일정한 속도로 미끄러진다. 몸은 머리 뒤쪽 경로를 그대로 따라온다 (기록 없이 결정적) ──
+/** pts = [[x, y], …] 를 잇는 매끈한 경로 → { X, Y, D(누적 길이), len, way(각 점까지의 길이) } */
+function splinePath(pts, step = 10) {
+  const X = [], Y = [], D = [], way = [0];
+  let len = 0, px = pts[0][0], py = pts[0][1];
+  X.push(px); Y.push(py); D.push(0);
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(pts.length - 1, i + 2)];
+    const n = Math.max(2, Math.ceil(Math.hypot(p2[0] - p1[0], p2[1] - p1[1]) / step));
+    for (let k = 1; k <= n; k++) {
+      const t = k / n, t2 = t * t, t3 = t2 * t;
+      const x = 0.5 * (2 * p1[0] + (p2[0] - p0[0]) * t + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 + (3 * p1[0] - p0[0] - 3 * p2[0] + p3[0]) * t3);
+      const y = 0.5 * (2 * p1[1] + (p2[1] - p0[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (3 * p1[1] - p0[1] - 3 * p2[1] + p3[1]) * t3);
+      len += Math.hypot(x - px, y - py); px = x; py = y;
+      X.push(x); Y.push(y); D.push(len);
+    }
+    way.push(len);
+  }
+  return { X, Y, D, len, way };
+}
+const _PA = { x: 0, y: 0 };
+/** 경로에서 길이 d 인 점 (0..len 으로 자른다) */
+function pathAt(P, d) {
+  const { X, Y, D } = P;
+  d = clamp(d, 0, P.len);
+  let lo = 0, hi = D.length - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (D[m] <= d) lo = m; else hi = m; }
+  const u = D[hi] > D[lo] ? (d - D[lo]) / (D[hi] - D[lo]) : 0;
+  _PA.x = lerp(X[lo], X[hi], u); _PA.y = lerp(Y[lo], Y[hi], u);
+  return _PA;
+}
+/** 용의 몸 마디 (머리 = 경로 길이 d, 꼬리 쪽으로 gap 간격 n 개) → out 평평한 배열, 반환: 그릴 마디 수 (경로 시작 전 마디는 빼서 창끝에서 솟아오르듯) */
+function dragonBody(P, d, n, gap, out) {
+  let k = 0;
+  for (let i = 0; i < n; i++) {
+    const di = d - i * gap;
+    if (di < 0) break;
+    const q = pathAt(P, di);
+    out[k * 2] = q.x; out[k * 2 + 1] = q.y; k++;
+  }
+  return k;
+}
+/**
+ * 번개의 용 (이졸데): 머리부터 꼬리까지의 마디 P(평평한 배열, n 개)를 따라 몸(번짐·색·흰 심 세 겹, 꼬리로 갈수록 가늘게)·
+ * 등갈기·머리(벌린 턱·뿔·눈빛)를 그린다. 그라디언트 없음, 난수 없음 (흔들림은 t 로).
+ */
+function stormDragon(ctx, P, n, s, col, a = 1, t = 0) {
+  if (n < 3 || !(a > 0.01)) return;
+  ctx.globalCompositeOperation = ADD; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (let i = 0; i < n; i += 4) glow(ctx, P[i * 2], P[i * 2 + 1], 34 * s * (1 - 0.6 * i / n), col, 0.32 * a);
+  const seg = Math.ceil(n / 3);
+  for (let g = 0; g < 3; g++) {
+    const i0 = g * seg, i1 = Math.min(n - 1, i0 + seg), wk = s * (1 - g * 0.3);
+    if (i1 <= i0) break;
+    const path = () => { ctx.beginPath(); ctx.moveTo(P[i0 * 2], P[i0 * 2 + 1]); for (let i = i0 + 1; i <= i1; i++) ctx.lineTo(P[i * 2], P[i * 2 + 1]); };
+    path(); ctx.strokeStyle = rgba(col, 0.22 * a); ctx.lineWidth = 26 * wk; ctx.stroke();
+    ctx.strokeStyle = rgba(col, 0.8 * a); ctx.lineWidth = 9 * wk; ctx.stroke();
+    ctx.strokeStyle = rgba('#ffffff', 0.95 * a); ctx.lineWidth = 3 * wk; ctx.stroke();
+  }
+  // 등갈기: 마디마다 몸의 법선 쪽으로 짧은 가시 (번갈아 양쪽)
+  ctx.fillStyle = rgba(col, 0.75 * a);
+  ctx.beginPath();
+  for (let i = 2; i < n - 1; i += 2) {
+    const x = P[i * 2], y = P[i * 2 + 1], dx = P[i * 2 - 2] - P[i * 2 + 2], dy = P[i * 2 - 1] - P[i * 2 + 3], L = Math.hypot(dx, dy) || 1;
+    const side = (i >> 1) % 2 ? 1 : -1, nx = -dy / L * side, ny = dx / L * side, h = 15 * s * (1 - 0.7 * i / n) * (0.8 + 0.2 * Math.sin(t * 18 + i));
+    ctx.moveTo(x - dx / L * 5 * s, y - dy / L * 5 * s); ctx.lineTo(x + nx * h - dx / L * 9 * s, y + ny * h - dy / L * 9 * s); ctx.lineTo(x + dx / L * 4 * s, y + dy / L * 4 * s);
+  }
+  ctx.fill();
+  // 머리
+  const hx = P[0], hy = P[1], ang = Math.atan2(P[1] - P[5], P[0] - P[4]), open = 0.22 + 0.14 * Math.sin(t * 9);
+  ctx.save(); ctx.translate(hx, hy); ctx.rotate(ang); if (Math.cos(ang) < 0) ctx.scale(1, -1); ctx.scale(s, s);
+  glow(ctx, 4, 0, 64, col, 0.6 * a);
+  ctx.fillStyle = rgba(col, 0.9 * a);
+  ctx.beginPath(); ctx.moveTo(-10, -7); ctx.lineTo(30, -4 - open * 10); ctx.lineTo(24, 1); ctx.lineTo(-6, 3); ctx.closePath(); ctx.fill();   // 윗턱
+  ctx.beginPath(); ctx.moveTo(-8, 3); ctx.lineTo(26, 5 + open * 22); ctx.lineTo(20, 9 + open * 14); ctx.lineTo(-10, 8); ctx.closePath(); ctx.fill();   // 아래턱
+  ctx.strokeStyle = rgba(col, 0.85 * a); ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(-6, -8); ctx.quadraticCurveTo(-20, -20, -38, -22); ctx.moveTo(-10, -5); ctx.quadraticCurveTo(-24, -10, -36, -8); ctx.stroke();   // 뿔
+  ctx.strokeStyle = rgba('#ffffff', 0.9 * a); ctx.lineWidth = 1.4;
+  ctx.beginPath(); ctx.moveTo(-8, -5); ctx.lineTo(28, -3 - open * 9); ctx.moveTo(-8, 5); ctx.lineTo(24, 6 + open * 19); ctx.stroke();
+  for (let i = 0; i < 4; i++) { const yy = -2 + i * 3.4 + Math.sin(t * 12 + i) * 1.5; ctx.beginPath(); ctx.moveTo(-10, yy); ctx.lineTo(-30 - i * 4, yy + 6 + i * 2); ctx.stroke(); }   // 수염·갈기
+  glow(ctx, 8, -4, 9, '#ffffff', a);
+  ctx.restore();
+}
+
+SKILL_IMPL.isolde_piercing_gale = (p, w, lv) => {
+  const id = 'isolde_piercing_gale', mv = MV(id, lv), r = V(id, 'r', lv), s = SZ(lv);
+  pose(p, w, 'thrust', 0.34, { h0: 0.07, hw: 0.08, sfx: 'slash' });
+  p.vx = p.facing * 220 * (p.onGround ? 1 : 0.5);
+  setTimeoutFx(w, 0.07 / p.atkSpeedMul, (ww) => {
+    const f = p.facing, sp = 1500, o = tipAt(p, 70);
+    shoot(ww, p, {
+      x: o.x, y: o.y, vx: f * sp, vy: 0, w: 70 * s, h: 30 * s, scale: s, render: galeRender, color: ISO_SKY,
+      life: r / sp + 0.05, pierce: 99, collideWalls: false, fadeOut: true, light: { r: 110 * s, color: ISO_SKY, i: 0.8 },
+      attack: atk(p, { mv, kb: [240, -120], hitstop: 0.05, shake: 2 }),
+      onExpire: (pr, w2) => w2.fx.burst('magic', pr.cx, pr.cy, 6, { color: ISO_SKY, speed: 140 }),
+    });
+    audio.sfx('dash_burst', { pitch: 1.3, vol: 0.6 }); audio.sfx('slash', { pitch: 1.2 });
+    ww.fx.ring(o.x, o.y, { color: ISO_SKY, r0: 6, r1: 40 * s, life: 0.18, width: 3 });
+  });
+};
+
+SKILL_IMPL.isolde_dragon_dive = (p, w, lv) => {
+  const id = 'isolde_dragon_dive', r = V(id, 'r', lv), mv = MV(id, lv), f = p.facing, air = !p.onGround;
+  if (!air) {
+    p.vy = -1020; p.vx = f * 140; p.onGround = false; p.jumpCut = true;
+    pose(p, w, 'launch', 0.32, { h0: 0.05, sfx: 'jump' });
+    w.fx.burst('dust', p.cx, p.bottom, 12, { speed: 220 });
+    audio.sfx('jump', { pitch: 0.8 });
+  }
+  fx(w, {
+    life: 1.7, z: 12, d: { dive: false, done: false, g: 0 },
+    follow(e) { e.x = p.cx - 80; e.y = p.y - 60; e.w = 160; e.h = p.h + 140; },
+    tick(e, ww) {
+      if (!e.d.dive && (air || p.vy > -160 || e.lt > 0.5)) {
+        e.d.dive = true;
+        pose(p, ww, 'plunge', 1.3, { h0: 0.02, hw: 1.2, sfx: 'dash' });
+        p.vy = 980; p.vx = f * 60;
+        audio.sfx('dash_burst', { pitch: 0.9 });
+      }
+      if (e.d.dive && !e.d.done) {
+        holdInvuln(p); p.vy = Math.max(p.vy, 980);
+        if ((e.d.g++ & 1) === 0) afterimage(ww, p, ISO_BOLT, 0.16);
+        if (Math.random() < 0.6) ww.fx.emit('thunder', p.cx + rand(-8, 8), p.bottom - rand(0, 30), { speed: 60, color: ISO_BOLT });
+        if (p.onGround) {
+          e.d.done = true;
+          const x = p.cx, y = p.bottom;
+          playerStrike(ww, { x: x - r, y: y - r * 0.8, w: r * 2, h: r * 0.8 + 12 }, atk(p, { mv, kb: [380, -620], launch: true, hitstop: 0.1, shake: 8 }));
+          ww.fx.ring(x, y - 4, { color: ISO_SKY, r0: 12, r1: r * 1.5, life: 0.4, width: 10 });
+          ww.fx.ering?.(x, y - 2, { color: '#ffffff', r0: 16, r1: r * 1.9, ry: 0.2, life: 0.4, width: 5 });
+          ww.fx.burst('thunder', x, y - 10, 16, { speed: 420, color: ISO_BOLT });
+          ww.fx.burst('dust', x, y, 14, { speed: 260 });
+          HFX.stampDecal?.(ww, x, y - 6, f, 'crack', { floor: true, scale: 1.2 });
+          shake(ww, 9, 0.3); ww.camera.punchZoom(1.05, 0.15);
+          audio.sfx('explode', { pitch: 1.1, vol: 0.7 }); audio.sfx('thunder', { pitch: 1.2, vol: 0.6 });
+          p.endMove(); p.iframes = 0.2;
+          e.dead = true;
+        }
+      }
+    },
+    end(e) { if (!e.d.done) { p.iframes = Math.min(p.iframes, 0.2); if (p.move?.id === 'sk_plunge') p.endMove(); } },
+    draw(ctx, e) {
+      if (!e.d.dive || e.d.done) return;
+      ctx.globalCompositeOperation = ADD;
+      beamV(ctx, p.cx, p.y - 160, p.bottom + 40, 12, ISO_SKY, 0.5);
+      glow(ctx, p.cx, p.bottom + 30, 50, ISO_BOLT, 0.7);
+    },
+  });
+};
+
+SKILL_IMPL.isolde_thunder_lance = (p, w, lv) => {
+  const id = 'isolde_thunder_lance', n = N(id, lv), mv = MV(id, lv), s = SZ(lv), f = p.facing;
+  pose(p, w, 'thrust', 0.4, { h0: 0.07, hw: 0.1, sfx: 'slash_heavy' });
+  audio.sfx('thunder', { pitch: 1.3, vol: 0.6 });
+  const foes = frontEnemies(w, p, 560), top = Math.max(w.camera.y + 10, p.y - 300), o = tipAt(p, 90);
+  fx(w, {
+    life: 0.26, z: 12, x: o.x - 260, y: o.y - 60, w: 520, h: 120, d: { pts: null },
+    tick(e) { if (!e.d.pts || Math.random() < 0.5) e.d.pts = boltPts(o.x, o.y, o.x + f * 240 * s, o.y + rand(-12, 12), 9, 14); },
+    draw(ctx, e) { if (e.d.pts) { drawBolt(ctx, e.d.pts, ISO_BOLT, 3.2 * s, 1 - e.k); glow(ctx, o.x, o.y, 40 * s, ISO_BOLT, 0.8 * (1 - e.k)); } },
+  });
+  for (let i = 0; i < n; i++) {
+    const en = foes.length ? foes[i % foes.length] : null, fx0 = p.cx + f * (140 + i * 110);
+    setTimeoutFx(w, 0.08 + i * 0.13, (ww) => {
+      const alive = en && !en.dead;
+      strikeBolt(ww, p, alive ? en.cx + rand(-6, 6) : fx0, top, mv, s, ISO_BOLT, alive ? en.cy : p.cy);
+    });
+  }
+};
+
+SKILL_IMPL.isolde_storm_dragon = (p, w, lv) => {
+  const id = 'isolde_storm_dragon', n = N(id, lv), mv = MV(id, lv), s = SZ(lv), f = p.facing;
+  pose(p, w, 'launch', 0.5, { h0: 0.1, sfx: 'thunder' });
+  audio.sfx('thunderclap', { vol: 0.7 }); audio.sfx('boss_roar', { pitch: 1.6, vol: 0.4 });
+  const V0 = viewRect(w, -30);
+  const foes = enemiesIn(w, viewRect(w, 0)).sort((a, b) => Math.abs(a.cx - p.cx) - Math.abs(b.cx - p.cx));
+  const pts = [[p.cx + f * 20, p.y - 30], [p.cx + f * 60, p.y - 150]];
+  for (let i = 0; i < n; i++) {
+    const en = foes.length ? foes[i % foes.length] : null;
+    pts.push(en ? [en.cx + (i % 2 ? 24 : -24), en.cy] : [p.cx + f * (180 + i * 90), p.cy - 30 - (i % 2) * 110]);
+  }
+  const last = pts[pts.length - 1];
+  pts.push([last[0] + f * 160, V0.y - 160]);
+  const P = splinePath(pts, 10), SP = 1700, BODY = 22, GAP = 13 * s, life = (P.len + BODY * GAP) / SP + 0.1;
+  const buf = new Float32Array(BODY * 2), hitAt = P.way.slice(2, 2 + n);
+  fx(w, {
+    life, z: 12, d: { hi: 0, k: 0 }, follow: (e, ww) => viewBound(e, ww),
+    tick(e, ww) {
+      const dist = e.lt * SP;
+      e.d.k = dragonBody(P, dist, BODY, GAP, buf);
+      while (e.d.hi < hitAt.length && dist >= hitAt[e.d.hi]) {
+        const q = pathAt(P, hitAt[e.d.hi]), qx = q.x, qy = q.y;
+        playerStrike(ww, circ(qx, qy, 70 * s), atk(p, { mv, element: 'thunder', kb: [f * 160, -360], launch: true, hitstop: 0.05, shake: 4, stun: 0.3 }));
+        ww.fx.burst('thunder', qx, qy, 10, { speed: 360, color: ISO_BOLT });
+        ww.fx.ring(qx, qy, { color: ISO_BOLT, r0: 10, r1: 80 * s, life: 0.25, width: 5 });
+        audio.sfx('thunder', { pitch: rand(1.1, 1.4), vol: 0.5 });
+        e.d.hi++;
+      }
+      if (e.d.k && Math.random() < 0.5) { const j = Math.floor(rand(0, e.d.k)); ww.fx.emit('thunder', buf[j * 2], buf[j * 2 + 1], { speed: 120, color: ISO_BOLT }); }
+    },
+    draw(ctx, e) { stormDragon(ctx, buf, e.d.k, s * 0.9, ISO_BOLT, Math.min(1, (e.life - e.lt) / 0.2), e.lt); },
+    light(L, e) { if (e.d.k) L.add(buf[0], buf[1], 240, ISO_BOLT, 1.1); },
+  });
+};
+
+SKILL_IMPL.isolde_wyrm_breath = (p, w, lv) => {
+  const id = 'isolde_wyrm_breath', T = V(id, 't', lv), r = V(id, 'r', lv), mv = MV(id, lv), f = p.facing;
+  audio.sfx('fire', { pitch: 0.7 }); audio.sfx('boss_roar', { pitch: 1.7, vol: 0.4 });
+  fx(w, {
+    life: T, z: 11, d: { n: 0, hit: 0, snd: 0, x: p.cx, y: p.cy },
+    follow(e) { const o = tipAt(p, 60); e.d.x = o.x; e.d.y = o.y; e.x = Math.min(o.x, o.x + f * r) - 40; e.y = o.y - 110; e.w = r + 80; e.h = 220; },
+    tick(e, ww, dt) {
+      if (!p.move || p.move.id !== 'sk_thrust') pose(p, ww, 'thrust', 0.3, { h0: 0.02, hw: 0.26, sfx: 'fire' });
+      e.d.snd -= dt; if (e.d.snd <= 0) { e.d.snd = 0.2; audio.sfx('fire', { vol: 0.45, pitch: rand(0.7, 0.9) }); }
+      e.d.hit -= dt;
+      if (e.d.hit <= 0) {
+        e.d.hit = 0.12;
+        const x0 = e.d.x, rect = { x: f > 0 ? x0 : x0 - r, y: e.d.y - 54, w: r, h: 108 };
+        const nh = playerStrike(ww, rect, atk(p, { mv, element: e.d.n++ % 2 ? 'dark' : 'fire', kb: [f * 140, -60], hitstop: 0.02, shake: 1, hitId: nid('wb') }));
+        if (nh) p.heal(p.stats.hp * 0.004 * nh, false);
+        if (ww.game.debug) ww.debugRects.push(rect);
+      }
+      for (let i = 0; i < 2; i++) ww.fx.emit(Math.random() < 0.3 ? 'dark' : 'fire', e.d.x, e.d.y + rand(-6, 6), { angle: f > 0 ? rand(-0.22, 0.22) : Math.PI + rand(-0.22, 0.22), spread: 0.1, speed: rand(520, 820), color: Math.random() < 0.3 ? '#b060ff' : '#ff7a2a' });
+    },
+    draw(ctx, e) {
+      const a = Math.min(1, e.lt * 8) * clamp((e.life - e.lt) / 0.2, 0, 1);
+      ctx.globalCompositeOperation = ADD;
+      for (let i = 0; i <= 10; i++) {
+        const u = i / 10, x = e.d.x + f * u * r * 0.95, y = e.d.y + Math.sin(e.lt * 26 + i * 1.7) * 7 * u;
+        glow(ctx, x, y, 16 + u * 52 + Math.sin(e.lt * 31 + i) * 5, i % 3 === 2 ? '#b060ff' : '#ff7a2a', 0.55 * (1 - u * 0.45) * a);
+      }
+      glow(ctx, e.d.x, e.d.y, 26, '#ffe0a0', 0.9 * a);
+    },
+    end() { if (p.move?.id === 'sk_thrust') p.endMove(); },
+    light(L, e) { L.add(e.d.x + f * r * 0.4, e.d.y, r, '#ff7a2a', 1); },
+  });
+};
+
+SKILL_IMPL.isolde_javelin = (p, w, lv) => {
+  const id = 'isolde_javelin', n = N(id, lv), mv = MV(id, lv), s = SZ(lv), f = p.facing;
+  pose(p, w, 'thrust', 0.32, { h0: 0.08, sfx: 'holy' });
+  const steps = [];
+  for (let i = 0; i < n; i++) {
+    steps.push([0.08 + i * 0.07, (ww) => {
+      const ang = (f > 0 ? 0 : Math.PI) - f * (0.06 + (i - (n - 1) / 2) * 0.1);
+      throwJavelin(ww, p, p.cx + f * 26, p.bottom - 70, ang, { mv, boom: mv * 0.5, scale: 1.05 * s, r: 60 });
+      audio.sfx('dagger', { pitch: 0.8 }); audio.sfx('holy', { vol: 0.5, pitch: 1.3 });
+    }]);
+  }
+  seq(w, steps);
+};
+
+/** 전사자의 영혼 (영웅의 전당): 빛나는 몸 + 날개 한 쌍 + 빛의 창 (그라디언트 없음) */
+function einherjarShape(ctx, s, a, t, aim) {
+  ctx.globalCompositeOperation = ADD;
+  glow(ctx, 0, 0, 46 * s, '#fff2b0', 0.4 * a);
+  // 날개: 깃 다섯 장 (단색 — 영혼 여럿이 프레임마다 그라디언트를 만들지 않게)
+  const sp = 0.55 + 0.25 * Math.sin(t * 7);
+  ctx.fillStyle = rgba('#fff2b0', 0.55 * a);
+  ctx.beginPath();
+  for (let i = 0; i < 5; i++) {
+    const ang = -2.3 + i * 0.32 - sp * 0.4, L = (34 - i * 4) * s, ca = Math.cos(ang), sa = Math.sin(ang), bx = -4 * s, by = -8 * s;
+    ctx.moveTo(bx, by); ctx.quadraticCurveTo(bx + ca * L * 0.5 - sa * 5 * s, by + sa * L * 0.5 + ca * 5 * s, bx + ca * L, by + sa * L); ctx.quadraticCurveTo(bx + ca * L * 0.5, by + sa * L * 0.5, bx, by);
+  }
+  ctx.fill();
+  ctx.fillStyle = rgba('#fff8e0', 0.85 * a);
+  ctx.beginPath(); ctx.ellipse(0, -14 * s, 5 * s, 6 * s, 0, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-6 * s, -6 * s); ctx.lineTo(6 * s, -6 * s); ctx.lineTo(9 * s, 22 * s); ctx.lineTo(-9 * s, 22 * s); ctx.closePath(); ctx.fill();
+  ctx.save(); ctx.rotate(aim); ctx.fillStyle = rgba(ISO_GOLD, 0.95 * a); ctx.fillRect(-18 * s, -1.2 * s, 46 * s, 2.4 * s);
+  ctx.beginPath(); ctx.moveTo(36 * s, 0); ctx.lineTo(26 * s, -4 * s); ctx.lineTo(26 * s, 4 * s); ctx.closePath(); ctx.fill(); ctx.restore();
+}
+SKILL_IMPL.isolde_valhalla = (p, w, lv) => {
+  const id = 'isolde_valhalla', n = N(id, lv), mv = MV(id, lv), T = V(id, 't', lv);
+  pose(p, w, 'cast_up', 0.5, { h0: 0.1, sfx: 'holy' });
+  audio.sfx('bell', { pitch: 1.2 }); audio.sfx('choir_gate', { vol: 0.5 });
+  const sp = [];
+  for (let i = 0; i < n; i++) sp.push({ ph: i / n * TAU, cd: 0.4 + i * 0.15, aim: p.facing > 0 ? 0 : Math.PI, x: p.cx, y: p.cy });
+  fx(w, {
+    life: T, z: 11, d: {},
+    follow(e) { e.x = p.cx - 200; e.y = p.cy - 200; e.w = 400; e.h = 320; },
+    start(e, ww) { ww.fx.burst('holy', p.cx, p.cy - 40, 24, { speed: 260 }); ww.fx.ring(p.cx, p.cy - 30, { color: '#fff2b0', r0: 20, r1: 160, life: 0.4, width: 6 }); },
+    tick(e, ww, dt) {
+      sp.forEach((g, i) => {
+        const th = g.ph + e.lt * 1.6, tx = p.cx - p.facing * 30 + Math.cos(th) * 70, ty = p.cy - 70 + Math.sin(th) * 26 - (i % 2) * 22;
+        g.x = lerp(g.x, tx, Math.min(1, dt * 8)); g.y = lerp(g.y, ty, Math.min(1, dt * 8));
+        const tg = ww.nearestEnemy(g.x, g.y, 620);
+        if (tg) g.aim = Math.atan2(tg.cy - g.y, tg.cx - g.x);
+        g.cd -= dt;
+        if (g.cd <= 0 && tg) {
+          g.cd = 0.85;
+          throwJavelin(ww, p, g.x, g.y, g.aim, { mv, boom: 0, scale: 0.8, speed: 1100, gravity: 0, life: 0.6, color: '#fff2b0' });
+          audio.sfx('holy', { vol: 0.35, pitch: rand(1.3, 1.6) });
+        }
+      });
+    },
+    draw(ctx, e) {
+      const a = Math.min(1, e.lt * 5) * clamp((e.life - e.lt) / 0.35, 0, 1);
+      for (const g of sp) { ctx.save(); ctx.translate(g.x, g.y + Math.sin(e.lt * 3 + g.ph) * 4); einherjarShape(ctx, 1, a, e.lt + g.ph, g.aim); ctx.restore(); }
+    },
+    end(e, ww) { for (const g of sp) ww.fx.burst('holy', g.x, g.y, 8, { speed: 140 }); },
+    light(L) { L.add(p.cx, p.cy - 70, 200, '#fff2b0', 0.8); },
+  });
+};
+
+/**
+ * 연속 찌르기 (천 번 찌르기 · 창성 특성 공용): gap 초마다 앞으로 한 번씩 n 번 찌른다. 창끝 빛줄기는 한 개체가 모아 그린다.
+ * o = { n, mv, s, gap, delay, pose(자세를 잡는가), finale(마지막 일격: 4배·확정 치명), tags, col }
+ */
+function thrustFlurry(w, p, o) {
+  const n = o.n, gap = o.gap ?? 0.045, s = o.s ?? 1, col = o.col ?? '#ffd0d8', lines = [];
+  return fx(w, {
+    delay: o.delay ?? 0, life: n * gap + 0.3, z: 12, d: { i: 0 },
+    follow(e) { e.x = p.cx - 320; e.y = p.bottom - 170; e.w = 640; e.h = 200; },
+    tick(e, ww) {
+      while (e.d.i < n && e.lt >= e.d.i * gap) {
+        const i = e.d.i++, last = !!o.finale && i === n - 1, f = p.facing, dy = ((i * 7) % 5 - 2) * 9, L = (last ? 230 : 170) * s;
+        if (o.pose && (last || !p.move || p.move.id !== 'sk_thrust')) pose(p, ww, 'thrust', last ? 0.4 : 0.16, { h0: 0.02, hw: 0.04, sfx: 'slash' });
+        if (o.pose) p.vx = f * 40;
+        lines.push({ x: p.cx + f * 34, y: p.bottom - 66 + dy, L: f * L, t: e.lt, last });
+        if (lines.length > 12) lines.shift();
+        const nh = playerStrike(ww, p.relRect(30, -80 + dy, L, 28), atk(p, { mv: last ? o.mv * 4 : o.mv, crit: last ? 100 : 0, kb: last ? [420, -260] : [60, -30], hitstop: last ? 0.12 : 0.012, shake: last ? 7 : 1, ...(o.tags ? { tags: o.tags } : {}) }));
+        if (nh && i % 3 === 0) audio.sfx('hit', { vol: 0.35, pitch: rand(1.2, 1.5) });
+        else if (i % 2 === 0) audio.sfx('slash', { vol: 0.3, pitch: rand(1.4, 1.7) });
+        if (last) { audio.sfx('slash_heavy', { pitch: 0.9 }); ww.fx.ring(p.cx + f * (34 + L * 0.8), p.bottom - 66, { color: col, r0: 8, r1: 70, life: 0.25, width: 4 }); shake(ww, 6, 0.15); }
+      }
+    },
+    draw(ctx, e) {
+      for (const l of lines) {
+        const k = (e.lt - l.t) / (l.last ? 0.2 : 0.09);
+        if (k >= 1 || k < 0) continue;
+        cutLine(ctx, l.x, l.y, l.x + l.L, l.y, l.last ? 6 : 2.6, l.last ? '#ffffff' : col, 1 - k);
+      }
+    },
+    light(L, e) { if (e.lt < n * gap + 0.1) L.add(p.cx + p.facing * 120, p.bottom - 66, 160, col, 0.6); },
+  });
+}
+SKILL_IMPL.isolde_thousand_thrusts = (p, w, lv) => {
+  const id = 'isolde_thousand_thrusts';
+  audio.sfx('slash', { pitch: 1.4 });
+  thrustFlurry(w, p, { n: N(id, lv), mv: MV(id, lv), s: SZ(lv), gap: 0.045, pose: true, finale: true });
+};
+
 // ═══════════════════════════ 필살기 ═══════════════════════════
 // feel §5.2·§5.3 (FX-ULTS). ULTS[charId](p, w, v) — v = ultCtx(p, w).
 // 층 나눔: ULTFX(render/ultfx.js, FX-ULTKIT) = 화면 레이어(줌인·레터박스·집중선·색보정·충격파 고리·임팩트 프레임·2차 전직 문양),
@@ -2440,6 +2838,7 @@ const ULT_COLS = {
   kael: ['#fff2b0', '#ffd870', '#ffffff', '#fff8e0'], sera: ['#fff2b0', '#ffe7a0', '#ffffff', '#fff4c8'],
   victor: ['#ffd070', '#ffe0a0', '#fff0b0'], bran: ['#ffb060', '#ff9a3a', '#ff7a2a', '#ffd8a0'],
   lia: ['#ff2040', '#ff2a4a', '#30e0ff'], azel: ['#ff1a2a', '#ff2040', '#ff1030', '#ff6070', '#ff1a3a'],   // '#ff1a3a': 초승달 둘레 빛 (없으면 연출 도중 굽는다)
+  isolde: ['#8ae8ff', '#bfe8ff', '#dff4ff', '#e8f8ff', '#ffffff'],
 };
 const ULT_BEAMS = { bran: [['#ff7a2a', '#fff0c0', true]], azel: [['#ff1a2a', '#ff9aa8', false]] };
 /** 아젤 필살기의 암전·핏빛 하늘 (ULTS.azel 과 prewarmGrads 가 같이 쓴다) */
@@ -2459,6 +2858,12 @@ function prewarmGrads(v, accents = null) {
     const k = flashK(game?.world);
     warmSkyFlash(gx, AZEL_DIMCOL, AZEL_DIM, AZEL_SKY, Math.min(0.7, 0.5 * k), 3, '#ffffff', 0.2);
     if (v.q < 0.95) warmSkyFlash(gx, AZEL_DIMCOL, AZEL_DIM, AZEL_SKY, Math.min(0.7, 0.6 * k), 3, '#ff1030', 0);
+  } else if (v.charId === 'isolde') {
+    // 폭풍 하늘 (ULTS.isolde): 시전 번쩍임 · 중간·낮음의 착지 번쩍임(0.5)과 마무리 번쩍임(0.6, 필살기 색)이 암전 층에 합쳐진다
+    for (let qr = 1; qr <= 32; qr++) gSky(gx, ISO_DIMCOL, ISO_DIM, ISO_SKYG, qr, 0, '');
+    const k = flashK(game?.world);
+    warmSkyFlash(gx, ISO_DIMCOL, ISO_DIM, ISO_SKYG, Math.min(0.7, 0.5 * k), 3, '#ffffff', 0.2);
+    if (v.q < 0.95) { warmSkyFlash(gx, ISO_DIMCOL, ISO_DIM, ISO_SKYG, Math.min(0.7, 0.5 * k), 3, '#dff4ff', 0); warmSkyFlash(gx, ISO_DIMCOL, ISO_DIM, ISO_SKYG, Math.min(0.7, 0.6 * k), 3, v.color, 0); }
   }
 }
 /** 번쩍임(fa0 에서 초당 fd 로 줄어듦)이 암전(ramp 초에 걸쳐 차오름; 0 이면 다 찬 상태)과 겹치는 동안 지나는 (qr, qf) 쌍을 모두 만든다.
@@ -3325,6 +3730,173 @@ ULTS.azel = (p, w, v = ultCtx(p, w)) => {
   });
 };
 
+// 이졸데 — 천룡강림: 창끝에 번개를 모아 화면 위로 도약 → 폭풍 하늘에서 번개의 용이 화면을 휘감으며 적에게 낙뢰 →
+// 용과 함께 수직으로 내리꽂혀 빛기둥과 지면 균열 → 천둥 마무리. 하늘 그라디언트는 감독 암전과 같은 한 장 (prewarmGrads)
+const ISO_DIM = 0.55, ISO_DIMCOL = '#02040c', ISO_SKYG = { top: '#16305a', ta: 0.5, bottom: '#04060e', ba: 0 };
+ULTS.isolde = (p, w, v = ultCtx(p, w)) => {
+  const V0 = ultView(w), f = p.facing, COL = v.color, ACC = v.accent;
+  const x0 = p.cx, b0 = p.bottom, prevMaxFall = p.maxFall;
+  // 내리꽂을 자리: 가까운 적(좌우 320px 안) 위 — 위아래 두 자리가 비어 있을 때만, 아니면 제자리
+  const tg = enemiesIn(w, V0).filter((e) => Math.abs(e.cx - x0) < 320).sort((a, b) => Math.abs(a.cx - x0) - Math.abs(b.cx - x0))[0];
+  let lx = x0, gy = groundAt(w, x0, b0 - 10, 12 * TILE) ?? b0;
+  if (tg) { const g2 = groundAt(w, tg.cx, tg.cy, 12 * TILE); if (g2 !== null && freeSpot(w, p, tg.cx, g2) && freeSpot(w, p, tg.cx, g2 - 220)) { lx = tg.cx; gy = g2; } }
+  // 하늘을 휘감는 용의 길 (영웅이 사라진 머리 위 → 화면 위쪽을 S 자로 → 내리꽂을 자리)
+  const sx = (u) => V0.x + V0.w * (f > 0 ? u : 1 - u);
+  const pts = [[x0, V0.y - 90], [sx(0.12), V0.y + V0.h * 0.24], [sx(0.4), V0.y + V0.h * 0.07], [sx(0.72), V0.y + V0.h * 0.3], [sx(0.9), V0.y + V0.h * 0.12],
+    [lerp(sx(0.9), lx, 0.5), V0.y + V0.h * 0.02], [lx, V0.y + V0.h * 0.1], [lx, gy - 10]];
+  const P = splinePath(pts, 12), T0 = 0.5, T1 = 1.5, BODY = v.low ? 18 : 28, S = 2.2, GAP = 15 * S;
+  const body = new Float32Array(BODY * 2), body2 = new Float32Array(BODY * 2), strikeAt = P.way.slice(1, 5);
+  const bolts = [];
+  const dragonD = (lt) => P.len * ease.inOutQuad(clamp((lt - T0) / (T1 - T0), 0, 1)) * 1.0;
+  pose(p, w, 'launch', 0.45, { h0: 0.12, sfx: 'thunder' });
+  audio.sfx('thunderclap', { vol: 0.9 }); audio.sfx('charge_ready', { pitch: 0.8 });
+  /** 하늘 낙뢰: 용의 머리(hx, hy)에서 적(또는 그 아래 땅)으로 */
+  const skyStrike = (ww, i, hx, hy) => {
+    const foes = enemiesIn(ww, ultView(ww, 20));
+    const en = foes.length ? foes[i % foes.length] : null, tx = en ? en.cx : lerp(hx, x0, 0.3) + rand(-60, 60);
+    const ty = en ? en.cy : (groundAt(ww, tx, hy + 40, 14 * TILE) ?? b0);
+    uHit(ww, p, 0.5, { element: 'thunder', hitstop: 0.04, kb: [0, -260], rect: { x: tx - 46, y: Math.min(hy, ty) - 20, w: 92, h: Math.abs(ty - hy) + 60 } });
+    bolts.push({ t: ww.time ?? 0, x0: hx, y0: hy, x1: tx, y1: ty, pts: boltPts(hx, hy, tx, ty, 12, 34) });
+    if (bolts.length > 6) bolts.shift();
+    ultBeat(ww, v, tx, ty, 0.45, false, COL);
+    const nb = ultRoom(ww, v, 10);
+    if (nb) ww.fx.burst('thunder', tx, ty, nb, { speed: 420, color: COL });
+    audio.sfx('thunder', { pitch: rand(0.9, 1.15), vol: 0.8 });
+  };
+  const slam = (ww, e) => {
+    e.d.slam = e.lt;
+    const x = p.cx, y = p.bottom;
+    e.d.sx = x; e.d.sy = y;
+    p.noGravity = false; p.maxFall = prevMaxFall; p.vy = 0;
+    p.endMove(); pose(p, ww, 'crouch_stab', 0.6, { h0: 0.01, sfx: 'slash_heavy' });
+    uHit(ww, p, 1.4, { element: 'thunder', kb: [80, -760], launch: true, hitstop: 0.12, shake: 12 });
+    ultBeat(ww, v, x, y, 1, true, COL);
+    shake(ww, 20, 1.1); ultFlash(ww, '#dff4ff', 0.5, 3, v);
+    audio.sfx('explode', { pitch: 0.7 }); audio.sfx('impact_crack'); audio.sfx('thunderclap', { vol: 0.8, pitch: 0.8 });
+    for (const dx of [0, -120, 120]) HFX.stampDecal?.(ww, x + dx, y - 6, dx < 0 ? -1 : 1, 'crack', { floor: true, scale: dx ? 1.3 : 2.1 });
+    const ng = ultRoom(ww, v, 26);
+    if (ng) ww.fx.burst('gravel', x, y - 8, ng, { angle: -Math.PI / 2, spread: 1.4, speed: 600 });
+    const nt = ultRoom(ww, v, 24);
+    if (nt) ww.fx.burst('thunder', x, y - 20, nt, { speed: 640, color: COL });
+    ww.fx.ering(x, y - 2, { color: '#e8f8ff', r0: 30, r1: V0.w * 0.5, ry: 0.14, life: 0.5, width: 12 });
+    const st = HFX.star?.(COL);
+    if (st) ww.fx.sprite(st, x, y - 30, { size: 340, life: 0.25, s0: 0.3, s1: 1.3 });
+    // 갈라진 땅을 따라 번개가 양쪽으로 달린다 (기둥 넷: 박자마다 작은 낙뢰)
+    for (let i = 1; i <= 4; i++) for (const d of [-1, 1]) {
+      const px = x + d * i * 150;
+      if (px < V0.x - 40 || px > V0.x + V0.w + 40) continue;
+      const base = groundAt(ww, px, y - 60, 10 * TILE) ?? y;
+      setTimeoutFx(ww, 0.06 * i, (w2) => {
+        uHit(w2, p, 0.25, { element: 'thunder', hitstop: 0, kb: [d * 120, -420], launch: true, rect: { x: px - 50, y: base - 200, w: 100, h: 210 } });
+        bolts.push({ t: w2.time ?? 0, x0: px + rand(-40, 40), y0: V0.y - 10, x1: px, y1: base, pts: boltPts(px + rand(-40, 40), V0.y - 10, px, base, 10, 28) });
+        if (bolts.length > 8) bolts.shift();
+        ultBeat(w2, v, px, base, 0.3, true, COL);
+      });
+    }
+  };
+  ultDirector(w, p, {
+    v, dur: 2.6, dim: ISO_DIM, dimCol: ISO_DIMCOL, d: { leap: false, hid: false, dive: false, slam: 0, fin: false, sx: x0, sy: b0, si: 0, k: 0, k2: 0 },
+    sky: { y: V0.y, h: V0.h, ...ISO_SKYG },
+    kit: { zoom: 0.92, zoomHold: 0.2 },   // 도약을 따라 화면이 물러난다 (키트의 시작 줌 대신)
+    start(e, ww) { if (!e.d.kit) ww.camera.zoomPulse(0.92, 0.25, 0.4, 0.4); },
+    bg(ctx, e, ww, a) {
+      // 폭풍 구름 띠: 화면 위쪽에 겹친 어두운 구름 (단색 타원) + 구름 속 번개빛
+      const k = clamp(e.lt / 0.5, 0, 1) * a;
+      if (k <= 0.01) return;
+      ctx.globalCompositeOperation = 'source-over';
+      for (let i = 0; i < 9; i++) {
+        const cx = V0.x + V0.w * ((i / 8 + e.lt * 0.025 * (i % 2 ? 1 : -1)) % 1.1) - 40, cy = V0.y + 26 + (i % 3) * 22, R = 120 + (i % 4) * 36;
+        ctx.fillStyle = rgba(i % 2 ? '#141c30' : '#1c2640', 0.85 * k);
+        ctx.beginPath(); ctx.ellipse(cx, cy, R, R * 0.36, 0, 0, TAU); ctx.fill();
+      }
+      ctx.globalCompositeOperation = ADD;
+      for (let i = 0; i < 3; i++) { const fl = Math.max(0, Math.sin(e.lt * (11 + i * 4) + i * 2.1)); glow(ctx, V0.x + V0.w * (0.2 + i * 0.3), V0.y + 40, 220, COL, 0.22 * fl * fl * k); }
+    },
+    tick(e, ww, dt) {
+      const d = e.d;
+      // 0.0–0.32 창끝에 번개가 모인다
+      if (!d.leap) {
+        const o = { x: p.cx + f * 20, y: p.y - 30 };
+        if (Math.random() < 0.8 * v.q && ultRoom(ww, v, 1)) ww.fx.emit('thunder', o.x + rand(-90, 90), o.y + rand(-90, 60), { speed: 40, color: COL });
+        if (e.lt >= 0.32) {
+          d.leap = true;
+          p.noGravity = true; p.vy = -1700; p.vx = 0; p.onGround = false;
+          audio.sfx('dash_burst', { pitch: 0.7 }); audio.sfx('jump', { pitch: 0.6 });
+          ww.fx.burst('dust', p.cx, p.bottom, 14, { speed: 260 });
+          ultBeat(ww, v, p.cx, p.bottom, 0.5, true, COL);
+        }
+      }
+      if (d.leap && !d.hid) {
+        ultAfter(ww, p, v, COL, 0.18);
+        for (let i = ultRoom(ww, v, qn(v, 2)); i > 0; i--) ww.fx.speedLine(p.cx + rand(-50, 50), p.bottom + rand(0, 60), Math.PI / 2, { len: rand(90, 170), width: 3, color: COL, life: 0.18, speed: 1000 });
+        if (e.lt >= T0 || p.bottom < ww.camera.y - 10) { d.hid = true; p.hidden = true; p.vy = 0; audio.sfx('boss_roar', { pitch: 1.55, vol: 0.55 }); }
+      }
+      if (d.hid && !d.dive) { p.vy = 0; p.vx = 0; }
+      // 하늘의 용 (T0 → T1): 길의 굽이마다 낙뢰
+      const dd = dragonD(e.lt);
+      if (e.lt >= T0 && !d.slam) {
+        d.k = dragonBody(P, dd, BODY, GAP, body);
+        if (v.tier >= 2) d.k2 = dragonBody(P, dd - GAP * 6, Math.round(BODY * 0.7), GAP * 0.8, body2);
+        while (d.si < strikeAt.length && dd >= strikeAt[d.si]) { const q = pathAt(P, strikeAt[d.si]); skyStrike(ww, d.si, q.x, q.y); d.si++; }
+        if (d.k && Math.random() < 0.7 * v.q && ultRoom(ww, v, 1)) { const j = Math.floor(rand(0, d.k)); ww.fx.emit('thunder', body[j * 2], body[j * 2 + 1], { speed: 160, color: COL }); }
+      }
+      // 내리꽂기: 용이 마지막 굽이를 돌면 이졸데가 용의 머리와 함께 떨어진다
+      if (!d.dive && d.hid && e.lt >= T1 - 0.16) {
+        d.dive = true;
+        const top = Math.max(0, gy - p.h - 220);
+        if (freeSpot(w, p, lx, gy - 220)) { p.x = lx - p.w / 2; p.y = top; }
+        p.hidden = false; p.noGravity = false; p.maxFall = 2400; p.vy = 2400; p.vx = 0;
+        pose(p, ww, 'plunge', 0.9, { h0: 0.01, hw: 0.8, sfx: 'dash' });
+        audio.sfx('dash_burst', { pitch: 0.6 });
+      }
+      if (d.dive && !d.slam) {
+        p.vy = Math.max(p.vy, 2400);
+        ultAfter(ww, p, v, COL, 0.16);
+        if ((d.dive && p.onGround) || e.lt > T1 + 0.25) slam(ww, e);
+      } else if (d.slam && !d.fin && e.lt > d.slam + 0.62) {
+        d.fin = true;
+        ultFinal(ww, p, 4.4, COL, { element: 'thunder' }, { v, x: d.sx, y: d.sy - 20, ground: true });
+        ww.fx.ring(d.sx, d.sy - 10, { color: '#e8f8ff', r0: 30, r1: V0.w * 0.7, life: 0.6, width: 18 });
+        pose(p, ww, 'launch', 0.5, { h0: 0.05, sfx: 'slash_heavy' });
+        audio.sfx('land_heavy', { pitch: 0.6 });
+      }
+    },
+    draw(ctx, e) {
+      const lt = e.lt, now = w.time ?? 0, fade = clamp((e.life - lt) / 0.45, 0, 1);
+      ctx.globalCompositeOperation = ADD;
+      // 시전: 창끝에 모이는 번개 구름
+      if (!e.d.hid && lt < 0.6) { const k = Math.sin(clamp(lt / 0.6, 0, 1) * Math.PI); glow(ctx, p.cx + f * 20, p.y - 40, 120 * k, COL, 0.7 * k); beamV(ctx, p.cx, p.y - 260, p.bottom, 30 * k, COL, 0.5 * k, '#ffffff'); }
+      // 하늘의 용 (2차 전직: 강조색의 작은 용이 뒤따른다) — 내리꽂기 뒤에는 흩어진다
+      const dk = e.d.slam ? 1 - clamp((lt - e.d.slam) / 0.25, 0, 1) : 1;
+      if (e.d.k2 > 2) stormDragon(ctx, body2, e.d.k2, S * 0.62, ACC, 0.8 * dk, lt + 1.3);
+      if (e.d.k > 2) stormDragon(ctx, body, e.d.k, S, COL, dk, lt);
+      // 낙뢰 (0.22초 동안)
+      for (const b of bolts) { const k = 1 - (now - b.t) / 0.22; if (k > 0) { drawBolt(ctx, b.pts, COL, 5, k); glow(ctx, b.x1, b.y1, 90, COL, 0.8 * k); } }
+      // 내리꽂는 빛기둥
+      if (e.d.dive && !e.d.slam) beamV(ctx, p.cx, V0.y - 20, p.bottom + 20, 26, COL, 0.8, '#ffffff');
+      if (e.d.slam) {
+        const k = clamp((lt - e.d.slam) / 0.35, 0, 1), x = e.d.sx, y = e.d.sy;
+        if (k < 1) beamV(ctx, x, V0.y - 30, y, 90 * (1 - k), COL, 1 - k, '#ffffff');
+        ctx.lineCap = 'round';
+        for (const s of [-1, 1]) {
+          const pts = [x, y];
+          for (let i = 1; i <= 12; i++) pts.push(x + s * V0.w * k * i / 12, y - 2 + Math.sin(i * 2.3 + s) * 7);
+          ctx.strokeStyle = rgba(COL, 0.45 * fade); ctx.lineWidth = 12; strokePts(ctx, pts);
+          ctx.strokeStyle = rgba('#ffffff', 0.95 * fade); ctx.lineWidth = 3; strokePts(ctx, pts);
+        }
+        glow(ctx, x, y, 240 * (0.6 + k), COL, 0.6 * fade);
+        beamH(ctx, x - V0.w * k, x + V0.w * k, y - 3, 10 * fade, COL, 0.5 * fade, '#ffffff');
+      }
+    },
+    end(e) { p.noGravity = false; p.maxFall = prevMaxFall; p.hidden = false; },
+    light(L, e) {
+      if (e.d.k) L.add(body[0], body[1], 300, COL, 1.2);
+      L.add(V0.x + V0.w * 0.5, V0.y + V0.h * 0.3, V0.w * 0.5, COL, 0.7, false);
+      if (e.d.slam) { L.add(e.d.sx, e.d.sy - 40, 600, COL, 1.3, false); L.add(e.d.sx, e.d.sy - 40, 260, COL, 1.3); }
+    },
+  });
+};
+
 // ═══════════════════════════ 비전서 커맨드 기술 ═══════════════════════════
 // 모든 캐릭터가 사용 가능. 캐릭터 고유색으로 물든다. MP 는 함수 안에서 확인·소모한다.
 function spendMp(p, w, cost) {
@@ -3808,6 +4380,30 @@ SKILL_IMPL.__onSwing = (p, w, mv) => {
       }
       break;
     }
+    // ── 이졸데 ──
+    case 'isolde_valkyrie': case 'isolde_einherjar': case 'isolde_spearsaint': {
+      // 발키리 계열: 마무리 찌르기·돌진 찌르기와 함께 빛의 투창 (전장의 여신은 세 갈래)
+      if (fin || mv.id === 'spDash') {
+        const k = c === 'isolde_einherjar' ? 3 : 1, base = f > 0 ? 0 : Math.PI;
+        for (let i = 0; i < k; i++) throwJavelin(w, p, p.cx + f * 30, p.bottom - 68, base + (i - (k - 1) / 2) * 0.16 * f, { mv: k > 1 ? 0.5 : 0.7, boom: 0.35, scale: 0.85, life: 0.55, tags: ['melee'] });
+        audio.sfx('holy', { vol: 0.4, pitch: 1.4 });
+      }
+      // 창성: 마무리 찌르기 뒤에 천 번 찌르기 (빛줄기 여덟 번)
+      if (c === 'isolde_spearsaint' && fin) thrustFlurry(w, p, { n: 8, mv: 0.25, gap: 0.035, delay: (mv.hit?.[1] ?? 0.3) / p.atkSpeedMul, tags: ['melee'] });
+      break;
+    }
+    case 'isolde_wyrmknight': {
+      // 흑룡기사: 창끝에 용염 — 찌를 때마다 불티, 마무리·돌진·모아 찌르기는 불꽃이 터진다
+      if (!mv.box) break;
+      const tp = tipOf(p, mv);
+      w.fx.burst('fire', tp.x, tp.y, 3, { speed: 120, color: '#ff7a2a' });
+      if (fin || mv.id === 'spDash') setTimeoutFx(w, 0.04, (ww) => boom(ww, p, tp.x, tp.y, fin ? 90 : 60, { mv: (mv.mv ?? 1) * (fin ? 1.1 : 0.7), element: 'fire', c1: '#ff6a1a', c2: '#c070ff', shake: fin ? 5 : 2, sfx: 'fire', atk: { tags: ['melee'], hitId: p.curHitId + 'w' } }));
+      break;
+    }
+    case 'isolde_stormlord': {
+      if (mv.box && (fin || mv.id === 'spDash')) { const tp = tipOf(p, mv); w.fx.burst('thunder', tp.x, tp.y, 6, { speed: 240, color: ISO_BOLT }); }
+      break;
+    }
     case 'azel_seraph': {
       if (fin) {
         for (let i = 0; i < 4; i++) {
@@ -3818,6 +4414,22 @@ SKILL_IMPL.__onSwing = (p, w, mv) => {
       break;
     }
   }
+};
+
+/**
+ * 급강하 충격파 특성 (player.groundPound 가 착지 때 부른다) → { r, element, color } | null (null 이면 기본 충격파 그대로)
+ * 용기사 계열: 반경 +40% · 번개 (흑룡기사는 화염) / 뇌룡기사: 착지한 자리 둘레의 적 셋에게 낙뢰
+ */
+SKILL_IMPL.__onPound = (p, w, r) => {
+  const c = p.hero?.classId;
+  if (!c || !isoLine(c, 'isolde_dragoon')) return null;
+  const wyrm = c === 'isolde_wyrmknight';
+  if (c === 'isolde_stormlord') {
+    const foes = w.enemies().filter((e) => !e.invuln && Math.abs(e.cx - p.cx) < 320 && Math.abs(e.cy - p.cy) < 260).slice(0, 3);
+    foes.forEach((en, i) => setTimeoutFx(w, 0.05 + i * 0.07, (ww) => { if (!en.dead) strikeBolt(ww, p, en.cx, Math.max(ww.camera.y + 10, en.cy - 320), 0.9, 0.9, ISO_BOLT, en.cy); }));
+  }
+  w.fx.burst(wyrm ? 'fire' : 'thunder', p.cx, p.bottom - 6, 10, { speed: 300, color: wyrm ? '#ff7a2a' : ISO_BOLT });
+  return { r: r * 1.4, element: wyrm ? 'fire' : 'thunder', color: wyrm ? '#ffb070' : ISO_BOLT };
 };
 
 // ═══════════════════════════ FXKIT (필살기·각성기 연출 도우미) ═══════════════════════════
@@ -3835,4 +4447,6 @@ Object.assign(FXKIT, {
   // 필살기 공용 도구 (FX-ULTS): 문맥·기본 줌 화면·키트 박자·불씨 비·색조·잔상·캐시 스프라이트
   ultCtx, ultView, ultBeat, ultFinal, ultDirector, ultAfter, emberRain, grade, holdOverlay, spiralMotes, glassRose,
   glowSprite, beamSprite, blit, kitLive, qn, ultRoom, flashK,
+  // 이졸데: 번개의 용(경로·마디·그리기) · 빛의 투창 · 연속 찌르기
+  splinePath, pathAt, dragonBody, stormDragon, throwJavelin, javelinRender, thrustFlurry,
 });

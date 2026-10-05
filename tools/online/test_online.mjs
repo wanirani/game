@@ -242,7 +242,7 @@ test('제출: 성공 응답 {best, rank, total, entry}, 순위표에 반영', as
   assert.deepEqual(expectOk(await board('tower:easy')).entries, [tw.entry]);
 });
 
-test('무한의 탑: floor 1~999 필수, time ≥ floor × 8초·24시간 이하, score ≤ (floor+1) × 500만, 순위 floor↓ → time↑, me.floor', async () => {
+test('무한의 탑: floor 1~999 필수, time ≥ floor × 3초·24시간 이하, score ≤ (floor+1) × 500만, 순위 floor↓ → time↑, me.floor', async () => {
   const { TOWER_RULES } = gd;
   const u = await signup();
   const s = await start(u, 'tower:hard');

@@ -1,4 +1,4 @@
-// 각성기(초필살기) 연출 감독 B — 브란 · 리아 · 아젤 (+ 2차 전직 '진 각성' 변형) — owner: AWAKEN-DIR-B
+// 각성기(초필살기) 연출 감독 B — 브란 · 리아 · 아젤 · 이졸데 (+ 2차 전직 '진 각성' 변형) — owner: AWAKEN-DIR-B (이졸데: H7-PLAY)
 // feel.md §6.4 (Bran, Lia, Azel), §5.2 (2차 전직 강조색·장식), §7 (설정), §8 (성능 예산); MASTER_PLAN §1.13, §1.14, R6, R12
 //
 // 공개 API
@@ -21,6 +21,10 @@
 //         0.3 눈이 번뜩이고 피의 날개가 펼쳐진다 → 0.5–1.4 피의 초승달 9개가 화면을 교차 (잔향 이중상, 가장자리에서 핏방울)
 //         1.6 손가락 튕기기 '딱' — 0.2초 정지 → 1.75 모든 초승달이 피의 비로 터지고, 적들의 피가 흐름이 되어 아젤에게 (체력 20% 회복)
 //         2.2 달이 다시 붉어진다
+//   isolde 천룡 귀환 — 하늘 기사단의 마지막 비행
+//         0.0 폭풍 구름이 하늘을 덮고 창끝에 번개가 모인다 (thunderclap) → 0.28 구름 속에서 용의 두 눈이 뜬다
+//         0.38 화면 위로 도약 → 0.4–1.95 번개의 용이 화면 위쪽을 휘감는 동안 0.62–1.76 급강하 찌르기 7회 (하늘에서 바닥까지 빛기둥, 기둥 안의 적 1타)
+//         2.0 용이 몸을 돌려 이졸데와 함께 수직으로 내리꽂힌다 → 땅에 닿는 순간 마무리 (하늘까지 빛기둥, 양쪽으로 달리는 지면의 번개)
 //  2차 전직 변형 (data/awaken.js T2; 대체 연출이 적용하지 않는 효과까지 여기서 적용한다)
 //   bran_guardian   성역의 방벽: 푸른 방패 결계 — 끝난 뒤 3초 무적(awaken.js 가 v.t2.invuln 적용)을 결계 그림으로 보여 준다
 //   bran_crusader   성전의 파도: 신성 속성(v.atk), 내려베기·기사 돌격마다 십자 충격파, 빛의 대검이 십자 모양
@@ -34,6 +38,10 @@
 //   azel_bloodking  피의 왕관: 머리 위 피의 왕관 (치명타 피해 +50% 는 awaken.js 가 v.atk 스탯에 반영)
 //   azel_dawnbringer 여명: 신성 속성, 금빛 날개·금빛 초승달, 마무리에서 일식이 황금빛 해돋이로 바뀐다
 //   azel_seraph     빛과 어둠의 날개: 흰 날개와 검은 날개, 흰·검은 초승달이 번갈아 교차
+//   isolde_stormlord 뇌룡의 폭풍: 번개 속성, 내리꽂을 때마다 번개가 적과 적 사이를 잇는다
+//   isolde_wyrmknight 흑룡의 겁화: 화염 속성, 불꽃의 용, 마무리에 맞은 적을 3초 동안 태우고 입힌 피해의 5% 흡혈
+//   isolde_einherjar 발할라의 날개: 신성 속성, 내리꽂을 때마다 영혼의 기둥 둘이 곁을 함께 꿰뚫는다 (끝난 뒤 2초 무적은 awaken.js)
+//   isolde_spearsaint 천 개의 창: 하늘에서 빛의 창이 비처럼 쏟아진다 (치명타 피해 +40% 는 awaken.js 가 v.atk 스탯에 반영)
 //  AWAKEN_DIR_B_DEBUG   시험용 기록 {casts, bakes, poseBakes, canvases, castCanvases, errors, prepared, last, lt(진행 중 감독 시각), sprite(name) → 구운 캔버스}
 //  prepareAwakenB(world?, p?)   캐시 스프라이트 미리 굽기 (스테이지 진입·방 이동·직업 변경 뒤 한가할 때 자동; 시험용으로도 공개)
 //
@@ -367,6 +375,7 @@ function needs(charId, classId) {
       else n.push(classId === 'azel_nosferatu' ? 'wing:bat' : 'wing:blood', 'cres:red');
       return n;
     }
+    case 'isolde': return ['beam'];   // 번개의 용·낙뢰는 벡터 (FXKIT.stormDragon · drawBolt)
     default: return [];
   }
 }
@@ -376,6 +385,7 @@ function glowCols(charId, classId) {
     case 'bran': return ['#cfe0ff', BRAN_TINT[classId] ?? '#9ab0ff', '#ffe8b0'];
     case 'lia': return ['#ff2040', '#b0102a', classId === 'lia_reaper' ? '#6affb0' : classId === 'lia_bladedancer' ? '#ffd84a' : '#ff4a6a'];
     case 'azel': return classId === 'azel_dawnbringer' ? ['#ffd070', '#fff0b0', '#ff2a4a', '#ff8a3a'] : ['#ff1a2a', '#ff2a4a', classId === 'azel_seraph' ? '#b060ff' : '#b0103a'];
+    case 'isolde': return [ISO_COL[classId] ?? '#8ae8ff', '#ffffff', ...(classId === 'isolde_einherjar' ? ['#ffe8a0'] : [])];
     default: return [];
   }
 }
@@ -386,6 +396,7 @@ function softCols(charId, classId) {
     case 'bran': return ['#6a9aff', '#e8f0ff', '#5a6a90', '#8a8074', ...(classId === 'bran_warlord' ? ['#ff5020'] : [])];
     case 'lia': return ['#5a0610'];
     case 'azel': return ['#5a0610'];
+    case 'isolde': return ['#8a8074', ...(classId === 'isolde_wyrmknight' ? ['#ff7a2a'] : [])];
     default: return [];
   }
 }
@@ -507,6 +518,7 @@ function poseJobs(charId, classId) {
       if (classId === 'lia_shadowmaster') out.push({ name: 'c', anim: 'stab_alt', o: { move: true, tint: '#8a4aff', tintA: 0.82 } });
       return out;
     }
+    case 'isolde': return [{ name: 'dive', anim: 'plunge', o: { move: true, air: true, t: 0.12, tint: ISO_COL[classId] ?? '#8ae8ff', tintA: 0.55 } }];   // 급강하 찌르기 잔상
     default: return [];
   }
 }
@@ -1702,7 +1714,227 @@ function drawScars(ctx, S, lt) {
   }
 }
 
+// ═══════════════════════════ 이졸데 — 천룡 귀환: 하늘 기사단의 마지막 비행 ═══════════════════════════
+const ISO_COL = { isolde_wyrmknight: '#ff7a2a', isolde_einherjar: '#fff2b0', isolde_spearsaint: '#ffd0d8' };
+function isolde(p, w, v) {
+  const S = begin(p, w, v, 3.0);
+  const f = S.f, cls = S.cls, cam = S.cam, W = S.W, K = FXKIT;
+  const storm = cls === 'isolde_stormlord', wyrm = cls === 'isolde_wyrmknight', valk = cls === 'isolde_einherjar', saint = cls === 'isolde_spearsaint';
+  const COL = ISO_COL[cls] ?? '#8ae8ff', DCOL = wyrm ? '#ff6a2a' : valk ? '#ffe8a0' : saint ? '#ffd0d8' : '#9ae8ff';
+  const EL = wyrm ? 'fire' : S.t2?.element ?? 'thunder', ND = 7;
+  const wDive = (i) => W[i] ?? 0.6, wFinal = W[W.length - 1] ?? 5;
+  const prevMF = p.maxFall, V0 = view(S);
+  const gy0 = ground(S, p.cx, p.bottom - 8, 12 * TILE) ?? p.bottom;
+  // 마지막 일격 자리: 가까운 적 위 (위아래 두 자리가 비어 있을 때만), 아니면 제자리
+  let lx = p.cx, lgy = gy0;
+  {
+    let best = null, bd = 1e9;
+    for (const e of foes(S)) { const d = Math.abs(e.cx - p.cx); if (d < 360 && d < bd) { bd = d; best = e; } }
+    const g = best ? ground(S, best.cx, best.cy, 12 * TILE) : null;
+    if (best && g != null && K.freeSpot?.(w, p, best.cx, g) && K.freeSpot?.(w, p, best.cx, g - 220)) { lx = best.cx; lgy = g; }
+  }
+  // 하늘을 휘감는 용의 길 (화면 위쪽 절반, 시전 방향으로) → 마지막에 위로 빠져 구름 속으로
+  const sx = (u) => V0.x + V0.w * (f > 0 ? u : 1 - u), sy = (u) => V0.y + V0.h * u;
+  const P1 = K.splinePath([[sx(-0.08), sy(0.12)], [sx(0.3), sy(0.36)], [sx(0.58), sy(0.1)], [sx(0.88), sy(0.42)], [sx(0.64), sy(0.56)], [sx(0.32), sy(0.3)], [sx(0.5), sy(-0.12)]], 12);
+  const P2 = K.splinePath([[lx, sy(-0.2)], [lx, sy(0.05)], [lx, lgy - 10]], 12);
+  const BODY = S.low ? 18 : 30, GAP = 16 * 2.4, body = new Float32Array(BODY * 2);
+  S.dives = []; S.chains = []; S.spears = []; S.dk = 0; S.eyes = -1; S.leap = -1; S.final = -1; S.fdive = -1; S.cracks = null; S.dotFoes = null;
+  if (saint) for (let i = 0, n = S.low ? 18 : 40; i < n; i++) S.spears.push({ u: rand(0.02, 0.98), t: 0.6 + rand(0, 1.3), sp: rand(1500, 2100), L: rand(40, 70) });
+
+  // 배경 어둠 (캐릭터 뒤)
+  layer(S, -1, (ctx, S) => dimFill(ctx, S, wyrm ? '#0a0406' : '#03060f', 0.6 * u01(S.lt, 0, 0.25) * (1 - u01(S.lt, 2.6, 0.4))));
+  // 폭풍 구름 띠 + 구름 속 용의 눈 + 번개빛 (하늘, 캐릭터 뒤)
+  layer(S, -0.9, (ctx, S) => {
+    const lt = S.lt, c = S.cam, k = u01(lt, 0, 0.35) * (1 - u01(lt, 2.6, 0.4));
+    if (k <= 0.01) return;
+    ctx.globalCompositeOperation = 'source-over';
+    for (let i = 0; i < 9; i++) {
+      const cx = c.x + c.vw * (i / 8) + Math.sin(lt * 0.7 + i) * 20, cy = c.y + 30 + (i % 3) * 24, R = 130 + (i % 4) * 40;
+      ctx.globalAlpha = 0.85 * k; ctx.fillStyle = i % 2 ? '#121a2c' : '#1a2440';
+      ctx.beginPath(); ctx.ellipse(cx, cy, R, R * 0.34, 0, 0, TAU); ctx.fill();
+    }
+    for (let i = 0; i < 3; i++) { const fl = Math.max(0, Math.sin(lt * (10 + i * 4) + i * 2.1)); glow(ctx, COL, c.x + c.vw * (0.2 + i * 0.3), c.y + 44, 230, 0.25 * fl * fl * k); }
+    if (S.eyes >= 0) {   // 구름 속에서 뜨는 용의 두 눈
+      const a = u01(lt, S.eyes, 0.12) * (1 - u01(lt, S.eyes + 0.55, 0.25));
+      for (const s of [-1, 1]) { const ex = c.x + c.vw / 2 + s * 70, ey = c.y + 70; glowE(ctx, COL, ex, ey, 60, 16, 0.9 * a); flare(ctx, ex, ey, 34, '#ffffff', a, 0); }
+    }
+  });
+
+  at(S, 0, (S) => {
+    sfx('thunderclap', { vol: 1 }); sfx('awaken_charge', { vol: 0.45, pitch: 0.8 });
+    pose(S, 'cast_up', 0.5, { h0: 0.06, silent: true });
+    p.noGravity = true; p.vx = 0; p.vy = 0;
+    emitN(S, 'thunder', p.cx, p.y - 20, 14, { speed: 260, color: COL });
+    cine(S, p.cx, p.cy - 60, 1.12, 0.3);
+  });
+  at(S, 0.28, (S) => { S.eyes = S.lt; sfx('eye_glint'); sfx('boss_roar', { pitch: 1.45, vol: 0.7 }); cam.addTrauma?.(0.2); });
+  // 0.38 도약 — 창을 치켜들고 화면 위로
+  at(S, 0.38, (S) => {
+    S.leap = S.lt;
+    pose(S, 'launch', 0.4, { h0: 0.04, sfx: 'jump' });
+    p.vy = -1800;
+    sfx('dash_burst', { pitch: 0.7 });
+    emitN(S, 'dust', p.cx, p.bottom - 4, 12, { speed: 230, angle: -HP, spread: 1.5 });
+    if (room(S, 1)) w.fx.ering(p.cx, p.bottom - 2, { color: COL, r0: 10, r1: 170, ry: 0.2, life: 0.35, width: 6 });
+    beat(S, p.cx, p.bottom, 0.5, true);
+    uncine(S, 0.3);
+  });
+  at(S, 0.56, (S) => { p.hidden = true; p.vy = 0; sfx('dash', { pitch: 0.6, vol: 0.6 }); });
+  for (let i = 0; i < ND; i++) at(S, 0.62 + i * 0.19, (S) => dive(S, i));
+  // 2.0 용이 구름 위에서 몸을 돌려 이졸데와 함께 내리꽂힌다
+  at(S, 2.0, (S) => {
+    S.fdive = S.lt;
+    const top = Math.max(0, lgy - p.h - 220);
+    if (K.freeSpot?.(w, p, lx, lgy - 220) ?? true) { p.x = lx - p.w / 2; p.y = top; }
+    p.hidden = false; p.noGravity = false; p.maxFall = 2400; p.vy = 2400; p.vx = 0;
+    pose(S, 'plunge', 0.8, { h0: 0.01, hw: 0.7, sfx: 'dash' });
+    sfx('dash_burst', { pitch: 0.55 }); sfx('boss_roar', { pitch: 1.3, vol: 0.6 });
+    cineOn(S, p, 1.06, 0.12);
+  });
+
+  const tick = (S) => {
+    const lt = S.lt;
+    if (S.leap >= 0 && S.fdive < 0 && !p.hidden) { try { K.ultAfter?.(w, p, { q: S.fq, tier: 2 }, COL, 0.16); } catch { /* 잔상 실패는 연출만 줄어든다 */ } }
+    if (p.hidden && S.fdive < 0) { p.vy = 0; p.vx = 0; }
+    // 하늘의 용 (0.4 → 1.95), 마지막 내리꽂기 (2.0 → 2.16)
+    if (S.final < 0) {
+      if (S.fdive >= 0) S.dk = K.dragonBody(P2, P2.len * ease.inQuad(u01(lt, S.fdive, 0.16)), BODY, GAP, body);
+      else if (lt >= 0.4) S.dk = K.dragonBody(P1, P1.len * ease.inOutQuad(u01(lt, 0.4, 1.55)), BODY, GAP, body);
+      if (S.dk && Math.random() < 0.6) { const j = Math.floor(rand(0, S.dk)); emitN(S, wyrm ? 'fire' : 'thunder', body[j * 2], body[j * 2 + 1], 1, { speed: 150, color: DCOL }); }
+    }
+    if (S.fdive >= 0 && S.final < 0) { p.vy = Math.max(p.vy, 2400); if (p.onGround || lt > S.fdive + 0.3) finalStrike(S); }
+  };
+  const draw = (ctx, S) => {
+    const lt = S.lt;
+    ctx.globalAlpha = 1;
+    // 시전: 창끝에 모이는 번개
+    if (S.leap < 0) { const k = u01(lt, 0, 0.3); glow(ctx, COL, p.cx + f * 18, p.y - 40, 120 * k, 0.7 * k); pillar(ctx, S, p.cx, p.y - 280, p.bottom, 26 * k, COL, 0.5 * k); }
+    // 번개의 용 (마무리 뒤에는 흩어진다)
+    const dk = S.final >= 0 ? 1 - u01(lt, S.final, 0.25) : 1;
+    if (S.dk > 2 && dk > 0.01) { ctx.save(); K.stormDragon?.(ctx, body, S.dk, 2.4, DCOL, dk, lt); ctx.restore(); }
+    // 급강하 찌르기: 하늘에서 바닥까지 빛기둥 + 낙뢰 + 내리꽂히는 이졸데의 잔상
+    for (const d of S.dives) {
+      const u = lt - d.t;
+      if (u < 0 || u > 0.4) continue;
+      const k = 1 - u01(u, 0.06, 0.34), drop = ease.inQuad(u01(u, 0, 0.07));
+      pillar(ctx, S, d.x, d.top, d.gy, 30 * k, COL, 0.8 * k);
+      if (d.pts && u < 0.2) { ctx.save(); K.drawBolt?.(ctx, d.pts, COL, 4, 1 - u / 0.2); ctx.restore(); }
+      drawPose(ctx, S.bmp.dive, d.x, lerp(d.top + 120, d.gy, drop), d.f, 0.85 * k, true, 1);
+      if (valk) for (const s of [-1, 1]) { pillar(ctx, S, d.x + s * 92, d.top, d.gy, 16 * k, '#ffe8a0', 0.6 * k); glow(ctx, '#fff2b0', d.x + s * 92, lerp(d.top + 80, d.gy - 50, drop), 30, 0.8 * k); }
+      glowE(ctx, COL, d.x, d.gy - 6, 90 * k + 20, 22 * k + 6, 0.8 * k);
+    }
+    // 뇌룡기사: 적과 적을 잇는 번개
+    for (const c of S.chains) { const u = lt - c.t; if (u >= 0 && u < 0.22) { ctx.save(); K.drawBolt?.(ctx, c.pts, '#e0f4ff', 2.4, 1 - u / 0.22); ctx.restore(); } }
+    // 창성: 하늘에서 쏟아지는 빛의 창
+    if (saint) {
+      const c = S.cam;
+      for (const s of S.spears) {
+        const u = lt - s.t;
+        if (u < 0 || u > 0.45) continue;
+        const x = c.x + c.vw * s.u, y = c.y - 60 + u * s.sp;
+        if (y > c.y + c.vh + 40) continue;
+        cut(ctx, x - 6, y - s.L * 2.2, x, y, 3, '#ffd0d8', 0.9);
+      }
+    }
+    // 마무리: 하늘까지 이어지는 빛기둥 + 양쪽으로 달리는 지면의 번개
+    if (S.final >= 0) {
+      const u = lt - S.final, k = 1 - u01(u, 0, 0.45), x = S.fx, y = S.fy;
+      if (k > 0) pillar(ctx, S, x, S.cam.y - 40, y, 110 * k, COL, k);
+      if (S.cracks) {
+        const a = 1 - u01(lt, 2.6, 0.4), r = ease.outCubic(u01(u, 0, 0.35));
+        ctx.lineCap = 'round';
+        for (const P of S.cracks) {
+          const n = Math.max(2, Math.round((P.length / 2) * r));
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.beginPath(); ctx.moveTo(P[0], P[1]); for (let i = 1; i < n; i++) ctx.lineTo(P[i * 2], P[i * 2 + 1]);
+          ctx.globalAlpha = 0.45 * a; ctx.strokeStyle = COL; ctx.lineWidth = 12; ctx.stroke();
+          ctx.globalAlpha = 0.95 * a; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.stroke();
+        }
+        glow(ctx, COL, x, y, 260 * (0.6 + r), 0.6 * a);
+      }
+    }
+  };
+  const light = (L, S) => {
+    const c = S.cam, fade = 1 - u01(S.lt, 2.6, 0.4);
+    lit(L, c.x + c.vw * 0.5, c.y + c.vh * 0.25, c.vw * 0.5, COL, 0.9 * fade);
+    if (S.dk) lit(L, body[0], body[1], 320, COL, 1.2 * fade);
+    if (S.final >= 0) lit(L, S.fx, S.fy - 40, 620, COL, 1.4 * fade);
+  };
+  return run(S, { tick, draw, light, end: () => { p.noGravity = false; p.maxFall = prevMF; } });
+
+  /** 급강하 찌르기 하나: 적(없으면 화면에 고르게) 위로 하늘에서 바닥까지 꿰뚫는 기둥 (기둥 안의 적 1타) */
+  function dive(S, i) {
+    const V = view(S), list = foes(S);
+    const en = list.length ? list[(i * 3) % list.length] : null;
+    const x = en ? en.cx : V.x + V.w * (0.18 + ((i * 0.37) % 0.64)), gy = (en ? ground(S, en.cx, en.cy, 10 * TILE) ?? en.bottom ?? en.cy : ground(S, x, V.y + V.h * 0.5, 14 * TILE)) ?? S.b0;
+    const top = V.y - 40, wd = valk ? 300 : 130;
+    const d = { x, gy, top, t: S.lt, f: i % 2 ? -f : f, pts: K.boltPts?.(x + rand(-50, 50), top, x, gy, 12, 30) ?? null };
+    S.dives.push(d);
+    if (S.dives.length > 4) S.dives.shift();
+    strike(S, { x: x - wd / 2, y: top, w: wd, h: gy - top + 30 }, wDive(i), { hitId: `${S.id}:d${i}`, element: EL, hitstop: 0.03, kb: [0, -420], launch: true, shake: 3 });
+    sfx('thunder', { pitch: rand(0.85, 1.1), vol: 0.8 }); sfx('dash', { pitch: 0.8, vol: 0.5 });
+    if (i % 2 === 0) beat(S, x, gy, 0.45, true);
+    if (room(S, 1)) w.fx.ring(x, gy - 4, { color: COL, r0: 8, r1: 110, life: 0.28, width: 6 });
+    emitN(S, wyrm ? 'fire' : 'thunder', x, gy - 10, 8, { speed: 360, color: COL });
+    emitN(S, 'dust', x, gy - 2, 5, { speed: 180, angle: -HP, spread: 1.4 });
+    S.cam.kick?.(0, 6);
+    if (storm && en) {   // 번개가 적과 적 사이를 잇는다
+      for (const o of list.filter((e) => e !== en).slice(0, 3)) {
+        const pts = K.boltPts?.(en.cx, en.cy, o.cx, o.cy, 8, 22);
+        if (pts) S.chains.push({ t: S.lt, pts });
+      }
+      if (S.chains.length > 12) S.chains.splice(0, S.chains.length - 12);
+    }
+  }
+  /** 천룡의 일격: 용과 함께 땅에 닿는 순간 화면의 적 전원 (마무리, class A) */
+  function finalStrike(S) {
+    S.final = S.lt;
+    const x = p.cx, y = p.bottom, list = foes(S, 30);
+    S.fx = x; S.fy = y;
+    p.maxFall = prevMF; p.vy = 0;
+    pose(S, 'crouch_stab', 0.6, { h0: 0.01, silent: true });
+    trimFx(S, 0.5);
+    strike(S, view(S, 40), wFinal, { element: EL, kb: [f * 220, -680] }, true);
+    try { ULTFX.final?.(w, x, y - 20, { color: COL, accent: S.acc, tier: 2, classId: cls, charId: S.charId, ground: true, flourish: S.tier >= 2, targets: list, flashColor: wyrm ? '#ffd0a0' : '#dff4ff' }); } catch (err) { report(err, 'ultfx.final'); }
+    sfx('awaken_boom'); sfx('thunderclap', { vol: 0.9, pitch: 0.8 }); sfx('impact_crack');
+    if (!S.low) for (const dx of [0, -130, 130]) HFX.stampDecal?.(w, x + dx, y - 6, dx < 0 ? -1 : 1, 'crack', { floor: true, scale: dx ? 1.4 : 2.2, life: 10 });
+    if (room(S, 1)) w.fx.ering(x, y - 2, { color: '#e8f8ff', r0: 30, r1: view(S).w * 0.55, ry: 0.14, life: 0.5, width: 12 });
+    emitN(S, wyrm ? 'fire' : 'thunder', x, y - 20, 30, { speed: 620, color: COL });
+    emitN(S, 'gravel', x, y - 8, 20, { angle: -HP, spread: 1.4, speed: 600 });
+    const V = view(S);
+    S.cracks = [];
+    for (const s of [-1, 1]) {
+      const P = [x, y];
+      for (let i = 1; i <= 14; i++) P.push(x + s * (V.w * 0.55) * i / 14, y - 2 + rand(-6, 6));
+      S.cracks.push(P);
+    }
+    cine(S, x, y - 80, 1.08, 0.1);
+    later(S, 0.35, (S) => uncine(S, 0.4));
+    if (wyrm && S.t2?.dot) startDot(S, list);
+    if (valk) emitN(S, 'holy', x, y - 40, 24, { speed: 380 });
+  }
+  /** 흑룡의 겁화: 마무리에 맞은 적들을 3초 동안 태운다 (0.5초마다 1타; 각성 상한 그대로) */
+  function startDot(S, list) {
+    const dot = S.t2.dot, hit = list.filter((e) => !e.dead).slice(0, 8);
+    if (!hit.length) return;
+    S.w.add(new SkillFx({
+      life: dot.t, z: 11, d: { n: 0 },
+      follow: (e) => cover(e, S),
+      tick(e) {
+        while (e.d.n < Math.floor(e.lt / 0.5)) {
+          e.d.n++;
+          for (const en of hit) {
+            if (en.dead) continue;
+            try { S.v.hit(en.hurtbox ? en.hurtbox() : en, 0, { mv: dot.mv, element: dot.element, hitstop: 0, shake: 0, kb: [0, 0], hitId: `${S.id}:dot${e.d.n}` }); } catch (err) { report(err, 'dot'); }
+            emitN(S, 'fire', en.cx, en.cy, 3, { speed: 120, color: '#ff7a2a' });
+          }
+        }
+      },
+    }));
+  }
+}
+
 /** 영웅별 각성 감독 (awaken.js directorOf: 등록 → AWAKEN_DIRECTOR → AWAKEN_DIRECTOR_B → 대체 연출) */
-export const AWAKEN_DIRECTOR_B = { bran, lia, azel };
+export const AWAKEN_DIRECTOR_B = { bran, lia, azel, isolde };
 /** 시험용: 캐시 스프라이트 이름('crow', 'cres:gold' …) → 구운 캔버스 (시각 검수) */
 AWAKEN_DIR_B_DEBUG.sprite = (name) => spr(name);

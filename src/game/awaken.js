@@ -442,7 +442,7 @@ function castPose(p, world, dur, anim = 'cast_up', id = 'aw_cast') {
 /** 무기별 휘두르기 자세 (대체 연출의 박자마다 번갈아) */
 const BEAT_ANIMS = {
   whip: ['lash', 'spin'], sword: ['slash_wide', 'uppercut'], greatsword: ['heavy_spin', 'heavy_down'],
-  dagger: ['spin_blade', 'stab'], gun: ['shoot', 'shoot_double'], staff: ['staff_swing', 'cast'],
+  dagger: ['spin_blade', 'stab'], gun: ['shoot', 'shoot_double'], staff: ['staff_swing', 'cast'], spear: ['thrust', 'slash_wide'],
 };
 
 // ───────────────────────── 감독 문맥 v ─────────────────────────

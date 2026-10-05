@@ -6,7 +6,7 @@
 //   name       각성기 이름 (컷인이 끝날 때 '각성 — {name}' 제목으로 찍힌다)
 //   line       시그니처 대사 (전체 문장; 컷인이 실제로 찍는 글자는 lines.join(' ') 과 같다)
 //   lines      컷인 줄바꿈: 앞줄들은 작게(도입), 마지막 줄은 크게(결정타) — feel §6.3 '대시·쉼표에서 줄바꿈'
-//   seal       붉은 낙관의 한자 (BN Seal 글꼴에 있는 글자만: 狩 聖 銃 鐵 鴉 血)
+//   seal       붉은 낙관의 한자 (BN Seal 글꼴에 있는 글자만: 狩 聖 銃 鐵 鴉 血 龍)
 //   cutin      컷인 일러스트 (assets/cg/cutin_<id>.webp, 1600×637)   portrait  일러스트가 없을 때 쓰는 초상 (2:3)
 //   face, eye  일러스트 안의 얼굴 중심·눈 위치 (0..1, tools/kling/cutin_anchors.json 에서 옮김)
 //   portraitFace  초상으로 대신할 때의 얼굴 중심 (0..1)
@@ -130,6 +130,21 @@ export const AWAKEN = {
     heal: 0.2,
     t2: ['azel_nosferatu', 'azel_bloodking', 'azel_dawnbringer', 'azel_seraph'],
   },
+  isolde: {
+    name: '천룡 귀환 — 하늘 기사단의 마지막 비행',
+    line: '빼앗긴 하늘이여 — 이 창끝에서 다시 포효하라!',
+    lines: ['빼앗긴 하늘이여 —', '이 창끝에서', '다시 포효하라!'],
+    seal: '龍',
+    cutin: 'cg/cutin_isolde', portrait: 'portraits/isolde',
+    face: [0.6, 0.4], eye: [0.62, 0.31], portraitFace: [0.5, 0.3],   // 컷인 그림이 들어오면 tools/kling/cutin_anchors.json 값으로 맞춘다
+    color: '#8ae8ff', dark: '#0c1428', accent: '#2a4a8a',
+    cue: { name: 'thunderclap', pitch: 0.9 },
+    style: 'pillar',
+    ultMv: 8.8,
+    mvWeights: [0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 5.0],   // 번개의 용과 번갈아 내리꽂는 급강하 찌르기 7회 + 천룡의 일격
+    final: '용과 하나가 되어 수직으로 내리꽂히는 천룡의 일격 (띄우기)',
+    t2: ['isolde_stormlord', 'isolde_wyrmknight', 'isolde_einherjar', 'isolde_spearsaint'],
+  },
 };
 
 /** 각성 영웅 순서 (갤러리·테스트용) */
@@ -172,6 +187,11 @@ export const T2 = {
   azel_bloodking: { label: '피의 왕관', desc: '피의 왕관이 떠올라 이번 각성의 치명타 피해가 50% 오른다.', color: '#ff6a6a', accent: '#ff1a2a', critDmg: 50, crown: true },
   azel_dawnbringer: { label: '여명', desc: '일식이 황금빛 해돋이로 바뀌고 초승달이 신성한 금빛이 된다.', color: '#fff0b0', accent: '#ffd070', element: 'holy', sunrise: true },
   azel_seraph: { label: '빛과 어둠의 날개', desc: '흰 날개와 검은 날개가 펼쳐지고 두 빛깔의 초승달이 교차한다.', color: '#e8d8ff', accent: '#b98cff', dualWing: true },
+  // 이졸데
+  isolde_stormlord: { label: '뇌룡의 폭풍', desc: '내리꽂을 때마다 번개가 적과 적 사이를 잇는다.', color: '#e0f4ff', accent: '#bfe0ff', element: 'thunder', chain: true },
+  isolde_wyrmknight: { label: '흑룡의 겁화', desc: '용이 검은 불꽃으로 타올라 3초 동안 화염 피해를 남기고, 입힌 피해의 5%를 흡혈한다.', color: '#ffb070', accent: '#ff6a2a', dot: { element: 'fire', t: 3, mv: 0.15 }, lifesteal: 0.05, wyrm: true },
+  isolde_einherjar: { label: '발할라의 날개', desc: '전사자의 영혼들이 함께 내리꽂히고, 각성이 끝난 뒤 2초 동안 무적이 된다.', color: '#fff2b0', accent: '#ffd84a', element: 'holy', invuln: 2, spirits: true },
+  isolde_spearsaint: { label: '천 개의 창', desc: '하늘에서 빛의 창이 비처럼 쏟아지고 이번 각성의 치명타 피해가 40% 오른다.', color: '#ffd0d8', accent: '#d02040', critDmg: 40, spears: true },
 };
 
 /** 진 각성 이름 앞에 붙는 말 (2차 전직) */
