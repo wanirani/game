@@ -1,4 +1,5 @@
 // 아케이드 실전 장면: 보스 러시 / 서바이벌 / 스테이지 연습 + 아케이드 일시정지 + 결과 정산
+// (무한의 탑은 arcade_tower.js 가 ArcadeRunScene 을 이어받는다 — 일시정지 옆 칸 drawPauseSide, 결과의 난이도별 최고 층 meta.towerBest)
 // World 를 직접 만들고 인스턴스 메서드(onBossDefeated/onPlayerDeath/addScore/finishStage)를 덮어써서 모드 규칙을 적용한다.
 // owner: PLAT-FRONT-B (world2 §11, MASTER_PLAN §1.14·§1.16)
 //  - ?scene=bossrush|survival|practice 로 바로 열어도 동작한다 (임시 세이브가 없으면 만든다; ?char= ?diff= ?preset= ?course= ?stage=)

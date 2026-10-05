@@ -334,11 +334,15 @@ test('한 판: 메뉴 → 헌터 선택 → 1층 처치·출구 → 5층 보스�
   const cleared = await page.evaluate(() => window.__game.top.cleared);
   assert.equal(cleared, 10);
   const reached = await page.evaluate(() => window.__game.top.floor);
+  await page.evaluate(() => import('/src/core/events.js').then(({ bus }) => { window.__arcFin = []; bus.on('arcadeFinished', (d) => window.__arcFin.push(d)); }));
   assert.equal(await kill(), true);
   await tickUntil(page, "g.top.name === 'arcadeResults' && g.fade.a < 0.05", 600, '결과 화면');
   const res = await page.evaluate(() => { const r = window.__game.top.res; return { kind: r.kind, rows: r.rows.map((x) => [x[0], typeof x[1] === 'function' ? 'fn' : x[1]]), floor: r.extra.floor, bl: r.extra.blessings.length, time: r.time }; });
   assert.equal(res.kind, 'tower');
   assert.equal(res.floor, 10);
+  // 익명 통계 사건 (core/telemetry.js 가 arcade_result 로 받는다)
+  const fin = await page.evaluate(() => window.__arcFin.map((d) => ({ kind: d.kind, floor: d.extra?.floor, cleared: d.cleared, diff: d.diff })));
+  assert.deepEqual(fin, [{ kind: 'tower', floor: 10, cleared: false, diff: 'normal' }]);
   assert.ok(res.bl >= 12, `축복 ${res.bl}`);
   const rowMap = Object.fromEntries(res.rows);
   assert.equal(rowMap['돌파한 층'], '10층');
@@ -393,6 +397,11 @@ test('한 판: 메뉴 → 헌터 선택 → 1층 처치·출구 → 5층 보스�
   assert.deepEqual(hs, { sel: 'tower', rec: '30층 · 10:00.00', me: '29층 · 10:05.00' });
   await page.waitForTimeout(300);
   await shot(page, 'hall_online');
+  // 클라우드 메타 합치기: 난이도별로 더 높은 층 (같으면 빠른 쪽)
+  const merged = await page.evaluate(() => import('/src/core/cloud.js').then((C) => C.mergeMeta(
+    { towerBest: { normal: { floor: 5, time: 100 }, easy: { floor: 3, time: 90 } } },
+    { towerBest: { normal: { floor: 7, time: 300 }, easy: { floor: 3, time: 80 }, hard: { floor: 2, time: 50 } } }).towerBest));
+  assert.deepEqual(Object.fromEntries(Object.entries(merged).map(([k, v]) => [k, [v.floor, v.time]])), { normal: [7, 300], easy: [3, 80], hard: [2, 50] });
   assert.deepEqual(errs, []);
   await ctx.close();
 });

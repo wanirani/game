@@ -138,6 +138,7 @@ test('검사: 형식·허용 목록·범위·길이를 벗어나면 400 (묶음 
     ['프레임에 쿼리', { body: batch([ev.error({ fr: ['src/a.js?v=1:1:2'] })]) }, 'bad_request'],
     ['불리언 아님 win', { body: batch([ev.boss({ win: 1 })]) }, 'bad_request'],
     ['문자열 숫자', { body: batch([ev.arcade({ score: '100' })]) }, 'bad_request'],
+    ['모르는 아케이드 모드', { body: batch([ev.arcade({ mode: 'towers' })]) }, 'bad_request'],
     ['화면 크기 형식', { body: batch([ev.start({ vp: '800*300' })]) }, 'bad_request'],
     ['빌드 이름에 공백', { body: batch([ev.start({ b: '1.0 beta' })]) }, 'bad_request'],
     ['좋은 사건 뒤의 나쁜 사건', { body: batch([ev.start(), ev.death({ lv: 0 })]) }, 'bad_request'],
@@ -150,6 +151,8 @@ test('검사: 형식·허용 목록·범위·길이를 벗어나면 400 (묶음 
   assert.equal(keys('raw/').length, 0, '거절한 묶음은 저장하지 않는다');
   // 선택 필드는 없거나 null 이어도 된다
   assert.equal((await post(batch([ev.start({ cores: null, mem: undefined }), ev.error({ scene: null, stage: undefined, room: undefined, fr: [] })]))).status, 204);
+  // 무한의 탑 정산 (wave 칸 = 돌파한 층)
+  assert.equal((await post(batch([ev.arcade({ mode: 'tower', wave: 23, bosses: 2 })]))).status, 204);
 });
 
 test('저장 전에 오류 문구의 주소·메일·IP·긴 토큰을 가린다', async () => {
