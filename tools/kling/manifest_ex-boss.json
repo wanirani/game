@@ -28,7 +28,7 @@
    "imageCount": 2,
    "credits": 4.0,
    "refs": "portrait",
-   "decision": "pending"
+   "decision": "#2 kept → raw/b_argen/head_a (strict profile facing right, jaw dropped open at the hinge, dark red throat, long swept horns; neck stump at the lower left is masked off). #1 unused (more cel-shaded with black outline, three-quarter view)."
   },
   {
    "boss": "b_argen",
@@ -39,7 +39,7 @@
    "imageCount": 2,
    "credits": 4.0,
    "refs": "portrait",
-   "decision": "pending"
+   "decision": "both rejected: hollow tubes with open pipe ends ('stump cut flat' read as cross-sections) and a hole through the flank — re-run as ag_body2 (closed egg-shaped torso)."
   },
   {
    "boss": "b_argen",
@@ -50,7 +50,7 @@
    "imageCount": 2,
    "credits": 4.0,
    "refs": "portrait",
-   "decision": "pending"
+   "decision": "#2 kept → raw/b_argen/necktail_a (top = straight neck strip, bottom = tail strip with fin on the left; the tail's violet underside is recoloured by the 'pure' tint at purification). #1 unused (the neck came with a whole head, the tail has a crystal belly band)."
   },
   {
    "boss": "b_argen",
@@ -61,7 +61,7 @@
    "imageCount": 2,
    "credits": 4.0,
    "refs": "portrait",
-   "decision": "pending"
+   "decision": "#1 kept → raw/b_argen/wing_a (root lower right, wrist claw upper middle, 4 fingers fanning left, torn membrane holes — one rigid wing sprite rotated/squashed at the shoulder). #2 unused (cleaner membrane, less character)."
   },
   {
    "boss": "b_argen",
@@ -72,7 +72,7 @@
    "imageCount": 2,
    "credits": 4.0,
    "refs": "portrait",
-   "decision": "pending"
+   "decision": "#2 kept → raw/b_argen/legs_a (piece 2 = side-view hind leg with claws, piece 3 = straight leg used as the foreleg). #1 rejected (whole-dragon back views instead of separate legs)."
   },
   {
    "boss": "b_argen",
@@ -83,7 +83,7 @@
    "imageCount": 2,
    "credits": 4.0,
    "refs": "portrait",
-   "decision": "pending"
+   "decision": "#2 kept → raw/b_argen/crys_a (5 obsidian-violet clusters on flat bases + the round faceted core gem). #1 unused (white/grey crystals and an ornamental heart locket)."
   },
   {
    "boss": "b_argen",
@@ -94,9 +94,20 @@
    "imageCount": 1,
    "credits": 2.0,
    "refs": "portrait",
+   "decision": "#1 kept → raw/b_argen/debris_a (silver scale plates, crystal shards, horn and claw tips)."
+  },
+  {
+   "boss": "b_argen",
+   "shot": "ag_body2",
+   "tool": "image_to_image",
+   "generationId": "Ab5Zd-EZQF-bhK1dOO3vC-uEabZmRyJAiww7WO3ybarRAJRuxCuNuSMWfNDynlgCh_49rUGP",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "credits": 4.0,
+   "refs": "portrait",
    "decision": "pending"
   }
  ],
- "imagesSpent": 15,
- "creditsSpent": 30.0
+ "imagesSpent": 17,
+ "creditsSpent": 34.0
 }

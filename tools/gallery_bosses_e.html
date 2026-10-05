@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>보스 갤러리 E — 외전 21장</title>
+<style>
+  :root { --bg: #07040b; --panel: #120b16; --line: #3a2434; --txt: #eadcc4; --dim: #9a8a86; --acc: #ff5a6a; --ok: #7de0a0; --warn: #ffc860; }
+  html, body { margin: 0; background: var(--bg); color: var(--txt); font: 13px "Noto Sans KR", system-ui, sans-serif; }
+  #app { display: flex; gap: 10px; padding: 8px; box-sizing: border-box; }
+  #side { width: 292px; flex: none; display: flex; flex-direction: column; gap: 8px; }
+  #main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+  #c { width: 100%; max-width: 960px; height: auto; background: #000; border: 1px solid var(--line); display: block; }
+  .box { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
+  h1 { font-size: 15px; margin: 0 0 2px; color: #ffd0c0; }
+  h2 { font-size: 12px; margin: 0 0 5px; color: var(--dim); font-weight: 600; }
+  button { font: inherit; font-size: 12px; color: var(--txt); background: #1f1420; border: 1px solid #4a2c3c; border-radius: 4px; padding: 3px 7px; margin: 2px; cursor: pointer; }
+  button:hover:not(:disabled) { border-color: var(--acc); }
+  button.on { background: #5a1a2a; border-color: var(--acc); }
+  button:disabled { opacity: 0.38; cursor: default; }
+  button.boss { display: flex; justify-content: space-between; align-items: center; width: 100%; text-align: left; margin: 3px 0; padding: 5px 7px; }
+  button.boss small { color: var(--dim); }
+  .badge { font-size: 11px; padding: 0 5px; border-radius: 3px; margin-left: 6px; white-space: nowrap; }
+  .b-ok { background: #1d4a30; color: var(--ok); } .b-stub { background: #333; color: #ccc; } .b-err { background: #5a1a1a; color: #ffb0b0; }
+  #info { font: 12px ui-monospace, Menlo, monospace; white-space: pre-wrap; line-height: 1.45; }
+  #log { font: 11px ui-monospace, Menlo, monospace; white-space: pre-wrap; max-height: 140px; overflow: auto; color: #ffb0b0; }
+  .sub { color: var(--dim); font-size: 12px; }
+  body.grid #side, body.grid #main .box { display: none; }
+  body.grid #c { max-width: none; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="side">
+    <div class="box"><h1 id="gtitle">보스 갤러리</h1><div class="sub" id="gsub"></div><div id="bosses"></div></div>
+    <div class="box"><h2>페이즈 (debugPhase — 새로 만든 뒤 진입)</h2><div id="phases"></div></div>
+    <div class="box"><h2>공격 패턴 (debugAct)</h2><div id="acts"></div><h2 style="margin-top:6px">전환 · 보조 상태</h2><div id="trans"></div></div>
+    <div class="box"><h2>도구</h2><div id="tools"></div></div>
+  </div>
+  <div id="main">
+    <canvas id="c" width="960" height="540"></canvas>
+    <div class="box"><div id="info"></div></div>
+    <div class="box" id="logbox" hidden><h2>오류 · 경고</h2><div id="log"></div></div>
+  </div>
+</div>
+<script type="module">
+// 2부 보스 갤러리 (BOSS-P2-KIT). 데이터의 모든 보스를 나열하고, 상태(debugAct)·페이즈(debugPhase) 버튼으로 확인한다.
+// 클래스가 아직 스텁(null)이면 GenericBoss 로 대신 보여 준다. 기믹은 c_common.js 의 대역(stand-in)이 맡는다 (방 기믹 없음).
+//  URL: ?id=b_moloch&act=hammer&ph=1&t=1.5&paused=1&debug&story=1&standins=0&diff=inferno&auto=1&player=0.25&dlg=1.5
+//       ?grid=1[&act=idle&t=1.2&ph=0&cols=2]   모든 보스를 한 장에 (스크린샷용)
+//  키: Space 일시정지 · . 0.1초 진행 · R 사망→부활 · Enter 대사 넘기기      자동화: window.__gal
+import { Particles } from '../src/core/particles.js';
+import { Camera } from '../src/core/camera.js';
+import { Lighting } from '../src/core/lighting.js';
+import { Entity } from '../src/game/entity.js';
+import { Projectile } from '../src/game/projectiles.js';
+import { Enemy } from '../src/game/enemy.js';
+import { GenericBoss } from '../src/game/bosses/boss.js';
+import { patternsOf, phaseScriptBusy } from '../src/game/bosses/c_common.js';
+import { STAGES } from '../src/data/stages.js';
+import { SCRIPTS } from '../src/data/story.js';
+import { getDiff } from '../src/data/difficulty.js';
+import { BOSSES_E as DEFS } from '../src/data/bosses_e.js';
+import { BOSS_E as CLASSES } from '../src/game/bosses/bosses_e.js';
+
+const GROUP = { title: '보스 갤러리 E', sub: '외전 21장 · BOSSES_E · 클래스 bosses_e.js' };
+const q = new URLSearchParams(location.search);
+const TILE = 48, VW = 960, VH = 540, DT = 1 / 60;
+const IDS = Object.keys(DEFS);
+const BG = { s14: 's14_mirror', s15: 's15_forge', s16: 's16_sunken', s17: 's17_sky', s18: 's18_nightmare', s19: 's19_blight', s20: 's20_void', s21: 's17_sky' };
+const LV = { s14: 46, s15: 50, s16: 54, s17: 58, s18: 62, s19: 66, s20: 70, s21: 70 };
+const TILE_COL = { s14: ['#1a1d2a', '#cfe8ff'], s15: ['#241410', '#ff9a50'], s16: ['#0e1e24', '#6fe8ff'], s17: ['#1c2030', '#dfeaff'], s18: ['#1a0e22', '#c080ff'], s19: ['#141a0c', '#b8e04a'], s20: ['#08060e', '#ffffff'], s21: ['#1c2030', '#eef4ff'] };
+const GEN_STATES = ['charge', 'shoot', 'leap'];
+const $ = (id) => document.getElementById(id);
+const cv = $('c'), ctx = cv.getContext('2d');
+
+// ───────────── 오류 수집 (화면에도 보여 준다) ─────────────
+const notes = [];
+function note(msg) { notes.push(msg); $('logbox').hidden = false; $('log').textContent = notes.slice(-14).join('\n'); }
+window.addEventListener('error', (e) => note('[오류] ' + (e.message || e)));
+window.addEventListener('unhandledrejection', (e) => note('[오류] ' + (e.reason?.message || e.reason)));
+const cErr = console.error.bind(console), cWarn = console.warn.bind(console);
+console.error = (...a) => { note('[오류] ' + a.map((x) => x?.stack || String(x)).join(' ').slice(0, 400)); cErr(...a); };
+console.warn = (...a) => { note('[경고] ' + a.map(String).join(' ').slice(0, 300)); cWarn(...a); };
+const seenErr = new Set();
+function errOnce(tag, e) { const k = tag + (e?.message ?? e); if (seenErr.has(k)) return; seenErr.add(k); console.error(`[갤러리] ${tag}`, e); }
+
+// ───────────── 옵션 ─────────────
+const O = {
+  id: IDS.includes(q.get('id')) ? q.get('id') : IDS[0],
+  paused: q.get('paused') === '1', slow: false, debug: q.has('debug'), story: q.get('story') === '1',
+  standIns: q.get('standins') !== '0', auto: q.get('auto') === '1', diff: q.get('diff') || 'normal',
+  player: Number(q.get('player') ?? 0.25), dlg: Number(q.get('dlg') ?? 1.5),
+};
+
+// ───────────── 가짜 맵 (설계 방: P2_PATTERNS.room) ─────────────
+function makeMap(room) {
+  const w = room.w, h = room.h, tiles = new Uint8Array(w * h);
+  for (const [x0, y0, x1, y1] of room.solids ?? []) for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) if (tx >= 0 && ty >= 0 && tx < w && ty < h) tiles[ty * w + tx] = 1;
+  return {
+    w, h, pxW: w * TILE, pxH: h * TILE, tiles, markers: [], decor: [],
+    typeAt(tx, ty) { if (tx < 0 || tx >= w || ty >= h) return 1; if (ty < 0) return 0; return tiles[ty * w + tx]; },
+    typeAtPx(x, y) { return this.typeAt(Math.floor(x / TILE), Math.floor(y / TILE)); },
+    isSolidPx(x, y) { const t = this.typeAtPx(x, y); return t === 1 || t === 3; },
+    markersOf() { return []; },
+    set(tx, ty, t) { if (tx >= 0 && ty >= 0 && tx < w && ty < h) tiles[ty * w + tx] = t; },
+    groundBelow(tx, ty) { for (let y = Math.max(0, ty); y < h; y++) if (this.typeAt(tx, y) === 1 && this.typeAt(tx, y - 1) !== 1) return y * TILE; return null; },
+  };
+}
+const DEFAULT_ROOM = { w: 56, h: 16, x0: 17, solids: [[0, 14, 55, 15]] };
+
+// ───────────── 가짜 플레이어 ─────────────
+class FakePlayer extends Entity {
+  constructor(x, y) {
+    super(x - 14, y - 64, 28, 64);
+    this.kind = 'player'; this.z = 5;
+    this.stats = { hp: 9999, maxHp: 9999, mp: 999, def: 10, res: 10 }; this.hp = 9999; this.mp = 999;
+    this.hits = 0; this.hitT = 0; this.iframes = 0; this.buffs = {}; this.dead = false; this.onG = false;
+  }
+  hurtbox() { return { x: this.x + 3, y: this.y + 6, w: this.w - 6, h: this.h - 6 }; }
+  get invuln() { return this.iframes > 0 || this.dead; }
+  takeHit(d, attack) { this.hitT = 0.25; this.hits++; this.iframes = 0.9; this.vx += (attack?.dir ?? 1) * 160; return true; }
+  refreshStats() {} heal() {}
+  update(dt, w) {
+    this.t += dt; if (this.hitT > 0) this.hitT -= dt; if (this.iframes > 0) this.iframes -= dt;
+    if (this.dead) return;
+    const b = w.boss; if (b) this.facing = Math.sign(b.cx - this.cx) || 1;
+    if (O.auto) { this.vx = Math.sin(this.t * 0.6) * 260; if (this.onG && Math.random() < 0.012) { this.vy = -790; this.onG = false; } }
+    else this.vx *= Math.pow(0.002, dt);
+    const m = w.map;
+    const nx = this.x + this.vx * dt, ex = this.vx > 0 ? nx + this.w : nx;
+    if (!m.isSolidPx(ex, this.y + this.h * 0.5) && !m.isSolidPx(ex, this.y + this.h * 0.9)) this.x = nx;
+    const pb = this.bottom;
+    this.vy = Math.min(1400, this.vy + 2200 * dt); this.y += this.vy * dt;
+    this.onG = false;
+    if (this.vy >= 0) {
+      const ty = Math.floor(this.bottom / TILE);
+      if ((m.typeAt(Math.floor((this.x + 4) / TILE), ty) === 1 || m.typeAt(Math.floor((this.x + this.w - 4) / TILE), ty) === 1) && pb <= ty * TILE + 2) { this.y = ty * TILE - this.h; this.vy = 0; this.onG = true; }
+    }
+    if (this.y > m.pxH + 80) { this.x = w.arena.x0 + TILE * 2; this.y = 0; this.vy = 0; }
+    const a = w.arena; this.x = Math.max(a.x0, Math.min(a.x1 - this.w, this.x));
+  }
+  draw(ctx) {
+    if (this.dead) return;
+    const x = this.cx, y = this.bottom, f = this.facing;
+    ctx.save(); ctx.translate(x, y); ctx.scale(f, 1);
+    if (this.iframes > 0 && Math.floor(this.t * 20) % 2) ctx.globalAlpha = 0.5;
+    ctx.fillStyle = this.hitT > 0 ? '#ff5060' : '#1a1420';
+    ctx.strokeStyle = '#9fb8ff'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(-10, 0); ctx.lineTo(-8, -30); ctx.lineTo(-13, -50); ctx.lineTo(-4, -58); ctx.lineTo(8, -56); ctx.lineTo(12, -30); ctx.lineTo(9, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#e8c8a8'; ctx.beginPath(); ctx.arc(2, -60, 7, 0, 7); ctx.fill();
+    ctx.fillStyle = '#a01020'; ctx.fillRect(-14, -52, 10, 26);
+    ctx.restore();
+  }
+}
+
+// ───────────── 가짜 월드 ─────────────
+function makeWorld(id) {
+  const def = DEFS[id], P = patternsOf(id, CLASSES[id]);
+  const room = P.room ?? DEFAULT_ROOM;
+  const map = makeMap(room);
+  const st = STAGES[def.stageId] ?? {};
+  const diff = getDiff(O.diff);
+  const W = {
+    game: {
+      flash(c, a) { W._flash = { c, a: Math.min(0.85, a ?? 0.8) }; }, toast(t) { W.toasts.push({ t: String(t), life: 2.5 }); },
+      debug: O.debug, settings: { flashFx: 1, reduceMotion: false }, viewW: VW, viewH: VH, fps: 60,
+      push(name, p = {}) { return fakePush(W, name, p); }, pop() { closeDialog(W); },
+    },
+    state: { difficulty: O.diff, progress: { bosses: [], flags: {}, seenScripts: [] }, stats: {} },
+    mode: O.story ? 'story' : 'arcade',
+    diff, stage: { id: def.stageId, level: st.level ?? LV[def.stageId] ?? 50, liquid: st.liquid ?? 'water' },
+    fx: new Particles(1400), camera: new Camera(VW, VH), lighting: new Lighting(),
+    entities: [], platforms: [], debugRects: [], overlays: [], toasts: [],
+    time: 0, hitstop: 0, slowmo: 0, timeStop: 0, cutscene: false, freezeEnemies: false, hudHidden: false, banner: null,
+    cleared: false, transitioning: false, inputLock: false, bossActive: false, dialog: null,
+    map, run: { score: 0, sp: 0, aw: 0, lives: 3 }, gimmick: null,
+    add(e) { e.world = W; W.entities.push(e); return e; },
+    addOverlay(o) { if (o) { o.t ??= 0; W.overlays.push(o); } return o; },
+    gimmickOf() { return null; },
+    spawnProjectile(o) { return W.add(new Projectile(o)); },
+    spawnEnemy(eid, x, y, o = {}) { return W.add(new Enemy(eid, x, y, { level: W.stage.level, diff: W.diff, facing: o.facing ?? -1, params: o.params, elite: false })); },
+    spawnPickup() {}, enemies() { return W.entities.filter((e) => (e.kind === 'enemy' || e.kind === 'boss') && !e.dead); },
+    hittables() { return W.enemies(); }, nearestEnemy() { return null; },
+    onBossDefeated(b) { W.cleared = true; W.banner = { text: 'STAGE CLEAR', sub: b.def.name + ' 격파!', t: 4, color: '#ffe070' }; W.slowmo = 1.6; },
+    breakTilesIn() {}, onPlayerHit() {}, onPlayerHurt() {}, onEnemyKilled() {}, addScore() {}, gainExp() {}, addAw() {},
+    playScript(sid) { fakePush(W, 'dialogue', { script: sid, world: W }); },
+  };
+  W.room = room;
+  W.lighting.darkness = Math.min(0.6, (st.darkness ?? 0.4) * 0.62);
+  W.lighting.res = 0.5;
+  const x0 = room.x0 * TILE, x1 = map.pxW, camX0 = Math.max(0, x0 - TILE);
+  W.arena = { x0, x1, cam: { x: camX0, y: 0, w: x1 - camX0, h: map.pxH } };
+  W.arenaX = x0;
+  W.camera.setBounds(camX0, 0, x1 - camX0, map.pxH);
+  W.camera.zoomTarget = Math.max(0.74, Math.min(1, VH / (map.pxH - TILE)));
+  W.camera.zoom = W.camera.zoomTarget;
+  W.camera.floorY = (P.floorRow ?? map.h - 2) * TILE;
+  return W;
+}
+/** dialogue 장면 흉내: 월드를 멈추고(스테이지 장면이 가려진 것처럼) 대사 상자를 띄운다 */
+function fakePush(W, name, p) {
+  if (name !== 'dialogue') { W.toasts.push({ t: `장면 '${name}' (갤러리에서는 생략)`, life: 2 }); return null; }
+  W.dialog = { id: p.script ?? '(대사)', lines: SCRIPTS[p.script] ?? p.lines ?? [], t: 0, onEnd: p.onEnd };
+  W.cutscene = true;
+  return { name };
+}
+function closeDialog(W) {
+  const d = W.dialog;
+  if (!d) return;
+  W.dialog = null; W.cutscene = !!S.forceCutscene;
+  try { d.onEnd?.(); } catch (e) { errOnce('대사 onEnd', e); }
+}
+
+// ───────────── 보스 만들기 ─────────────
+const S = { W: null, boss: null, status: {}, forceCutscene: false, msg: '', sync: [] };
+function statusOf(id) { return S.status[id] ?? (CLASSES[id] ? 'ok' : 'stub'); }
+/** 시작할 때 각 클래스를 한 번씩 만들어 본다 (생성자 오류를 목록 배지로 바로 보이게) */
+function probeClasses() {
+  for (const id of IDS) {
+    const C = CLASSES[id];
+    if (!C) { S.status[id] = 'stub'; continue; }
+    try { const W = makeWorld(id); W.player = W.add(new FakePlayer(W.arena.x0 + 200, W.map.pxH)); new C(W, DEFS[id], W.arena.x0 + (W.arena.x1 - W.arena.x0) * 0.72, (W.map.h - 2) * TILE); S.status[id] = 'ok'; }
+    catch (e) { S.status[id] = 'err'; errOnce(`${id} 생성`, e); }
+  }
+}
+function build(id = O.id, { phase = 0, act = null } = {}) {
+  O.id = id; S.msg = '';
+  const W = makeWorld(id), def = DEFS[id], C = CLASSES[id];
+  const a = W.arena, m = W.map;
+  const px = a.x0 + (a.x1 - a.x0) * O.player;
+  const fr = patternsOf(id, C).floorRow ?? m.h - 2;
+  const py = m.groundBelow(Math.floor(px / TILE), fr - 1) ?? fr * TILE;
+  W.player = W.add(new FakePlayer(px, py));
+  const bx = a.x0 + (a.x1 - a.x0) * 0.72, by = (m.h - 2) * TILE;
+  let boss = null;
+  try { boss = new (C || GenericBoss)(W, def, bx, by); if (C) S.status[id] = 'ok'; }
+  catch (e) { S.status[id] = 'err'; errOnce(`${id} 생성`, e); boss = new GenericBoss(W, def, bx, by); }
+  if (!O.standIns) boss.standIns = false;
+  W.boss = boss; W.add(boss); W.bossActive = true;
+  W.cutscene = !!S.forceCutscene;
+  S.W = W; S.boss = boss;
+  W.camera.follow(camTarget(W), DT, true);
+  if (phase) setPhase(phase);
+  if (act) doAct(act);
+  refreshUI();
+  return W;
+}
+function setPhase(n) {
+  const b = S.boss, W = S.W;
+  try {
+    if (typeof b.debugPhase === 'function') b.debugPhase(n);
+    else {
+      const ph = b.def.phases || [0.5];
+      while (b.phase < n && b.phase < ph.length) { b.hp = Math.floor(b.stats.maxHp * (ph[b.phase] - 0.01)); b.phase++; b.onPhase?.(b.phase, W); }
+    }
+  } catch (e) { errOnce(`debugPhase(${n})`, e); }
+}
+function doAct(name) {
+  const b = S.boss;
+  S.msg = '';
+  try {
+    if (typeof b.debugAct === 'function') { if (b.debugAct(name) === false) S.msg = `'${name}' 상태가 없다 (미구현)`; }
+    else if (GEN_STATES.includes(name) || typeof b['s_' + name] === 'function') b.setState(name);
+    else S.msg = `스텁 보스(GenericBoss)에는 '${name}' 이 없다`;
+  } catch (e) { errOnce(`debugAct(${name})`, e); }
+  refreshUI();
+}
+/** 플레이어 사망 → 부활 (world.onPlayerDeath → respawn 흉내: 한 프레임 쓰러진 뒤 부활, 보스 체력 가득) */
+function deathReset() {
+  const W = S.W, p = W.player, b = S.boss;
+  p.dead = true;
+  stepWorld(W, DT);
+  p.dead = false; p.iframes = 2.5; p.x = W.arena.x0 + TILE * 2; p.vx = p.vy = 0;
+  if (b && !b.dead && !(b.dying > 0)) {
+    if (b.phase > 0) for (const e of W.entities) if (e !== b && e !== p && (e.owner === b || e.boss === b) && ['projectile', 'hitbox', 'effect', 'hazard', 'zone'].includes(e.kind)) e.dead = true;
+    b.hp = b.stats.maxHp;
+  }
+  W.freezeEnemies = false; W.hudHidden = false;
+  W.banner = { text: 'READY?', sub: '부활 (onReset 확인)', t: 1.4, color: '#ffe7a0' };
+  S.msg = '플레이어 사망 → 부활';
+}
+function kill() {
+  const b = S.boss, W = S.W;
+  try { b.invuln = false; b.harmless = false; b.hp = 1; if (b.takeHit(99, { dir: 1, owner: W.player }, W, {}) !== true) { b.hp = 0; b.dying = 2.4; W.onBossDefeated(b); } }
+  catch (e) { errOnce('처치', e); }
+}
+
+// ───────────── 시뮬레이션 ─────────────
+function camTarget(W) {
+  const p = W.player, b = W.boss;
+  const mx = b && !b.dead ? (p.cx * 0.55 + b.cx * 0.45) : p.cx;
+  return { x: mx - 1, y: p.y, w: 2, h: p.h, vx: 0, vy: 0, facing: 1, onGround: true };
+}
+function stepWorld(W, dt) {
+  if (W.dialog) {
+    W.dialog.t += dt;
+    if (O.dlg > 0 && W.dialog.t >= O.dlg) closeDialog(W);
+    return;
+  }
+  if (W.hitstop > 0) { W.hitstop -= dt; return; }
+  let sdt = dt; if (W.slowmo > 0) { W.slowmo -= dt; sdt = dt * 0.35; }
+  W.time += sdt; if (W.timeStop > 0) W.timeStop -= dt;
+  const L = W.entities;
+  for (let i = 0; i < L.length; i++) { const e = L[i]; if (e.dead) continue; try { e.update(sdt, W); } catch (err) { errOnce(`${e.kind}:${e.def?.id ?? e.constructor?.name} update`, err); } }
+  W.entities = W.entities.filter((e) => !e.dead);
+  W.fx.update(sdt, W.map);
+  W.camera.follow(camTarget(W), dt);
+  W.lighting.begin();
+  for (const e of W.entities) { try { e.lights?.(W.lighting); } catch (err) { errOnce('lights', err); } }
+  for (const o of W.overlays) { o.t = (o.t ?? 0) + dt; try { o.update?.(dt, W); } catch (err) { o.dead = true; errOnce('overlay', err); } }
+  W.overlays = W.overlays.filter((o) => !o.dead && !(o.life != null && o.t >= o.life));
+  if (W._flash) { W._flash.a -= dt * 3; if (W._flash.a <= 0) W._flash = null; }
+  if (W.banner) { W.banner.t -= dt; if (W.banner.t <= 0) W.banner = null; }
+  for (const t of W.toasts) t.life -= dt;
+  W.toasts = W.toasts.filter((t) => t.life > 0).slice(-4);
+}
+function sim(W, sec) { const n = Math.round(sec / DT); for (let i = 0; i < n; i++) stepWorld(W, DT); }
+
+// ───────────── 그리기 ─────────────
+const bgImgs = {};
+function bgOf(stageId) {
+  const k = BG[stageId] ?? 's14_mirror';
+  if (!bgImgs[k]) { const im = new Image(); im.src = `../assets/bg/${k}.webp`; bgImgs[k] = im; }
+  return bgImgs[k];
+}
+function drawTiles(ctx, W, cam) {
+  const m = W.map, [c0, c1] = TILE_COL[W.stage.id] ?? ['#1a1220', '#ffd0c0'];
+  const tx0 = Math.max(0, Math.floor(cam.x / TILE) - 1), tx1 = Math.min(m.w - 1, Math.ceil((cam.x + cam.vw) / TILE) + 1);
+  for (let ty = 0; ty < m.h; ty++) for (let tx = tx0; tx <= tx1; tx++) {
+    if (m.typeAt(tx, ty) !== 1) continue;
+    ctx.fillStyle = c0; ctx.fillRect(tx * TILE, ty * TILE, TILE, TILE);
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(tx * TILE, ty * TILE + TILE - 3, TILE, 3); ctx.fillRect(tx * TILE + TILE - 2, ty * TILE, 2, TILE);
+    if (m.typeAt(tx, ty - 1) !== 1) { ctx.fillStyle = c1; ctx.globalAlpha = 0.35; ctx.fillRect(tx * TILE, ty * TILE, TILE, 2); ctx.globalAlpha = 1; }
+  }
+}
+function drawPanel(W, px, py, pw, ph, label) {
+  ctx.save();
+  ctx.translate(px, py);
+  ctx.beginPath(); ctx.rect(0, 0, pw, ph); ctx.clip();
+  ctx.scale(pw / VW, ph / VH);
+  const bg = bgOf(W.stage.id), cam = W.camera;
+  if (bg.complete && bg.naturalWidth) {
+    const s = Math.max(VW / bg.width, VH / bg.height) * 1.08;
+    const par = (cam.x - W.arena.x0) / Math.max(1, W.arena.x1 - W.arena.x0);
+    ctx.drawImage(bg, (VW - bg.width * s) / 2 - (par - 0.5) * 60, (VH - bg.height * s) / 2, bg.width * s, bg.height * s);
+  } else { ctx.fillStyle = '#140a18'; ctx.fillRect(0, 0, VW, VH); }
+  ctx.save();
+  cam.apply(ctx);
+  drawTiles(ctx, W, cam);
+  if (W.room?.water != null && !W.boss?._cStandIns?.deep) {   // 설계 방의 기본 물 (다곤 제단) — 대역 물이 없을 때만 참고용으로
+    ctx.fillStyle = 'rgba(8,38,66,0.55)';
+    const wy = W.room.water * TILE, fy = (patternsOf(W.boss.def.id, CLASSES[W.boss.def.id]).floorRow ?? W.map.h - 2) * TILE;
+    ctx.fillRect(W.arena.x0, wy, W.arena.x1 - W.arena.x0, fy - wy);
+    ctx.fillStyle = 'rgba(111,232,255,0.5)'; ctx.fillRect(W.arena.x0, wy, W.arena.x1 - W.arena.x0, 2);
+  }
+  W.fx.draw(ctx, 'back');
+  const list = W.entities.slice().sort((a, b) => a.z - b.z);
+  for (const e of list) { ctx.save(); try { e.draw(ctx, W); } catch (err) { errOnce(`${e.kind}:${e.def?.id ?? e.constructor?.name} draw`, err); } ctx.restore(); }
+  W.fx.draw(ctx, 'front');
+  if (W.game.debug) {
+    ctx.lineWidth = 1.5;
+    for (const e of W.entities) {
+      if (e.kind === 'boss') {
+        ctx.strokeStyle = '#0ff'; for (const hb of e.hurtboxes?.() ?? []) ctx.strokeRect(hb.x, hb.y, hb.w, hb.h);
+        ctx.strokeStyle = '#ff0'; for (const hb of e.hitParts?.() ?? []) if (hb && !hb.off) ctx.strokeRect(hb.x, hb.y, hb.w, hb.h);
+      } else if (e.kind === 'hazard' || e.kind === 'projectile') {
+        ctx.strokeStyle = e.on === false ? 'rgba(255,0,255,0.3)' : '#f0f'; ctx.strokeRect(e.x, e.y, e.w, e.h);
+        if (e.line) { ctx.beginPath(); ctx.moveTo(e.line.x0, e.line.y0); ctx.lineTo(e.line.x1, e.line.y1); ctx.stroke(); }
+        if (e.circle) { ctx.beginPath(); ctx.arc(e.circle.x, e.circle.y, e.circle.r, 0, 7); ctx.stroke(); }
+      } else if (e.kind === 'player') { ctx.strokeStyle = '#0f0'; const hb = e.hurtbox(); ctx.strokeRect(hb.x, hb.y, hb.w, hb.h); }
+    }
+    const A = W.boss?.A;
+    if (A) { ctx.strokeStyle = 'rgba(255,200,0,0.5)'; ctx.setLineDash([8, 6]); ctx.strokeRect(A.x0, A.top, A.w, A.floor - A.top); ctx.setLineDash([]); }
+  }
+  ctx.restore();
+  W.lighting.render(ctx, cam, VW, VH);
+  ctx.save(); cam.apply(ctx); W.fx.draw(ctx, 'top'); ctx.restore();
+  for (const o of W.overlays) { if (o.dead) continue; ctx.save(); try { o.draw?.(ctx, VW, VH, W); } catch (err) { o.dead = true; errOnce('overlay draw', err); } ctx.restore(); }
+  if (W._flash) { ctx.globalAlpha = Math.min(1, W._flash.a); ctx.fillStyle = W._flash.c; ctx.fillRect(0, 0, VW, VH); ctx.globalAlpha = 1; }
+  drawHud(W, label);
+  ctx.restore();
+}
+function drawHud(W, label) {
+  const b = W.boss;
+  ctx.fillStyle = 'rgba(0,0,0,0.62)'; ctx.fillRect(0, 0, VW, 50);
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.font = 'bold 18px "Noto Sans KR", sans-serif'; ctx.fillStyle = '#ffd6d0';
+  ctx.fillText(`${b.def.name} · ${b.def.title}`, 12, 22);
+  const k = Math.max(0, b.hp / b.stats.maxHp), kg = Math.max(0, (b.hpGhost ?? b.hp) / b.stats.maxHp);
+  ctx.fillStyle = '#2a0a12'; ctx.fillRect(12, 30, 420, 10);
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(12, 30, 420 * kg, 10);
+  ctx.fillStyle = b.invuln ? '#8a8a9a' : '#e01a3a'; ctx.fillRect(12, 30, 420 * k, 10);
+  for (const t of b.def.phases ?? []) { ctx.fillStyle = '#000'; ctx.fillRect(12 + 420 * t - 1, 28, 2, 14); }
+  ctx.font = '13px ui-monospace, monospace'; ctx.fillStyle = b.telegraph ? '#ffc860' : '#c8b8b0';
+  ctx.fillText(`${label ?? ''} state=${b.state} ph=${b.phase} ${b.telegraph ? '[예고]' : ''}${b.invuln ? '[무적]' : ''}${W.freezeEnemies ? '[적 정지]' : ''}${W.cutscene ? '[컷신]' : ''}`, 450, 22);
+  ctx.fillStyle = '#9a8a86'; ctx.fillText(`피격 ${W.player.hits}  개체 ${W.entities.length}  파티클 ${W.fx.list.length}`, 450, 42);
+  if (W.banner) {
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 44px serif'; ctx.fillStyle = W.banner.color || '#ffe070'; ctx.fillText(W.banner.text, VW / 2, VH * 0.36);
+    if (W.banner.sub) { ctx.font = '18px "Noto Sans KR", sans-serif'; ctx.fillText(W.banner.sub, VW / 2, VH * 0.36 + 32); }
+  }
+  ctx.textAlign = 'left';
+  W.toasts.forEach((t, i) => { ctx.font = '14px "Noto Sans KR", sans-serif'; ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(12, VH - 30 - i * 24, Math.min(VW - 24, ctx.measureText(t.t).width + 16), 22); ctx.fillStyle = '#ffe0c0'; ctx.fillText(t.t, 20, VH - 14 - i * 24); });
+  if (W.dialog) {
+    const d = W.dialog, line = d.lines.find((l) => l && l.text) ?? { who: '', text: '(대사 없음)' };
+    const txt = typeof line.text === 'string' ? line.text : (line.text?.default ?? Object.values(line.text ?? {})[0] ?? '');
+    ctx.fillStyle = 'rgba(8,4,12,0.9)'; ctx.fillRect(40, VH - 150, VW - 80, 120);
+    ctx.strokeStyle = '#8a3040'; ctx.strokeRect(40, VH - 150, VW - 80, 120);
+    ctx.font = 'bold 15px "Noto Sans KR", sans-serif'; ctx.fillStyle = '#ffb0a0'; ctx.fillText(`페이즈 대사 ${d.id} — ${line.who ?? ''}`, 56, VH - 124);
+    ctx.font = '16px "Noto Sans KR", sans-serif'; ctx.fillStyle = '#f0e6d8'; ctx.fillText(String(txt).slice(0, 60), 56, VH - 94);
+    ctx.font = '12px "Noto Sans KR", sans-serif'; ctx.fillStyle = '#9a8a86'; ctx.fillText('Enter: 대사 넘기기 (월드는 대사 동안 멈춘다)', 56, VH - 44);
+  }
+}
+
+// ───────────── UI ─────────────
+/** on/disabled 가 함수면 syncUI 가 제자리에서 갱신한다 (버튼을 다시 만들지 않아 누르는 도중 클릭이 사라지지 않게) */
+function btn(parent, label, fn, { on = false, disabled = false, title = '' } = {}) {
+  const b = document.createElement('button');
+  b.textContent = label; if (title) b.title = title;
+  b.onclick = () => { fn(); refreshUI(); };
+  parent.appendChild(b);
+  S.sync.push([b, on, disabled]);
+  return b;
+}
+function syncUI() {
+  for (const [b, on, dis] of S.sync) {
+    try { b.classList.toggle('on', !!(typeof on === 'function' ? on() : on)); b.disabled = !!(typeof dis === 'function' ? dis() : dis); } catch { /* 보스를 새로 만드는 중 */ }
+  }
+}
+function refreshUI() {
+  const b = S.boss, id = O.id, P = patternsOf(id, CLASSES[id]);
+  S.sync = [];
+  $('gtitle').textContent = GROUP.title; $('gsub').textContent = GROUP.sub;
+  const L = $('bosses'); L.textContent = '';
+  for (const bid of IDS) {
+    const d = DEFS[bid], st = statusOf(bid);
+    const e = document.createElement('button');
+    e.className = 'boss' + (bid === id ? ' on' : '');
+    e.innerHTML = `<span>${d.name} <small>${d.stageId}</small></span>`;
+    const g = document.createElement('span');
+    g.className = 'badge ' + (st === 'ok' ? 'b-ok' : st === 'err' ? 'b-err' : 'b-stub');
+    g.textContent = st === 'ok' ? `구현 · ${CLASSES[bid].name}` : st === 'err' ? '생성 오류' : '스텁 → GenericBoss';
+    e.appendChild(g);
+    e.onclick = () => { build(bid); };
+    L.appendChild(e);
+  }
+  const ph = $('phases'); ph.textContent = '';
+  const nph = (DEFS[id].phases ?? []).length;
+  for (let n = 0; n <= nph; n++) btn(ph, `P${n + 1}`, () => build(id, { phase: n }), { on: () => S.boss.phase === n });
+  const acts = $('acts'); acts.textContent = '';
+  const stub = !(b.debugAct && CLASSES[id]);
+  const attackList = b.attackNames?.() ?? P.attacks ?? [];
+  if (stub) for (const s of GEN_STATES) btn(acts, s + ' (Generic)', () => doAct(s), { on: () => S.boss.state === s });
+  for (const s of attackList) {
+    const has = typeof b['s_' + s] === 'function';
+    btn(acts, s, () => doAct(s), { on: () => S.boss.state === s, disabled: !has, title: has ? '' : '아직 구현되지 않음 (P2_PATTERNS 계약)' });
+  }
+  const tr = $('trans'); tr.textContent = '';
+  const trans = b.transitionNames?.() ?? Object.values(P.transitions ?? {}).map((t) => t.state);
+  for (const s of trans) btn(tr, '⇢ ' + s, () => doAct(s), { on: () => S.boss.state === s, disabled: stub, title: '전환 상태: 그 페이즈로 들어가 연출을 다시 보여 준다' });
+  for (const s of b.helperNames?.() ?? P.helpers ?? []) {
+    const has = typeof b['s_' + s] === 'function';
+    btn(tr, s, () => doAct(s), { on: () => S.boss.state === s, disabled: !has, title: has ? '' : '아직 구현되지 않음' });
+  }
+  btn(tr, 'idle', () => doAct('idle'), { on: () => S.boss.state === 'idle' });
+  const T = $('tools'); T.textContent = '';
+  btn(T, '⏸ 일시정지', () => { O.paused = !O.paused; }, { on: () => O.paused });
+  btn(T, '⏭ 0.1초', () => { sim(S.W, 0.1); draw(); });
+  btn(T, '느리게 ×0.25', () => { O.slow = !O.slow; }, { on: () => O.slow });
+  btn(T, '사망→부활 (onReset)', () => deathReset());
+  btn(T, '처치', () => kill());
+  btn(T, '판정 표시', () => { O.debug = !O.debug; S.W.game.debug = O.debug; }, { on: () => O.debug });
+  btn(T, '적 정지', () => { S.W.freezeEnemies = !S.W.freezeEnemies; }, { on: () => S.W.freezeEnemies });
+  btn(T, '컷신 유지', () => { S.forceCutscene = !S.forceCutscene; if (!S.W.dialog) S.W.cutscene = S.forceCutscene; }, { on: () => S.forceCutscene, title: '필살기·각성 컷인 흉내: 페이즈 대사가 미뤄지는지 본다' });
+  btn(T, '스토리 모드', () => { O.story = !O.story; S.W.mode = O.story ? 'story' : 'arcade'; }, { on: () => O.story, title: '페이즈 대사(처음 1회)를 띄운다' });
+  btn(T, '대역 기믹', () => { O.standIns = !O.standIns; build(id); }, { on: O.standIns, title: '방 기믹이 없을 때 c_common 대역 기믹 사용' });
+  btn(T, '자동 회피', () => { O.auto = !O.auto; }, { on: () => O.auto });
+  btn(T, '인페르노', () => { O.diff = O.diff === 'inferno' ? 'normal' : 'inferno'; build(id); }, { on: O.diff === 'inferno' });
+  btn(T, '새로 만들기', () => build(id));
+  btn(T, '전체 보기', () => { location.search = '?grid=1'; });
+  btn(T, '대사 넘기기', () => closeDialog(S.W), { on: () => !!S.W.dialog, disabled: () => !S.W.dialog });
+  syncUI();
+}
+function infoText() {
+  const W = S.W, b = S.boss, id = O.id;
+  const P = patternsOf(id, CLASSES[id]);
+  const wts = b.weights ? b.weights().map(([k, v]) => `${k} ${v}`).join(' · ') : Object.entries(P.weights?.[Math.min(b.phase, (P.weights?.length ?? 1) - 1)] ?? {}).map(([k, v]) => `${k} ${v}`).join(' · ');
+  const sc = b._cScripts;
+  const si = Object.entries(b._cStandIns ?? {}).filter(([, g]) => !g.dead).map(([k, g]) => {
+    if (k === 'magma' || k === 'deep') return `${k}(수면 ${Math.round(g.level)})`;
+    if (k === 'wind') return `wind(${g.phase}${g.auto ? ' 자동' : ''})`;
+    if (k === 'voidwall') return `voidwall(${g.active ? `${Math.round(g.wallX)}~${Math.round(g.wallR)}` : '열림'})`;
+    if (k === 'blight') return `blight(구름 ${g.clouds.length} 주머니 ${g.pods.length})`;
+    if (k === 'heartbeat') return `heartbeat(${g.beat}s #${g.beatIndex})`;
+    return k;
+  }).join('  ') || '-';
+  return [
+    `상태 ${b.state}   페이즈 ${b.phase + 1}/${(b.def.phases?.length ?? 0) + 1}   체력 ${Math.round(b.hp / b.stats.maxHp * 100)}%   예고 ${b.telegraph ? '켜짐' : '-'}   무적 ${b.invuln ? '예' : '-'}   무해 ${b.harmless ? '예' : '-'}`,
+    `이름 ${b.def.name} · ${b.def.title}   클래스 ${statusOf(id) === 'err' ? CLASSES[id].name + ' (생성 오류 → GenericBoss)' : CLASSES[id]?.name ?? 'GenericBoss (스텁)'}   모드 ${W.mode}   난이도 ${O.diff}`,
+    `가중치(이번 페이즈) ${wts || '-'}   강제 ${b.forced?.length ? b.forced.join(',') : '-'}`,
+    `페이즈 대사 대기 ${sc?.q?.length ?? 0} / 표시 ${sc?.on?.id ?? '-'} / 바쁨 ${phaseScriptBusy(b) ? '예' : '-'}   본 대사 ${W.state.progress.seenScripts.join(', ') || '-'}`,
+    `대역 기믹 ${si}   소환수 ${(b._cMinions ?? []).filter((e) => !e.dead).length}   어둠 ${W.lighting.darkness.toFixed(2)}   오버레이 ${W.overlays.length}`,
+    `시간 ${W.time.toFixed(1)}s   ${S.msg}`,
+  ].join('\n');
+}
+function draw() {
+  drawPanel(S.W, 0, 0, cv.width, cv.height, '');
+  $('info').textContent = infoText();
+}
+
+// ───────────── 전체 보기 (스크린샷용) ─────────────
+function gridMode() {
+  document.body.classList.add('grid');
+  const cols = Number(q.get('cols') || 2), rows = Math.ceil(IDS.length / cols);
+  const pw = Number(q.get('pw') || 640), phh = Math.round(pw * VH / VW);
+  cv.width = pw * cols; cv.height = phh * rows;
+  const act = q.get('act') || 'idle', t = Number(q.get('t') ?? 1.2), phn = Number(q.get('ph') || 0);
+  const panels = IDS.map((id) => { const W = build(id, { phase: phn, act: act === 'idle' ? null : act }); sim(W, t); return { id, W }; });
+  const render = () => {
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, cv.width, cv.height);
+    panels.forEach((P, i) => drawPanel(P.W, (i % cols) * pw, Math.floor(i / cols) * phh, pw, phh, statusOf(P.id) === 'ok' ? '' : '[스텁]'));
+  };
+  for (const P of panels) bgOf(P.W.stage.id).addEventListener('load', render);
+  render();
+  window.__gal = { panels, done: true };
+}
+
+// ───────────── 시작 ─────────────
+probeClasses();
+if (q.get('grid') === '1') gridMode();
+else {
+  build(O.id, { phase: Number(q.get('ph') || 0), act: q.get('act') });
+  if (q.has('t')) sim(S.W, Number(q.get('t')));
+  addEventListener('keydown', (e) => {
+    if (e.code === 'Space') { O.paused = !O.paused; e.preventDefault(); syncUI(); }
+    else if (e.key === '.') { sim(S.W, 0.1); }
+    else if (e.key === 'r' || e.key === 'R') { deathReset(); }
+    else if (e.key === 'Enter') { closeDialog(S.W); refreshUI(); }
+  });
+  let last = performance.now(), acc = 0, uiT = 0;
+  const loop = (now) => {
+    const dt = Math.min(0.1, (now - last) / 1000); last = now;
+    if (!O.paused) {
+      acc += dt * (O.slow ? 0.25 : 1);
+      let n = 0;
+      while (acc >= DT && n++ < 6) { stepWorld(S.W, DT); acc -= DT; }
+      if (n >= 6) acc = 0;
+    }
+    draw();
+    uiT += dt;
+    if (uiT > 0.25) { uiT = 0; syncUI(); }
+    requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+  window.__gal = {
+    S, O, build, act: doAct, phase: (n) => build(O.id, { phase: n }), reset: deathReset, kill,
+    step: (sec) => sim(S.W, sec), get world() { return S.W; }, get boss() { return S.boss; }, notes, ids: IDS, done: true,
+  };
+}
+</script>
+</body>
+</html>
