@@ -120,5 +120,8 @@
   }
  ],
  "imagesSpent": 19,
- "creditsSpent": 38.0
+ "creditsSpent": 38.0,
+ "creditsAtEnd": 5151,
+ "note": "Result URLs expire after 24 h; every kept image is stored as q95 webp under tools/painted/raw/b_argen/ (portrait → assets/portraits/b_argen.webp). urlWithoutWatermark was used, so no watermark removal was needed. Mount art (mt_argen) not generated here — 82 credits of the 120 cap remain for EX-INTEG if wanted.",
+ "budget": "19 images × 2 credits = 38 credits (cap 120; account 5189 → 5151)"
 }
