@@ -36,6 +36,7 @@ export const PERSONALITY = {
   bran:   { cad: 0.9,  A: 1.1,  bob: 1.3, lean: 1.0, vol: 1.4, dust: 1.5, arm: 1.0, sprintK: 1.25, skidDecel: 1300, airFx: null, sprintKick: 0.8, sprintGravel: 1 },
   lia:    { cad: 1.1,  A: 1.0,  bob: 0.8, lean: 1.1, vol: 0.7, dust: 0.7, arm: 1.0, sprintK: 1.38, skidDecel: 2200, airFx: 'feather', ninja: true },
   azel:   { cad: 1.0,  A: 1.0,  bob: 0.6, lean: 1.0, vol: 0.8, dust: 0.5, arm: 1.0, sprintK: 1.32, skidDecel: 1800, airFx: 'bats', ninja: true, sprintMist: true },
+  isolde: { cad: 0.97, A: 1.06, bob: 0.9, lean: 1.0, vol: 1.15, dust: 1.0, arm: 0.85, sprintK: 1.3, skidDecel: 1700, airFx: 'feather_w' },   // 판금 기사: 보폭 크고 발소리 무겁게, 공중 점프엔 날개 투구의 흰 깃
   _default: { cad: 1.0, A: 1.0, bob: 1.0, lean: 1.0, vol: 1.0, dust: 1.0, arm: 1.0, sprintK: 1.32, skidDecel: 1800, airFx: null },
 };
 

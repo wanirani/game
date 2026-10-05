@@ -108,7 +108,15 @@ def build(rig_path, dbg=False, out=None, quiet=False):
     for box in clean.get('cutBoxes', []):  # 원화 밖으로 삐져나온 잡동사니 제거
         fig[box[1]:box[3], box[0]:box[2]] = False
         fig_body[box[1]:box[3], box[0]:box[2]] = False
+    # opt-in torsoCarveBg (hero7): 실루엣에 둘러싸인 배경색 구멍(팔과 등 사이로 비치는 회색, heroes3 §5.2 의 회색 쐐기)을 몸통 부품에서 뺀다.
+    # 리그의 다각형을 손으로 파내는 대신 빌드에서: 남은(=배경색이라 메우지 않은) 구멍만, 2px 넓혀서
+    bg_holes = None
+    if rig.get('params', {}).get('torsoCarveBg'):
+        bg_holes = ndi.binary_fill_holes(fig) & ~fig
+        bg_holes = cv2.dilate(bg_holes.astype(np.uint8), np.ones((5, 5), np.uint8)) > 0
     fig_body = ndi.binary_fill_holes(fig_body)
+    if bg_holes is not None:
+        fig_body &= ~bg_holes
     C.fig = fig
     figE = cv2.erode(fig.astype(np.uint8), np.ones((3, 3), np.uint8), iterations=1) > 0
     figEB = cv2.erode(fig_body.astype(np.uint8), np.ones((3, 3), np.uint8), iterations=1) > 0
@@ -305,6 +313,8 @@ def build(rig_path, dbg=False, out=None, quiet=False):
         if P.get('skirtArmPad'):   # opt-in (heroes3rev): 팔 둘레 px 만큼도 인페인트 — 팔 윤곽 가장자리(피부·소매 주름)가 자락에 남아 팔이 비키면 얼룩이 되는 것 방지
             k = 2 * int(P['skirtArmPad']) + 1
             sk_vis &= ~(cv2.dilate((R('farm') | R('uarm')).astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))) > 0)
+        if P.get('skirtTorsoCut'):   # opt-in (hero7): 몸통 영역(허리 판금 타셋 등) 밑의 자락은 인페인트 — 자락이 돌 때 몸통 조각이 따라 나오지 않게
+            sk_vis &= ~R('torso')
         ssrc = (lum < P['skirtSrcMaxLum']) if P.get('skirtSrcMaxLum') else None
         img_s = inpaint(base, sk_vis, skirt_near_full, 11, tone=P.get('skirtTone', 0.55), srcm=ssrc)
         add('skirt', img_s, skirt_near_full & fig, J['skirtPivot'], J['skirtHem'])

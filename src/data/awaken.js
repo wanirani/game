@@ -136,7 +136,7 @@ export const AWAKEN = {
     lines: ['빼앗긴 하늘이여 —', '이 창끝에서', '다시 포효하라!'],
     seal: '龍',
     cutin: 'cg/cutin_isolde', portrait: 'portraits/isolde',
-    face: [0.6, 0.4], eye: [0.62, 0.31], portraitFace: [0.5, 0.3],   // 컷인 그림이 들어오면 tools/kling/cutin_anchors.json 값으로 맞춘다
+    face: [0.62, 0.4], eye: [0.641, 0.355], portraitFace: [0.5, 0.3],
     color: '#8ae8ff', dark: '#0c1428', accent: '#2a4a8a',
     cue: { name: 'thunderclap', pitch: 0.9 },
     style: 'pillar',

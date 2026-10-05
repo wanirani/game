@@ -39,7 +39,7 @@ export function statsOf(inst) {
 export function rarityName(r) { return ItemsM.RARITIES?.[r]?.name ?? ['일반', '고급', '희귀', '영웅', '전설', '신화'][r] ?? ''; }
 export function sellOf(inst) { const f = fn(ItemsM.sellPrice); return f ? safe(() => f(inst), 0) : Math.floor((baseOf(inst)?.price ?? 10) * 0.3); }
 export const SLOT_KIND = { weapon: '무기', head: '머리 방어구', body: '갑옷', cloak: '망토', acc: '장신구', consumable: '소모품', material: '재료', key: '중요 물품' };
-export const WTYPE_NAME = { whip: '채찍', sword: '장검', greatsword: '대검', dagger: '단검', gun: '총', staff: '지팡이' };
+export const WTYPE_NAME = { whip: '채찍', sword: '장검', greatsword: '대검', dagger: '단검', gun: '총', staff: '지팡이', spear: '창' };
 
 /** 아이템 설명 줄: [{text, color?}] (items.js 의 itemDesc 가 있으면 사용) */
 export function descLines(inst) {

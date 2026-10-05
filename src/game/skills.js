@@ -3795,7 +3795,7 @@ ULTS.isolde = (p, w, v = ultCtx(p, w)) => {
     }
   };
   ultDirector(w, p, {
-    v, dur: 2.6, dim: ISO_DIM, dimCol: ISO_DIMCOL, d: { leap: false, hid: false, dive: false, slam: 0, fin: false, sx: x0, sy: b0, si: 0, k: 0, k2: 0 },
+    v, dur: 2.45, dim: ISO_DIM, dimCol: ISO_DIMCOL, d: { leap: false, hid: false, dive: false, slam: 0, fin: false, sx: x0, sy: b0, si: 0, k: 0, k2: 0 },
     sky: { y: V0.y, h: V0.h, ...ISO_SKYG },
     kit: { zoom: 0.92, zoomHold: 0.2 },   // 도약을 따라 화면이 물러난다 (키트의 시작 줌 대신)
     start(e, ww) { if (!e.d.kit) ww.camera.zoomPulse(0.92, 0.25, 0.4, 0.4); },

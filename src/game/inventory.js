@@ -331,7 +331,7 @@ export function quickHeal(state, hero, player) {
 
 // ───────────────────────────── 정렬 · 판매 · 잠금 · 구매 ─────────────────────────────
 const SLOT_ORDER = { weapon: 0, head: 1, body: 2, cloak: 3, acc: 4, consumable: 5, material: 6, key: 7 };
-const WT_ORDER = { whip: 0, sword: 1, greatsword: 2, dagger: 3, gun: 4, staff: 5 };
+const WT_ORDER = { whip: 0, sword: 1, greatsword: 2, dagger: 3, gun: 4, staff: 5, spear: 6 };
 function sortKey(state, it) {
   const b = ITEMS[it.baseId] || {};
   return { eq: isEquipped(state, it.uid) ? 0 : 1, slot: SLOT_ORDER[b.slot] ?? 9, wt: WT_ORDER[b.wtype] ?? 0, tier: b.tier ?? 0, r: it.rarity ?? 0, lv: it.level ?? 0, t: it.t ?? 0, name: b.name ?? '' };

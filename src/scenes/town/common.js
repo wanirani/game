@@ -74,7 +74,7 @@ function clipRect(r, c, minH) {
 let LIST_SEQ = 0;
 
 export const SLOT_LABEL = { weapon: '무기', head: '투구', body: '갑옷', cloak: '망토', acc: '장신구', consumable: '소모품', material: '재료', key: '귀중품' };
-export const WTYPE_LABEL = { whip: '채찍', sword: '장검', greatsword: '대검', dagger: '단검', gun: '총', staff: '지팡이' };
+export const WTYPE_LABEL = { whip: '채찍', sword: '장검', greatsword: '대검', dagger: '단검', gun: '총', staff: '지팡이', spear: '창' };
 export const EQUIP_KINDS = new Set(['weapon', 'head', 'body', 'cloak', 'acc']);
 export const rarityColor = (r) => COLORS.rarity[clamp(r ?? 0, 0, 5)];
 

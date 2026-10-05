@@ -164,6 +164,11 @@ function fallbackIcon(ctx, id, cx, cy, s) {
       ctx.strokeStyle = '#7a5a3a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-14, 16); ctx.lineTo(10, -10); ctx.stroke();
       ctx.fillStyle = metal; ctx.beginPath(); ctx.arc(12, -12, 6, 0, TAU); ctx.fill();
       break;
+    case 'spear':   // 창: 비스듬한 긴 자루 + 버들잎 창날 + 술
+      ctx.strokeStyle = '#6a4a2a'; ctx.lineWidth = 2.6; ctx.beginPath(); ctx.moveTo(-17, 17); ctx.lineTo(7, -7); ctx.stroke();
+      ctx.fillStyle = metal; ctx.beginPath(); ctx.moveTo(17, -17); ctx.lineTo(9, -5); ctx.lineTo(5, -9); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#6ad0e0'; ctx.beginPath(); ctx.moveTo(6, -6); ctx.lineTo(-1, 3); ctx.lineTo(2, -4); ctx.closePath(); ctx.fill();
+      break;
     case 'body':
       ctx.fillStyle = metal; ctx.beginPath(); ctx.moveTo(-14, -12); ctx.lineTo(14, -12); ctx.lineTo(11, 16); ctx.lineTo(-11, 16); ctx.closePath(); ctx.fill();
       ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(-2, -12, 4, 28);
@@ -285,7 +290,7 @@ function fallbackIcon(ctx, id, cx, cy, s) {
 }
 
 const HEART_COL = ['#dff4ff', '#ff7a2a', '#3ad0c8', '#bfe0ff', '#c060ff', '#9ad040'];   // data/items.js k_heart_n.color 와 같은 순서
-const RIFT_KINDS = new Set(['whip', 'sword', 'greatsword', 'dagger', 'gun', 'staff', 'head', 'body', 'cloak', 'ring', 'amulet']);
+const RIFT_KINDS = new Set(['whip', 'sword', 'greatsword', 'dagger', 'gun', 'staff', 'spear', 'head', 'body', 'cloak', 'ring', 'amulet']);
 function glowDot(ctx, x, y, r, col, a) {
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';

@@ -45,6 +45,7 @@ export const FEEL_MOVE_OVERRIDES = {
   gsDown: { cls: 'H', otg: true, gb: true },
   dgDown: { cls: 'H', otg: true, gb: true },
   stDown: { cls: 'H', otg: true, gb: true },
+  spDown: { cls: 'H', otg: true, gb: true },   // 창 급강하 찌르기 (이졸데)
   gnDown: { cls: 'H', otg: true },
   gnDash: { cls: 'L' },   // 미끄러지며 4연사: 탄마다 H(6프레임)면 한 번에 누적 상한 0.40초를 다 쓴다 → 총탄 L (2프레임)
   whipA2: { gb: true },
@@ -170,7 +171,7 @@ export const HIT_SPRITE = {
   bullet: { size: [26, 32, 40, 60], life: 0.10 },
   glow: { size: [40, 55, 70, 90], life: 0.14 },
   byFx: { whip: 'cut', slash: 'cut', thrust: 'streak', pierce: 'streak', heavy: 'star', blunt: 'star', shot: 'bullet', bullet: 'bullet', magic: 'glow', fire: 'glow', ice: 'glow', holy: 'glow', dark: 'glow', thunder: 'glow' },
-  byWeapon: { whip: 'whip', sword: 'slash', dagger: 'slash', greatsword: 'heavy', gun: 'shot', staff: 'magic' },
+  byWeapon: { whip: 'whip', sword: 'slash', dagger: 'slash', greatsword: 'heavy', gun: 'shot', staff: 'magic', spear: 'thrust' },
 };
 
 /**

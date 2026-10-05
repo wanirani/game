@@ -11,14 +11,14 @@
 //      2차 전직 직업 중 박자 장식이 있는 직업(폭풍의 소환사: 낙뢰, 헬파이어: 착탄 폭발)은 박자마다 장식이 붙는다.
 //  ULTFX.final(w, x, y, {color, accent, tier, ground, classId, targets, noFlash, flashColor, shake, impact, impactFg, impactBg, flourish, silent}) →
 //      번쩍임 0.6(game.flash 정책) + 고리 1/2/3 + 불씨 비 40(1차+) + 2차: 임팩트 프레임 2장(검정 + 흰 실루엣 → difference 반전; low 는 흰 번쩍임) ·
-//      바닥 균열 · 직업 장식(24종, ULT_FLOURISH). 임팩트 프레임 동안에는 화면 번쩍임을 두 프레임 미뤘다가 다시 켠다(검정 화면이 씻기지 않게).
+//      바닥 균열 · 직업 장식(28종, ULT_FLOURISH). 임팩트 프레임 동안에는 화면 번쩍임을 두 프레임 미뤘다가 다시 켠다(검정 화면이 씻기지 않게).
 //      임팩트 프레임은 시전당 2번까지, 0.5초 간격 이상이며 화면 층 맨 끝에 그린다. ground: true 면 균열·타원을 가까운 바닥에 붙인다.
 //  ULTFX.afterimage(w, p, tint, {life, gap, min, max, tier, alpha}) → 캐시 잔상 비트맵 1장 → true | false
 //      단계별 동시 상한 0/3/5, 품질 상한 8/5/3, 0.045초 간격 제한. 영웅은 잔상을 만들 때 한 번만 그리고, 그 뒤로는 비트맵만 그린다.
 //  ULTFX.end(w, p?, {quick}) → 줌·기울기·레터박스 복구, 화면 층 0.25초 페이드 후 제거
 //  (추가) ULTFX.prepare(w, p?) 미리 굽기 · ULTFX.flourish(w, classId, x, y, o) 직업 장식만 · ULTFX.active(w) · ULTFX.tierOf(p) ·
 //         ULTFX.accentOf(classId) · ULTFX.glow(color) 빛 스프라이트(품질별 256/192/128px) · ULTFX.sprite(name) 장식 스프라이트
-//  ULT_TIERS[0|1|2] (= ULT_TIERS.T0/T1/T2) 단계 표 · ULT_FLOURISH[classId] {name, colors, sprites} · ULTFX_STATS (시험용 계수)
+//  ULT_TIERS[0|1|2] (= ULT_TIERS.T0/T1/T2) 단계 표 · ULT_FLOURISH[classId] {name, colors, sprites} (2차 전직 28종) · ULTFX_STATS (시험용 계수)
 //
 // 성능 (feel §8, MASTER_PLAN §5.2)
 //  · 프레임마다 그라디언트를 만들지 않는다 (굽기 때만: ULTFX_STATS.gradients). 모든 빛·문양은 캐시 스프라이트.
@@ -101,6 +101,10 @@ export const ULT_FLOURISH = {
   azel_bloodking:     { name: '혈왕의 관', colors: ['#ff1a2a', '#ffd84a', '#5a0010'], sprites: ['crown'] },
   azel_dawnbringer:   { name: '여명', colors: ['#ffd070', '#ff2040', '#fff8e8'], sprites: ['moon', 'sun'] },
   azel_seraph:        { name: '흑백의 날개', colors: ['#ffffff', '#b060ff', '#1a1a2a'], sprites: ['wing', 'wingD', 'crescentW', 'crescentD'] },
+  isolde_stormlord:   { name: '뇌룡의 날개', colors: ['#bfe8ff', '#ffffff', '#ffe070'], sprites: [] },
+  isolde_wyrmknight:  { name: '흑룡의 불길', colors: ['#ff6a2a', '#c070ff', '#ffd0a0'], sprites: [], soft: ['#3a1a2a', '#ff6a2a'] },
+  isolde_einherjar:   { name: '발키리의 강림', colors: ['#fff2b0', '#ffd84a', '#ffffff'], sprites: ['wing'] },
+  isolde_spearsaint:  { name: '천 개의 창끝', colors: ['#ffd0d8', '#d02040', '#ffffff'], sprites: [] },
 };
 
 /** 시험·계측용 계수 */
@@ -175,7 +179,7 @@ function visAccent(classId, col) {
   const a = accentOf(classId, col), v = rgbOf(a);
   return (0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]) / 255 < 0.22 ? col : a;
 }
-const AURA_DEF = { kael: 'holy', sera: 'holy', victor: 'fire', bran: 'fire', lia: 'dark', azel: 'blood' };
+const AURA_DEF = { kael: 'holy', sera: 'holy', victor: 'fire', bran: 'fire', lia: 'dark', azel: 'blood', isolde: 'thunder' };
 function auraOf(classId, charId, accent) {
   const A = CLASSES[classId]?.look?.aura;
   if (A?.type) return { type: A.type, color: A.color ?? accent };
@@ -1287,7 +1291,7 @@ function rollKickAlone(w, a) {
   });
 }
 
-// ═══════════════════════════ 직업 장식 24종 (feel §5.2) ═══════════════════════════
+// ═══════════════════════════ 직업 장식 28종 (feel §5.2) ═══════════════════════════
 function fctx(w, s, classId, x, y, o) {
   const def = ULT_FLOURISH[classId], p = w.player ?? null;
   let foes = null;
@@ -2120,6 +2124,120 @@ const FL = {
             for (let k = 3; k >= 0; k--) blit(ctx, img, x, y, 1.35, lerp(a0, a1, Math.max(0, u - k * 0.1)), fade * (k ? 0.45 / (k + 0.5) : 1), k ? true : add);
             if (!add) blit(ctx, img, x, y, 1.35, lerp(a0, a1, u), fade * 0.5, true);
           }
+        },
+      });
+    },
+  },
+  // ── 이졸데 ──
+  isolde_stormlord: {
+    // 뇌룡의 날개: 일격 자리에서 번개가 양쪽 위로 부채꼴처럼 갈라져 펼쳐진다 (용의 날개) + 박자마다 작은 낙뢰
+    beat(F, bx, by) {
+      const cam = F.cam;
+      lightning(F.w, bx + rand(-70, 70), (cam?.y ?? by - 400) - 20, bx, by, F.c[0], 0.16, 2.6, F.aw, 1);
+      sfx('thunder', { vol: 0.4, pitch: rand(1.1, 1.3) });
+    },
+    final(F) {
+      const { w, x, y } = F, gl = glowSprite(F.c[0]);
+      sfx('thunderclap', { vol: 1 }); sfx('thunder', { pitch: 0.6 });
+      let at = -1, arms = [];
+      spawn(w, {
+        life: 1.1, z: 13,
+        tick(e) {
+          if (e.lt - at < 0.05) return;
+          at = e.lt; arms = [];
+          const open = ease.outBack(clamp(e.lt / 0.3, 0, 1));
+          for (const s of [-1, 1]) for (let i = 0; i < 5; i++) {
+            const an = -Math.PI / 2 + s * (0.35 + i * 0.26) * open, L = (260 - i * 26) * (0.4 + 0.6 * open);
+            arms.push(boltPts(x, y, x + Math.cos(an) * L, y + Math.sin(an) * L, 8, 18));
+          }
+        },
+        draw(ctx, e) {
+          const a = clamp(1 - (e.lt - 0.5) / 0.6, 0, 1);
+          blitGlow(ctx, gl, x, y - 60, 1.6, 0.5 * a);
+          arms.forEach((P, i) => drawBolt(ctx, P, i % 5 === 0 ? F.c[2] : F.c[0], 3.2 - (i % 5) * 0.4, a));
+        },
+      });
+    },
+  },
+  isolde_wyrmknight: {
+    // 흑룡의 불길: 일격 자리에서 땅을 따라 양쪽으로 불꽃이 휩쓸고 지나간다 (용의 숨결)
+    beat(F, bx, by) { fireBlast(F.w, bx, by, false, F.aw); },
+    final(F) {
+      const { w, x } = F, gy = F.ground;
+      sfx('fire', { pitch: 0.5, vol: 1 }); sfx('explode', { pitch: 0.6, vol: 0.8 });
+      let i = 0;
+      spawn(w, {
+        life: 0.9, z: 13,
+        tick(e, ww) {
+          while (i < 6 && e.lt >= i * 0.06) {
+            for (const s of [-1, 1]) {
+              const px = x + s * (70 + i * 95);
+              fireBlast(ww, px, gy - 30, i % 2 === 0, F.aw);
+              if (emitOK(ww, F.aw)) ww.fx.emit('dark', px, gy - 40, { color: F.c[1], speed: 160 });
+            }
+            if (i % 2 === 0) sfx('fire', { vol: 0.5, pitch: rand(0.6, 0.8) });
+            i++;
+          }
+        },
+      });
+    },
+  },
+  isolde_einherjar: {
+    // 발키리의 강림: 등 뒤로 금빛 날개가 펼쳐지고, 하늘에서 빛의 창이 적들 위로 꽂힌다
+    final(F) {
+      const { w, p } = F, img = spriteOf('wing'), gl = glowSprite(F.c[0]), cam = w.camera;
+      sfx('choir_gate', { vol: 0.6 }); sfx('holy', { pitch: 0.7 });
+      const tg = F.foes.map((e) => [e.cx, e.cy]);
+      while (tg.length < 5) { const px = cam.x + cam.vw * rand(0.15, 0.85); tg.push([px, groundBelow(w, px, F.y, 10 * TILE) ?? F.y]); }
+      const spears = tg.slice(0, 7).map(([tx, ty], i) => ({ tx, ty, t0: 0.12 + i * 0.07 }));
+      const root = () => ({ x: p ? p.cx - (p.facing ?? 1) * 4 : F.x, y: p ? p.y + (p.h ?? 64) * 0.3 : F.y });
+      spawn(w, {
+        life: 1.5, z: 9.5,
+        draw(ctx, e) {
+          const t = e.lt, open = ease.outBack(clamp(t / 0.34, 0, 1)), fade = clamp((1.5 - t) / 0.4, 0, 1) * clamp(t / 0.08, 0, 1), r = root();
+          blitGlow(ctx, gl, r.x, r.y, 1.4 + 0.3 * open, 0.5 * fade);
+          for (const side of [-1, 1]) {
+            ctx.save(); ctx.translate(r.x + side * 6, r.y); ctx.scale(side, 1); ctx.rotate(lerp(1.1, -0.25, open) + Math.sin(t * 7) * 0.06 * open);
+            blit(ctx, img, 0, 0, 1.0, 0, fade, false, 22 / 256, 178 / 200);
+            ctx.restore();
+          }
+        },
+      });
+      spawn(w, {
+        life: 1.1, z: 13,
+        tick(e, ww) {
+          for (const s of spears) if (!s.hit && e.lt >= s.t0 + 0.12) { s.hit = true; burstN(ww, 'holy', s.tx, s.ty, 8, { speed: 260 }, F.aw); sfx('holy', { vol: 0.4, pitch: rand(1.2, 1.5) }); }
+        },
+        draw(ctx, e) {
+          for (const s of spears) {
+            const u = clamp((e.lt - s.t0) / 0.12, 0, 1), fade = clamp(1 - (e.lt - s.t0 - 0.12) / 0.5, 0, 1);
+            if (u <= 0 || fade <= 0) continue;
+            const y0 = cam.y - 60, yy = lerp(y0, s.ty, ease.inQuad(u));
+            taper(ctx, s.tx - 8, yy - 120, s.tx, yy, 7, F.c[0], 0.9 * fade);
+            taper(ctx, s.tx - 3, yy - 90, s.tx, yy, 2.4, '#ffffff', fade);
+            if (u >= 1) blitGlow(ctx, gl, s.tx, s.ty, 0.5, 0.8 * fade);
+          }
+        },
+      });
+    },
+  },
+  isolde_spearsaint: {
+    // 천 개의 창끝: 일격 자리에서 사방으로 찌르기 빛살이 겹겹이 뻗고 진홍 별빛이 맺힌다
+    final(F) {
+      const { w, x, y } = F, gl = glowSprite(F.c[1]), st = HFX.star?.(F.c[0]);
+      sfx('slash_heavy', { pitch: 0.8 }); sfx('crit', { pitch: 0.7 });
+      const waves = [0, 0.09, 0.18];
+      let star = false;
+      spawn(w, {
+        life: 0.85, z: 13,
+        tick(e, ww) { if (st && !star && e.lt > 0.2) { star = true; ww.fx.sprite(st, x, y, { size: 300, life: 0.3, s0: 0.3, s1: 1.4 }); } },
+        draw(ctx, e) {
+          waves.forEach((t0, k) => {
+            const u = clamp((e.lt - t0) / 0.18, 0, 1), fade = clamp(1 - (e.lt - t0 - 0.18) / 0.4, 0, 1);
+            if (u <= 0 || fade <= 0) return;
+            rays(ctx, x, y, 12, 30, 90 + 240 * ease.outCubic(u), k * 0.26, k === 1 ? F.c[1] : F.c[0], 0.85 * fade, 0.035);
+          });
+          blitGlow(ctx, gl, x, y, 1.2, 0.6 * clamp(1 - e.lt / 0.85, 0, 1));
         },
       });
     },

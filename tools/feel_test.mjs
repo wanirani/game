@@ -52,8 +52,9 @@ for (const k of ['only', 'heroes', 'out']) if (args[k] === true) { console.error
 const OUT = path.resolve(String(args.out && args.out !== true ? args.out : '/tmp/claude-0/qa_feel'));
 const SHOTS = path.join(OUT, 'shots');
 const ALL_HEROES = ['kael', 'sera', 'victor', 'bran', 'lia', 'azel'];
+const OPT_HEROES = ['isolde'];   // 7번째 영웅: 통합(CHAR_ORDER) 전까지는 --heroes 로만 (기본 실행 목록은 그대로)
 const HEROES = args.heroes && args.heroes !== true ? String(args.heroes).split(',').map((s) => s.trim()).filter(Boolean) : (args.quick ? ['kael', 'lia'] : ALL_HEROES);
-for (const h of HEROES) if (!ALL_HEROES.includes(h)) { console.error(`unknown hero ${h}`); process.exit(2); }
+for (const h of HEROES) if (!ALL_HEROES.includes(h) && !OPT_HEROES.includes(h)) { console.error(`unknown hero ${h}`); process.exit(2); }
 const ALL_IDS = ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', ...Array.from({ length: 15 }, (_, i) => 'C' + (i + 1)), 'U1', 'U2', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'V1', 'X1', 'X2', 'X3', 'I1', 'R183'];
 const ONLY = args.only && args.only !== true ? String(args.only).split(',').map((s) => s.trim().toUpperCase()).filter(Boolean) : null;
 // an entry is an exact id (C2, R183) or a one-letter group (C = C1…C15); anything else (R18, C1X) would match no check and the
@@ -66,10 +67,10 @@ const wantAny = (...ids) => ids.some(want);
 
 // ───────────────────────── spec tables (feel §1 baseline, §3, §4, §8) ─────────────────────────
 const BASE = {
-  run: { kael: 275, sera: 255, victor: 285, bran: 245, lia: 305, azel: 290 },
-  apex: { kael: 135, sera: 128, victor: 132, bran: 125, lia: 138, azel: 139 },
-  dash: { kael: 142, sera: 151, victor: 135, bran: 121, lia: 159, azel: 178 },
-  ult: { kael: 1.97, sera: 2.17, victor: 1.90, bran: 2.42, lia: 2.08, azel: 2.13 },
+  run: { kael: 275, sera: 255, victor: 285, bran: 245, lia: 305, azel: 290, isolde: 280 },
+  apex: { kael: 135, sera: 128, victor: 132, bran: 125, lia: 138, azel: 139, isolde: 169 },
+  dash: { kael: 142, sera: 151, victor: 135, bran: 121, lia: 159, azel: 178, isolde: 149 },
+  ult: { kael: 1.97, sera: 2.17, victor: 1.90, bran: 2.42, lia: 2.08, azel: 2.13, isolde: 2.45 },
 };
 const CLASS_PICK = {   // tier 0 · one tier 1 · one tier 2 (the tier-2 child of that tier-1)
   kael: ['kael_hunter', 'kael_crusader', 'kael_templar'],
@@ -78,6 +79,7 @@ const CLASS_PICK = {   // tier 0 · one tier 1 · one tier 2 (the tier-2 child o
   bran: ['bran_knight', 'bran_berserker', 'bran_warlord'],
   lia: ['lia_assassin', 'lia_dancer', 'lia_reaper'],
   azel: ['azel_dhampir', 'azel_vampire', 'azel_nosferatu'],
+  isolde: ['isolde_lancer', 'isolde_dragoon', 'isolde_stormlord'],
 };
 const MATERIAL_ENEMY = { flesh: 'zombie', bone: 'skeleton', metal: 'armor_knight', ghost: 'ghost', stone: 'mud_man', slime: 'slime', paper: 'mummy', ice: 'frozen_knight', fire: 'hellhound' };
 const MATERIAL_PRESET = { flesh: ['blood'], bone: ['shard'], metal: ['spark'], ghost: ['ecto'], stone: ['gravel'], slime: ['goo'], paper: ['paper'], ice: ['ice'], fire: ['ember'] };
