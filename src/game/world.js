@@ -608,7 +608,7 @@ export class World {
     this.run.hits++;
     this.addScore(10 * (1 + Math.floor(this.combo.n / 10)));
     this.run.sp = Math.min(100, this.run.sp + (info.crit ? 2.4 : 1.4) * (1 + (p.stats.ultGain ?? 0) / 100) * (guardian ? 0.4 : 1));   // [hook:cmp]
-    if (!guardian && p.stats.lifesteal > 0 && info.dmg > 0) p.heal(info.dmg * p.stats.lifesteal / 100, false);   // [hook:cmp]
+    if (!guardian && !p.dead && p.stats.lifesteal > 0 && info.dmg > 0) p.heal(info.dmg * p.stats.lifesteal / 100, false);   // [hook:cmp] 쓰러진 뒤 남은 탄·불길의 흡혈로 HP 가 차오르지 않게
     // [hook:feel] '{n} HIT!' 는 feel_hud 콤보 기둥 하나만 그린다 (머리 위 글자 중복 제거). 이정표 소리는 style.js 의 combo_milestone — 없을 때만 옛 'combo'
     if (this.combo.n % 25 === 0) { if (!SFX.combo_milestone) audio.sfx('combo'); bus.emit('combo', { count: this.combo.n }); }
     if (COMBO_MILESTONES.has(this.combo.n)) bus.emit('comboMilestone', { n: this.combo.n });   // [hook:feel]

@@ -1,0 +1,25 @@
+{
+ "package": "EX-BOSS",
+ "model": "kling-image-v3_0_omni (portrait: text_to_image · parts: image_to_image, img_resolution 2k)",
+ "prompts": "tools/painted/prompts/ex-boss.mjs (SHOTS)",
+ "refs": {
+  "image_1": "portrait (assets/portraits/b_argen.webp source PNG, file_upload)"
+ },
+ "creditsCap": 120,
+ "creditsAtStart": 5189,
+ "generations": [
+  {
+   "boss": "b_argen",
+   "shot": "ag_portrait",
+   "tool": "text_to_image",
+   "generationId": "AdrAksqgfhCPn2_YPjzaQfbPNq0znfRcJ3lMYrVHbukh9BR_cx983UIxwl1LOviW2QQjRU4Q",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "credits": 4,
+   "refs": "none",
+   "decision": "pending"
+  }
+ ],
+ "imagesSpent": 2,
+ "creditsSpent": 4
+}

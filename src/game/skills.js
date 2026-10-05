@@ -2653,7 +2653,7 @@ SKILL_IMPL.isolde_wyrm_breath = (p, w, lv) => {
         e.d.hit = 0.12;
         const x0 = e.d.x, rect = { x: f > 0 ? x0 : x0 - r, y: e.d.y - 54, w: r, h: 108 };
         const nh = playerStrike(ww, rect, atk(p, { mv, element: e.d.n++ % 2 ? 'dark' : 'fire', kb: [f * 140, -60], hitstop: 0.02, shake: 1, hitId: nid('wb') }));
-        if (nh) p.heal(p.stats.hp * 0.004 * nh, false);
+        if (nh && !p.dead) p.heal(p.stats.hp * 0.004 * nh, false);   // 쓰러진 뒤 남은 불길은 회복하지 않는다 (죽은 영웅의 HP 가 차오르지 않게)
         if (ww.game.debug) ww.debugRects.push(rect);
       }
       for (let i = 0; i < 2; i++) ww.fx.emit(Math.random() < 0.3 ? 'dark' : 'fire', e.d.x, e.d.y + rand(-6, 6), { angle: f > 0 ? rand(-0.22, 0.22) : Math.PI + rand(-0.22, 0.22), spread: 0.1, speed: rand(520, 820), color: Math.random() < 0.3 ? '#b060ff' : '#ff7a2a' });

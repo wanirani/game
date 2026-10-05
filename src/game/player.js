@@ -428,6 +428,9 @@ export class Player extends Entity {
       }
       return;
     }
+    // 급강하 포고(아래로 vy 를 주는 ↓ 기술 — 창)로 튀어 오르는 동안(꼭짓점 전)은 다시 내리꽂지 않는다: 입력은 버퍼에 남는다.
+    // 막지 않으면 포고(위로 600) 바로 다음 프레임의 급강하(아래로 980)가 되돌려 같은 적을 초당 십수 번 찌른다 (보스 위 무한 포고)
+    if (!this.onGround && down && ms.down?.pogo && ms.down.vy > 0 && this.vy < 0 && this.t - (this.pogoT ?? -9) < 0.6 && !(this.dashT > 0) && !this.mount?.riding) return;
     input.consume('attack');
     if ((this.dashT > 0 || (this.sprinting && this.onGround)) && ms.dash && !this.mount?.riding) { this.dashT = 0; this.startMove(world, ms.dash, 'dash'); return; }   // [hook:feel] [hook:cmp] 질주 공격 = 대시 공격 (땅 위에서만: 질주 점프 중엔 공중 공격·내려찍기)
     if (!this.onGround) {
@@ -550,7 +553,7 @@ export class Player extends Entity {
       const n = playerStrike(world, rect, atk);
       if (n > 0) {
         this.moveHits += n;
-        if (mv.pogo) { this.vy = -mv.pogo; this.airJumpsLeft = Math.max(this.airJumpsLeft, 1); this.airDashUsed = false; if (!mv.rehit) this.endMove(); return; }
+        if (mv.pogo) { this.vy = -mv.pogo; this.airJumpsLeft = Math.max(this.airJumpsLeft, 1); this.airDashUsed = false; if (mv.vy > 0) this.pogoT = this.t; if (!mv.rehit) this.endMove(); return; }
       }
       if (world.game.debug) world.debugRects.push(rect);
     }
