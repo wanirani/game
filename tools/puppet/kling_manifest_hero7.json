@@ -588,5 +588,32 @@
  "images_used": {
   "isolde": 49
  },
- "credits_used": 98
+ "credits_used": 98,
+ "summary": {
+  "jobs": 38,
+  "images": 49,
+  "credits": 98,
+  "cap_credits": 300,
+  "failed_jobs": [
+   "isolde_portrait_v1",
+   "isolde_lancer_side_v1",
+   "isolde_dragoon_q3b",
+   "isolde_dragoon_q3f",
+   "isolde_stormlord_q3b_v2"
+  ],
+  "retries": "각 실패 작업은 1회만 재시도. stormlord 3/4 뒤(ym135)는 재시도도 실패 → 더 생성하지 않고 5뷰 시트 그림으로 대체(알려진 한계).",
+  "picks": {
+   "portrait": "v2 b",
+   "cutin": "v1 a",
+   "lancer_side": "v2 b",
+   "dragoon": "a",
+   "stormlord": "b",
+   "wyrmknight": "b",
+   "valkyrie": "a",
+   "einherjar": "a",
+   "spearsaint": "b"
+  },
+  "identity_refs": "모든 원화 = 초상 v2b + 창기사 측면 v2b 를 신원 참고로 재사용(측면은 아젤 엄격한 옆모습 image_1). 직업 측면은 창기사 측면을 keep-pose 편집.",
+  "settings": "kling-image-v3_0_omni, img_resolution 2k(이미지당 2크레딧), urlWithoutWatermark 로 받아 ingest --no-wm"
+ }
 }
