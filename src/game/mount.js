@@ -69,10 +69,10 @@ const ZERO = Object.freeze({ dx: 0, dy: 0 });
 /**
  * 탈것에서 내린 뒤 시전하는 스킬 (companions §3.6.4). skills.js 를 grep 해서 만든 목록:
  *   p.x = / p.y = / p.hidden = → lia_shadow_step (그림자 걸음, 순간이동)   (ULTS.* 는 필살기라 따로 'ult' 로 내린다)
- *   p.vy = -9xx / -1xxx 발사 → bran_warlord_leap (전장 도약, -1050)       (ULTS.bran -1150 도 필살기)
+ *   p.vy = -9xx / -1xxx 발사 → bran_warlord_leap (전장 도약, -1050) · isolde_dragon_dive (용추락, 땅에서 -1020)   (ULTS.bran -1150 도 필살기)
  * tools/test_mount.mjs 가 skills.js · skills_p2.js 를 다시 grep 해서 이 목록과 맞는지 확인한다.
  */
-export const DISMOUNT_SKILLS = ['bran_warlord_leap', 'lia_shadow_step'];
+export const DISMOUNT_SKILLS = ['bran_warlord_leap', 'lia_shadow_step', 'isolde_dragon_dive'];
 
 const R = () => MOUNT_RULES;          // 데이터는 호출 시점에 읽는다 (순환 import 규칙)
 const NUDGE = [0, -8, 8, -16, 16, -24, 24, -32, 32];
