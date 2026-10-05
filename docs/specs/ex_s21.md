@@ -1,5 +1,7 @@
 # 외전 21장 「하늘 정원의 용」 — 설계 계약
 
+> **상태: 통합 완료 (EX-INTEG, 2026-10-05)** — 이야기(`data/story_ex.js`) · 세계 지도 외전 노드·해금(`p2_done`) · `STAGE_ORDER_P2` · 탈것 `mt_argen` · 아케이드(보스 러시 외전 코스·서바이벌·무한의 탑 41층 이후) · 서버 목록 · 시험·문서. 세부는 §7.
+
 리드가 정한 설계. **굵은 항목**은 바꾸지 않는다. 바꿀 이유가 생기면 `/tmp/claude-0/plan/ex_requests.md` 에 적는다.
 
 ## 1. 개요
@@ -56,3 +58,18 @@
 | EX-MAP | `src/data/maps/s21.js`(새 파일), `src/data/stages.js` 의 s21 항목 (**`STAGE_ORDER_P2` 와 세계 지도에는 넣지 않는다** — 통합 담당), 맵 검증 |
 | EX-BOSS | 보스 로직 새 파일, `src/data/bosses_*.js` 항목, 벡터·채색 그림, 갤러리, `tools/painted/**` 보스 설정, 보스 Kling 기록 |
 | EX-INTEG (나중) | 이야기(`story_p2.js` 등), 세계 지도 노드·해금, `STAGE_ORDER_P2`, 탈것 `mt_argen`, 아케이드 목록, 서버 gamedata(스테이지·보스 목록), 시험·문서 |
+
+## 7. 통합 기록 (EX-INTEG)
+
+| 항목 | 결과 |
+|---|---|
+| 해금·순서 | `stages.js` s21 `side: true`, intro/outro 기본값(`s21_intro`/`s21_outro`), `STAGE_ORDER_P2` 끝에 s21, `SIDE_STAGES`·`isSideStage`. `next` 사슬 밖 — `town/worldmap.js` 가 `flags.p2_done`(두 엔딩) 이면 처음 지도를 열 때 `unlocked` 에 넣고 한 번 연출(`s21_revealed`, '외전 · 하늘 정원의 둥지'). 2부 엔딩 판정·`ENDING_STAGES`·`endingAfter` 는 그대로 (s21 은 엔딩으로 가지 않는다) |
+| 세계 지도 | 이계 지도 노드 s21 (mapPos `{x:0.8, y:0}` — 17장 위쪽 구름 띠, 17→18 나선 길과 겹치지 않게), 17장에서 위로 휘어 오르는 은빛 점선 갈림길, 인장에 장 번호 대신 '외전' + 도는 점선 고리, 정보판 'SIDE STORY · 외전' · 외전/동료 칸. 나선 사슬(s14→s20)에는 들지 않는다 |
+| 진행 숫자 | 클리어해도 `progress.chapter` 를 올리지 않음(`results.js`) → NPC 장 대사·상점 단계·메뉴 '2부 · 20장 돌파' 그대로. 슬롯 요약의 가장 먼 장·서바이벌 적 순서·무한의 탑 순서 구간에서 뺀다 |
+| 표시 | '외전 하늘 정원의 둥지' (메뉴 `stageLabel`·아케이드·명예의 전당·일일/연습 호출), 모험 기록 칸 '외전'(열렸을 때만), 도감의 아르겐은 외전이 열렸거나 쓰러뜨렸을 때만, 성당 힌트 한 줄, 발소리 지면 stone |
+| 이야기 | `data/story_ex.js` (`SCRIPTS_P2` 에 합침): `s21_intro`(컷신, 대사 항목 28개 — 한 번에 보이는 줄은 분기별 10~11줄) · `s21_t1`(r3 '!' 10열) · `s21_t2`(r5 '!' 10열) · `b_argen_pre` · `b_argen_corrupt` · `b_argen_awaken` · `b_argen_post` · `s21_outro`(합류 `recruit('mt_argen')` + `ex_s21_done` — 조건 줄보다 앞). 이졸데가 아니면 `R('isolde')` 동행 NPC, 이졸데면 본인 분기. 영웅별 반응 `H({…})` 다섯 곳. 레이븐은 진엔딩을 봤으면 맨얼굴. 새 CG 없음(`cg/cutin_isolde`). 2부 15~20장에 `isolde:` 줄 11줄(장마다 2, 18장은 1 + 악몽 분기) · 두 엔딩에 2줄, `s18_t1` 이졸데 악몽 분기 3줄 |
+| 탈것 | `mt_argen` 아르겐 · 은빛 뇌룡 (chapter 21, obtain flag `recruit_mt_argen`, rig 'wyvern' variant 'silver', 초상화 `portraits/b_argen` 머리 자르기 `iconFocus {0.31, 0.25, 0.34}`). 벡터만: `render/mounts_b.js` `MOUNT_PAL_B.mt_argen`(+ 각성 날개막 `membraneAw`), `MOUNT_DRAW_B`·`MOUNT_ICON_B`, `mount.js` `FB_COL`, 마구간 머리 번개 빛. 수치는 스칼렛·게일 사이 (속도 380, 점프 800, 날갯짓 3·활공 140/420, 돌진 760·mv 1.1·번개 경직 0.3, 급강하 900·충격파 r130 mv 0.9, 숨결 1초 240×80 mv 0.36 cd 6, hp 0.95, windMul 0.5, 탑승 번개 +15%·번개 저항 +20%). 숨결·충격파 색·입자·소리 = `mount.js` `ELEM_FX[element]` |
+| 아케이드 | `BOSS_ORDER` 끝 b_argen (`STORY_BOSSES = 20`), 코스 5 '이계편 · 외전'(14장~외전, 8연전) · 6 '전 보스 연속 21연전' (`ex: true`). `exKnown(game)` = 코나미 · 2부 엔딩 본 적 · 슬롯 외전 해금 — 외전 코스·외전 연습 순위표·서바이벌 보스 웨이브(`arenaBosses(p2, ex)`)·무한의 탑 무작위 구간(`TowerPlanner` `lateBosses`, 41층 이후 → 첫 후보 45층)을 연다. 연습 목록은 슬롯 해금 그대로 |
+| 서버 | `gamedata.mts` `STAGE_LEVELS.s21 = 70`(→ `practice:s21:*` 보드), `P2_STAGES` + s21, `SIDE_STAGES`, `DAILY_STAGE_IDS`(외전 제외 — 일일 도전 순서·이미 정해진 날짜의 도전 그대로), `COURSE_COUNT = 7`; `runs.mts` 일일 도전이 `DAILY_STAGE_IDS` 를 쓴다. `validate.mts`·`online.mts` 는 바꿀 것 없음 (스테이지·보스 목록을 보지 않는다) |
+| 시험 | `tools/integration.mjs` s21 · s21_boss, `test_part2 --static` 외전 검사, `test_companion_state` 아르겐 행·범위, `test_companions` recruit 7, `test_mount` `ex_mt_argen`, `test_tower` lateBosses, `tools/online/test_online.mjs` STAGE_IDS 21 · 일일 외전 제외 · 코스 6/연습 s21 보드 |
+| 예산 | 새 그림 없음 (APK lo 그림 단계는 아르겐 채색 뒤 그대로 — 빌드 보고서 수치는 통합 보고 참고) |

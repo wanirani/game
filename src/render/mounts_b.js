@@ -49,7 +49,8 @@ export const MOUNT_PAL_B = {
   mt_giantbat: { coat: '#2a1e24', hi: '#4a3440', dark: '#141016', membrane: '#5a1422', vein: '#ff2a3a', ear: '#8a4a4a', silver: '#c8c8d0', leather: '#2a1a1e', trim: '#c8c8d0', claw: '#0c080a', fang: '#f0e8e0', eye: '#ff2a3a', glow: '#ff2a3a', awake: '#ff7a8a', breath: '#ff6a7a' },
   mt_gale: { coat: '#b8bcc4', hi: '#e8eaee', dark: '#6a6e78', feather: '#f4f4f0', featherDk: '#9aa0aa', gold: '#ffd060', beak: '#f0c040', scale: '#d8b060', leather: '#6a4424', trim: '#ffd060', claw: '#2a2420', eye: '#9fd0ff', glow: '#bfe0ff', awake: '#fff2a0', breath: '#dff0ff' },
   // 외전 아르겐: 은빛 비늘 · 청록 배 · 상아 뿔 · 남색 마구 (이졸데의 색) — mouth = 숨결 때 벌린 입속
-  mt_argen: { coat: '#c8d2de', hi: '#f4f8ff', dark: '#6a7688', belly: '#a8e8f0', bellyHi: '#e0fbff', horn: '#e8e0cc', membrane: '#9aa8bc', vein: '#5a6a80', leather: '#2a3450', trim: '#6ad0e0', claw: '#1a2030', eye: '#8af0ff', glow: '#9fe8ff', awake: '#e0fbff', breath: '#bff4ff', mouth: '#9fe8ff' },
+  //   membraneAw = 각성(유대 4) 날개막 (번개가 도는 은청색 · 핏줄이 awake 색으로 빛난다)
+  mt_argen: { coat: '#c8d2de', hi: '#f4f8ff', dark: '#6a7688', belly: '#a8e8f0', bellyHi: '#e0fbff', horn: '#e8e0cc', membrane: '#9aa8bc', membraneAw: '#bfe6f6', vein: '#5a6a80', leather: '#2a3450', trim: '#6ad0e0', claw: '#1a2030', eye: '#8af0ff', glow: '#9fe8ff', awake: '#e0fbff', breath: '#bff4ff', mouth: '#9fe8ff' },
 };
 const palOf = (id) => MOUNT_PAL_B[id] ?? MOUNT_PAL_B.mt_direwolf;
 
@@ -985,7 +986,8 @@ function vWing(ctx, C, w, far) {
     x += dx / d * bul; y += dy / d * bul;
     WP[k * 2] = x; WP[k * 2 + 1] = y;
   }
-  const mc = feather ? (far ? deep(pal.featherDk) : pal.feather) : (far ? deep(pal.membrane) : pal.membrane);
+  const memb = C.aw && pal.membraneAw ? pal.membraneAw : pal.membrane;   // 각성(유대 4) 막 색이 따로 있으면 (외전 아르겐: 번개 빛이 도는 은청색)
+  const mc = feather ? (far ? deep(pal.featherDk) : pal.feather) : (far ? deep(memb) : memb);
   ctx.save();
   try {
     ctx.strokeStyle = OUT; ctx.lineWidth = 1.2; ctx.fillStyle = col(C, mc);
@@ -1016,7 +1018,8 @@ function vWing(ctx, C, w, far) {
       ctx.stroke();
       if (C.q > 0) {
         const ga = ctx.globalAlpha;
-        ctx.strokeStyle = col(C, far ? deep(pal.vein) : pal.vein); ctx.lineWidth = 0.7; ctx.globalAlpha = ga * 0.7; ctx.beginPath();
+        const vein = C.aw && pal.membraneAw ? pal.awake : pal.vein;
+        ctx.strokeStyle = col(C, far ? deep(vein) : vein); ctx.lineWidth = C.aw && pal.membraneAw ? 1.1 : 0.7; ctx.globalAlpha = ga * 0.7; ctx.beginPath();
         for (let k = 0; k < n; k++) { const x = WP[k * 2], y = WP[k * 2 + 1], x2 = WP[k * 2 + 2], y2 = WP[k * 2 + 3]; ctx.moveTo(lerp(w.wx, x, 0.4), lerp(w.wy, y, 0.4)); ctx.quadraticCurveTo(lerp(x, x2, 0.5), lerp(y, y2, 0.5), lerp(w.wx, x2, 0.7), lerp(w.wy, y2, 0.7)); }
         ctx.stroke();
         ctx.globalAlpha = ga;

@@ -1,12 +1,13 @@
 # 블러드 녹턴 (BLOOD NOCTURNE) — 아키텍처 & 콘텐츠 계약서
 
 2D 횡스크롤 고딕 액션(악마성 스타일) + 아케이드 요소. **순수 HTML5 Canvas + ES 모듈(게임 자체는 빌드 없음)**. 데스크톱(키보드/게임패드)·모바일(캔버스 가상 패드)·안드로이드 앱(WebView APK) 모두 지원.
-1부(13장, 드라큘라의 성) + 2부 「균열의 순례」(s14–s20, 일곱 이계) · 동료(탈것 9 · 수호신 11) · 각성기 · 채색 컷아웃 퍼펫 그림.
+1부(13장, 드라큘라의 성) + 2부 「균열의 순례」(s14–s20, 일곱 이계) + 외전 「하늘 정원의 둥지」(s21, 2부 엔딩 뒤) · 동료(탈것 10 · 수호신 11) · 각성기 · 채색 컷아웃 퍼펫 그림.
 
 - 이 문서 = **지금 코드에 있는 계약**의 지도. 결정의 근거는 `docs/specs/MASTER_PLAN.md` §1 (여러 명세가 부딪칠 때 이긴다) → `docs/specs/{feel,platform,world2,companions}.md` → `docs/specs/ART_DECISION.md`. 계정·클라우드 저장은 `docs/ACCOUNTS.md`, 채색 그림 제작은 `docs/art/*_PIPELINE.md`, 배포는 `tools/deploy/README.md`.
 - 각 모듈의 머리말 주석이 가장 자세한 계약이다. 여기서는 파일 위치·공개 API·데이터 흐름·ID 목록만 모은다. 코드와 이 문서가 다르면 **코드가 맞고 이 문서가 낡은 것**이다 (고치는 곳: DOCS-ARCH → W4 FIX-TOOLS).
 - 마지막 전면 갱신: 2026-09-28 (W3 DOCS-ARCH, 같은 날 검수에서 코드와 다시 대조). 「진행 중」 표시는 이 시점에 아직 작업 중이던 패키지(부록 A)의 계약이다.
 - W4 1회차 동기화 (2026-09-29, FIX-TOOLS; 줄마다 코드와 대조): 두 단계 부팅·지연 장면(§3·§4), feel §8 계측, 늦게 받는 보스(§11.4), 시작 위치 옮기기·`bossReady`(§4·§8), 데미지 숫자 기둥·`setHudBand`(§4), HUD 클립·스프라이트 캐시(§9), 채색 텍스처 예산(§4·§12), 동료 조준·수호신 FX(§10), 각성 감독 늦게 받기(§7.4), 이동 발판 개별 설정(§8), QA 도구의 부팅 대기·성능 예산(§14).
+- 외전 통합 (2026-10-05, EX-INTEG; `docs/specs/ex_s21.md` §7): s21 · b_argen · mt_argen · `story_ex.js` · 지도 외전 노드 · 아케이드 외전 코스 · 서버 목록 (§10 · §11.7 · §14 · §15).
 - W4 1회차 추가 동기화 (2026-09-29, FIX-TOOLS 3차; 코드와 대조): `game.flashCapped`(§4), 가상 패드 백킹 놓기(§5.1), 메뉴의 `releaseChunks`·`releaseHeroOffscreen`·영웅 오프스크린 0.25 MP 상한(§6), ultfx 0×0 풀(§7.3), 보스 대역 거르기(§4·§9·§10), 번들러 조각 상한·`--restamp`·buildHash(§13), `platform_load` 단계 나누기(§14).
 
 ## 목차
@@ -67,7 +68,7 @@
 | `src/core/` | 엔진: `game`(루프·장면·해상도·품질 조절·토스트), `input`, `prompts`(버튼 글리프), `haptics`, `touchpad`(캔버스 가상 패드), `platform`(안전 영역·전체 화면·서비스 워커), `camera`, `physics`, `particles`, `lighting`, `assets`, `save`, `ui`(글꼴·피 글씨·탭 등록부), `audio`, `sfx_feel`, `audio_companions`, `cloud`(계정), `events`, `math` |
 | `src/game/` | 런타임: `world`, `player`, `enemy`, `ai*`(a·b·c·d), `bosses/*`, `combat`, `impact`, `style`, `feel_move`, `awaken`, `awaken_directors(_b)`, `skills`, `skills_p2`, `projectiles`, `pickups`, `props`, `tilemap`, `gimmicks(_b)`, `companions`, `companion_state`, `companion_events`, `mount`, `mount_b`, `guardian`, `guardian_ai_b`, `stats`, `inventory`, `enhance`, `loot`, `progression`, `quests`, `state`, `entity` |
 | `src/render/` | 그리기: `hero`(+`hero_parts`, `hero_gait`, `hero_puppet`, `puppet_manifest` 자동 생성), `enemies`(디스패처) + `enemies_a/b/c/d`(벡터), `hud`, `hud_layout`, `feel_hud`, `companion_hud`, `hitfx`, `ultfx`, `mount_rig`, `mounts`, `mounts_b`, `guardians`, `guardians_b`, `icons`, `background`, `tiles`, `painted/`(§12) |
-| `src/data/` | 순수 데이터: characters, classes, skills, movesets, items, subweapons, powerups, enemies(+a·b·c·d), bosses(+a·b·c·d), stages, maps/s01…s20·arena, story, story_p2, story_p2b, story_companions, quests, lore, npcs, town, shop, difficulty, music, controls, feel_hit, feel_move, awaken, companions |
+| `src/data/` | 순수 데이터: characters, classes, skills, movesets, items, subweapons, powerups, enemies(+a·b·c·d), bosses(+a·b·c·d·e), stages, maps/s01…s21·arena, story, story_p2, story_p2b, story_ex, story_companions, quests, lore, npcs, town, shop, difficulty, music, controls, feel_hit, feel_move, awaken, companions |
 | `src/scenes/` | 화면. 등록: `scenes/index.js`(게임플레이·오버레이) · `reg_front.js`(front/*) · `reg_games.js`(games/*) · `reg_menu.js`(menu/*) · `reg_town.js`(town/*) |
 | `assets/` | `bg/ cg/ portraits/ tex/`(Kling webp) · `icons/ props/`(Blender png) · `lo/`(저사양 60 % 변형 + index.json) · `fonts/` · `puppets/<char>/<class>/`(영웅·NPC 퍼펫) · `painted/{bosses,enemies,companions}/<id>/`(채색 아틀라스) |
 | `netlify/functions/`, `netlify/lib/`, `netlify.toml` | 계정 API (`/api/*`) · 정적 헤더 (docs/ACCOUNTS.md, §13) |
@@ -250,7 +251,7 @@ rAF ─▶ input.pollFrame() (패드 읽기·진동 정리) ─▶ (세로 잠�
 - `src/render/companion_hud.js` (CMP-UI): `drawCompanionHUD(ctx, world, o) → [{x,y,w,h, act:'mount'|'guard', slot?}] | null` (탈것 40 px 원: HP 고리·재소환 막·탑승 금빛·비행 체력 호·noMount 빗금, 라벨 [R]/L3/탑승; 수호신 38 px 원 × 1–2: 재사용 부채꼴·준비 맥동·AUTO, 라벨 [G]/R3/수호; 스킬 카드 줄 300×52 최대 2), `drawCompanionIcon(ctx, id, x, y, r, {locked, ring, alpha})`, `portraitCrop(id)`.
 - 검사 `tools/test_hud_layout.mjs`: 명세 행렬(보스 바 × 게이지 0–3 × 안전 영역) 겹침 검사 + 실제 위젯 픽셀 검사 (부분마다 따로 그려 알파 ≥ 0.3 잉크가 다른 영역·알림 칸·토스트 줄·패드·안전 여백·터치 y > 297 에 닿지 않아야 함).
 
-## 10. 동료 (탈것 9 · 수호신 11)
+## 10. 동료 (탈것 10 · 수호신 11)
 
 | id | 이름 · 칭호 | 합류 | 장 |
 |---|---|---|---|
@@ -263,6 +264,7 @@ rAF ─▶ input.pollFrame() (패드 읽기·진동 정리) ─▶ (세로 잠�
 | `mt_ignis` | 이그니스 · 화염 군마 | flag `recruit_mt_ignis` (s15_outro) | 15 |
 | `mt_gale` | 게일 · 폭풍 그리핀 | flag `recruit_mt_gale` (s17_outro) | 17 |
 | `mt_silva` | 실바 · 백록 신령 | flag `recruit_mt_silva` (s19_outro) | 19 |
+| `mt_argen` | 아르겐 · 은빛 뇌룡 | flag `recruit_mt_argen` (외전 s21_outro) — 비룡 리그 벡터만, 초상화 `portraits/b_argen` | 21 |
 | `gd_fairy` | 아리아 · 빛의 요정 | b_banshee | 2 |
 | `gd_spiritwolf` | 하티 · 영혼 늑대 | 의뢰 cq_hati | 2+ |
 | `gd_imp` | 핌 · 소악마 마법사 | 「소악마 계약서」 7,500 G | 3 |
@@ -284,6 +286,7 @@ rAF ─▶ input.pollFrame() (패드 읽기·진동 정리) ─▶ (세로 잠�
 - **런타임** `src/game/companions.js` (CMP-SYS): `class CompanionSystem` = `world.companions`: `active`, `onRoomLoaded`, `sync(force)`(편성이 바뀌면), `update(dt)`('guard' 입력은 buffered, HUD 탭, 자동 스킬 `autoSkill(p)` — 보스 근접·주변 적 수에서 늦게 받는 보스의 대역 `pendingBoss` 는 뺀다, 공명), `onHit`(협공), `onKill`(경험치 분배·50킬 유대), `onBossStart`(noMount), `onBossDefeated`, `onRespawn`, `onStatsChanged`, `incoming(p, dmg, attack) → {dmg, mounted, noStagger, cancel} | null`, `shieldT`(아리아 결계 → 플레이어 무적), `airDrainMul`(루멘 0.5), `mountBlocked`, `tryGuardianSkill(auto)`, `castSkill(g, {auto, resonance})`, `keepFx(e)`, `hudInfo()`, `hudRects`, `callouts`, `debug`. `CompanionDirector`(엔티티 루프 안의 보이지 않는 감독). `companionHubEnter(game, hub)`(마구간 개장 → 해금 평가 → 2번 칸 안내 → 합류 연출 최대 3), `companionHubNote(state)`(마구간 '!').
 - **탈것** `src/game/mount.js` (CMP-MOUNT): `class MountRider` = `player.mount` — 상태 stowed → summoning(0.45초) → riding → dismounting(0.30초) / recall / 'ult'. player.js 가 부름: `tick profile handleJump tryCharge updateCharge trySpecial adaptMove riderLift afterPhysics hazard dismount rideStats refresh hurtbox updateAnim riderAnim riderView draw(ctx, world, p, 'back'|'front') lights ghost healFrac beforeCast`; CompanionSystem 이 부름: `attach detach onRoomLoaded onRespawn onBossStart onBossDefeated incoming summon knockOff hudInfo`. 필드 `id riding chargeT invulnT state hp maxHp cd cdMax stamina staminaMax`. `MountGhost`(소환 안개·하차·도주), `DISMOUNT_SKILLS`, `fits(world, x, bottom, w, h)`, `findMountSpot(world, p, def, {cx, bottom})`, 메뉴 미리보기 `mountView/updateMountView/drawMountView`. `ledgeHint(dt, world, p)`: 날지 못하는 탈것이 넘지 못하는 턱에 막히면 방마다 한 번 `CMP_TEXT.ledge` 안내('{name}은(는) 이 턱을 넘지 못한다 — 내려서 올라가자', R1-REQ-369). `attach` 는 `MDRAW.preloadMounts` 를 한 번 부른다. 기수: `p.ride = {sx, sy, lean, duck, footY, legs, reins, gait, phase}` → drawHero 앉은 자세.
 - **2부 탈것** `src/game/mount_b.js` (CMP-MOUNT-B): `MOUNT_B[id] = { charge?{start,tick,end}, special?(r,world,p)|{start}, passive?{tick,hazard,land} }` — mt_ignis(화염 돌진·업화 발굽), mt_gale(질풍 돌격 8방향·뇌명 급강하, windMul 0.5), mt_silva(뿔 돌격·정화의 울음: 부패 −40 + HP 5 %, blightMul 0.5, 독 면역). 도우미 `r.atk/strike/hit/startAct/showName/rect/power/d`.
+  외전 **mt_argen** 은 MOUNT_B 없이 데이터만으로 동작한다: 활공 3회 · 뇌광 돌진(번개 경직) · 공중 = 번개 급강하(착지 충격파 r 130) · 특수기 「은빛 번개 숨결」(`kind 'breath'`, element thunder) · windMul 0.5. 숨결·급강하 충격파의 색·입자·소리는 `mount.js` `ELEM_FX[element]`(fire = 스칼렛, thunder = 아르겐)가 고른다.
 - **수호신** `src/game/guardian.js` (CMP-SYS): `class Guardian`(kind 'companion', 무적·충돌 없음, z 11|9), `gAttack(g, o)`(hitstop 0 필수, tags ['companion','guardian']), `gStrike(world, rect, attack)`(적·보스만, 거울 스위치·포자 주머니 등 `noGuardianHit` 제외), `gHitOne`, `GHit/GProj/GFx`, `gBlast`, `GUARDIAN_AI`(1부 여섯), `aiFor(id)`(→ `GUARDIAN_AI_B` → 데이터 기본), `runKind`(proj burst volley pounce slash bash cone dive blink zap bite swing ring flash), `KINDS`, `blockable`, `drawPlaceholder`. AI 규약 `{init, think, attack, assist, skill(g, world, mul, o), passive, onEvent('hit'|'kill'|'hurt'|'idle'), drawWorld, projRender?}` (`projRender` = 데이터 'proj' 자동 공격 탄 그림; 미라가 거울 파편으로 씀, R1-REQ-328). 표적 `aimBox(T, x, y, floorY?, bh?)`·`aimPoint(T, x, y)`(hitParts → hurtboxes → hurtbox → 몸 중 가장 가까운 살아 있는 맞는 상자; 지상 근접 수호신은 떠 있는 보스 상자까지 뛰어오른다, R1-REQ-372), `quietExpire(world, q)`(적 탄을 거둘 때 onExpire 를 조용히 한 번 — 쏜 적의 탄 장부만 풀고 폭발·연출은 없음; 가웨인 막기·방패벽·미라·모모, R1-REQ-173). 생성자가 `render/guardians.js` `prewarmFx(id)` 로 연출 스프라이트를 미리 굽는다.
 - `src/game/guardian_ai_b.js` (CMP-GUARD-AI-B): `GUARDIAN_AI_B` = gd_clock(정지된 초침: timeStop), gd_reaper(영혼 수확·처형), gd_mirra(만화경 난반사·되비추기), gd_lumen(심해의 등불: 기절 + deep 숨 100), gd_momo(악몽 포식·한입에 꿀꺽). 적 탄 제거는 `quietExpire`(guardian.js 에서 가져온다).
 - **그림**: `render/mount_rig.js`(순수 수학: `mountPose(m, dt)`, `seatOf(pose)`, `registerTemplate/getTemplate/templateFor`, `quadPose`, `ik2`, `footCycle`, `GAIT`, `MOUNT_TUNE`, `TEMPLATES`) · `render/mounts.js`(`drawMount(ctx, m, world, 'back'|'front', {alpha, tint, scale, noFx, flash, rider})` = `MOUNT_DRAW_B[id]` → 채색 퍼핏 → 벡터; `drawMountIcon`, `preloadMounts`, `MOUNT_PAL`) · `render/mounts_b.js`(늑대·비룡·박쥐·그리핀 템플릿 등록 + `MOUNT_DRAW_B`, `MOUNT_ICON_B`, `MOUNT_PAL_B`; CMP-MOUNT-ART-B **진행 중**) · `render/guardians.js`(`drawGuardian(ctx, g, world, opts) → bool` = 채색 → `GUARDIAN_DRAW_A`/`GUARDIAN_DRAW_B` → false; `drawGuardianIcon`, `drawGuardianProcedural`, `prewarmFx(id)`, FX 도우미 `fxFairyDome fxShieldWall fxMeteor fxPhantomWolf fxHolyBeam fxBoneShard fxClockFace fxScytheSweep fxSecretOutline fxBreath`, 공유 `PO gGlow gStar gHalo gSparkles gAwake`) · `render/guardians_b.js`(`GUARDIAN_DRAW_B`, `GUARDIAN_ICON_B`, `fxGear fxMirrorShard fxKaleido fxMirrorPane fxLumenFlash fxLumenBolts fxStunSparks fxMomoVortex fxMorsel`; CMP-GUARD-ART-B **진행 중**). 채색 동료 20종은 `src/render/painted/companions/<id>.js` (§12).
@@ -291,9 +294,9 @@ rAF ─▶ input.pollFrame() (패드 읽기·진동 정리) ─▶ (세로 잠�
 - **마을 (CMP-TOWN)**: `data/town.js` 마을 폭 96칸 (마구간은 성문 동쪽 x 4032–4608): `BUILDINGS` 'stable'(문 89, `scene:'stable'`, x 4100–4580), `TOWN_NPCS` npc_greta, `GRETA_LOOK`, `TOWN_TALK`, `TOWN_LAMPS`, `TOWN_PROPS`; `data/npcs.js` `npc_greta`(그레타 · 영혼의 마구간지기, `appear.minChapter 1`, role 'stable'), `NPC_ORDER`; `scenes/town/facades.js` 마구간 파사드(PAINT/LIVE/HEIGHT.stable, 간판 'horse', `info.stableNote` 의 '!') + `drawStallHead(ctx, id, x, y, s, t, k)`·`drawSpiritWisp(ctx, id, x, y, s, t, a)`; 허브(`hub.js`)는 enter/onResume 끝에 `companionHubEnter`, `boardInfo.stableNote`. 스크립트(`data/story_companions.js` `COMPANION_SCRIPTS`): `cmp_stable_open cmp_bat_arrive cmp_slot2 cmp_egg_ready npc_greta_default npc_greta_tip1 npc_greta_tip2 npc_greta_ch2 _ch4 _ch5 _ch8 _ch11 _ch14 q_cq_hati_start/_done q_cq_skoll_start/_done`.
 - 상호작용 규칙: 깊은 물(deep)에 들어가면 자동 하차·소환 불가; 돌풍 × `def.windMul`, 부패 × `def.blightMul`; 수호신 타격은 스타일 ×0.5, 각성 게이지 0, SP ×0.4, 경직 0(협공 0.03); 필살기·각성기는 먼저 하차; 보스 `def.noMount`.
 - 효과음 `core/audio_companions.js` (import 하면 31종 등록): `CMP_SFX`, `CMP_SFX_NAMES`, `registerCompanionSfx`, `playCry(def)`, `playKnockOff(def)`.
-- 시험: `node tools/test_companion_state.mjs` · `node tools/test_mount.mjs [--only mt_ignis,mt_gale,mt_silva]` · `node tools/test_guardians.mjs [--only A,B]` · 갤러리 `tools/gallery_mounts.html`, `tools/gallery_guardians.html`.
+- 시험: `node tools/test_companion_state.mjs` · `node tools/test_mount.mjs [--only mt_ignis,mt_gale,mt_silva | mt_argen]` · `node tools/test_guardians.mjs [--only A,B]` · 갤러리 `tools/gallery_mounts.html`, `tools/gallery_guardians.html`.
 
-## 11. 제2부 「균열의 순례」 (s14–s20)
+## 11. 제2부 「균열의 순례」 (s14–s20) · 외전 (s21)
 
 ### 11.1 스테이지
 | id | 이름 | 테마 | 기믹 (stage.gimmick) | 보스 | 음악 | 방 |
@@ -306,7 +309,7 @@ rAF ─▶ input.pollFrame() (패드 읽기·진동 정리) ─▶ (세로 잠�
 | s19 | 썩어가는 숲 | blight | `blight` (부패 게이지·포자) | b_behemoth | s19 | 6 |
 | s20 | 태초의 공허 | void | 방마다 (`voidwall` 등, 앞 스테이지 기믹 재조합) | b_nihil | s20 | 6 |
 
-- `data/stages.js`: `STAGE_ORDER_P1`(s01–s13), `STAGE_ORDER_P2`(STAGES 에 있는 s14–s20만), `STAGE_ORDER = [...P1, ...P2]`, `RELICS`, `SHARDS`(k_star_1…6), `HEARTS`(k_heart_1…6). 맵 `data/maps/s14.js…s20.js` (`ROOMS`). 방 필드: `gimmick`(undefined → 스테이지 값, null → 없음, 객체/배열), `liquid`, `doorMarks: ['blood'|null, …]`(문 순서대로). 각 소비자는 P1/전체를 골라 쓴다 (월드맵 0쪽 = P1, 서바이벌 = P1 + `def.noArena` 제외, 아케이드 목록·슬롯·성당·도감 = 전체).
+- `data/stages.js`: `STAGE_ORDER_P1`(s01–s13), `STAGE_ORDER_P2`(STAGES 에 있는 s14–s20 + 끝에 외전 s21), `STAGE_ORDER = [...P1, ...P2]`, `SIDE_STAGES`·`isSideStage`(stage.side, §11.7), `RELICS`, `SHARDS`(k_star_1…6), `HEARTS`(k_heart_1…6). 맵 `data/maps/s14.js…s20.js` (`ROOMS`). 방 필드: `gimmick`(undefined → 스테이지 값, null → 없음, 객체/배열), `liquid`, `doorMarks: ['blood'|null, …]`(문 순서대로). 각 소비자는 P1/전체를 골라 쓴다 (월드맵 0쪽 = P1, 서바이벌 = P1 + `def.noArena` 제외, 아케이드 목록·슬롯·성당·도감 = 전체).
 - 흐름: 1부 진엔딩 크레딧 뒤(또는 2부 이전 세이브의 첫 월드맵 방문) `p2_prologue` → 마을 → s14 … s20 → 엔딩 `p2`(파수꾼의 밤) 또는 `p2true`(새벽의 별; 별의 조각 6개 또는 flags.stars_all). `decideEnding(st, from)`, `ENDINGS.p2/p2true` (`scenes/front/ending.js`), 2부 엔딩 뒤 마을로, `creditsFor` 가 `CREDITS_P2` 를 끼운다.
 
 ### 11.2 기믹 엔진 (`game/gimmicks.js` GIMMICK-ENGINE, `game/gimmicks_b.js` GIMMICK-KINDS-B)
@@ -337,6 +340,7 @@ rAF ─▶ input.pollFrame() (패드 읽기·진동 정리) ─▶ (세로 잠�
 | `b_mara` | 마라 (악몽을 낳는 자) | s18 | `d_mara.js` | boss3 | `b_mara_dream` |
 | `b_behemoth` | 베헤모스 (부패한 대지의 짐승) | s19 | `d_behemoth.js` | boss4 | — |
 | `b_nihil` | 니힐 (태초의 공허, 4형태) | s20 | `d_nihil.js` | nihil | `b_nihil_form2`, `b_nihil_final` |
+| `b_argen` | 아르겐 (공허에 물든 은룡) — 외전 | s21 | `e_argen.js` (데이터 `bosses_e.js`) | boss4 | `b_argen_corrupt`(65%), `b_argen_awaken`(30%, form2) · 결말 '정화' |
 
 - 데이터 `data/bosses_c.js`/`bosses_d.js`, 레지스트리 `game/bosses/bosses_c.js`/`bosses_d.js`(SKEL 최종본: 클래스가 null 이면 빠지고 GenericBoss 대체).
 - **늦게 받는 보스** `game/bosses/lazy.js` (R1-REQ-229, 1·2부 보스 20체 모두): 보스 클래스 모듈을 보스마다 `import()` 로 받는다 — world.js 와 아케이드(front/arcade.js·arcade_run.js)는 이 파일만 쓰고 `bosses/index.js`(모든 보스를 정적으로 싣는 동기 경로, 불러와지면 자기 클래스를 여기 등록)를 첫 조각에 넣지 않는다. `createBoss(world, id, x, y)` 는 동기: 클래스가 있으면 진짜 보스, 받는 중이면 **`PendingBoss`**(`pendingBoss = true`, 무적·무해·그리지 않음, 상태 'intro', `debugAct` 없음)를 돌려주고, 대역은 모듈이 오면 update 에서 `become(C, world)` 로 `world.entities`·`world.boss` 의 자기 자리를 진짜 보스로 바꾼다 (세 번 실패하거나 20초 안에 안 오면 GenericBoss, 다시 받기 1.5초 간격). `loadBoss(id) → Promise<class|null>`, `preloadBosses(ids)`·`preloadStageBosses(stageId)`·`loadAllBosses()`, `stageBossIds`, `bossLoaded`·`knownBoss`·`BOSS_IDS`·`registerBosses`·`forgetBoss`(시험용). bus 'stageEntered' 때 그 스테이지 보스를 스스로 미리 받는다(월드맵도 미리 부른다). 도구는 `world.boss` 를 잡기 전에 `await world.bossReady()` 또는 `!w.boss.pendingBoss` 를 기다린다 (`tools/test_part2.mjs` `waitRealBoss`).
@@ -344,23 +348,31 @@ rAF ─▶ input.pollFrame() (패드 읽기·진동 정리) ─▶ (세로 잠�
 - b_nihil 'final' 전환: `run.sp = 100`, 1차 전직 이상이면 `run.aw = 100`, holyaura 20초, 공허의 벽 열림. 대사 `b_nihil_final` 에 합류한 2부 동료마다 한 줄. 갤러리 `tools/gallery_bosses_c.html`, `_d.html`.
 
 ### 11.5 스토리 (STORY-P2-A/B)
-- `data/story_p2.js` `SCRIPTS_P2 = {...A, ...SCRIPTS_P2B}`, `CREDITS_P2`; `data/story_p2b.js` `SCRIPTS_P2B`. 합치기는 `data/story.js` 끝.
+- `data/story_p2.js` `SCRIPTS_P2 = {...A, ...SCRIPTS_P2B, ...SCRIPTS_EX}`, `CREDITS_P2`; `data/story_p2b.js` `SCRIPTS_P2B`; `data/story_ex.js` `SCRIPTS_EX`(외전, §11.7). 합치기는 `data/story.js` 끝.
 - 스크립트 id: `p2_prologue` · 장마다 `s14_intro s14_t1 s14_t2 b_narkissa_pre b_narkissa_shatter b_narkissa_post s14_outro` · s15(`b_moloch_*`) · s16(`b_dagon_*`) · s17(`s17_t1 npc_rook_s17 s17_t2 b_ziz_*`) · s18(`npc_carmilla_s18 b_mara_pre b_mara_dream b_mara_post`) · s19(`b_behemoth_*`) · s20(`b_nihil_pre b_nihil_form2 b_nihil_final b_nihil_post s20_outro`) · 엔딩 `ending_p2`, `ending_p2true` · NPC 장별 `npc_<id>_ch14…ch20` · 의뢰 `q_<questId>_start/_done` (bd_rift bd_mirror bd_deep bd_storm bd_combo200 hd_ember hd_plus15 rk_stars rk_stars6 el_pearl ab_dawnflower mt_feast cm_dreams).
 - 새 명령 **`{cmd:'recruit', id}`**: `flags['recruit_'+id] = true` + `game.companions?.recruit?.(id)` (대화·컷신 모두, 건너뛰기도 실행; 합류 연출은 마을). 아웃트로의 합류 명령은 조건 분기보다 앞에 둔다 (results.js 가 새 분기를 보면 아웃트로를 다시 튼다).
-- 컷신 명령(`scenes/front/story.js`): `cg bg wait title flash recruit`. 새 플래그: `p2_started rook_revealed hearts_all stars_all p2_star p2_done s14_revealed s20_revealed dawnflower_given recruit_<6 ids> ending_p2 ending_p2true stable_open isolde_joined`.
-- 7번째 영웅 **이졸데**(hero7) 합류: `s14_outro` 미라 합류 뒤 — 1부 리아·아젤과 같은 `unlockChar` + `NEW HUNTER` 제목 카드 + `flag('isolde_joined')` (플래그는 조건 분기 앞 줄기에서 켠다), 이졸데로 플레이 중이면 `isolde_self` 분기. 새 CG 없이 `cg/cutin_isolde` 를 한 장면 빌린다. `b_nihil_final` 의 다른 헌터 목소리에 이졸데(합류 플래그가 있을 때만), `CREDITS_P2` 첫 줄에 이졸데.
+- 컷신 명령(`scenes/front/story.js`): `cg bg wait title flash recruit`. 새 플래그: `p2_started rook_revealed hearts_all stars_all p2_star p2_done s14_revealed s20_revealed dawnflower_given recruit_<6 ids> ending_p2 ending_p2true stable_open isolde_joined` + 외전 `s21_revealed recruit_mt_argen ex_s21_done`.
+- 7번째 영웅 **이졸데**(hero7) 합류: `s14_outro` 미라 합류 뒤 — 1부 리아·아젤과 같은 `unlockChar` + `NEW HUNTER` 제목 카드 + `flag('isolde_joined')` (플래그는 조건 분기 앞 줄기에서 켠다), 이졸데로 플레이 중이면 `isolde_self` 분기. 새 CG 없이 `cg/cutin_isolde` 를 한 장면 빌린다. `b_nihil_final` 의 다른 헌터 목소리에 이졸데(합류 플래그가 있을 때만), `CREDITS_P2` 첫 줄에 이졸데. 15~20장·두 2부 엔딩의 영웅별 줄(`H({…})`)에 `isolde:` 줄, `s18_t1` 악몽에 이졸데 분기(무너지는 하늘·끌려가는 은빛 용).
 
 ### 11.6 아이템·비전서·퀘스트·지도·음악·아케이드
 - 7단계(ITEMS-P2/P2-DATA, `TIER_LV[6] = 50`, 로마 숫자 Ⅶ): 무기 `w_<type>_13/14`(아이콘 `<type>_7`, visual `{style:6, rift:true}` = 무지갯빛 균열 광택), 방어구 `a_head/body/cloak_13/14`, 장신구 `a_ring_13/14 a_amulet_13/14`, 재료 `m_mirror m_ember m_pearl m_gale m_dream m_spore m_void`, 열쇠 `k_rift_lantern k_heart_1…6(worldHeart, color) k_star_1…6(starShard) k_dawnflower`, 고유 `u_narkissa u_moloch u_dagon u_ziz u_ziz2 u_mara u_behemoth u_nihil u_nihil2 u_alberto`, 신화 `u_dawn_whip/sword/great/dagger/gun/staff` → `MYTHIC_WEAPONS_P2`. 드롭(`game/loot.js`): 보스 고유는 첫 처치 확정·다시 잡으면 40 %, 세계의 심장은 중복 없음, 신화(7단계 `MYTHIC_WEAPONS_P2`)는 b_nihil 첫 처치 확정·이후 50 % · 다른 2부 보스 1.5 % · s20 정예 0.6 % (× 드롭 배율).
 - `world.collect` 가 별의 조각(`progress.shards`, bus `shardFound`, 6개면 stars_all)·세계의 심장(`progress.hearts`, bus `heartFound`, hearts_all)을 기록하고 배너를 띄운다.
 - 비전서 d21–d27, 기록 l21–l34 (`data/lore.js`; §15 표). 퀘스트(`data/quests.js`): 메인 s14–s20, 2부 의뢰 13 + 그레타 의뢰 `cq_hati cq_skoll`.
-- 월드맵(`scenes/town/worldmap.js`, WORLDMAP-P2): 두 쪽 — 0 악마성 Ⅰ(STAGE_ORDER_P1 + 투기장, 유물 5) · 1 이계 Ⅱ(s14–s20, 세계의 심장 6·별의 조각 6; flags.p2_started 이거나 s14 가 열렸을 때만). `enter({page})`, 해금 연출 s13·s14(s14_revealed)·s20(s20_revealed), 옛 세이브는 들어오자마자 `p2_prologue`, 쪽 전환 Q/E·Tab·LB/RB, 음악 worldmap ↔ worldmap2 교차 페이드.
+- 월드맵(`scenes/town/worldmap.js`, WORLDMAP-P2): 두 쪽 — 0 악마성 Ⅰ(STAGE_ORDER_P1 + 투기장, 유물 5) · 1 이계 Ⅱ(s14–s20, 세계의 심장 6·별의 조각 6; flags.p2_started 이거나 s14 가 열렸을 때만 + 외전 s21 노드는 열렸을 때만, 17장에서 갈라진 은빛 길·'외전' 인장). `enter({page})`, 해금 연출 s13·s14(s14_revealed)·s20(s20_revealed)·s21(p2_done → s21_revealed), 옛 세이브는 들어오자마자 `p2_prologue`, 쪽 전환 Q/E·Tab·LB/RB, 음악 worldmap ↔ worldmap2 교차 페이드.
 - 음악 `data/music.js` 2부 11곡: `s14…s20 boss3 boss4 nihil worldmap2`. 마을 하늘의 균열(2부 진행 중, hub.js).
-- 아케이드(`scenes/front/arcade.js`, `arcade_run.js`): `BOSS_ORDER` + 7, 코스 이계편·전 보스 연속, 레벨 프리셋 '이계의 순례자', 무기 단계 ≤ 7, `p2Known`.
+- 아케이드(`scenes/front/arcade.js`, `arcade_run.js`): `BOSS_ORDER` + 7 (+ 외전 b_argen, `STORY_BOSSES = 20` 뒤), 코스 이계편·전 보스 연속 (+ 외전 `ex` 코스 5 '이계편 · 외전'·6 '전 보스 21연전'), 레벨 프리셋 '이계의 순례자', 무기 단계 ≤ 7, `p2Known`, `exKnown`(§11.7).
 - **무한의 탑** (아케이드 5번째 카드, 장면 `tower`·`towerBlessing` = `scenes/front/arcade_tower.js`, 데이터 `data/tower.js`): 월드 하나에 층마다 합성 스테이지(id `'tower'`, 방 하나)를 넣고 `loadRoom`.
   전투 층 = 실제 스테이지 방의 사본(`towerRoom`: 이야기·문·상자·NPC·세이브 표식을 걷고 출구를 막고 기믹 끔, 원래 숫자 표식 자리 = 적 자리; 풀 74방, `node tools/tower_rooms.mjs` 가 validate_maps `--stages` 로 땅 자리 도달성 검사),
   5의 배수 = 보스(투기장, 단계별 보스), 10의 배수 = 안식처(회복 + 축복 1/3). 층 계획은 `TowerPlanner(state.arcade.seed)` 로 결정적. 난이도 곡선·축복 12종은 `data/tower.js` 머리말.
   축복 능력치는 장면이 영웅 `refreshStats` 를 감싸 덧씌운다. 기록: `meta.towerBest[diff]`(`front/common.js towerBests`, 클라우드 합치기 cloud.js), 명예의 전당 '무한의 탑' 부문, 온라인 `tower:<diff>`(docs/specs/online.md). 시험 `node tools/test_tower.mjs`.
+
+### 11.7 외전 「하늘 정원의 둥지」 (s21 · EX-MAP · EX-BOSS · EX-INTEG; 설계 `docs/specs/ex_s21.md`)
+- 스테이지 `s21`(chapter 21, part 2, page 1, **`side: true`**, 레벨 70, 테마·그림 s17 재사용, 기믹 wind, 방 r1–r5 + boss, 맵 `data/maps/s21.js`; '!' 트리거 r3 `s21_t1` · r5 `s21_t2`). `next` 사슬 밖 — **해금은 세계 지도**: `flags.p2_done`(두 2부 엔딩)이면 처음 지도를 열 때 `unlocked` 에 넣고 한 번 연출(`s21_revealed`). 클리어해도 `progress.chapter` 를 올리지 않는다(results.js), 슬롯 요약의 '가장 먼 장'·서바이벌 적 순서·무한의 탑 순서 구간에서도 뺀다.
+- 표시: 메뉴 `stageLabel` · 아케이드 · 명예의 전당은 '외전 하늘 정원의 둥지', 지도 정보판 'SIDE STORY · 외전', 모험 기록 칸 '외전'(열렸을 때만), 도감의 외전 보스는 외전이 열렸거나 쓰러뜨렸을 때만, 성당 힌트 한 줄.
+- 보스 `b_argen`(§11.4): 대본 `b_argen_pre` · 전환 `b_argen_corrupt`/`b_argen_awaken` · `b_argen_post`. 결말은 처치 처리 그대로(`boss_b_argen`, 드롭 u_argen/u_argen2) + 정화 연출.
+- 대본 `data/story_ex.js` `SCRIPTS_EX`: `s21_intro`(컷신, 엔딩 한 달 뒤 이졸데가 아르겐의 울음을 듣는다) · `s21_t1` · `s21_t2` · 보스 넷 · `s21_outro`(정화·재회 → `recruit('mt_argen')` + `ex_s21_done` — 조건 줄보다 앞). 이졸데가 플레이 중인 영웅이 아니면 `R('isolde')` NPC, 맞으면 `ifChar('isolde')` 본인 분기. 레이븐은 진엔딩(`ending_p2true`)을 봤으면 맨얼굴 초상화. 새 CG 없음(`cg/cutin_isolde` 재사용).
+- 아케이드: `exKnown(game)` = 코나미 · 2부 엔딩을 본 적 있음 · 어느 슬롯이든 외전 해금. 거짓이면 외전 코스·외전 연습 순위표를 숨기고, 서바이벌 보스 웨이브(`arenaBosses(p2, ex)`)와 무한의 탑 무작위 구간(`TowerPlanner` `lateBosses` = `sideBosses()`, 41층 이후)에 아르겐을 넣지 않는다. 연습 목록의 s21 은 슬롯 해금을 따른다.
+- 서버(`netlify/lib/gamedata.mts`): `STAGE_LEVELS.s21 = 70` → `practice:s21:<diff>` 보드, `P2_STAGES` + s21, `SIDE_STAGES`, `DAILY_STAGE_IDS`(외전 제외 — 일일 도전 순서가 그대로), `COURSE_COUNT = 7`.
 
 ## 12. 채색 그림 시스템 (ART_DECISION: 모든 캐릭터·크리처 = Kling 원화로 만든 채색 컷아웃 퍼펫 + 절차적 VFX, 벡터는 대체 그림으로 남음)
 
@@ -392,7 +404,7 @@ rAF ─▶ input.pollFrame() (패드 읽기·진동 정리) ─▶ (세로 잠�
   - **네이티브 계약**: `window.__BN_APP = {platform:'android', version, assets:'full'|'lo'|'lo+td', apiProxy, apiBase}` · `window.__BN_INSETS {l,r,t,b}` CSS px + window 이벤트 `'bn-insets'`(노치·보이는 시스템 막대) · `window.__BN_IME {bottom}` CSS px + `'bn-ime'`(API 30 이상만, 그 아래는 undefined; account.js 가 입력 칸을 올린다) · 브리지 `window.BNAndroid`: `isApp() version() exitApp() vibrate(json) insets() ime() rumble(strong, weak, ms)`(연결된 컨트롤러: API 31+ VibratorManager, 그 아래 단일 모터, 패드 없으면 무시) `apiStash(id, method, headers, body)`(WebView 는 POST 본문을 가로챌 수 없어 본문을 먼저 맡긴다).
 
 ## 14. QA 도구
-- `tools/integration.mjs`: 케이스 `title hub worldmap inn arcade s01…s20 s01_boss…s20_boss menu` (`--list`), 페이지·콘솔 오류 0, 보스방은 끝에 `world.boss` 필요, `--mobile`, `--dist [dir]`(CSP 적용 빌드). 단계는 장면이 모두 등록된 뒤(`game.scenesReady !== false`, 60초 안에 안 되면 'BOOT' 실패)에 시작한다 (§3 두 단계 부팅). 종료 코드 0/1/2.
+- `tools/integration.mjs`: 케이스 `title hub worldmap inn arcade s01…s21 s01_boss…s21_boss s01_isolde s15_isolde menu tower` (`--list`), 페이지·콘솔 오류 0, 보스방은 끝에 `world.boss` 필요, `--mobile`, `--dist [dir]`(CSP 적용 빌드). 단계는 장면이 모두 등록된 뒤(`game.scenesReady !== false`, 60초 안에 안 되면 'BOOT' 실패)에 시작한다 (§3 두 단계 부팅). 종료 코드 0/1/2.
 - `tools/test_part2.mjs` (P2-QA, world2 §17): `--static`(데이터) · 실행 묶음 `rooms gimmicks bosses flow legacy endings items loot mobile perf clears` · `--boss b_nihil,…`; 보스 검사는 경기장에 들어선 뒤 `waitRealBoss`(`world.bossReady()` + 대역이 진짜 보스로 바뀔 때까지 한 프레임씩)로 늦게 받는 보스를 기다린다; 결과 `/tmp/claude-0/proto/wpj/`.
 - `tools/balance.mjs [difficulty] [charId] --check` (2부 s14–s20 행을 world2 §15 와 비교; 다른 영웅은 '1부 기준 보정' 범위, `--strict` 는 문구 그대로), `--json`, `--acc`, `--docs`, `--quests`, `--k 'ehp=…'`.
 - `tools/feel_test.mjs` (FEEL-QA): feel §10 인수 검사 M1–M6 · C1–C15 · U1–U2 · A1–A8 · V1 · X1–X3 · I1 · R183, `--quick`, `--only`, `--heroes`; 결과 `/tmp/claude-0/qa_feel/`.
@@ -456,8 +468,8 @@ weapon:{type:'whip'|'sword'|'greatsword'|'dagger'|'gun'|'staff', style:1~6, colo
 - s14–s20: §11.3 (24종). 데이터·AI·벡터 파일: 공용+s01–s06 `*_a`, s07–s13 `*_b`, s14–s16 `*_c`, s17–s20 `*_d`. 채색 렌더러는 모두 `render/painted/enemies/<id>.js`.
 
 ### 보스 (ID — 스테이지)
-`b_nightwing`(s01) 나이트윙 · `b_banshee`(s02) 밴시 여왕 · `b_dullahan`(s03) 둘라한 · `b_crimson`(s04) 진홍의 갑주군주 · `b_bonedragon`(s05) 본 드래곤 · `b_grimoire`(s06) 그리모어 · `b_chimera`(s07) 키메라 호문쿨루스 · `b_leviathan`(s08) 레비아탄 · `b_colossus`(s09) 태엽 거신 · `b_frostqueen`(s10) 서리 여왕 이자벨라 · `b_death`(s11) 사신 데스 · `b_dracula`(s12) 드라큘라 백작 (2페이즈 진정한 모습 `portraits/b_dracula2`) · `b_chaos`(s13) 혼돈의 군주 · 2부 `b_narkissa b_moloch b_dagon b_ziz b_mara b_behemoth b_nihil` (§11.4).
-초상화 `portraits/<bossId>` (+ `b_dracula2`, `b_narkissa2`, `b_nihil2`). 클래스: 1부 `bosses/a_*.js`(`ABoss`, `a_common.js`)·`b_*.js`(`BossB`, `b_common.js`), 2부 `c_*.js`/`d_*.js`(BossC, `c_common.js`). 모든 보스에 채색 렌더러 `render/painted/bosses/<id>.js`.
+`b_nightwing`(s01) 나이트윙 · `b_banshee`(s02) 밴시 여왕 · `b_dullahan`(s03) 둘라한 · `b_crimson`(s04) 진홍의 갑주군주 · `b_bonedragon`(s05) 본 드래곤 · `b_grimoire`(s06) 그리모어 · `b_chimera`(s07) 키메라 호문쿨루스 · `b_leviathan`(s08) 레비아탄 · `b_colossus`(s09) 태엽 거신 · `b_frostqueen`(s10) 서리 여왕 이자벨라 · `b_death`(s11) 사신 데스 · `b_dracula`(s12) 드라큘라 백작 (2페이즈 진정한 모습 `portraits/b_dracula2`) · `b_chaos`(s13) 혼돈의 군주 · 2부 `b_narkissa b_moloch b_dagon b_ziz b_mara b_behemoth b_nihil` (§11.4) · 외전 `b_argen`(s21) 아르겐 (§11.7).
+초상화 `portraits/<bossId>` (+ `b_dracula2`, `b_narkissa2`, `b_nihil2`). 클래스: 1부 `bosses/a_*.js`(`ABoss`, `a_common.js`)·`b_*.js`(`BossB`, `b_common.js`), 2부 `c_*.js`/`d_*.js`·외전 `e_*.js`(BossC, `c_common.js`). 모든 보스에 채색 렌더러 `render/painted/bosses/<id>.js`.
 
 ### 숨겨진 비전서(기술 문서) — `data/lore.js` DOCS
 벽 'H' 를 부수면 해당 스테이지 `docs` 목록 순서로 등장. `tech` 는 커맨드 기술(`SKILL_IMPL[tech.id]`), `stats` 는 영구 보너스.
@@ -499,7 +511,7 @@ weapon:{type:'whip'|'sword'|'greatsword'|'dagger'|'gun'|'staff', style:1~6, colo
 `npc_marta` 마르타(흑묘 여관 주인, 미니게임), `npc_rook` 로크(떠돌이 상인, 상점; 2부 모습 `npc_rook2`), `npc_hadwin` 하드윈(대장장이, 강화), `npc_alberto` 알베르토 신부(성당, 전직/스토리 멘토), `npc_elise` 엘리제(마을 소녀, 구출 퀘스트), `npc_carmilla` 카밀라(수수께끼의 흡혈귀 귀부인, 선택지→엔딩 분기), `npc_greta` 그레타(영혼의 마구간지기, 1장부터). 초상화 `portraits/<id>`. 순서 `NPC_ORDER`. 모두 채색 퍼펫(`assets/puppets/npc/<id>/`).
 
 ### 스토리 스크립트 ID 규칙
-`<stageId>_intro`(스테이지 시작 전), `<stageId>_t1/_t2`(스테이지 안), `<stageId>_outro`(클리어 후), `<bossId>_pre`(보스 등장 전), `<bossId>_post`(스토리 모드에서 보스가 죽은 뒤), 보스 페이즈 대사(`b_dracula_transform`, `b_narkissa_shatter`, `b_mara_dream`, `b_nihil_form2`, `b_nihil_final`), `prologue`, `p2_prologue`, `ending_bad`, `ending_normal`, `ending_true`, `ending_p2`, `ending_p2true`, `<npcId>_default`, `<npcId>_ch<N>`(N장 클리어 뒤 마을 대사, N ≤ 20), `<npcId>_tip<N>`, `<npcId>_<stageId>`, 퀘스트 `q_<id>_start|_done`, 동료 `cmp_*`.
+`<stageId>_intro`(스테이지 시작 전), `<stageId>_t1/_t2`(스테이지 안), `<stageId>_outro`(클리어 후), `<bossId>_pre`(보스 등장 전), `<bossId>_post`(스토리 모드에서 보스가 죽은 뒤), 보스 페이즈 대사(`b_dracula_transform`, `b_narkissa_shatter`, `b_mara_dream`, `b_nihil_form2`, `b_nihil_final`, `b_argen_corrupt`, `b_argen_awaken`), `prologue`, `p2_prologue`, `ending_bad`, `ending_normal`, `ending_true`, `ending_p2`, `ending_p2true`, `<npcId>_default`, `<npcId>_ch<N>`(N장 클리어 뒤 마을 대사, N ≤ 20), `<npcId>_tip<N>`, `<npcId>_<stageId>`, 퀘스트 `q_<id>_start|_done`, 동료 `cmp_*`.
 줄 형식(`data/story.js` 머리말): `{who, text, side?, name?, portrait?}` · `{choice:[…]}` · `{label}`/`{goto}`/`{if}` · 명령 `give gold flag quest unlockChar shake flash music sfx relic cg recruit goto` (대화 `dialogue.js`·컷신 `front/story.js` 모두) + 컷신 전용 `bg wait title`.
 
 ### 스토리 CG (Kling 생성, `assets/cg/<id>.webp`)
