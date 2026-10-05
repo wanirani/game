@@ -3781,13 +3781,14 @@ ULTS.isolde = (p, w, v = ultCtx(p, w)) => {
     ww.fx.ering(x, y - 2, { color: '#e8f8ff', r0: 30, r1: V0.w * 0.5, ry: 0.14, life: 0.5, width: 12 });
     const st = HFX.star?.(COL);
     if (st) ww.fx.sprite(st, x, y - 30, { size: 340, life: 0.25, s0: 0.3, s1: 1.3 });
-    // 갈라진 땅을 따라 번개가 양쪽으로 달린다 (기둥 넷: 박자마다 작은 낙뢰)
+    // 갈라진 땅을 따라 번개가 양쪽으로 달린다 (기둥 넷: 박자마다 작은 낙뢰). 판정은 그려지는 낙뢰 그대로 화면 위에서 땅까지 —
+    // 땅 위 200px 만 치면 나는 보스(지즈 등)는 기둥을 하나도 맞지 않는다 (POLISH-1)
     for (let i = 1; i <= 4; i++) for (const d of [-1, 1]) {
       const px = x + d * i * 150;
       if (px < V0.x - 40 || px > V0.x + V0.w + 40) continue;
       const base = groundAt(ww, px, y - 60, 10 * TILE) ?? y;
       setTimeoutFx(ww, 0.06 * i, (w2) => {
-        uHit(w2, p, 0.25, { element: 'thunder', hitstop: 0, kb: [d * 120, -420], launch: true, rect: { x: px - 50, y: base - 200, w: 100, h: 210 } });
+        uHit(w2, p, 0.25, { element: 'thunder', hitstop: 0, kb: [d * 120, -420], launch: true, rect: { x: px - 50, y: V0.y - 10, w: 100, h: base + 20 - V0.y } });
         bolts.push({ t: w2.time ?? 0, x0: px + rand(-40, 40), y0: V0.y - 10, x1: px, y1: base, pts: boltPts(px + rand(-40, 40), V0.y - 10, px, base, 10, 28) });
         if (bolts.length > 8) bolts.shift();
         ultBeat(w2, v, px, base, 0.3, true, COL);

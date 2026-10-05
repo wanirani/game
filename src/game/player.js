@@ -22,6 +22,8 @@ import { SPRINT } from '../data/feel_move.js';
 import { handleUltInput } from './awaken.js';   // [hook:awaken]
 
 const COYOTE = 0.1, JUMP_BUF = 0.13, ATK_BUF = 0.16;
+/** 착지 충격파(groundPound) 내려찍기 뒤 다시 내리꽂기까지 (초) — handleAttackInput 의 재급강하 막기 */
+const POUND_REDIVE = 0.35;
 const ZERO = Object.freeze({ dx: 0, dy: 0 });   // [hook:cmp] 탑승하지 않을 때의 공격 판정 보정 (riderLift)
 const FACE_RING_T = 1;   // [hook:plat] 방향 전환 기록 보관 시간(초) — facingAt(t)
 /** 히트스톱으로 멈춰 있던 시간만큼 입력 버퍼를 늘린다 (최대 0.3초; world.frozenRecent 는 WORLD-CAM) */
@@ -272,7 +274,7 @@ export class Player extends Entity {
       this.landSlam = !!(this.move && (this.move.groundPound || this.move.id?.endsWith('Down') || this.move.anim === 'plunge' || this.move.anim === 'dive_kick'));   // [hook:feel] 내려찍기 착지는 무거운 착지 연출 없음
       world.fx.burst('dust', this.cx, this.bottom, 6, { angle: -Math.PI / 2, spread: 1.4, speed: 80 });
       audio.sfx('land', { vol: 0.4 });
-      if (this.move?.groundPound) this.groundPound(world, this.move.groundPound);
+      if (this.move?.groundPound) { this.groundPound(world, this.move.groundPound); this.poundT = this.t; }
       if (this.move && (this.move.id?.endsWith('Down') || this.move.anim === 'plunge' || this.move.anim === 'dive_kick')) { this.endMove(); }
       if (!this.mount?.riding) onLand?.(this, world, vyBefore, Math.max(0, this.y - (this.apexY ?? this.y)));   // [hook:feel] [hook:cmp] 탑승 중엔 탈것이 처리
     }
@@ -431,6 +433,9 @@ export class Player extends Entity {
     // 급강하 포고(아래로 vy 를 주는 ↓ 기술 — 창)로 튀어 오르는 동안(꼭짓점 전)은 다시 내리꽂지 않는다: 입력은 버퍼에 남는다.
     // 막지 않으면 포고(위로 600) 바로 다음 프레임의 급강하(아래로 980)가 되돌려 같은 적을 초당 십수 번 찌른다 (보스 위 무한 포고)
     if (!this.onGround && down && ms.down?.pogo && ms.down.vy > 0 && this.vy < 0 && this.t - (this.pogoT ?? -9) < 0.6 && !(this.dashT > 0) && !this.mount?.riding) return;
+    // 착지 충격파 내려찍기(대검·지팡이·창)도 착지 뒤 POUND_REDIVE 초 안에는 다시 내리꽂지 않는다 (입력은 버퍼에 남는다). 막지 않으면 제자리 점프 →
+    // ↓+공격이 초당 10번 넘게 충격파를 내 보스에게 지상 콤보의 5~8배 피해 (POLISH-1 측정). 한 번 내리꽂기의 피해·연출·착지 뒤 행동은 그대로
+    if (!this.onGround && down && ms.down?.groundPound && this.t - (this.poundT ?? -9) < POUND_REDIVE && !(this.dashT > 0) && !this.mount?.riding) return;
     input.consume('attack');
     if ((this.dashT > 0 || (this.sprinting && this.onGround)) && ms.dash && !this.mount?.riding) { this.dashT = 0; this.startMove(world, ms.dash, 'dash'); return; }   // [hook:feel] [hook:cmp] 질주 공격 = 대시 공격 (땅 위에서만: 질주 점프 중엔 공중 공격·내려찍기)
     if (!this.onGround) {

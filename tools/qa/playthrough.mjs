@@ -117,7 +117,14 @@ function installHelper() {
       }
       if (b) o.boss = { ...(P.hb(b) || {}), hp: b.hp, mhp: b.stats?.maxHp ?? b.maxHp, dead: !!b.dead, dying: b.dying > 0, pending: !!b.pendingBoss, id: b.def?.id ?? b.id, active: !!w.bossActive };
       const wind = w?.gimmickOf?.('wind');
-      if (wind) { o.wind = wind.phase; o.windRem = Math.max(0, (wind.dur ?? 0) - (wind.pt ?? 0)); o.windDir = wind.dir; }
+      // windRem = 돌풍(밀기)까지 남은 시간. 'off' 뒤에는 경고(warn, 밀지 않음)가 한 번 더 있다.
+      // auto:false (보스가 돌풍을 부르는 방 — s17 지즈·s21 아르겐 둥지): 'off' 는 남은 시간 0 에 멈춰 있지만 돌풍은 오지 않는다 → 무한대로 본다
+      // (0 으로 두면 doMacro 의 wind-wait 가 경기장 앞 점프를 영영 미룬다 — s21 보스방 정지)
+      if (wind) {
+        const rem = Math.max(0, (wind.dur ?? 0) - (wind.pt ?? 0));
+        o.wind = wind.phase; o.windDir = wind.dir;
+        o.windRem = wind.phase !== 'off' ? rem : wind.auto === false && !wind.single ? 99 : rem + (+wind.params?.warn || 0);
+      }
       const hb = w?.gimmickOf?.('heartbeat');
       if (hb) { o.hb = { rem: Math.max(0, hb.beat - hb.timer), beat: hb.beat, idx: hb.beatIndex }; if (full) o.hb.cells = hb.cells.map((c) => [c.idx, c.even]); }
       if (p && w) {
