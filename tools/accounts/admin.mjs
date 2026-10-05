@@ -70,7 +70,7 @@ try {
     case 'board': {
       const r = await admin.adminBoard(c, id, Number(rest[0]) || 100);
       console.log(`${r.board} — 계정 ${r.total}명`);
-      for (const e of r.entries) console.log(`${String(e.rank).padStart(3)}. ${e.nick} (${e.id ?? '?'})  time ${e.time}  score ${e.score}${e.wave !== undefined ? `  wave ${e.wave}` : ''}  ${e.hero}/${e.cls} Lv${e.level}  ${e.date}${e.ghost ? '  [고스트]' : ''}`);
+      for (const e of r.entries) console.log(`${String(e.rank).padStart(3)}. ${e.nick} (${e.id ?? '?'})  time ${e.time}  score ${e.score}${e.wave !== undefined ? `  wave ${e.wave}` : ''}${e.floor !== undefined ? `  floor ${e.floor}` : ''}  ${e.hero}/${e.cls} Lv${e.level}  ${e.date}${e.ghost ? '  [고스트]' : ''}`);
       break;
     }
     case 'board-remove': {

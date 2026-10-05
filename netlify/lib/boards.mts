@@ -30,9 +30,9 @@ export function kstDayStart(day: string): number | null {
 export const oldestDaily = (t: number): string => kstDay(t - ONLINE.dailyKeepDays * DAY);
 
 // ── 보드 ID ──
-export type Kind = 'bossrush' | 'survival' | 'practice' | 'daily';
+export type Kind = 'bossrush' | 'survival' | 'practice' | 'daily' | 'tower';
 export interface Board { id: string; kind: Kind; key: string; date?: string }
-const BOARD_RE = /^(?:bossrush:(0|[1-9]\d?):([a-z]{1,16})|survival:([a-z]{1,16})|practice:(s\d\d):([a-z]{1,16})|daily:(\d{8}))$/;
+const BOARD_RE = /^(?:bossrush:(0|[1-9]\d?):([a-z]{1,16})|survival:([a-z]{1,16})|practice:(s\d\d):([a-z]{1,16})|daily:(\d{8})|tower:([a-z]{1,16}))$/;
 const diffOk = (d: string): boolean => DIFFICULTY_IDS.includes(d);
 
 /**
@@ -55,6 +55,9 @@ export function parseBoard(raw: unknown, t: number, mode: 'read' | 'write' | 'an
   } else if (m[4] !== undefined) {
     if (!Object.hasOwn(STAGE_LEVELS, m[4]) || !diffOk(m[5])) return null;
     kind = 'practice';
+  } else if (m[7] !== undefined) {
+    if (!diffOk(m[7])) return null;
+    kind = 'tower';
   } else {
     date = m[6];
     if (kstDayStart(date) === null || (mode !== 'any' && date > kstDay(t))) return null;
@@ -65,16 +68,17 @@ export function parseBoard(raw: unknown, t: number, mode: 'read' | 'write' | 'an
 }
 
 // ── 순위 ──
-/** 순위 목록 항목 (서버 안에서만; 공개할 때는 uid 를 빼고 pubEntry 로 바꾼다) */
-export interface Entry { u: string; n: string; t: number; s: number; w?: number; h: string; c: string; l: number; d: number; g?: boolean }
+/** 순위 목록 항목 (서버 안에서만; 공개할 때는 uid 를 빼고 pubEntry 로 바꾼다). f = 무한의 탑 돌파한 층 */
+export interface Entry { u: string; n: string; t: number; s: number; w?: number; f?: number; h: string; c: string; l: number; d: number; g?: boolean }
 /** 계정의 최고 기록 (b/<보드 키>/e/<uid>). id = 로그인 아이디 (운영 도구용, 공개하지 않는다), rn = 이 기록을 세운 런 nonce, gr = 등급, dt = 죽은 수 */
-export interface Rec { v: 1; id: string; uid: string; t: number; s: number; w?: number; h: string; c: string; l: number; gr?: string; dt?: number; d: number; rn: string }
+export interface Rec { v: 1; id: string; uid: string; t: number; s: number; w?: number; f?: number; h: string; c: string; l: number; gr?: string; dt?: number; d: number; rn: string }
 interface Index { v: 1; board: string; total: number; list: Entry[] }
-type Score = Pick<Entry, 't' | 's' | 'w'>;
+type Score = Pick<Entry, 't' | 's' | 'w' | 'f'>;
 
-/** 순위 기준만 비교 (음수 = a 가 위). 보스 러시·일일: time ↑ / 서바이벌: wave ↓ → score ↓ / 연습: time ↑ → score ↓ */
+/** 순위 기준만 비교 (음수 = a 가 위). 보스 러시·일일: time ↑ / 서바이벌: wave ↓ → score ↓ / 연습: time ↑ → score ↓ / 무한의 탑: floor ↓ → time ↑ */
 export function cmpScore(kind: Kind, a: Score, b: Score): number {
   if (kind === 'survival') return ((b.w ?? 0) - (a.w ?? 0)) || (b.s - a.s);
+  if (kind === 'tower') return ((b.f ?? 0) - (a.f ?? 0)) || (a.t - b.t);
   if (kind === 'practice') return (a.t - b.t) || (b.s - a.s);
   return a.t - b.t;
 }
@@ -85,9 +89,10 @@ export function cmpEntry(kind: Kind, a: Entry, b: Entry): number {
 const better = (kind: Kind, a: Score, b: Score): boolean => cmpScore(kind, a, b) < 0;
 
 /** 공개 항목 (§2.3) */
-export function pubEntry(kind: Kind, e: Pick<Entry, 'n' | 't' | 's' | 'w' | 'h' | 'c' | 'l' | 'd' | 'g'>, rank: number | null): Record<string, unknown> {
+export function pubEntry(kind: Kind, e: Pick<Entry, 'n' | 't' | 's' | 'w' | 'f' | 'h' | 'c' | 'l' | 'd' | 'g'>, rank: number | null): Record<string, unknown> {
   const out: Record<string, unknown> = { rank, nick: e.n, time: e.t, score: e.s };
   if (kind === 'survival') out.wave = e.w ?? 0;
+  if (kind === 'tower') out.floor = e.f ?? 0;
   Object.assign(out, { hero: e.h, cls: e.c, level: e.l, date: e.d, ghost: !!e.g });
   return out;
 }
@@ -218,6 +223,7 @@ export async function saveBest(c: Ctx, b: Board, rec: Rec): Promise<Saved> {
 export const entryOf = (r: Rec, nick: string): Entry => {
   const e: Entry = { u: r.uid, n: nick, t: r.t, s: r.s, h: r.h, c: r.c, l: r.l, d: r.d };
   if (r.w !== undefined) e.w = r.w;
+  if (r.f !== undefined) e.f = r.f;
   return e;
 };
 

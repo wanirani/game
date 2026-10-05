@@ -69,7 +69,7 @@ node tools/accounts/admin.mjs nick hunter_01 새별명                # 지정 (
 node tools/accounts/admin.mjs show hunter_01                      # 계정 요약에 별명·기록을 둔 보드 목록
 ```
 
-- 보드 ID: `bossrush:<0~4>:<난이도>`, `survival:<난이도>`, `practice:<s01~s20>:<난이도>`, `daily:<YYYYMMDD>` (난이도 `easy|normal|hard|nightmare|inferno`).
+- 보드 ID: `bossrush:<0~4>:<난이도>`, `survival:<난이도>`, `practice:<s01~s20>:<난이도>`, `daily:<YYYYMMDD>`, `tower:<난이도>` (난이도 `easy|normal|hard|nightmare|inferno`).
 - 기록을 지워도 그 계정은 다시 제출할 수 있다. 같은 계정이 계속 문제면 `delete`(계정 삭제) 또는 `revoke`.
 - 금칙어를 늘리려면 `netlify/lib/nick.mts` 의 목록을 고치고 배포한다(이미 쓰는 별명은 그대로 — 필요하면 `nick` 으로 바꾼다).
 - `AUTH_PEPPER` 가 없으면 런 토큰 서명·일일 도전 키가 공개된 고정 문자열이라 위조·예측이 가능하다(함수 로그에 `[online] 경고` 가 한 번 남는다). 운영에는 반드시 넣는다. 바꾸면 진행 중인 런 토큰이 무효가 되고 오늘의 도전 내용이 바뀐다.

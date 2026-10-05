@@ -19,7 +19,7 @@ const K_Q = 'bn_online_q', K_DAILY = 'bn_online_daily', K_NICK = 'bn_online_nick
 export const RUN_TTL = 6 * 3600e3;            // run 유효 시간 (서버 서명 6시간)
 export const GHOST_MAX = 24 * 1024;           // 고스트 base64 상한 (§2.2)
 const Q_MAX = 6, BOARD_TTL = 30e3, LOCAL_GHOSTS = 6;
-const BOARD_RE = /^(bossrush:\d{1,2}:[a-z_]{2,16}|survival:[a-z_]{2,16}|practice:s\d{2}:[a-z_]{2,16}|daily:\d{8})$/;
+const BOARD_RE = /^(bossrush:\d{1,2}:[a-z_]{2,16}|survival:[a-z_]{2,16}|practice:s\d{2}:[a-z_]{2,16}|daily:\d{8}|tower:[a-z_]{2,16})$/;
 const NET = new Set(['offline', 'network', 'timeout']);
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const W = typeof window !== 'undefined' ? window : null;
@@ -81,12 +81,15 @@ export function boardOf(cfg) {
   if (cfg.kind === 'bossrush') b = `bossrush:${cfg.course ?? 0}:${d}`;
   else if (cfg.kind === 'survival') b = `survival:${d}`;
   else if (cfg.kind === 'practice') b = `practice:${cfg.stageId ?? 's01'}:${d}`;
+  else if (cfg.kind === 'tower') b = `tower:${d}`;
   return validBoard(b) ? b : null;
 }
 /** 보드 종류 */
 export const boardKind = (b) => String(b ?? '').split(':')[0];
 /** 순위 기준이 시간인가 (보스 러시·연습·일일) */
-export const timeBoard = (b) => boardKind(b) !== 'survival';
+export const timeBoard = (b) => boardKind(b) !== 'survival' && boardKind(b) !== 'tower';
+/** 무한의 탑 보드인가 (돌파한 층 ↑ → 시간 ↓) */
+export const floorBoard = (b) => boardKind(b) === 'tower';
 /** 한국 시간(UTC+9) 날짜 'YYYYMMDD' */
 export function kstDay(ms = Date.now()) {
   return new Date(ms + 9 * 3600e3).toISOString().slice(0, 10).replace(/-/g, '');
@@ -191,6 +194,7 @@ export function startRun(board) {
 export function cleanResult(r) {
   const o = { time: Math.max(0, Math.round(Number(r?.time) || 0)), score: Math.max(0, Math.min(99999999, Math.round(Number(r?.score) || 0))), hero: String(r?.hero ?? ''), cls: String(r?.cls ?? ''), level: Math.max(1, Math.min(99, Math.round(Number(r?.level) || 1))) };
   if (Number.isFinite(r?.wave)) o.wave = Math.max(0, Math.round(r.wave));
+  if (Number.isFinite(r?.floor)) o.floor = Math.max(0, Math.round(r.floor));
   if (typeof r?.rank === 'string' && /^[SABCD]$/.test(r.rank)) o.rank = r.rank;
   if (Number.isFinite(r?.deaths)) o.deaths = Math.max(0, Math.round(r.deaths));
   return o;
@@ -334,10 +338,10 @@ export function getBoard(board, { limit = 50, force = false } = {}) {
     if (!r.ok) { boards.delete(k); return r; }
     const entries = (Array.isArray(r.entries) ? r.entries : []).filter(isObj).slice(0, 100).map((e, i) => ({
       rank: Number.isFinite(e.rank) ? e.rank : i + 1, nick: String(e.nick ?? '???').slice(0, 24), time: Number(e.time) || 0, score: Number(e.score) || 0,
-      wave: Number.isFinite(e.wave) ? e.wave : null, hero: String(e.hero ?? ''), cls: String(e.cls ?? ''), level: Number(e.level) || 0, date: e.date ?? null, ghost: !!e.ghost,
+      wave: Number.isFinite(e.wave) ? e.wave : null, floor: Number.isFinite(e.floor) ? e.floor : null, hero: String(e.hero ?? ''), cls: String(e.cls ?? ''), level: Number(e.level) || 0, date: e.date ?? null, ghost: !!e.ghost,
     }));
     // me.rank 는 순위 밖이면 null (기록은 있다)
-    const me = isObj(r.me) && (Number.isFinite(r.me.rank) || r.me.rank === null) && Number.isFinite(r.me.time) ? { rank: Number.isFinite(r.me.rank) ? r.me.rank : null, time: Number(r.me.time) || 0, score: Number(r.me.score) || 0, wave: Number.isFinite(r.me.wave) ? r.me.wave : null } : null;
+    const me = isObj(r.me) && (Number.isFinite(r.me.rank) || r.me.rank === null) && Number.isFinite(r.me.time) ? { rank: Number.isFinite(r.me.rank) ? r.me.rank : null, time: Number(r.me.time) || 0, score: Number(r.me.score) || 0, wave: Number.isFinite(r.me.wave) ? r.me.wave : null, floor: Number.isFinite(r.me.floor) ? r.me.floor : null } : null;
     const out = { ok: true, board, total: Number.isFinite(r.total) ? r.total : entries.length, entries, me };
     boards.set(k, { at: Date.now(), data: out });
     return out;

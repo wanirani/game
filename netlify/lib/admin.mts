@@ -89,7 +89,7 @@ export async function adminDelete(c: Ctx, rawId: string): Promise<void> {
 // ── 온라인 순위표 (docs/ONLINE.md §운영) ──
 const boardOf = (raw: string) => {
   const b = parseBoard(raw, now(), 'read');
-  if (!b) throw new Error(`보드 ID 형식이 아닙니다: ${raw} (예: practice:s01:normal, bossrush:0:hard, survival:normal, daily:20261005)`);
+  if (!b) throw new Error(`보드 ID 형식이 아닙니다: ${raw} (예: practice:s01:normal, bossrush:0:hard, survival:normal, tower:normal, daily:20261005)`);
   return b;
 };
 

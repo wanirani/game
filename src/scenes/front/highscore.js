@@ -2,6 +2,7 @@
 //  - '기기 / 온라인' 탭 (docs/specs/online.md §4; 위 오른쪽 탭 · Q/E·LB/RB): 온라인은 왼쪽 보드 선택(종류 → 코스/스테이지 · 난이도,
 //    오늘의 도전)과 내 순위(로그인 안 했으면 안내 + 로그인 버튼), 오른쪽 상위 50명(순위·별명·기록·헌터/직업; 끌기·휠·오른쪽 스틱·↑↓로 넘김).
 //    불러오는 중·오류(다시 시도)·오프라인·이 환경에서 못 씀 상태를 보여 준다. go('highscore', {src:'online', board}) 로 그 보드를 바로 연다
+//  - 무한의 탑: 기기 탭 '무한의 탑' 부문(점수 상위 20) + 난이도별 최고 층 줄 (meta.towerBest), 온라인 보드 tower:<diff> (층 · 시간)
 // 플랫폼 (platform §6.2 · §6.3 · §4.5, MASTER_PLAN §1.16) — owner: PLAT-FRONT-A
 //  - 두 장면 모두 uiScale (game.uiW × game.uiH, 최소 720×400). 줄 높이는 화면 높이에 맞춘다
 //  - 부문 탭은 목록 줄(≥ 36 CSS px), 뒤로·▲▼·등록 버튼은 ui.taps (owner = 장면), 안내 줄은 지금 기기의 글리프
@@ -19,7 +20,7 @@ import { STAGES } from '../../data/stages.js';
 import { getDiff } from '../../data/difficulty.js';
 import {
   Ambience, kenBurns, shade, frame, heading, ornament, gbutton, backButton, footer, MODES, modeName,
-  recordHighScore, scoreList, fmtClock, follow, bossRushBests, linGrad, radGrad, GOLD, BONE, DIM,
+  recordHighScore, scoreList, fmtClock, follow, bossRushBests, towerBests, linGrad, radGrad, GOLD, BONE, DIM,
 } from './common.js';
 import { COURSES, visibleCourses, p2Known } from './arcade.js';
 import * as ENDING from './ending.js';
@@ -42,6 +43,7 @@ function detail(h) {
   switch (h.mode) {
     case 'bossrush': return `${h.bosses ?? '?'}체 격파${h.time ? ' · ' + fmtClock(h.time) : ''}`;
     case 'survival': return `WAVE ${h.wave ?? '?'}`;
+    case 'tower': return `${h.floor ?? 0}층 돌파${d ? ' · ' + d.name : ''}`;
     case 'practice': return stg ? `${stg.chapter}장 ${stg.name}` : '연습';
     default: return h.stageId === 'ending' ? '엔딩 도달' : stg ? `${stg.chapter}장 클리어` : (d?.name ?? '');
   }
@@ -58,6 +60,7 @@ function endingCount(seen) {
 const OKINDS = [
   { id: 'bossrush', name: '보스 러시' }, { id: 'survival', name: '서바이벌' },
   { id: 'practice', name: '스테이지 연습' }, { id: 'daily', name: '오늘의 도전' },
+  { id: 'tower', name: '무한의 탑' },
 ];
 let lastSrc = 'device';   // 이번 실행에서 마지막으로 본 탭
 let lastSel = null;       // 온라인 보드 선택 {kind, course, diff, stageId}
@@ -65,7 +68,7 @@ let lastSel = null;       // 온라인 보드 선택 {kind, course, diff, stageI
 function selOf(board) {
   const [k, a, b] = String(board ?? '').split(':');
   if (k === 'bossrush') return { kind: k, course: +a || 0, diff: b };
-  if (k === 'survival') return { kind: k, diff: a };
+  if (k === 'survival' || k === 'tower') return { kind: k, diff: a };
   if (k === 'practice') return { kind: k, stageId: a, diff: b };
   if (k === 'daily') return { kind: k };
   return null;
@@ -341,6 +344,12 @@ export class HighscoreScene extends Scene {
     const brb = bossRushBests(m), brc = COURSES.map((c, i) => (brb[i] ? `${c.short ?? c.name} ${fmtClock(brb[i].time ?? 0)}` : null)).filter(Boolean);
     if (brc.length) extra.push(`보스 러시 최단  ${brc.join(' · ')}`);
     if (m.survivalBest) extra.push(`서바이벌 최고 WAVE ${m.survivalBest}`);
+    // 무한의 탑: 난이도별 최고 층 (탑 부문이면 모든 난이도, 아니면 가장 높은 것 하나)
+    const twb = towerBests(m), tl = DIFFICULTIES.filter((d) => twb[d.id]?.floor > 0).map((d) => ({ d, b: twb[d.id] }));
+    if (tl.length) {
+      if (MODES[this.tabs.index]?.id === 'tower') extra.unshift(`무한의 탑 최고  ${tl.map(({ d, b }) => `${d.name} ${b.floor}층 ${fmtClock(b.time ?? 0)}`).join(' · ')}`);
+      else { const top = tl.reduce((a, x) => (x.b.floor > a.b.floor ? x : a)); extra.push(`무한의 탑 최고 ${top.b.floor}층 (${top.d.name})`); }
+    }
     const ec = endingCount(m.endingsSeen);
     if (ec.n) extra.push(`엔딩 ${ec.n}/${ec.of}`);
     if (extra.length) text(ctx, extra.join('   ·   '), W / 2, L.extraY, { size: 13, align: 'center', weight: 700, color: '#d8c0a0', ow: 2, maxWidth: W - 40 });
@@ -395,7 +404,7 @@ export class HighscoreScene extends Scene {
     const time = ONLINE.timeBoard(this.ob.board ?? this.board());
     text(ctx, '순위', C.rank, top + 14, { size: 12, weight: 800, color: DIM, ow: 2 });
     text(ctx, '별명', C.nick, top + 14, { size: 12, weight: 800, color: DIM, ow: 2 });
-    text(ctx, time ? '기록' : '웨이브 · 점수', C.rec, top + 14, { size: 12, align: 'right', weight: 800, color: DIM, ow: 2 });
+    text(ctx, time ? '기록' : ONLINE.floorBoard?.(this.ob.board ?? this.board()) ? '층 · 시간' : '웨이브 · 점수', C.rec, top + 14, { size: 12, align: 'right', weight: 800, color: DIM, ow: 2 });
     text(ctx, '헌터 · 직업', C.hero, top + 14, { size: 12, weight: 800, color: DIM, ow: 2 });
     ctx.fillStyle = 'rgba(232,200,114,0.2)'; ctx.fillRect(lx + 8, top + 21, lw - 16, 1);
     const st = this.ob.state, cx = lx + lw / 2, cy = list.y + Math.min(list.h / 2, 110);
@@ -438,9 +447,11 @@ export class HighscoreScene extends Scene {
     if (this.ofocus >= rows.length) { ctx.strokeStyle = GOLD; ctx.lineWidth = 1.5; ctx.strokeRect(lx + 1.5, top - 2.5, lw - 3, bot - top + 5); }
     text(ctx, `전체 ${D.total}명`, lx + lw - 12, bot - 2 + 14 > H - L.sb - 34 ? top + 14 : bot + 14, { size: 11, align: 'right', weight: 700, color: DIM, ow: 2 });
   }
-  /** 기록 표시: 시간 보드 = 1:23.45, 서바이벌 = WAVE n · 점수 */
+  /** 기록 표시: 시간 보드 = 1:23.45, 서바이벌 = WAVE n · 점수, 무한의 탑 = n층 · 1:23.45 */
   recText(e) {
-    return ONLINE.timeBoard(this.ob.board ?? this.board()) ? ONLINE.fmtMs(e.time) : `WAVE ${e.wave ?? '?'} · ${fmt(e.score ?? 0)}`;
+    const b = this.ob.board ?? this.board();
+    if (ONLINE.floorBoard?.(b)) return `${e.floor ?? '?'}층 · ${ONLINE.fmtMs(e.time)}`;
+    return ONLINE.timeBoard(b) ? ONLINE.fmtMs(e.time) : `WAVE ${e.wave ?? '?'} · ${fmt(e.score ?? 0)}`;
   }
 }
 

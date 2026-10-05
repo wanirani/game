@@ -330,11 +330,11 @@ class Telemetry {
     });
   }
   arcade(d) {
-    const kind = ['practice', 'bossrush', 'survival'].includes(d?.kind) ? d.kind : null;
+    const kind = ['practice', 'bossrush', 'survival', 'tower'].includes(d?.kind) ? d.kind : null;
     if (!kind) return;
     this.track('arcade_result', {
       mode: kind, score: int(d.score, 0, 1e12), time: num(d.time, 0, 86400, 10), cleared: !!d.cleared, hero: idOf(d.charId), diff: idOf(d.diff),
-      wave: int(d.extra?.wave, 0, 99999), bosses: int(d.extra?.bosses, 0, 999), stage: idOf(d.stageId),
+      wave: int(kind === 'tower' ? d.extra?.floor : d.extra?.wave, 0, 99999), bosses: int(d.extra?.bosses, 0, 999), stage: idOf(d.stageId),   // 무한의 탑: wave 칸 = 돌파한 층
     });
   }
   /** 오류 하나 (같은 오류는 실행마다 3번, 모두 25번까지). 절대 던지지 않는다 */

@@ -19,6 +19,7 @@
 | 서바이벌 | `survival:<diff>` | `wave` 클수록 위, 같으면 `score` 큰 쪽 |
 | 스테이지 연습 | `practice:<stageId>:<diff>` | `time`(ms) 작을수록 위, 같으면 `score` 큰 쪽 |
 | 일일 도전 | `daily:<YYYYMMDD>` | `time`(ms) 작을수록 위 |
+| 무한의 탑 | `tower:<diff>` | `floor`(돌파한 층) 클수록 위, 같으면 `time`(ms) 작을수록 위 |
 
 - `<course>`: arcade.js `COURSES` 의 인덱스. `<diff>`: difficulty id. `<stageId>`: `s01`…`s20`.
 - 일일 도전 날짜는 **한국 시간(UTC+9)** 기준이다.
@@ -39,8 +40,8 @@
 ### 2.2 런 제출
 `POST /api/runs/finish` (인증 필요, 본문 ≤ 48 KB)
 - 요청: `{ run, result, ghost?, board? }`
-  - `result`: `{ time, score, wave?, rank?, hero, cls, level, deaths? }`
-    - `time` 은 ms, `rank` 는 등급 글자(`S`·`A`…), 서바이벌은 `wave` 필수.
+  - `result`: `{ time, score, wave?, floor?, rank?, hero, cls, level, deaths? }`
+    - `time` 은 ms, `rank` 는 등급 글자(`S`·`A`…), 서바이벌은 `wave` 필수, 무한의 탑은 `floor`(돌파한 층) 필수.
   - `board`(선택): 보내면 런의 보드와 같아야 한다(§3 '보드 일치'). 보드는 `run` 안에 있으므로 생략해도 된다.
   - `ghost`: base64 문자열, 24 KB 이하. 형식은 클라이언트가 정하고 서버는 열어 보지 않는다 (부록 A).
 - 응답: `{ ok: true, best, rank, total, entry }`
@@ -63,9 +64,9 @@
 
 ### 2.3 순위표
 `GET /api/boards/<board>?limit=50` (공개, limit ≤ 100)
-- 응답: `{ board, total, entries: [{ rank, nick, time, score, wave?, hero, cls, level, date, ghost: bool }], me? }`
-  - `date` 는 기록을 세운 서버 시각(ms epoch). `wave` 는 서바이벌 보드에만 있다.
-- 인증 헤더가 있으면 `me: { rank, time, score, wave? }` 를 함께 준다.
+- 응답: `{ board, total, entries: [{ rank, nick, time, score, wave?, floor?, hero, cls, level, date, ghost: bool }], me? }`
+  - `date` 는 기록을 세운 서버 시각(ms epoch). `wave` 는 서바이벌 보드에만, `floor` 는 무한의 탑 보드에만 있다.
+- 인증 헤더가 있으면 `me: { rank, time, score, wave?, floor? }` 를 함께 준다.
   - 그 보드에 기록이 없으면 `me: null`, 100위 밖이면 `rank: null`. 토큰이 틀리면 다른 API 처럼 401.
 - `Cache-Control: public, max-age=30`. 인증한 요청은 `no-store`.
 
@@ -104,6 +105,8 @@
 - 보드별 상한·하한
   - 보스 러시·연습·일일: `time` 은 5초 이상 2시간 이하.
   - 서바이벌: `wave` 는 1~999.
+  - 무한의 탑: `floor` 는 1~999, `time` 은 24시간 이하이고 `floor × 8초` 이상(층마다 최소 8초 — 넘지 못하면 `implausible_time`),
+    `score` 는 `(floor + 1) × 5,000,000` 이하. 층 규칙 숫자는 `netlify/lib/gamedata.mts` `TOWER_RULES` = `src/data/tower.js` `TOWER_RULES`.
   - `level` 1~99, `score` 0~99,999,999.
   - `hero`·`cls` 는 데이터에 있는 id.
 - 계정당 제출은 1분에 6번, 하루에 300번까지.
@@ -115,7 +118,9 @@
   - 아케이드 모드나 일일 도전을 시작할 때 로그인 상태면 `POST /api/runs` 를 비동기로 호출한다. 실패해도 게임은 그대로 한다.
   - 끝나면 결과 화면에서 제출하고 순위를 보여 준다.
   - 오프라인이면 결과를 기기에 잠시 두었다가 다음 접속 때 보낸다. 단, `run` 은 6시간 안에만 유효하다.
-- **명예의 전당**: '기기 / 온라인' 탭을 둔다. 온라인 탭은 보드 선택(종류·코스·난이도·스테이지·오늘의 도전)과 상위 50명, 내 순위를 보여 준다.
+- **명예의 전당**: '기기 / 온라인' 탭을 둔다. 온라인 탭은 보드 선택(종류·코스·난이도·스테이지·오늘의 도전·무한의 탑)과 상위 50명, 내 순위를 보여 준다.
+  기기 탭의 무한의 탑 부문은 점수 상위 20개와 난이도별 최고 층(`meta.towerBest`)을 보여 준다.
+- **무한의 탑**: 쓰러져 끝나면(리타이어 포함) 돌파한 층이 1 이상일 때 늘 제출한다 (서바이벌처럼). 고스트는 없다.
 - **일일 도전**: 아케이드 메뉴에 '오늘의 도전' 카드를 둔다.
   - 그날 정해진 스테이지·헌터·규칙으로 연습 모드를 돌린다.
   - 같은 날 몇 번이든 할 수 있고, 최고 기록만 남는다.

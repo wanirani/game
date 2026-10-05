@@ -37,3 +37,11 @@ export const COURSE_COUNT = 5;
 export const LEVEL_PRESETS: readonly { lv: number; tier: number; p2?: boolean }[] = [
   { lv: 10, tier: 0 }, { lv: 25, tier: 1 }, { lv: 40, tier: 2 }, { lv: 60, tier: 2 }, { lv: 68, tier: 2, p2: true },
 ];
+
+/**
+ * 무한의 탑 층 규칙 (src/data/tower.js TOWER_RULES 와 같아야 한다 — tools/online/test_online.mjs 가 대조).
+ * 기록 검사(online.mts): 걸린 시간 ≥ 돌파한 층 × minFloorSec 초, 점수 ≤ (돌파한 층 + 1) × maxScorePerFloor
+ */
+export const TOWER_RULES: Readonly<{ bossEvery: number; restEvery: number; minFloorSec: number; maxScorePerFloor: number }> = {
+  bossEvery: 5, restEvery: 10, minFloorSec: 8, maxScorePerFloor: 5000000,
+};

@@ -5,7 +5,7 @@ import { BODY_LIMIT, CHARACTER_IDS, ONLINE, STORES } from './config.mts';
 import { ApiError, fail, isObj, json, ok, readJson } from './http.mts';
 import { accountAlive, authenticate, unauthorized, updateUser } from './accounts.mts';
 import type { Auth } from './accounts.mts';
-import { CLASS_INFO } from './gamedata.mts';
+import { CLASS_INFO, TOWER_RULES } from './gamedata.mts';
 import { limitAccount } from './ratelimit.mts';
 import { now } from './runtime.mts';
 import type { Ctx } from './runtime.mts';
@@ -92,19 +92,27 @@ const int = (v: unknown, min: number, max: number): v is number => Number.isSafe
 const badResult = (): never => fail('invalid_result', 422);
 
 /** 제출값 검사 (§3 보드별 상한·하한, 데이터에 있는 hero·cls) → 기록 필드 */
-function checkResult(b: Board, r: unknown): Pick<Rec, 't' | 's' | 'w' | 'h' | 'c' | 'l' | 'gr' | 'dt'> {
+function checkResult(b: Board, r: unknown): Pick<Rec, 't' | 's' | 'w' | 'f' | 'h' | 'c' | 'l' | 'gr' | 'dt'> {
   if (!isObj(r)) return badResult();
   const time = typeof r.time === 'number' && Number.isFinite(r.time) ? Math.round(r.time) : NaN;
-  if (b.kind === 'survival') { if (!(time >= 0 && time <= ONLINE.anyTimeMaxMs)) badResult(); }
+  if (b.kind === 'survival' || b.kind === 'tower') { if (!(time >= 0 && time <= ONLINE.anyTimeMaxMs)) badResult(); }
   else if (!(time >= ONLINE.timeMinMs && time <= ONLINE.timeMaxMs)) badResult();
   if (!int(r.score, 0, ONLINE.scoreMax) || !int(r.level, 1, ONLINE.levelMax)) badResult();
   if (b.kind === 'survival' && !int(r.wave, 1, ONLINE.waveMax)) badResult();
+  if (b.kind === 'tower') {
+    // 무한의 탑: 돌파한 층 1~999, 층마다 최소 시간 (돌파한 층 × 8초), 층에 비해 지나친 점수
+    if (!int(r.floor, 1, ONLINE.floorMax)) badResult();
+    const f = r.floor as number;
+    if (time < f * TOWER_RULES.minFloorSec * 1000) fail('implausible_time', 422);
+    if ((r.score as number) > (f + 1) * TOWER_RULES.maxScorePerFloor) badResult();
+  }
   if (typeof r.hero !== 'string' || !CHARACTER_IDS.includes(r.hero)) badResult();
   if (typeof r.cls !== 'string' || !Object.hasOwn(CLASS_INFO, r.cls) || CLASS_INFO[r.cls][0] !== r.hero) badResult();
   if (r.deaths !== undefined && r.deaths !== null && !int(r.deaths, 0, ONLINE.deathsMax)) badResult();
   if (r.rank !== undefined && r.rank !== null && !(typeof r.rank === 'string' && /^[A-Z][A-Z+-]{0,2}$/.test(r.rank))) badResult();
-  const out: Pick<Rec, 't' | 's' | 'w' | 'h' | 'c' | 'l' | 'gr' | 'dt'> = { t: time, s: r.score as number, h: r.hero as string, c: r.cls as string, l: r.level as number };
+  const out: Pick<Rec, 't' | 's' | 'w' | 'f' | 'h' | 'c' | 'l' | 'gr' | 'dt'> = { t: time, s: r.score as number, h: r.hero as string, c: r.cls as string, l: r.level as number };
   if (b.kind === 'survival') out.w = r.wave as number;
+  if (b.kind === 'tower') out.f = r.floor as number;
   if (typeof r.rank === 'string') out.gr = r.rank;
   if (Number.isSafeInteger(r.deaths)) out.dt = r.deaths as number;
   return out;
@@ -195,6 +203,7 @@ export async function getBoard(c: Ctx, raw: string): Promise<Response> {
     const at = idx.list.findIndex((e) => e.u === a.uid);
     const me: Record<string, unknown> = { rank: at >= 0 && at < ONLINE.rankTop ? at + 1 : null, time: rec.t, score: rec.s };
     if (board.kind === 'survival') me.wave = rec.w ?? 0;
+    if (board.kind === 'tower') me.floor = rec.f ?? 0;
     out.me = me;
   } else out.me = null;
   return json(200, out);

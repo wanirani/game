@@ -48,7 +48,7 @@ export const BROWSERS = ['chrome', 'edge', 'firefox', 'safari', 'samsung', 'oper
 const TIERS = ['low', 'medium', 'high'] as const;
 const INPUTS = ['touch', 'kb', 'pad'] as const;
 const MODES = ['story', 'practice', 'bossrush', 'survival'] as const;
-const ARCADE = ['practice', 'bossrush', 'survival'] as const;
+const ARCADE = ['practice', 'bossrush', 'survival', 'tower'] as const; // tower = 무한의 탑 (wave 칸 = 돌파한 층)
 const T_MAX = 86_400; // 초 (스테이지·보스·아케이드 시간 상한)
 
 /** 사건 종류별 허용 필드 (여기 없는 필드가 하나라도 있으면 묶음 전체를 거절한다). 모든 사건에 t(종류)·s(세션 시작 뒤 초) */

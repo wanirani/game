@@ -110,8 +110,9 @@ export const ONLINE = {
   timeGraceMs: 3000,
   timeMinMs: 5000, // 보스 러시·연습·일일: time 5초 ~ 2시간
   timeMaxMs: 2 * HOUR,
-  anyTimeMaxMs: 24 * HOUR, // 서바이벌 time 상한 (순위 기준은 아니다)
+  anyTimeMaxMs: 24 * HOUR, // 서바이벌·무한의 탑 time 상한
   waveMax: 999,
+  floorMax: 999, // 무한의 탑 돌파한 층 1~999 (시간·점수 하한·상한은 gamedata.mts TOWER_RULES)
   levelMax: 99,
   scoreMax: 99_999_999,
   deathsMax: 9999,
