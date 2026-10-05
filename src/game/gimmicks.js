@@ -940,7 +940,7 @@ class DeepGimmick {
     w.game?.flash?.('#ff2030', 0.25, 5);
     if (w.game?.settings?.showDamage !== false) w.fx.text(p.cx, p.y - 12, dmg, { color: '#ff6a7a', size: 18 });
     emitBubbles(w, p.cx, p.y + 10, 6);
-    if (p.hp <= 0) { p.hp = 0; p.die(w); }
+    if (p.hp <= 0) { p.hp = 0; p.die(w, 'hazard'); }   // [hook:plat] 사망 원인 (core/telemetry.js)
   }
   /**
    * 수위 바꾸기 (보스 다곤 등): time 초에 걸쳐 [tx0,tx1] 안의 빈칸을 지금 수면부터 row 까지 채우거나,

@@ -79,6 +79,12 @@ export function ok(body: Record<string, unknown> = {}, status = 200): Response {
   return json(status, { ok: true, ...body });
 }
 
+/** 본문 없는 204 응답 (공통 보안 헤더 그대로; 익명 통계 수집 POST /api/t) */
+export function noContent(): Response {
+  const { 'Content-Type': _ct, ...h } = BASE_HEADERS;
+  return new Response(null, { status: 204, headers: h });
+}
+
 export function errorResponse(err: ApiError): Response {
   const message = MESSAGES[err.code] ?? MESSAGES.server_error;
   return json(err.status, { ok: false, error: err.code, message, ...(err.extra ?? {}) }, err.headers);
@@ -87,7 +93,7 @@ export function errorResponse(err: ApiError): Response {
 export const isObj = (v: unknown): v is Record<string, any> => !!v && typeof v === 'object' && !Array.isArray(v);
 
 /** 본문을 최대 maxBytes 까지만 읽는다 (Content-Length 를 믿지 않고 실제로 센다). 비었으면 빈 배열 */
-async function readBytes(req: Request, maxBytes: number): Promise<Uint8Array> {
+export async function readBytes(req: Request, maxBytes: number): Promise<Uint8Array> {
   const declared = req.headers.get('content-length');
   if (declared !== null && /^\d+$/.test(declared) && Number(declared) > maxBytes) fail('payload_too_large', 413);
   if (!req.body) return new Uint8Array(0);

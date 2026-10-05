@@ -15,7 +15,9 @@
 //  'stageEntered'  {stageId}
 //  'roomEntered'   {stageId, roomId}
 //  'playerHurt'    {amount}
-//  'playerDied'    {}
+//  'playerDied'    {cause}           cause = 맞은 attack 객체 | 'fall' | 'hazard' | null (core/telemetry.js 가 사망 원인으로 읽는다)
+//  'bossStarted'   {bossId, stageId, time}   world.startBoss (스토리·연습 보스전 시작; time = run.time)
+//  'arcadeFinished' {kind, cleared, reason, score, time, extra, charId, diff, stageId}   아케이드 정산 (front/arcade_run.js finish)
 //  'levelUp'       {charId, level}
 //  'classChanged'  {charId, classId}
 //  'enhance'       {item, success, destroyed, level, before}
@@ -55,7 +57,7 @@ export class EventBus {
     const set = this.map.get(evt);
     if (!set) return;
     for (const fn of [...set]) {
-      try { fn(data); } catch (e) { console.error('[bus]', evt, e); }
+      try { fn(data); } catch (e) { console.error('[bus]', evt, e); globalThis.__bnReportError?.(e, 'bus'); } // 익명 오류 보고 (core/telemetry.js, 꺼져 있으면 없음)
     }
   }
 }

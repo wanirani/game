@@ -15,6 +15,7 @@ import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
 import { assets } from '../../core/assets.js';
 import { saves } from '../../core/save.js';
+import { bus } from '../../core/events.js';
 import { text, FONT, ListMenu, taps, bloodText, prewarmText } from '../../core/ui.js';
 import { drawHints, promptMode } from '../../core/prompts.js';
 import { clamp, ease, rgba, fmt, rand, randi, pick, chance } from '../../core/math.js';
@@ -192,6 +193,7 @@ class ArcadeRunScene extends Scene {
     if (w.combo.n > 0) w.endCombo();
     w.syncRun();
     const res = this.results(cleared, reason);
+    bus.emit('arcadeFinished', { kind: this.cfg.kind, cleared, reason, score: res.score, time: res.time, extra: res.extra ?? null, charId: this.cfg.charId, diff: this.cfg.diff, stageId: res.stageId });   // [hook:plat] 익명 통계 (core/telemetry.js)
     audio.stopMusic(0.5);
     this.game.go('arcadeResults', { ...res, kind: this.cfg.kind, cfg: this.cfg, charId: this.cfg.charId, cleared, reason }, { fadeTime: cleared ? 0.9 : 0.6 });
   }

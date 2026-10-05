@@ -1087,7 +1087,7 @@ export class World {
     p.hp -= dmg;
     this.run.damageTaken += dmg;
     audio.sfx('hurt');
-    if (p.hp <= 0) { p.hp = 0; p.y = this.map.pxH + 40; p.die(this); p.vy = 0; return; }
+    if (p.hp <= 0) { p.hp = 0; p.y = this.map.pxH + 40; p.die(this, 'fall'); p.vy = 0; return; }   // [hook:plat] 사망 원인 'fall'
     // 가까운 안전 지점으로 복귀: 마지막으로 딛고 선 단단한 땅 (없으면 체크포인트)
     const cp = p.safeSpot?.roomId === this.roomId ? p.safeSpot : this.run.checkpoint;
     p.x = cp.x; p.y = cp.y; p.vx = 0; p.vy = 0; p.iframes = 1.5;
@@ -1156,6 +1156,7 @@ export class World {
     this.boss = createBoss(this, id, bx, by);
     this.add(this.boss);
     this.companions?.onBossStart(this.boss);   // [hook:cmp] (noMount 보스면 하차)
+    bus.emit('bossStarted', { bossId: id, stageId: this.stage.id, time: this.run.time });   // [hook:plat] 보스전 시간 (core/telemetry.js)
     this.camera.floorY = this.arenaFloorY(x0, x1) ?? by;   // [hook:plat] 높은 경기장에서도 바닥이 화면 아래쪽에 보이게
     audio.stopMusic(0.5);
     this.cutscene = true;

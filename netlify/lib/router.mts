@@ -6,6 +6,7 @@ import { Ctx, now } from './runtime.mts';
 import { warnIfNoPepper } from './crypto.mts';
 import { changePassword, deleteAccount, login, logout, me, recover, signup } from './accounts.mts';
 import { deleteSlot, getMeta, getSlot, listSaves, parseSlot, putMeta, putSlot } from './saves.mts';
+import { ingest, stats } from './telemetry.mts';
 
 type Handler = (c: Ctx, param: string) => Promise<Response>;
 interface Route { name: string; re: RegExp; methods: Record<string, Handler> }
@@ -31,6 +32,9 @@ const ROUTES: Route[] = [
     },
   },
   { name: 'meta', re: /^\/api\/meta$/, methods: { GET: (c) => getMeta(c), PUT: (c) => putMeta(c) } },
+  // 익명 통계 (docs/TELEMETRY.md): 묶음 받기 → 204 · 공개 요약 (식별 정보 없음, 짧게 캐시)
+  { name: 'telemetry', re: /^\/api\/t$/, methods: { POST: (c) => ingest(c) } },
+  { name: 'stats', re: /^\/api\/stats$/, methods: { GET: (c) => stats(c) } },
 ];
 
 /**

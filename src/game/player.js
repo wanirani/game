@@ -722,7 +722,7 @@ export class Player extends Entity {
         world.game.flash('#fff8d0', 0.8); world.game.toast('성녀의 기적 — 죽음을 거부했다!', '#fff2b0');
         return true;
       }
-      this.hp = 0; this.die(world);
+      this.hp = 0; this.die(world, attack);   // [hook:plat] 사망 원인 (core/telemetry.js)
     }
     return true;
   }
@@ -734,7 +734,8 @@ export class Player extends Entity {
     if (got > 0 && showText) this.world.fx.text(this.cx, this.y - 10, '+' + got, { color: '#7ee07e', size: 20 });
     return got;
   }
-  die(world) {
+  /** cause: 맞은 attack 객체 | 'fall' | 'hazard' | null — 버스 'playerDied' 로 넘긴다 (익명 통계의 사망 원인) */
+  die(world, cause = null) {
     this.mount?.dismount(world, this, 'death');   // [hook:cmp]
     resetMoveFeel?.(this, world);   // [hook:feel]
     this.dead = true; this.deathT = 0;
@@ -743,7 +744,7 @@ export class Player extends Entity {
     world.game.flash('#ff0020', 0.5, 2);
     world.camera.shake(8, 0.4);
     world.slowmo = 0.8;
-    bus.emit('playerDied', {});
+    bus.emit('playerDied', { cause });
   }
   updateDeath(dt, world) {
     this.deathT += dt;

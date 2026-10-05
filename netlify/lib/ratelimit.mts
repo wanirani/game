@@ -5,7 +5,7 @@
 //    비밀번호를 한도보다 많이 확인시킬 수 없다 (예전 방식: '잠겼나?' 확인 → 확인 → 실패 기록 사이에 경합).
 //  - 아이디 전체 잠금(PS-04): 공격자가 망을 늘려 주인을 막지 못하게 — 잠금 시간은 2분에서 두 배씩 10분 상한(strikes),
 //    로그인에 성공한 적이 있는 망(믿는 망, lock/login/<id>/ok/…)에서 온 요청에는 걸지 않는다. IPv6 는 /48 단위로도 센다(wide).
-import { CAS_RETRIES, RATE, STORES } from './config.mts';
+import { CAS_RETRIES, RATE, STORES, TELEMETRY } from './config.mts';
 import { failRetry } from './http.mts';
 import { ipKey, netKey, wideNetOf } from './crypto.mts';
 import { now } from './runtime.mts';
@@ -73,6 +73,12 @@ async function release(st: KV, key: string, windowMs: number): Promise<void> {
 /** 망별 인증 시도 제한 (가입·로그인·복구·비밀번호 변경·탈퇴) — 초과 시 429 rate_limited */
 export async function limitAuthByIp(c: Ctx): Promise<void> {
   const wait = await windowHit(c.store(STORES.limits), `ip/auth/${ipKey(c.ip)}`, RATE.ipAuthMax, RATE.ipAuthWindowMs, true);
+  if (wait > 0) failRetry('rate_limited', wait);
+}
+
+/** 익명 통계 수집(POST /api/t) 망별 제한 — 초과 시 429 rate_limited. 망 키는 이 저장소에만 두고 통계 데이터에는 IP 를 넣지 않는다 */
+export async function limitTelemetryByIp(c: Ctx): Promise<void> {
+  const wait = await windowHit(c.store(STORES.limits), `ip/tel/${ipKey(c.ip)}`, TELEMETRY.ipMax, TELEMETRY.ipWindowMs, true);
   if (wait > 0) failRetry('rate_limited', wait);
 }
 

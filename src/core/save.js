@@ -116,6 +116,11 @@ export const detectQuality = autoQualityTier;
 
 export const SETTINGS_VERSION = 2;
 
+/** 브라우저가 '추적하지 말라'(Global Privacy Control)고 알리는가 → 익명 통계 기본값 끔 (docs/TELEMETRY.md) */
+export function privacySignal() {
+  try { return typeof navigator !== 'undefined' && navigator.globalPrivacyControl === true; } catch { return false; }
+}
+
 /** 모든 설정 키의 기본값 (MASTER_PLAN §1.5 표 순서). 새 키는 여기와 SETTINGS_SCHEMA 에 함께 추가한다 */
 export const DEFAULT_SETTINGS = {
   settingsVersion: SETTINGS_VERSION,
@@ -126,6 +131,7 @@ export const DEFAULT_SETTINGS = {
   ctrlDeadzone: 0.2, ctrlRumble: 0.8, autoSprint: false,
   touchOpacity: 0.55, touchScale: 1, touchStick: 'float', touchSlide: true, touchLeftHanded: false, touchLayout: null,
   vibration: true, autoSave: true, keepAwake: true, turntableAuto: true, fullscreenAuto: true,
+  telemetry: !privacySignal(), // 익명 통계·오류 보내기 (core/telemetry.js) — GPC 를 켠 브라우저는 기본 끔
   language: 'ko',
 };
 
@@ -166,7 +172,7 @@ export const SETTINGS_SCHEMA = Object.freeze({
   touchSlide: BOOL,
   touchLeftHanded: BOOL,
   touchLayout: Object.freeze({ type: 'layout' }),
-  vibration: BOOL, autoSave: BOOL, keepAwake: BOOL, turntableAuto: BOOL, fullscreenAuto: BOOL,
+  vibration: BOOL, autoSave: BOOL, keepAwake: BOOL, turntableAuto: BOOL, fullscreenAuto: BOOL, telemetry: BOOL,
   language: oneOf('ko'),
 });
 

@@ -5,7 +5,7 @@
 //  - 로고: ui.bloodText — 피 글씨 'BLOOD NOCTURNE' + 금박 한글 부제 (글꼴이 늦게 와도 ui 가 다시 굽는다)
 //  - 오른쪽 아래 알림 (위에서부터): 새 버전 [업데이트] (platform.onUpdateReady; 키보드·패드는 sub 버튼),
 //    아이폰 사파리 '홈 화면에 추가' 카드 (닫으면 meta.tips.a2hs), 안드로이드 웹 '안드로이드 앱(APK) 받기' (downloads/BloodNocturne.apk),
-//    컨트롤러만 쓰는데 소리가 잠겨 있으면 소리 안내 (P-23)
+//    컨트롤러만 쓰는데 소리가 잠겨 있으면 소리 안내 (P-23), 익명 통계 안내 한 번 (닫으면 meta.tips.telemetry, core/telemetry.js)
 //  - 오른쪽 위: 최고 점수 + 계정(로그인 아이디 또는 게스트) → 누르면 계정 화면. 메뉴에도 '계정' 항목
 //  - 안내 줄은 지금 기기의 글리프 (prompts.drawHints), 가상 패드는 숨김 (hidePad)
 import { Scene } from '../core/game.js';
@@ -16,6 +16,7 @@ import { saves } from '../core/save.js';
 import { bus } from '../core/events.js';
 import { cloud, SLOTS } from '../core/cloud.js';
 import * as platform from '../core/platform.js';
+import { NOTICE_TEXT as TELEMETRY_TEXT } from '../core/telemetry.js';
 import { text, wrap, FONT, ListMenu, taps, bloodText } from '../core/ui.js';
 import { drawHints, drawGlyph, glyphWidth, promptMode } from '../core/prompts.js';
 import { clamp, ease, lerp, fmt, rand } from '../core/math.js';
@@ -98,7 +99,11 @@ export class TitleScene extends Scene {
     if (this.apk) this.fetchApk();
     this.notes = [];
   }
-  exit() { this.alive = false; for (const off of this.offs ?? []) { try { off(); } catch { /* 무시 */ } } this.offs = []; }
+  exit() {
+    this.alive = false; for (const off of this.offs ?? []) { try { off(); } catch { /* 무시 */ } } this.offs = [];
+    // 익명 통계 안내를 3초 넘게 보고 타이틀을 떠났으면 본 것으로 (키보드·패드만 쓰면 ✕ 를 누를 수 없다)
+    if ((this.telNoticeT ?? 0) > 3) safe(() => this.game.telemetry?.dismissNotice?.());
+  }
   buildMenu(index) {
     this.saveCount = saves.list().filter((s) => !s.empty).length;
     const cloudSave = cloud.loggedIn && SLOTS.some((s) => cloud.view[s].cloud && !cloud.view[s].cloud.empty);
@@ -215,10 +220,12 @@ export class TitleScene extends Scene {
     if (this.checkKonami()) { this.unlockAll(); return; }
 
     if (input.anyPressed() || input.pointer.justDown) this.idle = 0; else this.idle += dt;
+    if (this.mode !== 'intro' && this.notes?.some((c) => c.id === 'telemetry')) this.telNoticeT = (this.telNoticeT ?? 0) + dt;
     // 버튼 (알림 카드·계정 표시): 그 뒤의 '아무 곳이나 누르기'보다 먼저
     const tap = taps.hit(this);
     if (tap === 'update') { this.applyUpdate(); return; }
     if (tap === 'a2hs') { audio.sfx('menu_cancel'); safe(() => platform.dismissA2hs?.()); return; }
+    if (tap === 'telemetry') { audio.sfx('menu_cancel'); safe(() => g.telemetry?.dismissNotice?.()); return; }
     if (tap === 'apk') { audio.sfx('menu_ok'); this.downloadApk(); return; }
     if (tap === 'account' && this.mode !== 'intro') { audio.sfx('menu_ok'); this.openAccount(); return; }
     // 키보드·패드로 업데이트 (sub = 키보드 A · 패드 Y/△)
@@ -308,6 +315,10 @@ export class TitleScene extends Scene {
     if (safe(() => platform.a2hsHint?.())) {
       const lines = wrap(ctx, platform.A2HS_TEXT ?? '', nw - 76, 13, 600);
       out.push({ id: 'a2hs', h: Math.max(60, 20 + lines.length * 19), lines });
+    }
+    if (safe(() => this.game.telemetry?.noticeDue?.())) {
+      const lines = wrap(ctx, TELEMETRY_TEXT, nw - 76, 13, 600);
+      out.push({ id: 'telemetry', h: Math.max(60, 20 + lines.length * 19), lines });
     }
     if (this.apk) out.push({ id: 'apk', h: 48 });
     if (safe(() => platform.audioHint?.())) out.push({ id: 'audio', h: 26 });
@@ -545,10 +556,10 @@ export class TitleScene extends Scene {
         text(ctx, '업데이트하면 게임이 다시 시작됩니다', c.x + 14, c.y + 45, { size: 11, weight: 600, color: DIM, ow: 2, maxWidth: c.w - bw - 34 });
         gbutton(ctx, r, '업데이트', { size: 15, selected: true, accent: '#86e0a0', owner: this, id: 'update', src: 'title.update' });
         if (m !== 'touch') { const gw = glyphWidth('sub', 18); if (gw > 0) drawGlyph(ctx, 'sub', r.x - gw - 6, r.y + 13, 18); }
-      } else if (c.id === 'a2hs') {
+      } else if (c.id === 'a2hs' || c.id === 'telemetry') {
         (c.lines ?? []).forEach((ln, i) => text(ctx, ln, c.x + 14, c.y + 24 + i * 19, { size: 13, weight: 600, color: BONE, ow: 2 }));
         const r = { x: c.x + c.w - 52, y: c.y + (c.h - 44) / 2, w: 44, h: 44 };
-        gbutton(ctx, r, '✕', { size: 16, owner: this, id: 'a2hs', kind: 'icon', src: 'title.a2hs' });
+        gbutton(ctx, r, '✕', { size: 16, owner: this, id: c.id, kind: 'icon', src: `title.${c.id}` });
       }
     }
   }

@@ -307,6 +307,7 @@ Every module in this table exists after W0, with the listed exports as no-ops. T
 | keepAwake | true | bool | platform §6.6 | 기타 | 화면 꺼짐 방지 |
 | turntableAuto | true | bool | platform §7.2 | 기타 | 영웅 자동 회전 |
 | fullscreenAuto | true | bool | platform §6.6 (touch/Android web only) | 기타 | 첫 터치에 전체 화면 |
+| telemetry | true | bool | docs/TELEMETRY.md (default false when navigator.globalPrivacyControl) | 기타 | 익명 통계·오류 보내기 |
 | language | 'ko' | 'ko' | existing | — | — |
 
 - Owner: src/core/save.js DEFAULT_SETTINGS + saves.loadSettings() (PLAT-SAVE-ASSETS, W1). All keys land in one edit.

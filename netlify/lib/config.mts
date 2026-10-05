@@ -12,6 +12,9 @@ export const STORES = {
   // key = ip/auth/<망 해시>, ip/signup/<망 해시>, lock/login/<id>/all, lock/login/<id>/net/<망 해시>, lock/login/<id>/wide/<IPv6 /48 해시>,
   //       lock/login/<id>/ok/<망 해시> (로그인에 성공한 망 = 믿는 망), lock/recover/<id>/net/<망 해시>
   limits: 'bn-ratelimit',
+  // 익명 통계 (docs/TELEMETRY.md): raw/<YYYY-MM-DD>/<HH>/<무작위> = 받은 묶음 그대로 (30일 뒤 삭제), hour/<YYYY-MM-DD>/<HH> = 시간 요약 (30일),
+  //   agg/<YYYY-MM-DD> = 날 요약 (계속 보관), state/agg = 모은 시간 칸 기록. IP·계정은 넣지 않는다
+  telemetry: 'bn-telemetry',
 } as const;
 
 /** 요청 본문 최대 크기 (바이트) */
@@ -73,6 +76,23 @@ export const CLEANUP = {
   sessionGraceMs: 30 * DAY, // 세션 저장값은 만료 뒤 30일 (사용자 기록의 만료 시각이 기준이라 저장값이 늦을 수 있다)
   maxPerRun: 4000, // 저장소마다 한 번에 읽는 최대 수 (함수 시간 제한 안에서; 남은 것은 다음 날)
   concurrency: 24,
+} as const;
+
+/** 익명 통계 (netlify/lib/telemetry.mts, docs/TELEMETRY.md). 숫자를 바꾸면 문서도 고친다 */
+export const TELEMETRY = {
+  bodyMax: 32 * 1024, // POST /api/t 본문 상한 (넘으면 413). 클라이언트는 24KB 로 자른다
+  maxEvents: 50, // 묶음 하나의 사건 수 상한
+  ipMax: 120, // 망별 10분에 묶음 120개 (한 기기는 30초마다 1개 + 숨을 때) — 학교·PC방처럼 IP 하나를 여럿이 써도 넉넉하게
+  ipWindowMs: 10 * MIN,
+  rawKeepDays: 30, // 원본 묶음·시간 요약 보관 (날 요약 agg/ 는 계속 보관)
+  statsMaxDays: 30, // GET /api/stats?days=N 의 최대 N
+  statsCacheSec: 60,
+  aggGraceMs: 5 * MIN, // 시간 칸이 끝나고 이만큼 지난 뒤에 모은다 (그 칸에 늦게 쓰이는 묶음이 없게)
+  aggRecheckDays: 3, // 매시 실행이 다시 살펴보는 날 수 (오늘 포함). 그보다 오래된 칸은 이미 모은 것으로 본다
+  aggMaxRawPerRun: 3000, // 한 번에 읽는 원본 묶음 수 (함수 시간 제한 안에서; 남은 칸은 다음 실행)
+  concurrency: 16,
+  keepErrors: 100, // 요약에 남기는 오류 묶음 수 (많은 순)
+  keepCells: 40, // 방마다 남기는 사망 칸 수 (많은 순)
 } as const;
 
 /** 동시 수정 충돌 시 조건부 쓰기 재시도 횟수 */

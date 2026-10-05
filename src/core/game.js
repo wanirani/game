@@ -705,7 +705,7 @@ class Game {
       ctx.save();
       let pf = 0, ps = 1;
       if (ui) { if (this.uiK !== 1) ctx.scale(this.uiK, this.uiK); pf = setTextFloor(UI_TEXT_FLOOR); ps = taps.setSpace(this.uiK); }
-      try { this.withUiPointer(sc, () => sc.render(ctx)); } catch (e) { console.error(e); } finally { if (ui) { setTextFloor(pf); taps.setSpace(ps); } }
+      try { this.withUiPointer(sc, () => sc.render(ctx)); } catch (e) { console.error(e); globalThis.__bnReportError?.(e, 'render'); } finally { if (ui) { setTextFloor(pf); taps.setSpace(ps); } }
       ctx.restore();
     }
     // 토스트

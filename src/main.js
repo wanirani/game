@@ -9,6 +9,7 @@ import { saves } from './core/save.js';
 import { cloud } from './core/cloud.js';
 import { fontsReady } from './core/ui.js';
 import { initPlatform } from './core/platform.js';
+import { telemetry } from './core/telemetry.js';
 import { TitleScene } from './scenes/title.js';
 
 const BOOT = typeof window !== 'undefined' ? window.__BN_BOOT : null;
@@ -50,6 +51,7 @@ async function boot() {
   audio.setVolumes(game.settings.musicVol, game.settings.sfxVol);
   game.init(canvas);
   initPlatform(game); // [hook:plat] 안전 영역·전체 화면·화면 꺼짐 방지·커서·서비스 워커 (game.platform)
+  telemetry.init(game); // [hook:plat] 익명 통계·오류 보내기 (game.telemetry; 자동화·로컬·개발 스위치·설정 끔이면 아무것도 하지 않는다, docs/TELEMETRY.md)
   game.register('title', TitleScene); // 나머지 장면은 loadRest (scenes/index.js registerScenes)
   cloud.init(game); // 계정·클라우드 저장 (로그인한 적이 없으면 네트워크 요청 없음)
   game.cloud = cloud; // platform.js 의 저장공간 안내가 로그인(클라우드 백업) 여부를 본다 (cloud.loggedIn)

@@ -159,6 +159,11 @@ function buildRows(sc) {
         vis: () => !!platform.isAndroid?.() && !!platform.fullscreenAvailable?.(),
         note: '타이틀 화면을 처음 누를 때 전체 화면으로 바꿉니다.',
       },
+      {
+        id: 'telemetry', label: '익명 통계·오류 보내기', type: 'bool',
+        note: (s) => (s.telemetry === false ? '보내지 않습니다. 이 기기에 남은 통계 기록과 익명 번호도 지웁니다.'
+          : '오류·사망 위치·클리어 시간·화면 속도 같은 익명 통계를 보내 게임을 고치는 데 씁니다. 계정·이름은 보내지 않습니다.'),
+      },
       { id: 'reset', label: '기본값 복원', type: 'action', value: () => '복원', run: () => sc.confirmReset(), note: '모든 설정을 처음 상태로 되돌립니다. 키·버튼 지정과 버튼 배치도 초기화됩니다.' },
     ],
   };
