@@ -254,6 +254,9 @@ test('한 판: 메뉴 → 헌터 선택 → 1층 처치·출구 → 5층 보스�
   await tickUntil(page, "t.phase === 'fight'", 200, '6층 전투');
   const fx = await page.evaluate(() => {
     const t = window.__game.top, w = t.world, p = w.player, out = {};
+    // 방의 무작위 강화 구슬(지도 p — 종류는 Math.random)은 치운다: 아래 자석 축복이 끌어오면 로사리오(화면의 적 전멸 → 6층이 끝나 버림)나
+    // 성광의 오라가 뒤의 '갇힌 적 불러내기' 검사를 흔든다
+    for (const e of w.entities) if (e.kind === 'pickup') e.dead = true;
     const snap = () => ({ ...p.stats, air: p.maxAirJumps(), hp: p.hp });
     for (const id of ['might', 'crit', 'leech', 'vigor', 'mana', 'wings', 'volley', 'magnet', 'frenzy', 'phoenix']) {
       const a = snap(), n0 = t.taken[id] | 0, ok = t.applyBlessing(id), b = snap();
@@ -310,10 +313,12 @@ test('한 판: 메뉴 → 헌터 선택 → 1층 처치·출구 → 5층 보스�
     const { isSolidType } = await import('/src/core/physics.js');
     const g = window.__game, t = g.top, w = t.world, p = w.player, m = w.map;
     // 적은 이 검사 동안 시험이 직접 처치할 때만 쓰러진다 (박쥐도): 위에서 받은 가시 반사(무적이어도 맞으면 곁의 적을 친다)나 자석 축복이
-    // 끌어온 무작위 강화(성광의 오라)가 영웅에게 닿은 적을 쓰러뜨리면(방·시드·난수마다 다름) 남은 적 수가 줄어 불러내기 시계가 다시 시작되거나
-    // 박쥐가 먼저 죽어 처치 수가 모자란다 (흔들리는 실패)
+    // 끌어온 강화(성광의 오라·로사리오 — 정예가 떨어뜨린 것)가 영웅에게 닿은 적을 쓰러뜨리면(방·시드·난수마다 다름) 남은 적 수가 줄어
+    // 불러내기 시계가 다시 시작되거나 박쥐가 먼저 죽어 처치 수가 모자란다 (흔들리는 실패)
     const held = w.enemies().filter((e) => !e.invuln);
     for (const e of held) e.invuln = true;
+    for (const e of w.entities) if (e.kind === 'pickup') e.dead = true;
+    delete p.buffs.holyaura;
     p.buffs.invincible = 9999;
     let n = 0, kills = 0;
     const o = t.summonStragglers.bind(t);
