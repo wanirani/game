@@ -518,7 +518,8 @@ function armPup(c, sx, sy, ex, ey, hx, hy, dark, hand) {
 
 // ── 손: 무기별 쥔 주먹(grip) · 편 손(open) ──
 // 주먹 중심을 무기 좌표계에서 얼마나 옮길지 (x=무기 방향, y=무기 법선, 논리 px)
-const GRIP_OFF = { sword: [-2.4, 0], greatsword: [-3.2, 0], dagger: [-1.4, 0], gun: [-2.0, 3.2], staff: [0, 0], whip: [-2.2, 0], none: [0, 0] };
+// spear (hero7 이졸데): paintSpear 원점 = 손잡이 감개(가까운 손), 자루 뒤끝 x≈−34 · 창끝 x≈+62. 먼 손은 hero.js 가 h1 − SPEAR_GAP 에 IK (같은 축)
+const GRIP_OFF = { sword: [-2.4, 0], greatsword: [-3.2, 0], dagger: [-1.4, 0], gun: [-2.0, 3.2], staff: [0, 0], whip: [-2.2, 0], spear: [0, 0], none: [0, 0] };
 function gripPup(c, K, ex, ey, hx, hy, wAng, wtype, dark, k = 1) {
   const g = R.rig.hands?.grip;
   if (!g || !R.parts.grip) return false;
@@ -886,8 +887,10 @@ export function drawTurnWeapon(ctx, I, W, yaw, front, t) {
   for (const side of list) {
     const h = hand(side);
     if ((h.depth > -0.2) !== front) continue;
-    const ang = type === 'staff' ? -HP - 0.08 * cs : type === 'gun' ? HP - 0.45 * cs : HP - tilt;
-    drawWeapon(W, h.x, h.y + (type === 'staff' ? -2 : 0), ang, {});
+    // 창(spear): 지팡이처럼 창끝을 위로 세워 든다 (자루 뒤끝 −34 → 물미가 발목 높이, 창끝은 머리 위로) — 보는 쪽으로 조금 기울임
+    const upright = type === 'staff' || type === 'spear';
+    const ang = upright ? -HP - (type === 'spear' ? 0.06 : 0.08) * cs : type === 'gun' ? HP - 0.45 * cs : HP - tilt;
+    drawWeapon(W, h.x, h.y + (type === 'staff' ? -2 : type === 'spear' ? 4 : 0), ang, {});
   }
   G.olw = olw;
 }

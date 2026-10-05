@@ -1,0 +1,261 @@
+{
+ "_doc": "흑룡기사: 흑비늘 판금 + 금 트림 + 용염 균열, 흑룡 머리 장식 서클릿, 먼 쪽 어깨 가시(몸통 앞 윤곽 넓힘). 손은 전용 시트(검은 발톱)",
+ "extends": "isolde_lancer",
+ "classId": "isolde_wyrmknight",
+ "src": "isolde/isolde_wyrmknight_side",
+ "hands": {
+  "sheet": "isolde/isolde_wyrmknight_hands",
+  "_why": "흑룡기사 전용: 검은 발톱 건틀릿. 막대가 주먹 앞을 대각선으로 지남",
+  "grip": {
+   "box": [
+    580,
+    190,
+    1090,
+    735
+   ],
+   "center": [
+    870,
+    420
+   ],
+   "axis": [
+    -0.584,
+    0.812
+   ],
+   "rodHalf": 40,
+   "wrist": [
+    800,
+    740
+   ],
+   "scale": 0.3
+  },
+  "open": {
+   "box": [
+    1460,
+    80,
+    2140,
+    800
+   ],
+   "wrist": [
+    1870,
+    800
+   ],
+   "tip": [
+    1912,
+    88
+   ],
+   "scale": 0.26
+  },
+  "rodKey": {
+   "hue": [
+    60,
+    185
+   ],
+   "sat": 0.1,
+   "val": 0.08
+  }
+ },
+ "regions": {
+  "torso": {
+   "pts": [
+    [
+     700,
+     555
+    ],
+    [
+     790,
+     560
+    ],
+    [
+     845,
+     600
+    ],
+    [
+     950,
+     592
+    ],
+    [
+     1005,
+     640
+    ],
+    [
+     1025,
+     720
+    ],
+    [
+     1042,
+     800
+    ],
+    [
+     1032,
+     880
+    ],
+    [
+     995,
+     945
+    ],
+    [
+     972,
+     1005
+    ],
+    [
+     975,
+     1080
+    ],
+    [
+     985,
+     1130
+    ],
+    [
+     955,
+     1185
+    ],
+    [
+     870,
+     1255
+    ],
+    [
+     845,
+     1300
+    ],
+    [
+     805,
+     1368
+    ],
+    [
+     700,
+     1420
+    ],
+    [
+     578,
+     1478
+    ],
+    [
+     565,
+     1400
+    ],
+    [
+     590,
+     1300
+    ],
+    [
+     598,
+     1200
+    ],
+    [
+     600,
+     1120
+    ],
+    [
+     610,
+     1040
+    ],
+    [
+     610,
+     960
+    ],
+    [
+     600,
+     880
+    ],
+    [
+     585,
+     800
+    ],
+    [
+     565,
+     720
+    ],
+    [
+     580,
+     640
+    ],
+    [
+     635,
+     590
+    ]
+   ],
+   "smooth": 3
+  }
+ },
+ "params": {
+  "torsoSrcMaxLum": 70,
+  "torsoTone": 0.15
+ },
+ "materials": {
+  "_replace": true,
+  "armor": {
+   "parts": [
+    "torso",
+    "uarm",
+    "farm",
+    "pad",
+    "thigh",
+    "shin",
+    "foot",
+    "hand",
+    "grip",
+    "open"
+   ],
+   "sat": [
+    0,
+    0.4
+   ],
+   "val": [
+    0,
+    0.45
+   ]
+  },
+  "trim": {
+   "parts": [
+    "torso",
+    "pad",
+    "uarm",
+    "farm",
+    "skirt",
+    "shin",
+    "foot"
+   ],
+   "hue": [
+    0,
+    62
+   ],
+   "sat": [
+    0.45,
+    1.01
+   ],
+   "val": [
+    0.35,
+    1.01
+   ]
+  }
+ },
+ "runtime": {
+  "armorBase": "#2a2430"
+ },
+ "turn": {
+  "sheet5": "isolde/isolde_wyrmknight_turn5",
+  "views5": [
+   "y90",
+   "y180",
+   "ym90",
+   "-",
+   "-"
+  ],
+  "extra": [
+   {
+    "sheet": "isolde/isolde_wyrmknight_q3f",
+    "views": [
+     "y135"
+    ],
+    "deshadow": true
+   },
+   {
+    "sheet": "isolde/isolde_wyrmknight_q3b",
+    "views": [
+     "ym135"
+    ],
+    "deshadow": true
+   }
+  ]
+ }
+}

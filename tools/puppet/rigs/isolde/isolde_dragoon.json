@@ -1,0 +1,110 @@
+{
+ "_doc": "용기사: 창기사 원화를 keep-pose 편집. 청강 판금(채도가 높은 푸른 강철)·하늘색 번개 줄. 손은 창기사 시트 공용",
+ "extends": "isolde_lancer",
+ "classId": "isolde_dragoon",
+ "src": "isolde/isolde_dragoon_side",
+ "materials": {
+  "_replace": true,
+  "armor": [
+   {
+    "parts": [
+     "torso",
+     "uarm",
+     "farm",
+     "pad",
+     "thigh",
+     "shin",
+     "foot",
+     "hand",
+     "grip",
+     "open"
+    ],
+    "sat": [
+     0,
+     0.1
+    ],
+    "val": [
+     0.22,
+     1.01
+    ]
+   },
+   {
+    "parts": [
+     "torso",
+     "uarm",
+     "farm",
+     "pad",
+     "thigh",
+     "shin",
+     "foot",
+     "hand",
+     "grip",
+     "open"
+    ],
+    "hue": [
+     180,
+     260
+    ],
+    "sat": [
+     0,
+     0.7
+    ],
+    "val": [
+     0.22,
+     1.01
+    ]
+   }
+  ],
+  "trim": {
+   "parts": [
+    "torso",
+    "pad",
+    "uarm",
+    "farm",
+    "shin",
+    "thigh"
+   ],
+   "hue": [
+    175,
+    205
+   ],
+   "sat": [
+    0.45,
+    1.01
+   ],
+   "val": [
+    0.6,
+    1.01
+   ]
+  }
+ },
+ "runtime": {
+  "armorBase": "#9aaccc"
+ },
+ "turn": {
+  "sheet5": "isolde/isolde_dragoon_turn5",
+  "views5": [
+   "y90",
+   "y180",
+   "-",
+   "ym90",
+   "-"
+  ],
+  "extra": [
+   {
+    "sheet": "isolde/isolde_dragoon_q3f",
+    "views": [
+     "y135"
+    ],
+    "deshadow": true
+   },
+   {
+    "sheet": "isolde/isolde_dragoon_q3b",
+    "views": [
+     "ym135"
+    ],
+    "deshadow": true
+   }
+  ]
+ }
+}

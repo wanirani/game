@@ -218,7 +218,7 @@ if (SEC.includes('pupatk') && !ZOOM) {
 }
 if (SEC.includes('pupw') && !ZOOM) {
   const WCLS = ONE ? [ONE] : PCH === 'kael' ? ['kael_hunter', 'kael_templar'] : [KCLS[0], KCLS[KCLS.length - 1]];
-  for (const cls of WCLS) for (const type of ['whip', 'sword', 'greatsword', 'dagger', 'gun', 'staff'].filter((t) => t !== 'whip' || PCH !== 'kael')) {
+  for (const cls of WCLS) for (const type of ['whip', 'sword', 'greatsword', 'dagger', 'gun', 'staff', 'spear'].filter((t) => t !== 'whip' || PCH !== 'kael')) {
     header(`무기 손잡이 · ${CLASSES[cls].name} × ${type} (주먹·양손·조준·시전·투척)`);
     const list = movesOf(type).map(([label, m, gnd]) => ({ label, wide: true, p: () => ent({ look: lookOf(PCH, cls, { type, style: 3, level: 7 }), ch: PCHD, anim: m.anim, move: m, moveT: hitT(m), onGround: gnd, muzzleT: 0.05 }) }));
     list.push({ label: 'idle', p: () => ent({ look: lookOf(PCH, cls, { type, style: 3 }), ch: PCHD }) });

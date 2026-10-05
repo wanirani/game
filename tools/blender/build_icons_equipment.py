@@ -3052,6 +3052,175 @@ def staff_6():
 
 
 # =============================================================================
+#  SPEARS  (이졸데, modelled pointing +Z: butt at the bottom, head at the top)
+# =============================================================================
+def spear_shaft(z0, z1, r, mat, butt_mat, bands=(), band_mat=None, wraps=((-0.32, -0.08),),
+                wrap_mat=None, name="shaft"):
+    """Straight pole from z0 to z1 with a pointed butt cap, metal bands and
+    one or more grip wraps (two-handed: two wraps)."""
+    lathe([(0, z0), (r, z0), (r * 0.94, z1), (0, z1)], mat, seg=20, name=name)
+    lathe([(0, z0 - 0.07), (r * 0.5, z0 - 0.04), (r * 1.25, z0 + 0.01), (r * 1.1, z0 + 0.04),
+           (0, z0 + 0.04)], butt_mat, seg=16, name="butt")
+    for z in bands:
+        torus(r * 1.08, r * 0.32, band_mat or butt_mat, loc=(0, 0, z), seg=24, rseg=6, name="band")
+    for (a, b) in wraps:
+        grip(a, b, r * 1.12, wrap_mat or M_leather((0.2, 0.11, 0.06)), wraps=7, depth=0.14,
+             name="wrap")
+
+
+def spear_socket(z, r, mat, h=0.1, name="socket"):
+    """Conical socket joining the pole to the head; returns the top z."""
+    lathe(smooth_profile([(0, z), (r * 1.3, z), (r * 1.6, z + h * 0.3), (r * 1.25, z + h),
+                          (0, z + h)], 3), mat, seg=24, name=name)
+    return z + h
+
+
+def spear_mane(z, mat, n=5, length=0.34, spread=0.07, r=0.009, name="mane"):
+    """Dragon-mane tassel: soft cords hanging from the socket and blowing
+    back (+x is the icon's lower right after the diagonal view)."""
+    for i in range(n):
+        a = (i - (n - 1) / 2) / max(1, n - 1)
+        p0 = Vector((0.0, a * 0.02, z))
+        p3 = Vector((0.1 + spread * (1 + a), -0.03 + a * 0.05, z - length * (0.75 + 0.25 * abs(a))))
+        sweep(bezier(p0, p0 + Vector((0.05, 0, -0.02)), p3 + Vector((-0.04, 0, 0.12)), p3, 20),
+              lambda s, r=r: r * (1.2 - 0.9 * s), mat, segs=8, name=name)
+
+
+def leaf_fn(width, thick=0.016, belly=0.42, tip_pow=0.85):
+    """Leaf-shaped spear head: widest at `belly`, rounded base, sharp tip."""
+    def fn(t):
+        if t < belly:
+            w = width / 2 * (0.35 + 0.65 * math.sin(t / belly * math.pi / 2))
+        else:
+            w = width / 2 * ((1 - t) / (1 - belly)) ** tip_pow
+        return w, 0.0, thick * (1 - 0.6 * t), 0
+    return fn
+
+
+@item("spear_1")
+def spear_1():
+    """Ash spear: pale wooden pole, iron leaf head, red horsehair tassel."""
+    wood = M_wood((0.5, 0.33, 0.17), "ash_wood")
+    iron = M_iron()
+    edge = pbr("leaf_edge", (0.55, 0.55, 0.56), metal=1, rough=0.28)
+    spear_shaft(-0.78, 0.5, 0.026, wood, iron, bands=(0.32,), wraps=((-0.34, -0.12),),
+                wrap_mat=M_leather((0.3, 0.16, 0.07)))
+    top = spear_socket(0.48, 0.026, iron)
+    blade(0.42, leaf_fn(0.12), iron, edge, cross="diamond", z0=top - 0.01, n=40)
+    spear_mane(top - 0.06, M_cloth((0.62, 0.06, 0.08), "tassel_red"), n=5)
+    view(diag=42, yaw=-22, fill=0.9)
+
+
+@item("spear_2")
+def spear_2():
+    """Winged spear: steel head with two side lugs, iron-banded pole, teal
+    tassel (the sky order's colour)."""
+    wood = M_wood((0.38, 0.22, 0.1), "spear_wood")
+    steel = M_steel()
+    edge = pbr("wing_edge", (0.86, 0.88, 0.92), metal=1, rough=0.12)
+    spear_shaft(-0.78, 0.5, 0.026, wood, steel, bands=(-0.5, 0.0, 0.32), band_mat=M_iron(),
+                wraps=((-0.36, -0.12),))
+    top = spear_socket(0.48, 0.026, steel)
+    blade(0.44, leaf_fn(0.11, belly=0.38), steel, edge, cross="diamond", z0=top - 0.01, n=40)
+    lugs = [(0.0, 0.0), (0.12, 0.05), (0.13, 0.08), (0.04, 0.07), (0.0, 0.09)]
+    extrude(mirror_x(lugs), 0.03, steel, loc=(0, 0, top - 0.04), bev=0.005, name="lugs")
+    spear_mane(top - 0.06, M_cloth((0.15, 0.6, 0.68), "tassel_teal"), n=5)
+    view(diag=42, yaw=-22, fill=0.9)
+
+
+@item("spear_3")
+def spear_3():
+    """Dragon-fang lance: long straight steel spike, dark steel pole with a
+    gold collar and sapphire, teal tassel."""
+    dsteel = pbr("lance_dsteel", (0.22, 0.24, 0.3), metal=1, rough=0.3)
+    steel = M_steel()
+    edge = pbr("fang_edge", (0.92, 0.94, 0.97), metal=1, rough=0.08)
+    gold = M_gold()
+    spear_shaft(-0.78, 0.46, 0.025, dsteel, steel, bands=(-0.55, 0.28), band_mat=gold,
+                wraps=((-0.38, -0.14),), wrap_mat=pbr("wrap_dark", (0.06, 0.06, 0.08), rough=0.45))
+    top = spear_socket(0.44, 0.025, gold, h=0.12)
+    blade(0.58, std_blade(0.085, tip=0.22, taper=0.35, thick=0.018, fuller=0.4, fuller_end=0.6),
+          steel, edge, cross="fuller", z0=top - 0.01, n=48)
+    gem(0.022, M_gem((0.15, 0.35, 1.0), "sapph_lance", 1.2), loc=(0, -0.034, top - 0.06), seg=8)
+    spear_mane(top - 0.08, M_cloth((0.15, 0.6, 0.68), "tassel_teal"), n=6, length=0.38)
+    view(diag=42, yaw=-22, fill=0.9)
+
+
+@item("spear_4")
+def spear_4():
+    """Rune partisan: blue-black steel head with curved side blades and
+    glowing runes, crimson tassel."""
+    dsteel = pbr("partisan_steel", (0.17, 0.2, 0.27), metal=1, rough=0.3, noise_rough=0.08)
+    edge = pbr("partisan_edge", (0.78, 0.84, 0.92), metal=1, rough=0.1)
+    rune = M_glow((0.25, 0.65, 1.0), "rune_blue", 12)
+    silver = M_silver()
+    spear_shaft(-0.78, 0.46, 0.026, M_darkwood(), silver, bands=(-0.52, 0.3), wraps=((-0.38, -0.12),),
+                wrap_mat=pbr("wrap_navy", (0.05, 0.07, 0.14), rough=0.5, coat=0.2))
+    top = spear_socket(0.44, 0.026, dsteel, h=0.11)
+    blade(0.5, std_blade(0.1, tip=0.25, taper=0.4, thick=0.018, fuller=0.45, fuller_end=0.62),
+          dsteel, edge, cross="fuller", z0=top - 0.01, n=48)
+    wing = [(0.03, 0.0), (0.1, 0.02), (0.17, 0.08), (0.19, 0.16), (0.13, 0.1), (0.07, 0.07), (0.03, 0.05)]
+    for sx in (-1, 1):
+        extrude([(sx * x, z) for x, z in wing], 0.03, dsteel, loc=(0, 0, top - 0.02), bev=0.005,
+                name="side_blade")
+    runes(0.0, top + 0.06, top + 0.34, -0.012, 0.04, rune, seed=5, gap=0.3)
+    spear_mane(top - 0.06, M_cloth((0.55, 0.05, 0.08), "tassel_crimson"), n=5)
+    view(diag=42, yaw=-22, fill=0.9, glow=1.0)
+
+
+@item("spear_5")
+def spear_5():
+    """Dragon-wing holy spear: silver pole with white wrap, gold wing guard,
+    long silver head with a radiant inlay, gold tassel."""
+    silver = M_silver()
+    gold = M_gold()
+    edge = pbr("holy_spear_edge", (1.0, 0.98, 0.95), metal=1, rough=0.06)
+    light = M_glow((1.0, 0.8, 0.4), "holy_light", 4.0, base=(1.0, 0.85, 0.5))
+    spear_shaft(-0.78, 0.44, 0.025, silver, gold, bands=(-0.6, -0.1, 0.26), band_mat=gold,
+                wraps=((-0.42, -0.16),), wrap_mat=pbr("wrap_white", (0.92, 0.89, 0.82), rough=0.5, coat=0.2))
+    top = spear_socket(0.42, 0.025, gold, h=0.1)
+    blade(0.56, leaf_fn(0.12, belly=0.3, tip_pow=0.9), silver, edge, cross="fuller", z0=top + 0.02, n=48)
+    blade(0.36, lambda t: (0.016 * (1 - 0.5 * t) * (min(1, (1 - t) / 0.2) ** 0.8), 0.0, 0.004, 0),
+          light, cross="diamond", z0=top + 0.08, n=24, name="inlay").location.y = -0.012
+    wing = [(0.02, 0.0), (0.08, 0.03), (0.16, 0.1), (0.24, 0.18), (0.17, 0.1), (0.2, 0.06),
+            (0.12, 0.03), (0.06, -0.02)]
+    for sx in (-1, 1):
+        extrude([(sx * x, z) for x, z in wing], 0.035, gold, loc=(0, 0, top - 0.03), bev=0.006,
+                name="wing_guard")
+    gem(0.03, M_gem((0.85, 0.92, 1.0), "diamond", 1.6), loc=(0, -0.034, top - 0.01), seg=12)
+    spear_mane(top - 0.08, M_cloth((0.85, 0.65, 0.2), "tassel_gold"), n=6, length=0.38)
+    view(diag=42, yaw=-22, fill=0.9, glow=0.9)
+
+
+@item("spear_6")
+def spear_6():
+    """Black-dragon spear: black metal pole, jagged violet-crimson crystal
+    head with a burning core, crimson mane."""
+    black = M_blackmetal()
+    crys = pbr("wyrm_crystal", (0.3, 0.02, 0.12), rough=0.05, trans=0.45, ior=1.6, spec=1.0,
+               emit=(1.0, 0.1, 0.3), emit_str=0.25, glow_str=0.3)
+    edge = pbr("wyrm_edge", (0.6, 0.1, 0.25), rough=0.02, trans=0.3, spec=1.0,
+               emit=(1.0, 0.15, 0.35), emit_str=0.7, glow_str=0.6)
+    core = M_glow((1.0, 0.2, 0.3), "wyrm_core", 6)
+    spear_shaft(-0.78, 0.44, 0.026, black, black, bands=(-0.5, 0.25), band_mat=pbr("blood_steel", (0.5, 0.04, 0.06), metal=1, rough=0.3),
+                wraps=((-0.4, -0.14),), wrap_mat=pbr("wrap_violet", (0.12, 0.03, 0.14), rough=0.45, coat=0.3))
+    top = spear_socket(0.42, 0.026, black, h=0.12)
+
+    def fn(t):
+        w = 0.06 * (1 + 0.3 * math.sin(t * math.pi * 0.9)) + sawtooth(t, 5, 0.022) * (1 - t)
+        if t > 0.75:
+            w *= ((1 - t) / 0.25) ** 0.9
+        return w, 0.01 * math.sin(t * 6), 0.02 * (1 - 0.5 * t), 0
+    blade(0.6, fn, crys, edge, cross="lens", z0=top - 0.01, n=64)
+    blade(0.46, lambda t: (0.014 * (1 - t) ** 0.6, 0.0, 0.006, 0), core, cross="diamond",
+          z0=top + 0.03, n=20, name="core")
+    for sx in (-1, 1):
+        cone(0.016, 0.1, black, loc=(sx * 0.05, 0, top - 0.04), rot=(0, sx * rad(125), 0), name="barb")
+    spear_mane(top - 0.08, M_cloth((0.5, 0.02, 0.05), "tassel_blood"), n=6, length=0.4)
+    view(diag=42, yaw=-22, fill=0.9, glow=1.0)
+
+
+# =============================================================================
 #  BODY ARMOUR
 # =============================================================================
 TORSO = [(0.36, 0.0), (0.33, 0.1), (0.295, 0.25), (0.305, 0.4), (0.355, 0.58), (0.37, 0.7),

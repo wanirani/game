@@ -1,0 +1,169 @@
+{
+ "_doc": "발키리: 백은 판금 + 금 트림, 흰 깃 날개 서클릿, 상아 자락(밝은 옷 → 인페인트 표본 제한 없음). 손은 백은 시트(발키리·전장의 여신·창성 공용)",
+ "extends": "isolde_lancer",
+ "classId": "isolde_valkyrie",
+ "src": "isolde/isolde_valkyrie_side",
+ "hands": {
+  "sheet": "isolde/isolde_valkyrie_hands",
+  "_why": "발키리·전장의 여신·창성 공용(백은·상아+금 건틀릿, 흰 판금이라 어두운 배경)",
+  "grip": {
+   "box": [
+    790,
+    350,
+    1262,
+    792
+   ],
+   "center": [
+    1027,
+    560
+   ],
+   "axis": [
+    0,
+    1
+   ],
+   "rodHalf": 100,
+   "wrist": [
+    800,
+    780
+   ],
+   "scale": 0.3
+  },
+  "open": {
+   "box": [
+    1400,
+    270,
+    2012,
+    862
+   ],
+   "wrist": [
+    1900,
+    840
+   ],
+   "tip": [
+    1500,
+    300
+   ],
+   "scale": 0.26
+  },
+  "rodKey": {
+   "hue": [
+    60,
+    185
+   ],
+   "sat": 0.1,
+   "val": 0.08
+  }
+ },
+ "params": {
+  "skirtSrcMaxLum": null,
+  "skirtTone": 0.5
+ },
+ "materials": {
+  "_replace": true,
+  "armor": [
+   {
+    "parts": [
+     "torso",
+     "uarm",
+     "farm",
+     "pad",
+     "thigh",
+     "shin",
+     "foot",
+     "hand",
+     "grip",
+     "open"
+    ],
+    "sat": [
+     0,
+     0.1
+    ],
+    "val": [
+     0.3,
+     1.01
+    ]
+   },
+   {
+    "parts": [
+     "torso",
+     "uarm",
+     "farm",
+     "pad",
+     "thigh",
+     "shin",
+     "foot",
+     "hand",
+     "grip",
+     "open"
+    ],
+    "hue": [
+     170,
+     270
+    ],
+    "sat": [
+     0,
+     0.3
+    ],
+    "val": [
+     0.3,
+     1.01
+    ]
+   }
+  ],
+  "trim": {
+   "parts": [
+    "torso",
+    "pad",
+    "uarm",
+    "farm",
+    "skirt",
+    "shin",
+    "thigh",
+    "hand",
+    "grip",
+    "open"
+   ],
+   "hue": [
+    30,
+    62
+   ],
+   "sat": [
+    0.4,
+    1.01
+   ],
+   "val": [
+    0.45,
+    1.01
+   ]
+  }
+ },
+ "runtime": {
+  "armorBase": "#e2e8f2"
+ },
+ "turn": {
+  "sheet5": "isolde/isolde_valkyrie_turn5",
+  "views5": [
+   "y90",
+   "y180",
+   "-",
+   "ym90",
+   "-"
+  ],
+  "extra": [
+   {
+    "sheet": "isolde/isolde_valkyrie_q3f",
+    "views": [
+     "y135"
+    ],
+    "deshadow": true
+   },
+   {
+    "sheet": "isolde/isolde_valkyrie_q3b",
+    "views": [
+     "ym135"
+    ],
+    "deshadow": true
+   }
+  ]
+ }
+}

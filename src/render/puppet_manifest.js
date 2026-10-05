@@ -131,6 +131,17 @@ export const PUPPETS = {
    ]
   }
  },
+ "isolde": {
+  "isolde_lancer": {
+   "h": "10e0bcba866c",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  }
+ },
  "kael": {
   "kael_bloodhunter": {
    "h": "e4ef47f711ef",

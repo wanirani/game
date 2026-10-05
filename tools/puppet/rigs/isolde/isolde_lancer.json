@@ -109,12 +109,12 @@
  "regions": {
   "head": [
    [
-    560,
-    140
+    470,
+    30
    ],
    [
     1110,
-    140
+    30
    ],
    [
     1110,
@@ -163,6 +163,10 @@
    [
     560,
     420
+   ],
+   [
+    470,
+    330
    ]
   ],
   "neckCap": {
@@ -1133,6 +1137,33 @@
     1.01
    ]
   }
+ },
+ "turn": {
+  "sheet5": "isolde/isolde_lancer_turn5",
+  "views5": [
+   "y90",
+   "y180",
+   "-",
+   "ym90",
+   "-"
+  ],
+  "extra": [
+   {
+    "sheet": "isolde/isolde_lancer_q3f",
+    "views": [
+     "y135"
+    ],
+    "deshadow": true
+   },
+   {
+    "sheet": "isolde/isolde_lancer_q3b",
+    "views": [
+     "ym135"
+    ],
+    "deshadow": true
+   }
+  ],
+  "_views": "5뷰: 정면·옆(왼쪽)·약한 3/4(버림, 거의 옆모습)·뒤·뒤 중복(버림). 3/4 앞·뒤는 한 장짜리 재생성(q3f, q3b)"
  },
  "runtime": {
   "band": null,

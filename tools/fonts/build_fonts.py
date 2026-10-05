@@ -50,7 +50,7 @@ FIRST_FRAME_BUDGET = 500 * 1024  # 첫 화면 전에 받는 글꼴 합계 상한
 FIRST_FRAME_TARGET = int(os.environ.get('FONT_TARGET_KB', '480')) * 1024  # 빌드 목표 (여유 20 KB). 넘으면 덜 쓰이는 한글을 plus 파일로 나눈다
 
 # 각성 컷인 낙관 한자 (feel §2.1) — 데이터 파일이 아직 없어도 항상 넣는다
-SEAL_HANJA = '狩聖銃鐵鴉血'
+SEAL_HANJA = '狩聖銃鐵鴉血龍'
 # 데미지 숫자·붓글씨에 늘 필요한 기호
 DMG_EXTRA = '×·−…'
 BRUSH_EXTRA = '—–…·‘’“”「」『』《》〈〉～!?'

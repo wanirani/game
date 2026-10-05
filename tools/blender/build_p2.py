@@ -774,6 +774,54 @@ def staff_7():
     face_camera()
 
 
+@equip("spear_7")
+def spear_7():
+    """Rift lance (이졸데): void-metal pole split by a rift seam, star-gold
+    bands and a winged star-gold collar, a long faceted void blade with a
+    glowing rift core, a star gem in the collar and a mane of rift light."""
+    gold = EM_stargold()
+    void = EM_void("voidmetal")
+    shaft = EM_void("spear_void", rift=dict(along="Z", across="X", amp=0.01, freq=4.0,
+                                            width=0.007, halo=0.018, strength=10.0, halo_str=0.5,
+                                            span=(-0.7, 0.4), depth=("Y", 0.0)))
+    E.lathe([(0, -0.78), (0.025, -0.78), (0.024, 0.44), (0, 0.44)], shaft, seg=20, name="shaft")
+    E.grip(-0.42, -0.16, 0.03, E.pbr("wrap_night", (0.05, 0.04, 0.09), rough=0.4, coat=0.4),
+           wraps=8, name="grip")
+    for zz in (-0.72, -0.12, 0.3):
+        E.torus(0.029, 0.009, gold, loc=(0, 0, zz), seg=24, rseg=6, name="band")
+    E.lathe([(0, -0.86), (0.016, -0.84), (0.03, -0.78), (0, -0.76)], gold, seg=4, smooth=False,
+            name="butt")
+    top = 0.44 + 0.11
+    E.lathe(E.smooth_profile([(0, 0.44), (0.035, 0.44), (0.045, 0.48), (0.032, top), (0, top)], 3),
+            gold, seg=24, name="collar")
+    wing = [(0.02, 0.0), (0.08, 0.03), (0.16, 0.1), (0.23, 0.19), (0.16, 0.1), (0.19, 0.06),
+            (0.11, 0.03), (0.05, -0.02)]
+    for sx in (-1, 1):
+        E.extrude([(sx * x, z) for x, z in wing], 0.03, gold, loc=(0, 0, top - 0.06), bev=0.006,
+                  name="collar_wing")
+
+    def fn(t):
+        w = 0.06 * (0.45 + 0.55 * math.sin(min(1.0, t / 0.35) * math.pi / 2))
+        if t > 0.35:
+            w = 0.06 * ((1 - t) / 0.65) ** 0.85
+        return w, 0.0, 0.02 * (1 - 0.5 * t), 0
+    E.blade(0.58, fn, void, E.pbr("rift_edge", (0.85, 0.8, 1.0), metal=1, rough=0.06),
+            cross="lens", z0=top - 0.01, n=56)
+    E.blade(0.46, lambda t: (0.012 * (1 - t) ** 0.6, 0.0, 0.005, 0), EM_riftglow("lance_core", 10.0),
+            cross="diamond", z0=top + 0.04, n=20, name="core").location.y = -0.01
+    star_gem(0.03, (0, -0.035, top - 0.04))
+    for i in range(5):
+        a = (i - 2) / 2
+        p0 = Vector((0.0, a * 0.02, top - 0.08))
+        p3 = Vector((0.12 + 0.05 * (1 + a), -0.03 + a * 0.05, top - 0.42))
+        E.sweep(E.bezier(p0, p0 + Vector((0.05, 0, -0.02)), p3 + Vector((-0.04, 0, 0.12)), p3, 20),
+                lambda s: 0.009 * (1.2 - 0.9 * s), EM_riftglow("mane_rift", 6.0), segs=8, name="mane")
+    shard_E((0.16, 0.0, 1.0), 0.02, 0.06, rot=(rad(15), rad(30), 0))
+    glint_E((0.03, -0.1, top + 0.4), 0.07)
+    E.view(diag=42, yaw=-22, fill=0.9, glow=1.0)
+    face_camera()
+
+
 @equip("head_7")
 def head_7():
     """Rift crown-helm: void-metal helm split by a glowing crack, T visor

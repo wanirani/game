@@ -1,0 +1,162 @@
+{
+ "_doc": "창성: 상아 판금 + 금 트림, 진홍 스카프(목)·허리띠·자락, 금 날개 관. 진홍 자락은 어두운 표본으로 인페인트. 손은 백은 시트 공용",
+ "extends": "isolde_lancer",
+ "classId": "isolde_spearsaint",
+ "src": "isolde/isolde_spearsaint_side",
+ "hands": {
+  "sheet": "isolde/isolde_valkyrie_hands",
+  "_why": "발키리·전장의 여신·창성 공용(백은·상아+금 건틀릿, 흰 판금이라 어두운 배경)",
+  "grip": {
+   "box": [
+    790,
+    350,
+    1262,
+    792
+   ],
+   "center": [
+    1027,
+    560
+   ],
+   "axis": [
+    0,
+    1
+   ],
+   "rodHalf": 100,
+   "wrist": [
+    800,
+    780
+   ],
+   "scale": 0.3
+  },
+  "open": {
+   "box": [
+    1400,
+    270,
+    2012,
+    862
+   ],
+   "wrist": [
+    1900,
+    840
+   ],
+   "tip": [
+    1500,
+    300
+   ],
+   "scale": 0.26
+  },
+  "rodKey": {
+   "hue": [
+    60,
+    185
+   ],
+   "sat": 0.1,
+   "val": 0.08
+  }
+ },
+ "params": {
+  "skirtSrcMaxLum": 120
+ },
+ "materials": {
+  "_replace": true,
+  "armor": [
+   {
+    "parts": [
+     "torso",
+     "uarm",
+     "farm",
+     "pad",
+     "thigh",
+     "shin",
+     "foot",
+     "hand",
+     "grip",
+     "open"
+    ],
+    "sat": [
+     0,
+     0.08
+    ],
+    "val": [
+     0.35,
+     1.01
+    ]
+   },
+   {
+    "parts": [
+     "torso",
+     "uarm",
+     "farm",
+     "pad",
+     "thigh",
+     "shin",
+     "foot",
+     "hand",
+     "grip",
+     "open"
+    ],
+    "hue": [
+     33,
+     75
+    ],
+    "sat": [
+     0,
+     0.33
+    ],
+    "val": [
+     0.45,
+     1.01
+    ]
+   }
+  ],
+  "trim": {
+   "parts": [
+    "torso",
+    "pad",
+    "uarm",
+    "farm"
+   ],
+   "hue": [
+    335,
+    15
+   ],
+   "sat": [
+    0.45,
+    1.01
+   ],
+   "val": [
+    0.2,
+    1.01
+   ]
+  }
+ },
+ "runtime": {
+  "armorBase": "#e8e4dc"
+ },
+ "turn": {
+  "sheet5": "isolde/isolde_spearsaint_turn5",
+  "views5": [
+   "y90",
+   "y180",
+   "-",
+   "ym90",
+   "-"
+  ],
+  "extra": [
+   {
+    "sheet": "isolde/isolde_spearsaint_q3f",
+    "views": [
+     "y135"
+    ],
+    "deshadow": true
+   },
+   {
+    "sheet": "isolde/isolde_spearsaint_q3b",
+    "views": [
+     "ym135"
+    ],
+    "deshadow": true
+   }
+  ]
+ }
+}
