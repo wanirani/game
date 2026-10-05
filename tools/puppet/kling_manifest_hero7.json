@@ -86,10 +86,88 @@
    "picked": "b",
    "prompt": "Edit 图片1. Keep the exact same walking pose seen from exactly the same STRICT SIDE PROFILE facing RIGHT (we see her left side, NOT her front; her chest and face point to the right edge of the picture), the same arm and leg positions (the near arm hanging slightly behind the hip with a relaxed half-closed hand, the far arm swinging forward, legs in mid-stride), the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and soft lighting. 图片2 is ONLY a reference for her face and hair, 图片3 is ONLY a reference for her armour design, neither is a reference for the camera angle. Replace the young man with the young female dragon knight of 图片2 and 图片3: her fair face in profile with a fierce determined expression and teal-green eyes, her silver-white hair swept back into one long thick braid that hangs down her BACK behind her shoulders (on the left side of the picture, trailing behind her), never in front of her chest and not over the arm; a slim silver circlet band across her brow with a swept-back silver wing ornament at the temple, her whole face visible. Tall, strong, athletic female build. Her armour exactly as in 图片3: polished silver plate breastplate, a silver pauldron on the near shoulder with a small dragon-head crest and dragon-scale engraving, silver plate vambraces and articulated silver plate gauntlets, a dark navy gambeson, silver plate tassets over the hips, a long deep-navy cloth tabard skirt with thin silver trim edges reaching just below the knees and flaring back behind her legs with her stride, silver plate greaves with knee cops and pointed armoured sabatons. No weapon, no spear, nothing held in the hands, no cape, no cloak, no wings, no helmet, no scarf, full body visible from the top of the head to the boots with margin, nothing cropped, no text, no watermark.",
    "note": "OK — 아젤 측면(엄격한 옆모습)을 image_1 로 한 재시도가 성공: 두 후보 모두 땋은 머리가 등 뒤로, 얼굴 옆모습, 가까운 팔이 엉덩이 옆, 남색 자락이 뒤로 흩날림. a 는 자락 안감이 아젤의 진홍(새어 들어옴) → b(남색·검은 안감) 채택. 몸통은 약간 3/4(가슴 윤곽) — 리아·세라 원화와 같은 수준"
+  },
+  {
+   "id": "isolde_dragoon_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AdWJC2P2Nt755__47YuiLRfIYQ7MHfkb14dgkveYCAyFrM-Dx5rYplzojpy5Bu2ASIRC-eWd",
+   "inputs": [
+    "isolde_lancer_side.jpg (keep-pose edit)"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": null,
+   "prompt": "Edit 图片1. Keep the SAME young woman with the exact same face, the same long thick silver-white braid hanging down her back, the same tall athletic body proportions, the exact same walking side pose facing right, the same arm and leg positions, the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and lighting. The long tabard skirt keeps flaring back behind her legs in the same place. Change ONLY her armour and outfit into the armour of a dragoon, one tier grander: cool blue-tinted steel plate armour with dragon-scale engraving across the breastplate, tassets and greaves, a larger sculpted steel pauldron on the near shoulder shaped like a dragon head with swept-back horn fins, scale-mail sleeves under blue-steel vambraces, articulated blue-steel plate gauntlets, thin glowing sky-blue lightning lines along the plate edges, a long deep-navy tabard skirt with silver-white trim and a sky-blue lining, a silver circlet with larger swept-back silver dragon-wing crests at the temple; her teal eyes. Her whole face stays visible in profile: no helmet, no visor, no mask. No cape, no cloak, no wings, no halo, no long scarf tails, no weapon, no spear, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark."
+  },
+  {
+   "id": "isolde_stormlord_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AfjVmO_FyJPrcZIHvMNFffcqdSV0PMpCBOYpv8UP7sUpOuTYE_Y0Dh18CXfsJvYZ86yRfJ4H",
+   "inputs": [
+    "isolde_lancer_side.jpg (keep-pose edit)"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": null,
+   "prompt": "Edit 图片1. Keep the SAME young woman with the exact same face, the same long thick silver-white braid hanging down her back, the same tall athletic body proportions, the exact same walking side pose facing right, the same arm and leg positions, the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and lighting. The long tabard skirt keeps flaring back behind her legs in the same place. Change ONLY her armour and outfit into the regalia of a storm dragon lord, the grandest tier: bright polished silver-blue plate armour with ornate gold trim and engraved lightning-bolt and dragon motifs, a large layered gold-rimmed silver pauldron on the near shoulder shaped like a folded dragon wing with crackling pale-blue lightning runes, gold-rimmed silver-blue plate gauntlets, a long dark storm-navy tabard skirt with a gold-embroidered hem and a pale ice-blue lining, a silver-and-gold crown-circlet with tall swept-back wing crests and a small glowing blue gem on her brow; her eyes glow pale ice-blue; a faint pale-blue lightning glow on the engravings. Her whole face stays visible in profile: no helmet, no visor, no mask. No cape, no cloak, no wings, no halo, no long scarf tails, no weapon, no spear, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark."
+  },
+  {
+   "id": "isolde_wyrmknight_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "Af7BH82sBc7nWEs5J-zRFPi_2mjYW_4MyW2KEwfNeyiKm22dZPOtkRueAVZQqQR8NjzDjyWP",
+   "inputs": [
+    "isolde_lancer_side.jpg (keep-pose edit)"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": null,
+   "prompt": "Edit 图片1. Keep the SAME young woman with the exact same face, the same long thick silver-white braid hanging down her back, the same tall athletic body proportions, the exact same walking side pose facing right, the same arm and leg positions, the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and lighting. The long tabard skirt keeps flaring back behind her legs in the same place. Change ONLY her armour and outfit into the armour of a black dragon knight, the grandest tier: jagged black dragon-scale plate armour with dull gold trim and glowing ember-orange cracks between the scales, a spiked black pauldron on the near shoulder shaped like a black dragon head with glowing orange eyes, black clawed plate gauntlets with gold rims, a long black and dark-crimson tabard skirt with a ragged hem glowing faintly ember-orange, black spiked plate greaves and sabatons; on her head a black circlet with two curved black dragon horns sweeping back over her hair; her eyes glow amber-orange; a faint ember glow. Her whole face stays visible in profile: no helmet, no visor, no mask. No cape, no cloak, no wings, no halo, no long scarf tails, no weapon, no spear, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark."
+  },
+  {
+   "id": "isolde_valkyrie_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AZoP795Mqpl_LpmlDcIZzjCiz5WoanAwwYi5kNme_A_RbfoSPkVX-HJI7r3-DimVxQIIwOf_",
+   "inputs": [
+    "isolde_lancer_side.jpg (keep-pose edit)"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": null,
+   "prompt": "Edit 图片1. Keep the SAME young woman with the exact same face, the same long thick silver-white braid hanging down her back, the same tall athletic body proportions, the exact same walking side pose facing right, the same arm and leg positions, the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and lighting. The long tabard skirt keeps flaring back behind her legs in the same place. Change ONLY her armour and outfit into the armour of a valkyrie, one tier grander: polished white-silver plate armour with gold trim and engraved feather patterns, a white-silver pauldron on the near shoulder with a small gold feather crest, white-silver plate gauntlets with gold rims, a long ivory-white tabard skirt with a gold-embroidered hem and a pale gold lining, white-silver greaves with gold knee cops, a silver circlet with two small white feathered wings at the temple. Her whole face stays visible in profile: no helmet, no visor, no mask. No cape, no cloak, no wings, no halo, no long scarf tails, no weapon, no spear, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark."
+  },
+  {
+   "id": "isolde_einherjar_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AWh425Qht-0ruAILbP_-CMvtlCsmkH9B_K9Iw3qr7jccU_fRYbIsDekZzKHRaBLwITTcQTdT",
+   "inputs": [
+    "isolde_lancer_side.jpg (keep-pose edit)"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": null,
+   "prompt": "Edit 图片1. Keep the SAME young woman with the exact same face, the same long thick silver-white braid hanging down her back, the same tall athletic body proportions, the exact same walking side pose facing right, the same arm and leg positions, the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and lighting. The long tabard skirt keeps flaring back behind her legs in the same place. Change ONLY her armour and outfit into the radiant regalia of a battlefield goddess, the grandest tier: ivory-white and gold plate armour with a sunburst and feather engraving on the breastplate, a large ornate gold-and-ivory pauldron on the near shoulder shaped like layered feathers, ivory plate gauntlets with gold rims, a long ivory tabard skirt with heavy gold embroidery and a golden lining, ivory greaves with gold knee cops, a gold circlet with tall white feathered wings at the temples and a small glowing gem on her brow; a faint warm golden glow on the gold. Her whole face stays visible in profile: no helmet, no visor, no mask. No cape, no cloak, no wings, no halo, no long scarf tails, no weapon, no spear, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark."
+  },
+  {
+   "id": "isolde_spearsaint_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AeXhe-NIAa1k3a7lbcDL-dpoVdjC2J9VnsCOm5N35kTMOLduGteleZpWd9tkfk8VxOfQkVRY",
+   "inputs": [
+    "isolde_lancer_side.jpg (keep-pose edit)"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": null,
+   "prompt": "Edit 图片1. Keep the SAME young woman with the exact same face, the same long thick silver-white braid hanging down her back, the same tall athletic body proportions, the exact same walking side pose facing right, the same arm and leg positions, the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and lighting. The long tabard skirt keeps flaring back behind her legs in the same place. Change ONLY her armour and outfit into the attire of a spear saint, the grandest tier: sleek ivory plate armour with gold trim and fine engraving, a crimson silk sash wrapped at the waist, a short crimson scarf wrapped snugly around her neck with the ends tucked in, a sleek ivory pauldron on the near shoulder with a gold rim and a small crimson tassel cord, ivory plate gauntlets with gold rims, a long crimson tabard skirt with a gold-embroidered hem and an ivory lining, ivory greaves with gold knee cops, a slim gold circlet with a small red gem on her brow and no wing ornaments; her eyes rose-pink. Her whole face stays visible in profile: no helmet, no visor, no mask. No cape, no cloak, no wings, no halo, no long scarf tails, no weapon, no spear, nothing held in the hands, full body visible from head to boots, nothing cropped, no text, no watermark."
   }
  ],
  "images_used": {
-  "isolde": 10
+  "isolde": 22
  },
- "credits_used": 20
+ "credits_used": 44
 }

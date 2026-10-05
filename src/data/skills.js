@@ -1,4 +1,4 @@
-// 스킬 트리 데이터: 6캐릭터 × 3계열 × 6스킬 = 108개 (액티브 48 / 패시브 60)
+// 스킬 트리 데이터: 7캐릭터 × 3계열 × 6스킬 = 126개 (액티브 56 / 패시브 70)
 // SKILLS[id] = { id, charId, name, desc, type:'active'|'passive', branch, row, maxLv, reqLevel, req:[선행스킬id], reqClass?,
 //                cost(MP), cd(초), color, v:{키:[기본값, 레벨당 증가]}(액티브 수치 → desc 의 {키} 치환, game/skills.js 가 사용),
 //                stats(패시브: {stat:[lv1..lvN]}), spCost(레벨당 필요 SP), icon? }
@@ -311,10 +311,49 @@ tree('azel', [
   ] },
 ]);
 
+// ═════════════════════════ 이졸데 ═════════════════════════
+tree('isolde', [
+  { id: 'isolde_lance', kind: 'core', name: '창술', color: '#8ae8ff', desc: '하늘 기사단에 대대로 전해진 창술. 멀리서 꿰뚫고, 하늘에서 내리꽂는다.', skills: [
+    A('isolde_piercing_gale', '질풍 찌르기', { cost: 7, cd: 2.4, color: '#8ae8ff', v: { dmg: [160, 26], r: [240, 30] },
+      desc: '창끝에서 바람의 창을 쏘아 앞으로 {r}만큼 꿰뚫는다. 지나가는 길의 적 모두에게 {dmg}% 피해.' }),
+    P('isolde_spearmanship', '창술 숙련', st({ atk: 1, reach: 1 }), '창은 팔보다 길다. 그 한 뼘이 곧 목숨값이다.'),
+    P('isolde_skyborn', '하늘의 아이', st({ jumpPow: 1, agi: 1, moveSpd: 1 }), '하늘 기사단의 아이는 걷는 법보다 뛰어오르는 법을 먼저 배운다.'),
+    A('isolde_dragon_dive', '용추락', { cost: 14, cd: 6, color: '#bfe8ff', v: { dmg: [260, 42], r: [130, 15] },
+      desc: '높이 뛰어올랐다가 창끝으로 곧장 내리꽂힌다. 착지한 자리에서 반경 {r}의 충격파로 {dmg}% 피해. 하강 중 무적.' }),
+    P('isolde_wyvern_heart', '비룡의 심장', st({ critDmg: 1.2, atkSpd: 1 }), '날개를 잃은 용기사의 심장도 여전히 용처럼 뛴다.'),
+    P('isolde_last_knight', '마지막 기사', st({ atk: 1.2, hp: 1, def: 1 }), '무너진 기사단의 이름은 이제 그녀 혼자 짊어진다.'),
+  ] },
+  { id: 'isolde_dragon', kind: 'class', gate: ['isolde_dragoon', 'isolde_stormlord', 'isolde_wyrmknight'], name: '용기사', color: '#9ae0ff',
+    desc: '용과 함께 하늘을 날던 기사들의 길. 용기사 계열에서 꽃핀다.', skills: [
+    P('isolde_storm_blood', '뇌운의 피', st({ thunder: 1, jumpPow: 1 }), '천둥 치는 밤이면 핏속에서 용의 울음이 들린다.'),
+    A('isolde_thunder_lance', '뇌창', { cost: 12, cd: 5, color: '#bfe0ff', v: { dmg: [120, 20], n: [3, 0.5] },
+      desc: '번개를 두른 창을 내질러 앞쪽의 적 {n}명에게 차례로 낙뢰를 떨어뜨린다. 낙뢰마다 {dmg}% 번개 피해.' }),
+    P('isolde_dragon_scale', '용린 갑주', st({ def: 1, resThunder: 1, resFire: 1 }), '용의 비늘을 덧댄 갑주. 번개도 불꽃도 미끄러져 나간다.'),
+    P('isolde_high_jump', '도약 비기', st({ jumpPow: 1.2, critDmg: 1 }), '높이 오를수록 내리꽂는 창은 무거워진다.'),
+    A('isolde_storm_dragon', '뇌룡 승천', { cost: 22, cd: 11, color: '#e0f4ff', v: { dmg: [80, 13], n: [6, 1.25] },
+      desc: '창을 하늘로 치켜들어 번개의 용을 부른다. 용은 화면을 휘감으며 적 사이를 {n}번 꿰뚫고, 꿰뚫을 때마다 {dmg}% 번개 피해.' }),
+    A('isolde_wyrm_breath', '흑룡의 숨결', { cost: 22, cd: 10, color: '#ff7a2a', v: { dmg: [55, 9], t: [1.6, 0.2], r: [260, 20] },
+      desc: '창끝에서 흑룡의 불길을 {t}초 동안 뿜어 앞쪽 {r} 안을 태운다. 타격당 {dmg}% 화염·암흑 피해를 주고 체력을 조금 흡수한다.' }),
+  ] },
+  { id: 'isolde_valkyrie_path', kind: 'class', gate: ['isolde_valkyrie', 'isolde_einherjar', 'isolde_spearsaint'], name: '발키리', color: '#ffd870',
+    desc: '전사자의 영혼을 이끄는 빛의 창. 발키리 계열에서 꽃핀다.', skills: [
+    P('isolde_valkyrie_oath', '발키리의 맹세', st({ holy: 1, res: 1 }), '쓰러진 이들의 이름을 하나도 잊지 않겠다는 맹세.'),
+    A('isolde_javelin', '빛의 투창', { cost: 10, cd: 4, color: '#ffe8a0', v: { dmg: [180, 30], n: [1, 0.5] },
+      desc: '빛으로 빚은 투창 {n}자루를 던진다. 투창은 적을 꿰뚫고 날아가 벽이나 바닥에 꽂히며 터진다. 위력 {dmg}% 신성 피해.' }),
+    P('isolde_wings_of_valor', '용맹의 날개', st({ moveSpd: 1, dmgReduce: 1 }), '날개는 달아나기 위해서가 아니라 먼저 닿기 위해 있다.'),
+    P('isolde_hunt_eye', '창끝의 눈', st({ crit: 1.2, luck: 1 }), '창끝이 겨누는 곳을 눈도 함께 본다.'),
+    A('isolde_valhalla', '영웅의 전당', { cost: 24, cd: 14, color: '#fff2b0', v: { dmg: [70, 12], n: [3, 0.5], t: [5, 0.5] },
+      desc: '전사자의 영혼 {n}명을 불러 {t}초 동안 함께 싸운다. 영혼은 가까운 적에게 빛의 창을 던져 {dmg}% 신성 피해를 준다.' }),
+    A('isolde_thousand_thrusts', '천 번 찌르기', { cost: 20, cd: 9, color: '#ffd0d8', v: { dmg: [32, 5], n: [16, 4] },
+      desc: '눈으로 좇을 수 없는 속도로 앞을 {n}번 찌른다. 찌를 때마다 {dmg}% 피해, 마지막 일격은 반드시 치명타.' }),
+  ] },
+]);
+
 // ─────────────────────────── 시작 스킬 ───────────────────────────
 export const STARTER_SKILLS = {
   kael: 'kael_vigilia', sera: 'sera_holy_bolt', victor: 'victor_fanning',
   bran: 'bran_ground_split', lia: 'lia_shadow_step', azel: 'azel_moon_slash',
+  isolde: 'isolde_piercing_gale',
 };
 
 // ─────────────────────────── 도우미 ───────────────────────────
