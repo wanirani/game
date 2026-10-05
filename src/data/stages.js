@@ -119,7 +119,7 @@ export const STAGES = {
   s21: S({ id: 's21', chapter: 21, part: 2, page: 1, side: true, name: '하늘 정원의 둥지', sub: '용들이 잠들었던 구름 위의 성소', theme: 'sky', bg: 'bg/s17_sky', tex: 'tex/tex_sky_marble', tex2: 'tex/tex_marble', tileStyle: 'sky',
     music: 's17', level: 70, darkness: 0.15, darkColor: '#081020', liquid: 'water', boss: 'b_argen', rooms: S21, parTime: 600,
     enemies: ['storm_harpy', 'gale_knight', 'thunder_roc', 'cloud_jelly', 'void_herald', 'nihil_spawn', 'mimic'], docs: [], shard: null, heart: null,
-    gimmick: { kind: 'wind', dir: 1, force: 850, on: 2.4, off: 3.8 }, color: '#c8e4ff', next: null, mapPos: { x: 0.7, y: 0 }, req: '2부의 끝을 본 뒤, 구름 위 하늘 정원에서 용의 울음이 들려오면 갈 수 있다' }),
+    gimmick: { kind: 'wind', dir: 1, force: 850, on: 2.4, off: 3.8 }, color: '#c8e4ff', next: null, mapPos: { x: 0.8, y: 0 }, req: '2부의 끝을 본 뒤, 구름 위 하늘 정원에서 용의 울음이 들려오면 갈 수 있다' }),
   arena: S({ id: 'arena', chapter: 0, name: '피의 투기장', sub: '서바이벌 & 보스 러시', theme: 'arena', bg: 'bg/s_arena', tex: 'tex/tex_castle_stone', tex2: 'tex/tex_dirt', tileStyle: 'stone',
     music: 'arena', level: 10, darkness: 0.3, boss: null, rooms: ARENA, parTime: 600, intro: null, outro: null,
     enemies: [], next: null, mapPos: { x: 0.3, y: 0.3 } }),
