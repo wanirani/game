@@ -46,6 +46,7 @@
 | `docs/AUDIT_REPORT.md` | 출시 전 감사 결과 (치명적 0 · 높음 6 · 보통 15, 모두 수정), 알려진 문제, 최종 회귀 시험 |
 | `docs/RELEASE.md` | 웹·APK 빌드와 배포 순서, 서명 키 백업·복구 |
 | `docs/ACCOUNTS.md` | 계정 서버 설계와 운영 (잠금 규칙, 정리 함수, `AUTH_PEPPER`) |
+| `docs/TELEMETRY.md` | 익명 통계·오류 수집 (무엇을 보내고 안 보내는지, 보관 기간, 끄는 법, `tools/telemetry/report.mjs` 보고서 읽기) |
 | `docs/ARCHITECTURE.md` | 코드 구조 |
 | `tools/deploy/README.md` | 빌드 옵션, 배포 확인(스모크) |
 

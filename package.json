@@ -10,6 +10,8 @@
     "validate": "node tools/validate_maps.mjs",
     "test:api": "node tools/accounts/test_api.mjs",
     "test:client": "node tools/accounts/test_client.mjs",
+    "test:telemetry": "node tools/telemetry/test_telemetry.mjs",
+    "test:telemetry:client": "node tools/telemetry/test_client_telemetry.mjs",
     "qa:platform": "node tools/qa/run_platform.mjs",
     "qa:platform:strict": "node tools/qa/run_platform.mjs --strict"
   },

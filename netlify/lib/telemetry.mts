@@ -358,9 +358,9 @@ export interface AggReport { hours: number; raws: number; days: string[]; pendin
  * 끝난 시간 칸(끝 + aggGraceMs 지남) 중 원본 키 목록이 지난번과 달라진 칸만 다시 계산한다 (hour/<칸> 을 그 칸의 원본 전부로 새로 씀),
  * 그런 칸이 있는 날은 agg/<날> 을 그날 시간 요약의 합으로 새로 쓴다. 마지막에 state/agg 에 칸별 지문을 적는다.
  * 중간에 멈춰도 다음 실행이 같은 칸을 처음부터 다시 계산하므로 두 번 세지 않는다.
- * opts.days: 살펴볼 날 수 (기본 aggRecheckDays — 오래 멈춰 있었다면 더 크게 한 번 돌린다)
+ * opts.days: 살펴볼 날 수 (기본 aggRecheckDays — 오래 멈춰 있었다면 더 크게 한 번 돌린다), opts.maxRaw: 한 번에 읽는 원본 수 (기본 aggMaxRawPerRun)
  */
-export async function runAggregation(c: Ctx, opts: { days?: number } = {}): Promise<AggReport> {
+export async function runAggregation(c: Ctx, opts: { days?: number; maxRaw?: number } = {}): Promise<AggReport> {
   const t0 = now();
   const st = c.store(STORES.telemetry);
   const days = Math.max(1, Math.min(TELEMETRY.rawKeepDays + 1, Math.floor(opts.days ?? TELEMETRY.aggRecheckDays)));
@@ -391,7 +391,7 @@ export async function runAggregation(c: Ctx, opts: { days?: number } = {}): Prom
   let raws = 0, hours = 0, pending = 0;
   const touched = new Set<string>();
   for (const [hour, keys, mark] of due) {
-    if (raws > 0 && raws + keys.length > TELEMETRY.aggMaxRawPerRun) { pending++; continue; } // 다음 실행에서
+    if (raws > 0 && raws + keys.length > (opts.maxRaw ?? TELEMETRY.aggMaxRawPerRun)) { pending++; continue; } // 다음 실행에서
     const agg = emptyAgg();
     const docs = await mapLimit(keys, TELEMETRY.concurrency, (k) => st.get(k, { type: 'json' }).catch(() => null));
     for (const d of docs) if (isObj(d)) foldBatch(agg, d);

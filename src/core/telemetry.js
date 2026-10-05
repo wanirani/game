@@ -42,6 +42,7 @@ const REQUIRED = {
   arcade_result: ['mode', 'score', 'time', 'cleared', 'hero'],
 };
 export const TELEMETRY_TYPES = Object.keys(REQUIRED);
+export const TELEMETRY_REQUIRED = REQUIRED;
 export const NOTICE_TEXT = '게임을 더 좋게 만들기 위해 익명 통계와 오류 기록을 보냅니다. 설정 › 기타에서 끌 수 있어요.';
 
 const W = typeof window !== 'undefined' ? window : null;

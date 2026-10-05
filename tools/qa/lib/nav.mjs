@@ -170,7 +170,9 @@ function onOneWay(s, grid) {
  * 매크로 하나를 굴린다. → { frames, end: 'land'|'exit'|'fell'|'swim'|'timeout', x, y, plat, exit, hazard, airborne }
  * exits: {R,L,U,D} 이 방에 있는 출구. plats: platObjects (복제해서 씀, 시간에 따라 움직임). 깊은 물이면 물에 들어간 순간 'swim'.
  */
-export function simulate(grid, hero, st0, macro, { plats = [], exits = {}, maxF = 150, liquidHurts = false } = {}) {
+export function simulate(grid, hero, st0, macro, { plats = [], exits = {}, maxF = 150, liquidHurts = false, flips = null } = {}) {
+  // flips: 심장 박동 예측 {at:[프레임…], cells:[[idx, even]…], beat0} — at[i] 프레임에 박자 beat0+i+1 로 바뀐다 (몸과 겹치는 칸은 비운 채 보류)
+  let fi = 0;
   const s = newSimState(st0);
   const pl = clonePlats(plats);
   let kin = { ...(st0.keys || {}) };
@@ -179,6 +181,16 @@ export function simulate(grid, hero, st0, macro, { plats = [], exits = {}, maxF 
   for (f = 0; f < maxF; f++) {
     while (ei < macro.events.length && macro.events[ei].f === f) { kin = { ...kin, ...macro.events[ei].k }; ei++; }
     advancePlats(pl);
+    if (flips && fi < flips.at.length && f === flips.at[fi]) {
+      const g2 = Object.create(grid); g2.tiles = grid.tiles.slice();
+      const beat = flips.beat0 + fi + 1, W = grid.w;
+      for (const [idx, even] of flips.cells) {
+        const want = even === (beat % 2 === 0), tx = idx % W, ty = (idx - tx) / W;
+        const hit = s.x < tx * TILE + TILE && s.x + s.w > tx * TILE && s.y < ty * TILE + TILE && s.y + s.h > ty * TILE;
+        g2.tiles[idx] = want && !hit ? T.SOLID : T.EMPTY;
+      }
+      grid = g2; fi++;
+    }
     simStep(s, hero, grid, pl, kin);
     if (touchesType(s, grid, T.SPIKE, 6)) hazard += 1;
     if (liquidHurts && touchesType(s, grid, T.LIQUID, 10)) hazard += 1;
@@ -346,7 +358,7 @@ export class RoomNav {
     return g.typeAt(tx, ty) === T.LIQUID && !g.solid(tx, ty - 1);
   }
   edgeCost(from, e) { return e.cost + (this.penalty.get(`${from}|${e.macro ?? e.walk ?? e.to}`) ?? 0); }
-  penalize(from, e, c = 3) { const k = `${from}|${e.macro ?? e.walk ?? e.to}`; this.penalty.set(k, (this.penalty.get(k) ?? 0) + c); }
+  penalize(from, e, c = 3) { const k = `${from}|${e.macro ?? e.walk ?? e.to}`; this.penalty.set(k, (this.penalty.get(k) ?? 0) + c); this.dirty = true; }
   /**
    * 시작 노드에서 앞으로 퍼져 나가며 간선을 만들고(시간 예산 안), 목표에서 거꾸로 Dijkstra → this.h (남은 비용).
    * → 시작 노드의 남은 비용 (Infinity = 길 없음)
@@ -380,7 +392,7 @@ export class RoomNav {
       if (c > (h.get(n) ?? Infinity)) continue;
       for (const [from, e] of rev.get(n) || []) push(from, c + this.edgeCost(from, e));
     }
-    this.h = h;
+    this.h = h; this.dirty = false;
     this.planMs = Date.now() - t0;
     this.goalHit = goalHit;
     return h.get(start) ?? Infinity;

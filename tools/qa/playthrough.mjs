@@ -91,7 +91,7 @@ function installHelper() {
       const switches = w.entities.filter((e) => e.def?.id === 'mirror_switch').map((e) => ({ tx: Math.round(e.x / 48), ty: Math.round((e.y + e.h) / 48) - 1 }));
       return { stage: w.stage.id, room: w.roomId, w: m.w, h: m.h, tiles: Array.from(m.tiles), openL: m.openLeft, openR: m.openRight, version: m.version,
         liquid: w.liquid, deep: !!w.gimmickOf?.('deep'), updraft: wind ? [...(wind.updraft || [])] : [], arenaX: w.room?.boss ? (w.arenaX ?? null) : null,
-        doors, switches, gimmicks: (w.gimmick?.members || []).map((x) => x.kind), revealed: m.revealed?.size ?? 0 };
+        doors, switches, gimmicks: (w.gimmick?.members || []).map((x) => x.kind), revealed: m.revealed?.size ?? 0, phase: (m.phaseTiles || []).map((t) => t.idx) };
     },
     plats() {
       return (g.world?.platforms || []).filter((p) => !p.dead).map((p) => p.constructor?.name === 'CrumblePlatform' || 'state' in p
@@ -112,7 +112,9 @@ function installHelper() {
       }
       if (b) o.boss = { ...(P.hb(b) || {}), hp: b.hp, mhp: b.stats?.maxHp ?? b.maxHp, dead: !!b.dead, dying: b.dying > 0, pending: !!b.pendingBoss, id: b.def?.id ?? b.id, active: !!w.bossActive };
       const wind = w?.gimmickOf?.('wind');
-      if (wind) o.wind = wind.phase;
+      if (wind) { o.wind = wind.phase; o.windRem = Math.max(0, (wind.dur ?? 0) - (wind.pt ?? 0)); }
+      const hb = w?.gimmickOf?.('heartbeat');
+      if (hb) { o.hb = { rem: Math.max(0, hb.beat - hb.timer), beat: hb.beat, idx: hb.beatIndex }; if (full) o.hb.cells = hb.cells.map((c) => [c.idx, c.even]); }
       if (p && w) {
         const foes = [];
         for (const e of w.entities) {
@@ -195,7 +197,7 @@ async function playStage(env, stageId) {
     const hero = heroModel(info);
     let route = routeFrom(stage, obs.room);
     rep.route = route;
-    let room = null, R = null, nav = null, gsnap = null, gridVer = -1, nextRoom = null;
+    let room = null, R = null, nav = null, gsnap = null, gridVer = -1, nextRoom = null, phaseRoom = false;
     const visited = [];
     let bossStart = null, resultWait = 0, lastProgress = 0;
     const finishRoom = (status, extra = {}) => {
@@ -215,10 +217,19 @@ async function playStage(env, stageId) {
       rep.rooms.push(R);
       await rebuild();
     };
+    let navKey = null;
     const rebuild = async () => {
       gsnap = await s.eval(() => window.__pt.grid());
       gridVer = gsnap.version + ':' + gsnap.revealed;
-      const grid = new Grid(gsnap);
+      const real = new Grid(gsnap);
+      // 심장 박동(z/Z)은 저절로 바뀐다 → 계획은 낙관적 합집합 (세로 줄 = 빈칸, 가로 줄 = 발판), 실행 때 지금 격자로 검증하고 기다린다
+      let grid = real;
+      phaseRoom = gsnap.gimmicks.includes('heartbeat') && gsnap.phase.length > 0;
+      if (phaseRoom) {
+        grid = new Grid(gsnap);
+        const ph = new Set(gsnap.phase), W = gsnap.w;
+        for (const i of ph) grid.tiles[i] = ph.has(i - W) || ph.has(i + W) ? 0 : 1;
+      }
       const goal = { exits: {}, door: null, arenaTx: null };
       if (stage.rooms[room]?.boss) goal.arenaTx = gsnap.arenaX != null ? Math.floor(gsnap.arenaX / TILE) : null;
       else if (nextRoom) {
@@ -227,17 +238,22 @@ async function playStage(env, stageId) {
         const d = gsnap.doors.filter((x) => x.target === nextRoom);
         if (d.length) goal.door = d[0];
       }
+      const key = `${room}|${grid.hash()}|${JSON.stringify(goal)}`;
+      if (nav && navKey === key) { nav.real = real; return; }
+      navKey = key;
       const plats = platObjects((await s.eval(() => window.__pt.plats())));
       nav = new RoomNav(grid, hero, goal, { plats, god: GOD });
+      nav.real = real;
       nav.liquidHurts = gsnap.liquid !== 'water' && gsnap.liquid !== 'deep';
       R.goal = goal; R.gimmicks = gsnap.gimmicks;
     };
+    const trace = (what) => { (R.trace ??= []).push(`${frame - R.f0}:${what}`); if (R.trace.length > 40) R.trace.shift(); };
     const shot = async (name) => { await s.eval(() => window.__pt.render()); const f = path.join(OUT, name); await s.screenshot(f); return f; };
     const stuck = async (reason) => {
       const f = await shot(`stuck_${stageId}_${room}.png`);
       const p = obs.p || {};
       finishRoom('stuck', { reason, pos: { x: Math.round(p.x), y: Math.round(p.y), tx: Math.floor((p.x + p.w / 2) / TILE), fy: Math.round((p.y + p.h) / TILE), og: p.og }, shot: f,
-        reached: nav?.reached?.size ?? 0, goalReachable: !!nav?.goalHit, trail: R.trail?.slice(-12) });
+        reached: nav?.reached?.size ?? 0, goalReachable: !!nav?.goalHit, trail: R.trail?.slice(-12), trace: R.trace?.slice(-25), h: nav ? nav.hOf(nav.nodeOf(p, p.plat ?? -1)) : null });
       await keys({});
       if (nextRoom) {
         await s.eval((n) => window.__game.world.gotoRoom(n), nextRoom);
@@ -248,7 +264,15 @@ async function playStage(env, stageId) {
     };
 
     const isOverlay = (t) => t && !['practice', 'stage', 'arcadeResults', 'loading'].includes(t);
-    let overlayN = 0, fightT = 0, swimT = 0, waitN = 0, noNode = 0;
+    let overlayN = 0, fightT = 0, swimT = 0, waitN = 0, noNode = 0, airN = 0, fnav = null, fnavKey = null, fightStall = 0, lastFightX = null;
+    const bossTarget = (b, p) => {
+      const g = nav.real, side = Math.sign((p.x + p.w / 2) - (b.x + b.w / 2)) || -1;
+      for (const off of [b.w / 2 + 40, b.w / 2 + 90, b.w / 2 + 140, -(b.w / 2 + 40)]) {
+        const tx = Math.floor((b.x + b.w / 2 + side * off) / TILE);
+        for (let fy = Math.max(2, Math.floor((b.y + b.h) / TILE) - 3); fy < g.h; fy++) if (nav.standable(tx, fy)) return { tx, fy };
+      }
+      return null;
+    };
     for (let iter = 0; iter < 400000; iter++) {
       if (Date.now() - t0 > WALL_CAP) { rep.errors.push(`HARNESS 스테이지 실시간 상한 ${WALL_CAP / 60000}분 초과`); if (R && !R.status) await stuck('실시간 상한 초과'); break; }
       // ── 결과 화면 ──
@@ -300,14 +324,35 @@ async function playStage(env, stageId) {
         continue;
       }
       if (isBossRoom && bossStart == null && inRoom > ROOM_TIMEOUT) { await stuck('보스 경기장에 닿지 못함'); break; }
+      // ── 격자 바뀜 (위상 타일·부서진 벽·드러난 가짜 벽) ──
+      if (obs.ver + ':' + obs.revealed !== gridVer) { await rebuild(); }
       // ── 보스전 ──
       if (isBossRoom && (obs.arena || obs.boss)) {
         fightT++;
+        const bb = obs.boss, p = obs.p;
+        if (bb && bb.active && !bb.pending && !obs.cut && p.og && !bb.dead) {
+          const dx = bb.x + bb.w / 2 - (p.x + p.w / 2);
+          const reach = 70 + (p.reach || 0) + bb.w / 2;
+          if (Math.abs(dx) > reach * 1.1 && (fightStall > 20 || nav.real.solid(Math.floor((p.x + p.w / 2) / TILE) + Math.sign(dx), Math.round((p.y + p.h) / TILE) - 1))) {
+            // 보스까지 걸어서 못 감 (기둥·턱): 보스 옆 바닥 칸을 목표로 길찾기
+            const tgt = bossTarget(bb, p);
+            if (tgt) {
+              const key = `${tgt.tx},${tgt.fy}`;
+              if (!fnav || fnavKey !== key) { fnav = new RoomNav(nav.grid, hero, { exits: {}, door: { tx: tgt.tx, ty: tgt.fy - 1 }, arenaTx: null }, { god: GOD }); fnav.real = nav.real; fnavKey = key; }
+              const fnode = fnav.nodeOf({ ...p, onGround: p.og }, -1);
+              if (fnode != null && !fnav.isGoal(fnode)) {
+                let hh = fnav.hOf(fnode);
+                if (!Number.isFinite(hh) || fnav.dirty) hh = fnav.plan(fnode);
+                if (Number.isFinite(hh)) { const sv = nav; nav = fnav; try { obs = await navStep(fnode, hh); } finally { nav = sv; } fightStall = 0; continue; }
+              }
+            }
+          }
+          if (Math.abs(dx) > reach && Math.abs(p.x - (lastFightX ?? -1)) < 1) fightStall++; else fightStall = 0;
+          lastFightX = p.x;
+        }
         obs = await fight(obs);
         continue;
       }
-      // ── 격자 바뀜 (위상 타일·부서진 벽·드러난 가짜 벽) ──
-      if (obs.ver + ':' + obs.revealed !== gridVer) { await rebuild(); }
       // ── 적 (정상 모드) ──
       if (!GOD && obs.p.og && obs.foes?.length) {
         const f = obs.foes.find((e) => Math.abs(e.dx) < (e.w / 2 + 70 + (obs.p.reach || 0)) && Math.abs(e.dy) < 90);
@@ -320,9 +365,18 @@ async function playStage(env, stageId) {
         }
       }
       // ── 깊은 물: 헤엄 ──
-      const node = nav.nodeOf({ ...obs.p, platRef: obs.p.platRef }, obs.p.plat);
+      const node = nav.nodeOf({ ...obs.p, onGround: obs.p.og }, obs.p.plat);
       if (!obs.p.og && !(typeof node === 'string' && node[0] === 'W')) {
         // 공중 (넉백·바람·발판에서 떨어짐): 키를 놓고 착지까지
+        trace(`air ${Math.round(obs.p.x)},${Math.round(obs.p.y)} vy=${Math.round(obs.p.vy)}`);
+        airN++;
+        if (airN > 3) {
+          // 오래 떠 있음 (상승 기류 등): 지금 상태에서 가장 좋은 매크로
+          const o = await s.eval(() => window.__pt.obs(true));
+          let best = null, bc = Infinity;
+          for (const mm of MACROS) { const rr = simFrom(mm, o), nn = landNode(rr); if (nn == null) continue; const c = hLand(nn) + rr.frames / 60; if (c < bc) { bc = c; best = mm; } }
+          if (best) { trace(`air-mpc ${best.id}`); obs = await execMacro(best); airN = 0; continue; }
+        }
         await keys({});
         obs = await run(30, { land: true, room: true, scene: true, dead: true });
         continue;
@@ -337,11 +391,11 @@ async function playStage(env, stageId) {
         if (noNode % 10 === 0) obs = await tap('jump', 12, 20);
         continue;
       }
-      noNode = 0;
+      noNode = 0; airN = 0;
       (R.trail ??= []);
       if (R.trail[R.trail.length - 1] !== node) { R.trail.push(node); if (R.trail.length > 40) R.trail.shift(); }
       let hNow = nav.hOf(node);
-      if (!Number.isFinite(hNow) || !nav.h.size) {
+      if (!Number.isFinite(hNow) || !nav.h.size || nav.dirty) {
         hNow = nav.plan(node); R.replans++;
         if (!Number.isFinite(hNow)) {
           // 길 없음: 거울 스위치 · 부서지는 벽 · 기다리기(위상·발판)
@@ -357,22 +411,8 @@ async function playStage(env, stageId) {
         await keys({ right: true }); obs = await run(6, { room: true }); continue;
       }
       // 바람: 돌풍 중에는 기다린다 (바람 반대쪽으로 버티기)
-      if (obs.wind === 'on' || obs.wind === 'warn') { await keys({}); obs = await run(6, { room: true }); continue; }
-      const b = nav.best(node);
-      if (!b) { nav.plan(node); R.replans++; obs = await run(4); continue; }
-      const e = b.e;
-      if (e.ride) { await keys({}); obs = await run(2, { room: true }); continue; }
-      if (e.swim) { obs = await swim(e); continue; }
-      if (e.walk != null && !e.macro) {
-        const k = e.walk > 0 ? 'right' : 'left';
-        await sprintSafe(k);
-        await keys({ [k]: true });
-        obs = await run(3, { room: true, dead: true });
-        // 떨어졌거나 제자리면 다음 판단에서 다시 본다
-        continue;
-      }
-      // 매크로 간선: 정렬 → 검증 → 실행
-      obs = await doMacro(node, e, hNow);
+      if (obs.wind === 'on') { await keys({}); obs = await run(6, { room: true }); continue; }
+      obs = await navStep(node, hNow);
     }
 
     // ── 보조 동작들 (클로저) ──
@@ -393,7 +433,9 @@ async function playStage(env, stageId) {
     function simFrom(m, o) {
       const p = o.p;
       const st = { x: p.x, y: p.y, w: p.w, h: p.h, vx: p.vx, vy: p.vy, onGround: p.og, air: p.air, jumpCut: true };
-      return simulate(nav.grid, hero, st, m, { plats: platObjects(o.plats || []), exits: nav.goal.exits || {} });
+      let flips = null;
+      if (o.hb?.cells) { const at = []; for (let k = 0; k < 3; k++) at.push(Math.max(1, Math.round((o.hb.rem + k * o.hb.beat) * 60))); flips = { at, cells: o.hb.cells, beat0: o.hb.idx }; }
+      return simulate(nav.real ?? nav.grid, hero, st, m, { plats: platObjects(o.plats || []), exits: nav.goal.exits || {}, flips });
     }
     function landNode(r) {
       if (r.end === 'exit') return 'EXIT';
@@ -405,7 +447,8 @@ async function playStage(env, stageId) {
       const m = macroById(e.macro);
       const onPlat = typeof node === 'string' && node[0] === 'P';
       const toPlat = typeof e.to === 'string' && e.to[0] === 'P';
-      const crumble = nav.crumbleAt(nav.decode(node)?.tx, nav.decode(node)?.fy);
+      const dn = nav.decode(node);
+      const crumble = !!dn && (nav.crumbleAt(dn.tx, dn.fy) || (phaseRoom && gsnap.phase.includes(dn.fy * nav.W + dn.tx)));
       if (!onPlat && !crumble && !(typeof node === 'string' && node[0] === 'W')) {
         const a = nav.anchor(node);
         if (!(await align(a.x))) { if (obs.room === room) { R.fails++; nav.penalize(node, e, 0.5); } return obs; }
@@ -429,13 +472,57 @@ async function playStage(env, stageId) {
         if (best) { chosen = best; }
         else {
           // 움직이는 발판을 기다린다
-          if (toPlat || onPlat || o.plats?.some((p) => p.kind !== 'F')) { waitN++; obs = await run(3, { room: true }); if (waitN % 120 === 119) { nav.penalize(node, e, 2); nav.plan(node); } return obs; }
-          R.fails++; nav.penalize(node, e, 3); nav.plan(node); R.replans++;
-          return obs;
+          trace(`verify-fail ${node} ${e.macro}->${e.to} got ${ln}`);
+          if (crumble) { chosen = m; }
+          else if (toPlat || onPlat || phaseRoom || o.plats?.some((p) => p.kind !== 'F')) { waitN++; obs = await run(3, { room: true }); if (waitN % 120 === 119) { nav.penalize(node, e, 2); nav.plan(node); } return obs; }
+          else { R.fails++; nav.penalize(node, e, 3); nav.plan(node); R.replans++; return obs; }
         }
       }
+      // 바람: 돌풍 전 남은 시간 안에 끝나지 않으면 기다린다
+      if (o.wind && o.wind !== 'on' && !crumble) {
+        const need = (r.frames ?? 60) / 60 + 0.15;
+        if (o.windRem < need) { trace(`wind-wait ${o.wind} ${o.windRem?.toFixed(2)} need ${need.toFixed(2)}`); await keys({}); obs = await run(6, { room: true }); return obs; }
+      }
       waitN = 0;
+      trace(`macro ${node} ${chosen.id}->${chosen === m ? e.to : '?'}`);
       // 실행
+      obs = await execMacro(chosen);
+      await keys({});
+      if (obs.room === room && obs.p) {
+        const now = nav.nodeOf({ ...obs.p, onGround: obs.p.og }, obs.p.plat);
+        const exp = chosen === m ? e.to : null;
+        if (exp != null && now !== exp && exp !== 'EXIT') {
+          R.fails++;
+          if (!(Number.isFinite(nav.hOf(now)) && nav.hOf(now) < hNow)) nav.penalize(node, e, 2);
+          nav.plan(now ?? node); R.replans++;
+        }
+      }
+      return obs;
+    }
+    async function navStep(node, hNow) {
+      const b = nav.best(node);
+      if (!b) { nav.plan(node); R.replans++; return run(4); }
+      const e = b.e;
+      if (e.ride) { trace(`ride ${node}`); await keys({}); obs = await run(2, { room: true }); return obs; }
+      if (e.swim) { trace(`swim ${node}->${e.to} [${e.swim}]`); obs = await swim(e); return obs; }
+      if (e.walk != null && !e.macro) {
+        const k = e.walk > 0 ? 'right' : 'left';
+        trace(`walk ${node}->${e.to} h=${hNow.toFixed(1)}`);
+        if (phaseRoom && e.to !== 'EXIT') {
+          const d = nav.decode(e.to);
+          const phaseFloor = gsnap.phase.includes(d.fy * nav.W + d.tx);
+          if (!nav.real.floor(d.tx, d.fy) || nav.real.solid(d.tx, d.fy - 1) || nav.real.solid(d.tx, d.fy - 2) || (phaseFloor && (obs.hb?.rem ?? 9) < 0.5)) { await keys({}); obs = await run(4, { room: true }); return obs; }
+        }
+        await sprintSafe(k);
+        await keys({ [k]: true });
+        obs = await run(3, { room: true, dead: true });
+        // 떨어졌거나 제자리면 다음 판단에서 다시 본다
+        return obs;
+      }
+      // 매크로 간선: 정렬 → 검증 → 실행
+      return doMacro(node, e, hNow);
+    }
+    async function execMacro(chosen) {
       R.macros++;
       const evs = chosen.events;
       let f = 0;
@@ -451,15 +538,6 @@ async function playStage(env, stageId) {
       }
       if (obs.room === room && !obs.p?.dead && !obs.landed) obs = await run(150, { land: true, room: true, dead: true, scene: true });
       await keys({});
-      if (obs.room === room && obs.p) {
-        const now = nav.nodeOf({ ...obs.p }, obs.p.plat);
-        const exp = chosen === m ? e.to : null;
-        if (exp != null && now !== exp && exp !== 'EXIT') {
-          R.fails++;
-          if (!(Number.isFinite(nav.hOf(now)) && nav.hOf(now) < hNow)) nav.penalize(node, e, 2);
-          nav.plan(now ?? node); R.replans++;
-        }
-      }
       return obs;
     }
     async function swim(e) {
@@ -467,16 +545,16 @@ async function playStage(env, stageId) {
       const cx = p.x + p.w / 2, by = p.y + p.h;
       const n = e.to;
       let tx, ty;
-      if (typeof n === 'string' && n[0] === 'W') { const i = +n.slice(1); tx = (i % nav.W) * TILE + TILE / 2; ty = (Math.floor(i / nav.W) + 1) * TILE; }
+      if (typeof n === 'string' && n[0] === 'W') { const i = +n.slice(1); tx = (i % nav.W) * TILE + TILE / 2; ty = (Math.floor(i / nav.W) + 0.55) * TILE; }
       else { const d = nav.decode(n); tx = d.tx * TILE + TILE / 2; ty = d.fy * TILE; }
       const want = {};
       if (tx - cx > 8) want.right = true; else if (tx - cx < -8) want.left = true;
-      if (ty - by < -12) { if (p.vy > -60) { await keys({ ...want, jump: true }); obs = await run(1); } }
+      if (ty - by < -6) { if (p.vy > -60) { await keys({ ...want, jump: true }); obs = await run(1); } }
       else if (ty - by > 20) want.down = true;
       await keys(want);
       obs = await run(3, { room: true });
       await setKey('jump', false);
-      if (++swimT % 600 === 0) { nav.penalize(nav.nodeOf(obs.p), e, 2); nav.plan(nav.nodeOf(obs.p)); }
+      if (++swimT % 600 === 0) { const cn = nav.nodeOf({ ...obs.p, onGround: obs.p.og }); if (cn != null) { nav.penalize(cn, e, 2); nav.plan(cn); } }
       return obs;
     }
     async function unblock(node) {
@@ -491,7 +569,7 @@ async function playStage(env, stageId) {
           nav.edges.clear(); nav.h = new Map();
           let hh = nav.plan(node);
           for (let k = 0; k < 400 && Number.isFinite(hh) && hh > 0; k++) {
-            const cur = nav.nodeOf({ ...obs.p }, obs.p.plat);
+            const cur = nav.nodeOf({ ...obs.p, onGround: obs.p.og }, obs.p.plat);
             if (cur == null) { obs = await run(4); continue; }
             if (cur === tgt) break;
             const b = nav.best(cur); if (!b) break;
@@ -542,6 +620,7 @@ async function playStage(env, stageId) {
       const reach = 70 + (p.reach || 0) + b.w / 2;
       const want = {};
       const ft = fightT;
+      if (ft % 40 === 0) trace(`fight p=${Math.round(p.x)},${Math.round(p.y)} og=${p.og} b=${Math.round(b.x)},${Math.round(b.y)},${Math.round(b.w)}x${Math.round(b.h)} hp=${Math.round(b.hp)}`);
       if (Math.abs(dx) > reach * 0.85) want[dir > 0 ? 'right' : 'left'] = true;
       else if (p.facing !== dir) want[dir > 0 ? 'right' : 'left'] = true;
       if ((dy < -90 && p.og && ft % 6 === 0) || (!p.og && dy < -60 && p.vy > -100 && p.air > 0 && ft % 4 === 0)) want.jump = true;
@@ -550,7 +629,7 @@ async function playStage(env, stageId) {
       if (ft % 45 === 32 && p.mp > 30) want.skill2 = true;
       if (ft % 30 === 20) want.sub = true;
       await keys(want);
-      const r = await run(3, { scene: true, room: true });
+      const r = await run(want.jump ? 10 : 3, { scene: true, room: true });
       await keys({ ...(want.right ? { right: true } : {}), ...(want.left ? { left: true } : {}) });
       return r;
     }
