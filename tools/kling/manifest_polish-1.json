@@ -1,0 +1,39 @@
+{
+ "package": "POLISH-1",
+ "model": "kling-image-v3_0_omni (image_to_image, img_resolution 2k)",
+ "creditsCap": 12,
+ "creditsAtStart": 5151,
+ "refs": {
+  "portrait": "assets/portraits/b_argen.webp full-res source PNG 1760x2368 (EX-BOSS ag_portrait #2), file_upload",
+  "bg": "assets/bg/s17_sky.webp as PNG 2520x1005, file_upload (style reference only)"
+ },
+ "generations": [
+  {
+   "asset": "cmp_mt_argen",
+   "tool": "image_to_image",
+   "generationId": "AbCu3aul_MaNuHWafKKY368oZewj4-vnvBzoeFlRzhLFWrd1Y1DXZlPHSdjDIj8fO12Wj3YS",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "credits": 4,
+   "refs": "portrait",
+   "prompt": "Repaint 图片1 keeping exactly the same composition, framing, pose, camera angle and painterly style: the same colossal silver sky dragon Argen seen from the side facing left, the same long serpentine neck, horned head, outstretched wings, legs and long tail in the same places, the same ruined white marble sky sanctuary towers and sea of clouds. The dragon is now purified and healed: ALL the black-violet void crystals are gone from its neck, spine, chest, flank and tail and replaced by smooth intact gleaming silver-white scales with cold pale-blue highlights; no violet or purple colour anywhere, no dark corruption veins, no crystal shards floating in the air; where the void core was on the chest there are smooth healed silver scales with a faint soft teal-white glow. Its eyes glow a clear bright teal-cyan, calm and noble, the mouth closed in a gentle calm expression. Pale ivory horns and claws, pale silver-blue translucent wing membranes. Soft golden dawn sunlight breaking through parted clouds behind it, warm light on the silver scales, clear sky. Majestic noble benevolent dragon companion portrait, highly detailed painterly digital illustration, dramatic lighting, video game character portrait, a single creature, no text, no watermark.",
+   "decision": "#2 kept → assets/portraits/cmp_mt_argen.webp (raw 1760x2336 → width 761 LANCZOS → top 968 rows = 761x968 like b_argen.webp, WebP q82 m6, 84,884 B ≤ 90 KB; urlWithoutWatermark, no watermark cut needed). Same framing as the corrupted portrait so mt_argen iconFocus {0.31,0.25,0.34} still frames the head. Silver scales with teal belly/membrane accents (mount palette #8ae8f0), teal-cyan eyes, no crystals. #1 unused (same pose, warm golden membranes — less silver)."
+  },
+  {
+   "asset": "s21_nest",
+   "tool": "image_to_image",
+   "generationId": "AahpzbRj-gW-suWoJrIq9ggjOyph3qAql-nRaSesX4ptoNf3F24cY5OtoKHQTx_0-k639ZKR",
+   "aspect": "21:9",
+   "imageCount": 2,
+   "credits": 4,
+   "refs": "bg",
+   "prompt": "Paint a NEW wide panoramic background in exactly the same painterly matte-painting style, colour treatment, brushwork, lighting and level of detail as 图片1 (the same world of floating sky ruins), but a different scene: the Sky Garden Nest, the ancient sanctuary of the sky knights high above a sea of clouds at dawn. Floating islands of white marble overgrown with lush gardens, flowering trees, ivy and hanging vines, broken colonnades and arches, statues of armoured knights holding spears, banners with a winged spear emblem, old chain bridges between the islands. In the centre distance, on the highest island, an enormous dragon's nest woven of broken marble pillars, uprooted trees and scattered silver scales, with a few faint dark violet crystal spikes on it and a faint violet glow pulsing in the clouds around it. Pale gold and rose dawn light breaking through on the left, cooler storm-blue clouds on the right, no lightning. Palette of marble white, silver, sage green, dawn gold and rose, storm grey-blue, with a small accent of dark violet. Wide panoramic 2D side-scrolling action game background art, dark fantasy, painterly digital illustration with rich detail, dramatic cinematic lighting, strong atmospheric depth and fog layers, no creatures, no dragons, no giant birds, no wings, no characters, no people, no text, no letters, no UI, no watermark. The lower quarter of the image is darker and simpler, a marble terrace balustrade in shadow, so a gameplay floor can overlay it. Full-bleed painting edge to edge, the scenery fills the entire canvas including all four corners and the bottom edge, no borders, no frame, no black bars, no letterbox.",
+   "decision": "#2 kept → assets/bg/s21_nest.webp (raw 3104x1312 → height 1080 → centre 2520 → bottom cut 75 = 2520x1005 like bg/s17_sky, WebP q78 m6 (q80 was 186,584 B > 180 KB), 171,532 B). Nest crowned with silver scales and violet crystal spikes on marble columns, knight statues, gardens, dawn left / storm right, same balustrade floor band as s17. #1 unused (single floating nest island, more iconic, fewer garden/knight cues)."
+  }
+ ],
+ "imagesSpent": 4,
+ "creditsSpent": 8,
+ "creditsAtEnd": 5143,
+ "used": "cmp_mt_argen: data/companions.js mt_argen.portrait (companions tab · stable · join card · mount HUD widget), data/story_ex.js AG lines (s21_outro) and b_argen_post. s21_nest: data/story_ex.js s21_intro (title card + departure lines; the Eshville lines keep bg/hub). lo/ copies by tools/assets/make_variants.py.",
+ "note": "Result URLs expire after 24 h; raws are not kept in the repo (same as manifest_p2 portraits/backgrounds)."
+}

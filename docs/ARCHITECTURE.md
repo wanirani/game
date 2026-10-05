@@ -264,7 +264,7 @@ rAF ─▶ input.pollFrame() (패드 읽기·진동 정리) ─▶ (세로 잠�
 | `mt_ignis` | 이그니스 · 화염 군마 | flag `recruit_mt_ignis` (s15_outro) | 15 |
 | `mt_gale` | 게일 · 폭풍 그리핀 | flag `recruit_mt_gale` (s17_outro) | 17 |
 | `mt_silva` | 실바 · 백록 신령 | flag `recruit_mt_silva` (s19_outro) | 19 |
-| `mt_argen` | 아르겐 · 은빛 뇌룡 | flag `recruit_mt_argen` (외전 s21_outro) — 비룡 리그 벡터만, 초상화 `portraits/b_argen` | 21 |
+| `mt_argen` | 아르겐 · 은빛 뇌룡 | flag `recruit_mt_argen` (외전 s21_outro) — 비룡 리그 벡터만, 초상화 `portraits/cmp_mt_argen` (정화된 모습, POLISH-1 — 보스 초상화 `portraits/b_argen` 은 싸움·싸움 전 대사) | 21 |
 | `gd_fairy` | 아리아 · 빛의 요정 | b_banshee | 2 |
 | `gd_spiritwolf` | 하티 · 영혼 늑대 | 의뢰 cq_hati | 2+ |
 | `gd_imp` | 핌 · 소악마 마법사 | 「소악마 계약서」 7,500 G | 3 |
