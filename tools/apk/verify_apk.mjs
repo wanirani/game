@@ -4,6 +4,7 @@
 //   node tools/apk/verify_apk.mjs [dist/BloodNocturne.apk] [--out 스크린샷폴더] [--web dist/web] [--keep] [--skip-java]
 //
 // 1. 내용물: APK assets/www = dist/web − sw.js − downloads/ − _redirects (해시 비교). 휴대폰 밀도(lo)면 빠진 원본마다 lo/ 사본이 있어야 한다.
+//    소리: 예산 때문에 뺀 녹음 음악(apk.json audio.musicFiles)만 빠져도 되고, APK 의 assets/audio/*/index.json 이 가리키는 파일은 모두 있어야 한다.
 //    assets/app/apk.json (계정 서버 주소·에셋 단계), 모든 파일 확장자가 AssetServer.java 의 MIME 표에 있는지.
 // 2. 네이티브 소스 정적 검사: WebView 관문(98), 브리지(insets/ime/rumble/apiStash), 권한, head_inject 조각.
 // 3. /api 프록시 (자바): ApiProxy.java 를 호스트 JVM 으로 컴파일해 로컬 API 서버(netlify/functions/api.mts + 메모리 저장소)에 대고
@@ -84,12 +85,14 @@ if (!fs.existsSync(path.join(webDir, 'index.html'))) {
   const web = relWalk(webDir).filter((r) => !EXCLUDED(r));
   const inApk = new Set(files);
   const modified = new Set(CFG.modified || []);
+  const musicOut = new Set(CFG.audio?.musicFiles || []);
   const problems = [];
-  let dropped = 0, same = 0;
+  let dropped = 0, same = 0, musicDropped = 0;
   for (const r of web) {
     const lo = LO_RE.exec(r);
     if (!inApk.has(r)) {
       if (LITE && lo && inApk.has(`assets/lo/${lo[1]}`)) { dropped++; continue; }
+      if (musicOut.has(r) && r.startsWith('assets/audio/music/')) { musicDropped++; continue; }
       problems.push(`빠짐: ${r}`);
       continue;
     }
@@ -101,7 +104,25 @@ if (!fs.existsSync(path.join(webDir, 'index.html'))) {
   if (LITE && CFG.dropped != null && dropped !== CFG.dropped) problems.push(`빠진 원본 수 ${dropped} ≠ apk.json ${CFG.dropped}`);
   if (!LITE && dropped) problems.push('full 단계인데 원본이 빠짐');
   check('APK assets/www = dist/web − sw.js − downloads/ − _redirects (해시)', problems.length === 0,
-    problems.length ? problems.slice(0, 6).join(', ') + (problems.length > 6 ? ` … 외 ${problems.length - 6}건` : '') : `같은 파일 ${same}개${dropped ? `, lo/ 사본으로 대신한 원본 ${dropped}개` : ''}${modified.size ? `, 휴대폰 밀도로 줄인 파일 ${modified.size}개` : ''}`);
+    problems.length ? problems.slice(0, 6).join(', ') + (problems.length > 6 ? ` … 외 ${problems.length - 6}건` : '') : `같은 파일 ${same}개${dropped ? `, lo/ 사본으로 대신한 원본 ${dropped}개` : ''}${modified.size ? `, 고친 파일 ${modified.size}개` : ''}${musicDropped ? `, 예산 때문에 뺀 녹음 음악 ${musicDropped}개` : ''}`);
+}
+// 소리 목록이 가리키는 파일이 APK 에 모두 있는가 (빠진 곡이 목록에 남으면 앱이 404 를 받는다)
+{
+  const audioProblems = [];
+  let musicN = 0, sfxN = 0;
+  const readJson = (rel) => { try { return JSON.parse(fs.readFileSync(path.join(WWW, rel), 'utf8')); } catch { return null; } };
+  const mi = fs.existsSync(path.join(WWW, 'assets/audio/music/index.json')) ? readJson('assets/audio/music/index.json') : undefined;
+  if (mi === null) audioProblems.push('assets/audio/music/index.json 형식 오류');
+  if (mi) {
+    for (const [id, t] of Object.entries(mi.tracks || {})) { musicN++; if (!t?.file || !fs.existsSync(path.join(WWW, 'assets/audio/music', t.file))) audioProblems.push(`음악 ${id}: ${t?.file} 없음`); }
+    for (const [a, b] of Object.entries(mi.alias || {})) if (!mi.tracks?.[b]) audioProblems.push(`음악 별칭 ${a} → ${b} (없는 곡)`);
+  }
+  if ((CFG.audio?.music ?? musicN) !== musicN) audioProblems.push(`apk.json audio.music ${CFG.audio?.music} ≠ 목록 ${musicN}곡`);
+  const si = fs.existsSync(path.join(WWW, 'assets/audio/sfx/index.json')) ? readJson('assets/audio/sfx/index.json') : undefined;
+  if (si === null) audioProblems.push('assets/audio/sfx/index.json 형식 오류');
+  if (si) for (const id of Object.keys(si.files || {})) for (const fmt of si.formats || []) { sfxN++; if (!fs.existsSync(path.join(WWW, `assets/audio/sfx/${id}.${fmt}`))) audioProblems.push(`효과음 ${id}.${fmt} 없음`); }
+  check('소리 목록이 가리키는 파일이 APK 에 있음 (assets/audio/*/index.json)', audioProblems.length === 0,
+    audioProblems.length ? audioProblems.slice(0, 6).join(', ') : `녹음 음악 ${mi ? musicN + '곡' : '없음'}${CFG.audio?.musicDropped?.length ? ` (예산으로 뺀 곡 ${CFG.audio.musicDropped.length}개 → 합성 음원)` : ''}, 효과음 파일 ${sfxN}개`);
 }
 
 // ── 2. 네이티브 소스 정적 검사 ──────────────────────────────────────
@@ -728,6 +749,8 @@ const essential404 = uniqMissing.filter((p) => /\.(js|mjs|css|html|json|webmanif
 check('필수 코드 파일 404 없음 (.js/.css/.html/.json)', essential404.length === 0, essential404.join(', '));
 const lo404 = uniqMissing.filter((p) => LO_RE.test(p));
 check('배경·CG·초상화 404 없음', lo404.length === 0, lo404.slice(0, 6).join(', '));
+const audio404 = uniqMissing.filter((p) => /^assets\/audio\//.test(p));
+check('소리(assets/audio) 404 없음', audio404.length === 0, audio404.slice(0, 6).join(', '));
 fs.writeFileSync(path.join(outDir, 'apk_verify_report.json'), JSON.stringify({ apk: apkPath, config: CFG, results, missing: uniqMissing, external: uniqExternal, loServed: [...new Set(loServed)], api: apiLog }, null, 1));
 if (!keep) fs.rmSync(tmp, { recursive: true, force: true });
 failed = results.some((r) => !r.ok);

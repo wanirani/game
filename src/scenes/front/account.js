@@ -15,6 +15,8 @@
 //  - 휴대폰 화면 키보드가 입력 칸을 가리면 패널을 위로 올린다 (visualViewport, 앱 브리지 window.__BN_IME, 안드로이드 앱 추정치)
 //  - 오프라인·서버 연결 안 됨·로그인 만료·동기화 대기 중 로그아웃·충돌 상태를 휴대폰에서도 읽을 수 있는 안내 상자로 보여 준다
 //  - 서버 주소 입력 칸은 두지 않는다 (앱은 cloud.js 가 정한 공식 사이트 API 를 쓴다)
+//  - 공개 별명 (docs/specs/online.md §0 · §2.6): 내 계정 목록의 '공개 별명' → 별명 칸 (2~12자 한글·영문·숫자·_, 입력하는 동안 검사).
+//    순위표에는 별명만 보이고 로그인 아이디는 보이지 않는다는 안내를 함께 둔다. 목록이 7줄이라 낮은 화면에서는 줄 높이를 36 CSS px 까지 줄인다
 import { Scene } from '../../core/game.js';
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
@@ -28,6 +30,7 @@ import { clamp, ease, rgba } from '../../core/math.js';
 import { hudSafe } from '../../render/hud_layout.js';
 import { Ambience, kenBurns, shade, frame, heading, ornament, gbutton, fmtDate, GOLD, BONE, DIM, CRIMSON } from './common.js';
 import { drawCloudIcon, drawCloudBadge, accountBadge, summaryLine, spinner, slotsJosa } from './cloud_ui.js';
+import * as ONLINE from '../../core/online.js';
 
 const STYLE_ID = 'bn-account-style';
 const CSS = `
@@ -56,6 +59,7 @@ const F_PW = { key: 'pw', label: '비밀번호', type: 'password', ac: 'current-
 const F_NEW = { key: 'pw', label: '비밀번호', type: 'password', ac: 'new-password', name: 'new-password', ph: '8~64자', max: 128 };
 const F_NEW2 = { key: 'pw2', label: '비밀번호 확인', type: 'password', ac: 'new-password', name: 'confirm-password', ph: '한 번 더 입력', max: 128 };
 const F_OLD = { key: 'old', label: '지금 비밀번호', type: 'password', ac: 'current-password', name: 'current-password', ph: '지금 쓰는 비밀번호', max: 128 };
+const F_NICK = { key: 'nick', label: '공개 별명', type: 'text', ac: 'nickname', name: 'nickname', ph: '2~12자 한글·영문·숫자·_', max: 24 };
 const F_CODE = { key: 'code', label: '복구 코드', type: 'text', ac: 'off', name: 'recovery-code', ph: 'XXXX-XXXX-XXXX-XXXX', max: 40, caps: true };
 
 const SCREENS = {
@@ -72,6 +76,7 @@ const SCREENS = {
   profile: {
     kind: 'list', title: '내 계정', items: [
       { id: 'sync', label: '지금 동기화', sub: 'SYNC NOW' },
+      { id: 'nick', label: '공개 별명', sub: 'NICKNAME' },
       { id: 'password', label: '비밀번호 변경', sub: 'PASSWORD' },
       { id: 'logout', label: '로그아웃', sub: 'LOG OUT' },
       { id: 'logoutAll', label: '모든 기기에서 로그아웃', sub: 'EVERYWHERE' },
@@ -83,10 +88,11 @@ const SCREENS = {
   signup: { kind: 'form', title: '회원가입', fields: [F_ID, F_NEW, F_NEW2], submit: '가입하기', remember: true },
   password: { kind: 'form', title: '비밀번호 변경', fields: [F_OLD, { ...F_NEW, label: '새 비밀번호' }, { ...F_NEW2, label: '새 비밀번호 확인' }], submit: '변경하기', hiddenUser: true },
   recover: { kind: 'form', title: '복구 코드로 재설정', fields: [F_ID, F_CODE, { ...F_NEW, label: '새 비밀번호' }, { ...F_NEW2, label: '새 비밀번호 확인' }], submit: '재설정하기' },
+  nick: { kind: 'form', title: '공개 별명', fields: [F_NICK], submit: '바꾸기' },
   delete: { kind: 'form', title: '계정 삭제', fields: [{ ...F_PW, label: '비밀번호', ph: '확인을 위해 입력' }], submit: '계정 삭제', danger: true, hiddenUser: true },
   code: { kind: 'code', title: '복구 코드' },
 };
-const LOGGED_IN = new Set(['profile', 'password', 'delete']);
+const LOGGED_IN = new Set(['profile', 'password', 'delete', 'nick']);
 const GUEST = new Set(['home', 'login', 'signup', 'recover']);
 const RED = '#ff8a8a', GOOD = '#9fe8b0', INFO = '#9fd8ff', WARN = '#ffb070';
 /** 게임패드로는 글자를 칠 수 없다 (platform P-29). 복구 코드 화면은 스펙 문구 그대로 */
@@ -132,6 +138,13 @@ const INFO_TEXT = {
     { b: '재설정하면 새 복구 코드가 나오고, 예전 코드와 모든 기기의 로그인은 무효가 됩니다.' },
     RULES_PW,
   ],
+  nick: [
+    { h: '공개 별명' },
+    { b: '온라인 순위표에는 공개 별명만 보입니다. 로그인 아이디는 어디에도 공개되지 않습니다.' },
+    { b: '2~12자의 한글·영문·숫자·밑줄(_)로 정해 주세요. 띄어쓰기는 쓸 수 없습니다.' },
+    { b: '다른 사람과 겹치면 뒤에 #숫자가 붙고, 쓸 수 없는 낱말은 거절됩니다.' },
+    { t: '정하지 않으면 처음 기록을 올릴 때 「헌터#1234」처럼 자동으로 만들어집니다.', c: DIM },
+  ],
   delete: [
     { h: '계정 삭제', c: '#ff9a9a' },
     { b: '계정과 클라우드에 보관한 세이브·기록이 모두 지워지며 되돌릴 수 없습니다.' },
@@ -144,6 +157,7 @@ const INFO_TEXT = {
 const ERR_FIELD = {
   invalid_id: 'id', reserved_id: 'id', id_taken: 'id', invalid_password: 'pw', password_same_as_id: 'pw', same_password: 'pw', weak_password: 'pw',
   invalid_credentials: 'pw', wrong_password: 'old', invalid_recovery: 'code',
+  invalid_nick: 'nick', nick_banned: 'nick', banned_nick: 'nick', forbidden_nick: 'nick', nick_taken: 'nick',
 };
 
 // ── 이 장면 밖에서 로그인이 만료된 기록 (다음에 계정 화면을 열면 로그인 칸으로 안내하고 아이디를 채운다) ──
@@ -207,6 +221,7 @@ export class AccountScene extends Scene {
     this.busy = false; this.msg = null; this.shakeT = 0;
     this.alive = true; this.leaving = false;
     this.code = null; this.codeNext = 'profile';
+    this.nick = null; this._nickReq = null;   // 공개 별명 (ONLINE.getNick)
     this.remember = cloud.rememberPref(); // '로그인 유지' 칸 (이 기기에 기억한 선택)
     this.infoT = 0; this.slotRows = [];
     this.lift = 0; this._placeT = 0; this.padFlash = 0;
@@ -280,7 +295,23 @@ export class AccountScene extends Scene {
       const it = this.items[this.focus];
       setTimeout(() => { if (this.alive && this.screen === name && this.game.top === this) this.focusInput(it.fi); }, 60);
     }
-    if (name === 'profile') this.readSlots();
+    if (name === 'profile') { this.readSlots(); this.fetchNick(); }
+    if (name === 'nick') {
+      const el = this.inputs.find((e) => e.dataset.key === 'nick');
+      const cur = ONLINE.nickNow();
+      if (el && cur) el.value = cur;
+      this.fetchNick();
+    }
+  }
+  /** 공개 별명 다시 읽기 (화면마다 한 번, 기다리지 않음) */
+  fetchNick() {
+    if (this._nickReq || !cloud.loggedIn) return;
+    this._nickReq = ONLINE.getNick().then((r) => {
+      if (!this.alive || !r.ok) return;
+      this.nick = r.nick;
+      const el = this.screen === 'nick' ? this.inputs.find((e) => e.dataset.key === 'nick') : null;
+      if (el && !el.value && r.nick) el.value = r.nick;
+    }).catch(() => {}).finally(() => { setTimeout(() => { this._nickReq = null; }, 4000); });
   }
   buildItems() {
     const d = this.def, it = [];
@@ -336,7 +367,11 @@ export class AccountScene extends Scene {
         el.setAttribute('enterkeyhint', i === fields.length - 1 ? (this.screen === 'login' ? 'go' : 'done') : 'next');
         if (f.key === 'id' && this.values.id) el.value = this.values.id;
         el.addEventListener('keydown', (e) => this.onFieldKey(e, i));
-        el.addEventListener('input', () => { el.classList.remove('bad'); if (this.msg?.field === f.key) this.msg = null; });
+        el.addEventListener('input', () => {
+          el.classList.remove('bad');
+          if (this.msg?.field === f.key) this.msg = null;
+          if (f.key === 'nick' && el.value) { const e = ONLINE.checkNick(el.value); if (e) { el.classList.add('bad'); this.msg = { text: e, color: RED, field: 'nick' }; } }
+        });
       }
       if (f.readonly) {
         // 읽기 전용 칸: 게임 키(Z·X·방향키)는 버튼 조작에 쓰고, 복사 단축키만 칸이 받게 한다
@@ -483,6 +518,8 @@ export class AccountScene extends Scene {
   listLayout(G) {
     const n = this.def.items.length, titleH = G.PH < 340 ? 46 : 54;
     const avail = G.PH - titleH - 10;
+    // 줄이 많아(내 계정 7줄) 판에 다 들어가지 않으면 줄 높이를 목록 줄 하한(36 CSS px)까지 줄이고 간격 없이 붙인다
+    if (n * (G.rowH + 2) > avail) { const rowH = Math.max(this.minPx(36), Math.floor(avail / n)); return { titleH, rowH, pitch: rowH, y: G.y0 + titleH }; }
     const rowH = Math.max(G.rowH, Math.min(52, Math.floor(avail / n) - 4));
     const pitch = Math.max(rowH + 2, Math.min(rowH + 6, Math.floor(avail / n)));
     return { titleH, rowH, pitch, y: G.y0 + titleH };
@@ -563,7 +600,7 @@ export class AccountScene extends Scene {
       case 'cancel': this.back(); return;
       case 'login': case 'signup': case 'recover': audio.sfx('menu_ok'); this.show(id); return;
       case 'forgot': audio.sfx('menu_ok'); this.show('recover'); return;
-      case 'password': case 'delete': audio.sfx('menu_ok'); this.show(id); return;
+      case 'password': case 'delete': case 'nick': audio.sfx('menu_ok'); this.show(id); return;
       case 'submit': this.submit(); return;
       case 'sync': this.doSync(); return;
       case 'logout': this.confirmLogout(); return;
@@ -579,7 +616,7 @@ export class AccountScene extends Scene {
     if (this.busy) return;
     switch (this.screen) {
       case 'login': case 'signup': case 'recover': audio.sfx('menu_cancel'); this.show('home'); break;
-      case 'password': case 'delete': audio.sfx('menu_cancel'); this.show('profile'); break;
+      case 'password': case 'delete': case 'nick': audio.sfx('menu_cancel'); this.show('profile'); break;
       case 'code': this.confirmCode(); break;
       default: this.leave();
     }
@@ -668,6 +705,7 @@ export class AccountScene extends Scene {
       return null;
     }
     if (s === 'delete' && !pw) return { text: '비밀번호를 입력해 주세요.', field: 'pw' };
+    if (s === 'nick') { const e = ONLINE.checkNick(this.val('nick')); if (e) return { text: e, field: 'nick' }; }
     return null;
   }
   async submit() {
@@ -676,6 +714,7 @@ export class AccountScene extends Scene {
     if (err) { this.fail(err.text, err.field); return; }
     const s = this.screen;
     if (s === 'delete') { this.confirmDelete(); return; }
+    if (s === 'nick') { this.submitNick(); return; }
     audio.sfx('menu_ok');
     this.setBusy(true);
     const id = this.val('id'), pw = this.val('pw');
@@ -708,6 +747,21 @@ export class AccountScene extends Scene {
     } else if (s === 'password') {
       this.show('profile', { msg: { text: '비밀번호를 바꿨습니다. 다른 기기에서는 모두 로그아웃되었습니다.', color: GOOD } });
     }
+  }
+  async submitNick() {
+    audio.sfx('menu_ok');
+    this.setBusy(true, '별명을 바꾸는 중…');
+    const r = await ONLINE.setNick(this.val('nick'));
+    if (!this.alive || this.screen !== 'nick') return;
+    this.setBusy(false);
+    if (!r.ok) {
+      if (r.error === 'unauthorized' && !cloud.loggedIn) return;   // 만료 → cloud:logout 이 로그인 화면으로
+      this.fail(r.message ?? '별명을 바꾸지 못했습니다.', ERR_FIELD[r.error] ?? (r.error === 'invalid_nick' ? 'nick' : null));
+      return;
+    }
+    audio.sfx('save');
+    this.nick = r.nick;
+    this.show('profile', { msg: { text: r.changed ? `같은 별명이 있어 「${r.nick}」로 정했습니다.` : `공개 별명을 「${r.nick}」로 바꿨습니다.`, color: GOOD } });
   }
   async afterLogin(id) {
     this.show('profile', { msg: { text: `${id} 님, 어서 오세요. 클라우드와 동기화하는 중…`, color: DIM, spin: true } });
@@ -886,7 +940,7 @@ export class AccountScene extends Scene {
   /** 게임패드 사용 중 입력 화면이면 P-29 안내 문구 */
   padNote() {
     if (input.mode !== 'pad' || this.def?.kind !== 'form') return null;
-    return this.screen === 'recover' ? P29_CODE : P29_TEXT;
+    return this.screen === 'recover' ? P29_CODE : this.screen === 'nick' ? '컨트롤러로는 별명을 입력할 수 없습니다. 키보드나 터치를 사용하세요' : P29_TEXT;
   }
   /** 로그인한 계정의 연결 상태 안내 (오프라인·서버 연결 안 됨·확인 중·충돌) */
   statusNote() {
@@ -1104,6 +1158,11 @@ export class AccountScene extends Scene {
     drawCloudIcon(ctx, x + 14, y + 32, 26, accountBadge().status, t);
     text(ctx, cloud.id ?? '', x + 36, y + 40, { size: 22, weight: 900, family: FONT.title, color: GOLD, ow: 3, maxWidth: w - 40 });
     y += 54;
+    // 공개 별명 (순위표에 보이는 이름 — 아이디는 공개되지 않는다)
+    const nk = this.nick ?? ONLINE.nickNow();
+    text(ctx, '공개 별명', x, y + 14, { size: 13, weight: 700, color: DIM, ow: 2 });
+    text(ctx, nk ?? '첫 기록 때 자동으로 정해져요', x + w, y + 14, { size: 13, align: 'right', weight: 800, color: nk ? '#9fe8c8' : DIM, ow: 2, maxWidth: w - 80 });
+    y += 22;
     ctx.fillStyle = 'rgba(232,200,114,0.2)'; ctx.fillRect(x, y, w, 1);
     y += 4;
     // 슬롯별 상태 (가장 중요) → 해금·명예의 전당 → 계정 정보

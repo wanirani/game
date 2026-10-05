@@ -5,7 +5,7 @@ import { Particles } from '../core/particles.js';
 import { Lighting } from '../core/lighting.js';
 import { T, Debris, isSolidType } from '../core/physics.js';
 import { input } from '../core/input.js';
-import { rand, randi, chance, clamp, overlap, TAU, pick } from '../core/math.js';
+import { rand, randi, chance, clamp, overlap, TAU, pick, RNG } from '../core/math.js';
 import { audio, SFX } from '../core/audio.js';
 import { bus } from '../core/events.js';
 import { saves } from '../core/save.js';
@@ -74,6 +74,11 @@ export class World {
     stageId = this.stage.id;
     this.mode = mode; // 'story' | 'bossrush' | 'survival'
     this.diff = getDiff(this.state.difficulty);
+    // 일일 도전 (docs/specs/online.md §2.5, front/arcade.js buildArcadeState): 난이도 배율 · 월드 규칙 · 시드 난수 (첫 방 소환 전에)
+    const ar = this.state.arcade;   // [hook:plat]
+    if (ar?.diffOver && typeof ar.diffOver === 'object') this.diff = { ...this.diff, ...ar.diffOver };   // [hook:plat]
+    this.rules = ar?.rules && typeof ar.rules === 'object' ? ar.rules : null;   // [hook:plat] {noPotion, noSub, dark, taken, dealt}
+    this.rng = Number.isInteger(ar?.seed) ? new RNG(ar.seed) : null;   // [hook:plat] 정예 출현·촛불 보상 (그 밖의 모드는 Math.random)
     this.hero = currentHero(this.state);
     this.camera = new Camera(game.viewW, game.viewH);
     this.fx = new Particles(1400);
@@ -351,7 +356,8 @@ export class World {
   add(e) { e.world = this; this.entities.push(e); return e; }
   spawnProjectile(o) { return this.add(new Projectile(o)); }
   spawnEnemy(id, fx, fy, opts = {}) {
-    const elite = opts.elite ?? (chance(this.diff.elite ?? 0) && id !== 'medusa_head' && ENEMIES[id]?.elite !== false);
+    const roll = this.rng ? this.rng.next() : Math.random();   // [hook:plat] 일일 도전 시드
+    const elite = opts.elite ?? (roll < (this.diff.elite ?? 0) && id !== 'medusa_head' && ENEMIES[id]?.elite !== false);
     const e = new Enemy(id, fx, fy, { level: opts.level ?? this.stage.level, elite, diff: this.diff, facing: opts.facing ?? -1, params: opts.params });
     this.roomFoes++;   // [hook:feel]
     return this.add(e);

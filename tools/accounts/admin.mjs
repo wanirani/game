@@ -10,6 +10,12 @@
 //   reset  <아이디>  임시 비밀번호 + 새 복구 코드 발급 (모든 세션 폐기). 반드시 본인 확인 뒤 사용자에게만 전달
 //   delete <아이디>  계정과 저장 데이터 전부 삭제 (되돌릴 수 없음, --yes 필요)
 //
+// 온라인 순위표 (docs/ONLINE.md):
+//   board  <보드> [수]               순위표 보기 (별명 옆에 로그인 아이디도 보인다 — 밖에 공유하지 말 것)
+//   board-remove <보드> <순위|별명>  그 계정의 기록·고스트를 순위표에서 지움 (--yes 필요)
+//   nick   <별명|아이디> [새 별명]   별명 바꾸기 (새 별명을 빼면 자동 별명 '헌터#1234')
+//   보드 예: practice:s01:normal, bossrush:0:hard, survival:normal, daily:20261005
+//
 // 운영(production) 저장소(getStore)만 다룬다. 미리보기 배포의 데이터는 배포별 저장소라 배포를 지우면 함께 사라진다.
 // AUTH_PEPPER 를 운영에서 쓰고 있다면 reset 때 같은 값을 넣는다 (넣지 않아도 첫 로그인 때 자동으로 다시 해시된다).
 import path from 'node:path';
@@ -17,7 +23,8 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const [cmd, id, ...rest] = process.argv.slice(2);
-const USAGE = '사용법: node tools/accounts/admin.mjs <show|unlock|revoke|reset|delete> <아이디> [--yes]';
+const USAGE = '사용법: node tools/accounts/admin.mjs <show|unlock|revoke|reset|delete> <아이디> [--yes]\n'
+  + '      node tools/accounts/admin.mjs board <보드> [수] | board-remove <보드> <순위|별명> --yes | nick <별명|아이디> [새 별명]';
 if (!cmd || !id) { console.error(USAGE); process.exit(2); }
 const siteID = process.env.NETLIFY_SITE_ID;
 const token = process.env.NETLIFY_AUTH_TOKEN;
@@ -60,6 +67,25 @@ try {
       await admin.adminDelete(c, id);
       console.log('계정과 저장 데이터를 삭제했습니다.');
       break;
+    case 'board': {
+      const r = await admin.adminBoard(c, id, Number(rest[0]) || 100);
+      console.log(`${r.board} — 계정 ${r.total}명`);
+      for (const e of r.entries) console.log(`${String(e.rank).padStart(3)}. ${e.nick} (${e.id ?? '?'})  time ${e.time}  score ${e.score}${e.wave !== undefined ? `  wave ${e.wave}` : ''}  ${e.hero}/${e.cls} Lv${e.level}  ${e.date}${e.ghost ? '  [고스트]' : ''}`);
+      break;
+    }
+    case 'board-remove': {
+      if (!rest[0]) { console.error(USAGE); process.exit(2); }
+      if (!rest.includes('--yes')) { console.error('정말 지우려면 --yes 를 붙이세요. 되돌릴 수 없습니다.'); process.exit(2); }
+      const r = await admin.adminRemoveEntry(c, id, rest[0]);
+      console.log(`${r.nick} (${r.id ?? '?'}) 의 기록과 고스트를 지웠습니다.`);
+      break;
+    }
+    case 'nick': {
+      const next = rest.find((x) => !x.startsWith('--'));
+      const r = await admin.adminRenameNick(c, id, next);
+      console.log(`${r.id}: ${r.from ?? '(없음)'} → ${r.to}`);
+      break;
+    }
     default:
       console.error(USAGE);
       process.exit(2);

@@ -77,6 +77,8 @@ export function hitTarget(world, attack, target, hx, hy) {
   attack = pi.attack;
   const res = computeDamage(src, target, attack);
   modDamage(world, pi, res, target);
+  const rl = world.rules;   // [hook:plat] 일일 도전 '유리 대포': 주는 피해 × dealt, 영웅이 받는 피해 × taken (docs/specs/online.md §2.5)
+  if (rl && res.dmg > 0) { const k = attack.team === 'player' ? rl.dealt ?? 1 : target.kind === 'player' ? rl.taken ?? 1 : 1; if (k !== 1) res.dmg = Math.max(1, Math.round(res.dmg * k)); }   // [hook:plat]
   const info = hitInfo(pi, res, hx, hy, target);
   if (attack.team === 'player' && !pi.prop) target.lastImpact = { cls: pi.cls, crit: res.crit, dmg: res.dmg, hpBefore: target.hp, counter: pi.counter, back: pi.back, t: world.time };
   // 부위 onHit: 대상의 takeHit 이 직접 부르지 않았을 때만 여기서 부른다 (BossB 는 스스로 부름)

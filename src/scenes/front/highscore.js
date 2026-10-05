@@ -1,4 +1,7 @@
 // 명예의 전당(모드별 상위 20) + 아케이드식 이니셜 입력(3글자, ↑↓로 글자 순환)
+//  - '기기 / 온라인' 탭 (docs/specs/online.md §4; 위 오른쪽 탭 · Q/E·LB/RB): 온라인은 왼쪽 보드 선택(종류 → 코스/스테이지 · 난이도,
+//    오늘의 도전)과 내 순위(로그인 안 했으면 안내 + 로그인 버튼), 오른쪽 상위 50명(순위·별명·기록·헌터/직업; 끌기·휠·오른쪽 스틱·↑↓로 넘김).
+//    불러오는 중·오류(다시 시도)·오프라인·이 환경에서 못 씀 상태를 보여 준다. go('highscore', {src:'online', board}) 로 그 보드를 바로 연다
 // 플랫폼 (platform §6.2 · §6.3 · §4.5, MASTER_PLAN §1.16) — owner: PLAT-FRONT-A
 //  - 두 장면 모두 uiScale (game.uiW × game.uiH, 최소 720×400). 줄 높이는 화면 높이에 맞춘다
 //  - 부문 탭은 목록 줄(≥ 36 CSS px), 뒤로·▲▼·등록 버튼은 ui.taps (owner = 장면), 안내 줄은 지금 기기의 글리프
@@ -18,8 +21,16 @@ import {
   Ambience, kenBurns, shade, frame, heading, ornament, gbutton, backButton, footer, MODES, modeName,
   recordHighScore, scoreList, fmtClock, follow, bossRushBests, linGrad, radGrad, GOLD, BONE, DIM,
 } from './common.js';
-import { COURSES } from './arcade.js';
+import { COURSES, visibleCourses, p2Known } from './arcade.js';
 import * as ENDING from './ending.js';
+import { bus } from '../../core/events.js';
+import { cloud } from '../../core/cloud.js';
+import * as ONLINE from '../../core/online.js';
+import { Gesture, Scroller, scrollbar, clipBegin, clipEnd } from '../menu/common.js';
+import { spinner } from './cloud_ui.js';
+import { CLASSES } from '../../data/classes.js';
+import { DIFFICULTIES } from '../../data/difficulty.js';
+import { STAGE_ORDER, STAGE_ORDER_P1 } from '../../data/stages.js';
 
 const MEDAL = ['#ffe070', '#d8dce8', '#e0a060'];
 const ORD = (i) => `${i + 1}${i === 0 ? 'ST' : i === 1 ? 'ND' : i === 2 ? 'RD' : 'TH'}`;
@@ -43,9 +54,26 @@ function endingCount(seen) {
   return { n: list.filter((k) => own(E, k)).length, of: Object.keys(E).length };
 }
 
+// ── 온라인 탭 (docs/specs/online.md §4) ──
+const OKINDS = [
+  { id: 'bossrush', name: '보스 러시' }, { id: 'survival', name: '서바이벌' },
+  { id: 'practice', name: '스테이지 연습' }, { id: 'daily', name: '오늘의 도전' },
+];
+let lastSrc = 'device';   // 이번 실행에서 마지막으로 본 탭
+let lastSel = null;       // 온라인 보드 선택 {kind, course, diff, stageId}
+/** 보드 id → 선택 (모르면 null) */
+function selOf(board) {
+  const [k, a, b] = String(board ?? '').split(':');
+  if (k === 'bossrush') return { kind: k, course: +a || 0, diff: b };
+  if (k === 'survival') return { kind: k, diff: a };
+  if (k === 'practice') return { kind: k, stageId: a, diff: b };
+  if (k === 'daily') return { kind: k };
+  return null;
+}
+
 export class HighscoreScene extends Scene {
   constructor(g) { super(g); this.uiScale = true; this.hidePad = true; }
-  enter({ mode = 'all', highlight = null, back = 'title' } = {}) {
+  enter({ mode = 'all', highlight = null, back = 'title', src = null, board = null } = {}) {
     this.back = back; this.highlight = highlight;
     this.tabs = new ListMenu(MODES.length, { cols: MODES.length, index: Math.max(0, MODES.findIndex((m) => m.id === mode)) });
     const q = this.game.tier === 'low' ? 0.5 : 1;
@@ -54,17 +82,42 @@ export class HighscoreScene extends Scene {
     this.page = 0;
     if (!this.game.registry.arcade && back === 'arcade') this.back = 'title';
     audio.music(this.game.state && !this.game.state.arcade ? 'hub' : 'title');
+    // 온라인 탭
+    this.p2 = p2Known(this.game);
+    const cfg = this.game.meta?.arcadeCfg ?? {};
+    this.sel = { kind: 'bossrush', course: 0, diff: 'normal', stageId: 's01', ...(lastSel ?? {}), ...(lastSel ? {} : { kind: OKINDS.some((k) => k.id === cfg.kind) ? cfg.kind : 'bossrush', course: cfg.course ?? 0, diff: cfg.diff ?? 'normal', stageId: cfg.stageId ?? 's01' }), ...(selOf(board) ?? {}) };
+    this.fixSel();
+    this.ofocus = 0; this.ob = { state: 'idle' }; this.oseq = 0;
+    this.ges = new Gesture(); this.scroll = new Scroller();
+    this.alive = true;
+    this.src = src === 'online' || src === 'device' ? src : board ? 'online' : lastSrc;
+    this.offs = [bus.on('cloud:login', () => this.alive && this.src === 'online' && this.load(true)), bus.on('cloud:logout', () => this.alive && this.src === 'online' && this.load(true))];
+    if (this.src === 'online') this.load();
+    try { ONLINE.flushQueue(); } catch { /* 온라인 모듈 교체 중 */ }
   }
+  exit() { this.alive = false; for (const f of this.offs ?? []) f?.(); lastSel = { ...this.sel }; }
+  onResume() { if (this.src === 'online') this.load(true); }
   list() {
     const id = MODES[this.tabs.index].id;
     const all = [...scoreList(this.game.meta)].sort((a, b) => b.score - a.score); // 손상된 기록은 scoreList 가 걸러 낸다
     return (id === 'all' ? all : all.filter((h) => (h.mode || 'story') === id)).slice(0, 20);
   }
+  setSrc(src) {
+    if (src === this.src) return;
+    this.src = lastSrc = src; this.changedT = this.t;
+    audio.sfx('menu_move');
+    if (src === 'online') this.load();
+  }
   update(dt) {
     const g = this.game;
     this.amb.update(dt, g.uiW || g.viewW, g.uiH || g.viewH);
     this.tabK = follow(this.tabK, this.tabs.index, dt, 14);
-    if (taps.hit(this) === 'back') { this.leave(); return; }
+    this.ges.update();
+    const tap = taps.hit(this);
+    if (tap === 'back') { this.leave(); return; }
+    if (tap === 'src:device' || tap === 'src:online') { this.setSrc(tap.slice(4)); return; }
+    if (input.pressed('prevTab') || input.pressed('nextTab')) { this.setSrc(this.src === 'online' ? 'device' : 'online'); return; }
+    if (this.src === 'online') { this.updateOnline(dt, tap); return; }
     const r = this.tabs.update(dt);
     if (this.tabs.moved) { audio.sfx('menu_move'); this.changedT = this.t; }
     if (r === 'cancel' || (r === 'confirm' && !input.pointer.tapped)) this.leave();
@@ -76,6 +129,102 @@ export class HighscoreScene extends Scene {
     else if (this.back === 'hub' && g.registry.hub && g.state) g.go('hub', {});
     else g.go('title', { menu: true, index: 3 });
   }
+
+  // ───────────────────────── 온라인 ─────────────────────────
+  /** 지금 보드에서 고를 수 있는 값이 아니면 고친다 */
+  fixSel() {
+    const S = this.sel;
+    if (!OKINDS.some((k) => k.id === S.kind)) S.kind = 'bossrush';
+    if (!DIFFICULTIES.some((d) => d.id === S.diff)) S.diff = 'normal';
+    const cs = visibleCourses(this.p2);
+    if (!cs.includes(S.course)) S.course = cs[0] ?? 0;
+    const st = this.stageList();
+    if (!st.includes(S.stageId)) S.stageId = st[0];
+  }
+  stageList() { return (this.p2 ? STAGE_ORDER : STAGE_ORDER_P1).filter((id) => STAGES[id]); }
+  board() {
+    const S = this.sel;
+    if (S.kind === 'daily') return `daily:${ONLINE.kstDay()}`;
+    return ONLINE.boardOf({ kind: S.kind, course: S.course, diff: S.diff, stageId: S.stageId });
+  }
+  /** 왼쪽 선택 줄: { label, value, n, i, set } */
+  orows() {
+    const S = this.sel, rows = [];
+    const ki = Math.max(0, OKINDS.findIndex((k) => k.id === S.kind));
+    rows.push({ id: 'kind', label: '종류', value: OKINDS[ki].name, n: OKINDS.length, i: ki, set: (i) => { S.kind = OKINDS[i].id; } });
+    if (S.kind === 'bossrush') {
+      const cs = visibleCourses(this.p2), ci = Math.max(0, cs.indexOf(S.course));
+      rows.push({ id: 'course', label: '코스', value: COURSES[cs[ci]]?.short ?? COURSES[cs[ci]]?.name ?? '', n: cs.length, i: ci, set: (i) => { S.course = cs[i]; } });
+    }
+    if (S.kind === 'practice') {
+      const st = this.stageList(), si = Math.max(0, st.indexOf(S.stageId)), sd = STAGES[st[si]];
+      rows.push({ id: 'stage', label: '스테이지', value: `${sd.chapter}장 ${sd.name}`, n: st.length, i: si, set: (i) => { S.stageId = st[i]; } });
+    }
+    if (S.kind === 'daily') {
+      const d = ONLINE.dailyNow(), sd = d ? STAGES[d.stageId] : null, day = ONLINE.kstDay();
+      rows.push({ id: 'date', label: '날짜', value: `오늘 · ${+day.slice(4, 6)}월 ${+day.slice(6, 8)}일`, n: 1, i: 0, info: true, set() {} });
+      if (sd) rows.push({ id: 'dstage', label: '스테이지', value: `${sd.chapter}장 ${sd.name}`, n: 1, i: 0, info: true, set() {} });
+    } else {
+      const di = Math.max(0, DIFFICULTIES.findIndex((d) => d.id === S.diff));
+      rows.push({ id: 'diff', label: '난이도', value: DIFFICULTIES[di].name, color: DIFFICULTIES[di].color, n: DIFFICULTIES.length, i: di, set: (i) => { S.diff = DIFFICULTIES[i].id; } });
+    }
+    return rows;
+  }
+  /** 순위표 받기 (같은 보드는 30초 동안 기억한 것 — online.js) */
+  load(force = false) {
+    const board = this.board(), seq = ++this.oseq;
+    this.ob = { state: 'loading', board };
+    this.scroll.reset();
+    if (this.sel.kind === 'daily') ONLINE.getDaily().catch(() => null);   // 오늘의 스테이지 이름 (기기에 있으면 요청 없음)
+    ONLINE.getBoard(board, { limit: 50, force }).then((r) => {
+      if (!this.alive || seq !== this.oseq) return;
+      if (r.ok) this.ob = { state: 'ready', board, data: r };
+      else this.ob = { state: r.error === 'unavailable' ? 'unavailable' : r.error === 'offline' ? 'offline' : 'error', board, msg: r.message };
+    }).catch(() => { if (this.alive && seq === this.oseq) this.ob = { state: 'error', board }; });
+  }
+  ochange(row, d) {
+    const r = this.orows()[row];
+    if (!r || r.n <= 1) return;
+    r.set((r.i + d + r.n) % r.n);
+    this.fixSel();
+    audio.sfx('menu_move');
+    this.load();
+  }
+  updateOnline(dt, tap) {
+    const rows = this.orows(), n = rows.length;
+    const L = this._OL;
+    if (L) this.scroll.update(dt, L.list, this.ges);
+    if (typeof tap === 'string' && tap.startsWith('hopt:')) { const [, i, d] = tap.split(':'); this.ofocus = +i; this.ochange(+i, +d); return; }
+    if (tap === 'retry') { audio.sfx('menu_ok'); this.load(true); return; }
+    if (tap === 'login') { audio.sfx('menu_ok'); this.game.push('account', { overlay: true, screen: 'login' }); return; }
+    if (input.pressed('cancel')) { this.leave(); return; }
+    const rowH = L?.rowH ?? 30;
+    if (this.ofocus >= n) {
+      // 목록: ↑↓ 한 줄씩 (맨 위에서 ↑ = 선택 줄로)
+      if (input.pressed('up')) { if (this.scroll.target <= 0.5) { this.ofocus = this.lastRow(rows); audio.sfx('menu_move'); } else this.scroll.target = Math.max(0, this.scroll.target - rowH); }
+      else if (input.pressed('down')) this.scroll.target = Math.min(this.scroll.max, this.scroll.target + rowH);
+      else if (input.pressed('confirm') && this.ob.state !== 'ready') this.load(true);
+      return;
+    }
+    if (input.pressed('up')) { const r = this.stepO(rows, -1); if (r !== this.ofocus) { this.ofocus = r; audio.sfx('menu_move'); } }
+    else if (input.pressed('down')) { const r = this.stepO(rows, 1); if (r !== this.ofocus) { this.ofocus = r; audio.sfx('menu_move'); } }
+    else if (input.pressed('left')) this.ochange(this.ofocus, -1);
+    else if (input.pressed('right')) this.ochange(this.ofocus, 1);
+    else if (input.pressed('confirm')) { if (this.ob.state !== 'ready' && this.ob.state !== 'loading') this.load(true); else this.ochange(this.ofocus, 1); }
+  }
+  /** 바꿀 수 있는 줄만 (안내 줄 건너뜀). n = 목록 */
+  stepO(rows, d) {
+    let i = this.ofocus;
+    for (let k = 0; k <= rows.length; k++) {
+      i += d;
+      if (i < 0) return this.ofocus;
+      if (i >= rows.length) return rows.length;
+      if (!rows[i].info) return i;
+    }
+    return this.ofocus;
+  }
+  lastRow(rows) { for (let i = rows.length - 1; i >= 0; i--) if (!rows[i].info) return i; return 0; }
+
   /** 배치 (UI 좌표): 제목 · 탭 · 순위 두 열 · 부가 기록 · 안내 줄 */
   layout() {
     const g = this.game, k = g.uiK || 1, W = g.uiW || g.viewW, H = g.uiH || g.viewH;
@@ -89,7 +238,10 @@ export class HighscoreScene extends Scene {
     const y0 = ty + tabH + (compact ? 10 : 16);
     // 순위 10줄 + 부가 기록 한 줄(20) + 안내 줄 띠(34)가 화면 높이에 들어가게 (높이 400 UI px 에서도 안내 줄과 겹치지 않는다)
     const rowH = clamp(Math.floor((H - sb - 34 - 20 - y0) / 10), 20, 31);
-    return { W, H, sl, sr, st, sb, compact, headY, headSize, tabH, ty, y0, rowH, extraY: y0 + 10 * rowH + 12 };
+    const minRow = Math.max(36, Math.ceil(38 / per));
+    // 위 오른쪽 '기기 / 온라인' 탭
+    const sw = 96, sh = 44, sx = W - sr - 14 - sw * 2 - 4;
+    return { W, H, sl, sr, st, sb, per, compact, headY, headSize, tabH, ty, y0, rowH, minRow, extraY: y0 + 10 * rowH + 12, src: { x: sx, y: 12 + st, w: sw, h: sh } };
   }
   render(ctx) {
     const g = this.game, t = g.time;
@@ -100,6 +252,24 @@ export class HighscoreScene extends Scene {
     this.amb.draw(ctx, W, H, 'front', t);
     const ap = ease.outCubic(clamp(this.t / 0.5, 0, 1));
     heading(ctx, W / 2, L.headY, 'HALL OF FAME', '명예의 전당', { size: L.headSize, alpha: ap });
+    // 기기 / 온라인
+    [['device', '기기'], ['online', '온라인']].forEach(([id, name], i) => {
+      const r = { x: L.src.x + i * (L.src.w + 4), y: L.src.y, w: L.src.w, h: L.src.h };
+      const cur = this.src === id;
+      ctx.fillStyle = cur ? 'rgba(140,20,40,0.88)' : 'rgba(20,8,20,0.75)'; ctx.fillRect(r.x, r.y, r.w, r.h);
+      ctx.strokeStyle = cur ? GOLD : 'rgba(200,160,90,0.35)'; ctx.lineWidth = cur ? 2 : 1; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
+      text(ctx, name, r.x + r.w / 2, r.y + r.h / 2 + 6, { size: 16, align: 'center', weight: 800, color: cur ? '#fff4dc' : '#b8a898', ow: 2 });
+      taps.add(`src:${id}`, r, { owner: this, kind: 'primary', src: 'highscore.src' });
+    });
+    if (this.src === 'online') this.renderOnline(ctx, L, t);
+    else this.renderDevice(ctx, L, t);
+    backButton(ctx, 14 + L.sl, 12 + L.st, '뒤로', this);
+    const tabHint = [['prevTab', '기기·온라인']];
+    if (this.src === 'online') footer(ctx, W, H, this.ofocus >= this.orows().length ? [['dpadV', '목록 넘기기'], ...tabHint, ['cancel', '돌아가기']] : [['dpadV', '항목'], ['dpadH', '바꾸기'], ...tabHint, ['cancel', '돌아가기']], '위 탭·◀ ▶ 를 누르고, 목록은 끌어서 넘기세요');
+    else footer(ctx, W, H, [['dpadH', '부문 전환'], ...tabHint, ['cancel', '돌아가기']], '부문 탭을 터치하세요');
+  }
+  renderDevice(ctx, L, t) {
+    const g = this.game, W = L.W;
     // 탭
     const n = MODES.length, tw = Math.min(150, (W - L.sl - L.sr - 80) / n), tx0 = W / 2 - (tw * n) / 2, ty = L.ty;
     this.tabs.clearHits();
@@ -174,8 +344,103 @@ export class HighscoreScene extends Scene {
     const ec = endingCount(m.endingsSeen);
     if (ec.n) extra.push(`엔딩 ${ec.n}/${ec.of}`);
     if (extra.length) text(ctx, extra.join('   ·   '), W / 2, L.extraY, { size: 13, align: 'center', weight: 700, color: '#d8c0a0', ow: 2, maxWidth: W - 40 });
-    backButton(ctx, 14 + L.sl, 12 + L.st, '뒤로', this);
-    footer(ctx, W, H, '←→ 부문 전환   X 돌아가기', '부문 탭을 터치하세요');
+  }
+  renderOnline(ctx, L, t) {
+    const W = L.W, H = L.H, rows = this.orows();
+    const x0 = L.sl + 16, LW = Math.round(clamp(W * 0.29, 236, 290));
+    const rh = Math.max(L.minRow, 42);
+    const lx = x0 + LW + 14, lw = W - L.sr - 16 - lx;
+    const top = L.ty, bot = H - L.sb - 40;
+    const list = { x: lx, y: top + 26, w: lw, h: bot - top - 26 };
+    const rowH = clamp(Math.floor(list.h / 10), 26, 32);
+    this._OL = { list, rowH };
+    // 왼쪽: 선택 줄
+    frame(ctx, x0, top - 4, LW, rows.length * rh + 8, { accent: '#8a6a3a', corners: false, edge: 0.4, fill0: 'rgba(14,6,16,0.84)' });
+    const lab = 76;
+    rows.forEach((o, i) => {
+      const y = top + i * rh, sel = this.ofocus === i, by = y + rh / 2 + 5;
+      if (sel) { ctx.fillStyle = 'rgba(179,18,46,0.45)'; ctx.fillRect(x0 + 2, y, LW - 4, rh); }
+      if (i > 0) { ctx.fillStyle = 'rgba(232,200,114,0.08)'; ctx.fillRect(x0 + 8, y, LW - 16, 1); }
+      text(ctx, o.label, x0 + 12, by, { size: 14, weight: 800, color: sel ? '#fff4dc' : '#c8b8a8', ow: 2, maxWidth: lab - 14 });
+      const vx = x0 + lab + (LW - lab) / 2;
+      text(ctx, o.value, vx, by, { size: 14, align: 'center', weight: 800, color: o.color ?? (sel ? GOLD : BONE), ow: 2, maxWidth: LW - lab - (o.n > 1 ? 50 : 12) });
+      if (o.n > 1) {
+        const ac = sel ? GOLD : 'rgba(232,200,114,0.5)';
+        text(ctx, '◀', x0 + lab + 10, by, { size: 15, align: 'center', color: ac, ow: 2 });
+        text(ctx, '▶', x0 + LW - 14, by, { size: 15, align: 'center', color: ac, ow: 2 });
+        const zk = { owner: this, kind: 'list', src: 'highscore.opt' };
+        taps.add(`hopt:${i}:1`, { x: x0, y, w: lab, h: rh }, zk);
+        taps.add(`hopt:${i}:-1`, { x: x0 + lab, y, w: vx - x0 - lab, h: rh }, zk);
+        taps.add(`hopt:${i}:1`, { x: vx, y, w: x0 + LW - vx, h: rh }, zk);
+      }
+    });
+    // 왼쪽 아래: 내 순위 / 로그인 안내
+    let y = top + rows.length * rh + 16;
+    const D = this.ob.data, me = D?.me;
+    const nick = ONLINE.nickNow();
+    if (!cloud.loggedIn) {
+      text(ctx, '로그인하면 순위에 오를 수 있어요', x0 + LW / 2, y + 14, { size: 13, align: 'center', weight: 800, color: '#9fd8ff', ow: 2, maxWidth: LW });
+      if (cloud.eligible() && y + 26 + 44 <= bot) { const br = { x: x0 + 24, y: y + 26, w: LW - 48, h: 44 }; gbutton(ctx, br, '로그인', { size: 15, owner: this, id: 'login', src: 'highscore.login' }); }
+    } else if (this.ob.state === 'ready') {
+      text(ctx, '내 순위', x0 + 12, y + 14, { size: 13, weight: 700, color: DIM, ow: 2 });
+      if (me) {
+        text(ctx, `${me.rank}위`, x0 + LW - 12, y + 16, { size: 20, align: 'right', weight: 900, family: FONT.num, color: '#ffe070', ow: 3 });
+        text(ctx, this.recText(me), x0 + 12, y + 40, { size: 15, weight: 800, family: FONT.num, color: '#fff', ow: 2, maxWidth: LW - 24 });
+      } else text(ctx, '아직 이 순위표에 기록이 없어요', x0 + 12, y + 40, { size: 13, weight: 700, color: BONE, ow: 2, maxWidth: LW - 24 });
+      if (nick && y + 62 <= bot) text(ctx, `공개 별명: ${nick}`, x0 + 12, y + 62, { size: 12, weight: 700, color: DIM, ow: 2, maxWidth: LW - 24 });
+    }
+    // 오른쪽: 목록
+    frame(ctx, lx, top - 4, lw, bot - top + 8, { accent: '#8a6a3a', corners: false, edge: 0.4, fill0: 'rgba(14,6,16,0.8)' });
+    const C = { rank: lx + 12, nick: lx + 58, rec: lx + Math.round(lw * 0.52), hero: lx + Math.round(lw * 0.56) + 18 };
+    const time = ONLINE.timeBoard(this.ob.board ?? this.board());
+    text(ctx, '순위', C.rank, top + 14, { size: 12, weight: 800, color: DIM, ow: 2 });
+    text(ctx, '별명', C.nick, top + 14, { size: 12, weight: 800, color: DIM, ow: 2 });
+    text(ctx, time ? '기록' : '웨이브 · 점수', C.rec, top + 14, { size: 12, align: 'right', weight: 800, color: DIM, ow: 2 });
+    text(ctx, '헌터 · 직업', C.hero, top + 14, { size: 12, weight: 800, color: DIM, ow: 2 });
+    ctx.fillStyle = 'rgba(232,200,114,0.2)'; ctx.fillRect(lx + 8, top + 21, lw - 16, 1);
+    const st = this.ob.state, cx = lx + lw / 2, cy = list.y + Math.min(list.h / 2, 110);
+    if (st !== 'ready') {
+      if (st === 'loading' || st === 'idle') { spinner(ctx, cx, cy - 18, 13, t); text(ctx, '순위를 불러오는 중…', cx, cy + 16, { size: 15, align: 'center', weight: 800, color: BONE, ow: 2 }); return; }
+      const m = st === 'offline' ? '인터넷에 연결되어 있지 않아요' : st === 'unavailable' ? '여기서는 온라인 순위를 볼 수 없어요' : this.ob.msg ?? '순위를 불러오지 못했어요';
+      text(ctx, m, cx, cy - 6, { size: 15, align: 'center', weight: 800, color: '#ffb0a0', ow: 2, maxWidth: lw - 30 });
+      if (st === 'unavailable') text(ctx, '공식 사이트와 안드로이드 앱에서 볼 수 있어요', cx, cy + 18, { size: 13, align: 'center', color: DIM, ow: 2, maxWidth: lw - 30 });
+      else { const br = { x: cx - 80, y: cy + 14, w: 160, h: 44 }; gbutton(ctx, br, '다시 시도', { size: 15, owner: this, id: 'retry', src: 'highscore.retry' }); }
+      return;
+    }
+    const E = D.entries;
+    if (!E.length) {
+      text(ctx, '아직 기록이 없어요', cx, cy - 4, { size: 17, align: 'center', weight: 800, family: FONT.title, color: BONE, ow: 3 });
+      text(ctx, '첫 기록의 주인공이 되어 보세요!', cx, cy + 22, { size: 13, align: 'center', color: DIM, ow: 2 });
+      return;
+    }
+    this.scroll.setMax(E.length * rowH - list.h);
+    clipBegin(ctx, list);
+    const sy = this.scroll.y, i0 = Math.max(0, Math.floor(sy / rowH)), i1 = Math.min(E.length, Math.ceil((sy + list.h) / rowH));
+    const CW = Math.max(1, Math.round(lw - 16));
+    for (let i = i0; i < i1; i++) {
+      const e = E[i], yy = list.y + i * rowH - sy, tb = yy + rowH / 2 + 5;
+      const mine = me && e.rank === me.rank;
+      ctx.save(); ctx.translate(lx + 8, 0);
+      ctx.fillStyle = linGrad(ctx, `hsRow|${mine ? 'me' : e.rank <= 3 ? 'top' : 'row'}|${CW}`, 0, 0, CW, 0, [[0, mine ? 'rgba(220,170,50,0.5)' : e.rank <= 3 ? 'rgba(120,20,40,0.55)' : 'rgba(16,6,16,0.6)'], [1, 'rgba(16,6,16,0.15)']]);
+      ctx.fillRect(0, yy + 1, CW, rowH - 3);
+      ctx.restore();
+      if (e.rank <= 3) { ctx.fillStyle = MEDAL[e.rank - 1]; ctx.fillRect(lx + 8, yy + 1, 3, rowH - 3); }
+      text(ctx, `${e.rank}`, C.rank + 6, tb, { size: 14, weight: 900, family: FONT.num, color: e.rank <= 3 ? MEDAL[e.rank - 1] : '#a89a90', ow: 2 });
+      text(ctx, e.nick, C.nick, tb, { size: 14, weight: 800, color: mine ? '#fff' : '#f0e4d0', ow: 2, maxWidth: C.rec - C.nick - 70 });
+      text(ctx, this.recText(e), C.rec, tb, { size: 14, align: 'right', weight: 900, family: FONT.num, color: i === 0 ? '#ffe070' : '#fff', ow: 2 });
+      const ch = own(CHARACTERS, e.hero) ? CHARACTERS[e.hero] : null, cl = own(CLASSES, e.cls) ? CLASSES[e.cls] : null;
+      const img = ch?.portrait ? assets.get(ch.portrait) : null, pr = Math.min(10, (rowH - 8) / 2), px = C.hero - 6 - pr, py = yy + rowH / 2;
+      if (img) { ctx.save(); ctx.beginPath(); ctx.arc(px, py, pr, 0, TAU); ctx.clip(); const s2 = (pr * 3) / img.width; ctx.drawImage(img, px - pr * 1.5, py - pr, pr * 3, img.height * s2); ctx.restore(); }
+      text(ctx, `${ch?.name?.split(' ')[0] ?? e.hero}${cl ? ` · ${cl.name}` : ''}`, C.hero + 4, tb, { size: 12, weight: 700, color: DIM, ow: 2, maxWidth: lx + lw - C.hero - 14 });
+    }
+    clipEnd(ctx, list, this.scroll);
+    scrollbar(ctx, lx + lw - 6, list.y, list.h, this.scroll, list.h);
+    if (this.ofocus >= rows.length) { ctx.strokeStyle = GOLD; ctx.lineWidth = 1.5; ctx.strokeRect(lx + 1.5, top - 2.5, lw - 3, bot - top + 5); }
+    text(ctx, `전체 ${D.total}명`, lx + lw - 12, bot - 2 + 14 > H - L.sb - 34 ? top + 14 : bot + 14, { size: 11, align: 'right', weight: 700, color: DIM, ow: 2 });
+  }
+  /** 기록 표시: 시간 보드 = 1:23.45, 서바이벌 = WAVE n · 점수 */
+  recText(e) {
+    return ONLINE.timeBoard(this.ob.board ?? this.board()) ? ONLINE.fmtMs(e.time) : `WAVE ${e.wave ?? '?'} · ${fmt(e.score ?? 0)}`;
   }
 }
 

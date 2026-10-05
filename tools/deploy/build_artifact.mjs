@@ -80,7 +80,8 @@ export function buildArtifact({ from = path.join(ROOT, 'dist/web'), out = path.j
   for (const css of ['css/style.css', 'css/touchpad.css']) if (fs.existsSync(path.join(WEB, css))) put(css, stripV(fs.readFileSync(path.join(WEB, css), 'utf8')));
 
   // ── 그림: 파일로 둘 것과 팩 ──
-  const all = walk(path.join(WEB, 'assets'));
+  // 녹음 음악(assets/audio/music, 수십 MB)은 아티팩트에 싣지 않는다: 팩에 없고 팩 목록이 complete 라 audio_rec.js 가 요청 없이 합성 음원으로 튼다
+  const all = walk(path.join(WEB, 'assets')).filter((r) => !r.startsWith('audio/music/'));
   const loose = all.filter((r) => LOOSE.some((re) => re.test(r)));
   const packed = all.filter((r) => !LOOSE.some((re) => re.test(r)));
   for (const r of loose) cp(`assets/${r}`);

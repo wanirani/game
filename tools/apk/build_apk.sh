@@ -17,8 +17,9 @@
 #
 #  APK 에 들어가는 웹 파일 = dist/web (tools/deploy/build_web.mjs 결과: 번들·lo/ 변형·글꼴) − sw.js − downloads/ − _redirects
 #    (platform §9.4-4, MASTER_PLAN §1.20). tools/apk/pack_web.py 가 꾸린다.
-#  크기 예산 45 MB (채색 그림 포함): 넘으면 휴대폰 밀도 단계로 — lo (bg/cg/portraits 원본 대신 assets/lo 사본) → lo+td (채색 아틀라스 0.75배).
-#    서명한 APK 가 예산을 넘으면 빌드 실패.
+#  크기 예산 75 MB (채색 그림·소리 포함, MASTER_PLAN §1.20). 그림 단계는 소리를 뺀 크기로 45 MB 기준: 넘으면 휴대폰 밀도 단계로 —
+#    lo (bg/cg/portraits 원본 대신 assets/lo 사본) → lo+td (채색 아틀라스 0.75배). 효과음 샘플은 늘 싣고, 녹음 음악은 75 MB 안에서
+#    우선순위대로 (pack_web.py MUSIC_PRIORITY; 빠진 곡은 앱에서 합성 음원). 서명한 APK 가 예산을 넘으면 빌드 실패.
 #  계정 API: 앱 안의 /api/* 는 AssetServer 프록시가 tools/apk/api_origin.txt 의 사이트로 보낸다 (docs/ACCOUNTS.md §1).
 #  Android SDK 가 없으면 $ANDROID_HOME(기본 /root/android-sdk)에 자동 설치한다:
 #    commandlinetools → sdkmanager → platform-tools, build-tools;34.0.0, platforms;android-34 (라이선스 자동 동의)
@@ -51,7 +52,8 @@
 #    KEYSTORE       키스토어 경로                          KEYSTORE_PROPS  비밀번호 파일 경로
 #    VERSION_NAME / VERSION_CODE
 #    WEB_DIR        웹 배포 빌드 폴더 (기본 dist/web)
-#    APK_BUDGET_MB  APK 크기 예산 (기본 45)                APK_ASSETS  auto(기본) | full | lo | lo+td (단계 강제)
+#    APK_BUDGET_MB  APK 크기 예산 (기본 75)                APK_ASSETS  auto(기본) | full | lo | lo+td (단계 강제)
+#    APK_IMAGE_BUDGET_MB  그림 단계 기준 (기본 45, 소리 제외)  APK_MUSIC  auto(기본) | all | none (녹음 음악)
 #    API_ORIGIN     계정 서버 주소 (기본: tools/apk/api_origin.txt)
 #
 #  앱 구조: android/app/src/main/ (AndroidManifest.xml, java/…/MainActivity.java, AssetServer.java, ApiProxy.java, WebViewCheck.java, res/, assets/app/)
@@ -79,8 +81,10 @@ KS_PROPS="${KEYSTORE_PROPS:-$ROOT/tools/android/keystore.properties}"
 CERT_FILE="${RELEASE_CERT_FILE:-$ROOT/tools/apk/release_cert.sha256}"
 # APK 에 넣을 웹 게임 파일: 웹 배포 빌드 결과 (sw.js · downloads/ · _redirects 는 pack_web.py 가 뺀다)
 WEB_DIR="${WEB_DIR:-$ROOT/dist/web}"
-BUDGET_MB="${APK_BUDGET_MB:-45}"
+BUDGET_MB="${APK_BUDGET_MB:-75}"
+IMAGE_BUDGET_MB="${APK_IMAGE_BUDGET_MB:-45}"
 ASSET_STAGE="${APK_ASSETS:-auto}"
+MUSIC_MODE="${APK_MUSIC:-auto}"
 # 이미 압축된 형식은 무압축 저장 (빠른 읽기 + openFd 로 길이/Range 지원) — pack_web.py 의 NO_COMPRESS 와 같게
 NO_COMPRESS=(png webp jpg jpeg gif avif mp3 ogg oga opus m4a aac mp4 webm woff woff2)
 # 허용 권한 (platform WP-9 acceptance 1)
@@ -231,7 +235,7 @@ rm -rf "${B:?}"
 mkdir -p "$B/assets" "$B/res-gen" "$B/compiled" "$B/gen" "$B/classes" "$B/dex"
 cp -R "$APP_DIR/assets/." "$B/assets/"          # app/head_inject.html (앱 전용 조각)
 say "웹 파일 꾸리기: $(sed -n 's/.*"version":"\([^"]*\)".*/\1/p' "$WEB_DIR/build-info.js" | head -1) ← ${WEB_DIR#$ROOT/} (예산 ${BUDGET_MB} MB, 단계 ${ASSET_STAGE})"
-PACK_ARGS=(--web "$WEB_DIR" --out "$B/assets" --budget-mb "$BUDGET_MB" --assets "$ASSET_STAGE"
+PACK_ARGS=(--web "$WEB_DIR" --out "$B/assets" --budget-mb "$BUDGET_MB" --image-budget-mb "$IMAGE_BUDGET_MB" --assets "$ASSET_STAGE" --music "$MUSIC_MODE"
   --origin-file "$ROOT/tools/apk/api_origin.txt" --cloud-js "$ROOT/src/core/cloud.js" --report "$B/pack_report.json")
 [[ -n "${API_ORIGIN:-}" ]] && PACK_ARGS+=(--origin "$API_ORIGIN")
 python3 "$ROOT/tools/apk/pack_web.py" "${PACK_ARGS[@]}" || die "웹 파일 꾸리기 실패 (tools/apk/pack_web.py)"

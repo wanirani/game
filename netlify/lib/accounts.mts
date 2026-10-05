@@ -3,7 +3,9 @@ import { BODY_LIMIT, CAS_RETRIES, SESSION, SLOTS, STORES } from './config.mts';
 import { ApiError, fail, failRetry, ok, readJson, readOptionalJson } from './http.mts';
 import { burn, hashSecret, needsRehash, newRecoveryCode, newToken, newUid, normalizeRecoveryCode, sha256hex, TOKEN_RE, verifySecret } from './crypto.mts';
 import type { SecretHash } from './crypto.mts';
-import { attemptFailed, attemptSucceeded, beginAttempt, checkSignupByIp, clearLocks, limitAuthByIp, releaseSignup, reserveSignup, trustNetwork } from './ratelimit.mts';
+import { attemptFailed, attemptSucceeded, beginAttempt, checkSignupByIp, clearAccountLimits, clearLocks, limitAuthByIp, releaseSignup, reserveSignup, trustNetwork } from './ratelimit.mts';
+import { purgeUserBoards } from './boards.mts';
+import { releaseNick } from './nick.mts';
 import type { Attempt } from './ratelimit.mts';
 import { now } from './runtime.mts';
 import type { Ctx } from './runtime.mts';
@@ -20,6 +22,7 @@ export interface UserRec {
   pw: SecretHash; // 비밀번호 해시
   rc: SecretHash; // 복구 코드 해시
   sessions: SessionEntry[]; // 토큰의 SHA-256 만 보관
+  nick?: string; // 공개 별명 (순위표, docs/specs/online.md) — 첫 기록 제출 때 자동으로 만들거나 PUT /api/profile/nick
 }
 interface SessionBlob { id: string; uid: string; createdAt: number; expiresAt: number }
 
@@ -218,7 +221,7 @@ export async function logout(c: Ctx): Promise<Response> {
 
 export async function me(c: Ctx): Promise<Response> {
   const a = await authenticate(c);
-  return ok({ id: a.id, createdAt: a.user.createdAt });
+  return ok({ id: a.id, createdAt: a.user.createdAt, nick: typeof a.user.nick === 'string' ? a.user.nick : null });
 }
 
 export async function changePassword(c: Ctx): Promise<Response> {
@@ -305,15 +308,22 @@ async function sweepSaves(c: Ctx, uid: string): Promise<void> {
 }
 
 /**
- * 계정 완전 삭제: 저장 데이터 → 세션 → 제한 기록 → 사용자 레코드 → 저장 데이터 한 번 더 (중간에 실패해도 다시 실행하면 이어서 지워진다).
- * 마지막 쓸기는 삭제 도중 인증을 통과해 들어온 세이브 쓰기를 치운다 (그보다 늦은 쓰기는 saves.mts 가 스스로 되돌린다).
+ * 계정 완전 삭제: 저장 데이터·순위 기록·고스트 → 세션 → 제한 기록 → 별명 → 사용자 레코드 → 저장 데이터·순위 기록 한 번 더
+ * (중간에 실패해도 다시 실행하면 이어서 지워진다). 마지막 쓸기는 삭제 도중 인증을 통과해 들어온 쓰기를 치운다
+ * (그보다 늦은 쓰기는 saves.mts·online.mts 가 스스로 되돌린다).
  */
 export async function purgeAccount(c: Ctx, user: UserRec): Promise<void> {
   await sweepSaves(c, user.uid);
+  await purgeUserBoards(c, user.uid);
   await dropSessionBlobs(c, user.sessions.map((e) => e?.h).filter((h): h is string => typeof h === 'string'));
-  await Promise.all([clearLocks(c, 'login', user.id), clearLocks(c, 'recover', user.id)]);
+  await Promise.all([clearLocks(c, 'login', user.id), clearLocks(c, 'recover', user.id), clearAccountLimits(c, user.uid)]);
+  // 별명 자리: 받은 레코드와 지금 레코드(그사이 바꿨을 수 있다) 둘 다
+  const latest = await getUser(c, user.id).catch(() => null);
+  const nicks = new Set([user.nick, latest?.user.uid === user.uid ? latest.user.nick : undefined]);
+  for (const n of nicks) await releaseNick(c, n, user.uid);
   await c.store(STORES.users).delete(user.id);
   await sweepSaves(c, user.uid);
+  await purgeUserBoards(c, user.uid);
 }
 
 /** 쓰기 뒤 확인용: 이 계정(uid)이 아직 있는가 */

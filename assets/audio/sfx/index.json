@@ -44,7 +44,7 @@
     "imp_impactPunch_medium_001",
     "imp_impactPunch_medium_002"
    ],
-   "g": 1.0,
+   "g": 0.456,
    "s": 0.6
   },
   "hit_heavy": {
@@ -53,14 +53,14 @@
     "imp_impactPunch_heavy_001",
     "imp_impactPunch_heavy_002"
    ],
-   "g": 1.0,
+   "g": 0.601,
    "s": 0.6
   },
   "crit": {
    "f": [
     "imp_impactPunch_heavy_003"
    ],
-   "g": 1.0,
+   "g": 0.457,
    "s": 0.75
   },
   "hit_flesh": {
@@ -68,7 +68,7 @@
     "imp_impactSoft_heavy_000",
     "imp_impactSoft_heavy_001"
    ],
-   "g": 1.0,
+   "g": 0.237,
    "s": 0.5
   },
   "hit_bone": {
@@ -76,7 +76,7 @@
     "imp_impactWood_light_000",
     "imp_impactWood_light_001"
    ],
-   "g": 1.0,
+   "g": 0.455,
    "s": 0.5
   },
   "hit_stone": {
@@ -84,7 +84,7 @@
     "imp_impactMining_000",
     "imp_impactMining_001"
    ],
-   "g": 1.0,
+   "g": 0.279,
    "s": 0.5
   },
   "clang": {
@@ -92,49 +92,49 @@
     "imp_impactMetal_heavy_000",
     "imp_impactMetal_heavy_001"
    ],
-   "g": 1.0,
+   "g": 0.856,
    "s": 0.5
   },
   "counter": {
    "f": [
     "imp_impactMetal_medium_000"
    ],
-   "g": 1.0,
+   "g": 0.581,
    "s": 0.7
   },
   "enhance_hit": {
    "f": [
     "imp_impactMetal_heavy_002"
    ],
-   "g": 1.0,
+   "g": 0.94,
    "s": 0.6
   },
   "enemy_die": {
    "f": [
     "imp_impactSoft_heavy_002"
    ],
-   "g": 1.0,
+   "g": 0.378,
    "s": 0.7
   },
   "hurt": {
    "f": [
     "imp_impactPunch_medium_003"
    ],
-   "g": 1.0,
+   "g": 0.369,
    "s": 0.7
   },
   "wall_bounce": {
    "f": [
     "imp_impactPlank_medium_000"
    ],
-   "g": 1.0,
+   "g": 0.948,
    "s": 0.6
   },
   "ground_bounce": {
    "f": [
     "imp_impactSoft_heavy_003"
    ],
-   "g": 1.0,
+   "g": 0.594,
    "s": 0.6
   },
   "land": {
@@ -142,14 +142,14 @@
     "imp_impactSoft_medium_000",
     "imp_impactSoft_medium_001"
    ],
-   "g": 1.0,
+   "g": 0.24,
    "s": 0.5
   },
   "land_heavy": {
    "f": [
     "imp_impactSoft_heavy_004"
    ],
-   "g": 1.0,
+   "g": 0.549,
    "s": 0.6
   },
   "explode": {
@@ -157,7 +157,7 @@
     "sf_explosionCrunch_000",
     "sf_explosionCrunch_001"
    ],
-   "g": 1.0,
+   "g": 0.88,
    "s": 0.6
   },
   "break_wall": {
@@ -165,21 +165,21 @@
     "imp_impactMining_002",
     "imp_impactMining_003"
    ],
-   "g": 1.0,
+   "g": 1.092,
    "s": 0.6
   },
   "boss_die": {
    "f": [
     "sf_lowFrequency_explosion_000"
    ],
-   "g": 1.0,
+   "g": 0.736,
    "s": 0.8
   },
   "ult_impact": {
    "f": [
     "sf_lowFrequency_explosion_001"
    ],
-   "g": 1.0,
+   "g": 0.762,
    "s": 0.7
   },
   "candle": {
@@ -187,21 +187,21 @@
     "imp_impactGlass_light_000",
     "imp_impactGlass_light_001"
    ],
-   "g": 1.0,
+   "g": 0.448,
    "s": 0.5
   },
   "bell": {
    "f": [
     "imp_impactBell_heavy_000"
    ],
-   "g": 1.0,
+   "g": 0.921,
    "s": 0.7
   },
   "seal_stamp": {
    "f": [
     "imp_impactPlate_heavy_000"
    ],
-   "g": 1.0,
+   "g": 0.602,
    "s": 0.6
   },
   "slash": {
@@ -209,7 +209,7 @@
     "rpg_knifeSlice",
     "rpg_knifeSlice2"
    ],
-   "g": 1.0,
+   "g": 0.549,
    "s": 0.5
   },
   "slash_heavy": {
@@ -217,7 +217,7 @@
     "rpg_knifeSlice",
     "rpg_knifeSlice2"
    ],
-   "g": 1.0,
+   "g": 0.768,
    "s": 0.6,
    "r": 0.8
   },
@@ -226,21 +226,21 @@
     "rpg_drawKnife1",
     "rpg_drawKnife2"
    ],
-   "g": 1.0,
+   "g": 0.447,
    "s": 0.5
   },
   "sheath": {
    "f": [
     "rpg_drawKnife3"
    ],
-   "g": 1.0,
+   "g": 0.606,
    "s": 0.4
   },
   "axe": {
    "f": [
     "rpg_chop"
    ],
-   "g": 1.0,
+   "g": 0.515,
    "s": 0.6
   },
   "footstep": {
@@ -249,7 +249,7 @@
     "rpg_footstep01",
     "rpg_footstep02"
    ],
-   "g": 1.0,
+   "g": 0.198,
    "s": 0
   },
   "step_stone": {
@@ -258,7 +258,7 @@
     "imp_footstep_concrete_001",
     "imp_footstep_concrete_002"
    ],
-   "g": 1.0,
+   "g": 0.319,
    "s": 0
   },
   "step_dirt": {
@@ -267,7 +267,7 @@
     "imp_footstep_grass_001",
     "imp_footstep_grass_002"
    ],
-   "g": 1.0,
+   "g": 0.296,
    "s": 0
   },
   "step_wood": {
@@ -276,7 +276,7 @@
     "imp_footstep_wood_001",
     "imp_footstep_wood_002"
    ],
-   "g": 1.0,
+   "g": 0.171,
    "s": 0
   },
   "step_snow": {
@@ -285,21 +285,21 @@
     "imp_footstep_snow_001",
     "imp_footstep_snow_002"
    ],
-   "g": 1.0,
+   "g": 0.169,
    "s": 0
   },
   "jump": {
    "f": [
     "rpg_cloth1"
    ],
-   "g": 1.0,
+   "g": 0.287,
    "s": 0.7
   },
   "double_jump": {
    "f": [
     "rpg_cloth2"
    ],
-   "g": 1.0,
+   "g": 0.271,
    "s": 0.7,
    "r": 1.1
   },
@@ -308,42 +308,42 @@
     "rpg_cloth3",
     "rpg_cloth4"
    ],
-   "g": 1.0,
+   "g": 0.398,
    "s": 0.6
   },
   "coin": {
    "f": [
     "rpg_handleCoins"
    ],
-   "g": 1.0,
+   "g": 0.736,
    "s": 0.8
   },
   "coin_insert": {
    "f": [
     "rpg_handleCoins2"
    ],
-   "g": 1.0,
+   "g": 0.864,
    "s": 0.7
   },
   "door": {
    "f": [
     "rpg_doorOpen_1"
    ],
-   "g": 1.0,
+   "g": 0.761,
    "s": 0.3
   },
   "chest": {
    "f": [
     "rpg_creak1"
    ],
-   "g": 1.0,
+   "g": 0.207,
    "s": 0.8
   },
   "heal": {
    "f": [
     "ui_glass_001"
    ],
-   "g": 1.0,
+   "g": 0.321,
    "s": 0.8
   },
   "card": {
@@ -352,42 +352,42 @@
     "rpg_bookFlip2",
     "rpg_bookFlip3"
    ],
-   "g": 1.0,
+   "g": 1.286,
    "s": 0
   },
   "magic": {
    "f": [
     "sf_forceField_000"
    ],
-   "g": 1.0,
+   "g": 0.199,
    "s": 0.7
   },
   "clock_tick": {
    "f": [
     "ui_tick_004"
    ],
-   "g": 1.0,
+   "g": 0.491,
    "s": 0
   },
   "menu_move": {
    "f": [
     "ui_tick_001"
    ],
-   "g": 1.0,
+   "g": 0.972,
    "s": 0.5
   },
   "menu_ok": {
    "f": [
     "ui_confirmation_001"
    ],
-   "g": 1.0,
+   "g": 0.266,
    "s": 0.4
   },
   "menu_cancel": {
    "f": [
     "ui_back_001"
    ],
-   "g": 1.0,
+   "g": 0.968,
    "s": 0.4
   }
  },
@@ -457,63 +457,63 @@
   },
   "imp_impactWood_light_000": {
    "dur": 0.1334,
-   "on": 0.0,
+   "on": 0,
    "m4a": 2554,
    "ogg": 4586,
    "src": "kenney/impact-sounds/impactWood_light_000.ogg"
   },
   "imp_impactWood_light_001": {
    "dur": 0.2627,
-   "on": 0.0,
+   "on": 0,
    "m4a": 3975,
    "ogg": 5306,
    "src": "kenney/impact-sounds/impactWood_light_001.ogg"
   },
   "imp_impactMining_000": {
    "dur": 0.6846,
-   "on": 0.0,
+   "on": 0,
    "m4a": 8238,
    "ogg": 7410,
    "src": "kenney/impact-sounds/impactMining_000.ogg"
   },
   "imp_impactMining_001": {
    "dur": 0.6354,
-   "on": 0.0,
+   "on": 0,
    "m4a": 7721,
    "ogg": 7193,
    "src": "kenney/impact-sounds/impactMining_001.ogg"
   },
   "imp_impactMetal_heavy_000": {
    "dur": 0.1648,
-   "on": 0.0,
+   "on": 0,
    "m4a": 2923,
    "ogg": 4673,
    "src": "kenney/impact-sounds/impactMetal_heavy_000.ogg"
   },
   "imp_impactMetal_heavy_001": {
    "dur": 0.3564,
-   "on": 0.0,
+   "on": 0,
    "m4a": 4876,
    "ogg": 5905,
    "src": "kenney/impact-sounds/impactMetal_heavy_001.ogg"
   },
   "imp_impactMetal_medium_000": {
    "dur": 0.2689,
-   "on": 0.0,
+   "on": 0,
    "m4a": 3977,
    "ogg": 5627,
    "src": "kenney/impact-sounds/impactMetal_medium_000.ogg"
   },
   "imp_impactMetal_heavy_002": {
    "dur": 0.1144,
-   "on": 0.0,
+   "on": 0,
    "m4a": 2309,
    "ogg": 4377,
    "src": "kenney/impact-sounds/impactMetal_heavy_002.ogg"
   },
   "imp_impactSoft_heavy_002": {
    "dur": 0.5694,
-   "on": 0.0,
+   "on": 0,
    "m4a": 7068,
    "ogg": 6187,
    "src": "kenney/impact-sounds/impactSoft_heavy_002.ogg"
@@ -527,7 +527,7 @@
   },
   "imp_impactPlank_medium_000": {
    "dur": 0.428,
-   "on": 0.0,
+   "on": 0,
    "m4a": 5609,
    "ogg": 7066,
    "src": "kenney/impact-sounds/impactPlank_medium_000.ogg"
@@ -576,14 +576,14 @@
   },
   "imp_impactMining_002": {
    "dur": 0.5319,
-   "on": 0.0,
+   "on": 0,
    "m4a": 6618,
    "ogg": 6969,
    "src": "kenney/impact-sounds/impactMining_002.ogg"
   },
   "imp_impactMining_003": {
    "dur": 0.6781,
-   "on": 0.0,
+   "on": 0,
    "m4a": 8102,
    "ogg": 7360,
    "src": "kenney/impact-sounds/impactMining_003.ogg"
@@ -596,7 +596,7 @@
    "src": "kenney/sci-fi-sounds/lowFrequency_explosion_000.ogg"
   },
   "sf_lowFrequency_explosion_001": {
-   "dur": 1.0,
+   "dur": 1,
    "on": 0.0076,
    "m4a": 11464,
    "ogg": 8582,
@@ -604,28 +604,28 @@
   },
   "imp_impactGlass_light_000": {
    "dur": 0.1559,
-   "on": 0.0,
+   "on": 0,
    "m4a": 2845,
    "ogg": 4722,
    "src": "kenney/impact-sounds/impactGlass_light_000.ogg"
   },
   "imp_impactGlass_light_001": {
    "dur": 0.1727,
-   "on": 0.0,
+   "on": 0,
    "m4a": 3039,
    "ogg": 4767,
    "src": "kenney/impact-sounds/impactGlass_light_001.ogg"
   },
   "imp_impactBell_heavy_000": {
    "dur": 1.286,
-   "on": 0.0,
+   "on": 0,
    "m4a": 14306,
    "ogg": 10577,
    "src": "kenney/impact-sounds/impactBell_heavy_000.ogg"
   },
   "imp_impactPlate_heavy_000": {
    "dur": 0.4432,
-   "on": 0.0,
+   "on": 0,
    "m4a": 5702,
    "ogg": 7098,
    "src": "kenney/impact-sounds/impactPlate_heavy_000.ogg"
@@ -695,7 +695,7 @@
   },
   "imp_footstep_concrete_000": {
    "dur": 0.103,
-   "on": 0.0,
+   "on": 0,
    "m4a": 2264,
    "ogg": 4586,
    "src": "kenney/impact-sounds/footstep_concrete_000.ogg"
@@ -709,14 +709,14 @@
   },
   "imp_footstep_concrete_002": {
    "dur": 0.1099,
-   "on": 0.0,
+   "on": 0,
    "m4a": 2383,
    "ogg": 4748,
    "src": "kenney/impact-sounds/footstep_concrete_002.ogg"
   },
   "imp_footstep_grass_000": {
    "dur": 0.1683,
-   "on": 0.0,
+   "on": 0,
    "m4a": 2818,
    "ogg": 5365,
    "src": "kenney/impact-sounds/footstep_grass_000.ogg"
@@ -730,7 +730,7 @@
   },
   "imp_footstep_grass_002": {
    "dur": 0.1606,
-   "on": 0.0,
+   "on": 0,
    "m4a": 2765,
    "ogg": 5406,
    "src": "kenney/impact-sounds/footstep_grass_002.ogg"
@@ -744,7 +744,7 @@
   },
   "imp_footstep_wood_001": {
    "dur": 0.2487,
-   "on": 0.0,
+   "on": 0,
    "m4a": 3792,
    "ogg": 4978,
    "src": "kenney/impact-sounds/footstep_wood_001.ogg"
@@ -800,7 +800,7 @@
   },
   "rpg_cloth4": {
    "dur": 0.3844,
-   "on": 0.0,
+   "on": 0,
    "m4a": 5315,
    "ogg": 7390,
    "src": "kenney/rpg-audio/cloth4.ogg"
@@ -835,7 +835,7 @@
   },
   "ui_glass_001": {
    "dur": 0.2755,
-   "on": 0.0,
+   "on": 0,
    "m4a": 3975,
    "ogg": 5273,
    "src": "kenney/interface-sounds/glass_001.ogg"
@@ -877,21 +877,21 @@
   },
   "ui_tick_001": {
    "dur": 0.0214,
-   "on": 0.0,
+   "on": 0,
    "m4a": 1403,
    "ogg": 4012,
    "src": "kenney/interface-sounds/tick_001.ogg"
   },
   "ui_confirmation_001": {
    "dur": 0.2898,
-   "on": 0.0,
+   "on": 0,
    "m4a": 4221,
    "ogg": 4783,
    "src": "kenney/interface-sounds/confirmation_001.ogg"
   },
   "ui_back_001": {
    "dur": 0.061,
-   "on": 0.0,
+   "on": 0,
    "m4a": 1793,
    "ogg": 4641,
    "src": "kenney/interface-sounds/back_001.ogg"

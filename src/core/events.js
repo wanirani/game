@@ -45,6 +45,8 @@
 //  'mounted' {id}  'dismounted' {id, reason}  'guardianSkill' {id, auto}  'eggObtained' {id}  'eggHatched' {id}
 // 계정 (core/cloud.js, docs/ACCOUNTS.md):
 //  'cloud:status' {state}  'cloud:login' {id, resumed}  'cloud:logout' {id, reason}  'cloud:sync' {phase, …}  'cloud:conflict' {slot}
+// 온라인 (core/online.js, docs/specs/online.md):
+//  'online:flushed' {sent:[{board, rank, total, best}], dropped, left}   기기 대기열에 두었던 결과를 보냄 (front/arcade.js 가 토스트)
 export class EventBus {
   constructor() { this.map = new Map(); }
   on(evt, fn) {

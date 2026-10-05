@@ -80,7 +80,7 @@ def seam_metrics(y, ls, le, sr):
     """루프 이음매 지표 (디코드된 PCM, 재생 순서 … y[le-1] → y[ls] …)
     jump: 이음매 1차 차분 / 루프 내부 1차 차분 99.9 백분위
     hf:   고역(2차 차분) 이음매 값 / 내부 99.9 백분위
-    match_db: 이음매 직전 0.5 s 의 y[le-W:le] 와 y[ls-W:ls] 의 SNR (같은 음악 → 클수록 좋음)
+    match_db: 이음매 직전 0.2 s 의 y[le-W:le] 와 y[ls-W:ls] 의 SNR (같은 음악 → 클수록 좋음)
     rms_db: 이음매 앞뒤 50 ms RMS 차 (dB) 와 내부 같은 지표의 95 백분위"""
     y = y.astype(np.float64)
     body = y[ls:le]
@@ -90,7 +90,7 @@ def seam_metrics(y, ls, le, sr):
     d2 = np.abs(body[2:] - 2 * body[1:-1] + body[:-2]).max(axis=1)
     q999 = np.percentile(d2, 99.9) + 1e-9
     seam2 = max(np.abs(y[ls] - 2 * y[le - 1] + y[le - 2]).max(), np.abs(y[ls + 1] - 2 * y[ls] + y[le - 1]).max())
-    W = int(0.5 * sr)
+    W = int(0.2 * sr)
     a, b = y[le - W:le], y[ls - W:ls] if ls >= W else None
     match = 99.0
     if b is not None:
@@ -102,3 +102,32 @@ def seam_metrics(y, ls, le, sr):
     for s in range(ls + w, le - w, max(w, (le - ls) // 400)):
         rs.append(abs(rdb(y[s - w:s]) - rdb(y[s:s + w])))
     return dict(jump=float(seam / p999), hf=float(seam2 / q999), match_db=float(match), rms_db=float(rms_seam), rms_p95=float(np.percentile(rs, 95)))
+
+def game_ir(sr, sec=3.3, seed=1066):
+    """게임 엔진 makeIR(대성당 잔향) 포팅 — 시드 고정 난수, WebAudio ConvolverNode normalize=true 와 같은 정규화"""
+    rng = np.random.default_rng(seed)
+    n = int(sr * sec); pre = int(sr * 0.022)
+    ir = np.zeros((n, 2))
+    i = np.arange(pre, n); x = i / n; t = i / sr
+    k = 0.88 - 0.78 * x; env = (1 - x) ** 2 * np.exp(-t * 1.05)
+    for ch in range(2):
+        r = rng.random(len(i)) * 2 - 1
+        lp = np.empty(len(i)); v = 0.0
+        for j in range(len(i)):  # 계수가 시변인 1극 저역 통과 (시간이 갈수록 어두워짐)
+            v += (r[j] - v) * k[j]; lp[j] = v
+        ir[pre:, ch] = lp * env
+        for q in range(14):
+            p = pre + int(sr * (0.004 + rng.random() * 0.085))
+            if p < n: ir[p, ch] += (rng.random() * 2 - 1) * 0.7 * (1 - q / 14)
+    power = np.sqrt(np.sum(ir ** 2) / (2 * n))
+    scale = 0.00125 / max(power, 0.000125) * (44100 / sr)
+    return ir * scale
+
+def reverb(send, sr, ir, hp_hz=170, out=0.85):
+    """잔향: 송신 버스 → 고역 통과 170 Hz → 컨볼루션(채널별) → ×0.85 (게임 엔진 신호 흐름과 같다, 선형 시불변)"""
+    b, a = signal.butter(2, hp_hz / (sr / 2), 'high')
+    x = signal.lfilter(b, a, send, axis=0)
+    y = np.zeros_like(x)
+    for ch in range(x.shape[1]):
+        y[:, ch] = signal.fftconvolve(x[:, ch], ir[:, ch])[: len(x)]
+    return out * y

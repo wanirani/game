@@ -654,6 +654,7 @@ export class Player extends Entity {
 
   // ── 보조무기 ──
   useSub(world) {
+    if (world.rules?.noSub) { if (!this._noSubT || world.time - this._noSubT > 1.5) { this._noSubT = world.time; this.game?.toast?.('오늘의 도전 규칙: 보조 무기를 쓸 수 없다', '#ffb070', 1.4); } audio.sfx('menu_cancel', { vol: 0.4 }); return; }   // [hook:plat] docs/specs/online.md §2.5
     const id = this.run.sub;
     const sw = SUBWEAPONS[id];
     if (!sw || this.subCool > 0) return;

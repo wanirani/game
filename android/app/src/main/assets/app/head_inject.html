@@ -16,6 +16,7 @@
     platform: 'android',
     version: '{{VERSION}}',
     assets: (C && C.assets) || 'full',
+    audio: (C && C.audio) || null, // {music: 실은 녹음 곡 수, musicDropped, sfx} — 0 곡이면 녹음 음악 목록을 요청하지 않는다 (core/audio_rec.js)
     apiProxy: !!(api && B && typeof B.apiStash === 'function'),
     apiBase: api ? '/api' : null,
   };

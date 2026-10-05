@@ -124,6 +124,8 @@ export class RecBank {
   index() {
     if (this.idxP) return this.idxP;
     if (!codecOk('m4a')) { this.idxState = 'off'; this.why = 'codec'; return (this.idxP = Promise.resolve(null)); }
+    const app = hasWin ? window.__BN_APP : null;   // APK 에 녹음 곡을 하나도 싣지 않았으면 (pack_web.py) 목록을 요청하지 않는다
+    if (app && app.audio && !app.audio.music) { this.idxState = 'off'; this.why = 'apk'; return (this.idxP = Promise.resolve(null)); }
     this.idxState = 'loading';
     this.idxP = fetchJson(MUSIC_DIR + 'index.json').then((ix) => {
       const ok = ix && typeof ix === 'object' && ix.tracks && typeof ix.tracks === 'object';
@@ -209,7 +211,7 @@ export class RecBank {
     if (this.bytes + bytes > this.cap) { this.trim(new Set([k]), true); if (this.bytes + bytes > this.cap) { if (!want) return null; this.failed.set(k, 'cap'); return null; } }
     const fr = Number(this.idx?.rate) || 48000, pr = Math.max(0, Number(t.priming) || 0), dur = Number(t.duration) || buf.duration;
     const lead = buf.duration - dur;
-    const off = pr > 0 && lead >= (pr / fr) * 0.5 ? Math.min(pr / fr, lead) : 0;   // 브라우저가 프라이밍을 자르지 않았다
+    const off = pr > 0 && lead >= (pr / fr) * 0.5 ? Math.min(pr / fr, buf.duration * 0.5) : 0;   // 브라우저가 프라이밍을 자르지 않았다
     const loop = t.loop !== false;
     let ls = (Number(t.loopStart) || 0) + off, le = (Number.isFinite(+t.loopEnd) && +t.loopEnd > 0 ? +t.loopEnd : dur) + off;
     le = Math.min(le, buf.duration);

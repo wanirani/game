@@ -50,7 +50,7 @@ export function rollEquipDrop(world, level, opts = {}) {
 /** 촛불/촛대 */
 export function rollCandleLoot(world, big) {
   const diff = world.diff;
-  const r = Math.random();
+  const r = world.rng ? world.rng.next() : Math.random();   // [hook:plat] 일일 도전 시드 (game/world.js rng)
   const lv = stageLv(world);
   if (big) {
     if (r < 0.1) return [{ type: 'sub', data: { id: pick(SUB_ORDER) } }];

@@ -1,13 +1,16 @@
 // 효과음 레지스트리 검증 — 등록된 모든 효과음을 헤드리스 Chromium 의 OfflineAudioContext 로 하나씩 렌더해 검사한다.
-// 사용: node tools/test_sfx.mjs [--only a,b] [--levels] [--json 파일]
-//  --levels  이름별 피크·단기 RMS·길이·노드 수 표 출력 (음량 보정용)
-//  --json    결과 전체를 파일로 저장
+// 사용: node tools/test_sfx.mjs [--only a,b] [--levels] [--json 파일] [--calibrate]
+//  --levels     이름별 피크·단기 RMS·길이·노드 수 표 출력 (음량 보정용)
+//  --json       결과 전체를 파일로 저장
+//  --calibrate  녹음 샘플 음량(g)을 합성음과 같은 크기가 되게 맞춰 assets/audio/sfx/index.json 에 쓴다 (tools/audio/sfx/build_sfx.py 뒤에)
 // 검사 항목
 //  1. 레지스트리: 내장 73종(§1.9 표의 '76' 은 오기, 목록은 73개 +_default) + 체감 45종(sfx_feel.js) + 동료 31종(audio_companions.js 가 하나라도 등록했으면 전부 필수), 이름 충돌 없음
 //  2. sfx_feel.js 가 audio.js 를 import 하지 않음 (순환 금지)
 //  3. API: defineSfx(name, def, vol) / SFX_KIT {T, N, R} / fn(S, H) 의 H = {T, N, FM, ARP, BOOM, CRACKLE, mtof, R} / audio 도우미
 //  4. 체감 예산: 100ms 창 상한(10·8·6), prio 예외, hit* 7개 이상이면 재질 레이어 생략, stopName
 //  5. 렌더: 예외·NaN 없음, 무음 아님, 클리핑 없음, 꼬리가 사라짐(멈추지 않는 소리 없음), 길이·노드 수 예산, 체감 효과음 음량 범위
+//  6. 녹음 샘플 (assets/audio/sfx/index.json, 헤드리스는 ogg 로 푼다): 매핑된 이름이 모두 등록된 효과음, 파일이 모두 있음, 합계 ≤ 3 MB,
+//     샘플을 얹은 렌더도 5 의 검사 + 단기 RMS 가 합성음만일 때의 0.6~1.6배 (같은 호출 음량에서 크기가 크게 달라지지 않게)
 import { chromium } from 'playwright-core';
 import { start } from './serve.mjs';
 import fs from 'node:fs';
@@ -180,6 +183,41 @@ const res = await page.evaluate(async ({ only, FEEL }) => {
     const part = names.slice(i, i + 8), rs = await Promise.all(part.map(one));
     part.forEach((n, j) => { out.renders[n] = rs[j]; });
   }
+  // ── 녹음 샘플: 같은 렌더에 샘플 뱅크를 얹어 잰다 (bankOf(name, g, s, 변형 번호)) ──
+  out.smp = { renders: {}, missing: [], unknown: [], bytes: 0, err: null };
+  try {
+    const r = await fetch('/assets/audio/sfx/index.json');
+    if (!r.ok) throw new Error('index.json ' + r.status);
+    const ix = await r.json(); out.smp.index = ix;
+    const dc = new OfflineAudioContext(1, 1, SR), bufs = {};
+    for (const [id, f] of Object.entries(ix.files)) {
+      for (const fmt of ix.formats) { const rr = await fetch(`/assets/audio/sfx/${id}.${fmt}`); if (!rr.ok) { out.smp.missing.push(`${id}.${fmt}`); continue; } out.smp.bytes += (await rr.clone().arrayBuffer()).byteLength; if (fmt === 'ogg') bufs[id] = { buf: await dc.decodeAudioData(await rr.arrayBuffer()), off: 0 }; }
+    }
+    const pick = (only ? Object.keys(ix.sfx).filter((n) => only.includes(n)) : Object.keys(ix.sfx));
+    for (const n of pick) if (!Object.prototype.hasOwnProperty.call(SFX, n)) out.smp.unknown.push(n);
+    const oneS = async (name, d, v) => {
+      const bank = { sample: (n) => (n === name ? { bufs: [bufs[d.f[v]]], g: d.g, s: d.s, r: d.r || 1 } : null) };
+      try {
+        const dry = new Engine(new OfflineAudioContext(2, 4410, SR)); dry.bank = bank; dry.sfx(name, { delay: DELAY });
+        const ent = dry.live[dry.live.length - 1], len = ent ? ent.end - ent.st - DELAY - 0.05 : 0;
+        const oc = new OfflineAudioContext(2, Math.ceil(SR * Math.min(9, DELAY + len + 3.8)), SR);
+        const eng = new Engine(oc); eng.setVolumes(0.6, 0.8); eng.bank = bank;
+        eng.sfx(name, { delay: DELAY });
+        return { len: +len.toFixed(3), ...stat(await oc.startRendering()) };
+      } catch (e) { return { err: String(e && e.stack || e) }; }
+    };
+    for (const n of pick) {
+      const d = ix.sfx[n];
+      if (!Object.prototype.hasOwnProperty.call(SFX, n) || !d.f.every((id) => bufs[id])) continue;
+      const vs = [];
+      for (let v = 0; v < d.f.length; v++) vs.push(await oneS(n, d, v));
+      const solos = [];
+      for (let v = 0; v < d.f.length; v++) solos.push(await oneS(n, { ...d, g: 1, s: 0 }, v)); // 샘플만 (g=1) — 보정용
+      const okS = solos.filter((x) => !x.err && x.st > 0);
+      const solo = okS.length ? { st: Math.exp(okS.reduce((a, x) => a + Math.log(x.st), 0) / okS.length) } : solos[0]; // 변형들의 기하 평균
+      out.smp.renders[n] = { vs, solo };
+    }
+  } catch (e) { out.smp.err = String(e && e.message || e); }
   return out;
 }, { only, FEEL }).catch(async (e) => {
   console.log('  ✗ 페이지 평가 실패: ' + String(e && e.message || e).split('\n').slice(0, 3).join(' | '));
@@ -225,6 +263,41 @@ for (const [n, r] of Object.entries(res.renders)) {
 }
 for (const e of pageErrs) fail(e);
 
+// ── 녹음 샘플 판정 (+ --calibrate: g 를 합성음 크기에 맞춰 index.json 에 쓴다) ──
+const SM = res.smp;
+let smpN = 0;
+const calib = {};
+if (SM.err) fail('녹음 샘플: ' + SM.err);
+else {
+  for (const m of SM.missing) fail(`녹음 샘플 파일 없음: ${m}`);
+  for (const n of SM.unknown) fail(`녹음 샘플 매핑이 등록되지 않은 효과음 이름: ${n}`);
+  if (SM.bytes > 3 * 1048576) fail(`녹음 샘플 합계 ${(SM.bytes / 1048576).toFixed(2)} MB > 3 MB`);
+  for (const [n, { vs, solo }] of Object.entries(SM.renders)) {
+    const base = res.renders[n];
+    const d = SM.index.sfx[n];
+    for (const [i, r] of vs.entries()) {
+      if (r.err) { fail(`${n}[샘플 ${i}]: 렌더 오류 ${r.err.split('\n')[0]}`); continue; }
+      if (r.bad) fail(`${n}[샘플 ${i}]: 비정상 샘플 ${r.bad}개`);
+      if (r.peak < 0.003) fail(`${n}[샘플 ${i}]: 무음`);
+      if (r.peak > 1.05) fail(`${n}[샘플 ${i}]: 클리핑 (피크 ${r.peak.toFixed(3)})`);
+      if (r.tail > 0.003) fail(`${n}[샘플 ${i}]: 소리가 끝나지 않음`);
+      const k = base && !base.err ? r.st / base.st : 1;
+      if (!args.calibrate && (k < 0.6 || k > 1.6)) fail(`${n}[샘플 ${i}]: 음량이 합성음과 너무 다름 (단기 RMS ${r.st.toFixed(3)} / 합성 ${base.st.toFixed(3)} = ${k.toFixed(2)}배)`);
+    }
+    smpN++;
+    // 보정: 합성음 몫 s 를 남기고 나머지 에너지를 샘플이 채우게 (비상관 합) — g = 합성 RMS × √(1−s²) / 샘플(g=1) RMS
+    if (base && !base.err && solo && !solo.err && solo.st > 1e-4) calib[n] = +Math.min(4, Math.max(0.05, (base.st * Math.sqrt(Math.max(0, 1 - d.s * d.s))) / solo.st)).toFixed(3);
+    if (args.levels) console.log(`smp    ${n.padEnd(17)} 합성 ${base?.st?.toFixed(3)}  샘플+합성 ${vs.map((r) => r.st?.toFixed(3)).join('/')}  (g ${d.g}, s ${d.s}${calib[n] ? `, 보정 g ${calib[n]}` : ''})`);
+  }
+}
+if (args.calibrate && !SM.err) {
+  const f = path.join(root, 'assets/audio/sfx/index.json');
+  const ix = JSON.parse(fs.readFileSync(f, 'utf8'));
+  for (const [n, g] of Object.entries(calib)) ix.sfx[n].g = g;
+  fs.writeFileSync(f, JSON.stringify(ix, null, 1) + '\n');
+  console.log(`--calibrate: 녹음 샘플 음량 ${Object.keys(calib).length}종을 ${path.relative(root, f)} 에 썼다`);
+}
+
 if (args.levels) {
   const rows = Object.entries(res.renders).filter(([, r]) => !r.err).sort((a, b) => group(a[0]).localeCompare(group(b[0])) || a[0].localeCompare(b[0]));
   console.log('group  name              peak    st      len    src  nodes');
@@ -233,7 +306,7 @@ if (args.levels) {
 if (args.json) fs.writeFileSync(args.json === true ? '/tmp/test_sfx.json' : String(args.json), JSON.stringify({ fails, warns, infos, renders: res.renders }, null, 1));
 
 const cnt = (g) => Object.keys(res.renders).filter((n) => group(n) === g).length;
-console.log(`효과음 ${played}/${Object.keys(res.renders).length}종 렌더 (내장 ${cnt('base')} · 체감 ${cnt('feel')} · 동료 ${cnt('cmp')} · 기타 ${cnt('extra')}), API ${res.api.length ? '✗' : '✓'}, 예산 ${res.budget.length ? '✗' : '✓'}`);
+console.log(`효과음 ${played}/${Object.keys(res.renders).length}종 렌더 (내장 ${cnt('base')} · 체감 ${cnt('feel')} · 동료 ${cnt('cmp')} · 기타 ${cnt('extra')}), API ${res.api.length ? '✗' : '✓'}, 예산 ${res.budget.length ? '✗' : '✓'}, 녹음 샘플 ${smpN}종 (${(SM.bytes / 1024).toFixed(0)} KB)`);
 for (const m of infos) console.log('  · ' + m);
 for (const m of warns) console.log('  ! ' + m);
 for (const m of fails) console.log('  ✗ ' + m);

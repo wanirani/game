@@ -24,7 +24,7 @@ const CALIB = JSON.parse(fs.readFileSync(path.join(HERE, 'gm_calib.json'), 'utf8
 
 const PPQ = 1920, RATE = 44100;
 const LUFS = -16, LUFS_JINGLE = -15, TP_MAX = -1.0, BUDGET_MB = 30;
-const REV_CC = 140;           // CC91 = rev × 140 (rev 0.55 → 77 ≈ 젖은/마른 −10 dB, FluidSynth room 0.82)
+const REV_CC = 140;           // MIDI 내보내기용 CC91 = rev × 140 (렌더는 rev 값으로 컨볼루션 잔향 송신을 직접 만든다)
 const JINGLES = new Set(['victory', 'gameover']);
 // 비트레이트 (kbps) — 조용하고 단순한 곡은 낮춰 용량 예산(30 MB)을 지킨다
 const KBPS = { default: 96, prologue: 80, story: 80, sad: 80, church: 80, inn: 80, gameover: 80, worldmap2: 80, hub: 88, shop: 88, minigame: 88, credits: 88, ending: 88, s02: 88, s06: 88, s10: 88, s14: 88, s18: 88 };
@@ -207,6 +207,7 @@ async function main() {
       // 게임 엔진 리드 딜레이 재현: 지연 = min(1.5, 0.75박) (곡 기본 bpm), 송신은 채널별 dly (CC7 에 √(dly/dmax) 로 반영)
       delay: dlyParts.length ? { time: Math.min(1.5, (60 / T.comp.bpm) * 0.75), gain: dmax, chans: Object.fromEntries(dlyParts.map((p) => [p.mch, Math.sqrt(p.dly / dmax)])) } : null,
       drums: T.parts.filter((p) => p.drum).map((p) => p.mch),
+      rev: Object.fromEntries(T.parts.map((p) => [p.mch, p.rev])),
       parts: T.parts.map((p) => ({ cid: p.cid, inst: p.inst, gm: p.drum ? `kit ${p.kit} ${p.name}` : `${p.prog} ${p.name}`, mch: p.mch, compiled: p.compiled, midi: p.notes.length, dedup: p.dedup || 0, cc7: p.cc7, cc91: p.cc91, cc93: p.cc93, cc10: p.cc10, lanes: p.lanes })),
     };
     const sp = path.join(BUILD, 'spec', `${T.id}.json`);

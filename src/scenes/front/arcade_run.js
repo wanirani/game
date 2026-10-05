@@ -10,6 +10,12 @@
 //    정할 때 미리 받는다. 아직 오지 않았으면 createBoss 가 대역(PendingBoss)을 돌려주고, 등장 연출 동안 진짜 보스로 바뀐다.
 //  - 결과·랭크 글자는 피 글씨(bloodText). 일시정지·결과는 uiScale 장면 (탭 대상 ≥ 44 CSS px, 기기별 글리프 안내)
 //  - 게임플레이 위 모드 표시는 hudLayout 의 기믹 게이지 줄에 둔다 (터치: 가운데 위 시스템 버튼 아래)
+//  - 온라인 (docs/specs/online.md §4): 시작할 때 로그인 중이면 ONLINE.startRun(보드) 를 기다리지 않고 부른다. 정산 화면이 제출하고
+//    '제출 중… / N위 (전체 M명) / 새 최고 기록!' 또는 오프라인·로그인 안내를 표의 '온라인 순위' 줄에 보여 준다 (기기 기록은 그대로).
+//    순위에 오르는 판: 보스 러시·연습·일일은 클리어, 서바이벌은 늘. 연습·일일은 영웅을 10Hz 로 기록해 고스트를 함께 올린다
+//    (game/ghost.js). 시작 때 고른 고스트(cfg.ghost: 1위·내 최고)는 반투명 실루엣으로 같은 경과 시간(run.time)에 그린다.
+//  - 일일 도전(cfg.daily): 규칙의 난이도 배율·월드 규칙·시드는 임시 세이브(state.arcade)로 World 가 만들 때 읽는다 (arcade.js
+//    buildArcadeState → game/world.js). 이 장면은 '어둠' 규칙의 시야 가림(화면 비네트, 그라데이션은 한 번 구운 그림)만 그린다
 import { Scene, TILE } from '../../core/game.js';
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
@@ -37,7 +43,9 @@ import { DIFFICULTIES, getDiff } from '../../data/difficulty.js';
 import {
   ARCADE_MODES, LEVEL_PRESETS, COURSES, courseBosses, endArcade, arenaBosses, p2Known, sanitizeCfg, practiceStages, buildArcadeState,
 } from './arcade.js';
-import { frame, menuItem, fmtClock, portraitIn, qualifies, heading, kenBurns, shade, bossRushBests, DIM } from './common.js';
+import { frame, menuItem, fmtClock, portraitIn, qualifies, heading, kenBurns, shade, bossRushBests, DIM, puppet } from './common.js';
+import * as ONLINE from '../../core/online.js';
+import { GhostRecorder, GhostPlayer, decodeGhost } from '../../game/ghost.js';
 
 // 서바이벌에 소환하지 않는 적: 생성기·위장·보너스 적 + 물이 있어야 싸울 수 있는 적(투기장엔 물이 없음). def.noArena 도 제외
 const NO_SPAWN = new Set(['medusa_spawner', 'mimic', 'golden_bat', 'killer_fish']);
@@ -69,6 +77,36 @@ function safeColumns(map) {
   return out.length ? out : null;
 }
 
+// ── 일일 도전 '어둠' 규칙: 영웅 둘레만 보이는 시야 (구멍 그림은 한 번만 굽는다 — 프레임마다 그라데이션을 만들지 않는다) ──
+const DARK_A = 0.93, DARK_C = `rgba(2,0,6,${DARK_A})`;
+let darkSpr = null;
+function darkSprite() {
+  if (darkSpr) return darkSpr;
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const x = c.getContext('2d');
+  const g = x.createRadialGradient(128, 128, 128 * 0.32, 128, 128, 128);
+  g.addColorStop(0, 'rgba(2,0,6,0)'); g.addColorStop(0.55, 'rgba(2,0,6,0.55)'); g.addColorStop(1, DARK_C);
+  x.fillStyle = g; x.fillRect(0, 0, 256, 256);
+  return (darkSpr = c);
+}
+/** 화면 좌표: 영웅 가슴 둘레 반지름 R(줌 반영) 바깥을 어둡게 */
+function drawDark(ctx, w, vw, vh) {
+  const p = w.player, cam = w.camera;
+  if (!p || !cam) return;
+  const s = cam.toScreen(p.cx, p.cy), R = 250 * (cam.zoom || 1);
+  const x0 = s.x - R, y0 = s.y - R, x1 = s.x + R, y1 = s.y + R;
+  const t = clamp(y0, 0, vh), b = clamp(y1, 0, vh), l = clamp(x0, 0, vw), r = clamp(x1, 0, vw);
+  ctx.save();
+  ctx.fillStyle = DARK_C;
+  if (t > 0) ctx.fillRect(0, 0, vw, t);
+  if (b < vh) ctx.fillRect(0, b, vw, vh - b);
+  if (b > t && l > 0) ctx.fillRect(0, t, l, b - t);
+  if (b > t && r < vw) ctx.fillRect(r, t, vw - r, b - t);
+  ctx.drawImage(darkSprite(), x0, y0, 2 * R, 2 * R);
+  ctx.restore();
+}
+
 class ArcadeRunScene extends Scene {
   get modeId() { return 'bossrush'; }
   enter({ cfg = null } = {}) {
@@ -84,6 +122,31 @@ class ArcadeRunScene extends Scene {
     g.world = this.world;
     this.patch();
     this.setup?.();
+    this.onlineStart();
+  }
+  /** 온라인: 런 시작(로그인 중일 때만, 기다리지 않음) · 연습/일일은 고스트 기록 + 고른 고스트 받기 */
+  onlineStart() {
+    this.ghost = null; this.rec = null;
+    try {
+      this.board = ONLINE.boardOf(this.cfg);
+      this.orun = ONLINE.startRun(this.board);
+      if (this.cfg.kind !== 'practice' || !this.board) return;
+      this.rec = new GhostRecorder(10);
+      const choice = this.cfg.ghost;
+      if (choice !== 'top' && choice !== 'mine') return;
+      ONLINE.pickGhost(this.board, choice).then((r) => {
+        if (this.game.world !== this.world || this.done) return;
+        if (!r.ok) { if (r.message) this.game.toast(r.message, '#9fd8ff', 2.4); return; }
+        const T = decodeGhost(r.data);
+        if (!T) { this.game.toast('고스트를 읽지 못했어요', '#9fd8ff', 2.4); return; }
+        const hero = CHARACTERS[r.hero] ? r.hero : this.cfg.charId;
+        let pup = null;
+        try { pup = puppet(hero, r.cls || null); } catch { try { pup = puppet(hero); } catch { pup = null; } }
+        const label = r.src === 'top' ? `1위 ${r.nick ?? ''}`.trim() : '내 최고';
+        this.ghost = new GhostPlayer(T, pup, label);
+        this.game.toast(`고스트: ${label} (${ONLINE.fmtMs(r.time)})`, '#9fd8ff', 2.4);
+      }).catch(() => {});
+    } catch (e) { console.warn('[arcade] online', e); }
   }
   /** 아케이드 메뉴를 거치지 않고 열렸다 (?scene=survival 등): 저장된 설정 + 주소 매개변수로 임시 세이브를 만든다 */
   directStart(cfg) {
@@ -174,6 +237,7 @@ class ArcadeRunScene extends Scene {
     this.phaseT += dt;
     this.tick?.(dt);
     w.update(dt);
+    if (this.rec && !this.done) this.rec.sample(w.run.time, w.player, w.roomId);   // 고스트 기록 (10Hz)
     // 안전장치: 월드가 죽은 플레이어를 목록에서 빼 버리는 경우에도 사망 연출·처리를 이어간다
     const p = w.player;
     if (p?.dead && !p.deathHandled && !w.entities.includes(p)) p.updateDeath?.(dt, w);
@@ -182,8 +246,11 @@ class ArcadeRunScene extends Scene {
     const w = this.world, vw = this.game.viewW, vh = this.game.viewH;
     if (!w) return;
     w.render(ctx);
+    if (this.ghost) { ctx.save(); w.camera.apply(ctx); this.ghost.draw(ctx, w, w.run.time); ctx.restore(); }
+    if (w.rules?.dark) drawDark(ctx, w, vw, vh);
     drawHUD(ctx, w, vw, vh);
     this.overlay?.(ctx, vw, vh);
+    if (this.ghost && !this.paused) this.ghost.marker(ctx, w, w.run.time, vw, vh, this.tagTop(vw, vh) + 60);
   }
   /** 모드 종료 → 결과 정산 */
   finish(cleared, reason = null) {
@@ -193,9 +260,29 @@ class ArcadeRunScene extends Scene {
     if (w.combo.n > 0) w.endCombo();
     w.syncRun();
     const res = this.results(cleared, reason);
+    res.online = this.onlinePayload(cleared, res);
     bus.emit('arcadeFinished', { kind: this.cfg.kind, cleared, reason, score: res.score, time: res.time, extra: res.extra ?? null, charId: this.cfg.charId, diff: this.cfg.diff, stageId: res.stageId });   // [hook:plat] 익명 통계 (core/telemetry.js)
     audio.stopMusic(0.5);
     this.game.go('arcadeResults', { ...res, kind: this.cfg.kind, cfg: this.cfg, charId: this.cfg.charId, cleared, reason }, { fadeTime: cleared ? 0.9 : 0.6 });
+  }
+  /**
+   * 정산 화면이 올릴 것: { h(런 손잡이), board, result, ghost, submit(순위에 오르는 판인가) }
+   * 보스 러시·연습·일일은 클리어한 판만 (시간 순위), 서바이벌은 웨이브가 있으면
+   */
+  onlinePayload(cleared, res) {
+    try {
+      const st = this.game.state, w = this.world, kind = this.cfg.kind;
+      const hero = st?.heroes?.[this.cfg.charId];
+      const submit = !!this.board && (kind === 'survival' ? (res.extra?.wave ?? 0) >= 1 : !!cleared);
+      const result = {
+        time: Math.round((kind === 'practice' ? w.run.time : this.clock) * 1000), score: res.score ?? 0,
+        hero: this.cfg.charId, cls: hero?.classId ?? '', level: hero?.level ?? this.P.lv, deaths: st?.stats?.deaths ?? 0,
+      };
+      if (kind === 'survival') result.wave = res.extra?.wave ?? 0;
+      if (res.rank) result.rank = res.rank;
+      const ghost = submit && this.rec ? this.rec.encode() : null;
+      return { h: this.orun ?? null, board: this.board, result, ghost, submit, daily: !!this.cfg.daily };
+    } catch (e) { console.warn('[arcade] online payload', e); return null; }
   }
   /** 모드 표시의 위쪽 끝 (논리 px): 데스크톱은 화면 위, 터치는 가운데 위 시스템 버튼(Ⅱ·가방) 아래의 기믹 게이지 줄 */
   tagTop(vw, vh) {
@@ -570,7 +657,11 @@ export class PracticeScene extends ArcadeRunScene {
     const w = this.world;
     w.finishStage = () => this.finish(true);
     w.banner = null;
-    this.call = { main: 'STAGE PRACTICE', sub: `제${w.stage.chapter}장 ${w.stage.name}`, color: '#5aa8ff', t: 0 };
+    const dl = this.cfg.daily;
+    if (dl) {
+      const mods = (dl.mods ?? []).map((m) => ONLINE.modName(m));
+      this.call = { main: 'DAILY CHALLENGE', sub: mods.length ? `규칙: ${mods.join(' · ')}` : `제${w.stage.chapter}장 ${w.stage.name}`, color: '#7ee0c0', t: 0 };
+    } else this.call = { main: 'STAGE PRACTICE', sub: `제${w.stage.chapter}장 ${w.stage.name}`, color: '#5aa8ff', t: 0 };
     this.phase = 'play';
   }
   tick(dt) { if (this.call) { this.call.t += dt / 2.4; if (this.call.t >= 1) this.call = null; } }
@@ -612,7 +703,7 @@ export class PracticeScene extends ArcadeRunScene {
     // 'PRACTICE' 꼬리표: 기믹 게이지 줄 오른쪽 (게이지·토스트·터치 시스템 버튼과 겹치지 않는 가운데 위)
     let y = 26;
     try { const m = hudLayout(this.world, vw, vh)?.meter?.(0); if (m && Number.isFinite(m.y)) y = m.y + 13; } catch { /* 무시 */ }
-    text(ctx, 'PRACTICE', vw / 2 + 108, y, { size: 13, align: 'left', weight: 900, family: FONT.logo, color: '#8ac8ff', ow: 3 });
+    text(ctx, this.cfg.daily ? 'DAILY' : 'PRACTICE', vw / 2 + 108, y, { size: 13, align: 'left', weight: 900, family: FONT.logo, color: this.cfg.daily ? '#7ee0c0' : '#8ac8ff', ow: 3 });
     if (this.call && !this.paused) this.bigCall(ctx, vw, vh, this.call.main, this.call.sub, this.call.color, this.call.t);
   }
 }
@@ -696,7 +787,45 @@ export class ArcadeResultsScene extends Scene {
     this.qual = qualifies(g, p.kind, this.final);
     audio.music(p.cleared ? 'victory' : 'gameover');
     endArcade(g);
+    this.onlineSubmit(p.online);
     this.prewarm();
+  }
+  /**
+   * 온라인 제출 (기다리지 않는다). this.onl = { state: 'sending'|'ok'|'queued'|'guest'|'login'|'offline'|'unavailable'|'error', … }
+   * 표에 '온라인 순위' 줄을 더한다 (순위에 오르는 판이 아니거나 이 환경에서 못 쓰면 줄 없음). 내 최고 고스트는 기기에도 남긴다
+   */
+  onlineSubmit(o) {
+    this.onl = null;
+    if (!o?.submit || !o.board) return;
+    try {
+      if (o.ghost && o.result?.time > 0) ONLINE.saveLocalGhost(o.board, o.result.time, o.ghost, o.result.hero, o.result.cls);
+      const st = o.h?.state;
+      if (st === 'unavailable' || st === 'none' || !st) return;
+      this.onl = { state: st === 'guest' ? 'guest' : 'sending' };
+      this.res.rows = [...(this.res.rows ?? []), ['온라인 순위', () => this.onlineText()]];
+      if (st === 'guest') return;
+      ONLINE.finishRun(o.h, o.result, o.ghost).then((r) => {
+        this.onl = r;
+        if (r.state === 'ok' && r.best && this.game.top === this) audio.sfx('levelup');
+      }).catch(() => { this.onl = { state: 'error' }; });
+    } catch (e) { console.warn('[arcade] online submit', e); this.onl = null; }
+  }
+  /** '온라인 순위' 줄 글 → [글, 색, 길게(가운데 한 줄)] */
+  onlineText() {
+    const o = this.onl;
+    if (!o) return ['-'];
+    switch (o.state) {
+      case 'sending': return ['제출 중…', DIM];
+      case 'ok': {
+        const rk = o.rank ? `${o.rank}위${o.total ? ` (전체 ${o.total}명)` : ''}` : o.total ? `100위 밖 (전체 ${o.total}명)` : '순위 밖';
+        return o.best ? [`★ 새 최고 기록! ${rk}`, '#ffe070'] : [`${rk} · 내 최고 기록이 더 좋아요`, '#cfe8ff'];
+      }
+      case 'queued': return ['오프라인 — 연결되면 자동으로 올려요', '#ffb070', true];
+      case 'guest': return ['로그인하면 순위에 오를 수 있어요', '#9fd8ff', true];
+      case 'login': return ['로그인이 만료되어 올리지 못했어요. 다시 로그인해 주세요', '#ffb070', true];
+      case 'offline': return ['시작할 때 연결되지 않아 이번 기록은 순위에 올리지 못했어요', '#ffb070', true];
+      default: return [o.message ?? '순위에 올리지 못했어요', '#ff9a8a', true];
+    }
   }
   /** 피 글씨 비트맵을 미리 굽는다 (첫 프레임·랭크 도장 프레임이 끊기지 않게). 실패해도 그릴 때 굽는다 */
   prewarm() {
@@ -727,8 +856,8 @@ export class ArcadeResultsScene extends Scene {
     this.left = true;
     const g = this.game, r = this.res;
     const entry = { score: this.final, mode: r.kind, charId: r.charId, diff: r.cfg?.diff, stageId: r.stageId, date: this.date, wave: r.extra?.wave, bosses: r.extra?.bosses, time: r.time };
-    if (this.qual) g.push('initials', { score: this.final, mode: r.kind, entry, onDone: () => g.go('highscore', { mode: r.kind, highlight: this.date, back: 'arcade' }) });
-    else g.go('arcade', { cfg: r.cfg });
+    if (this.qual) g.push('initials', { score: this.final, mode: r.kind, entry, onDone: () => g.go('highscore', { mode: r.kind, highlight: this.date, back: 'arcade', board: r.online?.submit ? r.online.board : null }) });
+    else g.go('arcade', { cfg: r.cfg?.daily ? { kind: 'daily', ghost: r.cfg.ghost } : r.cfg });
   }
   /** 배치 (UI px). 최소 720×400 에서도 표·랭크·안내가 겹치지 않는다 */
   layout() {
@@ -751,7 +880,7 @@ export class ArcadeResultsScene extends Scene {
   render(ctx) {
     const g = this.game, t = g.time, r = this.res;
     const L = this.layout(), { W, H, x, y, w } = L;
-    const M = ARCADE_MODES[r.kind] ?? ARCADE_MODES.bossrush;
+    const M = (r.cfg?.daily ? ARCADE_MODES.daily : ARCADE_MODES[r.kind]) ?? ARCADE_MODES.bossrush;
     kenBurns(ctx, assets.get(r.kind === 'practice' ? (STAGES[r.stageId]?.bg ?? 'bg/s_arena') : 'bg/s_arena'), W, H, t, { z0: 1.05, z1: 1.1 });
     ctx.fillStyle = 'rgba(6,2,10,0.74)'; ctx.fillRect(0, 0, W, H);
     shade(ctx, W, H, { top: 0.5, bottom: 0.6, vig: 0.8 });
@@ -766,8 +895,18 @@ export class ArcadeResultsScene extends Scene {
     frame(ctx, x, y, w, L.ph, { accent: M.color, glow: 0.6 });
     rows.slice(0, this.shown).forEach(([a, b], i) => {
       const yy = Math.round(L.rowY0 + i * L.rowStep);
-      text(ctx, a, x + 26, yy, { size: 16, color: '#e8dcc8', ow: 2 });
-      text(ctx, b, x + w - 26, yy, { size: 16, align: 'right', weight: 800, family: FONT.num, color: '#fff', ow: 2, maxWidth: w * 0.55 });
+      if (typeof b === 'function') {
+        // 온라인 순위 줄: 값이 바뀐다 (제출 중 → 순위). 긴 안내는 줄 전체 폭으로
+        const [v, col, wide] = b();
+        if (wide) text(ctx, v, x + w / 2, yy, { size: 15, align: 'center', weight: 800, color: col ?? '#fff', ow: 2, maxWidth: w - 40 });
+        else {
+          text(ctx, a, x + 26, yy, { size: 16, color: '#e8dcc8', ow: 2 });
+          text(ctx, v, x + w - 26, yy, { size: 16, align: 'right', weight: 800, color: col ?? '#fff', ow: 2, maxWidth: w * 0.62 });
+        }
+      } else {
+        text(ctx, a, x + 26, yy, { size: 16, color: '#e8dcc8', ow: 2 });
+        text(ctx, b, x + w - 26, yy, { size: 16, align: 'right', weight: 800, family: FONT.num, color: '#fff', ow: 2, maxWidth: w * 0.55 });
+      }
       ctx.fillStyle = 'rgba(232,200,114,0.12)'; ctx.fillRect(x + 22, yy + 10, w - 44, 1);
     });
     text(ctx, 'SCORE', x + 26, L.scoreY, { size: 18, weight: 900, family: FONT.num, color: DIM, ow: 2 });

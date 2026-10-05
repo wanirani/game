@@ -7,8 +7,10 @@ import { warnIfNoPepper } from './crypto.mts';
 import { changePassword, deleteAccount, login, logout, me, recover, signup } from './accounts.mts';
 import { deleteSlot, getMeta, getSlot, listSaves, parseSlot, putMeta, putSlot } from './saves.mts';
 import { ingest, stats } from './telemetry.mts';
+import { finishRun, getBoard, getDaily, getGhost, putNick, startRun } from './online.mts';
 
-type Handler = (c: Ctx, param: string) => Promise<Response>;
+/** param = 첫 번째 경로 조각, params = 모든 경로 조각 (정규식 그룹) */
+type Handler = (c: Ctx, param: string, params: string[]) => Promise<Response>;
 interface Route { name: string; re: RegExp; methods: Record<string, Handler> }
 
 const ROUTES: Route[] = [
@@ -35,6 +37,13 @@ const ROUTES: Route[] = [
   // 익명 통계 (docs/TELEMETRY.md): 묶음 받기 → 204 · 공개 요약 (식별 정보 없음, 짧게 캐시)
   { name: 'telemetry', re: /^\/api\/t$/, methods: { POST: (c) => ingest(c) } },
   { name: 'stats', re: /^\/api\/stats$/, methods: { GET: (c) => stats(c) } },
+  // 온라인 기록 (docs/specs/online.md): 런 시작·제출(로그인), 순위표·고스트·일일 도전(공개, 짧게 캐시), 별명(로그인)
+  { name: 'runs', re: /^\/api\/runs$/, methods: { POST: (c) => startRun(c) } },
+  { name: 'runs-finish', re: /^\/api\/runs\/finish$/, methods: { POST: (c) => finishRun(c) } },
+  { name: 'board', re: /^\/api\/boards\/([^/]+)$/, methods: { GET: (c, p) => getBoard(c, p) } },
+  { name: 'ghost', re: /^\/api\/ghosts\/([^/]+)\/([^/]+)$/, methods: { GET: (c, _p, ps) => getGhost(c, ps[0], ps[1]) } },
+  { name: 'daily', re: /^\/api\/daily$/, methods: { GET: (c) => getDaily(c) } },
+  { name: 'nick', re: /^\/api\/profile\/nick$/, methods: { PUT: (c) => putNick(c) } },
 ];
 
 /**
@@ -81,7 +90,9 @@ export async function handle(req: Request, context?: Context): Promise<Response>
   if (app) {
     for (const [k, v] of Object.entries(CORS_HEADERS)) res.headers.set(k, v);
     res.headers.set('Access-Control-Allow-Origin', app);
-    res.headers.set('Vary', 'Origin');
+    // 공개 캐시 응답의 Vary: Authorization 은 그대로 두고 Origin 을 더한다
+    const vary = (res.headers.get('vary') ?? '').split(',').map((v) => v.trim()).filter((v) => v && v.toLowerCase() !== 'origin');
+    res.headers.set('Vary', [...vary, 'Origin'].join(', '));
   }
   return res;
 }
@@ -93,10 +104,10 @@ async function route(req: Request, context: Context | undefined, fromApp: boolea
     try { path = new URL(req.url).pathname; } catch { path = ''; }
     if (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1);
     let route: Route | undefined;
-    let param = '';
+    let params: string[] = [];
     for (const r of ROUTES) {
       const m = r.re.exec(path);
-      if (m) { route = r; param = m[1] ?? ''; break; }
+      if (m) { route = r; params = m.slice(1).map((x) => x ?? ''); break; }
     }
     if (!route) return errorResponse(new ApiError('not_found', 404));
     routeName = route.name;
@@ -108,7 +119,7 @@ async function route(req: Request, context: Context | undefined, fromApp: boolea
     // 브라우저는 다른 사이트가 보낸 요청에 Sec-Fetch-Site: cross-site 를 붙인다. 이 API 는 같은 출처에서만 쓰므로 거절한다
     // (응답은 어차피 못 읽지만, 방문자 브라우저를 빌린 가입·로그인 시도·잠금 공격을 막는다. 안드로이드 앱 출처만 예외 — 위 APP_ORIGINS)
     if (!fromApp && (req.headers.get('sec-fetch-site') ?? '').trim().toLowerCase() === 'cross-site') return errorResponse(new ApiError('forbidden', 403));
-    return await h(new Ctx(req, context), param);
+    return await h(new Ctx(req, context), params[0] ?? '', params);
   } catch (e) {
     if (e instanceof ApiError) return errorResponse(e);
     // 요청 본문·토큰·IP 는 기록하지 않는다. 오류 종류와 가린 문구만 남긴다.

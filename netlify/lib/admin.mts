@@ -7,6 +7,9 @@ import { clearLocks, lockStatus } from './ratelimit.mts';
 import { now } from './runtime.mts';
 import type { Ctx } from './runtime.mts';
 import { normalizeId } from './validate.mts';
+import { parseBoard, pubEntry, readIndex, readRecord, removeUserFromBoard, userBoards } from './boards.mts';
+import { nickKey } from './nick.mts';
+import { setNick } from './online.mts';
 
 async function must(c: Ctx, rawId: string) {
   const id = normalizeId(rawId);
@@ -41,6 +44,8 @@ export async function adminShow(c: Ctx, rawId: string): Promise<Record<string, u
     recoverLock: await lock('recover'),
     slots,
     metaRev: meta?.metadata?.rev ?? 0,
+    nick: u.nick ?? null,
+    boards: (await userBoards(c, u.uid)).map((b) => b.id),
   };
 }
 
@@ -79,4 +84,43 @@ export async function adminResetPassword(c: Ctx, rawId: string): Promise<{ id: s
 export async function adminDelete(c: Ctx, rawId: string): Promise<void> {
   const u = await must(c, rawId);
   await purgeAccount(c, u);
+}
+
+// ── 온라인 순위표 (docs/ONLINE.md §운영) ──
+const boardOf = (raw: string) => {
+  const b = parseBoard(raw, now(), 'read');
+  if (!b) throw new Error(`보드 ID 형식이 아닙니다: ${raw} (예: practice:s01:normal, bossrush:0:hard, survival:normal, daily:20261005)`);
+  return b;
+};
+
+/** 순위표 보기 (운영자만 로그인 아이디를 함께 본다) */
+export async function adminBoard(c: Ctx, rawBoard: string, limit = 100): Promise<Record<string, unknown>> {
+  const b = boardOf(rawBoard);
+  const { idx } = await readIndex(c, b);
+  const list = idx.list.slice(0, Math.max(1, Math.min(limit, idx.list.length)));
+  const entries = await Promise.all(list.map(async (e, i) => {
+    const rec = await readRecord(c, b, e.u);
+    return { ...pubEntry(b.kind, e, i + 1), id: rec?.id ?? null, date: new Date(e.d).toISOString() };
+  }));
+  return { board: b.id, total: idx.total, entries };
+}
+
+/** 순위표에서 한 계정의 기록·고스트를 지운다. who = 순위(숫자) 또는 별명 */
+export async function adminRemoveEntry(c: Ctx, rawBoard: string, who: string): Promise<{ nick: string; id: string | null }> {
+  const b = boardOf(rawBoard);
+  const { idx } = await readIndex(c, b);
+  const e = /^\d{1,3}$/.test(who) ? idx.list[Number(who) - 1] : idx.list.find((x) => x.n.toLowerCase() === who.normalize('NFC').toLowerCase());
+  if (!e) throw new Error(`순위표에 없습니다: ${who}`);
+  const rec = await readRecord(c, b, e.u);
+  await removeUserFromBoard(c, b, e.u);
+  return { nick: e.n, id: rec?.id ?? null };
+}
+
+/** 별명 바꾸기. who = 지금 별명 또는 로그인 아이디, next 를 빼면 자동 별명 ('헌터#1234') */
+export async function adminRenameNick(c: Ctx, who: string, next?: string): Promise<{ id: string; from: string | null; to: string }> {
+  const rec = await c.store(STORES.nicks).get(nickKey(who), { type: 'json' }).catch(() => null);
+  const u = await must(c, typeof rec?.id === 'string' ? rec.id : who);
+  const from = typeof u.nick === 'string' ? u.nick : null;
+  const to = await setNick(c, u.id, u.uid, from, next === undefined ? null : next);
+  return { id: u.id, from, to };
 }
