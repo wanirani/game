@@ -49,7 +49,7 @@
 
 ## 5. 예산
 
-- APK 그림 단계는 45 MB 에 거의 닿아 있다. 새 채색 그림은 lo 사본 기준으로 작게 유지하고, 빌드 보고서의 그림 단계 수치를 보고한다. 넘치면 리드가 예산을 정한다(임의로 기준을 올리지 않는다).
+- APK 그림 단계는 45 MB 에 거의 닿아 있다 (→ 통합 뒤 리드가 48 MB 로 올렸다, §7 예산). 새 채색 그림은 lo 사본 기준으로 작게 유지하고, 빌드 보고서의 그림 단계 수치를 보고한다. 넘치면 리드가 예산을 정한다(임의로 기준을 올리지 않는다).
 
 ## 6. 작업 분담
 
@@ -63,7 +63,7 @@
 
 | 항목 | 결과 |
 |---|---|
-| 해금·순서 | `stages.js` s21 `side: true`, intro/outro 기본값(`s21_intro`/`s21_outro`), `STAGE_ORDER_P2` 끝에 s21, `SIDE_STAGES`·`isSideStage`. `next` 사슬 밖 — `town/worldmap.js` 가 `flags.p2_done`(두 엔딩) 이면 처음 지도를 열 때 `unlocked` 에 넣고 한 번 연출(`s21_revealed`, '외전 · 하늘 정원의 둥지'). 2부 엔딩 판정·`ENDING_STAGES`·`endingAfter` 는 그대로 (s21 은 엔딩으로 가지 않는다) |
+| 해금·순서 | `stages.js` s21 `side: true`, intro/outro 기본값(`s21_intro`/`s21_outro`), `STAGE_ORDER_P2` 끝에 s21, `SIDE_STAGES`·`isSideStage`. `next` 사슬 밖 — `town/worldmap.js` 가 `flags.p2_done`(두 엔딩 — 엔딩 대본 도중 앱을 닫은 세이브를 위해 엔딩 장면이 먼저 저장한 `ending_p2`·`ending_p2true` 도) 이면 처음 지도를 열 때 `unlocked` 에 넣고 한 번 연출(`s21_revealed`, '외전 · 하늘 정원의 둥지'). 2부 엔딩 판정·`ENDING_STAGES`·`endingAfter` 는 그대로 (s21 은 엔딩으로 가지 않는다) |
 | 세계 지도 | 이계 지도 노드 s21 (mapPos `{x:0.8, y:0}` — 17장 위쪽 구름 띠, 17→18 나선 길과 겹치지 않게), 17장에서 위로 휘어 오르는 은빛 점선 갈림길, 인장에 장 번호 대신 '외전' + 도는 점선 고리, 정보판 'SIDE STORY · 외전' · 외전/동료 칸. 나선 사슬(s14→s20)에는 들지 않는다 |
 | 진행 숫자 | 클리어해도 `progress.chapter` 를 올리지 않음(`results.js`) → NPC 장 대사·상점 단계·메뉴 '2부 · 20장 돌파' 그대로. 슬롯 요약의 가장 먼 장·서바이벌 적 순서·무한의 탑 순서 구간에서 뺀다 |
 | 표시 | '외전 하늘 정원의 둥지' (메뉴 `stageLabel`·아케이드·명예의 전당·일일/연습 호출), 모험 기록 칸 '외전'(열렸을 때만), 도감의 아르겐은 외전이 열렸거나 쓰러뜨렸을 때만, 성당 힌트 한 줄, 발소리 지면 stone |
@@ -72,5 +72,5 @@
 | 아케이드 | `BOSS_ORDER` 끝 b_argen (`STORY_BOSSES = 20`), 코스 5 '이계편 · 외전'(14장~외전, 8연전) · 6 '전 보스 연속 21연전' (`ex: true`). `exKnown(game)` = 코나미 · 2부 엔딩 본 적 · 슬롯 외전 해금 — 외전 코스·외전 연습 순위표·서바이벌 보스 웨이브(`arenaBosses(p2, ex)`)·무한의 탑 무작위 구간(`TowerPlanner` `lateBosses`, 41층 이후 → 첫 후보 45층)을 연다. 연습 목록은 슬롯 해금 그대로 |
 | 서버 | `gamedata.mts` `STAGE_LEVELS.s21 = 70`(→ `practice:s21:*` 보드), `P2_STAGES` + s21, `SIDE_STAGES`, `DAILY_STAGE_IDS`(외전 제외 — 일일 도전 순서·이미 정해진 날짜의 도전 그대로), `COURSE_COUNT = 7`; `runs.mts` 일일 도전이 `DAILY_STAGE_IDS` 를 쓴다. `validate.mts`·`online.mts` 는 바꿀 것 없음 (스테이지·보스 목록을 보지 않는다) |
 | 시험 | `tools/integration.mjs` s21 · s21_boss, `test_part2 --static` 외전 검사, `test_companion_state` 아르겐 행·범위, `test_companions` recruit 7, `test_mount` `ex_mt_argen`, `test_tower` lateBosses, `tools/online/test_online.mjs` STAGE_IDS 21 · 일일 외전 제외 · 코스 6/연습 s21 보드 |
-| 예산 | 새 그림 없음. 그래도 APK lo 그림 단계는 **47,202,026 B (45.02 MB) / 45.00 MB — 16,106 B 넘침** (EX-BOSS 뒤 ≈44.994 MB; 늘어난 것은 JS 약 22 KB — 대본·코드). 기준은 올리지 않았다 → 리드 결정 대기 (`/tmp/claude-0/plan/ex_requests.md`: 그림 변화 없는 PNG 무손실 재압축이면 −24.6 KB) |
+| 예산 | 새 그림 없음. 그래도 APK lo 그림 단계는 47,202,026 B (45.02 MB) 로 옛 기준 45.00 MB 를 16,106 B 넘쳤다 (EX-BOSS 뒤 ≈44.994 MB; 늘어난 것은 JS 약 22 KB — 대본·코드). **리드 결정 (2026-10-05): 그림 단계 기준 48 MB** (`build_web.mjs` `BUDGET.apkImageBytes` · `build_apk.sh` `APK_IMAGE_BUDGET_MB` · `pack_web.py --image-budget-mb` · MASTER_PLAN 검토 표 20행, APK 전체 75 MB 그대로). EX-VERIFY 빌드: lo 단계 47,202,152 B (45.02 MB) / 48.00 MB — 여유 약 2.98 MB, 원본(full) 단계 57.97 MB, 소리 포함 72.79 MB / 75 MB |
 | 도구 | `tools/balance.mjs` 끝 레벨 판정은 외전 앞(s20)에서 (s21 행은 정보) |

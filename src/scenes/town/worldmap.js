@@ -136,8 +136,10 @@ export class WorldMapScene extends Scene {
       queue.push(this.mkReveal('s20', 1));
     }
     // 외전 (docs/specs/ex_s21.md): 2부 엔딩(두 엔딩 모두 p2_done) 뒤 처음 지도를 열 때 열고 한 번 알린다. 이야기 진행(엔딩)과는 무관
+    //   p2_done 은 엔딩 대본 끝에서야 켜지므로, 엔딩 장면이 먼저 저장한 ending_p2·ending_p2true 도 본다 (엔딩 도중 앱을 닫은 세이브 — hub.js 와 같은 규칙)
+    const p2Ended = !!(F.p2_done || F.ending_p2 || F.ending_p2true);
     for (const id of SIDE_STAGES) {
-      if (!F.p2_done || F[`${id}_revealed`] || !REVEALS[id]) continue;
+      if (!p2Ended || F[`${id}_revealed`] || !REVEALS[id]) continue;
       if (!P.unlocked.includes(id)) P.unlocked.push(id);
       F[`${id}_revealed`] = true;
       queue.push(this.mkReveal(id, 1));
