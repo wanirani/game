@@ -45,7 +45,7 @@ FX_RANGE, FX_PREF = (0.58, 0.66), 0.62
 FY_RANGE, FY_PREF = (0.40, 0.58), 0.46
 QUALITY, Q_MIN, MAX_BYTES = 82, 70, 250 * 1024
 
-HEROES = ['kael', 'sera', 'victor', 'bran', 'lia', 'azel']
+HEROES = ['kael', 'sera', 'victor', 'bran', 'lia', 'azel', 'isolde']
 # 선택된 생성물마다 cutin_manifest.json 에 다음 값이 들어 있다 (원본 Kling 출력 3104x1312 기준 0..1 좌표):
 #   raw_face : 얼굴 중심 (코 부근)            raw_eye : 눈 반짝임을 넣을 눈 (보이는 쪽/밝은 쪽)
 #   retouch  : 글자처럼 보이는 잔무늬 제거 목록 (선택)
@@ -56,6 +56,7 @@ HEROES = ['kael', 'sera', 'victor', 'bran', 'lia', 'azel']
 COLORS = {
     'kael': ('#fff2b0', '#2a0a0e'), 'sera': ('#fff8d0', '#1c2440'), 'victor': ('#ffd070', '#7a1a1a'),
     'bran': ('#ffb060', '#2a3a6a'), 'lia': ('#ff4a6a', '#141018'), 'azel': ('#ff2a4a', '#141018'),
+    'isolde': ('#6ad0e0', '#1a2238'),
 }
 
 

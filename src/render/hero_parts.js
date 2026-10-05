@@ -1,7 +1,7 @@
 // 캐릭터 렌더 공용 부품
 //  - 색 캐시(sh/mx/ra) : 매 프레임 hex 파싱을 피하기 위한 메모이즈
 //  - 셰이딩 도형: capsule(원통형 음영 + 역광 림라이트 + 외곽선), ribbon(체인 → 천/머리카락/채찍 띠), smoothClosed(매끈한 외곽)
-//  - 무기 6계열 × 6단계 외형, 강화 발광(+7 발광 / +10 화염·번개 / +13 무지개), 채찍 끈
+//  - 무기 7계열(채찍·장검·대검·단검·총·지팡이·창) × 6단계 외형, 강화 발광(+7 발광 / +10 화염·번개 / +13 무지개), 채찍 끈
 //  - 날개(박쥐/천사/뼈/악마/까마귀/세라프), 오라 입자, 마법진
 // 모든 함수는 G.c(현재 ctx) 에 그린다. G.tint 가 있으면 단색 실루엣(잔상)으로만 그린다.
 import { TAU, clamp, lerp, shade, mix, hexToRgb } from '../core/math.js';
@@ -195,12 +195,16 @@ export function h01(n) { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; ret
 // 무기 로컬 좌표: 손잡이(쥔 곳)=원점, +x 방향이 칼끝/총구/지팡이 머리
 const BLADE_LEN = { sword: [48, 50, 52, 52, 54, 57], greatsword: [58, 61, 63, 64, 66, 70], dagger: [15, 18, 16, 15, 17, 19] };
 const MUZZLE = [17, 15, 20, 14, 17, 21];
-/** 무기 끝(칼끝·총구·지팡이 머리)까지 거리 */
+// 창: 자루 뒤끝 SPEAR_BUTT … 손잡이(0) … 물미(소켓) SPEAR_SOCK … 창끝 SPEAR_TIP[단계] (양손으로 쥐면 먼 손은 손잡이 뒤 render/hero.js SPEAR_GAP)
+const SPEAR_TIP = [60, 62, 64, 64, 66, 68];
+export const SPEAR_BUTT = -34, SPEAR_SOCK = 42;
+/** 무기 끝(칼끝·총구·지팡이 머리·창끝)까지 거리 */
 export function weaponReach(W) {
   const s = W.style - 1;
   if (W.type === 'sword' || W.type === 'greatsword' || W.type === 'dagger') return BLADE_LEN[W.type][s];
   if (W.type === 'gun') return MUZZLE[s] * 1.3;
   if (W.type === 'staff') return 32;
+  if (W.type === 'spear') return SPEAR_TIP[s] ?? 62;
   return 10;
 }
 export function muzzleY() { return -2; }
@@ -465,6 +469,74 @@ function paintWhipHandle(W) {
   if (s >= 5) gem(-3.8, 0, 0.9, W.gem);
 }
 
+/** 창 (이졸데, 6단계): 자루 + 뒤끝 물미 + 소켓 + 용 갈기 술 + 창날. 손잡이(쥔 곳)=원점, +x 가 창끝 */
+const SPEAR_SHAFT = ['#6a4a2a', '#5a3c22', '#3a3a46', '#2a262e', '#e8e4dc', '#1a1424'];
+const SPEAR_MANE = ['#c01828', '#6ad0e0', '#6ad0e0', '#c01828', '#ffd870', '#ff3a5a'];
+function paintSpear(W) {
+  const c = G.c, s = W.style, t = G.t, L = weaponReach(W), x0 = SPEAR_SOCK, B = SPEAR_BUTT;
+  const shaft = SPEAR_SHAFT[s - 1] ?? SPEAR_SHAFT[0], mane = s >= 3 && W.glowC ? W.glowC : SPEAR_MANE[s - 1] ?? SPEAR_MANE[0];
+  // 자루
+  roundRectPath(c, B, -1.15, x0 - B, 2.3, 1.1);
+  c.fillStyle = metalGradY(-1.15, 1.15, shaft); c.fill(); outline(shaft, 0.8);
+  if (!G.tint) {
+    // 두 손이 쥐는 곳의 감개 · 쇠띠
+    c.strokeStyle = ra(s === 5 ? '#c8a040' : '#1a1210', 0.75); c.lineWidth = 0.55;
+    c.beginPath();
+    for (const [a, b] of [[-3, 4], [-19, -10]]) for (let x = a; x < b; x += 1.6) { c.moveTo(x, -1.15); c.lineTo(x + 1, 1.15); }
+    c.stroke();
+    c.fillStyle = s >= 5 ? '#e8c872' : '#9a9aa4'; c.fillRect(9, -1.4, 1.2, 2.8); c.fillRect(25, -1.4, 1.2, 2.8);
+    if (s === 6) { c.save(); c.globalCompositeOperation = 'lighter'; c.fillStyle = ra(W.glowC || '#ff3a5a', 0.8); for (let x = -8; x < 36; x += 7) c.fillRect(x, -0.35, 3, 0.7); c.restore(); }
+  }
+  // 뒤끝 물미
+  c.beginPath(); c.moveTo(B + 0.6, -1.5); c.lineTo(B - 3.6, 0); c.lineTo(B + 0.6, 1.5); c.closePath();
+  c.fillStyle = metalGradY(-1.5, 1.5, W.hilt); c.fill(); outline(W.hilt, 0.6);
+  // 용 갈기: 소켓에서 자루를 따라 뒤로 흩날리는 술 세 가닥 (흔들림은 결정적 — 그리기 코드에 난수 없음)
+  for (let i = 0; i < 3; i++) {
+    const sw = Math.sin(t * 6.5 + i * 1.3) * 1.2, ex = x0 - 12 - i * 2.6, ey = 3.4 + i * 1.9 + sw;
+    c.beginPath(); c.moveTo(x0 - 0.5, -0.6 + i * 0.5);
+    c.quadraticCurveTo(x0 - 5, 1.2 + i * 0.6 + sw * 0.4, ex, ey);
+    c.quadraticCurveTo(x0 - 5.5, 2.6 + i * 0.8 + sw * 0.3, x0 - 0.5, 1 + i * 0.4);
+    c.closePath(); c.fillStyle = F(i === 1 ? sh(mane, 0.25) : mane); c.fill();
+  }
+  // 소켓
+  roundRectPath(c, x0 - 2.2, -2, 5.2, 4, 1);
+  c.fillStyle = metalGradY(-2, 2, W.hilt); c.fill(); outline(W.hilt, 0.7);
+  if (s >= 3) gem(x0 + 0.4, 0, 1.15, W.gem);
+  // 창날
+  const b = x0 + 3, col = W.blade;
+  const hw = [2.9, 3.0, 2.5, 3.2, 3.0, 3.4][s - 1] ?? 3;
+  c.beginPath();
+  if (s === 1) {   // 버들잎
+    c.moveTo(b, -1.3); c.quadraticCurveTo(b + (L - b) * 0.42, -hw * 1.35, L, 0); c.quadraticCurveTo(b + (L - b) * 0.42, hw * 1.35, b, 1.3);
+  } else if (s === 2) {   // 날개 창: 밑동 양쪽 귀
+    c.moveTo(b, -1.3); c.lineTo(b + 1.5, -hw - 2.6); c.lineTo(b + 3, -1.6); c.quadraticCurveTo(b + (L - b) * 0.5, -hw * 1.2, L, 0);
+    c.quadraticCurveTo(b + (L - b) * 0.5, hw * 1.2, b + 3, 1.6); c.lineTo(b + 1.5, hw + 2.6); c.lineTo(b, 1.3);
+  } else if (s === 3) {   // 곧은 용 송곳니
+    c.moveTo(b, -hw); c.lineTo(L * 0.86, -hw * 0.8); c.lineTo(L, 0); c.lineTo(L * 0.86, hw * 0.8); c.lineTo(b, hw);
+  } else if (s === 4) {   // 파르티잔: 가운데 날 + 휘어진 곁날
+    c.moveTo(b, -1.4); c.quadraticCurveTo(b + 2, -hw - 3.5, b - 1, -hw - 5.5); c.quadraticCurveTo(b + 5, -hw - 2.5, b + 6, -1.8);
+    c.lineTo(L * 0.82, -hw * 0.7); c.lineTo(L, 0); c.lineTo(L * 0.82, hw * 0.7); c.lineTo(b + 6, 1.8);
+    c.quadraticCurveTo(b + 5, hw + 2.5, b - 1, hw + 5.5); c.quadraticCurveTo(b + 2, hw + 3.5, b, 1.4);
+  } else if (s === 5) {   // 용익창: 금빛 날개 받침 위의 긴 날
+    c.moveTo(b, -1.5); c.quadraticCurveTo(b - 2, -hw - 4, b - 6, -hw - 5); c.quadraticCurveTo(b - 1, -hw - 1.5, b + 3, -hw * 0.9);
+    c.quadraticCurveTo(b + (L - b) * 0.6, -hw * 1.05, L, 0); c.quadraticCurveTo(b + (L - b) * 0.6, hw * 1.05, b + 3, hw * 0.9);
+    c.quadraticCurveTo(b - 1, hw + 1.5, b - 6, hw + 5); c.quadraticCurveTo(b - 2, hw + 4, b, 1.5);
+  } else {   // 6: 톱니 등날의 비대칭 날
+    c.moveTo(b, -hw);
+    for (let i = 0; i < 4; i++) { const xa = b + ((L * 0.8 - b) * i) / 4, xb = b + ((L * 0.8 - b) * (i + 1)) / 4; c.lineTo((xa + xb) / 2, -hw - 1.8); c.lineTo(xb, -hw * 0.9); }
+    c.quadraticCurveTo(L * 0.95, -hw * 0.7, L, hw * 0.15); c.quadraticCurveTo(L * 0.82, hw * 1.1, b, hw);
+  }
+  c.closePath();
+  c.fillStyle = metalGradY(-hw - 2, hw + 2, col); c.fill(); outline(col, G.olw * 0.9);
+  if (!G.tint) {
+    c.strokeStyle = ra(sh(col, -0.45), 0.8); c.lineWidth = 0.5;   // 가운데 능선
+    c.beginPath(); c.moveTo(b + 2, 0); c.lineTo(L - 3, 0); c.stroke();
+    c.strokeStyle = 'rgba(255,255,255,0.75)'; c.lineWidth = 0.5;
+    c.beginPath(); c.moveTo(b + 3, -hw * 0.55); c.lineTo(L - 4, -0.5); c.stroke();
+    if (s >= 5) { c.save(); c.globalCompositeOperation = 'lighter'; c.strokeStyle = ra(W.glowC || (s === 6 ? '#ff2a44' : '#8ae8ff'), 0.8); c.lineWidth = 0.7; c.beginPath(); for (let x = b + 4, i = 0; x < L - 6; x += 4.5, i++) { const y = (i % 2 ? -1 : 1) * hw * 0.3; c.moveTo(x, y - hw * 0.2); c.lineTo(x + 1.4, y); c.lineTo(x, y + hw * 0.2); } c.stroke(); c.restore(); }
+  }
+}
+
 /** 강화/희귀도 발광: 칼날 따라 + 불꽃/번개 + 무지개 (무기 로컬 좌표, 길이 L) */
 /** +13 무지개 발광: 무기 길이를 따라 흐르는 색상환 그라디언트 */
 export function prism(x0, y0, x1, y1, t, l = 70) {
@@ -541,6 +613,7 @@ export function drawWeapon(W, x, y, ang, opt) {
   else if (type === 'dagger') { paintSword(W, 'dagger'); weaponAura(W, weaponReach(W), 2, 0.55); }
   else if (type === 'gun') { c.scale(1.3, 1.3); paintGun(W, opt?.fire ?? 0); weaponAura(W, MUZZLE[W.style - 1], 1, 0.42); }
   else if (type === 'staff') { paintStaff(W); weaponAura(W, 36, 20, 0.9); }
+  else if (type === 'spear') { paintSpear(W); weaponAura(W, weaponReach(W), SPEAR_SOCK - 8, 0.75); }
   else if (type === 'whip') paintWhipHandle(W);
   c.restore();
 }

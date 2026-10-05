@@ -1,4 +1,4 @@
-// 캐릭터 렌더러 — 플레이어블 6인 · 직업 42종 · 장비 외형 · NPC 공용
+// 캐릭터 렌더러 — 플레이어블 7인 · 직업 49종 · 장비 외형 · NPC 공용
 // 영웅은 채색 컷아웃 퍼펫(hero_puppet.js, 에셋이 있는 캐릭터/직업)으로, 나머지·로딩 중·NPC 는 절차적 벡터 인형으로 그린다.
 // drawHero(ctx, p, world, opts)
 //   p: {cx, bottom, facing, anim, animT, move, moveT, atkSpeedMul, look, ch, vx, vy, onGround, rig, t, stats, charging, muzzleT, dashT,
@@ -15,7 +15,7 @@ import { VerletChain } from '../core/physics.js';
 import { TAU, clamp, lerp, ease } from '../core/math.js';
 import {
   G, sh, mx, ra, F, capsule, grad, fillGrad, outline, ellipse, glow, ribbonPath, smoothClosed, WS, h01, group, fl,
-  EL_COL, weaponReach, drawWeapon, drawLash, drawWhipCoil, drawWing, drawAuraMotes, drawMagicCircle, drawHalo, olc,
+  EL_COL, weaponReach, drawWeapon, drawLash, drawWhipCoil, drawWing, drawAuraMotes, drawMagicCircle, drawHalo, olc, SPEAR_BUTT,
 } from './hero_parts.js';
 import * as PUP from './hero_puppet.js';
 import { NPCS } from '../data/npcs.js';
@@ -35,6 +35,7 @@ const BLADE_DEF = {
   whip: ['#6a4424', '#5a3418', '#8a8e9a', '#b8bcc8', '#e8c872', '#8a0a1e'],
   gun: ['#5a5058', '#6a6a74', '#7a7a88', '#4a4a54', '#c8ccd8', '#d8b040'],
   staff: ['#7a5a3a', '#6a4a2a', '#8a8ea8', '#c8ccd4', '#f0e8d0', '#2a1a3a'],
+  spear: ['#d8dce8', '#dfe4f0', '#e8ecf6', '#c8ccd8', '#f4f6ff', '#c8c0d8'],   // 창날 (은빛) — 자루·술 색은 hero_parts.js paintSpear
 };
 const DEF_LOOK = { build: 'normal', skin: '#e8c2a0', hair: '#5a3a2a', hairStyle: 'short', outfit: 'villager', coat: 'short', primary: '#5a4a3a', secondary: '#3a2a1a', trim: '#8a7a5a', pants: '#3a3028', boots: '#2a1a10' };
 const col = (c, d) => (typeof c === 'string' && c ? c : d);
@@ -59,7 +60,7 @@ function weaponSpec(w, p) {
 function buildSpec(L, p) {
   const o = L.outfit || 'villager';
   const cid = p?.ch?.id || null;
-  const fem = L.fem ?? (cid ? cid === 'sera' || cid === 'lia' : FEM.has(o));
+  const fem = L.fem ?? (cid ? cid === 'sera' || cid === 'lia' || cid === 'isolde' : FEM.has(o));
   const kid = o === 'girl' || L.kid === true;
   const B = BUILD[L.build] ?? 1;
   const pr = col(L.primary, '#4a3a30'), se = col(L.secondary, sh(pr, -0.3)), tr = col(L.trim, '#b8a070');
@@ -111,7 +112,7 @@ function buildSpec(L, p) {
   K.off = K.W.type === 'dagger' || K.W.type === 'gun';
   K.auraC = K.aura?.color || '#b98cff';
   K.magicC = K.aura?.color || (K.W.element ? EL_COL[K.W.element] : o === 'nun' ? '#fff2b0' : '#b98cff');
-  K.trailC = L.trailColor || { azel: '#ff2a50', lia: '#b8a8ff', bran: '#ffa040', sera: '#ffe890', kael: '#ffd8a0', victor: '#ffc860' }[cid] || (K.W.type === 'greatsword' ? '#ffa040' : K.W.type === 'staff' ? '#ffe890' : '#a8ccff');
+  K.trailC = L.trailColor || { azel: '#ff2a50', lia: '#b8a8ff', bran: '#ffa040', sera: '#ffe890', kael: '#ffd8a0', victor: '#ffc860', isolde: '#8ae8ff' }[cid] || (K.W.type === 'greatsword' ? '#ffa040' : K.W.type === 'staff' ? '#ffe890' : '#a8ccff');
   return K;
 }
 const SPEC = new WeakMap();
@@ -300,6 +301,7 @@ function poseCharge(P, K, k, t) {
   if (w === 'whip') { P.a1 = -1.45; P.r1 = 0.96; P.w1 = -1.62; P.a2 = HP + 0.3; }
   else if (w === 'gun') { P.a1 = -0.06; P.r1 = 1; P.w1 = -0.05; P.a2 = 0.1; P.r2 = 0.86; P.w2 = -0.02; P.lean = 0.02; }
   else if (w === 'staff') { P.a1 = -1.5; P.r1 = 1; P.w1 = -HP; P.a2 = -1.2; P.r2 = 0.9; P.lean = -0.05; }
+  else if (w === 'spear') { P.a1 = 2.75; P.r1 = 0.5; P.w1 = 0.04 + sh2 * 0.05; P.lean = -0.12; P.two = 1; }   // 창을 허리 뒤로 당겨 드릴 찌르기를 모은다
   else { P.a1 = 2.45; P.r1 = 0.86; P.w1 = 2.95; P.a2 = 0.5; P.r2 = 0.8; if (w === 'greatsword') P.two = 1; if (w === 'dagger') { P.a2 = 2.7; P.w2 = 3.0; } }
 }
 /** 비공격 상태의 무기 쥐는 법 */
@@ -324,6 +326,14 @@ function holdFor(P, K, mode) {
     if (mode === 'air') { P.w1 = P.a1 + 0.2; }
   } else if (w === 'whip') {
     if (mode === 'idle') { P.a1 = HP - 0.12; P.r1 = 0.66; P.e1 = 1; } // 허리의 채찍에 손을 얹음
+  } else if (w === 'spear') {
+    // 창: 평소엔 창끝을 하늘로 세워 들고(뒤끝 물미가 땅 쪽), 달릴 때는 앞으로 낮춰 겨누며, 공격 대기·돌진은 양손으로 앞을 겨눈다
+    if (mode === 'run') { P.a1 = HP - 0.4 + (P.a1 - HP) * 0.3; P.r1 = 0.74; P.w1 = -0.3; }
+    else if (mode === 'air') { P.a1 = -0.25; P.r1 = 0.8; P.w1 = -0.95; }
+    else if (mode === 'dash') { P.a1 = 0.08; P.r1 = 0.95; P.w1 = 0.04; P.two = 1; }
+    else if (mode === 'crouch') { P.a1 = 0.55; P.r1 = 0.76; P.w1 = -0.22; }
+    else if (mode === 'stance') { P.a1 = 0.5; P.r1 = 0.7; P.w1 = -0.14; P.two = 1; }
+    else { P.a1 = HP - 0.55; P.r1 = 0.66; P.w1 = -HP + 0.12; }
   } else if (w === 'staff') {
     if (mode === 'run') { P.a1 = HP - 0.45 + (P.a1 - HP) * 0.3; P.r1 = 0.72; P.w1 = -2.15; }
     else if (mode === 'air') { P.a1 = -0.4; P.r1 = 0.8; P.w1 = -1.05; }
@@ -379,6 +389,16 @@ const AK = {
   cast: { cast: 1, R: { a1: -2.0, r1: 0.85, w1: -1.9, lean: -0.08, a2: 2.2 }, E: { a1: -0.3, r1: 1, w1: -0.5, lean: 0.18, a2: -0.12, r2: 0.9, f1x: 12, f2x: -10 } },
   cast_up: { cast: 2, R: { a1: 0.6, r1: 0.7, w1: -HP, py: -37, lean: 0.1 }, E: { a1: -1.5, r1: 1, w1: -1.6, a2: -1.25, r2: 0.95, lean: -0.1, hd: -0.35, py: -42 } },
 };
+// 창 (이졸데): 같은 자세 이름을 양손 자세로 덮는다 (movesets.js 의 anim 은 기존 이름 그대로 — 채색 퍼펫도 이 자세를 쓴다).
+// 찌르기는 칼 궤적 없이 찌르기 섬광만, 휘두르기는 양손 궤적. rise(위로 찌르기)·rehit(연속 찌르기)·drill(회전 드릴)은 attackPose 가 더한다
+const SPEAR_AK = {
+  thrust: { two: 1, R: { a1: 2.7, r1: 0.42, w1: 0.06, lean: -0.16, py: -40, f1x: 7, f2x: -11 }, E: { a1: -0.02, r1: 1, w1: -0.02, lean: 0.4, py: -35, f1x: 22, f2x: -15 }, streak: 1 },
+  crouch_stab: { two: 1, base: 'crouch', R: { a1: 2.6, r1: 0.45, w1: 0.1 }, E: { a1: 0.1, r1: 1, w1: 0.05, lean: 0.45 }, streak: 1 },
+  slash_wide: { two: 1, R: { a1: -2.6, r1: 0.9, w1: -2.75, lean: -0.22, py: -40 }, E: { a1: 1.25, r1: 1, w1: 1.95, lean: 0.42, py: -34, f1x: 18, f2x: -14 }, trail: 1 },
+  slash_down: { two: 1, R: { a1: -2.0, r1: 0.9, w1: -2.3, lean: -0.1 }, E: { a1: 0.9, r1: 1, w1: 1.1, lean: 0.3 }, trail: 1 },
+  launch: { two: 1, R: { a1: 1.7, r1: 0.85, w1: 2.4, py: -33, lean: 0.3 }, E: { a1: -1.35, r1: 1, w1: -1.45, py: -43, lean: -0.12, hd: -0.3, f1x: 8, f1y: -8 }, trail: 1 },
+};
+const SPEAR_GAP = 13;   // 양손 창: 먼 손은 손잡이 뒤 13px (hero_parts.js paintSpear 의 두 번째 감개 자리)
 const LEGK = ['px', 'py', 'f1x', 'f1y', 'f2x', 'f2y', 't1', 't2'];
 function keepLegs(P, B) { for (const k of LEGK) P[k] = B[k]; }
 
@@ -404,7 +424,8 @@ function setBase(P, p, K, kind) {
 
 /** 공격 자세 (t = 경과초 × 공격속도) */
 function attackPose(P, S, p, K, mv, t) {
-  const def = AK[mv.anim] || (K.W.type === 'whip' ? AK.lash : K.W.type === 'gun' ? AK.shoot : AK.slash_down);
+  const spear = K.W.type === 'spear';
+  const def = (spear && SPEAR_AK[mv.anim]) || AK[mv.anim] || (K.W.type === 'whip' ? AK.lash : K.W.type === 'gun' ? AK.shoot : AK.slash_down);
   const air = p.onGround === false;
   const ph = phaseAt(mv, t);
   S.atk = def; S.mv = mv; S.ph = ph.ph; S.u = ph.u; S.t = t; S.air = air;
@@ -416,11 +437,18 @@ function attackPose(P, S, p, K, mv, t) {
   if (def.gun) return gunPose(P, S, p, K, ph, def, kind);
   copyPose(PR, PB); Object.assign(PR, def.R); if (kind !== 'stance') keepLegs(PR, PB);
   copyPose(PE, PB); Object.assign(PE, def.E); if (kind !== 'stance') keepLegs(PE, PB);
+  if (spear && mv.rise) { PE.a1 -= 0.5; PE.w1 -= 0.55; PE.lean -= 0.18; PE.hd = -0.2; }   // 약간 위로 찌르기
   if (ph.ph === 0) lerpPose(P, PB, PR, ease.outCubic(ph.u));
   else if (ph.ph === 1) lerpPose(P, PR, PE, ease.outCubic(ph.u));
   else lerpPose(P, PE, PB, recoverEase(ph.u));
+  if (spear && mv.rehit && def.streak && ph.ph === 1) {
+    // 연속 찌르기: 판정이 다시 걸릴 때마다(rehit) 창이 끝까지 뻗고, 사이에는 반쯤 당긴다
+    const j = (1 - Math.cos(((ph.t - ph.h0) / mv.rehit) * TAU)) / 2;
+    P.r1 = lerp(1, 0.52, j); P.lean -= 0.1 * j; P.px -= 1.5 * j;
+    if (mv.drill) P.w1 += Math.sin(ph.t * 70) * 0.03;
+  }
   P.two = def.two ? 1 : 0; P.pvy = -46;
-  if (def.lash) S.lash = def.lash;
+  if (def.lash && K.W.type === 'whip') S.lash = def.lash;   // 채찍 끈은 채찍만 (창이 launch 자세를 빌려 써도 끈을 그리지 않는다)
   if (def.cast) { S.cast = def.cast; S.circle = ph.ph === 0 ? ph.u : ph.ph === 1 ? 1 : 1 - ph.u; }
 }
 function spinPose(P, S, p, K, ph, kind, air) {
@@ -451,6 +479,10 @@ function plungePose(P, S, p, K, ph) {
   copyPose(PR, PB); Object.assign(PR, { a1: -1.35, r1: 0.72, w1: -HP, a2: -1.2, r2: 0.72, lean: -0.05, f1x: 7, f1y: -16 });
   copyPose(PE, PB); Object.assign(PE, { a1: 1.28, r1: 0.44, w1: HP, a2: 1.2, r2: 0.46, lean: 0.06, hd: 0.4, f1x: 8, f1y: -22, f2x: -4, f2y: -15, t1: 0.6, t2: 0.9 });
   if (K.W.type === 'staff') Object.assign(PE, { a1: 0.95, r1: 0.7, w1: HP + 0.02, a2: 1.0, r2: 0.6 });
+  if (K.W.type === 'spear') {   // 급강하 찌르기: 머리 위로 들어 올린 창을 두 손으로 곧장 아래로 (창끝이 발보다 한참 아래)
+    Object.assign(PR, { a1: -1.45, r1: 0.8, w1: HP - 0.08, lean: -0.08 });
+    Object.assign(PE, { a1: 1.15, r1: 0.55, w1: HP + 0.03, lean: 0.04, hd: 0.45 });
+  }
   if (ph.ph === 0) lerpPose(P, PB, PR, ease.outCubic(ph.u));
   else if (ph.ph === 1) lerpPose(P, PR, PE, ease.outCubic(Math.min(1, ph.u * 5)));
   else lerpPose(P, PE, PB, ease.inOutQuad(ph.u));
@@ -541,7 +573,8 @@ function solveUpper(P, K, s) {
   s.e1x = IKO[0]; s.e1y = IKO[1]; s.h1x = IKO[2]; s.h1y = IKO[3];
   if (P.two) {
     // 양손 무기: 먼 손은 손잡이 아래쪽
-    const gx = s.h1x - Math.cos(P.w1) * 6.5, gy = s.h1y - Math.sin(P.w1) * 6.5;
+    const gap = K.W.type === 'spear' ? SPEAR_GAP : 6.5;
+    const gx = s.h1x - Math.cos(P.w1) * gap, gy = s.h1y - Math.sin(P.w1) * gap;
     ik(s.s2x, s.s2y, gx, gy, K.ua, K.fa, 1);
   } else ik(s.s2x, s.s2y, s.s2x + Math.cos(P.a2) * P.r2 * al, s.s2y + Math.sin(P.a2) * P.r2 * al, K.ua, K.fa, P.e2);
   s.e2x = IKO[0]; s.e2y = IKO[1]; s.h2x = IKO[2]; s.h2y = IKO[3];

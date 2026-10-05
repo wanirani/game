@@ -217,5 +217,28 @@
   "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qdgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpcc3BlY2lhbC1lZmZlY3Qvb3V0cHV0Lzk5OWFhZWRjLTcwODctNDM2NS1hMWUzLTA3YWRhZmIxYzYwOC84MTg3Nzk2OTQzNjk3Mzk3MzI0L3RlbXAzeWg3ZC5wbmc.origin?x-kcdn-pid=112372",
   "rejected": "close-up OK but eyes closed (breaks the eye-glint anchor); retried",
   "ref_url": "https://s15-kling.klingai.com/kimg/EMXN1y8qRQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBorYWdlbnRfdXBsb2FkLzE3OTA0Mjk4NTYvWnZOWmlaSTF1Uy9zZXJhLmpwZw.origin?x-kcdn-pid=112372"
+ },
+ "cutin_isolde": {
+  "group": "cutin",
+  "aspect_ratio": "21:9",
+  "generationId": "AX4J5VM602LZu4zCOasVpdFTDM2AO5cKmsnvolLEgerpWO_GSV9W6GVLKiIwNx1mvr0De8Z8",
+  "model": "kling-image-v3_0_omni",
+  "prompt": "see tools/puppet/kling_manifest_hero7.json isolde_cutin_v1 (candidate a)",
+  "file": "assets/cg/cutin_isolde.webp",
+  "tool": "image_to_image",
+  "attempt": 1,
+  "ref": "assets/portraits/isolde.webp",
+  "created": "2026-10-05T15:27:00Z",
+  "url": "https://s15-kling.klingai.com/kimg/EMXN1y8qfQoGdXBsb2FkEg55bGFiLXN0dW50LXNncBpjS2xpbmdBSV9Lb2xvcnNfS29sb3JzLXYzXzAtb21uaS12Mi1pMmktc3ItdmFlX2RfX2Y5YjBlNTdkXzE0ZThkODllY2RiZjVkNjFlYTYyZTRhOTQyNWNkMjYzNHp2YnUucG5n.origin?x-kcdn-pid=112372",
+  "url_note": "urlWithoutWatermark (no KlingAI watermark in the raw); the bottom 8% is still cut like the other cut-ins",
+  "raw_face": [
+   0.601,
+   0.259
+  ],
+  "raw_eye": [
+   0.615,
+   0.23
+  ],
+  "by": "H7-ART"
  }
 }

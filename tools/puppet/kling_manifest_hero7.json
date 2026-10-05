@@ -8,7 +8,11 @@
   "plan_images": 45
  },
  "uploads": {
-  "isolde_portrait_b.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qSwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBoxYWdlbnRfdXBsb2FkLzE3OTEyMTM3NzYvT2c1QzNwaTBPVy9wb3J0cmFpdF9iLmpwZw.origin?x-kcdn-pid=112372"
+  "isolde_portrait_b.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qSwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBoxYWdlbnRfdXBsb2FkLzE3OTEyMTM3NzYvT2c1QzNwaTBPVy9wb3J0cmFpdF9iLmpwZw.origin?x-kcdn-pid=112372",
+  "isolde_portrait.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qUAoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo2YWdlbnRfdXBsb2FkLzE3OTEyMTM5NTAvTUhjaVhnZ1RWVS9pc29sZGVfcG9ydHJhaXQuanBn.origin?x-kcdn-pid=112372",
+  "lia_assassin_side.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qUgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo4YWdlbnRfdXBsb2FkLzE3OTEyMTM5NTMvNEgyQ2xWRnd6TS9saWFfYXNzYXNzaW5fc2lkZS5qcGc.origin?x-kcdn-pid=112372",
+  "azel_dhampir_side.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qUgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo4YWdlbnRfdXBsb2FkLzE3OTEyMTQwODQvb0JNMGdNNllWTy9hemVsX2RoYW1waXJfc2lkZS5qcGc.origin?x-kcdn-pid=112372",
+  "isolde_lancer_side_v1b.jpg": "https://s15-kling.klingai.com/kimg/EMXN1y8qVwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo9YWdlbnRfdXBsb2FkLzE3OTEyMTQwODgvenh1UnN3V2drQi9pc29sZGVfbGFuY2VyX3NpZGVfdjFiLmpwZw.origin?x-kcdn-pid=112372"
  },
  "entries": [
   {
@@ -33,12 +37,56 @@
    ],
    "aspect_ratio": "auto",
    "img_resolution": "2k",
+   "picked": "b",
+   "prompt": "Edit 图片1. Keep the same young woman, the same pose, the same silver plate armour, the same navy cloth and cape, the same long spear with lightning in her hand, the same long silver-white braid, the same blood-moon background, composition, framing, lighting and painterly dark gothic fantasy style. REMOVE THE HELMET AND VISOR COMPLETELY: she is bare-headed, her whole face uncovered and clearly visible — a beautiful fierce young woman in her twenties with fair skin, a strong jaw, determined expression and glowing teal-green eyes, her silver-white hair swept back from her forehead into the single thick braid. On her head she wears only a slim silver circlet across her brow with two small swept-back silver dragon-wing ornaments at the temples that rise just above her hair; nothing covers her eyes, nose, cheeks or mouth. Remove the dragon tail completely: no tail anywhere, only the cape and the armoured legs. No helmet, no visor, no mask, no faceplate, no text, no letters, no watermark.",
+   "note": "OK — a·b 모두 투구 제거·얼굴 보임·은 서클릿+날개 장식·은발 땋은 머리·꼬리 없음. b 채택(날개 모양 장식이 단순해 게임 배율에서 실루엣이 읽힘, 명세의 날개 모양 장식에 가까움). a 는 용머리 장식. → assets/portraits/isolde.webp (fetch_pending+clean_watermark 와 같은 처리: 높이 1200 → 하단 5.5% 절단 → 800x1134 q82)"
+  },
+  {
+   "id": "isolde_lancer_side_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AVPS-9E1a0zYQ5pJiBoYfDTcjPXppv1xaT1CO36008H1GZpWRgA2uKYoPy6vwjm746R51w9Q",
+   "inputs": [
+    "lia_assassin_side.jpg (edit target: female walking side pose/framing)",
+    "isolde_portrait.jpg (identity/armour)"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": "-",
+   "prompt": "Edit 图片1. Keep the exact same walking side pose facing RIGHT in strict profile, the same arm and leg positions (the near arm hanging slightly behind the hip with a relaxed half-closed hand, the far arm swinging forward, legs in mid-stride), the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and soft lighting. Replace the woman with the young female dragon knight from 图片2: her fair face seen in profile with a fierce determined expression and teal-green eyes, her silver-white hair swept back from the forehead into one long thick braid that hangs straight down her back behind the shoulders to the waist (not over the arm), a slim silver circlet across her brow with a small swept-back silver wing ornament at the temple, her whole face fully visible. Tall, strong, athletic female knight build, a little taller and broader-shouldered than the woman in 图片1. Dress her in the knight armour of 图片2 seen from the side: a fitted polished silver-blue plate breastplate, a silver pauldron on the near shoulder engraved with a dragon-scale pattern, silver plate vambraces and articulated silver plate gauntlets, a dark navy padded gambeson under the armour, silver plate tassets over the hips, a long deep-navy cloth tabard skirt with thin silver trim edges, split at the front, reaching just below the knees and flaring back behind her legs with her stride, silver plate greaves and pointed armoured sabatons over dark navy leggings. Remove the red scarf, the face mask and the red sash. No weapon, no spear, no sword, nothing held in the hands, no cape, no cloak, no wings, no helmet, no tail, full body visible from the top of the head to the boots with margin, nothing cropped, no text, no watermark.",
+   "note": "FAILED: a 는 정면으로 걸어옴. b 는 옆으로 걷지만 몸통이 3/4 앞(가슴 정면)이고 땋은 머리가 먼 어깨 너머 가슴 앞으로 늘어짐(포니테일 체인은 머리 뒤로 흐르므로 자를 수 없음). 갑옷 디자인(용머리 견갑·은 판금·남색 자락·뾰족 사바톤)은 좋아서 재시도의 디자인 참고(image_3)로 씀"
+  },
+  {
+   "id": "isolde_cutin_v1",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "AX4J5VM602LZu4zCOasVpdFTDM2AO5cKmsnvolLEgerpWO_GSV9W6GVLKiIwNx1mvr0De8Z8",
+   "inputs": [
+    "isolde_portrait.jpg (identity)"
+   ],
+   "aspect_ratio": "21:9",
+   "img_resolution": "2k",
    "picked": null,
-   "prompt": "Edit 图片1. Keep the same young woman, the same pose, the same silver plate armour, the same navy cloth and cape, the same long spear with lightning in her hand, the same long silver-white braid, the same blood-moon background, composition, framing, lighting and painterly dark gothic fantasy style. REMOVE THE HELMET AND VISOR COMPLETELY: she is bare-headed, her whole face uncovered and clearly visible — a beautiful fierce young woman in her twenties with fair skin, a strong jaw, determined expression and glowing teal-green eyes, her silver-white hair swept back from her forehead into the single thick braid. On her head she wears only a slim silver circlet across her brow with two small swept-back silver dragon-wing ornaments at the temples that rise just above her hair; nothing covers her eyes, nose, cheeks or mouth. Remove the dragon tail completely: no tail anywhere, only the cape and the armoured legs. No helmet, no visor, no mask, no faceplate, no text, no letters, no watermark."
+   "prompt": "The same knight as in 图片1 (keep the identical face, silver-white hair in a long thick braid, slim silver circlet with swept-back silver wing ornaments, teal-green eyes, silver plate armour with navy cloth), redrawn as a brand-new close-up action illustration: Isolde Drachen, young female dragon knight, diving down from the sky and driving a very long silver dragon lance with a leaf-shaped spearhead diagonally forward across the frame, crackling cyan lightning coiling around the spear in the shape of a roaring dragon, a giant lightning dragon silhouette behind her, her braid and navy half-cape whipping in the wind, fierce battle cry. Extreme dynamic close-up for a fighting-game super-move cut-in, 21:9 ultra-wide cinematic framing, the character face and upper body fill the right half of the frame, head turned three-quarters toward the viewer, intense eyes at about 40% from the top of the image, weapon crossing the frame diagonally, strong motion, wind-blown hair and cloth, dramatic rim light in electric cyan, dark background with storm clouds, cyan sparks and ember particles, the left 45% of the image is darker negative space, painterly anime-influenced dark gothic fantasy illustration, high detail, sharp focus on the eyes, single character only, no helmet, no visor, no text, no letters, no logo, no watermark, no border, no frame."
+  },
+  {
+   "id": "isolde_lancer_side_v2",
+   "tool": "image_to_image",
+   "images": 2,
+   "generationId": "ARCoMJ_Ao9tdBv65Mg7_Q8DL6-hLJQVJAJDd6je7I_2IbD_HlBcM-0D0I2yBuEDP-kIamKue",
+   "inputs": [
+    "azel_dhampir_side.jpg (edit target: strict profile pose/framing)",
+    "isolde_portrait.jpg (face/hair)",
+    "isolde_lancer_side_v1b.jpg (armour design)"
+   ],
+   "aspect_ratio": "auto",
+   "img_resolution": "2k",
+   "picked": null,
+   "prompt": "Edit 图片1. Keep the exact same walking pose seen from exactly the same STRICT SIDE PROFILE facing RIGHT (we see her left side, NOT her front; her chest and face point to the right edge of the picture), the same arm and leg positions (the near arm hanging slightly behind the hip with a relaxed half-closed hand, the far arm swinging forward, legs in mid-stride), the same camera angle, the same framing, scale and position on the canvas, the same plain light-grey studio background, the same realistic painterly dark-fantasy game-art style and soft lighting. 图片2 is ONLY a reference for her face and hair, 图片3 is ONLY a reference for her armour design, neither is a reference for the camera angle. Replace the young man with the young female dragon knight of 图片2 and 图片3: her fair face in profile with a fierce determined expression and teal-green eyes, her silver-white hair swept back into one long thick braid that hangs down her BACK behind her shoulders (on the left side of the picture, trailing behind her), never in front of her chest and not over the arm; a slim silver circlet band across her brow with a swept-back silver wing ornament at the temple, her whole face visible. Tall, strong, athletic female build. Her armour exactly as in 图片3: polished silver plate breastplate, a silver pauldron on the near shoulder with a small dragon-head crest and dragon-scale engraving, silver plate vambraces and articulated silver plate gauntlets, a dark navy gambeson, silver plate tassets over the hips, a long deep-navy cloth tabard skirt with thin silver trim edges reaching just below the knees and flaring back behind her legs with her stride, silver plate greaves with knee cops and pointed armoured sabatons. No weapon, no spear, nothing held in the hands, no cape, no cloak, no wings, no helmet, no scarf, full body visible from the top of the head to the boots with margin, nothing cropped, no text, no watermark."
   }
  ],
  "images_used": {
-  "isolde": 4
+  "isolde": 10
  },
- "credits_used": 8
+ "credits_used": 20
 }

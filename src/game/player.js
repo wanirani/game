@@ -628,12 +628,15 @@ export class Player extends Entity {
     world.game.flash('#fff8e0', 0.35, 4);
   }
   groundPound(world, r) {
-    world.fx.ring(this.cx, this.bottom, { color: '#ffd8a0', r0: 10, r1: r * 1.6, life: 0.35, width: 8 });
-    world.fx.burst('shard', this.cx, this.bottom - 4, 16, { angle: -Math.PI / 2, spread: 1.2, speed: 360, color: '#8a7a6a' });
-    world.fx.burst('dust', this.cx, this.bottom, 14, { speed: 200 });
-    world.camera.shake(10, 0.3);
-    audio.sfx('explode', { vol: 0.7 });
-    playerStrike(world, { x: this.cx - r, y: this.bottom - 60, w: r * 2, h: 64 }, this.makeAttack(this.move || { mv: 1.5 }, { mv: (this.move?.mv ?? 1.5) * 0.8, hitId: this.curHitId + 'gp', kb: [340, -520], launch: true }));
+    const pk = SKILL_IMPL.__onPound?.(this, world, r, this.move) ?? null;   // 직업 특성: 충격파 반경·속성 (이졸데 용기사 계열; skills.js)
+    if (pk?.r > 0) r = pk.r;
+    const k = Math.min(1, r / 110);   // 작은 충격파(창의 급강하 찌르기 72)는 파편·흔들림·소리를 줄인다 — 대검·지팡이(110 이상)는 그대로
+    world.fx.ring(this.cx, this.bottom, { color: pk?.color ?? '#ffd8a0', r0: 10, r1: r * 1.6, life: 0.35, width: 8 * k });
+    world.fx.burst('shard', this.cx, this.bottom - 4, Math.round(16 * k), { angle: -Math.PI / 2, spread: 1.2, speed: 360, color: '#8a7a6a' });
+    world.fx.burst('dust', this.cx, this.bottom, Math.round(14 * k), { speed: 200 });
+    world.camera.shake(10 * k, 0.3);
+    audio.sfx('explode', { vol: 0.7 * k });
+    playerStrike(world, { x: this.cx - r, y: this.bottom - 60, w: r * 2, h: 64 }, this.makeAttack(this.move || { mv: 1.5 }, { mv: (this.move?.mv ?? 1.5) * 0.8, hitId: this.curHitId + 'gp', kb: [340, -520], launch: true, ...(pk?.element ? { element: pk.element } : {}) }));
   }
   gunmodeShot(world) {
     for (const dy of [-8, 8]) {

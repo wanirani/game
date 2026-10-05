@@ -1,4 +1,4 @@
-// 직업(클래스) 계보: 캐릭터마다 기본(tier0) → 상급 2갈래(tier1, Lv10) → 최상급 각 2갈래(tier2, Lv25)
+// 직업(클래스) 계보: 캐릭터마다 기본(tier0) → 상급 2갈래(tier1, Lv10) → 최상급 각 2갈래(tier2, Lv25) — 7인 × 7 = 49종
 // mult: 능력치 배율, flat: 고정 가산, look: 외형 덮어쓰기(render/hero.js 해석), perk: 직업 특성 설명
 // 전직은 마을 성당(알베르토 신부)에서 가능
 const C = {};
@@ -173,6 +173,35 @@ def('azel_seraph', { charId: 'azel', tier: 2, parent: 'azel_holyblade', name: '�
   desc: '빛과 어둠의 날개를 모두 지닌 자.', perk: '신성·암흑 피해 +30%, 공중 점프 +1',
   mult: { atk: 1.3, mag: 1.3, agi: 1.15 }, flat: { holy: 30, dark: 30, airJumps: 1 },
   look: { primary: '#1a1a2a', secondary: '#ffffff', trim: '#b060ff', wings: 'seraph', halo: true, eyes: '#ffd84a', eyeGlow: true, aura: { color: '#b98cff', type: 'dark' } } });
+
+// ── 이졸데: 창 (docs/specs/hero7.md §2) ──
+// 특성 동작은 game/skills.js 의 __onSwing(투창·용염·천 번 찌르기)과 __onPound(급강하 충격파·낙뢰)
+def('isolde_lancer', { charId: 'isolde', tier: 0, name: '창기사', eng: 'LANCER', reqLevel: 1, next: ['isolde_dragoon', 'isolde_valkyrie'],
+  desc: '하늘 기사단의 마지막 창.', perk: '공중에서 ↓+공격: 급강하 찌르기 — 착지하면 주변에 충격파' });
+def('isolde_dragoon', { charId: 'isolde', tier: 1, parent: 'isolde_lancer', name: '용기사', eng: 'DRAGOON', reqLevel: 10, next: ['isolde_stormlord', 'isolde_wyrmknight'],
+  desc: '잃어버린 용의 날개 대신 제 다리로 하늘을 걷는 기사.', perk: '점프력 +10%, 급강하 충격파 범위 +40%, 번개 피해 +15%',
+  mult: { atk: 1.15, agi: 1.1 }, flat: { jumpPow: 10, thunder: 15 },
+  look: { primary: '#22304e', secondary: '#7ad8ff', trim: '#e8ecf4', armorColor: '#9aaccc', armorTrim: '#7ad8ff', aura: { color: '#9ae0ff', type: 'thunder' }, cape: { color: '#162036', color2: '#7ad8ff', len: 0.9 } } });
+def('isolde_stormlord', { charId: 'isolde', tier: 2, parent: 'isolde_dragoon', name: '뇌룡기사', eng: 'STORMLORD', reqLevel: 25,
+  desc: '뇌룡의 숨결을 창에 깃들인 폭풍의 기사.', perk: '공중 점프 +1, 급강하 착지 때 낙뢰가 떨어진다, 번개 피해 +35%',
+  mult: { atk: 1.3, agi: 1.2 }, flat: { airJumps: 1, thunder: 35, moveSpd: 8 },
+  look: { primary: '#141c34', secondary: '#bfe8ff', trim: '#ffe070', armorColor: '#c4d2ec', armorTrim: '#ffe070', eyes: '#bfe8ff', eyeGlow: true, aura: { color: '#bfe0ff', type: 'thunder' }, cape: { color: '#101830', color2: '#bfe8ff', len: 1.1 } } });
+def('isolde_wyrmknight', { charId: 'isolde', tier: 2, parent: 'isolde_dragoon', name: '흑룡기사', eng: 'WYRM KNIGHT', reqLevel: 25,
+  desc: '균열에 삼켜진 용의 검은 불꽃을 이어받은 기사.', perk: '흡혈 3%, 창끝에 용염 — 마무리 찌르기가 불꽃을 뿜는다, 화염·암흑 피해 +25%',
+  mult: { atk: 1.4, hp: 1.15 }, flat: { lifesteal: 3, fire: 25, dark: 25, critDmg: 15 },
+  look: { primary: '#1a1016', secondary: '#ff6a2a', trim: '#c8a040', armor: 'dark', armorColor: '#2a2430', armorTrim: '#ff6a2a', headgear: 'horns', headColor: '#3a2a30', wings: 'demon', eyes: '#ffb040', eyeGlow: true, aura: { color: '#ff7a2a', type: 'fire' }, cape: null } });
+def('isolde_valkyrie', { charId: 'isolde', tier: 1, parent: 'isolde_lancer', name: '발키리', eng: 'VALKYRIE', reqLevel: 10, next: ['isolde_einherjar', 'isolde_spearsaint'],
+  desc: '전사자의 길을 비추는 빛의 창잡이.', perk: '마무리 찌르기와 돌진 찌르기에 빛의 투창을 함께 던진다, 신성 피해 +15%',
+  mult: { atk: 1.12, res: 1.15 }, flat: { holy: 15, reach: 5 },
+  look: { primary: '#e6eaf2', secondary: '#ffd870', trim: '#ffe8a0', armor: 'holy', armorColor: '#e2e8f2', armorTrim: '#ffd870', headColor: '#e8ecf4', cape: { color: '#f0ece0', color2: '#ffd870', len: 0.95 } } });
+def('isolde_einherjar', { charId: 'isolde', tier: 2, parent: 'isolde_valkyrie', name: '전장의 여신', eng: 'EINHERJAR', reqLevel: 25,
+  desc: '쓰러진 용사들의 영혼을 이끄는 신성한 날개.', perk: '받는 피해 -15%, 투창이 세 갈래로 흩어져 날아간다, 신성 피해 +30%',
+  mult: { atk: 1.25, hp: 1.2, res: 1.2 }, flat: { dmgReduce: 15, holy: 30, hpRegen: 1 },
+  look: { primary: '#fff8ec', secondary: '#ffd84a', trim: '#ffd84a', armor: 'holy', armorColor: '#f2f0ea', armorTrim: '#ffd84a', headColor: '#f4f0e6', wings: 'angel', halo: true, aura: { color: '#fff2b0', type: 'holy' }, cape: null } });
+def('isolde_spearsaint', { charId: 'isolde', tier: 2, parent: 'isolde_valkyrie', name: '창성', eng: 'SPEAR SAINT', reqLevel: 25,
+  desc: '천 번을 찔러 천 번 모두 급소를 꿰는 창의 성인.', perk: '치명타 +12%, 치명타 피해 +30%, 마무리 찌르기 뒤 천 번 찌르기가 이어진다',
+  mult: { atk: 1.35, agi: 1.25 }, flat: { crit: 12, critDmg: 30, atkSpd: 10 },
+  look: { primary: '#ece6dc', secondary: '#d02040', trim: '#ffd070', armor: 'holy', armorColor: '#e8e4dc', armorTrim: '#d02040', headgear: 'circlet', scarf: { color: '#d02040', long: true }, eyes: '#ff8a9a', aura: { color: '#ffd0d8', type: 'holy' }, cape: null } });
 
 export const CLASSES = C;
 

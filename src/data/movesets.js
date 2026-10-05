@@ -4,7 +4,8 @@
 //   mv(모션 배율), type:'phys'|'mag', kb:[x,y] 넉백, hitstop, shake, cancel(다음 입력 허용 시각), lunge(전진 속도),
 //   vy(시작 시 수직 속도), airStall(공중 체공), launch(띄우기), pogo(맞히면 튀어오름), rehit(다단히트 간격),
 //   fx:'whip'|'slash'|'heavy'|'thrust'|'shot'|'magic', slash:{r,arc,angle,width,color} 궤적,
-//   sfx, proj:{render,speed,w,h,mv,count,spread,angle,behavior,life,pierce,offX,offY,color,type,homing}, finisher
+//   sfx, proj:{render,speed,w,h,mv,count,spread,angle,behavior,life,pierce,offX,offY,color,type,homing}, finisher,
+//   groundPound(착지 충격파 반경), rise·drill(창 연출 깃발, render/hero.js)
 // }
 // 세트: ground[] (연속 콤보), air[], up, down(공중 하단), crouch, dash, charge(모아쏘기)
 export const MOVESETS = {
@@ -103,6 +104,28 @@ export const MOVESETS = {
       proj: { render: 'bullet', speed: 1700, w: 18, h: 8, life: 0.5, pierce: 1, offX: 40, offY: -30 } },
     charge: { id: 'gnCharge', anim: 'shoot_double', dur: 0.6, hit: [0.08, 0.09], box: null, mv: 4.0, kb: [500, -300], hitstop: 0.12, shake: 10, cancel: 0.5, fx: 'shot', sfx: 'shotgun', finisher: true, recoil: 380,
       proj: { render: 'bolt', speed: 2000, w: 40, h: 30, life: 0.7, pierce: 99, offX: 50, offY: -58, color: '#ffe070', scale: 1.8 } },
+  },
+
+  // 창 (이졸데, docs/specs/hero7.md §3): 사거리는 채찍만큼 길고 장검보다 한 박자 느리다. 세로 놀이가 장기 —
+  // 장대 도약 띄우기(up, 위로 솟구침), 급강하 찌르기(down: 최대 낙하 속도로 수직 낙하 → 맞히면 pogo, 착지하면 작은 충격파 groundPound).
+  // 자세는 기존 이름을 그대로 쓰고(thrust·slash_wide·launch·plunge …), 창 계열의 양손 자세는 render/hero.js SPEAR_AK 가 덮는다.
+  // drill: 회전 드릴 찌르기 연출 (render/hero.js) — 판정은 rehit 그대로
+  spear: {
+    ground: [
+      { id: 'sp1', anim: 'thrust', dur: 0.3, hit: [0.08, 0.15], box: { x: 8, y: -68, w: 160, h: 24 }, mv: 1.0, kb: [190, -40], hitstop: 0.045, shake: 2, cancel: 0.18, lunge: 150, fx: 'thrust', sfx: 'slash' },
+      { id: 'sp2', anim: 'thrust', dur: 0.3, hit: [0.08, 0.15], box: { x: 8, y: -104, w: 150, h: 40 }, mv: 1.05, kb: [170, -170], hitstop: 0.045, shake: 2, cancel: 0.18, lunge: 120, fx: 'thrust', sfx: 'slash', rise: true },
+      { id: 'sp3', anim: 'slash_wide', dur: 0.4, hit: [0.11, 0.21], box: { x: -34, y: -116, w: 196, h: 106 }, mv: 1.25, kb: [260, -200], hitstop: 0.06, shake: 4, cancel: 0.27, lunge: 140, fx: 'slash', slash: { r: 112, arc: 3.0, angle: 0.1, width: 22 }, sfx: 'slash_heavy' },
+      { id: 'sp4', anim: 'thrust', dur: 0.56, hit: [0.1, 0.42], rehit: 0.064, box: { x: 6, y: -72, w: 178, h: 32 }, mv: 0.52, kb: [300, -120], hitstop: 0.04, shake: 4, cancel: 0.46, lunge: 170, fx: 'thrust', sfx: 'slash_heavy', finisher: true },
+    ],
+    air: [
+      { id: 'spA1', anim: 'thrust', dur: 0.3, hit: [0.07, 0.15], box: { x: 6, y: -72, w: 152, h: 30 }, mv: 1.0, kb: [170, -90], hitstop: 0.045, cancel: 0.2, fx: 'thrust', sfx: 'slash', airStall: 0.45 },
+      { id: 'spA2', anim: 'slash_down', dur: 0.32, hit: [0.07, 0.16], box: { x: -10, y: -100, w: 152, h: 112 }, mv: 1.1, kb: [200, 140], hitstop: 0.05, cancel: 0.22, fx: 'slash', slash: { r: 104, arc: 2.6, angle: 0.4, width: 20 }, sfx: 'slash', airStall: 0.45 },
+    ],
+    up: { id: 'spUp', anim: 'launch', dur: 0.46, hit: [0.08, 0.22], box: { x: -18, y: -214, w: 104, h: 214 }, mv: 1.3, kb: [50, -720], launch: true, vy: -620, hitstop: 0.06, shake: 3, cancel: 0.3, fx: 'slash', slash: { r: 100, arc: 2.4, angle: -1.3, width: 20, dir: -1 }, sfx: 'slash_heavy' },
+    down: { id: 'spDown', anim: 'plunge', dur: 1.1, hit: [0.04, 1.06], box: { x: -22, y: -26, w: 44, h: 76 }, mv: 1.35, kb: [140, 360], vy: 980, pogo: 600, groundPound: 72, hitstop: 0.05, shake: 2, cancel: 0.32, fx: 'thrust', sfx: 'dash' },
+    crouch: { id: 'spLow', anim: 'crouch_stab', dur: 0.3, hit: [0.07, 0.14], box: { x: 6, y: -36, w: 160, h: 26 }, mv: 1.0, kb: [170, -30], hitstop: 0.045, cancel: 0.18, fx: 'thrust', sfx: 'slash' },
+    dash: { id: 'spDash', anim: 'thrust', dur: 0.4, hit: [0.04, 0.24], box: { x: -6, y: -72, w: 182, h: 40 }, mv: 1.5, kb: [360, -160], lunge: 640, hitstop: 0.06, shake: 3, cancel: 0.3, fx: 'thrust', sfx: 'slash_heavy' },
+    charge: { id: 'spCharge', anim: 'thrust', dur: 0.74, hit: [0.12, 0.52], rehit: 0.08, box: { x: -10, y: -84, w: 232, h: 52 }, mv: 0.62, kb: [420, -220], lunge: 420, hitstop: 0.06, shake: 7, cancel: 0.62, fx: 'thrust', sfx: 'slash_heavy', element: 'thunder', finisher: true, drill: true },
   },
 
   staff: {

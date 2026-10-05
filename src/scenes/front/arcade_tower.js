@@ -216,15 +216,19 @@ export class TowerScene extends ArcadeRunScene {
     });
     audio.sfx('mist', { vol: 0.5 });
   }
-  /** 갇힌 적 (오래 처치가 없을 때): 영웅 양옆 바닥으로 불러낸다 */
+  /** 갇힌 적 (오래 처치가 없을 때): 영웅 양옆 바닥으로 불러낸다 — 영웅 높이에서 벽·가시를 만나기 전 칸까지만 (벽 속·벽 너머에 놓지 않게) */
   summonStragglers() {
     const w = this.world, p = w.player, m = w.map;
+    const fy = Math.floor((p.bottom - 1) / TILE), ptx = Math.floor(p.cx / TILE);
+    const open = (tx) => { for (let ty = fy - 1; ty <= fy; ty++) { const t = m.typeAt(tx, ty); if (isSolidType(t) || t === T.SPIKE) return false; } return true; };
     let i = 0;
     for (const e of w.enemies()) {
       if (e.kind !== 'enemy') continue;
-      const side = i++ % 2 ? -1 : 1;
-      const x = clamp(p.cx + side * (180 + 40 * i), TILE * 2, m.pxW - TILE * 2);
-      const gy = m.groundBelow?.(Math.floor(x / TILE), Math.max(0, Math.floor((p.y - TILE) / TILE))) ?? p.bottom;
+      const side = i++ % 2 ? -1 : 1, want = Math.round((180 + 40 * i) / TILE);
+      let tx = ptx;
+      for (let k = 1; k <= want && open(ptx + side * k); k++) tx = ptx + side * k;
+      const x = tx * TILE + TILE / 2;
+      const gy = m.groundBelow(tx, fy) ?? p.bottom;
       e.x = x - e.w / 2; e.y = (e.def?.flying ? p.y - 60 : gy - e.h); e.vx = 0; e.vy = 0;
       w.fx.burst('dark', e.cx, e.cy, 12, { speed: 120 });
     }
@@ -313,12 +317,13 @@ export class TowerScene extends ArcadeRunScene {
     this.game.toast(`축복: ${b.name}`, b.color, 2.2);
     return true;
   }
-  /** 출구를 연다: 영웅 발밑 (공중이면 이 방의 시작 위치) */
+  /** 출구를 연다: 영웅 발밑 (공중이거나 발밑이 움직이는·무너지는 발판·부서지는 벽이면 — 문이 허공에 남는다 — 이 방의 시작 위치) */
   openGate() {
-    const w = this.world, p = w.player;
+    const w = this.world, p = w.player, m = w.map;
     if (this.gate) return;
     let cx = p.cx, bottom = p.bottom;
-    if (!p.onGround || p.dead) { const cp = w.run.checkpoint; cx = cp.x + p.w / 2; bottom = cp.y + p.h; }
+    const fy = Math.floor((p.bottom + 2) / TILE), firm = (x) => { const t = m.typeAt(Math.floor(x / TILE), fy); return t === T.SOLID || t === T.ONEWAY; };
+    if (!p.onGround || p.dead || !(firm(p.x + 2) || firm(p.x + p.w - 2))) { const cp = w.run.checkpoint; cx = cp.x + p.w / 2; bottom = cp.y + p.h; }
     this.gate = w.add(new TowerGate(cx, bottom, this));
     w.cleared = true; w.exitCalled = true;   // 남은 전리품을 영웅에게 끌어온다 (pickups.js); 스테이지 클리어 흐름(afterClear)은 타지 않는다
     this.phase = 'gate'; this.phaseT = 0;
@@ -548,7 +553,8 @@ export class TowerBlessingScene extends Scene {
     this.selK = this.selK.map((v, i) => v + ((i === this.index ? 1 : 0) - v) * Math.min(1, dt * 14));
     if (this.picked) {
       this.pickT += dt;
-      if (this.pickT > 0.45) { const id = this.picked, run = this.run; this.run = null; this.game.pop(); run.onBlessingPicked(id); }
+      // run 을 먼저 비우므로 exit() 대신 여기서 일시정지 표시를 푼다 (남으면 층 이름·출구 안내·적 방향 표시가 런 끝까지 숨는다)
+      if (this.pickT > 0.45) { const id = this.picked, run = this.run; this.run = null; run.paused = false; this.game.pop(); run.onBlessingPicked(id); }
       return;
     }
     const tap = taps.hit(this);
