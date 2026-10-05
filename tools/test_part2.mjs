@@ -207,8 +207,10 @@ async function staticChecks() {
   check(G, 'd21 비전서 커맨드 = ↓↗+공격 (MASTER_PLAN §1.21)', JSON.stringify(DOCS.d21?.tech?.cmd ?? DOCS.d21?.cmd) === JSON.stringify(['d', 'uf', 'btn:attack']), DOCS.d21);
 
   // ── 보스 목록 · 대본 · 엔딩 · 저장 ──
-  const allBosses = Object.keys(BOSSES);
-  check(G, 'BOSS_ORDER(아케이드) 에 보스 20종이 모두 있다', allBosses.length === 20 && allBosses.every((b) => BOSS_ORDER.includes(b)) && BOSS_ORDER.length === 20, { n: allBosses.length, order: BOSS_ORDER });
+  // 이야기 순서(STAGE_ORDER)에 든 스테이지의 보스 = 아케이드 보스 러시 목록 (외전 s21 아르겐은 통합 담당이 s21 을 STAGE_ORDER_P2 와
+  // BOSS_ORDER 에 함께 넣을 때 여기 들어온다 — docs/specs/ex_s21.md §6. 그 전에는 BOSSES 에만 있다)
+  const allBosses = Object.keys(BOSSES).filter((b) => STAGE_ORDER.includes(BOSSES[b].stageId));
+  check(G, `BOSS_ORDER(아케이드) 에 이야기 보스 ${allBosses.length}종이 모두 있다 (20 + 이야기에 든 외전)`, allBosses.length >= 20 && allBosses.every((b) => BOSS_ORDER.includes(b)) && BOSS_ORDER.length === allBosses.length && BOSS_ORDER.every((b) => BOSSES[b]), { n: allBosses.length, order: BOSS_ORDER, notInStory: Object.keys(BOSSES).filter((b) => !allBosses.includes(b)) });
   const noScript = SCRIPT_IDS.filter((id) => !SCRIPTS[id]);
   const noQ = P2_SIDE.flatMap((q) => [`q_${q}_start`, `q_${q}_done`]).filter((id) => !SCRIPTS[id]);
   check(G, `SCRIPTS 에 world2 §1.4 의 대본 ${SCRIPT_IDS.length}개가 모두 있다`, !noScript.length, noScript);

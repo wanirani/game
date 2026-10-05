@@ -54,8 +54,8 @@ const PATTERNS = {
 // ── 몸 지역 좌표 (+x = 머리 쪽, y 아래가 양수, 원점 = 몸 중심) ──
 const NB = [94, -30];           // 목 뿌리
 const TB = [-110, -2];          // 꼬리 뿌리
-const CC = [64, 18];            // 가슴의 공허 핵
-const SHN = [30, -44], SHF = [18, -52];   // 날개 뿌리 (가까운 · 먼)
+const CC = [14, -4];            // 공허의 핵 (몸통 가운데 옆구리의 깨진 구멍 — 채색 몸통의 구멍 자리)
+const SHN = [26, -50], SHF = [12, -56];   // 날개 뿌리 (가까운 · 먼) — 등 위. 두 날개 모두 몸통 뒤에 그린다 (옆구리의 핵이 가려지지 않게)
 const BACK = [-66, -30];        // 날개막이 몸에 붙는 곳
 const L1 = 150, L2 = 165, FL = [240, 214, 180, 136];
 const NN = 9, TN = 11;          // 목 · 꼬리 점 수
@@ -63,6 +63,7 @@ const POSE0 = { raise: 0, spread: 0, fold: 0, rear: 0, lunge: 0, mouth: 0, coreO
 const POSE_RATE = { raise: 7, spread: 6, fold: 4, rear: 5, lunge: 7, mouth: 12, coreOpen: 5, tail: 9, curl: 5, legs: 4, roar: 6, bow: 2.5 };
 // 공허 결정 (ph = 이 페이즈부터 자람, brk = 이 페이즈 전환에서 깨짐 · 9 = 정화 때만)
 const CRYS = [
+  { at: 'body', lx: 14, ly: -10, a: -1.55, s: 1.15, ph: 0, brk: 1, shell: true },   // 1페이즈: 핵을 덮은 결정 껍질 → corrupt 전환에서 깨져 핵이 드러난다
   { at: 'body', lx: -22, ly: -50, a: -1.75, s: 1.0, ph: 0, brk: 9 },
   { at: 'body', lx: 12, ly: -52, a: -1.4, s: 0.8, ph: 0, brk: 2 },
   { at: 'body', lx: -66, ly: -36, a: -2.15, s: 0.86, ph: 0, brk: 9 },
@@ -681,7 +682,7 @@ export class Argen extends BossC {
     const A = this.A;
     if (this.at(0.001)) {
       this.faceP(10);
-      this.tzx = clamp(this.zx, A.x0 + 260, A.x1 - 260); this.tzy = A.floor - 265; this.spd = 240; this.spdY = 260;
+      this.tzx = clamp(this.zx, A.x0 + 260, A.x1 - 260); this.tzy = A.floor - 245; this.spd = 240; this.spdY = 260;
       this.setPose({ rear: 0.8, roar: 1, mouth: 1, coreOpen: 1, raise: -0.3, spread: 1, legs: 0.5 });
       telegraph(this, 0.8, { sfx: 'warning', vol: 0.45, pitch: 0.7 });
       audio.sfx('dark', { pitch: 0.55, vol: 0.8 });
@@ -789,12 +790,10 @@ export class Argen extends BossC {
   /** 형태 바꾸기 (페이즈마다 한 번, debugPhase 에도): 1 = 결정 성장 + 핵 노출, 2 = 결정 일부 깨짐 + 은빛 */
   applyPhase(k) {
     this.dmg = Math.max(this.dmg, k);
-    if (k >= 1) { this.coreBase = 0.6; this.voidK = 1; for (const c of this.crys) if (c.ph <= 1 && c.brk > 1 && !c.alive) { c.alive = true; c.grow = 0; } }
-    if (k >= 2) {
-      this.silverK = Math.max(this.silverK, 0.45); this.voidK = 0.55; this.flapMul = 1;
-      let n = 0;
-      for (const c of this.crys) if (c.alive && c.brk <= 2 && !(c.breakIn > 0)) c.breakIn = 0.001 + 0.08 * n++;
-    }
+    if (k >= 1) { this.coreBase = 0.6; this.voidK = 1; for (const c of this.crys) if (c.ph <= 1 && c.brk > 1 && !c.alive && !c.gone) { c.alive = true; c.grow = 0; } }
+    if (k >= 2) { this.silverK = Math.max(this.silverK, 0.45); this.voidK = 0.55; this.flapMul = 1; }
+    let n = 0;
+    for (const c of this.crys) if (c.alive && c.brk <= k && !(c.breakIn > 0)) c.breakIn = 0.001 + 0.08 * n++;
   }
   /** 결정 하나가 깨진다 (파편 효과 + 소리) */
   breakCrystal(c, fx = true) {
@@ -936,18 +935,18 @@ export class Argen extends BossC {
   /** 몸 전체 (지역 좌표: 원점 = 몸 중심, +x = 머리 쪽) */
   drawArgen(ctx, fl) {
     this.drawWing(ctx, this.wing.f, true, fl);
+    this.drawWing(ctx, this.wing.n, false, fl);
+    this.drawCrystals(ctx, fl, 'wing');
     this.drawLeg(ctx, this.legs.hf, true, fl);
     this.drawTail(ctx, fl);
     this.drawTorso(ctx, fl);
+    this.drawCore(ctx, fl);
     this.drawCrystals(ctx, fl, 'body', 'tail');
     this.drawLeg(ctx, this.legs.hn, false, fl);
     this.drawFore(ctx, fl);
     this.drawNeck(ctx, fl);
     this.drawHead(ctx, fl);
     this.drawCrystals(ctx, fl, 'neck', 'head');
-    this.drawWing(ctx, this.wing.n, false, fl);
-    this.drawCrystals(ctx, fl, 'wing');
-    this.drawCore(ctx, fl);
     if (!fl && this.silverK > 0.05) this.drawSilver(ctx);
   }
 

@@ -1,0 +1,855 @@
+{
+ "id": "b_argen",
+ "kind": "boss",
+ "out": "assets/painted/bosses/b_argen",
+ "raw": "tools/painted/raw/b_argen",
+ "td": 1.6,
+ "quality": 88,
+ "hurtboxNotes": "BOSS_PIPELINE §8.8 (documented, gameplay NOT changed): logic hit parts = core 74x74 at body (14,-4) (P2+, listed first), head 76x60 at head.{x,y}, neck 66x66 at neck point 4, body 214x98 at (0,2), near wing S..Wr box (+60 below), tail points 2..6 box. The painted torso spans about -118..150 x -75..56 (spikes and chest included), so the chest front and the back spikes reach ~35 px beyond the body box; the painted wing membrane and finger tips (up to ~600 px) have no hurtbox, exactly like the vector wing membrane. Neck/tail strips follow the logic chains; head + jaw sit on head.{lx,ly,a,jaw}; the core gem is drawn exactly at the logic core point.",
+ "matte": {
+  "default": {
+   "key": 9,
+   "soft": 22,
+   "hard": 6,
+   "watermark": false
+  },
+  "wing_a": {
+   "key": 5,
+   "soft": 12,
+   "hard": 3,
+   "watermark": false
+  }
+ },
+ "cuts": {
+  "full_a": {
+   "masks": {
+    "torso": [
+     {
+      "op": "poly",
+      "feather": 1.5,
+      "pts": [
+       [
+        1380,
+        700
+       ],
+       [
+        1500,
+        630
+       ],
+       [
+        1650,
+        585
+       ],
+       [
+        1800,
+        555
+       ],
+       [
+        1950,
+        545
+       ],
+       [
+        2050,
+        535
+       ],
+       [
+        2250,
+        743
+       ],
+       [
+        2393,
+        757
+       ],
+       [
+        2425,
+        850
+       ],
+       [
+        2385,
+        980
+       ],
+       [
+        2336,
+        1057
+       ],
+       [
+        2250,
+        1050
+       ],
+       [
+        2000,
+        1045
+       ],
+       [
+        1720,
+        1045
+       ],
+       [
+        1560,
+        1005
+       ],
+       [
+        1440,
+        960
+       ],
+       [
+        1390,
+        900
+       ],
+       [
+        1370,
+        800
+       ]
+      ]
+     }
+    ]
+   }
+  },
+  "head_a": {
+   "masks": {
+    "headm": [
+     {
+      "op": "poly",
+      "feather": 1.2,
+      "pts": [
+       [
+        0,
+        0
+       ],
+       [
+        2336,
+        0
+       ],
+       [
+        2336,
+        1080
+       ],
+       [
+        2100,
+        1080
+       ],
+       [
+        1700,
+        1050
+       ],
+       [
+        1480,
+        975
+       ],
+       [
+        1300,
+        895
+       ],
+       [
+        1200,
+        960
+       ],
+       [
+        1150,
+        1080
+       ],
+       [
+        1080,
+        1100
+       ],
+       [
+        1000,
+        900
+       ],
+       [
+        700,
+        800
+       ],
+       [
+        0,
+        720
+       ]
+      ]
+     },
+     {
+      "op": "minus",
+      "color": "red",
+      "rect": [
+       1240,
+       760,
+       2130,
+       1100
+      ]
+     }
+    ],
+    "jaw": [
+     {
+      "op": "poly",
+      "feather": 1.2,
+      "pts": [
+       [
+        1150,
+        880
+       ],
+       [
+        1300,
+        885
+       ],
+       [
+        1480,
+        970
+       ],
+       [
+        1700,
+        1045
+       ],
+       [
+        2000,
+        1065
+       ],
+       [
+        1990,
+        1250
+       ],
+       [
+        1850,
+        1420
+       ],
+       [
+        1730,
+        1650
+       ],
+       [
+        1640,
+        1660
+       ],
+       [
+        1560,
+        1500
+       ],
+       [
+        1400,
+        1330
+       ],
+       [
+        1250,
+        1220
+       ],
+       [
+        1170,
+        1150
+       ],
+       [
+        1120,
+        1000
+       ]
+      ]
+     }
+    ]
+   }
+  },
+  "necktail_a": {
+   "masks": {
+    "neck": [
+     {
+      "op": "poly",
+      "feather": 1.0,
+      "pts": [
+       [
+        1400,
+        150
+       ],
+       [
+        2745,
+        150
+       ],
+       [
+        2745,
+        680
+       ],
+       [
+        1400,
+        680
+       ]
+      ]
+     }
+    ],
+    "tail": [
+     {
+      "op": "poly",
+      "feather": 1.0,
+      "pts": [
+       [
+        0,
+        740
+       ],
+       [
+        2925,
+        740
+       ],
+       [
+        2925,
+        1130
+       ],
+       [
+        0,
+        1130
+       ]
+      ]
+     }
+    ]
+   }
+  },
+  "wing_a": {
+   "masks": {
+    "wing": [
+     {
+      "op": "poly",
+      "feather": 1.2,
+      "pts": [
+       [
+        0,
+        0
+       ],
+       [
+        2000,
+        0
+       ],
+       [
+        2000,
+        950
+       ],
+       [
+        2150,
+        1010
+       ],
+       [
+        2250,
+        1110
+       ],
+       [
+        2260,
+        1300
+       ],
+       [
+        2260,
+        1520
+       ],
+       [
+        0,
+        1520
+       ]
+      ]
+     },
+     {
+      "op": "minus",
+      "feather": 1.0,
+      "pts": [
+       [
+        2080,
+        1000
+       ],
+       [
+        2300,
+        1000
+       ],
+       [
+        2300,
+        1105
+       ],
+       [
+        2080,
+        1105
+       ]
+      ]
+     }
+    ]
+   }
+  },
+  "legs_a": {
+   "masks": {
+    "legH": [
+     {
+      "op": "poly",
+      "feather": 1.0,
+      "pts": [
+       [
+        850,
+        300
+       ],
+       [
+        1280,
+        300
+       ],
+       [
+        1280,
+        1250
+       ],
+       [
+        850,
+        1250
+       ]
+      ]
+     }
+    ],
+    "legF": [
+     {
+      "op": "poly",
+      "feather": 1.0,
+      "pts": [
+       [
+        1400,
+        280
+       ],
+       [
+        1780,
+        280
+       ],
+       [
+        1780,
+        1240
+       ],
+       [
+        1400,
+        1240
+       ]
+      ]
+     }
+    ]
+   }
+  },
+  "crys_a": {
+   "masks": {}
+  }
+ },
+ "parts": [
+  {
+   "name": "torso",
+   "src": "full_a",
+   "mask": "torso",
+   "lps": 0.255,
+   "box": [
+    1360,
+    525,
+    2435,
+    1065
+   ],
+   "pivots": {
+    "c": [
+     1831,
+     838
+    ],
+    "neck": [
+     2200,
+     720
+    ],
+    "tail": [
+     1400,
+     860
+    ],
+    "core": [
+     1886,
+     821
+    ],
+    "hipH": [
+     1600,
+     960
+    ],
+    "hipF": [
+     2100,
+     1000
+    ],
+    "sh": [
+     1949,
+     665
+    ]
+   }
+  },
+  {
+   "name": "head",
+   "src": "head_a",
+   "mask": "headm",
+   "lps": 0.118,
+   "box": [
+    0,
+    0,
+    2336,
+    1110
+   ],
+   "pivots": {
+    "c": [
+     1365,
+     735
+    ],
+    "eye": [
+     1450,
+     633
+    ],
+    "hinge": [
+     1258,
+     950
+    ],
+    "snout": [
+     2150,
+     960
+    ],
+    "mouth": [
+     1950,
+     1000
+    ],
+    "neck": [
+     1009,
+     786
+    ]
+   },
+   "extra": {
+    "ang": 0.22
+   }
+  },
+  {
+   "name": "jaw",
+   "src": "head_a",
+   "mask": "jaw",
+   "lps": 0.118,
+   "box": [
+    1110,
+    860,
+    2010,
+    1670
+   ],
+   "pivots": {
+    "hinge": [
+     1258,
+     950
+    ],
+    "tip": [
+     1690,
+     1640
+    ]
+   },
+   "extra": {
+    "open0": 0.5
+   }
+  },
+  {
+   "name": "neck",
+   "src": "necktail_a",
+   "mask": "neck",
+   "lps": 0.194,
+   "box": [
+    1400,
+    200,
+    2745,
+    660
+   ],
+   "pivots": {
+    "root": [
+     2745,
+     460
+    ],
+    "tip": [
+     1400,
+     460
+    ]
+   },
+   "extra": {
+    "r": 160
+   }
+  },
+  {
+   "name": "tail",
+   "src": "necktail_a",
+   "mask": "tail",
+   "lps": 0.2,
+   "box": [
+    30,
+    770,
+    2925,
+    1120
+   ],
+   "pivots": {
+    "root": [
+     2925,
+     955
+    ],
+    "tip": [
+     40,
+     955
+    ],
+    "fin": [
+     700,
+     955
+    ]
+   },
+   "extra": {
+    "r": 105
+   }
+  },
+  {
+   "name": "wing",
+   "src": "wing_a",
+   "mask": "wing",
+   "lps": 0.25,
+   "box": [
+    30,
+    60,
+    2265,
+    1500
+   ],
+   "pivots": {
+    "sh": [
+     2240,
+     1190
+    ],
+    "el": [
+     1730,
+     1010
+    ],
+    "wr": [
+     1830,
+     340
+    ],
+    "f0": [
+     60,
+     260
+    ],
+    "f1": [
+     440,
+     990
+    ],
+    "f2": [
+     1180,
+     1460
+    ],
+    "mid": [
+     1200,
+     700
+    ]
+   }
+  },
+  {
+   "name": "legH",
+   "src": "legs_a",
+   "mask": "legH",
+   "lps": 0.155,
+   "box": [
+    850,
+    310,
+    1275,
+    1245
+   ],
+   "pivots": {
+    "hip": [
+     1000,
+     380
+    ],
+    "foot": [
+     960,
+     1150
+    ]
+   }
+  },
+  {
+   "name": "legF",
+   "src": "legs_a",
+   "mask": "legF",
+   "lps": 0.1,
+   "box": [
+    1400,
+    290,
+    1775,
+    1235
+   ],
+   "pivots": {
+    "hip": [
+     1600,
+     340
+    ],
+    "foot": [
+     1580,
+     1150
+    ]
+   }
+  },
+  {
+   "name": "cr1",
+   "src": "crys_a",
+   "lps": 0.075,
+   "box": [
+    1090,
+    90,
+    1610,
+    795
+   ],
+   "pivots": {
+    "base": [
+     1330,
+     760
+    ],
+    "tip": [
+     1350,
+     110
+    ]
+   }
+  },
+  {
+   "name": "cr2",
+   "src": "crys_a",
+   "lps": 0.075,
+   "box": [
+    1910,
+    130,
+    2480,
+    775
+   ],
+   "pivots": {
+    "base": [
+     2200,
+     740
+    ],
+    "tip": [
+     2140,
+     150
+    ]
+   }
+  },
+  {
+   "name": "cr3",
+   "src": "crys_a",
+   "lps": 0.075,
+   "box": [
+    220,
+    870,
+    790,
+    1405
+   ],
+   "pivots": {
+    "base": [
+     480,
+     1380
+    ],
+    "tip": [
+     690,
+     890
+    ]
+   }
+  },
+  {
+   "name": "cr4",
+   "src": "crys_a",
+   "lps": 0.075,
+   "box": [
+    1950,
+    880,
+    2480,
+    1405
+   ],
+   "pivots": {
+    "base": [
+     2200,
+     1390
+    ],
+    "tip": [
+     2190,
+     900
+    ]
+   }
+  },
+  {
+   "name": "gem",
+   "src": "crys_a",
+   "lps": 0.09,
+   "box": [
+    1110,
+    900,
+    1610,
+    1400
+   ],
+   "pivots": {
+    "c": [
+     1362,
+     1150
+    ]
+   }
+  }
+ ],
+ "debris": [
+  {
+   "prefix": "deb",
+   "src": "debris_a",
+   "lps": 0.075,
+   "keepFrac": 0.3,
+   "boxes": [
+    [
+     110,
+     120,
+     790,
+     790
+    ],
+    [
+     580,
+     350,
+     950,
+     950
+    ],
+    [
+     990,
+     120,
+     1710,
+     500
+    ],
+    [
+     1680,
+     280,
+     1940,
+     640
+    ],
+    [
+     2020,
+     60,
+     2580,
+     700
+    ],
+    [
+     1140,
+     480,
+     1590,
+     870
+    ],
+    [
+     790,
+     980,
+     1070,
+     1440
+    ],
+    [
+     1490,
+     740,
+     1890,
+     1100
+    ],
+    [
+     1880,
+     800,
+     2230,
+     1210
+    ]
+   ]
+  }
+ ],
+ "kling": {
+  "manifest": "tools/kling/manifest_ex-boss.json",
+  "prompts": "tools/painted/prompts/ex-boss.mjs",
+  "images": {
+   "portrait": "ag_portrait #2",
+   "head_a": "ag_head #2",
+   "full_a": "ag_full #2 (torso cut)",
+   "necktail_a": "ag_necktail #2",
+   "wing_a": "ag_wing #1",
+   "legs_a": "ag_legs #2",
+   "crys_a": "ag_crystals #2",
+   "debris_a": "ag_debris #1"
+  },
+  "rejected": {
+   "ag_body": "both: hollow tubes",
+   "ag_body2": "both: tube/larva shapes",
+   "ag_legs #1": "whole-dragon back views",
+   "ag_crystals #1": "white crystals + heart locket"
+  }
+ }
+}

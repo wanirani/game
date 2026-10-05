@@ -1,4 +1,4 @@
-// 스테이지 정의 (1부 13장 + 2부 14~20장 + 투기장). 맵은 data/maps/<id>.js 의 ROOMS.
+// 스테이지 정의 (1부 13장 + 2부 14~20장 + 외전 21장 + 투기장). 맵은 data/maps/<id>.js 의 ROOMS.
 // 2부 스테이지 추가 필드 (world2 §4.2): part:2, page:1(월드맵 쪽), gimmick(world2 §3.1 — 모든 방의 기본값, { kind, …매개변수 } 또는 배열),
 //   shard(별의 조각 k_star_n: 맵 '@' 에 정확히 1개), heart(세계의 심장 k_heart_n: 보스 전리품), color(월드맵 노드 색), liquid 에 'deep'(깊은 물) 추가.
 //   1부 스테이지에는 새 필드가 없다 (page 는 월드맵에서 0 으로 본다).
@@ -34,6 +34,8 @@ import { ROOMS as S18 } from './maps/s18.js';
 import { ROOMS as S19 } from './maps/s19.js';
 // ── P2 map imports s20 (MAPS-P2-D) ──
 import { ROOMS as S20 } from './maps/s20.js';
+// ── EX map import s21 (EX-MAP) — 외전 ──
+import { ROOMS as S21 } from './maps/s21.js';
 
 const S = (o) => ({ start: 'r1', parTime: 300, darkColor: '#06020c', liquid: 'water', docs: [], relic: null, unlocks: [], ...o, intro: o.intro ?? `${o.id}_intro`, outro: o.outro ?? `${o.id}_outro` });
 
@@ -110,6 +112,13 @@ export const STAGES = {
     music: 's20', level: 68, darkness: 0.5, darkColor: '#000000', liquid: 'lava', boss: 'b_nihil', rooms: S20, parTime: 600,
     enemies: ['void_herald', 'nihil_spawn', 'mirror_knight', 'slag_golem', 'abyss_angler', 'storm_harpy', 'faceless', 'rot_treant', 'fungal_husk'], docs: ['d27'], shard: null, heart: null,
     color: '#ffffff', next: null, mapPos: { x: 0.52, y: 0.46 }, req: '여섯 세계의 심장을 모두 되찾으면 공허로 가는 길이 열린다' }),
+  // ── EX stage s21 (EX-MAP) — 외전 「하늘 정원의 둥지」 (docs/specs/ex_s21.md). 2부 엔딩(p2_done) 뒤에 열린다.
+  //    STAGE_ORDER_P2 · 세계 지도 노드(mapPos 는 자리표시) · 해금은 통합 담당(EX-INTEG)이 넣는다 — 그때까지 일반 진행에서는 닿지 않는다.
+  //    intro/outro '' = 아직 대본 없음 (외전 대본 s21_intro · s21_outro 는 EX-INTEG 가 쓰고 이 두 빈 값을 지우면 S() 기본값 s21_intro/s21_outro 가 된다) ──
+  s21: S({ id: 's21', chapter: 21, part: 2, page: 1, name: '하늘 정원의 둥지', sub: '용들이 잠들었던 구름 위의 성소', theme: 'sky', bg: 'bg/s17_sky', tex: 'tex/tex_sky_marble', tex2: 'tex/tex_marble', tileStyle: 'sky',
+    music: 's17', level: 70, darkness: 0.15, darkColor: '#081020', liquid: 'water', boss: 'b_argen', rooms: S21, parTime: 600, intro: '', outro: '',
+    enemies: ['storm_harpy', 'gale_knight', 'thunder_roc', 'cloud_jelly', 'void_herald', 'nihil_spawn', 'mimic'], docs: [], shard: null, heart: null,
+    gimmick: { kind: 'wind', dir: 1, force: 850, on: 2.4, off: 3.8 }, color: '#c8e4ff', next: null, mapPos: { x: 0.66, y: 0.04 }, req: '2부의 끝을 본 뒤, 구름 위 하늘 정원에서 용의 울음이 들려오면 갈 수 있다' }),
   arena: S({ id: 'arena', chapter: 0, name: '피의 투기장', sub: '서바이벌 & 보스 러시', theme: 'arena', bg: 'bg/s_arena', tex: 'tex/tex_castle_stone', tex2: 'tex/tex_dirt', tileStyle: 'stone',
     music: 'arena', level: 10, darkness: 0.3, boss: null, rooms: ARENA, parTime: 600, intro: null, outro: null,
     enemies: [], next: null, mapPos: { x: 0.3, y: 0.3 } }),

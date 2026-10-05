@@ -105,9 +105,20 @@
    "imageCount": 2,
    "credits": 4.0,
    "refs": "portrait",
-   "decision": "pending"
+   "decision": "both rejected: still read as a tube with an open end (#1 also grew a baked crystal burst on the chest, #2 a larva-like cocoon)."
+  },
+  {
+   "boss": "b_argen",
+   "shot": "ag_full",
+   "tool": "image_to_image",
+   "generationId": "AcwGxB7v8mk9GwrLIVVyZIq4RgwOYUSp1fYeCXjph6GsZJtSAFGwhzoU0lMFTKBlmdfZSfvP",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "credits": 4.0,
+   "refs": "portrait",
+   "decision": "#2 kept → raw/b_argen/full_a (whole wingless dragon in strict side view; the torso is cut out of it with masks; the dark hollow on the shoulder becomes the void-core socket). #1 unused (wings painted on, covering the back)."
   }
  ],
- "imagesSpent": 17,
- "creditsSpent": 34.0
+ "imagesSpent": 19,
+ "creditsSpent": 38.0
 }
