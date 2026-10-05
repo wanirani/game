@@ -423,6 +423,7 @@ test('고스트: 상위 20위 안의 최고 기록만 저장, 밀려나면 지�
   const r3 = expectOk(await play(users[0], b, RES({ time: 59_500 })));
   assert.deepEqual([r3.best, r3.rank, r3.entry.ghost], [true, 2, false]);
   expectErr(await call('GET', `/api/ghosts/${b}/2`), 404, 'ghost_not_found');
+  assert.ok(!(await gkeys()).includes(`practice.s04.normal/${await uid(0)}`), '예전 고스트 파일도 지운다');
 });
 
 test('순위표: 공개 캐시(public, max-age=30, Vary) / 인증하면 no-store + me, limit, 빈 보드, 잘못된 보드·토큰', async () => {

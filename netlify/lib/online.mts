@@ -152,7 +152,9 @@ export async function finishRun(c: Ctx): Promise<Response> {
       ghostSaved = true;
     }
     const placed = await placeEntry(c, board!, entryOf(saved.rec, nick), saved.isNew, ghostSaved);
-    const drop = [...placed.evicted, ...(ghostSaved && !placed.ghost ? [a.uid] : [])];
+    // 밀려난 계정의 고스트, 20위 밖이 된 내 고스트, 고스트 없이 갱신한 내 예전 고스트(지금 기록과 맞지 않는다)
+    const mineStale = (ghostSaved && !placed.ghost) || (saved.best && !saved.replay && !ghostSaved);
+    const drop = [...placed.evicted, ...(mineStale ? [a.uid] : [])];
     if (drop.length) await deleteGhosts(c, board!, drop);
     // 그사이 탈퇴했다면 방금 쓴 것을 지운다 (탈퇴 쪽도 사용자 레코드를 지운 뒤 한 번 더 쓴다)
     if (!(await accountAlive(c, a.id, a.uid))) { await removeUserFromBoard(c, board!, a.uid); unauthorized(); }

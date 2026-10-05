@@ -268,7 +268,8 @@ def check(index_path, only=None, budget=30.0, tpmax=-1.0):
             if not 0 < t['loopStart'] < t['loopEnd'] <= t['duration']: fails.append(f'{k}: 루프 지점 이상')
             if abs(t['loopStart'] * sr - t['loopStartSample']) > 1 or abs(t['loopEnd'] * sr - t['loopEndSample']) > 1: fails.append(f'{k}: 루프 초/샘플 불일치')
             s = dsp.seam_metrics(D, t['loopStartSample'], t['loopEndSample'], sr)
-            if s['jump'] > 1.5 or s['hf'] > 1.5: fails.append(f"{k}: 이음매 튐 jump {s['jump']:.2f} hf {s['hf']:.2f}")
+            # 디코드 PCM 기준: 1차 차분은 루프 안 99.9 백분위의 1.5배, 2차 차분(고역)은 3배까지 (AAC 프레임 잡음이 이음매에서 바뀌는 몫)
+            if s['jump'] > 1.5 or s['hf'] > 3.0: fails.append(f"{k}: 이음매 튐 jump {s['jump']:.2f} hf {s['hf']:.2f}")
         print(f"{k:10} {t['duration']:7.2f} {t['loopStart']:8.3f}-{t['loopEnd']:8.3f} {lu:6.2f} {tp:6.2f} {s['jump']:5.2f} {s['hf']:5.2f} {s['match_db']:6.1f} {b / 1024:6.0f}")
     mb = tot / 1048576
     print(f'합계 {len(idx["tracks"])}곡 {mb:.2f} MB (예산 {budget} MB), 별칭 {idx.get("alias", {})}')

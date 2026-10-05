@@ -196,18 +196,19 @@ async function runBalance(ids) {
   fs.mkdirSync(dir, { recursive: true });
   const PY = path.join(HERE, 'render.py'), REF = path.join(HERE, 'ref_synth.mjs');
   const res = {};
-  await pool(ids, JOBS, async (id) => {
+  await pool(ids, JOBS, async (id) => { try {
     const t = Date.now();
     const sp = writeSpec(buildTrack(id, { noBalance: true }), dir, dir);
     const og = path.join(dir, `${id}.orig.json`);
     if (!fs.existsSync(og) || args.includes('--fresh')) fs.writeFileSync(og, await run(process.execPath, [REF, '--measure', id]));
     await run('python3', [PY, 'balance', sp, path.join(dir, `${id}.gm.json`)]);
     const o = JSON.parse(fs.readFileSync(og, 'utf8')), g = JSON.parse(fs.readFileSync(path.join(dir, `${id}.gm.json`), 'utf8'));
+    if (o.suspect?.length) throw new Error(`${id}: 원본 렌더 이상 (${o.suspect.join(',')}) — 측정 중단`);
     const keys = Object.keys(g.parts).filter((k) => o.chans[k] != null && Number.isFinite(o.chans[k]) && g.parts[k] > -150);
     const os_ = dbsum(keys.map((k) => o.chans[k])), gs = dbsum(keys.map((k) => g.parts[k]));
     res[id] = Object.fromEntries(keys.map((k) => [k, Math.round(clamp((o.chans[k] - os_) - (g.parts[k] - gs), -15, 15) * 10) / 10]));
     console.log(`  ${id.padEnd(10)} ${((Date.now() - t) / 1000).toFixed(0)}s ${JSON.stringify(res[id])}`);
-  });
+  } catch (e) { console.error(`  ${id}: ${e.message.split('\n')[0]}`); } });
   const all = { ...BALANCE, ...res };
   const ord = Object.fromEntries(Object.keys(TRACKS).filter((k) => all[k]).map((k) => [k, all[k]]));
   fs.writeFileSync(BAL_PATH, JSON.stringify(ord, null, 1) + '\n');
@@ -313,10 +314,10 @@ function writeQA(idx, ids) {
     const sp = path.join(BUILD, 'spec', `${id}.stats.json`);
     if (!fs.existsSync(sp) || !idx.tracks[id]) continue;
     const s = JSON.parse(fs.readFileSync(sp, 'utf8')), e = s.entry, q = s.qa;
-    const seam = e.loop ? `${q.seam.jump.toFixed(2)} / ${q.seam.hf.toFixed(2)} / ${q.seam.match_db.toFixed(0)} dB` : '—';
-    rows.push(`| ${id} | ${e.duration.toFixed(1)} | ${e.loop ? `${e.loopStart.toFixed(3)}–${e.loopEnd.toFixed(3)}` : 'no loop'} | ${(q.durErrMs).toFixed(2)} | ${e.lufs.toFixed(1)} | ${e.peak.toFixed(1)} | ${q.limitDb.toFixed(1)} | ${q.clip} | ${seam} | ${q.notesOk ? 'ok' : q.notesMsg} | ${q.kbps} | ${(e.bytes / 1024).toFixed(0)} |`);
+    const seam = e.loop ? `${q.seam.jump.toFixed(2)} / ${q.seam.hf.toFixed(2)} / ${q.seam.match_db.toFixed(0)} dB (src ${q.seam_src.match_db.toFixed(0)} dB, x ${q.xSec.toFixed(2)} s)` : '—';
+    rows.push(`| ${id} | ${e.duration.toFixed(1)} | ${e.loop ? `${e.loopStart.toFixed(3)}–${e.loopEnd.toFixed(3)}` : 'no loop'} | ${(q.durErrMs).toFixed(2)} | ${e.lufs.toFixed(1)} | ${e.peak.toFixed(1)} | ${q.limitDb.toFixed(1)} | ${q.clip} | ${seam} | ${q.notesOk ? 'ok' : q.notesMsg} | ${q.kbps}${q.coder && q.coder !== 'twoloop' ? ' ' + q.coder : ''} | ${(e.bytes / 1024).toFixed(0)} |`);
   }
-  const table = ['| id | dur s | loop s | Δtempo ms | LUFS | dBTP | limiter dB | clip | seam jump / hf / match | notes MIDI=compiled | kbps | KiB |', '|---|---|---|---|---|---|---|---|---|---|---|---|', ...rows].join('\n');
+  const table = ['| id | dur s | loop s | Δtempo ms | LUFS | dBTP | limiter dB | clip | seam jump / hf / match | notes | kbps | KiB |', '|---|---|---|---|---|---|---|---|---|---|---|---|', ...rows].join('\n');
   let md = fs.readFileSync(rd, 'utf8');
   md = md.replace(/<!-- QA:BEGIN -->[\s\S]*<!-- QA:END -->/, `<!-- QA:BEGIN -->\n${table}\n\nTotal: ${Object.keys(idx.tracks).length} files, ${(idx.totalBytes / 1048576).toFixed(2)} MB (budget ${BUDGET_MB} MB). Aliases: ${Object.keys(idx.alias).length ? JSON.stringify(idx.alias) : 'none'}.\n<!-- QA:END -->`);
   fs.writeFileSync(rd, md);

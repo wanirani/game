@@ -105,18 +105,20 @@ export function octaveBands(chs, sr) {
 }
 
 // 한 곡의 기준 측정: 채널별 단독 에너지(K 가중, dB) + 전체 마른 믹스의 옥타브 대역
+const peakOf = (chs) => { let p = 0; for (const x of chs) for (let i = 0; i < x.length; i++) { const v = Math.abs(x[i]); if (v > p) p = v; } return p; };
 export async function measureOrig(id) {
-  const comp = compileTrack(TRACKS[id], id), out = { chans: {}, bands: null };
+  const comp = compileTrack(TRACKS[id], id), out = { chans: {}, bands: null, suspect: [] };
   for (const [ci, cd] of comp.chans.entries()) {
     if (cd.inst === 'kit') {
-      const a = await renderOrig(id, (e, c) => c === ci && e.m !== 'z'); out.chans[cd.id] = 10 * Math.log10(kpower(a.chs, a.sr) + 1e-20);
+      const a = await renderOrig(id, (e, c) => c === ci && e.m !== 'z'); out.chans[cd.id] = 10 * Math.log10(kpower(a.chs, a.sr) + 1e-20); if (peakOf(a.chs) > 2) out.suspect.push(cd.id);
       if (comp.seq.some((s) => comp.secs[s].ev.some((e) => e.c === ci && e.m === 'z'))) { const z = await renderOrig(id, (e, c) => c === ci && e.m === 'z'); out.chans[cd.id + '.z'] = 10 * Math.log10(kpower(z.chs, z.sr) + 1e-20); }
     } else {
-      const a = await renderOrig(id, (e, c) => c === ci); out.chans[cd.id] = 10 * Math.log10(kpower(a.chs, a.sr) + 1e-20);
+      const a = await renderOrig(id, (e, c) => c === ci); out.chans[cd.id] = 10 * Math.log10(kpower(a.chs, a.sr) + 1e-20); if (peakOf(a.chs) > 2) out.suspect.push(cd.id);
     }
   }
   const full = await renderOrig(id);
-  out.bands = octaveBands(full.chs, full.sr); out.total = 10 * Math.log10(kpower(full.chs, full.sr));
+  out.bands = octaveBands(full.chs, full.sr); out.total = 10 * Math.log10(kpower(full.chs, full.sr)); out.peak = 20 * Math.log10(peakOf(full.chs));
+  if (out.peak > 12) out.suspect.push('mix');
   return out;
 }
 
