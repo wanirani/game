@@ -76,6 +76,22 @@ function makeMock() {
   return M;
 }
 
+// 실제 서버 처리기 (netlify/functions/api.mts + 메모리 저장소) — 끝에서 끝까지 시험 하나에 쓴다
+globalThis.Netlify ??= { context: null, env: { get: () => undefined, set() {}, has: () => false, delete() {}, toObject: () => ({}) } };
+let REAL = null;
+async function realApi() {
+  if (REAL) return REAL;
+  const api = (await import(path.join(ROOT, 'netlify/functions/api.mts'))).default;
+  const rt = await import(path.join(ROOT, 'netlify/lib/runtime.mts'));
+  const scrypto = await import(path.join(ROOT, 'netlify/lib/crypto.mts'));
+  const { createMemoryBackend } = await import(path.join(ROOT, 'tools/accounts/mem_store.mjs'));
+  const backend = createMemoryBackend();
+  rt.setStoreFactory((name, dc) => backend.factory(name, dc));
+  scrypto.setHashCostForTests?.({ N: 1024, r: 8, p: 1 });
+  REAL = { api };
+  return REAL;
+}
+
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--autoplay-policy=no-user-gesture-required'] });
 
 async function newContext(M, vp = 'desk') {
@@ -89,6 +105,13 @@ async function newContext(M, vp = 'desk') {
       if ([...M.down].some((d) => u.pathname === d || d === '*')) return route.abort('internetdisconnected');
       let body = null;
       try { body = req.postData() ? JSON.parse(req.postData()) : null; } catch { body = null; }
+      if (M.real) {
+        const headers = await req.allHeaders();
+        const buf = req.postDataBuffer();
+        const res = await M.real.api(new Request(req.url(), { method: req.method(), headers, body: buf && buf.length ? buf : undefined }), { ip: '198.51.100.30', deploy: { context: 'production' } });
+        return route.fulfill({ status: res.status, headers: Object.fromEntries(res.headers), body: Buffer.from(await res.arrayBuffer()) });
+      }
+      if (M.rejectGhost && u.pathname === '/api/runs/finish' && body?.ghost) { M.rejected = (M.rejected ?? 0) + 1; return route.fulfill({ status: 422, contentType: 'application/json', body: JSON.stringify({ ok: false, error: 'invalid_ghost', message: '고스트 형식' }) }); }
       const r = M.handle(req.method(), u.pathname, await req.allHeaders(), body);
       return route.fulfill({ status: r.status, contentType: 'application/json', body: JSON.stringify(r.body) });
     }
@@ -144,6 +167,7 @@ test('런 시작·제출: 시작 때 POST /api/runs, 정산 화면이 결과+고
   const f = M.finishes[0];
   assert.ok(f, '제출 요청');
   assert.match(f.run, /^run\.1\.practice:s01:normal$/);
+  assert.equal(f.board, 'practice:s01:normal', 'board 도 보낸다 (§2.2)');
   for (const k of ['time', 'score', 'hero', 'cls', 'level']) assert.ok(k in f.result, `result.${k}`);
   assert.equal(f.result.hero, 'kael');
   assert.ok(f.result.time > 2000 && f.result.time < 10000, `time ${f.result.time}`);
@@ -204,6 +228,67 @@ test('시작할 때 오프라인: 게임은 그대로, 정산은 "이번 기록�
   await page.waitForFunction(() => window.__game.top.onl?.state === 'offline', null, { timeout: 10000 });
   assert.match((await page.evaluate(() => window.__game.top.onlineText()))[0], /올리지 못했어요/);
   assert.ok([null, '[]'].includes(await page.evaluate(() => localStorage.getItem('bn_online_q'))), '대기열 없음');
+  assert.deepEqual(errs, []);
+  await ctx.close();
+});
+
+test('고스트 형식 거절(422 invalid_ghost): 같은 런으로 고스트 없이 다시 보냄', async () => {
+  const M = makeMock();
+  M.rejectGhost = true;
+  const ctx = await newContext(M);
+  const { page, errs } = await openGame(ctx, { init: AUTH });
+  await startPractice(page);
+  await page.waitForFunction(() => window.__game.top.orun?.state === 'ready', null, { timeout: 8000 });
+  await ticks(page, 30);
+  await page.evaluate(() => window.__game.top.finish(true));
+  await waitTop(page, 'arcadeResults');
+  await page.waitForFunction(() => window.__game.top.onl?.state === 'ok', null, { timeout: 10000 });
+  assert.equal(M.rejected, 1);
+  assert.equal(M.finishes.length, 1);
+  assert.equal(M.finishes[0].ghost, undefined);
+  assert.deepEqual(errs, []);
+  await ctx.close();
+});
+
+test('끝에서 끝까지 (실제 서버 처리기 · 메모리 저장소): 가입 → 연습 완주 → 1위 · 순위표 · 1위 고스트 · 별명 · 오늘의 도전', async () => {
+  const M = makeMock();
+  M.real = await realApi();
+  const su = await M.real.api(new Request('https://game.test/api/auth/signup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: `e2e${Date.now() % 1e6}`, password: 'crimson-moon-77', remember: true }) }), { ip: '198.51.100.31', deploy: { context: 'production' } });
+  const sj = await su.json();
+  assert.ok(sj.ok, JSON.stringify(sj));
+  const ctx = await newContext(M);
+  const { page, errs } = await openGame(ctx, { init: { bn_auth: JSON.stringify({ id: sj.id, token: sj.token }) } });
+  await startPractice(page);
+  await page.waitForFunction(() => window.__game.top.orun?.state === 'ready', null, { timeout: 10000 });
+  await page.evaluate(() => { window.__game._pageHidden = true; });
+  await page.keyboard.down('ArrowRight'); await ticks(page, 120); await page.keyboard.up('ArrowRight');
+  await page.evaluate(() => { const w = window.__game.world; w.run.time = Math.max(w.run.time, 6.2); });
+  await page.waitForTimeout(2500);   // 서버 검사: 실제 걸린 시간 ≥ 기록 × 0.9 − 3초
+  await page.evaluate(() => { window.__game._pageHidden = false; window.__game.top.finish(true); });
+  await waitTop(page, 'arcadeResults');
+  await page.waitForFunction(() => ['ok', 'error', 'queued'].includes(window.__game.top.onl?.state), null, { timeout: 15000 });
+  const onl = await page.evaluate(() => window.__game.top.onl);
+  assert.equal(onl.state, 'ok', JSON.stringify(onl));
+  assert.equal(onl.rank, 1); assert.equal(onl.total, 1); assert.equal(onl.best, true);
+  // 명예의 전당: 내 항목·내 순위 (별명은 자동 '헌터#…')
+  await page.evaluate(() => window.__game.go('highscore', { src: 'online', board: 'practice:s01:normal' }, { fade: false }));
+  await page.waitForFunction(() => window.__game.top?.name === 'highscore' && window.__game.top.ob?.state === 'ready', null, { timeout: 10000 });
+  const b = await page.evaluate(() => window.__game.top.ob.data);
+  assert.equal(b.entries.length, 1); assert.equal(b.me.rank, 1); assert.match(b.entries[0].nick, /^헌터#\d+$/); assert.equal(b.entries[0].ghost, true);
+  // 별명 바꾸기 → 순위표에 반영
+  const nick = await page.evaluate(async () => (await import('/src/core/online.js')).setNick('밤의사냥꾼'));
+  assert.equal(nick.ok, true); assert.equal(nick.nick, '밤의사냥꾼');
+  const nid = await page.evaluate(async (id) => (await import('/src/core/online.js')).setNick(`${id}x`), sj.id);
+  assert.equal(nid.ok, false); assert.match(nid.message, /아이디/);
+  // 다음 판: 1위 고스트를 받아 재생
+  await startPractice(page, { ghost: 'top' });
+  await page.waitForFunction(() => !!window.__game.top.ghost, null, { timeout: 10000 });
+  // 오늘의 도전 카드 (서버가 정한 값이 이 게임 데이터로 열린다)
+  await page.evaluate(() => window.__game.go('arcade', { cfg: { kind: 'daily' } }, { fade: false }));
+  await page.waitForFunction(() => window.__game.top?.name === 'arcade' && ['ready', 'error'].includes(window.__game.top.daily?.state), null, { timeout: 10000 });
+  const d = await page.evaluate(() => ({ state: window.__game.top.daily.state, msg: window.__game.top.daily.msg, cfg: window.__game.top.daily.cfg }));
+  assert.equal(d.state, 'ready', d.msg);
+  assert.ok(d.cfg.cls, '직업이 그 헌터의 것');
   assert.deepEqual(errs, []);
   await ctx.close();
 });

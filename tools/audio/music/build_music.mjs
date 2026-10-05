@@ -80,9 +80,9 @@ export function buildTrack(id, { noBalance = false } = {}) {
         const v = e.v * (0.96 + 0.08 * e.hum);
         if (e.m === 'z') {
           if (!taiko) taiko = { cid: cd.id + '.z', inst: 'kit:z', ci, prog: 116, name: GM_NAME[116], vol: (cd.vol ?? 0.5) * 0.9, pan: 0, rev: 0.35, dly: 0, cho: 0, notes: [], compiled: 0 };
-          taiko.notes.push({ tick: e.tick, dur: PPQ * 2, key: 36, vel: clamp(Math.round(127 * Math.sqrt(v)), 1, 127) }); taiko.compiled++;
+          taiko.notes.push({ tick: e.tick, dur: PPQ * 2, key: 36, vel: clamp(Math.round(127 * Math.sqrt(v)), 1, 127), v0: e.v }); taiko.compiled++;
         } else if (LANE_KEY[e.m]) {
-          drumPart.notes.push({ tick: e.tick, dur: PPQ / 8, key: LANE_KEY[e.m], vel: clamp(Math.round(127 * Math.sqrt(v * (LANE_VEL[e.m] ?? 0.8))), 1, 127) });
+          drumPart.notes.push({ tick: e.tick, dur: PPQ / 8, key: LANE_KEY[e.m], vel: clamp(Math.round(127 * Math.sqrt(v * (LANE_VEL[e.m] ?? 0.8))), 1, 127), v0: e.v });
         }
       }
       drumPart.compiled -= taiko ? taiko.compiled : 0;
@@ -92,7 +92,7 @@ export function buildTrack(id, { noBalance = false } = {}) {
     const st = { min: ms.length ? Math.min(...ms) : 60, max: ms.length ? Math.max(...ms) : 60, med: median(ms) };
     const prog = ov.prog ?? pick(inst, cd, st, def);
     const p = { cid: cd.id, inst, ci, prog, name: GM_NAME[prog] || `GM ${prog}`, vol: (cd.vol ?? 0.5) * (ov.vol ?? 1), pan: cd.pan ?? 0, rev: ov.rev ?? rev, dly, cho: ov.cho ?? CHORUS[prog] ?? 0, st, gen: !!cd.gen, from: cd.from || null, notes: [], compiled: compiledCount[ci] };
-    for (const e of evs) p.notes.push({ tick: e.tick, dur: e.dur, key: clamp(Math.round(e.m), 0, 127), vel: clamp(Math.round(127 * Math.sqrt(clamp(e.v * (0.96 + 0.08 * e.hum), 0.01, 1))), 1, 127) });
+    for (const e of evs) p.notes.push({ tick: e.tick, dur: e.dur, key: clamp(Math.round(e.m), 0, 127), vel: clamp(Math.round(127 * Math.sqrt(clamp(e.v * (0.96 + 0.08 * e.hum), 0.01, 1))), 1, 127), v0: e.v });
     parts.push(p);
   });
   if (taiko) parts.push(taiko);
@@ -152,17 +152,19 @@ function toMIDI(T) {
 // ── 별칭 탐지: 컴파일 결과가 같거나 일정 음정 이동만 다르면 별칭 ──
 function signature(T) {
   const notes = [];
-  for (const p of T.parts) for (const n of p.notes) notes.push([p.inst, p.prog, n.tick, n.dur, p.drum ? n.key : 0, n.vel].join(','));
+  for (const p of T.parts) for (const n of p.notes) notes.push([p.cid, p.inst, p.prog, p.vol, p.pan, n.tick, n.dur, p.drum ? n.key : 0, n.v0.toFixed(4)].join(',')); // 인간미(곡 id 시드) 제외한 원래 세기
   const keys = T.parts.flatMap((p) => (p.drum ? [] : p.notes.map((n) => n.key)));
   return { body: notes.join(';') + '|' + T.tl.map((s) => s.name + s.bpm).join(',') + '|' + T.comp.loopAt, keys };
 }
-function findAliases(list) {
+export function findAliases(list) {
   const alias = {}, sigs = list.map((T) => [T.id, signature(T)]);
   for (let i = 0; i < sigs.length; i++) for (let j = 0; j < i; j++) {
     const [a, A] = sigs[j], [b, B] = sigs[i];
     if (alias[b] || alias[a] || A.body !== B.body || A.keys.length !== B.keys.length) continue;
     const d = B.keys.length ? B.keys[0] - A.keys[0] : 0;
-    if (B.keys.every((k, x) => k - A.keys[x] === d)) alias[b] = a; // d≠0 이면 순수 조옮김 재사용
+    if (!B.keys.every((k, x) => k - A.keys[x] === d)) continue;
+    // 같은 곡 → 별칭. 순수 조옮김 재사용은 별칭 계약에 음높이 칸이 없고(detune 은 템포도 바뀜) 키가 달라지므로 따로 렌더하고 알리기만 한다
+    if (d === 0) alias[b] = a; else console.log(`  참고: ${b} = ${a} 의 ${d > 0 ? '+' : ''}${d} 반음 조옮김 (따로 렌더)`);
   }
   return alias;
 }

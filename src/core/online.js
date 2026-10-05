@@ -3,6 +3,7 @@
 //    cloud.eligible(): https·localhost 만, claude.ai 임베드 등은 요청 0건). 401 이면 cloud.expire() 로 로그인 만료를 알린다
 //  - 게임을 기다리게 하지 않는다: 모든 요청은 비동기·시간 제한, 실패해도 예외 없이 {ok:false, error, message} 를 돌려준다
 //  - 런 흐름 (§4): startRun(board) → 로그인 중이면 POST /api/runs 를 비동기로 (실패해도 게임은 그대로) → finishRun(h, result, ghost)
+//    · 제출 본문 { run, result, board, ghost? }. 422 invalid_ghost 면 고스트를 빼고 다시 (그 밖의 4xx 는 버림 — §2.2 표)
 //    · 연결 문제(오프라인·시간 초과·5xx·429)로 못 보낸 결과는 기기 대기열(localStorage bn_online_q, 계정별, 최대 6개)에 두었다가
 //      다시 연결될 때(online 이벤트 · 로그인 · 아케이드/명예의 전당 화면) 보낸다. run 은 시작 뒤 6시간만 유효 → 지난 것은 버린다
 //    · 버스 'online:flushed' {sent:[{board, rank, total, best}], dropped} — 대기열에서 보낸 결과 (아케이드 메뉴가 토스트)
@@ -99,14 +100,14 @@ export function fmtMs(ms) {
 }
 
 // ───────────────────────── 별명 규칙 (§0) ─────────────────────────
-const NICK_CH = /^[가-힣A-Za-z0-9_]$/u;
+const NICK_CH = /^[\uAC00-\uD7A3A-Za-z0-9_]$/u;   // 완성형 한글 (글꼴 검사가 소스 글자를 세므로 범위는 이스케이프로)
 /** 별명 검사 → 오류 문구 또는 null (금칙어·겹침은 서버). id: 로그인 아이디 (별명에 넣을 수 없다 — 서버 nick_is_id) */
 export function checkNick(raw, id = cloud.id) {
   const s = String(raw ?? '').normalize('NFC').trim();
   if (!s) return '별명을 입력해 주세요.';
   const cs = [...s];
   if (cs.some((c) => /\s/u.test(c))) return '별명에는 띄어쓰기를 쓸 수 없어요.';
-  if (cs.some((c) => /[ㄱ-ㆎ]/u.test(c))) return '자음·모음만 따로 쓸 수 없어요. 완성된 글자로 써 주세요.';
+  if (cs.some((c) => /[\u3131-\u318E]/u.test(c))) return '자음·모음만 따로 쓸 수 없어요. 완성된 글자로 써 주세요.';
   const bad = cs.find((c) => !NICK_CH.test(c));
   if (bad) return `「${bad}」 은(는) 쓸 수 없어요. 한글·영문·숫자·밑줄(_)만 쓸 수 있어요.`;
   if (cs.length < 2 || cs.length > 12) return `별명은 2~12자로 정해 주세요. (지금 ${cs.length}자)`;
@@ -212,10 +213,10 @@ export async function finishRun(h, result, ghost = null) {
       if (h.state === 'offline' || h.state === 'starting') return { state: 'offline' };
       return { state: 'error', message: h.error ?? MESSAGES.server_error };
     }
-    const body = { run: h.run, result: cleanResult(result) };
+    const body = { run: h.run, result: cleanResult(result), board: h.board };
     if (okGhost(ghost)) body.ghost = ghost;
     if (!cloud.loggedIn || (h.id && cloud.id !== h.id)) return { state: 'login' };
-    const r = await call('POST', '/runs/finish', { body, need: true, timeout: 12000 });
+    const r = await sendFinish(body);
     dropBoardCache(h.board);
     if (r.ok) return { state: 'ok', ...pickRank(r) };
     if (r.error === 'unauthorized' || r.error === 'logged_out') return { state: 'login' };
@@ -228,6 +229,12 @@ export async function finishRun(h, result, ghost = null) {
     console.warn('[online] finish', e);
     return { state: 'error', message: MESSAGES.client_error };
   }
+}
+/** 제출 한 번. 고스트 형식이 거절되면(422 invalid_ghost — 런은 쓰이지 않는다, §2.2) 고스트를 빼고 한 번 더 */
+async function sendFinish(body) {
+  const r = await call('POST', '/runs/finish', { body, need: true, timeout: 12000 });
+  if (!r.ok && r.error === 'invalid_ghost' && body.ghost) { delete body.ghost; return call('POST', '/runs/finish', { body, need: true, timeout: 12000 }); }
+  return r;
 }
 function pickRank(r) {
   const n = (v) => (Number.isFinite(v) ? v : null);
@@ -270,7 +277,7 @@ export function flushQueue() {
       let stop = false;
       for (const e of q) {
         if (stop || e.id !== cloud.id) { rest.push(e); continue; }
-        const r = await call('POST', '/runs/finish', { body: e.body, need: true, timeout: 12000 });
+        const r = await sendFinish(e.body);
         if (r.ok) { out.sent.push({ board: e.board, ...pickRank(r) }); dropBoardCache(e.board); }
         else if (retryable(r) || r.error === 'logged_out' || r.error === 'unauthorized') { e.tries = (e.tries ?? 0) + 1; rest.push(e); stop = true; }
         else out.dropped++;   // 서버가 거절 (이미 제출·만료·검사 실패): 다시 보내도 안 된다
