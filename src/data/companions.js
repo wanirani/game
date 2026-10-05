@@ -1,4 +1,4 @@
-// 동료(탈것 10 — 외전 아르겐 포함 · 수호신 11) 순수 데이터 — owner: CMP-DATA (companions §1–4, §9, §12.1; MASTER_PLAN §1.2)
+// 동료(탈것 10 — 외전 아르겐 포함 · 수호신 12 — 외전 무닌 포함) 순수 데이터 — owner: CMP-DATA (companions §1–4, §9, §12.1; MASTER_PLAN §1.2)
 // 순수 데이터 모듈: node 에서 import 가능, DOM 없음. 데이터 모듈(items.js 의 josa)만 import 한다.
 //
 // id 체계는 MASTER_PLAN §1.2: 탈것 mt_*, 수호신 gd_* (명세의 m_*/g_* 는 LEGACY_IDS 로 옮겨 읽는다).
@@ -581,6 +581,30 @@ export const GUARDIANS = {
     light: { color: '#c060ff', r: 70, i: 0.4 },
     join: '꿈먹는 맥이 당신의 그림자 속으로 쏙 들어왔다. 악몽은 이제 이 녀석의 간식이다.', joinNarr: true,
     chips: ['악몽 포식', '탄 먹기', 'HP 재생 · 암흑 저항'],
+  }),
+  // ─ 외전 (docs/specs/ex_s22.md §3): 네메인의 늙은 까마귀 — s22_outro 의 recruit 명령 (플래그 recruit_gd_munin).
+  //   AI = 미네르바(gd_owl)의 OWL.passive · OWL.drawWorld + 데이터 kind 'dive' (스킬은 aiFor 의 GENERIC) — game/guardian.js GUARDIAN_AI.gd_munin
+  //   그림 = render/guardians_b.js GUARDIAN_DRAW_B.gd_munin (벡터 까마귀, 채색 퍼핏 없음) · 초상화 portraits/cmp_gd_munin (EX2-BOSS Kling) 의 머리에 맞춘 크롭.
+  //   울음 crow_caw(core/sfx_feel.js)의 vol 2.6 은 대역 필터 보정값이라 실제로는 크지 않다 (tools/test_sfx.mjs --levels 단기 RMS 0.074 — 올빼미 owl_hoot 0.134,
+  //   틱톡 gear_whir 0.074 와 같은 범위) → 부르는 쪽 음량(합류 카드 0.85 · 스킬 0.7 · 메뉴 0.55 · 비밀 발견 0.5)을 그대로 쓰고 pitch 1.1 로 조금 가늘게
+  gd_munin: guardian({
+    id: 'gd_munin', part: 2, chapter: 22, name: '무닌', title: '이름을 기억하는 까마귀', color: '#ff4a6a',
+    role: '척후·암살형 — 약한 적을 노리는 급강하와 숨은 길 찾기',
+    desc: '까마귀 결사의 둥지에서 서른 해를 산 늙은 까마귀. 이름 없이 쓰러진 칼들의 이름을 하나도 빠짐없이 외우고 있다.',
+    portrait: 'portraits/cmp_gd_munin', iconFocus: { x: 0.66, y: 0.27, s: 0.42 },
+    obtain: { type: 'flag', flag: 'recruit_gd_munin', hint: '외전 「이름 없는 언덕」에서 만날 수 있다' },
+    cry: { sfx: 'crow_caw', pitch: 1.1 }, palette: ['#141018', '#2a2438', '#5a5468', '#c0142a', '#ff4a6a'],
+    move: 'fly', size: { w: 24, h: 22 }, front: true, anchor: { dx: 30, dy: -118 }, speed: 1050, engage: 360, bias: 'lowhp', perch: 'shoulder',
+    attack: { name: '부리 급강하', desc: '위에서 내리꽂혀 부리로 쪼아 댄다. 약해진 적을 먼저 노린다.', kind: 'dive', swoop: 0.28, box: { w: 40, h: 40 },
+      mv: 1.0, element: 'dark', interval: 1.5, range: 360 },
+    skill: { name: '까마귀 떼', desc: '까마귀 떼를 불러 주인 주위를 휩쓸어 적을 쪼고 밀쳐 낸다.', cd: 28, mv: 1.4, type: 'phys', element: 'dark', stun: 0.5,
+      line: '까악— 까아악!' },
+    assist: { name: '눈 쪼기', desc: '적의 눈을 쪼아 잠시 경직시킨다.', kind: 'dive', mv: 1.0, element: 'dark', stun: 0.4 },
+    aura: { base: { crit: 3, critDmg: 8 }, perLv: { crit: 0.05, critDmg: 0.2 } },
+    passive: { name: '까마귀의 눈', desc: '가까운 부서지는 벽과 가짜 벽을 윤곽으로 보여 준다. 반짝이는 것은 까마귀가 먼저 찾는다.', tiles: 7 },
+    light: { color: '#ff4a6a', r: 50, i: 0.3 },
+    join: '이름을 기억하는 늙은 까마귀가 당신의 어깨에 내려앉았다. 이제 이 까마귀가 당신의 이름도 기억할 것이다.', joinNarr: true,
+    chips: ['까마귀 떼', '까마귀의 눈', '치명타 · 치명타 피해'],
   }),
 };
 

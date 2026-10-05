@@ -1,0 +1,121 @@
+{
+ "id": "b_nemain",
+ "kind": "boss",
+ "out": "assets/painted/bosses/b_nemain",
+ "raw": "tools/painted/raw/b_nemain",
+ "td": 1.0,
+ "quality": 78,
+ "matte": {
+  "default": {
+   "key": 9,
+   "soft": 22,
+   "hard": 6,
+   "watermark": false
+  }
+ },
+ "cuts": {},
+ "parts": [
+  {
+   "name": "x",
+   "src": "full_a",
+   "box": [
+    0,
+    0,
+    10,
+    10
+   ],
+   "lps": 1,
+   "pivots": {
+    "c": [
+     5,
+     5
+    ]
+   }
+  },
+  {
+   "name": "y",
+   "src": "heads_a",
+   "box": [
+    0,
+    0,
+    10,
+    10
+   ],
+   "lps": 1,
+   "pivots": {
+    "c": [
+     5,
+     5
+    ]
+   }
+  },
+  {
+   "name": "z",
+   "src": "arms_a",
+   "box": [
+    0,
+    0,
+    10,
+    10
+   ],
+   "lps": 1,
+   "pivots": {
+    "c": [
+     5,
+     5
+    ]
+   }
+  },
+  {
+   "name": "w",
+   "src": "cloak_a",
+   "box": [
+    0,
+    0,
+    10,
+    10
+   ],
+   "lps": 1,
+   "pivots": {
+    "c": [
+     5,
+     5
+    ]
+   }
+  },
+  {
+   "name": "v",
+   "src": "crows_a",
+   "box": [
+    0,
+    0,
+    10,
+    10
+   ],
+   "lps": 1,
+   "pivots": {
+    "c": [
+     5,
+     5
+    ]
+   }
+  },
+  {
+   "name": "u",
+   "src": "debris_a",
+   "box": [
+    0,
+    0,
+    10,
+    10
+   ],
+   "lps": 1,
+   "pivots": {
+    "c": [
+     5,
+     5
+    ]
+   }
+  }
+ ]
+}

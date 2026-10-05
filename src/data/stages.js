@@ -1,4 +1,4 @@
-// 스테이지 정의 (1부 13장 + 2부 14~20장 + 외전 21장 + 투기장). 맵은 data/maps/<id>.js 의 ROOMS.
+// 스테이지 정의 (1부 13장 + 2부 14~20장 + 외전 21·22장 + 투기장). 맵은 data/maps/<id>.js 의 ROOMS.
 // 2부 스테이지 추가 필드 (world2 §4.2): part:2, page:1(월드맵 쪽), gimmick(world2 §3.1 — 모든 방의 기본값, { kind, …매개변수 } 또는 배열),
 //   shard(별의 조각 k_star_n: 맵 '@' 에 정확히 1개), heart(세계의 심장 k_heart_n: 보스 전리품), color(월드맵 노드 색), liquid 에 'deep'(깊은 물) 추가.
 //   1부 스테이지에는 새 필드가 없다 (page 는 월드맵에서 0 으로 본다).
@@ -36,6 +36,8 @@ import { ROOMS as S19 } from './maps/s19.js';
 import { ROOMS as S20 } from './maps/s20.js';
 // ── EX map import s21 (EX-MAP) — 외전 ──
 import { ROOMS as S21 } from './maps/s21.js';
+// ── EX map import s22 (EX2-MAP) — 외전 ──
+import { ROOMS as S22 } from './maps/s22.js';
 
 const S = (o) => ({ start: 'r1', parTime: 300, darkColor: '#06020c', liquid: 'water', docs: [], relic: null, unlocks: [], ...o, intro: o.intro ?? `${o.id}_intro`, outro: o.outro ?? `${o.id}_outro` });
 
@@ -120,6 +122,15 @@ export const STAGES = {
     music: 's17', level: 70, darkness: 0.15, darkColor: '#081020', liquid: 'water', boss: 'b_argen', rooms: S21, parTime: 600,
     enemies: ['storm_harpy', 'gale_knight', 'thunder_roc', 'cloud_jelly', 'void_herald', 'nihil_spawn', 'mimic'], docs: [], shard: null, heart: null,
     gimmick: { kind: 'wind', dir: 1, force: 850, on: 2.4, off: 3.8 }, color: '#c8e4ff', next: null, mapPos: { x: 0.8, y: 0 }, req: '2부의 끝을 본 뒤, 구름 위 하늘 정원에서 용의 울음이 들려오면 갈 수 있다' }),
+  // ── EX stage s22 (EX2-MAP 맵 · EX2-INTEG 통합) — 외전 「까마귀의 이름」 (docs/specs/ex_s22.md). 2부 엔딩(p2_done) 뒤에 열린다.
+  //    side: true · page: 0 = 1부 지도(에슈빌 쪽)에서 2장 안개의 묘지로부터 갈라지는 외전 노드 (town/worldmap.js SIDE_FROM.s22 = 's02')
+  //    intro/outro '' = 아직 대본 없음 (외전 대본 s22_intro · s22_outro 는 EX2-INTEG 가 쓰고 이 두 빈 값을 지우면 S() 기본값 s22_intro/s22_outro 가 된다).
+  //    STAGE_ORDER_P2 · 세계 지도 노드 · 해금은 EX2-INTEG — 그때까지 일반 진행에서는 닿지 않는다 ──
+  s22: S({ id: 's22', chapter: 22, part: 2, page: 0, side: true, name: '이름 없는 언덕', sub: '안개의 묘지 너머, 이름 없는 칼들이 자란 곳', theme: 'graveyard', bg: 'bg/s02_graveyard', tex: 'tex/tex_mossy_stone', tex2: 'tex/tex_dirt', tileStyle: 'moss',
+    music: 's02', level: 72, darkness: 0.5, darkColor: '#06020c', liquid: 'water', boss: 'b_nemain', rooms: S22, parTime: 600, intro: '', outro: '',
+    enemies: ['crow', 'ghost', 'phantom_sword', 'shadow_hunter', 'faceless', 'wisp', 'mimic'], docs: [], shard: null, heart: null,
+    gimmick: { kind: 'wind', dir: 'alt', force: 760, on: 2.2, off: 4.2 }, color: '#ff4a6a', next: null, mapPos: { x: 0.13, y: 0.5 },
+    req: '2부의 끝을 본 뒤, 까마귀 결사의 소집령이 에슈빌에 날아들면 갈 수 있다' }),
   arena: S({ id: 'arena', chapter: 0, name: '피의 투기장', sub: '서바이벌 & 보스 러시', theme: 'arena', bg: 'bg/s_arena', tex: 'tex/tex_castle_stone', tex2: 'tex/tex_dirt', tileStyle: 'stone',
     music: 'arena', level: 10, darkness: 0.3, boss: null, rooms: ARENA, parTime: 600, intro: null, outro: null,
     enemies: [], next: null, mapPos: { x: 0.3, y: 0.3 } }),

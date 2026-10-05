@@ -55,6 +55,7 @@ export const SURFACE = {
   s16: { liquid: 'water', dry: 'stone' },
   s17: 'stone', s18: 'flesh', s19: 'dirt', s20: 'stone',
   s21: 'stone',   // 외전: 하늘 정원의 둥지 (s17 과 같은 하늘 대리석)
+  s22: 'dirt',    // 외전: 이름 없는 언덕 (s02 와 같은 묘지 흙)
   hub: 'dirt', town: 'dirt',   // 마을 허브 (HubScene 의 TOWN_STAGE.id 는 'town')
   _default: 'stone',
 };
