@@ -61,7 +61,8 @@ const DPR = Math.min(2, window.devicePixelRatio || 1);
 const W = LABEL_W + CW * YAWS.length + 10;
 
 // ── 외형 만들기 (메뉴와 같은 composeLook: 직업 계보 + 장비 칸) ──
-const heroes = (CHAR_ORDER || Object.keys(CHARACTERS)).filter((id) => CHARACTERS[id]).slice(0, 6);
+// ?heroes=isolde,kael — 목록 밖 영웅(통합 전 7번째 영웅 등)도 볼 수 있게. 없으면 예전처럼 CHAR_ORDER 앞 6명 (turntable.mjs 기본 검사)
+const heroes = (Q.get('heroes') ? Q.get('heroes').split(',') : (CHAR_ORDER || Object.keys(CHARACTERS)).slice(0, 6)).filter((id) => CHARACTERS[id]);
 function classesOf(cid) { return Object.values(CLASSES).filter((c) => c.charId === cid); }
 function bestOf(filter) {
   let best = null;

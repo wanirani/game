@@ -227,8 +227,10 @@ export class TowerScene extends ArcadeRunScene {
       const side = i++ % 2 ? -1 : 1, want = Math.round((180 + 40 * i) / TILE);
       let tx = ptx;
       for (let k = 1; k <= want && open(ptx + side * k); k++) tx = ptx + side * k;
-      const x = tx * TILE + TILE / 2;
-      const gy = m.groundBelow(tx, fy) ?? p.bottom;
+      // 넓은 적(골렘 등)의 몸이 트인 칸 안에 들어가게 (영웅 칸 ~ tx 사이)
+      const lo = Math.min(ptx, tx) * TILE + e.w / 2, hi = (Math.max(ptx, tx) + 1) * TILE - e.w / 2;
+      const x = lo <= hi ? clamp(tx * TILE + TILE / 2, lo, hi) : (lo + hi) / 2;
+      const gy = m.groundBelow(Math.floor(x / TILE), fy) ?? p.bottom;
       e.x = x - e.w / 2; e.y = (e.def?.flying ? p.y - 60 : gy - e.h); e.vx = 0; e.vy = 0;
       w.fx.burst('dark', e.cx, e.cy, 12, { speed: 120 });
     }
@@ -317,13 +319,19 @@ export class TowerScene extends ArcadeRunScene {
     this.game.toast(`축복: ${b.name}`, b.color, 2.2);
     return true;
   }
-  /** 출구를 연다: 영웅 발밑 (공중이거나 발밑이 움직이는·무너지는 발판·부서지는 벽이면 — 문이 허공에 남는다 — 이 방의 시작 위치) */
+  /**
+   * 출구를 연다: 영웅 발밑. 공중이거나 발밑이 움직이는·무너지는 발판·부서지는 벽이면(문이 허공에 남는다) 영웅이 마지막으로
+   * 딛고 선 단단한 땅(p.safeSpot — 영웅 곁이라 닿을 수 있다), 그것도 없으면 이 방의 시작 위치
+   */
   openGate() {
     const w = this.world, p = w.player, m = w.map;
     if (this.gate) return;
     let cx = p.cx, bottom = p.bottom;
     const fy = Math.floor((p.bottom + 2) / TILE), firm = (x) => { const t = m.typeAt(Math.floor(x / TILE), fy); return t === T.SOLID || t === T.ONEWAY; };
-    if (!p.onGround || p.dead || !(firm(p.x + 2) || firm(p.x + p.w - 2))) { const cp = w.run.checkpoint; cx = cp.x + p.w / 2; bottom = cp.y + p.h; }
+    if (!p.onGround || p.dead || !(firm(p.x + 2) || firm(p.x + p.w - 2))) {
+      const cp = p.safeSpot?.roomId === w.roomId ? p.safeSpot : w.run.checkpoint;
+      cx = cp.x + p.w / 2; bottom = cp.y + p.h;
+    }
     this.gate = w.add(new TowerGate(cx, bottom, this));
     w.cleared = true; w.exitCalled = true;   // 남은 전리품을 영웅에게 끌어온다 (pickups.js); 스테이지 클리어 흐름(afterClear)은 타지 않는다
     this.phase = 'gate'; this.phaseT = 0;

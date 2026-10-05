@@ -133,7 +133,7 @@ export const PUPPETS = {
  },
  "isolde": {
   "isolde_dragoon": {
-   "h": "2d18a57ded95",
+   "h": "ab1551509174",
    "turn": true,
    "lv": [
     "hi",
@@ -142,7 +142,7 @@ export const PUPPETS = {
    ]
   },
   "isolde_einherjar": {
-   "h": "0e09b4e623bc",
+   "h": "4dffdc703f5a",
    "turn": true,
    "lv": [
     "hi",
@@ -151,7 +151,7 @@ export const PUPPETS = {
    ]
   },
   "isolde_lancer": {
-   "h": "85890b04b822",
+   "h": "366d66300857",
    "turn": true,
    "lv": [
     "hi",
@@ -160,7 +160,7 @@ export const PUPPETS = {
    ]
   },
   "isolde_spearsaint": {
-   "h": "f5e0b1ea4df9",
+   "h": "4d402b6fbc2e",
    "turn": true,
    "lv": [
     "hi",
@@ -169,7 +169,7 @@ export const PUPPETS = {
    ]
   },
   "isolde_stormlord": {
-   "h": "2207b66da2f9",
+   "h": "0255c4e2b6f9",
    "turn": true,
    "lv": [
     "hi",
@@ -178,7 +178,7 @@ export const PUPPETS = {
    ]
   },
   "isolde_valkyrie": {
-   "h": "12ce775dd9ae",
+   "h": "98ac2bcdcc40",
    "turn": true,
    "lv": [
     "hi",
@@ -187,7 +187,7 @@ export const PUPPETS = {
    ]
   },
   "isolde_wyrmknight": {
-   "h": "fc43a9c854a0",
+   "h": "59ddba347727",
    "turn": true,
    "lv": [
     "hi",
