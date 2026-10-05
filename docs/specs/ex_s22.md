@@ -1,6 +1,6 @@
 # 외전 22장 「까마귀의 이름」 — 설계 계약
 
-> **상태: 설계 승인 (리드, 2026-10-05) — 구현 중.** 리드 확정: 반전(둥지어미 = 리아의 어머니 네메인) · 1부 지도(page 0) 외전 노드 · `p2_done` 해금 · `COURSE_COUNT` 9. 통합이 끝나면 EX2-INTEG 가 이 줄과 §7 을 「통합 기록」으로 바꾼다 (ex_s21.md §7 과 같은 모양).
+> **상태: 통합 완료 (EX2-INTEG, 2026-10-05) — 기록은 §7.** 설계 승인 (리드, 2026-10-05). 리드 확정: 반전(둥지어미 = 리아의 어머니 네메인) · 1부 지도(page 0) 외전 노드 · `p2_done` 해금 · `COURSE_COUNT` 9. 구현에서 달라진 값(보스 hpMul·res, 단검 atk, 지도 mapPos)은 그 자리에 고쳐 적었고, §4.2 대본은 설계 원문 그대로 두고 손질한 줄을 §7 '이야기' 칸에 모았다 (실제 대본은 `src/data/story_ex.js`).
 
 리드가 정한 설계. **굵은 항목**은 바꾸지 않는다. 바꿀 이유가 생기면 `/tmp/claude-0/plan/ex2_requests.md` 에 `[보낸이→받는이] 내용` 한 줄로 적는다.
 비용은 s21 과 같은 틀: **새 배경·새 적·새 기믹 없음**, 새 그림은 보스 하나(채색) + 초상화 셋. 보상은 탈것이 아니라 **수호신**.
@@ -61,7 +61,7 @@
 s22: S({ id: 's22', chapter: 22, part: 2, page: 0, side: true, name: '이름 없는 언덕', sub: '안개의 묘지 너머, 이름 없는 칼들이 자란 곳', theme: 'graveyard', bg: 'bg/s02_graveyard', tex: 'tex/tex_mossy_stone', tex2: 'tex/tex_dirt', tileStyle: 'moss',
   music: 's02', level: 72, darkness: 0.5, darkColor: '#06020c', liquid: 'water', boss: 'b_nemain', rooms: S22, parTime: 600,
   enemies: ['crow', 'ghost', 'phantom_sword', 'shadow_hunter', 'faceless', 'wisp', 'mimic'], docs: [], shard: null, heart: null,
-  gimmick: { kind: 'wind', dir: 'alt', force: 760, on: 2.2, off: 4.2 }, color: '#ff4a6a', next: null, mapPos: { x: 0.13, y: 0.5 },
+  gimmick: { kind: 'wind', dir: 'alt', force: 760, on: 2.2, off: 4.2 }, color: '#ff4a6a', next: null, mapPos: { x: 0.13, y: 0.55 },   // 통합: 0.5 → 0.55 (데스크톱에서 나침반과 겹쳐서, §7)
   req: '2부의 끝을 본 뒤, 까마귀 결사의 소집령이 에슈빌에 날아들면 갈 수 있다' }),
 ```
 
@@ -71,7 +71,7 @@ s22: S({ id: 's22', chapter: 22, part: 2, page: 0, side: true, name: '이름 없
 |---|---|
 | id | **`b_nemain`**. 1페이즈 이름 **둥지어미**, 칭호 「이름을 거두는 까마귀」(초상화 `portraits/b_nemain`, 가면). form2(가면이 깨진 뒤) 이름 **네메인**, 칭호 「가면을 벗은 어미」(초상화 `portraits/b_nemain2`) |
 | 모습 | 키 큰 마른 여인(사십 대 후반). 검은 칠의 까마귀 부리 반가면(코 위 부리, 금이 가 있다), 땅에 끌리는 수천 장의 검은 까마귀 깃털 망토(안감은 리아의 목도리와 같은 진홍 `#c0142a`), 몸에 붙는 검은 가죽 암살복·은 버클, 목·손목의 까마귀 문신, 까마귀 부리 모양의 긴 검은 단검 두 자루. 망토 자락마다 붉은 눈들이 깜빡인다. 가면 아래는 **리아와 같은 붉은 눈**(`#d02a3a`), 은빛이 섞인 검은 머리, 뺨의 얇은 흉터. 색: 검정 `#141018` · 자두색 `#3a1420` · 진홍 `#c0142a` · 뼈·은 `#c8c8d0` · 달빛 푸른 가장자리광 |
-| 데이터 (시작값) | `hp: 2800, hpMul: 1.2, atk: 46, def: 21, res: 24, exp: 3500, score: 430000, size: { w: 64, h: 150 }, flying: false, contact: 0.5, material: 'flesh', weak: ['holy'], resist: ['dark'], phases: [0.5], music: 'boss3', stageId: 's22', drops: ['u_nemain'], light: { r: 220, color: '#ff4a6a', i: 0.6 }` · `intro: '(부리 가면 너머로 붉은 눈이 가늘어진다. 깃털 망토 자락마다 까마귀의 눈이 깜빡인다.)'` · `desc: '까마귀 결사의 둥지를 서른 해 동안 지켜 온 여인. 이름 없는 아이들을 칼로 길러 냈고, 결사가 문을 닫던 날 모든 칼에게 이름을 반납하라는 소집령을 내렸다.'` (도감 설명에는 반전을 쓰지 않는다) |
+| 데이터 (최종 — 시작값 hpMul 1.2 · res 24 를 EX2-BOSS 가 밸런스로 바꿈) | `hp: 2800, hpMul: 1.3, atk: 46, def: 21, res: 21, exp: 3500, score: 430000, size: { w: 64, h: 150 }, flying: false, contact: 0.5, material: 'flesh', weak: ['holy'], resist: ['dark'], phases: [0.5], music: 'boss3', stageId: 's22', drops: ['u_nemain'], light: { r: 220, color: '#ff4a6a', i: 0.6 }` · `intro: '(부리 가면 너머로 붉은 눈이 가늘어진다. 깃털 망토 자락마다 까마귀의 눈이 깜빡인다.)'` · `desc: '까마귀 결사의 둥지를 서른 해 동안 지켜 온 여인. 이름 없는 아이들을 칼로 길러 냈고, 결사가 문을 닫던 날 모든 칼에게 이름을 반납하라는 소집령을 내렸다.'` (도감 설명에는 반전을 쓰지 않는다) |
 | 체급 | 아르겐과 니힐 사이 (`tools/balance.mjs` 보스 타수 기준, 보통·kael·s21 클리어 레벨): **목표 ≈ 160–180타 · 받는 피해 16–20%**. 다른 영웅도 아르겐과 같은 순서에 놓이게 hp/hpMul 을 맞춘다 |
 | 페이즈 | **2단계** (`phases: [0.5]`). 50% 전환 `unmask` 에서 가면이 깨지고 form2 로 바뀐다 (= 싸움 속의 반전). 15% 이하에서 한 번 「그믐」 강제 + 대사 `b_nemain_last` |
 | 결말 | **죽이지 않는다** — 체력 0 이면 보스 처치 처리(경험치·드롭·`boss_b_nemain`)는 같고 연출만 '굴복': 망토에서 까마귀 떼가 터져 하늘로 흩어지고(0–1.5초), 단검 두 자루가 떨어져 울리고(1.2초), 한쪽 무릎을 꿇는다(1.5–2.5초) → 그 자세를 유지. 'STAGE CLEAR' 부제 **'결착!'**. 아케이드 모드에서는 3.5초에 까마귀로 흩어져 사라진다 (보스 러시 다음 라운드). 파편 폭발 없음. `e_argen.js` 의 정화 결말과 같은 방식으로 덮어쓴다 |
@@ -142,7 +142,7 @@ const PATTERNS = {
 
 ```js
 { id: 'u_nemain', name: '흑우 단검 네메인', slot: 'weapon', wtype: 'dagger', tier: 7, icon: 'dagger_7', lvReq: 72, rarity: 5, boss: 'b_nemain',
-  stats: { atk: 130, crit: 18, critDmg: 45, dark: 25, atkSpd: 10 }, element: 'dark', visual: { style: 6, glow: '#ff4a6a', rift: true },
+  stats: { atk: 134, crit: 18, critDmg: 45, dark: 25, atkSpd: 10 }, element: 'dark', visual: { style: 6, glow: '#ff4a6a', rift: true },   // 최종 (시작값 130)
   effect: '이름 없는 칼 — 치명타 확률 +18%, 치명타 피해 +45%', desc: '네메인이 서른 해 동안 쥐었던 쌍단검 중 한 자루. 손잡이 안쪽에 아주 작은 글씨로 이름 하나가 새겨져 있다. 리아.' },
 ```
 수치는 7단계 단검 곡선(`u_mara` lvReq 62 · atk 118) 위에서 EX2-BOSS 가 맞춘다.
@@ -455,19 +455,21 @@ EX2-MAP 과 EX2-BOSS 는 동시에, EX2-INTEG 는 둘이 끝난 뒤 (대본·서
 - 보스 방 모양을 바꾸면 요청 파일로 알린다 — 보스 로직의 `PATTERNS.room`·`floorRow` 를 같이 맞춘다.
 - 커밋은 10분마다 자동 저장된다(예상된 일). 밀어 올리기(push) 하지 않는다.
 
-## 7. 통합 목록 (EX2-INTEG 체크리스트 — 끝나면 s21 처럼 「통합 기록」 표로 바꾼다)
+## 7. 통합 기록 (EX2-INTEG)
 
-| 항목 | 할 일 |
+| 항목 | 결과 |
 |---|---|
-| 해금·순서 | `STAGE_ORDER_P2` 끝에 `'s22'` (→ `SIDE_STAGES`=['s21','s22']). s22 항목 `intro`/`outro` 자리표시 지우기(기본값 `s22_intro`/`s22_outro`). `worldmap.js` 해금 고리는 그대로 (`p2Ended` 이면 `s22_revealed` 한 번) — 단 `mkReveal(id, STAGES[id].page ?? 1)`. 처음 지도를 여는 2부 완주 세이브는 두 외전(s21 page 1, s22 page 0) 연출이 차례로 나온다(`startReveal` 이 쪽을 넘긴다) |
-| 세계 지도 (page 0 외전 노드) | `SIDE_FROM.s22 = 's02'`, `REVEALS.s22`(§4.2). `buildPage(page)` 의 외전 고리를 두 쪽 모두에서 돌리고 `(STAGES[id].page ?? 1) === page` 인 것만 넣는다 (page 0 은 투기장 노드 앞에). **page 0 의 이야기 사슬(`chain = nodes.filter(…)`)에서 `n.side` 노드를 뺀다** — 안 빼면 s12→s22 길이 생긴다. 노드 그림의 `if (page === 1 && n.side)` 점선 고리·인장 '외전'을 page 0 에서도 그리게(잉크 색은 `PAGES[0]`). `prefersP2` 의 외전 판정은 page 1 외전만. mapPos `{x: 0.13, y: 0.5}`(2장 위 왼쪽 숲 언덕, 1→2장 길·나침반과 겹치지 않게) — `platform_view` 데스크톱·휴대폰 스크린샷으로 이름표 겹침 확인, 겹치면 0.05 안에서 옮긴다 |
-| 진행 숫자·표시 | 바꿀 것 없음 확인: `results.js`(side 는 장 진행 안 올림) · `slots.js` 가장 먼 장 · `access.js` '외전 이름 없는 언덕' · `tab_system.js` 2부 칸 끝 · `tab_bestiary.js`(외전 열렸거나 쓰러뜨렸을 때만 — `part: 2` 라 이계 쪽) · `balance.mjs`(side 행은 정보). 성당 힌트 한 줄(§4.2) |
-| 이야기 | §4.2 를 `story_ex.js` 에 (도우미 넷 + 스크립트 8개). 머리말 담당 스크립트·플래그 목록에 s22 추가. `node tools/test_part2.mjs --static` |
-| 동료 | `recruit('gd_munin')` + `ex_s22_done` 이 조건 줄보다 앞인지 (§4.2 그대로면 맞다). 허브 합류 카드 확인 |
-| 아케이드 | `BOSS_ORDER` 끝에 `'b_nemain'` (`STORY_BOSSES = 20` 그대로). `COURSES` 끝에 둘 (기존 0–6 번호·내용 그대로 — 기록 키): `{ name: '외전편', sub: '외전 보스 2연전', from: 20, to: 22, p2: true, ex: true, short: '외전 2연전' }` · `{ name: '전 보스 연속', sub: '22연전', from: 0, to: 22, p2: true, ex: true, short: '전 보스 22연전' }`. 서바이벌 `arenaBosses(p2, ex)`·탑 `sideBosses()`(41층 이후 lateBosses)는 자동 — 확인만. 머리말 주석 갱신 |
-| 서버 | `gamedata.mts`: `STAGE_LEVELS.s22 = 72`(→ `practice:s22:*`) · `P2_STAGES` + `'s22'` · `SIDE_STAGES = ['s21', 's22']` · `DAILY_STAGE_IDS` 는 자동으로 외전 제외(s01~s20 그대로) · **`COURSE_COUNT = 9`** (arcade.js `COURSES` 수와 같아야 한다 — test_online 이 센다). `validate.mts`·`online.mts`·`runs.mts` 는 바꿀 것 없음 |
-| 시험 | `tools/integration.mjs` STAGES 에 `'s22'` → 케이스 `s22`·`s22_boss` · `test_part2.mjs` 외전 검사를 목록으로(`{sid:'s22', boss:'b_nemain', recruit:'gd_munin', flag:'ex_s22_done', scripts:[8개]}`) · `test_companions.mjs` recruit `want.gd_munin = 's22_outro'` · `test_tower.mjs` lateBosses 에 `b_nemain`(41층 이후만) · `test_online.mjs` STAGE_IDS 22개·SIDE_STAGES·일일 외전 제외·`practice:s22:normal` 유효·무효 예시 `'practice:s22'`→`'practice:s23'`, `'bossrush:7'`→`'bossrush:9'`(9 는 이제도 무효) · `run_all.mjs` 에 `test_nemain` (runtime, 20분). 돌릴 것: `validate_maps` · `test_part2 --static` · `integration --only s22,s22_boss` · `test_nemain` · `test_guardians --case munin` · `test_companion_state` · `test_companions --only recruit` · `test_tower` · `test_online` · `qa/playthrough.mjs`(s22) · `build_fonts.py --check` |
-| 예산 | `node tools/deploy/build_web.mjs` 보고서의 APK lo 그림 단계 바이트를 이 표에 적는다 (예상 ≈ 45.5 MiB / 48, 상한 45.8 — §5) |
+| 해금·순서 | `STAGE_ORDER_P2` 끝에 `'s22'` → `SIDE_STAGES = ['s21', 's22']`. s22 항목의 `intro: ''`/`outro: ''` 자리표시를 지워 기본값 `s22_intro`/`s22_outro`. `maps/s22.js` r3 `triggers: ['s22_t1']` · r5 `['s22_t2']` (EX2-MAP 자리표시 교체). `town/worldmap.js` 해금 고리는 그대로(`p2Ended` = `p2_done`·`ending_p2`·`ending_p2true` 이면 처음 지도를 열 때 한 번 `s22_revealed`) — 연출은 `mkReveal(id, STAGES[id].page ?? 1)` 로 그 외전이 놓인 쪽에서. 처음 지도를 여는 2부 완주 세이브는 s21(이계 Ⅱ) → s22(악마성 Ⅰ) 연출이 차례로 나온다 (`startReveal` 이 쪽을 넘긴다 — 확인: 데스크톱·phone1·phone2 모두 1/s21 → 0/s22 → page 0, s22 선택) |
+| 세계 지도 | `SIDE_FROM.s22 = 's02'`, `REVEALS.s22` (§4.2 그대로). 외전 노드는 `sideNodes(page)` 한 곳에서 `(STAGES[id].page ?? 1) === page` 인 것만 — page 0 은 투기장 노드 앞(노드 순서 s01…s13 · s22 · 투기장). **page 0 장 사슬에서 `n.side` 를 뺀다** (s12→s22 길 없음, 외전 길은 s02→s22 하나). 점선 고리·인장 '외전' 은 두 쪽 모두 (page 0 잉크 = `PAGES[0].path` `#8a1426`, 외전 갈림길도 같은 잉크). `prefersP2` 의 외전 판정은 page 1 외전만 (s22 가 가장 최근 미클리어면 악마성 Ⅰ 로 연다). 정보판 외전 칸은 쪽에 상관없이 (유물 칸 대신) 'SIDE STORY · 외전' + 외전 안내 + 동료 칸 (`SIDE_INFO`: s21 아르겐 · s22 '까마귀가 이름을 부른다' / '늙은 까마귀 무닌 합류'). **mapPos `{x: 0.13, y: 0.5}` → `{0.13, 0.55}`**: 0.5 는 데스크톱(1280×720)에서 노드 고리가 나침반 아래 테두리에 닿았다. 0.55 에서 이름표 겹침 0 · 숨김 0 (데스크톱 아래, phone1·phone2 위), 1→2장 길과 떨어져 있고 가장 가까운 노드 s01 까지 UI 52–71 px (다른 이웃 노드 쌍과 같은 수준). 스크린숏 `/tmp/claude-0/ex2_integ/worldmap055/{desk,phone1,phone2}_{ranked,fresh}_{reveal1,reveal2,page0_s22,page0_s02sel}.png` |
+| 진행 숫자·표시 | 바꿀 것 없음 확인 (모두 `stage.side` 일반 처리): `results.js`(장 진행 안 올림) · `slots.js` 가장 먼 장 · `access.js` '외전 이름 없는 언덕' · `tab_system.js` 2부 칸 끝 · `tab_bestiary.js`(외전 열렸거나 쓰러뜨렸을 때만) · `arcade_run.js`·`arcade_tower.js` 순서에서 뺌 · `highscore.js` 외전 순위표(`exKnown`). 성당 힌트 한 줄 (`town/church.js`, s21 줄 아래 — '안개 묘지' → 스테이지 이름 '안개의 묘지' 로) |
+| 이야기 | `data/story_ex.js`: 도우미 `VOICE_N NM_FACE NM2 MU CROWC` + 스크립트 8개(`s22_intro` 컷신 17줄 · `s22_t1` · `s22_t2` · `b_nemain_pre` · `b_nemain_unmask` · `b_nemain_last` · `b_nemain_post` · `s22_outro` 컷신 22줄 — 한 번에 보이는 줄 수는 리아·다른 영웅 분기가 같다), 머리말 담당 스크립트·플래그 목록에 22장. 모든 goto 목표 있음 · 컷신 줄바꿈 측정(서술 ≤ 3줄 / 4, 화자 ≤ 2줄 / 3 — TIP 한 줄 그대로 3줄). 대본 손질(말투·사실 맞춤): ① 브란 `그대를 길러 낸 이요?` → `이 말이오?`(브란의 하오체 의문 "…단 말이오?") ② 게임 글 `R 을/R 은` → `R을/R은` (기존 `"R"이`) ③ s22_t1·t2 장면 서술의 시제를 한 줄 안에서 현재로 (`새겨져 있다`·`적혀 있지 않다`, s21_t1·t2 와 같게) ④ 목소리 `가면은 모두 돌아오지 못한 칼들이다` → `칼들의 것이다` ⑤ 가면이 깨진 서술 `얼굴에는 … 붉은 눈이 있었다` → `가면 아래로 드러난 것은 … 붉은 눈이었다` ⑥ 이졸데 `창을 거두라고는` → `칼을 거두라고는`(리아는 단검) ⑦ `언덕 아래 무덤으로 오너라` → `무덤 언덕으로 내려오너라` (비석 없는 무덤은 언덕 위 — 언덕 아래는 십자가 묘지, 아웃트로도 언덕) ⑧ 네메인 `밤마다 하나씩, 전부 외우고 있더구나` → `밤마다 하나씩 되뇌다 보니, 전부 외우고 있더구나`(1인칭 '-더구나') ⑨ `이 녀석이 대신 외워 주었지` → `이 녀석도 함께 외워 주었지` (바로 앞에서 "나는 하나도 잊지 않았다") |
+| 동료 | `recruit('gd_munin')` + `recruit_gd_munin` + `ex_s22_done` 이 첫 조건 줄보다 앞. 아웃트로(리아로 건너뛰기 포함) → 마을 → 합류 카드 '무닌 · 이름을 기억하는 까마귀 · 수호신' (`companionJoin`, owned, pending 비움 — 스크린숏 `/tmp/claude-0/ex2_integ/story/outro_after.png`). 트리거 r3·r5 는 걸어서 발동 (kael·lia·isolde), 보스 전·전환 대사는 스토리 모드에서 `debugPhase(1)` 로 `b_nemain_unmask` (초상화 `portraits/b_nemain2`, 이름 '네메인'). 보스 쪽 연결(EX2-BOSS): `b_nemain_unmask` 는 전환 끝(스토리 1회), `b_nemain_last` 는 15% 이하 그믐 시작(스토리 1회), `b_nemain_post` 는 `world.afterClear` 뒤 무릎 꿇은 보스 위에서, 처치 부제는 '격파' → '결착' 만 바뀐다 |
+| 아케이드 | `BOSS_ORDER` 끝에 `'b_nemain'` (22명, `STORY_BOSSES = 20` 그대로). `COURSES` 끝에 7 '외전편 · 외전 보스 2연전'(from 20 to 22, 아르겐 → 네메인) · 8 '전 보스 연속 · 22연전' (`ex: true`; 0–6 번호·내용 그대로 — 기록 키). 확인: `visibleCourses(p2, ex)` 0–8 / ex 없으면 0–4 / 1부만 0–2, `courseBosses(7)` = [b_argen, b_nemain], 8 = 22명, 6 = 21명, 코스 7 시작 → 첫 라운드 b_argen. 서바이벌 `arenaBosses(true, true)` 끝 b_argen · b_nemain (ex 없으면 b_nihil 까지), 탑 `sideBosses()` = [b_argen, b_nemain] (41층 이후 lateBosses). 머리말 주석 갱신 |
+| 서버 | `gamedata.mts`: `STAGE_LEVELS.s22 = 72`(→ `practice:s22:*` 보드) · `P2_STAGES` + s22 · `SIDE_STAGES = ['s21', 's22']` · `DAILY_STAGE_IDS` 는 그대로 s01~s20 (외전 제외, 이미 정해진 날짜의 도전 그대로) · **`COURSE_COUNT = 9`** (= arcade.js `COURSES` 수, test_online 이 센다). `validate.mts`·`online.mts`·`runs.mts`·`boards.mts` 는 바꿀 것 없음 (`bossrush:<n>` 은 `COURSE_COUNT` 로 검사) |
+| 시험 | `tools/integration.mjs` STAGES 에 s22 (케이스 `s22` · `s22_boss`) · `test_part2.mjs` 외전 검사를 목록 `EX_LIST`(s21 · s22, page·대본 8개·트리거·합류·`ex_*_done`, 외전 = `STAGE_ORDER_P2` 의 side 차례) · `test_companions.mjs` recruit `gd_munin: 's22_outro'` · `test_tower.mjs` lateBosses `['b_argen', 'b_nemain']` 둘 다 41층 이후만 + `BOSS_ORDER` 외전 꼬리 · `test_online.mjs` STAGE_IDS 22 · SIDE_STAGES 둘 · 일일 외전 제외 · `practice:s22:normal`·`bossrush:8:hard` 유효(런 시작 시드 9개) · 보드 `practice:s22:hard`·`bossrush:8:normal` 빈 보드 · 무효 예시 `practice:s23` · `bossrush:9` · `run_all.mjs` 에 `nemain` (runtime, 20분). 결과 (2026-10-05): validate_maps 오류 0 (경고 1 — 예전부터의 s11 r4) · test_part2 --static 23/23 · integration title,hub,worldmap,menu,arcade,tower,s02,s21,s21_boss,s22,s22_boss 11/11 · --mobile title,worldmap,s22 3/3 · test_nemain 51/51 (다섯 번 중 세 번; 두 번은 서로 다른 한 검사 — '까마귀 급습' 2페이즈 수 · '사망→부활' 어둠 복원 — 가 흔들려 50/51, EX2-BOSS 에 요청, 통합 변경과 무관) · test_argen 55/55 · test_guardians --case munin 1/1 · test_companion_state 81 · test_companions 22/22 · test_tower 4/4 · test_save_v2 72 · test:online 24 (건너뜀 5) · test:api 65 (건너뜀 10) · test:online:client 15/15 · test:client 11/11 · playthrough s22 6/6 방 · 사망 0 · 보스 33.2초 · painted_registry 35 pass · 1 warn(mt_argen·gd_munin 채색 없음 — 설계대로 벡터) · bindings 43/43 · build_fonts --check 통과 |
+| 글꼴 | 새 글자 '맘'(s22_intro 리아 "…맘대로 해") 하나 → `python3 tools/fonts/build_fonts.py` 로 다시 만듦 (Noto Sans KR · Hahmlet · BN Brush · 두 ext). `--check` 통과, 첫 화면 글꼴 470.1 KB / 500 KB |
+| 예산 | `node tools/deploy/build_web.mjs --out dist/<임시> --no-apk --no-deploy-bundle` (빌드 뒤 지움): APK lo 그림 단계 **47,533,147 B = 45.33 MiB / 48 MB** (이 묶음 상한 45.8 MiB 안, s21 통합 때 47,202,152 B 에서 +330,995 B ≈ +0.32 MiB). 원본 단계 58.71 MB, 사이트 58.84 MB / 90, JS brotli 1.49 MB, 첫 화면 경로 brotli 0.68 MB / 1.60 |
+| 도구 | `tools/balance.mjs` 끝 줄 '외전 s21 까지' → 외전 목록에서 ('외전 s21 · s22 까지 73', 보통·리아) — 끝 레벨 판정은 그대로 s20 |
 
 ## 8. 시험 계약 요약
 
