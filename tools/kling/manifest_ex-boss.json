@@ -17,9 +17,86 @@
    "imageCount": 2,
    "credits": 4,
    "refs": "none",
+   "decision": "#2 kept → assets/portraits/b_argen.webp (761x968 q82, bottom 56 px cut like the other P2 portraits; side view facing left, crystals on neck/spine/chest core — the strongest 'void infection'). Full-res PNG uploaded as 图片1 for all parts. #1 unused (three-quarter front view, crystals only on the chest)."
+  },
+  {
+   "boss": "b_argen",
+   "shot": "ag_head",
+   "tool": "image_to_image",
+   "generationId": "AdMRixWR9fND8RBX_kZ2ISkoFhXaRSNAXuLXW0_vSsUJTxCwJfJ1Mh3iN8dxm9DmeToyNKuZ",
+   "aspect": "4:3",
+   "imageCount": 2,
+   "credits": 4.0,
+   "refs": "portrait",
+   "decision": "pending"
+  },
+  {
+   "boss": "b_argen",
+   "shot": "ag_body",
+   "tool": "image_to_image",
+   "generationId": "AU3-rKHnNkX-NkA2tWa79aNLrDGt_Xi0URqZq5FjhgbomX0FSiPaJZPyoTtf5zM7nC7fBtxN",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "credits": 4.0,
+   "refs": "portrait",
+   "decision": "pending"
+  },
+  {
+   "boss": "b_argen",
+   "shot": "ag_necktail",
+   "tool": "image_to_image",
+   "generationId": "AV0Gfpr7AcE65tGm7lTBb7RI21eG-iH84K2ubGtFllQGBBov409wvvIx5ZGV99kSvXs2le3y",
+   "aspect": "21:9",
+   "imageCount": 2,
+   "credits": 4.0,
+   "refs": "portrait",
+   "decision": "pending"
+  },
+  {
+   "boss": "b_argen",
+   "shot": "ag_wing",
+   "tool": "image_to_image",
+   "generationId": "AVGXM60nYcKp7af_fm2IcqkSK4xcMharoOaDAiQ0zdAbw634WQDex2iAtmWP0zrepk9f4YH5",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "credits": 4.0,
+   "refs": "portrait",
+   "decision": "pending"
+  },
+  {
+   "boss": "b_argen",
+   "shot": "ag_legs",
+   "tool": "image_to_image",
+   "generationId": "AZSc31cJNFw3OOmb8WBnYSFb_ZTuAPRL_fuFgVYPf5ZMevx55m_faPc2caQDRndTLshFA_Ks",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "credits": 4.0,
+   "refs": "portrait",
+   "decision": "pending"
+  },
+  {
+   "boss": "b_argen",
+   "shot": "ag_crystals",
+   "tool": "image_to_image",
+   "generationId": "ASXuEnzLdZClAvC8-c95fPS3Qq94bWNh4Omzjh3x9YT2tUOlF_YSTBDSSsgDuXXaMudyzbMp",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "credits": 4.0,
+   "refs": "portrait",
+   "decision": "pending"
+  },
+  {
+   "boss": "b_argen",
+   "shot": "ag_debris",
+   "tool": "image_to_image",
+   "generationId": "AfudCxysYNLsvn78r97dGVH8wMRlGBMVSfWW20z4aQW9rDrE3R0o6G39dmx1b0n5697OeTGl",
+   "aspect": "16:9",
+   "imageCount": 1,
+   "credits": 2.0,
+   "refs": "portrait",
    "decision": "pending"
   }
  ],
- "imagesSpent": 2,
- "creditsSpent": 4
+ "imagesSpent": 15,
+ "creditsSpent": 30.0
 }

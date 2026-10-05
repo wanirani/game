@@ -68,6 +68,7 @@
   "cg/cutin_sera",
   "cg/cutin_victor",
   "portraits/azel",
+  "portraits/b_argen",
   "portraits/b_banshee",
   "portraits/b_behemoth",
   "portraits/b_bonedragon",
@@ -574,6 +575,13 @@
    "h": 680,
    "bytes": 26160,
    "srcBytes": 72414
+  },
+  "portraits/b_argen.webp": {
+   "src": "a14f856384a7",
+   "w": 457,
+   "h": 581,
+   "bytes": 25202,
+   "srcBytes": 74748
   },
   "portraits/b_banshee.webp": {
    "src": "50919cc4b4e0",
