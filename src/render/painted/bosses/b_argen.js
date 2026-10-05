@@ -33,14 +33,15 @@ const DEF = {
   glow: '#b878ff',
   outline: { width: 1.6, color: 'rgba(6,4,14,0.9)' },
   parts: {
-    torso: { flash: true, cracks: 4, char: 1, holes: 0, crackMinLum: 95 },
-    head: { flash: true, cracks: 3, char: 1, holes: 0, crackMinLum: 120 },
-    jaw: { flash: true, cracks: 2, char: 1, holes: 0, crackMinLum: 120 },
-    neck: { cracks: 3, char: 1, holes: 0, crackMinLum: 100 },
-    tail: { cracks: 3, char: 1, holes: 0, crackMinLum: 100 },
-    wing: { membrane: true, holes: 3, cracks: 2, char: 1, crackMinLum: 70, deep: 0.62 },
-    legH: { cracks: 1, char: 1, holes: 0, deep: 0.62 },
-    legF: { cracks: 1, char: 1, holes: 0 },
+    // 그을림(char)은 은빛 비늘에서 검은 얼룩으로 보여 약하게 — 큰 날개막은 그을림 없이 균열·찢김만
+    torso: { flash: true, cracks: 4, char: 0.5, holes: 0, crackMinLum: 95 },
+    head: { flash: true, cracks: 3, char: 0.35, holes: 0, crackMinLum: 120 },
+    jaw: { flash: true, cracks: 2, char: 0.35, holes: 0, crackMinLum: 120 },
+    neck: { cracks: 3, char: 0.25, holes: 0, crackMinLum: 100 },
+    tail: { cracks: 3, char: 0.25, holes: 0, crackMinLum: 100 },
+    wing: { membrane: true, holes: 2, cracks: 1, char: 0, crackMinLum: 70, deep: 0.62 },
+    legH: { cracks: 1, char: 0.3, holes: 0, deep: 0.62 },
+    legF: { cracks: 1, char: 0.3, holes: 0 },
     gem: { noDmg: true },
   },
   prefix: { cr: { noDmg: true }, deb: { noDmg: true, outline: 1.2 } },
@@ -48,7 +49,8 @@ const DEF = {
 };
 // 로직 상수 (e_argen.js 와 같은 값)
 const CC = [14, -4], SHN = [26, -50], SHF = [12, -56];
-const NECK_R0 = 31, NECK_R1 = 19, TAIL_R0 = 27;
+const NECK_R0 = 40, NECK_R1 = 29, TAIL_R0 = 29;   // 채색 띠 굵기 (로직 판정과 무관 — 그림 비례만)
+const WING_UP = -2.3, WING_S = 0.82;   // 날개: 위로 든 자세의 어깨→손목 각 · 크기 배율
 const CRYS_SPR = ['cr1', 'cr2', 'cr3', 'cr4'];
 
 // ───────────────────────── 모듈 계약 ─────────────────────────
@@ -208,10 +210,13 @@ function glowOver(ctx, D, st, p, pivot, x, y, rot, sx, sy, a, t, vk) {
 function drawWing(D, ctx, st, p, Wg, far, sk, t) {
   const ix = p.wr[0] - p.sh[0], iy = p.wr[1] - p.sh[1];
   const lx = Wg.Wr.x - Wg.S.x, ly = Wg.Wr.y - Wg.S.y;
-  const rot = Math.atan2(ly, lx) - Math.atan2(iy, ix);
-  const k = p.k * clamp(Math.hypot(lx, ly) / (Math.hypot(ix, iy) * p.k), 0.8, 1.25) * (far ? 0.92 : 1);
-  drawPart(D, st, p, 'sh', Wg.S.x, Wg.S.y, rot, k, k, sk, far);
-  if (!far) glowOver(ctx, D, st, p, 'sh', Wg.S.x, Wg.S.y, rot, k, k, 0.45, t + 1.3, 1);
+  // 날갯짓 폭을 줄인다: 옆모습에서 내려친 날개가 바닥까지 늘어지지 않게 (위로 든 자세 기준 각의 60%) · 내려칠수록 짧게(원근)
+  const d = Math.atan2(Math.sin(Math.atan2(ly, lx) - WING_UP), Math.cos(Math.atan2(ly, lx) - WING_UP));
+  const dn = clamp(-d / 1.4, 0, 1);
+  const rot = WING_UP + d * 0.6 - Math.atan2(iy, ix);
+  const k = p.k * WING_S * clamp(Math.hypot(lx, ly) / (Math.hypot(ix, iy) * p.k * WING_S), 0.85, 1.15) * (far ? 0.9 : 1) * (1 - 0.22 * dn);
+  drawPart(D, st, p, 'sh', Wg.S.x, Wg.S.y, rot, k, k * (1 - 0.2 * dn), sk, far);
+  if (!far) glowOver(ctx, D, st, p, 'sh', Wg.S.x, Wg.S.y, rot, k, k * (1 - 0.2 * dn), 0.45, t + 1.3, 1);
 }
 /** 다리 (강체): 그림의 엉덩이→발 벡터를 로직 hip→foot 에 맞춘다 */
 function drawLeg(D, st, p, leg, far, sk, a) {
