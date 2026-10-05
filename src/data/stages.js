@@ -5,7 +5,7 @@
 // 방(room) 추가 필드: gimmick(undefined = 스테이지 기본값, null = 기믹 없음, 객체/배열 = 이 방만), liquid(이 방만 다른 액체), doorMarks(['blood'|null, …] 문 순서).
 // 2부 스테이지는 맵 패키지별로 아래 앵커 주석 바로 뒤에 넣는다 (import 4곳, STAGES 4곳). 앵커 주석은 지우지 않는다.
 //   s14–s15 = MAPS-P2-A (이 파일의 주인), s16–s17 = MAPS-P2-B, s18–s19 = MAPS-P2-C, s20 = MAPS-P2-D. STAGE_ORDER_P2 는 STAGES 에 들어온 것만 담는다.
-// stage = { id, chapter, name, sub, theme(render/background THEMES 키), bg, tex, tex2, tileStyle(render/tiles TILE_STYLES 키), music,
+// stage = { id, chapter, side?(외전: true), name, sub, theme(render/background THEMES 키), bg, tex, tex2, tileStyle(render/tiles TILE_STYLES 키), music,
 //   level(적 레벨), darkness(0~0.9), darkColor, liquid:'water'|'lava'|'poison'|'blood', boss, start(첫 방), rooms,
 //   enemies:[이 스테이지에 배치할 적 ID 후보], docs:[비전서 id(숨김 벽 'H' 순서대로)], relic(드라큘라 유물 id|null),
 //   next(클리어 시 해금), unlocks:[추가 해금], mapPos:{x,y}(월드맵 0~1), parTime(초), intro/outro(스토리 스크립트 id), req(해금 조건 설명) }
@@ -112,21 +112,26 @@ export const STAGES = {
     music: 's20', level: 68, darkness: 0.5, darkColor: '#000000', liquid: 'lava', boss: 'b_nihil', rooms: S20, parTime: 600,
     enemies: ['void_herald', 'nihil_spawn', 'mirror_knight', 'slag_golem', 'abyss_angler', 'storm_harpy', 'faceless', 'rot_treant', 'fungal_husk'], docs: ['d27'], shard: null, heart: null,
     color: '#ffffff', next: null, mapPos: { x: 0.52, y: 0.46 }, req: '여섯 세계의 심장을 모두 되찾으면 공허로 가는 길이 열린다' }),
-  // ── EX stage s21 (EX-MAP) — 외전 「하늘 정원의 둥지」 (docs/specs/ex_s21.md). 2부 엔딩(p2_done) 뒤에 열린다.
-  //    STAGE_ORDER_P2 · 세계 지도 노드(mapPos 는 자리표시) · 해금은 통합 담당(EX-INTEG)이 넣는다 — 그때까지 일반 진행에서는 닿지 않는다.
-  //    intro/outro '' = 아직 대본 없음 (외전 대본 s21_intro · s21_outro 는 EX-INTEG 가 쓰고 이 두 빈 값을 지우면 S() 기본값 s21_intro/s21_outro 가 된다) ──
-  s21: S({ id: 's21', chapter: 21, part: 2, page: 1, name: '하늘 정원의 둥지', sub: '용들이 잠들었던 구름 위의 성소', theme: 'sky', bg: 'bg/s17_sky', tex: 'tex/tex_sky_marble', tex2: 'tex/tex_marble', tileStyle: 'sky',
-    music: 's17', level: 70, darkness: 0.15, darkColor: '#081020', liquid: 'water', boss: 'b_argen', rooms: S21, parTime: 600, intro: '', outro: '',
+  // ── EX stage s21 (EX-MAP 맵 · EX-INTEG 통합) — 외전 「하늘 정원의 둥지」 (docs/specs/ex_s21.md). 2부 엔딩(p2_done) 뒤에 열린다.
+  //    side: true = 외전 (이야기 진행 밖): 해금은 next 사슬이 아니라 세계 지도(town/worldmap.js — p2_done 이면 s21 을 열고 한 번 해금 연출),
+  //    클리어해도 progress.chapter 를 올리지 않는다 (results.js). 세계 지도 2부 쪽에 17장 위로 갈라진 '외전' 노드로 그린다.
+  //    대본 s21_intro · s21_t1 · s21_t2 · s21_outro · b_argen_* = data/story_ex.js ──
+  s21: S({ id: 's21', chapter: 21, part: 2, page: 1, side: true, name: '하늘 정원의 둥지', sub: '용들이 잠들었던 구름 위의 성소', theme: 'sky', bg: 'bg/s17_sky', tex: 'tex/tex_sky_marble', tex2: 'tex/tex_marble', tileStyle: 'sky',
+    music: 's17', level: 70, darkness: 0.15, darkColor: '#081020', liquid: 'water', boss: 'b_argen', rooms: S21, parTime: 600,
     enemies: ['storm_harpy', 'gale_knight', 'thunder_roc', 'cloud_jelly', 'void_herald', 'nihil_spawn', 'mimic'], docs: [], shard: null, heart: null,
-    gimmick: { kind: 'wind', dir: 1, force: 850, on: 2.4, off: 3.8 }, color: '#c8e4ff', next: null, mapPos: { x: 0.66, y: 0.04 }, req: '2부의 끝을 본 뒤, 구름 위 하늘 정원에서 용의 울음이 들려오면 갈 수 있다' }),
+    gimmick: { kind: 'wind', dir: 1, force: 850, on: 2.4, off: 3.8 }, color: '#c8e4ff', next: null, mapPos: { x: 0.7, y: 0 }, req: '2부의 끝을 본 뒤, 구름 위 하늘 정원에서 용의 울음이 들려오면 갈 수 있다' }),
   arena: S({ id: 'arena', chapter: 0, name: '피의 투기장', sub: '서바이벌 & 보스 러시', theme: 'arena', bg: 'bg/s_arena', tex: 'tex/tex_castle_stone', tex2: 'tex/tex_dirt', tileStyle: 'stone',
     music: 'arena', level: 10, darkness: 0.3, boss: null, rooms: ARENA, parTime: 600, intro: null, outro: null,
     enemies: [], next: null, mapPos: { x: 0.3, y: 0.3 } }),
 };
 /** 1부 스테이지 (월드맵 첫 쪽, 서바이벌 적 풀 등 1부만 쓰는 곳) */
 export const STAGE_ORDER_P1 = ['s01', 's02', 's03', 's04', 's05', 's06', 's07', 's08', 's09', 's10', 's11', 's12', 's13'];
-/** 2부 스테이지 중 STAGES 에 실제로 있는 것만 (맵이 한 묶음씩 들어와도 모든 소비처가 그대로 동작) */
-export const STAGE_ORDER_P2 = ['s14', 's15', 's16', 's17', 's18', 's19', 's20'].filter((id) => STAGES[id]);   // [hook:p2]
+/** 2부 스테이지 중 STAGES 에 실제로 있는 것만 (맵이 한 묶음씩 들어와도 모든 소비처가 그대로 동작). 끝의 s21 은 외전 (side: true) */
+export const STAGE_ORDER_P2 = ['s14', 's15', 's16', 's17', 's18', 's19', 's20', 's21'].filter((id) => STAGES[id]);   // [hook:p2]
+/** 외전 스테이지 (STAGES[id].side — 2부 엔딩 뒤 세계 지도가 연다. 이야기 장 수·엔딩 판정에는 들지 않는다) */
+export const SIDE_STAGES = STAGE_ORDER_P2.filter((id) => STAGES[id].side);
+/** 이 스테이지가 외전인가 */
+export const isSideStage = (id) => !!STAGES[id]?.side;
 /** 전체 스테이지 순서 (1부 + 있는 2부). 1부만 필요한 곳은 STAGE_ORDER_P1 을 쓴다 (MASTER_PLAN §1.14) */
 export const STAGE_ORDER = [...STAGE_ORDER_P1, ...STAGE_ORDER_P2];
 export const RELICS = ['k_relic_1', 'k_relic_2', 'k_relic_3', 'k_relic_4', 'k_relic_5'];

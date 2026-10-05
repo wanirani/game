@@ -81,7 +81,7 @@ export class ResultsScene extends Scene {
     st.progress.cleared[stage.id] = { rank: better ? this.rank.r : prevRank, time: Math.min(Number.isFinite(prev?.time) ? prev.time : 1e9, run.time), score: Math.max(Number.isFinite(prev?.score) ? prev.score : 0, this.finalScore) };
     if (stage.next && !st.progress.unlocked.includes(stage.next)) st.progress.unlocked.push(stage.next);
     for (const u of stage.unlocks || []) if (!st.progress.unlocked.includes(u)) st.progress.unlocked.push(u);
-    st.progress.chapter = Math.max(st.progress.chapter ?? 0, stage.chapter ?? 0);
+    if (!stage.side) st.progress.chapter = Math.max(st.progress.chapter ?? 0, stage.chapter ?? 0);   // 외전(s21, side)은 이야기 장 진행에 들지 않는다
     st.lives = Math.max(run.lives, world.diff.lives);
     this.game.recordScore?.(this.finalScore, stage.id);
     bus.emit('stageCleared', { stageId: stage.id, rank: this.rank.r, time: run.time, score: this.finalScore });

@@ -2,10 +2,12 @@
 //   두 장의 지도
 //     0 악마성 Ⅰ : 양피지 지도 위 1부 13개 스테이지(STAGE_ORDER_P1) + 투기장. 에슈빌에서 출발, 드라큘라의 유물 5
 //     1 이계 Ⅱ   : 2부 s14~s20 (에슈빌 균열문 → 나선을 그리며 한가운데 태초의 공허로). 세계의 심장 6 · 별의 조각 6
+//                  + 외전 s21 (side, docs/specs/ex_s21.md): 2부 엔딩(p2_done) 뒤에만 17장 위쪽에 '외전' 노드로 나타난다 (17장에서 갈라지는 은빛 길)
 //     2부 지도는 flags.p2_started 이거나 s14 가 열렸을 때만 있다 — 없으면 탭 없이 예전 그대로.
 //     아직 맵이 없는 2부 스테이지(STAGES 에 없음)는 잠긴 노드로만 보인다.
 //   enter({ page }) : 페이지 지정이 우선. 없으면 가장 최근에 열린 미클리어 스테이지나 lastStage 가 2부면 1, 아니면 0
 //   해금 연출 (차례로): s13 (유물 5 + s12 클리어) · s14 (2부 시작 → flags.s14_revealed) · s20 (처음 열렸을 때 → flags.s20_revealed)
+//                       · s21 외전 (2부 엔딩 p2_done 뒤 처음 지도를 열 때 해금 → flags.s21_revealed)
 //   옛 세이브 (2부가 생기기 전에 s13 을 깼다): 들어오자마자 2부 프롤로그 → 마을 (world2 §2.2 — 지도는 마을 위에 쌓이는 장면이라 바로 가지 않는다)
 //   입력: 방향 = 노드 · 결정 = 출발 · 취소/메뉴 = 닫기 · 지도 전환 = Q/E·S/D·Tab (패드 LB/RB·LT·SELECT) · 터치 = 노드/탭/버튼
 //   uiScale 장면 (game.uiW × game.uiH 로 배치), 안내 줄은 기기별 글리프 (prompts.drawHints), 탭 영역은 ui.taps (터치 여유 포함)
@@ -20,7 +22,7 @@ import { text, wrap, drawCover, FONT, font, taps, fontEpoch } from '../../core/u
 import { drawHints } from '../../core/prompts.js';
 import { TAU, clamp, lerp, ease, fmt, fmtTime, rgba, rand, shade, mix } from '../../core/math.js';
 import { Particles } from '../../core/particles.js';
-import { STAGES, STAGE_ORDER_P1, RELICS, HEARTS, SHARDS } from '../../data/stages.js';
+import { STAGES, STAGE_ORDER_P1, RELICS, HEARTS, SHARDS, SIDE_STAGES } from '../../data/stages.js';
 import { SCRIPTS } from '../../data/story.js';
 import { ITEMS } from '../../data/items.js';
 import { CHARACTERS } from '../../data/characters.js';
@@ -31,7 +33,7 @@ import { ensureState, uiPanel, uiButton } from './common.js';
 import { glow } from './facades.js';
 
 const RANK_COL = { SSS: '#ffe070', SS: '#ff5a4a', S: '#ffa640', A: '#c07cff', B: '#5aa8ff', C: '#7ee07e', D: '#a0a0a0' };
-const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX'];
+const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX', 'XXI'];
 const INK = '#2a1608';
 const XFADE = 0.35;             // 지도 전환 교차 페이드 (초)
 const TAB_W = 112, TAB_GAP = 6; // 상단 탭 (world2 §10: {x:250, y:12, w:112, h:34})
@@ -39,6 +41,8 @@ const PAGE_KEYS = ['prevTab', 'nextTab', 'swap', 'skill1', 'skill2', 'map'];
 
 // 2부 스테이지 순서 (STAGE_ORDER_P2 는 있는 것만 담으므로 지도는 이 목록으로 자리를 잡는다)
 const P2_IDS = ['s14', 's15', 's16', 's17', 's18', 's19', 's20'];
+// 외전 (STAGES[id].side): 열렸을 때만 노드가 생기고, from 노드에서 갈라지는 길로 잇는다 (나선 사슬에는 들지 않는다)
+const SIDE_FROM = { s21: 's17' };
 // STAGES 에 아직 없는 2부 스테이지의 자리 (잠긴 노드로만 보인다; 값은 world2 §4.2)
 const P2_STUB = {
   s14: { name: '거울의 성', color: '#cfe8ff', mapPos: { x: 0.16, y: 0.74 } },
@@ -69,6 +73,7 @@ const REVEALS = {
   s13: { title: '심연의 역성', sub: '다섯 유물이 공명하며 거꾸로 선 성이 모습을 드러냈다', color: '#b060ff', tcol: '#e0b0ff', fx: 'dark', pcol: '#d080ff' },
   s14: { title: '균열이 열렸다', sub: '에슈빌 하늘 너머로 이계의 길이 드러났다', color: '#b060ff', tcol: '#e0b0ff', fx: 'magic' },
   s20: { title: '태초의 공허', sub: '여섯 세계의 심장이 공허로 가는 길을 비춘다', color: '#ffffff', tcol: '#ffffff', fx: 'holy' },
+  s21: { title: '외전 · 하늘 정원의 둥지', sub: '구름 위 하늘 정원에서 용의 울음이 들려온다', color: '#c8e4ff', tcol: '#e8f6ff', crack: '#e8f6ff', fx: 'magic' },
 };
 
 /** 글자 폭을 재는 캔버스 (update 에서도 이름표 배치를 계산할 수 있게) */
@@ -130,6 +135,13 @@ export class WorldMapScene extends Scene {
       F.s20_revealed = true;
       queue.push(this.mkReveal('s20', 1));
     }
+    // 외전 (docs/specs/ex_s21.md): 2부 엔딩(두 엔딩 모두 p2_done) 뒤 처음 지도를 열 때 열고 한 번 알린다. 이야기 진행(엔딩)과는 무관
+    for (const id of SIDE_STAGES) {
+      if (!F.p2_done || F[`${id}_revealed`] || !REVEALS[id]) continue;
+      if (!P.unlocked.includes(id)) P.unlocked.push(id);
+      F[`${id}_revealed`] = true;
+      queue.push(this.mkReveal(id, 1));
+    }
     // ③ 지도 두 장
     this.hasP2 = !!(F.p2_started || P.unlocked.includes('s14'));
     this.pages = [this.buildPage(0), this.hasP2 ? this.buildPage(1) : null];
@@ -188,6 +200,14 @@ export class WorldMapScene extends Scene {
       }
       links.push({ a: null, b: nodes[0], seed: 0 });
       for (let i = 0; i < nodes.length - 1; i++) links.push({ a: nodes[i], b: nodes[i + 1], seed: i + 1, wide: nodes[i + 1].id === 's20' ? 1.6 : 1 });
+      // 외전: 열렸을 때만 (2부 엔딩 뒤). 나선 사슬 끝이 아니라 SIDE_FROM 노드에서 갈라지는 은빛 길
+      for (const id of SIDE_STAGES) {
+        if (!P.unlocked.includes(id)) continue;
+        const n = { id, stage: STAGES[id], side: true };
+        nodes.push(n);
+        const from = nodes.find((m) => m.id === SIDE_FROM[id]);
+        if (from) links.push({ a: from, b: n, seed: 21, col: STAGES[id].color, side: true, always: true });
+      }
     }
     return { page, nodes, links };
   }
@@ -210,7 +230,8 @@ export class WorldMapScene extends Scene {
       const id = P.unlocked[i];
       if ((STAGES[id] || P2_IDS.includes(id)) && id !== 'arena' && !P.cleared?.[id]) recent = id;   // 아직 맵이 없는 2부 스테이지도 센다
     }
-    return P2_IDS.includes(recent) || P2_IDS.includes(st.lastStage?.stageId);
+    const p2 = (id) => P2_IDS.includes(id) || SIDE_STAGES.includes(id);   // 외전도 이계 지도
+    return p2(recent) || p2(st.lastStage?.stageId);
   }
 
   mkReveal(id, page) {
@@ -534,7 +555,7 @@ export class WorldMapScene extends Scene {
     const sp = this.pos(PG.start, L);
     for (const k of pg.links) {
       const a = k.a ? this.pos(k.a.stage.mapPos, L) : sp, b = this.pos(k.b.stage.mapPos, L);
-      this.path(ctx, L, page, a, b, k.always || this.isOpen(k.b), t, k.col ?? PG.path, k.seed, k.wide ?? 1);
+      this.path(ctx, L, page, a, b, k.always || this.isOpen(k.b), t, k.col ?? PG.path, k.seed, k.wide ?? 1, !!k.side);
     }
     if (page === 0) this.village(ctx, sp.x, sp.y); else this.gate(ctx, sp.x, sp.y, t);
     const lab = this.labels(L, page);
@@ -580,9 +601,12 @@ export class WorldMapScene extends Scene {
     } catch (e) { console.warn('[worldmap] snapshot', e); return null; }
   }
 
-  path(ctx, L, page, a, b, open, t, col, seed, wide = 1) {
+  path(ctx, L, page, a, b, open, t, col, seed, wide = 1, side = false) {
     let mx = (a.x + b.x) / 2 + Math.sin(seed * 2.3) * 22, my = (a.y + b.y) / 2 + Math.cos(seed * 1.7) * 18;
-    if (page === 1) {
+    if (side) {
+      // 외전 갈림길: 나선 대신 위로 살짝 휘어 오른다 (아래를 지나는 나선 길과 겹치지 않게)
+      mx = (a.x + b.x) / 2; my = Math.min(a.y, b.y) - 14;
+    } else if (page === 1) {
       // 나선: 조절점을 중심에서 바깥쪽으로 밀어 길이 공허를 감싸 돌게 한다
       const c = this.pos(P2_CENTER, L), ax = (a.x + b.x) / 2 - c.x, ay = (a.y + b.y) / 2 - c.y, d = Math.hypot(ax, ay) || 1;
       const len = Math.hypot(b.x - a.x, b.y - a.y);
@@ -641,6 +665,13 @@ export class WorldMapScene extends Scene {
     const R = sel ? 21 : 17;
     const col = page === 1 ? n.stage.color ?? '#b060ff' : null;
     ctx.save();
+    if (page === 1 && n.side) {
+      // 외전: 천천히 도는 은빛 점선 고리
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(t * 0.5);
+      ctx.strokeStyle = rgba(col, 0.75); ctx.lineWidth = 1.5; ctx.setLineDash([3, 4]);
+      ctx.beginPath(); ctx.arc(0, 0, R + 5, 0, TAU); ctx.stroke();
+      ctx.restore();
+    }
     if (page === 1 && n.id === 's20') {
       // 태초의 공허: 하얗게 맥동
       const k = 0.5 + 0.5 * Math.sin(t * 2.4);
@@ -690,7 +721,9 @@ export class WorldMapScene extends Scene {
     } else {
       const numCol = rec ? '#3a2006' : page === 1 ? '#ffffff' : '#ffe7a0';
       const size = page === 1 ? (sel ? 13 : 11) : sel ? 14 : 12;
-      text(ctx, ROMAN[n.stage.chapter] ?? '', p.x, p.y + 5, { size, weight: 900, family: FONT.num, align: 'center', color: numCol, outline: rec ? 'rgba(255,240,200,0.6)' : 'rgba(0,0,0,0.7)', ow: 2, maxWidth: R * 1.7 });
+      // 외전 노드는 장 번호 대신 '외전'
+      if (n.side) text(ctx, '외전', p.x, p.y + 4, { size: sel ? 12 : 10, weight: 900, family: FONT.title, align: 'center', color: numCol, outline: rec ? 'rgba(255,240,200,0.6)' : 'rgba(0,0,0,0.7)', ow: 2, maxWidth: R * 1.7 });
+      else text(ctx, ROMAN[n.stage.chapter] ?? '', p.x, p.y + 5, { size, weight: 900, family: FONT.num, align: 'center', color: numCol, outline: rec ? 'rgba(255,240,200,0.6)' : 'rgba(0,0,0,0.7)', ow: 2, maxWidth: R * 1.7 });
     }
     // 랭크 인장
     if (rec?.rank) {
@@ -853,7 +886,7 @@ export class WorldMapScene extends Scene {
     const bx = x + w - bw - 16;
     const lw = narrow ? w * 0.31 - 44 : w * 0.36 - 24;
     // 제목
-    const chapTxt = n.arena ? 'ARENA' : `CHAPTER ${ROMAN[s.chapter] ?? s.chapter}`;
+    const chapTxt = n.arena ? 'ARENA' : n.side ? 'SIDE STORY · 외전' : `CHAPTER ${ROMAN[s.chapter] ?? s.chapter}`;
     text(ctx, chapTxt, x + 24, y + Y[0], { size: 12, weight: 800, family: FONT.num, color: page === 1 ? '#c8b0ff' : n.id === 's13' ? '#d8a0ff' : '#c8a060' });
     text(ctx, open ? s.name : '??? — 봉인된 땅', x + 24, y + Y[1], { size: cmp ? 23 : 26, weight: 800, family: FONT.title, color: open ? (page === 1 ? '#efe4ff' : '#f3d690') : '#8a7a70', maxWidth: lw });
     const subSize = narrow ? 12 : 13;
@@ -916,6 +949,15 @@ export class WorldMapScene extends Scene {
       value(has ? ITEMS[s.relic]?.name ?? '' : '어딘가에 잠들어 있다', rows[1], has ? '#ff8a9a' : '#8a6a6a');
       return;
     }
+    if (n.side) {
+      // 외전: 세계의 심장·별의 조각 대신 이야기 안내와 동료 (s21 아르겐 — 합류했으면 이름)
+      label('외전', rows[1]);
+      value('2부 엔딩 그 뒤의 이야기', rows[1], '#c8e4ff', vx);
+      label('동료', rows[2]);
+      const got = !!P.flags?.recruit_mt_argen;
+      value(got ? '은빛 용 아르겐 합류' : '구름 위에서 누군가 기다린다', rows[2], got ? '#e8f6ff' : '#8a7aa0', vx);
+      return;
+    }
     if (n.id === 's20' || (!s.shard && !s.heart)) {
       const sh = SHARDS.filter((id) => P.shards?.includes(id)).length, he = HEARTS.filter((id) => P.hearts?.includes(id)).length;
       label('별의 조각', rows[1]);
@@ -969,7 +1011,7 @@ export class WorldMapScene extends Scene {
     const k = clamp(t / 1.3, 0, 1);
     ctx.globalCompositeOperation = 'lighter';
     glow(ctx, p.x, p.y, 40 + k * 160, R.color, 0.3 + k * 0.5);
-    ctx.strokeStyle = rgba(R.id === 's20' ? '#ffffff' : '#dca0ff', k); ctx.lineWidth = 3;
+    ctx.strokeStyle = rgba(R.crack ?? (R.id === 's20' ? '#ffffff' : '#dca0ff'), k); ctx.lineWidth = 3;
     ctx.beginPath();
     for (let i = 0; i < 7; i++) {
       const a = (i / 7) * TAU + 0.3; let x = p.x, y = p.y; ctx.moveTo(x, y);
