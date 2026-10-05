@@ -132,8 +132,62 @@ export const PUPPETS = {
   }
  },
  "isolde": {
+  "isolde_dragoon": {
+   "h": "2d18a57ded95",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "isolde_einherjar": {
+   "h": "0e09b4e623bc",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
   "isolde_lancer": {
-   "h": "10e0bcba866c",
+   "h": "85890b04b822",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "isolde_spearsaint": {
+   "h": "f5e0b1ea4df9",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "isolde_stormlord": {
+   "h": "2207b66da2f9",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "isolde_valkyrie": {
+   "h": "12ce775dd9ae",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "isolde_wyrmknight": {
+   "h": "fc43a9c854a0",
    "turn": true,
    "lv": [
     "hi",

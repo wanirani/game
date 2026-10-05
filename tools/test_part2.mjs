@@ -72,7 +72,7 @@ const ROOM_GIMMICKS = {
 async function staticChecks() {
   const G = 'static';
   const imp = (f) => import(path.join(ROOT, f));
-  const [{ STAGES, STAGE_ORDER, STAGE_ORDER_P2, SHARDS, HEARTS }, { ENEMIES }, { BOSSES }, { ITEMS, MYTHIC_WEAPONS_P2 }, { QUESTS }, { LORE, LORE_ORDER, DOCS, DOC_ORDER }, { SCRIPTS }, { TRACKS }, { NPCS }, { SAVE_VERSION }, { ENDINGS }, { BOSS_ORDER }, CMP, { P2_PATTERNS }] = await Promise.all([
+  const [{ STAGES, STAGE_ORDER, STAGE_ORDER_P2, SHARDS, HEARTS }, { ENEMIES }, { BOSSES }, { ITEMS, MYTHIC_WEAPONS_P2, WTYPES }, { QUESTS }, { LORE, LORE_ORDER, DOCS, DOC_ORDER }, { SCRIPTS }, { TRACKS }, { NPCS }, { SAVE_VERSION }, { ENDINGS }, { BOSS_ORDER }, CMP, { P2_PATTERNS }] = await Promise.all([
     imp('src/data/stages.js'), imp('src/data/enemies.js'), imp('src/data/bosses.js'), imp('src/data/items.js'), imp('src/data/quests.js'), imp('src/data/lore.js'),
     imp('src/data/story.js'), imp('src/data/music.js'), imp('src/data/npcs.js'), imp('src/game/state.js'), imp('src/scenes/front/ending.js'), imp('src/scenes/front/arcade.js'),
     imp('src/data/companions.js'), imp('src/game/bosses/c_common.js'),
@@ -197,7 +197,7 @@ async function staticChecks() {
     check(G, '가방 300/300: 새벽꽃(중요 물품)은 들어가고 일반 아이템은 거절, 못 받은 보상은 보관함 → 자리가 나면 지급', r.full && r.normalRefused && r.flowerCanAdd && r.flowerAdded && r.stillFull && r.reward.queued === 1 && r.delivered === 1 && r.alberto, r);
   }
   const myth = Object.values(MYTHIC_WEAPONS_P2 ?? {});
-  check(G, 'MYTHIC_WEAPONS_P2 는 무기 종류별 6종 (u_dawn_*)', myth.length === 6 && myth.every((id) => ITEMS[id]?.slot === 'weapon' && /^u_dawn_/.test(id)), MYTHIC_WEAPONS_P2);
+  check(G, `MYTHIC_WEAPONS_P2 는 무기 종류별 ${WTYPES.length}종 (u_dawn_*)`, myth.length === WTYPES.length && WTYPES.every((wt) => MYTHIC_WEAPONS_P2[wt]) && myth.every((id) => ITEMS[id]?.slot === 'weapon' && /^u_dawn_/.test(id)), MYTHIC_WEAPONS_P2);
 
   // ── 로어 · 비전서 ──
   const loreIds = Object.keys(LORE);
