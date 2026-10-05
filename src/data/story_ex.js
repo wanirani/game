@@ -47,7 +47,7 @@ const recruit = (id) => [{ cmd: 'recruit', id }, flag('recruit_' + id)];
 
 export const SCRIPTS_EX = {
   // ═══════════════════════════ 외전 21장 하늘 정원의 둥지 ═══════════════════════════
-  // 배경: 제목 카드는 하늘 정원의 둥지(bg/s21_nest, tools/kling/manifest_polish-1.json) → 에슈빌 장면은 마을(hub) → 길을 나서는 끝은 다시 둥지
+  // 배경: 제목 카드는 하늘 정원의 둥지(bg/s21_nest, tools/kling/manifest_polish-1.json) → 에슈빌 장면은 마을(hub) → 길을 나서는 끝은 다시 둥지 (s21_outro 도 둥지 — 결과 화면이 넘기는 스테이지 배경 bg/s17_sky 대신)
   s21_intro: [
     bgm('story'), bg('s21_nest'),
     title('외전', '하늘 정원의 둥지'),
@@ -176,7 +176,7 @@ export const SCRIPTS_EX = {
     S('b_argen', '(크르르르——!)', { portrait: PURE }),
   ],
   s21_outro: [
-    bgm('story'),
+    bgm('story'), bg('s21_nest'),
     N('공허의 결정이 걷힌 둥지 위로 구름이 갈라지며 햇살이 쏟아졌다. 하늘 기사단의 옛 성소가 오랜만의 빛을 받아 은빛으로 반짝인다.'),
     N('하늘을 크게 돌던 은빛 용이 날갯짓을 늦추더니, 일행 앞에 조용히 내려앉았다.'),
     AG('(크르르…. 아르겐이 고개를 숙이고 따뜻한 콧김을 내쉰다.)'),

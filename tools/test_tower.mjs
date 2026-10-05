@@ -309,6 +309,10 @@ test('한 판: 메뉴 → 헌터 선택 → 1층 처치·출구 → 5층 보스�
   const stall = await page.evaluate(async () => {
     const { isSolidType } = await import('/src/core/physics.js');
     const g = window.__game, t = g.top, w = t.world, p = w.player, m = w.map;
+    // 남은 적은 이 검사 동안 쓰러지지 않게 한다: 위에서 받은 가시 반사(무적이어도 맞으면 곁의 적을 친다)나 자석 축복이 끌어온
+    // 무작위 강화(성광의 오라)가 영웅에게 닿은 적을 쓰러뜨리면(방·시드마다 다름) 남은 적 수가 줄어 불러내기 시계가 다시 시작된다 (흔들리는 실패)
+    const held = w.enemies().filter((e) => !e.invuln);
+    for (const e of held) e.invuln = true;
     p.buffs.invincible = 9999;
     let n = 0, kills = 0;
     const o = t.summonStragglers.bind(t);
@@ -325,6 +329,7 @@ test('한 판: 메뉴 → 헌터 선택 → 1층 처치·출구 → 5층 보스�
       for (let x = e.x + 4; x <= e.x + e.w - 4; x += 8) for (let y = e.y + 4; y <= e.y + e.h - 4; y += 8) if (isSolidType(m.typeAt(Math.floor(x / 48), Math.floor(y / 48)))) { inWall++; x = Infinity; break; }
     }
     p.buffs.invincible = 0;
+    for (const e of held) e.invuln = false;
     return { n, kills, inWall };
   });
   assert.ok(stall.n === 1 && stall.kills >= 5, `졸개만 잡아도 불러내기 ${JSON.stringify(stall)}`);
