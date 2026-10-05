@@ -39,7 +39,7 @@ node tools/deploy/build_web.mjs --selftest-deny # 공개 금지 검사가 빌드
   (tools/apk/verify_apk.mjs, platform WP-9 수락 3) 가 맞는다 (R1-REQ-324). 내용이 같아도 새로 찍으려면 `--restamp`.
 - 검사: `python3 tools/fonts/build_fonts.py --check` (실패하면 빌드 실패 — 임시 빌드만 `--allow-font-gaps`), `node tools/validate_maps.mjs`,
   netlify.toml 헤더 규칙 겹침·CSP, 크기 예산.
-- **크기 예산**: 사이트(dist/web − downloads) ≤ 90 MB (실패), APK 입력 ≤ 45 MB (넘으면 "APK 는 bg/cg/portraits 원본 대신 assets/lo 만" 크기를 알리고
+- **크기 예산**: 사이트(dist/web − downloads) ≤ 90 MB (실패), APK 입력(소리 제외) ≤ 48 MB (넘으면 "APK 는 bg/cg/portraits 원본 대신 assets/lo 만" 크기를 알리고
   그것도 넘으면 실패 — 정해진 경로라 경고가 아니다: `tools/apk/pack_web.py --assets auto` 가 lo 단계를 고른다, APK 어림 ≈ 38 MB),
   첫 화면 경로 brotli ≤ 1.6 MB (경고, `--strict` 면 실패).
 - APK: `dist/BloodNocturne.apk` 가 있으면 (또는 `--apk <파일>`) `downloads/BloodNocturne-<versionName>-<versionCode>.apk` + `downloads/latest.json`.
