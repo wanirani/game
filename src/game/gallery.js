@@ -175,10 +175,10 @@ class GalEngine {
     const st = this.game.state;
     return isObj(st) && !st.arcade && st.slot >= 1 && st.slot <= 3 ? st : null;
   }
-  /** 저장된 슬롯 하나 다시 요약 (지금 게임 중인 슬롯이면 파싱 없이 그 상태로) */
-  redigest(slot) {
+  /** 저장된 슬롯 하나 다시 요약 (지금 게임 중인 슬롯이면 파싱 없이 그 상태로 — store: 그래도 저장소를 읽는다, 클라우드가 알림 없이 받은 슬롯) */
+  redigest(slot, store = false) {
     const st = this.liveSlotState();
-    if (st && st.slot === slot) { this.live = digestGal(st); this.liveState = st; this.digests[slot] = this.live; }
+    if (st && st.slot === slot && !store) { this.live = digestGal(st); this.liveState = st; this.digests[slot] = this.live; }
     else {
       let raw = null;
       try { raw = this.saves.read?.(slot) ?? null; } catch { raw = null; }
@@ -186,7 +186,7 @@ class GalEngine {
     }
     this.union = null;
   }
-  loadAll() { for (const s of SLOTS) this.redigest(s); this.loaded = true; }
+  loadAll(store = false) { for (const s of SLOTS) this.redigest(s, store); this.loaded = true; }
   /** 지금 game.state 를 다시 요약 (저장 전 진행 포함) */
   refreshLive() {
     const st = this.liveSlotState();
@@ -198,8 +198,8 @@ class GalEngine {
     const cur = this.liveSlotState();
     const st = this.liveState && this.liveState === cur ? cur : null;   // game.state 가 바뀌었으면 지난 요약은 빼고 저장된 슬롯으로
     if (!this.union || this.unionLive !== st) {
-      const list = [];
-      for (const s of SLOTS) list.push(st && st.slot === s ? this.live : this.digests[s]);
+      const list = SLOTS.map((s) => this.digests[s]);
+      if (st) list.push(this.live);   // 지금 game.state 는 그 슬롯의 저장된 요약에 더한다 (회랑이 열린 채 클라우드가 같은 슬롯을 받아도 받은 기록이 빠지지 않게)
       this.union = unionDigests(list); this.unionLive = st;
     }
     return { d: this.union, meta: isObj(this.game.meta) ? this.game.meta : {} };
@@ -288,7 +288,7 @@ class GalEngine {
   // ── 소급 ──
   /** 'open': 슬롯 캐시 + 지금 game.state (처음이면 슬롯을 읽는다) · 그 밖('retro'·'cloud'): 슬롯 셋을 다시 읽는다 → 새로 연 'kind:id' */
   rescan(src = 'retro') {
-    if (src !== 'open' || !this.loaded) this.loadAll();
+    if (src !== 'open' || !this.loaded) this.loadAll(src === 'cloud');
     this.refreshLive();
     return this.scan();
   }

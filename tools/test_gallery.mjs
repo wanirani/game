@@ -434,6 +434,19 @@ if (run('G4')) {
     ok(!g.game.meta.gal.cg.cutin_lia && g.saves.metaWrites === mw4 && !g.game.gal, '_dispose 뒤 구독 없음 · game.gal 지움');
   }
   {
+    // CROSS-QA-2: 회랑이 열린 채(game.state = 슬롯 1, 진행 중 아님) 클라우드가 같은 슬롯 1 을 받으면 (saves.store, 알림 없음) 받은 기록으로 훑는다
+    //   (전에는 슬롯 1 요약을 메모리의 지난 game.state 로만 만들어 받은 기록이 빠졌다 — gallery.md '남은 것')
+    const st = base();
+    const g = mkGame({ state: st, slots: { 1: st } });
+    g.gal.rescan('retro');
+    ok(!g.gal.has('cg', 'cg_nihil') && !g.gal.p2(), '받기 전: 2부 없음');
+    g.saves.store(1, fixture('save_p2done'));
+    bus.emit('cloud:sync', { phase: 'done', ok: true });
+    await sleep(20);
+    ok(g.gal.has('cg', 'cg_nihil') && g.gal.p2() && g.gal.has('th', 'end_p2true') && g.gal.has('cg', 'cg_elise_taken'), 'cloud:sync done → 같은 슬롯의 받은 기록 + 지금 game.state 둘 다');
+    g.done();
+  }
+  {
     // 디버그 부팅: 진짜 saves (core/save.js) — saveMeta 는 디버그 칸에만, 알림 debug:true
     const S = SV.saves;
     LS.clear();
