@@ -84,8 +84,10 @@ const FIT = new Map();
 function clipZone(r, clip, kind, owner, src, min) {
   const x0 = Math.max(r.x, clip.x), y0 = Math.max(r.y, clip.y), x1 = Math.min(r.x + r.w, clip.x + clip.w), y1 = Math.min(r.y + r.h, clip.y + clip.h);
   const v = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
-  const size = kind === 'list' ? v.h : Math.min(v.w, v.h);
-  if (!owner || v.w <= 0 || v.h <= 0 || size < min - 0.01) { v.tzo = owner; v.thid = true; return v; }
+  // 잘린 쪽만 잰다 (온전히 보이는 영역은 그대로 — 44 UI px 단추는 터치 여유로 44 CSS px 를 채운다)
+  const cutW = v.w < r.w - 0.01, cutH = v.h < r.h - 0.01;
+  const small = (cutH && v.h < min - 0.01) || (kind !== 'list' && cutW && v.w < min - 0.01);
+  if (!owner || v.w <= 0 || v.h <= 0 || small) { v.tzo = owner; v.thid = true; return v; }
   return zone(v, kind, owner, { src });
 }
 /** 모달이 열려 있을 때의 바탕 영역: 등록하지 않고 가려진 것으로만 표시 */
@@ -294,11 +296,13 @@ export class AchievementsScene extends Scene {
     if (ges.tap(this.zTitles)) { this.openPick(); return; }
     if (ges.tap(this.zClaim)) { this.claim(); return; }
     for (let k = 0; k < this.zCats.length; k++) {
-      if (!this.zCats[k]) continue;
-      if (ges.tap(this.zCats[k])) { this.setCat(k); return; }
+      const z = this.zCats[k];
+      if (!z || z.thid) continue;   // 가려진(잘린) 칩은 판정하지 않는다
+      if (ges.tap(z)) { this.setCat(k); return; }
     }
     if (!this.sc.dragging) {
       for (const z of this.zRows) {
+        if (z.r.thid) continue;
         if (ges.hoverIn(z.r) && this.i !== z.k) this.i = z.k;
         if (ges.tap(z.r)) { this.openDetail(z.k); return; }
       }
@@ -761,6 +765,7 @@ class PickModal {
     for (let L = 0; L < 2; L++) {
       if (this.scs[L].dragging) continue;
       for (const z of this.zones[L]) {
+        if (z.r.thid) continue;
         if (ges.hoverIn(z.r) && (this.L !== L || this.k[L] !== z.k)) { this.L = L; this.k[L] = z.k; }
         if (ges.tap(z.r)) { this.L = L; this.k[L] = z.k; this.choose(L, z.k); return true; }
       }

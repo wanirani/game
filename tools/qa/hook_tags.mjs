@@ -26,7 +26,7 @@ import { writeReport, parseFlags } from './lib/report.mjs';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '../..');
 const args = parseFlags();
-const TAGS = ['feel', 'awaken', 'gimmick', 'cmp', 'plat', 'p2'];
+const TAGS = ['feel', 'awaken', 'gimmick', 'cmp', 'plat', 'p2', 'ach'];
 const W1_PLAN = '/tmp/claude-0/plan/hook_baseline.json';
 const W1_COPY = path.join(HERE, 'hook_baseline_w1.json');
 const RATCHET = path.join(HERE, 'hook_tags_ratchet.json');
