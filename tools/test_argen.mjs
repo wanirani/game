@@ -161,6 +161,24 @@ check('debugAct(없는 상태) → false', (await page.evaluate((id) => { const 
   check('정화: 결정이 모두 깨지고 은빛 1 → 사라짐 · 클리어', r.mid.crys === 0 && r.mid.silver === 1 && r.mid.purified && r.end.dead && r.end.cleared, { mid: r.mid, end: r.end });
   check('패턴별 검사 오류 0', !r.notes.length, r.notes);
 }
+{
+  // 처치 히트스톱 동안의 배너: world.onBossDefeated 가 '… 격파!' 를 단 바로 그 프레임부터 '정화' 여야 한다 (정화 틱은 히트스톱이 끝나야 돈다).
+  //   W.hitstop 0.25 = S 등급 마무리 일격 (L·M·H·F + 처치 가산은 이보다 짧다) · 보스 러시 'ROUND CLEAR' 배너도 같은 길
+  const r = await page.evaluate((id) => {
+    const G = window.__gal, out = {};
+    for (const kind of ['stage', 'rush']) {
+      G.build(id, { phase: 2 }); G.step(7);
+      const b = G.boss, W = G.world, n0 = G.notes.length;
+      if (kind === 'rush') W.onBossDefeated = (bb) => { W.cleared = true; W.banner = { text: 'ROUND CLEAR', sub: `${bb.def.name} 격파 · 1:23  +12,000`, t: 3 }; };
+      G.kill(); W.hitstop = 0.25;
+      let wrong = 0, frames = 0; const subs = new Set();
+      for (let i = 0; i <= 40; i++) { if (i) G.step(1 / 60); const sub = W.banner?.sub; frames++; if (sub) subs.add(sub); if (typeof sub === 'string' && sub.includes('격파')) wrong++; }
+      out[kind] = { wrong, frames, subs: [...subs], notes: G.notes.slice(n0) };
+    }
+    return out;
+  }, ID);
+  check('처치 히트스톱: 잘못된 부제("격파") 0 프레임 · 첫 프레임부터 "아르겐 정화!" (STAGE CLEAR · ROUND CLEAR)', r.stage.wrong === 0 && r.rush.wrong === 0 && r.stage.subs.join() === '아르겐 정화!' && r.rush.subs.join() === '아르겐 정화 · 1:23  +12,000' && !r.stage.notes.length && !r.rush.notes.length, r);
+}
 
 // ── 4) 사망 → 부활 (onReset) · 적 정지 ──
 {

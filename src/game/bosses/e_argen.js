@@ -326,6 +326,7 @@ export class Argen extends BossC {
   }
   onHurt(dmg, attack, world, info, part) {
     const x = info?.hx ?? this.cx, y = info?.hy ?? this.cy;
+    if (this.dying > 0 || this.dead) this.renameBanner(world);
     if (part === this.pCore) { world.fx.burst('magic', x, y, 5, { color: VOID_L, speed: 220 }); return; }
     if (Math.random() < 0.5) world.fx.burst('shard', x, y, 2, { color: SIL, speed: 160 });
   }
@@ -835,11 +836,17 @@ export class Argen extends BossC {
     audio.sfx('boss_roar', { pitch: 0.8 }); audio.sfx('dark', { pitch: 0.35 });
     world.fx.ring(this.coreW.x, this.coreW.y, { color: VOID_L, r0: 20, r1: 300, life: 0.8, width: 10 });
   }
+  /**
+   * 'STAGE CLEAR' 부제: 격파 → 정화 (보스 처치 처리는 그대로, 글자만). 아케이드 배너('ROUND CLEAR' 시간·점수, 탑의 축복 안내)는 나머지를 남긴다.
+   * 처치 타격 바로 뒤(onHurt — world.onBossDefeated 가 배너를 단 직후)에도 부른다: 정화 틱만 기다리면 처치 히트스톱 동안 '격파!' 가 보였다 (e_hagen.js 와 같다)
+   */
+  renameBanner(world) {
+    if (!this._bannered && world?.banner?.sub) { this._bannered = true; const s = world.banner.sub; world.banner.sub = s.includes('격파') ? s.replace('격파', '정화') : `${this.def.name} 정화!`; }
+  }
   dyingTick(dt, world) {
     this.dieT += dt;
     const T = this.dieT, A = this.A, q = world.fx.quality ?? 1;
-    // 'STAGE CLEAR' 부제: 격파 → 정화 (보스 처치 처리는 그대로, 글자만). 아케이드 배너('ROUND CLEAR' 시간·점수, 탑의 축복 안내)는 나머지를 남긴다
-    if (!this._bannered && world.banner?.sub) { this._bannered = true; const s = world.banner.sub; world.banner.sub = s.includes('격파') ? s.replace('격파', '정화') : `${this.def.name} 정화!`; }
+    this.renameBanner(world);
     if (T < 1.1) {
       this.coreCrack = clamp(T / 1.0, 0, 1);
       this.tzx = this.zx + Math.sin(T * 41) * 2;

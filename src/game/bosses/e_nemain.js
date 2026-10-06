@@ -278,7 +278,7 @@ export class Nemain extends BossC {
     const x = info?.hx ?? this.cx, y = info?.hy ?? this.cy;
     if (Math.random() < 0.6) world.fx.burst('dark', x, y, 3, { color: BLK2, speed: 150 });
     if (part === this.pHead && this.masked) world.fx.burst('shard', x, y, 2, { color: LACQ_H, speed: 170 });
-    if (this.dying > 0 || this.dead) return;
+    if (this.dying > 0 || this.dead) { this.renameBanner(world); return; }
     // 카운터 창(그림자 걸음·그믐의 솟아오름)에 맞으면 → 무릎 (stagger)
     if (this.cWin && (this.state === 'shadowStep' || this.state === 'eclipse')) { this.cWin = false; this.later(0, () => this.toStagger()); return; }
     // 까마귀 폭풍 노출 1초 안에 최대 체력 5% 이상 → 무릎
@@ -799,12 +799,18 @@ export class Nemain extends BossC {
     audio.sfx('crow_caw', { vol: 0.6, pitch: 0.8 }); audio.sfx('bat', { pitch: 0.45, vol: 1 });
     world.fx.ring(this.zx, this.fy - 90, { color: CRIM_L, r0: 20, r1: 320, life: 0.8, width: 6 });
   }
+  /**
+   * 'STAGE CLEAR' 부제: 낱말 '격파' 만 '결착' 으로 (보스 러시 'ROUND CLEAR'·탑 '축복' 안내 등 나머지는 그대로). 새 배너가 뜰 때마다 한 번씩.
+   * 처치 타격 바로 뒤(onHurt — world.onBossDefeated 가 배너를 단 직후)에도 부른다: 굴복 틱만 기다리면 처치 히트스톱 동안 '격파!' 가 보였다 (e_hagen.js 와 같다)
+   */
+  renameBanner(world) {
+    const bn = world?.banner;
+    if (bn && bn !== this._bn) { this._bn = bn; if (typeof bn.sub === 'string' && bn.sub.includes('격파')) bn.sub = bn.sub.replace('격파', '결착'); }
+  }
   dyingTick(dt, world) {
     this.dieT += dt;
     const T = this.dieT, q = world.fx?.quality ?? 1;
-    // 'STAGE CLEAR' 부제: 낱말 '격파' 만 '결착' 으로 (보스 러시 'ROUND CLEAR'·탑 '축복' 안내 등 나머지는 그대로). 새 배너가 뜰 때마다 한 번씩
-    const bn = world.banner;
-    if (bn && bn !== this._bn) { this._bn = bn; if (typeof bn.sub === 'string' && bn.sub.includes('격파')) bn.sub = bn.sub.replace('격파', '결착'); }
+    this.renameBanner(world);
     // 0–1.5초: 망토에서 까마귀 떼가 하늘로 (망토가 접힌다)
     if (T < 1.5 && Math.random() < 0.6 * q) world.fx.emit('dark', this.zx - this.facing * 30 + rand(-30, 30), this.fy - 60 - rand(0, 60), { color: BLK2, speed: 120, angle: -PI / 2, spread: 0.8 });
     if (T >= 0.6 && T < 1.0) this.setPose({ spread: 0.3, caw: 0 });

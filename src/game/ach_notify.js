@@ -3,7 +3,8 @@
 //  - 버스 'achievementUnlocked' {ids, src} 를 대기열에 넣고, 보여도 될 때 game.toast 로 낸다 (토스트 규칙은 core/game.js 그대로)
 //    · 'live' 하나·둘: 하나씩 「업적 달성 — 「이름」」 (#ffd070, 3.6초) + 처음 보일 때 효과음 'secret'(pitch 1.2) 한 번
 //    · 'live' 셋 이상 (미뤄 둔 사이에 모인 것 포함): 「업적 n개 달성 — 「첫 이름」 외 n−1개」 한 줄
-//    · 'retro'·'cloud' (소급): 1.2초 모아(부팅 훑기와 첫 동기화가 겹치면 합친다) 한 줄 「지난 기록으로 업적 n개를 달성했습니다 — …」 5초, 소리 없음
+//    · 'retro'·'cloud' (소급): 1.2초 모아(부팅 훑기와 첫 동기화가 겹치면 합친다) 한 줄 「지난 기록으로 업적 n개를 달성했습니다 — …」 5초, 소리 없음.
+//      실행마다 한 줄만: 그 뒤에 늦게 끝난 동기화의 소급은 아직 보이는 그 줄의 개수에 더하고(5초 다시), 줄이 이미 사라졌으면 조용히 넘긴다 (srcOf 는 그대로)
 //  - 미루기 (0.5초마다 다시 본다 — 대기열이 비면 타이머를 끈다): 보스전(world.bossActive·cutscene, 클리어 전) · 연출 장면이 맨 위
 //    (dialogue story bossIntro awakenCutin ultCutin companionJoin results ending credits loading) · 타이틀 인트로·PRESS START ·
 //    인게임 메뉴(game.js 가 메뉴에서는 토스트를 숨긴 채 시간을 흘려보내 사라진다) · deferToasts/hideToasts 장면 · 각성 연출(hudHidden)
@@ -38,6 +39,7 @@ class Notifier {
   constructor(game) {
     this.game = game;
     this.live = []; this.retro = new Set(); this.retroAt = 0;
+    this.retroAll = new Set(); this.retroToast = null;   // 이번 실행의 소급 요약 줄 (하나뿐)과 거기에 센 업적
     this.src = new Map();          // 업적 id → 이번 실행에서 달성한 경로 ('live'|'retro'|'cloud')
     this.hinted = false; this.hintAt = -1;
     this.timer = null; this.soon = null;
@@ -95,9 +97,20 @@ class Notifier {
     try { audio.sfx('secret', { pitch: 1.2 }); } catch { /* 소리 없음 */ }
   }
   showRetro() {
-    const n = this.retro.size;
+    const g = this.game, prev = this.retroToast, i = prev && Array.isArray(g.toasts) ? g.toasts.indexOf(prev) : -1;
+    const ids = [...this.retro];
     this.retro.clear();
-    this.game.toast(`지난 기록으로 업적 ${n}개를 달성했습니다 — 「업적」 화면에서 확인하세요`, COL, 5);
+    if (prev && i < 0) return;   // 이번 실행의 요약 줄은 이미 떴다 사라졌다 — 두 번째 줄은 내지 않는다 (업적 화면이 '지난 기록으로 달성' 을 보여 준다)
+    for (const id of ids) this.retroAll.add(id);
+    const text = `지난 기록으로 업적 ${this.retroAll.size}개를 달성했습니다 — 「업적」 화면에서 확인하세요`;
+    if (i >= 0) {
+      // 아직 보이는(또는 줄을 기다리는) 그 줄을 새 개수로 바꾼다: 5초 다시, 지난 시간은 그대로 (다시 페이드인하지 않게) — 새 객체라 글 폭 캐시도 새로
+      g.toasts[i] = this.retroToast = { text, color: COL, t: 5, max: 5 + Math.max(0, (prev.max ?? 5) - (prev.t ?? 5)), shown: prev.shown };
+      return;
+    }
+    g.toast(text, COL, 5);
+    const last = Array.isArray(g.toasts) ? g.toasts[g.toasts.length - 1] : null;
+    this.retroToast = last?.text === text ? last : { text };   // 토스트 목록을 못 읽으면 '이미 떴다' 로만 기억
   }
   showHint() {
     this.hintAt = -1;

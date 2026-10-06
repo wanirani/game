@@ -1,6 +1,7 @@
 // 업적 「사냥의 기록」 시험 (docs/specs/achievements.md §12.1) — 브라우저 없음, < 15초
 //   node tools/test_achievements.mjs [--only C3,C4] [--ui]
 //   C1 데이터 · C2 요약(digestState) · C3 소급 · C4 이벤트 · C5 병합 · C6 서버 검사(퍼징) · C7 보상 · C8 온라인 이명 · C9 회차(ngplus.md §6)
+//   C10 소급 알림 (ach_notify: 「지난 기록으로 …」 요약은 실행마다 한 줄)
 //   --ui : ACH-UI 의 헤드리스 시험 tools/qa/ach_ui.mjs (export default async function run(opts)) 도 돌린다 (§12.2 U1–U10)
 import fs from 'node:fs';
 import path from 'node:path';
@@ -792,6 +793,40 @@ if (run('C9')) {
       ok(!threw && d && isDeepStrictEqual(rest, base), `손상 ng ${JSON.stringify(bad)}: 던짐 없음, 지금 슬롯 요약 그대로`);
     }
   }
+}
+
+// ═════════ C10 소급 알림 ═════════
+// 「지난 기록으로 업적 n개 …」 요약은 실행마다 한 줄: 부팅 훑기(retro) 요약이 뜬 뒤 1.2초 넘게 지나 끝난 클라우드 동기화(cloud)의 소급은
+// 아직 보이는 그 줄에 개수를 더하고, 이미 사라졌으면 조용히 넘긴다 (업적 화면의 '지난 기록으로 달성' 표시 srcOf 는 그대로)
+if (run('C10')) {
+  section('C10 소급 알림');
+  const NT = await imp('src/game/ach_notify.js');
+  const toasts = [];
+  const game = { top: { name: 'hub' }, world: null, toasts, ach: { defs: D.ACHIEVEMENTS }, toast(text, color, time) { toasts.push({ text: String(text), color, t: time, max: time }); } };
+  const N = NT.initAchNotify(game);
+  const retroLines = () => game.toasts.filter((t) => /^지난 기록으로 업적/.test(t.text));
+  try {
+    bus.emit('achievementUnlocked', { ids: ['st_s01', 'st_s02', 'cb_kill_1k'], src: 'retro' });
+    N.flush();   // 부팅 훑기 요약 (모으는 1.2초가 지난 것처럼)
+    let L = retroLines();
+    ok(L.length === 1 && L[0].text === '지난 기록으로 업적 3개를 달성했습니다 — 「업적」 화면에서 확인하세요', `부팅 요약 한 줄 (${JSON.stringify(L.map((t) => t.text))})`);
+    // 1.2초 넘게 지나 끝난 동기화: 두 번째 줄이 아니라 같은 줄의 개수가 늘어난다 (보이던 줄 그대로 — 다시 페이드인하지 않게 지난 시간 유지)
+    L[0].t -= 2;
+    bus.emit('achievementUnlocked', { ids: ['st_dracula', 'cl_relics'], src: 'cloud' });
+    N.flush();
+    L = retroLines();
+    const a = L[0] ? Math.min(1, L[0].t * 3, (L[0].max - L[0].t) * 6) : 0;
+    ok(L.length === 1 && L[0].text === '지난 기록으로 업적 5개를 달성했습니다 — 「업적」 화면에서 확인하세요' && L[0].t === 5 && a === 1, `늦은 동기화 → 같은 줄 5개, 5초 다시, 불투명 그대로 (${JSON.stringify(L.map((t) => [t.text, t.t, t.max]))})`);
+    // 그 줄이 사라진 뒤의 소급: 새 줄 없음 · srcOf 는 그대로 남는다
+    game.toasts.length = 0;
+    bus.emit('achievementUnlocked', { ids: ['cl_docs10'], src: 'cloud' });
+    N.flush();
+    ok(retroLines().length === 0 && !N.pending() && N.srcOf('cl_docs10') === 'cloud' && N.srcOf('st_s01') === 'retro', `사라진 뒤의 소급 → 두 번째 줄 없음 · srcOf 유지 (${JSON.stringify(game.toasts.map((t) => t.text))})`);
+    // 실시간 달성(live)은 그대로 따로 뜬다
+    bus.emit('achievementUnlocked', { ids: ['mg_win'], src: 'live' });
+    N.flush();
+    ok(game.toasts.length === 1 && /^업적 달성 — 「/.test(game.toasts[0].text), `live 달성은 그대로 (${JSON.stringify(game.toasts.map((t) => t.text))})`);
+  } finally { for (const off of N.offs) off(); N.stop(); clearTimeout(N.soon); N.soon = null; }
 }
 
 // ═════════ --ui (ACH-UI) ═════════
