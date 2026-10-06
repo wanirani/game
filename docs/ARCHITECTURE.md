@@ -518,7 +518,7 @@ weapon:{type:'whip'|'sword'|'greatsword'|'dagger'|'gun'|'staff', style:1~6, colo
 
 ### 보스 (ID — 스테이지)
 `b_nightwing`(s01) 나이트윙 · `b_banshee`(s02) 밴시 여왕 · `b_dullahan`(s03) 둘라한 · `b_crimson`(s04) 진홍의 갑주군주 · `b_bonedragon`(s05) 본 드래곤 · `b_grimoire`(s06) 그리모어 · `b_chimera`(s07) 키메라 호문쿨루스 · `b_leviathan`(s08) 레비아탄 · `b_colossus`(s09) 태엽 거신 · `b_frostqueen`(s10) 서리 여왕 이자벨라 · `b_death`(s11) 사신 데스 · `b_dracula`(s12) 드라큘라 백작 (2페이즈 진정한 모습 `portraits/b_dracula2`) · `b_chaos`(s13) 혼돈의 군주 · 2부 `b_narkissa b_moloch b_dagon b_ziz b_mara b_behemoth b_nihil` (§11.4) · 외전 `b_argen`(s21) 아르겐 (§11.7) · `b_nemain`(s22) 둥지어미 / 네메인 (§11.8) · `b_hagen`(s23) 하겐 / 은빛 늑대 (§11.10) · `b_bride`(s24) 엘제베트 / 시든 신부 (§11.11).
-초상화 `portraits/<bossId>` (+ `b_dracula2`, `b_narkissa2`, `b_nihil2`, `b_nemain2`, `b_hagen2`). 클래스: 1부 `bosses/a_*.js`(`ABoss`, `a_common.js`)·`b_*.js`(`BossB`, `b_common.js`), 2부 `c_*.js`/`d_*.js`·외전 `e_*.js`(BossC, `c_common.js`). 모든 보스에 채색 렌더러 `render/painted/bosses/<id>.js`.
+초상화 `portraits/<bossId>` (+ `b_dracula2`, `b_narkissa2`, `b_nihil2`, `b_nemain2`, `b_hagen2`, `b_bride2`). 클래스: 1부 `bosses/a_*.js`(`ABoss`, `a_common.js`)·`b_*.js`(`BossB`, `b_common.js`), 2부 `c_*.js`/`d_*.js`·외전 `e_*.js`(BossC, `c_common.js`). 모든 보스에 채색 렌더러 `render/painted/bosses/<id>.js`.
 
 ### 숨겨진 비전서(기술 문서) — `data/lore.js` DOCS
 벽 'H' 를 부수면 해당 스테이지 `docs` 목록 순서로 등장. `tech` 는 커맨드 기술(`SKILL_IMPL[tech.id]`), `stats` 는 영구 보너스.
