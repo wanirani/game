@@ -7,11 +7,15 @@
 //  - 두 장면 모두 uiScale (game.uiW × game.uiH, 최소 720×400). 줄 높이는 화면 높이에 맞춘다
 //  - 부문 탭은 목록 줄(≥ 36 CSS px), 뒤로·▲▼·등록 버튼은 ui.taps (owner = 장면), 안내 줄은 지금 기기의 글리프
 //  - 'NEW RECORD!' 는 ui.bloodText (금박 피 글씨)
+//  - 이명 (docs/specs/achievements.md §8.3, ACH-UI): 온라인 목록 줄의 별명 뒤에 작은 금색 「이름」 — 고정 목록(core/ach_meta.js ACH_TITLES)
+//    id 만 이름으로 옮기고 모르는 id 는 그리지 않는다. 별명 칸 폭 안에서 이명을 먼저 줄이고(…), 그래도 모자라면 이명을 뺀다
+//    (별명은 줄이지 않는다). 왼쪽 '공개 별명' 줄 끝에 내 이명
 import { Scene } from '../../core/game.js';
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
 import { assets } from '../../core/assets.js';
-import { text, FONT, ListMenu, taps, bloodText, prewarmText } from '../../core/ui.js';
+import { text, font, FONT, ListMenu, taps, bloodText, prewarmText } from '../../core/ui.js';
+import * as ACHM from '../../core/ach_meta.js';
 import { drawHints, promptMode } from '../../core/prompts.js';
 import { clamp, ease, fmt, TAU } from '../../core/math.js';
 import { hudSafe } from '../../render/hud_layout.js';
@@ -36,6 +40,21 @@ import { STAGE_ORDER, STAGE_ORDER_P1 } from '../../data/stages.js';
 const MEDAL = ['#ffe070', '#d8dce8', '#e0a060'];
 const ORD = (i) => `${i + 1}${i === 0 ? 'ST' : i === 1 ? 'ND' : i === 2 ? 'RD' : 'TH'}`;
 const own = (o, k) => typeof k === 'string' && !!o && Object.hasOwn(o, k);
+/** 이명 id → 이름 (고정 목록 밖이면 null) */
+const titleNameOf = (id) => (own(ACHM.ACH_TITLES, id) ? ACHM.ACH_TITLES[id].name : null);
+const EPI = new Map();
+/** 이명 「이름」 을 room 폭(12 px 굵게)에 맞춘 글 — 줄여도(…, 두 글자 이상) 안 들어가면 null */
+function fitEpithet(ctx, name, room) {
+  const k = name + '|' + Math.round(room);
+  if (EPI.has(k)) return EPI.get(k);
+  ctx.font = font(12, 700, FONT.body);
+  let out = null;
+  if (ctx.measureText(`「${name}」`).width <= room) out = `「${name}」`;
+  else for (let n = name.length - 1; n >= 2; n--) { const s = `「${name.slice(0, n)}…」`; if (ctx.measureText(s).width <= room) { out = s; break; } }
+  if (EPI.size > 300) EPI.clear();
+  EPI.set(k, out);
+  return out;
+}
 
 function detail(h) {
   const d = getDiff(h.diff);
@@ -397,7 +416,8 @@ export class HighscoreScene extends Scene {
         text(ctx, me.rank ? `${me.rank}위` : '순위 밖', x0 + LW - 12, y + 16, { size: me.rank ? 20 : 15, align: 'right', weight: 900, family: me.rank ? FONT.num : FONT.body, color: '#ffe070', ow: 3 });
         text(ctx, this.recText(me), x0 + 12, y + 40, { size: 15, weight: 800, family: FONT.num, color: '#fff', ow: 2, maxWidth: LW - 24 });
       } else text(ctx, '아직 이 순위표에 기록이 없어요', x0 + 12, y + 40, { size: 13, weight: 700, color: BONE, ow: 2, maxWidth: LW - 24 });
-      if (nick && y + 62 <= bot) text(ctx, `공개 별명: ${nick}`, x0 + 12, y + 62, { size: 12, weight: 700, color: DIM, ow: 2, maxWidth: LW - 24 });
+      const myTitle = titleNameOf((() => { try { return this.game.ach?.title?.() ?? null; } catch { return null; } })());   // [hook:ach]
+      if (nick && y + 62 <= bot) text(ctx, `공개 별명: ${nick}${myTitle ? ` · 이명 「${myTitle}」` : ''}`, x0 + 12, y + 62, { size: 12, weight: 700, color: DIM, ow: 2, maxWidth: LW - 24 });
     }
     // 오른쪽: 목록
     frame(ctx, lx, top - 4, lw, bot - top + 8, { accent: '#8a6a3a', corners: false, edge: 0.4, fill0: 'rgba(14,6,16,0.8)' });
@@ -436,7 +456,7 @@ export class HighscoreScene extends Scene {
       ctx.restore();
       if (e.rank <= 3) { ctx.fillStyle = MEDAL[e.rank - 1]; ctx.fillRect(lx + 8, yy + 1, 3, rowH - 3); }
       text(ctx, `${e.rank}`, C.rank + 6, tb, { size: 14, weight: 900, family: FONT.num, color: e.rank <= 3 ? MEDAL[e.rank - 1] : '#a89a90', ow: 2 });
-      text(ctx, e.nick, C.nick, tb, { size: 14, weight: 800, color: mine ? '#fff' : '#f0e4d0', ow: 2, maxWidth: C.rec - C.nick - 70 });
+      this.drawNick(ctx, e, C.nick, tb, C.rec - C.nick - 70, mine);
       text(ctx, this.recText(e), C.rec, tb, { size: 14, align: 'right', weight: 900, family: FONT.num, color: i === 0 ? '#ffe070' : '#fff', ow: 2 });
       const ch = own(CHARACTERS, e.hero) ? CHARACTERS[e.hero] : null, cl = own(CLASSES, e.cls) ? CLASSES[e.cls] : null;
       const img = ch?.portrait ? assets.get(ch.portrait) : null, pr = Math.min(10, (rowH - 8) / 2), px = C.hero - 6 - pr, py = yy + rowH / 2;
@@ -447,6 +467,21 @@ export class HighscoreScene extends Scene {
     scrollbar(ctx, lx + lw - 6, list.y, list.h, this.scroll, list.h);
     if (this.ofocus >= rows.length) { ctx.strokeStyle = GOLD; ctx.lineWidth = 1.5; ctx.strokeRect(lx + 1.5, top - 2.5, lw - 3, bot - top + 5); }
     text(ctx, `전체 ${D.total}명`, lx + lw - 12, bot - 2 + 14 > H - L.sb - 34 ? top + 14 : bot + 14, { size: 11, align: 'right', weight: 700, color: DIM, ow: 2 });
+  }
+  /** 순위 줄의 별명 + 이명 (§8.3): 별명은 그대로, 이명을 남는 폭에 맞춰 줄이고 안 되면 뺀다 */
+  drawNick(ctx, e, x, y, w, mine) {
+    const col = mine ? '#fff' : '#f0e4d0', tn = titleNameOf(e.title);
+    if (tn) {
+      ctx.font = font(14, 800, FONT.body);
+      const nw = ctx.measureText(e.nick).width;
+      const ep = nw + 6 < w ? fitEpithet(ctx, tn, w - nw - 5) : null;
+      if (ep) {
+        text(ctx, e.nick, x, y, { size: 14, weight: 800, color: col, ow: 2 });
+        text(ctx, ep, x + nw + 5, y - 0.5, { size: 12, weight: 700, color: '#e8c872', ow: 2 });
+        return;
+      }
+    }
+    text(ctx, e.nick, x, y, { size: 14, weight: 800, color: col, ow: 2, maxWidth: w });
   }
   /** 기록 표시: 시간 보드 = 1:23.45, 서바이벌 = WAVE n · 점수, 무한의 탑 = n층 · 1:23.45 */
   recText(e) {
