@@ -158,7 +158,7 @@ if (run('C1')) {
   }
   ok(DEF.get('mg_duel').cond.n === foes, `mg_duel.n === FOES.length (${foes})`);
   ok(DEF.get('cp_mounts').cond.n === Object.keys(MOUNTS).length && DEF.get('cp_guards').cond.n === Object.keys(GUARDIANS).length, '탈것 10 · 수호신 12 = 데이터');
-  ok(DEF.get('ar_rush22').cond.arg[0] === 8 && gd.COURSE_COUNT === 9, '22연전 = 코스 8');
+  ok(DEF.get('ar_rush22').cond.arg[0] === 8 && gd.COURSE_COUNT === 11, '22연전 = 코스 8 (코스 11개 — 9·10 은 외전 s23 의 3연전·23연전, ex_s23.md §5.2)');   // EX3-INTEG
   ok(DEF.get('ch_rank_s_all').cond.arg.length === 20 && DEF.get('ch_rank_s_all').cond.arg.every((s) => STAGES[s] && !STAGES[s].side), 'rankS 인자: 외전 아닌 스무 스테이지');
   // prog 키 목록 (§3.3)
   eq([...A.PROG_KEYS], ['kills', 'combo', 'style', 'nodmg', 'nd_b_dracula', 'aw_kael', 'aw_sera', 'aw_victor', 'aw_bran', 'aw_lia', 'aw_azel', 'aw_isolde', 'aw2',

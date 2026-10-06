@@ -43,9 +43,11 @@ const RECRUITS = { s14: 'gd_mirra', s15: 'mt_ignis', s16: 'gd_lumen', s17: 'mt_g
 // 외전 — STAGE_ORDER_P2 끝의 side 스테이지들 (해금은 세계 지도가 p2_done 으로, page = 그 외전이 놓이는 지도)
 //   s21 「하늘 정원의 둥지」 (docs/specs/ex_s21.md): 이계 지도, 아웃트로에서 탈것 아르겐 합류
 //   s22 「이름 없는 언덕」 (docs/specs/ex_s22.md): 1부 지도(page 0), 아웃트로에서 수호신 무닌 합류
+//   s23 「빈칸의 현상금」 (docs/specs/ex_s23.md): 1부 지도(page 0), 동료 대신 아웃트로에서 신화 무기 「사냥꾼의 달」 일곱 자루 (reward: give once·silent = HUNT_SET)
 const EX_LIST = [
   { sid: 's21', chapter: 21, page: 1, boss: 'b_argen', recruit: 'mt_argen', rig: 'wyvern', done: 'ex_s21_done', scripts: ['s21_intro', 's21_t1', 's21_t2', 'b_argen_pre', 'b_argen_corrupt', 'b_argen_awaken', 'b_argen_post', 's21_outro'] },
   { sid: 's22', chapter: 22, page: 0, boss: 'b_nemain', recruit: 'gd_munin', done: 'ex_s22_done', scripts: ['s22_intro', 's22_t1', 's22_t2', 'b_nemain_pre', 'b_nemain_unmask', 'b_nemain_last', 'b_nemain_post', 's22_outro'] },
+  { sid: 's23', chapter: 23, page: 0, boss: 'b_hagen', reward: 'hunt', done: 'ex_s23_done', scripts: ['s23_intro', 's23_t1', 's23_t2', 'b_hagen_pre', 'b_hagen_moon', 'b_hagen_last', 'b_hagen_post', 's23_outro'] },
 ];
 const P2_SIDE = ['bd_rift', 'bd_mirror', 'bd_deep', 'bd_storm', 'bd_combo200', 'hd_ember', 'hd_plus15', 'rk_stars', 'rk_stars6', 'el_pearl', 'ab_dawnflower', 'mt_feast', 'cm_dreams'];
 // world2 §1.4 — 2부 대본 id 전부
@@ -79,7 +81,7 @@ const ROOM_GIMMICKS = {
 async function staticChecks() {
   const G = 'static';
   const imp = (f) => import(path.join(ROOT, f));
-  const [{ STAGES, STAGE_ORDER, STAGE_ORDER_P2, SHARDS, HEARTS }, { ENEMIES }, { BOSSES }, { ITEMS, MYTHIC_WEAPONS_P2, WTYPES }, { QUESTS }, { LORE, LORE_ORDER, DOCS, DOC_ORDER }, { SCRIPTS }, { TRACKS }, { NPCS }, { SAVE_VERSION }, { ENDINGS }, { BOSS_ORDER }, CMP, { P2_PATTERNS }] = await Promise.all([
+  const [{ STAGES, STAGE_ORDER, STAGE_ORDER_P2, SHARDS, HEARTS }, { ENEMIES }, { BOSSES }, { ITEMS, MYTHIC_WEAPONS_P2, WTYPES, HUNT_SET }, { QUESTS }, { LORE, LORE_ORDER, DOCS, DOC_ORDER }, { SCRIPTS }, { TRACKS }, { NPCS }, { SAVE_VERSION }, { ENDINGS }, { BOSS_ORDER }, CMP, { P2_PATTERNS }] = await Promise.all([
     imp('src/data/stages.js'), imp('src/data/enemies.js'), imp('src/data/bosses.js'), imp('src/data/items.js'), imp('src/data/quests.js'), imp('src/data/lore.js'),
     imp('src/data/story.js'), imp('src/data/music.js'), imp('src/data/npcs.js'), imp('src/game/state.js'), imp('src/scenes/front/ending.js'), imp('src/scenes/front/arcade.js'),
     imp('src/data/companions.js'), imp('src/game/bosses/c_common.js'),
@@ -97,7 +99,7 @@ async function staticChecks() {
   // ── 스테이지 · 방 ──
   check(G, 'STAGE_ORDER 에 s14–s20 이 모두 있다 (1부 뒤, 순서대로 · 외전은 그 뒤)', P2.every((s) => STAGE_ORDER.includes(s)) && STAGE_ORDER_P2.filter((s) => !STAGES[s]?.side).join() === P2.join() && STAGE_ORDER.indexOf('s14') === STAGE_ORDER.indexOf('s13') + 1
     && STAGE_ORDER_P2.slice(P2.length).every((s) => STAGES[s]?.side), STAGE_ORDER_P2);
-  check(G, '외전 = STAGE_ORDER_P2 의 side 스테이지 (s21 · s22 차례로)', STAGE_ORDER_P2.filter((s) => STAGES[s]?.side).join() === EX_LIST.map((e) => e.sid).join(), STAGE_ORDER_P2);
+  check(G, '외전 = STAGE_ORDER_P2 의 side 스테이지 (s21 · s22 · s23 차례로)', STAGE_ORDER_P2.filter((s) => STAGES[s]?.side).join() === EX_LIST.map((e) => e.sid).join(), STAGE_ORDER_P2);
   for (const EX of EX_LIST) {
     // 외전: 이야기 사슬(next) 밖 · 2부 · 보스·대본·전환 대사·트리거·합류 (해금은 세계 지도가 p2_done 으로 — town/worldmap.js)
     const st = STAGES[EX.sid], miss = [];
@@ -107,13 +109,24 @@ async function staticChecks() {
     if (st?.intro !== `${EX.sid}_intro` || st?.outro !== `${EX.sid}_outro`) miss.push(`intro/outro ${st?.intro}/${st?.outro}`);
     for (const id of EX.scripts) if (!SCRIPTS[id]) miss.push(`대본 ${id}`);
     for (const [rid, room] of Object.entries(st?.rooms ?? {})) for (const t of room.triggers ?? []) if (!SCRIPTS[t]) miss.push(`${rid} trigger ${t}`);
+    if (!st?.rooms?.r3?.triggers?.includes(`${EX.sid}_t1`) || !st?.rooms?.r5?.triggers?.includes(`${EX.sid}_t2`)) miss.push(`트리거 r3 ${EX.sid}_t1 · r5 ${EX.sid}_t2`);
     const ln = (x) => (Array.isArray(x) ? x : Array.isArray(x?.lines) ? x.lines : []);
-    const out = ln(SCRIPTS[`${EX.sid}_outro`]), ri = out.findIndex((l) => l?.cmd === 'recruit' && l.id === EX.recruit), fi = out.findIndex((l) => l?.if);
-    if (ri < 0 || out[ri + 1]?.key !== 'recruit_' + EX.recruit || !(fi < 0 || ri < fi)) miss.push(`${EX.sid}_outro recruit (조건 줄보다 앞)`);
+    const out = ln(SCRIPTS[`${EX.sid}_outro`]), fi = out.findIndex((l) => l?.if);
+    if (EX.recruit) {
+      const ri = out.findIndex((l) => l?.cmd === 'recruit' && l.id === EX.recruit);
+      if (ri < 0 || out[ri + 1]?.key !== 'recruit_' + EX.recruit || !(fi < 0 || ri < fi)) miss.push(`${EX.sid}_outro recruit (조건 줄보다 앞)`);
+      const m = CMP.MOUNTS?.[EX.recruit] ?? CMP.GUARDIANS?.[EX.recruit];
+      if (!(m?.obtain?.type === 'flag' && m.obtain.flag === 'recruit_' + EX.recruit && (!EX.rig || m.rig === EX.rig))) miss.push(`${EX.recruit} 정의`);
+    }
+    if (EX.reward) {
+      // 보상 = 아웃트로의 give 줄들 (once · silent, 조건 줄보다 앞 — 결과 화면이 아웃트로를 다시 틀어도 겹치지 않는다) = 그 한 벌 (ex_s23.md §3)
+      const set = EX.reward === 'hunt' ? HUNT_SET ?? [] : [];
+      const gv = out.map((l, i) => [l, i]).filter(([l]) => l?.cmd === 'give');
+      if (!set.length || gv.map(([l]) => l.item).sort().join() !== [...set].sort().join()) miss.push(`${EX.sid}_outro give ${gv.map(([l]) => l.item)} ≠ ${EX.reward} ${set}`);
+      for (const [l, i] of gv) if (!l.once || !l.silent || (l.qty ?? 1) !== 1 || !(fi < 0 || i < fi) || !ITEMS[l.item]) miss.push(`${EX.sid}_outro give ${l.item} (once · silent · 1개 · 조건 줄보다 앞 · ITEMS)`);
+    }
     if (!out.some((l, i) => l?.cmd === 'flag' && l.key === EX.done && (fi < 0 || i < fi))) miss.push(`${EX.sid}_outro ${EX.done} (조건 줄보다 앞)`);
-    const m = CMP.MOUNTS?.[EX.recruit] ?? CMP.GUARDIANS?.[EX.recruit];
-    if (!(m?.obtain?.type === 'flag' && m.obtain.flag === 'recruit_' + EX.recruit && (!EX.rig || m.rig === EX.rig))) miss.push(`${EX.recruit} 정의`);
-    check(G, `외전 ${EX.sid}: side · page ${EX.page} · next 사슬 밖 · 보스 ${EX.boss} · 대본 ${EX.scripts.length}개 · 트리거 · 아웃트로 합류(${EX.recruit})·${EX.done}`, !miss.length, miss);
+    check(G, `외전 ${EX.sid}: side · page ${EX.page} · next 사슬 밖 · 보스 ${EX.boss} · 대본 ${EX.scripts.length}개 · 트리거 r3·r5 · 아웃트로 ${EX.recruit ? `합류(${EX.recruit})` : `보상(${EX.reward})`}·${EX.done}`, !miss.length, miss);
   }
   P2.forEach((sid, i) => {
     const st = STAGES[sid];
@@ -224,6 +237,33 @@ async function staticChecks() {
   }
   const myth = Object.values(MYTHIC_WEAPONS_P2 ?? {});
   check(G, `MYTHIC_WEAPONS_P2 는 무기 종류별 ${WTYPES.length}종 (u_dawn_*)`, myth.length === WTYPES.length && WTYPES.every((wt) => MYTHIC_WEAPONS_P2[wt]) && myth.every((id) => ITEMS[id]?.slot === 'weapon' && /^u_dawn_/.test(id)), MYTHIC_WEAPONS_P2);
+  // 외전 s23 「사냥꾼의 달」 (ex_s23.md §3): 무기 종류마다 한 자루 · 7단계 신화 · 희귀도 5 · lvReq 72 · 냉기 · 드롭 표(MYTHIC_WEAPONS_P2 · 보스 고유) 밖
+  const hunt = (HUNT_SET ?? []).map((id) => ITEMS[id]);
+  check(G, `HUNT_SET 은 무기 종류별 ${WTYPES.length}종 (u_hunt_*, 7단계 신화 · 드롭 표 밖)`, hunt.length === WTYPES.length && WTYPES.every((wt) => hunt.filter((b) => b?.wtype === wt).length === 1)
+    && hunt.every((b) => b?.slot === 'weapon' && /^u_hunt_/.test(b.id) && b.tier === 7 && b.mythic && b.rarity === 5 && b.lvReq === 72 && b.element === 'ice' && b.set === 'hunt' && b.unique && !b.boss && !myth.includes(b.id)), HUNT_SET);
+  // 대사 give 의 once · silent (ex_s23.md §3 · §8): 두 번 틀어도 한 자루 · 가방이 꽉 차면 보관함 · 보관함에 있어도 once · 팔면 다시 받는다
+  {
+    const INV = await imp('src/game/inventory.js');
+    const [{ newGameState }, { makeItem }] = await Promise.all([imp('src/game/state.js'), imp('src/data/items.js')]);
+    const giveOnce = (st, id) => { if (!INV.ownsItem(st, id)) INV.grantItem(st, id, 1); };   // scenes/dialogue.js · front/story.js 의 case 'give' 와 같은 규칙
+    const own = (st, id) => INV.countItem(st, id) + (st.progress.lootQueue ?? []).filter((i) => i.baseId === id).length;
+    const st = newGameState({ slot: 1 });
+    for (let k = 0; k < 2; k++) for (const id of HUNT_SET ?? []) giveOnce(st, id);
+    const r = { twice: (HUNT_SET ?? []).every((id) => own(st, id) === 1) };
+    const gun = st.inventory.find((i) => i.baseId === 'u_hunt_gun');
+    INV.sellItem(st, gun.uid);
+    r.sold = !INV.ownsItem(st, 'u_hunt_gun');
+    giveOnce(st, 'u_hunt_gun');
+    r.again = own(st, 'u_hunt_gun') === 1;
+    // 가방이 꽉 찬 세이브: 한 벌이 보관함으로 가고, 보관함에 있는 동안 다시 틀어도 겹치지 않는다
+    const full = newGameState({ slot: 2 });
+    const wid = Object.keys(ITEMS).find((k) => ITEMS[k].slot === 'weapon' && !ITEMS[k].unique);
+    for (let i = 0; INV.freeSlots(full) > 0 && i < 400; i++) INV.addItem(full, makeItem(wid), { silent: true });
+    for (let k = 0; k < 2; k++) for (const id of HUNT_SET ?? []) giveOnce(full, id);
+    r.queued = (full.progress.lootQueue ?? []).filter((i) => (HUNT_SET ?? []).includes(i.baseId)).length;
+    r.fullOnce = (HUNT_SET ?? []).every((id) => own(full, id) === 1 && INV.ownsItem(full, id));
+    check(G, 'give once: 두 번 틀어도 무기마다 한 자루 · 팔면 다시 받음 · 가방이 꽉 차면 보관함(그동안에도 once)', r.twice && r.sold && r.again && r.queued === 7 && r.fullOnce, r);
+  }
 
   // ── 로어 · 비전서 ──
   const loreIds = Object.keys(LORE);
@@ -1012,6 +1052,55 @@ async function itemsGroup() {
     check(G, '15장 대장간에 w_*_13 · w_*_14 (무기 6종)', r.smith.every(([, a, b]) => a && b), r.smith);
     check(G, 'ab_dawnflower 보상 → u_alberto · flags.dawnflower_given', r.dawn.accepted && r.dawn.canClaim && r.dawn.claimed && r.dawn.alberto && r.dawn.flag, r.dawn);
     check(G, 'rk_stars 진행 = progress.shards (2/3 → 3/3 달성)', r.stars.active && r.stars.two === 2 && !r.stars.doneAt2 && r.stars.three === 3 && r.stars.doneAt3, r.stars);
+    // 외전 s23 아웃트로의 give once · silent (docs/specs/ex_s23.md §3 · §8): 진짜 컷신(front/story.js)·대화창(dialogue.js) 장면으로 —
+    //   끝까지 보기 · 건너뛰기 모두 일곱 자루, 다시 틀어도 겹치지 않음, 획득 토스트 0 · 'item' 소리는 대본의 se 한 번, 가방이 꽉 차면 보관함, 팔고 다시 틀면 다시 받음
+    const gv = await P.page.evaluate(async () => {
+      const g = window.__game;
+      const [{ ITEMS, makeItem, HUNT_SET }, { newGameState }, INV, { audio }, { SCRIPTS }] = await Promise.all([
+        import('/src/data/items.js'), import('/src/game/state.js'), import('/src/game/inventory.js'), import('/src/core/audio.js'), import('/src/data/story.js'),
+      ]);
+      if (!SCRIPTS.s23_outro || !HUNT_SET?.length) return { missing: { outro: !!SCRIPTS.s23_outro, set: HUNT_SET?.length ?? 0 } };
+      const keep = { state: g.state, toast: g.toast, sfx: audio.sfx };
+      const log = { toasts: [], item: 0 };
+      g.toast = function (t, ...a) { log.toasts.push(String(t)); return keep.toast.call(this, t, ...a); };
+      audio.sfx = function (id, ...a) { if (id === 'item') log.item++; return keep.sfx.call(this, id, ...a); };
+      const own = (st) => HUNT_SET.map((id) => INV.countItem(st, id) + (st.progress.lootQueue ?? []).filter((i) => i.baseId === id).length);
+      const fresh = (charId = 'kael') => { const st = newGameState({ slot: 1, charId }); st.slot = 0; st.progress.flags.p2_done = true; return st; };   // slot 0: 컷신 끝의 saves.write 를 건너뛴다
+      // how: 'play' = 한 줄씩 끝까지 · 'skip' = 건너뛰기 · 'dlg' = 대화창(skipAll)
+      const run = (st, how) => {
+        g.state = st;
+        const t0 = log.toasts.length, i0 = log.item;
+        if (how === 'dlg') { const sc = g.push('dialogue', { lines: SCRIPTS.s23_outro }); sc.skipAll(); }
+        else {
+          const sc = g.push('story', { script: 's23_outro', then: 'title' });
+          if (how === 'skip') sc.skip();
+          else for (let n = 0; n < 400 && !sc.ending; n++) sc.next();
+          if (g.top === sc) g.pop();
+        }
+        return { toasts: log.toasts.slice(t0).filter((t) => /획득/.test(t)).length, item: log.item - i0, own: own(st), done: !!st.progress.flags.ex_s23_done };
+      };
+      const out = {};
+      try {
+        const a = fresh('victor');
+        out.play = run(a, 'play'); out.again = run(a, 'skip');
+        const gun = a.inventory.find((i) => i.baseId === 'u_hunt_gun');
+        INV.sellItem(a, gun.uid);
+        out.sold = own(a)[HUNT_SET.indexOf('u_hunt_gun')];
+        out.resell = run(a, 'skip');
+        out.skip = run(fresh('lia'), 'skip');
+        const d = fresh();
+        out.dlg = run(d, 'dlg'); out.dlg2 = run(d, 'dlg');
+        const f = fresh('isolde');
+        const wid = Object.keys(ITEMS).find((k) => ITEMS[k].slot === 'weapon' && !ITEMS[k].unique);
+        for (let i = 0; INV.freeSlots(f) > 0 && i < 400; i++) INV.addItem(f, makeItem(wid), { silent: true });
+        out.full = run(f, 'skip'); out.full.queued = (f.progress.lootQueue ?? []).length; out.full2 = run(f, 'play');
+      } finally { g.toast = keep.toast; audio.sfx = keep.sfx; g.state = keep.state; }
+      return out;
+    });
+    const one = (x) => x && x.own.every((n) => n === 1) && x.toasts === 0 && x.done;
+    check(G, 's23 아웃트로 give once·silent: 끝까지 보기 → 일곱 자루 · 획득 토스트 0 · item 소리 1 (대본 se)', !gv.missing && one(gv.play) && gv.play.item === 1, gv.missing ?? gv.play);
+    check(G, 's23 아웃트로 다시 틀기 · 건너뛰기 · 대화창 두 번 → 무기마다 한 자루, 토스트 0', !gv.missing && one(gv.again) && one(gv.skip) && one(gv.dlg) && one(gv.dlg2) && gv.again.item === 0 && gv.dlg2.item <= 1, gv.missing ?? { again: gv.again, skip: gv.skip, dlg: gv.dlg, dlg2: gv.dlg2 });
+    check(G, 's23 아웃트로: 팔고 다시 틀면 다시 받음 · 가방이 꽉 차면 보관함 일곱 (다시 틀어도 겹치지 않음)', !gv.missing && gv.sold === 0 && one(gv.resell) && one(gv.full) && gv.full.queued === 7 && one(gv.full2), gv.missing ?? { sold: gv.sold, resell: gv.resell, full: gv.full, full2: gv.full2 });
     check(G, '아이템/의뢰 검사 오류 0', !errsSince(P, e0).length, errsSince(P, e0));
   } catch (e) { check(G, '아이템 검사 실행', false, e.stack); }
   await P?.close();
