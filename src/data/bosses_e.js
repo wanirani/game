@@ -2,6 +2,7 @@
 //                   b_nemain (s22, 외전 「까마귀의 이름」) — docs/specs/ex_s22.md §2. 소유: EX2-BOSS (아래 b_nemain 머리말)
 //                   b_hagen (s23, 외전 「빈칸의 현상금」) — docs/specs/ex_s23.md §2. 소유: EX3-BOSS (아래 b_hagen 머리말)
 //                   b_bride (s24, 외전 「시드는 장미」) — docs/specs/ex_s24.md §2. 소유: EX4-BOSS (아래 b_bride 머리말)
+//                   b_charon (s25, 외전 「불탄 목장의 밤」) — docs/specs/ex_s25.md §2. 소유: EX5-BOSS (아래 b_charon 머리말)
 // 스키마: game/bosses/boss.js 상단 주석 (bosses_c.js 머리말 참고). 클래스는 game/bosses/e_argen.js (BossC 상속).
 // 체급: 지즈(b_ziz, s17)보다 한 단계 위 · 니힐(b_nihil, s20 최종)보다 아래. s21 레벨 70 (s20 은 68).
 // 밸런스 (EX-BOSS, tools/balance.mjs 와 같은 식 — 보통 난이도 kael, s20 클리어 레벨 67 · s20 장비 기준):
@@ -59,6 +60,13 @@
 //     다른 영웅 중앙 (3–4판, 전 → 뒤 초): 세라 28.6 → 34.8 · 빅터 25.9 → 32.6 · 브란 51.2 → 59.0 · 리아 46.6 → 45.2 · 아젤 31.2 → 43.8 · 이졸데 19.4 → 32.5.
 // 경험치 3700 (명세 값 그대로). 드롭 없음 (drops: [] — 보상은 아웃트로의 수호신 베스퍼, §3 · §9-7). 2부 보스 공통 신화 1.5% 는 loot.js 그대로.
 // 결말: 체력 0 → 보스 처치 처리(경험치·플래그 boss_b_bride)는 같고 부제도 기본 '격파!' (악역). 연출만 '바스러짐' (무릎 → 시든 꽃잎, 파편 폭발 없음).
+// ── b_charon (s25) — 카론 / 사신의 마부. 클래스 game/bosses/e_charon.js (BossC 상속) ──
+// 체급: 외전 맨 위 — 엘제베트(s24)보다 한 단계 위. s25 레벨 78. 2페이즈 (50% 전환 'unbridle' 에서 말들이 풀려나 마차가 부서지고 마부 혼자, form2 칭호 '말을 잃은 마부' · 같은 초상화).
+//   15% 이하 한 번 lastLoad (스토리·처음이면 대사 b_charon_last 뒤 그림메인이 들이받아 2.5초 주저앉음). 1페이즈 창 상한(질주 12% · 무릎 10% · 등불 노출 8%)은 처음부터.
+// 밸런스: (EX5-BOSS 결과 — 아래 줄에 적는다)
+// 경험치 3800 (명세 값 그대로). 드롭 없음 (drops: [] — 보상은 아웃트로의 탈것 모르겐, §3). 2부 보스 공통 신화 1.5% 는 loot.js 그대로.
+// 결말: 체력 0 → 보스 처치 처리(경험치·플래그 boss_b_charon)는 같고 부제도 기본 '격파!'. 연출만 '놓아줌' (주저앉음 → 스토리는 그대로 남아 b_charon_post 가 걸어서 떠나보내고,
+//   아케이드는 재와 혼불로 흩어진다, 파편 폭발 없음). 도감(desc)에는 반전을 쓰지 않는다.
 export const BOSSES_E = {
   b_argen: {
     id: 'b_argen', name: '아르겐', title: '공허에 물든 은룡', hp: 2900, hpMul: 1.2, atk: 45, def: 22, res: 22, exp: 3360, score: 420000,
@@ -91,5 +99,13 @@ export const BOSSES_E = {
     form2: { name: '시든 신부', title: '돌려받는 세월', portrait: 'portraits/b_bride2' },
     intro: '(장미 향 사이로 비릿한 피 냄새가 번진다. 베일 아래 얼굴은 열여섯 소녀처럼 매끈하다.)',
     desc: '드라큘라 백작의 첫 신부. 백작이 재가 된 뒤 남쪽 기슭의 버려진 수녀원에 장미 정원을 가꾸었다. 밤마다 핏빛 욕조에 몸을 담근다는 소문이 돈다.',
+  },
+  b_charon: {
+    id: 'b_charon', name: '카론', title: '사신의 마부', hp: 3150, hpMul: 1.32, atk: 49, def: 23, res: 22, exp: 3800, score: 460000,
+    size: { w: 200, h: 130 }, flying: false, contact: 0.6, material: 'bone', weak: ['holy'], resist: ['dark', 'ice'], phases: [0.5],
+    music: 'boss', portrait: 'portraits/b_charon', stageId: 's25', drops: [], light: { r: 220, color: '#7dffb0', i: 0.55 },
+    form2: { name: '카론', title: '말을 잃은 마부', portrait: 'portraits/b_charon' },
+    intro: '(관을 실은 검은 마차가 소리 없이 멈춘다. 마부석의 사내가 모자를 들어 정중히 인사한다.)',
+    desc: '사신의 영구 마차를 사백 년 동안 몰아 온 마부. 명부에 적힌 이름을 하나도 빠짐없이 실어 나르는 것이 그의 자랑이다. 마차를 끄는 말들은 모두 불길이나 칼끝에 쓰러진 말들이라고 한다.',
   },
 };
