@@ -561,14 +561,16 @@ const SILVA = {
 
 // ───────────────────────── 모르겐 (새벽 서약의 군마, 외전 docs/specs/ex_s25.md §3) ─────────────────────────
 const DAWN_TINT = '#ffd890';
-/** 혼 말 하나 (Hitbox follow): 출발 지연(delay) 뒤 앞으로 달리며 포즈를 'run' 걸음으로 갱신한다. 벽에 닿으면 멈추고 사라진다 */
+/** 보스방 잠긴 문(맵 타일이 아님 — world.arena 경계, 플레이어·보스를 붙잡는 그 선) 밖인가 */
+const pastGate = (world, x) => { const A = world?.arena; return !!A && (x < A.x0 || x > A.x1); };
+/** 혼 말 하나 (Hitbox follow): 출발 지연(delay) 뒤 앞으로 달리며 포즈를 'run' 걸음으로 갱신한다. 벽·보스방 문에 닿으면 멈추고 사라진다 */
 function dawnHorseFollow(h, world) {
   const run = Math.max(0, h.t - h.delay);
   const dt = clamp(h.t - (h.lt ?? 0), 0, 0.05);
   h.lt = h.t;
   if (!h.stopped) {
-    const x = h.x0 + h.lead * h.speed * run;
-    if (run > 0 && wallBetween(world, h.hx, x + h.lead * h.w * 0.5, h.b0 - h.h * 0.5)) { h.stopped = true; h.life = Math.min(h.life, 0.15); }
+    const x = h.x0 + h.lead * h.speed * run, fx = x + h.lead * h.w * 0.5;
+    if (run > 0 && (wallBetween(world, h.hx, fx, h.b0 - h.h * 0.5) || pastGate(world, fx))) { h.stopped = true; h.life = Math.min(h.life, 0.15); }
     else h.hx = x;
   }
   h.x = h.hx - h.w / 2; h.y = h.b0 - h.h;
@@ -598,7 +600,7 @@ function dawnHorseTick(h, world) {
 /** 새벽 말 떼 2단: 혼 말 넷 (sp.horses · sp.gap 간격 · sp.speed · sp.dur) */
 function dawnStampede(r, world, p, sp) {
   const f = p.facing || 1, b0 = p.bottom, bw = sp.box?.w ?? 110, bh = sp.box?.h ?? 90;
-  const back = wallBetween(world, p.cx, p.cx - f * (60 + bw * 0.5), b0 - bh * 0.5) ? 0 : 60;   // 등 뒤가 벽이면 기수 자리에서 출발
+  const bx = p.cx - f * (60 + bw * 0.5), back = wallBetween(world, p.cx, bx, b0 - bh * 0.5) || pastGate(world, bx) ? 0 : 60;   // 등 뒤가 벽(보스방 문)이면 기수 자리에서 출발
   const n = sp.horses ?? 4, gap = sp.gap ?? 0.12;
   for (let i = 0; i < n; i++) {
     let snap = null;
