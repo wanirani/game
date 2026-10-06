@@ -57,8 +57,8 @@ const PATTERNS = {
 const T48 = () => TILE || 48;
 const SIZE_L = { w: 64, h: 150 }, SIZE_C = { w: 84, h: 150 }, HOV = 24;   // 귀부인 · 노파 판정 크기 (발 x 고정) · 노파 판정 아래 끝 = 디딤면 − 24
 const HEAL = 0.04, HEAL_AT = 0.85, HEAL_MAX = 2, BREAK_DMG = 0.03, EXPOSE_DMG = 0.05;   // 회춘의 잔 (§2.1)
-// 창 하나에 잃는 체력 상한 (페이즈별 [1, 2], 최대 체력 비 — POLISH-4, §2.1 · §10): 왈츠 두 가지 한 번(걸음 · 무릎 인사) · 무릎 한 번(15% 긴 무릎은 빼고).
-//   닿으면 남는 피해는 버리고('저항' 숫자), 무릎이면 곧바로 일어선다. 강한 영웅만 닿는다 (첫 왈츠 + 카운터 무릎이 50–60% 를 깎던 것)
+// 창 상한 (페이즈별 [1페이즈], 최대 체력 비 — POLISH-4, §2.1 · §10): 왈츠 한 번(세 걸음 · 무릎 인사) 15% · 무릎 한 번 10% 까지만 잃는다 (2페이즈 · 15% 긴 무릎은 상한 없음).
+//   닿으면 남는 피해는 버리고('저항' 숫자), 무릎이면 곧바로 일어선다. 강한 영웅만 닿는다 — 첫 왈츠(26–35%) + 카운터 무릎(22–31%)이 1페이즈를 한 번에 끝내던 것
 const DANCE_CAP = [0.15], STAG_CAP = [0.10];
 // ── 몸 지역 좌표 (+x = 얼굴 쪽, y 아래가 양수, 원점 = 발 가운데 바닥) ──
 const TORSO = 34, TORSO_C = 44, UA = 24, FA = 23, VINE_N = 8, TRAIN_N = 6, STRAND_N = 4;   // 몸통(허리→목) 귀부인 · 노파 — 채색 부품(full_a lps 0.06 · crone_a lps 0.07)의 비례
@@ -314,18 +314,19 @@ export class Bride extends BossC {
     return L;
   }
   /**
-   * 무릎(stagger) 한 번에 잃는 체력은 페이즈마다 STAG_CAP 까지 (d_nihil.js 피날레 보호와 같은 틀 — takeHit 에서 줄인다): 상한을 넘는 피해는
-   * 상한까지만 들어가고(숫자도 줄인 값, 1 이하면 '저항') 그 틱에 일어선다. 15% 의 카밀라 긴 무릎은 빼고 (POLISH-4 — 강한 영웅이 첫 왈츠 카운터 무릎에서 22–31% 를 깎던 것)
+   * 창 상한 (DANCE_CAP · STAG_CAP, d_nihil.js 피날레 보호와 같은 틀 — takeHit 에서 줄인다): 왈츠 한 번 · 무릎 한 번에 잃는 체력은 1페이즈에서 상한까지.
+   * 넘는 피해는 상한까지만 들어가고(숫자도 줄인 값, 1 이하면 impact.js capFn 처럼 '저항'), 무릎이면 그 틱에 일어선다. 필살·각성은 빼고(제 상한 capFn 30%).
    */
   takeHit(dmg, attack, world, info) {
-    if (this.capHp != null && !(this.dying > 0) && !this.invuln && this.hp - dmg < this.capHp) {
+    const burst = attack?.tags?.includes('ult') || attack?.tags?.includes('awaken');
+    if (this.capHp != null && !burst && !(this.dying > 0) && !this.invuln && this.hp - dmg <= this.capHp) {
       dmg = Math.max(1, Math.round(this.hp - this.capHp));
       if (info) { info.dmg = dmg; info.capped = true; if (dmg <= 1) info.resist = true; }
       if (this.state === 'stagger' && this.stunned) this.wakeT = this.st + 1e-3;
     }
     return super.takeHit(dmg, attack, world, info);
   }
-  /** 상태가 바뀔 때마다 창 상한을 새로 (왈츠 두 가지 · 무릎만, 그 상태가 끝나면 닫힌다) */
+  /** 상태가 바뀔 때마다 창 상한을 새로 연다 (왈츠 두 가지 · 무릎만 — 그 상태가 끝나면 닫힌다, 15% 긴 무릎은 없음) */
   setState(s) {
     super.setState(s);
     const c = (s === 'waltz' || s === 'lastDance' ? DANCE_CAP : s === 'stagger' && !this.stagLong ? STAG_CAP : null)?.[this.phase], mx = this.stats?.maxHp;
@@ -337,9 +338,10 @@ export class Bride extends BossC {
     if (this.dying > 0 || this.dead) { this.renameBanner(world); return; }
     this.check15();
     const mx = this.stats.maxHp;
-    // 회춘의 잔: 성배 판정 한 대 · 몸통에 최대 체력 3% → 성배가 깨진다 (스토리 15% 의 대사 성배는 카밀라가 깬다)
+    // 회춘의 잔: 성배 판정 한 대 · 몸통에 최대 체력 3% → 성배가 깨진다 (스토리 15% 의 대사 성배는 카밀라가 깬다).
+    //   수호신의 자동 공격은 성배를 '한 대'로 깨지 않는다 — 몸통 피해로만 센다 (e_hagen.js 올가미 noGuardianHit 과 같은 뜻: 끊을지는 플레이어가 고른다)
     if (this.state === 'goblet' && this.gobletUp && !this._lastMode) {
-      if (part === this.pGob) { this._breakNow = true; return; }
+      if (part === this.pGob && !attack?.tags?.includes('guardian')) { this._breakNow = true; return; }
       this.gobAcc += Math.max(0, dmg || 0);
       if (this.gobAcc >= mx * BREAK_DMG) { this._breakNow = true; return; }
     }
