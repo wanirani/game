@@ -36,7 +36,7 @@ export class ChurchScene extends ServiceScene {
     this.talk('hello');
   }
   get useLeftRight() { return this.tab === 0 || this.tab === 1 || this.tabs[this.tab]?.id === 'save'; }   // [hook:gal] 기록 탭: ←→ = 두 단추
-  /** 안내 줄의 선택 방향: 전직 카드는 ←→, 축복 목록은 ↑↓, 초기화·기록 탭은 고를 것이 없다 */
+  /** 안내 줄의 선택 방향: 전직 카드·기록 탭의 두 단추는 ←→, 축복 목록은 ↑↓, 초기화 탭은 고를 것이 없다 */
   selectHint() { const id = this.tabs[this.tab]?.id; return id === 'class' || id === 'save' ? 'dpadH' : id === 'bless' ? 'dpadV' : null; }   // [hook:gal] 기록 탭 ←→
   extraHints() { return this.tabs[this.tab]?.id === 'save' ? [['alt', '회랑']] : []; }   // [hook:gal] 회랑 바로가기
   onTab() { this.sel = 0; }
