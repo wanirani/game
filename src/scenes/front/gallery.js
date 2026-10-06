@@ -294,6 +294,7 @@ export class GalleryScene extends Scene {
     this.atlas = { cv, ctx, cw, ch, state: new Uint8Array(CELLS * CELLS) };   // 0 없음 · 1 받는 중 · 2 구움 · 3 실패
     return this.atlas;
   }
+  get fitCover() { return FIT_COVER; }   // QA: 크게 보기 맞춤 상태
   get atlasBytes() { return this.atlas ? this.atlas.cv.width * this.atlas.cv.height * 4 : 0; }
   bakeTick() {
     if (this.saveData || this.viewer || this.ri !== 0 || !this.openCg.length) return;
@@ -666,7 +667,7 @@ export class GalleryScene extends Scene {
     const g = this.game, t = g.time;
     const L = this._L = this.layout();
     this.devK = ctxScale(ctx);
-    this.toastY = L.wide ? L.st + 96 : L.st + 112;
+    this.toastY = L.wide ? L.st + 142 : L.st + 122;   // 토스트는 방 칩 아래 (칩을 가리지 않게)
     this.zChips.length = 0; this.zItems.length = 0; this.zBtns = {};
     if (this.viewer) { this.renderViewer(ctx, L, t); this.ges.flush(); return; }
     this.drawBg(ctx, L, t);
