@@ -1,17 +1,31 @@
 {
- "when": "2026-09-28T15:31:04.862Z",
+ "when": "2026-10-06T04:25:17.244Z",
  "note": "per-file [hook:*] counts; node tools/qa/hook_tags.mjs --update rewrites it",
  "counts": {
   "src/core/camera.js": {
    "feel": 3,
    "plat": 5
   },
-  "src/core/game.js": {
-   "awaken": 1,
+  "src/core/cloud.js": {
+   "ach": 4,
+   "ng": 1,
    "plat": 1
   },
+  "src/core/events.js": {
+   "ach": 3
+  },
+  "src/core/game.js": {
+   "plat": 2,
+   "awaken": 1
+  },
+  "src/core/online.js": {
+   "ach": 2
+  },
+  "src/core/telemetry.js": {
+   "ng": 1
+  },
   "src/data/bosses.js": {
-   "p2": 3
+   "p2": 4
   },
   "src/data/enemies.js": {
    "p2": 3
@@ -23,6 +37,9 @@
    "p2": 4,
    "cmp": 2
   },
+  "src/game/achievements.js": {
+   "ng": 6
+  },
   "src/game/ai.js": {
    "p2": 3
   },
@@ -30,7 +47,7 @@
    "feel": 1
   },
   "src/game/bosses/a_common.js": {
-   "feel": 10
+   "feel": 11
   },
   "src/game/bosses/b_colossus.js": {
    "feel": 4
@@ -48,16 +65,32 @@
    "feel": 4
   },
   "src/game/bosses/boss.js": {
-   "feel": 8
+   "feel": 8,
+   "ng": 1
   },
   "src/game/bosses/index.js": {
-   "p2": 4
+   "p2": 5
+  },
+  "src/game/combat.js": {
+   "plat": 2
+  },
+  "src/game/companion_state.js": {
+   "ng": 3
+  },
+  "src/game/gimmicks.js": {
+   "plat": 1
+  },
+  "src/game/inventory.js": {
+   "plat": 1
+  },
+  "src/game/loot.js": {
+   "plat": 1
   },
   "src/game/player.js": {
    "feel": 37,
    "awaken": 5,
    "cmp": 56,
-   "plat": 11,
+   "plat": 13,
    "gimmick": 9
   },
   "src/game/props.js": {
@@ -71,6 +104,7 @@
   },
   "src/game/state.js": {
    "cmp": 3,
+   "ng": 2,
    "p2": 3
   },
   "src/game/stats.js": {
@@ -81,21 +115,48 @@
    "awaken": 13,
    "gimmick": 20,
    "cmp": 18,
-   "plat": 10,
-   "p2": 2
+   "plat": 18,
+   "ng": 4,
+   "p2": 2,
+   "ach": 1
   },
   "src/main.js": {
-   "cmp": 4,
-   "plat": 1
+   "cmp": 5,
+   "ach": 2,
+   "plat": 2,
+   "ng": 5
   },
   "src/render/enemies.js": {
    "p2": 4
   },
   "src/render/hud.js": {
-   "feel": 5,
+   "feel": 6,
    "cmp": 4,
    "plat": 3,
    "awaken": 1
+  },
+  "src/scenes/front/arcade.js": {
+   "ng": 1
+  },
+  "src/scenes/front/arcade_run.js": {
+   "plat": 1,
+   "ach": 3
+  },
+  "src/scenes/front/cloud_ui.js": {
+   "ng": 3
+  },
+  "src/scenes/front/common.js": {
+   "ng": 3
+  },
+  "src/scenes/front/ending.js": {
+   "ng": 4
+  },
+  "src/scenes/front/highscore.js": {
+   "ng": 2,
+   "ach": 1
+  },
+  "src/scenes/front/slots.js": {
+   "ng": 11
   },
   "src/scenes/index.js": {
    "awaken": 2,
@@ -105,16 +166,40 @@
    "cmp": 1,
    "plat": 1
   },
+  "src/scenes/menu/tab_system.js": {
+   "ach": 2
+  },
+  "src/scenes/pause.js": {
+   "ng": 2
+  },
   "src/scenes/reg_town.js": {
    "cmp": 2
   },
+  "src/scenes/results.js": {
+   "ach": 1
+  },
   "src/scenes/stage.js": {
    "plat": 4
+  },
+  "src/scenes/town/facades.js": {
+   "ng": 2
   },
   "src/scenes/town/hub.js": {
    "cmp": 6,
    "p2": 1,
    "plat": 1
+  },
+  "src/scenes/town/shop.js": {
+   "ng": 2
+  },
+  "src/scenes/town/smith.js": {
+   "ng": 2
+  },
+  "src/scenes/town/stable.js": {
+   "ng": 2
+  },
+  "src/scenes/town/worldmap.js": {
+   "ng": 2
   }
  }
 }
