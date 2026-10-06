@@ -507,6 +507,8 @@ export class GalleryScene extends Scene {
     if (this.pollT <= 0) { this.pollT = 0.5; const G = this.api(); if ((this.noEngine && G) || (G && safe(() => G.rev, null) !== this.rev)) this.refresh(); }
     this.tickMusic(dt);
     this.bakeTick();
+    // 다시 보기·크레딧에서 돌아오는 암전이 걷히는 동안은 입력을 받지 않는다 — 대사를 연타로 넘기던 손이 같은 극장 줄을 다시 틀지 않게 (GAL-VERIFY)
+    if (g.fade?.dir < 0) return;
     if (this.viewer) { this.updateViewer(dt, nav, ges); return; }
     const L = this._L, room = this.room;
     const area = L ? this.scrollRect(L) : null;
