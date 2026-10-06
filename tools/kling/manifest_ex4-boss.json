@@ -1,0 +1,126 @@
+{
+ "package": "EX4-BOSS",
+ "model": "kling-image-v3_0_omni (portraits: text_to_image · parts / edits: image_to_image, img_resolution 2k)",
+ "prompts": "tools/painted/prompts/ex4-boss.mjs (SHOTS)",
+ "refs": {
+  "portrait": "bd_portrait #1 full-res PNG 1760x2368 (file_upload) — 图片1 for every image_to_image call",
+  "portraitUrl": "https://s15-kling.klingai.com/kimg/EMXN1y8qTgoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo0YWdlbnRfdXBsb2FkLzE3OTEyODc1NDgvMms1V2JLWWRRWi9iZF9wb3J0cmFpdF8xLnBuZw.origin?x-kcdn-pid=112372",
+  "portrait2": "bd_portrait2 #1 full-res PNG 1760x2336 (file_upload) — 图片2 for the crone parts (bd_crone · bd_heads · bd_arms)",
+  "portrait2Url": "https://s15-kling.klingai.com/kimg/EMXN1y8qTwoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo1YWdlbnRfdXBsb2FkLzE3OTEyODgyNzAvWTBnUWdKRkVxYS9iZF9wb3J0cmFpdDJfMS5wbmc.origin?x-kcdn-pid=112372"
+ },
+ "creditsCap": 44,
+ "imagesCap": 22,
+ "creditsAtStart": 5069,
+ "generations": [
+  {
+   "boss": "b_bride",
+   "shot": "bd_portrait",
+   "tool": "text_to_image",
+   "generationId": "AfbQrUAyHjM8VQnUpm4CDtzTSq7oCck1lT9DJT0R6c8IZ-qoJ2AcVnV4MaKQ65xtrs1WxXYz",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "credits": 4,
+   "refs": "none",
+   "decision": "#1 kept → assets/portraits/b_bride.webp (raw 1760x2368 → width 761 LANCZOS → top 968 rows = 761x968, WebP q82 m6, 80,144 B; urlWithoutWatermark). Three-quarter view: crown of red roses on a long black lace veil, porcelain face, crimson eyes, crimson/black lace gown, golden goblet raised, coiled thorn-vine whip, rose-covered ruined chapel, blood pool. Full-res PNG uploaded as 图片1 for every part. #2 unused (thigh slit and deeper neckline)."
+  },
+  {
+   "boss": "gd_vesper",
+   "shot": "vesper_portrait",
+   "tool": "text_to_image",
+   "generationId": "AbkUI5zFgodLa6S7gJ2Zj4ftM1LXjNi8hrYowthP3jUO-u8cIbfINjaUpo5pL9XxV5zukAgb",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "credits": 4,
+   "refs": "none",
+   "decision": "#1 kept → assets/portraits/cmp_gd_vesper.webp (761x968 q82, 67,642 B — same processing as the other companion portraits). Small black bat with crimson wing membranes and a red ribbon on one ear hanging upside down from a gothic window frame, rose-sealed letter in its claws, full moon, wilting roses. iconFocus set by EX4-INTEG {x:0.55, y:0.67, s:0.4}. #2 unused (long rat-like tail, cuter style)."
+  },
+  {
+   "boss": "b_bride",
+   "shot": "bd_portrait2",
+   "tool": "image_to_image",
+   "generationId": "AV-l_nsfHvAdwwsL71vPeRfLoCuEGM6xcTRz2fh7bG3aDe5U3KmynsTByKO-szxwvlL1_TVa",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "credits": 4,
+   "refs": "portrait",
+   "decision": "#1 kept → assets/portraits/b_bride2.webp (761x968 q82, 103,168 B — same processing). Same chapel/moon/composition: a floating withered bride with a skull-like cracked face, snow-white hair, wilted rose crown, burnt veil, rotted gown rags, long golden nails, goblet. Reads more 'undead bride' than 'old crone' — accepted (the spec's cracked porcelain face + white hair + long nails + floating rags are all there), no retry. Full-res PNG uploaded as 图片2 for the crone parts. #2 unused (crown turned into a gold metal crown)."
+  },
+  {
+   "boss": "b_bride",
+   "shot": "bd_full",
+   "tool": "image_to_image",
+   "generationId": "AbKr4-0VQ0YOsUBSvXjMX2D1PwTCwhzn_vdk9WAgUpAqqNbL7gxBJaW5HGHQLVtvEox6JZcP",
+   "aspect": "9:16",
+   "imageCount": 2,
+   "credits": 4,
+   "refs": "portrait",
+   "decision": "#2 kept → raw/b_bride/full_a (strict profile facing right, armless — a round shoulder stump that the near upper arm covers, flared crimson skirt, long black lace veil to the floor; a cleaner, slightly outlined style that reads fine at puppet scale): headL, torsoL, skirtF, train, veilL (lps 0.06). #1 unused (three-quarter back view with the near arm attached)."
+  },
+  {
+   "boss": "b_bride",
+   "shot": "bd_props",
+   "tool": "image_to_image",
+   "generationId": "ASrzgw9klHZBAAj0gbtTIoGaDWUVnfpj2mIKb_i8-Kgtn4KPD8wCTaiyTzdubGbwcjOzBC9e",
+   "aspect": "1:1",
+   "imageCount": 1,
+   "credits": 2,
+   "refs": "portrait",
+   "decision": "#1 kept → raw/b_bride/props_a: golden goblet = 'goblet' (and its three debris pieces gobShard0–2 — the model drew no shards, so the shards are cut from the goblet), blood-red rose = 'rose', a straight stretch of the thorn-vine arc = 'vine' (whip segment tile), two withered petals = 'petalA'·'petalB', lace scrap = 'debVeil'. The two lace drapes and the second rose are unused."
+  },
+  {
+   "boss": "b_bride",
+   "shot": "bd_crone",
+   "tool": "image_to_image",
+   "generationId": "AT7b5rJkJ9HtRsP7_Z3TvcSCNo3w0Jnp_uR9OZrCMZzK8yTLeD9naOprOpKGXsWNVsqelYTz",
+   "aspect": "9:16",
+   "imageCount": 2,
+   "credits": 4,
+   "refs": "portrait + portrait2",
+   "decision": "#1 kept → raw/b_bride/crone_a (mirrored to face right — Kling drew it facing left): hunched skull-faced bride in a black lace hood, armless, crimson gown dripping into ragged black strips: cHead, cVeilF, cMane, cBody, ragA, ragB, ragC (lps 0.065). #2 unused (young face, arms with goblet, three-quarter)."
+  },
+  {
+   "boss": "b_bride",
+   "shot": "bd_heads",
+   "tool": "image_to_image",
+   "generationId": "AXcwG2AZ1WHEID83fFweIm1oVq2uKFyGHHq9MhsuWdo2tn-KVl7yLOFMma_UD0wwd66vHSl-",
+   "aspect": "4:3",
+   "imageCount": 1,
+   "credits": 2,
+   "refs": "portrait + portrait2",
+   "decision": "failed for the puppet: three FRONT-facing busts instead of profiles → unused. No retry: the profile heads of full_a (lady) and crone_a (crone) match their bodies; the half-cracked middle stage is drawn procedurally (cracks over the lady head during wither) + the lady→crone cross-fade."
+  },
+  {
+   "boss": "b_bride",
+   "shot": "bd_arms",
+   "tool": "image_to_image",
+   "generationId": "ARDRJdpCow3G6aUIIfQygXKMCHP1Ur1nGXKiA9sJni8TYSO0uCNxhLSEwcT2LTJCiSsoRnxr",
+   "aspect": "16:9",
+   "imageCount": 1,
+   "credits": 2,
+   "refs": "portrait + portrait2",
+   "decision": "partly failed (a bust, a separate fist forearm and a whole skeleton instead of five pieces) but every needed piece is in it → raw/b_bride/arms_a: the bust's bare hanging arm = 'armU' (matches the strapless gown of full_a), the separate bare fist forearm = 'armF', the skeleton's raised humerus = 'cArmU' and its forearm with golden claws = 'cArmF'. No retry."
+  }
+ ],
+ "derived": [
+  {
+   "file": "tools/painted/raw/b_bride/crone_a.webp",
+   "from": "bd_crone #1",
+   "how": "mirrored to face right (Kling drew it facing left)."
+  },
+  {
+   "file": "tools/painted/raw/b_bride/full_a.webp · props_a.webp · arms_a.webp",
+   "from": "bd_full #2 · bd_props #1 · bd_arms #1",
+   "how": "q95 webp of the 2k PNG (no edits)."
+  },
+  {
+   "file": "assets/portraits/b_bride.webp · b_bride2.webp · cmp_gd_vesper.webp",
+   "from": "bd_portrait #1 · bd_portrait2 #1 · vesper_portrait #1",
+   "how": "761 wide LANCZOS, top 968 rows (like the other Part 2 portraits), WebP q82 m6; lo copies by python3 tools/assets/make_variants.py (26,398 B · 34,470 B · 23,876 B)."
+  }
+ ],
+ "imagesSpent": 13,
+ "creditsSpent": 26,
+ "creditsAtEnd": 5043,
+ "note": "Result URLs expire after 24 h; every kept image is stored as q95 webp under tools/painted/raw/b_bride/ (portraits → assets/portraits/*.webp). urlWithoutWatermark was used, so no watermark removal was needed. No retries: bd_heads failed (front busts) and bd_arms partly failed, but the profile heads of the body sheets and the usable arm pieces covered every puppet part; 9 images / 18 credits of the cap left unused.",
+ "budget": "13 images × 2 credits = 26 credits (cap 22 images / 44 credits; planned 13 + up to 9 retries; account 5069 → 5043)"
+}

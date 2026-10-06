@@ -746,6 +746,8 @@ export class Bride extends BossC {
   }
   onReset() {
     this.onCancel();
+    // 부활: 소환한 신부·박쥐 떼는 resetArena 가 지웠다 — 그들이 쏜 탄도 같이 (보스 소유가 아니라 killTransients 가 남긴다)
+    for (const e of this.world?.entities ?? []) if (!e.dead && (e.kind === 'projectile' || e.kind === 'hazard') && e.owner?.summoner === this) e.dead = true;
     this.crone = false; this.morph = 0; this.morphT = -1; this.burnT = -1; this.crackT = -1; this.burnK = 0; this.crackK = 0;
     this.w = SIZE_L.w; this.h = SIZE_L.h;
     this.vanishK = 0; this.heals = 0; this.gobBreakT = -9; this.spinT = -9;

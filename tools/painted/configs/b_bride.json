@@ -1436,5 +1436,69 @@
    ]
   }
  ],
- "hurtboxNotes": "BOSS_PIPELINE §8.8 (documented, gameplay NOT changed): logic hit parts — phase 1 (lady): veil head 30x30 at pts.head (0.9, kneel 0.6), body 34x46 between hip and neck (1.0 · kneel 0.7 · 15% long kneel 0.6), skirt 58x(hip→floor) (1.15), goblet 44x44 above the near hand only while raised (52x52 story+Sera); phase 2 (crone, box bottom = floor − 24): cracked face 34x34 (0.8), body 40x46 (1.0 · drain exposure 0.7), rags 60x(hip→box bottom) (1.2). No hit parts while scattered into bats (waltz ghost). The painted puppet is bigger than these boxes (train, veil, 8-tile vine lash) — the boxes are the logic's, the art only reads them."
+ "hurtboxNotes": "BOSS_PIPELINE §8.8 (documented, gameplay NOT changed): logic hit parts — phase 1 (lady): veil head 30x30 at pts.head (0.9, kneel 0.6), body 34x46 between hip and neck (1.0 · kneel 0.7 · 15% long kneel 0.6), skirt 58x(hip→floor) (1.15), goblet 44x44 above the near hand only while raised (52x52 story+Sera); phase 2 (crone, box bottom = floor − 24): cracked face 34x34 (0.8), body 40x46 (1.0 · drain exposure 0.7), rags 60x(hip→box bottom) (1.2). No hit parts while scattered into bats (waltz ghost). The painted puppet is bigger than these boxes (train, veil, 8-tile vine lash) — the boxes are the logic's, the art only reads them.",
+ "kling": {
+  "model": "kling-image-v3_0_omni (image_to_image 2k; portraits text_to_image)",
+  "manifest": "tools/kling/manifest_ex4-boss.json",
+  "prompts": "tools/painted/prompts/ex4-boss.mjs",
+  "images": {
+   "bd_portrait": {
+    "generationId": "AfbQrUAyHjM8VQnUpm4CDtzTSq7oCck1lT9DJT0R6c8IZ-qoJ2AcVnV4MaKQ65xtrs1WxXYz",
+    "tool": "text_to_image",
+    "aspect": "3:4",
+    "count": 2,
+    "decision": "#1 kept → assets/portraits/b_bride.webp (raw 1760x2368 → width 761 LANCZOS → top 968 rows = 761x968, WebP q82 m6, 80,144 B; urlWithoutWatermark). Three-quarter view: crown of red roses on a long black lace veil, porcelain face, crimson eyes, crimson/black lace gown, golden goblet raised, coiled thorn-vine whip, rose-covered ruined chapel, blood pool. Full-res PNG uploaded as 图片1 for every part. #2 unused (thigh slit and deeper neckline)."
+   },
+   "vesper_portrait": {
+    "generationId": "AbkUI5zFgodLa6S7gJ2Zj4ftM1LXjNi8hrYowthP3jUO-u8cIbfINjaUpo5pL9XxV5zukAgb",
+    "tool": "text_to_image",
+    "aspect": "3:4",
+    "count": 2,
+    "decision": "#1 kept → assets/portraits/cmp_gd_vesper.webp (761x968 q82, 67,642 B — same processing as the other companion portraits). Small black bat with crimson wing membranes and a red ribbon on one ear hanging upside down from a gothic window frame, rose-sealed letter in its claws, full moon, wilting roses. iconFocus set by EX4-INTEG {x:0.55, y:0.67, s:0.4}. #2 unused (long rat-like tail, cuter style)."
+   },
+   "bd_portrait2": {
+    "generationId": "AV-l_nsfHvAdwwsL71vPeRfLoCuEGM6xcTRz2fh7bG3aDe5U3KmynsTByKO-szxwvlL1_TVa",
+    "tool": "image_to_image",
+    "aspect": "3:4",
+    "count": 2,
+    "decision": "#1 kept → assets/portraits/b_bride2.webp (761x968 q82, 103,168 B — same processing). Same chapel/moon/composition: a floating withered bride with a skull-like cracked face, snow-white hair, wilted rose crown, burnt veil, rotted gown rags, long golden nails, goblet. Reads more 'undead bride' than 'old crone' — accepted (the spec's cracked porcelain face + white hair + long nails + floating rags are all there), no retry. Full-res PNG uploaded as 图片2 for the crone parts. #2 unused (crown turned into a gold metal crown)."
+   },
+   "bd_full": {
+    "generationId": "AbKr4-0VQ0YOsUBSvXjMX2D1PwTCwhzn_vdk9WAgUpAqqNbL7gxBJaW5HGHQLVtvEox6JZcP",
+    "tool": "image_to_image",
+    "aspect": "9:16",
+    "count": 2,
+    "decision": "#2 kept → raw/b_bride/full_a (strict profile facing right, armless — a round shoulder stump that the near upper arm covers, flared crimson skirt, long black lace veil to the floor; a cleaner, slightly outlined style that reads fine at puppet scale): headL, torsoL, skirtF, train, veilL (lps 0.06). #1 unused (three-quarter back view with the near arm attached)."
+   },
+   "bd_props": {
+    "generationId": "ASrzgw9klHZBAAj0gbtTIoGaDWUVnfpj2mIKb_i8-Kgtn4KPD8wCTaiyTzdubGbwcjOzBC9e",
+    "tool": "image_to_image",
+    "aspect": "1:1",
+    "count": 1,
+    "decision": "#1 kept → raw/b_bride/props_a: golden goblet = 'goblet' (and its three debris pieces gobShard0–2 — the model drew no shards, so the shards are cut from the goblet), blood-red rose = 'rose', a straight stretch of the thorn-vine arc = 'vine' (whip segment tile), two withered petals = 'petalA'·'petalB', lace scrap = 'debVeil'. The two lace drapes and the second rose are unused."
+   },
+   "bd_crone": {
+    "generationId": "AT7b5rJkJ9HtRsP7_Z3TvcSCNo3w0Jnp_uR9OZrCMZzK8yTLeD9naOprOpKGXsWNVsqelYTz",
+    "tool": "image_to_image",
+    "aspect": "9:16",
+    "count": 2,
+    "decision": "#1 kept → raw/b_bride/crone_a (mirrored to face right — Kling drew it facing left): hunched skull-faced bride in a black lace hood, armless, crimson gown dripping into ragged black strips: cHead, cVeilF, cMane, cBody, ragA, ragB, ragC (lps 0.065). #2 unused (young face, arms with goblet, three-quarter)."
+   },
+   "bd_heads": {
+    "generationId": "AXcwG2AZ1WHEID83fFweIm1oVq2uKFyGHHq9MhsuWdo2tn-KVl7yLOFMma_UD0wwd66vHSl-",
+    "tool": "image_to_image",
+    "aspect": "4:3",
+    "count": 1,
+    "decision": "failed for the puppet: three FRONT-facing busts instead of profiles → unused. No retry: the profile heads of full_a (lady) and crone_a (crone) match their bodies; the half-cracked middle stage is drawn procedurally (cracks over the lady head during wither) + the lady→crone cross-fade."
+   },
+   "bd_arms": {
+    "generationId": "ARDRJdpCow3G6aUIIfQygXKMCHP1Ur1nGXKiA9sJni8TYSO0uCNxhLSEwcT2LTJCiSsoRnxr",
+    "tool": "image_to_image",
+    "aspect": "16:9",
+    "count": 1,
+    "decision": "partly failed (a bust, a separate fist forearm and a whole skeleton instead of five pieces) but every needed piece is in it → raw/b_bride/arms_a: the bust's bare hanging arm = 'armU' (matches the strapless gown of full_a), the separate bare fist forearm = 'armF', the skeleton's raised humerus = 'cArmU' and its forearm with golden claws = 'cArmF'. No retry."
+   }
+  },
+  "total": "13 images / 26 credits (cap 22 / 44), 0 retries"
+ }
 }
