@@ -43,6 +43,7 @@ const MODS = {
   b_argen: () => import('./e_argen.js').then((m) => m.Argen),   // 외전 s21
   b_nemain: () => import('./e_nemain.js').then((m) => m.Nemain),   // 외전 s22
   b_hagen: () => import('./e_hagen.js').then((m) => m.Hagen),   // 외전 s23
+  b_bride: () => import('./e_bride.js').then((m) => m.Bride),   // 외전 s24
 };
 export const BOSS_IDS = Object.freeze(Object.keys(MODS));
 

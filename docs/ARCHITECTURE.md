@@ -32,7 +32,7 @@
 | 파라미터 | 뜻 |
 |---|---|
 | `scene=<이름>` | 그 장면으로 바로 (스택에 혼자면 닫힐 때 타이틀/마을로, P-26). 예: `scene=hub`, `scene=worldmap`, `scene=stable`, `scene=awakenCutin&char=lia`, `scene=ultCutin&char=lia` |
-| `stage=` `room=` `char=` `diff=` | 스테이지·방·영웅·난이도 (`?scene=stage` 의 임시 세이브, main.js). 디버그 부팅이 만든 임시 세이브(`?scene=stage`·`?scene=hub`·`?scene=shop` 등)는 `saves.markDebug` — 게임 안에서는 슬롯 1 이지만 저장은 진짜 슬롯 대신 디버그 칸 `saves.read(DEBUG_SLOT)` (`bloodnocturne_slot_debug`, 알림·클라우드 없음) |
+| `stage=` `room=` `char=` `diff=` | 스테이지·방·영웅·난이도 (`?scene=stage` 의 임시 세이브, main.js). 디버그 부팅이 만든 임시 세이브(`?scene=stage`·`?scene=hub`·`?scene=shop` 등)는 `saves.markDebug` — 게임 안에서는 슬롯 1 이지만 저장은 진짜 슬롯 대신 디버그 칸 `saves.read(DEBUG_SLOT)` (`bloodnocturne_slot_debug`, 알림·클라우드 없음). 디버그 부팅(`?scene=` 이 타이틀이 아님) 한 실행 동안은 메타(업적·명예의 전당·보스 러시·탑·해금)도 `saves.markDebugBoot()` — 읽기는 진짜 메타, 쓰기는 `bloodnocturne_meta_debug` 에만(알림 `debug:true` → 업적 엔진은 다시 보고 클라우드는 올리지 않음), 아케이드 판은 순위표·내 고스트에 남기지 않음 |
 | `class=` | 직업 — 컷인 장면(`scene=ultCutin`·`awakenCutin`)을 혼자 열 때만 읽는다 (`overlays.js`; 스테이지 임시 세이브의 직업은 바꾸지 않는다) |
 | `preset=` `course=` `seed=` (+ `diff=` `stage=` `char=`) | 아케이드 장면(`scene=survival`·`bossrush`·`practice`·`tower`)을 메뉴 없이 열 때 (`arcade_run.js` `directStart`; `seed=` = 무한의 탑 런 시드) |
 | `debug` · `debug=taps` | 히트박스·FPS / 등록된 모든 탭 영역 (초록 OK · 노랑 최소 미달 · 빨강 32 CSS px 미만) |
@@ -188,7 +188,7 @@ rAF ─▶ input.pollFrame() (패드 읽기·진동 정리) ─▶ (세로 잠�
 - 옵션 화면 `scenes/front/options.js` (페이지 5개 + 전체 화면 + 기본값 복원, uiScale, 44 CSS px), 하위 화면 `options_controls.js`: `RemapPage('pad'|'key')`(다음 입력을 잡아 `input.remap`, 겹치면 맞바꾸고 토스트) · `GuidePage`(조작 안내를 `input.bindings` 와 가상 패드 배치에서 생성) · 터치 배치 편집 → `touchpad.openEditor()`. `enter({page, sub:'padRemap'|'keyRemap'|'guide'})`.
 
 ### 5.3 저장 (세이브 스키마 v2, `game/state.js` `SAVE_VERSION = 2`)
-- 슬롯 3 + 설정 + 메타(`DEFAULT_META`: unlockedChars, highScores, bossRushBest, survivalBest, konami, clears, endingsSeen, bestiary; `meta.tips {a2hs, storage, remap, pad}`). `saves.write/read/list/remove/exportCode/importCode/store/onWrite`, `saves.markDebug/isDebug`(디버그 임시 세이브 → 디버그 칸 `DEBUG_SLOT`, §0), `isValidSave(obj)`(클라이언트·서버 공통, 버전과 무관).
+- 슬롯 3 + 설정 + 메타(`DEFAULT_META`: unlockedChars, highScores, bossRushBest, survivalBest, konami, clears, endingsSeen, bestiary; `meta.tips {a2hs, storage, remap, pad}`). `saves.write/read/list/remove/exportCode/importCode/store/onWrite`, `saves.markDebug/isDebug`(디버그 임시 세이브 → 디버그 칸 `DEBUG_SLOT`, §0) · `saves.markDebugBoot()`/`debugBoot`(디버그 부팅의 메타 → `DEBUG_META_KEY`, §0), `isValidSave(obj)`(클라이언트·서버 공통, 버전과 무관).
 - `newGameState()` : `progress {chapter(최대 20), cleared, unlocked, flags, docs, lore, secrets, bosses, relics, seenScripts, shards[], hearts[]}` + `ensureCompanionState(state)`.
 - `migrateState(s)` (불러올 때마다, **멱등**, 모르는 필드 보존): 기존 보정 → shards/hearts 문자열·중복 정리 → 14장을 깬 세이브에 `flags.isolde_joined` 소급(7번째 영웅, 아케이드 제외) → `migrateCompanions(s)`(try/catch, 손상되면 동료만 초기화) → `normalizeNg(s)`(회차, `ng` 가 없으면 아무것도 하지 않음) → `s.version = 2`. 클라우드에서 받은 세이브도 이 함수를 거친다.
 - 헌터 해금은 메타 `unlockedChars` (스토리 `unlockChar` 명령·코나미 코드). `storyJoinedChars(state)` = 세이브 플래그로 합류가 확정된 영웅(`CHARACTERS[id].unlock {type:'story', flag}`) — 마을(`town/hub.js syncHeroUnlocks`)이 들어올 때 메타에 보태고 토스트, 헌터 교체(`town/party.js`)도 연다.

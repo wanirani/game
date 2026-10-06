@@ -73,6 +73,8 @@
   "portraits/b_banshee",
   "portraits/b_behemoth",
   "portraits/b_bonedragon",
+  "portraits/b_bride",
+  "portraits/b_bride2",
   "portraits/b_chaos",
   "portraits/b_chimera",
   "portraits/b_colossus",
@@ -110,6 +112,7 @@
   "portraits/cmp_gd_mirra",
   "portraits/cmp_gd_momo",
   "portraits/cmp_gd_munin",
+  "portraits/cmp_gd_vesper",
   "portraits/cmp_m_boar",
   "portraits/cmp_m_direwolf",
   "portraits/cmp_m_giantbat",
@@ -618,6 +621,20 @@
    "bytes": 31164,
    "srcBytes": 83880
   },
+  "portraits/b_bride.webp": {
+   "src": "00be12f99a70",
+   "w": 457,
+   "h": 581,
+   "bytes": 26398,
+   "srcBytes": 80144
+  },
+  "portraits/b_bride2.webp": {
+   "src": "88af8e175b0f",
+   "w": 457,
+   "h": 581,
+   "bytes": 34470,
+   "srcBytes": 103168
+  },
   "portraits/b_chaos.webp": {
    "src": "3f97d54105fe",
    "w": 457,
@@ -876,6 +893,13 @@
    "h": 581,
    "bytes": 21762,
    "srcBytes": 65282
+  },
+  "portraits/cmp_gd_vesper.webp": {
+   "src": "003b3541eddb",
+   "w": 457,
+   "h": 581,
+   "bytes": 23876,
+   "srcBytes": 67642
   },
   "portraits/cmp_m_boar.webp": {
    "src": "161982832831",

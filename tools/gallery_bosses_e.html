@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:,">
-<title>보스 갤러리 E — 외전 21·22·23장</title>
+<title>보스 갤러리 E — 외전 21·22·23·24장</title>
 <style>
   :root { --bg: #07040b; --panel: #120b16; --line: #3a2434; --txt: #eadcc4; --dim: #9a8a86; --acc: #ff5a6a; --ok: #7de0a0; --warn: #ffc860; }
   html, body { margin: 0; background: var(--bg); color: var(--txt); font: 13px "Noto Sans KR", system-ui, sans-serif; }
@@ -64,13 +64,13 @@ import { getDiff } from '../src/data/difficulty.js';
 import { BOSSES_E as DEFS } from '../src/data/bosses_e.js';
 import { BOSS_E as CLASSES } from '../src/game/bosses/bosses_e.js';
 
-const GROUP = { title: '보스 갤러리 E', sub: '외전 21·22·23장 · BOSSES_E · 클래스 bosses_e.js' };
+const GROUP = { title: '보스 갤러리 E', sub: '외전 21·22·23·24장 · BOSSES_E · 클래스 bosses_e.js' };
 const q = new URLSearchParams(location.search);
 const TILE = 48, VW = 960, VH = 540, DT = 1 / 60;
 const IDS = Object.keys(DEFS);
-const BG = { s14: 's14_mirror', s15: 's15_forge', s16: 's16_sunken', s17: 's17_sky', s18: 's18_nightmare', s19: 's19_blight', s20: 's20_void', s21: 's17_sky', s22: 's02_graveyard', s23: 's10_spire' };
-const LV = { s14: 46, s15: 50, s16: 54, s17: 58, s18: 62, s19: 66, s20: 70, s21: 70, s22: 72, s23: 74 };
-const TILE_COL = { s14: ['#1a1d2a', '#cfe8ff'], s15: ['#241410', '#ff9a50'], s16: ['#0e1e24', '#6fe8ff'], s17: ['#1c2030', '#dfeaff'], s18: ['#1a0e22', '#c080ff'], s19: ['#141a0c', '#b8e04a'], s20: ['#08060e', '#ffffff'], s21: ['#1c2030', '#eef4ff'], s22: ['#16141c', '#c8c0d8'], s23: ['#141a24', '#dfeaff'] };
+const BG = { s14: 's14_mirror', s15: 's15_forge', s16: 's16_sunken', s17: 's17_sky', s18: 's18_nightmare', s19: 's19_blight', s20: 's20_void', s21: 's17_sky', s22: 's02_graveyard', s23: 's10_spire', s24: 's11_chapel' };
+const LV = { s14: 46, s15: 50, s16: 54, s17: 58, s18: 62, s19: 66, s20: 70, s21: 70, s22: 72, s23: 74, s24: 76 };
+const TILE_COL = { s14: ['#1a1d2a', '#cfe8ff'], s15: ['#241410', '#ff9a50'], s16: ['#0e1e24', '#6fe8ff'], s17: ['#1c2030', '#dfeaff'], s18: ['#1a0e22', '#c080ff'], s19: ['#141a0c', '#b8e04a'], s20: ['#08060e', '#ffffff'], s21: ['#1c2030', '#eef4ff'], s22: ['#16141c', '#c8c0d8'], s23: ['#141a24', '#dfeaff'], s24: ['#1a0a12', '#ff8aa8'] };
 const GEN_STATES = ['charge', 'shoot', 'leap'];
 const $ = (id) => document.getElementById(id);
 const cv = $('c'), ctx = cv.getContext('2d');

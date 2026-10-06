@@ -1038,7 +1038,7 @@ await run('recruit', STAGE('s01', '&ch=20'), (page) => page.evaluate(async () =>
   info.found = found;
   checks.push(['대본: 2부 여섯 동료 + 외전 아르겐 · 무닌 · 베스퍼의 recruit 명령이 제 아웃트로에', Object.entries(want).every(([id, sid]) => found[id]?.includes(sid)) && Object.keys(found).length === Object.keys(want).length, found]);
   checks.push(['recruit 바로 뒤 같은 플래그 · 조건 분기보다 앞', !bad.length, bad]);
-  checks.push(['데이터: 여덟 동료의 합류 조건 = recruit_<id> 플래그', Object.keys(want).every((id) => T.D.COMPANIONS?.[id]?.obtain?.flag === 'recruit_' + id || (T.D.MOUNTS[id] ?? T.D.GUARDIANS[id])?.obtain?.flag === 'recruit_' + id)]);
+  checks.push(['데이터: 아홉 동료의 합류 조건 = recruit_<id> 플래그', Object.keys(want).every((id) => T.D.COMPANIONS?.[id]?.obtain?.flag === 'recruit_' + id || (T.D.MOUNTS[id] ?? T.D.GUARDIANS[id])?.obtain?.flag === 'recruit_' + id)]);
   const st = g.state;
   st.companions.pending.length = 0;
   checks.push(['(준비) 2부 동료 미보유', Object.keys(want).every((id) => !T.CS.isOwned(st, id))]);
