@@ -69,7 +69,8 @@ const T48 = () => TILE || 48;
 const SIZE_H = { w: 200, h: 130 }, SIZE_M = { w: 66, h: 168 };   // 마차 · 마부 판정 크기 (명세 §2.1 전환)
 // 마차 지역 좌표 (+x = 말 쪽 = facing, 원점 = 마차 가운데 바닥): 말 머리 끝 · 마차 뒤 끝 · 경계 여백 · 마부석 · 등불 · 바퀴 · 말 자리
 const HEAD_X = 254, REAR_X = 104, EDGE = 258;
-const SEAT = { x: 82, y: -112 }, LANT = { x: 106, y: -94 }, WHL = [{ x: -60, y: -38, r: 38 }, { x: 58, y: -30, r: 30 }];
+// 채색 마차(ch_coach #2, lps 0.133)와 같은 자리: 상자 −62…68 · 지붕 −152 · 마부석 98,−88 · 뒷바퀴 r 40 · 앞바퀴 r 31
+const SEAT = { x: 98, y: -88 }, LANT = { x: 75, y: -146 }, WHL = [{ x: -60, y: -42, r: 40 }, { x: 91, y: -31, r: 31 }];
 const H1 = { x: 176, y: 0 }, H2 = { x: 144, y: -6 }, HS = 1.25;   // 가까운 말(모르겐) · 먼 말(헤이즐) · 말 크기
 // 창 상한 (페이즈별 [1페이즈], 최대 체력 비 — POLISH-4 교훈을 처음부터, docs/specs/ex_s25.md §2.1): 질주 한 번 12% · 무릎 한 번 10% · 등불 노출 한 번 8%.
 //   닿으면 남는 피해는 버리고('저항' 숫자), 무릎이면 곧바로 일어선다 (필살·각성 · 2페이즈 · 15% 긴 주저앉음은 상한 밖)
@@ -141,14 +142,14 @@ export class Charon extends BossC {
     this.dieT = 0; this.vanishK = 0; this.ashAcc = 0;
     this.runZ = this.pullZ = this.ghostZ = null; this.tl = null; this.wc = null;
     this.pMan = { x: 0, y: 0, w: 44, h: 84, defMul: 0.85 };
-    this.pBody = { x: 0, y: 0, w: 184, h: 80, defMul: 1.0 };
-    this.pWheelR = { x: 0, y: 0, w: 76, h: 76, defMul: 1.15 };
-    this.pWheelF = { x: 0, y: 0, w: 60, h: 60, defMul: 1.15 };
+    this.pBody = { x: 0, y: 0, w: 136, h: 104, defMul: 1.0 };
+    this.pWheelR = { x: 0, y: 0, w: 80, h: 80, defMul: 1.15 };
+    this.pWheelF = { x: 0, y: 0, w: 62, h: 62, defMul: 1.15 };
     this.pLan = { x: 0, y: 0, w: 44, h: 44, defMul: 1.0, lantern: true };
     this.pHead = { x: 0, y: 0, w: 30, h: 40, defMul: 0.85 };
     this.pTorso = { x: 0, y: 0, w: 36, h: 52, defMul: 1.0 };
     this.pSkirt = { x: 0, y: 0, w: 54, h: 60, defMul: 1.15 };
-    this.cBox = { x: 0, y: 0, w: 156, h: 82 }; this.cMan = { x: 0, y: 0, w: 30, h: 110 };
+    this.cBox = { x: 0, y: 0, w: 120, h: 84 }; this.cMan = { x: 0, y: 0, w: 30, h: 110 };
     this._hp = []; this._cp = []; this._pt = { x: 0, y: 0 }; this._r = { x: 0, y: 0 }; this._q = { x: 0, y: 0 };
     this.fxAcc = 0;
     // 싸움 중 새 캔버스 0 (MASTER_PLAN §5.2): 쓰는 발광 색은 등장 때 굽는다 · 빈 영구차 실루엣도 지금 한 번
@@ -198,7 +199,7 @@ export class Charon extends BossC {
   /** 손 · 등불 (월드) */
   handN(out = this._q) { return this.toWorldM(this.pts.hdN.x, this.pts.hdN.y, out); }
   handF(out = this._q) { return this.toWorldM(this.pts.hdF.x, this.pts.hdF.y, out); }
-  lanternW(out = this._q) { return this.coach ? this.toWorld(LANT.x, LANT.y + 11, out) : this.toWorldM(this.pts.lan.x, this.pts.lan.y, out); }   // 등불 유리 가운데
+  lanternW(out = this._q) { return this.coach ? this.toWorld(LANT.x, LANT.y + 15, out) : this.toWorldM(this.pts.lan.x, this.pts.lan.y, out); }   // 등불 유리 가운데 (마차: 상자 앞 모서리 걸이에 매달림)
 
   /** 골격 (마부 지역 좌표): 허리 · 목 · 머리 · 어깨 · 팔꿈치 · 손 · 무릎 · 발 · 등불. 그리기·판정·채색이 같이 쓴다 */
   rig() {
@@ -226,8 +227,8 @@ export class Charon extends BossC {
     arm(P.shF, P.elF, P.hdF, a.f1, a.f2);
     // 다리: 앉으면 허벅지 앞으로 · 정강이 아래로 발판까지 / 서면 두 마디 IK (걷기 · 무릎 · 주저앉음)
     if (seat) {
-      P.knN.x = P.hip.x + 34; P.knN.y = P.hip.y + 3; P.ftN.x = P.knN.x + 5; P.ftN.y = P.knN.y + 36;
-      P.knF.x = P.hip.x + 30; P.knF.y = P.hip.y + 1; P.ftF.x = P.knF.x + 3; P.ftF.y = P.knF.y + 35;
+      P.knN.x = P.hip.x + 30; P.knN.y = P.hip.y + 2; P.ftN.x = P.knN.x + 4; P.ftN.y = P.knN.y + 26;
+      P.knF.x = P.hip.x + 27; P.knF.y = P.hip.y + 1; P.ftF.x = P.knF.x + 3; P.ftF.y = P.knF.y + 25;
     } else {
       const u = this.walkPh * TAU, wk = this.walkK * (1 - kn) * (1 - sl);
       let nx = 6 + Math.sin(u) * 16 * wk, ny = -Math.max(0, Math.cos(u)) * 7 * wk;
@@ -293,10 +294,10 @@ export class Charon extends BossC {
       const st = this.stunned;
       this.toWorldM((P.hip.x + P.head.x) / 2 + 2, (P.hip.y + P.head.y) / 2 - 4, W);
       const pm = this.pMan; pm.x = W.x - pm.w / 2; pm.y = W.y - pm.h / 2; pm.defMul = st ? 0.6 : this.exposed ? 0.7 : 0.85;
-      this.toWorld(-12, -91, W); const pb = this.pBody; pb.x = W.x - pb.w / 2; pb.y = W.y - pb.h / 2; pb.defMul = st ? (this.stagLong ? 0.6 : 0.7) : 1.0;
+      this.toWorld(0, -100, W); const pb = this.pBody; pb.x = W.x - pb.w / 2; pb.y = W.y - pb.h / 2; pb.defMul = st ? (this.stagLong ? 0.6 : 0.7) : 1.0;
       this.toWorld(WHL[0].x, WHL[0].y, W); const r0 = this.pWheelR; r0.x = W.x - r0.w / 2; r0.y = Math.min(W.y - r0.h / 2, this.fy - r0.h);
       this.toWorld(WHL[1].x, WHL[1].y, W); const r1 = this.pWheelF; r1.x = W.x - r1.w / 2; r1.y = Math.min(W.y - r1.h / 2, this.fy - r1.h);
-      this.toWorld(-6, -82, W); const cb = this.cBox; cb.x = W.x - cb.w / 2; cb.y = W.y - cb.h / 2;
+      this.toWorld(0, -96, W); const cb = this.cBox; cb.x = W.x - cb.w / 2; cb.y = W.y - cb.h / 2;
     } else {
       const st = this.stunned;
       this.toWorldM(P.head.x + 1, P.head.y - 8, W);
@@ -690,7 +691,7 @@ export class Charon extends BossC {
       const side = Math.random() < 0.5 ? -1 : 1;
       const xs = [px, px + side * 4 * T];
       if (xs[1] < A.x0 + 40 || xs[1] > A.x1 - 40) xs[1] = px - side * 4 * T;
-      const src = this.coach ? this.toWorld(-30, -150, { x: 0, y: 0 }) : { x: this.zx, y: this.fy - 300 };
+      const src = this.coach ? this.toWorld(0, -164, { x: 0, y: 0 }) : { x: this.zx, y: this.fy - 300 };
       this.roofN = this.coach ? Math.max(0, this.roofN - 2) : this.roofN;
       audio.sfx('whip', { vol: 0.5, pitch: 0.6 });
       xs.forEach((x0, i) => {
@@ -1364,51 +1365,52 @@ function drawCoach(ctx, b, fl, layer) {
   const t = b.t;
   if (layer === 'back') {
     shaft(ctx, fl, -3, true);
-    wheel(ctx, WHL[0].x - 4, WHL[0].y - 2, WHL[0].r, b.wA, fl, true);   // 먼 뒷바퀴
+    wheel(ctx, WHL[0].x - 4, WHL[0].y - 2, WHL[0].r, b.wA, fl, true);   // 먼 바퀴 둘
+    wheel(ctx, WHL[1].x - 4, WHL[1].y - 2, WHL[1].r, b.wA * WHL[0].r / WHL[1].r, fl, true);
     // 지붕 관 (난간 뒤)
-    for (let i = 0; i < b.roofN; i++) { ctx.save(); ctx.translate(-70 + i * 48, -136 - (i === 1 ? 2 : 0)); drawCoffinShape(ctx, 0.62, fl, 0); ctx.restore(); }
+    for (let i = 0; i < b.roofN; i++) { ctx.save(); ctx.translate(-36 + i * 38, -158 - (i === 1 ? 3 : 0)); drawCoffinShape(ctx, 0.52, fl, 0); ctx.restore(); }
     // 상자 몸통
     ctx.beginPath();
-    ctx.moveTo(-100, -52); ctx.lineTo(-104, -112); ctx.quadraticCurveTo(-100, -132, -82, -134); ctx.lineTo(56, -134); ctx.quadraticCurveTo(68, -132, 70, -118); ctx.lineTo(72, -52); ctx.closePath();
-    ink(ctx, fl ? '#fff' : LG(ctx, 'ch_box', 0, -134, 0, -52, [0, LACQ_H, 0.35, LACQ, 1, LACQ_D]), 2);
+    ctx.moveTo(-58, -50); ctx.lineTo(-64, -124); ctx.quadraticCurveTo(-62, -150, -46, -152); ctx.lineTo(56, -152); ctx.quadraticCurveTo(68, -150, 70, -132); ctx.lineTo(68, -50); ctx.closePath();
+    ink(ctx, fl ? '#fff' : LG(ctx, 'ch_box', 0, -152, 0, -50, [0, LACQ_H, 0.35, LACQ, 1, LACQ_D]), 2);
     if (!fl) {
       // 금박 테 · 장식 · 유리창 너머의 관
       ctx.strokeStyle = GOLD; ctx.lineWidth = 1.6;
-      ctx.beginPath(); ctx.moveTo(-98, -58); ctx.lineTo(66, -58); ctx.moveTo(-100, -126); ctx.lineTo(62, -126); ctx.stroke();
-      ctx.beginPath(); ctx.rect(-78, -118, 120, 50); ctx.fillStyle = 'rgba(40,80,70,0.55)'; ctx.fill(); ctx.strokeStyle = GOLD_D; ctx.lineWidth = 2.4; ctx.stroke();
-      ctx.save(); ctx.translate(-18, -86); drawCoffinShape(ctx, 0.95, false, 1); ctx.restore();
-      ctx.fillStyle = rgba(SOUL_H, 0.12); ctx.beginPath(); ctx.moveTo(-74, -116); ctx.lineTo(-48, -116); ctx.lineTo(-74, -78); ctx.closePath(); ctx.fill();   // 유리 반사
+      ctx.beginPath(); ctx.moveTo(-58, -56); ctx.lineTo(66, -56); ctx.moveTo(-62, -144); ctx.lineTo(64, -144); ctx.stroke();
+      ctx.beginPath(); ctx.rect(-50, -136, 104, 44); ctx.fillStyle = 'rgba(40,80,70,0.55)'; ctx.fill(); ctx.strokeStyle = GOLD_D; ctx.lineWidth = 2.4; ctx.stroke();
+      ctx.save(); ctx.translate(0, -110); drawCoffinShape(ctx, 0.85, false, 1); ctx.restore();
+      ctx.fillStyle = rgba(SOUL_H, 0.12); ctx.beginPath(); ctx.moveTo(-46, -134); ctx.lineTo(-24, -134); ctx.lineTo(-46, -96); ctx.closePath(); ctx.fill();   // 유리 반사
       ctx.strokeStyle = GOLD; ctx.lineWidth = 1.2;
-      for (const x of [-92, 54]) { ctx.beginPath(); ctx.moveTo(x, -66); ctx.quadraticCurveTo(x + 6, -92, x, -118); ctx.stroke(); }
+      for (const x of [-56, 60]) { ctx.beginPath(); ctx.moveTo(x, -64); ctx.quadraticCurveTo(x + 5, -88, x, -132); ctx.stroke(); }
       // 지붕 난간
-      ctx.strokeStyle = IRON_H; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(-96, -146); ctx.lineTo(60, -146);
-      for (let x = -96; x <= 60; x += 26) { ctx.moveTo(x, -146); ctx.lineTo(x, -134); }
+      ctx.strokeStyle = GOLD_D; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(-60, -164); ctx.lineTo(64, -164);
+      for (let x = -60; x <= 64; x += 31) { ctx.moveTo(x, -164); ctx.lineTo(x, -152); }
       ctx.stroke();
     }
-    // 마부석 (상자 앞쪽 위) · 등받이
-    ctx.beginPath(); ctx.moveTo(66, -100); ctx.lineTo(66, -118); ctx.lineTo(98, -118); ctx.lineTo(100, -108); ctx.closePath(); ink(ctx, fl ? '#fff' : LACQ, 1.4);
-    ctx.beginPath(); ctx.moveTo(62, -110); ctx.lineTo(60, -146); ctx.lineTo(68, -146); ctx.lineTo(70, -110); ctx.closePath(); ink(ctx, fl ? '#fff' : LACQ_D, 1.2);
+    // 마부석 (상자 앞 · 낮은 벤치) · 등받이
+    ctx.beginPath(); ctx.moveTo(68, -80); ctx.lineTo(68, -88); ctx.lineTo(116, -88); ctx.lineTo(118, -80); ctx.closePath(); ink(ctx, fl ? '#fff' : LACQ, 1.4);
+    ctx.beginPath(); ctx.moveTo(68, -88); ctx.lineTo(70, -112); ctx.lineTo(80, -112); ctx.lineTo(82, -88); ctx.closePath(); ink(ctx, fl ? '#fff' : LACQ_D, 1.2);
+    ctx.beginPath(); ctx.moveTo(70, -80); ctx.quadraticCurveTo(86, -56, 120, -54); ctx.lineTo(120, -48); ctx.lineTo(68, -48); ctx.closePath(); ink(ctx, fl ? '#fff' : LACQ_D, 1.2);   // 마부석 받침
     wheel(ctx, WHL[0].x, WHL[0].y, WHL[0].r, b.wA, fl, false);   // 가까운 뒷바퀴
     // 차대
-    ctx.strokeStyle = fl ? '#fff' : IRON; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(-98, -50); ctx.lineTo(102, -50); ctx.stroke();
+    ctx.strokeStyle = fl ? '#fff' : IRON; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(-62, -46); ctx.lineTo(128, -46); ctx.stroke();
     return;
   }
   // front
   wheel(ctx, WHL[1].x, WHL[1].y, WHL[1].r, b.wA * WHL[0].r / WHL[1].r, fl, false);
-  ctx.beginPath(); ctx.moveTo(70, -84); ctx.lineTo(116, -84); ctx.lineTo(114, -78); ctx.lineTo(72, -78); ctx.closePath(); ink(ctx, fl ? '#fff' : LACQ, 1.2);   // 발판
-  ctx.beginPath(); ctx.moveTo(100, -82); ctx.lineTo(104, -50); ctx.lineTo(96, -50); ctx.lineTo(92, -82); ctx.closePath(); ink(ctx, fl ? '#fff' : LACQ_D, 1.2);   // 앞판
+  ctx.beginPath(); ctx.moveTo(122, -94); ctx.quadraticCurveTo(134, -80, 132, -60); ctx.lineTo(124, -60); ctx.quadraticCurveTo(124, -80, 116, -90); ctx.closePath(); ink(ctx, fl ? '#fff' : LACQ, 1.2);   // 앞판 (발 앞)
   shaft(ctx, fl, 0, false);
-  // 앞 모서리 등불 둘 (먼 것은 어둡게) — 부풀면 커진다
+  // 상자 앞 모서리 등불 둘 (먼 것은 어둡게) — 부풀면 커진다
   const k = b.lanK, out = b.lanBroken && t - b.lanOutT < 2.5;
-  ctx.strokeStyle = fl ? '#fff' : IRON; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(96, -104); ctx.lineTo(LANT.x, -104); ctx.lineTo(LANT.x, LANT.y - 3); ctx.stroke();
-  drawLanternAt(ctx, LANT.x - 6, LANT.y - 4, 0, fl, 0, false, t, 0.85);
+  ctx.strokeStyle = fl ? '#fff' : IRON; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(64, LANT.y - 3); ctx.lineTo(LANT.x, LANT.y - 3); ctx.lineTo(LANT.x, LANT.y); ctx.stroke();
+  drawLanternAt(ctx, LANT.x - 22, LANT.y + 4, 0, fl, 0, false, t, 0.85);
   drawLanternAt(ctx, LANT.x, LANT.y, 0, fl, k, out, t, 1 + 0.25 * k);
 }
 function shaft(ctx, fl, dy, far) {
   ctx.lineCap = 'round';
   ctx.strokeStyle = fl ? '#fff' : far ? WOOD_D : WOOD; ctx.lineWidth = 3.6;
-  ctx.beginPath(); ctx.moveTo(98, -46 + dy); ctx.quadraticCurveTo(130, -50 + dy, H1.x - 18, -56 * HS + dy); ctx.stroke();
-  if (!fl && !far) { ctx.strokeStyle = GOLD_D; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(100, -47); ctx.quadraticCurveTo(130, -51, H1.x - 20, -57 * HS); ctx.stroke(); }
+  ctx.beginPath(); ctx.moveTo(120, -48 + dy); ctx.quadraticCurveTo(140, -52 + dy, H1.x - 18, -56 * HS + dy); ctx.stroke();
+  if (!fl && !far) { ctx.strokeStyle = GOLD_D; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(122, -49); ctx.quadraticCurveTo(140, -53, H1.x - 20, -57 * HS); ctx.stroke(); }
 }
 /** 살바퀴 (a = 굴러간 각) */
 function wheel(ctx, x, y, r, a, fl, far) {
@@ -1581,16 +1583,16 @@ function paintWreck(ctx, x, floor, f, z) {
 function bakeGhost(b) {
   if (GHOST || typeof document === 'undefined') return;
   try {
-    const c = document.createElement('canvas'); c.width = 250; c.height = 180;
-    const g = c.getContext('2d'), ox = 118, oy = 172;
+    const c = document.createElement('canvas'); c.width = 230; c.height = 200;
+    const g = c.getContext('2d'), ox = 92, oy = 192;
     g.translate(ox, oy);
     const save = { roofN: b.roofN, wA: b.wA, lanK: b.lanK };
     b.roofN = 3; b.wA = 0; b.lanK = 0;
     drawCoach(g, b, false, 'back'); drawCoach(g, b, false, 'front');
     Object.assign(b, save);
     g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'source-in';
-    const gr = g.createLinearGradient(0, 0, 0, 180); gr.addColorStop(0, SOUL_H); gr.addColorStop(1, SOUL);
-    g.fillStyle = gr; g.fillRect(0, 0, 250, 180);
+    const gr = g.createLinearGradient(0, 0, 0, 200); gr.addColorStop(0, SOUL_H); gr.addColorStop(1, SOUL);
+    g.fillStyle = gr; g.fillRect(0, 0, 230, 200);
     GHOST = { c, ox, oy };
   } catch (e) { GHOST = null; }
 }
