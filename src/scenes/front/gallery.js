@@ -957,7 +957,7 @@ export class GalleryScene extends Scene {
     const tx = r.x + 54, xr = r.x + r.w - 14;
     const hint = !row.open && row.ending ? TH_LOCK_END : '';
     const hw = hint ? Math.min(r.w * 0.4, 200) : 0;
-    text(ctx, row.sub, tx, r.y + (wide ? 17 : 20), { size: 11, weight: 900, family: FONT.num, color: row.open ? '#d8b070' : '#7a6a60', ow: 0 });
+    text(ctx, row.sub, tx, r.y + (wide ? 17 : 20), { size: 12, weight: 900, family: FONT.num, color: row.open ? '#d8b070' : '#7a6a60', ow: 0 });
     text(ctx, row.open ? fit(ctx, row.name, xr - hw - 10 - tx, 17, 800, FONT.title) : '???', tx, r.y + h - (wide ? 9 : 12), { size: 17, weight: 800, family: FONT.title, color: !row.open ? '#7a6e70' : sel ? '#fff4dc' : BONE, ow: 2 });
     if (hint) text(ctx, fit(ctx, hint, hw, 12, 700), xr, cy + 5, { size: 12, align: 'right', weight: 700, color: '#8a7a74', ow: 0 });
     ctx.restore();
@@ -1001,7 +1001,7 @@ export class GalleryScene extends Scene {
     const tx = cr.x + cr.w + 16, xr = W - L.sr - 18, n = this.openCg.length;
     const cnt = `${V.vi + 1} / ${n}`;
     text(ctx, cnt, xr, L.st + 32, { size: 18, align: 'right', weight: 800, family: FONT.num, color: BONE, ow: 3 });
-    text(ctx, FIT_COVER ? '가득 채움' : '화면에 맞춤', xr, L.st + 52, { size: 11, align: 'right', weight: 700, color: DIM, ow: 2 });
+    text(ctx, FIT_COVER ? '가득 채움' : '화면에 맞춤', xr, L.st + 53, { size: 12, align: 'right', weight: 700, color: DIM, ow: 2 });
     const nw = xr - 110 - tx;
     text(ctx, fit(ctx, row.name, nw, 20, 800, FONT.title), tx, L.st + 34, { size: 20, weight: 800, family: FONT.title, color: '#fff4dc', ow: 3 });
     const sub = row.part === 'aw' && row.sub ? row.sub : `${PART_SHORT[row.part]} · ${row.at}`;
