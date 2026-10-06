@@ -50,7 +50,14 @@ function fitEpithet(ctx, name, room) {
   ctx.font = font(12, 700, FONT.body);
   let out = null;
   if (ctx.measureText(`「${name}」`).width <= room) out = `「${name}」`;
-  else for (let n = name.length - 1; n >= 2; n--) { const s = `「${name.slice(0, n)}…」`; if (ctx.measureText(s).width <= room) { out = s; break; } }
+  else {
+    for (let n = name.length - 1; n >= 2; n--) {
+      const head = name.slice(0, n).replace(/\s+$/, '');   // 낱말 사이 빈칸에서 자르면 빈칸은 뺀다
+      if (head.length < 2 || head.length < n) continue;
+      const s = `「${head}…」`;
+      if (ctx.measureText(s).width <= room) { out = s; break; }
+    }
+  }
   if (EPI.size > 300) EPI.clear();
   EPI.set(k, out);
   return out;

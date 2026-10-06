@@ -248,6 +248,19 @@ async function U2(C) {
     tx = await drawnText(s.page);
     C.check('U2', `${vp} ch_all 달성: 67 / 67 · 1,630 · 숨긴 업적 모두 공개`, st.sum.got === 67 && st.sum.pts === 1630 && st.cat === 'secret' && !tx.includes('숨겨진 업적') && tx.includes('옛 주문'), `${st.sum.got} ${st.sum.pts} ${st.cat}`);
     if (vp === 'desk') await C.shot(s, 'desk_state_all');
+    // 엔진이 없을 때 (§7.1): 데이터만으로 모두 미달성 + 한 줄, 던지지 않는다 · 받기는 꺼짐
+    if (vp === 'desk') {
+      await s.eval(() => { const g = window.__game; g.go('title', { menu: true }, { fade: false }); g.__achSaved = g.ach; delete g.ach; });
+      await openAch(s, {});
+      const fb = await achState(s);
+      tx = await drawnText(s.page);
+      await s.key('KeyC'); await s.key('KeyA');
+      const fb2 = await achState(s);
+      await C.shot(s, 'desk_state_noengine');
+      await s.eval(() => { const g = window.__game; g.top.modal = null; g.ach = g.__achSaved; });
+      C.check('U2', "엔진 없음: 67줄 모두 미달성 · '업적 정보를 불러오지 못했습니다' · 받기 꺼짐 · 이명 창 열림", fb.err && fb.n === 67 && fb.sum.got === 0 && tx.includes('업적 정보를 불러오지 못했습니다') && !fb.claimOK && fb2.modal === 'pick',
+        JSON.stringify({ err: fb.err, n: fb.n, got: fb.sum.got, modal: fb2.modal }));
+    }
     await C.close(s);
   }
 }
@@ -458,6 +471,14 @@ async function U6(C) {
     const s = await C.open('desk', 'index.html?scene=hub', { pred: `${READY} && g.top?.name === 'hub' && !!g.world` });
     await waitFrames(s.page, { ms: 400, frames: 4, ticks: 2 });
     await grant(s, ['st_s01', 'st_s02', 'st_end1']);   // 회복 물약 ×3 · 300 G · 이명(받기 대상 아님)
+    // 마을에 다시 들어서면 받을 보상 안내 한 번 (§6) — 두 번째 입장에는 없다
+    const hubAgain = async () => { await s.eval(() => { window.__game.toasts.length = 0; window.__game.go('hub', {}, { fade: false }); }); await s.waitGame("g.top?.name === 'hub' && !!g.world", 10000); };
+    await hubAgain();
+    const hint = await waitToast(s, /^업적 보상 2개를 받을 수 있습니다 — 메뉴의 「기록」에서 「업적」을 고르세요$/, 4000);
+    await hubAgain();
+    await sleep(2500);
+    const again = (await toasts(s)).some((x) => /^업적 보상/.test(x));
+    C.check('U6', "마을에 들어설 때 받을 보상 안내 — 이번 실행에서 한 번", !!hint && !again, `${hint} · 두 번째 ${again}`);
     const b0 = await s.eval(async () => { const I = await import('/src/game/inventory.js'); const st = window.__game.state; return { gold: st.gold ?? 0, potion: I.countItem(st, 'c_potion') }; });
     await s.eval(() => window.__game.push('menu', { tab: 'system' }));
     await s.waitGame("g.top?.name === 'menu'", 8000);
@@ -591,6 +612,7 @@ async function U9(C) {
       { rank: 1, nick: 'HUNTER', time: 61230, hero: 'kael', cls: '', title: 't_dawn' },
       { rank: 2, nick: 'BETA', time: 62000, hero: 'lia', cls: '', title: 't_zzz' },
       { rank: 3, nick: 'NIGHTHUNTER_SUPREME_X', time: 63000, hero: 'sera', cls: '', title: 't_legend' },
+      { rank: 4, nick: 'MOON_KNIGHT_7', time: 64000, hero: 'bran', cls: '', title: 't_nightmare' },
     ],
   };
   for (const vp of ['desk', 'phone2']) {
@@ -605,7 +627,27 @@ async function U9(C) {
     const nickW = await s.eval(() => { const g = window.__game, t = g.top, L = t.layout(); const W = L.W; const LW = Math.round(Math.min(290, Math.max(236, W * 0.29))); const lx = L.sl + 16 + LW + 14, lw = W - L.sr - 16 - lx; return Math.round(lx + Math.round(lw * 0.52) - (lx + 58) - 70); });
     C.check('U9', `${vp} t_dawn → 별명 옆 '「새벽을 연 자」'`, tx.includes('HUNTER') && tx.includes('「새벽을 연 자」'), epi.join(' | '));
     C.check('U9', `${vp} t_zzz(목록 밖) → 별명만`, tx.includes('BETA') && !tx.some((x) => /zzz/i.test(x)), epi.join(' | '));
-    C.check('U9', `${vp} 긴 별명은 그대로 (칸 ${nickW} UI px — 이명을 줄이거나 뺀다)`, tx.includes('NIGHTHUNTER_SUPREME_X') && epi.every((x) => x === '「새벽을 연 자」' || /^「블러드 녹턴」$|^「블러?…」$|^「블러드…」$|^「블러드 녹…」$/.test(x)), epi.join(' | '));
+    // 규칙 (§8.3): 별명 칸(C.rec − C.nick − 70) 안에서 별명은 그대로, 이명을 먼저 줄이고(…, 두 글자 이상) 안 되면 뺀다 → 줄마다 기대값
+    const expect = await s.eval(async ([entries, w]) => {
+      const U = await import('/src/core/ui.js');
+      const ctx = document.createElement('canvas').getContext('2d');
+      const names = { t_dawn: '새벽을 연 자', t_legend: '블러드 녹턴', t_nightmare: '악몽을 걷는 자' };
+      return entries.map((e) => {
+        const n = names[e.title];
+        if (!n) return null;
+        ctx.font = U.font(14, 800, U.FONT.body);
+        const nw = ctx.measureText(e.nick).width, room = w - nw - 5;
+        if (nw + 6 >= w) return null;
+        ctx.font = U.font(12, 700, U.FONT.body);
+        if (ctx.measureText(`「${n}」`).width <= room) return `「${n}」`;
+        for (let k = n.length - 1; k >= 2; k--) { const h = n.slice(0, k); if (/\s$/.test(h)) continue; const q = `「${h}…」`; if (ctx.measureText(q).width <= room) return q; }
+        return null;
+      }).filter(Boolean);
+    }, [BOARD.entries, nickW]);
+    const same = expect.length === epi.length && expect.every((x) => epi.includes(x));
+    C.R.u9 = { ...(C.R.u9 ?? {}), [vp]: { nickW, expect, drawn: epi } };
+    C.check('U9', `${vp} 좁은 칸(${nickW} UI px): 별명 그대로 · 이명을 먼저 줄이고(…) 안 되면 뺀다`, tx.includes('NIGHTHUNTER_SUPREME_X') && tx.includes('MOON_KNIGHT_7') && same, `기대 ${expect.join(' | ')} · 그림 ${epi.join(' | ')}`);
+    if (vp === 'phone2') C.check('U9', '줄인 이명이 한 번 이상 나옴 (desk·phone2)', [...(C.R.u9.desk?.drawn ?? []), ...epi].some((x) => x.endsWith('…」')), JSON.stringify(C.R.u9));
     await C.shot(s, `${vp}_board_titles`);
     await C.close(s);
   }
@@ -624,18 +666,40 @@ async function U10(C) {
   await waitFrames(s.page, { ms: 1000, frames: 10, ticks: 6 });
   const tier = await s.eval(() => window.__game.tier);
   await freeze(s.page);
+  // 얼린 페이지에서 그리기를 연달아 기록하면 크롬이 쌓인 그리기 명령을 수십 프레임마다 한꺼번에 래스터한다(한 프레임에 수백 ms로 보임).
+  // 그래서 30프레임씩 재고, 그 사이(잰 구간 밖)에서 한 번씩 비운다(getImageData). 래스터까지 넣은 값은 따로 (정보: 인게임 메뉴와 비교)
+  const flush = () => s.eval(() => { window.__game.ctx.getImageData(0, 0, 1, 1); });
+  const raster = (n) => s.eval((n) => {
+    const g = window.__game, P = window.__perf, out = [];
+    for (let i = 0; i < n; i++) { window.__qaStep(1, false); const t0 = P.realNow(); g.__qaRender.call(g); g.ctx.getImageData(0, 0, 1, 1); out.push(+(P.realNow() - t0).toFixed(2)); }
+    return out;
+  }, n);
   const run = async (label, setup) => {
     if (setup) await s.eval(setup);
-    await measureFrames(s.page, 10);   // 데우기 (글꼴·레이어 굽기)
-    const r = await measureFrames(s.page, 90);
-    const ms = r.frames.map((f) => f.ms), grad = r.frames.map((f) => f.grad), canv = r.frames.map((f) => f.canv);
-    return { label, ms: stats(ms), gradMax: Math.max(...grad), canvMax: Math.max(...canv), sites: r.sites.grad.slice(0, 3) };
+    await measureFrames(s.page, 10); await flush();   // 데우기 (글꼴·레이어 굽기)
+    const frames = [], sites = [];
+    for (let k = 0; k < 3; k++) { const r = await measureFrames(s.page, 30); frames.push(...r.frames); sites.push(...r.sites.grad); await flush(); }
+    const ms = frames.map((f) => f.ms), grad = frames.map((f) => f.grad), canv = frames.map((f) => f.canv);
+    return { label, ms: stats(ms), gradMax: Math.max(...grad), canvMax: Math.max(...canv), sites: sites.slice(0, 3), withRaster: stats(await raster(30)) };
   };
   const list = await run('list');
   const detail = await run('detail', () => window.__game.top.openDetail(2));
   const pick = await run('pick', () => { const t = window.__game.top; t.modal = null; t.openPick(); });
+  // 비교 (정보): 같은 페이지의 인게임 메뉴 '기록' 탭 (래스터 포함)
+  await s.eval(() => { const t = window.__game.top; t.modal = null; });
   await unfreeze(s.page);
-  C.R.perf = { vp: 'phone1', tier, list, detail, pick };
+  const ref = await (async () => {
+    try {
+      await s.eval(async () => { const S = await import('/src/game/state.js'); const g = window.__game; g.state = g.state ?? S.newGameState({ slot: 1 }); g.push('menu', { tab: 'system' }); });
+      await waitFrames(s.page, { ms: 900, frames: 8, ticks: 4 });
+      await freeze(s.page); await measureFrames(s.page, 10); await flush();
+      const r = stats(await raster(30));
+      await unfreeze(s.page); await s.eval(() => window.__game.pop()); await waitFrames(s.page, { ms: 300, frames: 3, ticks: 2 });
+      return r;
+    } catch (e) { await unfreeze(s.page).catch(() => {}); return { error: String(e?.message ?? e) }; }
+  })();
+  C.R.perf = { vp: 'phone1', tier, list, detail, pick, menuSystemWithRaster: ref };
+  console.log(`   그리기+래스터 (정보, 소프트웨어 래스터): 업적 목록 p95 ${list.withRaster.p95} ms · 자세히 ${detail.withRaster.p95} · 이명 창 ${pick.withRaster.p95} · 인게임 메뉴 기록 탭 ${ref.p95 ?? ref.error} ms`);
   for (const p of [list, detail, pick]) {
     C.check('U10', `phone1(${tier}) 업적 장면 ${p.label} 그리기 p95 ${p.ms.p95} ms ≤ 3 ms · 프레임마다 새 그라디언트·캔버스 0`, p.ms.p95 <= 3 && p.gradMax === 0 && p.canvMax === 0,
       `avg ${p.ms.avg} p50 ${p.ms.p50} p95 ${p.ms.p95} max ${p.ms.max} · grad ${p.gradMax} ${JSON.stringify(p.sites)} · canv ${p.canvMax}`);
