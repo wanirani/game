@@ -112,6 +112,8 @@ const pts = (n) => Array.from({ length: n }, pt);
 const rot = (x, y, a, out) => { const c = Math.cos(a), s = Math.sin(a); out.x = x * c - y * s; out.y = x * s + y * c; return out; };
 const ownHit = (attack) => !(attack?.tags?.includes('guardian') || attack?.tags?.includes('companion'));   // 플레이어·탈것의 '한 대'만 (수호신·동료 자동 공격 제외)
 let GHOST = null;   // 빈 영구차 실루엣 (마차를 한 번 구운 비트맵 — 페이지마다 한 번)
+let HAZEL = null;   // 먼 말(헤이즐) 실루엣 프레임 {key: canvas} (반 해상도로 한 번 굽는다 — 페이지마다 한 번)
+const HZ = { x0: -66, y0: -180, w: 172, h: 188, s: 0.5 };   // 프레임이 덮는 말 지역 사각형 (마차 지역 px) · 굽는 배율
 
 export class Charon extends BossC {
   static get PATTERNS() { return PATTERNS; }
@@ -157,6 +159,7 @@ export class Charon extends BossC {
     prewarmTint([SOUL]);
     this.motion(0, this.world);
     bakeGhost(this);
+    bakeHazel();
   }
 
   // ═════════════════════════════ 위치 · 자세 ═════════════════════════════
@@ -397,8 +400,11 @@ export class Charon extends BossC {
     const [h1, h2] = this.horses, off = this.hRun;
     if (which !== 'near' && h2.pose) {
       h2.cx = H2.x + off * 0.92; h2.bottom = H2.y;
-      if (!R.fl) glowE(ctx, h2.cx - 4, h2.bottom - 52 * HS, 58, 34, SOUL, 0.18 * this.hA);
-      drawMount(ctx, h2, world, 'back', { alpha: 0.8 * this.hA, tint: R.fl ? '#ffffff' : SOUL_D, scale: HS, rider: false, noFx: true });
+      glowE(ctx, h2.cx - 4, h2.bottom - 52 * HS, 58, 34, SOUL, 0.18 * this.hA);
+      // 먼 말은 구운 실루엣 프레임 (휴대폰 그리기 ≤ 0.6 ms — 명세 §2.2): 걸음 위상 8칸 · 대기 · 땅 긁기 · 앞들기 · 휘청
+      const F = HAZEL, n = F && (h2.rearK > 0.5 ? F.rear : h2.anim === 'run' || h2.anim === 'walk' ? F[h2.anim + (Math.floor(h2.phase * 8) % 8)] : F[h2.anim] ?? F.idle);
+      if (n) { const a = ctx.globalAlpha; ctx.globalAlpha = a * 0.8 * this.hA; ctx.drawImage(n, h2.cx + HZ.x0, h2.bottom + HZ.y0, HZ.w, HZ.h); ctx.globalAlpha = a; }
+      else drawMount(ctx, h2, world, 'back', { alpha: 0.8 * this.hA, tint: SOUL_D, scale: HS, rider: false, noFx: true });
     }
     if (which !== 'far' && h1.pose) {
       h1.cx = H1.x + off; h1.bottom = H1.y;
@@ -1595,6 +1601,26 @@ function bakeGhost(b) {
     g.fillStyle = gr; g.fillRect(0, 0, 230, 200);
     GHOST = { c, ox, oy };
   } catch (e) { GHOST = null; }
+}
+
+/** 먼 말(헤이즐) 실루엣 프레임 굽기 (한 번, 등장 때 — 싸움 중 새 캔버스 0): 같은 벡터 탈것 리그를 어두운 녹청 tint 로, 반 해상도 */
+function bakeHazel() {
+  if (HAZEL || typeof document === 'undefined') return;
+  try {
+    const F = {}, h = mkHorse(0);
+    const mk = (key, anim, phase, rear) => {
+      const sp = anim === 'run' ? 420 : anim === 'walk' ? 120 : 0;
+      Object.assign(h, { anim, animT: 0.3, t: 1.3, phase, rearK: rear, pitch: -0.7 * rear, vx: sp, speedK: sp / 400, cx: 0, bottom: 0, pose: null });
+      h.pose = mountPose(h, 0);
+      const c = document.createElement('canvas'); c.width = Math.ceil(HZ.w * HZ.s); c.height = Math.ceil(HZ.h * HZ.s);
+      const g = c.getContext('2d'); g.scale(HZ.s, HZ.s); g.translate(-HZ.x0, -HZ.y0);
+      drawMount(g, h, null, 'back', { tint: SOUL_D, scale: HS, rider: false, noFx: true });
+      F[key] = c;
+    };
+    mk('idle', 'idle', 0, 0); mk('dig', 'dig', 0, 0); mk('rear', 'idle', 0, 1); mk('knocked', 'knocked', 0, 0);
+    for (let i = 0; i < 8; i++) { mk('walk' + i, 'walk', i / 8, 0); mk('run' + i, 'run', i / 8, 0); }
+    HAZEL = F;
+  } catch (e) { HAZEL = null; }
 }
 
 /** 벡터 그림 컬링 대리 개체 (e_bride.js 와 같은 방식): 보스의 artBounds() 를 사각형으로 삼아 보스 draw 를 대신 부른다 */

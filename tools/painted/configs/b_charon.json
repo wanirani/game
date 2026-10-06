@@ -3,7 +3,7 @@
  "kind": "boss",
  "out": "assets/painted/bosses/b_charon",
  "raw": "tools/painted/raw/b_charon",
- "td": 1.3,
+ "td": 1.4,
  "quality": 80,
  "matte": {
   "default": {
@@ -1708,5 +1708,19 @@
     ]
    ]
   }
- ]
+ ],
+ "hurtboxNotes": "BOSS_PIPELINE §8.8 (documented, gameplay NOT changed): logic hit parts — phase 1 (hearse, coach-local, +x = horses): coachman on the box seat 44x84 around hip→head (0.85, lantern exposure 0.7, stagger 0.6), coach box 136x104 centred (0,-100) (1.0, stagger 0.7), wheels 80x80 at (-60,-42) and 62x62 at (91,-31) (1.15), soul lantern 44x44 at the hook (75,-146)+15 only while it swells; contact = box core 120x84. Horses: no hit parts (spirits). Phase 2 (coachman, 66x168, feet = coach centre x · A.floor): hat head 30x40 (0.85 · stagger 0.6), torso 36x52 (1.0 · stagger 0.7 · gatherSouls exposure 0.7 · 15% collapse 0.6), coat skirt 54x≤60 (1.15). The painted coach is taller than the 200x130 box (roof coffins to -180) and the horses reach 254 px ahead — the boxes are the logic's, the art only reads them. Logic SEAT (98,-88) · WHL · LANT were set to this art's geometry (coach_a at lps 0.133, origin = image (781, 1440)).",
+ "kling": {
+  "model": "kling-image-v3_0_omni (image_to_image 2k, 图片1 = assets/portraits/b_charon.webp full-res PNG)",
+  "manifest": "tools/kling/manifest_ex5-boss.json",
+  "prompts": "tools/painted/prompts/ex5-boss.mjs",
+  "images": {
+   "coachman_a": "ch_coachman #2 (AYK8fY9i…) mirrored to face right — head · armU · armF",
+   "coachman_b": "coachman_a with the near arm (sleeve · cuff · bony hand, polygon) filled with coat texture from the skirt (x 700–860, y 1680–2150, mirrored tiling, ring-mean colour match) + cv2.inpaint seam — torso · skirt · tail",
+   "limbs_a": "ch_limbs #1 (Adenkw…) mirrored — thigh · shin (one leg cut at the knee, white sticker rim removed)",
+   "coach_a": "ch_coach #2 (AWpWv9X…) with the light-grey front window glass tinted teal (x 915–1090, y 415–705) so the matte keeps it — coach · dash · shafts · debB",
+   "props_a": "ch_props #1 (AahCUAO…) — wheel · lantern · coffin · coin · whipH · ledger · debA"
+  },
+  "total": "11 images / 22 credits (portraits 4 · ch_coachman 2 · ch_limbs 1 · ch_coach 2 · ch_heads 1 (unused) · ch_props 1), 0 retries — cap 20 / 40"
+ }
 }

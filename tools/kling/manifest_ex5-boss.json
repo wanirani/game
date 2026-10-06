@@ -1,0 +1,98 @@
+{
+ "package": "EX5-BOSS",
+ "model": "kling-image-v3_0_omni (portraits: text_to_image · parts: image_to_image, img_resolution 2k)",
+ "prompts": "tools/painted/prompts/ex5-boss.mjs (SHOTS)",
+ "refs": {
+  "portrait": "ch_portrait #2 full-res PNG 1760x2368 (file_upload) — 图片1 for every image_to_image call",
+  "portraitUrl": "https://s15-kling.klingai.com/kimg/EMXN1y8qUAoGdXBsb2FkEg55bGFiLXN0dW50LXNncBo2YWdlbnRfdXBsb2FkLzE3OTEzMDc3ODAvVnNweU1lSm93WC9jaF9wb3J0cmFpdF9yZWYucG5n.origin?x-kcdn-pid=112372"
+ },
+ "creditsCap": 40,
+ "imagesCap": 20,
+ "creditsAtStart": 5043,
+ "generations": [
+  {
+   "boss": "b_charon",
+   "shot": "ch_portrait",
+   "tool": "text_to_image",
+   "generationId": "Acbcud8ZxI6_I_bmIeJggTerKdFqylsVB9m4PbOekUlp12jjv8JXx6RnQL68ZmFuK53iqMZt",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "credits": 4,
+   "refs": "none",
+   "decision": "#2 kept → assets/portraits/b_charon.webp (raw 1760x2368 → width 761 LANCZOS → top 968 rows = 761x968, WebP q82 m6, 72,098 B; urlWithoutWatermark) + lo copy via make_variants (25,486 B). Gaunt coachman with a skull-like ash-grey face and teal-glowing eye sockets, top hat with a dark-red band and brass buckle, caped greatcoat with green lining, teal soul-fire lantern, coiled whip, black hearse with coffins behind, blood moon, burning stable. Full-res PNG uploaded as 图片1 for every part. form2 uses the same portrait (spec §9-6). #1 unused (grinning skull, more cartoonish)."
+  },
+  {
+   "boss": "mt_morgen",
+   "shot": "mg_portrait",
+   "tool": "text_to_image",
+   "generationId": "AY-dj4OFW1wlrAPxoiSlfO-KCht9SldgCQAIWkmt4ggJkvtLXPiHFzOOOMyGzyDDuFuYjPoR",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "credits": 4,
+   "refs": "none",
+   "decision": "#2 kept → assets/portraits/cmp_mt_morgen.webp (761x968 q82, 77,610 B — same processing as the other companion portraits) + lo copy (25,816 B). Pearl-white spirit warhorse with a white-gold flame mane and tail, saddle and bridle, a golden rising-sun crest on the breast strap, burnt ranch at dawn, no rider. iconFocus is EX5-INTEG's (companions.js). #1 unused (no saddle or tack)."
+  },
+  {
+   "boss": "b_charon",
+   "shot": "ch_coachman",
+   "tool": "image_to_image",
+   "generationId": "AYK8fY9iWVwcjeKo20sNm2QK2xxNxBy-4OReUAIA0rK9XqBtkEIvH_fBGIyqaZrf3GkC4wN4",
+   "aspect": "9:16",
+   "imageCount": 2,
+   "credits": 4,
+   "refs": "portrait",
+   "decision": "#2 kept → raw/b_charon/coachman_a (mirrored to face right — Kling drew it facing left) and coachman_b (the same, with the near arm — sleeve, cuff, bony hand — filled with coat texture + cv2 inpaint): head, armU, armF from coachman_a; torso (layered cape), skirt (front coat skirt), tail (ragged back flap) from coachman_b (lps 0.0677). The 'without arms' instruction was ignored (both results have hanging arms). #1 unused (same arm problem, darker ragged hem)."
+  },
+  {
+   "boss": "b_charon",
+   "shot": "ch_limbs",
+   "tool": "image_to_image",
+   "generationId": "AdenkwNWj8ipSD5l3Svfb4OXzKZmkrAoZCXFQUBljAY2HtGVfwTAsbsJ5f0RIPWwbyHNkXS8",
+   "aspect": "16:9",
+   "imageCount": 1,
+   "credits": 2,
+   "refs": "portrait",
+   "decision": "#1 partly failed (a front-view full figure, a gloved fist, a bony hand, one whole leg, a back view of the coat — all with white sticker outlines) → raw/b_charon/limbs_a (mirrored): the leg is cut at the knee into thigh + shin (white rim removed by a tight polygon + 'minus bright'); the rest unused. No retry. This slot replaced the spec's ch_seated one-for-one (seated pose = jointed thigh/shin)."
+  },
+  {
+   "boss": "b_charon",
+   "shot": "ch_coach",
+   "tool": "image_to_image",
+   "generationId": "AWpWv9XzIWKa2dbBI6ko39imCvOk2yx0UdhY42QIm3IZKGRpyGtoMuAU-n8XTykpt_Kc28Cf",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "credits": 4,
+   "refs": "portrait",
+   "decision": "#2 kept → raw/b_charon/coach_a (front window glass tinted teal before matting — its light grey glass keyed out as a hole): coach (box body + box seat; near and far wheels, the hanging lantern and the roof coffin masked out), dash (seat front panel, drawn over the coachman's shins), shafts (lps 0.133; logic SEAT/WHL/LANT in e_charon.js moved to match this art), debris debB (door panel). #1 unused (shafts bent down to the ground)."
+  },
+  {
+   "boss": "b_charon",
+   "shot": "ch_heads",
+   "tool": "image_to_image",
+   "generationId": "AR9C38GDQeYVALxoXdkXZllGeKOszIPnq2wULFzr2u0-EJMEawsx3e4g8_ncv_iu_KWeSXqW",
+   "aspect": "4:3",
+   "imageCount": 1,
+   "credits": 2,
+   "refs": "portrait",
+   "decision": "#1 partly failed: three-quarter front head, a left-facing profile head, the back of the head — no bare head, no lone hat → unused; the head part is cut from coachman_a (same scale and light as the body). Raw not kept. No retry."
+  },
+  {
+   "boss": "b_charon",
+   "shot": "ch_props",
+   "tool": "image_to_image",
+   "generationId": "AahCUAOMQEEVWr0HXUY1YPAH5lCo_R33Fp2IMRRWP4dVqemtzBiQZ6PEne3AjqyHuLd19nP5",
+   "aspect": "1:1",
+   "imageCount": 1,
+   "credits": 2,
+   "refs": "portrait",
+   "decision": "#1 kept → raw/b_charon/props_a: teal lantern (coach hook + phase-2 hand; deep variant when out), black coffin (roof roofN + thrown coffins + wreck), spoked wheel (all four wheels, far ones deep), silver coin, whip handle (whipH), black burnt ledger, gold-framed black panel (debris debA). Open book and scroll unused."
+  }
+ ],
+ "creditsAtEnd": 5021,
+ "total": {
+  "images": 11,
+  "credits": 22,
+  "retries": 0,
+  "note": "plan 11 images / 22 credits (spec §2.2) — ch_seated swapped one-for-one for ch_limbs. Horses are the vector mount rig (no ch_horse spare used)."
+ }
+}
