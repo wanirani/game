@@ -151,7 +151,7 @@ export class AchievementsScene extends Scene {
     this.defById = new Map(defs.map((d) => [d.id, d]));
     const plain = () => defs.map((def) => ({ def, got: null, cur: 0, need: def.cond?.n ?? 1, bar: false, isNew: false, claimable: false, hiddenLocked: !!def.hidden }));
     let rows = null;
-    this.err = !A;
+    this.err = !A; this.noEngine = !A;
     if (A) rows = safe(() => A.list('all'), null);
     if (!Array.isArray(rows)) { rows = plain(); this.err = true; }
     const ci = new Map(cats.map((c, i) => [c.id, i]));
@@ -270,7 +270,7 @@ export class AchievementsScene extends Scene {
     for (const [id, t0] of this.flash) if (this.t - t0 > 2.6) this.flash.delete(id);
     // 기록이 바뀌었으면(엔진 rev — 동기화·다른 화면의 달성) 또는 엔진이 늦게 왔으면 다시 읽는다
     this.pollT -= dt;
-    if (this.pollT <= 0) { this.pollT = 0.5; if ((this.err && g.ach) || (g.ach && g.ach.rev !== this.rev)) this.refresh(); }
+    if (this.pollT <= 0) { this.pollT = 0.5; if ((this.noEngine && g.ach) || (g.ach && !this.noEngine && g.ach.rev !== this.rev)) this.refresh(); }
     if ((g.meta?.ach?.deco ?? 'none') !== this.decoKey) this.makeAmb();
     const L = this._L;
     if (this.modal) {

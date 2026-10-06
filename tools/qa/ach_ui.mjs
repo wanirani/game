@@ -407,6 +407,9 @@ async function U4(C) {
         if (inter(p, q) && !contains(p, q) && !contains(q, p)) ov++;
       }
       C.check('U4', `${vp} ${name}: primary ≥ 44 · list ≥ 36 CSS px, 겹침 0 (${a.n ?? 0}곳)`, !a.error && a.ok && ov === 0 && (a.n ?? 0) > 0, `${describeAudit(a)} · 겹침 ${ov}`);
+      // 읽기 (platform P-03, platform_view 의 기준): 글자 p10 ≥ 9 · 중앙값 ≥ 10 CSS px
+      const T = a.text ?? {};
+      C.check('U4', `${vp} ${name}: 글자 p10 ${T.p10} ≥ 9 · 중앙값 ${T.median} ≥ 10 CSS px`, T.n > 0 && T.p10 >= 9 && T.median >= 10, `min ${T.min} · ${(T.smallest ?? []).join(', ')}`);
       if (name === 'list') await C.shot(s, `${vp}_taps_list`);
     }
     await C.close(s);

@@ -534,11 +534,14 @@ ACH-CORE 와 ACH-UI 는 동시에 시작한다 (각 1.5–2시간). UI 는 `game
 
 ## 14. 통합 기록 (ACH-UI 가 마지막에, CORE 결과는 요청 파일로)
 
+기록 2026-10-06 (ACH-UI). CORE 줄은 `/tmp/claude-0/plan/ach_requests.md` 의 ACH-CORE 보고를 옮겼다.
+
 | 항목 | 결과 |
 |---|---|
-| 엔진·데이터 | (ACH-CORE) |
-| 저장·클라우드·서버 | (ACH-CORE) |
-| 화면·알림·타이틀·메뉴·순위표 | (ACH-UI) |
-| 시험 | (둘 다 — 명령과 숫자) |
-| 글꼴 | (`--check` 결과, 새 글자) |
-| 예산 | (APK lo 그림 단계 바이트) |
+| 엔진·데이터 | (ACH-CORE) 67개 · 1,630점 · §3.3 지표 모두 · `prog` 키 25 (§3.3 목록). 소급: 합성 '2부 완주' 슬롯 → 23개를 `'retro'` 이벤트 **한 번**, 고정 세이브 `save_v1`(1부) → 15개 (실제 Chromium 부팅에서도 `game.ach` · 15개 저장 · 페이지 오류 0). 처치 경로 2.5 µs/처치, 처치 1,000번에 `saveMeta` 1번(달성할 때만). API(§3.2)에 `rev`(바뀔 때마다 +1) · `status().claimed` · `reward(id)` 를 더했다 |
+| 저장·클라우드·서버 | (ACH-CORE) `mergeMeta`/`cleanMeta` 가 `meta.ach` 를 싣는다(`mergeAch`/`cleanAch`) · `ACH_LIMITS` = `config.mts ACH` (C1) · C6 퍼징 2,000 → 정리한 메타를 서버 `isValidMeta` 가 거절 0, 클라이언트·서버 `isValidAch` 2,000/2,000 일치 · 서버 이명 화이트리스트 `TITLE_IDS` 17 (`finishRun` → `entryOf ti`, `placeEntry` 가 별명처럼 이명을 새로, `pubEntry title`), `Rec` 그대로 |
+| 화면·알림·타이틀·메뉴·순위표 | (ACH-UI) **장면** `achievements` (`front/achievements.js` + 벡터 메달 `front/ach_medal.js`, `reg_front.js` 등록): 넓은 배치(desk·tablet 960×540 UI) = 분류 칸 9줄 + '이명 · 장식'·'보상 받기 (k)' + 카드 목록(66) · 좁은 배치(phone1 1010×467 · phone2 888×432 · 640×360 CSS 768×432 UI) = 칩 띠(끌기·자동 이동) + 줄 목록(54) + 바닥 단추. 자세히·이명/장식 팝업, 받기(이유 한 줄), 엔진이 없으면 데이터만으로(§7.1). **알림** `game/ach_notify.js`: §6 문구·색·시간 그대로, 미루기 = 보스전·연출 장면·타이틀 인트로/PRESS START(+ 인게임 메뉴·deferToasts 장면·각성 연출), 같은 프레임 이벤트 80 ms 모아 셋 이상 한 줄, 소급 1.2초 모아 한 줄, 마을 입장 보상 안내 한 번. **타이틀** 8줄 — 메뉴 첫 줄 y0: desk 151(로고 위) · phone1 61.7 · phone2 27(로고 오른쪽), 마지막 줄 끝 510 / 436.7 / 402 (안전 영역 아래 540 / 466.7 / 432), 알림 카드(새 버전·홈 화면에 추가·APK)와 겹침 0, phone2 노치 47/47/0/21 + `safeArea 'full'` 에서도 안 → **대체안(명예의 전당 머리 단추) 쓰지 않음**. NEW: 이름 오른쪽 붉은 점 + `NEW n`. 장식 5종(`decoOf`·`decoAmbience`·`drawDecoMoon`, title.js export). **인게임 메뉴** '기록' 탭 [설정 \| 업적] (단추 높이 desk 77.3 · phone1 53.3 · phone2 50.0 CSS, 클라우드 단추와 겹침 0, ↑↓ 줄·←→ 설정↔업적). **순위표** 별명 뒤 「이명」(12 px `#e8c872`), 칸이 모자라면 이명을 줄이고(`「악몽을…」`) 그래도 안 되면 뺀다, 모르는 id 는 그리지 않음, '공개 별명' 줄 끝에 내 이명 |
+| 설계와 다른 점 (ACH-UI) | ① 좁은 배치 머리 58 · 칩 44 · 바닥 단추 44 UI px — 44 CSS px 는 터치 여유로 채우고 이웃과 9 UI px 이상 띄운다(§7.2 의 48·46·50 대신). 스크롤에 반쯤 잘린 줄·칩은 보이는 부분만, 최소 크기 이상일 때만 탭 영역 ② 배경 켄번스는 한 장면을 레이어에 굽고(휴대폰 등급 반 해상도, 장식 안개 색 포함) 움직이지 않는다 — 휴대폰 그리기 예산 ③ '지난 기록으로 달성' 은 이번 실행에서 받은 소급·클라우드 달성만 (`meta.ach` 에 경로가 없다) ④ 알림 미루기에 인게임 `menu` 를 더했다 (game.js 는 메뉴에서 토스트를 숨긴 채 시간을 흘려보내 사라진다) ⑤ 자세히 창에서 ↑↓ 로 이웃 업적을 넘겨 본다 ⑥ 넓은 배치 분류 칸은 줄 38 UI px (9줄 + 단추 + 이유 줄이 540 높이에 들어가게) |
+| 시험 | (ACH-UI) `node tools/qa/ach_ui.mjs` **101/101** U1–U10 (페이지·콘솔 오류 0), `node tools/test_achievements.mjs --ui` **220/220** (CORE 219 + UI 묶음) · 스크린숏 `/tmp/claude-0/ach_ui/{desk,phone1,phone2}_{title,list,detail,titles}.png` 외 · phone1(medium) 그리기 p95 목록 1.2 · 자세히 1.7 · 이명 창 2.0 ms (≤ 3), 프레임마다 새 그라디언트·캔버스 0, 10초 동안 `canvasPoolStats().free` 39 → 39 (닫으면 레이어 한 장을 돌려준다 39 → 40) · 래스터까지 넣은 값(헤드리스 소프트웨어, 정보) 목록 p95 8.4 ms vs 인게임 메뉴 기록 탭 9.0 ms · 글자 p10 9.2 · 중앙값 11.7 CSS px (platform P-03 기준 9 · 10) · `integration --only title,hub,menu,arcade,s01` 5/5 · `--mobile --only title,hub` 2/2 · `qa/platform_view --only front,stack` 26/26 · `qa/platform_menu` 39/39 · `qa/bindings` 43/43 · `qa/hook_tags` 5 통과 · 1 경고(다른 패키지의 art-boss 태그) · `npm run test:client` 11/11 · (ACH-CORE) `node tools/test_achievements.mjs` 219/219 (C1–C8) · `npm run test:online` 30/30 + 25/25 · `npm run test:api` 76/76 + 66/66 · `test_save_v2` 72/72 · `npm run test:online:client` 15/15 · `npm run test:telemetry` 15/15 · `test_part2 --static` 23/23 |
+| 글꼴 | `python3 tools/fonts/build_fonts.py --check` 통과 — 새 글자 0 (게임 글자 1,327자 그대로), 첫 화면 글꼴 470.1 KB / 500 |
+| 예산 | (ACH-CORE, UI 파일 포함 빌드) APK lo 그림 단계 47,622,074 B = **45.42 MiB** (상한 45.8) |
