@@ -105,11 +105,11 @@ test('게임 데이터 사본(gamedata.mts)이 src/data·arcade.js 와 같다', 
   assert.deepEqual(Object.fromEntries(Object.entries(gd.CLASS_INFO).map(([k, v]) => [k, [...v]])), Object.fromEntries(Object.values(CLASSES).map((c) => [c.id, [c.charId, c.tier]])));
   assert.deepEqual([...gd.DIFFICULTY_IDS], DIFFICULTIES.map((d) => d.id));
   assert.deepEqual({ ...gd.STAGE_LEVELS }, Object.fromEntries(STAGE_ORDER.map((s) => [s, STAGES[s].level])));
-  assert.deepEqual([...gd.STAGE_IDS], Array.from({ length: 23 }, (_, i) => `s${String(i + 1).padStart(2, '0')}`), '명세: s01~s20 + 외전 s21 · s22 · s23');
+  assert.deepEqual([...gd.STAGE_IDS], Array.from({ length: 24 }, (_, i) => `s${String(i + 1).padStart(2, '0')}`), '명세: s01~s20 + 외전 s21 · s22 · s23 · s24');
   assert.deepEqual([...gd.P2_STAGES], [...STAGE_ORDER_P2]);
-  // 외전 (docs/specs/ex_s21.md · ex_s22.md · ex_s23.md): 연습 보드는 받고, 일일 도전 목록에서는 빠진다 (s01~s20 그대로 → 이미 정해진 날짜의 도전이 바뀌지 않는다)
+  // 외전 (docs/specs/ex_s21.md · ex_s22.md · ex_s23.md · ex_s24.md): 연습 보드는 받고, 일일 도전 목록에서는 빠진다 (s01~s20 그대로 → 이미 정해진 날짜의 도전이 바뀌지 않는다)
   assert.deepEqual([...gd.SIDE_STAGES], [...SIDE_STAGES]);
-  assert.deepEqual([...gd.SIDE_STAGES], ['s21', 's22', 's23'], '외전 셋');
+  assert.deepEqual([...gd.SIDE_STAGES], ['s21', 's22', 's23', 's24'], '외전 넷');
   assert.deepEqual([...gd.DAILY_STAGE_IDS], Array.from({ length: 20 }, (_, i) => `s${String(i + 1).padStart(2, '0')}`), '일일 도전: 외전 제외');
   assert.deepEqual([...cfg.CHARACTER_IDS].sort(), Object.keys(CHARACTERS).sort());
   // arcade.js 는 브라우저 모듈(캔버스·오디오)을 끌어오므로 소스에서 표를 읽는다
@@ -200,12 +200,12 @@ test('런 시작: 인증 필요, 보드 ID 검사, {run, seed(32비트), ts}, �
   const u = await signup();
   const today = kst();
   const old61 = kst(T - 61 * DAY), old60 = kst(T - 60 * DAY), tomorrow = kst(T + DAY);
-  const bad = ['bossrush:11:normal', 'bossrush:01:normal', 'bossrush:-1:normal', 'bossrush:0:veryhard', 'bossrush:0', 'survival:Normal', 'survival:', 'practice:s24:normal',
+  const bad = ['bossrush:13:normal', 'bossrush:01:normal', 'bossrush:-1:normal', 'bossrush:0:veryhard', 'bossrush:0', 'survival:Normal', 'survival:', 'practice:s25:normal',
     'practice:s00:hard', 'practice:s1:hard', 'practice:s01', 'daily:20261301', 'daily:20260230', `daily:${tomorrow}`, `daily:${old61}`, 'daily:2026105', 'story:s01', 'x', '', 'survival:normal ',
     'BOSSRUSH:0:normal', 7, null, undefined, 'tower:Normal', 'tower:', 'tower', 'tower:veryhard', 'tower:normal:1', 'tower:normal '];
   for (const b of bad) expectErr(await call('POST', '/api/runs', { body: { board: b }, token: u.token }), 400, 'invalid_board');
   const seeds = new Set();
-  for (const b of ['bossrush:0:easy', 'bossrush:6:inferno', 'bossrush:8:hard', 'bossrush:10:hard', 'survival:nightmare', 'practice:s20:hard', 'practice:s21:normal', 'practice:s22:normal', 'practice:s23:normal', `daily:${old60}`, 'tower:normal']) {   // 6 · 8 · 10 = 외전 코스 · s21 · s22 · s23 = 외전
+  for (const b of ['bossrush:0:easy', 'bossrush:6:inferno', 'bossrush:8:hard', 'bossrush:10:hard', 'bossrush:12:hard', 'survival:nightmare', 'practice:s20:hard', 'practice:s21:normal', 'practice:s22:normal', 'practice:s23:normal', 'practice:s24:normal', `daily:${old60}`, 'tower:normal']) {   // 6 · 8 · 10 · 12 = 외전 코스 · s21 · s22 · s23 · s24 = 외전
     const r = expectOk(await call('POST', '/api/runs', { body: { board: b }, token: u.token }));
     assert.match(r.run, /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{43}$/);
     assert.ok(Number.isInteger(r.seed) && r.seed >= 0 && r.seed <= 0xffffffff, String(r.seed));
@@ -213,7 +213,7 @@ test('런 시작: 인증 필요, 보드 ID 검사, {run, seed(32비트), ts}, �
     assert.ok(!Buffer.from(r.run.split('.')[0], 'base64url').toString().includes(await uidOf(u.id)), '토큰에 uid 가 그대로 들어가지 않는다');
     seeds.add(r.seed);
   }
-  assert.equal(seeds.size, 11);
+  assert.equal(seeds.size, 13);
   const d = expectOk(await call('GET', '/api/daily'));
   const r1 = expectOk(await call('POST', '/api/runs', { body: { board: `daily:${today}` }, token: u.token }));
   const r2 = expectOk(await call('POST', '/api/runs', { body: { board: d.board }, token: u.token }));
@@ -567,9 +567,10 @@ test('순위표: 공개 캐시(public, max-age=30, Vary) / 인증하면 no-store
   assert.equal(expectOk(await call('GET', '/api/boards/bossrush%3A0%3Ahard')).total, 4);
   const empty = expectOk(await board('practice:s20:inferno'));
   assert.deepEqual([empty.total, empty.entries], [0, []]);
-  for (const bad of ['practice:s24:normal', 'bossrush:11:normal', `daily:${kst(T + DAY)}`, 'nope', '%E0%A4%A']) expectErr(await call('GET', `/api/boards/${bad}`), 400, 'invalid_board');
-  assert.deepEqual([expectOk(await board('practice:s21:hard')).total, expectOk(await board('practice:s22:hard')).total, expectOk(await board('practice:s23:hard')).total, expectOk(await board('bossrush:5:normal')).total, expectOk(await board('bossrush:8:normal')).total, expectOk(await board('bossrush:9:normal')).total],
-    [0, 0, 0, 0, 0, 0], '외전 연습 보드 · 외전 보스 러시 코스 보드');
+  for (const bad of ['practice:s25:normal', 'bossrush:13:normal', `daily:${kst(T + DAY)}`, 'nope', '%E0%A4%A']) expectErr(await call('GET', `/api/boards/${bad}`), 400, 'invalid_board');
+  assert.deepEqual([expectOk(await board('practice:s21:hard')).total, expectOk(await board('practice:s22:hard')).total, expectOk(await board('practice:s23:hard')).total, expectOk(await board('practice:s24:hard')).total,
+    expectOk(await board('bossrush:5:normal')).total, expectOk(await board('bossrush:8:normal')).total, expectOk(await board('bossrush:9:normal')).total, expectOk(await board('bossrush:11:normal')).total],
+    [0, 0, 0, 0, 0, 0, 0, 0], '외전 연습 보드 · 외전 보스 러시 코스 보드');
   // 오래된 일일 도전은 읽을 수 있다 (비어 있음)
   assert.equal(expectOk(await board(`daily:${kst(T - 90 * DAY)}`)).total, 0);
   // 기본 limit 50

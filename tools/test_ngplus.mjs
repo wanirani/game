@@ -299,7 +299,7 @@ if (want('N5')) {
     const bs = enemyStats({ hp: 900, atk: 20, def: 5, exp: 400 }, r.stage.level, { ...r.diff, enemyHp: r.diff.bossHp ?? r.diff.enemyHp }, false);
     if (![es.maxHp, es.atk, es.def, es.exp, bs.maxHp, bs.atk].every(Number.isFinite)) bad.push(`${id}/${n}/${D.id} enemyStats 유한 아님`);
   }
-  ok(n5 === STORY.length * 15 && STORY.length === 23, `사례 ${n5} (스토리 스테이지 ${STORY.length})`);   // 23 = s01–s20 + 외전 s21 · s22 · s23 (EX3-INTEG, ex_s23.md §5.4)
+  ok(n5 === STORY.length * 15 && STORY.length === 24, `사례 ${n5} (스토리 스테이지 ${STORY.length})`);   // 24 = s01–s20 + 외전 s21 · s22 · s23 · s24 (EX4-INTEG, ex_s24.md §5.4)
   ok(!bad.length, `§3.1 공식 · 사본 · 나머지 배율 그대로 · bossPatterns · enemyStats 유한 (${bad.slice(0, 6).join(' | ')})`);
   ok(Object.entries(STAGES).every(([k, v]) => v.level === levels0[k] && !('ngFrom' in v)), 'STAGES 의 level 그대로 (ngFrom 없음)');
   const hell = NG.ngWorld(STAGES.s01, getDiff('inferno'), 3), hell20 = NG.ngWorld(STAGES.s20, getDiff('inferno'), 3);

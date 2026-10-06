@@ -2,6 +2,7 @@
 //
 //  GUARDIAN_DRAW_B[id] = (ctx, g, world, opts) → true   틱톡 gd_clock · 모르스 gd_reaper · 미라 gd_mirra · 루멘 gd_lumen · 모모 gd_momo
 //    + 외전 무닌 gd_munin (docs/specs/ex_s22.md §3 — EX2-MAP; 채색 퍼핏 없이 이 벡터 그림이 게임 그림이다)
+//    + 외전 베스퍼 gd_vesper (docs/specs/ex_s24.md §3 — EX4-INTEG; 무닌처럼 채색 퍼핏 없이 이 벡터 그림이 게임 그림이다)
 //    절차(벡터 HD) 그림. render/guardians.js drawGuardian 이 채색 퍼핏(src/render/painted/companions/gd_*.js, reg/cmp-guard-art-b.js)이
 //    없거나 준비 전·꺼짐(?painted=0 · __paintedOff · settings.painted=false)일 때 save/restore 로 감싸 부른다.
 //    규약은 guardians.js 와 같다: ctx 는 월드(또는 메뉴) 좌표, g.cx/g.bottom 이 발 중앙, 이 함수가 facing 반전을 건다. world 는 null 일 수 있다(메뉴).
@@ -16,6 +17,7 @@
 //    모르스 blink 0.1초(연기로 흩어짐) → attack (0.1 에 낫질) · skill 0.75초 — 0~0.18 들어 올림, 0.18~0.54 크게 휘두름(fxScytheSweep wind/sweep 과 같음)
 //    미라 attack 0.3초 — 0.08 에 거울 번쩍 · skill 1.25초 거울을 높이 · 모모 attack(bite) 0.34초 — 0.14 에 코로 덥석 · skill 1.25초 들이마심 → 꺼억
 //    무닌 attack/assist(dive) 0.14 솟음('move') → swoop 0.28 내리꽂힘('attack', 75% 에 타격) · skill 0.5초(GENERIC skillPose) — 0~0.15 부리를 벌리고 날개 활짝
+//    베스퍼 attack(dive) 0.14 솟음('move') → swoop 0.24 내리꽂힘 · assist(bite) 0.34초 — 0.14 에 덥석 · skill 0.5초(GENERIC skillPose) · emote 1.0초 (앉았으면 거꾸로 매달림)
 // 규칙: 그리기는 게임 상태를 바꾸지 않는다, Math.random 금지 (결정적 해시), 그레이디언트·캔버스는 굽기 때만, 품질 world.fx.quality,
 //   모바일 예산 (수호신 한 마리 ≤ 0.15 ms, MASTER_PLAN §5.2).
 // 순환 import (guardians.js ↔ 이 파일): guardians.js 에서 가져오는 것은 함수 선언(호이스팅)뿐이고 모두 함수 안에서만 부른다.
@@ -1301,12 +1303,256 @@ function drawMunin(ctx, g, world, opts) {
   return true;
 }
 
-/** 2부 수호신 다섯 + 외전 무닌의 절차 그림 (render/guardians.js drawGuardian 이 위임) */
-export const GUARDIAN_DRAW_B = { gd_clock: drawClock, gd_reaper: drawReaper, gd_mirra: drawMirra, gd_lumen: drawLumen, gd_momo: drawMomo, gd_munin: drawMunin };
+// ═════════════════════════ 베스퍼 (장미 향 나는 박쥐, 외전 docs/specs/ex_s24.md §3) ═════════════════════════
+// 카밀라의 편지 박쥐: 검은 털 몸 · 진홍 날개막 · 한쪽(가까운) 귀의 빨간 리본 · 작은 송곳니 · 붉은 눈.
+// 무닌(drawMunin)의 구운 부위 구조를 박쥐로 옮겼다: 날 때 몸(body) · 앉을 때 몸(perched) · 날개막 두 틀(펼침 wingA · 반쯤 접음 wingB, 먼 날개 wingA2·wingB2) +
+// 머리 둘(다문 입 head · 벌린 입 headO)을 따로 구워 날갯짓·고개·물기를 돌려 그린다. 오른쪽을 보는 옆모습, 발 원점, 몸 중심 (0,-9).
+//   perch(어깨) = 날개를 망토처럼 접고 앉음 · idle/move = 날갯짓(두 틀 번갈아) · attack(급강하) = 날개를 접고 머리부터 내리꽂힘 · assist(물기) = 앞으로 덤비며 입을 벌림 ·
+//   skill = 날개 활짝 + 입 벌림 + 작은 박쥐 떼가 돌고 장미 꽃잎이 흩날린다 · emote = 앉아 있으면 어깨 밑에 거꾸로 매달려 흔들림, 날고 있으면 공중제비 ·
+//   각성(유대 4) = 장미 빛 기운 · 날개막 끝 장미 테 · 장미 꽃잎이 뒤로 흩날린다
+const BAT_FUR = [[0, '#6a3446'], [0.4, '#2a1420'], [0.8, '#140a10'], [1, '#08040a']];   // 검은 털 + 장밋빛 반사
+const V_NECK = [4.0, -1.4], V_NECKP = [1.0, -4.0];   // 머리 피벗: 날 때 · 앉을 때 (몸 중심 기준)
+const V_SH = [-0.4, -1.6];                         // 날개 어깨 (몸 중심 기준)
+const ROSE = ['#ff6a8a', '#c0143a', '#ff9ab0'];
+/** 날개막 (어깨 원점, 깃끝이 -x 쪽): 팔뚝 → 손목 → 손가락 끝 넷, 손가락 사이는 안으로 휜 막 */
+function batWing(x, wrist, tips, back) {
+  const pts = [[0, -0.5], wrist, ...tips, back];
+  // 막: 손가락 끝 사이를 손목 쪽으로 휘게 (가리비 모양)
+  x.beginPath(); x.moveTo(0, -0.5); x.lineTo(wrist[0], wrist[1] - 0.3);
+  x.lineTo(tips[0][0], tips[0][1]);
+  for (let i = 1; i < pts.length - 2; i++) {
+    const a = pts[i + 1], b = pts[i + 2], mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+    x.quadraticCurveTo(lerp(mx, wrist[0], 0.32), lerp(my, wrist[1], 0.32), b[0], b[1]);
+  }
+  x.quadraticCurveTo(lerp(back[0], wrist[0], 0.1) - 1, back[1] + 0.8, 0, 1.4); x.closePath();
+  x.fillStyle = lin(x, wrist[0], wrist[1], tips[2][0], tips[2][1] + 3, [[0, '#4a0614'], [0.45, '#a8102e'], [0.85, '#d81e44'], [1, '#ff5a7a']]); x.fill();
+  x.strokeStyle = OUT; x.lineWidth = 0.32; x.stroke();
+  // 막의 실핏줄 (밝은 선)
+  x.strokeStyle = 'rgba(255,140,160,0.35)'; x.lineWidth = 0.16; x.beginPath();
+  for (let i = 0; i < tips.length - 1; i++) {
+    const a = tips[i], b = tips[i + 1];
+    x.moveTo(lerp(wrist[0], a[0], 0.35), lerp(wrist[1], a[1], 0.35)); x.quadraticCurveTo(lerp(a[0], b[0], 0.5) * 0.8 + wrist[0] * 0.2, lerp(a[1], b[1], 0.5) * 0.8 + wrist[1] * 0.2, lerp(wrist[0], b[0], 0.6), lerp(wrist[1], b[1], 0.6));
+  }
+  x.stroke();
+  // 뼈: 팔뚝 · 손가락 넷 · 엄지 갈고리
+  limb(x, [[0, -0.4], wrist], 0.75, '#2a121c', OUT, 0.35);
+  for (const tp of tips) limb(x, [wrist, tp], 0.36, '#1e0c14', 'rgba(12,6,10,0.7)', 0.22);
+  x.fillStyle = '#e8d8dc'; x.beginPath(); x.moveTo(wrist[0] + 0.2, wrist[1] - 0.4); x.quadraticCurveTo(wrist[0] + 0.9, wrist[1] - 1.8, wrist[0] + 1.7, wrist[1] - 1.4);
+  x.quadraticCurveTo(wrist[0] + 0.9, wrist[1] - 1.0, wrist[0] + 0.6, wrist[1] + 0.1); x.closePath(); x.fill();
+}
+/** 머리 (목 피벗 원점): 둥근 머리 · 뾰족한 주둥이 · 큰 귀 둘(가까운 귀에 빨간 리본) · 붉은 눈 · 작은 송곳니. open = 입을 벌린 틀 */
+function batHead(x, open) {
+  // 먼 귀 (어둡게)
+  x.fillStyle = '#1a0a12'; x.beginPath(); x.moveTo(-0.9, -2.6); x.quadraticCurveTo(-2.4, -6.4, -2.2, -8.0); x.quadraticCurveTo(0.2, -5.6, 1.0, -3.2); x.closePath(); x.fill();
+  x.strokeStyle = OUT; x.lineWidth = 0.28; x.stroke();
+  // 목 털
+  x.fillStyle = rad(x, -0.2, 0.2, 0.3, 3.0, BAT_FUR, -0.8, -1);
+  x.beginPath(); x.ellipse(-0.4, 0.4, 2.4, 2.1, 0, 0, TAU); x.fill();
+  // 머리
+  x.fillStyle = rad(x, 1.3, -1.2, 0.3, 3.2, BAT_FUR, 0.6, -2.6);
+  x.beginPath(); x.arc(1.3, -1.2, 2.75, 0, TAU); x.fill();
+  x.strokeStyle = OUT; x.lineWidth = 0.34; x.beginPath(); x.arc(1.3, -1.2, 2.75, -2.6, 1.2); x.stroke();
+  // 아래턱 (벌리면 아래로 젖혀지고 입속이 보인다)
+  if (open) {
+    x.fillStyle = '#5a0a18'; x.beginPath(); x.moveTo(2.6, -0.2); x.lineTo(5.6, -0.6); x.lineTo(4.4, 2.2); x.closePath(); x.fill();
+    x.fillStyle = '#2a1018'; x.beginPath(); x.moveTo(2.4, 0.2); x.quadraticCurveTo(3.8, 2.4, 4.8, 2.4); x.quadraticCurveTo(4.0, 1.2, 2.8, 0.0); x.closePath(); x.fill();
+    x.strokeStyle = OUT; x.lineWidth = 0.24; x.stroke();
+    x.fillStyle = '#fff6f4';   // 송곳니 위·아래
+    x.beginPath(); x.moveTo(4.2, -0.6); x.lineTo(4.55, 1.0); x.lineTo(4.9, -0.7); x.closePath(); x.fill();
+    x.beginPath(); x.moveTo(3.5, 1.9); x.lineTo(3.75, 0.9); x.lineTo(4.05, 2.0); x.closePath(); x.fill();
+  }
+  // 주둥이 (뾰족) · 코
+  x.fillStyle = lin(x, 2.6, -2.6, 5.8, -0.2, [[0, '#3a1a26'], [0.6, '#24101a'], [1, '#140810']]);
+  x.beginPath(); x.moveTo(2.6, -2.6); x.quadraticCurveTo(4.6, -2.4, 5.9, -1.0); x.quadraticCurveTo(5.4, open ? -0.5 : 0.2, 3.0, open ? -0.3 : 0.6); x.closePath(); x.fill();
+  x.strokeStyle = OUT; x.lineWidth = 0.28; x.stroke();
+  x.fillStyle = '#5a2a38'; x.beginPath(); x.ellipse(5.5, -1.15, 0.55, 0.42, 0.4, 0, TAU); x.fill();
+  if (!open) {   // 다문 입: 송곳니 끝만 살짝
+    x.fillStyle = '#fff6f4';
+    x.beginPath(); x.moveTo(4.1, 0.15); x.lineTo(4.35, 1.05); x.lineTo(4.65, 0.05); x.closePath(); x.fill();
+    x.beginPath(); x.moveTo(3.3, 0.45); x.lineTo(3.5, 1.15); x.lineTo(3.75, 0.4); x.closePath(); x.fill();
+  }
+  // 가까운 귀 (안쪽 분홍)
+  x.fillStyle = rad(x, 0.8, -5, 0.3, 4, [[0, '#4a2232'], [1, '#1a0a12']]);
+  x.beginPath(); x.moveTo(-0.2, -3.0); x.quadraticCurveTo(-0.6, -7.2, 0.6, -9.0); x.quadraticCurveTo(2.4, -6.4, 2.9, -3.4); x.closePath(); x.fill();
+  x.strokeStyle = OUT; x.lineWidth = 0.3; x.stroke();
+  x.fillStyle = '#b85068'; x.beginPath(); x.moveTo(0.5, -3.6); x.quadraticCurveTo(0.3, -6.6, 0.75, -7.6); x.quadraticCurveTo(1.9, -5.8, 2.2, -3.8); x.closePath(); x.fill();
+  // 빨간 리본 (가까운 귀 허리): 고리 둘 · 매듭 · 늘어진 끝 둘
+  x.save(); x.translate(0.55, -6.3); x.rotate(-0.55); x.scale(0.72, 0.72);
+  x.fillStyle = '#c0102c';
+  x.beginPath(); x.moveTo(0, 0); x.lineTo(-1.3, 2.2); x.lineTo(-0.6, 2.0); x.lineTo(-0.1, 2.6); x.closePath(); x.fill();
+  x.beginPath(); x.moveTo(0, 0); x.lineTo(0.9, 2.3); x.lineTo(1.3, 1.8); x.lineTo(1.7, 2.3); x.closePath(); x.fill();
+  for (const sx of [-1, 1]) {
+    x.beginPath(); x.moveTo(0, 0); x.bezierCurveTo(sx * 0.6, -1.5, sx * 2.4, -1.4, sx * 2.0, 0.1); x.bezierCurveTo(sx * 1.6, 0.9, sx * 0.6, 0.6, 0, 0); x.closePath();
+    x.fillStyle = lin(x, 0, -1.4, 0, 0.8, [[0, '#ff4a62'], [1, '#a00c24']]); x.fill();
+    x.strokeStyle = '#4a0612'; x.lineWidth = 0.18; x.stroke();
+  }
+  x.fillStyle = '#ff8090'; x.beginPath(); x.ellipse(-1.1, -0.7, 0.5, 0.22, -0.4, 0, TAU); x.ellipse(1.0, -0.8, 0.5, 0.22, 0.4, 0, TAU); x.fill();
+  x.fillStyle = '#e01c3a'; x.beginPath(); x.ellipse(0, 0, 0.55, 0.5, 0, 0, TAU); x.fill(); x.strokeStyle = '#4a0612'; x.lineWidth = 0.16; x.stroke();
+  x.restore();
+  // 눈: 붉은 눈 + 하얀 반짝
+  x.fillStyle = '#ff2030'; x.beginPath(); x.arc(2.5, -1.5, 0.72, 0, TAU); x.fill();
+  x.fillStyle = '#3a0408'; x.beginPath(); x.ellipse(2.62, -1.5, 0.24, 0.5, 0, 0, TAU); x.fill();
+  x.fillStyle = '#ffffff'; x.beginPath(); x.arc(2.25, -1.8, 0.2, 0, TAU); x.fill();
+  // 머리 털결
+  x.strokeStyle = 'rgba(200,120,150,0.35)'; x.lineWidth = 0.18; x.beginPath(); x.arc(1.0, -1.0, 2.1, -2.6, -1.4); x.stroke();
+}
+function vesperParts() {
+  return cached('vesper', () => {
+    const head = bake(-3.2, -9.6, 6.4, 3.0, (x) => batHead(x, false));
+    const headO = bake(-3.2, -9.6, 6.4, 3.0, (x) => batHead(x, true));
+    // 날 때 몸 (몸 중심 원점, 목 = V_NECK, 어깨 = V_SH): 꼬리막 · 뒷다리(발톱) · 털 몸통
+    const body = bake(-9, -5.5, 6.5, 6.5, (x) => {
+      x.fillStyle = '#3a0a18'; x.beginPath(); x.moveTo(-3.0, 1.4); x.quadraticCurveTo(-6.8, 2.2, -8.0, 4.4); x.quadraticCurveTo(-5.6, 3.6, -3.2, 3.4); x.closePath(); x.fill();
+      x.strokeStyle = OUT; x.lineWidth = 0.26; x.stroke();
+      for (const [ly, c] of [[1.5, '#140a10'], [2.3, '#24101a']]) {
+        limb(x, [[-2.4, ly], [-5.2, ly + 1.6], [-7.2, ly + 1.9]], 0.55, c, OUT, 0.3);
+        x.strokeStyle = '#d8c8cc'; x.lineWidth = 0.22; x.beginPath(); x.moveTo(-7.2, ly + 1.9); x.lineTo(-7.9, ly + 1.3); x.moveTo(-7.2, ly + 1.9); x.lineTo(-8.0, ly + 2.2); x.stroke();
+      }
+      x.fillStyle = rad(x, 0.2, -1.8, 0.4, 6.2, BAT_FUR);
+      x.beginPath(); x.ellipse(0, 0.2, 4.8, 3.1, -0.08, 0, TAU); x.fill();
+      x.strokeStyle = OUT; x.lineWidth = 0.36; x.stroke();
+      // 털결 (등 · 가슴의 짧은 털)
+      x.strokeStyle = 'rgba(190,110,140,0.4)'; x.lineWidth = 0.18; x.beginPath();
+      for (let i = 0; i < 6; i++) { const px = -3.4 + i * 1.3, py = -2.2 + Math.abs(i - 2.5) * 0.25; x.moveTo(px, py); x.lineTo(px - 0.7, py + 0.6); }
+      x.stroke();
+      x.fillStyle = 'rgba(110,50,70,0.55)'; x.beginPath(); x.ellipse(1.4, 1.6, 2.4, 1.0, -0.1, 0, TAU); x.fill();
+    });
+    // 앉은 몸 (몸 중심 원점, 발 = (0,9), 목 = V_NECKP): 날개를 망토처럼 접어 몸을 감싼다 (가장자리에 진홍 안감)
+    const perched = bake(-6, -6.5, 6, 10, (x) => {
+      for (const [lx, c] of [[-0.8, '#140a10'], [0.9, '#24101a']]) {
+        limb(x, [[lx, 5.6], [lx, 8.8]], 0.6, c, OUT, 0.3);
+        x.strokeStyle = '#d8c8cc'; x.lineWidth = 0.22; x.beginPath(); x.moveTo(lx, 8.8); x.lineTo(lx + 1.0, 9.2); x.moveTo(lx, 8.8); x.lineTo(lx - 0.8, 9.3); x.stroke();
+      }
+      x.fillStyle = rad(x, 0.8, -1.6, 0.4, 7, BAT_FUR, 0, -2.4);
+      x.beginPath(); x.ellipse(0.2, 1.4, 4.3, 4.6, 0.1, 0, TAU); x.fill();
+      x.strokeStyle = OUT; x.lineWidth = 0.36; x.stroke();
+      x.fillStyle = 'rgba(110,50,70,0.5)'; x.beginPath(); x.ellipse(2.0, 2.0, 1.5, 2.8, 0.15, 0, TAU); x.fill();   // 가슴 털
+      // 접은 날개 (어깨에서 발치까지 망토처럼 몸을 감싼다) · 진홍 안감 · 손목 갈고리
+      x.fillStyle = lin(x, 2, -4, -3, 7, [[0, '#3a1420'], [0.5, '#1c0a12'], [1, '#0c0408']]);
+      x.beginPath(); x.moveTo(1.6, -3.6); x.bezierCurveTo(-2.4, -4.4, -5.6, 0.6, -4.4, 6.8);
+      x.quadraticCurveTo(-2.2, 7.8, 0.2, 6.9); x.bezierCurveTo(-1.0, 3.6, 0.4, -0.2, 2.6, -1.6); x.closePath(); x.fill();
+      x.strokeStyle = OUT; x.lineWidth = 0.32; x.stroke();
+      x.strokeStyle = '#a8102e'; x.lineWidth = 0.45; x.beginPath(); x.moveTo(0.2, 6.7); x.bezierCurveTo(-0.9, 3.6, 0.5, -0.1, 2.5, -1.4); x.stroke();
+      x.strokeStyle = 'rgba(255,120,150,0.4)'; x.lineWidth = 0.16; x.beginPath();
+      for (let i = 0; i < 3; i++) { x.moveTo(1.0 - i * 1.0, -2.8 + i * 0.5); x.quadraticCurveTo(-3.2 - i * 0.2, 0.2 + i * 1.6, -3.4 + i * 0.9, 6.0); }
+      x.stroke();
+      x.fillStyle = '#e8d8dc'; x.beginPath(); x.moveTo(1.4, -3.4); x.quadraticCurveTo(2.2, -4.8, 3.0, -4.2); x.quadraticCurveTo(2.2, -3.8, 2.0, -3.0); x.closePath(); x.fill();
+    });
+    const wingA = bake(-15.2, -9.2, 1.4, 5.0, (x) => batWing(x, [-5.6, -2.4], [[-8.8, -8.2], [-13.2, -5.0], [-14.4, -0.6], [-11.0, 3.4]], [-2.4, 3.4]));
+    const wingB = bake(-11.2, -8.6, 1.4, 4.4, (x) => batWing(x, [-4.2, -3.0], [[-5.6, -7.6], [-8.6, -6.4], [-10.2, -3.4], [-8.4, 0.8]], [-2.0, 2.8]));
+    const dark = (s) => tinted(s, 'rgba(10,2,6,1)', 0.5);
+    return { head, headO, body, perched, wingA, wingB, wingA2: dark(wingA), wingB2: dark(wingB), wingAw: tinted(wingA, '#ff6a8a', 1) };
+  });
+}
+/** 작은 박쥐 실루엣 (스킬 「박쥐 떼의 왈츠」): 원점 중심, 날개 위상 ph */
+function batMini(ctx, x, y, s, ph, f = 1) {
+  const w = Math.sin(ph);
+  ctx.save(); ctx.translate(x, y); ctx.scale(s * f, s);
+  ctx.beginPath(); ctx.moveTo(-3.4, -w * 2.2); ctx.lineTo(-2.4, 0.2 - w); ctx.lineTo(-1.6, -0.2 - w * 0.6); ctx.lineTo(-0.8, 0.6);
+  ctx.lineTo(-0.5, -0.8); ctx.lineTo(0, -0.4); ctx.lineTo(0.5, -0.8); ctx.lineTo(0.8, 0.6);
+  ctx.lineTo(1.6, -0.2 - w * 0.6); ctx.lineTo(2.4, 0.2 - w); ctx.lineTo(3.4, -w * 2.2); ctx.quadraticCurveTo(1.4, 0.8, 0, 1.4); ctx.quadraticCurveTo(-1.4, 0.8, -3.4, -w * 2.2); ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+/** 장미 꽃잎 하나 (원점 중심) */
+function petal(ctx, x, y, r, rot, col, a) {
+  if (a <= 0.01) return;
+  ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.globalAlpha *= a;
+  ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(0, -r); ctx.quadraticCurveTo(r * 0.9, -r * 0.4, 0, r); ctx.quadraticCurveTo(-r * 0.9, -r * 0.4, 0, -r); ctx.fill();
+  ctx.restore();
+}
+function drawVesper(ctx, g, world, opts) {
+  const P = vesperParts();
+  if (!P?.body) return false;
+  const s = pre(ctx, g, world, opts), t = s.t, at = s.at, an = s.an;
+  const emote = an === 'emote', perch = an === 'perch' || (!!g.perched && (an === 'idle' || emote));
+  const cast = an === 'skill', atk = an === 'attack' || an === 'assist';
+  const bite = atk && g.act?.name === 'assist';   // 협공 「목덜미 물기」(kind 'bite') — 급강하가 아니라 앞으로 덤빈다
+  const bob = perch ? 0 : Math.sin(t * 3.4 + (g.seed ?? 0)) * 1.4;
+  let tilt = perch ? 0 : clamp(s.vxf * 0.0008, -0.2, 0.3) - s.hurt * 0.3;
+  if (atk) tilt = bite ? 0.12 : 0.7;   // 급강하: 머리부터 내리꽂힌다
+  let ha = 0, open = cast || bite || (atk && at > 0.1);
+  if (cast) ha = -0.28 * easeOut(clamp(at / 0.15, 0, 1));
+  else if (perch && !emote) ha = Math.sin(t * 0.8 + (g.seed ?? 0)) > 0.86 ? -0.2 : 0;
+  else if (bite) ha = 0.18;
+  const sc = 0.55 + 0.45 * s.appear;
+  const fk = flashK(world);
+  if (s.aw) gGlow(ctx, 0, -9 + bob, 22, '#c0143a', 0.4 + 0.12 * Math.sin(t * 2.2));
+  gGlow(ctx, 0, -9 + bob, cast ? 24 : 10, '#ff6a8a', (cast ? 0.42 : 0.12) * (cast ? fk : 1));
+  const headAt = (nx, ny) => {
+    ctx.save(); ctx.translate(nx, ny); ctx.rotate(ha);
+    blit(ctx, open ? P.headO : P.head, 0, 0);
+    const blink = perch && (t % 3.7) < 0.12;
+    if (blink) { ctx.fillStyle = '#1a0a12'; ctx.fillRect(1.7, -1.9, 1.6, 0.7); }
+    else gGlow(ctx, 2.5, -1.5, cast || s.aw ? 3.4 : 1.8, '#ff2030', cast || s.aw ? 0.9 : 0.45, 0.25);
+    ctx.restore();
+  };
+  if (perch) {
+    ctx.save();
+    if (emote) {   // 어깨 밑에 거꾸로 매달려 흔들린다 (발 원점 = 어깨에 걸린 발)
+      const k = clamp(at / 1.0, 0, 1), sw = Math.sin(k * Math.PI * 3) * 0.3 * (1 - k * 0.5);
+      ctx.rotate(sw); ctx.scale(1, -1);
+    }
+    ctx.translate(0, -9);
+    if (sc !== 1) ctx.scale(sc, sc);
+    blit(ctx, P.perched, 0, 0);
+    headAt(V_NECKP[0], V_NECKP[1]);
+    ctx.restore();
+  } else {
+    ctx.translate(0, -9 + bob);
+    if (sc !== 1) ctx.scale(sc, sc);
+    if (emote) ctx.rotate(-easeIO(clamp(at / 0.8, 0, 1)) * TAU);   // 날고 있으면 공중제비 한 바퀴
+    ctx.rotate(tilt);
+    // 날갯짓: 내려칠 때 펼친 틀(wingA), 올릴 때 반쯤 접은 틀(wingB)
+    const ph = t * 12 + (g.seed ?? 0);
+    let wa = 0.45 + Math.sin(ph) * 0.85, wsy = 1, spread = Math.cos(ph) < 0;
+    if (atk) { wa = bite ? 0.9 : 0.15; wsy = bite ? 0.8 : 0.7; spread = false; }
+    else if (cast) { wa = lerp(0.6, 1.25, easeOut(clamp(at / 0.18, 0, 1))) + Math.sin(t * 18) * 0.1; spread = true; }
+    else if (Math.abs(s.vxf) > 200) { wa = 0.3 + Math.sin(ph) * 0.4; }
+    const W = spread ? P.wingA : P.wingB, W2 = spread ? P.wingA2 : P.wingB2;
+    blit(ctx, W2, V_SH[0] - 0.6, V_SH[1] - 0.4, wa + 0.35, 0.86, 0.86 * wsy);
+    blit(ctx, P.body, 0, 0);
+    headAt(V_NECK[0], V_NECK[1]);
+    blit(ctx, W, V_SH[0], V_SH[1], wa, 1, wsy);
+    if (s.aw && spread) blitAdd(ctx, P.wingAw, V_SH[0], V_SH[1], wa, 1, wsy, 0.18 + 0.08 * Math.sin(t * 5));
+    if (atk && at < 0.4) dashLines(ctx, at * 0.4, '#ff6a8a', -1);
+  }
+  // 스킬 「박쥐 떼의 왈츠」: 작은 박쥐들이 둘레를 돌고 장미 꽃잎이 흩날린다 (주위를 휩쓰는 판정은 guardian.js GENERIC — 0.5초)
+  if (cast) {
+    const k = clamp(at / 0.5, 0, 1), n = s.q > 0.6 ? 7 : 4, fade = 1 - Math.max(0, k - 0.7) / 0.3;
+    ctx.save(); ctx.rotate(-tilt);
+    ctx.fillStyle = '#140a10'; ctx.globalAlpha *= 0.9 * fade;
+    for (let i = 0; i < n; i++) {
+      const a = t * 5.5 + (i / n) * TAU, R = 10 + k * 22 + (i % 2) * 4;
+      batMini(ctx, Math.cos(a) * R, Math.sin(a) * R * 0.55 - 2, 1.0 + (i % 3) * 0.25, t * 24 + i * 1.7, Math.sin(a) > 0 ? 1 : -1);
+    }
+    const m = s.q > 0.6 ? 8 : 4;
+    for (let i = 0; i < m; i++) {
+      const a = (i / m) * TAU + i * 0.7, R = 6 + k * (24 + hsh(i) * 10);
+      petal(ctx, Math.cos(a) * R, Math.sin(a) * R * 0.6 - 2 + k * 4, 1.3 + hsh(i + 3) * 0.6, t * 4 + i, ROSE[i % 3], 0.95);
+    }
+    ctx.restore();
+  }
+  // 각성: 장미 꽃잎이 뒤로 흩날린다
+  if (s.aw && s.q > 0.5 && !perch) {
+    ctx.save(); ctx.rotate(-tilt);
+    for (let i = 0; i < 3; i++) {
+      const k = (t * 0.45 + i / 3) % 1;
+      const fx = -8 - k * 12, fy = -3 + Math.sin(k * 6 + i * 2) * 3 + k * 6;
+      petal(ctx, fx, fy, 1.5, t * 1.5 + i, ROSE[i % 3], 0.85 * (1 - k));
+      gGlow(ctx, fx, fy, 3.2 * (1 - k), '#ff6a8a', 0.5 * (1 - k));
+    }
+    ctx.restore();
+  }
+  return true;
+}
+
+/** 2부 수호신 다섯 + 외전 무닌 · 베스퍼의 절차 그림 (render/guardians.js drawGuardian 이 위임) */
+export const GUARDIAN_DRAW_B = { gd_clock: drawClock, gd_reaper: drawReaper, gd_mirra: drawMirra, gd_lumen: drawLumen, gd_momo: drawMomo, gd_munin: drawMunin, gd_vesper: drawVesper };
 
 // ───────────────────────── 원형 머리 아이콘 ─────────────────────────
 /** [초점 x, y, 원 지름에 담을 폭] (발 원점 논리 좌표) */
-const ICON_FOCUS = { gd_clock: [0.8, -25.4, 16], gd_reaper: [2.4, -29.6, 17], gd_mirra: [0.8, -24.4, 12.5], gd_lumen: [0, -26, 22], gd_momo: [7.4, -15.2, 18], gd_munin: [7.2, -16.4, 15] };
+const ICON_FOCUS = { gd_clock: [0.8, -25.4, 16], gd_reaper: [2.4, -29.6, 17], gd_mirra: [0.8, -24.4, 12.5], gd_lumen: [0, -26, 22], gd_momo: [7.4, -15.2, 18], gd_munin: [7.2, -16.4, 15], gd_vesper: [5.4, -13.6, 15] };
 const ICONS = new Map();
 function iconG(def) {
   return { id: def.id, def, anim: 'idle', animT: 0, t: 0.35, facing: 1, alpha: 1, seed: 0, vx: 0, vy: 0, cx: 0, bottom: 0, perched: false, d: { awakened: false }, hopY: () => 0 };

@@ -2,6 +2,7 @@
 // 수호신 런타임 테스트 (CMP-SYS; companions §14 C3, §4–§5, §7.4; MASTER_PLAN §1.2 · §1.14)
 //   node tools/test_guardians.mjs                A 그룹: CompanionSystem · 1부 수호신 여섯 (아리아 하티 핌 가웨인 크론 미네르바) · 허브 합류
 //                                                + 외전 무닌 (사례 munin — 미네르바의 비밀 찾기를 빌려 쓰므로 guardian.js 와 같은 A 그룹; --case munin 만 돌려도 된다)
+//                                                + 외전 베스퍼 (사례 vesper — guardian.js GUARDIAN_AI.gd_vesper: 적중 흡혈 · 스킬 회복 · 자석 오라, docs/specs/ex_s24.md §3)
 //   node tools/test_guardians.mjs --only B       B 그룹: 틱톡 · 모르스 · 미라 · 루멘 · 모모 (CMP-GUARD-AI-B 의 guardian_ai_b.js)
 //   node tools/test_guardians.mjs --only A,B     둘 다
 //   --case name[,name]   특정 사례만   --verbose   통과 항목도 자세히   --mobile   모든 사례를 휴대폰 화면(844×390, 터치)으로
@@ -514,6 +515,114 @@ await run('A', 'munin', STAGE('s01', '&room=r1&guards=gd_munin&cmplv=10'), (page
   checks.push(['그림: 아홉 상태 모두 그려짐 (잉크 ≥ 150px)', Object.values(st).every((n) => n >= 150), st]);
   checks.push(['그림: 각성 모습이 다르다 (바뀐 픽셀 ≥ 잉크 5%)', diff >= a0.n * 0.05, { diff, ink: a0.n }]);
   checks.push(['원형 아이콘 (GUARDIAN_ICON_B 자동)', icOk === true]);
+  return { info, checks };
+}));
+
+// 외전 베스퍼 (docs/specs/ex_s24.md §3): AI = 데이터 kind 'dive'·'bite' + GUARDIAN_AI.gd_vesper (제 적중 흡혈 25%·한 번에 최대 HP 1% · GENERIC 스킬 + 주인 HP 4%),
+//   오라 lifesteal·magnet (pickups.js 가 stats.magnet > 0 을 본다), 벡터 박쥐 그림 (어깨 밑에 거꾸로 매달리는 emote 포함)
+await run('A', 'vesper', STAGE('s01', '&room=r1&guards=gd_vesper&cmplv=10'), (page) => page.evaluate(async () => {
+  const T = window.__T, g0 = T.g, w = T.w, p = T.p, cs = w.companions, st = w.state;
+  const G = await import('/src/game/guardian.js'), GR = await import('/src/render/guardians.js'), GB = await import('/src/render/guardians_b.js');
+  const { GUARD_RULES } = await import('/src/data/companions.js');
+  const g = cs.guards[0], checks = [], info = {};
+  const ai = G.aiFor('gd_vesper'), generic = G.aiFor('gd_no_such');
+  checks.push(['장착: 베스퍼 하나', cs.guards.length === 1 && g?.id === 'gd_vesper', cs.guards.map((x) => x.id)]);
+  checks.push(['AI: GUARDIAN_AI.gd_vesper (onEvent · 자기 스킬) · 공격/협공은 데이터 kind dive · bite', ai === G.GUARDIAN_AI.gd_vesper && typeof ai.onEvent === 'function' && ai.skill !== generic.skill
+    && !ai.attack && !ai.assist && g.def.attack.kind === 'dive' && g.def.assist.kind === 'bite']);
+  // ① 오라: 흡혈 1 + 0.03/Lv (Lv 10 → 1.27) · 아이템 자석 1 (유대 0 — ×1.5 는 유대 2단계부터)
+  info.aura = { lifesteal: p.stats.lifesteal, magnet: p.stats.magnet };
+  checks.push(['오라가 영웅 능력치에: 아이템 자석 > 0 · 흡혈 ≥ 1.27', (p.stats.magnet ?? 0) > 0 && (p.stats.lifesteal ?? 0) >= 1.27 - 1e-6, info.aura]);
+  // ② 적중 흡혈 (합성 사건): 준 피해의 25% · 한 번에 최대 HP 1% · 주인 자신의 타격은 아니다
+  const P = g.def.passive, cap = p.stats.hp * P.cap;
+  const dHeal = (dmg, owner) => { p.hp = p.stats.hp * 0.5; const h = p.hp; ai.onEvent(g, w, 'hit', { target: null, info: { dmg }, attack: { owner } }); return p.hp - h; };
+  const s1 = dHeal(cap * 2, g), s2 = dHeal(cap * 100, g), s3 = dHeal(cap * 100, p), s4 = dHeal(0, g);
+  info.drain = { cap: +cap.toFixed(2), small: +s1.toFixed(2), big: +s2.toFixed(2), player: s3, zero: s4 };
+  checks.push(['적중 흡혈: 피해 × 25% (작은 타격)', Math.abs(s1 - cap * 2 * 0.25) < 1e-6, info.drain]);
+  checks.push(['적중 흡혈: 한 번에 최대 HP 1% 까지 (큰 타격)', Math.abs(s2 - cap) < 1e-6, info.drain]);
+  checks.push(['주인의 타격 · 피해 0 은 흡혈 없음', s3 === 0 && s4 === 0, info.drain]);
+  // ③ 급강하 (bias lowhp) — 실제 타격마다 흡혈 한 번 (heal 기록 = min(피해 × 25%, 최대 HP 1%))
+  T.clearFoes(); w.hits.length = 0;
+  p.facing = 1;
+  const za = T.spawn('zombie', 120), zb = T.spawn('zombie', 210);
+  for (const z of [za, zb]) { z.stats.maxHp = z.hp = 1e5; z.stats.atk = 0; }
+  zb.hp = zb.stats.maxHp * 0.1;
+  for (let i = 0; i < 240 && (za.harmless || zb.harmless); i++) T.step(1 / 60);
+  const pick = g.pickTarget(w, p);
+  const heals = [], heal0 = p.heal;
+  p.heal = function (a, show) { heals.push(a); return heal0.call(this, a, show); };
+  p.hp = p.stats.hp * 0.5;
+  const anims = new Set();
+  T.step(3, () => { anims.add(g.anim); if (p.hp > p.stats.hp * 0.8) p.hp = p.stats.hp * 0.5; }, 10);
+  const mh = w.hits.filter((h) => h.owner === 'gd_vesper');
+  const want = mh.map((h) => Math.min(h.dmg * P.drain, cap));
+  const matched = want.filter((x) => heals.some((a) => Math.abs(a - x) < 1e-6)).length;
+  info.dive = { pick: pick === zb ? 'weak' : pick === za ? 'near' : String(pick?.def?.id), hits: mh.length, heals: heals.length, matched, anims: [...anims] };
+  checks.push(['bias lowhp: 멀어도 체력 10% 적을 먼저 노린다', pick === zb, info.dive.pick]);
+  checks.push(['급강하로 적을 맞힘 (경직 0 · 태그 companion+guardian)', mh.length >= 1 && mh.every((h) => h.hs === 0 && h.tags.includes('guardian')), mh.slice(0, 3)]);
+  checks.push(["급강하 동작: 솟음('move') → 내리꽂힘('attack')", anims.has('attack') && anims.has('move'), [...anims]]);
+  checks.push(['실제 적중마다 흡혈 (min(피해×25%, 최대 HP 1%))', mh.length >= 1 && matched === mh.length, info.dive]);
+  // ④ 스킬 「박쥐 떼의 왈츠」 = GENERIC 휩쓸기 (r 170, 속성 dark) + 주인 HP 4%
+  T.clearFoes(); w.hits.length = 0; heals.length = 0;
+  const zc = T.spawn('zombie', 90); zc.stats.maxHp = zc.hp = 1e5; zc.stats.atk = 0;
+  T.step(0.1);
+  p.hp = p.stats.hp * 0.5;
+  const ev0 = T.events.filter((e) => e.ev === 'guardianSkill').length, hp0 = p.hp;
+  cs.debug.skill(0);
+  const sweep = w.entities.find((e) => e.kind === 'hitbox' && e.owner === g);
+  const skAnim = g.anim, skHeal = heals.slice();
+  T.step(0.3, null, 3);
+  p.heal = heal0;
+  const sh = w.hits.filter((h) => h.owner === 'gd_vesper');
+  info.skill = { box: sweep ? [Math.round(sweep.w), Math.round(sweep.h)] : null, el: sweep?.attack?.element, anim: skAnim, hits: sh.length, heal: skHeal.map((a) => +a.toFixed(1)), want: +(p.stats.hp * 0.04).toFixed(1) };
+  checks.push(['스킬 시전 (guardianSkill)', T.events.filter((e) => e.ev === 'guardianSkill').length === ev0 + 1]);
+  checks.push(['GENERIC 휩쓸기 판정 340×340 · 속성 dark · 스킬 자세', !!sweep && Math.round(sweep.w) === 340 && Math.round(sweep.h) === 340 && sweep.attack?.element === 'dark' && skAnim === 'skill', info.skill]);
+  checks.push(['스킬: 주인 HP 4% 회복 (한 번)', skHeal.filter((a) => Math.abs(a - p.stats.hp * 0.04) < 1e-6).length === 1, info.skill]);
+  checks.push(['스킬이 가까운 적을 침', sh.length >= 1, sh.length]);
+  // ⑤ 아이템 자석: 떨어진 골드(끌림 거리 0)를 320px 안에서 끌어와 줍는다 — 자석을 잠시 0 으로 하면 그대로 (대조)
+  T.clearFoes();
+  const gold0 = st.gold, m0 = p.stats.magnet;
+  p.stats.magnet = 0;
+  const pk = w.spawnPickup('gold', p.cx + 250, p.cy - 10, { amount: 7, vx: 0, vy: 0 });
+  T.step(1.0);
+  const still = { dead: !!pk.dead, gold: st.gold - gold0, dx: Math.round(pk.cx - p.cx) };
+  p.stats.magnet = m0;
+  T.step(1.5);
+  info.magnet = { off: still, on: { dead: !!pk.dead, gold: st.gold - gold0 } };
+  checks.push(['대조: 자석 0 이면 250px 밖 골드는 끌려오지 않는다', !still.dead && still.gold === 0 && still.dx > 200, still]);
+  checks.push(['베스퍼 자석: 250px 밖 골드가 끌려와 주워진다', !!pk.dead && st.gold - gold0 >= 7, info.magnet]);
+  // ⑥ 어깨 앉기: 싸움이 없고 주인이 3초 가만히 서 있으면 뒤쪽 어깨에 앉는다 → 장난(emote)은 거꾸로 매달림
+  T.clearFoes();
+  T.step(GUARD_RULES.perchIdle + 1.5, null, 15);
+  const A = g.anchor(p), dx = Math.abs(g.cx - (p.cx - (p.facing || 1) * 16)), dy = Math.abs(g.bottom - (p.bottom - p.h * 0.78));
+  info.perch = { perched: g.perched, anim: g.anim, dx: Math.round(dx), dy: Math.round(dy), anchor: [Math.round(A.x - p.cx), Math.round(A.y - p.bottom)] };
+  checks.push(["어깨 앉기: perched · anim 'perch' · 뒤쪽 어깨 (±10px)", g.perched && g.anim === 'perch' && dx <= 10 && dy <= 10, info.perch]);
+  let emoteOk = true;
+  g.begin('emote', 1.0, { pos: false });
+  try { for (let i = 0; i < 4; i++) { T.step(0.2); g0.render(); } } catch (e) { emoteOk = String(e); }
+  checks.push(['앉은 채 장난 → 매달린 그림 오류 없음', emoteOk === true, emoteOk]);
+  // ⑦ 벡터 박쥐 그림: 상태마다 그려지고 (잉크 있음) 각성 모습이 다르다 · 매달림이 앉음과 다르다 · 원형 아이콘
+  const W = 120, H = 100;
+  const ink = (aw, anim, perched = false, act = null) => {
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const x = c.getContext('2d'); x.scale(2, 2);
+    const fake = { id: 'gd_vesper', def: g.def, anim, animT: 0.3, t: 0.35, facing: 1, alpha: 1, seed: 0, vx: 0, vy: 0, cx: 30, bottom: 30, perched, d: { awakened: aw }, hopY: () => 0, act };
+    const ok = GB.GUARDIAN_DRAW_B.gd_vesper(x, fake, null, { awakened: aw }) === true;
+    const d = x.getImageData(0, 0, W, H).data;
+    let n = 0, lo = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 20) { n++; if (((i - 3) / 4 / W | 0) > 60) lo++; }
+    return { ok, n, lo, d };
+  };
+  const stt = {};
+  for (const an of ['idle', 'move', 'attack', 'assist', 'skill', 'emote', 'hurt', 'appear', 'perch']) { const r = ink(false, an, an === 'perch', an === 'assist' ? { name: 'assist' } : null); stt[an] = r.ok ? r.n : -1; }
+  const hang = ink(false, 'emote', true), sit = ink(false, 'perch', true);
+  const a0 = ink(false, 'idle'), a1 = ink(true, 'idle');
+  let diff = 0; for (let i = 0; i < a0.d.length; i += 4) if (Math.abs(a0.d[i] - a1.d[i]) + Math.abs(a0.d[i + 1] - a1.d[i + 1]) + Math.abs(a0.d[i + 2] - a1.d[i + 2]) + Math.abs(a0.d[i + 3] - a1.d[i + 3]) > 60) diff++;
+  const ic = document.createElement('canvas'); ic.width = ic.height = 64;
+  const icOk = GR.drawGuardianIcon(ic.getContext('2d'), 'gd_vesper', 32, 32, 30);
+  info.draw = { st: stt, awDiff: diff, ink: a0.n, hangLow: hang.lo, sitLow: sit.lo, icOk, iconB: typeof GB.GUARDIAN_ICON_B.gd_vesper };
+  checks.push(['그림: 아홉 상태 모두 그려짐 (잉크 ≥ 150px)', Object.values(stt).every((n) => n >= 150), stt]);
+  checks.push(['그림: 앉아서 장난 = 발 아래로 거꾸로 매달림 (발 원점 아래 잉크)', hang.ok && hang.lo > 150 && sit.lo < hang.lo / 4, { hang: hang.lo, sit: sit.lo }]);
+  checks.push(['그림: 각성 모습이 다르다 (바뀐 픽셀 ≥ 잉크 5%)', diff >= a0.n * 0.05, { diff, ink: a0.n }]);
+  checks.push(['원형 아이콘 (GUARDIAN_ICON_B 자동)', icOk === true && typeof GB.GUARDIAN_ICON_B.gd_vesper === 'function']);
   return { info, checks };
 }));
 

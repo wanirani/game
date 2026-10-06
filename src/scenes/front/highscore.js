@@ -512,7 +512,8 @@ const NR_OPTS = { size: 46, style: 'gold', drips: 0 };
 
 /** push('initials', { score, mode, entry, onDone(rank, name) }) */
 export class InitialsScene extends Scene {
-  constructor(g) { super(g); this.opaque = false; this.uiScale = true; this.hidePad = true; }
+  // deferToasts: 결과 화면(아케이드 정산·엔딩) 위에 뜨는 이름 새기기 창 — 업적 알림이 안내·글자 칸을 가리지 않고 창을 닫은 뒤 나온다 (CROSS-QA) [hook:ach]
+  constructor(g) { super(g); this.opaque = false; this.uiScale = true; this.hidePad = true; this.deferToasts = true; }
   enter({ score = 0, mode = 'story', entry = {}, onDone = null } = {}) {
     this.score = score; this.mode = mode; this.entry = entry; this.onDone = onDone;
     const last = String(this.game.meta?.lastInitials || 'AAA').toUpperCase().padEnd(3, 'A').slice(0, 3);

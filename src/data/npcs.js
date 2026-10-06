@@ -2,6 +2,7 @@
 //  · 대화 스크립트는 data/story.js 의 resolveNpcScript(npcId, state) 가 챕터/플래그에 따라 고른다 (<npcId>_ch<N> → 팁 순환 → <npcId>_default)
 //  · role: 'inn'(여관·미니게임) 'shop'(상점) 'smith'(강화) 'church'(전직·스토리) 'villager' 'mystery' 'stable'(영혼의 마구간)
 //  · appear: 허브(마을)에 모습을 보이는 조건 — npcVisible(npcId, state) 로 판정 (맵 'N' 배치는 조건 없이 등장)
+//      { minChapter, flag, orFlag(flag 가 없어도 이 플래그면 등장), hideFrom, hideUntil }
 export const NPCS = {
   npc_marta: {
     id: 'npc_marta', name: '마르타', title: '흑묘 여관 주인', portrait: 'portraits/npc_marta', role: 'inn', services: ['inn', 'minigame', 'quest'],
@@ -38,7 +39,7 @@ export const NPCS = {
   npc_carmilla: {
     id: 'npc_carmilla', name: '카밀라', title: '흡혈귀 귀부인', portrait: 'portraits/npc_carmilla', role: 'mystery', services: [],
     desc: '백작의 가장 오래된 "딸" 중 하나. 우아하고 변덕스러우며, 속내를 알 수 없다. 그녀를 믿을지는 당신의 몫이다.',
-    appear: { minChapter: 6, flag: 'carmilla_trust1' },
+    appear: { minChapter: 6, flag: 'carmilla_trust1', orFlag: 'ex_s24_done' },   // 외전 「시드는 장미」를 함께 끝냈으면 6장에서 거절했어도 여관에 있다 (docs/specs/ex_s24.md §9-11)
     look: { build: 'slim', height: 1.03, skin: '#f4e6ea', hair: '#141018', hairStyle: 'flowing', eyes: '#ff3040', eyeGlow: true, outfit: 'lady',
       primary: '#2a0812', secondary: '#12060c', trim: '#c8a040', pants: '#12060c', boots: '#0a0608', cape: { color: '#1a0610', color2: '#6a0a20', len: 0.9 } },
   },
@@ -65,6 +66,6 @@ export function npcVisible(npcId, state) {
   const f = state?.progress?.flags ?? {};
   if (a.hideFrom != null && ch >= a.hideFrom && ch < a.hideUntil && !f.elise_rescued) return false;
   if (a.minChapter != null && ch < a.minChapter) return false;
-  if (a.flag && !f[a.flag]) return false;
+  if (a.flag && !f[a.flag] && !(a.orFlag && f[a.orFlag])) return false;   // orFlag: flag 대신 이 플래그로도 나타난다
   return true;
 }

@@ -25,7 +25,7 @@
 //   pad       (8) 가짜 게임패드: 버튼 10(L3) 탑승 · 11(R3) 수호신 스킬
 //   spam      R · 점프 · 수호 · 돌진 · 특수기 연타 (그림메인 · 녹티스), 소환 도중 방 바꾸기 · 마을로 가기: 박힘 · 몸 크기 · 오류 없음
 //   tools     (9)(10) node tools/scan_mount_fit.mjs · node tools/balance_companions.mjs 의 합격 여부
-//   recruit   (2부) 이야기 명령 {cmd:'recruit'} 여섯 (s14–s19 아웃트로) + 외전 둘 (s21 아르겐 · s22 무닌) · 이야기 장면 · 대화 장면 · 플래그만 있는 세이브의 합류
+//   recruit   (2부) 이야기 명령 {cmd:'recruit'} 여섯 (s14–s19 아웃트로) + 외전 셋 (s21 아르겐 · s22 무닌 · s24 베스퍼) · 이야기 장면 · 대화 장면 · 플래그만 있는 세이브의 합류
 //   stable    (2부) 영혼의 마구간: 구입(바르그 · 핌) · 잠금/금화 부족 · 알 부화(스테이지 두 번) · 그레타 의뢰(하티 · 스콜) · 공물
 //   deep      (2부) 깊은 물: 탄 채 들어가면 하차 · 물속 소환 거절 · 루멘 숨 감소 ×0.5
 //   wind_blight (2부) 게일 windMul 0.5 (돌풍 몫 절반) · 실바 blightMul 0.5 (부패 게이지 절반)
@@ -1020,7 +1020,7 @@ await run('spam', STAGE('s01', '&cmp=all&ch=20&mount=mt_warhorse&guards=gd_knigh
 await run('recruit', STAGE('s01', '&ch=20'), (page) => page.evaluate(async () => {
   const T = window.__T, g = T.g, checks = [], info = {};
   const { SCRIPTS } = await import('/src/data/story.js');
-  const want = { gd_mirra: 's14_outro', mt_ignis: 's15_outro', gd_lumen: 's16_outro', mt_gale: 's17_outro', gd_momo: 's18_outro', mt_silva: 's19_outro', mt_argen: 's21_outro', gd_munin: 's22_outro' };   // + 외전 아르겐 · 무닌
+  const want = { gd_mirra: 's14_outro', mt_ignis: 's15_outro', gd_lumen: 's16_outro', mt_gale: 's17_outro', gd_momo: 's18_outro', mt_silva: 's19_outro', mt_argen: 's21_outro', gd_munin: 's22_outro', gd_vesper: 's24_outro' };   // + 외전 아르겐 · 무닌 · 베스퍼
   // 대본: 여섯 아웃트로에 recruit 명령 + 같은 플래그 · 조건 분기/선택지보다 앞
   const found = {}, bad = [];
   for (const [sid, sc] of Object.entries(SCRIPTS)) {
@@ -1036,7 +1036,7 @@ await run('recruit', STAGE('s01', '&ch=20'), (page) => page.evaluate(async () =>
     });
   }
   info.found = found;
-  checks.push(['대본: 2부 여섯 동료 + 외전 아르겐 · 무닌의 recruit 명령이 제 아웃트로에', Object.entries(want).every(([id, sid]) => found[id]?.includes(sid)) && Object.keys(found).length === Object.keys(want).length, found]);
+  checks.push(['대본: 2부 여섯 동료 + 외전 아르겐 · 무닌 · 베스퍼의 recruit 명령이 제 아웃트로에', Object.entries(want).every(([id, sid]) => found[id]?.includes(sid)) && Object.keys(found).length === Object.keys(want).length, found]);
   checks.push(['recruit 바로 뒤 같은 플래그 · 조건 분기보다 앞', !bad.length, bad]);
   checks.push(['데이터: 여덟 동료의 합류 조건 = recruit_<id> 플래그', Object.keys(want).every((id) => T.D.COMPANIONS?.[id]?.obtain?.flag === 'recruit_' + id || (T.D.MOUNTS[id] ?? T.D.GUARDIANS[id])?.obtain?.flag === 'recruit_' + id)]);
   const st = g.state;

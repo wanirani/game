@@ -82,16 +82,18 @@ const GUARD_TABLE = [
   ['gd_momo', '모모', '꿈먹는 맥', 'flag:recruit_gd_momo', 18, 'portraits/cmp_gd_momo', 'momo_gulp'],
   // 외전 (docs/specs/ex_s22.md §3): 네메인의 늙은 까마귀 — 초상화는 EX2-BOSS (Kling)
   ['gd_munin', '무닌', '이름을 기억하는 까마귀', 'flag:recruit_gd_munin', 22, 'portraits/cmp_gd_munin', 'crow_caw'],
+  // 외전 (docs/specs/ex_s24.md §3): 카밀라의 편지 박쥐 — 초상화는 EX4-BOSS (Kling), 울음은 기존 bat 효과음 (새 소리 없음)
+  ['gd_vesper', '베스퍼', '장미 향 나는 박쥐', 'flag:recruit_gd_vesper', 24, 'portraits/cmp_gd_vesper', 'bat'],
 ];
 const obtainKey = (o) => `${o.type}:${o.flag ?? o.boss ?? o.quest ?? o.price ?? o.count}`;
-t('탈것 10 (외전 아르겐 포함) · 수호신 12 (외전 무닌 포함) · 순서', () => {
+t('탈것 10 (외전 아르겐 포함) · 수호신 13 (외전 무닌 · 베스퍼 포함) · 순서', () => {
   eq(D.MOUNT_IDS, MOUNT_TABLE.map((r) => r[0]));
   eq(D.GUARDIAN_IDS, GUARD_TABLE.map((r) => r[0]));
   eq(D.COMPANION_ORDER, [...D.MOUNT_IDS, ...D.GUARDIAN_IDS]);
-  eq(D.UNLOCK_ORDER.length, 22);
-  eq(new Set(D.UNLOCK_ORDER).size, 22);
-  eq(D.UNLOCK_ORDER[D.UNLOCK_ORDER.length - 1], 'gd_munin');   // chapter 22 — 외전 아르겐(21) 다음
-  eq(D.UNLOCK_ORDER.slice(-2), ['mt_argen', 'gd_munin']);
+  eq(D.UNLOCK_ORDER.length, 23);
+  eq(new Set(D.UNLOCK_ORDER).size, 23);
+  eq(D.UNLOCK_ORDER[D.UNLOCK_ORDER.length - 1], 'gd_vesper');   // chapter 24 — 외전 아르겐(21) · 무닌(22) 다음 (s23 은 동료가 아니라 무기)
+  eq(D.UNLOCK_ORDER.slice(-3), ['mt_argen', 'gd_munin', 'gd_vesper']);
 });
 for (const [id, name, title, ob, ch, rig, portrait, cry] of MOUNT_TABLE) {
   t(`탈것 ${id} ${name}`, () => {
@@ -135,7 +137,8 @@ t('울음소리 배율·보조음 (§1.2)', () => {
 t('울음·발굽 효과음 이름이 MASTER_PLAN §1.9 등록부에 있다', () => {
   const REG = new Set(('neigh gallop hoof_land boar_grunt wolf_howl wolf_bite wing_flap roar_small fire_breath screech bone_rattle fairy_chime knight_guard imp_cackle owl_hoot '
     + 'gear_whir scythe soul_reap stag_call griffin_cry mirror_chime jelly_zap momo_gulp fire footstep dash'
-    + ' crow_caw').split(' '));   // crow_caw = 체감 효과음(core/sfx_feel.js, §1.9 체감 표) — 외전 무닌의 울음으로 재사용 (docs/specs/ex_s22.md §3, 새 소리 없음)
+    + ' crow_caw bat').split(' '));   // crow_caw = 체감 효과음(core/sfx_feel.js, §1.9 체감 표) — 외전 무닌의 울음으로 재사용 (docs/specs/ex_s22.md §3, 새 소리 없음)
+  //   bat = 기존 적 효과음(core/audio.js) — 외전 베스퍼의 울음으로 재사용 (docs/specs/ex_s24.md §3, 새 소리 없음)
   for (const id of D.COMPANION_ORDER) {
     const d = D.companionDef(id);
     ok(REG.has(d.cry.sfx) && (!d.cry.extra || REG.has(d.cry.extra)), id + ' 울음 ' + JSON.stringify(d.cry));
@@ -235,6 +238,12 @@ t('2부 수호신 기본 수치 (MASTER_PLAN §1.2)', () => {
   eq(g.gd_mirra.join, '이제부터 당신의 뒤를 비출게요. 뒤에서 오는 건 제가 먼저 볼게요.');
   eq(g.gd_lumen.join, '빛나는 해파리가 등불 곁에 둥실 떠올랐다. 이제 어둠 속에서도 길을 밝혀 줄 것이다.');
   eq(g.gd_momo.join, '꿈먹는 맥이 당신의 그림자 속으로 쏙 들어왔다. 악몽은 이제 이 녀석의 간식이다.');
+  // 외전 베스퍼 (docs/specs/ex_s24.md §3): 흡혈 오라는 모르스보다 낮게 + 자석 (pickups.js 는 stats.magnet > 0 만 본다) · 적중 흡혈 25% (한 번에 최대 HP 1%) · 스킬 회복 4%
+  eq(row('gd_vesper'), ['fly', 26, 18, true, -30, -112, '흡혈 급습', 0.95, 'dark', 1.3, 380, '박쥐 떼의 왈츠', 28, '목덜미 물기', 1.0,
+    { base: { lifesteal: 1, magnet: 1 }, perLv: { lifesteal: 0.03 } }, { color: '#ff6a8a', r: 46, i: 0.3 }]);
+  eq([g.gd_vesper.attack.kind, g.gd_vesper.assist.kind, g.gd_vesper.bias, g.gd_vesper.perch, g.gd_vesper.skill.heal, g.gd_vesper.passive.drain, g.gd_vesper.passive.cap], ['dive', 'bite', 'lowhp', 'shoulder', 0.04, 0.25, 0.01]);
+  ok(g.gd_vesper.aura.base.lifesteal < g.gd_reaper.aura.base.lifesteal && !g.gd_reaper.aura.base.magnet, '베스퍼 흡혈 오라 < 모르스, 자석은 베스퍼만');
+  ok(Object.values(g).filter((d) => d.aura.base.magnet > 0).map((d) => d.id).join() === 'gd_vesper', '아이템 자석 오라는 베스퍼 하나');
 });
 t('원문 대사·이름 변경 (§4.9 표, 이름 변경표)', () => {
   eq(D.GUARDIANS.gd_fairy.skill.line, '빛이여, 이 사람을 지켜 줘!');
@@ -764,7 +773,7 @@ console.log('6. 디버그');
 t('cmp=all · cmplv · mount · guards(2칸이면 8장) · ride', () => {
   const s = freshState({ chapter: 0 });
   const r = S.applyCompanionDebug(s, new URLSearchParams('cmp=all&cmplv=10&mount=mt_warhorse&guards=gd_knight,g_imp&ride=1'));
-  eq(S.ownedIds(s).length, 22); eq(r.granted.length, 22); eq(r.ride, true);   // 탈것 10 (외전 아르겐 포함) + 수호신 12 (외전 무닌 포함)
+  eq(S.ownedIds(s).length, 23); eq(r.granted.length, 23); eq(r.ride, true);   // 탈것 10 (외전 아르겐 포함) + 수호신 13 (외전 무닌 · 베스퍼 포함)
   ok(Object.values(s.companions.owned).every((e) => e.lv === 10 && e.src === 'debug' && e.seen), '레벨·출처');
   eq(s.companions.pending, []); eq(s.progress.chapter, 8); eq(s.heroes.kael.companions, { mount: 'mt_warhorse', guards: ['gd_knight', 'gd_imp'] });
   eq(s.companions._debug, { ride: true }); ok(!JSON.stringify(s).includes('_debug'), '_debug 는 저장되지 않는다');

@@ -44,10 +44,12 @@ const RECRUITS = { s14: 'gd_mirra', s15: 'mt_ignis', s16: 'gd_lumen', s17: 'mt_g
 //   s21 「하늘 정원의 둥지」 (docs/specs/ex_s21.md): 이계 지도, 아웃트로에서 탈것 아르겐 합류
 //   s22 「이름 없는 언덕」 (docs/specs/ex_s22.md): 1부 지도(page 0), 아웃트로에서 수호신 무닌 합류
 //   s23 「빈칸의 현상금」 (docs/specs/ex_s23.md): 1부 지도(page 0), 동료 대신 아웃트로에서 신화 무기 「사냥꾼의 달」 일곱 자루 (reward: give once·silent = HUNT_SET)
+//   s24 「시드는 장미」 (docs/specs/ex_s24.md): 1부 지도(page 0), 아웃트로에서 수호신 베스퍼 합류
 const EX_LIST = [
   { sid: 's21', chapter: 21, page: 1, boss: 'b_argen', recruit: 'mt_argen', rig: 'wyvern', done: 'ex_s21_done', scripts: ['s21_intro', 's21_t1', 's21_t2', 'b_argen_pre', 'b_argen_corrupt', 'b_argen_awaken', 'b_argen_post', 's21_outro'] },
   { sid: 's22', chapter: 22, page: 0, boss: 'b_nemain', recruit: 'gd_munin', done: 'ex_s22_done', scripts: ['s22_intro', 's22_t1', 's22_t2', 'b_nemain_pre', 'b_nemain_unmask', 'b_nemain_last', 'b_nemain_post', 's22_outro'] },
   { sid: 's23', chapter: 23, page: 0, boss: 'b_hagen', reward: 'hunt', done: 'ex_s23_done', scripts: ['s23_intro', 's23_t1', 's23_t2', 'b_hagen_pre', 'b_hagen_moon', 'b_hagen_last', 'b_hagen_post', 's23_outro'] },
+  { sid: 's24', chapter: 24, page: 0, boss: 'b_bride', recruit: 'gd_vesper', done: 'ex_s24_done', scripts: ['s24_intro', 's24_t1', 's24_t2', 'b_bride_pre', 'b_bride_wither', 'b_bride_last', 'b_bride_post', 's24_outro'] },
 ];
 const P2_SIDE = ['bd_rift', 'bd_mirror', 'bd_deep', 'bd_storm', 'bd_combo200', 'hd_ember', 'hd_plus15', 'rk_stars', 'rk_stars6', 'el_pearl', 'ab_dawnflower', 'mt_feast', 'cm_dreams'];
 // world2 §1.4 — 2부 대본 id 전부
@@ -99,7 +101,7 @@ async function staticChecks() {
   // ── 스테이지 · 방 ──
   check(G, 'STAGE_ORDER 에 s14–s20 이 모두 있다 (1부 뒤, 순서대로 · 외전은 그 뒤)', P2.every((s) => STAGE_ORDER.includes(s)) && STAGE_ORDER_P2.filter((s) => !STAGES[s]?.side).join() === P2.join() && STAGE_ORDER.indexOf('s14') === STAGE_ORDER.indexOf('s13') + 1
     && STAGE_ORDER_P2.slice(P2.length).every((s) => STAGES[s]?.side), STAGE_ORDER_P2);
-  check(G, '외전 = STAGE_ORDER_P2 의 side 스테이지 (s21 · s22 · s23 차례로)', STAGE_ORDER_P2.filter((s) => STAGES[s]?.side).join() === EX_LIST.map((e) => e.sid).join(), STAGE_ORDER_P2);
+  check(G, '외전 = STAGE_ORDER_P2 의 side 스테이지 (s21 · s22 · s23 · s24 차례로)', STAGE_ORDER_P2.filter((s) => STAGES[s]?.side).join() === EX_LIST.map((e) => e.sid).join(), STAGE_ORDER_P2);
   for (const EX of EX_LIST) {
     // 외전: 이야기 사슬(next) 밖 · 2부 · 보스·대본·전환 대사·트리거·합류 (해금은 세계 지도가 p2_done 으로 — town/worldmap.js)
     const st = STAGES[EX.sid], miss = [];
@@ -283,7 +285,7 @@ async function staticChecks() {
   check(G, '2부 의뢰 13개의 q_<id>_start / _done 대본', !noQ.length && P2_SIDE.every((q) => QUESTS[q]), { noScript: noQ, noQuest: P2_SIDE.filter((q) => !QUESTS[q]) });
   const six = Object.values(RECRUITS);
   const badRecruit = [...recruitIds.keys()].filter((id) => !six.includes(id) && !EX_LIST.some((EX) => id === EX.recruit && (recruitIds.get(id) ?? []).every((sid) => sid === `${EX.sid}_outro`)));
-  check(G, '대본의 recruit id 는 모두 world2 §14 의 여섯 동료 (+ 외전 s21_outro 의 mt_argen · s22_outro 의 gd_munin)', !badRecruit.length && recruitIds.size > 0, { bad: badRecruit, seen: Object.fromEntries(recruitIds) });
+  check(G, '대본의 recruit id 는 모두 world2 §14 의 여섯 동료 (+ 외전 s21_outro 의 mt_argen · s22_outro 의 gd_munin · s24_outro 의 gd_vesper)', !badRecruit.length && recruitIds.size > 0, { bad: badRecruit, seen: Object.fromEntries(recruitIds) });
   const wrongOutro = Object.entries(RECRUITS).filter(([sid, id]) => !lines(SCRIPTS[`${sid}_outro`]).some((l) => l?.cmd === 'recruit' && l.id === id));
   check(G, '각 동료는 자기 스테이지 아웃트로에서 합류한다 (s14 미라 … s19 실바)', !wrongOutro.length, wrongOutro);
   const cmpBad = six.filter((id) => { const d = CMP.MOUNTS?.[id] ?? CMP.GUARDIANS?.[id]; const o = d?.obtain ?? d?.unlock; return !d || !(o?.type === 'flag' && (o.flag ?? o.id) === `recruit_${id}`); });

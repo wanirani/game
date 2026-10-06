@@ -614,7 +614,7 @@ export const GUARDIANS = {
     id: 'gd_vesper', part: 2, chapter: 24, name: '베스퍼', title: '장미 향 나는 박쥐', color: '#ff6a8a',
     role: '흡혈·심부름형 — 재빠른 급습과 떨어진 물건 물어 오기',
     desc: '카밀라가 백 년 동안 편지를 맡기던 작은 박쥐. 귀에 빨간 리본을 매었고, 날갯짓마다 장미 향이 난다.',
-    portrait: 'portraits/cmp_gd_vesper', iconFocus: { x: 0.5, y: 0.35, s: 0.42 },   // 초상화가 나오면 머리에 맞춘다
+    portrait: 'portraits/cmp_gd_vesper', iconFocus: { x: 0.55, y: 0.67, s: 0.4 },   // 머리(큰 귀·빨간 리본·붉은 눈·송곳니) — 거꾸로 매달린 초상화(EX4-BOSS)에 맞춘 크롭
     obtain: { type: 'flag', flag: 'recruit_gd_vesper', hint: '외전 「장미 수녀원」에서 만날 수 있다' },
     cry: { sfx: 'bat', pitch: 1.4 }, palette: ['#140a10', '#2a1420', '#5a2a3a', '#c0143a', '#ff6a8a'],
     move: 'fly', size: { w: 26, h: 18 }, front: true, anchor: { dx: -30, dy: -112 }, speed: 1150, engage: 380, bias: 'lowhp', perch: 'shoulder',

@@ -10,7 +10,8 @@
 //  aimBox(T, x, y, floorY?, bh?) · aimPoint(T, x, y)   노릴 피격 판정 상자 / 그 가운데 (떠 있는 보스 판정 — 근접 동작이 뛰어올라 친다)
 //  quietExpire(world, q)              적 탄을 거둘 때 onExpire 를 조용히 한 번 (쏜 적의 장부만 풀리고 폭발·연출은 없다; guardian_ai_b 도 쓴다)
 //  class GHit / GProj / GFx           수호신용 지속 판정 · 투사체 · 연출 개체 (모두 gStrike 로만 때린다)
-//  GUARDIAN_AI[id] = { init, think, attack, skill, assist, passive, onEvent, drawWorld }   (1부 여섯: 아리아 하티 핌 가웨인 크론 미네르바 + 외전 무닌 = 미네르바의 비밀 찾기)
+//  GUARDIAN_AI[id] = { init, think, attack, skill, assist, passive, onEvent, drawWorld }   (1부 여섯: 아리아 하티 핌 가웨인 크론 미네르바 + 외전 무닌 = 미네르바의 비밀 찾기
+//                                     · 외전 베스퍼 = 적중 흡혈 + GENERIC 스킬과 주인 회복)
 //  aiFor(id)                          GUARDIAN_AI → GUARDIAN_AI_B(guardian_ai_b.js, CMP-GUARD-AI-B) → 데이터 기반 기본 AI
 //  runKind(g, world, target, spec, o) 데이터(def.attack/def.assist)의 kind 로 동작 실행:
 //                                       proj burst volley pounce slash bash cone dive blink zap bite swing ring flash
@@ -1089,9 +1090,28 @@ const OWL = {
 
 /** 외전 무닌 (docs/specs/ex_s22.md §3): 미네르바의 비밀 찾기(passive · 윤곽)만 빌린다. 공격·협공은 데이터 kind 'dive', 스킬은 aiFor 가 채우는 GENERIC */
 const MUNIN = { passive: OWL.passive, drawWorld: OWL.drawWorld };
+/**
+ * 외전 베스퍼 (docs/specs/ex_s24.md §3): 공격·협공은 데이터 kind 'dive'·'bite', 자석은 오라(stats.magnet). 제 이빨로 문 피해의 drain(25%)을 주인 HP 로
+ * (한 번에 최대 HP 의 cap(1%)까지 — 흡혈 오라와 달리 수호신 자신의 적중만) · 스킬 = GENERIC 휩쓸기 + 주인 HP skill.heal(4%).
+ * GENERIC 은 이 아래에 선언되므로 호출 때 찾는다 (모듈 최상위에서 읽지 않는다)
+ */
+const VESPER = {
+  onEvent(g, world, name, d) {
+    if (name !== 'hit' || d?.attack?.owner !== g) return;
+    const p = world.player, P = g.def.passive, dmg = d.info?.dmg;
+    if (!p || p.dead || !(dmg > 0) || !(p.stats?.hp > 0)) return;
+    const amt = Math.min(dmg * (P?.drain ?? 0.25), p.stats.hp * (P?.cap ?? 0.01));
+    if (amt > 0) p.heal(amt, false);
+  },
+  skill(g, world, mul, o) {
+    GENERIC.skill(g, world, mul, o);
+    const p = world.player;
+    if (p && !p.dead && p.stats?.hp > 0) p.heal(p.stats.hp * (g.def.skill?.heal ?? 0.04), true);
+  },
+};
 
-/** 1부 수호신 여섯 + 외전 무닌 (나머지 다섯은 guardian_ai_b.js — CMP-GUARD-AI-B). attack/assist 가 없으면 데이터 kind 로 */
-export const GUARDIAN_AI = { gd_fairy: FAIRY, gd_spiritwolf: WOLF, gd_imp: IMP, gd_knight: KNIGHT, gd_whelp: WHELP, gd_owl: OWL, gd_munin: MUNIN };
+/** 1부 수호신 여섯 + 외전 무닌 · 베스퍼 (나머지 다섯은 guardian_ai_b.js — CMP-GUARD-AI-B). attack/assist 가 없으면 데이터 kind 로 */
+export const GUARDIAN_AI = { gd_fairy: FAIRY, gd_spiritwolf: WOLF, gd_imp: IMP, gd_knight: KNIGHT, gd_whelp: WHELP, gd_owl: OWL, gd_munin: MUNIN, gd_vesper: VESPER };
 
 /** 아직 AI 가 없는 수호신의 기본 스킬: 주위를 휩쓰는 영혼 파동 (데이터 skill.mv·element 사용) */
 const GENERIC = {

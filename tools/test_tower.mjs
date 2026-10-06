@@ -173,14 +173,14 @@ test('층 계획: 같은 시드 → 같은 방·적·보스, 다른 시드 → �
   assert.deepEqual(T.blessingOffer(5, 10, full, 0).sort(), ['crit', 'might']);
   // 2부 풀
   assert.ok(mk(1, STAGE_ORDER).rooms.length > mk(1).rooms.length);
-  // 외전 보스 (lateBosses, docs/specs/ex_s21.md · ex_s22.md · ex_s23.md): 순서 구간의 계획은 그대로이고, 순서를 다 지난 무작위 구간에서만 후보가 된다
-  //   (장면은 arcade.js sideBosses() = BOSS_ORDER 의 STORY_BOSSES 뒤 = 아르겐 · 네메인 · 하겐 을 준다)
-  const LATE = ['b_argen', 'b_nemain', 'b_hagen'];
+  // 외전 보스 (lateBosses, docs/specs/ex_s21.md · ex_s22.md · ex_s23.md · ex_s24.md): 순서 구간의 계획은 그대로이고, 순서를 다 지난 무작위 구간에서만 후보가 된다
+  //   (장면은 arcade.js sideBosses() = BOSS_ORDER 의 STORY_BOSSES 뒤 = 아르겐 · 네메인 · 하겐 · 엘제베트 를 준다)
+  const LATE = ['b_argen', 'b_nemain', 'b_hagen', 'b_bride'];
   {
     // arcade.js 는 브라우저 모듈을 끌어오므로 소스에서 BOSS_ORDER 를 읽는다 (STORY_BOSSES = 20 뒤 = 외전 보스)
     const src = fs.readFileSync(path.join(ROOT, 'src/scenes/front/arcade.js'), 'utf8'), at = src.indexOf('export const BOSS_ORDER = [');
     const order = [...src.slice(at, src.indexOf('];', at)).matchAll(/'(b_\w+)'/g)].map((m) => m[1]);
-    assert.deepEqual(order.slice(20), LATE, 'BOSS_ORDER 의 외전 보스 (sideBosses) = 아르겐 · 네메인 · 하겐');
+    assert.deepEqual(order.slice(20), LATE, 'BOSS_ORDER 의 외전 보스 (sideBosses) = 아르겐 · 네메인 · 하겐 · 엘제베트');
   }
   const late = (seed) => new T.TowerPlanner(seed, { stages: STAGES, order: STAGE_ORDER_P1, enemies: ENEMIES, bosses, lateBosses: LATE, P: 60, eliteBase: 0.04 });
   assert.deepEqual(dump(late(4242)).slice(0, 2 * STAGE_ORDER_P1.length), dump(mk(4242)).slice(0, 2 * STAGE_ORDER_P1.length), '외전 보스를 더해도 순서 구간은 같다');
