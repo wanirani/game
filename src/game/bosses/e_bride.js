@@ -58,7 +58,7 @@ const T48 = () => TILE || 48;
 const SIZE_L = { w: 64, h: 150 }, SIZE_C = { w: 84, h: 150 }, HOV = 24;   // 귀부인 · 노파 판정 크기 (발 x 고정) · 노파 판정 아래 끝 = 디딤면 − 24
 const HEAL = 0.04, HEAL_AT = 0.85, HEAL_MAX = 2, BREAK_DMG = 0.03, EXPOSE_DMG = 0.05;   // 회춘의 잔 (§2.1)
 // ── 몸 지역 좌표 (+x = 얼굴 쪽, y 아래가 양수, 원점 = 발 가운데 바닥) ──
-const TORSO = 42, UA = 24, FA = 23, VINE_N = 8, TRAIN_N = 6, STRAND_N = 4;
+const TORSO = 34, TORSO_C = 44, UA = 24, FA = 23, VINE_N = 8, TRAIN_N = 6, STRAND_N = 4;   // 몸통(허리→목) 귀부인 · 노파 — 채색 부품(full_a lps 0.06 · crone_a lps 0.07)의 비례
 const POSE0 = { lean: 0, bow: 0, kneel: 0, hunch: 0, flare: 0, sway: 0, rise: 0, veil: 0 };
 const POSE_RATE = { lean: 8, bow: 7, kneel: 7, hunch: 3, flare: 6, sway: 3, rise: 5, veil: 6 };
 /** 팔 자세 (각 = 몸 지역: 0 앞, π/2 아래). n = 가까운 팔(성배), f = 먼 팔(채찍) */
@@ -157,11 +157,12 @@ export class Bride extends BossC {
   rig() {
     const s = this.ps, P = this.pts, a = this.arm, t = this.t, hov = this.hov;
     const hn = clamp(s.hunch, 0, 1), kn = clamp(s.kneel, 0, 1), bw = clamp(s.bow, 0, 1);
-    P.hip.x = -2 * hn - 3 * kn - 4 * bw; P.hip.y = -76 + 6 * hn + 30 * kn + 12 * bw - hov + Math.sin(t * 1.7) * 1.2 * s.sway;
-    const ta = 0.04 + 0.2 * s.lean + 0.62 * hn + 0.45 * bw + 0.18 * kn + Math.sin(t * 1.3) * 0.015 + Math.sin(t * 2.1) * 0.05 * s.sway;
+    P.hip.x = -2 * hn - 3 * kn - 4 * bw; P.hip.y = -86 + 9 * hn + 30 * kn + 12 * bw - hov + Math.sin(t * 1.7) * 1.2 * s.sway;
+    const ta = 0.04 + 0.2 * s.lean + 0.3 * hn + 0.45 * bw + 0.18 * kn + Math.sin(t * 1.3) * 0.015 + Math.sin(t * 2.1) * 0.05 * s.sway;
     P.tA = ta;
-    P.neck.x = P.hip.x + Math.sin(ta) * TORSO; P.neck.y = P.hip.y - Math.cos(ta) * TORSO;
-    const ha = ta * 0.45 + 0.2 * hn - 0.25 * bw - 0.12 * s.lean;
+    const tl = lerp(TORSO, TORSO_C, hn);
+    P.neck.x = P.hip.x + Math.sin(ta) * tl; P.neck.y = P.hip.y - Math.cos(ta) * tl;
+    const ha = ta * 0.45 + 0.35 * hn - 0.25 * bw - 0.12 * s.lean;
     P.hA = ha;
     const q = this._r;
     rot(3, -11, ha, q); P.head.x = P.neck.x + q.x; P.head.y = P.neck.y + q.y;
