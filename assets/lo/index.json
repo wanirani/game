@@ -84,6 +84,8 @@
   "portraits/b_dullahan",
   "portraits/b_frostqueen",
   "portraits/b_grimoire",
+  "portraits/b_hagen",
+  "portraits/b_hagen2",
   "portraits/b_leviathan",
   "portraits/b_mara",
   "portraits/b_moloch",
@@ -692,6 +694,20 @@
    "h": 581,
    "bytes": 22614,
    "srcBytes": 66440
+  },
+  "portraits/b_hagen.webp": {
+   "src": "d3d9ed3d4e57",
+   "w": 457,
+   "h": 581,
+   "bytes": 23616,
+   "srcBytes": 70178
+  },
+  "portraits/b_hagen2.webp": {
+   "src": "9035eee827cf",
+   "w": 457,
+   "h": 581,
+   "bytes": 32220,
+   "srcBytes": 99170
   },
   "portraits/b_leviathan.webp": {
    "src": "1bc1888f7616",
