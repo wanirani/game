@@ -508,7 +508,9 @@ export class GalleryScene extends Scene {
     this.tickMusic(dt);
     this.bakeTick();
     // 다시 보기·크레딧에서 돌아오는 암전이 걷히는 동안은 입력을 받지 않는다 — 대사를 연타로 넘기던 손이 같은 극장 줄을 다시 틀지 않게 (GAL-VERIFY)
-    if (g.fade?.dir < 0) return;
+    // 암전이 걷힌 뒤에도 0.3초는 받지 않는다 — 걷히는 마지막 틱에 눌린 키가 다음 틱에 들어와 같은 줄을 다시 트는 경합 (출시 10 QA U7)
+    if (g.fade?.dir < 0) { this.lockT = 0.3; return; }
+    if (this.lockT > 0) { this.lockT -= dt; return; }
     if (this.viewer) { this.updateViewer(dt, nav, ges); return; }
     const L = this._L, room = this.room;
     const area = L ? this.scrollRect(L) : null;
