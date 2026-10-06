@@ -2,7 +2,7 @@
 //  · 모든 공격 패턴 × 페이즈 0/1 debugAct → idle 로 돌아오는지, 판정 개체·탄·올가미·소환이 생기는지, 오류 0 (debugAct 직전에 있던 개체는 세지 않는다)
 //  · 전환 moonrise (form2 '은빛 늑대' · portraits/b_hagen2 · 판정 크기 112×118 · 발 위치 그대로) · debugPhase(n) · 보조 stagger·offer · 없는 상태 경고 ·
 //    사망→부활 onReset (사람 모습·'하겐'·146 높이, 올가미·늑대·달빛·화면 색조 정리) · 처치 (쓰러짐 5초 → 사람으로 누움, 파편 폭발 없음, 부제 '결착!') · 적 정지
-//  · 보스별: 조준선 마지막 0.25초 고정(빅터면 0.1초 늦게 — 스토리·1페이즈), 장전 노출 1.15, 산탄은 6칸 밖에서 고르지 않음 · 7알 · 한 번에 최대 3알,
+//  · 보스별: 조준선 마지막 0.25초 고정(빅터면 0.1초 늦게 — 스토리·1페이즈), 장전 노출 0.85, 산탄은 6칸 밖에서 고르지 않음 · 7알 · 한 번에 최대 3알,
 //    올가미 ≤ 4 · 한 대에 부서짐 · 밟으면 묶임 · 8초 수명, 소환 상한(snow_wolf ≤ 3), 덮치기 착지점이 A 안·A.floor 위(발판이면 그 발판) · 세 번째는 벽 차기,
 //    달 그림자 화면 밖 동안 판정 없음 · 내리꽂기 셋 · 노출 0.7, 카운터(사냥칼·덮치기·노출 5%) → stagger, offer 는 15% 이하 한 번 + 대사 한 번(스토리) →
 //    곧바로 clawRush, 투기장(arena r1)에서 패턴 8개가 경계 안에서 돈다, drops 빈 목록, inferno 를 읽지 않음
@@ -88,18 +88,18 @@ check('전환 상태 moonrise · 보조 stagger·offer', trans.tr.join() === 'mo
   check('전환 moonrise: 무적·판정 없음 · 1.9초까지 사람 → 2.0초 늑대 · form2 은빛 늑대 · portraits/b_hagen2 · 칭호', r.st0 === 'moonrise' && r.inv0 && r.contact0 === 0 && !r.wolf19 && r.name19 === '하겐' && r.wolf21 && r.name === '은빛 늑대' && r.portrait === 'portraits/b_hagen2' && r.title === '사냥꾼이었던 짐승' && !r.notes.length, r);
   check('전환: 판정 크기 60×146 → 112×118 · 발 위치 그대로 · 장총을 내던지고 외투가 찢어짐', r.size0.join() === '60,146' && r.size.join() === '112,118' && r.foot.x === r.foot.zx && r.foot.y === r.foot.fy && r.foot.zx === r.foot0.x && r.foot.fy === r.foot0.y && r.rifle && r.tear, r);
   check('debugAct(moonrise) 다시 보여 주기 → 전환 → 끝 (늑대 그대로)', r.re && r.reState === 'moonrise' && r.reAfter !== 'moonrise' && r.reWolf, { re: r.re, st: r.reState, after: r.reAfter });
-  check('전환 뒤: 곧바로 무리 부르기 (강제 packCall) · 주둥이 배율 1.2', r.after === 'packCall' && !r.inv && r.phase === 1 && r.headMul === 1.2, { after: r.after, headMul: r.headMul });
+  check('전환 뒤: 곧바로 무리 부르기 (강제 packCall) · 주둥이 배율 0.8', r.after === 'packCall' && !r.inv && r.phase === 1 && r.headMul === 0.8, { after: r.after, headMul: r.headMul });
 }
 for (const n of [0, 1]) {
   const r = await page.evaluate(({ id, n }) => { const G = window.__gal; const n0 = G.notes.length; G.build(id, { phase: n }); G.step(1.0); const b = G.boss; return { phase: b.phase, wolf: b.wolf, inv: b.invuln, name: b.def.name, head: b.pHead.defMul, legs: b.pLegs.defMul, size: [b.w, b.h], parts: b.hitParts().length, notes: G.notes.slice(n0) }; }, { id: ID, n });
-  check(`debugPhase(${n}) — ${n ? '늑대 · 주둥이 1.2(노릴 곳) · 등판 · 다리 1.1' : '사람 · 모자 0.9 · 다리 1.15'}`, r.phase === n && r.wolf === !!n && !r.inv && r.head === (n ? 1.2 : 0.9) && r.legs === (n ? 1.1 : 1.15) && r.parts === (n ? 4 : 3) && r.name === (n ? '은빛 늑대' : '하겐') && !r.notes.length, r);
+  check(`debugPhase(${n}) — ${n ? '늑대 · 주둥이 0.8(노릴 곳) · 등판 · 다리 1.1' : '사람 · 모자 0.9 · 다리 1.15'}`, r.phase === n && r.wolf === !!n && !r.inv && r.head === (n ? 0.8 : 0.9) && r.legs === (n ? 1.1 : 1.15) && r.parts === (n ? 4 : 3) && r.name === (n ? '은빛 늑대' : '하겐') && !r.notes.length, r);
 }
 for (const ph of [0, 1]) {
   for (const s of [...trans.help, 'idle']) {
     const r = await page.evaluate(({ id, s, ph }) => { const G = window.__gal; G.build(id, { phase: ph }); G.step(ph ? 6 : 2); const b = G.boss, n0 = G.notes.length; const ok = b.debugAct(s); const st0 = b.state; G.step(0.5); const mid = { head: b.pHead.defMul, body: b.pBody.defMul, stunned: b.stunned, offering: b.offering, contact: b.contactParts().length }; G.step(2.4); return { ok, st0, mid, after: b.state, notes: G.notes.slice(n0) }; }, { id: ID, s, ph });
     check(`P${ph + 1} 보조 ${s}`, r.ok && (s === 'idle' ? r.st0 === 'idle' : r.st0 === s && r.after !== s) && !r.notes.length, r);
     if (s === 'stagger') check(`P${ph + 1} stagger: 무릎 1.4초 · 몸통 0.7 · 머리 0.6`, r.mid.stunned && r.mid.body === 0.7 && r.mid.head === 0.6, r.mid);
-    if (s === 'offer') check(`P${ph + 1} offer: 가슴을 내줌 2.5초 · 몸통 1.6 · 접촉 없음 → 곧바로 clawRush`, r.mid.offering && r.mid.body === 1.6 && r.mid.contact === 0 && (ph ? r.after === 'clawRush' : true), { mid: r.mid, after: r.after });
+    if (s === 'offer') check(`P${ph + 1} offer: 가슴을 내줌 2.5초 · 몸통 0.6 · 접촉 없음 → 곧바로 clawRush`, r.mid.offering && r.mid.body === 0.6 && r.mid.contact === 0 && (ph ? r.after === 'clawRush' : true), { mid: r.mid, after: r.after });
   }
 }
 check('debugAct(없는 상태) → false', (await page.evaluate((id) => { const G = window.__gal; G.build(id); return G.boss.debugAct('nope'); }, ID)) === false, null);
@@ -112,7 +112,7 @@ check('debugAct(없는 상태) → false', (await page.evaluate((id) => { const 
     const act = (b, s) => { pre = new Set(G.world.entities); return b.debugAct(s); };
     const fresh = (pred) => G.world.entities.filter((e) => !pre.has(e) && pred(e));
     const quiet = (b) => { b.debugAct('idle'); b.idleWait = 99; };
-    // 조준 사격: 조준선이 플레이어를 따라가다 마지막 0.25초는 고정 → 은탄 (폭 20, 1800px/s) → 장전 노출 (몸통 1.15)
+    // 조준 사격: 조준선이 플레이어를 따라가다 마지막 0.25초는 고정 → 은탄 (폭 20, 1800px/s) → 장전 노출 (몸통 0.85)
     G.build(id); G.step(2); let b = G.boss, p = G.world.player;
     quiet(b); G.step(0.3); p.x = b.zx - b.facing * 420;
     act(b, 'aimedShot');
@@ -207,20 +207,23 @@ check('debugAct(없는 상태) → false', (await page.evaluate((id) => { const 
     const kw = { cWin: b.cWin, tele: b.telegraph };
     b.takeHit(10, { team: 'player', dir: 1 }, G.world, {}); G.step(0.05);
     out.knife = { cuts: cuts.size, ...kw, state: b.state };
-    // 15%: offer 강제 + 대사(스토리) 한 번 → 곧바로 clawRush · 다시 15% 아래로 맞아도 두 번째 offer 없음 · 부활 뒤 offer 는 다시, 대사는 다시 안 나온다
+    // 15%: 하던 패턴(할퀴기 연타)을 끊고 곧바로 offer + 대사(스토리) 한 번 → 곧바로 clawRush · 다시 15% 아래로 맞아도 두 번째 offer 없음 ·
+    //   부활 뒤 offer 는 다시, 대사는 다시 안 나온다 (패턴 끝을 기다리면 강한 영웅이 offer·대사 없이 쓰러뜨렸다 — EX3-VERIFY)
     G.S.forceCutscene = false; G.O.story = true;
     G.build(id, { phase: 1 }); G.world.mode = 'story'; G.step(6); b = G.boss; quiet(b);
+    act(b, 'clawRush'); G.step(0.4);
+    const st0 = b.state;
     b.hp = Math.floor(b.stats.maxHp * 0.16); b.takeHit(Math.ceil(b.stats.maxHp * 0.02), { team: 'player', dir: 1 }, G.world, {});
-    out.last = { forced: b.forced.slice(), hasScript: !!(await import('../src/data/story.js')).SCRIPTS.b_hagen_last };
+    out.last = { pre: st0, forced: b.forced.slice(), hasScript: !!(await import('../src/data/story.js')).SCRIPTS.b_hagen_last };
     b.idleWait = 0.1; let dlg = null, seq = [];
     for (let t = 0; t < 8; t += 0.05) { G.step(0.05); if (G.world.dialog?.id && !dlg) dlg = G.world.dialog.id; if (seq[seq.length - 1] !== b.state) seq.push(b.state); if (b.state === 'clawRush') break; }
     out.last.dialog = dlg; out.last.seq = seq;
-    b.takeHit(Math.ceil(b.stats.maxHp * 0.02), { team: 'player', dir: 1 }, G.world, {});
-    out.last.twice = b.forced.includes('offer');
+    b.takeHit(Math.ceil(b.stats.maxHp * 0.02), { team: 'player', dir: 1 }, G.world, {}); G.step(0.05);
+    out.last.twice = b.forced.includes('offer') || b.state === 'offer';
     G.step(3); G.reset(); G.step(0.5);
     b.debugPhase(1); G.step(4); quiet(b);
-    b.hp = Math.floor(b.stats.maxHp * 0.16); b.takeHit(Math.ceil(b.stats.maxHp * 0.02), { team: 'player', dir: 1 }, G.world, {});
-    out.last.again = b.forced.includes('offer');
+    b.hp = Math.floor(b.stats.maxHp * 0.16); b.takeHit(Math.ceil(b.stats.maxHp * 0.02), { team: 'player', dir: 1 }, G.world, {}); G.step(0.05);
+    out.last.again = b.state === 'offer';
     b.idleWait = 0.1; let dlg2 = null; for (let t = 0; t < 4; t += 0.05) { G.step(0.05); if (G.world.dialog?.id === 'b_hagen_last') dlg2 = true; }
     out.last.dialogAgain = dlg2;
     out.last.seen = G.world.state.progress.seenScripts.filter((s) => s === 'b_hagen_last').length;
@@ -229,7 +232,7 @@ check('debugAct(없는 상태) → false', (await page.evaluate((id) => { const 
     return out;
   }, ID);
   check('조준 사격: 조준선이 플레이어를 따라가다 마지막 0.25초는 고정 (선 폭 20 · lockAt 0.65)', r.aim.follow && r.aim.locked && r.aim.lockFlag && r.aim.th === 20 && r.aim.lockAt === 0.65, r.aim);
-  check('조준 사격: 은탄 1800px/s · 장전 노출 몸통 1.15', Math.abs(r.aim.speed - 1800) <= 40 && r.reload.reloading && r.reload.body === 1.15, { speed: r.aim.speed, reload: r.reload });
+  check('조준 사격: 은탄 1800px/s · 장전 노출 몸통 0.85', Math.abs(r.aim.speed - 1800) <= 40 && r.reload.reloading && r.reload.body === 0.85, { speed: r.aim.speed, reload: r.reload });
   check('스승의 봐주기: 스토리 · 1페이즈 · 빅터만 고정 0.1초 늦게 (아케이드·카엘·2페이즈 0)', r.mercy.arcade === 0 && r.mercy.story === 0.1 && r.mercy.kael === 0 && r.mercy.p2 === 0, r.mercy);
   check('산탄: 6칸 밖에서는 고르지 않음 · 7알 · 1200px/s · 수명 0.35 · 판정 id 3개(최대 3알) · mv 0.35', !r.buck.far && r.buck.near && r.buck.n === 7 && r.buck.ids === 3 && r.buck.speed === 1200 && r.buck.life === 0.35 && r.buck.mv === 0.35, r.buck);
   check('은 올가미: 3개 → 두 번째는 1개 더 (살아 있는 올가미 ≤ 4) · 4개면 고르지 않음 · 경기장 바닥 안', r.trap.t1 === 3 && r.trap.t2 === 4 && !r.trap.weightsFull && r.trap.inA && r.trap.armed, r.trap);
@@ -242,8 +245,8 @@ check('debugAct(없는 상태) → false', (await page.evaluate((id) => { const 
   check('달 그림자: 화면 밖 동안 판정·접촉 없음 · 내리꽂기 셋 (폭 90) · 노출 몸통 0.7', r.dive.n === 3 && r.dive.th === 90 && r.dive.offscreen > 5 && r.dive.offHits === 0 && r.dive.exposed?.body === 0.7 && r.dive.exposed.parts > 0, r.dive);
   check('달 그림자: 노출 중 최대 체력 5% → stagger', r.diveStagger.wasExp && r.diveStagger.state === 'stagger', r.diveStagger);
   check('사냥칼: 2연 베기 (150×100) · 끝 = 카운터 창 → stagger', r.knife.cuts === 2 && r.knife.cWin && r.knife.tele && r.knife.state === 'stagger', r.knife);
-  check('15%: offer 강제 + 대사 b_hagen_last (스토리) → 곧바로 clawRush · 싸움마다 한 번 · 부활 뒤 offer 다시 (대사는 다시 안 나온다)',
-    r.last.forced.includes('offer') && r.last.hasScript && r.last.dialog === 'b_hagen_last' && r.last.seq.includes('offer') && r.last.seq[r.last.seq.length - 1] === 'clawRush' && !r.last.twice && r.last.again && !r.last.dialogAgain && r.last.seen === 1, r.last);
+  check('15%: 하던 패턴을 끊고 곧바로 offer + 대사 b_hagen_last (스토리) → 곧바로 clawRush · 싸움마다 한 번 · 부활 뒤 offer 다시 (대사는 다시 안 나온다)',
+    r.last.pre === 'clawRush' && !r.last.forced.includes('offer') && r.last.seq[0] === 'offer' && r.last.hasScript && r.last.dialog === 'b_hagen_last' && r.last.seq.includes('offer') && r.last.seq[r.last.seq.length - 1] === 'clawRush' && !r.last.twice && r.last.again && !r.last.dialogAgain && r.last.seen === 1, r.last);
   check('패턴별 검사 오류 0', !r.notes.length, r.notes);
 }
 
