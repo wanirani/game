@@ -81,6 +81,27 @@ function detail(h) {
     }
   }
 }
+const RUSH = new Map();
+/** 보스 러시 코스별 최단 기록 줄: 폭 room(13 px 굵게)에 들어가는 만큼 코스 순서대로, 넘치면 '… 외 N코스' (결과는 캐시).
+ *  코스 15개(외전 s21–s25 의 열 개 포함)를 한 줄에 모두 넣으면 maxWidth 가 글자를 1/3 로 눌러 읽을 수 없다. 15 % 까지 눌리는 것은 예전처럼 둔다 */
+function rushLine(ctx, list, room) {
+  const k = list.join('|') + '|' + Math.round(room);
+  let out = RUSH.get(k);
+  if (out === undefined) {
+    ctx.font = font(13, 700, FONT.body);
+    const head = '보스 러시 최단  ', fits = (str) => ctx.measureText(str).width <= room * 1.15;
+    const cut = (n) => `${head}${list.slice(0, n).join(' · ')} 외 ${list.length - n}코스`;
+    out = head + list.join(' · ');
+    if (!fits(out) && list.length > 1) {
+      let n = list.length - 1;
+      while (n > 1 && !fits(cut(n))) n--;
+      out = cut(n);
+    }
+    if (RUSH.size > 100) RUSH.clear();
+    RUSH.set(k, out);
+  }
+  return out;
+}
 /** 본 엔딩 수 / 전체 엔딩 수 (ending.js ENDINGS: bad·normal·true + 2부 p2·p2true) */
 function endingCount(seen) {
   const E = ENDING.ENDINGS && typeof ENDING.ENDINGS === 'object' ? ENDING.ENDINGS : null;
@@ -376,7 +397,6 @@ export class HighscoreScene extends Scene {
     const m = g.meta ?? {};
     const extra = [];
     const brb = bossRushBests(m), brc = COURSES.map((c, i) => (brb[i] ? `${c.short ?? c.name} ${fmtClock(brb[i].time ?? 0)}` : null)).filter(Boolean);
-    if (brc.length) extra.push(`보스 러시 최단  ${brc.join(' · ')}`);
     if (m.survivalBest) extra.push(`서바이벌 최고 WAVE ${m.survivalBest}`);
     // 무한의 탑: 난이도별 최고 층 (탑 부문이면 모든 난이도, 아니면 가장 높은 것 하나)
     const twb = towerBests(m), tl = DIFFICULTIES.filter((d) => twb[d.id]?.floor > 0).map((d) => ({ d, b: twb[d.id] }));
@@ -386,6 +406,11 @@ export class HighscoreScene extends Scene {
     }
     const ec = endingCount(m.endingsSeen);
     if (ec.n) extra.push(`엔딩 ${ec.n}/${ec.of}`);
+    if (brc.length) {   // 보스 러시는 맨 앞(탑 부문이면 탑 다음)에, 다른 기록이 쓰고 남은 폭만큼만
+      ctx.font = font(13, 700, FONT.body);
+      const room = W - 40 - (extra.length ? ctx.measureText(extra.join('   ·   ') + '   ·   ').width : 0);
+      extra.splice(MODES[this.tabs.index]?.id === 'tower' && tl.length ? 1 : 0, 0, rushLine(ctx, brc, room));
+    }
     if (extra.length) text(ctx, extra.join('   ·   '), W / 2, L.extraY, { size: 13, align: 'center', weight: 700, color: '#d8c0a0', ow: 2, maxWidth: W - 40 });
   }
   renderOnline(ctx, L, t) {
