@@ -88,6 +88,7 @@ const W_MUL = {
   spear: { atk: 1.06, crit: [1, 1, 2, 2, 3, 3, 4] },   // 채찍만큼 긴 사거리 · 장검과 대검 사이의 위력
 };
 // [이름, 속성, 추가 능력치, 색(외형), 설명]
+// BAL-TUNE (bal_audit.md 권고 7): 7단계 표준형 균열의 사슬 · 악몽의 송곳 · 균열의 창(_13)은 암흑 → 무속성 — s12–s25 보스 14 중 12가 암흑 저항(×0.5)이라 대장간의 함정 구매였다
 const WEAPON_TABLE = {
   whip: [
     ['가죽 채찍', null, {}, '#6a4424', '질긴 소가죽을 꼬아 만든 헌터의 기본 채찍. 손에 익으면 이만한 것이 없다.'],
@@ -102,7 +103,7 @@ const WEAPON_TABLE = {
     ['서리 사슬', 'ice', {}, '#a8d8f0', '얼어붙은 첨탑의 만년빙으로 벼린 사슬. 스치기만 해도 피가 얼어붙는다.'],
     ['핏빛 로사리오', 'dark', { lifesteal: 2 }, null, '피로 물든 묵주를 엮은 채찍. 신앙과 저주가 한데 뒤엉켜 있다.'],
     ['심판의 채찍', 'holy', { reach: 10, crit: 4 }, '#f0dca0', '교황청 비밀 기사단의 성유물. 휘두른 궤적에 성광의 잔상이 남는다.'],
-    ['균열의 사슬', 'dark', { lifesteal: 2 }, '#3a2a4a', '공허의 균열에서 건져 낸 사슬. 휘두르면 공간이 잠시 찢어진 채로 남는다.'],
+    ['균열의 사슬', null, { lifesteal: 2 }, '#3a2a4a', '공허의 균열에서 건져 낸 사슬. 휘두르면 공간이 잠시 찢어진 채로 남는다.'],
     ['별빛 채찍 아스트라', 'holy', { reach: 12, crit: 5 }, '#f4ecd0', '별빛을 꼬아 만들었다는 채찍. 밤하늘에 휘두르면 별자리가 그려진다.'],
   ],
   sword: [
@@ -150,7 +151,7 @@ const WEAPON_TABLE = {
     ['서리송곳', 'ice', { crit: 3 }, '#bfe8ff', '만년빙을 깎아 만든 송곳. 결코 녹지 않는다.'],
     ['핏빛 초승달', null, { lifesteal: 3, critDmg: 10 }, null, '초승달처럼 휜 붉은 칼. 흡혈귀 사냥꾼들 사이에서 금기시된 무기.'],
     ['성흔의 단검', 'holy', { crit: 5 }, null, '성인의 성흔에서 흘러내린 빛으로 벼렸다는 단검.'],
-    ['악몽의 송곳', 'dark', { crit: 5 }, null, '꿈속에서 벼린 송곳. 깨어나면 상처만 남는다.'],
+    ['악몽의 송곳', null, { crit: 5 }, null, '꿈속에서 벼린 송곳. 깨어나면 상처만 남는다.'],
     ['심해 가시 단검', 'ice', { critDmg: 20, lifesteal: 2 }, null, '심해 아귀의 이빨을 갈아 만든 단검. 물속에서 더 날카로워진다.'],
   ],
   gun: [
@@ -198,7 +199,7 @@ const WEAPON_TABLE = {
     ['성광의 창', 'holy', { res: 6 }, null, '대성당 종탑의 성구를 녹여 벼렸다는 창. 어둠 속에서도 창끝이 희게 빛난다.'],
     ['흑룡의 송곳니', 'dark', { lifesteal: 2 }, null, '균열 너머 흑룡의 송곳니를 창날로 박았다. 찌를 때마다 검은 불꽃이 상처 속으로 파고든다.'],
     ['용기사의 장창', null, { crit: 6, critDmg: 12, reach: 8 }, '#e8f4ff', '하늘 기사단 단장이 들던 창. 내리꽂은 자리에 용의 발톱 자국이 남는다.'],
-    ['균열의 창', 'dark', { crit: 6 }, '#cfc0e8', '공허의 균열에서 건져 낸 창. 창끝이 지나간 자리가 한동안 찢어진 채로 남는다.'],
+    ['균열의 창', null, { crit: 6 }, '#cfc0e8', '공허의 균열에서 건져 낸 창. 창끝이 지나간 자리가 한동안 찢어진 채로 남는다.'],
     ['폭풍 기사의 창', 'thunder', { reach: 10, atkSpd: 6 }, '#bfe0ff', '하늘 왕국 폭풍 기사단의 마지막 창. 하늘을 향해 들면 구름이 먼저 갈라진다.'],
   ],
 };
@@ -463,8 +464,9 @@ const UNIQUE_LIST = [
     stats: { atk: 196, mag: 60, holy: 35, crit: 10 }, element: 'holy', visual: { style: 6, glow: '#fff2b0', rift: true },
     effect: '첫 햇살 — 신성 피해 +35%, 치명타 확률 +10%', desc: '공허를 몰아낸 첫 햇살을 벼려 만든 검. 칼날이 밤을 가를 때마다 동이 튼다.' },
   { id: 'u_dawn_great', name: '종언대검 오메가', slot: 'weapon', wtype: 'greatsword', tier: 7, icon: 'greatsword_7', lvReq: 52, rarity: 5, mythic: true,
-    stats: { atk: 250, critDmg: 50, dmgReduce: 6, hp: 120 }, visual: { style: 6, glow: '#fff2b0', rift: true },
-    effect: '끝의 무게 — 치명타 피해 +50%, 받는 피해 −6%', desc: '세상의 끝을 끝내기 위해 벼린 대검. 내려칠 때마다 공허가 한 걸음 물러선다.' },
+    // BAL-TUNE (bal_audit.md 권고 1): 다른 새벽 신화 여섯처럼 신성 — s20 · 외전 보스는 모두 신성 약점. 받는 피해 −6% 를 빼고 신성 +30% (브란은 가디언 피해 감소가 이미 있다)
+    stats: { atk: 250, holy: 30, critDmg: 50, hp: 120 }, element: 'holy', visual: { style: 6, glow: '#fff2b0', rift: true },
+    effect: '끝의 무게 — 신성 피해 +30%, 치명타 피해 +50%', desc:'세상의 끝을 끝내기 위해 벼린 대검. 내려칠 때마다 공허가 한 걸음 물러선다.' },
   { id: 'u_dawn_dagger', name: '별똥 단검 스텔라', slot: 'weapon', wtype: 'dagger', tier: 7, icon: 'dagger_7', lvReq: 52, rarity: 5, mythic: true,
     stats: { atk: 142, crit: 22, critDmg: 45, holy: 30, atkSpd: 12 }, element: 'holy', visual: { style: 6, glow: '#fff2b0', rift: true },
     effect: '떨어지는 별 — 치명타 확률 +22%, 공격 속도 +12%', desc: '떨어지는 별 하나를 붙잡아 벼린 단검. 칼끝이 지나간 자리에 꼬리별이 남는다.' },

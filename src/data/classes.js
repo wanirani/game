@@ -142,7 +142,7 @@ def('lia_bladedancer', { charId: 'lia', tier: 2, parent: 'lia_dancer', name: '�
   look: { primary: '#5a0a2a', secondary: '#ffd84a', trim: '#ffd84a', headgear: 'tiara', scarf: { color: '#ffd84a', long: true }, aura: { color: '#ffd84a', type: 'holy' } } });
 def('lia_reaper', { charId: 'lia', tier: 2, parent: 'lia_dancer', name: '사신의 낫', eng: 'REAPER', reqLevel: 25,
   desc: '죽음과 계약한 자.', perk: '처치 시 HP 3% 회복, 암흑 피해 +40%',
-  mult: { atk: 1.4 }, flat: { dark: 40, critDmg: 40, lifesteal: 3 },
+  mult: { atk: 1.4, hp: 1.15 }, flat: { dark: 40, critDmg: 40, lifesteal: 3 },   // hp ×1.15: BAL-TUNE (bal_audit.md 권고 6) — 리아의 여섯 직업 중 유일한 방어 선택지
   // scarf 짧게 — 칼날 무희의 긴 금빛 스카프가 뼈 날개 사이로 흘러내리지 않게 (HERO-REVIEW #225 / 요청 #349)
   look: { primary: '#0a0a0a', secondary: '#3a8a5a', trim: '#6affb0', headgear: 'hood', wings: 'bone', scarf: { color: '#e8c872', long: false }, aura: { color: '#6affb0', type: 'dark' }, eyes: '#6affb0', eyeGlow: true } });
 

@@ -22,8 +22,9 @@ export const BOSSES_D = {
   },
   b_nihil: {
     // 밸런스 (BOSS-P2-4, world2 §15 s20 보스 타수 180–260 · 받은 피해 14–24%): hpMul 1.6→1.32 (명세 값이면 kael 타수 ≈272–281 → ≈215–241)
+    // phases 첫 경계 0.75 → 0.7: BAL-TUNE (bal_audit.md 권고 5) — 1페이즈가 HP 25 → 30% (신성 무기 카엘은 1페이즈 패턴 2–3개 · 7–12초였다). 총 HP 그대로, 피날레 보호(15%)는 마지막 경계라 그대로
     id: 'b_nihil', name: '니힐', title: '태초의 공허', hp: 3200, hpMul: 1.32, atk: 44, def: 22, res: 22, exp: 5250, score: 600000,
-    size: { w: 220, h: 280 }, flying: true, contact: 0.8, material: 'ghost', weak: ['holy'], resist: ['dark', 'ice', 'fire', 'thunder'], phases: [0.75, 0.45, 0.15],
+    size: { w: 220, h: 280 }, flying: true, contact: 0.8, material: 'ghost', weak: ['holy'], resist: ['dark', 'ice', 'fire', 'thunder'], phases: [0.7, 0.45, 0.15],
     music: 'nihil', portrait: 'portraits/b_nihil', stageId: 's20', drops: ['u_nihil', 'u_nihil2'], light: { r: 340, color: '#ffffff', i: 0.6 },
     form2: { name: '니힐', title: '만유(萬有)를 흉내 내는 무', portrait: 'portraits/b_nihil2' },
     intro: '……',

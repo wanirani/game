@@ -81,6 +81,10 @@
 // 경험치 3800 (명세 값 그대로). 드롭 없음 (drops: [] — 보상은 아웃트로의 탈것 모르겐, §3). 2부 보스 공통 신화 1.5% 는 loot.js 그대로.
 // 결말: 체력 0 → 보스 처치 처리(경험치·플래그 boss_b_charon)는 같고 부제도 기본 '격파!'. 연출만 '놓아줌' (주저앉음 → 스토리는 그대로 남아 b_charon_post 가 걸어서 떠나보내고,
 //   아케이드는 재와 혼불로 흩어진다, 파편 폭발 없음). 도감(desc)에는 반전을 쓰지 않는다.
+// ── BAL-TUNE (2026-10-06, bal_audit.md 권고 2 · 리드 결정) — s23–s25 공격력 평탄화: 하겐 46 → 44 · 엘제베트 50 → 45 · 카론 49 → 42 (HP·hpMul·타수 그대로).
+//   까닭: 7단계·희귀도 4·+12 장비는 s17 에서 멈추는데 외전 보스 공격은 계속 올라 모형 장비의 리아·빅터·세라가 s23 부터 두 대에 쓰러졌다 (s25 한 대 = 최대 HP 57.4 · 53.1 · 46.5%).
+//   카엘 받는 피해 (모형, 보통): 하겐 20.7 → 19.8 · 엘제베트 21.5 → 19.4 · 카론 22.6 → 19.4% — s21 ≤ s22 ≤ s25 순서는 남고 s23–s25 는 19.4–19.8% 의 평지 (명세 §2.3 '앞 보스보다 세게'에서 벗어남, 리드 결정).
+//   위 머리말의 atk 46 · 50 · 49 결과 줄은 처음 맞출 때의 기록이다.
 export const BOSSES_E = {
   b_argen: {
     id: 'b_argen', name: '아르겐', title: '공허에 물든 은룡', hp: 2900, hpMul: 1.2, atk: 45, def: 22, res: 22, exp: 3360, score: 420000,
@@ -99,7 +103,7 @@ export const BOSSES_E = {
     desc: '까마귀 결사의 둥지를 서른 해 동안 지켜 온 여인. 이름 없는 아이들을 칼로 길러 냈고, 결사가 문을 닫던 날 모든 칼에게 이름을 반납하라는 소집령을 내렸다.',
   },
   b_hagen: {
-    id: 'b_hagen', name: '하겐', title: '늑대를 잡던 사냥꾼', hp: 2900, hpMul: 1.35, atk: 46, def: 22, res: 20, exp: 3600, score: 440000,
+    id: 'b_hagen', name: '하겐', title: '늑대를 잡던 사냥꾼', hp: 2900, hpMul: 1.35, atk: 44, def: 22, res: 20, exp: 3600, score: 440000,
     size: { w: 60, h: 146 }, flying: false, contact: 0.6, material: 'flesh', weak: ['holy'], resist: ['ice'], phases: [0.5],
     music: 'boss2', portrait: 'portraits/b_hagen', stageId: 's23', drops: [], light: { r: 200, color: '#ffcf6a', i: 0.55 },
     form2: { name: '은빛 늑대', title: '사냥꾼이었던 짐승', portrait: 'portraits/b_hagen2' },
@@ -107,7 +111,7 @@ export const BOSSES_E = {
     desc: '북쪽 설원에서 사십 년 동안 늑대를 사냥한 늙은 사냥꾼. 현상금 공고의 액수 칸을 늘 비워 두었고, 사냥꾼들 사이에서는 "은빛 늑대"라는 소문과 함께 이름이 오르내렸다.',
   },
   b_bride: {
-    id: 'b_bride', name: '엘제베트', title: '백작의 첫 신부', hp: 3000, hpMul: 1.3, atk: 50, def: 23, res: 22, exp: 3700, score: 450000,
+    id: 'b_bride', name: '엘제베트', title: '백작의 첫 신부', hp: 3000, hpMul: 1.3, atk: 45, def: 23, res: 22, exp: 3700, score: 450000,
     size: { w: 64, h: 150 }, flying: false, contact: 0.6, material: 'flesh', weak: ['holy', 'fire'], resist: ['dark'], phases: [0.5],
     music: 'dracula', portrait: 'portraits/b_bride', stageId: 's24', drops: [], light: { r: 220, color: '#ff6a8a', i: 0.6 },
     form2: { name: '시든 신부', title: '돌려받는 세월', portrait: 'portraits/b_bride2' },
@@ -115,7 +119,7 @@ export const BOSSES_E = {
     desc: '드라큘라 백작의 첫 신부. 백작이 재가 된 뒤 남쪽 기슭의 버려진 수녀원에 장미 정원을 가꾸었다. 밤마다 핏빛 욕조에 몸을 담근다는 소문이 돈다.',
   },
   b_charon: {
-    id: 'b_charon', name: '카론', title: '사신의 마부', hp: 3150, hpMul: 1.32, atk: 49, def: 23, res: 22, exp: 3800, score: 460000,
+    id: 'b_charon', name: '카론', title: '사신의 마부', hp: 3150, hpMul: 1.32, atk: 42, def: 23, res: 22, exp: 3800, score: 460000,
     size: { w: 200, h: 130 }, flying: false, contact: 0.6, material: 'bone', weak: ['holy'], resist: ['dark', 'ice'], phases: [0.5],
     music: 'boss', portrait: 'portraits/b_charon', stageId: 's25', drops: [], light: { r: 220, color: '#7dffb0', i: 0.55 },
     form2: { name: '카론', title: '말을 잃은 마부', portrait: 'portraits/b_charon' },

@@ -2,7 +2,7 @@
 // BossC(c_common.js) 상속 — 패턴 이름은 계약 (P2_PATTERNS.b_nihil):
 //   공격  palmEyes · erase · starfall · grasp (P1) · echoDracula · echoChaos · echoNarkissa · echoZiz (P2+)
 //         collapse (P3 진입 때 강제, 그 뒤 약 20초마다) · maw (P3) · lastLight (P4: 느린 별비 5개 / 반속 grasp 를 번갈아)
-//   전환  form2 (75%, 2.0초: 가면이 일그러지며 쓰러뜨린 보스들의 얼굴이 스친다 · form2 이름 · 대사 b_nihil_form2 스토리 1회)
+//   전환  form2 (70% — BAL-TUNE 75 → 70, 2.0초: 가면이 일그러지며 쓰러뜨린 보스들의 얼굴이 스친다 · form2 이름 · 대사 b_nihil_form2 스토리 1회)
 //         phase2 (45%, 1.6초: 실루엣이 세로로 찢어지며 무너지는 별의 아가리가 열린다 → 다음 패턴 collapse 강제)
 //         final (15%, 2.2초: 실루엣이 핵으로 빨려 들어가 흰 불꽃을 두른 검은 태양이 된다 · 대사 b_nihil_final)
 //         final 뒤 (afterTransition): run.sp = 100, 1차 전직 이상이면 run.aw = 100 (피날레 = 각성의 순간),

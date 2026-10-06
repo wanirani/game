@@ -1195,7 +1195,7 @@ Death: the queen withers and drops off; the beast lies down with a long gentle g
 ### 6.8 `b_nihil` — 니힐, 태초의 공허 (s20, final)
 ```js
 b_nihil: { id: 'b_nihil', name: '니힐', title: '태초의 공허', hp: 3200, hpMul: 1.6, atk: 44, def: 22, res: 22, exp: 15000, score: 600000,
-  size: { w: 220, h: 280 }, flying: true, contact: 0.8, material: 'ghost', weak: ['holy'], resist: ['dark', 'ice', 'fire', 'thunder'], phases: [0.75, 0.45, 0.15],
+  size: { w: 220, h: 280 }, flying: true, contact: 0.8, material: 'ghost', weak: ['holy'], resist: ['dark', 'ice', 'fire', 'thunder'], phases: [0.7, 0.45, 0.15],   // BAL-TUNE: 첫 경계 0.75 → 0.7 (1페이즈 HP 30%)
   music: 'nihil', portrait: 'portraits/b_nihil', stageId: 's20', drops: ['u_nihil', 'u_nihil2'], light: { r: 340, color: '#ffffff', i: 0.6 },
   form2: { name: '니힐', title: '만유(萬有)를 흉내 내는 무', portrait: 'portraits/b_nihil2' },
   intro: '……',
@@ -1251,10 +1251,10 @@ Weapons (`w_<type>_13` standard, `w_<type>_14` upper; icon `<type>_7`; visual `{
 the hero renderer treats `rift` as an optional iridescent shimmer and otherwise renders style 6):
 | type | 13 | 14 |
 |---|---|---|
-| whip | '균열의 사슬' dark, `{ lifesteal: 2 }`, '#3a2a4a' — '공허의 균열에서 건져 낸 사슬. 휘두르면 공간이 잠시 찢어진 채로 남는다.' | '별빛 채찍 아스트라' holy, `{ reach: 12, crit: 5 }`, '#f4ecd0' — '별빛을 꼬아 만들었다는 채찍. 밤하늘에 휘두르면 별자리가 그려진다.' |
+| whip | '균열의 사슬' null (BAL-TUNE: was dark), `{ lifesteal: 2 }`, '#3a2a4a' — '공허의 균열에서 건져 낸 사슬. 휘두르면 공간이 잠시 찢어진 채로 남는다.' | '별빛 채찍 아스트라' holy, `{ reach: 12, crit: 5 }`, '#f4ecd0' — '별빛을 꼬아 만들었다는 채찍. 밤하늘에 휘두르면 별자리가 그려진다.' |
 | sword | '만경검' ice, `{ crit: 6 }`, '#dff4ff' — '만경궁의 거울을 녹여 벼린 검. 칼날에 벤 자의 얼굴이 비친다.' | '폭풍 참마검' thunder, `{ atkSpd: 6 }`, '#bfe0ff' — '하늘 왕국 근위대의 검. 칼집에서 뽑을 때마다 천둥이 먼저 운다.' |
 | greatsword | '용광로 대검' fire, `{ critDmg: 14 }` — '영겁의 용광로에서 식지 않은 채 꺼낸 대검. 칼날이 늘 붉게 달아 있다.' | '세계수 파쇄검' null, `{ critDmg: 26, hp: 60 }` — '썩은 세계수의 심재를 깎아 만든 대검. 쇠보다 무겁고 쇠보다 단단하다.' |
-| dagger | '악몽의 송곳' dark, `{ crit: 5 }` — '꿈속에서 벼린 송곳. 깨어나면 상처만 남는다.' | '심해 가시 단검' ice, `{ critDmg: 20, lifesteal: 2 }` — '심해 아귀의 이빨을 갈아 만든 단검. 물속에서 더 날카로워진다.' |
+| dagger | '악몽의 송곳' null (BAL-TUNE: was dark), `{ crit: 5 }` — '꿈속에서 벼린 송곳. 깨어나면 상처만 남는다.' | '심해 가시 단검' ice, `{ critDmg: 20, lifesteal: 2 }` — '심해 아귀의 이빨을 갈아 만든 단검. 물속에서 더 날카로워진다.' |
 | gun | '뇌조의 장총' thunder, `{ crit: 5 }` — '뇌조의 깃대를 총열로 쓴 장총. 방아쇠를 당기면 벼락이 날아간다.' | '용암 산탄포' fire, `{ critDmg: 22 }` — '쇳물을 산탄으로 쏘는 대포. 한 발 한 발이 작은 용광로다.' |
 | staff | '산호 성장(聖杖)' holy, `{ mp: 30, mpRegen: 1 }` — '가라앉은 성소의 사제들이 들던 산호 지팡이. 물속에서도 기도가 닿는다.' | '공허의 지팡이' dark, `{ skillDmg: 14 }` — '공허의 조각을 박은 지팡이. 들여다보면 끝없이 빨려 든다.' |
 
@@ -1315,7 +1315,7 @@ written by WP-F in the same style (grotesque flavour for boss items; u_alberto: 
 |---|---|---|---|---|
 | u_dawn_whip | 새벽채찍 루미나 | `{ atk: 190, holy: 40, reach: 18, crit: 8 }` | holy | '성녀의 기도 — 신성 피해 +40%, 공격 범위 +18%' |
 | u_dawn_sword | 여명검 아우로라 | `{ atk: 196, mag: 60, holy: 35, crit: 10 }` | holy | '첫 햇살 — 신성 피해 +35%, 치명타 확률 +10%' |
-| u_dawn_great | 종언대검 오메가 | `{ atk: 250, critDmg: 50, dmgReduce: 6, hp: 120 }` | — | '끝의 무게 — 치명타 피해 +50%, 받는 피해 −6%' |
+| u_dawn_great | 종언대검 오메가 | `{ atk: 250, holy: 30, critDmg: 50, hp: 120 }` (BAL-TUNE: was `dmgReduce: 6`, no element) | holy | '끝의 무게 — 신성 피해 +30%, 치명타 피해 +50%' |
 | u_dawn_dagger | 별똥 단검 스텔라 | `{ atk: 142, crit: 22, critDmg: 45, holy: 30, atkSpd: 12 }` | holy | '떨어지는 별 — 치명타 확률 +22%, 공격 속도 +12%' |
 | u_dawn_gun | 창세총 제네시스 | `{ atk: 168, crit: 14, holy: 35, subDmg: 30 }` | holy | '첫 번째 빛 — 신성 피해 +35%, 보조무기 피해 +30%' |
 | u_dawn_staff | 새벽의 홀 에오스 | `{ atk: 75, mag: 220, holy: 40, skillDmg: 25, mpRegen: 2 }` | holy | '여명의 여신 — 스킬 피해 +25%, MP 재생 +2/초' |
@@ -1644,15 +1644,22 @@ other character within ±30%:
 
 | stage | enemy lv | expected player lv at entry | hitsMed | hitsMax | takenMed % | boss hits | boss taken % |
 |---|---|---|---|---|---|---|---|
-| s14 | 46 | 39–43 | 5–9 | ≤ 20 | 6–12 | 110–170 | 12–22 |
-| s15 | 50 | 43–47 | 5–9 | ≤ 20 | 6–12 | 110–170 | 12–22 |
-| s16 | 53 | 46–50 | 5–9 | ≤ 20 | 6–12 | 110–170 | 12–22 |
-| s17 | 56 | 49–53 | 5–9 | ≤ 20 | 6–12 | 115–175 | 12–22 |
-| s18 | 60 | 52–57 | 5–9 | ≤ 20 | 6–13 | 120–180 | 13–23 |
-| s19 | 64 | 56–61 | 5–10 | ≤ 22 | 6–13 | 130–190 | 13–23 |
-| s20 | 68 | 60–65 | 5–10 | ≤ 22 | 7–14 | 180–260 | 14–24 |
+| s14 | 46 | 44–48 | 5–9 | ≤ 20 | 6–12 | 110–170 | 12–22 |
+| s15 | 50 | 47–51 | 5–9 | ≤ 20 | 6–12 | 110–170 | 12–22 |
+| s16 | 53 | 51–55 | 4–9 | ≤ 20 | 4–12 | 110–170 | 12–22 |
+| s17 | 56 | 54–58 | 5–9 | ≤ 20 | 6–12 | 115–175 | 12–22 |
+| s18 | 60 | 58–62 | 5–9 | ≤ 20 | 6–13 | 120–180 | 13–23 |
+| s19 | 64 | 61–65 | 5–10 | ≤ 22 | 6–13 | 130–190 | 13–23 |
+| s20 | 68 | 65–69 | 5–10 | ≤ 22 | 7–14 | 180–260 | 14–24 |
 
-Level at the end of s20 ≈ 64–68. Tuning knobs, in order: enemy base `atk` (quadratic scaling dominates after lv 55 —
+Level at the end of s20 ≈ 70–74.
+
+**BAL-TUNE (2026-10-06, `/tmp/claude-0/plan/bal_audit.md` recommendations 3–4, lead-approved):**
+- The reference run now includes main-quest exp by default. All 20 main quests are `auto`, so every player gets it. `--no-quests` gives the old run.
+- The player-level column is the real entry level ±2: s14 46, s15 49, s16 53, s17 56, s18 60, s19 63, s20 67, end of s20 72. The old column (39–43 … 60–65, end 64–68) left the quest exp out.
+- With quest exp, kael enters s16 at Lv 53, so tier 7 (Lv 50) arrives one stage earlier. s16 hitsMed is 4 and takenMed 4.4%, so the s16 lower bounds are 4.
+- `--ng` keeps the ngplus.md §3.4 model, with no quest exp, because its 1.15/1.45/1.65 limits were set on that model.
+- Every column above is element-neutral, and `--check` judges these. `balance.mjs` also prints `el` / `elMul` / `bossSecEl`: boss seconds with the reference weapon's element (weak ×1.6, resist ×0.5, ×(1 + hero element %)), for tuning bosses. In the real engine, element changes fight length by up to 2×. Tuning knobs, in order: enemy base `atk` (quadratic scaling dominates after lv 55 —
 lower base atk before touching `enemyStats`), enemy/boss base `hp`, boss `hpMul`, enemy `exp`, main-quest exp `k`,
 tier-7 `T_ATK`/`A_BASE` (±15% max). `enemyStats()` and `Boss` scaling formulas must not change (Part 1 balance).
 Difficulty scaling (5 levels) applies unchanged; on `inferno` every boss uses the inferno extras listed in §6.

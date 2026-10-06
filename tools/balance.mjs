@@ -1,5 +1,5 @@
 // 밸런스 시뮬레이터: 스테이지별 예상 레벨/장비로 일반 적·보스 처치 타수와 받는 피해 비율을 표로 출력
-// 사용: node tools/balance.mjs [difficulty=normal] [charId=kael] [--check] [--strict] [--json] [--acc] [--docs] [--quests] [--seed N] [--k …]
+// 사용: node tools/balance.mjs [difficulty=normal] [charId=kael] [--check] [--strict] [--json] [--acc] [--docs] [--no-quests] [--seed N] [--k …]
 //   --check : 2부 행(s14–s20)을 world2 §15 목표와 비교해 벗어난 칸을 나열하고, 하나라도 벗어나면 종료 코드 1.
 //             카엘은 표의 범위 그대로. 다른 영웅은 "1부 기준 보정" 범위: 카엘 범위 × (그 영웅 ÷ 카엘, s11–s13 평균 비율) ±30%.
 //             1부에서 이미 정해진 영웅 개성(예: 브란 가디언 피해 감소 25%, 빅터·리아 무방비)은 2부 데이터로 바꿀 수 없으므로
@@ -8,7 +8,9 @@
 //   --json  : 표 대신 JSON 한 덩어리 (다른 도구가 읽기용)
 //   --acc   : 장신구 2칸(반지·목걸이, 같은 단계·희귀도)도 장착한 기준 (기준 실행은 무기·몸통·머리·망토 4칸)
 //   --docs  : 지난 스테이지의 비전서 능력치(d01 질풍보 등)를 반영
-//   --quests: 메인 퀘스트 보상 경험치(스테이지 클리어 시 자동 수령)도 더함 (기준 실행에는 없음)
+//   --no-quests: 메인 퀘스트 보상 경험치를 빼고 잰다 (BAL-TUNE 전의 기준 실행). 기본은 더한다 — 메인 퀘스트 20개는 모두 auto 라
+//             스테이지를 깨면 누구나 받는다 (game/quests.js check(), bal_audit.md §3).
+//             --ng 는 예외: ngplus.md §3.4 모형 그대로 회차 실행·1회차 기준 실행 모두 퀘스트 경험치 없이 (상한을 그 모형으로 맞췄다; --quests 로 넣는다).
 //   --seed N: 옵션(affix) 추첨 시드 (기본 1). 같은 데이터 → 같은 표.
 //   --k 'bexp=0.4,eatk=0.9,bexp.b_chaos=0.5' : 데이터 조정 가정(what-if) 배율. 이름만 쓰면 2부 스테이지(s14–s20)의
 //             모든 적/보스에, 이름.id 를 쓰면 그 적/보스 하나에(1부 포함) 적용. 이름: eexp ehp eatk (일반 적 경험치·체력·공격),
@@ -21,13 +23,18 @@
 //             1회차 기준 실행의 2부(s14–s20) 최댓값 — 받는 피해(bossTaken·takenMed) ≤ 1.15 / 1.45 / 1.65 (N = 1 / 2 / 3 이상),
 //             보스 타수(bossHits) ≤ 1.15, 표의 숫자가 모두 유한. 하나라도 벗어나면 종료 코드 1.
 //
-// 기준 실행 (world2 §15): 보통 난이도, 1레벨에서 시작해 스테이지마다 일반 적 85% + 보스 처치 경험치를 쌓는다.
+// 기준 실행 (world2 §15): 보통 난이도, 1레벨에서 시작해 스테이지마다 일반 적 85% + 보스 처치 경험치 + 메인 퀘스트 경험치를 쌓는다.
 // 장비 = tierForLevel(레벨) 단계(최대 7) 상위형 베이스, 희귀도 min(4, 1+floor(i/4)), 강화 min(12, floor(i*0.8))
 // (몸통 ×0.7, 머리 ×0.5, 망토 0). 직업은 10/25 레벨에서 첫 번째 갈래. 옵션 추첨은 시드 5개 평균.
 //
 // 열: hitsMed/hitsMax/bossHits = 기본기 1타(모션 배율 1.0) 기준 타수 — §15 목표의 단위.
 //     bossSec = 지상 기본 콤보(모션 배율 × feel_hit.js MV_SCALE, 다단히트 포함)를 쉬지 않고 넣을 때 보스 처치 시간(초, 참고용;
 //     공격 속도 스탯·스킬·필살기 제외). 머리글의 mvHit = 그 콤보의 1타 평균 배율 (채찍 MV_SCALE 상향이 여기에 보인다).
+//     bossSec 와 타수·받는 피해 열은 무속성 — §15 목표와 --check 는 이 값으로 본다 (속성을 넣으면 띠가 영웅·무기마다 움직인다).
+//     el / elMul / bossSecEl = 장착한 기준 무기의 속성을 넣은 값 (BAL-TUNE, bal_audit.md 권고 3): 콤보 동작마다 속성 = 동작의 element
+//     (지팡이 기본기는 신성) 또는 무기 element, 배율 = (1 + 영웅 속성 %) × 보스 약점 1.6 / 저항 0.5 / 면역 0 (combat.js computeDamage 와 같다).
+//     el = 콤보의 속성(섞이면 a/b), elMul = 무속성 대비 콤보 피해 배율, bossSecEl = bossSec ÷ elMul. 실제 엔진에서는 속성이 싸움 길이를
+//     2배까지 바꾼다 (신성 채찍 카엘 하겐 31초 · 무속성 58초) — 보스를 맞출 때는 두 값을 함께 본다.
 //     takenMed / bossTaken = 적 1타(보스는 모션 1.2) 피해가 최대 HP 에서 차지하는 %.
 import { STAGES, STAGE_ORDER } from '../src/data/stages.js';
 import { ENEMIES } from '../src/data/enemies.js';
@@ -50,10 +57,12 @@ const flag = (n) => argv.includes('--' + n);
 const optv = (n, d) => { const i = argv.indexOf('--' + n); return i >= 0 && argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[i + 1] : d; };
 const pos = argv.filter((a, i) => !a.startsWith('--') && !(i > 0 && ['--seed', '--k', '--ng'].includes(argv[i - 1])));
 const diffId = pos[0] || 'normal', charId = pos[1] || 'kael';
-const CHECK = flag('check'), STRICT = flag('strict'), JSON_OUT = flag('json'), ACC = flag('acc'), DOCS = flag('docs'), QUESTS_ON = flag('quests');
+const CHECK = flag('check'), STRICT = flag('strict'), JSON_OUT = flag('json'), ACC = flag('acc'), DOCS = flag('docs');
 const SEED = Number(optv('seed', 1)) || 1;
 const SEEDS = 5;
 const NG_N = flag('ng') ? Number(optv('ng', NaN)) : 0;   // 회차 (docs/specs/ngplus.md §3.4)
+// 메인 퀘스트 경험치: 1회차 표는 기본 포함 (BAL-TUNE). --ng 는 ngplus.md §3.4 모형 그대로(퀘스트 경험치 없음 — 상한 1.15/1.45/1.65 를 그 모형으로 맞췄다), --quests 로 넣는다
+const QUESTS_ON = NG_N ? flag('quests') : !flag('no-quests');
 if (flag('ng') && !(Number.isInteger(NG_N) && NG_N >= 1 && NG_N <= 9)) { console.error(`--ng 는 1–9 정수 (${optv('ng', '')})`); process.exit(2); }
 // getDiff 는 모르는 id 를 보통으로 바꾼다 — 오타(예: hardd)가 보통 난이도 표를 'hardd' 라는 이름으로 내지 않게 막는다
 if (!DIFF[diffId]) { console.error(`알 수 없는 난이도: ${diffId} (${Object.keys(DIFF).join(', ')})`); process.exit(2); }
@@ -85,12 +94,30 @@ const realRandom = Math.random;
 function comboModel(wtype) {
   const g = MOVESETS[wtype]?.ground ?? [];
   let sum = 0, n = 0, time = 0;
+  const parts = [];   // 동작별 배율 몫 (속성 배율용): { w: 배율 × 타수, el: 동작 속성 (없으면 무기 속성) }
   g.forEach((m, i) => {
     const hits = m.rehit && m.hit ? 1 + Math.floor((m.hit[1] - m.hit[0]) / m.rehit) : 1;
-    sum += (m.mv ?? 1) * (MV_SCALE[m.id] ?? 1) * hits; n += hits;
+    const w = (m.mv ?? 1) * (MV_SCALE[m.id] ?? 1) * hits;
+    sum += w; n += hits; parts.push({ w, el: m.element ?? null });
     time += i < g.length - 1 ? (m.cancel ?? m.dur ?? 0.3) : (m.dur ?? 0.4);
   });
-  return n ? { mvHit: sum / n, perSec: sum / Math.max(0.1, time) } : { mvHit: 1, perSec: 3 };
+  return n ? { mvHit: sum / n, perSec: sum / Math.max(0.1, time), parts, sum } : { mvHit: 1, perSec: 3, parts: [{ w: 1, el: null }], sum: 1 };
+}
+/** 한 타의 속성 배율 (combat.js computeDamage 와 같은 순서: 영웅 속성 % → 약점 ×1.6 → 저항 ×0.5 → 면역 0). el 이 없으면 1 */
+function elemMul(src, tgt, el) {
+  if (!el) return 1;
+  let k = 1 + (src[el] ?? 0) / 100;
+  if (tgt.weak?.includes(el)) k *= 1.6;
+  if (tgt.resist?.includes(el)) k *= 0.5;
+  if (tgt.immune?.includes(el)) k = 0;
+  return k;
+}
+/** 기본 콤보 전체의 속성 배율 (무속성 대비) — 동작 속성(지팡이 기본기 = 신성) 이 무기 속성(src.element)보다 먼저 (player.js makeAttack) */
+function comboElem(combo, src, tgt) {
+  const els = new Set();
+  let w = 0;
+  for (const p of combo.parts) { const el = p.el ?? src.element ?? null; if (el) els.add(el); w += p.w * elemMul(src, tgt, el); }
+  return { el: els.size ? [...els].join('/') : '-', mul: combo.sum > 0 ? w / combo.sum : 1 };
 }
 
 function countEnemies(stage) {
@@ -164,7 +191,7 @@ function simulate(cid, ng = 0) {
     const hits = es.map((e) => Math.ceil(e.s.maxHp / dmg(P, e.s, 1.0, mag)));
     const taken = es.map((e) => dmg(e.s, { def: P.def, dmgReduce: P.dmgReduce, crit: 0 }, 1.0) / P.hp * 100);
     const b = BOSSES[st.boss];
-    let bh = 0, bt = 0, bhp = 0, bsec = 0;
+    let bh = 0, bt = 0, bhp = 0, bsec = 0, bel = '-', belMul = 1;
     if (b) {
       const bid = b.id ?? st.boss;
       const bs = enemyStats({ ...b, lv: st.level }, st.level, { ...D, enemyHp: D.bossHp ?? D.enemyHp }, false);
@@ -174,8 +201,9 @@ function simulate(cid, ng = 0) {
       bh = Math.ceil(bhp / d1);
       bsec = bhp / (d1 * combo.perSec);
       bt = dmg(bs, { def: P.def, dmgReduce: P.dmgReduce }, 1.2) / P.hp * 100;
+      ({ el: bel, mul: belMul } = comboElem(combo, P, bs));   // 장착한 기준 무기의 속성 (보고용 — --check 는 무속성)
     }
-    rows.push({ stage: sid, elv: st.level, plv: level, cls: H.classId.replace(/^[a-z]+_/, ''), tier, ...(ng ? { enh } : {}), atk: Math.round(mag ? P.mag : P.atk), hp: Math.round(P.hp), def: Math.round(P.def), n: ids.length, eHP: med(es.map((e) => e.s.maxHp)), hitsMed: med(hits), hitsMax: Math.max(...hits, 0), takenMed: +med(taken).toFixed(1), bossHP: bhp, bossHits: bh, bossSec: Math.round(bsec), bossTaken: +bt.toFixed(1) });
+    rows.push({ stage: sid, elv: st.level, plv: level, cls: H.classId.replace(/^[a-z]+_/, ''), tier, ...(ng ? { enh } : {}), atk: Math.round(mag ? P.mag : P.atk), hp: Math.round(P.hp), def: Math.round(P.def), n: ids.length, eHP: med(es.map((e) => e.s.maxHp)), hitsMed: med(hits), hitsMax: Math.max(...hits, 0), takenMed: +med(taken).toFixed(1), bossHP: bhp, bossHits: bh, bossSec: Math.round(bsec), bossTaken: +bt.toFixed(1), el: bel, elMul: +belMul.toFixed(2), bossSecEl: belMul > 0 ? Math.round(bsec / belMul) : Infinity });
     // 경험치 획득 (85% 처치 + 보스 [+ 메인 퀘스트])
     let gain = es.reduce((a, e) => a + e.s.exp, 0) * 0.85;
     if (b) gain += Math.round((b.exp ?? 400) * knob('bexp', b.id ?? st.boss, sid) * (1 + st.level * 0.35) * (D.exp ?? 1));
@@ -188,17 +216,18 @@ function simulate(cid, ng = 0) {
   return { rows, endLevel: mainLevel, sideEndLevel: level, combo };
 }
 
-// ── world2 §15 목표 (카엘 기준)
+// ── world2 §15 목표 (카엘 기준). plv = 메인 퀘스트 경험치를 받은 실제 진입 레벨 ±2 (BAL-TUNE, bal_audit.md 권고 4 — 예전 띠 39–43 … 60–65 는 퀘스트 경험치를 뺀 값)
 const T = {
-  s14: { plv: [39, 43], hitsMed: [5, 9], hitsMax: [0, 20], takenMed: [6, 12], bossHits: [110, 170], bossTaken: [12, 22] },
-  s15: { plv: [43, 47], hitsMed: [5, 9], hitsMax: [0, 20], takenMed: [6, 12], bossHits: [110, 170], bossTaken: [12, 22] },
-  s16: { plv: [46, 50], hitsMed: [5, 9], hitsMax: [0, 20], takenMed: [6, 12], bossHits: [110, 170], bossTaken: [12, 22] },
-  s17: { plv: [49, 53], hitsMed: [5, 9], hitsMax: [0, 20], takenMed: [6, 12], bossHits: [115, 175], bossTaken: [12, 22] },
-  s18: { plv: [52, 57], hitsMed: [5, 9], hitsMax: [0, 20], takenMed: [6, 13], bossHits: [120, 180], bossTaken: [13, 23] },
-  s19: { plv: [56, 61], hitsMed: [5, 10], hitsMax: [0, 22], takenMed: [6, 13], bossHits: [130, 190], bossTaken: [13, 23] },
-  s20: { plv: [60, 65], hitsMed: [5, 10], hitsMax: [0, 22], takenMed: [7, 14], bossHits: [180, 260], bossTaken: [14, 24] },
+  s14: { plv: [44, 48], hitsMed: [5, 9], hitsMax: [0, 20], takenMed: [6, 12], bossHits: [110, 170], bossTaken: [12, 22] },
+  s15: { plv: [47, 51], hitsMed: [5, 9], hitsMax: [0, 20], takenMed: [6, 12], bossHits: [110, 170], bossTaken: [12, 22] },
+  s16: { plv: [51, 55], hitsMed: [4, 9], hitsMax: [0, 20], takenMed: [4, 12],   // 4: 퀘스트 경험치로 s16 진입이 Lv 53 → 7단계(Lv 50)가 한 장 일찍 온다 (BAL-TUNE)
+        bossHits: [110, 170], bossTaken: [12, 22] },
+  s17: { plv: [54, 58], hitsMed: [5, 9], hitsMax: [0, 20], takenMed: [6, 12], bossHits: [115, 175], bossTaken: [12, 22] },
+  s18: { plv: [58, 62], hitsMed: [5, 9], hitsMax: [0, 20], takenMed: [6, 13], bossHits: [120, 180], bossTaken: [13, 23] },
+  s19: { plv: [61, 65], hitsMed: [5, 10], hitsMax: [0, 22], takenMed: [6, 13], bossHits: [130, 190], bossTaken: [13, 23] },
+  s20: { plv: [65, 69], hitsMed: [5, 10], hitsMax: [0, 22], takenMed: [7, 14], bossHits: [180, 260], bossTaken: [14, 24] },
 };
-const END_LV = [64, 68];   // s20 을 마친 뒤 레벨
+const END_LV = [70, 74];   // s20 을 마친 뒤 레벨 (메인 퀘스트 경험치 포함 — BAL-TUNE 이 plv 띠와 함께 실제 레벨 ±2 로 옮김; --no-quests 실행은 plv 가 띠 밖)
 const ANCHOR = ['s11', 's12', 's13'];   // 1부 기준 보정 비율을 잴 스테이지
 const round1 = (v) => Math.round(v * 10) / 10;
 
