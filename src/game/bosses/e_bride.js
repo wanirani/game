@@ -27,8 +27,8 @@
 //   ps {…} · pts (골격, rig()) · vine (채찍 점 9) · train (끌자락 점 7) · veil (베일 점 5) · rags (넝마 자락 3×5) · hair (머리채 2×5) · gobletUp · gobBreakT ·
 //   burnK · crackK · ghost · stunned · exposed · cWin · spinT · dieT · vanishK · state · t · flashT · hitPart · A
 // 컬링: 펼친 채찍(8칸)·끌자락이 몸통 판정보다 크므로 하겐과 같은 ArtCull 대리 개체가 artBounds() 로 그린다.
-import { BossC, telegraph, strikeRect, strikeColumn, strikeCircle, pullField, warnMark, spawnMinion, minionsAlive, screenTint, prewarmTint, phaseScript, canShowScript } from './c_common.js';
-import { PI, R, LG, ink, glow, glowE, glowSprite, warnFloor, warnRect, impact } from './b_common.js';
+import { BossC, telegraph, strikeRect, strikeColumn, strikeCircle, pullField, warnMark, spawnMinion, minionsAlive, screenTint, prewarmTint, phaseScript, canShowScript, capNote } from './c_common.js';
+import { PI, R, LG, ink, glow, glowE, glowSprite, warnFloor, warnRect, impact, ownHit } from './b_common.js';
 import { Entity } from '../entity.js';
 import { TILE } from '../../core/game.js';
 import { T as TT } from '../../core/physics.js';
@@ -59,7 +59,7 @@ const T48 = () => TILE || 48;
 const SIZE_L = { w: 64, h: 150 }, SIZE_C = { w: 84, h: 150 }, HOV = 24;   // 귀부인 · 노파 판정 크기 (발 x 고정) · 노파 판정 아래 끝 = 디딤면 − 24
 const HEAL = 0.04, HEAL_AT = 0.85, HEAL_MAX = 2, BREAK_DMG = 0.03, EXPOSE_DMG = 0.05;   // 회춘의 잔 (§2.1)
 // 창 상한 (페이즈별 [1페이즈], 최대 체력 비 — POLISH-4, docs/specs/ex_s24.md §10): 왈츠 한 번(세 걸음 · 무릎 인사) 15% · 무릎 한 번 10% 까지만 잃는다 (2페이즈 · 15% 긴 무릎은 상한 없음).
-//   닿으면 남는 피해는 버리고('저항' 숫자), 무릎이면 곧바로 일어선다. 강한 영웅만 닿는다 — 첫 왈츠(26–35%) + 카운터 무릎(22–31%)이 1페이즈를 한 번에 끝내던 것
+//   닿으면 남는 피해는 버리고('저항' 은 창마다 한 번, 그 뒤 같은 창은 0 · 숫자 없음 — c_common.capNote), 무릎이면 곧바로 일어선다. 강한 영웅만 닿는다 — 첫 왈츠(26–35%) + 카운터 무릎(22–31%)이 1페이즈를 한 번에 끝내던 것
 const DANCE_CAP = [0.15], STAG_CAP = [0.10];
 // ── 몸 지역 좌표 (+x = 얼굴 쪽, y 아래가 양수, 원점 = 발 가운데 바닥) ──
 const TORSO = 34, TORSO_C = 44, UA = 24, FA = 23, VINE_N = 8, TRAIN_N = 6, STRAND_N = 4;   // 몸통(허리→목) 귀부인 · 노파 — 채색 부품(full_a lps 0.06 · crone_a lps 0.07)의 비례
@@ -316,13 +316,14 @@ export class Bride extends BossC {
   }
   /**
    * 창 상한 (DANCE_CAP · STAG_CAP, d_nihil.js 피날레 보호와 같은 틀 — takeHit 에서 줄인다): 왈츠 한 번 · 무릎 한 번에 잃는 체력은 1페이즈에서 상한까지.
-   * 넘는 피해는 상한까지만 들어가고(숫자도 줄인 값, 1 이하면 impact.js capFn 처럼 '저항'), 무릎이면 그 틱에 일어선다. 필살·각성은 빼고(제 상한 capFn 30%).
+   * 넘는 피해는 상한까지만 들어가고(그 줄인 숫자가 창마다 한 번 회색 '저항'), 그 뒤 같은 창의 타격은 0 · 숫자 없음 (capNote — BAL-RULES:
+   * 예전엔 1 씩 '저항' 이 줄지어 떴다), 무릎이면 그 틱에 일어선다. 필살·각성은 빼고(제 상한 capFn 30%).
    */
   takeHit(dmg, attack, world, info) {
     const burst = attack?.tags?.includes('ult') || attack?.tags?.includes('awaken');
     if (this.capHp != null && !burst && !(this.dying > 0) && !this.invuln && this.hp - dmg <= this.capHp) {
-      dmg = Math.max(1, Math.round(this.hp - this.capHp));
-      if (info) { info.dmg = dmg; info.capped = true; if (dmg <= 1) info.resist = true; }
+      dmg = Math.max(0, Math.round(this.hp - this.capHp));
+      capNote(this, info, dmg);
       if (this.state === 'stagger' && this.stunned) this.wakeT = this.st + 1e-3;
     }
     return super.takeHit(dmg, attack, world, info);
@@ -331,7 +332,7 @@ export class Bride extends BossC {
   setState(s) {
     super.setState(s);
     const c = (s === 'waltz' || s === 'lastDance' ? DANCE_CAP : s === 'stagger' && !this.stagLong ? STAG_CAP : null)?.[this.phase], mx = this.stats?.maxHp;
-    this.capHp = c && mx ? this.hp - mx * c : null;
+    this.capHp = c && mx ? this.hp - mx * c : null; this.capSaid = false;
   }
   onHurt(dmg, attack, world, info, part) {
     const x = info?.hx ?? this.cx, y = info?.hy ?? this.cy;
@@ -340,14 +341,14 @@ export class Bride extends BossC {
     this.check15();
     const mx = this.stats.maxHp;
     // 회춘의 잔: 성배 판정 한 대 · 몸통에 최대 체력 3% → 성배가 깨진다 (스토리 15% 의 대사 성배는 카밀라가 깬다).
-    //   수호신의 자동 공격은 성배를 '한 대'로 깨지 않는다 — 몸통 피해로만 센다 (e_hagen.js 올가미 noGuardianHit 과 같은 뜻: 끊을지는 플레이어가 고른다)
+    //   수호신의 자동 공격은 성배를 '한 대'로 깨지 않는다 — 몸통 피해로만 센다 (ownHit, e_hagen.js 올가미 noGuardianHit 과 같은 뜻: 끊을지는 플레이어가 고른다)
     if (this.state === 'goblet' && this.gobletUp && !this._lastMode) {
-      if (part === this.pGob && !attack?.tags?.includes('guardian')) { this._breakNow = true; return; }
+      if (part === this.pGob && ownHit(attack)) { this._breakNow = true; return; }
       this.gobAcc += Math.max(0, dmg || 0);
       if (this.gobAcc >= mx * BREAK_DMG) { this._breakNow = true; return; }
     }
-    // 카운터 창(왈츠 두 가지의 무릎 인사)에 맞으면 → 무릎 (stagger)
-    if (this.cWin && (this.state === 'waltz' || this.state === 'lastDance')) { this.cWin = false; this._stagNow = true; return; }
+    // 카운터 창(왈츠 두 가지의 무릎 인사)에 플레이어·탈것이 한 대 → 무릎 (stagger). 수호신 자동 공격은 창을 쓰지 않는다 (ownHit — BAL-RULES)
+    if (this.cWin && (this.state === 'waltz' || this.state === 'lastDance') && ownHit(attack)) { this.cWin = false; this._stagNow = true; return; }
     // 세월 흡수 노출 0.9초 안에 최대 체력 5% 이상 → 무릎
     if (this.exposed && this.state === 'drain') {
       this.dexp += Math.max(0, dmg || 0);

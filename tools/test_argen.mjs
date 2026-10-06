@@ -131,6 +131,9 @@ check('debugAct(없는 상태) → false', (await page.evaluate((id) => { const 
     b.debugAct('coreBurst'); G.step(1.0);
     b.hitCore(b.stats.maxHp * 0.06); G.step(0.1);
     out.stagger = { state: b.state, stunned: b.stunned };
+    // 수호신 자동 공격은 핵을 깨지 않는다 (피해만 — BAL-RULES, b_common.ownHit): 핵 부위에 6% 를 쳐도 coreBurst 그대로 · 플레이어 한 대면 추락
+    const coreHit = (tags) => { G.build(id, { phase: 1 }); G.step(4.5); b = G.boss; b.debugAct('coreBurst'); G.step(1.0); const hp0 = b.hp; b.hitPart = b.pCore; b.takeHit(Math.ceil(b.stats.maxHp * 0.06), { team: 'player', dir: 1, tags }, G.world, {}); G.step(0.1); return { state: b.state, dmg: hp0 - b.hp }; };
+    out.coreGuard = { guard: coreHit(['companion', 'guardian']), player: coreHit(['melee']) };
     // 은빛 비행: 낙뢰 기둥 여럿 + 공허 파편
     G.build(id, { phase: 2 }); G.step(7); b = G.boss;
     let cols = new Set(), shards = 0; const s2 = b.shoot.bind(b); b.shoot = (o) => { shards++; return s2(o); };
@@ -156,6 +159,7 @@ check('debugAct(없는 상태) → false', (await page.evaluate((id) => { const 
   check('내리꽂기: 바닥에서 기절, 핵 0.45 (반격 창)', !r.vanishStun.hidden && r.vanishStun.stunned && r.vanishStun.core === 0.45 && r.vanishStun.dy === 125, r.vanishStun);
   check('핵 노출: 공허 고리 셋, 핵 0.45', r.coreBurst.rings === 3 && r.coreBurst.core === 0.45, r.coreBurst);
   check('핵 노출: 핵에 최대 체력 5% 넘게 → stagger(추락·기절)', r.stagger.state === 'stagger' && r.stagger.stunned, r.stagger);
+  check('핵 노출: 수호신 자동 공격은 핵을 깨지 않음 (피해만) · 플레이어 한 대는 추락', r.coreGuard.guard.state === 'coreBurst' && r.coreGuard.guard.dmg > 0 && r.coreGuard.player.state === 'stagger', r.coreGuard);
   check('은빛 비행: 낙뢰 기둥 8+ · 공허 파편', r.storm.cols >= 8 && r.storm.shards >= 9, r.storm);
   check('정화: 사망 5초 · STAGE CLEAR 부제 "아르겐 정화!"', r.end.d0 === 5 && r.banner === '아르겐 정화!', { d0: r.end.d0, banner: r.banner });
   check('정화: 결정이 모두 깨지고 은빛 1 → 사라짐 · 클리어', r.mid.crys === 0 && r.mid.silver === 1 && r.mid.purified && r.end.dead && r.end.cleared, { mid: r.mid, end: r.end });

@@ -1,7 +1,7 @@
 // 13장 보스: 혼돈의 군주 — 수많은 눈과 공허의 촉수, 부서진 왕관의 우주적 존재
 // 패턴: 마안 광선(조준/격자) · 공허 촉수 · 탄막(나선/꽃잎/틈새 고리/별비) · 현실 왜곡(좌우 반전) · 옛 보스의 그림자 소환 · 글리치 순간이동
 // 3페이즈(12%): 최후의 발악 '종언의 눈' — 화면이 어두워지고 거대한 탄막, 대신 코어가 크게 노출된다
-import { BossB, PI, OUT, R, C, LG, RG, ink, glow, glowE, eye, warnRect, warnFloor, warnLine, warnCircle, warnBang, lineStrike, circleStrike, impact, hash, glowSprite } from './b_common.js';
+import { BossB, PI, OUT, R, C, LG, RG, ink, glow, glowE, eye, warnRect, warnFloor, warnLine, warnCircle, warnBang, lineStrike, circleStrike, impact, hash, glowSprite, ownHit } from './b_common.js';
 import { audio } from '../../core/audio.js';
 import { TAU, clamp, lerp, rand, ease, rgba, mix, wrapAngle } from '../../core/math.js';
 import { paintedRig, paintedEnabled } from '../../render/painted/registry.js';
@@ -22,7 +22,7 @@ export class ChaosLord extends BossB {
     this.place(this.cx, this.homeY);
     this.eyes = [];
     for (let i = 0; i < NEYE; i++) this.eyes.push({ a: i / NEYE * TAU, r: 150, x: this.cx, y: this.cy, tx: null, ty: null, hp: 1, dead: false, open: 1, blink: rand(1, 4), look: 0, laser: null, part: { x: 0, y: 0, w: 40, h: 40, defMul: 1.2, eyeI: i } });
-    for (const e of this.eyes) e.part.onHit = (part, dmg) => this.hitEye(part.eyeI, dmg);
+    for (const e of this.eyes) e.part.onHit = (part, dmg, atk) => { if (ownHit(atk)) this.hitEye(part.eyeI, dmg); };   // 수호신 자동 공격은 눈을 깨지 않는다 (피해만 — BAL-RULES)
     this.core = { x: 0, y: 0, w: 110, h: 110, defMul: 1 };
     this.shards = []; for (let i = 0; i < 12; i++) this.shards.push({ a: rand(0, TAU), r: rand(120, 190), s: rand(0.3, 0.8) * (i % 2 ? 1 : -1), z: rand(0.6, 1.2), rot: rand(0, TAU) });
     this.mouth = 0; this.mouthT = 0;

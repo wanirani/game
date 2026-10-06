@@ -20,7 +20,7 @@
 //   legs[{kx, ky, fxw, fyw}] (P2 무릎·발, 월드) · heads[{alive, grow, x, y}] · faceP · mouthP · mouthK (입 벌림 0~1) · eyeT ·
 //   dawn ({fake}) · collapsed · rush · dieT
 import { BossC, telegraph, warnText, warnMark, strikeLine, strikeCircle, ringWave, gimmickOf, setBeat, screenTint, prewarmTint, darken, muteMusic } from './c_common.js';
-import { PI, R, C, LG, ink, glow, glowE, glowSprite, warnRect, warnLine, impact, hash, tube } from './b_common.js';
+import { PI, R, C, LG, ink, glow, glowE, glowSprite, warnRect, warnLine, impact, hash, tube, ownHit } from './b_common.js';
 import { Entity } from '../entity.js';
 import { T } from '../../core/physics.js';
 import { audio } from '../../core/audio.js';
@@ -393,7 +393,7 @@ export class Mara extends BossC {
     const hhp = Math.max(1, Math.round(this.stats.maxHp * 0.02));
     this.heads = HEAD_LEGS.map((leg, i) => {
       const h = { i, leg, hp: hhp, max: hhp, alive: true, grow: 1, hitT: 0, x: 0, y: 0 };
-      h.part = { x: 0, y: 0, w: 34, h: 34, defMul: 0.9, head: h, onHit: (part, dmg) => this.hitHead(h, dmg) };
+      h.part = { x: 0, y: 0, w: 34, h: 34, defMul: 0.9, head: h, onHit: (part, dmg, atk) => { if (ownHit(atk)) this.hitHead(h, dmg); } };   // 수호신 자동 공격은 머리를 깨지 않는다 (피해만 — BAL-RULES)
       return h;
     });
     this.pFace = { x: 0, y: 0, w: 70, h: 118, defMul: 1.0, face: true };

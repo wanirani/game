@@ -678,10 +678,16 @@ export class StableScene extends ServiceScene {
     portraitCard(ctx, e.id, px, py, pw, ph, { dim: locked ? 0.55 : 0, t: this.t });
     const x = px + pw + 14, w = r.x + r.w - pad - x;
     let y = py + 22;
-    text(ctx, d.name, x, y, { size: compact ? 20 : 22, weight: 800, family: FONT.title, color: d.color, maxWidth: w });
+    // 칭호가 종류 표시(탈것/수호신) 옆에 다 들어가지 않으면 종류 표시를 이름 줄 오른쪽으로 올려 칭호가 칸 폭을 다 쓴다
+    // (외전 무닌 '이름을 기억하는 까마귀'가 desk 에서 83 %, phone2 에서 92 % 로 눌렸다 — CROSS-QA-2). 이름이 그 옆에 들어갈 때만
+    const ns = compact ? 20 : 22, kind = KIND_LABEL[d.kind] ?? '';
+    ctx.font = font(10, 800, FONT.body); const kw = ctx.measureText(kind).width + 14 + 8;
+    ctx.font = font(13, 700); const tw = ctx.measureText(d.title).width;
+    ctx.font = font(ns, 800, FONT.title); const up = tw > w - 64 && ctx.measureText(d.name).width <= w - kw;
+    text(ctx, d.name, x, y, { size: ns, weight: 800, family: FONT.title, color: d.color, maxWidth: up ? w - kw : w });
     y += 20;
-    text(ctx, d.title, x, y, { size: 13, weight: 700, color: '#d8c8b0', maxWidth: w - 64 });
-    pill(ctx, KIND_LABEL[d.kind] ?? '', x + w, y - 5, { color: d.kind === 'mount' ? '#e8a040' : '#9fd8ff', align: 'right', size: 10 });
+    text(ctx, d.title, x, y, { size: 13, weight: 700, color: '#d8c8b0', maxWidth: up ? w : w - 64 });
+    pill(ctx, kind, x + w, up ? y - 28 : y - 5, { color: d.kind === 'mount' ? '#e8a040' : '#9fd8ff', align: 'right', size: 10 });
     y += 10;
     if (owned) {
       const xi = CS.expInfo?.(st, e.id) ?? { lv: 1, exp: 0, need: 0, max: false };

@@ -122,6 +122,11 @@ check('debugAct(없는 상태) → false', (await page.evaluate((id) => { const 
     out.rise = { cWin: b.cWin, tele: b.telegraph, parts: b.hitParts().length };
     b.takeHit(10, { team: 'player', dir: 1 }, G.world, {}); G.step(0.05);
     out.counter = { state: b.state, stunned: b.stunned };
+    // 카운터 창: 수호신 자동 공격 한 대로는 무릎이 아니다 (BAL-RULES — b_common.ownHit)
+    G.build(id); G.step(2); b = G.boss;
+    act(b, 'shadowStep'); G.step(1.0);
+    const gw = b.cWin; b.takeHit(10, { team: 'player', dir: 1, tags: ['companion', 'guardian'] }, G.world, {}); G.step(0.05);
+    out.counterGuard = { cWin: gw, state: b.state, stunned: b.stunned };
     G.build(id, { phase: 1 }); G.step(9); b = G.boss;
     act(b, 'shadowStep'); let slashes = 0; const seenS = new Set();
     for (let t = 0; t < 4; t += 0.05) { G.step(0.05); for (const z of hazards()) if (!z.line && z.w === 160) seenS.add(z.attack.hitId); if (b.state !== 'shadowStep') break; }
@@ -209,6 +214,7 @@ check('debugAct(없는 상태) → false', (await page.evaluate((id) => { const 
   check('까마귀 급습: 1페이즈 3마리 · 2페이즈 5마리 (선분 폭 34)', r.dive0.n === 3 && r.dive1.n === 5 && r.dive0.th === 34, { p1: r.dive0, p2: r.dive1 });
   check('그림자 걸음: 가라앉은 동안 판정·접촉 없음', r.sunk.ghost && r.sunk.parts === 0 && r.sunk.contact === 0, r.sunk);
   check('그림자 걸음: 솟아오름 = 카운터 창 → 맞으면 stagger', r.rise.cWin && r.rise.tele && r.rise.parts > 0 && r.counter.state === 'stagger' && r.counter.stunned, { rise: r.rise, counter: r.counter });
+  check('그림자 걸음 카운터 창: 수호신 자동 공격 한 대로는 무릎이 아니다', r.counterGuard.cWin && r.counterGuard.state === 'shadowStep' && !r.counterGuard.stunned, r.counterGuard);
   check('그림자 걸음 2페이즈: 반대쪽에서 한 번 더 (베기 4타)', r.step2 === 4, r.step2);
   check('비석 없는 무덤: 기둥 5 / 7 · 높이 5칸', r.grave0.n === 5 && r.grave1.n === 7 && r.grave0.h === 240, { p1: r.grave0, p2: r.grave1 });
   const caps = r.nest.caps, last = caps[caps.length - 1];

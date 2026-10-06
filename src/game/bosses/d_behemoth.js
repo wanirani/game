@@ -19,7 +19,7 @@
 //   roar, headDown, scrape, breath, qRaise, pulse} · bodyA · drop · headA · jawK · legs[{hip, knee, foot}] (몸 지역) · sacs[{alive, grow, x, y}] ·
 //   queenAwake · dmgStage (0~2) · kneeling · stunned · rushing · qFall (사망 때 떨어지는 여왕) · bloomK (사망 새싹 0~1) · dieT
 import { BossC, telegraph, warnText, strikeFloor, groundWave, sporeCloud, sporePod, spawnMinion, minionsAlive } from './c_common.js';
-import { PI, R, C, LG, ink, glow, glowE, glowSprite, warnRect, warnFloor, impact, hash, tube } from './b_common.js';
+import { PI, R, C, LG, ink, glow, glowE, glowSprite, warnRect, warnFloor, impact, hash, tube, ownHit } from './b_common.js';
 import { Entity } from '../entity.js';
 import { T } from '../../core/physics.js';
 import { audio } from '../../core/audio.js';
@@ -390,7 +390,7 @@ export class Behemoth extends BossC {
     const shp = Math.max(1, Math.round(this.stats.maxHp * 0.025));
     this.sacs = SACS.map(([x, y], i) => {
       const s = { i, lx: x, ly: y, hp: shp, max: shp, alive: true, grow: 1, hitT: 0, x: 0, y: 0 };
-      s.part = { x: 0, y: 0, w: 50, h: 50, defMul: 0.8, sac: s, onHit: (part, dmg) => this.hitSac(s, dmg) };
+      s.part = { x: 0, y: 0, w: 50, h: 50, defMul: 0.8, sac: s, onHit: (part, dmg, atk) => { if (ownHit(atk)) this.hitSac(s, dmg); } };   // 수호신 자동 공격은 주머니를 깨지 않는다 (피해만 — BAL-RULES)
       return s;
     });
     this.legs = LEGS.map((d) => ({ ...d, hipL: [0, 0], kneeL: [0, 0], footL: [0, 0], fxw: 0, fyw: 0 }));

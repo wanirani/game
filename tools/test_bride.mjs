@@ -8,7 +8,8 @@
 //    깨짐 + 2.5초 무릎, 아케이드면 보통 성배 (s23 VERIFY ① 교훈) · 소환 상한(신부 ≤ 2 · 박쥐 떼 ≤ 2) · 왈츠·마지막 왈츠 착지점이 A 안·A.floor 또는 발판 위 ·
 //    잔상이 0.45초 뒤 같은 자리 · 욕조 띠가 A 폭·A.floor 기준 · 흡수 끝에 터짐 · 노출 0.7 · 판정 부위 피해 순서 (2페이즈 머리 > 몸통 > 넝마 자락 — 피해로 잰다,
 //    s23 VERIFY ② 교훈) · 가시 채찍 낮은 띠/가운데 띠 · 카운터 창(왈츠 두 가지·흡수 노출 5%) → stagger · 투기장(arena r1)에서 패턴 8개가 경계 안에서 돈다 ·
-//    drops 빈 목록 · inferno 를 읽지 않음 · 창 상한(POLISH-4: 1페이즈 무릎 한 번 ≤ 10% · 왈츠 한 번 ≤ 15%, 필살 제외, 2페이즈 없음) · 수호신은 성배를 깨지 않음
+//    drops 빈 목록 · inferno 를 읽지 않음 · 창 상한(POLISH-4: 1페이즈 무릎 한 번 ≤ 10% · 왈츠 한 번 ≤ 15%, 필살 제외, 2페이즈 없음;
+//    BAL-RULES: '저항' 은 창마다 한 번, 그 뒤 같은 창은 0 · 숫자 없음) · 수호신은 성배·카운터 창을 쓰지 않음 (b_common.ownHit)
 // 사용: node tools/test_bride.mjs   (종료 코드 0 = 모두 통과 · 페이지 오류 0). Math.random 은 페이지에서 고정 시드로 바꿔 매번 같은 결과.
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
@@ -208,6 +209,11 @@ check('debugAct(없는 상태) → false', (await page.evaluate((id) => { const 
       for (const z of fresh((e) => e.data?.spin)) spinZ.add(z);
     }
     out.waltz = { onPlat, marks: marks.map((z) => [Math.round(z.data.tx), z.data.ty]), A: [A.x0, A.x1, A.floor], ghostN, ghostHits, cw, spins: spinZ.size };
+    // 카운터 창: 수호신 자동 공격 한 대로는 무릎이 아니다 (BAL-RULES — b_common.ownHit, 카론과 같다)
+    G.build(id); G.step(2); b = G.boss; quiet(b);
+    act(b, 'waltz'); let gcw = null;
+    for (let t = 0; t < 3 && b.state === 'waltz' && !gcw; t += 1 / 60) { G.step(1 / 60); if (b.cWin) { b.takeHit(10, { team: 'player', dir: 1, tags: ['companion', 'guardian'] }, G.world, {}); G.step(2 / 60); gcw = { state: b.state, cWin: b.cWin }; } }
+    out.waltzGuard = gcw;
     // ─ 마지막 왈츠: 착지 다섯 · 잔상이 0.45초 뒤 같은 자리 · 무릎 인사 카운터 ─
     G.build(id, { phase: 1 }); G.step(6); b = G.boss; quiet(b);
     act(b, 'lastDance'); const spins = new Map(), afters = new Map(); let lcw = null;
@@ -262,11 +268,11 @@ check('debugAct(없는 상태) → false', (await page.evaluate((id) => { const 
     G.build(id); G.step(2); b = G.boss; quiet(b); b.hp = Math.floor(mx() * 0.95);
     b.debugAct('stagger'); G.step(0.2);
     let c0 = b.hp; const si = hitN(4, 0.04); const sLoss = (c0 - b.hp) / mx(); G.step(2 / 60);
-    out.capStag = { loss: +sLoss.toFixed(4), capped: si.filter((i) => i.capped).length, resist: si.filter((i) => i.resist).length, stunned: b.stunned, st: b.state };
+    out.capStag = { loss: +sLoss.toFixed(4), capped: si.filter((i) => i.capped).length, resist: si.filter((i) => i.resist).length, say: si.map((i) => !!i.capSay).join(), mute: si.map((i) => !!i.capMute).join(), dmg4: si[3].dmg, stunned: b.stunned, st: b.state };
     G.build(id); G.step(2); b = G.boss; quiet(b); b.hp = Math.floor(mx() * 0.95);
     act(b, 'waltz'); c0 = b.hp; let wn = 0;
-    for (let f = 0; f < 108 && b.state === 'waltz'; f++) { G.step(1 / 60); if (!b.ghost && !b.cWin && f % 6 === 0) { hitN(1, 0.03); wn++; } }
-    out.capWaltz = { loss: +((c0 - b.hp) / mx()).toFixed(4), hits: wn, st: b.state };
+    const wi = []; for (let f = 0; f < 108 && b.state === 'waltz'; f++) { G.step(1 / 60); if (!b.ghost && !b.cWin && f % 6 === 0) { wi.push(...hitN(1, 0.03)); wn++; } }
+    out.capWaltz = { loss: +((c0 - b.hp) / mx()).toFixed(4), hits: wn, st: b.state, say: wi.filter((i) => i.capSay).length, mute: wi.filter((i) => i.capMute).length, muteDmg: wi.filter((i) => i.capMute).reduce((a, i) => a + i.dmg, 0) };
     G.build(id); G.step(2); b = G.boss; quiet(b); b.hp = Math.floor(mx() * 0.95);
     b.debugAct('stagger'); G.step(0.2); c0 = b.hp; hitN(1, 0.2, ['ult']); out.capUlt = +((c0 - b.hp) / mx()).toFixed(4);
     G.build(id, { phase: 1 }); G.step(6); b = G.boss; quiet(b); b.hp = Math.floor(mx() * 0.45);
@@ -295,6 +301,7 @@ check('debugAct(없는 상태) → false', (await page.evaluate((id) => { const 
   const w = r.waltz, A = w.A;
   check('피의 왈츠: 착지 예고 셋 · 착지점이 A 안 · 플레이어가 선 발판(11행) 위 · 박쥐로 흩어진 동안 판정·접촉 없음 · 무릎 인사 = 카운터 창 → stagger',
     w.onPlat && w.marks.length === 3 && w.marks.every(([x, y]) => x >= A[0] && x <= A[1] && (y === 528 || y === A[2]) && y <= A[2]) && w.marks.some(([, y]) => y === 528) && w.ghostN > 5 && w.ghostHits === 0 && w.cw?.tele && w.cw?.state === 'stagger' && w.spins === 3, w);
+  check('왈츠 카운터 창: 수호신 자동 공격 한 대로는 무릎이 아니다', r.waltzGuard && r.waltzGuard.state === 'waltz', r.waltzGuard);
   const ld = r.last;
   check('마지막 왈츠: 회전 베기 다섯 · 젊은 날의 잔상이 0.45초 뒤 같은 자리 (넷째까지 확인) · 경기장 안 · 무릎 인사 카운터 → stagger',
     ld.spins.length === 5 && ld.afters.length >= 4 && ld.afters.filter((a) => a.dt != null).every((a) => a.same && Math.abs(a.dt - 0.45) <= 0.03) && ld.afters.filter((a) => a.dt != null).length >= 4 && ld.spins.every(([x]) => x >= ld.A[0] && x <= ld.A[1]) && ld.cw?.state === 'stagger', ld);
@@ -310,9 +317,9 @@ check('debugAct(없는 상태) → false', (await page.evaluate((id) => { const 
   const pp = r.parts;
   check('판정 부위 피해 순서 (2페이즈 같은 공격): 금 간 얼굴 > 몸통 > 넝마 자락', pp.head.part === 'head' && pp.body.part === 'body' && pp.rags.part === 'rags' && pp.head.dmg > pp.body.dmg && pp.body.dmg > pp.rags.dmg, pp);
   const cs = r.capStag, cw2 = r.capWaltz;
-  check('창 상한 (1페이즈): 무릎 한 번에 최대 체력 10% 까지 — 넘는 피해는 줄어들고("저항") 곧바로 일어섬', cs.loss >= 0.0999 && cs.loss <= 0.1011 && cs.capped === 2 && cs.resist === 1 && !cs.stunned && cs.st === 'stagger', cs);
+  check('창 상한 (1페이즈): 무릎 한 번에 최대 체력 10% 까지 — 넘는 피해는 줄어들고("저항" 은 창마다 한 번, 그 뒤 0 · 숫자 없음) 곧바로 일어섬', cs.loss >= 0.0999 && cs.loss <= 0.1001 && cs.capped === 2 && cs.resist === 1 && cs.say === 'false,false,true,false' && cs.mute === 'false,false,false,true' && cs.dmg4 === 0 && !cs.stunned && cs.st === 'stagger', cs);
   check('창 상한 (1페이즈): 왈츠 한 번(걸음 · 무릎 인사) 15% 까지 (춤은 끊기지 않음) · 필살은 상한 밖 · 2페이즈 무릎은 상한 없음',
-    cw2.hits >= 8 && cw2.loss >= 0.1499 && cw2.loss <= 0.152 && cw2.st === 'waltz' && r.capUlt >= 0.199 && r.capP2 >= 0.159, { waltz: cw2, ult: r.capUlt, p2: r.capP2 });
+    cw2.hits >= 8 && cw2.loss >= 0.1499 && cw2.loss <= 0.1501 && cw2.st === 'waltz' && cw2.say === 1 && cw2.mute >= 2 && cw2.muteDmg === 0 && r.capUlt >= 0.199 && r.capP2 >= 0.159, { waltz: cw2, ult: r.capUlt, p2: r.capP2 });
   check('회춘의 잔: 수호신 자동 공격은 성배를 깨지 않음 (몸통 피해로만 셈) → 못 끊으면 회복', r.gobGuard.st === 'goblet' && r.gobGuard.up && r.gobGuard.heals === 1 && !r.gobGuard.broke, r.gobGuard);
   check('패턴별 검사 오류 0', !r.notes.length, r.notes);
 }

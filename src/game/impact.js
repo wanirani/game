@@ -16,6 +16,8 @@
 //   hpBefore                                             타격 직전 대상 체력
 // takeHit 뒤 impact 가 더하는 필드: killed, landed(플레이어 피격이 실제로 들어갔는가), launched(띄우기 성공), hitstop(실제 적용 초),
 //   overkill (처치 시 (dmg - hpBefore) / maxHp)
+// takeHit 안에서 보스가 더할 수 있는 필드 (창 상한 — c_common.capNote, e_bride · e_charon): capped (상한으로 줄임) ·
+//   capSay (창마다 한 번: 줄어든 숫자를 회색 '저항' 으로) · capMute (같은 창의 그다음 타격: 0 피해, 숫자 없음, 소리는 capClank 만)
 // 대상에 남기는 필드: target.hsShake(초, 피격 떨림) · target.hsCls(등급 순번) · target.lastImpact {cls, crit, dmg, hpBefore, counter, back, t}
 //   (world.onEnemyKilled 의 오버킬 판정용: 처치 타격의 dmg - hpBefore)
 // 플레이어에 남기는 필드: p.lastLaunch {t, target} (추격 점프 판정, FEEL-MOVE)
@@ -368,13 +370,14 @@ export function impact(world, attack, target, info) {
   }
   // 5) 숫자와 판정 문구
   if (!info.prop) {
-    const key = info.capped && info.dmg <= 1 ? 'resist' : info.crit ? 'crit' : (cls === 'U' || cls === 'S' || cls === 'A') ? 'ult' : info.counter ? 'counter' : info.weak ? 'weak' : info.resist ? 'resist' : 'normal';
-    dmgNumber(world, target, info.dmg, key, { x: px, y: py - 20, color: info.crit ? null : attack.dmgColor ?? null });
+    const key = info.capped && (info.dmg <= 1 || info.capSay) ? 'resist' : info.crit ? 'crit' : (cls === 'U' || cls === 'S' || cls === 'A') ? 'ult' : info.counter ? 'counter' : info.weak ? 'weak' : info.resist ? 'resist' : 'normal';
+    if (!info.capMute) dmgNumber(world, target, info.dmg, key, { x: px, y: py - 20, color: info.crit ? null : attack.dmgColor ?? null });   // 창 상한을 다 쓴 뒤의 타격은 숫자 없이 ('저항' 은 창마다 한 번)
     if (info.counter) callout(world, px, py - 44, COUNTER.callout, { color: COUNTER.color });
     if (info.back) callout(world, px, py - (info.counter ? 60 : 44), BACK.callout, { color: BACK.color, size: CALLOUT.small });
   }
-  // 6) 효과음 (경직 0 잔타는 동료 타격처럼 작게, 재질 층 없이)
-  hitSounds(world, attack, target, info, cls, cmp || attack.hitstop === 0);
+  // 6) 효과음 (경직 0 잔타는 동료 타격처럼 작게, 재질 층 없이 · 창 상한을 다 쓴 타격은 가끔 작은 쇳소리만)
+  if (info.capMute) capClank(world);
+  else hitSounds(world, attack, target, info, cls, cmp || attack.hitstop === 0);
   // 7) 진동과 이벤트 (경직 0 잔타는 진동 없음: 오라가 0.35초마다 진동을 울리지 않게)
   if (!info.prop && !guard && cls !== 'U' && attack.hitstop !== 0) {
     const R = RUMBLE[cls];
@@ -547,6 +550,15 @@ function hitSounds(world, attack, target, info, cls, cmp) {
   }
   if (info.counter) sfxPlay(COUNTER.sfx, { vol: 0.9 });
   if (info.back) sfxPlay(BACK.sfx, { vol: 0.7 });
+}
+
+/** 창 상한을 다 쓴 타격(info.capMute)의 소리: 작은 쇳소리 하나, 0.35초에 한 번까지 (숫자 없이 '막혔다' 만 들리게) */
+const CAP_CLANK = { gap: 0.35, vol: 0.22 };
+function capClank(world) {
+  const now = world.time ?? 0;
+  if (now - (world._capClankT ?? -9) < CAP_CLANK.gap) return;
+  world._capClankT = now;
+  sfxPlay('clang', { vol: CAP_CLANK.vol, pitch: rand(1.3, 1.45) });
 }
 
 /** 적 → 플레이어 피격 연출: 3프레임 경직, 카메라, 피, 숫자 (진동·비네트는 haptics.js / world.onPlayerHurt 담당) */

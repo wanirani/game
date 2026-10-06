@@ -43,6 +43,8 @@
 //  resetArena(world, boss, opts) · ARENA_RESET · spawnMinion(boss, ids, x, y, {max}) · minionsAlive · clearMinions · killTransients
 //  darken(boss, add, dur) · screenTint(boss, {color, alpha, edge, dur}) · clearTints · muteMusic(boss, sec) · clearMood
 //
+// ── 창 상한 피드백 ── capNote(boss, info, dmg): 창마다 '저항' 한 번(capSay), 그 뒤 같은 창은 0 피해 · 숫자 없음(capMute) — e_bride · e_charon
+//
 // ── 예고(텔레그래프)와 공격 지대 (모두 b_common Zone: 적 정지 중 멈춤, 예고 동안 boss.telegraph 켜짐 = 카운터) ──
 //  telegraph(boss, sec, {sfx}) · warnText(boss, text, color) · warnMark(boss, x, y, sec, color)
 //  strikeRect · strikeColumn · strikeLine · strikeCircle · strikeFloor · ringWave · groundWave · pullField · nudgePlayer
@@ -240,6 +242,19 @@ export function pumpPhaseScripts(boss, world = boss?.world, dt = 0) {
   const ok = safe('phaseScript push', () => { world.game.push('dialogue', { script: job.id, world, onEnd: () => { if (S.on === job) S.on = null; job.onEnd?.(); } }); return true; });
   if (!ok) { S.on = null; job.onEnd?.(); }
   return ok;
+}
+
+// ═════════════════════════════ 창 상한 피드백 (e_bride · e_charon takeHit) ═════════════════════════════
+/**
+ * 1페이즈 창 상한으로 이번 타격을 dmg 로 줄였다고 info 에 적는다. '저항' 은 창마다 한 번 — 예산을 다 쓴 타격이 줄어든 숫자를
+ * 회색 '저항'(impact DMG_STYLE.resist) 으로 보이고(info.capSay), 같은 창의 그다음 타격은 숫자 없이(info.capMute — impact.js 가
+ * 타격 불꽃은 그대로, 소리는 가끔 작은 쇳소리). 보스는 창을 열 때 boss.capSaid = false 로 되돌린다 (BAL-RULES: 장비가 앞선 세이브의 '저항' 줄)
+ */
+export function capNote(boss, info, dmg) {
+  if (!info) return;
+  info.dmg = dmg; info.capped = true;
+  if (boss.capSaid) info.capMute = true;
+  else { boss.capSaid = true; info.capSay = true; info.resist = true; }
 }
 
 // ═════════════════════════════ 기믹 (null 안전 + 대역) ═════════════════════════════

@@ -374,6 +374,13 @@ export function arenaOf(world, boss) {
 // ───────────────────────── 기반 클래스 ─────────────────────────
 const OFF = { x: -99999, y: -99999, w: 1, h: 1 };
 /**
+ * 플레이어·탈것의 '한 대'인가 (수호신 자동 공격 · 동료 공명 'companion' 태그는 아니다). 보스의 플레이어 기술 기믹 — 카운터 창 → 무릎,
+ * 약점 부위(눈 · 왕관 미끼 · 포자 주머니 · 머리 · 핵 · 성배 · 등불)를 깨기 — 은 이 한 대로만 걸린다. 수호신 타격은 피해만 준다 (그 피해는 몸통 피해로
+ * 세는 문턱 — 노출 5% · 성배 몸통 3% — 에는 들어간다). POLISH-4 성배 · EX5 카론 교훈, BAL-RULES 가 모든 보스에 맞춤
+ */
+export const ownHit = (attack) => !(attack?.tags?.includes('guardian') || attack?.tags?.includes('companion'));
+
+/**
  * BossB: Boss 확장.
  *  - 자체 시계 this.st (시간 정지 반영), at(t)/every(p,a,b) 이벤트 헬퍼, 지연 작업 later(t, fn)
  *  - 상태 메서드 s_<state>(dt, world, t) 자동 호출

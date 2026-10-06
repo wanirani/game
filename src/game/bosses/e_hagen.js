@@ -24,7 +24,7 @@
 //   ghost · stunned · exposed · reloading · offering · cWin · bristle · moonK · dawnK · dieT · vanishK · lieHuman · state · t · flashT · hitPart · A
 // 컬링: 긴 장총·꼬리·하늘의 달 그림자가 몸통 판정보다 크므로 아르겐·네메인과 같은 ArtCull 대리 개체가 artBounds() 로 그린다.
 import { BossC, telegraph, strikeRect, strikeLine, strikeCircle, ringWave, spawnMinion, minionsAlive, screenTint, prewarmTint, phaseScript, clearMood } from './c_common.js';
-import { PI, R, LG, ink, glow, glowE, glowSprite, warnLine, warnFloor, impact, hash } from './b_common.js';
+import { PI, R, LG, ink, glow, glowE, glowSprite, warnLine, warnFloor, impact, hash, ownHit } from './b_common.js';
 import { heldByFreeze } from './boss.js';
 import { Entity } from '../entity.js';
 import { enemyStrike } from '../combat.js';
@@ -370,8 +370,8 @@ export class Hagen extends BossC {
     if (this.wolf) { if (Math.random() < 0.6) world.fx.burst('feather', x, y, 2, { color: FUR, speed: 140 }); }
     else if (Math.random() < 0.5) world.fx.burst('shard', x, y, 2, { color: LEATH_H, speed: 150 });
     if (this.dying > 0 || this.dead) { this.renameBanner(world); return; }
-    // 카운터 창(사냥칼 끝 · 덮치기 착지 경직)에 맞으면 → 무릎 (stagger)
-    if (this.cWin && (this.state === 'huntingKnife' || this.state === 'pounce')) { this.cWin = false; this.later(0, () => this.toStagger()); return; }
+    // 카운터 창(사냥칼 끝 · 덮치기 착지 경직)에 플레이어·탈것이 한 대 → 무릎 (stagger). 수호신 자동 공격은 창을 쓰지 않는다 (ownHit — BAL-RULES)
+    if (this.cWin && (this.state === 'huntingKnife' || this.state === 'pounce') && ownHit(attack)) { this.cWin = false; this.later(0, () => this.toStagger()); return; }
     // 달 그림자 노출 1초 안에 최대 체력 5% 이상 → 무릎
     if (this.exposed && this.state === 'moonDive') {
       this.mexp += Math.max(0, dmg || 0);
@@ -1322,7 +1322,7 @@ class HagenTrap extends Entity {
   hurtbox() { return { x: this.tx - 26, y: this.floor - 34, w: 52, h: 34 }; }
   /** 한 대에 부서진다 */
   takeHit(dmg, attack, world) {
-    if (this.invuln || attack?.tags?.includes('companion')) return false;
+    if (this.invuln || !ownHit(attack)) return false;
     this.broken = true; this.dead = true;
     audio.sfx('clang', { pitch: 1.5, vol: 0.6 });
     world.fx.burst('spark', this.tx, this.floor - 8, 10, { color: SILV, speed: 220 });

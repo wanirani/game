@@ -34,8 +34,8 @@
 //   ps {…} · pts (골격, rig()) · whip (채찍 점 10) · chain (고삐 사슬 점 10) · tails (외투 자락 2×5) · hatK · stunned · exposed · cWin · ghost · dieT · vanishK ·
 //   horsesOn · state · t · flashT · hitPart · A · drawHorses(ctx, world)
 // 컬링: 말·채찍·사슬이 몸통 판정보다 크므로 e_bride.js 와 같은 ArtCull 대리 개체가 artBounds() 로 그린다.
-import { BossC, telegraph, strikeRect, strikeColumn, strikeCircle, strikeLine, groundWave, pullField, warnMark, spawnMinion, minionsAlive, screenTint, prewarmTint, phaseScript, canShowScript } from './c_common.js';
-import { PI, R, LG, ink, glow, glowE, glowSprite, warnRect, warnFloor, warnCircle, impact } from './b_common.js';
+import { BossC, telegraph, strikeRect, strikeColumn, strikeCircle, strikeLine, groundWave, pullField, warnMark, spawnMinion, minionsAlive, screenTint, prewarmTint, phaseScript, canShowScript, capNote } from './c_common.js';
+import { PI, R, LG, ink, glow, glowE, glowSprite, warnRect, warnFloor, warnCircle, impact, ownHit } from './b_common.js';   // ownHit: 플레이어·탈것의 '한 대'만 (수호신·동료 자동 공격 제외)
 import { Entity } from '../entity.js';
 import { TILE } from '../../core/game.js';
 import { T as TT } from '../../core/physics.js';
@@ -74,7 +74,7 @@ const HEAD_X = 254, REAR_X = 104, EDGE = 258;
 const SEAT = { x: 98, y: -88 }, LANT = { x: 75, y: -146 }, WHL = [{ x: -60, y: -42, r: 40 }, { x: 91, y: -31, r: 31 }];
 const H1 = { x: 176, y: 0 }, H2 = { x: 144, y: -6 }, HS = 1.25;   // 가까운 말(모르겐) · 먼 말(헤이즐) · 말 크기
 // 창 상한 (페이즈별 [1페이즈], 최대 체력 비 — POLISH-4 교훈을 처음부터, docs/specs/ex_s25.md §2.1): 질주 한 번 12% · 무릎 한 번 10% · 등불 노출 한 번 8%.
-//   닿으면 남는 피해는 버리고('저항' 숫자), 무릎이면 곧바로 일어선다 (필살·각성 · 2페이즈 · 15% 긴 주저앉음은 상한 밖)
+//   닿으면 남는 피해는 버리고('저항' 은 창마다 한 번, 그 뒤 같은 창은 0 · 숫자 없음 — c_common.capNote), 무릎이면 곧바로 일어선다 (필살·각성 · 2페이즈 · 15% 긴 주저앉음은 상한 밖)
 const RUN_CAP = [0.12], STAG_CAP = [0.10], LANTERN_CAP = [0.08];
 // EX5-BOSS 확인 2 (실제 엔진 싸움 길이): 고정 세이브 카엘은 한 대가 최대 체력 6–8% 라 위 세 창만으로는 마차(피하지 않는 큰 과녁)의 1페이즈가 패턴 1–2개 · 4–7초에 끝났다
 //   → 나머지 1페이즈 창에도 같은 틀의 상한: 질주 밖의 1페이즈 패턴 한 번 PAT_CAP · 패턴 사이 쉼 한 번 IDLE_CAP (bosses_e.js 머리말 b_charon 확인 2)
@@ -111,7 +111,6 @@ const ARM = {
 const pt = () => ({ x: 0, y: 0 });
 const pts = (n) => Array.from({ length: n }, pt);
 const rot = (x, y, a, out) => { const c = Math.cos(a), s = Math.sin(a); out.x = x * c - y * s; out.y = x * s + y * c; return out; };
-const ownHit = (attack) => !(attack?.tags?.includes('guardian') || attack?.tags?.includes('companion'));   // 플레이어·탈것의 '한 대'만 (수호신·동료 자동 공격 제외)
 let GHOST = null;   // 빈 영구차 실루엣 (마차를 한 번 구운 비트맵 — 페이지마다 한 번)
 let HAZEL = null;   // 먼 말(헤이즐) 실루엣 프레임 {key: canvas} (반 해상도로 한 번 굽는다 — 페이지마다 한 번)
 const HZ = { x0: -66, y0: -180, w: 172, h: 188, s: 0.5 };   // 프레임이 덮는 말 지역 사각형 (마차 지역 px) · 굽는 배율
@@ -441,14 +440,15 @@ export class Charon extends BossC {
   }
   /**
    * 창 상한 (RUN_CAP · STAG_CAP · LANTERN_CAP, e_bride.js 와 같은 틀 — takeHit 에서 줄인다): 1페이즈 질주 한 번 · 무릎 한 번 · 등불 노출 한 번에 잃는 체력은 상한까지.
-   * 넘는 피해는 상한까지만 들어가고(숫자도 줄인 값, 1 이하면 '저항'), 무릎이면 그 틱에 일어서고 등불 노출이면 노출이 끝난다. 필살·각성은 빼고.
+   * 넘는 피해는 상한까지만 들어가고(그 줄인 숫자가 창마다 한 번 회색 '저항'), 그 뒤 같은 창의 타격은 0 · 숫자 없음 (capNote — BAL-RULES),
+   * 무릎이면 그 틱에 일어서고 등불 노출이면 노출이 끝난다. 필살·각성은 빼고.
    */
   takeHit(dmg, attack, world, info) {
     const burst = attack?.tags?.includes('ult') || attack?.tags?.includes('awaken');
     if (this.capBud != null && !burst && !(this.dying > 0) && !this.invuln) {
       if (dmg >= this.capBud) {
-        dmg = Math.max(1, Math.round(this.capBud)); this.capBud = 0;
-        if (info) { info.dmg = dmg; info.capped = true; if (dmg <= 1) info.resist = true; }
+        dmg = Math.max(0, Math.round(this.capBud)); this.capBud = 0;
+        capNote(this, info, dmg);
         if (this.state === 'stagger' && this.stunned) this.wakeT = this.st + 1e-3;
         if (this.state === 'soulLantern' && this.exposed) this.exposeEnd = this.st + 1e-3;
       } else this.capBud -= dmg;
@@ -464,7 +464,7 @@ export class Charon extends BossC {
     this.openCap(s === 'deathRun' ? RUN_CAP : s === 'stagger' ? (this.stagLong ? null : STAG_CAP) : s === 'idle' ? IDLE_CAP : P1_PAT.has(s) ? PAT_CAP : null);
   }
   /** 남은 피해 예산 (최대 체력 × 상한) — 체력 값이 아니라 이 창에서 잃은 양으로 센다 */
-  openCap(C) { const c = C?.[this.phase], mx = this.stats?.maxHp; this.capBud = c && mx ? mx * c : null; }
+  openCap(C) { const c = C?.[this.phase], mx = this.stats?.maxHp; this.capBud = c && mx ? mx * c : null; this.capSaid = false; }
   onHurt(dmg, attack, world, info, part) {
     const x = info?.hx ?? this.cx, y = info?.hy ?? this.cy;
     if (Math.random() < 0.5) world.fx.burst(this.coach ? 'spark' : 'dark', x, y, 2, { color: this.coach ? GOLD : ASH, speed: 150 });

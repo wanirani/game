@@ -15,7 +15,7 @@
 //   lures[{x, y, t}] · dmg (0..2) · dash ({dir, y} | null) · dieT (사망 연출 시간)
 // 컬링: 그림이 판정 사각형보다 훨씬 커서 화면 가장자리에서 통째로 사라지지 않게 ArtCull 대리 개체가 artBounds() 로 그린다.
 import { BossC, telegraph, warnText, strikeRect, strikeCircle, ringWave, pullField, setWater, waterY, darken, spawnMinion } from './c_common.js';
-import { PI, R, C, LG, RG, ink, glow, glowE, glowSprite, warnRect, impact, hash, tube } from './b_common.js';
+import { PI, R, C, LG, RG, ink, glow, glowE, glowSprite, warnRect, impact, hash, tube, ownHit } from './b_common.js';
 import { Entity } from '../entity.js';
 import { T } from '../../core/physics.js';
 import { audio } from '../../core/audio.js';
@@ -77,7 +77,7 @@ export class Dagon extends BossC {
     const hp = Math.max(1, Math.round(this.stats.maxHp * 0.02));
     this.bulbs = [0, 1, 2].map((i) => {
       const b = { i, hp, max: hp, alive: true, grow: 1, hitT: 0, out: false, x: 0, y: 0, lx: 0, ly: 0, sx: 0, sy: 0, tx: 0, ty: 0 };
-      b.part = { x: 0, y: 0, w: 32, h: 32, defMul: 1.0, bulb: b, onHit: (part, dmg) => this.hitBulb(b, dmg) };
+      b.part = { x: 0, y: 0, w: 32, h: 32, defMul: 1.0, bulb: b, onHit: (part, dmg, atk) => { if (ownHit(atk)) this.hitBulb(b, dmg); } };   // 수호신 자동 공격은 미끼를 깨지 않는다 (피해만 — BAL-RULES)
       return b;
     });
     this.pFace = { x: 0, y: 0, w: 80, h: 66, defMul: 1.0 };

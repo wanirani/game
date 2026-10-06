@@ -6,7 +6,7 @@
 //  · 보스별: 질주 — 띠 = A.floor−2.6칸…A.floor, 끝이 A 안(말 머리 기준), 투기장 9행 발판 위는 맞지 않음, 카운터 창 한 대 → stagger ·
 //    등불 — 플레이어 한 대 → 꺼짐·소환 없음·노출, 수호신 한 대로는 안 꺼짐 · 소환 상한(해골 ≤ 2 · 도깨비불 ≤ 3 · 원혼 ≤ 2) · 관·통행료 기둥이 A 안 ·
 //    빈 영구차가 전환 직후 강제 · 망자 부르기 끝에 터짐·노출 0.7 · 15% 강제 — 하던 패턴(질주·빈 영구차·망자 부르기)을 1틱 안에 끊음,
-//    스토리면 b_charon_last 한 번 → 2.5초 주저앉음, 아케이드면 보통 올가미 · 1페이즈 창 상한 12/10/8% (필살은 상한 밖) ·
+//    스토리면 b_charon_last 한 번 → 2.5초 주저앉음, 아케이드면 보통 올가미 · 1페이즈 창 상한 12/10/8% (필살은 상한 밖; '저항' 은 창마다 한 번, 그 뒤 0 · 숫자 없음 — BAL-RULES) ·
 //    판정 부위 피해 순서 (1페이즈 마부 > 몸통 > 바퀴, 2페이즈 머리 > 몸통 > 자락 — 숫자가 아니라 피해로 잰다) ·
 //    투기장(arena r1)에서 패턴 10개가 경계 안에서 돈다 · drops 빈 목록 · inferno 를 읽지 않음
 // 사용: node tools/test_charon.mjs   (종료 코드 0 = 모두 통과 · 페이지 오류 0). Math.random 은 페이지에서 고정 시드로 바꿔 매번 같은 결과.
@@ -246,11 +246,11 @@ check('debugAct(없는 상태) → false', (await page.evaluate((id) => { const 
     G.build(id); G.step(2); b = G.boss; quiet(b); b.hp = Math.floor(mx() * 0.95);
     b.debugAct('stagger'); G.step(0.2);
     let c0 = b.hp; const si = hitN(4, 0.04); const sLoss = (c0 - b.hp) / mx(); G.step(2 / 60);
-    out.capStag = { loss: +sLoss.toFixed(4), capped: si.filter((i) => i.capped).length, resist: si.filter((i) => i.resist).length, stunned: b.stunned, st: b.state };
+    out.capStag = { loss: +sLoss.toFixed(4), capped: si.filter((i) => i.capped).length, resist: si.filter((i) => i.resist).length, say: si.map((i) => !!i.capSay).join(), mute: si.map((i) => !!i.capMute).join(), dmg4: si[3].dmg, stunned: b.stunned, st: b.state };
     G.build(id); G.step(2); b = G.boss; quiet(b); b.hp = Math.floor(mx() * 0.95);
     act(b, 'deathRun'); c0 = b.hp; let rn = 0;
-    for (let f = 0; f < 100 && b.state === 'deathRun'; f++) { G.step(1 / 60); if (!b.cWin && f % 6 === 0) { hitN(1, 0.03); rn++; } }
-    out.capRun = { loss: +((c0 - b.hp) / mx()).toFixed(4), hits: rn, st: b.state };
+    const ri = []; for (let f = 0; f < 100 && b.state === 'deathRun'; f++) { G.step(1 / 60); if (!b.cWin && f % 6 === 0) { ri.push(...hitN(1, 0.03)); rn++; } }
+    out.capRun = { loss: +((c0 - b.hp) / mx()).toFixed(4), hits: rn, st: b.state, say: ri.filter((i) => i.capSay).length, mute: ri.filter((i) => i.capMute).length, muteDmg: ri.filter((i) => i.capMute).reduce((a, i) => a + i.dmg, 0) };
     G.build(id); G.step(2); b = G.boss; quiet(b); b.hp = Math.floor(mx() * 0.95);
     act(b, 'soulLantern'); G.step(0.4); b.hitPart = b.pLan; b.takeHit(5, { team: 'player', dir: 1 }, G.world, {}); G.step(2 / 60);
     c0 = b.hp; const li = hitN(4, 0.03, null, b.pMan); G.step(2 / 60); out.capLan = { loss: +((c0 - b.hp) / mx()).toFixed(4), resist: li.filter((i) => i.resist).length, exposed: b.exposed, st: b.state };
@@ -299,9 +299,9 @@ check('debugAct(없는 상태) → false', (await page.evaluate((id) => { const 
     s.st === 'lastLoad' && s.last && s.hasScript && s.dialog === 'b_charon_last' && s.seq[0] === 'lastLoad' && s.seq.includes('stagger') && s.noose === 0 && s.body?.body === 0.6 && s.body?.long && s.stagT >= 2.7 && s.stagT <= 2.95
     && s.again && !s.lastAgain && !s.dialogAgain && s.seen === 1, s);
   const cs = r.capStag, cr = r.capRun, cl = r.capLan;
-  check('창 상한 (1페이즈): 무릎 한 번에 최대 체력 10% 까지 — 넘는 피해는 줄어들고("저항") 곧바로 일어섬', cs.loss >= 0.0999 && cs.loss <= 0.1011 && cs.capped === 2 && cs.resist === 1 && !cs.stunned && cs.st === 'stagger', cs);
-  check('창 상한 (1페이즈): 질주 한 번(경고 · 돌진 · 카운터 창) 12% 까지 (질주는 끊기지 않음)', cr.hits >= 8 && cr.loss >= 0.1199 && cr.loss <= 0.1215 && cr.st === 'deathRun', cr);
-  check('창 상한 (1페이즈): 등불 노출 한 번 8% 까지 — 닿으면 노출이 끝남 · 패턴이 끝날 때까지 계속 쳐도 8%', cl.loss >= 0.0799 && cl.loss <= 0.081 && cl.resist >= 1 && !cl.exposed && cl.lossEnd <= 0.0815 && cl.stEnd !== 'soulLantern', cl);
+  check('창 상한 (1페이즈): 무릎 한 번에 최대 체력 10% 까지 — 넘는 피해는 줄어들고("저항" 은 창마다 한 번, 그 뒤 0 · 숫자 없음) 곧바로 일어섬', cs.loss >= 0.0999 && cs.loss <= 0.1001 && cs.capped === 2 && cs.resist === 1 && cs.say === 'false,false,true,false' && cs.mute === 'false,false,false,true' && cs.dmg4 === 0 && !cs.stunned && cs.st === 'stagger', cs);
+  check('창 상한 (1페이즈): 질주 한 번(경고 · 돌진 · 카운터 창) 12% 까지 (질주는 끊기지 않음)', cr.hits >= 8 && cr.loss >= 0.1199 && cr.loss <= 0.1201 && cr.st === 'deathRun' && cr.say === 1 && cr.mute >= 2 && cr.muteDmg === 0, cr);
+  check('창 상한 (1페이즈): 등불 노출 한 번 8% 까지 — 닿으면 노출이 끝남 · 패턴이 끝날 때까지 계속 쳐도 8%', cl.loss >= 0.0799 && cl.loss <= 0.081 && cl.resist === 1 && !cl.exposed && cl.lossEnd <= 0.0815 && cl.stEnd !== 'soulLantern', cl);
   check('창 상한: 필살은 상한 밖 · 2페이즈 무릎은 상한 없음', r.capUlt >= 0.199 && r.capP2 >= 0.159, { ult: r.capUlt, p2: r.capP2 });
   const p1 = r.parts1, p2 = r.parts2;
   check('판정 부위 피해 순서 (1페이즈 같은 공격): 마부 > 마차 몸통 > 바퀴', p1.man.part === 'man' && p1.body.part === 'body' && p1.wheel.part === 'wheel' && p1.man.dmg > p1.body.dmg && p1.body.dmg > p1.wheel.dmg, p1);

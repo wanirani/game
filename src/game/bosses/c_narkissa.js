@@ -11,7 +11,7 @@
 //   formPhase(2 = 가면 없음) · twin(분신 개체) · legs(거미 다리 발 위치) · maskCrack(0~1). 거울 속에서는 this.hidden = true (kit 규칙).
 //   거울 속 실루엣은 NarkMirror 가 그린다.
 import { BossC, telegraph, strikeRect, strikeLine, spawnMinion } from './c_common.js';
-import { PI, OUT, R, LG, glow, glowE, glowSprite, warnRect, impact } from './b_common.js';
+import { PI, OUT, R, LG, glow, glowE, glowSprite, warnRect, impact, ownHit } from './b_common.js';
 import { heldByFreeze } from './boss.js';
 import { Entity } from '../entity.js';
 import { audio } from '../../core/audio.js';
@@ -815,7 +815,7 @@ class NarkMirror extends Entity {
   /** 금빛일 때만. 판정은 틀보다 넉넉하게 — 아래 거울(바닥−120)도 땅에 선 채 첫 채찍질(발−66…−40)로 닿는다 */
   hurtbox() { return this.gold > 0 ? { x: this.x - 14, y: this.y - 14, w: this.w + 28, h: this.h + 48 } : OFF; }
   takeHit(dmg, attack, world) {
-    if (!(this.gold > 0) || attack?.tags?.includes('companion')) return false;
+    if (!(this.gold > 0) || !ownHit(attack)) return false;
     let id = attack?.hitId;
     if (typeof id === 'string') { if (id.startsWith('aura')) return false; id = id.replace(/:\d+$/, ''); }
     if (id != null) { const seen = (this._hitIds ??= new Set()); if (seen.has(id)) return false; seen.add(id); }

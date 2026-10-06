@@ -207,6 +207,11 @@ check('debugAct(없는 상태) → false', (await page.evaluate((id) => { const 
     const kw = { cWin: b.cWin, tele: b.telegraph };
     b.takeHit(10, { team: 'player', dir: 1 }, G.world, {}); G.step(0.05);
     out.knife = { cuts: cuts.size, ...kw, state: b.state };
+    // 카운터 창: 수호신 자동 공격 한 대로는 무릎이 아니다 (BAL-RULES — b_common.ownHit)
+    G.build(id); G.step(2); b = G.boss; quiet(b);
+    act(b, 'huntingKnife'); for (let t = 0; t < 3 && !b.cWin; t += 1 / 60) G.step(1 / 60);
+    const gkw = b.cWin; b.takeHit(10, { team: 'player', dir: 1, tags: ['companion', 'guardian'] }, G.world, {}); G.step(0.05);
+    out.knifeGuard = { cWin: gkw, state: b.state };
     // 15%: 하던 패턴(할퀴기 연타)을 끊고 곧바로 offer + 대사(스토리) 한 번 → 곧바로 clawRush · 다시 15% 아래로 맞아도 두 번째 offer 없음 ·
     //   부활 뒤 offer 는 다시, 대사는 다시 안 나온다 (패턴 끝을 기다리면 강한 영웅이 offer·대사 없이 쓰러뜨렸다 — EX3-VERIFY)
     G.S.forceCutscene = false; G.O.story = true;
@@ -245,6 +250,7 @@ check('debugAct(없는 상태) → false', (await page.evaluate((id) => { const 
   check('달 그림자: 화면 밖 동안 판정·접촉 없음 · 내리꽂기 셋 (폭 90) · 노출 몸통 0.7', r.dive.n === 3 && r.dive.th === 90 && r.dive.offscreen > 5 && r.dive.offHits === 0 && r.dive.exposed?.body === 0.7 && r.dive.exposed.parts > 0, r.dive);
   check('달 그림자: 노출 중 최대 체력 5% → stagger', r.diveStagger.wasExp && r.diveStagger.state === 'stagger', r.diveStagger);
   check('사냥칼: 2연 베기 (150×100) · 끝 = 카운터 창 → stagger', r.knife.cuts === 2 && r.knife.cWin && r.knife.tele && r.knife.state === 'stagger', r.knife);
+  check('사냥칼 카운터 창: 수호신 자동 공격 한 대로는 무릎이 아니다', r.knifeGuard.cWin && r.knifeGuard.state === 'huntingKnife', r.knifeGuard);
   check('15%: 하던 패턴을 끊고 곧바로 offer + 대사 b_hagen_last (스토리) → 곧바로 clawRush · 싸움마다 한 번 · 부활 뒤 offer 다시 (대사는 다시 안 나온다)',
     r.last.pre === 'clawRush' && !r.last.forced.includes('offer') && r.last.seq[0] === 'offer' && r.last.hasScript && r.last.dialog === 'b_hagen_last' && r.last.seq.includes('offer') && r.last.seq[r.last.seq.length - 1] === 'clawRush' && !r.last.twice && r.last.again && !r.last.dialogAgain && r.last.seen === 1, r.last);
   check('패턴별 검사 오류 0', !r.notes.length, r.notes);

@@ -6,6 +6,7 @@
 //                                       breakWalls:false, dmgColor:def.color, … } (hitstop 0 필수: 자동 공격이 게임을 멈추지 않게)
 //  gStrike(world, rect, attack) → n   수호신 전용 타격: 적·보스만 (소품·촛불·거울 스위치·포자 주머니 등 noGuardianHit 대상은 건너뜀 —
 //                                       타격 불꽃·효과음·경직도 없다). 부위 판정(hitParts)·몸통(hurtboxes/hurtbox)은 combat.playerStrike 와 같다.
+//                                       보스의 플레이어 기술 기믹(카운터 창 → 무릎 · 약점 깨기)은 보스가 b_common.ownHit 으로 거른다 — 수호신 타격은 피해만.
 //  gHitOne(world, target, attack, x, y) 한 대상만 직접 타격 (번개 연쇄 등)
 //  aimBox(T, x, y, floorY?, bh?) · aimPoint(T, x, y)   노릴 피격 판정 상자 / 그 가운데 (떠 있는 보스 판정 — 근접 동작이 뛰어올라 친다)
 //  quietExpire(world, q)              적 탄을 거둘 때 onExpire 를 조용히 한 번 (쏜 적의 장부만 풀리고 폭발·연출은 없다; guardian_ai_b 도 쓴다)

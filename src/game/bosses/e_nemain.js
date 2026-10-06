@@ -20,7 +20,7 @@
 //   ghost · stunned · exposed · cWin · flock {x,y,ph (Float32Array 40), a, n} · cage · daggersDown · dieT · vanishK · state · t · flashT · A
 // 컬링: 펼친 망토·까마귀 떼가 몸통 판정보다 훨씬 크므로 아르겐과 같은 ArtCull 대리 개체가 artBounds() 로 그린다.
 import { BossC, telegraph, strikeRect, strikeColumn, strikeLine, ringWave, spawnMinion, minionsAlive, darken, screenTint, prewarmTint, phaseScript, clearMood } from './c_common.js';
-import { PI, R, C, LG, ink, glow, glowE, glowSprite, warnRect, warnLine, warnFloor, impact, hash } from './b_common.js';
+import { PI, R, C, LG, ink, glow, glowE, glowSprite, warnRect, warnLine, warnFloor, impact, hash, ownHit } from './b_common.js';
 import { Entity } from '../entity.js';
 import { TILE } from '../../core/game.js';
 import { audio } from '../../core/audio.js';
@@ -279,8 +279,8 @@ export class Nemain extends BossC {
     if (Math.random() < 0.6) world.fx.burst('dark', x, y, 3, { color: BLK2, speed: 150 });
     if (part === this.pHead && this.masked) world.fx.burst('shard', x, y, 2, { color: LACQ_H, speed: 170 });
     if (this.dying > 0 || this.dead) { this.renameBanner(world); return; }
-    // 카운터 창(그림자 걸음·그믐의 솟아오름)에 맞으면 → 무릎 (stagger)
-    if (this.cWin && (this.state === 'shadowStep' || this.state === 'eclipse')) { this.cWin = false; this.later(0, () => this.toStagger()); return; }
+    // 카운터 창(그림자 걸음·그믐의 솟아오름)에 플레이어·탈것이 한 대 → 무릎 (stagger). 수호신 자동 공격은 창을 쓰지 않는다 (ownHit — BAL-RULES)
+    if (this.cWin && (this.state === 'shadowStep' || this.state === 'eclipse') && ownHit(attack)) { this.cWin = false; this.later(0, () => this.toStagger()); return; }
     // 까마귀 폭풍 노출 1초 안에 최대 체력 5% 이상 → 무릎
     if (this.exposed && this.state === 'murder') {
       this.mexp += Math.max(0, dmg || 0);

@@ -20,7 +20,7 @@
 //   stunned · hidden · alpha · br (숨결 {on, x}) · dieT · purified · state · t · flashT · A
 // 컬링: 날개·꼬리가 몸통 판정보다 훨씬 크므로 지즈와 같은 ArtCull 대리 개체가 artBounds() 로 그린다.
 import { BossC, telegraph, warnText, strikeColumn, strikeFloor, groundWave, ringWave, windGust, screenTint, prewarmTint } from './c_common.js';
-import { PI, R, C, LG, ink, glow, glowE, glowSprite, warnRect, warnLine, warnFloor, warnCircle, impact, hash, tube, boltPath } from './b_common.js';
+import { PI, R, C, LG, ink, glow, glowE, glowSprite, warnRect, warnLine, warnFloor, warnCircle, impact, hash, tube, boltPath, ownHit } from './b_common.js';
 import { Entity } from '../entity.js';
 import { audio } from '../../core/audio.js';
 import { TAU, clamp, lerp, rand, approach, rgba } from '../../core/math.js';
@@ -132,7 +132,7 @@ export class Argen extends BossC {
     this.legs = { hn: { hip: { x: -56, y: 30 }, knee: pt(), foot: pt() }, hf: { hip: { x: -44, y: 26 }, knee: pt(), foot: pt() }, fn: { hip: { x: 70, y: 34 }, knee: pt(), foot: pt() } };
     this.crys = CRYS.map((c) => ({ ...c, x: 0, y: 0, wa: c.a ?? 0, alive: c.ph === 0, grow: c.ph === 0 ? 1 : 0, gone: 0, breakIn: 0 }));
     this.mouthW = { x: 0, y: 0 }; this.coreW = { x: 0, y: 0 };
-    this.pCore = { x: 0, y: 0, w: 74, h: 74, defMul: 0.75, onHit: (part, dmg) => this.hitCore(dmg) };
+    this.pCore = { x: 0, y: 0, w: 74, h: 74, defMul: 0.75, onHit: (part, dmg, atk) => { if (ownHit(atk)) this.hitCore(dmg); } };   // 수호신 자동 공격은 핵을 깨지 않는다 (피해만 — BAL-RULES)
     this.pHead = { x: 0, y: 0, w: 76, h: 60, defMul: 1.0 };
     this.pNeck = { x: 0, y: 0, w: 66, h: 66, defMul: 1.05 };
     this.pBody = { x: 0, y: 0, w: 214, h: 98, defMul: 1.15 };
@@ -317,7 +317,7 @@ export class Argen extends BossC {
     L.push(this.cBody);
     return L;
   }
-  /** 공허 핵 피격: coreBurst 중 최대 체력 5% 를 넘게 맞으면 추락(stagger) */
+  /** 공허 핵 피격 (플레이어·탈것의 타격만 — pCore.onHit 의 ownHit): coreBurst 중 최대 체력 5% 를 넘게 맞으면 추락(stagger) */
   hitCore(dmg) {
     const cb = this.cb;
     if (this.state !== 'coreBurst' || !cb || cb.broke || this.dying > 0) return;

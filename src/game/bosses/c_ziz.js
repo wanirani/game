@@ -13,7 +13,7 @@
 //   eyes[{side, j, alive, open, fireT, hitT, x, y}] · head {x, y} · dmg (0..2) · stunned · sw (talon 휩쓸기 {x0, x1, by, on}) · dieT
 // 컬링: 날개 폭이 1200px 가 넘으므로 ArtCull 대리 개체가 artBounds() 로 그린다 (화면 가장자리에서 통째로 사라지지 않게).
 import { BossC, telegraph, warnText, strikeRect, strikeColumn, groundWave, windGust } from './c_common.js';
-import { PI, R, C, LG, ink, glow, glowE, glowSprite, warnRect, warnFloor, impact, hash, tube, boltPath } from './b_common.js';
+import { PI, R, C, LG, ink, glow, glowE, glowSprite, warnRect, warnFloor, impact, hash, tube, boltPath, ownHit } from './b_common.js';
 import { Entity } from '../entity.js';
 import { audio } from '../../core/audio.js';
 import { TAU, clamp, lerp, rand, approach, rgba } from '../../core/math.js';
@@ -71,7 +71,7 @@ export class Ziz extends BossC {
     this.eyes = [];
     for (const side of [-1, 1]) for (let j = 0; j < 6; j++) {
       const e = { side, j, hp: ehp, max: ehp, alive: true, open: 0, fireT: 0, hitT: 0, lx: 0, ly: 0, ang: 0, x: 0, y: 0 };
-      e.part = { x: 0, y: 0, w: 30, h: 30, defMul: 0.8, eye: e, onHit: (part, dmg) => this.hitEye(e, dmg) };
+      e.part = { x: 0, y: 0, w: 30, h: 30, defMul: 0.8, eye: e, onHit: (part, dmg, atk) => { if (ownHit(atk)) this.hitEye(e, dmg); } };   // 수호신 자동 공격은 눈을 깨지 않는다 (피해만 — BAL-RULES)
       this.eyes.push(e);
     }
     this.pHead = { x: 0, y: 0, w: 60, h: 60, defMul: 1.0 };
