@@ -276,9 +276,9 @@ async function U2(C) {
 
 // ───────────────────────── U3 조작 ─────────────────────────
 async function U3(C) {
-  // 키보드 (desk)
-  {
-    const s = await C.open('desk');
+  // 키보드 (desk · phone2 — 좁은 배치도 같은 조작)
+  for (const vp of ['desk', 'phone2']) {
+    const s = await C.open(vp);
     await seed(s, 'some', { seen: true });
     await s.eval(() => window.__game.go('title', { menu: true }, { fade: false }));
     await openGal(s);
@@ -289,14 +289,14 @@ async function U3(C) {
     await s.key('KeyE'); a = await galState(s);
     const e3 = a.room === 'cg';
     await s.key('KeyQ'); a = await galState(s);
-    C.check('U3', 'kb E·E·E·Q → 음악 · 극장 · 그림(돌아감) · 극장', e1 && e2 && e3 && a.room === 'theater', a.room);
+    C.check('U3', `kb(${vp}) E·E·E·Q → 음악 · 극장 · 그림(돌아감) · 극장`, e1 && e2 && e3 && a.room === 'theater', a.room);
     await s.key('KeyE');
     const cols = await s.eval(() => window.__game.top.geo.cg.cols);
     await s.key('ArrowRight'); const r1 = (await galState(s)).sel[0];
     await s.key('ArrowDown'); const d1 = (await galState(s)).sel[0];
     await s.key('ArrowLeft'); const l1 = (await galState(s)).sel[0];
     await s.key('ArrowUp'); const u1 = (await galState(s)).sel[0];
-    C.check('U3', `kb 격자 → ↓ ← ↑ (열 ${cols})`, r1 === 1 && d1 === 1 + cols && l1 === cols && u1 === 0, [r1, d1, l1, u1].join(','));
+    C.check('U3', `kb(${vp}) 격자 → ↓ ← ↑ (열 ${cols})`, r1 === 1 && d1 === 1 + cols && l1 === cols && u1 === 0, [r1, d1, l1, u1].join(','));
     await s.key('KeyZ'); a = await galState(s);
     const z = a.viewer?.key === 'cg/cg_prologue_moon' && a.deferToasts;
     await s.key('ArrowRight'); a = await galState(s);
@@ -305,7 +305,7 @@ async function U3(C) {
     const skip2 = a.viewer?.key === 'cg/cg_elise_rescued';
     await s.key('ArrowRight'); a = await galState(s);
     const end = a.viewer?.key === 'cg/cg_elise_rescued';
-    C.check('U3', 'kb Z 크게 보기 · → 가 잠긴 그림을 건너뜀 (0 → 2 → 5, 끝에서 멈춤)', z && skip1 && skip2 && end, JSON.stringify(a.viewer));
+    C.check('U3', `kb(${vp}) Z 크게 보기 · → 가 잠긴 그림을 건너뜀 (0 → 2 → 5, 끝에서 멈춤)`, z && skip1 && skip2 && end, JSON.stringify(a.viewer));
     const f0 = a.fit;
     await s.key('KeyA'); a = await galState(s);
     const f1 = a.fit;
@@ -313,7 +313,7 @@ async function U3(C) {
     await s.key('KeyZ'); const ov = (await galState(s)).viewer?.ui;
     await C.shot(s, 'desk_viewer_kb');
     await s.key('KeyX'); a = await galState(s);
-    C.check('U3', 'kb A 맞춤 ↔ 가득 채움 · Z 덮개 숨김 · X 닫기 (목록 선택이 마지막 그림)', f1 === !f0 && a.fit === f0 && ov === 0 && a.viewer === null && !a.deferToasts && a.sel[0] === 5, JSON.stringify({ f0, f1, ov, sel: a.sel }));
+    C.check('U3', `kb(${vp}) A 맞춤 ↔ 가득 채움 · Z 덮개 숨김 · X 닫기 (목록 선택이 마지막 그림)`, f1 === !f0 && a.fit === f0 && ov === 0 && a.viewer === null && !a.deferToasts && a.sel[0] === 5, JSON.stringify({ f0, f1, ov, sel: a.sel }));
     // 음악실
     await s.key('KeyE');
     await s.eval(async () => { const { audio } = await import('/src/core/audio.js'); audio.unlock(); });
@@ -327,14 +327,15 @@ async function U3(C) {
     await s.key('ArrowRight'); a = await galState(s);
     const nextId = await s.eval((i) => window.__game.top.rows.mus[i].id, a.sel[1]);
     await sleep(600); a = await galState(s);
-    C.check('U3', `kb 음악실 ↓ · Z 재생(${id1}) · A 정지 · → 다음 열린 곡 0.35초 뒤 재생(${nextId})`, sel1 === 1 && play && stop && a.current === nextId && nextId === 'hub', JSON.stringify({ sel1, play, stop, cur: a.current }));
+    C.check('U3', `kb(${vp}) 음악실 ↓ · Z 재생(${id1}) · A 정지 · → 다음 열린 곡 0.35초 뒤 재생(${nextId})`, sel1 === 1 && play && stop && a.current === nextId && nextId === 'hub', JSON.stringify({ sel1, play, stop, cur: a.current }));
     // 극장
     await s.key('KeyE'); await s.key('ArrowDown'); a = await galState(s);
-    C.check('U3', 'kb 극장 ↓', a.room === 'theater' && a.sel[2] === 1, JSON.stringify(a.sel));
+    C.check('U3', `kb(${vp}) 극장 ↓`, a.room === 'theater' && a.sel[2] === 1, JSON.stringify(a.sel));
     await s.key('KeyX');
     await s.waitGame("g.top?.name === 'title'", 10000).catch(() => {});
     const tm = await titleMenu(s);
-    C.check('U3', 'kb X → 타이틀 메뉴 회랑 줄 · 곡 title', tm.top === 'title' && tm.idx === 7 && (await s.eval(() => window.__game.audio?.current ?? null)) === 'title', JSON.stringify(tm));
+    C.check('U3', `kb(${vp}) X → 타이틀 메뉴 회랑 줄 · 곡 title`, tm.top === 'title' && tm.idx === 7 && (await s.eval(() => window.__game.audio?.current ?? null)) === 'title', JSON.stringify(tm));
+    if (vp !== 'desk') { await C.close(s); continue; }
     // 마우스: 올리면 고르기 · 누르면 크게 보기 · 휠 넘기기
     await seed(s, 'all', { seen: true });
     await openGal(s);
@@ -352,7 +353,7 @@ async function U3(C) {
     await C.close(s);
   }
   // 패드 (fakepad, 결정 위치 auto = 아래 A / 설정 'east' = 오른쪽 B)
-  for (const [vp, confirm] of [['desk', 'auto'], ['phone1', 'east']]) {
+  for (const [vp, confirm] of [['desk', 'auto'], ['phone1', 'east'], ['phone2', 'auto']]) {
     const s = await C.open(vp, 'index.html', { initScripts: [fakePadInit()], settings: { ctrlConfirm: confirm } });
     await connect(s.page);
     await seed(s, 'some', { seen: true });
@@ -484,7 +485,7 @@ async function U3(C) {
 // ───────────────────────── U4 탭 크기 ─────────────────────────
 async function U4(C) {
   for (const vp of ['phone1', 'phone2']) {
-    const s = await C.open(vp, 'index.html', { storage: slotStorage(C.fixture) });
+    let s = await C.open(vp, 'index.html', { storage: slotStorage(C.fixture) });
     await seed(s, 'all', { seen: true });
     await installTapRecorder(s.page);
     const views = [
@@ -494,9 +495,16 @@ async function U4(C) {
       ['music', "(__game.top.closeViewer(), __game.top.setRoom(1), 0)", 800],
       ['music-scrolled', "(__game.top.scs[1].target = 130, 0)", 700],
       ['theater', "(__game.top.setRoom(2), 0)", 800],
-      ['church', "(__game.go('hub', {}, {fade:false}), setTimeout(() => { __game.push('church', {}); __game.top.setTab(3); }, 600), 0)", 2200],
+      ['church', null, 900],
     ];
     for (const [name, ev, wait] of views) {
+      if (name === 'church') {   // 성당 「여정 기록」 단추 둘: 마을(?scene=hub) 에서
+        await C.close(s);
+        s = await C.open(vp, 'index.html?scene=hub', { pred: `${READY} && g.top?.name === 'hub' && !!g.world` });
+        await installTapRecorder(s.page);
+        await s.eval(() => { const g = window.__game; g.input.touchMode = true; g.push('church', {}); g.top.setTab(3); });
+        await s.waitGame("g.top?.name === 'church'", 10000);
+      }
       const a = await auditScene(s.page, ev, { wait });
       const regs = a.regions ?? [];
       let ov = 0;
@@ -609,7 +617,10 @@ async function U6(C) {
   C.check('U6', `같은 곡을 다시 고르면 처음부터 (${e2.toFixed(2)} 초) · 정지 → current null`, e2 < res.e && a.current === null, JSON.stringify({ e2, cur: a.current }));
   // 빠른 → 다섯 번 → 재생 요청 한 번
   await s.eval(async () => { const { audio } = await import('/src/core/audio.js'); const t = window.__game.top; t.sel[1] = t.rows.mus.findIndex((r) => r.id === 's01'); window.__musicCalls = []; const m = audio.music.bind(audio); audio.__qaMusic = m; audio.music = (id, o) => { window.__musicCalls.push(id); return m(id, o); }; });
-  for (let k = 0; k < 5; k++) await s.key('ArrowRight', 40);
+  for (let k = 0; k < 5; k++) {   // 빠르게 (0.35초 안에 다음 누름)
+    await s.page.keyboard.down('ArrowRight'); await waitFrames(s.page, { frames: 2, ticks: 1 });
+    await s.page.keyboard.up('ArrowRight'); await waitFrames(s.page, { frames: 1, ticks: 1 });
+  }
   await sleep(700);
   const calls = await s.eval(async () => { const { audio } = await import('/src/core/audio.js'); audio.music = audio.__qaMusic; delete audio.__qaMusic; return window.__musicCalls; });
   a = await galState(s);
@@ -649,6 +660,7 @@ async function U7(C) {
     const w = saves.write.bind(saves);
     saves.write = (...a) => { window.__writes++; return w(...a); };
   });
+  await sleep(3500);   // 부팅 뒤 업적·회랑 소급 훑기(한가할 때)가 메타를 쓰고 난 뒤에 사진을 찍는다
   await openGal(s, { back: 'title', backIndex: 7, room: 'theater' });
   await s.eval(() => window.__game.gal.markSeen());   // 회랑을 닫을 때의 seenAt 쓰기를 먼저 (다시 보기와 무관)
   const before = await snapBytes(s);
