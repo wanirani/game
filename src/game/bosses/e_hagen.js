@@ -5,8 +5,9 @@
 // 모습: 1페이즈 = 옆모습의 키 큰 마른 노인 (얼굴 쪽 = facing). 챙 넓은 낡은 모자, 희끗한 수염, 늑대처럼 노랗게 빛나는 눈, 눈이 엉긴 긴 가죽 외투(허리띠·
 //   뒤가 갈라진 무릎 길이 자락), 은 탄띠, 긴 장총, 허리의 사냥칼. 2페이즈 = 은회색 거대한 늑대 (네 발로 서고 일어설 수 있다, 역관절 뒷다리, 긴 꼬리) —
 //   찢어진 외투 자락·탄띠가 몸에 남아 있고 노란 눈에 사람의 빛이 흔들린다. 50% 전환(moonrise)에서 달빛을 받아 늑대가 된다 (form2 '은빛 늑대').
-// 판정 부위 (가까운 부위 우선): 1페이즈 머리(모자) 0.9 · 몸통 1.0 (장전 노출 1.15) · 다리 1.15.
-//   2페이즈 머리(주둥이) 1.2 — 노릴 곳 · 몸통 1.0 (달 그림자 노출 0.7 · 가슴을 내줌 1.6) · 외투 자락 등판 0.85 · 다리 1.1. 무릎(stagger) 몸통 0.7 · 머리 0.6.
+// 판정 부위 (가까운 부위 우선, defMul = 방어 배율 — 작을수록 아프다): 1페이즈 머리(모자) 0.9 · 몸통 1.0 (장전 노출 0.85) · 다리 1.15.
+//   2페이즈 머리(주둥이) 0.8 — 노릴 곳 · 몸통 1.0 (달 그림자 노출 0.7 · 가슴을 내줌 0.6) · 외투 자락 등판 0.85 · 다리 1.1. 무릎(stagger) 몸통 0.7 · 머리 0.6.
+//   (명세 §2.1 의 '장전 노출 1.15 · 주둥이 1.2 · 가슴 1.6' 은 피해 배율로 적힌 값 — 방어 배율로는 거꾸로라 노출·약점이 더 단단했다. EX3-VERIFY 가 뒤집음)
 //   달 그림자의 하늘 위(화면 밖)·사망 중에는 판정 없음 (ghost).
 // 패턴 (static PATTERNS — docs/specs/ex_s23.md §2.1): aimedShot(조준 사격) · trapLine(은 올가미) · buckshot(산탄, 6칸 안일 때만) · huntingKnife(사냥칼,
 //   카운터 창) · packCall(무리 부르기, 1·2페이즈) · pounce(덮치기, 카운터 창 · 세 번에 한 번 벽 차기) · clawRush(할퀴기 연타) · moonDive(달 그림자) ·
@@ -116,7 +117,7 @@ export class Hagen extends BossC {
     this.wolf = false; this.morph = 0; this.morphT = -1; this.tearT = -1; this.bristle = 0;
     this.ghost = false; this.stunned = false; this.exposed = false; this.reloading = false; this.offering = false; this.cWin = false; this.mexp = 0;
     this.moonK = 0; this.moonT = 0; this.dawnK = 0; this.dieT = 0; this.vanishK = 0; this.lieHuman = false;
-    this._offered = false; this._lastPending = false; this._bn = null; this.pounceN = 0;
+    this._offered = false; this._lastPending = false; this._offerNow = false; this._bn = null; this.pounceN = 0;
     this.as = this.tl = this.bs = this.kn = this.pc = this.pn = this.cr = this.md = this.of = null;
     this.traps = [];
     this.pHead = { x: 0, y: 0, w: 34, h: 34, defMul: 0.9 };
@@ -292,17 +293,17 @@ export class Hagen extends BossC {
       this.toWorld(P.head.x + 2, P.head.y - 4, W);
       const ph = this.pHead; ph.w = 34; ph.h = 34; ph.x = W.x - 17; ph.y = W.y - 17; ph.defMul = this.stunned ? 0.6 : 0.9;
       this.toWorld((P.hip.x + P.neck.x) / 2, (P.hip.y + P.neck.y) / 2 + 2, W);
-      const pb = this.pBody; pb.w = 40; pb.h = 58; pb.x = W.x - 20; pb.y = W.y - 29; pb.defMul = this.stunned ? 0.7 : this.reloading ? 1.15 : this.offering ? 1.6 : 1.0;
+      const pb = this.pBody; pb.w = 40; pb.h = 58; pb.x = W.x - 20; pb.y = W.y - 29; pb.defMul = this.stunned ? 0.7 : this.reloading ? 0.85 : this.offering ? 0.6 : 1.0;
       this.cBody.w = 40; this.cBody.x = W.x - 20; this.cBody.y = W.y - 30; this.cBody.h = Math.max(40, this.fy - (W.y - 30));
       this.toWorld(P.hip.x * 0.5, 0, W);
       const pl = this.pLegs; pl.w = 36; pl.h = Math.max(24, -P.hip.y); pl.x = W.x - 18; pl.y = this.fy - pl.h; pl.defMul = 1.15;
     } else {
       const P = this.wp;
       this.toWorld(P.head.x + 10, P.head.y + 2, W);
-      const ph = this.pHead; ph.w = 48; ph.h = 40; ph.x = W.x - 24; ph.y = W.y - 20; ph.defMul = this.stunned ? 0.6 : 1.2;
+      const ph = this.pHead; ph.w = 48; ph.h = 40; ph.x = W.x - 24; ph.y = W.y - 20; ph.defMul = this.stunned ? 0.6 : 0.8;
       this.toWorld((P.hip.x + P.sh.x) / 2 + 4, (P.hip.y + P.sh.y) / 2 + 4, W);
       const pb = this.pBody; pb.w = 74; pb.h = 56; pb.x = W.x - 37; pb.y = W.y - 28;
-      pb.defMul = this.stunned ? 0.7 : this.offering ? 1.6 : this.exposed ? 0.7 : 1.0;
+      pb.defMul = this.stunned ? 0.7 : this.offering ? 0.6 : this.exposed ? 0.7 : 1.0;
       this.cBody.w = 70; this.cBody.x = W.x - 35; this.cBody.y = W.y - 28; this.cBody.h = Math.max(40, this.fy - (W.y - 28));
       this.toWorld(P.hip.x - 10, P.hip.y - 14, W);
       const pk = this.pBack; pk.x = W.x - 28; pk.y = W.y - 22; pk.defMul = 0.85;
@@ -368,7 +369,7 @@ export class Hagen extends BossC {
     const x = info?.hx ?? this.cx, y = info?.hy ?? this.cy;
     if (this.wolf) { if (Math.random() < 0.6) world.fx.burst('feather', x, y, 2, { color: FUR, speed: 140 }); }
     else if (Math.random() < 0.5) world.fx.burst('shard', x, y, 2, { color: LEATH_H, speed: 150 });
-    if (this.dying > 0 || this.dead) return;
+    if (this.dying > 0 || this.dead) { this.renameBanner(world); return; }
     // 카운터 창(사냥칼 끝 · 덮치기 착지 경직)에 맞으면 → 무릎 (stagger)
     if (this.cWin && (this.state === 'huntingKnife' || this.state === 'pounce')) { this.cWin = false; this.later(0, () => this.toStagger()); return; }
     // 달 그림자 노출 1초 안에 최대 체력 5% 이상 → 무릎
@@ -378,11 +379,21 @@ export class Hagen extends BossC {
     }
     this.check15();
   }
-  /** 체력 15% 이하에서 한 번(싸움마다): offer 강제 + 대사 b_hagen_last (스토리·처음만 — phaseScript 가 거른다) */
+  /**
+   * 체력 15% 이하에서 한 번(싸움마다): offer + 대사 b_hagen_last (스토리·처음만 — phaseScript 가 거른다). 다음 틱(tickB)에 하던 패턴을 끊고
+   * 곧바로 시작한다 (전환 중이면 전환 뒤로 — forceNext): 패턴이 끝나길 기다리면 강한 영웅은 덮치기·할퀴기·달 그림자 하나 사이에 남은 15% 를
+   * 다 깎아 offer·대사 없이 쓰러뜨렸다 (EX3-VERIFY: 봇 스토리 5판 중 4판)
+   */
   check15() {
     if (this._offered || this.phase < 1 || this.dying > 0 || this.hpK() > 0.15) return;
-    this._offered = true; this._lastPending = true;
-    this.forceNext('offer');
+    this._offered = true; this._lastPending = true; this._offerNow = true;
+  }
+  toOffer() {
+    this._offerNow = false;
+    if (this.dying > 0 || this.dead || this.state === 'offer') return;
+    if (this._tr) { this.forceNext('offer'); return; }
+    this.clearJobs(); this.onCancel(this.world);
+    this.setState('offer');
   }
   toStagger() {
     if (this.dying > 0 || this.dead || this.state === 'stagger' || this._tr) return;
@@ -401,6 +412,7 @@ export class Hagen extends BossC {
 
   // ═════════════════════════════ 논리 틱 ═════════════════════════════
   tickB(dt, world) {
+    if (this._offerNow) this.toOffer();   // 15% (check15): 피격 처리 안이 아니라 여기서 (runJobs 밖 — clearJobs 가 안전하다)
     this.motion(dt, world);
     this.ambient(dt, world);
     this.ensureCull(world);
@@ -481,7 +493,7 @@ export class Hagen extends BossC {
   }
 
   // ── aimedShot: 무릎 쏴 0.3초 → 조준선(플레이어를 따라감) 0.9초, 마지막 0.25초는 고정(선이 붉어지고 eye_glint) →
-  //    은탄 한 발 1800px/s 관통 (폭 20, mv 0.85) → 장전 0.6초 = 노출 (몸통 1.15) ──
+  //    은탄 한 발 1800px/s 관통 (폭 20, mv 0.85) → 장전 0.6초 = 노출 (몸통 0.85) ──
   s_aimedShot(dt, world, t) {
     const lockAt = 0.65 + this.mercy();   // 조준선 안 시각 (0.9 − 0.25)
     if (this.at(0.001)) {
@@ -842,7 +854,7 @@ export class Hagen extends BossC {
     if (t >= 1.7) { this.relax(); this.done(0.6); }
   }
 
-  /** 보조 offer: 체력 15% 이하 한 번(싸움마다) — 멈춰 서서 가슴을 드러낸다 2.5초 (공격 판정 없음, 몸통 1.6) + 대사 b_hagen_last (스토리·처음만).
+  /** 보조 offer: 체력 15% 이하 한 번(싸움마다) — 멈춰 서서 가슴을 드러낸다 2.5초 (공격 판정 없음, 몸통 0.6) + 대사 b_hagen_last (스토리·처음만).
    *  끝나면 곧바로 clawRush. 아케이드도 같은 2.5초 (대사만 없음) */
   s_offer(dt, world, t) {
     if (this.at(0.001)) {
@@ -928,7 +940,7 @@ export class Hagen extends BossC {
     this.wolf = false; this.morph = 0; this.morphT = -1; this.tearT = -1; this.gun = 'port'; this.rifleDrop = null;
     this.w = SIZE_H.w; this.h = SIZE_H.h;
     this.moonK = 0; this.moonT = 0; this.dawnK = 0; this.vanishK = 0; this.lieHuman = false; this.bristle = 0;
-    this._offered = false; this._lastPending = false; this.pounceN = 0;
+    this._offered = false; this._lastPending = false; this._offerNow = false; this.pounceN = 0;
     for (const e of this.traps) e.dead = true;
     this.traps.length = 0;
     for (const k in this.pt) { this.pt[k] = 0; this.ps[k] = 0; }
@@ -948,12 +960,18 @@ export class Hagen extends BossC {
     if (this.wolf) { this.setPose({ crouch: 0.6, rear: 0, run: 0, howl: 0.4, jaw: 0.6, air: 0 }); this.paw = 'idle'; audio.sfx('wolf_howl', { vol: 0.5, pitch: 0.55 }); }
     else { this.setPose({ kneel: 1, lean: 0.3 }); this.arms('limp', 8); }
   }
+  /**
+   * 'STAGE CLEAR' 부제: 낱말 '격파' 만 '결착' 으로 (보스 러시 'ROUND CLEAR'·탑 '축복' 안내 등 나머지는 그대로). 새 배너가 뜰 때마다 한 번씩.
+   * 처치 타격 바로 뒤(onHurt — world.onBossDefeated 가 배너를 단 직후)에도 부른다: 쓰러짐 틱만 기다리면 처치 히트스톱 동안 '격파!' 가 보였다
+   */
+  renameBanner(world) {
+    const bn = world?.banner;
+    if (bn && bn !== this._bn) { this._bn = bn; if (typeof bn.sub === 'string' && bn.sub.includes('격파')) bn.sub = bn.sub.replace('격파', '결착'); }
+  }
   dyingTick(dt, world) {
     this.dieT += dt;
     const T = this.dieT, q = world.fx?.quality ?? 1;
-    // 'STAGE CLEAR' 부제: 낱말 '격파' 만 '결착' 으로 (보스 러시 'ROUND CLEAR'·탑 '축복' 안내 등 나머지는 그대로). 새 배너가 뜰 때마다 한 번씩
-    const bn = world.banner;
-    if (bn && bn !== this._bn) { this._bn = bn; if (typeof bn.sub === 'string' && bn.sub.includes('격파')) bn.sub = bn.sub.replace('격파', '결착'); }
+    this.renameBanner(world);
     // 0–1.5초: 늑대가 눈밭에 쓰러진다 (사람이면 무릎을 꿇었다가 눕는다)
     if (T >= 0.5) this.setPose({ lie: 1, crouch: 0, rear: 0, howl: 0, jaw: 0.2, kneel: this.wolf ? 0 : 0.4 });
     if (!this._thud && T >= 1.1) { this._thud = true; audio.sfx('land', { pitch: 0.6, vol: 0.7 }); world.fx.burst('paper', this.zx, this.fy - 8, 16, { color: SNOW, speed: 160, angle: -PI / 2, spread: 1.6 }); }
