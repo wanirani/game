@@ -171,7 +171,7 @@ check('debugAct(없는 상태) → false', (await page.evaluate((id) => { const 
     out.cage = { inGap, onRing, r0: Math.round(r0), r1, burst };
     // 그믐: 어둠 켜짐 → 기습 3번 (각 베기 170×110) → 어둠 복원
     G.build(id, { phase: 1 }); G.step(9); b = G.boss;
-    b.debugAct('idle'); for (let t = 0; t < 6 && b._cDark?.list?.length; t += 0.1) G.step(0.1);   // 저절로 고른 그믐의 어둠이 남아 있으면 끝날 때까지
+    b.debugAct('idle'); b.idleWait = 99; for (let t = 0; t < 6 && b._cDark?.list?.length; t += 0.1) G.step(0.1);   // 저절로 고른 그믐의 어둠이 남아 있으면 끝날 때까지
     const L = G.world.lighting, d0 = L.darkness;
     act(b, 'eclipse'); G.step(0.2); const dOn = L.darkness;
     const cuts = new Set(); let riseWin = 0;
@@ -180,7 +180,7 @@ check('debugAct(없는 상태) → false', (await page.evaluate((id) => { const 
     out.eclipse = { d0: +d0.toFixed(2), on: +dOn.toFixed(2), back: +L.darkness.toFixed(2), cuts: cuts.size, riseWin: riseWin > 0 };
     // 그믐 솟아오름에 카운터 → 무릎: 어둠·색조가 걷힌다 (무릎 꿇은 동안 방이 칠흑으로 남지 않게)
     G.build(id, { phase: 1 }); G.step(9); b = G.boss;
-    b.debugAct('idle'); for (let t = 0; t < 6 && b._cDark?.list?.length; t += 0.1) G.step(0.1);
+    b.debugAct('idle'); b.idleWait = 99; for (let t = 0; t < 6 && b._cDark?.list?.length; t += 0.1) G.step(0.1);
     {
       const LL = G.world.lighting, base = LL.darkness;
       act(b, 'eclipse'); for (let t = 0; t < 3 && !b.cWin; t += 0.02) G.step(0.02);
