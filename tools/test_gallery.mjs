@@ -85,7 +85,9 @@ function mkGame({ meta = {}, state = null, slots = {}, saves = null } = {}) {
 const stored = (meta) => sorted([...Object.keys(meta.gal?.cg ?? {}).map((k) => 'cg:' + k), ...Object.keys(meta.gal?.mus ?? {}).map((k) => 'mus:' + k)]);
 const thOpen = (gal) => gal.list('th').filter((r) => r.open).map((r) => r.def.id);
 /** 실제 게임이 쓰는 메타: 엔딩 장면은 대본을 틀기 전에 meta.endingsSeen 에 적는다 → 고정 세이브의 ending_* 대본에서 */
-const metaOf = (s) => ({ endingsSeen: (s.progress?.seenScripts ?? []).filter((x) => /^ending_/.test(x)).map((x) => x.slice(7)) });
+//  (엔딩 장면은 같은 순간에 슬롯 깃발 ending_<k> 도 세운다 — 옛 고정 세이브 save_v1 은 ending_normal 깃발만 있고 대본 기록이 없다)
+const metaOf = (s) => ({ endingsSeen: [...new Set([...(s.progress?.seenScripts ?? []).filter((x) => /^ending_/.test(x)).map((x) => x.slice(7)),
+  ...Object.keys(s.progress?.flags ?? {}).filter((k) => /^ending_/.test(k) && s.progress.flags[k] === true).map((k) => k.slice(7))])] });
 
 // ═════════ G1 데이터 ═════════
 if (run('G1')) {
@@ -305,6 +307,7 @@ if (run('G3')) {
     // 슬롯을 지워도 거두지 않는다
     g.saves.remove(2);
     ok(g.gal.rescan('retro').length === 0 && isDeepStrictEqual(stored(g.game.meta), asStored(e)), `${f}: 슬롯 삭제 뒤에도 남는다`);
+    eq(thOpen(g.gal), e.th, `${f}: 슬롯 삭제 뒤에도 극장 그대로 (서막은 그 CG, 엔딩은 meta.endingsSeen — 다시 잠기지 않는다)`);   // GAL-VERIFY
     g.done();
     // 「피의 윤회」로 넘긴 슬롯 (seenScripts 빔)만 있어도 같은 집합
     const ng = NG.startNgPlus(quiet(() => clone(s)), { slot: 3, now: 1759700000000 });
@@ -395,6 +398,13 @@ if (run('G4')) {
     await sleep(20);
     ok(g.gal.has('cg', 'cg_true_ending') && g.gal.has('mus', 'chaos'), "cloud:sync done → 전부 훑기 (받은 슬롯 2)");
     bus.emit('cloud:sync', { phase: 'done', ok: false });
+    {   // GAL-VERIFY: 클라우드 병합(applyMeta 가 제자리에서 바꿔 쓰고 saveMeta)으로 다른 기기의 열림이 들어오면 rev 가 바뀐다 (열린 회랑이 다시 읽는다)
+      const rv = g.gal.rev, other = clone(g.game.meta.gal); other.cg.cg_ziz_storm = 1759000000000;
+      g.game.meta.gal = CL.mergeMeta(clone(g.game.meta), { gal: other }).gal;
+      g.saves.saveMeta(g.game.meta);
+      await sleep(650);
+      ok(g.gal.has('cg', 'cg_ziz_storm') && g.gal.rev !== rv, `병합으로 들어온 열림 → rev 바뀜 (${rv} → ${g.gal.rev})`);
+    }
     // game.meta 를 통째로 바꿔 끼운 뒤에도 (cloud.applyMeta·로그인 다른 계정)
     const old = g.game.meta;
     g.game.meta = CL.mergeMeta({ ...structuredClone(DEFAULT_META) }, clone(old));

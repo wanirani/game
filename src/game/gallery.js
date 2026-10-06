@@ -153,6 +153,7 @@ class GalEngine {
     this.pend = { slots: new Set(), meta: false, timer: null };
     this.rev = 0;                                     // 열림이 바뀔 때마다 +1 (화면 캐시용)
     this.thSig = '';                                  // 극장 열림 표시 (바뀌면 rev +1)
+    this.galSig = '';                                 // meta.gal 수·seenAt 표시 (밖에서 바뀌면 rev +1)
     this.offs = [];
     this.subscribe();
     if (opts.boot !== false) this.idle(() => this.rescan('retro'));
@@ -211,7 +212,14 @@ class GalEngine {
     const hit = scanGal(ctx);
     const out = this.add(Object.entries(hit).flatMap(([k, ids]) => ids.map((id) => [k, id])));
     this.touchTheater(ctx);
+    this.touchGal();
     return out;
+  }
+  /** 메타가 밖에서 바뀌었으면(클라우드 병합 — 다른 기기에서 연 것·seenAt, 메타 바꿔 끼우기) rev +1 → 열린 회랑이 다시 읽는다 */
+  touchGal() {
+    const g = this.game.meta?.gal;
+    const sig = isObj(g) ? `${isObj(g.cg) ? Object.keys(g.cg).length : 0}|${isObj(g.mus) ? Object.keys(g.mus).length : 0}|${g.seenAt}` : '';
+    if (sig !== this.galSig) { this.galSig = sig; this.rev++; }
   }
   /** [kind, id] 목록 중 아직 없는 것을 지금 시각으로 적는다 → 새로 연 'kind:id' */
   add(pairs) {
@@ -223,8 +231,14 @@ class GalEngine {
     this.saveMeta();
     return out;
   }
+  /** 극장 줄: 증거(need) 또는 그 줄의 CG(bg 'cg/…')가 이미 걸렸으면 열림 — '서막은 그 CG' (§2.1). 슬롯을 지워도 다시 잠기지 않는다 */
+  thOpen(d, ctx) {
+    if (evalNeed(d.need, ctx)) return true;
+    const id = typeof d.bg === 'string' && d.bg.startsWith('cg/') ? d.bg.slice(3) : null;
+    return !!id && DEF.cg.has(id) && isObj(this.game.meta?.gal) && Object.hasOwn(this.gal().cg, id);   // 읽기만 — 없는 gal 을 만들지 않는다
+  }
   touchTheater(ctx) {
-    const sig = GAL_THEATER.map((d) => (evalNeed(d.need, ctx) ? 1 : 0)).join('');
+    const sig = GAL_THEATER.map((d) => (this.thOpen(d, ctx) ? 1 : 0)).join('');
     if (sig !== this.thSig) { this.thSig = sig; this.rev++; }
   }
 
@@ -284,7 +298,7 @@ class GalEngine {
     const k = kindOf(kind), d = k && DEF[k].get(id);
     if (!d) return false;
     if (isAlways(d)) return true;
-    if (k === 'th') return evalNeed(d.need, this.ctx());
+    if (k === 'th') return this.thOpen(d, this.ctx());
     const m = this.gal()[k];
     return Object.hasOwn(m, id);
   }
@@ -307,7 +321,7 @@ class GalEngine {
     if (!k) return [];
     const p2 = this.p2(), ctx = k === 'th' ? this.ctx() : null, g = this.gal();
     return GAL_KINDS[k].map((def) => {
-      const open = isAlways(def) || (k === 'th' ? evalNeed(def.need, ctx) : Object.hasOwn(g[k], def.id));
+      const open = isAlways(def) || (k === 'th' ? this.thOpen(def, ctx) : Object.hasOwn(g[k], def.id));
       const t = k !== 'th' ? g[k][def.id] : null;
       return { def, open, isNew: typeof t === 'number' && t > g.seenAt, hidden: !!def.p2 && !p2 };
     });
