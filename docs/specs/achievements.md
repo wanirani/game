@@ -171,6 +171,7 @@ game.ach = {
 
 - `prog` 키 (25개): `kills combo style nodmg nd_b_dracula aw_kael aw_sera aw_victor aw_bran aw_lia aw_azel aw_isolde aw2 ride egg enh daily_n daily_last rush_perfect mg_win jackpot nodmg_stage hb_lia_nemain hb_isolde_argen deaths`. 새 키를 쓰면 이 목록과 시험 C1 에 적는다.
 - **진행 막대**(`bar: true`)는 셀 수 있는 지표에서 `n > 1` 일 때만: `kills combo tier2all heroes awaken mounts guards bond cmpLv otherworld docs bestiary secrets enhance quests survival tower daily mgWins duel rankS nodmg deaths all`. `cur` 는 `min(metric, n)`.
+- 회차: 요약은 `ng.past` 를 가상 슬롯으로 함께 읽는다 — ngplus.md §6 (`digestState(state).past` = 지난 회차의 진행만, 영웅·통계·동료·가방은 비어 있고 난이도는 `past.diff`; `ctx.slots` 에 따로 한 칸이라 회차를 넘겨도 지표가 줄지 않고 `diffEnding` 은 그 회차의 난이도로만 선다 · 시험 C9).
 - 성능: `enemyKilled` 처리는 상수 시간(카운터·캐시 집합)만 — 휴대폰 ≤ 0.02 ms. 세이브 전체 요약은 드문 이벤트 뒤 `setTimeout(0)` 로 미뤄 한 번 (요약 한 번 ≤ 2 ms 휴대폰). 부팅 훑기는 한가할 때 (슬롯 셋 JSON 읽기 ≈ 5–15 ms).
 
 ### 3.4 소급 (옛 플레이어)

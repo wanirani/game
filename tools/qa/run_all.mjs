@@ -57,6 +57,7 @@ const STEPS = [
   S('companion_state', 'unit', node('tools/test_companion_state.mjs'), 10 * MIN),
   S('accounts_api', 'unit', node('tools/accounts/test_api.mjs'), 10 * MIN),
   S('achievements', 'unit', node('tools/test_achievements.mjs'), 5 * MIN),   // 업적 데이터·엔진·병합·서버 검사 (docs/specs/achievements.md §12.1)
+  S('ngplus', 'unit', node('tools/test_ngplus.mjs'), 5 * MIN),   // 회차 「피의 윤회」 규칙·세이브·세기 (docs/specs/ngplus.md §10.1, 브라우저 없이)
   S('sfx', 'unit', node('tools/test_sfx.mjs'), 10 * MIN),
   S('hud_layout', 'unit', node('tools/test_hud_layout.mjs'), 15 * MIN),
   // ── balance
@@ -64,6 +65,8 @@ const STEPS = [
   ...HEROES.map((h) => S(`balance.${h}`, 'balance', node('tools/balance.mjs', 'normal', h, '--check'), 10 * MIN, { blame: 'src/data/enemies.js', sev: 'S3' })),   // §5.3: balance outside targets = S3
   // §5.1 "(+ hard/inferno printed for review)": tables only (no --check); red only when the simulator itself crashes
   S('balance_review', 'balance', ['bash', '-c', `for d in hard inferno; do for c in ${HEROES.join(' ')}; do echo "══ $d $c"; node tools/balance.mjs $d $c || exit 1; done; done`], 10 * MIN, { script: 'tools/balance.mjs' }),
+  // 회차 세기 상한 (docs/specs/ngplus.md §3.4): 난이도 4 × 영웅 7 × 회차 N 1–3 — red = NG_RULES 숫자(src/game/ngplus.js)가 상한 밖
+  S('balance_ng', 'balance', ['bash', '-c', `rc=0; for d in normal hard nightmare inferno; do for c in ${HEROES.join(' ')}; do for n in 1 2 3; do echo "══ $d $c --ng $n"; node tools/balance.mjs $d $c --ng $n --check || rc=1; done; done; done; exit $rc`], 10 * MIN, { script: 'tools/balance.mjs', blame: 'src/game/ngplus.js', sev: 'S3' }),
   S('balance_companions', 'balance', node('tools/balance_companions.mjs'), 10 * MIN, { optional: true }),
   S('scan_mount_fit', 'balance', node('tools/scan_mount_fit.mjs'), 10 * MIN, { optional: true }),
   // ── runtime

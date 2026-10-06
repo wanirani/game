@@ -14,7 +14,7 @@ import { TILE, game } from '../../core/game.js';
 import { BUILDINGS, TOWN_FLOOR_ROW, TOWN_LAMPS } from '../../data/town.js';
 import { companionDef } from '../../data/companions.js';
 import * as CS from '../../game/companion_state.js';
-import * as NG from '../../game/ngplus.js';
+import * as NG from '../../game/ngplus.js';   // [hook:ng]
 import * as CRT from '../../game/companions.js';
 
 export const FLOOR = TOWN_FLOOR_ROW * TILE;
@@ -1334,7 +1334,7 @@ function stableView() {
   try {
     const st = game?.state;
     if (!st || st.arcade || !st.progress) return SV;
-    SV.open = (NG.serviceChapter?.(st) ?? st.progress.chapter ?? 0) >= 1;
+    SV.open = (NG.serviceChapter?.(st) ?? st.progress.chapter ?? 0) >= 1;   // [hook:ng]
     if (!SV.open) return SV;
     const pm = game.world?.player?.mount;
     const riding = pm?.riding ? pm.id : null;

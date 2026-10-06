@@ -5,7 +5,7 @@ import { audio } from '../../core/audio.js';
 import { button, COLORS } from '../../core/ui.js';
 import { fmt } from '../../core/math.js';
 import * as Shop from '../../data/shop.js';
-import * as NG from '../../game/ngplus.js';
+import * as NG from '../../game/ngplus.js';   // [hook:ng]
 import { removeItem, countItem } from '../../game/inventory.js';
 import { SHOP_LINES } from '../../data/town.js';
 import { ServiceScene, ScrollList, Modal, itemRow, drawItemDetail, baseOf, nameOf, makeInst, sellPriceOf, isEquippedAny, SLOT_LABEL, WTYPE_LABEL, EQUIP_KINDS, hitRect, openBuy, mergeLines, uiButton } from './common.js';
@@ -26,7 +26,7 @@ export class ShopScene extends ServiceScene {
     const st = this.state;
     if (this.tab === 0) {
       let stock = [];
-      try { stock = Shop.shopStock(NG.serviceChapter?.(st) ?? st.progress?.chapter ?? 0) || []; } catch (e) { console.error(e); }
+      try { stock = Shop.shopStock(NG.serviceChapter?.(st) ?? st.progress?.chapter ?? 0) || []; } catch (e) { console.error(e); }   // [hook:ng]
       this.entries = stock.filter((s) => baseOf(s)).map((s) => {
         const inst = makeInst(s.baseId, { rarity: s.rarity ?? 0, affixes: [] });
         return inst ? { inst, price: s.price ?? baseOf(s).price ?? 10, tag: s.tag, note: s.note } : null;

@@ -17,7 +17,7 @@ import { BOSSES } from '../../data/bosses.js';
 import { NPCS } from '../../data/npcs.js';
 import { DOCS, DOC_ORDER } from '../../data/lore.js';
 import { getDiff } from '../../data/difficulty.js';
-import * as NG from '../../game/ngplus.js';
+import * as NG from '../../game/ngplus.js';   // [hook:ng]
 import { Ambience, kenBurns, ornament, frame, gbutton, goSafe, qualifies, fmtPlay, TapZones, GOLD, BONE, DIM } from './common.js';
 
 // name 은 ending_* 대사 끝의 '— ○○ END : 이름 —' 과 같아야 한다 (제목 카드·크레딧 달성 목록에 표시)
@@ -259,7 +259,7 @@ export class CreditsScene extends Scene {
     return {
       rows,
       score: st.score ?? 0, diff: getDiff(st.difficulty), charId: st.charId, relics: Math.min(5, p.relics?.length ?? 0),
-      stars: p2Kind ? stars : null, ng: NG.ngOf?.(st) ?? 0,
+      stars: p2Kind ? stars : null, ng: NG.ngOf?.(st) ?? 0,   // [hook:ng]
     };
   }
   /** 마지막 화면 안내: [달성 엔딩 수, 엔딩 이름 목록(모르는 것은 ???), 힌트·인사…] */
@@ -278,7 +278,7 @@ export class CreditsScene extends Scene {
     else out.push('아케이드 모드: 보스 러시 · 서바이벌 · 스테이지 연습에서 명예의 전당에 도전하세요');
     // 2부 엔딩 뒤: 이 슬롯으로 다음 회차를 열 수 있다 (ngplus §4.2 — 마지막 줄 앞)
     const st = this.game.state;
-    if (P2_KINDS.has(K) && st && NG.canStartNg?.(st)) {
+    if (P2_KINDS.has(K) && st && NG.canStartNg?.(st)) {   // [hook:ng]
       const n = NG.ngOf?.(st) ?? 0;
       out.splice(out.length - 1, 0, `이어하기에서 이 슬롯을 고르면 「피의 윤회」로 ${NG.ngLabel?.(Math.min(9, n + 1)) || `${n + 2}회차`}를 시작할 수 있습니다`);
     }
@@ -427,7 +427,7 @@ export class CreditsScene extends Scene {
     frame(ctx, x, y, w, h, { glow: 0.8, accent });
     text(ctx, 'YOUR JOURNEY', vw / 2, y + 40, { size: 26, align: 'center', weight: 900, family: FONT.logo, color: accent, ow: 4 });
     const ch = CHARACTERS[S.charId];
-    const ngTag = S.ng > 0 ? ` · ${NG.ngLabel?.(S.ng) || `${S.ng + 1}회차`}` : '';
+    const ngTag = S.ng > 0 ? ` · ${NG.ngLabel?.(S.ng) || `${S.ng + 1}회차`}` : '';   // [hook:ng]
     text(ctx, `${ch?.name ?? ''} · ${S.diff?.name ?? ''} 난이도${ngTag}`, vw / 2, y + 64, { size: 14, align: 'center', weight: 700, color: BONE, ow: 2 });
     ornament(ctx, vw / 2, y + 78, 300);
     // 두 칸 표: 행이 늘어도 (2부 엔딩은 11칸) 아래 보석 줄과 겹치지 않도록 줄 간격을 맞춘다

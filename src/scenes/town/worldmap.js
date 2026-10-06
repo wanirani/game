@@ -30,7 +30,7 @@ import { SCRIPTS } from '../../data/story.js';
 import { ITEMS } from '../../data/items.js';
 import { CHARACTERS } from '../../data/characters.js';
 import { currentHero } from '../../game/state.js';
-import * as NG from '../../game/ngplus.js';
+import * as NG from '../../game/ngplus.js';   // [hook:ng]
 import { preloadStageBosses } from '../../game/bosses/lazy.js';
 import { drawIcon } from '../../render/icons.js';
 import { ensureState, uiPanel, uiButton } from './common.js';
@@ -920,7 +920,7 @@ export class WorldMapScene extends Scene {
     } else text(ctx, s.sub ?? '', x + 24, y + Y[2], { size: subSize, color: '#c8b8a0', maxWidth: lw });
     const hero = currentHero(st);
     if (open && !n.arena) {
-      const lv = NG.ngStageLevel?.(s, NG.ngOf?.(st) ?? 0) ?? s.level;   // 회차면 회차 적 레벨
+      const lv = NG.ngStageLevel?.(s, NG.ngOf?.(st) ?? 0) ?? s.level;   // [hook:ng] 회차면 회차 적 레벨
       const danger = (hero?.level ?? 1) < lv - 2;
       text(ctx, `적 레벨 ${lv}`, x + 24, y + Y[3], { size: 13, weight: 800, color: danger ? '#ff6a5a' : '#9d8f80' });
       if (danger) text(ctx, lw - 86 >= 150 ? '⚠ 위험 — 레벨을 더 올리자' : '⚠ 레벨을 더 올리자', x + 110, y + Y[3], { size: 12, weight: 700, color: '#ff8a6a', maxWidth: Math.max(60, lw - 86) });

@@ -20,7 +20,7 @@ import { QUESTS } from '../../data/quests.js';
 import { SCRIPTS } from '../../data/story.js';
 import { josa } from '../../data/items.js';
 import * as CS from '../../game/companion_state.js';
-import * as NG from '../../game/ngplus.js';
+import * as NG from '../../game/ngplus.js';   // [hook:ng]
 import * as CRT from '../../game/companions.js';
 import * as ACMP from '../../core/audio_companions.js';
 import {
@@ -37,7 +37,7 @@ const EGG_LOOK = {
   mt_wyvern: { a: '#c8303e', b: '#4a0810', spot: '#ffd070', glow: '#ff8a3a', burst: ['ember', '#ff8a3a'], burst2: ['fire', '#ffd070'] },
 };
 /** 마을 서비스가 보는 장 (회차면 20장까지 연 것처럼) */
-const svcChapter = (st) => NG.serviceChapter?.(st) ?? st?.progress?.chapter ?? 0;
+const svcChapter = (st) => NG.serviceChapter?.(st) ?? st?.progress?.chapter ?? 0;   // [hook:ng]
 const scriptLine = (id) => { const l = SCRIPTS[id]?.find?.((x) => x && typeof x.text === 'string'); return l?.text ?? null; };
 
 // ───────────────────────── 그림 도우미 ─────────────────────────

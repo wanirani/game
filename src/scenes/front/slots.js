@@ -22,7 +22,7 @@ import { CLASSES } from '../../data/classes.js';
 import { getDiff, DIFFICULTIES } from '../../data/difficulty.js';
 import { STAGES, STAGE_ORDER } from '../../data/stages.js';
 import { migrateState } from '../../game/state.js';
-import * as NG from '../../game/ngplus.js';
+import * as NG from '../../game/ngplus.js';   // [hook:ng]
 import { bus } from '../../core/events.js';
 import { cloud } from '../../core/cloud.js';
 import { drawCloudBadge, accountBadge, summaryLine } from './cloud_ui.js';
@@ -100,7 +100,7 @@ export class SlotsScene extends Scene {
         relics: len(P.relics), docs: len(P.docs), shards: len(P.shards), hearts: len(P.hearts),
         heroes: Object.keys(st?.heroes ?? {}).filter((id) => own(CHARACTERS, id)),
         cls: own(CLASSES, classId) ? CLASSES[classId].name : '', cloud: c,
-        ng: st ? NG.ngOf?.(st) ?? 0 : 0, canNg: !!st && !!NG.canStartNg?.(st),   // 회차 (지난 회차 수) · 피의 윤회를 열 수 있는가
+        ng: st ? NG.ngOf?.(st) ?? 0 : 0, canNg: !!st && !!NG.canStartNg?.(st),   // [hook:ng] 회차 (지난 회차 수) · 피의 윤회를 열 수 있는가
       };
     });
   }
@@ -125,23 +125,23 @@ export class SlotsScene extends Scene {
     const down = this.cloudOf(s) && st !== 'synced' ? [['cloudDown', '클라우드에서 받기', 'CLOUD → DEVICE']] : [];
     const up = cloud.loggedIn && !s.empty && !s.broken && st !== 'synced' ? [['cloudUp', '클라우드에 올리기', 'DEVICE → CLOUD']] : [];
     // 피의 윤회: 서버가 더 새 기록을 가졌거나 충돌이면 먼저 받게 한다. 빈 슬롯(이 기기·클라우드 모두 빈 가장 작은 번호)이 있으면 복사도
-    const ngk = s.canNg && st !== 'cloud' && st !== 'conflict' ? this.ngTarget() : null;
+    const ngk = s.canNg && st !== 'cloud' && st !== 'conflict' ? this.ngTarget() : null;   // [hook:ng]
     const ng = s.canNg && st !== 'cloud' && st !== 'conflict'
       ? [['ngplus', '피의 윤회', 'NEW GAME+'], ...(ngk ? [['ngcopy', `피의 윤회 · 빈 슬롯 ${ngk}`, `NEW GAME+ → SLOT ${ngk}`]] : [])] : [];
     const items = s.empty
       ? [...down, ['new', '새로 시작', 'NEW GAME'], ['import', '코드 가져오기', 'IMPORT'], ['back', '취소', 'CANCEL']]
       : s.broken
         ? [...down, ['new', '새로 시작', 'NEW GAME'], ['import', '코드 가져오기', 'IMPORT'], ['delete', '삭제', 'DELETE'], ['back', '취소', 'CANCEL']]
-        : [['load', '불러오기', 'LOAD'], ...ng, ...down, ...up, ['new', '새로 시작', 'NEW GAME'], ['export', '코드 내보내기', 'EXPORT'], ['import', '코드 가져오기', 'IMPORT'], ['delete', '삭제', 'DELETE'], ['back', '취소', 'CANCEL']];
+        : [['load', '불러오기', 'LOAD'], ...ng, ...down, ...up, ['new', '새로 시작', 'NEW GAME'], ['export', '코드 내보내기', 'EXPORT'], ['import', '코드 가져오기', 'IMPORT'], ['delete', '삭제', 'DELETE'], ['back', '취소', 'CANCEL']];   // [hook:ng]
     const start = this.mode === 'new' ? Math.max(0, items.findIndex((i) => i[0] === 'new')) : 0;
     const cols = this.actionCols(items.length);
     this.act = { items, cols, menu: new ListMenu(items.length, { cols, index: start }), t: 0 };
     audio.sfx('menu_ok');
   }
   /** 피의 윤회 복사 대상: 이 기기에서 비어 있고 클라우드 기록도 없는 가장 작은 슬롯 번호 (없으면 null) */
-  ngTarget() { return this.slots.find((x) => x.empty && !this.cloudOf(x))?.slot ?? null; }
+  ngTarget() { return this.slots.find((x) => x.empty && !this.cloudOf(x))?.slot ?? null; }   // [hook:ng]
   /** 피의 윤회 확인 → 시작 (copy: 빈 슬롯에 새 회차, 원래 슬롯은 읽기만) */
-  askNg(s, copy) {
+  askNg(s, copy) {   // [hook:ng]
     const g = this.game, slot = s.slot, target = copy ? this.ngTarget() : slot;
     if (!target) return;
     const label = NG.ngLabel?.(Math.min(9, (s.ng || 0) + 1)) || `${(s.ng || 0) + 2}회차`;
@@ -152,7 +152,7 @@ export class SlotsScene extends Scene {
     const g = this.game;
     const raw = saves.read(slot);
     let next = null;
-    try { next = raw ? NG.startNgPlus(migrateState(raw), { slot: target }) : null; } catch (e) { console.error(e); }
+    try { next = raw ? NG.startNgPlus(migrateState(raw), { slot: target }) : null; } catch (e) { console.error(e); }   // [hook:ng]
     if (!next) { g.toast('기록을 읽을 수 없습니다', '#ff6060'); return; }
     // 같은 슬롯이면 이어지는 기록 — cloud.markOverwrite 를 부르지 않는다 (다른 기기의 더 새 기록과는 평소의 충돌 화면으로 고른다)
     saves.write(target, next);
@@ -178,8 +178,8 @@ export class SlotsScene extends Scene {
         goSafe(g, 'hub', { from: 'load' }, { fadeTime: 0.6 });
         break;
       }
-      case 'ngplus': this.askNg(s, false); break;
-      case 'ngcopy': this.askNg(s, true); break;
+      case 'ngplus': this.askNg(s, false); break;   // [hook:ng]
+      case 'ngcopy': this.askNg(s, true); break;   // [hook:ng]
       case 'new': {
         const cl = this.cloudOf(s);
         const start = () => { if (cloud.loggedIn) cloud.markOverwrite(slot); g.go('difficulty', { slot }); };
@@ -349,7 +349,7 @@ export class SlotsScene extends Scene {
       text(ctx, label, cx + bw / 2, y3, { size: 11, align: 'center', weight: 800, color: col, ow: 2 });
       cx += bw + 8;
     };
-    if (s.ng > 0) badge(NG.ngLabel?.(s.ng) || `${s.ng + 1}회차`, NG_COLOR);
+    if (s.ng > 0) badge(NG.ngLabel?.(s.ng) || `${s.ng + 1}회차`, NG_COLOR);   // [hook:ng]
     if (st?.part === 2) badge('제2부', P2_COLOR);
     text(ctx, st ? `CHAPTER ${st.chapter}  ·  ${st.name}` : '프롤로그', cx, y3, { size: 14, weight: 700, color: '#e8d8c0', ow: 2, maxWidth: colW - (cx - tx) });
     // 보조 정보

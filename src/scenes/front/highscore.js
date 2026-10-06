@@ -29,7 +29,7 @@ import {
 } from './common.js';
 import { COURSES, visibleCourses, p2Known, exKnown } from './arcade.js';
 import * as ENDING from './ending.js';
-import * as NG from '../../game/ngplus.js';
+import * as NG from '../../game/ngplus.js';   // [hook:ng]
 import { bus } from '../../core/events.js';
 import { cloud } from '../../core/cloud.js';
 import * as ONLINE from '../../core/online.js';
@@ -76,7 +76,7 @@ function detail(h) {
     default: {
       const s = h.stageId === 'ending' ? '엔딩 도달' : stg ? (stg.side ? '외전 클리어' : `${stg.chapter}장 클리어`) : (d?.name ?? '');
       // 회차 줄 (항목의 ng 는 클라우드에서 합쳐 온 값일 수도 있다 — 1..9 정수만)
-      const ng = (h.mode || 'story') === 'story' && Number.isInteger(h.ng) && h.ng >= 1 ? NG.ngLabel?.(Math.min(9, h.ng)) || `${Math.min(9, h.ng) + 1}회차` : '';
+      const ng = (h.mode || 'story') === 'story' && Number.isInteger(h.ng) && h.ng >= 1 ? NG.ngLabel?.(Math.min(9, h.ng)) || `${Math.min(9, h.ng) + 1}회차` : '';   // [hook:ng]
       return ng ? `${ng} · ${s}` : s;
     }
   }

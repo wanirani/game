@@ -1,6 +1,6 @@
 // 업적 「사냥의 기록」 시험 (docs/specs/achievements.md §12.1) — 브라우저 없음, < 15초
 //   node tools/test_achievements.mjs [--only C3,C4] [--ui]
-//   C1 데이터 · C2 요약(digestState) · C3 소급 · C4 이벤트 · C5 병합 · C6 서버 검사(퍼징) · C7 보상 · C8 온라인 이명
+//   C1 데이터 · C2 요약(digestState) · C3 소급 · C4 이벤트 · C5 병합 · C6 서버 검사(퍼징) · C7 보상 · C8 온라인 이명 · C9 회차(ngplus.md §6)
 //   --ui : ACH-UI 의 헤드리스 시험 tools/qa/ach_ui.mjs (export default async function run(opts)) 도 돌린다 (§12.2 U1–U10)
 import fs from 'node:fs';
 import path from 'node:path';
@@ -677,6 +677,108 @@ if (run('C8')) {
   const r = spawnSync(process.execPath, [path.join(ROOT, 'tools/online/test_online.mjs'), '--mode=memory', '--filter=이명'], { encoding: 'utf8', timeout: 120000 });
   const out = (r.stdout ?? '') + (r.stderr ?? '');
   ok(r.status === 0 && /통과 1, 실패 0/.test(out), `test_online.mjs 이명 사례 (memory) ${r.status === 0 ? '통과' : '실패\n' + out.slice(-800)}`);
+}
+
+// ═════════ C9 회차 ═════════
+// docs/specs/ngplus.md §6: 엔진 요약이 지난 회차 기록(ng.past)을 가상 슬롯으로 함께 읽는다 → 넘겨도 새 달성 0 · 진행이 줄지 않음 ·
+// diffEnding 은 그 회차(가상 슬롯)의 난이도로만. 업적 고정 수(67 · 1,630 · 17 · 25)는 C1 이 그대로 본다
+if (run('C9')) {
+  section('C9 회차 (ngplus.md §6)');
+  const NG = await imp('src/game/ngplus.js');
+  const { migrateState } = await imp('src/game/state.js');
+  const NOW = Date.UTC(2026, 9, 6, 3, 0, 0);
+  const ngOf = (src, now = NOW) => NG.startNgPlus(quiet(() => migrateState(clone(src))), { slot: src.slot ?? 1, now });
+  /** 모든 업적 조건의 지표 값 (진행 막대의 원본) */
+  const metrics = (ctx) => Object.fromEntries(D.ACHIEVEMENTS.map((d) => [d.id, A.metric(d.cond.m, d.cond.arg, ctx)]));
+  const p2 = part2Save();
+  const next = ngOf(p2);
+  ok(next.ng?.n === 1 && next.progress.chapter === 0 && Object.keys(next.progress.cleared).length === 0 && next.quests.done.length === 0, `넘긴 세이브: n 1 · 1장 · 클리어·의뢰 비움 (${JSON.stringify({ n: next.ng?.n, ch: next.progress.chapter })})`);
+  // 요약: 1회차 세이브는 past 없음 (모양 그대로), 회차 세이브는 past = 가상 슬롯 (영웅·통계·동료·가방 비어 있음, 난이도 = past.diff)
+  ok(!('past' in A.digestState(p2)), '1회차 세이브 요약에는 past 키가 없다');
+  const dn = A.digestState(next);
+  ok(dn?.past && Object.keys(dn.past.cleared).length === 20 && dn.past.bosses.length === 20 && dn.past.questsDone.length === 35 && dn.past.secrets === 25 && dn.past.relics === 5,
+    `회차 요약 past: 클리어 20 · 보스 20 · 의뢰 35 · 비밀 25 · 유물 5 (${JSON.stringify(dn?.past && { c: Object.keys(dn.past.cleared).length, b: dn.past.bosses.length, q: dn.past.questsDone.length, s: dn.past.secrets, r: dn.past.relics })})`);
+  ok(dn?.past && !('past' in dn.past) && Object.keys(dn.past.heroes).length === 0 && dn.past.stats.kills === 0 && Object.keys(dn.past.owned).length === 0 && dn.past.enhance === 0 && dn.past.difficulty === 'normal',
+    '가상 슬롯: 재귀 없음 · 영웅·통계·동료·가방 비어 있음 · 난이도 = past.diff');
+  ok(isDeepStrictEqual(A.digestState(next), dn), 'digestState(회차 세이브) 결정적');
+  {
+    // 같은 계정(이미 받은 업적) — 넘기기 → 슬롯 쓰기 → 소급: 새 달성 0, 알림 0, 진행 줄지 않음
+    const g = mkGame({ meta: P2_META, slots: { 2: p2 } });
+    const first = g.ach.rescan('retro');
+    eq([...first].sort(), [...P2_EXPECT].sort(), '넘기기 전 소급 = C3 의 집합 E');
+    const m0 = metrics(g.ach._engine.ctx(true));
+    const ev0 = g.events.length, mw0 = g.saves.metaWrites;
+    g.saves.write(2, ngOf(g.saves.read(2)));   // 같은 슬롯을 새 회차로 (slots.js §2.1 흐름: saves.write)
+    await tick(); await tick();
+    ok(g.ach.rescan('retro').length === 0 && g.events.length === ev0, `넘긴 뒤 rescan('retro') 새 달성 0 · achievementUnlocked 0번 (${g.events.length - ev0})`);
+    ok(g.saves.metaWrites === mw0, `메타 저장 없음 (${g.saves.metaWrites - mw0})`);
+    const ctx = g.ach._engine.ctx(true);
+    ok(ctx.slots.length === 2, `ctx.slots = 지금 회차 + 지난 회차 가상 슬롯 (${ctx.slots.length})`);
+    const m1 = metrics(ctx);
+    const down = D.ACHIEVEMENTS.filter((d) => m1[d.id] < m0[d.id]).map((d) => `${d.id} ${m0[d.id]}→${m1[d.id]}`);
+    ok(down.length === 0, `67개 조건의 지표가 하나도 줄지 않음 (${down.join(', ')})`);
+    for (const id of ['ch_rank_s', 'ch_rank_s_all', 'cl_secret20', 'cl_quest30', 'st_end2', 'cl_relics', 'cl_otherworld']) ok(m1[id] === m0[id], `${id} 진행 그대로 (${m0[id]} → ${m1[id]})`);
+    // 가상 슬롯이 진행을 붙잡는다: 지난 회차 칸을 빼면 줄어든다 (훅이 없을 때의 모습)
+    const noPast = { ...ctx, slots: ctx.slots.filter((d) => d !== ctx.slots[1]) };
+    ok(A.metric('secrets', null, noPast) === 0 && A.metric('quests', null, noPast) === 0 && A.metric('rankS', DEF.get('ch_rank_s_all').cond.arg, noPast) === 0, '지난 회차 칸이 없으면 비밀·의뢰·S 랭크가 0 (가상 슬롯이 진행을 붙잡음)');
+    // 지금 게임 중인 회차 슬롯 (실시간 요약)도 같다
+    g.game.state = quiet(() => migrateState(g.saves.read(2)));
+    ok(g.ach.rescan('retro').length === 0 && g.ach._engine.ctx(true).slots.length === 2, '게임 중인 회차 슬롯(live)도 가상 슬롯 + 새 달성 0');
+    // 새 회차에서 같은 일을 다시 해도 두 번 받지 않는다 (s01 클리어 · 의뢰 · 비밀)
+    const st = g.game.state;
+    const t01 = STAGES.s01.parTime * 0.8;   // 빠른 클리어(ch_speed, ≤ 0.5)는 아닌 시간 — 지난 회차와 같은 기록
+    st.progress.cleared.s01 = { rank: 'S', time: t01, score: 1 }; st.progress.secrets.push('s01:k0'); st.quests.done.push('q_0');
+    bus.emit('stageCleared', { stageId: 's01', rank: 'S', time: t01 }); await tick(); await tick();
+    const again = g.ach.rescan('retro');
+    ok(g.events.length === ev0 && again.length === 0, `새 회차의 같은 클리어·비밀·의뢰 → 새 달성 0 (${JSON.stringify(g.events.slice(ev0))} ${again})`);
+    // 두 번째 넘기기 (n 2): past 합치기, 여전히 새 달성 0
+    g.game.state = null;
+    const n2 = ngOf(st, NOW + 1000);
+    g.saves.write(2, n2); await tick(); await tick();
+    ok(n2.ng.n === 2 && g.ach.rescan('retro').length === 0 && g.events.length === ev0, `두 번째 넘기기(n ${n2.ng.n}) → 새 달성 0`);
+    const m2 = metrics(g.ach._engine.ctx(true));
+    ok(D.ACHIEVEMENTS.every((d) => m2[d.id] >= m0[d.id]), '두 번째 넘기기 뒤에도 지표가 줄지 않음');
+    g.done();
+  }
+  {
+    // 새 계정(받은 것 없음)에서 넘기기 전·뒤 소급 집합이 같다 — 같은 기록을 다시 읽을 뿐 (ngplus.md §10.1 N11 과 같은 계약)
+    const a = mkGame({ meta: P2_META, slots: { 1: p2 } }), b = mkGame({ meta: P2_META, slots: { 1: next } });
+    const ga = a.ach.rescan('retro'), gb = b.ach.rescan('retro');
+    eq([...gb].sort(), [...ga].sort(), '새 계정: 넘긴 세이브의 소급 집합 = 넘기기 전 세이브의 집합');
+    ok(!gb.includes('ch_nightmare_p2') && !gb.includes('ch_hard_p1'), `보통 난이도 회차 세이브 → ch_nightmare_p2 · ch_hard_p1 아님 (${gb.filter((x) => x.startsWith('ch_')).join(',')})`);
+    a.done(); b.done();
+  }
+  {
+    // diffEnding 은 가상 슬롯 자신의 (난이도, 엔딩 깃발) 로만 선다
+    const hardPast = clone(next); hardPast.ng.past.diff = 'hard';   // 지난 회차를 베테랑으로 끝냈다
+    const g1 = mkGame({ meta: P2_META, slots: { 1: hardPast } });
+    const got1 = g1.ach.rescan('retro');
+    ok(got1.includes('ch_hard_p1') && !got1.includes('ch_nightmare_p2'), `past.diff 'hard' + 엔딩 깃발 → ch_hard_p1 (가상 슬롯), ch_nightmare_p2 아님 (${got1.filter((x) => x.startsWith('ch_')).join(',')})`);
+    g1.done();
+    // 거꾸로: 지금 회차 난이도가 베테랑이어도 지난 회차(보통)의 엔딩 깃발과 섞이지 않는다
+    const mixed = clone(next); mixed.difficulty = 'hard'; mixed.ng.past.diff = 'normal';
+    const g2 = mkGame({ meta: P2_META, slots: { 1: mixed } });
+    const got2 = g2.ach.rescan('retro');
+    ok(!got2.includes('ch_hard_p1') && !got2.includes('ch_nightmare_p2'), `지금 'hard' + 지난 회차 'normal' 엔딩 → ch_hard_p1 아님 (섞이지 않음) (${got2.filter((x) => x.startsWith('ch_')).join(',')})`);
+    g2.done();
+    // 지옥 지난 회차 + 2부 엔딩 → ch_nightmare_p2 (가상 슬롯), 1부도
+    const infPast = clone(next); infPast.ng.past.diff = 'inferno';
+    const g3 = mkGame({ meta: P2_META, slots: { 1: infPast } });
+    const got3 = g3.ach.rescan('retro');
+    ok(got3.includes('ch_nightmare_p2') && got3.includes('ch_hard_p1'), `past.diff 'inferno' → ch_nightmare_p2 · ch_hard_p1 (${got3.filter((x) => x.startsWith('ch_')).join(',')})`);
+    g3.done();
+  }
+  {
+    // 손상된 ng 에도 던지지 않고 지금 슬롯 요약은 그대로
+    const base = A.digestState(p2);
+    for (const bad of ['x', 5, [], { n: 2 }, { n: 2, past: 'x' }, { n: 2, past: [] }, { n: 2, past: { cleared: 7, unlocked: 'x', flags: [] } }, { n: NaN, past: { diff: 'zzz' } }]) {
+      const s = clone(p2); s.ng = bad;
+      let d = null, threw = false;
+      try { d = A.digestState(s); } catch { threw = true; }
+      const { past, ...rest } = d ?? {};
+      ok(!threw && d && isDeepStrictEqual(rest, base), `손상 ng ${JSON.stringify(bad)}: 던짐 없음, 지금 슬롯 요약 그대로`);
+    }
+  }
 }
 
 // ═════════ --ui (ACH-UI) ═════════

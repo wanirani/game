@@ -16,7 +16,7 @@ import { drawHints } from '../core/prompts.js';
 import { clamp, ease, fmtTime, TAU } from '../core/math.js';
 import { CHARACTERS } from '../data/characters.js';
 import { CLASSES } from '../data/classes.js';
-import * as NG from '../game/ngplus.js';
+import * as NG from '../game/ngplus.js';   // [hook:ng]
 import {
   PAL, frame, divider, glow, glowOval, glyph, gauge, diamond, gbutton, Nav, Gesture, Embers,
 } from './menu/common.js';
@@ -302,7 +302,7 @@ export class PauseScene extends Scene {
     const cx0 = L.cx0 + (1 - kIn) * 40;
     frame(ctx, cx0, cy0, cw, ch, { top: 'rgba(24,12,30,0.9)', bot: 'rgba(8,4,12,0.92)' });
     const st = w.stage || {};
-    const ng = w.ng > 0 ? NG.ngLabel?.(w.ng) || `${w.ng + 1}회차` : '';
+    const ng = w.ng > 0 ? NG.ngLabel?.(w.ng) || `${w.ng + 1}회차` : '';   // [hook:ng]
     text(ctx, `CHAPTER ${st.chapter ?? ''}${ng ? ` · ${ng}` : ''}`, cx0 + 22, cy0 + 30, { size: 12, weight: 800, family: FONT.num, color: PAL.goldMid });
     text(ctx, st.name ?? '', cx0 + 22, cy0 + 60, { size: 26, weight: 800, family: FONT.title, color: PAL.bone, ow: 4, maxWidth: cw - 44 });
     if (st.sub) text(ctx, st.sub, cx0 + 22, cy0 + 80, { size: 12, weight: 600, color: PAL.dim, maxWidth: cw - 44 });

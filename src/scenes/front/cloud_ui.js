@@ -94,11 +94,11 @@ export function slotsJosa(list, withBatchim, without) {
 export function summaryLine(sum) {
   if (!sum) return '';
   const ch = CHARACTERS[sum.charId];
-  return `${ch?.name ?? sum.charId ?? '?'} Lv.${sum.level ?? 1} · ${chapterText(sum.chapter)}${ngText(sum)}`;
+  return `${ch?.name ?? sum.charId ?? '?'} Lv.${sum.level ?? 1} · ${chapterText(sum.chapter)}${ngText(sum)}`;   // [hook:ng]
 }
 export const chapterText = (c) => (c ? `${c}장까지 돌파` : '1장 진행 중');
 /** 회차 꼬리 ' · {N}회차' (요약의 ng 가 1..9 정수일 때만, 아니면 '') */
-export const ngText = (sum) => (Number.isInteger(sum?.ng) && sum.ng > 0 ? ` · ${Math.min(9, sum.ng) + 1}회차` : '');
+export const ngText = (sum) => (Number.isInteger(sum?.ng) && sum.ng > 0 ? ` · ${Math.min(9, sum.ng) + 1}회차` : '');   // [hook:ng]
 
 /** 세이브 요약 카드 (초상화·캐릭터·레벨·직업·진행·플레이 시간·저장 시각·난이도) */
 export function drawSummaryCard(ctx, r, sum, { title, sub = null, newer = false, empty = '기록 없음', t = 0, accent = GOLD } = {}) {
@@ -127,7 +127,7 @@ export function drawSummaryCard(ctx, r, sum, { title, sub = null, newer = false,
   const cls = CLASSES[sum.classId]?.name ?? ch?.title ?? '';
   if (cls) text(ctx, cls, tx + 56, r.y + 80, { size: 12, weight: 700, color: '#d8c8b8', ow: 2, maxWidth: maxW - 56 });
   const rows = [
-    ['진행', chapterText(sum.chapter) + ngText(sum)],
+    ['진행', chapterText(sum.chapter) + ngText(sum)],   // [hook:ng]
     ['저장 시각', fmtDate(sum.savedAt ?? sum.clientSavedAt)],
     ['플레이 시간', fmtPlay(sum.playTime ?? 0)],
   ];

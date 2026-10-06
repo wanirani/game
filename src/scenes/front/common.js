@@ -727,9 +727,9 @@ export function recordHighScore(game, entry) {
   // 스토리 모드는 한 회차(세이브 슬롯+생성 시각)당 한 줄만 남긴다. 회차 「피의 윤회」(ngplus §7)는 created 가 그대로라 run 끝에 ':n' → 회차마다 한 줄 + ng
   // (첫 조각 파일이라 game/ngplus.js 를 import 하지 않고 그 자리에서 읽는다 — main.js recordScore 와 같은 규칙)
   const st = game.state;
-  const ng = e.mode === 'story' && st && !st.arcade && Number.isInteger(st.ng?.n) && st.ng.n > 0 ? Math.min(9, st.ng.n) : 0;
-  if (e.mode === 'story' && !e.run && st?.created) e.run = `${st.slot ?? 1}:${st.created}${ng ? `:${ng}` : ''}`;
-  if (ng) e.ng = ng;
+  const ng = e.mode === 'story' && st && !st.arcade && Number.isInteger(st.ng?.n) && st.ng.n > 0 ? Math.min(9, st.ng.n) : 0;   // [hook:ng]
+  if (e.mode === 'story' && !e.run && st?.created) e.run = `${st.slot ?? 1}:${st.created}${ng ? `:${ng}` : ''}`;   // [hook:ng]
+  if (ng) e.ng = ng;   // [hook:ng]
   if (e.run) {
     const old = m.highScores.filter((h) => h.run === e.run && (h.mode || 'story') === e.mode);
     for (const h of old) { e.score = Math.max(e.score, h.score); if (!e.name) e.name = h.name; }

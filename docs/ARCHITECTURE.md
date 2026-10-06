@@ -13,7 +13,7 @@
 
 ## 목차
 0. 실행·디버그·검사 명령 · 1. 좌표/단위 · 2. 파일 지도와 규칙 · 3. 부팅과 프레임 흐름 · 4. 코어 API · 5. 입력·설정·저장 ·
-6. 플랫폼 셸 · 7. 손맛(이동·타격·필살기·각성기) · 8. 훅 지점 · 9. HUD · 10. 동료 · 11. 제2부 · 12. 채색 그림 시스템 ·
+6. 플랫폼 셸 · 7. 손맛(이동·타격·필살기·각성기) · 8. 훅 지점 · 9. HUD · 10. 동료 · 11. 제2부 (+ 회차 §11.9) · 12. 채색 그림 시스템 ·
 13. 배포(웹·서비스 워커·APK) · 14. QA 도구 · 15. 콘텐츠 ID 목록 (능력치·외형·아이템·적·보스·비전서·유물·NPC·스토리·CG·음악·효과음·장면·이벤트) · 부록
 
 ---
@@ -36,6 +36,7 @@
 | `preset=` `course=` `seed=` (+ `diff=` `stage=` `char=`) | 아케이드 장면(`scene=survival`·`bossrush`·`practice`·`tower`)을 메뉴 없이 열 때 (`arcade_run.js` `directStart`; `seed=` = 무한의 탑 런 시드) |
 | `debug` · `debug=taps` | 히트박스·FPS / 등록된 모든 탭 영역 (초록 OK · 노랑 최소 미달 · 빨강 32 CSS px 미만) |
 | `cmp=all\|id,id` `cmplv=N` `bond=N` `mount=id` `guards=id,id` `egg=id,id` `ride=1` `ch=N` | 동료 임시 세이브 (`applyCompanionDebug`, `?scene=stage`·`?scene=hub` 에서) |
+| `ng=N` (1–9) | 회차 임시 세이브 `state.ng = {v:1, n:N, …}` → N+1회차 세기 (`ngplus.js applyNgDebug`, `?scene=stage`·`?scene=hub` 에서; §11.9). 예: `?scene=stage&stage=s20&room=boss&ng=3` |
 | `painted=0` | 채색 그림 전부 끄기 (벡터 대체; `window.__paintedOff = true` 와 같음). 적만: `window.__paintedEnemies = false` |
 | `nosw` | 서비스 워커 등록 안 함 |
 | `lo=1\|auto\|0` | 저사양 그림 변형 `assets/lo/` 강제 · 자동(lo 목록 없이도 시도) · 끔 |
@@ -44,7 +45,7 @@
 | 묶음 | 명령 |
 |---|---|
 | 정적 | `node tools/validate_maps.mjs` · `node tools/test_part2.mjs --static` · `python3 tools/fonts/build_fonts.py --check` · `node tools/qa/hook_tags.mjs` · `node tools/qa/bindings.mjs` · `node tools/qa/painted_registry.mjs` |
-| 단위 | `node tools/test_save_v2.mjs` · `node tools/test_settings_v2.mjs` · `node tools/test_companion_state.mjs` · `node tools/accounts/test_api.mjs` (`npm run test:api`) · `node tools/test_achievements.mjs [--only C3,C4] [--ui]` · `node tools/test_sfx.mjs` · `node tools/test_hud_layout.mjs` |
+| 단위 | `node tools/test_save_v2.mjs` · `node tools/test_settings_v2.mjs` · `node tools/test_companion_state.mjs` · `node tools/accounts/test_api.mjs` (`npm run test:api`) · `node tools/test_achievements.mjs [--only C3,C4] [--ui]` · `node tools/test_ngplus.mjs [--only N3,N5] [--browser] [--ui]` · `node tools/test_sfx.mjs` · `node tools/test_hud_layout.mjs` |
 | 밸런스 | `node tools/balance.mjs normal <charId> --check` (2부 행을 world2 §15 목표와 비교; `--strict`, `--json`, `--k`) |
 | 실행 | `node tools/integration.mjs [--only s14,s14_boss,hub,menu] [--mobile] [--dist] [--list]` · `node tools/test_part2.mjs [--only …] [--boss …]` · `node tools/test_mount.mjs [--only mt_ignis,…]` · `node tools/test_guardians.mjs [--only A,B] [--mobile]` · `node tools/qa/commands.mjs` · `node tools/feel_test.mjs [--quick] [--only M,C5,A]` |
 | 플랫폼 | `node tools/qa/run_platform.mjs [--only pad,bind,touch,view,menu,pwa,load,turntable]` (`npm run qa:platform`) · `node tools/qa/turntable.mjs` |
@@ -67,19 +68,19 @@
 | `index.html` · `css/style.css`, `css/touchpad.css` · `manifest.webmanifest` · `sw.js` · `robots.txt` | 페이지 셸, 글꼴 `@font-face`, PWA, 서비스 워커 (§13) |
 | `src/boot-gate.js` (일반 스크립트) · `src/main.js` | 브라우저 관문·부팅 진행률·오류 화면 → 부트스트랩 (§3) |
 | `src/core/` | 엔진: `game`(루프·장면·해상도·품질 조절·토스트), `input`, `prompts`(버튼 글리프), `haptics`, `touchpad`(캔버스 가상 패드), `platform`(안전 영역·전체 화면·서비스 워커), `camera`, `physics`, `particles`, `lighting`, `assets`, `save`, `ui`(글꼴·피 글씨·탭 등록부), `audio`, `sfx_feel`, `audio_companions`, `cloud`(계정), `online`(순위·고스트), `ach_meta`(업적 기록 meta.ach 의 모양·병합·정리, 이명·장식 표 — 첫 조각), `events`, `math` |
-| `src/game/` | 런타임: `world`, `player`, `enemy`, `ai*`(a·b·c·d), `bosses/*`, `combat`, `impact`, `style`, `feel_move`, `awaken`, `awaken_directors(_b)`, `skills`, `skills_p2`, `projectiles`, `pickups`, `props`, `tilemap`, `gimmicks(_b)`, `companions`, `companion_state`, `companion_events`, `mount`, `mount_b`, `guardian`, `guardian_ai_b`, `stats`, `inventory`, `enhance`, `loot`, `progression`, `quests`, `state`, `entity`, `achievements`(업적 엔진 `game.ach`), `ach_notify`(업적 알림) |
+| `src/game/` | 런타임: `world`, `player`, `enemy`, `ai*`(a·b·c·d), `bosses/*`, `combat`, `impact`, `style`, `feel_move`, `awaken`, `awaken_directors(_b)`, `skills`, `skills_p2`, `projectiles`, `pickups`, `props`, `tilemap`, `gimmicks(_b)`, `companions`, `companion_state`, `companion_events`, `mount`, `mount_b`, `guardian`, `guardian_ai_b`, `stats`, `inventory`, `enhance`, `loot`, `progression`, `quests`, `state`, `entity`, `achievements`(업적 엔진 `game.ach`), `ach_notify`(업적 알림), `ngplus`(회차 「피의 윤회」 규칙·세이브·세기, 순수) |
 | `src/render/` | 그리기: `hero`(+`hero_parts`, `hero_gait`, `hero_puppet`, `puppet_manifest` 자동 생성), `enemies`(디스패처) + `enemies_a/b/c/d`(벡터), `hud`, `hud_layout`, `feel_hud`, `companion_hud`, `hitfx`, `ultfx`, `mount_rig`, `mounts`, `mounts_b`, `guardians`, `guardians_b`, `icons`, `background`, `tiles`, `painted/`(§12) |
 | `src/data/` | 순수 데이터: characters, classes, skills, movesets, items, subweapons, powerups, enemies(+a·b·c·d), bosses(+a·b·c·d·e), stages, maps/s01…s22·arena, story, story_p2, story_p2b, story_ex, story_companions, quests, lore, npcs, town, shop, difficulty, music, controls, feel_hit, feel_move, awaken, companions, achievements(업적 67) |
 | `src/scenes/` | 화면. 등록: `scenes/index.js`(게임플레이·오버레이) · `reg_front.js`(front/*) · `reg_games.js`(games/*) · `reg_menu.js`(menu/*) · `reg_town.js`(town/*) |
 | `assets/` | `bg/ cg/ portraits/ tex/`(Kling webp) · `icons/ props/`(Blender png) · `lo/`(저사양 60 % 변형 + index.json) · `fonts/` · `puppets/<char>/<class>/`(영웅·NPC 퍼펫) · `painted/{bosses,enemies,companions}/<id>/`(채색 아틀라스) |
 | `netlify/functions/`, `netlify/lib/`, `netlify.toml` | 계정 API (`/api/*`) · 정적 헤더 (docs/ACCOUNTS.md, §13) |
 | `android/app/src/main/` | 안드로이드 앱 셸 (MainActivity·AssetServer·ApiProxy·WebViewCheck, assets/app/) |
-| `tools/` | serve·smoke·validate_maps·integration·test_*·balance·feel_test · `qa/`(회귀 묶음) · `deploy/`(웹 빌드·SW·아티팩트) · `apk/` · `painted/`·`puppet/`(그림 파이프라인) · `kling/manifest_<pkg>.json` · `blender/` · `fonts/` · `accounts/` · `online/` · `test_achievements.mjs` · `fixtures/`(save_v1.json, save_ch6_nocmp.json) · `gallery_*.html` |
+| `tools/` | serve·smoke·validate_maps·integration·test_*·balance·feel_test · `qa/`(회귀 묶음) · `deploy/`(웹 빌드·SW·아티팩트) · `apk/` · `painted/`·`puppet/`(그림 파이프라인) · `kling/manifest_<pkg>.json` · `blender/` · `fonts/` · `accounts/` · `online/` · `test_achievements.mjs` · `fixtures/`(save_v1.json, save_ch6_nocmp.json, save_p2done.json) · `gallery_*.html` |
 
 **규칙**
 - 자기 담당 파일만 수정한다 (소유는 `docs/specs/master_plan.json`). 남의 파일 변경이 필요하면 `/tmp/claude-0/plan/requests.jsonl` 에 요청 한 줄. npm 의존성 추가 금지. 커밋은 자동 저장이 한다.
 - **순환 import**: 모듈 최상위에서 import 한 값에 접근하지 않는다 (함수 안에서만). 다른 패키지의 새 export 는 `import * as M` 으로 받아 `M.name?.()` 처럼 부른다 (없는 이름을 named import 하면 링크 오류로 게임 전체가 멈춘다, R6). 다른 기능 호출은 `world.gimmickOf?.('wind')`, `game.companions?.recruit?.(id)` 처럼 방어적으로.
-- **훅 표식 (R4)**: 기능 사이를 잇는 줄에는 끝에 `// [hook:feel] [hook:awaken] [hook:gimmick] [hook:cmp] [hook:plat] [hook:p2] [hook:ach]`(업적, docs/specs/achievements.md §9) 를 단다. 옮길 때 같이 옮긴다. `tools/qa/hook_tags.mjs` 가 개수가 줄지 않았는지 검사한다 (2026-09-28: feel 138 · awaken 23 · gimmick 30 · cmp 104 · plat 37 · p2 33).
+- **훅 표식 (R4)**: 기능 사이를 잇는 줄에는 끝에 `// [hook:feel] [hook:awaken] [hook:gimmick] [hook:cmp] [hook:plat] [hook:p2] [hook:ach]`(업적, docs/specs/achievements.md §9) `[hook:ng]`(회차, docs/specs/ngplus.md §9) 를 단다. 옮길 때 같이 옮긴다. `tools/qa/hook_tags.mjs` 가 개수가 줄지 않았는지 검사한다 (2026-09-28: feel 138 · awaken 23 · gimmick 30 · cmp 104 · plat 37 · p2 33).
 - **그리기 코드**: `Math.random`·`rand()`·`world.fx.emit/burst` 금지 (게임플레이 난수를 먹는다 → 채색 키트의 `rr`, `hash1`, 자체 입자). 프레임마다 그라디언트·캔버스 새로 만들지 않기 (캐시). 품질 `world.fx.quality`·`settings.quality/reduceMotion/flashFx` 를 따른다.
 - **히트스톱 안전 입력 (R16)**: `world.update()` 는 히트스톱 동안 엔티티를 멈추지만 `input.update()` 는 계속 돈다 → 멈춤을 넘길 수 있는 판정은 `pressed()` 한 번에 기대지 말고 `input.down` + `pressTime/releasedAt`, `buffered()` 를 쓴다.
 - 모든 사용자 노출 텍스트는 자연스러운 한국어. 글꼴은 `FONT.*` 와 `ui.text/bloodText` 로만 (글꼴 이름 하드코딩 금지).
@@ -188,11 +189,12 @@ rAF ─▶ input.pollFrame() (패드 읽기·진동 정리) ─▶ (세로 잠�
 ### 5.3 저장 (세이브 스키마 v2, `game/state.js` `SAVE_VERSION = 2`)
 - 슬롯 3 + 설정 + 메타(`DEFAULT_META`: unlockedChars, highScores, bossRushBest, survivalBest, konami, clears, endingsSeen, bestiary; `meta.tips {a2hs, storage, remap, pad}`). `saves.write/read/list/remove/exportCode/importCode/store/onWrite`, `isValidSave(obj)`(클라이언트·서버 공통, 버전과 무관).
 - `newGameState()` : `progress {chapter(최대 20), cleared, unlocked, flags, docs, lore, secrets, bosses, relics, seenScripts, shards[], hearts[]}` + `ensureCompanionState(state)`.
-- `migrateState(s)` (불러올 때마다, **멱등**, 모르는 필드 보존): 기존 보정 → shards/hearts 문자열·중복 정리 → 14장을 깬 세이브에 `flags.isolde_joined` 소급(7번째 영웅, 아케이드 제외) → `migrateCompanions(s)`(try/catch, 손상되면 동료만 초기화) → `s.version = 2`. 클라우드에서 받은 세이브도 이 함수를 거친다.
+- `migrateState(s)` (불러올 때마다, **멱등**, 모르는 필드 보존): 기존 보정 → shards/hearts 문자열·중복 정리 → 14장을 깬 세이브에 `flags.isolde_joined` 소급(7번째 영웅, 아케이드 제외) → `migrateCompanions(s)`(try/catch, 손상되면 동료만 초기화) → `normalizeNg(s)`(회차, `ng` 가 없으면 아무것도 하지 않음) → `s.version = 2`. 클라우드에서 받은 세이브도 이 함수를 거친다.
 - 헌터 해금은 메타 `unlockedChars` (스토리 `unlockChar` 명령·코나미 코드). `storyJoinedChars(state)` = 세이브 플래그로 합류가 확정된 영웅(`CHARACTERS[id].unlock {type:'story', flag}`) — 마을(`town/hub.js syncHeroUnlocks`)이 들어올 때 메타에 보태고 토스트, 헌터 교체(`town/party.js`)도 연다.
 - 동료 하위 트리 `state.companions = { v:1, owned:{id:{lv,exp,bond,got,src,gift,seen}}, eggs, pending, clears, autoSkill, slot2Seen, last }`, `state.heroes[charId].companions = { mount, guards:[g0,g1] }`.
+- **회차 `state.ng`** (선택, 계약 `docs/specs/ngplus.md` §5): `{ v:1, n(지난 회차 수 0–9, 표기 `${n+1}회차`), at, hist:[{n, end, diff, t, at}] ≤ 10, past:{diff, cleared{sid:{rank,time}}, unlocked, bosses, relics, shards, hearts, secrets, flags(true 만), quests} ≤ 24 KB }`. 없거나 `n` 0 이면 1회차. `game/ngplus.js normalizeNg` 가 정리(모르는 필드 보존, 멱등, 던지지 않음 — 실패하면 `past` 만 지움) · 옛 세이브에 `ng` 를 만들지 않는다. 아케이드 임시 세이브의 `ng` 는 무시(`ngOf` → 0). 첫 조각 파일(`core/cloud.js`·`front/common.js`·`front/cloud_ui.js`)은 `ngplus.js` 를 싣지 않고 `Number.isInteger(s.ng?.n) && s.ng.n > 0 ? Math.min(9, s.ng.n) : 0` 를 그 자리에서 읽는다. 서버 `isValidSave` 는 `ng` 로 거절하지 않고, 슬롯 요약에만 `ng` (1–9).
 - 저장하지 않는 런타임 값: `world.run.aw`(각성 게이지, 스테이지마다 0), `world.run.awakenN`, `world.run.mount`, `world.awakenState`.
-- 크기: 20장·동료 20·7단계 장비·가방 가득 세이브 < 256 KB (서버 한도 512 KB) — `tools/test_save_v2.mjs`. 고정 세이브 `tools/fixtures/save_v1.json`, `save_ch6_nocmp.json`.
+- 크기: 20장·동료 20·7단계 장비·가방 가득 세이브 < 256 KB (서버 한도 512 KB) — `tools/test_save_v2.mjs`. 고정 세이브 `tools/fixtures/save_v1.json`, `save_ch6_nocmp.json`, `save_p2done.json`(2부·외전 완주 — 회차 시험).
 - **업적 기록 `meta.ach`** (계정 단위, 계약 `docs/specs/achievements.md` §2): `{ v:1, got:{업적 id: 처음 얻은 ms}, prog:{누적값 25키}, claimed:[보상 받은 id], seenAt, title:'t_…'|null, deco:'d_…'|null }`.
   `DEFAULT_META` 에는 없다 — 엔진이 처음 쓸 때 `core/ach_meta.js ensureAch(meta)` 로 만든다 (모르는 필드 보존, 멱등). 키 규칙 `/^[a-z][a-z0-9_]{1,31}$/`, got ≤ 256 · prog ≤ 128 · claimed ≤ 256 · JSON ≤ 24 KB (`ACH_LIMITS` = 서버 `config.mts ACH`).
   클라우드: `mergeMeta` 가 `mergeAch`(got 합집합·가장 이른 시각, prog 큰 값, claimed 합집합, title/deco 기기 우선; 한쪽만 있어도 남김), `cleanMeta` 가 `cleanAch`(늘 서버 `isValidAch` 통과).
@@ -387,6 +389,15 @@ rAF ─▶ input.pollFrame() (패드 읽기·진동 정리) ─▶ (세로 잠�
 - 대본 `data/story_ex.js`: `s22_intro`(컷신, 흑묘 여관에 둥지의 소집령) · `s22_t1` · `s22_t2` · `b_nemain_pre` · `b_nemain_unmask` · `b_nemain_last` · `b_nemain_post` · `s22_outro`(→ `recruit('gd_munin')` + `ex_s22_done` — 조건 줄보다 앞). 리아가 플레이 중인 영웅이 아니면 `R('lia')` NPC, 맞으면 `ifChar('lia')` 본인 분기. 가면 쓴 둥지어미는 `S('b_nemain')`, 가면이 깨진 뒤는 `NM2`(이름 '네메인'), 모습을 보이기 전 목소리는 s18_t1 과 같은 이름표 '까마귀 가면의 목소리'. 새 CG·배경 없음(`bg/s02_graveyard` · `bg/inn`).
 - 아케이드: `BOSS_ORDER` 끝 b_nemain (22명), 코스 7 '외전편 · 외전 보스 2연전'(아르겐 → 네메인) · 8 '전 보스 연속 · 22연전' (`ex`), 서바이벌 보스 웨이브·탑 `sideBosses()` 에 자동 (외전을 알 때만).
 - 서버(`gamedata.mts`): `STAGE_LEVELS.s22 = 72` → `practice:s22:<diff>`, `P2_STAGES`·`SIDE_STAGES = ['s21', 's22']`, `DAILY_STAGE_IDS` 그대로 s01~s20, **`COURSE_COUNT = 9`**.
+
+### 11.9 회차 「피의 윤회」 (NEW GAME+; NG-CORE · NG-UI · NG-SYNC; 설계 `docs/specs/ngplus.md`)
+- 2부 엔딩을 본 슬롯(`flags.p2_done || ending_p2 || ending_p2true`, 아케이드 아님, `n < 9` = `NG.canStartNg`)이 이어하기 → 슬롯 동작 '피의 윤회'(같은 슬롯) · '피의 윤회 · 빈 슬롯 k'(복사)로 1장부터 다시 시작한다 (`front/slots.js` → `NG.startNgPlus(state, {slot, now})` → 서막 → 마을). 원본은 바꾸지 않는 깊은 사본.
+- `startNgPlus` (§2.2): **그대로** 영웅 전부·장비·가방·보관함·골드·통계·도감·여관 놀이·동료·`charId`·`difficulty`(회차 중 바꾸지 않음)·`created`·`name`·모르는 최상위 필드·`progress.docs/lore` · **뺀다** 가방·보관함의 중요 물품(`ITEMS[baseId].slot === 'key'` — 남기면 `loot.heartOwned` 가 세계의 심장을 다시 떨어뜨리지 않는다) · **새로** progress 나머지(`flags` 는 `startChar`·`stable_open` 만 → 이야기·지도·외전 해금·보스 첫 처치 드롭 `loot_*` 이 다시)·`quests`·`score 0`·`lives`·`lastStage null`·`slot` · `ng.n + 1`(≤ 9)·`hist` 한 줄·`past` 합치기(더 좋은 랭크·짧은 시간·합집합).
+- 세기 (`NG_RULES`, §3 — 숫자의 원본은 이것 하나): 월드 생성자(`[hook:ng]`, 일일 도전 `diffOver` 줄 뒤·첫 방 전)가 `mode === 'story' && !state.arcade` 일 때만 `world.ng = NG.ngOf(state)` 와 `NG.ngWorld(stage, diff, n)` → `world.stage` = 복사본 `{...stage, level: E, ngFrom: L}` (`E = min(99, max(L, round(base + k·L)))`, `STAGES` 는 그대로) · `world.diff` = 체력·공격·보스 체력 × 회차 배율(상한 4.0/3.0/3.6, 난이도 값보다 낮추지 않음) × 1부 초반 보정 `comp(L)`, aggro·정예·드롭 · `world.ngBoss` → `Boss` 생성자 `this.inferno`(악몽·지옥 강화 패턴). 적·보스·드롭·결과 골드는 모두 `stage.level` 을 읽으므로 이것으로 끝 (적·보스 코드에 회차 분기 없음). 세기는 4회차(`n = 3`)에서 멈춘다. 마을·아케이드·보스 러시·연습은 `world.ng = 0`. 배너 부제 `{N}회차 · CHAPTER {c} · {sub}`.
+- 회차의 마을: `NG.serviceChapter(state)` = 회차면 `max(chapter, 20)` — 가게·대장간·마구간(`stable.js`·`facades.js`·`companion_state.buyCompanion`)·수호신 2번 칸(`guardianSlots`)이 읽는다 (`companion_state.js` 는 data·events 만 import 하는 규칙이라 같은 규칙을 인라인으로 — `test_ngplus` N6 이 대조).
+- 업적 67 그대로: `digestState` 가 `NG.pastState(state)`(지난 회차 가상 슬롯, 영웅·가방 비어 있음, 난이도 = `past.diff`)를 `past` 로 함께 요약 → 회차를 넘겨도 진행 막대가 줄지 않고 새로 서는 것도 없다. 아케이드 연습 목록은 `ng.past.unlocked` 도 더한다. 명예의 전당 스토리 줄 `run` = `${slot}:${created}` + (`n ≥ 1` 이면 `:${n}`), 항목 `ng` (`front/common.js recordHighScore`·`main.js recordScore`). 익명 통계 4사건에 선택 필드 `ng`.
+- 표시: 슬롯 카드 배지 `{N}회차` · 일시정지 `CHAPTER {c} · {N}회차`(`world.ng`) · 세계 지도 적 레벨 `NG.ngStageLevel` · 엔딩 크레딧 머리 줄·안내 · 명예의 전당 · 클라우드 요약 ` · {N}회차`. 문장은 설계 §4.2 그대로 (새 글자 0).
+- 시험 `node tools/test_ngplus.mjs [--browser] [--ui]` (N1–N12; `--browser` = 월드·보스 강화 패턴·아케이드 무관, `--ui` = `tools/qa/ngplus_ui.mjs`) · 통합 케이스 `s01_ng`(`?ng=1`) · `s20_boss_ng`(`?ng=3`) · 디버그 `?ng=N`.
 
 ## 12. 채색 그림 시스템 (ART_DECISION: 모든 캐릭터·크리처 = Kling 원화로 만든 채색 컷아웃 퍼펫 + 절차적 VFX, 벡터는 대체 그림으로 남음)
 

@@ -28,6 +28,7 @@
 | `death` | 스테이지·방·칸 x/y (영웅 발 위치, 타일 단위)·원인 `cause` (`enemy:<적 id>` · `boss:<보스 id>` · `hazard` 함정·지형 · `fall` 낙사 · `unknown`)·영웅·레벨·스테이지 시간·모드·난이도 | 사망 순간 (`playerDied {cause}`) |
 | `boss_result` | 보스·스테이지·싸움 시간 `dur` (보스전 시작부터)·승패 `win`·영웅·레벨·난이도·모드 | 보스 격파, 또는 보스전 중 사망 (스토리·연습 보스전만, 보스 러시는 아케이드 결과로) |
 | `arcade_result` | 모드(`practice`·`bossrush`·`survival`·`tower`)·점수·웨이브(무한의 탑은 돌파한 층)·격파한 보스 수·시간·클리어 여부·영웅·난이도 | 아케이드 정산 (`arcadeFinished`) |
+| (회차) | `stage_start`·`stage_clear`·`death`·`boss_result` 의 선택 필드 **`ng`** = 지난 회차 수 (정수 1–9, 회차 「피의 윤회」 — docs/specs/ngplus.md §7). 스토리 회차일 때만 싣는다 (`world.ng`, 없으면 세이브 `ng.n`) — 1회차·아케이드·연습에는 없다. 서버는 0·10·문자열을 거절한다 | 그 사건과 같이 |
 
 허용 목록 밖의 사건 종류·필드는 클라이언트가 만들지 않고, 서버는 그런 묶음을 통째로 거절한다(400).
 
@@ -45,7 +46,7 @@
   - 안드로이드 앱: WebView 는 가로챈 요청의 본문을 넘겨주지 않아 sendBeacon 본문이 프록시에 닿지 않는다. 그래서 앱 조각(`head_inject.html`)이 감싼 `window.fetch` 로만 보낸다 → `AssetServer` → `ApiProxy` → 같은 `/api/t` (docs/ACCOUNTS.md §1). `/api` 프록시가 없는 옛 앱은 보내지 않는다.
   - 오프라인·429·5xx 는 줄에 두고 나중에(30초에서 두 배씩, 최대 10분; `Retry-After` 를 따름), 400·413·415 는 그 묶음을 버리고, 404·405(이 사이트에 API 없음)는 그 실행 동안 그만둔다.
 - 게임을 멈추지 않는다: 모든 일은 버스 구독·1초 타이머·이벤트 처리기 안에서 `try/catch`, 보내기는 비동기.
-- **보내지 않는 곳** (구독·타이머를 하나도 걸지 않는다): `navigator.webdriver`(자동화·QA·`smoke_deployed.mjs`), `localhost`·`127.0.0.1`, `http:`, 개발 스위치 `?debug ?scene= ?stage= ?nosw ?feelstats ?painted ?lo ?qa`, claude.ai 임베드, 프록시 없는 옛 앱. `?telemetry=1` 은 이 검사만 건너뛴다(시험용 — 설정·GPC 는 그대로 따른다). `?telemetry=0` 은 늘 끈다.
+- **보내지 않는 곳** (구독·타이머를 하나도 걸지 않는다): `navigator.webdriver`(자동화·QA·`smoke_deployed.mjs`), `localhost`·`127.0.0.1`, `http:`, 개발 스위치 `?debug ?scene= ?stage= ?nosw ?feelstats ?painted ?lo ?qa ?ng=`, claude.ai 임베드, 프록시 없는 옛 앱. `?telemetry=1` 은 이 검사만 건너뛴다(시험용 — 설정·GPC 는 그대로 따른다). `?telemetry=0` 은 늘 끈다.
 
 ## 4. 끄기 · 보관 기간
 
@@ -65,6 +66,7 @@
 ### 모으기 (매시, `telemetry_agg.mts`)
 - 최근 3일의 원본 키를 시간 칸별로 모아, **끝난 칸**(칸 끝 + 5분)의 키 목록 지문(개수 + 해시)이 `state/agg` 에 적힌 것과 다르면 그 칸의 원본 **전부**로 `hour/<칸>` 을 새로 계산하고, 바뀐 날은 그날 시간 요약을 합쳐 `agg/<날>` 을 새로 쓴다(`summary` 파생 값 포함). 더하지 않고 다시 계산하므로 다시 돌려도·중간에 실패해도·늦게 들어온 원본이 있어도 두 번 세지 않는다. 한 번에 원본 3,000개까지(남은 칸은 다음 시간).
 - 함수가 3일 넘게 멈췄었다면 `runAggregation(ctx, {days: 31})` 로 한 번 더 돌린다 (원본은 30일 남는다).
+- 회차(`ng`) 사건: 시작·클리어는 난이도 칸을 `<난이도>_ng<n>` (예 `s01|normal_ng2`)으로 따로 세어 보고서에 별도 줄로 나오고, 사망·보스 표에는 넣지 않는다 (레벨 70 영웅이 1회차 사망 지점·보스 승률을 흐리지 않게 — 종류별 수에는 들어가고 원본에는 30일 남는다).
 - 요약 내용: 종류별 수, 세션 수, 플랫폼·OS·브라우저·화면·배율·코어·메모리·품질·입력·빌드 분포, fps·하위 5 % fps·힙 히스토그램, 스테이지·난이도별 시작/클리어(시간 히스토그램·랭크·사망), 스테이지·방별 사망(원인, 많은 칸 40개), 보스 승패·이긴 싸움 시간, 아케이드 점수·웨이브·시간, 오류(문구의 숫자를 #로 바꾼 것 + 첫 프레임으로 묶은 서명 → 횟수와 첫 표본, 많은 순 100개). 시간·점수는 유효 숫자 두 자리 칸(예 245초 → 240)으로 모아 백분위는 칸의 아래 끝이다.
 
 ### 보고서 읽기
@@ -84,7 +86,7 @@ node tools/telemetry/report.mjs --file stats.json --out dist/telemetry_30d.html
 
 ## 6. 시험
 ```bash
-npm run test:telemetry          # 서버: 검사 거절·32KB·망별 제한·원본 저장(IP 없음)·모으기 멱등·공개 통계·정리·보고서·클라이언트와 같은 계약
+npm run test:telemetry          # 서버: 검사 거절·32KB·망별 제한·원본 저장(IP 없음)·모으기 멱등·공개 통계·정리·보고서·클라이언트와 같은 계약·회차 ng
 npm run test:telemetry:client   # 브라우저: ?telemetry=1 로 session_start·오류(프레임 정리)·스테이지/사망/보스/클리어/아케이드 모양·끄기·GPC·
                                 #   webdriver 면 0건·공식 사이트 흉내(sendBeacon, 운영 CSP)·안드로이드 앱 흉내(감싼 fetch)
 ```

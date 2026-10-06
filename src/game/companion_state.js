@@ -19,7 +19,6 @@ import {
   STABLE_SHOP, TRIBUTE, CMP_TEXT, companionDef, normCompanionId, cexpToNext, guardianShare, trampleRatio, cdMul,
   mountHpMul, mountSpeedMul, bondRank, bondNext, cmpText, GUARD_RULES, EGG_TEXT,
 } from '../data/companions.js';
-import { serviceChapter } from './ngplus.js';   // [hook:ng] 회차의 마을 = 20장 (docs/specs/ngplus.md §4.3)
 
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const has = (o, k) => isObj(o) && typeof k === 'string' && Object.hasOwn(o, k);
@@ -54,6 +53,8 @@ function heroOf(state, hero) {
 }
 const isCurrentHero = (state, h) => !!h && isObj(state?.heroes) && state.heroes[state.charId] === h;
 const chapterOf = (state) => (Number.isFinite(state?.progress?.chapter) ? state.progress.chapter : 0);
+// 회차의 마을 (docs/specs/ngplus.md §4.3 = ngplus.js serviceChapter): 회차 세이브면 20장처럼. 이 파일은 data·events 만 import 하므로 인라인 읽기 (tools/test_ngplus.mjs N6 이 대조)
+const serviceChapter = (state) => (!state?.arcade && Number.isInteger(state?.ng?.n) && state.ng.n > 0 ? Math.max(chapterOf(state), 20) : chapterOf(state));   // [hook:ng]
 
 // ── 보정 · 마이그레이션 (§8) ────────────────────────────────────────────────────────────
 function normEntry(e) {

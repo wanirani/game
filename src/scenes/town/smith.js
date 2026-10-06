@@ -5,7 +5,7 @@ import { audio } from '../../core/audio.js';
 import { text, button, bar, panel, FONT, COLORS, font } from '../../core/ui.js';
 import { fmt, rand, clamp, TAU, ease, lerp, rgba } from '../../core/math.js';
 import * as Shop from '../../data/shop.js';
-import * as NG from '../../game/ngplus.js';
+import * as NG from '../../game/ngplus.js';   // [hook:ng]
 import * as Items from '../../data/items.js';
 import * as Enh from '../../game/enhance.js';
 import { countItem } from '../../game/inventory.js';
@@ -64,7 +64,7 @@ export class SmithScene extends ServiceScene {
       if (keepUid) { const i = this.entries.findIndex((e) => e.inst.uid === keepUid); if (i >= 0) this.list.index = i; }
     } else {
       let stock = [];
-      try { stock = Shop.smithStock(NG.serviceChapter?.(st) ?? st.progress?.chapter ?? 0) || []; } catch (e) { console.error(e); }
+      try { stock = Shop.smithStock(NG.serviceChapter?.(st) ?? st.progress?.chapter ?? 0) || []; } catch (e) { console.error(e); }   // [hook:ng]
       this.entries = stock.filter((s) => baseOf(s)).map((s) => {
         const inst = makeInst(s.baseId, { rarity: s.rarity ?? 0, affixes: [] });
         return inst ? { inst, price: s.price ?? 100, tag: s.tag, note: s.note } : null;
