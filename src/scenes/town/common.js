@@ -272,10 +272,18 @@ export function itemRow(ctx, r, sel, inst, { right = '', rightColor = '#ffd84a',
   rowBg(ctx, r, sel, { tint: rarityColor(inst.rarity), dim });
   const s = r.h - 8;
   drawSlot(ctx, r.x + 8, r.y + 4, s, inst);
-  const nx = r.x + s + 18;
+  const nx = r.x + s + 18, cy = r.y + r.h / 2;
   ctx.globalAlpha = dim ? 0.55 : 1;
-  text(ctx, nameOf(inst), nx, r.y + r.h / 2 - (sub ? 3 : -6), { size: 15, weight: 700, color: rarityColor(inst.rarity), maxWidth: r.w - s - 120 });
-  if (sub) text(ctx, sub, nx, r.y + r.h / 2 + 14, { size: 11, color: '#a89880', maxWidth: r.w - s - 120 });
+  // 이름: 오른쪽 값·배지 폭만 비우고 (예전 고정 120 px) fitItemName 으로 '+N' 빼기 → 13 px 까지 줄이기 → 두 줄 (12–13 px).
+  // maxWidth 로 가로로 짓눌리지 않게 (CROSS-QA: '+15 대마법사의 별빛 채찍 아스트라' 가 대장간 목록에서 47 % 까지 눌렸다)
+  let rw = 0;
+  if (right) { ctx.font = font(15, 800, FONT.num); rw = ctx.measureText(right).width; }
+  if (badge) { ctx.font = font(10, 800); rw = Math.max(rw, ctx.measureText(badge).width); }
+  const nw = r.x + r.w - 12 - (rw ? rw + 14 : 0) - nx;
+  const nm = fitItemName(ctx, inst, nw, { size: 15, min1: 13, max2: 13, min2: 12, weight: 700, family: FONT.body });
+  const two = nm.lines.length > 1, ny = cy + (two ? (sub ? -10 : -3) : (sub ? -3 : 6));
+  nm.lines.forEach((l, i) => text(ctx, l, nx, ny + i * (nm.size + 1), { size: nm.size, weight: 700, color: rarityColor(inst.rarity), maxWidth: nw }));
+  if (sub) text(ctx, sub, nx, cy + (two ? 18 : 14), { size: 11, color: '#a89880', maxWidth: nw });
   if (right) text(ctx, right, r.x + r.w - 12, r.y + r.h / 2 + 6, { size: 15, weight: 800, family: FONT.num, color: rightColor, align: 'right' });
   if (badge) text(ctx, badge, r.x + r.w - 12, r.y + 14, { size: 10, weight: 800, color: '#e8c872', align: 'right' });
   ctx.globalAlpha = 1;

@@ -641,9 +641,15 @@ export class StableScene extends ServiceScene {
       if (ent && ent.seen === false) pill(ctx, 'NEW', right, r.y + 12, { color: '#ff6a6a', align: 'right', size: 10 });
     } else {
       ctx.globalAlpha = locked ? 0.6 : 1;
-      text(ctx, e.row.label, nx, cy - 3, { size: 15, weight: 800, family: FONT.title, color: locked ? '#8a7a68' : d.color, maxWidth: r.w - 170 });
-      text(ctx, e.row.desc, nx, cy + 15, { size: 11, color: '#a89880', maxWidth: r.w - ir * 2 - 130 });
       const rt = owned ? '보유 중' : locked ? e.row.lockNote : `${fmt(e.row.price)} G`;
+      // 이름·설명 폭 = 오른쪽 글 왼쪽까지 (예전 고정 r.w − 170 / − 130: 휴대폰에서 설명이 55 % 로 눌렸다 — CROSS-QA). 설명이 넘치면
+      // ' — 탈것/수호신' 꼬리를 뺀다 (상세 칸의 종류 표시가 보여 준다)
+      ctx.font = font(locked ? 11 : 14, 800, locked ? FONT.body : FONT.num);
+      const mw = right - ctx.measureText(rt).width - 10 - nx;
+      ctx.font = font(11);
+      const desc = ctx.measureText(e.row.desc).width > mw ? e.row.desc.split(' — ')[0] : e.row.desc;
+      text(ctx, e.row.label, nx, cy - 3, { size: 15, weight: 800, family: FONT.title, color: locked ? '#8a7a68' : d.color, maxWidth: mw });
+      text(ctx, desc, nx, cy + 15, { size: 11, color: '#a89880', maxWidth: mw });
       const rc = owned ? '#8ae08a' : locked ? '#8a7a68' : (st.gold ?? 0) >= e.row.price ? '#ffd84a' : (COLORS.bad ?? '#ff6a5a');
       text(ctx, rt, right, cy + 6, { size: locked ? 11 : 14, weight: 800, family: locked ? FONT.body : FONT.num, color: rc, align: 'right' });
       ctx.globalAlpha = 1;
