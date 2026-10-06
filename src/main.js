@@ -46,6 +46,10 @@ async function boot() {
   if (window.__BN_BLOCKED) return; // 지원하지 않는 브라우저: boot-gate.js 가 안내를 띄웠다
   BOOT?.step?.('main');
   const canvas = document.getElementById('screen');
+  const params = new URLSearchParams(location.search);
+  const start = params.get('scene');
+  const direct = !!start && start !== 'title'; // ?scene=stage 등: 나머지 장면이 올 때까지 기다린다
+  if (direct) saves.markDebugBoot(); // 디버그 부팅: 메타(업적·기록·해금)는 진짜 칸·클라우드 대신 디버그 칸에만 (core/save.js)
   game.settings = saves.loadSettings();
   game.meta = saves.loadMeta();
   game.audio = audio; game.assets = assets; game.saves = saves;
@@ -75,10 +79,7 @@ async function boot() {
     m.highScores = m.highScores.slice(0, 20);
     saves.saveMeta(m);
   };
-  const params = new URLSearchParams(location.search);
   game.debug = params.has('debug');
-  const start = params.get('scene');
-  const direct = !!start && start !== 'title'; // ?scene=stage 등: 나머지 장면이 올 때까지 기다린다
   // 타이틀 배경은 첫 화면의 일부라 글꼴과 함께 일찍 받기 시작한다 (최대 2.5초 기다림, 실패해도 타이틀이 대체 그림을 그린다)
   const bg = direct ? null : Promise.resolve(assets.preload(['bg/title'])).catch(() => null);
   // 나머지 장면: ?scene= 으로 곧바로 가면 지금, 타이틀이면 첫 화면을 그린 뒤 받는다 (느린 연결에서 첫 화면의 글꼴·배경·main 조각과

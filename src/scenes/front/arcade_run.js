@@ -810,7 +810,7 @@ export class ArcadeResultsScene extends Scene {
    */
   onlineSubmit(o) {
     this.onl = null;
-    if (!o?.submit || !o.board) return;
+    if (!o?.submit || !o.board || saves.debugBoot) return;   // 디버그 부팅(?scene=bossrush 등)의 판은 순위표·내 고스트에 남기지 않는다
     try {
       if (o.ghost && o.result?.time > 0) ONLINE.saveLocalGhost(o.board, o.result.time, o.ghost, o.result.hero, o.result.cls);
       const st = o.h?.state;

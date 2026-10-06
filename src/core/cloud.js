@@ -705,7 +705,7 @@ class Cloud {
   // ── 저장 알림 ──
   onLocalWrite(ev) {
     if (!this.auth || this.muted || !this.eligible()) return;
-    if (ev.type === 'meta') { this.schedule('meta'); return; }
+    if (ev.type === 'meta') { if (!ev.debug) this.schedule('meta'); return; }   // 디버그 부팅의 메타(saves.markDebugBoot)는 올리지 않는다
     const slot = ev.slot;
     if (!SLOTS.includes(slot)) return;
     if (ev.type === 'remove') {
@@ -870,6 +870,7 @@ class Cloud {
    */
   async _syncMeta(listMeta) {
     if (!this.auth) return fail('logged_out');
+    if (saves.debugBoot) { this.metaView = { status: 'unknown', rev: null }; return { ok: true, skipped: true }; }   // 디버그 부팅: 메모리의 메타(디버그 기록)를 올리지도, 받은 것을 저장하지도 않는다
     const id = this.id;
     const rec = this.metaRec();
     let local = this.localMeta();

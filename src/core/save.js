@@ -6,6 +6,9 @@
 // saves.markDebug(state) → 디버그 부팅(?scene=stage · ?scene=hub … 슬롯을 고르지 않고 바로 연 장면)의 임시 세이브로 표시. 그 상태의 write 는
 //  진짜 슬롯(1–3) 대신 디버그 칸 DEBUG_SLOT('debug' → bloodnocturne_slot_debug)에 쓰고 알리지 않는다 (클라우드가 올리지 않는다) — 진짜 슬롯 1 을
 //  덮어쓰던 위험. 상태의 slot 값(1)은 그대로라 게임 안의 규칙은 같다. saves.read(DEBUG_SLOT) 로 마지막 디버그 기록을 읽는다 (QA 도구)
+// saves.markDebugBoot() → 이 실행 전체가 디버그 부팅(main.js: ?scene= 이 타이틀이 아님). 메타(업적·명예의 전당·보스 러시·탑 기록·해금)는
+//  읽기는 진짜 메타에서 하지만 saveMeta 는 진짜 칸 대신 DEBUG_META_KEY(bloodnocturne_meta_debug)에 쓰고, 알림에 debug:true 를 붙인다
+//  (업적 엔진은 그대로 다시 보고, 클라우드는 올리지 않는다). saves.debugBoot → 표시 여부
 // 쓰기 실패 (저장 공간 부족 QuotaExceededError · 저장소 차단): write/store/saveSettings/saveMeta 가 false 를 돌려주고,
 //  새 기록은 이번 실행 동안 메모리에 남아 읽기(read·list·exportCode·클라우드 올리기)가 옛 기록 대신 그것을 돌려준다.
 //  공간 부족이면 게임이 만든 사본(클라우드 받기 전 백업 bloodnocturne_slot_N_backup)을 지우고 한 번 다시 쓴다.
@@ -23,6 +26,8 @@ import { CHARACTERS } from '../data/characters.js';
 const PREFIX = 'bloodnocturne_';
 /** 디버그 부팅의 임시 세이브가 쓰는 칸 (saves.list 의 1–3 밖, 클라우드 SLOTS 밖) */
 export const DEBUG_SLOT = 'debug';
+/** 디버그 부팅의 메타가 쓰는 칸 (진짜 메타 bloodnocturne_meta 를 건드리지 않는다) */
+export const DEBUG_META_KEY = 'bloodnocturne_meta_debug';
 const DEBUG_STATES = new WeakSet();
 // 기기에 쓰지 못한 최신 기록 (이번 실행 동안만). 읽기는 이것을 먼저 본다: 쓰기 실패 뒤에도 옛 기록이 되살아나지 않게
 const mem = {};
@@ -279,6 +284,7 @@ class SaveSystem {
     this.listeners = new Set(); this.failFns = new Set();
     this.settings = null; /* 마지막으로 불러오거나 저장한 설정 객체 (= game.settings) */
     this.lastFail = null; /* 마지막 쓰기 실패 { kind, key, slot, at } | null */
+    this.debugBoot = false; /* 디버그 부팅(markDebugBoot) — 메타를 디버그 칸에만 쓴다 */
     failHook = (f) => this.failed(f);
   }
   /** 저장 알림 구독 (core/cloud.js 가 쓴다). 구독자 오류는 저장을 막지 않는다 */
@@ -300,6 +306,8 @@ class SaveSystem {
   /** 디버그 부팅의 임시 세이브로 표시 (main.js debugState · 장면을 바로 열 때의 임시 상태). 반환: 그 상태 */
   markDebug(state) { if (state && typeof state === 'object') DEBUG_STATES.add(state); return state; }
   isDebug(state) { return !!state && typeof state === 'object' && DEBUG_STATES.has(state); }
+  /** 이 실행은 디버그 부팅 (main.js): 이후 saveMeta 는 DEBUG_META_KEY 에만 */
+  markDebugBoot() { this.debugBoot = true; }
   write(slot, state) {
     state.savedAt = Date.now();
     state.slot = slot;
@@ -377,6 +385,10 @@ class SaveSystem {
       return { ...structuredClone(DEFAULT_META), ...m };
     } catch { return structuredClone(DEFAULT_META); }
   }
-  saveMeta(m) { const ok = lsSet(PREFIX + 'meta', JSON.stringify(m)); this.notify({ type: 'meta', ok }); return ok; }
+  saveMeta(m) {
+    // 디버그 부팅: 진짜 메타·클라우드에 닿지 않는다 (알림은 debug 표시와 함께 — 업적 엔진은 다시 보고 core/cloud.js 는 무시)
+    if (this.debugBoot) { const ok = lsSet(DEBUG_META_KEY, JSON.stringify(m)); this.notify({ type: 'meta', ok, debug: true }); return ok; }
+    const ok = lsSet(PREFIX + 'meta', JSON.stringify(m)); this.notify({ type: 'meta', ok }); return ok;
+  }
 }
 export const saves = new SaveSystem();
