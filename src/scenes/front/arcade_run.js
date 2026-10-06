@@ -776,7 +776,9 @@ export class ArcadePauseScene extends Scene {
 const RANK_STYLE = { S: ['#ffe070', 'gold'], A: ['#ffa640', 'blood'], B: ['#5aa8ff', 'bone'], C: ['#7ee07e', 'bone'], D: ['#a0a0a0', 'bone'] };
 const RANK_W = 170, RANK_GAP = 20; // 랭크 도장 칸 폭, 표와의 간격 (UI px)
 export class ArcadeResultsScene extends Scene {
-  constructor(g) { super(g); this.uiScale = true; this.hidePad = true; }
+  // deferToasts: 스토리 결과(results.js)처럼 토스트를 숨기고 시간도 멈춘다 — 클리어로 얻은 업적 알림(첫 결착·무결점 러시 …)이
+  // 제목 아래 부제·결과표를 가리지 않고 결과 화면을 나간 뒤 나온다 (achievements.md §6, CROSS-QA) [hook:ach]
+  constructor(g) { super(g); this.uiScale = true; this.hidePad = true; this.deferToasts = true; }
   enter(p) {
     this.res = p;
     const g = this.game, m = g.meta;

@@ -1,4 +1,4 @@
-// 동료(탈것 10 — 외전 아르겐 포함 · 수호신 12 — 외전 무닌 포함) 순수 데이터 — owner: CMP-DATA (companions §1–4, §9, §12.1; MASTER_PLAN §1.2)
+// 동료(탈것 10 — 외전 아르겐 포함 · 수호신 13 — 외전 무닌 · 베스퍼 포함) 순수 데이터 — owner: CMP-DATA (companions §1–4, §9, §12.1; MASTER_PLAN §1.2)
 // 순수 데이터 모듈: node 에서 import 가능, DOM 없음. 데이터 모듈(items.js 의 josa)만 import 한다.
 //
 // id 체계는 MASTER_PLAN §1.2: 탈것 mt_*, 수호신 gd_* (명세의 m_*/g_* 는 LEGACY_IDS 로 옮겨 읽는다).
@@ -605,6 +605,29 @@ export const GUARDIANS = {
     light: { color: '#ff4a6a', r: 50, i: 0.3 },
     join: '이름을 기억하는 늙은 까마귀가 당신의 어깨에 내려앉았다. 이제 이 까마귀가 당신의 이름도 기억할 것이다.', joinNarr: true,
     chips: ['까마귀 떼', '까마귀의 눈', '치명타 · 치명타 피해'],
+  }),
+  // ─ 외전 (docs/specs/ex_s24.md §3): 카밀라의 편지 박쥐 — s24_outro 의 recruit 명령 (플래그 recruit_gd_vesper).
+  //   AI = 데이터 kind 'dive'·'bite' + game/guardian.js GUARDIAN_AI.gd_vesper (적중 흡혈 · GENERIC 스킬 + 회복)
+  //   그림 = render/guardians_b.js GUARDIAN_DRAW_B.gd_vesper (벡터 박쥐, 채색 퍼핏 없음 — 무닌과 같은 수준) · 초상화 portraits/cmp_gd_vesper (EX4-BOSS Kling) 의 머리에 맞춘 크롭.
+  //   오라 magnet 은 pickups.js 가 stats.magnet > 0 만 본다 (유대 2단계 ×1.5 → 1.5 여도 같은 자석) · 흡혈 오라는 모르스(2 + 0.03/Lv)보다 낮게 시작
+  gd_vesper: guardian({
+    id: 'gd_vesper', part: 2, chapter: 24, name: '베스퍼', title: '장미 향 나는 박쥐', color: '#ff6a8a',
+    role: '흡혈·심부름형 — 재빠른 급습과 떨어진 물건 물어 오기',
+    desc: '카밀라가 백 년 동안 편지를 맡기던 작은 박쥐. 귀에 빨간 리본을 매었고, 날갯짓마다 장미 향이 난다.',
+    portrait: 'portraits/cmp_gd_vesper', iconFocus: { x: 0.5, y: 0.35, s: 0.42 },   // 초상화가 나오면 머리에 맞춘다
+    obtain: { type: 'flag', flag: 'recruit_gd_vesper', hint: '외전 「장미 수녀원」에서 만날 수 있다' },
+    cry: { sfx: 'bat', pitch: 1.4 }, palette: ['#140a10', '#2a1420', '#5a2a3a', '#c0143a', '#ff6a8a'],
+    move: 'fly', size: { w: 26, h: 18 }, front: true, anchor: { dx: -30, dy: -112 }, speed: 1150, engage: 380, bias: 'lowhp', perch: 'shoulder',
+    attack: { name: '흡혈 급습', desc: '위에서 내리꽂혀 적의 목덜미를 문다. 약해진 적을 먼저 노린다.', kind: 'dive', swoop: 0.24, box: { w: 38, h: 34 },
+      mv: 0.95, element: 'dark', interval: 1.3, range: 380 },
+    skill: { name: '박쥐 떼의 왈츠', desc: '박쥐 떼를 불러 주인 주위를 휘돌며 적을 물어뜯고 밀쳐 낸다. 주인의 HP를 조금 채운다.', cd: 28, mv: 1.4, type: 'phys', element: 'dark', stun: 0.5,
+      heal: 0.04, line: '끼익— 끼이익!' },
+    assist: { name: '목덜미 물기', desc: '적의 목덜미를 물어 잠시 경직시킨다.', kind: 'bite', mv: 1.0, element: 'dark', stun: 0.35 },
+    aura: { base: { lifesteal: 1, magnet: 1 }, perLv: { lifesteal: 0.03 } },
+    passive: { name: '심부름 박쥐', desc: '떨어진 물건을 물어 온다 (아이템 자석). 베스퍼가 문 피해의 일부가 주인의 HP로 돌아온다.', drain: 0.25, cap: 0.01 },
+    light: { color: '#ff6a8a', r: 46, i: 0.3 },
+    join: '장미 향 나는 작은 박쥐가 당신의 어깨에 내려앉았다. 이제 이 박쥐가 당신의 밤을 지킬 것이다.', joinNarr: true,
+    chips: ['박쥐 떼의 왈츠', '심부름 박쥐', '흡혈 · 아이템 자석'],
   }),
 };
 
