@@ -749,6 +749,19 @@ if (run('C9')) {
     a.done(); b.done();
   }
   {
+    // 빈 슬롯 복사(ngcopy, slots.js): 원래 슬롯은 그대로이고 복사본도 같은 누적 통계(처치 5,000)를 가진다 — 같은 진행(created)을 두 번 세지 않는다
+    // (합 지표 kills 가 10,000 이 되어 cb_kill_10k 를 거짓으로 주고 prog.kills 를 부풀리던 결함, NG-VERIFY)
+    const g = mkGame({ meta: P2_META, slots: { 1: p2 } });
+    g.ach.rescan('retro');
+    const k0 = A.metric('kills', null, g.ach._engine.ctx(true)), ev0 = g.events.length;
+    g.saves.write(3, NG.startNgPlus(quiet(() => migrateState(g.saves.read(1))), { slot: 3, now: NOW }));
+    await tick(); await tick();
+    const k1 = A.metric('kills', null, g.ach._engine.ctx(true));
+    ok(k0 === 5000 && k1 === 5000 && g.ach.rescan('retro').length === 0 && g.events.length === ev0 && g.game.meta.ach.prog.kills === 5000,
+      `빈 슬롯 복사: 처치 수 합 그대로 (${k0} → ${k1}, prog ${g.game.meta.ach.prog.kills}) · 새 달성 0 (${JSON.stringify(g.events.slice(ev0))})`);
+    g.done();
+  }
+  {
     // diffEnding 은 가상 슬롯 자신의 (난이도, 엔딩 깃발) 로만 선다
     const hardPast = clone(next); hardPast.ng.past.diff = 'hard';   // 지난 회차를 베테랑으로 끝냈다
     const g1 = mkGame({ meta: P2_META, slots: { 1: hardPast } });

@@ -153,6 +153,7 @@ export function digestState(state, withPast = true) {
       cleared, bosses: [...strSet(p.bosses)], flags, difficulty: typeof state.difficulty === 'string' ? state.difficulty : 'normal',
       heroes, joined, owned, docs, relics, hearts: strSet(p.hearts).size, shards: strSet(p.shards).size, secrets, bestiary, questsDone,
       stats, inn, enhance, ...(past ? { past } : {}),   // [hook:ng]
+      run: Number.isFinite(state.created) ? state.created : null,   // [hook:ng] 같은 진행 표식 (sumOf: 피의 윤회 빈 슬롯 복사본의 누적값을 두 번 세지 않는다)
     };
   } catch { return null; }
 }
@@ -165,7 +166,13 @@ function pastDigest(state) {
 const slotsOf = (ctx) => (Array.isArray(ctx?.slots) ? ctx.slots.filter(isObj) : []);
 const progOf = (ctx, k) => fin(ctx?.ach?.prog?.[k]);
 const maxOf = (ctx, fn) => { let m = 0; for (const d of slotsOf(ctx)) { const v = fin(fn(d)); if (v > m) m = v; } return m; };
-const sumOf = (ctx, fn) => { let m = 0; for (const d of slotsOf(ctx)) m += fin(fn(d)); return m; };
+/** 슬롯 합. 같은 진행(run = created 가 같은 슬롯 — 피의 윤회 빈 슬롯 복사·코드로 옮긴 사본)은 큰 값 하나만 센다 (ngplus.md §6: 복사로 새 달성 0) */
+const sumOf = (ctx, fn) => {   // [hook:ng]
+  const runs = new Map(); let m = 0;
+  for (const d of slotsOf(ctx)) { const v = fin(fn(d)); if (d.run == null) m += v; else runs.set(d.run, Math.max(runs.get(d.run) ?? 0, v)); }
+  for (const v of runs.values()) m += v;
+  return m;
+};
 const anyOf = (ctx, fn) => slotsOf(ctx).some((d) => { try { return !!fn(d); } catch { return false; } });
 const unionOf = (ctx, fn) => { const s = new Set(); for (const d of slotsOf(ctx)) for (const x of fn(d) ?? []) s.add(x); return s; };
 const arr = (a) => (Array.isArray(a) ? a : a == null ? [] : [a]);
