@@ -167,11 +167,12 @@ function fitSize(ctx, str, size, weight, maxW, family = FONT.body) {
 }
 
 export class CreditsScene extends Scene {
-  enter({ kind = null, fromEnding = false, back = null } = {}) {
+  enter({ kind = null, fromEnding = false, back = null, backParams = null } = {}) {
     this.hidePad = true;
     this.uiScale = true;
     const g = this.game;
     this.kind = kind; this.fromEnding = fromEnding; this.back = back;
+    this.backParams = backParams && typeof backParams === 'object' ? backParams : null;   // [hook:gal] 회랑 극장에서 열면 돌아갈 회랑 인자
     this.E = ENDINGS[kind] ?? null;
     this.p2 = p2Known(kind, g.meta);
     this.taps = new TapZones();
@@ -312,7 +313,10 @@ export class CreditsScene extends Scene {
     if (this.left) return;
     this.left = true;
     const g = this.game;
-    if (!this.fromEnding) { g.go(this.back === 'hub' ? 'hub' : 'title', this.back === 'hub' ? {} : { menu: true, index: 7 }); return; }   // 7 = 타이틀 메뉴 '크레딧' 줄 (title.js buildMenu, 업적 줄이 생겨 8줄)
+    if (!this.fromEnding) {
+      if (this.back === 'gallery') { g.go('gallery', this.backParams ?? { back: 'title', room: 'theater' }); return; }   // [hook:gal] 회랑 극장 (docs/specs/gallery.md §5.5)
+      g.go(this.back === 'hub' ? 'hub' : 'title', this.back === 'hub' ? {} : { menu: true, index: 7 }); return;   // 7 = 타이틀 메뉴 '회랑' 줄 (title.js buildMenu — 크레딧은 회랑의 극장 안으로)
+    }
     const st = g.state;
     const after = () => {
       if (!st) { g.go('title', {}); return; }

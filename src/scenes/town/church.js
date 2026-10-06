@@ -1,4 +1,6 @@
 // 성 루미나 성당 (알베르토 신부): 전직(새 외형 미리보기 · 특성 · 능력치 배율) · 축복(기도 힌트/성수/주문서) · 스킬 초기화 · 여정 기록(저장)
+// 「여정 기록」 탭의 아래 단추 둘 (docs/specs/gallery.md §5.7, GAL-UI): [여정을 기록한다] [회랑에서 돌아본다] — ←→ 로 고르고 confirm,
+// alt = 회랑 바로가기 → push('gallery', {}) (극장 꺼짐, 닫으면 성당으로)
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
 import { saves } from '../../core/save.js';
@@ -33,9 +35,10 @@ export class ChurchScene extends ServiceScene {
     this.prayed = false;
     this.talk('hello');
   }
-  get useLeftRight() { return this.tab === 0 || this.tab === 1; }
+  get useLeftRight() { return this.tab === 0 || this.tab === 1 || this.tabs[this.tab]?.id === 'save'; }   // [hook:gal] 기록 탭: ←→ = 두 단추
   /** 안내 줄의 선택 방향: 전직 카드는 ←→, 축복 목록은 ↑↓, 초기화·기록 탭은 고를 것이 없다 */
-  selectHint() { const id = this.tabs[this.tab]?.id; return id === 'class' ? 'dpadH' : id === 'bless' ? 'dpadV' : null; }
+  selectHint() { const id = this.tabs[this.tab]?.id; return id === 'class' || id === 'save' ? 'dpadH' : id === 'bless' ? 'dpadV' : null; }   // [hook:gal] 기록 탭 ←→
+  extraHints() { return this.tabs[this.tab]?.id === 'save' ? [['alt', '회랑']] : []; }   // [hook:gal] 회랑 바로가기
   onTab() { this.sel = 0; }
 
   get options() {
@@ -84,6 +87,8 @@ export class ChurchScene extends ServiceScene {
     } else if (tab === 'reset') {
       if (id === 'act' || input.pressed('confirm')) { this.tryReset(); return 'handled'; }
     } else if (tab === 'save') {
+      nav(2, true);   // [hook:gal] ←→ [여정을 기록한다] · [회랑에서 돌아본다]
+      if (id === 'gal' || input.pressed('alt') || (input.pressed('confirm') && this.sel === 1)) { this.openGallery(); return 'handled'; }   // [hook:gal]
       if (id === 'act' || input.pressed('confirm')) { this.doSave(); return 'handled'; }
     }
     if (input.pressed('cancel')) return 'cancel';
@@ -232,6 +237,9 @@ export class ChurchScene extends ServiceScene {
     if (r) this.fx.burst('holy', r.x + r.w / 2, r.y + r.h / 2, 30, { speed: 200 });
     this.game.toast(ok !== false ? `슬롯 ${st.slot ?? 1}에 여정을 기록했다.` : '저장 공간에 접근할 수 없어 임시로 보관했다.', '#fff2b0');
   }
+
+  /** 회랑 (docs/specs/gallery.md §5.7): 마을 장면·월드는 아래에 그대로 — 회랑은 불투명이라 그리지 않는다 */
+  openGallery() { audio.sfx('menu_ok'); this.game.push('gallery', {}); }   // [hook:gal]
 
   // ───────────────────────── 그리기 ─────────────────────────
   renderBody(ctx, body) {
@@ -415,8 +423,12 @@ export class ChurchScene extends ServiceScene {
       text(ctx, k, tx, y, { size: 13, color: '#9d8f80' });
       text(ctx, v, body.x + body.w - 24, y, { size: 14, weight: 700, color: '#efe4cf', align: 'right' });
     });
-    this.actRect = this.tz('act', { x: body.x + body.w / 2 - 170, y: body.y + body.h - 50, w: 340, h: 48 });
-    uiButton(ctx, this.actRect, '여정을 기록한다', { selected: true, size: 17 });
+    // [hook:gal] 단추 둘: 기록 · 회랑 (각 폭 min(240, (body.w − 48) / 2), 높이 48 → ≥ 44 CSS px, 사이 16)
+    const bw = Math.min(240, (body.w - 48) / 2), bx = body.x + body.w / 2 - bw - 8, by = body.y + body.h - 50;
+    this.actRect = this.tz('act', { x: bx, y: by, w: bw, h: 48 });
+    this.galRect = this.tz('gal', { x: bx + bw + 16, y: by, w: bw, h: 48 });   // [hook:gal]
+    uiButton(ctx, this.actRect, '여정을 기록한다', { selected: this.sel !== 1, size: 17 });
+    uiButton(ctx, this.galRect, '회랑에서 돌아본다', { selected: this.sel === 1, size: 17 });   // [hook:gal]
   }
 
   renderOver(ctx, L) {
