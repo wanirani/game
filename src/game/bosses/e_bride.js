@@ -13,6 +13,7 @@
 // 패턴 (static PATTERNS — docs/specs/ex_s24.md §2.1): waltz(피의 왈츠, 카운터 창) · thornLash(가시 채찍) · roseBloom(핏빛 장미) · brides(신부들의 부름) ·
 //   goblet(회춘의 잔 — 85% 이하 · 성공 < 2, 성배 한 대·몸통 3% 로 끊김, 회복 4% · 2페이즈는 49.9% 까지) · crimsonBath(피의 욕조) · drain(세월 흡수) ·
 //   lastDance(마지막 왈츠 — 젊은 날의 잔상 · 카운터 창) · 보조 stagger(무릎).
+//   창 상한(POLISH-4, DANCE_CAP · STAG_CAP · takeHit): 1페이즈 왈츠 한 번 15% · 무릎 한 번 10% 까지만 잃는다. 수호신 자동 공격은 성배를 깨지 않는다(몸통으로 센다).
 //   전환 wither (1: 무적 2.4초, 0.4초 베일이 탄다 → 1.0초 얼굴에 금·흰머리 → 2.0초 노파 (판정 84×150, 아래 끝 A.floor − 24, 발 x 그대로) →
 //   대사 b_bride_wither → 곧바로 crimsonBath). 15% 이하 한 번: 다음 틱에 하던 패턴을 끊고 goblet (스토리·처음이면 대사 b_bride_last → 카밀라가
 //   성배를 깨고 2.5초 긴 무릎, 아케이드·다시 볼 때는 보통 회춘의 잔).

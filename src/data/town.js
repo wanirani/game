@@ -7,7 +7,7 @@
 // 카메라는 바닥에 맞춰 세로 고정 — 위쪽 빈 하늘은 원경(Kling 그림)과 건물 지붕·첨탑이 채운다.
 // 동쪽으로 84 → 96열 확장 (companions §2.2): x 4032 서쪽은 그대로, 동쪽 성문 밖에 「영혼의 마구간」(x 4100–4580)과 그레타.
 //  문 순서(왼→오): 여관 · 잡화점 · 의뢰 게시판 · 대장간 · 성당 · 동쪽 성문(월드맵) · 영혼의 마구간
-//  NPC 순서(왼→오): 마르타 · 로크 · 하드윈 · 알베르토 신부 · 엘리제 · 그레타
+//  NPC 순서(왼→오): 카밀라(여관 왼쪽 구석 — npcs.js appear: 6장 신뢰 또는 외전 「시드는 장미」 뒤) · 마르타 · 로크 · 하드윈 · 알베르토 신부 · 엘리제 · 그레타
 const W = 96;
 const row = (marks = {}) => { const a = Array(W).fill(' '); for (const k in marks) a[+k] = marks[k]; return a.join(''); };
 const range = (a, b, ch) => { const o = {}; for (let i = a; i <= b; i++) o[i] = ch; return o; };
@@ -19,7 +19,7 @@ const MAP = [
   row(), row(), row(), row(), row(), row(),
   row({ ...range(9, 12, '='), ...range(39, 41, '=') }),   // 6: 여관 발코니 · 대장간 차양
   row(),
-  row({ 7: 'D', 10: 'N', 19: 'D', 22: 'N', 29: 'P', 32: 'D', 41: 'D', 46: 'N', 57: 'D', 61: 'N', 69: 'N', 78: 'D', 89: 'D', 93: 'N' }),
+  row({ 4: 'N', 7: 'D', 10: 'N', 19: 'D', 22: 'N', 29: 'P', 32: 'D', 41: 'D', 46: 'N', 57: 'D', 61: 'N', 69: 'N', 78: 'D', 89: 'D', 93: 'N' }),
   '%'.repeat(W),
 ];
 
@@ -34,7 +34,7 @@ export const TOWN_STAGE = {
       map: MAP,
       facing: 1,
       doors: ['scene:inn', 'scene:shop', 'scene:questboard', 'scene:smith', 'scene:church', 'scene:worldmap', 'scene:stable'],
-      npcs: ['npc_marta', 'npc_rook', 'npc_hadwin', 'npc_alberto', 'npc_elise', 'npc_greta'],
+      npcs: ['npc_carmilla', 'npc_marta', 'npc_rook', 'npc_hadwin', 'npc_alberto', 'npc_elise', 'npc_greta'],
     },
   },
 };
@@ -101,6 +101,10 @@ export const TOWN_NPCS = {
   },
   npc_greta: {
     name: '그레타', title: '영혼의 마구간지기', portrait: 'portraits/npc_greta', range: 80, speed: 36, idle: [2.5, 5], look: GRETA_LOOK,
+  },
+  // 카밀라: 여관 왼쪽 구석(4열, 문에서 3칸 — 문·마르타의 대화 범위와 겹치지 않게)에서 천천히 서성인다. 외형·대사는 data/npcs.js · story.js (POLISH-4, ex_s24.md §10)
+  npc_carmilla: {
+    name: '카밀라', title: '흡혈귀 귀부인', portrait: 'portraits/npc_carmilla', range: 36, speed: 24, idle: [3, 6],
   },
 };
 

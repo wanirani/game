@@ -1565,6 +1565,8 @@ function pickNpcScript(npcId, state, stageId) {
   if (stageId && SCRIPTS[`${npcId}_${stageId}`]) return `${npcId}_${stageId}`; // 스테이지 안에서 만났을 때 전용 대사
   let latest = null;
   for (let k = ch; k >= 0; k--) if (SCRIPTS[`${npcId}_ch${k}`]) { latest = `${npcId}_ch${k}`; break; }
+  // 외전은 장을 올리지 않는다 — 「시드는 장미」 뒤 카밀라는 외전 뒤 대사가 가장 새 대사 (story_ex.js npc_carmilla_ex24, ex_s24.md §10)
+  if (npcId === 'npc_carmilla' && p?.flags?.ex_s24_done && SCRIPTS.npc_carmilla_ex24) latest = 'npc_carmilla_ex24';
   const seen = p?.seenScripts;
   if (latest && seen && !seen.includes(latest)) { seen.push(latest); p.npcTalks ??= {}; p.npcTalks[npcId] = 0; return latest; } // 다음 대화부터 팁 순환
   if (latest && !seen) return latest;
