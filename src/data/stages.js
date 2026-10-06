@@ -170,8 +170,8 @@ export const STAGES = {
 };
 /** 1부 스테이지 (월드맵 첫 쪽, 서바이벌 적 풀 등 1부만 쓰는 곳) */
 export const STAGE_ORDER_P1 = ['s01', 's02', 's03', 's04', 's05', 's06', 's07', 's08', 's09', 's10', 's11', 's12', 's13'];
-/** 2부 스테이지 중 STAGES 에 실제로 있는 것만 (맵이 한 묶음씩 들어와도 모든 소비처가 그대로 동작). 끝의 s21 · s22 · s23 · s24 는 외전 (side: true) */
-export const STAGE_ORDER_P2 = ['s14', 's15', 's16', 's17', 's18', 's19', 's20', 's21', 's22', 's23', 's24'].filter((id) => STAGES[id]);   // [hook:p2]
+/** 2부 스테이지 중 STAGES 에 실제로 있는 것만 (맵이 한 묶음씩 들어와도 모든 소비처가 그대로 동작). 끝의 s21 · s22 · s23 · s24 · s25 는 외전 (side: true) */
+export const STAGE_ORDER_P2 = ['s14', 's15', 's16', 's17', 's18', 's19', 's20', 's21', 's22', 's23', 's24', 's25'].filter((id) => STAGES[id]);   // [hook:p2]
 /** 외전 스테이지 (STAGES[id].side — 2부 엔딩 뒤 세계 지도가 연다. 이야기 장 수·엔딩 판정에는 들지 않는다) */
 export const SIDE_STAGES = STAGE_ORDER_P2.filter((id) => STAGES[id].side);
 /** 이 스테이지가 외전인가 */

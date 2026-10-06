@@ -1571,6 +1571,7 @@ function paintGhost(ctx, x, floor, dir, a, z, w) {
   ctx.save(); ctx.globalAlpha *= clamp(a * k, 0, 1);
   ctx.translate(x, floor); ctx.scale(dir, 1);
   if (C?.v?.glow && C.o) {
+    ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha *= 0.62;   // 빛으로 된 혼 — 뒤 배경이 비친다
     if (Wh?.v?.glow && Wh.c) for (const wl of WHL) { ctx.save(); ctx.translate(wl.x, wl.y); const s = Wh.k * wl.r / 40; ctx.scale(s, s); ctx.drawImage(Wh.v.glow, -Wh.c[0], -Wh.c[1]); ctx.restore(); }
     ctx.scale(C.k, C.k); ctx.drawImage(C.v.glow, -C.o[0], -C.o[1]);
   } else if (g) ctx.drawImage(g.c, -g.ox, -g.oy);
