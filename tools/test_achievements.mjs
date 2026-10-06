@@ -512,6 +512,23 @@ if (run('C5')) {
   const e2 = clone(M.ensureAch(em));
   ok(isDeepStrictEqual(e1, e2) && e1.v === 3 && isDeepStrictEqual(e1.got, { st_s01: 5 }) && isDeepStrictEqual(e1.prog, { deaths: 2 }) && isDeepStrictEqual(e1.claimed, []) && e1.seenAt === 0 && e1.title === null && isDeepStrictEqual(e1.futureField, { z: 1 }), 'ensureAch: 고침·모르는 필드 보존·멱등');
   for (const x of [null, 5, 'x', [], { ach: [] }, { ach: 'x' }, { ach: null }]) { try { const r = M.ensureAch(x); ok(M.isValidAch(r), `ensureAch(${JSON.stringify(x)}) 유효`); } catch { ok(false, `ensureAch(${JSON.stringify(x)}) 던짐`); } }
+  // 메타 올리기(PUT) 도중에 이 기기에서 얻은 업적·prog 는 충돌(409) 병합 뒤에도 남는다 (cloud._syncMeta — 보내기 전 사본으로 합치면 applyMeta 가 지운다)
+  {
+    const C = CL.cloud, keep = { game: C.game, auth: C.auth, request: C.request };
+    const g = { meta: meta({ ach: { v: 1, got: { st_s01: 1000 }, prog: {}, claimed: [], seenAt: 0, title: null, deco: null } }) };
+    const s1 = meta({ ach: { got: { cb_kill_1k: 2000 } } }), s2 = meta({ ach: { got: { cb_kill_1k: 2000, cp_first: 3000 } } });
+    let puts = 0;
+    try {
+      C.game = g; C.auth = { id: 'tester', token: 't'.repeat(43), remember: false };
+      C.request = async (method, p) => {
+        if (method === 'GET' && p === '/meta') return { ok: true, rev: 1, data: s1 };
+        if (method === 'PUT' && p === '/meta' && ++puts === 1) { g.meta.ach.got.sc_cat = 4000; g.meta.ach.prog.style = 7; return { ok: false, error: 'conflict', server: { rev: 2, data: s2 } }; }
+        return { ok: true, rev: 3, savedAt: 5000 };
+      };
+      const r = await quiet(() => C._syncMeta({ rev: 1 }));
+      eq([r.ok, Object.keys(g.meta.ach.got).sort(), g.meta.ach.prog.style], [true, ['cb_kill_1k', 'cp_first', 'sc_cat', 'st_s01'], 7], '메타 동기화 충돌: 올리는 동안 얻은 업적·prog 가 남음');
+    } finally { Object.assign(C, keep); }
+  }
 }
 
 // ═════════ C6 서버 검사 ═════════

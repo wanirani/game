@@ -893,7 +893,8 @@ class Cloud {
       if (r.error !== 'conflict' || !isObj(r.server)) { this.noteResult(r); this.metaView.status = 'error'; return r; }
       server = { rev: num(r.server.rev), data: isObj(r.server.data) ? r.server.data : null };
       base = server.rev;
-      merged = server.data ? mergeMeta(merged, server.data) : merged;
+      // 지금 기기 메타(올리는 동안 생긴 업적·기록 포함 — merged 는 보내기 전 사본이라 applyMeta 가 그것을 지운다)와 합친다 [hook:ach]
+      merged = server.data ? mergeMeta(this.localMeta(), server.data) : merged;
     }
     this.metaView.status = 'error';
     return fail('conflict');
