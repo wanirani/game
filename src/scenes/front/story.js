@@ -64,6 +64,7 @@ export class StoryScene extends Scene {
     this.cg = null;
     this.card = title ? { eng: title.eng ?? '', kor: title.kor ?? '', t: 0, dur: 3.2 } : null;
     this.i = -1; this.cur = null; this.full = ''; this.shown = 0; this.menu = null;
+    this.gave = false;   // 이번 재생에서 give 가 실제로 아이템을 건넸는가 (once 로 모두 건너뛰면 false) — 조건 { if: { gave: true } }
     this.waitT = 0; this.lineT = 0;
     if (music) audio.music(music);
     if (!this.card) this.next();
@@ -91,12 +92,13 @@ export class StoryScene extends Scene {
     const f = this.state?.progress?.flags ?? {};
     if (typeof cond === 'string') return cond.startsWith('!') ? !f[cond.slice(1)] : !!f[cond];
     if (cond?.char) return this.state?.charId === cond.char;
+    if (cond?.gave) return this.gave;   // 앞의 give 가 하나라도 건넸을 때만 (once 로 모두 건너뛰면 그 알림 줄·소리를 거른다 — story_ex.js s23_outro)
     return true;
   }
   runCmd(l, quiet = false) {
     const st = this.state, g = this.game;
     switch (l.cmd) {
-      case 'give': if (st && !(l.once && ownsItem(st, l.item))) { try { grantItem(st, l.item, l.qty ?? 1); } catch { /* 무시 */ } if (!quiet && !l.silent) { g.toast(`획득: ${l.name ?? l.item} ×${l.qty ?? 1}`, '#e8c872'); audio.sfx('item'); } } break;   // once · silent (ex_s23.md §3)
+      case 'give': if (st && !(l.once && ownsItem(st, l.item))) { this.gave = true; try { grantItem(st, l.item, l.qty ?? 1); } catch { /* 무시 */ } if (!quiet && !l.silent) { g.toast(`획득: ${l.name ?? l.item} ×${l.qty ?? 1}`, '#e8c872'); audio.sfx('item'); } } break;   // once · silent (ex_s23.md §3)
       case 'gold': if (st) { st.gold = (st.gold ?? 0) + (l.amount ?? 0); if (!quiet) { g.toast(`${l.amount} G 획득`, '#ffd84a'); audio.sfx('coin'); } } break;
       case 'flag': if (st) st.progress.flags[l.key] = l.value ?? true; break;
       case 'quest': bus.emit('questOffer', { questId: l.id }); g.quests?.accept?.(l.id); break;

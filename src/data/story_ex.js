@@ -76,6 +76,8 @@ const HG2 = (text) => ({ who: 'b_hagen', name: '하겐', portrait: 'portraits/b_
 const MOONC = '#ffcf6a';
 /** 신화 무기 지급 — 이미 가졌으면 건너뛰고(once), 토스트 없이(silent) — §3 */
 const giveOnce = (item, name) => ({ cmd: 'give', item, qty: 1, name, once: true, silent: true });
+/** 조건: 앞의 giveOnce 가 하나라도 실제로 건넸을 때만 (다시 틀거나 회차에서 일곱 자루를 이미 들고 있으면 알림 줄·소리를 거른다 — front/story.js · dialogue.js check) */
+const GAVE = { gave: true };
 
 // ── 24장 (docs/specs/ex_s24.md §4.2) ──
 const CA = 'npc_carmilla', EL = 'npc_elise';
@@ -615,8 +617,8 @@ export const SCRIPTS_EX = {
     giveOnce('u_hunt_gun', '사냥달 장총 하겐'), giveOnce('u_hunt_whip', '사냥달 채찍 셀레네'), giveOnce('u_hunt_sword', '사냥달 검 루나'),
     giveOnce('u_hunt_great', '사냥달 대검 펜리르'), giveOnce('u_hunt_dagger', '사냥달 단검 초승'), giveOnce('u_hunt_staff', '사냥달 지팡이 아르테미스'),
     giveOnce('u_hunt_spear', '사냥달 창 오리온'),
-    se('item'), flag('ex_s23_done'),
-    N('[획득] 신화 무기 「사냥꾼의 달」 일곱 자루. 가방이 가득 차면 보관함에 맡겨진다.'),
+    flag('ex_s23_done'), { ...se('item'), if: GAVE },
+    N('[획득] 신화 무기 「사냥꾼의 달」 일곱 자루. 가방이 가득 차면 보관함에 맡겨진다.', { if: GAVE }),
     ifChar('victor', 'self'),
     H({ kael: '"발크레인의 채찍잡이에게." …우리가 지나온 길을 멀리서 다 지켜본 거다.', sera: '"성 루미나의 수녀님에게." 손에 꼭 맞아요…. 하겐 씨, 감사합니다.', bran: '"기사단의 마지막 기사에게." …이런 선물을 받고도 갚을 길이 없구려.', lia: '"까마귀 아가씨에게." …아가씨는 빼지. 그래도, 잘 쓸게.',
       azel: '"새벽을 걷는 백작의 아들에게." 은이 손을 태우지 않게 가죽까지 감아 두었군. …세심한 늙은이다.', isolde: '"용을 되찾을 창잡이에게." 창끝까지 은빛이다. 부끄럽지 않게 쓰겠다.', default: '쪽지마다 우리 이름이 적혀 있어…. 계속 지켜보고 있었구나.' }),

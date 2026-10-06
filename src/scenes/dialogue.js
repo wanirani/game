@@ -87,6 +87,7 @@ export class DialogueScene extends Scene {
     if (!L && script) L = SCRIPTS[script] ?? [{ who: 'narrator', text: `(대사 ${script} 없음)` }];
     this.lines = Array.isArray(L) ? L : [];
     this.i = -1; this.shown = 0; this.menu = null; this.cur = null; this.full = '';
+    this.gave = false;   // 이번 재생에서 give 가 실제로 건넸는가 — 조건 { if: { gave: true } } (front/story.js 와 같다)
     this.cg = null; this.cgT = 0;
     this.sp = null; this.pKey = null; this.pT = 0; this.lay = null; this._pReady = null;
     this.labels = {};
@@ -160,12 +161,13 @@ export class DialogueScene extends Scene {
     const f = this.state?.progress?.flags ?? {};
     if (typeof cond === 'string') return cond.startsWith('!') ? !f[cond.slice(1)] : !!f[cond];
     if (cond?.char) return this.state?.charId === cond.char;
+    if (cond?.gave) return this.gave;   // 앞의 give 가 하나라도 건넸을 때만
     return true;
   }
   runCmd(l) {
     const st = this.state;
     switch (l.cmd) {
-      case 'give': if (st && !(l.once && ownsItem(st, l.item))) { const r = grantItem(st, l.item, l.qty ?? 1); if (!l.silent) { this.game.toast(`획득: ${l.name ?? l.item} ×${l.qty ?? 1}${r.queued ? ' (가방이 가득 차 보관함에 맡겼다)' : ''}`, '#e8c872'); audio.sfx('item'); } } break;   // once: 이미 들고 있으면 건너뜀 · silent: 토스트·소리 없이 (대본이 알린다 — ex_s23.md §3)
+      case 'give': if (st && !(l.once && ownsItem(st, l.item))) { this.gave = true; const r = grantItem(st, l.item, l.qty ?? 1); if (!l.silent) { this.game.toast(`획득: ${l.name ?? l.item} ×${l.qty ?? 1}${r.queued ? ' (가방이 가득 차 보관함에 맡겼다)' : ''}`, '#e8c872'); audio.sfx('item'); } } break;   // once: 이미 들고 있으면 건너뜀 · silent: 토스트·소리 없이 (대본이 알린다 — ex_s23.md §3)
       case 'gold': if (st) { st.gold = (st.gold ?? 0) + (l.amount ?? 0); this.game.toast(`${l.amount} G 획득`, '#ffd84a'); audio.sfx('coin'); } break;
       case 'flag': if (st?.progress) (st.progress.flags ??= {})[l.key] = l.value ?? true; break;
       case 'quest': bus.emit('questOffer', { questId: l.id }); this.game.quests?.accept?.(l.id); break;
