@@ -246,6 +246,17 @@ section('debug boot state (saves.markDebug)');
   ok(!saves.isDebug(copy), '디버그 칸에서 읽어 만든 새 상태는 표시 없음 (불러온 세이브처럼 진짜 슬롯에 쓴다)');
   saves.remove?.(1); saves.remove?.(DEBUG_SLOT);
 }
+// 디버그 부팅의 메타 (saves.markDebugBoot — main.js ?scene=…): 진짜 메타 칸은 그대로, 알림은 debug 표시 (클라우드가 올리지 않는다)
+{
+  quiet(() => saves.saveMeta({ ...saves.loadMeta(), clears: 7, highScores: [{ score: 1, mode: 'story' }] }));
+  const before = JSON.stringify(saves.loadMeta());
+  const evs = []; const off = saves.onWrite((e) => evs.push(e));
+  saves.markDebugBoot();
+  quiet(() => saves.saveMeta({ ...saves.loadMeta(), clears: 99, highScores: [], ach: { v: 1, got: { st_s01: 1 } } }));
+  off(); saves.debugBoot = false;   // (같은 프로세스의 다른 시험을 위해 되돌림 — 게임에서는 한 번 켜면 그 실행 끝까지)
+  ok(JSON.stringify(saves.loadMeta()) === before, '디버그 부팅의 saveMeta → 진짜 메타 칸 그대로');
+  ok(evs.length === 1 && evs[0].type === 'meta' && evs[0].debug === true, `디버그 메타 알림은 debug:true 하나 (업적 엔진은 다시 보고 클라우드는 무시) (${JSON.stringify(evs)})`);
+}
 
 console.log(`${fails ? '✗' : '✓'} test_save_v2: ${passes} 통과, ${fails} 실패${cmpStub ? ' (companion_state 는 아직 스텁 — 동료 항목 일부 생략)' : ''}`);
 process.exit(fails ? 1 : 0);
