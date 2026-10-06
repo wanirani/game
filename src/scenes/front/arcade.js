@@ -102,7 +102,7 @@ function bossUsable(id) {
   const i = BOSS_ORDER.indexOf(id);
   return !!BOSSES[id] && (i < P1_BOSSES || bossReady(id));
 }
-/** 모든 세이브 슬롯에서 해금된 스테이지 (합집합) */
+/** 모든 세이브 슬롯에서 해금된 스테이지 (합집합, 회차 슬롯은 지난 회차 것까지) */
 function slotUnlocks() {
   const set = new Set();
   let list = [];
@@ -113,6 +113,7 @@ function slotUnlocks() {
     try { st = saves.read(s.slot); } catch { st = null; }
     const u = st?.progress?.unlocked;
     if (Array.isArray(u)) for (const id of u) if (typeof id === 'string') set.add(id);
+    for (const id of Array.isArray(st?.ng?.past?.unlocked) ? st.ng.past.unlocked : []) if (typeof id === 'string') set.add(id);   // [hook:ng] 지난 회차에 연 스테이지 (ngplus.md §7)
   }
   return set;
 }

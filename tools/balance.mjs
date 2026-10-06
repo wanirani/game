@@ -13,6 +13,13 @@
 //   --k 'bexp=0.4,eatk=0.9,bexp.b_chaos=0.5' : 데이터 조정 가정(what-if) 배율. 이름만 쓰면 2부 스테이지(s14–s20)의
 //             모든 적/보스에, 이름.id 를 쓰면 그 적/보스 하나에(1부 포함) 적용. 이름: eexp ehp eatk (일반 적 경험치·체력·공격),
 //             bexp bhp batk (보스 경험치·체력·공격). 데이터 파일은 바꾸지 않는다 — FIX-DATA 요청 값을 고르는 용도.
+//   --ng N  : 회차 「피의 윤회」 N(1–9, 세기는 3 에서 멈춤)의 표 (docs/specs/ngplus.md §3.4). 영웅 모형 = 1회차 끝 상태:
+//             N = 1 은 Lv 70 시작 · 강화 +12, N ≥ 2 는 Lv 99 · +15 (7장마다 +1, ≤ 15), 7단계 희귀도 4 · 장신구 둘 · 비전서 전부
+//             (--acc/--docs 와 상관없이; 시드는 설계 시뮬레이션과 같은 레벨 기준). 적·보스 값은 게임과 같은 NG.ngWorld()
+//             (src/game/ngplus.js — 공식을 여기에 복사하지 않는다), elv = 회차 적 레벨, enh = 그 행의 무기 강화.
+//             --check 와 함께면 모든 난이도에서 (world2 §15 목표 대신): 회차 행(s01–s20, 외전 제외)의 최댓값 ÷ 같은 영웅·난이도
+//             1회차 기준 실행의 2부(s14–s20) 최댓값 — 받는 피해(bossTaken·takenMed) ≤ 1.15 / 1.45 / 1.65 (N = 1 / 2 / 3 이상),
+//             보스 타수(bossHits) ≤ 1.15, 표의 숫자가 모두 유한. 하나라도 벗어나면 종료 코드 1.
 //
 // 기준 실행 (world2 §15): 보통 난이도, 1레벨에서 시작해 스테이지마다 일반 적 85% + 보스 처치 경험치를 쌓는다.
 // 장비 = tierForLevel(레벨) 단계(최대 7) 상위형 베이스, 희귀도 min(4, 1+floor(i/4)), 강화 min(12, floor(i*0.8))
@@ -35,21 +42,25 @@ import { CHARACTERS } from '../src/data/characters.js';
 import { CLASSES } from '../src/data/classes.js';
 import { MOVESETS } from '../src/data/movesets.js';
 import { MV_SCALE } from '../src/data/feel_hit.js';
+import { DOCS as ALL_DOCS } from '../src/data/lore.js';
+import * as NG from '../src/game/ngplus.js';
 
 const argv = process.argv.slice(2);
 const flag = (n) => argv.includes('--' + n);
 const optv = (n, d) => { const i = argv.indexOf('--' + n); return i >= 0 && argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[i + 1] : d; };
-const pos = argv.filter((a, i) => !a.startsWith('--') && !(i > 0 && ['--seed', '--k'].includes(argv[i - 1])));
+const pos = argv.filter((a, i) => !a.startsWith('--') && !(i > 0 && ['--seed', '--k', '--ng'].includes(argv[i - 1])));
 const diffId = pos[0] || 'normal', charId = pos[1] || 'kael';
 const CHECK = flag('check'), STRICT = flag('strict'), JSON_OUT = flag('json'), ACC = flag('acc'), DOCS = flag('docs'), QUESTS_ON = flag('quests');
 const SEED = Number(optv('seed', 1)) || 1;
 const SEEDS = 5;
+const NG_N = flag('ng') ? Number(optv('ng', NaN)) : 0;   // 회차 (docs/specs/ngplus.md §3.4)
+if (flag('ng') && !(Number.isInteger(NG_N) && NG_N >= 1 && NG_N <= 9)) { console.error(`--ng 는 1–9 정수 (${optv('ng', '')})`); process.exit(2); }
 // getDiff 는 모르는 id 를 보통으로 바꾼다 — 오타(예: hardd)가 보통 난이도 표를 'hardd' 라는 이름으로 내지 않게 막는다
 if (!DIFF[diffId]) { console.error(`알 수 없는 난이도: ${diffId} (${Object.keys(DIFF).join(', ')})`); process.exit(2); }
 const diff = getDiff(diffId);
 if (!CHARACTERS[charId]) { console.error(`알 수 없는 영웅: ${charId} (${Object.keys(CHARACTERS).join(', ')})`); process.exit(2); }
 // world2 §15 목표는 보통 난이도 기준 실행에만 있다 (MASTER_PLAN §5.1: hard/inferno 는 --check 없이 표만 검토)
-if (CHECK && diffId !== 'normal') { console.error(`--check 는 normal 난이도에서만 쓴다 (world2 §15 목표 = 보통 난이도 기준). ${diffId} 는 --check 없이 표로 검토하세요.`); process.exit(2); }
+if (CHECK && !NG_N && diffId !== 'normal') { console.error(`--check 는 normal 난이도에서만 쓴다 (world2 §15 목표 = 보통 난이도 기준). ${diffId} 는 --check 없이 표로 검토하세요.`); process.exit(2); }
 const KNOBS = {};
 for (const part of String(optv('k', '')).split(',').map((s) => s.trim()).filter(Boolean)) {
   const [name, v] = part.split('=');
@@ -100,11 +111,12 @@ function dmg(src, tgt, mv = 1, mag = false) {
   return Math.max(1, d);
 }
 
-/** 한 영웅의 1~20 스테이지 기준 실행 */
-function simulate(cid) {
+/** 한 영웅의 1~20 스테이지 기준 실행 (ng ≥ 1: 회차 — 1회차 끝 영웅 모형 + NG.ngWorld 세기, docs/specs/ngplus.md §3.4) */
+function simulate(cid, ng = 0) {
   const ch = CHARACTERS[cid];
   const combo = comboModel(ch.weaponType);
   const mag = ch.weaponType === 'staff';
+  const NG_HERO = ng ? { start: ng === 1 ? 70 : 99, enh: ng === 1 ? 12 : 15 } : null;   // §3.4 영웅 모형
   function heroOnce(level, stageIdx, docs, seed) {
     Math.random = mulberry32(seed);
     try {
@@ -112,37 +124,40 @@ function simulate(cid) {
       // 직업: 10/25 레벨에서 첫 번째 갈래
       let c = CLASSES[h.classId];
       while (c?.next?.length && level >= CLASSES[c.next[0]].reqLevel) { h.classId = c.next[0]; c = CLASSES[h.classId]; }
-      const tier = Math.min(7, tierForLevel(level));   // 요청 20: 2부 7단계 장비
-      const rar = Math.min(4, 1 + Math.floor(stageIdx / 4));
-      const enh = Math.min(12, Math.floor(stageIdx * 0.8));   // world2 §15 (1부 행은 최대 9 라서 예전과 같다)
+      const tier = NG_HERO ? 7 : Math.min(7, tierForLevel(level));   // 요청 20: 2부 7단계 장비
+      const rar = NG_HERO ? 4 : Math.min(4, 1 + Math.floor(stageIdx / 4));
+      const enh = NG_HERO ? Math.min(15, NG_HERO.enh + Math.floor(stageIdx / 7)) : Math.min(12, Math.floor(stageIdx * 0.8));   // world2 §15 (1부 행은 최대 9 라서 예전과 같다)
       const inv = [];
       const put = (slot, id, opts) => { const it = id && makeItem(id, opts); if (it) { inv.push(it); h.equip[slot] = it.uid; } };
       put('weapon', baseIdFor('weapon', tier, { wtype: ch.weaponType }), { rarity: rar, level: enh });
       put('body', baseIdFor('body', tier), { rarity: rar, level: Math.floor(enh * 0.7) });
       put('head', baseIdFor('head', tier), { rarity: rar, level: Math.floor(enh * 0.5) });
       put('cloak', baseIdFor('cloak', tier), { rarity: rar });
-      if (ACC) { put('acc1', baseIdFor('acc', tier, { variant: 0 }), { rarity: rar }); put('acc2', baseIdFor('acc', tier, { variant: 1 }), { rarity: rar }); }
+      if (ACC || NG_HERO) { put('acc1', baseIdFor('acc', tier, { variant: 0 }), { rarity: rar }); put('acc2', baseIdFor('acc', tier, { variant: 1 }), { rarity: rar }); }
       // arcade: true → 수호신 오라 제외 (기준 실행에는 동료가 없다)
-      const state = { inventory: inv, heroes: { [cid]: h }, progress: { docs: DOCS ? docs : [] }, arcade: true };
-      return { h, s: computeStats(state, h), tier };
+      const state = { inventory: inv, heroes: { [cid]: h }, progress: { docs: NG_HERO ? Object.keys(ALL_DOCS) : DOCS ? docs : [] }, arcade: true };
+      return { h, s: computeStats(state, h), tier, enh };
     } finally { Math.random = realRandom; }
   }
-  /** 옵션 추첨 편차를 줄이려고 시드 여러 개의 능력치 평균 */
+  /** 옵션 추첨 편차를 줄이려고 시드 여러 개의 능력치 평균 (회차는 설계 시뮬레이션처럼 레벨 기준 시드) */
   function heroAt(level, stageIdx, docs) {
-    const runs = Array.from({ length: SEEDS }, (_, k) => heroOnce(level, stageIdx, docs, SEED * 1000 + stageIdx * 31 + k));
+    const runs = Array.from({ length: SEEDS }, (_, k) => heroOnce(level, stageIdx, docs, SEED * 1000 + (NG_HERO ? level : stageIdx) * 31 + k));
     const s = { ...runs[0].s };
     for (const k of Object.keys(s)) if (typeof s[k] === 'number') s[k] = runs.reduce((a, r) => a + (r.s[k] ?? 0), 0) / runs.length;
-    return { h: runs[0].h, s, tier: runs[0].tier };
+    return { h: runs[0].h, s, tier: runs[0].tier, enh: runs[0].enh };
   }
-  let level = 1, exp = 0, mainLevel = 1;   // mainLevel = 이야기(외전 제외) 마지막 장(s20)을 마친 레벨 — END_LV 는 이것과 비교
+  let level = NG_HERO ? NG_HERO.start : 1, exp = 0, mainLevel = level;   // mainLevel = 이야기(외전 제외) 마지막 장(s20)을 마친 레벨 — END_LV 는 이것과 비교
   const docsSoFar = [];
   const rows = [];
   STAGE_ORDER.forEach((sid, i) => {
-    const st = STAGES[sid];
-    const { s: P, h: H, tier } = heroAt(level, i, docsSoFar);
+    // 회차: 게임과 같은 계산 (적 레벨 · 배율 · 1부 초반 보정 · 상한) — 스테이지·난이도의 복사본
+    const W = ng ? NG.ngWorld(STAGES[sid], diff, ng) : null;
+    if (ng && !W) { console.error(`NG.ngWorld(${sid}, ${diffId}, ${ng}) 가 null — src/game/ngplus.js 가 아직 뼈대인가?`); process.exit(2); }
+    const st = W ? W.stage : STAGES[sid], D = W ? W.diff : diff;
+    const { s: P, h: H, tier, enh } = heroAt(level, i, docsSoFar);
     const ids = countEnemies(st);
     const es = ids.map((id) => {
-      const s = enemyStats(ENEMIES[id], st.level, diff, false);
+      const s = enemyStats(ENEMIES[id], st.level, D, false);
       s.maxHp = Math.round(s.maxHp * knob('ehp', id, sid)); s.atk = Math.round(s.atk * knob('eatk', id, sid)); s.exp = Math.round(s.exp * knob('eexp', id, sid));
       return { id, s };
     });
@@ -152,7 +167,7 @@ function simulate(cid) {
     let bh = 0, bt = 0, bhp = 0, bsec = 0;
     if (b) {
       const bid = b.id ?? st.boss;
-      const bs = enemyStats({ ...b, lv: st.level }, st.level, { ...diff, enemyHp: diff.bossHp ?? diff.enemyHp }, false);
+      const bs = enemyStats({ ...b, lv: st.level }, st.level, { ...D, enemyHp: D.bossHp ?? D.enemyHp }, false);
       bs.atk = Math.round(bs.atk * knob('batk', bid, sid));
       bhp = Math.round(bs.maxHp * (b.hpMul ?? 1) * knob('bhp', bid, sid) * (1 + Math.max(0, 10 - (st.level - 1)) * 0.1) / (1 + Math.max(0, st.level - 24) * 0.035));
       const d1 = dmg(P, bs, 1.0, mag);
@@ -160,10 +175,10 @@ function simulate(cid) {
       bsec = bhp / (d1 * combo.perSec);
       bt = dmg(bs, { def: P.def, dmgReduce: P.dmgReduce }, 1.2) / P.hp * 100;
     }
-    rows.push({ stage: sid, elv: st.level, plv: level, cls: H.classId.replace(/^[a-z]+_/, ''), tier, atk: Math.round(mag ? P.mag : P.atk), hp: Math.round(P.hp), def: Math.round(P.def), n: ids.length, eHP: med(es.map((e) => e.s.maxHp)), hitsMed: med(hits), hitsMax: Math.max(...hits, 0), takenMed: +med(taken).toFixed(1), bossHP: bhp, bossHits: bh, bossSec: Math.round(bsec), bossTaken: +bt.toFixed(1) });
+    rows.push({ stage: sid, elv: st.level, plv: level, cls: H.classId.replace(/^[a-z]+_/, ''), tier, ...(ng ? { enh } : {}), atk: Math.round(mag ? P.mag : P.atk), hp: Math.round(P.hp), def: Math.round(P.def), n: ids.length, eHP: med(es.map((e) => e.s.maxHp)), hitsMed: med(hits), hitsMax: Math.max(...hits, 0), takenMed: +med(taken).toFixed(1), bossHP: bhp, bossHits: bh, bossSec: Math.round(bsec), bossTaken: +bt.toFixed(1) });
     // 경험치 획득 (85% 처치 + 보스 [+ 메인 퀘스트])
     let gain = es.reduce((a, e) => a + e.s.exp, 0) * 0.85;
-    if (b) gain += Math.round((b.exp ?? 400) * knob('bexp', b.id ?? st.boss, sid) * (1 + st.level * 0.35) * (diff.exp ?? 1));
+    if (b) gain += Math.round((b.exp ?? 400) * knob('bexp', b.id ?? st.boss, sid) * (1 + st.level * 0.35) * (D.exp ?? 1));
     if (QUESTS_ON) gain += MAIN_EXP[sid] ?? 0;
     exp += gain;
     while (level < 99 && exp >= expToNext(level)) { exp -= expToNext(level); level++; }
@@ -187,9 +202,43 @@ const END_LV = [64, 68];   // s20 을 마친 뒤 레벨
 const ANCHOR = ['s11', 's12', 's13'];   // 1부 기준 보정 비율을 잴 스테이지
 const round1 = (v) => Math.round(v * 10) / 10;
 
-const run = simulate(charId);
+// ── 회차 (--ng N): 1회차 2부 최댓값 대비 비율 (docs/specs/ngplus.md §3.4) — world2 §15 목표 대신
+if (NG_N) {
+  const ngRun = simulate(charId, NG_N);
+  const base = simulate(charId, 0);
+  const P2 = base.rows.filter((r) => P2_IDS.has(r.stage));
+  const NGR = ngRun.rows.filter((r) => !STAGES[r.stage]?.side);   // s01–s20 (외전은 2부 엔딩 뒤 — 행만 보여 준다)
+  const mx = (rows, k) => Math.max(...rows.map((r) => r[k]));
+  const LIMIT = { taken: [1.15, 1.45, 1.65][Math.min(NG_N, 3) - 1], hits: 1.15 };
+  const KEYS = ['bossTaken', 'takenMed', 'bossHits'];
+  const base1 = Object.fromEntries(KEYS.map((k) => [k, mx(P2, k)])), max = Object.fromEntries(KEYS.map((k) => [k, mx(NGR, k)]));
+  const ratios = Object.fromEntries(KEYS.map((k) => [k, base1[k] > 0 ? +(max[k] / base1[k]).toFixed(3) : NaN]));
+  const at = (k) => NGR.find((r) => r[k] === max[k])?.stage ?? '?';
+  const fails = KEYS.filter((k) => !(ratios[k] <= (k === 'bossHits' ? LIMIT.hits : LIMIT.taken))).map((k) => ({ key: k, ratio: ratios[k], limit: k === 'bossHits' ? LIMIT.hits : LIMIT.taken, at: at(k) }));
+  const bad = ngRun.rows.flatMap((r) => Object.entries(r).filter(([, v]) => typeof v === 'number' && !Number.isFinite(v)).map(([k]) => `${r.stage}.${k}`));
+  if (bad.length) fails.push({ key: 'finite', ratio: NaN, limit: null, at: bad.join(' ') });
+  const label = `${NG_N + 1}회차 (--ng ${NG_N}${NG_N > NG.NG_RULES.cap ? `, 세기 = ${NG.NG_RULES.cap + 1}회차` : ''})`;
+  const hero = { start: NG_N === 1 ? 70 : 99, enh: NG_N === 1 ? 12 : 15, rarity: 4, tier: 7, acc: true, docs: Object.keys(ALL_DOCS).length };
+  if (JSON_OUT) {
+    console.log(JSON.stringify({ diff: diffId, char: charId, ng: NG_N, knobs: KNOBS, hero, combo: { mvHit: +ngRun.combo.mvHit.toFixed(3), perSec: +ngRun.combo.perSec.toFixed(2) }, endLevel: ngRun.sideEndLevel, base1, max, ratios, limits: LIMIT, rows: ngRun.rows, fails }, null, 1));
+  } else {
+    console.log(`${diffId} · ${charId} (${CHARACTERS[charId].weaponType}) · ${label} — 영웅 모형 Lv ${hero.start} 시작 · ${hero.tier}단계 희귀도 ${hero.rarity} · 강화 +${hero.enh}(7장마다 +1, ≤ 15) · 장신구 둘 · 비전서 ${hero.docs} · 적·보스 = NG.ngWorld`);
+    console.table(ngRun.rows);
+    console.log(`끝 레벨 ${ngRun.sideEndLevel} · 회차 행(s01–s20) 최댓값 ÷ 1회차 2부(s14–s20) 최댓값: 받는 피해 bossTaken ×${ratios.bossTaken} (${at('bossTaken')}) · takenMed ×${ratios.takenMed} (${at('takenMed')}) ≤ ${LIMIT.taken} · 보스 타수 ×${ratios.bossHits} (${at('bossHits')}) ≤ ${LIMIT.hits}`);
+    if (CHECK) {
+      if (!fails.length) console.log(`✓ 회차 세기 상한 안 (ngplus.md §3.4, ${label})`);
+      else {
+        console.log(`✗ 회차 세기 상한 밖 ${fails.length}칸 (${label}):`);
+        for (const f of fails) console.log(`   ${f.key} ×${f.ratio}  (상한 ${f.limit ?? '유한'}, ${f.at})`);
+      }
+    }
+  }
+  if (CHECK && fails.length) process.exitCode = 1;
+}
+
+const run = NG_N ? null : simulate(charId);
 let ratio = null;   // 영웅 ÷ 카엘 (1부 s11–s13 평균)
-if (charId !== 'kael' && !STRICT) {
+if (run && charId !== 'kael' && !STRICT) {
   const k = simulate('kael');
   ratio = {};
   for (const key of ['hitsMed', 'hitsMax', 'takenMed', 'bossHits', 'bossTaken']) {
@@ -204,7 +253,7 @@ function band(key, [lo, hi]) {
   return [lo === 0 ? 0 : round1(lo * r * 0.7), round1(hi * r * 1.3)];
 }
 const fails = [];
-for (const r of run.rows) {
+for (const r of run?.rows ?? []) {
   const t = T[r.stage];
   if (!t) continue;
   for (const [k, b] of Object.entries(t)) {
@@ -213,10 +262,10 @@ for (const r of run.rows) {
     if (v < lo || v > hi) fails.push({ stage: r.stage, key: k, value: v, lo, hi, dir: v < lo ? 'low' : 'high' });
   }
 }
-if (!(run.endLevel >= END_LV[0] && run.endLevel <= END_LV[1])) fails.push({ stage: 'end', key: 'plv', value: run.endLevel, lo: END_LV[0], hi: END_LV[1], dir: run.endLevel < END_LV[0] ? 'low' : 'high' });
+if (run && !(run.endLevel >= END_LV[0] && run.endLevel <= END_LV[1])) fails.push({ stage: 'end', key: 'plv', value: run.endLevel, lo: END_LV[0], hi: END_LV[1], dir: run.endLevel < END_LV[0] ? 'low' : 'high' });
 const mode = charId === 'kael' ? 'kael' : STRICT ? 'strict ±30%' : '1부 기준 보정';
 
-if (JSON_OUT) {
+if (!run) { /* --ng: 위에서 출력했다 */ } else if (JSON_OUT) {
   console.log(JSON.stringify({ diff: diffId, char: charId, acc: ACC, docs: DOCS, quests: QUESTS_ON, knobs: KNOBS, mode, ratio, combo: { mvHit: +run.combo.mvHit.toFixed(3), perSec: +run.combo.perSec.toFixed(2) }, endLevel: run.endLevel, rows: run.rows, fails }, null, 1));
 } else {
   const ch = CHARACTERS[charId];
@@ -233,4 +282,4 @@ if (JSON_OUT) {
     }
   }
 }
-if (CHECK && fails.length) process.exitCode = 1;
+if (run && CHECK && fails.length) process.exitCode = 1;

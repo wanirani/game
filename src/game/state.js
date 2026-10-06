@@ -7,6 +7,7 @@ import { newHero } from './progression.js';
 import { addItem, ensureWeapon } from './inventory.js';
 import { MAX_LEVEL } from './stats.js';
 import { ensureCompanionState, migrateCompanions } from './companion_state.js';   // [hook:cmp]
+import { normalizeNg } from './ngplus.js';   // [hook:ng] 회차 state.ng 정리 (docs/specs/ngplus.md §5.2)
 
 // 세이브 스키마 버전 (MASTER_PLAN §1.6). 2 = 제2부: progress.shards/hearts + state.companions (동료) + hero.companions (편성)
 // migrateState 는 버전과 상관없이 매번 돌며 멱등이다 (두 번 돌려도 결과가 같다). 모르는 필드는 절대 지우지 않는다.
@@ -130,6 +131,7 @@ export function migrateState(s) {
     for (const h of Object.values(s.heroes)) delete h.companions;
     try { ensureCompanionState(s); } catch (e2) { console.warn('[state] 동료 상태 생성 실패', e2); }
   }
+  normalizeNg(s);   // [hook:ng] 회차(state.ng) 정리 — ng 가 없으면 아무것도 하지 않는다 (옛 세이브에 ng 를 만들지 않는다)
   // 버전은 마지막에 (MASTER_PLAN §1.6). 더 새 클라이언트의 세이브도 이 클라이언트 스키마로 보정했으니 이 번호로 적는다:
   // 모르는 필드는 남아 있고, 새 클라이언트가 다시 불러오면 자기 마이그레이션을 한 번 더 돌린다 (멱등)
   s.version = SAVE_VERSION;

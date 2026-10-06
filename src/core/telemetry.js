@@ -3,6 +3,7 @@
 //  - 설치 id: 무작위 128비트 base64url, localStorage bn_tid. 메타(game.meta)에는 넣지 않는다 — 메타는 로그인하면 클라우드에 올라가
 //    계정과 이어지기 때문. 설정에서 끄면 설치 id 와 보내지 못한 사건을 지운다 (다시 켜면 새 id)
 //  - 사건 (허용 목록만): session_start · error · perf · stage_start · stage_clear · death · boss_result · arcade_result
+//    스토리 회차(docs/specs/ngplus.md §7)면 stage_start · stage_clear · death · boss_result 에 선택 필드 ng (지난 회차 수 1..9)
 //    게임 쪽은 버스 이벤트(stageEntered · bossStarted · bossKilled · playerDied {cause} · stageCleared · arcadeFinished)와
 //    window error/unhandledrejection, 잡힌 오류 보고 globalThis.__bnReportError(e, where) (events.js 버스 · game.js 그리기) 로만 잇는다
 //  - 묶어 보내기: 메모리 줄 + localStorage bn_tq 사본 (최대 200, 넘치면 오래된 것부터 버림) → 30초마다 · 화면이 숨을 때(visibilitychange·pagehide)
@@ -11,7 +12,7 @@
 //    오프라인·429·5xx 는 나중에 다시 (지수 대기), 400·413·415 는 그 묶음을 버리고, 404·405(이 사이트에 API 없음)는 이번 실행에서 그만둔다
 //  - 켜고 끄기: 설정 › 기타 '익명 통계·오류 보내기' (settings.telemetry, 기본 켬 · navigator.globalPrivacyControl 이면 기본 끔 — core/save.js)
 //    타이틀에 한 번 안내 카드 (닫으면 meta.tips.telemetry)
-//  - 보내지 않는 곳: navigator.webdriver(자동화) · localhost·127.0.0.1 · 개발 스위치(?debug ?scene= ?stage= ?nosw ?feelstats ?painted ?lo ?qa)
+//  - 보내지 않는 곳: navigator.webdriver(자동화) · localhost·127.0.0.1 · 개발 스위치(?debug ?scene= ?stage= ?nosw ?feelstats ?painted ?lo ?qa ?ng=)
 //    · http(https 가 아님) · claude.ai 임베드 · /api 프록시 없는 옛 앱. ?telemetry=1 은 이 검사를 건너뛴다(시험용 — 설정·GPC 는 그대로 따른다),
 //    ?telemetry=0 은 늘 끔. 막히면 구독·타이머를 하나도 걸지 않는다 (비용 0)
 //  - 게임 루프를 막지 않는다: 모든 일은 버스 구독·1초 타이머·이벤트 처리기 안에서 try/catch, 보내기는 비동기
@@ -27,7 +28,7 @@ const FLUSH_EVERY = 30, PERF_EVERY = 60; // 초 (타이머 1초)
 const MAX_ERRORS = 25, MAX_PER_SIG = 3; // 한 실행에서 보내는 오류 수 · 같은 오류 수
 const LOCAL = /^(localhost|127\.0\.0\.1|\[::1\]|::1|0\.0\.0\.0)$/i;
 const BLOCKED = /(^|\.)(claude\.ai|claude\.site|claudeusercontent\.com|claudemcpcontent\.com|anthropic\.com)$/i;
-const DEV_PARAMS = ['debug', 'scene', 'stage', 'feelstats', 'nosw', 'painted', 'lo', 'qa'];
+const DEV_PARAMS = ['debug', 'scene', 'stage', 'feelstats', 'nosw', 'painted', 'lo', 'qa', 'ng'];   // ng = 회차 디버그 ?ng=N (docs/specs/ngplus.md §8)
 const ID = /^[a-z0-9_]{1,40}$/;
 const MODES = new Set(['story', 'practice', 'bossrush', 'survival']);
 /** 사건 종류 → 꼭 있어야 하는 필드 (서버 EVENT_FIELDS 와 같아야 한다 — 빠지면 그 사건만 버린다: 서버가 묶음 전체를 거절하지 않게) */
@@ -277,13 +278,23 @@ class Telemetry {
     const st = this.game?.state, h = st?.heroes?.[st?.charId];
     return { hero: idOf(st?.charId), cls: idOf(h?.classId), lv: int(h?.level, 1, 999), diff: idOf(st?.difficulty) };
   }
+  /**
+   * 회차 (docs/specs/ngplus.md §7): 스토리 월드이고 지난 회차가 1 이상이면 1..9, 아니면 undefined (1회차·아케이드·연습은 싣지 않는다).
+   * world.ng (월드가 회차 세기를 받았는가) 가 먼저, 없으면 세이브의 ng.n 을 인라인으로 (ngplus.js 를 import 하지 않는다)
+   */
+  ngOf(w) {
+    const st = this.game?.state;
+    if (w?.mode !== 'story' || !st || st.arcade) return undefined;
+    const n = Number.isInteger(w.ng) ? w.ng : Number.isInteger(st.ng?.n) ? st.ng.n : 0;   // [hook:ng]
+    return n >= 1 ? Math.min(9, n) : undefined;
+  }
   /** 'stageEntered' 다음 마이크로태스크: 장면이 game.world 를 넣은 뒤 */
   stageStart(d) {
     const w = this.game?.world;
     if (!w || w.stage?.id !== d?.stageId || !MODES.has(w.mode)) { this.cur = null; return; } // 마을 등
     const hi = this.heroInfo();
-    this.cur = { stage: idOf(w.stage.id), mode: w.mode, ...hi, deaths: 0, boss: null };
-    this.track('stage_start', { stage: this.cur.stage, mode: w.mode, ...hi, in: ['touch', 'kb', 'pad'].includes(input.mode) ? input.mode : 'kb' });
+    this.cur = { stage: idOf(w.stage.id), mode: w.mode, ...hi, deaths: 0, boss: null, ng: this.ngOf(w) };
+    this.track('stage_start', { stage: this.cur.stage, mode: w.mode, ...hi, in: ['touch', 'kb', 'pad'].includes(input.mode) ? input.mode : 'kb', ng: this.cur.ng });
   }
   /** 사망 원인: 공격(attack 객체)의 주인 → 'boss:<id>' | 'enemy:<id>', 주인 없는 공격 → 'hazard', 문자열 'fall'|'hazard' */
   causeOf(c, w) {
@@ -308,7 +319,7 @@ class Telemetry {
     if (this.cur) this.cur.deaths++;
     this.track('death', {
       stage: idOf(w.stage?.id), room: idOf(w.roomId), x: int(Math.floor(p.cx / TILE), -99, 9999), y: int(Math.floor((p.y + p.h) / TILE), -99, 9999),
-      cause: this.causeOf(d?.cause, w), hero: hi.hero, lv: hi.lv, time: num(w.run?.time, 0, 86400, 10), mode: w.mode, diff: hi.diff,
+      cause: this.causeOf(d?.cause, w), hero: hi.hero, lv: hi.lv, time: num(w.run?.time, 0, 86400, 10), mode: w.mode, diff: hi.diff, ng: this.ngOf(w),
     });
     if (w.bossActive && !w.cleared && w.boss && !w.boss.dead) this.bossEnd(false, { bossId: w.boss.def?.id, stageId: w.stage?.id, time: w.run?.time });
   }
@@ -317,7 +328,7 @@ class Telemetry {
     const c = this.cur, hi = this.heroInfo(), id = idOf(d?.bossId);
     if (!c?.boss || !id || c.boss.id !== d.bossId) return;
     const dur = Number.isFinite(d?.time) ? num(d.time - c.boss.t, 0, 86400, 10) : undefined;
-    this.track('boss_result', { boss: id, stage: idOf(d?.stageId), dur, win: !!win, lv: hi.lv, hero: hi.hero, diff: hi.diff, mode: c.mode });
+    this.track('boss_result', { boss: id, stage: idOf(d?.stageId), dur, win: !!win, lv: hi.lv, hero: hi.hero, diff: hi.diff, mode: c.mode, ng: c.ng });
     if (win) c.boss = null;
   }
   stageClear(d) {
@@ -326,7 +337,7 @@ class Telemetry {
     const hi = this.heroInfo();
     this.track('stage_clear', {
       stage: c.stage, mode: c.mode, time: num(d.time, 0, 86400, 10), rank: ['S', 'A', 'B', 'C', 'D'].includes(d.rank) ? d.rank : undefined,
-      deaths: int(c.deaths, 0, 9999), hero: hi.hero ?? c.hero, cls: hi.cls ?? c.cls, lv: hi.lv ?? c.lv, diff: c.diff ?? hi.diff,
+      deaths: int(c.deaths, 0, 9999), hero: hi.hero ?? c.hero, cls: hi.cls ?? c.cls, lv: hi.lv ?? c.lv, diff: c.diff ?? hi.diff, ng: c.ng,
     });
   }
   arcade(d) {

@@ -60,8 +60,10 @@ async function boot() {
   game.cloud = cloud; // platform.js 의 저장공간 안내가 로그인(클라우드 백업) 여부를 본다 (cloud.loggedIn)
   game.recordScore = (score, stageId, mode = 'story') => {
     const m = game.meta, st = game.state;
-    const run = st?.created ? `${st.slot ?? 1}:${st.created}` : null;
+    const ng = Number.isInteger(st?.ng?.n) && st.ng.n > 0 && !st.arcade ? Math.min(9, st.ng.n) : 0;   // [hook:ng] 회차 (ngplus.js 를 싣지 않는 인라인 읽기, ngplus.md §8)
+    const run = st?.created ? `${st.slot ?? 1}:${st.created}${ng ? `:${ng}` : ''}` : null;   // [hook:ng] 회차마다 한 줄 (front/common.js recordHighScore 와 같은 규칙, §7)
     const e = { score, stageId, charId: st?.charId, diff: st?.difficulty, date: Date.now(), mode, name: st?.name ?? '', run };
+    if (ng && mode === 'story') e.ng = ng;   // [hook:ng]
     // 같은 스토리 진행(세이브)의 기록은 하나만 남긴다 (스테이지마다 누적 점수로 중복 등록되지 않도록)
     if (run && mode === 'story') {
       const old = m.highScores.filter((h) => h.run === run && (h.mode || 'story') === mode);
@@ -94,7 +96,9 @@ async function boot() {
   if (direct && game.registry[start]) {
     const debugState = async () => {
       const { newGameState } = await import('./game/state.js');
-      return newGameState({ slot: 1, difficulty: params.get('diff') || 'normal', charId: params.get('char') || 'kael' });
+      const st = newGameState({ slot: 1, difficulty: params.get('diff') || 'normal', charId: params.get('char') || 'kael' });
+      if (params.has('ng')) (await import('./game/ngplus.js')).applyNgDebug?.(st, params); // [hook:ng] ?ng=N → N+1회차 세기 (docs/specs/ngplus.md §8)
+      return st;
     };
     const applyCmp = (st) => rest?.C?.applyCompanionDebug?.(st, params); // [hook:cmp] cmp/mount/guards/ride… (키가 없으면 아무것도 하지 않는다)
     if (start === 'stage') {
@@ -102,7 +106,7 @@ async function boot() {
       applyCmp(game.state); // [hook:cmp]
       game.go('stage', { stageId: params.get('stage') || 's01', roomId: params.get('room') || null }, { fade: false });
     } else {
-      if (start === 'hub' && CMP_DEBUG_KEYS.some((k) => params.has(k))) {
+      if (start === 'hub' && (CMP_DEBUG_KEYS.some((k) => params.has(k)) || params.has('ng'))) { // [hook:ng] ?scene=hub&ng=1 → 회차의 마을
         game.state = await debugState();
         applyCmp(game.state); // [hook:cmp]
       }

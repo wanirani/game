@@ -42,6 +42,7 @@ import { CompanionSystem } from './companions.js';   // [hook:cmp]
 import { touchpad } from '../core/touchpad.js';   // [hook:plat]
 import * as HFX from '../render/hitfx.js';   // [hook:feel] 첫 타격 스프라이트 미리 굽기 (prewarmHitFx)
 import * as HL from '../render/hud_layout.js';   // 데미지 숫자·판정 문구가 HUD 윗줄 뒤에 숨지 않게 (R1-REQ-331, syncHudBand)
+import * as NG from './ngplus.js';   // [hook:ng] 회차 「피의 윤회」 세기 (docs/specs/ngplus.md §3)
 
 // ── 손맛·각성 상수 (feel.md §4.9, §6.1). AW_GAIN(data/feel_hit.js)에 값이 없으면 이 기본값을 쓴다 ──
 const SLOWMO_BASE = 0.35;                      // 기본 슬로모션 배율 (보스 격파 등 옛 호출부)
@@ -77,6 +78,8 @@ export class World {
     // 일일 도전 (docs/specs/online.md §2.5, front/arcade.js buildArcadeState): 난이도 배율 · 월드 규칙 · 시드 난수 (첫 방 소환 전에)
     const ar = this.state.arcade;   // [hook:plat]
     if (ar?.diffOver && typeof ar.diffOver === 'object') this.diff = { ...this.diff, ...ar.diffOver };   // [hook:plat]
+    this.ng = mode === 'story' && !ar ? NG.ngOf?.(this.state) ?? 0 : 0;   // [hook:ng] 지난 회차 수 (스토리만 — 마을·아케이드·보스 러시는 0; pause.js 가 읽는다)
+    if (this.ng) { const r = NG.ngWorld?.(this.stage, this.diff, this.ng); if (r) { this.stage = r.stage; this.diff = r.diff; this.ngBoss = r.bossPatterns; } }   // [hook:ng] 적 레벨·배율 (스테이지 복사본, 첫 방 소환 전에)
     this.rules = ar?.rules && typeof ar.rules === 'object' ? ar.rules : null;   // [hook:plat] {noPotion, noSub, dark, taken, dealt}
     this.rng = Number.isInteger(ar?.seed) ? new RNG(ar.seed) : null;   // [hook:plat] 정예 출현·촛불 보상 (그 밖의 모드는 Math.random)
     this.hero = currentHero(this.state);
@@ -114,6 +117,7 @@ export class World {
     this.prewarmHitFx();   // [hook:feel]
     bus.emit('stageEntered', { stageId });
     this.banner = { text: this.stage.name, sub: `CHAPTER ${this.stage.chapter ?? ''} · ${this.stage.sub ?? ''}`, t: 3.2, color: '#e8c872', big: true };
+    if (this.ng) this.banner.sub = `${NG.ngLabel?.(this.ng) ?? ''} · ${this.banner.sub}`;   // [hook:ng] '{N}회차 · CHAPTER {c} · {sub}'
   }
 
   /**

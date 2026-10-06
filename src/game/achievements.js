@@ -7,6 +7,7 @@
 //    거두지 않는다 (조건이 다시 거짓이 되어도 got 은 남는다). ch_all 은 다른 업적이 달성될 때마다 마지막에 본다
 //  - prog(누적값)는 메모리에서 늘리고 드물게 저장: 달성 · stageCleared · arcadeFinished · 스토리 bossKilled · 화면 숨김 · 받기·이명·장식·markSeen
 //  - 소급: 부팅 뒤 한가할 때 rescan('retro') · 클라우드 동기화 뒤 rescan('cloud') · 슬롯 쓰기(saves.onWrite) 뒤 그 슬롯만 다시 요약
+//  - 회차(docs/specs/ngplus.md §6): 슬롯 요약의 past(지난 회차 ng.past 의 가상 슬롯)를 ctx.slots 에 따로 한 칸 — 회차를 넘겨도 진행이 줄지 않는다
 //  - 성능: enemyKilled 는 상수 시간(카운터·캐시 집합). 세이브 요약은 드문 이벤트 뒤 setTimeout(0) 로 한 번
 // 순수 export (node 시험 tools/test_achievements.mjs): digestState · metric · evaluate · scanDefs · rewardOf · ACH_EVENTS · PROG_KEYS · BAR_METRICS
 import { bus } from '../core/events.js';
@@ -21,6 +22,7 @@ import { ENEMIES } from '../data/enemies.js';
 import { STAGES } from '../data/stages.js';
 import { ITEMS } from '../data/items.js';
 import { grantItem } from './inventory.js';
+import * as NG from './ngplus.js';   // [hook:ng] 회차: 지난 회차 기록(ng.past)을 가상 슬롯으로 (docs/specs/ngplus.md §6)
 
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const fin = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
@@ -95,9 +97,11 @@ const strSet = (a) => new Set(Array.isArray(a) ? a.filter((x) => typeof x === 's
 
 /**
  * 세이브 → 업적에 필요한 것만 담은 요약 (순수, 원본을 바꾸지 않는다, 손상 세이브에도 던지지 않는다).
- * 객체가 아니거나 아케이드 임시 세이브(state.arcade)면 null
+ * 객체가 아니거나 아케이드 임시 세이브(state.arcade)면 null.
+ * 회차 세이브면 요약에 past = 지난 회차들의 가상 슬롯 요약 (영웅·통계·동료·가방이 비어 합·최대 지표에 더해지지 않고, 난이도는 그 회차의 것).
+ * withPast = false 는 가상 슬롯 자신 (한 단계만 — 재귀하지 않는다)
  */
-export function digestState(state) {
+export function digestState(state, withPast = true) {
   try {
     if (!isObj(state) || state.arcade) return null;
     const p = isObj(state.progress) ? state.progress : {};
@@ -144,12 +148,17 @@ export function digestState(state) {
     const inn = { jackpots: Math.max(0, fin(ig.jackpots)), duelRank: Math.max(0, fin(ig.duelRank)), catGift: ig.catGift === true };
     let enhance = 0;
     if (Array.isArray(state.inventory)) for (const it of state.inventory) if (isObj(it) && Number.isFinite(it.level) && it.level > enhance) enhance = it.level;
+    const past = withPast ? pastDigest(state) : null;
     return {
       cleared, bosses: [...strSet(p.bosses)], flags, difficulty: typeof state.difficulty === 'string' ? state.difficulty : 'normal',
       heroes, joined, owned, docs, relics, hearts: strSet(p.hearts).size, shards: strSet(p.shards).size, secrets, bestiary, questsDone,
-      stats, inn, enhance,
+      stats, inn, enhance, ...(past ? { past } : {}),   // [hook:ng]
     };
   } catch { return null; }
+}
+/** 지난 회차 가상 슬롯 요약 | null (NG.pastState 가 실패해도 지금 슬롯 요약은 그대로) */
+function pastDigest(state) {
+  try { return state.ng ? digestState(NG.pastState?.(state) ?? null, false) : null; } catch { return null; }   // [hook:ng]
 }
 
 // ───────────────────────── 지표 ─────────────────────────
@@ -332,6 +341,7 @@ class AchEngine {
     for (const s of SLOTS) {
       const d = st && st.slot === s ? this.live : this.digests[s];
       if (d) slots.push(d);
+      if (d?.past) slots.push(d.past);   // [hook:ng] 지난 회차 = 따로 한 칸 (diffEnding 은 그 회차의 난이도로만)
     }
     return { meta: this.game.meta ?? {}, ach: this.ach(), slots, beast: this.beast };
   }

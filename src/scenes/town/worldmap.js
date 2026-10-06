@@ -15,6 +15,7 @@
 //   uiScale 장면 (game.uiW × game.uiH 로 배치), 안내 줄은 기기별 글리프 (prompts.drawHints), 탭 영역은 ui.taps (터치 여유 포함)
 //   스택에 이 장면만 있으면(?scene=worldmap) 닫기 = 마을로 (P-26)
 //   음악: 0 = worldmap, 1 = worldmap2 (전환하면 교차 페이드)
+//   회차 (docs/specs/ngplus.md §4.1): 정보판 '적 레벨' 과 위험 색 비교는 회차 적 레벨 (NG.ngStageLevel — 스테이지 월드와 같은 값)
 import { Scene } from '../../core/game.js';
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
@@ -29,6 +30,7 @@ import { SCRIPTS } from '../../data/story.js';
 import { ITEMS } from '../../data/items.js';
 import { CHARACTERS } from '../../data/characters.js';
 import { currentHero } from '../../game/state.js';
+import * as NG from '../../game/ngplus.js';
 import { preloadStageBosses } from '../../game/bosses/lazy.js';
 import { drawIcon } from '../../render/icons.js';
 import { ensureState, uiPanel, uiButton } from './common.js';
@@ -918,8 +920,9 @@ export class WorldMapScene extends Scene {
     } else text(ctx, s.sub ?? '', x + 24, y + Y[2], { size: subSize, color: '#c8b8a0', maxWidth: lw });
     const hero = currentHero(st);
     if (open && !n.arena) {
-      const danger = (hero?.level ?? 1) < s.level - 2;
-      text(ctx, `적 레벨 ${s.level}`, x + 24, y + Y[3], { size: 13, weight: 800, color: danger ? '#ff6a5a' : '#9d8f80' });
+      const lv = NG.ngStageLevel?.(s, NG.ngOf?.(st) ?? 0) ?? s.level;   // 회차면 회차 적 레벨
+      const danger = (hero?.level ?? 1) < lv - 2;
+      text(ctx, `적 레벨 ${lv}`, x + 24, y + Y[3], { size: 13, weight: 800, color: danger ? '#ff6a5a' : '#9d8f80' });
       if (danger) text(ctx, lw - 86 >= 150 ? '⚠ 위험 — 레벨을 더 올리자' : '⚠ 레벨을 더 올리자', x + 110, y + Y[3], { size: 12, weight: 700, color: '#ff8a6a', maxWidth: Math.max(60, lw - 86) });
     } else if (n.arena) text(ctx, '끝없이 몰려오는 적과 역대 보스에 도전한다', x + 24, y + Y[3], { size: 12, color: '#9d8f80', maxWidth: lw });
     // 기록 · 수집 (투기장은 없음)

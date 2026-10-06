@@ -6,6 +6,10 @@
 //  - 뒤로 버튼은 ui.taps (owner = 장면), 안내 줄은 지금 기기의 글리프
 //  - 슬롯 표시는 migrateState 를 거친 기록으로 그린다 (B103: 손상된 캐릭터·직업·난이도 id 는 hasOwn 으로 거른다)
 //  - 챕터는 20장까지, 2부(STAGES[id].part === 2)면 '제2부' 표시
+//  - 회차 「피의 윤회」 (docs/specs/ngplus.md §2.1 · §4.1, NG-UI): 회차 슬롯은 장 줄 앞에 '{N}회차' 배지('제2부' 배지보다 앞).
+//    2부 엔딩을 본 슬롯(NG.canStartNg)이고 구름 상태가 '서버가 최신'·'충돌'이 아니면 동작 목록 '불러오기' 뒤에 '피의 윤회'
+//    (+ 이 기기·클라우드 모두 빈 슬롯이 있으면 '피의 윤회 · 빈 슬롯 k' — 원래 슬롯은 읽기만). 확인(danger) → NG.startNgPlus →
+//    saves.write → 서막(새 게임과 같은 길). cloud.markOverwrite 는 부르지 않는다 (같은 슬롯의 이어지는 기록)
 import { Scene } from '../../core/game.js';
 import { audio } from '../../core/audio.js';
 import { assets } from '../../core/assets.js';
@@ -18,6 +22,7 @@ import { CLASSES } from '../../data/classes.js';
 import { getDiff, DIFFICULTIES } from '../../data/difficulty.js';
 import { STAGES, STAGE_ORDER } from '../../data/stages.js';
 import { migrateState } from '../../game/state.js';
+import * as NG from '../../game/ngplus.js';
 import { bus } from '../../core/events.js';
 import { cloud } from '../../core/cloud.js';
 import { drawCloudBadge, accountBadge, summaryLine } from './cloud_ui.js';
@@ -28,6 +33,9 @@ import {
 
 const own = (o, k) => typeof k === 'string' && !!o && Object.hasOwn(o, k);
 const P2_COLOR = '#b98cff';
+const NG_COLOR = '#ff5a6a';
+/** 회차 확인 창 본문 (ngplus §4.2) */
+const NG_BODY = '레벨·장비·직업·스킬·비전서·동료·골드를 지닌 채 1장부터 다시 시작합니다. 이야기·지도·의뢰·유물은 처음으로 돌아가고, 적은 더 강해집니다.';
 
 export class SlotsScene extends Scene {
   constructor(g) { super(g); this.uiScale = true; this.hidePad = true; }
@@ -92,6 +100,7 @@ export class SlotsScene extends Scene {
         relics: len(P.relics), docs: len(P.docs), shards: len(P.shards), hearts: len(P.hearts),
         heroes: Object.keys(st?.heroes ?? {}).filter((id) => own(CHARACTERS, id)),
         cls: own(CLASSES, classId) ? CLASSES[classId].name : '', cloud: c,
+        ng: st ? NG.ngOf?.(st) ?? 0 : 0, canNg: !!st && !!NG.canStartNg?.(st),   // 회차 (지난 회차 수) · 피의 윤회를 열 수 있는가
       };
     });
   }
@@ -115,15 +124,43 @@ export class SlotsScene extends Scene {
     const st = s.cloud?.status;
     const down = this.cloudOf(s) && st !== 'synced' ? [['cloudDown', '클라우드에서 받기', 'CLOUD → DEVICE']] : [];
     const up = cloud.loggedIn && !s.empty && !s.broken && st !== 'synced' ? [['cloudUp', '클라우드에 올리기', 'DEVICE → CLOUD']] : [];
+    // 피의 윤회: 서버가 더 새 기록을 가졌거나 충돌이면 먼저 받게 한다. 빈 슬롯(이 기기·클라우드 모두 빈 가장 작은 번호)이 있으면 복사도
+    const ngk = s.canNg && st !== 'cloud' && st !== 'conflict' ? this.ngTarget() : null;
+    const ng = s.canNg && st !== 'cloud' && st !== 'conflict'
+      ? [['ngplus', '피의 윤회', 'NEW GAME+'], ...(ngk ? [['ngcopy', `피의 윤회 · 빈 슬롯 ${ngk}`, `NEW GAME+ → SLOT ${ngk}`]] : [])] : [];
     const items = s.empty
       ? [...down, ['new', '새로 시작', 'NEW GAME'], ['import', '코드 가져오기', 'IMPORT'], ['back', '취소', 'CANCEL']]
       : s.broken
         ? [...down, ['new', '새로 시작', 'NEW GAME'], ['import', '코드 가져오기', 'IMPORT'], ['delete', '삭제', 'DELETE'], ['back', '취소', 'CANCEL']]
-        : [['load', '불러오기', 'LOAD'], ...down, ...up, ['new', '새로 시작', 'NEW GAME'], ['export', '코드 내보내기', 'EXPORT'], ['import', '코드 가져오기', 'IMPORT'], ['delete', '삭제', 'DELETE'], ['back', '취소', 'CANCEL']];
+        : [['load', '불러오기', 'LOAD'], ...ng, ...down, ...up, ['new', '새로 시작', 'NEW GAME'], ['export', '코드 내보내기', 'EXPORT'], ['import', '코드 가져오기', 'IMPORT'], ['delete', '삭제', 'DELETE'], ['back', '취소', 'CANCEL']];
     const start = this.mode === 'new' ? Math.max(0, items.findIndex((i) => i[0] === 'new')) : 0;
     const cols = this.actionCols(items.length);
     this.act = { items, cols, menu: new ListMenu(items.length, { cols, index: start }), t: 0 };
     audio.sfx('menu_ok');
+  }
+  /** 피의 윤회 복사 대상: 이 기기에서 비어 있고 클라우드 기록도 없는 가장 작은 슬롯 번호 (없으면 null) */
+  ngTarget() { return this.slots.find((x) => x.empty && !this.cloudOf(x))?.slot ?? null; }
+  /** 피의 윤회 확인 → 시작 (copy: 빈 슬롯에 새 회차, 원래 슬롯은 읽기만) */
+  askNg(s, copy) {
+    const g = this.game, slot = s.slot, target = copy ? this.ngTarget() : slot;
+    if (!target) return;
+    const label = NG.ngLabel?.(Math.min(9, (s.ng || 0) + 1)) || `${(s.ng || 0) + 2}회차`;
+    const message = `${NG_BODY} ${copy ? `슬롯 ${slot}의 기록은 그대로 두고, 빈 슬롯 ${target}에 새 회차를 만듭니다.` : `슬롯 ${slot}의 지금 기록은 새 회차로 바뀝니다.`}`;
+    g.push('frontConfirm', { title: `피의 윤회 — ${label}`, message, yes: '시작', no: '취소', danger: true, onYes: () => this.startNg(slot, target) });
+  }
+  startNg(slot, target) {
+    const g = this.game;
+    const raw = saves.read(slot);
+    let next = null;
+    try { next = raw ? NG.startNgPlus(migrateState(raw), { slot: target }) : null; } catch (e) { console.error(e); }
+    if (!next) { g.toast('기록을 읽을 수 없습니다', '#ff6060'); return; }
+    // 같은 슬롯이면 이어지는 기록 — cloud.markOverwrite 를 부르지 않는다 (다른 기기의 더 새 기록과는 평소의 충돌 화면으로 고른다)
+    saves.write(target, next);
+    g.state = migrateState(next);
+    g.state.slot = target;
+    this.act = null;
+    g.flash('#ff2040', 0.3, 3);
+    g.go('story', { script: 'prologue', then: 'hub', thenParams: { from: 'prologue' }, bg: 'cg/cg_prologue_moon', music: 'prologue' }, { fadeTime: 0.8 });
   }
   /** 동작 목록이 화면 높이에 한 줄로 들어가지 않으면 두 줄 (§6.3: 줄 높이는 줄이지 않는다) */
   actionCols(n) { const L = this.layout(); return n * L.ih + 30 > L.H - L.st - L.sb - 60 ? 2 : 1; }
@@ -141,6 +178,8 @@ export class SlotsScene extends Scene {
         goSafe(g, 'hub', { from: 'load' }, { fadeTime: 0.6 });
         break;
       }
+      case 'ngplus': this.askNg(s, false); break;
+      case 'ngcopy': this.askNg(s, true); break;
       case 'new': {
         const cl = this.cloudOf(s);
         const start = () => { if (cloud.loggedIn) cloud.markOverwrite(slot); g.go('difficulty', { slot }); };
@@ -299,17 +338,19 @@ export class SlotsScene extends Scene {
     text(ctx, ch.name ?? s.charId, tx, y1, { size: 20, weight: 800, family: FONT.title, color: '#fff2dc', ow: 3, maxWidth: colW });
     text(ctx, `Lv.${s.level}`, tx, y2, { size: 18, weight: 900, family: FONT.num, color: GOLD, ow: 3 });
     text(ctx, s.cls || ch.title || '', tx + 66, y2 - 1, { size: 13, weight: 700, color: '#d8c8b8', ow: 2, maxWidth: colW - 66 });
-    // 챕터 (20장까지, 2부면 '제2부' 표시)
+    // 챕터 (20장까지) 앞 배지: 회차면 '{N}회차', 2부면 '제2부'
     const st = s.stage;
     let cx = tx;
-    if (st?.part === 2) {
+    const badge = (label, col) => {
       ctx.font = `800 11px ${FONT.body}`;
-      const bw = ctx.measureText('제2부').width + 12;
-      ctx.fillStyle = rgba(P2_COLOR, 0.2); ctx.fillRect(cx, y3 - 13, bw, 17);
-      ctx.strokeStyle = rgba(P2_COLOR, 0.85); ctx.lineWidth = 1; ctx.strokeRect(cx + 0.5, y3 - 12.5, bw - 1, 16);
-      text(ctx, '제2부', cx + bw / 2, y3, { size: 11, align: 'center', weight: 800, color: P2_COLOR, ow: 2 });
+      const bw = ctx.measureText(label).width + 12;
+      ctx.fillStyle = rgba(col, 0.2); ctx.fillRect(cx, y3 - 13, bw, 17);
+      ctx.strokeStyle = rgba(col, 0.85); ctx.lineWidth = 1; ctx.strokeRect(cx + 0.5, y3 - 12.5, bw - 1, 16);
+      text(ctx, label, cx + bw / 2, y3, { size: 11, align: 'center', weight: 800, color: col, ow: 2 });
       cx += bw + 8;
-    }
+    };
+    if (s.ng > 0) badge(NG.ngLabel?.(s.ng) || `${s.ng + 1}회차`, NG_COLOR);
+    if (st?.part === 2) badge('제2부', P2_COLOR);
     text(ctx, st ? `CHAPTER ${st.chapter}  ·  ${st.name}` : '프롤로그', cx, y3, { size: 14, weight: 700, color: '#e8d8c0', ow: 2, maxWidth: colW - (cx - tx) });
     // 보조 정보
     const icons = [];

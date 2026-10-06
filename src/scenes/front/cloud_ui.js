@@ -5,6 +5,8 @@
 //  - cloudConflict 는 uiScale 장면 (game.uiW × game.uiH, 최소 720×400). 버튼 ≥ 44 CSS px, 탭 영역은 ui.taps (owner = 장면)
 //  - 안내 줄은 지금 기기의 글리프 (prompts.drawHints), 터치에서는 숨김
 //  - 실패: 연결 끊김·서버 오류는 버튼을 그대로 두어 다시 시도, 로그인 만료는 '닫기'만, 그 사이 클라우드가 비면 올리기만 남긴다
+//  - 회차 (docs/specs/ngplus.md §4.1): 요약 한 줄·카드 진행 줄 끝에 ' · {N}회차' (sum.ng 1..9) — 충돌 화면에서 어느 쪽이 새 회차인지 보인다.
+//    첫 조각 파일이라 game/ngplus.js 를 import 하지 않고 그 자리에서 읽는다
 import { Scene } from '../../core/game.js';
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
@@ -88,13 +90,15 @@ export function slotsJosa(list, withBatchim, without) {
   return `슬롯 ${list.join(', ')}${BATCHIM.has(n) ? withBatchim : without}`;
 }
 
-/** 요약 한 줄 (예: '카엘 Lv.12 · 2장까지 돌파') */
+/** 요약 한 줄 (예: '카엘 Lv.12 · 2장까지 돌파', 회차면 '… · 2회차') */
 export function summaryLine(sum) {
   if (!sum) return '';
   const ch = CHARACTERS[sum.charId];
-  return `${ch?.name ?? sum.charId ?? '?'} Lv.${sum.level ?? 1} · ${chapterText(sum.chapter)}`;
+  return `${ch?.name ?? sum.charId ?? '?'} Lv.${sum.level ?? 1} · ${chapterText(sum.chapter)}${ngText(sum)}`;
 }
 export const chapterText = (c) => (c ? `${c}장까지 돌파` : '1장 진행 중');
+/** 회차 꼬리 ' · {N}회차' (요약의 ng 가 1..9 정수일 때만, 아니면 '') */
+export const ngText = (sum) => (Number.isInteger(sum?.ng) && sum.ng > 0 ? ` · ${Math.min(9, sum.ng) + 1}회차` : '');
 
 /** 세이브 요약 카드 (초상화·캐릭터·레벨·직업·진행·플레이 시간·저장 시각·난이도) */
 export function drawSummaryCard(ctx, r, sum, { title, sub = null, newer = false, empty = '기록 없음', t = 0, accent = GOLD } = {}) {
@@ -123,7 +127,7 @@ export function drawSummaryCard(ctx, r, sum, { title, sub = null, newer = false,
   const cls = CLASSES[sum.classId]?.name ?? ch?.title ?? '';
   if (cls) text(ctx, cls, tx + 56, r.y + 80, { size: 12, weight: 700, color: '#d8c8b8', ow: 2, maxWidth: maxW - 56 });
   const rows = [
-    ['진행', chapterText(sum.chapter)],
+    ['진행', chapterText(sum.chapter) + ngText(sum)],
     ['저장 시각', fmtDate(sum.savedAt ?? sum.clientSavedAt)],
     ['플레이 시간', fmtPlay(sum.playTime ?? 0)],
   ];

@@ -9,6 +9,7 @@
 //  아직 없었을 때)와 남은 합류 연출을 이어서 보여 준다 (CMP-SYS 의 단일 흐름; 같은 것을 두 번 보여 주지 않는다).
 //  1장 전(progress.chapter < 1): '닫힘' 모드 — 불 꺼진 빈 마구간 위로 내레이션 한 줄('불에 그을린 빈 마구간이다…') 뒤 닫힌다.
 //  ?scene=stable 로 바로 열면 임시 세이브(ensureState)로 열리고, 닫으면 타이틀로 간다 (P-26).
+//  회차 (docs/specs/ngplus.md §4.3): 닫힘·구입 줄의 장은 svcChapter (= NG.serviceChapter — 회차면 20장까지 연 것처럼; CS.buyCompanion 과 같은 값)
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
 import { assets } from '../../core/assets.js';
@@ -19,6 +20,7 @@ import { QUESTS } from '../../data/quests.js';
 import { SCRIPTS } from '../../data/story.js';
 import { josa } from '../../data/items.js';
 import * as CS from '../../game/companion_state.js';
+import * as NG from '../../game/ngplus.js';
 import * as CRT from '../../game/companions.js';
 import * as ACMP from '../../core/audio_companions.js';
 import {
@@ -34,6 +36,8 @@ const EGG_LOOK = {
   gd_whelp: { a: '#ece4d4', b: '#8a8070', spot: '#6a5a7a', glow: '#b060ff', burst: ['dust', '#e8e0d0'], burst2: ['magic', '#b060ff'] },
   mt_wyvern: { a: '#c8303e', b: '#4a0810', spot: '#ffd070', glow: '#ff8a3a', burst: ['ember', '#ff8a3a'], burst2: ['fire', '#ffd070'] },
 };
+/** 마을 서비스가 보는 장 (회차면 20장까지 연 것처럼) */
+const svcChapter = (st) => NG.serviceChapter?.(st) ?? st?.progress?.chapter ?? 0;
 const scriptLine = (id) => { const l = SCRIPTS[id]?.find?.((x) => x && typeof x.text === 'string'); return l?.text ?? null; };
 
 // ───────────────────────── 그림 도우미 ─────────────────────────
@@ -229,7 +233,7 @@ export class StableScene extends ServiceScene {
   setup() {
     const st = this.state;
     try { CS.ensureCompanionState?.(st); } catch (e) { console.warn('[stable] state', e); }
-    this.closed = !!st.arcade || (st.progress?.chapter ?? 0) < 1;
+    this.closed = !!st.arcade || svcChapter(st) < 1;
     this.title = '영혼의 마구간'; this.eng = 'STABLE OF SOULS';
     this.bgKey = null; this.music = null;
     this.npcId = this.closed ? null : GRETA;
@@ -381,7 +385,7 @@ export class StableScene extends ServiceScene {
   buy(e) {
     const st = this.state, row = e.row, d = companionDef(e.id);
     if (CS.isOwned?.(st, e.id)) { audio.sfx('menu_cancel'); this.game.toast(CMP_TEXT.owned, '#c8b8a0'); return; }
-    if ((st.progress?.chapter ?? 0) < row.chapter) { audio.sfx('menu_cancel'); this.talk(`아직 들여오지 못했어. ${row.chapter}장을 마치고 다시 와.`); return; }
+    if (svcChapter(st) < row.chapter) { audio.sfx('menu_cancel'); this.talk(`아직 들여오지 못했어. ${row.chapter}장을 마치고 다시 와.`); return; }
     if (!((st.gold ?? 0) >= row.price)) { this.poor(); return; }
     audio.sfx('menu_ok');
     const who = row.label !== d.name ? `${row.label} — ${d.title} ${d.name}` : `${d.title} ${d.name}`;
@@ -578,7 +582,7 @@ export class StableScene extends ServiceScene {
     }
     if (e.kind === 'shop') {
       if (CS.isOwned?.(st, e.id)) return { label: '함께하고 있다', ok: false };
-      if ((st.progress?.chapter ?? 0) < e.row.chapter) return { label: e.row.lockNote, ok: false };
+      if (svcChapter(st) < e.row.chapter) return { label: e.row.lockNote, ok: false };
       return gold >= e.row.price ? { label: `데려가기 · ${fmt(e.row.price)} G`, ok: true } : { label: `골드 부족 · ${fmt(e.row.price)} G`, ok: false, color: '#ff8a7a' };
     }
     if (e.kind === 'egg') return e.egg.ready ? { label: '부화시키기', ok: true, color: '#ffe070' } : { label: '아직 따뜻하다…', ok: false };
@@ -621,7 +625,7 @@ export class StableScene extends ServiceScene {
     const d = companionDef(e.id);
     if (!d) return;
     const owned = !!CS.isOwned?.(st, e.id);
-    const locked = e.kind === 'shop' && !owned && (st.progress?.chapter ?? 0) < e.row.chapter;
+    const locked = e.kind === 'shop' && !owned && svcChapter(st) < e.row.chapter;
     rowBg(ctx, r, sel, { tint: d.color, dim: locked });
     cmpIcon(ctx, e.id, ix, cy, ir, { locked });
     const nx = ix + ir + 12, right = r.x + r.w - 12;
@@ -661,7 +665,7 @@ export class StableScene extends ServiceScene {
     const st = this.state, d = companionDef(e.id);
     if (!d) return;
     const owned = !!CS.isOwned?.(st, e.id);
-    const locked = e.kind === 'shop' && !owned && (st.progress?.chapter ?? 0) < e.row.chapter;
+    const locked = e.kind === 'shop' && !owned && svcChapter(st) < e.row.chapter;
     const pad = 12, ph = Math.round(clamp(r.h * 0.56, 110, 170)), pw = Math.round(ph * 0.76);
     const px = r.x + pad, py = r.y + pad;
     portraitCard(ctx, e.id, px, py, pw, ph, { dim: locked ? 0.55 : 0, t: this.t });

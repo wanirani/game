@@ -50,6 +50,7 @@ const INPUTS = ['touch', 'kb', 'pad'] as const;
 const MODES = ['story', 'practice', 'bossrush', 'survival'] as const;
 const ARCADE = ['practice', 'bossrush', 'survival', 'tower'] as const; // tower = 무한의 탑 (wave 칸 = 돌파한 층)
 const T_MAX = 86_400; // 초 (스테이지·보스·아케이드 시간 상한)
+const NG = f.int(1, 9, true); // 회차 (docs/specs/ngplus.md §7): 지난 회차 수, 스토리 회차일 때만 (1회차·아케이드는 없음)
 
 /** 사건 종류별 허용 필드 (여기 없는 필드가 하나라도 있으면 묶음 전체를 거절한다). 모든 사건에 t(종류)·s(세션 시작 뒤 초) */
 export const EVENT_FIELDS: Record<string, Record<string, Field>> = {
@@ -62,16 +63,16 @@ export const EVENT_FIELDS: Record<string, Record<string, Field>> = {
     scene: f.id(true), stage: f.id(true), room: f.id(true), b: f.of('ver', true),
   },
   perf: { fps: f.num(0, 480), p5: f.num(0, 480), tier: f.en(TIERS), heap: f.num(0, 65536, true), dur: f.num(1, 600), scene: f.id(true) },
-  stage_start: { stage: f.id(), mode: f.en(MODES), hero: f.id(), cls: f.id(true), lv: f.int(1, 999), diff: f.id(), in: f.en(INPUTS) },
+  stage_start: { stage: f.id(), mode: f.en(MODES), hero: f.id(), cls: f.id(true), lv: f.int(1, 999), diff: f.id(), in: f.en(INPUTS), ng: NG },
   stage_clear: {
     stage: f.id(), mode: f.en(MODES), time: f.num(0, T_MAX), rank: f.en(['S', 'A', 'B', 'C', 'D']), deaths: f.int(0, 9999),
-    hero: f.id(), cls: f.id(true), lv: f.int(1, 999), diff: f.id(),
+    hero: f.id(), cls: f.id(true), lv: f.int(1, 999), diff: f.id(), ng: NG,
   },
   death: {
     stage: f.id(), room: f.id(true), x: f.int(-99, 9999), y: f.int(-99, 9999), cause: f.of('cause'), hero: f.id(), lv: f.int(1, 999),
-    time: f.num(0, T_MAX), mode: f.en(MODES), diff: f.id(),
+    time: f.num(0, T_MAX), mode: f.en(MODES), diff: f.id(), ng: NG,
   },
-  boss_result: { boss: f.id(), stage: f.id(true), dur: f.num(0, T_MAX, true), win: f.bool(), lv: f.int(1, 999), hero: f.id(), diff: f.id(), mode: f.en(MODES) },
+  boss_result: { boss: f.id(), stage: f.id(true), dur: f.num(0, T_MAX, true), win: f.bool(), lv: f.int(1, 999), hero: f.id(), diff: f.id(), mode: f.en(MODES), ng: NG },
   arcade_result: {
     mode: f.en(ARCADE), score: f.int(0, 1e12), wave: f.int(0, 99999, true), bosses: f.int(0, 999, true), time: f.num(0, T_MAX),
     cleared: f.bool(), hero: f.id(), diff: f.id(true), stage: f.id(true),
@@ -208,7 +209,10 @@ export function foldBatch(a: Agg, b: { ev?: unknown }): void {
     if (!e || typeof e.t !== 'string' || !Object.hasOwn(EVENT_FIELDS, e.t)) continue;
     a.events++;
     inc(a.types, e.t);
-    const sd = `${e.stage}|${e.diff}`;
+    // 회차(ng) 사건: 시작·클리어는 난이도 칸을 '<난이도>_ng<n>' 으로 따로 세고, 사망·보스 표에는 넣지 않는다 (레벨 70 영웅이 1회차 표를 흐리지 않게 — 원본에는 남는다)
+    const ng = typeof e.ng === 'number' && e.ng >= 1 ? e.ng : 0;
+    const sd = `${e.stage}|${e.diff}${ng ? `_ng${ng}` : ''}`;
+    if (ng && (e.t === 'death' || e.t === 'boss_result')) continue;
     switch (e.t) {
       case 'session_start': {
         a.sessions++;

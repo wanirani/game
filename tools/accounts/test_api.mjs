@@ -641,6 +641,26 @@ test('저장: 올리기·요약·내려받기·rev 충돌·force·baseRev 생략
   assert.equal(expectOk(await call('PUT', '/api/saves/1', { body: { data: s, baseRev: 5, force: false }, token: u.token })).rev, 6);
 });
 
+test('저장: 회차 요약 ng (ngplus.md §5.4) — ng.n 2 → 요약 ng 2, ng 없음 → 요약에 없음, 이상한 ng 도 200 (거절하지 않음)', async () => {
+  const u = await signup(newId(), PW, { ip: freshIp() });
+  const s = validSave('kael');
+  s.ng = { v: 1, n: 2, at: T, hist: [{ n: 0, end: 'p2true', diff: 'normal', t: 98765, at: T }], past: { diff: 'normal', unlocked: ['s01', 's02'], flags: { p2_done: true } } };
+  expectOk(await call('PUT', '/api/saves/1', { body: { data: s }, token: u.token }));
+  expectOk(await call('PUT', '/api/saves/2', { body: { data: validSave('kael') }, token: u.token }));
+  let list = expectOk(await call('GET', '/api/saves', { token: u.token }));
+  assert.equal(list.slots[0].summary.ng, 2);
+  assert.ok(!('ng' in list.slots[1].summary), JSON.stringify(list.slots[1].summary));
+  const got = expectOk(await call('GET', '/api/saves/1', { token: u.token }));
+  assert.deepEqual(got.data.ng, JSON.parse(JSON.stringify(s.ng)), '세이브의 ng 는 그대로 오간다');
+  // 이상한 ng: 저장은 된다 (isValidSave 그대로), 요약에는 정수 ≥ 1 만 (최대 9)
+  for (const [ng, want] of [['x', undefined], [{ n: 'x' }, undefined], [{ n: 0 }, undefined], [{ n: 2.5 }, undefined], [{ n: -1 }, undefined], [null, undefined], [[2], undefined], [{ n: 12 }, 9], [{ n: 1 }, 1]]) {
+    const b = validSave('kael'); b.ng = ng;
+    expectOk(await call('PUT', '/api/saves/3', { body: { data: b }, token: u.token }));
+    list = expectOk(await call('GET', '/api/saves', { token: u.token }));
+    assert.equal(list.slots[2].summary.ng, want, `ng ${JSON.stringify(ng)} → 요약 ${JSON.stringify(list.slots[2].summary)}`);
+  }
+});
+
 test('저장: 잘못된 baseRev·force → 400 bad_request, 잘못된 슬롯 → 400 invalid_slot', async () => {
   const u = await signup(newId(), PW, { ip: freshIp() });
   const s = validSave();

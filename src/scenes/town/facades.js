@@ -5,7 +5,7 @@
 //  glowSprite(color)               : 부드러운 광채 스프라이트 (다른 장면에서도 재사용)
 //  영혼의 마구간 (companions §2.2, CMP-TOWN): PAINT/LIVE/HEIGHT.stable, 간판 아이콘 'horse'.
 //   LIVE 는 game.state 를 읽어 보유한 탈것의 머리(칸마다), 제단 위 수호신 영혼, 알림 '!'(info.stableNote, 없으면 companionHubNote)를 그린다.
-//   1장 전(마구간 닫힘)에는 등불·제단이 꺼져 있고 문에 판자가 박혀 있다.
+//   1장 전(마구간 닫힘)에는 등불·제단이 꺼져 있고 문에 판자가 박혀 있다. 장은 NG.serviceChapter (회차면 열림, docs/specs/ngplus.md §4.3).
 //  drawStallHead(ctx, id, x, y, s, t, k) · drawSpiritWisp(ctx, id, x, y, s, t, a) : 마구간 장면(stable.js)도 쓰는 동료 그림
 import { RNG, hashStr, TAU, clamp, rgba, shade, lerp } from '../../core/math.js';
 import { text, FONT } from '../../core/ui.js';
@@ -14,6 +14,7 @@ import { TILE, game } from '../../core/game.js';
 import { BUILDINGS, TOWN_FLOOR_ROW, TOWN_LAMPS } from '../../data/town.js';
 import { companionDef } from '../../data/companions.js';
 import * as CS from '../../game/companion_state.js';
+import * as NG from '../../game/ngplus.js';
 import * as CRT from '../../game/companions.js';
 
 export const FLOOR = TOWN_FLOOR_ROW * TILE;
@@ -1333,7 +1334,7 @@ function stableView() {
   try {
     const st = game?.state;
     if (!st || st.arcade || !st.progress) return SV;
-    SV.open = (st.progress.chapter ?? 0) >= 1;
+    SV.open = (NG.serviceChapter?.(st) ?? st.progress.chapter ?? 0) >= 1;
     if (!SV.open) return SV;
     const pm = game.world?.player?.mount;
     const riding = pm?.riding ? pm.id : null;

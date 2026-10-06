@@ -2,6 +2,7 @@
 // → (순위권이면) 이니셜 입력 → 1부 진엔딩: 2부 프롤로그(p2_prologue) → 마을 / 2부 엔딩·노멀·배드: 마을 / 그 밖: 타이틀
 // world2 §2.2–2.3 (STORY-P2-A): ENDINGS p2·p2true, decideEnding 의 s20, 2부 크레딧 슬라이드·통계·안내, 진엔딩 뒤 2부 프롤로그, 2부 엔딩 뒤 마을
 // 장면 플래그: uiScale (platform §6.2 — game.uiW × game.uiH 로 배치), hidePad
+// 회차 (docs/specs/ngplus.md §4.1, NG-UI): 통계 머리 줄 끝에 '· {N}회차' (회차 슬롯), 2부 엔딩이고 피의 윤회를 열 수 있으면 마지막 안내 앞에 한 줄
 import { Scene } from '../../core/game.js';
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
@@ -16,6 +17,7 @@ import { BOSSES } from '../../data/bosses.js';
 import { NPCS } from '../../data/npcs.js';
 import { DOCS, DOC_ORDER } from '../../data/lore.js';
 import { getDiff } from '../../data/difficulty.js';
+import * as NG from '../../game/ngplus.js';
 import { Ambience, kenBurns, ornament, frame, gbutton, goSafe, qualifies, fmtPlay, TapZones, GOLD, BONE, DIM } from './common.js';
 
 // name 은 ending_* 대사 끝의 '— ○○ END : 이름 —' 과 같아야 한다 (제목 카드·크레딧 달성 목록에 표시)
@@ -257,7 +259,7 @@ export class CreditsScene extends Scene {
     return {
       rows,
       score: st.score ?? 0, diff: getDiff(st.difficulty), charId: st.charId, relics: Math.min(5, p.relics?.length ?? 0),
-      stars: p2Kind ? stars : null,
+      stars: p2Kind ? stars : null, ng: NG.ngOf?.(st) ?? 0,
     };
   }
   /** 마지막 화면 안내: [달성 엔딩 수, 엔딩 이름 목록(모르는 것은 ???), 힌트·인사…] */
@@ -274,6 +276,12 @@ export class CreditsScene extends Scene {
     if (K === 'true') out.push('모든 밤을 끝낸 전설의 헌터에게 경의를! 아케이드 모드에서 한계에 도전해 보세요');
     else if (K === 'p2true') out.push('일곱 세계에 새벽을 되찾은 전설의 헌터에게 경의를! 아케이드 모드에서 한계에 도전해 보세요');
     else out.push('아케이드 모드: 보스 러시 · 서바이벌 · 스테이지 연습에서 명예의 전당에 도전하세요');
+    // 2부 엔딩 뒤: 이 슬롯으로 다음 회차를 열 수 있다 (ngplus §4.2 — 마지막 줄 앞)
+    const st = this.game.state;
+    if (P2_KINDS.has(K) && st && NG.canStartNg?.(st)) {
+      const n = NG.ngOf?.(st) ?? 0;
+      out.splice(out.length - 1, 0, `이어하기에서 이 슬롯을 고르면 「피의 윤회」로 ${NG.ngLabel?.(Math.min(9, n + 1)) || `${n + 2}회차`}를 시작할 수 있습니다`);
+    }
     return out;
   }
   endRoll() {
@@ -419,7 +427,8 @@ export class CreditsScene extends Scene {
     frame(ctx, x, y, w, h, { glow: 0.8, accent });
     text(ctx, 'YOUR JOURNEY', vw / 2, y + 40, { size: 26, align: 'center', weight: 900, family: FONT.logo, color: accent, ow: 4 });
     const ch = CHARACTERS[S.charId];
-    text(ctx, `${ch?.name ?? ''} · ${S.diff?.name ?? ''} 난이도`, vw / 2, y + 64, { size: 14, align: 'center', weight: 700, color: BONE, ow: 2 });
+    const ngTag = S.ng > 0 ? ` · ${NG.ngLabel?.(S.ng) || `${S.ng + 1}회차`}` : '';
+    text(ctx, `${ch?.name ?? ''} · ${S.diff?.name ?? ''} 난이도${ngTag}`, vw / 2, y + 64, { size: 14, align: 'center', weight: 700, color: BONE, ow: 2 });
     ornament(ctx, vw / 2, y + 78, 300);
     // 두 칸 표: 행이 늘어도 (2부 엔딩은 11칸) 아래 보석 줄과 겹치지 않도록 줄 간격을 맞춘다
     const lines = Math.ceil(S.rows.length / 2);

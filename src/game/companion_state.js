@@ -19,6 +19,7 @@ import {
   STABLE_SHOP, TRIBUTE, CMP_TEXT, companionDef, normCompanionId, cexpToNext, guardianShare, trampleRatio, cdMul,
   mountHpMul, mountSpeedMul, bondRank, bondNext, cmpText, GUARD_RULES, EGG_TEXT,
 } from '../data/companions.js';
+import { serviceChapter } from './ngplus.js';   // [hook:ng] 회차의 마을 = 20장 (docs/specs/ngplus.md §4.3)
 
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const has = (o, k) => isObj(o) && typeof k === 'string' && Object.hasOwn(o, k);
@@ -192,7 +193,7 @@ export function markSeen(state, id) {
   return true;
 }
 /** 수호신 칸 수: 8장 클리어부터 2칸 (§2.5) */
-export function guardianSlots(state) { return chapterOf(state) >= 8 ? 2 : 1; }
+export function guardianSlots(state) { return serviceChapter(state) >= 8 ? 2 : 1; }   // [hook:ng] 회차면 20장처럼 (2번 칸이 닫혀 두 번째 수호신이 편성에서 빠지지 않게)
 /** 합류 시작 레벨: clamp(round(영웅 최고 레벨 × 0.7), 1, 25) (§2.3) */
 export function startLevelFor(state) {
   let max = 1;
@@ -592,7 +593,7 @@ export function buyCompanion(state, id) {
   const row = STABLE_SHOP.find((r) => r.id === n);
   if (!c || !row) return { ok: false, msg: '마구간에서 파는 동료가 아니다' };
   if (Object.hasOwn(c.owned, n)) return { ok: false, msg: CMP_TEXT.owned };
-  if (chapterOf(state) < row.chapter) return { ok: false, msg: row.lockNote };
+  if (serviceChapter(state) < row.chapter) return { ok: false, msg: row.lockNote };   // [hook:ng] 회차면 20장처럼
   if (!(Number.isFinite(state.gold) && state.gold >= row.price)) return { ok: false, msg: CMP_TEXT.poor };
   state.gold -= row.price;
   unlockCompanion(state, n, { source: 'shop' });

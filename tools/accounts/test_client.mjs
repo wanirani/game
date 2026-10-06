@@ -361,6 +361,21 @@ test('형식이 틀린 로그인 응답(아이디·토큰)은 저장하지 않�
   await ctx.close();
 });
 
+test('요약 summarize: 회차 ng (ngplus.md §5.3) — 서버 saveSummary 와 같은 모양 (ng.n 정수 ≥ 1 → 최대 9, 아니면 없음)', async () => {
+  const sval = await import(path.join(ROOT, 'netlify/lib/validate.mts'));
+  const base = () => ({ charId: 'kael', heroes: { kael: { level: 72, classId: 'kael_hunter', equip: {} } }, inventory: [], progress: { chapter: 3 }, stats: { playTime: 99.5 }, difficulty: 'normal', gold: 10, savedAt: 1759712000000 });
+  const cases = [[undefined, undefined], [{ v: 1, n: 2, at: 1, hist: [], past: {} }, 2], [{ n: 1 }, 1], [{ n: 9 }, 9], [{ n: 12 }, 9], [{ n: 0 }, undefined], [{ n: -1 }, undefined], [{ n: 2.5 }, undefined],
+    [{ n: '2' }, undefined], ['x', undefined], [null, undefined], [7, undefined], [[2], undefined]];
+  for (const [ng, want] of cases) {
+    const s = base();
+    if (ng !== undefined) s.ng = ng;
+    const c = cloudMod.summarize(s), sv = sval.saveSummary(s);
+    assert.equal(c.ng, want, `ng ${JSON.stringify(ng)} → ${JSON.stringify(c)}`);
+    assert.equal('ng' in c, want !== undefined, `ng ${JSON.stringify(ng)}: 1회차 요약에는 ng 키가 없다`);
+    assert.deepEqual(c, sv, `ng ${JSON.stringify(ng)}: 클라이언트 요약 = 서버 요약`);
+  }
+});
+
 let pass = 0, fail = 0;
 for (const t of tests) {
   if (FILTER && !t.name.includes(FILTER)) continue;

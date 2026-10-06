@@ -355,6 +355,33 @@ test('정리: 30일 지난 raw/·hour/ 는 지우고 agg/·state/ 와 최근 원
   assert.equal(fn.config.schedule, '@daily');
 });
 
+test('회차 ng (docs/specs/ngplus.md §7): 네 사건에 선택 정수 1–9, 그 밖은 거절 · 모으기는 회차 칸을 따로', async () => {
+  const four = [ev.sstart, ev.clear, ev.death, ev.boss];
+  // ng 2 가 든 stage_clear 통과 (네 사건 모두, 1과 9 경계도)
+  assert.equal((await post(batch([ev.clear({ ng: 2 })]))).status, 204);
+  assert.equal((await post(batch(four.map((m) => m({ ng: 1 }))))).status, 204);
+  assert.equal((await post(batch(four.map((m) => m({ ng: 9 }))))).status, 204);
+  assert.equal((await post(batch(four.map((m) => m({ ng: null }))))).status, 204, 'null = 없음 (선택 필드)');
+  for (const bad of [0, 10, '2', 2.5, -1, true, [2]]) {
+    for (const m of four) {
+      const r = await post(batch([m({ ng: bad })]));
+      assert.equal(r.status, 400, `ng ${JSON.stringify(bad)} (${m().t}): ${r.status}`);
+    }
+  }
+  // 다른 사건에는 ng 가 없다
+  for (const m of [ev.arcade, ev.start, ev.perf, ev.error]) assert.equal((await post(batch([m({ ng: 2 })]))).status, 400, `${m().t} 에 ng 는 모르는 필드`);
+  assert.ok(tel.checkEvent(ev.clear({ ng: 2 }))?.ng === 2);
+  // 모으기: 회차 시작·클리어는 '<난이도>_ng<n>' 칸, 회차 사망·보스는 1회차 표에 섞지 않는다 (사건 수에는 센다)
+  const a = tel.emptyAgg();
+  tel.foldBatch(a, { ev: [ev.sstart(), ev.sstart({ ng: 2 }), ev.clear({ ng: 2, time: 60 }), ev.clear(), ev.death({ ng: 2 }), ev.boss({ ng: 2 }), ev.death()] });
+  assert.deepEqual(a.starts, { 's01|normal': 1, 's01|normal_ng2': 1 });
+  assert.equal(a.clears['s01|normal'].n, 1); assert.equal(a.clears['s01|normal_ng2'].n, 1);
+  assert.equal(a.deaths.s01.n, 1); assert.deepEqual(a.bosses, {});
+  assert.equal(a.events, 7); assert.equal(a.types.death, 2); assert.equal(a.types.boss_result, 1);
+  const sum = tel.summarize(a);
+  assert.equal(sum.clears['s01|normal_ng2'].stage, 's01'); assert.equal(sum.clears['s01|normal_ng2'].diff, 'normal_ng2'); assert.equal(sum.clears['s01|normal_ng2'].starts, 1);
+});
+
 test('요약 합치기: 교환 법칙(순서와 무관) · 오류·칸 수 상한', () => {
   const a = tel.emptyAgg(), b = tel.emptyAgg();
   tel.foldBatch(a, { ev: [ev.start(), ev.death(), ev.error()] });
@@ -391,7 +418,7 @@ test('클라이언트·서버 계약: 사건 종류와 필수 필드가 같다, 
   assert.equal(G('', 'localhost', 'http:').ok, false);
   assert.equal(G('?telemetry=1', 'localhost', 'http:').ok, true);
   assert.equal(G('?telemetry=1', '192.168.0.2', 'http:').ok, false);
-  for (const p of ['debug', 'scene=stage', 'nosw', 'feelstats', 'painted=0', 'lo=1', 'stage=s01', 'qa']) assert.equal(G(`?${p}`, 'blood.example', 'https:').why, 'dev', p);
+  for (const p of ['debug', 'scene=stage', 'nosw', 'feelstats', 'painted=0', 'lo=1', 'stage=s01', 'qa', 'ng=2']) assert.equal(G(`?${p}`, 'blood.example', 'https:').why, 'dev', p);
   assert.equal(G('?telemetry=1', 'claude.ai', 'https:').ok, false);
   assert.equal(G('', 'appassets.androidplatform.net', 'https:', {}, { __BN_APP: { apiProxy: true } }).ok, true);
   assert.equal(G('', 'appassets.androidplatform.net', 'https:', {}, { __BN_APP: { apiProxy: false } }).why, 'app');

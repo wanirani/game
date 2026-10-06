@@ -6,6 +6,7 @@
 //  - 가상 패드는 scene 플래그 hidePad 로 숨긴다 (game.syncPad 가 유일한 주인)
 //  - 토스트(컨트롤러 연결 알림 등)는 오른쪽 정보 카드 아래 칸 (toastX/toastY, UI 좌표)
 //  - '마을로 귀환' 은 마을 동쪽 성문 앞에서 시작한다 (hub {from: 스테이지 id})
+//  - 회차 (docs/specs/ngplus.md §4.1): 정보 카드 머리 줄 'CHAPTER {c} · {N}회차' (world.ng ≥ 1)
 import { Scene } from '../core/game.js';
 import { input } from '../core/input.js';
 import { audio } from '../core/audio.js';
@@ -15,6 +16,7 @@ import { drawHints } from '../core/prompts.js';
 import { clamp, ease, fmtTime, TAU } from '../core/math.js';
 import { CHARACTERS } from '../data/characters.js';
 import { CLASSES } from '../data/classes.js';
+import * as NG from '../game/ngplus.js';
 import {
   PAL, frame, divider, glow, glowOval, glyph, gauge, diamond, gbutton, Nav, Gesture, Embers,
 } from './menu/common.js';
@@ -300,7 +302,8 @@ export class PauseScene extends Scene {
     const cx0 = L.cx0 + (1 - kIn) * 40;
     frame(ctx, cx0, cy0, cw, ch, { top: 'rgba(24,12,30,0.9)', bot: 'rgba(8,4,12,0.92)' });
     const st = w.stage || {};
-    text(ctx, `CHAPTER ${st.chapter ?? ''}`, cx0 + 22, cy0 + 30, { size: 12, weight: 800, family: FONT.num, color: PAL.goldMid });
+    const ng = w.ng > 0 ? NG.ngLabel?.(w.ng) || `${w.ng + 1}회차` : '';
+    text(ctx, `CHAPTER ${st.chapter ?? ''}${ng ? ` · ${ng}` : ''}`, cx0 + 22, cy0 + 30, { size: 12, weight: 800, family: FONT.num, color: PAL.goldMid });
     text(ctx, st.name ?? '', cx0 + 22, cy0 + 60, { size: 26, weight: 800, family: FONT.title, color: PAL.bone, ow: 4, maxWidth: cw - 44 });
     if (st.sub) text(ctx, st.sub, cx0 + 22, cy0 + 80, { size: 12, weight: 600, color: PAL.dim, maxWidth: cw - 44 });
     divider(ctx, cx0 + 16, cy0 + 94, cw - 32);

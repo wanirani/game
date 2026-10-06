@@ -55,7 +55,7 @@ export class Boss extends Entity {
     this.facing = -1;
     this.z = 4;
     this.aggro = diff.aggro ?? 1;
-    this.inferno = world.state.difficulty === 'inferno' || world.state.difficulty === 'nightmare';
+    this.inferno = world.state.difficulty === 'inferno' || world.state.difficulty === 'nightmare' || !!world.ngBoss;   // [hook:ng] 회차(2회차부터)도 강화 패턴
     this.anim = 'idle'; this.animT = 0;
     this.dying = 0;
     this._tgT = 0; this._tgOn = false;   // [hook:feel] 예고(윈드업) 창 — get telegraph

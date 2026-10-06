@@ -255,13 +255,15 @@ export function isEligibleLocation(loc) {
 }
 
 // ───────────────────────── 요약 · 동기화 판정 ─────────────────────────
-/** 세이브 요약 (서버의 summary 와 같은 모양) */
+/** 세이브 요약 (서버의 summary 와 같은 모양). 회차 세이브면 ng = 지난 회차 수 1..9 (docs/specs/ngplus.md §5.3 — ngplus.js 를 import 하지 않는 첫 조각 인라인 읽기) */
 export function summarize(s) {
   if (!isObj(s)) return null;
   const hero = isObj(s.heroes) ? s.heroes[s.charId] : null;
+  const ng = Number.isInteger(s.ng?.n) && s.ng.n > 0 ? Math.min(9, s.ng.n) : 0;   // [hook:ng]
   return {
     charId: s.charId ?? null, level: hero?.level ?? 1, classId: hero?.classId ?? null, chapter: s.progress?.chapter ?? 0,
     playTime: s.stats?.playTime ?? 0, difficulty: s.difficulty ?? null, gold: s.gold ?? 0, clientSavedAt: s.savedAt ?? null,
+    ...(ng ? { ng } : {}),
   };
 }
 

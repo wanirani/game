@@ -10,6 +10,7 @@
 //  - 이명 (docs/specs/achievements.md §8.3, ACH-UI): 온라인 목록 줄의 별명 뒤에 작은 금색 「이름」 — 고정 목록(core/ach_meta.js ACH_TITLES)
 //    id 만 이름으로 옮기고 모르는 id 는 그리지 않는다. 별명 칸 폭 안에서 이명을 먼저 줄이고(…), 그래도 모자라면 이명을 뺀다
 //    (별명은 줄이지 않는다). 왼쪽 '공개 별명' 줄 끝에 내 이명
+//  - 회차 (docs/specs/ngplus.md §4.1 · §7): 기기 순위표의 스토리 줄은 회차마다 한 줄 — h.ng ≥ 1 이면 '{N}회차 · {c}장 클리어' 처럼 앞에 붙인다
 import { Scene } from '../../core/game.js';
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
@@ -28,6 +29,7 @@ import {
 } from './common.js';
 import { COURSES, visibleCourses, p2Known, exKnown } from './arcade.js';
 import * as ENDING from './ending.js';
+import * as NG from '../../game/ngplus.js';
 import { bus } from '../../core/events.js';
 import { cloud } from '../../core/cloud.js';
 import * as ONLINE from '../../core/online.js';
@@ -71,7 +73,12 @@ function detail(h) {
     case 'survival': return `WAVE ${h.wave ?? '?'}`;
     case 'tower': return `${h.floor ?? 0}층 돌파${d ? ' · ' + d.name : ''}`;
     case 'practice': return stg ? `${stg.side ? '외전' : `${stg.chapter}장`} ${stg.name}` : '연습';
-    default: return h.stageId === 'ending' ? '엔딩 도달' : stg ? (stg.side ? '외전 클리어' : `${stg.chapter}장 클리어`) : (d?.name ?? '');
+    default: {
+      const s = h.stageId === 'ending' ? '엔딩 도달' : stg ? (stg.side ? '외전 클리어' : `${stg.chapter}장 클리어`) : (d?.name ?? '');
+      // 회차 줄 (항목의 ng 는 클라우드에서 합쳐 온 값일 수도 있다 — 1..9 정수만)
+      const ng = (h.mode || 'story') === 'story' && Number.isInteger(h.ng) && h.ng >= 1 ? NG.ngLabel?.(Math.min(9, h.ng)) || `${Math.min(9, h.ng) + 1}회차` : '';
+      return ng ? `${ng} · ${s}` : s;
+    }
   }
 }
 /** 본 엔딩 수 / 전체 엔딩 수 (ending.js ENDINGS: bad·normal·true + 2부 p2·p2true) */

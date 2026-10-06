@@ -1,9 +1,11 @@
 // 하드윈의 대장간: 강화(주문서 선택 · 확률/비용 · 다음 단계 미리보기 → 모루 위 단조 연출 → 성공/실패/파괴) · 무기·방어구 구매
+// 회차 (docs/specs/ngplus.md §4.3): 구매 재고 장은 NG.serviceChapter (회차면 20장까지 연 것처럼)
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
 import { text, button, bar, panel, FONT, COLORS, font } from '../../core/ui.js';
 import { fmt, rand, clamp, TAU, ease, lerp, rgba } from '../../core/math.js';
 import * as Shop from '../../data/shop.js';
+import * as NG from '../../game/ngplus.js';
 import * as Items from '../../data/items.js';
 import * as Enh from '../../game/enhance.js';
 import { countItem } from '../../game/inventory.js';
@@ -62,7 +64,7 @@ export class SmithScene extends ServiceScene {
       if (keepUid) { const i = this.entries.findIndex((e) => e.inst.uid === keepUid); if (i >= 0) this.list.index = i; }
     } else {
       let stock = [];
-      try { stock = Shop.smithStock(st.progress?.chapter ?? 0) || []; } catch (e) { console.error(e); }
+      try { stock = Shop.smithStock(NG.serviceChapter?.(st) ?? st.progress?.chapter ?? 0) || []; } catch (e) { console.error(e); }
       this.entries = stock.filter((s) => baseOf(s)).map((s) => {
         const inst = makeInst(s.baseId, { rarity: s.rarity ?? 0, affixes: [] });
         return inst ? { inst, price: s.price ?? 100, tag: s.tag, note: s.note } : null;

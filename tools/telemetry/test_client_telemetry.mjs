@@ -1,7 +1,7 @@
 // 익명 통계 클라이언트 탐침 (헤드리스 Chromium, tools/qa/lib/server.mjs): node tools/telemetry/test_client_telemetry.mjs [--filter=문자열]
 //  - /api/** 는 실제 핸들러(netlify/functions/api.mts) + 메모리 저장소로 처리하고, 보낸 묶음을 서버 검사(checkBatch)로 다시 확인한다
 //  - 개발 서버(localhost) + ?telemetry=1: session_start · 타이틀 안내 카드 · 오류(창·잡힌 오류·거부된 약속, 프레임은 file:line:col 만) ·
-//    스테이지/사망(낙사·적·함정)/보스/클리어/아케이드 사건 모양 · 설정 끄기(보내기 멈춤, 기록·설치 id 지움)와 옵션 줄로 다시 켜기
+//    스테이지/사망(낙사·적·함정)/보스/클리어/아케이드 사건 모양 · 회차(?ng=2) 사건의 ng · 설정 끄기(보내기 멈춤, 기록·설치 id 지움)와 옵션 줄로 다시 켜기
 //  - GPC(navigator.globalPrivacyControl) 면 기본 끔 → 아무것도 보내지 않음
 //  - 공식 사이트 흉내(https://game.test, 운영 CSP): navigator.webdriver 이고 ?telemetry=1 이 없으면 아무것도 걸지 않음 /
 //    webdriver 가 아니면 보냄 (숨을 때 sendBeacon text/plain, CSP 위반 0)
@@ -188,6 +188,32 @@ test('스테이지·사망·보스·클리어·아케이드 사건 모양', asyn
   const ar = ev.find((e) => e.t === 'arcade_result');
   assert.deepEqual([ar.mode, ar.score, ar.wave, ar.time, ar.cleared, ar.hero, ar.diff], ['survival', 98765, 14, 321.5, false, 'lia', 'hard']);
   assert.equal(new Set(ev.map((e) => e._id)).size, 1, '설치 id 하나');
+  assert.ok(ev.every((e) => !('ng' in e)), '1회차에는 ng 를 싣지 않는다 (docs/specs/ngplus.md §7)');
+  await s.close();
+});
+
+test('회차 ng (docs/specs/ngplus.md §7): 스토리 회차면 시작·사망·보스·클리어에 ng, 아케이드 결과에는 없음', async () => {
+  const log = [];
+  const s = await env.page(VP, null);
+  await hook(s.ctx, log);
+  await s.goto('index.html?telemetry=1&scene=stage&stage=s01&ng=2');
+  await waitQ(s, 'stage_start');
+  await s.skipDialogue();
+  assert.equal(await s.page.evaluate(() => window.__game.world?.ng), 2, 'world.ng (NG-CORE 월드 훅 · ?ng= 디버그)');
+  await s.page.evaluate(() => { const w = window.__game.world, p = w.player; p.hp = 1; w.onPlayerFell(p); });
+  await bus(s, 'bossStarted', { bossId: 'b_nightwing', stageId: 's01', time: 100 });
+  await bus(s, 'bossKilled', { bossId: 'b_nightwing', stageId: 's01', time: 162.5 });
+  await bus(s, 'stageCleared', { stageId: 's01', rank: 'A', time: 170.25, score: 12345 });
+  await bus(s, 'arcadeFinished', { kind: 'survival', cleared: false, reason: null, score: 1, time: 3, extra: { wave: 1 }, charId: 'kael', diff: 'normal', stageId: 'arena' });
+  await drain(s);
+  const ev = eventsOf(log);   // 서버 검사(checkBatch) 통과
+  for (const t of ['stage_start', 'death', 'boss_result', 'stage_clear']) {
+    const e = ev.find((x) => x.t === t);
+    assert.ok(e, `${t} 없음: ${JSON.stringify(ev.map((x) => x.t))}`);
+    assert.equal(e.ng, 2, `${t}.ng`);
+  }
+  assert.ok(!('ng' in ev.find((x) => x.t === 'arcade_result')), 'arcade_result 에는 ng 가 없다');
+  assert.ok(!('ng' in ev.find((x) => x.t === 'session_start')), 'session_start 에는 ng 가 없다');
   await s.close();
 });
 

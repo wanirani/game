@@ -136,9 +136,13 @@ export function isValidSave(s: any): boolean {
 const num = (v: unknown, d = 0): number => (typeof v === 'number' && Number.isFinite(v) ? v : d);
 const str = (v: unknown, max: number): string | null => (typeof v === 'string' && v.length <= max ? v : null);
 
-/** 슬롯 목록용 요약 (Blobs 메타데이터에 함께 저장 — 2KB 제한 안쪽) */
+/**
+ * 슬롯 목록용 요약 (Blobs 메타데이터에 함께 저장 — 2KB 제한 안쪽).
+ * 회차 세이브(docs/specs/ngplus.md §5.4)면 ng = 지난 회차 수 (정수 ≥ 1 → 최대 9). ng 모양으로 세이브를 거절하지는 않는다 (isValidSave 그대로)
+ */
 export function saveSummary(s: any): Record<string, unknown> {
   const hero = s.heroes[s.charId];
+  const ng = isObj(s.ng) && Number.isInteger(s.ng.n) && s.ng.n >= 1 ? Math.min(s.ng.n, 9) : 0;
   return {
     charId: s.charId,
     level: Math.floor(num(hero.level, 1)),
@@ -148,6 +152,7 @@ export function saveSummary(s: any): Record<string, unknown> {
     difficulty: str(s.difficulty, 24) ?? 'normal',
     gold: Math.floor(num(s.gold, 0)),
     clientSavedAt: typeof s.savedAt === 'number' && Number.isFinite(s.savedAt) ? s.savedAt : null,
+    ...(ng ? { ng } : {}),
   };
 }
 
