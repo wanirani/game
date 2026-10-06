@@ -1,13 +1,17 @@
 {
- "when": "2026-10-06T04:25:17.244Z",
+ "when": "2026-10-06T15:56:47.510Z",
  "note": "per-file [hook:*] counts; node tools/qa/hook_tags.mjs --update rewrites it",
  "counts": {
+  "src/core/audio.js": {
+   "gal": 11
+  },
   "src/core/camera.js": {
    "feel": 3,
    "plat": 5
   },
   "src/core/cloud.js": {
    "ach": 4,
+   "gal": 4,
    "ng": 1,
    "plat": 1
   },
@@ -68,6 +72,9 @@
    "feel": 8,
    "ng": 1
   },
+  "src/game/bosses/e_hagen.js": {
+   "feel": 1
+  },
   "src/game/bosses/index.js": {
    "p2": 5
   },
@@ -123,6 +130,7 @@
   "src/main.js": {
    "cmp": 5,
    "ach": 2,
+   "gal": 1,
    "plat": 2,
    "ng": 5
   },
@@ -140,7 +148,7 @@
   },
   "src/scenes/front/arcade_run.js": {
    "plat": 1,
-   "ach": 3
+   "ach": 4
   },
   "src/scenes/front/cloud_ui.js": {
    "ng": 3
@@ -149,14 +157,18 @@
    "ng": 3
   },
   "src/scenes/front/ending.js": {
-   "ng": 4
+   "ng": 4,
+   "gal": 2
   },
   "src/scenes/front/highscore.js": {
    "ng": 2,
-   "ach": 1
+   "ach": 2
   },
   "src/scenes/front/slots.js": {
    "ng": 11
+  },
+  "src/scenes/front/story.js": {
+   "gal": 8
   },
   "src/scenes/index.js": {
    "awaken": 2,
@@ -166,11 +178,17 @@
    "cmp": 1,
    "plat": 1
   },
+  "src/scenes/menu/tab_bestiary.js": {
+   "ng": 3
+  },
   "src/scenes/menu/tab_system.js": {
    "ach": 2
   },
   "src/scenes/pause.js": {
    "ng": 2
+  },
+  "src/scenes/reg_front.js": {
+   "gal": 2
   },
   "src/scenes/reg_town.js": {
    "cmp": 2
@@ -180,6 +198,12 @@
   },
   "src/scenes/stage.js": {
    "plat": 4
+  },
+  "src/scenes/title.js": {
+   "gal": 5
+  },
+  "src/scenes/town/church.js": {
+   "gal": 9
   },
   "src/scenes/town/facades.js": {
    "ng": 2
