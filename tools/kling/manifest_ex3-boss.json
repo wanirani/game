@@ -1,0 +1,139 @@
+{
+ "package": "EX3-BOSS",
+ "model": "kling-image-v3_0_omni (portraits: text_to_image · parts / edits: image_to_image, img_resolution 2k)",
+ "prompts": "tools/painted/prompts/ex3-boss.mjs (SHOTS)",
+ "refs": {
+  "portrait": "hg_portrait #2 full-res PNG 1760x2368 (file_upload) — 图片1 for every image_to_image call",
+  "portraitUrl": "https://s15-kling.klingai.com/kimg/EMXN1y8qRAoGdXBsb2FkEg55bGFiLXN0dW50LXNncBoqYWdlbnRfdXBsb2FkLzE3OTEyNjI4OTkvTGxxTGVkc3k5eC9wdDIucG5n.origin?x-kcdn-pid=112372",
+  "portrait2": "hg_portrait2 #1 full-res PNG 1760x2336 (file_upload) — 图片2 for the werewolf parts (hg_beast · hg_heads · hg_arms)",
+  "portrait2Url": "https://s15-kling.klingai.com/kimg/EMXN1y8qRAoGdXBsb2FkEg55bGFiLXN0dW50LXNncBoqYWdlbnRfdXBsb2FkLzE3OTEyNjMwNDMvZVJMRUNoczlsNy9wdzEucG5n.origin?x-kcdn-pid=112372"
+ },
+ "creditsCap": 44,
+ "imagesCap": 22,
+ "creditsAtStart": 5101,
+ "generations": [
+  {
+   "boss": "b_hagen",
+   "shot": "hg_portrait",
+   "tool": "text_to_image",
+   "generationId": "AVW1w16rVioAJsZbfzTSOGlb04m5_ekCmWnys3s9RVYXLEtYCuFin5dYlmr2pjnnb40CY6Mk",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "credits": 4,
+   "refs": "none",
+   "decision": "#2 kept → assets/portraits/b_hagen.webp (raw 1760x2368 → width 761 LANCZOS → top 968 rows = 761x968, WebP q82 m6, 70,178 B; urlWithoutWatermark). Three-quarter view: battered wide-brimmed hat, grey beard, glowing amber wolf eyes, snow-crusted leather coat, crossed bandolier, one lever rifle held across the body, knife at the belt, campfire + moon + frozen monastery. Full-res PNG uploaded as 图片1 for every part. #1 unused (a second rifle over the shoulder)."
+  },
+  {
+   "boss": "b_hagen",
+   "shot": "hg_portrait2",
+   "tool": "image_to_image",
+   "generationId": "AUR1RYtiapu8qidnqKHAoNf1a6pSEDJvNwbfQ0URSBUmeqZk_M9ABedytEL6GF0ILqqLfM6g",
+   "aspect": "3:4",
+   "imageCount": 2,
+   "credits": 4,
+   "refs": "portrait",
+   "decision": "#1 kept → assets/portraits/b_hagen2.webp (761x968 q82, 99,170 B — same processing). Same composition: towering silver-grey werewolf, snarl, amber eyes, torn shreds of the leather coat, bandolier, campfire/monastery/moon. Full-res PNG uploaded as 图片2 for the werewolf parts. #2 unused (an intact vest, the coat not torn)."
+  },
+  {
+   "boss": "b_hagen",
+   "shot": "hg_full",
+   "tool": "image_to_image",
+   "generationId": "AQ6LOBq_zWeqXPhRnGoyvEVQR5rFY7HFreue9EmOGToSuyVri1_EoVT3SsQ6F3FET3LQ4Qwg",
+   "aspect": "9:16",
+   "imageCount": 2,
+   "credits": 4,
+   "refs": "portrait",
+   "decision": "both rejected: #1 profile facing LEFT with the near arm hanging over the coat and a white sticker border; #2 three-quarter facing left with both arms. Retried once as hg_full2."
+  },
+  {
+   "boss": "b_hagen",
+   "shot": "hg_props",
+   "tool": "image_to_image",
+   "generationId": "Aetd_h7GEvCdUkj3rdLjqcwtaCHErCABjlwiVeqethdtFp_gT5TXt9AvTGB3O98qMof3VxH-",
+   "aspect": "1:1",
+   "imageCount": 1,
+   "credits": 2,
+   "refs": "portrait",
+   "decision": "#1 kept → raw/b_hagen/props_a (spiked steel snare ring = 'trap' — squashed flat in game to read as a ground snare; silver bullet = 'bullet'; bull horn with brass mouthpiece = 'horn'; torn vest / sleeve / scrap = 'debVest' · 'debSleeve' · 'debScrap' (coat tearing at moonrise); fur tuft = 'debFur')."
+  },
+  {
+   "boss": "b_hagen",
+   "shot": "hg_beast",
+   "tool": "image_to_image",
+   "generationId": "AVE1KktCoueAvxPU_V668Di-Xw_cKKB0QSAGa1NW6slr5jQJQtYa3M-ROVG_51xL_gsV8zWy",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "credits": 4,
+   "refs": "portrait + portrait2",
+   "decision": "#1 kept → raw/b_hagen/beast_a (mirrored to face right): the model drew a huge four-legged silver wolf (not the asked biped) with the torn coat draped over the back and the bandolier — kept on purpose, the phase-2 patterns are '앞발' / pounce / claw rush / moon dive and a quadruped reads as '은빛 늑대'; it rears up for howl and offer. Cut into wBody, hindU, hindL, foreU, foreL, wTailA, wTailB (lps 0.1). #2 unused (same pose, the coat covers more of the legs)."
+  },
+  {
+   "boss": "b_hagen",
+   "shot": "hg_heads",
+   "tool": "image_to_image",
+   "generationId": "AR_NXMKCNT8jk52AQhiq-vM9iqWmD_ZRRykpE1_hdhsmXIF4KsYUckzjBjJ-hkb6gTT61r92",
+   "aspect": "4:3",
+   "imageCount": 1,
+   "credits": 2,
+   "refs": "portrait + portrait2",
+   "decision": "#1 kept → raw/b_hagen/heads_a: werewolf head mouth closed = 'wHeadC', jaws open = 'wHeadO' (both facing right with the leather collar scrap, lps 0.1 = same scale as beast_a). The hatted hunter head (three-quarter) is unused — the profile head of hg_full2 #2 matches the body better."
+  },
+  {
+   "boss": "b_hagen",
+   "shot": "hg_arms",
+   "tool": "image_to_image",
+   "generationId": "AQdZqLkyxGw-MrNZdmWCXiKsmtNbHEz70FteUEAD8ns0MmjRrzzMmwW75KIbdsnah6GcPi4W",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "credits": 4,
+   "refs": "portrait + portrait2",
+   "decision": "partly failed (drew whole figures instead of separate pieces): #1 → raw/b_hagen/arms_c (crop x 1760–2720 of the image: the vertical lever-action rifle = 'rifle'; the werewolf lower foreleg is unused — beast_a has its own); #2 → raw/b_hagen/arms_d (crop 1820,960–2720,1400: the bowie hunting knife = 'knife'; the revolver and figures unused). No usable human arm → retried once as hg_arms2 (human pieces only, portrait as the only reference)."
+  },
+  {
+   "boss": "b_hagen",
+   "shot": "hg_full2",
+   "tool": "image_to_image",
+   "generationId": "AbQOUY-MH4-0QU9FgNNqwG7WXn9-48OKBe6IWLSNrVlbGWjLKRHLicjSjHVIGcpIadIMCIb8",
+   "aspect": "9:16",
+   "imageCount": 2,
+   "credits": 4,
+   "refs": "portrait",
+   "decision": "retry (1 of 1 allowed) — both still face left with the near arm hanging; #2 kept anyway (clean strict profile, no sticker border, knife sheathed at the belt) → raw/b_hagen/full_a after a local fix (see derived): headH, torso, skirtF, tailA, tailB, boot (lps 0.0635). No further full-body attempt (retry limit).",
+   "retryOf": "hg_full"
+  },
+  {
+   "boss": "b_hagen",
+   "shot": "hg_arms2",
+   "tool": "image_to_image",
+   "generationId": "AZxETU_Ezu3QjKROzb76gErkSPAtQss2Nt_mPanUpCGPhJSZNfbq9IXiAf6boBSJe-cKydAD",
+   "aspect": "16:9",
+   "imageCount": 2,
+   "credits": 4,
+   "refs": "portrait",
+   "decision": "retry (1 of 1 allowed) — #1 → raw/b_hagen/arms_a (three horizontal fur-cuffed forearms; piece 3 = bare fist with silver wolf hairs = 'armF'); #2 → raw/b_hagen/arms_b (vertical pieces; piece 1 = upper arm with a ragged leather pauldron = 'armU'). Both kept.",
+   "retryOf": "hg_arms"
+  }
+ ],
+ "derived": [
+  {
+   "file": "tools/painted/raw/b_hagen/full_a.webp",
+   "from": "hg_full2 #2",
+   "how": "mirrored to face right; the hanging near arm (sleeve, cuff, hand — polygon in tools/kling, scratch script) was filled with a mirrored tiling of the coat-skirt leather (colour-matched to the surrounding torso) and the seam blended with cv2.inpaint (Telea, 6 px) + a 6 px feather. At puppet scale (≈40 px torso) the patch reads as coat leather; the puppet's own near arm is drawn over that side."
+  },
+  {
+   "file": "tools/painted/raw/b_hagen/beast_a.webp",
+   "from": "hg_beast #1",
+   "how": "mirrored to face right (Kling drew it facing left). Matte uses hard: −20 (no colour-key holes) — the silver fur is the same grey as the studio background; the rembg silhouette alone is clean."
+  },
+  {
+   "file": "assets/portraits/b_hagen.webp · b_hagen2.webp",
+   "from": "hg_portrait #2 · hg_portrait2 #1",
+   "how": "761 wide LANCZOS, top 968 rows (like the other Part 2 portraits), WebP q82 m6; lo copies by python3 tools/assets/make_variants.py (23,616 B · 32,220 B)."
+  }
+ ],
+ "imagesSpent": 16,
+ "creditsSpent": 32,
+ "creditsAtEnd": 5069,
+ "note": "Result URLs expire after 24 h; every kept image is stored as q95 webp under tools/painted/raw/b_hagen/ (portraits → assets/portraits/*.webp). urlWithoutWatermark was used, so no watermark removal was needed. Two retries were used (hg_full, hg_arms), one each; 6 images / 12 credits of the cap left unused.",
+ "budget": "16 images × 2 credits = 32 credits (cap 22 images / 44 credits; planned 12 + up to 10 retries; account 5101 → 5069)"
+}

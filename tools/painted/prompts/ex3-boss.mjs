@@ -4,6 +4,9 @@
 //  · form2 초상화: image_to_image 3:4, 图片1 = 사람 초상화 (같은 구도) → assets/portraits/b_hagen2.webp
 //  · 부품: image_to_image, 图片1 = 사람 초상화 (PNG 업로드), 늑대 부품은 图片2 = 늑대 초상화. 템플릿: docs/art/BOSS_PIPELINE.md §3
 // 퍼핏 방향: 옆모습, 오른쪽을 본다 (로직 e_hagen.js 의 몸 지역 좌표 +x = facing).
+// 실제로 쓴 것 (manifest_ex3-boss.json, 16장 · 32크레딧): hg_beast 는 두 장 모두 네 발 늑대로 나와 그대로 썼다(2페이즈 '앞발' 패턴과 맞는다) ·
+//   hg_full/hg_full2 는 네 장 모두 왼쪽을 보고 가까운 팔이 달려 있어 hg_full2 #2 를 뒤집고 팔 자리를 외투 가죽으로 메웠다 · hg_arms 는 조각 대신
+//   인물을 그려 장총·칼만 쓰고 팔은 hg_arms2.
 // 상한 22장 · 44크레딧 (재시도 포함). 결과(생성 ID·채택/기각 이유)는 tools/kling/manifest_ex3-boss.json 과 configs/b_hagen.json 의 kling 블록에 기록한다.
 // 사용: node tools/painted/prompts/ex3-boss.mjs [shotId]  → 프롬프트 출력 (Kling 호출은 에이전트가 MCP 로 한다)
 

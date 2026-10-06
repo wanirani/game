@@ -140,7 +140,7 @@ export const STAGES = {
   s23: S({ id: 's23', chapter: 23, part: 2, page: 0, side: true, name: '늑대 고개', sub: '북쪽 설원, 사냥꾼들이 돌아오지 않는 고개', theme: 'spire', bg: 'bg/s10_spire', tex: 'tex/tex_ice', tex2: 'tex/tex_castle_stone', tileStyle: 'ice',
     music: 's10', level: 74, darkness: 0.35, darkColor: '#04080e', liquid: 'water', boss: 'b_hagen', rooms: S23, parTime: 600,
     enemies: ['snow_wolf', 'wolf', 'ice_bat', 'frost_wraith', 'frozen_knight', 'ice_golem', 'shadow_hunter', 'mimic'], docs: [], shard: null, heart: null,
-    gimmick: { kind: 'wind', dir: 'alt', force: 800, on: 2.0, off: 4.4 }, color: '#ffcf6a', next: null, mapPos: { x: 0.94, y: 0.34 },   // mapPos 는 INTEG 가 겹침을 보고 고칠 수 있다 (§5.1)
+    gimmick: { kind: 'wind', dir: 'alt', force: 800, on: 2.0, off: 4.4 }, color: '#ffcf6a', next: null, mapPos: { x: 0.95, y: 0.4 },   // 통합: 0.94·0.34 → 0.95·0.4 (phone2 에서 드라큘라의 왕좌 이름표가 숨겨져서, ex_s23.md §10)
     req: '2부의 끝을 본 뒤, 액수 칸이 빈 현상금 공고가 에슈빌에 날아들면 갈 수 있다' }),
   arena: S({ id: 'arena', chapter: 0, name: '피의 투기장', sub: '서바이벌 & 보스 러시', theme: 'arena', bg: 'bg/s_arena', tex: 'tex/tex_castle_stone', tex2: 'tex/tex_dirt', tileStyle: 'stone',
     music: 'arena', level: 10, darkness: 0.3, boss: null, rooms: ARENA, parTime: 600, intro: null, outro: null,
@@ -148,8 +148,8 @@ export const STAGES = {
 };
 /** 1부 스테이지 (월드맵 첫 쪽, 서바이벌 적 풀 등 1부만 쓰는 곳) */
 export const STAGE_ORDER_P1 = ['s01', 's02', 's03', 's04', 's05', 's06', 's07', 's08', 's09', 's10', 's11', 's12', 's13'];
-/** 2부 스테이지 중 STAGES 에 실제로 있는 것만 (맵이 한 묶음씩 들어와도 모든 소비처가 그대로 동작). 끝의 s21 · s22 는 외전 (side: true) */
-export const STAGE_ORDER_P2 = ['s14', 's15', 's16', 's17', 's18', 's19', 's20', 's21', 's22'].filter((id) => STAGES[id]);   // [hook:p2]
+/** 2부 스테이지 중 STAGES 에 실제로 있는 것만 (맵이 한 묶음씩 들어와도 모든 소비처가 그대로 동작). 끝의 s21 · s22 · s23 은 외전 (side: true) */
+export const STAGE_ORDER_P2 = ['s14', 's15', 's16', 's17', 's18', 's19', 's20', 's21', 's22', 's23'].filter((id) => STAGES[id]);   // [hook:p2]
 /** 외전 스테이지 (STAGES[id].side — 2부 엔딩 뒤 세계 지도가 연다. 이야기 장 수·엔딩 판정에는 들지 않는다) */
 export const SIDE_STAGES = STAGE_ORDER_P2.filter((id) => STAGES[id].side);
 /** 이 스테이지가 외전인가 */

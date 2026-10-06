@@ -1591,6 +1591,64 @@
  "hurtboxNotes": "BOSS_PIPELINE §8.8 (documented, gameplay NOT changed): logic hit parts — phase 1 (hunter): hat head 34x34 at pts.head (0.9, kneel 0.6), body 40x58 between hip and neck (1.0 · reload 1.15 · kneel 0.7), legs 36x(hip height) (1.15); phase 2 (wolf): muzzle head 48x40 at wp.head (1.2), body 74x56 between hip and shoulder (1.0 · moonDive exposure 0.7 · offer 1.6 · kneel 0.7), coat-tail back 56x44 behind the hip (0.85), legs 96x(leg height) (1.1). No hit parts while above the screen in moonDive (ghost). The painted puppet is bigger than these boxes (tail, rifle) — the boxes are the logic's, the art only reads them.",
  "kling": {
   "manifest": "tools/kling/manifest_ex3-boss.json",
-  "prompts": "tools/painted/prompts/ex3-boss.mjs"
+  "prompts": "tools/painted/prompts/ex3-boss.mjs",
+  "images": {
+   "full_a": {
+    "shot": "hg_full2",
+    "generationId": "AbQOUY-MH4-0QU9FgNNqwG7WXn9-48OKBe6IWLSNrVlbGWjLKRHLicjSjHVIGcpIadIMCIb8",
+    "pick": 2,
+    "use": "headH, torso, skirtF, tailA, tailB, boot (lps 0.0635) — mirrored, near arm filled with coat leather (manifest derived)"
+   },
+   "beast_a": {
+    "shot": "hg_beast",
+    "generationId": "AVE1KktCoueAvxPU_V668Di-Xw_cKKB0QSAGa1NW6slr5jQJQtYa3M-ROVG_51xL_gsV8zWy",
+    "pick": 1,
+    "use": "wBody, hindU, hindL, foreU, foreL, wTailA, wTailB (lps 0.1) — mirrored"
+   },
+   "heads_a": {
+    "shot": "hg_heads",
+    "generationId": "AR_NXMKCNT8jk52AQhiq-vM9iqWmD_ZRRykpE1_hdhsmXIF4KsYUckzjBjJ-hkb6gTT61r92",
+    "pick": 1,
+    "use": "wHeadC, wHeadO (lps 0.1)"
+   },
+   "arms_a": {
+    "shot": "hg_arms2",
+    "generationId": "AZxETU_Ezu3QjKROzb76gErkSPAtQss2Nt_mPanUpCGPhJSZNfbq9IXiAf6boBSJe-cKydAD",
+    "pick": 1,
+    "use": "armF (piece 3, lps 0.0388)"
+   },
+   "arms_b": {
+    "shot": "hg_arms2",
+    "generationId": "AZxETU_Ezu3QjKROzb76gErkSPAtQss2Nt_mPanUpCGPhJSZNfbq9IXiAf6boBSJe-cKydAD",
+    "pick": 2,
+    "use": "armU (piece 1, lps 0.0274)"
+   },
+   "arms_c": {
+    "shot": "hg_arms",
+    "generationId": "AQdZqLkyxGw-MrNZdmWCXiKsmtNbHEz70FteUEAD8ns0MmjRrzzMmwW75KIbdsnah6GcPi4W",
+    "pick": 1,
+    "use": "rifle (crop x 1760–2720, lps 0.0794)"
+   },
+   "arms_d": {
+    "shot": "hg_arms",
+    "generationId": "AQdZqLkyxGw-MrNZdmWCXiKsmtNbHEz70FteUEAD8ns0MmjRrzzMmwW75KIbdsnah6GcPi4W",
+    "pick": 2,
+    "use": "knife (crop 1820,960–2720,1400, lps 0.046)"
+   },
+   "props_a": {
+    "shot": "hg_props",
+    "generationId": "Aetd_h7GEvCdUkj3rdLjqcwtaCHErCABjlwiVeqethdtFp_gT5TXt9AvTGB3O98qMof3VxH-",
+    "pick": 1,
+    "use": "trap, bullet, horn, debVest, debSleeve, debScrap, debFur"
+   }
+  },
+  "rejected": [
+   "hg_portrait #1",
+   "hg_portrait2 #2",
+   "hg_full #1 #2",
+   "hg_full2 #1",
+   "hg_beast #2",
+   "hg_arms (figures; only rifle + knife used)"
+  ]
  }
 }
