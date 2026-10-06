@@ -48,6 +48,8 @@ function badge(ctx, x, y, label, col) {
 
 export class SlotsScene extends Scene {
   constructor(g) { super(g); this.uiScale = true; this.hidePad = true; }
+  /** 동작 목록이 열려 있으면 토스트는 제목 줄로 — 휴대폰(높이 390)에서 기본 위치(y 92)가 목록 첫 줄 '불러오기'를 가린다 (업적 소급 알림 5초, '피의 윤회' 두 줄로 목록이 길어져 슬롯 2·3 도) */
+  get toastY() { return this.act ? this.layout().st + 30 : undefined; }   // [hook:ng]
   enter({ mode = 'load', index = null } = {}) {
     this.mode = mode;
     const q = this.game.tier === 'low' ? 0.5 : 1;
