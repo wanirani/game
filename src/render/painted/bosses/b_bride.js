@@ -188,7 +188,7 @@ function lady(D, ctx, R, b, st, ff, jr, t) {
   if (!lash) vine(D, R, b, true);
   // 2) 긴 베일 (머리 뒤 → 등 → 바닥, 로직 베일 띠의 방향으로 흔들린다). 전환 중에는 잿빛으로 타 들어간다
   const V0 = b.veil[0], V4 = b.veil[b.veil.length - 1];
-  const va = Math.atan2(V4.y - V0.y, V4.x - V0.x) + 0.12;
+  const va = clamp(Math.atan2(V4.y - V0.y, V4.x - V0.x) - 0.04, 1.35, 2.25);   // 베일을 젖혀도(부름) 깃발처럼 서지 않게
   aim(D, R.veilL, 'top', 'bot', V0.x, V0.y, va, 0, false, 1, 1 - 0.75 * (b.burnK ?? 0));
   // 3) 끌자락 (치마 뒷단 → 바닥을 따라 뒤로)
   const T0 = b.train[0], T6 = b.train[b.train.length - 1];
@@ -234,7 +234,7 @@ function crone(D, ctx, R, b, st, ff, jr, t) {
   // 2) 뒤로 흩날리는 베일 (머리 뒤)
   const mn = D.pt(hd.nk[0], hd.nk[1], hd.mn[0], hd.mn[1], P.neck.x, P.neck.y, hr, hd.k, hd.k, st.mk);
   const H0 = b.hair[0][0], H4 = b.hair[0][b.hair[0].length - 1];
-  aim(D, R.cMane, 'top', 'tip', mn[0], mn[1], Math.atan2(H4.y - H0.y, H4.x - H0.x) + 0.35 + Math.sin(t * 2.6) * 0.05, lvl, true);
+  aim(D, R.cMane, 'top', 'tip', mn[0], mn[1], Math.atan2(H4.y - H0.y, H4.x - H0.x) + 0.75 + Math.sin(t * 2.6) * 0.05, lvl, true);
   // 3) 넝마 자락 셋 (몸통 그림의 rA·rB·rC 에서, 로직 넝마 띠의 방향으로 흩날린다)
   D.rec = ff.legs;
   const rp = ['rA', 'rB', 'rC'], rn = ['ragA', 'ragB', 'ragC'];
