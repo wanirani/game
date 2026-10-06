@@ -424,16 +424,16 @@ export class Bride extends BossC {
     if (this.at(0.9)) { this.setPose({ bow: 0 }); this.arms('idle', 6); }
     if (t >= 1.5) this.done(0.8);
   }
-  /** 대기: 귀부인은 플레이어와 280px 안팎을 지키며 춤추듯 미끄러진다 (붙으면 물러선다) · 노파는 210px 안팎을 떠다닌다 */
+  /** 대기: 귀부인은 플레이어와 280px 안팎을 지키며 춤추듯 미끄러진다 (붙으면 빠르게 물러선다 — 서서 맞는 틈을 줄인다, §2 체급) · 노파는 210px 안팎을 떠다닌다 */
   idleMove(dt, world, t) {
     this.faceP();
     const A = this.A, p = this.P;
     const px = p ? p.cx : A.cx;
     const side = Math.sign(this.zx - px) || -this.facing;
     const d = this.crone ? 210 + Math.sin(this.t * 1.1) * 40 : 280 + Math.sin(this.t * 0.9) * 50;
-    const close = p && Math.abs(p.cx - this.zx) < (this.crone ? 110 : 140);
+    const close = p && Math.abs(p.cx - this.zx) < (this.crone ? 120 : 170);
     this.tzx = clamp(px + side * d, A.x0 + 80, A.x1 - 80);
-    this.spd = this.crone ? (close ? 300 : 190) : (close ? 260 : 140);
+    this.spd = this.crone ? (close ? 330 : 190) : (close ? 320 : 150);
     if (this.state === 'idle') this.setPose({ sway: 1, flare: this.crone ? 0 : 0.12 + 0.2 * this.walkK, lean: close ? -0.12 : 0 });
   }
 
@@ -509,11 +509,14 @@ export class Bride extends BossC {
       const f = this.facing, base = Math.min(this.A.floor, this.fy);
       const bands = [{ y: base - T, h: T, low: true }, { y: base - 2.6 * T, h: 0.8 * T, low: false }];
       if (Math.random() < 0.5) bands.reverse();
-      this.tl = { f, base, bands, x: f > 0 ? this.zx : this.zx - 8 * T };
+      this.tl = { f, base, bands, x: 0 };
+      // 덩굴을 감아 올리며 한 걸음 뒤로 미끄러진다 (붙어 있던 플레이어와 틈을 벌린다)
+      this.tzx = clamp(this.zx - f * 70, this.A.x0 + 60, this.A.x1 - 60); this.spd = 220;
     }
     const tl = this.tl;
     if (!tl) { if (t > 0.5) this.done(0.5); return; }
     if (this.at(0.6)) {
+      this.spd = 0; tl.x = tl.f > 0 ? this.zx : this.zx - 8 * T;
       tl.bands.forEach((b, i) => {
         strikeRect(this, { x: tl.x, y: b.y, w: 8 * T, h: b.h }, { warn: 0.6 + i * 0.35, life: 0.15, mv: i ? 0.75 : 0.7, color: CRIM, sfx: 'whip_crack', vol: 0.8, kb: [380, b.low ? -420 : -200],
           data: { lash: true, low: b.low, i }, onStart: () => { this.lashY = b.y + b.h / 2 - this.fy; this.lashK = 0; this.vineMode = 'lash'; this.arms('lash', 30); },
@@ -529,12 +532,13 @@ export class Bride extends BossC {
   s_roseBloom(dt, world, t) {
     const n = this.crone ? 5 : 3;
     if (this.at(0.001)) {
-      this.faceP(10); this.spd = 0;
+      this.faceP(10);
       this.arms('throwWind', 10); this.setPose({ lean: -0.15 });
       telegraph(this, 0.3, { sfx: 'warning', vol: 0.35, pitch: 1.1 });
+      this.tzx = clamp(this.zx - this.facing * 50, this.A.x0 + 60, this.A.x1 - 60); this.spd = 200;   // 던지며 뒤로 미끄러짐
     }
     if (this.at(0.3)) {
-      this.arms('throw', 24); this.setPose({ lean: 0.2 });
+      this.spd = 0; this.arms('throw', 24); this.setPose({ lean: 0.2 });
       audio.sfx('whip', { vol: 0.5, pitch: 1.4 });
       const offs = this.crone ? [0, -2, 2, -4, 4] : [0, -3, 3];
       this.roses(offs, { w: 64, h: 4, mv: 0.7, warn: 0.8, gap: 0.12 });
@@ -579,7 +583,7 @@ export class Bride extends BossC {
   // ── goblet 회춘의 잔: (고르는 조건: 체력 ≤ 85% · 이번 싸움 회복 성공 < 2) 성배를 머리 위로 1.8초(2페이즈 1.5초) — 성배에 금빛 고리, eye_glint.
   //    그동안 성배 판정(44×44, 손 위)을 한 대 치거나 몸통에 최대 체력 3% 이상 → 성배가 깨짐(ice pitch 1.6 + 금 파편) → stagger.
   //    못 끊으면 최대 체력 4% 회복(heal pitch 0.6, 붉은 숫자) — 2페이즈는 49.9% 까지 (전환이 다시 걸리지 않게).
-  //    15% 강제(_gobForce) + 스토리·처음: 0.6초에 대사 b_bride_last → 대사가 끝나면 카밀라가 성배를 깨고 긴 무릎 2.5초 (몸통 0.6) ──
+  //    15% 강제(_gobForce) + 스토리·처음: 성배를 들자마자 대사 b_bride_last → 대사가 끝나면 카밀라가 성배를 깨고 긴 무릎 2.5초 (몸통 0.6) ──
   s_goblet(dt, world, t) {
     const dur = this.crone ? 1.5 : 1.8;
     if (this.at(0.001)) {
@@ -595,8 +599,10 @@ export class Bride extends BossC {
       warnMark(this, this.pGob.x + this.pGob.w / 2, this.pGob.y - 26, Math.min(0.8, dur), GOLD);
     }
     if (this._lastMode) {
-      // 스토리 15%: 대사가 끝나야 진행 (대사 동안 월드가 멈춘다). 보여 줄 수 없게 되면 보통 회춘의 잔으로
-      if (this.at(0.6) && !phaseScript(this, 'b_bride_last', { onEnd: () => { this._lastEnd = true; } })) { this._lastMode = false; this._lastEnd = false; }
+      // 스토리 15%: 성배를 든 첫 프레임에 대사 b_bride_last (대사 동안 월드가 멈춘다) → 대사가 끝나면 카밀라가 깬다. 보여 줄 수 없게 되면 보통 회춘의 잔으로.
+      //   명세의 '0.6초' 대신 곧바로 — 0.6초를 기다리면 강한 영웅(스토리 봇 카엘)이 남은 13% 를 깎아 대사 없이 쓰러뜨렸다 (s23 VERIFY ① 과 같은 교훈)
+      if (this.at(0.001)) { Object.assign(this.arm, ARM.raise); this.rig(); this.syncParts(); }
+      if (this.at(0.001) && !phaseScript(this, 'b_bride_last', { onEnd: () => { this._lastEnd = true; } })) { this._lastMode = false; this._lastEnd = false; }
       else { if (this._lastEnd || t > 8) this.breakGoblet(world, true); return; }
     }
     if (this.gobletUp && this.at(dur)) {
