@@ -86,7 +86,7 @@ const TEST_STATES = new WeakSet();
 /** game.state 가 없으면(단독 테스트) 임시 세이브 생성. 여관 전용 기록 공간 보정 */
 export function ensureState(game) {
   if (!game.state) {
-    const s = newGameState({ slot: 1 });
+    const s = saves.markDebug(newGameState({ slot: 1 }));   // 다른 장면이 저장해도 진짜 슬롯에 닿지 않게
     s.gold = Math.max(s.gold, 5000);
     TEST_STATES.add(s);
     game.state = s;

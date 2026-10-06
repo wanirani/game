@@ -6,6 +6,7 @@
 //  5) 프로토타입 키 방어 (charId/heroes/difficulty 에 '__proto__', 'constructor' …)
 //  6) 20장 완료 + 동료 20 + 7단계 장비 + 가방 가득 세이브가 256 KB 미만 (서버 한도 512 KB)
 //  7) 내보내기 코드 왕복에 동료·조각·심장이 실린다, computeStats 가 유한한 값을 돌려준다
+//  8) 디버그 임시 세이브(saves.markDebug — ?scene=stage · ?scene=hub 부팅): write 는 진짜 슬롯 대신 디버그 칸 · 알림 없음 · slot 값 그대로
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,7 +16,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const imp = (p) => import(path.join(ROOT, p));
 const { SAVE_VERSION, newGameState, migrateState, ensureHero, storyJoinedChars } = await imp('src/game/state.js');
 const { computeStats } = await imp('src/game/stats.js');
-const { isValidSave, saves } = await imp('src/core/save.js');
+const { isValidSave, saves, DEBUG_SLOT } = await imp('src/core/save.js');
 const { CHARACTERS } = await imp('src/data/characters.js');
 const { CLASSES } = await imp('src/data/classes.js');
 const { ITEMS, makeItem, baseIdFor, WTYPES } = await imp('src/data/items.js');
@@ -224,6 +225,27 @@ ok(typeof code === 'string' && saves.importCode(2, code), 'exportCode → import
 const back = saves.read(2);
 ok(back && isDeepStrictEqual(back.progress.shards, ['k_star_2']) && isDeepStrictEqual(back.progress.hearts, ['k_heart_3']) && isDeepStrictEqual(back.companions, rt.companions), '코드에 shards/hearts/companions 가 실린다');
 saves.remove?.(2); saves.remove?.(3);
+
+// ── 8. 디버그 임시 세이브 ──
+section('debug boot state (saves.markDebug)');
+{
+  const real = clone(m1); real.charId = 'sera';
+  saves.write(1, real);
+  const before = JSON.stringify(saves.read(1));
+  const evs = []; const off = saves.onWrite((e) => evs.push(e));
+  const dbg = saves.markDebug(newGameState({ slot: 1, difficulty: 'normal', charId: 'kael' }));
+  dbg.gold = 4321;
+  quiet(() => saves.write(1, dbg));   // (Node 에는 저장소가 없어 메모리 기록 — false)
+  off();
+  ok(saves.isDebug(dbg) && !saves.isDebug(real) && !saves.isDebug(null), 'isDebug: 표시한 상태만');
+  ok(JSON.stringify(saves.read(1)) === before, '디버그 상태의 write(1) → 진짜 슬롯 1 그대로');
+  ok(saves.read(DEBUG_SLOT)?.gold === 4321 && saves.read(DEBUG_SLOT)?.charId === 'kael' && dbg.slot === 1, '디버그 칸(saves.read(DEBUG_SLOT))에 기록 · 상태의 slot 은 1 그대로');
+  ok(evs.length === 0, `디버그 기록은 onWrite 알림 없음 (클라우드가 올리지 않는다) (${evs.length})`);
+  ok(saves.list().every((x) => !x || x.charId !== 'kael' || x.slot !== 1), 'saves.list 의 슬롯 1 은 진짜 기록');
+  const copy = migrateState(saves.read(DEBUG_SLOT));
+  ok(!saves.isDebug(copy), '디버그 칸에서 읽어 만든 새 상태는 표시 없음 (불러온 세이브처럼 진짜 슬롯에 쓴다)');
+  saves.remove?.(1); saves.remove?.(DEBUG_SLOT);
+}
 
 console.log(`${fails ? '✗' : '✓'} test_save_v2: ${passes} 통과, ${fails} 실패${cmpStub ? ' (companion_state 는 아직 스텁 — 동료 항목 일부 생략)' : ''}`);
 process.exit(fails ? 1 : 0);

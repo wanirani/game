@@ -55,7 +55,7 @@ export class HubScene extends Scene {
   get deferToasts() { return (!!this.banner && this.banner.t < 3.6) || !!this.menuOpen; } // 마을 메뉴가 열린 동안에도 (제목을 가리지 않게)
   enter(params = {}) {
     const g = this.game;
-    if (!g.state) g.state = newGameState({ slot: 1, difficulty: 'normal', charId: 'kael' });
+    if (!g.state) g.state = saves.markDebug(newGameState({ slot: 1, difficulty: 'normal', charId: 'kael' }));   // ?scene=hub 단독: 디버그 임시 세이브 (진짜 슬롯에 쓰지 않는다)
     this.from = params.from ?? null;
     this.menuOpen = false; this.menu = null; this.hidePad = false;
     this.hint = null; this.anvilT = 1.2;

@@ -94,9 +94,10 @@ async function boot() {
   BOOT?.step?.('title');
   game.start();
   if (direct && game.registry[start]) {
+    // 디버그 임시 세이브: 게임 안에서는 슬롯 1 이지만 저장은 디버그 칸으로만 (saves.markDebug — 진짜 슬롯 1 을 덮어쓰지 않는다)
     const debugState = async () => {
       const { newGameState } = await import('./game/state.js');
-      const st = newGameState({ slot: 1, difficulty: params.get('diff') || 'normal', charId: params.get('char') || 'kael' });
+      const st = saves.markDebug(newGameState({ slot: 1, difficulty: params.get('diff') || 'normal', charId: params.get('char') || 'kael' }));
       if (params.has('ng')) (await import('./game/ngplus.js')).applyNgDebug?.(st, params); // [hook:ng] ?ng=N → N+1회차 세기 (docs/specs/ngplus.md §8)
       return st;
     };

@@ -19,6 +19,7 @@
 //                 (장착한 수호신 둘이 '각각' 보스를 쳐야 한다)
 //   boss_reach (5 보강) 수호신 열하나를 하나씩 s03 · s12 보스 곁에: 모두 10초 안에 보스에게 피해를 준다 (boss_reach_s03 · boss_reach_s12)
 //   save      (6) 탄 채로 관(세이브)에서 저장 → 다시 불러오기 · 내보내기 코드 왕복 · 클라우드 기록 경로(sanitizeTree → migrateState) · 256 KB
+//                 (?scene=stage 의 디버그 임시 세이브라 디버그 칸 saves.DEBUG_SLOT 에 저장되고, 슬롯 1 에 심은 기록은 그대로여야 한다)
 //   mobile    (7) 844×390 터치: 탑승/수호 버튼 · 누르기 · 수호 재사용 대기 가림막 · 캔버스 위젯 탭 · 스틱·다른 버튼과 겹침 없음
 //                 · 장착하지 않은 동작의 버튼은 사라진다
 //   pad       (8) 가짜 게임패드: 버튼 10(L3) 탑승 · 11(R3) 수호신 스킬
@@ -765,13 +766,17 @@ await run('save', STAGE('s01', '&room=r3&cmp=all&cmplv=40&bond=4&ch=20&mount=mt_
     T.key(dir > 0 ? 'ArrowRight' : 'ArrowLeft', false);
     T.step(0.4);
     m.hp = Math.round(m.maxHp * 0.4);
+    // ?scene=stage 의 디버그 임시 세이브는 진짜 슬롯 1 대신 디버그 칸(saves.DEBUG_SLOT)에 저장한다 (main.js · saves.markDebug): 슬롯 1 에 심은 기록은 그대로여야 한다
+    const real1 = JSON.stringify({ ...T.ST.newGameState({ slot: 1, difficulty: 'hard', charId: 'sera' }), savedAt: 1 });
+    localStorage.setItem(T.SV.saves.slotKey(1), real1);
     const t0 = T.toasts.length;
     T.press('ArrowUp', 0.1);
     T.step(0.3);
     const saved = T.toasts.slice(t0).some((x) => x.includes('저장 완료'));
     checks.push(['탄 채로 ↑ → 관에서 저장 (저장 완료)', saved && m.riding, T.toasts.slice(t0)]);
     checks.push(['저장하면 탈것 체력도 회복', m.hp >= m.maxHp, { hp: m.hp, max: m.maxHp }]);
-    const slot = st.slot ?? 1;
+    checks.push(['디버그 부팅의 저장은 진짜 슬롯 1 을 건드리지 않는다 (디버그 칸에)', T.SV.saves.isDebug(st) && localStorage.getItem(T.SV.saves.slotKey(1)) === real1, { debug: T.SV.saves.isDebug(st) }]);
+    const slot = T.SV.saves.isDebug(st) ? T.SV.DEBUG_SLOT : st.slot ?? 1;
     const rd = T.SV.saves.read(slot);
     info.slot = slot;
     checks.push(['슬롯 기록의 companions = 현재 상태', !!rd && canon(rd.companions) === canon(st.companions), { slot, has: !!rd?.companions }]);

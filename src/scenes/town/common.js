@@ -25,6 +25,7 @@ import * as Items from '../../data/items.js';
 import { STAT_INFO } from '../../game/stats.js';
 import { findItem, canEquip, addItem } from '../../game/inventory.js';
 import { currentHero, newGameState } from '../../game/state.js';
+import { saves } from '../../core/save.js';
 import { NPCS } from '../../data/npcs.js';
 import { TOWN_NPCS } from '../../data/town.js';
 import { glow } from './facades.js';
@@ -54,9 +55,9 @@ export function uiHints(ctx, items, x, y, align = 'center') {
 function tappedR(r) { const p = input.pointer; return p.tapped && p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h; }
 function hovered(r) { const p = input.pointer; return p.active && !input.touchMode && p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h; }
 
-/** 테스트로 장면을 바로 열었을 때(?scene=shop 등) 세이브가 없으면 임시 상태를 만든다 */
+/** 테스트로 장면을 바로 열었을 때(?scene=shop 등) 세이브가 없으면 임시 상태를 만든다 (디버그 임시 세이브 — 진짜 슬롯에 쓰지 않는다) */
 export function ensureState(game) {
-  if (!game.state) game.state = newGameState({ slot: 1, difficulty: 'normal', charId: 'kael' });
+  if (!game.state) game.state = saves.markDebug(newGameState({ slot: 1, difficulty: 'normal', charId: 'kael' }));
   return game.state;
 }
 /**
@@ -485,13 +486,13 @@ export function drawItemDetail(ctx, r, inst, { state, price = null, priceLabel =
   if (nm.lines.length > 1) {
     const b1 = iy + nm.size + (sm ? 0 : 2), lh = nm.size + 2;
     nm.lines.forEach((l, i) => text(ctx, l, tx, b1 + i * lh, { size: nm.size, weight: 800, family: FONT.title, color: rc, maxWidth: tw }));
-    ky = Math.max(ky, b1 + lh + 15);
+    ky = Math.max(ky, b1 + lh + (sm ? 16 : 17));
   } else text(ctx, nm.lines[0], tx, iy + 24, { size: nm.size, weight: 800, family: FONT.title, color: rc, maxWidth: tw });
   if (tag) { ctx.font = font(11, 800); const w2 = ctx.measureText(tag).width + 14; ctx.fillStyle = '#8a1426'; ctx.fillRect(r.x + r.w - w2 - 12, r.y + 12, w2, 20); text(ctx, tag, r.x + r.w - 12 - w2 / 2, r.y + 26, { size: 11, weight: 800, align: 'center', color: '#ffe7a0', ow: 0 }); }
   const kind = [RARITY_NAMES[inst.rarity ?? 0], SLOT_LABEL[b.slot] ?? '', b.wtype ? WTYPE_LABEL[b.wtype] : ''].filter(Boolean).join(' · ');
   text(ctx, kind, tx, ky, { size: 13, color: '#c8b8a0', weight: 600 });
   const lvReq = b.lvReq ?? 1;
-  const ly = Math.max(iy + (sm ? 60 : 68), ky + 15);
+  const ly = Math.max(iy + (sm ? 60 : 68), ky + (sm ? 14 : 15));
   if (EQUIP_KINDS.has(b.slot)) {
     const ok = !hero || (hero.level >= lvReq);
     text(ctx, `요구 레벨 ${lvReq}`, tx, ly, { size: 12, color: ok ? '#9d8f80' : COLORS.bad, weight: 700 });

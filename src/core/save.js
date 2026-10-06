@@ -3,6 +3,9 @@
 // saves.exportCode(slot) → 문자열, saves.importCode(slot, code)
 // saves.onWrite(fn) → 해제 함수. 슬롯 저장·삭제·가져오기와 메타 저장 뒤 fn({ type:'write'|'remove'|'meta', slot }) 호출 (클라우드 동기화용)
 // saves.store(slot, data) → 클라우드에서 받은 기록을 savedAt 그대로 저장 (onWrite 알림 없음)
+// saves.markDebug(state) → 디버그 부팅(?scene=stage · ?scene=hub … 슬롯을 고르지 않고 바로 연 장면)의 임시 세이브로 표시. 그 상태의 write 는
+//  진짜 슬롯(1–3) 대신 디버그 칸 DEBUG_SLOT('debug' → bloodnocturne_slot_debug)에 쓰고 알리지 않는다 (클라우드가 올리지 않는다) — 진짜 슬롯 1 을
+//  덮어쓰던 위험. 상태의 slot 값(1)은 그대로라 게임 안의 규칙은 같다. saves.read(DEBUG_SLOT) 로 마지막 디버그 기록을 읽는다 (QA 도구)
 // 쓰기 실패 (저장 공간 부족 QuotaExceededError · 저장소 차단): write/store/saveSettings/saveMeta 가 false 를 돌려주고,
 //  새 기록은 이번 실행 동안 메모리에 남아 읽기(read·list·exportCode·클라우드 올리기)가 옛 기록 대신 그것을 돌려준다.
 //  공간 부족이면 게임이 만든 사본(클라우드 받기 전 백업 bloodnocturne_slot_N_backup)을 지우고 한 번 다시 쓴다.
@@ -18,6 +21,9 @@
 import { CHARACTERS } from '../data/characters.js';
 
 const PREFIX = 'bloodnocturne_';
+/** 디버그 부팅의 임시 세이브가 쓰는 칸 (saves.list 의 1–3 밖, 클라우드 SLOTS 밖) */
+export const DEBUG_SLOT = 'debug';
+const DEBUG_STATES = new WeakSet();
 // 기기에 쓰지 못한 최신 기록 (이번 실행 동안만). 읽기는 이것을 먼저 본다: 쓰기 실패 뒤에도 옛 기록이 되살아나지 않게
 const mem = {};
 /** 지워도 되는, 게임이 스스로 만든 사본: 클라우드 받기 전 이 기기 기록 백업 (core/cloud.js) */
@@ -291,9 +297,13 @@ class SaveSystem {
   /** 이번 실행에서 기기에 쓰지 못하고 메모리에만 있는 기록이 있는가 */
   pending() { return Object.keys(mem).length > 0; }
   slotKey(slot) { return `${PREFIX}slot_${slot}`; }
+  /** 디버그 부팅의 임시 세이브로 표시 (main.js debugState · 장면을 바로 열 때의 임시 상태). 반환: 그 상태 */
+  markDebug(state) { if (state && typeof state === 'object') DEBUG_STATES.add(state); return state; }
+  isDebug(state) { return !!state && typeof state === 'object' && DEBUG_STATES.has(state); }
   write(slot, state) {
     state.savedAt = Date.now();
     state.slot = slot;
+    if (DEBUG_STATES.has(state)) return lsSet(this.slotKey(DEBUG_SLOT), JSON.stringify(state));   // 진짜 슬롯·클라우드에 닿지 않는다 (알림 없음)
     const ok = lsSet(this.slotKey(slot), JSON.stringify(state));
     if (ok) this.lastFail = null;
     // 실패해도 알린다: 로그인 중이면 클라우드(core/cloud.js)가 메모리의 새 기록을 올려 진행을 지킨다
