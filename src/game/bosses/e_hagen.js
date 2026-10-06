@@ -56,10 +56,10 @@ const PATTERNS = {
 const T48 = () => TILE || 48;
 const SIZE_H = { w: 60, h: 146 }, SIZE_W = { w: 112, h: 118 };   // 사람 · 늑대 판정 크기 (발 위치 고정)
 // ── 사람 몸 지역 좌표 (+x = 얼굴 쪽, y 아래가 양수, 원점 = 발 가운데 바닥) ──
-const TH = 40, SH = 40, TORSO = 46, UA = 29, FA = 28;   // 넓적다리 · 정강이(발바닥까지) · 몸통(엉덩이→목) · 위팔 · 아래팔(주먹까지)
+const TH = 40, SH = 40, TORSO = 40, UA = 26, FA = 26;   // 넓적다리 · 정강이(발바닥까지) · 몸통(엉덩이→목) · 위팔 · 아래팔(주먹까지) — 채색 부품(full_a lps 0.0635)의 비례
 const RIFLE = 104, RG = 30, RF = 64, KNIFE = 30;        // 장총 (개머리판 끝 → 총구) · 방아쇠 손 · 앞손 자리 · 사냥칼
 // ── 늑대 (네 발) ──
-const SPINE = 70, FU = 34, FL = 38, HU = 36, HS = 32, HM = 24, TAIL_N = 6, TAIL_L = 14;   // 엉덩이→어깨 · 앞다리 위/아래 · 뒷다리 위/아래/발등 · 꼬리 마디
+const SPINE = 65, FU = 32, FL = 36, HU = 30, HS = 24, HM = 36, TAIL_N = 6, TAIL_L = 14;   // 엉덩이→어깨 · 앞다리 위/아래 · 뒷다리 위/아래/발등 · 꼬리 마디 — 채색 부품(beast_a lps 0.1)의 비례
 const POSE0 = { lean: 0, crouch: 0, kneel: 0, hunch: 0, lie: 0, rear: 0, run: 0, howl: 0, jaw: 0, bare: 0, sway: 0, recoil: 0, air: 0 };
 const POSE_RATE = { lean: 9, crouch: 9, kneel: 7, hunch: 5, lie: 2.6, rear: 6, run: 8, howl: 7, jaw: 12, bare: 5, sway: 3, recoil: 18, air: 10 };
 /** 사람 팔 자세 (각 = 몸 지역: 0 앞, π/2 아래) · gk = 주먹에서 칼 방향 */
@@ -171,7 +171,7 @@ export class Hagen extends BossC {
     P.hA = ha;
     const q = this._r;
     rot(3, -12, ha, q); P.head.x = P.neck.x + q.x; P.head.y = P.neck.y + q.y;
-    rot(8, -3, ha, q); P.eye.x = P.head.x + q.x; P.eye.y = P.head.y + q.y;
+    rot(3, -1, ha, q); P.eye.x = P.head.x + q.x; P.eye.y = P.head.y + q.y;
     rot(9, 5, ha, q); P.mouth.x = P.head.x + q.x; P.mouth.y = P.head.y + q.y;
     P.shN.x = lerp(P.hip.x, P.neck.x, 0.86) + 1; P.shN.y = lerp(P.hip.y, P.neck.y, 0.86) + 1;
     P.shF.x = P.shN.x - 7; P.shF.y = P.shN.y - 1;
@@ -231,18 +231,19 @@ export class Hagen extends BossC {
     const cr = clamp(s.crouch, 0, 1), rear = clamp(s.rear, 0, 1), run = clamp(s.run, 0, 1), lie = clamp(s.lie, 0, 1), howl = clamp(s.howl, 0, 1), air = clamp(s.air, 0, 1);
     const wk = this.walkK, ph = this.walkPh;
     const gal = run * Math.sin(ph * 1.6);
-    W.hip.x = lerp(-38 + 6 * rear + 4 * air, -30, lie); W.hip.y = lerp(-62 + 20 * cr + 4 * rear - 6 * air + gal * 4 + Math.sin(t * 2.1) * 1.2, -20, lie);
-    let wa = 0.08 - 0.06 * cr + 1.05 * rear - 0.1 * air + gal * 0.08 + 0.12 * s.bare + Math.sin(t * 2.1) * 0.015;
-    wa = lerp(wa, 0.02, lie);
+    W.hip.x = lerp(-40 + 6 * rear + 4 * air, -34, lie); W.hip.y = lerp(-70 + 22 * cr + 6 * rear - 6 * air + gal * 4 + Math.sin(t * 2.1) * 1.2, -24, lie);
+    let wa = -0.04 * cr + 1.05 * rear - 0.08 * air + gal * 0.08 + 0.12 * s.bare + Math.sin(t * 2.1) * 0.015;
+    wa = lerp(wa, 0.0, lie);
     W.wa = wa;
-    rot(SPINE, -6, -wa, q); W.sh.x = W.hip.x + q.x; W.sh.y = W.hip.y + q.y;
-    rot(14, -14, -wa * 0.55, q); W.neck.x = W.sh.x + q.x; W.neck.y = W.sh.y + q.y;
-    let ha = 0.22 + 0.3 * cr + 0.12 * run - 1.05 * howl - 0.35 * rear + 0.2 * s.bare - 0.15 * air;
-    ha = lerp(ha, 0.28, lie);
+    rot(SPINE, 5, -wa, q); W.sh.x = W.hip.x + q.x; W.sh.y = W.hip.y + q.y;
+    rot(33, -22, -wa * 0.55, q); W.neck.x = W.sh.x + q.x; W.neck.y = W.sh.y + q.y;
+    // 머리 각 ha: 0 = 채색 머리 그림의 기울기 (목 → 주둥이가 조금 위), + = 숙인다
+    let ha = 0.3 + 0.35 * cr + 0.15 * run - 1.2 * howl - 0.4 * rear + 0.25 * s.bare - 0.2 * air;
+    ha = lerp(ha, 0.4, lie);
     W.ha = ha;
-    rot(15, -3, ha, q); W.head.x = W.neck.x + q.x; W.head.y = W.neck.y + q.y;
-    rot(30, 7, ha, q); W.snout.x = W.head.x + q.x; W.snout.y = W.head.y + q.y;
-    rot(5, -8, ha, q); W.eye.x = W.head.x + q.x; W.eye.y = W.head.y + q.y;
+    rot(17, -19, ha, q); W.head.x = W.neck.x + q.x; W.head.y = W.neck.y + q.y;
+    rot(54, -14, ha, q); W.snout.x = W.neck.x + q.x; W.snout.y = W.neck.y + q.y;
+    rot(28, -24, ha, q); W.eye.x = W.neck.x + q.x; W.eye.y = W.neck.y + q.y;
     // 앞발 자리 (부드럽게 따라간다)
     const S = W.sh, tN = this._tN ??= pt(), tF = this._tF ??= pt();
     const walk = Math.sin(ph) * 14 * wk;
@@ -253,22 +254,22 @@ export class Hagen extends BossC {
       case 'spread': tN.x = S.x + 6; tN.y = S.y + 66; tF.x = S.x - 16; tF.y = S.y + 62; break;
       case 'air': tN.x = S.x + 52; tN.y = S.y + 16; tF.x = S.x + 40; tF.y = S.y + 24; break;
       case 'dive': tN.x = S.x + 18; tN.y = S.y + 60; tF.x = S.x + 4; tF.y = S.y + 56; break;
-      default: tN.x = S.x + 12 + walk; tN.y = -Math.max(0, Math.cos(ph)) * 8 * wk; tF.x = S.x - 2 - walk; tF.y = -Math.max(0, -Math.cos(ph)) * 8 * wk;
+      default: tN.x = S.x + 11 + walk; tN.y = -Math.max(0, Math.cos(ph)) * 8 * wk; tF.x = S.x + 22 - walk; tF.y = -Math.max(0, -Math.cos(ph)) * 8 * wk;
     }
     if (lie > 0.01) { tN.x = lerp(tN.x, S.x + 48, lie); tN.y = lerp(tN.y, -8, lie); tF.x = lerp(tF.x, S.x + 40, lie); tF.y = lerp(tF.y, -4, lie); }
     const pk = dt > 0 ? 1 - Math.exp(-16 * dt) : 1;
     this.pawN.x += (tN.x - this.pawN.x) * pk; this.pawN.y += (tN.y - this.pawN.y) * pk;
     this.pawF.x += (tF.x - this.pawF.x) * pk; this.pawF.y += (tF.y - this.pawF.y) * pk;
-    const shF = this._shF ??= pt(); shF.x = S.x - 6; shF.y = S.y - 2;
+    const shF = this._shF ??= pt(); shF.x = S.x + 6; shF.y = S.y - 2;
     ik(S, this.pawN, FU, FL, W.elN, W.pwN, back);
     ik(shF, this.pawF, FU, FL, W.elF, W.pwF, back);
     // 뒷다리: 발 → 발목(역관절, 발등은 거의 세로) → 무릎(앞으로)
     const fN = this._hN ??= pt(), fF = this._hF ??= pt();
-    if (air > 0.5) { fN.x = W.hip.x - 34; fN.y = W.hip.y + 40; fF.x = W.hip.x - 44; fF.y = W.hip.y + 32; }
-    else if (run > 0.3) { const u = ph * 1.6 + 1.2; fN.x = W.hip.x + 10 + 30 * Math.sin(u); fN.y = -Math.max(0, Math.cos(u)) * 18; fF.x = W.hip.x - 4 - 30 * Math.sin(u); fF.y = -Math.max(0, -Math.cos(u)) * 18; }
-    else { fN.x = W.hip.x + 8 - walk + 6 * rear; fN.y = -Math.max(0, -Math.cos(ph)) * 7 * wk; fF.x = W.hip.x - 8 + walk + 4 * rear; fF.y = -Math.max(0, Math.cos(ph)) * 7 * wk; }
+    if (air > 0.5) { fN.x = W.hip.x - 44; fN.y = W.hip.y + 52; fF.x = W.hip.x - 34; fF.y = W.hip.y + 58; }
+    else if (run > 0.3) { const u = ph * 1.6 + 1.2; fN.x = W.hip.x - 14 + 30 * Math.sin(u); fN.y = -Math.max(0, Math.cos(u)) * 18; fF.x = W.hip.x - 4 - 30 * Math.sin(u); fF.y = -Math.max(0, -Math.cos(u)) * 18; }
+    else { fN.x = W.hip.x - 26 - walk + 22 * rear; fN.y = -Math.max(0, -Math.cos(ph)) * 7 * wk; fF.x = W.hip.x - 12 + walk + 18 * rear; fF.y = -Math.max(0, Math.cos(ph)) * 7 * wk; }
     if (lie > 0.01) { fN.x = lerp(fN.x, W.hip.x - 40, lie); fN.y = lerp(fN.y, -8, lie); fF.x = lerp(fF.x, W.hip.x - 46, lie); fF.y = lerp(fF.y, -3, lie); }
-    const tilt = air > 0.5 ? -0.9 : lie > 0.5 ? -1.3 : -0.32;
+    const tilt = air > 0.5 ? -0.9 : lie > 0.5 ? -1.3 : -0.15;
     for (const [F, Hk, K] of [[fN, W.hkN, W.knN], [fF, W.hkF, W.knF]]) {
       rot(0, -HM, tilt, q); Hk.x = F.x + q.x; Hk.y = F.y + q.y;
       ik(W.hip, Hk, HU, HS, K, null, front);
@@ -276,10 +277,10 @@ export class Hagen extends BossC {
     W.ftN.x = fN.x; W.ftN.y = fN.y; W.ftF.x = fF.x; W.ftF.y = fF.y;
     // 꼬리: 엉덩이 뒤 → 뒤아래로 늘어진다 (흔들림 · 달리면 수평 · 울부짖으면 처진다 · 일어서면 아래로 · 누우면 바닥에). 각 = 화면 방향 (cos, sin), π = 뒤
     const T0 = this.tail;
-    rot(-12, -10, -wa, q); T0[0].x = W.hip.x + q.x; T0[0].y = W.hip.y + q.y;
-    let ang = PI - lerp(0.55 + 0.3 * howl - 0.4 * run - 0.45 * air + 0.15 * cr, 0.08, lie) - wa * 0.9;
+    rot(-11, -12, -wa, q); T0[0].x = W.hip.x + q.x; T0[0].y = W.hip.y + q.y;
+    let ang = PI - lerp(0.5 + 0.3 * howl - 0.4 * run - 0.45 * air + 0.15 * cr, 0.08, lie) - wa * 0.9;
     for (let i = 1; i <= TAIL_N; i++) {
-      ang += (i > 2 ? 0.07 : 0.03) + Math.sin(t * 2.6 - i * 0.7) * (0.06 + 0.06 * this.bristle) * (1 - lie);
+      ang += (i > 3 ? 0.17 * (1 - 0.6 * lie) : 0) + Math.sin(t * 2.6 - i * 0.7) * (0.06 + 0.06 * this.bristle) * (1 - lie);
       T0[i].x = T0[i - 1].x + Math.cos(ang) * TAIL_L; T0[i].y = Math.min(-2, T0[i - 1].y + Math.sin(ang) * TAIL_L);
     }
   }

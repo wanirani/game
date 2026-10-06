@@ -49,7 +49,7 @@ export const BOSSES_E = {
     desc: '까마귀 결사의 둥지를 서른 해 동안 지켜 온 여인. 이름 없는 아이들을 칼로 길러 냈고, 결사가 문을 닫던 날 모든 칼에게 이름을 반납하라는 소집령을 내렸다.',
   },
   b_hagen: {
-    id: 'b_hagen', name: '하겐', title: '늑대를 잡던 사냥꾼', hp: 2950, hpMul: 1.35, atk: 47, def: 22, res: 20, exp: 3600, score: 440000,
+    id: 'b_hagen', name: '하겐', title: '늑대를 잡던 사냥꾼', hp: 2900, hpMul: 1.35, atk: 46, def: 22, res: 20, exp: 3600, score: 440000,
     size: { w: 60, h: 146 }, flying: false, contact: 0.6, material: 'flesh', weak: ['holy'], resist: ['ice'], phases: [0.5],
     music: 'boss2', portrait: 'portraits/b_hagen', stageId: 's23', drops: [], light: { r: 200, color: '#ffcf6a', i: 0.55 },
     form2: { name: '은빛 늑대', title: '사냥꾼이었던 짐승', portrait: 'portraits/b_hagen2' },
