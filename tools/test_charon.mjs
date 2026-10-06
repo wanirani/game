@@ -254,6 +254,8 @@ check('debugAct(없는 상태) → false', (await page.evaluate((id) => { const 
     G.build(id); G.step(2); b = G.boss; quiet(b); b.hp = Math.floor(mx() * 0.95);
     act(b, 'soulLantern'); G.step(0.4); b.hitPart = b.pLan; b.takeHit(5, { team: 'player', dir: 1 }, G.world, {}); G.step(2 / 60);
     c0 = b.hp; const li = hitN(4, 0.03, null, b.pMan); G.step(2 / 60); out.capLan = { loss: +((c0 - b.hp) / mx()).toFixed(4), resist: li.filter((i) => i.resist).length, exposed: b.exposed, st: b.state };
+    for (let f = 0; f < 60 && b.state === 'soulLantern'; f++) { hitN(1, 0.03, null, b.pMan); G.step(1 / 60); }   // 노출이 끝난 뒤 패턴 끝까지 계속 쳐도 (끝 0.15초) 같은 예산 (EX5-VERIFY)
+    out.capLan.lossEnd = +((c0 - b.hp) / mx()).toFixed(4); out.capLan.stEnd = b.state;
     G.build(id); G.step(2); b = G.boss; quiet(b); b.hp = Math.floor(mx() * 0.95);
     b.debugAct('stagger'); G.step(0.2); c0 = b.hp; hitN(1, 0.2, ['ult']); out.capUlt = +((c0 - b.hp) / mx()).toFixed(4);
     G.build(id, { phase: 1 }); G.step(7); b = G.boss; quiet(b); b.hp = Math.floor(mx() * 0.45);
@@ -299,7 +301,7 @@ check('debugAct(없는 상태) → false', (await page.evaluate((id) => { const 
   const cs = r.capStag, cr = r.capRun, cl = r.capLan;
   check('창 상한 (1페이즈): 무릎 한 번에 최대 체력 10% 까지 — 넘는 피해는 줄어들고("저항") 곧바로 일어섬', cs.loss >= 0.0999 && cs.loss <= 0.1011 && cs.capped === 2 && cs.resist === 1 && !cs.stunned && cs.st === 'stagger', cs);
   check('창 상한 (1페이즈): 질주 한 번(경고 · 돌진 · 카운터 창) 12% 까지 (질주는 끊기지 않음)', cr.hits >= 8 && cr.loss >= 0.1199 && cr.loss <= 0.1215 && cr.st === 'deathRun', cr);
-  check('창 상한 (1페이즈): 등불 노출 한 번 8% 까지 — 닿으면 노출이 끝남', cl.loss >= 0.0799 && cl.loss <= 0.081 && cl.resist >= 1 && !cl.exposed, cl);
+  check('창 상한 (1페이즈): 등불 노출 한 번 8% 까지 — 닿으면 노출이 끝남 · 패턴이 끝날 때까지 계속 쳐도 8%', cl.loss >= 0.0799 && cl.loss <= 0.081 && cl.resist >= 1 && !cl.exposed && cl.lossEnd <= 0.0815 && cl.stEnd !== 'soulLantern', cl);
   check('창 상한: 필살은 상한 밖 · 2페이즈 무릎은 상한 없음', r.capUlt >= 0.199 && r.capP2 >= 0.159, { ult: r.capUlt, p2: r.capP2 });
   const p1 = r.parts1, p2 = r.parts2;
   check('판정 부위 피해 순서 (1페이즈 같은 공격): 마부 > 마차 몸통 > 바퀴', p1.man.part === 'man' && p1.body.part === 'body' && p1.wheel.part === 'wheel' && p1.man.dmg > p1.body.dmg && p1.body.dmg > p1.wheel.dmg, p1);

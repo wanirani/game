@@ -732,8 +732,8 @@ export class Charon extends BossC {
         paint: (ctx, z) => paintLanRing(ctx, this, z) });
     }
     if (this.lanBroken) {
-      // 꺼진 뒤: 노출 0.8초 (마부 멈칫)
-      if (this.st >= this.exposeEnd && this.exposed) { this.exposed = false; this.capBud = null; this.relax(); }
+      // 꺼진 뒤: 노출 0.8초 (마부 멈칫). 노출이 끝나도 남은 예산(LANTERN_CAP)은 패턴이 끝날 때까지 그대로 — null 로 열면 끝 0.15초가 상한 없는 창이 된다
+      if (this.st >= this.exposeEnd && this.exposed) { this.exposed = false; this.relax(); }
       if (this.st >= this.exposeEnd + 0.15) this.done(1.0);
       return;
     }
