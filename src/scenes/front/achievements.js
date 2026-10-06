@@ -77,6 +77,20 @@ function rewardOf(def) {
 
 // 잘라 쓴 글 캐시 (매 프레임 measureText 반복을 피한다; 글꼴 세대·글자 하한도 키에)
 const FIT = new Map();
+/**
+ * 스크롤·잘린 영역 안의 탭 영역: 보이는 부분만 등록한다. 보이는 크기가 kind 의 최소(min, UI px — CSS 기준을 배율로 바꾼 값)보다
+ * 작으면 등록하지 않는다 (가려진 표시만: tap() 이 거짓). 반쯤 보이는 줄의 온전한 사각형이 아래 단추와 겹치지 않게 (§6.3 겹침 0)
+ */
+function clipZone(r, clip, kind, owner, src, min) {
+  const x0 = Math.max(r.x, clip.x), y0 = Math.max(r.y, clip.y), x1 = Math.min(r.x + r.w, clip.x + clip.w), y1 = Math.min(r.y + r.h, clip.y + clip.h);
+  const v = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+  const size = kind === 'list' ? v.h : Math.min(v.w, v.h);
+  if (!owner || v.w <= 0 || v.h <= 0 || size < min - 0.01) { v.tzo = owner; v.thid = true; return v; }
+  return zone(v, kind, owner, { src });
+}
+/** 모달이 열려 있을 때의 바탕 영역: 등록하지 않고 가려진 것으로만 표시 */
+function hiddenZone(r, owner) { r.tzo = owner; r.thid = true; return r; }
+
 function fit(ctx, str, w, size, weight = 500, family = FONT.body) {
   const k = size + '|' + weight + '|' + Math.round(w) + '|' + family.length + '|' + fontEpoch + '|' + textFloor() + '|' + str;
   let v = FIT.get(k);
@@ -318,6 +332,7 @@ export class AchievementsScene extends Scene {
     const sl = (S.l || 0) / k, sr = (S.r || 0) / k, st = (S.t || 0) / k, sb = (S.b || 0) / k;
     const wide = W >= 960 && H >= 500;
     const btnH = 44;   // 44 UI px + 터치 여유(이웃과 9 UI px 이상) ≥ 44 CSS px
+    const minRow = 36 / per, minBtn = 44 / per;   // 잘린 줄·칩을 등록할 최소 크기 (UI px)
     if (wide) {
       const top = st + 78, bot = H - sb - 34 - 6;
       const cw = Math.round(clamp(W * 0.22, 200, 250));
@@ -326,7 +341,7 @@ export class AchievementsScene extends Scene {
       const by = top + rowH * 9 + 10, bw = Math.floor((cw - 8) / 2);
       const lx = cats.x + cw + 16;
       return {
-        W, H, sl, sr, st, sb, per, wide, cats,
+        W, H, sl, sr, st, sb, per, wide, cats, minRow, minBtn,
         back: { x: 14 + sl, y: 12 + st, w: 92, h: 44 },
         btnTitles: { x: cats.x, y: by, w: bw, h: btnH }, btnClaim: { x: cats.x + cw - bw, y: by, w: bw, h: btnH }, reasonY: by + btnH + 16,
         list: { x: lx, y: top, w: W - sr - 16 - lx, h: bot - top }, cardH: 66, stride: 72,
@@ -336,7 +351,7 @@ export class AchievementsScene extends Scene {
     const listY = chipsY + btnH + 9, listH = bottomY - 9 - listY;
     const bw = Math.round(clamp(W * 0.19, 150, 190));
     return {
-      W, H, sl, sr, st, sb, per, wide,
+      W, H, sl, sr, st, sb, per, wide, minRow, minBtn,
       back: { x: 12 + sl, y: 4 + st, w: 92, h: 44 },
       chips: { x: sl + 12, y: chipsY, w: W - sl - sr - 24, h: btnH },
       list: { x: sl + 12, y: listY, w: W - sl - sr - 24, h: listH }, cardH: 54, stride: 54,
@@ -382,7 +397,7 @@ export class AchievementsScene extends Scene {
     this.renderCats(ctx, L, t);
     this.renderButtons(ctx, L, t);
     this.renderList(ctx, L, t);
-    backButton(ctx, L.back.x, L.back.y, '뒤로', this);
+    backButton(ctx, L.back.x, L.back.y, '뒤로', this.modal ? null : this);
     footer(ctx, W, L.H, [[['prevTab', 'nextTab'], '분류'], ['dpadV', '고르기'], ['confirm', '자세히'], ['alt', '이명·장식'], ['alt2', '보상 받기'], ['cancel', '돌아가기']], HINT_TOUCH);
   }
   renderNarrow(ctx, L, t) {
@@ -393,7 +408,7 @@ export class AchievementsScene extends Scene {
     this.renderChips(ctx, L, t);
     this.renderList(ctx, L, t);
     this.renderButtons(ctx, L, t);
-    backButton(ctx, L.back.x, L.back.y, '뒤로', this);
+    backButton(ctx, L.back.x, L.back.y, '뒤로', this.modal ? null : this);
     // 바닥 줄 오른쪽: 받을 수 없는 이유 + 안내
     const hx = L.hintX, y = L.bottomY, m = promptMode();
     const reason = this.claimReason();
@@ -408,7 +423,7 @@ export class AchievementsScene extends Scene {
     frame(ctx, C.x - 6, C.y - 6, C.w + 12, C.h + 12, { corners: false, key: false, top: 'rgba(20,8,20,0.82)', bot: 'rgba(8,3,10,0.86)' });
     this.cats.forEach((c, k) => {
       const r = { x: C.x, y: C.y + k * rh, w: C.w, h: rh - 2 };
-      this.zCats[k] = this.ges.zone(r, 'list', { src: 'ach.cat' });
+      this.zCats[k] = this.modal ? hiddenZone(r, this.ges) : this.ges.zone(r, 'list', { src: 'ach.cat' });
       const sel = k === this.ci, info = this.catInfo[k] ?? { got: 0, total: 0 };
       if (sel) selBar(ctx, r.x, r.y, r.w, r.h, t, { dim: !focused });
       else if (this.ges.over(r)) { ctx.fillStyle = 'rgba(255,220,160,0.06)'; ctx.fillRect(r.x, r.y, r.w, r.h); }
@@ -444,7 +459,7 @@ export class AchievementsScene extends Scene {
     this.cats.forEach((c, k) => {
       const r = { x, y: R.y, w: ws[k], h: R.h };
       x += ws[k] + gap;
-      this.zCats[k] = this.ges.zone(r, 'primary', { clip: R, src: 'ach.chip' });
+      this.zCats[k] = clipZone(r, R, 'primary', this.modal ? null : this.ges, 'ach.chip', L.minBtn);
       if (r.x > R.x + R.w || r.x + r.w < R.x) return;
       const sel = k === this.ci, info = this.catInfo[k] ?? {};
       const col = c.id === 'all' ? GOLD : CAT_COL[c.id] ?? GOLD;
@@ -464,8 +479,8 @@ export class AchievementsScene extends Scene {
   renderButtons(ctx, L, t) {
     const ges = this.ges, rt = L.btnTitles, rc = L.btnClaim;
     const ok = this.claimOK, touch = promptMode() === 'touch';
-    this.zTitles = ges.zone(rt, 'primary', { src: 'ach.titles' });
-    this.zClaim = ges.zone(rc, 'primary', { src: 'ach.claim' });   // 꺼져 있어도 누르면 이유를 보여 준다
+    this.zTitles = this.modal ? hiddenZone({ ...rt }, ges) : ges.zone({ ...rt }, 'primary', { src: 'ach.titles' });
+    this.zClaim = this.modal ? hiddenZone({ ...rc }, ges) : ges.zone({ ...rc }, 'primary', { src: 'ach.claim' });   // 꺼져 있어도 누르면 이유를 보여 준다
     gbutton(ctx, rt, '이명 · 장식', { hot: ges.over(rt), size: 14, t });
     gbutton(ctx, rc, `보상 받기 (${this.sum.claimable})`, { hot: ok && ges.over(rc), disabled: !ok, size: 14, t, accent: '#b07a20' });
     if (ok) glowOval(ctx, rc.x + rc.w / 2, rc.y + rc.h / 2, rc.w * 0.55, rc.h * 0.8, '#ffb040', 0.12 + 0.08 * Math.sin(t * 4));
@@ -494,7 +509,7 @@ export class AchievementsScene extends Scene {
     }
     for (let k = i0; k < i1; k++) {
       const r = { x: LR.x, y: y0 + k * st - sy, w: LR.w - 10, h: ch };
-      this.zRows.push({ k, r: this.ges.zone(r, 'list', { clip: LR, src: 'ach.row' }) });
+      this.zRows.push({ k, r: clipZone(r, LR, 'list', this.modal ? null : this.ges, 'ach.row', L.minRow) });
       ctx.save();
       if (ck < 1) { ctx.globalAlpha = 0.3 + 0.7 * ck; ctx.translate((1 - ck) * 24, 0); }
       if (L.wide) this.drawCard(ctx, rows[k], r, k === this.i, t);
@@ -582,7 +597,7 @@ export class AchievementsScene extends Scene {
 
 // ───────────────────────── 팝업: 자세히 (§7.3) ─────────────────────────
 class DetailModal {
-  constructor(sc, i) { this.sc = sc; this.i = i; this.t = 0; this.open = true; this.btns = []; this.bi = 0; this.box = null; }
+  constructor(sc, i) { this.kind = 'detail'; this.sc = sc; this.i = i; this.t = 0; this.open = true; this.btns = []; this.bi = 0; this.box = null; }
   get row() { return this.sc.list()[this.i]; }
   actions(row) {
     const out = [], ti = row?.def?.reward?.title;
@@ -686,7 +701,7 @@ class DetailModal {
 // ───────────────────────── 팝업: 이명 · 장식 (§7.3) ─────────────────────────
 class PickModal {
   constructor(sc) {
-    this.sc = sc; this.t = 0; this.open = true; this.box = null; this.msg = null;
+    this.kind = 'pick'; this.sc = sc; this.t = 0; this.open = true; this.box = null; this.msg = null;
     this.L = 0; this.k = [0, 0]; this.zones = [[], []]; this.closeR = null;
     this.scs = [new Scroller(), new Scroller()];
     this.load();
@@ -818,7 +833,8 @@ class PickModal {
       items.forEach((it, k) => {
         const r = { x: A.x + (k % c) * (cw + 9), y: A.y + Math.floor(k / c) * stride - sc.y, w: cw, h: rh };
         if (r.y + r.h < A.y - 2 || r.y > A.y + A.h + 2) return;
-        this.zones[Li].push({ k, r: zone(r, Li === 1 && !P.wide ? 'primary' : 'list', this, { clip: A, src: Li ? 'ach.pick.deco' : 'ach.pick.title' }) });
+        const kind = Li === 1 && !P.wide ? 'primary' : 'list';
+        this.zones[Li].push({ k, r: clipZone(r, A, kind, this, Li ? 'ach.pick.deco' : 'ach.pick.title', kind === 'list' ? L0.minRow : L0.minBtn) });
         this.drawItem(ctx, Li, it, r, focus && this.k[Li] === k, it.id === this.cur[Li], t);
       });
       clipEnd(ctx, A, sc, 'rgba(14,6,16,0.95)');

@@ -16,6 +16,7 @@ import { audio } from '../core/audio.js';
 const DEFER_TOP = new Set(['dialogue', 'story', 'bossIntro', 'awakenCutin', 'ultCutin', 'companionJoin', 'results', 'ending', 'credits', 'loading', 'menu']);
 const COL = '#ffd070', COL_HINT = '#f3e2b8';
 const POLL_MS = 500;          // 미룬 동안 다시 보는 간격
+const GATHER_MS = 80;         // 연달아 온 달성을 모으는 시간 (같은 프레임의 여러 이벤트 → 셋 이상이면 한 줄)
 const RETRO_GATHER = 1200;    // 소급 알림을 모으는 시간 (ms)
 const HINT_DELAY = 1500;      // 마을에 들어선 뒤 보상 안내까지 (ms; 입장 배너와 겹치지 않게)
 const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
@@ -39,7 +40,7 @@ class Notifier {
     this.live = []; this.retro = new Set(); this.retroAt = 0;
     this.src = new Map();          // 업적 id → 이번 실행에서 달성한 경로 ('live'|'retro'|'cloud')
     this.hinted = false; this.hintAt = -1;
-    this.timer = null;
+    this.timer = null; this.soon = null;
     this.offs = [
       bus.on('achievementUnlocked', (e) => this.onUnlock(e)),
       bus.on('stageEntered', () => { if (!this.hinted) { this.hintAt = now(); this.kick(); } }),
@@ -57,11 +58,12 @@ class Notifier {
     else { for (const id of ids) this.retro.add(id); this.retroAt = now(); }
     this.kick();
   }
+  /** 곧 한 번 본다 (같은 처리·같은 프레임에 연달아 온 달성을 한 줄로 모으게 잠깐 기다린 뒤) + 미룬 동안 0.5초마다 */
   kick() {
-    if (!this.timer) {
-      try { this.timer = setInterval(() => this.pump(), POLL_MS); } catch { this.timer = null; }
-    }
-    this.pump();
+    try {
+      if (!this.soon) this.soon = setTimeout(() => { this.soon = null; this.pump(); }, GATHER_MS);
+      if (!this.timer) this.timer = setInterval(() => this.pump(), POLL_MS);
+    } catch { this.pump(); }
   }
   stop() { if (this.timer) { clearInterval(this.timer); this.timer = null; } }
   /** 보여도 되면 대기열을 토스트로 (시험은 직접 부른다) */
