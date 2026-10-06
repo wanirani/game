@@ -1461,13 +1461,15 @@ class AudioSystem {
   }
   duck(amount = 0.5, time = 0.5) { this.eng?.duck(amount, time); }
   /** 음악 버스 분석기 (회랑 음악실 시각화, docs/specs/gallery.md §5.4): 처음 부르면 만들어 duckG 출력에 병렬로 붙인다 — 소리 경로는 그대로. [hook:gal]
+   *  분석기 → 음량 0 게인 → 목적지: 일부 WebKit(iOS 사파리)은 목적지로 이어지지 않은 분석기를 처리하지 않아 막대가 바닥에 머문다 (0 × 신호라 들리는 소리는 같다)
    *  analyser() → AnalyserNode (fftSize 64 → getByteFrequencyData 32칸) | null (컨텍스트 없음) · analyser(false) → 끊고 버린다 (null) [hook:gal] */
   analyser(on = true) { // [hook:gal]
     const a = this._an, eng = this.eng; // [hook:gal]
-    if (a && (!on || this._anEng !== eng)) { try { this._anEng?.duckG.disconnect(a); } catch { /* 이미 끊김 */ } this._an = this._anEng = null; } // [hook:gal]
+    if (a && (!on || this._anEng !== eng)) { try { this._anEng?.duckG.disconnect(a); } catch { /* 이미 끊김 */ } try { a.disconnect(); } catch { /* 이미 끊김 */ } try { this._anZ?.disconnect(); } catch { /* 이미 끊김 */ } this._an = this._anEng = this._anZ = null; } // [hook:gal]
     if (!on || !eng) return null; // [hook:gal]
     if (this._an) return this._an; // [hook:gal]
-    try { const n = this.ctx.createAnalyser(); n.fftSize = 64; n.smoothingTimeConstant = 0.72; eng.duckG.connect(n); this._an = n; this._anEng = eng; } catch { this._an = this._anEng = null; } // [hook:gal]
+    let z = null; // [hook:gal]
+    try { const n = this.ctx.createAnalyser(); n.fftSize = 64; n.smoothingTimeConstant = 0.72; z = this.ctx.createGain(); z.gain.value = 0; n.connect(z); z.connect(this.ctx.destination); eng.duckG.connect(n); this._an = n; this._anEng = eng; this._anZ = z; } catch { try { z?.disconnect(); } catch { /* 없음 */ } this._an = this._anEng = this._anZ = null; } // [hook:gal]
     return this._an; // [hook:gal]
   } // [hook:gal]
   update() { this._tick(); }
