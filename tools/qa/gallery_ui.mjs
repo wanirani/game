@@ -19,7 +19,7 @@
 //                 음량 0 안내 · visibilitychange → suspended, 돌아오면 재생 시간이 이어짐 · analyser 막대 > 0 · 방을 나가면 analyser 끊김 · 타이틀 → 'title'
 //   U7 극장       지난 판 game.state(슬롯 2 + 저장하지 않은 깃발)를 둔 채 8개 모두 다시 보기 → 회랑(극장 방): game.state·슬롯 1–3·메타 바이트 같음,
 //                 seenScripts 그대로, saves.write 0, 토스트 '획득' 0 · 크레딧: 타이틀에서 연 것은 타이틀 회랑 줄로, 극장에서 연 것은 회랑으로 ·
-//                 엔딩에서 시작한 크레딧(fromEnding)은 예전 흐름
+//                 엔딩에서 시작한 크레딧(fromEnding)은 예전 흐름 · 돌아오는 암전 동안 누른 결정 키는 같은 줄을 다시 틀지 않음 (GAL-VERIFY)
 //   U8 성당       ?scene=hub → 성당 「여정 기록」 → ←→ 두 단추 · '회랑에서 돌아본다'(push) → 음악실 s03 → 닫기 → 성당, 곡 'church' · 극장 꺼짐 + 안내 ·
 //                 alt 바로가기 · '여정을 기록한다' 는 예전처럼 저장
 //   U9 성능       phone1 그리기 p95 ≤ 3 ms (목록·크게 보기·음악실·극장, perfprobe) · 프레임마다 새 그라디언트·캔버스 0 · 10초 동안 풀 free 그대로
@@ -719,6 +719,22 @@ async function U7(C) {
     C.check('U7', `${id}: ${first}${credits ? ' → credits' : ''} → 회랑(극장 방) · state·슬롯 1–3·메타 바이트 같음 · seenScripts ${seen0} · 쓰기 0 · '획득' 0`,
       flowOk && st.room === 'theater' && same && writes === 0 && seen1 === seen0 && !tl.some((x) => /획득/.test(x)) && (!story || story.hero === 'kael'),
       JSON.stringify({ story, credits, room: st.room, same, writes, seen1, tl: tl.slice(0, 2), diff: Object.keys(before.ls).filter((x) => before.ls[x] !== after.ls[x]) }));
+  }
+  // GAL-VERIFY: 대사를 연타로 넘기던 손 — 다시 보기에서 돌아오는 암전이 걷히는 동안 누른 결정 키가 같은 줄을 다시 틀지 않는다
+  {
+    await s.eval(() => { const t = window.__game.top; t.sel[2] = 0; t.activate(0); });
+    await s.waitGame("g.top?.name === 'story' && (g.fade?.a ?? 0) < 0.05", 15000);
+    await s.eval(() => { const t = window.__game.top; t.card = null; t.waitT = 0; t.skip(); });
+    let pressed = 0;
+    for (let i = 0; i < 120; i++) {
+      const f = await s.eval(() => ({ top: window.__game.top?.name, dir: window.__game.fade?.dir ?? 0 }));
+      if (f.top === 'gallery' && f.dir === 0) break;
+      if (f.top === 'gallery') { await s.key('Enter', 40); pressed++; } else await sleep(40);
+    }
+    await sleep(700);
+    const top = await s.top();
+    C.check('U7', `다시 보기에서 돌아오는 암전 동안 결정 키 ${pressed}번 → 회랑 그대로 (같은 줄을 다시 틀지 않음)`, pressed > 0 && top === 'gallery', JSON.stringify({ pressed, top }));
+    if (top !== 'gallery') { await s.eval(() => window.__game.go('gallery', { back: 'title', backIndex: 7, room: 'theater' }, { fade: false })); await s.waitGame(GAL_READY, 15000); }
   }
   // 크레딧: 타이틀에서 연 것(back:'title')은 타이틀의 회랑 줄로
   await s.eval(() => window.__game.go('credits', { back: 'title' }, { fade: false }));
