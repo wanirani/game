@@ -58,8 +58,10 @@ export class BestiaryTab extends Tab {
       const bosses2 = D.P2_STAGE_IDS.map((sid) => S[sid]?.boss).filter((id) => id && B[id]);
       for (const id of Object.keys(B)) if (!bosses2.includes(id) && D.isP2Boss(id)) bosses2.push(id);
       // 외전 보스(s21 아르겐)는 외전이 열렸거나 이미 쓰러뜨렸을 때만 (docs/specs/ex_s21.md — 2부 엔딩 전 스포일러 방지)
-      const P = this.state.progress || {};
-      for (let i = bosses2.length - 1; i >= 0; i--) { const sid = B[bosses2[i]]?.stageId; if (S[sid]?.side && !(P.unlocked || []).includes(sid) && !(P.bosses || []).includes(bosses2[i])) bosses2.splice(i, 1); }
+      //  피의 윤회: 지난 회차에서 열었거나 쓰러뜨렸으면 그대로 (ng.past — 도감은 회차를 넘어 이어진다, ngplus.md §2)
+      const P = this.state.progress || {}, Q = this.state.ng?.past || {};   // [hook:ng]
+      const knew = (sid, id) => [P, Q].some((x) => (x.unlocked || []).includes(sid) || (x.bosses || []).includes(id));   // [hook:ng]
+      for (let i = bosses2.length - 1; i >= 0; i--) { const sid = B[bosses2[i]]?.stageId; if (S[sid]?.side && !knew(sid, bosses2[i])) bosses2.splice(i, 1); }
       group('이계의 군주', bosses2, true);
       if (rows.length > start) rows.splice(start, 0, { header: '제2부 · 이계', part: 2 });
     }
@@ -70,7 +72,7 @@ export class BestiaryTab extends Tab {
     this.i = clamp(this.i, 0, Math.max(0, this.entries.length - 1));
   }
   kills(r) {
-    if (r.boss) return (this.state.progress?.bosses || []).includes(r.id) ? 1 : 0;
+    if (r.boss) return (this.state.progress?.bosses || []).includes(r.id) || (this.state.ng?.past?.bosses || []).includes(r.id) ? 1 : 0;   // [hook:ng] 지난 회차에 쓰러뜨린 보스
     const v = this.state.bestiary?.[r.id] ?? this.game.meta?.bestiary?.[r.id];
     return typeof v === 'number' ? v : (v?.kills ?? v?.seen ?? 0);
   }
