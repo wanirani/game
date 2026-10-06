@@ -9,7 +9,7 @@
 //   마차를 끄는 말 둘은 혼(판정 없음): 가까운 말 = 모르겐(투명도 0.85 + 녹청 빛 + 굴레 줄), 먼 말 = 헤이즐(같은 그림의 어두운 녹청 tint).
 //   2페이즈 = 잔해에서 일어선 마부 혼자 — 끊어진 고삐를 사슬처럼 감아쥔 먼 손, 등불을 든 가까운 손.
 // 판정 부위 (가까운 부위 우선, defMul = 방어 배율 — 작을수록 아프다, s23 VERIFY 교훈): 1페이즈 마부(마부석) 0.85 — 노릴 곳(점프로 닿는다) ·
-//   마차 몸통 1.0 · 바퀴 둘 1.15 · 혼불 등불(부푼 동안만, 플레이어·탈것 한 대로 꺼짐). 말은 판정 없음.
+//   마차 몸통 1.0 · 바퀴 둘 1.15 · 혼불 등불(부푼 동안만, 플레이어·탈것 한 대로 꺼짐 — prio: 공격 판정이 등불과 겹치면 가까운 부위보다 먼저, POLISH-5). 말은 판정 없음.
 //   2페이즈 머리(모자) 0.85 · 몸통 1.0 · 외투 자락 1.15. 무릎(stagger) 몸통 0.7 · 머리 0.6 (15% 긴 주저앉음 몸통 0.6) · 등불 노출 마부 0.7 ·
 //   망자 부르기 노출 몸통 0.7. 빈 영구차(마차 혼)·쓰러짐 중에는 판정 없음.
 // 패턴 (static PATTERNS — docs/specs/ex_s25.md §2.1): deathRun(영구차 질주 · 카운터 창) · whipCrack(마부의 채찍) · coffinDrop(관 떨구기) ·
@@ -148,7 +148,7 @@ export class Charon extends BossC {
     this.pBody = { x: 0, y: 0, w: 136, h: 104, defMul: 1.0 };
     this.pWheelR = { x: 0, y: 0, w: 80, h: 80, defMul: 1.15 };
     this.pWheelF = { x: 0, y: 0, w: 62, h: 62, defMul: 1.15 };
-    this.pLan = { x: 0, y: 0, w: 44, h: 44, defMul: 1.0, lantern: true };
+    this.pLan = { x: 0, y: 0, w: 44, h: 44, defMul: 1.0, lantern: true, prio: true };   // prio: 겹치면 몸통·마부석보다 먼저 (combat.js pickPart — POLISH-5)
     this.pHead = { x: 0, y: 0, w: 30, h: 40, defMul: 0.85 };
     this.pTorso = { x: 0, y: 0, w: 36, h: 52, defMul: 1.0 };
     this.pSkirt = { x: 0, y: 0, w: 54, h: 60, defMul: 1.15 };

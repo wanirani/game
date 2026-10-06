@@ -71,7 +71,7 @@ export function gAttack(g, o = {}) {
   };
 }
 
-/** 겹친 부위 중 판정 중심에 가장 가까운 부위 (combat.js pickPart 와 같은 규칙) */
+/** 겹친 부위 중 판정 중심에 가장 가까운 부위 (combat.js pickPart 와 같은 규칙 — 다만 prio 는 보지 않는다: 카론 등불 같은 prio 과녁은 플레이어·탈것의 '한 대' 몫) */
 function pickPart(rect, parts) {
   const cx = rect.x + rect.w / 2, cy = rect.y + rect.h / 2;
   let best = null, bd = Infinity;

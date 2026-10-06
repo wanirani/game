@@ -14,8 +14,8 @@
 //   capFn(target, dmg, world) → 이번 타격 최대 피해 (각성기 보스 상한 등, impact.modDamage)
 //   otg / gb: 강한 다운 추가타 / 바닥 바운드 동작 (보통은 data/feel_hit.js FEEL_MOVE_OVERRIDES 로 지정)
 // }
-// 다중 부위 대상: target.hitParts() → [{x,y,w,h, off?, defMul?, defAdd?, armor?, onHit?(part, dmg, attack, world)}]
-//   playerStrike 가 공격 판정과 겹치는 부위 중 가장 가까운(작은) 부위를 골라 target.hitPart 에 두고,
+// 다중 부위 대상: target.hitParts() → [{x,y,w,h, off?, defMul?, defAdd?, armor?, prio?, onHit?(part, dmg, attack, world)}]
+//   playerStrike 가 공격 판정과 겹치는 부위 중 가장 가까운(작은) 부위(prio 부위가 겹치면 그것)를 골라 target.hitPart 에 두고,
 //   부위 방어 배율(defMul/defAdd)을 target.stats.def/res 에 반영한다. onHit 은 대상의 takeHit 이 부르지 않았다면 여기서 부른다.
 import { clamp, overlap } from '../core/math.js';
 import { bus } from '../core/events.js';
@@ -146,12 +146,14 @@ export function playerStrike(world, rect, attack) {
   return n;
 }
 
-/** 겹친 부위 중 공격 판정 중심에 가장 가까운 부위 (중심을 포함하는 부위가 여럿이면 더 작은 부위 = 머리·눈 같은 약점 우선) */
+/** 겹친 부위 중 공격 판정 중심에 가장 가까운 부위 (중심을 포함하는 부위가 여럿이면 더 작은 부위 = 머리·눈 같은 약점 우선).
+ *  prio 부위는 겹치기만 하면 그것 (큰 부위 사이에 낀 작은 과녁 — 카론 혼불 등불, POLISH-5) */
 function pickPart(rect, parts) {
   const cx = rect.x + rect.w / 2, cy = rect.y + rect.h / 2;
   let best = null, bd = Infinity;
   for (const b of parts) {
     if (!b || b.off || !overlap(rect, b)) continue;
+    if (b.prio) return b;
     const dx = cx - clamp(cx, b.x, b.x + b.w), dy = cy - clamp(cy, b.y, b.y + b.h);
     const d = dx * dx + dy * dy + b.w * b.h * 1e-6;
     if (d < bd) { bd = d; best = b; }
