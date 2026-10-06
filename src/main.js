@@ -33,6 +33,7 @@ async function loadRest(g) {
     // 업적 엔진·알림 (docs/specs/achievements.md §3.1): 정적 import 금지 — 받지 못해도 게임은 그대로 (game.ach 가 없으면 화면이 데이터만으로 그린다)
     import('./game/achievements.js').then((A) => A.initAchievements(g)).catch((e) => console.warn('[ach]', e)); // [hook:ach]
     import('./game/ach_notify.js').then((N) => N.initAchNotify(g)).catch((e) => console.warn('[ach]', e)); // [hook:ach] (ACH-UI)
+    import('./game/gallery.js').then((G) => G.initGallery(g)).catch((e) => console.warn('[gal]', e)); // [hook:gal] 회랑 엔진 game.gal (docs/specs/gallery.md §3 — 없으면 화면이 데이터만으로 모두 잠김)
   }
   return rest;
 }

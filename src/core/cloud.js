@@ -14,6 +14,7 @@
 import { bus } from './events.js';
 import { saves, isValidSave } from './save.js';
 import { mergeAch, cleanAch } from './ach_meta.js';   // [hook:ach] 업적 기록 meta.ach (docs/specs/achievements.md §2.3)
+import { mergeGal, cleanGal } from './gal_meta.js';   // [hook:gal] 회랑 기록 meta.gal (docs/specs/gallery.md §2.3)
 
 export const API_BASE = '/api';
 /** 안드로이드 앱이 부르는 계정 서버 (공식 사이트). 사이트 주소를 바꾸면 여기와 netlify.toml·문서를 함께 바꾼다 */
@@ -43,6 +44,7 @@ const BLOCKED_HOST = /(^|\.)(claude\.ai|claude\.site|claudeusercontent\.com|clau
 const LOCAL_HOST = /^(localhost|127\.0\.0\.1|\[::1\]|::1)$/i;
 // 게임을 진행 중이 아닌 장면 (이 장면이 맨 아래일 때만 클라우드 기록을 현재 슬롯에 받아도 안전)
 const FRONT_SCENES = new Set(['title', 'slots', 'account', 'options', 'difficulty', 'charselect', 'arcade', 'highscore', 'credits']);
+FRONT_SCENES.add('gallery');   // [hook:gal] 회랑이 맨 아래 장면이면 지난 game.state 의 슬롯을 '진행 중' 으로 보지 않는다
 
 // ───────────────────────── 서버 오류 문구 (서버가 message 를 주지 않을 때의 대체) ─────────────────────────
 export const MESSAGES = {
@@ -365,6 +367,7 @@ export function mergeMeta(a, b) {
   }
   // [hook:ach] 업적: got 합집합(가장 이른 시각)·prog 큰 값·claimed 합집합 (한쪽만 있으면 그것을 고친 사본 — 서버 것을 지우지 않는다)
   if (isObj(a.ach) || isObj(b.ach)) out.ach = mergeAch(a.ach, b.ach);
+  if (isObj(a.gal) || isObj(b.gal)) out.gal = mergeGal(a.gal, b.gal);   // [hook:gal] 회랑: cg·mus 합집합(가장 이른 시각)·seenAt 큰 값 (한쪽만 있으면 그것을 고친 사본)
   return JSON.parse(JSON.stringify(out));
 }
 
@@ -377,6 +380,7 @@ export function cleanMeta(m) {
   if (!isObj(o.bestiary)) o.bestiary = {};
   o.clears = num(o.clears); o.survivalBest = num(o.survivalBest); o.konami = !!o.konami;
   if ('ach' in o) o.ach = isObj(o.ach) ? cleanAch(o.ach) : null;   // [hook:ach] 서버 isValidAch 를 늘 통과하는 사본 (≤ 24 KB, 줄이지 않는다)
+  if ('gal' in o) o.gal = isObj(o.gal) ? cleanGal(o.gal) : null;   // [hook:gal] 키 상한·≤ 8 KB 사본 (서버는 gal 을 검사하지 않는다)
   // 64KB 제한 여유: 너무 크면 기록 목록을 줄인다
   if (JSON.stringify(o).length > 56000) o.highScores = o.highScores.slice(0, 40);
   return o;
