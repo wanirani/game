@@ -7,7 +7,7 @@
 //                  WORLD-CAM; a copy is kept in tools/qa/hook_baseline_w1.json) still has ≥ its [hook:*] tag count  → red
 //   tags.total     per tag kind, the repo-wide count is ≥ the ratchet snapshot (tools/qa/hook_tags_ratchet.json)   → red
 //   tags.file      a file lost tags although the repo total per kind held (moved with the code?)                    → warn
-//   tags.unknown   a [hook:x] tag outside TAGS (feel/awaken/gimmick/cmp/plat/p2/ach/ng)                                         → warn
+//   tags.unknown   a [hook:x] tag outside TAGS (feel/awaken/gimmick/cmp/plat/p2/ach/ng/gal)                                     → warn
 //   draw.fx        a particle/FX spawn (fx.emit/burst/ring/flash/slash/text/sprite/dmg/callout/ghost/addDecal…) inside
 //                  a draw-path function (draw*, render*, paint*, *Draw): the spawn rate then follows the render rate
 //                  (120 Hz, frame skips, hidden tabs), not the simulation                                             → red (S3)
@@ -26,7 +26,7 @@ import { writeReport, parseFlags } from './lib/report.mjs';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '../..');
 const args = parseFlags();
-const TAGS = ['feel', 'awaken', 'gimmick', 'cmp', 'plat', 'p2', 'ach', 'ng'];
+const TAGS = ['feel', 'awaken', 'gimmick', 'cmp', 'plat', 'p2', 'ach', 'ng', 'gal'];
 const W1_PLAN = '/tmp/claude-0/plan/hook_baseline.json';
 const W1_COPY = path.join(HERE, 'hook_baseline_w1.json');
 const RATCHET = path.join(HERE, 'hook_tags_ratchet.json');

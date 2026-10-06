@@ -3,8 +3,8 @@
 //  line = { who:'hero'|charId|npcId|bossId|'narrator'|'임의 이름', text: '문자열' 또는 {kael:'..', sera:'..', victor:'..', bran:'..', lia:'..', azel:'..', isolde:'..', default:'..'}, side?:'left'|'right',
 //           name?:'명패 이름 덮어쓰기(이름을 밝히기 전 등)', portrait?:'portraits/… 초상화 덮어쓰기' }
 //       | { choice:[{ text, set:{flag:true}, goto:'label' }] , who, text }
-//       | { label:'이름' } | { goto:'label' } | { if:'flag' | '!flag' | {char:'kael'}, ...line }
-//       | { cmd:'give', item, qty, name } | { cmd:'gold', amount } | { cmd:'flag', key, value } | { cmd:'quest', id }
+//       | { label:'이름' } | { goto:'label' } | { if:'flag' | '!flag' | {char:'kael'} | {gave:true}, ...line }   (gave = 이번 재생에서 앞의 give 가 하나라도 실제로 건넸다)
+//       | { cmd:'give', item, qty, name, once?(이미 가졌으면 건너뜀), silent?(토스트·소리 없음) } | { cmd:'gold', amount } | { cmd:'flag', key, value } | { cmd:'quest', id }
 //       | { cmd:'unlockChar', id } | { cmd:'shake', power?, time?, color? } | { cmd:'music', id } | { cmd:'sfx', id } | { cmd:'relic', id }
 //       | { cmd:'cg', id:'cg_prologue_moon' | null }   (전체화면 이벤트 CG, null 로 해제)
 // '{hero}' 는 현재 캐릭터 이름으로 치환

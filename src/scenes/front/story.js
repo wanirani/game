@@ -7,6 +7,9 @@
 //               (건너뛰기도 다른 명령처럼 실행한다. 합류 연출은 마을의 companionJoin 이 맡는다)
 //  · 장면 플래그: uiScale (platform §6.2 — game.uiW × game.uiH 로 배치), hidePad, deferToasts
 //  · 줄 단위 덮어쓰기: { name } 명패, { portrait } 초상화, { side } 좌우
+//  · replay: true — 회랑 극장의 다시 보기 (docs/specs/gallery.md §5.5, GAL-UI · [hook:gal] 네 곳): seenScripts 에 넣지 않음 ·
+//    give gold flag quest unlockChar relic recruit 명령과 선택지의 set 을 건너뜀 · 끝나도 슬롯을 쓰지 않음 · 화자·문장·if 는 고정 상태
+//    {charId:'kael', progress:{flags:{}}} 로 읽는다 (어느 슬롯에서 열어도 같은 장면). 기본값 false — 기존 흐름은 그대로
 import { Scene } from '../../core/game.js';
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
@@ -38,10 +41,12 @@ function speaker(who, state) {
   if (BOSSES[who]) return { name: BOSSES[who].name, portrait: BOSSES[who].portrait ?? `portraits/${who}`, side: 'right', color: '#ff8a8a' };
   return { name: who, portrait: assets.has(`portraits/${who}`) ? `portraits/${who}` : null, side: 'right', color: '#f3d690' };
 }
+const REPLAY_SKIP = new Set(['give', 'gold', 'flag', 'quest', 'unlockChar', 'relic', 'recruit']);   // [hook:gal] 다시 보기에서 건너뛰는 부수 효과 명령
 const imgKey = (id) => (!id ? null : id.includes('/') ? id : id.startsWith('cg_') ? `cg/${id}` : id.startsWith('b_') || id.startsWith('npc_') ? `portraits/${id}` : `bg/${id}`);
 
 export class StoryScene extends Scene {
-  enter({ script = null, lines = null, then = 'hub', thenParams = {}, bg = null, title = null, music = null } = {}) {
+  enter({ script = null, lines = null, then = 'hub', thenParams = {}, bg = null, title = null, music = null, replay = false } = {}) {
+    this.replay = !!replay; this.replayState = this.replay ? { charId: 'kael', progress: { flags: {} } } : null;   // [hook:gal] ④ 고정 상태
     // 컷신 동안 토스트(결과 화면에서 미뤄진 퀘스트 알림 등)는 CG 위에 뜨지 않도록 숨기고, 다음 장면에서 이어서 보여 준다
     this.deferToasts = true;
     this.hidePad = true;   // 가상 패드 숨김 (game.syncPad 가 장면 플래그를 읽는다)
@@ -58,7 +63,7 @@ export class StoryScene extends Scene {
     // { label } 줄만 이동 목표. { if, cmd:'goto', label } (ifChar/ifFlag) 은 조건부 이동 명령이다
     L.forEach((l, k) => { if (l.label && !l.cmd) this.labels[l.label] = k; });
     const st = this.game.state;
-    if (script && st?.progress && !st.progress.seenScripts.includes(script)) st.progress.seenScripts.push(script);
+    if (script && !this.replay && st?.progress && !st.progress.seenScripts.includes(script)) st.progress.seenScripts.push(script);   // [hook:gal] ① 다시 보기는 넣지 않음
     this.setImage(imgKey(bg) ?? 'bg/title', true);
     this.base = imgKey(bg) ?? 'bg/title';
     this.cg = null;
@@ -69,7 +74,7 @@ export class StoryScene extends Scene {
     if (music) audio.music(music);
     if (!this.card) this.next();
   }
-  get state() { return this.game.state; }
+  get state() { return this.replay ? this.replayState : this.game.state; }   // [hook:gal] ④ 다시 보기: 카엘로 기본 갈래
   /** 배치 크기: uiScale 이면 UI 좌표 (game.render 가 ctx.scale(uiK) 로 감싼다) */
   dims() {
     const g = this.game;
@@ -97,6 +102,7 @@ export class StoryScene extends Scene {
   }
   runCmd(l, quiet = false) {
     const st = this.state, g = this.game;
+    if (this.replay && REPLAY_SKIP.has(l.cmd)) return;   // [hook:gal] ② 다시 보기: 부수 효과 없음
     switch (l.cmd) {
       case 'give': if (st && !(l.once && ownsItem(st, l.item))) { this.gave = true; try { grantItem(st, l.item, l.qty ?? 1); } catch { /* 무시 */ } if (!quiet && !l.silent) { g.toast(`획득: ${l.name ?? l.item} ×${l.qty ?? 1}`, '#e8c872'); audio.sfx('item'); } } break;   // once · silent (ex_s23.md §3)
       case 'gold': if (st) { st.gold = (st.gold ?? 0) + (l.amount ?? 0); if (!quiet) { g.toast(`${l.amount} G 획득`, '#ffd84a'); audio.sfx('coin'); } } break;
@@ -177,7 +183,7 @@ export class StoryScene extends Scene {
     if (this.ending) return;
     this.ending = true;
     const g = this.game, st = g.state;
-    if (st && st.slot >= 1 && !st.arcade) { try { saves.write(st.slot, st); } catch { /* 무시 */ } }
+    if (st && st.slot >= 1 && !st.arcade && !this.replay) { try { saves.write(st.slot, st); } catch { /* 무시 */ } }   // [hook:gal] ③ 다시 보기는 슬롯을 쓰지 않음
     goSafe(g, this.then, this.thenParams, { fadeTime: immediate ? 0.25 : 0.9 });
   }
   update(dt) {
@@ -215,7 +221,7 @@ export class StoryScene extends Scene {
       if (r === 'confirm') {
         const c = this.cur.choice[this.menu.index];
         audio.sfx('menu_ok');
-        if (c.set && this.state) Object.assign(this.state.progress.flags, c.set);
+        if (c.set && this.state && !this.replay) Object.assign(this.state.progress.flags, c.set);   // [hook:gal] ② 선택지의 set 무시
         if (c.goto) this.i = (this.labels[c.goto] ?? this.lines.length) - 1;
         this.next();
       }

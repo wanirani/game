@@ -58,6 +58,7 @@ const STEPS = [
   S('accounts_api', 'unit', node('tools/accounts/test_api.mjs'), 10 * MIN),
   S('achievements', 'unit', node('tools/test_achievements.mjs'), 5 * MIN),   // 업적 데이터·엔진·병합·서버 검사 (docs/specs/achievements.md §12.1)
   S('ngplus', 'unit', node('tools/test_ngplus.mjs'), 5 * MIN),   // 회차 「피의 윤회」 규칙·세이브·세기 (docs/specs/ngplus.md §10.1, 브라우저 없이)
+  S('gallery', 'unit', node('tools/test_gallery.mjs'), 5 * MIN),   // 회랑 데이터·엔진·병합·크기 (docs/specs/gallery.md §9.1, 브라우저 없이)
   S('sfx', 'unit', node('tools/test_sfx.mjs'), 10 * MIN),
   S('hud_layout', 'unit', node('tools/test_hud_layout.mjs'), 15 * MIN),
   // ── balance

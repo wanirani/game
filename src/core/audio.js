@@ -23,6 +23,7 @@
 //  없거나 받기·풀기 실패·코덱 없음·상한 초과·설정 'synth' 면 합성 트랙(Player)을 튼다. 페이드·덕킹·볼륨·일시정지 의미는 같다.
 //  녹음 곡이 아직 풀리지 않았으면 이전 곡은 곧바로 내리고 최대 REC_WAIT 초 기다린다 (넘으면 이번에는 합성 트랙 — 장면을 막지 않는다).
 //  audio.prefetch(id) 다음 곡 미리 받기 · audio.setMusicSource(v) 엔진 바꾸기 · audio.recStats() 메모리·상태 (QA)
+//  audio.analyser(on) 음악 버스(duckG) 분석기 — 회랑 음악실 시각화, 소리 경로 그대로 [hook:gal]
 //  효과음 샘플: SFX 이름에 샘플이 있으면 샘플(+ 합성음 몫 s)으로 — assets/audio/sfx/index.json, 받기 전·실패 시 합성음만.
 import { TRACKS } from '../data/music.js';
 import { FEEL_SFX } from './sfx_feel.js';
@@ -1459,6 +1460,16 @@ class AudioSystem {
     if (this.player) { this.player.kill(fade); this.player = null; }
   }
   duck(amount = 0.5, time = 0.5) { this.eng?.duck(amount, time); }
+  /** 음악 버스 분석기 (회랑 음악실 시각화, docs/specs/gallery.md §5.4): 처음 부르면 만들어 duckG 출력에 병렬로 붙인다 — 소리 경로는 그대로. [hook:gal]
+   *  analyser() → AnalyserNode (fftSize 64 → getByteFrequencyData 32칸) | null (컨텍스트 없음) · analyser(false) → 끊고 버린다 (null) [hook:gal] */
+  analyser(on = true) { // [hook:gal]
+    const a = this._an, eng = this.eng; // [hook:gal]
+    if (a && (!on || this._anEng !== eng)) { try { this._anEng?.duckG.disconnect(a); } catch { /* 이미 끊김 */ } this._an = this._anEng = null; } // [hook:gal]
+    if (!on || !eng) return null; // [hook:gal]
+    if (this._an) return this._an; // [hook:gal]
+    try { const n = this.ctx.createAnalyser(); n.fftSize = 64; n.smoothingTimeConstant = 0.72; eng.duckG.connect(n); this._an = n; this._anEng = eng; } catch { this._an = this._anEng = null; } // [hook:gal]
+    return this._an; // [hook:gal]
+  } // [hook:gal]
   update() { this._tick(); }
   _sync() {
     if (!this.eng || this.ctx.state !== 'running') return;

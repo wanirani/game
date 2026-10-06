@@ -11,6 +11,8 @@
 //  - 업적 (docs/specs/achievements.md §7.6 · §5.2, ACH-UI): 메뉴 8번째 줄 '업적' (명예의 전당 다음, 안 본 달성이 있으면 붉은 점 + NEW n)
 //    → go('achievements', {back:'title'}) · 고른 타이틀 장식(meta.ach.deco → core/ach_meta.js ACH_DECOS)을 Ambience 인자에 더한다
 //    (박쥐·먼지 수 배율, 불씨·안개 색, '핏빛 달'은 로고 뒤 오른쪽 위 달 하나). decoOf · decoAmbience · drawDecoMoon 은 업적 화면도 쓴다
+//  - 회랑 (docs/specs/gallery.md §5.7, GAL-UI): 메뉴 8번째 줄 '크레딧' 자리가 '회랑' (줄 수 8 그대로 — 크레딧은 회랑의 극장 안으로)
+//    → go('gallery', {back:'title', backIndex}) · 안 본 그림·곡이 있으면 업적 줄과 같은 붉은 점 + NEW n (g.gal.summary().unseen, 1초마다)
 import { Scene } from '../core/game.js';
 import { input } from '../core/input.js';
 import { audio } from '../core/audio.js';
@@ -115,6 +117,7 @@ export class TitleScene extends Scene {
     this.amb = new Ambience(decoAmbience({ embers: Math.round(70 * q), motes: Math.round(24 * q), bats: Math.round(14 * q), lightning: bolts }, deco));
     this.moon = !!deco?.amb?.moon;
     this.achNew = 0; this.achPoll = 0;
+    this.galNew = 0;   // [hook:gal] 회랑: 안 본 그림·곡 수 (achPoll 과 같이 1초마다)
     this.amb.nextBolt = 0.9;
     this.mode = params.menu ? 'menu' : 'intro';
     this.modeT = params.menu ? 1 : 0;
@@ -158,7 +161,7 @@ export class TitleScene extends Scene {
       { id: 'ach', label: '업적', sub: 'ACHIEVEMENTS' },   // 업적 화면 (docs/specs/achievements.md §7.6)
       { id: 'account', label: '계정', sub: 'ACCOUNT' },
       { id: 'options', label: '설정', sub: 'OPTIONS' },
-      { id: 'credits', label: '크레딧', sub: 'CREDITS' },
+      { id: 'gallery', label: '회랑', sub: 'GALLERY' },   // [hook:gal] 회랑 (docs/specs/gallery.md §5.7 — 크레딧은 회랑의 극장 안으로)
     ];
     this.menu = new ListMenu(this.items.length, { index: index ?? (hasSave ? 1 : 0) });
   }
@@ -262,7 +265,7 @@ export class TitleScene extends Scene {
     this.menuK = follow(this.menuK, this.mode === 'menu' ? 1 : 0, dt, 7);
     // 업적: 안 본 달성 수 (엔진이 늦게 오고 소급 훑기도 한가할 때 돌아서, 1초마다 다시 읽는다)
     this.achPoll -= dt;
-    if (this.achPoll <= 0) { this.achPoll = 1; this.achNew = Math.max(0, Number(safe(() => g.ach?.summary?.()?.unseen)) || 0); }
+    if (this.achPoll <= 0) { this.achPoll = 1; this.achNew = Math.max(0, Number(safe(() => g.ach?.summary?.()?.unseen)) || 0); this.galNew = Math.max(0, Number(safe(() => g.gal?.summary?.()?.unseen)) || 0); }   // [hook:gal]
     if (this.checkKonami()) { this.unlockAll(); return; }
 
     if (input.anyPressed() || input.pointer.justDown) this.idle = 0; else this.idle += dt;
@@ -309,7 +312,7 @@ export class TitleScene extends Scene {
       case 'ach': g.go('achievements', { back: 'title' }); break;
       case 'account': this.openAccount(); break;
       case 'options': g.push('options', {}); break;
-      case 'credits': g.go('credits', { back: 'title' }); break;
+      case 'gallery': g.go('gallery', { back: 'title', backIndex: Math.max(0, this.items.indexOf(it)) }); break;   // [hook:gal]
     }
   }
 
@@ -561,9 +564,10 @@ export class TitleScene extends Scene {
       const r = { x: x - (1 - k) * 60, y: y0 + i * (h + gap), w, h };
       this.menu.hit(i, r);
       ctx.save(); ctx.globalAlpha = k;
-      const achNew = it.id === 'ach' && this.achNew > 0, sel = this.menu.index === i && this.mode === 'menu', fs = h >= 48 ? 22 : 21;
-      menuItem(ctx, r, it.label, { selected: sel, disabled: it.disabled, sub: achNew ? `NEW ${this.achNew}` : it.sub, k, size: fs });
-      if (achNew) { // 안 본 업적: 이름 오른쪽 붉은 점
+      const nNew = it.id === 'ach' ? this.achNew : it.id === 'gallery' ? this.galNew : 0;   // [hook:gal] 업적 · 회랑 줄의 NEW
+      const achNew = nNew > 0, sel = this.menu.index === i && this.mode === 'menu', fs = h >= 48 ? 22 : 21;
+      menuItem(ctx, r, it.label, { selected: sel, disabled: it.disabled, sub: achNew ? `NEW ${nNew}` : it.sub, k, size: fs });
+      if (achNew) { // 안 본 업적 · 그림 · 곡: 이름 오른쪽 붉은 점
         ctx.font = `800 ${fs}px ${FONT.title}`;
         const dx = r.x + 28 + (sel ? 6 * k : 0) + ctx.measureText(it.label).width + 13, dy = r.y + r.h / 2 - 9, pr = 4.5 + 0.8 * Math.sin(t * 5);
         ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.beginPath(); ctx.arc(dx, dy, pr + 1.5, 0, Math.PI * 2); ctx.fill();
