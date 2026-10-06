@@ -250,6 +250,12 @@ async function U2(C) {
     const inside = a.rects.every((r) => r && r.x >= 0 && r.y >= 0 && r.x + r.w <= V.uiW + 0.5 && r.y + r.h <= V.uiH + 0.5);
     C.check('U2', `${vp} 동작 ${a.ids.length}줄 · ${a.cols}열 · 줄 높이 ${rowCss.toFixed(1)} CSS ≥ 36 · 화면 안${vp === 'phone2' ? ' · 두 줄' : ''}`,
       rowCss >= 36 && inside && (vp !== 'phone2' || a.cols === 2), `cols ${a.cols} · inside ${inside}`);
+    // 토스트(업적 소급 알림 5초 등)가 떠도 동작 줄을 가리지 않는다 — phone1 은 기본 자리(y 92)가 첫 줄 '불러오기'를 덮었다 (NG-VERIFY)
+    await s.eval(() => window.__game.toast('지난 기록으로 업적 30개를 달성했습니다 — 「업적」 화면에서 확인하세요', '#ffd070', 5));
+    const tt = (await texts(s)).find((t) => t.s.startsWith('지난 기록으로 업적'));
+    const k = V.uiK, over = tt ? a.rects.filter((r) => r && tt.x0 - 18 * k < (r.x + r.w) * k && tt.x1 + 18 * k > r.x * k && tt.y - 20 * k < (r.y + r.h) * k && tt.y + 8 * k > r.y * k).length : -1;
+    C.check('U2', `${vp} 토스트가 동작 줄을 가리지 않음`, over === 0, tt ? `겹친 줄 ${over} (토스트 글 y ${tt.y.toFixed(0)})` : '토스트 글 없음');
+    await s.eval(() => { window.__game.toasts.length = 0; });
     await C.shot(s, `${vp}_actions`);
     // 미완주 슬롯 · 구름 상태
     const b = await actions(s, 1);

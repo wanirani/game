@@ -122,14 +122,14 @@ game.ach = {
 
 `ctx = { meta, ach, slots }`. `slots` = 슬롯 1–3 의 **요약(digest)** — 저장된 세이브를 읽은 것 + 지금 `game.state` 가 그 슬롯이면 그것의 실시간 요약으로 바꿔 낀다. **`state.arcade` 인 임시 세이브(아케이드·연습·일일)는 요약하지 않는다** (연습에서 쓰러뜨린 보스가 스토리 업적이 되지 않게). "합"은 슬롯을 합친 값, "최대"는 슬롯 중 큰 값.
 
-`digestState(state)` (순수, 손상 세이브에도 던지지 않는다, 원본을 바꾸지 않는다): `cleared{sid:{rank,time}}` · `bosses` · `flags`(ending_* · ex_*_done · isolde_joined 등 필요한 것) · `difficulty` · `heroes{charId:{level,tier}}` (`CLASSES[classId].tier`) · `joined` (`storyJoinedChars(state)`) · `owned{id:{lv,bond,src}}` (`state.companions.owned`) · `docs` · `relics` · `hearts` · `shards` · `secrets` · `bestiary`(키, `ENEMIES` 에 있는 것만) · `questsDone` · `stats{kills,deaths,maxCombo,minigameWins}` · `inn{jackpots,duelRank,catGift}` (`state.innGames`) · `enhance`(가방 장비의 최대 `level`).
+`digestState(state)` (순수, 손상 세이브에도 던지지 않는다, 원본을 바꾸지 않는다): `cleared{sid:{rank,time}}` · `bosses` · `flags`(ending_* · ex_*_done · isolde_joined 등 필요한 것) · `difficulty` · `heroes{charId:{level,tier}}` (`CLASSES[classId].tier`) · `joined` (`storyJoinedChars(state)`) · `owned{id:{lv,bond,src}}` (`state.companions.owned`) · `docs` · `relics` · `hearts` · `shards` · `secrets` · `bestiary`(키, `ENEMIES` 에 있는 것만) · `questsDone` · `stats{kills,deaths,maxCombo,minigameWins}` · `inn{jackpots,duelRank,catGift}` (`state.innGames`) · `enhance`(가방 장비의 최대 `level`) · `run`(`state.created` — 같은 진행 표식, ngplus.md §6).
 
 | m | arg | 값 | 소급 | 실시간 계기 (이 이벤트 뒤에 그 지표를 쓰는 업적만 다시 본다) |
 |---|---|---|---|---|
 | `cleared` | sid[] | arg 중 어느 슬롯에서든 `progress.cleared[sid]` 가 있는 수 | ✓ | `stageCleared` · 슬롯 쓰기 |
 | `boss` | bossId | 어느 슬롯의 `progress.bosses` 에 있으면 1 | ✓ | `bossKilled`(mode story) · 슬롯 쓰기 |
 | `ending` | kind[] | arg 중 `meta.endingsSeen` 에 있는 수 | ✓ | 메타 쓰기 (`ending.js` 의 saveMeta) |
-| `kills` | – | max(`prog.kills`, 합 `stats.kills`) | ✓ | `enemyKilled` (byPlayer, 모든 모드) → `prog.kills++` |
+| `kills` | – | max(`prog.kills`, 합 `stats.kills` — 같은 진행(`created` 가 같은 슬롯: 피의 윤회 빈 슬롯 복사·코드로 옮긴 사본)은 큰 값 하나만) | ✓ | `enemyKilled` (byPlayer, 모든 모드) → `prog.kills++` |
 | `combo` | – | max(`prog.combo`, 최대 `stats.maxCombo`) | ✓ | `comboMilestone {n}` → `prog.combo = max` |
 | `style` | – | `prog.style` (D=1 … SSS=7) | ✗ | `styleRankUp {r}` |
 | `nodmg` | bossId? | 인자 없음: `prog.nodmg` (무피해 보스 처치 수) · 있음: `prog.nd_<bossId>` | ✗ | `bossStarted` → (`playerHurt`·`playerDied` 없음, `world.run.damageTaken` 그대로) → 같은 id 의 `bossKilled` (mode story·practice) |
@@ -171,7 +171,7 @@ game.ach = {
 
 - `prog` 키 (25개): `kills combo style nodmg nd_b_dracula aw_kael aw_sera aw_victor aw_bran aw_lia aw_azel aw_isolde aw2 ride egg enh daily_n daily_last rush_perfect mg_win jackpot nodmg_stage hb_lia_nemain hb_isolde_argen deaths`. 새 키를 쓰면 이 목록과 시험 C1 에 적는다.
 - **진행 막대**(`bar: true`)는 셀 수 있는 지표에서 `n > 1` 일 때만: `kills combo tier2all heroes awaken mounts guards bond cmpLv otherworld docs bestiary secrets enhance quests survival tower daily mgWins duel rankS nodmg deaths all`. `cur` 는 `min(metric, n)`.
-- 회차: 요약은 `ng.past` 를 가상 슬롯으로 함께 읽는다 — ngplus.md §6 (`digestState(state).past` = 지난 회차의 진행만, 영웅·통계·동료·가방은 비어 있고 난이도는 `past.diff`; `ctx.slots` 에 따로 한 칸이라 회차를 넘겨도 지표가 줄지 않고 `diffEnding` 은 그 회차의 난이도로만 선다 · 시험 C9).
+- 회차: 요약은 `ng.past` 를 가상 슬롯으로 함께 읽는다 — ngplus.md §6 (`digestState(state).past` = 지난 회차의 진행만, 영웅·통계·동료·가방은 비어 있고 난이도는 `past.diff`; `ctx.slots` 에 따로 한 칸이라 회차를 넘겨도 지표가 줄지 않고 `diffEnding` 은 그 회차의 난이도로만 선다 · 시험 C9). 빈 슬롯 복사본은 누적 통계를 그대로 가지므로 요약에 `run`(= `created`)을 두고 합 지표(`kills`)가 같은 `run` 을 한 번만 센다 (C9 '빈 슬롯 복사').
 - 성능: `enemyKilled` 처리는 상수 시간(카운터·캐시 집합)만 — 휴대폰 ≤ 0.02 ms. 세이브 전체 요약은 드문 이벤트 뒤 `setTimeout(0)` 로 미뤄 한 번 (요약 한 번 ≤ 2 ms 휴대폰). 부팅 훑기는 한가할 때 (슬롯 셋 JSON 읽기 ≈ 5–15 ms).
 
 ### 3.4 소급 (옛 플레이어)
