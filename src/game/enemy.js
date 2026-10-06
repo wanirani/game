@@ -367,7 +367,7 @@ export class Enemy extends Entity {
     const vxBefore = this.vx, vyBefore = this.vy, wasAir = !this.onGround;
     moveBody(this, dt, world.map, world.platforms);
     // 벽 바운드 (feel §4.5): 경직 중 벽에 |vx| ≥ 380 으로 부딪힘
-    if (stunned && this.hitWall && this.wbArmed > 0 && !this.wbUsed && Math.abs(vxBefore) >= (T.BW.minVx ?? 380)) this.wallBounce(world, vxBefore);
+    if (stunned && this.hitWall && this.wbArmed > 0 && !this.wbUsed && !this.scripted() && Math.abs(vxBefore) >= (T.BW.minVx ?? 380)) this.wallBounce(world, vxBefore);   // 연출 상태(땅에서 올라오는 중 등)는 튕겨 띄우지 않는다
     this.vx *= damp(this.onGround ? (W.groundFriction ?? 0.86) : (W.airDamp ?? 0.985), dt);
     if (this.onGround && wasAir) this.onReactLand(world, vyBefore);
   }
@@ -584,7 +584,7 @@ export class Enemy extends Entity {
     }
     this.kbT = 0.2;
     // 벽 바운드 준비: F·H 등급 |kb.x| ≥ 320
-    if ((cls0 === 'F' || cls0 === 'H' || cls0 === 'S' || cls0 === 'A') && Math.abs(kb[0]) >= (T.BW.armKb ?? 320) && !this.wbUsed) this.wbArmed = T.BW.armT ?? 0.5;
+    if ((cls0 === 'F' || cls0 === 'H' || cls0 === 'S' || cls0 === 'A') && Math.abs(kb[0]) >= (T.BW.armKb ?? 320) && !this.wbUsed && !this.scripted()) this.wbArmed = T.BW.armT ?? 0.5;
   }
 
   takeHit(dmg, attack, world, info) {

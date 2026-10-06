@@ -13,6 +13,7 @@
 //         (다른 사이트 주소는 무시 — 비밀번호·토큰이 다른 곳으로 가지 않게)
 import { bus } from './events.js';
 import { saves, isValidSave } from './save.js';
+import { mergeAch, cleanAch } from './ach_meta.js';   // [hook:ach] 업적 기록 meta.ach (docs/specs/achievements.md §2.3)
 
 export const API_BASE = '/api';
 /** 안드로이드 앱이 부르는 계정 서버 (공식 사이트). 사이트 주소를 바꾸면 여기와 netlify.toml·문서를 함께 바꾼다 */
@@ -360,6 +361,8 @@ export function mergeMeta(a, b) {
     out.towerBest = {};
     for (const k of new Set([...Object.keys(A), ...Object.keys(B)])) out.towerBest[k] = betterTower(A[k], B[k]);
   }
+  // [hook:ach] 업적: got 합집합(가장 이른 시각)·prog 큰 값·claimed 합집합 (한쪽만 있으면 그것을 고친 사본 — 서버 것을 지우지 않는다)
+  if (isObj(a.ach) || isObj(b.ach)) out.ach = mergeAch(a.ach, b.ach);
   return JSON.parse(JSON.stringify(out));
 }
 
@@ -371,6 +374,7 @@ export function cleanMeta(m) {
   o.highScores = (Array.isArray(o.highScores) ? o.highScores : []).filter(isObj).slice(0, 200);
   if (!isObj(o.bestiary)) o.bestiary = {};
   o.clears = num(o.clears); o.survivalBest = num(o.survivalBest); o.konami = !!o.konami;
+  if ('ach' in o) o.ach = isObj(o.ach) ? cleanAch(o.ach) : null;   // [hook:ach] 서버 isValidAch 를 늘 통과하는 사본 (≤ 24 KB, 줄이지 않는다)
   // 64KB 제한 여유: 너무 크면 기록 목록을 줄인다
   if (JSON.stringify(o).length > 56000) o.highScores = o.highScores.slice(0, 40);
   return o;

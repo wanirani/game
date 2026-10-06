@@ -84,7 +84,7 @@ export class ResultsScene extends Scene {
     if (!stage.side) st.progress.chapter = Math.max(st.progress.chapter ?? 0, stage.chapter ?? 0);   // 외전(s21, side)은 이야기 장 진행에 들지 않는다
     st.lives = Math.max(run.lives, world.diff.lives);
     this.game.recordScore?.(this.finalScore, stage.id);
-    bus.emit('stageCleared', { stageId: stage.id, rank: this.rank.r, time: run.time, score: this.finalScore });
+    bus.emit('stageCleared', { stageId: stage.id, rank: this.rank.r, time: run.time, score: this.finalScore, noDamage: run.damageTaken === 0, diff: st.difficulty, charId: st.charId });   // [hook:ach] 무결 (ch_nodmg_stage) — 여기서는 game.world 가 이미 비었다
     saves.write(st.slot, st);
     this.shownRows = 0; this.rowT = 0; this.scoreShown = this.baseScore;
     this.rankShown = 0; this.left = false;

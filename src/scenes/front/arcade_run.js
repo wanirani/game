@@ -265,7 +265,8 @@ export class ArcadeRunScene extends Scene {
     w.syncRun();
     const res = this.results(cleared, reason);
     res.online = this.onlinePayload(cleared, res);
-    bus.emit('arcadeFinished', { kind: this.cfg.kind, cleared, reason, score: res.score, time: res.time, extra: res.extra ?? null, charId: this.cfg.charId, diff: this.cfg.diff, stageId: res.stageId });   // [hook:plat] 익명 통계 (core/telemetry.js)
+    bus.emit('arcadeFinished', { kind: this.cfg.kind, cleared, reason, score: res.score, time: res.time, extra: res.extra ?? null, charId: this.cfg.charId, diff: this.cfg.diff, stageId: res.stageId,   // [hook:plat] 익명 통계 (core/telemetry.js)
+      course: this.cfg.course ?? null, daily: this.cfg.daily?.date ?? null });   // [hook:ach] 업적: 일일 도전 날짜(ar_daily7)·코스
     audio.stopMusic(0.5);
     this.game.go('arcadeResults', { ...res, kind: this.cfg.kind, cfg: this.cfg, charId: this.cfg.charId, cleared, reason }, { fadeTime: cleared ? 0.9 : 0.6 });
   }
@@ -285,6 +286,7 @@ export class ArcadeRunScene extends Scene {
       if (kind === 'survival') result.wave = res.extra?.wave ?? 0;
       if (kind === 'tower') result.floor = res.extra?.floor ?? 0;   // 돌파한 층 (§1 tower:<diff>)
       if (res.rank) result.rank = res.rank;
+      const ti = this.game.ach?.title?.(); if (ti) result.ti = ti;   // [hook:ach] 온라인 이명 (고정 목록 id — 서버가 목록 밖은 버린다, achievements.md §8)
       const ghost = submit && this.rec ? this.rec.encode() : null;
       return { h: this.orun ?? null, board: this.board, result, ghost, submit, daily: !!this.cfg.daily };
     } catch (e) { console.warn('[arcade] online payload', e); return null; }
@@ -438,7 +440,7 @@ export class BossRushScene extends ArcadeRunScene {
         ['무피해 격파', `${this.log.filter((l) => l.perfect).length}회`],
         ['최대 콤보', `${Math.max(w.combo.best, w.combo.max)} HITS`],
       ],
-      log: this.log, stageId: 'arena', extra: { bosses: this.log.length, total: this.queue.length },
+      log: this.log, stageId: 'arena', extra: { bosses: this.log.length, total: this.queue.length, perfect: this.log.filter((l) => l.perfect).length },   // [hook:ach] perfect: 무피해 라운드 수 (ch_rush_perfect)
     };
   }
   overlay(ctx, vw, vh) {

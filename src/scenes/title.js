@@ -8,6 +8,9 @@
 //    컨트롤러만 쓰는데 소리가 잠겨 있으면 소리 안내 (P-23), 익명 통계 안내 한 번 (닫으면 meta.tips.telemetry, core/telemetry.js)
 //  - 오른쪽 위: 최고 점수 + 계정(로그인 아이디 또는 게스트) → 누르면 계정 화면. 메뉴에도 '계정' 항목
 //  - 안내 줄은 지금 기기의 글리프 (prompts.drawHints), 가상 패드는 숨김 (hidePad)
+//  - 업적 (docs/specs/achievements.md §7.6 · §5.2, ACH-UI): 메뉴 8번째 줄 '업적' (명예의 전당 다음, 안 본 달성이 있으면 붉은 점 + NEW n)
+//    → go('achievements', {back:'title'}) · 고른 타이틀 장식(meta.ach.deco → core/ach_meta.js ACH_DECOS)을 Ambience 인자에 더한다
+//    (박쥐·먼지 수 배율, 불씨·안개 색, '핏빛 달'은 로고 뒤 오른쪽 위 달 하나). decoOf · decoAmbience · drawDecoMoon 은 업적 화면도 쓴다
 import { Scene } from '../core/game.js';
 import { input } from '../core/input.js';
 import { audio } from '../core/audio.js';
@@ -22,6 +25,7 @@ import { drawHints, drawGlyph, glyphWidth, promptMode } from '../core/prompts.js
 import { clamp, ease, lerp, fmt, rand } from '../core/math.js';
 import { hudSafe } from '../render/hud_layout.js';
 import { CHARACTERS, CHAR_ORDER } from '../data/characters.js';
+import * as ACHM from '../core/ach_meta.js';
 // 아케이드 장면(arcade.js → 보스·아이템·퀘스트 데이터)은 정적으로 싣지 않는다: endArcade 는 front/common.js 의 것 (R1-REQ-229)
 import {
   Ambience, kenBurns, shade, menuItem, ornament, applySettings, installRecordScore, gbutton, frame, linGrad, radGrad, glowSprite,
@@ -54,6 +58,40 @@ const TITLE_OPTS = { size: 96, style: 'blood', spacing: 2, drips: 0.45 };
 const SUB_OPTS = { size: 30, style: 'gold', family: FONT.title, weight: 800, spacing: 6, glow: false };
 const GLINTS = [[-330, -38], [-150, -52], [40, -40], [210, -50], [350, -34], [-40, 78], [120, 74]];
 
+// ── 타이틀 장식 (업적 보상, docs/specs/achievements.md §5.2) ──
+/** 고른 타이틀 장식 {name, amb} (meta.ach.deco; 없거나 모르는 id 면 null) */
+export function decoOf(meta) {
+  const id = meta?.ach?.deco, D = ACHM.ACH_DECOS;
+  return typeof id === 'string' && D && Object.hasOwn(D, id) ? D[id] : null;
+}
+/** Ambience 인자에 장식을 더한다: 색은 바꾸고, batsMul·motesMul 은 수에 곱한다 (박쥐 28 이하 — 그리기 예산은 지금과 같은 수준) */
+export function decoAmbience(base, deco) {
+  const a = deco?.amb, o = { ...base };
+  if (!a || typeof a !== 'object') return o;
+  if (typeof a.emberColor === 'string') o.emberColor = a.emberColor;
+  if (typeof a.fogTint === 'string') o.fogTint = a.fogTint;
+  if (Number(a.batsMul) > 0) o.bats = Math.min(28, Math.round((o.bats ?? 12) * a.batsMul));
+  if (Number(a.motesMul) > 0) o.motes = Math.round((o.motes ?? 30) * a.motesMul);
+  return o;
+}
+/** '핏빛 달' 장식: 붉은 달 원판 하나 (발광은 glowSprite 캐시, 원 하나 + 얼룩 둘) */
+export function drawDecoMoon(ctx, x, y, r, t = 0) {
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.globalAlpha = 0.5 + 0.1 * Math.sin(t * 0.7);
+  const s = r * 4.4;
+  ctx.drawImage(glowSprite('#ff3040'), x - s / 2, y - s / 2, s, s);
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 0.9;
+  ctx.fillStyle = '#c41c2e';
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 0.28; ctx.fillStyle = '#4a0610';
+  ctx.beginPath(); ctx.arc(x - r * 0.28, y - r * 0.18, r * 0.26, 0, Math.PI * 2); ctx.arc(x + r * 0.3, y + r * 0.26, r * 0.18, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 0.35; ctx.strokeStyle = '#ff8a8a'; ctx.lineWidth = Math.max(1, r * 0.05);
+  ctx.beginPath(); ctx.arc(x, y, r * 0.96, Math.PI * 1.1, Math.PI * 1.6); ctx.stroke();
+  ctx.restore();
+}
+
 const APK_DEFAULT = 'downloads/BloodNocturne.apk';
 /** 기록의 이름 (이니셜이 없으면 영웅 이름 앞부분; 알 수 없는 영웅 id 는 '???') */
 const scoreName = (h) => (h.name ? String(h.name) : (typeof h.charId === 'string' && Object.hasOwn(CHARACTERS, h.charId) ? CHARACTERS[h.charId].name.split(' ')[0] : '???'));
@@ -73,7 +111,10 @@ export class TitleScene extends Scene {
     const q = g.tier === 'low' ? 0.5 : g.tier === 'medium' ? 0.75 : 1;
     // 번개(화면 번쩍임)는 '화면 번쩍임'·'동작 줄이기' 설정을 따른다
     const bolts = Number(st.flashFx ?? 1) > 0 && !st.reduceMotion;
-    this.amb = new Ambience({ embers: Math.round(70 * q), motes: Math.round(24 * q), bats: Math.round(14 * q), lightning: bolts });
+    const deco = decoOf(g.meta);   // 업적 보상 타이틀 장식 (§5.2)
+    this.amb = new Ambience(decoAmbience({ embers: Math.round(70 * q), motes: Math.round(24 * q), bats: Math.round(14 * q), lightning: bolts }, deco));
+    this.moon = !!deco?.amb?.moon;
+    this.achNew = 0; this.achPoll = 0;
     this.amb.nextBolt = 0.9;
     this.mode = params.menu ? 'menu' : 'intro';
     this.modeT = params.menu ? 1 : 0;
@@ -88,6 +129,7 @@ export class TitleScene extends Scene {
     // 클라우드에서 기록을 받거나 로그인 상태가 바뀌면 '이어하기' 활성 여부를 다시 계산
     const rebuild = () => { if (this.game.top === this) this.buildMenu(this.menu.index); };
     this.offs = [bus.on('cloud:sync', (e) => { if (e?.phase === 'done') rebuild(); }), bus.on('cloud:login', rebuild), bus.on('cloud:logout', rebuild)];
+    this.offs.push(bus.on('achievementUnlocked', () => { this.achPoll = 0; }));   // NEW 수를 곧 다시 읽는다
     // 새 버전 준비 알림 (구독하는 동안 platform.js 는 타이틀에서 자기 안내 토스트를 띄우지 않는다)
     this.upd = null;
     try {
@@ -113,6 +155,7 @@ export class TitleScene extends Scene {
       { id: 'continue', label: '이어하기', sub: 'CONTINUE', disabled: !hasSave },
       { id: 'arcade', label: '아케이드 모드', sub: 'ARCADE MODE' },
       { id: 'hof', label: '명예의 전당', sub: 'HALL OF FAME' },
+      { id: 'ach', label: '업적', sub: 'ACHIEVEMENTS' },   // 업적 화면 (docs/specs/achievements.md §7.6)
       { id: 'account', label: '계정', sub: 'ACCOUNT' },
       { id: 'options', label: '설정', sub: 'OPTIONS' },
       { id: 'credits', label: '크레딧', sub: 'CREDITS' },
@@ -217,6 +260,9 @@ export class TitleScene extends Scene {
     if (this.nextGlint <= 0) { this.glint = 0; this.glintI = (this.glintI + 1 + Math.floor(rand(0, GLINTS.length - 1))) % GLINTS.length; this.nextGlint = rand(3.5, 6.5); }
     if (this.glint >= 0) { this.glint += dt / 0.7; if (this.glint > 1) this.glint = -1; }
     this.menuK = follow(this.menuK, this.mode === 'menu' ? 1 : 0, dt, 7);
+    // 업적: 안 본 달성 수 (엔진이 늦게 오고 소급 훑기도 한가할 때 돌아서, 1초마다 다시 읽는다)
+    this.achPoll -= dt;
+    if (this.achPoll <= 0) { this.achPoll = 1; this.achNew = Math.max(0, Number(safe(() => g.ach?.summary?.()?.unseen)) || 0); }
     if (this.checkKonami()) { this.unlockAll(); return; }
 
     if (input.anyPressed() || input.pointer.justDown) this.idle = 0; else this.idle += dt;
@@ -260,6 +306,7 @@ export class TitleScene extends Scene {
       case 'continue': g.go('slots', { mode: 'load' }); break;
       case 'arcade': g.go('arcade', {}); break;
       case 'hof': g.go('highscore', { back: 'title' }); break;
+      case 'ach': g.go('achievements', { back: 'title' }); break;
       case 'account': this.openAccount(); break;
       case 'options': g.push('options', {}); break;
       case 'credits': g.go('credits', { back: 'title' }); break;
@@ -340,6 +387,7 @@ export class TitleScene extends Scene {
     const img = assets.get('bg/title');
     // 배경 켄번스 (초점: 달·성 중앙 상단)
     kenBurns(ctx, img, W, H, t, { z0: 1.03, z1: 1.1, period: 50, panX: 0.012, panY: 0.01, px: this.px, py: this.py, oy: 0.4 });
+    if (this.moon) drawDecoMoon(ctx, W * 0.8 + this.px * 1.5, H * 0.17 + L.st, H * 0.075, t);   // 장식 '핏빛 달' (로고 뒤 오른쪽 위)
     this.amb.draw(ctx, W, H, 'back', t, this.px * 2);
     // 달빛 맥동 (원점 그라데이션 + 알파)
     ctx.save();
@@ -513,7 +561,13 @@ export class TitleScene extends Scene {
       const r = { x: x - (1 - k) * 60, y: y0 + i * (h + gap), w, h };
       this.menu.hit(i, r);
       ctx.save(); ctx.globalAlpha = k;
-      menuItem(ctx, r, it.label, { selected: this.menu.index === i && this.mode === 'menu', disabled: it.disabled, sub: it.sub, k, size: h >= 48 ? 22 : 21 });
+      const achNew = it.id === 'ach' && this.achNew > 0;
+      menuItem(ctx, r, it.label, { selected: this.menu.index === i && this.mode === 'menu', disabled: it.disabled, sub: achNew ? `NEW ${this.achNew}` : it.sub, k, size: h >= 48 ? 22 : 21 });
+      if (achNew) { // 안 본 업적: 줄 오른쪽 붉은 점
+        const dx = r.x + r.w - 20, dy = r.y + r.h / 2, pr = 4.5 + 0.8 * Math.sin(t * 5);
+        ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.beginPath(); ctx.arc(dx, dy, pr + 1.5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#ff3050'; ctx.beginPath(); ctx.arc(dx, dy, pr, 0, Math.PI * 2); ctx.fill();
+      }
       ctx.restore();
     });
     ctx.save(); ctx.globalAlpha = mk;

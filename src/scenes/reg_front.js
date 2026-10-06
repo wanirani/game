@@ -15,6 +15,7 @@ import { HighscoreScene, InitialsScene } from './front/highscore.js';
 import { ConfirmScene, SaveCodeScene } from './front/dialogs.js';
 import { AccountScene } from './front/account.js';
 import { CloudConflictScene } from './front/cloud_ui.js';
+import { AchievementsScene } from './front/achievements.js';   // 업적 (docs/specs/achievements.md §7, ACH-UI)
 
 export function register(game) {
   game.register('title', TitleScene);
@@ -39,4 +40,5 @@ export function register(game) {
   game.register('saveCode', SaveCodeScene);
   game.register('account', AccountScene);
   game.register('cloudConflict', CloudConflictScene);
+  game.register('achievements', AchievementsScene);
 }

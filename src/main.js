@@ -30,6 +30,9 @@ async function loadRest(g) {
     Q.initQuests(g);
     C.initCompanions(g); // [hook:cmp] game.companions = {recruit, unlock, evaluate, state} + 버스 구독
     rest = { S, Q, C };
+    // 업적 엔진·알림 (docs/specs/achievements.md §3.1): 정적 import 금지 — 받지 못해도 게임은 그대로 (game.ach 가 없으면 화면이 데이터만으로 그린다)
+    import('./game/achievements.js').then((A) => A.initAchievements(g)).catch((e) => console.warn('[ach]', e)); // [hook:ach]
+    import('./game/ach_notify.js').then((N) => N.initAchNotify(g)).catch((e) => console.warn('[ach]', e)); // [hook:ach] (ACH-UI)
   }
   return rest;
 }

@@ -194,17 +194,26 @@ await run('core', ['mt_warhorse'], STAGE('s01', '&cmp=all&cmplv=10&mount=mt_warh
   checks.push(['빠르게 달리다 돌아서면 turn', turned]);
   T.step(0.8);
   // 4) 돌진 → 앞의 좀비가 맞고 뜬다
+  //   갓 생긴 좀비는 땅에서 솟는 중(state 'rise', 0.9초)이고, 이 연출 상태는 설계상 띄우지 않고 밀기만 한다 (enemy.js SCRIPTED_STATES).
+  //   예전에는 솟는 중에 들이받아, 벽에 몰린 좀비가 '벽 바운드'로 뜰 때만 우연히 통과했다 (치명타로 그 자리에서 죽거나 정예라 벽 바운드가 안 나면 실패 ≈ 15%).
+  //   → 솟기 시계를 넘겨 다음 틱에 AI 가 스스로 일어서게(walk) 한 뒤 들이받는다 (기다리는 동안 동료가 먼저 치지 않게 한 틱만). 정예 굴림도 끈다.
   T.reset(m); T.clearFoes();
   p.facing = 1;
-  const z = T.spawn('zombie', 110);
+  const z = T.spawn('zombie', 110, { elite: false });
+  z.stateT = 99; T.step(1 / 60);
+  checks.push(['(준비) 좀비가 다 솟아 섰다', z.state !== 'rise' && !z.scripted(), z.state]);
+  // 돌진 타격 자체의 반응을 기록한다 (벽 바운드·동료 협공이 띄운 것과 구별)
+  let chargeReact = null;
+  const zHit = z.takeHit;
+  z.takeHit = function (dmg, atk, ww, inf) { const r = zHit.call(this, dmg, atk, ww, inf); if (!chargeReact && atk?.tags?.includes('charge')) chargeReact = { vy: Math.round(this.vy), jugg: this.jugg, killed: this.hp <= 0 }; return r; };
   const hp0 = z.hp;
   T.press('KeyC', 0.05);
   let launched = false, chargeSeen = false;
   T.step(0.5, () => { if (m.chargeT > 0) chargeSeen = true; if (z.vy < -100 || z.airborne || z.launched) launched = true; return false; });
-  info.charge = { hp0, hp: z.hp, dead: z.dead };
+  info.charge = { hp0, hp: z.hp, dead: z.dead, react: chargeReact };
   checks.push(['돌진 시작 (chargeT)', chargeSeen]);
   checks.push(['돌진에 좀비가 맞았다', z.dead || z.hp < hp0, info.charge]);
-  checks.push(['돌진에 좀비가 떴다', launched || z.dead]);
+  checks.push(['돌진에 좀비가 떴다 (돌진 타격으로)', launched && !!chargeReact && chargeReact.vy < -100 && chargeReact.jugg, info.charge]);
   checks.push(['돌진 재사용 대기', m.chargeCd >= 0 && m.chargeCd <= 0.8]);
   // 5) ↓+X → 앞발 강타: 재사용 대기 · 반경 180 안의 적
   T.reset(m); T.clearFoes(); T.step(0.2);

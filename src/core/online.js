@@ -193,6 +193,8 @@ export function startRun(board) {
   });
   return h;
 }
+/** 이명 id 형식 (core/ach_meta.js ACH_TITLES 의 키 — 이름은 화면이 그 표로 옮긴다. 자유 글은 오르지 않는다) */
+export const TITLE_RE = /^t_[a-z0-9_]{1,30}$/;
 /** 제출할 결과 정리 (§2.2: time·score·level 정수, 범위 밖은 서버가 거절) */
 export function cleanResult(r) {
   const o = { time: Math.max(0, Math.round(Number(r?.time) || 0)), score: Math.max(0, Math.min(99999999, Math.round(Number(r?.score) || 0))), hero: String(r?.hero ?? ''), cls: String(r?.cls ?? ''), level: Math.max(1, Math.min(99, Math.round(Number(r?.level) || 1))) };
@@ -200,6 +202,7 @@ export function cleanResult(r) {
   if (Number.isFinite(r?.floor)) o.floor = Math.max(0, Math.round(r.floor));
   if (typeof r?.rank === 'string' && /^[SABCD]$/.test(r.rank)) o.rank = r.rank;
   if (Number.isFinite(r?.deaths)) o.deaths = Math.max(0, Math.round(r.deaths));
+  if (typeof r?.ti === 'string' && TITLE_RE.test(r.ti)) o.ti = r.ti;   // [hook:ach] 이명 id (고정 목록 밖이면 서버가 오류 없이 버린다, achievements.md §8)
   return o;
 }
 const okGhost = (g) => typeof g === 'string' && g.length > 0 && g.length <= GHOST_MAX && /^[A-Za-z0-9+/]+={0,2}$/.test(g);
@@ -342,6 +345,7 @@ export function getBoard(board, { limit = 50, force = false } = {}) {
     const entries = (Array.isArray(r.entries) ? r.entries : []).filter(isObj).slice(0, 100).map((e, i) => ({
       rank: Number.isFinite(e.rank) ? e.rank : i + 1, nick: String(e.nick ?? '???').slice(0, 24), time: Number(e.time) || 0, score: Number(e.score) || 0,
       wave: Number.isFinite(e.wave) ? e.wave : null, floor: Number.isFinite(e.floor) ? e.floor : null, hero: String(e.hero ?? ''), cls: String(e.cls ?? ''), level: Number(e.level) || 0, date: e.date ?? null, ghost: !!e.ghost,
+      title: typeof e.title === 'string' && TITLE_RE.test(e.title) ? e.title : null,   // [hook:ach] 이명 id (모르는 id 는 화면이 그리지 않는다)
     }));
     // me.rank 는 순위 밖이면 null (기록은 있다)
     const me = isObj(r.me) && (Number.isFinite(r.me.rank) || r.me.rank === null) && Number.isFinite(r.me.time) ? { rank: Number.isFinite(r.me.rank) ? r.me.rank : null, time: Number(r.me.time) || 0, score: Number(r.me.score) || 0, wave: Number.isFinite(r.me.wave) ? r.me.wave : null, floor: Number.isFinite(r.me.floor) ? r.me.floor : null } : null;

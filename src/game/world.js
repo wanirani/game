@@ -1270,7 +1270,7 @@ export class World {
     this.addScore((boss.def.score ?? 20000));
     for (const d of rollBossLoot(this, boss)) this.spawnPickup(d.type, boss.cx + rand(-40, 40), boss.cy, { ...d.data, keep: true });   // keep: 첫 처치 확정 고유 장비 등 — 가방이 가득 차도 보관함으로 (stashRoomLoot · collectLeftovers)
     for (let i = 0; i < 20; i++) setTimeout(() => this.fx.burst('fire', boss.cx + rand(-80, 80), boss.cy + rand(-80, 80), 8, { speed: 200 }), i * 60);
-    bus.emit('bossKilled', { bossId: boss.def.id, stageId: this.stage.id, time: this.run.time });
+    bus.emit('bossKilled', { bossId: boss.def.id, stageId: this.stage.id, time: this.run.time, mode: this.mode, charId: this.hero?.charId });   // [hook:ach] mode·charId: 업적 (sc_lia·sc_isolde 스토리, cb_nodmg 스토리·연습)
     this.banner = { text: 'STAGE CLEAR', sub: boss.def.name + ' 격파!', t: 4, color: '#ffe070', big: true };
   }
   /** 클리어 연출이 끝난 뒤: (스토리) 보스의 마지막 대사 `<bossId>_post` 를 한 번 보여 주고 결과 화면으로 */

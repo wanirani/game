@@ -2,7 +2,7 @@
 // 이벤트 등록부 (MASTER_PLAN §1.12). 새 이벤트는 여기에 이름과 payload 를 먼저 적고 쓴다.
 // 주요 이벤트 (payload):
 //  'enemyKilled'   {enemy, def, x, y, byPlayer}
-//  'bossKilled'    {bossId, stageId, time}
+//  'bossKilled'    {bossId, stageId, time, mode, charId}   mode = world.mode ('story'|'practice'; 아케이드 보스 러시·서바이벌·탑은 나오지 않는다), charId = 그때의 영웅 [hook:ach]
 //  'itemPicked'    {item, qty}       (인벤토리에 들어간 아이템 인스턴스)
 //  'itemUsed'      {item, baseId}
 //  'itemBought'    {baseId, qty, gold, item}
@@ -11,13 +11,14 @@
 //  'docFound'      {docId}
 //  'relicFound'    {id}
 //  'secretFound'   {stageId, key}
-//  'stageCleared'  {stageId, rank, time, score}
+//  'stageCleared'  {stageId, rank, time, score, noDamage, diff, charId}   scenes/results.js (스토리). noDamage = run.damageTaken === 0 [hook:ach]
 //  'stageEntered'  {stageId}
 //  'roomEntered'   {stageId, roomId}
 //  'playerHurt'    {amount}
 //  'playerDied'    {cause}           cause = 맞은 attack 객체 | 'fall' | 'hazard' | null (core/telemetry.js 가 사망 원인으로 읽는다)
 //  'bossStarted'   {bossId, stageId, time}   world.startBoss (스토리·연습 보스전 시작; time = run.time)
-//  'arcadeFinished' {kind, cleared, reason, score, time, extra, charId, diff, stageId}   아케이드 정산 (front/arcade_run.js finish)
+//  'arcadeFinished' {kind, cleared, reason, score, time, extra, charId, diff, stageId, course, daily}   아케이드 정산 (front/arcade_run.js finish)
+//                  course = 보스 러시 코스 번호 | null · daily = 일일 도전 날짜 'YYYYMMDD' | null · 보스 러시 extra {bosses, total, perfect(무피해 라운드 수)} [hook:ach]
 //  'levelUp'       {charId, level}
 //  'classChanged'  {charId, classId}
 //  'enhance'       {item, success, destroyed, level, before}
@@ -47,6 +48,9 @@
 //  'cloud:status' {state}  'cloud:login' {id, resumed}  'cloud:logout' {id, reason}  'cloud:sync' {phase, …}  'cloud:conflict' {slot}
 // 온라인 (core/online.js, docs/specs/online.md):
 //  'online:flushed' {sent:[{board, rank, total, best}], dropped, left}   기기 대기열에 두었던 결과를 보냄 (front/arcade.js 가 토스트)
+// 업적 (game/achievements.js, docs/specs/achievements.md §9):
+//  'achievementUnlocked' {ids, src}   ids = 이번 처리에서 새로 얻은 업적 id 들 (한 번에 모아 한 번), src = 'live'(게임 중 사건) | 'retro'(부팅 소급) | 'cloud'(동기화 뒤)
+//                                     game/ach_notify.js(알림)·scenes/front/achievements.js(화면)가 듣는다
 export class EventBus {
   constructor() { this.map = new Map(); }
   on(evt, fn) {
