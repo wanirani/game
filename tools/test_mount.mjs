@@ -2,7 +2,7 @@
 // 탈것 런타임 테스트 (CMP-MOUNT; companions §3, §11.4, §14 C2; world2 §14; MASTER_PLAN §1.2 · §1.7 · §1.14)
 //   node tools/test_mount.mjs                          1부 탈것 여섯 (그림메인 바르그 코슈타 스콜 스칼렛 녹티스) + 공통 규칙 + 터치·패드
 //   node tools/test_mount.mjs --only mt_ignis,mt_gale,mt_silva   2부 탈것 (CMP-MOUNT-B 의 mount_b.js 가 채운 뒤) — 탈것 id 나 사례 이름으로 고른다
-//   (외전 아르겐 mt_argen 은 기본 실행에 든다 · --only mt_argen 으로 따로)
+//   (외전 아르겐 mt_argen · 모르겐 mt_morgen 은 기본 실행에 든다 · --only mt_argen / --only mt_morgen 으로 따로)
 //   --case name[,name]   특정 사례만   --verbose   통과 항목도   --shots   사례마다 스크린샷 (/tmp/claude-0/proto/CMP-MOUNT/)
 // 헤드리스 Chromium + tools/serve.mjs. 게임 시간은 game.tick(1/60) 을 직접 돌려 진행한다 (결정적). 터치·패드 사례만 실제 시간으로 잠깐 돈다.
 // 모든 사례는 페이지 오류·콘솔 오류 0 이어야 통과한다.
@@ -945,6 +945,136 @@ await run('ex_mt_argen', ['ex', 'mt_argen'], STAGE('s01', '&cmp=all&cmplv=10'), 
   T.goHome(); T.reset(m); T.key('ArrowRight', true); T.step(1.2); T.key('ArrowRight', false);
   checks.push(['달린다', Math.abs(p.vx) > def.move.speed * 0.8 || m.anim === 'run', p.vx]);
   checks.push(['돌풍 저항 windMul 0.5 · 탑승 보너스 번개', def.windMul === 0.5 && def.ride.thunder === 15 && def.ride.resThunder === 20]);
+  return { checks, info };
+}));
+
+// ═════════════ 외전 모르겐 (mt_morgen, docs/specs/ex_s25.md §3 · §8): 말 리그(벡터) · 허공 딛기 1 · 새벽 돌격(신성 · 빛 자국) · 새벽 말 떼 ═════════════
+// 특수기는 mount_b.js MOUNT_B.mt_morgen (kind 'stampede'): 앞들기 0.3초 무적 → 혼 말 넷 (0.12초 간격, 760px/s · 0.85초, 말마다 대상마다 한 번).
+// 그림은 mount.js 스냅숏(mountSnapshot)을 'run' 걸음으로 금빛 틴트. 마구간(메뉴 「동료」 탭)의 모르겐 줄 · 잠긴 줄(힌트) · 합류 카드도 본다.
+await run('ex_mt_morgen', ['ex', 'mt_morgen'], STAGE('s01', '&cmp=all&cmplv=10'), (page) => page.evaluate(async () => {
+  const T = window.__T, g = T.g, w = T.w, p = T.p, checks = [], info = {};
+  const MD = await import('/src/render/mounts.js'), MBR = await import('/src/render/mounts_b.js');
+  T.step(0.5); T.clearFoes();
+  T.CS.equipGuardian(w.state, null, 0, null); T.CS.equipGuardian(w.state, null, 1, null);   // 수호신 협공이 피해 횟수에 섞이지 않게
+  const m = T.ride('mt_morgen'); T.reset(m); T.step(0.3);
+  T.setHome();
+  const def = m.def;
+  checks.push(['모르겐 탑승 · 말 리그 · 몸 60×90', m.riding && def.rig === 'horse' && p.w === 60 && p.h === 90, [def.rig, p.w, p.h]]);
+  checks.push(['벡터 말 리그 (B 그림 없음 · 포즈 있음 · 팔레트 fire · plate)', !MBR.MOUNT_DRAW_B?.mt_morgen && !!m.pose && !m.fallback && MD.MOUNT_PAL.mt_morgen?.fire === true && MD.MOUNT_PAL.mt_morgen?.plate === true, [!!m.pose, m.fallback]]);
+  // 그리기 (보통 · 기수 없음 · 틴트) + 아이콘: 오류 0, 칠한 픽셀이 있다
+  {
+    const cv = document.createElement('canvas'); cv.width = 160; cv.height = 140; const cx = cv.getContext('2d');
+    const v = T.M.mountView('mt_morgen', { anim: 'run' }); for (let i = 0; i < 20; i++) T.M.updateMountView(v, 1 / 60, 'run');
+    cx.save(); cx.translate(80, 120); T.M.drawMountView(cx, v, 'back'); T.M.drawMountView(cx, v, 'front'); T.M.drawMountView(cx, v, 'back', { tint: '#ffd890', rider: false }); cx.restore();
+    const ic = document.createElement('canvas'); ic.width = 64; ic.height = 64; MD.drawMountIcon(ic.getContext('2d'), 'mt_morgen', 32, 32, 30);
+    const ink = (c) => { const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 20) n++; return n; };
+    info.ink = { view: ink(cv), icon: ink(ic) };
+    checks.push(['그림 (달리기 · 틴트 유령 · 아이콘)', info.ink.view > 2000 && info.ink.icon > 400, info.ink]);
+  }
+  // 허공 딛기: 땅 점프 → 공중 점프 1 (0.9배, 이름 표시) → 세 번째 없음
+  T.texts.length = 0;
+  const jv = m.profile(p).jump;
+  T.key('KeyZ', true); T.step(0.05); T.key('KeyZ', false); T.step(0.2);
+  const vys = [];
+  for (let i = 0; i < 2; i++) { T.key('KeyZ', true); T.step(1 / 60); vys.push(Math.round(p.vy)); T.key('KeyZ', false); T.step(0.15); }
+  checks.push(['허공 딛기 1번 (−0.9×점프) · 두 번째 공중 점프 없음 · 이름', vys[0] <= -jv * 0.9 + 40 && vys[1] > -jv * 0.6 && T.texts.includes(def.airJumpName), { vys, jv: Math.round(jv), texts: T.texts.slice(0, 4) }]);
+  // 공중에서 특수기 → 거절 (재사용 대기 없음, 앞들기 없음)
+  T.key('ArrowDown', true); T.press('KeyX', 0.05); T.key('ArrowDown', false);
+  checks.push(['공중 새벽 말 떼 거절', !(m.specialCd > 0) && m.act?.name !== 'rear', [m.specialCd, m.act?.name]]);
+  T.step(1.2, () => p.onGround);
+  // 새벽 돌격: 신성 · 적을 친다 · 빛 자국(신성 trail)
+  T.step(0.3); T.clearFoes(); T.goHome(); T.reset(m); T.step(0.2); p.facing = 1;
+  const cz = T.spawn('zombie', 120); T.step(1.2);
+  const ch = cz.hp;
+  T.press('KeyC', 0.05);
+  const ck = m.chargeKind, cel = m.chargeAtk?.element;
+  T.step(0.3);
+  const trail = w.entities.filter((e) => e.kind === 'hitbox' && e.attack?.tags?.includes('trail'));
+  T.step(0.4);
+  checks.push(['새벽 돌격 = 신성 · 적을 친다', ck === 'ground' && cel === 'holy' && (cz.dead || cz.hp < ch), [ck, cel, ch, cz.hp]]);
+  checks.push(['빛 자국 (신성 trail)', trail.length > 0 && trail.every((h) => h.attack.element === 'holy'), trail.map((h) => h.attack.element)]);
+  // 새벽 말 떼: 앞들기 0.3초 무적 → 혼 말 넷 (0.12초 간격) — 말마다 대상마다 한 번
+  T.step(0.5); T.clearFoes(); T.goHome(); T.reset(m); T.step(0.3); p.facing = 1;
+  const foes = [150, 300].map((dx) => { const e = T.spawn('zombie', dx); return e; });
+  T.step(1.2);
+  for (const e of foes) { e.maxHp = e.hp = 999999; if (e.stats) e.stats.hp = 999999; }
+  const before = new Map(foes.map((e) => [e, e.hp])), hits = new Map(foes.map((e) => [e, 0]));
+  T.texts.length = 0;
+  T.key('ArrowDown', true); T.press('KeyX', 0.05); T.key('ArrowDown', false);
+  const act0 = m.act?.name, inv0 = m.invulnT;
+  let horses = [], maxN = 0, t0 = null, starts = [], gallop = true, moved = true, rendered = 0;
+  const seen = new Set();
+  T.step(1.6, (i) => {
+    const hb = w.entities.filter((e) => e.kind === 'hitbox' && e.snap && e.attack?.tags?.includes('special'));
+    for (const h of hb) if (!seen.has(h)) { seen.add(h); horses.push(h); h._x0 = h.hx; }
+    maxN = Math.max(maxN, hb.length);
+    for (const h of hb) if (h.t >= h.delay && h.snap?.pose && h.snap.pose.gait !== 'gallop') gallop = false;
+    for (const e of foes) { const hp = e.hp; if (hp < before.get(e)) { hits.set(e, hits.get(e) + 1); before.set(e, hp); } }
+    if (i % 6 === 0 && hb.length) { try { g.render(); rendered++; } catch (err) { rendered = -1e9; } }
+    return false;
+  });
+  for (const h of horses) if (!(h.hx - h._x0 > 300 || h.stopped)) moved = false;
+  info.stampede = { act0, inv0: +inv0.toFixed(2), horses: horses.length, maxN, delays: horses.map((h) => +h.delay.toFixed(2)), boxes: horses.map((h) => [h.w, h.h]), ids: new Set(horses.map((h) => h.attack.hitId)).size,
+    run: horses.map((h) => Math.round(h.hx - h._x0)), hits: foes.map((e) => hits.get(e)), mv: horses[0]?.attack?.mv, el: horses[0]?.attack?.element, rehit: horses[0]?.attack?.rehit, rendered, gallop };
+  checks.push(['앞들기 0.3초 무적 (기존 rear 동작)', act0 === 'rear' && inv0 > 0.2, [act0, inv0]]);
+  checks.push(['혼 말 넷 · 0.12초 간격 · 발밑 110×90 · 서로 다른 판정', horses.length === 4 && info.stampede.delays.join() === '0,0.12,0.24,0.36' && horses.every((h) => h.w === 110 && h.h === 90) && info.stampede.ids === 4, info.stampede]);
+  checks.push(['앞으로 달린다 (≥ 300px, 질주 포즈) · 그리기 오류 0', moved && gallop && rendered > 0, info.stampede]);
+  checks.push(['신성 · 말마다 대상마다 한 번 (넷 다 맞으면 4번, rehit 없음)', info.stampede.el === 'holy' && !info.stampede.rehit && foes.every((e) => hits.get(e) >= 3 && hits.get(e) <= 4), info.stampede.hits]);
+  checks.push(['재사용 대기 9초 (× 레벨 배율) · 이름', m.specialCdMax > 8 && m.specialCdMax <= 9 && m.specialCd > 0 && T.texts.includes(def.special.name), [m.specialCdMax, m.specialCd, T.texts.slice(0, 3)]]);
+  // 벽 앞: 말은 벽을 지나가지 않는다 (가장 가까운 벽까지 2–8칸인 바닥을 찾아 그 벽을 본다)
+  {
+    T.clearFoes(); T.reset(m);
+    const map = w.map, PH = T.PH, solid = (x, y) => PH.isSolidType(map.typeAt(x, y));
+    const spot = T.findTile((tx, ty) => !solid(tx, ty) && !solid(tx, ty - 1) && !solid(tx - 1, ty) && solid(tx, ty + 1) && solid(tx - 1, ty + 1)
+      && [2, 3, 4, 5, 6, 7, 8].some((k) => solid(tx + k, ty) && solid(tx + k, ty - 1) && [...Array(k).keys()].every((j) => !solid(tx + j, ty) && !solid(tx + j, ty - 1) && solid(tx + j, ty + 1))));
+    if (spot) {
+      let k = 2; while (!solid(spot.tx + k, spot.ty)) k++;
+      const wallX = (spot.tx + k) * 48;
+      T.place(spot.tx, spot.ty + 1); p.facing = 1; T.step(0.4); T.reset(m); p.facing = 1;
+      const n0 = new Set(w.entities);
+      T.key('ArrowDown', true); T.press('KeyX', 0.05); T.key('ArrowDown', false);
+      let maxRight = -1e9, stopped = 0;
+      const mine = new Set();
+      T.step(1.4, () => { for (const e of w.entities) if (e.kind === 'hitbox' && e.snap && !n0.has(e)) { mine.add(e); if (e.t >= e.delay) maxRight = Math.max(maxRight, e.hx); } return false; });
+      for (const h of mine) if (h.stopped) stopped++;
+      info.wall = { spot, k, wallX, maxRight: Math.round(maxRight), stopped, n: mine.size };
+      checks.push(['벽 앞: 혼 말은 벽을 지나가지 않고 멈춘다', mine.size === 4 && stopped === 4 && maxRight < wallX, info.wall]);
+    } else checks.push(['벽 앞 자리 찾기', false, 'no spot']);
+  }
+  // 마구간 목록 (메뉴 「동료」 탭): 모르겐 줄 → 잠긴 줄 (??? · 힌트)
+  {
+    const drawn = [];
+    const ft = CanvasRenderingContext2D.prototype.fillText;
+    CanvasRenderingContext2D.prototype.fillText = function (s, ...a) { drawn.push(String(s)); return ft.call(this, s, ...a); };
+    try {
+      const st = g.state;
+      st.companions.pending.length = 0;
+      g.push('menu', { world: w, tab: 'companions' });
+      T.step(0.3, null);
+      const tb = g.top?.cur;
+      if (tb) { tb.kind = 'mount'; tb.sel.mount = tb.ids().indexOf('mt_morgen'); }
+      drawn.length = 0; for (let i = 0; i < 3; i++) { g.tick(1 / 60); g.render(); }
+      const own = { row: drawn.includes('모르겐'), title: drawn.some((s) => s.includes('새벽 서약의 군마')), n: tb?.ids().length };
+      const saved = st.companions.owned.mt_morgen;
+      delete st.companions.owned.mt_morgen;
+      drawn.length = 0; for (let i = 0; i < 3; i++) { g.tick(1 / 60); g.render(); }
+      const hint = def.obtain.hint;
+      const locked = { q: drawn.includes('???'), hint: drawn.some((s) => s.includes(hint) || (s.length > 6 && hint.startsWith(s.replace(/…$/, '')))), title: drawn.some((s) => s.includes('새벽 서약의 군마')) };
+      st.companions.owned.mt_morgen = saved;
+      while (g.top?.name === 'menu') g.pop();
+      info.stable = { own, locked };
+      checks.push(['동료 탭: 탈것 11 · 모르겐 줄 (이름 · 칭호)', own.n === 11 && own.row && own.title, own]);
+      checks.push(['동료 탭: 잠긴 모르겐 = ??? · 합류 방법(힌트) · 칭호 없음', locked.q && locked.hint && !locked.title, locked]);
+      // 합류 카드
+      drawn.length = 0;
+      g.push('companionJoin', { id: 'mt_morgen', source: 'story' });
+      for (let i = 0; i < 120; i++) { g.tick(1 / 60); if (i % 20 === 19) g.render(); }
+      info.join = { top: g.top?.name, name: drawn.includes('모르겐'), title: drawn.some((s) => s.includes('새벽 서약의 군마')), kind: drawn.includes('탈것') };
+      while (g.top?.name === 'companionJoin') g.pop();
+      checks.push(['합류 카드: 모르겐 · 새벽 서약의 군마 · 탈것', info.join.top === 'companionJoin' && info.join.name && info.join.title && info.join.kind, info.join]);
+    } finally { CanvasRenderingContext2D.prototype.fillText = ft; }
+  }
+  checks.push(['탑승 보너스 신성 +12 · 암흑 저항 +20 · recall 14', def.ride.holy === 12 && def.ride.resDark === 20 && def.recall === 14]);
   return { checks, info };
 }));
 

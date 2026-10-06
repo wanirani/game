@@ -376,7 +376,7 @@ export const MOUNTS = {
     id: 'mt_morgen', part: 2, chapter: 25, name: '모르겐', title: '새벽 서약의 군마', color: '#ffd890',
     role: '질주형 — 가장 빠른 군마, 허공 딛기와 새벽 말 떼',
     desc: '새벽 서약 기사단의 군마. 십 년 동안 사신의 영구 마차에 묶여 있다가 풀려나, 스스로 다시 고삐를 허락했다.',
-    portrait: 'portraits/cmp_mt_morgen', iconFocus: { x: 0.5, y: 0.3, s: 0.4 },   // 초상화가 나오면 머리에 맞춘다
+    portrait: 'portraits/cmp_mt_morgen', iconFocus: { x: 0.76, y: 0.25, s: 0.36 },   // 초상화(EX5-BOSS Kling)의 머리 · 굴레 · 금빛 갈기
     obtain: { type: 'flag', flag: 'recruit_mt_morgen', hint: '외전 「불탄 목장」에서 만날 수 있다' },
     cry: { sfx: 'neigh', pitch: 1.1 }, hoof: { sfx: 'gallop', pitch: 1.05, vol: 0.9 },
     rig: 'horse', palette: ['#e4e2dc', '#9aa0b0', '#ffd070', '#fff4c8', '#3a3040'], light: { color: '#ffe8a0', r: 80, i: 0.4 },
