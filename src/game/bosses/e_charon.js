@@ -17,7 +17,8 @@
 //   toll(통행료) · hearseGhost(빈 영구차 — 전환 직후 강제) · gatherSouls(망자 부르기 · 노출) · 보조 stagger · lastLoad(15%).
 //   모든 공격은 어느 모습에서든 돈다 (debugAct — 마차가 없으면 마부가, 마부가 마부석에 있으면 마부석에서).
 //   창 상한(POLISH-4 교훈, 처음부터, RUN_CAP · STAG_CAP · LANTERN_CAP · takeHit): 1페이즈 질주 한 번(경고·돌진·카운터 창) 12% · 무릎 한 번 10% ·
-//   등불 노출 한 번 8% 까지만 잃는다. 수호신 자동 공격은 등불을 끄지도, 카운터 창을 열지도 않는다 (플레이어·탈것 공격만 '한 대').
+//   등불 노출 한 번 8% 까지만 잃는다 + (확인 2 에서 더한 것) 그 밖의 1페이즈 패턴 한 번 PAT_CAP · 패턴 사이 쉼 한 번 IDLE_CAP — 상한은 체력 값이 아니라
+//   그 창에서 잃은 양(남은 예산 capBud)으로 센다. 수호신 자동 공격은 등불을 끄지도, 카운터 창을 열지도 않는다 (플레이어·탈것 공격만 '한 대').
 //   전환 unbridle (1: 무적 2.6초, 0.3초 휘파람 → 0.6초 굴레가 끊어짐 → 말 둘이 경기장 밖으로 달려 빛으로 → 1.2초 마차가 기울어 나뒹굴고 부서짐 →
 //   2.0초 마부가 잔해에서 일어섬 (판정 66×168, 발 = 마차 가운데 x · A.floor, form2 칭호) → 대사 b_charon_unbridle → 곧바로 hearseGhost).
 //   15% 이하 한 번: 다음 틱에 하던 패턴을 끊고 lastLoad (스토리·처음이면 대사 b_charon_last → 그림메인이 들이받아 2.5초 긴 주저앉음,
@@ -77,7 +78,7 @@ const H1 = { x: 176, y: 0 }, H2 = { x: 144, y: -6 }, HS = 1.25;   // 가까운 �
 const RUN_CAP = [0.12], STAG_CAP = [0.10], LANTERN_CAP = [0.08];
 // EX5-BOSS 확인 2 (실제 엔진 싸움 길이): 고정 세이브 카엘은 한 대가 최대 체력 6–8% 라 위 세 창만으로는 마차(피하지 않는 큰 과녁)의 1페이즈가 패턴 1–2개 · 4–7초에 끝났다
 //   → 나머지 1페이즈 창에도 같은 틀의 상한: 질주 밖의 1페이즈 패턴 한 번 PAT_CAP · 패턴 사이 쉼 한 번 IDLE_CAP (bosses_e.js 머리말 b_charon 확인 2)
-const PAT_CAP = [0.05], IDLE_CAP = [0.025];
+const PAT_CAP = [0.055], IDLE_CAP = [0.03];
 const P1_PAT = new Set(['whipCrack', 'coffinDrop', 'soulLantern', 'rearStomp', 'reinChain', 'lanternSwing', 'toll', 'hearseGhost', 'gatherSouls', 'lastLoad']);
 const RUN_SPEED = 1100, GHOST_SPEED = 1300, EXPOSE_DMG = 0.05;
 // ── 마부 몸 지역 좌표 (+x = 얼굴 쪽, y 아래 양수). 원점 O = 앉았으면 마부석, 서 있으면 두 발 가운데 바닥 ──
@@ -893,10 +894,10 @@ export class Charon extends BossC {
       this.ghostZ = this.zone({ x: A.x0, y: by, w: A.w, h: 2.6 * T, warn: o.warn, life: D, mv: o.mv, kb: [420, -520], z: 5, data: { ghost: true, gx0, gx1 },
         tick: (z) => { if (z.t >= z.warn) { G.x = lerp(gx0, gx1, clamp((z.t - z.warn) / D, 0, 1)); z.x = G.x - REAR_X; z.w = 2 * REAR_X; } },
         onStart: (z, w) => impact(w, { shake: 5, time: 0.4 }),
-        onEnd: (z, w) => { this.zone({ x: G.x - 120, y: by - 40, w: 240, h: 2.6 * T + 40, warn: 0, life: 0.35, harmless: true, z: 5, data: { ghostFade: true }, paint: (ctx, z2) => paintGhost(ctx, G.x, A.floor, dir, 1 - z2.a, null) }); w.fx.burst('soul', G.x, A.floor - 60, 14, { color: SOUL, speed: 220 }); },
+        onEnd: (z, w) => { this.zone({ x: G.x - 120, y: by - 40, w: 240, h: 2.6 * T + 40, warn: 0, life: 0.35, harmless: true, z: 5, data: { ghostFade: true }, paint: (ctx, z2, w2) => paintGhost(ctx, G.x, A.floor, dir, 1 - z2.a, null, w2) }); w.fx.burst('soul', G.x, A.floor - 60, 14, { color: SOUL, speed: 220 }); },
         paint: (ctx, z, w) => {
-          if (!z.started) { warnRect(ctx, A.x0, by, A.w, 2.6 * T, z.k, SOUL, w.time); paintGhost(ctx, gx0, A.floor, dir, 0.6 * z.k, null); }
-          else paintGhost(ctx, G.x, A.floor, dir, 0.75, z);
+          if (!z.started) { warnRect(ctx, A.x0, by, A.w, 2.6 * T, z.k, SOUL, w.time); paintGhost(ctx, gx0, A.floor, dir, 0.6 * z.k, null, w); }
+          else paintGhost(ctx, G.x, A.floor, dir, 0.75, z, w);
         } });
       this.ghostT = { end: w0 + o.warn + D + 0.35 };
     }
@@ -1562,13 +1563,18 @@ function paintCoins(ctx, x, y, z, f) {
     glow(ctx, cx, cy, 8, SOUL_H, 0.5);
   }
 }
-/** 빈 영구차 (마차 혼): 구운 실루엣 비트맵 하나 (퍼핏을 두 번 그리지 않는다). dir = 달리는 쪽 */
-function paintGhost(ctx, x, floor, dir, a, z) {
-  const g = GHOST;
+/** 빈 영구차 (마차 혼): 실루엣 비트맵 하나 (퍼핏을 두 번 그리지 않는다) — 채색 퍼핏이 준비됐으면 채색 마차·바퀴의 녹청 발광 실루엣(구운 glow), 아니면 벡터 마차를 구운 GHOST. dir = 달리는 쪽 */
+function paintGhost(ctx, x, floor, dir, a, z, w) {
   const k = z ? Math.min(1, z.t - z.warn < 0.15 ? (z.t - z.warn) / 0.15 + 0.4 : 1) : 1;
+  const rig = paintedEnabled?.(w?.game) ? paintedRig?.('b_charon') : null;
+  const C = rig?.parts?.coach, Wh = rig?.parts?.wheel, g = GHOST;
   ctx.save(); ctx.globalAlpha *= clamp(a * k, 0, 1);
-  if (g) { ctx.translate(x, floor); ctx.scale(dir, 1); ctx.drawImage(g.c, -g.ox, -g.oy); }
-  else glowE(ctx, x, floor - 70, 110, 70, SOUL, 0.5);
+  ctx.translate(x, floor); ctx.scale(dir, 1);
+  if (C?.v?.glow && C.o) {
+    if (Wh?.v?.glow && Wh.c) for (const wl of WHL) { ctx.save(); ctx.translate(wl.x, wl.y); const s = Wh.k * wl.r / 40; ctx.scale(s, s); ctx.drawImage(Wh.v.glow, -Wh.c[0], -Wh.c[1]); ctx.restore(); }
+    ctx.scale(C.k, C.k); ctx.drawImage(C.v.glow, -C.o[0], -C.o[1]);
+  } else if (g) ctx.drawImage(g.c, -g.ox, -g.oy);
+  else glowE(ctx, 0, -70, 110, 70, SOUL, 0.5);
   ctx.restore();
   if (z?.started) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; glowE(ctx, x - dir * 120, floor - 60, 90, 40, SOUL, 0.25); ctx.restore(); }
 }
