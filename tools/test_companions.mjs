@@ -486,14 +486,28 @@ await run('guardians', STAGE('s05', '&cmp=all&ch=20'), (page) => page.evaluate(a
       // 땅 위의 적 셋 (날아다니는 박쥐는 급강하형 수호신이 5초 안에 못 맞힐 때가 있어 뺀다)
       const foes = [T.spawn('skeleton', 170), T.spawn('zombie', -170), T.spawn('skeleton', 260)].filter(Boolean);
       for (const e of foes) { e.hp = e.maxHp = Math.max(1, Math.round((e.maxHp ?? e.hp ?? 30))); }
+      // 2.5초 뒤 이 쌍의 수호신이 처음 맞히는 적을 그 한 대에 쓰러지게(맞기 직전 체력 1): 수호신 공격의 처치 경로(처치 판정 · onKill · 경험치 몫)를 본다
+      //   (수호신 몫은 전체 딜의 10–20% 라 5초 안에 제 힘으로는 잘 못 잡는다). 나머지 둘은 끝까지 표적으로 남긴다.
+      //   예전에는 foes[0] 만 체력 1 이었다: 하티(뒤쪽 우선)는 등 뒤 좀비만 물고 아리아는 1.4초마다 앞의 두 해골 중 하나(해골 AI 의 난수로 자리가 바뀜)를
+      //   노려, 남은 2.5초에 foes[0] 을 못 맞히면 처치 0 (약 1/5 실패 — s05·s11 의 gd_fairy+gd_spiritwolf 쌍)
+      let lethal = false, pairKill = false;
+      for (const e of foes) {
+        const th = e.takeHit;
+        e.takeHit = function (dmg, atk, ...x) {
+          const id = atk?.owner?.id, mine = id === a || id === b;
+          if (lethal && mine && this.hp > 1) this.hp = 1;
+          const killed = th.call(this, dmg, atk, ...x);
+          if (killed && mine) { pairKill = true; lethal = false; }
+          return killed;
+        };
+      }
       w.hits.length = 0;
       let renders = 0, hsFrames = 0;
       const N = 5 * 60, uA = [], dA = [];
       const exp0 = [a, b].map((id) => { const e = st.companions.owned[id]; return (e.lv ?? 1) * 1e7 + (e.exp ?? 0); });
       for (let i = 0; i < N; i++) {
         p.hp = p.stats.hp; p.iframes = Math.max(p.iframes ?? 0, 0.2);
-        // 2.5초 뒤 남은 적의 체력을 1 로: 수호신 공격의 처치 경로(onKill · 경험치 몫)를 본다 (수호신 몫은 전체 딜의 10–20% 라 5초 안에 제 힘으로는 잘 못 잡는다)
-        if (i === 150 && foes[0] && !foes[0].dead && !(foes[0].dying > 0)) foes[0].hp = 1;   // 나머지 둘은 끝까지 표적으로 남긴다
+        if (i === 150) lethal = !pairKill;   // 위의 takeHit 감싸기: 이제부터 이 쌍의 첫 명중이 처치 (벌써 제 힘으로 잡았으면 그대로)
         const u0 = acc.u, d0 = acc.d;
         g.tick(1 / 60);
         if ((w.hitstop ?? 0) > 0) hsFrames++;

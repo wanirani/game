@@ -16,7 +16,7 @@ import { Scene } from '../../core/game.js';
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
 import { assets } from '../../core/assets.js';
-import { text, wrap, panel, button, drawCover, vignette, FONT, COLORS, RARITY_NAMES, font, taps } from '../../core/ui.js';
+import { text, wrap, panel, button, drawCover, vignette, FONT, COLORS, RARITY_NAMES, font, taps, fontEpoch } from '../../core/ui.js';
 import { drawHints } from '../../core/prompts.js';
 import { clamp, TAU, fmt, rand, ease, rgba } from '../../core/math.js';
 import { Particles } from '../../core/particles.js';
@@ -434,6 +434,38 @@ export class RewardPopup {
 }
 
 // ───────────────────────── 아이템 상세 카드 ─────────────────────────
+const NAME_FIT = new Map();
+/**
+ * 상세 카드 머리글의 아이템 이름을 폭 maxW 에 맞춘다 — maxWidth 로 가로로 짓눌리지 않게 (EX3-VERIFY: '사냥달 지팡이 아르테미스' 215 → 183px,
+ * '+15 대마법사의 …' 같은 접두 옵션 이름은 61% 까지 눌렸다): ① 그대로 ② 안 들어가면 강화 접두 '+N ' 을 뺀다 (아이콘 칸·강화 줄이 이미 +N 을
+ * 보여 준다 — menu/tab_equip.js fitName 과 같은 규칙) ③ 한 줄 그대로 글자를 줄인다 (min1 까지, render/hud.js fitText 처럼 비율 그대로)
+ * ④ 그래도 넘치면 띄어쓰기에서 가장 고르게 두 줄 (max2 → min2). 반환 { lines, size } — 같은 이름·폭·글꼴 세대면 다시 재지 않는다
+ */
+export function fitItemName(ctx, inst, maxW, { size = 20, min1 = 16, max2 = 16, min2 = 13, weight = 800, family = FONT.title } = {}) {
+  const full = nameOf(inst);
+  const key = `${full}|${Math.round(maxW)}|${size}|${min1}|${max2}|${min2}|${weight}|${family}|${fontEpoch}`;
+  let f = NAME_FIT.get(key);
+  if (f) return f;
+  ctx.save();
+  const wAt = (str, z) => { ctx.font = font(z, weight, family); return ctx.measureText(str).width; };
+  let str = full;
+  if ((inst?.level ?? 0) > 0 && wAt(str, size) > maxW) str = full.replace(/^\+\d+\s*/, '') || full;
+  const w = wAt(str, size), z1 = w > maxW ? Math.floor((size * maxW) / w) : size;
+  if (z1 >= min1) f = { lines: [str], size: z1 };
+  else {
+    const words = str.split(' ');
+    let best = null;
+    for (let i = 1; i < words.length; i++) {
+      const a = words.slice(0, i).join(' '), b = words.slice(i).join(' '), m = Math.max(wAt(a, max2), wAt(b, max2));
+      if (!best || m < best.m) best = { lines: [a, b], m };
+    }
+    f = best ? { lines: best.lines, size: clamp(Math.floor((max2 * maxW) / best.m), min2, max2) } : { lines: [str], size: Math.max(min2, z1) };
+  }
+  ctx.restore();
+  if (NAME_FIT.size > 400) NAME_FIT.clear();
+  NAME_FIT.set(key, f);
+  return f;
+}
 /** 아이템 상세: 아이콘·이름·등급·부위·능력치(장착 비교)·설명·가격 */
 export function drawItemDetail(ctx, r, inst, { state, price = null, priceLabel = '가격', priceOk = true, footer = null, compare = true, note = null, tag = null } = {}) {
   uiPanel(ctx, r.x, r.y, r.w, r.h, { corner: false });
@@ -446,13 +478,20 @@ export function drawItemDetail(ctx, r, inst, { state, price = null, priceLabel =
   if ((inst.rarity ?? 0) >= 2) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; glow(ctx, ix + s / 2, iy + s / 2, 70, rc, 0.35 + Math.sin(performance.now() / 300) * 0.08); ctx.restore(); }
   drawSlot(ctx, ix, iy, s, inst);
   const tx = ix + s + 16, tw = r.w - s - 50;
-  text(ctx, nameOf(inst), tx, iy + 24, { size: 20, weight: 800, family: FONT.title, color: rc, maxWidth: tw });
+  const sm = s < 70; // 낮은 패널: 머리글 줄 간격을 좁힌다
+  // 이름: 줄이거나 두 줄 (fitItemName) — 두 줄이면 종류 줄을 그 아래로 내린다 (요구 레벨 줄·능력치 표는 그 자리 그대로)
+  const nm = fitItemName(ctx, inst, tw, { max2: sm ? 14 : 16 });
+  let ky = iy + (sm ? 42 : 46);
+  if (nm.lines.length > 1) {
+    const b1 = iy + nm.size + (sm ? 0 : 2), lh = nm.size + 2;
+    nm.lines.forEach((l, i) => text(ctx, l, tx, b1 + i * lh, { size: nm.size, weight: 800, family: FONT.title, color: rc, maxWidth: tw }));
+    ky = Math.max(ky, b1 + lh + 15);
+  } else text(ctx, nm.lines[0], tx, iy + 24, { size: nm.size, weight: 800, family: FONT.title, color: rc, maxWidth: tw });
   if (tag) { ctx.font = font(11, 800); const w2 = ctx.measureText(tag).width + 14; ctx.fillStyle = '#8a1426'; ctx.fillRect(r.x + r.w - w2 - 12, r.y + 12, w2, 20); text(ctx, tag, r.x + r.w - 12 - w2 / 2, r.y + 26, { size: 11, weight: 800, align: 'center', color: '#ffe7a0', ow: 0 }); }
   const kind = [RARITY_NAMES[inst.rarity ?? 0], SLOT_LABEL[b.slot] ?? '', b.wtype ? WTYPE_LABEL[b.wtype] : ''].filter(Boolean).join(' · ');
-  const sm = s < 70; // 낮은 패널: 머리글 줄 간격을 좁힌다
-  text(ctx, kind, tx, iy + (sm ? 42 : 46), { size: 13, color: '#c8b8a0', weight: 600 });
+  text(ctx, kind, tx, ky, { size: 13, color: '#c8b8a0', weight: 600 });
   const lvReq = b.lvReq ?? 1;
-  const ly = iy + (sm ? 60 : 68);
+  const ly = Math.max(iy + (sm ? 60 : 68), ky + 15);
   if (EQUIP_KINDS.has(b.slot)) {
     const ok = !hero || (hero.level >= lvReq);
     text(ctx, `요구 레벨 ${lvReq}`, tx, ly, { size: 12, color: ok ? '#9d8f80' : COLORS.bad, weight: 700 });
