@@ -1,5 +1,6 @@
 // 외전 보스 데이터 E: b_argen (s21, 외전 「하늘 정원의 용」) — docs/specs/ex_s21.md §2. 소유: EX-BOSS
 //                   b_nemain (s22, 외전 「까마귀의 이름」) — docs/specs/ex_s22.md §2. 소유: EX2-BOSS (아래 b_nemain 머리말)
+//                   b_hagen (s23, 외전 「빈칸의 현상금」) — docs/specs/ex_s23.md §2. 소유: EX3-BOSS (아래 b_hagen 머리말)
 // 스키마: game/bosses/boss.js 상단 주석 (bosses_c.js 머리말 참고). 클래스는 game/bosses/e_argen.js (BossC 상속).
 // 체급: 지즈(b_ziz, s17)보다 한 단계 위 · 니힐(b_nihil, s20 최종)보다 아래. s21 레벨 70 (s20 은 68).
 // 밸런스 (EX-BOSS, tools/balance.mjs 와 같은 식 — 보통 난이도 kael, s20 클리어 레벨 67 · s20 장비 기준):
@@ -21,6 +22,15 @@
 //   위 수치는 기본 방어(부위 배율 1.0) 기준 — 판정 부위 배율(가면 0.85 · 몸통 1.0 · 다리 1.15 · 펼친 망토 1.3)은 e_nemain.js.
 // 경험치 3500 (명세 값 그대로, 외전이라 니힐 5250 보다 낮게). 드롭 u_nemain(흑우 단검, data/items.js) 하나.
 // 결말: 체력 0 → 보스 처치 처리(경험치·드롭·플래그 boss_b_nemain)는 같고 연출만 '굴복' (까마귀 떼가 흩어지고 무릎을 꿇는다, 파편 폭발 없음).
+// ── b_hagen (s23) — 하겐 / 은빛 늑대. 클래스 game/bosses/e_hagen.js (BossC 상속) ──
+// 체급: 네메인(s22)과 니힐(s20) 사이. s23 레벨 74. 2페이즈 (50% 전환 'moonrise' 에서 늑대가 되고 form2 '은빛 늑대'). 15% 이하 한 번 'offer'.
+// 밸런스 (EX3-BOSS, tools/balance.mjs 와 같은 식 — 보통 난이도, s22 클리어 레벨 · 그다음 칸 장비 기준, docs/specs/ex_s23.md §2.3 확인 1):
+//   목표 카엘 185–200타 · 받는 피해 19–21% · 다른 영웅은 아르겐·네메인과 같은 순서, 네메인 값보다 4–14% 많게.
+//   결과: (밸런스 확인 뒤 적는다)
+//   위 수치는 기본 방어(부위 배율 1.0) 기준 — 판정 부위 배율(1페이즈 모자 0.9 · 몸통 1.0 · 다리 1.15 / 2페이즈 주둥이 1.2 · 몸통 1.0 · 등판 0.85 · 다리 1.1)은 e_hagen.js.
+// 경험치 3600 (명세 값 그대로). 드롭 없음 (drops: [] — 보상은 아웃트로의 신화 무기 일곱 자루, §3 · §9-4). 2부 보스 공통 신화 1.5% 는 loot.js 그대로.
+// 결말: 체력 0 → 보스 처치 처리(경험치·플래그 boss_b_hagen)는 같고 연출만 '쓰러짐' (늑대가 쓰러지고 새벽빛에 사람으로 돌아와 눕는다, 파편 폭발 없음).
+// 도감(desc)에는 반전을 쓰지 않는다.
 export const BOSSES_E = {
   b_argen: {
     id: 'b_argen', name: '아르겐', title: '공허에 물든 은룡', hp: 2900, hpMul: 1.2, atk: 45, def: 22, res: 22, exp: 3360, score: 420000,
@@ -37,5 +47,13 @@ export const BOSSES_E = {
     form2: { name: '네메인', title: '가면을 벗은 어미', portrait: 'portraits/b_nemain2' },
     intro: '(부리 가면 너머로 붉은 눈이 가늘어진다. 깃털 망토 자락마다 까마귀의 눈이 깜빡인다.)',
     desc: '까마귀 결사의 둥지를 서른 해 동안 지켜 온 여인. 이름 없는 아이들을 칼로 길러 냈고, 결사가 문을 닫던 날 모든 칼에게 이름을 반납하라는 소집령을 내렸다.',
+  },
+  b_hagen: {
+    id: 'b_hagen', name: '하겐', title: '늑대를 잡던 사냥꾼', hp: 2950, hpMul: 1.35, atk: 47, def: 22, res: 20, exp: 3600, score: 440000,
+    size: { w: 60, h: 146 }, flying: false, contact: 0.6, material: 'flesh', weak: ['holy'], resist: ['ice'], phases: [0.5],
+    music: 'boss2', portrait: 'portraits/b_hagen', stageId: 's23', drops: [], light: { r: 200, color: '#ffcf6a', i: 0.55 },
+    form2: { name: '은빛 늑대', title: '사냥꾼이었던 짐승', portrait: 'portraits/b_hagen2' },
+    intro: '(챙 넓은 모자 아래에서 노란 눈이 달빛을 받아 빛난다. 장총을 쥔 손등에 은빛 털이 돋아 있다.)',
+    desc: '북쪽 설원에서 사십 년 동안 늑대를 사냥한 늙은 사냥꾼. 현상금 공고의 액수 칸을 늘 비워 두었고, 사냥꾼들 사이에서는 "은빛 늑대"라는 소문과 함께 이름이 오르내렸다.',
   },
 };
