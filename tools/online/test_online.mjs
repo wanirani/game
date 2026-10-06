@@ -412,6 +412,58 @@ test('최고 기록만: 나쁜·같은 기록은 best:false (기록 그대로), 
   assert.equal(expectOk(await play(u, 'bossrush:1:hard', RES({ time: 100_000, score: 9999 }))).best, false);
 });
 
+test('이명(result.ti, achievements.md §8): 고정 목록 id 만 entry.title·순위표에, 목록 밖·형식 밖은 200 으로 버림, 나아지지 않은 제출에서도 바뀜, 빼면 빠짐, 순위·계정 수·고스트 그대로', async () => {
+  const { ACH_TITLES } = await import(path.join(ROOT, 'src/core/ach_meta.js'));
+  assert.deepEqual([...gd.TITLE_IDS].sort(), Object.keys(ACH_TITLES).sort(), 'TITLE_IDS(gamedata.mts) = ACH_TITLES 키 (core/ach_meta.js)');
+  assert.equal(gd.TITLE_IDS.length, 17);
+  const [u, v] = [await signup('titled'), await signup('plainti')];
+  const b = 'practice:s17:nightmare';   // 다른 시험이 쓰지 않는 보드
+  const r1 = expectOk(await play(u, b, RES({ time: 80_000, ti: 't_dawn' }), { ghost: ghostData(40) }));
+  assert.equal(r1.best, true);
+  assert.equal(r1.entry.title, 't_dawn', '응답 entry.title');
+  assert.equal(r1.entry.ghost, true);
+  let g = expectOk(await board(b));
+  assert.equal(g.entries[0].title, 't_dawn', '순위표 항목 title');
+  // 목록 밖·형식 밖·자유 글 → 오류 없이 이명만 버린다 (판이 다른 클라이언트의 제출이 실패하지 않게)
+  const bads = ['t_nope', 'x', 'T_DAWN', 't_dawn ', 42, { id: 't_dawn' }, ['t_dawn'], '새벽을 연 자', null, 't_'.padEnd(80, 'a')];
+  let vEntry = null;
+  for (const bad of bads) {
+    const r = expectOk(await play(v, b, RES({ time: 90_000, ti: bad })));
+    assert.equal(r.entry.title, undefined, `버림: ${JSON.stringify(bad)}`);
+    vEntry = r.entry;
+  }
+  g = expectOk(await board(b));
+  assert.equal(g.entries.find((e) => e.nick === vEntry.nick).title, undefined, '목록 밖 이명은 순위표에 없다');
+  assert.ok(!JSON.stringify(g).includes('새벽을 연 자') && !JSON.stringify(g).includes('t_nope'), '자유 글·목록 밖 id 가 순위표에 오르지 않는다');
+  // 기록이 나아지지 않은 제출에서도 이명은 새로 (별명처럼)
+  const r2 = expectOk(await play(u, b, RES({ time: 99_000, ti: 't_reaper' })));
+  assert.equal(r2.best, false);
+  assert.equal(r2.entry.title, 't_reaper');
+  assert.equal(r2.entry.time, 80_000, '기록은 그대로');
+  g = expectOk(await board(b));
+  assert.deepEqual(g.entries.map((e) => [e.rank, e.time, e.title ?? null]), [[1, 80_000, 't_reaper'], [2, 90_000, null]]);
+  assert.equal(g.total, 2, '계정 수 그대로');
+  assert.equal(g.entries[0].ghost, true, '고스트 표시 그대로');
+  // ti 없이 제출 → 이명이 빠진다
+  const r3 = expectOk(await play(u, b, RES({ time: 99_000 })));
+  assert.equal(r3.entry.title, undefined);
+  g = expectOk(await board(b));
+  assert.equal(g.entries[0].title, undefined);
+  assert.deepEqual(g.entries.map((e) => e.rank), [1, 2]);
+  // 고스트 응답은 바뀌지 않는다 (이명 없음, 나아지지 않은 제출 뒤에도 고스트 그대로)
+  const gh = expectOk(await call('GET', `/api/ghosts/${b}/1`));
+  assert.deepEqual(Object.keys(gh).sort(), ['cls', 'data', 'hero', 'nick', 'ok', 'time']);
+  assert.equal(gh.data, ghostData(40));
+  // 더 좋은 기록 + 이명 → 함께 바뀐다
+  const r4 = expectOk(await play(u, b, RES({ time: 70_000, ti: 't_legend' }), { ghost: ghostData(41) }));
+  assert.equal(r4.best, true);
+  assert.equal(r4.entry.title, 't_legend');
+  assert.equal(expectOk(await board(b)).entries[0].title, 't_legend');
+  // 이명은 기록(Rec)에 묶지 않는다
+  const rec = await store(cfg.STORES.boards).get(`b/practice.s17.nightmare/e/${await uidOf(u.id)}`, { type: 'json' });
+  assert.equal(rec.ti, undefined, 'Rec 에 ti 없음');
+});
+
 test('순위·동점: 명세 순서 (서바이벌 wave→score, 연습 time→score, 보스 러시·일일 time), 완전 동점은 먼저 세운 기록, total = 계정 수, me', async () => {
   const [a, b, c, d] = [await signup(), await signup(), await signup(), await signup()];
   const sv = 'survival:inferno';

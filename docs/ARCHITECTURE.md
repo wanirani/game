@@ -44,7 +44,7 @@
 | 묶음 | 명령 |
 |---|---|
 | 정적 | `node tools/validate_maps.mjs` · `node tools/test_part2.mjs --static` · `python3 tools/fonts/build_fonts.py --check` · `node tools/qa/hook_tags.mjs` · `node tools/qa/bindings.mjs` · `node tools/qa/painted_registry.mjs` |
-| 단위 | `node tools/test_save_v2.mjs` · `node tools/test_settings_v2.mjs` · `node tools/test_companion_state.mjs` · `node tools/accounts/test_api.mjs` (`npm run test:api`) · `node tools/test_sfx.mjs` · `node tools/test_hud_layout.mjs` |
+| 단위 | `node tools/test_save_v2.mjs` · `node tools/test_settings_v2.mjs` · `node tools/test_companion_state.mjs` · `node tools/accounts/test_api.mjs` (`npm run test:api`) · `node tools/test_achievements.mjs [--only C3,C4] [--ui]` · `node tools/test_sfx.mjs` · `node tools/test_hud_layout.mjs` |
 | 밸런스 | `node tools/balance.mjs normal <charId> --check` (2부 행을 world2 §15 목표와 비교; `--strict`, `--json`, `--k`) |
 | 실행 | `node tools/integration.mjs [--only s14,s14_boss,hub,menu] [--mobile] [--dist] [--list]` · `node tools/test_part2.mjs [--only …] [--boss …]` · `node tools/test_mount.mjs [--only mt_ignis,…]` · `node tools/test_guardians.mjs [--only A,B] [--mobile]` · `node tools/qa/commands.mjs` · `node tools/feel_test.mjs [--quick] [--only M,C5,A]` |
 | 플랫폼 | `node tools/qa/run_platform.mjs [--only pad,bind,touch,view,menu,pwa,load,turntable]` (`npm run qa:platform`) · `node tools/qa/turntable.mjs` |
@@ -66,20 +66,20 @@
 |---|---|
 | `index.html` · `css/style.css`, `css/touchpad.css` · `manifest.webmanifest` · `sw.js` · `robots.txt` | 페이지 셸, 글꼴 `@font-face`, PWA, 서비스 워커 (§13) |
 | `src/boot-gate.js` (일반 스크립트) · `src/main.js` | 브라우저 관문·부팅 진행률·오류 화면 → 부트스트랩 (§3) |
-| `src/core/` | 엔진: `game`(루프·장면·해상도·품질 조절·토스트), `input`, `prompts`(버튼 글리프), `haptics`, `touchpad`(캔버스 가상 패드), `platform`(안전 영역·전체 화면·서비스 워커), `camera`, `physics`, `particles`, `lighting`, `assets`, `save`, `ui`(글꼴·피 글씨·탭 등록부), `audio`, `sfx_feel`, `audio_companions`, `cloud`(계정), `events`, `math` |
-| `src/game/` | 런타임: `world`, `player`, `enemy`, `ai*`(a·b·c·d), `bosses/*`, `combat`, `impact`, `style`, `feel_move`, `awaken`, `awaken_directors(_b)`, `skills`, `skills_p2`, `projectiles`, `pickups`, `props`, `tilemap`, `gimmicks(_b)`, `companions`, `companion_state`, `companion_events`, `mount`, `mount_b`, `guardian`, `guardian_ai_b`, `stats`, `inventory`, `enhance`, `loot`, `progression`, `quests`, `state`, `entity` |
+| `src/core/` | 엔진: `game`(루프·장면·해상도·품질 조절·토스트), `input`, `prompts`(버튼 글리프), `haptics`, `touchpad`(캔버스 가상 패드), `platform`(안전 영역·전체 화면·서비스 워커), `camera`, `physics`, `particles`, `lighting`, `assets`, `save`, `ui`(글꼴·피 글씨·탭 등록부), `audio`, `sfx_feel`, `audio_companions`, `cloud`(계정), `online`(순위·고스트), `ach_meta`(업적 기록 meta.ach 의 모양·병합·정리, 이명·장식 표 — 첫 조각), `events`, `math` |
+| `src/game/` | 런타임: `world`, `player`, `enemy`, `ai*`(a·b·c·d), `bosses/*`, `combat`, `impact`, `style`, `feel_move`, `awaken`, `awaken_directors(_b)`, `skills`, `skills_p2`, `projectiles`, `pickups`, `props`, `tilemap`, `gimmicks(_b)`, `companions`, `companion_state`, `companion_events`, `mount`, `mount_b`, `guardian`, `guardian_ai_b`, `stats`, `inventory`, `enhance`, `loot`, `progression`, `quests`, `state`, `entity`, `achievements`(업적 엔진 `game.ach`), `ach_notify`(업적 알림) |
 | `src/render/` | 그리기: `hero`(+`hero_parts`, `hero_gait`, `hero_puppet`, `puppet_manifest` 자동 생성), `enemies`(디스패처) + `enemies_a/b/c/d`(벡터), `hud`, `hud_layout`, `feel_hud`, `companion_hud`, `hitfx`, `ultfx`, `mount_rig`, `mounts`, `mounts_b`, `guardians`, `guardians_b`, `icons`, `background`, `tiles`, `painted/`(§12) |
-| `src/data/` | 순수 데이터: characters, classes, skills, movesets, items, subweapons, powerups, enemies(+a·b·c·d), bosses(+a·b·c·d·e), stages, maps/s01…s22·arena, story, story_p2, story_p2b, story_ex, story_companions, quests, lore, npcs, town, shop, difficulty, music, controls, feel_hit, feel_move, awaken, companions |
+| `src/data/` | 순수 데이터: characters, classes, skills, movesets, items, subweapons, powerups, enemies(+a·b·c·d), bosses(+a·b·c·d·e), stages, maps/s01…s22·arena, story, story_p2, story_p2b, story_ex, story_companions, quests, lore, npcs, town, shop, difficulty, music, controls, feel_hit, feel_move, awaken, companions, achievements(업적 67) |
 | `src/scenes/` | 화면. 등록: `scenes/index.js`(게임플레이·오버레이) · `reg_front.js`(front/*) · `reg_games.js`(games/*) · `reg_menu.js`(menu/*) · `reg_town.js`(town/*) |
 | `assets/` | `bg/ cg/ portraits/ tex/`(Kling webp) · `icons/ props/`(Blender png) · `lo/`(저사양 60 % 변형 + index.json) · `fonts/` · `puppets/<char>/<class>/`(영웅·NPC 퍼펫) · `painted/{bosses,enemies,companions}/<id>/`(채색 아틀라스) |
 | `netlify/functions/`, `netlify/lib/`, `netlify.toml` | 계정 API (`/api/*`) · 정적 헤더 (docs/ACCOUNTS.md, §13) |
 | `android/app/src/main/` | 안드로이드 앱 셸 (MainActivity·AssetServer·ApiProxy·WebViewCheck, assets/app/) |
-| `tools/` | serve·smoke·validate_maps·integration·test_*·balance·feel_test · `qa/`(회귀 묶음) · `deploy/`(웹 빌드·SW·아티팩트) · `apk/` · `painted/`·`puppet/`(그림 파이프라인) · `kling/manifest_<pkg>.json` · `blender/` · `fonts/` · `accounts/` · `fixtures/`(save_v1.json, save_ch6_nocmp.json) · `gallery_*.html` |
+| `tools/` | serve·smoke·validate_maps·integration·test_*·balance·feel_test · `qa/`(회귀 묶음) · `deploy/`(웹 빌드·SW·아티팩트) · `apk/` · `painted/`·`puppet/`(그림 파이프라인) · `kling/manifest_<pkg>.json` · `blender/` · `fonts/` · `accounts/` · `online/` · `test_achievements.mjs` · `fixtures/`(save_v1.json, save_ch6_nocmp.json) · `gallery_*.html` |
 
 **규칙**
 - 자기 담당 파일만 수정한다 (소유는 `docs/specs/master_plan.json`). 남의 파일 변경이 필요하면 `/tmp/claude-0/plan/requests.jsonl` 에 요청 한 줄. npm 의존성 추가 금지. 커밋은 자동 저장이 한다.
 - **순환 import**: 모듈 최상위에서 import 한 값에 접근하지 않는다 (함수 안에서만). 다른 패키지의 새 export 는 `import * as M` 으로 받아 `M.name?.()` 처럼 부른다 (없는 이름을 named import 하면 링크 오류로 게임 전체가 멈춘다, R6). 다른 기능 호출은 `world.gimmickOf?.('wind')`, `game.companions?.recruit?.(id)` 처럼 방어적으로.
-- **훅 표식 (R4)**: 기능 사이를 잇는 줄에는 끝에 `// [hook:feel] [hook:awaken] [hook:gimmick] [hook:cmp] [hook:plat] [hook:p2]` 를 단다. 옮길 때 같이 옮긴다. `tools/qa/hook_tags.mjs` 가 개수가 줄지 않았는지 검사한다 (2026-09-28: feel 138 · awaken 23 · gimmick 30 · cmp 104 · plat 37 · p2 33).
+- **훅 표식 (R4)**: 기능 사이를 잇는 줄에는 끝에 `// [hook:feel] [hook:awaken] [hook:gimmick] [hook:cmp] [hook:plat] [hook:p2] [hook:ach]`(업적, docs/specs/achievements.md §9) 를 단다. 옮길 때 같이 옮긴다. `tools/qa/hook_tags.mjs` 가 개수가 줄지 않았는지 검사한다 (2026-09-28: feel 138 · awaken 23 · gimmick 30 · cmp 104 · plat 37 · p2 33).
 - **그리기 코드**: `Math.random`·`rand()`·`world.fx.emit/burst` 금지 (게임플레이 난수를 먹는다 → 채색 키트의 `rr`, `hash1`, 자체 입자). 프레임마다 그라디언트·캔버스 새로 만들지 않기 (캐시). 품질 `world.fx.quality`·`settings.quality/reduceMotion/flashFx` 를 따른다.
 - **히트스톱 안전 입력 (R16)**: `world.update()` 는 히트스톱 동안 엔티티를 멈추지만 `input.update()` 는 계속 돈다 → 멈춤을 넘길 수 있는 판정은 `pressed()` 한 번에 기대지 말고 `input.down` + `pressTime/releasedAt`, `buffered()` 를 쓴다.
 - 모든 사용자 노출 텍스트는 자연스러운 한국어. 글꼴은 `FONT.*` 와 `ui.text/bloodText` 로만 (글꼴 이름 하드코딩 금지).
@@ -193,6 +193,10 @@ rAF ─▶ input.pollFrame() (패드 읽기·진동 정리) ─▶ (세로 잠�
 - 동료 하위 트리 `state.companions = { v:1, owned:{id:{lv,exp,bond,got,src,gift,seen}}, eggs, pending, clears, autoSkill, slot2Seen, last }`, `state.heroes[charId].companions = { mount, guards:[g0,g1] }`.
 - 저장하지 않는 런타임 값: `world.run.aw`(각성 게이지, 스테이지마다 0), `world.run.awakenN`, `world.run.mount`, `world.awakenState`.
 - 크기: 20장·동료 20·7단계 장비·가방 가득 세이브 < 256 KB (서버 한도 512 KB) — `tools/test_save_v2.mjs`. 고정 세이브 `tools/fixtures/save_v1.json`, `save_ch6_nocmp.json`.
+- **업적 기록 `meta.ach`** (계정 단위, 계약 `docs/specs/achievements.md` §2): `{ v:1, got:{업적 id: 처음 얻은 ms}, prog:{누적값 25키}, claimed:[보상 받은 id], seenAt, title:'t_…'|null, deco:'d_…'|null }`.
+  `DEFAULT_META` 에는 없다 — 엔진이 처음 쓸 때 `core/ach_meta.js ensureAch(meta)` 로 만든다 (모르는 필드 보존, 멱등). 키 규칙 `/^[a-z][a-z0-9_]{1,31}$/`, got ≤ 256 · prog ≤ 128 · claimed ≤ 256 · JSON ≤ 24 KB (`ACH_LIMITS` = 서버 `config.mts ACH`).
+  클라우드: `mergeMeta` 가 `mergeAch`(got 합집합·가장 이른 시각, prog 큰 값, claimed 합집합, title/deco 기기 우선; 한쪽만 있어도 남김), `cleanMeta` 가 `cleanAch`(늘 서버 `isValidAch` 통과).
+  엔진 `game/achievements.js` (`main.js loadRest` 가 import(), `game.ach` API — 상태·목록·요약·이명·장식·보상 받기 `claimAll`(마을·슬롯 세이브만)·`rescan`). 판정은 메타 + 슬롯 1–3 요약(`digestState`; 아케이드 임시 세이브 `state.arcade` 는 요약하지 않음), 부팅 뒤 한가할 때 소급(`'retro'`)·동기화 뒤(`'cloud'`)·게임 중(`'live'`) → 버스 `achievementUnlocked {ids, src}` 한 번 + `saveMeta` 한 번. 누적값은 처치마다 저장하지 않는다. 시험 `node tools/test_achievements.mjs`.
 - 계정·클라우드 저장 (`core/cloud.js`, `/api/*`): `docs/ACCOUNTS.md` 참고 (장면 `account`, `cloudConflict`; 버스 `cloud:*`).
 - 온라인 순위·일일 도전·고스트 (`core/online.js` API 클라이언트·대기열·캐시, `game/ghost.js` 기록·묶기·재생): 계약 `docs/specs/online.md` (부록 A = 고스트 형식). 늦게 받는 조각에 실린다 (아케이드·명예의 전당·계정 장면이 import). 일일 도전 규칙은 임시 세이브 `state.arcade.{diffOver, rules, seed}` → `World` 가 `world.diff`·`world.rules {noPotion, noSub, dark, taken, dealt}`·`world.rng`(정예 출현·촛불 보상) 로 읽는다 (`combat.hitTarget`·`inventory.useItem`·`player.useSub`·`loot.rollCandleLoot` 의 `[hook:plat]` 줄). localStorage: `bn_online_q`(제출 대기열, 계정별·6시간) · `bn_online_daily`(그날 도전) · `bn_online_nick` · `bn_ghost_best`(보드별 내 최고 고스트 6개).
 
@@ -542,7 +546,7 @@ weapon:{type:'whip'|'sword'|'greatsword'|'dagger'|'gun'|'staff', style:1~6, colo
 
 ### 장면(Scene) 이름
 - 게임플레이·오버레이 (`scenes/index.js`): `title stage dialogue bossIntro ultCutin document gameover results pause awakenCutin companionJoin` ('title' 만 main.js 가 바로 등록하고, 나머지는 지연 장면으로 뒤에 등록된다 — §3. 그 사이의 자리 장면 이름은 `loading`(game.js `PendingScene`))
-- 프런트 (`reg_front.js`): `slots difficulty charselect story options ending credits arcade bossrush survival practice tower towerBlessing arcadePause arcadeResults highscore initials frontConfirm saveCode account cloudConflict`
+- 프런트 (`reg_front.js`): `slots difficulty charselect story options ending credits arcade bossrush survival practice tower towerBlessing arcadePause arcadeResults highscore initials frontConfirm saveCode account cloudConflict achievements`(업적 — 타이틀 `go('achievements', {back:'title'})` · 메뉴 기록 탭 `push('achievements', {})`, docs/specs/achievements.md §7)
 - 여관·미니게임 (`reg_games.js`): `inn minigame_dice minigame_blackjack minigame_slot minigame_duel minigame_memory`
 - 메뉴 (`reg_menu.js`): `menu` — 탭 `MENU_TABS`: status(상태) equip(장비) inventory(인벤토리) skills(스킬) class(직업) companions(동료) quests(퀘스트) docs(비전서) bestiary(도감) system(기록). `game.push('menu', {tab})`. 스테이지·마을의 'map' 액션 = 인벤토리 탭.
 - 마을 (`reg_town.js`): `hub worldmap shop smith church questboard party stable`
@@ -550,13 +554,15 @@ weapon:{type:'whip'|'sword'|'greatsword'|'dagger'|'gun'|'staff', style:1~6, colo
 - 컷인 규칙: 한 번에 하나, `deferToasts`, `hidePad`. 보스 페이즈 대사는 cutscene 이 끝난 뒤 스토리 모드에서 한 번만.
 
 ### 이벤트 버스 (`core/events.js` 머리말이 등록부 — 새 이벤트는 거기에 먼저 적는다)
-- 기존: `enemyKilled {enemy, def, x, y, byPlayer}` `bossKilled {bossId, stageId, time}` `itemPicked` `itemUsed` `itemBought` `itemSold` `goldPicked` `docFound` `relicFound` `secretFound` `stageCleared {stageId, rank, time, score}` `stageEntered` `roomEntered {stageId, roomId}` `playerHurt {amount}` `playerDied` `levelUp {charId, level}` `classChanged` `enhance` `minigame` `npcTalk` `questOffer` `questDone` `questClaimed {questId, reward}` `combo {count}`
+- 기존: `enemyKilled {enemy, def, x, y, byPlayer}` `bossKilled {bossId, stageId, time, mode, charId}` `itemPicked` `itemUsed` `itemBought` `itemSold` `goldPicked` `docFound` `relicFound` `secretFound` `stageCleared {stageId, rank, time, score, noDamage, diff, charId}` `stageEntered` `roomEntered {stageId, roomId}` `playerHurt {amount}` `playerDied` `levelUp {charId, level}` `classChanged` `enhance` `minigame` `npcTalk` `questOffer` `questDone` `questClaimed {questId, reward}` `combo {count}`
 - 플랫폼: `inputDevice {kind, name, glyphs}` · `hitCrit {target}` · `hitHeavy {cls}` · `shake {mag}`
 - 손맛: `ultimateCast {charId, tier, classId}`(옛 ultStart 는 쓰지 않음) · `awakenCast {charId, tier, classId}` · `styleRankUp {rank}` · `comboMilestone {n}`
 - 2부: `shardFound {id}` · `heartFound {id}`
 - 동료: `companionUnlocked {id, source}` · `companionLevelUp {id, level}` · `bondUp {id, rank}` · `mounted {id}` · `dismounted {id, reason}` · `guardianSkill {id, auto}` · `eggObtained {id}` · `eggHatched {id}`
 - 계정 (`core/cloud.js`): `cloud:status {state}` `cloud:login {id, resumed}` `cloud:logout {id, reason}` `cloud:sync {phase:'start'|'done', …}` `cloud:conflict {slot}`
 - 온라인 (`core/online.js`): `online:flushed {sent:[{board, rank, total, best}], dropped, left}` (기기 대기열의 결과를 보냄)
+- 아케이드: `bossStarted {bossId, stageId, time}` · `arcadeFinished {kind, cleared, reason, score, time, extra, charId, diff, stageId, course, daily}` (보스 러시 `extra {bosses, total, perfect}`)
+- 업적 (`game/achievements.js`): `achievementUnlocked {ids, src:'live'|'retro'|'cloud'}` (한 처리의 달성을 모아 한 번 — `game/ach_notify.js`·업적 화면이 듣는다)
 
 ---
 

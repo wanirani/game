@@ -807,6 +807,25 @@ test('메타: 형식 오류 → 422 invalid_meta, 64KB 초과 → 413', async ()
   expectOk(await call('PUT', '/api/meta', { body: { data: { ...DEFAULT_META, bossRushBests: { 0: { time: 321 } }, futureThing: [1, 2] } }, token: u.token }));
 });
 
+test('메타: 업적 기록 ach (achievements.md §2.4) — 유효한 ach 200·왕복, 잘못된 ach 422 invalid_meta, cleanMeta 결과는 통과', async () => {
+  const { cleanMeta } = await import(path.join(ROOT, 'src/core/cloud.js'));
+  const u = await signup(newId(), PW, { ip: freshIp() });
+  const ach = { v: 1, got: { st_s01: 1759700000000, cb_kill_1k: 1759700000001 }, prog: { kills: 1234, daily_last: 20261006 }, claimed: ['st_s01'], seenAt: 1759712000000, title: 't_dawn', deco: null, future: { x: 1 } };
+  const m = { ...structuredClone(DEFAULT_META), endingsSeen: ['normal'], ach };
+  const r = expectOk(await call('PUT', '/api/meta', { body: { data: m, baseRev: 0 }, token: u.token }));
+  assert.deepEqual(expectOk(await call('GET', '/api/meta', { token: u.token })).data.ach, ach, '모르는 필드까지 그대로 왕복');
+  expectOk(await call('PUT', '/api/meta', { body: { data: { ...m, ach: null }, baseRev: r.rev }, token: u.token }));   // null 허용
+  const bad = [
+    [], 'x', 5, { got: { ST_S01: 1 } }, { got: { st_s01: '1' } }, { got: { st_s01: -1 } }, { got: { st_s01: 1e14 } }, { prog: { kills: 1e10 } },
+    { got: Object.fromEntries(Array.from({ length: 257 }, (_, i) => [`a_${i}`, 1])) }, { title: 7 }, { deco: 'Bad Deco' }, { claimed: 'st_s01' },
+    { claimed: ['ST'] }, { v: 0 }, { v: 1.5 }, { seenAt: -5 }, { pad: 'x'.repeat(25 * 1024) },
+  ];
+  for (const a of bad) expectErr(await call('PUT', '/api/meta', { body: { data: { ...DEFAULT_META, ach: a } }, token: u.token }), 422, 'invalid_meta');
+  // 클라이언트가 올리는 모양(cleanMeta)은 망가진 ach 도 고쳐서 통과한다
+  for (const a of bad) expectOk(await call('PUT', '/api/meta', { body: { data: cleanMeta({ ...DEFAULT_META, ach: a }) }, token: u.token }));
+  assert.equal(sval.isValidAch(cleanMeta({ ach: { got: { ok_id: 5 } } }).ach), true);
+});
+
 // ═════════ 배포 문맥 분리 ═════════
 test('배포 문맥: 미리보기(deploy-preview) 데이터는 운영(production)과 분리', async () => {
   const id = newId('preview');

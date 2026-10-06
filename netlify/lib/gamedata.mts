@@ -56,3 +56,12 @@ export const LEVEL_PRESETS: readonly { lv: number; tier: number; p2?: boolean }[
 export const TOWER_RULES: Readonly<{ bossEvery: number; restEvery: number; minFloorSec: number; maxScorePerFloor: number }> = {
   bossEvery: 5, restEvery: 10, minFloorSec: 3, maxScorePerFloor: 5000000,   // minFloorSec = 층마다 건너뛸 수 없는 연출 시간 (src/data/tower.js)
 };
+
+/**
+ * 온라인 이명 고정 목록 (docs/specs/achievements.md §8). src/core/ach_meta.js ACH_TITLES 의 키와 같아야 한다 — tools/test_achievements.mjs C1 이 대조.
+ * 런 제출의 result.ti 는 이 목록 안의 id 만 받고 나머지는 오류 없이 버린다 (자유 글은 순위표에 오르지 않는다)
+ */
+export const TITLE_IDS: readonly string[] = [
+  't_dawn', 't_warden', 't_chronicler', 't_reaper', 't_nocturne', 't_apex', 't_awakened', 't_stable', 't_guardian',
+  't_scholar', 't_rush', 't_tower', 't_lucky', 't_perfect', 't_nightmare', 't_count', 't_legend',
+];

@@ -2,6 +2,8 @@
 // + 클라우드: 로그인 상태와 '지금 동기화'(로그인 안 했으면 '로그인' → 계정 화면). 계정을 쓸 수 없는 환경이면 안내 한 줄
 // 2부(이계)는 플레이어가 알 때만 (access.p2Known): 스테이지 기록 2부 7칸 · 세계의 심장 · 별의 조각 · 비전서 총수 (MASTER_PLAN §1.14)
 // 휴대폰 UI 배율(uiScale)에서도 넘치지 않게 줄 높이·단추 높이를 남는 자리에 맞춘다. 단추는 ui.taps 등록부 (44 CSS px 이상)
+// 업적 (docs/specs/achievements.md §7.6, ACH-UI): 둘째 줄을 반으로 나눠 [설정 | 업적] — 칸 높이는 그대로 (phone2 에서 넷째 줄을 더하면
+// 클라우드 단추와 겹친다). 행동 순서 저장 · 설정 · 업적 · 타이틀로 · (클라우드), ↑↓ 는 줄 단위, ←→ 는 설정 ↔ 업적. 업적 → push('achievements', {})
 import { text, FONT } from '../../core/ui.js';
 import { audio } from '../../core/audio.js';
 import { clamp, fmtTime } from '../../core/math.js';
@@ -15,15 +17,19 @@ import { cloud } from '../../core/cloud.js';
 import { drawCloudIcon, accountBadge, slotsJosa } from '../front/cloud_ui.js';
 
 const RANK_COL = { D: '#a0a0a0', C: '#7ee07e', B: '#5aa8ff', A: '#c07cff', S: '#ffa640', SS: '#ff5a4a', SSS: '#ffe070' };
+/** 단추 줄: 저장 0 · [설정 | 업적] 1 · 타이틀로 2 (클라우드는 칸 맨 아래에 따로) */
+const ROW_OF = { save: 0, options: 1, ach: 1, title: 2 };
+const rowOf = (id) => ROW_OF[id] ?? 3;
 
 export class SystemTab extends Tab {
-  constructor(m) { super(m); this.i = 0; this.btns = []; }
+  constructor(m) { super(m); this.i = 0; this.col = 0; this.btns = []; }
   get canSave() { return !this.world || this.world.mode === 'town'; }
   actions() {
     const g = this.game;
     const acts = [
       { id: 'save', label: '저장하기', icon: 'save', disabled: !this.canSave, sub: this.canSave ? `슬롯 ${this.state.slot ?? 1}에 기록` : '세이브 포인트에서 저장할 수 있습니다', run: () => this.save() },
       { id: 'options', label: '설정', icon: 'gear', disabled: !g.registry.options, sub: g.registry.options ? '소리 · 화면 · 조작' : '준비 중입니다', run: () => { audio.sfx('menu_ok'); g.push('options', {}); } },
+      { id: 'ach', label: '업적', icon: 'star', disabled: !g.registry.achievements, sub: g.registry.achievements ? this.achSub() : '준비 중입니다', run: () => { audio.sfx('menu_ok'); g.push('achievements', {}); } },   // [hook:ach]
       { id: 'title', label: '타이틀로', icon: 'door', sub: '진행 중인 모험을 떠납니다', run: () => this.toTitle() },
     ];
     // 클라우드 (계정을 쓸 수 있는 환경에서만 버튼)
@@ -32,6 +38,17 @@ export class SystemTab extends Tab {
       else acts.push({ id: 'cloud', label: this.syncing ? '동기화 중…' : '지금 동기화', disabled: this.syncing, sub: `${cloud.id} · ${cloud.overall().short}`, run: () => this.syncNow() });
     }
     return acts;
+  }
+  /** 업적 단추 아래 글: '{got} / 67 달성' (엔진이 없으면 기능 이름) */
+  achSub() {
+    try { const S = this.game.ach?.summary?.(); if (S && Number.isFinite(S.got)) return `${S.got} / ${S.total} 달성`; } catch { /* 엔진 없음 */ }
+    return '사냥의 기록';
+  }
+  /** 줄 row 에서 고를 단추 (둘째 줄은 마지막으로 고른 쪽: 설정 0 · 업적 1). 없으면 -1 */
+  pickRow(acts, row) {
+    const c = acts.filter((a) => rowOf(a.id) === row);
+    if (!c.length) return -1;
+    return acts.indexOf(row === 1 ? c[Math.min(this.col, c.length - 1)] : c[0]);
   }
   async syncNow() {
     if (this.syncing) return;
@@ -67,17 +84,28 @@ export class SystemTab extends Tab {
 
   update(dt, nav, ges, focused) {
     const acts = this.actions();
+    const colOf = (k) => (acts[k]?.id === 'ach' ? 1 : 0);
     for (let k = 0; k < this.btns.length; k++) {
-      if (ges.hoverIn(this.btns[k])) this.i = k;
-      if (ges.tap(this.btns[k])) { this.m.focus = 'content'; this.i = k; this.run(acts[k]); return; }
+      if (ges.hoverIn(this.btns[k])) { this.i = k; if (rowOf(acts[k]?.id) === 1) this.col = colOf(k); }
+      if (ges.tap(this.btns[k])) { this.m.focus = 'content'; this.i = k; if (rowOf(acts[k]?.id) === 1) this.col = colOf(k); this.run(acts[k]); return; }
     }
     if (!focused) return;
-    if (nav.up) { if (this.i > 0) { this.i--; audio.sfx('menu_move'); } else { this.m.focusTabs(); return; } }
-    if (nav.down && this.i < acts.length - 1) { this.i++; audio.sfx('menu_move'); }
+    this.i = clamp(this.i, 0, acts.length - 1);
+    const row = rowOf(acts[this.i]?.id);
+    if (nav.up) {
+      if (row === 0) { this.m.focusTabs(); return; }
+      const j = this.pickRow(acts, row - 1);
+      if (j >= 0) { this.i = j; audio.sfx('menu_move'); }
+    }
+    if (nav.down) { const j = this.pickRow(acts, row + 1); if (j >= 0) { this.i = j; audio.sfx('menu_move'); } }
+    if ((nav.left || nav.right) && row === 1) {   // [설정 | 업적]
+      const j = acts.findIndex((a) => a.id === (nav.right ? 'ach' : 'options'));
+      if (j >= 0 && j !== this.i) { this.i = j; this.col = nav.right ? 1 : 0; audio.sfx('menu_move'); }
+    }
     if (nav.confirm) this.run(acts[this.i]);
     if (nav.cancel) this.m.close();
   }
-  hints() { return [['↑↓', '고르기'], ['Z', '결정', '버튼을 터치하세요']]; }
+  hints() { return [['↑↓←→', '고르기'], ['Z', '결정', '버튼을 터치하세요']]; }
 
   render(ctx, A) {
     const t = this.t, st = this.state, focused = this.m.focus === 'content';
@@ -185,16 +213,20 @@ export class SystemTab extends Tab {
     const acts = this.actions();
     this.btns.length = 0;
     const hasCloud = acts.some((a) => a.id === 'cloud');
-    const main = acts.filter((a) => a.id !== 'cloud').length;
+    const main = new Set(acts.filter((a) => a.id !== 'cloud').map((a) => rowOf(a.id))).size;   // 단추 줄 수 ([설정 | 업적] 은 한 줄)
+    const half = (RW - 32 - 8) / 2;
     const cloudH = touch ? 50 : 52, foot = hasCloud ? cloudH + 14 : (!cloud.eligible() ? 32 : 10);
     // 단추 높이: 쓸 수 있는 높이에 맞춰 (터치 최소 46 · 44 CSS px 이상)
     const gap = 10, avail = A.h - 46 - foot - 8;
     const bh = clamp(Math.floor((avail - (main - 1) * gap) / Math.max(1, main)), touch ? 46 : 42, touch ? 64 : 58);
     acts.forEach((a, k) => {
       // 클라우드 단추는 오른쪽 칸 맨 아래에 따로 둔다
+      const row = rowOf(a.id);
       const r = a.id === 'cloud'
         ? { x: RX + 16, y: A.y + A.h - 14 - cloudH, w: RW - 32, h: cloudH }
-        : { x: RX + 16, y: A.y + 46 + k * (bh + gap), w: RW - 32, h: bh };
+        : row === 1
+          ? { x: RX + 16 + (a.id === 'ach' ? half + 8 : 0), y: A.y + 46 + row * (bh + gap), w: half, h: bh }   // [설정 | 업적] [hook:ach]
+          : { x: RX + 16, y: A.y + 46 + row * (bh + gap), w: RW - 32, h: bh };
       this.btns.push(this.m.ges.zone(r, 'primary', { src: 'system.' + a.id, disabled: false }));
       const sel = k === this.i;
       gbutton(ctx, r, a.label, { hot: sel && (focused || this.m.ges.over(r)), disabled: a.disabled, icon: a.icon, size: bh < 50 ? 15 : 16, t, sub: bh < 48 && a.id !== 'cloud' ? null : a.sub, accent: a.id === 'title' ? '#6a1020' : undefined });

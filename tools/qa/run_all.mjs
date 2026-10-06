@@ -56,6 +56,7 @@ const STEPS = [
   S('settings_v2', 'unit', node('tools/test_settings_v2.mjs'), 10 * MIN),
   S('companion_state', 'unit', node('tools/test_companion_state.mjs'), 10 * MIN),
   S('accounts_api', 'unit', node('tools/accounts/test_api.mjs'), 10 * MIN),
+  S('achievements', 'unit', node('tools/test_achievements.mjs'), 5 * MIN),   // 업적 데이터·엔진·병합·서버 검사 (docs/specs/achievements.md §12.1)
   S('sfx', 'unit', node('tools/test_sfx.mjs'), 10 * MIN),
   S('hud_layout', 'unit', node('tools/test_hud_layout.mjs'), 15 * MIN),
   // ── balance

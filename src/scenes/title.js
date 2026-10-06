@@ -561,10 +561,11 @@ export class TitleScene extends Scene {
       const r = { x: x - (1 - k) * 60, y: y0 + i * (h + gap), w, h };
       this.menu.hit(i, r);
       ctx.save(); ctx.globalAlpha = k;
-      const achNew = it.id === 'ach' && this.achNew > 0;
-      menuItem(ctx, r, it.label, { selected: this.menu.index === i && this.mode === 'menu', disabled: it.disabled, sub: achNew ? `NEW ${this.achNew}` : it.sub, k, size: h >= 48 ? 22 : 21 });
-      if (achNew) { // 안 본 업적: 줄 오른쪽 붉은 점
-        const dx = r.x + r.w - 20, dy = r.y + r.h / 2, pr = 4.5 + 0.8 * Math.sin(t * 5);
+      const achNew = it.id === 'ach' && this.achNew > 0, sel = this.menu.index === i && this.mode === 'menu', fs = h >= 48 ? 22 : 21;
+      menuItem(ctx, r, it.label, { selected: sel, disabled: it.disabled, sub: achNew ? `NEW ${this.achNew}` : it.sub, k, size: fs });
+      if (achNew) { // 안 본 업적: 이름 오른쪽 붉은 점
+        ctx.font = `800 ${fs}px ${FONT.title}`;
+        const dx = r.x + 28 + (sel ? 6 * k : 0) + ctx.measureText(it.label).width + 13, dy = r.y + r.h / 2 - 9, pr = 4.5 + 0.8 * Math.sin(t * 5);
         ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.beginPath(); ctx.arc(dx, dy, pr + 1.5, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#ff3050'; ctx.beginPath(); ctx.arc(dx, dy, pr, 0, Math.PI * 2); ctx.fill();
       }

@@ -5,7 +5,7 @@ import { BODY_LIMIT, CHARACTER_IDS, ONLINE, STORES } from './config.mts';
 import { ApiError, fail, isObj, json, ok, readJson } from './http.mts';
 import { accountAlive, authenticate, unauthorized, updateUser } from './accounts.mts';
 import type { Auth } from './accounts.mts';
-import { CLASS_INFO, TOWER_RULES } from './gamedata.mts';
+import { CLASS_INFO, TITLE_IDS, TOWER_RULES } from './gamedata.mts';
 import { limitAccount } from './ratelimit.mts';
 import { now } from './runtime.mts';
 import type { Ctx } from './runtime.mts';
@@ -146,6 +146,8 @@ export async function finishRun(c: Ctx): Promise<Response> {
   if (!board) fail('run_expired', 410); // 서명은 맞는데 보드가 지금 받을 수 없음 = 오래된 일일 도전
   const res = checkResult(board!, body.result);
   if (t - claims!.ts < res.t * ONLINE.timeSlack - ONLINE.timeGraceMs) fail('implausible_time', 422);
+  // 이명 (achievements.md §8): 고정 목록 id 만, 나머지(판이 다른 클라이언트·형식 밖)는 오류 없이 버린다. 기록(Rec)에 묶지 않는다 — 계정의 '지금' 이명
+  const ti = typeof body.result?.ti === 'string' && TITLE_IDS.includes(body.result.ti) ? body.result.ti as string : undefined;
   const ghost = checkGhost(body.ghost);
   await limitAccount(c, a.uid, 'run-m', ONLINE.submitPerMin, MIN);
   await limitAccount(c, a.uid, 'run-d', ONLINE.submitPerDay, DAY);
@@ -162,14 +164,14 @@ export async function finishRun(c: Ctx): Promise<Response> {
       await putGhost(c, board!, a.uid, { data: ghost, t: rec.t, h: rec.h, c: rec.c });
       ghostSaved = true;
     }
-    const placed = await placeEntry(c, board!, entryOf(saved.rec, nick), saved.isNew, ghostSaved);
+    const placed = await placeEntry(c, board!, entryOf(saved.rec, nick, ti), saved.isNew, ghostSaved);
     // 밀려난 계정의 고스트, 20위 밖이 된 내 고스트, 고스트 없이 갱신한 내 예전 고스트(지금 기록과 맞지 않는다)
     const mineStale = (ghostSaved && !placed.ghost) || (saved.best && !saved.replay && !ghostSaved);
     const drop = [...placed.evicted, ...(mineStale ? [a.uid] : [])];
     if (drop.length) await deleteGhosts(c, board!, drop);
     // 그사이 탈퇴했다면 방금 쓴 것을 지운다 (탈퇴 쪽도 사용자 레코드를 지운 뒤 한 번 더 쓴다)
     if (!(await accountAlive(c, a.id, a.uid))) { await removeUserFromBoard(c, board!, a.uid); unauthorized(); }
-    return ok({ best: saved.best, rank: placed.rank, total: placed.total, entry: pubEntry(board!.kind, { ...entryOf(saved.rec, nick), g: placed.ghost }, placed.rank) });
+    return ok({ best: saved.best, rank: placed.rank, total: placed.total, entry: pubEntry(board!.kind, { ...entryOf(saved.rec, nick, ti), g: placed.ghost }, placed.rank) });
   } catch (e) {
     // 서버 오류면 같은 런으로 다시 보낼 수 있게 자리를 돌려준다 (기록은 최고 기록만 남으므로 다시 보내도 안전하다)
     if (!(e instanceof ApiError)) await runs.delete(nk).catch(() => {});

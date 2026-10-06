@@ -40,8 +40,9 @@
 ### 2.2 런 제출
 `POST /api/runs/finish` (인증 필요, 본문 ≤ 48 KB)
 - 요청: `{ run, result, ghost?, board? }`
-  - `result`: `{ time, score, wave?, floor?, rank?, hero, cls, level, deaths? }`
+  - `result`: `{ time, score, wave?, floor?, rank?, hero, cls, level, deaths?, ti? }`
     - `time` 은 ms, `rank` 는 등급 글자(`S`·`A`…), 서바이벌은 `wave` 필수, 무한의 탑은 `floor`(돌파한 층) 필수.
+    - `ti`(선택): 이명 id (docs/specs/achievements.md §8). 서버의 고정 목록 `gamedata.mts TITLE_IDS`(17개, 클라이언트 `core/ach_meta.js ACH_TITLES` 의 키)에 있는 것만 받고, 목록 밖·형식 밖은 **오류 없이 버린다**(판이 다른 클라이언트의 제출이 실패하지 않게). 자유 글은 받지 않는다. 기록(최고 기록)에 묶지 않고 계정의 '지금' 이명으로 그 보드의 항목에 단다 — 기록이 나아지지 않은 제출에서도 별명처럼 새로 바뀌고, `ti` 없이 내면 빠진다.
   - `board`(선택): 보내면 런의 보드와 같아야 한다(§3 '보드 일치'). 보드는 `run` 안에 있으므로 생략해도 된다.
   - `ghost`: base64 문자열, 24 KB 이하. 형식은 클라이언트가 정하고 서버는 열어 보지 않는다 (부록 A).
 - 응답: `{ ok: true, best, rank, total, entry }`
@@ -64,8 +65,9 @@
 
 ### 2.3 순위표
 `GET /api/boards/<board>?limit=50` (공개, limit ≤ 100)
-- 응답: `{ board, total, entries: [{ rank, nick, time, score, wave?, floor?, hero, cls, level, date, ghost: bool }], me? }`
+- 응답: `{ board, total, entries: [{ rank, nick, time, score, wave?, floor?, hero, cls, level, date, ghost: bool, title? }], me? }`
   - `date` 는 기록을 세운 서버 시각(ms epoch). `wave` 는 서바이벌 보드에만, `floor` 는 무한의 탑 보드에만 있다.
+  - `title`(선택): 그 계정이 이 보드에 마지막으로 제출할 때 단 이명 id (§2.2 `ti`, 고정 목록 안의 것만). 화면은 클라이언트 표로 이름에 옮기고, 모르는 id 는 그리지 않는다. 런 제출 응답의 `entry` 에도 같은 필드. 고스트 응답(§2.4)에는 없다.
 - 인증 헤더가 있으면 `me: { rank, time, score, wave?, floor? }` 를 함께 준다.
   - 그 보드에 기록이 없으면 `me: null`, 100위 밖이면 `rank: null`. 토큰이 틀리면 다른 API 처럼 401.
 - `Cache-Control: public, max-age=30`. 인증한 요청은 `no-store`.

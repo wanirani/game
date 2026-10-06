@@ -68,8 +68,8 @@ export function parseBoard(raw: unknown, t: number, mode: 'read' | 'write' | 'an
 }
 
 // ── 순위 ──
-/** 순위 목록 항목 (서버 안에서만; 공개할 때는 uid 를 빼고 pubEntry 로 바꾼다). f = 무한의 탑 돌파한 층 */
-export interface Entry { u: string; n: string; t: number; s: number; w?: number; f?: number; h: string; c: string; l: number; d: number; g?: boolean }
+/** 순위 목록 항목 (서버 안에서만; 공개할 때는 uid 를 빼고 pubEntry 로 바꾼다). f = 무한의 탑 돌파한 층, ti = 이명 id (gamedata.mts TITLE_IDS 안의 것만) */
+export interface Entry { u: string; n: string; t: number; s: number; w?: number; f?: number; h: string; c: string; l: number; d: number; g?: boolean; ti?: string }
 /** 계정의 최고 기록 (b/<보드 키>/e/<uid>). id = 로그인 아이디 (운영 도구용, 공개하지 않는다), rn = 이 기록을 세운 런 nonce, gr = 등급, dt = 죽은 수 */
 export interface Rec { v: 1; id: string; uid: string; t: number; s: number; w?: number; f?: number; h: string; c: string; l: number; gr?: string; dt?: number; d: number; rn: string }
 interface Index { v: 1; board: string; total: number; list: Entry[] }
@@ -89,11 +89,12 @@ export function cmpEntry(kind: Kind, a: Entry, b: Entry): number {
 const better = (kind: Kind, a: Score, b: Score): boolean => cmpScore(kind, a, b) < 0;
 
 /** 공개 항목 (§2.3) */
-export function pubEntry(kind: Kind, e: Pick<Entry, 'n' | 't' | 's' | 'w' | 'f' | 'h' | 'c' | 'l' | 'd' | 'g'>, rank: number | null): Record<string, unknown> {
+export function pubEntry(kind: Kind, e: Pick<Entry, 'n' | 't' | 's' | 'w' | 'f' | 'h' | 'c' | 'l' | 'd' | 'g' | 'ti'>, rank: number | null): Record<string, unknown> {
   const out: Record<string, unknown> = { rank, nick: e.n, time: e.t, score: e.s };
   if (kind === 'survival') out.wave = e.w ?? 0;
   if (kind === 'tower') out.floor = e.f ?? 0;
   Object.assign(out, { hero: e.h, cls: e.c, level: e.l, date: e.d, ghost: !!e.g });
+  if (e.ti) out.title = e.ti;   // 이명 id (achievements.md §8 — 화면이 클라이언트 표로 이름에 옮긴다)
   return out;
 }
 
@@ -152,6 +153,8 @@ export async function placeEntry(c: Ctx, b: Board, e: Entry, isNew: boolean, gho
     } else {
       mine = cur.d === e.d && cur.t === e.t && cur.s === e.s;
       if (cur.n !== e.n) { cur.n = e.n; changed = true; }
+      // 이명도 별명처럼 늘 새로 (기록이 나아지지 않아도 — 제출에 없으면 뺀다)
+      if ((cur.ti ?? null) !== (e.ti ?? null)) { if (e.ti) cur.ti = e.ti; else delete cur.ti; changed = true; }
     }
     list.sort((x, y) => cmpEntry(b.kind, x, y));
     const evicted: string[] = [];
@@ -220,10 +223,11 @@ export async function saveBest(c: Ctx, b: Board, rec: Rec): Promise<Saved> {
   throw new Error('record contention');
 }
 
-export const entryOf = (r: Rec, nick: string): Entry => {
+export const entryOf = (r: Rec, nick: string, ti?: string): Entry => {
   const e: Entry = { u: r.uid, n: nick, t: r.t, s: r.s, h: r.h, c: r.c, l: r.l, d: r.d };
   if (r.w !== undefined) e.w = r.w;
   if (r.f !== undefined) e.f = r.f;
+  if (ti) e.ti = ti;   // 이명 (online.mts finishRun 이 TITLE_IDS 로 거른 것)
   return e;
 };
 

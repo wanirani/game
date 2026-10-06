@@ -1,5 +1,5 @@
 // 입력 검증: 아이디, 비밀번호(흔한 비밀번호 거부 포함), 세이브 데이터 구조(isValidSave 복사본), 전역 메타, 슬롯 요약.
-import { CHARACTER_IDS } from './config.mts';
+import { ACH, CHARACTER_IDS } from './config.mts';
 import { fail, isObj } from './http.mts';
 
 const ID_RE = /^[a-z][a-z0-9_]{3,15}$/;
@@ -165,6 +165,32 @@ export function isValidMeta(m: any): boolean {
   for (const k of ['clears', 'survivalBest']) if (k in m && m[k] !== null && !Number.isFinite(m[k])) return false;
   if ('konami' in m && typeof m.konami !== 'boolean') return false;
   if ('bossRushBest' in m && m.bossRushBest !== null && !isObj(m.bossRushBest) && !Number.isFinite(m.bossRushBest)) return false;
+  if ('ach' in m && m.ach !== null && !isValidAch(m.ach)) return false;
+  return true;
+}
+
+// ── 업적 기록 (meta.ach — docs/specs/achievements.md §2.4) ──
+// 모양·크기만 본다. 업적 id 목록은 검사하지 않는다 (서버는 달성을 확인할 수 없고, 업적을 더할 때마다 배포가 필요해진다).
+// src/core/ach_meta.js isValidAch 와 같은 규칙 (클라이언트 cleanAch 결과는 늘 이것을 통과해야 한다 — tools/test_achievements.mjs C6)
+const achKey = (k: unknown): boolean => typeof k === 'string' && ACH.keyRe.test(k);
+const achNum = (v: unknown, max: number): boolean => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= max;
+function achNumMap(m: unknown, maxKeys: number, maxVal: number): boolean {
+  if (!isObj(m)) return false;
+  const ks = Object.keys(m);
+  return ks.length <= maxKeys && ks.every((k) => achKey(k) && achNum((m as Record<string, unknown>)[k], maxVal));
+}
+/** meta.ach 모양 검사. 모르는 필드는 허용 */
+export function isValidAch(a: any): boolean {
+  if (!isObj(a)) return false;
+  let len: number;
+  try { len = JSON.stringify(a).length; } catch { return false; }
+  if (len > ACH.maxBytes) return false;
+  if ('v' in a && !(Number.isInteger(a.v) && a.v >= 1 && a.v <= ACH.vMax)) return false;
+  if ('got' in a && !achNumMap(a.got, ACH.gotMax, ACH.timeMax)) return false;
+  if ('prog' in a && !achNumMap(a.prog, ACH.progMax, ACH.progValMax)) return false;
+  if ('claimed' in a && !(Array.isArray(a.claimed) && a.claimed.length <= ACH.claimedMax && a.claimed.every(achKey))) return false;
+  if ('seenAt' in a && !achNum(a.seenAt, ACH.timeMax)) return false;
+  for (const k of ['title', 'deco']) if (k in a && a[k] !== null && !achKey(a[k])) return false;
   return true;
 }
 

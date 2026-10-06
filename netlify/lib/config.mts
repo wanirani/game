@@ -136,6 +136,17 @@ export const ONLINE = {
   orphanGhostMs: HOUR, // 순위 목록에 표시가 없는 고스트는 이만큼 지난 뒤 정리한다 (막 저장 중인 것을 지우지 않게)
 } as const;
 
+/**
+ * 업적 기록 meta.ach 의 모양 검사 상한 (validate.mts isValidAch, docs/specs/achievements.md §2.4).
+ * src/core/ach_meta.js ACH_LIMITS·ACH_KEY_RE 와 같은 숫자여야 한다 — 어긋나면 클라이언트 cleanAch 가 만든 메타가 invalid_meta 로 거절되어
+ * 메타 동기화 전체가 멈춘다 (tools/test_achievements.mjs C1 이 대조, C6 이 퍼징). 크기는 JSON.stringify 길이
+ */
+export const ACH = {
+  maxBytes: 24 * 1024, gotMax: 256, progMax: 128, claimedMax: 256,
+  timeMax: 1e13, progValMax: 1e9, vMax: 99,
+  keyRe: /^[a-z][a-z0-9_]{1,31}$/,
+} as const;
+
 /** 동시 수정 충돌 시 조건부 쓰기 재시도 횟수 */
 export const CAS_RETRIES = 5;
 
