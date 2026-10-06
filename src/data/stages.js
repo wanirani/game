@@ -1,4 +1,4 @@
-// 스테이지 정의 (1부 13장 + 2부 14~20장 + 외전 21·22장 + 투기장). 맵은 data/maps/<id>.js 의 ROOMS.
+// 스테이지 정의 (1부 13장 + 2부 14~20장 + 외전 21·22·23장 + 투기장). 맵은 data/maps/<id>.js 의 ROOMS.
 // 2부 스테이지 추가 필드 (world2 §4.2): part:2, page:1(월드맵 쪽), gimmick(world2 §3.1 — 모든 방의 기본값, { kind, …매개변수 } 또는 배열),
 //   shard(별의 조각 k_star_n: 맵 '@' 에 정확히 1개), heart(세계의 심장 k_heart_n: 보스 전리품), color(월드맵 노드 색), liquid 에 'deep'(깊은 물) 추가.
 //   1부 스테이지에는 새 필드가 없다 (page 는 월드맵에서 0 으로 본다).
@@ -38,6 +38,8 @@ import { ROOMS as S20 } from './maps/s20.js';
 import { ROOMS as S21 } from './maps/s21.js';
 // ── EX map import s22 (EX2-MAP) — 외전 ──
 import { ROOMS as S22 } from './maps/s22.js';
+// ── EX map import s23 (EX3-MAP) — 외전 ──
+import { ROOMS as S23 } from './maps/s23.js';
 
 const S = (o) => ({ start: 'r1', parTime: 300, darkColor: '#06020c', liquid: 'water', docs: [], relic: null, unlocks: [], ...o, intro: o.intro ?? `${o.id}_intro`, outro: o.outro ?? `${o.id}_outro` });
 
@@ -131,6 +133,15 @@ export const STAGES = {
     enemies: ['crow', 'ghost', 'phantom_sword', 'shadow_hunter', 'faceless', 'wisp', 'mimic'], docs: [], shard: null, heart: null,
     gimmick: { kind: 'wind', dir: 'alt', force: 760, on: 2.2, off: 4.2 }, color: '#ff4a6a', next: null, mapPos: { x: 0.13, y: 0.55 },
     req: '2부의 끝을 본 뒤, 까마귀 결사의 소집령이 에슈빌에 날아들면 갈 수 있다' }),
+  // ── EX stage s23 (EX3-MAP 맵·대본 · EX3-INTEG 통합) — 외전 「빈칸의 현상금」 (docs/specs/ex_s23.md). 2부 엔딩(p2_done) 뒤에 열린다.
+  //    side: true · page: 0 = 1부 지도에서 10장 얼어붙은 첨탑으로부터 오른쪽 산맥으로 갈라지는 외전 노드 (town/worldmap.js SIDE_FROM.s23 = 's10')
+  //    해금은 s21 · s22 와 같은 세계 지도 고리, 클리어해도 progress.chapter 를 올리지 않는다 (results.js). 보상은 동료 대신 신화 무기 일곱 (아웃트로 give).
+  //    대본 s23_intro · s23_t1 · s23_t2 · s23_outro · b_hagen_* = data/story_ex.js ──
+  s23: S({ id: 's23', chapter: 23, part: 2, page: 0, side: true, name: '늑대 고개', sub: '북쪽 설원, 사냥꾼들이 돌아오지 않는 고개', theme: 'spire', bg: 'bg/s10_spire', tex: 'tex/tex_ice', tex2: 'tex/tex_castle_stone', tileStyle: 'ice',
+    music: 's10', level: 74, darkness: 0.35, darkColor: '#04080e', liquid: 'water', boss: 'b_hagen', rooms: S23, parTime: 600,
+    enemies: ['snow_wolf', 'wolf', 'ice_bat', 'frost_wraith', 'frozen_knight', 'ice_golem', 'shadow_hunter', 'mimic'], docs: [], shard: null, heart: null,
+    gimmick: { kind: 'wind', dir: 'alt', force: 800, on: 2.0, off: 4.4 }, color: '#ffcf6a', next: null, mapPos: { x: 0.94, y: 0.34 },   // mapPos 는 INTEG 가 겹침을 보고 고칠 수 있다 (§5.1)
+    req: '2부의 끝을 본 뒤, 액수 칸이 빈 현상금 공고가 에슈빌에 날아들면 갈 수 있다' }),
   arena: S({ id: 'arena', chapter: 0, name: '피의 투기장', sub: '서바이벌 & 보스 러시', theme: 'arena', bg: 'bg/s_arena', tex: 'tex/tex_castle_stone', tex2: 'tex/tex_dirt', tileStyle: 'stone',
     music: 'arena', level: 10, darkness: 0.3, boss: null, rooms: ARENA, parTime: 600, intro: null, outro: null,
     enemies: [], next: null, mapPos: { x: 0.3, y: 0.3 } }),

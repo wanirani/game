@@ -17,7 +17,7 @@ import { CHARACTERS } from '../data/characters.js';
 import { NPCS } from '../data/npcs.js';
 import { BOSSES } from '../data/bosses.js';
 import * as CMP from '../data/companions.js';
-import { grantItem } from '../game/inventory.js';
+import { grantItem, ownsItem } from '../game/inventory.js';
 import { bus } from '../core/events.js';
 import { saves } from '../core/save.js';
 import { clamp, ease } from '../core/math.js';
@@ -165,7 +165,7 @@ export class DialogueScene extends Scene {
   runCmd(l) {
     const st = this.state;
     switch (l.cmd) {
-      case 'give': if (st) { const r = grantItem(st, l.item, l.qty ?? 1); this.game.toast(`획득: ${l.name ?? l.item} ×${l.qty ?? 1}${r.queued ? ' (가방이 가득 차 보관함에 맡겼다)' : ''}`, '#e8c872'); audio.sfx('item'); } break;
+      case 'give': if (st && !(l.once && ownsItem(st, l.item))) { const r = grantItem(st, l.item, l.qty ?? 1); if (!l.silent) { this.game.toast(`획득: ${l.name ?? l.item} ×${l.qty ?? 1}${r.queued ? ' (가방이 가득 차 보관함에 맡겼다)' : ''}`, '#e8c872'); audio.sfx('item'); } } break;   // once: 이미 들고 있으면 건너뜀 · silent: 토스트·소리 없이 (대본이 알린다 — ex_s23.md §3)
       case 'gold': if (st) { st.gold = (st.gold ?? 0) + (l.amount ?? 0); this.game.toast(`${l.amount} G 획득`, '#ffd84a'); audio.sfx('coin'); } break;
       case 'flag': if (st?.progress) (st.progress.flags ??= {})[l.key] = l.value ?? true; break;
       case 'quest': bus.emit('questOffer', { questId: l.id }); this.game.quests?.accept?.(l.id); break;

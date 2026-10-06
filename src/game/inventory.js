@@ -6,7 +6,7 @@
 //  toggleLock(state, uid) → locked / buyItem(state, baseId, {rarity, price, qty}) → {ok, msg, item}
 //  quickHeal(state, hero, player) → {ok, msg} (전투 중 가장 알맞은 회복약 자동 사용) / freeSlots(state) / usedSlots(state) / canAdd(state, inst)
 //  queueLoot(state, inst) / deliverLoot(state) → 넣은 개수 (가방이 가득 차 받지 못한 전리품 보관함 progress.lootQueue)
-//  grantItem(state, baseId, qty, opts) → {added, queued} (보상 지급: 못 넣은 몫은 보관함으로)
+//  grantItem(state, baseId, qty, opts) → {added, queued} (보상 지급: 못 넣은 몫은 보관함으로) / ownsItem(state, baseId) → 가방(장착 포함)·보관함에 있는가
 //  equippedByOther(state, hero, uid) → charId|null / ensureWeapon(state, hero) → 새로 낀 무기|null
 // 아이템 인스턴스: { uid, baseId, slot, icon, rarity(0~5), level(강화 0~15), affixes:[{stat,value,id}], qty, locked, t }
 import { ITEMS, makeItem, isEquipment, buyPrice, sellPrice, itemName, itemStats } from '../data/items.js';
@@ -123,6 +123,13 @@ export function grantItem(state, baseId, qty = 1, opts = {}) {
     else for (let k = 0; k < queued; k++) queueLoot(state, makeItem(baseId, opts));
   }
   return { added, queued };
+}
+
+/** 이 베이스의 물건을 들고 있는가: 가방(장착한 것도 가방에 있다) + 보관함(progress.lootQueue). 대사 give 의 once (docs/specs/ex_s23.md §3) */
+export function ownsItem(state, baseId) {
+  if (!baseId) return false;
+  const has = (arr) => Array.isArray(arr) && arr.some((i) => i?.baseId === baseId);
+  return has(state?.inventory) || has(state?.progress?.lootQueue);
 }
 
 export function addByBase(state, baseId, qty = 1, opts = {}) {

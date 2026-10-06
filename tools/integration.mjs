@@ -11,8 +11,10 @@ const args = Object.fromEntries(process.argv.slice(2).reduce((a, v, i, arr) => {
 const out = args.out || '/tmp/claude-0/integ';
 const mobile = !!args.mobile;
 const KEY = { right: 'ArrowRight', left: 'ArrowLeft', up: 'ArrowUp', down: 'ArrowDown', jump: 'KeyZ', attack: 'KeyX', dash: 'KeyC', sub: 'KeyA', skill1: 'KeyS', skill2: 'KeyD', ult: 'KeyF', menu: 'Escape', enter: 'Enter', swap: 'KeyQ' };
-// 1부 s01–s13 + 2부 s14–s20 (P2-QA) + 외전 s21 (EX-INTEG, docs/specs/ex_s21.md) · s22 (EX2-INTEG, docs/specs/ex_s22.md). 보스방 케이스 <id>_boss 는 끝에 world.boss 가 있어야 통과한다.
-const STAGES = ['s01','s02','s03','s04','s05','s06','s07','s08','s09','s10','s11','s12','s13','s14','s15','s16','s17','s18','s19','s20','s21','s22'];
+// 1부 s01–s13 + 2부 s14–s20 (P2-QA) + 외전 s21 (EX-INTEG, docs/specs/ex_s21.md) · s22 (EX2-INTEG, docs/specs/ex_s22.md) · s23 (EX3-INTEG, docs/specs/ex_s23.md). 보스방 케이스 <id>_boss 는 끝에 world.boss 가 있어야 통과한다.
+const STAGES = ['s01','s02','s03','s04','s05','s06','s07','s08','s09','s10','s11','s12','s13','s14','s15','s16','s17','s18','s19','s20','s21','s22','s23'];
+// 외전 보스방은 그 외전의 보스여야 한다 (world.boss.def.id — 다른 보스로 대신 나오면 실패)
+const SIDE_BOSS = { s21: 'b_argen', s22: 'b_nemain', s23: 'b_hagen' };
 const CASES = [
   { id: 'title', url: 'index.html', steps: 'wait:1.5,shot,enter:0.1,wait:1,shot,down:0.1,down:0.1,wait:0.3,shot' },
   { id: 'hub', url: 'index.html?scene=hub', steps: 'wait:2,shot,right:2,shot,menu:0.1,wait:0.5,shot' },
@@ -22,7 +24,7 @@ const CASES = [
   ...STAGES.map((s) => ({ id: s, url: `index.html?scene=stage&stage=${s}`, steps: 'wait:3,shot,right:1.2,attack:0.15,wait:0.2,attack:0.15,jump:0.3,right:1,shot,menu:0.1,wait:0.6,shot,menu:0.1,wait:0.4,sub:0.1,skill1:0.1,wait:0.5' })),
   // rightboss:N = 보스가 나올 때까지(최대 N초) 오른쪽으로 걷기, intro:N = 보스 소개·대사를 넘겨 전투가 시작될 때까지(최대 N초).
   // 부하가 큰 기계에서도 고정 시간 대기에 기대지 않는다 (2부 보스방은 입구에서 경기장까지 15칸).
-  ...STAGES.map((s) => ({ id: s + '_boss', url: `index.html?scene=stage&stage=${s}&room=boss`, boss: true, steps: 'wait:2.5,rightboss:8,intro:25,wait:1,shot,attack:0.2,attack:0.2,attack:0.2,wait:1,shot' })),
+  ...STAGES.map((s) => ({ id: s + '_boss', url: `index.html?scene=stage&stage=${s}&room=boss`, boss: true, bossId: SIDE_BOSS[s], steps: 'wait:2.5,rightboss:8,intro:25,wait:1,shot,attack:0.2,attack:0.2,attack:0.2,wait:1,shot' })),
   // 7번째 영웅 이졸데(창): 1부 첫 스테이지와 2부 합류 다음 스테이지를 이졸데로 (docs/specs/hero7.md)
   ...['s01', 's15'].map((s) => ({ id: s + '_isolde', url: `index.html?scene=stage&stage=${s}&char=isolde`, steps: 'wait:3,shot,right:1.2,attack:0.15,wait:0.2,attack:0.15,jump:0.3,attack:0.15,wait:0.8,right:1,shot,menu:0.1,wait:0.6,shot,menu:0.1,wait:0.4,sub:0.1,skill1:0.1,wait:0.5' })),
   // 회차 「피의 윤회」 (docs/specs/ngplus.md §8): ?ng=N 디버그 세이브 — 2회차 s01 (적 레벨 70 · 배너 '2회차 · CHAPTER 1'), 4회차 s20 보스 (강화 패턴)
@@ -130,6 +132,7 @@ for (const c of CASES) {
     const fails = [...new Set(errs)];
     // 보스방 케이스는 보스가 실제로 나와야 한다 (없으면 방 id/보스 등록이 깨진 것 — 오류 없이 통과하지 않게)
     if (c.boss && !info?.boss) fails.push(`NOBOSS world.boss 가 없음 (room=${info?.room}, scenes=${info?.scenes})`);
+    else if (c.bossId && info?.boss !== c.bossId) fails.push(`WRONGBOSS world.boss ${info?.boss} ≠ ${c.bossId}`);
     report.push({ id: c.id, info, errs: fails });
   } catch (e) { report.push({ id: c.id, info: null, errs: ['HARNESS ' + e.message] }); }
   await ctx.close();

@@ -4,14 +4,14 @@
 //  ITEMS[id] = { id, name, slot:'weapon'|'head'|'body'|'cloak'|'acc'|'consumable'|'material'|'key',
 //    wtype?, tier(1~7; 7 = 2부), icon, lvReq, stats:{}, visual:{}, element?, price, stack?, use?, desc,
 //    relic?, unique?, rarity?(고유 아이템 고정 희귀도), effect?(고유 효과 문구), boss?(드롭 보스 id), quest?,
-//    mythic?(신화 무기), worldHeart?(세계의 심장 번호 1~6), starShard?(별의 조각 번호 1~6), color?(심장 색) }
+//    mythic?(신화 무기), set?(신화 한 벌 — 'hunt' = 외전 s23 지급, 드롭 표 밖), worldHeart?(세계의 심장 번호 1~6), starShard?(별의 조각 번호 1~6), color?(심장 색) }
 //  visual — 무기 {style(1~6), color, glow, rift?(7단계: 무지갯빛 균열 광택, 없으면 style 6 그대로)} / 머리 {headgear, color} / 몸 {armor, color, trim}
 //           망토 {cape:'plain'|'royal'|'tattered', color, color2, len} / 장신구 {aura:{color,type}}  (game/stats.js composeLook 가 해석)
 //  use — { heal(최대 HP 비율), mp(최대 MP 비율), cure, buff:{id(POWERUPS 키), time}, warp }
 // ── 인스턴스 ──
 //  { uid, baseId, slot, icon, rarity(0~5), level(강화 0~15), affixes:[{id, stat, value}], qty, locked?, t?(획득 순서) }
 // ── 공개 API ──
-//  RARITIES, ITEMS, AFFIXES, AFFIX_MAP, UNIQUES, BOSS_UNIQUES, MYTHIC_WEAPONS(6단계 신화), MYTHIC_WEAPONS_P2(7단계 신화), WTYPES, WTYPE_NAMES, SLOT_LABELS, STAT_LABELS
+//  RARITIES, ITEMS, AFFIXES, AFFIX_MAP, UNIQUES, BOSS_UNIQUES, MYTHIC_WEAPONS(6단계 신화), MYTHIC_WEAPONS_P2(7단계 신화), HUNT_SET(외전 s23 신화 한 벌), WTYPES, WTYPE_NAMES, SLOT_LABELS, STAT_LABELS
 //  TIER_LV (세계의 심장·별의 조각 id 목록은 data/stages.js 의 HEARTS · SHARDS)
 //  makeItem(baseId, {rarity, level, affixes, qty}) → inst     (희귀도>0 인데 affixes 미지정이면 자동 추첨)
 //  rollItem(level, {luck, diff, slot, wtype, minRarity, maxRarity, tier}) → 무작위 장비 인스턴스
@@ -338,6 +338,9 @@ for (const [id, name, icon, t, stats, aura, desc] of ACC_TABLE) {
 
 // ───────────────────────────── 고유 아이템 (보스 · 신화 무기) ─────────────────────────────
 // 고유 아이템은 능력치가 고정(희귀도 배율 미적용, 무작위 옵션 없음)이며 effect 문구로 특수 효과를 설명한다.
+// 외전 신화 무기 「사냥꾼의 달」 (s23 아웃트로 지급, docs/specs/ex_s23.md §3). set: 'hunt' — MYTHIC_WEAPONS_P2 에는 넣지 않는다 (드롭 표 아님).
+//   새벽 한 벌(u_dawn_*, lvReq 52)의 공격력 ×1.05, 신성 대신 냉기. 세트 효과는 없다
+const HUNT = (o) => ({ slot: 'weapon', tier: 7, lvReq: 72, rarity: 5, mythic: true, set: 'hunt', element: 'ice', visual: { style: 6, glow: '#dfe8ff', rift: true }, ...o });
 const UNIQUE_LIST = [
   { id: 'u_nightwing', name: '나이트윙의 박쥐날개', slot: 'cloak', tier: 1, icon: 'cloak_6', lvReq: 3, rarity: 4, boss: 'b_nightwing',
     stats: { def: 3, res: 5, agi: 3, moveSpd: 6, airJumps: 1 }, visual: { cape: 'tattered', color: '#240a14', color2: '#7a0a1e', len: 1.2 },
@@ -474,6 +477,21 @@ const UNIQUE_LIST = [
   { id: 'u_dawn_spear', name: '여명창 헬리오스', slot: 'weapon', wtype: 'spear', tier: 7, icon: 'spear_7', lvReq: 52, rarity: 5, mythic: true,
     stats: { atk: 200, holy: 35, reach: 12, crit: 8 }, element: 'holy', visual: { style: 6, glow: '#fff2b0', rift: true },
     effect: '하늘을 가르는 첫 햇살 — 신성 피해 +35%, 공격 범위 +12%', desc: '새벽 하늘을 처음 가른 햇살을 창날로 벼렸다. 내리꽂는 자리마다 동이 튼다.' },
+  // ── 외전 신화 무기 「사냥꾼의 달」 (7단계, set: 'hunt'; s23 아웃트로의 give once·silent 로만 — docs/specs/ex_s23.md §3) ──
+  HUNT({ id: 'u_hunt_whip', name: '사냥달 채찍 셀레네', wtype: 'whip', icon: 'whip_7', stats: { atk: 200, ice: 30, reach: 15, crit: 10, critDmg: 20 },
+    effect: '달빛 올가미 — 냉기 피해 +30%, 치명타 확률 +10%', desc: '하겐이 새벽마다 은탄을 녹여 벼린 채찍. 손잡이의 쪽지: "발크레인의 채찍잡이에게."' }),
+  HUNT({ id: 'u_hunt_sword', name: '사냥달 검 루나', wtype: 'sword', icon: 'sword_7', stats: { atk: 206, mag: 60, ice: 30, crit: 12 },
+    effect: '달 아래 칼날 — 냉기 피해 +30%, 치명타 확률 +12%', desc: '은이 손을 태우지 않게 칼자루에 가죽을 두 겹 감았다. 쪽지: "새벽을 걷는 백작의 아들에게."' }),
+  HUNT({ id: 'u_hunt_great', name: '사냥달 대검 펜리르', wtype: 'greatsword', icon: 'greatsword_7', stats: { atk: 262, ice: 25, critDmg: 55, hp: 100 },
+    effect: '늑대의 송곳니 — 치명타 피해 +55%, 최대 HP +100', desc: '늑대 송곳니처럼 휜 은빛 대검. 쪽지: "기사단의 마지막 기사에게."' }),
+  HUNT({ id: 'u_hunt_dagger', name: '사냥달 단검 초승', wtype: 'dagger', icon: 'dagger_7', stats: { atk: 150, ice: 25, crit: 22, critDmg: 50, atkSpd: 12 },
+    effect: '초승달 — 치명타 확률 +22%, 공격 속도 +12%', desc: '초승달처럼 가늘게 휜 은 단검. 쪽지: "까마귀 아가씨에게."' }),
+  HUNT({ id: 'u_hunt_gun', name: '사냥달 장총 하겐', wtype: 'gun', icon: 'gun_7', stats: { atk: 176, ice: 30, crit: 16, critDmg: 30, subDmg: 20 },
+    effect: '늑대잡이 — 냉기 피해 +30%, 치명타 피해 +30%', desc: '늑대잡이 하겐이 사십 년 동안 쥐었던 장총. 개머리판에 작은 과녁이 새겨져 있고, 그 한가운데에 구멍이 하나 나 있다.' }),
+  HUNT({ id: 'u_hunt_staff', name: '사냥달 지팡이 아르테미스', wtype: 'staff', icon: 'staff_7', stats: { atk: 80, mag: 230, ice: 35, skillDmg: 25, mpRegen: 2 },
+    effect: '사냥의 여신 — 스킬 피해 +25%, MP 재생 +2/초', desc: '끝에 은빛 초승달을 단 지팡이. 쪽지: "성 루미나의 수녀님에게."' }),
+  HUNT({ id: 'u_hunt_spear', name: '사냥달 창 오리온', wtype: 'spear', icon: 'spear_7', stats: { atk: 210, ice: 30, reach: 12, crit: 10 },
+    effect: '사냥꾼 별자리 — 냉기 피해 +30%, 공격 범위 +12%', desc: '창끝까지 은으로 감싼 사냥 창. 쪽지: "용을 되찾을 창잡이에게."' }),
 ];
 const U_PRICE = [2000, 5000, 12000, 25000, 50000, 90000, 150000];
 for (const u of UNIQUE_LIST) def({ ...u, unique: true, price: U_PRICE[u.tier - 1] * (u.rarity >= 5 ? 1.5 : 1) });
@@ -483,8 +501,10 @@ export const BOSS_UNIQUES = {};
 for (const u of UNIQUE_LIST) if (u.boss) (BOSS_UNIQUES[u.boss] ??= []).push(u.id);
 /** 무기 계열 → 신화 무기 id (1부: 6단계 신화만 — 기존 동작 그대로) */
 export const MYTHIC_WEAPONS = Object.fromEntries(UNIQUE_LIST.filter((u) => u.mythic && u.tier === 6).map((u) => [u.wtype, u.id]));
-/** 무기 계열 → 2부 신화 무기 id (7단계; game/loot.js 가 chapter ≥ 14 에서 쓴다) */
-export const MYTHIC_WEAPONS_P2 = Object.fromEntries(UNIQUE_LIST.filter((u) => u.mythic && u.tier === 7).map((u) => [u.wtype, u.id]));
+/** 무기 계열 → 2부 신화 무기 id (7단계; game/loot.js 가 chapter ≥ 14 에서 쓴다). 한 벌(set) 신화는 드롭 표가 아니라서 뺀다 (안 그러면 같은 계열의 새벽 신화가 덮인다) */
+export const MYTHIC_WEAPONS_P2 = Object.fromEntries(UNIQUE_LIST.filter((u) => u.mythic && u.tier === 7 && !u.set).map((u) => [u.wtype, u.id]));
+/** 외전 s23 「사냥꾼의 달」 일곱 자루 (아웃트로 give 와 같은 목록 — 시험용) */
+export const HUNT_SET = UNIQUE_LIST.filter((u) => u.set === 'hunt').map((u) => u.id);
 
 // ───────────────────────────── 소모품 ─────────────────────────────
 const CONSUMABLES = [
