@@ -1020,7 +1020,7 @@ await run('spam', STAGE('s01', '&cmp=all&ch=20&mount=mt_warhorse&guards=gd_knigh
 await run('recruit', STAGE('s01', '&ch=20'), (page) => page.evaluate(async () => {
   const T = window.__T, g = T.g, checks = [], info = {};
   const { SCRIPTS } = await import('/src/data/story.js');
-  const want = { gd_mirra: 's14_outro', mt_ignis: 's15_outro', gd_lumen: 's16_outro', mt_gale: 's17_outro', gd_momo: 's18_outro', mt_silva: 's19_outro', mt_argen: 's21_outro', gd_munin: 's22_outro', gd_vesper: 's24_outro' };   // + 외전 아르겐 · 무닌 · 베스퍼
+  const want = { gd_mirra: 's14_outro', mt_ignis: 's15_outro', gd_lumen: 's16_outro', mt_gale: 's17_outro', gd_momo: 's18_outro', mt_silva: 's19_outro', mt_argen: 's21_outro', gd_munin: 's22_outro', gd_vesper: 's24_outro', mt_morgen: 's25_outro' };   // + 외전 아르겐 · 무닌 · 베스퍼 · 모르겐
   // 대본: 여섯 아웃트로에 recruit 명령 + 같은 플래그 · 조건 분기/선택지보다 앞
   const found = {}, bad = [];
   for (const [sid, sc] of Object.entries(SCRIPTS)) {
@@ -1036,9 +1036,9 @@ await run('recruit', STAGE('s01', '&ch=20'), (page) => page.evaluate(async () =>
     });
   }
   info.found = found;
-  checks.push(['대본: 2부 여섯 동료 + 외전 아르겐 · 무닌 · 베스퍼의 recruit 명령이 제 아웃트로에', Object.entries(want).every(([id, sid]) => found[id]?.includes(sid)) && Object.keys(found).length === Object.keys(want).length, found]);
+  checks.push(['대본: 2부 여섯 동료 + 외전 아르겐 · 무닌 · 베스퍼 · 모르겐의 recruit 명령이 제 아웃트로에', Object.entries(want).every(([id, sid]) => found[id]?.includes(sid)) && Object.keys(found).length === Object.keys(want).length, found]);
   checks.push(['recruit 바로 뒤 같은 플래그 · 조건 분기보다 앞', !bad.length, bad]);
-  checks.push(['데이터: 아홉 동료의 합류 조건 = recruit_<id> 플래그', Object.keys(want).every((id) => T.D.COMPANIONS?.[id]?.obtain?.flag === 'recruit_' + id || (T.D.MOUNTS[id] ?? T.D.GUARDIANS[id])?.obtain?.flag === 'recruit_' + id)]);
+  checks.push(['데이터: 열 동료의 합류 조건 = recruit_<id> 플래그', Object.keys(want).every((id) => T.D.COMPANIONS?.[id]?.obtain?.flag === 'recruit_' + id || (T.D.MOUNTS[id] ?? T.D.GUARDIANS[id])?.obtain?.flag === 'recruit_' + id)]);
   const st = g.state;
   st.companions.pending.length = 0;
   checks.push(['(준비) 2부 동료 미보유', Object.keys(want).every((id) => !T.CS.isOwned(st, id))]);

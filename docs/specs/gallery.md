@@ -166,8 +166,8 @@ game.gal = {
 | | 04 `sad` | `s:s07_outro` `c:s07` `e:bad` `c:s23` |
 | | 11 `worldmap2` (2부) | `s:p2_prologue` `f:p2_started` `c:s14` |
 | **제1부** | 13–25 `s01` … `s13` | `s:<장>_intro` `c:<장>` (인트로가 그 곡을 튼다) |
-| **제2부** (2부) | 26–32 `s14` … `s20` | 같음 (외전 s21–s24 는 s17·s02·s10·s11 곡을 다시 쓴다) |
-| **보스** | 33 `boss` | `boss:` b_nightwing · b_banshee · b_crimson · b_grimoire |
+| **제2부** (2부) | 26–32 `s14` … `s20` | 같음 (외전 s21–s25 는 s17·s02·s10·s11·s01 곡을 다시 쓴다) |
+| **보스** | 33 `boss` | `boss:` b_nightwing · b_banshee · b_crimson · b_grimoire · b_charon |
 | | 34 `boss2` | `boss:` b_dullahan · b_bonedragon · b_chimera · b_leviathan · b_colossus · b_frostqueen · b_death · b_hagen |
 | | 35 `dracula` · 36 `chaos` | `boss:b_dracula` `boss:b_bride` · `boss:b_chaos` |
 | | 37 `boss3` (2부) | `boss:` b_narkissa · b_dagon · b_mara · b_nemain |

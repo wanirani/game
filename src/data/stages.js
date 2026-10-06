@@ -1,4 +1,4 @@
-// 스테이지 정의 (1부 13장 + 2부 14~20장 + 외전 21·22·23·24장 + 투기장). 맵은 data/maps/<id>.js 의 ROOMS.
+// 스테이지 정의 (1부 13장 + 2부 14~20장 + 외전 21·22·23·24·25장 + 투기장). 맵은 data/maps/<id>.js 의 ROOMS.
 // 2부 스테이지 추가 필드 (world2 §4.2): part:2, page:1(월드맵 쪽), gimmick(world2 §3.1 — 모든 방의 기본값, { kind, …매개변수 } 또는 배열),
 //   shard(별의 조각 k_star_n: 맵 '@' 에 정확히 1개), heart(세계의 심장 k_heart_n: 보스 전리품), color(월드맵 노드 색), liquid 에 'deep'(깊은 물) 추가.
 //   1부 스테이지에는 새 필드가 없다 (page 는 월드맵에서 0 으로 본다).
@@ -42,6 +42,8 @@ import { ROOMS as S22 } from './maps/s22.js';
 import { ROOMS as S23 } from './maps/s23.js';
 // ── EX map import s24 (EX4-MAP) — 외전 ──
 import { ROOMS as S24 } from './maps/s24.js';
+// ── EX map import s25 (EX5-MAP) — 외전 ──
+import { ROOMS as S25 } from './maps/s25.js';
 
 const S = (o) => ({ start: 'r1', parTime: 300, darkColor: '#06020c', liquid: 'water', docs: [], relic: null, unlocks: [], ...o, intro: o.intro ?? `${o.id}_intro`, outro: o.outro ?? `${o.id}_outro` });
 
@@ -153,6 +155,15 @@ export const STAGES = {
     enemies: ['bat', 'vampire_bride', 'cursed_nun', 'blood_priest', 'puppet_maiden', 'chandelier_fiend', 'mirror_knight', 'mimic'], docs: [], shard: null, heart: null,
     gimmick: { kind: 'heartbeat', beat: 3.4, warn: 0.9 }, color: '#ff6a8a', next: null, mapPos: { x: 0.88, y: 0.72 },   // mapPos 는 INTEG 가 겹침을 보고 고칠 수 있다 (ex_s24.md §5.1)
     req: '2부의 끝을 본 뒤, 장미 향 나는 붉은 봉랍의 편지가 에슈빌에 날아들면 갈 수 있다' }),
+  // ── EX stage s25 (EX5-MAP 맵·대본 · EX5-INTEG 통합) — 외전 「불탄 목장의 밤」 (docs/specs/ex_s25.md). 2부 엔딩(p2_done) 뒤에 열린다.
+  //    side: true · page: 0 = 1부 지도에서 1장 불타는 마을로부터 에슈빌 외곽 들판으로 갈라지는 외전 노드 (town/worldmap.js SIDE_FROM.s25 = 's01')
+  //    해금은 s21–s24 와 같은 세계 지도 고리, 클리어해도 progress.chapter 를 올리지 않는다 (results.js). 보상은 탈것 모르겐 (아웃트로 recruit).
+  //    대본 s25_intro · s25_t1 · s25_t2 · s25_outro · b_charon_* = data/story_ex.js ──
+  s25: S({ id: 's25', chapter: 25, part: 2, page: 0, side: true, name: '불탄 목장', sub: '에슈빌 외곽, 밤마다 그날 밤으로 돌아가는 곳', theme: 'village', bg: 'bg/s01_village', tex: 'tex/tex_wood', tex2: 'tex/tex_dirt', tileStyle: 'wood',
+    music: 's01', level: 78, darkness: 0.4, darkColor: '#0c0406', liquid: 'water', boss: 'b_charon', rooms: S25, parTime: 600,
+    enemies: ['wisp', 'ghost', 'crow', 'wolf', 'skeleton', 'death_knight', 'chain_warden', 'hellhound', 'mimic'], docs: [], shard: null, heart: null,
+    gimmick: { kind: 'magma', mode: 'tide', low: 18, high: 15.5, period: 10, hold: 1.8, warn: 1.6 }, color: '#ffb060', next: null, mapPos: { x: 0.05, y: 0.68 },   // mapPos 는 INTEG 가 겹침을 보고 고칠 수 있다 (ex_s25.md §5.1)
+    req: '2부의 끝을 본 뒤, 그을린 고삐를 문 흑마가 여관 문을 두드리면 갈 수 있다' }),
   arena: S({ id: 'arena', chapter: 0, name: '피의 투기장', sub: '서바이벌 & 보스 러시', theme: 'arena', bg: 'bg/s_arena', tex: 'tex/tex_castle_stone', tex2: 'tex/tex_dirt', tileStyle: 'stone',
     music: 'arena', level: 10, darkness: 0.3, boss: null, rooms: ARENA, parTime: 600, intro: null, outro: null,
     enemies: [], next: null, mapPos: { x: 0.3, y: 0.3 } }),

@@ -158,10 +158,11 @@ if (run('C1')) {
     foes = (blk.match(/^ {4}id: '/gm) ?? []).length;
   }
   ok(DEF.get('mg_duel').cond.n === foes, `mg_duel.n === FOES.length (${foes})`);
-  ok(DEF.get('cp_mounts').cond.n === Object.keys(MOUNTS).length, '탈것 10 = 데이터');
+  // 탈것 11 (외전 모르겐, docs/specs/ex_s25.md §5.3): 「마구간의 주인」은 10마리 그대로 — 조건 10 ≤ 탈것 수, 설명에 '모두' 없음 (얻은 사람·소급 변화 0)
+  ok(DEF.get('cp_mounts').cond.n === 10 && DEF.get('cp_mounts').cond.n <= Object.keys(MOUNTS).length && !DEF.get('cp_mounts').desc.includes('모두'), "cp_mounts: 탈것 10 (≤ 탈것 수, 설명에 '모두' 없음)");
   // 수호신 13 (외전 베스퍼, docs/specs/ex_s24.md §5.3): 「열두 수호신」은 12체 그대로 — 조건 12 ≤ 수호신 수, 설명에 '모두' 없음 (얻은 사람·소급 변화 0)
   ok(DEF.get('cp_guards').cond.n === 12 && DEF.get('cp_guards').cond.n <= Object.keys(GUARDIANS).length && !DEF.get('cp_guards').desc.includes('모두'), "cp_guards: 수호신 12 (≤ 수호신 수, 설명에 '모두' 없음)");
-  ok(DEF.get('ar_rush22').cond.arg[0] === 8 && gd.COURSE_COUNT === 13, '22연전 = 코스 8 (코스 13개 — 9·10 은 외전 s23 의 3연전·23연전, 11·12 는 s24 의 4연전·24연전, ex_s24.md §5.2)');   // EX3-INTEG · EX4-INTEG
+  ok(DEF.get('ar_rush22').cond.arg[0] === 8 && gd.COURSE_COUNT === 15, '22연전 = 코스 8 (코스 15개 — 9·10 은 외전 s23 의 3연전·23연전, 11·12 는 s24 의 4연전·24연전, 13·14 는 s25 의 5연전·25연전, ex_s25.md §5.2)');   // EX3-INTEG · EX4-INTEG · EX5-INTEG
   ok(DEF.get('ch_rank_s_all').cond.arg.length === 20 && DEF.get('ch_rank_s_all').cond.arg.every((s) => STAGES[s] && !STAGES[s].side), 'rankS 인자: 외전 아닌 스무 스테이지');
   // prog 키 목록 (§3.3)
   eq([...A.PROG_KEYS], ['kills', 'combo', 'style', 'nodmg', 'nd_b_dracula', 'aw_kael', 'aw_sera', 'aw_victor', 'aw_bran', 'aw_lia', 'aw_azel', 'aw_isolde', 'aw2',

@@ -93,10 +93,10 @@ export const GAL_MUSIC = Object.freeze([
   mu('minigame', 'story', START),
   // ── 제1부 (s01–s13)
   ...Array.from({ length: 13 }, (_, i) => ch(i + 1, 'p1')),
-  // ── 제2부 (s14–s20 — 외전 s21–s24 는 s17·s02·s10·s11 곡을 다시 쓴다)
+  // ── 제2부 (s14–s20 — 외전 s21–s25 는 s17·s02·s10·s11·s01 곡을 다시 쓴다)
   ...Array.from({ length: 7 }, (_, i) => ch(i + 14, 'p2', { p2: true })),
   // ── 보스 (모든 보스가 BOSSES[id].music 의 줄에 있다 — G1)
-  mu('boss', 'boss', bosses('b_nightwing', 'b_banshee', 'b_crimson', 'b_grimoire')),
+  mu('boss', 'boss', bosses('b_nightwing', 'b_banshee', 'b_crimson', 'b_grimoire', 'b_charon')),
   mu('boss2', 'boss', bosses('b_dullahan', 'b_bonedragon', 'b_chimera', 'b_leviathan', 'b_colossus', 'b_frostqueen', 'b_death', 'b_hagen')),
   mu('dracula', 'boss', bosses('b_dracula', 'b_bride')),
   mu('chaos', 'boss', bosses('b_chaos')),

@@ -15,8 +15,11 @@
 //            착지 충격파 r 140 + 번개 기둥 ±120/±240 · 활공 깃털·바람 줄기 · 질주 발굽 정전기
 //   mt_silva 실바     「뿔 돌격」 성광 꼬리·잎사귀 · 「정화의 울음」 원 r 240 (경직) + 부패 게이지 −40 + 둘레 포자 구름 흩기·포자 주머니 정화 +
 //            기수 HP 5% 회복 · 뿔 사이 빛 방울 · 발굽 자리에 돋는 새싹 · 독 웅덩이를 밟으면 정화 반짝임
+//   mt_morgen 모르겐  외전 (docs/specs/ex_s25.md §3) 「새벽 말 떼」 앞들기 0.3초(무적) → 0.12초 간격으로 혼 말 넷이 기수 뒤 60px 에서
+//            760px/s 로 0.85초 앞으로 (말마다 발밑 110×90, 대상마다 한 번 · 신성 · 벽에서 멈춤; 그림 = mount.js 스냅숏을 'run' 걸음으로 금빛 틴트) ·
+//            갈기의 새벽빛 입자 (돌진 빛 자국 · 공중 점프는 데이터)
 //
-//  탈것 애니메이션 이름 (CMP-MOUNT-ART 가 그린다): 이그니스 'rear' → 'special'(내리찍기) · 게일 'jump'(도약) → 'dive' → 'land' · 실바 'howl'
+//  탈것 애니메이션 이름 (CMP-MOUNT-ART 가 그린다): 이그니스 'rear' → 'special'(내리찍기) · 게일 'jump'(도약) → 'dive' → 'land' · 실바 'howl' · 모르겐 'rear' → 'special'
 //   기수 자세: 'ride_rear' (앞들기·도약·울음) · 'ride_charge' (급강하)
 //  그리기 콜백(Hitbox render · fx.ghost)에는 Math.random·fx.emit 이 없다 (무작위는 갱신 때 정해 둔다).
 //  순환 import 규칙: 가져온 값(TILE, GRAVITY …)은 함수 안에서만 쓴다.
@@ -26,6 +29,8 @@ import { audio } from '../core/audio.js';
 import { input } from '../core/input.js';
 import { clamp, rand, TAU } from '../core/math.js';
 import * as HFX from '../render/hitfx.js';
+import * as RIG from '../render/mount_rig.js';
+import * as M from './mount.js';   // 순환: mount.js 가 이 파일을 부른다 — M 의 값은 함수 안에서만 쓴다
 
 // ───────────────────────── 공용 도우미 ─────────────────────────
 const q = (world) => world?.fx?.quality ?? 1;
@@ -554,4 +559,99 @@ const SILVA = {
   },
 };
 
-export const MOUNT_B = { mt_ignis: IGNIS, mt_gale: GALE, mt_silva: SILVA };
+// ───────────────────────── 모르겐 (새벽 서약의 군마, 외전 docs/specs/ex_s25.md §3) ─────────────────────────
+const DAWN_TINT = '#ffd890';
+/** 혼 말 하나 (Hitbox follow): 출발 지연(delay) 뒤 앞으로 달리며 포즈를 'run' 걸음으로 갱신한다. 벽에 닿으면 멈추고 사라진다 */
+function dawnHorseFollow(h, world) {
+  const run = Math.max(0, h.t - h.delay);
+  const dt = clamp(h.t - (h.lt ?? 0), 0, 0.05);
+  h.lt = h.t;
+  if (!h.stopped) {
+    const x = h.x0 + h.lead * h.speed * run;
+    if (run > 0 && wallBetween(world, h.hx, x + h.lead * h.w * 0.5, h.b0 - h.h * 0.5)) { h.stopped = true; h.life = Math.min(h.life, 0.15); }
+    else h.hx = x;
+  }
+  h.x = h.hx - h.w / 2; h.y = h.b0 - h.h;
+  if (run > 0 && !h.light) h.light = h.lightDef;
+  const s = h.snap;
+  if (!s) return;
+  s.cx = h.hx; s.bottom = h.b0; s.t += dt; s.animT += dt;
+  s.phase = (h.ph0 + run * h.speed / 110) % 1;
+  try { s.pose = RIG.mountPose(s, dt) ?? s.pose; } catch { /* 포즈 실패 → 마지막 포즈 */ }
+}
+/** 혼 말 그리기 (Hitbox render): 금빛 단색 유령, 출발 전에는 그리지 않는다 */
+function drawDawnHorse(ctx, h, world) {
+  const run = h.t - h.delay;
+  if (run < 0 || !h.snap) return;
+  const a = 0.6 * clamp(run / 0.08, 0, 1) * clamp(h.life / 0.15, 0, 1);
+  if (a <= 0.01) return;
+  try { M.drawMountSnapshot(ctx, h.snap, world, 'back', { alpha: a, tint: DAWN_TINT, noFx: true, rider: false }); } catch { /* 그림 없음 */ }
+}
+function dawnHorseTick(h, world) {
+  if (!h.fired) {
+    h.fired = true;
+    sfx('gallop', { vol: 0.5, pitch: 1.1 + h.idx * 0.06 });
+    world.fx?.burst('dust', h.hx, h.b0, nq(world, 6), { angle: -Math.PI / 2 - h.lead * 0.6, spread: 0.6, speed: 140 });
+  }
+  if (Math.random() < 0.7 * q(world)) world.fx?.emit('holy', h.hx - h.lead * rand(10, 50), h.b0 - rand(20, 80), { angle: h.lead > 0 ? Math.PI : 0, spread: 0.5, speed: rand(60, 160) });
+}
+/** 새벽 말 떼 2단: 혼 말 넷 (sp.horses · sp.gap 간격 · sp.speed · sp.dur) */
+function dawnStampede(r, world, p, sp) {
+  const f = p.facing || 1, b0 = p.bottom, bw = sp.box?.w ?? 110, bh = sp.box?.h ?? 90;
+  const back = wallBetween(world, p.cx, p.cx - f * (60 + bw * 0.5), b0 - bh * 0.5) ? 0 : 60;   // 등 뒤가 벽이면 기수 자리에서 출발
+  const n = sp.horses ?? 4, gap = sp.gap ?? 0.12;
+  for (let i = 0; i < n; i++) {
+    let snap = null;
+    try {
+      snap = M.mountSnapshot(r);
+      Object.assign(snap, { anim: 'run', gait: 'run', animT: 0, speedK: 1.15, onGround: true, rearK: 0, pitch: null, skid: false, duck: 0, facing: f, awakened: false, vx: f * (sp.speed ?? 760), vy: 0, inWater: false, gliding: false, flying: false, diving: false });
+    } catch { snap = null; }
+    r.hit(world, {
+      x: p.cx - f * back - bw / 2, y: b0 - bh, w: bw, h: bh, life: sp.dur ?? 0.85, delay: i * gap, z: 8,
+      attack: r.atk({ mv: r.power(sp.mv ?? 0.45), type: sp.type ?? 'phys', element: sp.element ?? 'holy', kb: sp.kb ?? [380, -220], stun: sp.stun ?? 0.2, hitstop: 0.03, shake: 2, dir: f, tags: ['mount', 'special'] }, p),
+      follow: dawnHorseFollow, render: drawDawnHorse, tick: dawnHorseTick, light: null, lightDef: { r: 90, color: '#ffe8a0', i: 0.5 },
+      x0: p.cx - f * back, hx: p.cx - f * back, b0, lead: f, speed: sp.speed ?? 760, idx: i, ph0: (i * 0.29) % 1, snap, fired: false, stopped: false, lt: 0,
+    });
+  }
+  const fx = world.fx;
+  fx?.ering?.(p.cx, p.bottom, { color: '#ffe8a0', r0: 10, r1: 130, ry: 0.25, life: 0.4, width: 6 });
+  fx?.flash?.(p.cx + f * 20, p.bottom - 50, { color: '#fff4c0', size: 120, life: 0.12 });
+  fx?.burst('holy', p.cx, p.bottom - 40, nq(world, 16), { speed: 240 });
+  fx?.burst('dust', p.cx, p.bottom, nq(world, 10), { speed: 180 });
+  world.camera?.shake?.(4, 0.2);
+  sfx('gallop', { vol: 0.9 }); sfx('gallop', { vol: 0.7, pitch: 0.9, delay: 0.1 });
+  rumble(0.45, 0.35, 140);
+  r.startAct({ name: 'stampede', dur: 0.2, anim: 'special', riderAnim: 'ride', moveMul: 0.3, rearK: 0 });
+}
+
+const MORGEN = {
+  /** 새벽 말 떼: 앞발을 치켜들고 울면 (무적) 풀려난 말들의 혼 넷이 차례로 앞으로 내달린다 */
+  special: {
+    start(r, world, p) {
+      const sp = r.def?.special ?? {};
+      r.startAct({
+        name: 'rear', dur: sp.rear ?? 0.3, anim: 'rear', riderAnim: 'ride_rear', moveMul: 0, rearK: 1, invuln: sp.invuln ?? 0.3, noJump: true,
+        tick(rr, w, pp) {   // 치켜든 발굽에 새벽빛이 모인다
+          if (Math.random() < 0.6 * q(w)) w.fx?.emit('holy', pp.cx + (pp.facing || 1) * rand(16, 40), pp.bottom - rand(40, 90), { speed: 70 });
+        },
+        end(rr, w, pp) { dawnStampede(rr, w, pp, sp); },
+      });
+      sfx('neigh', { vol: 0.95, pitch: 1.2 });
+      world.fx?.burst('holy', p.cx + (p.facing || 1) * 30, p.bottom - 70, nq(world, 8), { angle: -Math.PI / 2, spread: 0.8, speed: 120 });
+      return true;
+    },
+  },
+  passive: {
+    /** 갈기에서 흩날리는 새벽빛 (품질 비례) */
+    tick(r, world, p, dt) {
+      const s = st(r);
+      s.fxT -= dt;
+      if (s.fxT <= 0) {
+        s.fxT = 0.25 / Math.max(0.4, q(world));
+        world.fx?.emit('holy', p.cx + (p.facing || 1) * rand(4, 26), p.bottom - rand(78, 98), { angle: -Math.PI / 2, spread: 0.8, speed: rand(20, 60) });
+      }
+    },
+  },
+};
+
+export const MOUNT_B = { mt_ignis: IGNIS, mt_gale: GALE, mt_silva: SILVA, mt_morgen: MORGEN };

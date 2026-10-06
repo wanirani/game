@@ -67,6 +67,8 @@ const MOUNT_TABLE = [
   ['mt_silva', '실바', '백록 신령', 'flag:recruit_mt_silva', 19, 'stag', 'portraits/cmp_mt_silva', 'stag_call'],
   // 외전 (docs/specs/ex_s21.md §3): 초상화는 보스 초상화를 머리에 맞춰 자른다 (새 그림 없음)
   ['mt_argen', '아르겐', '은빛 뇌룡', 'flag:recruit_mt_argen', 21, 'wyvern', 'portraits/cmp_mt_argen', 'roar_small'],
+  // 외전 (docs/specs/ex_s25.md §3): 새벽 서약의 군마 — 벡터 말 리그 · 초상화는 EX5-BOSS (Kling), 울음은 기존 neigh (새 소리 없음)
+  ['mt_morgen', '모르겐', '새벽 서약의 군마', 'flag:recruit_mt_morgen', 25, 'horse', 'portraits/cmp_mt_morgen', 'neigh'],
 ];
 const GUARD_TABLE = [
   ['gd_fairy', '아리아', '빛의 요정', 'boss:b_banshee', 2, 'portraits/cmp_g_fairy', 'fairy_chime'],
@@ -86,14 +88,14 @@ const GUARD_TABLE = [
   ['gd_vesper', '베스퍼', '장미 향 나는 박쥐', 'flag:recruit_gd_vesper', 24, 'portraits/cmp_gd_vesper', 'bat'],
 ];
 const obtainKey = (o) => `${o.type}:${o.flag ?? o.boss ?? o.quest ?? o.price ?? o.count}`;
-t('탈것 10 (외전 아르겐 포함) · 수호신 13 (외전 무닌 · 베스퍼 포함) · 순서', () => {
+t('탈것 11 (외전 아르겐 · 모르겐 포함) · 수호신 13 (외전 무닌 · 베스퍼 포함) · 순서', () => {
   eq(D.MOUNT_IDS, MOUNT_TABLE.map((r) => r[0]));
   eq(D.GUARDIAN_IDS, GUARD_TABLE.map((r) => r[0]));
   eq(D.COMPANION_ORDER, [...D.MOUNT_IDS, ...D.GUARDIAN_IDS]);
-  eq(D.UNLOCK_ORDER.length, 23);
-  eq(new Set(D.UNLOCK_ORDER).size, 23);
-  eq(D.UNLOCK_ORDER[D.UNLOCK_ORDER.length - 1], 'gd_vesper');   // chapter 24 — 외전 아르겐(21) · 무닌(22) 다음 (s23 은 동료가 아니라 무기)
-  eq(D.UNLOCK_ORDER.slice(-3), ['mt_argen', 'gd_munin', 'gd_vesper']);
+  eq(D.UNLOCK_ORDER.length, 24);
+  eq(new Set(D.UNLOCK_ORDER).size, 24);
+  eq(D.UNLOCK_ORDER[D.UNLOCK_ORDER.length - 1], 'mt_morgen');   // chapter 25 — 외전 아르겐(21) · 무닌(22) · 베스퍼(24) 다음 (s23 은 동료가 아니라 무기)
+  eq(D.UNLOCK_ORDER.slice(-3), ['gd_munin', 'gd_vesper', 'mt_morgen']);
 });
 for (const [id, name, title, ob, ch, rig, portrait, cry] of MOUNT_TABLE) {
   t(`탈것 ${id} ${name}`, () => {
@@ -190,6 +192,17 @@ t('2부 탈것 기본 수치 (MASTER_PLAN §1.2)', () => {
   const MOV = ['speed', 'accel', 'decel', 'airAccel', 'jump'], others = Object.values(m).filter((d) => d.id !== 'mt_argen');
   for (const k of MOV) ok(m.mt_argen.move[k] >= Math.min(...others.map((d) => d.move[k])) && m.mt_argen.move[k] <= Math.max(...others.map((d) => d.move[k])), '아르겐 move.' + k + ' 범위');
   for (const k of ['hp', 'absorb', 'taken', 'armor', 'recall']) ok(m.mt_argen[k] >= Math.min(...others.map((d) => d[k])) && m.mt_argen[k] <= Math.max(...others.map((d) => d[k])), '아르겐 ' + k + ' 범위');
+  // 외전 모르겐 (docs/specs/ex_s25.md §3): 그림메인과 같은 말 리그 · 몸 크기 · 안장, 가장 빠른 군마 (속도 460 = 스콜 480 다음) · 허공 딛기 1 · recall 14 = 스콜과 같은 최소
+  eq(row('mt_morgen'), [60, 90, -4, -56, 26, 460, 2000, 2200, 1500, 840, 1, 0.9, 0.7, 1, 0.1, 14]);
+  eq([m.mt_morgen.airJumpName, m.mt_morgen.flight, m.mt_morgen.light], ['허공 딛기', null, { color: '#ffe8a0', r: 80, i: 0.4 }]);
+  const mc = m.mt_morgen.charge; eq([mc.name, mc.dur, mc.speed, mc.mv, mc.element, mc.kb, mc.launch, mc.stun, mc.cd, mc.iframes, mc.breakWalls, mc.trail], ['새벽 돌격', 0.34, 860, 1.2, 'holy', [400, -280], true, 0.3, 0.75, 0.2, true, { life: 0.9, mv: 0.28, element: 'holy', rehit: 0.25 }]);
+  const ms = m.mt_morgen.special; eq([ms.name, ms.kind, ms.cd, ms.element, ms.air, ms.rear, ms.invuln, ms.horses, ms.gap, ms.speed, ms.dur, ms.box, ms.mv, ms.kb, ms.stun], ['새벽 말 떼', 'stampede', 9, 'holy', false, 0.3, 0.3, 4, 0.12, 760, 0.85, { w: 110, h: 90 }, 0.45, [380, -220], 0.2]);
+  eq([m.mt_morgen.ride, m.mt_morgen.hazard, m.mt_morgen.windMul, m.mt_morgen.blightMul], [{ holy: 12, resDark: 20 }, { spike: 1, lava: 1, poison: 1, blood: 1 }, 1, 1]);
+  ok(ms.mv * ms.horses > 1.3 && ms.mv * ms.horses < 2.5, '새벽 말 떼 넷이 다 맞으면 ' + ms.mv * ms.horses + ' (다른 특수기 1.3–2.5 사이)');
+  const othersM = Object.values(m).filter((d) => d.id !== 'mt_morgen');
+  for (const k of MOV) ok(m.mt_morgen.move[k] >= Math.min(...othersM.map((d) => d.move[k])) && m.mt_morgen.move[k] <= Math.max(...othersM.map((d) => d.move[k])), '모르겐 move.' + k + ' 범위');
+  for (const k of ['hp', 'absorb', 'taken', 'armor', 'recall']) ok(m.mt_morgen[k] >= Math.min(...othersM.map((d) => d[k])) && m.mt_morgen[k] <= Math.max(...othersM.map((d) => d[k])), '모르겐 ' + k + ' 범위');
+  ok(m.mt_morgen.move.speed > Math.max(...othersM.filter((d) => d.rig === 'horse').map((d) => d.move.speed)), '모르겐 = 가장 빠른 말');
   eq(m.mt_gale.move.airSpeed, 440);
   eq(m.mt_gale.flight, { type: 'glide', flaps: 2, flapVy: -600, glideFall: 140, glideSpeed: 440 });
   const c = m.mt_ignis.charge; eq([c.name, c.dur, c.speed, c.mv, c.element, c.kb, c.launch, c.cd, c.iframes, c.trail], ['화염 돌진', 0.38, 820, 1.3, 'fire', [440, -280], true, 0.8, 0.2, { life: 1, mv: 0.3, element: 'fire', rehit: 0.25 }]);
@@ -773,7 +786,7 @@ console.log('6. 디버그');
 t('cmp=all · cmplv · mount · guards(2칸이면 8장) · ride', () => {
   const s = freshState({ chapter: 0 });
   const r = S.applyCompanionDebug(s, new URLSearchParams('cmp=all&cmplv=10&mount=mt_warhorse&guards=gd_knight,g_imp&ride=1'));
-  eq(S.ownedIds(s).length, 23); eq(r.granted.length, 23); eq(r.ride, true);   // 탈것 10 (외전 아르겐 포함) + 수호신 13 (외전 무닌 · 베스퍼 포함)
+  eq(S.ownedIds(s).length, 24); eq(r.granted.length, 24); eq(r.ride, true);   // 탈것 11 (외전 아르겐 · 모르겐 포함) + 수호신 13 (외전 무닌 · 베스퍼 포함)
   ok(Object.values(s.companions.owned).every((e) => e.lv === 10 && e.src === 'debug' && e.seen), '레벨·출처');
   eq(s.companions.pending, []); eq(s.progress.chapter, 8); eq(s.heroes.kael.companions, { mount: 'mt_warhorse', guards: ['gd_knight', 'gd_imp'] });
   eq(s.companions._debug, { ride: true }); ok(!JSON.stringify(s).includes('_debug'), '_debug 는 저장되지 않는다');

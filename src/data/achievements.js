@@ -50,7 +50,7 @@ export const ACHIEVEMENTS = [
   { id: 'cp_first', cat: 'companion', name: '첫 동료', desc: '탈것이나 수호신을 처음 얻는다', pts: 10, cond: { m: 'cmpAny', n: 1 }, reward: { gold: 1000 } },
   { id: 'cp_ride', cat: 'companion', name: '첫 기승', desc: '탈것에 처음 올라탄다', pts: 10, cond: { m: 'ride', n: 1 } },
   { id: 'cp_egg', cat: 'companion', name: '알을 깨고 나온 날개', desc: '알을 부화시켜 동료로 맞는다', pts: 10, cond: { m: 'egg', n: 1 } },
-  { id: 'cp_mounts', cat: 'companion', name: '마구간의 주인', desc: '탈것 10마리를 모두 얻는다', pts: 30, cond: { m: 'mounts', n: 10 }, reward: { title: 't_stable' } },
+  { id: 'cp_mounts', cat: 'companion', name: '마구간의 주인', desc: '탈것 10마리를 얻는다', pts: 30, cond: { m: 'mounts', n: 10 }, reward: { title: 't_stable' } },
   { id: 'cp_guards', cat: 'companion', name: '열두 수호신', desc: '수호신 12체를 얻는다', pts: 30, cond: { m: 'guards', n: 12 }, reward: { title: 't_guardian' } },
   { id: 'cp_bond', cat: 'companion', name: '영혼 결속', desc: '동료 하나와 유대 최고 단계 「영혼 결속」에 이른다', pts: 30, cond: { m: 'bond', n: 5 } },
   { id: 'cp_lv30', cat: 'companion', name: '함께 걸어온 길', desc: '동료 하나를 최고 레벨 30까지 키운다', pts: 20, cond: { m: 'cmpLv', n: 30 } },

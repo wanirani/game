@@ -23,18 +23,18 @@ export const CLASS_INFO: Readonly<Record<string, readonly [string, number]>> = {
 /** 난이도 id (src/data/difficulty.js DIFFICULTIES 순서) */
 export const DIFFICULTY_IDS: readonly string[] = ['easy', 'normal', 'hard', 'nightmare', 'inferno'];
 
-/** 스테이지 id → 권장 레벨 (src/data/stages.js STAGE_ORDER, STAGES[id].level). s14~s20 은 2부, s21 · s22 · s23 · s24 는 외전 (2부 엔딩 뒤) */
+/** 스테이지 id → 권장 레벨 (src/data/stages.js STAGE_ORDER, STAGES[id].level). s14~s20 은 2부, s21 · s22 · s23 · s24 · s25 는 외전 (2부 엔딩 뒤) */
 export const STAGE_LEVELS: Readonly<Record<string, number>> = {
   s01: 1, s02: 3, s03: 5, s04: 8, s05: 11, s06: 14, s07: 17, s08: 20, s09: 24, s10: 28,
   s11: 32, s12: 36, s13: 45, s14: 46, s15: 50, s16: 53, s17: 56, s18: 60, s19: 64, s20: 68,
-  s21: 70, s22: 72, s23: 74, s24: 76,
+  s21: 70, s22: 72, s23: 74, s24: 76, s25: 78,
 };
 /** 모든 스테이지 (연습 보드 practice:<id> 가 받는 id) */
 export const STAGE_IDS: readonly string[] = Object.keys(STAGE_LEVELS);
-/** 2부 스테이지 (src/data/stages.js STAGE_ORDER_P2 — 끝의 s21 · s22 · s23 · s24 는 외전) */
-export const P2_STAGES: readonly string[] = ['s14', 's15', 's16', 's17', 's18', 's19', 's20', 's21', 's22', 's23', 's24'];
+/** 2부 스테이지 (src/data/stages.js STAGE_ORDER_P2 — 끝의 s21 · s22 · s23 · s24 · s25 는 외전) */
+export const P2_STAGES: readonly string[] = ['s14', 's15', 's16', 's17', 's18', 's19', 's20', 's21', 's22', 's23', 's24', 's25'];
 /** 외전 스테이지 (src/data/stages.js SIDE_STAGES — STAGES[id].side) */
-export const SIDE_STAGES: readonly string[] = ['s21', 's22', 's23', 's24'];
+export const SIDE_STAGES: readonly string[] = ['s21', 's22', 's23', 's24', 's25'];
 /**
  * 일일 도전이 고르는 스테이지 = 외전을 뺀 1·2부 (s01~s20). 외전은 2부 엔딩 뒤에 열리는 이야기라 매일 도전으로 내밀지 않고,
  * 목록 길이가 그대로라 이미 정해진 날짜의 도전(스테이지·헌터·규칙)도 외전이 들어오기 전과 같다 (그날의 순위표가 배포 도중 바뀌지 않는다)
@@ -42,8 +42,8 @@ export const SIDE_STAGES: readonly string[] = ['s21', 's22', 's23', 's24'];
 export const DAILY_STAGE_IDS: readonly string[] = STAGE_IDS.filter((id) => !SIDE_STAGES.includes(id));
 
 /** 보스 러시 코스 수 (src/scenes/front/arcade.js COURSES — 보드 ID 의 <course> 는 그 인덱스; 5·6 = 외전 아르겐이 든 코스, 7·8 = 외전 2연전 · 전 보스 22연전, 9·10 = 외전 3연전 · 전 보스 23연전,
- *  11·12 = 외전 4연전 · 전 보스 24연전 — docs/specs/ex_s24.md §5.2) */
-export const COURSE_COUNT = 13;
+ *  11·12 = 외전 4연전 · 전 보스 24연전 — docs/specs/ex_s24.md §5.2, 13·14 = 외전 5연전 · 전 보스 25연전 — docs/specs/ex_s25.md §5.2) */
+export const COURSE_COUNT = 15;
 
 /** 헌터 등급 (src/scenes/front/arcade.js LEVEL_PRESETS 의 lv·tier·p2) */
 export const LEVEL_PRESETS: readonly { lv: number; tier: number; p2?: boolean }[] = [

@@ -76,6 +76,7 @@
   "portraits/b_bride",
   "portraits/b_bride2",
   "portraits/b_chaos",
+  "portraits/b_charon",
   "portraits/b_chimera",
   "portraits/b_colossus",
   "portraits/b_crimson",
@@ -122,6 +123,7 @@
   "portraits/cmp_mt_argen",
   "portraits/cmp_mt_gale",
   "portraits/cmp_mt_ignis",
+  "portraits/cmp_mt_morgen",
   "portraits/cmp_mt_silva",
   "portraits/isolde",
   "portraits/kael",
@@ -642,6 +644,13 @@
    "bytes": 24030,
    "srcBytes": 71474
   },
+  "portraits/b_charon.webp": {
+   "src": "513372f46dac",
+   "w": 457,
+   "h": 581,
+   "bytes": 25486,
+   "srcBytes": 72098
+  },
   "portraits/b_chimera.webp": {
    "src": "2cc951afd245",
    "w": 457,
@@ -963,6 +972,13 @@
    "h": 581,
    "bytes": 30614,
    "srcBytes": 88042
+  },
+  "portraits/cmp_mt_morgen.webp": {
+   "src": "7990250b2cc8",
+   "w": 457,
+   "h": 581,
+   "bytes": 25816,
+   "srcBytes": 77610
   },
   "portraits/cmp_mt_silva.webp": {
    "src": "a3f68ec95c16",

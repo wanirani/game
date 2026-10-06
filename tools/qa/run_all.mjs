@@ -80,6 +80,7 @@ const STEPS = [
   S('nemain', 'runtime', node('tools/test_nemain.mjs'), 20 * MIN),   // 외전 보스 네메인 패턴 (docs/specs/ex_s22.md §8)
   S('hagen', 'runtime', node('tools/test_hagen.mjs'), 20 * MIN),     // 외전 보스 하겐 패턴 (docs/specs/ex_s23.md §8)
   S('bride', 'runtime', node('tools/test_bride.mjs'), 20 * MIN),     // 외전 보스 엘제베트 패턴 (docs/specs/ex_s24.md §8)
+  S('charon', 'runtime', node('tools/test_charon.mjs'), 20 * MIN),   // 외전 보스 카론 패턴 (docs/specs/ex_s25.md §8)
   S('companions', 'runtime', node('tools/test_companions.mjs'), 40 * MIN, { optional: true }),
   S('commands', 'runtime', node('tools/qa/commands.mjs', ...(QUICK ? ['--quick'] : [])), 60 * MIN, { report: path.join(TOOLS_DIR, 'commands.json') }),
   // ── platform (pad, touch, view, menu, bind, turntable, load, pwa)

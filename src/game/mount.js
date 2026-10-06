@@ -1521,6 +1521,8 @@ function snapMount(m) {
     diving: m.diving, stamina: m.stamina, staminaMax: m.staminaMax, flashT: 0, alpha: 1, awakened: m.awakened, rank: m.rank, lv: m.lv, pose, fallback: m.fallback, scale: 1,
   };
 }
+/** 외전 모르겐 「새벽 말 떼」(mount_b.js MOUNT_B.mt_morgen): 돌진 잔상과 같은 스냅숏 · 그 스냅숏 그리기 (리그가 없으면 대체 그림) */
+export { snapMount as mountSnapshot, drawMountAny as drawMountSnapshot };
 function snapRider(m, p) {
   const v = Object.assign({}, m.riderView(p));
   v.ride = { ...m.rideO }; v.rig = null; v.snapshot = true;
@@ -1548,6 +1550,7 @@ const FB_COL = {
   mt_ignis: { coat: '#2a140c', dark: '#150a06', hi: '#6a2e14', mane: '#ff8a2a', cloth: '#6a1a0a', trim: '#ffc040', eye: '#fff0b0', metal: '#3a2a20', hoof: '#1a0e0a', flame: '#ff8a2a' },
   mt_gale: { coat: '#c8b898', dark: '#6a5a4a', hi: '#efe4cc', mane: '#f4f0e8', cloth: '#3a4a6a', trim: '#ffe880', eye: '#9fd0ff', metal: '#d8c890', hoof: '#4a4038', wing: '#d8d0c0' },
   mt_silva: { coat: '#eeeee4', dark: '#a8a898', hi: '#ffffff', mane: '#e8f0c8', cloth: '#6a8a5a', trim: '#fff8d0', eye: '#fff8d0', metal: '#d8c890', hoof: '#8a8474' },
+  mt_morgen: { coat: '#dcdad4', dark: '#8a8e9c', hi: '#ffffff', mane: '#ffd070', cloth: '#efe6d2', trim: '#ffd070', eye: '#fff0b0', metal: '#c8ccd8', hoof: '#4a4450', flame: '#ffd070' },
 };
 const DEF_COL = FB_COL.mt_warhorse;
 const OUT = '#0a0608';

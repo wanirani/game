@@ -30,6 +30,8 @@ export const MOUNT_PAL = {
   mt_skelsteed: { coat: '#262c3a', hi: '#4a5670', dark: '#10131c', bone: '#d8d0bc', boneDk: '#8a8478', mane: '#6ad0ff', maneHi: '#e0f8ff', steel: '#4a4a56', steelHi: '#9aa0b0', cloth: '#16121a', trim: '#6ad0ff', leather: '#1a1418', eye: '#8ae8ff', hoof: '#6a6458', glow: '#6ad0ff', awake: '#b0ffd8', bones: true, fire: true },
   mt_ignis: { coat: '#1c1210', hi: '#4a2c1e', dark: '#080404', mane: '#ff7a1a', maneHi: '#ffe08a', lava: '#ff6a14', steel: '#4a4038', steelHi: '#8a7a6a', cloth: '#3a1a10', trim: '#ffb040', leather: '#2a1a12', eye: '#fff0a0', hoof: '#1a0e0a', glow: '#ff8a2a', awake: '#fff4c0', fire: true },
   mt_silva: { coat: '#eeeee4', hi: '#ffffff', dark: '#a8a898', mane: '#f4f4ec', maneHi: '#ffffff', antler: '#d8ffcc', leaf: '#4f8a3e', steel: '#d8c890', steelHi: '#fff4c0', cloth: '#5a7a4a', trim: '#e8d890', leather: '#6a4a2a', eye: '#7affb0', hoof: '#3a3430', glow: '#a8ff9a', awake: '#fff0a0' },
+  // 외전 모르겐 (docs/specs/ex_s25.md §3): 그림메인과 같은 말 리그 · 진주빛 털 · 금빛 불꽃 갈기(fire) · 흰 마갑(plate = 그림메인 강철판 길) + 떠오르는 해 문장(crest)
+  mt_morgen: { coat: '#dcdad4', hi: '#ffffff', dark: '#8a8e9c', mane: '#ffd070', maneHi: '#fff8d8', steel: '#c8ccd8', steelHi: '#ffffff', cloth: '#efe6d2', trim: '#ffd070', leather: '#5a4632', eye: '#fff0b0', hoof: '#4a4450', glow: '#ffe8a0', awake: '#fff4c0', fire: true, plate: true, crest: '#ffd070' },
 };
 const DEF_PAL = MOUNT_PAL.mt_warhorse;
 const palOf = (id) => MOUNT_PAL[id] ?? DEF_PAL;
@@ -309,14 +311,19 @@ function tack(ctx, C, rx, ry) {
   const { pal, m, T } = C;
   const sx = T.seat[0] - T.body.x, sy = T.seat[1] - T.body.y;   // 안장점 (몸통 좌표)
   const boar = T.name === 'boar';
-  if (m.id === 'mt_warhorse') {
-    // 강철 가슴판
+  if (m.id === 'mt_warhorse' || pal.plate) {
+    // 강철 가슴판 (모르겐 = 흰 마갑)
     ctx.fillStyle = col(C, pal.steel); ctx.strokeStyle = OUT; ctx.lineWidth = 1.2;
     ctx.beginPath(); ctx.moveTo(rx - 10, -ry + 1); ctx.quadraticCurveTo(rx + 4, -ry + 2, rx + 3, 4); ctx.quadraticCurveTo(rx, ry - 2, rx - 8, ry - 3); ctx.quadraticCurveTo(rx - 3, 0, rx - 10, -ry + 1); ctx.fill(); ctx.stroke();
     if (!C.tint) { ctx.fillStyle = col(C, pal.steelHi); for (const [x, y] of [[rx - 5, -ry + 4], [rx - 1, -2], [rx - 3, 5]]) { ctx.beginPath(); ctx.arc(x, y, 0.9, 0, TAU); ctx.fill(); } }
     // 강철 엉덩이 판
     ctx.fillStyle = col(C, pal.steel);
     ctx.beginPath(); ctx.moveTo(-rx + 12, -ry - 1); ctx.quadraticCurveTo(-rx - 3, -ry + 1, -rx - 1, 5); ctx.lineTo(-rx + 9, 3); ctx.closePath(); ctx.fill(); ctx.stroke();
+    if (pal.crest && !C.tint) {   // 가슴판의 떠오르는 해 문장 (새벽 서약): 반원 + 햇살 셋
+      ctx.fillStyle = col(C, pal.crest); ctx.strokeStyle = col(C, pal.crest); ctx.lineWidth = 0.9;
+      ctx.beginPath(); ctx.arc(rx - 3, 2, 2.6, PI, 0); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(rx - 3, -1.5); ctx.lineTo(rx - 3, -4.5); ctx.moveTo(rx - 6, -0.5); ctx.lineTo(rx - 8, -2.8); ctx.moveTo(rx, -0.5); ctx.lineTo(rx + 2, -2.8); ctx.stroke();
+    }
   }
   if (!boar) {
     // 안장 천 (진홍 · 금 술)
@@ -433,7 +440,7 @@ function drawHead(ctx, C) {
     // 귀 (젖힘)
     ctx.fillStyle = col(C, pal.coat); ctx.strokeStyle = OUT; ctx.lineWidth = 1.2;
     ctx.beginPath(); ctx.moveTo(0, -7); ctx.lineTo(-4 - P.ear * 3, -16 + P.ear * 3); ctx.lineTo(5, -8); ctx.closePath(); ctx.fill(); ctx.stroke();
-    if (m.id === 'mt_warhorse') {   // 강철 면갑
+    if (m.id === 'mt_warhorse' || pal.plate) {   // 강철 면갑
       ctx.fillStyle = col(C, pal.steel);
       ctx.beginPath(); ctx.moveTo(1, -8.5); ctx.lineTo(hl - 3, -5); ctx.lineTo(hl - 5, 2); ctx.lineTo(3, 1); ctx.closePath(); ctx.fill(); ctx.stroke();
       if (!C.tint) { ctx.strokeStyle = col(C, pal.steelHi); ctx.lineWidth = 0.9; ctx.beginPath(); ctx.moveTo(3, -6.5); ctx.lineTo(hl - 5, -3.8); ctx.stroke(); }

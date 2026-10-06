@@ -1,4 +1,4 @@
-// 동료(탈것 10 — 외전 아르겐 포함 · 수호신 13 — 외전 무닌 · 베스퍼 포함) 순수 데이터 — owner: CMP-DATA (companions §1–4, §9, §12.1; MASTER_PLAN §1.2)
+// 동료(탈것 11 — 외전 아르겐 · 모르겐 포함 · 수호신 13 — 외전 무닌 · 베스퍼 포함) 순수 데이터 — owner: CMP-DATA (companions §1–4, §9, §12.1; MASTER_PLAN §1.2)
 // 순수 데이터 모듈: node 에서 import 가능, DOM 없음. 데이터 모듈(items.js 의 josa)만 import 한다.
 //
 // id 체계는 MASTER_PLAN §1.2: 탈것 mt_*, 수호신 gd_* (명세의 m_*/g_* 는 LEGACY_IDS 로 옮겨 읽는다).
@@ -367,6 +367,32 @@ export const MOUNTS = {
     windMul: 0.5,
     join: '공허의 핵에서 풀려난 은빛 용이 당신 곁에 날개를 접었다. 하늘 기사단의 마지막 용이 이제 당신과 함께 하늘을 난다.',
     chips: ['뇌광 돌진 · 번개 급강하', '은빛 번개 숨결', '활공 · 돌풍 저항'],
+  }),
+  // ─ 외전 (docs/specs/ex_s25.md §3): 새벽 서약의 군마 모르겐 — s25_outro 의 recruit 명령 (플래그 recruit_mt_morgen).
+  //   벡터 말 리그('horse', render/mounts.js MOUNT_PAL.mt_morgen 진주빛 · 금빛 불꽃 갈기 fire) · 채색 그림 없음 · 초상화 portraits/cmp_mt_morgen.
+  //   수치는 기존 탈것 범위 안 (가장 빠른 군마 — 속도 460 은 스콜 480 다음, recall 14 = 스콜과 같은 최소).
+  //   특수기 「새벽 말 떼」 = game/mount_b.js MOUNT_B.mt_morgen.special (kind 'stampede' — 돌진 잔상과 같은 스냅숏이 앞으로 달린다)
+  mt_morgen: mount({
+    id: 'mt_morgen', part: 2, chapter: 25, name: '모르겐', title: '새벽 서약의 군마', color: '#ffd890',
+    role: '질주형 — 가장 빠른 군마, 허공 딛기와 새벽 말 떼',
+    desc: '새벽 서약 기사단의 군마. 십 년 동안 사신의 영구 마차에 묶여 있다가 풀려나, 스스로 다시 고삐를 허락했다.',
+    portrait: 'portraits/cmp_mt_morgen', iconFocus: { x: 0.5, y: 0.3, s: 0.4 },   // 초상화가 나오면 머리에 맞춘다
+    obtain: { type: 'flag', flag: 'recruit_mt_morgen', hint: '외전 「불탄 목장」에서 만날 수 있다' },
+    cry: { sfx: 'neigh', pitch: 1.1 }, hoof: { sfx: 'gallop', pitch: 1.05, vol: 0.9 },
+    rig: 'horse', palette: ['#e4e2dc', '#9aa0b0', '#ffd070', '#fff4c8', '#3a3040'], light: { color: '#ffe8a0', r: 80, i: 0.4 },
+    body: { w: 60, h: 90 }, seat: { x: -4, y: -56 }, footY: 26,
+    move: { speed: 460, accel: 2000, decel: 2200, airAccel: 1500, jump: 840, airJumps: 1 },
+    airJumpName: '허공 딛기',
+    charge: { name: '새벽 돌격', desc: '새벽빛을 두르고 내달려 적을 띄우고, 지나간 자리에 잠시 빛의 발자국을 남긴다.',
+      dur: 0.34, speed: 860, mv: 1.2, element: 'holy', kb: [400, -280], launch: true, stun: 0.3, cd: 0.75, iframes: 0.2, breakWalls: true,
+      trail: { life: 0.9, mv: 0.28, element: 'holy', rehit: 0.25 } },
+    special: { name: '새벽 말 떼', desc: '앞발을 치켜들고 울면, 풀려난 말들의 혼이 함께 앞으로 내달리며 적을 휩쓸어 밀어낸다.', kind: 'stampede', cd: 9, element: 'holy',
+      rear: 0.3, invuln: 0.3, horses: 4, gap: 0.12, speed: 760, dur: 0.85, box: { w: 110, h: 90 }, mv: 0.45, kb: [380, -220], stun: 0.2 },
+    ride: { holy: 12, resDark: 20 }, rideDesc: '신성 피해 +12% · 암흑 저항 +20%',
+    passive: { name: '새벽 서약', desc: '쓰러져도 금세 돌아오고, 공중에서 한 번 더 허공을 딛는다.' },
+    hp: 0.90, absorb: 0.70, taken: 1.00, armor: 0.10, recall: 14,
+    join: '십 년 동안 굴레에 묶여 있던 새벽 서약의 군마가 스스로 당신에게 고삐를 허락했다. 이번에는 끝까지 함께 달릴 것이다.',
+    chips: ['새벽 돌격', '새벽 말 떼', '허공 딛기 · 가장 빠른 군마'],
   }),
 };
 
