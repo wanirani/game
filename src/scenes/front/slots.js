@@ -36,6 +36,15 @@ const P2_COLOR = '#b98cff';
 const NG_COLOR = '#ff5a6a';
 /** 회차 확인 창 본문 (ngplus §4.2) */
 const NG_BODY = '레벨·장비·직업·스킬·비전서·동료·골드를 지닌 채 1장부터 다시 시작합니다. 이야기·지도·의뢰·유물은 처음으로 돌아가고, 적은 더 강해집니다.';
+/** 슬롯 카드 장 줄 앞 작은 배지 (왼쪽 x, 글 기준선 y). 반환: 폭 */
+function badge(ctx, x, y, label, col) {
+  ctx.font = `800 11px ${FONT.body}`;
+  const bw = ctx.measureText(label).width + 12;
+  ctx.fillStyle = rgba(col, 0.2); ctx.fillRect(x, y - 13, bw, 17);
+  ctx.strokeStyle = rgba(col, 0.85); ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y - 12.5, bw - 1, 16);
+  text(ctx, label, x + bw / 2, y, { size: 11, align: 'center', weight: 800, color: col, ow: 2 });
+  return bw;
+}
 
 export class SlotsScene extends Scene {
   constructor(g) { super(g); this.uiScale = true; this.hidePad = true; }
@@ -138,8 +147,8 @@ export class SlotsScene extends Scene {
     this.act = { items, cols, menu: new ListMenu(items.length, { cols, index: start }), t: 0 };
     audio.sfx('menu_ok');
   }
-  /** 피의 윤회 복사 대상: 이 기기에서 비어 있고 클라우드 기록도 없는 가장 작은 슬롯 번호 (없으면 null) */
-  ngTarget() { return this.slots.find((x) => x.empty && !this.cloudOf(x))?.slot ?? null; }   // [hook:ng]
+  /** 피의 윤회 복사 대상: 이 기기에서 비어 있고 클라우드 기록도 없는 가장 작은 슬롯 번호 (없으면 null — 클라우드 목록을 받는 중이면 아직 모른다) */
+  ngTarget() { return cloud.loggedIn && this.cloudBusy ? null : this.slots.find((x) => x.empty && !this.cloudOf(x))?.slot ?? null; }   // [hook:ng]
   /** 피의 윤회 확인 → 시작 (copy: 빈 슬롯에 새 회차, 원래 슬롯은 읽기만) */
   askNg(s, copy) {   // [hook:ng]
     const g = this.game, slot = s.slot, target = copy ? this.ngTarget() : slot;
@@ -341,16 +350,8 @@ export class SlotsScene extends Scene {
     // 챕터 (20장까지) 앞 배지: 회차면 '{N}회차', 2부면 '제2부'
     const st = s.stage;
     let cx = tx;
-    const badge = (label, col) => {
-      ctx.font = `800 11px ${FONT.body}`;
-      const bw = ctx.measureText(label).width + 12;
-      ctx.fillStyle = rgba(col, 0.2); ctx.fillRect(cx, y3 - 13, bw, 17);
-      ctx.strokeStyle = rgba(col, 0.85); ctx.lineWidth = 1; ctx.strokeRect(cx + 0.5, y3 - 12.5, bw - 1, 16);
-      text(ctx, label, cx + bw / 2, y3, { size: 11, align: 'center', weight: 800, color: col, ow: 2 });
-      cx += bw + 8;
-    };
-    if (s.ng > 0) badge(NG.ngLabel?.(s.ng) || `${s.ng + 1}회차`, NG_COLOR);   // [hook:ng]
-    if (st?.part === 2) badge('제2부', P2_COLOR);
+    if (s.ng > 0) cx += badge(ctx, cx, y3, NG.ngLabel?.(s.ng) || `${s.ng + 1}회차`, NG_COLOR) + 8;   // [hook:ng]
+    if (st?.part === 2) cx += badge(ctx, cx, y3, '제2부', P2_COLOR) + 8;
     text(ctx, st ? `CHAPTER ${st.chapter}  ·  ${st.name}` : '프롤로그', cx, y3, { size: 14, weight: 700, color: '#e8d8c0', ow: 2, maxWidth: colW - (cx - tx) });
     // 보조 정보
     const icons = [];
