@@ -559,6 +559,24 @@ async function U5(C) {
     C.check('U5', `닫은 뒤 canvasPoolStats().free 그대로 (${f0} → ${f1}) · cg/ 디코딩 0`, f1 === f0 && dec1 === 0, `${f0} → ${f1} · cg ${dec1}`);
     await C.close(s);
   }
+  {   // 데이터 절약(saveData): 썸네일 대신 이름 카드 — 목록에서는 받지 않고 크게 볼 때만
+    const SAVE_DATA = () => { try { Object.defineProperty(Navigator.prototype, 'connection', { configurable: true, get: () => ({ saveData: true, effectiveType: '4g', addEventListener() {}, removeEventListener() {} }) }); } catch { /* 무시 */ } };
+    const s = await C.open('phone2', 'index.html', { initScripts: [SAVE_DATA] });
+    const reqs = [];
+    s.page.on('request', (r) => { if (/\/assets\/(lo\/)?cg\//.test(r.url())) reqs.push(r.url()); });
+    await seed(s, 'all', { seen: true });
+    await openGal(s);
+    await waitFrames(s.page, { ms: 1500, frames: 10, ticks: 6 });
+    const st = await s.eval(() => ({ sd: window.__game.top.saveData, atlas: window.__game.top.atlasBytes }));
+    await installTapRecorder(s.page);
+    const tx = await drawnText(s.page);
+    const n0 = reqs.length;
+    await C.shot(s, 'phone2_savedata');
+    await s.eval(() => window.__game.top.openViewer(0));
+    await s.waitGame('g.top.viewer?.shown', 15000).catch(() => {});
+    C.check('U5', `saveData: 이름 카드(아틀라스 없음) · 목록에서 cg/ 요청 ${n0} · 크게 볼 때만 받기 (${reqs.length - n0})`, st.sd && st.atlas === 0 && n0 === 0 && reqs.length - n0 >= 1 && tx.includes('핏빛 달'), JSON.stringify({ st, n0, n1: reqs.length }));
+    await C.close(s);
+  }
   {
     const s = await C.open('phone1', 'index.html?scene=hub', { settings: { quality: 'medium' }, pred: `${READY} && g.top?.name === 'hub' && !!g.world` });
     await seed(s, 'all', { seen: true });

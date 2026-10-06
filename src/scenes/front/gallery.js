@@ -654,13 +654,15 @@ export class GalleryScene extends Scene {
     return { list, panel, band, rowH, head, items, heads, total: y };
   }
   geoTh(L) {
-    const A = L.area, n = Math.max(1, this.rows.th.length), top = this.err ? 26 : 0, tail = this.pushed ? 34 : 0;
-    const rowH = L.wide ? clamp(Math.floor((A.h - top - tail) / n), Math.max(44, Math.ceil(36 / L.per)), 48) : 56;
+    const A = L.area, n = Math.max(1, this.rows.th.length), top = this.err ? 26 : 0;
+    // 성당(push): 줄 아래 안내 한 줄 자리(30)를 스크롤 밖에 남긴다 — 늘 보이게
+    const list = this.pushed ? { x: A.x, y: A.y, w: A.w, h: A.h - 30 } : A;
+    const rowH = L.wide ? clamp(Math.floor((list.h - top) / n), Math.max(44, Math.ceil(36 / L.per)), 48) : 56;
     const items = this.rows.th.map((r, i) => ({ x: 0, y: top + i * rowH, w: A.w - 10, h: rowH }));
-    return { rowH, items, top, total: top + this.rows.th.length * rowH + tail };
+    return { list, rowH, items, top, total: top + this.rows.th.length * rowH };
   }
   /** 지금 방의 스크롤 영역 */
-  scrollRect(L) { return this.room === 'music' ? this.geoOf(L, 'mus').list : L.area; }
+  scrollRect(L) { return this.room === 'music' ? this.geoOf(L, 'mus').list : this.room === 'theater' ? this.geoOf(L, 'th').list : L.area; }
 
   // ───────────────────────── 그리기 ─────────────────────────
   render(ctx) {
@@ -929,7 +931,7 @@ export class GalleryScene extends Scene {
 
   // ── 극장 ──
   renderTheater(ctx, L, t) {
-    const A = L.area, G = this.geoOf(L, 'th'), rows = this.rows.th, sc = this.scs[2], i = this.sel[2], off = this.pushed;
+    const G = this.geoOf(L, 'th'), A = G.list, rows = this.rows.th, sc = this.scs[2], i = this.sel[2], off = this.pushed;
     sc.setMax(G.total - A.h);
     const it = G.items[i];
     if (it && sc.shouldFollow(i)) sc.ensure(it.y, it.y + it.h, A.h, 4);
@@ -942,9 +944,9 @@ export class GalleryScene extends Scene {
       if (!off) this.zItems.push({ k, r: clipZone(r, A, 'list', this.ges, 'gal.th', L.minRow) });   // 성당(push): 꺼짐 — 탭 영역 없음
       this.drawTh(ctx, rows[k], r, k === i && !off, off, t, L.wide);
     }
-    if (off) text(ctx, TH_OFF_LINE, A.x + A.w / 2, y0 + G.items.length * G.rowH + G.top + 24, { size: 14, align: 'center', weight: 700, color: '#d8b080', ow: 2 });
     clipEnd(ctx, A, sc, 'rgba(8,4,12,0.9)');
     scrollbar(ctx, A.x + A.w - 5, A.y, A.h, sc, A.h);
+    if (off) text(ctx, TH_OFF_LINE, A.x + A.w / 2, A.y + A.h + 21, { size: 14, align: 'center', weight: 700, color: '#d8b080', ow: 2 });
   }
   drawTh(ctx, row, r, sel, off, t, wide) {
     const h = r.h - 2, cy = r.y + h / 2;
