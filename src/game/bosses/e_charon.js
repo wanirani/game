@@ -62,7 +62,8 @@ const PATTERNS = {
   ],
   gimmicks: [],
   floorRow: 16,
-  room: { w: 60, h: 18, x0: 17, solids: [[0, 16, 59, 17], [22, 11, 26, 11], [34, 11, 39, 11], [50, 11, 54, 11], [29, 7, 31, 7], [43, 7, 45, 7]] },   // s21–s24 boss 방과 같은 뼈대 (15행 턱 없음)
+  // s21–s24 boss 방과 같은 뼈대 — 15행 턱은 없고 (영구차가 경기장 끝까지 달린다) 13행 한쪽 발판 둘 [18–20] [55–58] (EX5-MAP 요청: 띠 위 19px — 브란·세라·빅터가 11행으로 오르는 디딤)
+  room: { w: 60, h: 18, x0: 17, solids: [[0, 16, 59, 17], [22, 11, 26, 11], [34, 11, 39, 11], [50, 11, 54, 11], [29, 7, 31, 7], [43, 7, 45, 7], [18, 13, 20, 13], [55, 13, 58, 13]] },
 };
 const T48 = () => TILE || 48;
 const SIZE_H = { w: 200, h: 130 }, SIZE_M = { w: 66, h: 168 };   // 마차 · 마부 판정 크기 (명세 §2.1 전환)
@@ -73,6 +74,10 @@ const H1 = { x: 176, y: 0 }, H2 = { x: 144, y: -6 }, HS = 1.25;   // 가까운 �
 // 창 상한 (페이즈별 [1페이즈], 최대 체력 비 — POLISH-4 교훈을 처음부터, docs/specs/ex_s25.md §2.1): 질주 한 번 12% · 무릎 한 번 10% · 등불 노출 한 번 8%.
 //   닿으면 남는 피해는 버리고('저항' 숫자), 무릎이면 곧바로 일어선다 (필살·각성 · 2페이즈 · 15% 긴 주저앉음은 상한 밖)
 const RUN_CAP = [0.12], STAG_CAP = [0.10], LANTERN_CAP = [0.08];
+// EX5-BOSS 확인 2 (실제 엔진 싸움 길이): 고정 세이브 카엘은 한 대가 최대 체력 6–8% 라 위 세 창만으로는 마차(피하지 않는 큰 과녁)의 1페이즈가 패턴 1–2개 · 4–7초에 끝났다
+//   → 나머지 1페이즈 창에도 같은 틀의 상한: 질주 밖의 1페이즈 패턴 한 번 PAT_CAP · 패턴 사이 쉼 한 번 IDLE_CAP (bosses_e.js 머리말 b_charon 확인 2)
+const PAT_CAP = [0.05], IDLE_CAP = [0.025];
+const P1_PAT = new Set(['whipCrack', 'coffinDrop', 'soulLantern', 'rearStomp', 'reinChain', 'lanternSwing', 'toll', 'hearseGhost', 'gatherSouls', 'lastLoad']);
 const RUN_SPEED = 1100, GHOST_SPEED = 1300, EXPOSE_DMG = 0.05;
 // ── 마부 몸 지역 좌표 (+x = 얼굴 쪽, y 아래 양수). 원점 O = 앉았으면 마부석, 서 있으면 두 발 가운데 바닥 ──
 const TORSO = 48, UA = 26, FA = 25, THIGH = 40, SHIN = 44, WHIP_N = 9, CHAIN_N = 9, TAIL_N = 4;
@@ -131,7 +136,7 @@ export class Charon extends BossC {
     this.tails = [pts(TAIL_N + 1), pts(TAIL_N + 1)];
     this.horsesOn = true; this.hRun = 0; this.hA = 1; this.hFree = false;
     this.horses = [mkHorse(0), mkHorse(1.7)];
-    this.ghost = false; this.stunned = false; this.stagLong = false; this.exposed = false; this.cWin = false; this.dexp = 0; this.capHp = null; this.wakeT = 9;
+    this.ghost = false; this.stunned = false; this.stagLong = false; this.exposed = false; this.cWin = false; this.dexp = 0; this.capBud = null; this.wakeT = 9;
     this._forced15 = false; this._lastNow = false; this._lanNow = false; this._stagNow = false; this._lastMode = false; this._lastEnd = false; this._bn = null;
     this.dieT = 0; this.vanishK = 0; this.ashAcc = 0;
     this.runZ = this.pullZ = this.ghostZ = null; this.tl = null; this.wc = null;
@@ -432,20 +437,26 @@ export class Charon extends BossC {
    */
   takeHit(dmg, attack, world, info) {
     const burst = attack?.tags?.includes('ult') || attack?.tags?.includes('awaken');
-    if (this.capHp != null && !burst && !(this.dying > 0) && !this.invuln && this.hp - dmg <= this.capHp) {
-      dmg = Math.max(1, Math.round(this.hp - this.capHp));
-      if (info) { info.dmg = dmg; info.capped = true; if (dmg <= 1) info.resist = true; }
-      if (this.state === 'stagger' && this.stunned) this.wakeT = this.st + 1e-3;
-      if (this.state === 'soulLantern' && this.exposed) this.exposeEnd = this.st + 1e-3;
+    if (this.capBud != null && !burst && !(this.dying > 0) && !this.invuln) {
+      if (dmg >= this.capBud) {
+        dmg = Math.max(1, Math.round(this.capBud)); this.capBud = 0;
+        if (info) { info.dmg = dmg; info.capped = true; if (dmg <= 1) info.resist = true; }
+        if (this.state === 'stagger' && this.stunned) this.wakeT = this.st + 1e-3;
+        if (this.state === 'soulLantern' && this.exposed) this.exposeEnd = this.st + 1e-3;
+      } else this.capBud -= dmg;
     }
     return super.takeHit(dmg, attack, world, info);
   }
-  /** 상태가 바뀔 때마다 창 상한을 새로 연다 (질주 · 무릎만 — 등불은 노출이 시작될 때 openCap). 그 상태가 끝나면 닫힌다 */
+  /**
+   * 상태가 바뀔 때마다 창 상한을 새로 연다 (1페이즈만 — 그 상태가 끝나면 닫힌다): 질주 RUN_CAP · 무릎 STAG_CAP (15% 긴 주저앉음 제외) ·
+   * 그 밖의 1페이즈 패턴 PAT_CAP · 쉼(idle) IDLE_CAP. 등불 노출은 노출이 시작될 때 openCap(LANTERN_CAP) 으로 따로 연다
+   */
   setState(s) {
     super.setState(s);
-    this.openCap(s === 'deathRun' ? RUN_CAP : s === 'stagger' && !this.stagLong ? STAG_CAP : null);
+    this.openCap(s === 'deathRun' ? RUN_CAP : s === 'stagger' ? (this.stagLong ? null : STAG_CAP) : s === 'idle' ? IDLE_CAP : P1_PAT.has(s) ? PAT_CAP : null);
   }
-  openCap(C) { const c = C?.[this.phase], mx = this.stats?.maxHp; this.capHp = c && mx ? this.hp - mx * c : null; }
+  /** 남은 피해 예산 (최대 체력 × 상한) — 체력 값이 아니라 이 창에서 잃은 양으로 센다 */
+  openCap(C) { const c = C?.[this.phase], mx = this.stats?.maxHp; this.capBud = c && mx ? mx * c : null; }
   onHurt(dmg, attack, world, info, part) {
     const x = info?.hx ?? this.cx, y = info?.hy ?? this.cy;
     if (Math.random() < 0.5) world.fx.burst(this.coach ? 'spark' : 'dark', x, y, 2, { color: this.coach ? GOLD : ASH, speed: 150 });
@@ -714,7 +725,7 @@ export class Charon extends BossC {
     }
     if (this.lanBroken) {
       // 꺼진 뒤: 노출 0.8초 (마부 멈칫)
-      if (this.st >= this.exposeEnd && this.exposed) { this.exposed = false; this.capHp = null; this.relax(); }
+      if (this.st >= this.exposeEnd && this.exposed) { this.exposed = false; this.capBud = null; this.relax(); }
       if (this.st >= this.exposeEnd + 0.15) this.done(1.0);
       return;
     }
