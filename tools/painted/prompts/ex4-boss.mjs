@@ -6,6 +6,8 @@
 //  · 베스퍼 초상화: text_to_image 3:4 (수호신 초상화와 같은 꼬리말 — ex2-boss.mjs munin_portrait) → assets/portraits/cmp_gd_vesper.webp
 // 퍼핏 방향: 옆모습, 오른쪽을 본다 (로직 e_bride.js 의 몸 지역 좌표 +x = facing).
 // 상한 22장 · 44크레딧 (재시도 포함, 보스 + 초상화 셋). 계획 13장 · 26크레딧.
+// 실제로 쓴 것 (manifest_ex4-boss.json, 13장 · 26크레딧 · 재시도 0): bd_heads 는 옆모습 대신 정면 흉상 셋이라 쓰지 않았다(머리는 full_a · crone_a 의 옆모습) ·
+//   bd_arms 는 조각 대신 흉상·주먹 팔·해골을 그려 그 안에서 팔 조각 넷을 잘랐다 · bd_crone 은 왼쪽을 봐서 뒤집었다 · CRONE 설명은 채택한 bd_portrait2 #1(해골 같은 얼굴·금빛 손톱)에 맞춰 고쳤다.
 // 결과(생성 ID·채택/기각 이유)는 tools/kling/manifest_ex4-boss.json 과 configs/b_bride.json 의 kling 블록에 기록한다.
 // 사용: node tools/painted/prompts/ex4-boss.mjs [shotId]  → 프롬프트 출력 (Kling 호출은 에이전트가 MCP 로 한다)
 
