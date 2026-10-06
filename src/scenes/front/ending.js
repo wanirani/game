@@ -304,7 +304,7 @@ export class CreditsScene extends Scene {
     if (this.left) return;
     this.left = true;
     const g = this.game;
-    if (!this.fromEnding) { g.go(this.back === 'hub' ? 'hub' : 'title', this.back === 'hub' ? {} : { menu: true, index: 5 }); return; }
+    if (!this.fromEnding) { g.go(this.back === 'hub' ? 'hub' : 'title', this.back === 'hub' ? {} : { menu: true, index: 7 }); return; }   // 7 = 타이틀 메뉴 '크레딧' 줄 (title.js buildMenu, 업적 줄이 생겨 8줄)
     const st = g.state;
     const after = () => {
       if (!st) { g.go('title', {}); return; }
