@@ -4,7 +4,7 @@
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
 import { saves } from '../../core/save.js';
-import { text, wrap, panel, button, bar, FONT, COLORS, font } from '../../core/ui.js';
+import { text, panel, button, bar, FONT, COLORS, font } from '../../core/ui.js';
 import { fmt, fmtTime, rand, clamp, TAU, ease, rgba } from '../../core/math.js';
 import { drawHero } from '../../render/hero.js';
 import { drawIcon } from '../../render/icons.js';
@@ -19,7 +19,7 @@ import { composeLook, STAT_INFO } from '../../game/stats.js';
 import { addByBase } from '../../game/inventory.js';
 import { SHOP_LINES } from '../../data/town.js';
 import { ServiceScene, Modal, RewardPopup, makeInst, hitRect, rowBg, Snap, uiPanel, uiButton, uiHints, josa } from './common.js';
-import { vGrad, rGrad, fillGradRect, Gesture, Scroller, clipBegin, clipEnd, scrollbar } from '../menu/common.js';
+import { vGrad, rGrad, fillGradRect, wrapC, Gesture, Scroller, clipBegin, clipEnd, scrollbar } from '../menu/common.js';
 // 직업 카드 그라디언트 색 멈춤 (menu/common 캐시 — 매 프레임 새 그라디언트 0, R1-REQ-341B)
 const CARD_SEL = [0, 'rgba(60,30,50,0.92)', 1, 'rgba(6,3,8,0.95)'], CARD_OFF = [0, 'rgba(20,12,22,0.88)', 1, 'rgba(6,3,8,0.95)'];
 // 스크롤 칸 위·아래 가림 (그 높이의 카드 색: 위 = 선택/보통 카드 그라디언트의 30% 지점, 아래 = 카드 아래쪽 색)
@@ -321,7 +321,7 @@ export class ChurchScene extends ServiceScene {
       this.preview(ctx, c.id, look, r.x + pw / 2 + 4, r.y + r.h - 22, clamp(r.h / 150, 1.3, 2.1), look.aura?.color, !sel);
       ctx.restore();
       // 정보 (우측): 이름·영문·요구 레벨은 고정. 그 아래(설명·특성·보정치)는 카드에 맞춘다 — 넘치면 설명을 줄이고(2 → 1 → 0줄),
-      // 그래도 넘치면(휴대폰) 원래 설명 그대로 그 칸만 세로 스크롤 (보정치 줄을 버리지 않는다)
+      // 그래도 넘치면(주로 휴대폰) 원래 설명 그대로 그 칸만 세로 스크롤 (보정치 줄을 버리지 않는다)
       const tx = r.x + pw + 12, tw0 = r.w - pw - 22;
       text(ctx, c.name, tx, r.y + 30, { size: 19, weight: 800, family: FONT.title, color: sel ? '#fff4d8' : '#f3d690', maxWidth: tw0 });
       text(ctx, `${c.eng ?? ''} · ${TIER_NAME[c.tier ?? 1]}`, tx, r.y + 48, { size: 10, weight: 800, family: FONT.num, color: '#8a7a64', maxWidth: tw0 });
@@ -329,7 +329,7 @@ export class ChurchScene extends ServiceScene {
       const mods = [];
       for (const k in c.mult || {}) { const p = Math.round((c.mult[k] - 1) * 100); if (p) mods.push([STAT_INFO[k]?.name ?? k, `${p > 0 ? '+' : ''}${p}%`, p > 0]); }
       for (const k in c.flat || {}) { const v = c.flat[k]; mods.push([STAT_INFO[k]?.name ?? k, `${v > 0 ? '+' : ''}${v}${STAT_INFO[k]?.pct ? '%' : ''}`, v > 0]); }
-      const linesOf = (tw) => ({ tw, d: wrap(ctx, c.desc ?? '', tw, 12).slice(0, 2), p: wrap(ctx, c.perk ?? '', tw, 12).slice(0, 3) });
+      const linesOf = (tw) => ({ tw, d: wrapC(ctx, c.desc ?? '', tw, 12).slice(0, 2), p: wrapC(ctx, c.perk ?? '', tw, 12).slice(0, 3) });   // 줄바꿈 캐시 (매 프레임 measureText 0)
       const lastOf = (L, dMax) => { const yy = r.y + 90 + Math.min(L.d.length, dMax) * 17 + 26 + L.p.length * 17; return mods.length ? yy + (mods.length - 1) * 17 : yy - 23; };
       let L = linesOf(tw0), dMax = [2, 1, 0].find((d) => lastOf(L, d) <= r.y + r.h - 16);
       const CR = { x: tx - 2, y: r.y + 74, w: r.x + r.w - tx, h: r.h - 78 };
