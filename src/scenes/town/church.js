@@ -19,9 +19,11 @@ import { composeLook, STAT_INFO } from '../../game/stats.js';
 import { addByBase } from '../../game/inventory.js';
 import { SHOP_LINES } from '../../data/town.js';
 import { ServiceScene, Modal, RewardPopup, makeInst, hitRect, rowBg, Snap, uiPanel, uiButton, uiHints, josa } from './common.js';
-import { vGrad, rGrad, fillGradRect } from '../menu/common.js';
+import { vGrad, rGrad, fillGradRect, Gesture, Scroller, clipBegin, clipEnd, scrollbar } from '../menu/common.js';
 // 직업 카드 그라디언트 색 멈춤 (menu/common 캐시 — 매 프레임 새 그라디언트 0, R1-REQ-341B)
 const CARD_SEL = [0, 'rgba(60,30,50,0.92)', 1, 'rgba(6,3,8,0.95)'], CARD_OFF = [0, 'rgba(20,12,22,0.88)', 1, 'rgba(6,3,8,0.95)'];
+// 스크롤 칸 위·아래 가림 (그 높이의 카드 색: 위 = 선택/보통 카드 그라디언트의 30% 지점, 아래 = 카드 아래쪽 색)
+const CARD_FADE = [0, 'rgba(6,3,8,0)', 1, 'rgba(6,3,8,0.92)'], FADE_SEL = [0, 'rgba(43,21,36,0.95)', 1, 'rgba(43,21,36,0)'], FADE_OFF = [0, 'rgba(16,9,18,0.95)', 1, 'rgba(16,9,18,0)'];
 import { glow } from './facades.js';
 
 const TIER_NAME = ['기본 직업', '상급 직업', '최상급 직업'];
@@ -32,6 +34,8 @@ export class ChurchScene extends ServiceScene {
     this.lines = SHOP_LINES.alberto; this.music = 'church'; this.portraitGlow = '#fff2b0'; this.emberColor = '#fff2b0';
     this.tabs = [{ id: 'class', label: '전직' }, { id: 'bless', label: '축복' }, { id: 'reset', label: '스킬 초기화' }, { id: 'save', label: '여정 기록' }];
     this.sel = 0; this.rigs = {}; this.cere = null;
+    // 전직 카드의 설명·특성·보정치 칸이 카드보다 길 때(휴대폰)만 세로 스크롤: 두 카드가 같은 자리로 (끌기·휠·↑↓·오른쪽 스틱 Y)
+    this.ges = new Gesture(); this.csc = new Scroller(); this.cscRect = null; this.cscKey = null;
     this.prayed = false;
     this.talk('hello');
   }
@@ -39,7 +43,7 @@ export class ChurchScene extends ServiceScene {
   /** 안내 줄의 선택 방향: 전직 카드·기록 탭의 두 단추는 ←→, 축복 목록은 ↑↓, 초기화 탭은 고를 것이 없다 */
   selectHint() { const id = this.tabs[this.tab]?.id; return id === 'class' || id === 'save' ? 'dpadH' : id === 'bless' ? 'dpadV' : null; }   // [hook:gal] 기록 탭 ←→
   extraHints() { return this.tabs[this.tab]?.id === 'save' ? [['alt', '회랑']] : []; }   // [hook:gal] 회랑 바로가기
-  onTab() { this.sel = 0; }
+  onTab() { this.sel = 0; this.csc.reset(); }
 
   get options() {
     const hero = this.hero;
@@ -61,6 +65,7 @@ export class ChurchScene extends ServiceScene {
   }
 
   updateBody(dt) {
+    this.ges.addWheel(this.wheel); this.ges.update();
     if (this.cere) { this.updateCeremony(dt); return 'handled'; }
     const tab = this.tabs[this.tab].id;
     const nav = (n, horiz) => {
@@ -74,9 +79,14 @@ export class ChurchScene extends ServiceScene {
     if (tab === 'class') {
       const opts = this.options;
       nav(opts.length, true);
-      const i = pick('card:');
+      if (this.cscRect) this.csc.update(dt, this.cscRect, this.ges);
+      const scroll = this.csc.max > 0;
+      if (scroll && input.pressed('up')) this.csc.target = clamp(this.csc.target - 48, 0, this.csc.max);
+      if (scroll && input.pressed('down')) this.csc.target = clamp(this.csc.target + 48, 0, this.csc.max);
+      const dragged = scroll && this.ges.moved;   // 카드를 끌어 스크롤한 손가락을 뗀 것은 카드·전직 단추 탭이 아니다
+      const i = dragged ? -1 : pick('card:');
       if (i >= 0 && opts[i]) { if (this.sel === i) this.tryClass(opts[i]); else { this.sel = i; audio.sfx('menu_move'); } return 'handled'; }
-      if (id === 'act' && opts[this.sel]) { this.tryClass(opts[this.sel]); return 'handled'; }
+      if (id === 'act' && !dragged && opts[this.sel]) { this.tryClass(opts[this.sel]); return 'handled'; }
       if (input.pressed('confirm') && opts[this.sel]) { this.tryClass(opts[this.sel]); return 'handled'; }
     } else if (tab === 'bless') {
       const o = this.blessOptions();
@@ -245,7 +255,7 @@ export class ChurchScene extends ServiceScene {
   // ───────────────────────── 그리기 ─────────────────────────
   renderBody(ctx, body) {
     const tab = this.tabs[this.tab].id;
-    this.cardRects = null; this.optRects = null; this.actRect = null;
+    this.cardRects = null; this.optRects = null; this.actRect = null; this.cscRect = null;
     if (tab === 'class') this.drawClass(ctx, body);
     else if (tab === 'bless') this.drawBless(ctx, body);
     else if (tab === 'reset') this.drawReset(ctx, body);
@@ -290,6 +300,9 @@ export class ChurchScene extends ServiceScene {
     }
     this.cardRects = [];
     const n = opts.length, gap = 12, cw = (body.w - gap * (n - 1)) / n;
+    const key = opts.map((c) => c.id).join();
+    if (key !== this.cscKey) { this.cscKey = key; this.csc.reset(); }
+    let cscMax = 0;
     opts.forEach((c, i) => {
       const r = this.tz('card:' + i, { x: body.x + i * (cw + gap), y: y0, w: cw, h });
       this.cardRects.push(r);
@@ -307,27 +320,49 @@ export class ChurchScene extends ServiceScene {
       ctx.fillRect(r.x - lx, r.y - ly, pw, r.h); ctx.translate(-lx, -ly);
       this.preview(ctx, c.id, look, r.x + pw / 2 + 4, r.y + r.h - 22, clamp(r.h / 150, 1.3, 2.1), look.aura?.color, !sel);
       ctx.restore();
-      // 정보 (우측)
-      const tx = r.x + pw + 12, tw = r.w - pw - 22;
-      text(ctx, c.name, tx, r.y + 30, { size: 19, weight: 800, family: FONT.title, color: sel ? '#fff4d8' : '#f3d690', maxWidth: tw });
-      text(ctx, `${c.eng ?? ''} · ${TIER_NAME[c.tier ?? 1]}`, tx, r.y + 48, { size: 10, weight: 800, family: FONT.num, color: '#8a7a64', maxWidth: tw });
+      // 정보 (우측): 이름·영문·요구 레벨은 고정. 그 아래(설명·특성·보정치)는 카드에 맞춘다 — 넘치면 설명을 줄이고(2 → 1 → 0줄),
+      // 그래도 넘치면(휴대폰) 원래 설명 그대로 그 칸만 세로 스크롤 (보정치 줄을 버리지 않는다)
+      const tx = r.x + pw + 12, tw0 = r.w - pw - 22;
+      text(ctx, c.name, tx, r.y + 30, { size: 19, weight: 800, family: FONT.title, color: sel ? '#fff4d8' : '#f3d690', maxWidth: tw0 });
+      text(ctx, `${c.eng ?? ''} · ${TIER_NAME[c.tier ?? 1]}`, tx, r.y + 48, { size: 10, weight: 800, family: FONT.num, color: '#8a7a64', maxWidth: tw0 });
       text(ctx, `요구 레벨 ${c.reqLevel}`, tx, r.y + 68, { size: 12, weight: 800, color: chk.ok ? COLORS.good : COLORS.bad });
-      let yy = r.y + 90;
-      ctx.font = font(12, 500);
-      for (const l of wrap(ctx, c.desc ?? '', tw, 12).slice(0, 2)) { text(ctx, l, tx, yy, { size: 12, color: '#b8a890' }); yy += 17; }
-      yy += 4;
-      text(ctx, '특성', tx, yy, { size: 11, weight: 800, color: '#ffe7a0' }); yy += 16;
-      for (const l of wrap(ctx, c.perk ?? '', tw, 12).slice(0, 3)) { text(ctx, l, tx, yy, { size: 12, color: '#efe4cf' }); yy += 17; }
-      yy += 6;
       const mods = [];
       for (const k in c.mult || {}) { const p = Math.round((c.mult[k] - 1) * 100); if (p) mods.push([STAT_INFO[k]?.name ?? k, `${p > 0 ? '+' : ''}${p}%`, p > 0]); }
       for (const k in c.flat || {}) { const v = c.flat[k]; mods.push([STAT_INFO[k]?.name ?? k, `${v > 0 ? '+' : ''}${v}${STAT_INFO[k]?.pct ? '%' : ''}`, v > 0]); }
-      for (const [nm, v, up] of mods.slice(0, Math.max(0, Math.floor((r.y + r.h - 8 - yy) / 17)))) {
+      const linesOf = (tw) => ({ tw, d: wrap(ctx, c.desc ?? '', tw, 12).slice(0, 2), p: wrap(ctx, c.perk ?? '', tw, 12).slice(0, 3) });
+      const lastOf = (L, dMax) => { const yy = r.y + 90 + Math.min(L.d.length, dMax) * 17 + 26 + L.p.length * 17; return mods.length ? yy + (mods.length - 1) * 17 : yy - 23; };
+      let L = linesOf(tw0), dMax = [2, 1, 0].find((d) => lastOf(L, d) <= r.y + r.h - 16);
+      const CR = { x: tx - 2, y: r.y + 74, w: r.x + r.w - tx, h: r.h - 78 };
+      const scroll = dMax === undefined;
+      let off = 0, mx = 0;
+      if (scroll) {
+        L = linesOf(tw0 - 8); dMax = 2;   // 스크롤 막대 자리
+        mx = Math.max(0, Math.ceil(lastOf(L, dMax) + 6 - (CR.y + CR.h)));
+        off = Math.min(this.csc.y, mx);
+        this.cscRect = this.cscRect ? { x: body.x, y: CR.y, w: body.w, h: CR.h } : CR;
+        cscMax = Math.max(cscMax, mx);
+        clipBegin(ctx, CR);
+      }
+      const tw = L.tw;
+      let yy = r.y + 90 - off;
+      for (const l of L.d.slice(0, dMax)) { text(ctx, l, tx, yy, { size: 12, color: '#b8a890' }); yy += 17; }
+      yy += 4;
+      text(ctx, '특성', tx, yy, { size: 11, weight: 800, color: '#ffe7a0' }); yy += 16;
+      for (const l of L.p) { text(ctx, l, tx, yy, { size: 12, color: '#efe4cf' }); yy += 17; }
+      yy += 6;
+      for (const [nm, v, up] of mods) {
         text(ctx, nm, tx, yy, { size: 12, color: '#c8b8a0' });
         text(ctx, v, tx + tw, yy, { size: 12, weight: 800, family: FONT.num, color: up ? COLORS.good : COLORS.bad, align: 'right' });
         yy += 17;
       }
+      if (scroll) {
+        clipEnd(ctx, CR, null);
+        if (off > 1) fillGradRect(ctx, vGrad(ctx, 14, sel ? FADE_SEL : FADE_OFF), CR.x, CR.y, CR.w, 14);
+        if (off < mx - 1) fillGradRect(ctx, vGrad(ctx, 18, CARD_FADE), CR.x, CR.y + CR.h - 18, CR.w, 18);
+        scrollbar(ctx, r.x + r.w - 7, CR.y + 2, CR.h - 4, { y: off, max: mx }, CR.h);
+      }
     });
+    this.csc.setMax(cscMax);
     const c = opts[this.sel];
     this.actRect = this.tz('act', { x: body.x + body.w / 2 - 170, y: body.y + body.h - 50, w: 340, h: 48 });
     const ok = c && canChangeClass(hero, c.id).ok;
