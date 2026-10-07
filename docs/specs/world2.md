@@ -1661,6 +1661,7 @@ Level at the end of s20 ≈ 70–74.
 - With quest exp, kael enters s16 at Lv 53, so tier 7 (Lv 50) arrives one stage earlier. s16 hitsMed is 4 and takenMed 4.4%, so the s16 lower bounds are 4.
 - `--ng` keeps the ngplus.md §3.4 model, with no quest exp, because its 1.15/1.45/1.65 limits were set on that model (`--quests` opts in). With quest exp in the 1st-cycle reference, hard `--ng 3` would read 1.653–1.659 against the 1.65 cap.
 - The s16 lower bounds (4) and the `--ng` model are lead decisions (`bal_requests.md`); the s16 enemies were not tuned.
+- The same pass changed game data (recommendations 1, 2, 5, 6, 7, 10): §6.8 nihil phases `[0.7, 0.45, 0.15]`, §7.2 the T7 `_13` whip/dagger/spear neutral, §7.5 `u_dawn_great` holy, §7.6 Rook `m_stone_6`, `lia_reaper` hp ×1.15, side-boss atk (ex_s23–s25 §2.3). Re-run with these rows: `--check` 7/7, `--ng 1..3 --check` 84/84 (largest ratios 1.072 / 1.365 / 1.574). Real-engine record: ex_s25.md §10 BAL-TUNE.
 - Every column above is element-neutral, and `--check` judges these. `balance.mjs` also prints `el` / `elMul` / `bossSecEl`: boss seconds with the reference weapon's element (weak ×1.6, resist ×0.5, ×(1 + hero element %)), for tuning bosses. In the real engine, element changes fight length by up to 2×.
 
 Tuning knobs, in order: enemy base `atk` (quadratic scaling dominates after lv 55 —
