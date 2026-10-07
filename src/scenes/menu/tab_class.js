@@ -9,7 +9,7 @@ import * as PUP from '../../render/hero_puppet.js';
 import * as ProgM from '../../game/progression.js';
 import { Tab } from './base.js';
 import { HeroView, HeroStage, PixLayer, PixCache, pedestal, accentOf, turntableHints, pxScale } from './hero_view.js';
-import { PAL, frame, heading, divider, brackets, glow, glowOval, pill, para, rr, glyph, ellipsize, measure, leanMem, takeCanvas, giveCanvas, vGrad, fillPathGrad } from './common.js';
+import { PAL, frame, heading, divider, brackets, glow, glowOval, pill, para, rr, glyph, ellipsize, measure, leanMem, takeCanvas, giveCanvas, vGrad, fillPathGrad, wrapC, Scroller, clipBegin, clipEnd, scrollbar } from './common.js';
 // 카드 그라디언트 색 멈춤 (common.js 캐시 키 — 같은 배열이면 매 프레임 새 그라디언트 0, R1-REQ-341B)
 const CARD_ON = [0, 'rgba(70,16,32,0.96)', 1, 'rgba(8,4,10,0.96)'], CARD_OFF = [0, 'rgba(30,18,30,0.94)', 1, 'rgba(8,4,10,0.96)'];
 import { fmtStatVal } from './tab_status.js';
@@ -26,6 +26,7 @@ export class ClassTab extends Tab {
     this.bg = new PixLayer();       // 두 판의 틀 (그라디언트) — 한 장으로 구워 1:1 복사
     this.heroRect = null;
     this.sel = null; this.rects = []; this.thumbs = new Map(); this.looks = new Map(); this.rev = -1;
+    this.dsc = new Scroller(); this.detailRect = null; this.dKey = null;   // 상세 글이 칸을 넘칠 때(휴대폰)만 세로 스크롤
   }
   /** 메뉴의 가로 밀기(탭 넘기기)를 무시할 곳: 회전 무대 (platform §5.6) */
   noSwipe(x, y) { return this.view.swipeBlock(x, y); }
@@ -103,6 +104,7 @@ export class ClassTab extends Tab {
     if (!this.sel) this.sel = this.hero.classId;
     this.view.control(dt, ges);     // 턴테이블 (포커스와 무관: 끌기·휠·, . /·오른쪽 스틱·R3·무대 탭 = 시연)
     this.view.update(dt);
+    if (this.detailRect) this.dsc.update(dt, this.detailRect, ges);   // 끌기·휠·오른쪽 스틱 Y (tab_skills 상세와 같다)
     for (const r of this.rects) {
       if (ges.hoverIn(r) && this.sel !== r.id) { this.sel = r.id; }
       if (ges.tap(r)) { this.m.focus = 'content'; if (this.sel !== r.id) audio.sfx('menu_move'); else this.view.showcase(); this.sel = r.id; return; }
