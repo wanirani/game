@@ -1212,7 +1212,7 @@ Patterns:
 - `erase`: warnRect band 90 px tall across the arena at the player's height (0.9 s) → erased (mv 1.6).
 - `starfall`: 10 stars at random x (warned circles r 40, 0.7 s), mv 1.0.
 - `grasp`: both hands sweep inward from the arena edges at floor level (0–120 px) in 1.0 s (mv 1.5).
-- `form2` (transition at 75%): pushes `b_nihil_form2`.
+- `form2` (transition at 70% — BAL-TUNE, was 75%: phase 1 is 30% of HP so a holy-weapon hero sees more than 2–3 patterns): pushes `b_nihil_form2`.
 - `echoDracula` (P2+): 3 hellfire pillars (warnFloor) + 3 fireballs, Dracula-style colours `#ff2a3a`.
 - `echoChaos` (P2+): eye-laser grid, 4 vertical + 2 horizontal lines (warn 1.0 s, mv 1.4), violet.
 - `echoNarkissa` (P2+): shard rain with 2 gaps (as `shardRain`).
@@ -1325,6 +1325,7 @@ new `MYTHIC_WEAPONS_P2` = tier-7 mythics. `loot.js` `mythicDrop(world)` uses P2 
 ### 7.6 Shop
 - `chapterTier(ch)`: unchanged up to 13; `ch === 14 → 6`, `ch >= 15 → 7`. `smithStock` `topR`: `ch >= 16 → 3`.
 - `ROOK_GOODS` append `['m_stone_4', 14, 1.35]` and `['m_stone_5', 16, 1.4, '한정 입고']`; existing entries unchanged.
+- BAL-TUNE (`bal_audit.md` recommendation 10): `ROOK_GOODS` also has `['m_stone_6', 20, 1.6, '귀한 물건']` — 8,000 G from chapter 20 and in NG+ (`serviceChapter` ≥ 20), a post-game gold sink for +13..+15. The tag is there because the chapter stops at 20, so the default '신상품' tag would never go away.
 - `ROOK_ACC` append `['a_ring_11', 14], ['a_amulet_11', 14], ['a_ring_13', 16], ['a_amulet_13', 16]` (the existing
   rarity rule `accR` applies).
 
@@ -1658,8 +1659,11 @@ Level at the end of s20 ≈ 70–74.
 - The reference run now includes main-quest exp by default. All 20 main quests are `auto`, so every player gets it. `--no-quests` gives the old run.
 - The player-level column is the real entry level ±2: s14 46, s15 49, s16 53, s17 56, s18 60, s19 63, s20 67, end of s20 72. The old column (39–43 … 60–65, end 64–68) left the quest exp out.
 - With quest exp, kael enters s16 at Lv 53, so tier 7 (Lv 50) arrives one stage earlier. s16 hitsMed is 4 and takenMed 4.4%, so the s16 lower bounds are 4.
-- `--ng` keeps the ngplus.md §3.4 model, with no quest exp, because its 1.15/1.45/1.65 limits were set on that model.
-- Every column above is element-neutral, and `--check` judges these. `balance.mjs` also prints `el` / `elMul` / `bossSecEl`: boss seconds with the reference weapon's element (weak ×1.6, resist ×0.5, ×(1 + hero element %)), for tuning bosses. In the real engine, element changes fight length by up to 2×. Tuning knobs, in order: enemy base `atk` (quadratic scaling dominates after lv 55 —
+- `--ng` keeps the ngplus.md §3.4 model, with no quest exp, because its 1.15/1.45/1.65 limits were set on that model (`--quests` opts in). With quest exp in the 1st-cycle reference, hard `--ng 3` would read 1.653–1.659 against the 1.65 cap.
+- The s16 lower bounds (4) and the `--ng` model are lead decisions (`bal_requests.md`); the s16 enemies were not tuned.
+- Every column above is element-neutral, and `--check` judges these. `balance.mjs` also prints `el` / `elMul` / `bossSecEl`: boss seconds with the reference weapon's element (weak ×1.6, resist ×0.5, ×(1 + hero element %)), for tuning bosses. In the real engine, element changes fight length by up to 2×.
+
+Tuning knobs, in order: enemy base `atk` (quadratic scaling dominates after lv 55 —
 lower base atk before touching `enemyStats`), enemy/boss base `hp`, boss `hpMul`, enemy `exp`, main-quest exp `k`,
 tier-7 `T_ATK`/`A_BASE` (±15% max). `enemyStats()` and `Boss` scaling formulas must not change (Part 1 balance).
 Difficulty scaling (5 levels) applies unchanged; on `inferno` every boss uses the inferno extras listed in §6.

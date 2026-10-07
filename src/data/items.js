@@ -466,7 +466,7 @@ const UNIQUE_LIST = [
   { id: 'u_dawn_great', name: '종언대검 오메가', slot: 'weapon', wtype: 'greatsword', tier: 7, icon: 'greatsword_7', lvReq: 52, rarity: 5, mythic: true,
     // BAL-TUNE (bal_audit.md 권고 1): 다른 새벽 신화 여섯처럼 신성 — s20 · 외전 보스는 모두 신성 약점. 받는 피해 −6% 를 빼고 신성 +30% (브란은 가디언 피해 감소가 이미 있다)
     stats: { atk: 250, holy: 30, critDmg: 50, hp: 120 }, element: 'holy', visual: { style: 6, glow: '#fff2b0', rift: true },
-    effect: '끝의 무게 — 신성 피해 +30%, 치명타 피해 +50%', desc:'세상의 끝을 끝내기 위해 벼린 대검. 내려칠 때마다 공허가 한 걸음 물러선다.' },
+    effect: '끝의 무게 — 신성 피해 +30%, 치명타 피해 +50%', desc: '세상의 끝을 끝내기 위해 벼린 대검. 내려칠 때마다 공허가 한 걸음 물러선다.' },
   { id: 'u_dawn_dagger', name: '별똥 단검 스텔라', slot: 'weapon', wtype: 'dagger', tier: 7, icon: 'dagger_7', lvReq: 52, rarity: 5, mythic: true,
     stats: { atk: 142, crit: 22, critDmg: 45, holy: 30, atkSpd: 12 }, element: 'holy', visual: { style: 6, glow: '#fff2b0', rift: true },
     effect: '떨어지는 별 — 치명타 확률 +22%, 공격 속도 +12%', desc: '떨어지는 별 하나를 붙잡아 벼린 단검. 칼끝이 지나간 자리에 꼬리별이 남는다.' },

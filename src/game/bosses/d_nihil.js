@@ -1126,7 +1126,7 @@ export class Nihil extends BossC {
   }
 
   // ── 전환 ──
-  /** form2 (75%): 두 손이 가면을 움켜쥐고, 가면이 일그러지며 쓰러뜨린 자들의 얼굴과 그림자가 번갈아 스친다 */
+  /** form2 (70% — BAL-TUNE, 예전 75%): 두 손이 가면을 움켜쥐고, 가면이 일그러지며 쓰러뜨린 자들의 얼굴과 그림자가 번갈아 스친다 */
   s_form2(dt, world, t) {
     if (this.at(0.001)) {
       this.glitchT = 2.0; this.echoFlick = true;

@@ -17,8 +17,9 @@ const ROOK_GOODS = [
   ['m_scroll_bless', 4, 1.2], ['m_scroll_protect', 5, 1.2, '비쌈'],
   // 2부 (world2 §7.6)
   ['m_stone_4', 14, 1.35], ['m_stone_5', 16, 1.4, '한정 입고'],
-  // BAL-TUNE (bal_audit.md 권고 10): 2부 엔딩(20장) 뒤 · 회차의 골드 쓸 곳 — +13..+15 의 드롭 전용 강화석을 8,000 G 에 (serviceChapter ≥ 20)
-  ['m_stone_6', 20, 1.6],
+  // BAL-TUNE (bal_audit.md 권고 10): 2부 엔딩(20장) 뒤 · 회차의 골드 쓸 곳 — +13..+15 의 드롭 전용 강화석을 8,000 G 에 (serviceChapter ≥ 20).
+  //   태그를 주지 않으면 장이 20 에서 멈추므로 '신상품' 이 영영 붙는다 → '귀한 물건' (엘릭서와 같은 글)
+  ['m_stone_6', 20, 1.6, '귀한 물건'],
 ];
 // [baseId, 해금 챕터] — 기본 장신구
 const ROOK_ACC = [
