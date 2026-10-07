@@ -426,6 +426,8 @@ export function glyph(ctx, kind, x, y, s, color = PAL.gold, lw = 1.6) {
       ctx.moveTo(4, -8); ctx.lineTo(-4, 0); ctx.lineTo(4, 8); ctx.stroke(); break;
     case 'chevronR':
       ctx.moveTo(-4, -8); ctx.lineTo(4, 0); ctx.lineTo(-4, 8); ctx.stroke(); break;
+    case 'chevronD': // 아래에 더 있음 (스크롤 칸 아래 끝)
+      ctx.moveTo(-8, -4); ctx.lineTo(0, 4); ctx.lineTo(8, -4); ctx.stroke(); break;
     default:
       ctx.arc(0, 0, 6, 0, TAU); ctx.stroke();
   }
@@ -912,6 +914,10 @@ export function clipEnd(ctx, r, sc, fadeC = 'rgba(8,4,12,0.95)') {
   if (!sc) return;
   if (sc.y > 1) fillGradRect(ctx, vGrad(ctx, 18, [0, fadeC, 1, 'rgba(8,4,12,0)']), r.x, r.y, r.w, 18);
   if (sc.y < sc.max - 1) fillGradRect(ctx, vGrad(ctx, 18, [0, 'rgba(8,4,12,0)', 1, fadeC]), r.x, r.y + r.h - 18, r.w, 18);
+}
+/** 아래에 더 있음 표시: 칸 아래 끝 가운데 작은 꺾쇠 (업적 칩 줄의 좌우 꺾쇠와 같은 빛깔·굵기). 끝까지 내리면 사라진다 */
+export function moreBelow(ctx, cx, bottom, y, max) {
+  if (y < max - 1) glyph(ctx, 'chevronD', cx, bottom - 6, 12, 'rgba(232,200,114,0.7)', 2);
 }
 
 // ───────────────────────── 버튼 ─────────────────────────

@@ -19,7 +19,7 @@ import { composeLook, STAT_INFO } from '../../game/stats.js';
 import { addByBase } from '../../game/inventory.js';
 import { SHOP_LINES } from '../../data/town.js';
 import { ServiceScene, Modal, RewardPopup, makeInst, hitRect, rowBg, Snap, uiPanel, uiButton, uiHints, josa } from './common.js';
-import { vGrad, rGrad, fillGradRect, wrapC, Gesture, Scroller, clipBegin, clipEnd, scrollbar } from '../menu/common.js';
+import { vGrad, rGrad, fillGradRect, wrapC, Gesture, Scroller, clipBegin, clipEnd, scrollbar, moreBelow } from '../menu/common.js';
 // 직업 카드 그라디언트 색 멈춤 (menu/common 캐시 — 매 프레임 새 그라디언트 0, R1-REQ-341B)
 const CARD_SEL = [0, 'rgba(60,30,50,0.92)', 1, 'rgba(6,3,8,0.95)'], CARD_OFF = [0, 'rgba(20,12,22,0.88)', 1, 'rgba(6,3,8,0.95)'];
 // 스크롤 칸 위·아래 가림 (그 높이의 카드 색: 위 = 선택/보통 카드 그라디언트의 30% 지점, 아래 = 카드 아래쪽 색)
@@ -360,6 +360,7 @@ export class ChurchScene extends ServiceScene {
         if (off > 1) fillGradRect(ctx, vGrad(ctx, 14, sel ? FADE_SEL : FADE_OFF), CR.x, CR.y, CR.w, 14);
         if (off < mx - 1) fillGradRect(ctx, vGrad(ctx, 18, CARD_FADE), CR.x, CR.y + CR.h - 18, CR.w, 18);
         scrollbar(ctx, r.x + r.w - 7, CR.y + 2, CR.h - 4, { y: off, max: mx }, CR.h);
+        moreBelow(ctx, CR.x + CR.w / 2, CR.y + CR.h, off, mx);
       }
     });
     this.csc.setMax(cscMax);

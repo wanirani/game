@@ -664,7 +664,7 @@ export class Bride extends BossC {
   }
 
   // ── crimsonBath (2페이즈): 1칸 떠오름 → 바닥 띠 경고 1.0초 (warnRect 경기장 폭 전체, A.floor−1.6칸…A.floor, 거품) → 핏물 띠 2.4초
-  //    (mv 0.35, rehit 0.4, 위로 튕김) → 0.4초에 빠진다. 그동안 발판 쪽으로 장미 2송이 (roseBloom 작은 판, mv 0.6). 답 = 발판·공중. 전환 직후 강제 ──
+  //    (mv 0.3 — POLISH-6: 0.35 에서 −15%, 2페이즈 약한 영웅, rehit 0.4, 위로 튕김) → 0.4초에 빠진다. 그동안 발판 쪽으로 장미 2송이 (roseBloom 작은 판, mv 0.6). 답 = 발판·공중. 전환 직후 강제 ──
   s_crimsonBath(dt, world, t) {
     const A = this.A, T = T48();
     if (this.at(0.001)) {
@@ -672,7 +672,7 @@ export class Bride extends BossC {
       this.setPose({ rise: 1, lean: -0.1 }); this.arms('spread', 6);
       audio.sfx('splash', { vol: 0.7, pitch: 0.5 }); audio.sfx('heartbeat', { vol: 0.6 });
       const y = A.floor - 1.6 * T;
-      this.bathZ = strikeRect(this, { x: A.x0, y, w: A.w, h: 1.6 * T }, { warn: 1.0, life: 2.4, mv: 0.35, rehit: 0.4, color: BLOOD, sfx: 'splash', pitch: 0.6, kb: [120, -760], data: { bath: true },
+      this.bathZ = strikeRect(this, { x: A.x0, y, w: A.w, h: 1.6 * T }, { warn: 1.0, life: 2.4, mv: 0.3, rehit: 0.4, color: BLOOD, sfx: 'splash', pitch: 0.6, kb: [120, -760], data: { bath: true },
         onStart: (z, w) => { impact(w, { shake: 6, time: 0.4 }); for (let i = 0; i < 6; i++) w.fx.burst('blood', A.x0 + A.w * (i + 0.5) / 6, A.floor - 20, 6, { speed: 260, angle: -PI / 2, spread: 0.6 }); },
         onEnd: (z, w) => { this.zone({ x: A.x0, y, w: A.w, h: 1.6 * T, warn: 0, life: 0.4, harmless: true, z: 6, data: { recede: true }, paint: (ctx, z2, w2) => paintBath(ctx, A, z2, w2, 'recede') }); },
         paint: (ctx, z, w) => paintBath(ctx, A, z, w, z.started ? 'on' : 'warn') });

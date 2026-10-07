@@ -310,8 +310,8 @@ check('debugAct(없는 상태) → false', (await page.evaluate((id) => { const 
     lb.length === 2 && low && mid && low.y === fl - 48 && low.h === 48 && Math.abs(mid.y - (fl - 2.6 * 48)) < 0.01 && Math.abs(mid.h - 0.8 * 48) < 0.01 && lb.every((z) => z.w === 384) && Math.abs(Math.abs(lb[1].warn - lb[0].warn) - 0.35) < 1e-6
     && lb.every((z) => (r.lash.f > 0 ? Math.abs(z.x - r.lash.zx) < 1 : Math.abs(z.x + z.w - r.lash.zx) < 1)), r.lash);
   const bt = r.bath;
-  check('피의 욕조: 띠 = 경기장 폭 전체 · A.floor 기준 1.6칸 · 예고 1.0초 · 판정 2.4초 · rehit 0.4 · mv 0.35 · 1칸 떠오름 · 장미 둘',
-    bt.x === bt.A[0] && bt.w === bt.A[1] && Math.abs(bt.y + bt.h - bt.A[2]) < 0.01 && Math.abs(bt.h - 1.6 * 48) < 0.01 && bt.warn === 1 && bt.dur === 2.4 && bt.rehit === 0.4 && bt.mv === 0.35 && bt.rise > 0.9 && bt.roses === 2, bt);
+  check('피의 욕조: 띠 = 경기장 폭 전체 · A.floor 기준 1.6칸 · 예고 1.0초 · 판정 2.4초 · rehit 0.4 · mv 0.3 · 1칸 떠오름 · 장미 둘',
+    bt.x === bt.A[0] && bt.w === bt.A[1] && Math.abs(bt.y + bt.h - bt.A[2]) < 0.01 && Math.abs(bt.h - 1.6 * 48) < 0.01 && bt.warn === 1 && bt.dur === 2.4 && bt.rehit === 0.4 && bt.mv === 0.3 && bt.rise > 0.9 && bt.roses === 2, bt);
   check('세월 흡수: 흡수장 → 끝에 터짐 (r 150 · mv 0.85, 2.1초) → 노출 몸통 0.7', r.drain.burst?.r === 150 && r.drain.burst.mv === 0.85 && Math.abs(r.drain.burst.t - 2.1) < 0.05 && r.drain.pullOn > 60 && r.drain.exp?.body === 0.7, r.drain);
   check('세월 흡수: 노출 중 최대 체력 5% → stagger', r.drainStagger.wasExp && r.drainStagger.state === 'stagger', r.drainStagger);
   const pp = r.parts;

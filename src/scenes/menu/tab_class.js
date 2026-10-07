@@ -9,7 +9,7 @@ import * as PUP from '../../render/hero_puppet.js';
 import * as ProgM from '../../game/progression.js';
 import { Tab } from './base.js';
 import { HeroView, HeroStage, PixLayer, PixCache, pedestal, accentOf, turntableHints, pxScale } from './hero_view.js';
-import { PAL, frame, heading, divider, brackets, glow, glowOval, pill, para, rr, glyph, ellipsize, measure, leanMem, takeCanvas, giveCanvas, vGrad, fillPathGrad, wrapC, Scroller, clipBegin, clipEnd, scrollbar } from './common.js';
+import { PAL, frame, heading, divider, brackets, glow, glowOval, pill, para, rr, glyph, ellipsize, measure, leanMem, takeCanvas, giveCanvas, vGrad, fillPathGrad, wrapC, Scroller, clipBegin, clipEnd, scrollbar, moreBelow } from './common.js';
 // 카드 그라디언트 색 멈춤 (common.js 캐시 키 — 같은 배열이면 매 프레임 새 그라디언트 0, R1-REQ-341B)
 const CARD_ON = [0, 'rgba(70,16,32,0.96)', 1, 'rgba(8,4,10,0.96)'], CARD_OFF = [0, 'rgba(30,18,30,0.94)', 1, 'rgba(8,4,10,0.96)'];
 import { fmtStatVal } from './tab_status.js';
@@ -308,6 +308,7 @@ export class ClassTab extends Tab {
     if (!fit) {
       clipEnd(ctx, R, this.dsc, 'rgba(12,6,16,0.95)');
       if (this.dsc.max > 0) scrollbar(ctx, x + w - 8, R.y + 2, R.h - 4, this.dsc, R.h);
+      moreBelow(ctx, R.x + R.w / 2, R.y + R.h, this.dsc.y, this.dsc.max);   // 보정치 줄이 접힌 아래에서 시작할 때
     }
     // 안내 (고정)
     this.txt.draw(ctx, 'foot', `${c.id}|${st.key}|${this.hero.level}|${this.m.rev}`, x + 4, by - 12, w - 8, y + h - 4 - (by - 12), (g) => {
