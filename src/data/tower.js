@@ -296,8 +296,9 @@ export class TowerPlanner {
     const bh = (id) => this.enemies[id]?.hp ?? 0, avg = (a) => a.reduce((x, id) => x + bh(id), 0) / a.length;
     const prevC = this.plans.slice().reverse().find((p) => p.pool);
     if (f > TOWER_RULES.restEvery && Math.floor((f - 1) / 2) < this.order.length && prevC) {   // 첫 안식처까지(1–3타 구간)는 그대로
-      pool.sort((a, b) => bh(a) - bh(b) || (a < b ? -1 : 1));
-      while (pool.length > 1 && avg(pool) > POOL_STEP * avg(prevC.pool)) pool.pop();
+      const keep = pool.slice().sort((a, b) => bh(a) - bh(b) || (a < b ? -1 : 1));   // 남는 적의 순서(= 시드별 뽑기)는 그대로
+      while (keep.length > 1 && avg(keep) > POOL_STEP * avg(prevC.pool)) keep.pop();
+      if (keep.length < pool.length) pool = pool.filter((id) => keep.includes(id));
     }
     const n = TOWER_CURVE.count(f), eliteP = TOWER_CURVE.elite(this.eliteBase, f);
     const ground = r.shuffle(room.slots.map((s, i) => i).filter((i) => room.slots[i].ground));
